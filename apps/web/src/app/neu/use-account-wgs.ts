@@ -37,6 +37,8 @@ export function useAccountWgs({
 	const [accountWgs, setAccountWgs] = useState<AccountWg[]>([]);
 	const [authState, setAuthState] = useState<AuthState>('loading');
 	const [authRetryNonce, setAuthRetryNonce] = useState(0);
+	// Client-only: a session cookie exists, so the check is for someone already signed in.
+	const [sessionHint, setSessionHint] = useState(false);
 
 	useEffect(() => {
 		if (!interactive) return;
@@ -48,6 +50,7 @@ export function useAccountWgs({
 				setAuthState('signed-out');
 				return;
 			}
+			setSessionHint(true);
 			setAuthState('loading');
 			try {
 				const res = await fetch('/api/wg/mine', {
@@ -111,6 +114,7 @@ export function useAccountWgs({
 
 	function handleAuthenticated(): void {
 		markJustSignedIn();
+		setSessionHint(true);
 		setAuthState('loading');
 		setAuthRetryNonce((value) => value + 1);
 	}
@@ -119,6 +123,7 @@ export function useAccountWgs({
 		accountWgs,
 		setAccountWgs,
 		authState,
+		checkingSession: authState === 'loading' && sessionHint,
 		setAuthState,
 		retryAuth,
 		handleAuthenticated,

@@ -16,7 +16,7 @@ import { useRouter } from 'next/navigation';
 import { type FormEvent, useRef, useState } from 'react';
 
 const GENERIC_RECOVERY_ERROR =
-	'Das alte Profil konnte nicht wiederhergestellt werden. Bitte prüfe den WG-Code und versuche es erneut.';
+	'Profil konnte nicht wieder\u00ADher\u00ADgestellt werden. Prüfe den WG-Code und versuche es erneut.';
 
 type ClaimResponse = {
 	member?: {

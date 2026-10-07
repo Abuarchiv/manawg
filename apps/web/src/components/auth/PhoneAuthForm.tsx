@@ -1,6 +1,7 @@
 'use client';
 
 import { ErrorBox } from '@/components/app/ErrorBox';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -144,7 +145,7 @@ export function PhoneAuthForm({
 			className="flex flex-col gap-4"
 		>
 			<FieldGroup>
-				<h2 id="phone-auth-heading" className="text-[14px] font-semibold text-foreground">
+				<h2 id="phone-auth-heading" className="sr-only">
 					Mit Telefon per SMS
 				</h2>
 				<Field data-invalid={phoneFieldInvalid} data-disabled={otpRequested || busy !== null}>
@@ -164,11 +165,11 @@ export function PhoneAuthForm({
 						}
 						aria-invalid={phoneFieldInvalid ? true : undefined}
 						disabled={otpRequested || busy !== null}
-						className="text-base"
+						className="text-base disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 dark:disabled:bg-muted/40"
 					/>
 				</Field>
 				<p id="auth-phone-hint" className="text-xs text-muted-foreground">
-					Mit + und Landesvorwahl, zum Beispiel +491701234567.
+					Beginnt mit + und der Landesvorwahl.
 				</p>
 				{otpRequested && (
 					<Field data-invalid={otpFieldInvalid}>
@@ -196,10 +197,7 @@ export function PhoneAuthForm({
 				)}
 				{phoneError === 'invalid-phone' && (
 					<div id="auth-phone-error">
-						<ErrorBox>
-							Gib eine Telefonnummer im internationalen E.164-Format ein, zum Beispiel
-							+491701234567.
-						</ErrorBox>
+						<ErrorBox>Gib die Nummer mit Landesvorwahl ein, zum Beispiel +491701234567.</ErrorBox>
 					</div>
 				)}
 				{phoneError === 'invalid-otp' && (
@@ -215,11 +213,15 @@ export function PhoneAuthForm({
 					</div>
 				)}
 				{phoneMessage && (
-					<output className="block text-[13px] text-muted-foreground">{phoneMessage}</output>
+					<Alert>
+						<AlertDescription className="[overflow-wrap:break-word]">
+							{phoneMessage}
+						</AlertDescription>
+					</Alert>
 				)}
 				{otpRequested ? (
 					<div className="flex flex-col gap-2">
-						<Button type="submit" variant="outline" disabled={busy !== null}>
+						<Button type="submit" disabled={busy !== null}>
 							{busy === 'phone-verify' && <Spinner data-icon="inline-start" aria-hidden />}
 							Code bestätigen
 						</Button>
@@ -243,7 +245,7 @@ export function PhoneAuthForm({
 						</Button>
 					</div>
 				) : (
-					<Button type="submit" variant="outline" disabled={busy !== null} className="w-full">
+					<Button type="submit" disabled={busy !== null} className="w-full">
 						{busy === 'phone-request' && <Spinner data-icon="inline-start" aria-hidden />}
 						SMS-Code anfordern
 					</Button>

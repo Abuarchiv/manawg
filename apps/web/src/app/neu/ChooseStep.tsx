@@ -42,24 +42,26 @@ export function ChooseStep({
 		<div className="flex flex-col gap-4">
 			{accountWgs.length > 0 && (
 				<section aria-labelledby="your-wgs-heading" className="flex flex-col gap-3">
-					<h2 id="your-wgs-heading" className="text-base font-semibold">
+					<h2 id="your-wgs-heading" className="sr-only">
 						Deine WGs
 					</h2>
 					<ItemGroup>
 						{accountWgs.map((accountWg) => (
-							<Item
-								key={accountWg.id}
-								variant="outline"
-								render={<Link href={`/wg/${encodeURIComponent(accountWg.code)}`} />}
-							>
-								<ItemMedia variant="icon">
-									<Home aria-hidden />
-								</ItemMedia>
-								<ItemContent className="min-w-0">
-									<ItemTitle className="line-clamp-none break-words">{accountWg.name}</ItemTitle>
-									<ItemDescription>WG öffnen</ItemDescription>
-								</ItemContent>
-							</Item>
+							// biome-ignore lint/a11y/useSemanticElements: ItemGroup is a div[role=list], a bare <li> would be invalid HTML
+							<div key={accountWg.id} role="listitem" className="w-full min-w-0">
+								<Item
+									variant="outline"
+									render={<Link href={`/wg/${encodeURIComponent(accountWg.code)}`} />}
+								>
+									<ItemMedia variant="icon">
+										<Home aria-hidden />
+									</ItemMedia>
+									<ItemContent className="min-w-0">
+										<ItemTitle className="line-clamp-none break-words">{accountWg.name}</ItemTitle>
+										<ItemDescription>WG öffnen</ItemDescription>
+									</ItemContent>
+								</Item>
+							</div>
 						))}
 					</ItemGroup>
 				</section>
@@ -83,12 +85,16 @@ export function ChooseStep({
 					render={
 						<Button
 							variant="ghost"
-							className="h-auto w-full justify-between whitespace-normal text-left"
+							className="h-auto w-full justify-between whitespace-normal py-2 text-left"
 						/>
 					}
 				>
 					Altes Profil auf diesem Gerät wiederherstellen
-					<ChevronDown data-icon="inline-end" aria-hidden />
+					<ChevronDown
+						data-icon="inline-end"
+						aria-hidden
+						className="transition-transform group-aria-expanded/button:rotate-180 motion-reduce:transition-none"
+					/>
 				</CollapsibleTrigger>
 				<CollapsiblePanel keepRendered>
 					<div inert={!legacyOpen} className="pt-3">

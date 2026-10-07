@@ -1,6 +1,7 @@
 'use client';
 
 import { ErrorBox } from '@/components/app/ErrorBox';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -33,7 +34,7 @@ export function useEmailAuth({
 	// "Konto erstellen"; the sign-in path keeps current-password until then.
 	const [newAccountIntent, setNewAccountIntent] = useState(false);
 	const [emailError, setEmailError] = useState<
-		'generic' | 'invalid' | 'weak-password' | 'reset-invalid' | null
+		'generic' | 'invalid' | 'too-short' | 'weak-password' | 'reset-invalid' | null
 	>(null);
 	const [failure, setFailure] = useState<AuthFailure>('other');
 	const [emailMessage, setEmailMessage] = useState<string | null>(null);
@@ -50,9 +51,15 @@ export function useEmailAuth({
 		const normalizedEmail = email.trim().toLowerCase();
 		// Existing accounts may still use 6-character passwords, so only new
 		// passwords have to meet the stricter minimum.
-		if (mode === 'sign-up' && password.length < NEW_PASSWORD_MIN_LENGTH) {
-			setEmailError('weak-password');
-			return;
+		if (mode === 'sign-up') {
+			if (!isValidEmail(normalizedEmail)) {
+				setEmailError('invalid');
+				return;
+			}
+			if (password.length < NEW_PASSWORD_MIN_LENGTH) {
+				setEmailError('too-short');
+				return;
+			}
 		}
 		if (!isValidEmail(normalizedEmail) || password.length < 6) {
 			setEmailError('invalid');
@@ -112,7 +119,9 @@ export function useEmailAuth({
 		emailError === 'reset-invalid' ||
 		(emailError === 'invalid' && !isValidEmail(email.trim().toLowerCase()));
 	const passwordFieldInvalid =
-		(emailError === 'invalid' && password.length < 6) || emailError === 'weak-password';
+		(emailError === 'invalid' && password.length < 6) ||
+		emailError === 'too-short' ||
+		emailError === 'weak-password';
 
 	return {
 		email,
@@ -168,6 +177,7 @@ export function EmailAuthForm({
 						type="email"
 						value={email}
 						onChange={(event) => setEmail(event.target.value)}
+						readOnly={busy !== null}
 						autoComplete="email"
 						enterKeyHint="next"
 						inputMode="email"
@@ -185,6 +195,7 @@ export function EmailAuthForm({
 						type="password"
 						value={password}
 						onChange={(event) => setPassword(event.target.value)}
+						readOnly={busy !== null}
 						autoComplete={newAccountIntent ? 'new-password' : 'current-password'}
 						onFocus={() => setNewAccountIntent(false)}
 						enterKeyHint="go"
@@ -210,6 +221,11 @@ export function EmailAuthForm({
 						<ErrorBox>Bitte gib eine gültige E-Mail-Adresse und dein Passwort ein.</ErrorBox>
 					</div>
 				)}
+				{emailError === 'too-short' && (
+					<div id="auth-email-error">
+						<ErrorBox>Dein Passwort braucht mindestens {NEW_PASSWORD_MIN_LENGTH} Zeichen.</ErrorBox>
+					</div>
+				)}
 				{emailError === 'weak-password' && (
 					<div id="auth-email-error">
 						<ErrorBox>{WEAK_PASSWORD_MESSAGE}</ErrorBox>
@@ -231,7 +247,11 @@ export function EmailAuthForm({
 					{busy === 'password-reset' ? 'Link wird angefordert…' : 'Passwort vergessen?'}
 				</Button>
 				{emailMessage && (
-					<output className="block text-[13px] text-muted-foreground">{emailMessage}</output>
+					<Alert>
+						<AlertDescription className="[overflow-wrap:break-word]">
+							{emailMessage}
+						</AlertDescription>
+					</Alert>
 				)}
 				<div className="flex flex-col gap-2">
 					<Button type="submit" variant="default" disabled={busy !== null}>

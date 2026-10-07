@@ -1,6 +1,5 @@
 import { PasswordResetForm } from '@/components/auth/PasswordResetForm';
 import { EntryFrame } from '@/components/entry/EntryFrame';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getAuthenticatedUserFromCookies } from '@/core/auth/server';
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
@@ -28,22 +27,9 @@ export default async function PasswordResetPage() {
 			}
 			headingId="password-reset-heading"
 			backHref="/neu"
+			backLabel="ManaWG, zurück zur Anmeldung"
 		>
-			{recoveryRequested ? (
-				<Card>
-					<CardHeader>
-						<CardTitle>
-							<h2>Neues Passwort</h2>
-						</CardTitle>
-						<CardDescription>Mindestens acht Zeichen.</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<PasswordResetForm recoveryRequested />
-					</CardContent>
-				</Card>
-			) : (
-				<PasswordResetForm recoveryRequested={false} />
-			)}
+			<PasswordResetForm recoveryRequested={recoveryRequested} />
 		</EntryFrame>
 	);
 }

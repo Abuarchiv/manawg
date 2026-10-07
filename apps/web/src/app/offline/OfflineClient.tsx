@@ -51,6 +51,7 @@ export function OfflineClient({ sessionless = false }: { sessionless?: boolean }
 	const [hasIdentity, setHasIdentity] = useState(false);
 	const [queue, setQueue] = useState<OfflineAction[]>([]);
 	const [syncing, setSyncing] = useState(false);
+	const [rechecking, setRechecking] = useState(false);
 	const [message, setMessage] = useState<string | null>(null);
 	const [status, setStatus] = useState<OfflineStatus>('checking');
 	const syncingRef = useRef(false);
@@ -153,7 +154,18 @@ export function OfflineClient({ sessionless = false }: { sessionless?: boolean }
 		label: statusLabel,
 		heading: statusHeading,
 		description: statusDescription,
-	} = offlineStatusCopy(status, online);
+	} = offlineStatusCopy(status, online, knownWgs.length > 0);
+
+	async function recheck(): Promise<void> {
+		if (rechecking) return;
+		setRechecking(true);
+		try {
+			// The offline branch resolves instantly; keep the pending state long enough to be seen.
+			await Promise.all([refresh(), new Promise((resolve) => window.setTimeout(resolve, 400))]);
+		} finally {
+			setRechecking(false);
+		}
+	}
 
 	async function syncNow() {
 		if (syncingRef.current || !hasRetryableQueue) return;
@@ -210,8 +222,8 @@ export function OfflineClient({ sessionless = false }: { sessionless?: boolean }
 		>
 			<div className="mx-auto flex w-full max-w-md flex-col gap-5 pb-[env(safe-area-inset-bottom)]">
 				<header className="flex flex-col gap-3" aria-labelledby="offline-heading">
-					<div className="flex items-center justify-between gap-3">
-						<div className="flex min-w-0 items-center gap-2">
+					<div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+						<div className="flex min-w-0 max-w-full items-center gap-2">
 							<span className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-muted">
 								{online ? (
 									<Wifi className="h-5 w-5 text-primary" aria-hidden />
@@ -229,11 +241,21 @@ export function OfflineClient({ sessionless = false }: { sessionless?: boolean }
 							type="button"
 							variant="outline"
 							size="sm"
-							onClick={() => void refresh()}
+							onClick={() => void recheck()}
+							disabled={rechecking}
+							aria-busy={rechecking}
 							aria-label="Offline-Status erneut prüfen"
 							className="shrink-0"
 						>
-							<RotateCw data-icon="inline-start" aria-hidden />
+							{rechecking ? (
+								<Spinner
+									data-icon="inline-start"
+									className="motion-reduce:animate-none"
+									aria-hidden
+								/>
+							) : (
+								<RotateCw data-icon="inline-start" aria-hidden />
+							)}
 							Prüfen
 						</Button>
 					</div>
@@ -291,7 +313,7 @@ export function OfflineClient({ sessionless = false }: { sessionless?: boolean }
 					)}
 				</header>
 
-				<OfflineQueueCard queue={queue} primaryWg={primaryWg} />
+				<OfflineQueueCard queue={queue} primaryWg={primaryWg} status={status} />
 
 				{status !== 'unauthenticated' && (
 					<KnownWgsCard
@@ -307,7 +329,7 @@ export function OfflineClient({ sessionless = false }: { sessionless?: boolean }
 					<p className="text-center text-xs leading-relaxed text-muted-foreground">
 						{queue.length > 0
 							? `${Array.from(new Set(queue.map(moduleLabel))).join(', ')} bleibt lokal gespeichert.`
-							: 'Du kannst diese Seite schließen. Sobald du online bist, lädt ManaWG wieder normal.'}
+							: 'Lade die Seite neu, sobald du online bist.'}
 					</p>
 				)}
 			</div>

@@ -30,7 +30,7 @@ export function KnownWgsCard({
 		>
 			<div>
 				<h2 id="known-wgs-heading" className="font-heading text-base leading-5 font-semibold">
-					Zurück in deine WG
+					{knownWgs.length === 0 ? 'Deine WGs' : 'Zurück in deine WG'}
 				</h2>
 			</div>
 			<div className="space-y-2">
@@ -39,33 +39,41 @@ export function KnownWgsCard({
 						{status === 'checking'
 							? 'Gemerkte WGs werden gesucht…'
 							: hasIdentity
-								? 'Auf diesem Gerät bist du in einer WG angemeldet, aber ihr Code ist hier nicht gespeichert. Sobald du wieder online bist, öffnet sich deine WG wieder.'
+								? status === 'ready'
+									? 'Auf diesem Gerät bist du angemeldet, aber der Code deiner WG ist hier nicht gespeichert. Gib den Code ein, um sie zu öffnen.'
+									: 'Auf diesem Gerät bist du in einer WG angemeldet, aber ihr Code ist hier nicht gespeichert. Sobald du wieder online bist, lade die Seite neu, dann kannst du deine WG wieder öffnen.'
 								: status === 'browser-offline'
-									? 'Ohne Netz zeigen wir nur WGs mit wartenden Aktionen. Sobald du wieder online bist, öffnet sich deine WG wieder.'
-									: 'Noch keine WG auf diesem Gerät gemerkt. Sobald du wieder online bist, kannst du mit deinem Code erneut beitreten.'}
+									? 'Ohne Netz zeigen wir nur WGs mit wartenden Aktionen. Sobald du wieder online bist, lade die Seite neu, dann kannst du deine WG wieder öffnen.'
+									: status === 'ready'
+										? 'Noch keine WG auf diesem Gerät gemerkt. Gib deinen Code ein, um beizutreten.'
+										: 'Noch keine WG auf diesem Gerät gemerkt. Sobald du wieder online bist, kannst du mit deinem Code erneut beitreten.'}
 					</p>
 				) : (
 					<ItemGroup aria-label="Bekannte WGs">
 						{knownWgs.slice(0, 3).map((wg) => (
-							<Item
-								key={wg.code}
-								variant="outline"
-								render={<Link href={wgHref(wg.code)} aria-label={`${wg.name} öffnen`} />}
-							>
-								<ItemContent>
-									<ItemTitle>{wg.name}</ItemTitle>
-									<ItemDescription>
-										{formatWgQueuedActionCount(queueCounts.get(wg.code) ?? 0)}
-									</ItemDescription>
-								</ItemContent>
-								<ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-							</Item>
+							// biome-ignore lint/a11y/useSemanticElements: ItemGroup is a div[role=list], a bare <li> would be invalid HTML
+							<div key={wg.code} role="listitem" className="w-full min-w-0">
+								<Item
+									variant="outline"
+									render={<Link href={wgHref(wg.code)} aria-label={`${wg.name} öffnen`} />}
+								>
+									<ItemContent className="basis-40">
+										<ItemTitle className="line-clamp-none [overflow-wrap:break-word]">
+											{wg.name}
+										</ItemTitle>
+										<ItemDescription>
+											{formatWgQueuedActionCount(queueCounts.get(wg.code) ?? 0)}
+										</ItemDescription>
+									</ItemContent>
+									<ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+								</Item>
+							</div>
 						))}
 					</ItemGroup>
 				)}
 
 				<div className="grid grid-cols-1 gap-2 pt-2">
-					{primaryWg && (
+					{primaryWg && (queueCounts.get(primaryWg.code) ?? 0) > 0 && (
 						<Button
 							variant="outline"
 							size="lg"

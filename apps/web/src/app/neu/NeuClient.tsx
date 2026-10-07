@@ -8,11 +8,12 @@ import { LegalLinks } from '@/components/entry/LegalLinks';
 import { Button } from '@/components/ui/button';
 import { FieldGroup, FieldSeparator } from '@/components/ui/field';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import { safeNextPath } from '@/core/auth/next-path';
 import { normalizeShareCode } from '@/core/utils/share-code';
 import { getIdentity } from '@/shared/lib/identity';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ChooseStep } from './ChooseStep';
 import { CreateStep } from './CreateStep';
 import { InviteStep } from './InviteStep';
@@ -31,6 +32,7 @@ import { useCreateWg } from './use-create-wg';
 import { useJoinWg } from './use-join-wg';
 import { useSaveStartDraft, useStartDraft } from './use-start-draft';
 import { useStartError } from './use-start-error';
+import { useStepHistory } from './use-step-history';
 
 // Most failed callbacks are an expired or reused link, or a link opened in a
 // different browser than the one that requested it (no PKCE verifier there).
@@ -60,9 +62,31 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 	const { error, invalidField, clearError, setFormError, setFieldError } = useStartError();
 	const [accountSwitchError, setAccountSwitchError] = useState<string | null>(null);
 	const [legacyOpen, setLegacyOpen] = useState(false);
-	const { accountWgs, setAccountWgs, authState, setAuthState, retryAuth, handleAuthenticated } =
-		useAccountWgs({ interactive, step, clearError });
+	const [switching, setSwitching] = useState(false);
+	const [credentialsBusy, setCredentialsBusy] = useState(false);
+	// Keeps the retry button mounted (and focused) while the check reruns.
+	const [retried, setRetried] = useState(false);
+	const {
+		accountWgs,
+		setAccountWgs,
+		authState,
+		checkingSession,
+		setAuthState,
+		retryAuth,
+		handleAuthenticated,
+	} = useAccountWgs({ interactive, step, clearError });
 	useSaveStartDraft({ interactive, step, wgName, creatorName, joinCode, joinName, joinWg });
+	const { goTo, goBack } = useStepHistory({
+		interactive,
+		step,
+		setStep,
+		onPop: (target) => {
+			clearError();
+			if (target === 'choose') setJoinWg(null);
+		},
+		canEnter: (target) =>
+			target === 'joinName' ? joinWg !== null : target === 'invite' ? createdWg !== null : true,
+	});
 
 	function loginNextPath(): string {
 		const params = new URLSearchParams();
@@ -88,11 +112,15 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 		router.replace(loginNextPath());
 	}
 
+	useEffect(() => {
+		if (authState !== 'loading') setRetried(false);
+	}, [authState]);
+
 	const errorActions = { clearError, setFormError, setFieldError };
 	const { createdWg, setCreatedWg, createWg } = useCreateWg({
 		wgName,
 		creatorName,
-		setStep,
+		setStep: goTo,
 		busyRef,
 		setBusy,
 		...errorActions,
@@ -103,7 +131,7 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 		joinName,
 		joinWg,
 		setJoinWg,
-		setStep,
+		setStep: goTo,
 		busyRef,
 		setBusy,
 		...errorActions,
@@ -115,6 +143,7 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 		if (busyRef.current) return;
 		busyRef.current = true;
 		setBusy(true);
+		setSwitching(true);
 		setAccountSwitchError(null);
 		try {
 			const { signOutSocialAccount } = await import('@/core/auth/client');
@@ -145,14 +174,33 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 		} finally {
 			busyRef.current = false;
 			setBusy(false);
+			setSwitching(false);
 		}
 	}
 
 	function backToChoose(): void {
-		setStep('choose');
-		clearError();
-		setJoinWg(null);
+		goBack('choose');
 	}
+
+	// Back to the choose step drops the focused button; land on the heading instead.
+	const previousStepRef = useRef(step);
+	useEffect(() => {
+		if (previousStepRef.current !== step && step === 'choose') {
+			document.getElementById('neu-heading')?.focus();
+		}
+		previousStepRef.current = step;
+	}, [step]);
+
+	// The static metadata title names the WG flow; the signed-out page shows the sign-in form.
+	const showsSignIn = authState !== 'authenticated' && !checkingSession;
+	useEffect(() => {
+		if (!showsSignIn) return;
+		const previous = document.title;
+		document.title = 'Anmelden — ManaWG';
+		return () => {
+			document.title = previous;
+		};
+	}, [showsSignIn]);
 
 	const callbackError = searchParams.get('error') === 'auth_callback';
 	const deniedWgCode = (() => {
@@ -163,24 +211,37 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 	if (authState !== 'authenticated') {
 		return (
 			<EntryFrame
-				title="Anmelden"
+				title={checkingSession ? 'Deine WG' : 'Anmelden'}
 				headingId="auth-heading"
 				description={
-					step === 'create'
-						? 'Melde dich an, danach erstellst du deine neue WG.'
-						: joinCode
-							? 'Melde dich an, um mit deinem WG-Code beizutreten.'
-							: undefined
+					checkingSession
+						? undefined
+						: step === 'create'
+							? 'Melde dich an, danach erstellst du deine neue WG.'
+							: joinCode
+								? 'Melde dich an, um mit deinem WG-Code beizutreten.'
+								: undefined
 				}
 				backHref={explorationHref()}
 			>
 				{accountSwitchError && <ErrorBox>{accountSwitchError}</ErrorBox>}
 				{callbackError && <ErrorBox>{AUTH_CALLBACK_ERROR}</ErrorBox>}
-				{authState === 'error' && (
+				{(authState === 'error' || (retried && authState === 'loading')) && (
 					<div className="flex flex-col gap-2">
 						<ErrorBox>Deine Anmeldung konnte gerade nicht geprüft werden.</ErrorBox>
-						<Button variant="outline" onClick={() => retryAuth()}>
-							Erneut prüfen
+						<Button
+							variant="outline"
+							focusableWhenDisabled
+							disabled={retried}
+							aria-busy={retried}
+							className="aria-disabled:pointer-events-none aria-disabled:opacity-50"
+							onClick={() => {
+								setRetried(true);
+								retryAuth();
+							}}
+						>
+							{retried && <Spinner data-icon="inline-start" aria-hidden />}
+							{retried ? 'Prüfe …' : 'Erneut prüfen'}
 						</Button>
 					</div>
 				)}
@@ -190,24 +251,48 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 						aria-label="Anmeldung wird geprüft"
 						className="flex flex-col gap-4"
 					>
-						<Skeleton className="h-11 w-full" />
-						<Skeleton className="h-40 w-full" />
+						{checkingSession ? (
+							// Shaped like the two choose buttons that replace it.
+							<div className="flex flex-col gap-2">
+								<Skeleton className="h-9 w-full" />
+								<Skeleton className="h-9 w-full" />
+							</div>
+						) : (
+							// Shaped like the sign-in form (Google, separator, two fields, link, two buttons).
+							<>
+								<Skeleton className="h-8 w-full" />
+								<Skeleton className="h-5 w-full" />
+								<Skeleton className="h-[4.5rem] w-full" />
+								<Skeleton className="h-24 w-full" />
+								<Skeleton className="h-8 w-full" />
+								<Skeleton className="h-[4.5rem] w-full" />
+							</>
+						)}
 						<span className="sr-only">Anmeldung wird geprüft</span>
 					</output>
 				) : (
 					<FieldGroup>
-						<SocialLoginButtons next={loginNextPath()} onOAuthStart={startSocialLogin} />
+						<SocialLoginButtons
+							next={loginNextPath()}
+							onOAuthStart={startSocialLogin}
+							disabled={credentialsBusy}
+						/>
 						<FieldSeparator>oder</FieldSeparator>
-						<CredentialsAuth next={loginNextPath()} onAuthenticated={handleAuthenticated} />
+						<CredentialsAuth
+							next={loginNextPath()}
+							onAuthenticated={handleAuthenticated}
+							onBusyChange={setCredentialsBusy}
+						/>
 					</FieldGroup>
 				)}
-				<LegalLinks consent />
+				{!checkingSession && <LegalLinks consent />}
 			</EntryFrame>
 		);
 	}
 
 	return (
 		<EntryFrame
+			headingId="neu-heading"
 			title={
 				step === 'choose'
 					? 'Deine WG'
@@ -217,7 +302,7 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 							? 'Per Code beitreten'
 							: step === 'joinName'
 								? 'Dein Name in der WG'
-								: (createdWg?.name ?? 'Mitbewohner einladen')
+								: 'WG erstellt'
 			}
 			description={
 				step === 'invite'
@@ -229,23 +314,10 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 							: step === 'join'
 								? 'Gib den WG-Code deiner Mitbewohner ein.'
 								: accountWgs.length > 0
-									? 'Öffne eine deiner WGs oder starte gemeinsam neu.'
-									: 'Du hast noch keine WG. Erstelle eure oder tritt mit einem Code bei.'
+									? 'Öffne eine deiner WGs, erstelle eine neue oder tritt per Code bei.'
+									: 'Du hast noch keine WG. Erstelle eine neue oder tritt mit einem Code bei.'
 			}
 			backHref={explorationHref()}
-			actions={
-				step !== 'invite' ? (
-					<Button
-						type="button"
-						variant="link"
-						onClick={() => void switchAccount()}
-						disabled={busy}
-						className="w-fit px-0 text-muted-foreground underline underline-offset-4"
-					>
-						{busy ? 'Bitte warten…' : 'Mit anderem Konto anmelden'}
-					</Button>
-				) : undefined
-			}
 		>
 			{callbackError && <ErrorBox>{AUTH_CALLBACK_ERROR}</ErrorBox>}
 			{accountSwitchError && <ErrorBox>{accountSwitchError}</ErrorBox>}
@@ -263,8 +335,8 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 					busy={busy}
 					legacyOpen={legacyOpen}
 					onLegacyOpenChange={setLegacyOpen}
-					onCreate={() => setStep('create')}
-					onJoin={() => setStep('join')}
+					onCreate={() => goTo('create')}
+					onJoin={() => goTo('join')}
 				/>
 			)}
 
@@ -313,11 +385,20 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 					clearError={clearError}
 					busy={busy}
 					onSubmit={() => void joinExistingWg()}
-					onBack={() => {
-						clearError();
-						setStep('join');
-					}}
+					onBack={() => goBack('join')}
 				/>
+			)}
+
+			{step !== 'invite' && (
+				<Button
+					type="button"
+					variant="link"
+					onClick={() => void switchAccount()}
+					disabled={busy}
+					className="w-fit px-0 text-left text-muted-foreground underline underline-offset-4"
+				>
+					{switching ? 'Bitte warten…' : 'Mit anderem Konto anmelden'}
+				</Button>
 			)}
 		</EntryFrame>
 	);

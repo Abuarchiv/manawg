@@ -1,3 +1,4 @@
+import { ToastContainer } from '@/components/ui/Toast';
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 
@@ -7,5 +8,10 @@ export const metadata: Metadata = {
 };
 
 export default function NeuLayout({ children }: { children: ReactNode }) {
-	return children;
+	return (
+		<>
+			{children}
+			<ToastContainer />
+		</>
+	);
 }

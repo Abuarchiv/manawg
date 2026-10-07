@@ -5,6 +5,7 @@ const LEGAL_LINKS = [
 	{ href: 'https://manawg.com/datenschutz', label: 'Datenschutz' },
 	{ href: 'https://manawg.com/agb', label: 'AGB' },
 ] as const;
+const [IMPRESSUM, DATENSCHUTZ, AGB] = LEGAL_LINKS;
 
 // Public entry and sign-up must reach the legal pages without an account (§ 5 DDG, Art. 13 DSGVO).
 export function LegalLinks({
@@ -18,9 +19,21 @@ export function LegalLinks({
 				className,
 			)}
 		>
-			{consent && <p>Mit der Anmeldung akzeptierst du unsere AGB und die Datenschutzerklärung.</p>}
+			{consent && (
+				<p>
+					Mit der Anmeldung akzeptierst du unsere{' '}
+					<a href={AGB.href} className="underline underline-offset-4">
+						AGB
+					</a>{' '}
+					und die{' '}
+					<a href={DATENSCHUTZ.href} className="underline underline-offset-4">
+						Datenschutzerklärung
+					</a>
+					.
+				</p>
+			)}
 			<nav aria-label="Rechtliches" className="flex flex-wrap justify-center">
-				{LEGAL_LINKS.map((link) => (
+				{(consent ? [IMPRESSUM] : LEGAL_LINKS).map((link) => (
 					<a
 						key={link.href}
 						href={link.href}

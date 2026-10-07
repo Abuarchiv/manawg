@@ -1,5 +1,5 @@
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import {
 	Item,
 	ItemActions,
@@ -24,7 +24,7 @@ const PREVIEW_COPY = {
 	ausgaben: { title: 'Pizzaabend', detail: 'Mika bezahlt · 4 Personen' },
 	putzen: { title: 'Bad putzen', detail: 'Lea · heute' },
 	pinnwand: { title: 'Übergabe am Freitag', detail: 'Jona · Schlüssel liegen im Flur bereit.' },
-	fixkosten: { title: 'Internet', detail: '29,99 € monatlich · nächste Zahlung am 3.' },
+	fixkosten: { title: 'Internet', detail: '29,99 € monatlich · nächste Zahlung am 3. des Monats' },
 	mahnungen: { title: 'Jona bekommt 12,50 €', detail: 'Geteilt aus dem Einkauf · seit 2 Tagen' },
 	vorraete: { title: 'Toilettenpapier', detail: '2 Packungen · Mindestbestand 1' },
 	kalender: { title: 'Putzplan-Check', detail: 'Freitag · 18:00 Uhr · für die ganze WG' },
@@ -55,7 +55,8 @@ function PreviewRows({ module }: { module: PublicPreviewModule }) {
 		return (
 			<ItemGroup className="gap-0">
 				{SHOPPING_ROWS.map(([title, detail, done]) => (
-					<Item key={title} className={ROW}>
+					// biome-ignore lint/a11y/useSemanticElements: ItemGroup is a div[role=list], a bare <li> would be invalid HTML
+					<Item key={title} className={ROW} role="listitem">
 						<ItemMedia>
 							<span
 								aria-hidden
@@ -85,15 +86,22 @@ function PreviewRows({ module }: { module: PublicPreviewModule }) {
 	if (module.slug === 'ausgaben') {
 		return (
 			<ItemGroup className="gap-0">
-				<Item className={ROW}>
+				{/* biome-ignore lint/a11y/useSemanticElements: ItemGroup is a div[role=list], a bare <li> would be invalid HTML */}
+				<Item className={ROW} role="listitem">
 					<ItemMedia variant="icon">
 						<module.Icon aria-hidden />
 					</ItemMedia>
-					<ItemContent className="min-w-0">
-						<ItemTitle className="line-clamp-none break-words">{copy.title}</ItemTitle>
-						<ItemDescription className="line-clamp-none break-words">{copy.detail}</ItemDescription>
+					<ItemContent className="min-w-[10ch]">
+						<ItemTitle className="line-clamp-none [overflow-wrap:break-word]">
+							{copy.title}
+						</ItemTitle>
+						<ItemDescription className="line-clamp-none [overflow-wrap:break-word]">
+							{copy.detail}
+						</ItemDescription>
 					</ItemContent>
-					<ItemActions className="shrink-0 font-mono text-sm tabular-nums">28,40 €</ItemActions>
+					<ItemActions className="ml-auto shrink-0 font-mono text-sm whitespace-nowrap tabular-nums">
+						28,40 €
+					</ItemActions>
 				</Item>
 			</ItemGroup>
 		);
@@ -102,10 +110,11 @@ function PreviewRows({ module }: { module: PublicPreviewModule }) {
 	if (module.slug === 'putzen') {
 		return (
 			<ItemGroup className="gap-0">
-				<Item className={ROW}>
+				{/* biome-ignore lint/a11y/useSemanticElements: ItemGroup is a div[role=list], a bare <li> would be invalid HTML */}
+				<Item className={ROW} role="listitem">
 					<ItemMedia>
 						<Avatar size="sm">
-							<AvatarFallback>L</AvatarFallback>
+							<AvatarFallback>LE</AvatarFallback>
 						</Avatar>
 					</ItemMedia>
 					<ItemContent className="min-w-0">
@@ -119,7 +128,8 @@ function PreviewRows({ module }: { module: PublicPreviewModule }) {
 
 	return (
 		<ItemGroup className="gap-0">
-			<Item className={ROW}>
+			{/* biome-ignore lint/a11y/useSemanticElements: ItemGroup is a div[role=list], a bare <li> would be invalid HTML */}
+			<Item className={ROW} role="listitem">
 				<ItemMedia variant="icon">
 					<module.Icon aria-hidden />
 				</ItemMedia>
@@ -141,17 +151,24 @@ export function PublicModulePreviews({
 }) {
 	return (
 		<section aria-label="So kann euer Alltag aussehen">
+			<p className="px-1 pb-1.5 text-xs text-muted-foreground">
+				Beispiel: So kann euer Alltag aussehen
+			</p>
 			<Card className="py-0">
 				<div className="flex flex-col">
 					{modules.map((module) => {
 						const copy = PREVIEW_COPY[module.slug];
 						return (
-							<article key={module.slug} aria-label={`${module.title}, Beispiel-WG`}>
+							<article
+								key={module.slug}
+								aria-label={`${module.title}, Beispiel-WG`}
+								className="@container"
+							>
 								<Item
 									render={<Link href={hrefFor(module.slug)} />}
 									className="min-h-11 rounded-none border-0 border-t border-border px-4 py-2.5 in-[article:first-child]:border-t-0"
 								>
-									<ItemMedia variant="icon">
+									<ItemMedia variant="icon" className="@max-[13rem]:hidden">
 										<module.Icon aria-hidden />
 									</ItemMedia>
 									<ItemContent className="min-w-0">
@@ -160,7 +177,10 @@ export function PublicModulePreviews({
 											{copy.title} · {copy.detail}
 										</ItemDescription>
 									</ItemContent>
-									<ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+									<ChevronRight
+										className="size-4 shrink-0 text-muted-foreground @max-[13rem]:hidden"
+										aria-hidden
+									/>
 								</Item>
 							</article>
 						);
@@ -176,10 +196,8 @@ export function PublicModulePreview({ module }: { module: PublicPreviewModule })
 		<section aria-label={`Beispielansicht für ${module.title}`}>
 			<article aria-label={`${module.title}, Beispiel-WG`}>
 				<Card className="h-full">
-					<CardHeader>
-						<span className="justify-self-end text-[12px] text-muted-foreground">Beispiel</span>
-					</CardHeader>
 					<CardContent>
+						<span className="mb-1 block text-right text-xs text-muted-foreground">Beispiel</span>
 						<PreviewRows module={module} />
 					</CardContent>
 				</Card>

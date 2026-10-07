@@ -49,8 +49,9 @@ export function useStartDraft() {
 				const restoredCode = normalizeShareCode(draft.joinWg.code);
 				setJoinWg({ code: restoredCode, name: `WG ${restoredCode}` });
 				setStep('joinName');
-			} else if (draft?.step === 'create' || draft?.step === 'join') setStep(draft.step);
-			else if (draft?.joinCode) setStep('join');
+			}
+			// Create/join forms are not reopened from a draft: the typed values stay, but a bare /neu
+			// opens the choose step (create and invite links carry their own step in the URL).
 		}
 		setInteractive(true);
 	}, []);

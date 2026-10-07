@@ -2,17 +2,10 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardFooter,
-	CardHeader,
-	CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { type NavigatorWithShare, copyText } from '@/core/utils/clipboard';
 import { cn } from '@/shared/lib/cn';
-import { AlertTriangle, Check, MessageCircle, Share2 } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Check, MessageCircle, Share2 } from 'lucide-react';
 import { useRef, useState } from 'react';
 
 const SHARE_RESET_MS = 1500;
@@ -37,6 +30,9 @@ export function InviteStep({ code, wgName, onSkip }: InviteStepProps) {
 	function flash(next: ShareState): void {
 		setState(next);
 		if (timerRef.current) window.clearTimeout(timerRef.current);
+		timerRef.current = null;
+		// Errors stay until the next action overwrites them.
+		if (next === 'failed' || next === 'codeFailed') return;
 		timerRef.current = window.setTimeout(() => setState('idle'), SHARE_RESET_MS);
 	}
 
@@ -112,7 +108,7 @@ export function InviteStep({ code, wgName, onSkip }: InviteStepProps) {
 						: state === 'codeCopied'
 							? 'WG-Code wurde kopiert.'
 							: state === 'failed'
-								? 'Teilen fehlgeschlagen. Kopiere den Link stattdessen.'
+								? 'Teilen fehlgeschlagen. Kopiere stattdessen den Code oben.'
 								: state === 'codeFailed'
 									? 'WG-Code konnte nicht kopiert werden.'
 									: ''}
@@ -120,10 +116,10 @@ export function InviteStep({ code, wgName, onSkip }: InviteStepProps) {
 
 			<Card>
 				<CardHeader className="items-center text-center">
-					<div className="flex size-10 items-center justify-center rounded-lg bg-muted text-foreground">
+					<div className="mx-auto flex size-10 items-center justify-center rounded-lg bg-muted text-foreground">
 						<Check aria-hidden />
 					</div>
-					<CardTitle className="max-w-full break-words">{wgName} ist live.</CardTitle>
+					<CardTitle className="max-w-full break-words">Eure WG „{wgName}“ ist live.</CardTitle>
 					<CardDescription>Teile den WG-Code mit deiner WG.</CardDescription>
 				</CardHeader>
 				<CardContent className="flex flex-col items-center gap-3 text-center">
@@ -138,14 +134,17 @@ export function InviteStep({ code, wgName, onSkip }: InviteStepProps) {
 						{code}
 					</Button>
 					<p className="text-sm text-muted-foreground">Tippe auf den Code zum Kopieren.</p>
+					<div className="flex min-h-6 items-center justify-center">
+						{(state === 'codeCopied' || state === 'codeFailed') && (
+							<Badge
+								variant={state === 'codeFailed' ? 'destructive' : 'secondary'}
+								className="h-auto whitespace-normal text-center"
+							>
+								{state === 'codeCopied' ? 'Code kopiert' : 'Code konnte nicht kopiert werden'}
+							</Badge>
+						)}
+					</div>
 				</CardContent>
-				{(state === 'codeCopied' || state === 'codeFailed') && (
-					<CardFooter className="justify-center">
-						<Badge variant={state === 'codeFailed' ? 'destructive' : 'secondary'}>
-							{state === 'codeCopied' ? 'Code kopiert' : 'Code konnte nicht kopiert werden'}
-						</Badge>
-					</CardFooter>
-				)}
 			</Card>
 
 			<Card>
@@ -194,18 +193,14 @@ export function InviteStep({ code, wgName, onSkip }: InviteStepProps) {
 						<MessageCircle data-icon="inline-start" aria-hidden />
 						Per WhatsApp teilen
 					</a>
+					<div className="flex min-h-6 items-center justify-center">
+						{state === 'failed' && (
+							<Badge variant="destructive" className="h-auto whitespace-normal text-center">
+								Teilen fehlgeschlagen. Kopiere stattdessen den Code oben.
+							</Badge>
+						)}
+					</div>
 				</CardContent>
-				{state !== 'idle' && state !== 'codeCopied' && state !== 'codeFailed' && (
-					<CardFooter>
-						<Badge variant={state === 'failed' ? 'destructive' : 'secondary'}>
-							{state === 'shared'
-								? 'Einladung geteilt'
-								: state === 'copied'
-									? 'Link kopiert'
-									: 'Teilen fehlgeschlagen'}
-						</Badge>
-					</CardFooter>
-				)}
 			</Card>
 
 			<Button
@@ -215,7 +210,8 @@ export function InviteStep({ code, wgName, onSkip }: InviteStepProps) {
 				disabled={sharingBlocked}
 				className="w-full"
 			>
-				Später → direkt zur WG
+				<ArrowRight data-icon="inline-start" aria-hidden />
+				Zur WG
 			</Button>
 		</div>
 	);

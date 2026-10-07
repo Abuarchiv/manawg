@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { FieldDescription, FieldGroup, FieldLabel, Field as UiField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
+import { normalizeShareCode } from '@/core/utils/share-code';
 import { ArrowRight } from 'lucide-react';
 import type { StartField } from './start-flow';
 
@@ -48,12 +49,10 @@ export function JoinCodeStep({
 						value={joinCode}
 						onChange={(event) => {
 							// Pasted codes often carry spaces or dashes ("ABCD 1234"); drop them (and
-							// leave maxLength slack) so a paste is not cut off.
+							// leave maxLength slack) so a paste is not cut off. Look-alikes (I/L/O/U)
+							// are swapped right away so the field shows the code that gets checked.
 							onJoinCodeChange(
-								event.target.value
-									.replace(/[^a-z0-9]/gi, '')
-									.toUpperCase()
-									.slice(0, 8),
+								normalizeShareCode(event.target.value.replace(/[^a-z0-9]/gi, '')).slice(0, 8),
 							);
 							if (error) clearError();
 						}}
@@ -71,13 +70,12 @@ export function JoinCodeStep({
 						aria-invalid={invalidField === 'joinCode'}
 						className="font-mono text-base"
 					/>
-					<FieldDescription id="join-code-hint">8 Zeichen, ohne I, L, O und U.</FieldDescription>
+					<FieldDescription id="join-code-hint">Der Code hat 8 Zeichen.</FieldDescription>
 				</UiField>
+				{error && invalidField === 'joinCode' && <ErrorBox id="join-code-error">{error}</ErrorBox>}
 			</FieldGroup>
-			{error && (
-				<ErrorBox id={invalidField === 'joinCode' ? 'join-code-error' : 'join-code-form-error'}>
-					{error}
-				</ErrorBox>
+			{error && invalidField !== 'joinCode' && (
+				<ErrorBox id="join-code-form-error">{error}</ErrorBox>
 			)}
 			<div className="flex flex-wrap items-center gap-2">
 				<BackButton onClick={onBack} disabled={busy} />

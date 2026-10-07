@@ -1,6 +1,5 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -10,7 +9,12 @@ import {
 } from '@/core/offline/offline-queue';
 import type { KnownWg } from '@/shared/lib/identity';
 import Link from 'next/link';
-import { formatOfflineAge, formatQueuedActionCount, wgHref } from './offline-page-helpers';
+import {
+	type OfflineStatus,
+	formatOfflineAge,
+	formatQueuedActionCount,
+	wgHref,
+} from './offline-page-helpers';
 
 const RECENT_VISIBLE = 4;
 
@@ -18,7 +22,8 @@ const RECENT_VISIBLE = 4;
 export function OfflineQueueCard({
 	queue,
 	primaryWg,
-}: { queue: OfflineAction[]; primaryWg: KnownWg | null }) {
+	status,
+}: { queue: OfflineAction[]; primaryWg: KnownWg | null; status: OfflineStatus }) {
 	const recentQueue = queue.slice(0, RECENT_VISIBLE);
 	const hiddenQueueCount = Math.max(0, queue.length - recentQueue.length);
 	return (
@@ -32,7 +37,11 @@ export function OfflineQueueCard({
 						Warteschlange
 					</h2>
 					<p className="mt-1 text-sm text-muted-foreground">
-						{formatQueuedActionCount(queue.length)}
+						{status === 'checking'
+							? 'Wird geladen…'
+							: status === 'unauthenticated'
+								? 'Nach der Anmeldung siehst du deine wartenden Aktionen.'
+								: formatQueuedActionCount(queue.length)}
 					</p>
 				</div>
 			</div>
@@ -42,20 +51,22 @@ export function OfflineQueueCard({
 						const summary = getOfflineActionSummary(item);
 						const risk = getOfflineActionRisk(item);
 						return (
-							<Item key={item.id} variant="outline">
-								<ItemContent>
-									<ItemTitle>{summary.title}</ItemTitle>
-									<ItemDescription className="truncate">{summary.detail}</ItemDescription>
-									{item.lastError && (
-										<p className="mt-1 text-xs text-destructive">{item.lastError}</p>
-									)}
-									{risk && (
+							// biome-ignore lint/a11y/useSemanticElements: ItemGroup is a div[role=list], a bare <li> would be invalid HTML
+							<Item key={item.id} variant="outline" role="listitem" className="items-start">
+								<ItemContent className="basis-40">
+									<ItemTitle className="line-clamp-none [overflow-wrap:break-word]">
+										{summary.title}
+									</ItemTitle>
+									<ItemDescription className="line-clamp-1">{summary.detail}</ItemDescription>
+									{(item.lastError || risk) && (
 										<p className="mt-1 text-xs text-muted-foreground">
-											{risk.title}: {risk.detail}
+											{item.lastError && <span className="text-destructive">{item.lastError}</span>}
+											{item.lastError && risk ? ' ' : null}
+											{risk && `${risk.title}: ${risk.detail}`}
 										</p>
 									)}
 								</ItemContent>
-								<span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+								<span className="shrink-0 text-xs whitespace-nowrap text-muted-foreground tabular-nums">
 									{formatOfflineAge(item.createdAt)}
 								</span>
 							</Item>
@@ -70,15 +81,12 @@ export function OfflineQueueCard({
 						+{hiddenQueueCount} weitere Aktion
 						{hiddenQueueCount === 1 ? '' : 'en'} in der Warteschlange.{' '}
 						{primaryWg ? (
-							<Button
-								variant="link"
-								size="lg"
-								render={<Link href={wgHref(primaryWg.code, '/einstellungen#daten')} />}
-								nativeButton={false}
-								className="px-0"
+							<Link
+								href={wgHref(primaryWg.code, '/einstellungen#daten')}
+								className="text-primary underline underline-offset-4"
 							>
 								Alle Aktionen prüfen
-							</Button>
+							</Link>
 						) : (
 							'Alle Aktionen prüfen'
 						)}{' '}
