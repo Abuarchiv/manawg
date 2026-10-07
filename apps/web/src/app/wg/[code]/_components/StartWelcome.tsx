@@ -16,23 +16,24 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { CopyCodeButton } from './CopyCodeButton';
 
-export function StartWelcome() {
+export function StartWelcome({ dismissedFallback }: { dismissedFallback?: React.ReactNode }) {
 	const { wg, identity, members } = useWg();
 	// Stable WG/member IDs survive invitation-code changes and isolate preferences.
 	const storageKey = `manawg:start-welcome-dismissed:${wg.id}:${identity.memberId}`;
-	const [visibleFor, setVisibleFor] = useState<string | null>(null);
+	// null until localStorage was read, so the fallback does not flash on load.
+	const [status, setStatus] = useState<{ key: string; dismissed: boolean } | null>(null);
 	useEffect(() => {
 		try {
-			setVisibleFor(localStorage.getItem(storageKey) === '1' ? null : storageKey);
+			setStatus({ key: storageKey, dismissed: localStorage.getItem(storageKey) === '1' });
 		} catch {
-			setVisibleFor(storageKey);
+			setStatus({ key: storageKey, dismissed: false });
 		}
 	}, [storageKey]);
 
 	function dismiss() {
 		// Der Knopf verschwindet gleich: Fokus vorher auf die nächste Überschrift legen.
 		document.getElementById('week-heading')?.focus({ preventScroll: true });
-		setVisibleFor(null);
+		setStatus({ key: storageKey, dismissed: true });
 		try {
 			localStorage.setItem(storageKey, '1');
 		} catch {
@@ -40,7 +41,8 @@ export function StartWelcome() {
 		}
 	}
 
-	if (visibleFor !== storageKey) return null;
+	if (status?.key !== storageKey) return null;
+	if (status.dismissed) return <>{dismissedFallback}</>;
 	const baseHref = `/wg/${encodeURIComponent(wg.shareCode)}`;
 	const hasRoommates = members.filter((member) => member.active).length >= 2;
 	return (
