@@ -92,7 +92,7 @@ interface PayPalPaymentButtonProps {
 	payeeMerchantId: string;
 	amountCents: number;
 	currency: string;
-	onPaid: () => void;
+	onPaid: (message?: string) => void;
 }
 
 export function PayPalPaymentButton({
@@ -119,6 +119,8 @@ export function PayPalPaymentButton({
 	const [isCheckingStatus, setIsCheckingStatus] = useState(true);
 	const [isRetrying, setIsRetrying] = useState(false);
 	onPaidRef.current = onPaid;
+	const paidMessageRef = useRef('');
+	paidMessageRef.current = `PayPal-Zahlung über ${formatEuroCents(amountCents, currency)} verbucht.`;
 
 	useEffect(() => {
 		if (!PAYPAL_CLIENT_ID || !PAYPAL_PARTNER_ATTRIBUTION_ID || !containerRef.current) return;
@@ -145,7 +147,7 @@ export function PayPalPaymentButton({
 				if (result.ok && result.data.status === 'COMPLETED') {
 					updatePendingOrder(null);
 					setError(null);
-					onPaidRef.current();
+					onPaidRef.current(paidMessageRef.current);
 					return 'completed';
 				}
 				if (result.ok && result.data.status === 'PENDING') {
@@ -301,7 +303,7 @@ export function PayPalPaymentButton({
 			{pendingOrderId && (
 				<div className="flex flex-col gap-2">
 					<output
-						className="rounded-md border bg-muted px-3 py-2 text-sm text-muted-foreground"
+						className="rounded-md border bg-muted px-3 py-2 text-sm text-foreground"
 						aria-live="polite"
 					>
 						PayPal verarbeitet diese Zahlung noch. Starte keine weitere Zahlung.

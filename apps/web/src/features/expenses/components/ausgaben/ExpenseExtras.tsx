@@ -56,9 +56,13 @@ export function ExpenseExtras({
 					disabled={formSaving}
 				>
 					<Receipt data-icon="inline-start" />
-					Beleg hinzufügen
-					{imageUrl && <Badge variant="secondary">Angehängt</Badge>}
-					<ChevronDown data-icon="inline-end" className="ml-auto" />
+					<span className="min-w-0 flex-1 text-left">Beleg hinzufügen</span>
+					{imageUrl && (
+						<Badge variant="secondary" className="shrink-0">
+							Angehängt
+						</Badge>
+					)}
+					<ChevronDown data-icon="inline-end" className="shrink-0" />
 				</CollapsibleTrigger>
 				<CollapsiblePanel>
 					<div className="pt-3">
@@ -79,15 +83,15 @@ export function ExpenseExtras({
 					disabled={formSaving || editingRecurringExpense !== null || isEditingQueuedRecurring}
 				>
 					<Repeat2 data-icon="inline-start" />
-					Fixkosten-Vorlage
+					<span className="min-w-0 flex-1 text-left">Fixkosten-Vorlage</span>
 					{recurringOpen && (
-						<Badge variant="secondary">
+						<Badge variant="secondary" className="shrink-0">
 							{recurringIntervalMonths === 1
 								? 'Monatlich'
 								: `Alle ${recurringIntervalMonths} Monate`}
 						</Badge>
 					)}
-					<ChevronDown data-icon="inline-end" className="ml-auto" />
+					<ChevronDown data-icon="inline-end" className="shrink-0" />
 				</CollapsibleTrigger>
 				<CollapsiblePanel>
 					<FieldGroup className="pt-3">

@@ -19,6 +19,7 @@ import { formatShortDate } from '@/core/utils/time';
 import type { Expense } from '@/features/expenses/components/ausgaben/expense-types';
 import type { SimplifiedDebt } from '@/features/expenses/debt-reduction';
 import Link from 'next/link';
+import type { RefObject } from 'react';
 import type { DebtSettlement } from './use-debt-settlement';
 
 /** Confirms a payment that already happened, listing the expense shares it settles. */
@@ -27,16 +28,19 @@ export function SettlementReviewDialog({
 	expenses,
 	shareCode,
 	settlement,
+	finalFocusRef,
 }: {
 	debt: SimplifiedDebt;
 	expenses: readonly Expense[];
 	shareCode: string;
 	settlement: DebtSettlement;
+	/** Der Ausgleichen-Button: Der Dialog hat keinen Trigger, sonst fiele der Fokus auf body. */
+	finalFocusRef: RefObject<HTMLElement | null>;
 }) {
 	const { reviewOpen, setReviewOpen, settling, preview, error, settle } = settlement;
 	return (
 		<AlertDialog open={reviewOpen} onOpenChange={settlement.setReviewDialogOpen}>
-			<AlertDialogContent className="max-h-[90dvh] overflow-y-auto">
+			<AlertDialogContent className="max-h-[90dvh] overflow-y-auto" finalFocus={finalFocusRef}>
 				<AlertDialogHeader className="place-items-start text-left">
 					<AlertDialogTitle>Bereits erfolgte Zahlung bestätigen</AlertDialogTitle>
 					<AlertDialogDescription>

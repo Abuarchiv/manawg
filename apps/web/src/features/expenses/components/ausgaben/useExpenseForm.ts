@@ -8,7 +8,7 @@ import {
 	writeDraft,
 } from '@/core/offline/drafts';
 import type { OfflineActionType } from '@/core/offline/offline-queue';
-import { formatEuroInput } from '@/core/utils/amount';
+import { formatEuroInput, parseEuroAmount } from '@/core/utils/amount';
 import { CENTS_PER_EURO } from '@/core/utils/money';
 import { buildExpensePrefillDraft } from '@/features/expenses/expense-prefill';
 import { isEqualExpenseSplit } from '@/features/expenses/expense-split-input';
@@ -23,6 +23,18 @@ import {
 	splitsToManualInput,
 } from './expense-form-draft';
 import type { Expense, RecurringExpense } from './expense-types';
+
+function isEqualQueuedSplit(draft: ExpenseDraft, members: readonly FormMember[]): boolean {
+	const amount = parseEuroAmount(draft.amountStr ?? '');
+	if (amount === null || !draft.manualSplits) return false;
+	const splits = Object.entries(draft.manualSplits).flatMap(([debtorMemberId, value]) => {
+		const share = parseEuroAmount(value);
+		return share === null
+			? []
+			: [{ debtorMemberId, amountCents: Math.round(share * CENTS_PER_EURO) }];
+	});
+	return isEqualExpenseSplit(Math.round(amount * CENTS_PER_EURO), splits, members);
+}
 
 /**
  * Only the fields this hook actually reads. Kept structural rather than
@@ -93,6 +105,9 @@ export function useExpenseForm({
 	const [recurringSourceId, setRecurringSourceId] = useState<string | null>(null);
 
 	const draftKey = buildDraftKey(shareCode, identityMemberId, 'expense');
+	// Die Wiederherstellung läuft nur einmal je Entwurf, soll aber die aktuellen Mitglieder sehen.
+	const membersRef = useRef(members);
+	membersRef.current = members;
 	// Both prefill sources apply once per distinct URL. Without these guards,
 	// re-renders (or a reload that re-resolves the template) would keep
 	// stomping over edits the user has since made in the open form.
@@ -129,8 +144,13 @@ export function useExpenseForm({
 		if (draft.amountStr) setAmountStr(draft.amountStr);
 		if (draft.imageUrl !== undefined) setImageUrl(draft.imageUrl);
 		if (draft.paidByMemberId) setPaidByMemberId(draft.paidByMemberId);
-		if (draft.splitMode) setSplitMode(draft.splitMode);
-		if (draft.manualSplits) setManualSplits(draft.manualSplits);
+		// Wartende Ausgaben tragen immer Beträge je Person; war es eine gleichmäßige Aufteilung, bleibt sie „Gleichmäßig“.
+		const queuedEqual =
+			draft.queueEditId !== undefined &&
+			draft.splitMode === 'manual' &&
+			isEqualQueuedSplit(draft, membersRef.current);
+		if (draft.splitMode) setSplitMode(queuedEqual ? 'equal' : draft.splitMode);
+		if (draft.manualSplits && !queuedEqual) setManualSplits(draft.manualSplits);
 		if (typeof draft.recurringSourceId === 'string') setRecurringSourceId(draft.recurringSourceId);
 		if (draft.queueEditId) setQueueEditId(draft.queueEditId);
 		if (draft.queueEditType) setQueueEditType(draft.queueEditType);

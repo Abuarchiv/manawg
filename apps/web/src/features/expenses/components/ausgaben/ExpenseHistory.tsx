@@ -64,7 +64,13 @@ export function ExpenseHistory({
 					{weeks.map((week) => (
 						<section key={week.label} aria-label={week.label} className="flex flex-col gap-1.5">
 							<h3 className="px-0 text-[12px] font-medium text-muted-foreground">{week.label}</h3>
-							<ul className="divide-y divide-border/60 overflow-hidden rounded-xl border">
+							<ul
+								className={cn(
+									'divide-y divide-border/60 overflow-hidden rounded-xl border',
+									// Bei ?highlight= echte Zeilenhöhen: sonst wächst die Seite nach dem Scrollen und das Ziel rutscht unter die Nav.
+									highlightedId && '[&>li]:[content-visibility:visible]',
+								)}
+							>
 								{week.items.map((expense) => (
 									<ExpenseRow
 										key={expense.id}

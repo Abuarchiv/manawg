@@ -25,7 +25,11 @@ const ExpenseFormSection = dynamic(
 		),
 	{
 		loading: () => (
-			<output className="block text-sm text-[var(--text-2)]">Ausgabenformular wird geladen…</output>
+			// Außerhalb des Flusses, damit der Hintergrund nicht springt; das echte Sheet ersetzt es an Ort und Stelle.
+			<output className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-popover text-sm text-popover-foreground">
+				<Spinner aria-hidden className="size-6" />
+				Ausgabenformular wird geladen…
+			</output>
 		),
 	},
 );
@@ -86,9 +90,13 @@ export default function AusgabenPage() {
 					title={
 						editingRecurringExpense
 							? 'Fixkosten-Vorlage bearbeiten'
-							: editingExpense
-								? 'Ausgabe bearbeiten'
-								: 'Ausgabe hinzufügen'
+							: isEditingQueuedRecurring
+								? 'Wartende Fixkosten-Vorlage bearbeiten'
+								: form.queueEditType === 'expense.create'
+									? 'Wartende Ausgabe bearbeiten'
+									: editingExpense
+										? 'Ausgabe bearbeiten'
+										: 'Ausgabe hinzufügen'
 					}
 					previewSplits={page.splitPreview?.ok ? page.splitPreview.splits : null}
 					pendingPrefillDescription={form.pendingPrefill?.description ?? null}
@@ -147,16 +155,10 @@ export default function AusgabenPage() {
 				/>
 			)}
 			{page.actionNotice && !showForm && <ActionNoticeBanner notice={page.actionNotice} />}
-			{refreshing && (
-				<output
-					// Schwebt über dem Inhalt: im Fluss würde sein Verschwinden die Karten springen lassen.
-					className="pointer-events-none fixed inset-x-0 top-[calc(env(safe-area-inset-top)+0.5rem)] z-40 mx-auto flex w-fit items-center gap-2 rounded-full border bg-background px-3 py-1 text-sm text-muted-foreground shadow-sm"
-					aria-live="polite"
-				>
-					<Spinner />
-					Wird aktualisiert…
-				</output>
-			)}
+			{/* Nur für Screenreader: ein sichtbarer Hinweis würde die Kopfzeile verdecken und beim Poll aufblitzen. */}
+			<output aria-live="polite" aria-hidden={!refreshing} className="sr-only">
+				{refreshing ? 'Wird aktualisiert…' : ''}
+			</output>
 			<OfflineQueueNotice queuedCount={data.queuedCount} />
 			{loadError && (
 				<LoadErrorBanner
