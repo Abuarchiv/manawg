@@ -91,7 +91,8 @@ export function SettlementDebtRow({
 	const owedToMe = debt.toId === currentMemberId;
 
 	return (
-		<Item size="sm" className="flex-wrap items-center gap-x-2.5 px-0 py-1">
+		// biome-ignore lint/a11y/useSemanticElements: ItemGroup ist role="list"; Item bleibt ein div für das Layout.
+		<Item role="listitem" size="sm" className="flex-wrap items-center gap-x-2.5 px-0 py-1">
 			<div aria-hidden className="flex shrink-0 items-center -space-x-0.5">
 				<MemberAvatar name={debt.fromName} size={24} className="ring-2 ring-card" />
 				<MemberAvatar name={debt.toName} size={24} className="ring-2 ring-card" />
@@ -141,7 +142,7 @@ export function SettlementDebtRow({
 							</p>
 							<Link
 								href={`/wg/${encodeURIComponent(shareCode)}/einstellungen`}
-								className={cn(buttonVariants({ variant: 'link' }), 'min-h-11 justify-start px-0')}
+								className={cn(buttonVariants({ variant: 'link' }), 'justify-start px-0 underline')}
 							>
 								PayPal verbinden
 							</Link>

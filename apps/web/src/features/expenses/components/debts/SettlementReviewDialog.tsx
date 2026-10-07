@@ -49,41 +49,45 @@ export function SettlementReviewDialog({
 						gezahlt hat. Es wird kein Geld überwiesen.
 					</AlertDialogDescription>
 				</AlertDialogHeader>
-				<ItemGroup aria-label="Unterstützte Ausgabenanteile">
-					{(preview?.splits ?? []).map((split) => {
-						const expense = expenses.find((item) => item.id === split.expenseId);
-						return (
-							<Item
-								key={split.id}
-								variant="muted"
-								size="xs"
-								className="relative min-h-11 has-[a:focus-visible]:ring-[3px] has-[a:focus-visible]:ring-ring/50"
-							>
-								<ItemContent className="min-w-0 group-data-[size=xs]/item:gap-0.5">
-									<ItemTitle className="line-clamp-none [overflow-wrap:break-word]">
-										{expense ? (
-											<Link
-												href={`/wg/${encodeURIComponent(shareCode)}/ausgaben?highlight=${encodeURIComponent(split.expenseId)}`}
-												onClick={() => setReviewOpen(false)}
-												className="underline underline-offset-4 outline-none after:absolute after:inset-0 after:rounded-lg after:content-['']"
-											>
-												{expense.description}
-											</Link>
-										) : (
-											<span>Ausgabe</span>
-										)}
-									</ItemTitle>
-									<ItemDescription>
-										{expense ? formatShortDate(expense.occurredAt) : 'Aktueller offener Anteil'}
-									</ItemDescription>
-								</ItemContent>
-								<Badge variant="outline" className="font-mono tabular-nums">
-									{formatEuroCents(split.amountCents, debt.currency)}
-								</Badge>
-							</Item>
-						);
-					})}
-				</ItemGroup>
+				{(preview?.splits.length ?? 0) > 0 && (
+					<ItemGroup aria-label="Unterstützte Ausgabenanteile">
+						{(preview?.splits ?? []).map((split) => {
+							const expense = expenses.find((item) => item.id === split.expenseId);
+							return (
+								<Item
+									key={split.id}
+									// biome-ignore lint/a11y/useSemanticElements: ItemGroup ist role="list"; Item bleibt ein div für das Layout.
+									role="listitem"
+									variant="muted"
+									size="xs"
+									className="relative min-h-11 has-[a:focus-visible]:ring-[3px] has-[a:focus-visible]:ring-ring/50"
+								>
+									<ItemContent className="min-w-0 group-data-[size=xs]/item:gap-0.5">
+										<ItemTitle className="line-clamp-none [overflow-wrap:break-word]">
+											{expense ? (
+												<Link
+													href={`/wg/${encodeURIComponent(shareCode)}/ausgaben?highlight=${encodeURIComponent(split.expenseId)}`}
+													onClick={() => setReviewOpen(false)}
+													className="underline underline-offset-4 outline-none after:absolute after:inset-0 after:rounded-lg after:content-['']"
+												>
+													{expense.description}
+												</Link>
+											) : (
+												<span>Ausgabe</span>
+											)}
+										</ItemTitle>
+										<ItemDescription>
+											{expense ? formatShortDate(expense.occurredAt) : 'Aktueller offener Anteil'}
+										</ItemDescription>
+									</ItemContent>
+									<Badge variant="outline" className="font-mono tabular-nums">
+										{formatEuroCents(split.amountCents, debt.currency)}
+									</Badge>
+								</Item>
+							);
+						})}
+					</ItemGroup>
+				)}
 				{preview && preview.remainingCents > 0 && (
 					<Alert>
 						<AlertDescription>

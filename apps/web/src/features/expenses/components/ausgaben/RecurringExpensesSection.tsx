@@ -50,7 +50,7 @@ import {
 import { cn } from '@/shared/lib/cn';
 import { ChevronDown, MoreHorizontal, Pencil, Repeat2, Trash2 } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { RecurringExpense } from './expense-types';
 
 interface RecurringExpensesSectionProps {
@@ -90,6 +90,9 @@ export function RecurringExpensesSection({
 }: RecurringExpensesSectionProps): React.ReactElement {
 	const [open, setOpen] = useState(recurringFilterActive || recurringId !== null);
 	const [deleteCandidate, setDeleteCandidate] = useState<RecurringExpense | null>(null);
+	// Der Dialog hat keinen Trigger; nach dem Löschen fehlt die Zeile, auf die der Fokus zurückfiele.
+	const triggerRef = useRef<HTMLButtonElement>(null);
+	const deletedRef = useRef(false);
 	useEffect(() => {
 		if (recurringFilterActive || recurringId) setOpen(true);
 	}, [recurringFilterActive, recurringId]);
@@ -102,7 +105,10 @@ export function RecurringExpensesSection({
 				className="scroll-mt-24"
 			>
 				{recurringFilterActive && <h2 className="text-base font-semibold">Fixkosten-Fokus</h2>}
-				<CollapsibleTrigger render={<Button variant="outline" className="w-full justify-start" />}>
+				<CollapsibleTrigger
+					ref={triggerRef}
+					render={<Button variant="outline" className="w-full justify-start" />}
+				>
 					<Repeat2 data-icon="inline-start" />
 					Fixkosten<Badge variant="secondary">{recurringExpenses.length}</Badge>
 					<ChevronDown data-icon="inline-end" className={cn('ml-auto', open && 'rotate-180')} />
@@ -112,7 +118,7 @@ export function RecurringExpensesSection({
 						{hiddenRecurringCount > 0 && (
 							<Link
 								href={`${wgBaseHref}/ausgaben?filter=recurring`}
-								className={buttonVariants({ variant: 'outline', className: 'min-h-11' })}
+								className={cn(buttonVariants({ variant: 'outline' }), 'min-h-11')}
 							>
 								Alle {recurringExpenses.length} Fixkosten anzeigen
 							</Link>
@@ -270,7 +276,13 @@ export function RecurringExpensesSection({
 					if (!next) setDeleteCandidate(null);
 				}}
 			>
-				<AlertDialogContent>
+				<AlertDialogContent
+					finalFocus={() => {
+						if (!deletedRef.current) return true;
+						deletedRef.current = false;
+						return triggerRef.current;
+					}}
+				>
 					<AlertDialogHeader>
 						<AlertDialogTitle>Vorlage löschen?</AlertDialogTitle>
 						<AlertDialogDescription>
@@ -285,7 +297,10 @@ export function RecurringExpensesSection({
 							className="min-h-11"
 							disabled={recurringActionPending}
 							onClick={() => {
-								if (deleteCandidate) onDeleteTemplate(deleteCandidate);
+								if (deleteCandidate) {
+									deletedRef.current = true;
+									onDeleteTemplate(deleteCandidate);
+								}
 								setDeleteCandidate(null);
 							}}
 						>

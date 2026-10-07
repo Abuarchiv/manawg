@@ -198,12 +198,18 @@ export function DebtSummary({
 							So wird ausgeglichen
 						</h3>
 						{personal.length > 0 && (
-							<ItemGroup aria-label="Deine offenen Zahlungen" className="gap-0 divide-y">
+							<ItemGroup
+								aria-label="Deine offenen Zahlungen"
+								className="gap-0 divide-y [&>[data-slot=item]:not(:last-child)]:border-b-border"
+							>
 								{personal.map((debt) => renderDebt(debt))}
 							</ItemGroup>
 						)}
 						{others.length > 0 && (
-							<ItemGroup aria-label="Weitere Zahlungen in der WG" className="gap-0 divide-y">
+							<ItemGroup
+								aria-label="Weitere Zahlungen in der WG"
+								className="gap-0 divide-y [&>[data-slot=item]:not(:last-child)]:border-b-border"
+							>
 								{others.map((debt) => renderDebt(debt))}
 							</ItemGroup>
 						)}
