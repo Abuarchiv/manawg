@@ -214,17 +214,15 @@ export default function AktivitaetPage() {
 										render={<Link href={`${wgBaseHref}${item.href}`} />}
 									>
 										<ItemContent className="min-w-0">
-											<ItemTitle className="min-w-0 w-full">
-												<span
-													className={cn(
-														'line-clamp-1',
-														item.priority === 'high' && 'font-semibold',
-													)}
-												>
-													{item.title}
-												</span>
+											<ItemTitle
+												className={cn(
+													'line-clamp-none w-full min-w-0 [overflow-wrap:break-word]',
+													item.priority === 'high' && 'font-semibold',
+												)}
+											>
+												{item.title}
 											</ItemTitle>
-											<ItemDescription className="min-w-0 line-clamp-1">
+											<ItemDescription className="line-clamp-2 min-w-0 [overflow-wrap:break-word]">
 												{item.detail}
 											</ItemDescription>
 										</ItemContent>

@@ -117,8 +117,8 @@ export function WeekSection({
 					// biome-ignore lint/a11y/useSemanticElements: role="status" names the loading region without swapping the wrapper element to <output>.
 					role="status"
 				>
-					<Skeleton className="h-11 w-full" />
-					<Skeleton className="h-11 w-full" />
+					<Skeleton className="h-11 w-full bg-foreground/[0.07]" />
+					<Skeleton className="h-11 w-full bg-foreground/[0.07]" />
 				</div>
 			)}
 

@@ -111,8 +111,8 @@ export function ForYouSection({ items, loaded, failed, completion }: ForYouSecti
 				</p>
 			) : (
 				<output aria-label="Für dich wird geladen" className="flex flex-col gap-2">
-					<Skeleton className="h-14 w-full" />
-					<Skeleton className="h-14 w-full" />
+					<Skeleton className="h-14 w-full bg-foreground/[0.07]" />
+					<Skeleton className="h-14 w-full bg-foreground/[0.07]" />
 				</output>
 			)}
 		</section>
