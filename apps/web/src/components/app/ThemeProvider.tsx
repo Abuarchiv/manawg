@@ -50,8 +50,17 @@ function writeStoredTheme(next: Theme): void {
 
 function applyResolved(next: ResolvedTheme): void {
 	const root = document.documentElement;
-	if (next === 'dark') root.classList.add('dark');
-	else root.classList.remove('dark');
+	root.classList.toggle('dark', next === 'dark');
+	// Tastatur und native Datumsauswahl in iOS-WebKit leiten ihr Erscheinungsbild aus dem
+	// Inline-Wert und dem Meta-Tag ab, nicht zuverlässig aus der .dark-Klasse.
+	root.style.colorScheme = next;
+	let meta = document.head.querySelector<HTMLMetaElement>('meta[name="color-scheme"]');
+	if (!meta) {
+		meta = document.createElement('meta');
+		meta.name = 'color-scheme';
+		document.head.appendChild(meta);
+	}
+	meta.content = next;
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {

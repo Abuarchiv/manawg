@@ -26,8 +26,8 @@ function Switch({
 	return (
 		<SwitchPrimitive
 			className={cn(
-				// No border: it would shrink the 68px track and push the thumb off-centre.
-				'group/switch relative peer inline-flex h-11 w-[68px] shrink-0 items-center rounded-[22px] border-0 bg-transparent px-0 outline-none before:absolute before:inset-x-0 before:top-1/2 before:h-[30px] before:-translate-y-1/2 before:pointer-events-none before:rounded-[15px] before:bg-(--switch-track) before:content-[""] focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50',
+				// No border: it would shrink the 68px track and push the thumb off-centre. Height in px: the thumb is positioned in px, a rem height would drift apart at 200 % text.
+				'group/switch relative isolate peer inline-flex h-[44px] w-[68px] shrink-0 items-center rounded-[22px] border-0 bg-transparent px-0 outline-none before:absolute before:inset-x-0 before:top-1/2 before:h-[30px] before:-translate-y-1/2 before:pointer-events-none before:rounded-[15px] before:bg-(--switch-track) before:content-[""] focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50',
 				// The thumb's pressed glass paints this colour too.
 				'[--switch-track:var(--input)] data-[checked]:[--switch-track:var(--primary)] dark:data-[unchecked]:[--switch-track:color-mix(in_oklab,var(--muted-foreground)_60%,transparent)]',
 				className,

@@ -42,7 +42,7 @@ function pathSegment(value: unknown): string {
 
 const STALE_ACTION_RISK: OfflineActionRisk = {
 	title: 'Vor dem Senden prüfen',
-	detail: 'Der Eintrag ist schon länger in der Warteschlange und könnte nicht mehr aktuell sein.',
+	detail: 'Prüfe den Eintrag, bevor du ihn erneut sendest.',
 };
 
 export const offlineActionHandlers: Record<OfflineActionType, OfflineActionHandler> = {

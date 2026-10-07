@@ -5,6 +5,7 @@ import { getAppUrl } from '@/shared/lib/app-url';
 import { THEME_BOOTSTRAP_SCRIPT } from '@/shared/lib/theme';
 import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
+import { headers } from 'next/headers';
 import Script from 'next/script';
 import '@/shared/globals.css';
 
@@ -133,11 +134,13 @@ export const viewport: Viewport = {
 	],
 };
 
-export default function RootLayout({
+export default async function RootLayout({
 	children,
 }: {
 	children: React.ReactNode;
 }) {
+	// The CSP only allows scripts with the per-request nonce from the middleware.
+	const nonce = (await headers()).get('x-nonce') ?? undefined;
 	return (
 		<html
 			lang="de"
@@ -156,12 +159,16 @@ export default function RootLayout({
 				<Script id="manawg-install-ready" strategy="beforeInteractive">
 					{`(function(){if(typeof window==='undefined')return;window.__manawgDeferredInstallEvent=null;window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__manawgDeferredInstallEvent=e;window.dispatchEvent(new CustomEvent('manawg:install-ready'));});})();`}
 				</Script>
-				{/* Anti-flicker theme bootstrap — runs synchronously before first paint.
-            Safe: no dynamic data interpolated, only reads from localStorage.
-            Pattern used by next-themes and every major theme library. */}
-				<Script id="manawg-theme-bootstrap" strategy="beforeInteractive">
-					{THEME_BOOTSTRAP_SCRIPT}
-				</Script>
+				{/* Anti-flicker theme bootstrap. A plain inline script in <head> runs before first paint;
+            next/script beforeInteractive only queues it until the runtime chunks have loaded, so
+            slow networks showed a white page on dark devices. The browser hides the nonce attribute
+            from the client, hence suppressHydrationWarning. */}
+				<script
+					nonce={nonce}
+					suppressHydrationWarning
+					// biome-ignore lint/security/noDangerouslySetInnerHtml: static constant, no dynamic data
+					dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }}
+				/>
 				{/* Organization + SoftwareApplication JSON-LD for rich results. Content is static JSON.stringify of trusted constants — no XSS surface. */}
 				<Script
 					id="manawg-org-schema"
@@ -181,7 +188,11 @@ export default function RootLayout({
 				<ThemeProvider>
 					{/* Phone column on every screen; wider viewports show backdrop
 					    and a hairline edge around it. */}
-					<div className="relative mx-auto min-h-svh w-full max-w-[var(--app-frame-width)] bg-background min-[30rem]:border-x">
+					<div
+						data-app-frame
+						className="relative mx-auto min-h-svh w-full max-w-[var(--app-frame-width)] bg-background min-[30rem]:border-x"
+						style={{ paddingBottom: 'var(--install-prompt-space, 0px)' }}
+					>
 						{children}
 						<PwaRegister />
 						<InstallPrompt />

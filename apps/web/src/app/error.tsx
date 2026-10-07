@@ -11,18 +11,26 @@ import {
 import { captureException } from '@/core/infra/capture-client';
 import { TriangleAlert } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 export default function ErrorBoundary({
 	error,
 	reset,
 }: { error: Error & { digest?: string }; reset: () => void }) {
+	const mainRef = useRef<HTMLElement>(null);
+
 	useEffect(() => {
 		captureException(error, { boundary: 'root' });
 	}, [error]);
 
+	// Der Fokus lag auf dem verschwundenen Element; ohne Umzug landet er am Seitenanfang.
+	useEffect(() => {
+		mainRef.current?.focus();
+	}, []);
+
 	return (
 		<main
+			ref={mainRef}
 			id="main"
 			tabIndex={-1}
 			className="mx-auto flex min-h-[60dvh] w-full max-w-md flex-col items-center justify-center bg-background px-4 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] focus:outline-none"

@@ -6,7 +6,7 @@ function Empty({ className, ...props }: React.ComponentProps<'div'>) {
 		<div
 			data-slot="empty"
 			className={cn(
-				'mx-auto flex w-full max-w-3xl min-w-0 flex-1 flex-col items-center justify-center gap-4 rounded-xl border-dashed p-6 text-center text-balance',
+				'mx-auto flex w-full max-w-3xl min-w-0 flex-1 flex-col items-center justify-center gap-4 rounded-xl border-dashed px-[min(1.5rem,6vw)] py-6 text-center text-balance',
 				className,
 			)}
 			{...props}
@@ -19,7 +19,7 @@ function EmptyHeader({ className, ...props }: React.ComponentProps<'div'>) {
 		<div
 			data-slot="empty-header"
 			className={cn(
-				'flex w-full min-w-0 max-w-sm flex-col items-center gap-2 [overflow-wrap:anywhere]',
+				'flex w-full min-w-0 max-w-sm flex-col items-center gap-2 [overflow-wrap:break-word]',
 				className,
 			)}
 			{...props}
@@ -62,7 +62,7 @@ function EmptyTitle({ className, ...props }: React.ComponentProps<'div'>) {
 		<div
 			data-slot="empty-title"
 			className={cn(
-				'min-w-0 max-w-full text-[14px] font-semibold [overflow-wrap:anywhere]',
+				'min-w-0 max-w-full text-body font-semibold [overflow-wrap:break-word]',
 				className,
 			)}
 			{...props}
@@ -75,7 +75,7 @@ function EmptyDescription({ className, ...props }: React.ComponentProps<'p'>) {
 		<div
 			data-slot="empty-description"
 			className={cn(
-				'min-w-0 max-w-full text-[12px]/normal text-muted-foreground [overflow-wrap:anywhere] [&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-primary',
+				'min-w-0 max-w-full text-meta/normal text-muted-foreground [overflow-wrap:break-word] [&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-primary',
 				className,
 			)}
 			{...props}
@@ -88,7 +88,7 @@ function EmptyContent({ className, ...props }: React.ComponentProps<'div'>) {
 		<div
 			data-slot="empty-content"
 			className={cn(
-				'flex w-full max-w-sm min-w-0 flex-col items-center gap-2.5 text-sm text-balance [overflow-wrap:anywhere]',
+				'flex w-full max-w-sm min-w-0 flex-col items-center gap-2.5 text-sm text-balance [overflow-wrap:break-word]',
 				className,
 			)}
 			{...props}

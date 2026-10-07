@@ -1,5 +1,6 @@
 'use client';
 
+import { useToast } from '@/components/ui/Toast';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import {
@@ -11,7 +12,7 @@ import {
 import { isPushSupported, subscribeWebPush } from '@/core/notifications/push-subscribe';
 import { isEditingTarget, safeLocalStorage } from '@/core/utils/browser';
 import { X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 function rememberDismissed(): void {
 	try {
@@ -43,6 +44,14 @@ export function PushPrimingPrompt({
 	const [visible, setVisible] = useState(false);
 	const [busy, setBusy] = useState(false);
 	const [activationError, setActivationError] = useState<string | null>(null);
+	const cardRef = useRef<HTMLDivElement>(null);
+	const toast = useToast();
+
+	// The card sits at the page end: the error line makes it taller, so bring it fully back
+	// into view (above the bottom navigation, see scroll-mb on the card).
+	useEffect(() => {
+		if (activationError) cardRef.current?.scrollIntoView({ block: 'nearest' });
+	}, [activationError]);
 
 	useEffect(() => {
 		if (typeof window === 'undefined') return;
@@ -114,9 +123,11 @@ export function PushPrimingPrompt({
 		};
 	}, [code, memberId]);
 
-	function dismiss(): void {
+	// The focused button leaves the DOM with the card; park focus on the page instead of <body>.
+	function hideCard(): void {
 		rememberDismissed();
 		setVisible(false);
+		document.getElementById('main')?.focus({ preventScroll: true });
 	}
 
 	async function enable(): Promise<void> {
@@ -125,8 +136,8 @@ export function PushPrimingPrompt({
 		setActivationError(null);
 		try {
 			await subscribeWebPush(code, memberId);
-			rememberDismissed();
-			setVisible(false);
+			hideCard();
+			toast.success('Benachrichtigungen sind aktiv.');
 		} catch {
 			setActivationError(
 				'Aktivierung fehlgeschlagen. Prüfe die Browser-Einstellungen und versuche es erneut.',
@@ -144,11 +155,12 @@ export function PushPrimingPrompt({
 			role="status"
 			aria-live="polite"
 			aria-label="Benachrichtigungen aktivieren"
-			className="flex w-full flex-wrap items-center gap-3 rounded-xl border p-3"
+			ref={cardRef}
+			className="flex w-full scroll-mb-[calc(var(--app-nav-height,5rem)+0.5rem)] flex-wrap items-center gap-3 rounded-xl border p-3"
 		>
 			<div className="min-w-0 flex-1 basis-48">
 				<p className="text-sm font-medium">Benachrichtigungen</p>
-				<p className="text-[12px] text-muted-foreground">Push für fällige Aufgaben und Chat.</p>
+				<p className="text-meta text-muted-foreground">Push für fällige Aufgaben und Chat.</p>
 				{activationError && (
 					<p role="alert" className="text-sm text-destructive">
 						{activationError}
@@ -161,7 +173,8 @@ export function PushPrimingPrompt({
 					variant="outline"
 					size="sm"
 					onClick={() => void enable()}
-					disabled={busy}
+					aria-disabled={busy}
+					className="aria-disabled:opacity-50"
 				>
 					{busy && <Spinner data-icon="inline-start" aria-hidden />}
 					Aktivieren
@@ -170,7 +183,7 @@ export function PushPrimingPrompt({
 					variant="ghost"
 					size="icon"
 					type="button"
-					onClick={dismiss}
+					onClick={hideCard}
 					aria-label="Hinweis schließen"
 					className="text-muted-foreground"
 				>

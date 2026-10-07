@@ -1,6 +1,7 @@
 'use client';
 
 import { LogoMark } from '@/components/ui/LogoMark';
+import { useHasToasts } from '@/components/ui/Toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { isEditingTarget } from '@/core/utils/browser';
@@ -12,7 +13,7 @@ import {
 } from '@/shared/lib/pwa-install';
 import { X } from 'lucide-react';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { InstallButton } from './InstallButton';
 
 /**
@@ -67,18 +68,47 @@ export function InstallPrompt() {
 		};
 	}, []);
 
-	const dismiss = () => setHidden(true);
+	const visible = !(hidden || !onStartPage || (!event && !manual));
+	// A toast lands on the same baseline above the nav. The prompt steps aside while one is
+	// shown (invisible, not unmounted: it keeps its reserved room, so the page does not jump).
+	const toastOpen = useHasToasts();
+	const promptRef = useRef<HTMLDivElement>(null);
+	// The prompt is fixed and covers the page end (legal links, last cards). While it is
+	// shown, publish its height so the app frame reserves that room (see globals.css 1c).
+	useLayoutEffect(() => {
+		const el = promptRef.current;
+		if (!visible || !el) return;
+		const root = document.documentElement;
+		const publish = () =>
+			root.style.setProperty('--install-prompt-space', `${el.offsetHeight + 8}px`);
+		publish();
+		const observer = new ResizeObserver(publish);
+		observer.observe(el);
+		return () => {
+			observer.disconnect();
+			root.style.removeProperty('--install-prompt-space');
+		};
+	}, [visible]);
+
+	const dismiss = () => {
+		// The focused button unmounts with the prompt; hand focus to the page instead of <body>.
+		if (promptRef.current?.contains(document.activeElement))
+			document.getElementById('main')?.focus({ preventScroll: true });
+		setHidden(true);
+	};
 
 	const install = async () => {
 		const result = await triggerInstall();
 		if (result !== 'unavailable') dismiss();
 	};
 
-	if (hidden || !onStartPage || (!event && !manual)) return null;
+	if (!visible) return null;
 
 	return (
 		<div
-			className="fixed inset-x-0 z-40 mx-auto w-[calc(100%-1rem)] max-w-[calc(var(--app-frame-width)-1rem)] animate-in fade-in slide-in-from-bottom-2 duration-[220ms]"
+			ref={promptRef}
+			data-install-prompt
+			className={`fixed inset-x-0 z-40 mx-auto w-[calc(100%-1rem)] max-w-[calc(var(--app-frame-width)-1rem)] animate-in fade-in slide-in-from-bottom-2 duration-[220ms] ${toastOpen ? 'invisible' : ''}`}
 			// Use the measured BottomNav height so wrapped labels and zoomed text leave room.
 			style={{ bottom: 'calc(var(--app-nav-height, 5rem) + 0.5rem)' }}
 		>
@@ -95,7 +125,7 @@ export function InstallPrompt() {
 						/>
 						<div className="min-w-0 flex-1">
 							<CardTitle className="text-sm">ManaWG als App installieren</CardTitle>
-							<CardDescription className="text-[12px]">
+							<CardDescription className="text-meta">
 								Schneller starten, offline-fähig.
 							</CardDescription>
 						</div>

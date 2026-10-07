@@ -65,7 +65,8 @@ function DialogContent({
 }) {
 	return (
 		<DialogPortal>
-			<DialogOverlay />
+			{/* forceRender: a confirm dialog nested in a drawer or dialog still dims what is behind it. */}
+			<DialogOverlay forceRender />
 			<DialogPrimitive.Popup
 				data-slot="dialog-content"
 				className={cn(

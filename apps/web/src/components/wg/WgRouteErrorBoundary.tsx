@@ -13,7 +13,7 @@ import { captureException } from '@/core/infra/capture-client';
 import { TriangleAlert } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 interface WgRouteErrorBoundaryProps {
 	error: Error & { digest?: string };
@@ -42,13 +42,23 @@ export function WgRouteErrorBoundary({
 }: WgRouteErrorBoundaryProps) {
 	const params = useParams<{ code: string }>();
 	const code = params?.code ?? '';
+	const rootRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
 		captureException(error, { boundary });
 	}, [error, boundary]);
 
+	// Der Fokus lag auf dem verschwundenen Inhalt; ohne Umzug landet er am Seitenanfang.
+	useEffect(() => {
+		rootRef.current?.focus();
+	}, []);
+
 	return (
-		<div className="flex min-h-[calc(100svh-4.25rem)] items-center justify-center bg-background px-4 pb-[env(safe-area-inset-bottom)]">
+		<div
+			ref={rootRef}
+			tabIndex={-1}
+			className="flex items-center justify-center bg-background px-4 py-8 focus:outline-none"
+		>
 			<Card className="w-full max-w-md">
 				<CardContent className="pt-6">
 					<Empty>

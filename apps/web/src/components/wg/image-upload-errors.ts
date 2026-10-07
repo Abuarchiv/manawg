@@ -1,6 +1,8 @@
 export const MISSING_PENDING_IMAGE_MESSAGE =
 	'Bild konnte auf diesem Gerät nicht mehr gefunden werden. Entferne den Platzhalter und wähle es erneut aus.';
 
+const GENERIC_SIGN_ERROR = 'Bild konnte nicht hochgeladen werden. Versuche es erneut.';
+
 export function uploadSignErrorMessage(status: number, error: string): string {
 	if (status === 404 || error === 'wg_not_found') {
 		return 'Bild konnte nicht hochgeladen werden: Öffne die WG über den aktuellen Link erneut.';
@@ -28,10 +30,13 @@ export function uploadSignErrorMessage(status: number, error: string): string {
 	if (error === 'feature_disabled' || error === 'image_uploads_unavailable') {
 		return 'Bild-Upload ist noch nicht konfiguriert.';
 	}
+	if (status === 429 || error === 'upload_sign_rate_limited') {
+		return 'Zu viele Uploads. Versuche es gleich noch einmal.';
+	}
 	if (error === 'invalid_body' || error === 'invalid_json') {
 		return 'Bild konnte nicht hochgeladen werden: Die Anfrage war ungültig.';
 	}
-	return 'Konnte Upload-Signatur nicht holen.';
+	return GENERIC_SIGN_ERROR;
 }
 
 /** Copy for a failed background upload of a pending image; null means retry silently. */
@@ -41,6 +46,6 @@ export function pendingUploadErrorMessage(error: unknown): string | null {
 	if (!match) return null;
 	const status = Number(match[1]);
 	const message = uploadSignErrorMessage(status, match[2] ?? '');
-	if (status >= 500 && message === 'Konnte Upload-Signatur nicht holen.') return null;
+	if (status >= 500 && message === GENERIC_SIGN_ERROR) return null;
 	return message;
 }

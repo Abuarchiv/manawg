@@ -29,7 +29,7 @@ function UploadFeedback({ error, notice }: { error: string | null; notice: strin
 				</Alert>
 			)}
 			{notice && (
-				<output className="mt-2 block text-[12px] text-muted-foreground" aria-live="polite">
+				<output className="mt-2 block text-meta text-muted-foreground" aria-live="polite">
 					{notice}
 				</output>
 			)}
@@ -69,7 +69,7 @@ export function ImageUploader({
 							loading="lazy"
 						/>
 					) : (
-						<div className="flex h-full items-center justify-center text-[12px] text-muted-foreground">
+						<div className="flex h-full items-center justify-center text-meta text-muted-foreground">
 							Bild wird vorbereitet…
 						</div>
 					)}
@@ -129,7 +129,7 @@ export function ImageUploader({
 		<div>
 			<label
 				className={cn(
-					'flex h-32 flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border bg-background text-sm text-muted-foreground transition-colors focus-within:ring-2 focus-within:ring-ring/50',
+					'flex min-h-32 flex-col items-center justify-center gap-2 rounded-lg px-3 py-3 border-2 border-dashed border-border bg-background text-sm text-muted-foreground transition-colors focus-within:ring-2 focus-within:ring-ring/50',
 					disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-muted/50',
 				)}
 			>
@@ -139,7 +139,9 @@ export function ImageUploader({
 					<ImagePlus className="size-6" aria-hidden="true" />
 				)}
 				<span aria-live="polite">{uploading ? 'Lädt hoch…' : 'Bild hinzufügen'}</span>
-				<span className="text-xs text-muted-foreground">JPG, PNG, WebP, HEIC · max. 8 MB</span>
+				<span className="text-center text-xs text-muted-foreground">
+					JPG, PNG, WebP, HEIC · max. 8 MB
+				</span>
 				<input
 					type="file"
 					accept="image/jpeg,image/png,image/webp,image/heic,image/heif"

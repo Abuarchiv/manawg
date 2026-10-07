@@ -53,19 +53,19 @@ export function WgAppHeader() {
 					<h1
 						aria-label={`${wg.name} – Start`}
 						title={wg.name}
-						className="min-w-[8rem] flex-1 basis-0 truncate font-heading text-xl font-semibold tracking-[-0.03em]"
+						className="min-w-[8rem] flex-1 basis-0 line-clamp-2 break-words font-heading text-xl font-semibold tracking-[-0.03em]"
 					>
 						{wg.name}
 					</h1>
 				) : (
 					<p
 						title={wg.name}
-						className="min-w-[8rem] flex-1 basis-0 truncate font-heading text-xl font-semibold tracking-[-0.03em]"
+						className="min-w-[8rem] flex-1 basis-0 line-clamp-2 break-words font-heading text-xl font-semibold tracking-[-0.03em]"
 					>
 						{wg.name}
 					</p>
 				)}
-				<div className="flex shrink-0 items-center gap-2">
+				<div className="ml-auto flex shrink-0 items-center gap-2">
 					<ChatTopBarLink
 						href={`${baseHref}/chat`}
 						className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'relative shrink-0')}

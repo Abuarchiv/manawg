@@ -2,6 +2,9 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* The app theme is the .dark class on <html>, not the OS setting. */
+@custom-variant dark (&:is(.dark, .dark *));
+
 /* Phone density, applied on every viewport width: the app is a single phone column.
    Page wrappers set their own gap and padding (gap-3 px-4 py-3). */
 [data-home-content] section {
@@ -118,12 +121,16 @@ body:has(.group\/wg-shell) [data-slot="field-group"] {
 }
 
 @theme inline {
-	--font-sans: var(--font-inter);
-	--font-heading: var(--font-inter-tight);
+	--font-sans: var(--font-inter, ui-sans-serif), ui-sans-serif, system-ui, sans-serif;
+	--font-heading: var(--font-inter-tight, var(--font-inter, ui-sans-serif)), ui-sans-serif,
+		system-ui, sans-serif;
 	--font-mono: var(--font-jetbrains-mono);
 	/* Small text keeps a readable floor under the fluid root size (section 6);
 	   headings and spacing above still scale down on narrow phones. */
 	--text-xs: max(12px, 0.8125rem);
+	/* Compact scale in rem: 12/14px at the default root, grows with the user's text size. */
+	--text-meta: max(12px, 0.75rem);
+	--text-body: max(14px, 0.875rem);
 	--text-sm: max(12.5px, 0.875rem);
 	--text-lg: 1.0625rem;
 	--text-2xl: 1.625rem;
@@ -209,6 +216,49 @@ html:has([data-sticky-tabs]) {
 	);
 }
 
+/* 1c. The fixed install prompt (InstallPrompt) publishes its height as
+      --install-prompt-space. The frame's page content gives that room up so legal
+      links and the last content can scroll above it, and focus/scrollIntoView
+      does not land under it. */
+[data-app-frame] > .min-h-svh {
+	min-height: calc(100svh - var(--install-prompt-space, 0px));
+}
+html:has([data-install-prompt]) {
+	scroll-padding-bottom: calc(
+		var(--app-nav-height, 5rem) +
+		0.5rem +
+		var(--install-prompt-space, 0px)
+	);
+}
+
+/* 1d. Toasts sit above modal dialogs and sheets. There they move to the top, so
+      they neither hide the dialog's footer buttons nor end up behind the overlay. */
+body:has(
+		[data-slot="dialog-content"],
+		[data-slot="alert-dialog-content"],
+		[data-slot="drawer-popup"]
+	)
+	[data-toast-stack] {
+	z-index: 60;
+	top: calc(env(safe-area-inset-top, 0px) + 0.5rem);
+	bottom: auto;
+}
+
+/* 1e. A dropdown menu taller than the room it has (200 % text, many entries) scrolls.
+      Scroll shadows show that: the "local" layers cover the shadows once the end is
+      reached, so a menu that fits shows neither. */
+[data-slot="dropdown-menu-content"] {
+	--menu-shade: color-mix(in oklab, var(--foreground) 22%, transparent);
+	background:
+		linear-gradient(var(--popover) 30%, transparent) top / 100% 1.5rem no-repeat local,
+		linear-gradient(transparent, var(--popover) 70%) bottom / 100% 1.5rem no-repeat local,
+		radial-gradient(farthest-side at 50% 0, var(--menu-shade), transparent) top / 100% 0.5rem
+		no-repeat scroll,
+		radial-gradient(farthest-side at 50% 100%, var(--menu-shade), transparent) bottom / 100% 0.5rem
+		no-repeat scroll,
+		var(--popover);
+}
+
 /* 2. Mobile tap highlight suppressed globally (html already has it for legacy,
       but * catches SVGs, custom elements, and pseudo-elements) */
 * {
@@ -256,7 +306,6 @@ textarea,
 [data-scroll-y],
 .scroll-y {
 	-webkit-overflow-scrolling: touch;
-	scroll-behavior: smooth;
 }
 
 /* 3. Respect reduced-motion OS preference — squash all animations/transitions */
@@ -396,12 +445,30 @@ input[type="date"],
 input[type="time"],
 input[type="datetime-local"],
 input[type="month"] {
-	display: flex;
+	/* A grid with one shrinkable column, not flex: Chromium's inner container of a flex input
+	   never shrinks below the digits, so at 200 % text the picker icon was pushed out. */
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
 	align-items: center;
 	min-width: 0;
 	max-width: 100%;
 	-webkit-appearance: none;
 	appearance: none;
+}
+/* At 200 % text the date digits are wider than the field. They give way (clip) before
+   the picker icon does, so the icon stays fully inside the border. */
+input[type="date"]::-webkit-datetime-edit,
+input[type="time"]::-webkit-datetime-edit,
+input[type="datetime-local"]::-webkit-datetime-edit,
+input[type="month"]::-webkit-datetime-edit {
+	min-width: 0;
+	overflow: hidden;
+}
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="month"]::-webkit-calendar-picker-indicator {
+	flex-shrink: 0;
 }
 
 /* ─── END RESPONSIVE FOUNDATIONS ────────────────────────────────────────── */
@@ -580,7 +647,10 @@ input[type="month"] {
 		--muted-foreground: oklch(0.708 0 0);
 		--accent-foreground: oklch(0.985 0 0);
 		--destructive: oklch(0.704 0.191 22.216);
-		--input: oklch(1 0 0 / 15%);
+		/* Vorher weiß mit 15 % Deckkraft (1,5:1 gegen den Grund). 0,55 ergibt ca. 4,1:1 auf der Seite,
+		   3,7:1 auf Karten und 3,1:1 auf muted-Flächen (WCAG 1.4.11). Flächen mit --input nutzen
+		   foreground/…-Alpha, damit die Füllung nicht mit aufhellt. */
+		--input: oklch(0.55 0 0);
 		--ring: oklch(0.556 0 0);
 		--sidebar: oklch(0.205 0 0);
 		--sidebar-foreground: oklch(0.985 0 0);
@@ -612,7 +682,7 @@ input[type="month"] {
 	body {
 		background-color: var(--app-backdrop);
 		color: var(--text-1);
-		font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+		font-family: var(--font-inter, ui-sans-serif), ui-sans-serif, system-ui, sans-serif;
 		font-feature-settings: "kern" on, "ss01" on, "cv11" on;
 		-webkit-font-smoothing: antialiased;
 		-moz-osx-font-smoothing: grayscale;
@@ -627,7 +697,8 @@ input[type="month"] {
 	h4,
 	h5,
 	h6 {
-		font-family: var(--font-inter-tight), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+		font-family: var(--font-inter-tight, var(--font-inter, ui-sans-serif)), ui-sans-serif, system-ui,
+			sans-serif;
 		font-weight: 600;
 	}
 
@@ -669,6 +740,12 @@ input[type="month"] {
 		text-decoration: none;
 		transition: transform 150ms ease-out;
 	}
+	/* Offene modale Dialoge setzen aria-hidden auf den Skip-Link; dann darf er auch nicht
+	   mehr per Tab erreichbar sein (visibility:hidden nimmt ihn aus der Tab-Reihenfolge). */
+	.skip-link[aria-hidden="true"],
+	body:has(:is([role="dialog"], [role="alertdialog"])[data-open]) .skip-link {
+		visibility: hidden;
+	}
 	.skip-link:focus,
 	.skip-link:focus-visible {
 		transform: translateY(0);
@@ -682,27 +759,6 @@ input[type="month"] {
 		outline: 3px solid Highlight;
 		outline-offset: 2px;
 	}
-}
-
-@media (prefers-reduced-motion: reduce) {
-	.animate-toast-progress {
-		animation: none !important;
-		opacity: 1 !important;
-		transform: none !important;
-	}
-}
-
-@keyframes toast-progress {
-	from {
-		transform: scaleX(1);
-	}
-	to {
-		transform: scaleX(0);
-	}
-}
-.animate-toast-progress {
-	animation: toast-progress var(--toast-duration, 4s) linear forwards;
-	transform-origin: left;
 }
 
 /* ─── NATIVE-APP POLISH ──────────────────────────────────────────────────

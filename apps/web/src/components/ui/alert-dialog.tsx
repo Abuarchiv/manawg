@@ -82,7 +82,7 @@ function AlertDialogHeader({ className, ...props }: React.ComponentProps<'div'>)
 		<div
 			data-slot="alert-dialog-header"
 			className={cn(
-				'grid grid-cols-[minmax(0,1fr)] grid-rows-[auto_1fr] min-w-0 place-items-center gap-1.5 text-center *:min-w-0 has-data-[slot=alert-dialog-media]:grid-rows-[auto_auto_1fr] has-data-[slot=alert-dialog-media]:gap-x-4',
+				'grid grid-cols-[minmax(0,1fr)] grid-rows-[auto_1fr] min-w-0 place-items-start gap-1.5 text-left *:min-w-0 has-data-[slot=alert-dialog-media]:grid-rows-[auto_auto_1fr] has-data-[slot=alert-dialog-media]:gap-x-4',
 				className,
 			)}
 			{...props}
@@ -95,7 +95,7 @@ function AlertDialogFooter({ className, ...props }: React.ComponentProps<'div'>)
 		<div
 			data-slot="alert-dialog-footer"
 			className={cn(
-				'-mx-4 -mb-4 flex min-w-0 flex-col-reverse gap-2 rounded-b-xl border-t bg-muted/50 p-4 *:min-w-0 group-data-[size=sm]/alert-dialog-content:grid group-data-[size=sm]/alert-dialog-content:grid-cols-2',
+				'-mx-4 -mb-4 flex min-w-0 flex-col gap-2 rounded-b-xl border-t bg-muted/50 p-4 *:min-w-0 group-data-[size=sm]/alert-dialog-content:grid group-data-[size=sm]/alert-dialog-content:grid-cols-2',
 				className,
 			)}
 			{...props}

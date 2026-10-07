@@ -10,8 +10,8 @@ export function formatOfflineQueueCount(count: number): string {
 }
 
 export function formatQueuedOfflineEntries(count: number): string {
-	if (count === 1) return '1 Offline-Eintrag wartet auf Synchronisierung.';
-	return `${count} Offline-Einträge warten auf Synchronisierung.`;
+	if (count === 1) return '1 Aktion wartet auf Synchronisierung.';
+	return `${count} Aktionen warten auf Synchronisierung.`;
 }
 
 function formatSyncedOfflineActions(count: number): string {
@@ -29,6 +29,10 @@ function formatRemainingActions(count: number): string {
 	if (count === 1) return '1 Aktion wartet weiter.';
 	return `${count} Aktionen warten weiter.`;
 }
+
+/** Shown after a successful offline enqueue (du-form, the app addresses one person). */
+export const OFFLINE_SAVED_NOTICE =
+	'Offline gespeichert. Wird synchronisiert, sobald du wieder online bist.';
 
 export function formatManualOfflineSyncResult(
 	synced: number,

@@ -1,11 +1,25 @@
 'use client';
 
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
+import {
+	subscribeOnline,
+	subscribeVisibility,
+	useOnlineStatus,
+} from '@/core/hooks/use-online-status';
 import { cn } from '@/shared/lib/cn';
 import type { StoredIdentity } from '@/shared/lib/identity';
-import { createContext, useContext, useMemo, useRef, useState } from 'react';
+import {
+	createContext,
+	useCallback,
+	useContext,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from 'react';
 import type { ReactNode } from 'react';
 import { useMembersPolling, useMembersRefresh } from './use-members-refresh';
 import { useMembershipLost } from './use-membership-lost';
@@ -133,6 +147,41 @@ export function WgContextProvider({
 	useMembersPolling(refreshMembers, Boolean(identity && accountReady));
 	useSyncOnFocusAndOnline(sync, identity, accountReady);
 
+	// Retry in place: the alert stays mounted while the request runs (keepCurrentContext keeps the
+	// skeleton away), so the button can show its busy state instead of the page flashing.
+	const [retrying, setRetrying] = useState(false);
+	const retryingRef = useRef(false);
+	const retryMemberLoad = useCallback(async () => {
+		const userId = authUserIdRef.current;
+		if (!userId) {
+			window.location.reload();
+			return;
+		}
+		if (retryingRef.current) return;
+		retryingRef.current = true;
+		setRetrying(true);
+		try {
+			await loadSessionMember(userId, authGenerationRef.current, true);
+		} finally {
+			retryingRef.current = false;
+			setRetrying(false);
+		}
+	}, [loadSessionMember]);
+	const online = useOnlineStatus();
+
+	// The error heals itself once the connection is back or the app returns to the foreground.
+	useEffect(() => {
+		if (!memberLoadError) return;
+		const offOnline = subscribeOnline(() => void retryMemberLoad());
+		const offVisible = subscribeVisibility((visible) => {
+			if (visible) void retryMemberLoad();
+		});
+		return () => {
+			offOnline();
+			offVisible();
+		};
+	}, [memberLoadError, retryMemberLoad]);
+
 	// A server-verified session already carries the identity, so the shell and page render
 	// in the SSR HTML; only the localStorage path has to wait for the mount effect.
 	if (!memberLoaded || (!hydrated && !serverVerified)) {
@@ -158,22 +207,41 @@ export function WgContextProvider({
 		);
 	}
 
-	if (memberLoadError) {
+	const backToWgs = (
+		<a
+			href={`/neu?next=${encodeURIComponent(`/wg/${wg.shareCode}`)}`}
+			className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'mt-3 w-full')}
+		>
+			Zurück zu deinen WGs
+		</a>
+	);
+
+	// No WG header or bottom nav around these two screens, so the status bar inset is theirs.
+	const standaloneMain =
+		'mx-auto max-w-md px-6 pb-6 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] focus:outline-none';
+
+	if (memberLoadError || retrying) {
 		return (
-			<main id="main" tabIndex={-1} className="mx-auto max-w-md p-6">
+			<main id="main" tabIndex={-1} className={standaloneMain}>
 				<Alert variant="destructive">
+					<AlertTitle>WG nicht geladen</AlertTitle>
 					<AlertDescription className="text-current">
-						Deine WG konnte nicht geladen werden. Bitte versuche es erneut.
+						{online
+							? 'Deine WG konnte nicht geladen werden. Bitte versuche es erneut.'
+							: 'Du bist offline. Sobald die Verbindung zurück ist, lädt deine WG von selbst.'}
 					</AlertDescription>
 					<Button
 						type="button"
 						variant="outline"
 						size="lg"
-						className="mt-3"
-						onClick={() => window.location.reload()}
+						className="mt-3 w-full aria-disabled:opacity-50"
+						aria-disabled={retrying}
+						onClick={() => void retryMemberLoad()}
 					>
-						Erneut versuchen
+						{retrying && <Spinner data-icon="inline-start" aria-hidden />}
+						{retrying ? 'Lädt…' : 'Erneut versuchen'}
 					</Button>
+					{backToWgs}
 				</Alert>
 			</main>
 		);
@@ -181,18 +249,14 @@ export function WgContextProvider({
 
 	if (!identity) {
 		return (
-			<main id="main" tabIndex={-1} className="mx-auto max-w-md p-6">
+			<main id="main" tabIndex={-1} className={standaloneMain}>
 				<Alert variant="destructive">
+					<AlertTitle>Kein Zugriff</AlertTitle>
 					<AlertDescription className="text-current">
 						Du bist in dieser WG nicht (mehr) Mitglied, z. B. weil du ausgezogen bist oder entfernt
 						wurdest.
 					</AlertDescription>
-					<a
-						href={`/neu?next=${encodeURIComponent(`/wg/${wg.shareCode}`)}`}
-						className={cn(buttonVariants({ variant: 'link', size: 'lg' }), 'mt-2 px-0')}
-					>
-						Zurück zu deinen WGs
-					</a>
+					{backToWgs}
 				</Alert>
 			</main>
 		);

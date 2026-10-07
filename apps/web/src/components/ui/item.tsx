@@ -11,6 +11,9 @@ function ItemGroup({ className, ...props }: React.ComponentProps<'div'>) {
 			data-slot="item-group"
 			className={cn(
 				'group/item-group flex w-full min-w-0 flex-col gap-3 has-data-[size=sm]:gap-2 has-data-[size=xs]:gap-2',
+				// divide-y only sets the width: Item's own border-transparent would hide the line,
+				// and a rounded corner would bend it, so a divided group gets square, coloured rows.
+				'[&.divide-y>[data-slot=item]:not(:last-child)]:rounded-none [&.divide-y>[data-slot=item]:not(:last-child)]:border-b-border',
 				className,
 			)}
 			{...props}
