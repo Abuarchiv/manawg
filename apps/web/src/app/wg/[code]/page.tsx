@@ -39,7 +39,16 @@ export default function WgHomePage() {
 		>
 			{view.isNewWg && (
 				<div>
-					<StartWelcome />
+					<StartWelcome
+						dismissedFallback={
+							<ForYouSection
+								items={view.forYouItems}
+								loaded={Boolean(data)}
+								failed={Boolean(error)}
+								completion={completion}
+							/>
+						}
+					/>
 				</div>
 			)}
 			{/* Offline with data on screen: the offline bar already says so. */}

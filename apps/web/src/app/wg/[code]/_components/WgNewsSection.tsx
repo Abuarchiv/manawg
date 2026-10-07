@@ -6,7 +6,7 @@ import {
 	CollapsibleTrigger,
 } from '@/components/animate-ui/primitives/base/collapsible';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@/components/ui/item';
+import { Item, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { DashboardData } from '@/composition/dashboard-data';
 import { getDashboardAnnouncementHref } from '@/composition/dashboard-links';
@@ -61,6 +61,7 @@ export function WgNewsSection({
 								{latestAnnouncement && !latestIsPending && (
 									<Item
 										variant="muted"
+										className="gap-2 px-2"
 										render={
 											<Link
 												href={
@@ -71,12 +72,14 @@ export function WgNewsSection({
 											/>
 										}
 									>
-										<ItemMedia variant="icon">
-											<Megaphone aria-hidden />
-										</ItemMedia>
+										<span className="flex size-8 shrink-0 items-center justify-center text-muted-foreground">
+											<Megaphone className="size-4" strokeWidth={1.5} aria-hidden />
+										</span>
 										<ItemContent className="min-w-0">
-											<ItemTitle>Neu an der Pinnwand</ItemTitle>
-											<ItemDescription>
+											<ItemTitle className="[overflow-wrap:break-word]">
+												Neu an der Pinnwand
+											</ItemTitle>
+											<ItemDescription className="[overflow-wrap:break-word]">
 												{latestAnnouncement.authorName}: {latestAnnouncement.content}
 											</ItemDescription>
 										</ItemContent>
@@ -101,9 +104,9 @@ export function WgNewsSection({
 								// biome-ignore lint/a11y/useSemanticElements: role="status" names the loading region without swapping the wrapper element to <output>.
 								role="status"
 							>
-								<Skeleton className="h-16 w-full" />
-								<Skeleton className="h-11 w-full" />
-								<Skeleton className="h-11 w-full" />
+								<Skeleton className="h-16 w-full bg-foreground/[0.07]" />
+								<Skeleton className="h-11 w-full bg-foreground/[0.07]" />
+								<Skeleton className="h-11 w-full bg-foreground/[0.07]" />
 							</div>
 						)}
 						<Link

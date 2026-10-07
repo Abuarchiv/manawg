@@ -32,6 +32,7 @@ export function useHomeChoreCompletion({
 	const complete = useChoreCompletion(wg, identity);
 	const [confirmItem, setConfirmItem] = useState<TodayImportantItem | null>(null);
 	const [pendingChoreId, setPendingChoreId] = useState<string | null>(null);
+	const [doneTick, setDoneTick] = useState(0);
 	const [completeError, setCompleteError] = useState<string | null>(null);
 	const [queuedOccurrences, setQueuedOccurrences] = useState<ReadonlySet<string>>(() => new Set());
 
@@ -63,12 +64,16 @@ export function useHomeChoreCompletion({
 		else if (feedback.done) toast.error(feedback.message);
 		else setCompleteError(feedback.message);
 		if (feedback.toast && feedback.toast !== feedback.message) toast.error(feedback.toast);
-		if (feedback.done) setConfirmItem(null);
+		if (feedback.done) {
+			setConfirmItem(null);
+			setDoneTick((tick) => tick + 1);
+		}
 		if (feedback.reload) reload();
 	}
 
 	return {
 		confirmItem,
+		doneTick,
 		pendingChoreId,
 		completeError,
 		queuedOccurrences,

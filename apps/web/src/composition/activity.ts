@@ -162,9 +162,6 @@ interface ActivityInboxItem {
 
 interface ActivityInboxInput {
 	reminders: ActivityReminder[];
-	items: ActivityItem[];
-	currentMemberName: string;
-	currentMemberId?: string | null;
 }
 
 function memberName(members: Map<string, MemberInput>, id: string): string {
@@ -597,49 +594,16 @@ export function groupActivityItemsByDay(
 		}));
 }
 
-function inboxActivityDetail(kind: ActivityKind): string {
-	switch (kind) {
-		case 'expense':
-			return 'Deine Ausgabe';
-		case 'shopping':
-			return 'Dein Einkauf';
-		case 'announcement':
-			return 'Dein Pinnwand-Beitrag';
-		case 'chore':
-			return 'Von dir erledigt';
-		case 'recurring':
-			return 'Deine Fixkosten';
-		case 'absence':
-			return 'Deine Abwesenheit';
-		case 'audit':
-			return 'Deine Änderung';
-	}
-}
-
 export function buildActivityInbox(input: ActivityInboxInput): ActivityInboxItem[] {
-	const urgent = input.reminders.map((item) => ({
-		id: `reminder:${item.kind}:${item.href}`,
-		priority: 'high' as const,
-		title: item.title,
-		detail: item.detail,
-		href: item.href,
-		kind: item.kind,
-	}));
-	const mine = input.items
-		.filter(
-			(item) =>
-				isCurrentMemberActivity(item, input.currentMemberName, input.currentMemberId) && item.href,
-		)
-		.slice(0, 4)
+	// Nur Offenes: eigene erledigte Einträge stehen im Verlauf darunter.
+	return input.reminders
 		.map((item) => ({
-			id: `activity:${item.kind}:${item.id}`,
-			priority: 'normal' as const,
-			// Protokoll-Texte beginnen mit „hat“/„ist“ und brauchen die Person davor (wie im ActivityFeed).
-			title: item.text.replace(/^hat\b/, 'Du hast').replace(/^ist\b/, 'Du bist'),
-			detail: inboxActivityDetail(item.kind),
-			href: item.href ?? '',
+			id: `reminder:${item.kind}:${item.href}`,
+			priority: 'high' as const,
+			title: item.title,
+			detail: item.detail,
+			href: item.href,
 			kind: item.kind,
-		}));
-
-	return [...urgent, ...mine].slice(0, 6);
+		}))
+		.slice(0, 6);
 }

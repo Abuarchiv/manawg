@@ -16,21 +16,24 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { CopyCodeButton } from './CopyCodeButton';
 
-export function StartWelcome() {
+export function StartWelcome({ dismissedFallback }: { dismissedFallback?: React.ReactNode }) {
 	const { wg, identity, members } = useWg();
 	// Stable WG/member IDs survive invitation-code changes and isolate preferences.
 	const storageKey = `manawg:start-welcome-dismissed:${wg.id}:${identity.memberId}`;
-	const [visibleFor, setVisibleFor] = useState<string | null>(null);
+	// null until localStorage was read, so the fallback does not flash on load.
+	const [status, setStatus] = useState<{ key: string; dismissed: boolean } | null>(null);
 	useEffect(() => {
 		try {
-			setVisibleFor(localStorage.getItem(storageKey) === '1' ? null : storageKey);
+			setStatus({ key: storageKey, dismissed: localStorage.getItem(storageKey) === '1' });
 		} catch {
-			setVisibleFor(storageKey);
+			setStatus({ key: storageKey, dismissed: false });
 		}
 	}, [storageKey]);
 
 	function dismiss() {
-		setVisibleFor(null);
+		// Der Knopf verschwindet gleich: Fokus vorher auf die nächste Überschrift legen.
+		document.getElementById('week-heading')?.focus({ preventScroll: true });
+		setStatus({ key: storageKey, dismissed: true });
 		try {
 			localStorage.setItem(storageKey, '1');
 		} catch {
@@ -38,7 +41,8 @@ export function StartWelcome() {
 		}
 	}
 
-	if (visibleFor !== storageKey) return null;
+	if (status?.key !== storageKey) return null;
+	if (status.dismissed) return <>{dismissedFallback}</>;
 	const baseHref = `/wg/${encodeURIComponent(wg.shareCode)}`;
 	const hasRoommates = members.filter((member) => member.active).length >= 2;
 	return (
@@ -65,26 +69,29 @@ export function StartWelcome() {
 						</Button>
 					</CardAction>
 				</CardHeader>
-				<CardContent className="flex flex-row flex-wrap gap-2">
+				<CardContent className="flex flex-col gap-2">
 					{hasRoommates && (
-						<Link href={`${baseHref}/einkauf`} className={cn(buttonVariants(), 'flex-1')}>
+						<Link href={`${baseHref}/einkauf`} className={cn(buttonVariants(), 'w-full')}>
 							Einkauf öffnen
 						</Link>
 					)}
-					<CopyCodeButton
-						code={wg.shareCode}
-						wgName={wg.name}
-						joiningEnabled={wg.joiningEnabled}
-						className="flex-1"
-						variant={hasRoommates ? 'ghost' : 'default'}
-					/>
-					{!wg.joiningEnabled && (
-						<Link
-							href={`${baseHref}/einstellungen#zugang`}
-							className={cn(buttonVariants({ variant: 'link' }), '')}
-						>
-							Einladungen verwalten
-						</Link>
+					{wg.joiningEnabled ? (
+						<CopyCodeButton
+							code={wg.shareCode}
+							wgName={wg.name}
+							className="w-full"
+							variant={hasRoommates ? 'ghost' : 'default'}
+						/>
+					) : (
+						<p className="text-sm text-muted-foreground">
+							Beitritte sind gesperrt.{' '}
+							<Link
+								href={`${baseHref}/einstellungen#zugang`}
+								className="inline-block py-2 text-foreground underline underline-offset-4"
+							>
+								Einladungen verwalten
+							</Link>
+						</p>
 					)}
 				</CardContent>
 			</Card>

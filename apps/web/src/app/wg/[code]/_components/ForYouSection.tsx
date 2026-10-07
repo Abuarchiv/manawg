@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { TodayImportantItem } from '@/composition/dashboard-insights';
 import { Check, ChevronDown } from 'lucide-react';
 import { useReducedMotion } from 'motion/react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { HomeChoreCompletion } from '../_hooks/use-home-chore-completion';
 import { TodayRow } from './TodayRow';
 
@@ -30,6 +30,25 @@ export function ForYouSection({ items, loaded, failed, completion }: ForYouSecti
 	const visible = items.slice(0, TODAY_VISIBLE);
 	const more = items.slice(TODAY_VISIBLE);
 
+	// Nach dem Erledigen verschwindet die Zeile samt Knopf: Fokus auf die Überschrift, sobald er sonst auf body fiele.
+	const doneSeen = useRef(0);
+	const needsFocus = useRef(false);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: läuft bei neuem Erledigen und bei neuer Liste (nach dem Neuladen)
+	useEffect(() => {
+		if (completion.doneTick !== doneSeen.current) {
+			doneSeen.current = completion.doneTick;
+			needsFocus.current = true;
+		}
+		if (!needsFocus.current) return;
+		const timer = setTimeout(() => {
+			const active = document.activeElement;
+			if (active && active !== document.body) return;
+			needsFocus.current = false;
+			document.getElementById('today-heading')?.focus({ preventScroll: true });
+		}, 300);
+		return () => clearTimeout(timer);
+	}, [completion.doneTick, items]);
+
 	const rows = (list: TodayImportantItem[]) =>
 		list.map((item) => (
 			<TodayRow
@@ -46,7 +65,11 @@ export function ForYouSection({ items, loaded, failed, completion }: ForYouSecti
 
 	return (
 		<section aria-labelledby="today-heading" className="flex min-w-0 flex-col gap-2">
-			<h2 id="today-heading" className="font-heading text-xl font-semibold">
+			<h2
+				id="today-heading"
+				tabIndex={-1}
+				className="font-heading text-xl font-semibold outline-none"
+			>
 				Für dich
 			</h2>
 			{loaded ? (
@@ -88,8 +111,8 @@ export function ForYouSection({ items, loaded, failed, completion }: ForYouSecti
 				</p>
 			) : (
 				<output aria-label="Für dich wird geladen" className="flex flex-col gap-2">
-					<Skeleton className="h-14 w-full" />
-					<Skeleton className="h-14 w-full" />
+					<Skeleton className="h-14 w-full bg-foreground/[0.07]" />
+					<Skeleton className="h-14 w-full bg-foreground/[0.07]" />
 				</output>
 			)}
 		</section>
