@@ -107,6 +107,8 @@ function FilePick({
 				onChange={(event) => {
 					const file = event.target.files?.[0];
 					if (file) onFile(file);
+					// Dieselbe Datei muss nach einer Ablehnung erneut wählbar sein.
+					event.target.value = '';
 				}}
 				className="peer sr-only h-px w-px"
 			/>
@@ -168,7 +170,7 @@ export function ImportInputStep({
 							label="Erkannte Daten"
 							placeholder="Ergebnis hier prüfen und korrigieren"
 							value={input.ocrText}
-							invalid={invalid}
+							invalid={invalid && input.ocrText.length > 0}
 							disabled={busy || ocrRunning}
 							onChange={input.setManualPayload}
 						/>
@@ -192,7 +194,7 @@ export function ImportInputStep({
 							label="Inhalt des Exports"
 							placeholder="Füge den Inhalt deines Exports hier ein"
 							value={input.rawPayload}
-							invalid={invalid}
+							invalid={invalid && input.rawPayload.length > 0}
 							disabled={busy || inputStatus === 'reading'}
 							onChange={input.setManualPayload}
 						/>

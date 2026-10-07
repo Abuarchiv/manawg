@@ -88,15 +88,17 @@ export function ImportPreviewTable({
 							aria-label={`Eintrag ${index + 1} importieren`}
 							className="relative mt-0.5 after:absolute after:-inset-3"
 						/>
-						<ItemContent className="min-w-0">
+						<ItemContent className="min-w-0 basis-40">
 							{/* Label statt Div: Antippen von Titel oder Meta schaltet den Eintrag um. */}
 							<label
 								htmlFor={`import-entry-${index}`}
 								className="flex min-w-0 cursor-pointer flex-col gap-1"
 							>
-								<ItemTitle className="line-clamp-none break-words">{parsed.description}</ItemTitle>
-								<ItemDescription className="line-clamp-none">
-									{formatDate(parsed.date)} · bezahlt von{' '}
+								<ItemTitle className="line-clamp-none [overflow-wrap:break-word]">
+									{parsed.description}
+								</ItemTitle>
+								<ItemDescription className="line-clamp-none [overflow-wrap:break-word]">
+									<span className="whitespace-nowrap">{formatDate(parsed.date)}</span> · bezahlt von{' '}
 									{resolveName(mapping, members, parsed.paidByName)}
 									{skipped && ' · wird übersprungen'}
 								</ItemDescription>

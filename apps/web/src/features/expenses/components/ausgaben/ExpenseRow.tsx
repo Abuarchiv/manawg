@@ -231,7 +231,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 												className="ml-auto"
 												onClick={() => setSettleCandidate(split)}
 												disabled={pendingIds.has(split.id) || pendingIds.has(expense.id)}
-												aria-label={`${settled ? 'Wieder öffnen' : 'Als bezahlt eintragen'}: ${memberName(split.debtorMemberId)}`}
+												aria-label={`${settled ? 'Wieder öffnen' : 'Als bezahlt eintragen'}: ${who(split.debtorMemberId)}`}
 											>
 												{pendingIds.has(split.id) ? (
 													<Spinner data-icon="inline-start" />
@@ -293,11 +293,12 @@ export const ExpenseRow = memo(function ExpenseRow({
 						<AlertDialogDescription>
 							{settleCandidate && (
 								<>
-									{memberName(settleCandidate.debtorMemberId)} ·{' '}
+									{who(settleCandidate.debtorMemberId)} ·{' '}
 									<span className="font-mono tabular-nums">
 										{formatEuroCents(settleCandidate.amountCents, expense.currency)}
 									</span>{' '}
-									für „{expense.description}“, bezahlt von {memberName(expense.paidByMemberId)}.{' '}
+									für „{expense.description}“, bezahlt von{' '}
+									{isPayer ? 'dir' : memberName(expense.paidByMemberId)}.{' '}
 									{settleCandidate.settledAt
 										? 'Dieser Anteil wird wieder als offen vermerkt.'
 										: 'Dieser Anteil wird als beglichen vermerkt.'}{' '}
