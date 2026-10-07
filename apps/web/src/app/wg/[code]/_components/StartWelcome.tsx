@@ -67,26 +67,29 @@ export function StartWelcome() {
 						</Button>
 					</CardAction>
 				</CardHeader>
-				<CardContent className="flex flex-row flex-wrap gap-2">
+				<CardContent className="flex flex-col gap-2">
 					{hasRoommates && (
-						<Link href={`${baseHref}/einkauf`} className={cn(buttonVariants(), 'flex-1')}>
+						<Link href={`${baseHref}/einkauf`} className={cn(buttonVariants(), 'w-full')}>
 							Einkauf öffnen
 						</Link>
 					)}
-					<CopyCodeButton
-						code={wg.shareCode}
-						wgName={wg.name}
-						joiningEnabled={wg.joiningEnabled}
-						className="flex-1"
-						variant={hasRoommates ? 'ghost' : 'default'}
-					/>
-					{!wg.joiningEnabled && (
-						<Link
-							href={`${baseHref}/einstellungen#zugang`}
-							className={cn(buttonVariants({ variant: 'link' }), '')}
-						>
-							Einladungen verwalten
-						</Link>
+					{wg.joiningEnabled ? (
+						<CopyCodeButton
+							code={wg.shareCode}
+							wgName={wg.name}
+							className="w-full"
+							variant={hasRoommates ? 'ghost' : 'default'}
+						/>
+					) : (
+						<p className="text-sm text-muted-foreground">
+							Beitritte sind gesperrt.{' '}
+							<Link
+								href={`${baseHref}/einstellungen#zugang`}
+								className="inline-block py-2 text-foreground underline underline-offset-4"
+							>
+								Einladungen verwalten
+							</Link>
+						</p>
 					)}
 				</CardContent>
 			</Card>

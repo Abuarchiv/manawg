@@ -130,7 +130,10 @@ export default function AktivitaetPage() {
 	}
 
 	return (
-		<div className="mx-auto flex w-full min-w-0 max-w-4xl flex-col gap-3 px-4 py-3">
+		<div
+			data-household-content
+			className="mx-auto flex w-full min-w-0 max-w-4xl flex-col gap-3 px-4 py-3"
+		>
 			<h1 className="font-heading min-w-0 flex-1 text-base font-semibold tracking-tight break-words text-foreground">
 				Aktivität
 			</h1>
@@ -159,7 +162,7 @@ export default function AktivitaetPage() {
 									const query = event.currentTarget.value;
 									setFilter((current) => ({ ...current, query }));
 								}}
-								placeholder="Aktivität durchsuchen"
+								placeholder="Suchen"
 								aria-label="Aktivität durchsuchen"
 								className="min-h-11 text-base"
 							/>

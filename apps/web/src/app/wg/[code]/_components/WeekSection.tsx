@@ -1,6 +1,8 @@
 'use client';
 
-import { Button, buttonVariants } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import type { WeekAgenda, WeekAgendaItem } from '@/composition/dashboard-insights';
 import { berlinDayKey } from '@/core/utils/berlin-day';
 import { MS_PER_DAY } from '@/core/utils/time';
@@ -108,31 +110,33 @@ export function WeekSection({
 				</Link>
 			</div>
 
-			{events.loading && !events.loaded && (
-				<output className="text-sm text-muted-foreground">Termine werden geladen…</output>
+			{((events.loading && !events.loaded) || (!choresLoaded && !choresFailed)) && (
+				<div
+					className="flex min-w-0 flex-col gap-2"
+					aria-label="Termine und Putzplan-Aufgaben werden geladen"
+					// biome-ignore lint/a11y/useSemanticElements: role="status" names the loading region without swapping the wrapper element to <output>.
+					role="status"
+				>
+					<Skeleton className="h-11 w-full" />
+					<Skeleton className="h-11 w-full" />
+				</div>
 			)}
+
 			{events.failed && !(online === false && events.loaded) && (
-				<div className="flex min-w-0 flex-wrap items-center gap-x-3 text-sm text-muted-foreground">
-					<output className="min-w-0 flex-1 basis-48">
-						{events.loaded
+				<LoadErrorBanner
+					message={
+						events.loaded
 							? 'Termine konnten nicht aktualisiert werden. Angezeigte Einträge können veraltet sein.'
 							: choresLoaded
 								? 'Termine konnten nicht geladen werden. Putzplan-Aufgaben bleiben sichtbar.'
-								: 'Termine konnten nicht geladen werden.'}
-					</output>
-					<Button
-						variant="outline"
-						type="button"
-						className="min-h-11 shrink-0"
-						onClick={events.retry}
-					>
-						Termine erneut laden
-					</Button>
-				</div>
+								: 'Termine konnten nicht geladen werden.'
+					}
+					onRetry={events.retry}
+					busy={events.loading}
+					retryLabel="Termine erneut laden"
+				/>
 			)}
-			{!choresLoaded && !choresFailed && (
-				<output className="text-sm text-muted-foreground">Putzplan-Aufgaben werden geladen…</output>
-			)}
+
 			{!choresLoaded && choresFailed && (
 				<p className="text-sm text-muted-foreground">
 					Putzplan-Aufgaben konnten nicht geladen werden.

@@ -12,7 +12,6 @@ const RESET_MS = 1500;
 interface CopyCodeButtonProps {
 	code: string;
 	wgName?: string;
-	joiningEnabled?: boolean;
 	variant?: 'default' | 'ghost';
 	className?: string;
 }
@@ -22,7 +21,6 @@ type CopyState = 'idle' | 'shared' | 'copied' | 'failed';
 export function CopyCodeButton({
 	code,
 	wgName,
-	joiningEnabled = true,
 	variant = 'ghost',
 	className,
 }: CopyCodeButtonProps) {
@@ -47,7 +45,6 @@ export function CopyCodeButton({
 	}
 
 	async function onClick(): Promise<void> {
-		if (!joiningEnabled) return;
 		if (sharingRef.current) return;
 		sharingRef.current = true;
 		setSharing(true);
@@ -106,13 +103,11 @@ export function CopyCodeButton({
 				type="button"
 				variant={variant}
 				onClick={onClick}
-				disabled={!joiningEnabled || sharing}
+				disabled={sharing}
 				className={cn('h-auto whitespace-normal', className)}
 			>
 				{sharing ? (
 					<Spinner data-icon="inline-start" aria-hidden />
-				) : !joiningEnabled ? (
-					<AlertTriangle data-icon="inline-start" aria-hidden />
 				) : state === 'copied' || state === 'shared' ? (
 					<Check data-icon="inline-start" aria-hidden />
 				) : state === 'failed' ? (
@@ -120,17 +115,15 @@ export function CopyCodeButton({
 				) : (
 					<Share2 data-icon="inline-start" aria-hidden />
 				)}
-				{!joiningEnabled
-					? 'Beitritte gesperrt'
-					: sharing
-						? 'Einladung wird geteilt…'
-						: state === 'copied'
-							? 'Einladung kopiert'
-							: state === 'shared'
-								? 'WG geteilt'
-								: state === 'failed'
-									? 'Erneut teilen'
-									: 'Mitbewohner einladen'}
+				{sharing
+					? 'Einladung wird geteilt…'
+					: state === 'copied'
+						? 'Einladung kopiert'
+						: state === 'shared'
+							? 'WG geteilt'
+							: state === 'failed'
+								? 'Erneut teilen'
+								: 'Mitbewohner einladen'}
 			</Button>
 		</>
 	);
