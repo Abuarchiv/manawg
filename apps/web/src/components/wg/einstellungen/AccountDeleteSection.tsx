@@ -152,12 +152,12 @@ export function AccountDeleteSection() {
 					{error && (
 						<Alert variant="destructive" id="delete-account-error">
 							<AlertDescription>
-								{error}
+								<div>{error}</div>
 								{error === SIGN_IN_AGAIN_MESSAGE && (
 									<Button
 										variant="outline"
 										size="sm"
-										className="mt-2"
+										className="mt-2 no-underline!"
 										render={<Link href="/neu" />}
 										nativeButton={false}
 									>

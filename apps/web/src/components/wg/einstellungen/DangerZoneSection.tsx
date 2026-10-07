@@ -117,7 +117,7 @@ export function DangerZoneSection({ wg, members, identity }: DangerZoneSectionPr
 					>
 						<div className="grid gap-3 p-3">
 							{activeMemberCount <= 1 ? (
-								<p className="text-muted-foreground text-[12px]">
+								<p className="text-muted-foreground text-xs">
 									Du bist das letzte aktive Mitglied. Die WG kann erst verlassen werden, wenn ein
 									weiteres Mitglied aktiv ist. Wenn du nur dieses Gerät abmelden möchtest, nutze
 									oben „Konto abmelden“.
@@ -192,7 +192,7 @@ export function DangerZoneSection({ wg, members, identity }: DangerZoneSectionPr
 							onChange={(e) => setConfirmText(e.target.value.toUpperCase())}
 							placeholder="Code eingeben"
 							disabled={deleteStage === 'pending'}
-							className="text-center font-mono text-base tracking-[0.18em]"
+							className="text-center font-mono text-base tracking-[0.18em] placeholder:font-sans placeholder:tracking-normal"
 							autoComplete="off"
 						/>
 					</Field>

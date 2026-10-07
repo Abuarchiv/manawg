@@ -42,10 +42,12 @@ export function ProfileTab({ memberName, wgName, shareCode, memberId }: ProfileT
 				<div className="flex min-h-[44px] items-center gap-3 px-3 py-2">
 					<MemberAvatar name={memberName} size={32} />
 					<div className="min-w-0 flex-1">
-						<div className="text-foreground truncate text-[14px] font-medium">{memberName}</div>
+						<div className="text-foreground text-sm font-medium [overflow-wrap:break-word]">
+							{memberName}
+						</div>
 					</div>
 				</div>
-				<div className="grid gap-2 px-2 pb-2">
+				<div className="grid gap-2 px-3 pb-3">
 					<ToggleGroup
 						variant="segmented"
 						className="w-full flex-wrap"

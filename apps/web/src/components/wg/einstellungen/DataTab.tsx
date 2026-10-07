@@ -133,7 +133,7 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 							value={csvExportSection}
 							disabled={exportPending !== null}
 							onChange={(event) => setCsvExportSection(event.target.value)}
-							className="min-w-0 flex-1 text-base"
+							className="min-w-36 max-w-full flex-1 text-base"
 						>
 							{exportSummary.map((section) => (
 								<NativeSelectOption key={section.key} value={section.key}>
@@ -151,7 +151,7 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 									? `${csvExportLabel} wird als CSV exportiert`
 									: `${csvExportLabel} als CSV exportieren`
 							}
-							className="h-11 shrink-0"
+							className="h-11 min-w-fit flex-1"
 						>
 							{exportPending === 'csv' ? <Spinner aria-hidden /> : <Download aria-hidden />}
 							CSV exportieren

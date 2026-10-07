@@ -185,7 +185,7 @@ function ShareWgBody({
 						<span className="text-muted-foreground block text-xs font-medium tracking-wider uppercase">
 							Code
 						</span>
-						<span className="text-foreground mt-0.5 block font-mono text-base font-medium tracking-[0.12em] break-all">
+						<span className="text-foreground mt-0.5 block font-mono text-base font-medium tracking-[0.05em] break-all">
 							{shareCode}
 						</span>
 					</span>
@@ -231,7 +231,7 @@ function ShareWgBody({
 				</Alert>
 			) : null}
 			{/* Feste Zeile, damit die Rückmeldung nichts verschiebt. */}
-			<p aria-live="polite" className="text-muted-foreground mt-2 min-h-4 text-xs">
+			<p aria-live="polite" className="text-muted-foreground mt-2 min-h-4 text-xs leading-4">
 				{copyError
 					? ''
 					: copied === 'code'
@@ -246,7 +246,7 @@ function ShareWgBody({
 				onClick={onShare}
 				disabled={!joiningEnabled || copying !== null}
 				aria-label={copying === 'share' ? 'WG-Einladung wird geteilt…' : 'WG-Einladung teilen'}
-				className="mt-3 w-full"
+				className="mt-2 w-full"
 			>
 				{copying === 'share' ? <Spinner aria-hidden /> : <Share2 aria-hidden />}
 				{copying === 'share' ? 'Teilt…' : 'Teilen'}

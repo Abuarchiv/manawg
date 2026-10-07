@@ -91,7 +91,7 @@ export function NotificationSection({
 				{loadingStatus && (
 					<div className="grid gap-2" aria-live="polite">
 						<Skeleton className="h-11 w-full" />
-						<p className="text-muted-foreground text-[12px]">Hinweise werden geladen…</p>
+						<p className="text-muted-foreground text-xs">Hinweise werden geladen…</p>
 					</div>
 				)}
 				{!status && error && (
