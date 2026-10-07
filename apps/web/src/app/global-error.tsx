@@ -9,15 +9,18 @@ import {
 	EmptyMedia,
 } from '@/components/ui/empty';
 import { captureException } from '@/core/infra/capture-client';
-import { THEME_BOOTSTRAP_SCRIPT } from '@/shared/lib/theme';
+import { THEME_BOOTSTRAP_SCRIPT, applyStoredTheme } from '@/shared/lib/theme';
 import '@/shared/globals.css';
 import { TriangleAlert } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useLayoutEffect } from 'react';
 
 export default function GlobalError({
 	error,
 	reset,
 }: { error: Error & { digest?: string }; reset: () => void }) {
+	// The head script only runs on a server render; a client-rendered error page needs this
+	// before paint so dark devices do not flash white.
+	useLayoutEffect(applyStoredTheme, []);
 	useEffect(() => {
 		captureException(error, { boundary: 'global' });
 	}, [error]);

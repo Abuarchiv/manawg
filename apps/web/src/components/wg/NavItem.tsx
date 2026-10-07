@@ -59,7 +59,7 @@ export function NavItem({ href, label, iconKey, activePrefixes }: NavItemProps) 
 				)}
 			>
 				<Icon aria-hidden className="size-[18px]" strokeWidth={1.5} />
-				<span className="max-w-full whitespace-nowrap text-center text-[11px] font-medium leading-4">
+				<span className="max-w-full whitespace-nowrap text-center text-[length:clamp(12px,0.75rem,16px)] font-medium leading-4">
 					{label}
 				</span>
 			</Link>

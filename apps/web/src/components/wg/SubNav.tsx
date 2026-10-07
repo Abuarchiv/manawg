@@ -205,7 +205,7 @@ function SegmentList({
 									aria-current={active ? (current ? 'page' : 'location') : undefined}
 									aria-label={suffix ? `${itemLabel}, ${suffix}` : undefined}
 									className={cn(
-										"relative flex min-h-8 min-w-0 items-center justify-center gap-1.5 rounded-md px-2 text-sm font-medium after:absolute after:inset-x-0 after:top-1/2 after:h-11 after:-translate-y-1/2 after:content-[''] max-[419px]:px-1 max-[419px]:text-[12px] outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50",
+										"relative flex min-h-8 min-w-0 items-center justify-center gap-1.5 rounded-md px-2 text-sm font-medium after:absolute after:inset-x-0 after:top-1/2 after:h-11 after:-translate-y-1/2 after:content-[''] max-[419px]:px-1 max-[419px]:text-meta outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50",
 										active
 											? 'bg-background text-foreground ring-1 ring-border dark:bg-foreground/15 dark:ring-foreground/25'
 											: 'text-foreground/75 hover:text-foreground active:bg-foreground/5',
@@ -216,7 +216,7 @@ function SegmentList({
 									{showCount && (
 										<span
 											aria-hidden
-											className="text-[12px] leading-none font-medium tabular-nums text-muted-foreground"
+											className="text-meta leading-none font-medium tabular-nums text-muted-foreground"
 										>
 											{marker}
 											{countOverflow || count > 99 || (countExact ?? 0) > 99 ? '99+' : count}
@@ -225,7 +225,7 @@ function SegmentList({
 									{!showCount && marker && (
 										<span
 											aria-hidden
-											className="text-[12px] leading-none font-medium text-muted-foreground"
+											className="text-meta leading-none font-medium text-muted-foreground"
 										>
 											{marker}
 										</span>

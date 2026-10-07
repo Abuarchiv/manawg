@@ -29,7 +29,7 @@ function UploadFeedback({ error, notice }: { error: string | null; notice: strin
 				</Alert>
 			)}
 			{notice && (
-				<output className="mt-2 block text-[12px] text-muted-foreground" aria-live="polite">
+				<output className="mt-2 block text-meta text-muted-foreground" aria-live="polite">
 					{notice}
 				</output>
 			)}
@@ -69,7 +69,7 @@ export function ImageUploader({
 							loading="lazy"
 						/>
 					) : (
-						<div className="flex h-full items-center justify-center text-[12px] text-muted-foreground">
+						<div className="flex h-full items-center justify-center text-meta text-muted-foreground">
 							Bild wird vorbereitet…
 						</div>
 					)}

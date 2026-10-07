@@ -14,3 +14,14 @@ export function resolveTheme(theme: Theme, systemDark: boolean): ResolvedTheme {
 
 /** Runs before first paint (layout and global-error) so dark mode never flashes white. */
 export const THEME_BOOTSTRAP_SCRIPT = `(function(){try{var t=localStorage.getItem('${THEME_STORAGE_KEY}');var s=t!=='light'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;if(t==='dark'||s){document.documentElement.classList.add('dark');}else{document.documentElement.classList.remove('dark');}}catch(e){}})();`;
+
+/** Same logic as THEME_BOOTSTRAP_SCRIPT, callable from client code (inline scripts do not run on client renders, and new Function() is blocked by a strict CSP). */
+export function applyStoredTheme(): void {
+	try {
+		const theme = parseStoredTheme(localStorage.getItem(THEME_STORAGE_KEY));
+		const systemDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
+		document.documentElement.classList.toggle('dark', resolveTheme(theme, systemDark) === 'dark');
+	} catch {
+		// Storage blocked: keep whatever class the document has.
+	}
+}

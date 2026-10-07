@@ -116,7 +116,7 @@ export function InstallPrompt() {
 						/>
 						<div className="min-w-0 flex-1">
 							<CardTitle className="text-sm">ManaWG als App installieren</CardTitle>
-							<CardDescription className="text-[12px]">
+							<CardDescription className="text-meta">
 								Schneller starten, offline-fähig.
 							</CardDescription>
 						</div>

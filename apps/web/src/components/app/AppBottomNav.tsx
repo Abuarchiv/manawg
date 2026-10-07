@@ -17,16 +17,32 @@ export function AppBottomNav({ label, children }: { label: string; children: Rea
 	useEffect(() => {
 		const vv = window.visualViewport;
 		if (!vv) return;
-		const sync = () => {
+		// The keyboard is open when the visual viewport is much shorter than the page height seen
+		// before typing began. innerHeight alone is unreliable: Android (resizes-content) and iOS 27
+		// shrink it together with the keyboard, so the difference stays near 0 or depends on event order.
+		const pageHeight = () => Math.max(document.documentElement.clientHeight, vv.height);
+		let base = pageHeight();
+		const sync = (event?: Event) => {
 			const el = document.activeElement;
 			const typing =
 				el instanceof HTMLElement && el.matches('input, textarea, [contenteditable="true"]');
-			setKeyboardOpen(typing && window.innerHeight - vv.height > 100);
+			// Moving focus between fields blurs first while the keyboard is still up: keep the old base.
+			if (!typing && event?.type !== 'focusout') base = pageHeight();
+			setKeyboardOpen(typing && base - vv.height > 100);
 		};
+		sync();
 		vv.addEventListener('resize', sync);
+		vv.addEventListener('scroll', sync);
+		window.addEventListener('resize', sync);
+		window.addEventListener('orientationchange', sync);
+		document.addEventListener('focusin', sync);
 		document.addEventListener('focusout', sync);
 		return () => {
 			vv.removeEventListener('resize', sync);
+			vv.removeEventListener('scroll', sync);
+			window.removeEventListener('resize', sync);
+			window.removeEventListener('orientationchange', sync);
+			document.removeEventListener('focusin', sync);
 			document.removeEventListener('focusout', sync);
 		};
 	}, []);

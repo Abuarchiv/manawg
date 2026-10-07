@@ -48,7 +48,7 @@ export function WgRouteErrorBoundary({
 	}, [error, boundary]);
 
 	return (
-		<div className="flex min-h-[calc(100svh-4.25rem)] items-center justify-center bg-background px-4 pb-[env(safe-area-inset-bottom)]">
+		<div className="flex items-center justify-center bg-background px-4 py-8">
 			<Card className="w-full max-w-md">
 				<CardContent className="pt-6">
 					<Empty>

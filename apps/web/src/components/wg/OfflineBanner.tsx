@@ -136,7 +136,7 @@ export function OfflineBanner() {
 			<output
 				ref={bannerRef}
 				data-offline-banner
-				className="bg-muted text-foreground border-border sticky top-0 z-20 grid min-h-[calc(44px+1rem+1px)] grid-cols-[minmax(0,1fr)] content-center border-b px-4 py-2 text-[12px] font-medium"
+				className="bg-muted text-foreground border-border sticky top-0 z-20 grid min-h-[calc(44px+1rem+1px)] grid-cols-[minmax(0,1fr)] content-center border-b px-4 py-2 text-meta font-medium"
 				aria-live="polite"
 			>
 				<div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-3">
@@ -168,7 +168,7 @@ export function OfflineBanner() {
 			<output
 				ref={bannerRef}
 				data-offline-banner
-				className="bg-card text-foreground border-border sticky top-0 z-20 grid min-h-[calc(44px+1rem+1px)] grid-cols-[minmax(0,1fr)] content-center border-b px-4 py-2 text-[12px] font-medium"
+				className="bg-card text-foreground border-border sticky top-0 z-20 grid min-h-[calc(44px+1rem+1px)] grid-cols-[minmax(0,1fr)] content-center border-b px-4 py-2 text-meta font-medium"
 				aria-live="polite"
 			>
 				<div className="mx-auto flex w-full max-w-2xl items-center gap-2">
@@ -183,7 +183,7 @@ export function OfflineBanner() {
 		<output
 			ref={bannerRef}
 			data-offline-banner
-			className="bg-card text-foreground border-border sticky top-0 z-20 grid min-h-[calc(44px+1rem+1px)] grid-cols-[minmax(0,1fr)] content-center border-b px-4 py-2 text-[12px] font-medium"
+			className="bg-card text-foreground border-border sticky top-0 z-20 grid min-h-[calc(44px+1rem+1px)] grid-cols-[minmax(0,1fr)] content-center border-b px-4 py-2 text-meta font-medium"
 			aria-live="polite"
 		>
 			<div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-3">
@@ -201,7 +201,7 @@ export function OfflineBanner() {
 					aria-label={
 						syncing ? 'Offline-Aktionen werden gesendet' : 'Offline-Aktionen jetzt senden'
 					}
-					className="min-h-[44px] shrink-0 text-[12px]"
+					className="min-h-[44px] shrink-0 text-meta"
 				>
 					{syncing ? (
 						<Spinner aria-hidden />

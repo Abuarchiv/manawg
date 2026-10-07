@@ -2,6 +2,9 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* The app theme is the .dark class on <html>, not the OS setting. */
+@custom-variant dark (&:is(.dark, .dark *));
+
 /* Phone density, applied on every viewport width: the app is a single phone column.
    Page wrappers set their own gap and padding (gap-3 px-4 py-3). */
 [data-home-content] section {
@@ -118,12 +121,15 @@ body:has(.group\/wg-shell) [data-slot="field-group"] {
 }
 
 @theme inline {
-	--font-sans: var(--font-inter);
-	--font-heading: var(--font-inter-tight);
+	--font-sans: var(--font-inter, ui-sans-serif), ui-sans-serif, system-ui, sans-serif;
+	--font-heading: var(--font-inter-tight, var(--font-inter, ui-sans-serif)), ui-sans-serif, system-ui, sans-serif;
 	--font-mono: var(--font-jetbrains-mono);
 	/* Small text keeps a readable floor under the fluid root size (section 6);
 	   headings and spacing above still scale down on narrow phones. */
 	--text-xs: max(12px, 0.8125rem);
+	/* Compact scale in rem: 12/14px at the default root, grows with the user's text size. */
+	--text-meta: max(12px, 0.75rem);
+	--text-body: max(14px, 0.875rem);
 	--text-sm: max(12.5px, 0.875rem);
 	--text-lg: 1.0625rem;
 	--text-2xl: 1.625rem;
@@ -640,7 +646,7 @@ input[type="month"] {
 	body {
 		background-color: var(--app-backdrop);
 		color: var(--text-1);
-		font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+		font-family: var(--font-inter, ui-sans-serif), ui-sans-serif, system-ui, sans-serif;
 		font-feature-settings: "kern" on, "ss01" on, "cv11" on;
 		-webkit-font-smoothing: antialiased;
 		-moz-osx-font-smoothing: grayscale;
@@ -655,7 +661,7 @@ input[type="month"] {
 	h4,
 	h5,
 	h6 {
-		font-family: var(--font-inter-tight), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+		font-family: var(--font-inter-tight, var(--font-inter, ui-sans-serif)), ui-sans-serif, system-ui, sans-serif;
 		font-weight: 600;
 	}
 
