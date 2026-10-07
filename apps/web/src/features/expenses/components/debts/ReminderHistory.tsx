@@ -67,14 +67,14 @@ export function ReminderHistory({ items, memberName, currentMemberId }: Reminder
 								? 'dir'
 								: memberName(item.creditorMemberId)}
 						</ItemTitle>
-						<ItemDescription>
+						<ItemDescription className="line-clamp-none break-words">
 							<time dateTime={item.sentAt} title={formatTimeFull(item.sentAt)}>
 								{formatRelativeTime(item.sentAt)}
 							</time>{' '}
 							· {channelLabel(item.channel)}
 						</ItemDescription>
 					</ItemContent>
-					<Badge variant="outline" className="font-mono tabular-nums">
+					<Badge variant="outline" className="ml-auto shrink-0 font-mono tabular-nums">
 						{formatEuroCents(item.amountCents, item.currency)}
 					</Badge>
 				</Item>

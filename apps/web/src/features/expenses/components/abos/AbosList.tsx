@@ -10,7 +10,7 @@ import {
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { AboRow } from '@/features/expenses/components/abos/AboRow';
 import type { Abo, AboFilter, MemberOption } from '@/features/expenses/components/abos/abos-types';
-import { RefreshCw } from 'lucide-react';
+import { Repeat2 } from 'lucide-react';
 import type { Ref } from 'react';
 
 interface AbosListProps {
@@ -83,22 +83,20 @@ export function AbosList({
 					<Empty>
 						<EmptyHeader>
 							<EmptyMedia variant="icon">
-								<RefreshCw />
+								<Repeat2 />
 							</EmptyMedia>
 							<EmptyTitle>
-								{loadError && abos.length === 0
-									? 'Noch keine Fixkosten geladen'
-									: abos.length === 0
-										? 'Noch keine Fixkosten'
-										: `Keine ${filter === 'paused' ? 'pausierten' : 'aktiven'} Fixkosten`}
+								{abos.length === 0
+									? 'Noch keine Fixkosten'
+									: `Keine ${filter === 'paused' ? 'pausierten' : 'aktiven'} Fixkosten`}
 							</EmptyTitle>
-							{abos.length > 0 || loadError ? (
-								<EmptyDescription>
-									{loadError && abos.length === 0
-										? 'Versuche es erneut, sobald die Verbindung wieder da ist.'
-										: 'Wähle einen anderen Filter.'}
-								</EmptyDescription>
-							) : null}
+							<EmptyDescription>
+								{abos.length === 0
+									? 'Lege Miete, Strom oder Netflix an, ManaWG bucht sie automatisch.'
+									: filter === 'paused'
+										? 'Keine Fixkosten sind pausiert.'
+										: 'Alle Fixkosten sind pausiert. Zeige sie unter „Pausiert“.'}
+							</EmptyDescription>
 						</EmptyHeader>
 					</Empty>
 				)

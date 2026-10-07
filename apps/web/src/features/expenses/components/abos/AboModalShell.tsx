@@ -74,7 +74,7 @@ export function AboModalShell({ title, onClose, submitting, children }: AboModal
 					</DialogHeader>
 					<Separator />
 					<div
-						className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-4"
+						className="min-h-0 flex-1 scroll-pb-40 overflow-y-auto overscroll-contain px-4 pt-4"
 						onChangeCapture={trackFieldChange}
 						onInputCapture={trackFieldChange}
 						onClickCapture={trackToggleChange}

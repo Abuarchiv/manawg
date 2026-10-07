@@ -83,6 +83,11 @@ export function useRemindersPage() {
 	const [expensesLoadFailed, setExpensesLoadFailed] = useState(false);
 	const [remindersLoadFailed, setRemindersLoadFailed] = useState(false);
 	const [primaryReminderKey, setPrimaryReminderKey] = useState<string | null>(null);
+	// Server said 403 debtor_opted_out; the page has no data source for it, so remember it locally.
+	const [optedOutIds, setOptedOutIds] = useState<ReadonlySet<string>>(() => new Set());
+	const markOptedOut = useCallback((debtorId: string) => {
+		setOptedOutIds((current) => new Set(current).add(debtorId));
+	}, []);
 	const hasPageCacheRef = useRef(Boolean(cachedExpenses || cachedReminders));
 
 	function updateReminders(
@@ -246,13 +251,15 @@ export function useRemindersPage() {
 		(row.creditorId === identity.memberId || isAdmin) &&
 		row.debtorId !== identity.memberId &&
 		members.find((m) => m.id === row.debtorId)?.active !== false;
-	const remindable = rows.filter(canRemind);
+	// Without the history the cooldown is unknown, so no reminder is offered at all.
+	const remindable = remindersLoadFailed
+		? []
+		: rows.filter((row) => canRemind(row) && !optedOutIds.has(row.debtorId));
 	const mine = remindable.filter((row) => row.creditorId === identity.memberId);
 	const pool = mine.length > 0 ? mine : remindable;
 	const primaryReminder =
 		pool.find((row) => reminderKey(row) === primaryReminderKey) ??
 		pool.find((row) => cooldownFor(row.debtorId, row.creditorId, row.currency).allowed) ??
-		pool[0] ??
 		null;
 
 	const allClear =
@@ -283,6 +290,8 @@ export function useRemindersPage() {
 		cooldownFor,
 		canRemind,
 		primaryReminder,
+		optedOutIds,
+		markOptedOut,
 		allClear,
 	};
 }
