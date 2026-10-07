@@ -119,6 +119,7 @@ export function ExpenseFormSection({
 	const [confirmClose, setConfirmClose] = useState(false);
 	const [replaceOpen, setReplaceOpen] = useState(false);
 	const formRef = useRef<HTMLFormElement>(null);
+	const formErrorRef = useRef<HTMLDivElement>(null);
 	const editingTemplate = Boolean(
 		editingRecurringExpense && !isEditingQueuedExpense && !isEditingQueuedRecurring,
 	);
@@ -144,6 +145,11 @@ export function ExpenseFormSection({
 		if (validationAttempt === 0) return;
 		formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
 	}, [validationAttempt]);
+
+	// Der Serverfehler steht am Ende des Scrollbereichs; auf kleinen Handys liegt er sonst unterhalb des Sichtbereichs.
+	useEffect(() => {
+		if (formError) formErrorRef.current?.scrollIntoView({ block: 'nearest' });
+	}, [formError]);
 
 	function requestClose() {
 		if (formSaving || savingRecurringTemplate) return;
@@ -298,7 +304,7 @@ export function ExpenseFormSection({
 									formSaving={formSaving}
 								/>
 								{formError && (
-									<Alert variant="destructive">
+									<Alert ref={formErrorRef} variant="destructive">
 										<AlertDescription>{formError}</AlertDescription>
 										{conflictExpenseId && (
 											<div className="flex flex-col gap-2 pt-3">

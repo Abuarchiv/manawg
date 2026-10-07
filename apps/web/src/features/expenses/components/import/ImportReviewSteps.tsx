@@ -67,7 +67,7 @@ export function ImportPreviewStep({ headingRef, wizard }: StepProps) {
 			<FieldGroup>
 				<Field orientation="horizontal" className="min-h-11 items-start" data-disabled={busy}>
 					<Checkbox
-						className="mt-0.5"
+						className="relative mt-0.5 after:absolute after:-inset-3"
 						id="import-duplicates"
 						checked={wizard.skipDuplicates}
 						onCheckedChange={(checked) => wizard.setSkipDuplicates(checked === true)}

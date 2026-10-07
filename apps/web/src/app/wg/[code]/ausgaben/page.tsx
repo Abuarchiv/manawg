@@ -47,6 +47,33 @@ export default function AusgabenPage() {
 	const isEditingQueuedRecurring = form.queueEditType === 'recurring.create';
 	const formSaving = submit.submitting || recurring.savingRecurringTemplate;
 
+	/** Nach einem Bearbeitungs-Konflikt gegen die frische Server-Version entscheiden. */
+	async function resolveConflict(choice: 'server' | 'draft'): Promise<void> {
+		const editedId = form.editingExpense?.id;
+		const fresh = await data.load(false);
+		const serverExpense = fresh?.find((expense) => expense.id === editedId);
+		if (!fresh || !editedId) {
+			form.setFormError(
+				'Die Liste konnte nicht neu geladen werden. Versuche es gleich noch einmal.',
+			);
+			return;
+		}
+		if (!serverExpense) {
+			form.setConflictExpenseId(null);
+			form.setFormError(
+				'Die ursprüngliche Ausgabe wurde gelöscht. Deine ungespeicherten Änderungen bleiben im Entwurf; du kannst sie kopieren oder den Entwurf verwerfen.',
+			);
+			return;
+		}
+		if (choice === 'server') {
+			form.startEdit(serverExpense);
+			return;
+		}
+		form.rebaseEdit(serverExpense.updatedAt);
+		form.setConflictExpenseId(null);
+		form.setFormError(null);
+	}
+
 	return (
 		<div
 			data-finance-content
@@ -99,12 +126,8 @@ export default function AusgabenPage() {
 					validationAttempt={support.validationAttempt}
 					onClearFieldError={support.clearFieldError}
 					conflictExpenseId={form.conflictExpenseId}
-					onReloadServerVersion={() => {
-						form.setConflictExpenseId(null);
-						form.setFormError(null);
-						void data.load(false);
-					}}
-					onKeepDraft={() => form.setConflictExpenseId(null)}
+					onReloadServerVersion={() => void resolveConflict('server')}
+					onKeepDraft={() => void resolveConflict('draft')}
 					savingRecurringTemplate={recurring.savingRecurringTemplate}
 					editingRecurringExpense={editingRecurringExpense}
 					formSaving={formSaving}

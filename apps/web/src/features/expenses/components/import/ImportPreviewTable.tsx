@@ -86,15 +86,21 @@ export function ImportPreviewTable({
 							onCheckedChange={() => onToggleSkip(index)}
 							disabled={disabled}
 							aria-label={`Eintrag ${index + 1} importieren`}
-							className="mt-0.5"
+							className="relative mt-0.5 after:absolute after:-inset-3"
 						/>
 						<ItemContent className="min-w-0">
-							<ItemTitle className="line-clamp-none break-words">{parsed.description}</ItemTitle>
-							<ItemDescription className="line-clamp-none">
-								{formatDate(parsed.date)} · bezahlt von{' '}
-								{resolveName(mapping, members, parsed.paidByName)}
-								{skipped && ' · wird übersprungen'}
-							</ItemDescription>
+							{/* Label statt Div: Antippen von Titel oder Meta schaltet den Eintrag um. */}
+							<label
+								htmlFor={`import-entry-${index}`}
+								className="flex min-w-0 cursor-pointer flex-col gap-1"
+							>
+								<ItemTitle className="line-clamp-none break-words">{parsed.description}</ItemTitle>
+								<ItemDescription className="line-clamp-none">
+									{formatDate(parsed.date)} · bezahlt von{' '}
+									{resolveName(mapping, members, parsed.paidByName)}
+									{skipped && ' · wird übersprungen'}
+								</ItemDescription>
+							</label>
 						</ItemContent>
 						<Badge variant="outline" className="font-mono tabular-nums">
 							{formatEuroCents(parsed.amountCents, 'EUR')}

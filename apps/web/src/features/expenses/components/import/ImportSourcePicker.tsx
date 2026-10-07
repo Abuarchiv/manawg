@@ -43,11 +43,6 @@ export function ImportSourcePicker({ value, onChange }: Props) {
 			<FieldLegend className="sr-only">Importquelle wählen</FieldLegend>
 			<ToggleGroup
 				value={value ? [value] : []}
-				onValueChange={(values) => {
-					const next = values[0];
-					if (next === 'splitwise_csv' || next === 'splid_csv' || next === 'ocr_screenshot')
-						onChange(next);
-				}}
 				orientation="vertical"
 				variant="outline"
 				className="w-full min-w-0"
@@ -56,6 +51,8 @@ export function ImportSourcePicker({ value, onChange }: Props) {
 					<ToggleGroupItem
 						key={id}
 						value={id}
+						// onClick statt onValueChange: ein erneutes Antippen der gewählten Quelle liefert dort eine leere Liste.
+						onClick={() => onChange(id)}
 						className="h-auto min-h-16 w-full min-w-0 justify-start gap-3 whitespace-normal py-3 text-left"
 					>
 						<Icon />

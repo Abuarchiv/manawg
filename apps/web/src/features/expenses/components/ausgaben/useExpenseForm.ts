@@ -307,6 +307,11 @@ export function useExpenseForm({
 		setShowForm(true);
 	}
 
+	/** Draft bleibt, aber der nächste Speichern-Versuch prüft gegen die aktuelle Server-Version. */
+	function rebaseEdit(updatedAt: string): void {
+		setEditingExpense((current) => (current ? { ...current, updatedAt } : current));
+	}
+
 	function startRecurringEdit(template: RecurringExpense): void {
 		setRecurringSourceId(null);
 		setPendingPrefill(null);
@@ -370,6 +375,7 @@ export function useExpenseForm({
 		},
 		resetForm,
 		startEdit,
+		rebaseEdit,
 		startRecurringEdit,
 	};
 }

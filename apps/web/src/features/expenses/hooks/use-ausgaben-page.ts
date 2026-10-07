@@ -47,7 +47,8 @@ export function useAusgabenPage() {
 	const notify: ActionNotifier = {
 		error: (message) => setActionNotice(message ? { message, tone: 'error' } : null),
 		warning: (message) => setActionNotice({ message, tone: 'warning' }),
-		success: (message) => setActionNotice({ message, tone: 'success' }),
+		// Erfolg als schwebender Toast: ein Banner im Fluss bliebe stehen, tauchte im nächsten Formular wieder auf und schöbe die Seite.
+		success: (message) => toast.success(message),
 	};
 	const pending = usePendingSet();
 
@@ -82,7 +83,9 @@ export function useAusgabenPage() {
 		recurringExpenses,
 		updateExpenses: data.updateExpenses,
 		updateRecurringExpenses: data.updateRecurringExpenses,
-		reload: () => data.load(false),
+		reload: async () => {
+			await data.load(false);
+		},
 		refreshQueuedCount: data.refreshQueuedCount,
 	};
 	const support = useExpenseFormSupport(ctx, form);
