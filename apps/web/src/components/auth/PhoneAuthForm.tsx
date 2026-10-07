@@ -169,7 +169,7 @@ export function PhoneAuthForm({
 					/>
 				</Field>
 				<p id="auth-phone-hint" className="text-xs text-muted-foreground">
-					Mit + und Landesvorwahl, zum Beispiel +491701234567.
+					Beginnt mit + und der Landesvorwahl.
 				</p>
 				{otpRequested && (
 					<Field data-invalid={otpFieldInvalid}>
@@ -197,10 +197,7 @@ export function PhoneAuthForm({
 				)}
 				{phoneError === 'invalid-phone' && (
 					<div id="auth-phone-error">
-						<ErrorBox>
-							Gib eine Telefonnummer im internationalen E.164-Format ein, zum Beispiel
-							+491701234567.
-						</ErrorBox>
+						<ErrorBox>Gib die Nummer mit Landesvorwahl ein, zum Beispiel +491701234567.</ErrorBox>
 					</div>
 				)}
 				{phoneError === 'invalid-otp' && (

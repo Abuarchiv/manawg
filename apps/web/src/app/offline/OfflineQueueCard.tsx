@@ -58,7 +58,7 @@ export function OfflineQueueCard({
 									<ItemTitle className="line-clamp-none [overflow-wrap:break-word]">
 										{summary.title}
 									</ItemTitle>
-									<ItemDescription className="truncate">{summary.detail}</ItemDescription>
+									<ItemDescription className="line-clamp-1">{summary.detail}</ItemDescription>
 									{item.lastError && (
 										<p className="mt-1 text-xs text-destructive">{item.lastError}</p>
 									)}

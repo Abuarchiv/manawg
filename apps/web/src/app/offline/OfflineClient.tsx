@@ -51,6 +51,7 @@ export function OfflineClient({ sessionless = false }: { sessionless?: boolean }
 	const [hasIdentity, setHasIdentity] = useState(false);
 	const [queue, setQueue] = useState<OfflineAction[]>([]);
 	const [syncing, setSyncing] = useState(false);
+	const [rechecking, setRechecking] = useState(false);
 	const [message, setMessage] = useState<string | null>(null);
 	const [status, setStatus] = useState<OfflineStatus>('checking');
 	const syncingRef = useRef(false);
@@ -155,6 +156,17 @@ export function OfflineClient({ sessionless = false }: { sessionless?: boolean }
 		description: statusDescription,
 	} = offlineStatusCopy(status, online);
 
+	async function recheck(): Promise<void> {
+		if (rechecking) return;
+		setRechecking(true);
+		try {
+			// The offline branch resolves instantly; keep the pending state long enough to be seen.
+			await Promise.all([refresh(), new Promise((resolve) => window.setTimeout(resolve, 400))]);
+		} finally {
+			setRechecking(false);
+		}
+	}
+
 	async function syncNow() {
 		if (syncingRef.current || !hasRetryableQueue) return;
 		const controller = new AbortController();
@@ -229,11 +241,21 @@ export function OfflineClient({ sessionless = false }: { sessionless?: boolean }
 							type="button"
 							variant="outline"
 							size="sm"
-							onClick={() => void refresh()}
+							onClick={() => void recheck()}
+							disabled={rechecking}
+							aria-busy={rechecking}
 							aria-label="Offline-Status erneut prüfen"
 							className="shrink-0"
 						>
-							<RotateCw data-icon="inline-start" aria-hidden />
+							{rechecking ? (
+								<Spinner
+									data-icon="inline-start"
+									className="motion-reduce:animate-none"
+									aria-hidden
+								/>
+							) : (
+								<RotateCw data-icon="inline-start" aria-hidden />
+							)}
 							Prüfen
 						</Button>
 					</div>

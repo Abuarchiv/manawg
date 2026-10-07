@@ -51,7 +51,6 @@ export function SocialLoginButtons({
 }: SocialLoginButtonsProps) {
 	const [pendingProvider, setPendingProvider] = useState<SocialProvider | null>(null);
 	const [error, setError] = useState<string | null>(null);
-	const action = variant === 'link' ? 'verknüpfen' : 'anmelden';
 	const pendingLabel = providers.find(({ provider }) => provider === pendingProvider)?.name;
 
 	// Coming back from the provider via the bfcache restores this page with the spinner still on.
@@ -107,7 +106,7 @@ export function SocialLoginButtons({
 
 			{pendingProvider && (
 				<output aria-live="polite" className="sr-only">
-					{pendingLabel} wird zum {action} gestartet …
+					{`${variant === 'link' ? 'Verknüpfung mit' : 'Anmeldung bei'} ${pendingLabel} wird gestartet…`}
 				</output>
 			)}
 

@@ -38,7 +38,8 @@ export function EntryFrame({
 			<header className="flex flex-col gap-2">
 				<h1
 					id={headingId}
-					className="break-words font-heading text-lg leading-6 font-semibold tracking-tight"
+					tabIndex={headingId ? -1 : undefined}
+					className="break-words font-heading text-lg leading-6 font-semibold tracking-tight focus:outline-none"
 				>
 					{title}
 				</h1>

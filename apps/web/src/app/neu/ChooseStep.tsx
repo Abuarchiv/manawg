@@ -42,7 +42,7 @@ export function ChooseStep({
 		<div className="flex flex-col gap-4">
 			{accountWgs.length > 0 && (
 				<section aria-labelledby="your-wgs-heading" className="flex flex-col gap-3">
-					<h2 id="your-wgs-heading" className="text-base font-semibold">
+					<h2 id="your-wgs-heading" className="sr-only">
 						Deine WGs
 					</h2>
 					<ItemGroup>
