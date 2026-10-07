@@ -34,7 +34,7 @@ export default function WgNotFound() {
 							</EmptyMedia>
 							<h1
 								data-slot="empty-title"
-								className="min-w-0 max-w-full text-base font-semibold [overflow-wrap:anywhere]"
+								className="min-w-0 max-w-full text-base font-semibold [overflow-wrap:break-word]"
 							>
 								WG nicht gefunden
 							</h1>
