@@ -22,15 +22,15 @@ interface MessageListProps {
 	olderError: boolean;
 	scrollRef: RefObject<HTMLDivElement | null>;
 	onLoadOlder: () => void;
-	onReact: (messageId: string, emoji: string) => Promise<boolean>;
-	onUnreact: (messageId: string, emoji: string) => Promise<boolean>;
-	onEdit: (messageId: string, next: string) => Promise<boolean>;
-	onDelete: (messageId: string) => Promise<boolean>;
+	onReact: (messageId: string, emoji: string) => Promise<string | null>;
+	onUnreact: (messageId: string, emoji: string) => Promise<string | null>;
+	onEdit: (messageId: string, next: string) => Promise<string | null>;
+	onDelete: (messageId: string) => Promise<string | null>;
 	onReply: (messageId: string) => void;
 }
 const DAY_FORMAT = new Intl.DateTimeFormat('de-DE', {
 	weekday: 'long',
-	day: '2-digit',
+	day: 'numeric',
 	month: 'long',
 });
 const NO_REACTIONS: ReactionSummary[] = [];

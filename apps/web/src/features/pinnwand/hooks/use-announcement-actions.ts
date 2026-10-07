@@ -50,10 +50,10 @@ export function useAnnouncementActions(
 		body: { pinned?: boolean; status?: AnnouncementStatus; kind?: AnnouncementKind },
 		pendingKey: string,
 		rollback: () => void,
+		onSuccess?: () => void,
 	): Promise<void> {
 		if (isPending(pendingKey)) return;
 		start(pendingKey);
-		setActionError(null);
 		const res = await apiFetch<AnnouncementWriteResponse>(
 			`/api/wg/${encodedShareCode}/announcements/${encodeURIComponent(id)}`,
 			{
@@ -74,6 +74,7 @@ export function useAnnouncementActions(
 		}
 		const warningMessage = notificationWarningMessage(res.data.warning);
 		if (warningMessage) setNotice(warningMessage);
+		onSuccess?.();
 		void load();
 	}
 
@@ -104,8 +105,16 @@ export function useAnnouncementActions(
 			resolvedAt: nextStatus === 'resolved' ? new Date().toISOString() : null,
 			resolvedByMemberId: nextStatus === 'resolved' ? identity.memberId : null,
 		}));
-		if (nextStatus === 'resolved') toast.success('Erledigt – liegt jetzt unter „Geklärt & älter“.');
-		void patchAnnouncement(announcement.id, { status: nextStatus }, pendingKey, rollback);
+		// Erfolgs-Toast erst nach der Serverantwort, sonst widerspricht er dem Rollback bei Fehlern.
+		void patchAnnouncement(
+			announcement.id,
+			{ status: nextStatus },
+			pendingKey,
+			rollback,
+			nextStatus === 'resolved'
+				? () => toast.success('Geklärt – liegt jetzt unter „Geklärt & älter“.')
+				: undefined,
+		);
 	}
 
 	async function toggleReaction(announcement: Announcement, reaction: ReactionKey): Promise<void> {
@@ -121,7 +130,6 @@ export function useAnnouncementActions(
 			}),
 		);
 		start(pendingKey);
-		setActionError(null);
 		const reactionRequestKey = `${announcement.id}:${reaction}`;
 		const pendingReaction = reactionIdempotencyKeysRef.current.get(reactionRequestKey);
 		const idempotencyKey =
@@ -166,10 +174,11 @@ export function useAnnouncementActions(
 		void load();
 	}
 
-	async function remove(id: string): Promise<boolean> {
-		if (isPending(id)) return false;
+	/** Der Dialog zeigt den Fehler selbst: null = entfernt (oder schon weg), sonst die Meldung. */
+	async function remove(id: string): Promise<string | null> {
+		const failed = 'Beitrag konnte nicht entfernt werden. Versuche es erneut.';
+		if (isPending(id)) return failed;
 		start(id);
-		setActionError(null);
 		const res = await apiFetch<Record<string, never>>(
 			`/api/wg/${encodedShareCode}/announcements/${encodeURIComponent(id)}`,
 			{
@@ -181,18 +190,15 @@ export function useAnnouncementActions(
 		if (!res.ok) {
 			if (res.status === 404 && res.error === 'announcement_not_found') {
 				dropVanishedAnnouncement(id);
-			} else {
-				const msg =
-					res.status === 403
-						? 'Nur wer den Beitrag geschrieben hat oder WG-Admins können ihn entfernen.'
-						: announcementActionErrorMessage(res.error);
-				setActionError(msg);
+				return null;
 			}
-			return false;
+			return res.status === 403
+				? 'Nur wer den Beitrag geschrieben hat oder WG-Admins können ihn entfernen.'
+				: failed;
 		}
 		commitItems(itemsRef.current.filter((item) => item.id !== id));
 		void load();
-		return true;
+		return null;
 	}
 
 	return {

@@ -1,7 +1,6 @@
 import { apiFetch } from '@/core/infra/api-client';
 import { notificationWarningMessage } from '@/core/notifications/notification-warning';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
-import { commentActionErrorMessage } from '@/features/pinnwand/announcement-errors';
 import type { CommentOverrides } from '@/features/pinnwand/comment-overrides';
 import type {
 	Announcement,
@@ -58,13 +57,11 @@ export function useAnnouncementComments(
 			comments: [...item.comments, optimisticComment],
 		}));
 		start(pendingKey);
-		setActionError(null);
 		const commentRequestKey = `${announcement.id}:${content}`;
 		const idempotencyKey =
 			commentIdempotencyKeysRef.current.get(commentRequestKey) ?? createOfflineIdempotencyKey();
 		if (!idempotencyKey) {
 			end(pendingKey);
-			setActionError('Kommentar konnte nicht sicher gesendet werden. Versuche es erneut.');
 			return false;
 		}
 		commentIdempotencyKeysRef.current.set(commentRequestKey, idempotencyKey);
@@ -85,7 +82,6 @@ export function useAnnouncementComments(
 			} else {
 				edits.forgetCommentOverride(announcement.id, optimisticComment.id);
 				edits.replaceComment(announcement.id, optimisticComment.id, null);
-				setActionError(commentActionErrorMessage(res.error));
 			}
 			return false;
 		}
@@ -123,7 +119,6 @@ export function useAnnouncementComments(
 			),
 		}));
 		start(pendingKey);
-		setActionError(null);
 		const res = await apiFetch<{ comment: AnnouncementComment }>(
 			commentUrl(announcement.id, commentId),
 			{
@@ -140,11 +135,10 @@ export function useAnnouncementComments(
 					...item,
 					comments: item.comments.filter((comment) => comment.id !== commentId),
 				}));
-				setActionError('Dieser Kommentar existiert nicht mehr und wurde entfernt.');
+				setActionError('Diese Antwort existiert nicht mehr und wurde entfernt.');
 				return true;
 			}
 			if (previousComment) edits.replaceComment(announcement.id, commentId, previousComment);
-			setActionError(commentActionErrorMessage(res.error));
 			return false;
 		}
 		const confirmedComment = { ...previousComment, ...res.data.comment };
@@ -162,29 +156,24 @@ export function useAnnouncementComments(
 	async function deleteComment(announcement: Announcement, commentId: string): Promise<boolean> {
 		const pendingKey = `${commentId}:comment-delete`;
 		if (isPending(pendingKey)) return false;
-		const previousComment = announcement.comments.find((comment) => comment.id === commentId);
-		edits.rememberCommentOverride(announcement.id, commentId, null);
-		edits.updateItem(announcement.id, (item) => ({
-			...item,
-			comments: item.comments.filter((comment) => comment.id !== commentId),
-		}));
 		start(pendingKey);
-		setActionError(null);
 		const res = await apiFetch<Record<string, never>>(commentUrl(announcement.id, commentId), {
 			method: 'DELETE',
 			memberId: identity.memberId,
 		});
 		end(pendingKey);
-		if (!res.ok) {
-			if (res.status === 404 && res.error === 'comment_not_found') {
-				setActionError('Dieser Kommentar existiert nicht mehr und wurde entfernt.');
-			} else {
-				edits.forgetCommentOverride(announcement.id, commentId);
-				if (previousComment) edits.replaceComment(announcement.id, commentId, previousComment);
-				setActionError(commentActionErrorMessage(res.error));
-			}
+		const gone = res.ok || (res.status === 404 && res.error === 'comment_not_found');
+		if (!gone) {
+			// Der Kommentar bleibt stehen, bis der Server bestätigt; der offene Dialog zeigt den Fehler.
 			return false;
 		}
+		// Erst jetzt entfernen: ein früheres Entfernen würde die Zeile samt Dialog mitten in der Anfrage unmounten.
+		edits.rememberCommentOverride(announcement.id, commentId, null);
+		edits.updateItem(announcement.id, (item) => ({
+			...item,
+			comments: item.comments.filter((comment) => comment.id !== commentId),
+		}));
+		if (!res.ok) setActionError('Diese Antwort existiert nicht mehr und wurde entfernt.');
 		void load('background');
 		return true;
 	}

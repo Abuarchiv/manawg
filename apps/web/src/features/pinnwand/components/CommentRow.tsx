@@ -23,7 +23,9 @@ import type { AnnouncementComment } from './announcement-types';
 
 export function actionLabelSubject(value: string, fallback: string): string {
 	const normalized = value.trim().replace(/\s+/g, ' ');
-	return normalized.length > 48 ? `${normalized.slice(0, 47)}…` : normalized || fallback;
+	return normalized.length > 48
+		? `${normalized.slice(0, 47).replace(/[\s,;:.–-]+$/, '')}…`
+		: normalized || fallback;
 }
 
 // Comment input survives hiding a thread, filtering a card, and route changes.
@@ -69,11 +71,13 @@ export function CommentRow({
 	const draft = useCommentDraft(draftKey, comment.content);
 	const editorRef = useRef<HTMLTextAreaElement>(null);
 	const focusEditorOnEditRef = useRef(false);
+	const editButtonRef = useRef<HTMLButtonElement>(null);
+	const focusEditButtonRef = useRef(false);
 	const [pending, setPending] = useState(false);
 	const [error, setError] = useState(false);
 	const [confirmOpen, setConfirmOpen] = useState(false);
 	const pendingRef = useRef(false);
-	const actionSubject = actionLabelSubject(comment.content, 'leerer Kommentar');
+	const actionSubject = actionLabelSubject(comment.content, 'leere Antwort');
 	useEffect(() => {
 		if (draft.restored && canEdit) setEditing(true);
 	}, [draft.restored, canEdit]);
@@ -82,6 +86,12 @@ export function CommentRow({
 		focusEditorOnEditRef.current = false;
 		editorRef.current?.focus();
 	}, [editing]);
+	// Nach Speichern/Abbrechen ist der Editor weg: Fokus zurück auf den Bearbeiten-Button.
+	useEffect(() => {
+		if (editing || pending || !focusEditButtonRef.current) return;
+		focusEditButtonRef.current = false;
+		editButtonRef.current?.focus();
+	}, [editing, pending]);
 	async function save() {
 		if (!draft.draft.trim() || pendingRef.current) return;
 		pendingRef.current = true;
@@ -90,6 +100,7 @@ export function CommentRow({
 		try {
 			if (await onUpdate(draft.draft.trim())) {
 				draft.clear();
+				focusEditButtonRef.current = true;
 				setEditing(false);
 			} else setError(true);
 		} finally {
@@ -136,10 +147,11 @@ export function CommentRow({
 					{canEdit && !editing && (
 						<span className="ml-auto flex gap-1">
 							<Button
+								ref={editButtonRef}
 								variant="ghost"
 								size="icon-sm"
 								disabled={pending}
-								aria-label={`Kommentar bearbeiten: ${actionSubject}`}
+								aria-label={`Antwort bearbeiten: ${actionSubject}`}
 								onClick={() => {
 									if (!draft.restored) draft.change(comment.content);
 									focusEditorOnEditRef.current = true;
@@ -152,8 +164,11 @@ export function CommentRow({
 								variant="ghost"
 								size="icon-sm"
 								disabled={pending}
-								aria-label={`Kommentar entfernen: ${actionSubject}`}
-								onClick={() => setConfirmOpen(true)}
+								aria-label={`Antwort entfernen: ${actionSubject}`}
+								onClick={() => {
+									setError(false);
+									setConfirmOpen(true);
+								}}
 							>
 								<Trash2 aria-hidden />
 							</Button>
@@ -162,28 +177,36 @@ export function CommentRow({
 				</div>
 				{editing ? (
 					<FieldGroup className="gap-2">
-						<Field data-invalid={error}>
+						<Field data-invalid={error} className="data-[invalid=true]:text-foreground">
 							<Textarea
 								ref={editorRef}
 								value={draft.draft}
 								onChange={(event) => draft.change(event.target.value)}
-								disabled={pending}
+								readOnly={pending}
+								aria-busy={pending}
 								maxLength={600}
 								rows={2}
-								aria-label="Kommentar bearbeiten"
+								aria-label="Antwort bearbeiten"
 								aria-invalid={error}
 								aria-describedby={error ? `comment-edit-error-${comment.id}` : undefined}
-								className="text-base"
+								className="text-base read-only:opacity-60"
 							/>
 						</Field>
 						<div className="flex flex-wrap justify-end gap-2">
-							<Button variant="ghost" disabled={pending} onClick={() => setEditing(false)}>
-								Später
+							<Button
+								variant="ghost"
+								disabled={pending}
+								onClick={() => {
+									focusEditButtonRef.current = true;
+									setEditing(false);
+								}}
+							>
+								Abbrechen
 							</Button>
 							<Button
 								disabled={pending || !draft.draft.trim()}
 								onClick={() => void save()}
-								aria-label={`Kommentar speichern: ${actionSubject}`}
+								aria-label={`Antwort speichern: ${actionSubject}`}
 							>
 								{pending && <Spinner data-icon="inline-start" />}{' '}
 								{pending ? 'Wird gespeichert…' : 'Speichern'}
@@ -193,24 +216,32 @@ export function CommentRow({
 				) : (
 					<p className="whitespace-pre-wrap text-sm [overflow-wrap:anywhere]">{comment.content}</p>
 				)}
-				{error && (
+				{error && editing && (
 					<Alert id={`comment-edit-error-${comment.id}`} variant="destructive">
 						<AlertDescription>
-							Kommentar konnte nicht gespeichert oder entfernt werden. Versuche es erneut.
+							Antwort konnte nicht gespeichert werden. Versuche es erneut.
 						</AlertDescription>
 					</Alert>
 				)}
 			</div>
-			<AlertDialog open={confirmOpen} onOpenChange={(open) => !pending && setConfirmOpen(open)}>
+			<AlertDialog
+				open={confirmOpen}
+				onOpenChange={(open) => {
+					// pendingRef sperrt synchron: das eingebaute Schließen läuft vor dem nächsten Render.
+					if (pendingRef.current || pending) return;
+					setConfirmOpen(open);
+					if (!open) setError(false);
+				}}
+			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>Kommentar entfernen?</AlertDialogTitle>
+						<AlertDialogTitle>Antwort entfernen?</AlertDialogTitle>
 						<AlertDialogDescription>„{actionSubject}“ wird entfernt.</AlertDialogDescription>
 					</AlertDialogHeader>
 					{error && (
 						<Alert variant="destructive">
 							<AlertDescription>
-								Kommentar konnte nicht entfernt werden. Versuche es erneut.
+								Antwort konnte nicht entfernt werden. Versuche es erneut.
 							</AlertDescription>
 						</Alert>
 					)}
@@ -222,7 +253,7 @@ export function CommentRow({
 							variant="destructive"
 							disabled={pending}
 							className="min-h-11"
-							aria-label={`Kommentar entfernen bestätigen: ${actionSubject}`}
+							aria-label={`Antwort entfernen bestätigen: ${actionSubject}`}
 							onClick={() => void remove()}
 						>
 							{pending && <Spinner data-icon="inline-start" />}

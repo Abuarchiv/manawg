@@ -121,7 +121,7 @@ test.describe('pinnwand archive', () => {
 		await expect(page.locator('li#announcement-archive-resolved')).toBeInViewport();
 	});
 
-	test('Erledigt moves an open question into the archive', async ({ page }) => {
+	test('Geklärt moves an open question into the archive', async ({ page }) => {
 		await setupMember(page);
 		let current = openPost;
 		const patches: unknown[] = [];
@@ -148,7 +148,7 @@ test.describe('pinnwand archive', () => {
 		const board = page.getByRole('list', { name: 'Pinnwand-Beiträge' });
 		await expect(board.getByText('Offene Frage')).toBeVisible();
 
-		await page.getByRole('button', { name: 'Als erledigt markieren: Offene Frage' }).click();
+		await page.getByRole('button', { name: 'Als geklärt markieren: Offene Frage' }).click();
 
 		await expect.poll(() => patches).toEqual([{ status: 'resolved' }]);
 		await expect(page.getByText('Nichts Offenes')).toBeVisible();
@@ -218,12 +218,12 @@ test.describe('pinnwand comment edit focus', () => {
 			await page.keyboard.press('Enter');
 			const panel = page.locator(`#announcement-comments-${ANNOUNCEMENT_ID}`);
 			const row = panel.locator('li').filter({ hasText: 'Diese Antwort lässt sich bearbeiten.' });
-			const editButton = row.getByRole('button', { name: /^Kommentar bearbeiten:/ });
+			const editButton = row.getByRole('button', { name: /^Antwort bearbeiten:/ });
 			await expect(editButton).toBeVisible();
 			await editButton.focus();
 			await page.keyboard.press('Enter');
 
-			const editor = row.getByRole('textbox', { name: 'Kommentar bearbeiten' });
+			const editor = row.getByRole('textbox', { name: 'Antwort bearbeiten' });
 			await expect(editor).toBeVisible();
 			await expect(editor).toBeFocused();
 		});
@@ -254,7 +254,7 @@ test.describe('pinnwand comment edit focus', () => {
 		const panel = page.locator(`#announcement-comments-${ANNOUNCEMENT_ID}`);
 		await expect(panel).toBeVisible();
 		const row = panel.locator('li').first();
-		const editor = row.getByRole('textbox', { name: 'Kommentar bearbeiten' });
+		const editor = row.getByRole('textbox', { name: 'Antwort bearbeiten' });
 		await expect(editor).toHaveValue('Bearbeitungs-Entwurf');
 		await expect(panel.getByRole('textbox', { name: /^Antwort verfassen:/ })).toHaveValue(
 			'Antwort-Entwurf',
@@ -367,8 +367,8 @@ test.describe('pinnwand comment layout', () => {
 					expect(commentMetrics.right).toBeLessThanOrEqual(width + 1);
 					expect(commentMetrics.scrollWidth).toBeLessThanOrEqual(commentMetrics.clientWidth + 1);
 
-					const editButton = row.getByRole('button', { name: /^Kommentar bearbeiten:/ });
-					const removeButton = row.getByRole('button', { name: /^Kommentar entfernen:/ });
+					const editButton = row.getByRole('button', { name: /^Antwort bearbeiten:/ });
+					const removeButton = row.getByRole('button', { name: /^Antwort entfernen:/ });
 					for (const action of [editButton, removeButton]) {
 						await expect(action).toBeVisible();
 						const bounds = await action.boundingBox();
@@ -380,8 +380,8 @@ test.describe('pinnwand comment layout', () => {
 					}
 					await editButton.focus();
 					await page.keyboard.press('Enter');
-					await expect(row.getByRole('textbox', { name: 'Kommentar bearbeiten' })).toBeVisible();
-					await row.getByRole('button', { name: 'Später', exact: true }).click();
+					await expect(row.getByRole('textbox', { name: 'Antwort bearbeiten' })).toBeVisible();
+					await row.getByRole('button', { name: 'Abbrechen', exact: true }).click();
 
 					const replyInput = panel.getByRole('textbox', { name: /^Antwort verfassen:/ });
 					await expect(replyInput).toBeVisible();
@@ -666,10 +666,10 @@ test.describe('pinnwand refresh', () => {
 		await page.getByRole('button', { name: /Antworten anzeigen/ }).click();
 		await expect(page.getByText('Testkommentar', { exact: true })).toBeVisible();
 
-		const deleteTrigger = page.getByRole('button', { name: /Kommentar entfernen: Testkommentar/ });
+		const deleteTrigger = page.getByRole('button', { name: /Antwort entfernen: Testkommentar/ });
 		await deleteTrigger.click();
 
-		const dialog = page.getByRole('alertdialog', { name: 'Kommentar entfernen?' });
+		const dialog = page.getByRole('alertdialog', { name: 'Antwort entfernen?' });
 		await expect(dialog).toBeVisible();
 		await expect(page.getByText('Testkommentar', { exact: true })).toBeVisible();
 
@@ -682,7 +682,7 @@ test.describe('pinnwand refresh', () => {
 		// Confirming removes the comment and calls the delete endpoint exactly once.
 		await deleteTrigger.click();
 		await expect(dialog).toBeVisible();
-		await dialog.getByRole('button', { name: /Kommentar entfernen bestätigen/ }).click();
+		await dialog.getByRole('button', { name: /Antwort entfernen bestätigen/ }).click();
 		await expect.poll(() => deleteRequests).toBe(1);
 		await expect(page.getByText('Testkommentar', { exact: true })).toBeHidden();
 	});

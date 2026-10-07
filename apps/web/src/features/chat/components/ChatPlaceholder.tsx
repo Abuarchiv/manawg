@@ -7,39 +7,47 @@ import {
 	EmptyMedia,
 	EmptyTitle,
 } from '@/components/ui/empty';
-import { MessageScrollerItem } from '@/components/ui/message-scroller';
-import { Spinner } from '@/components/ui/spinner';
+import { Skeleton } from '@/components/ui/skeleton';
 import { MessageCircle } from 'lucide-react';
+
+/** Drei Sprechblasen-Platzhalter; bewusst kräftiger als --muted, das im hellen Modus fast weiß ist. */
+export function ChatBubbleSkeletons() {
+	return (
+		<div className="flex flex-col gap-3" aria-hidden>
+			<Skeleton className="h-12 w-2/3 rounded-2xl bg-foreground/[0.07]" />
+			<Skeleton className="h-9 w-1/2 self-end rounded-2xl bg-foreground/[0.07]" />
+			<Skeleton className="h-16 w-3/4 rounded-2xl bg-foreground/[0.07]" />
+		</div>
+	);
+}
 
 export function ChatLoadingPlaceholder() {
 	return (
-		<MessageScrollerItem>
-			<output className="flex min-h-40 items-center justify-center">
-				<Spinner className="size-5" aria-hidden />
-				<span className="sr-only">Nachrichten werden geladen</span>
-			</output>
-		</MessageScrollerItem>
+		<output className="block py-2">
+			<ChatBubbleSkeletons />
+			<span className="sr-only">Nachrichten werden geladen</span>
+		</output>
 	);
 }
 
 export function ChatLoadErrorPlaceholder({ onRetry }: { onRetry: () => void }) {
 	return (
-		<MessageScrollerItem className="flex min-h-40 w-full items-center justify-center">
+		<div className="flex min-h-40 w-full items-center justify-center">
 			<Alert variant="destructive" className="max-w-sm text-center">
 				<AlertTitle>Chat konnte nicht geladen werden.</AlertTitle>
 				<AlertDescription>
 					<Button type="button" variant="outline" size="sm" onClick={onRetry} className="mt-3">
-						Erneut laden
+						Erneut versuchen
 					</Button>
 				</AlertDescription>
 			</Alert>
-		</MessageScrollerItem>
+		</div>
 	);
 }
 
 export function ChatEmptyPlaceholder() {
 	return (
-		<MessageScrollerItem className="py-6">
+		<div className="py-6">
 			<Empty className="border border-dashed">
 				<EmptyHeader>
 					<EmptyMedia>
@@ -49,6 +57,6 @@ export function ChatEmptyPlaceholder() {
 					<EmptyDescription>Schreib die erste.</EmptyDescription>
 				</EmptyHeader>
 			</Empty>
-		</MessageScrollerItem>
+		</div>
 	);
 }

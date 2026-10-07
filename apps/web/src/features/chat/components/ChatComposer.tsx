@@ -13,7 +13,7 @@ import { readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
 import { haptic } from '@/shared/lib/haptics';
 import { Send, X } from 'lucide-react';
 import { type ChangeEvent, type KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
-import { type MentionTrigger, detectMention } from '../chat-pure';
+import { type MentionTrigger, detectMention, escapeRegExp } from '../chat-pure';
 import {
 	MentionAutocomplete,
 	type MentionMember,
@@ -22,10 +22,6 @@ import {
 } from './MentionAutocomplete';
 
 const BODY_MAX = 4000;
-
-function escapeRegExp(value: string): string {
-	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
 
 interface ChatComposerProps {
 	draftKey: string;
@@ -226,39 +222,42 @@ export function ChatComposer({
 
 	return (
 		<div className="relative shrink-0 border-t border-border bg-background" aria-busy={pending}>
-			{replyToMessageId && (
-				<div className="flex items-start gap-2 border-b border-border bg-muted px-3 py-2 text-xs">
-					<div className="min-w-0 flex-1">
-						<div className="font-medium text-foreground">
-							Antwort an {replyToSenderName ?? 'Unbekannt'}
+			{/* Hinweise scrollen intern, damit der Verlauf bei großer Schrift sichtbar bleibt. */}
+			<div className="max-h-[25dvh] overflow-y-auto">
+				{replyToMessageId && (
+					<div className="flex items-start gap-2 border-b border-border bg-muted px-3 py-2 text-xs">
+						<div className="min-w-0 flex-1">
+							<div className="font-medium text-foreground">
+								Antwort an {replyToSenderName ?? 'Unbekannt'}
+							</div>
+							<div className="truncate text-muted-foreground">{replyToPreview ?? '…'}</div>
 						</div>
-						<div className="truncate text-muted-foreground">{replyToPreview ?? '…'}</div>
+						<Button
+							type="button"
+							variant="ghost"
+							size="icon"
+							onClick={onClearReply}
+							disabled={pending}
+							aria-label="Antwort abbrechen"
+						>
+							<X aria-hidden />
+						</Button>
 					</div>
-					<Button
-						type="button"
-						variant="ghost"
-						size="icon"
-						onClick={onClearReply}
-						disabled={pending}
-						aria-label="Antwort abbrechen"
-					>
-						<X aria-hidden />
-					</Button>
-				</div>
-			)}
-			{error && (
-				<Alert variant="destructive">
-					<AlertDescription>{error} Dein Text ist noch da.</AlertDescription>
-				</Alert>
-			)}
-			{draftStorageFailed && (
-				<Alert>
-					<AlertDescription>
-						Der Entwurf kann auf diesem Gerät nicht gespeichert werden. Lass den Chat bis zum Senden
-						geöffnet.
-					</AlertDescription>
-				</Alert>
-			)}
+				)}
+				{error && (
+					<Alert variant="destructive">
+						<AlertDescription>{error} Dein Text ist noch da.</AlertDescription>
+					</Alert>
+				)}
+				{draftStorageFailed && (
+					<Alert>
+						<AlertDescription>
+							Der Entwurf kann auf diesem Gerät nicht gespeichert werden. Lass den Chat bis zum
+							Senden geöffnet.
+						</AlertDescription>
+					</Alert>
+				)}
+			</div>
 			<MentionAutocomplete
 				listboxId={mentionListboxId}
 				items={mentionItems}
@@ -282,14 +281,14 @@ export function ChatComposer({
 						aria-autocomplete="list"
 						aria-controls={mentionOpen ? mentionListboxId : undefined}
 						aria-activedescendant={activeOptionId}
-						className="max-h-32 min-h-11 flex-1 px-4 py-2 text-base"
+						className="max-h-[min(8rem,20dvh)] min-h-11 flex-1 px-4 py-2 text-base"
 					/>
 					<InputGroupAddon align="inline-end" className="py-1 pe-1">
 						<InputGroupButton
 							type="button"
 							variant="default"
 							size="icon-sm"
-							onPointerDown={(event) => event.preventDefault()}
+							onMouseDown={(event) => event.preventDefault()}
 							onClick={() => void submit()}
 							disabled={pending || !draftHydrated || draft.trim().length === 0}
 							aria-label="Nachricht senden"
@@ -300,11 +299,8 @@ export function ChatComposer({
 					</InputGroupAddon>
 				</InputGroup>
 			</div>
-			{pending && (
-				<output className="px-3 pb-2 text-xs text-muted-foreground">
-					Nachricht wird gesendet…
-				</output>
-			)}
+			{/* Nur für Screenreader: eine sichtbare Zeile würde den Composer höher machen und die Liste verschieben. */}
+			{pending && <output className="sr-only">Nachricht wird gesendet…</output>}
 		</div>
 	);
 }

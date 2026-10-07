@@ -31,6 +31,33 @@ export function detectMention(value: string, cursor: number): MentionTrigger | n
 	return { query: match[1] ?? '', startIndex: start };
 }
 
+export function escapeRegExp(value: string): string {
+	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+export interface MentionSegment {
+	text: string;
+	/** Name of the mentioned member, set for "@Name" segments only. */
+	mention?: string;
+}
+
+/** Splits a message body into plain text and "@Name" segments for the given member names. */
+export function splitMentions(body: string, names: readonly string[]): MentionSegment[] {
+	const sorted = [...new Set(names.filter(Boolean))].sort((a, b) => b.length - a.length);
+	if (sorted.length === 0 || !body.includes('@')) return [{ text: body }];
+	// Same boundary rule as the check on send; longest name first so "Anna Lena" beats "Anna".
+	const pattern = new RegExp(`@(${sorted.map(escapeRegExp).join('|')})(?![\\p{L}\\p{N}_-])`, 'gu');
+	const segments: MentionSegment[] = [];
+	let last = 0;
+	for (const match of body.matchAll(pattern)) {
+		if (match.index > last) segments.push({ text: body.slice(last, match.index) });
+		segments.push({ text: match[0], mention: match[1] ?? '' });
+		last = match.index + match[0].length;
+	}
+	if (last < body.length) segments.push({ text: body.slice(last) });
+	return segments;
+}
+
 function toDate(value: Date | string): Date {
 	return value instanceof Date ? value : new Date(value);
 }

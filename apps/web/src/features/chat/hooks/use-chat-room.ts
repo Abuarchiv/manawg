@@ -56,7 +56,6 @@ export function useChatRoom({
 	const reactions = useChatReactions({
 		encodedShareCode,
 		memberId: identity.memberId,
-		toast,
 		setReactionRows,
 	});
 	const reactionTracker = reactions.tracker;
@@ -158,15 +157,14 @@ export function useChatRoom({
 		return true;
 	}
 
-	async function editMessage(messageId: string, next: string): Promise<boolean> {
+	async function editMessage(messageId: string, next: string): Promise<string | null> {
 		const res = await apiFetch<{ message: ChatMessageDto }>(`${messagesUrl}/${messageId}`, {
 			method: 'PATCH',
 			memberId: identity.memberId,
 			body: JSON.stringify({ body: next }),
 		});
 		if (!res.ok) {
-			toast.error(explainChatError('edit', res.error));
-			return false;
+			return explainChatError('edit', res.error);
 		}
 		refresher.invalidate();
 		const editedAt =
@@ -176,17 +174,16 @@ export function useChatRoom({
 		setMessages((prev) =>
 			prev.map((m) => (m.id === messageId ? { ...m, body: res.data.message.body, editedAt } : m)),
 		);
-		return true;
+		return null;
 	}
 
-	async function deleteMessage(messageId: string): Promise<boolean> {
+	async function deleteMessage(messageId: string): Promise<string | null> {
 		const res = await apiFetch(`${messagesUrl}/${messageId}`, {
 			method: 'DELETE',
 			memberId: identity.memberId,
 		});
 		if (!res.ok) {
-			toast.error(explainChatError('delete', res.error));
-			return false;
+			return explainChatError('delete', res.error);
 		}
 		refresher.invalidate();
 		setMessages((prev) =>
@@ -196,7 +193,7 @@ export function useChatRoom({
 					: m,
 			),
 		);
-		return true;
+		return null;
 	}
 
 	return {

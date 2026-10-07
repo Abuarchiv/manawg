@@ -1,17 +1,31 @@
 import { Skeleton } from '@/components/ui/skeleton';
+import { ChatBubbleSkeletons } from '@/features/chat/components/ChatPlaceholder';
 
+// Spiegelt page.tsx (Rahmen, Tab-Leiste, Verlauf, Composer), damit beim Laden nichts springt.
 export default function ChatLoading() {
 	return (
 		<output
-			className="flex min-h-80 flex-col gap-5 px-4 py-5"
+			data-chat-frame
+			className="flex min-h-0 flex-col"
 			aria-label="Chat wird geladen"
 			aria-busy="true"
+			style={{
+				height:
+					'calc(100dvh - env(safe-area-inset-top, 0px) - var(--safe-area-bottom, 0px) - var(--offline-banner-height, 0px) - var(--app-header-height, 0px))',
+				marginBottom: 'calc(-1 * (var(--app-nav-height, 5rem) + 0.5rem))',
+			}}
 		>
-			<Skeleton className="h-7 w-32" />
-			<Skeleton className="h-11 w-full" />
-			<Skeleton className="h-20 w-3/4" />
-			<Skeleton className="h-16 w-2/3 self-end" />
-			<Skeleton className="mt-auto h-14 w-full" />
+			<div className="flex shrink-0 flex-col gap-2 border-b border-border bg-background px-4 pt-3 pb-2">
+				<Skeleton className="mx-auto h-8 w-full max-w-4xl bg-foreground/[0.07]" />
+			</div>
+			<div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col justify-end overflow-hidden px-4 py-2">
+				<ChatBubbleSkeletons />
+			</div>
+			<div className="shrink-0 border-t border-border bg-background">
+				<div className="mx-auto flex w-full max-w-3xl items-end gap-2 px-4 py-2">
+					<Skeleton className="h-11 flex-1 rounded-3xl bg-foreground/[0.07]" />
+				</div>
+			</div>
 		</output>
 	);
 }

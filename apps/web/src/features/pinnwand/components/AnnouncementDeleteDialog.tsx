@@ -19,7 +19,8 @@ interface AnnouncementDeleteDialogProps {
 	onOpenChange: (open: boolean) => void;
 	actionSubject: string;
 	deletePending: boolean;
-	onDelete: () => Promise<boolean>;
+	/** null = entfernt, sonst die Fehlermeldung für den Dialog. */
+	onDelete: () => Promise<string | null>;
 }
 
 /** Confirmation before a post and its replies are removed; stays open with an error on failure. */
@@ -31,10 +32,10 @@ export function AnnouncementDeleteDialog({
 	onDelete,
 }: AnnouncementDeleteDialogProps) {
 	const deletingRef = useRef(false);
-	const [deleteError, setDeleteError] = useState(false);
+	const [deleteError, setDeleteError] = useState<string | null>(null);
 	// Every opening starts without the previous attempt's error.
 	useEffect(() => {
-		if (open) setDeleteError(false);
+		if (open) setDeleteError(null);
 	}, [open]);
 	return (
 		<AlertDialog
@@ -69,11 +70,11 @@ export function AnnouncementDeleteDialog({
 						onClick={async () => {
 							// Lock synchronously: the built-in close runs before the next render.
 							deletingRef.current = true;
-							setDeleteError(false);
+							setDeleteError(null);
 							try {
-								const ok = await onDelete();
-								if (ok) onOpenChange(false);
-								else setDeleteError(true);
+								const message = await onDelete();
+								if (message === null) onOpenChange(false);
+								else setDeleteError(message);
 							} finally {
 								deletingRef.current = false;
 							}

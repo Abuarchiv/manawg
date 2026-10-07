@@ -4,7 +4,6 @@ import {
 	MessageScroller,
 	MessageScrollerButton,
 	MessageScrollerContent,
-	MessageScrollerItem,
 	MessageScrollerProvider,
 	MessageScrollerViewport,
 } from '@/components/ui/message-scroller';
@@ -101,7 +100,7 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 						data-scroll-y
 						role="log"
 						aria-label="Chat-Nachrichten"
-						className="bg-background"
+						className="bg-background [scroll-behavior:auto]!"
 					>
 						<MessageScrollerContent className="mx-auto w-full max-w-3xl gap-3 px-4 py-2">
 							{chat.bootstrapping ? (
@@ -130,16 +129,15 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 									onReply={onReply}
 								/>
 							)}
-							<MessageScrollerItem>
-								<div ref={chat.readSentinelRef} className="h-px" aria-hidden />
-							</MessageScrollerItem>
+							{/* Kein MessageScrollerItem: ein Item vor den echten Nachrichten verbraucht die einmalige Startposition "end" auf leerer Liste. */}
+							<div ref={chat.readSentinelRef} className="h-px shrink-0" aria-hidden />
 						</MessageScrollerContent>
 					</MessageScrollerViewport>
 					<MessageScrollerButton
 						direction="end"
 						aria-label="Zum Ende scrollen"
-						behavior="auto"
-						className="min-h-11 min-w-11"
+						behavior="smooth"
+						className="inset-s-auto end-3 translate-x-0 rounded-full shadow-md rtl:translate-x-0"
 						onClick={() => haptic('selection')}
 					>
 						<ChevronDown aria-hidden />

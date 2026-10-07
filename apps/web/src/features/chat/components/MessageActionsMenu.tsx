@@ -9,11 +9,13 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useWg } from '@/components/wg/WgContextProvider';
 import { copyText } from '@/core/utils/clipboard';
 import { cn } from '@/shared/lib/cn';
 import { haptic } from '@/shared/lib/haptics';
 import { Copy, Pencil, Reply, Smile, Trash2 } from 'lucide-react';
-import type { ReactNode, RefObject } from 'react';
+import { type ReactNode, type RefObject, useMemo } from 'react';
+import { splitMentions } from '../chat-pure';
 import type { BubbleMessage } from '../chat-types';
 
 export const BUBBLE_TEXT = 'rounded-2xl px-3 py-1.5 text-[14px] leading-snug';
@@ -56,6 +58,16 @@ export function MessageActionsMenu({
 	onEdit,
 	onDelete,
 }: MessageActionsMenuProps) {
+	const { members, identity } = useWg();
+	const ownName = members.find((m) => m.id === identity.memberId)?.name;
+	const bodySegments = useMemo(
+		() =>
+			splitMentions(
+				message.body ?? '',
+				members.map((m) => m.name),
+			),
+		[message.body, members],
+	);
 	const toast = useToast();
 	return (
 		<DropdownMenu>
@@ -86,7 +98,22 @@ export function MessageActionsMenu({
 				)}
 				{/* Spans instead of <p>: paragraph elements are not allowed inside a <button>. */}
 				<span className="block whitespace-pre-wrap [overflow-wrap:anywhere]">
-					{message.body}
+					{bodySegments.map((segment, index) =>
+						segment.mention ? (
+							<span
+								// biome-ignore lint/suspicious/noArrayIndexKey: segments are static per body
+								key={index}
+								className={cn(
+									'font-semibold',
+									segment.mention === ownName && 'underline underline-offset-2',
+								)}
+							>
+								{segment.text}
+							</span>
+						) : (
+							segment.text
+						),
+					)}
 					{timeStamp}
 				</span>
 			</DropdownMenuTrigger>

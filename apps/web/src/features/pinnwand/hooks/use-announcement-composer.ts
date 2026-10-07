@@ -1,3 +1,4 @@
+import { useToast } from '@/components/ui/Toast';
 import { apiFetch } from '@/core/infra/api-client';
 import { notificationWarningMessage } from '@/core/notifications/notification-warning';
 import { buildDraftKey, readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
@@ -46,6 +47,7 @@ export function useAnnouncementComposer(
 	scrollToAnnouncement: (id: string, behavior?: ScrollBehavior) => void,
 ) {
 	const { wg, identity, encodedShareCode, setNotice, load, refreshCount } = ctx;
+	const toast = useToast();
 	const searchParams = useSearchParams();
 	const prefillContent = searchParams.get('content');
 	const prefillKind = kindFromParam(searchParams.get('kind'));
@@ -64,7 +66,7 @@ export function useAnnouncementComposer(
 	const appliedPrefillRef = useRef<string | null>(null);
 	const draftKey = buildDraftKey(wg.shareCode, identity.memberId, 'announcement');
 	const prefillKey = `${prefillContent ?? ''}|${prefillKind ?? ''}|${prefillImageUrl ?? ''}`;
-	const hasDraft = Boolean(content.trim() || imageUrl || queueEditId || kind !== 'info');
+	const hasDraft = Boolean(content.trim() || imageUrl || queueEditId);
 
 	const createButtonRef = useRef<HTMLButtonElement | null>(null);
 	useEffect(() => {
@@ -79,6 +81,13 @@ export function useAnnouncementComposer(
 		window.addEventListener('keydown', onKey);
 		return () => window.removeEventListener('keydown', onKey);
 	}, [composerOpen, content, imageUrl, setNotice]);
+
+	// Fehler beim Senden: Fokus zurück ins Textfeld (der deaktivierte Senden-Knopf hat ihn mitgenommen).
+	useEffect(() => {
+		if (error && composerOpen && document.activeElement === document.body) {
+			textareaRef.current?.focus({ preventScroll: true });
+		}
+	}, [error, composerOpen]);
 
 	function closeComposer(): void {
 		if (submittingRef.current) return;
@@ -121,6 +130,10 @@ export function useAnnouncementComposer(
 		if (prefillKind) setKind(prefillKind);
 		if (prefillImageUrl) setImageUrl(prefillImageUrl);
 		setComposerOpen(true);
+		// Prefill nur einmal übernehmen: sonst öffnet sich der Composer nach Abbrechen und Reload erneut.
+		const url = new URL(window.location.href);
+		for (const name of ['content', 'kind', 'imageUrl']) url.searchParams.delete(name);
+		window.history.replaceState(window.history.state, '', url);
 	}, [prefillContent, prefillImageUrl, prefillKey, prefillKind]);
 
 	useEffect(() => {
@@ -248,6 +261,7 @@ export function useAnnouncementComposer(
 			setComposerOpen(false);
 			const warningMessage = notificationWarningMessage(res.data.warning);
 			if (warningMessage) setNotice(warningMessage);
+			else toast.success('Beitrag veröffentlicht.');
 			void load().then(() => scrollToAnnouncement(createdAnnouncementId));
 		} finally {
 			submittingRef.current = false;

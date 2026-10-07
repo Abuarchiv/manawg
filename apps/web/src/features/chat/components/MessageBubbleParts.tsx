@@ -53,7 +53,7 @@ export function MessageEditForm({
 }: MessageEditFormProps) {
 	return (
 		<FieldGroup className="gap-2">
-			<Field data-invalid={Boolean(error)}>
+			<Field data-invalid={Boolean(error)} className="data-[invalid=true]:text-foreground">
 				<Textarea
 					ref={textareaRef}
 					value={draft}
@@ -158,6 +158,8 @@ interface MessageDeleteDialogProps {
 	error: string | null;
 	onOpenChange: (open: boolean) => void;
 	onConfirm: () => void;
+	/** Wohin der Fokus nach dem Schließen geht; true = Standard (Auslöser). */
+	finalFocus?: () => HTMLElement | true;
 }
 
 export function MessageDeleteDialog({
@@ -166,10 +168,11 @@ export function MessageDeleteDialog({
 	error,
 	onOpenChange,
 	onConfirm,
+	finalFocus,
 }: MessageDeleteDialogProps) {
 	return (
 		<AlertDialog open={open} onOpenChange={onOpenChange}>
-			<AlertDialogContent>
+			<AlertDialogContent finalFocus={finalFocus}>
 				<AlertDialogHeader>
 					<AlertDialogTitle>Nachricht löschen?</AlertDialogTitle>
 					<AlertDialogDescription>
