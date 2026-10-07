@@ -1,7 +1,6 @@
 import { apiFetch } from '@/core/infra/api-client';
 import { notificationWarningMessage } from '@/core/notifications/notification-warning';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
-import { commentActionErrorMessage } from '@/features/pinnwand/announcement-errors';
 import type { CommentOverrides } from '@/features/pinnwand/comment-overrides';
 import type {
 	Announcement,
@@ -63,7 +62,6 @@ export function useAnnouncementComments(
 			commentIdempotencyKeysRef.current.get(commentRequestKey) ?? createOfflineIdempotencyKey();
 		if (!idempotencyKey) {
 			end(pendingKey);
-			setActionError('Antwort konnte nicht sicher gesendet werden. Versuche es erneut.');
 			return false;
 		}
 		commentIdempotencyKeysRef.current.set(commentRequestKey, idempotencyKey);
@@ -84,7 +82,6 @@ export function useAnnouncementComments(
 			} else {
 				edits.forgetCommentOverride(announcement.id, optimisticComment.id);
 				edits.replaceComment(announcement.id, optimisticComment.id, null);
-				setActionError(commentActionErrorMessage(res.error));
 			}
 			return false;
 		}
@@ -142,7 +139,6 @@ export function useAnnouncementComments(
 				return true;
 			}
 			if (previousComment) edits.replaceComment(announcement.id, commentId, previousComment);
-			setActionError(commentActionErrorMessage(res.error));
 			return false;
 		}
 		const confirmedComment = { ...previousComment, ...res.data.comment };

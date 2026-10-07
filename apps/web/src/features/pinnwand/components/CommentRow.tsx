@@ -216,10 +216,10 @@ export function CommentRow({
 				) : (
 					<p className="whitespace-pre-wrap text-sm [overflow-wrap:anywhere]">{comment.content}</p>
 				)}
-				{error && (
+				{error && editing && (
 					<Alert id={`comment-edit-error-${comment.id}`} variant="destructive">
 						<AlertDescription>
-							Antwort konnte nicht gespeichert oder entfernt werden. Versuche es erneut.
+							Antwort konnte nicht gespeichert werden. Versuche es erneut.
 						</AlertDescription>
 					</Alert>
 				)}
