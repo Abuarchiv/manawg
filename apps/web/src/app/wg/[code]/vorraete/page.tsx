@@ -12,11 +12,33 @@ import { useWg } from '@/components/wg/WgContextProvider';
 import { InventoryList } from '@/features/inventory/components/InventoryList';
 import { useInventoryPage } from '@/features/inventory/hooks/use-inventory-page';
 import { Plus } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+
+/** So lange bleibt der Ring um den per Link angesprungenen Vorrat stehen. */
+const HIGHLIGHT_MS = 3000;
 
 export default function VorraetePage() {
 	const { wg, identity } = useWg();
 	const { items, initialLoading, loadError, addOpen, setAddOpen, load, onChanged } =
 		useInventoryPage(wg.shareCode, identity.memberId);
+
+	// Deep-Link aus der Benachrichtigung (?highlight=<id>): einmal in die Mitte scrollen, Ring kurz zeigen.
+	const targetId = useSearchParams().get('highlight');
+	const [highlightedId, setHighlightedId] = useState<string | null>(null);
+	const targetFound = targetId !== null && items.some((item) => item.id === targetId);
+	useEffect(() => {
+		if (!targetId || !targetFound) return;
+		setHighlightedId(targetId);
+		const scrollTimer = window.setTimeout(() => {
+			document.getElementById(`inventory-${targetId}`)?.scrollIntoView({ block: 'center' });
+		}, 80);
+		const clearTimer = window.setTimeout(() => setHighlightedId(null), HIGHLIGHT_MS);
+		return () => {
+			window.clearTimeout(scrollTimer);
+			window.clearTimeout(clearTimer);
+		};
+	}, [targetId, targetFound]);
 
 	return (
 		<div data-household-content className="mx-auto flex w-full max-w-4xl flex-col gap-3 px-4 py-3">
@@ -70,7 +92,12 @@ export default function VorraetePage() {
 						<CardContent className="p-0">
 							<ItemGroup className="gap-0" aria-busy="true" aria-label="Vorräte werden geladen">
 								{['s0', 's1', 's2'].map((k) => (
-									<Item key={k} className="px-3 py-3">
+									<Item
+										key={k}
+										// biome-ignore lint/a11y/useSemanticElements: ItemGroup ist role=list über <div>, Kinder brauchen role=listitem.
+										role="listitem"
+										className="px-3 py-3"
+									>
 										<ItemContent className="flex-1 gap-2">
 											<Skeleton className="h-3.5 w-2/5" />
 											<Skeleton className="h-3 w-3/5" />
@@ -89,6 +116,7 @@ export default function VorraetePage() {
 					onChanged={onChanged}
 					addOpen={addOpen}
 					onAddOpenChange={setAddOpen}
+					highlightedId={highlightedId}
 				/>
 			)}
 			{!(initialLoading && items.length === 0) && !(loadError && items.length === 0) && (

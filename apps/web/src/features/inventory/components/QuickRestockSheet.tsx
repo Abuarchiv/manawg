@@ -129,7 +129,12 @@ export function QuickRestockSheet({
 							<CardContent className="p-0">
 								<ItemGroup className="gap-0 divide-y divide-border">
 									{sorted.map((item) => (
-										<Item key={item.id} className="px-3 py-2.5">
+										<Item
+											key={item.id}
+											// biome-ignore lint/a11y/useSemanticElements: ItemGroup ist role=list über <div>, Kinder brauchen role=listitem.
+											role="listitem"
+											className="px-3 py-2.5 not-last:border-b-border"
+										>
 											{/* min-w statt min-w-0: bei großer Schrift rutscht der Knopf unter den Text,
 											    statt den Namen zeichenweise zu quetschen. */}
 											<ItemContent className="min-w-[10ch] flex-1">

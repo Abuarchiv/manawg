@@ -37,6 +37,7 @@ interface InventoryListProps {
 	onChanged: (item?: InventoryMutationItemDto, deletedId?: string) => void;
 	addOpen: boolean;
 	onAddOpenChange: (open: boolean) => void;
+	highlightedId?: string | null;
 }
 
 export function InventoryList({
@@ -46,6 +47,7 @@ export function InventoryList({
 	onChanged,
 	addOpen,
 	onAddOpenChange: setAddOpen,
+	highlightedId = null,
 }: InventoryListProps) {
 	const [quickOpen, setQuickOpen] = useState(false);
 	const [editing, setEditing] = useState<InventoryItemDto | null>(null);
@@ -117,6 +119,7 @@ export function InventoryList({
 											<InventoryItemRow
 												key={item.id}
 												item={item}
+												highlighted={item.id === highlightedId}
 												shareCode={shareCode}
 												memberId={memberId}
 												onChanged={onChanged}
@@ -158,6 +161,7 @@ export function InventoryList({
 											<InventoryItemRow
 												key={item.id}
 												item={item}
+												highlighted={item.id === highlightedId}
 												shareCode={shareCode}
 												memberId={memberId}
 												onChanged={onChanged}

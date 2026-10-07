@@ -27,6 +27,8 @@ interface InventoryItemRowProps {
 	/** Löschen-Bestätigung; die Liste hält nur eine armierte Zeile, damit nie zwei offen stehen. */
 	deleteArmed: boolean;
 	onDeleteArmedChange: (id: string | null) => void;
+	/** Deep-Link-Treffer (?highlight=<id>): Ring um die Zeile. */
+	highlighted?: boolean;
 }
 
 // Während einer Anfrage bleibt der Fokus auf dem Knopf (aria-disabled statt disabled).
@@ -44,6 +46,7 @@ type ConsumeResponse = {
 
 export const InventoryItemRow = memo(function InventoryItemRow({
 	item,
+	highlighted = false,
 	shareCode,
 	memberId,
 	onChanged,
@@ -215,120 +218,132 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 	if (removed) return null;
 
 	return (
-		<Item className="flex-col items-stretch gap-2" aria-busy={pending}>
-			<div
-				ref={rowRef}
-				data-inventory-row
-				className="flex w-full min-w-0 flex-wrap items-center gap-2"
+		// Der Wrapper ist das Listenelement der Gruppe (role=list); er trägt auch die Trennlinie
+		// (divide-y der Gruppe) und das Sprungziel für ?highlight=.
+		<div
+			// biome-ignore lint/a11y/useSemanticElements: ItemGroup ist role=list über <div>, Kinder brauchen role=listitem.
+			role="listitem"
+			id={`inventory-${item.id}`}
+			className="w-full min-w-0"
+		>
+			<Item
+				className={`flex-col items-stretch gap-2 ${highlighted ? 'ring-2 ring-inset ring-ring' : ''}`}
+				aria-busy={pending}
 			>
-				{/* Im Bestätigungsmodus weniger Basisbreite, damit Entfernen/Abbrechen in der Zeile
+				<div
+					ref={rowRef}
+					data-inventory-row
+					className="flex w-full min-w-0 flex-wrap items-center gap-2"
+				>
+					{/* Im Bestätigungsmodus weniger Basisbreite, damit Entfernen/Abbrechen in der Zeile
 				    bleiben und die Liste darunter nicht springt. */}
-				<ItemContent className={armed ? 'min-w-0 flex-[1_1_7rem]' : 'min-w-0 flex-[1_1_6.5rem]'}>
-					<ItemTitle className="w-full min-w-0 gap-2 line-clamp-none">
-						<span className="min-w-0 flex-1 break-words" title={item.name}>
-							{item.name}
-						</span>
-					</ItemTitle>
-					<ItemDescription className="line-clamp-none tabular-nums">
-						{formatQuantity(quantity, item.unit)} · Nachkaufen{'\u00a0'}ab{'\u00a0'}
-						{item.threshold}
-					</ItemDescription>
-				</ItemContent>
+					<ItemContent className={armed ? 'min-w-0 flex-[1_1_7rem]' : 'min-w-0 flex-[1_1_6.5rem]'}>
+						<ItemTitle className="w-full min-w-0 gap-2 line-clamp-none">
+							<span className="min-w-0 flex-1 break-words" title={item.name}>
+								{item.name}
+							</span>
+						</ItemTitle>
+						<ItemDescription className="line-clamp-none tabular-nums">
+							{formatQuantity(quantity, item.unit)} · Nachkaufen{'\u00a0'}ab{'\u00a0'}
+							{item.threshold}
+						</ItemDescription>
+					</ItemContent>
 
-				{/* pr-1.5: die 44-px-Trefferfläche des letzten Knopfs ragt sonst über den Zeilenrand hinaus. */}
-				<ItemActions className="ml-auto flex-wrap justify-end gap-1.5 pr-1.5">
-					{!armed && (
-						<>
-							<Button
-								type="button"
-								variant="outline"
-								size="icon"
-								onClick={() => void changeQuantity(-1)}
-								disabled={pending || quantity === 0}
-								focusableWhenDisabled
-								className={BUSY_CLASS}
-								aria-busy={pendingAction === 'decrement'}
-								aria-label={
-									quantity === 0
-										? `${item.name} um eins verringern (Bestand 0)`
-										: `${item.name} um eins verringern`
-								}
-							>
-								{pendingAction === 'decrement' ? <Spinner aria-hidden /> : <Minus aria-hidden />}
-							</Button>
-							<Button
-								type="button"
-								variant="outline"
-								size="icon"
-								onClick={() => void changeQuantity(1)}
-								disabled={pending}
-								focusableWhenDisabled
-								className={BUSY_CLASS}
-								aria-busy={pendingAction === 'increment'}
-								aria-label={`${item.name} um eins erhöhen`}
-							>
-								{pendingAction === 'increment' ? <Spinner aria-hidden /> : <Plus aria-hidden />}
-							</Button>
+					{/* pr-1.5: die 44-px-Trefferfläche des letzten Knopfs ragt sonst über den Zeilenrand hinaus. */}
+					<ItemActions className="ml-auto flex-wrap justify-end gap-1.5 pr-1.5">
+						{!armed && (
+							<>
+								<Button
+									type="button"
+									variant="outline"
+									size="icon"
+									onClick={() => void changeQuantity(-1)}
+									disabled={pending || quantity === 0}
+									focusableWhenDisabled
+									className={BUSY_CLASS}
+									aria-busy={pendingAction === 'decrement'}
+									aria-label={
+										quantity === 0
+											? `${item.name} um eins verringern (Bestand 0)`
+											: `${item.name} um eins verringern`
+									}
+								>
+									{pendingAction === 'decrement' ? <Spinner aria-hidden /> : <Minus aria-hidden />}
+								</Button>
+								<Button
+									type="button"
+									variant="outline"
+									size="icon"
+									onClick={() => void changeQuantity(1)}
+									disabled={pending}
+									focusableWhenDisabled
+									className={BUSY_CLASS}
+									aria-busy={pendingAction === 'increment'}
+									aria-label={`${item.name} um eins erhöhen`}
+								>
+									{pendingAction === 'increment' ? <Spinner aria-hidden /> : <Plus aria-hidden />}
+								</Button>
+								<Button
+									type="button"
+									variant="ghost"
+									size="icon"
+									onClick={() => onEdit(item)}
+									disabled={pending}
+									aria-label={`${item.name} bearbeiten`}
+									className="text-muted-foreground"
+								>
+									<Pencil aria-hidden />
+								</Button>
+							</>
+						)}
+						{armed ? (
+							<>
+								<Button
+									type="button"
+									variant="destructive"
+									size="sm"
+									onClick={handleDelete}
+									disabled={pending}
+									focusableWhenDisabled
+									aria-busy={pendingAction === 'delete'}
+									aria-label={`Endgültig entfernen: ${item.name}`}
+									className={`px-3.5 ${BUSY_CLASS}`}
+								>
+									{pendingAction === 'delete' && <Spinner aria-hidden />}
+									Entfernen
+								</Button>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									ref={cancelRef}
+									onClick={handleCancel}
+									disabled={pending}
+									focusableWhenDisabled
+									className={BUSY_CLASS}
+									aria-label={`Abbrechen: Löschen von ${item.name}`}
+								>
+									Abbrechen
+								</Button>
+							</>
+						) : (
 							<Button
 								type="button"
 								variant="ghost"
 								size="icon"
-								onClick={() => onEdit(item)}
-								disabled={pending}
-								aria-label={`${item.name} bearbeiten`}
-								className="text-muted-foreground"
-							>
-								<Pencil aria-hidden />
-							</Button>
-						</>
-					)}
-					{armed ? (
-						<>
-							<Button
-								type="button"
-								variant="destructive"
-								size="sm"
+								ref={trashRef}
 								onClick={handleDelete}
 								disabled={pending}
 								focusableWhenDisabled
-								aria-busy={pendingAction === 'delete'}
-								aria-label={`Endgültig entfernen: ${item.name}`}
-								className={`px-3.5 ${BUSY_CLASS}`}
+								aria-label={`${item.name} entfernen`}
+								className={`text-muted-foreground hover:text-destructive active:text-destructive ${BUSY_CLASS}`}
 							>
-								{pendingAction === 'delete' && <Spinner aria-hidden />}
-								Entfernen
+								<Trash2 aria-hidden />
 							</Button>
-							<Button
-								type="button"
-								variant="outline"
-								size="sm"
-								ref={cancelRef}
-								onClick={handleCancel}
-								disabled={pending}
-								focusableWhenDisabled
-								className={BUSY_CLASS}
-								aria-label={`Abbrechen: Löschen von ${item.name}`}
-							>
-								Abbrechen
-							</Button>
-						</>
-					) : (
-						<Button
-							type="button"
-							variant="ghost"
-							size="icon"
-							ref={trashRef}
-							onClick={handleDelete}
-							disabled={pending}
-							focusableWhenDisabled
-							aria-label={`${item.name} entfernen`}
-							className={`text-muted-foreground hover:text-destructive active:text-destructive ${BUSY_CLASS}`}
-						>
-							<Trash2 aria-hidden />
-						</Button>
-					)}
-				</ItemActions>
-			</div>
-		</Item>
+						)}
+					</ItemActions>
+				</div>
+			</Item>
+		</div>
 	);
 });
