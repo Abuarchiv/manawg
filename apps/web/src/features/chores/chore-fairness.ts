@@ -1,3 +1,4 @@
+import { parseValidDate } from '@/core/utils/time';
 import { getAbsentMemberIds } from '@/features/chores/absence';
 import { computeNextDueAt } from '@/features/chores/chore-recurrence';
 import { getChoreStatus } from '@/features/chores/chore-status';
@@ -193,12 +194,10 @@ export function predictNextAssigneeId(
 	members: MemberInput[],
 	absences: Parameters<typeof getAbsentMemberIds>[0],
 ): string | null {
-	const nextDueAt = computeNextDueAt(
-		new Date(chore.nextDueAt),
-		chore.intervalDays,
-		new Date(),
-		chore.recurrenceType,
-	);
+	// Ein unlesbares Datum darf nicht den ganzen Plan kippen: die Zeile zeigt dann „Datum prüfen“.
+	const dueAt = chore.nextDueAt ? parseValidDate(chore.nextDueAt) : null;
+	if (!dueAt) return null;
+	const nextDueAt = computeNextDueAt(dueAt, chore.intervalDays, new Date(), chore.recurrenceType);
 	return chooseNextAvailableMember({
 		members,
 		currentMemberId: chore.assignedMemberId,

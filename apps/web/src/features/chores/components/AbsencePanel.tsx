@@ -50,6 +50,8 @@ interface AbsencePanelProps {
 	allAbsencesHref: string;
 	visibleAbsences: AbsenceInput[];
 	highlightedAbsenceId: string | null;
+	/** Kurz getönte Zeile nach einem Deeplink; wird nach ein paar Sekunden wieder null. */
+	flashedAbsenceId: string | null;
 	onRemove: (id: string) => void;
 	isPending: (key: string) => boolean;
 	/** Fehler beim Eintragen: steht im Formular über dem Speichern-Knopf. */
@@ -77,6 +79,7 @@ export function AbsencePanel({
 	allAbsencesHref,
 	visibleAbsences,
 	highlightedAbsenceId,
+	flashedAbsenceId,
 	onRemove,
 	isPending,
 	error,
@@ -233,8 +236,9 @@ export function AbsencePanel({
 									key={absence.id}
 									id={`absence-${absence.id}`}
 									className={cn(
-										'scroll-mt-28 px-0',
-										absence.id === highlightedAbsenceId && 'ring-2 ring-inset ring-ring',
+										// Die Tönung reicht 0,5 rem über den Text hinaus, damit er nicht am Rand klebt.
+										'scroll-mt-28 -mx-2 w-[calc(100%+1rem)] max-w-none rounded-none px-2 transition-colors duration-700',
+										absence.id === flashedAbsenceId && 'bg-primary/10',
 									)}
 								>
 									<ItemContent className="min-w-0 basis-36">

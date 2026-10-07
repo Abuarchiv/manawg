@@ -48,6 +48,14 @@ interface ChoreRowProps {
 	highlighted: boolean;
 }
 
+/** Zweistellig wie im Formular („06.10.2026“), nicht „6.10.2026“. */
+const DUE_DATE_FORMAT = new Intl.DateTimeFormat('de-DE', {
+	day: '2-digit',
+	month: '2-digit',
+	year: 'numeric',
+	timeZone: 'Europe/Berlin',
+});
+
 function formatChoreCadence(interval: number, type: RecurrenceType): string {
 	if (interval <= 0) return 'einmalig';
 	if (type === 'months') {
@@ -89,14 +97,15 @@ export const ChoreRow = memo(function ChoreRow({
 	const needsTakeOver = !isMine && getChoreRepairHint(chore) !== null;
 	const cadence = formatChoreCadence(chore.intervalDays, chore.recurrenceType);
 	const busy = isPending || isTakePending || isSwapPending;
+	const dueDate = parseValidDate(chore.nextDueAt);
 
 	return (
 		<Item
 			id={`chore-${chore.id}`}
 			render={<li />}
 			className={cn(
-				'scroll-mt-24 rounded-none py-2 pr-1.5 [contain-intrinsic-size:auto_4.5rem] [content-visibility:auto]',
-				highlighted && 'ring-2 ring-inset ring-ring',
+				'scroll-mt-24 rounded-none py-2 pr-1.5 transition-colors duration-700 [contain-intrinsic-size:auto_4.5rem] [content-visibility:auto]',
+				highlighted && 'bg-primary/10',
 			)}
 			aria-busy={busy}
 		>
@@ -178,10 +187,7 @@ export const ChoreRow = memo(function ChoreRow({
 								<dd>{isMine ? 'du' : assignee.name}</dd>
 								<dt className="text-muted-foreground">Fällig</dt>
 								<dd>
-									{parseValidDate(chore.nextDueAt)?.toLocaleDateString('de-DE', {
-										timeZone: 'Europe/Berlin',
-									}) ?? 'unbekannt'}{' '}
-									({status.label})
+									{dueDate ? DUE_DATE_FORMAT.format(dueDate) : 'unbekannt'} ({status.label})
 								</dd>
 								<dt className="text-muted-foreground">Rhythmus</dt>
 								<dd>{cadence}</dd>

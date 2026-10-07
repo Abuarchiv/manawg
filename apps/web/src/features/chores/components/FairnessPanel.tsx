@@ -18,6 +18,11 @@ const FAIRNESS_RULES = [
 	'Nach Erledigung neu berechnet, Abwesende übersprungen',
 ];
 
+/** Balkensegment und Legendenpunkt teilen sich die Abstufung, damit man sie zuordnen kann. */
+function segmentTint(index: number): string {
+	return `color-mix(in oklab, var(--primary) ${Math.max(100 - index * 25, 20)}%, transparent)`;
+}
+
 export function FairnessPanel({
 	fairness,
 	monthCompletions,
@@ -67,16 +72,23 @@ export function FairnessPanel({
 										className="h-full border-background border-r-2 last:border-r-0"
 										style={{
 											width: `${(member.count / total) * 100}%`,
-											backgroundColor: `color-mix(in oklab, var(--primary) ${100 - index * 25}%, transparent)`,
+											backgroundColor: segmentTint(index),
 										}}
 									/>
 								))}
 							</div>
 							<ul className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
-								{shares.map((member) => (
-									<li key={member.id}>
-										{member.id === currentMemberId ? 'Du' : member.name}:{' '}
-										{Math.round((member.count / total) * 100)} % ({member.count})
+								{shares.map((member, index) => (
+									<li key={member.id} className="flex items-center gap-1.5">
+										<span
+											aria-hidden
+											className="size-2 shrink-0 rounded-full"
+											style={{ backgroundColor: segmentTint(index) }}
+										/>
+										<span>
+											{member.id === currentMemberId ? 'Du' : member.name}:{' '}
+											{Math.round((member.count / total) * 100)} % ({member.count})
+										</span>
 									</li>
 								))}
 							</ul>

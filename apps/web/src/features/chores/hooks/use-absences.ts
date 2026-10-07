@@ -48,6 +48,7 @@ export function useAbsences(ctx: ChorePageContext, form: AbsenceFormState, queue
 		startPending,
 		endPending,
 		toast,
+		absences,
 		setActionNotice,
 		updateAbsences,
 		refreshCount,
@@ -231,7 +232,11 @@ export function useAbsences(ctx: ChorePageContext, form: AbsenceFormState, queue
 				);
 				return;
 			}
+			const removed = absences.find((absence) => absence.id === id);
 			updateAbsences((current) => current.filter((absence) => absence.id !== id));
+			toast.success(
+				removed ? `Abwesenheit von ${removed.memberName} entfernt.` : 'Abwesenheit entfernt.',
+			);
 		} finally {
 			endPending(pendingKey);
 		}

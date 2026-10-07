@@ -2,6 +2,7 @@ import { isNetworkError } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
 import { discardQueuedEntry } from '@/core/offline/offline-client';
 import { isQueuedCreateId } from '@/core/offline/offline-queue';
+import { parseValidDate } from '@/core/utils/time';
 import { getAbsentMemberIds } from '@/features/chores/absence';
 import { choreCompletionFeedback } from '@/features/chores/chore-completion';
 import { choreActionErrorMessage } from '@/features/chores/chore-errors';
@@ -61,8 +62,14 @@ export function useChoreActions(ctx: ChorePageContext) {
 
 	/** The chore stays in the plan offline: move it to its next date and assignee locally. */
 	function advanceLocally(previousChore: Chore): void {
+		const dueAt = parseValidDate(previousChore.nextDueAt);
+		if (!dueAt) {
+			// Ohne gültiges Datum gibt es nichts zu verschieben; die Zeile bleibt, wie sie war.
+			restore(previousChore);
+			return;
+		}
 		const localNextDueAt = computeNextDueAt(
-			new Date(previousChore.nextDueAt),
+			dueAt,
 			previousChore.intervalDays,
 			new Date(),
 			previousChore.recurrenceType,
@@ -102,6 +109,13 @@ export function useChoreActions(ctx: ChorePageContext) {
 		const outcome = await completeChore(chore);
 		switch (outcome.kind) {
 			case 'completed':
+				// Die Erledigung schließt die Tauschanfrage; zum nächsten Termin ist eine neue möglich.
+				setSwapRequestedIds((current) => {
+					if (!current.has(chore.id)) return current;
+					const rest = new Set(current);
+					rest.delete(chore.id);
+					return rest;
+				});
 				if (outcome.next) {
 					const next = outcome.next;
 					const completed: Chore = {
@@ -138,10 +152,19 @@ export function useChoreActions(ctx: ChorePageContext) {
 		if (feedback.tone === 'success') toast.success(feedback.message);
 		else if (feedback.tone === 'notice') setActionNotice(feedback.message);
 		else setActionError(feedback.message);
-		if (feedback.toast) toast.error(feedback.toast);
+		// Bleibt der Dialog offen, zeigt sein Alert den Fehler schon; ein Toast wäre eine Doppelmeldung.
+		if (feedback.done && feedback.toast && feedback.toast !== feedback.message) {
+			toast.error(feedback.toast);
+		}
 		if (feedback.done) setCompleteConfirmId(null);
 		if (feedback.reload) void load(false);
 		endPending(chore.id);
+	}
+
+	/** Abbrechen räumt auch den Fehler weg, der sonst nach dem Schließen als Seitenbanner stehen bliebe. */
+	function cancelComplete(): void {
+		setActionError(null);
+		setCompleteConfirmId(null);
 	}
 
 	async function handleSwapRequest(chore: Chore): Promise<void> {
@@ -263,7 +286,9 @@ export function useChoreActions(ctx: ChorePageContext) {
 					void load(false);
 				}
 			} else {
+				const removedTitle = items.find((item) => item.id === id)?.title;
 				updateChores((current) => current.filter((item) => item.id !== id));
+				toast.success(removedTitle ? `„${removedTitle}“ entfernt.` : 'Aufgabe entfernt.');
 				void load(false);
 			}
 		} finally {
@@ -273,7 +298,7 @@ export function useChoreActions(ctx: ChorePageContext) {
 
 	return {
 		completeConfirmId,
-		setCompleteConfirmId,
+		cancelComplete,
 		handleComplete,
 		handleSwapRequest,
 		swapRequestedIds,

@@ -53,11 +53,13 @@ export default function PutzenPage() {
 		addAbsence,
 		applyChoreSuggestion,
 		applyQuickChore,
+		cancelComplete,
 		choreAddPending,
 		choreGroups,
 		completeConfirmId,
 		confirmSuggestion,
 		fairness,
+		flashAbsenceId,
 		handleAssignedMemberIdChange,
 		handleComplete,
 		handleIntervalPresetSelect,
@@ -89,7 +91,6 @@ export default function PutzenPage() {
 		setAbsenceMemberId,
 		setAbsenceReason,
 		setAbsenceStart,
-		setCompleteConfirmId,
 		setConfirmSuggestion,
 		setNewTitle,
 		setShowForm,
@@ -164,7 +165,7 @@ export default function PutzenPage() {
 				)}
 			</ChoreForm>
 			{actionErrorVisible && (
-				<Alert variant="destructive" id="chore-action-error">
+				<Alert variant="destructive" id="chore-action-error" className="scroll-mt-24">
 					<AlertDescription>{actionError}</AlertDescription>
 				</Alert>
 			)}
@@ -247,7 +248,7 @@ export default function PutzenPage() {
 										isCompleteArmed={completeConfirmId === chore.id}
 										completeError={actionError}
 										nextAssigneeName={nextAssigneeNameByChoreId.get(chore.id) ?? null}
-										onCancelComplete={() => setCompleteConfirmId(null)}
+										onCancelComplete={cancelComplete}
 										onComplete={handleComplete}
 										onSwapRequest={handleSwapRequest}
 										onTakeOver={handleTakeOver}
@@ -291,6 +292,7 @@ export default function PutzenPage() {
 					allAbsencesHref={`${wgBaseHref}/putzen?panel=absences`}
 					visibleAbsences={visibleAbsences}
 					highlightedAbsenceId={absenceId}
+					flashedAbsenceId={flashAbsenceId}
 					onRemove={(id) => void removeAbsence(id)}
 					isPending={isPending}
 					error={absenceError}

@@ -471,7 +471,7 @@ test.describe('daily overview home', () => {
 		const confirm = page.getByRole('button', { name: 'Erledigt bestätigen: Bad putzen' });
 		await expect(confirm).toHaveAttribute('aria-disabled', 'true');
 		await expect(confirm).toBeFocused();
-		await expect(page.getByText('Wird gespeichert…')).toBeVisible();
+		await expect(confirm).toContainText('Wird gespeichert…');
 
 		resolveComplete?.();
 		await expect(page.getByText('Bad putzen erledigt.')).toBeVisible();
