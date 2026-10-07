@@ -31,6 +31,7 @@ import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 
 const NO_INVENTORY: InventoryItemDto[] = [];
+const RECENTLY_BOUGHT_MS = 24 * 60 * 60 * 1000;
 
 export default function EinkaufPage() {
 	const { wg, members, identity, isAdmin } = useWg();
@@ -59,10 +60,21 @@ export default function EinkaufPage() {
 
 	// Vorschläge ohne Artikel, die schon offen auf der Liste stehen.
 	const openNames = new Set(open.map((item) => normalizeForMatch(item.name)));
+	// Gerade Gekauftes nicht sofort wieder anbieten: sonst taucht beim Abhaken ein Chip auf,
+	// schiebt die Liste und lädt zum Nachkaufen ein.
+	const recentCutoff = Date.now() - RECENTLY_BOUGHT_MS;
+	const recentlyBought = new Set(
+		done
+			.filter((item) => item.boughtAt !== null && Date.parse(item.boughtAt) > recentCutoff)
+			.map((item) => normalizeForMatch(item.name)),
+	);
 	const lowStock = inventory
-		.filter((item) => isBelowThreshold(item) && !openNames.has(normalizeForMatch(item.name)))
+		.filter((item) => {
+			const key = normalizeForMatch(item.name);
+			return isBelowThreshold(item) && !openNames.has(key) && !recentlyBought.has(key);
+		})
 		.map((item) => item.name);
-	const taken = new Set([...openNames, ...lowStock.map(normalizeForMatch)]);
+	const taken = new Set([...openNames, ...recentlyBought, ...lowStock.map(normalizeForMatch)]);
 	const frequent = [
 		...inventory
 			.filter((item) => item.decrementCount30d > 0)
@@ -129,7 +141,7 @@ export default function EinkaufPage() {
 				/>
 			)}
 			{inventoryLoading || (initialLoading && items.length === 0) ? (
-				<ListSkeleton />
+				<ListSkeleton withSuggestions />
 			) : loadError && items.length === 0 ? (
 				<Empty>
 					<EmptyHeader>
@@ -146,6 +158,11 @@ export default function EinkaufPage() {
 							<ListChecks aria-hidden />
 						</EmptyMedia>
 						<EmptyTitle>Noch nichts auf der Liste</EmptyTitle>
+						<EmptyDescription>
+							{suggestionGroups.length > 0
+								? 'Schreib unten einen Artikel auf oder tippe einen Vorschlag.'
+								: 'Schreib unten einen Artikel auf.'}
+						</EmptyDescription>
 					</EmptyHeader>
 				</Empty>
 			) : (

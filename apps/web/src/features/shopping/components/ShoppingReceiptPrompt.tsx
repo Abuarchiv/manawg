@@ -4,9 +4,11 @@ import type { ShoppingItem } from '@/features/shopping/components/shopping-types
 import { cn } from '@/shared/lib/cn';
 import { Receipt } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const RECEIPT_PROMPT_WINDOW_MS = 12 * 60 * 60 * 1000;
+// Nur wer gerade selbst abgehakt hat, bekommt den Hinweis in den Blick geholt, nicht beim Laden.
+const RECEIPT_SCROLL_WINDOW_MS = 10_000;
 
 /** Nach dem Einkauf: eigene frisch gekaufte Artikel direkt als Ausgabe erfassen. */
 export function ShoppingReceiptPrompt({
@@ -37,7 +39,23 @@ export function ShoppingReceiptPrompt({
 			item.boughtAt !== null &&
 			Date.parse(item.boughtAt) > receiptCutoff,
 	);
-	if (myFreshBought.length === 0) return null;
+	const promptRef = useRef<HTMLDivElement>(null);
+	const previousCount = useRef(0);
+	const freshCount = myFreshBought.length;
+	const newestBoughtAt = Math.max(
+		0,
+		...myFreshBought.map((item) => Date.parse(item.boughtAt ?? '')),
+	);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: nur auf die Anzahl reagieren
+	useEffect(() => {
+		const rose = freshCount > previousCount.current;
+		previousCount.current = freshCount;
+		if (rose && Date.now() - newestBoughtAt < RECEIPT_SCROLL_WINDOW_MS) {
+			// scroll-padding-bottom der Seite (ThumbAction) hält die Karte über der festen Leiste.
+			promptRef.current?.scrollIntoView({ block: 'nearest' });
+		}
+	}, [freshCount]);
+	if (freshCount === 0) return null;
 
 	function dismissReceiptPrompt(): void {
 		const now = new Date().toISOString();
@@ -50,9 +68,9 @@ export function ShoppingReceiptPrompt({
 	}
 
 	return (
-		<Alert>
+		<Alert ref={promptRef}>
 			<Receipt aria-hidden />
-			<AlertDescription className="flex flex-col gap-2 text-[12px]">
+			<AlertDescription className="flex flex-col gap-2 text-[13px]">
 				<span>Beleg für {myFreshBought.length} Artikel als Ausgabe erfassen?</span>
 				<span className="flex flex-wrap gap-2">
 					<Link

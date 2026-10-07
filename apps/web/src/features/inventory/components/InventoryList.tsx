@@ -19,7 +19,10 @@ import {
 import { cn } from '@/shared/lib/cn';
 import { Package, ShoppingBasket, Zap } from 'lucide-react';
 import Link from 'next/link';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+/** So lange bleibt eine Zeile nach +/- in ihrer Gruppe, damit sie nicht unter dem Daumen wegspringt. */
+const REGROUP_DELAY_MS = 1500;
 
 interface InventoryListProps {
 	items: InventoryItemDto[];
@@ -40,12 +43,25 @@ export function InventoryList({
 }: InventoryListProps) {
 	const [quickOpen, setQuickOpen] = useState(false);
 	const [editing, setEditing] = useState<InventoryItemDto | null>(null);
-	// Knappe Vorräte stehen gesammelt oben, der Rest bleibt nach Kategorie sortiert.
-	const lowItems = useMemo(() => items.filter(isBelowThreshold), [items]);
-	const grouped = useMemo(
-		() => groupItemsByCategory(items.filter((item) => !isBelowThreshold(item))),
-		[items],
-	);
+	// Knappe Vorräte stehen gesammelt oben, der Rest bleibt nach Kategorie sortiert. Die Gruppe
+	// einer bekannten Zeile ändert sich erst nach einer Ruhephase; die Menge bleibt live.
+	const settledLowRef = useRef(new Map<string, boolean>());
+	const [, setRegroupTick] = useState(0);
+	const settledLow = settledLowRef.current;
+	for (const item of items) {
+		if (!settledLow.has(item.id)) settledLow.set(item.id, isBelowThreshold(item));
+	}
+	useEffect(() => {
+		const timer = window.setTimeout(() => {
+			settledLowRef.current = new Map(items.map((item) => [item.id, isBelowThreshold(item)]));
+			setRegroupTick((tick) => tick + 1);
+		}, REGROUP_DELAY_MS);
+		return () => window.clearTimeout(timer);
+	}, [items]);
+	const isLow = (item: InventoryItemDto): boolean =>
+		settledLow.get(item.id) ?? isBelowThreshold(item);
+	const lowItems = items.filter(isLow);
+	const grouped = groupItemsByCategory(items.filter((item) => !isLow(item)));
 	const isEmpty = items.length === 0;
 	const hasQuickRestockItems = items.some(
 		(item) => item.decrementCount30d > 0 || item.lastDecrementedAt !== null,

@@ -56,7 +56,8 @@ export function ShoppingAddBar({
 						disabled={!value.trim()}
 						aria-busy={adding}
 						aria-label="Artikel hinzufügen"
-						onPointerDown={(event) => event.preventDefault()}
+						// mousedown statt pointerdown: WebKit löst nach pointerdown-preventDefault bei Touch keinen Click aus.
+						onMouseDown={(event) => event.preventDefault()}
 						className="size-11 shrink-0"
 					>
 						{adding ? <Spinner aria-hidden /> : <Plus aria-hidden />}

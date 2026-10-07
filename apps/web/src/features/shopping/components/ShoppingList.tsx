@@ -24,7 +24,7 @@ interface ShoppingListProps {
 	onDoneOpenChange: (open: boolean) => void;
 	isPending: (id: string) => boolean;
 	onToggle: (item: ShoppingItem) => Promise<void>;
-	onRemove: (id: string) => Promise<void>;
+	onRemove: (id: string, itemName: string) => Promise<void>;
 	removeError: string | null;
 	removeErrorId: string | null;
 	isAdmin: boolean;
@@ -146,7 +146,7 @@ export function ShoppingList({
 							onClick={onClearRequest}
 							disabled={clearingBought}
 							aria-label={`Erledigte Artikel entfernen (${doneItems.length})`}
-							className="mt-1 self-start text-muted-foreground"
+							className="mt-1 justify-start text-left text-muted-foreground"
 						>
 							{clearingBought ? (
 								<Spinner data-icon="inline-start" aria-hidden />

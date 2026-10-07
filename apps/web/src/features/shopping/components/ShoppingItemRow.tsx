@@ -41,7 +41,7 @@ interface ShoppingItemRowProps {
 	pending: boolean;
 	queued?: boolean;
 	onToggle: (item: ShoppingItem) => void;
-	onRemove: (id: string) => void;
+	onRemove: (id: string, itemName: string) => void;
 	removeError?: string | null;
 	highlighted: boolean;
 	shareCode: string;
@@ -86,7 +86,7 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 	function handleDelete(): void {
 		if (!deleteConfirm.request(item.id)) return;
 		deleteConfirm.cancel();
-		onRemove(item.id);
+		onRemove(item.id, item.name);
 	}
 
 	return (
@@ -143,10 +143,12 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 						aria-label={isBought ? `${item.name} wieder öffnen` : `${item.name} erledigen`}
 					/>
 				</ItemMedia>
-				<ItemContent className="min-w-0 basis-32 gap-0.5">
+				{/* basis-0 + min-w statt basis-32: bei großer Schrift bleiben Häkchen, Text und ⋯ in einer Zeile;
+				    das ⋯ rutscht nur darunter, wenn ein Wort sonst mitten im Wort brechen müsste. */}
+				<ItemContent className="min-w-[10ch] basis-0 gap-0.5">
 					<ItemTitle
 						className={cn(
-							'block line-clamp-none break-words [overflow-wrap:anywhere]',
+							'block line-clamp-none [overflow-wrap:break-word]',
 							isBought && 'text-muted-foreground line-through',
 						)}
 					>

@@ -41,7 +41,7 @@ export function useShoppingRemoval(ctx: RemovalContext) {
 	}, []);
 
 	const remove = useCallback(
-		async (id: string): Promise<void> => {
+		async (id: string, itemName: string): Promise<void> => {
 			if (isPending(id) || togglingRef.current.has(id) || isTempItemId(id)) return;
 			start(id);
 			try {
@@ -78,13 +78,7 @@ export function useShoppingRemoval(ctx: RemovalContext) {
 							'Dieser Einkaufsartikel existiert nicht mehr und wurde aus deiner Liste entfernt.',
 						);
 					} else {
-						failRemove(
-							id,
-							shoppingActionErrorMessage(
-								res.error,
-								'Entfernen fehlgeschlagen. Versuche es gleich erneut.',
-							),
-						);
+						failRemove(id, shoppingActionErrorMessage(res.error, itemName, 'entfernt'));
 					}
 					return;
 				}

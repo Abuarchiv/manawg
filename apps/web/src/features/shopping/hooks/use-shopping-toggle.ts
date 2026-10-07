@@ -164,10 +164,7 @@ export function useShoppingToggle(ctx: ShoppingActionContext) {
 			} else {
 				rollback();
 				setToggleError(
-					shoppingActionErrorMessage(
-						res.error,
-						'Abhaken fehlgeschlagen. Versuche es gleich erneut.',
-					),
+					shoppingActionErrorMessage(res.error, item.name, bought ? 'abgehakt' : 'wieder geöffnet'),
 				);
 			}
 		},
