@@ -59,7 +59,7 @@ export function ReminderHistory({ items, memberName, currentMemberId }: Reminder
 			{items.map((item) => (
 				// biome-ignore lint/a11y/useSemanticElements: ItemGroup ist ein div mit role="list", die Kinder brauchen role="listitem"
 				<Item key={item.id} role="listitem" variant="outline" size="sm">
-					<ItemContent className="min-w-0">
+					<ItemContent className="min-w-[min(100%,12rem)]">
 						<ItemTitle className="line-clamp-none break-words">
 							{item.debtorMemberId === currentMemberId
 								? 'Du schuldest'
@@ -75,7 +75,10 @@ export function ReminderHistory({ items, memberName, currentMemberId }: Reminder
 							· {channelLabel(item.channel)}
 						</ItemDescription>
 					</ItemContent>
-					<Badge variant="outline" className="ml-auto shrink-0 font-mono tabular-nums">
+					<Badge
+						variant="outline"
+						className="ml-auto h-auto min-h-5 shrink-0 text-[0.75rem] font-mono tabular-nums"
+					>
 						{formatEuroCents(item.amountCents, item.currency)}
 					</Badge>
 				</Item>
