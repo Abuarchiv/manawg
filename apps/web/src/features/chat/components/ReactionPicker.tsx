@@ -102,7 +102,7 @@ export function ReactionPicker({
 									}
 								}}
 								aria-label="Eigene Emoji-Reaktion"
-								placeholder="Emoji eingeben"
+								placeholder="Emoji"
 								className="text-base"
 							/>
 							<InputGroupAddon align="inline-end">

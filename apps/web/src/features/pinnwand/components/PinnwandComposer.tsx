@@ -115,14 +115,15 @@ export function PinnwandComposer({
 								id="announcement-content"
 								value={content}
 								onChange={(e) => onContentChange(e.target.value)}
-								disabled={submitting}
+								readOnly={submitting}
+								aria-busy={submitting}
 								maxLength={CONTENT_MAX}
 								rows={3}
 								aria-label="Beitragstext"
 								aria-invalid={fieldInvalid}
 								aria-describedby={error ? 'announcement-error' : 'announcement-count'}
 								placeholder={`Was gibt es Neues, ${authorName}?`}
-								className="min-h-20 text-base"
+								className="min-h-20 text-base read-only:opacity-60"
 							/>
 						</Field>
 					</FieldGroup>

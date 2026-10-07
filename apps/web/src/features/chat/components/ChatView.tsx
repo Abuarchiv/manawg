@@ -100,7 +100,7 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 						data-scroll-y
 						role="log"
 						aria-label="Chat-Nachrichten"
-						className="bg-background"
+						className="bg-background [scroll-behavior:auto]!"
 					>
 						<MessageScrollerContent className="mx-auto w-full max-w-3xl gap-3 px-4 py-2">
 							{chat.bootstrapping ? (
@@ -136,7 +136,7 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 					<MessageScrollerButton
 						direction="end"
 						aria-label="Zum Ende scrollen"
-						behavior="auto"
+						behavior="smooth"
 						className="min-h-11 min-w-11"
 						onClick={() => haptic('selection')}
 					>

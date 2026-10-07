@@ -69,6 +69,8 @@ export function CommentRow({
 	const draft = useCommentDraft(draftKey, comment.content);
 	const editorRef = useRef<HTMLTextAreaElement>(null);
 	const focusEditorOnEditRef = useRef(false);
+	const editButtonRef = useRef<HTMLButtonElement>(null);
+	const focusEditButtonRef = useRef(false);
 	const [pending, setPending] = useState(false);
 	const [error, setError] = useState(false);
 	const [confirmOpen, setConfirmOpen] = useState(false);
@@ -82,6 +84,12 @@ export function CommentRow({
 		focusEditorOnEditRef.current = false;
 		editorRef.current?.focus();
 	}, [editing]);
+	// Nach Speichern/Später ist der Editor weg: Fokus zurück auf den Bearbeiten-Button.
+	useEffect(() => {
+		if (editing || pending || !focusEditButtonRef.current) return;
+		focusEditButtonRef.current = false;
+		editButtonRef.current?.focus();
+	}, [editing, pending]);
 	async function save() {
 		if (!draft.draft.trim() || pendingRef.current) return;
 		pendingRef.current = true;
@@ -90,6 +98,7 @@ export function CommentRow({
 		try {
 			if (await onUpdate(draft.draft.trim())) {
 				draft.clear();
+				focusEditButtonRef.current = true;
 				setEditing(false);
 			} else setError(true);
 		} finally {
@@ -136,6 +145,7 @@ export function CommentRow({
 					{canEdit && !editing && (
 						<span className="ml-auto flex gap-1">
 							<Button
+								ref={editButtonRef}
 								variant="ghost"
 								size="icon-sm"
 								disabled={pending}
@@ -170,17 +180,25 @@ export function CommentRow({
 								ref={editorRef}
 								value={draft.draft}
 								onChange={(event) => draft.change(event.target.value)}
-								disabled={pending}
+								readOnly={pending}
+								aria-busy={pending}
 								maxLength={600}
 								rows={2}
 								aria-label="Kommentar bearbeiten"
 								aria-invalid={error}
 								aria-describedby={error ? `comment-edit-error-${comment.id}` : undefined}
-								className="text-base"
+								className="text-base read-only:opacity-60"
 							/>
 						</Field>
 						<div className="flex flex-wrap justify-end gap-2">
-							<Button variant="ghost" disabled={pending} onClick={() => setEditing(false)}>
+							<Button
+								variant="ghost"
+								disabled={pending}
+								onClick={() => {
+									focusEditButtonRef.current = true;
+									setEditing(false);
+								}}
+							>
 								Später
 							</Button>
 							<Button

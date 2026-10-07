@@ -58,6 +58,7 @@ export function AnnouncementFooter({
 	const [commentPending, setCommentPending] = useState(false);
 	const [commentError, setCommentError] = useState(false);
 	const commentPendingRef = useRef(false);
+	const replyRef = useRef<HTMLTextAreaElement>(null);
 	const commentDraft = useCommentDraft(`${draftKey}:reply`);
 	const isResolved = announcement.status === 'resolved';
 	const commentCount = announcement.comments.length;
@@ -78,6 +79,9 @@ export function AnnouncementFooter({
 		} finally {
 			commentPendingRef.current = false;
 			setCommentPending(false);
+			// Der deaktivierte Senden-Knopf nimmt den Fokus mit: zurück ins Feld, damit der nächste Text direkt geht.
+			if (document.activeElement === document.body)
+				replyRef.current?.focus({ preventScroll: true });
 		}
 	}
 
@@ -98,9 +102,11 @@ export function AnnouncementFooter({
 							key={key}
 							variant={active ? 'secondary' : 'ghost'}
 							size="sm"
-							className="gap-1 pr-2 text-[12px]"
-							onClick={() => onReact(key)}
-							disabled={reactionPending(key)}
+							className="gap-1 pr-2 text-[12px] aria-disabled:pointer-events-none aria-disabled:opacity-50"
+							onClick={() => {
+								if (!reactionPending(key)) onReact(key);
+							}}
+							aria-disabled={reactionPending(key) || undefined}
 							aria-pressed={active}
 							aria-label={
 								label + (active ? '-Reaktion entfernen: ' : '-Reaktion setzen: ') + actionSubject
@@ -179,9 +185,11 @@ export function AnnouncementFooter({
 					<Field data-invalid={commentError}>
 						<InputGroup>
 							<InputGroupTextarea
+								ref={replyRef}
 								value={commentDraft.draft}
 								onChange={(event) => commentDraft.change(event.target.value)}
-								disabled={commentPending}
+								readOnly={commentPending}
+								aria-busy={commentPending}
 								aria-invalid={commentError}
 								aria-describedby={
 									commentError ? `announcement-comment-error-${announcement.id}` : undefined
@@ -190,7 +198,7 @@ export function AnnouncementFooter({
 								rows={1}
 								aria-label={`Antwort verfassen: ${actionSubject}`}
 								placeholder="Antwort schreiben"
-								className="max-h-40 text-base"
+								className="max-h-40 text-base read-only:opacity-60"
 							/>
 							<InputGroupAddon align="inline-end">
 								<InputGroupButton

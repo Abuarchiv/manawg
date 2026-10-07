@@ -30,7 +30,7 @@ interface MessageListProps {
 }
 const DAY_FORMAT = new Intl.DateTimeFormat('de-DE', {
 	weekday: 'long',
-	day: '2-digit',
+	day: 'numeric',
 	month: 'long',
 });
 const NO_REACTIONS: ReactionSummary[] = [];

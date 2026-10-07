@@ -64,7 +64,7 @@ export function useAnnouncementComposer(
 	const appliedPrefillRef = useRef<string | null>(null);
 	const draftKey = buildDraftKey(wg.shareCode, identity.memberId, 'announcement');
 	const prefillKey = `${prefillContent ?? ''}|${prefillKind ?? ''}|${prefillImageUrl ?? ''}`;
-	const hasDraft = Boolean(content.trim() || imageUrl || queueEditId || kind !== 'info');
+	const hasDraft = Boolean(content.trim() || imageUrl || queueEditId);
 
 	const createButtonRef = useRef<HTMLButtonElement | null>(null);
 	useEffect(() => {
@@ -79,6 +79,13 @@ export function useAnnouncementComposer(
 		window.addEventListener('keydown', onKey);
 		return () => window.removeEventListener('keydown', onKey);
 	}, [composerOpen, content, imageUrl, setNotice]);
+
+	// Fehler beim Senden: Fokus zurück ins Textfeld (der deaktivierte Senden-Knopf hat ihn mitgenommen).
+	useEffect(() => {
+		if (error && composerOpen && document.activeElement === document.body) {
+			textareaRef.current?.focus({ preventScroll: true });
+		}
+	}, [error, composerOpen]);
 
 	function closeComposer(): void {
 		if (submittingRef.current) return;
@@ -121,6 +128,10 @@ export function useAnnouncementComposer(
 		if (prefillKind) setKind(prefillKind);
 		if (prefillImageUrl) setImageUrl(prefillImageUrl);
 		setComposerOpen(true);
+		// Prefill nur einmal übernehmen: sonst öffnet sich der Composer nach Abbrechen und Reload erneut.
+		const url = new URL(window.location.href);
+		for (const name of ['content', 'kind', 'imageUrl']) url.searchParams.delete(name);
+		window.history.replaceState(window.history.state, '', url);
 	}, [prefillContent, prefillImageUrl, prefillKey, prefillKind]);
 
 	useEffect(() => {

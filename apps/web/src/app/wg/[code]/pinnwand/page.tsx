@@ -212,7 +212,7 @@ export default function PinnwandPage(): React.ReactElement {
 				<Button
 					ref={composer.buttonRef}
 					type="button"
-					className="min-h-11 w-full"
+					className="relative min-h-11 w-full"
 					disabled={composer.submitting || initialLoading}
 					onClick={() => {
 						composer.setOpen(true);
@@ -221,6 +221,12 @@ export default function PinnwandPage(): React.ReactElement {
 				>
 					<Plus data-icon="inline-start" aria-hidden />
 					{composer.hasDraft ? 'Entwurf fortsetzen' : 'Beitrag hinzufügen'}
+					{composer.hasDraft && (
+						<span
+							aria-hidden
+							className="absolute top-1 right-1 size-2.5 rounded-full bg-primary-foreground ring-2 ring-primary"
+						/>
+					)}
 				</Button>
 			</ThumbAction>
 		</div>

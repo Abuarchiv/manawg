@@ -1,7 +1,6 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Spinner } from '@/components/ui/spinner';
 import { formatRelativeTime } from '@/core/utils/time';
 import { isLongAnnouncementBody } from '@/features/pinnwand/announcement-card-model';
 import { cn } from '@/shared/lib/cn';
@@ -83,7 +82,7 @@ export function AnnouncementBody({
 					)}
 				</a>
 			)}
-			{(takerNames.length > 0 || announcement.resolvedAt || busy) && (
+			{(takerNames.length > 0 || announcement.resolvedAt) && (
 				<p className="flex flex-wrap items-center gap-x-2 text-[12px] text-muted-foreground [overflow-wrap:anywhere]">
 					{takerNames.length > 0 && (
 						<span className="inline-flex items-center gap-1 text-foreground">
@@ -97,13 +96,10 @@ export function AnnouncementBody({
 							Geklärt {formatRelativeTime(announcement.resolvedAt)}
 						</span>
 					)}
-					{busy && (
-						<output className="inline-flex items-center gap-1">
-							<Spinner /> Wird gespeichert…
-						</output>
-					)}
 				</p>
 			)}
+			{/* Nur für Screenreader: eine sichtbare Zeile würde die Aktionsleiste beim Tippen verschieben. */}
+			{busy && <output className="sr-only">Wird gespeichert…</output>}
 		</>
 	);
 }
