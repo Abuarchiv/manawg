@@ -1,5 +1,6 @@
 'use client';
 
+import { useToast } from '@/components/ui/Toast';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { type NavigatorWithShare, copyViaTextArea } from '@/core/utils/clipboard';
@@ -8,6 +9,7 @@ import { AlertTriangle, Check, Share2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 const RESET_MS = 1500;
+const FAILED_RESET_MS = 4000;
 
 interface CopyCodeButtonProps {
 	code: string;
@@ -28,6 +30,7 @@ export function CopyCodeButton({
 	const [sharing, setSharing] = useState(false);
 	const timerRef = useRef<number | null>(null);
 	const sharingRef = useRef(false);
+	const toast = useToast();
 
 	useEffect(() => {
 		return () => {
@@ -37,11 +40,16 @@ export function CopyCodeButton({
 
 	function flash(next: CopyState): void {
 		setState(next);
+		if (next === 'failed')
+			toast.error('Einladung konnte nicht geteilt werden. Kopiere den Code manuell.');
 		if (timerRef.current !== null) window.clearTimeout(timerRef.current);
-		timerRef.current = window.setTimeout(() => {
-			setState('idle');
-			timerRef.current = null;
-		}, RESET_MS);
+		timerRef.current = window.setTimeout(
+			() => {
+				setState('idle');
+				timerRef.current = null;
+			},
+			next === 'failed' ? FAILED_RESET_MS : RESET_MS,
+		);
 	}
 
 	async function onClick(): Promise<void> {

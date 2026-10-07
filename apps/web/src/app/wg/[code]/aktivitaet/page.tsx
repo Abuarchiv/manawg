@@ -202,25 +202,34 @@ export default function AktivitaetPage() {
 					<CardContent>
 						<ItemGroup aria-label="Offene Klärungen">
 							{inboxItems.map((item) => (
-								<Item
+								<div
 									key={item.id}
-									size="sm"
-									className="rounded-none border-0 border-b border-border px-0 last:border-b-0"
-									render={<Link href={`${wgBaseHref}${item.href}`} />}
+									// biome-ignore lint/a11y/useSemanticElements: ItemGroup is a div role="list"; the wrapper keeps the link a plain item.
+									role="listitem"
+									className="w-full min-w-0 border-b border-border last:border-b-0"
 								>
-									<ItemContent className="min-w-0">
-										<ItemTitle className="min-w-0 w-full">
-											<span
-												className={cn('line-clamp-1', item.priority === 'high' && 'font-semibold')}
-											>
-												{item.title}
-											</span>
-										</ItemTitle>
-										<ItemDescription className="min-w-0 line-clamp-1">
-											{item.detail}
-										</ItemDescription>
-									</ItemContent>
-								</Item>
+									<Item
+										size="sm"
+										className="rounded-none border-0 px-0"
+										render={<Link href={`${wgBaseHref}${item.href}`} />}
+									>
+										<ItemContent className="min-w-0">
+											<ItemTitle className="min-w-0 w-full">
+												<span
+													className={cn(
+														'line-clamp-1',
+														item.priority === 'high' && 'font-semibold',
+													)}
+												>
+													{item.title}
+												</span>
+											</ItemTitle>
+											<ItemDescription className="min-w-0 line-clamp-1">
+												{item.detail}
+											</ItemDescription>
+										</ItemContent>
+									</Item>
+								</div>
 							))}
 						</ItemGroup>
 					</CardContent>
