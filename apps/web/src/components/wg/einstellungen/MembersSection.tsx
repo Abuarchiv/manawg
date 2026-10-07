@@ -151,7 +151,7 @@ export function MembersSection({ wg, members, identity }: MembersSectionProps) {
 												}}
 												aria-label={`Admin übergeben: ${member.name}`}
 											>
-												Admin
+												Admin übergeben
 											</Button>
 											<Button
 												type="button"
@@ -170,7 +170,7 @@ export function MembersSection({ wg, members, identity }: MembersSectionProps) {
 					))}
 				</ItemGroup>
 				{inactiveMembers.length > 0 && (
-					<div className="px-4 pt-2 pb-1">
+					<div className="px-2 pt-2 pb-1">
 						<p className="text-muted-foreground px-0.5 pb-1 text-xs font-medium">Ausgezogen</p>
 						<ItemGroup className="gap-0">
 							{inactiveMembers.map((member) => (
@@ -211,14 +211,14 @@ export function MembersSection({ wg, members, identity }: MembersSectionProps) {
 					</div>
 				)}
 				{memberActionMessage && (
-					<div className="px-4 pb-3">
+					<div className="px-2 pb-3">
 						<Alert>
 							<AlertDescription>{memberActionMessage}</AlertDescription>
 						</Alert>
 					</div>
 				)}
 				{memberActionError && (
-					<div className="px-4 pb-3">
+					<div className="px-2 pb-3">
 						<Alert variant="destructive">
 							<AlertDescription>{memberActionError}</AlertDescription>
 						</Alert>

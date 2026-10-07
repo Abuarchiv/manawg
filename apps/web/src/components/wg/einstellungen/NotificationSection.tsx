@@ -86,12 +86,12 @@ export function NotificationSection({
 	}, [message, error, status]);
 
 	return (
-		<Section id="benachrichtigungen" title="Benachrichtigungen">
+		<Section id="benachrichtigungen" title="Hinweise">
 			<div className="grid min-w-0 gap-3 p-3">
 				{loadingStatus && (
 					<div className="grid gap-2" aria-live="polite">
 						<Skeleton className="h-11 w-full" />
-						<p className="text-muted-foreground text-[12px]">Benachrichtigungen werden geladen…</p>
+						<p className="text-muted-foreground text-[12px]">Hinweise werden geladen…</p>
 					</div>
 				)}
 				{!status && error && (
@@ -126,7 +126,7 @@ export function NotificationSection({
 												? 'Testbenachrichtigung wird gesendet'
 												: 'Testbenachrichtigung senden'
 										}
-										className="justify-self-start"
+										className="-ml-2.5 self-start"
 									>
 										{pending === 'test' && <Spinner aria-hidden />}
 										Test senden

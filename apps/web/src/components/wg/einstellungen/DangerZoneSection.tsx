@@ -18,6 +18,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { MemberDeactivateDialog } from '@/components/wg/MemberDeactivateDialog';
 import type { Member, WgSummary } from '@/components/wg/WgContextProvider';
 import { useWg } from '@/components/wg/WgContextProvider';
+import { AccountDeleteSection } from '@/components/wg/einstellungen/AccountDeleteSection';
 import { Section } from '@/components/wg/einstellungen/Section';
 import {
 	deleteWgErrorMessage,
@@ -27,7 +28,7 @@ import type { StoredIdentity } from '@/shared/lib/identity';
 import { clearIdentity, forgetWg, memberContextHeader } from '@/shared/lib/identity';
 import { LogOut, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 interface DangerZoneSectionProps {
 	wg: WgSummary;
@@ -44,6 +45,8 @@ export function DangerZoneSection({ wg, members, identity }: DangerZoneSectionPr
 	const [deleteError, setDeleteError] = useState<string | null>(null);
 	const [confirmText, setConfirmText] = useState('');
 	const [leaving, setLeaving] = useState(false);
+	// Fokus auf „Abbrechen“, damit auf iOS nicht ungefragt die Tastatur aufgeht.
+	const cancelRef = useRef<HTMLButtonElement>(null);
 	const activeMemberCount = members.filter((m) => m.active).length;
 
 	function leaveWg(): void {
@@ -105,7 +108,7 @@ export function DangerZoneSection({ wg, members, identity }: DangerZoneSectionPr
 					<p className="text-muted-foreground text-xs">
 						{activeMemberCount <= 1
 							? 'Du bist Admin und das letzte aktive Mitglied. Aktiviere zuerst ein ausgezogenes Mitglied und übergib die Admin-Rolle, oder lösche die WG unten.'
-							: 'Übergib zuerst die Admin-Rolle an ein aktives Mitglied (Button „Admin“ bei den Mitgliedern), danach kannst du die WG verlassen.'}
+							: 'Übergib zuerst die Admin-Rolle an ein aktives Mitglied (Button „Admin übergeben“ bei den Mitgliedern), danach kannst du die WG verlassen.'}
 					</p>
 				) : (
 					<Section
@@ -155,6 +158,8 @@ export function DangerZoneSection({ wg, members, identity }: DangerZoneSectionPr
 						</Button>
 					</div>
 				</Section>
+
+				<AccountDeleteSection />
 			</div>
 
 			<AlertDialog
@@ -167,7 +172,7 @@ export function DangerZoneSection({ wg, members, identity }: DangerZoneSectionPr
 					}
 				}}
 			>
-				<AlertDialogContent>
+				<AlertDialogContent initialFocus={cancelRef}>
 					<AlertDialogHeader>
 						<AlertDialogMedia>
 							<Trash2 aria-hidden />
@@ -185,7 +190,7 @@ export function DangerZoneSection({ wg, members, identity }: DangerZoneSectionPr
 							type="text"
 							value={confirmText}
 							onChange={(e) => setConfirmText(e.target.value.toUpperCase())}
-							placeholder={wg.shareCode}
+							placeholder="Code eingeben"
 							disabled={deleteStage === 'pending'}
 							className="text-center font-mono text-base tracking-[0.18em]"
 							autoComplete="off"
@@ -197,7 +202,9 @@ export function DangerZoneSection({ wg, members, identity }: DangerZoneSectionPr
 						</Alert>
 					)}
 					<AlertDialogFooter>
-						<AlertDialogCancel disabled={deleteStage === 'pending'}>Abbrechen</AlertDialogCancel>
+						<AlertDialogCancel ref={cancelRef} disabled={deleteStage === 'pending'}>
+							Abbrechen
+						</AlertDialogCancel>
 						<Button
 							variant="destructive"
 							onClick={(event) => {
@@ -207,7 +214,7 @@ export function DangerZoneSection({ wg, members, identity }: DangerZoneSectionPr
 							disabled={deleteStage === 'pending' || confirmText !== wg.shareCode}
 						>
 							{deleteStage === 'pending' ? <Spinner aria-hidden /> : <Trash2 aria-hidden />}
-							Endgültig löschen
+							WG löschen
 						</Button>
 					</AlertDialogFooter>
 				</AlertDialogContent>

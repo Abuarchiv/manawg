@@ -159,14 +159,14 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 					</div>
 				</div>
 				{exportMessage && (
-					<div className="px-4 pb-4">
+					<div className="p-3 pt-0">
 						<Alert>
 							<AlertDescription>{exportMessage}</AlertDescription>
 						</Alert>
 					</div>
 				)}
 				{exportError && (
-					<div className="px-4 pb-4">
+					<div className="p-3 pt-0">
 						<Alert variant="destructive">
 							<AlertTitle>Export fehlgeschlagen</AlertTitle>
 							<AlertDescription>{exportError}</AlertDescription>
@@ -179,7 +179,7 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 				<div className="p-3">
 					<Link
 						href={`${wgBaseHref}/import`}
-						className={cn(buttonVariants({ variant: 'outline' }), 'w-full')}
+						className={cn(buttonVariants({ variant: 'outline' }), 'h-11 w-full')}
 					>
 						<Upload aria-hidden />
 						Ausgaben importieren
