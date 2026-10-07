@@ -114,7 +114,7 @@ function PreviewRows({ module }: { module: PublicPreviewModule }) {
 				<Item className={ROW} role="listitem">
 					<ItemMedia>
 						<Avatar size="sm">
-							<AvatarFallback>L</AvatarFallback>
+							<AvatarFallback>LE</AvatarFallback>
 						</Avatar>
 					</ItemMedia>
 					<ItemContent className="min-w-0">

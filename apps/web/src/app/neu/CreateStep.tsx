@@ -45,7 +45,7 @@ export function CreateStep({
 				<TextField
 					id="wg-name"
 					label="WG-Name"
-					placeholder="z. B. WG Weserstraße"
+					placeholder="z. B. WG Nord"
 					value={wgName}
 					onChange={onWgNameChange}
 					maxLength={WG_NAME_MAX}
@@ -56,6 +56,7 @@ export function CreateStep({
 					describedBy={invalidField === 'wgName' ? 'create-wg-error' : undefined}
 					enterKeyHint="next"
 				/>
+				{error && invalidField === 'wgName' && <ErrorBox id="create-wg-error">{error}</ErrorBox>}
 				<TextField
 					id="creator-name"
 					label="Dein Anzeigename"
@@ -69,32 +70,22 @@ export function CreateStep({
 					describedBy={invalidField === 'creatorName' ? 'create-wg-error' : undefined}
 					enterKeyHint="done"
 				/>
+				{error && invalidField === 'creatorName' && (
+					<ErrorBox id="create-wg-error">{error}</ErrorBox>
+				)}
 			</FieldGroup>
-			{error && (
-				<ErrorBox
-					id={
-						invalidField === 'wgName' || invalidField === 'creatorName'
-							? 'create-wg-error'
-							: 'create-wg-form-error'
-					}
-				>
-					{error}
-				</ErrorBox>
+			{error && invalidField !== 'wgName' && invalidField !== 'creatorName' && (
+				<ErrorBox id="create-wg-form-error">{error}</ErrorBox>
 			)}
 			<div className="flex flex-wrap items-center gap-2">
 				<BackButton onClick={onBack} disabled={busy} />
-				<Button
-					type="submit"
-					disabled={busy}
-					aria-label={busy ? 'WG wird erstellt…' : 'WG erstellen'}
-					className="flex-1"
-				>
+				<Button type="submit" disabled={busy} className="flex-1">
 					{busy ? (
 						<Spinner data-icon="inline-start" aria-hidden />
 					) : (
 						<ArrowRight data-icon="inline-start" aria-hidden />
 					)}
-					{busy ? 'Wird erstellt…' : 'WG erstellen'}
+					{busy ? 'WG wird erstellt…' : 'WG erstellen'}
 				</Button>
 			</div>
 		</form>

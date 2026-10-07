@@ -297,7 +297,7 @@ test.describe('ManaWG launch smoke', () => {
 			expect(inviteCode).toBe(createdShareCode);
 
 			// Step 5: Continue to /wg/<8-char-code>; ManaWG share codes are 8 alphanumeric chars.
-			await page.getByRole('button', { name: /direkt zur WG/i }).click();
+			await page.getByRole('button', { name: 'Zur WG', exact: true }).click();
 			await page.waitForURL(/\/wg\/[A-Z0-9]{8}$/, { timeout: 15_000 });
 			const manifestResponse = await page.request.get(`/api/wg/${createdShareCode}`);
 			expect(manifestResponse.status()).toBe(200);

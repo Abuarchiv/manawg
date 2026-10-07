@@ -145,7 +145,7 @@ export function PhoneAuthForm({
 			className="flex flex-col gap-4"
 		>
 			<FieldGroup>
-				<h2 id="phone-auth-heading" className="text-[14px] font-semibold text-foreground">
+				<h2 id="phone-auth-heading" className="sr-only">
 					Mit Telefon per SMS
 				</h2>
 				<Field data-invalid={phoneFieldInvalid} data-disabled={otpRequested || busy !== null}>
@@ -165,7 +165,7 @@ export function PhoneAuthForm({
 						}
 						aria-invalid={phoneFieldInvalid ? true : undefined}
 						disabled={otpRequested || busy !== null}
-						className="text-base"
+						className="text-base disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 dark:disabled:bg-muted/40"
 					/>
 				</Field>
 				<p id="auth-phone-hint" className="text-xs text-muted-foreground">
@@ -221,7 +221,7 @@ export function PhoneAuthForm({
 				)}
 				{otpRequested ? (
 					<div className="flex flex-col gap-2">
-						<Button type="submit" variant="outline" disabled={busy !== null}>
+						<Button type="submit" disabled={busy !== null}>
 							{busy === 'phone-verify' && <Spinner data-icon="inline-start" aria-hidden />}
 							Code bestätigen
 						</Button>
@@ -245,7 +245,7 @@ export function PhoneAuthForm({
 						</Button>
 					</div>
 				) : (
-					<Button type="submit" variant="outline" disabled={busy !== null} className="w-full">
+					<Button type="submit" disabled={busy !== null} className="w-full">
 						{busy === 'phone-request' && <Spinner data-icon="inline-start" aria-hidden />}
 						SMS-Code anfordern
 					</Button>

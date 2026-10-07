@@ -6,6 +6,7 @@ export function EntryFrame({
 	title,
 	description,
 	backHref = '/',
+	backLabel = 'ManaWG Startseite',
 	headingId,
 	actions,
 	children,
@@ -13,6 +14,7 @@ export function EntryFrame({
 	title: string;
 	description?: string | undefined;
 	backHref?: string;
+	backLabel?: string;
 	headingId?: string;
 	actions?: ReactNode;
 	children: ReactNode;
@@ -21,16 +23,16 @@ export function EntryFrame({
 		<main
 			id="main"
 			tabIndex={-1}
-			className="flex min-h-svh w-full flex-col gap-6 bg-background px-4 py-6 focus:outline-none"
+			className="flex min-h-svh w-full flex-col gap-6 bg-background px-4 py-3 focus:outline-none"
 			style={{
-				paddingTop: 'calc(1.5rem + env(safe-area-inset-top, 0px))',
+				paddingTop: 'calc(0.75rem + env(safe-area-inset-top, 0px))',
 				paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
 			}}
 		>
 			<Link
 				href={backHref}
-				className="flex min-h-11 items-center gap-2 self-start"
-				aria-label="ManaWG Startseite"
+				className="relative flex min-h-9 items-center gap-2 self-start after:absolute after:inset-x-0 after:-inset-y-1 after:content-['']"
+				aria-label={backLabel}
 			>
 				<LogoMark size={24} tile={false} aria-hidden />
 				<span className="font-heading text-xl font-semibold tracking-[-0.03em]">ManaWG</span>

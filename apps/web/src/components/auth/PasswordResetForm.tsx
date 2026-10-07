@@ -4,7 +4,7 @@ import { NEW_PASSWORD_MIN_LENGTH } from '@/components/auth/auth-form-shared';
 import { useToast } from '@/components/ui/Toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import {
@@ -129,10 +129,13 @@ export function PasswordResetForm({ recoveryRequested }: PasswordResetFormProps)
 							required
 							readOnly={state === 'submitting'}
 							enterKeyHint="next"
-							aria-describedby={error ? 'reset-password-error' : undefined}
+							aria-describedby={
+								error ? 'reset-password-hint reset-password-error' : 'reset-password-hint'
+							}
 							aria-invalid={error ? true : undefined}
 							className="text-base"
 						/>
+						<FieldDescription id="reset-password-hint">Mindestens acht Zeichen.</FieldDescription>
 					</Field>
 					<Field data-invalid={Boolean(error)}>
 						<FieldLabel htmlFor="reset-password-confirmation">Passwort bestätigen</FieldLabel>

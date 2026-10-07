@@ -5,7 +5,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { type NavigatorWithShare, copyText } from '@/core/utils/clipboard';
 import { cn } from '@/shared/lib/cn';
-import { AlertTriangle, Check, MessageCircle, Share2 } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Check, MessageCircle, Share2 } from 'lucide-react';
 import { useRef, useState } from 'react';
 
 const SHARE_RESET_MS = 1500;
@@ -119,7 +119,7 @@ export function InviteStep({ code, wgName, onSkip }: InviteStepProps) {
 					<div className="mx-auto flex size-10 items-center justify-center rounded-lg bg-muted text-foreground">
 						<Check aria-hidden />
 					</div>
-					<CardTitle className="max-w-full break-words">{wgName} ist live.</CardTitle>
+					<CardTitle className="max-w-full break-words">Eure WG „{wgName}“ ist live.</CardTitle>
 					<CardDescription>Teile den WG-Code mit deiner WG.</CardDescription>
 				</CardHeader>
 				<CardContent className="flex flex-col items-center gap-3 text-center">
@@ -210,7 +210,8 @@ export function InviteStep({ code, wgName, onSkip }: InviteStepProps) {
 				disabled={sharingBlocked}
 				className="w-full"
 			>
-				Später → direkt zur WG
+				<ArrowRight data-icon="inline-start" aria-hidden />
+				Zur WG
 			</Button>
 		</div>
 	);

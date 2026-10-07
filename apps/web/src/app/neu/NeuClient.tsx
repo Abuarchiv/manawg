@@ -191,6 +191,17 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 		previousStepRef.current = step;
 	}, [step]);
 
+	// The static metadata title names the WG flow; the signed-out page shows the sign-in form.
+	const showsSignIn = authState !== 'authenticated' && !checkingSession;
+	useEffect(() => {
+		if (!showsSignIn) return;
+		const previous = document.title;
+		document.title = 'Anmelden — ManaWG';
+		return () => {
+			document.title = previous;
+		};
+	}, [showsSignIn]);
+
 	const callbackError = searchParams.get('error') === 'auth_callback';
 	const deniedWgCode = (() => {
 		const code = getWgCodeFromPath(safeNextPath(searchParams.get('next')));
@@ -291,7 +302,7 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 							? 'Per Code beitreten'
 							: step === 'joinName'
 								? 'Dein Name in der WG'
-								: (createdWg?.name ?? 'Mitbewohner einladen')
+								: 'WG erstellt'
 			}
 			description={
 				step === 'invite'

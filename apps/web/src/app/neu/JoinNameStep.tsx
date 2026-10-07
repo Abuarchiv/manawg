@@ -59,29 +59,24 @@ export function JoinNameStep({
 					describedBy={invalidField === 'joinName' ? 'join-name-error' : undefined}
 					enterKeyHint="done"
 				/>
+				{error && invalidField === 'joinName' && <ErrorBox id="join-name-error">{error}</ErrorBox>}
 			</FieldGroup>
 			<p className="text-sm text-muted-foreground">
-				Du trittst <span className="font-medium text-foreground">{joinWg.name}</span> bei.
+				Du trittst mit dem WG-Code{' '}
+				<span className="font-medium text-foreground">{joinWg.code}</span> bei.
 			</p>
-			{error && (
-				<ErrorBox id={invalidField === 'joinName' ? 'join-name-error' : 'join-name-form-error'}>
-					{error}
-				</ErrorBox>
+			{error && invalidField !== 'joinName' && (
+				<ErrorBox id="join-name-form-error">{error}</ErrorBox>
 			)}
 			<div className="flex flex-wrap items-center gap-2">
 				<BackButton onClick={onBack} disabled={busy} />
-				<Button
-					type="submit"
-					disabled={busy}
-					aria-label={busy ? 'Du trittst der WG bei…' : 'WG beitreten'}
-					className="flex-1"
-				>
+				<Button type="submit" disabled={busy} className="flex-1">
 					{busy ? (
 						<Spinner data-icon="inline-start" aria-hidden />
 					) : (
 						<ArrowRight data-icon="inline-start" aria-hidden />
 					)}
-					{busy ? 'Tritt bei…' : 'Beitreten'}
+					{busy ? 'Tritt bei…' : 'WG beitreten'}
 				</Button>
 			</div>
 		</form>

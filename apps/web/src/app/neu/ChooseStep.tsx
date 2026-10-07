@@ -85,12 +85,16 @@ export function ChooseStep({
 					render={
 						<Button
 							variant="ghost"
-							className="h-auto w-full justify-between whitespace-normal text-left"
+							className="h-auto w-full justify-between whitespace-normal py-2 text-left"
 						/>
 					}
 				>
 					Altes Profil auf diesem Gerät wiederherstellen
-					<ChevronDown data-icon="inline-end" aria-hidden />
+					<ChevronDown
+						data-icon="inline-end"
+						aria-hidden
+						className="transition-transform group-aria-expanded/button:rotate-180 motion-reduce:transition-none"
+					/>
 				</CollapsibleTrigger>
 				<CollapsiblePanel keepRendered>
 					<div inert={!legacyOpen} className="pt-3">
