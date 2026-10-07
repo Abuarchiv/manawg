@@ -206,7 +206,7 @@ export const ChoreRow = memo(function ChoreRow({
 							{!isMine && (
 								<Button
 									variant="outline"
-									className="min-h-11 shrink-0"
+									className="min-h-11 shrink-0 py-2"
 									disabled={busy}
 									onClick={() => {
 										setActionsOpen(false);
@@ -219,7 +219,7 @@ export const ChoreRow = memo(function ChoreRow({
 							)}
 							<Button
 								variant="outline"
-								className="min-h-11 shrink-0"
+								className="min-h-11 shrink-0 py-2"
 								disabled={busy || isSwapRequested}
 								aria-label={`${isSwapRequested ? 'Tausch angefragt' : 'Tausch auf der Pinnwand anfragen'}: ${chore.title}`}
 								onClick={() => {
@@ -241,7 +241,7 @@ export const ChoreRow = memo(function ChoreRow({
 									)}
 									<Button
 										variant="destructive"
-										className="min-h-11 shrink-0"
+										className="min-h-11 shrink-0 py-2"
 										disabled={busy}
 										aria-label={`${removeConfirm.confirmId === chore.id ? 'Endgültig entfernen' : 'Aufgabe entfernen'}: ${chore.title}`}
 										onClick={() => {
@@ -260,7 +260,7 @@ export const ChoreRow = memo(function ChoreRow({
 							)}
 						</div>
 						<DrawerFooter className="pb-[max(1rem,env(safe-area-inset-bottom))]">
-							<DrawerClose render={<Button variant="outline" className="min-h-11" />}>
+							<DrawerClose render={<Button variant="outline" className="min-h-11 py-2" />}>
 								Schließen
 							</DrawerClose>
 						</DrawerFooter>

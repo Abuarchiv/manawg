@@ -101,7 +101,7 @@ export function FairnessPanel({
 							<Button
 								variant="ghost"
 								size="sm"
-								className="-mx-2.5 w-[calc(100%+1.25rem)] break-normal"
+								className="-mx-2.5 w-[calc(100%+1.25rem)] max-w-none break-normal"
 							/>
 						}
 					>

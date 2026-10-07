@@ -24,6 +24,7 @@ import {
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Spinner } from '@/components/ui/spinner';
 import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
+import { berlinDayKey } from '@/core/utils/berlin-day';
 import { formatShortDateRange } from '@/core/utils/time';
 import type { AbsenceInput } from '@/features/chores/absence';
 import type { ChoreMember } from '@/features/chores/components/chore-types';
@@ -92,6 +93,22 @@ export function AbsencePanel({
 	useEffect(() => {
 		if (openForm || start || end || reason) setFormOpen(true);
 	}, [openForm, start, end, reason]);
+	// Ein offenes, leeres Formular startet mit heute: sonst zeigt WebKit ein Datum an, der Knopf bleibt aber tot.
+	useEffect(() => {
+		if (!formOpen || start || end) return;
+		const today = berlinDayKey(new Date());
+		onStartChange(today);
+		onEndChange(today);
+	}, [formOpen, start, end, onStartChange, onEndChange]);
+	function toggleForm() {
+		if (formOpen) {
+			// Sonst öffnet der Effekt oben das Formular sofort wieder.
+			onStartChange('');
+			onEndChange('');
+			onReasonChange('');
+		}
+		setFormOpen(!formOpen);
+	}
 
 	return (
 		<Card id="absences-panel" className={cn('scroll-mt-28', openForm && 'ring-2 ring-ring')}>
@@ -108,7 +125,7 @@ export function AbsencePanel({
 					<Button
 						variant="outline"
 						size="sm"
-						onClick={() => setFormOpen((open) => !open)}
+						onClick={toggleForm}
 						aria-label={formOpen ? 'Abwesenheitsformular schließen' : 'Abwesenheit eintragen'}
 						aria-expanded={formOpen}
 						aria-controls="absence-form"
@@ -131,6 +148,7 @@ export function AbsencePanel({
 								event.preventDefault();
 								onAdd();
 							}}
+							noValidate
 							className={cn(
 								'flex flex-col gap-3 pt-3',
 								// Platz für die Daumen-Leiste nur, wenn keine Liste mehr folgt.
