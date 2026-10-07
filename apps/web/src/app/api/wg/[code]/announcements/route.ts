@@ -255,6 +255,30 @@ export const POST = withWgRoute('announcements POST', async (req, { code }) => {
 					if (chore) {
 						safeSource = 'chore_swap';
 						safeSourcePath = choreSwapSourcePath(chore.id);
+						// One open swap request per chore: a repeated request (other member,
+						// second tab, offline retry) returns the existing post instead of a duplicate.
+						const [existing] = await tx
+							.select()
+							.from(announcements)
+							.where(
+								and(
+									eq(announcements.wgId, wg.id),
+									eq(announcements.source, 'chore_swap'),
+									eq(announcements.sourcePath, safeSourcePath),
+									eq(announcements.status, 'open'),
+								),
+							)
+							.limit(1);
+						if (existing) {
+							return {
+								response: {
+									status: 200,
+									body: { announcement: existing, warning: null, duplicate: true },
+									entityId: existing.id,
+								},
+								effect: null,
+							};
+						}
 					}
 				}
 

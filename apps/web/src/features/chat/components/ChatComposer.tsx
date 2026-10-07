@@ -288,7 +288,7 @@ export function ChatComposer({
 							type="button"
 							variant="default"
 							size="icon-sm"
-							onPointerDown={(event) => event.preventDefault()}
+							onMouseDown={(event) => event.preventDefault()}
 							onClick={() => void submit()}
 							disabled={pending || !draftHydrated || draft.trim().length === 0}
 							aria-label="Nachricht senden"

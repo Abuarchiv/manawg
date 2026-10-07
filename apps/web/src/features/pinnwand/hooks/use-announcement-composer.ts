@@ -1,3 +1,4 @@
+import { useToast } from '@/components/ui/Toast';
 import { apiFetch } from '@/core/infra/api-client';
 import { notificationWarningMessage } from '@/core/notifications/notification-warning';
 import { buildDraftKey, readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
@@ -46,6 +47,7 @@ export function useAnnouncementComposer(
 	scrollToAnnouncement: (id: string, behavior?: ScrollBehavior) => void,
 ) {
 	const { wg, identity, encodedShareCode, setNotice, load, refreshCount } = ctx;
+	const toast = useToast();
 	const searchParams = useSearchParams();
 	const prefillContent = searchParams.get('content');
 	const prefillKind = kindFromParam(searchParams.get('kind'));
@@ -259,6 +261,7 @@ export function useAnnouncementComposer(
 			setComposerOpen(false);
 			const warningMessage = notificationWarningMessage(res.data.warning);
 			if (warningMessage) setNotice(warningMessage);
+			else toast.success('Beitrag veröffentlicht.');
 			void load().then(() => scrollToAnnouncement(createdAnnouncementId));
 		} finally {
 			submittingRef.current = false;
