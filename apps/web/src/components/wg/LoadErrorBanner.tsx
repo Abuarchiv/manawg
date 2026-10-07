@@ -8,7 +8,7 @@ import { RotateCw } from 'lucide-react';
 interface LoadErrorBannerProps {
 	message: string;
 	onRetry: () => void;
-	/** Disables the button and spins the icon while a reload is in flight. */
+	/** Marks the button aria-disabled and spins the icon while a reload is in flight. */
 	busy: boolean;
 	/** e.g. "Liste erneut laden". */
 	retryLabel: string;
@@ -33,9 +33,10 @@ export function LoadErrorBanner({ message, onRetry, busy, retryLabel }: LoadErro
 				variant="outline"
 				size="sm"
 				type="button"
-				onClick={onRetry}
-				disabled={busy}
-				className="max-w-full shrink-0 whitespace-normal"
+				// aria-disabled instead of disabled: a disabled button drops keyboard focus mid-retry.
+				onClick={busy ? undefined : onRetry}
+				aria-disabled={busy}
+				className="max-w-full shrink-0 whitespace-normal aria-disabled:pointer-events-none aria-disabled:opacity-50"
 			>
 				{busy ? <Spinner aria-hidden /> : <RotateCw data-icon="inline-start" aria-hidden />}
 				{busy ? 'Lädt…' : retryLabel}

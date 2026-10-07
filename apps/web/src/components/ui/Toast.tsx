@@ -90,20 +90,22 @@ function ToastItem({ toast }: { toast: Toast }) {
 			variant={toast.variant === 'error' ? 'destructive' : 'default'}
 			role={toast.variant === 'error' ? 'alert' : 'status'}
 			aria-live={toast.variant === 'error' ? undefined : 'polite'}
-			className="flex items-center gap-3"
+			className="flex flex-wrap items-center gap-x-3 gap-y-1"
 			onMouseEnter={clearTimer}
 			onMouseLeave={scheduleTimer}
 			onFocus={clearTimer}
 			onBlur={scheduleTimer}
 		>
 			<Icon className="shrink-0" aria-hidden="true" />
-			<AlertDescription className="min-w-0 flex-1 wrap-anywhere">{toast.message}</AlertDescription>
+			<AlertDescription className="min-w-[10ch] flex-1 basis-[10ch] wrap-break-word">
+				{toast.message}
+			</AlertDescription>
 			<Button
 				type="button"
 				onClick={() => removeToast(toast.id)}
 				variant="ghost"
 				size="icon"
-				className="size-11"
+				className="ml-auto size-11"
 				aria-label="Benachrichtigung schließen"
 			>
 				<X aria-hidden="true" />

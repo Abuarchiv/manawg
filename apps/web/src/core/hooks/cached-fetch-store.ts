@@ -116,9 +116,10 @@ function startFetch<T>(key: string, url: string, options: CachedFetchOptions): P
 	const previous = readCachedSnapshot<T>(key);
 	const requestVersion = previous.version;
 	if (previous.data === undefined || pendingUpdates.has(key)) rebasingFetches.add(key);
+	// The previous error stays until the response replaces it, so a retry banner keeps its button
+	// (and focus) and can show a busy state instead of vanishing and reappearing.
 	publish(key, {
 		...previous,
-		error: undefined,
 		isLoading: previous.data === undefined,
 		isFetching: true,
 	});
@@ -149,7 +150,7 @@ function startFetch<T>(key: string, url: string, options: CachedFetchOptions): P
 				return;
 			}
 			if (result.ok && current.version !== requestVersion) {
-				publish(key, { ...current, isLoading: false, isFetching: false });
+				publish(key, { ...current, error: undefined, isLoading: false, isFetching: false });
 				return;
 			}
 			if (result.ok) {

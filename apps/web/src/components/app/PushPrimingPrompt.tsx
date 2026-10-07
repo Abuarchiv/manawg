@@ -1,5 +1,6 @@
 'use client';
 
+import { useToast } from '@/components/ui/Toast';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import {
@@ -44,6 +45,7 @@ export function PushPrimingPrompt({
 	const [busy, setBusy] = useState(false);
 	const [activationError, setActivationError] = useState<string | null>(null);
 	const cardRef = useRef<HTMLDivElement>(null);
+	const toast = useToast();
 
 	// The card sits at the page end: the error line makes it taller, so bring it fully back
 	// into view (above the bottom navigation, see scroll-mb on the card).
@@ -121,9 +123,11 @@ export function PushPrimingPrompt({
 		};
 	}, [code, memberId]);
 
-	function dismiss(): void {
+	// The focused button leaves the DOM with the card; park focus on the page instead of <body>.
+	function hideCard(): void {
 		rememberDismissed();
 		setVisible(false);
+		document.getElementById('main')?.focus({ preventScroll: true });
 	}
 
 	async function enable(): Promise<void> {
@@ -132,8 +136,8 @@ export function PushPrimingPrompt({
 		setActivationError(null);
 		try {
 			await subscribeWebPush(code, memberId);
-			rememberDismissed();
-			setVisible(false);
+			hideCard();
+			toast.success('Benachrichtigungen sind aktiv.');
 		} catch {
 			setActivationError(
 				'Aktivierung fehlgeschlagen. Prüfe die Browser-Einstellungen und versuche es erneut.',
@@ -179,7 +183,7 @@ export function PushPrimingPrompt({
 					variant="ghost"
 					size="icon"
 					type="button"
-					onClick={dismiss}
+					onClick={hideCard}
 					aria-label="Hinweis schließen"
 					className="text-muted-foreground"
 				>

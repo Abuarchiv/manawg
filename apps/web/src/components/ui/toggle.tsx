@@ -20,6 +20,9 @@ const toggleVariants = cva(
 				lg: 'min-h-8 min-w-8 h-auto px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2',
 			},
 		},
+		// After the size variants so min-w-fit wins over their min-w-8; a segment never shrinks
+		// below its label, the group wraps instead (200 % text).
+		compoundVariants: [{ variant: 'segmented', class: 'min-w-fit' }],
 		defaultVariants: {
 			variant: 'default',
 			size: 'default',

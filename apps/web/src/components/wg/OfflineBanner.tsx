@@ -1,5 +1,6 @@
 'use client';
 
+import { useToast } from '@/components/ui/Toast';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { useWg } from '@/components/wg/WgContextProvider';
@@ -15,11 +16,9 @@ import {
 	formatQueuedOfflineActions,
 	getOfflineSyncFailureMessage,
 } from '@/core/offline/offline-copy';
-import { AlertCircle, CheckCircle2, WifiOff } from 'lucide-react';
+import { AlertCircle, WifiOff } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
-
-const SUCCESS_NOTICE_MS = 6000;
 
 function isScopedSyncEventForOtherWg(event: Event, shareCode: string): boolean {
 	if (!(event instanceof CustomEvent)) return false;
@@ -35,10 +34,9 @@ export function OfflineBanner() {
 	const online = useOnlineStatus();
 	const [queueCount, setQueueCount] = useState(0);
 	const [syncing, setSyncing] = useState(false);
-	const [notice, setNotice] = useState<{
-		type: 'success' | 'warning';
-		text: string;
-	} | null>(null);
+	// Only a warning stays in the bar; a finished sync is a toast so the page below never shifts.
+	const [notice, setNotice] = useState<string | null>(null);
+	const toast = useToast();
 	const syncingRef = useRef(false);
 
 	// The bar wraps instead of truncating, so its real height (small phones, large text) feeds
@@ -71,10 +69,7 @@ export function OfflineBanner() {
 			const synced = getSyncedCountForWg(event, wg.shareCode);
 			if (synced > 0) {
 				const remaining = countOfflineActions(wg.shareCode, { memberId: identity.memberId });
-				setNotice({
-					type: 'success',
-					text: formatManualOfflineSyncResult(synced, remaining),
-				});
+				toast.success(formatManualOfflineSyncResult(synced, remaining));
 			}
 			update({ clearNotice: synced <= 0 });
 		};
@@ -87,14 +82,7 @@ export function OfflineBanner() {
 			window.removeEventListener('manawg:offline-queue', updateFromEvent);
 			window.removeEventListener('manawg:offline-synced', onSynced);
 		};
-	}, [identity, wg.shareCode]);
-
-	// A finished sync is only news for a moment; keep the sticky bar from lingering.
-	useEffect(() => {
-		if (notice?.type !== 'success' || queueCount > 0) return;
-		const timer = window.setTimeout(() => setNotice(null), SUCCESS_NOTICE_MS);
-		return () => window.clearTimeout(timer);
-	}, [notice, queueCount]);
+	}, [identity, wg.shareCode, toast]);
 
 	async function retry(): Promise<void> {
 		if (syncingRef.current) return;
@@ -109,22 +97,13 @@ export function OfflineBanner() {
 			const after = countOfflineActions(wg.shareCode, { memberId: identity.memberId });
 			setQueueCount(after);
 			if (synced > 0) {
-				setNotice({
-					type: 'success',
-					text: formatManualOfflineSyncResult(synced, after),
-				});
+				toast.success(formatManualOfflineSyncResult(synced, after));
 			} else if (before > 0 && after > 0) {
-				setNotice({
-					type: 'warning',
-					text: 'Noch nicht gesendet. Die Aktionen bleiben gespeichert.',
-				});
+				setNotice('Noch nicht gesendet. Die Aktionen bleiben gespeichert.');
 			}
 		} catch {
 			setQueueCount(countOfflineActions(wg.shareCode, { memberId: identity.memberId }));
-			setNotice({
-				type: 'warning',
-				text: getOfflineSyncFailureMessage(),
-			});
+			setNotice(getOfflineSyncFailureMessage());
 		} finally {
 			syncingRef.current = false;
 			setSyncing(false);
@@ -161,23 +140,7 @@ export function OfflineBanner() {
 		);
 	}
 
-	if (queueCount === 0 && !notice) return null;
-
-	if (notice && queueCount === 0) {
-		return (
-			<output
-				ref={bannerRef}
-				data-offline-banner
-				className="bg-card text-foreground border-border sticky top-0 z-20 grid min-h-[calc(44px+1rem+1px)] grid-cols-[minmax(0,1fr)] content-center border-b px-4 py-2 text-meta font-medium"
-				aria-live="polite"
-			>
-				<div className="mx-auto flex w-full max-w-2xl items-center gap-2">
-					<CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden />
-					{notice.text}
-				</div>
-			</output>
-		);
-	}
+	if (queueCount === 0) return null;
 
 	return (
 		<output
@@ -191,7 +154,7 @@ export function OfflineBanner() {
 					href={settingsDataHref}
 					className="flex min-h-[44px] min-w-0 flex-1 items-center leading-snug text-pretty"
 				>
-					{notice ? notice.text : formatQueuedOfflineActions(queueCount)}
+					{notice ?? formatQueuedOfflineActions(queueCount)}
 				</Link>
 				<Button
 					type="button"
@@ -203,11 +166,7 @@ export function OfflineBanner() {
 					}
 					className="min-h-[44px] shrink-0 text-meta"
 				>
-					{syncing ? (
-						<Spinner aria-hidden />
-					) : notice?.type === 'warning' ? (
-						<AlertCircle aria-hidden />
-					) : null}
+					{syncing ? <Spinner aria-hidden /> : notice ? <AlertCircle aria-hidden /> : null}
 					Jetzt senden
 				</Button>
 			</div>
