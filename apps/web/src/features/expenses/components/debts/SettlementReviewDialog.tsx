@@ -29,6 +29,7 @@ export function SettlementReviewDialog({
 	shareCode,
 	settlement,
 	finalFocusRef,
+	currentMemberId,
 }: {
 	debt: SimplifiedDebt;
 	expenses: readonly Expense[];
@@ -36,6 +37,7 @@ export function SettlementReviewDialog({
 	settlement: DebtSettlement;
 	/** Der Ausgleichen-Button: Der Dialog hat keinen Trigger, sonst fiele der Fokus auf body. */
 	finalFocusRef: RefObject<HTMLElement | null>;
+	currentMemberId: string;
 }) {
 	const { reviewOpen, setReviewOpen, settling, preview, error, settle } = settlement;
 	return (
@@ -44,9 +46,10 @@ export function SettlementReviewDialog({
 				<AlertDialogHeader className="place-items-start text-left">
 					<AlertDialogTitle>Bereits erfolgte Zahlung bestätigen</AlertDialogTitle>
 					<AlertDialogDescription>
-						Nur bestätigen, wenn {debt.fromName}{' '}
-						{formatEuroCents(preview?.settleableCents ?? 0, debt.currency)} bereits an {debt.toName}{' '}
-						gezahlt hat. Es wird kein Geld überwiesen.
+						Nur bestätigen, wenn {debt.fromId === currentMemberId ? 'du' : debt.fromName}{' '}
+						{formatEuroCents(preview?.settleableCents ?? 0, debt.currency)} bereits an{' '}
+						{debt.toId === currentMemberId ? 'dich' : debt.toName} gezahlt{' '}
+						{debt.fromId === currentMemberId ? 'hast' : 'hat'}. Es wird kein Geld überwiesen.
 					</AlertDialogDescription>
 				</AlertDialogHeader>
 				{(preview?.splits.length ?? 0) > 0 && (
@@ -76,7 +79,7 @@ export function SettlementReviewDialog({
 												<span>Ausgabe</span>
 											)}
 										</ItemTitle>
-										<ItemDescription>
+										<ItemDescription className="line-clamp-none [overflow-wrap:break-word]">
 											{expense ? formatShortDate(expense.occurredAt) : 'Aktueller offener Anteil'}
 										</ItemDescription>
 									</ItemContent>
@@ -120,7 +123,7 @@ export function SettlementReviewDialog({
 					</AlertDialogCancel>
 					{preview && preview.settleableCents > 0 && (
 						<Button
-							className="h-auto whitespace-normal"
+							className="h-auto min-h-11 whitespace-normal py-2 leading-snug"
 							disabled={settling || !preview || preview.settleableCents <= 0}
 							onClick={() => void settle()}
 						>

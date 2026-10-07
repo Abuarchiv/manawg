@@ -193,6 +193,7 @@ export function SettlementDebtRow({
 				shareCode={shareCode}
 				settlement={settlement}
 				finalFocusRef={settleButtonRef}
+				currentMemberId={currentMemberId}
 			/>
 		</Item>
 	);

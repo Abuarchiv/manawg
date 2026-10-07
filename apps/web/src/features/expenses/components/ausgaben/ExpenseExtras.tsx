@@ -111,13 +111,6 @@ export function ExpenseExtras({
 				>
 					<Repeat2 data-icon="inline-start" />
 					<span className="min-w-0 flex-1 text-left">Fixkosten-Vorlage</span>
-					{recurringOpen && (
-						<Badge variant="secondary" className="shrink-0">
-							{recurringIntervalMonths === 1
-								? 'Monatlich'
-								: `Alle ${recurringIntervalMonths} Monate`}
-						</Badge>
-					)}
 					<ChevronDown
 						data-icon="inline-end"
 						className="shrink-0 transition-transform group-aria-expanded/button:rotate-180"
@@ -132,7 +125,7 @@ export function ExpenseExtras({
 								value={recurringIntervalMonths}
 								onChange={(event) => setRecurringIntervalMonths(Number(event.target.value))}
 								disabled={formSaving}
-								className="w-full [&_select]:h-11 [&_select]:text-base"
+								className="w-full [&_select]:h-auto [&_select]:py-[0.5625rem] [&_select]:text-base"
 							>
 								{RECURRING_INTERVAL_OPTIONS.map(({ value, label }) => (
 									<NativeSelectOption key={value} value={value}>
