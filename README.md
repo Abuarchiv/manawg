@@ -15,11 +15,11 @@ Further reading: [architecture](docs/architecture.md), [release checklist](docs/
 apps/web/
   src/app/        routes only: pages, layouts, API handlers (thin, call core/features)
   src/core/       domain-neutral building blocks: db, auth, guards, http, offline, notifications, infra
-                  core/reads/ is the cross-feature read/composition layer (dashboard, activity, export)
+  src/composition/ cross-feature reads (dashboard, activity, export)
   src/features/   vertical slices (chat, chores, events, expenses, inventory, pinnwand, shopping)
                   a feature may import core/, shared/ and itself, never another feature
   src/components/ reusable UI: ui/ (shadcn), animate-ui/ (motion variants), app/ (shell, PWA, theme), wg/ (WG-wide)
-  src/shared/     framework-light utilities (lib/, fonts, css): theme, brand, analytics, identity
+  src/shared/     framework-light utilities (lib/, fonts, css): theme, brand, analytics
   drizzle/        SQL migrations (`pnpm --filter @manawg/web db:generate` / `db:migrate`)
   e2e/            Playwright specs (fixture mode needs no database)
   tests/          node:test suites that are not colocated with a module

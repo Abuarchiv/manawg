@@ -6,7 +6,7 @@ import { removeDraft } from '@/core/offline/drafts';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import posthog from '@/shared/lib/analytics';
-import { rememberWg } from '@/shared/lib/identity';
+import { rememberWg } from '@/core/auth/identity';
 import { useRouter } from 'next/navigation';
 import { useRef } from 'react';
 import {

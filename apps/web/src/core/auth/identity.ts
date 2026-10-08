@@ -2,13 +2,13 @@
 
 import { safeLocalStorage } from '@/core/utils/browser';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
-import { z } from 'zod';
-import { MEMBER_NAME_MAX_LENGTH, WG_NAME_MAX_LENGTH } from './limits';
+import { MEMBER_NAME_MAX_LENGTH, WG_NAME_MAX_LENGTH } from '@/shared/lib/limits';
 import {
 	EXPECTED_MEMBER_ID_HEADER,
 	LEGACY_CLAIM_MEMBER_ID_HEADER,
 	LEGACY_CLAIM_TOKEN_HEADER,
-} from './member-header';
+} from '@/shared/lib/member-header';
+import { z } from 'zod';
 
 const STORAGE_PREFIX = 'manawg_identity:';
 const KNOWN_WGS_KEY = 'manawg_known_wgs';
@@ -129,9 +129,9 @@ export function getLegacyIdentityCandidates(): LegacyIdentityCandidate[] {
 }
 
 /**
- * True, wenn auf diesem Gerät eine Identität liegt, die zum angemeldeten Konto passt
- * (oder aus der Zeit vor der Konto-Bindung stammt). Die Offline-Seite bietet dann die
- * gemerkten WGs an, auch ohne wartende Aktionen.
+ * True when this device holds an identity that matches the signed-in account (or predates
+ * account binding). The offline page then offers the remembered WGs, even without queued
+ * actions.
  */
 export function hasLocalIdentityFor(authUserId: string | null): boolean {
 	const ls = safeLocalStorage();

@@ -7,7 +7,7 @@ import { DangerZoneSection } from '@/components/wg/einstellungen/DangerZoneSecti
 import { MembersSection } from '@/components/wg/einstellungen/MembersSection';
 import { Section } from '@/components/wg/einstellungen/Section';
 import { ShareAccessSection } from '@/components/wg/einstellungen/ShareAccessSection';
-import type { StoredIdentity } from '@/shared/lib/identity';
+import type { StoredIdentity } from '@/core/auth/identity';
 import { useEffect, useState } from 'react';
 
 interface AccessTabProps {

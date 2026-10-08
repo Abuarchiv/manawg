@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item';
-import type { KnownWg } from '@/shared/lib/identity';
+import type { KnownWg } from '@/core/auth/identity';
 import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { type OfflineStatus, formatWgQueuedActionCount, wgHref } from './offline-page-helpers';

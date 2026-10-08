@@ -1,7 +1,7 @@
 'use client';
 
 import { MEMBERSHIP_LOST_EVENT } from '@/core/infra/api-client';
-import { type StoredIdentity, clearIdentity } from '@/shared/lib/identity';
+import { type StoredIdentity, clearIdentity } from '@/core/auth/identity';
 import { type Dispatch, type RefObject, type SetStateAction, useEffect } from 'react';
 
 /**

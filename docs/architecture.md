@@ -13,7 +13,7 @@ browser
        (body validation)              before auth, so invalid_body cannot leak membership
        requireWgMember                Supabase user -> WG by share code -> active wg_members row
        withIdempotentWrite            mutations carrying an Idempotency-Key (and keyless writes)
-       features/<x> / core/reads      domain logic
+       features/<x> / composition    domain logic
        core/db (Drizzle, pg Pool)     Postgres
 ```
 
@@ -54,19 +54,18 @@ under `app/wg/**`; WG APIs belong under `app/api/wg/**`.
 | --- | --- | --- |
 | `app/` | Pages, layouts, route handlers. Thin. | everything below |
 | `features/<x>/` | Vertical slices: `chat`, `chores`, `events`, `expenses`, `inventory`, `pinnwand`, `shopping` (logic, hooks, components) | `core/`, `shared/`, own files |
-| `core/reads/` | Cross-feature reads/composition: dashboard data and insights, activity feed, export | `core/`, several `features/*` (chores, expenses, events, pinnwand) |
-| `core/` (rest) | Domain-neutral blocks: `db`, `auth`, `guards`, `http`, `hooks`, `offline`, `sync`, `notifications`, `infra`, `utils`, `validators` | `core/`, `shared/` (exception: `core/activity-feed.ts` imports chat constants) |
+| `composition/` | Cross-feature reads: dashboard data and insights, activity, export | `features/`, `components/`, `core/`, `shared/` |
+| `core/` | Domain-neutral blocks: `db`, `auth`, `guards`, `http`, `hooks`, `offline`, `sync`, `notifications`, `infra`, `utils`, `validators` | `core/`, `shared/` |
 | `components/` | Shared UI: `ui/` shadcn primitives (plus `LogoMark`, `Toast`, `ConfirmDialog`), `animate-ui/`, `app/` app-wide composites (shell, PWA install/push prompts, theme), `wg/` WG-wide composites | `components/`, `core/`, `shared/` |
-| `shared/` | Framework-light utilities (`lib/`, fonts, css): theme, analytics, identity, header names | `shared/` |
+| `shared/` | Framework-light utilities (`lib/`, fonts, css): theme, analytics, header names | `shared/` |
 
 Rules:
 
-- A feature never imports another feature. `scripts/check-feature-boundaries.mjs` resolves
-  aliased and relative specifiers and fails CI on a cross-feature import.
+- A feature never imports another feature. `scripts/check-architecture.mjs` resolves aliased
+  and relative specifiers and fails lint and CI on any import against the matrix above.
 - Cross-feature side effects go through `core/` (e.g. `core/activity-feed.ts` posts system
   notices to the pinnwand feed; `core/audit.ts` records audit events).
-- Cross-feature reads go through `core/reads/`, which the boundary script does not check
-  (it only scans `features/`).
+- Cross-feature reads go through `composition/`.
 
 ## Identity model
 
@@ -340,7 +339,7 @@ Route folders under `app/wg/[code]/`, with the code names behind them.
 | Vorräte / Inventar (`vorraete`) | `features/inventory` | `inventory` | `wg_inventory_items`, `wg_inventory_log` |
 | Kalender (`kalender`) | events (`features/events`) | `events`, `calendar-subscription` | `wg_events`, `calendar_subscriptions` |
 | Chat (`chat`) | `features/chat` | `chat` | `wg_chat_messages`, `wg_chat_reactions`, `wg_chat_reads`, `wg_chat_mentions` |
-| Aktivität (`aktivitaet`) | activity (`core/reads/activity.ts`) | `activity` | `audit_events` |
+| Aktivität (`aktivitaet`) | activity (`composition/activity.ts`) | `activity` | `audit_events` |
 | Einstellungen (`einstellungen`) | settings | `notifications`, `export`, ... | |
 
 "Erinnerungen" for chores and events are push notifications sent by the `chore-reminders` and

@@ -7,7 +7,7 @@ import {
 	getIdentity,
 	rememberWg,
 	setIdentity,
-} from '@/shared/lib/identity';
+} from '@/core/auth/identity';
 import {
 	type Dispatch,
 	type RefObject,

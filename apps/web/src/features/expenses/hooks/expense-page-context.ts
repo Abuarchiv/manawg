@@ -5,7 +5,7 @@ import type {
 	RecurringExpense,
 } from '@/features/expenses/components/ausgaben/expense-types';
 import type { useExpenseForm } from '@/features/expenses/components/ausgaben/useExpenseForm';
-import type { StoredIdentity } from '@/shared/lib/identity';
+import type { StoredIdentity } from '@/core/auth/identity';
 
 export interface ActionNotifier {
 	error: (message: string | null) => void;

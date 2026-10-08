@@ -1,5 +1,5 @@
 import { apiFetch } from '@/core/infra/api-client';
-import { getIdentity } from '@/shared/lib/identity';
+import { getIdentity } from '@/core/auth/identity';
 import { isPendingImageToken, removePendingImage, uploadPendingImageToken } from './offline-images';
 import {
 	type OfflineAction,

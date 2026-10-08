@@ -11,8 +11,8 @@ import { useWg } from '@/components/wg/WgContextProvider';
 import { Section } from '@/components/wg/einstellungen/Section';
 import { accessErrorMessage } from '@/components/wg/einstellungen/settings-errors';
 import { apiFetch } from '@/core/infra/api-client';
-import type { StoredIdentity } from '@/shared/lib/identity';
-import { forgetWg } from '@/shared/lib/identity';
+import type { StoredIdentity } from '@/core/auth/identity';
+import { forgetWg } from '@/core/auth/identity';
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 

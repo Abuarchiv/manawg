@@ -4,7 +4,7 @@ import { REQUEST_TIMEOUT_MS } from '@/core/infra/api-client';
 import { removeDraft } from '@/core/offline/drafts';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import posthog from '@/shared/lib/analytics';
-import { rememberWg } from '@/shared/lib/identity';
+import { rememberWg } from '@/core/auth/identity';
 import { useRef, useState } from 'react';
 import {
 	type CreateResponse,

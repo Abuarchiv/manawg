@@ -4,7 +4,7 @@ import { subscribeOnline } from '@/core/hooks/use-online-status';
 import { apiFetch } from '@/core/infra/api-client';
 import { captureException } from '@/core/infra/capture-client';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
-import { type StoredIdentity, clearIdentity } from '@/shared/lib/identity';
+import { type StoredIdentity, clearIdentity } from '@/core/auth/identity';
 import {
 	type Dispatch,
 	type RefObject,

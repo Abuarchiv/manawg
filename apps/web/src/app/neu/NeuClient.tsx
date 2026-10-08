@@ -11,7 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { safeNextPath } from '@/core/auth/next-path';
 import { normalizeShareCode } from '@/core/utils/share-code';
-import { getIdentity } from '@/shared/lib/identity';
+import { getIdentity } from '@/core/auth/identity';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { ChooseStep } from './ChooseStep';

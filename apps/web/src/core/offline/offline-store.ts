@@ -1,6 +1,6 @@
 import { safeLocalStorage } from '@/core/utils/browser';
 import { isRecord } from '@/core/utils/is-record';
-import { getIdentity } from '@/shared/lib/identity';
+import { getIdentity } from '@/core/auth/identity';
 import { isOfflineAction } from './offline-action-guard';
 import {
 	type OfflineAction,

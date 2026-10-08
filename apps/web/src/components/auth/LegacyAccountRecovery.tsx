@@ -11,7 +11,7 @@ import {
 	clearIdentity,
 	getLegacyIdentityCandidates,
 	legacyClaimHeaders,
-} from '@/shared/lib/identity';
+} from '@/core/auth/identity';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useRef, useState } from 'react';
 

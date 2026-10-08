@@ -10,7 +10,7 @@ import {
 	useOnlineStatus,
 } from '@/core/hooks/use-online-status';
 import { cn } from '@/shared/lib/cn';
-import type { StoredIdentity } from '@/shared/lib/identity';
+import type { StoredIdentity } from '@/core/auth/identity';
 import {
 	createContext,
 	useCallback,

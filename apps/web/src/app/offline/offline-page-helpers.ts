@@ -1,6 +1,6 @@
 import { type OfflineAction, getOfflineActionSummary } from '@/core/offline/offline-queue';
 import { parseTimestamp } from '@/core/utils/time';
-import { type KnownWg, getKnownWgs } from '@/shared/lib/identity';
+import { type KnownWg, getKnownWgs } from '@/core/auth/identity';
 
 export function moduleLabel(action: OfflineAction): string {
 	return getOfflineActionSummary(action).title;

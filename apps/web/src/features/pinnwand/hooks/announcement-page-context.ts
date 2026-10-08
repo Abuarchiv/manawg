@@ -6,7 +6,7 @@ import type {
 	AnnouncementComment,
 	ReactionKey,
 } from '@/features/pinnwand/components/announcement-types';
-import type { StoredIdentity } from '@/shared/lib/identity';
+import type { StoredIdentity } from '@/core/auth/identity';
 import type { MutableRefObject } from 'react';
 
 /** What the Pinnwand mutation hooks share: who acts, where results go, and the loaded board. */

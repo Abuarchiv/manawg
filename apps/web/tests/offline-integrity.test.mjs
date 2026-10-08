@@ -133,7 +133,7 @@ function makeQueueModule({
 			'@/core/utils/is-record': loadTs('src/core/utils/is-record.ts', {}),
 			'@/core/infra/api-client': { apiFetch },
 			'@/core/utils/browser': { safeLocalStorage: () => window.localStorage },
-			'@/shared/lib/identity': { getIdentity: identity },
+			'@/core/auth/identity': { getIdentity: identity },
 			'./offline-images': {
 				isPendingImageToken: (value) =>
 					typeof value === 'string' && value.startsWith('manawg-pending-image:'),
@@ -808,7 +808,7 @@ test('resolved upload URL is persisted to the queue before its IndexedDB blob is
 					return { ok: false, status: 0, error: 'network', signal: init.signal };
 				},
 			},
-			'@/shared/lib/identity': { getIdentity: () => ({ memberId: 'member-a' }) },
+			'@/core/auth/identity': { getIdentity: () => ({ memberId: 'member-a' }) },
 			'./offline-images': images,
 			'./replay-retention': loadTs('src/core/offline/replay-retention.ts', {}),
 			'./offline-queue': {

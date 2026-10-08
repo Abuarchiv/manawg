@@ -13,8 +13,8 @@ import {
 	readResponseErrorCode,
 } from '@/components/wg/einstellungen/settings-errors';
 import { cn } from '@/shared/lib/cn';
-import type { StoredIdentity } from '@/shared/lib/identity';
-import { memberContextHeader } from '@/shared/lib/identity';
+import type { StoredIdentity } from '@/core/auth/identity';
+import { memberContextHeader } from '@/core/auth/identity';
 import { Download, Upload } from 'lucide-react';
 import Link from 'next/link';
 import { useRef, useState } from 'react';

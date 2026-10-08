@@ -7,7 +7,7 @@ import {
 	getOfflineActionRisk,
 	getOfflineActionSummary,
 } from '@/core/offline/offline-queue';
-import type { KnownWg } from '@/shared/lib/identity';
+import type { KnownWg } from '@/core/auth/identity';
 import Link from 'next/link';
 import {
 	type OfflineStatus,

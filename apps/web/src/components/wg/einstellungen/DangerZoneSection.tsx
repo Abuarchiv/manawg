@@ -24,8 +24,8 @@ import {
 	deleteWgErrorMessage,
 	readResponseErrorCode,
 } from '@/components/wg/einstellungen/settings-errors';
-import type { StoredIdentity } from '@/shared/lib/identity';
-import { clearIdentity, forgetWg, memberContextHeader } from '@/shared/lib/identity';
+import type { StoredIdentity } from '@/core/auth/identity';
+import { clearIdentity, forgetWg, memberContextHeader } from '@/core/auth/identity';
 import { LogOut, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';

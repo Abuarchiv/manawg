@@ -17,7 +17,7 @@ import {
 	getOfflineSyncFailureMessage,
 } from '@/core/offline/offline-copy';
 import type { OfflineAction } from '@/core/offline/offline-queue';
-import { type KnownWg, getKnownWgs, hasLocalIdentityFor } from '@/shared/lib/identity';
+import { type KnownWg, getKnownWgs, hasLocalIdentityFor } from '@/core/auth/identity';
 import { CloudOff, RefreshCw, RotateCw, Wifi } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
