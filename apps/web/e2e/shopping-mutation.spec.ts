@@ -12,7 +12,7 @@ import {
 	shoppingCreateCodec,
 	shoppingCreateHttpResponse,
 	withShoppingCreatePostCommitFallback,
-} from '../src/features/shopping/shopping-mutation';
+} from '../src/features/shopping/server/shopping-mutation';
 import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './support/helpers';
 
 test.describe('shopping input', () => {
