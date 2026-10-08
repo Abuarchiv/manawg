@@ -8,7 +8,6 @@ const state = {
 	fetchOptions: null as RequestInit | null,
 };
 
-mock.module('server-only', { namedExports: {} });
 mock.module('@supabase/supabase-js', {
 	namedExports: {
 		createClient: (

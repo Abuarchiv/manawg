@@ -1,9 +1,7 @@
 import assert from 'node:assert/strict';
-import { after, before, mock, test } from 'node:test';
+import { after, before, test } from 'node:test';
 import { isAuthRetryableFetchError } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
-
-mock.module('server-only', { namedExports: {} });
 
 const originalFetch = globalThis.fetch;
 

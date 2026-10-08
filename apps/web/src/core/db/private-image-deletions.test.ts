@@ -30,7 +30,6 @@ const testDb = new Proxy({} as TestDb, {
 const routeContext = { wgId, memberId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' };
 const lockProbe: { onLock?: (() => void) | undefined } = {};
 
-mock.module('server-only', { namedExports: {} });
 mock.module('@/core/db', {
 	namedExports: {
 		...schema,

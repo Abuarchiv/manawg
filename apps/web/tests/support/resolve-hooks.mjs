@@ -16,6 +16,11 @@ function findFile(basePath) {
 }
 
 export async function resolve(specifier, context, nextResolve) {
+	// `server-only` throws when imported outside a server bundle; unit tests load server modules
+	// directly, so it resolves to an empty module.
+	if (specifier === 'server-only') {
+		return { url: 'data:text/javascript,export {}', format: 'module', shortCircuit: true };
+	}
 	let target = null;
 	if (specifier.startsWith('@/')) {
 		target = new URL(specifier.slice(2), SRC);
