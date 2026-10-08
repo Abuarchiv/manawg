@@ -1,54 +1,25 @@
-const assert = require('node:assert/strict');
-const Module = require('node:module');
-const path = require('node:path');
-const test = require('node:test');
-const ts = require('typescript');
-
-const appRoot = path.resolve(__dirname, '..');
-const srcRoot = path.join(appRoot, 'src');
-const resolveFilename = Module._resolveFilename;
-
-Module._resolveFilename = function resolveEventsModule(request, parent, isMain, options) {
-	const resolvedRequest = request.startsWith('@/') ? path.join(srcRoot, request.slice(2)) : request;
-	return resolveFilename.call(this, resolvedRequest, parent, isMain, options);
-};
-
-for (const extension of ['.ts', '.tsx']) {
-	Module._extensions[extension] = (loadedModule, filename) => {
-		const source = require('node:fs').readFileSync(filename, 'utf8');
-		const transpiled = ts.transpileModule(source, {
-			compilerOptions: {
-				esModuleInterop: true,
-				jsx: ts.JsxEmit.ReactJSX,
-				module: ts.ModuleKind.CommonJS,
-				target: ts.ScriptTarget.ES2022,
-			},
-			fileName: filename,
-		});
-		loadedModule._compile(transpiled.outputText, filename);
-	};
-}
-
-const { PgDialect } = require('drizzle-orm/pg-core');
-const {
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { PgDialect } from 'drizzle-orm/pg-core';
+import { startOfBerlinDay } from '../src/core/utils/berlin-day.ts';
+import {
+	EVENT_REMINDER_BUDGET,
+	collectReminderOccurrences,
+	processReminderBatches,
+	reminderCopyForOccurrence,
+	startsInReminderWindow,
+} from '../src/features/events/event-reminder-dispatch.ts';
+import {
+	buildEventsWindowFilter,
+	computeTomorrowUtcWindow,
+	withEventWindowCandidates,
+} from '../src/features/events/event-reminder-window.ts';
+import {
 	EVENTS_LIST_LIMIT,
 	eventOverlapsCalendarDay,
 	expandRecurrence,
 	parseRecurrenceRule,
-} = require('../src/features/events/events.ts');
-const {
-	buildEventsWindowFilter,
-	withEventWindowCandidates,
-} = require('../src/features/events/event-reminder-window.ts');
-const {
-	collectReminderOccurrences,
-	EVENT_REMINDER_BUDGET,
-	processReminderBatches,
-	reminderCopyForOccurrence,
-	startsInReminderWindow,
-} = require('../src/features/events/event-reminder-dispatch.ts');
-const { startOfBerlinDay } = require('../src/core/utils/berlin-day.ts');
-const { computeTomorrowUtcWindow } = require('../src/features/events/event-reminder-window.ts');
+} from '../src/features/events/events.ts';
 
 function eventCandidate(id, startsAt, recurrence, { allDay = false, endsAt = null } = {}) {
 	return {
