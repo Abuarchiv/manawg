@@ -2,9 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { PgDialect, jsonb, pgTable, timestamp, uuid } from 'drizzle-orm/pg-core';
 import * as chat from '../src/features/chat/chat-pure.ts';
-import * as chatReadQuery from '../src/features/chat/chat-read-query.ts';
 import * as unreadCount from '../src/features/chat/chat-unread-count.ts';
-import * as unreadQuery from '../src/features/chat/chat-unread-query.ts';
+import * as chatReadQuery from '../src/features/chat/server/chat-read-query.ts';
+import * as unreadQuery from '../src/features/chat/server/chat-unread-query.ts';
 
 interface ChatRow {
 	id: string;

@@ -48,7 +48,7 @@ mock.module('@/core/guards/require-wg-member', {
 mock.module('@/core/rate-limit', {
 	namedExports: { chatReadLimiter: {}, checkRateLimit: async () => ({ success: true }) },
 });
-mock.module('@/features/chat/chat-read-query', {
+mock.module('@/features/chat/server/chat-read-query', {
 	namedExports: {
 		buildChatReadMarkerSetWhere: (candidate: unknown, current: unknown) => {
 			state.markerCalls.push([candidate, current]);
