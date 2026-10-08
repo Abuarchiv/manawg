@@ -6,8 +6,8 @@ import {
 	collectReminderOccurrences,
 	startsInReminderWindow,
 } from '../src/features/events/event-reminder-dispatch.ts';
-import { buildEventsWindowFilter } from '../src/features/events/event-reminder-window.ts';
 import { eventOverlapsCalendarDay, expandRecurrence } from '../src/features/events/events.ts';
+import { buildEventsWindowFilter } from '../src/features/events/server/event-reminder-window.ts';
 
 test('timed event end is exclusive at midnight; all-day end date stays inclusive', () => {
 	const previousTimezone = process.env.TZ;

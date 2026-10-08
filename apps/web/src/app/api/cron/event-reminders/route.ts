@@ -11,12 +11,12 @@ import {
 	processReminderBatches,
 	reminderCopyForOccurrence,
 } from '@/features/events/event-reminder-dispatch';
+import { type EventInput, expandRecurrence } from '@/features/events/events';
 import {
 	buildEventsWindowFilter,
 	computeTomorrowUtcWindow,
 	withEventWindowCandidates,
-} from '@/features/events/event-reminder-window';
-import { type EventInput, expandRecurrence } from '@/features/events/events';
+} from '@/features/events/server/event-reminder-window';
 import { and, asc, eq, gt, inArray, isNull, lte, or } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 

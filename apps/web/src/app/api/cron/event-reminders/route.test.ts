@@ -162,7 +162,7 @@ mock.module('@/core/notifications/notification-dispatch', {
 		},
 	},
 });
-mock.module('@/features/events/event-reminder-window', {
+mock.module('@/features/events/server/event-reminder-window', {
 	namedExports: {
 		buildEventsWindowFilter: () => ({}),
 		computeTomorrowUtcWindow: (now: Date) => {

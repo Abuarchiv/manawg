@@ -11,10 +11,6 @@ import { dispatchNotificationSafely } from '@/core/notifications/notification-di
 import type { NotificationWarning } from '@/core/notifications/notification-warning';
 import { checkRateLimit, clientIpKey, wgReadLimiter, wgWriteLimiter } from '@/core/rate-limit';
 import {
-	buildEventsWindowFilter,
-	withEventWindowCandidates,
-} from '@/features/events/event-reminder-window';
-import {
 	eventDateTimeSchema,
 	eventDescriptionSchema,
 	eventLocationSchema,
@@ -27,6 +23,10 @@ import {
 	parseRecurrenceRule,
 	serializeWgEvent,
 } from '@/features/events/events';
+import {
+	buildEventsWindowFilter,
+	withEventWindowCandidates,
+} from '@/features/events/server/event-reminder-window';
 import { and, asc, eq, gt, or } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';

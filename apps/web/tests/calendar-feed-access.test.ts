@@ -165,7 +165,7 @@ mock.module('@/core/rate-limit', {
 		wgReadLimiter: {},
 	},
 });
-mock.module('@/features/events/calendar-subscription', {
+mock.module('@/features/events/server/calendar-subscription', {
 	namedExports: {
 		isCalendarFeedToken: () => true,
 		verifyCalendarFeedToken: (_id: string, seed: string, token: string) =>

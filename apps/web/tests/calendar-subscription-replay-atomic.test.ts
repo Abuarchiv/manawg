@@ -186,7 +186,7 @@ mock.module('@/core/rate-limit', {
 		wgWriteLimiter: {},
 	},
 });
-mock.module('@/features/events/calendar-subscription', {
+mock.module('@/features/events/server/calendar-subscription', {
 	namedExports: {
 		createCalendarFeedSeed: () => `seed-${++state.seeds}`,
 		deriveCalendarFeedToken: (_id: string, seed: string) => `${seed}-token`,

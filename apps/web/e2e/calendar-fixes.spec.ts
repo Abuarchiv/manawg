@@ -4,12 +4,12 @@
 import { type Route, expect, test } from '@playwright/test';
 import type { SQL } from 'drizzle-orm';
 import { PgDialect } from 'drizzle-orm/pg-core';
-import { computeTomorrowUtcWindow } from '../src/features/events/event-reminder-window';
 import {
 	type EventInput,
 	expandAgendaRecurrence,
 	expandRecurrence,
 } from '../src/features/events/events';
+import { computeTomorrowUtcWindow } from '../src/features/events/server/event-reminder-window';
 import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './support/helpers';
 
 test.describe('calendar fixes', () => {
@@ -56,7 +56,7 @@ test.describe('calendar fixes', () => {
 			) => boolean;
 		};
 		const windowHelpers = (await import(
-			'../src/features/events/event-reminder-window'
+			'../src/features/events/server/event-reminder-window'
 		)) as unknown as {
 			buildEventsWindowFilter?: (from: Date, to: Date) => SQL | undefined;
 		};

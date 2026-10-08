@@ -8,14 +8,14 @@ import {
 	reminderCopyForOccurrence,
 } from '../src/features/events/event-reminder-dispatch.ts';
 import {
-	computeTomorrowUtcWindow,
-	withEventWindowCandidates,
-} from '../src/features/events/event-reminder-window.ts';
-import {
 	EVENTS_LIST_LIMIT,
 	expandRecurrence,
 	parseRecurrenceRule,
 } from '../src/features/events/events.ts';
+import {
+	computeTomorrowUtcWindow,
+	withEventWindowCandidates,
+} from '../src/features/events/server/event-reminder-window.ts';
 
 import { eventCandidate, eventCandidatePages } from './support/event-candidates.ts';
 

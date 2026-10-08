@@ -246,7 +246,7 @@ mock.module('@/core/rate-limit', {
 		wgWriteLimiter: {},
 	},
 });
-mock.module('@/features/events/event-reminder-window', {
+mock.module('@/features/events/server/event-reminder-window', {
 	namedExports: {
 		buildEventsWindowFilter: () => undefined,
 		withEventWindowCandidates: async () => undefined,
