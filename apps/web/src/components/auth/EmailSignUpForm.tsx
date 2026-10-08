@@ -145,6 +145,7 @@ function InboxNotice({
 				<AlertDescription className="[overflow-wrap:anywhere]">
 					Wir haben einen Bestätigungslink an {sentTo} geschickt, sofern für diese Adresse noch kein
 					Konto besteht. Öffne den Link, danach geht es hier weiter. Schau auch im Spam-Ordner nach.
+					Hast du schon ein Konto, melde dich stattdessen an.
 				</AlertDescription>
 			</Alert>
 			{resendNotice && (

@@ -209,7 +209,7 @@ export function WgContextProvider({
 
 	const backToWgs = (
 		<a
-			href={`/neu?next=${encodeURIComponent(`/wg/${wg.shareCode}`)}`}
+			href="/neu"
 			className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'mt-3 w-full')}
 		>
 			Zurück zu deinen WGs

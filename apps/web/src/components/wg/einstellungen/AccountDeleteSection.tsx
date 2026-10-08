@@ -65,6 +65,18 @@ export function AccountDeleteSection() {
 				setStage('confirm');
 				return;
 			}
+			if (res.status === 409) {
+				setError(
+					'Eine PayPal-Zahlung ist noch offen. Schließe oder storniere sie zuerst und versuche es dann erneut.',
+				);
+				setStage('confirm');
+				return;
+			}
+			if (res.status === 503) {
+				setError('Das Löschen ist gerade nicht verfügbar. Bitte versuche es später erneut.');
+				setStage('confirm');
+				return;
+			}
 			if (res.status !== 200 && res.status !== 202) {
 				setError('Konto konnte nicht gelöscht werden. Bitte versuche es später erneut.');
 				setStage('confirm');

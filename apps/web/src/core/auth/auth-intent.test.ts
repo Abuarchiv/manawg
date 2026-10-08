@@ -23,6 +23,7 @@ test('rejects invalid codes, foreign targets and the auth pages themselves', () 
 	assert.equal(authIntentQuery('next=%2F%2Fevil.com'), '');
 	assert.equal(authIntentQuery('next=%2Fneu%3Faction%3Dcreate'), '');
 	assert.equal(authIntentQuery('next=%2Fregistrieren'), '');
+	assert.equal(authIntentQuery('next=%2Fauth%2Freset'), '');
 });
 
 test('builds page links with and without intent', () => {

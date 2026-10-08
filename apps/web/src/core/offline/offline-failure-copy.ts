@@ -35,6 +35,11 @@ const ACCESS_MISSING: OfflineFailureExplanation = {
 	detail: 'Öffne die WG erneut oder prüfe, ob dein Mitglied noch Zugriff hat.',
 };
 
+const SESSION_EXPIRED: OfflineFailureExplanation = {
+	title: 'Sitzung abgelaufen',
+	detail: 'Melde dich neu an und versuche die Aktion danach erneut.',
+};
+
 const TARGET_GONE: OfflineFailureExplanation = {
 	title: 'Ziel nicht mehr gefunden',
 	detail:
@@ -224,7 +229,8 @@ export function explainOfflineActionFailure(
 		code !== null && Object.hasOwn(FAILURE_BY_CODE, code) ? FAILURE_BY_CODE[code] : null;
 	if (known) return { ...known };
 	if (status === 413) return { ...TOO_LARGE };
-	if (status === 401 || status === 403) return { ...ACCESS_MISSING };
+	if (status === 401) return { ...SESSION_EXPIRED };
+	if (status === 403) return { ...ACCESS_MISSING };
 	if (status === 404) return { ...TARGET_GONE };
 	if (status >= 500 || (code !== null && SERVER_ERROR_CODES.has(code))) {
 		return { ...SERVER_NOT_READY };

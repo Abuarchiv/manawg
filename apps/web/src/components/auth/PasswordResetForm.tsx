@@ -1,5 +1,6 @@
 'use client';
 
+import { PasswordResetRequest } from '@/components/auth/PasswordResetRequest';
 import { NEW_PASSWORD_MIN_LENGTH } from '@/components/auth/auth-form-shared';
 import { useToast } from '@/components/ui/Toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -92,8 +93,9 @@ export function PasswordResetForm({ recoveryRequested }: PasswordResetFormProps)
 						Dieser Link ist ungültig oder abgelaufen. Bitte fordere einen neuen Link an.
 					</AlertDescription>
 				</Alert>
-				<Link href="/neu" className={cn(buttonVariants({ variant: 'outline' }))}>
-					Neuen Link anfordern
+				<PasswordResetRequest />
+				<Link href="/neu" className={cn(buttonVariants({ variant: 'ghost' }))}>
+					Zur Anmeldung
 				</Link>
 			</div>
 		);
@@ -106,9 +108,7 @@ export function PasswordResetForm({ recoveryRequested }: PasswordResetFormProps)
 					<Alert variant="destructive">
 						<AlertDescription>{serverError}</AlertDescription>
 					</Alert>
-					<Link href="/neu" className={cn(buttonVariants({ variant: 'outline' }))}>
-						Neuen Link anfordern
-					</Link>
+					<PasswordResetRequest />
 				</>
 			)}
 			<form onSubmit={(event) => void submit(event)} noValidate>

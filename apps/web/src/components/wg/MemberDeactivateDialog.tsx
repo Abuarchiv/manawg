@@ -129,6 +129,14 @@ export function MemberDeactivateDialog({
 			setSubmitting(false);
 			return;
 		}
+		if (res.error === 'paypal_payment_pending') {
+			setSubmitError(
+				'Es läuft noch eine PayPal-Zahlung. Warte, bis sie abgeschlossen ist, und versuche es dann erneut.',
+			);
+			submittingRef.current = false;
+			setSubmitting(false);
+			return;
+		}
 		setSubmitError(
 			isRateLimited(res.error, res.status)
 				? RATE_LIMITED_MESSAGE

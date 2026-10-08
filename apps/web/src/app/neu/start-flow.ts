@@ -41,14 +41,6 @@ export interface AccountWg {
 export type StartStep = 'choose' | 'create' | 'join' | 'joinName' | 'invite';
 export type StartField = 'wgName' | 'creatorName' | 'joinCode' | 'joinName';
 
-export function isNeuPath(path: string): boolean {
-	try {
-		return new URL(path, 'https://manawg.invalid').pathname === '/neu';
-	} catch {
-		return false;
-	}
-}
-
 export function getWgCodeFromPath(path: string): string | null {
 	const match = path.match(/^\/wg\/([^/]+)/);
 	if (!match?.[1]) return null;

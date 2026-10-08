@@ -5,9 +5,10 @@ import { safeNextPath } from './next-path';
 export const SIGN_IN_PATH = '/neu';
 export const SIGN_UP_PATH = '/registrieren';
 
-function isAuthPagePath(path: string): boolean {
+/** Sign-in, registration and the `/auth/*` utility routes are never a place to return to after login. */
+export function isAuthPagePath(path: string): boolean {
 	const { pathname } = new URL(path, 'https://manawg.invalid');
-	return pathname === SIGN_IN_PATH || pathname === SIGN_UP_PATH;
+	return pathname === SIGN_IN_PATH || pathname === SIGN_UP_PATH || pathname.startsWith('/auth/');
 }
 
 /**

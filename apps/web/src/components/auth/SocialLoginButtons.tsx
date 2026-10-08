@@ -96,10 +96,10 @@ export function SocialLoginButtons({
 		<FieldSet
 			aria-label={
 				variant === 'link'
-					? 'Social Login verknüpfen'
+					? 'Google verknüpfen'
 					: variant === 'sign-up'
-						? 'Mit Social Login registrieren'
-						: 'Mit Social Login anmelden'
+						? 'Mit Google registrieren'
+						: 'Mit Google anmelden'
 			}
 			aria-busy={pendingProvider !== null}
 			className="m-0 w-full gap-3 border-0 p-0"
