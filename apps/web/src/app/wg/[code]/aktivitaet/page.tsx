@@ -125,7 +125,7 @@ export default function AktivitaetPage() {
 
 	function resetFilters(): void {
 		setFilter({ kind: 'all', mineOnly: false, query: '' });
-		// Der Knopf verschwindet mit dem Leerzustand: Fokus auf den Bereichsfilter (öffnet keine Tastatur).
+		// The button disappears with the empty state: focus the scope filter instead (does not open the keyboard).
 		document.getElementById('activity-kind')?.focus({ preventScroll: true });
 	}
 
@@ -147,7 +147,7 @@ export default function AktivitaetPage() {
 				/>
 			)}
 
-			{/* Filter stehen über der Inbox: sie verschwindet beim Suchen und würde das Feld sonst unter dem Finger wegschieben. */}
+			{/* Filters stay above the inbox: the inbox disappears while searching, which would otherwise shift the field out from under the finger. */}
 			{data && data.items.length > 0 && (
 				<Card className="overflow-visible border-0 bg-transparent py-0 shadow-none">
 					<CardContent className="space-y-3 p-0">
@@ -238,7 +238,7 @@ export default function AktivitaetPage() {
 				<CardContent className="p-0">
 					{data ? (
 						<div className="space-y-3">
-							{/* Dauerhaft eingehängt, damit Screenreader jede Änderung der Trefferzahl ansagen. */}
+							{/* Always mounted so screen readers announce every change of the result count. */}
 							{data.items.length > 0 && (
 								<output
 									aria-live="polite"

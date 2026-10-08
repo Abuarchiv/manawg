@@ -40,7 +40,7 @@ interface MembersSectionProps {
 	identity: StoredIdentity;
 }
 
-/** Mitgliederliste mit Admin-Übergabe, Ausziehen und Reaktivieren (nur Admins). */
+/** Member list with admin handover, move-out and reactivation (admins only). */
 export function MembersSection({ wg, members, identity }: MembersSectionProps) {
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const { refreshMembers, isAdmin } = useWg();

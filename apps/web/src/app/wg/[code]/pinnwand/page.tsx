@@ -189,7 +189,7 @@ export default function PinnwandPage(): React.ReactElement {
 									className="size-4 shrink-0 group-aria-expanded:rotate-180"
 								/>
 							</CollapsibleTrigger>
-							{/* Verlinkte Archiv-Beiträge müssen per Hash auffindbar bleiben. */}
+							{/* Linked archive posts must stay reachable by hash. */}
 							<CollapsibleContent keepMounted>
 								<ul
 									className="flex flex-col divide-y overflow-hidden rounded-xl border"

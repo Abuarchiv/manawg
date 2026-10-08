@@ -25,7 +25,7 @@ const ExpenseFormSection = dynamic(
 		),
 	{
 		loading: () => (
-			// Außerhalb des Flusses, damit der Hintergrund nicht springt; das echte Sheet ersetzt es an Ort und Stelle.
+			// Out of flow so the background does not jump; the real sheet replaces it in place.
 			<output className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-popover text-sm text-popover-foreground">
 				<Spinner aria-hidden className="size-6" />
 				Ausgabenformular wird geladen…
@@ -34,7 +34,7 @@ const ExpenseFormSection = dynamic(
 	},
 );
 
-/** Das Formular-Chunk einmal online anfordern, damit der Service Worker es für offline hat. */
+/** Request the form chunk once while online so the service worker has it for offline use. */
 function usePreloadExpenseForm(): void {
 	useEffect(() => {
 		if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
@@ -50,7 +50,7 @@ export default function AusgabenPage() {
 	const { showForm, setShowForm, editingExpense, editingRecurringExpense } = form;
 	const isEditingQueuedRecurring = form.queueEditType === 'recurring.create';
 	const formSaving = submit.submitting || recurring.savingRecurringTemplate;
-	// Das Formular bleibt nach dem Schließen gemountet, bis die Ausblend-Animation durch ist; jedes Öffnen startet frisch.
+	// The form stays mounted after closing until the exit animation finishes; every open starts fresh.
 	const [formSession, setFormSession] = useState({ mounted: showForm, key: 0 });
 	const [previousShowForm, setPreviousShowForm] = useState(showForm);
 	if (showForm !== previousShowForm) {
@@ -58,7 +58,7 @@ export default function AusgabenPage() {
 		if (showForm) setFormSession((session) => ({ mounted: true, key: session.key + 1 }));
 	}
 
-	/** Nach einem Bearbeitungs-Konflikt gegen die frische Server-Version entscheiden. */
+	/** After an edit conflict, decide against the fresh server version. */
 	async function resolveConflict(choice: 'server' | 'draft'): Promise<void> {
 		const editedId = form.editingExpense?.id;
 		const fresh = await data.load(false);
@@ -166,7 +166,7 @@ export default function AusgabenPage() {
 				/>
 			)}
 			{page.actionNotice && !showForm && <ActionNoticeBanner notice={page.actionNotice} />}
-			{/* Nur für Screenreader: ein sichtbarer Hinweis würde die Kopfzeile verdecken und beim Poll aufblitzen. */}
+			{/* Screen readers only: a visible notice would cover the header and flash on every poll. */}
 			<output aria-live="polite" aria-hidden={!refreshing} className="sr-only">
 				{refreshing ? 'Wird aktualisiert…' : ''}
 			</output>
@@ -207,7 +207,7 @@ export default function AusgabenPage() {
 						}}
 					/>
 				)}
-			{/* Fixkosten leben im eigenen Tab; hier nur, wenn ein Link gezielt eine Vorlage öffnet. */}
+			{/* Recurring expenses live in their own tab; shown here only when a link opens a specific template. */}
 			{(page.recurringFilterActive || (page.recurringId && recurringExpenses.length > 0)) && (
 				<RecurringExpensesSection
 					recurringExpenses={recurringExpenses}

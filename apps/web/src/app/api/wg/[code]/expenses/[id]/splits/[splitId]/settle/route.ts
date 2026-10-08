@@ -121,7 +121,7 @@ export const POST = withWgRoute<{ id: string; splitId: string }>(
 			if (await hasCapturingExpensePayment(tx, expense.wgId)) return { kind: 'blocked' as const };
 
 			if (settled) {
-				// ponytail: scan all WG splits under the lock; add indexed stored balances if this becomes slow.
+				// Scans all WG splits under the lock; indexed stored balances would help if this becomes slow.
 				// Sequential instead of Promise.all: a transaction has a single connection, and pg
 				// deprecates parallel queries on it (removed in pg 9).
 				const members = await tx

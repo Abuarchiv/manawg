@@ -16,7 +16,7 @@ export function WgAppHeader() {
 	const baseHref = `/wg/${encodeURIComponent(wg.shareCode)}`;
 	const isStart = /^\/wg\/[^/]+\/?$/.test(pathname);
 	const ref = useRef<HTMLElement>(null);
-	// Der Chat rechnet seine Rahmenhöhe aus dem Viewport und braucht die Kopfhöhe.
+	// The chat computes its frame height from the viewport and needs the header height.
 	useLayoutEffect(() => {
 		const header = ref.current;
 		if (!header) return;
@@ -32,9 +32,9 @@ export function WgAppHeader() {
 		};
 	}, []);
 
-	// Ein Kopf für alle Seiten, wie im öffentlichen Shell: Unterseiten zeigen
-	// WG-Name und Aktionen in einer Zeile; das <h1> gehört
-	// nur zur Startseite, Unterseiten haben ihren eigenen Seitentitel.
+	// One header for all pages, as in the public shell: subpages show the
+	// WG name and actions in one row; the <h1> belongs only to the start
+	// page, subpages have their own page title.
 	return (
 		<header
 			ref={ref}

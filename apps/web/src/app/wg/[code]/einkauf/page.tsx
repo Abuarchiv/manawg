@@ -51,22 +51,22 @@ export default function EinkaufPage() {
 	const { items, initialLoading, loadError, add } = shopping;
 	const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
 	const headingRef = useRef<HTMLHeadingElement>(null);
-	// Zeile oder Erledigt-Block verschwinden samt Fokus: er bleibt auf der Seite statt auf BODY zu fallen.
+	// Row or done block disappears together with its focus: keep it on the page instead of letting it fall to BODY.
 	const keepFocus = (ok: boolean): void => {
 		if (ok) requestAnimationFrame(() => headingRef.current?.focus());
 	};
 
-	// Direkt abgeleitet statt per Effect gespiegelt: sonst rendert ein Frame mit
-	// leerem Vorrat und die Vorschläge springen.
+	// Derived directly instead of mirrored via an effect: otherwise one frame
+	// renders with an empty pantry and the suggestions jump.
 	const inventory = cachedInventory?.items ?? NO_INVENTORY;
 	const { open, done, openItems, doneItems } = splitShoppingItems(items);
 	const actionError =
 		shopping.toggleError ?? (shopping.removeErrorId ? null : shopping.removeError);
 
-	// Vorschläge ohne Artikel, die schon offen auf der Liste stehen.
+	// Suggestions for articles that are not already open on the list.
 	const openNames = new Set(open.map((item) => normalizeForMatch(item.name)));
-	// Gerade Gekauftes nicht sofort wieder anbieten: sonst taucht beim Abhaken ein Chip auf,
-	// schiebt die Liste und lädt zum Nachkaufen ein.
+	// Do not offer just-bought items again right away: otherwise ticking one off pops up a chip,
+	// shifts the list and invites buying it again.
 	const recentCutoff = Date.now() - RECENTLY_BOUGHT_MS;
 	const recentlyBought = new Set(
 		done
@@ -91,9 +91,9 @@ export default function EinkaufPage() {
 		taken.add(key);
 		return true;
 	});
-	// Vorschläge und Liste erscheinen gemeinsam, sobald Liste und Vorrat da sind: sonst
-	// tauschen die Gruppen nach dem Laden und schieben die Liste nach unten (Layout Shift).
-	// Ohne Liste (Ladefehler) kennen wir die offenen Artikel nicht und bieten nichts zum Hinzufügen an.
+	// Suggestions and list appear together once list and pantry are loaded: otherwise
+	// the groups swap after loading and push the list down (layout shift).
+	// Without a list (load error) the open items are unknown, so nothing is offered for adding.
 	const listUnknown = Boolean(loadError) && items.length === 0;
 	const suggestionsPending = initialLoading || inventoryLoading || listUnknown;
 	const suggestionGroups = [
@@ -112,7 +112,7 @@ export default function EinkaufPage() {
 	return (
 		<div data-household-content className="mx-auto flex w-full max-w-4xl flex-col gap-3 px-4 py-3">
 			<SubNav liveCount={!initialLoading && !loadError ? open.length : undefined} />
-			{/* Der aktive Tab benennt die Seite schon; Titel und Zähler bleiben für Screenreader. */}
+			{/* The active tab already names the page; title and count stay for screen readers. */}
 			<header className="sr-only">
 				<h1 ref={headingRef} tabIndex={-1}>
 					Einkäufe

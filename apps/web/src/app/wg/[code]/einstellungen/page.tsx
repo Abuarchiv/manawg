@@ -25,7 +25,7 @@ import { useEffect, useRef, useState } from 'react';
  * ssr:false because this page is already a client component behind a resolved
  * local identity; there is no server render of these panels to preserve.
  */
-// Ahmt Titelzeile plus Karte nach, damit der Tab-Inhalt kaum springt.
+// Mimics title row plus card so the tab content barely jumps.
 const tabFallback = () => (
 	<div className="grid gap-2.5" aria-hidden>
 		{[0, 1, 2].map((i) => (
@@ -65,7 +65,7 @@ export default function EinstellungenPage() {
 		typeof window === 'undefined' ? 'profile' : getSettingsTabFromHash(window.location.hash),
 	);
 
-	// Tab-Chunks vorladen: offline schlägt sonst jeder Tab-Wechsel fehl und der Import bleibt gecacht.
+	// Preload tab chunks: offline, every tab switch would otherwise fail, and the import stays cached.
 	useEffect(() => {
 		void import('@/components/wg/einstellungen/ProfileTab');
 		void import('@/components/wg/einstellungen/NotificationSection');
@@ -73,7 +73,7 @@ export default function EinstellungenPage() {
 		void import('@/components/wg/einstellungen/DataTab');
 	}, []);
 
-	// Export-Zusammenfassung erst laden, wenn der Daten-Tab geöffnet wird; danach bleibt sie im State.
+	// Load the export summary only once the data tab opens; afterwards it stays in state.
 	const exportSummaryLoaded = useRef(false);
 	useEffect(() => {
 		if (activeTab !== 'data' || exportSummaryLoaded.current) return;
@@ -112,7 +112,7 @@ export default function EinstellungenPage() {
 		};
 	}, [activeTab, encodedShareCode, identity.memberId]);
 
-	// Nach dem Tab-Wechsel zum Anfang des neuen Inhalts, nicht mitten hinein (das Scroll-Padding hält die Leiste frei).
+	// After a tab switch, scroll to the start of the new content, not into the middle (scroll padding keeps the bar clear).
 	const previousTab = useRef(activeTab);
 	useEffect(() => {
 		if (previousTab.current === activeTab) return;
