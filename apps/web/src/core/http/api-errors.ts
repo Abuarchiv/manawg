@@ -1,4 +1,5 @@
 import { captureException } from '@/core/infra/observability';
+import type { RateLimitResult } from '@/core/rate-limit';
 import { NextResponse } from 'next/server';
 
 export const HTTP = {
@@ -45,6 +46,19 @@ function idempotencyRetryableResponse(): NextResponse<ApiErrorBody> {
 	);
 }
 
+/**
+ * The write committed but its response cannot be replayed (it was too large to keep). Retrying
+ * can never succeed, so this is a final 409 rather than a retryable 503.
+ */
+const IDEMPOTENCY_UNAVAILABLE = 'idempotency_response_unavailable';
+
+function isIdempotencyUnavailable(value: unknown): boolean {
+	return (
+		value === IDEMPOTENCY_UNAVAILABLE ||
+		(value instanceof Error && value.message === IDEMPOTENCY_UNAVAILABLE)
+	);
+}
+
 export function badRequest(message = 'bad_request', code?: string): NextResponse<ApiErrorBody> {
 	return apiError(message, HTTP.BAD_REQUEST, code);
 }
@@ -84,6 +98,28 @@ export function payloadTooLarge(
 }
 
 /**
+ * `null` when the limiter admitted the request. Otherwise 429 with the given message, or a
+ * retryable 503 `rate_limiter_unavailable` when a fail-closed limiter could not decide: that is
+ * an outage, not the caller's fault.
+ */
+export function rateLimitResponse(
+	result: RateLimitResult,
+	message = 'too_many_requests',
+	code?: string,
+): NextResponse | null {
+	if (result.success) return null;
+	if (!result.limiterUnavailable) return tooMany(message, code);
+	const retryAfterMs = Math.max(0, result.reset - Date.now());
+	return NextResponse.json(
+		{ error: 'rate_limiter_unavailable', retryAfterMs },
+		{
+			status: HTTP.SERVICE_UNAVAILABLE,
+			headers: { 'Retry-After': Math.max(1, Math.ceil(retryAfterMs / 1000)).toString() },
+		},
+	);
+}
+
+/**
  * Response for a body `readJsonLimited` refused: 413 when it exceeded the byte
  * cap (the client should shorten it, not retry), otherwise 400 `invalid_json`.
  */
@@ -117,6 +153,10 @@ export function serverError(
 	if (isIdempotencyRetryable(errOrMessage)) {
 		captureException(typeof errOrMessage === 'string' ? new Error(errOrMessage) : errOrMessage);
 		return idempotencyRetryableResponse();
+	}
+	if (isIdempotencyUnavailable(errOrMessage)) {
+		captureException(typeof errOrMessage === 'string' ? new Error(errOrMessage) : errOrMessage);
+		return apiError(IDEMPOTENCY_UNAVAILABLE, HTTP.CONFLICT, IDEMPOTENCY_UNAVAILABLE);
 	}
 	if (errOrMessage === null) {
 		captureException(new Error(message));

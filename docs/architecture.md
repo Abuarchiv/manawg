@@ -113,7 +113,7 @@ withIdempotentWrite(
 2. **`prepare`**: checks that must pass before the claim (rate limits, membership of named
    members, parsing an import); it can stop the request or hand an input to the write.
 3. **Claim**: `claimResponseSlot` inserts a `{"_claimed": true}` placeholder with a 15-minute
-   lease. A request that loses the claim polls (`claimReplaySlot`) until the winner's response is
+   lease and returns that lease to the winner. A request that loses the claim polls (`claimReplaySlot`) until the winner's response is
    stored, then replays it. Claim and store errors fail closed (retryable 503).
 4. **One transaction** (`inTransaction`, default `withTransaction`; money paths pass
    `withExpensePaymentLock` so the payment lock comes before the claim row and any WG or member
@@ -122,20 +122,21 @@ withIdempotentWrite(
    response commits atomically with the write. Outcomes rejected by `storeStatus` (default: 2xx
    only) delete the claim in the same transaction (`releaseLockedClaim`) so a retry runs again.
 5. **Rollback**: after a confirmed rollback (the write's own error) the claim is released with
-   its lease (`releaseClaimedResponse`); a failed COMMIT keeps the claim until the lease ends, so
-   an unknown outcome never runs twice. A request whose lease ran out can neither complete nor
+   its lease (`releaseClaimedResponse`), and so is a claim whose transaction failed before the
+   write started (pool checkout, `BEGIN`); a failed COMMIT keeps the claim until the lease ends,
+   so an unknown outcome never runs twice. A request whose lease ran out can neither complete nor
    delete the claim of the request that took the key over. `retryAfterRollback` runs a second
    write under the same lease (a unique index that found the canonical row, a fresh share code).
 6. **Storage**: a `codec` decides the stored shape (`responseCodec` stores `{status, body}`,
    `bodyCodec` the bare body; legacy readers keep older rows inside the window replayable).
    Responses over 32 KiB are stored as replay-unavailable unless the route opts out (import
-   results). Rows live 7 days (`RESPONSE_REPLAY_TTL_SECONDS`) and are purged by the maintenance
+   results); a retry of such a write answers a final 409 `idempotency_response_unavailable`. Rows live 7 days (`RESPONSE_REPLAY_TTL_SECONDS`) and are purged by the maintenance
    cron.
 
 Side effects that must not undo the write (audit events, push, pinboard notices) run after the
 call, for `written` results only, so a replay never repeats them. A warning that only becomes
 known then (a failed push) is written into the stored response with `setReplayWarning`. Without a
-key the write runs in a plain transaction. The protocol is specified in
+key the write runs in a plain transaction (`retryAfterRollback` still applies). The protocol is specified in
 [`openspec/changes/unify-idempotency-claims`](../openspec/changes/unify-idempotency-claims/proposal.md).
 
 ## Money

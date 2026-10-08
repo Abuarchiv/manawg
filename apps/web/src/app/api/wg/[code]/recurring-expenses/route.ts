@@ -2,7 +2,6 @@ import { recordAuditEvent } from '@/core/audit';
 import { db, recurringExpenses, wgMembers } from '@/core/db';
 import { bodyCodec, withIdempotentWrite } from '@/core/db/idempotent-write';
 import { TransactionAbort } from '@/core/db/transaction';
-import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { badRequest, forbidden, notFound, serverError, tooMany } from '@/core/http/api-errors';
@@ -26,6 +25,7 @@ import { checkPaidByGuard } from '@/features/expenses/paid-by-guard';
 import { serializeRecurringExpense } from '@/features/expenses/recurring-expenses';
 import {
 	advanceRecurringTemplate,
+	deleteRecurringTemplate,
 	editRecurringTemplate,
 } from '@/features/expenses/recurring-template-writes';
 import { splitValidationErrorCode, validateSplits } from '@/features/expenses/split-math';
@@ -273,43 +273,5 @@ export const DELETE = withWgRoute('recurring-expenses DELETE', async (req, { cod
 	);
 	if (!limited.success) return tooMany();
 
-	const rows = await db
-		.select({
-			id: recurringExpenses.id,
-			createdByMemberId: recurringExpenses.createdByMemberId,
-			description: recurringExpenses.description,
-			amountCents: recurringExpenses.amountCents,
-			intervalMonths: recurringExpenses.intervalMonths,
-			nextDueAt: recurringExpenses.nextDueAt,
-		})
-		.from(recurringExpenses)
-		.where(and(eq(recurringExpenses.id, parsed.data.id), eq(recurringExpenses.wgId, wg.id)))
-		.limit(1);
-	const template = rows[0];
-	if (!template) return notFound('recurring_expense_not_found');
-	const denied = await requireOwnerOrAdmin(wg.id, auth.member, template.createdByMemberId);
-	if (denied) return denied;
-
-	const deleted = await db
-		.delete(recurringExpenses)
-		.where(and(eq(recurringExpenses.id, parsed.data.id), eq(recurringExpenses.wgId, wg.id)))
-		.returning({ id: recurringExpenses.id });
-	if (deleted.length === 0) return notFound('recurring_expense_not_found');
-
-	await recordAuditEvent({
-		wgId: wg.id,
-		memberId: auth.member.memberId,
-		eventType: 'recurring.deleted',
-		entityType: 'recurring_expense',
-		entityId: template.id,
-		summary: `${auth.member.name} hat die Fixkosten-Vorlage ${template.description} gelöscht.`,
-		metadata: {
-			description: template.description,
-			amountCents: template.amountCents,
-			currency: 'EUR',
-			intervalMonths: template.intervalMonths,
-			nextDueAt: template.nextDueAt.toISOString(),
-		},
-	});
-	return NextResponse.json({ deleted: true });
+	return deleteRecurringTemplate({ wgId: wg.id, member: auth.member }, parsed.data.id);
 });

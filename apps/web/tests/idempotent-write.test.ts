@@ -47,19 +47,17 @@ mock.module('@/core/idempotency-store', {
 		claimResponseSlot: async (scope: string, key: string) => {
 			if (state.claimError) throw state.claimError;
 			const row = state.rows.get(id(scope, key));
-			if (live(row)) return false;
-			state.rows.set(id(scope, key), {
-				body: PLACEHOLDER,
-				expiresAt: new Date(Date.now() + LEASE_MS),
-			});
-			return true;
+			if (live(row)) return null;
+			const expiresAt = new Date(Date.now() + LEASE_MS);
+			state.rows.set(id(scope, key), { body: PLACEHOLDER, expiresAt });
+			return expiresAt;
 		},
 		getCachedResponse: async (scope: string, key: string) => {
 			if (state.readError) throw state.readError;
 			const row = state.rows.get(id(scope, key));
 			if (!row || !live(row) || isPlaceholder(row.body)) return null;
 			if ((row.body as { _replayUnavailable?: boolean })._replayUnavailable) {
-				throw new Error('idempotency_cache_read_failed');
+				throw new Error('idempotency_response_unavailable');
 			}
 			return row.body;
 		},
@@ -312,7 +310,7 @@ test('an oversized response is stored as replay-unavailable', async () => {
 		assert.equal(state.warned, 1);
 		await assert.rejects(
 			withIdempotentWrite({ scope: SCOPE, key: KEY, codec }, createChore()),
-			/idempotency_cache_read_failed/,
+			/idempotency_response_unavailable/,
 		);
 
 		reset();
@@ -491,4 +489,78 @@ test('a 5xx outcome is not stored and the same key runs the write again', async 
 	const replay = await withIdempotentWrite(options, write);
 	assert.deepEqual(replay, { kind: 'replayed', status: 201, body: { ok: true } });
 	assert.equal(calls, 2);
+});
+
+test('a transaction that fails before its callback releases the won claim', async () => {
+	reset();
+	const checkoutFailed = new Error('pool checkout timed out');
+	await assert.rejects(
+		withIdempotentWrite(
+			{
+				scope: SCOPE,
+				key: KEY,
+				codec,
+				inTransaction: async () => {
+					throw checkoutFailed;
+				},
+			},
+			createChore(),
+		),
+		(err: unknown) => err === checkoutFailed,
+	);
+	assert.deepEqual(state.writes, []);
+	assert.equal(state.released.length, 1);
+	assert.equal(state.rows.size, 0);
+
+	// The retry runs at once instead of polling into idempotency_response_pending.
+	const retry = await withIdempotentWrite({ scope: SCOPE, key: KEY, codec }, createChore());
+	assert.equal(retry.kind, 'written');
+	assert.deepEqual(state.writes, ['chore-1']);
+});
+
+test('an unknown COMMIT outcome keeps the claim until its lease ends', async () => {
+	reset();
+	const commitFailed = new Error('connection lost during COMMIT');
+	await assert.rejects(
+		withIdempotentWrite(
+			{
+				scope: SCOPE,
+				key: KEY,
+				codec,
+				inTransaction: async (work) => {
+					await work({} as never);
+					throw commitFailed;
+				},
+			},
+			createChore(),
+		),
+		(err: unknown) => err === commitFailed,
+	);
+	assert.equal(state.released.length, 0);
+});
+
+test('without a key, retryAfterRollback recovers once without preparing again', async () => {
+	reset();
+	const duplicate = new Error('unique_violation');
+	let prepared = 0;
+	const result = await withIdempotentWrite(
+		{
+			scope: SCOPE,
+			key: null,
+			codec,
+			prepare: async () => {
+				prepared += 1;
+				return { input: undefined };
+			},
+			retryAfterRollback: (error, attempt) =>
+				error === duplicate && attempt === 1
+					? async () => ({ status: 200, body: { chore: { id: 'existing' } } })
+					: null,
+		},
+		async () => {
+			throw duplicate;
+		},
+	);
+	assert.equal(prepared, 1);
+	assert.deepEqual(result.kind === 'written' && result.body, { chore: { id: 'existing' } });
 });

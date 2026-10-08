@@ -125,7 +125,7 @@ export function clientIpKey(req: { headers: Headers }): string {
 	);
 }
 
-interface RateLimitResult {
+export interface RateLimitResult {
 	success: boolean;
 	remaining: number;
 	reset: number;

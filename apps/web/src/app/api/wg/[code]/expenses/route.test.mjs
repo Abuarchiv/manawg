@@ -131,15 +131,10 @@ function harness({ templateWgId = wgId, templateDueAt = dueAt, pausedAt = null }
 		idempotency: new Map(),
 		idempotencyClaims: [],
 		currentClaimId: null,
-		lastFoundExpense: null,
 		templateLocks: 0,
-		existingExpenseLookups: 0,
 		expenseInsertAttempts: 0,
 		sideEffects: 0,
 		errors: [],
-		race: null,
-		raceConstraint: null,
-		raceWinner: null,
 		rejectImageAttachment: false,
 		failCommit: false,
 		reclaimOnRollback: false,
@@ -155,7 +150,6 @@ function harness({ templateWgId = wgId, templateDueAt = dueAt, pausedAt = null }
 			return state.members.filter((member) => member.wgId === wgId && !member.deactivatedAt);
 		}
 		if (table === expenses) {
-			state.existingExpenseLookups++;
 			const existing = local.expenses.find(
 				(expense) =>
 					expense.wgId === wgId &&
@@ -332,6 +326,7 @@ function harness({ templateWgId = wgId, templateDueAt = dueAt, pausedAt = null }
 			notFound: (message = 'not_found') => Response.json({ error: message }, { status: 404 }),
 			serverError: () => Response.json({ error: 'server_error' }, { status: 500 }),
 			tooMany: () => Response.json({ error: 'too_many' }, { status: 429 }),
+			rateLimitResponse: (limit) => (limit.success ? null : Response.json({}, { status: 429 })),
 		},
 		'@/core/guards/replay-slot': {
 			claimReplaySlot: async (scope, key) => {
@@ -425,6 +420,10 @@ function harness({ templateWgId = wgId, templateDueAt = dueAt, pausedAt = null }
 			},
 		},
 		'@/features/expenses/expenses': expenseHelpers,
+		'@/features/expenses/recurring-booking': {
+			advanceRecurringDue: async (_tx, template) => ({ ...template, advanced: true }),
+			recordRecurringAdvanced: async () => undefined,
+		},
 		'@/features/expenses/paid-by-guard': loadTypeScript(
 			path.join(process.cwd(), 'src/features/expenses/paid-by-guard.ts'),
 			{},
@@ -762,6 +761,7 @@ function getHarness({ expenseCount, readLimited = false }) {
 		'@/features/expenses/expense-payments': { loadCompletedExpensePayments: async () => [] },
 		'@/features/expenses/expenses': stub,
 		'@/features/expenses/paid-by-guard': stub,
+		'@/features/expenses/recurring-booking': stub,
 		'@/features/expenses/split-math': stub,
 		'next/server': { NextResponse: { json: (body, init) => Response.json(body, init) } },
 	});

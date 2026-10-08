@@ -24,6 +24,9 @@ import { logApiError } from '@/core/infra/observability';
  *    transaction, so a retry runs again.
  * 5. When the transaction fails, the claim is released with the lease it held;
  *    a request whose lease ran out can never delete another request's claim.
+ *    A transaction that fails before its callback runs (pool checkout, BEGIN)
+ *    wrote nothing, so the won claim is released too instead of blocking
+ *    retries with `idempotency_response_pending` until the lease ends.
  *
  * Claim and store errors fail closed: they throw, and the caller answers with
  * a retryable error instead of writing without protection. Without a key the
@@ -146,8 +149,9 @@ export interface IdempotentWriteOptions<O extends AnyOutcome, I, S> {
 	inTransaction?: <R>(work: (tx: DbTransaction) => Promise<R>) => Promise<R>;
 	/**
 	 * Called after the transaction failed. Returning a write runs it in a new
-	 * transaction under the same claim (e.g. replaying a row a unique index found);
-	 * `null` releases the claim and rethrows.
+	 * transaction under the same claim, or again without a key (e.g. replaying a
+	 * row a unique index found); `prepare` does not run again. `null` releases the
+	 * claim and rethrows.
 	 */
 	retryAfterRollback?: (error: unknown, attempt: number) => WriteFn<O, I> | null;
 	/** `TransactionAbort` code thrown when the response cannot be stored. */
@@ -200,10 +204,26 @@ export async function withIdempotentWrite<O extends AnyOutcome, I = undefined, S
 		context: outcome.context as ContextOf<O> | undefined,
 	});
 
-	if (!key) return written(await inTransaction((tx) => write(tx, input)));
+	if (!key) {
+		let attemptWrite = write;
+		for (let attempt = 1; ; attempt += 1) {
+			try {
+				return written(await inTransaction((tx) => attemptWrite(tx, input)));
+			} catch (error) {
+				const retry = options.retryAfterRollback?.(error, attempt) ?? null;
+				if (!retry) throw error;
+				attemptWrite = retry;
+			}
+		}
+	}
 
+	let wonLease: Date | null = null;
 	const slot = await claimReplaySlot<unknown>(scope, key, {
-		claim: claimResponseSlot,
+		claim: async (claimScope, claimKey) => {
+			const lease = await claimResponseSlot(claimScope, claimKey);
+			if (lease instanceof Date) wonLease = lease;
+			return Boolean(lease);
+		},
 		read: getCachedResponse,
 	});
 	if (!slot.won) return replay(slot.cached);
@@ -211,9 +231,10 @@ export async function withIdempotentWrite<O extends AnyOutcome, I = undefined, S
 	const isStored = (body: unknown): body is unknown => codec.decode(body) !== null;
 	// The callback's own error comes back only after ROLLBACK succeeded; any other error (a
 	// failed COMMIT) leaves the outcome unknown, and the claim then stays until its lease ends.
-	const claim: { lease: Date | null; callbackError: unknown } = {
+	const claim: { lease: Date | null; callbackError: unknown; started: boolean } = {
 		lease: null,
 		callbackError: undefined,
+		started: false,
 	};
 	let attemptWrite = write;
 	const lockAndWrite = async (tx: DbTransaction) => {
@@ -244,8 +265,10 @@ export async function withIdempotentWrite<O extends AnyOutcome, I = undefined, S
 	};
 	for (let attempt = 1; ; attempt += 1) {
 		claim.callbackError = undefined;
+		claim.started = false;
 		try {
 			const result = await inTransaction(async (tx) => {
+				claim.started = true;
 				try {
 					return await lockAndWrite(tx);
 				} catch (err) {
@@ -262,7 +285,12 @@ export async function withIdempotentWrite<O extends AnyOutcome, I = undefined, S
 				attemptWrite = retry;
 				continue;
 			}
-			if (rolledBack && claim.lease) await releaseClaimedResponse(scope, key, claim.lease);
+			// Not started: the transaction failed before the callback, so this attempt wrote
+			// nothing (earlier attempts rolled back) and the claim can go.
+			const lease = claim.lease ?? (wonLease as Date | null);
+			if ((rolledBack || !claim.started) && lease) {
+				await releaseClaimedResponse(scope, key, lease);
+			}
 			throw error;
 		}
 	}
