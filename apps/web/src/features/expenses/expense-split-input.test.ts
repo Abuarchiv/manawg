@@ -1,26 +1,10 @@
 import assert from 'node:assert/strict';
-import { registerHooks } from 'node:module';
-import { resolve } from 'node:path';
 import test from 'node:test';
-import { fileURLToPath, pathToFileURL } from 'node:url';
-
-const appRoot = fileURLToPath(new URL('../../..', import.meta.url));
-registerHooks({
-	resolve(specifier, context, nextResolve) {
-		if (specifier.startsWith('@/')) {
-			const path = resolve(appRoot, 'src', `${specifier.slice(2)}.ts`);
-			return nextResolve(pathToFileURL(path).href, context);
-		}
-		return nextResolve(specifier, context);
-	},
-});
 
 const { buildSplitsFromForm, isEqualExpenseSplit, remainderCandidates } = await import(
-	'./expense-split-input.ts'
+	'./expense-split-input'
 );
-const { distributeRemainderCents } = await import(
-	'./components/ausgaben/manual-split-distribute.ts'
-);
+const { distributeRemainderCents } = await import('./components/ausgaben/manual-split-distribute');
 
 const members = [
 	{ id: 'a', active: true },
@@ -39,7 +23,7 @@ test('an equal split saved with a rotation offset reopens as equal', () => {
 			amountCents: 1001,
 			rotationOffset,
 		});
-		assert.equal(result.ok, true);
+		assert.ok(result.ok);
 		assert.equal(
 			isEqualExpenseSplit(1001, result.splits, members),
 			true,
@@ -85,7 +69,7 @@ test('"Rest aufteilen" never assigns cents to a moved-out member when creating',
 		amountCents: 3000,
 		rotationOffset: 0,
 	});
-	assert.equal(result.ok, true);
+	assert.ok(result.ok);
 	assert.deepEqual(
 		result.splits.map((split) => split.debtorMemberId),
 		['a', 'b', 'c'],
@@ -103,7 +87,7 @@ test('editing an equal split keeps each member share when amount and debtors are
 		amountCents: 1001,
 		rotationOffset: 1,
 	});
-	assert.equal(saved.ok, true);
+	assert.ok(saved.ok);
 	const savedByMember = Object.fromEntries(
 		saved.splits.map((split) => [split.debtorMemberId, split.amountCents]),
 	);
@@ -116,7 +100,7 @@ test('editing an equal split keeps each member share when amount and debtors are
 			rotationOffset,
 			previousSplits: saved.splits,
 		});
-		assert.equal(result.ok, true);
+		assert.ok(result.ok);
 		assert.deepEqual(
 			Object.fromEntries(result.splits.map((split) => [split.debtorMemberId, split.amountCents])),
 			savedByMember,
@@ -138,6 +122,7 @@ test('editing an equal split re-splits when the amount or the debtors change', (
 		rotationOffset: 0,
 		previousSplits,
 	});
+	assert.ok(changedAmount.ok);
 	assert.deepEqual(
 		changedAmount.splits.map((split) => split.amountCents),
 		[334, 334, 334],
@@ -150,6 +135,7 @@ test('editing an equal split re-splits when the amount or the debtors change', (
 		rotationOffset: 0,
 		previousSplits,
 	});
+	assert.ok(changedMembers.ok);
 	assert.deepEqual(
 		changedMembers.splits.map((split) => [split.debtorMemberId, split.amountCents]),
 		[

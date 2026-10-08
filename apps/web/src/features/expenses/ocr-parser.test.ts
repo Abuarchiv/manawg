@@ -1,42 +1,39 @@
 import assert from 'node:assert/strict';
-import { registerHooks } from 'node:module';
-import { resolve } from 'node:path';
-import test from 'node:test';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { mock, test } from 'node:test';
 
-const appRoot = fileURLToPath(new URL('../../..', import.meta.url));
-const tesseractMockUrl = `data:text/javascript,${encodeURIComponent(
-	'export const createWorker = (...args) => globalThis.__ocrTesseractMock.createWorker(...args);',
-)}`;
-registerHooks({
-	resolve(specifier, context, nextResolve) {
-		if (specifier.startsWith('@/')) {
-			const path = resolve(appRoot, 'src', `${specifier.slice(2)}.ts`);
-			return nextResolve(pathToFileURL(path).href, context);
-		}
-		if (specifier === 'tesseract.js') return { url: tesseractMockUrl, shortCircuit: true };
-		return nextResolve(specifier, context);
+type WorkerOptions = { errorHandler?: (message: string) => void };
+type CreateWorker = (langs?: unknown, oem?: unknown, options?: WorkerOptions) => Promise<unknown>;
+let tesseractMock: { createWorker: CreateWorker } = { createWorker: async () => ({}) };
+mock.module('tesseract.js', {
+	namedExports: {
+		createWorker: (langs?: unknown, oem?: unknown, options?: WorkerOptions) =>
+			tesseractMock.createWorker(langs, oem, options),
 	},
 });
 
-const { OcrInitializationError, parseOcrText, runOcrOnImage } = await import('./ocr.ts');
+const { OcrInitializationError, parseOcrText, runOcrOnImage } = await import('./ocr');
 const contextDate = '2026-09-27T00:00:00.000Z';
-const reloadRequired = (error) => error instanceof OcrInitializationError && error.requiresReload;
+const reloadRequired = (error: unknown) =>
+	error instanceof OcrInitializationError && error.requiresReload;
 
-function setTesseractMock(createWorker) {
-	globalThis.__ocrTesseractMock = { createWorker };
+function setTesseractMock(createWorker: CreateWorker) {
+	tesseractMock = { createWorker };
 }
 
 function deferred() {
-	let resolve;
-	const promise = new Promise((res) => {
+	let resolve: (value?: unknown) => void = () => {};
+	const promise = new Promise<unknown>((res) => {
 		resolve = res;
 	});
 	return { promise, resolve };
 }
 
-async function assertRejectsWithin(promise, timeoutMs, errorPattern) {
-	let timer;
+async function assertRejectsWithin(
+	promise: Promise<unknown>,
+	timeoutMs: number,
+	errorPattern: RegExp | ((error: unknown) => boolean),
+) {
+	let timer: ReturnType<typeof setTimeout> | undefined;
 	try {
 		await assert.rejects(
 			Promise.race([
@@ -145,13 +142,13 @@ test('a timed-out module load does not start a worker when it resolves late', as
 	});
 	await assertRejectsWithin(
 		runOcrOnImage(new Blob(), undefined, {
-			loadTesseract: () => moduleLoad.promise,
+			loadTesseract: () => moduleLoad.promise as never,
 			initTimeoutMs: 10,
 		}),
 		250,
 		reloadRequired,
 	);
-	moduleLoad.resolve(globalThis.__ocrTesseractMock);
+	moduleLoad.resolve(tesseractMock);
 	await new Promise((resolve) => setImmediate(resolve));
 	assert.equal(workerStarts, 0);
 });
@@ -233,7 +230,7 @@ test('SDK init errors reject promptly and repeated attempts do not spawn another
 		queueMicrotask(() => options?.errorHandler?.('TypeError: Failed to fetch language data'));
 		return new Promise(() => {});
 	});
-	const runtime = { loadTesseract: async () => globalThis.__ocrTesseractMock, initTimeoutMs: 100 };
+	const runtime = { loadTesseract: async () => tesseractMock as never, initTimeoutMs: 100 };
 	await assertRejectsWithin(runOcrOnImage(new Blob(), undefined, runtime), 250, reloadRequired);
 	await assert.rejects(runOcrOnImage(new Blob(), undefined, runtime), reloadRequired);
 	assert.equal(createCalls, 1);
