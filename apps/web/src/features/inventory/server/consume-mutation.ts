@@ -1,8 +1,9 @@
+import 'server-only';
 import { shoppingItems, wgInventoryItems, wgInventoryLog } from '@/core/db';
 import type { WgInventoryItem, WgMember } from '@/core/db/schema';
 import type { DbTransaction } from '@/core/db/transaction';
 import { clampQuantity, isBelowThreshold, normalizeForMatch } from '@/features/inventory/inventory';
-import { pushBelowThresholdItemToShopping } from '@/features/inventory/inventory-mutations';
+import { pushBelowThresholdItemToShopping } from '@/features/inventory/server/inventory-mutations';
 import { and, eq, isNull } from 'drizzle-orm';
 
 export type ConsumeInventoryMutationInput = {

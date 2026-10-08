@@ -15,8 +15,8 @@ import {
 	INVENTORY_UNITS,
 	groupItemsByCategory,
 } from '@/features/inventory/inventory';
-import { getRecentDecrementCounts } from '@/features/inventory/inventory-decrements';
-import { createInventoryItemMutation } from '@/features/inventory/inventory-mutations';
+import { getRecentDecrementCounts } from '@/features/inventory/server/inventory-decrements';
+import { createInventoryItemMutation } from '@/features/inventory/server/inventory-mutations';
 import { and, asc, eq, lte } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';

@@ -1,3 +1,4 @@
+import 'server-only';
 import { db, wgInventoryLog } from '@/core/db';
 import { MS_PER_DAY } from '@/core/utils/time';
 import { and, eq, gte, inArray, lt } from 'drizzle-orm';

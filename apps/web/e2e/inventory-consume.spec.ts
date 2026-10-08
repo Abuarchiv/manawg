@@ -14,8 +14,8 @@ import { type ReplaySlotDependencies, claimReplaySlot } from '../src/core/guards
 import {
 	type ConsumeInventoryMutationInput,
 	consumeInventoryMutation,
-} from '../src/features/inventory/consume-mutation';
-import * as inventoryMutations from '../src/features/inventory/inventory-mutations';
+} from '../src/features/inventory/server/consume-mutation';
+import * as inventoryMutations from '../src/features/inventory/server/inventory-mutations';
 
 test.describe('inventory consume regression', () => {
 	type InventoryState = {
