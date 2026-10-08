@@ -34,7 +34,7 @@ test.describe('pwa platform', () => {
 		});
 	}
 
-	test('dismissed install prompt returns on the next page load', async ({ page }) => {
+	test('a dismissed install prompt stays away for two weeks, then returns', async ({ page }) => {
 		await page.goto('/');
 		await fireInstallEvent(page);
 		const install = page.getByRole('button', { name: 'Jetzt installieren', exact: true });
@@ -46,10 +46,18 @@ test.describe('pwa platform', () => {
 		await expect(page).toHaveURL(/entdecken/);
 		await expect(install).toHaveCount(0);
 
-		// Feature pages keep their bottom actions free; the next start page shows it again.
-		await page.reload();
+		// The dismissal is remembered on this device: the next start page stays quiet.
+		await page.goto('/');
 		await fireInstallEvent(page);
 		await expect(install).toHaveCount(0);
+
+		// After the cooldown the start page offers it again.
+		await page.evaluate(() =>
+			localStorage.setItem(
+				'manawg-install-dismissed-at',
+				String(Date.now() - 15 * 24 * 60 * 60 * 1000),
+			),
+		);
 		await page.goto('/');
 		await fireInstallEvent(page);
 		await expect(install).toBeVisible();

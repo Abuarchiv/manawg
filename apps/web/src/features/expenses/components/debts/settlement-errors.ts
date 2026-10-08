@@ -28,6 +28,9 @@ export function settlementErrorMessage(error: string): string {
 	if (error === 'same_member' || error === 'member_ids_invalid' || error === 'invalid_json') {
 		return 'Ausgleich konnte nicht gespeichert werden: Die Anfrage war ungültig.';
 	}
+	if (error === 'amount_invalid' || error === 'currency_invalid') {
+		return 'Barzahlung konnte nicht gespeichert werden: Der Betrag ist ungültig.';
+	}
 	if (error === 'paypal_payment_pending')
 		return 'Eine PayPal-Zahlung läuft noch. Warte auf deren Abschluss.';
 	return 'Ausgleich konnte nicht gespeichert werden.';

@@ -141,6 +141,13 @@
       "when": 1791239657625,
       "tag": "0019_push_subscription_per_member",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1791493770883,
+      "tag": "0020_expense_payments_manual_provider",
+      "breakpoints": true
     }
   ]
 }

@@ -39,7 +39,7 @@ export function SettlementReviewDialog({
 	finalFocusRef: RefObject<HTMLElement | null>;
 	currentMemberId: string;
 }) {
-	const { reviewOpen, setReviewOpen, settling, preview, error, settle } = settlement;
+	const { reviewOpen, setReviewOpen, settling, preview, error, settle, settleCash } = settlement;
 	return (
 		<AlertDialog open={reviewOpen} onOpenChange={settlement.setReviewDialogOpen}>
 			<AlertDialogContent className="max-h-[90dvh] overflow-y-auto" finalFocus={finalFocusRef}>
@@ -47,8 +47,8 @@ export function SettlementReviewDialog({
 					<AlertDialogTitle>Bereits erfolgte Zahlung bestätigen</AlertDialogTitle>
 					<AlertDialogDescription>
 						Nur bestätigen, wenn {debt.fromId === currentMemberId ? 'du' : debt.fromName}{' '}
-						{formatEuroCents(preview?.settleableCents ?? 0, debt.currency)} bereits an{' '}
-						{debt.toId === currentMemberId ? 'dich' : debt.toName} gezahlt{' '}
+						{formatEuroCents(preview?.settleableCents || (preview?.netCents ?? 0), debt.currency)}{' '}
+						bereits an {debt.toId === currentMemberId ? 'dich' : debt.toName} gezahlt{' '}
 						{debt.fromId === currentMemberId ? 'hast' : 'hat'}. Es wird kein Geld überwiesen.
 					</AlertDialogDescription>
 				</AlertDialogHeader>
@@ -107,8 +107,8 @@ export function SettlementReviewDialog({
 				{preview?.splits.length === 0 && (
 					<Alert>
 						<AlertDescription>
-							Keine direkt zuordenbaren Anteile. Es wird keine Zahlung eingetragen. Prüft die
-							ursprünglichen Ausgaben einzeln.
+							Dieser Saldo entsteht durch Verrechnung und lässt sich keinem einzelnen Anteil
+							zuordnen. Du kannst ihn als Barzahlung eintragen.
 						</AlertDescription>
 					</Alert>
 				)}
@@ -121,6 +121,19 @@ export function SettlementReviewDialog({
 					<AlertDialogCancel className="min-h-11" disabled={settling}>
 						Abbrechen
 					</AlertDialogCancel>
+					{preview && preview.remainingCents > 0 && (
+						<Button
+							variant="outline"
+							className="h-auto min-h-11 whitespace-normal py-2 leading-snug"
+							disabled={settling}
+							onClick={() => void settleCash()}
+						>
+							{settling && <Spinner data-icon="inline-start" />}
+							{settling
+								? 'Speichert…'
+								: `Gesamten Saldo ${formatEuroCents(preview.netCents, debt.currency)} bar eintragen`}
+						</Button>
+					)}
 					{preview && preview.settleableCents > 0 && (
 						<Button
 							className="h-auto min-h-11 whitespace-normal py-2 leading-snug"

@@ -9,7 +9,6 @@
 	"scope": "/",
 	"prefer_related_applications": false,
 	"display": "standalone",
-	"orientation": "portrait",
 	"background_color": "#FFFFFF",
 	"theme_color": "#0A0A0A",
 	"categories": ["lifestyle", "productivity", "social"],

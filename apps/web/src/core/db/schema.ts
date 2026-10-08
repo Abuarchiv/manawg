@@ -285,7 +285,10 @@ export const expensePayments = pgTable(
 			'expense_payments_members_check',
 			sql`${t.fromMemberId} <> ${t.toMemberId}`,
 		),
-		providerCheck: check('expense_payments_provider_check', sql`${t.provider} = 'paypal'`),
+		providerCheck: check(
+			'expense_payments_provider_check',
+			sql`${t.provider} in ('paypal', 'manual')`,
+		),
 		statusCheck: check(
 			'expense_payments_status_check',
 			sql`${t.status} in ('created', 'capturing', 'completed', 'failed')`,
@@ -985,9 +988,6 @@ export type Announcement = typeof announcements.$inferSelect;
 export type AnnouncementReaction = typeof announcementReactions.$inferSelect;
 export type AnnouncementComment = typeof announcementComments.$inferSelect;
 export type Chore = typeof chores.$inferSelect;
-// Calendar-aware recurrence cadence for chores. 'days' = ms-based arithmetic
-// (legacy default); 'months' = Date.setMonth() so 12-month chores land on the
-// exact same calendar day each year instead of drifting ~5 days off.
 export const idempotencyResponses = pgTable(
 	'idempotency_responses',
 	{
