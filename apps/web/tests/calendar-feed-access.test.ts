@@ -1,13 +1,12 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import path from 'node:path';
-import test from 'node:test';
+import { mock, test } from 'node:test';
+import * as eventDisplay from '../src/features/events/event-display.ts';
+import * as eventRecurrence from '../src/features/events/event-recurrence.ts';
+import * as eventRecurrenceRule from '../src/features/events/event-recurrence-rule.ts';
 
-const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
-const { ModuleKind, ScriptTarget, transpileModule } = requireFromWeb('typescript');
-const routePath = path.join(process.cwd(), 'src/app/api/calendar/[id]/[token]/route.ts');
-const srcPath = path.join(process.cwd(), 'src');
+type Row = Record<string, any>;
+type Filter = { kind: string; parts?: unknown[]; value?: unknown } | undefined;
+
 const id = '11111111-1111-4111-8111-111111111111';
 const wgId = '22222222-2222-4222-8222-222222222222';
 const calendarSubscriptions = {
@@ -27,88 +26,177 @@ const wgEvents = {
 	recurrence: 'recurrence',
 };
 const drizzle = {
-	and: (...parts) => ({ kind: 'and', parts }),
-	asc: (value) => ({ kind: 'asc', value }),
-	eq: (...parts) => ({ kind: 'eq', parts }),
-	gt: (...parts) => ({ kind: 'gt', parts }),
-	gte: (...parts) => ({ kind: 'gte', parts }),
-	isNotNull: (value) => ({ kind: 'isNotNull', value }),
-	isNull: (value) => ({ kind: 'isNull', value }),
-	lte: (...parts) => ({ kind: 'lte', parts }),
-	or: (...parts) => ({ kind: 'or', parts }),
+	and: (...parts: unknown[]) => ({ kind: 'and', parts }),
+	asc: (value: unknown) => ({ kind: 'asc', value }),
+	eq: (...parts: unknown[]) => ({ kind: 'eq', parts }),
+	gt: (...parts: unknown[]) => ({ kind: 'gt', parts }),
+	gte: (...parts: unknown[]) => ({ kind: 'gte', parts }),
+	isNotNull: (value: unknown) => ({ kind: 'isNotNull', value }),
+	isNull: (value: unknown) => ({ kind: 'isNull', value }),
+	lte: (...parts: unknown[]) => ({ kind: 'lte', parts }),
+	or: (...parts: unknown[]) => ({ kind: 'or', parts }),
 };
 
 /** Evaluates the drizzle stubs above against an event row, like the SQL WHERE would. */
-function matchesEventFilter(filter, row) {
+function matchesEventFilter(filter: Filter, row: Row): boolean {
 	if (filter === undefined) return true;
 	// Duck-typed: withFrozenTime swaps the global Date class mid-test.
-	const operand = (raw) => (typeof raw?.getTime === 'function' ? raw.getTime() : raw);
-	const value = (field) => operand(row[field] ?? null);
+	const operand = (raw: any) => (typeof raw?.getTime === 'function' ? raw.getTime() : raw);
+	const parts = (filter.parts ?? []) as any[];
+	const value = (field: string) => operand(row[field] ?? null);
 	switch (filter.kind) {
 		case 'and':
-			return filter.parts.every((part) => matchesEventFilter(part, row));
+			return parts.every((part) => matchesEventFilter(part, row));
 		case 'or':
-			return filter.parts.some((part) => matchesEventFilter(part, row));
+			return parts.some((part) => matchesEventFilter(part, row));
 		case 'eq':
-			return value(filter.parts[0]) === operand(filter.parts[1]);
+			return value(parts[0]) === operand(parts[1]);
 		case 'gt':
-			return value(filter.parts[0]) !== null && value(filter.parts[0]) > operand(filter.parts[1]);
+			return value(parts[0]) !== null && value(parts[0]) > operand(parts[1]);
 		case 'gte':
-			return value(filter.parts[0]) !== null && value(filter.parts[0]) >= operand(filter.parts[1]);
+			return value(parts[0]) !== null && value(parts[0]) >= operand(parts[1]);
 		case 'lte':
-			return value(filter.parts[0]) !== null && value(filter.parts[0]) <= operand(filter.parts[1]);
+			return value(parts[0]) !== null && value(parts[0]) <= operand(parts[1]);
 		case 'isNull':
-			return value(filter.value) === null;
+			return value(filter.value as string) === null;
 		case 'isNotNull':
-			return value(filter.value) !== null;
+			return value(filter.value as string) !== null;
 		default:
 			throw new Error(`unexpected filter: ${filter.kind}`);
 	}
 }
 
-function loadTypeScriptModule(filePath, dependencies = {}) {
-	const source = readFileSync(filePath, 'utf8');
-	const compiled = transpileModule(source, {
-		compilerOptions: {
-			module: ModuleKind.CommonJS,
-			target: ScriptTarget.ES2022,
-			esModuleInterop: true,
-		},
-	}).outputText;
-	const module = { exports: {} };
-	new Function('require', 'module', 'exports', compiled)(
-		(name) => (Object.hasOwn(dependencies, name) ? dependencies[name] : requireFromWeb(name)),
-		module,
-		module.exports,
-	);
-	return module.exports;
+interface HarnessState {
+	authUserId: string | null;
+	deactivatedAt: Date | null;
+	revokedAt: Date | null;
+	wgExists: boolean;
+	steps: string[];
+	events: Row[];
+	expansionWindows: Array<{ from: string; to: string }>;
+	eventQueries: number[];
+	expandedEventIds: string[];
 }
 
-const berlinDay = loadTypeScriptModule(path.join(srcPath, 'core/utils/berlin-day.ts'));
-const timeUtils = loadTypeScriptModule(path.join(srcPath, 'core/utils/time.ts'));
-const eventUtils = loadTypeScriptModule(path.join(srcPath, 'features/events/events.ts'), {
-	'@/core/utils/berlin-day': berlinDay,
-	'@/core/utils/time': timeUtils,
-	'@/features/events/event-limits': loadTypeScriptModule(
-		path.join(srcPath, 'features/events/event-limits.ts'),
-	),
+// The mocks below read the state of the harness currently in use.
+let current: HarnessState;
+const subscription = () => ({
+	id,
+	wgId,
+	tokenSeed: 'seed',
+	memberId: 'member-1',
+	revokedAt: current.revokedAt,
 });
-const eventWindow = loadTypeScriptModule(
-	path.join(srcPath, 'features/events/event-reminder-window.ts'),
-	{
-		'@/core/utils/berlin-day': berlinDay,
-		'@/core/utils/time': timeUtils,
-		'../../core/db/schema': { wgEvents },
-		'./events': eventUtils,
-		'drizzle-orm': drizzle,
+
+const tx = {
+	select: () => {
+		let table: unknown;
+		let joined = false;
+		let whereFilter: Filter;
+		const query = {
+			from(value: unknown) {
+				table = value;
+				return query;
+			},
+			innerJoin() {
+				joined = true;
+				return query;
+			},
+			where(filter: Filter) {
+				whereFilter = filter;
+				return query;
+			},
+			limit: async (count: number) => {
+				const state = current;
+				if (table === wgEvents) {
+					state.steps.push('events');
+					state.eventQueries.push(count);
+					return state.events
+						.map((event) => ({ wgId, ...event }))
+						.filter((event) => matchesEventFilter(whereFilter, event))
+						.sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime() || a.id.localeCompare(b.id))
+						.slice(0, count);
+				}
+				if (table === calendarSubscriptions && joined) {
+					state.steps.push('member-check');
+					return state.authUserId && !state.deactivatedAt && !state.revokedAt
+						? [subscription()]
+						: [];
+				}
+				if (table === calendarSubscriptions) {
+					return state.revokedAt ? [] : [{ wgId, tokenSeed: 'seed' }];
+				}
+				throw new Error(`unexpected limit query: ${String(table)}`);
+			},
+			for: async (lock: string) => {
+				assert.equal(table, wgs);
+				assert.equal(lock, 'share');
+				current.steps.push('wg-lock');
+				return current.wgExists ? [{ id: wgId, name: 'Sonnenhof' }] : [];
+			},
+			orderBy() {
+				assert.equal(table, wgEvents);
+				return query;
+			},
+		};
+		return query;
 	},
-);
+};
+
+mock.module('@/core/db', { namedExports: { calendarSubscriptions, wgEvents, wgMembers, wgs } });
+// event-reminder-window imports the schema by a relative path.
+mock.module(new URL('../src/core/db/schema.ts', import.meta.url).href, {
+	namedExports: { wgEvents },
+});
+mock.module('@/core/db/transaction', {
+	namedExports: { withTransaction: async (operation: (tx: unknown) => unknown) => operation(tx) },
+});
+mock.module('@/core/guards/api-auth', { namedExports: { isUuid: () => true } });
+mock.module('@/core/infra/observability', {
+	namedExports: { logApiError: () => undefined, captureException: () => undefined },
+});
+mock.module('@/core/rate-limit', {
+	namedExports: {
+		checkRateLimit: async () => ({ success: true }),
+		clientIpKey: () => 'ip',
+		wgReadLimiter: {},
+	},
+});
+mock.module('@/features/events/calendar-subscription', {
+	namedExports: {
+		isCalendarFeedToken: () => true,
+		verifyCalendarFeedToken: (_id: string, seed: string, token: string) =>
+			seed === 'seed' && token === 'valid',
+	},
+});
+mock.module('@/features/events/events', {
+	namedExports: {
+		...eventRecurrenceRule,
+		...eventRecurrence,
+		...eventDisplay,
+		EVENTS_LIST_LIMIT: 1000,
+		expandRecurrence: (event: { id: string }, from: Date, to: Date) => {
+			current.expansionWindows.push({ from: from.toISOString(), to: to.toISOString() });
+			current.expandedEventIds.push(event.id);
+			return eventRecurrence.expandRecurrence(event as never, from, to);
+		},
+	},
+});
+mock.module('@/features/events/ics', {
+	namedExports: {
+		calendarFeedToIcs: (events: Array<{ title: string }>, calendarName: string) =>
+			[`CALNAME:${calendarName}`, ...events.map((event) => event.title)].join('\n'),
+	},
+});
+mock.module('drizzle-orm', { namedExports: drizzle });
+
+const route = await import('../src/app/api/calendar/[id]/[token]/route.ts');
 
 function harness({
 	token = 'valid',
-	authUserId = 'auth-user',
-	deactivatedAt = null,
-	revokedAt = null,
+	authUserId = 'auth-user' as string | null,
+	deactivatedAt = null as Date | null,
+	revokedAt = null as Date | null,
 	events = [
 		{
 			id: 'event-1',
@@ -122,9 +210,9 @@ function harness({
 			createdAt: new Date('2026-09-25T00:00:00.000Z'),
 			updatedAt: new Date('2026-09-25T00:00:00.000Z'),
 		},
-	],
+	] as Row[],
 } = {}) {
-	const state = {
+	const state: HarnessState = {
 		authUserId,
 		deactivatedAt,
 		revokedAt,
@@ -135,119 +223,27 @@ function harness({
 		eventQueries: [],
 		expandedEventIds: [],
 	};
-	const subscription = { id, wgId, tokenSeed: 'seed', memberId: 'member-1', revokedAt };
-	const tx = {
-		select: () => {
-			let table;
-			let joined = false;
-			let whereFilter;
-			const query = {
-				from(value) {
-					table = value;
-					return query;
-				},
-				innerJoin() {
-					joined = true;
-					return query;
-				},
-				where(filter) {
-					whereFilter = filter;
-					return query;
-				},
-				limit: async (count) => {
-					if (table === wgEvents) {
-						state.steps.push('events');
-						state.eventQueries.push(count);
-						return state.events
-							.map((event) => ({ wgId, ...event }))
-							.filter((event) => matchesEventFilter(whereFilter, event))
-							.sort(
-								(a, b) => a.startsAt.getTime() - b.startsAt.getTime() || a.id.localeCompare(b.id),
-							)
-							.slice(0, count);
-					}
-					if (table === calendarSubscriptions && joined) {
-						state.steps.push('member-check');
-						return state.authUserId && !state.deactivatedAt && !state.revokedAt
-							? [subscription]
-							: [];
-					}
-					if (table === calendarSubscriptions) {
-						return state.revokedAt ? [] : [{ wgId, tokenSeed: 'seed' }];
-					}
-					throw new Error(`unexpected limit query: ${String(table)}`);
-				},
-				for: async (lock) => {
-					assert.equal(table, wgs);
-					assert.equal(lock, 'share');
-					state.steps.push('wg-lock');
-					return state.wgExists ? [{ id: wgId, name: 'Sonnenhof' }] : [];
-				},
-				orderBy() {
-					assert.equal(table, wgEvents);
-					return query;
-				},
-			};
-			return query;
-		},
-	};
-	const mocks = {
-		'@/core/db': { calendarSubscriptions, wgEvents, wgMembers, wgs },
-		'@/core/db/transaction': { withTransaction: async (operation) => operation(tx) },
-		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
-		'@/core/http/api-errors': {
-			notFound: (code) => Response.json({ error: code }, { status: 404 }),
-			serverError: (code) => Response.json({ error: code }, { status: 500 }),
-			serviceUnavailable: (code) => Response.json({ error: code }, { status: 503 }),
-			tooMany: (code) => Response.json({ error: code }, { status: 429 }),
-		},
-		'@/core/guards/api-auth': { isUuid: () => true },
-		'@/core/infra/observability': { logApiError: () => undefined },
-		'@/core/rate-limit': {
-			checkRateLimit: async () => ({ success: true }),
-			clientIpKey: () => 'ip',
-			wgReadLimiter: {},
-		},
-		'@/core/utils/time': { MS_PER_DAY: 86_400_000 },
-		'@/core/utils/berlin-day': berlinDay,
-		'@/features/events/calendar-subscription': {
-			isCalendarFeedToken: () => true,
-			verifyCalendarFeedToken: (_id, seed, token) => seed === 'seed' && token === 'valid',
-		},
-		'@/features/events/event-reminder-window': eventWindow,
-		'@/features/events/events': {
-			expandRecurrence: (event, from, to) => {
-				state.expansionWindows.push({ from: from.toISOString(), to: to.toISOString() });
-				state.expandedEventIds.push(event.id);
-				return eventUtils.expandRecurrence(event, from, to);
-			},
-		},
-		'@/features/events/ics': {
-			calendarFeedToIcs: (events, calendarName) =>
-				[`CALNAME:${calendarName}`, ...events.map((event) => event.title)].join('\n'),
-		},
-		'drizzle-orm': drizzle,
-		'next/server': { NextResponse: Response },
-	};
-	const route = loadTypeScriptModule(routePath, mocks);
 	const request = new Request(`https://example.test/api/calendar/${id}/${token}`);
 	return {
 		state,
-		get: () => route.GET(request, { params: Promise.resolve({ id, token }) }),
+		get: () => {
+			current = state;
+			return route.GET(request as never, { params: Promise.resolve({ id, token }) } as never);
+		},
 	};
 }
 
-async function withFrozenTime(value, operation) {
+async function withFrozenTime<T>(value: string, operation: () => Promise<T>): Promise<T> {
 	const RealDate = globalThis.Date;
 	const now = RealDate.parse(value);
 	globalThis.Date = class FrozenDate extends RealDate {
-		constructor(...args) {
-			super(...(args.length === 0 ? [now] : args));
+		constructor(...args: unknown[]) {
+			super(...((args.length === 0 ? [now] : args) as [number]));
 		}
 		static now() {
 			return now;
 		}
-	};
+	} as DateConstructor;
 	try {
 		return await operation();
 	} finally {
@@ -336,7 +332,7 @@ test('calendar feed keeps all-day events through their final Berlin day across D
 	}
 });
 
-function eventRow(id, startsAt, overrides = {}) {
+function eventRow(id: string, startsAt: string, overrides: Row = {}) {
 	const start = new Date(startsAt);
 	return {
 		id,
