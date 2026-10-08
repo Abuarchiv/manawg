@@ -14,7 +14,7 @@ import {
 } from '../src/features/inventory/consume-mutation';
 import { type InventoryItemDto, groupItemsByCategory } from '../src/features/inventory/inventory';
 import * as inventoryMutations from '../src/features/inventory/inventory-mutations';
-import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
+import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './support/helpers';
 
 test.describe('inventory consume regression', () => {
 	type InventoryState = {

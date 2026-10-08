@@ -4,7 +4,7 @@
 import { expect, test } from '@playwright/test';
 import { isEmptyModuleDraft } from '../src/core/offline/drafts';
 import { E2E_EXISTING_WG } from '../src/fixtures/data';
-import { dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
+import { dismissOnboarding, navigateToFeature, setupMember } from './support/helpers';
 
 test.describe('offline drafts', () => {
 	const MEMBER = 'member-1';

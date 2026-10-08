@@ -9,7 +9,7 @@ import {
 	mockUnreadCount,
 	navigateToFeature,
 	setupMember,
-} from './_helpers';
+} from './support/helpers';
 
 test.describe('mobile layout matrix', () => {
 	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
@@ -372,7 +372,7 @@ test.describe('mobile layout matrix', () => {
 			expect(input).not.toBeNull();
 			expect(submit).not.toBeNull();
 			if (input && submit) {
-				// Eine Eingabezeile; bei 200% rutscht die Icon-Aktion darunter.
+				// A single input row; at 200% the icon action wraps below it.
 				expect(input.width).toBeGreaterThanOrEqual(200);
 				expect(input.height).toBeGreaterThanOrEqual(44);
 				expect(submit.height).toBeGreaterThanOrEqual(44);
@@ -401,7 +401,7 @@ test.describe('mobile layout matrix', () => {
 					});
 				});
 				for (const word of wordLines) expect(word.lineCount, word.word).toBe(1);
-				// Name und Aktionen überlappen nie: nebeneinander oder (bei großer Schrift) untereinander.
+				// Name and actions never overlap: side by side or (at large font sizes) stacked.
 				expect(
 					titleBox.x + titleBox.width <= actionsBox.x + 1 ||
 						titleBox.y + titleBox.height <= actionsBox.y + 1,
@@ -545,7 +545,7 @@ test.describe('mobile layout matrix', () => {
 						? page.getByRole('button', { name: /Als erledigt markieren: Bad putzen/ })
 						: page.locator('[data-home-content] a').last();
 		await expect(lastAction).toHaveCount(1);
-		// Aufgeklappte Abschnitte und smooth scroll brauchen einen Moment, bis das Layout steht.
+		// Expanded sections and smooth scroll need a moment until the layout settles.
 		await expect(async () => {
 			await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
 			const lastActionBox = await lastAction.boundingBox();
@@ -610,7 +610,7 @@ test.describe('mobile layout matrix', () => {
 					const rootFontSize = await page.evaluate(
 						() => getComputedStyle(document.documentElement).fontSize,
 					);
-					// Normale Schrift skaliert auf schmalen Handys fluid (90–100 %), 200 % bleibt exakt.
+					// Normal text scales fluidly on narrow phones (90-100%); 200% stays exact.
 					if (textScale === '200%') {
 						expect(rootFontSize).toBe('32px');
 					} else {
@@ -1414,8 +1414,8 @@ test.describe('toast pause on hover', () => {
 
 	// WCAG 2.2.1 (Timing Adjustable): an auto-dismissing toast must pause while the
 	// user is hovering or focusing it, and only resume counting down afterwards.
-	// The toast's dismiss timer (Toast.tsx: TOAST_DURATION_MS = 4000) used to be a
-	// single un-pausable setTimeout, so this test must fail against that version.
+	// The toast's dismiss timer (Toast.tsx: TOAST_DURATION_MS = 4000) must be pausable;
+	// this test fails if it degrades to a single un-pausable setTimeout.
 	const TOAST_DURATION_MS = 4000;
 	const PAST_DURATION_MS = TOAST_DURATION_MS + 400;
 

@@ -9,7 +9,7 @@ import {
 	mockUnreadCount,
 	navigateToFeature,
 	setupMember,
-} from './_helpers';
+} from './support/helpers';
 
 test.describe('contrast tokens', () => {
 	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
@@ -673,7 +673,7 @@ test.describe('enter key hint forms', () => {
 
 		await navigateToFeature(page, `/wg/${shareCode}/ausgaben`);
 		await dismissOnboarding(page);
-		// Der Button unten öffnet das Formular.
+		// The bottom button opens the form.
 		await page
 			.locator('[data-page-primary-action]')
 			.getByRole('button', { name: 'Ausgabe hinzufügen' })

@@ -2,7 +2,7 @@
 // Why: OAuth errors must keep a safe destination, reject external redirects and clear PKCE cookies; only verifiable against the real provider config.
 
 import { expect, test } from '@playwright/test';
-import { defined } from './_helpers';
+import { defined } from './support/helpers';
 
 test.describe('live social-login entry', () => {
 	test.skip(

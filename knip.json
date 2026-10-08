@@ -14,7 +14,7 @@
 				"tests/support/*.{mjs,cjs}",
 				"src/**/*.test.{mjs,ts}",
 				"e2e/*.config.cjs",
-				"e2e/preview-global-setup.ts"
+				"e2e/support/preview-global-setup.ts"
 			],
 			"project": [
 				"src/**/*.{ts,tsx,css}",
