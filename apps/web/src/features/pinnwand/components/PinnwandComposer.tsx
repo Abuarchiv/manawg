@@ -26,7 +26,7 @@ import { type ReactElement, type RefObject, useState } from 'react';
 
 interface PinnwandComposerProps {
 	open: boolean;
-	/** Auslöser, an den der Fokus nach dem Schließen zurückgeht. */
+	/** Trigger to which focus returns after closing. */
 	finalFocusRef: RefObject<HTMLElement | null>;
 	authorName: string;
 	submitting: boolean;

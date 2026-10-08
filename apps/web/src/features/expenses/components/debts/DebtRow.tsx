@@ -18,7 +18,7 @@ interface DebtRowProps {
 	amountCents: number;
 	currency: string;
 	oldestDebtAgeDays: number;
-	/** Aus Sicht dieser Person formulieren: „schuldet dir“ statt des eigenen Namens. */
+	/** Phrase from this person's point of view: "schuldet dir" instead of their own name. */
 	currentMemberId?: string;
 	action?: ReactNode;
 }

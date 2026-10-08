@@ -43,7 +43,7 @@ function init() {
 	if (typeof window === 'undefined') return;
 	initialized = true;
 
-	// Falls schon vor diesem Modul-Load gefired (z.B. via inline script in layout)
+	// In case it already fired before this module loaded (e.g. via inline script in layout)
 	if (window.__manawgDeferredInstallEvent) {
 		cached = window.__manawgDeferredInstallEvent as BeforeInstallEvent;
 	}
@@ -102,7 +102,7 @@ export function isIosLikeDevice(input: {
 
 export function subscribeInstall(fn: Subscriber): () => void {
 	subscribers.add(fn);
-	// Sofort mit aktuellem State callen
+	// Call immediately with the current state
 	fn(cached);
 	return () => {
 		subscribers.delete(fn);

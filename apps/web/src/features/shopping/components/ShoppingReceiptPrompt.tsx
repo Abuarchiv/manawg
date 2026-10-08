@@ -7,10 +7,10 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
 const RECEIPT_PROMPT_WINDOW_MS = 12 * 60 * 60 * 1000;
-// Nur wer gerade selbst abgehakt hat, bekommt den Hinweis in den Blick geholt, nicht beim Laden.
+// Only whoever just checked off themselves gets the notice brought into view, not on load.
 const RECEIPT_SCROLL_WINDOW_MS = 10_000;
 
-/** Nach dem Einkauf: eigene frisch gekaufte Artikel direkt als Ausgabe erfassen. */
+/** After shopping: capture the own freshly bought items directly as an expense. */
 export function ShoppingReceiptPrompt({
 	doneItems,
 	memberId,
@@ -26,7 +26,7 @@ export function ShoppingReceiptPrompt({
 		try {
 			setReceiptSince(window.localStorage.getItem(receiptKey));
 		} catch {
-			// Ohne Speicher erscheint der Hinweis nur für die letzten Stunden.
+			// Without storage, the notice appears only for the last few hours.
 		}
 	}, [receiptKey]);
 	const receiptCutoff = Math.max(
@@ -51,7 +51,7 @@ export function ShoppingReceiptPrompt({
 		const rose = freshCount > previousCount.current;
 		previousCount.current = freshCount;
 		if (rose && Date.now() - newestBoughtAt < RECEIPT_SCROLL_WINDOW_MS) {
-			// scroll-padding-bottom der Seite (ThumbAction) hält die Karte über der festen Leiste.
+			// The page's scroll-padding-bottom (ThumbAction) keeps the card above the fixed bar.
 			promptRef.current?.scrollIntoView({ block: 'nearest' });
 		}
 	}, [freshCount]);
@@ -63,7 +63,7 @@ export function ShoppingReceiptPrompt({
 		try {
 			window.localStorage.setItem(receiptKey, now);
 		} catch {
-			// Hinweis bleibt dann nur in dieser Sitzung ausgeblendet.
+			// The notice is then hidden for this session only.
 		}
 	}
 

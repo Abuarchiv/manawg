@@ -179,9 +179,9 @@ export function chooseNextAvailableMember(input: {
 }
 
 /**
- * Spiegelt die Complete-Route: Verfügbarkeit wird am nächsten Fälligkeitstag geprüft, nicht heute.
- * Dem Client-Datensatz fehlt der Anker, was nur die Monatsende-Klammerung betrifft, nie den
- * Tag, gegen den Abwesenheiten geprüft werden.
+ * Mirrors the complete route: availability is checked on the next due day, not today.
+ * The client record lacks the anchor, which only affects month-end clamping, never the
+ * day absences are checked against.
  */
 export function predictNextAssigneeId(
 	chore: {
@@ -194,7 +194,7 @@ export function predictNextAssigneeId(
 	members: MemberInput[],
 	absences: Parameters<typeof getAbsentMemberIds>[0],
 ): string | null {
-	// Ein unlesbares Datum darf nicht den ganzen Plan kippen: die Zeile zeigt dann „Datum prüfen“.
+	// An unreadable date must not break the whole plan: the row then shows "Datum prüfen".
 	const dueAt = chore.nextDueAt ? parseValidDate(chore.nextDueAt) : null;
 	if (!dueAt) return null;
 	const nextDueAt = computeNextDueAt(dueAt, chore.intervalDays, new Date(), chore.recurrenceType);

@@ -56,7 +56,7 @@ interface EventEditModalProps {
 	onUpdate: (id: string, payload: UpdateEventPayload) => Promise<void>;
 	onDelete: (id: string) => Promise<void>;
 	actionError?: string | null;
-	/** Exportiert den gewählten Termin als .ics für die eigene Kalender-App. */
+	/** Exports the chosen event as .ics for the user's own calendar app. */
 	onExportIcs?: (() => void) | undefined;
 }
 
@@ -87,18 +87,18 @@ export function EventEditModal({
 	const [confirmingDiscard, setConfirmingDiscard] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [errorField, setErrorField] = useState<'title' | 'startsAt' | 'endsAt' | null>(null);
-	// Synchron gesetzt, bevor der Bestätigungsdialog per Klick schließen will (State käme zu spät).
+	// Set synchronously before the confirm dialog tries to close on click (state would come too late).
 	const deletingRef = useRef(false);
-	// Wer das betroffene Feld ändert, räumt dessen Fehlerzustand und die Meldung ab.
+	// Changing the affected field clears its error state and the message.
 	function clearErrorFor(...fields: Array<'title' | 'startsAt' | 'endsAt'>): void {
 		if (errorField && fields.includes(errorField)) {
 			setErrorField(null);
 			setError(null);
 		}
 	}
-	// Die Meldung sitzt unter den Feldern, der Speichern-Button ist angeheftet.
+	// The message sits below the fields, the save button is pinned.
 	const shownError = error || actionError;
-	// Bei Feldfehlern bleibt das fokussierte Feld im Bild, die Meldung wird vorgelesen.
+	// On field errors the focused field stays in view, the message is announced.
 	useEffect(() => {
 		if (shownError && !errorField)
 			document.getElementById('event-edit-error')?.scrollIntoView({ block: 'nearest' });
@@ -206,8 +206,8 @@ export function EventEditModal({
 			<Drawer
 				open={event !== null}
 				onOpenChange={(open, details) => {
-					// Die Bestätigungsdialoge sind Geschwister des Drawers: ihre Klicks und Esc zählen hier
-					// als "außerhalb" und dürfen den Drawer nicht schließen.
+					// The confirm dialogs are siblings of the drawer: their clicks and Esc count here
+					// as "outside" and must not close the drawer.
 					const target = details?.event?.target;
 					if (target instanceof Element && target.closest('[data-slot^="alert-dialog"]')) return;
 					if (!open && !confirmingDelete && !confirmingDiscard) requestClose();

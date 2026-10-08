@@ -16,7 +16,7 @@ import { useAnnouncementsData } from './use-announcements-data';
 
 const CARD_RENDER_PAGE = 30;
 
-/** Pinnwand-Seite: verbindet Laden, Verfassen und Karten-Aktionen und leitet die Anzeige ab. */
+/** Pinboard page: connects loading, composing and card actions and derives the display. */
 export function usePinnwandPage() {
 	const { wg, members, identity, isAdmin } = useWg();
 	const toast = useToast();
@@ -40,7 +40,7 @@ export function usePinnwandPage() {
 		isPending,
 		start,
 		end,
-		// Fehler als Toast: Ein Seiten-Alert über der Liste liegt außerhalb des Sichtfelds, wo man gerade tippt.
+		// Errors as toast: a page alert above the list lies outside the field of view where one is typing.
 		setActionError: (message) => {
 			if (message) toast.error(message);
 		},
@@ -70,7 +70,7 @@ export function usePinnwandPage() {
 			if (id) scrollToAnnouncement(id, 'auto');
 			return Boolean(id);
 		}
-		// ?highlight=<id> wie in den anderen Bereichen; #announcement-<id> hat Vorrang.
+		// ?highlight=<id> as in the other areas; #announcement-<id> takes precedence.
 		if (!applyHash()) {
 			const id = new URLSearchParams(window.location.search).get('highlight');
 			if (id) scrollToAnnouncement(id, 'auto');
@@ -81,7 +81,7 @@ export function usePinnwandPage() {
 
 	useEffect(() => {
 		if (!highlightedId || itemCount === 0) return;
-		// Verlinkte Beiträge können im eingeklappten Archiv liegen.
+		// Linked posts can be in the collapsed archive.
 		const target = itemsRef.current.find((item) => item.id === highlightedId);
 		const archived = Boolean(target && isAnnouncementArchived(target, Date.now()));
 		if (archived) setArchiveOpen(true);
@@ -89,7 +89,7 @@ export function usePinnwandPage() {
 			document.getElementById(`announcement-${highlightedId}`)?.scrollIntoView({
 				block: 'center',
 			});
-		// Das Archiv klappt animiert auf: ein zweites Scrollen nach der Animation, sonst bleibt die Karte unter der Tab-Leiste.
+		// The archive expands animated: scroll a second time after the animation, otherwise the card stays under the tab bar.
 		const timers = (archived ? [80, 400] : [80]).map((ms) => window.setTimeout(scroll, ms));
 		return () => {
 			for (const timer of timers) window.clearTimeout(timer);
@@ -111,7 +111,7 @@ export function usePinnwandPage() {
 	}, [items]);
 	const [openLimit, setOpenLimit] = useState(CARD_RENDER_PAGE);
 	const [archivedLimit, setArchivedLimit] = useState(CARD_RENDER_PAGE);
-	// Das verlinkte/hervorgehobene Element muss immer im DOM sein.
+	// The linked/highlighted element must always be in the DOM.
 	const visibleOpenCount = Math.max(
 		openLimit,
 		openItems.findIndex((item) => item.id === highlightedId) + 1,

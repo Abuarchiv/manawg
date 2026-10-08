@@ -67,7 +67,7 @@ export function ExpenseHistory({
 							<ul
 								className={cn(
 									'divide-y divide-border/60 overflow-hidden rounded-xl border',
-									// Bei ?highlight= echte Zeilenhöhen: sonst wächst die Seite nach dem Scrollen und das Ziel rutscht unter die Nav.
+									// With ?highlight=, use real row heights: otherwise the page grows after scrolling and the target slides under the nav.
 									highlightedId && '[&>li]:[content-visibility:visible]',
 								)}
 							>
@@ -96,7 +96,7 @@ export function ExpenseHistory({
 					)}
 				</div>
 			)}
-			{/* Selten gebraucht: Import am Listenende statt als Icon über dem Saldo. */}
+			{/* Rarely needed: import at the end of the list rather than as an icon above the balance. */}
 			{!showSkeleton && (
 				<Link
 					href={importHref}

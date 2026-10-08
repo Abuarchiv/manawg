@@ -43,7 +43,7 @@ export function choreCreateErrorMessage(error: string): string {
 	);
 }
 
-/** Gemeinsame Fehlertexte für Tausch- und Übernahme-Aktion: `prefix` ist der Satz ohne Punkt. */
+/** Shared error texts for the swap and take-over actions: `prefix` is the sentence without a period. */
 export function choreActionErrorMessage(
 	prefix: string,
 	result: { error: string; status: number },

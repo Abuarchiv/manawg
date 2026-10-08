@@ -595,7 +595,7 @@ export function groupActivityItemsByDay(
 }
 
 export function buildActivityInbox(input: ActivityInboxInput): ActivityInboxItem[] {
-	// Nur Offenes: eigene erledigte Einträge stehen im Verlauf darunter.
+	// Open items only: the user's own completed entries appear below in the history.
 	return input.reminders
 		.map((item) => ({
 			id: `reminder:${item.kind}:${item.href}`,

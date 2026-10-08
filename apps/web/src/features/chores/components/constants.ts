@@ -6,9 +6,9 @@ interface IntervalPreset {
 	label: string;
 }
 
-// Day-based presets (legacy + sub-month cadence). 30d "monatlich" stays for
-// users who explicitly want the old behavior, but new flows should prefer the
-// month-unit "1 Monat" preset to avoid 12×30=360-day drift over a year.
+// Day-based presets (sub-month cadence). 30d "monatlich" stays for users who
+// want a fixed 30-day cycle; prefer the month-unit "1 Monat" preset to avoid
+// 12×30=360-day drift over a year.
 export const INTERVAL_PRESETS_DAYS: ReadonlyArray<IntervalPreset> = [
 	{ interval: 1, unit: 'days', label: 'täglich' },
 	{ interval: 3, unit: 'days', label: 'alle 3 T.' },

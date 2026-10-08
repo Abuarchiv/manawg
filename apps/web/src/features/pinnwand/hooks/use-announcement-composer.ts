@@ -42,7 +42,7 @@ function kindFromParam(value: string | null): AnnouncementKind | null {
 	return null;
 }
 
-/** Beitrag verfassen: Composer-Zustand, localStorage-Entwurf, Prefill aus der URL und Anlegen (online/offline). */
+/** Compose a post: composer state, localStorage draft, prefill from the URL and creation (online/offline). */
 export function useAnnouncementComposer(
 	ctx: AnnouncementPageContext,
 	scrollToAnnouncement: (id: string, behavior?: ScrollBehavior) => void,
@@ -83,7 +83,7 @@ export function useAnnouncementComposer(
 		return () => window.removeEventListener('keydown', onKey);
 	}, [composerOpen, content, imageUrl, setNotice]);
 
-	// Fehler beim Senden: Fokus zurück ins Textfeld (der deaktivierte Senden-Knopf hat ihn mitgenommen).
+	// On send error: focus back into the text field (the disabled send button took it away).
 	useEffect(() => {
 		if (error && composerOpen && document.activeElement === document.body) {
 			textareaRef.current?.focus({ preventScroll: true });
@@ -131,7 +131,7 @@ export function useAnnouncementComposer(
 		if (prefillKind) setKind(prefillKind);
 		if (prefillImageUrl) setImageUrl(prefillImageUrl);
 		setComposerOpen(true);
-		// Prefill nur einmal übernehmen: sonst öffnet sich der Composer nach Abbrechen und Reload erneut.
+		// Take the prefill only once: otherwise the composer reopens after cancel and reload.
 		const url = new URL(window.location.href);
 		for (const name of ['content', 'kind', 'imageUrl']) url.searchParams.delete(name);
 		window.history.replaceState(window.history.state, '', url);

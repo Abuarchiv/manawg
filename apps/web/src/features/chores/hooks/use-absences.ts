@@ -19,7 +19,7 @@ import { useRef, useState } from 'react';
 import type { ChorePageContext } from './chore-page-context';
 import type { QueueEdit } from './use-chore-create';
 
-/** Formularfelder der Abwesenheit; sie liegen im selben Entwurf wie die Aufgabe. */
+/** Absence form fields; they live in the same draft as the chore. */
 export function useAbsenceFormState(initialMemberId: string) {
 	const [absenceMemberId, setAbsenceMemberId] = useState(initialMemberId);
 	const [absenceStart, setAbsenceStart] = useState('');
@@ -73,8 +73,8 @@ export function useAbsences(ctx: ChorePageContext, form: AbsenceFormState, queue
 			setAbsenceError('Bitte wähle einen gültigen Zeitraum für die Abwesenheit.');
 			return;
 		}
-		// Die Liste zeigt nur laufende und künftige Abwesenheiten; eine vergangene würde
-		// scheinbar gespeichert und sofort wieder aus der Ansicht verschwinden.
+		// The list shows only current and future absences; a past one would seem
+		// saved and immediately vanish from view.
 		if (endOfBerlinDay(endDay) < new Date()) {
 			setAbsenceError('Das Ende der Abwesenheit liegt in der Vergangenheit.');
 			return;

@@ -149,7 +149,7 @@ export function useExpensesData({ shareCode, memberId, setActionNotice }: UseExp
 			setExpenses(cachedExpenses.expenses);
 			setPayments(cachedExpenses.payments ?? []);
 			setLoadError(null);
-			// Das Skeleton hängt nur an den Ausgaben selbst, nicht an den Fixkosten.
+			// The skeleton depends only on the expenses themselves, not on the recurring expenses.
 			setInitialLoading(false);
 		}
 		if (cachedRecurringExpenses) {
@@ -184,7 +184,7 @@ export function useExpensesData({ shareCode, memberId, setActionNotice }: UseExp
 		void load(true);
 	}, [load]);
 
-	// Auto-Refresh wie auf dem Dashboard — ersetzt den manuellen Reload-Button.
+	// Auto-refresh as on the dashboard; replaces the manual reload button.
 	useVisibilityPausedInterval(() => void load(false), 30_000);
 
 	const { queuedCount, refreshCount: refreshQueuedCount } = useOfflineQueueSync({

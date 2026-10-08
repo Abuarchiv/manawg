@@ -27,7 +27,7 @@ import { Package, ShoppingBasket, Zap } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-/** So lange bleibt eine Zeile nach +/- in ihrer Gruppe, damit sie nicht unter dem Daumen wegspringt. */
+/** How long a row stays in its group after +/- so it does not jump away under the thumb. */
 const REGROUP_DELAY_MS = 1500;
 
 interface InventoryListProps {
@@ -52,8 +52,8 @@ export function InventoryList({
 	const [quickOpen, setQuickOpen] = useState(false);
 	const [editing, setEditing] = useState<InventoryItemDto | null>(null);
 	const [armedDeleteId, setArmedDeleteId] = useState<string | null>(null);
-	// Knappe Vorräte stehen gesammelt oben, der Rest bleibt nach Kategorie sortiert. Die Gruppe
-	// einer bekannten Zeile ändert sich erst nach einer Ruhephase; die Menge bleibt live.
+	// Scarce items are collected at the top, the rest stays sorted by category. A known
+	// row's group only changes after a rest period; the quantity stays live.
 	const settledLowRef = useRef(new Map<string, boolean>());
 	const [, setRegroupTick] = useState(0);
 	const settledLow = settledLowRef.current;

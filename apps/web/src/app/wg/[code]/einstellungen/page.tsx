@@ -17,10 +17,9 @@ import dynamic from 'next/dynamic';
 import { useEffect, useRef, useState } from 'react';
 
 /**
- * Only one tab is ever mounted, but statically importing all four put every
- * one of them in this route's first-load bundle — it was the heaviest route in
- * the app at 63.6 kB against a 55 kB budget, ~10 kB clear of the next page.
- * Loading each on demand means a visitor pays for the tab they opened.
+ * Only one tab is ever mounted, so each tab loads on demand: importing all four
+ * statically would put every one of them in this route's first-load bundle.
+ * A visitor pays only for the tab they opened.
  *
  * ssr:false because this page is already a client component behind a resolved
  * local identity; there is no server render of these panels to preserve.

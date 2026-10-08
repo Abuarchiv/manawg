@@ -155,7 +155,7 @@ const CHORE_GROUPS: { key: ChoreGroupKey; label: string }[] = [
 	{ key: 'later', label: 'Später' },
 ];
 
-/** Eigene Aufgaben bis morgen stehen oben, fremde nach Dringlichkeit darunter. */
+/** Own chores due by tomorrow come first, others follow by urgency. */
 function getChoreGroup(
 	chore: ChoreRepairInput,
 	currentMemberId: string,
@@ -168,7 +168,7 @@ function getChoreGroup(
 	return days <= 7 ? 'week' : 'later';
 }
 
-/** Reparaturbedürftige Aufgaben stehen innerhalb jeder Gruppe zuerst, leere Gruppen entfallen. */
+/** Chores in need of repair come first within each group; empty groups are dropped. */
 export function groupChoresForPlan<T extends ChoreRepairInput>(
 	chores: T[],
 	currentMemberId: string,
