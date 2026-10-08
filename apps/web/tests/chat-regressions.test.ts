@@ -3,14 +3,8 @@ import test from 'node:test';
 import { PgDialect, jsonb, pgTable, timestamp, uuid } from 'drizzle-orm/pg-core';
 import * as chat from '../src/features/chat/chat-pure.ts';
 import * as chatReadQuery from '../src/features/chat/chat-read-query.ts';
+import * as unreadQuery from '../src/features/chat/chat-unread-query.ts';
 import * as unreadCount from '../src/features/chat/chat-unread-count.ts';
-
-let unreadQuery;
-try {
-	unreadQuery = await import('../src/features/chat/chat-unread-query.ts');
-} catch {
-	unreadQuery = {};
-}
 
 test('sanitizes deleted chat messages while retaining reply identity', () => {
 	const deleted = {
@@ -23,7 +17,7 @@ test('sanitizes deleted chat messages while retaining reply identity', () => {
 		deletedAt: '2026-09-23T18:00:00.000Z',
 	};
 
-	assert.deepEqual(chat.sanitizeChatMessageForRead?.(deleted), {
+	assert.deepEqual(chat.sanitizeChatMessageForRead(deleted), {
 		...deleted,
 		body: null,
 		imageUrl: null,
@@ -43,7 +37,7 @@ test('refresh replaces loaded reactions from the server and preserves a pending 
 	];
 
 	assert.deepEqual(
-		chat.reconcileChatReactions?.(
+		chat.reconcileChatReactions(
 			existing,
 			server,
 			new Set(['loaded-a']),
@@ -67,7 +61,7 @@ test('refresh protects reaction mutations that are pending or completed after it
 	]);
 
 	assert.deepEqual(
-		chat.reactionKeysToPreserve?.(
+		chat.reactionKeysToPreserve(
 			versions,
 			new Set(['loaded-a|member-a|💙']),
 			new Map([
@@ -104,7 +98,7 @@ test('refresh replaces stale content for loaded older messages with tombstones',
 	};
 
 	assert.deepEqual(
-		chat.reconcileChatMessages?.([oldMessage, latestMessage], [latestMessage], [tombstone]),
+		chat.reconcileChatMessages([oldMessage, latestMessage], [latestMessage], [tombstone]),
 		[tombstone, latestMessage],
 	);
 });
@@ -112,11 +106,11 @@ test('refresh replaces stale content for loaded older messages with tombstones',
 test('older message refresh batches are bounded and rotate through loaded IDs', () => {
 	const loaded = Array.from({ length: 7 }, (_, index) => ({ id: `message-${index}` }));
 
-	assert.deepEqual(chat.nextChatRefreshBatch?.(loaded, 2, 3, 0), {
+	assert.deepEqual(chat.nextChatRefreshBatch(loaded, 2, 3, 0), {
 		ids: ['message-0', 'message-1', 'message-2'],
 		nextOffset: 3,
 	});
-	assert.deepEqual(chat.nextChatRefreshBatch?.(loaded, 2, 3, 3), {
+	assert.deepEqual(chat.nextChatRefreshBatch(loaded, 2, 3, 3), {
 		ids: ['message-3', 'message-4'],
 		nextOffset: 0,
 	});
@@ -131,7 +125,7 @@ test('unread chat query excludes soft-deleted messages', () => {
 		deletedAt: timestamp('deleted_at', { withTimezone: true }),
 		createdAt: timestamp('created_at', { withTimezone: true }),
 	});
-	const where = unreadQuery.buildUnreadChatMessagesWhere?.(
+	const where = unreadQuery.buildUnreadChatMessagesWhere(
 		messages,
 		'00000000-0000-4000-8000-000000000001',
 		'00000000-0000-4000-8000-000000000002',
@@ -152,7 +146,7 @@ test('unread chat query excludes soft-deleted messages', () => {
 		'00000000-0000-4000-8000-000000000003',
 		'00000000-0000-4000-8000-000000000001',
 	]);
-	const older = unreadQuery.buildChatCursorWhere?.(
+	const older = unreadQuery.buildChatCursorWhere(
 		messages,
 		'00000000-0000-4000-8000-000000000001',
 		'00000000-0000-4000-8000-000000000003',
@@ -182,7 +176,7 @@ test('chat read marker advances by timestamp and message id', () => {
 	const reads = pgTable('wg_chat_reads', {
 		lastReadMessageId: uuid('last_read_message_id'),
 	});
-	const where = chatReadQuery.buildChatReadMarkerSetWhere?.(
+	const where = chatReadQuery.buildChatReadMarkerSetWhere(
 		'00000000-0000-4000-8000-000000000003',
 		reads.lastReadMessageId,
 	);
@@ -218,11 +212,11 @@ test('read payload keeps the latest page and older refresh updates in separate f
 		deletedAt: '2026-09-23T13:00:00.000Z',
 	};
 
-	assert.deepEqual(chat.chatMessagesReadPayload?.([pageTombstone], [olderTombstone]), {
+	assert.deepEqual(chat.chatMessagesReadPayload([pageTombstone], [olderTombstone]), {
 		messages: [{ ...pageTombstone, body: null }],
 		refreshedMessages: [{ ...olderTombstone, body: null }],
 	});
-	assert.deepEqual(chat.chatMessagesReadPayload?.([], [olderTombstone]), {
+	assert.deepEqual(chat.chatMessagesReadPayload([], [olderTombstone]), {
 		messages: [],
 		refreshedMessages: [{ ...olderTombstone, body: null }],
 	});
@@ -234,10 +228,10 @@ test('late older refresh response cannot overwrite a newer tombstone', () => {
 	const tombstoneRequestId = ++latestRequestId;
 	let visibleMessage = 'live body';
 
-	if (chat.isLatestChatRefreshResponse?.(tombstoneRequestId, latestRequestId)) {
+	if (chat.isLatestChatRefreshResponse(tombstoneRequestId, latestRequestId)) {
 		visibleMessage = 'tombstone';
 	}
-	if (chat.isLatestChatRefreshResponse?.(staleRequestId, latestRequestId)) {
+	if (chat.isLatestChatRefreshResponse(staleRequestId, latestRequestId)) {
 		visibleMessage = 'stale live body';
 	}
 	assert.equal(visibleMessage, 'tombstone');
@@ -246,11 +240,11 @@ test('late older refresh response cannot overwrite a newer tombstone', () => {
 test('GET started before successful delete cannot restore the deleted body', () => {
 	let latestRequestId = 1;
 	const oldGetRequestId = latestRequestId;
-	let visibleBody = 'body to delete';
+	let visibleBody: string | null = 'body to delete';
 
-	latestRequestId = chat.advanceChatRefreshSequence?.(latestRequestId) ?? latestRequestId;
+	latestRequestId = chat.advanceChatRefreshSequence(latestRequestId);
 	visibleBody = null;
-	if (chat.isLatestChatRefreshResponse?.(oldGetRequestId, latestRequestId)) {
+	if (chat.isLatestChatRefreshResponse(oldGetRequestId, latestRequestId)) {
 		visibleBody = 'body to delete';
 	}
 
