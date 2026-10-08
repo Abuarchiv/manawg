@@ -48,6 +48,7 @@ export default function PinnwandPage(): React.ReactElement {
 		authorByMemberId,
 		isPending,
 		stableDelete,
+		stableEdit,
 		stableTogglePinned,
 		stableToggleStatus,
 		stableToggleReaction,
@@ -64,12 +65,14 @@ export default function PinnwandPage(): React.ReactElement {
 				announcement={a}
 				author={authorByMemberId.get(a.authorMemberId) ?? UNKNOWN_AUTHOR}
 				deletePending={isPending(a.id)}
+				editPending={isPending(`${a.id}:edit`)}
 				pinPending={isPending(`${a.id}:pin`)}
 				statusPending={isPending(`${a.id}:status`)}
 				pendingReactions={(['seen', 'take', 'ok'] as const)
 					.filter((reaction) => isPending(`${a.id}:reaction:${reaction}`))
 					.join()}
 				onDelete={stableDelete}
+				onEdit={stableEdit}
 				onTogglePinned={stableTogglePinned}
 				onToggleStatus={stableToggleStatus}
 				onToggleReaction={stableToggleReaction}

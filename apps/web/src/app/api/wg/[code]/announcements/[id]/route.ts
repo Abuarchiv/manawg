@@ -22,6 +22,7 @@ const patchAnnouncementSchema = z.object({
 	status: z.enum(['open', 'resolved']).optional(),
 	pinned: z.boolean().optional(),
 	kind: z.enum(ANNOUNCEMENT_KINDS).optional(),
+	content: z.string().trim().min(1).max(2000).optional(),
 });
 
 export const PATCH = withWgRoute<{ id: string }>(
@@ -34,6 +35,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 				status: 'status_invalid',
 				pinned: 'pinned_invalid',
 				kind: 'kind_invalid',
+				content: 'content_invalid',
 			},
 		});
 		if (!parsed.ok) return parsed.response;
@@ -52,15 +54,22 @@ export const PATCH = withWgRoute<{ id: string }>(
 				authorMemberId: announcements.authorMemberId,
 				content: announcements.content,
 				status: announcements.status,
+				source: announcements.source,
 			})
 			.from(announcements)
 			.where(and(eq(announcements.id, id), eq(announcements.wgId, wg.id)))
 			.limit(1);
 		const row = existing[0];
 		if (!row) return notFound('announcement_not_found');
+		// Posts generated from a chore or an expense carry system text; only manual posts are editable.
+		if (parsed.data.content !== undefined && row.source !== 'manual') {
+			return forbidden('content_locked', 'content_locked');
+		}
 
 		const changesModeratedFields =
-			parsed.data.kind !== undefined || parsed.data.pinned !== undefined;
+			parsed.data.kind !== undefined ||
+			parsed.data.pinned !== undefined ||
+			parsed.data.content !== undefined;
 		const isAuthor = row.authorMemberId === auth.member.memberId;
 		if (changesModeratedFields) {
 			const denied = await requireOwnerOrAdmin(wg.id, auth.member, row.authorMemberId);
@@ -69,6 +78,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 
 		const now = new Date();
 		const patch: {
+			content?: string;
 			kind?: string;
 			pinnedAt?: Date | null;
 			status?: string;
@@ -78,6 +88,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 		} = {};
 		patch.updatedAt = now;
 		if (parsed.data.kind) patch.kind = parsed.data.kind;
+		if (parsed.data.content !== undefined) patch.content = parsed.data.content;
 		if (typeof parsed.data.pinned === 'boolean') {
 			patch.pinnedAt = parsed.data.pinned ? now : null;
 		}

@@ -24,10 +24,12 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
+import { ShoppingItemEditForm } from '@/features/shopping/components/ShoppingItemEditForm';
 import type { ShoppingItem } from '@/features/shopping/components/shopping-types';
+import { isTempItemId } from '@/features/shopping/shopping-view';
 import { cn } from '@/shared/lib/cn';
 import type { MemberInfo } from '@/shared/lib/member-types';
-import { Check, MoreHorizontal, Receipt, RotateCcw, Trash2 } from 'lucide-react';
+import { Check, MoreHorizontal, Pencil, Receipt, RotateCcw, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { memo, useEffect, useRef, useState } from 'react';
 
@@ -42,6 +44,7 @@ interface ShoppingItemRowProps {
 	queued?: boolean;
 	onToggle: (item: ShoppingItem) => void;
 	onRemove: (id: string, itemName: string) => void;
+	onEdit: (item: ShoppingItem, name: string, quantity: string | null) => Promise<string | null>;
 	removeError?: string | null;
 	highlighted: boolean;
 	shareCode: string;
@@ -56,6 +59,7 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 	queued = false,
 	onToggle,
 	onRemove,
+	onEdit,
 	removeError = null,
 	highlighted,
 	shareCode,
@@ -72,6 +76,9 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 			: buyer?.name
 		: null;
 	const adderName = item.addedByMemberId === identity.memberId ? 'dir' : adder.name;
+	const [editing, setEditing] = useState(false);
+	// Queued or unsaved rows and bought items are not editable.
+	const canEdit = !isBought && !queued && !isTempItemId(item.id);
 	const swipeStartX = useRef<number | null>(null);
 	const confirmAlertRef = useRef<HTMLDivElement>(null);
 	const [swipeX, setSwipeX] = useState(0);
@@ -183,7 +190,12 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 					</ItemDescription>
 				</ItemContent>
 				<ItemActions className="ml-auto">
-					<Drawer onOpenChange={() => deleteConfirm.cancel()}>
+					<Drawer
+						onOpenChange={() => {
+							deleteConfirm.cancel();
+							setEditing(false);
+						}}
+					>
 						<DrawerTrigger
 							render={
 								<Button variant="ghost" size="icon" aria-label={`Artikelaktionen: ${item.name}`} />
@@ -204,6 +216,19 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 								</DrawerDescription>
 							</DrawerHeader>
 							<div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-4">
+								{canEdit && !editing && (
+									<Button type="button" variant="outline" onClick={() => setEditing(true)}>
+										<Pencil data-icon="inline-start" aria-hidden />
+										Bearbeiten
+									</Button>
+								)}
+								{editing && (
+									<ShoppingItemEditForm
+										item={item}
+										onSave={onEdit}
+										onDone={() => setEditing(false)}
+									/>
+								)}
 								{isBought && (
 									<>
 										<Button

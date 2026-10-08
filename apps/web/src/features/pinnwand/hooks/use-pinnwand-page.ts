@@ -127,6 +127,7 @@ export function usePinnwandPage() {
 		[members],
 	);
 	const stableDelete = useStableCallback((a: Announcement) => actions.remove(a.id));
+	const stableEdit = useStableCallback(actions.editContent);
 	const stableTogglePinned = useStableCallback(actions.togglePinned);
 	const stableToggleStatus = useStableCallback(actions.toggleStatus);
 	const stableToggleReaction = useStableCallback((a: Announcement, reaction: ReactionKey) => {
@@ -165,6 +166,7 @@ export function usePinnwandPage() {
 		authorByMemberId,
 		isPending,
 		stableDelete,
+		stableEdit,
 		stableTogglePinned,
 		stableToggleStatus,
 		stableToggleReaction,

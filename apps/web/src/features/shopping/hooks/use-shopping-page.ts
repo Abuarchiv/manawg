@@ -6,6 +6,7 @@ import { useShoppingAdd } from '@/features/shopping/hooks/use-shopping-add';
 import { isTempItemId } from '@/features/shopping/shopping-view';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ShoppingActionContext } from './shopping-action-context';
+import { useShoppingEdit } from './use-shopping-edit';
 import { useShoppingRemoval } from './use-shopping-removal';
 import { useShoppingToggle } from './use-shopping-toggle';
 
@@ -88,6 +89,7 @@ export function useShoppingPage({
 	};
 	const toggleBought = useShoppingToggle(ctx);
 	const removal = useShoppingRemoval({ ...ctx, start, end });
+	const editItem = useShoppingEdit(ctx);
 
 	const add = useShoppingAdd({
 		wg,
@@ -159,6 +161,7 @@ export function useShoppingPage({
 		isPending,
 		toggleBought,
 		remove: removal.remove,
+		editItem,
 		clearBought: removal.clearBought,
 		add,
 	};

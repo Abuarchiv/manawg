@@ -201,7 +201,35 @@ export function useAnnouncementActions(
 		return null;
 	}
 
+	/** The dialog shows the error itself: null = saved, otherwise the message. */
+	async function editContent(announcement: Announcement, content: string): Promise<string | null> {
+		const pendingKey = `${announcement.id}:edit`;
+		if (isPending(pendingKey)) return 'Die Änderung wird bereits gespeichert.';
+		start(pendingKey);
+		const res = await apiFetch<AnnouncementWriteResponse>(
+			`/api/wg/${encodedShareCode}/announcements/${encodeURIComponent(announcement.id)}`,
+			{
+				method: 'PATCH',
+				memberId: identity.memberId,
+				body: JSON.stringify({ content }),
+			},
+		);
+		end(pendingKey);
+		if (!res.ok) {
+			if (res.status === 404 && res.error === 'announcement_not_found') {
+				dropVanishedAnnouncement(announcement.id);
+				return null;
+			}
+			return announcementActionErrorMessage(res.error);
+		}
+		updateItem(announcement.id, (item) => ({ ...item, content }));
+		toast.success('Beitrag gespeichert.');
+		void load();
+		return null;
+	}
+
 	return {
+		editContent,
 		togglePinned,
 		toggleStatus,
 		toggleReaction,

@@ -23,6 +23,7 @@ import { type ReactElement, memo, useState } from 'react';
 import { AnnouncementActionsMenu } from './AnnouncementActionsMenu';
 import { AnnouncementBody } from './AnnouncementBody';
 import { AnnouncementDeleteDialog } from './AnnouncementDeleteDialog';
+import { AnnouncementEditDialog } from './AnnouncementEditDialog';
 import { AnnouncementFooter } from './AnnouncementFooter';
 import { actionLabelSubject } from './CommentRow';
 import type { Announcement, ReactionKey } from './announcement-types';
@@ -32,11 +33,13 @@ interface AnnouncementCardProps {
 	announcement: Announcement;
 	author: MemberInfo;
 	deletePending: boolean;
+	editPending: boolean;
 	pinPending: boolean;
 	statusPending: boolean;
 	/** Comma-separated reactions with a request in flight (a string, not a function, so memo holds). */
 	pendingReactions: string;
 	onDelete: (announcement: Announcement) => Promise<string | null>;
+	onEdit: (announcement: Announcement, content: string) => Promise<string | null>;
 	onTogglePinned: (announcement: Announcement) => void;
 	onToggleStatus: (announcement: Announcement) => void;
 	onToggleReaction: (announcement: Announcement, reaction: ReactionKey) => void;
@@ -57,10 +60,12 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 	announcement,
 	author,
 	deletePending,
+	editPending,
 	pinPending,
 	statusPending,
 	pendingReactions,
 	onDelete,
+	onEdit,
 	onTogglePinned,
 	onToggleStatus,
 	onToggleReaction,
@@ -75,6 +80,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 	const reactionPending = (key: ReactionKey): boolean => pendingReactions.includes(key);
 	const bodyText = announcement.content.trim();
 	const [deleteOpen, setDeleteOpen] = useState(false);
+	const [editOpen, setEditOpen] = useState(false);
 	const [touchedReactions, setTouchedReactions] = useState<ReactionKey[]>([]);
 	const draftKey = `manawg:draft:${shareCode}:${currentMemberId}:announcement:${announcement.id}`;
 
@@ -83,6 +89,8 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 	const isAuthor = announcement.authorMemberId === currentMemberId;
 	const canModerate = isAuthor || isAdmin;
 	const canResolve = isAuthor || announcement.myReactions.includes('take');
+	// Posts made from a chore or expense carry system text; the server only edits manual ones.
+	const canEdit = canModerate && announcement.source === 'manual';
 	const sourceLabel = SOURCE_LABELS[announcement.source];
 	const sourceHref = announcement.sourcePath
 		? `/wg/${encodeURIComponent(shareCode)}${announcement.sourcePath}`
@@ -91,6 +99,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 	const reactions = pickReactionOptions(announcement, touchedReactions);
 	const busy =
 		deletePending ||
+		editPending ||
 		pinPending ||
 		statusPending ||
 		REACTION_OPTIONS.some(({ key }) => reactionPending(key));
@@ -144,6 +153,8 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 							isResolved={isResolved}
 							canModerate={canModerate}
 							canResolve={canResolve}
+							canEdit={canEdit}
+							onEdit={() => setEditOpen(true)}
 							deletePending={deletePending}
 							pinPending={pinPending}
 							statusPending={statusPending}
@@ -182,6 +193,12 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 					/>
 				</CardFooter>
 			</Card>
+			<AnnouncementEditDialog
+				open={editOpen}
+				onOpenChange={setEditOpen}
+				initialContent={bodyText}
+				onSave={(content) => onEdit(announcement, content)}
+			/>
 			<AnnouncementDeleteDialog
 				open={deleteOpen}
 				onOpenChange={setDeleteOpen}

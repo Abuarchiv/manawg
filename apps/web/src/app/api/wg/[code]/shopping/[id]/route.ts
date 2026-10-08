@@ -179,3 +179,65 @@ export const DELETE = withWgRoute<{ id: string }>('shopping DELETE', async (req,
 	});
 	return NextResponse.json({ deleted: true });
 });
+
+const NAME_MAX = 120;
+const QUANTITY_MAX = 40;
+
+const putShoppingItemSchema = z.object({
+	name: z.string().trim().min(1).max(NAME_MAX),
+	quantity: z.string().trim().max(QUANTITY_MAX).nullable().optional(),
+});
+
+/** Rename an open item or change its amount; any member may, like ticking it off. */
+export const PUT = withWgRoute<{ id: string }>('shopping PUT', async (req, { code, id }) => {
+	if (!UUID_PATTERN.test(id)) return badRequest('id_invalid');
+
+	const parsed = await parseBody(req, putShoppingItemSchema, {
+		fieldErrors: { name: 'name_invalid', quantity: 'quantity_invalid' },
+	});
+	if (!parsed.ok) return parsed.response;
+	const auth = await requireWgMember(req, code);
+	if (!auth.ok) return auth.response;
+	const wgId = auth.wg.id;
+
+	const limited = await checkRateLimit(
+		wgWriteLimiter,
+		`shopping:item:${wgId}:${auth.member.memberId}`,
+	);
+	if (!limited.success) return tooMany();
+
+	try {
+		const [updated] = await db
+			.update(shoppingItems)
+			.set({
+				name: parsed.data.name,
+				quantity: parsed.data.quantity?.trim() || null,
+				updatedAt: sql`greatest(clock_timestamp(), ${shoppingItems.updatedAt} + interval '1 millisecond')`,
+			})
+			.where(
+				and(eq(shoppingItems.id, id), eq(shoppingItems.wgId, wgId), isNull(shoppingItems.boughtAt)),
+			)
+			.returning();
+		if (!updated) {
+			const [existing] = await db
+				.select({ id: shoppingItems.id })
+				.from(shoppingItems)
+				.where(and(eq(shoppingItems.id, id), eq(shoppingItems.wgId, wgId)))
+				.limit(1);
+			return existing ? conflict('shopping_item_changed') : notFound('item_not_found');
+		}
+		await recordAuditEvent({
+			wgId,
+			memberId: auth.member.memberId,
+			eventType: 'shopping.updated',
+			entityType: 'shopping_item',
+			entityId: updated.id,
+			summary: `${auth.member.name} hat ${updated.name} auf der Einkaufsliste geändert.`,
+			metadata: { name: updated.name, quantity: updated.quantity },
+		});
+		return NextResponse.json({ item: updated });
+	} catch (err) {
+		if (isOpenShoppingItemDuplicate(err)) return conflict('shopping_item_duplicate');
+		throw err;
+	}
+});

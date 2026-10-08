@@ -176,6 +176,7 @@ export default function EinkaufPage() {
 					isPending={shopping.isPending}
 					onToggle={shopping.toggleBought}
 					onRemove={(id, name) => shopping.remove(id, name).then(keepFocus)}
+					onEdit={shopping.editItem}
 					removeError={shopping.removeError}
 					removeErrorId={shopping.removeErrorId}
 					isAdmin={isAdmin}

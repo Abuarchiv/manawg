@@ -25,6 +25,7 @@ interface ShoppingListProps {
 	isPending: (id: string) => boolean;
 	onToggle: (item: ShoppingItem) => Promise<void>;
 	onRemove: (id: string, itemName: string) => Promise<unknown>;
+	onEdit: (item: ShoppingItem, name: string, quantity: string | null) => Promise<string | null>;
 	removeError: string | null;
 	removeErrorId: string | null;
 	isAdmin: boolean;
@@ -44,6 +45,7 @@ export function ShoppingList({
 	isPending,
 	onToggle,
 	onRemove,
+	onEdit,
 	removeError,
 	removeErrorId,
 	isAdmin,
@@ -101,6 +103,7 @@ export function ShoppingList({
 				queued={queuedShoppingUpdateIds.has(item.id)}
 				onToggle={onToggle}
 				onRemove={onRemove}
+				onEdit={onEdit}
 				removeError={removeErrorId === item.id ? removeError : null}
 				// Die Server-Route lässt auch den Admin fremde Artikel entfernen.
 				canRemove={item.addedByMemberId === memberId || isAdmin}
