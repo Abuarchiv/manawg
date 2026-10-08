@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { DEFAULT_JSON_BODY_BYTES, readJsonLimited } from './read-json.ts';
+import { DEFAULT_JSON_BODY_BYTES, readJsonLimited } from './read-json';
 
-const post = (body, headers = {}) =>
+const post = (body: string, headers: Record<string, string> = {}) =>
 	new Request('http://x.test/', { method: 'POST', body, headers });
 
 test('readJsonLimited parses small bodies', async () => {

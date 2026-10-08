@@ -1,23 +1,9 @@
 import assert from 'node:assert/strict';
-import { registerHooks } from 'node:module';
-import { resolve } from 'node:path';
 import test from 'node:test';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { buildQueueEditDraft, buildQueueEditHref } from './drafts';
 
-const srcRoot = fileURLToPath(new URL('../..', import.meta.url));
-registerHooks({
-	resolve(specifier, context, nextResolve) {
-		if (specifier.startsWith('@/')) {
-			const path = resolve(srcRoot, `${specifier.slice(2)}.ts`);
-			return nextResolve(pathToFileURL(path).href, context);
-		}
-		return nextResolve(specifier, context);
-	},
-});
-
-const { buildQueueEditDraft, buildQueueEditHref } = await import('./drafts.ts');
-
-const action = (type, payload) => ({ id: `queued-${type}`, type, payload });
+const action = (type: string, payload: Record<string, unknown>) =>
+	({ id: `queued-${type}`, type, payload }) as never;
 
 test('a queued absence opens in the Putzplan chore draft that the page reads', () => {
 	const draft = buildQueueEditDraft(

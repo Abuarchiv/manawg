@@ -1,43 +1,135 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import path from 'node:path';
-import test from 'node:test';
-import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
-import { loadClaimedResponse, withRouteHelpers } from '../../../tests/support/claimed-response.cjs';
+import { mock, test } from 'node:test';
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { Client, Pool } from 'pg';
+import { z } from 'zod';
 
-const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
+// Runs against a throwaway schema of a loopback Postgres (PRIVATE_IMAGE_TEST_DATABASE_URL); the
+// test is skipped without one. The real helper, transaction, deletion and route modules run on
+// that database; the mocks below replace only auth, rate limits, audit and notifications.
+
 const connectionString = process.env.PRIVATE_IMAGE_TEST_DATABASE_URL;
 const wgId = '11111111-1111-4111-8111-111111111111';
 const objectId = '22222222-2222-4222-8222-222222222222';
 
-/** Real expense constants and schemas, so the route validates with production limits. */
-function expenseValidationModules() {
-	const constants = loadTypeScript(
-		path.join(process.cwd(), 'src/features/expenses/expense-constants.ts'),
-		{},
-	);
-	return {
-		'@/features/expenses/expense-constants': constants,
-		'@/features/expenses/expense-schemas': loadTypeScript(
-			path.join(process.cwd(), 'src/features/expenses/expense-schemas.ts'),
-			{ '@/features/expenses/expense-constants': constants },
-		),
-	};
-}
+const schema = await import('./schema');
+type TestDb = NodePgDatabase<typeof schema>;
 
-function loadTypeScript(file, overrides = {}) {
-	const source = transpileModule(readFileSync(file, 'utf8'), {
-		compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
-	}).outputText;
-	const loaded = { exports: {} };
-	new Function('require', 'module', 'exports', source)(
-		(name) => (name in overrides ? overrides[name] : requireFromWeb(name)),
-		loaded,
-		loaded.exports,
-	);
-	return loaded.exports;
-}
+// The database is created inside the test; the mocked `@/core/db` reads it through this proxy.
+let activeDb: TestDb | undefined;
+const database = () => activeDb as TestDb;
+const testDb = new Proxy({} as TestDb, {
+	get(_target, prop) {
+		const value = Reflect.get(database(), prop);
+		return typeof value === 'function' ? value.bind(database()) : value;
+	},
+});
+
+const routeContext = { wgId, memberId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' };
+const lockProbe: { onLock?: (() => void) | undefined } = {};
+
+mock.module('server-only', { namedExports: {} });
+mock.module('@/core/db', {
+	namedExports: {
+		...schema,
+		db: testDb,
+		withTransaction: <T>(operation: Parameters<TestDb['transaction']>[0]) =>
+			database().transaction(operation) as Promise<T>,
+	},
+});
+
+const transaction = await import('./transaction');
+// Reports the next WG-lock attempt, so a test can tell that a writer reached the lock.
+mock.module('@/core/db/transaction', {
+	namedExports: {
+		...transaction,
+		lockExpensePayments: (
+			tx: Parameters<typeof transaction.lockExpensePayments>[0],
+			id: string,
+		) => {
+			const probe = lockProbe.onLock;
+			lockProbe.onLock = undefined;
+			probe?.();
+			return transaction.lockExpensePayments(tx, id);
+		},
+	},
+});
+
+const validator = await import('@/core/validators/image-url');
+mock.module('@/core/validators/image-url', {
+	namedExports: {
+		...validator,
+		imageUrlSchema: z.string().nullable().optional(),
+		isAllowedImageUrlForWg: () => true,
+	},
+});
+mock.module('@/core/audit', { namedExports: { recordAuditEvent: async () => undefined } });
+mock.module('@/core/guards/api-auth', {
+	namedExports: { UUID_PATTERN: /^[0-9a-f-]{36}$/i },
+});
+mock.module('@/core/guards/admin', {
+	namedExports: { isWgAdmin: async () => true, requireOwnerOrAdmin: async () => null },
+});
+mock.module('@/core/guards/require-wg-member', {
+	namedExports: {
+		requireWgMember: async () => ({
+			ok: true,
+			wg: { id: routeContext.wgId, name: 'Test WG', shareCode: 'MTE8PZAT' },
+			member: { memberId: routeContext.memberId, name: 'Member' },
+		}),
+	},
+});
+mock.module('@/core/guards/with-wg-route', {
+	namedExports: { withWgRoute: (_label: string, handler: unknown) => handler },
+});
+mock.module('@/core/idempotency-store', {
+	namedExports: {
+		claimResponseSlot: async () => true,
+		getCachedResponse: async () => null,
+		readIdempotencyKey: (request: Request) => request.headers.get('Idempotency-Key'),
+		setReplayWarning: async () => undefined,
+	},
+});
+mock.module('@/core/infra/env', {
+	namedExports: { readListLimit: (_env: unknown, _key: unknown, fallback: number) => fallback },
+});
+mock.module('@/core/infra/observability', {
+	namedExports: { logApiError: () => undefined, captureException: () => undefined },
+});
+mock.module('@/core/notifications/notification-dispatch', {
+	namedExports: { dispatchNotificationSafely: async () => ({ warning: null }) },
+});
+mock.module('@/core/rate-limit', {
+	namedExports: {
+		checkRateLimit: async () => ({ success: true }),
+		chatMessageLimiter: {},
+		wgWriteLimiter: {},
+	},
+});
+mock.module('@/features/expenses/expense-payments', {
+	namedExports: {
+		hasCapturingExpensePayment: async () => false,
+		withExpensePaymentLock: async (
+			currentWgId: string,
+			operation: (tx: Parameters<typeof transaction.lockExpensePayments>[0]) => Promise<unknown>,
+		) =>
+			database().transaction(async (tx) => {
+				await transaction.lockExpensePayments(tx, currentWgId);
+				return operation(tx);
+			}),
+	},
+});
+mock.module('@/features/expenses/split-math', {
+	namedExports: {
+		settledAtForOwnShare: () => null,
+		splitValidationErrorCode: (reason: string) => reason,
+		validateSplits: () => ({ ok: true }),
+	},
+});
+
+type RouteHandler = (request: Request, context: Record<string, string>) => Promise<Response>;
 
 function imageUrl(id = objectId, targetWgId = wgId) {
 	const key = `manawg/${targetWgId}/expense/${id}.jpg`;
@@ -48,7 +140,7 @@ test(
 	'private image deletion preserves shared references and serializes attachment against last removal',
 	{ skip: !connectionString },
 	async () => {
-		const parsed = new URL(connectionString);
+		const parsed = new URL(connectionString as string);
 		const loopbackHosts = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
 		assert.ok(
 			(parsed.protocol === 'postgres:' || parsed.protocol === 'postgresql:') &&
@@ -59,16 +151,16 @@ test(
 			'test database must be a query-free loopback URL',
 		);
 
-		const { Client, Pool } = requireFromWeb('pg');
-		const { drizzle } = requireFromWeb('drizzle-orm/node-postgres');
-		const { and, eq } = requireFromWeb('drizzle-orm');
 		const schemaName = `private_image_test_${process.pid}_${Date.now()}`;
 		const setup = new Client({ connectionString });
+		const { connectionParameters } = setup as unknown as {
+			connectionParameters: { host: string; port: string | number };
+		};
 		assert.ok(
-			loopbackHosts.has(setup.connectionParameters.host),
+			loopbackHosts.has(connectionParameters.host),
 			'pg driver target must remain on loopback',
 		);
-		assert.equal(Number(setup.connectionParameters.port), Number(parsed.port));
+		assert.equal(Number(connectionParameters.port), Number(parsed.port));
 		await setup.connect();
 		await setup.query(`CREATE SCHEMA ${schemaName}`);
 		await setup.query(`CREATE TABLE ${schemaName}.expenses (
@@ -160,31 +252,25 @@ test(
 			application_name: 'manawg_private_image_test',
 			options: `-c search_path=${schemaName},public`,
 		});
-		const schema = loadTypeScript(path.join(process.cwd(), 'src/core/db/schema.ts'));
-		const db = drizzle(pool, { schema });
-		const transaction = loadTypeScript(path.join(process.cwd(), 'src/core/db/transaction.ts'), {
-			'./connection': { resolveConnectionString: () => connectionString },
-			'./index': { withTransaction: (operation) => db.transaction(operation) },
-			'./schema': schema,
-			'./transaction-abort': loadTypeScript(
-				path.join(process.cwd(), 'src/core/db/transaction-abort.ts'),
-			),
-		});
-		const validator = loadTypeScript(path.join(process.cwd(), 'src/core/validators/image-url.ts'));
-		const helper = loadTypeScript(
-			path.join(process.cwd(), 'src/core/db/private-image-deletions.ts'),
-			{
-				'server-only': {},
-				'@/core/db': { db },
-				'@/core/db/schema': schema,
-				'@/core/db/transaction': transaction,
-				'@/core/validators/image-url': validator,
-			},
-		);
+		// Polls until a backend of this test waits on a lock; resolves to the waiting query.
+		const waitForLockWait = async (): Promise<string | null> => {
+			for (let attempt = 0; attempt < 30; attempt++) {
+				const waiting = await setup.query(
+					"SELECT query FROM pg_stat_activity WHERE application_name = 'manawg_private_image_test' AND wait_event_type = 'Lock' LIMIT 1",
+				);
+				if (waiting.rowCount) return waiting.rows[0].query;
+				await new Promise<void>((resolve) => setTimeout(resolve, 10));
+			}
+			return null;
+		};
+
+		activeDb = drizzle(pool, { schema });
+		const db = database();
 		const { announcements, expenses, wgChatMessages } = schema;
+		const helper = await import('./private-image-deletions');
 
 		try {
-			const insertReference = (table, url, deletedAt = null) => {
+			const insertReference = (table: string, url: string, deletedAt: Date | null = null) => {
 				if (table === 'wg_chat_messages') {
 					return setup.query(
 						`INSERT INTO ${schemaName}.${table} (wg_id, image_url, deleted_at) VALUES ($1, $2, $3)`,
@@ -207,7 +293,7 @@ test(
 					await helper.revokePrivateImageIfUnreferenced(tx, wgId, rollbackImage.url);
 					throw new Error('injected_failure_after_private_image_revocation');
 				}),
-				(error) => error.message === 'injected_failure_after_private_image_revocation',
+				(error: Error) => error.message === 'injected_failure_after_private_image_revocation',
 			);
 			assert.equal(await helper.isPrivateImageKeyRevoked(rollbackImage.key), false);
 			const rollbackReference = await setup.query(
@@ -258,7 +344,7 @@ test(
 				db.transaction((tx) =>
 					helper.assertPrivateImageCanBeAttached(tx, wgId, sharedAnnouncement.url),
 				),
-				(error) => error.code === 'image_removed',
+				(error: { code?: string }) => error.code === 'image_removed',
 			);
 
 			const sharedChat = imageUrl('44444444-4444-4444-8444-444444444444');
@@ -284,12 +370,12 @@ test(
 
 			const raced = imageUrl('55555555-5555-4555-8555-555555555555');
 			await insertReference('expenses', raced.url);
-			let releaseDeletion;
-			let deletionChanged;
-			const waitForRelease = new Promise((resolve) => {
+			let releaseDeletion!: () => void;
+			let deletionChanged!: () => void;
+			const waitForRelease = new Promise<void>((resolve) => {
 				releaseDeletion = resolve;
 			});
-			const changed = new Promise((resolve) => {
+			const changed = new Promise<void>((resolve) => {
 				deletionChanged = resolve;
 			});
 			const deleting = db.transaction(async (tx) => {
@@ -301,15 +387,15 @@ test(
 				deletionChanged();
 				await waitForRelease;
 			});
-			let attaching;
+			let attaching: Promise<unknown> | undefined;
 			try {
 				const deletionReachedGate = await Promise.race([
 					changed.then(() => true),
 					deleting.then(() => false),
 				]);
 				assert.equal(deletionReachedGate, true, 'deletion transaction reaches its held-lock gate');
-				let attachmentStarted;
-				const startingAttachment = new Promise((resolve) => {
+				let attachmentStarted!: () => void;
+				const startingAttachment = new Promise<void>((resolve) => {
 					attachmentStarted = resolve;
 				});
 				attaching = db.transaction(async (tx) => {
@@ -317,8 +403,7 @@ test(
 					await transaction.lockExpensePayments(tx, wgId);
 					await helper.assertPrivateImageCanBeAttached(tx, wgId, raced.url);
 					await tx.execute(
-						requireFromWeb('drizzle-orm')
-							.sql`INSERT INTO expenses (wg_id, image_url) VALUES (${wgId}, ${raced.url})`,
+						sql`INSERT INTO expenses (wg_id, image_url) VALUES (${wgId}, ${raced.url})`,
 					);
 				});
 				const attachmentReachedLock = await Promise.race([
@@ -332,7 +417,10 @@ test(
 				);
 				releaseDeletion();
 				await deleting;
-				await assert.rejects(attaching, (error) => error.code === 'image_removed');
+				await assert.rejects(
+					attaching,
+					(error: { code?: string }) => error.code === 'image_removed',
+				);
 				assert.equal(await helper.isPrivateImageKeyRevoked(raced.key), true);
 			} finally {
 				releaseDeletion();
@@ -344,29 +432,28 @@ test(
 				`INSERT INTO ${schemaName}.expenses (wg_id, image_url) VALUES ($1, $2) RETURNING id`,
 				[wgId, attachFirst.url],
 			);
-			let releaseAttachment;
-			let attachmentHeld;
-			let deletionStarted;
-			const waitForAttachmentRelease = new Promise((resolve) => {
+			let releaseAttachment!: () => void;
+			let attachmentHeld!: () => void;
+			let deletionStarted!: () => void;
+			const waitForAttachmentRelease = new Promise<void>((resolve) => {
 				releaseAttachment = resolve;
 			});
-			const attachmentReady = new Promise((resolve) => {
+			const attachmentReady = new Promise<void>((resolve) => {
 				attachmentHeld = resolve;
 			});
-			const deletionReady = new Promise((resolve) => {
+			const deletionReady = new Promise<void>((resolve) => {
 				deletionStarted = resolve;
 			});
 			const attachingFirst = db.transaction(async (tx) => {
 				await transaction.lockExpensePayments(tx, wgId);
 				await helper.assertPrivateImageCanBeAttached(tx, wgId, attachFirst.url);
 				await tx.execute(
-					requireFromWeb('drizzle-orm')
-						.sql`INSERT INTO expenses (wg_id, image_url) VALUES (${wgId}, ${attachFirst.url})`,
+					sql`INSERT INTO expenses (wg_id, image_url) VALUES (${wgId}, ${attachFirst.url})`,
 				);
 				attachmentHeld();
 				await waitForAttachmentRelease;
 			});
-			let deletingAfterAttach;
+			let deletingAfterAttach: Promise<unknown> | undefined;
 			try {
 				const attachmentReachedGate = await Promise.race([
 					attachmentReady.then(() => true),
@@ -384,17 +471,7 @@ test(
 					await helper.revokePrivateImageIfUnreferenced(tx, wgId, attachFirst.url);
 				});
 				await deletionReady;
-				let lockObserved = false;
-				for (let attempt = 0; attempt < 30; attempt++) {
-					const waiting = await setup.query(
-						"SELECT 1 FROM pg_stat_activity WHERE application_name = 'manawg_private_image_test' AND wait_event_type = 'Lock' LIMIT 1",
-					);
-					if (waiting.rowCount) {
-						lockObserved = true;
-						break;
-					}
-					await new Promise((resolve) => setTimeout(resolve, 10));
-				}
+				const lockObserved = (await waitForLockWait()) !== null;
 				assert.equal(lockObserved, true, 'last-reference deletion waits for the attachment lock');
 				releaseAttachment();
 				await Promise.all([attachingFirst, deletingAfterAttach]);
@@ -477,38 +554,25 @@ test(
 			const cascadeImage = imageUrl('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
 			await setup.query(`INSERT INTO ${schemaName}.wgs (id) VALUES ($1)`, [wgId]);
 			await insertReference('expenses', cascadeImage.url);
-			const deleteWg = loadTypeScript(path.join(process.cwd(), 'src/core/db/delete-wg.ts'), {
-				'./schema': schema,
-				'./transaction': transaction,
-				'./private-image-deletions': helper,
-			});
-			let releaseCascade;
-			let cascadeApplied;
-			let routeLockStarted;
-			const waitForCascadeRelease = new Promise((resolve) => {
+			const deleteWg = await import('./delete-wg');
+			let releaseCascade!: () => void;
+			let cascadeApplied!: () => void;
+			let routeLockStarted!: () => void;
+			const waitForCascadeRelease = new Promise<void>((resolve) => {
 				releaseCascade = resolve;
 			});
-			const cascadeReady = new Promise((resolve) => {
+			const cascadeReady = new Promise<void>((resolve) => {
 				cascadeApplied = resolve;
 			});
-			const routeLockReady = new Promise((resolve) => {
+			const routeLockReady = new Promise<void>((resolve) => {
 				routeLockStarted = resolve;
 			});
-			const originalLock = transaction.lockExpensePayments;
-			let observeRouteLock = false;
-			transaction.lockExpensePayments = (tx, currentWgId) => {
-				if (observeRouteLock) {
-					observeRouteLock = false;
-					routeLockStarted();
-				}
-				return originalLock(tx, currentWgId);
-			};
 			const deletingWg = db.transaction(async (tx) => {
 				assert.equal(await deleteWg.deleteWgCascade(tx, wgId), true);
 				cascadeApplied();
 				await waitForCascadeRelease;
 			});
-			let post;
+			let post: Promise<Response> | undefined;
 			try {
 				const cascadeReachedGate = await Promise.race([
 					cascadeReady.then(() => true),
@@ -520,73 +584,10 @@ test(
 					'WG deletion transaction reaches its held-lock gate',
 				);
 
-				const z = requireFromWeb('zod').z;
-				const responseJson = (error, status) => Response.json({ error }, { status });
-				const route = loadTypeScript(
-					path.join(process.cwd(), 'src/app/api/wg/[code]/chat/messages/route.ts'),
-					withRouteHelpers({
-						'@/core/audit': { recordAuditEvent: async () => undefined },
-						'@/core/db': {
-							db,
-							idempotencyResponses: schema.idempotencyResponses,
-							wgChatMentions: schema.wgChatMentions,
-							wgChatMessages: schema.wgChatMessages,
-							wgChatReactions: schema.wgChatReactions,
-							wgMembers: schema.wgMembers,
-						},
-						'@/core/db/claimed-response': loadClaimedResponse({
-							'@/core/db': { db, idempotencyResponses: schema.idempotencyResponses },
-							'@/core/db/transaction': transaction,
-						}),
-						'@/core/db/private-image-deletions': helper,
-						'@/core/db/transaction': transaction,
-						'@/core/http/api-errors': {
-							HTTP: { BAD_REQUEST: 400, TOO_MANY: 429 },
-							badRequest: (error) => responseJson(error, 400),
-							conflict: (error, code) =>
-								Response.json({ error, ...(code ? { code } : {}) }, { status: 409 }),
-							payloadTooLarge: () => responseJson('payload_too_large', 413),
-						},
-						'@/core/guards/api-auth': { UUID_PATTERN: /^[0-9a-f-]{36}$/i },
-						'@/core/guards/require-wg-member': {
-							requireWgMember: async () => ({
-								ok: true,
-								wg: { id: wgId, name: 'Test WG', shareCode: 'MTE8PZAT' },
-								member: { memberId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', name: 'Member' },
-							}),
-						},
-						'@/core/guards/with-wg-route': { withWgRoute: (_label, handler) => handler },
-						'@/core/http/read-json': {
-							readJsonBody: async (request) => ({ ok: true, body: await request.json() }),
-						},
-						'@/core/idempotency-store': {
-							RESPONSE_REPLAY_TTL_SECONDS: 604_800,
-							getCachedResponse: async () => null,
-							readIdempotencyKey: () => null,
-						},
-						'@/core/infra/env': { readListLimit: (_env, _key, fallback) => fallback },
-						'@/core/infra/observability': { logApiError: () => undefined },
-						'@/core/notifications/notification-dispatch': {
-							dispatchNotificationSafely: async () => ({ warning: null }),
-						},
-						'@/core/rate-limit': { checkRateLimit: async () => ({ success: true }) },
-						'@/core/validators/image-url': {
-							imageUrlSchema: z.string().nullable().optional(),
-							isAllowedImageUrlForWg: () => true,
-						},
-						'@/features/chat/chat-pure': {
-							CHAT_REFRESH_BATCH_SIZE: 100,
-							filterPersistedMentionIds: (ids) => ids,
-							previewBody: (body) => body,
-							sanitizeMessageBody: (body) => body,
-						},
-						'@/features/chat/chat-unread-query': {},
-						'next/server': {
-							NextResponse: { json: (body, init) => Response.json(body, init) },
-						},
-					}),
-				);
-				observeRouteLock = true;
+				const route = (await import('@/app/api/wg/[code]/chat/messages/route')) as unknown as {
+					POST: RouteHandler;
+				};
+				lockProbe.onLock = routeLockStarted;
 				post = route.POST(
 					new Request('https://app.example/api/wg/MTE8PZAT/chat/messages', {
 						method: 'POST',
@@ -599,17 +600,7 @@ test(
 					post.then(() => false),
 				]);
 				assert.equal(attemptedLock, true, 'writer enters its WG transaction before completing');
-				let blockedOnWgLock = false;
-				for (let attempt = 0; attempt < 30; attempt++) {
-					const waiting = await setup.query(
-						"SELECT 1 FROM pg_stat_activity WHERE application_name = 'manawg_private_image_test' AND wait_event_type = 'Lock' LIMIT 1",
-					);
-					if (waiting.rowCount) {
-						blockedOnWgLock = true;
-						break;
-					}
-					await new Promise((resolve) => setTimeout(resolve, 10));
-				}
+				const blockedOnWgLock = (await waitForLockWait()) !== null;
 				assert.equal(
 					blockedOnWgLock,
 					true,
@@ -648,29 +639,7 @@ test(
 				accountWgId,
 				accountImage.url,
 			]);
-			const accountDeletion = loadTypeScript(
-				path.join(process.cwd(), 'src/core/db/account-deletion.ts'),
-				{
-					'./schema': schema,
-					'./transaction': transaction,
-					'./transaction-abort': loadTypeScript(
-						path.join(process.cwd(), 'src/core/db/transaction-abort.ts'),
-					),
-				},
-			);
-			const deleteAccount = loadTypeScript(
-				path.join(process.cwd(), 'src/core/db/delete-account.ts'),
-				{
-					'./account-deletion': accountDeletion,
-					'./delete-wg': deleteWg,
-					'./member-departure': loadTypeScript(
-						path.join(process.cwd(), 'src/core/db/member-departure.ts'),
-						{ './schema': schema },
-					),
-					'./schema': schema,
-					'./transaction': transaction,
-				},
-			);
+			const deleteAccount = await import('./delete-account');
 			const removal = await db.transaction((tx) =>
 				deleteAccount.removeAccountFromWgs(tx, accountUserId),
 			);
@@ -679,6 +648,8 @@ test(
 
 			const routeWgId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 			const routeMemberId = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
+			routeContext.wgId = routeWgId;
+			routeContext.memberId = routeMemberId;
 			await setup.query(`INSERT INTO ${schemaName}.wgs (id) VALUES ($1)`, [routeWgId]);
 			const patchImage = imageUrl('12121212-1212-4212-8212-121212121212', routeWgId);
 			const deleteImage = imageUrl('13131313-1313-4313-8313-131313131313', routeWgId);
@@ -690,65 +661,10 @@ test(
 				`INSERT INTO ${schemaName}.expenses (wg_id, paid_by_member_id, image_url) VALUES ($1, $2, $3) RETURNING id`,
 				[routeWgId, routeMemberId, deleteImage.url],
 			);
-			const z = requireFromWeb('zod').z;
-			const expenseRoute = loadTypeScript(
-				path.join(process.cwd(), 'src/app/api/wg/[code]/expenses/[id]/route.ts'),
-				{
-					'@/core/audit': { recordAuditEvent: async () => undefined },
-					'@/core/db': {
-						db,
-						expenseSplits: schema.expenseSplits,
-						expenses,
-						wgMembers: schema.wgMembers,
-					},
-					'@/core/db/private-image-deletions': helper,
-					'@/core/db/transaction': transaction,
-					'@/core/http/api-errors': {
-						badRequest: (error) => responseJson(error, 400),
-						conflict: (error, code) =>
-							Response.json({ error, ...(code ? { code } : {}) }, { status: 409 }),
-						forbidden: (error) => responseJson(error, 403),
-						notFound: (error) => responseJson(error, 404),
-						serverError: (error) => responseJson(error, 500),
-						tooMany: () => responseJson('too_many', 429),
-					},
-					'@/core/guards/admin': {},
-					'@/core/guards/api-auth': { UUID_PATTERN: /^[0-9a-f-]{36}$/i },
-					'@/core/guards/require-wg-member': {
-						requireWgMember: async () => ({
-							ok: true,
-							wg: { id: routeWgId },
-							member: { memberId: routeMemberId, name: 'Member' },
-						}),
-					},
-					'@/core/guards/with-wg-route': { withWgRoute: (_label, handler) => handler },
-					'@/core/infra/observability': { logApiError: () => undefined },
-					'@/core/rate-limit': {
-						checkRateLimit: async () => ({ success: true }),
-						wgWriteLimiter: {},
-					},
-					'@/core/validators/currency': { currencySchema: z.string() },
-					'@/core/validators/image-url': {
-						imageUrlSchema: z.string().nullable().optional(),
-						isAllowedImageUrlForWg: () => true,
-					},
-					...expenseValidationModules(),
-					'@/features/expenses/expense-payments': {
-						hasCapturingExpensePayment: async () => false,
-						withExpensePaymentLock: async (currentWgId, operation) =>
-							db.transaction(async (tx) => {
-								await transaction.lockExpensePayments(tx, currentWgId);
-								return operation(tx);
-							}),
-					},
-					'@/features/expenses/split-math': {
-						settledAtForOwnShare: () => null,
-						splitValidationErrorCode: (reason) => reason,
-						validateSplits: () => ({ ok: true }),
-					},
-					'next/server': { NextResponse: { json: (body, init) => Response.json(body, init) } },
-				},
-			);
+			const expenseRoute = (await import('@/app/api/wg/[code]/expenses/[id]/route')) as unknown as {
+				PATCH: RouteHandler;
+				DELETE: RouteHandler;
+			};
 			const patchResponse = await expenseRoute.PATCH(
 				new Request('https://app.example', {
 					method: 'PATCH',
@@ -771,40 +687,9 @@ test(
 				`INSERT INTO ${schemaName}.wg_chat_messages (id, wg_id, sender_member_id, kind, body, image_url) VALUES ($1, $2, $3, 'image', null, $4)`,
 				[chatMessageId, routeWgId, routeMemberId, chatImage.url],
 			);
-			const chatDeleteRoute = loadTypeScript(
-				path.join(process.cwd(), 'src/app/api/wg/[code]/chat/messages/[id]/route.ts'),
-				{
-					'@/core/audit': { recordAuditEvent: async () => undefined },
-					'@/core/db': { db, wgChatMessages: schema.wgChatMessages },
-					'@/core/db/private-image-deletions': helper,
-					'@/core/db/transaction': transaction,
-					'@/core/http/api-errors': {
-						badRequest: (error) => responseJson(error, 400),
-						forbidden: (error) => responseJson(error, 403),
-						notFound: (error) => responseJson(error, 404),
-						tooMany: () => responseJson('too_many', 429),
-					},
-					'@/core/guards/admin': { requireOwnerOrAdmin: async () => null },
-					'@/core/guards/api-auth': { UUID_PATTERN: /^[0-9a-f-]{36}$/i },
-					'@/core/guards/require-wg-member': {
-						requireWgMember: async () => ({
-							ok: true,
-							wg: { id: routeWgId },
-							member: { memberId: routeMemberId, name: 'Member' },
-						}),
-					},
-					'@/core/guards/with-wg-route': { withWgRoute: (_label, handler) => handler },
-					'@/core/rate-limit': {
-						checkRateLimit: async () => ({ success: true }),
-						wgWriteLimiter: {},
-					},
-					'@/features/chat/chat-pure': {
-						canEditMessage: () => true,
-						sanitizeMessageBody: (body) => body,
-					},
-					'next/server': { NextResponse: { json: (body, init) => Response.json(body, init) } },
-				},
-			);
+			const chatDeleteRoute = (await import(
+				'@/app/api/wg/[code]/chat/messages/[id]/route'
+			)) as unknown as { DELETE: RouteHandler };
 			const chatDeleteResponse = await chatDeleteRoute.DELETE(
 				new Request('https://app.example', { method: 'DELETE' }),
 				{ code: 'MTE8PZAT', id: chatMessageId },
@@ -818,49 +703,9 @@ test(
 				`INSERT INTO ${schemaName}.announcements (id, wg_id, author_member_id, content, image_url) VALUES ($1, $2, $3, 'Announcement', $4)`,
 				[announcementId, routeWgId, routeMemberId, announcementImage.url],
 			);
-			const announcementDeleteRoute = loadTypeScript(
-				path.join(process.cwd(), 'src/app/api/wg/[code]/announcements/[id]/route.ts'),
-				{
-					'@/core/audit': { recordAuditEvent: async () => undefined },
-					'@/core/db': {
-						announcementReactions: schema.announcementReactions,
-						announcements: schema.announcements,
-						db,
-					},
-					'@/core/db/private-image-deletions': helper,
-					'@/core/db/transaction': transaction,
-					'@/core/http/api-errors': {
-						badRequest: (error) => responseJson(error, 400),
-						forbidden: (error) => responseJson(error, 403),
-						notFound: (error) => responseJson(error, 404),
-						tooMany: () => responseJson('too_many', 429),
-					},
-					'@/core/guards/admin': {
-						isWgAdmin: async () => true,
-						requireOwnerOrAdmin: async () => null,
-					},
-					'@/core/guards/api-auth': { UUID_PATTERN: /^[0-9a-f-]{36}$/i },
-					'@/core/guards/require-wg-member': {
-						requireWgMember: async () => ({
-							ok: true,
-							wg: { id: routeWgId },
-							member: { memberId: routeMemberId, name: 'Member' },
-						}),
-					},
-					'@/core/guards/with-wg-route': { withWgRoute: (_label, handler) => handler },
-					'@/core/notifications/notification-dispatch': {
-						dispatchNotificationSafely: async () => ({ warning: null }),
-					},
-					'@/core/rate-limit': {
-						checkRateLimit: async () => ({ success: true }),
-						wgWriteLimiter: {},
-					},
-					'@/features/pinnwand/announcement-workflow': {
-						ANNOUNCEMENT_KINDS: ['info', 'question', 'problem', 'request', 'decision'],
-					},
-					'next/server': { NextResponse: { json: (body, init) => Response.json(body, init) } },
-				},
-			);
+			const announcementDeleteRoute = (await import(
+				'@/app/api/wg/[code]/announcements/[id]/route'
+			)) as unknown as { DELETE: RouteHandler };
 			const announcementDeleteResponse = await announcementDeleteRoute.DELETE(
 				new Request('https://app.example', { method: 'DELETE' }),
 				{ code: 'MTE8PZAT', id: announcementId },
@@ -874,29 +719,21 @@ test(
 				`INSERT INTO ${schemaName}.idempotency_responses (scope, key, response_body, expires_at) VALUES ($1, $2, '{"_claimed":true}'::jsonb, $3)`,
 				[replayScope, replayKey, new Date(Date.now() + 60_000)],
 			);
-			let releaseReplayLock;
-			let workgroupLocked;
-			let replayLockAttempted;
-			const waitForReplayRelease = new Promise((resolve) => {
+			let releaseReplayLock!: () => void;
+			let workgroupLocked!: () => void;
+			let replayLockAttempted!: () => void;
+			const waitForReplayRelease = new Promise<void>((resolve) => {
 				releaseReplayLock = resolve;
 			});
-			const workgroupLockReady = new Promise((resolve) => {
+			const workgroupLockReady = new Promise<void>((resolve) => {
 				workgroupLocked = resolve;
 			});
-			const replayLockReady = new Promise((resolve) => {
+			const replayLockReady = new Promise<void>((resolve) => {
 				replayLockAttempted = resolve;
 			});
-			const lockForTest = transaction.lockExpensePayments;
-			let observeReplayLock = true;
-			transaction.lockExpensePayments = (tx, currentWgId) => {
-				if (observeReplayLock) {
-					observeReplayLock = false;
-					replayLockAttempted();
-				}
-				return lockForTest(tx, currentWgId);
-			};
+			lockProbe.onLock = replayLockAttempted;
 			const replayLockHolder = db.transaction(async (tx) => {
-				await lockForTest(tx, accountWgId);
+				await transaction.lockExpensePayments(tx, accountWgId);
 				workgroupLocked();
 				await waitForReplayRelease;
 			});
@@ -906,23 +743,7 @@ test(
 					replayLockHolder.then(() => false),
 				]);
 				assert.equal(holderAcquiredLock, true, 'test transaction holds the WG lock');
-				const replayModule = loadTypeScript(
-					path.join(process.cwd(), 'src/features/pinnwand/announcement-replay.ts'),
-					withRouteHelpers({
-						'@/core/db': { db, idempotencyResponses: schema.idempotencyResponses },
-						'@/core/db/claimed-response': loadClaimedResponse({
-							'@/core/db': { db, idempotencyResponses: schema.idempotencyResponses },
-							'@/core/db/transaction': transaction,
-						}),
-						'@/core/db/transaction': transaction,
-						'@/core/idempotency-store': {
-							RESPONSE_REPLAY_TTL_SECONDS: 604_800,
-							getCachedResponse: async () => null,
-							readIdempotencyKey: (request) => request.headers.get('Idempotency-Key'),
-						},
-						'@/core/infra/observability': { logApiError: () => undefined },
-					}),
-				);
+				const replayModule = await import('@/features/pinnwand/announcement-replay');
 				let mutateStarted = false;
 				const replay = replayModule.withAnnouncementReplay(
 					new Request('https://app.example', { headers: { 'Idempotency-Key': replayKey } }),
@@ -946,17 +767,7 @@ test(
 					true,
 					'WG lock is attempted before the replay-row lock',
 				);
-				let advisoryWaitObserved = false;
-				for (let attempt = 0; attempt < 30; attempt++) {
-					const waiting = await setup.query(
-						"SELECT query FROM pg_stat_activity WHERE application_name = 'manawg_private_image_test' AND wait_event_type = 'Lock' LIMIT 1",
-					);
-					if (waiting.rowCount) {
-						advisoryWaitObserved = /pg_advisory_xact_lock/.test(waiting.rows[0].query);
-						break;
-					}
-					await new Promise((resolve) => setTimeout(resolve, 10));
-				}
+				const advisoryWaitObserved = /pg_advisory_xact_lock/.test((await waitForLockWait()) ?? '');
 				assert.equal(advisoryWaitObserved, true);
 				assert.equal(mutateStarted, false);
 				releaseReplayLock();

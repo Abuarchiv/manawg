@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { safeNextPath } from './next-path.ts';
+import { safeNextPath } from './next-path';
 
 test('keeps same-origin paths with query and hash', () => {
 	assert.equal(safeNextPath('/wg/MTE8PZAT/einkauf?x=1#a'), '/wg/MTE8PZAT/einkauf?x=1#a');

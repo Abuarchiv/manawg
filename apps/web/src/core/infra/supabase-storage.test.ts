@@ -1,49 +1,45 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import path from 'node:path';
-import test from 'node:test';
-import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
+import { mock, test } from 'node:test';
 
-const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
+const state = {
+	bucket: null as unknown,
+	keys: null as string[] | null,
+	fetchSignal: null as AbortSignal | null,
+	fetchOptions: null as RequestInit | null,
+};
 
-function loadTypeScript(file, overrides = {}) {
-	const source = transpileModule(readFileSync(file, 'utf8'), {
-		compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
-	}).outputText;
-	const loaded = { exports: {} };
-	new Function('require', 'module', 'exports', source)(
-		(name) => (name in overrides ? overrides[name] : requireFromWeb(name)),
-		loaded,
-		loaded.exports,
-	);
-	return loaded.exports;
-}
+mock.module('server-only', { namedExports: {} });
+mock.module('@supabase/supabase-js', {
+	namedExports: {
+		createClient: (
+			_url: string,
+			_serviceRoleKey: string,
+			options: { global: { fetch: typeof fetch } },
+		) => ({
+			storage: {
+				getBucket: async (_bucket: string) => ({ data: state.bucket, error: null }),
+				from: (_bucket: string) => ({
+					remove: async (keys: string[]) => {
+						state.keys = keys;
+						const response = await options.global.fetch('https://storage.example/remove', {
+							method: 'DELETE',
+						});
+						return { data: [], error: response.ok ? null : new Error('remove failed') };
+					},
+				}),
+			},
+		}),
+	},
+});
+
+const { ImageStorageConfigurationError, removeSupabaseImages } = await import('./supabase-storage');
 
 function harness() {
-	const state = { bucket: null, keys: null, fetchSignal: null, fetchOptions: null };
-	const policy = loadTypeScript(path.join(process.cwd(), 'src/core/infra/private-image-policy.ts'));
-	const module = loadTypeScript(path.join(process.cwd(), 'src/core/infra/supabase-storage.ts'), {
-		'server-only': {},
-		'./private-image-policy': policy,
-		'@supabase/supabase-js': {
-			createClient: (_url, _serviceRoleKey, options) => ({
-				storage: {
-					getBucket: async (_bucket) => ({ data: state.bucket, error: null }),
-					from: (_bucket) => ({
-						remove: async (keys) => {
-							state.keys = keys;
-							const response = await options.global.fetch('https://storage.example/remove', {
-								method: 'DELETE',
-							});
-							return { data: [], error: response.ok ? null : new Error('remove failed') };
-						},
-					}),
-				},
-			}),
-		},
-	});
-	return { state, ...module };
+	state.bucket = null;
+	state.keys = null;
+	state.fetchSignal = null;
+	state.fetchOptions = null;
+	return { state, ImageStorageConfigurationError, removeSupabaseImages };
 }
 
 test('cleanup removes through Supabase with a bounded request even when uploads use AWS', async () => {
@@ -60,9 +56,9 @@ test('cleanup removes through Supabase with a bounded request even when uploads 
 		file_size_limit: 8 * 1024 * 1024,
 		allowed_mime_types: ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'],
 	};
-	globalThis.fetch = async (_input, options) => {
-		state.fetchSignal = options.signal;
-		state.fetchOptions = options;
+	globalThis.fetch = async (_input: unknown, options?: RequestInit) => {
+		state.fetchSignal = options?.signal ?? null;
+		state.fetchOptions = options ?? null;
 		return new Response(null, { status: 204 });
 	};
 	process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://supabase.example';
@@ -77,16 +73,17 @@ test('cleanup removes through Supabase with a bounded request even when uploads 
 		await removeSupabaseImages(keys);
 		assert.deepEqual(state.keys, keys);
 		assert.ok(state.fetchSignal instanceof AbortSignal);
-		assert.equal(state.fetchSignal.aborted, false);
-		assert.equal(state.fetchOptions.method, 'DELETE');
+		assert.equal((state.fetchSignal as AbortSignal).aborted, false);
+		assert.equal(state.fetchOptions?.method, 'DELETE');
 	} finally {
 		globalThis.fetch = previous.fetch;
-		for (const [name, value] of [
+		const restore: Array<[string, string | undefined]> = [
 			['NEXT_PUBLIC_SUPABASE_URL', previous.url],
 			['SUPABASE_SERVICE_ROLE_KEY', previous.serviceRole],
 			['SUPABASE_STORAGE_BUCKET', previous.bucketName],
 			['IMAGE_STORAGE_PROVIDER', previous.provider],
-		]) {
+		];
+		for (const [name, value] of restore) {
 			if (value === undefined) Reflect.deleteProperty(process.env, name);
 			else process.env[name] = value;
 		}
@@ -113,11 +110,12 @@ test('cleanup fails closed when bucket policy no longer matches the private imag
 		);
 		assert.equal(state.keys, null);
 	} finally {
-		for (const [name, value] of [
+		const restore: Array<[string, string | undefined]> = [
 			['NEXT_PUBLIC_SUPABASE_URL', previous.url],
 			['SUPABASE_SERVICE_ROLE_KEY', previous.serviceRole],
 			['SUPABASE_STORAGE_BUCKET', previous.bucketName],
-		]) {
+		];
+		for (const [name, value] of restore) {
 			if (value === undefined) Reflect.deleteProperty(process.env, name);
 			else process.env[name] = value;
 		}

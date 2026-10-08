@@ -1,28 +1,14 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import path from 'node:path';
 import test from 'node:test';
-import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
+import { requireCronSecret } from './cron-auth';
 
-// Loaded through CommonJS: Node's ESM resolver cannot resolve `next/server`
-// without a file extension.
-const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
-const source = transpileModule(
-	readFileSync(path.join(process.cwd(), 'src/core/infra/cron-auth.ts'), 'utf8'),
-	{ compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 } },
-).outputText;
-const loaded = { exports: {} };
-new Function('require', 'module', 'exports', source)(requireFromWeb, loaded, loaded.exports);
-const { requireCronSecret } = loaded.exports;
-
-function request(authorization) {
+function request(authorization: string | null) {
 	return new Request('https://app.example/api/cron/maintenance', {
 		headers: authorization ? { authorization } : {},
 	});
 }
 
-function withSecret(value, run) {
+function withSecret<T>(value: string | undefined, run: () => T): T {
 	const previous = process.env.CRON_SECRET;
 	if (value === undefined) Reflect.deleteProperty(process.env, 'CRON_SECRET');
 	else process.env.CRON_SECRET = value;
