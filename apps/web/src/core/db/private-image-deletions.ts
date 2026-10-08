@@ -48,6 +48,20 @@ export async function findWgReferencedImageKeys(wgId: string): Promise<Set<strin
 	return withTransaction((tx) => getWgPrivateImageKeys(tx, wgId, true));
 }
 
+/**
+ * Puts keys on the deletion queue. From then on attaching them is refused, and the regular
+ * cleanup removes them later after checking once more that no row points at them.
+ */
+export async function queueImageDeletions(objectKeys: readonly string[]): Promise<void> {
+	for (let offset = 0; offset < objectKeys.length; offset += 250) {
+		const batch = objectKeys.slice(offset, offset + 250);
+		await db
+			.insert(privateImageDeletions)
+			.values(batch.map((objectKey) => ({ objectKey })))
+			.onConflictDoNothing();
+	}
+}
+
 /** The keys among `objectKeys` that already wait in the deletion queue. */
 export async function findQueuedImageDeletionKeys(
 	objectKeys: readonly string[],

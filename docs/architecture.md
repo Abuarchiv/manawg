@@ -381,7 +381,7 @@ These behaviors were reviewed in the October 2026 audit and are kept on purpose.
   admin until any of its shares is settled.
 - **Fixed-cost cents.** An even split's extra cents move on to another member with every booking
   (`recurring-split-rotation.ts`); uneven custom splits stay as entered.
-- **Uploads.** Pictures that no row points at after 14 days are removed from the private bucket by
+- **Uploads.** Pictures that no row points at after 14 days are put on the deletion queue by
   the maintenance cron, a few WGs per run.
 - **Signing secret rotation.** `MEMBER_SESSION_SECRET_PREVIOUS` keeps calendar feed URLs and recovery
   proofs valid while the secret changes.

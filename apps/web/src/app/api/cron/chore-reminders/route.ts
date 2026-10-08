@@ -173,6 +173,11 @@ export const GET = withCronLogging(
 					gte(chores.nextDueAt, lookbackStart),
 					isNull(chores.assignedMemberId),
 					or(isNull(chores.lastReminderAt), lte(chores.lastReminderAt, throttleCutoff)),
+					// Only chores somebody can be told about, as in the assigned query; otherwise
+					// undeliverable ones keep the front of the capped window forever.
+					sql`exists (select 1 from ${wgMembers} wm where wm.wg_id = ${chores.wgId}
+						and wm.deactivated_at is null and wm.push_opt_in and wm.notify_chores
+						and exists (select 1 from ${pushSubscriptions} where ${pushSubscriptions.memberId} = wm.id))`,
 				),
 			)
 			.orderBy(sql`${chores.lastReminderAt} asc nulls first`, asc(chores.nextDueAt), asc(chores.id))

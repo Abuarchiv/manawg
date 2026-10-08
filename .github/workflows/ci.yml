@@ -47,7 +47,7 @@ jobs:
       - run: pnpm --filter @manawg/web exec node scripts/check-wg-auth-invariant.mjs
       - name: Schema matches the committed migrations
         run: |
-          DATABASE_URL=postgres://u:p@localhost:5432/x pnpm --dir apps/web exec drizzle-kit generate --name=ci_drift
+          DATABASE_URL=postgres://u:p@localhost:5432/x pnpm --filter @manawg/web db:generate --name=ci_drift
           if [ -n "$(git status --porcelain apps/web/drizzle)" ]; then
             git status --porcelain apps/web/drizzle >&2
             echo 'schema.ts differs from the committed migrations: run drizzle-kit generate and commit the result.' >&2

@@ -68,7 +68,7 @@ async function cleanupPrivateImages(): Promise<{
 }
 
 /** Only the private Supabase bucket can be listed; other providers have nothing to sweep. */
-async function sweepOrphans(): Promise<{ wgsChecked: number; removed: number } | null> {
+async function sweepOrphans(): Promise<{ wgsChecked: number; queued: number } | null> {
 	return getImageStorageProvider() === 'supabase' ? sweepOrphanUploads() : null;
 }
 

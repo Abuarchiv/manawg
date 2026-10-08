@@ -2,34 +2,40 @@ import 'server-only';
 
 import { db } from '@/core/db';
 import { wgs } from '@/core/db/schema';
-import { listSupabaseImageObjects, removeSupabaseImages } from '@/core/infra/supabase-storage';
+import { listSupabaseImageObjects } from '@/core/infra/supabase-storage';
 import type { StoredImageObject } from '@/core/infra/supabase-storage';
 import { asc } from 'drizzle-orm';
 import { selectOrphanKeys } from './orphan-upload-selection';
-import { findQueuedImageDeletionKeys, findWgReferencedImageKeys } from './private-image-deletions';
+import {
+	findQueuedImageDeletionKeys,
+	findWgReferencedImageKeys,
+	queueImageDeletions,
+} from './private-image-deletions';
 
 const PURPOSES = ['expense', 'announcement', 'chat'] as const;
 const WGS_PER_RUN = 10;
-const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
- * Removes uploaded pictures no row points at: a visitor picked a picture and then dropped the
- * form. A run looks at a few WGs and the next run at the following ones, so the whole bucket
- * is covered over time without one run having to list all of it.
+ * Queues uploaded pictures no row points at for deletion: a visitor picked a picture and then
+ * dropped the form. Queued keys cannot be attached any more, and the regular cleanup removes them
+ * after a final reference check, so a picture attached meanwhile is never lost. A run looks at a
+ * few WGs and the next run (the cron runs daily) at the following ones, stepping through the
+ * WG list by the batch size so every WG is reached however many there are.
  */
 export async function sweepOrphanUploads(now = new Date()): Promise<{
 	wgsChecked: number;
-	removed: number;
+	queued: number;
 }> {
 	const rows = await db.select({ id: wgs.id }).from(wgs).orderBy(asc(wgs.id));
-	if (rows.length === 0) return { wgsChecked: 0, removed: 0 };
-	const start = (Math.floor(now.getTime() / HOUR_MS) * WGS_PER_RUN) % rows.length;
+	if (rows.length === 0) return { wgsChecked: 0, queued: 0 };
+	const start = (Math.floor(now.getTime() / DAY_MS) * WGS_PER_RUN) % rows.length;
 	const batch = Array.from(
 		{ length: Math.min(WGS_PER_RUN, rows.length) },
 		(_, index) => rows[(start + index) % rows.length],
 	);
 
-	let removed = 0;
+	let queuedTotal = 0;
 	for (const row of batch) {
 		if (!row) continue;
 		const objects: StoredImageObject[] = [];
@@ -38,11 +44,11 @@ export async function sweepOrphanUploads(now = new Date()): Promise<{
 		}
 		if (objects.length === 0) continue;
 		const referenced = await findWgReferencedImageKeys(row.id);
-		const queued = await findQueuedImageDeletionKeys(objects.map(({ key }) => key));
-		const orphans = selectOrphanKeys(objects, referenced, queued, now);
+		const alreadyQueued = await findQueuedImageDeletionKeys(objects.map(({ key }) => key));
+		const orphans = selectOrphanKeys(objects, referenced, alreadyQueued, now);
 		if (orphans.length === 0) continue;
-		await removeSupabaseImages(orphans);
-		removed += orphans.length;
+		await queueImageDeletions(orphans);
+		queuedTotal += orphans.length;
 	}
-	return { wgsChecked: batch.length, removed };
+	return { wgsChecked: batch.length, queued: queuedTotal };
 }

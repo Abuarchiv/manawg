@@ -1,6 +1,6 @@
-import { expenseImports, expenseSplits, expenses } from '@/core/db';
+import { expenseImports, expensePayments, expenseSplits, expenses } from '@/core/db';
 import { TransactionAbort } from '@/core/db/transaction';
-import { and, eq, inArray, isNotNull, ne } from 'drizzle-orm';
+import { and, eq, gte, inArray, isNotNull, ne } from 'drizzle-orm';
 import { hasCapturingExpensePayment, withExpensePaymentLock } from './expense-payments';
 
 export type UndoImportResult =
@@ -22,7 +22,11 @@ export async function undoImport(
 	try {
 		return await withExpensePaymentLock(wgId, async (tx) => {
 			const [imp] = await tx
-				.select({ source: expenseImports.source, importedBy: expenseImports.importedByMemberId })
+				.select({
+					source: expenseImports.source,
+					importedBy: expenseImports.importedByMemberId,
+					startedAt: expenseImports.startedAt,
+				})
 				.from(expenseImports)
 				.where(and(eq(expenseImports.id, importId), eq(expenseImports.wgId, wgId)))
 				.limit(1);
@@ -33,6 +37,21 @@ export async function undoImport(
 			if (await hasCapturingExpensePayment(tx, wgId)) {
 				throw new TransactionAbort('paypal_payment_pending');
 			}
+
+			// A payment completed since the import may have covered its expenses through a netted
+			// balance; which of them is not recoverable, so any such payment blocks the undo.
+			const [laterPayment] = await tx
+				.select({ id: expensePayments.id })
+				.from(expensePayments)
+				.where(
+					and(
+						eq(expensePayments.wgId, wgId),
+						eq(expensePayments.status, 'completed'),
+						gte(expensePayments.completedAt, imp.startedAt),
+					),
+				)
+				.limit(1);
+			if (laterPayment) return { ok: false as const, error: 'import_settled' as const };
 
 			const rows = await tx
 				.select({ id: expenses.id })

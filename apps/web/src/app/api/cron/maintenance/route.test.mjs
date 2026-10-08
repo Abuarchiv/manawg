@@ -72,7 +72,7 @@ function harness() {
 		'@/features/expenses/paypal-reconcile': {
 			reconcileStaleCapturingPayments: async () => null,
 		},
-		'@/core/db/orphan-uploads': { sweepOrphanUploads: async () => ({ wgsChecked: 0, removed: 0 }) },
+		'@/core/db/orphan-uploads': { sweepOrphanUploads: async () => ({ wgsChecked: 0, queued: 0 }) },
 		'@/core/infra/supabase-storage': {
 			getImageStorageProvider: () => 'aws',
 			removeSupabaseImages: async (objectKeys) => {
