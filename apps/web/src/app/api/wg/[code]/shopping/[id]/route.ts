@@ -186,6 +186,8 @@ const QUANTITY_MAX = 40;
 const putShoppingItemSchema = z.object({
 	name: z.string().trim().min(1).max(NAME_MAX),
 	quantity: z.string().trim().max(QUANTITY_MAX).nullable().optional(),
+	// The version the form was opened on; a newer one means somebody changed the item meanwhile.
+	expectedUpdatedAt: z.string().datetime({ offset: true }).optional(),
 });
 
 /** Rename an open item or change its amount; any member may, like ticking it off. */
@@ -193,7 +195,11 @@ export const PUT = withWgRoute<{ id: string }>('shopping PUT', async (req, { cod
 	if (!UUID_PATTERN.test(id)) return badRequest('id_invalid');
 
 	const parsed = await parseBody(req, putShoppingItemSchema, {
-		fieldErrors: { name: 'name_invalid', quantity: 'quantity_invalid' },
+		fieldErrors: {
+			name: 'name_invalid',
+			quantity: 'quantity_invalid',
+			expectedUpdatedAt: 'expected_state_invalid',
+		},
 	});
 	if (!parsed.ok) return parsed.response;
 	const auth = await requireWgMember(req, code);
@@ -215,7 +221,14 @@ export const PUT = withWgRoute<{ id: string }>('shopping PUT', async (req, { cod
 				updatedAt: sql`greatest(clock_timestamp(), ${shoppingItems.updatedAt} + interval '1 millisecond')`,
 			})
 			.where(
-				and(eq(shoppingItems.id, id), eq(shoppingItems.wgId, wgId), isNull(shoppingItems.boughtAt)),
+				and(
+					eq(shoppingItems.id, id),
+					eq(shoppingItems.wgId, wgId),
+					isNull(shoppingItems.boughtAt),
+					parsed.data.expectedUpdatedAt
+						? sql`date_trunc('milliseconds', ${shoppingItems.updatedAt}) = ${new Date(parsed.data.expectedUpdatedAt)}`
+						: undefined,
+				),
 			)
 			.returning();
 		if (!updated) {

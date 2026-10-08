@@ -7,13 +7,15 @@ import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { type AuthFailure, classifyAuthError } from '@/core/auth/password-errors';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
 	type AuthFormProps,
 	type BusyAction,
 	GenericAuthError,
 	isValidEmail,
 } from './auth-form-shared';
+
+const RESEND_COOLDOWN_SECONDS = 60;
 
 /** E-mail and password: sign in, resend a confirmation mail, or request a reset link. */
 export function useEmailAuth({
@@ -29,6 +31,14 @@ export function useEmailAuth({
 	);
 	const [failure, setFailure] = useState<AuthFailure>('other');
 	const [emailMessage, setEmailMessage] = useState<string | null>(null);
+	// Kept across sign-in attempts, so repeating the failed sign-in cannot mail again at once.
+	const [resendCooldown, setResendCooldown] = useState(0);
+
+	useEffect(() => {
+		if (resendCooldown <= 0) return;
+		const timer = setTimeout(() => setResendCooldown((value) => value - 1), 1000);
+		return () => clearTimeout(timer);
+	}, [resendCooldown]);
 
 	function resetEmailFeedback(): void {
 		setFailure('other');
@@ -66,7 +76,7 @@ export function useEmailAuth({
 	}
 
 	async function resendConfirmation(): Promise<void> {
-		if (busy) return;
+		if (busy || resendCooldown > 0) return;
 		const normalizedEmail = email.trim().toLowerCase();
 		resetEmailFeedback();
 		if (!isValidEmail(normalizedEmail)) {
@@ -77,6 +87,7 @@ export function useEmailAuth({
 		try {
 			const { resendSignupConfirmation } = await import('@/core/auth/client');
 			await resendSignupConfirmation(normalizedEmail, next);
+			setResendCooldown(RESEND_COOLDOWN_SECONDS);
 			setEmailMessage(
 				'Wir haben die Bestätigungs-Mail erneut gesendet, sofern diese Adresse auf eine Bestätigung wartet. Schau auch im Spam-Ordner nach.',
 			);
@@ -126,6 +137,7 @@ export function useEmailAuth({
 		emailMessage,
 		submitEmail,
 		resendConfirmation,
+		resendCooldown,
 		requestPasswordReset,
 		emailFieldInvalid,
 		passwordFieldInvalid,
@@ -146,6 +158,7 @@ export function EmailAuthForm({
 		emailMessage,
 		submitEmail,
 		resendConfirmation,
+		resendCooldown,
 		requestPasswordReset,
 		emailFieldInvalid,
 		passwordFieldInvalid,
@@ -232,10 +245,12 @@ export function EmailAuthForm({
 						type="button"
 						variant="outline"
 						onClick={() => void resendConfirmation()}
-						disabled={busy !== null}
+						disabled={busy !== null || resendCooldown > 0}
 					>
 						{busy === 'email-resend' && <Spinner data-icon="inline-start" aria-hidden />}
-						Bestätigungs-Mail erneut senden
+						{resendCooldown > 0
+							? `Erneut senden in ${resendCooldown} s`
+							: 'Bestätigungs-Mail erneut senden'}
 					</Button>
 				)}
 				<Button type="submit" variant="default" disabled={busy !== null}>

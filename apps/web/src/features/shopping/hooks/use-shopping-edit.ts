@@ -23,7 +23,15 @@ export function useShoppingEdit(ctx: EditContext) {
 			}
 			const res = await apiFetch<{ item: ShoppingItem }>(
 				`/api/wg/${encodedShareCode}/shopping/${encodeURIComponent(item.id)}`,
-				{ method: 'PUT', memberId, body: JSON.stringify({ name, quantity }) },
+				{
+					method: 'PUT',
+					memberId,
+					body: JSON.stringify({
+						name,
+						quantity,
+						...(item.updatedAt ? { expectedUpdatedAt: item.updatedAt } : {}),
+					}),
+				},
 			);
 			if (!res.ok) {
 				if (res.error === 'shopping_item_duplicate') {

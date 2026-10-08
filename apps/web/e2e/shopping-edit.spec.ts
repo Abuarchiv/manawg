@@ -41,7 +41,14 @@ test.describe('shopping edit', () => {
 		await page.getByLabel('Menge (optional)').fill('2 Packungen');
 		await page.getByRole('button', { name: 'Speichern' }).click();
 
-		await expect.poll(() => putBody).toEqual({ name: 'Hafermilch', quantity: '2 Packungen' });
+		// The version the form was opened on travels along, so a concurrent change is rejected.
+		await expect
+			.poll(() => putBody)
+			.toEqual({
+				name: 'Hafermilch',
+				quantity: '2 Packungen',
+				expectedUpdatedAt: item.updatedAt,
+			});
 		await expect(page.getByText('Artikel gespeichert.')).toBeVisible();
 	});
 

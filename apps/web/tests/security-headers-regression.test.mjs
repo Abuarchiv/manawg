@@ -90,19 +90,31 @@ test('Tesseract gets WASM compilation and only its pinned German and English dat
 	}
 });
 
-test('Supabase image storage keeps every Amazon host out of the policy', () => {
+test('Supabase image storage drops S3 as an upload target but keeps reading legacy S3 pictures', () => {
 	const previous = process.env.IMAGE_STORAGE_PROVIDER;
+	const previousBucket = process.env.S3_BUCKET;
+	const previousRegion = process.env.AWS_REGION;
 	try {
+		process.env.S3_BUCKET = 'legacy-bucket';
+		process.env.AWS_REGION = 'eu-central-1';
+
 		process.env.IMAGE_STORAGE_PROVIDER = 'supabase';
-		const supabasePolicy = contentSecurityPolicy('nonce', true, false);
-		assert.doesNotMatch(supabasePolicy, /amazonaws/);
+		const supabasePolicy = directives(contentSecurityPolicy('nonce', true, false));
+		assert.doesNotMatch(supabasePolicy.get('connect-src')?.join(' ') ?? '', /amazonaws/);
+		assert.ok(supabasePolicy.get('img-src')?.includes('https://*.amazonaws.com'));
 
 		process.env.IMAGE_STORAGE_PROVIDER = 'aws';
 		const awsPolicy = directives(contentSecurityPolicy('nonce', true, false));
-		assert.ok(awsPolicy.get('img-src')?.includes('https://*.amazonaws.com'));
+		assert.match(awsPolicy.get('connect-src')?.join(' ') ?? '', /legacy-bucket/);
 		assert.ok(awsPolicy.get('media-src')?.includes('https://*.amazonaws.com'));
 	} finally {
-		if (previous === undefined) Reflect.deleteProperty(process.env, 'IMAGE_STORAGE_PROVIDER');
-		else process.env.IMAGE_STORAGE_PROVIDER = previous;
+		for (const [name, value] of [
+			['IMAGE_STORAGE_PROVIDER', previous],
+			['S3_BUCKET', previousBucket],
+			['AWS_REGION', previousRegion],
+		]) {
+			if (value === undefined) Reflect.deleteProperty(process.env, name);
+			else process.env[name] = value;
+		}
 	}
 });
