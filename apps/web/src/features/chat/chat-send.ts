@@ -7,6 +7,7 @@ export interface ChatMessageInput {
 	body: string;
 	mentionMemberIds: string[];
 	replyToMessageId: string | null;
+	imageUrl?: string | null;
 }
 
 /** The key of a send whose outcome is unknown; a retry of the same input reuses it. */

@@ -107,6 +107,35 @@ export async function removeSupabaseImages(objectKeys: readonly string[]): Promi
 	if (error) throw error;
 }
 
+export interface StoredImageObject {
+	key: string;
+	createdAt: Date;
+}
+
+const LIST_PAGE_SIZE = 1000;
+const LIST_MAX_PAGES = 5;
+
+/** The files directly under `folder` (no recursion); sub-folders carry no id and are skipped. */
+export async function listSupabaseImageObjects(folder: string): Promise<StoredImageObject[]> {
+	const { client, bucketName } = await getPrivateBucket(10_000);
+	const objects: StoredImageObject[] = [];
+	for (let page = 0; page < LIST_MAX_PAGES; page += 1) {
+		const { data, error } = await client.storage.from(bucketName).list(folder, {
+			limit: LIST_PAGE_SIZE,
+			offset: page * LIST_PAGE_SIZE,
+		});
+		if (error) throw error;
+		for (const entry of data ?? []) {
+			const createdAt = entry.created_at ? new Date(entry.created_at) : null;
+			if (entry.id && createdAt && !Number.isNaN(createdAt.getTime())) {
+				objects.push({ key: `${folder}/${entry.name}`, createdAt });
+			}
+		}
+		if ((data?.length ?? 0) < LIST_PAGE_SIZE) break;
+	}
+	return objects;
+}
+
 function limitPrivateImageStream(stream: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> {
 	const reader = stream.getReader();
 	let bytesRead = 0;

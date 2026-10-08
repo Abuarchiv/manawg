@@ -2,6 +2,7 @@
 
 import { retireWebPushEndpoint } from '@/core/notifications/push-subscribe';
 import { createBrowserClient } from '@supabase/ssr';
+import { authCookieOptions } from './cookie-options';
 import { safeNextPath } from './next-path';
 import { getSupabaseEnv } from './supabase-env';
 
@@ -29,7 +30,9 @@ export function isPhoneAuthUnavailable(error: unknown): boolean {
 
 export function createSupabaseBrowserClient() {
 	const { url, publishableKey } = getSupabaseEnv();
-	return createBrowserClient(url, publishableKey);
+	return createBrowserClient(url, publishableKey, {
+		cookieOptions: authCookieOptions(window.location.protocol === 'https:'),
+	});
 }
 
 export async function isAuthProviderEnabled(provider: SocialProvider | 'phone'): Promise<boolean> {
@@ -244,6 +247,10 @@ export async function clearLocalAccountData(): Promise<void> {
 						),
 					),
 	]);
+	// The wipe took the offline page with it; the worker fetches it again.
+	if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+		navigator.serviceWorker.controller?.postMessage('refresh-shell');
+	}
 }
 
 export async function signOutSocialAccount(

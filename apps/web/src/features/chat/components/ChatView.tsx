@@ -169,6 +169,7 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 			<ChatComposer
 				key={`${shareCode}:${identity.memberId}`}
 				draftKey={`manawg:draft:${shareCode}:${identity.memberId}:chat`}
+				shareCode={shareCode}
 				error={chat.sendError}
 				members={members.filter((m) => m.active).map((m) => ({ id: m.id, name: m.name }))}
 				currentMemberId={identity.memberId}

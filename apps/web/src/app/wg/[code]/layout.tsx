@@ -5,7 +5,9 @@ import { WG_SECTIONS } from '@/components/app/navigation';
 import { ToastContainer } from '@/components/ui/Toast';
 import { NavItem } from '@/components/wg/NavItem';
 import { OfflineBanner } from '@/components/wg/OfflineBanner';
+import { SessionExpiredBanner } from '@/components/wg/SessionExpiredBanner';
 import { WgContextProvider } from '@/components/wg/WgContextProvider';
+import { REQUEST_PATH_HEADER, wgReturnPath } from '@/core/auth/next-path';
 import { getAuthenticatedUserFromCookies } from '@/core/auth/server';
 import { db, wgMembers, wgs } from '@/core/db';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
@@ -13,6 +15,7 @@ import { loadFixtureWgView } from '@/fixtures/pages';
 import type { StoredIdentity } from '@/shared/lib/identity';
 import { and, eq, isNull } from 'drizzle-orm';
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import { type ReactNode, cache } from 'react';
 import { TabWarmup } from './_components/TabWarmup';
@@ -92,11 +95,11 @@ export default async function WgLayout({ children, params }: Props) {
 	}
 
 	const viewer = await getWgViewer(code);
-	if (!viewer) redirect(`/neu?next=${encodeURIComponent(`/wg/${encodeURIComponent(code)}`)}`);
-	const { user, access } = viewer;
-	if (!access) {
-		redirect(`/neu?next=${encodeURIComponent(`/wg/${encodeURIComponent(code)}`)}`);
+	if (!viewer?.access) {
+		const requested = (await headers()).get(REQUEST_PATH_HEADER);
+		redirect(`/neu?next=${encodeURIComponent(wgReturnPath(code, requested))}`);
 	}
+	const { user, access } = viewer;
 	const { memberId, memberName, ...wg } = access;
 	const initialIdentity: StoredIdentity = { memberId, name: memberName, authUserId: user.id };
 
@@ -184,6 +187,7 @@ function WgShell({
 				}}
 			>
 				<OfflineBanner />
+				<SessionExpiredBanner />
 				<RouteFocusOnNavigate />
 				<WgAppHeader />
 				{/* WCAG 1.3.1 / 2.4.1 — single <main> landmark.

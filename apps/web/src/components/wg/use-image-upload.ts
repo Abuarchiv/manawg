@@ -4,6 +4,7 @@ import { useWg } from '@/components/wg/WgContextProvider';
 import { subscribeOnline } from '@/core/hooks/use-online-status';
 import { REQUEST_TIMEOUT_MS } from '@/core/infra/api-client';
 import {
+	type ImageUploadPurpose,
 	isPendingImageToken,
 	readPendingImage,
 	readUploadSignError,
@@ -36,7 +37,7 @@ const ALLOWED_IMAGE_TYPES = new Set([
 
 interface ImageUploadInput {
 	shareCode: string;
-	purpose: 'expense' | 'announcement';
+	purpose: ImageUploadPurpose;
 	value: string | null;
 	onChange: (url: string | null) => void;
 	disabled: boolean;

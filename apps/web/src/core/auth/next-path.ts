@@ -16,3 +16,17 @@ export function safeNextPath(value: string | null): string {
 		return '/';
 	}
 }
+
+/** Set by the middleware on page requests so server layouts can see the requested URL. */
+export const REQUEST_PATH_HEADER = 'x-manawg-path';
+
+/**
+ * Where a sign-in redirect from a WG layout returns to: the requested page of that WG, or
+ * the WG start when the header is absent or points elsewhere.
+ */
+export function wgReturnPath(code: string, requested: string | null): string {
+	const base = `/wg/${encodeURIComponent(code)}`;
+	const path = safeNextPath(requested);
+	const [pathname = ''] = path.split(/[?#]/, 1);
+	return pathname === base || pathname.startsWith(`${base}/`) ? path : base;
+}

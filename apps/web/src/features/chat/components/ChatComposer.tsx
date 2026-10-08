@@ -9,9 +9,11 @@ import {
 	InputGroupTextarea,
 } from '@/components/ui/input-group';
 import { Spinner } from '@/components/ui/spinner';
+import { ImageUploader } from '@/components/wg/ImageUploader';
 import { readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
+import { isPendingImageToken } from '@/core/offline/offline-images';
 import { haptic } from '@/shared/lib/haptics';
-import { Send, X } from 'lucide-react';
+import { ImagePlus, Send, X } from 'lucide-react';
 import {
 	type ChangeEvent,
 	type KeyboardEvent,
@@ -33,6 +35,7 @@ const BODY_MAX = 4000;
 
 interface ChatComposerProps {
 	draftKey: string;
+	shareCode: string;
 	error: string | null;
 	members: MentionMember[];
 	currentMemberId: string;
@@ -46,11 +49,13 @@ interface ChatComposerProps {
 		body: string;
 		mentionMemberIds: string[];
 		replyToMessageId: string | null;
+		imageUrl: string | null;
 	}) => Promise<boolean>;
 }
 
 export function ChatComposer({
 	draftKey,
+	shareCode,
 	error,
 	members,
 	currentMemberId,
@@ -70,6 +75,12 @@ export function ChatComposer({
 	replyToMessageIdRef.current = replyToMessageId;
 	const [draft, setDraft] = useState('');
 	const [pending, setPending] = useState(false);
+	const [attachOpen, setAttachOpen] = useState(false);
+	// A picture in a message is uploaded first; the message carries only its final URL.
+	const [imageUrl, setImageUrl] = useState<string | null>(null);
+	const imageUrlRef = useRef<string | null>(null);
+	const imageWaiting = isPendingImageToken(imageUrl);
+	const canSend = draft.trim().length > 0 || (imageUrl !== null && !imageWaiting);
 	const pendingRef = useRef(false);
 	const [draftHydrated, setDraftHydrated] = useState(false);
 	const [draftStorageFailed, setDraftStorageFailed] = useState(false);
@@ -159,8 +170,12 @@ export function ChatComposer({
 	async function submit(): Promise<void> {
 		const outgoingDraft = draftRef.current;
 		const outgoingReplyToMessageId = replyToMessageIdRef.current;
+		const outgoingImageUrl = imageUrlRef.current;
 		const text = outgoingDraft.trim();
-		if (text.length === 0 || text.length > BODY_MAX || pendingRef.current) return;
+		if (isPendingImageToken(outgoingImageUrl)) return;
+		if ((text.length === 0 && !outgoingImageUrl) || text.length > BODY_MAX || pendingRef.current) {
+			return;
+		}
 		pendingRef.current = true;
 		haptic('selection');
 		setPending(true);
@@ -178,9 +193,15 @@ export function ChatComposer({
 				body: text,
 				mentionMemberIds: mentionedIds,
 				replyToMessageId: outgoingReplyToMessageId,
+				imageUrl: outgoingImageUrl,
 			});
 			if (ok) {
 				haptic('medium');
+				if (imageUrlRef.current === outgoingImageUrl) {
+					imageUrlRef.current = null;
+					setImageUrl(null);
+					setAttachOpen(false);
+				}
 				// A user may continue composing while the request is in flight. Only
 				// clear the draft/reply that produced this request.
 				if (draftRef.current === outgoingDraft) {
@@ -292,6 +313,26 @@ export function ChatComposer({
 					</Alert>
 				)}
 			</div>
+			{attachOpen && (
+				<div className="mx-auto w-full max-w-3xl px-4 pt-2">
+					<ImageUploader
+						shareCode={shareCode}
+						purpose="chat"
+						value={imageUrl}
+						onChange={(url) => {
+							imageUrlRef.current = url;
+							setImageUrl(url);
+						}}
+						disabled={pending}
+						imageLabel="Chat-Bild"
+					/>
+					{imageWaiting && (
+						<output className="mt-2 block text-meta text-muted-foreground">
+							Senden ist möglich, sobald das Bild hochgeladen ist.
+						</output>
+					)}
+				</div>
+			)}
 			<MentionAutocomplete
 				listboxId={mentionListboxId}
 				items={mentionItems}
@@ -317,6 +358,20 @@ export function ChatComposer({
 						aria-activedescendant={activeOptionId}
 						className="max-h-[min(8rem,20dvh)] min-h-11 flex-1 px-4 py-2 text-base"
 					/>
+					<InputGroupAddon align="inline-start" className="py-1 ps-1">
+						<InputGroupButton
+							type="button"
+							variant="ghost"
+							size="icon-sm"
+							onClick={() => setAttachOpen((open) => !open)}
+							disabled={pending}
+							aria-label={attachOpen ? 'Bildauswahl schließen' : 'Bild anhängen'}
+							aria-expanded={attachOpen}
+							className="size-8 shrink-0 rounded-full"
+						>
+							<ImagePlus aria-hidden />
+						</InputGroupButton>
+					</InputGroupAddon>
 					<InputGroupAddon align="inline-end" className="py-1 pe-1">
 						<InputGroupButton
 							type="button"
@@ -324,7 +379,7 @@ export function ChatComposer({
 							size="icon-sm"
 							onMouseDown={(event) => event.preventDefault()}
 							onClick={() => void submit()}
-							disabled={pending || !draftHydrated || draft.trim().length === 0}
+							disabled={pending || !draftHydrated || !canSend}
 							aria-label="Nachricht senden"
 							className="size-8 shrink-0 rounded-full"
 						>

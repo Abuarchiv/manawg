@@ -4,7 +4,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import { isPendingImageToken } from '@/core/offline/offline-images';
+import { type ImageUploadPurpose, isPendingImageToken } from '@/core/offline/offline-images';
 import { cn } from '@/shared/lib/cn';
 import { AlertTriangle, ImagePlus, Maximize2, X } from 'lucide-react';
 import { useState } from 'react';
@@ -13,7 +13,7 @@ import { useImageUpload } from './use-image-upload';
 
 interface Props {
 	shareCode: string;
-	purpose: 'expense' | 'announcement';
+	purpose: ImageUploadPurpose;
 	value: string | null;
 	onChange: (url: string | null) => void;
 	disabled?: boolean;
@@ -48,7 +48,9 @@ export function ImageUploader({
 	const { uploading, error, notice, featureDisabled, localPreview, handleFile, remove } =
 		useImageUpload({ shareCode, purpose, value, onChange, disabled });
 	const [previewOpen, setPreviewOpen] = useState(false);
-	const accessibleImageLabel = imageLabel ?? (purpose === 'expense' ? 'Belegbild' : 'Beitragsbild');
+	const accessibleImageLabel =
+		imageLabel ??
+		(purpose === 'expense' ? 'Belegbild' : purpose === 'chat' ? 'Chat-Bild' : 'Beitragsbild');
 
 	if (value) {
 		const pending = isPendingImageToken(value);

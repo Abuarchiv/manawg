@@ -365,6 +365,24 @@ test('generic PayPal return ignores caller destinations and malformed merchant h
 	assert.equal(mismatchedState.headers.get('location'), 'https://manawg.example/');
 });
 
+test('PayPal return without a trusted app origin explains itself on a page, not as raw JSON', async () => {
+	const next = loadTs('src/app/api/paypal/return/route.ts', {
+		'@/core/infra/paypal-onboarding': {
+			getPayPalEnvironment: () => null,
+			getTrustedPayPalAppOrigin: () => null,
+			isPayPalMerchantId: () => false,
+			readPayPalConnectionCookie,
+			verifyPayPalConnectionCookie: () => null,
+		},
+		'next/server': { NextResponse: Response },
+	});
+	const response = await next.GET(new Request('https://manawg.example/api/paypal/return?state=x'));
+	assert.equal(response.status, 503);
+	assert.match(response.headers.get('content-type') ?? '', /^text\/html/);
+	assert.equal(response.headers.get('cache-control'), 'no-store');
+	assert.match(await response.text(), /PayPal-Verbindung gerade nicht möglich/);
+});
+
 function completionRequest(body = { action: 'complete' }, cookie = 'valid-cookie') {
 	return new Request('https://manawg.example/api/connect', {
 		method: 'POST',

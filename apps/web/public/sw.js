@@ -11,7 +11,7 @@
 // served from cache, and the app has its own offline queue for writes.
 //
 // Bump VERSION to evict every cached shell asset on the next activate.
-const VERSION = 'manawg-app-v6-runtime-cap';
+const VERSION = 'manawg-app-v7-nav-timeout';
 const SHELL_CACHE = `${VERSION}-shell`;
 // Hashed /_next/static chunks fetched while browsing. sw.js itself does not
 // change between deploys, so nothing would ever evict them; the cap keeps the
@@ -20,6 +20,9 @@ const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const MAX_RUNTIME_ENTRIES = 200;
 const PUBLIC_DOCUMENT_PATHS = new Set(['/', '/offline']);
+// A navigation the network has not answered by then falls back to the cache, so a bad
+// connection shows the offline page instead of a page that never finishes loading.
+const NAVIGATION_TIMEOUT_MS = 8000;
 
 const SHELL_ASSETS = [
 	'/',
@@ -57,9 +60,12 @@ const matchFromCache = (request) => caches.match(request).catch(() => undefined)
 const getOfflineShellAssets = async (cache) => {
 	const page = await cache.match('/offline');
 	if (!page) throw new Error('offline page was not precached');
+	return offlineShellAssetsOf(await page.text());
+};
 
+const offlineShellAssetsOf = (html) => {
 	const assets = new Set();
-	for (const [, , reference] of (await page.text()).matchAll(
+	for (const [, , reference] of html.matchAll(
 		/\b(?:src|href)\s*=\s*(["'])(.*?)\1/gi,
 	)) {
 		let asset;
@@ -83,6 +89,26 @@ const getOfflineShellAssets = async (cache) => {
 	if (assets.size === 0)
 		throw new Error('offline page has no same-origin Next.js scripts or styles');
 	return [...assets];
+};
+
+const precacheShell = async () => {
+	const cache = await caches.open(SHELL_CACHE);
+	await cache.addAll(SHELL_ASSETS);
+	await cache.addAll(await getOfflineShellAssets(cache));
+};
+
+// A newer /offline page references newer chunks. Store those first, so the page that
+// replaces the old one never points at assets the cache does not hold.
+const refreshOfflinePage = async (request, response) => {
+	const cache = await caches.open(SHELL_CACHE);
+	await cache.addAll(offlineShellAssetsOf(await response.clone().text()));
+	await cache.put(request, response);
+};
+
+const fetchWithTimeout = (request) => {
+	const controller = new AbortController();
+	const timer = setTimeout(() => controller.abort(), NAVIGATION_TIMEOUT_MS);
+	return fetch(request, { signal: controller.signal }).finally(() => clearTimeout(timer));
 };
 
 const fallbackPushData = {
@@ -115,15 +141,13 @@ self.addEventListener('install', (event) => {
 			// Unsupported pattern syntax — the fetch handler still bypasses these.
 		}
 	}
-	event.waitUntil(
-		caches
-			.open(SHELL_CACHE)
-			.then(async (cache) => {
-				await cache.addAll(SHELL_ASSETS);
-				await cache.addAll(await getOfflineShellAssets(cache));
-			})
-			.then(() => self.skipWaiting()),
-	);
+	event.waitUntil(precacheShell().then(() => self.skipWaiting()));
+});
+
+// Asked by the page after sign-out, which deletes every cache: the offline page must exist
+// again before the connection drops.
+self.addEventListener('message', (event) => {
+	if (event.data === 'refresh-shell') event.waitUntil(precacheShell().catch(() => undefined));
 });
 
 self.addEventListener('activate', (event) => {
@@ -244,9 +268,13 @@ self.addEventListener('fetch', (event) => {
 	// Network-first for HTML navigations (always serve fresh app shell when online)
 	if (request.mode === 'navigate' || request.headers.get('accept')?.includes('text/html')) {
 		event.respondWith(
-			fetch(request)
+			fetchWithTimeout(request)
 				.then((res) => {
-					if (PUBLIC_DOCUMENT_PATHS.has(url.pathname)) cacheResponse(request, res.clone());
+					if (url.pathname === '/offline' && res.ok) {
+						refreshOfflinePage(request, res.clone()).catch(() => undefined);
+					} else if (PUBLIC_DOCUMENT_PATHS.has(url.pathname)) {
+						cacheResponse(request, res.clone());
+					}
 					return res;
 				})
 				.catch(() =>

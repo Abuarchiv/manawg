@@ -43,6 +43,23 @@ async function getWgPrivateImageKeys(
 	return keys;
 }
 
+/** Every private image key any row of the WG still points at, deleted chat messages included. */
+export async function findWgReferencedImageKeys(wgId: string): Promise<Set<string>> {
+	return withTransaction((tx) => getWgPrivateImageKeys(tx, wgId, true));
+}
+
+/** The keys among `objectKeys` that already wait in the deletion queue. */
+export async function findQueuedImageDeletionKeys(
+	objectKeys: readonly string[],
+): Promise<Set<string>> {
+	if (objectKeys.length === 0) return new Set();
+	const rows = await db
+		.select({ objectKey: privateImageDeletions.objectKey })
+		.from(privateImageDeletions)
+		.where(inArray(privateImageDeletions.objectKey, [...objectKeys]));
+	return new Set(rows.map(({ objectKey }) => objectKey));
+}
+
 export async function assertPrivateImageCanBeAttached(
 	tx: DbTransaction,
 	wgId: string,

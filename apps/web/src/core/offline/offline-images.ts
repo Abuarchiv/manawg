@@ -3,6 +3,9 @@
 import { EXPECTED_MEMBER_ID_HEADER } from '@/shared/lib/member-header';
 import { createOfflineIdempotencyKey } from './offline-queue';
 
+/** What an uploaded image is attached to; it is part of the storage key. */
+export type ImageUploadPurpose = 'expense' | 'announcement' | 'chat';
+
 const DB_NAME = 'manawg-offline-images';
 const STORE_NAME = 'images';
 const DB_VERSION = 1;
@@ -16,7 +19,7 @@ interface PendingImageRecord {
 	size: number;
 	shareCode: string;
 	memberId: string;
-	purpose: 'expense' | 'announcement';
+	purpose: ImageUploadPurpose;
 	createdAt: string;
 	publicUrl?: string;
 }
@@ -103,7 +106,7 @@ export async function storePendingImage(input: {
 	file: File;
 	shareCode: string;
 	memberId: string;
-	purpose: 'expense' | 'announcement';
+	purpose: ImageUploadPurpose;
 }): Promise<string> {
 	const now = Date.now();
 	// Local IndexedDB key only: prefer UUID, but keep browsers without Web Crypto usable.
