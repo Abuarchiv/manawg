@@ -28,10 +28,10 @@ export function captureException(err: unknown, context?: Record<string, unknown>
 /**
  * Log an API-route failure as a redacted one-line summary.
  *
- * Route catch blocks used to hand the raw error object to `console.error`,
- * which copies stacks, request details, and provider payloads (Postgres,
- * PayPal) into platform logs that outlive the request. Keep the static route
- * label and error type; discard message and stack contents.
+ * Passing the raw error object to `console.error` would copy stacks, request
+ * details, and provider payloads (Postgres, PayPal) into platform logs that
+ * outlive the request. Keep the static route label and error type; discard
+ * message and stack contents.
  */
 export function logApiError(label: string, ...errors: unknown[]): void {
 	logSentryApiError(errors.map(describeThrown));

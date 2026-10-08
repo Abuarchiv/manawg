@@ -209,7 +209,7 @@ function auditDetail(metadataJson?: string | null): string | undefined {
 		if (typeof metadata.contentPreview === 'string' && metadata.contentPreview.length > 0) {
 			parts.push(`„${metadata.contentPreview}“`);
 		}
-		// Nur bekannte Pinnwand-Arten: Chat-Audits tragen kind 'text'/'image', das ist kein Nutzer-Text.
+		// Only known pinboard kinds: chat audits carry kind 'text'/'image', which is not user text.
 		const kindLabel =
 			typeof metadata.kind === 'string'
 				? (KIND_LABELS as Record<string, string | undefined>)[metadata.kind]
