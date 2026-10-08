@@ -54,6 +54,11 @@ export function AccountDeleteSection() {
 					setStage('confirm');
 					return;
 				}
+				if (result?.error === 'account_deletion_unavailable') {
+					setError('Das Löschen ist gerade nicht verfügbar. Bitte versuche es später erneut.');
+					setStage('confirm');
+					return;
+				}
 			}
 			if (res.status === 401) {
 				setError(SIGN_IN_AGAIN_MESSAGE);
@@ -69,11 +74,6 @@ export function AccountDeleteSection() {
 				setError(
 					'Eine PayPal-Zahlung ist noch offen. Schließe oder storniere sie zuerst und versuche es dann erneut.',
 				);
-				setStage('confirm');
-				return;
-			}
-			if (res.status === 503) {
-				setError('Das Löschen ist gerade nicht verfügbar. Bitte versuche es später erneut.');
 				setStage('confirm');
 				return;
 			}
