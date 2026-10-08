@@ -42,7 +42,7 @@
 ## 8. Guardrails and docs
 
 - [x] 8.1 `scripts/check-architecture.mjs` in lint and CI.
-- [ ] 8.2 Conventions in `AGENTS.md`; update `docs/architecture.md` and `README.md`.
+- [x] 8.2 Conventions in `AGENTS.md`; update `docs/architecture.md` and `README.md`.
 
 ## 9. Verification
 

@@ -10,6 +10,24 @@ survives a chat session.
 2. Reuse existing patterns and dependencies. Keep changes narrowly scoped.
 3. Before handoff, run the gates in `README.md` (lint, typecheck, unit, build, e2e) and report exact results.
 
+## Code conventions
+
+`apps/web/scripts/check-architecture.mjs` (part of `lint` and CI) enforces these; layers and
+rationale are in [docs/architecture.md](docs/architecture.md). The baseline file only shrinks.
+
+- Layers: `app -> fixtures -> composition -> features -> components -> core -> shared`; each
+  layer imports only layers to its right. A feature never
+  imports another feature; cross-feature reads go through `src/composition/`.
+- Source files stay under 400 lines, test files under 800. Split along responsibilities and
+  keep the old file as the entry when importers should not change.
+- Comments are English and describe the code as it is; no history narration.
+- Unit tests are `*.test.ts` (next to the module or in `apps/web/tests/`), import real modules
+  through `tests/support/register.mjs` and mock with `node:test` `mock.module`; no `vm`,
+  `transpileModule` or reading source text. E2E specs are `e2e/*.spec.ts` with helpers in
+  `e2e/support/` and only cover what needs a browser or a running server.
+- Add a test for a fixed bug as a regression test at the cheapest level that catches it.
+  Tests that only check copy or presentation already covered by e2e are not added.
+
 ## Safety
 
 - Preserve existing working-tree changes; never reset or discard user work.
