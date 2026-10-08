@@ -1,21 +1,7 @@
 import assert from 'node:assert/strict';
-import { registerHooks } from 'node:module';
-import { resolve } from 'node:path';
 import test from 'node:test';
-import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const appRoot = fileURLToPath(new URL('../../../../..', import.meta.url));
-registerHooks({
-	resolve(specifier, context, nextResolve) {
-		if (specifier.startsWith('@/')) {
-			const path = resolve(appRoot, 'src', `${specifier.slice(2)}.ts`);
-			return nextResolve(pathToFileURL(path).href, context);
-		}
-		return nextResolve(specifier, context);
-	},
-});
-
-const { distributeRemainderCents } = await import('./manual-split-distribute.ts');
+const { distributeRemainderCents } = await import('./manual-split-distribute');
 
 const members = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
 
@@ -28,16 +14,16 @@ test('tops up empty fields when too little was entered', () => {
 });
 
 test('claws excess back from filled fields instead of going negative', () => {
-	// Regression: overshooting by 5€ used to target the empty "c" field,
-	// driving it to -5,00 — a value the input can't parse back out, so it
-	// silently vanished from the sum instead of fixing the overage.
+	// Regression: an overshoot of 5€ must not target the empty "c" field. A value of -5,00
+	// cannot be parsed back out of the input, so it would drop out of the sum and leave the
+	// overage unfixed.
 	const next = distributeRemainderCents({ a: '15,00', b: '20,00' }, members, -500);
 	assert.notEqual(next.c, '-5,00');
 	assert.equal(next.c ?? '', '');
 	// The 5€ excess is clawed back from the two filled fields (a, b).
 	const totalCents = 1500 + 2000 - 500;
-	const aCents = Math.round(Number.parseFloat(next.a.replace(',', '.')) * 100);
-	const bCents = Math.round(Number.parseFloat(next.b.replace(',', '.')) * 100);
+	const aCents = Math.round(Number.parseFloat(String(next.a).replace(',', '.')) * 100);
+	const bCents = Math.round(Number.parseFloat(String(next.b).replace(',', '.')) * 100);
 	assert.equal(aCents + bCents, totalCents);
 	assert.ok(aCents >= 0 && bCents >= 0);
 });
@@ -71,9 +57,9 @@ test('no-op when the remainder is already zero', () => {
 });
 
 test('never writes a negative amount, even when the excess sits outside the targets', () => {
-	// Regression (#492): the only over-allocated share belongs to someone who
-	// is not a target (a moved-out member). The targets can't absorb it, but
-	// they must stay at zero rather than turn into unparsable "-x,xx" strings.
+	// Regression (#492): the only over-allocated share belongs to someone who is not a target
+	// (a moved-out member). The targets cannot absorb it, but they must stay at zero rather
+	// than turn into unparsable "-x,xx" strings.
 	const next = distributeRemainderCents({ inactive: '30,00' }, members, -1000);
 	for (const value of Object.values(next)) {
 		assert.ok(!value.startsWith('-'), `negative amount ${value}`);
@@ -82,8 +68,8 @@ test('never writes a negative amount, even when the excess sits outside the targ
 });
 
 test('is pure: same input, same output, input left untouched', () => {
-	// Regression (#493): the leftover counter used to live in a closure that
-	// the state updater mutated, so a second (StrictMode) invocation lost cents.
+	// Regression (#493): the leftover counter must not live in a closure mutated by the state
+	// updater, because a second (StrictMode) invocation would lose cents.
 	const current = Object.freeze({ a: '10,00' });
 	const first = distributeRemainderCents(current, members, 2001);
 	const second = distributeRemainderCents(current, members, 2001);

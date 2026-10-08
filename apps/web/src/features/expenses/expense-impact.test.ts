@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { getExpenseImpact } from './expense-impact.ts';
+import { getExpenseImpact } from './expense-impact';
 
-const split = (debtorMemberId, amountCents, settledAt = null) => ({
+const split = (debtorMemberId: string, amountCents: number, settledAt: string | null = null) => ({
 	debtorMemberId,
 	amountCents,
 	settledAt,

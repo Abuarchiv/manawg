@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { canDeleteMessage, canEditMessage, reconcileChatMessages } from './chat-pure.ts';
+import { canDeleteMessage, canEditMessage, reconcileChatMessages } from './chat-pure';
 
 const createdAt = '2026-09-23T10:00:00.000Z';
 const own = { id: 'm1', senderMemberId: 'me', kind: 'text', createdAt };
 
 test('only the sender can edit a live text message within the edit window', () => {
-	const at = (minutes) => Date.parse(createdAt) + minutes * 60_000;
+	const at = (minutes: number) => Date.parse(createdAt) + minutes * 60_000;
 	assert.equal(canEditMessage(own, { id: 'me' }, at(15)), true);
 	assert.equal(canEditMessage(own, { id: 'me' }, at(16)), false);
 	assert.equal(canEditMessage(own, { id: 'bob', role: 'admin' }, at(1)), false);
@@ -22,7 +22,7 @@ test('senders and admins can delete; system messages only admins', () => {
 });
 
 test('a full latest page past the loaded history replaces it instead of leaving a gap', () => {
-	const page = (from, to) =>
+	const page = (from: number, to: number) =>
 		Array.from({ length: to - from + 1 }, (_, index) => ({ id: `m${from + index}` }));
 	// Loaded m1..m60 before the tab went to the background; m61..m200 arrived.
 	const loaded = page(1, 60);
