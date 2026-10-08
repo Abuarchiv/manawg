@@ -190,7 +190,7 @@ export default async function RootLayout({
 					    and a hairline edge around it. */}
 					<div
 						data-app-frame
-						className="relative mx-auto min-h-svh w-full max-w-[var(--app-frame-width)] overflow-x-clip bg-background min-[30rem]:border-x"
+						className="relative mx-auto min-h-svh w-full max-w-[var(--app-frame-width)] overflow-x-clip bg-background min-[30rem]:border-x print:max-w-none print:border-x-0"
 						style={{ paddingBottom: 'var(--install-prompt-space, 0px)' }}
 					>
 						{children}

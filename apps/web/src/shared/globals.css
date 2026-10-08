@@ -816,3 +816,17 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 		transform: scale(0.97);
 	}
 }
+
+/* Print (Monatsabrechnung as PDF): only the page content, on A4. */
+@media print {
+	@page {
+		size: A4;
+		margin: 16mm 18mm;
+	}
+	[data-app-chrome] {
+		display: none !important;
+	}
+	.group\/wg-shell {
+		padding: 0 !important;
+	}
+}

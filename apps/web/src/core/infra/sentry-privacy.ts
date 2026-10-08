@@ -37,6 +37,7 @@ export const SAFE_TAG_VALUES: Record<string, ReadonlySet<string>> = {
 		'wg-import',
 		'wg-kalender',
 		'wg-mahnungen',
+		'wg-abrechnung',
 		'wg-pinnwand',
 		'wg-putzen',
 		'wg-vorraete',

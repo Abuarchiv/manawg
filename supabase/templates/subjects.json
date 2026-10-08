@@ -1,0 +1,7 @@
+{
+	"confirmation": "Bestätige deine E-Mail-Adresse",
+	"recovery": "Neues Passwort festlegen",
+	"magic_link": "{{ slice .Token 0 3 }} {{ slice .Token 3 6 }} ist dein Anmeldecode",
+	"email_change": "Bestätige deine neue E-Mail-Adresse",
+	"password_changed": "Dein Passwort wurde geändert"
+}
