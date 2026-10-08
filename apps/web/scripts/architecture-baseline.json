@@ -39,17 +39,6 @@
 		"src/core/db/schema.ts": 1039,
 		"tests/events-boundaries.test.cjs": 851,
 		"tests/offline-integrity.test.mjs": 1192,
-		"e2e/account-delete-db.spec.ts": 1177,
-		"e2e/calendar.spec.ts": 1131,
-		"e2e/chores.spec.ts": 1060,
-		"e2e/dashboard.spec.ts": 1684,
-		"e2e/expense-idempotency-retry.spec.ts": 999,
-		"e2e/expense-ui.spec.ts": 1812,
-		"e2e/inventory.spec.ts": 880,
-		"e2e/layout.spec.ts": 1497,
-		"e2e/paypal.spec.ts": 870,
-		"e2e/settings.spec.ts": 981,
-		"e2e/settlement.spec.ts": 1174,
-		"e2e/shopping.spec.ts": 1101
+		"e2e/account-delete-db.spec.ts": 1177
 	}
 }
