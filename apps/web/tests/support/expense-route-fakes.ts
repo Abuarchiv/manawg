@@ -4,7 +4,7 @@
 import { mock } from 'node:test';
 import { TransactionAbort } from '../../src/core/db/transaction-abort.ts';
 
-export const SHARE_CODE = 'MTE8PZAT';
+const SHARE_CODE = 'MTE8PZAT';
 export const WG_ID = '989ac820-58b7-431f-9c65-28721264f333';
 export const EXPENSE_ID = '550e8400-e29b-41d4-a716-446655440000';
 export const CALLER_ID = '7d898f9e-5ad7-4f5d-abed-8c3e99a76973';
@@ -46,7 +46,7 @@ export function matches(row: Record<string, unknown>, predicate: Predicate): boo
 	return value !== null && value !== undefined;
 }
 
-export const predicateOperators = {
+const predicateOperators = {
 	and: (...values: Predicate[]): Predicate => ({ kind: 'and', values }),
 	asc: () => undefined,
 	desc: () => undefined,
@@ -62,7 +62,7 @@ export const predicateOperators = {
 };
 
 /** A table whose columns are `{ table, name }` pairs created on first access. */
-export function fakeTable(table: string): Record<string, Column> {
+function fakeTable(table: string): Record<string, Column> {
 	return new Proxy({} as Record<string, Column>, {
 		get: (_target, name) => ({ table, name: String(name) }),
 	});
@@ -136,7 +136,7 @@ export const tables = {
 	wgMembers: fakeTable('wgMembers'),
 };
 
-export const authorizedMember = async () => ({
+const authorizedMember = async () => ({
 	ok: true,
 	wg: { id: WG_ID, name: 'WG', shareCode: SHARE_CODE },
 	member: { memberId: CALLER_ID, name: 'Mina' },

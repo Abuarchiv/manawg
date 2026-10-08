@@ -144,31 +144,6 @@ export async function mockDashboard(page: Page, base: string, body: unknown): Pr
 	await page.route(`**${base}/dashboard`, (route) => route.fulfill({ status: 200, json: body }));
 }
 
-/** JSON `Response` with the `NextResponse.json(body, init)` signature for route-module stubs. */
-export function jsonResponse(body: unknown, init: number | ResponseInit = 200): Response {
-	const status = typeof init === 'number' ? init : (init.status ?? 200);
-	return new Response(JSON.stringify(body), {
-		...(typeof init === 'number' ? {} : init),
-		status,
-		headers: { 'content-type': 'application/json' },
-	});
-}
-
-/** Silences `console.error` and records each call until `restore()`. */
-export function spyConsoleError(): { calls: unknown[][]; restore: () => void } {
-	const original = console.error;
-	const calls: unknown[][] = [];
-	console.error = (...args: unknown[]) => {
-		calls.push(args);
-	};
-	return {
-		calls,
-		restore: () => {
-			console.error = original;
-		},
-	};
-}
-
 type Tuple<T, N extends number, R extends T[] = []> = R['length'] extends N
 	? R
 	: Tuple<T, N, [...R, T]>;
