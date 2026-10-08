@@ -345,3 +345,26 @@ Route folders under `app/wg/[code]/`, with the code names behind them.
 
 "Erinnerungen" for chores and events are push notifications sent by the `chore-reminders` and
 `event-reminders` crons, not the `reminders` API.
+
+## Decisions on trust, retention and exposure
+
+These behaviors were reviewed in the October 2026 audit and are kept on purpose.
+
+- **Expenses run on household trust.** A member may log an expense paid by someone else only while
+  carrying a positive share themselves (`features/expenses/paid-by-guard.ts`); any debtor may remove
+  an expense or mark their own share settled. The audit trail records who did it. Stricter rules
+  (payer confirmation) would end the "log it for a flatmate" flow and are not planned.
+- **Edit rights.** Editing an expense is payer-only; removing is payer or any debtor. The UI offers
+  only what the server accepts (`ExpenseRow`).
+- **Account deletion keeps names.** The member leaves like an "Auszug": login link, PayPal id and push
+  subscriptions are removed, the display name stays on past entries so that balances, chat and
+  history of the remaining flatmates stay understandable. The name is a household-internal label, not
+  an account identifier. Changing this is a legal decision, not a technical one.
+- **PayPal merchant ids are public identifiers.** They are sent to every member because the PayPal SDK
+  needs the payee's id on the client; no secret is involved. Orders and amounts are always built on
+  the server.
+- **Activity feed.** Every member reads it. Private details (one person's quiet hours, push opt-in,
+  the creation-time share code) are removed before the response (`core/audit-visibility.ts`).
+- **Share-code rotation** keeps the "joining enabled" switch as it was and says which way it stands.
+- **Member names** are unique ignoring case among active members. A moved-out member who holds a name
+  a current member wants is renamed to "Name (ausgezogen)". The cap of 20 counts active members only.

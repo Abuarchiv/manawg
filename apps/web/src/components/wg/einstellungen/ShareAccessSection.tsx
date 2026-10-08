@@ -1,6 +1,7 @@
 'use client';
 
 import { Switch } from '@/components/animate-ui/components/base/switch';
+import { useToast } from '@/components/ui/Toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Field, FieldContent, FieldDescription, FieldTitle } from '@/components/ui/field';
@@ -32,6 +33,7 @@ export function ShareAccessSection({
 }: ShareAccessSectionProps) {
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const router = useRouter();
+	const toast = useToast();
 	const { isAdmin } = useWg();
 	const [accessPending, setAccessPending] = useState<'join' | 'rotate' | null>(null);
 	const [accessMessage, setAccessMessage] = useState<string | null>(null);
@@ -97,6 +99,10 @@ export function ShareAccessSection({
 			if (!data) return;
 			setRotateConfirm(false);
 			setJoiningEnabled(data.wg.joiningEnabled);
+			// Rotating the code keeps the joining switch as it was; say which way it stands.
+			toast.success(
+				`WG-Code erneuert. Neue Beitritte sind ${data.wg.joiningEnabled ? 'erlaubt' : 'gesperrt'}.`,
+			);
 			// Old code is dead after rotation; drop it so the WG list doesn't show a stale duplicate.
 			forgetWg(wg.shareCode);
 			// #zugang, sonst landet man nach dem Erneuern wieder im Profil-Tab.

@@ -3,6 +3,7 @@ import {
 	buildActivityTimeline,
 	getActivityReminders,
 } from '@/composition/activity';
+import { publicAuditMetadata } from '@/core/audit-visibility';
 import {
 	announcements,
 	auditEvents,
@@ -214,6 +215,7 @@ export const GET = withWgRoute('activity GET', async (req, { code }) => {
 			})),
 			auditEvents: auditRows.map((item) => ({
 				...item,
+				metadataJson: publicAuditMetadata(item.eventType, item.metadataJson),
 				createdAt: item.createdAt.toISOString(),
 			})),
 			limit: 80,

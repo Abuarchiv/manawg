@@ -1,0 +1,29 @@
+/**
+ * Audit metadata keys that stay with the person or the system. Every member can read the
+ * activity feed, so details such as one person's quiet hours or a WG's creation-time share
+ * code must not travel with the event.
+ */
+const PRIVATE_METADATA_KEYS: Readonly<Record<string, readonly string[]>> = {
+	'notification.settings.updated': ['pushOptIn', 'quietStartHour', 'quietEndHour'],
+	'wg.created': ['shareCode'],
+};
+
+/** The metadata JSON of an audit event as the whole WG may see it. */
+export function publicAuditMetadata(
+	eventType: string,
+	metadataJson: string | null | undefined,
+): string | null {
+	if (!metadataJson) return metadataJson ?? null;
+	const hidden = PRIVATE_METADATA_KEYS[eventType];
+	if (!hidden) return metadataJson;
+	try {
+		const parsed: unknown = JSON.parse(metadataJson);
+		if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return metadataJson;
+		const visible = Object.fromEntries(
+			Object.entries(parsed).filter(([key]) => !hidden.includes(key)),
+		);
+		return JSON.stringify(visible);
+	} catch {
+		return null;
+	}
+}
