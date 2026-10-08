@@ -130,6 +130,15 @@ export function usePinnwandPage() {
 	const stableTogglePinned = useStableCallback(actions.togglePinned);
 	const stableToggleStatus = useStableCallback(actions.toggleStatus);
 	const stableToggleReaction = useStableCallback((a: Announcement, reaction: ReactionKey) => {
+		const now = Date.now();
+		const acknowledged = { ...a, myReactions: [...a.myReactions, reaction] };
+		if (
+			!a.myReactions.includes(reaction) &&
+			!isAnnouncementArchived(a, now) &&
+			isAnnouncementArchived(acknowledged, now)
+		) {
+			toast.info('Abgehakt. Liegt jetzt unter „Geklärt & älter“.');
+		}
 		void actions.toggleReaction(a, reaction);
 	});
 	const stableAddComment = useStableCallback(actions.addComment);

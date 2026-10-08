@@ -59,7 +59,10 @@ export function summarizeAnnouncementReactions(
 	return summary;
 }
 
-/** Infos and decisions need no clarification; without a pin they move to the archive after a week without reply. */
+/**
+ * Infos and decisions need no clarification; without a pin they move to the archive once the
+ * viewer acknowledged them ("Gesehen"/"Passt") or after a week without reply.
+ */
 const ANNOUNCEMENT_FADE_MS = 7 * 24 * 60 * 60 * 1000;
 
 export function isAnnouncementArchived(
@@ -69,11 +72,14 @@ export function isAnnouncementArchived(
 		pinnedAt: string | null;
 		createdAt: string;
 		comments?: readonly { createdAt: string }[];
+		myReactions?: readonly string[];
 	},
 	now: number,
 ): boolean {
 	if (item.status === 'resolved') return true;
 	if (item.pinnedAt || (item.kind !== 'info' && item.kind !== 'decision')) return false;
+	// Reactions carry no timestamp, so a reply after the acknowledgement keeps it archived.
+	if (item.myReactions?.some((reaction) => reaction === 'seen' || reaction === 'ok')) return true;
 	const lastActivity = Math.max(
 		Date.parse(item.createdAt),
 		...(item.comments ?? []).map((comment) => Date.parse(comment.createdAt)),

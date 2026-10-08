@@ -31,6 +31,20 @@ test('archives resolved posts and quiet unpinned infos, keeps open asks on the b
 	assert.equal(isAnnouncementArchived({ ...base, kind: 'decision' }, now), true);
 	assert.equal(isAnnouncementArchived({ ...base, pinnedAt: old }, now), false);
 	assert.equal(isAnnouncementArchived({ ...base, kind: 'question' }, now), false);
+	const fresh = { ...base, createdAt: '2026-09-26T12:00:00Z' };
+	assert.equal(isAnnouncementArchived({ ...fresh, myReactions: ['seen'] }, now), true);
+	assert.equal(
+		isAnnouncementArchived({ ...fresh, kind: 'decision', myReactions: ['ok'] }, now),
+		true,
+	);
+	assert.equal(
+		isAnnouncementArchived({ ...fresh, kind: 'question', myReactions: ['seen'] }, now),
+		false,
+	);
+	assert.equal(
+		isAnnouncementArchived({ ...fresh, pinnedAt: old, myReactions: ['seen'] }, now),
+		false,
+	);
 	assert.equal(
 		isAnnouncementArchived({ ...base, comments: [{ createdAt: '2026-09-25T12:00:00Z' }] }, now),
 		false,
