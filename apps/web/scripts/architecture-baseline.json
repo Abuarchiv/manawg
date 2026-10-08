@@ -36,10 +36,7 @@
 		"test-location tests/wg-create-replay-atomic.test.mjs"
 	],
 	"fileSize": {
-		"src/composition/activity.ts": 610,
-		"src/composition/dashboard-data.ts": 761,
 		"src/core/db/schema.ts": 1039,
-		"src/features/events/events.ts": 631,
 		"tests/events-boundaries.test.cjs": 851,
 		"tests/offline-integrity.test.mjs": 1192,
 		"e2e/account-delete-db.spec.ts": 1177,
