@@ -2,6 +2,7 @@
 
 import { ErrorBox } from '@/components/app/ErrorBox';
 import { CredentialsAuth } from '@/components/auth/CredentialsAuth';
+import { SignUpPrompt } from '@/components/auth/SignUpPrompt';
 import { SocialLoginButtons } from '@/components/auth/SocialLoginButtons';
 import { EntryFrame } from '@/components/entry/EntryFrame';
 import { LegalLinks } from '@/components/entry/LegalLinks';
@@ -37,7 +38,7 @@ import { useStepHistory } from './use-step-history';
 // Most failed callbacks are an expired or reused link, or a link opened in a
 // different browser than the one that requested it (no PKCE verifier there).
 const AUTH_CALLBACK_ERROR =
-	'Die Anmeldung konnte nicht abgeschlossen werden. Melde dich erneut an und öffne Anmeldelinks im selben Browser, in dem du sie angefordert hast.';
+	'Die Anmeldung konnte nicht abgeschlossen werden. Falls du gerade deine E-Mail-Adresse bestätigt hast, kannst du dich jetzt mit E-Mail und Passwort anmelden. Öffne Anmeldelinks sonst im selben Browser, in dem du sie angefordert hast.';
 
 export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 	const router = useRouter();
@@ -279,6 +280,7 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 							onAuthenticated={handleAuthenticated}
 							onBusyChange={setCredentialsBusy}
 						/>
+						<SignUpPrompt intentQuery={loginNextPath().split('?')[1] ?? ''} />
 					</FieldGroup>
 				)}
 				{!checkingSession && <LegalLinks consent />}

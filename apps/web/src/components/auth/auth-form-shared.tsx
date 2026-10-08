@@ -9,6 +9,7 @@ export const NEW_PASSWORD_MIN_LENGTH = 8;
 export type BusyAction =
 	| 'email-sign-in'
 	| 'email-sign-up'
+	| 'email-resend'
 	| 'password-reset'
 	| 'phone-request'
 	| 'phone-verify'
@@ -24,12 +25,9 @@ export function isValidEmail(value: string): boolean {
 	return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
-export function GenericAuthError({ failure = 'other' }: { failure?: AuthFailure }): ReactElement {
-	return (
-		<ErrorBox>
-			{failure === 'other'
-				? 'Die Anmeldung konnte gerade nicht abgeschlossen werden. Bitte versuche es erneut.'
-				: AUTH_FAILURE_MESSAGES[failure]}
-		</ErrorBox>
-	);
+export function GenericAuthError({
+	failure = 'other',
+	fallback = 'Die Anmeldung konnte gerade nicht abgeschlossen werden. Bitte versuche es erneut.',
+}: { failure?: AuthFailure; fallback?: string }): ReactElement {
+	return <ErrorBox>{failure === 'other' ? fallback : AUTH_FAILURE_MESSAGES[failure]}</ErrorBox>;
 }

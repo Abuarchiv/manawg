@@ -13,7 +13,7 @@ type SocialLoginStart = (provider: SocialProvider, next: string) => Promise<void
 type SocialLoginButtonsProps = {
 	next?: string;
 	onOAuthStart: SocialLoginStart;
-	variant?: 'sign-in' | 'link';
+	variant?: 'sign-in' | 'sign-up' | 'link';
 	/** Locks the button while another sign-in request is running. */
 	disabled?: boolean;
 };
@@ -94,7 +94,13 @@ export function SocialLoginButtons({
 
 	return (
 		<FieldSet
-			aria-label={variant === 'link' ? 'Social Login verknüpfen' : 'Mit Social Login anmelden'}
+			aria-label={
+				variant === 'link'
+					? 'Social Login verknüpfen'
+					: variant === 'sign-up'
+						? 'Mit Social Login registrieren'
+						: 'Mit Social Login anmelden'
+			}
 			aria-busy={pendingProvider !== null}
 			className="m-0 w-full gap-3 border-0 p-0"
 		>
@@ -112,7 +118,12 @@ export function SocialLoginButtons({
 
 			{providers.map(({ provider, name, Icon }) => {
 				const loading = pendingProvider === provider;
-				const label = variant === 'link' ? `${name} verknüpfen` : `Mit ${name} anmelden`;
+				const label =
+					variant === 'link'
+						? `${name} verknüpfen`
+						: variant === 'sign-up'
+							? `Mit ${name} registrieren`
+							: `Mit ${name} anmelden`;
 				return (
 					<Button
 						key={provider}

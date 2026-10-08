@@ -1,0 +1,65 @@
+'use client';
+
+import { CredentialsAuth } from '@/components/auth/CredentialsAuth';
+import { SocialLoginButtons } from '@/components/auth/SocialLoginButtons';
+import { EntryFrame } from '@/components/entry/EntryFrame';
+import { LegalLinks } from '@/components/entry/LegalLinks';
+import { FieldGroup, FieldSeparator } from '@/components/ui/field';
+import { authPageHref } from '@/core/auth/auth-intent';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+
+function describeIntent(intent: URLSearchParams): string {
+	if (intent.get('code')) return 'Erstelle dein Konto, um mit deinem WG-Code beizutreten.';
+	if (intent.get('action') === 'create')
+		return 'Erstelle dein Konto, danach legst du deine neue WG an.';
+	return 'Mit deinem Konto erstellst du eine WG oder trittst mit einem Code bei.';
+}
+
+/** Registration page: Google, e-mail/password or SMS, then back into the `/neu` start flow. */
+export function RegistrierenClient({ intentQuery }: { intentQuery: string }) {
+	const router = useRouter();
+	const [credentialsBusy, setCredentialsBusy] = useState(false);
+	const intent = new URLSearchParams(intentQuery);
+	const afterAuthPath = authPageHref('/neu', intentQuery);
+	const code = intent.get('code');
+
+	return (
+		<EntryFrame
+			title="Konto erstellen"
+			headingId="signup-heading"
+			description={describeIntent(intent)}
+			backHref={code ? `/?code=${encodeURIComponent(code)}` : '/'}
+		>
+			<FieldGroup>
+				<SocialLoginButtons
+					variant="sign-up"
+					next={afterAuthPath}
+					onOAuthStart={async (provider, next) => {
+						const { startSocialLogin } = await import('@/core/auth/client');
+						await startSocialLogin(provider, next);
+					}}
+					disabled={credentialsBusy}
+				/>
+				<FieldSeparator>oder</FieldSeparator>
+				<CredentialsAuth
+					mode="sign-up"
+					next={afterAuthPath}
+					onAuthenticated={() => router.replace(afterAuthPath)}
+					onBusyChange={setCredentialsBusy}
+				/>
+			</FieldGroup>
+			<p className="text-sm text-muted-foreground">
+				Du hast schon ein Konto?{' '}
+				<Link
+					href={authPageHref('/neu', intentQuery)}
+					className="-my-3 inline-block py-3 font-medium text-foreground underline underline-offset-4"
+				>
+					Anmelden
+				</Link>
+			</p>
+			<LegalLinks registration />
+		</EntryFrame>
+	);
+}
