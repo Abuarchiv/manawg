@@ -4,7 +4,7 @@ import { isTerminalPayPalOrderCreationError } from '../src/core/infra/paypal.ts'
 import { computeNetBalances, simplifyDebts } from '../src/features/expenses/debt-reduction.ts';
 import { computeBalances } from '../src/features/expenses/debts.ts';
 import type { DebtExpenseInput } from '../src/features/expenses/debts.ts';
-import type { ExpensePaymentInput } from '../src/features/expenses/expense-payments.ts';
+import type { ExpensePaymentInput } from '../src/features/expenses/expense-payment-input.ts';
 
 // PayPal capture state machine (server contracts, no browser).
 // Why: a capture must settle exactly once and must not run for members who left the WG.
@@ -105,10 +105,10 @@ mock.module('@/core/infra/paypal-onboarding', {
 mock.module('@/core/rate-limit', {
 	namedExports: { checkRateLimit: async () => ({ success: true }), wgWriteLimiter: {} },
 });
-mock.module('@/features/expenses/open-expenses', {
+mock.module('@/features/expenses/server/open-expenses', {
 	namedExports: { loadOpenExpenses: () => active.loadOpenExpenses() },
 });
-mock.module('@/features/expenses/expense-payments', {
+mock.module('@/features/expenses/server/expense-payments', {
 	namedExports: {
 		PAYPAL_ORDER_TTL_MS: 10_000,
 		loadCompletedExpensePayments: () => active.loadCompletedExpensePayments(),

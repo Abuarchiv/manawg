@@ -1,3 +1,4 @@
+import 'server-only';
 import { recordAuditEvent } from '@/core/audit';
 import { db, recurringExpenses, wgMembers } from '@/core/db';
 import { requireOwnerOrAdmin } from '@/core/guards/admin';
@@ -5,15 +6,15 @@ import { badRequest, conflict, forbidden, notFound } from '@/core/http/api-error
 import { isRecurringDueAtEditAllowed } from '@/core/validators/recurring-due-date';
 import { checkPaidByGuard } from '@/features/expenses/paid-by-guard';
 import {
-	advanceRecurringDue,
-	recordRecurringAdvanced,
-} from '@/features/expenses/recurring-booking';
-import {
 	addMonthsFromAnchor,
 	parseRecurringSplits,
 	recurringDueDateMatchesExpected,
 	serializeRecurringExpense,
 } from '@/features/expenses/recurring-expenses';
+import {
+	advanceRecurringDue,
+	recordRecurringAdvanced,
+} from '@/features/expenses/server/recurring-booking';
 import { splitValidationErrorCode, validateSplits } from '@/features/expenses/split-math';
 import { and, eq, inArray, isNotNull, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';

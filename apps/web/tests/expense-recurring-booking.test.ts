@@ -36,10 +36,10 @@ mock.module('@/core/audit', { namedExports: { recordAuditEvent: async () => unde
 mock.module('@/core/infra/observability', {
 	namedExports: { captureException: () => undefined, logApiError: () => undefined },
 });
-mock.module('@/features/expenses/expense-payments', {
+mock.module('@/features/expenses/server/expense-payments', {
 	namedExports: { hasCapturingExpensePayment: async () => false },
 });
-mock.module('@/features/expenses/expenses', {
+mock.module('@/features/expenses/server/expenses', {
 	namedExports: {
 		insertExpenseWithSplits: async (_tx: unknown, input: Record<string, unknown>) => ({
 			expense: { id: 'expense-1', ...input },
@@ -48,7 +48,7 @@ mock.module('@/features/expenses/expenses', {
 	},
 });
 
-const { writeExpense } = await import('../src/features/expenses/expense-create.ts');
+const { writeExpense } = await import('../src/features/expenses/server/expense-create.ts');
 
 function fakeTx() {
 	return {

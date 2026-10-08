@@ -1,3 +1,4 @@
+import 'server-only';
 import { recordAuditEvent } from '@/core/audit';
 import { type db, recurringExpenses } from '@/core/db';
 import type { DbTransaction } from '@/core/db/transaction';

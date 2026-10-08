@@ -15,6 +15,7 @@ import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, expensesReadLimiter, wgWriteLimiter } from '@/core/rate-limit';
 import { isAllowedImageUrlForWg } from '@/core/validators/image-url';
+import { checkPaidByGuard } from '@/features/expenses/paid-by-guard';
 import {
 	EXPENSE_CREATE_FIELD_ERRORS,
 	type ExpenseCreateInput,
@@ -25,18 +26,17 @@ import {
 	isRecurringDueUniqueViolation,
 	replayRecurringBooking,
 	writeExpense,
-} from '@/features/expenses/expense-create';
+} from '@/features/expenses/server/expense-create';
 import {
 	loadCompletedExpensePayments,
 	withExpensePaymentLock,
-} from '@/features/expenses/expense-payments';
+} from '@/features/expenses/server/expense-payments';
 import {
 	findExpenseMemberIds,
 	recordExpenseCreatedSideEffects,
 	resolveExpensePayer,
-} from '@/features/expenses/expenses';
-import { checkPaidByGuard } from '@/features/expenses/paid-by-guard';
-import { recordRecurringAdvanced } from '@/features/expenses/recurring-booking';
+} from '@/features/expenses/server/expenses';
+import { recordRecurringAdvanced } from '@/features/expenses/server/recurring-booking';
 import { splitValidationErrorCode, validateSplits } from '@/features/expenses/split-math';
 import { desc, eq, getTableColumns } from 'drizzle-orm';
 import { NextResponse } from 'next/server';

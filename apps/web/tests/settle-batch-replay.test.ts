@@ -80,14 +80,14 @@ mock.module('@/core/rate-limit', {
 		},
 	},
 });
-mock.module('@/features/expenses/expense-payments', {
+mock.module('@/features/expenses/server/expense-payments', {
 	namedExports: {
 		withExpensePaymentLock: (_wgId: string, work: (tx: unknown) => unknown) => work({}),
 	},
 });
 
 const { responseCodec } = await import('../src/core/db/idempotent-write.ts');
-mock.module('@/features/expenses/settle-debt', {
+mock.module('@/features/expenses/server/settle-debt', {
 	namedExports: {
 		SettlementChangedError: class extends Error {},
 		loadSettlementSnapshot: async () => ({ members: [], expenses: [], payments: [] }),

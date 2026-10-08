@@ -18,7 +18,7 @@ import {
 	hasCapturingExpensePayment,
 	loadCompletedExpensePayments,
 	withExpensePaymentLock,
-} from '@/features/expenses/expense-payments';
+} from '@/features/expenses/server/expense-payments';
 import { and, eq, isNotNull, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 

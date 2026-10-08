@@ -105,7 +105,7 @@ mock.module('@/features/expenses/debts', {
 		],
 	},
 });
-mock.module('@/features/expenses/expense-payments', {
+mock.module('@/features/expenses/server/expense-payments', {
 	namedExports: {
 		PAYPAL_ORDER_TTL_MS: 60_000,
 		loadCompletedExpensePayments: async () => [],
@@ -113,7 +113,7 @@ mock.module('@/features/expenses/expense-payments', {
 			operation(active.tx),
 	},
 });
-mock.module('@/features/expenses/open-expenses', {
+mock.module('@/features/expenses/server/open-expenses', {
 	namedExports: { loadOpenExpenses: async () => [] },
 });
 mock.module('drizzle-orm', {

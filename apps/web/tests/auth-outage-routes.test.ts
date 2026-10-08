@@ -161,7 +161,7 @@ mock.module('@/core/idempotency-store', {
 		readIdempotencyKey: unreachable('readIdempotencyKey'),
 	},
 });
-mock.module('@/features/expenses/expense-payments', {
+mock.module('@/features/expenses/server/expense-payments', {
 	namedExports: { withExpensePaymentLock: unreachable('withExpensePaymentLock') },
 });
 mock.module('@/core/guards/with-wg-route', {

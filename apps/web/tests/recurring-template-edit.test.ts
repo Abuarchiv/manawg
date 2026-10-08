@@ -67,7 +67,7 @@ mock.module('@/core/infra/observability', {
 });
 
 const { editRecurringTemplate } = await import(
-	'../src/features/expenses/recurring-template-writes.ts'
+	'../src/features/expenses/server/recurring-template-writes.ts'
 );
 const caller = { wgId: 'wg-1', member: { memberId: MEMBER, name: 'Mina' } };
 

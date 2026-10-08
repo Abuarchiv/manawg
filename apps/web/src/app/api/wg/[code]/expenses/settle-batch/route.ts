@@ -15,14 +15,14 @@ import {
 import { readJsonLimited } from '@/core/http/read-json';
 import { readIdempotencyKey } from '@/core/idempotency-store';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
-import { withExpensePaymentLock } from '@/features/expenses/expense-payments';
+import { withExpensePaymentLock } from '@/features/expenses/server/expense-payments';
 import {
 	SettlementChangedError,
 	loadSettlementSnapshot,
 	pairIsInWg,
 	settleDebtPair,
 	settlementCodec,
-} from '@/features/expenses/settle-debt';
+} from '@/features/expenses/server/settle-debt';
 import {
 	type SettlementConfirmation,
 	parseSettlementConfirmation,

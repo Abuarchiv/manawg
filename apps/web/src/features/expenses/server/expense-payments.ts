@@ -1,15 +1,10 @@
+import 'server-only';
 import { db, expensePayments } from '@/core/db';
 import { type DbTransaction, lockExpensePayments, withTransaction } from '@/core/db/transaction';
+import type { ExpensePaymentInput } from '@/features/expenses/expense-payment-input';
 import { and, eq, gt, or } from 'drizzle-orm';
 
 export const PAYPAL_ORDER_TTL_MS = 3 * 60 * 60 * 1000;
-
-export interface ExpensePaymentInput {
-	fromMemberId: string;
-	toMemberId: string;
-	amountCents: number;
-	currency: string;
-}
 
 export async function loadCompletedExpensePayments(
 	wgId: string,

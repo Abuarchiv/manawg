@@ -16,7 +16,7 @@ import { serializeRecurringExpense } from '@/features/expenses/recurring-expense
 import {
 	deleteRecurringTemplate,
 	editRecurringTemplate,
-} from '@/features/expenses/recurring-template-writes';
+} from '@/features/expenses/server/recurring-template-writes';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';

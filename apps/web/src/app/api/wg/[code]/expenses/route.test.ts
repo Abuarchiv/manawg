@@ -400,7 +400,7 @@ mock.module('@/core/validators/image-url', {
 		isAllowedImageUrlForWg: () => true,
 	},
 });
-mock.module('@/features/expenses/expense-payments', {
+mock.module('@/features/expenses/server/expense-payments', {
 	namedExports: {
 		hasCapturingExpensePayment: async () => state.capturing,
 		loadCompletedExpensePayments: async () => [],
@@ -435,7 +435,7 @@ mock.module('@/features/expenses/expense-payments', {
 		},
 	},
 });
-mock.module('@/features/expenses/recurring-booking', {
+mock.module('@/features/expenses/server/recurring-booking', {
 	namedExports: {
 		advanceRecurringDue: async (_tx: unknown, template: Loose) => ({ ...template, advanced: true }),
 		recordRecurringAdvanced: async () => undefined,

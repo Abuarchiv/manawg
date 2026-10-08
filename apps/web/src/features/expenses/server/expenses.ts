@@ -1,3 +1,4 @@
+import 'server-only';
 import { postChatSystemMessage, postSystemNotice } from '@/core/activity-feed';
 import { recordAuditEvent } from '@/core/audit';
 import { db, expenseSplits, expenses, wgMembers } from '@/core/db';

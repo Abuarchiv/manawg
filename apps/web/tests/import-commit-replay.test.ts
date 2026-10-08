@@ -131,7 +131,7 @@ mock.module('@/core/notifications/notification-dispatch', {
 	},
 });
 mock.module('@/core/utils/money', { namedExports: { formatEuroCents: () => '0,00 €' } });
-mock.module('@/features/expenses/expense-payments', {
+mock.module('@/features/expenses/server/expense-payments', {
 	namedExports: {
 		hasCapturingExpensePayment: async () => state.capturing,
 		withExpensePaymentLock,
@@ -153,7 +153,7 @@ mock.module('drizzle-orm', {
 	},
 });
 
-const { commitImport: commit } = await import('../src/features/expenses/import-commit.ts');
+const { commitImport: commit } = await import('../src/features/expenses/server/import-commit.ts');
 
 function input(count = 1, skip = true) {
 	return {

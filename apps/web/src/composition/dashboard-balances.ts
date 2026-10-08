@@ -1,6 +1,6 @@
 import { normalizeCurrency } from '@/core/utils/money';
 import { computeNetBalances } from '@/features/expenses/debt-reduction';
-import type { ExpensePaymentInput } from '@/features/expenses/expense-payments';
+import type { ExpensePaymentInput } from '@/features/expenses/expense-payment-input';
 
 export interface MemberBalance {
 	memberId: string;

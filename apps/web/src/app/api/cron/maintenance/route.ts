@@ -12,7 +12,7 @@ import { requireCronSecret } from '@/core/infra/cron-auth';
 import { logApiError, withCronLogging } from '@/core/infra/observability';
 import { isPayPalConfigured } from '@/core/infra/paypal';
 import { removeSupabaseImages } from '@/core/infra/supabase-storage';
-import { reconcileStaleCapturingPayments } from '@/features/expenses/paypal-reconcile';
+import { reconcileStaleCapturingPayments } from '@/features/expenses/server/paypal-reconcile';
 import { type NextRequest, NextResponse } from 'next/server';
 
 async function cleanupPrivateImages(): Promise<{

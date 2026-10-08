@@ -79,7 +79,7 @@ mock.module('@/core/rate-limit', {
 		wgWriteLimiter: {},
 	},
 });
-mock.module('@/features/expenses/expense-payments', {
+mock.module('@/features/expenses/server/expense-payments', {
 	namedExports: {
 		hasCapturingExpensePayment: async () => false,
 		loadCompletedExpensePayments: async () => [],
@@ -87,7 +87,7 @@ mock.module('@/features/expenses/expense-payments', {
 			current.withExpensePaymentLock(...args),
 	},
 });
-mock.module('@/features/expenses/expenses', {
+mock.module('@/features/expenses/server/expenses', {
 	namedExports: {
 		findExpenseMemberIds: async () => new Set([MEMBER_ID]),
 		insertExpenseWithSplits: async (

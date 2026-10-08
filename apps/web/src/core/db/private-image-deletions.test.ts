@@ -107,7 +107,7 @@ mock.module('@/core/rate-limit', {
 		wgWriteLimiter: {},
 	},
 });
-mock.module('@/features/expenses/expense-payments', {
+mock.module('@/features/expenses/server/expense-payments', {
 	namedExports: {
 		hasCapturingExpensePayment: async () => false,
 		withExpensePaymentLock: async (

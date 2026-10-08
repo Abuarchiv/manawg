@@ -1,5 +1,5 @@
 import { normalizeCurrency } from '@/core/utils/money';
-import type { ExpensePaymentInput } from './expense-payments';
+import type { ExpensePaymentInput } from './expense-payment-input';
 
 export interface SimplifiedDebt {
 	fromId: string;

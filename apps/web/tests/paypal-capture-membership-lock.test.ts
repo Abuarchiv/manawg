@@ -171,7 +171,7 @@ mock.module('@/features/expenses/debt-reduction', {
 		],
 	},
 });
-mock.module('@/features/expenses/expense-payments', {
+mock.module('@/features/expenses/server/expense-payments', {
 	namedExports: {
 		withExpensePaymentLock: async (
 			_id: string,
@@ -188,7 +188,7 @@ mock.module('@/features/expenses/expense-payments', {
 		hasCapturingExpensePayment: async () => false,
 	},
 });
-mock.module('@/features/expenses/open-expenses', {
+mock.module('@/features/expenses/server/open-expenses', {
 	namedExports: { loadOpenExpenses: async () => [] },
 });
 mock.module('@/features/expenses/paypal-settlement', {

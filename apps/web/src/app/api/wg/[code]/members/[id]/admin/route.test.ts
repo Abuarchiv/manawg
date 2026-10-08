@@ -64,7 +64,7 @@ mock.module('@/core/guards/require-wg-admin', {
 		}),
 	},
 });
-mock.module('@/features/expenses/expense-payments', {
+mock.module('@/features/expenses/server/expense-payments', {
 	namedExports: {
 		withExpensePaymentLock: async (_id: string, fn: (tx: unknown) => unknown) => fn(tx),
 	},

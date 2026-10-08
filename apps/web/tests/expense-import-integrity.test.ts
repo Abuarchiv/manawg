@@ -43,10 +43,10 @@ mock.module('@/features/expenses/import-parsers', {
 		parseSplidCsv: () => [parsedExpense],
 	},
 });
-const { commitImport } = await import('../src/features/expenses/import-commit.ts');
-const { hashPayload } = await import('../src/features/expenses/import-hash.ts');
+const { commitImport } = await import('../src/features/expenses/server/import-commit.ts');
+const { hashPayload } = await import('../src/features/expenses/server/import-hash.ts');
 let committed: Record<string, unknown> | undefined;
-mock.module('@/features/expenses/import-commit', {
+mock.module('@/features/expenses/server/import-commit', {
 	namedExports: {
 		commitImport: async (
 			_replay: unknown,

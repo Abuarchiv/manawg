@@ -1,11 +1,10 @@
+import 'server-only';
 import { type db, expensePayments, expenseSplits, expenses, wgMembers } from '@/core/db';
 import { type WriteOutcome, responseCodec } from '@/core/db/idempotent-write';
 import type { DbTransaction } from '@/core/db/transaction';
 import { HTTP } from '@/core/http/api-errors';
-import {
-	type ExpensePaymentInput,
-	hasCapturingExpensePayment,
-} from '@/features/expenses/expense-payments';
+import type { ExpensePaymentInput } from '@/features/expenses/expense-payment-input';
+import { hasCapturingExpensePayment } from '@/features/expenses/server/expense-payments';
 import {
 	type SettlementConfirmation,
 	type SettlementExpenseInput,

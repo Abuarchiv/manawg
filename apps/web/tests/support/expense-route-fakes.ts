@@ -196,7 +196,7 @@ export function installWgRouteMocks(): RouteEnv {
 			wgWriteLimiter: {},
 		},
 	});
-	mock.module('@/features/expenses/expense-payments', {
+	mock.module('@/features/expenses/server/expense-payments', {
 		namedExports: {
 			PAYPAL_ORDER_TTL_MS: 3 * 60 * 60 * 1000,
 			hasActiveExpensePayment: async () => false,

@@ -193,7 +193,7 @@ mock.module('@/core/infra/paypal-onboarding', {
 mock.module('@/core/rate-limit', {
 	namedExports: { checkRateLimit: async () => ({ success: true }), wgWriteLimiter: {} },
 });
-mock.module('@/features/expenses/expense-payments', {
+mock.module('@/features/expenses/server/expense-payments', {
 	namedExports: {
 		hasActiveExpensePayment: async () => current.options.activePayment,
 		withExpensePaymentLock: async (_wgId: string, operation: (tx: unknown) => unknown) =>

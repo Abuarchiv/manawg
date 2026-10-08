@@ -90,7 +90,7 @@ mock.module('@/features/expenses/import-body', {
 		readImportJsonBody: async (req: Request) => ({ ok: true, value: await req.json() }),
 	},
 });
-mock.module('@/features/expenses/import-commit', {
+mock.module('@/features/expenses/server/import-commit', {
 	namedExports: {
 		commitImport: async (
 			_replay: unknown,
@@ -102,7 +102,9 @@ mock.module('@/features/expenses/import-commit', {
 		},
 	},
 });
-mock.module('@/features/expenses/import-hash', { namedExports: { hashPayload: () => 'hash' } });
+mock.module('@/features/expenses/server/import-hash', {
+	namedExports: { hashPayload: () => 'hash' },
+});
 mock.module('@/features/expenses/import-parsers', {
 	namedExports: {
 		UnsupportedCurrencyError: class extends Error {},

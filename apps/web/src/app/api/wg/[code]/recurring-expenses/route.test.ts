@@ -128,7 +128,7 @@ mock.module('@/core/infra/observability', {
 mock.module('@/core/rate-limit', {
 	namedExports: { checkRateLimit: async () => ({ success: true }), wgWriteLimiter: {} },
 });
-mock.module('@/features/expenses/expense-payments', {
+mock.module('@/features/expenses/server/expense-payments', {
 	namedExports: { withExpensePaymentLock: async () => {} },
 });
 mock.module('@/features/expenses/paid-by-guard', {

@@ -1,3 +1,4 @@
+import 'server-only';
 import { postSystemNotice } from '@/core/activity-feed';
 import { recordAuditEvent } from '@/core/audit';
 import { db, expenseImports, expenseSplits, expenses, wgMembers } from '@/core/db';
@@ -8,14 +9,14 @@ import {
 	dispatchNotificationSafely,
 } from '@/core/notifications/notification-dispatch';
 import { formatEuroCents } from '@/core/utils/money';
+import { checkPaidByGuard } from '@/features/expenses/paid-by-guard';
 import {
 	hasCapturingExpensePayment,
 	withExpensePaymentLock,
-} from '@/features/expenses/expense-payments';
-import { checkPaidByGuard } from '@/features/expenses/paid-by-guard';
+} from '@/features/expenses/server/expense-payments';
 import { settledAtForOwnShare } from '@/features/expenses/split-math';
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
-import type { ImportSource, ParsedExpense } from './import-parsers';
+import type { ImportSource, ParsedExpense } from '../import-parsers';
 
 export interface CommitInput {
 	wg: { id: string; name: string; shareCode: string };

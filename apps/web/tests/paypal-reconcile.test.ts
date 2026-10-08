@@ -68,7 +68,7 @@ mock.module(sibling('paypal-settlement.ts'), {
 });
 
 const { reconcileStaleCapturingPayments } = await import(
-	'../src/features/expenses/paypal-reconcile.ts'
+	'../src/features/expenses/server/paypal-reconcile.ts'
 );
 
 test('reconciliation leaves a mismatched or missing provider order identity unresolved', async () => {

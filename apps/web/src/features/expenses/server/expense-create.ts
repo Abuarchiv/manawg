@@ -1,3 +1,4 @@
+import 'server-only';
 import { expenseSplits, expenses, recurringExpenses } from '@/core/db';
 import { bodyCodec } from '@/core/db/idempotent-write';
 import { assertPrivateImageCanBeAttached } from '@/core/db/private-image-deletions';
@@ -7,14 +8,14 @@ import type { NotificationDispatchWarning } from '@/core/notifications/notificat
 import { currencySchema } from '@/core/validators/currency';
 import { imageUrlSchema } from '@/core/validators/image-url';
 import { MAX_SPLITS } from '@/features/expenses/expense-constants';
-import { hasCapturingExpensePayment } from '@/features/expenses/expense-payments';
 import {
 	expenseAmountSchema,
 	expenseDescriptionSchema,
 	expenseSplitSchema,
 } from '@/features/expenses/expense-schemas';
-import { insertExpenseWithSplits } from '@/features/expenses/expenses';
-import { advanceRecurringDue } from '@/features/expenses/recurring-booking';
+import { hasCapturingExpensePayment } from '@/features/expenses/server/expense-payments';
+import { insertExpenseWithSplits } from '@/features/expenses/server/expenses';
+import { advanceRecurringDue } from '@/features/expenses/server/recurring-booking';
 import { and, eq } from 'drizzle-orm';
 import type { NextResponse } from 'next/server';
 import { z } from 'zod';

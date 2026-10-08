@@ -1,3 +1,4 @@
+import 'server-only';
 import { db, expenseSplits, expenses } from '@/core/db';
 import type { DbTransaction } from '@/core/db/transaction';
 import type { DebtExpenseInput } from '@/features/expenses/debts';

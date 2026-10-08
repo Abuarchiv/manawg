@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { mock, test } from 'node:test';
-import { TransactionAbort } from '../../core/db/transaction-abort';
-import type { ParsedExpense } from './import-parsers';
+import { TransactionAbort } from '@/core/db/transaction-abort';
+import type { ParsedExpense } from '../import-parsers';
 
 const wgId = '22222222-2222-4222-8222-222222222222';
 const memberId = '33333333-3333-4333-8333-333333333333';
@@ -57,7 +57,7 @@ mock.module('@/core/notifications/notification-dispatch', {
 	namedExports: { dispatchNotificationSafely: async () => ({ warning: null }) },
 });
 mock.module('@/core/utils/money', { namedExports: { formatEuroCents: () => '12,00 €' } });
-mock.module('@/features/expenses/expense-payments', {
+mock.module('@/features/expenses/server/expense-payments', {
 	namedExports: {
 		hasCapturingExpensePayment: async () => false,
 		withExpensePaymentLock: async (_id: string, operation: (tx: unknown) => unknown) =>

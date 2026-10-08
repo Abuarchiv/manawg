@@ -8,7 +8,7 @@ import {
 	computeBalances,
 	computeOldestDebtAges,
 } from '@/features/expenses/debts';
-import type { ExpensePaymentInput } from '@/features/expenses/expense-payments';
+import type { ExpensePaymentInput } from '@/features/expenses/expense-payment-input';
 import { canSendReminder } from '@/features/expenses/reminders';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 

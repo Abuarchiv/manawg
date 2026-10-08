@@ -41,7 +41,9 @@ mock.module('@/features/expenses/import-body', {
 		readImportJsonBody: async (req: Request) => ({ ok: true, value: await req.json() }),
 	},
 });
-mock.module('@/features/expenses/import-hash', { namedExports: { hashPayload: () => 'hash' } });
+mock.module('@/features/expenses/server/import-hash', {
+	namedExports: { hashPayload: () => 'hash' },
+});
 mock.module('@/features/expenses/import-parsers', {
 	namedExports: {
 		...parsers,
