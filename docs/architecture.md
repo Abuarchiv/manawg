@@ -54,7 +54,7 @@ under `app/wg/**`; WG APIs belong under `app/api/wg/**`.
 | --- | --- | --- |
 | `app/` | Pages, layouts, route handlers. Thin. | everything below |
 | `fixtures/` | Database-free fixture build: mode detection, fixture API and page data (README "Fixture mode") | `composition/` and everything below |
-| `features/<x>/` | Vertical slices: `chat`, `chores`, `events`, `expenses`, `inventory`, `pinnwand`, `shopping` (logic, hooks, components) | `components/`, `core/`, `shared/`, own files |
+| `features/<x>/` | Vertical slices: `chat`, `chores`, `events`, `expenses`, `inventory`, `pinnwand`, `shopping` (logic, hooks, components, and a `server/` folder) | `components/`, `core/`, `shared/`, own files |
 | `composition/` | Cross-feature reads: dashboard data and insights, activity, export | `features/`, `components/`, `core/`, `shared/` |
 | `core/` | Domain-neutral blocks: `db`, `auth`, `guards`, `http`, `hooks`, `offline`, `sync`, `notifications`, `infra`, `utils`, `validators` | `core/`, `shared/` |
 | `components/` | Shared UI: `ui/` shadcn primitives (plus `LogoMark`, `Toast`, `ConfirmDialog`), `animate-ui/`, `app/` app-wide composites (shell, PWA install/push prompts, theme), `wg/` WG-wide composites | `components/`, `core/`, `shared/` |
@@ -64,6 +64,13 @@ Rules:
 
 - A feature never imports another feature. `scripts/check-architecture.mjs` resolves aliased
   and relative specifiers and fails lint and CI on any import against the matrix above.
+- Code that touches the database or other server-only dependencies (`drizzle-orm`, `core/db`,
+  `core/auth/server`, secrets, `node:` modules) lives in `features/<x>/server/` and starts with
+  `import 'server-only'`. Files directly under `features/<x>/`, `components/` and `hooks/` stay
+  client-safe: shared types and pure logic go there, so a client module never pulls in a server
+  module. The check fails any `features/<x>/server/` file without the import and any
+  `'use client'` module importing from a `server/` folder. Unit tests resolve `server-only` to an
+  empty module (`tests/support/resolve-hooks.mjs`).
 - Cross-feature side effects go through `core/` (e.g. `core/activity-feed.ts` posts system
   notices to the pinnwand feed; `core/audit.ts` records audit events).
 - Cross-feature reads go through `composition/`.
@@ -153,7 +160,7 @@ key the write runs in a plain transaction (`retryAfterRollback` still applies). 
   only the WG admin may import a shared history with rows they are not part of.
 - Manual settlement sets `expense_splits.settled_at`
   (`/api/wg/<code>/expenses/[id]/splits/[splitId]/settle`, `/expenses/settle-batch`).
-- PayPal (`/api/wg/<code>/paypal/{connect,order,capture}`, `features/expenses/paypal-*.ts`): the
+- PayPal (`/api/wg/<code>/paypal/{connect,order,capture}`, `features/expenses/paypal-settlement.ts`, `features/expenses/server/paypal-reconcile.ts`): the
   payee connects via PayPal partner referrals (`paypal_merchant_id`). An order is created for the
   simplified net debt; `expense_payments.status` goes `created -> capturing -> completed|failed`,
   with one active payment per member pair. Only a server-confirmed capture counts. Payment work
@@ -331,7 +338,7 @@ Route folders under `app/wg/[code]/`, with the code names behind them.
 | Mitglied, Auszug | members, `deactivatedAt` | `members` | `wg_members` |
 | Ausgaben (`ausgaben`) | `features/expenses` | `expenses` | `expenses`, `expense_splits`, `expense_payments` |
 | Abos (`abos`) | recurring expenses (`features/expenses/recurring-expenses.ts`) | `recurring-expenses` | `recurring_expenses` |
-| Import (`import`) | expense import (`features/expenses/import-*.ts`) | `imports` | `expense_imports` |
+| Import (`import`) | expense import (`features/expenses/import-*.ts`, commit in `features/expenses/server/import-commit.ts`) | `imports` | `expense_imports` |
 | Mahnungen / Erinnerungen (`mahnungen`) | payment reminders (`features/expenses/reminders.ts`) | `reminders` | `expense_reminders` |
 | Putzen / Putzplan (`putzen`) | `features/chores` | `chores` | `chores`, `chore_completions` |
 | Abwesenheiten (panel on `putzen`) | absences (`features/chores/absence.ts`) | `absences` | `member_absences` |

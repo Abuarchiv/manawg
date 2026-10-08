@@ -18,6 +18,7 @@ apps/web/
   src/composition/ cross-feature reads (dashboard, activity, export)
   src/features/   vertical slices (chat, chores, events, expenses, inventory, pinnwand, shopping)
                   a feature may import core/, shared/ and itself, never another feature
+                  features/<x>/server/ holds database and server-only code (import 'server-only')
   src/components/ reusable UI: ui/ (shadcn), animate-ui/ (motion variants), app/ (shell, PWA, theme), wg/ (WG-wide)
   src/shared/     framework-light utilities (lib/, fonts, css): theme, brand, analytics
   drizzle/        SQL migrations (`pnpm --filter @manawg/web db:generate` / `db:migrate`)
