@@ -42,7 +42,7 @@ export function createAction(overrides: Action = {}): Action {
 	};
 }
 
-export class FakeCustomEvent {
+class FakeCustomEvent {
 	type: string;
 	detail: unknown;
 	constructor(type: string, init: { detail?: unknown } = {}) {
@@ -86,7 +86,7 @@ export function makeLockManager() {
 		},
 	};
 }
-export type FakeLockManager = ReturnType<typeof makeLockManager>;
+type FakeLockManager = ReturnType<typeof makeLockManager>;
 
 export function deferred<T = unknown>() {
 	let resolve: (value?: T) => void = () => {};
