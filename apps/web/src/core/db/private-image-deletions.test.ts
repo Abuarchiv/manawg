@@ -742,7 +742,7 @@ test(
 					replayLockHolder.then(() => false),
 				]);
 				assert.equal(holderAcquiredLock, true, 'test transaction holds the WG lock');
-				const replayModule = await import('@/features/pinnwand/announcement-replay');
+				const replayModule = await import('@/features/pinnwand/server/announcement-replay');
 				let mutateStarted = false;
 				const replay = replayModule.withAnnouncementReplay(
 					new Request('https://app.example', { headers: { 'Idempotency-Key': replayKey } }),

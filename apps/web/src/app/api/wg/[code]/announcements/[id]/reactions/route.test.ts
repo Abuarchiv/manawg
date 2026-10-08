@@ -132,7 +132,7 @@ mock.module('@/core/notifications/notification-dispatch', {
 mock.module('@/core/rate-limit', {
 	namedExports: { wgWriteLimiter: {}, checkRateLimit: async () => ({ success: true }) },
 });
-mock.module('@/features/pinnwand/announcement-replay', {
+mock.module('@/features/pinnwand/server/announcement-replay', {
 	namedExports: { withAnnouncementReplay, persistAnnouncementReplayWarning: async () => true },
 });
 mock.module('@/features/pinnwand/announcement-workflow', {

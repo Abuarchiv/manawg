@@ -225,7 +225,7 @@ mock.module('@/core/idempotency-store', {
 		readIdempotencyKey: (request: Request) => request.headers.get('idempotency-key'),
 	},
 });
-mock.module('@/features/pinnwand/announcement-replay', {
+mock.module('@/features/pinnwand/server/announcement-replay', {
 	namedExports: {
 		withAnnouncementReplay: async (
 			request: Request,

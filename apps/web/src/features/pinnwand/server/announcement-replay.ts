@@ -1,3 +1,4 @@
+import 'server-only';
 import { type ReplayCodec, withIdempotentWrite } from '@/core/db/idempotent-write';
 import { type DbTransaction, lockExpensePayments, withTransaction } from '@/core/db/transaction';
 import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';

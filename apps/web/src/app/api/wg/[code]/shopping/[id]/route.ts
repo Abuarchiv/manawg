@@ -9,7 +9,7 @@ import { badRequest, conflict, notFound, tooMany } from '@/core/http/api-errors'
 import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey } from '@/core/idempotency-store';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
-import { withAnnouncementReplay } from '@/features/pinnwand/announcement-replay';
+import { withAnnouncementReplay } from '@/features/pinnwand/server/announcement-replay';
 import { isOpenShoppingItemDuplicate } from '@/features/shopping/shopping-duplicate';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
