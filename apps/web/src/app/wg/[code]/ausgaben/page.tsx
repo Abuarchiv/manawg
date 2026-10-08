@@ -122,6 +122,8 @@ export default function AusgabenPage() {
 					setDescription={form.setDescription}
 					amountStr={form.amountStr}
 					setAmountStr={form.setAmountStr}
+					occurredOn={form.occurredOn}
+					setOccurredOn={form.setOccurredOn}
 					paidByMemberId={form.paidByMemberId}
 					setPaidByMemberId={form.setPaidByMemberId}
 					members={members}

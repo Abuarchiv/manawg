@@ -1,5 +1,6 @@
 import { formatEuroInput, parseEuroAmount } from '@/core/utils/amount';
 import { CENTS_PER_EURO } from '@/core/utils/money';
+import { distributeCentsEqually } from '@/features/expenses/split-math';
 
 /**
  * Pure remainder-distribution step behind "Rest aufteilen", kept out of the
@@ -59,4 +60,21 @@ export function distributeRemainderCents(
 		remainingTargets = nextTargets;
 	}
 	return next;
+}
+
+/**
+ * Manual-mode fields for an equal split among only some members: each participant gets an equal
+ * share (the leftover cents go to the first ones), everyone else stays empty. Null when there is
+ * nobody to split among or the amount is not a positive number of cents.
+ */
+export function equalSharesAmong(
+	amountCents: number,
+	participantIds: readonly string[],
+): Record<string, string> | null {
+	if (!Number.isInteger(amountCents) || amountCents <= 0 || participantIds.length === 0)
+		return null;
+	const shares = distributeCentsEqually(amountCents, participantIds);
+	return Object.fromEntries(
+		participantIds.map((id, index) => [id, formatEuroInput((shares[index] ?? 0) / CENTS_PER_EURO)]),
+	);
 }

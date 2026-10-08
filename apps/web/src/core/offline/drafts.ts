@@ -81,6 +81,7 @@ export function isEmptyModuleDraft(
 		expense: {
 			description: '',
 			amountStr: '',
+			occurredOn: '',
 			imageUrl: null,
 			paidByMemberId: memberId,
 			splitMode: 'equal',

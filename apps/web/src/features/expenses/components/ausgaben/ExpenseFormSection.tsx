@@ -3,8 +3,7 @@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { FieldGroup } from '@/components/ui/field';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { type ActionNotice, ActionNoticeBanner } from '@/components/wg/ActionNoticeBanner';
@@ -15,6 +14,7 @@ import { ArrowLeft } from 'lucide-react';
 import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from 'react';
 import { CloseDraftDialog, ReplaceDraftDialog } from './ExpenseDraftDialogs';
 import { ExpenseExtras } from './ExpenseExtras';
+import { ExpensePayerDateFields } from './ExpensePayerDateFields';
 import { ExpenseSplitFieldset } from './ExpenseSplitFieldset';
 import { TextField } from './TextField';
 import { DESCRIPTION_MAX } from './constants';
@@ -32,6 +32,8 @@ interface ExpenseFormSectionProps {
 	setDescription: Dispatch<SetStateAction<string>>;
 	amountStr: string;
 	setAmountStr: Dispatch<SetStateAction<string>>;
+	occurredOn: string;
+	setOccurredOn: Dispatch<SetStateAction<string>>;
 	paidByMemberId: string;
 	setPaidByMemberId: Dispatch<SetStateAction<string>>;
 	members: Member[];
@@ -83,6 +85,8 @@ export function ExpenseFormSection({
 	setDescription,
 	amountStr,
 	setAmountStr,
+	occurredOn,
+	setOccurredOn,
 	paidByMemberId,
 	setPaidByMemberId,
 	members,
@@ -143,6 +147,7 @@ export function ExpenseFormSection({
 	const isDirty = useExpenseFormDirty({
 		description,
 		amountStr,
+		occurredOn,
 		paidByMemberId,
 		splitMode,
 		manualSplits,
@@ -263,28 +268,17 @@ export function ExpenseFormSection({
 									error={fieldErrors.amount}
 									enterKeyHint="next"
 								/>
-								<Field data-disabled={formSaving}>
-									<FieldLabel htmlFor="paid-by">Bezahlt von</FieldLabel>
-									<NativeSelect
-										id="paid-by"
-										value={paidByMemberId}
-										onChange={(event) => setPaidByMemberId(event.target.value)}
-										disabled={formSaving || isEditingExpense}
-										className="w-full [&_select]:h-auto [&_select]:py-[0.5625rem] [&_select]:text-base"
-									>
-										{payerOptions.map((member) => (
-											<NativeSelectOption key={member.id} value={member.id}>
-												{member.name}
-												{member.id === identityMemberId ? ' (du)' : ''}
-											</NativeSelectOption>
-										))}
-									</NativeSelect>
-									{isEditingExpense && (
-										<FieldDescription>
-											Die zahlende Person kann bei einer bestehenden Ausgabe nicht geändert werden.
-										</FieldDescription>
-									)}
-								</Field>
+								<ExpensePayerDateFields
+									occurredOn={occurredOn}
+									setOccurredOn={setOccurredOn}
+									showDate={!savesTemplate && !isEditingQueuedExpense}
+									paidByMemberId={paidByMemberId}
+									setPaidByMemberId={setPaidByMemberId}
+									payerOptions={payerOptions}
+									identityMemberId={identityMemberId}
+									isEditingExpense={isEditingExpense}
+									disabled={formSaving}
+								/>
 								<ExpenseSplitFieldset
 									members={members}
 									splitCandidates={splitCandidates}

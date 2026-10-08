@@ -29,6 +29,8 @@ export type ExpenseDraft = {
 	editingExpense?: unknown;
 	description?: string;
 	amountStr?: string;
+	/** Berlin calendar day (YYYY-MM-DD) of a back-dated expense; empty means "now". */
+	occurredOn?: string;
 	imageUrl?: string | null;
 	paidByMemberId?: string;
 	splitMode?: SplitMode;

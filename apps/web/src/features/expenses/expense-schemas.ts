@@ -26,3 +26,16 @@ export const expenseAmountSchema = z
 	.max(AMOUNT_MAX_CENTS);
 
 export const expenseDescriptionSchema = z.string().trim().min(1).max(DESCRIPTION_MAX_LENGTH);
+
+const OCCURRED_AT_MAX_FUTURE_MS = 24 * 60 * 60 * 1000;
+const OCCURRED_AT_MAX_PAST_MS = 10 * 365 * 24 * 60 * 60 * 1000;
+
+/** When the expense happened: not later than tomorrow and not older than ten years. */
+export const expenseOccurredAtSchema = z
+	.string()
+	.datetime({ offset: true })
+	.refine((value) => {
+		const time = Date.parse(value);
+		const now = Date.now();
+		return time <= now + OCCURRED_AT_MAX_FUTURE_MS && time >= now - OCCURRED_AT_MAX_PAST_MS;
+	}, 'occurred_at_out_of_range');

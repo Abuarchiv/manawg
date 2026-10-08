@@ -197,6 +197,7 @@ export default function KalenderPage() {
 				readOnly={
 					calendar.editing !== null &&
 					!isAdmin &&
+					calendar.editing.createdByMemberId !== undefined &&
 					calendar.editing.createdByMemberId !== identity.memberId
 				}
 				onExportIcs={editingOccurrence ? () => downloadOccurrenceIcs(editingOccurrence) : undefined}

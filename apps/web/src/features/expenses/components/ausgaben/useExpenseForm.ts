@@ -9,6 +9,7 @@ import {
 } from '@/core/offline/drafts';
 import type { OfflineActionType } from '@/core/offline/offline-queue';
 import { formatEuroInput, parseEuroAmount } from '@/core/utils/amount';
+import { berlinDayKey } from '@/core/utils/berlin-day';
 import { CENTS_PER_EURO } from '@/core/utils/money';
 import { buildExpensePrefillDraft } from '@/features/expenses/expense-prefill';
 import { isEqualExpenseSplit } from '@/features/expenses/expense-split-input';
@@ -81,6 +82,8 @@ export function useExpenseForm({
 	const [showForm, setShowForm] = useState(false);
 	const [description, setDescription] = useState('');
 	const [amountStr, setAmountStr] = useState('');
+	// Berlin day of the expense; empty means it happened just now.
+	const [occurredOn, setOccurredOn] = useState('');
 	const [imageUrl, setImageUrl] = useState<string | null>(null);
 	const [paidByMemberId, setPaidByMemberId] = useState<string>(identityMemberId);
 	const [splitMode, setSplitMode] = useState<SplitMode>('equal');
@@ -132,6 +135,7 @@ export function useExpenseForm({
 		}
 		if (draft.description) setDescription(draft.description);
 		if (draft.amountStr) setAmountStr(draft.amountStr);
+		if (draft.occurredOn) setOccurredOn(draft.occurredOn);
 		if (draft.imageUrl !== undefined) setImageUrl(draft.imageUrl);
 		if (draft.paidByMemberId) setPaidByMemberId(draft.paidByMemberId);
 		// Queued expenses always carry per-person amounts; an equal split stays "Gleichmäßig".
@@ -157,6 +161,7 @@ export function useExpenseForm({
 			editingExpense: invalidEditDraft ? { invalid: true } : editingExpense,
 			description,
 			amountStr,
+			occurredOn,
 			imageUrl,
 			paidByMemberId,
 			splitMode,
@@ -175,6 +180,7 @@ export function useExpenseForm({
 		draftKey,
 		imageUrl,
 		manualSplits,
+		occurredOn,
 		paidByMemberId,
 		queueEditId,
 		queueEditType,
@@ -202,6 +208,7 @@ export function useExpenseForm({
 			setConflictExpenseId(null);
 			setDescription(prefill.description);
 			setAmountStr(prefill.amountStr);
+			setOccurredOn('');
 			setImageUrl(prefill.imageUrl);
 			setPaidByMemberId(prefill.paidByMemberId);
 			setSplitMode(prefill.splitMode);
@@ -270,6 +277,7 @@ export function useExpenseForm({
 		setRecurringSourceId(null);
 		setDescription('');
 		setAmountStr('');
+		setOccurredOn('');
 		setImageUrl(null);
 		setPaidByMemberId(identityMemberId);
 		setSplitMode('equal');
@@ -291,6 +299,7 @@ export function useExpenseForm({
 		setPendingPrefill(null);
 		setDescription(expense.description);
 		setAmountStr(formatEuroInput(expense.amountCents / CENTS_PER_EURO));
+		setOccurredOn(berlinDayKey(new Date(expense.occurredAt)));
 		setImageUrl(expense.imageUrl);
 		setPaidByMemberId(expense.paidByMemberId);
 		// "Equal" only if the splits cover EVERY current member and each share matches what
@@ -323,6 +332,7 @@ export function useExpenseForm({
 		setPendingPrefill(null);
 		setDescription(template.description);
 		setAmountStr(formatEuroInput(template.amountCents / CENTS_PER_EURO));
+		setOccurredOn('');
 		setImageUrl(null);
 		setPaidByMemberId(template.paidByMemberId);
 		// A template stores explicit per-member shares, so editing it always
@@ -346,6 +356,8 @@ export function useExpenseForm({
 		setDescription,
 		amountStr,
 		setAmountStr,
+		occurredOn,
+		setOccurredOn,
 		imageUrl,
 		setImageUrl,
 		paidByMemberId,

@@ -13,6 +13,7 @@ export function buildOptimisticExpense({
 	paidByMemberId,
 	imageUrl,
 	splits,
+	occurredAt,
 	previous,
 }: {
 	id: string;
@@ -21,6 +22,8 @@ export function buildOptimisticExpense({
 	paidByMemberId: string;
 	imageUrl: string | null;
 	splits: DebtorShare[];
+	/** Back-dated day of the expense; keeps the previous or current time otherwise. */
+	occurredAt?: string;
 	previous?: Expense;
 }): Expense {
 	const now = new Date().toISOString();
@@ -31,7 +34,7 @@ export function buildOptimisticExpense({
 		currency: previous?.currency ?? 'EUR',
 		description,
 		imageUrl,
-		occurredAt: previous?.occurredAt ?? now,
+		occurredAt: occurredAt ?? previous?.occurredAt ?? now,
 		createdAt: previous?.createdAt ?? now,
 		updatedAt: now,
 		splits: splits.map((split, index) => {

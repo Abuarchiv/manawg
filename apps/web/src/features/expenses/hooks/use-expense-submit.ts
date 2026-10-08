@@ -31,6 +31,7 @@ import {
 	isPermanentClientError,
 	splitInputErrorMessage,
 } from '@/features/expenses/expense-errors';
+import { resolveOccurredAt } from '@/features/expenses/expense-occurred-at';
 import { manualSplitsFingerprint } from '@/features/expenses/expense-split-input';
 import { buildOptimisticExpense } from '@/features/expenses/optimistic-expense';
 import type { DebtorShare } from '@/features/expenses/split-math';
@@ -121,6 +122,7 @@ export function useExpenseSubmit(
 			imageUrl,
 			splitMode,
 			manualSplits: manualSplitsFingerprint(splitMode, form.manualSplits),
+			occurredOn: form.occurredOn,
 		});
 		const pendingRequest = pendingRequestRef.current;
 		const reusePendingRequest = !isEdit && pendingRequest?.fingerprint === fingerprint;
@@ -168,6 +170,16 @@ export function useExpenseSubmit(
 			recurringSourceId && expectedRecurringNextDueAt
 				? { recurringExpenseId: recurringSourceId, expectedRecurringNextDueAt }
 				: {};
+		const original = editingExpense
+			? expenses.find((expense) => expense.id === editingExpense.id)
+			: undefined;
+		const occurredAt = resolveOccurredAt(form.occurredOn, original?.occurredAt ?? null);
+		if (occurredAt.invalid) {
+			support.setValidationErrors({ description: 'Das Datum ist ungültig.' });
+			finishSubmitting();
+			return;
+		}
+		const occurredAtIso = occurredAt.iso;
 		const requestBody = {
 			paidByMemberId,
 			amountCents,
@@ -175,6 +187,7 @@ export function useExpenseSubmit(
 			imageUrl,
 			splits,
 			expectedUpdatedAt: editingExpense?.updatedAt,
+			...(occurredAtIso ? { occurredAt: occurredAtIso } : {}),
 			...recurringSource,
 		};
 		const idempotencyKey = isEdit
@@ -218,6 +231,7 @@ export function useExpenseSubmit(
 			paidByMemberId,
 			imageUrl,
 			splits,
+			...(occurredAtIso ? { occurredAt: occurredAtIso } : {}),
 			...(previousExpense ? { previous: previousExpense } : {}),
 		});
 		pending.start(optimisticId);
@@ -234,6 +248,17 @@ export function useExpenseSubmit(
 		});
 
 		if (!res.ok) {
+			if (res.status === 0 && occurredAtIso) {
+				// The offline queue does not carry a date; saving it as today would be wrong.
+				rollbackOptimisticExpense();
+				pending.end(optimisticId);
+				finishSubmitting();
+				const message =
+					'Ohne Verbindung kann die Ausgabe nicht mit anderem Datum vorgemerkt werden. Stelle das Datum auf heute oder speichere online.';
+				form.setFormError(message);
+				toast.error(message);
+				return;
+			}
 			if (res.status === 0) {
 				const queuedAction = isEdit
 					? createQueuedExpenseUpdate({

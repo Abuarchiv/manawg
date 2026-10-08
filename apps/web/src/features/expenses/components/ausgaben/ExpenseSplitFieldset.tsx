@@ -21,6 +21,7 @@ import { formatEuroInput, parseEuroAmount } from '@/core/utils/amount';
 import { formatEuroCents } from '@/core/utils/money';
 import { remainderCandidates } from '@/features/expenses/expense-split-input';
 import type { Dispatch, SetStateAction } from 'react';
+import { ExpenseParticipants } from './ExpenseParticipants';
 import { ManualSplitSummary } from './ManualSplitSummary';
 import { SplitReview } from './SplitReview';
 import type { SplitMode } from './expense-form-draft';
@@ -176,6 +177,18 @@ export function ExpenseSplitFieldset({
 						</FieldDescription>
 					)}
 				</FieldGroup>
+			)}
+			{splitMode === 'equal' && !hasLockedHistoricalShare && !isEditingExpense && (
+				<ExpenseParticipants
+					members={splitCandidates}
+					amountStr={amountStr}
+					disabled={formSaving}
+					onChoose={(shares) => {
+						onClearSplitsError();
+						setManualSplits(shares);
+						setSplitMode('manual');
+					}}
+				/>
 			)}
 			{splitMode !== 'manual' && (
 				<SplitReview

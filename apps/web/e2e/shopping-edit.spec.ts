@@ -18,7 +18,7 @@ test.describe('shopping edit', () => {
 	};
 
 	test('fixes a typo and sends name and quantity', async ({ page }) => {
-		let current = item;
+		let current: Record<string, unknown> = item;
 		let putBody: unknown = null;
 		await setupMember(page);
 		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/shopping`, (route) =>
@@ -29,7 +29,7 @@ test.describe('shopping edit', () => {
 		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/shopping/${item.id}`, (route) => {
 			if (route.request().method() !== 'PUT') return route.fallback();
 			putBody = route.request().postDataJSON();
-			current = { ...item, name: 'Hafermilch', quantity: '2 Packungen' } as typeof item;
+			current = { ...item, name: 'Hafermilch', quantity: '2 Packungen' };
 			return route.fulfill({ json: { item: current } });
 		});
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einkauf`);
