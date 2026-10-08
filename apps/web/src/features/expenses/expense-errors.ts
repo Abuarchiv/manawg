@@ -1,7 +1,7 @@
 import { mutationErrorMessage } from '@/core/http/error-codes';
 
 /** Shared with abo-errors.ts so both forms say the same thing. */
-export const SPLIT_SUM_MISMATCH =
+const SPLIT_SUM_MISMATCH =
 	'Beträge stimmen nicht überein — Summe muss exakt dem Gesamtbetrag entsprechen.';
 const PAID_BY_MUST_INCLUDE_CALLER =
 	'Wenn du für jemand anderen buchst, muss dein eigener Anteil größer als 0 sein.';
