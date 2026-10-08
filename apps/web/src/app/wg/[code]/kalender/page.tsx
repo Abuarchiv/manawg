@@ -24,7 +24,7 @@ import { useState } from 'react';
 type ViewMode = 'month' | 'list';
 
 export default function KalenderPage() {
-	const { wg } = useWg();
+	const { wg, isAdmin, identity } = useWg();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const wgBaseHref = `/wg/${encodedShareCode}`;
 	const [month, setMonth] = useState<Date>(() => {
@@ -194,6 +194,11 @@ export default function KalenderPage() {
 				onUpdate={calendar.updateEvent}
 				onDelete={calendar.deleteEvent}
 				actionError={actionError}
+				readOnly={
+					calendar.editing !== null &&
+					!isAdmin &&
+					calendar.editing.createdByMemberId !== identity.memberId
+				}
 				onExportIcs={editingOccurrence ? () => downloadOccurrenceIcs(editingOccurrence) : undefined}
 			/>
 			<ThumbAction>

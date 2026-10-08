@@ -10,6 +10,7 @@ import {
 	type InventoryUnit,
 	isBelowThreshold,
 } from '@/features/inventory/inventory';
+import { useState } from 'react';
 
 interface InventoryFormFieldsProps {
 	mode: 'create' | 'edit';
@@ -46,6 +47,13 @@ export function InventoryFormFields({
 	onUnitChange,
 	onCategoryChange,
 }: InventoryFormFieldsProps) {
+	// A comma or dot is dropped, which turned "1,5" into 15; say so instead of changing the number silently.
+	const [wholeNumberHint, setWholeNumberHint] = useState(false);
+	const wholeNumber = (value: string): string => {
+		const digits = value.replace(/\D/g, '');
+		setWholeNumberHint(digits !== value);
+		return digits;
+	};
 	return (
 		<FieldGroup>
 			<Field data-invalid={Boolean(nameError)}>
@@ -79,7 +87,7 @@ export function InventoryFormFields({
 						pattern="[0-9]*"
 						maxLength={String(INVENTORY_LIMITS.QUANTITY_MAX).length}
 						value={quantityText}
-						onChange={(event) => onQuantityTextChange(event.target.value.replace(/\D/g, ''))}
+						onChange={(event) => onQuantityTextChange(wholeNumber(event.target.value))}
 						onFocus={(event) => event.currentTarget.select()}
 						disabled={disabled}
 						className="text-base"
@@ -94,13 +102,20 @@ export function InventoryFormFields({
 						pattern="[0-9]*"
 						maxLength={String(INVENTORY_LIMITS.THRESHOLD_MAX).length}
 						value={thresholdText}
-						onChange={(event) => onThresholdTextChange(event.target.value.replace(/\D/g, ''))}
+						onChange={(event) => onThresholdTextChange(wholeNumber(event.target.value))}
 						onFocus={(event) => event.currentTarget.select()}
 						disabled={disabled}
 						className="text-base"
 					/>
 				</Field>
 			</div>
+			{wholeNumberHint && (
+				<output>
+					<FieldDescription>
+						Hier sind nur ganze Zahlen möglich. Runde auf, zum Beispiel 2 statt 1,5.
+					</FieldDescription>
+				</output>
+			)}
 			<div className="grid grid-cols-1 gap-2">
 				<Field className="min-w-0">
 					<FieldLabel htmlFor="inventory-unit">Einheit</FieldLabel>

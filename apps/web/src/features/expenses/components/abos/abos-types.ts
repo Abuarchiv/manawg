@@ -14,6 +14,7 @@ export interface Abo {
 	lastCreatedAt: string | null;
 	pausedAt: string | null;
 	splits: AboSplit[];
+	createdByMemberId?: string | undefined;
 }
 
 export type AboFilter = 'active' | 'paused' | 'all';

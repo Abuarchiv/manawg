@@ -31,6 +31,7 @@ interface CalendarEvent {
 	allDay: boolean;
 	location: string | null;
 	recurrence: string | null;
+	createdByMemberId?: string | undefined;
 }
 
 type CalendarCreateResponse = {

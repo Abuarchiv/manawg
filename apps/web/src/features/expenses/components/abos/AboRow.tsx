@@ -47,7 +47,9 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 		{ nextDueAt: abo.nextDueAt, intervalMonths: abo.intervalMonths },
 		3,
 	);
-	const { identity } = useWg();
+	const { identity, isAdmin } = useWg();
+	// The server accepts pause, edit and delete only from the creator or an admin.
+	const canManage = isAdmin || abo.createdByMemberId === identity.memberId;
 	const payerName = payer?.name ?? 'unbekannt';
 	// The cron skips (never advances) a template whose payer or debtor moved out.
 	const blockedByMovedOut =
@@ -141,41 +143,51 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 									.join(', ')}
 							</p>
 						)}
-						<div className="flex flex-wrap items-center gap-3 border-t pt-3">
-							{/* Pausieren liegt bewusst hier statt als Schalter in der Zeile: kein versehentliches Antippen. */}
-							<Button
-								variant="outline"
-								onClick={() => onTogglePause(abo)}
-								disabled={pending}
-								aria-label={
-									isPaused ? `Fortsetzen: ${abo.description}` : `Pausieren: ${abo.description}`
-								}
-							>
-								{isPaused ? <Play data-icon="inline-start" /> : <Pause data-icon="inline-start" />}
-								{isPaused ? 'Fortsetzen' : 'Pausieren'}
-							</Button>
-							<Button
-								variant="outline"
-								size="icon"
-								onClick={() => onEdit(abo)}
-								disabled={pending}
-								aria-label={`${abo.description} bearbeiten`}
-							>
-								<Pencil />
-								<span className="sr-only">{abo.description} bearbeiten</span>
-							</Button>
-							<Button
-								variant="outline"
-								size="icon"
-								className="text-destructive"
-								onClick={() => onDelete(abo)}
-								disabled={pending}
-								aria-label={`${abo.description} löschen`}
-							>
-								<Trash2 />
-								<span className="sr-only">{abo.description} löschen</span>
-							</Button>
-						</div>
+						{canManage ? (
+							<div className="flex flex-wrap items-center gap-3 border-t pt-3">
+								{/* Pausieren liegt bewusst hier statt als Schalter in der Zeile: kein versehentliches Antippen. */}
+								<Button
+									variant="outline"
+									onClick={() => onTogglePause(abo)}
+									disabled={pending}
+									aria-label={
+										isPaused ? `Fortsetzen: ${abo.description}` : `Pausieren: ${abo.description}`
+									}
+								>
+									{isPaused ? (
+										<Play data-icon="inline-start" />
+									) : (
+										<Pause data-icon="inline-start" />
+									)}
+									{isPaused ? 'Fortsetzen' : 'Pausieren'}
+								</Button>
+								<Button
+									variant="outline"
+									size="icon"
+									onClick={() => onEdit(abo)}
+									disabled={pending}
+									aria-label={`${abo.description} bearbeiten`}
+								>
+									<Pencil />
+									<span className="sr-only">{abo.description} bearbeiten</span>
+								</Button>
+								<Button
+									variant="outline"
+									size="icon"
+									className="text-destructive"
+									onClick={() => onDelete(abo)}
+									disabled={pending}
+									aria-label={`${abo.description} löschen`}
+								>
+									<Trash2 />
+									<span className="sr-only">{abo.description} löschen</span>
+								</Button>
+							</div>
+						) : (
+							<p className="border-t pt-3 text-xs text-muted-foreground">
+								Nur wer die Fixkosten angelegt hat und Admins können sie ändern.
+							</p>
+						)}
 					</div>
 				</CollapsiblePanel>
 			</Collapsible>

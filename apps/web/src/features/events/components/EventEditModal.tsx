@@ -46,6 +46,7 @@ export interface EditableEvent {
 	allDay: boolean;
 	location: string | null;
 	recurrence: string | null;
+	createdByMemberId?: string | undefined;
 }
 
 export type UpdateEventPayload = Omit<EditableEvent, 'id'>;
@@ -58,6 +59,8 @@ interface EventEditModalProps {
 	actionError?: string | null;
 	/** Exportiert den gewählten Termin als .ics für die eigene Kalender-App. */
 	onExportIcs?: (() => void) | undefined;
+	/** Only the creator and admins may change an event; everyone else gets a read-only view. */
+	readOnly?: boolean;
 }
 
 function toLocalInputValue(iso: string, allDay: boolean): string {
@@ -73,6 +76,7 @@ export function EventEditModal({
 	onDelete,
 	actionError,
 	onExportIcs,
+	readOnly = false,
 }: EventEditModalProps) {
 	const [title, setTitle] = useState('');
 	const [description, setDescription] = useState('');
@@ -215,8 +219,13 @@ export function EventEditModal({
 			>
 				<DrawerContent className="mx-auto w-full max-w-md">
 					<DrawerHeader className="border-b pb-3">
-						<DrawerTitle>Termin bearbeiten</DrawerTitle>
-						{event.recurrence && (
+						<DrawerTitle>{readOnly ? 'Termin ansehen' : 'Termin bearbeiten'}</DrawerTitle>
+						{readOnly && (
+							<DrawerDescription>
+								Nur wer den Termin erstellt hat und Admins können ihn ändern.
+							</DrawerDescription>
+						)}
+						{!readOnly && event.recurrence && (
 							<DrawerDescription>Änderungen gelten für die gesamte Terminserie.</DrawerDescription>
 						)}
 					</DrawerHeader>
@@ -248,11 +257,11 @@ export function EventEditModal({
 								onLocationChange={setLocation}
 								description={description}
 								onDescriptionChange={setDescription}
-								disabled={saving || deleting}
+								disabled={saving || deleting || readOnly}
 								errorField={errorField}
 								errorId="event-edit-error"
 								recurrenceField={
-									<Field data-disabled={saving || deleting}>
+									<Field data-disabled={saving || deleting || readOnly}>
 										<FieldLabel htmlFor="event-edit-recurrence">Wiederholung</FieldLabel>
 										<NativeSelect
 											id="event-edit-recurrence"
@@ -269,7 +278,7 @@ export function EventEditModal({
 																: '',
 														)
 											}
-											disabled={saving || deleting}
+											disabled={saving || deleting || readOnly}
 											className="w-full [&_select]:min-h-11 [&_select]:text-base"
 										>
 											{recurrence && !isSimpleRecurrence && (
@@ -294,10 +303,12 @@ export function EventEditModal({
 						</div>
 						<DrawerFooter className="border-t pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
 							<div className="flex flex-wrap gap-2">
-								<Button type="submit" className="min-w-fit flex-1" disabled={saving || deleting}>
-									{saving && <Spinner data-icon="inline-start" aria-hidden />}
-									{saving ? 'Speichert…' : 'Speichern'}
-								</Button>
+								{!readOnly && (
+									<Button type="submit" className="min-w-fit flex-1" disabled={saving || deleting}>
+										{saving && <Spinner data-icon="inline-start" aria-hidden />}
+										{saving ? 'Speichert…' : 'Speichern'}
+									</Button>
+								)}
 								<Button
 									type="button"
 									variant="outline"
@@ -305,7 +316,7 @@ export function EventEditModal({
 									onClick={requestClose}
 									disabled={saving || deleting}
 								>
-									Abbrechen
+									{readOnly ? 'Schließen' : 'Abbrechen'}
 								</Button>
 							</div>
 							<div className="flex flex-wrap gap-2">
@@ -321,17 +332,19 @@ export function EventEditModal({
 										In Kalender
 									</Button>
 								)}
-								<Button
-									type="button"
-									variant="destructive"
-									className="h-auto min-h-8 min-w-fit flex-1 py-1.5"
-									onClick={() => setConfirmingDelete(true)}
-									disabled={saving || deleting}
-									aria-label="Termin löschen"
-								>
-									<Trash2 data-icon="inline-start" aria-hidden />
-									Termin löschen
-								</Button>
+								{!readOnly && (
+									<Button
+										type="button"
+										variant="destructive"
+										className="h-auto min-h-8 min-w-fit flex-1 py-1.5"
+										onClick={() => setConfirmingDelete(true)}
+										disabled={saving || deleting}
+										aria-label="Termin löschen"
+									>
+										<Trash2 data-icon="inline-start" aria-hidden />
+										Termin löschen
+									</Button>
+								)}
 							</div>
 						</DrawerFooter>
 					</form>

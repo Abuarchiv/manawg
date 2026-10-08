@@ -71,6 +71,9 @@ export const ExpenseRow = memo(function ExpenseRow({
 	highlighted,
 }: ExpenseRowProps) {
 	const isPayer = expense.paidByMemberId === currentMemberId;
+	// The server accepts edit from the payer and removal from the payer or any debtor.
+	const canRemove =
+		isPayer || expense.splits.some((split) => split.debtorMemberId === currentMemberId);
 	const impact = getExpenseImpact(expense, currentMemberId);
 	const who = (id: string) => (id === currentMemberId ? 'Du' : memberName(id));
 	const [deleteOpen, setDeleteOpen] = useState(false);
@@ -145,37 +148,41 @@ export const ExpenseRow = memo(function ExpenseRow({
 							</span>
 						</CollapsibleTrigger>
 					</ItemContent>
-					<ItemActions className="shrink-0">
-						<DropdownMenu>
-							<DropdownMenuTrigger
-								render={<Button variant="ghost" size="icon" />}
-								aria-label={`Aktionen für ${expense.description}`}
-							>
-								<MoreHorizontal />
-							</DropdownMenuTrigger>
-							<DropdownMenuContent align="end">
-								<DropdownMenuGroup>
-									{isPayer && (
-										<DropdownMenuItem
-											onClick={() => onEdit(expense)}
-											disabled={pendingIds.has(expense.id)}
-										>
-											<Pencil />
-											Bearbeiten
-										</DropdownMenuItem>
-									)}
-									<DropdownMenuItem
-										variant="destructive"
-										onClick={() => setDeleteOpen(true)}
-										disabled={pendingIds.has(expense.id)}
-									>
-										<Trash2 />
-										Entfernen
-									</DropdownMenuItem>
-								</DropdownMenuGroup>
-							</DropdownMenuContent>
-						</DropdownMenu>
-					</ItemActions>
+					{canRemove && (
+						<ItemActions className="shrink-0">
+							<DropdownMenu>
+								<DropdownMenuTrigger
+									render={<Button variant="ghost" size="icon" />}
+									aria-label={`Aktionen für ${expense.description}`}
+								>
+									<MoreHorizontal />
+								</DropdownMenuTrigger>
+								<DropdownMenuContent align="end">
+									<DropdownMenuGroup>
+										{isPayer && (
+											<DropdownMenuItem
+												onClick={() => onEdit(expense)}
+												disabled={pendingIds.has(expense.id)}
+											>
+												<Pencil />
+												Bearbeiten
+											</DropdownMenuItem>
+										)}
+										{canRemove && (
+											<DropdownMenuItem
+												variant="destructive"
+												onClick={() => setDeleteOpen(true)}
+												disabled={pendingIds.has(expense.id)}
+											>
+												<Trash2 />
+												Entfernen
+											</DropdownMenuItem>
+										)}
+									</DropdownMenuGroup>
+								</DropdownMenuContent>
+							</DropdownMenu>
+						</ItemActions>
+					)}
 					<CollapsibleContent className="w-full pr-1.5 pb-2">
 						{/* Die Woche steht schon als Überschrift; der genaue Zeitpunkt nur in den Details. */}
 						<p className="mb-2 text-xs text-muted-foreground">
