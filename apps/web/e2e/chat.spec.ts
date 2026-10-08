@@ -20,7 +20,7 @@ test.describe('chat edit focus', () => {
 		const actions = message.getByRole('button', { name: /Aktionen für Nachricht/ });
 		await actions.focus();
 		await page.keyboard.press('Enter');
-		// Reagieren, Antworten und Kopieren stehen vor Bearbeiten.
+		// React, reply and copy come before edit.
 		await expect(page.getByRole('menuitem', { name: 'Reagieren' })).toBeFocused();
 		await page.keyboard.press('ArrowDown');
 		await page.keyboard.press('ArrowDown');

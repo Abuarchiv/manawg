@@ -270,7 +270,7 @@ test.describe('chore next assignee', () => {
 			active: true,
 		};
 		const title = 'Spülmaschinenreinigung mit Entkalkung und gründlicher Küchenhygiene';
-		// Übernehmen gibt es nur bei Aufgaben anderer.
+		// Taking over is only offered on other members' chores.
 		const rows = [{ ...chore('actions-zoom', flatmate.id), title }];
 
 		await openPutzen(page, [viewer, flatmate], rows, []);
@@ -536,7 +536,7 @@ test.describe('chore next assignee', () => {
 
 		await openPutzen(page, members, chores, absences);
 		const row = page.locator('#chore-viewer-next');
-		// Der Folge-Zuständige steht im Aktionen-Drawer, nicht mehr in der Zeile.
+		// The follow-up assignee is shown in the actions drawer, not in the row.
 		await expect(row).not.toContainText('danach');
 		await row.getByRole('button', { name: /^Aufgabenaktionen:/ }).click();
 		await expect(page.getByRole('dialog').getByText('Danach').locator('+ dd')).toHaveText('du');
@@ -630,7 +630,7 @@ test.describe('chore next assignee', () => {
 		await title.fill('Automatisch zugewiesener Entwurf');
 		await expect(assignee).toHaveValue(CURRENT_MEMBER);
 		await page.reload();
-		// Ein Entwurf klappt das Formular nicht von selbst auf; erst „Putzaufgabe hinzufügen“ zeigt ihn.
+		// A draft does not expand the form by itself; only „Putzaufgabe hinzufügen“ reveals it.
 		await expect(title).toBeHidden();
 		await page.getByRole('button', { name: 'Putzaufgabe hinzufügen' }).click();
 		await expect(title).toBeVisible();
@@ -655,7 +655,7 @@ test.describe('chore next assignee', () => {
 		await openPutzen(page, [viewer], [], []);
 		await page.getByRole('button', { name: 'Putzaufgabe hinzufügen' }).click();
 		await page.getByPlaceholder('z. B. Müll rausbringen').fill('Zu schnell');
-		// Die Middleware antwortet mit `rate_limited`, nicht mit `too_many_requests`.
+		// The middleware answers with `rate_limited`, not `too_many_requests`.
 		await page.route(`**/api/wg/${SHARE_CODE}/chores`, async (route) => {
 			if (route.request().method() === 'POST') {
 				await route.fulfill({ status: 429, json: { error: 'rate_limited' } });
@@ -693,7 +693,7 @@ test.describe('chore next assignee', () => {
 			),
 		).toBeVisible();
 		await expect(title).toHaveValue('Entwurf bleibt');
-		// Middleware bei MIGRATION_READ_ONLY: 503 `migration_read_only`.
+		// Middleware with MIGRATION_READ_ONLY: 503 `migration_read_only`.
 		failure = { status: 503, json: { error: 'migration_read_only', retryAfter: '300' } };
 		await page.getByRole('button', { name: 'Aufgabe speichern' }).click();
 		await expect(
@@ -724,7 +724,7 @@ test.describe('chore next assignee', () => {
 			)
 			.toBe(true);
 		await page.reload();
-		// Ein Entwurf klappt das Formular nicht von selbst auf; erst „Putzaufgabe hinzufügen“ zeigt ihn.
+		// A draft does not expand the form by itself; only „Putzaufgabe hinzufügen“ reveals it.
 		await expect(title).toBeHidden();
 		await page.getByRole('button', { name: 'Putzaufgabe hinzufügen' }).click();
 		await expect(title).toBeVisible();
@@ -744,7 +744,7 @@ test.describe('chore next assignee', () => {
 			draftKey,
 		);
 		await page.reload();
-		// Ein Entwurf klappt das Formular nicht von selbst auf; erst „Putzaufgabe hinzufügen“ zeigt ihn.
+		// A draft does not expand the form by itself; only „Putzaufgabe hinzufügen“ reveals it.
 		await expect(title).toBeHidden();
 		await page.getByRole('button', { name: 'Putzaufgabe hinzufügen' }).click();
 		await expect(title).toBeVisible();

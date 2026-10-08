@@ -498,12 +498,12 @@ test.describe('debt summary reminder link', () => {
 
 		const debtList = page.getByRole('list', { name: 'Deine offenen Zahlungen' });
 		await expect(debtList).toBeVisible();
-		// Salden sind immer sichtbar, nicht mehr hinter „Alle Salden“ versteckt.
+		// Balances are always visible, not hidden behind „Alle Salden“.
 		const balanceList = page.getByRole('list', { name: 'Saldo pro Mitglied' });
 		await expect(balanceList).toBeVisible();
 		const balanceLabel = page.getByText('Dein Saldo', { exact: true });
 		await expect(balanceLabel).toBeVisible();
-		// Der Saldo ist die Überschrift, die offenen Zahlungen stehen direkt darunter.
+		// The balance is the heading; the open payments follow directly below.
 		const balancePrecedesDebtsInDom = await balanceLabel.evaluate((node) => {
 			const debt = document.querySelector('[aria-label="Deine offenen Zahlungen"]');
 			return debt
@@ -544,9 +544,9 @@ test.describe('debt summary reminder link', () => {
 				}, textScale);
 				for (const width of [320, 360, 390]) {
 					await page.setViewportSize({ width, height: 844 });
-					// Beide Buttons im selben Frame messen: getBoundingClientRect ist
-					// viewport-relativ, zwei getrennte evaluate-Aufrufe können zwischen
-					// Scroll- oder Render-Schritten liegen und eine Scheinüberlappung melden.
+					// Measure both buttons in the same frame: getBoundingClientRect is
+					// viewport-relative, and two separate evaluate calls can straddle
+					// scroll or render steps and report a false overlap.
 					const metrics = await secondaryDebt.evaluate((row) =>
 						(['Ausgleichen', 'Erinnern'] as const).map((label) => {
 							const element = [...row.querySelectorAll('button')].find(
