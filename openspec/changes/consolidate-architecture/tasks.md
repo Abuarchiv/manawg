@@ -29,14 +29,14 @@
 
 ## 6. Tests
 
-- [ ] 6.1 Shared unit-test loader; migrate all `vm`/`transpileModule` tests.
-- [ ] 6.2 Replace source-text extraction tests with tests of extracted pure modules.
-- [ ] 6.3 Move pure tests out of `e2e/`; replace SQL-text assertions with behaviour assertions.
+- [x] 6.1 Shared unit-test loader; migrate all `vm`/`transpileModule` tests.
+- [x] 6.2 Replace source-text extraction tests with tests of extracted pure modules.
+- [x] 6.3 Move pure tests out of `e2e/`; replace SQL-text assertions with behaviour assertions.
 
 ## 7. Structure and comments
 
 - [ ] 7.1 Split features into `server/` (with `server-only`) and client modules.
-- [ ] 7.2 English-only comments; remove history narration and stray notes.
+- [x] 7.2 English-only comments; remove history narration and stray notes.
 - [x] 7.3 Split `scripts/db-migrate.mjs` into modules.
 
 ## 8. Guardrails and docs
