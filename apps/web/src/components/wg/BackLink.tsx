@@ -5,14 +5,13 @@ import Link from 'next/link';
 
 interface BackLinkProps {
 	href: string;
-	/** Ziel im Klartext, z. B. "Ausgaben" — wird zu "Zurück zu Ausgaben". */
+	/** Target in plain words, e.g. "Ausgaben"; becomes "Zurück zu Ausgaben". */
 	label: string;
 }
 
 /**
- * Rücksprung einer Unterseite auf ihre Modulseite. Unterseiten hängen nicht
- * mehr in der Hauptnavigation, deshalb ist das hier der einzige Weg zurück
- * und muss auf jeder von ihnen stehen.
+ * Back link from a subpage to its module page. Subpages are not in the main
+ * navigation, so this is the only way back and must appear on every one of them.
  */
 export function BackLink({ href, label }: BackLinkProps) {
 	return (

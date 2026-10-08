@@ -201,19 +201,17 @@ interface ForwardSkip {
 }
 
 /**
- * expandRecurrence() used to always walk forward from the event's original
- * startsAt, one period at a time, bounded by MAX_EXPAND_ITERATIONS. For an
- * old event with no end date, the entire iteration budget could be spent
- * before ever reaching the query window, silently returning zero
- * occurrences. This analytically fast-forwards to the last occurrence at or
- * before window.from — preserving the exact recurrence phase (day-of-week /
- * day-of-month / time-of-day) — so the bounded loop always has budget left
- * to cover the window itself, regardless of the event's age.
+ * Fast-forwards analytically to the last occurrence at or before window.from, preserving
+ * the exact recurrence phase (day-of-week / day-of-month / time-of-day). Walking forward
+ * from the event's original startsAt one period at a time, bounded by
+ * MAX_EXPAND_ITERATIONS, could spend the whole iteration budget on an old event with no
+ * end date before reaching the query window and silently return zero occurrences. After
+ * the jump, the bounded loop always has budget left to cover the window itself,
+ * regardless of the event's age.
  *
  * MONTHLY/YEARLY are included too: with INTERVAL=1 (the common case),
  * MAX_EXPAND_ITERATIONS=366 is only ~30.5 years for MONTHLY and 366 years
- * for YEARLY — both reachable in practice, not "centuries away" as a
- * previous version of this comment assumed.
+ * for YEARLY, both reachable in practice.
  */
 function computeForwardSkip(
 	rule: RecurrenceRule,
@@ -466,7 +464,7 @@ export function formatEventTimeRange(occurrence: EventOccurrence): string {
 	return `${startLabel} – ${WEEKDAY_FORMATTER.format(end)} ${DATE_FORMATTER.format(end)} ${TIME_FORMATTER.format(end)}`;
 }
 
-/** Nur die Uhrzeit, für Listen, die den Tag schon daneben zeigen. */
+/** Time only, for lists that already show the day alongside. */
 export function formatEventTimeOfDay(occurrence: EventOccurrence): string {
 	if (occurrence.allDay) return 'ganztägig';
 	const start = new Date(occurrence.startsAt);
@@ -503,8 +501,8 @@ export function getCalendarDayBounds(reference: Date): { start: Date; end: Date 
 
 /**
  * Exact UTC midnight is canonical, including indistinguishable legacy midnight values.
- * Other all-day timestamps retain the old device-local display. The original timezone
- * was never stored, so it cannot be recovered or made invariant across viewers.
+ * Other all-day timestamps are displayed in device-local time. The original timezone
+ * is not stored, so it cannot be recovered or made invariant across viewers.
  */
 export function eventDateForDisplay(iso: string, allDay: boolean): Date {
 	const date = new Date(iso);

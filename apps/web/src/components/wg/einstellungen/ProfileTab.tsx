@@ -13,7 +13,7 @@ import { isPayPalSdkEnabled } from '@/core/infra/security-headers';
 import { haptic } from '@/shared/lib/haptics';
 import { Monitor, Moon, Sun } from 'lucide-react';
 
-// Ohne PayPal-Zugangsdaten keinen halbfertigen PayPal-Abschnitt zeigen.
+// Without PayPal credentials, do not show a half-finished PayPal section.
 const PAYPAL_ENABLED = isPayPalSdkEnabled(
 	process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID,
 	process.env.NEXT_PUBLIC_PAYPAL_PARTNER_ATTRIBUTION_ID,

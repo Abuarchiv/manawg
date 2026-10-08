@@ -36,7 +36,7 @@ interface DangerZoneSectionProps {
 	identity: StoredIdentity;
 }
 
-/** WG verlassen und WG löschen. */
+/** Leave WG and delete WG. */
 export function DangerZoneSection({ wg, members, identity }: DangerZoneSectionProps) {
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const router = useRouter();
@@ -45,7 +45,7 @@ export function DangerZoneSection({ wg, members, identity }: DangerZoneSectionPr
 	const [deleteError, setDeleteError] = useState<string | null>(null);
 	const [confirmText, setConfirmText] = useState('');
 	const [leaving, setLeaving] = useState(false);
-	// Fokus auf „Abbrechen“, damit auf iOS nicht ungefragt die Tastatur aufgeht.
+	// Focus the cancel button so iOS does not open the keyboard unprompted.
 	const cancelRef = useRef<HTMLButtonElement>(null);
 	const activeMemberCount = members.filter((m) => m.active).length;
 

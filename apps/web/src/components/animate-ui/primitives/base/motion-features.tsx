@@ -3,8 +3,8 @@
 import { LazyMotion } from 'motion/react';
 import type { ReactNode } from 'react';
 
-// Die Animations-Features laden als eigener Chunk nach; die `m`-Komponenten rendern bis dahin
-// ihre Startwerte (initial) und animieren danach wie zuvor.
+// The animation features load as a separate chunk; until then the `m` components render
+// their initial values and animate afterwards.
 const loadFeatures = () => import('./motion-dom-animation').then((mod) => mod.default);
 
 export function MotionFeatures({ children }: { children: ReactNode }) {

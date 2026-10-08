@@ -83,7 +83,7 @@ export interface DashboardSpendSummary {
 interface ActivityItem {
 	kind: 'expense' | 'shopping' | 'announcement' | 'chore' | 'recurring' | 'absence' | 'audit';
 	timestamp: string;
-	/** Damit die Oberfläche eigene Einträge als „Du …“ zeigen kann. */
+	/** Lets the UI show own entries as "Du …". */
 	memberId?: string | null;
 	memberName: string;
 	text: string;

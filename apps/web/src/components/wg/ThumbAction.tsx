@@ -16,7 +16,7 @@ export function ThumbAction({ children }: { children: ReactNode }) {
 		const syncHeight = () => {
 			const height = action.getBoundingClientRect().height;
 			root.style.setProperty('--thumb-action-space', `${height + 8}px`);
-			// Fokus/scrollIntoView lassen Felder und ⋯-Menüs sonst unter dem festen Button stehen.
+			// Focus/scrollIntoView would otherwise leave fields and ⋯ menus under the fixed button.
 			root.style.scrollPaddingBottom = `calc(var(--app-nav-height, 5rem) + 0.5rem + ${height + 8}px)`;
 			if (spacerRef.current) {
 				spacerRef.current.style.height = `${height + 12}px`;
@@ -40,7 +40,7 @@ export function ThumbAction({ children }: { children: ReactNode }) {
 				data-page-primary-action
 				className={cn(
 					'pointer-events-none [&>*]:pointer-events-auto fixed inset-x-0 bottom-[calc(var(--app-nav-height,5rem)+0.5rem)] z-20 mx-auto w-full max-w-[var(--app-nav-width)] px-4',
-					// Deckt die 8 px zwischen Aktion und Tab-Leiste ab, sonst scheint die Liste durch.
+					// Covers the 8 px between action and tab bar, otherwise the list shows through.
 					'after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-2 after:bg-background',
 					'[&>button:has(svg.lucide-plus)]:flex',
 					'[&>button:has(svg.lucide-plus)]:size-[44px]',

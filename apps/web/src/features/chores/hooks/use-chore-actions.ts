@@ -64,7 +64,7 @@ export function useChoreActions(ctx: ChorePageContext) {
 	function advanceLocally(previousChore: Chore): void {
 		const dueAt = parseValidDate(previousChore.nextDueAt);
 		if (!dueAt) {
-			// Ohne gültiges Datum gibt es nichts zu verschieben; die Zeile bleibt, wie sie war.
+			// Without a valid date there is nothing to move; the row stays as it was.
 			restore(previousChore);
 			return;
 		}

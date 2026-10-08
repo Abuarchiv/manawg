@@ -18,7 +18,7 @@ const FAIRNESS_RULES = [
 	'Nach Erledigung neu berechnet, Abwesende übersprungen',
 ];
 
-/** Balkensegment und Legendenpunkt teilen sich die Abstufung, damit man sie zuordnen kann. */
+/** Bar segment and legend dot share the shading so they can be matched. */
 function segmentTint(index: number): string {
 	return `color-mix(in oklab, var(--primary) ${Math.max(100 - index * 25, 20)}%, transparent)`;
 }
@@ -32,7 +32,7 @@ export function FairnessPanel({
 	fairness: ChoreFairness;
 	monthCompletions: Record<string, number>;
 	members: MemberRef[];
-	/** Die eigene Person heißt überall „du“, nicht beim eigenen Namen. */
+	/** The own person is called "du" everywhere, not by their own name. */
 	currentMemberId: string;
 }) {
 	const shares = members

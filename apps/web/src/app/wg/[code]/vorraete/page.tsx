@@ -15,7 +15,7 @@ import { Plus } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-/** So lange bleibt der Ring um den per Link angesprungenen Vorrat stehen. */
+/** How long the ring stays around the item reached via link. */
 const HIGHLIGHT_MS = 3000;
 
 export default function VorraetePage() {
@@ -23,7 +23,7 @@ export default function VorraetePage() {
 	const { items, initialLoading, loadError, addOpen, setAddOpen, load, onChanged } =
 		useInventoryPage(wg.shareCode, identity.memberId);
 
-	// Deep-Link aus der Benachrichtigung (?highlight=<id>): einmal in die Mitte scrollen, Ring kurz zeigen.
+	// Deep link from the notification (?highlight=<id>): scroll to the center once, show the ring briefly.
 	const targetId = useSearchParams().get('highlight');
 	const [highlightedId, setHighlightedId] = useState<string | null>(null);
 	const targetFound = targetId !== null && items.some((item) => item.id === targetId);
@@ -43,7 +43,7 @@ export default function VorraetePage() {
 	return (
 		<div data-household-content className="mx-auto flex w-full max-w-4xl flex-col gap-3 px-4 py-3">
 			<SubNav />
-			{/* Der aktive Tab benennt die Seite schon; Titel und Zähler bleiben für Screenreader. */}
+			{/* The active tab already names the page; title and count stay for screen readers. */}
 			<header className="sr-only">
 				<div className="min-w-0 flex-1">
 					<h1 tabIndex={-1}>Vorräte</h1>
@@ -84,7 +84,7 @@ export default function VorraetePage() {
 
 			{initialLoading && items.length === 0 ? (
 				<div className="flex flex-col gap-2">
-					{/* Gruppenüberschrift der geladenen Liste: der Inhalt springt beim Laden nicht nach unten. */}
+					{/* Group heading of the loaded list: content does not jump down on load. */}
 					<div className="flex h-5 items-center">
 						<Skeleton className="h-3.5 w-24" />
 					</div>

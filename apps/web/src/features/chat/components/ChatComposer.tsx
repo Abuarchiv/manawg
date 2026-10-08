@@ -295,7 +295,7 @@ export function ChatComposer({
 				onHoverIndex={setMentionActiveIndex}
 			/>
 			<div className="mx-auto flex w-full max-w-3xl items-end gap-2 px-4 py-2">
-				{/* Pillenform mit rundem Senden-Knopf wie in gängigen Messengern. */}
+				{/* Pill shape with a round send button, as in common messengers. */}
 				<InputGroup className="h-auto items-end rounded-3xl">
 					<InputGroupTextarea
 						ref={textareaRef}

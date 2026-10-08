@@ -5,8 +5,8 @@ import type { NextResponse } from 'next/server';
 /**
  * Count a share-code miss (unknown code or a WG the caller does not belong
  * to) against the caller's account. Once the budget is spent every further
- * miss answers 429, so the 404/403 difference can no longer be used to
- * enumerate share codes through nested routes. An unavailable limiter keeps
+ * miss answers 429, so the 404/403 difference does not help enumerate
+ * share codes through nested routes. An unavailable limiter keeps
  * the original answer: members are unaffected either way.
  */
 export async function shareCodeMissResponse(

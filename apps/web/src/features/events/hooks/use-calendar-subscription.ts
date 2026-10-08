@@ -20,8 +20,8 @@ type ScopedValue<T> = { scope: string; value: T } | null;
 export type SubscriptionConfirm = 'rotate' | 'revoke' | null;
 
 /**
- * Persönlicher Kalender-Feed. Alle Zustände sind an Scope (WG + Mitglied) gebunden, damit eine
- * spät eintreffende Antwort nach einem WG-Wechsel nicht in der falschen WG landet.
+ * Personal calendar feed. All state is bound to the scope (WG + member) so a late-arriving
+ * response after a WG switch does not land in the wrong WG.
  */
 export function useCalendarSubscription(encodedShareCode: string) {
 	const { identity } = useWg();
@@ -33,7 +33,7 @@ export function useCalendarSubscription(encodedShareCode: string) {
 	const readRequestIdRef = useRef(0);
 	const busyRef = useRef(false);
 	const busyScopeRef = useRef<string | null>(null);
-	// Ein fehlgeschlagener (nicht eindeutig abgelehnter) Request wird mit demselben Key wiederholt.
+	// A failed (not clearly rejected) request is retried with the same key.
 	const requestKeysRef = useRef(new Map<string, string>());
 
 	const [subscriptionRecord, setSubscriptionRecord] =
@@ -86,7 +86,7 @@ export function useCalendarSubscription(encodedShareCode: string) {
 		return () => window.removeEventListener('focus', onFocus);
 	}, [load]);
 
-	/** Serialisiert Schreibzugriffe und hält Lesezugriffe währenddessen zurück. */
+	/** Serializes writes and holds back reads in the meantime. */
 	async function runExclusive(
 		requestKeyId: string,
 		missingKeyMessage: string,

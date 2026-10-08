@@ -656,8 +656,7 @@ export const expenseReminders = pgTable(
 			t.sentAt.desc(),
 		),
 		amountCheck: check('expense_reminders_amount_cents_check', sql`${t.amountCents} >= 0`),
-		// 'telegram' was dropped with the Telegram integration; the table is empty,
-		// so the narrower check costs nothing.
+		// Channels are push and in-app only.
 		channelCheck: check('expense_reminders_channel_check', sql`${t.channel} in ('push', 'inapp')`),
 	}),
 );

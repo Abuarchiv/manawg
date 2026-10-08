@@ -55,7 +55,7 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 	const stableUnreact = useStableCallback(chat.unreact);
 	const stableEdit = useStableCallback(chat.editMessage);
 	const stableDelete = useStableCallback(chat.deleteMessage);
-	// Eigene Nachricht immer ans Listenende holen, auch wenn hochgescrollt wurde.
+	// Always bring the own message to the end of the list, even when scrolled up.
 	const send = useStableCallback(async (input: Parameters<typeof chat.sendMessage>[0]) => {
 		const ok = await chat.sendMessage(input);
 		if (ok) {
@@ -129,7 +129,7 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 									onReply={onReply}
 								/>
 							)}
-							{/* Kein MessageScrollerItem: ein Item vor den echten Nachrichten verbraucht die einmalige Startposition "end" auf leerer Liste. */}
+							{/* No MessageScrollerItem: an item before the real messages would consume the one-time start position "end" on an empty list. */}
 							<div ref={chat.readSentinelRef} className="h-px shrink-0" aria-hidden />
 						</MessageScrollerContent>
 					</MessageScrollerViewport>

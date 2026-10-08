@@ -191,7 +191,7 @@ export function PayPalConnect({
 				}
 				pendingReturn.current = null;
 				callbackState.current = null;
-				// Ohne laufendes Onboarding gibt es nichts abzuschließen: einfach nicht verbunden.
+				// Without a running onboarding there is nothing to complete: simply not connected.
 				if (!returnedFromPayPal && !result.ok && result.error === 'paypal_connection_expired')
 					return;
 				setError(

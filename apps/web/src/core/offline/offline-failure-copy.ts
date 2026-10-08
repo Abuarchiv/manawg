@@ -12,7 +12,7 @@ export interface OfflineFailureExplanation {
 	detail: string;
 }
 
-/** Also used to tell a fresh connection failure apart from a server answer. */
+/** Also tells a fresh connection failure apart from a server answer. */
 export const OFFLINE_NO_CONNECTION_TITLE = 'Noch keine Verbindung';
 
 const NO_CONNECTION: OfflineFailureExplanation = {

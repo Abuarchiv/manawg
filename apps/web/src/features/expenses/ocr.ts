@@ -45,7 +45,7 @@ export class OcrInitializationError extends Error {
 const OCR_INIT_TIMEOUT_MS = 30_000;
 const OCR_RECOGNITION_TIMEOUT_MS = 20_000;
 
-// ponytail: Tesseract 5 exposes no handle before init settles; keep one pending initializer and terminate late handles, with reload as recovery if it never settles.
+// Tesseract 5 exposes no handle before init settles; keep one pending initializer and terminate late handles, with reload as recovery if it never settles.
 let pendingWorkerInitialization: Promise<TesseractWorkerLike> | null = null;
 
 async function loadTesseract(): Promise<TesseractModuleLike> {
