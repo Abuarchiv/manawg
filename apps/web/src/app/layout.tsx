@@ -68,11 +68,9 @@ export const metadata: Metadata = {
 	keywords: ['WG', 'Wohngemeinschaft', 'Ausgaben teilen', 'Putzplan', 'WG App', 'DSGVO'],
 	authors: [{ name: 'ManaWG' }],
 	applicationName: 'ManaWG',
-	alternates: {
-		canonical: '/',
-	},
+	// Gefunden werden soll manawg.com, die App-Seiten bleiben aus dem Index
 	robots: {
-		index: true,
+		index: false,
 		follow: true,
 	},
 	openGraph: {
