@@ -46,4 +46,4 @@
 
 ## 9. Verification
 
-- [ ] 9.1 Lint, typecheck, unit, build, bundle check and full fixture e2e pass; exact results in the PR.
+- [x] 9.1 Lint, typecheck, unit, build, bundle check and full fixture e2e pass; exact results in the PR.
