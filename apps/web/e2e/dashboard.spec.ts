@@ -276,7 +276,7 @@ test.describe('daily overview home', () => {
 				});
 
 				const lastAgendaRow = agenda.getByText('WG-Abendessen', { exact: true });
-				// Ganz nach unten scrollen wie ein Nutzer: die Seite hält unten Platz für die Navigation frei.
+				// Scroll all the way down like a user: the page reserves room at the bottom for the navigation.
 				// `instant`: html has scroll-behavior:smooth, so a plain scrollTo would still be animating.
 				await page.evaluate(() =>
 					globalThis.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }),
