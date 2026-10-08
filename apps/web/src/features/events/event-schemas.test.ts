@@ -1,21 +1,7 @@
 import assert from 'node:assert/strict';
-import { registerHooks } from 'node:module';
-import { resolve } from 'node:path';
 import test from 'node:test';
-import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const appRoot = fileURLToPath(new URL('../../..', import.meta.url));
-registerHooks({
-	resolve(specifier, context, nextResolve) {
-		if (specifier.startsWith('@/')) {
-			const path = resolve(appRoot, 'src', `${specifier.slice(2)}.ts`);
-			return nextResolve(pathToFileURL(path).href, context);
-		}
-		return nextResolve(specifier, context);
-	},
-});
-
-const { eventDateTimeSchema, eventTitleSchema } = await import('./event-schemas.ts');
+const { eventDateTimeSchema, eventTitleSchema } = await import('./event-schemas');
 
 test('event timestamps outside the supported years are rejected', () => {
 	assert.equal(eventDateTimeSchema.safeParse('2026-10-05T18:00:00.000Z').success, true);

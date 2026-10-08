@@ -1,40 +1,24 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import path from 'node:path';
 import test from 'node:test';
-import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
-
-const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
-
-function loadTypeScript(relativePath, overrides = {}) {
-	const source = transpileModule(readFileSync(path.join(process.cwd(), relativePath), 'utf8'), {
-		compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
-	}).outputText;
-	const loaded = { exports: {} };
-	new Function('require', 'module', 'exports', source)(
-		(name) => (Object.hasOwn(overrides, name) ? overrides[name] : requireFromWeb(name)),
-		loaded,
-		loaded.exports,
-	);
-	return loaded.exports;
-}
-
-const { computeBalances } = loadTypeScript('src/features/expenses/debts.ts', {
-	'@/core/utils/time': { MS_PER_DAY: 86_400_000 },
-	'@/core/utils/money': { normalizeCurrency: (value) => value?.trim().toUpperCase() || 'EUR' },
-});
-const { buildSettlementSummary, computeDirectDebts, computeNetBalances, simplifyDebts } =
-	loadTypeScript('src/features/expenses/debt-reduction.ts', {
-		'@/core/utils/money': { normalizeCurrency: (value) => value?.trim().toUpperCase() || 'EUR' },
-	});
+import {
+	buildSettlementSummary,
+	computeDirectDebts,
+	computeNetBalances,
+	simplifyDebts,
+} from './debt-reduction';
+import { computeBalances } from './debts';
 
 const members = [
 	{ id: 'A', name: 'A', color: null },
 	{ id: 'B', name: 'B', color: null },
 ];
 
-function expense(paidByMemberId, debtorMemberId, amountCents, currency = 'EUR') {
+function expense(
+	paidByMemberId: string,
+	debtorMemberId: string,
+	amountCents: number,
+	currency = 'EUR',
+) {
 	return {
 		paidByMemberId,
 		currency,
@@ -43,15 +27,18 @@ function expense(paidByMemberId, debtorMemberId, amountCents, currency = 'EUR') 
 	};
 }
 
-function payment(fromMemberId, toMemberId, amountCents, currency = 'EUR') {
+function payment(fromMemberId: string, toMemberId: string, amountCents: number, currency = 'EUR') {
 	return { fromMemberId, toMemberId, amountCents, currency };
 }
 
-function directRows(debts) {
+type DirectDebt = { fromId: string; toId: string; cents: number; currency?: string };
+type PairDebt = { debtorId: string; creditorId: string; amountCents: number; currency: string };
+
+function directRows(debts: DirectDebt[]) {
 	return debts.map(({ fromId, toId, cents, currency }) => ({ fromId, toId, cents, currency }));
 }
 
-function pairRows(debts) {
+function pairRows(debts: PairDebt[]) {
 	return debts.map(({ debtorId, creditorId, amountCents, currency }) => ({
 		fromId: debtorId,
 		toId: creditorId,
@@ -60,7 +47,10 @@ function pairRows(debts) {
 	}));
 }
 
-function canonicalDebts(expenses, payments) {
+function canonicalDebts(
+	expenses: ReturnType<typeof expense>[],
+	payments: ReturnType<typeof payment>[],
+) {
 	return directRows(simplifyDebts(computeNetBalances(expenses, members, payments)));
 }
 

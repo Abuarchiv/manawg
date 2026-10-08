@@ -1,12 +1,6 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import path from 'node:path';
-import test from 'node:test';
-import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
+import { mock, test } from 'node:test';
 
-const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
-const modulePath = path.join(process.cwd(), 'src/features/expenses/open-expenses.ts');
 const wgId = '11111111-1111-4111-8111-111111111111';
 const expenses = {
 	id: 'expenses.id',
@@ -21,45 +15,34 @@ const expenseSplits = {
 	amountCents: 'expenseSplits.amountCents',
 	settledAt: 'expenseSplits.settledAt',
 };
-const eq = (field, value) => ({ operator: 'eq', field, value });
+const eq = (field: unknown, value: unknown) => ({ operator: 'eq', field, value });
 
-function load() {
-	const source = transpileModule(readFileSync(modulePath, 'utf8'), {
-		compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
-	}).outputText;
-	const mocks = {
-		'@/core/db': { db: null, expenseSplits, expenses },
-		'drizzle-orm': {
-			eq,
-			inArray: () => assert.fail('splits must not be loaded by an id list'),
-		},
-	};
-	const loaded = { exports: {} };
-	new Function('require', 'module', 'exports', source)(
-		(name) => (Object.hasOwn(mocks, name) ? mocks[name] : requireFromWeb(name)),
-		loaded,
-		loaded.exports,
-	);
-	return loaded.exports;
-}
+mock.module('@/core/db', { namedExports: { db: null, expenseSplits, expenses } });
+mock.module('drizzle-orm', {
+	namedExports: {
+		eq,
+		inArray: () => assert.fail('splits must not be loaded by an id list'),
+	},
+});
+
+const { loadOpenExpenses } = await import('./open-expenses');
 
 test('loadOpenExpenses joins splits by WG instead of binding every expense id', async () => {
-	const { loadOpenExpenses } = load();
-	const splitQueries = [];
+	const splitQueries: unknown[] = [];
 	const client = {
 		select() {
 			const query = {
-				table: null,
-				join: null,
-				from(table) {
+				table: null as unknown,
+				join: null as unknown,
+				from(table: unknown) {
 					query.table = table;
 					return query;
 				},
-				innerJoin(table, on) {
+				innerJoin(table: unknown, on: unknown) {
 					query.join = { table, on };
 					return query;
 				},
-				where: async (predicate) => {
+				where: async (predicate: unknown) => {
 					if (query.table === expenses) {
 						assert.deepEqual(predicate, eq(expenses.wgId, wgId));
 						return [
@@ -88,7 +71,7 @@ test('loadOpenExpenses joins splits by WG instead of binding every expense id', 
 		},
 	};
 
-	const result = await loadOpenExpenses(wgId, client);
+	const result = await loadOpenExpenses(wgId, client as never);
 
 	assert.deepEqual(splitQueries, [
 		{

@@ -1,29 +1,14 @@
 import assert from 'node:assert/strict';
-import { registerHooks } from 'node:module';
-import { resolve } from 'node:path';
 import test from 'node:test';
-import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const appRoot = fileURLToPath(new URL('../../..', import.meta.url));
-registerHooks({
-	resolve(specifier, context, nextResolve) {
-		if (specifier.startsWith('@/')) {
-			const path = resolve(appRoot, 'src', `${specifier.slice(2)}.ts`);
-			return nextResolve(pathToFileURL(path).href, context);
-		}
-		return nextResolve(specifier, context);
-	},
-});
-
-const { parseSplitwiseCsv } = await import('./import-parsers.ts');
+const { parseSplitwiseCsv } = await import('./import-parsers');
 
 test('parseSplitwiseCsv recovers the payer share from their net-balance column', () => {
-	// Splitwise CSV convention: each person's column holds their NET balance
-	// for the row (paid - ownShare for the payer, -share for everyone else),
-	// not their raw share. A previously used Math.abs() on every column,
-	// which reads the payer's own net balance as their "share" — wrong
-	// whenever the split isn't 50/50, and it silently discarded the real
-	// custom split as unrepairable "drift" instead of importing it correctly.
+	// Splitwise CSV convention: each person's column holds their NET balance for the row
+	// (paid - ownShare for the payer, -share for everyone else), not their raw share. Taking
+	// Math.abs() of every column would read the payer's net balance as their share, which is
+	// wrong whenever the split is not 50/50 and would discard the real custom split as
+	// unrepairable drift instead of importing it.
 	const csv = [
 		'Date,Description,Cost,Currency,Anna,Bob',
 		'2026-01-15,Miete,30.00,EUR,20.00,-20.00',

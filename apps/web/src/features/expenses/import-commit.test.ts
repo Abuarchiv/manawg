@@ -1,16 +1,8 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import path from 'node:path';
-import test from 'node:test';
-import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
-import {
-	loadClaimedResponse,
-	loadIdempotentWrite,
-} from '../../../tests/support/claimed-response.cjs';
+import { mock, test } from 'node:test';
+import { TransactionAbort } from '../../core/db/transaction-abort';
+import type { ParsedExpense } from './import-parsers';
 
-const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
-const sourcePath = path.join(process.cwd(), 'src/features/expenses/import-commit.ts');
 const wgId = '22222222-2222-4222-8222-222222222222';
 const memberId = '33333333-3333-4333-8333-333333333333';
 const bobId = '44444444-4444-4444-8444-444444444444';
@@ -25,33 +17,89 @@ const expenseFields = {
 	importDuplicateKey: 'expenses.importDuplicateKey',
 };
 
-function loadTsModule(file, mocks = {}) {
-	const source = transpileModule(readFileSync(file, 'utf8'), {
-		compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
-	}).outputText;
-	const loaded = { exports: {} };
-	new Function('require', 'module', 'exports', source)(
-		(name) => (Object.hasOwn(mocks, name) ? mocks[name] : requireFromWeb(name)),
-		loaded,
-		loaded.exports,
-	);
-	return loaded.exports;
-}
+const expenseImports = { id: 'expenseImports.id' };
+const expenseSplits = {};
+const wgMembers = { id: 'wgMembers.id' };
+const expenses = expenseFields;
 
-const paidByGuard = loadTsModule(
-	path.join(process.cwd(), 'src/features/expenses/paid-by-guard.ts'),
-);
+// Each runCommit installs its own fake database and transaction here; the mocked modules below
+// delegate to whatever is current.
+let current: { db: unknown; tx: unknown } = { db: null, tx: null };
 
-function runCommit(existingExpenses, { rows, mapping, mayRecordForOthers = false } = {}) {
-	const expenseImports = { id: 'expenseImports.id' };
-	const expenseSplits = {};
-	const wgMembers = { id: 'wgMembers.id' };
-	const state = { inserted: [], splits: [] };
+mock.module('@/core/activity-feed', { namedExports: { postSystemNotice: async () => {} } });
+mock.module('@/core/audit', { namedExports: { recordAuditEvent: async () => {} } });
+mock.module('@/core/db', {
+	namedExports: {
+		db: {
+			select: (...args: unknown[]) =>
+				(current.db as { select: (...a: unknown[]) => unknown }).select(...args),
+		},
+		expenseImports,
+		expenseSplits,
+		expenses,
+		idempotencyResponses: {},
+		wgMembers,
+	},
+});
+mock.module('@/core/db/transaction', {
+	namedExports: {
+		TransactionAbort,
+		withTransaction: () => assert.fail('the import opens its own transaction'),
+	},
+});
+// The import runs without an Idempotency-Key, so the real withIdempotentWrite never reaches the
+// response store behind these.
+mock.module('@/core/idempotency-store', {
+	namedExports: { claimResponseSlot: async () => true, getCachedResponse: async () => null },
+});
+mock.module('@/core/infra/observability', { namedExports: { logApiError: () => undefined } });
+mock.module('@/core/notifications/notification-dispatch', {
+	namedExports: { dispatchNotificationSafely: async () => ({ warning: null }) },
+});
+mock.module('@/core/utils/money', { namedExports: { formatEuroCents: () => '12,00 €' } });
+mock.module('@/features/expenses/expense-payments', {
+	namedExports: {
+		hasCapturingExpensePayment: async () => false,
+		withExpensePaymentLock: async (_id: string, operation: (tx: unknown) => unknown) =>
+			operation(current.tx),
+	},
+});
+mock.module('@/features/expenses/split-math', {
+	namedExports: { settledAtForOwnShare: () => null },
+});
+mock.module('drizzle-orm', {
+	namedExports: {
+		and: (...conditions: unknown[]) => conditions,
+		eq: (field: unknown, value: unknown) => ({ field, value }),
+		inArray: (field: unknown, values: unknown) => ({ field, values }),
+		isNull: (field: unknown) => ({ field, isNull: true }),
+		sql: (parts: unknown, ...values: unknown[]) => ({ parts, values }),
+	},
+});
+
+const { commitImport } = await import('./import-commit');
+
+type ExistingExpense = Record<string, unknown>;
+type Row = Record<string, unknown>;
+
+function runCommit(
+	existingExpenses: ExistingExpense[],
+	{
+		rows,
+		mapping,
+		mayRecordForOthers = false,
+	}: {
+		rows?: ParsedExpense[];
+		mapping?: Record<string, string>;
+		mayRecordForOthers?: boolean;
+	} = {},
+) {
+	const state = { inserted: [] as Row[], splits: [] as unknown[] };
 	const tx = {
-		select(fields) {
-			let table;
+		select(fields: Record<string, unknown>) {
+			let table: unknown;
 			const query = {
-				from(selectedTable) {
+				from(selectedTable: unknown) {
 					table = selectedTable;
 					return query;
 				},
@@ -61,7 +109,7 @@ function runCommit(existingExpenses, { rows, mapping, mayRecordForOthers = false
 						Object.fromEntries(
 							Object.entries(fields).map(([key, field]) => [
 								key,
-								Object.values(expenseFields).includes(field) ? row[key] : undefined,
+								Object.values(expenseFields).includes(field as string) ? row[key] : undefined,
 							]),
 						),
 					);
@@ -69,9 +117,9 @@ function runCommit(existingExpenses, { rows, mapping, mayRecordForOthers = false
 			};
 			return query;
 		},
-		insert(table) {
+		insert(table: unknown) {
 			return {
-				values(value) {
+				values(value: Row & Row[]) {
 					if (table === expenseImports) {
 						return { returning: async () => [{ id: 'import-1' }] };
 					}
@@ -92,14 +140,14 @@ function runCommit(existingExpenses, { rows, mapping, mayRecordForOthers = false
 				},
 			};
 		},
-		update(table) {
+		update(table: unknown) {
 			assert.equal(table, expenseImports);
 			return { set: () => ({ where: async () => [] }) };
 		},
 	};
 	const db = {
 		select: () => ({
-			from: (table) => {
+			from: (table: unknown) => {
 				assert.equal(table, wgMembers);
 				return {
 					where: async () => Object.values(mapping ?? { Alice: memberId }).map((id) => ({ id })),
@@ -107,46 +155,13 @@ function runCommit(existingExpenses, { rows, mapping, mayRecordForOthers = false
 			},
 		}),
 	};
-	const expenses = expenseFields;
-	const mocks = {
-		'@/core/activity-feed': { postSystemNotice: async () => {} },
-		'@/core/audit': { recordAuditEvent: async () => {} },
-		'@/core/db': {
-			db,
-			expenseImports,
-			expenseSplits,
-			expenses,
-			idempotencyResponses: {},
-			wgMembers,
-		},
-		'@/core/db/transaction': { TransactionAbort: class TransactionAbort extends Error {} },
-		'@/core/notifications/notification-dispatch': {
-			dispatchNotificationSafely: async () => ({ warning: null }),
-		},
-		'@/core/utils/money': { formatEuroCents: () => '12,00 €' },
-		'@/features/expenses/expense-payments': {
-			hasCapturingExpensePayment: async () => false,
-			withExpensePaymentLock: async (_id, operation) => operation(tx),
-		},
-		'@/features/expenses/paid-by-guard': paidByGuard,
-		'@/features/expenses/split-math': { settledAtForOwnShare: () => null },
-		'drizzle-orm': {
-			and: (...conditions) => conditions,
-			eq: (field, value) => ({ field, value }),
-			inArray: (field, values) => ({ field, values }),
-			isNull: (field) => ({ field, isNull: true }),
-			sql: (parts, ...values) => ({ parts, values }),
-		},
-	};
-	mocks['@/core/db/claimed-response'] = loadClaimedResponse(mocks);
-	mocks['@/core/db/idempotent-write'] = loadIdempotentWrite(mocks);
-	const module = loadTsModule(sourcePath, mocks);
+	current = { db, tx };
 	return {
 		state,
 		commit: async () => {
 			const input = {
 				wg: { id: wgId, name: 'WG', shareCode: 'MTE8PZAT' },
-				source: 'manual',
+				source: 'manual' as const,
 				importedByMemberId: memberId,
 				importedByName: 'Alice',
 				mayRecordForOthers,
@@ -167,19 +182,17 @@ function runCommit(existingExpenses, { rows, mapping, mayRecordForOthers = false
 				skipDuplicates: true,
 				rawPayloadHash: 'payload-hash',
 			};
-			const outcome = await module.commitImport(
-				{ scope: 'import-commit', key: null },
-				async () => ({
-					input,
-				}),
-			);
+			const outcome = await commitImport({ scope: 'import-commit', key: null }, async () => ({
+				input,
+			}));
+			assert.ok(outcome.kind !== 'stopped');
 			return outcome.result;
 		},
 	};
 }
 
 test('duplicate checks distinguish currencies and keep the legacy EUR import key', async () => {
-	const existing = (currency) => ({
+	const existing = (currency: string) => ({
 		wgId,
 		paidByMemberId: memberId,
 		description: 'Dinner',
@@ -192,7 +205,7 @@ test('duplicate checks distinguish currencies and keep the legacy EUR import key
 	const inserted = await differentCurrency.commit();
 	assert.deepEqual([inserted.inserted, inserted.skipped], [1, 0]);
 	assert.equal(
-		differentCurrency.state.inserted[0].importDuplicateKey,
+		differentCurrency.state.inserted[0]?.importDuplicateKey,
 		'2025-01-15|dinner|1200|33333333-3333-4333-8333-333333333333',
 	);
 
@@ -201,7 +214,7 @@ test('duplicate checks distinguish currencies and keep the legacy EUR import key
 	assert.deepEqual([skipped.inserted, skipped.skipped], [0, 1]);
 });
 
-const foreignRow = {
+const foreignRow: ParsedExpense = {
 	date: '2025-02-01',
 	description: 'Strom',
 	amountCents: 5000,
