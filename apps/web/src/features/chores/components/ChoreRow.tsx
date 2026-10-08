@@ -204,6 +204,19 @@ export const ChoreRow = memo(function ChoreRow({
 									</>
 								)}
 							</dl>
+							<Button
+								variant="outline"
+								className="min-h-11 shrink-0 py-2"
+								disabled={busy}
+								aria-label={`Aufgabe bearbeiten: ${chore.title}`}
+								onClick={() => {
+									setActionsOpen(false);
+									onEdit(chore);
+								}}
+							>
+								<Pencil data-icon="inline-start" aria-hidden />
+								Bearbeiten
+							</Button>
 							{/* Bei der eigenen Aufgabe gäbe es nichts zu übernehmen. */}
 							{!isMine && (
 								<Button
@@ -219,19 +232,6 @@ export const ChoreRow = memo(function ChoreRow({
 									Ich übernehme
 								</Button>
 							)}
-							<Button
-								variant="outline"
-								className="min-h-11 shrink-0 py-2"
-								disabled={busy}
-								aria-label={`Aufgabe bearbeiten: ${chore.title}`}
-								onClick={() => {
-									setActionsOpen(false);
-									onEdit(chore);
-								}}
-							>
-								<Pencil data-icon="inline-start" aria-hidden />
-								Bearbeiten
-							</Button>
 							<Button
 								variant="outline"
 								className="min-h-11 shrink-0 py-2"
