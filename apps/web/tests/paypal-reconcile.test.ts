@@ -49,7 +49,7 @@ mock.module('@/core/infra/paypal', {
 });
 mock.module('@/core/utils/money', { namedExports: { formatEuroCents: () => '12,34 €' } });
 mock.module('drizzle-orm', { namedExports: { and: () => {}, eq: () => {}, lt: () => {} } });
-mock.module(sibling('expense-payments.ts'), {
+mock.module(sibling('server/expense-payments.ts'), {
 	namedExports: {
 		withExpensePaymentLock: async (_wgId: string, action: (tx: unknown) => Promise<unknown>) => {
 			harness.writes += 1;

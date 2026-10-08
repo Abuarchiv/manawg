@@ -4,6 +4,17 @@ import path from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
 import { parse } from 'dotenv';
 
+// Specs import `features/<x>/server/` modules directly in Node, outside Next's bundler, where
+// `server-only` would throw. Workers load this config too, so the patch reaches every spec.
+const emptyServerOnly = require.resolve('next/dist/compiled/server-only/empty.js');
+const Module = require('node:module') as {
+	_resolveFilename: (request: string, ...rest: unknown[]) => string;
+};
+const resolveFilename = Module._resolveFilename;
+Module._resolveFilename = function (request: string, ...rest: unknown[]) {
+	return resolveFilename.call(this, request === 'server-only' ? emptyServerOnly : request, ...rest);
+};
+
 const DEFAULT_E2E_PORT = process.env.E2E_PORT ?? '3101';
 const BASE_URL = process.env.BASE_URL ?? `http://localhost:${DEFAULT_E2E_PORT}`;
 const previewE2E = process.env.PREVIEW_E2E === 'true';
