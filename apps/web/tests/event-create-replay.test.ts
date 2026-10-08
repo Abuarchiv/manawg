@@ -13,6 +13,7 @@ const wgEvents = {};
 const wgId = '989ac820-58b7-431f-9c65-28721264f333';
 const memberId = '7d898f9e-5ad7-4f5d-abed-8c3e99a76973';
 const key = '550e8400-e29b-41d4-a716-446655440000';
+// biome-ignore lint/suspicious/noExplicitAny: fake rows carry arbitrary shapes
 type Row = Record<string, any>;
 
 interface HarnessState {
@@ -56,9 +57,7 @@ const withTransaction = async (operation: (tx: unknown) => Promise<unknown>) => 
 						for: async (lock: string) => {
 							assert.equal(lock, 'update');
 							state.claimWhere = dialect.sqlToQuery(condition).sql;
-							return draft.slot
-								? [{ body: draft.slot.body, expiresAt: draft.slot.expiresAt }]
-								: [];
+							return draft.slot ? [{ body: draft.slot.body, expiresAt: draft.slot.expiresAt }] : [];
 						},
 					}),
 				}),
@@ -150,12 +149,14 @@ const db = {
 					assert.equal(table, idempotencyResponses);
 					state.warningWhere = dialect.sqlToQuery(condition).sql;
 					assert.match(dialect.sqlToQuery(values.responseBody).sql, /jsonb_set/);
+					const slot = state.slot;
 					if (
-						state.slot?.body.body?.event?.id !== state.events[0]?.id ||
-						state.slot.body.body.warning !== null
+						!slot ||
+						slot.body.body?.event?.id !== state.events[0]?.id ||
+						slot.body.body.warning !== null
 					)
 						return [];
-					state.slot.body.body.warning = state.warning;
+					slot.body.body.warning = state.warning;
 					return [{ scope: 'claimed' }];
 				},
 			}),
@@ -301,6 +302,9 @@ function harness() {
 	return { state: own, post };
 }
 
+// The assertions below narrow `state.slot`; reading it through a function keeps it widened.
+const slotOf = (state: HarnessState) => state.slot;
+
 test('legacy response envelopes replay their original status and body at every read path', async () => {
 	const storedResponses = [
 		{ status: 200, body: { event: { id: 'existing-event' }, warning: null } },
@@ -346,10 +350,10 @@ test('event and replay response roll back together; retry creates once', async (
 	const retry = await post();
 	assert.equal(retry.status, 200);
 	assert.equal(state.events.length, 1);
-	assert.equal(state.slot?.body.status, retry.status);
-	assert.deepEqual(await retry.json(), state.slot?.body.body);
-	assert.equal(state.slot?.body.body.event.id, state.events[0].id);
-	assert.ok(state.slot && state.slot.expiresAt.getTime() > Date.now() + 6 * 24 * 60 * 60 * 1000);
+	assert.equal(slotOf(state)?.body.status, retry.status);
+	assert.deepEqual(await retry.json(), slotOf(state)?.body.body);
+	assert.equal(slotOf(state)?.body.body.event.id, state.events[0]?.id);
+	assert.ok((slotOf(state)?.expiresAt.getTime() ?? 0) > Date.now() + 6 * 24 * 60 * 60 * 1000);
 	assert.match(state.claimWhere, /for update|scope/);
 	assert.match(state.baseWhere, /response_body.*_claimed/);
 	assert.equal(state.audits, 1);
@@ -363,7 +367,7 @@ test('unknown commit outcome retains the claim', async () => {
 	const response = await post();
 	assert.equal(response.status, 500);
 	assert.equal(state.releases, 0);
-	assert.deepEqual(state.slot?.body, { _claimed: true });
+	assert.deepEqual(slotOf(state)?.body, { _claimed: true });
 });
 
 test('post-commit side-effect failure retains the completed response', async () => {
@@ -372,7 +376,7 @@ test('post-commit side-effect failure retains the completed response', async () 
 	const response = await post();
 	assert.equal(response.status, 500);
 	assert.equal(state.events.length, 1);
-	assert.equal(state.slot?.body.body.event.id, state.events[0].id);
+	assert.equal(slotOf(state)?.body.body.event.id, state.events[0]?.id);
 	assert.equal(state.releases, 0);
 });
 
@@ -383,7 +387,7 @@ test('rollback release cannot delete a newer claim lease', async () => {
 	const response = await post();
 	assert.equal(response.status, 500);
 	assert.equal(state.releases, 0);
-	assert.deepEqual(state.slot?.body, { _claimed: true });
+	assert.deepEqual(slotOf(state)?.body, { _claimed: true });
 	assert.match(state.releaseWhere, /expires_at/);
 });
 
@@ -414,7 +418,7 @@ test('warning update targets the same completed event', async () => {
 	const response = await post();
 	assert.equal(response.status, 200);
 	assert.equal((await response.json()).warning, state.warning);
-	assert.equal(state.slot?.body.body.warning, state.warning);
+	assert.equal(slotOf(state)?.body.body.warning, state.warning);
 	assert.match(state.warningWhere, /response_body.*body.*event.*id/);
 	assert.match(state.warningWhere, /response_body.*body.*warning/);
 });

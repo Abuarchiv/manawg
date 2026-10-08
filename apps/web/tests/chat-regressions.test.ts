@@ -3,8 +3,16 @@ import test from 'node:test';
 import { PgDialect, jsonb, pgTable, timestamp, uuid } from 'drizzle-orm/pg-core';
 import * as chat from '../src/features/chat/chat-pure.ts';
 import * as chatReadQuery from '../src/features/chat/chat-read-query.ts';
-import * as unreadQuery from '../src/features/chat/chat-unread-query.ts';
 import * as unreadCount from '../src/features/chat/chat-unread-count.ts';
+import * as unreadQuery from '../src/features/chat/chat-unread-query.ts';
+
+interface ChatRow {
+	id: string;
+	createdAt: string;
+	body: string | null;
+	imageUrl: string | null;
+	deletedAt: string | null;
+}
 
 test('sanitizes deleted chat messages while retaining reply identity', () => {
 	const deleted = {
@@ -77,14 +85,14 @@ test('refresh protects reaction mutations that are pending or completed after it
 });
 
 test('refresh replaces stale content for loaded older messages with tombstones', () => {
-	const oldMessage = {
+	const oldMessage: ChatRow = {
 		id: 'older-message',
 		createdAt: '2026-09-23T10:00:00.000Z',
 		body: 'deleted text must not remain visible',
 		imageUrl: null,
 		deletedAt: null,
 	};
-	const latestMessage = {
+	const latestMessage: ChatRow = {
 		id: 'latest-message',
 		createdAt: '2026-09-23T12:00:00.000Z',
 		body: 'still visible',

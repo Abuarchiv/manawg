@@ -167,7 +167,10 @@ mock.module('@/features/expenses/expense-payments', {
 mock.module('@/core/guards/with-wg-route', {
 	namedExports: {
 		withWgRoute:
-			(label: string, handler: (req: Request, params: Record<string, string>) => Promise<Response>) =>
+			(
+				label: string,
+				handler: (req: Request, params: Record<string, string>) => Promise<Response>,
+			) =>
 			async (req: Request, ctx: { params: Promise<Record<string, string>> }) => {
 				try {
 					return await handler(req, await ctx.params);

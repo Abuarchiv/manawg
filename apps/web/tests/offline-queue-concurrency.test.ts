@@ -6,6 +6,7 @@ import {
 	makeLockManager,
 	makeQueueModule,
 	makeStorage,
+	readStoredQueue,
 	restoreGlobals,
 	setQueue,
 } from './support/offline-harness.ts';
@@ -18,7 +19,7 @@ test('two tabs preserve both enqueues when the second reads during the first mut
 	const first = (await makeQueueModule({ storage, locks })).module;
 	const second = (await makeQueueModule({ storage, locks })).module;
 	const getItem = storage.getItem.bind(storage);
-	let secondEnqueue;
+	let secondEnqueue: Promise<number> | undefined;
 	storage.getItem = (key) => {
 		const value = getItem(key);
 		if (key === 'manawg:offline-actions' && !secondEnqueue) {
@@ -32,7 +33,7 @@ test('two tabs preserve both enqueues when the second reads during the first mut
 	assert.equal(firstCount, 1);
 	assert.equal(secondCount, 2);
 	assert.deepEqual(
-		JSON.parse(storage.getItem('manawg:offline-actions')).map((action) => action.id),
+		readStoredQueue(storage).map((action) => action.id),
 		['action-1', 'action-2'],
 	);
 });
@@ -45,7 +46,7 @@ test('same-tab concurrent enqueues keep every action', async () => {
 		),
 	);
 	assert.deepEqual(
-		JSON.parse(storage.getItem('manawg:offline-actions')).map((action) => action.id),
+		readStoredQueue(storage).map((action) => action.id),
 		Array.from({ length: 8 }, (_, index) => `action-${index}`),
 	);
 });
@@ -74,7 +75,7 @@ test('queue writes and sync fail closed when Web Locks are unavailable', async (
 	);
 	assert.equal(requests, 0);
 	assert.deepEqual(
-		JSON.parse(storage.getItem('manawg:offline-actions')).map((action) => action.id),
+		readStoredQueue(storage).map((action) => action.id),
 		['action-1'],
 	);
 });
@@ -94,7 +95,7 @@ test('discarding a queued update for a server item still fails closed without We
 	);
 	const { module } = await makeQueueModule({ storage, locks: null });
 	assert.equal(await module.discardQueuedEntry('TEST1234', serverItemId), 'storage_blocked');
-	assert.equal(JSON.parse(storage.getItem('manawg:offline-actions')).length, 1);
+	assert.equal(readStoredQueue(storage).length, 1);
 });
 
 test('discard during a second-tab enqueue preserves the new action', async () => {
@@ -105,7 +106,7 @@ test('discard during a second-tab enqueue preserves the new action', async () =>
 	await setQueue(first, [createAction()]);
 	const getItem = storage.getItem.bind(storage);
 	let queueReads = 0;
-	let secondEnqueue;
+	let secondEnqueue: Promise<number> | undefined;
 	storage.getItem = (key) => {
 		const value = getItem(key);
 		if (key === 'manawg:offline-actions' && ++queueReads === 2) {
@@ -116,7 +117,7 @@ test('discard during a second-tab enqueue preserves the new action', async () =>
 	assert.equal(await first.discardQueuedEntry('TEST1234', 'action-1'), 'removed');
 	assert.equal(await secondEnqueue, 1);
 	assert.deepEqual(
-		JSON.parse(storage.getItem('manawg:offline-actions')).map((action) => action.id),
+		readStoredQueue(storage).map((action) => action.id),
 		['action-2'],
 	);
 });
@@ -128,7 +129,7 @@ test('edit during a second-tab enqueue preserves both the edit and new action', 
 	const second = (await makeQueueModule({ storage, locks })).module;
 	await setQueue(first, [createAction()]);
 	const getItem = storage.getItem.bind(storage);
-	let secondEnqueue;
+	let secondEnqueue: Promise<number> | undefined;
 	storage.getItem = (key) => {
 		const value = getItem(key);
 		if (key === 'manawg:offline-actions' && !secondEnqueue) {
@@ -147,8 +148,8 @@ test('edit during a second-tab enqueue preserves both the edit and new action', 
 		true,
 	);
 	assert.equal(await secondEnqueue, 2);
-	const queue = JSON.parse(storage.getItem('manawg:offline-actions'));
-	assert.equal(queue.find((action) => action.id === 'action-1').payload.content, 'edited');
+	const queue = readStoredQueue(storage);
+	assert.equal(queue.find((action) => action.id === 'action-1')?.payload.content, 'edited');
 	assert.deepEqual(
 		queue.map((action) => action.id),
 		['action-1', 'action-2'],
@@ -159,15 +160,17 @@ test('sync final merge preserves an enqueue made from another tab during the req
 	const storage = makeStorage();
 	const locks = makeLockManager();
 	const second = (await makeQueueModule({ storage, locks })).module;
-	let secondEnqueue;
-	const first = (await makeQueueModule({
-		storage,
-		locks,
-		apiFetch: async () => {
-			secondEnqueue = second.enqueueOfflineAction(createAction({ id: 'action-2' }));
-			return { ok: true, data: {} };
-		},
-	})).module;
+	let secondEnqueue: Promise<number> | undefined;
+	const first = (
+		await makeQueueModule({
+			storage,
+			locks,
+			apiFetch: async () => {
+				secondEnqueue = second.enqueueOfflineAction(createAction({ id: 'action-2' }));
+				return { ok: true, data: {} };
+			},
+		})
+	).module;
 	await setQueue(first, [createAction()]);
 	assert.equal(
 		await first.syncOfflineActions('TEST1234', { force: true, memberId: 'member-a' }),
@@ -175,7 +178,7 @@ test('sync final merge preserves an enqueue made from another tab during the req
 	);
 	assert.equal(await secondEnqueue, 2);
 	assert.deepEqual(
-		JSON.parse(storage.getItem('manawg:offline-actions')).map((action) => action.id),
+		readStoredQueue(storage).map((action) => action.id),
 		['action-2'],
 	);
 });
@@ -208,7 +211,7 @@ test('concurrent failed queue saves retain every synced marker', async () => {
 	failQueueSave = true;
 	responsesReady.resolve();
 	await syncing;
-	const savedMarkers = JSON.parse(storage.getItem('manawg:offline-synced-ids'));
+	const savedMarkers = JSON.parse(storage.getItem('manawg:offline-synced-ids') ?? 'null');
 	assert.deepEqual(Object.keys(savedMarkers).sort(), ['action-1', 'action-2']);
 	const reloaded = (await makeQueueModule({ storage, locks })).module;
 	assert.equal(reloaded.readOfflineQueue().length, 0);

@@ -12,14 +12,16 @@ const idempotencyResponses = {
 	responseBody: 'responseBody',
 	expiresAt: 'expiresAt',
 };
+// biome-ignore lint/suspicious/noExplicitAny: fake rows carry arbitrary shapes
 type Row = Record<string, any>;
+// biome-ignore lint/suspicious/noExplicitAny: fake rows carry arbitrary shapes
 type Condition = { kind: string; parts: any[] };
 const condition = (kind: string, ...parts: unknown[]): Condition => ({ kind, parts });
 
 interface HarnessState {
 	wgs: Row[];
 	members: Row[];
-	slot: { body: any; expiresAt: Date } | null;
+	slot: { body: Row; expiresAt: Date } | null;
 	claims: number;
 	audits: number;
 	events: string[];
@@ -165,8 +167,7 @@ mock.module('@/core/idempotency-store', {
 			state.slot = { body: state.claimBody, expiresAt: new Date(Date.now() + 60_000) };
 			return true;
 		},
-		getCachedResponse: async () =>
-			state.slot?.body?._claimed ? null : (state.slot?.body ?? null),
+		getCachedResponse: async () => (state.slot?.body?._claimed ? null : (state.slot?.body ?? null)),
 		readIdempotencyKey: (req: Request) => req.headers.get('idempotency-key'),
 	},
 });
@@ -246,7 +247,7 @@ test('retry replays the committed WG response while the first request is still f
 	const { state, post, atAudit, releaseAudit } = harness({ pauseAudit: true });
 	const first = post();
 	await atAudit;
-	assert.equal(state.slot.body.status, 200);
+	assert.equal(state.slot?.body.status, 200);
 	assert.equal(state.wgs.length, 1);
 	const secondResponse = await post();
 	releaseAudit();
@@ -264,7 +265,7 @@ test('retry replays the committed WG response while the first request is still f
 		'replay_update',
 		'commit',
 	]);
-	assert.ok(state.slot.expiresAt.getTime() > Date.now() + 6 * 24 * 60 * 60 * 1000);
+	assert.ok((state.slot?.expiresAt.getTime() ?? 0) > Date.now() + 6 * 24 * 60 * 60 * 1000);
 });
 
 for (const failAt of ['member', 'replay']) {

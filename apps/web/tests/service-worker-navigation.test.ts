@@ -19,7 +19,7 @@ worker.self = {
 	location: { origin: APP_ORIGIN },
 	addEventListener: (type: string, handler: Handler) => handlers.set(type, handler),
 };
-await import('../public/sw.js');
+await import(new URL('../public/sw.js', import.meta.url).href);
 
 async function clickNotification(url: string, windows: WindowClient[]) {
 	const opened: string[] = [];

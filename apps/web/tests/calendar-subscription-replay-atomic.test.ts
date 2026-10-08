@@ -10,13 +10,15 @@ const idempotencyResponses = {
 	responseBody: 'body',
 	expiresAt: 'expiresAt',
 };
+// biome-ignore lint/suspicious/noExplicitAny: fake rows carry arbitrary shapes
 type Row = Record<string, any>;
+// biome-ignore lint/suspicious/noExplicitAny: fake rows carry arbitrary shapes
 type Condition = { kind: string; parts: any[] };
 const condition = (kind: string, ...parts: unknown[]): Condition => ({ kind, parts });
 
 interface HarnessState {
 	subscription: Row | null;
-	slot: { body: any; expiresAt: Date } | null;
+	slot: { body: Row; expiresAt: Date } | null;
 	claims: number;
 	audits: number;
 	seeds: number;
@@ -172,8 +174,7 @@ mock.module('@/core/guards/with-wg-route', {
 mock.module('@/core/idempotency-store', {
 	namedExports: {
 		claimResponseSlot: async () => true,
-		getCachedResponse: async () =>
-			state.slot?.body?._claimed ? null : (state.slot?.body ?? null),
+		getCachedResponse: async () => (state.slot?.body?._claimed ? null : (state.slot?.body ?? null)),
 		readIdempotencyKey: (req: Request) => req.headers.get('idempotency-key'),
 	},
 });
@@ -237,10 +238,16 @@ function harness({
 			method,
 			headers: { 'idempotency-key': key },
 		});
-	const handlers = route as unknown as Record<string, (req: Request, ctx: unknown) => Promise<Response>>;
+	const handlers = route as unknown as Record<
+		string,
+		(req: Request, ctx: unknown) => Promise<Response>
+	>;
 	const call = (method: string) => {
 		state = own;
-		return handlers[method](request(method), { code: 'MTE8PZAT' });
+		return (handlers[method] as (req: Request, ctx: unknown) => Promise<Response>)(
+			request(method),
+			{ code: 'MTE8PZAT' },
+		);
 	};
 	return { state: own, call, atAudit, releaseAudit };
 }
@@ -264,8 +271,8 @@ test('rotation retry returns the committed feed URL while audit is pending', asy
 	});
 	const first = call('PATCH');
 	await atAudit;
-	assert.equal(state.subscription.tokenSeed, 'seed-1');
-	assert.equal(state.slot.body.status, 200);
+	assert.equal(state.subscription?.tokenSeed, 'seed-1');
+	assert.equal(state.slot?.body.status, 200);
 	const duplicate = await call('PATCH');
 	releaseAudit();
 	const original = await first;
@@ -279,7 +286,7 @@ test('failed replay publication rolls token rotation back', async () => {
 	const { state, call } = harness({ subscription: activeSubscription(), failReplayWrite: true });
 	const response = await call('PATCH');
 	assert.equal(response.status, 500);
-	assert.equal(state.subscription.tokenSeed, 'seed-0');
+	assert.equal(state.subscription?.tokenSeed, 'seed-0');
 	// The rolled-back request frees its claim, so a same-key retry runs at once.
 	assert.equal(state.slot, null);
 	assert.equal(state.audits, 0);
@@ -294,7 +301,7 @@ test('reactivation retry does not regenerate its token', async () => {
 	const first = await call('POST');
 	const duplicate = await call('POST');
 	assert.deepEqual(await duplicate.json(), await first.json());
-	assert.equal(state.subscription.revokedAt, null);
+	assert.equal(state.subscription?.revokedAt, null);
 	assert.equal(state.seeds, 1);
 	assert.equal(state.audits, 1);
 });
@@ -305,7 +312,7 @@ test('revoke retry replays success after the subscription is already revoked', a
 	const duplicate = await call('DELETE');
 	assert.deepEqual(await duplicate.json(), await first.json());
 	assert.equal(first.status, 200);
-	assert.ok(state.subscription.revokedAt);
+	assert.ok(state.subscription?.revokedAt);
 	assert.equal(state.audits, 1);
 });
 

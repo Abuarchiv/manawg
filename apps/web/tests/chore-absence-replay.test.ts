@@ -6,6 +6,7 @@ const wgId = '989ac820-58b7-431f-9c65-28721264f333';
 const memberId = '7d898f9e-5ad7-4f5d-abed-8c3e99a76973';
 const key = 'a597a363-9e4c-4df3-9946-a76375583cd4';
 const nextId = '910a55a3-1a79-450d-9922-38a0de395daa';
+// biome-ignore lint/suspicious/noExplicitAny: fake rows carry arbitrary shapes
 type Row = Record<string, any>;
 
 const tables = {
@@ -48,7 +49,7 @@ const withTransaction = async (operation: (tx: unknown) => Promise<unknown>) => 
 			from: (table: unknown) => ({
 				where: () => ({
 					limit: () => {
-						const rows: any =
+						const rows: Row[] & { for?: () => Promise<Row[]> } =
 							table === tables.idempotencyResponses
 								? [{ body: draftClaim, expiresAt: state.claimExpiresAt }]
 								: [];
@@ -274,7 +275,7 @@ function harness(kind: 'chore' | 'absence', bodyOverride?: Row) {
 	return { post, request, state: own };
 }
 
-for (const kind of ['chore', 'absence']) {
+for (const kind of ['chore', 'absence'] as const) {
 	test(`${kind} create rolls back on replay write miss, then replays one committed response`, async () => {
 		const { post, request, state } = harness(kind);
 		state.missReplayWrite = true;

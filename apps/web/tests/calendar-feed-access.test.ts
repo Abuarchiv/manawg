@@ -1,10 +1,13 @@
 import assert from 'node:assert/strict';
 import { mock, test } from 'node:test';
 import * as eventDisplay from '../src/features/events/event-display.ts';
-import * as eventRecurrence from '../src/features/events/event-recurrence.ts';
 import * as eventRecurrenceRule from '../src/features/events/event-recurrence-rule.ts';
+import * as eventRecurrence from '../src/features/events/event-recurrence.ts';
 
+// biome-ignore lint/suspicious/noExplicitAny: fake rows carry arbitrary shapes
 type Row = Record<string, any>;
+// biome-ignore lint/suspicious/noExplicitAny: duck-typed stub operands
+type Loose = any;
 type Filter = { kind: string; parts?: unknown[]; value?: unknown } | undefined;
 
 const id = '11111111-1111-4111-8111-111111111111';
@@ -41,8 +44,8 @@ const drizzle = {
 function matchesEventFilter(filter: Filter, row: Row): boolean {
 	if (filter === undefined) return true;
 	// Duck-typed: withFrozenTime swaps the global Date class mid-test.
-	const operand = (raw: any) => (typeof raw?.getTime === 'function' ? raw.getTime() : raw);
-	const parts = (filter.parts ?? []) as any[];
+	const operand = (raw: Loose) => (typeof raw?.getTime === 'function' ? raw.getTime() : raw);
+	const parts = (filter.parts ?? []) as Loose[];
 	const value = (field: string) => operand(row[field] ?? null);
 	switch (filter.kind) {
 		case 'and':
@@ -112,7 +115,7 @@ const tx = {
 					state.steps.push('events');
 					state.eventQueries.push(count);
 					return state.events
-						.map((event) => ({ wgId, ...event }))
+						.map((event): Row => ({ wgId, ...event }))
 						.filter((event) => matchesEventFilter(whereFilter, event))
 						.sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime() || a.id.localeCompare(b.id))
 						.slice(0, count);
@@ -240,7 +243,7 @@ async function withFrozenTime<T>(value: string, operation: () => Promise<T>): Pr
 		constructor(...args: unknown[]) {
 			super(...((args.length === 0 ? [now] : args) as [number]));
 		}
-		static now() {
+		static override now() {
 			return now;
 		}
 	} as DateConstructor;

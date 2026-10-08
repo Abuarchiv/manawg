@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { afterEach, test } from 'node:test';
 import {
+	type Action,
 	OFFLINE_REPLAY_MAX_AGE_MS,
 	RESPONSE_REPLAY_TTL_SECONDS,
 	VALID_KEY,
@@ -18,7 +19,7 @@ afterEach(restoreGlobals);
 test('expired replay windows fence automatic and forced sync before upload or mutation', async () => {
 	const now = Date.parse('2026-10-10T12:00:00Z');
 	class Clock extends Date {
-		static now() {
+		static override now() {
 			return now;
 		}
 	}
@@ -73,7 +74,7 @@ test('expired replay windows fence automatic and forced sync before upload or mu
 test('replay fence includes the retention boundary and invalid clocks but tolerates small future skew', async () => {
 	const now = Date.parse('2026-10-10T12:00:00Z');
 	class Clock extends Date {
-		static now() {
+		static override now() {
 			return now;
 		}
 	}
@@ -96,14 +97,14 @@ test('replay fence includes the retention boundary and invalid clocks but tolera
 		});
 		await setQueue(module, [createAction({ createdAt })]);
 		await module.syncOfflineActions('TEST1234', { memberId: 'member-a', force: true });
-		assert.equal(requests, expectedRequests, createdAt);
+		assert.equal(requests, expectedRequests, String(createdAt));
 	}
 });
 
 test('replay window is rechecked after an upload crosses the deadline', async () => {
 	let now = Date.parse('2026-10-10T12:00:00Z');
 	class Clock extends Date {
-		static now() {
+		static override now() {
 			return now;
 		}
 	}
@@ -330,7 +331,7 @@ test('a recurring advance action is not followed by a second advance request', a
 });
 
 test('queued PATCH keeps its idempotency key and expected member in the request', async () => {
-	let request;
+	let request: Action | undefined;
 	const { module } = await makeQueueModule({
 		apiFetch: async (_path, init) => {
 			request = init;
@@ -350,6 +351,6 @@ test('queued PATCH keeps its idempotency key and expected member in the request'
 		}),
 	]);
 	await module.syncOfflineActions('TEST1234', { force: true, memberId: 'member-a' });
-	assert.equal(request.headers['Idempotency-Key'], VALID_KEY);
-	assert.equal(request.memberId, 'member-a');
+	assert.equal(request?.headers['Idempotency-Key'], VALID_KEY);
+	assert.equal(request?.memberId, 'member-a');
 });

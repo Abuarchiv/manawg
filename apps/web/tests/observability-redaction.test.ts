@@ -13,9 +13,17 @@ const browserSentryPath = createRequire(import.meta.resolve('@sentry/nextjs')).r
 	'@sentry/browser',
 );
 const browserSentryModule = await import(pathToFileURL(browserSentryPath).href);
-const browserSentry = (browserSentryModule.default ?? browserSentryModule) as typeof import(
-	'@sentry/browser'
-);
+// biome-ignore lint/suspicious/noExplicitAny: serialized envelope payload, read by path
+type SentryEventBody = Record<string, any>;
+
+interface BrowserSentry {
+	init(options: unknown): unknown;
+	captureEvent(event: unknown): unknown;
+	flush(timeout: number): Promise<boolean>;
+	isInitialized(): boolean;
+	close(timeout: number): Promise<boolean>;
+}
+const browserSentry = (browserSentryModule.default ?? browserSentryModule) as BrowserSentry;
 const envelopes: Array<[unknown, Array<[{ type: string }, Record<string, unknown>]>]> = [];
 // `sdk.onInit` observes (and replaces) Sentry.init for the entrypoint tests; without it the
 // browser SDK initializes against a recording transport.
@@ -190,7 +198,9 @@ test('instrumentation loads the Sentry chunk only when a DSN is configured', asy
 	assert.deepEqual(calls, []);
 
 	await (
-		await runInstrumentationClient({ NEXT_PUBLIC_SENTRY_DSN: 'https://public@o123.ingest.sentry.io/1' })
+		await runInstrumentationClient({
+			NEXT_PUBLIC_SENTRY_DSN: 'https://public@o123.ingest.sentry.io/1',
+		})
 	).settled();
 	assert.deepEqual(calls, ['initializeSentry']);
 });
@@ -302,7 +312,7 @@ test('pinned Sentry SDK envelopes omit inferred IPs and automatic sessions', asy
 			false,
 		);
 		const event = items.find(([header]) => header.type === 'event')?.[1] as
-			| Record<string, any>
+			| SentryEventBody
 			| undefined;
 		assert.ok(event);
 		assert.equal(event.sdk?.settings?.infer_ip, 'never');
@@ -365,8 +375,8 @@ test('custom Error.name values are reduced to a trusted error type', () => {
 		captureException(custom);
 		captureException(new TypeError('another provider payload'));
 
-		assert.equal(calls[0][1], 'Error');
-		assert.equal(calls[1][1], 'TypeError');
+		assert.equal(calls[0]?.[1], 'Error');
+		assert.equal(calls[1]?.[1], 'TypeError');
 		assert.equal(JSON.stringify(calls).includes('privateDbPassword123'), false);
 	} finally {
 		console.error = original;
@@ -466,6 +476,6 @@ test('every route error boundary tag survives Sentry tag filtering', async () =>
 		const source = readFileSync(path.join(appDir, String(file)), 'utf8');
 		const tag = source.match(/boundary(?:="|: ')([a-z-]+)/)?.[1];
 		assert.ok(tag, `${file} has no boundary tag`);
-		assert.ok(SAFE_TAG_VALUES.boundary.has(tag), `${file}: boundary "${tag}" is not allowed`);
+		assert.ok(SAFE_TAG_VALUES.boundary?.has(tag), `${file}: boundary "${tag}" is not allowed`);
 	}
 });

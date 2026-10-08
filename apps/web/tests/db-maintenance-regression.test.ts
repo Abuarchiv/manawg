@@ -57,7 +57,7 @@ test('queries and transactions share one pool that follows URL changes without r
 	env.POSTGRES_URL = 'postgres://localhost/database_b';
 	assert.equal(realDb.readUrl(), await transactionUrl());
 	assert.equal(pools.length, 2);
-	assert.ok(pools[0].ended && !pools[1].ended);
+	assert.ok(pools[0]?.ended && !pools[1]?.ended);
 
 	// Direct-connection variables belong to migrations; runtime transactions stay on the pool.
 	env.DATABASE_URL_UNPOOLED = 'postgres://localhost/direct_a';

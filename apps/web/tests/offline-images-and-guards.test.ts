@@ -1,15 +1,19 @@
 import assert from 'node:assert/strict';
 import { afterEach, mock, test } from 'node:test';
 import {
-	VALID_KEY,
+	type Action,
 	createAction,
 	deferred,
 	makeQueueModule,
 	makeStorage,
+	readStoredQueue,
 	restoreGlobals,
 	setGlobal,
 	setQueue,
 } from './support/offline-harness.ts';
+
+// biome-ignore lint/suspicious/noExplicitAny: hand-rolled IndexedDB fake
+type Loose = any;
 
 afterEach(restoreGlobals);
 
@@ -34,15 +38,20 @@ test('resolved upload URL is persisted to the queue before its IndexedDB blob is
 	]);
 	const indexedDB = {
 		open() {
-			const request = { result: null, onupgradeneeded: null, onsuccess: null, onerror: null };
+			const request: Loose = {
+				result: null,
+				onupgradeneeded: null,
+				onsuccess: null,
+				onerror: null,
+			};
 			request.result = {
 				objectStoreNames: { contains: () => true },
 				createObjectStore() {},
 				close() {},
 				transaction() {
-					const tx = { oncomplete: null, onerror: null, error: null };
-					const makeRequest = (run) => {
-						const req = { result: undefined, error: null, onsuccess: null, onerror: null };
+					const tx: Loose = { oncomplete: null, onerror: null, error: null };
+					const makeRequest = (run: () => unknown) => {
+						const req: Loose = { result: undefined, error: null, onsuccess: null, onerror: null };
 						queueMicrotask(() => {
 							try {
 								req.result = run();
@@ -58,13 +67,13 @@ test('resolved upload URL is persisted to the queue before its IndexedDB blob is
 						return req;
 					};
 					tx.objectStore = () => ({
-						get: (key) => makeRequest(() => records.get(key)),
-						put: (value, key) =>
+						get: (key: string) => makeRequest(() => records.get(key)),
+						put: (value: Loose, key: string) =>
 							makeRequest(() => {
 								records.set(key, value);
 								return key;
 							}),
-						delete: (key) => makeRequest(() => records.delete(key)),
+						delete: (key: string) => makeRequest(() => records.delete(key)),
 					});
 					return tx;
 				},
@@ -84,13 +93,13 @@ test('resolved upload URL is persisted to the queue before its IndexedDB blob is
 			: new Response(null, { status: 200 }),
 	);
 	const storage = makeStorage();
-	let queueAtRequest: any;
+	let queueAtRequest: Action[] | undefined;
 	const { module } = await makeQueueModule({
 		storage,
 		// The real image store runs against the fake IndexedDB above.
 		images: null,
 		apiFetch: async (_path, init) => {
-			queueAtRequest = JSON.parse(storage.getItem('manawg:offline-actions') as string);
+			queueAtRequest = readStoredQueue(storage);
 			return { ok: false, status: 0, error: 'network', signal: init.signal };
 		},
 	});
@@ -98,7 +107,7 @@ test('resolved upload URL is persisted to the queue before its IndexedDB blob is
 		createAction({ payload: { content: 'with image', kind: 'info', imageUrl: pendingToken } }),
 	]);
 	await module.syncOfflineActions('TEST1234', { force: true, memberId: 'member-a' });
-	assert.equal(queueAtRequest[0].payload.imageUrl, publicUrl);
+	assert.equal(queueAtRequest?.[0]?.payload.imageUrl, publicUrl);
 	assert.equal(module.readOfflineQueue()[0].payload.imageUrl, publicUrl);
 	assert.equal(records.has('pic'), false);
 });
@@ -401,13 +410,13 @@ test('server guard rejects a stale expected member only after cookie membership 
 				get: (name: string) => (name === 'x-manawg-expected-member-id' ? expectedMember : null),
 			},
 		}) as never;
-	const result: any = await guard.requireMember(request('member-b'), 'wg-1');
+	const result: Action = await guard.requireMember(request('member-b'), 'wg-1');
 	assert.equal(authenticated, true);
 	assert.equal(membershipResolved, true);
 	assert.equal(result.ok, false);
 	assert.equal(result.reason, 'member_context_changed');
 	assert.deepEqual(result.response, { code: 'member_context_changed', status: 409 });
-	const matching: any = await guard.requireMember(request('member-a'), 'wg-1');
+	const matching: Action = await guard.requireMember(request('member-a'), 'wg-1');
 	assert.equal(matching.ok, true);
 	assert.equal(matching.member.memberId, 'member-a');
 });
@@ -417,7 +426,9 @@ test('offline data is visible only for the currently bound local account', async
 		['wg-1', { memberId: 'member-a', authUserId: 'user-a' }],
 		['wg-2', { memberId: 'member-b' }],
 	]);
-	const { module } = await makeQueueModule({ identity: (wgId) => identities.get(wgId) ?? null });
+	const { module } = await makeQueueModule({
+		identity: (wgId) => identities.get(wgId ?? '') ?? null,
+	});
 	assert.equal(typeof module.filterOfflineActionsForAuthUser, 'function');
 	const scoped = [
 		createAction(),

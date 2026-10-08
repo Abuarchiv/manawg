@@ -9,8 +9,24 @@ export const { OFFLINE_REPLAY_MAX_AGE_MS, RESPONSE_REPLAY_TTL_SECONDS } = await 
 
 export const VALID_KEY = '00000000-0000-4000-8000-000000000001';
 
+// biome-ignore lint/suspicious/noExplicitAny: queue entries are fake actions of any type
 export type Action = Record<string, any>;
-export type QueueModule = typeof import('../../src/core/offline/offline-client.ts');
+
+/** The offline-client API as the tests use it, with fake actions instead of the strict union. */
+export interface QueueModule {
+	enqueueOfflineAction(action: Action): Promise<number>;
+	updateOfflineQueue(update: (actions: Action[]) => Action[]): Promise<boolean>;
+	discardQueuedEntry(shareCode: string, id: string): Promise<string>;
+	syncOfflineActions(
+		shareCode: string,
+		options: { force?: boolean; memberId?: string; signal?: AbortSignal },
+	): Promise<number>;
+	/** Typed as non-empty because the tests read the first entry of queues they just filled. */
+	readOfflineQueue(): [Action, ...Action[]];
+	needsManualOfflineResolution(action: Action): boolean;
+	isOfflineActionQueued(id: string): boolean;
+	filterOfflineActionsForAuthUser(actions: Action[], authUserId: string | null): Action[];
+}
 
 export function createAction(overrides: Action = {}): Action {
 	return {
@@ -72,12 +88,17 @@ export function makeLockManager() {
 }
 export type FakeLockManager = ReturnType<typeof makeLockManager>;
 
-export function deferred<T = void>() {
-	let resolve: (value: T) => void = () => {};
-	const promise = new Promise<T>((done) => {
+export function deferred<T = unknown>() {
+	let resolve: (value?: T) => void = () => {};
+	const promise = new Promise<T | undefined>((done) => {
 		resolve = done;
 	});
 	return { promise, resolve };
+}
+
+/** The persisted offline queue of a fake storage. */
+export function readStoredQueue(storage: FakeStorage): Action[] {
+	return JSON.parse(storage.getItem('manawg:offline-actions') ?? 'null');
 }
 
 const savedGlobals = new Map<string, PropertyDescriptor | undefined>();
@@ -129,12 +150,12 @@ const defaultQueue = {
 let instances = 0;
 
 export interface QueueOptions {
-	apiFetch?: (path: string, init: any) => Promise<any>;
+	apiFetch?: (path: string, init: Action) => Promise<unknown>;
 	identity?: (wgId?: string) => unknown;
 	/** Replacement for the offline-images module; `null` keeps the real one. */
 	images?: Record<string, unknown> | null;
 	storage?: FakeStorage;
-	clock?: DateConstructor;
+	clock?: unknown;
 	locks?: FakeLockManager | null;
 }
 
@@ -173,10 +194,12 @@ export async function makeQueueModule({
 			...images,
 		});
 	}
-	const module: QueueModule = await import(`../../src/core/offline/offline-client.ts${instance}`);
+	const module = (await import(
+		`../../src/core/offline/offline-client.ts${instance}`
+	)) as unknown as QueueModule;
 	return { module, storage, window };
 }
 
 export async function setQueue(module: QueueModule, actions: Action[]): Promise<void> {
-	assert.equal(await module.updateOfflineQueue(() => actions as never), true);
+	assert.equal(await module.updateOfflineQueue(() => actions), true);
 }

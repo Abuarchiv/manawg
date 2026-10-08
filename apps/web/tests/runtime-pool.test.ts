@@ -27,7 +27,7 @@ class TrackedPool extends pg.Pool {
 		harness.pools.push(this);
 	}
 
-	end(): Promise<void> {
+	override end(): Promise<void> {
 		this.testEndPromise ??= super.end();
 		return this.testEndPromise;
 	}
@@ -104,26 +104,26 @@ test(
 
 		const dataDir = mkdtempSync(join(tmpdir(), 'manawg-db-timeouts-'));
 		const portProbe = net.createServer();
-		await new Promise((resolve, reject) => {
+		await new Promise<void>((resolve, reject) => {
 			portProbe.once('error', reject);
 			portProbe.listen(0, '127.0.0.1', resolve);
 		});
 		const address = portProbe.address();
 		assert.ok(address && typeof address !== 'string');
 		const pgPort = address.port;
-		await new Promise((resolve, reject) => {
+		await new Promise<void>((resolve, reject) => {
 			portProbe.close((error) => (error ? reject(error) : resolve()));
 		});
 
-		const run = (binary, args) => {
+		const run = (binary: string, args: string[]) => {
 			const result = spawnSync(binary, args, { encoding: 'utf8', timeout: 30_000 });
 			assert.equal(result.status, 0, `${binary} failed: ${result.stderr || result.stdout}`);
 		};
 		let proxy: net.Server | undefined;
 		let proxyStarted = false;
-		let dropRepliesForQuery = null;
+		let dropRepliesForQuery: string | null = null;
 		let droppedReplyBytes = 0;
-		const proxySockets = new Set();
+		const proxySockets = new Set<net.Socket>();
 		let pgStarted = false;
 		try {
 			run(initdb.stdout.trim(), [
@@ -185,12 +185,13 @@ test(
 					client.write(chunk);
 				});
 			});
-			await new Promise((resolve, reject) => {
-				proxy.once('error', reject);
-				proxy.listen(0, '127.0.0.1', resolve);
+			const proxyServer = proxy;
+			await new Promise<void>((resolve, reject) => {
+				proxyServer.once('error', reject);
+				proxyServer.listen(0, '127.0.0.1', resolve);
 			});
 			proxyStarted = true;
-			const proxyAddress = proxy.address();
+			const proxyAddress = proxyServer.address();
 			assert.ok(proxyAddress && typeof proxyAddress !== 'string');
 			const testRuntimeUrl = `postgresql://postgres@127.0.0.1:${proxyAddress.port}/postgres?sslmode=disable`;
 			process.env.POSTGRES_URL = testRuntimeUrl;
@@ -198,7 +199,7 @@ test(
 			const { Client } = pg;
 			const db = database;
 
-			const expectConnectTimeout = async (operation) => {
+			const expectConnectTimeout = async (operation: () => Promise<unknown>) => {
 				stalledConnections += 1;
 				const startedAt = Date.now();
 				await assert.rejects(operation(), (error) => error instanceof Error);
@@ -249,7 +250,7 @@ test(
 				const lockStartedAt = Date.now();
 				await assert.rejects(
 					withTransaction((tx) => tx.execute(sql`select pg_advisory_xact_lock(147258369)`)),
-					(error) => error.cause?.code === '55P03',
+					(error: { cause?: { code?: string } }) => error.cause?.code === '55P03',
 				);
 				assert.ok(
 					Date.now() - lockStartedAt < 3_500,
@@ -262,7 +263,7 @@ test(
 
 			await assert.rejects(
 				withTransaction((tx) => tx.execute(sql`select pg_sleep(10)`)),
-				(error) => error.cause?.code === '57014',
+				(error: { cause?: { code?: string } }) => error.cause?.code === '57014',
 			);
 			const probeClient = new Client({
 				connectionString: `postgresql://postgres@127.0.0.1:${pgPort}/postgres?sslmode=disable`,
@@ -305,7 +306,7 @@ test(
 			if (proxyStarted) {
 				await Promise.all(harness.pools.map((pool) => pool.end()));
 				for (const socket of proxySockets) socket.destroy();
-				await new Promise((resolve) => proxy.close(resolve));
+				await new Promise((resolve) => proxy?.close(resolve));
 			}
 			if (pgStarted) {
 				const stopped = spawnSync(
