@@ -1,12 +1,12 @@
 import type { useToast } from '@/components/ui/Toast';
 import type { Member, WgSummary } from '@/components/wg/WgContextProvider';
+import type { StoredIdentity } from '@/core/auth/identity';
 import type { NotificationWarning } from '@/core/notifications/notification-warning';
 import type {
 	Announcement,
 	AnnouncementComment,
 	ReactionKey,
 } from '@/features/pinnwand/components/announcement-types';
-import type { StoredIdentity } from '@/core/auth/identity';
 import type { MutableRefObject } from 'react';
 
 /** What the Pinnwand mutation hooks share: who acts, where results go, and the loaded board. */

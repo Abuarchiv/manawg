@@ -4,13 +4,13 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
+import type { StoredIdentity } from '@/core/auth/identity';
 import {
 	subscribeOnline,
 	subscribeVisibility,
 	useOnlineStatus,
 } from '@/core/hooks/use-online-status';
 import { cn } from '@/shared/lib/cn';
-import type { StoredIdentity } from '@/core/auth/identity';
 import {
 	createContext,
 	useCallback,

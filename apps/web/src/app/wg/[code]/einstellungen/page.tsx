@@ -9,10 +9,10 @@ import {
 	buildEmptyExportSummary,
 	buildExportSummaryFromCounts,
 } from '@/composition/export';
+import { memberContextHeader } from '@/core/auth/identity';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { SETTINGS_TABS, getSettingsTabFromHash } from '@/core/guards/settings-tabs';
 import type { SettingsTab } from '@/core/guards/settings-tabs';
-import { memberContextHeader } from '@/core/auth/identity';
 import dynamic from 'next/dynamic';
 import { useEffect, useRef, useState } from 'react';
 

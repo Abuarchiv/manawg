@@ -1,9 +1,9 @@
 'use client';
 
+import type { StoredIdentity } from '@/core/auth/identity';
 import { subscribeOnline } from '@/core/hooks/use-online-status';
 import { countOfflineActions, syncOfflineActions } from '@/core/offline/offline-client';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
-import type { StoredIdentity } from '@/core/auth/identity';
 import { type RefObject, useCallback, useEffect, useRef } from 'react';
 
 /**

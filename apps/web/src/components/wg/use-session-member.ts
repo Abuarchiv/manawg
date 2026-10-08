@@ -1,6 +1,5 @@
 'use client';
 
-import { apiFetch } from '@/core/infra/api-client';
 import {
 	type StoredIdentity,
 	clearIdentity,
@@ -8,6 +7,7 @@ import {
 	rememberWg,
 	setIdentity,
 } from '@/core/auth/identity';
+import { apiFetch } from '@/core/infra/api-client';
 import {
 	type Dispatch,
 	type RefObject,

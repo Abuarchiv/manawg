@@ -28,9 +28,9 @@ import { MemberDeactivateDialog } from '@/components/wg/MemberDeactivateDialog';
 import type { Member, WgSummary } from '@/components/wg/WgContextProvider';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { Section } from '@/components/wg/einstellungen/Section';
+import type { StoredIdentity } from '@/core/auth/identity';
 import { RATE_LIMITED_MESSAGE, isRateLimited } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
-import type { StoredIdentity } from '@/core/auth/identity';
 import { Crown, UserPlus } from 'lucide-react';
 import { useState } from 'react';
 
