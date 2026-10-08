@@ -11,18 +11,17 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Button } from '@/components/ui/button';
 import {
 	Drawer,
 	DrawerContent,
 	DrawerDescription,
-	DrawerFooter,
 	DrawerHeader,
 	DrawerTitle,
 } from '@/components/ui/drawer';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Spinner } from '@/components/ui/spinner';
+import { EventEditFooter } from '@/features/events/components/EventEditFooter';
 import { EventFormFields, focusEventField } from '@/features/events/components/EventFormFields';
 import {
 	RECURRENCE_OPTIONS,
@@ -32,7 +31,6 @@ import {
 	parseRecurrenceRule,
 	validateEventForm,
 } from '@/features/events/events';
-import { CalendarPlus, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 const KEEP_EXISTING_RECURRENCE = '__keep__';
@@ -301,52 +299,14 @@ export function EventEditModal({
 								</Alert>
 							)}
 						</div>
-						<DrawerFooter className="border-t pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-							<div className="flex flex-wrap gap-2">
-								{!readOnly && (
-									<Button type="submit" className="min-w-fit flex-1" disabled={saving || deleting}>
-										{saving && <Spinner data-icon="inline-start" aria-hidden />}
-										{saving ? 'Speichert…' : 'Speichern'}
-									</Button>
-								)}
-								<Button
-									type="button"
-									variant="outline"
-									className="min-w-fit flex-1"
-									onClick={requestClose}
-									disabled={saving || deleting}
-								>
-									{readOnly ? 'Schließen' : 'Abbrechen'}
-								</Button>
-							</div>
-							<div className="flex flex-wrap gap-2">
-								{onExportIcs && (
-									<Button
-										type="button"
-										variant="outline"
-										className="h-auto min-h-8 min-w-fit flex-1 py-1.5"
-										onClick={onExportIcs}
-										aria-label="In Kalender-App übernehmen"
-									>
-										<CalendarPlus data-icon="inline-start" aria-hidden />
-										In Kalender
-									</Button>
-								)}
-								{!readOnly && (
-									<Button
-										type="button"
-										variant="destructive"
-										className="h-auto min-h-8 min-w-fit flex-1 py-1.5"
-										onClick={() => setConfirmingDelete(true)}
-										disabled={saving || deleting}
-										aria-label="Termin löschen"
-									>
-										<Trash2 data-icon="inline-start" aria-hidden />
-										Termin löschen
-									</Button>
-								)}
-							</div>
-						</DrawerFooter>
+						<EventEditFooter
+							readOnly={readOnly}
+							busy={saving || deleting}
+							saving={saving}
+							onCancel={requestClose}
+							onDelete={() => setConfirmingDelete(true)}
+							onExportIcs={onExportIcs}
+						/>
 					</form>
 				</DrawerContent>
 			</Drawer>
