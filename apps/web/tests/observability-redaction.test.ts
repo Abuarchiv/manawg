@@ -1,11 +1,48 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
-import test from 'node:test';
-import { fileURLToPath } from 'node:url';
+import { mock, test } from 'node:test';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { format } from 'node:util';
 import { contentSecurityPolicy } from '../src/core/infra/security-headers.ts';
+
+// The envelope test drives the browser SDK; @sentry/browser is only reachable through
+// @sentry/nextjs, which pins the version the app ships.
+const browserSentryPath = createRequire(import.meta.resolve('@sentry/nextjs')).resolve(
+	'@sentry/browser',
+);
+const browserSentryModule = await import(pathToFileURL(browserSentryPath).href);
+const browserSentry = (browserSentryModule.default ?? browserSentryModule) as typeof import(
+	'@sentry/browser'
+);
+const envelopes: Array<[unknown, Array<[{ type: string }, Record<string, unknown>]>]> = [];
+// `sdk.onInit` observes (and replaces) Sentry.init for the entrypoint tests; without it the
+// browser SDK initializes against a recording transport.
+const sdk = { onInit: null as null | ((options: Record<string, unknown>) => void) };
+mock.module('@sentry/nextjs', {
+	namedExports: {
+		init: (options: Record<string, unknown>) => {
+			if (sdk.onInit) return sdk.onInit(options);
+			return browserSentry.init({
+				...options,
+				transport: () => ({
+					send(envelope: never) {
+						envelopes.push(envelope);
+						return Promise.resolve({ statusCode: 200 });
+					},
+					flush: () => Promise.resolve(true),
+				}),
+			} as never);
+		},
+		captureException() {},
+		logger: { error() {} },
+	},
+});
+
+// Loaded up front so the client entrypoint's lazy import resolves from the module cache.
+const sentryWrapper = await import('../src/core/infra/sentry.ts');
+const { captureException } = await import('../src/core/infra/observability.ts');
 
 test('Sentry CSP allows only the configured HTTPS DSN origin', () => {
 	const originalDsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
@@ -72,7 +109,7 @@ test('Sentry strips personal data and WG codes from error events', async () => {
 	const calendarUrl =
 		'https://manawg.com/api/calendar/calendar-id/calendar-token?download=private#fragment';
 	assert.equal(
-		sanitizeSentryEvent({ request: { url: calendarUrl } }).request.url,
+		sanitizeSentryEvent({ request: { url: calendarUrl } }).request?.url,
 		'https://manawg.com/api/calendar/[redacted]/[redacted]',
 	);
 	assert.equal(
@@ -103,84 +140,59 @@ test('Sentry strips personal data and WG codes from error events', async () => {
 	);
 });
 
-const require = createRequire(import.meta.url);
-const ts = require('typescript');
-const sentryRequire = createRequire(require.resolve('@sentry/nextjs/package.json'));
-const browserSentry = sentryRequire('@sentry/browser');
-const sourcePath = path.join(
-	path.dirname(fileURLToPath(import.meta.url)),
-	'../src/core/infra/observability.ts',
-);
-const compiled = ts.transpileModule(readFileSync(sourcePath, 'utf8'), {
-	compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
-}).outputText;
-const loaded = { exports: {} };
-new Function('require', 'module', 'exports', compiled)(
-	(name) => {
-		if (name === './sentry') return { captureSentryException() {}, logSentryApiError() {} };
-		if (name === './sentry-privacy') return loadCoreModule('sentry-privacy.ts', {});
-		return require(name);
-	},
-	loaded,
-	loaded.exports,
-);
-const { captureException } = loaded.exports;
+function setEnv(env: Record<string, string | undefined>): void {
+	for (const [key, value] of Object.entries(env)) {
+		if (value === undefined) Reflect.deleteProperty(process.env, key);
+		else process.env[key] = value;
+	}
+}
 
-function loadCoreModule(relativePath, overrides) {
-	const source = readFileSync(path.join(path.dirname(sourcePath), relativePath), 'utf8');
-	const code = ts.transpileModule(source, {
-		compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
-	}).outputText;
-	const module = { exports: {} };
-	new Function('require', 'module', 'exports', code)(
-		(name) => (name in overrides ? overrides[name] : require(name)),
-		module,
-		module.exports,
-	);
-	return module.exports;
+/** Runs `body` with the given environment variables set (undefined removes one), then restores them. */
+async function withEnv<T>(env: Record<string, string | undefined>, body: () => Promise<T>) {
+	const previous = new Map(Object.keys(env).map((key) => [key, process.env[key]]));
+	setEnv(env);
+	try {
+		return await body();
+	} finally {
+		setEnv(Object.fromEntries(previous));
+	}
+}
+
+// The entrypoint loads its optional modules through a dynamic import; give it time to settle.
+const flushOptionalImport = () => new Promise((resolve) => setTimeout(resolve, 30));
+
+let clientEntryRuns = 0;
+/**
+ * Evaluates the client entrypoint afresh: its work happens at module load, driven by the env.
+ * The env stays in place until `settled()` resolves, because the optional import reads it later.
+ */
+async function runInstrumentationClient(env: Record<string, string | undefined>) {
+	const scoped = { NODE_ENV: 'production', NEXT_PUBLIC_SENTRY_DSN: undefined, ...env };
+	const previous = new Map(Object.keys(scoped).map((key) => [key, process.env[key]]));
+	setEnv(scoped);
+	clientEntryRuns += 1;
+	await import(`../src/instrumentation-client.ts?run=${clientEntryRuns}`);
+	return {
+		settled: async () => {
+			await flushOptionalImport();
+			setEnv(Object.fromEntries(previous));
+		},
+	};
 }
 
 test('instrumentation loads the Sentry chunk only when a DSN is configured', async () => {
-	const instrumentationPath = path.join(
-		path.dirname(sourcePath),
-		'../../instrumentation-client.ts',
-	);
-	const compiled = ts.transpileModule(readFileSync(instrumentationPath, 'utf8'), {
-		compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
-	}).outputText;
+	const calls: string[] = [];
+	sdk.onInit = () => {
+		calls.push('initializeSentry');
+	};
 
-	async function run(env) {
-		const imports = [];
-		const calls = [];
-		const module = { exports: {} };
-		new Function('require', 'module', 'exports', 'process', 'console', compiled)(
-			(name) => {
-				imports.push(name);
-				if (name === '@/core/infra/sentry') {
-					return { initializeSentry: () => calls.push('initializeSentry') };
-				}
-				throw new Error(`Unexpected instrumentation import: ${name}`);
-			},
-			module,
-			module.exports,
-			{ env },
-			{ error() {}, warn() {} },
-		);
-		await new Promise((resolve) => setImmediate(resolve));
-		return { imports, calls };
-	}
+	await (await runInstrumentationClient({})).settled();
+	assert.deepEqual(calls, []);
 
-	const unconfigured = await run({ NODE_ENV: 'production' });
-	assert.deepEqual(unconfigured, { imports: [], calls: [] });
-
-	const configured = await run({
-		NODE_ENV: 'production',
-		NEXT_PUBLIC_SENTRY_DSN: 'https://public@o123.ingest.sentry.io/1',
-	});
-	assert.deepEqual(configured, {
-		imports: ['@/core/infra/sentry'],
-		calls: ['initializeSentry'],
-	});
+	await (
+		await runInstrumentationClient({ NEXT_PUBLIC_SENTRY_DSN: 'https://public@o123.ingest.sentry.io/1' })
+	).settled();
+	assert.deepEqual(calls, ['initializeSentry']);
 });
 
 test('pinned Sentry SDK envelopes omit inferred IPs and automatic sessions', async () => {
@@ -194,7 +206,7 @@ test('pinned Sentry SDK envelopes omit inferred IPs and automatic sessions', asy
 		['NEXT_PUBLIC_SENTRY_DSN', 'https://public@o123.ingest.sentry.io/1'],
 		['NEXT_PUBLIC_SENTRY_ENVIRONMENT', 'test'],
 		['NEXT_PUBLIC_SENTRY_RELEASE', 'observability-envelope-test'],
-	]) {
+	] as const) {
 		process.env[key] = value;
 	}
 
@@ -211,7 +223,7 @@ test('pinned Sentry SDK envelopes omit inferred IPs and automatic sessions', asy
 	const oldGlobals = new Map(
 		browserGlobals.map((key) => [key, Object.getOwnPropertyDescriptor(globalThis, key)]),
 	);
-	const setGlobal = (key, value) =>
+	const setGlobal = (key: string, value: unknown) =>
 		Object.defineProperty(globalThis, key, {
 			configurable: true,
 			enumerable: true,
@@ -247,29 +259,10 @@ test('pinned Sentry SDK envelopes omit inferred IPs and automatic sessions', asy
 		throw new Error('network disabled in test');
 	});
 
-	const envelopes = [];
-	const sentry = {
-		...browserSentry,
-		init(options) {
-			return browserSentry.init({
-				...options,
-				transport: () => ({
-					send(envelope) {
-						envelopes.push(envelope);
-						return Promise.resolve({ statusCode: 200 });
-					},
-					flush: () => Promise.resolve(true),
-				}),
-			});
-		},
-	};
-	const sdkOptions = loadCoreModule('sentry.ts', {
-		'@sentry/core': { captureException() {}, logger: { error() {} } },
-		'@sentry/nextjs': sentry,
-		'./sentry-privacy': loadCoreModule('sentry-privacy.ts', {}),
-	});
+	envelopes.length = 0;
+	sdk.onInit = null;
 	try {
-		sdkOptions.initializeSentry();
+		sentryWrapper.initializeSentry();
 		browserSentry.captureEvent({
 			user: { id: 'private-member-id', email: 'alice@example.com' },
 			message: 'private event message',
@@ -299,7 +292,7 @@ test('pinned Sentry SDK envelopes omit inferred IPs and automatic sessions', asy
 					},
 				},
 			],
-		});
+		} as never);
 		await browserSentry.flush(1000);
 
 		assert.ok(envelopes.length > 0);
@@ -308,7 +301,9 @@ test('pinned Sentry SDK envelopes omit inferred IPs and automatic sessions', asy
 			items.some(([header]) => header.type === 'session'),
 			false,
 		);
-		const event = items.find(([header]) => header.type === 'event')?.[1];
+		const event = items.find(([header]) => header.type === 'event')?.[1] as
+			| Record<string, any>
+			| undefined;
 		assert.ok(event);
 		assert.equal(event.sdk?.settings?.infer_ip, 'never');
 		assert.deepEqual(event.request, {
@@ -361,9 +356,9 @@ test('pinned Sentry SDK envelopes omit inferred IPs and automatic sessions', asy
 });
 
 test('custom Error.name values are reduced to a trusted error type', () => {
-	const calls = [];
+	const calls: unknown[][] = [];
 	const original = console.error;
-	console.error = (...args) => calls.push(args);
+	console.error = (...args: unknown[]) => calls.push(args);
 	try {
 		const custom = new Error('provider payload');
 		custom.name = 'privateDbPassword123';
@@ -380,25 +375,23 @@ test('custom Error.name values are reduced to a trusted error type', () => {
 
 test('idempotency cache failures never log a push endpoint or provider error', async () => {
 	const secret = 'privatePushEndpointToken123';
-	const calls = [];
+	const calls: string[] = [];
 	const originalError = console.error;
 	const originalWarn = console.warn;
-	console.error = (...args) => calls.push(format(...args));
-	console.warn = (...args) => calls.push(format(...args));
-	try {
-		const { releaseClaimedResponse } = loadCoreModule('../db/claimed-response.ts', {
-			'@/core/db': {
-				db: {
-					delete: () => {
-						throw new Error(secret);
-					},
+	console.error = (...args: unknown[]) => calls.push(format(...args));
+	console.warn = (...args: unknown[]) => calls.push(format(...args));
+	mock.module('@/core/db', {
+		namedExports: {
+			db: {
+				delete: () => {
+					throw new Error(secret);
 				},
-				idempotencyResponses: {},
 			},
-			'@/core/db/transaction-abort': loadCoreModule('../db/transaction-abort.ts', {}),
-			'@/core/infra/observability': loaded.exports,
-			'@/core/offline/replay-retention': loadCoreModule('../offline/replay-retention.ts', {}),
-		});
+			idempotencyResponses: {},
+		},
+	});
+	try {
+		const { releaseClaimedResponse } = await import('../src/core/db/claimed-response.ts');
 		const released = await releaseClaimedResponse(
 			`push_subscribe:https://push.example/${secret}`,
 			secret,
@@ -413,89 +406,56 @@ test('idempotency cache failures never log a push endpoint or provider error', a
 	}
 });
 
-const clientEntryPath = path.join(
-	path.dirname(fileURLToPath(import.meta.url)),
-	'../src/instrumentation-client.ts',
-);
-
-function runInstrumentationClient(env, loadSentry) {
-	const source = ts.transpileModule(readFileSync(clientEntryPath, 'utf8'), {
-		compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
-	}).outputText;
-	const module = { exports: {} };
-	new Function('require', 'module', 'exports', 'process', source)(
-		(name) => {
-			if (name === '@/core/infra/sentry') return loadSentry();
-			throw new Error(`Unexpected optional import: ${name}`);
-		},
-		module,
-		module.exports,
-		{ env },
-	);
-}
-
-const flushOptionalImport = () => new Promise((resolve) => setImmediate(resolve));
-
 test('client entrypoint does not load Sentry without a configured DSN', async () => {
-	const loads = [];
-	runInstrumentationClient({}, () => loads.push('loaded'));
-	await flushOptionalImport();
+	const loads: string[] = [];
+	sdk.onInit = () => {
+		loads.push('loaded');
+	};
+	await (await runInstrumentationClient({})).settled();
 	assert.deepEqual(loads, []);
 });
 
 test('client entrypoint initializes Sentry once lazily and tolerates a failed optional import', async () => {
-	const calls = [];
-	runInstrumentationClient(
-		{ NEXT_PUBLIC_SENTRY_DSN: 'https://public-key@o123.ingest.de.sentry.io/1' },
-		() => {
-			calls.push('loaded');
-			return { initializeSentry: () => calls.push('initialized') };
-		},
-	);
+	const calls: string[] = [];
+	sdk.onInit = () => {
+		calls.push('initialized');
+	};
+	const run = await runInstrumentationClient({
+		NEXT_PUBLIC_SENTRY_DSN: 'https://public-key@o123.ingest.de.sentry.io/1',
+	});
 	assert.deepEqual(calls, []);
-	await flushOptionalImport();
-	assert.deepEqual(calls, ['loaded', 'initialized']);
+	await run.settled();
+	assert.deepEqual(calls, ['initialized']);
 
-	const failedLoads = [];
-	runInstrumentationClient({ NEXT_PUBLIC_SENTRY_DSN: 'configured' }, () => {
+	const failedLoads: string[] = [];
+	sdk.onInit = () => {
 		failedLoads.push('loaded');
 		throw new Error('optional Sentry unavailable');
-	});
+	};
+	const failedRun = await runInstrumentationClient({ NEXT_PUBLIC_SENTRY_DSN: 'configured' });
 	assert.deepEqual(failedLoads, []);
-	await flushOptionalImport();
+	await failedRun.settled();
 	assert.deepEqual(failedLoads, ['loaded']);
 });
 
-test('Vercel config loads the public Sentry config wrapper', () => {
-	const configPath = path.join(path.dirname(fileURLToPath(import.meta.url)), '../next.config.ts');
-	const source = readFileSync(configPath, 'utf8');
-	const compiled = ts.transpileModule(source, {
-		compilerOptions: {
-			module: ts.ModuleKind.CommonJS,
-			target: ts.ScriptTarget.ES2022,
-			esModuleInterop: true,
+test('Vercel config loads the public Sentry config wrapper', async () => {
+	const nextConfig = await withEnv(
+		{
+			VERCEL: '1',
+			VERCEL_ENV: 'preview',
+			NODE_ENV: 'production',
+			SENTRY_ORG: 'fixture-org',
+			SENTRY_PROJECT: 'fixture-project',
+			SENTRY_AUTH_TOKEN: 'fixture-only-not-a-credential',
 		},
-	}).outputText;
-	const module = { exports: {} };
-	const env = {
-		VERCEL: '1',
-		VERCEL_ENV: 'preview',
-		NODE_ENV: 'production',
-		SENTRY_ORG: 'fixture-org',
-		SENTRY_PROJECT: 'fixture-project',
-		SENTRY_AUTH_TOKEN: 'fixture-only-not-a-credential',
-	};
-	new Function('require', 'module', 'exports', 'process', compiled)(
-		require,
-		module,
-		module.exports,
-		{ env },
+		() => import('../next.config.ts'),
 	);
-	assert.equal(typeof module.exports.default?.headers, 'function');
+	assert.equal(typeof nextConfig.default?.headers, 'function');
 });
 
+// Reads the error boundary components themselves (non-executable here): each must declare a
+// boundary tag that the Sentry tag filter keeps.
 test('every route error boundary tag survives Sentry tag filtering', async () => {
-	const { readdirSync } = await import('node:fs');
 	const { SAFE_TAG_VALUES } = await import('../src/core/infra/sentry-privacy.ts');
 	const appDir = fileURLToPath(new URL('../src/app', import.meta.url));
 	const boundaryFiles = readdirSync(appDir, { recursive: true }).filter((file) =>

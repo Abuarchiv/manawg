@@ -1,36 +1,15 @@
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
-import { registerHooks } from 'node:module';
-import { dirname, extname, resolve } from 'node:path';
-import { after, before, test } from 'node:test';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { after, before, mock, test } from 'node:test';
 import { isAuthRetryableFetchError } from '@supabase/supabase-js';
-import { NextRequest, NextResponse } from 'next/server.js';
+import { NextRequest, NextResponse } from 'next/server';
 
-registerHooks({
-	resolve(specifier, context, nextResolve) {
-		if (specifier === 'server-only') {
-			return { url: 'data:text/javascript,', shortCircuit: true };
-		}
-		if (specifier === 'next/server') return nextResolve('next/server.js', context);
-		if (specifier === 'next/headers') return nextResolve('next/headers.js', context);
-		if (
-			specifier.startsWith('.') &&
-			!extname(specifier) &&
-			context.parentURL?.startsWith('file:')
-		) {
-			const file = resolve(dirname(fileURLToPath(context.parentURL)), `${specifier}.ts`);
-			if (existsSync(file)) return nextResolve(pathToFileURL(file).href, context);
-		}
-		return nextResolve(specifier, context);
-	},
-});
+mock.module('server-only', { namedExports: {} });
 
 const originalFetch = globalThis.fetch;
 
-let getAuthenticatedUser;
-let refreshSupabaseSession;
-let authFetchCalls;
+let getAuthenticatedUser: typeof import('../src/core/auth/server.ts').getAuthenticatedUser;
+let refreshSupabaseSession: typeof import('../src/core/auth/middleware.ts').refreshSupabaseSession;
+let authFetchCalls = 0;
 
 before(async () => {
 	process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://auth-outage.supabase.co';
@@ -58,7 +37,7 @@ function authenticatedRequest(path = '/api/wg/mine') {
 	});
 }
 
-function mockAuthResponse(status) {
+function mockAuthResponse(status: number) {
 	authFetchCalls = 0;
 	const body =
 		status === 401
@@ -66,13 +45,13 @@ function mockAuthResponse(status) {
 			: status === 429
 				? { code: 'over_request_rate_limit', message: 'Too many requests' }
 				: { code: 'server_error', message: 'Auth service unavailable' };
-	globalThis.fetch = async () => {
+	globalThis.fetch = (async () => {
 		authFetchCalls += 1;
 		return new Response(JSON.stringify(body), {
 			status,
 			headers: { 'Content-Type': 'application/json' },
 		});
-	};
+	}) as typeof fetch;
 }
 
 function middlewareResponse() {
@@ -86,7 +65,7 @@ function middlewareResponse() {
 
 test('transient Supabase Auth failures propagate instead of becoming an unauthenticated user', async () => {
 	mockAuthResponse(503);
-	let authError;
+	let authError: unknown;
 	try {
 		await getAuthenticatedUser(authenticatedRequest());
 	} catch (error) {
@@ -119,14 +98,14 @@ test('temporary Auth failures keep WG page headers and cookies for the retry bou
 
 test('an upstream Auth rate limit propagates instead of becoming an unauthenticated user', async () => {
 	mockAuthResponse(429);
-	let authError;
+	let authError: unknown;
 	try {
 		await getAuthenticatedUser(authenticatedRequest());
 	} catch (error) {
 		authError = error;
 	}
 	assert.ok(authFetchCalls > 0, 'the active session must reach Supabase Auth');
-	assert.equal(authError?.status, 429);
+	assert.equal((authError as { status?: number }).status, 429);
 });
 
 test('an invalid session still redirects to sign-in', async () => {
@@ -139,5 +118,5 @@ test('an invalid session still redirects to sign-in', async () => {
 
 	assert.ok(authFetchCalls > 0, 'the active session must reach Supabase Auth');
 	assert.equal(response.status, 307);
-	assert.equal(new URL(response.headers.get('location')).pathname, '/neu');
+	assert.equal(new URL(response.headers.get('location') ?? '').pathname, '/neu');
 });

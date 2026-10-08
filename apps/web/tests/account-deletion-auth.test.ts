@@ -4,14 +4,14 @@ import test from 'node:test';
 const { deleteAuthUser } = await import('../src/core/auth/delete-user.ts');
 const USER_ID = '12d54242-a3ba-47b9-9254-f152f1e44eb0';
 
-function response(status, body) {
+function response(status: number, body: unknown) {
 	return new Response(JSON.stringify(body), {
 		status,
 		headers: { 'Content-Type': 'application/json' },
 	});
 }
 
-function remove(fetchImpl, timeoutMs = 100) {
+function remove(fetchImpl: typeof fetch, timeoutMs = 100) {
 	return deleteAuthUser('https://auth.example.test', 'service-role-test-key', USER_ID, {
 		fetch: fetchImpl,
 		timeoutMs,
@@ -34,12 +34,12 @@ test('permission failures and unrelated 404 responses remain pending', async () 
 });
 
 test('a stalled Auth request is aborted and remains pending', async () => {
-	const stalledFetch = (_input, init) =>
+	const stalledFetch = ((_input: unknown, init: RequestInit) =>
 		new Promise((_resolve, reject) => {
-			init.signal.addEventListener('abort', () =>
+			init.signal?.addEventListener('abort', () =>
 				reject(new DOMException('aborted', 'AbortError')),
 			);
-		});
+		})) as typeof fetch;
 	const keepAlive = setTimeout(() => {}, 100);
 	try {
 		assert.equal(await remove(stalledFetch, 20), false);

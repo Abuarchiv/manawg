@@ -16,18 +16,19 @@ function findFile(basePath) {
 }
 
 export async function resolve(specifier, context, nextResolve) {
-	let basePath = null;
+	let target = null;
 	if (specifier.startsWith('@/')) {
-		basePath = fileURLToPath(new URL(specifier.slice(2), SRC));
+		target = new URL(specifier.slice(2), SRC);
 	} else if (
 		(specifier.startsWith('./') || specifier.startsWith('../')) &&
 		context.parentURL?.startsWith('file:')
 	) {
-		basePath = fileURLToPath(new URL(specifier, context.parentURL));
+		target = new URL(specifier, context.parentURL);
 	}
-	if (basePath) {
-		const file = findFile(basePath);
-		if (file) return nextResolve(pathToFileURL(file).href, context);
+	if (target) {
+		// A query string (`./entry.ts?run=2`) is kept so a test can evaluate a module afresh.
+		const file = findFile(fileURLToPath(target));
+		if (file) return nextResolve(pathToFileURL(file).href + target.search, context);
 		return nextResolve(specifier, context);
 	}
 	try {
@@ -38,4 +39,15 @@ export async function resolve(specifier, context, nextResolve) {
 		if (error?.code !== 'ERR_MODULE_NOT_FOUND' || !/^[@a-z]/i.test(specifier)) throw error;
 		return nextResolve(`${specifier}.js`, context);
 	}
+}
+
+// Side-effect-only entry files without import/export (e.g. `instrumentation-client.ts`) are
+// detected as CommonJS, and a dynamic `import()` inside a second evaluation of such a file
+// (`./entry.ts?run=2`) never settles. Query-suffixed URLs are therefore always loaded as ESM.
+export async function load(url, context, nextLoad) {
+	const result = await nextLoad(url, context);
+	if (url.includes('?') && result.format === 'commonjs-typescript') {
+		return { ...result, format: 'module-typescript' };
+	}
+	return result;
 }

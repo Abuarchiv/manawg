@@ -33,7 +33,7 @@ export function rateLimitFailMode(): 'open' | 'closed' {
 		: 'open';
 }
 
-export function createConfiguredRedis(): Redis | null {
+function createConfiguredRedis(): Redis | null {
 	if (!url || !token) return null;
 	try {
 		const endpoint = new URL(url);

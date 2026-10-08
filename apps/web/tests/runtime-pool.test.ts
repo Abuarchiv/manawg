@@ -1,31 +1,63 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { createRequire } from 'node:module';
+import { mkdtempSync, rmSync } from 'node:fs';
 import net from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import test from 'node:test';
+import { mock, test } from 'node:test';
 import { sql } from 'drizzle-orm';
+import * as realDrizzle from 'drizzle-orm/node-postgres';
+import pg from 'pg';
 
-const require = createRequire(import.meta.url);
-const ts = require('typescript');
+// Every pool the runtime creates is a real pg.Pool that also records its constructor options, so
+// the config assertions and the PostgreSQL integration share one module graph.
+const harness = {
+	pools: [] as TrackedPool[],
+	/** Replaces drizzle with a stub that exposes the pool options (config assertions only). */
+	stubDrizzle: true,
+};
 
-function load(relativePath, mocks, env, logs = []) {
-	const source = readFileSync(new URL(`../src/${relativePath}`, import.meta.url), 'utf8');
-	const compiled = ts.transpileModule(source, {
-		compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
-	}).outputText;
-	const module = { exports: {} };
-	new Function('require', 'module', 'exports', 'process', 'console', compiled)(
-		(id) => (Object.hasOwn(mocks, id) ? mocks[id] : require(id)),
-		module,
-		module.exports,
-		{ env },
-		{ warn: () => {}, error: (...args) => logs.push(args) },
-	);
-	return module.exports;
+class TrackedPool extends pg.Pool {
+	constructorOptions: unknown;
+	testEndPromise?: Promise<void>;
+
+	constructor(options: pg.PoolConfig) {
+		super(options);
+		this.constructorOptions = options;
+		harness.pools.push(this);
+	}
+
+	end(): Promise<void> {
+		this.testEndPromise ??= super.end();
+		return this.testEndPromise;
+	}
 }
+
+mock.module('pg', { namedExports: { Pool: TrackedPool, Client: pg.Client } });
+mock.module('drizzle-orm/node-postgres', {
+	namedExports: {
+		drizzle: (pool: TrackedPool, config: never) =>
+			harness.stubDrizzle
+				? {
+						getConfig: () => pool.constructorOptions,
+						transaction: async () => pool.constructorOptions,
+					}
+				: realDrizzle.drizzle(pool, config),
+	},
+});
+
+const { resolveConnectionString } = await import('../src/core/db/connection.ts');
+const database = (await import('../src/core/db/index.ts')) as unknown as {
+	db: {
+		getConfig: () => unknown;
+		execute: (query: unknown) => Promise<{ rows: Array<Record<string, unknown>> }>;
+	};
+	withTransaction: <T>(
+		fn: (tx: {
+			execute: (query: unknown) => Promise<{ rows: Array<Record<string, unknown>> }>;
+		}) => T,
+	) => Promise<T>;
+};
 
 test(
 	'runtime database pools time out stalled, locked, and slow queries and recover',
@@ -43,57 +75,21 @@ test(
 		for (const parameter of ['lock_timeout', 'query_timeout', 'statement_timeout']) {
 			const url = new URL(runtimeUrl);
 			url.searchParams.set(parameter, '0');
-			const resolver = load(
-				'core/db/connection.ts',
-				{ './supabase-ca': {} },
-				{ POSTGRES_URL: url.href },
-			);
-			assert.throws(() => resolver.resolveConnectionString(), new RegExp(parameter));
+			process.env.POSTGRES_URL = url.href;
+			assert.throws(() => resolveConnectionString(), new RegExp(parameter));
 		}
 		const configuredUrl = new URL(runtimeUrl);
 		configuredUrl.searchParams.set('application_name', 'runtime-pool-test');
 		configuredUrl.searchParams.set('connect_timeout', '0');
-		const resolver = load(
-			'core/db/connection.ts',
-			{ './supabase-ca': {} },
-			{ POSTGRES_URL: configuredUrl.href },
-		);
-		const preserved = new URL(resolver.resolveConnectionString());
+		process.env.POSTGRES_URL = configuredUrl.href;
+		const preserved = new URL(resolveConnectionString());
 		assert.equal(preserved.searchParams.get('application_name'), 'runtime-pool-test');
 		assert.equal(preserved.searchParams.get('connect_timeout'), '0');
 
-		const configEnv = { POSTGRES_URL: runtimeUrl };
-		const connection = {
-			closeClientOnQueryTimeout: () => {},
-			resolveConnectionString: () => runtimeUrl,
-		};
-		const configPools = [];
-		class ConfigPool {
-			constructor(options) {
-				this.options = options;
-				configPools.push(this);
-			}
-
-			on() {}
-		}
-		const poolMock = { Pool: ConfigPool };
-		const configDb = load(
-			'core/db/index.ts',
-			{
-				'./connection': connection,
-				'./schema': {},
-				pg: poolMock,
-				'drizzle-orm/node-postgres': {
-					drizzle: (pool) => ({
-						getConfig: () => pool.options,
-						transaction: async () => pool.options,
-					}),
-				},
-			},
-			configEnv,
-		);
-		assert.deepEqual(configDb.db.getConfig(), expected);
-		assert.deepEqual(await configDb.withTransaction(() => undefined), expected);
+		process.env.POSTGRES_URL = runtimeUrl;
+		const { pools: configPools } = harness;
+		assert.deepEqual(database.db.getConfig(), expected);
+		assert.deepEqual(await database.withTransaction(() => undefined), expected);
 		assert.equal(configPools.length, 1, 'queries and transactions share one pool');
 
 		if (process.env.RUN_DB_TIMEOUT_INTEGRATION !== '1') return;
@@ -123,12 +119,11 @@ test(
 			const result = spawnSync(binary, args, { encoding: 'utf8', timeout: 30_000 });
 			assert.equal(result.status, 0, `${binary} failed: ${result.stderr || result.stdout}`);
 		};
-		let proxy;
+		let proxy: net.Server | undefined;
 		let proxyStarted = false;
 		let dropRepliesForQuery = null;
 		let droppedReplyBytes = 0;
 		const proxySockets = new Set();
-		const pools = [];
 		let pgStarted = false;
 		try {
 			run(initdb.stdout.trim(), [
@@ -198,31 +193,10 @@ test(
 			const proxyAddress = proxy.address();
 			assert.ok(proxyAddress && typeof proxyAddress !== 'string');
 			const testRuntimeUrl = `postgresql://postgres@127.0.0.1:${proxyAddress.port}/postgres?sslmode=disable`;
-			const env = { POSTGRES_URL: testRuntimeUrl };
-			const testConnection = load('core/db/connection.ts', { './supabase-ca': {} }, env);
-			const { Pool, Client } = require('pg');
-			class TrackedPool extends Pool {
-				constructor(options) {
-					super(options);
-					pools.push(this);
-				}
-
-				end() {
-					this.testEndPromise ??= super.end();
-					return this.testEndPromise;
-				}
-			}
-			const drizzlePg = require('drizzle-orm/node-postgres');
-			const db = load(
-				'core/db/index.ts',
-				{
-					'./connection': testConnection,
-					'./schema': {},
-					pg: { Pool: TrackedPool },
-					'drizzle-orm/node-postgres': drizzlePg,
-				},
-				env,
-			);
+			process.env.POSTGRES_URL = testRuntimeUrl;
+			harness.stubDrizzle = false;
+			const { Client } = pg;
+			const db = database;
 
 			const expectConnectTimeout = async (operation) => {
 				stalledConnections += 1;
@@ -329,7 +303,7 @@ test(
 			}
 		} finally {
 			if (proxyStarted) {
-				await Promise.all(pools.map((pool) => pool.end()));
+				await Promise.all(harness.pools.map((pool) => pool.end()));
 				for (const socket of proxySockets) socket.destroy();
 				await new Promise((resolve) => proxy.close(resolve));
 			}
