@@ -610,7 +610,7 @@ test.describe('mobile layout matrix', () => {
 					const rootFontSize = await page.evaluate(
 						() => getComputedStyle(document.documentElement).fontSize,
 					);
-					// Normale Schrift skaliert auf schmalen Handys fluid (90–100 %), 200 % bleibt exakt.
+					// Normal text scales fluidly on narrow phones (90-100%); 200% stays exact.
 					if (textScale === '200%') {
 						expect(rootFontSize).toBe('32px');
 					} else {
