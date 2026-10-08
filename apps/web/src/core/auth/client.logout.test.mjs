@@ -69,6 +69,7 @@ function harness({ serverAvailable = true, unsubscribeResult = true } = {}) {
 		'./supabase-env': {
 			getSupabaseEnv: () => ({ url: 'https://auth.example.test', publishableKey: 'test' }),
 		},
+		'./cookie-options': { authCookieOptions: () => ({}) },
 		'./next-path': { safeNextPath: (value) => value },
 		'@/core/notifications/push-subscribe': pushSubscriptions,
 	});

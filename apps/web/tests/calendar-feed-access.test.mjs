@@ -92,6 +92,10 @@ const eventUtils = loadTypeScriptModule(path.join(srcPath, 'features/events/even
 	'@/features/events/event-limits': loadTypeScriptModule(
 		path.join(srcPath, 'features/events/event-limits.ts'),
 	),
+	'@/features/events/recurrence-rule': loadTypeScriptModule(
+		path.join(srcPath, 'features/events/recurrence-rule.ts'),
+		{ '@/core/utils/time': timeUtils },
+	),
 });
 const eventWindow = loadTypeScriptModule(
 	path.join(srcPath, 'features/events/event-reminder-window.ts'),

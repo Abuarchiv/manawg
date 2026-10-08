@@ -158,3 +158,19 @@ test('SDK timeout results use the existing open and closed failure policies', as
 	assert.equal(harness.logs.length, 2);
 	assert.equal(harness.exceptions.length, 2);
 });
+
+test('a configured limiter that fails does not pass traffic on Preview', async () => {
+	const failing = {
+		limit: async () => {
+			throw new Error('upstash down');
+		},
+	};
+	const preview = loadRateLimit({ env: { NODE_ENV: 'production', VERCEL_ENV: 'preview' } });
+	const denied = await preview.rateLimit.checkRateLimit(failing, '198.51.100.50');
+	assert.equal(denied.success, false);
+	assert.equal(denied.limiterUnavailable, true);
+
+	const development = loadRateLimit({ env: { NODE_ENV: 'development' } });
+	const allowed = await development.rateLimit.checkRateLimit(failing, '198.51.100.50');
+	assert.equal(allowed.success, true);
+});

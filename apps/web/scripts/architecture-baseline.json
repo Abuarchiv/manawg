@@ -263,7 +263,7 @@
 		"src/composition/export-queries.ts": 579,
 		"src/core/db/private-image-deletions.test.mjs": 976,
 		"src/core/db/schema.ts": 1040,
-		"src/features/events/events.ts": 633,
+		"src/features/events/events.ts": 573,
 		"src/features/expenses/import-parsers.ts": 589,
 		"tests/events-boundaries.test.cjs": 851,
 		"tests/offline-integrity.test.mjs": 1192,

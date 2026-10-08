@@ -15,6 +15,7 @@ import {
 	parseRecurringSplits,
 	recurringSplitsMatchAmount,
 } from '@/features/expenses/recurring-expenses';
+import { rotateRemainderCents } from '@/features/expenses/recurring-split-rotation';
 import { settledAtForOwnShare } from '@/features/expenses/split-math';
 import { and, asc, eq, inArray, isNull, lte } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -132,8 +133,14 @@ async function createExpenseForDueAt(
 				.returning({ id: expenses.id });
 			if (!inserted) throw new TransactionAbort('insert_failed');
 
+			const bookedSplits = rotateRemainderCents(
+				splits,
+				template.amountCents,
+				dueAt,
+				template.intervalMonths,
+			);
 			await tx.insert(expenseSplits).values(
-				splits.map((split: RecurringSplit) => ({
+				bookedSplits.map((split: RecurringSplit) => ({
 					expenseId: inserted.id,
 					debtorMemberId: split.debtorMemberId,
 					amountCents: split.amountCents,

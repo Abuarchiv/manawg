@@ -288,6 +288,7 @@ function harness({
 			recurringSplitsMatchAmount: (splits, amount) =>
 				splits.reduce((sum, split) => sum + split.amountCents, 0) === amount,
 		},
+		'@/features/expenses/recurring-split-rotation': { rotateRemainderCents: (splits) => splits },
 		'@/features/expenses/split-math': { settledAtForOwnShare: () => null },
 		'drizzle-orm': { and, asc: (column) => column, eq, inArray, isNull, lte },
 		'next/server': {

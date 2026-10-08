@@ -368,3 +368,22 @@ These behaviors were reviewed in the October 2026 audit and are kept on purpose.
 - **Share-code rotation** keeps the "joining enabled" switch as it was and says which way it stands.
 - **Member names** are unique ignoring case among active members. A moved-out member who holds a name
   a current member wants is renamed to "Name (ausgezogen)". The cap of 20 counts active members only.
+- **Time zones.** Event times are entered and shown in the device's zone; repeats, reminders and the
+  calendar feed follow Berlin wall time. A device elsewhere gets a notice on the calendar page
+  (`TimeZoneNotice`). Pinning every display to Berlin would change the month grid, the agenda and
+  all-day handling together and is not planned.
+- **One date of a series.** A repeating event keeps its removed dates as `EXDATE=` in the rule
+  (`features/events/recurrence-rule.ts`, at most 40); changing one date removes it and creates a
+  single event in one transaction (`POST /events/[id]/occurrence`). Removed dates still count toward
+  `COUNT`.
+- **Import.** Duplicates are counted, not collapsed: the n-th identical row of a file is skipped only
+  while the WG already holds n of them. An import can be taken back by the member who ran it or an
+  admin until any of its shares is settled.
+- **Fixed-cost cents.** An even split's extra cents move on to another member with every booking
+  (`recurring-split-rotation.ts`); uneven custom splits stay as entered.
+- **Uploads.** Pictures that no row points at after 14 days are removed from the private bucket by
+  the maintenance cron, a few WGs per run.
+- **Signing secret rotation.** `MEMBER_SESSION_SECRET_PREVIOUS` keeps calendar feed URLs and recovery
+  proofs valid while the secret changes.
+- **Preview limiter.** A configured rate limiter that fails does not pass traffic on Preview; an
+  unconfigured one still does (fixtures, local runs).

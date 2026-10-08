@@ -1,11 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { acceptedSigningSecrets } from '@/core/infra/signing-secrets';
 
 const LEGACY_TOKEN_PATTERN = /^[0-9a-f]{64}$/i;
-
-function getSecret(): string | null {
-	const raw = process.env.MEMBER_SESSION_SECRET;
-	return raw && raw.trim().length > 0 ? raw.trim() : null;
-}
 
 /**
  * Proof for the explicit legacy-profile recovery (`POST .../members/[id]/claim`).
@@ -25,10 +21,13 @@ export function verifyLegacyClaimProof(
 	token: string | null | undefined,
 ): boolean {
 	if (!token || !LEGACY_TOKEN_PATTERN.test(token)) return false;
-	const secret = getSecret();
-	if (!secret) return false;
-	const expectedBuf = createHmac('sha256', secret).update(`${wgId}:${memberId}`).digest();
 	const providedBuf = Buffer.from(token, 'hex');
-	if (expectedBuf.length !== providedBuf.length) return false;
-	return timingSafeEqual(expectedBuf, providedBuf);
+	let valid = false;
+	for (const secret of acceptedSigningSecrets()) {
+		const expectedBuf = createHmac('sha256', secret).update(`${wgId}:${memberId}`).digest();
+		if (expectedBuf.length === providedBuf.length && timingSafeEqual(expectedBuf, providedBuf)) {
+			valid = true;
+		}
+	}
+	return valid;
 }

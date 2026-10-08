@@ -211,8 +211,11 @@ export async function checkRateLimit(
 		if (r.reason === 'timeout') throw new Error('Upstash rate-limit timed out');
 		return { success: r.success, remaining: r.remaining, reset: r.reset };
 	} catch {
-		reportUnavailable('limiter-call-failed', failMode, true);
-		if (failMode === 'closed') {
+		// A configured limiter that fails must not pass traffic on Preview either: that is where
+		// a wrong token or URL should surface, before it reaches production.
+		const mode = process.env.VERCEL_ENV === 'preview' ? 'closed' : failMode;
+		reportUnavailable('limiter-call-failed', mode, true);
+		if (mode === 'closed') {
 			return { success: false, remaining: 0, reset: Date.now() + 60_000, limiterUnavailable: true };
 		}
 		return { success: true, remaining: -1, reset: 0 };

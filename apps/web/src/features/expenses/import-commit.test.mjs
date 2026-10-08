@@ -201,6 +201,51 @@ test('duplicate checks distinguish currencies and keep the legacy EUR import key
 	assert.deepEqual([skipped.inserted, skipped.skipped], [0, 1]);
 });
 
+test('two identical purchases inside one file are both imported', async () => {
+	const coffee = {
+		date: '2025-03-01',
+		description: 'Kaffee',
+		amountCents: 300,
+		currency: 'EUR',
+		paidByName: 'Alice',
+		splits: [{ memberName: 'Alice', amountCents: 300 }],
+		warnings: [],
+	};
+	const run = runCommit([], { rows: [coffee, coffee] });
+	const result = await run.commit();
+	assert.deepEqual([result.inserted, result.skipped], [2, 0]);
+	assert.deepEqual(
+		run.state.inserted.map((row) => row.importDuplicateKey),
+		[
+			'2025-03-01|kaffee|300|33333333-3333-4333-8333-333333333333',
+			'2025-03-01|kaffee|300|33333333-3333-4333-8333-333333333333|#2',
+		],
+	);
+});
+
+test('a re-imported file skips as many rows as the WG already holds, no more', async () => {
+	const coffee = {
+		date: '2025-03-01',
+		description: 'Kaffee',
+		amountCents: 300,
+		currency: 'EUR',
+		paidByName: 'Alice',
+		splits: [{ memberName: 'Alice', amountCents: 300 }],
+		warnings: [],
+	};
+	const existing = {
+		wgId,
+		paidByMemberId: memberId,
+		description: 'Kaffee',
+		amountCents: 300,
+		currency: 'EUR',
+		occurredAt: new Date('2025-03-01T12:00:00.000Z'),
+	};
+	const run = runCommit([existing], { rows: [coffee, coffee] });
+	const result = await run.commit();
+	assert.deepEqual([result.inserted, result.skipped], [1, 1]);
+});
+
 const foreignRow = {
 	date: '2025-02-01',
 	description: 'Strom',

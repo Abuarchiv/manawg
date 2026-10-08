@@ -8,6 +8,7 @@ import Link from 'next/link';
 import type { Ref } from 'react';
 import { ImportProgress } from './ImportProgress';
 import { ImportStepHeading } from './ImportStepHeading';
+import { ImportUndo } from './ImportUndo';
 import type { CommitResponse } from './import-wizard-types';
 
 interface ImportResultStepProps {
@@ -63,6 +64,7 @@ export function ImportResultStep({
 					</AlertDescription>
 				</Alert>
 			)}
+			{result.inserted > 0 && <ImportUndo importId={result.importId} />}
 			<Link href={expensesHref} className={buttonVariants({ className: 'min-h-11' })}>
 				Zu den Ausgaben
 			</Link>

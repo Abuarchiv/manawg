@@ -9,7 +9,7 @@ const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
 const routePath = path.join(process.cwd(), 'src/app/api/cron/chore-reminders/route.ts');
 const now = new Date('2026-09-25T06:00:00.000Z');
 
-function harness({ choreCount }) {
+function harness({ choreCount, unassignedCount = 0 }) {
 	const chores = {
 		id: 'chores.id',
 		title: 'chores.title',
@@ -35,6 +35,7 @@ function harness({ choreCount }) {
 		maxInFlight: 0,
 		dispatched: [],
 		payloads: [],
+		targets: [],
 		stamped: null,
 	};
 	const rows = Array.from({ length: choreCount }, (_, index) => ({
@@ -48,30 +49,41 @@ function harness({ choreCount }) {
 		shareCode: 'MTE8PZAT',
 	}));
 
+	const unassignedRows = Array.from({ length: unassignedCount }, (_, index) => ({
+		...rows[0],
+		id: `orphan-${index}`,
+		title: `Unassigned ${index}`,
+		assignedMemberId: null,
+	}));
+
 	const op =
 		(operator) =>
 		(...args) => ({ operator, args });
 	const db = {
 		select() {
 			let table;
+			let joinsMembers = false;
 			const query = {
 				from(selected) {
 					table = selected;
 					return query;
 				},
-				innerJoin() {
+				innerJoin(joined) {
+					if (joined === wgMembers) joinsMembers = true;
 					return query;
 				},
 				where(predicate) {
 					if (table === choreCompletions) return Promise.resolve([]);
-					state.candidateWhere = predicate;
+					// The unassigned-chore query has no member join and finds nothing here.
+					if (joinsMembers) state.candidateWhere = predicate;
 					return query;
 				},
 				orderBy(...order) {
-					state.orderBy = order;
+					if (joinsMembers) state.orderBy = order;
 					return query;
 				},
 				limit(value) {
+					if (!joinsMembers) return Promise.resolve(unassignedRows.slice(0, value));
 					state.limit = value;
 					return Promise.resolve(rows.slice(0, value));
 				},
@@ -102,6 +114,7 @@ function harness({ choreCount }) {
 				state.inFlight -= 1;
 				state.dispatched.push(notification.payload.choreId);
 				state.payloads.push(notification.payload);
+				state.targets.push(notification.targetMemberIds);
 				return { sent: 1, failures: [] };
 			},
 		},
@@ -226,4 +239,20 @@ test('a large reminder backlog is dispatched in batches of ten', async (t) => {
 	assert.equal(state.dispatched.length, 45);
 	assert.equal(state.stamped.length, 45);
 	assert.equal(new Set(state.stamped).size, 45);
+});
+
+test('a chore nobody is assigned to is announced to the whole WG', async (t) => {
+	t.mock.timers.enable({ apis: ['Date'], now });
+	const { state, get } = harness({ choreCount: 1, unassignedCount: 1 });
+	await withCronSecret(async () => {
+		const response = await get();
+		assert.deepEqual(await response.json(), { ok: true, sent: 2 });
+	});
+
+	const index = state.payloads.findIndex((payload) => payload.choreId === 'orphan-0');
+	assert.equal(state.payloads[index].unassigned, true);
+	assert.equal(state.targets[index], undefined, 'no target list means every eligible member');
+	const assigned = state.payloads.findIndex((payload) => payload.choreId === 'chore-0');
+	assert.deepEqual(state.targets[assigned], ['member-0']);
+	assert.equal(state.payloads[assigned].unassigned, undefined);
 });

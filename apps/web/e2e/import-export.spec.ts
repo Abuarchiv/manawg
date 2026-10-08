@@ -602,6 +602,64 @@ test.describe('import wizard responsive', () => {
 	}
 });
 
+test.describe('import undo', () => {
+	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+
+	test('the result step takes the whole import back after a second tap', async ({ page }) => {
+		await page.setViewportSize({ width: 360, height: 844 });
+		await setupMember(page);
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/imports/preview`, (route) =>
+			route.fulfill({
+				json: {
+					parsed: [
+						{
+							date: '2026-09-25T00:00:00.000Z',
+							description: 'Wocheneinkauf',
+							amountCents: 1200,
+							currency: 'EUR',
+							paidByName: FIXTURE_WG.memberName,
+							splits: [{ memberName: FIXTURE_WG.memberName, amountCents: 1200 }],
+							warnings: [],
+						},
+					],
+					payloadHash: 'undo-import-payload',
+					memberMapping: { [FIXTURE_WG.memberName]: FIXTURE_WG.memberId },
+					conflicts: [],
+					members: [{ id: FIXTURE_WG.memberId, name: FIXTURE_WG.memberName }],
+				},
+			}),
+		);
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/imports/commit`, (route) =>
+			route.fulfill({
+				json: { importId: 'undo-import', inserted: 1, skipped: 0, errors: [], warning: null },
+			}),
+		);
+		const undoRequests: string[] = [];
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/imports/undo-import`, (route) => {
+			undoRequests.push(route.request().method());
+			return route.fulfill({ json: { removed: 1 } });
+		});
+
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/import`);
+		await dismissOnboarding(page);
+		await page.getByRole('button', { name: /Splitwise CSV/ }).click();
+		await page.getByText('Oder Inhalt einfügen', { exact: true }).click();
+		await page.getByRole('textbox', { name: 'Inhalt des Exports' }).fill('fixture export');
+		await page.getByRole('button', { name: 'Vorschau erstellen', exact: true }).click();
+		await page.getByRole('button', { name: 'Weiter zur Vorschau', exact: true }).click();
+		await page.getByRole('button', { name: 'Importieren (1)', exact: true }).click();
+		await expect(page.getByRole('heading', { name: 'Import abgeschlossen' })).toBeVisible();
+
+		await page.getByRole('button', { name: 'Import rückgängig machen' }).click();
+		expect(undoRequests).toEqual([]);
+		await page
+			.getByRole('button', { name: 'Wirklich alle importierten Ausgaben entfernen' })
+			.click();
+		await expect(page.getByText('Import rückgängig gemacht: 1 Ausgabe entfernt.')).toBeVisible();
+		expect(undoRequests).toEqual(['DELETE']);
+	});
+});
+
 test.describe('import error notice', () => {
 	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
 	test.use({ hasTouch: true, isMobile: true });

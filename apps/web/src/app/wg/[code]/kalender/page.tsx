@@ -16,6 +16,7 @@ import {
 } from '@/features/events/components/CalendarUpcomingList';
 import { EventCreateModal } from '@/features/events/components/EventCreateModal';
 import { EventEditModal } from '@/features/events/components/EventEditModal';
+import { TimeZoneNotice } from '@/features/events/components/TimeZoneNotice';
 import { useCalendarPage } from '@/features/events/hooks/use-calendar-page';
 import { haptic } from '@/shared/lib/haptics';
 import { CalendarDays, List, Plus } from 'lucide-react';
@@ -110,6 +111,8 @@ export default function KalenderPage() {
 						: `${calendar.eventCount} WG-Termin${calendar.eventCount === 1 ? '' : 'e'}`}
 				</p>
 			</header>
+
+			<TimeZoneNotice />
 
 			{actionError && (
 				<Alert variant="destructive">
@@ -217,6 +220,9 @@ export default function KalenderPage() {
 				onClose={() => calendar.setEditing(null)}
 				onUpdate={calendar.updateEvent}
 				onDelete={calendar.deleteEvent}
+				occurrence={editingOccurrence}
+				onUpdateOccurrence={calendar.updateOccurrence}
+				onDeleteOccurrence={calendar.deleteOccurrence}
 				actionError={actionError}
 				readOnly={
 					calendar.editing !== null &&

@@ -19,6 +19,7 @@ const REMINDER_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000;
 // Per-run cap; throttled chores are excluded in SQL, so a larger backlog is
 // drained by the following runs instead of being loaded in one go.
 const REMINDER_CANDIDATE_LIMIT = 500;
+const UNASSIGNED_CANDIDATE_LIMIT = 100;
 // Same concurrency cap as the event-reminders cron.
 const DISPATCH_BATCH_SIZE = 10;
 const localReminderClaims = new Map<string, number>(); // claim key -> expiry (epoch ms)
@@ -44,7 +45,8 @@ interface DueChore {
 	shareCode: string;
 }
 
-type PendingChore = Omit<DueChore, 'assignedMemberId'> & { assignedMemberId: string };
+// An unassigned chore (its assignee moved out) goes to every member who wants chore pushes.
+type PendingChore = DueChore;
 
 function getReminderClaimTable(): typeof dbSchema.idempotencyResponses | null {
 	return 'idempotencyResponses' in dbSchema ? dbSchema.idempotencyResponses : null;
@@ -151,6 +153,32 @@ export const GET = withCronLogging(
 			.orderBy(sql`${chores.lastReminderAt} asc nulls first`, asc(chores.nextDueAt), asc(chores.id))
 			.limit(REMINDER_CANDIDATE_LIMIT)) as DueChore[];
 
+		// Nobody is answerable for these, so without a reminder they would simply stay overdue.
+		const unassigned = (await db
+			.select({
+				id: chores.id,
+				title: chores.title,
+				nextDueAt: chores.nextDueAt,
+				assignedMemberId: chores.assignedMemberId,
+				lastReminderAt: chores.lastReminderAt,
+				wgId: wgs.id,
+				wgName: wgs.name,
+				shareCode: wgs.shareCode,
+			})
+			.from(chores)
+			.innerJoin(wgs, eq(chores.wgId, wgs.id))
+			.where(
+				and(
+					lte(chores.nextDueAt, endOfDay),
+					gte(chores.nextDueAt, lookbackStart),
+					isNull(chores.assignedMemberId),
+					or(isNull(chores.lastReminderAt), lte(chores.lastReminderAt, throttleCutoff)),
+				),
+			)
+			.orderBy(sql`${chores.lastReminderAt} asc nulls first`, asc(chores.nextDueAt), asc(chores.id))
+			.limit(UNASSIGNED_CANDIDATE_LIMIT)) as DueChore[];
+		due.push(...unassigned);
+
 		if (due.length === 0) return NextResponse.json({ ok: true, sent: 0 });
 
 		const completions = await db
@@ -167,7 +195,6 @@ export const GET = withCronLogging(
 			);
 		const completedToday = new Set(completions.map((item) => item.choreId));
 		const pending = due.filter((item): item is PendingChore => {
-			if (!item.assignedMemberId) return false;
 			if (completedToday.has(item.id)) return false;
 			// Throttle: skip if we already pinged the assignee within the window.
 			// `lastReminderAt` is null for chores that have never been reminded —
@@ -200,11 +227,12 @@ export const GET = withCronLogging(
 							wg: { id: item.wgId, name: item.wgName, shareCode: item.shareCode },
 							event: 'chore.due',
 							payload: {
+								...(item.assignedMemberId ? {} : { unassigned: true }),
 								title: item.title,
 								choreId: item.id,
 								nextDueAt: item.nextDueAt.toISOString(),
 							},
-							targetMemberIds: [item.assignedMemberId],
+							...(item.assignedMemberId ? { targetMemberIds: [item.assignedMemberId] } : {}),
 						});
 					} catch (err) {
 						console.warn('[chore-reminders] notification dispatch failed');

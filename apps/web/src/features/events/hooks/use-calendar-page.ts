@@ -19,6 +19,7 @@ import {
 	getCalendarDayBounds,
 	getMonthBounds,
 } from '@/features/events/events';
+import { postOccurrenceChange } from '@/features/events/occurrence-api';
 import { haptic } from '@/shared/lib/haptics';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -335,6 +336,41 @@ export function useCalendarPage(month: Date) {
 		if (res.ok) toast.success('Termin gelöscht.');
 	}
 
+	/** One date of a series: cancel it, or replace it with a single event built from `payload`. */
+	async function changeOccurrence(
+		id: string,
+		occurrenceStartsAt: string,
+		payload: UpdateEventPayload | null,
+	): Promise<void> {
+		setActionError(null);
+		const res = await postOccurrenceChange<CalendarEvent>(
+			eventsBaseUrl,
+			identity.memberId,
+			id,
+			occurrenceStartsAt,
+			payload,
+		);
+		if (!res.ok) {
+			if (isEventGone(res)) {
+				updateEvents((current) => current.filter((event) => event.id !== id));
+			}
+			const message =
+				res.error === 'occurrence_changed' || res.error === 'occurrence_not_found'
+					? 'Dieser Termin wurde inzwischen geändert. Die Ansicht wird aktualisiert.'
+					: eventSaveError('Termin konnte nicht geändert werden', res);
+			if (res.status === 409 || res.status === 404) void load(false);
+			toast.error(message);
+			throw new Error(message);
+		}
+		const { event, created } = res.data;
+		updateEvents((current) => [
+			...current.map((item) => (item.id === id ? event : item)),
+			...(created ? [created] : []),
+		]);
+		setEditing(null);
+		toast.success(payload ? 'Termin geändert.' : 'Termin entfernt.');
+	}
+
 	return {
 		eventCount: events.length,
 		loading,
@@ -355,5 +391,9 @@ export function useCalendarPage(month: Date) {
 		createEvent,
 		updateEvent,
 		deleteEvent,
+		updateOccurrence: (id: string, occurrenceStartsAt: string, payload: UpdateEventPayload) =>
+			changeOccurrence(id, occurrenceStartsAt, payload),
+		deleteOccurrence: (id: string, occurrenceStartsAt: string) =>
+			changeOccurrence(id, occurrenceStartsAt, null),
 	};
 }

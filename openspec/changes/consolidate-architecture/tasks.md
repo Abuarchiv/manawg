@@ -6,7 +6,7 @@
 ## 2. Data access and identity
 
 - [ ] 2.1 One pool and one module for `db` and `withTransaction`.
-- [ ] 2.2 Remove the member token, `verified`, `requireVerifiedMember`, `isVerifiedWgAdmin`, `checkWgAdminAccess` and client `member_not_verified` branches.
+- [x] 2.2 Remove the member token, `verified`, `requireVerifiedMember`, `isVerifiedWgAdmin`, `checkWgAdminAccess` and client `member_not_verified` branches.
 - [ ] 2.3 Typed failure reason from `requireMember`; drop response-JSON sniffing.
 
 ## 3. HTTP and idempotency
@@ -24,8 +24,8 @@
 - [x] 5.1 `useSyncedCollection` and one online/visibility subscription; migrate shopping, chores, inventory, pinnwand.
 - [ ] 5.2 Chore completion implemented once.
 - [x] 5.3 Split the dashboard page, `ImportWizard`, the shopping and chat hooks.
-- [ ] 5.4 One component tree; remove `components/neu` and `shared/components/ui`.
-- [ ] 5.5 Replace Zustand in the toast store; drop the dependency.
+- [x] 5.4 One component tree; remove `components/neu` and `shared/components/ui`.
+- [x] 5.5 Replace Zustand in the toast store; drop the dependency.
 
 ## 6. Tests
 

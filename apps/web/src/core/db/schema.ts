@@ -68,15 +68,10 @@ export const wgs = pgTable(
 	}),
 );
 
-// FK policy toward wgMembers (intentional placeholder — no member-removal feature exists yet,
-// only whole-WG deletion, so this is currently dead protection):
-// - onDelete: 'restrict' — financial/audit tables (expenses, expenseSplits, shoppingItems,
-//   announcements, choreCompletions, recurringExpenses) where losing the historical member
-//   reference would corrupt records once member-removal ships.
-// - onDelete: 'cascade' — tables (absences, debts, chat) whose rows are meaningless without
-//   the member and can safely disappear with them.
-// When implementing member removal, keep 'restrict' tables intact (reassign/soft-delete the
-// member instead of hard-deleting) rather than relaxing these to 'cascade'.
+// FK policy toward wgMembers: 'restrict' on the financial and audit tables (expenses, splits,
+// shopping items, announcements, chore completions, recurring expenses) keeps history intact, so
+// members leave through deactivated_at ("Auszug") and are never deleted; 'cascade' on tables
+// (absences, debts, chat) whose rows mean nothing without the member.
 export const wgMembers = pgTable(
 	'wg_members',
 	{
@@ -447,6 +442,8 @@ export const chores = pgTable(
 	},
 	(t) => ({
 		wgIdx: index('chores_wg_idx').on(t.wgId, t.nextDueAt),
+		// The reminder cron scans every WG for chores due in a window.
+		nextDueIdx: index('chores_next_due_idx').on(t.nextDueAt),
 		// Mirrors CHORE_RECURRENCE_TYPES below — every write goes through a zod
 		// enum of the same two values, and the column has always defaulted to
 		// 'days'. Added NOT VALID out of caution for any row from before that
@@ -528,6 +525,9 @@ export const recurringExpenses = pgTable(
 	},
 	(t) => ({
 		wgIdx: index('recurring_expenses_wg_idx').on(t.wgId, t.nextDueAt),
+		nextDueIdx: index('recurring_expenses_next_due_idx')
+			.on(t.nextDueAt)
+			.where(sql`${t.pausedAt} IS NULL`),
 		amountCheck: check('recurring_expenses_amount_cents_check', sql`${t.amountCents} > 0`),
 	}),
 );

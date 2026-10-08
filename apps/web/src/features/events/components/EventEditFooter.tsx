@@ -10,6 +10,7 @@ export function EventEditFooter({
 	saving,
 	onCancel,
 	onDelete,
+	deleteLabel = 'Termin löschen',
 	onExportIcs,
 }: {
 	readOnly: boolean;
@@ -17,6 +18,7 @@ export function EventEditFooter({
 	saving: boolean;
 	onCancel: () => void;
 	onDelete: () => void;
+	deleteLabel?: string;
 	onExportIcs?: (() => void) | undefined;
 }) {
 	return (
@@ -58,10 +60,10 @@ export function EventEditFooter({
 						className="h-auto min-h-8 min-w-fit flex-1 py-1.5"
 						onClick={onDelete}
 						disabled={busy}
-						aria-label="Termin löschen"
+						aria-label={deleteLabel}
 					>
 						<Trash2 data-icon="inline-start" aria-hidden />
-						Termin löschen
+						{deleteLabel}
 					</Button>
 				)}
 			</div>

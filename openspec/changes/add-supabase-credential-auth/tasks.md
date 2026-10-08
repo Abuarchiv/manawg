@@ -6,10 +6,10 @@
 
 ## 2. Credential implementation
 
-- [ ] 2.1 Add accessible Google, email/password sign-up/sign-in, and phone/SMS OTP UI using the existing Supabase browser client; verify Node 22 typecheck and production build.
-- [ ] 2.2 Preserve only validated create/join intent through every auth method and reload account state after a resulting session; verify no automatic WG or membership write occurs.
-- [ ] 2.3 Remove disabled Apple/Facebook choices and add generic failure states that do not enumerate accounts; verify source checks and focused E2E coverage.
-- [ ] 2.4 Add password recovery before broad password-only promotion; verify the confirmation and recovery callback reach the intended safe route without exposing credentials.
+- [x] 2.1 Add accessible Google, email/password sign-up/sign-in, and phone/SMS OTP UI using the existing Supabase browser client; verify Node 22 typecheck and production build.
+- [x] 2.2 Preserve only validated create/join intent through every auth method and reload account state after a resulting session; verify no automatic WG or membership write occurs.
+- [x] 2.3 Remove disabled Apple/Facebook choices and add generic failure states that do not enumerate accounts; verify source checks and focused E2E coverage.
+- [x] 2.4 Add password recovery before broad password-only promotion; verify the confirmation and recovery callback reach the intended safe route without exposing credentials.
 
 ## 3. Hosted Supabase release gates
 

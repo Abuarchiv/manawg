@@ -1,0 +1,2 @@
+CREATE INDEX "chores_next_due_idx" ON "chores" USING btree ("next_due_at");--> statement-breakpoint
+CREATE INDEX "recurring_expenses_next_due_idx" ON "recurring_expenses" USING btree ("next_due_at") WHERE "recurring_expenses"."paused_at" IS NULL;

@@ -128,6 +128,11 @@ function berlinDayNumber(date: Date): number {
 // Reminders also fire for chores overdue up to a week and for new chores due
 // tomorrow, so the copy follows the Berlin calendar distance to nextDueAt.
 function choreDueBody(payload: Record<string, unknown>, wgName: string): string {
+	const body = choreDueSentence(payload, wgName);
+	return payload.unassigned === true ? `${body} Niemand ist zuständig.` : body;
+}
+
+function choreDueSentence(payload: Record<string, unknown>, wgName: string): string {
 	const title = text(payload.title, 'Eine Aufgabe');
 	const dueAt = typeof payload.nextDueAt === 'string' ? new Date(payload.nextDueAt) : null;
 	if (!dueAt || Number.isNaN(dueAt.getTime())) return `${title} ist heute in ${wgName} fällig.`;

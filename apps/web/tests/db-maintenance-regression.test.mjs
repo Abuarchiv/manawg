@@ -152,7 +152,11 @@ test('maintenance attempts deletion recovery when idempotency cleanup fails', as
 			'@/features/expenses/paypal-reconcile': {
 				reconcileStaleCapturingPayments: async () => null,
 			},
-			'@/core/infra/supabase-storage': { removeSupabaseImages: async () => undefined },
+			'@/core/db/orphan-uploads': { sweepOrphanUploads: async () => null },
+			'@/core/infra/supabase-storage': {
+				getImageStorageProvider: () => 'aws',
+				removeSupabaseImages: async () => undefined,
+			},
 			'next/server': { NextResponse: Response },
 		},
 		env,
@@ -165,6 +169,7 @@ test('maintenance attempts deletion recovery when idempotency cleanup fails', as
 		ok: false,
 		purgedIdempotencyRows: null,
 		paypalReconcile: null,
+		orphanUploads: null,
 		accountDeletions: { ...recoveryResult, authAdminAvailable: false },
 		privateImageCleanup: {
 			attempted: 0,
@@ -187,6 +192,7 @@ test('maintenance attempts deletion recovery when idempotency cleanup fails', as
 		ok: true,
 		purgedIdempotencyRows: 1,
 		paypalReconcile: null,
+		orphanUploads: null,
 		accountDeletions: { ...recoveryResult, authAdminAvailable: false },
 		privateImageCleanup: {
 			attempted: 0,
