@@ -1,86 +1,175 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import path from 'node:path';
-import test from 'node:test';
-import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
-import { loadParseBody } from '../../../../../../../tests/support/claimed-response.cjs';
+import { mock, test } from 'node:test';
 
-const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
 const wgId = '1bc67a5a-5c08-4c0d-8eaf-520def98021a';
 const fromMemberId = '2bc67a5a-5c08-4c0d-8eaf-520def98021a';
 const toMemberId = '3bc67a5a-5c08-4c0d-8eaf-520def98021a';
 
-function loadOrderRoute(overrides) {
-	const source = readFileSync('src/app/api/wg/[code]/paypal/order/route.ts', 'utf8');
-	const compiled = transpileModule(source, {
-		compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
-	}).outputText;
-	const loaded = { exports: {} };
-	new Function('require', 'module', 'exports', compiled)(
-		(name) => (name in overrides ? overrides[name] : requireFromWeb(name)),
-		loaded,
-		loaded.exports,
-	);
-	return loaded.exports;
+// The real provider client stays in place for the API-helper test; the route sees a faked subset.
+const realPayPal = await import('@/core/infra/paypal');
+
+const wgMembers = {
+	id: 'id',
+	wgId: 'wgId',
+	name: 'name',
+	color: 'color',
+	paypalMerchantId: 'paypalMerchantId',
+};
+const expensePayments = {
+	id: 'id',
+	wgId: 'wgId',
+	fromMemberId: 'fromMemberId',
+	toMemberId: 'toMemberId',
+	provider: 'provider',
+	providerOrderId: 'providerOrderId',
+	amountCents: 'amountCents',
+	currency: 'currency',
+	status: 'status',
+	expiresAt: 'expiresAt',
+	payeeMerchantId: 'payeeMerchantId',
+};
+
+interface Condition {
+	kind: string;
+	conditions?: Condition[];
+	field?: string;
+	value?: unknown;
+	values?: unknown[];
+}
+type Row = Record<string, unknown>;
+interface PaymentRow extends Row {
+	id: string;
+	status: string;
+	providerOrderId: string;
+}
+interface Update {
+	status?: string;
+	providerOrderId?: string;
+}
+interface OrderRequest {
+	requestId: string;
 }
 
-function loadPayPalInfra() {
-	const source = readFileSync('src/core/infra/paypal.ts', 'utf8');
-	const compiled = transpileModule(source, {
-		compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
-	}).outputText;
-	const loaded = { exports: {} };
-	new Function('require', 'module', 'exports', compiled)(
-		(name) => requireFromWeb(name),
-		loaded,
-		loaded.exports,
+// The scenario of the harness that issued the current request; mocks read it at call time.
+interface Active {
+	tx: unknown;
+	isPayPalMerchantReady: () => Promise<boolean>;
+	createPayPalOrder: (input: OrderRequest) => Promise<{ id: string }>;
+	drizzle: {
+		and: (...conditions: unknown[]) => unknown;
+		eq: (field: unknown, value: unknown) => unknown;
+		inArray: (field: unknown, values: unknown) => unknown;
+		lte: (field: unknown, value: unknown) => unknown;
+	};
+}
+let active: Active;
+
+mock.module('@/core/db', { namedExports: { db: {}, expensePayments, wgMembers } });
+mock.module('@/core/guards/require-wg-member', {
+	namedExports: {
+		requireWgMember: async () => ({
+			ok: true,
+			wg: { id: wgId },
+			member: { memberId: fromMemberId },
+		}),
+	},
+});
+mock.module('@/core/infra/observability', {
+	namedExports: { captureException: () => undefined, logApiError: () => undefined },
+});
+mock.module('@/core/infra/paypal', {
+	namedExports: {
+		isPayPalConfigured: () => true,
+		isTerminalPayPalOrderCreationError: realPayPal.isTerminalPayPalOrderCreationError,
+		createPayPalOrder: (input: OrderRequest) => active.createPayPalOrder(input),
+	},
+});
+mock.module('@/core/infra/paypal-onboarding', {
+	namedExports: { isPayPalMerchantReady: () => active.isPayPalMerchantReady() },
+});
+mock.module('@/core/rate-limit', {
+	namedExports: { checkRateLimit: async () => ({ success: true }), wgWriteLimiter: {} },
+});
+mock.module('@/features/expenses/debt-reduction', {
+	namedExports: {
+		computeNetBalances: () => [],
+		simplifyDebts: () => [
+			{ fromId: fromMemberId, toId: toMemberId, cents: 1_000, currency: 'EUR' },
+		],
+	},
+});
+mock.module('@/features/expenses/debts', {
+	namedExports: {
+		computeBalances: () => [
+			{ debtorId: fromMemberId, creditorId: toMemberId, amountCents: 1_000, currency: 'EUR' },
+		],
+	},
+});
+mock.module('@/features/expenses/expense-payments', {
+	namedExports: {
+		PAYPAL_ORDER_TTL_MS: 60_000,
+		loadCompletedExpensePayments: async () => [],
+		withExpensePaymentLock: async (_id: string, operation: (tx: unknown) => unknown) =>
+			operation(active.tx),
+	},
+});
+mock.module('@/features/expenses/open-expenses', {
+	namedExports: { loadOpenExpenses: async () => [] },
+});
+mock.module('drizzle-orm', {
+	namedExports: {
+		and: (...conditions: unknown[]) => active.drizzle.and(...conditions),
+		eq: (field: unknown, value: unknown) => active.drizzle.eq(field, value),
+		inArray: (field: unknown, values: unknown) => active.drizzle.inArray(field, values),
+		lte: (field: unknown, value: unknown) => active.drizzle.lte(field, value),
+		sql: (parts: unknown, ...values: unknown[]) => ({ kind: 'sql', parts, values }),
+	},
+});
+
+const { POST } = await import('./route');
+
+function postOrder() {
+	return POST(
+		new Request('https://manawg.example/api/paypal/order', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ fromMemberId, toMemberId, currency: 'EUR' }),
+		}) as never,
+		{ params: Promise.resolve({ code: 'MTE8PZAT' }) } as never,
 	);
-	return loaded.exports;
 }
 
-function makeOrderHarness({ isPayPalMerchantReady, createPayPalOrder }) {
-	const wgMembers = {
-		id: 'id',
-		wgId: 'wgId',
-		name: 'name',
-		color: 'color',
-		paypalMerchantId: 'paypalMerchantId',
-	};
-	const expensePayments = {
-		id: 'id',
-		wgId: 'wgId',
-		fromMemberId: 'fromMemberId',
-		toMemberId: 'toMemberId',
-		provider: 'provider',
-		providerOrderId: 'providerOrderId',
-		amountCents: 'amountCents',
-		currency: 'currency',
-		status: 'status',
-		expiresAt: 'expiresAt',
-		payeeMerchantId: 'payeeMerchantId',
-	};
+function makeOrderHarness({
+	isPayPalMerchantReady,
+	createPayPalOrder,
+}: {
+	isPayPalMerchantReady: () => Promise<boolean>;
+	createPayPalOrder: (input: OrderRequest) => Promise<{ id: string }>;
+}) {
 	const members = [
 		{ id: fromMemberId, wgId, name: 'Payer', color: 'blue', paypalMerchantId: null },
 		{ id: toMemberId, wgId, name: 'Payee', color: 'green', paypalMerchantId: '2B23456789ABC' },
 	];
-	const state = { payment: null, failedUpdates: 0 };
-	const z = requireFromWeb('zod').z;
+	// `payment` stays unset until the route reserves one.
+	const state = { payment: null as unknown as PaymentRow, failedUpdates: 0 };
 
-	function matches(row, condition) {
+	function matches(row: Row, condition: Condition | null | undefined): boolean {
 		if (!condition) return true;
-		if (condition.kind === 'and') return condition.conditions.every((part) => matches(row, part));
-		if (condition.kind === 'eq') return row[condition.field] === condition.value;
-		if (condition.kind === 'in') return condition.values.includes(row[condition.field]);
-		if (condition.kind === 'lte') return row[condition.field] <= condition.value;
+		const field = condition.field as string;
+		if (condition.kind === 'and') {
+			return (condition.conditions ?? []).every((part) => matches(row, part));
+		}
+		if (condition.kind === 'eq') return row[field] === condition.value;
+		if (condition.kind === 'in') return (condition.values ?? []).includes(row[field]);
+		if (condition.kind === 'lte') return (row[field] as Date) <= (condition.value as Date);
 		return true;
 	}
 
 	function queryBuilder() {
-		let rows = [];
+		let rows: Row[] = [];
 		const query = Promise.resolve().then(() => rows);
 		Object.assign(query, {
-			from(table) {
+			from(table: unknown) {
 				rows =
 					table === wgMembers
 						? members
@@ -89,11 +178,11 @@ function makeOrderHarness({ isPayPalMerchantReady, createPayPalOrder }) {
 							: [];
 				return query;
 			},
-			where(condition) {
+			where(condition: Condition) {
 				rows = rows.filter((row) => matches(row, condition));
 				return query;
 			},
-			limit(count) {
+			limit(count: number) {
 				return Promise.resolve(rows.slice(0, count));
 			},
 		});
@@ -103,19 +192,19 @@ function makeOrderHarness({ isPayPalMerchantReady, createPayPalOrder }) {
 	const tx = {
 		select: () => queryBuilder(),
 		insert: () => ({
-			values: (values) => ({
+			values: (values: Row) => ({
 				onConflictDoNothing: () => ({
 					returning: async () => {
 						if (state.payment) return [];
-						state.payment = { ...values, id: 'payment-id', status: 'created' };
+						state.payment = { ...values, id: 'payment-id', status: 'created' } as PaymentRow;
 						return [{ id: state.payment.id }];
 					},
 				}),
 			}),
 		}),
 		update: () => ({
-			set: (updates) => ({
-				where: async (condition) => {
+			set: (updates: Update) => ({
+				where: async (condition: Condition) => {
 					const matched = Boolean(state.payment && matches(state.payment, condition));
 					if (matched) {
 						Object.assign(state.payment, updates);
@@ -128,85 +217,29 @@ function makeOrderHarness({ isPayPalMerchantReady, createPayPalOrder }) {
 			}),
 		}),
 	};
-	const orderRequests = [];
-	const terminalPayPalError = loadPayPalInfra().isTerminalPayPalOrderCreationError;
-	const dependencies = {
-		'@/core/db': { db: {}, expensePayments, wgMembers },
-		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
-		'@/core/http/api-errors': {
-			badRequest: (error) => Response.json({ error }, { status: 400 }),
-			conflict: (error) => Response.json({ error }, { status: 409 }),
-			forbidden: (error) => Response.json({ error }, { status: 403 }),
-			serverError: (error) => Response.json({ error: String(error) }, { status: 500 }),
-			tooMany: () => new Response(null, { status: 429 }),
+	const orderRequests: OrderRequest[] = [];
+	const own: Active = {
+		tx,
+		isPayPalMerchantReady,
+		createPayPalOrder: async (input) => {
+			orderRequests.push(input);
+			return createPayPalOrder(input);
 		},
-		'@/core/guards/require-wg-member': {
-			requireWgMember: async () => ({
-				ok: true,
-				wg: { id: wgId },
-				member: { memberId: fromMemberId },
-			}),
-		},
-		'@/core/guards/with-wg-route': { withWgRoute: (_name, handler) => handler },
-		'@/core/infra/observability': { logApiError: () => undefined },
-		'@/core/infra/paypal': {
-			isPayPalConfigured: () => true,
-			isTerminalPayPalOrderCreationError: terminalPayPalError,
-			createPayPalOrder: async (input) => {
-				orderRequests.push(input);
-				return createPayPalOrder(input);
-			},
-		},
-		'@/core/infra/paypal-onboarding': { isPayPalMerchantReady },
-		'@/core/rate-limit': {
-			checkRateLimit: async () => ({ success: true }),
-			wgWriteLimiter: {},
-		},
-		'@/core/validators/currency': { currencySchema: z.string() },
-		'@/features/expenses/debt-reduction': {
-			computeNetBalances: () => [],
-			simplifyDebts: () => [
-				{ fromId: fromMemberId, toId: toMemberId, cents: 1_000, currency: 'EUR' },
-			],
-		},
-		'@/features/expenses/debts': {
-			computeBalances: () => [
-				{ debtorId: fromMemberId, creditorId: toMemberId, amountCents: 1_000, currency: 'EUR' },
-			],
-		},
-		'@/features/expenses/expense-payments': {
-			PAYPAL_ORDER_TTL_MS: 60_000,
-			loadCompletedExpensePayments: async () => [],
-			withExpensePaymentLock: async (_id, operation) => operation(tx),
-		},
-		'@/features/expenses/open-expenses': { loadOpenExpenses: async () => [] },
-		'drizzle-orm': {
+		drizzle: {
 			and: (...conditions) => ({ kind: 'and', conditions }),
 			eq: (field, value) => ({ kind: 'eq', field, value }),
 			inArray: (field, values) => ({ kind: 'in', field, values }),
 			lte: (field, value) => ({ kind: 'lte', field, value }),
-			sql: () => ({ kind: 'sql' }),
 		},
-		'next/server': { NextResponse: Response },
 	};
-	dependencies['@/core/http/parse-body'] = loadParseBody(dependencies);
-	const { POST } = loadOrderRoute(dependencies);
-	const post = () =>
-		POST(
-			new Request('https://manawg.example/api/paypal/order', {
-				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ fromMemberId, toMemberId, currency: 'EUR' }),
-			}),
-			{ code: 'MTE8PZAT' },
-		);
+	const post = () => {
+		active = own;
+		return postOrder();
+	};
 	return { post, state, orderRequests };
 }
 
 test('new PayPal order is refused when the recipient has lost provider readiness', async () => {
-	const wgMembers = { id: 'id', wgId: 'wgId' };
-	const expensePayments = { id: 'id', status: 'status' };
-	const debt = { fromId: fromMemberId, toId: toMemberId, cents: 1_000, currency: 'EUR' };
 	const members = [
 		{ id: fromMemberId, name: 'Payer', color: 'blue', paypalMerchantId: null },
 		{ id: toMemberId, name: 'Payee', color: 'green', paypalMerchantId: '2B23456789ABC' },
@@ -214,15 +247,15 @@ test('new PayPal order is refused when the recipient has lost provider readiness
 	const state = { created: 0, failed: false };
 	const tx = {
 		select: () => {
-			let rows = [];
+			let rows: unknown[] = [];
 			const query = Promise.resolve().then(() => rows);
 			return Object.assign(query, {
-				from(value) {
+				from(value: unknown) {
 					rows = value === wgMembers ? members : [];
-					return this;
+					return query;
 				},
 				where() {
-					return this;
+					return query;
 				},
 				limit: async () => [],
 			});
@@ -233,77 +266,23 @@ test('new PayPal order is refused when the recipient has lost provider readiness
 			}),
 		}),
 		update: () => ({
-			set: (values) => ({
+			set: (values: Update) => ({
 				where: async () => {
 					if (values.status === 'failed') state.failed = true;
 				},
 			}),
 		}),
 	};
-	const z = requireFromWeb('zod').z;
-	const overrides = {
-		'@/core/db': { expensePayments, wgMembers },
-		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
-		'@/core/http/api-errors': {
-			badRequest: (error) => Response.json({ error }, { status: 400 }),
-			conflict: (error) => Response.json({ error }, { status: 409 }),
-			forbidden: (error) => Response.json({ error }, { status: 403 }),
-			serverError: (error) => Response.json({ error }, { status: 500 }),
-			tooMany: () => new Response(null, { status: 429 }),
+	active = {
+		tx,
+		isPayPalMerchantReady: async () => false,
+		createPayPalOrder: async () => {
+			state.created += 1;
+			return { id: 'order-id' };
 		},
-		'@/core/guards/require-wg-member': {
-			requireWgMember: async () => ({
-				ok: true,
-				wg: { id: wgId },
-				member: { memberId: fromMemberId },
-			}),
-		},
-		'@/core/guards/with-wg-route': { withWgRoute: (_name, handler) => handler },
-		'@/core/infra/observability': { logApiError: () => undefined },
-		'@/core/infra/paypal': {
-			isPayPalConfigured: () => true,
-			createPayPalOrder: async () => {
-				state.created += 1;
-				return { id: 'order-id' };
-			},
-		},
-		'@/core/infra/paypal-onboarding': { isPayPalMerchantReady: async () => false },
-		'@/core/rate-limit': { checkRateLimit: async () => ({ success: true }), wgWriteLimiter: {} },
-		'@/core/validators/currency': { currencySchema: z.string() },
-		'@/features/expenses/debt-reduction': {
-			computeNetBalances: () => [],
-			simplifyDebts: () => [debt],
-		},
-		'@/features/expenses/debts': {
-			computeBalances: () => [
-				{ debtorId: fromMemberId, creditorId: toMemberId, amountCents: 1_000, currency: 'EUR' },
-			],
-		},
-		'@/features/expenses/expense-payments': {
-			PAYPAL_ORDER_TTL_MS: 60_000,
-			loadCompletedExpensePayments: async () => [],
-			withExpensePaymentLock: async (_id, operation) => operation(tx),
-		},
-		'@/features/expenses/open-expenses': { loadOpenExpenses: async () => [] },
-		'drizzle-orm': {
-			and: () => null,
-			eq: () => null,
-			inArray: () => null,
-			lte: () => null,
-			sql: (parts, ...values) => ({ parts, values }),
-		},
-		'next/server': { NextResponse: Response },
+		drizzle: { and: () => null, eq: () => null, inArray: () => null, lte: () => null },
 	};
-	overrides['@/core/http/parse-body'] = loadParseBody(overrides);
-	const { POST } = loadOrderRoute(overrides);
-	const response = await POST(
-		new Request('https://manawg.example/api/paypal/order', {
-			method: 'POST',
-			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({ fromMemberId, toMemberId, currency: 'EUR' }),
-		}),
-		{ code: 'MTE8PZAT' },
-	);
+	const response = await postOrder();
 	assert.equal(response.status, 409);
 	assert.equal((await response.json()).error, 'paypal_onboarding_pending');
 	assert.equal(state.created, 0);
@@ -316,12 +295,12 @@ test('late readiness denial cannot release an already advanced reservation', asy
 		{ status: 'capturing', providerOrderId: 'paypal-order-race' },
 		{ status: 'completed', providerOrderId: 'paypal-order-race' },
 	]) {
-		let releaseReadiness;
-		let notifyReadinessStarted;
-		const readinessStarted = new Promise((resolve) => {
+		let releaseReadiness: (ready: boolean) => void = () => undefined;
+		let notifyReadinessStarted: () => void = () => undefined;
+		const readinessStarted = new Promise<void>((resolve) => {
 			notifyReadinessStarted = resolve;
 		});
-		const readinessGate = new Promise((resolve) => {
+		const readinessGate = new Promise<boolean>((resolve) => {
 			releaseReadiness = resolve;
 		});
 		const harness = makeOrderHarness({
@@ -385,7 +364,7 @@ test('readiness and provider availability failures retry the same pending paymen
 	assert.equal(harness.state.payment.providerOrderId, pendingOrderId);
 	assert.equal(harness.state.payment.status, 'created');
 	assert.equal(harness.orderRequests.length, 1);
-	assert.equal(harness.orderRequests[0].requestId, paymentId);
+	assert.equal(harness.orderRequests[0]?.requestId, paymentId);
 	assert.equal(harness.state.failedUpdates, 0);
 
 	const recovered = await harness.post();
@@ -416,9 +395,9 @@ test('PayPal API helper keeps onboarding status errors, PAYEE classification, an
 	process.env.PAYPAL_CLIENT_SECRET = 'test-secret';
 	process.env.PAYPAL_PARTNER_ATTRIBUTION_ID = 'BN-CODE';
 
-	const calls = [];
+	const calls: { url: string; headers: Headers; init: RequestInit }[] = [];
 	let responseMode = 'payee-error';
-	globalThis.fetch = async (input, init = {}) => {
+	globalThis.fetch = (async (input: unknown, init: RequestInit = {}) => {
 		const url = String(input);
 		const headers = new Headers(init.headers ?? {});
 		calls.push({ url, headers, init });
@@ -451,10 +430,10 @@ test('PayPal API helper keeps onboarding status errors, PAYEE classification, an
 			});
 		}
 		return Response.json({ id: 'paypal-order', status: 'CREATED' });
-	};
+	}) as typeof fetch;
 
 	try {
-		const paypal = loadPayPalInfra();
+		const paypal = realPayPal;
 		assert.equal(
 			paypal.isTerminalPayPalOrderCreationError(
 				new Error('paypal_api_403_PAYEE_ACCOUNT_RESTRICTED'),
@@ -473,14 +452,14 @@ test('PayPal API helper keeps onboarding status errors, PAYEE classification, an
 			paypal.requestPayPalApi('/v2/checkout/orders', { method: 'POST' }, '2B23456789ABC'),
 			/paypal_api_403_PAYEE_ACCOUNT_RESTRICTED/,
 		);
-		assert.ok(calls.at(-1).headers.get('PayPal-Auth-Assertion'));
+		assert.ok(calls.at(-1)?.headers.get('PayPal-Auth-Assertion'));
 
 		responseMode = 'onboarding-404';
 		await assert.rejects(
 			paypal.requestPayPalApi('/v1/merchant-integrations', { method: 'GET' }),
 			/paypal_api_404$/,
 		);
-		assert.equal(calls.at(-1).headers.get('PayPal-Auth-Assertion'), null);
+		assert.equal(calls.at(-1)?.headers.get('PayPal-Auth-Assertion'), null);
 
 		responseMode = 'success';
 		const created = await paypal.createPayPalOrder({
@@ -493,20 +472,20 @@ test('PayPal API helper keeps onboarding status errors, PAYEE classification, an
 		});
 		assert.equal(created.id, 'paypal-order');
 		const createRequest = calls.filter((call) => call.url.endsWith('/v2/checkout/orders')).at(-1);
-		assert.equal(createRequest.headers.get('PayPal-Request-Id'), 'payment-id');
+		assert.equal(createRequest?.headers.get('PayPal-Request-Id'), 'payment-id');
 
 		const capture = await paypal.capturePayPalOrder('paypal-order', '2B23456789ABC');
 		const captureRequest = calls.find((call) => call.url.endsWith('/capture'));
-		assert.equal(captureRequest.headers.get('PayPal-Request-Id'), 'paypal-order');
-		assert.equal(captureRequest.headers.get('Prefer'), 'return=representation');
+		assert.equal(captureRequest?.headers.get('PayPal-Request-Id'), 'paypal-order');
+		assert.equal(captureRequest?.headers.get('Prefer'), 'return=representation');
 		assert.equal(capture.status, 'COMPLETED');
-		assert.equal(capture.purchase_units[0].payee.merchant_id, '2B23456789ABC');
-		assert.equal(capture.purchase_units[0].payments.captures[0].amount.value, '12.34');
+		assert.equal(capture.purchase_units?.[0]?.payee?.merchant_id, '2B23456789ABC');
+		assert.equal(capture.purchase_units?.[0]?.payments?.captures?.[0]?.amount?.value, '12.34');
 	} finally {
 		globalThis.fetch = previousFetch;
 		for (const name of environmentNames) {
 			if (previousEnvironment[name] === undefined) delete process.env[name];
-			else process.env[name] = previousEnvironment[name];
+			else process.env[name] = previousEnvironment[name] as string;
 		}
 	}
 });

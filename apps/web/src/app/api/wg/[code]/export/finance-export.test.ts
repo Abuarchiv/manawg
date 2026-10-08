@@ -1,24 +1,17 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import path from 'node:path';
-import test from 'node:test';
-import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
+import { mock, test } from 'node:test';
 
-const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
-
-function loadTs(file, overrides = {}) {
-	const source = transpileModule(readFileSync(path.join(process.cwd(), file), 'utf8'), {
-		compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
-	}).outputText;
-	const module = { exports: {} };
-	new Function('require', 'module', 'exports', source)(
-		(name) => (name in overrides ? overrides[name] : requireFromWeb(name)),
-		module,
-		module.exports,
-	);
-	return module.exports;
-}
+type Row = Record<string, unknown>;
+type ExportedSections = {
+	sections: Record<'expenses' | 'members' | 'expensePayments', Row[]>;
+};
+type Condition = {
+	op: string;
+	items?: Condition[];
+	column?: string;
+	value?: unknown;
+	values?: unknown[];
+};
 
 const members = [
 	{ id: 'alice', wgId: 'wg', name: 'Alice', createdAt: new Date('2026-01-01T00:00:00Z') },
@@ -88,125 +81,134 @@ const completedPayments = [
 	},
 ];
 
-function createExportRoute({ failedTable } = {}) {
-	const columns = {
-		announcementComments: ['announcementId'],
-		announcements: ['wgId'],
-		auditEvents: ['wgId'],
-		chores: ['wgId'],
-		expensePayments: ['wgId', 'status'],
-		expenseSplits: ['expenseId'],
-		expenses: ['wgId'],
-		memberAbsences: ['wgId'],
-		recurringExpenses: ['wgId'],
-		shoppingItems: ['wgId'],
-		wgChatMessages: ['wgId'],
-		wgEvents: ['wgId'],
-		wgMembers: ['wgId'],
-	};
-	const tables = Object.fromEntries(
-		Object.entries(columns).map(([name, keys]) => [
-			name,
-			Object.assign(Object.fromEntries(keys.map((key) => [key, key])), { __name: name }),
-		]),
-	);
-	const rowsByTable = {
-		announcements: [],
-		auditEvents: [],
-		chores: [],
-		expensePayments: completedPayments,
-		expenseSplits: splits,
-		expenses,
-		memberAbsences: [],
-		recurringExpenses: [],
-		shoppingItems: [],
-		wgMembers: members,
-	};
+const columns: Record<string, string[]> = {
+	announcementComments: ['announcementId'],
+	announcements: ['wgId'],
+	auditEvents: ['wgId'],
+	chores: ['wgId'],
+	expensePayments: ['wgId', 'status'],
+	expenseSplits: ['expenseId'],
+	expenses: ['wgId'],
+	memberAbsences: ['wgId'],
+	recurringExpenses: ['wgId'],
+	shoppingItems: ['wgId'],
+	wgChatMessages: ['wgId'],
+	wgEvents: ['wgId'],
+	wgMembers: ['wgId'],
+};
+const tables = Object.fromEntries(
+	Object.entries(columns).map(([name, keys]) => [
+		name,
+		Object.assign(Object.fromEntries(keys.map((key) => [key, key])), { __name: name }),
+	]),
+);
+const rowsByTable: Record<string, Row[]> = {
+	announcements: [],
+	auditEvents: [],
+	chores: [],
+	expensePayments: completedPayments,
+	expenseSplits: splits,
+	expenses,
+	memberAbsences: [],
+	recurringExpenses: [],
+	shoppingItems: [],
+	wgMembers: members,
+};
 
-	function matches(row, condition) {
-		if (!condition) return true;
-		if (condition.op === 'and') return condition.items.every((item) => matches(row, item));
-		if (condition.op === 'eq') return row[condition.column] === condition.value;
-		if (condition.op === 'inArray') return condition.values.includes(row[condition.column]);
-		return false;
-	}
+const state = { failedTable: null as string | null, logged: [] as unknown[][] };
 
-	const db = {
-		select: () => ({
-			from: (table) => {
-				const name = table.__name;
-				let limit = Number.MAX_SAFE_INTEGER;
-				let offset = 0;
-				let rows = rowsByTable[name] ?? [];
-				const query = Object.assign(
-					Promise.resolve().then(() => {
-						if (name === failedTable) throw new Error('privateDbPassword123');
-						return rows.slice(offset, offset + limit);
-					}),
-					{
-						innerJoin: () => query,
-						where: (condition) => {
-							rows = rows.filter((row) => matches(row, condition));
-							return query;
-						},
-						orderBy: () => query,
-						limit: (value) => {
-							limit = value;
-							return query;
-						},
-						offset: (value) => {
-							offset = value;
-							return query;
-						},
+function matches(row: Row, condition: Condition | undefined): boolean {
+	if (!condition) return true;
+	if (condition.op === 'and') return (condition.items ?? []).every((item) => matches(row, item));
+	if (condition.op === 'eq') return row[condition.column as string] === condition.value;
+	if (condition.op === 'inArray')
+		return (condition.values ?? []).includes(row[condition.column as string]);
+	return false;
+}
+
+const db = {
+	select: () => ({
+		from: (table: { __name: string }) => {
+			const name = table.__name;
+			let limit = Number.MAX_SAFE_INTEGER;
+			let offset = 0;
+			let rows = rowsByTable[name] ?? [];
+			const query: Promise<Row[]> & object = Object.assign(
+				Promise.resolve().then(() => {
+					if (name === state.failedTable) throw new Error('privateDbPassword123');
+					return rows.slice(offset, offset + limit);
+				}),
+				{
+					innerJoin: () => query,
+					where: (condition: Condition) => {
+						rows = rows.filter((row) => matches(row, condition));
+						return query;
 					},
-				);
-				return query;
-			},
+					orderBy: () => query,
+					limit: (value: number) => {
+						limit = value;
+						return query;
+					},
+					offset: (value: number) => {
+						offset = value;
+						return query;
+					},
+				},
+			);
+			return query;
+		},
+	}),
+};
+
+mock.module('@/core/db', { namedExports: { db, ...tables } });
+mock.module('drizzle-orm', {
+	namedExports: {
+		and: (...items: Condition[]) => ({ op: 'and', items }),
+		asc: () => null,
+		count: () => null,
+		desc: () => null,
+		eq: (column: string, value: unknown) => ({ op: 'eq', column, value }),
+		inArray: (column: string, values: unknown[]) => ({ op: 'inArray', column, values }),
+	},
+});
+mock.module('@/core/guards/require-wg-member', {
+	namedExports: {
+		requireWgMember: async () => ({
+			ok: true,
+			wg: { id: 'wg', name: 'WG', shareCode: 'MTE8PZAT' },
+			member: { memberId: 'alice' },
 		}),
-	};
-	const logged = [];
-	const exportModule = loadTs('src/composition/export.ts');
-	const { GET } = loadTs('src/app/api/wg/[code]/export/route.ts', {
-		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
-		'@/core/http/api-errors': {
-			badRequest: (error) => Response.json({ error }, { status: 400 }),
-			serverError: (_error, message) =>
-				Response.json({ error: message ?? 'server_error' }, { status: 500 }),
-			tooMany: () => new Response(null, { status: 429 }),
-		},
-		'@/core/guards/require-wg-member': {
-			requireWgMember: async () => ({
-				ok: true,
-				wg: { id: 'wg', name: 'WG', shareCode: 'MTE8PZAT' },
-				member: { memberId: 'alice' },
-			}),
-		},
-		'@/core/guards/route-preamble': {
-			readShareCode: async () => ({ ok: true, code: 'MTE8PZAT' }),
-		},
-		'@/core/infra/observability': { logApiError: (...args) => logged.push(args) },
-		'@/core/rate-limit': { checkRateLimit: async () => ({ success: true }) },
-		'@/composition/export': exportModule,
-		'@/composition/export-queries': loadTs('src/composition/export-queries.ts', {
-			'@/core/db': { db, ...tables },
-			'drizzle-orm': {
-				and: (...items) => ({ op: 'and', items }),
-				asc: () => null,
-				desc: () => null,
-				eq: (column, value) => ({ op: 'eq', column, value }),
-				inArray: (column, values) => ({ op: 'inArray', column, values }),
-			},
-			'./export': exportModule,
-		}),
-		'next/server': { NextResponse: Response },
-	});
+	},
+});
+mock.module('@/core/infra/observability', {
+	namedExports: {
+		captureException: () => undefined,
+		logApiError: (...args: unknown[]) => state.logged.push(args),
+	},
+});
+mock.module('@/core/rate-limit', {
+	namedExports: { wgExportLimiter: {}, checkRateLimit: async () => ({ success: true }) },
+});
+
+const { GET } = await import('./route');
+const { computeNetBalances } = await import('@/features/expenses/debt-reduction');
+
+function createExportRoute({ failedTable = null }: { failedTable?: string | null } = {}) {
+	state.failedTable = failedTable;
+	state.logged = [];
 	return {
-		logged,
-		get: (search = '') => GET({ nextUrl: new URL(`https://example.invalid/export${search}`) }, {}),
+		get logged() {
+			return state.logged;
+		},
+		get: (search = '') =>
+			GET(
+				{ nextUrl: new URL(`https://example.invalid/export${search}`) } as never,
+				{ params: Promise.resolve({ code: 'MTE8PZAT' }) } as never,
+			),
 	};
 }
 
-function appBalancesFromSource(computeNetBalances) {
+function appBalancesFromSource() {
 	return computeNetBalances(
 		expenses.map((expense) => ({
 			paidByMemberId: expense.paidByMemberId,
@@ -232,12 +234,9 @@ function appBalancesFromSource(computeNetBalances) {
 }
 
 test('exported expenses and completed payments reconstruct the app balances by currency', async () => {
-	const { computeNetBalances } = loadTs('src/features/expenses/debt-reduction.ts', {
-		'@/core/utils/money': { normalizeCurrency: (value) => value?.trim().toUpperCase() || 'EUR' },
-	});
 	const response = await createExportRoute().get();
 	assert.equal(response.status, 200);
-	const exported = await response.json();
+	const exported = (await response.json()) as ExportedSections;
 
 	assert.deepEqual(exported.sections.expensePayments, [
 		{
@@ -267,11 +266,11 @@ test('exported expenses and completed payments reconstruct the app balances by c
 			paidByMemberId: expense.paidByMemberId,
 			currency: expense.currency,
 			splits: expense.splits,
-		})),
-		exported.sections.members.map(({ id, name }) => ({ id, name, color: null })),
-		exported.sections.expensePayments,
+		})) as never,
+		exported.sections.members.map(({ id, name }) => ({ id, name, color: null })) as never,
+		exported.sections.expensePayments as never,
 	);
-	assert.deepEqual(exportedBalances, appBalancesFromSource(computeNetBalances));
+	assert.deepEqual(exportedBalances, appBalancesFromSource());
 	assert.deepEqual(
 		exportedBalances.map(({ memberId, cents, currency }) => [memberId, cents, currency]),
 		[
@@ -288,7 +287,7 @@ test('exported expenses and completed payments reconstruct the app balances by c
 test('completed payments support optional JSON sections and paged CSV', async () => {
 	const optionalResponse = await createExportRoute().get('?sections=expensePayments');
 	assert.equal(optionalResponse.status, 200);
-	const optionalExport = await optionalResponse.json();
+	const optionalExport = (await optionalResponse.json()) as ExportedSections;
 	assert.equal(optionalExport.sections.expensePayments.length, 2);
 	assert.deepEqual(optionalExport.sections.expenses, []);
 	assert.deepEqual(optionalExport.sections.members, []);

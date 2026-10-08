@@ -1,60 +1,119 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import path from 'node:path';
-import test from 'node:test';
-import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
+import { mock, test } from 'node:test';
 
-const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
+type Row = Record<string, unknown>;
+type Sections = Record<string, Row[]>;
 
-function loadTs(file, overrides = {}) {
-	const source = transpileModule(readFileSync(path.join(process.cwd(), file), 'utf8'), {
-		compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
-	}).outputText;
-	const module = { exports: {} };
-	new Function('require', 'module', 'exports', source)(
-		(name) => (name in overrides ? overrides[name] : requireFromWeb(name)),
-		module,
-		module.exports,
-	);
-	return module.exports;
-}
+const tables: Record<string, object> = Object.fromEntries(
+	[
+		'announcementComments',
+		'announcements',
+		'auditEvents',
+		'chores',
+		'expensePayments',
+		'expenseSplits',
+		'expenses',
+		'memberAbsences',
+		'recurringExpenses',
+		'shoppingItems',
+		'wgChatMessages',
+		'wgEvents',
+		'wgMembers',
+	].map((name) => [
+		name,
+		name === 'expensePayments'
+			? {
+					id: {},
+					fromMemberId: {},
+					toMemberId: {},
+					amountCents: {},
+					currency: {},
+					completedAt: {},
+					wgId: {},
+					status: {},
+				}
+			: {},
+	]),
+);
 
-function exportRoute(failedTable, { expenseCount = 0, rowsByTable = {} } = {}) {
-	const tables = Object.fromEntries(
-		[
-			'announcementComments',
-			'announcements',
-			'auditEvents',
-			'chores',
-			'expensePayments',
-			'expenseSplits',
-			'expenses',
-			'memberAbsences',
-			'recurringExpenses',
-			'shoppingItems',
-			'wgChatMessages',
-			'wgEvents',
-			'wgMembers',
-		].map((name) => [
-			name,
-			name === 'expensePayments'
-				? {
-						id: {},
-						fromMemberId: {},
-						toMemberId: {},
-						amountCents: {},
-						currency: {},
-						completedAt: {},
-						wgId: {},
-						status: {},
-					}
-				: {},
-		]),
-	);
-	const limits = [];
-	const inArrayCalls = [];
-	const expenseRows = Array.from({ length: expenseCount }, (_, index) => ({
+const state = {
+	failedTable: undefined as string | null | undefined,
+	expenseRows: [] as Row[],
+	rowsByTable: {} as Record<string, Row[]>,
+	limits: [] as number[],
+	inArrayCalls: [] as number[],
+};
+
+const db = {
+	select: () => ({
+		from: (table: object) => {
+			const name = Object.keys(tables).find((key) => tables[key] === table) ?? '';
+			const rows =
+				state.failedTable && table === tables[state.failedTable]
+					? Promise.reject(new Error('privateDbPassword123'))
+					: Promise.resolve(
+							table === tables.expenses ? state.expenseRows : (state.rowsByTable[name] ?? []),
+						);
+			const query: Promise<Row[]> & object = Object.assign(rows, {
+				innerJoin: () => query,
+				where: () => query,
+				orderBy: () => query,
+				limit: (limit: number) => {
+					state.limits.push(limit);
+					return query;
+				},
+				offset: () => query,
+			});
+			return query;
+		},
+	}),
+};
+
+mock.module('@/core/db', { namedExports: { db, ...tables } });
+mock.module('drizzle-orm', {
+	namedExports: {
+		and: () => null,
+		asc: () => null,
+		count: () => null,
+		desc: () => null,
+		eq: () => null,
+		inArray: (_column: unknown, values: unknown[]) => {
+			state.inArrayCalls.push(values.length);
+			return null;
+		},
+	},
+});
+mock.module('@/core/guards/require-wg-member', {
+	namedExports: {
+		requireWgMember: async () => ({
+			ok: true,
+			wg: { id: 'wg', name: 'WG', shareCode: 'MTE8PZAT' },
+			member: { memberId: 'member' },
+		}),
+	},
+});
+// The real observability module runs against a stubbed Sentry so tests can inspect console output.
+mock.module('@/core/infra/sentry', {
+	namedExports: { captureSentryException() {}, logSentryApiError() {} },
+});
+mock.module('@/core/rate-limit', {
+	namedExports: { wgExportLimiter: {}, checkRateLimit: async () => ({ success: true }) },
+});
+
+const { GET } = await import('./route');
+
+function exportRoute(
+	failedTable?: string | null,
+	{
+		expenseCount = 0,
+		rowsByTable = {},
+	}: { expenseCount?: number; rowsByTable?: Record<string, Row[]> } = {},
+) {
+	state.failedTable = failedTable;
+	state.rowsByTable = rowsByTable;
+	state.limits = [];
+	state.inArrayCalls = [];
+	state.expenseRows = Array.from({ length: expenseCount }, (_, index) => ({
 		id: `expense-${index}`,
 		description: 'x',
 		amountCents: 1,
@@ -63,74 +122,14 @@ function exportRoute(failedTable, { expenseCount = 0, rowsByTable = {} } = {}) {
 		imageUrl: null,
 		occurredAt: new Date(0),
 	}));
-	const db = {
-		select: () => ({
-			from: (table) => {
-				const name = Object.keys(tables).find((key) => tables[key] === table);
-				const rows =
-					table === tables[failedTable]
-						? Promise.reject(new Error('privateDbPassword123'))
-						: Promise.resolve(table === tables.expenses ? expenseRows : (rowsByTable[name] ?? []));
-				const query = Object.assign(rows, {
-					innerJoin: () => query,
-					where: () => query,
-					orderBy: () => query,
-					limit: (limit) => {
-						limits.push(limit);
-						return query;
-					},
-					offset: () => query,
-				});
-				return query;
-			},
-		}),
-	};
-	const exportModule = loadTs('src/composition/export.ts');
-	const drizzle = {
-		and: () => null,
-		asc: () => null,
-		count: () => null,
-		desc: () => null,
-		eq: () => null,
-		inArray: (_column, values) => {
-			inArrayCalls.push(values.length);
-			return null;
-		},
-	};
-	const { GET } = loadTs('src/app/api/wg/[code]/export/route.ts', {
-		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
-		'@/core/http/api-errors': {
-			badRequest: (error) => Response.json({ error }, { status: 400 }),
-			serverError: (_error, message) => Response.json({ error: message }, { status: 500 }),
-			tooMany: () => new Response(null, { status: 429 }),
-		},
-		'@/core/guards/require-wg-member': {
-			requireWgMember: async () => ({
-				ok: true,
-				wg: { id: 'wg', name: 'WG', shareCode: 'MTE8PZAT' },
-				member: { memberId: 'member' },
-			}),
-		},
-		'@/core/guards/route-preamble': {
-			readShareCode: async () => ({ ok: true, code: 'MTE8PZAT' }),
-		},
-		'@/core/infra/observability': loadTs('src/core/infra/observability.ts', {
-			'./sentry': { captureSentryException() {}, logSentryApiError() {} },
-			'./sentry-privacy': loadTs('src/core/infra/sentry-privacy.ts'),
-		}),
-		'@/core/rate-limit': { checkRateLimit: async () => ({ success: true }) },
-		'@/composition/export': exportModule,
-		'@/composition/export-queries': loadTs('src/composition/export-queries.ts', {
-			'@/core/db': { db, ...tables },
-			'drizzle-orm': drizzle,
-			'./export': exportModule,
-		}),
-		'next/server': { NextResponse: Response },
-	});
 	return {
-		limits,
-		inArrayCalls,
-		get: (search = '') => GET({ nextUrl: new URL(`https://example.invalid/export${search}`) }, {}),
+		limits: state.limits,
+		inArrayCalls: state.inArrayCalls,
+		get: (search = '') =>
+			GET(
+				{ nextUrl: new URL(`https://example.invalid/export${search}`) } as never,
+				{ params: Promise.resolve({ code: 'MTE8PZAT' }) } as never,
+			),
 	};
 }
 
@@ -161,12 +160,12 @@ test('large expense id sets load splits in bind-param-safe chunks', async () => 
 });
 
 test('one failed JSON section rejects the incomplete backup', async (t) => {
-	const logged = [];
-	t.mock.method(console, 'error', (...args) => logged.push(args));
+	const logged: unknown[][] = [];
+	t.mock.method(console, 'error', (...args: unknown[]) => logged.push(args));
 	for (const section of ['expenses', 'wgMembers']) {
 		const response = await exportRoute(section).get('?limit=20');
 		assert.equal(response.status, 500);
-		assert.equal((await response.json()).error, 'export_incomplete');
+		assert.equal(((await response.json()) as { error: string }).error, 'export_incomplete');
 	}
 	assert.equal(JSON.stringify(logged).includes('privateDbPassword123'), false);
 });
@@ -214,7 +213,7 @@ test('deleted chat messages export without their text or image', async () => {
 	});
 	const response = await route.get('?sections=chatMessages');
 	assert.equal(response.status, 200);
-	const { sections } = await response.json();
+	const { sections } = (await response.json()) as { sections: Sections };
 	assert.deepEqual(sections.chatMessages, [
 		{
 			id: 'message-live',
@@ -289,7 +288,10 @@ test('new sections are part of the full dump and export CSV headers', async () =
 	});
 	const response = await route.get();
 	assert.equal(response.status, 200);
-	const { sections, failedSections } = await response.json();
+	const { sections, failedSections } = (await response.json()) as {
+		sections: Sections;
+		failedSections: string[];
+	};
 	assert.deepEqual(failedSections, []);
 	assert.deepEqual(sections.chatMessages, []);
 	assert.deepEqual(sections.announcementComments, [
@@ -301,7 +303,7 @@ test('new sections are part of the full dump and export CSV headers', async () =
 			createdAt: '2026-03-02T08:00:00.000Z',
 		},
 	]);
-	assert.equal(sections.events[0].createdByName, '');
+	assert.equal(sections.events?.[0]?.createdByName, '');
 
 	const expected = {
 		chatMessages: 'id;createdAt;senderName;kind;body;imageUrl;editedAt;deletedAt;replyToMessageId',
@@ -326,7 +328,7 @@ test('a failed new section fails the full export closed', async (t) => {
 	for (const table of ['wgChatMessages', 'announcementComments', 'wgEvents']) {
 		const response = await exportRoute(table).get();
 		assert.equal(response.status, 500);
-		assert.equal((await response.json()).error, 'export_incomplete');
+		assert.equal(((await response.json()) as { error: string }).error, 'export_incomplete');
 	}
 });
 
@@ -336,7 +338,7 @@ test('the counts summary counts rows per section instead of downloading them', a
 	});
 	const response = await route.get('?summary=counts');
 	assert.equal(response.status, 200);
-	const { counts } = await response.json();
+	const { counts } = (await response.json()) as { counts: Record<string, number> };
 	assert.equal(counts.chatMessages, 3);
 	assert.equal(counts.members, 2);
 	assert.equal(counts.expenses, 0);

@@ -1,11 +1,6 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import path from 'node:path';
-import test from 'node:test';
-import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
+import { mock, test } from 'node:test';
 
-const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
 const code = 'MTE8PZAT';
 const wgId = '1bc67a5a-5c08-4c0d-8eaf-520def98021a';
 const memberId = '2bc67a5a-5c08-4c0d-8eaf-520def98021a';
@@ -15,29 +10,45 @@ const cookieName = 'manawg_paypal_connection';
 const stableTrackingId = 'stable-opaque-customer-tracking-id';
 const callbackNonce = '9f3e7a22-11ab-4b13-9d1e-d3a42fd7b6c0';
 
-function loadTs(file, overrides = {}) {
-	const source = readFileSync(file, 'utf8');
-	const compiled = transpileModule(source, {
-		compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
-	}).outputText;
-	const loaded = { exports: {} };
-	new Function('require', 'module', 'exports', compiled)(
-		(name) => (name in overrides ? overrides[name] : requireFromWeb(name)),
-		loaded,
-		loaded.exports,
-	);
-	return loaded.exports;
+// The real cookie signing/parsing stays in place; the provider-facing calls are faked below.
+const realOnboarding = await import('@/core/infra/paypal-onboarding');
+const { readPayPalConnectionCookie, createPayPalConnectionCookie } = realOnboarding;
+
+interface CookieState {
+	nonce: string;
+	code: string;
+	trackingId: string;
+	expectedPreviousMerchantId: string | null;
 }
 
-const { readPayPalConnectionCookie } = loadTs('src/core/infra/paypal-onboarding.ts', {
-	'./paypal': {},
-});
-
-function responseError(error, status = 400) {
-	return Response.json({ error }, { status });
+interface Options {
+	savedMerchantId?: string | null;
+	cookieExpectedPreviousMerchantId?: string | null;
+	providerReady?: boolean;
+	inactive?: boolean;
+	activePayment?: boolean;
+	cookieTrackingId?: string;
+	lookupMerchantId?: string | null;
+	onReadiness?: (state: Scenario['state']) => void;
+	realCookie?: boolean;
 }
 
-function harness({
+interface Scenario {
+	options: Required<Omit<Options, 'onReadiness'>> & {
+		onReadiness: Options['onReadiness'] | undefined;
+	};
+	state: {
+		updates: Record<string, unknown>[];
+		referral: { trackingId: string; nonce: string; returnUrl: string } | null;
+		readinessCalls: { id: string; trackingId: string }[];
+		lookupCalls: string[];
+		cookieState: CookieState;
+		memberId: string | null;
+		expectedPreviousMerchantId: string | null;
+	};
+}
+
+function scenario({
 	savedMerchantId = null,
 	cookieExpectedPreviousMerchantId = savedMerchantId,
 	providerReady = true,
@@ -47,47 +58,86 @@ function harness({
 	lookupMerchantId = merchantId,
 	onReadiness,
 	realCookie = false,
-} = {}) {
-	const state = {
-		updates: [],
-		referral: null,
-		readinessCalls: [],
-		lookupCalls: [],
-		cookieState: null,
-		memberId: savedMerchantId,
-		expectedPreviousMerchantId: cookieExpectedPreviousMerchantId,
-	};
-	const tables = { wgMembers: { id: 'id', wgId: 'wgId', paypalMerchantId: 'paypalMerchantId' } };
-	const member = () => ({ id: memberId, paypalMerchantId: state.memberId });
-	const db = {
-		select: () => {
-			const query = {
-				from: () => query,
-				where: () => query,
-				limit: async () => [member()],
-			};
-			return query;
+}: Options = {}): Scenario {
+	return {
+		options: {
+			savedMerchantId,
+			cookieExpectedPreviousMerchantId,
+			providerReady,
+			inactive,
+			activePayment,
+			cookieTrackingId,
+			lookupMerchantId,
+			onReadiness,
+			realCookie,
+		},
+		state: {
+			updates: [],
+			referral: null,
+			readinessCalls: [],
+			lookupCalls: [],
+			cookieState: {} as CookieState,
+			memberId: savedMerchantId,
+			expectedPreviousMerchantId: cookieExpectedPreviousMerchantId,
 		},
 	};
-	const tx = {
-		select: () => {
-			const query = {
-				from: () => query,
-				where: () => query,
-				for: async () => [member()],
-			};
-			return query;
-		},
-		update: () => ({
-			set: (values) => ({
-				where: async () => {
-					state.updates.push(values);
-					state.memberId = values.paypalMerchantId ?? state.memberId;
-				},
-			}),
+}
+
+// Every route call runs against the scenario of the harness that issued it.
+let current = scenario();
+
+const tables = { wgMembers: { id: 'id', wgId: 'wgId', paypalMerchantId: 'paypalMerchantId' } };
+const member = () => ({ id: memberId, paypalMerchantId: current.state.memberId });
+const db = {
+	select: () => {
+		const query = {
+			from: () => query,
+			where: () => query,
+			limit: async () => [member()],
+		};
+		return query;
+	},
+};
+const tx = {
+	select: () => {
+		const query = {
+			from: () => query,
+			where: () => query,
+			for: async () => [member()],
+		};
+		return query;
+	},
+	update: () => ({
+		set: (values: { paypalMerchantId?: string }) => ({
+			where: async () => {
+				current.state.updates.push(values);
+				current.state.memberId = values.paypalMerchantId ?? current.state.memberId;
+			},
 		}),
-	};
-	const payPal = {
+	}),
+};
+
+mock.module('@/core/db', { namedExports: { db, ...tables } });
+mock.module('@/core/db/account-deletion', {
+	namedExports: {
+		lockActiveAccountMember: async () => (current.options.inactive ? null : { id: memberId }),
+	},
+});
+mock.module('@/core/guards/require-wg-member', {
+	namedExports: {
+		requireWgMember: async () => ({
+			ok: true,
+			wg: { id: wgId },
+			member: { memberId, name: 'Abu' },
+			authUserId,
+		}),
+	},
+});
+mock.module('@/core/infra/observability', {
+	namedExports: { captureException: () => undefined, logApiError: () => undefined },
+});
+mock.module('@/core/infra/paypal-onboarding', {
+	namedExports: {
 		PAYPAL_CONNECTION_COOKIE_NAME: cookieName,
 		getPayPalOnboardingConfig: () => ({
 			environment: 'sandbox',
@@ -98,29 +148,35 @@ function harness({
 		getPayPalEnvironment: () => 'sandbox',
 		getTrustedPayPalAppOrigin: () => 'https://manawg.example',
 		getPayPalTrackingId: () => stableTrackingId,
-		isPayPalMerchantId: (value) => value === merchantId,
-		createPayPalPartnerReferral: async (input) => {
-			state.referral = input;
+		isPayPalMerchantId: (value: string) => value === merchantId,
+		createPayPalPartnerReferral: async (input: NonNullable<Scenario['state']['referral']>) => {
+			current.state.referral = input;
 			return 'https://www.sandbox.paypal.com/partnerexp/appEntry?referralToken=generated';
 		},
-		getPayPalMerchantIdByTracking: async (trackingId) => {
-			state.lookupCalls.push(trackingId);
-			return lookupMerchantId;
+		getPayPalMerchantIdByTracking: async (trackingId: string) => {
+			current.state.lookupCalls.push(trackingId);
+			return current.options.lookupMerchantId;
 		},
-		isPayPalMerchantReady: async (id, trackingId) => {
-			state.readinessCalls.push({ id, trackingId });
-			onReadiness?.(state);
-			return providerReady;
+		isPayPalMerchantReady: async (id: string, trackingId: string) => {
+			current.state.readinessCalls.push({ id, trackingId });
+			current.options.onReadiness?.(current.state);
+			return current.options.providerReady;
 		},
-		createPayPalConnectionCookie: (value) => {
-			state.cookieState = value;
+		createPayPalConnectionCookie: (value: CookieState) => {
+			current.state.cookieState = value;
 			return 'signed-cookie';
 		},
 		readPayPalConnectionCookie,
-		verifyPayPalConnectionCookie: (value, expected) =>
-			value === 'signed-cookie' || value === 'valid-cookie'
+		verifyPayPalConnectionCookie: (
+			value: string | undefined,
+			expected: { environment: 'sandbox' | 'live' },
+		) => {
+			if (current.options.realCookie) {
+				return realOnboarding.verifyPayPalConnectionCookie(value, expected);
+			}
+			return value === 'signed-cookie' || value === 'valid-cookie'
 				? {
-						trackingId: cookieTrackingId,
+						trackingId: current.options.cookieTrackingId,
 						nonce: callbackNonce,
 						wgId,
 						memberId,
@@ -128,51 +184,40 @@ function harness({
 						code,
 						environment: expected.environment,
 						expiresAt: 2_000_000_000,
-						expectedPreviousMerchantId: state.expectedPreviousMerchantId,
+						expectedPreviousMerchantId: current.state.expectedPreviousMerchantId,
 					}
-				: null,
-	};
-	if (realCookie) {
-		payPal.verifyPayPalConnectionCookie = loadTs('src/core/infra/paypal-onboarding.ts', {
-			'./paypal': {},
-		}).verifyPayPalConnectionCookie;
-	}
-	const auth = {
-		ok: true,
-		wg: { id: wgId },
-		member: { memberId, name: 'Abu' },
-		authUserId,
-	};
-	const errors = {
-		apiError: responseError,
-		badRequest: (error) => responseError(error, 400),
-		conflict: (error) => responseError(error, 409),
-		forbidden: (error) => responseError(error, 403),
-		notFound: (error) => responseError(error, 404),
-		serverError: (error) => responseError(error, 500),
-		tooMany: () => new Response(null, { status: 429 }),
-	};
-	const overrides = {
-		'@/core/db': { db, ...tables },
-		'@/core/db/account-deletion': {
-			lockActiveAccountMember: async () => (inactive ? null : { id: memberId }),
+				: null;
 		},
-		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
-		'@/core/http/api-errors': errors,
-		'@/core/guards/require-wg-member': { requireWgMember: async () => auth },
-		'@/core/guards/with-wg-route': { withWgRoute: (_name, handler) => handler },
-		'@/core/infra/observability': { logApiError: () => undefined },
-		'@/core/infra/paypal-onboarding': payPal,
-		'@/core/rate-limit': { checkRateLimit: async () => ({ success: true }), wgWriteLimiter: {} },
-		'@/features/expenses/expense-payments': {
-			hasActiveExpensePayment: async () => activePayment,
-			withExpensePaymentLock: async (_wgId, operation) => operation(tx),
+	},
+});
+mock.module('@/core/rate-limit', {
+	namedExports: { checkRateLimit: async () => ({ success: true }), wgWriteLimiter: {} },
+});
+mock.module('@/features/expenses/expense-payments', {
+	namedExports: {
+		hasActiveExpensePayment: async () => current.options.activePayment,
+		withExpensePaymentLock: async (_wgId: string, operation: (tx: unknown) => unknown) =>
+			operation(tx),
+	},
+});
+mock.module('drizzle-orm', { namedExports: { and: () => null, eq: () => null } });
+
+const route = await import('./route');
+const returnRoute = await import('@/app/api/paypal/return/route');
+
+function harness(options: Options = {}) {
+	const own = scenario(options);
+	const connect = {
+		GET: (req: Request, ctx: { code: string }) => {
+			current = own;
+			return route.GET(req as never, { params: Promise.resolve(ctx) } as never);
 		},
-		'drizzle-orm': { and: () => null, eq: () => null },
-		'next/server': { NextResponse: Response },
+		POST: (req: Request, ctx: { code: string }) => {
+			current = own;
+			return route.POST(req as never, { params: Promise.resolve(ctx) } as never);
+		},
 	};
-	const connect = loadTs('src/app/api/wg/[code]/paypal/connect/route.ts', overrides);
-	return { state, connect };
+	return { state: own.state, connect };
 }
 
 test('GET exposes only provider readiness and returns no-store', async () => {
@@ -214,10 +259,10 @@ test('start requires affirmative consent and fixes the callback to the configure
 	assert.equal(state.cookieState.trackingId, stableTrackingId);
 	assert.equal(state.cookieState.expectedPreviousMerchantId, merchantId);
 	assert.match(
-		response.headers.get('set-cookie'),
+		response.headers.get('set-cookie') as string,
 		new RegExp(`${cookieName}=signed-cookie; Path=/api; Max-Age=1800; HttpOnly; SameSite=Lax`),
 	);
-	assert.match(response.headers.get('set-cookie'), /; Secure$/);
+	assert.match(response.headers.get('set-cookie') as string, /; Secure$/);
 	const firstNonce = state.cookieState.nonce;
 	const secondStart = await connect.POST(
 		new Request('https://manawg.example/api/connect', {
@@ -228,8 +273,8 @@ test('start requires affirmative consent and fixes the callback to the configure
 		{ code },
 	);
 	assert.equal(secondStart.status, 200);
-	assert.equal(state.referral.trackingId, stableTrackingId);
-	assert.notEqual(state.referral.nonce, firstNonce);
+	assert.equal((state.referral as Scenario['state']['referral'])?.trackingId, stableTrackingId);
+	assert.notEqual((state.referral as Scenario['state']['referral'])?.nonce, firstNonce);
 });
 
 test('unready or forged provider return never writes a recipient ID', async () => {
@@ -261,7 +306,7 @@ test('verified onboarding can replace the signed previous recipient and rejects 
 	assert.equal(connected.status, 200);
 	assert.deepEqual(await connected.json(), { connected: true });
 	assert.deepEqual(first.state.updates, [{ paypalMerchantId: merchantId }]);
-	assert.match(connected.headers.get('set-cookie'), /Max-Age=0/);
+	assert.match(connected.headers.get('set-cookie') as string, /Max-Age=0/);
 
 	const second = harness({ savedMerchantId: '2C23456789ABC' });
 	const correctedLegacyId = await second.connect.POST(
@@ -319,18 +364,7 @@ test('replacement waits until every active WG payment has settled or expired', a
 });
 
 test('generic PayPal return ignores caller destinations and malformed merchant hints', async () => {
-	const next = loadTs('src/app/api/paypal/return/route.ts', {
-		'@/core/infra/paypal-onboarding': {
-			PAYPAL_CONNECTION_COOKIE_NAME: cookieName,
-			getPayPalEnvironment: () => 'sandbox',
-			getTrustedPayPalAppOrigin: () => 'https://manawg.example',
-			isPayPalMerchantId: (value) => value === merchantId,
-			readPayPalConnectionCookie,
-			verifyPayPalConnectionCookie: (value) =>
-				value === 'valid-cookie' ? { environment: 'sandbox', code, nonce: callbackNonce } : null,
-		},
-		'next/server': { NextResponse: Response },
-	});
+	const next = { GET: (req: Request) => returnRoute.GET(req as never) };
 	const response = await next.GET(
 		new Request(
 			`https://manawg.example/api/paypal/return?state=${callbackNonce}&code=EVILCODE&next=https%3A%2F%2Fevil.test&merchantIdInPayPal=${merchantId}`,
@@ -365,7 +399,10 @@ test('generic PayPal return ignores caller destinations and malformed merchant h
 	assert.equal(mismatchedState.headers.get('location'), 'https://manawg.example/');
 });
 
-function completionRequest(body = { action: 'complete' }, cookie = 'valid-cookie') {
+function completionRequest(
+	body: Record<string, unknown> = { action: 'complete' },
+	cookie = 'valid-cookie',
+) {
 	return new Request('https://manawg.example/api/connect', {
 		method: 'POST',
 		headers: { 'content-type': 'application/json', cookie: `${cookieName}=${cookie}` },
@@ -381,12 +418,12 @@ test('completion discovers only the signed tracking recipient and reuses canonic
 	assert.deepEqual(state.lookupCalls, [stableTrackingId]);
 	assert.deepEqual(state.readinessCalls, [{ id: merchantId, trackingId: stableTrackingId }]);
 	assert.deepEqual(state.updates, [{ paypalMerchantId: merchantId }]);
-	assert.match(response.headers.get('set-cookie'), /Max-Age=0/);
+	assert.match(response.headers.get('set-cookie') as string, /Max-Age=0/);
 	assert.equal(response.headers.get('cache-control'), 'no-store');
 });
 
 test('completion rejects missing state, changed client tracking, stale recipient, and caller hints before provider calls', async () => {
-	for (const [options, cookie, body, expected] of [
+	const rejections: [Options, string, Record<string, unknown>, string][] = [
 		[{}, '', { action: 'complete' }, 'paypal_connection_expired'],
 		[
 			{ cookieTrackingId: 'another-client-tracking' },
@@ -407,7 +444,8 @@ test('completion rejects missing state, changed client tracking, stale recipient
 			{ action: 'complete', trackingId: stableTrackingId },
 			'paypal_request_invalid',
 		],
-	]) {
+	];
+	for (const [options, cookie, body, expected] of rejections) {
 		const { state, connect } = harness(options);
 		const response = await connect.POST(completionRequest(body, cookie), { code });
 		assert.equal((await response.json()).error, expected);
@@ -447,9 +485,6 @@ test('completion followed by an overlapping callback cannot overwrite or duplica
 
 test('completion validates real signed-cookie expiry and every current session binding before provider access', async () => {
 	process.env.PAYPAL_CLIENT_SECRET = 'fixture-signing-secret';
-	const { createPayPalConnectionCookie } = loadTs('src/core/infra/paypal-onboarding.ts', {
-		'./paypal': {},
-	});
 	const cookieState = {
 		trackingId: stableTrackingId,
 		nonce: callbackNonce,
@@ -474,7 +509,7 @@ test('completion validates real signed-cookie expiry and every current session b
 		const response = await connect.POST(
 			completionRequest(
 				{ action: 'complete' },
-				createPayPalConnectionCookie({ ...cookieState, ...binding }),
+				createPayPalConnectionCookie({ ...cookieState, ...binding } as never),
 			),
 			{ code },
 		);
@@ -488,7 +523,10 @@ test('completion validates real signed-cookie expiry and every current session b
 	assert.equal(
 		(
 			await connect.POST(
-				completionRequest({ action: 'complete' }, createPayPalConnectionCookie(cookieState)),
+				completionRequest(
+					{ action: 'complete' },
+					createPayPalConnectionCookie(cookieState as never),
+				),
 				{ code },
 			)
 		).status,
@@ -499,8 +537,8 @@ test('completion validates real signed-cookie expiry and every current session b
 
 test('completion rechecks recipient compare-and-set after provider work', async () => {
 	const { state, connect } = harness({
-		onReadiness: (current) => {
-			current.memberId = '2C23456789ABC';
+		onReadiness: (s) => {
+			s.memberId = '2C23456789ABC';
 		},
 	});
 	const response = await connect.POST(completionRequest(), { code });
