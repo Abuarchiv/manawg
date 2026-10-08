@@ -89,3 +89,20 @@ test('Tesseract gets WASM compilation and only its pinned German and English dat
 		process.env.NODE_ENV = previousNodeEnv ?? '';
 	}
 });
+
+test('Supabase image storage keeps every Amazon host out of the policy', () => {
+	const previous = process.env.IMAGE_STORAGE_PROVIDER;
+	try {
+		process.env.IMAGE_STORAGE_PROVIDER = 'supabase';
+		const supabasePolicy = contentSecurityPolicy('nonce', true, false);
+		assert.doesNotMatch(supabasePolicy, /amazonaws/);
+
+		process.env.IMAGE_STORAGE_PROVIDER = 'aws';
+		const awsPolicy = directives(contentSecurityPolicy('nonce', true, false));
+		assert.ok(awsPolicy.get('img-src')?.includes('https://*.amazonaws.com'));
+		assert.ok(awsPolicy.get('media-src')?.includes('https://*.amazonaws.com'));
+	} finally {
+		if (previous === undefined) Reflect.deleteProperty(process.env, 'IMAGE_STORAGE_PROVIDER');
+		else process.env.IMAGE_STORAGE_PROVIDER = previous;
+	}
+});

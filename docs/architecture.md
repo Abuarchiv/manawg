@@ -137,7 +137,7 @@ Side effects that must not undo the write (audit events, push, pinboard notices)
 call, for `written` results only, so a replay never repeats them. A warning that only becomes
 known then (a failed push) is written into the stored response with `setReplayWarning`. Without a
 key the write runs in a plain transaction (`retryAfterRollback` still applies). The protocol is specified in
-[`openspec/changes/unify-idempotency-claims`](../openspec/changes/unify-idempotency-claims/proposal.md).
+[`openspec/changes/archive/2026-10-08-unify-idempotency-claims`](../openspec/changes/archive/2026-10-08-unify-idempotency-claims/proposal.md).
 
 ## Money
 

@@ -12,7 +12,14 @@
  * exact origin in the policy — and with nothing configured there is no upload
  * target to allow at all, only the bucket-scoped legacy endpoint.
  */
+function usesSupabaseImageStorage(): boolean {
+	return process.env.IMAGE_STORAGE_PROVIDER?.trim() === 'supabase';
+}
+
 function s3UploadOrigins(): string[] {
+	// Private images go to Supabase Storage (its origin is added below) and are read through
+	// `/api/upload/read`, so no S3 host belongs in the policy at all.
+	if (usesSupabaseImageStorage()) return [];
 	const bucket = process.env.S3_BUCKET?.trim();
 	const region = process.env.AWS_REGION?.trim();
 	if (bucket && region) {
@@ -69,7 +76,8 @@ export function contentSecurityPolicy(
 		'https://cdn.jsdelivr.net',
 	];
 	const styleSrc = ["'self'", `'nonce-${nonce}'`];
-	const imgSrc = ["'self'", 'data:', 'blob:', 'https://*.amazonaws.com'];
+	const awsHosts = usesSupabaseImageStorage() ? [] : ['https://*.amazonaws.com'];
+	const imgSrc = ["'self'", 'data:', 'blob:', ...awsHosts];
 	// Only the pinned Tesseract language files are CDN fetch targets. Do not add
 	// the broader CDN origin to connect-src, which would permit unrelated fetches.
 	const connectSrc = ["'self'", ...s3UploadOrigins(), ...TESSERACT_LANGUAGE_DATA_URLS];
@@ -100,7 +108,7 @@ export function contentSecurityPolicy(
 		"font-src 'self' data:",
 		`connect-src ${connectSrc.join(' ')}`,
 		...(payPalSdkEnabled ? [`frame-src 'self' ${PAYPAL_FRAME_CONNECT_ORIGINS.join(' ')}`] : []),
-		"media-src 'self' blob: https://*.amazonaws.com",
+		`media-src ${["'self'", 'blob:', ...awsHosts].join(' ')}`,
 		`worker-src ${workerSrc.join(' ')}`,
 		"frame-ancestors 'none'",
 		"base-uri 'self'",
