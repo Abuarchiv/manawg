@@ -26,7 +26,13 @@ export async function resolve(specifier, context, nextResolve) {
 		target = new URL(specifier, context.parentURL);
 	}
 	if (target) {
-		// A query string (`./entry.ts?run=2`) is kept so a test can evaluate a module afresh.
+		// A query string (`./entry.ts?run=2`) is kept so a test can evaluate a module afresh. An
+		// `instance` query on the importing module carries over to the project files it imports,
+		// giving each instance its own copy of the module graph.
+		const instance = context.parentURL
+			? new URL(context.parentURL).searchParams.get('instance')
+			: null;
+		if (instance && !target.search) target.search = `?instance=${instance}`;
 		const file = findFile(fileURLToPath(target));
 		if (file) return nextResolve(pathToFileURL(file).href + target.search, context);
 		return nextResolve(specifier, context);
