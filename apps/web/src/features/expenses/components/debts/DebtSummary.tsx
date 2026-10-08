@@ -16,7 +16,7 @@ import type { Expense } from '@/features/expenses/components/ausgaben/expense-ty
 import { getDebtOverview } from '@/features/expenses/debt-overview';
 import type { SettlementSummary, SimplifiedDebt } from '@/features/expenses/debt-reduction';
 import { cn } from '@/shared/lib/cn';
-import { Bell } from 'lucide-react';
+import { Bell, FileText } from 'lucide-react';
 import Link from 'next/link';
 import { SALDO_HEADING_ID, SettlementDebtRow } from './SettlementDebtRow';
 
@@ -138,7 +138,15 @@ export function DebtSummary({
 						)}
 					</h2>
 				</CardTitle>
-				<CardAction>
+				<CardAction className="flex">
+					<Link
+						href={`/wg/${encodeURIComponent(shareCode)}/abrechnung`}
+						aria-label="Monatsabrechnung"
+						title="Monatsabrechnung"
+						className={cn(buttonVariants({ variant: 'ghost', size: 'icon-sm' }))}
+					>
+						<FileText aria-hidden />
+					</Link>
 					<Link
 						href={`/wg/${encodeURIComponent(shareCode)}/mahnungen`}
 						aria-label="Alle Erinnerungen"

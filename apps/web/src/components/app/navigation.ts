@@ -28,7 +28,7 @@ export const WG_SECTIONS = [
 			{ slug: 'abos', label: 'Fixkosten', icon: Repeat2 },
 		],
 		// Finance actions with their own page: no segment, but the tab stays active.
-		related: ['mahnungen', 'import'],
+		related: ['mahnungen', 'import', 'abrechnung'],
 	},
 	{
 		label: 'Austausch',
