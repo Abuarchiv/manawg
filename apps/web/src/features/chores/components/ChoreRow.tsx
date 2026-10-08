@@ -25,7 +25,7 @@ import type { Chore, RecurrenceType } from '@/features/chores/components/chore-t
 import { cn } from '@/shared/lib/cn';
 import type { MemberInfo } from '@/shared/lib/member-types';
 
-import { Check, Hand, MessageSquareMore, MoreHorizontal, Trash2 } from 'lucide-react';
+import { Check, Hand, MessageSquareMore, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { type ReactElement, memo, useState } from 'react';
 
 interface ChoreRowProps {
@@ -45,6 +45,7 @@ interface ChoreRowProps {
 	onSwapRequest: (chore: Chore) => void;
 	onTakeOver: (chore: Chore) => void;
 	onRemove: (id: string) => void;
+	onEdit: (chore: Chore) => void;
 	highlighted: boolean;
 }
 
@@ -88,6 +89,7 @@ export const ChoreRow = memo(function ChoreRow({
 	onSwapRequest,
 	onTakeOver,
 	onRemove,
+	onEdit,
 	highlighted,
 }: ChoreRowProps): ReactElement {
 	const [actionsOpen, setActionsOpen] = useState(false);
@@ -217,6 +219,19 @@ export const ChoreRow = memo(function ChoreRow({
 									Ich übernehme
 								</Button>
 							)}
+							<Button
+								variant="outline"
+								className="min-h-11 shrink-0 py-2"
+								disabled={busy}
+								aria-label={`Aufgabe bearbeiten: ${chore.title}`}
+								onClick={() => {
+									setActionsOpen(false);
+									onEdit(chore);
+								}}
+							>
+								<Pencil data-icon="inline-start" aria-hidden />
+								Bearbeiten
+							</Button>
 							<Button
 								variant="outline"
 								className="min-h-11 shrink-0 py-2"

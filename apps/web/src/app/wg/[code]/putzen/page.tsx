@@ -26,13 +26,14 @@ import { QUICK_CHORE_TEMPLATES } from '@/features/chores/components/constants';
 import { usePutzenPage } from '@/features/chores/hooks/use-putzen-page';
 import { Plus, Sparkles } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 const ConfirmDialog = dynamic(() =>
 	import('@/components/ui/ConfirmDialog').then((module) => module.ConfirmDialog),
 );
 
 export default function PutzenPage() {
+	const editTitleInputRef = useRef<HTMLInputElement>(null);
 	const { wg, members, identity, isAdmin } = useWg();
 	const {
 		absenceAddPending,
@@ -55,6 +56,7 @@ export default function PutzenPage() {
 		applyQuickChore,
 		cancelComplete,
 		choreAddPending,
+		choreEdit,
 		choreGroups,
 		completeConfirmId,
 		confirmSuggestion,
@@ -164,6 +166,26 @@ export default function PutzenPage() {
 					/>
 				)}
 			</ChoreForm>
+			<ChoreForm
+				open={choreEdit.editing !== null}
+				onClose={choreEdit.close}
+				heading="Aufgabe bearbeiten"
+				error={choreEdit.error}
+				title={choreEdit.title}
+				onTitleChange={choreEdit.setTitle}
+				titleInputRef={editTitleInputRef}
+				interval={choreEdit.interval}
+				recurrenceType={choreEdit.recurrenceType}
+				onRecurrenceUnitToggle={choreEdit.toggleRecurrenceUnit}
+				onIntervalPresetSelect={choreEdit.selectIntervalPreset}
+				assignedMemberId={choreEdit.assigned}
+				onAssignedMemberIdChange={choreEdit.setAssigned}
+				members={activeMembers}
+				pending={choreEdit.pending}
+				onSubmit={() => void choreEdit.submit()}
+				dueDate={choreEdit.dueDate}
+				onDueDateChange={choreEdit.setDueDate}
+			/>
 			{actionErrorVisible && (
 				<Alert variant="destructive" id="chore-action-error" className="scroll-mt-24">
 					<AlertDescription>{actionError}</AlertDescription>
@@ -253,6 +275,7 @@ export default function PutzenPage() {
 										onSwapRequest={handleSwapRequest}
 										onTakeOver={handleTakeOver}
 										onRemove={handleRemove}
+										onEdit={choreEdit.open}
 										highlighted={highlightedId === chore.id}
 									/>
 								))}

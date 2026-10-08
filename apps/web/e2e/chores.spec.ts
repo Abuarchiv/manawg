@@ -279,6 +279,7 @@ test.describe('chore next assignee', () => {
 		const opener = row.getByRole('button', { name: `Aufgabenaktionen: ${title}` });
 		const takeOver = page.getByRole('button', { name: 'Ich übernehme' });
 		const swap = page.getByRole('button', { name: `Tausch auf der Pinnwand anfragen: ${title}` });
+		const edit = page.getByRole('button', { name: `Aufgabe bearbeiten: ${title}` });
 		const close = page.getByRole('button', { name: 'Schließen' });
 
 		for (const theme of ['light', 'dark'] as const) {
@@ -316,6 +317,9 @@ test.describe('chore next assignee', () => {
 
 					await takeOver.focus();
 					await expect(takeOver).toBeFocused();
+					await page.keyboard.press('Tab');
+					await expect(edit).toBeFocused();
+					await expectNoOverflow(edit);
 					await page.keyboard.press('Tab');
 					await expect(swap).toBeFocused();
 					if (width === 320 && rootFontSize === 32) {
@@ -447,6 +451,30 @@ test.describe('chore next assignee', () => {
 		await openPutzen(page, [viewer], rows, []);
 		await page.getByRole('button', { name: `Aufgabenaktionen: ${title}` }).click();
 		await expect(page.getByRole('button', { name: `Aufgabe entfernen: ${title}` })).toHaveCount(0);
+	});
+
+	test('editing a chore sends only the changed fields and shows the saved title', async ({
+		page,
+	}) => {
+		const viewer: FixtureMember = { id: CURRENT_MEMBER, name: 'Abu', color: null, active: true };
+		const rows = [chore('edit-me', viewer.id)];
+		let patchBody: Record<string, unknown> | null = null;
+		await page.route(`**/api/wg/${SHARE_CODE}/chores/edit-me`, async (route) => {
+			if (route.request().method() !== 'PATCH') return route.fallback();
+			patchBody = route.request().postDataJSON();
+			return route.fulfill({ json: { chore: { ...rows[0], title: 'Bad gründlich putzen' } } });
+		});
+		await openPutzen(page, [viewer], rows, []);
+
+		await page.getByRole('button', { name: 'Aufgabenaktionen: Aufgabe edit-me' }).click();
+		await page.getByRole('button', { name: 'Aufgabe bearbeiten: Aufgabe edit-me' }).click();
+		await expect(page.getByRole('heading', { name: 'Aufgabe bearbeiten' })).toBeVisible();
+		await expect(page.getByLabel('Fällig am')).toBeVisible();
+		await page.getByLabel('Aufgabe', { exact: true }).fill('Bad gründlich putzen');
+		await page.getByRole('button', { name: 'Aufgabe speichern' }).click();
+
+		await expect.poll(() => patchBody).toEqual({ title: 'Bad gründlich putzen' });
+		await expect(page.getByText('Aufgabe gespeichert.')).toBeVisible();
 	});
 
 	test('offers other members for an absence only to admins', async ({ page }) => {

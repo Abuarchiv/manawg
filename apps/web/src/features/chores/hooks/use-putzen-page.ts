@@ -15,6 +15,7 @@ import type { ChorePageContext } from './chore-page-context';
 import { useAbsenceFormState, useAbsences } from './use-absences';
 import { useChoreActions } from './use-chore-actions';
 import { useChoreCreate } from './use-chore-create';
+import { useChoreEdit } from './use-chore-edit';
 import { useChoresData } from './use-chores-data';
 
 /** The chore plan page: ties loading, creating, actions and absences together and derives the view. */
@@ -70,6 +71,7 @@ export function usePutzenPage() {
 	const create = useChoreCreate(ctx, absenceForm, prefillTitle, fairness.suggestedAssignee);
 	const absenceActions = useAbsences(ctx, absenceForm, create.queueEdit);
 	const choreActions = useChoreActions(ctx);
+	const choreEdit = useChoreEdit(ctx);
 
 	// The highlight is a brief hint, not a selection state: it fades after 2.5 s.
 	const [flashId, setFlashId] = useState<string | null>(null);
@@ -172,6 +174,7 @@ export function usePutzenPage() {
 		applyChoreSuggestion: create.applyChoreSuggestion,
 		applyQuickChore: create.applyQuickChore,
 		choreAddPending: isPending('chore:add'),
+		choreEdit,
 		choreGroups,
 		completeConfirmId: choreActions.completeConfirmId,
 		confirmSuggestion: create.confirmSuggestion,

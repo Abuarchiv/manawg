@@ -19,6 +19,7 @@ const INTERVAL_MAX_MONTHS = 60;
 
 const patchSchema = z
 	.object({
+		title: z.string().trim().min(1).max(120).optional(),
 		assignedMemberId: z.string().uuid().nullable().optional(),
 		nextDueAt: z.string().datetime({ offset: true }).optional(),
 		intervalDays: z.number().int().min(INTERVAL_MIN).optional(),
@@ -64,6 +65,7 @@ export const PATCH = withWgRoute<{ id: string }>('chores PATCH', async (req, { c
 
 	const parsed = await parseBody(req, patchSchema, {
 		fieldErrors: {
+			title: 'title_invalid',
 			assignedMemberId: 'member_id_invalid',
 			nextDueAt: 'due_date_invalid',
 			intervalDays: 'interval_invalid',
@@ -120,6 +122,7 @@ export const PATCH = withWgRoute<{ id: string }>('chores PATCH', async (req, { c
 	}
 
 	const update: {
+		title?: string;
 		assignedMemberId?: string | null;
 		nextDueAt?: Date;
 		anchorAt?: Date;
@@ -130,6 +133,7 @@ export const PATCH = withWgRoute<{ id: string }>('chores PATCH', async (req, { c
 	} = {
 		updatedAt: new Date(),
 	};
+	if (parsed.data.title !== undefined) update.title = parsed.data.title;
 	if (recurrencePatch) Object.assign(update, recurrencePatch.update);
 	if (parsed.data.assignedMemberId !== undefined) {
 		const nextAssignee = parsed.data.assignedMemberId;

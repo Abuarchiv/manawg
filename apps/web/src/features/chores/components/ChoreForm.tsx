@@ -38,6 +38,10 @@ interface ChoreFormProps {
 	members: ChoreMember[];
 	pending: boolean;
 	onSubmit: () => void;
+	/** Edit mode: heading and a due date field replace the "first due" hint. */
+	heading?: string;
+	dueDate?: string;
+	onDueDateChange?: (value: string) => void;
 	children?: React.ReactNode;
 }
 
@@ -57,6 +61,9 @@ export function ChoreForm({
 	members,
 	pending,
 	onSubmit,
+	heading = 'Neue Putzaufgabe',
+	dueDate,
+	onDueDateChange,
 	children,
 }: ChoreFormProps): React.ReactElement {
 	const presets = recurrenceType === 'months' ? INTERVAL_PRESETS_MONTHS : INTERVAL_PRESETS_DAYS;
@@ -73,7 +80,7 @@ export function ChoreForm({
 		>
 			<DrawerContent className="mx-auto w-full max-w-md">
 				<DrawerHeader>
-					<DrawerTitle>Neue Putzaufgabe</DrawerTitle>
+					<DrawerTitle>{heading}</DrawerTitle>
 				</DrawerHeader>
 				<form
 					id="add-chore-form"
@@ -139,8 +146,24 @@ export function ChoreForm({
 										</ToggleGroupItem>
 									))}
 								</ToggleGroup>
-								<FieldDescription>Erste Fälligkeit: {firstDue}.</FieldDescription>
+								{dueDate === undefined ? (
+									<FieldDescription>Erste Fälligkeit: {firstDue}.</FieldDescription>
+								) : null}
 							</Field>
+							{dueDate !== undefined && onDueDateChange && (
+								<Field data-disabled={pending}>
+									<FieldLabel htmlFor="chore-due">Fällig am</FieldLabel>
+									<Input
+										id="chore-due"
+										type="date"
+										value={dueDate}
+										onChange={(event) => onDueDateChange(event.target.value)}
+										disabled={pending}
+										required
+										className="text-base"
+									/>
+								</Field>
+							)}
 							<Field data-disabled={pending}>
 								<FieldLabel htmlFor="chore-assigned">Zuständig</FieldLabel>
 								<NativeSelect

@@ -49,7 +49,9 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 	);
 	const { identity, isAdmin } = useWg();
 	// The server accepts pause, edit and delete only from the creator or an admin.
-	const canManage = isAdmin || abo.createdByMemberId === identity.memberId;
+	// A row without a creator id (older cached data) stays actionable; the server still decides.
+	const canManage =
+		isAdmin || abo.createdByMemberId === undefined || abo.createdByMemberId === identity.memberId;
 	const payerName = payer?.name ?? 'unbekannt';
 	// The cron skips (never advances) a template whose payer or debtor moved out.
 	const blockedByMovedOut =

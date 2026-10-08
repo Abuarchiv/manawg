@@ -58,3 +58,21 @@ export function choreActionErrorMessage(
 	}
 	return `${prefix}.`;
 }
+
+const EDIT_SUBJECT = 'Änderung konnte nicht gespeichert werden';
+const CHORE_EDIT_ERRORS: Record<string, string> = {
+	title_invalid: `${EDIT_SUBJECT}: Der Titel muss 1 bis 120 Zeichen haben.`,
+	interval_invalid: `${EDIT_SUBJECT}: Das Intervall muss zwischen 1 und 365 Tagen oder 1 und 60 Monaten liegen.`,
+	due_date_invalid: `${EDIT_SUBJECT}: Das Fälligkeitsdatum liegt zu weit in Vergangenheit oder Zukunft.`,
+	member_not_in_wg: `${EDIT_SUBJECT}: Dieses Mitglied ist nicht mehr in dieser WG.`,
+	chore_changed: `${EDIT_SUBJECT}: Die Aufgabe wurde inzwischen geändert. Der Plan wird neu geladen, versuche es dann erneut.`,
+	chore_not_found: `${EDIT_SUBJECT}: Diese Aufgabe gibt es nicht mehr.`,
+};
+
+/** Error text for editing an existing chore; unknown codes fall back to the shared action wording. */
+export function choreEditErrorMessage(result: { error: string; status: number }): string {
+	return (
+		CHORE_EDIT_ERRORS[result.error] ??
+		choreActionErrorMessage('Änderung konnte nicht gespeichert werden', result)
+	);
+}
