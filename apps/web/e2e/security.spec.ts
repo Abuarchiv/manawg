@@ -28,7 +28,7 @@ import { contentSecurityPolicy } from '../src/core/infra/security-headers';
 import { MAX_CSV_BYTES, readImportJsonBody } from '../src/features/expenses/import-body';
 import { isE2EDbDownMode } from '../src/fixtures/mode';
 import { config, isShareCodeLookup, middleware, originAllowed } from '../src/middleware';
-import { FIXTURE_WG, setupMember, spyConsoleError } from './_helpers';
+import { FIXTURE_WG, setupMember, spyConsoleError } from './support/helpers';
 
 test.describe('csrf origin', () => {
 	const WRITE_URL = 'https://app.example.com/api/wg/ABCDEFGH/expenses';

@@ -2,7 +2,7 @@
 // Why: ambiguous network failures must reuse the original key so a retry can never book an expense twice.
 
 import { type Page, type Route, expect, test } from '@playwright/test';
-import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
+import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './support/helpers';
 
 test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
 

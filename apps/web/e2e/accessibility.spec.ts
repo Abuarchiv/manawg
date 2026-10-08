@@ -9,7 +9,7 @@ import {
 	mockUnreadCount,
 	navigateToFeature,
 	setupMember,
-} from './_helpers';
+} from './support/helpers';
 
 test.describe('contrast tokens', () => {
 	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');

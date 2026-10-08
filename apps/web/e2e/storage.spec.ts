@@ -23,7 +23,7 @@ import {
 	isAllowedImageUrlForWg,
 	parsePrivateImageKey,
 } from '../src/core/validators/image-url';
-import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
+import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './support/helpers';
 
 test.describe('private image url', () => {
 	const WG_A = '11111111-1111-4111-8111-111111111111';

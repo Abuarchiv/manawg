@@ -15,7 +15,7 @@ import {
 	parsePayPalAmountCents,
 	terminalPayPalCaptureOutcome,
 } from '../src/features/expenses/paypal-settlement.ts';
-import { jsonResponse } from './_helpers';
+import { jsonResponse } from './support/helpers';
 
 test.describe('paypal capture state', () => {
 	const CAPTURE_ROUTE_PATH = path.join(

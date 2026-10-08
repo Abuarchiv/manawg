@@ -21,7 +21,7 @@ import {
 	inMinimalMatrix,
 	navigateToFeature,
 	setupMember,
-} from './_helpers';
+} from './support/helpers';
 
 test.describe('import replay atomic', () => {
 	type CommitResult = {

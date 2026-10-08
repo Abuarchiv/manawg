@@ -25,7 +25,7 @@ import {
 	navigateToFeature,
 	setupMember,
 	tuple,
-} from './_helpers';
+} from './support/helpers';
 
 test.describe('daily overview home', () => {
 	const BASE = '/api/wg/MTE8PZAT';

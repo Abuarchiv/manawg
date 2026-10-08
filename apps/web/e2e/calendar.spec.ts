@@ -19,7 +19,7 @@ import {
 	validateEventForm,
 } from '../src/features/events/events';
 import { occurrenceToIcs } from '../src/features/events/ics';
-import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
+import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './support/helpers';
 
 test.describe('calendar fixes', () => {
 	const ALL_DAY_EVENT: EventInput = {

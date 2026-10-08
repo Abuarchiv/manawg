@@ -4,7 +4,7 @@
 import { writeFile } from 'node:fs/promises';
 import { type Page, type Route, expect, test } from '@playwright/test';
 import { isIosLikeDevice } from '../src/shared/lib/pwa-install';
-import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
+import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './support/helpers';
 
 test.describe('pwa platform', () => {
 	test('iPadOS desktop Safari is treated as an iOS-like device', () => {

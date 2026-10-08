@@ -22,7 +22,7 @@ import {
 	shoppingCreateHttpResponse,
 	withShoppingCreatePostCommitFallback,
 } from '../src/features/shopping/shopping-mutation';
-import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
+import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './support/helpers';
 
 test.describe('shopping input', () => {
 	test('splits a leading amount from the item name', () => {

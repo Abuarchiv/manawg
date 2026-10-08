@@ -2,7 +2,7 @@
 // Why: deletion must be atomic, fenced and leave no residue; only a real database proves FK/cascade behaviour.
 
 import { expect, test } from '@playwright/test';
-import { tuple } from './_helpers';
+import { tuple } from './support/helpers';
 
 const accountDeleteTestUrl = process.env.ACCOUNT_DELETE_TEST_URL?.trim() ?? '';
 const loopbackHosts = new Set(['localhost', '127.0.0.1', '::1']);
