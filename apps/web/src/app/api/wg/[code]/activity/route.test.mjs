@@ -62,6 +62,7 @@ test('due chores are the overdue ones, oldest first, so the 120-row cap keeps th
 		}),
 	};
 	const { GET } = loadTs('src/app/api/wg/[code]/activity/route.ts', {
+		'@/core/audit-visibility': { publicAuditMetadata: (_type, json) => json },
 		'@/core/db': { db, ...tables },
 		'@/core/guards/require-wg-member': {
 			requireWgMember: async () => ({ ok: true, wg: { id: 'wg-1' } }),
@@ -173,6 +174,7 @@ test('reminders read open shopping items and open announcements from their own o
 	};
 	let reminderInput = null;
 	const { GET } = loadTs('src/app/api/wg/[code]/activity/route.ts', {
+		'@/core/audit-visibility': { publicAuditMetadata: (_type, json) => json },
 		'@/core/db': { db, ...tables },
 		'@/core/guards/require-wg-member': {
 			requireWgMember: async () => ({ ok: true, wg: { id: 'wg-1' } }),
