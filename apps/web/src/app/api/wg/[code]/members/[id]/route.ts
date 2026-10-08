@@ -2,6 +2,8 @@ import { recordAuditEvent } from '@/core/audit';
 import { db, pushSubscriptions, wgMembers } from '@/core/db';
 import { hasCapturingMemberPayment, lockActiveAccountMember } from '@/core/db/account-deletion';
 import { releaseMemberChores } from '@/core/db/member-departure';
+import { MAX_MEMBERS_PER_WG, availableMemberName, releaseMemberName } from '@/core/db/member-names';
+import { LIMITS } from '@/core/db/schema';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
@@ -21,7 +23,7 @@ import {
 	withExpensePaymentLock,
 } from '@/features/expenses/expense-payments';
 import { loadOpenExpenses } from '@/features/expenses/open-expenses';
-import { and, eq } from 'drizzle-orm';
+import { and, count, eq, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -169,13 +171,32 @@ export const PATCH = withWgRoute<{ id: string }>(
 			) {
 				return { ok: false as const, response: conflict('paypal_payment_pending') };
 			}
+			let returnName: string | null = null;
 			const activeUnchanged = active === undefined || active === (target.deactivatedAt === null);
 			if (activeUnchanged) {
 				return { ok: true as const, changedActive: false, member: target };
 			}
 
+			if (active === true) {
+				const [activeCount] = await tx
+					.select({ total: count() })
+					.from(wgMembers)
+					.where(and(eq(wgMembers.wgId, wgId), isNull(wgMembers.deactivatedAt)));
+				if ((activeCount?.total ?? 0) >= MAX_MEMBERS_PER_WG) {
+					return {
+						ok: false as const,
+						response: conflict('member_limit_reached', 'member_limit_reached'),
+					};
+				}
+				// A person who has since taken the name keeps it; this member returns under a numbered one.
+				if (!(await releaseMemberName(tx, wgId, target.name, target.id))) {
+					returnName = await availableMemberName(tx, wgId, target.name);
+				}
+			}
+
 			const updateValues = {
 				...(active !== undefined ? { deactivatedAt: active ? null : new Date() } : {}),
+				...(returnName ? { name: returnName } : {}),
 			};
 			const [updated] = await tx
 				.update(wgMembers)
@@ -226,3 +247,68 @@ export const PATCH = withWgRoute<{ id: string }>(
 		});
 	},
 );
+
+const renameSchema = z.object({ name: z.string().trim().min(1).max(LIMITS.NAME_MAX) });
+
+/** PUT changes the display name; a member renames themselves, an admin may rename anyone active. */
+export const PUT = withWgRoute<{ id: string }>('members/[id] PUT', async (req, { code, id }) => {
+	if (!UUID_PATTERN.test(id)) return badRequest('id_invalid');
+	const parsed = await parseBody(req, renameSchema, { fieldErrors: { name: 'name_invalid' } });
+	if (!parsed.ok) return parsed.response;
+	const { name } = parsed.data;
+	const auth = await requireWgMember(req, code);
+	if (!auth.ok) return auth.response;
+	const wgId = auth.wg.id;
+	const limited = await checkRateLimit(
+		wgWriteLimiter,
+		`member-update:${wgId}:${auth.member.memberId}`,
+	);
+	if (!limited.success) return tooMany();
+
+	const result = await withExpensePaymentLock(wgId, async (tx) => {
+		const actor = await lockActiveAccountMember(tx, wgId, auth.member.memberId, auth.authUserId);
+		if (!actor) return { ok: false as const, response: unauthorized('member_deactivated') };
+		const [target] = await tx
+			.select({ id: wgMembers.id, name: wgMembers.name, deactivatedAt: wgMembers.deactivatedAt })
+			.from(wgMembers)
+			.where(and(eq(wgMembers.id, id), eq(wgMembers.wgId, wgId)))
+			.for('update');
+		if (!target) return { ok: false as const, response: notFound('member_not_found') };
+		if (actor.id !== target.id && actor.role !== 'admin') {
+			return { ok: false as const, response: forbidden('not_owner', 'not_owner') };
+		}
+		if (target.deactivatedAt) {
+			return { ok: false as const, response: conflict('member_deactivated', 'member_deactivated') };
+		}
+		if (target.name === name) return { ok: true as const, before: target.name, name };
+		if (!(await releaseMemberName(tx, wgId, name, target.id))) {
+			return { ok: false as const, response: conflict('name_taken', 'name_taken') };
+		}
+		await tx.update(wgMembers).set({ name }).where(eq(wgMembers.id, id));
+		return { ok: true as const, before: target.name, name };
+	}).catch((err: unknown) => {
+		// The exact unique index only fires when a concurrent rename took the same name.
+		if (
+			err &&
+			typeof err === 'object' &&
+			'code' in err &&
+			(err as { code?: unknown }).code === '23505'
+		) {
+			return { ok: false as const, response: conflict('name_taken', 'name_taken') };
+		}
+		throw err;
+	});
+	if (!result.ok) return result.response;
+	if (result.before !== result.name) {
+		await recordAuditEvent({
+			wgId,
+			memberId: auth.member.memberId,
+			eventType: 'member.renamed',
+			entityType: 'member',
+			entityId: id,
+			summary: `${auth.member.name} hat ${result.before} in ${result.name} umbenannt.`,
+			metadata: { nameBefore: result.before, nameAfter: result.name },
+		});
+	}
+	return NextResponse.json({ member: { id, name: result.name } });
+});

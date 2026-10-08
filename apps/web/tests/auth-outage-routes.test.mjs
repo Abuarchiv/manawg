@@ -219,6 +219,11 @@ function wgRouteMocks(state) {
 			assertAccountCanAcquireMembership: unreachable('assertAccountCanAcquireMembership'),
 			lockActiveAccountMember: unreachable('lockActiveAccountMember'),
 		},
+		'@/core/db/member-names': {
+			MAX_MEMBERS_PER_WG: 20,
+			availableMemberName: unreachable('availableMemberName'),
+			releaseMemberName: unreachable('releaseMemberName'),
+		},
 		'@/core/db/schema': { LIMITS: { NAME_MAX: 50 } },
 		'@/core/db/transaction': {
 			TransactionAbort: class extends Error {},

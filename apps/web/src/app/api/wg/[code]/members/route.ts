@@ -4,6 +4,7 @@ import { getAuthenticatedUser } from '@/core/auth/server';
 import { db, wgMembers, wgs } from '@/core/db';
 import { assertAccountCanAcquireMembership } from '@/core/db/account-deletion';
 import { type WriteOutcome, responseCodec, withIdempotentWrite } from '@/core/db/idempotent-write';
+import { MAX_MEMBERS_PER_WG, releaseMemberName } from '@/core/db/member-names';
 import { LIMITS } from '@/core/db/schema';
 import { type DbTransaction, TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { isWgAdmin } from '@/core/guards/admin';
@@ -23,11 +24,10 @@ import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey } from '@/core/idempotency-store';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, clientIpKey, wgWriteLimiter } from '@/core/rate-limit';
-import { and, asc, count, eq, sql } from 'drizzle-orm';
+import { and, asc, count, eq, isNull } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-const MAX_MEMBERS_PER_WG = 20;
 // GET pagination: WG member counts are small, but the listing must never
 // degenerate into an unbounded SELECT. Default high enough that existing
 // clients keep receiving the full roster; explicit limit/offset enables
@@ -154,22 +154,16 @@ async function insertJoiningMember(
 	if (existingForUser[0]?.deactivatedAt) return reject('member_deactivated');
 	if (existingForUser.length > 0) return reject('already_joined');
 	if (!lockedWg.joiningEnabled) return reject('joining_disabled');
+	// Moved-out members do not use up a place.
 	const memberCount = await tx
 		.select({ id: wgMembers.id })
 		.from(wgMembers)
-		.where(eq(wgMembers.wgId, input.wgId));
+		.where(and(eq(wgMembers.wgId, input.wgId), isNull(wgMembers.deactivatedAt)));
 	if (memberCount.length >= MAX_MEMBERS_PER_WG) return reject('limit');
 
-	const existing = await tx
-		.select({ id: wgMembers.id, name: wgMembers.name, color: wgMembers.color })
-		.from(wgMembers)
-		// Case-insensitive: "anna" next to "Anna" could not be told apart in chat and balances.
-		// The unique index stays exact and only catches the race.
-		.where(
-			and(eq(wgMembers.wgId, input.wgId), sql`lower(${wgMembers.name}) = lower(${input.name})`),
-		)
-		.limit(1);
-	if (existing.length > 0) return reject('name_taken');
+	// Case-insensitive: "anna" next to "Anna" could not be told apart in chat and balances. A
+	// moved-out member with the name is renamed aside; the unique index only catches the race.
+	if (!(await releaseMemberName(tx, input.wgId, input.name))) return reject('name_taken');
 	let inserted: typeof wgMembers.$inferSelect | undefined;
 	try {
 		// A savepoint keeps the transaction usable when the unique index catches a race.
