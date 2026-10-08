@@ -65,9 +65,7 @@ const getOfflineShellAssets = async (cache) => {
 
 const offlineShellAssetsOf = (html) => {
 	const assets = new Set();
-	for (const [, , reference] of html.matchAll(
-		/\b(?:src|href)\s*=\s*(["'])(.*?)\1/gi,
-	)) {
+	for (const [, , reference] of html.matchAll(/\b(?:src|href)\s*=\s*(["'])(.*?)\1/gi)) {
 		let asset;
 		try {
 			asset = new URL(reference, self.location.origin);

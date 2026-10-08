@@ -105,3 +105,69 @@ test('does not navigate to a foreign target and opens the app root', async () =>
 	assert.deepEqual(calls, []);
 	assert.deepEqual(opened, ['/']);
 });
+
+function loadTimeoutWorker({ fetch, cached }) {
+	const handlers = new Map();
+	const timers = [];
+	const self = {
+		location: { origin: APP_ORIGIN },
+		addEventListener: (type, handler) => handlers.set(type, handler),
+	};
+	const caches = {
+		match: async (key) => cached[typeof key === 'string' ? key : new URL(key.url).pathname],
+		open: async () => ({ put: async () => undefined, addAll: async () => undefined }),
+	};
+	vm.runInNewContext(serviceWorkerSource, {
+		self,
+		URL,
+		caches,
+		fetch,
+		AbortController,
+		setTimeout: (fn, ms) => {
+			timers.push({ fn, ms });
+			return timers.length;
+		},
+		clearTimeout: () => undefined,
+	});
+	return { handlers, timers };
+}
+
+function navigateTo(handlers, pathname) {
+	let response;
+	handlers.get('fetch')({
+		request: {
+			method: 'GET',
+			mode: 'navigate',
+			url: `${APP_ORIGIN}${pathname}`,
+			headers: { get: () => 'text/html' },
+		},
+		respondWith: (promise) => {
+			response = promise;
+		},
+	});
+	return response;
+}
+
+test('a navigation the network does not answer in time falls back to the offline page', async () => {
+	const { handlers, timers } = loadTimeoutWorker({
+		fetch: (_request, { signal }) =>
+			new Promise((_resolve, reject) => {
+				signal.addEventListener('abort', () => reject(new Error('aborted')));
+			}),
+		cached: { '/offline': 'offline-page' },
+	});
+
+	const pending = navigateTo(handlers, '/wg/ABCD2345/ausgaben');
+	assert.equal(timers.length, 1);
+	assert.equal(timers[0].ms, 8000);
+	timers[0].fn();
+
+	assert.equal(await pending, 'offline-page');
+});
+
+test('a timely answer is served as is', async () => {
+	const answer = { ok: true, clone: () => answer };
+	const { handlers } = loadTimeoutWorker({ fetch: async () => answer, cached: {} });
+
+	assert.equal(await navigateTo(handlers, '/wg/ABCD2345/ausgaben'), answer);
+});
