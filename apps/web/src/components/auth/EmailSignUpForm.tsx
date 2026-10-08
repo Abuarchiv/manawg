@@ -12,7 +12,7 @@ import {
 	classifyAuthError,
 	isWeakPasswordError,
 } from '@/core/auth/password-errors';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
 	type AuthFormProps,
 	type BusyAction,
@@ -138,10 +138,17 @@ function InboxNotice({
 	busy,
 }: { auth: ReturnType<typeof useEmailSignUp>; busy: BusyAction }) {
 	const { sentTo, cooldown, resendNotice, error, failure, resend, useOtherAddress } = auth;
+	const titleRef = useRef<HTMLDivElement>(null);
+	// The form was replaced by this notice, so keyboard and screen reader users land on it.
+	useEffect(() => {
+		titleRef.current?.focus();
+	}, []);
 	return (
 		<div className="flex flex-col gap-4">
 			<Alert>
-				<AlertTitle>Prüfe dein Postfach</AlertTitle>
+				<AlertTitle ref={titleRef} tabIndex={-1} className="focus:outline-none">
+					Prüfe dein Postfach
+				</AlertTitle>
 				<AlertDescription className="[overflow-wrap:anywhere]">
 					Wir haben einen Bestätigungslink an {sentTo} geschickt, sofern für diese Adresse noch kein
 					Konto besteht. Öffne den Link, danach geht es hier weiter. Schau auch im Spam-Ordner nach.

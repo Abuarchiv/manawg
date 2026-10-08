@@ -6,6 +6,7 @@ import { enqueueOfflineAction, readOfflineQueue } from '@/core/offline/offline-c
 import { createOfflineIdempotencyKey, createQueuedExpense } from '@/core/offline/offline-queue';
 import type { RecurringExpense } from '@/features/expenses/components/ausgaben/expense-types';
 import {
+	expenseSaveErrorMessage,
 	isPermanentClientError,
 	recurringAdvanceWarningMessage,
 } from '@/features/expenses/expense-errors';
@@ -177,7 +178,12 @@ export function useRecurringBooking(ctx: ExpensePageContext) {
 			}
 			rollbackOptimisticExpense();
 			pending.end(optimisticId);
-			const message = 'Fixkosten-Ausgabe konnte nicht erstellt werden: Versuche es gleich erneut.';
+			// A permanent client error (member moved out, template paused or already advanced) will not
+			// succeed on retry, so say what the server rejected instead of "try again".
+			const message =
+				isPermanentClientError(createRes.status) && createRes.error
+					? expenseSaveErrorMessage(createRes.error)
+					: 'Fixkosten-Ausgabe konnte nicht erstellt werden: Versuche es gleich erneut.';
 			notify.error(message);
 			toast.error(message);
 			finishCreating();

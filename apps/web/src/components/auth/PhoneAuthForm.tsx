@@ -7,7 +7,7 @@ import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { type AuthFailure, classifyAuthError } from '@/core/auth/password-errors';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { type AuthFormProps, type BusyAction, GenericAuthError } from './auth-form-shared';
 
 const E164_PATTERN = /^\+[1-9]\d{1,14}$/;
@@ -18,6 +18,11 @@ export function usePhoneAuth({ busy, setBusy, onAuthenticated }: AuthFormProps) 
 	const [phone, setPhone] = useState('');
 	const [otp, setOtp] = useState('');
 	const [otpRequested, setOtpRequested] = useState(false);
+
+	// The request button unmounts when the code field appears; move focus there.
+	useEffect(() => {
+		if (otpRequested) document.getElementById('auth-phone-otp')?.focus();
+	}, [otpRequested]);
 	const [failure, setFailure] = useState<AuthFailure>('other');
 	const [phoneError, setPhoneError] = useState<
 		'generic' | 'invalid-phone' | 'invalid-otp' | 'unavailable' | null

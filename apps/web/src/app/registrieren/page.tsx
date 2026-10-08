@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
 	title: 'Konto erstellen — ManaWG',
 	description: 'Lege dein ManaWG-Konto an, um eine WG zu erstellen oder einer WG beizutreten.',
+	alternates: { canonical: '/registrieren' },
 };
 
 type SearchParams = Record<string, string | string[] | undefined>;

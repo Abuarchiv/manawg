@@ -187,6 +187,11 @@ export function ChatComposer({
 					draftRef.current = '';
 					setDraft('');
 					setMention(null);
+				} else if (outgoingDraft !== '' && draftRef.current.startsWith(outgoingDraft)) {
+					// Keep what was typed after sending; otherwise the sent text would go out twice.
+					const rest = draftRef.current.slice(outgoingDraft.length).trimStart();
+					draftRef.current = rest;
+					setDraft(rest);
 				}
 				if (replyToMessageIdRef.current === outgoingReplyToMessageId) {
 					onClearReply();
