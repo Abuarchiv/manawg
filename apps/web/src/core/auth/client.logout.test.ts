@@ -1,32 +1,55 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import path from 'node:path';
-import test from 'node:test';
+import { mock, test } from 'node:test';
 
-const requireFromWeb = createRequire(path.join(process.cwd(), 'package.json'));
-const { ModuleKind, ScriptTarget, transpileModule } = requireFromWeb('typescript');
+// Real client.ts and push-subscribe.ts run against a recording fake of the network, the Supabase
+// auth client and the browser's push subscription; the events array keeps their order.
 
-function loadTypeScriptModule(sourcePath, mocks) {
-	const source = readFileSync(path.join(process.cwd(), sourcePath), 'utf8');
-	const compiled = transpileModule(source, {
-		compilerOptions: {
-			module: ModuleKind.CommonJS,
-			target: ScriptTarget.ES2022,
-			esModuleInterop: true,
+type Event = {
+	type: string;
+	url?: string;
+	init?: { method?: string; body?: string; memberId?: string } | undefined;
+};
+
+const current = {
+	events: [] as Event[],
+	serverAvailable: true,
+};
+
+mock.module('@/core/infra/api-client', {
+	namedExports: {
+		apiFetch: async (url: string, init?: Event['init']) => {
+			current.events.push({ type: 'server-unsubscribe', url, init });
+			return current.serverAvailable
+				? { ok: true, data: { ok: true } }
+				: { ok: false, status: 503, error: 'server_error' };
 		},
-	}).outputText;
-	const module = { exports: {} };
-	new Function('require', 'module', 'exports', compiled)(
-		(name) => (Object.hasOwn(mocks, name) ? mocks[name] : requireFromWeb(name)),
-		module,
-		module.exports,
-	);
-	return module.exports;
-}
+	},
+});
+mock.module('@supabase/ssr', {
+	namedExports: {
+		createBrowserClient: () => ({
+			auth: {
+				signOut: async () => {
+					current.events.push({ type: 'sign-out' });
+					return { error: null };
+				},
+			},
+		}),
+	},
+});
+mock.module('./supabase-env', {
+	namedExports: {
+		getSupabaseEnv: () => ({ url: 'https://auth.example.test', publishableKey: 'test' }),
+	},
+});
+mock.module('./next-path', { namedExports: { safeNextPath: (value: string) => value } });
+
+const client = await import('./client');
 
 function harness({ serverAvailable = true, unsubscribeResult = true } = {}) {
-	const events = [];
+	const events: Event[] = [];
+	current.events = events;
+	current.serverAvailable = serverAvailable;
 	let subscriptionActive = true;
 	const endpoint = 'https://push.example.test/browser-endpoint';
 	const subscription = {
@@ -47,30 +70,6 @@ function harness({ serverAvailable = true, unsubscribeResult = true } = {}) {
 				}),
 			},
 		},
-	});
-	const pushSubscriptions = loadTypeScriptModule('src/core/notifications/push-subscribe.ts', {
-		'@/core/infra/api-client': {
-			apiFetch: async (url, init) => {
-				events.push({ type: 'server-unsubscribe', url, init });
-				return serverAvailable
-					? { ok: true, data: { ok: true } }
-					: { ok: false, status: 503, error: 'server_error' };
-			},
-		},
-	});
-	const auth = {
-		signOut: async () => {
-			events.push({ type: 'sign-out' });
-			return { error: null };
-		},
-	};
-	const client = loadTypeScriptModule('src/core/auth/client.ts', {
-		'@supabase/ssr': { createBrowserClient: () => ({ auth }) },
-		'./supabase-env': {
-			getSupabaseEnv: () => ({ url: 'https://auth.example.test', publishableKey: 'test' }),
-		},
-		'./next-path': { safeNextPath: (value) => value },
-		'@/core/notifications/push-subscribe': pushSubscriptions,
 	});
 	return {
 		client,
@@ -93,20 +92,20 @@ test('shared logout retires this browser endpoint before clearing its local subs
 		]);
 		const serverCleanups = state.events.filter((event) => event.type === 'server-unsubscribe');
 		assert.equal(serverCleanups.length, 2);
-		assert.equal(serverCleanups[0].url, '/api/wg/ABCD2345/notifications');
-		assert.equal(serverCleanups[0].init.method, 'POST');
-		assert.deepEqual(JSON.parse(serverCleanups[0].init.body), {
+		assert.equal(serverCleanups[0]?.url, '/api/wg/ABCD2345/notifications');
+		assert.equal(serverCleanups[0]?.init?.method, 'POST');
+		assert.deepEqual(JSON.parse(serverCleanups[0]?.init?.body as string), {
 			action: 'push_unsubscribe',
 			endpoint: state.endpoint,
 		});
-		assert.equal(serverCleanups[0].init.memberId, 'member-a');
-		assert.equal(Object.hasOwn(serverCleanups[0].init, 'memberToken'), false);
-		assert.equal(serverCleanups[1].url, '/api/wg/BCDE2345/notifications');
-		assert.equal(JSON.parse(serverCleanups[1].init.body).endpoint, state.endpoint);
-		assert.equal(serverCleanups[1].init.memberId, 'member-b');
+		assert.equal(serverCleanups[0]?.init?.memberId, 'member-a');
+		assert.equal(Object.hasOwn(serverCleanups[0]?.init ?? {}, 'memberToken'), false);
+		assert.equal(serverCleanups[1]?.url, '/api/wg/BCDE2345/notifications');
+		assert.equal(JSON.parse(serverCleanups[1]?.init?.body as string).endpoint, state.endpoint);
+		assert.equal(serverCleanups[1]?.init?.memberId, 'member-b');
 		assert.equal(state.isSubscriptionActive(), false);
 		assert.deepEqual(result, { pushCleanup: 'unsubscribed' });
-		assert.equal(state.events.at(-1).type, 'sign-out');
+		assert.equal(state.events.at(-1)?.type, 'sign-out');
 	} finally {
 		state.cleanup();
 	}
@@ -120,7 +119,7 @@ test('logout still unsubscribes locally and signs out when the server is offline
 		]);
 		assert.equal(state.isSubscriptionActive(), false);
 		assert.deepEqual(result, { pushCleanup: 'unsubscribed' });
-		assert.equal(state.events.at(-1).type, 'sign-out');
+		assert.equal(state.events.at(-1)?.type, 'sign-out');
 	} finally {
 		state.cleanup();
 	}
@@ -133,7 +132,7 @@ test('logout reports when browser unsubscribe failed but still clears the auth s
 			{ code: 'ABCD2345', memberId: 'member-a' },
 		]);
 		assert.deepEqual(result, { pushCleanup: 'failed' });
-		assert.equal(state.events.at(-1).type, 'sign-out');
+		assert.equal(state.events.at(-1)?.type, 'sign-out');
 		assert.equal(state.isSubscriptionActive(), true);
 	} finally {
 		state.cleanup();
@@ -147,25 +146,25 @@ test('logout wipes account-bound browser data but keeps the theme', async () => 
 		['manawg_identity:wg', '{}'],
 		['manawg-theme', 'dark'],
 	]);
-	const deleted = [];
+	const deleted: string[] = [];
 	const names = ['localStorage', 'indexedDB', 'caches'];
 	const previous = names.map((name) => Object.getOwnPropertyDescriptor(globalThis, name));
 	const storage = new Proxy(
-		{ removeItem: (key) => store.delete(key) },
+		{ removeItem: (key: string) => store.delete(key) },
 		{
 			ownKeys: () => [...store.keys()],
 			getOwnPropertyDescriptor: (_, key) =>
-				store.has(key) ? { enumerable: true, configurable: true, value: 1 } : undefined,
+				store.has(key as string) ? { enumerable: true, configurable: true, value: 1 } : undefined,
 		},
 	);
 	Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: storage });
 	Object.defineProperty(globalThis, 'indexedDB', {
 		configurable: true,
 		value: {
-			deleteDatabase: (name) => {
+			deleteDatabase: (name: string) => {
 				deleted.push(`idb:${name}`);
-				const request = {};
-				queueMicrotask(() => request.onsuccess());
+				const request: { onsuccess?: () => void } = {};
+				queueMicrotask(() => request.onsuccess?.());
 				return request;
 			},
 		},
@@ -174,7 +173,7 @@ test('logout wipes account-bound browser data but keeps the theme', async () => 
 		configurable: true,
 		value: {
 			keys: async () => ['manawg-app-v4-shell', 'other'],
-			delete: async (key) => deleted.push(`cache:${key}`),
+			delete: async (key: string) => deleted.push(`cache:${key}`),
 		},
 	});
 	const state = harness();
