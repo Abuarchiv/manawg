@@ -2,12 +2,12 @@
 
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item';
 import { Separator } from '@/components/ui/separator';
+import type { KnownWg } from '@/core/auth/identity';
 import {
 	type OfflineAction,
 	getOfflineActionRisk,
 	getOfflineActionSummary,
 } from '@/core/offline/offline-queue';
-import type { KnownWg } from '@/core/auth/identity';
 import Link from 'next/link';
 import {
 	type OfflineStatus,

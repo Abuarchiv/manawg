@@ -2,7 +2,7 @@
 // Why: the UI must report the true server outcome (200/202/unconfirmed/pre-commit failure) and never claim a failed or pending deletion as done.
 
 import { expect, test } from '@playwright/test';
-import { mockNoWgs } from './_helpers';
+import { mockNoWgs } from './support/helpers';
 
 async function openConfirmation(page: import('@playwright/test').Page) {
 	await mockNoWgs(page);

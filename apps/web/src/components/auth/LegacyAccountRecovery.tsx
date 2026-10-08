@@ -6,12 +6,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
-import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import {
 	clearIdentity,
 	getLegacyIdentityCandidates,
 	legacyClaimHeaders,
 } from '@/core/auth/identity';
+import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useRef, useState } from 'react';
 

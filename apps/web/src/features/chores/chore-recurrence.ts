@@ -1,28 +1,21 @@
 /**
  * Pure helpers for recurring-chore due-date math.
  *
- * Bug history #1: an earlier implementation computed `nextDueAt` from
- * `Date.now()` only. For a monthly chore completed 5 days early, the next due
- * also slid 5 days earlier — across a year this drifts ~60 days off-cadence.
- *
- * Fix #1: anchor the next due on the previous due so the cadence stays stable,
- * but re-anchor on `completedAt` once the due day has passed so a
- * massively-overdue chore is not scheduled in the past.
+ * The next due date anchors on the previous due date so the cadence stays
+ * stable (a monthly chore completed 5 days early must not slide 5 days earlier,
+ * which would drift ~60 days off-cadence over a year). Once the due day has
+ * passed, it re-anchors on `completedAt` so a massively overdue chore is not
+ * scheduled in the past:
  *
  *   nextDueAt = (late ? completedAt : prevDueAt) + interval
  *
- * Bug history #2: "monatlich" was encoded as `intervalDays = 30`, but 12×30
- * = 360 days, so a chore created Jan 1 fires Dec 27 by year end. Real users
- * notice this.
+ * `recurrenceType: 'days' | 'months'` exists because "monatlich" as
+ * `intervalDays = 30` would drift (12×30 = 360 days). The 'months' branch adds
+ * calendar months so 12 monthly cycles land on the same calendar day each
+ * year. Month-end is clamped (Jan 31 + 1 month → Feb 28/29, NOT March 3).
  *
- * Fix #2: introduce `recurrenceType: 'days' | 'months'`. The 'months' branch
- * adds calendar months so 12 monthly cycles land on the exact same calendar
- * day each year. Month-end is clamped (Jan 31 + 1 month → Feb 28/29, NOT
- * March 3).
- *
- * Bug history #3: 'days' added raw 24h blocks, shifting the wall-clock time
- * (and near midnight the weekday) across DST. Both branches now step on the
- * Europe/Berlin calendar.
+ * Both branches step on the Europe/Berlin calendar, so the wall-clock time
+ * (and near midnight the weekday) does not shift across DST.
  */
 
 import type { ChoreRecurrenceType } from '@/core/db/schema';

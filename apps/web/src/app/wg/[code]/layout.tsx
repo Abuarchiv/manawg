@@ -6,11 +6,11 @@ import { ToastContainer } from '@/components/ui/Toast';
 import { NavItem } from '@/components/wg/NavItem';
 import { OfflineBanner } from '@/components/wg/OfflineBanner';
 import { WgContextProvider } from '@/components/wg/WgContextProvider';
+import type { StoredIdentity } from '@/core/auth/identity';
 import { getAuthenticatedUserFromCookies } from '@/core/auth/server';
 import { db, wgMembers, wgs } from '@/core/db';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import { loadFixtureWgView } from '@/fixtures/pages';
-import type { StoredIdentity } from '@/core/auth/identity';
 import { and, eq, isNull } from 'drizzle-orm';
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
@@ -211,11 +211,10 @@ function WgShell({
 						)}
 					/>
 				))}
-				{/* Vier Ziele nach Candidate A: Start, Haushalt (Einkauf/Vorräte/
-				    Putzen/Kalender), Finanzen (Ausgaben/Fixkosten/Mahnungen/Import),
-				    Austausch (Pinnwand/Chat). Alle bisherigen Deep Links lösen
-				    weiter auf; Aktivität/Einstellungen bleiben über
-				    Header- und Start-Verlinkungen erreichbar. */}
+				{/* Four destinations: Start, Household (Einkauf/Vorräte/
+				    Putzen/Kalender), Finance (Ausgaben/Fixkosten/Mahnungen/Import),
+				    Exchange (Pinnwand/Chat). All deep links resolve;
+				    Activity/Settings stay reachable through header and Start links. */}
 			</AppBottomNav>
 			{/* Last in the DOM so Tab reaches a toast's dismiss button right after
 			    whatever the user just did, instead of jumping back to the page top. */}

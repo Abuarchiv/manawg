@@ -2,7 +2,7 @@ export const AMOUNT_MIN_EUROS = 0.01;
 export const AMOUNT_MAX_EUROS = 1_000_000;
 export const DESCRIPTION_MAX = 200;
 
-// Über dem Maximum wäre „über 0 €“ irreführend: der Betrag ist dann zu groß, nicht zu klein.
+// Above the maximum, "over 0 €" would be misleading: the amount is too large, not too small.
 export function amountErrorMessage(euros: number | null, raw = ''): string {
 	if (euros === null && /[.,]\d{3,}\s*(€|EUR)?$/i.test(raw.trim())) {
 		return 'Maximal zwei Nachkommastellen.';

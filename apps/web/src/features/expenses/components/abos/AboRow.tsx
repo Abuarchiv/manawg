@@ -24,7 +24,7 @@ const DATE_WITH_YEAR = new Intl.DateTimeFormat('de-DE', {
 	year: 'numeric',
 });
 
-/** Jährliche Fixkosten: ohne Jahr sähen alle Termine gleich aus (03.02., 03.02., 03.02.). */
+/** Yearly recurring expenses: without the year all dates would look the same (03.02., 03.02., 03.02.). */
 function formatAboDate(iso: string, intervalMonths: number): string {
 	const date = intervalMonths >= 12 ? parseValidDate(iso) : null;
 	return date ? DATE_WITH_YEAR.format(date) : formatShortDate(iso);
@@ -69,7 +69,7 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 					<span className="mt-0.5 flex">
 						<MemberAvatar name={payerName} size={28} />
 					</span>
-					{/* Betrag rechts neben dem Titel; erst wenn die Zeile zu schmal wird (320 px, große Schrift), darunter. */}
+					{/* Amount to the right of the title; only when the row gets too narrow (320 px, large text) it goes below. */}
 					<span className="@container flex min-w-0 flex-1 flex-col gap-0.5">
 						<span className="flex min-w-0 flex-col gap-0.5 @[14rem]:flex-row @[14rem]:items-baseline @[14rem]:gap-3">
 							<span className="sr-only">Details öffnen:</span>
@@ -142,7 +142,7 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 							</p>
 						)}
 						<div className="flex flex-wrap items-center gap-3 border-t pt-3">
-							{/* Pausieren liegt bewusst hier statt als Schalter in der Zeile: kein versehentliches Antippen. */}
+							{/* Pausing is deliberately here rather than a switch in the row: no accidental taps. */}
 							<Button
 								variant="outline"
 								onClick={() => onTogglePause(abo)}

@@ -51,10 +51,9 @@ async function createExpenseForDueAt(
 ): Promise<string | 'duplicate' | null> {
 	try {
 		// The expense and its splits are one fact and are written in one
-		// transaction. This used to be two statements with a compensating
-		// delete, but that delete is itself a database call: when it failed the
-		// orphaned expense stayed behind and skewed the balances of a WG that
-		// nobody was watching, because the cron runs unattended.
+		// transaction: a compensating delete is itself a database call, and if it
+		// failed the orphaned expense would skew the balances of a WG that nobody is
+		// watching, because the cron runs unattended.
 		return await withExpensePaymentLock(template.wgId, async (tx) => {
 			const [wg] = await tx
 				.select({ id: wgs.id })

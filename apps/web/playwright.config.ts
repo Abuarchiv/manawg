@@ -73,7 +73,7 @@ const webServerCommand =
 			: `${prepareIsolatedNext} && if [ "\${CI:-}" != "true" ] && [ -f .env.local ]; then set -a; . ./.env.local; set +a; fi; VERCEL_ENV=development ${isolatedNextEnv} pnpm exec next dev --port ${serverPort}`;
 
 export default defineConfig({
-	...(previewE2E ? { globalSetup: path.join(APP_DIR, 'e2e/preview-global-setup.ts') } : {}),
+	...(previewE2E ? { globalSetup: path.join(APP_DIR, 'e2e/support/preview-global-setup.ts') } : {}),
 	testDir: './e2e',
 	fullyParallel: false,
 	forbidOnly: !!process.env.CI,

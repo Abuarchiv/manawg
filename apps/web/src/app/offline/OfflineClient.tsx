@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { createSupabaseBrowserClient } from '@/core/auth/client';
+import { type KnownWg, getKnownWgs, hasLocalIdentityFor } from '@/core/auth/identity';
 import { subscribeConnectivity } from '@/core/hooks/use-online-status';
 import {
 	filterOfflineActionsForAuthUser,
@@ -17,7 +18,6 @@ import {
 	getOfflineSyncFailureMessage,
 } from '@/core/offline/offline-copy';
 import type { OfflineAction } from '@/core/offline/offline-queue';
-import { type KnownWg, getKnownWgs, hasLocalIdentityFor } from '@/core/auth/identity';
 import { CloudOff, RefreshCw, RotateCw, Wifi } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';

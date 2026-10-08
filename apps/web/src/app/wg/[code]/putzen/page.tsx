@@ -102,7 +102,7 @@ export default function PutzenPage() {
 	} = usePutzenPage();
 	const wgBaseHref = `/wg/${encodeURIComponent(wg.shareCode)}`;
 	const actionErrorVisible = Boolean(actionError) && !showForm && !completeConfirmId;
-	// Der Fehler steht oben; wer am Abwesenheitsformular unten ist, sähe ihn sonst nicht.
+	// The error is shown at the top; someone at the absence form below would not see it otherwise.
 	useEffect(() => {
 		if (actionErrorVisible) {
 			document.getElementById('chore-action-error')?.scrollIntoView({ block: 'nearest' });
@@ -273,7 +273,7 @@ export default function PutzenPage() {
 				<AbsencePanel
 					active={absencesPanelActive}
 					absentCount={absentMemberIds.length}
-					// Die API lässt Abwesenheiten nur für sich selbst oder als Admin zu.
+					// The API allows absences only for oneself or as admin.
 					members={
 						isAdmin ? activeMembers : activeMembers.filter((m) => m.id === identity.memberId)
 					}

@@ -30,10 +30,10 @@ export function AccountDeleteSection() {
 	const [stage, setStage] = useState<'idle' | 'confirm' | 'pending'>('idle');
 	const [confirmText, setConfirmText] = useState('');
 	const [error, setError] = useState<string | null>(null);
-	// Fokus auf „Abbrechen“, damit auf iOS nicht ungefragt die Tastatur aufgeht.
+	// Focus the cancel button so iOS does not open the keyboard unprompted.
 	const cancelRef = useRef<HTMLButtonElement>(null);
 
-	// Bei großer Schrift liegt die Meldung unterhalb des sichtbaren Dialogausschnitts.
+	// With large text the message lies below the visible dialog area.
 	useEffect(() => {
 		if (error)
 			document.getElementById('delete-account-error')?.scrollIntoView({ block: 'nearest' });

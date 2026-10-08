@@ -3,7 +3,7 @@
 
 import { expect, test } from '@playwright/test';
 
-import { mockNoWgs } from './_helpers';
+import { mockNoWgs } from './support/helpers';
 
 test.describe('auth phone flow', () => {
 	test.describe('phone authentication fixture', () => {

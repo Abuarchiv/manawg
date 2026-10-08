@@ -31,7 +31,7 @@ import { Check, MoreHorizontal, Receipt, RotateCcw, Trash2 } from 'lucide-react'
 import Link from 'next/link';
 import { memo, useEffect, useRef, useState } from 'react';
 
-// Ab dieser Wischstrecke nach rechts gilt der Artikel als abgehakt (bzw. wieder offen).
+// From this swipe distance to the right, the item counts as checked off (or open again).
 const SWIPE_TOGGLE_PX = 72;
 
 interface ShoppingItemRowProps {
@@ -65,7 +65,7 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 	const deleteConfirm = useConfirmDelete();
 	const isDeleteArmed = deleteConfirm.confirmId === item.id;
 	const { identity } = useWg();
-	// Die eigene Person heißt „dir“/„dich“, nicht beim eigenen Namen.
+	// The own person is called "dir"/"dich", not by their own name.
 	const buyerName = item.boughtByMemberId
 		? item.boughtByMemberId === identity.memberId
 			? 'dir'
@@ -76,7 +76,7 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 	const confirmAlertRef = useRef<HTMLDivElement>(null);
 	const [swipeX, setSwipeX] = useState(0);
 
-	// Bei großer Schrift schiebt der Hinweis den Bereich über die Schließen-Leiste: in den Blick holen.
+	// With large text the notice pushes the area over the close bar: bring it into view.
 	useEffect(() => {
 		if (isDeleteArmed) confirmAlertRef.current?.scrollIntoView({ block: 'nearest' });
 	}, [isDeleteArmed]);
@@ -97,9 +97,9 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 
 	return (
 		<li className={cn('relative', swipeX > 0 && 'overflow-hidden')}>
-			{/* overflow-hidden nur während aktiver Wischgeste: sonst schneidet es die
-			    unsichtbare Tap-Fläche der Checkbox (after:-inset-2.5) am linken Rand ab,
-			    weil das Item hier px-0 hat und die Checkbox flächenbündig sitzt. */}
+			{/* overflow-hidden only during an active swipe: otherwise it clips the checkbox's
+			    invisible tap area (after:-inset-2.5) at the left edge, because the item has
+			    px-0 here and the checkbox sits flush. */}
 			<div
 				aria-hidden
 				className={cn(
@@ -121,11 +121,11 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 				style={swipeX > 0 ? { transform: `translateX(${swipeX}px)` } : undefined}
 				aria-busy={pending}
 				onPointerDown={(event) => {
-					// Maus bleibt beim Klicken; Wischen ist eine Touch-Geste.
+					// The mouse stays on click; swiping is a touch gesture.
 					if (event.pointerType !== 'mouse' && !pending && !queued) {
 						swipeStartX.current = event.clientX;
-						// Ohne Capture würden pointermove/-up bei schnellem Wischen auf ein
-						// Nachbarelement umgeleitet und die Zeile bliebe optisch hängen.
+						// Without capture, pointermove/-up would be redirected to a neighboring element
+						// on a fast swipe and the row would stay visually stuck.
 						event.currentTarget.setPointerCapture(event.pointerId);
 					}
 				}}
@@ -149,8 +149,8 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 						aria-label={isBought ? `${item.name} wieder öffnen` : `${item.name} erledigen`}
 					/>
 				</ItemMedia>
-				{/* basis-0 + min-w statt basis-32: bei großer Schrift bleiben Häkchen, Text und ⋯ in einer Zeile;
-				    das ⋯ rutscht nur darunter, wenn ein Wort sonst mitten im Wort brechen müsste. */}
+				{/* basis-0 + min-w instead of basis-32: with large text check mark, text and ⋯ stay in one row;
+				    the ⋯ only drops below when a word would otherwise break mid-word. */}
 				<ItemContent className="min-w-[10ch] basis-0 gap-0.5">
 					<ItemTitle
 						className={cn(

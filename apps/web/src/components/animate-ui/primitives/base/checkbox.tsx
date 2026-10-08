@@ -49,8 +49,8 @@ function Checkbox({
 		onCheckedChange: setIsChecked,
 		...(indeterminate === undefined ? {} : { indeterminate }),
 		...(value === undefined ? {} : { value }),
-		// Der Render-Target ist immer ein echter <button> (m.button), wie beim Switch:
-		// ohne nativeButton fehlt type="button" (Submit in Formularen) und Base UI warnt.
+		// The render target is always a real <button> (m.button), as with the switch:
+		// without nativeButton, type="button" is missing (submit in forms) and Base UI warns.
 		nativeButton: nativeButton ?? true,
 		...(parent === undefined ? {} : { parent }),
 		...(disabled === undefined ? {} : { disabled }),

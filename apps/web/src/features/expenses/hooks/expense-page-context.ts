@@ -1,11 +1,11 @@
 import type { useToast } from '@/components/ui/Toast';
 import type { Member, WgSummary } from '@/components/wg/WgContextProvider';
+import type { StoredIdentity } from '@/core/auth/identity';
 import type {
 	Expense,
 	RecurringExpense,
 } from '@/features/expenses/components/ausgaben/expense-types';
 import type { useExpenseForm } from '@/features/expenses/components/ausgaben/useExpenseForm';
-import type { StoredIdentity } from '@/core/auth/identity';
 
 export interface ActionNotifier {
 	error: (message: string | null) => void;

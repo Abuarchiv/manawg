@@ -15,7 +15,7 @@ import {
 	navigateToFeature,
 	nextHistoryPop,
 	setupMember,
-} from './_helpers';
+} from './support/helpers';
 
 test.describe('expense row reflow', () => {
 	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
@@ -123,9 +123,9 @@ test.describe('expense row reflow', () => {
 					await expect(
 						page.getByRole('menuitem', { name: 'Bearbeiten', exact: true }),
 					).toBeVisible();
-					// Ein Escape direkt nach dem Öffnen kann noch in der Öffnungsphase landen; erst wenn
-					// das Menü wirklich weg ist, weitermessen. Sonst steht es in WebKit noch an der alten,
-					// breiteren Ankerposition und der nächste Durchlauf meldet einen Scheinüberlauf.
+					// An Escape right after opening can land during the opening phase; keep measuring only
+					// once the menu is really gone. Otherwise WebKit still shows it at the old, wider
+					// anchor position and the next pass reports a false overflow.
 					await expect(async () => {
 						await page.keyboard.press('Escape');
 						await expect(page.getByRole('menu')).toHaveCount(0, { timeout: 500 });
@@ -134,7 +134,7 @@ test.describe('expense row reflow', () => {
 			}
 		}
 
-		// Entfernen bestätigt wie bei Fixkosten mit einer Erfolgsmeldung.
+		// Removing confirms with a success message, like recurring costs.
 		await page.route(`**/api/wg/${shareCode}/expenses/${EXPENSE_ID}`, (route) =>
 			route.fulfill({ json: { deleted: true } }),
 		);
@@ -1247,7 +1247,7 @@ test.describe('fab summary overlay', () => {
 		await itemName.focus();
 		await expect(itemName).toBeFocused();
 
-		// Eine offene Forderung blendet auf „Erinnerungen“ den reinen Text-Button „Erinnern“ ein.
+		// An open claim shows the text-only button „Erinnern“ on „Erinnerungen“.
 		const createdAt = new Date().toISOString();
 		await page.route(`**/api/wg/${SHARE_CODE}/expenses`, (route) =>
 			route.request().method() === 'GET'
@@ -1285,7 +1285,7 @@ test.describe('fab summary overlay', () => {
 		await navigateToFeature(page, `/wg/${SHARE_CODE}/mahnungen`);
 		await useLargeText(page);
 		await dismissOnboarding(page);
-		// RemindButton legt den Button in einen Wrapper; das FAB-CSS greift nur auf direkte Kinder.
+		// RemindButton wraps the button; the FAB CSS only applies to direct children.
 		const textAction = page.locator('[data-page-primary-action] button');
 		await expect(textAction).toHaveCount(1);
 		await expect(textAction).toBeVisible();
@@ -1642,7 +1642,7 @@ test.describe('date integrity ui', () => {
 
 		test('uses Berlin day boundaries across the spring clock change', async ({ page }) => {
 			const post = await interceptValidationPost(page, 'absences');
-			// Vergangene Zeiträume lehnt das Formular ab, daher steht die Uhr vor der Zeitumstellung.
+			// The form rejects past ranges, so the clock is set before the clock change.
 			await page.clock.setFixedTime(new Date('2026-03-20T10:00:00Z'));
 			await setupMember(page);
 			await navigateToFeature(page, `/wg/${SHARE_CODE}/putzen?panel=absences`);

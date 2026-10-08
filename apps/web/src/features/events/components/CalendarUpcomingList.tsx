@@ -30,9 +30,9 @@ interface CalendarUpcomingListProps {
 	}>;
 	onSelect: (occurrence: EventOccurrence) => void;
 	wgBaseHref: string;
-	/** Regel je Termin (eventId), daraus entsteht das Intervall hinter der Uhrzeit. */
+	/** Rule per event (eventId); it yields the interval behind the time. */
 	recurrenceByEventId?: ReadonlyMap<string, string | null>;
-	/** Termin aus dem Push-Link (`?highlight=`); die nächste Fälligkeit wird markiert und angescrollt. */
+	/** Event from the push link (`?highlight=`); its next occurrence is marked and scrolled to. */
 	highlightEventId?: string | null;
 }
 
@@ -47,7 +47,7 @@ const DAY_FORMATTER = new Intl.DateTimeFormat('de-DE', {
 const MONTH_SHORT_FORMATTER = new Intl.DateTimeFormat('de-DE', { month: 'short' });
 const WEEKDAY_FORMATTER = new Intl.DateTimeFormat('de-DE', { weekday: 'short' });
 
-/** Kurzes Intervall wie "wöchentlich"; komplexere Regeln heißen allgemein "wiederkehrend". */
+/** Short interval like "wöchentlich"; more complex rules are labeled generically as "wiederkehrend". */
 function recurrenceLabel(rule: string | null | undefined): string {
 	const parsed = parseRecurrenceRule(rule);
 	const simple = parsed && parsed.interval === 1 && parsed.byDay === undefined;
@@ -117,7 +117,7 @@ export function CalendarUpcomingList({
 		);
 	}
 
-	// Bei Serien trägt nur das erste Vorkommen den Anker.
+	// For series, only the first occurrence carries the anchor.
 	const highlightedEntry = highlightEventId
 		? entries.find(
 				(entry) => entry.kind === 'event' && entry.occurrence.eventId === highlightEventId,
@@ -135,7 +135,7 @@ export function CalendarUpcomingList({
 		days.set(key, day);
 	}
 
-	// Eine Liste, Datum links: Tage lassen sich wie in einem Taschenkalender überfliegen.
+	// One list, date on the left: days can be skimmed like in a pocket calendar.
 	return (
 		<ul className="flex flex-col divide-y overflow-hidden rounded-xl border">
 			{[...days.entries()].map(([key, day], index, all) => {

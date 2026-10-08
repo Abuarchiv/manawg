@@ -24,17 +24,17 @@ interface InventoryItemRowProps {
 	memberId: string;
 	onChanged: (item?: InventoryMutationItemDto, deletedId?: string) => void;
 	onEdit: (item: InventoryItemDto) => void;
-	/** Löschen-Bestätigung; die Liste hält nur eine armierte Zeile, damit nie zwei offen stehen. */
+	/** Delete confirmation; the list holds only one armed row so never two are open. */
 	deleteArmed: boolean;
 	onDeleteArmedChange: (id: string | null) => void;
-	/** Deep-Link-Treffer (?highlight=<id>): Ring um die Zeile. */
+	/** Deep-link hit (?highlight=<id>): ring around the row. */
 	highlighted?: boolean;
 }
 
-// Während einer Anfrage bleibt der Fokus auf dem Knopf (aria-disabled statt disabled).
+// While a request runs, focus stays on the button (aria-disabled instead of disabled).
 const BUSY_CLASS = 'aria-disabled:pointer-events-none aria-disabled:opacity-50';
 
-/** So lange bleibt „Entfernen/Abbrechen“ stehen, bevor die Zeile zurückfällt. */
+/** How long "Entfernen/Abbrechen" stays before the row falls back. */
 const DELETE_CONFIRM_MS = 6000;
 
 type PendingAction = 'decrement' | 'increment' | 'delete';
@@ -64,8 +64,8 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 	const cancelRef = useRef<HTMLButtonElement>(null);
 	const consumeIdempotencyKeyRef = useRef<string | null>(null);
 	const restockIdempotencyKeyRef = useRef<string | null>(null);
-	// Optimistisch: der Bestand ändert sich sofort beim Tippen; Erfolg ersetzt ihn durch den Serverwert,
-	// Fehler setzen ihn im finally zurück (null = zeige den Serverstand).
+	// Optimistic: stock changes immediately on tap; success replaces it with the server value,
+	// errors reset it in finally (null = show server state).
 	const [optimisticQuantity, setOptimisticQuantity] = useState<number | null>(null);
 	const quantity = optimisticQuantity ?? item.quantity;
 	const isDeleteArmed = deleteArmed;
@@ -157,7 +157,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 		}
 	}
 
-	// Die Zeile verschwindet: der Fokus geht an die Nachbarzeile statt auf BODY.
+	// The row disappears: focus moves to the neighboring row instead of BODY.
 	function focusNeighborRow(): void {
 		const rows = [...document.querySelectorAll<HTMLElement>('[data-inventory-row]')];
 		const index = rows.findIndex((row) => row === rowRef.current);
@@ -190,7 +190,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 		if (pending) return;
 		if (!isDeleteArmed) {
 			onDeleteArmedChange(item.id);
-			// Der Papierkorb wird ausgetauscht: der Fokus wandert auf die sichere Wahl.
+			// The trash button is swapped out: focus moves to the safe choice.
 			requestAnimationFrame(() => cancelRef.current?.focus());
 			return;
 		}
@@ -204,7 +204,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 		requestAnimationFrame(() => trashRef.current?.focus());
 	}
 
-	// Die Bestätigung fällt nach ein paar Sekunden zurück; der Fokus bleibt dabei in der Zeile.
+	// The confirmation falls back after a few seconds; focus stays in the row meanwhile.
 	useEffect(() => {
 		if (!isDeleteArmed || pending) return;
 		const timer = window.setTimeout(() => {
@@ -218,8 +218,8 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 	if (removed) return null;
 
 	return (
-		// Der Wrapper ist das Listenelement der Gruppe (role=list); er trägt auch die Trennlinie
-		// (divide-y der Gruppe) und das Sprungziel für ?highlight=.
+		// The wrapper is the group's list item (role=list); it also carries the divider
+		// (the group's divide-y) and the jump target for ?highlight=.
 		<div
 			// biome-ignore lint/a11y/useSemanticElements: ItemGroup ist role=list über <div>, Kinder brauchen role=listitem.
 			role="listitem"
@@ -235,8 +235,8 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 					data-inventory-row
 					className="flex w-full min-w-0 flex-wrap items-center gap-2"
 				>
-					{/* Im Bestätigungsmodus weniger Basisbreite, damit Entfernen/Abbrechen in der Zeile
-				    bleiben und die Liste darunter nicht springt. */}
+					{/* In confirm mode a smaller base width, so Entfernen/Abbrechen stay in the row
+					    and the list below does not jump. */}
 					<ItemContent className={armed ? 'min-w-0 flex-[1_1_7rem]' : 'min-w-0 flex-[1_1_6.5rem]'}>
 						<ItemTitle className="w-full min-w-0 gap-2 line-clamp-none">
 							<span className="min-w-0 flex-1 break-words hyphens-auto" title={item.name}>
@@ -249,7 +249,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 						</ItemDescription>
 					</ItemContent>
 
-					{/* pr-1.5: die 44-px-Trefferfläche des letzten Knopfs ragt sonst über den Zeilenrand hinaus. */}
+					{/* pr-1.5: otherwise the 44 px hit area of the last button sticks out past the row edge. */}
 					<ItemActions className="ml-auto flex-wrap justify-end gap-1.5 pr-1.5">
 						{!armed && (
 							<>

@@ -78,8 +78,8 @@ export async function createPresignedUpload(
 	const client = getClient();
 	// Binding ContentLength into the signed PUT means S3 rejects any upload
 	// whose Content-Length header doesn't match. Without this, the 8 MB cap
-	// was advisory (client-side) and an attacker could PUT arbitrarily large
-	// files — runaway storage + bandwidth bill.
+	// would be advisory (client-side) and an attacker could PUT arbitrarily large
+	// files, running up a storage and bandwidth bill.
 	const command = new PutObjectCommand({
 		Bucket: BUCKET,
 		Key: key,

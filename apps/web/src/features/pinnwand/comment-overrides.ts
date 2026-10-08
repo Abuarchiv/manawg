@@ -4,8 +4,8 @@ import type {
 } from '@/features/pinnwand/components/announcement-types';
 
 /**
- * Optimistische Kommentar-Änderungen, die Hintergrund-Reloads überstehen müssen, bis der
- * Server sie widerspiegelt. `null` bedeutet gelöscht.
+ * Optimistic comment changes that must survive background reloads until the server
+ * reflects them. `null` means deleted.
  */
 export type CommentOverride = AnnouncementComment | null;
 export type CommentOverrides = Map<string, Map<string, CommentOverride>>;

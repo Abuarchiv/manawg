@@ -19,7 +19,7 @@ interface AbosListProps {
 	filter: AboFilter;
 	pendingId: string | null;
 	loadError?: string | null;
-	/** Fokusziel nach dem Löschen einer Zeile; der Container bleibt auch bei leerer Liste gerendert. */
+	/** Focus target after deleting a row; the container stays rendered even when the list is empty. */
 	listRef?: Ref<HTMLElement>;
 	onFilterChange: (next: AboFilter) => void;
 	onEdit: (abo: Abo) => void;
@@ -51,7 +51,7 @@ export function AbosList({
 	onTogglePause,
 	onDelete,
 }: AbosListProps) {
-	// Der Filter lohnt erst, wenn es pausierte Abos gibt.
+	// The filter is only worthwhile when there are paused recurring expenses.
 	const showFilter = abos.some((abo) => abo.pausedAt !== null);
 	const filtered = applyFilter(abos, showFilter ? filter : 'all');
 

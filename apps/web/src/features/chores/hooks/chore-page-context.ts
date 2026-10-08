@@ -1,8 +1,8 @@
 import type { useToast } from '@/components/ui/Toast';
 import type { Member, WgSummary } from '@/components/wg/WgContextProvider';
+import type { StoredIdentity } from '@/core/auth/identity';
 import type { AbsenceInput } from '@/features/chores/absence';
 import type { Chore } from '@/features/chores/components/chore-types';
-import type { StoredIdentity } from '@/core/auth/identity';
 
 /** What the Putzplan hooks share: who acts, where results go, and the loaded plan. */
 export interface ChorePageContext {

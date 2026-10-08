@@ -19,7 +19,7 @@ import {
 	validateEventForm,
 } from '../src/features/events/events';
 import { occurrenceToIcs } from '../src/features/events/ics';
-import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './_helpers';
+import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './support/helpers';
 
 test.describe('calendar fixes', () => {
 	const ALL_DAY_EVENT: EventInput = {
@@ -956,7 +956,7 @@ test.describe('calendar date and recurrence regressions', () => {
 		expect(detectMention('@', 1)).toBeNull();
 		expect(detectMention('@ ', 1)).toBeNull();
 		expect(detectMention('Hallo @M', 8)).toEqual({ query: 'M', startIndex: 6 });
-		// Namen mit Umlaut-fremden Buchstaben bleiben bis zum Ende des Namens auswählbar.
+		// Names containing letters outside the umlaut set stay selectable up to the end of the name.
 		expect(detectMention('Hi @René', 8)).toEqual({ query: 'René', startIndex: 3 });
 	});
 

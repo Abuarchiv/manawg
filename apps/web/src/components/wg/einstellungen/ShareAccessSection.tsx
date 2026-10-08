@@ -10,9 +10,9 @@ import type { WgSummary } from '@/components/wg/WgContextProvider';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { Section } from '@/components/wg/einstellungen/Section';
 import { accessErrorMessage } from '@/components/wg/einstellungen/settings-errors';
-import { apiFetch } from '@/core/infra/api-client';
 import type { StoredIdentity } from '@/core/auth/identity';
 import { forgetWg } from '@/core/auth/identity';
+import { apiFetch } from '@/core/infra/api-client';
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 
@@ -23,7 +23,7 @@ interface ShareAccessSectionProps {
 	onJoiningEnabledChange: (enabled: boolean) => void;
 }
 
-/** WG-Code teilen sowie Beitritte sperren und den Code erneuern (nur Admins). */
+/** Share the WG code, block joins and renew the code (admins only). */
 export function ShareAccessSection({
 	wg,
 	identity,
@@ -66,7 +66,7 @@ export function ShareAccessSection({
 		setAccessPending('join');
 		setRotateConfirm(false);
 		const next = !joiningEnabled;
-		// Optimistisch umschalten, damit der Thumb sofort gleitet; bei Fehler zurück.
+		// Toggle optimistically so the thumb glides immediately; revert on error.
 		setJoiningEnabled(next);
 		try {
 			const data = await updateAccess({ joiningEnabled: next });
@@ -99,7 +99,7 @@ export function ShareAccessSection({
 			setJoiningEnabled(data.wg.joiningEnabled);
 			// Old code is dead after rotation; drop it so the WG list doesn't show a stale duplicate.
 			forgetWg(wg.shareCode);
-			// #zugang, sonst landet man nach dem Erneuern wieder im Profil-Tab.
+			// Go to #zugang; otherwise the user lands in the profile tab again after renewing.
 			router.replace(`/wg/${encodeURIComponent(data.wg.shareCode)}/einstellungen#zugang`);
 		} finally {
 			accessPendingRef.current = false;

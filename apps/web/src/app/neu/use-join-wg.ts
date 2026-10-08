@@ -1,12 +1,12 @@
 'use client';
 
+import { rememberWg } from '@/core/auth/identity';
 import { REQUEST_TIMEOUT_MS } from '@/core/infra/api-client';
 import { joinErrorMessage } from '@/core/infra/join-flow';
 import { removeDraft } from '@/core/offline/drafts';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import posthog from '@/shared/lib/analytics';
-import { rememberWg } from '@/core/auth/identity';
 import { useRouter } from 'next/navigation';
 import { useRef } from 'react';
 import {

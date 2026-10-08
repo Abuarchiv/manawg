@@ -53,7 +53,7 @@ const QUICK_TEMPLATES: ReadonlyArray<{
 		allDay: true,
 	},
 	{ label: 'Stromableser', title: 'Stromableser kommt', recurrence: null, allDay: false },
-	// Das Formular kennt nur die Frequenz; ein BYDAY wäre stillschweigend verworfen worden.
+	// The form only knows the frequency; a BYDAY would have been silently dropped.
 	{ label: 'WG-Meeting', title: 'WG-Meeting', recurrence: 'FREQ=WEEKLY', allDay: false },
 	{ label: 'Müll raus', title: 'Müll raus', recurrence: 'FREQ=WEEKLY', allDay: false },
 ];
@@ -76,13 +76,13 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [errorField, setErrorField] = useState<'title' | 'startsAt' | 'endsAt' | null>(null);
-	// Die Meldung sitzt unter den Feldern, der Speichern-Button ist angeheftet.
+	// The message sits below the fields, the save button is pinned.
 	useEffect(() => {
-		// Bei Feldfehlern bleibt das fokussierte Feld im Bild, die Meldung wird vorgelesen.
+		// On field errors the focused field stays in view, the message is announced.
 		if (error && !errorField)
 			document.getElementById('event-create-error')?.scrollIntoView({ block: 'nearest' });
 	}, [error, errorField]);
-	// Zuletzt angetippte Vorlage; solange gesetzt, darf eine andere Vorlage den Titel ersetzen.
+	// Most recently tapped template; while set, another template may replace the title.
 	const [activeTemplate, setActiveTemplate] = useState<string | null>(null);
 	function clearErrorFor(...fields: Array<'title' | 'startsAt' | 'endsAt'>): void {
 		if (errorField && fields.includes(errorField)) {
@@ -91,14 +91,14 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 		}
 	}
 	const draftInitializedRef = useRef(false);
-	// Tag, mit dem der Entwurf zuletzt vorbelegt wurde.
+	// Day the draft was last prefilled with.
 	const lastSeedDayRef = useRef('');
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: nur beim Öffnen bzw. neuem Tag vorbelegen, nicht bei jedem Tastendruck.
 	useEffect(() => {
 		if (!open) return;
 		const day = defaultDate?.toDateString() ?? '';
-		// Ein unberührter Entwurf folgt dem neu gewählten Tag, ein begonnener bleibt erhalten.
+		// An untouched draft follows the newly chosen day, a started one is kept.
 		const pristine = !title && !description && !location && !endsAt && !allDay && !recurrenceFreq;
 		if (draftInitializedRef.current && !(pristine && day !== lastSeedDayRef.current)) return;
 		draftInitializedRef.current = true;
@@ -120,7 +120,7 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 	}, [open, defaultDate]);
 
 	function applyTemplate(template: (typeof QUICK_TEMPLATES)[number]): void {
-		// Ein selbst getippter Titel bleibt; nur leere oder von einer Vorlage stammende Titel werden ersetzt.
+		// A self-typed title is kept; only empty titles or ones from a template are replaced.
 		const previous = QUICK_TEMPLATES.find((t) => t.label === activeTemplate);
 		if (!title || title === previous?.title) setTitle(template.title);
 		setActiveTemplate(template.label);
