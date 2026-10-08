@@ -1,5 +1,5 @@
 import { recordAuditEvent } from '@/core/audit';
-import { CHORE_RECURRENCE_TYPES, chores, db, wgMembers } from '@/core/db';
+import { CHORE_RECURRENCE_TYPES, announcements, chores, db, wgMembers } from '@/core/db';
 import type { ChoreRecurrenceType } from '@/core/db';
 import { isWgAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
@@ -139,6 +139,17 @@ export const PATCH = withWgRoute<{ id: string }>('chores PATCH', async (req, { c
 		update.lastReminderAt = sql`case when ${chores.assignedMemberId} is distinct from ${nextAssignee}::uuid then null else ${chores.lastReminderAt} end`;
 	}
 
+	const previousAssignee =
+		parsed.data.assignedMemberId !== undefined
+			? ((
+					await db
+						.select({ assignedMemberId: chores.assignedMemberId })
+						.from(chores)
+						.where(and(eq(chores.id, id), eq(chores.wgId, wgId)))
+						.limit(1)
+				)[0]?.assignedMemberId ?? null)
+			: undefined;
+
 	const currentMatch = currentChore
 		? and(
 				eq(chores.intervalDays, currentChore.intervalDays),
@@ -162,6 +173,26 @@ export const PATCH = withWgRoute<{ id: string }>('chores PATCH', async (req, { c
 			if (stillExists.length > 0) return conflict('chore_changed');
 		}
 		return notFound('chore_not_found');
+	}
+	// A swap request is answered once someone else holds the chore, however that happened.
+	if (previousAssignee !== undefined && previousAssignee !== updated.assignedMemberId) {
+		const now = new Date();
+		await db
+			.update(announcements)
+			.set({
+				status: 'resolved',
+				resolvedAt: now,
+				resolvedByMemberId: auth.member.memberId,
+				updatedAt: now,
+			})
+			.where(
+				and(
+					eq(announcements.wgId, wgId),
+					eq(announcements.status, 'open'),
+					eq(announcements.source, 'chore_swap'),
+					eq(announcements.sourcePath, `/putzen?highlight=${encodeURIComponent(updated.id)}`),
+				),
+			);
 	}
 	await recordAuditEvent({
 		wgId,

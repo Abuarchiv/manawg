@@ -176,7 +176,7 @@ export function useChoreActions(ctx: ChorePageContext) {
 		setActionNotice(null);
 
 		const status = getChoreStatus(chore.nextDueAt);
-		const result = await apiFetch<Record<string, never>>(
+		const result = await apiFetch<{ duplicate?: boolean }>(
 			`/api/wg/${encodedShareCode}/announcements`,
 			{
 				method: 'POST',
@@ -195,7 +195,12 @@ export function useChoreActions(ctx: ChorePageContext) {
 			setActionError(choreActionErrorMessage('Tauschanfrage konnte nicht gepostet werden', result));
 		} else {
 			setSwapRequestedIds((current) => new Set(current).add(chore.id));
-			toast.success('Tauschanfrage wurde auf der Pinnwand gepostet.');
+			// The server answers with the existing post instead of creating a second one.
+			toast.success(
+				result.data.duplicate
+					? 'Für diese Aufgabe gibt es schon eine offene Tauschanfrage auf der Pinnwand.'
+					: 'Tauschanfrage wurde auf der Pinnwand gepostet.',
+			);
 		}
 
 		endPending(pendingKey);
@@ -236,6 +241,13 @@ export function useChoreActions(ctx: ChorePageContext) {
 					item.id === chore.id ? { ...item, assignedMemberId: memberId } : item,
 				),
 			);
+			// A new assignee answers the swap request on the Pinnwand; a later request is possible again.
+			setSwapRequestedIds((current) => {
+				if (!current.has(chore.id)) return current;
+				const rest = new Set(current);
+				rest.delete(chore.id);
+				return rest;
+			});
 			toast.success(notice);
 			void load(false);
 		}

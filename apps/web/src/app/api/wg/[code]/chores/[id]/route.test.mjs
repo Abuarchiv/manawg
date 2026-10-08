@@ -11,6 +11,7 @@ const routeFile = path.join(process.cwd(), 'src/app/api/wg/[code]/chores/[id]/ro
 const choreId = '11111111-1111-4111-8111-111111111111';
 const wgId = '22222222-2222-4222-8222-222222222222';
 const otherWgId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const memberId = '33333333-3333-4333-8333-333333333333';
 
 function json(body, status = 200) {
 	return Response.json(body, { status });
@@ -18,12 +19,30 @@ function json(body, status = 200) {
 
 function makeRoute(state) {
 	const chores = { id: 'chores.id', wgId: 'chores.wg_id' };
+	const wgMembers = { id: 'wm.id', wgId: 'wm.wg_id', deactivatedAt: 'wm.deactivated_at' };
+	const announcements = {
+		wgId: 'a.wg_id',
+		status: 'a.status',
+		source: 'a.source',
+		sourcePath: 'a.source_path',
+	};
 	const db = {
+		update: (table) => ({
+			set: (values) => ({
+				where: (conditions) => {
+					const call = { table, values, conditions };
+					state.updates.push(call);
+					const result = table === chores ? [{ ...state.rows[0], ...call.values }] : [];
+					return Object.assign(Promise.resolve(result), { returning: async () => result });
+				},
+			}),
+		}),
 		select: () => ({
 			from: (table) => ({
 				where: (conditions) => ({
 					limit: async (limit) => {
 						state.queries.push({ table, conditions, limit });
+						if (table === wgMembers) return state.members;
 						const filters = new Map(conditions.map(({ column, value }) => [column, value]));
 						return state.rows
 							.filter(
@@ -37,7 +56,13 @@ function makeRoute(state) {
 	};
 	const overrides = {
 		'@/core/audit': { recordAuditEvent: async () => undefined },
-		'@/core/db': { CHORE_RECURRENCE_TYPES: ['days', 'months'], chores, db, wgMembers: {} },
+		'@/core/db': {
+			CHORE_RECURRENCE_TYPES: ['days', 'months'],
+			announcements,
+			chores,
+			db,
+			wgMembers,
+		},
 		'@/core/http/read-json': { readJsonLimited: (req) => req.json() },
 		'@/core/http/api-errors': {
 			badRequest: (code) => json({ error: code }, 400),
@@ -80,7 +105,7 @@ function makeRoute(state) {
 		routeModule,
 		routeModule.exports,
 	);
-	return { get: routeModule.exports.GET };
+	return { get: routeModule.exports.GET, patch: routeModule.exports.PATCH };
 }
 
 function makeState(overrides = {}) {
@@ -97,8 +122,10 @@ function makeState(overrides = {}) {
 			},
 		],
 		auth: { ok: true, wg: { id: wgId }, member: { memberId: choreId, name: 'Alex' } },
+		members: [{ id: memberId }],
 		authCalls: [],
 		queries: [],
+		updates: [],
 		...overrides,
 	};
 }
@@ -163,4 +190,42 @@ test('GET rejects a malformed UUID before auth or database access', async () => 
 	assert.deepEqual(await response.json(), { error: 'id_invalid' });
 	assert.equal(state.authCalls.length, 0);
 	assert.equal(state.queries.length, 0);
+});
+
+function patchRequest(body) {
+	return new Request(`https://example.invalid/api/wg/WG123456/chores/${choreId}`, {
+		method: 'PATCH',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify(body),
+	});
+}
+
+test('PATCH to a new assignee resolves the open swap request of that chore', async () => {
+	const state = makeState();
+	const route = makeRoute(state);
+
+	const response = await route.patch(patchRequest({ assignedMemberId: memberId }), context());
+
+	assert.equal(response.status, 200);
+	const swapUpdate = state.updates.find((call) => call.values.status === 'resolved');
+	assert.ok(swapUpdate, 'the open chore_swap post is resolved');
+	const filters = new Map(swapUpdate.conditions.map(({ column, value }) => [column, value]));
+	assert.equal(filters.get('a.source'), 'chore_swap');
+	assert.equal(filters.get('a.status'), 'open');
+	assert.equal(filters.get('a.wg_id'), wgId);
+	assert.equal(filters.get('a.source_path'), `/putzen?highlight=${choreId}`);
+});
+
+test('PATCH that keeps the same assignee leaves the swap request open', async () => {
+	const state = makeState();
+	state.rows[0].assignedMemberId = memberId;
+	const route = makeRoute(state);
+
+	const response = await route.patch(patchRequest({ assignedMemberId: memberId }), context());
+
+	assert.equal(response.status, 200);
+	assert.equal(
+		state.updates.some((call) => call.values.status === 'resolved'),
+		false,
+	);
 });
