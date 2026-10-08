@@ -73,12 +73,12 @@ pnpm typecheck
 pnpm build
 pnpm --filter @manawg/web bundle:check
 pnpm --filter @manawg/web test:e2e:fixtures
-BASE_URL=https://example.invalid E2E_PORT=3112 pnpm --filter @manawg/web exec playwright test release-workflow-gates.spec.ts --reporter=line --retries=0
+pnpm --filter @manawg/web exec node --experimental-strip-types --import ./tests/support/register.mjs --test tests/release-workflow-gates.test.ts
 ```
 
-The `example.invalid` command exercises only pure gate logic and makes no
-network request. Use a unique `E2E_PORT` such as `3112` whenever a local
-Playwright command starts a server; do not share `.next` with another build.
+The last command exercises only the pure gate logic and makes no network
+request. Use a unique `E2E_PORT` such as `3112` whenever a local Playwright
+command starts a server; do not share `.next` with another build.
 
 After the Preview environment and Vercel event path are authorized, the CI
 Preview job runs this explicit pack against the validated target:

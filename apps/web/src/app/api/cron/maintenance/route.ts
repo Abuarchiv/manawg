@@ -105,6 +105,7 @@ export const GET = withCronLogging(
 		const ok =
 			purge.status === 'fulfilled' &&
 			deletions.status === 'fulfilled' &&
+			paypal.status === 'fulfilled' &&
 			!recoveryPending &&
 			!imageCleanupProblem;
 		return NextResponse.json(

@@ -8,7 +8,7 @@ export async function generateMetadata({
 }: { params: Promise<{ module: string }> }): Promise<Metadata> {
 	const { module } = await params;
 	const entry = PUBLIC_MODULES[module];
-	if (!entry) return {};
+	if (!entry) notFound();
 	return {
 		title: `${entry.title} — ManaWG`,
 		description: `${entry.description} Die WG-App für Ausgaben, Putzplan, Einkauf und Pinnwand.`,
