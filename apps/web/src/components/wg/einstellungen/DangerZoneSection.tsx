@@ -52,7 +52,7 @@ export function DangerZoneSection({ wg, members, identity }: DangerZoneSectionPr
 	function leaveWg(): void {
 		clearIdentity(wg.id);
 		forgetWg(wg.shareCode);
-		router.push('/');
+		router.push('/?left=1');
 	}
 
 	function openLeaveConfirm(): void {

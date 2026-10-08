@@ -20,6 +20,7 @@ export function AccountSignOutSection({
 	const router = useRouter();
 	const [accountSignOutPending, setAccountSignOutPending] = useState(false);
 	const [accountSignOutError, setAccountSignOutError] = useState<string | null>(null);
+	const [pushNotice, setPushNotice] = useState<string | null>(null);
 
 	async function handleAccountSignOut(): Promise<void> {
 		if (accountSignOutPending) return;
@@ -36,9 +37,11 @@ export function AccountSignOutSection({
 			clearIdentity(wg.id);
 			forgetWg(wg.shareCode);
 			if (pushCleanup === 'failed') {
-				window.alert(
+				// Stay until the visitor has read it; the session is already gone.
+				setPushNotice(
 					'Du bist abgemeldet, aber Push konnte auf diesem Browser nicht sicher beendet werden. Deaktiviere Website-Benachrichtigungen in den Browsereinstellungen.',
 				);
+				return;
 			}
 			router.push('/');
 		} catch {
@@ -46,6 +49,19 @@ export function AccountSignOutSection({
 		} finally {
 			setAccountSignOutPending(false);
 		}
+	}
+
+	if (pushNotice) {
+		return (
+			<div className="flex flex-col gap-2">
+				<Alert>
+					<AlertDescription>{pushNotice}</AlertDescription>
+				</Alert>
+				<Button type="button" onClick={() => router.push('/')}>
+					Weiter
+				</Button>
+			</div>
+		);
 	}
 
 	return (
