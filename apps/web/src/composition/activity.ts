@@ -1,39 +1,16 @@
 import { berlinDayKey, prevBerlinDayStart, startOfBerlinDay } from '@/core/utils/berlin-day';
-import { formatEuroCents } from '@/core/utils/money';
-import {
-	MS_PER_DAY,
-	formatShortDateRange as formatSharedShortDateRange,
-	formatShortDate,
-	parseTimestamp,
-} from '@/core/utils/time';
-import { getChoreStatus } from '@/features/chores/chore-status';
-import { KIND_LABELS } from '@/features/pinnwand/components/constants';
+import { formatShortDateRange as formatSharedShortDateRange } from '@/core/utils/time';
+import { auditDetail, formatAuditActivityText, getAuditHref } from './activity-audit';
+import type { ActivityFilter, ActivityItem, ActivityKind, ActivityScope } from './activity-types';
 
-const STALE_SHOPPING_DAYS = 3;
-const STALE_ANNOUNCEMENT_DAYS = 2;
-
-export type ActivityKind =
-	| 'expense'
-	| 'shopping'
-	| 'announcement'
-	| 'chore'
-	| 'recurring'
-	| 'absence'
-	| 'audit';
-
-export interface ActivityItem {
-	id: string;
-	kind: ActivityKind;
-	timestamp: string;
-	memberId?: string | null;
-	memberName: string;
-	text: string;
-	completed: boolean;
-	detail?: string;
-	amountCents?: number;
-	currency?: string;
-	href?: string;
-}
+export type { ActivityFilter, ActivityItem, ActivityKind, ActivityScope };
+export { formatAuditActivityText, getAuditHref };
+export {
+	type ActivityReminder,
+	REMINDER_ANNOUNCEMENT_KINDS,
+	buildActivityInbox,
+	getActivityReminders,
+} from './activity-reminders';
 
 export function activityItemKey(
 	item: Pick<ActivityItem, 'kind' | 'timestamp' | 'memberName' | 'text' | 'href'> & {
@@ -114,54 +91,10 @@ interface ActivityTimelineInput {
 	limit?: number;
 }
 
-export interface ActivityReminder {
-	kind: 'shopping' | 'chore' | 'announcement';
-	title: string;
-	detail: string;
-	href: string;
-}
-
-interface ActivityReminderInput {
-	openShoppingItems: Array<{ id: string; name: string; createdAt: string }>;
-	dueChores: Array<{
-		id: string;
-		title: string;
-		nextDueAt: string;
-		assignedName: string | null;
-	}>;
-	openAnnouncements?: Array<{
-		id: string;
-		content: string;
-		kind: string;
-		createdAt: string;
-	}>;
-}
-
-export interface ActivityFilter {
-	kind: ActivityKind | 'all';
-	mineOnly: boolean;
-	query: string;
-}
-
-export type ActivityScope = 'all' | 'system' | 'mine' | 'changes' | 'done';
-
 interface ActivityChronicleGroup {
 	date: string;
 	label: string;
 	items: ActivityItem[];
-}
-
-interface ActivityInboxItem {
-	id: string;
-	priority: 'high' | 'normal';
-	title: string;
-	detail: string;
-	href: string;
-	kind: ActivityKind | ActivityReminder['kind'];
-}
-
-interface ActivityInboxInput {
-	reminders: ActivityReminder[];
 }
 
 function memberName(members: Map<string, MemberInput>, id: string): string {
@@ -179,167 +112,6 @@ function isCurrentMemberActivity(
 
 function shortDateRange(startIso: string, endIso: string): string {
 	return formatSharedShortDateRange(startIso, endIso).replace(' bis ', '-');
-}
-
-function parseAuditMetadata(metadataJson?: string | null): Record<string, unknown> | null {
-	if (!metadataJson) return null;
-	try {
-		const metadata = JSON.parse(metadataJson) as unknown;
-		if (typeof metadata !== 'object' || metadata === null || Array.isArray(metadata)) return null;
-		return metadata as Record<string, unknown>;
-	} catch {
-		return null;
-	}
-}
-
-function auditDetail(metadataJson?: string | null): string | undefined {
-	const metadata = parseAuditMetadata(metadataJson);
-	if (!metadata) return undefined;
-	try {
-		const parts: string[] = [];
-		if (typeof metadata.description === 'string' && metadata.description.length > 0) {
-			parts.push(metadata.description);
-		}
-		if (typeof metadata.title === 'string' && metadata.title.length > 0) {
-			parts.push(metadata.title);
-		}
-		if (typeof metadata.quantity === 'string' && metadata.quantity.length > 0) {
-			parts.push(metadata.quantity);
-		}
-		if (typeof metadata.contentPreview === 'string' && metadata.contentPreview.length > 0) {
-			parts.push(`„${metadata.contentPreview}“`);
-		}
-		// Only known pinboard kinds: chat audits carry kind 'text'/'image', which is not user text.
-		const kindLabel =
-			typeof metadata.kind === 'string'
-				? (KIND_LABELS as Record<string, string | undefined>)[metadata.kind]
-				: undefined;
-		if (kindLabel) parts.push(`Typ: ${kindLabel}`);
-		if (metadata.hasImage === true) {
-			parts.push('mit Bild');
-		}
-		if (Array.isArray(metadata.notificationFields)) {
-			const fields = metadata.notificationFields.filter(
-				(field): field is string => typeof field === 'string' && field.length > 0,
-			);
-			if (fields.length > 0) parts.push(fields.join(', '));
-		}
-		if (typeof metadata.pushOptIn === 'boolean') {
-			parts.push(metadata.pushOptIn ? 'Web Push aktiv' : 'Web Push aus');
-		}
-		if ('quietStartHour' in metadata || 'quietEndHour' in metadata) {
-			const start = typeof metadata.quietStartHour === 'number' ? metadata.quietStartHour : null;
-			const end = typeof metadata.quietEndHour === 'number' ? metadata.quietEndHour : null;
-			if (start !== null || end !== null) {
-				parts.push(`Ruhezeit ${start ?? '?'}-${end ?? '?'} Uhr`);
-			} else {
-				parts.push('Ruhezeit aus');
-			}
-		}
-		if (typeof metadata.reason === 'string' && metadata.reason.length > 0) {
-			parts.push(metadata.reason);
-		}
-		if (typeof metadata.amountCents === 'number') {
-			const currency = typeof metadata.currency === 'string' ? metadata.currency : 'EUR';
-			parts.push(formatEuroCents(metadata.amountCents, currency));
-		}
-		if (typeof metadata.splitCount === 'number') {
-			parts.push(`${metadata.splitCount} Aufteilungen`);
-		}
-		if (typeof metadata.reaction === 'string') {
-			parts.push(`Reaktion: ${metadata.reaction}`);
-		}
-		if (typeof metadata.nameBefore === 'string' && typeof metadata.nameAfter === 'string') {
-			if (metadata.nameBefore !== metadata.nameAfter) {
-				parts.push(`${metadata.nameBefore} → ${metadata.nameAfter}`);
-			}
-		}
-		if (
-			typeof metadata.joiningEnabledBefore === 'boolean' &&
-			typeof metadata.joiningEnabledAfter === 'boolean' &&
-			metadata.joiningEnabledBefore !== metadata.joiningEnabledAfter
-		) {
-			parts.push(metadata.joiningEnabledAfter ? 'Beitritt offen' : 'Beitritt gesperrt');
-		}
-		if (metadata.shareCodeRotated === true) {
-			parts.push('neuer WG-Code');
-		}
-		if (typeof metadata.intervalDays === 'number') {
-			parts.push(metadata.intervalDays === 1 ? 'täglich' : `alle ${metadata.intervalDays} Tage`);
-		}
-		if (typeof metadata.intervalMonths === 'number') {
-			parts.push(
-				metadata.intervalMonths === 1 ? 'monatlich' : `alle ${metadata.intervalMonths} Monate`,
-			);
-		}
-		if (typeof metadata.startDate === 'string' && typeof metadata.endDate === 'string') {
-			parts.push(`abwesend ${formatSharedShortDateRange(metadata.startDate, metadata.endDate)}`);
-		}
-		if (typeof metadata.nextDueAt === 'string') {
-			parts.push(`nächste Fälligkeit ${formatShortDate(metadata.nextDueAt, 'Europe/Berlin')}`);
-		}
-		if (Array.isArray(metadata.splitIds)) {
-			parts.push(`${metadata.splitIds.length} Anteil${metadata.splitIds.length === 1 ? '' : 'e'}`);
-		}
-		return parts.length > 0 ? parts.join(' · ') : undefined;
-	} catch {
-		return undefined;
-	}
-}
-
-export function getAuditHref(event: {
-	eventType: string;
-	entityType?: string;
-	entityId?: string | null;
-	metadataJson?: string | null;
-}): string | undefined {
-	const metadata = parseAuditMetadata(event.metadataJson);
-	const announcementId =
-		typeof metadata?.announcementId === 'string' && metadata.announcementId.length > 0
-			? metadata.announcementId
-			: event.entityType === 'announcement' && event.entityId
-				? event.entityId
-				: null;
-
-	if (announcementId) return `/pinnwand#announcement-${encodeURIComponent(announcementId)}`;
-	if (event.entityType === 'shopping_item' && event.entityId) {
-		return `/einkauf?highlight=${encodeURIComponent(event.entityId)}`;
-	}
-	if (event.entityType === 'chore' && event.entityId) {
-		return `/putzen?highlight=${encodeURIComponent(event.entityId)}`;
-	}
-	if ((event.entityType === 'absence' || event.entityType === 'member_absence') && event.entityId) {
-		return `/putzen?panel=absences&absence=${encodeURIComponent(event.entityId)}`;
-	}
-	if (event.entityType === 'recurring_expense' && event.eventType === 'recurring.deleted') {
-		return '/ausgaben?filter=recurring';
-	}
-	if (event.entityType === 'recurring_expense' && event.entityId) {
-		return `/ausgaben?recurring=${encodeURIComponent(event.entityId)}`;
-	}
-	if (
-		event.entityType === 'expense' ||
-		event.entityType === 'expense_split' ||
-		event.entityType === 'expense_debt'
-	) {
-		return event.entityType === 'expense' && event.entityId
-			? `/ausgaben?highlight=${encodeURIComponent(event.entityId)}`
-			: '/ausgaben';
-	}
-	if (event.entityType === 'member' && event.eventType.startsWith('notification.')) {
-		return '/einstellungen#benachrichtigungen';
-	}
-	if (event.entityType === 'wg') return '/einstellungen#zugang';
-	return undefined;
-}
-
-export function formatAuditActivityText(summary: string, actorName: string): string {
-	const trimmed = summary.trim();
-	const prefix = `${actorName} `;
-	if (trimmed.toLocaleLowerCase('de-DE').startsWith(prefix.toLocaleLowerCase('de-DE'))) {
-		return trimmed.slice(prefix.length);
-	}
-	return trimmed;
 }
 
 export function buildActivityTimeline(input: ActivityTimelineInput): ActivityItem[] {
@@ -454,74 +226,6 @@ export function buildActivityTimeline(input: ActivityTimelineInput): ActivityIte
 	return items.sort((a, b) => b.timestamp.localeCompare(a.timestamp)).slice(0, input.limit ?? 50);
 }
 
-/**
- * Announcement kinds that turn into a reminder once they stay open too long: those the
- * pinnwand lets members close ("Erledigt"). Infos and decisions fade out on their own.
- */
-export const REMINDER_ANNOUNCEMENT_KINDS = ['question', 'problem', 'request'] as const;
-
-export function getActivityReminders(
-	input: ActivityReminderInput,
-	now = Date.now(),
-): ActivityReminder[] {
-	const reminders: Array<{ item: ActivityReminder; priority: number; ageDays: number }> = [];
-
-	for (const chore of input.dueChores) {
-		const status = getChoreStatus(chore.nextDueAt, now);
-		if (!status.escalated) continue;
-		reminders.push({
-			priority: 0,
-			ageDays: status.overdueDays,
-			item: {
-				kind: 'chore',
-				title: `${chore.title} hängt seit ${status.overdueDays} Tagen`,
-				href: `/putzen?highlight=${encodeURIComponent(chore.id)}`,
-				detail: `${chore.assignedName ?? 'Niemand'} ist eingetragen. Nachholen, übernehmen oder kurz klären.`,
-			},
-		});
-	}
-
-	for (const item of input.openAnnouncements ?? []) {
-		if (!(REMINDER_ANNOUNCEMENT_KINDS as readonly string[]).includes(item.kind)) continue;
-		const createdAt = parseTimestamp(item.createdAt);
-		if (createdAt === null) continue;
-		const days = Math.floor((now - createdAt) / MS_PER_DAY);
-		if (days < STALE_ANNOUNCEMENT_DAYS) continue;
-		reminders.push({
-			priority: 1,
-			ageDays: days,
-			item: {
-				kind: 'announcement',
-				title: `Pinnwand offen seit ${days} Tagen`,
-				href: `/pinnwand#announcement-${encodeURIComponent(item.id)}`,
-				detail: item.content,
-			},
-		});
-	}
-
-	for (const item of input.openShoppingItems) {
-		const createdAt = parseTimestamp(item.createdAt);
-		if (createdAt === null) continue;
-		const days = Math.floor((now - createdAt) / MS_PER_DAY);
-		if (days < STALE_SHOPPING_DAYS) continue;
-		reminders.push({
-			priority: 2,
-			ageDays: days,
-			item: {
-				kind: 'shopping',
-				title: `${item.name} liegt seit ${days} Tagen offen`,
-				href: `/einkauf?highlight=${encodeURIComponent(item.id)}`,
-				detail: 'Prüft kurz, ob ihr das noch braucht.',
-			},
-		});
-	}
-
-	return reminders
-		.sort((a, b) => a.priority - b.priority || b.ageDays - a.ageDays)
-		.slice(0, 6)
-		.map(({ item }) => item);
-}
-
 export function filterActivityItems(
 	items: ActivityItem[],
 	filter: ActivityFilter,
@@ -592,18 +296,4 @@ export function groupActivityItemsByDay(
 						: formatter.format(new Date(`${date}T12:00:00.000Z`)),
 			items: groupItems,
 		}));
-}
-
-export function buildActivityInbox(input: ActivityInboxInput): ActivityInboxItem[] {
-	// Open items only: the user's own completed entries appear below in the history.
-	return input.reminders
-		.map((item) => ({
-			id: `reminder:${item.kind}:${item.href}`,
-			priority: 'high' as const,
-			title: item.title,
-			detail: item.detail,
-			href: item.href,
-			kind: item.kind,
-		}))
-		.slice(0, 6);
 }
