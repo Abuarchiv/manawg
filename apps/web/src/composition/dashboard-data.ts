@@ -1,96 +1,19 @@
-import {
-	announcementReactions,
-	announcements,
-	auditEvents,
-	chores,
-	db,
-	expensePayments,
-	expenseSplits,
-	expenses,
-	memberAbsences,
-	recurringExpenses,
-	shoppingItems,
-	wgMembers,
-} from '@/core/db';
-import { captureException } from '@/core/infra/observability';
-import {
-	berlinDayKey,
-	nextBerlinDayStart,
-	prevBerlinDayStart,
-	startOfBerlinDay,
-} from '@/core/utils/berlin-day';
-import { normalizeCurrency } from '@/core/utils/money';
 import { getAbsentMemberIds } from '@/features/chores/absence';
-import { computeNetBalances } from '@/features/expenses/debt-reduction';
-import type { ExpensePaymentInput } from '@/features/expenses/expense-payments';
 import { getDueRecurringExpenses } from '@/features/expenses/recurring-expenses';
-import { and, count, desc, eq, isNull } from 'drizzle-orm';
-import { type ActivityKind, formatAuditActivityText } from './activity';
+import { computeMemberBalances } from './dashboard-balances';
+import type { MemberBalance } from './dashboard-balances';
+import { type ActivityItem, appendSecondaryActivity, buildPrimaryActivity } from './dashboard-feed';
 import { type WgHealth, getWgHealth } from './dashboard-insights';
+import { ACTIVITY_LIMIT, loadPrimaryRows, loadSecondaryRows } from './dashboard-queries';
 import {
-	getDashboardActivityHref,
-	getDashboardAuditHref,
-	getDashboardAuditKind,
-} from './dashboard-links';
+	type CurrencyTotals,
+	type DaySpend,
+	addCurrencyTotal,
+	singleCurrencyTotal,
+	summarizeDashboardSpend,
+} from './dashboard-spend';
 
-const SPARKLINE_DAYS = 14;
-const ACTIVITY_LIMIT = 6;
-const AUDIT_DEDUPE_WINDOW_MS = 60_000;
-
-function addCurrencyTotal(totals: CurrencyTotals, currency: string, cents: number): void {
-	totals[currency] = (totals[currency] ?? 0) + cents;
-}
-
-function singleCurrencyTotal(totals: Readonly<CurrencyTotals>): number | null {
-	const currencies = Object.keys(totals).filter((currency) => totals[currency] !== 0);
-	return currencies.length <= 1 ? (currencies[0] ? (totals[currencies[0]] ?? 0) : 0) : null;
-}
-
-// Code points, not UTF-16 units: slicing mid-surrogate leaves a broken "�".
-function clip(text: string, max: number): string {
-	const chars = Array.from(text);
-	return chars.length > max ? `${chars.slice(0, max).join('')}…` : text;
-}
-
-export interface MemberBalance {
-	memberId: string;
-	memberName: string;
-	color: string | null;
-	currency: string;
-	paidCents: number;
-	owedCents: number;
-	balanceCents: number;
-}
-
-interface DaySpend {
-	date: string;
-	currency: string;
-	cents: number;
-}
-
-type CurrencyTotals = Record<string, number>;
-
-export interface DashboardSpendSummary {
-	spendByDay: DaySpend[];
-	totalSpendByCurrency: CurrencyTotals;
-	weekSpendByCurrency: CurrencyTotals;
-	monthSpendByCurrency: CurrencyTotals;
-	totalSpendCents: number | null;
-	weekSpendCents: number | null;
-	monthSpendCents: number | null;
-}
-
-interface ActivityItem {
-	kind: 'expense' | 'shopping' | 'announcement' | 'chore' | 'recurring' | 'absence' | 'audit';
-	timestamp: string;
-	/** Lets the UI show own entries as "Du …". */
-	memberId?: string | null;
-	memberName: string;
-	text: string;
-	amountCents?: number;
-	currency?: string;
-	href?: string;
-}
+export { computeMemberBalances, summarizeDashboardSpend };
 
 interface ChoreDue {
 	id: string;
@@ -183,157 +106,6 @@ function getCurrentAbsenceRowsByMember<
 	return currentByMember;
 }
 
-function berlinDaysAgoStart(todayStart: Date, daysAgo: number): Date {
-	let day = todayStart;
-	for (let i = 0; i < daysAgo; i++) day = prevBerlinDayStart(day);
-	return day;
-}
-
-export function summarizeDashboardSpend(
-	expenses: ReadonlyArray<{
-		amountCents: number;
-		currency?: string;
-		occurredAt: Date | string;
-	}>,
-	now = new Date(),
-): DashboardSpendSummary {
-	const todayStart = startOfBerlinDay(now);
-	const sparklineStart = berlinDaysAgoStart(todayStart, SPARKLINE_DAYS - 1);
-	const weekStart = berlinDaysAgoStart(todayStart, 6);
-	const monthStart = berlinDaysAgoStart(todayStart, 29);
-	const spendBuckets = new Map<string, CurrencyTotals>();
-	let bucketDay = sparklineStart;
-	for (let i = 0; i < SPARKLINE_DAYS; i++) {
-		spendBuckets.set(berlinDayKey(bucketDay), {});
-		bucketDay = nextBerlinDayStart(bucketDay);
-	}
-	const totalSpendByCurrency: CurrencyTotals = {};
-	const weekSpendByCurrency: CurrencyTotals = {};
-	const monthSpendByCurrency: CurrencyTotals = {};
-	for (const expense of expenses) {
-		const currency = normalizeCurrency(expense.currency);
-		addCurrencyTotal(totalSpendByCurrency, currency, expense.amountCents);
-		const occurredAt =
-			expense.occurredAt instanceof Date ? expense.occurredAt : new Date(expense.occurredAt);
-		if (occurredAt >= weekStart)
-			addCurrencyTotal(weekSpendByCurrency, currency, expense.amountCents);
-		if (occurredAt >= monthStart)
-			addCurrencyTotal(monthSpendByCurrency, currency, expense.amountCents);
-		const bucket = spendBuckets.get(berlinDayKey(occurredAt));
-		if (bucket) addCurrencyTotal(bucket, currency, expense.amountCents);
-	}
-	const spendByDay: DaySpend[] = Array.from(spendBuckets.entries()).flatMap(([date, totals]) => {
-		const entries = Object.entries(totals).sort(([left], [right]) => left.localeCompare(right));
-		return entries.length > 0
-			? entries.map(([currency, cents]) => ({ date, currency, cents }))
-			: [{ date, currency: 'EUR', cents: 0 }];
-	});
-	return {
-		spendByDay,
-		totalSpendByCurrency,
-		weekSpendByCurrency,
-		monthSpendByCurrency,
-		totalSpendCents: singleCurrencyTotal(totalSpendByCurrency),
-		weekSpendCents: singleCurrencyTotal(weekSpendByCurrency),
-		monthSpendCents: singleCurrencyTotal(monthSpendByCurrency),
-	};
-}
-
-export function computeMemberBalances(
-	members: Array<{ id: string; name: string; color: string | null }>,
-	expenses: Array<{
-		id: string;
-		paidByMemberId: string;
-		amountCents: number;
-		currency?: string;
-	}>,
-	splits: Array<{
-		expenseId: string;
-		debtorMemberId: string;
-		amountCents: number;
-		settledAt: Date | null;
-	}>,
-	payments: ExpensePaymentInput[] = [],
-): MemberBalance[] {
-	const splitsByExpense = new Map<
-		string,
-		Array<{ debtorMemberId: string; amountCents: number; settledAt: string | null }>
-	>();
-	for (const split of splits) {
-		const expenseSplits = splitsByExpense.get(split.expenseId) ?? [];
-		expenseSplits.push({
-			debtorMemberId: split.debtorMemberId,
-			amountCents: split.amountCents,
-			settledAt: split.settledAt?.toISOString() ?? null,
-		});
-		splitsByExpense.set(split.expenseId, expenseSplits);
-	}
-
-	const normalizedExpenses = expenses.map((expense) => ({
-		...expense,
-		currency: normalizeCurrency(expense.currency),
-	}));
-	const netBalances = computeNetBalances(
-		normalizedExpenses.map((expense) => ({
-			paidByMemberId: expense.paidByMemberId,
-			currency: expense.currency,
-			splits: splitsByExpense.get(expense.id) ?? [],
-		})),
-		members,
-		payments,
-	);
-	const grossByKey = new Map<string, { paidCents: number; owedCents: number }>();
-	const currencies = new Set<string>(netBalances.map((balance) => balance.currency));
-	for (const expense of normalizedExpenses) {
-		currencies.add(expense.currency);
-		const key = `${expense.currency}:${expense.paidByMemberId}`;
-		const paid = grossByKey.get(key) ?? { paidCents: 0, owedCents: 0 };
-		paid.paidCents += expense.amountCents;
-		grossByKey.set(key, paid);
-	}
-	const currencyByExpenseId = new Map(
-		normalizedExpenses.map((expense) => [expense.id, expense.currency]),
-	);
-	for (const split of splits) {
-		if (split.settledAt) continue;
-		const currency = currencyByExpenseId.get(split.expenseId) ?? 'EUR';
-		const key = `${currency}:${split.debtorMemberId}`;
-		const owed = grossByKey.get(key) ?? { paidCents: 0, owedCents: 0 };
-		owed.owedCents += split.amountCents;
-		grossByKey.set(key, owed);
-	}
-	for (const payment of payments) {
-		const currency = payment.currency?.trim().toUpperCase() || 'EUR';
-		currencies.add(currency);
-		const paidKey = `${currency}:${payment.fromMemberId}`;
-		const owedKey = `${currency}:${payment.toMemberId}`;
-		const paid = grossByKey.get(paidKey) ?? { paidCents: 0, owedCents: 0 };
-		const owed = grossByKey.get(owedKey) ?? { paidCents: 0, owedCents: 0 };
-		paid.paidCents += payment.amountCents;
-		owed.owedCents += payment.amountCents;
-		grossByKey.set(paidKey, paid);
-		grossByKey.set(owedKey, owed);
-	}
-
-	return [...currencies].sort().flatMap((currency) =>
-		members.map((member) => {
-			const net = netBalances.find(
-				(balance) => balance.memberId === member.id && balance.currency === currency,
-			);
-			const gross = grossByKey.get(`${currency}:${member.id}`);
-			return {
-				memberId: member.id,
-				memberName: member.name,
-				color: member.color,
-				currency,
-				paidCents: gross?.paidCents ?? 0,
-				owedCents: gross?.owedCents ?? 0,
-				balanceCents: net?.cents ?? 0,
-			};
-		}),
-	);
-}
-
 function buildDueChores(
 	choreRows: Array<{
 		id: string;
@@ -360,27 +132,6 @@ function buildDueChores(
 		.sort((a, b) => a.nextDueAt.localeCompare(b.nextDueAt));
 }
 
-function isDuplicateAuditActivity(
-	rawByKey: Map<string, number>,
-	kind: ActivityKind,
-	entityId: string | null | undefined,
-	timestampMs: number,
-): boolean {
-	if (!entityId) return false;
-	const rawMs = rawByKey.get(`${kind}:${entityId}`);
-	return rawMs !== undefined && Math.abs(timestampMs - rawMs) <= AUDIT_DEDUPE_WINDOW_MS;
-}
-
-// Reads that drive household counts must succeed; falling back to an empty
-// list would report a false zero. Optional activity sections may still degrade.
-// Financial reads must all succeed or balances would be fabricated.
-function withFallback<T>(label: string, query: Promise<T>, fallback: () => T): Promise<T> {
-	return query.catch((err: unknown) => {
-		captureException(err, { action: 'loadDashboardData', query: label });
-		return fallback();
-	});
-}
-
 export async function loadDashboardData(
 	wgId: string,
 	currentMemberId?: string | null,
@@ -398,100 +149,7 @@ export async function loadDashboardData(
 		choreRows,
 		announcementRows,
 		openAnnouncementCountRows,
-	] = await Promise.all([
-		db
-			.select({ id: wgMembers.id, name: wgMembers.name, color: wgMembers.color })
-			.from(wgMembers)
-			.where(eq(wgMembers.wgId, wgId)),
-		db
-			.select({
-				id: expenses.id,
-				paidByMemberId: expenses.paidByMemberId,
-				amountCents: expenses.amountCents,
-				currency: expenses.currency,
-				description: expenses.description,
-				occurredAt: expenses.occurredAt,
-			})
-			.from(expenses)
-			.where(eq(expenses.wgId, wgId))
-			.orderBy(desc(expenses.occurredAt)),
-		db
-			.select({
-				expenseId: expenseSplits.expenseId,
-				debtorMemberId: expenseSplits.debtorMemberId,
-				amountCents: expenseSplits.amountCents,
-				settledAt: expenseSplits.settledAt,
-			})
-			.from(expenseSplits)
-			.innerJoin(expenses, eq(expenseSplits.expenseId, expenses.id))
-			.where(eq(expenses.wgId, wgId)),
-		db
-			.select({
-				fromMemberId: expensePayments.fromMemberId,
-				toMemberId: expensePayments.toMemberId,
-				amountCents: expensePayments.amountCents,
-				currency: expensePayments.currency,
-			})
-			.from(expensePayments)
-			.where(and(eq(expensePayments.wgId, wgId), eq(expensePayments.status, 'completed'))),
-		// Bought items accumulate forever; the dashboard only needs the open list
-		// (count and top entries) plus the latest few for the activity preview.
-		db
-			.select({ name: shoppingItems.name, quantity: shoppingItems.quantity })
-			.from(shoppingItems)
-			.where(and(eq(shoppingItems.wgId, wgId), isNull(shoppingItems.boughtAt)))
-			.orderBy(desc(shoppingItems.createdAt)),
-		db
-			.select({
-				id: shoppingItems.id,
-				name: shoppingItems.name,
-				addedByMemberId: shoppingItems.addedByMemberId,
-				createdAt: shoppingItems.createdAt,
-				boughtAt: shoppingItems.boughtAt,
-			})
-			.from(shoppingItems)
-			.where(eq(shoppingItems.wgId, wgId))
-			.orderBy(desc(shoppingItems.createdAt))
-			.limit(ACTIVITY_LIMIT),
-		db
-			.select({
-				id: chores.id,
-				title: chores.title,
-				nextDueAt: chores.nextDueAt,
-				assignedMemberId: chores.assignedMemberId,
-			})
-			.from(chores)
-			.where(eq(chores.wgId, wgId)),
-		withFallback(
-			'announcements',
-			db
-				.select({
-					id: announcements.id,
-					content: announcements.content,
-					authorMemberId: announcements.authorMemberId,
-					createdAt: announcements.createdAt,
-				})
-				.from(announcements)
-				.where(and(eq(announcements.wgId, wgId), eq(announcements.source, 'manual')))
-				.orderBy(desc(announcements.createdAt))
-				.limit(ACTIVITY_LIMIT),
-			() => [],
-		),
-		withFallback(
-			'openAnnouncementCount',
-			db
-				.select({ value: count() })
-				.from(announcements)
-				.where(
-					and(
-						eq(announcements.wgId, wgId),
-						eq(announcements.source, 'manual'),
-						eq(announcements.status, 'open'),
-					),
-				),
-			() => [],
-		),
-	]);
+	] = await loadPrimaryRows(wgId);
 
 	const memberById = new Map(memberRows.map((m) => [m.id, m]));
 
@@ -506,135 +164,17 @@ export async function loadDashboardData(
 	const allDueChores = buildDueChores(choreRows, memberById, now);
 	const dueChores = allDueChores;
 
-	const activity: ActivityItem[] = [];
-	const rawActivityByKey = new Map<string, number>();
-	for (const e of expenseRows.slice(0, ACTIVITY_LIMIT)) {
-		activity.push({
-			kind: 'expense',
-			timestamp: e.occurredAt.toISOString(),
-			memberId: e.paidByMemberId,
-			memberName: memberById.get(e.paidByMemberId)?.name ?? '—',
-			text: e.description,
-			amountCents: e.amountCents,
-			currency: e.currency,
-			href: getDashboardActivityHref(shareCode, 'expense', e.id),
-		});
-		rawActivityByKey.set(`expense:${e.id}`, new Date(e.occurredAt).getTime());
-	}
-	for (const s of recentShopping) {
-		activity.push({
-			kind: 'shopping',
-			timestamp: (s.boughtAt ?? s.createdAt).toISOString(),
-			memberId: s.addedByMemberId,
-			memberName: memberById.get(s.addedByMemberId)?.name ?? '—',
-			// Matches activity.ts's buildActivityTimeline wording for the same
-			// event — these two feed builders are independently maintained
-			// (dashboard-data.ts assembles a bounded per-category preview,
-			// activity.ts the full chronicle), so their text must stay in sync
-			// by hand until they're consolidated.
-			text: s.boughtAt ? `${s.name} gekauft` : s.name,
-			href: getDashboardActivityHref(shareCode, 'shopping', s.id),
-		});
-		rawActivityByKey.set(`shopping:${s.id}`, (s.boughtAt ?? s.createdAt).getTime());
-	}
-	for (const a of announcementRows) {
-		activity.push({
-			kind: 'announcement',
-			timestamp: a.createdAt.toISOString(),
-			memberId: a.authorMemberId,
-			memberName: memberById.get(a.authorMemberId)?.name ?? '—',
-			text: clip(a.content, 80),
-			href: getDashboardActivityHref(shareCode, 'announcement', a.id),
-		});
-		rawActivityByKey.set(`announcement:${a.id}`, a.createdAt.getTime());
-	}
-	activity.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+	const { activity, rawActivityByKey } = buildPrimaryActivity(
+		expenseRows,
+		recentShopping,
+		announcementRows,
+		memberById,
+		shareCode,
+	);
 
 	const latestAnnouncement = getLatestManualAnnouncement(announcementRows, memberById);
 	const [myOpenAnnouncements, absenceRows, recurringRows, auditRows, currentMemberNotification] =
-		await Promise.all([
-			withFallback(
-				'myOpenAnnouncements',
-				currentMemberId
-					? db
-							.select({
-								id: announcements.id,
-								kind: announcements.kind,
-								content: announcements.content,
-								createdAt: announcements.createdAt,
-							})
-							.from(announcements)
-							.innerJoin(
-								announcementReactions,
-								eq(announcementReactions.announcementId, announcements.id),
-							)
-							.where(
-								and(
-									eq(announcements.wgId, wgId),
-									eq(announcements.status, 'open'),
-									eq(announcementReactions.memberId, currentMemberId),
-									eq(announcementReactions.reaction, 'take'),
-								),
-							)
-							.orderBy(desc(announcements.createdAt))
-					: Promise.resolve([]),
-				() => [],
-			),
-			withFallback(
-				'memberAbsences',
-				db
-					.select({
-						id: memberAbsences.id,
-						memberId: memberAbsences.memberId,
-						startDate: memberAbsences.startDate,
-						endDate: memberAbsences.endDate,
-					})
-					.from(memberAbsences)
-					.where(eq(memberAbsences.wgId, wgId)),
-				() => [],
-			),
-			db
-				.select({
-					id: recurringExpenses.id,
-					description: recurringExpenses.description,
-					amountCents: recurringExpenses.amountCents,
-					nextDueAt: recurringExpenses.nextDueAt,
-					lastCreatedAt: recurringExpenses.lastCreatedAt,
-					createdAt: recurringExpenses.createdAt,
-					pausedAt: recurringExpenses.pausedAt,
-				})
-				.from(recurringExpenses)
-				.where(eq(recurringExpenses.wgId, wgId)),
-			withFallback(
-				'auditEvents',
-				db
-					.select({
-						id: auditEvents.id,
-						memberId: auditEvents.memberId,
-						eventType: auditEvents.eventType,
-						entityType: auditEvents.entityType,
-						entityId: auditEvents.entityId,
-						metadataJson: auditEvents.metadataJson,
-						summary: auditEvents.summary,
-						createdAt: auditEvents.createdAt,
-					})
-					.from(auditEvents)
-					.where(eq(auditEvents.wgId, wgId))
-					.orderBy(desc(auditEvents.createdAt))
-					.limit(ACTIVITY_LIMIT),
-				() => [],
-			),
-			withFallback(
-				'currentMemberPushOptIn',
-				currentMemberId
-					? db.query.wgMembers.findFirst({
-							where: and(eq(wgMembers.id, currentMemberId), eq(wgMembers.wgId, wgId)),
-							columns: { pushOptIn: true },
-						})
-					: Promise.resolve(null),
-				() => null,
-			),
-		]);
+		await loadSecondaryRows(wgId, currentMemberId);
 	const filteredMyOpenAnnouncements = myOpenAnnouncements;
 	const dueRecurringExpenses = getDueRecurringExpenses(
 		recurringRows
@@ -648,48 +188,15 @@ export async function loadDashboardData(
 			})),
 		now.getTime(),
 	);
-	for (const absence of absenceRows.slice(0, ACTIVITY_LIMIT)) {
-		activity.push({
-			kind: 'absence',
-			timestamp: absence.startDate.toISOString(),
-			memberId: absence.memberId,
-			memberName: memberById.get(absence.memberId)?.name ?? '—',
-			text: 'Abwesenheit eingetragen',
-			href: getDashboardActivityHref(shareCode, 'absence', absence.id),
-		});
-		rawActivityByKey.set(`absence:${absence.id}`, absence.startDate.getTime());
-	}
-	for (const recurring of recurringRows.slice(0, ACTIVITY_LIMIT)) {
-		const recurringTs = (recurring.lastCreatedAt ?? recurring.createdAt).getTime();
-		activity.push({
-			kind: 'recurring',
-			timestamp: new Date(recurringTs).toISOString(),
-			memberName: 'System',
-			text: recurring.lastCreatedAt
-				? `${recurring.description} aus Vorlage erstellt`
-				: `${recurring.description} als Vorlage angelegt`,
-			amountCents: recurring.amountCents,
-			currency: 'EUR',
-			href: getDashboardActivityHref(shareCode, 'recurring', recurring.id),
-		});
-		rawActivityByKey.set(`recurring:${recurring.id}`, recurringTs);
-	}
-	for (const audit of auditRows) {
-		const kind = getDashboardAuditKind(audit);
-		if (isDuplicateAuditActivity(rawActivityByKey, kind, audit.entityId, audit.createdAt.getTime()))
-			continue;
-		const actorName = audit.memberId ? (memberById.get(audit.memberId)?.name ?? '—') : 'System';
-		const href = getDashboardAuditHref(shareCode, audit);
-		activity.push({
-			kind,
-			timestamp: audit.createdAt.toISOString(),
-			memberId: audit.memberId ?? null,
-			memberName: actorName,
-			text: formatAuditActivityText(audit.summary, actorName),
-			...(href ? { href } : {}),
-		});
-	}
-	activity.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+	appendSecondaryActivity(
+		activity,
+		rawActivityByKey,
+		absenceRows,
+		recurringRows,
+		auditRows,
+		memberById,
+		shareCode,
+	);
 	const absentMemberIds = getAbsentMemberIds(
 		absenceRows.map((item) => ({
 			memberId: item.memberId,
