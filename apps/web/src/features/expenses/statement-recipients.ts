@@ -4,7 +4,7 @@ import {
 	buildMonthlyStatement,
 } from './monthly-statement';
 
-export type StatementSkipReason =
+type StatementSkipReason =
 	| 'inactive'
 	| 'no_email'
 	| 'opted_out'

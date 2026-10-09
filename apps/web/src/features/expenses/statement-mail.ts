@@ -48,7 +48,7 @@ const SEGMENT_LABELS: Record<StatusKind, string> = {
 	owes: 'Du schuldest',
 };
 
-export function escapeHtml(value: string): string {
+function escapeHtml(value: string): string {
 	return value
 		.replaceAll('&', '&amp;')
 		.replaceAll('<', '&lt;')

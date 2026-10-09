@@ -149,7 +149,7 @@ export function splitInputErrorMessage(
 		case 'splits_mismatch':
 			return SPLIT_SUM_MISMATCH;
 		case 'no_members':
-			return 'Keine Mitglieder vorhanden.';
+			return 'Wähle mindestens eine beteiligte Person aus.';
 	}
 }
 

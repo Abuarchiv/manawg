@@ -303,7 +303,7 @@ test.describe('settings theme responsive', () => {
 		});
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen`);
 		const name = page.getByLabel('Name eurer WG');
-		const save = page.getByRole('button', { name: 'Speichern', exact: true });
+		const save = page.getByLabel('WG-Name').getByRole('button', { name: 'Speichern', exact: true });
 		await expect(save).toBeDisabled();
 		await name.fill('  Neue WG ');
 		await save.click();

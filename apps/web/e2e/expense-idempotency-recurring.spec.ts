@@ -413,7 +413,10 @@ test('a malformed recurring-expense success replays the queued request with its 
 		recurringExpenseId: 'recurring-rent',
 		expectedRecurringNextDueAt,
 	});
-	expect(attempts[1]?.body).toEqual(attempts[0]?.body);
+	// The queued replay is stamped with its queue day; the first online attempt left it to the server.
+	const { occurredAt, ...replayBody } = (attempts[1]?.body ?? {}) as Record<string, unknown>;
+	expect(typeof occurredAt).toBe('string');
+	expect(replayBody).toEqual(attempts[0]?.body);
 });
 
 test('recurring-source form retries keep the original due date and POST body', async ({ page }) => {

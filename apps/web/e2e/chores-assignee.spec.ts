@@ -275,7 +275,7 @@ test.describe('chore next assignee', () => {
 		releaseFirstDelete();
 
 		await expect(
-			page.getByText('Entfernen fehlgeschlagen. Versuche es gleich erneut.'),
+			page.getByText('Entfernen fehlgeschlagen: Versuche es gleich erneut.'),
 		).toBeVisible();
 		await expect(remove).toBeEnabled();
 		expect(deleteCalls).toBe(1);

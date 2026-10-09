@@ -17,6 +17,7 @@ import {
 	createQueuedExpenseUpdate,
 } from '@/core/offline/offline-queue';
 import { parseEuroAmount } from '@/core/utils/amount';
+import { inputDateToIso, todayInputValue } from '@/core/utils/local-date';
 import { CENTS_PER_EURO } from '@/core/utils/money';
 import type { ExpenseFormFieldErrors } from '@/features/expenses/components/ausgaben/ExpenseFormSection';
 import {
@@ -26,13 +27,18 @@ import {
 	amountErrorMessage,
 } from '@/features/expenses/components/ausgaben/constants';
 import type { Expense } from '@/features/expenses/components/ausgaben/expense-types';
+import { isoToInputDate } from '@/features/expenses/components/ausgaben/use-expense-form-extras';
 import {
 	expenseSaveErrorMessage,
 	isPermanentClientError,
 	splitInputErrorMessage,
 } from '@/features/expenses/expense-errors';
 import { manualSplitsFingerprint } from '@/features/expenses/expense-split-input';
-import { buildOptimisticExpense } from '@/features/expenses/optimistic-expense';
+import {
+	buildOptimisticExpense,
+	sortExpensesNewestFirst,
+} from '@/features/expenses/optimistic-expense';
+import { withQueuedOccurredAt } from '@/features/expenses/queued-occurred-at';
 import type { DebtorShare } from '@/features/expenses/split-math';
 import { useRef, useState } from 'react';
 import type { ExpenseFormState, ExpensePageContext } from './expense-page-context';
@@ -41,12 +47,8 @@ import type { ExpenseFormSupport } from './use-expense-form-support';
 export type ExpenseCreateResponse = { expense: Expense; warning: NotificationWarning };
 type ExpenseMutationResponse = Expense | ExpenseCreateResponse;
 
-/**
- * Create/edit of a single expense: validation, optimistic list update,
- * request with idempotency key (reused while the same unsent form is
- * retried), offline queueing and the follow-up advance of a recurring
- * template.
- */
+/** Create/edit of one expense: validation, optimistic update, idempotent request (key reused
+ * while the same unsent form is retried), offline queueing and the recurring-template advance. */
 export function useExpenseSubmit(
 	ctx: ExpensePageContext,
 	form: ExpenseFormState,
@@ -106,6 +108,10 @@ export function useExpenseSubmit(
 		if (amountEuros === null || amountEuros < AMOUNT_MIN_EUROS || amountEuros > AMOUNT_MAX_EUROS) {
 			validationErrors.amount = amountErrorMessage(amountEuros, form.amountStr);
 		}
+		const { occurredOn } = form.extras;
+		if (occurredOn.length === 0 || occurredOn > todayInputValue()) {
+			validationErrors.date = 'Wähle ein Datum, das nicht in der Zukunft liegt.';
+		}
 		if (Object.keys(validationErrors).length > 0) {
 			support.setValidationErrors(validationErrors);
 			return;
@@ -121,6 +127,8 @@ export function useExpenseSubmit(
 			imageUrl,
 			splitMode,
 			manualSplits: manualSplitsFingerprint(splitMode, form.manualSplits),
+			participantIds: splitMode === 'equal' ? form.extras.participantIds : null,
+			occurredOn,
 		});
 		const pendingRequest = pendingRequestRef.current;
 		const reusePendingRequest = !isEdit && pendingRequest?.fingerprint === fingerprint;
@@ -168,7 +176,15 @@ export function useExpenseSubmit(
 			recurringSourceId && expectedRecurringNextDueAt
 				? { recurringExpenseId: recurringSourceId, expectedRecurringNextDueAt }
 				: {};
+		// Only a changed day is sent: an unchanged one keeps the real time of day.
+		const editedOccurredAt = isEdit
+			? expenses.find((expense) => expense.id === editingExpense.id)?.occurredAt
+			: undefined;
+		const dateChanged =
+			occurredOn !== (editedOccurredAt ? isoToInputDate(editedOccurredAt) : todayInputValue());
+		const occurredAt = dateChanged ? inputDateToIso(occurredOn) : null;
 		const requestBody = {
+			...(occurredAt ? { occurredAt } : {}),
 			paidByMemberId,
 			amountCents,
 			description: desc,
@@ -218,13 +234,18 @@ export function useExpenseSubmit(
 			paidByMemberId,
 			imageUrl,
 			splits,
+			...(occurredAt ? { occurredAt } : {}),
 			...(previousExpense ? { previous: previousExpense } : {}),
 		});
 		pending.start(optimisticId);
 		updateExpenses((current) =>
-			isEdit
-				? current.map((expense) => (expense.id === editingExpense.id ? optimisticExpense : expense))
-				: [optimisticExpense, ...current],
+			sortExpensesNewestFirst(
+				isEdit
+					? current.map((expense) =>
+							expense.id === editingExpense.id ? optimisticExpense : expense,
+						)
+					: [optimisticExpense, ...current],
+			),
 		);
 		const res = await apiFetch<ExpenseMutationResponse>(url, {
 			method: isEdit ? 'PATCH' : 'POST',
@@ -236,30 +257,36 @@ export function useExpenseSubmit(
 		if (!res.ok) {
 			if (res.status === 0) {
 				const queuedAction = isEdit
-					? createQueuedExpenseUpdate({
-							expenseId: editingExpense.id,
-							expectedUpdatedAt: editingExpense.updatedAt,
-							wgId: wg.id,
-							shareCode: wg.shareCode,
-							memberId: identity.memberId,
-							description: desc,
-							amountCents,
-							paidByMemberId,
-							splits,
-							imageUrl,
-						})
-					: createQueuedExpense({
-							wgId: wg.id,
-							shareCode: wg.shareCode,
-							memberId: identity.memberId,
-							...(idempotencyKey ? { idempotencyKey } : {}),
-							description: desc,
-							amountCents,
-							paidByMemberId,
-							splits,
-							imageUrl,
-							...recurringSource,
-						});
+					? withQueuedOccurredAt(
+							createQueuedExpenseUpdate({
+								expenseId: editingExpense.id,
+								expectedUpdatedAt: editingExpense.updatedAt,
+								wgId: wg.id,
+								shareCode: wg.shareCode,
+								memberId: identity.memberId,
+								description: desc,
+								amountCents,
+								paidByMemberId,
+								splits,
+								imageUrl,
+							}),
+							occurredAt,
+						)
+					: withQueuedOccurredAt(
+							createQueuedExpense({
+								wgId: wg.id,
+								shareCode: wg.shareCode,
+								memberId: identity.memberId,
+								...(idempotencyKey ? { idempotencyKey } : {}),
+								description: desc,
+								amountCents,
+								paidByMemberId,
+								splits,
+								imageUrl,
+								...recurringSource,
+							}),
+							occurredAt ?? new Date().toISOString(),
+						);
 				const queuedCount = await enqueueOfflineAction(queuedAction);
 				if (queuedCount === 0) {
 					rollbackOptimisticExpense();
@@ -320,14 +347,16 @@ export function useExpenseSubmit(
 		const savedExpense = 'expense' in res.data ? res.data.expense : res.data;
 		const pushWarning = 'expense' in res.data ? notificationWarningMessage(res.data.warning) : null;
 		updateExpenses((current) =>
-			isEdit
-				? current.map((expense) => (expense.id === savedExpense.id ? savedExpense : expense))
-				: [
-						savedExpense,
-						...current.filter(
-							(expense) => expense.id !== optimisticId && expense.id !== savedExpense.id,
-						),
-					],
+			sortExpensesNewestFirst(
+				isEdit
+					? current.map((expense) => (expense.id === savedExpense.id ? savedExpense : expense))
+					: [
+							savedExpense,
+							...current.filter(
+								(expense) => expense.id !== optimisticId && expense.id !== savedExpense.id,
+							),
+						],
+			),
 		);
 		pending.end(optimisticId);
 		if (!(await support.clearEditedQueueItem(['expense.create', 'expense.update']))) {
@@ -347,12 +376,10 @@ export function useExpenseSubmit(
 			);
 		}
 		if (recurringSourceId) {
-			const recurringTemplateForAdvance = recurringExpenses.find(
-				(item) => item.id === recurringSourceId,
-			);
 			await advanceRecurringTemplate(
 				recurringSourceId,
-				expectedRecurringNextDueAt ?? recurringTemplateForAdvance?.nextDueAt,
+				expectedRecurringNextDueAt ??
+					recurringExpenses.find((item) => item.id === recurringSourceId)?.nextDueAt,
 			);
 		}
 		form.setShowForm(false);

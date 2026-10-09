@@ -5,7 +5,7 @@ import type { WgStatementPlan } from './statement-plans';
 
 export const CLAIM_BATCH_SIZE = 100;
 /** Failed rows are retried until they reach this many attempts (one per cron day 1-5). */
-export const MAX_ATTEMPTS = 5;
+const MAX_ATTEMPTS = 5;
 const INSERT_CHUNK = 500;
 /** A `sending` row older than this never got its result written down. */
 const LEASE_MS = 15 * 60 * 1000;

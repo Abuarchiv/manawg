@@ -17,45 +17,47 @@ interface ChatMemberLike {
 	role?: string | null;
 }
 
-export interface MentionTrigger {
-	query: string;
-	startIndex: number;
+// Text helpers (mentions, links) live in ./chat-text; re-exported for existing callers.
+export { detectMention } from './chat-text';
+
+/** The viewer's last read message as the server reports it when the chat opens. */
+export interface OwnReadMarker {
+	messageId: string;
+	createdAt: string;
 }
 
-export function detectMention(value: string, cursor: number): MentionTrigger | null {
-	const upTo = value.slice(0, cursor);
-	// Unicode letters like the mention check on send, otherwise the picker stops at "René" after the é.
-	const match = /(?:^|\s)@([\p{L}\p{N}_-]{1,40})$/u.exec(upTo);
-	if (!match) return null;
-	const start = upTo.length - (match[1]?.length ?? 0) - 1;
-	return { query: match[1] ?? '', startIndex: start };
-}
-
-export function escapeRegExp(value: string): string {
-	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-export interface MentionSegment {
-	text: string;
-	/** Name of the mentioned member, set for "@Name" segments only. */
-	mention?: string;
-}
-
-/** Splits a message body into plain text and "@Name" segments for the given member names. */
-export function splitMentions(body: string, names: readonly string[]): MentionSegment[] {
-	const sorted = [...new Set(names.filter(Boolean))].sort((a, b) => b.length - a.length);
-	if (sorted.length === 0 || !body.includes('@')) return [{ text: body }];
-	// Same boundary rule as the check on send; longest name first so "Anna Lena" beats "Anna".
-	const pattern = new RegExp(`@(${sorted.map(escapeRegExp).join('|')})(?![\\p{L}\\p{N}_-])`, 'gu');
-	const segments: MentionSegment[] = [];
-	let last = 0;
-	for (const match of body.matchAll(pattern)) {
-		if (match.index > last) segments.push({ text: body.slice(last, match.index) });
-		segments.push({ text: match[0], mention: match[1] ?? '' });
-		last = match.index + match[0].length;
-	}
-	if (last < body.length) segments.push({ text: body.slice(last) });
-	return segments;
+/**
+ * The first message after the read marker that the viewer did not write themselves, i.e. where
+ * the "Neue Nachrichten" divider goes. `null` when there is no marker (never opened) or nothing
+ * foreign is unread. A marker older than the loaded page counts as "before the first message".
+ */
+export function findFirstUnreadId(
+	messages: ReadonlyArray<{
+		id: string;
+		senderMemberId: string | null;
+		createdAt: string;
+		deletedAt?: string | null;
+		systemPayload?: Record<string, unknown> | null;
+	}>,
+	marker: OwnReadMarker | null,
+	currentMemberId: string,
+): string | null {
+	if (!marker) return null;
+	const markerIndex = messages.findIndex((message) => message.id === marker.messageId);
+	const markerTime = Date.parse(marker.createdAt);
+	const start =
+		markerIndex >= 0
+			? markerIndex + 1
+			: messages.findIndex((message) => Date.parse(message.createdAt) > markerTime);
+	if (start < 0) return null;
+	// Same rule as the unread counter: deleted messages and the viewer's own actions are not news.
+	const next = messages.slice(start).find((message) => {
+		if (message.deletedAt) return false;
+		return message.senderMemberId
+			? message.senderMemberId !== currentMemberId
+			: message.systemPayload?.actorMemberId !== currentMemberId;
+	});
+	return next?.id ?? null;
 }
 
 function toDate(value: Date | string): Date {
@@ -120,6 +122,9 @@ export function canDeleteMessage(message: ChatMessageLike, member: ChatMemberLik
 	return member.role === 'admin';
 }
 
+// Pictographs, flags and keycaps; plain letters, digits and punctuation are not emoji.
+const EMOJI_PATTERN = /\p{Extended_Pictographic}|\p{Regional_Indicator}|[0-9#*]\uFE0F?\u20E3/u;
+
 export function isSingleEmoji(value: unknown): boolean {
 	if (typeof value !== 'string') return false;
 	const trimmed = value.trim();
@@ -127,9 +132,10 @@ export function isSingleEmoji(value: unknown): boolean {
 	try {
 		const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
 		const segments = [...segmenter.segment(trimmed)];
-		return segments.length === 1;
+		return segments.length === 1 && EMOJI_PATTERN.test(trimmed);
 	} catch {
-		return /^\p{Extended_Pictographic}$/u.test(trimmed);
+		// Without Intl.Segmenter graphemes cannot be counted; the length cap above is the bound.
+		return EMOJI_PATTERN.test(trimmed);
 	}
 }
 
@@ -307,4 +313,45 @@ export function mergePagedReactions<
 	const seen = new Set(existing.map(key));
 	const fresh = older.filter((r) => !seen.has(key(r)));
 	return [...fresh, ...existing];
+}
+
+const WEEKDAY_FORMAT = new Intl.DateTimeFormat('de-DE', { weekday: 'long' });
+const DATE_FORMAT = new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'long' });
+const DATE_YEAR_FORMAT = new Intl.DateTimeFormat('de-DE', {
+	day: 'numeric',
+	month: 'long',
+	year: 'numeric',
+});
+
+/** Day pill label as in messengers: Heute, Gestern, a weekday within the last week, else the date. */
+export function chatDayLabel(day: Date, now: Date = new Date()): string {
+	const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+	const start = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+	// Rounded: a day across a DST switch is 23 or 25 hours long.
+	const daysAgo = Math.round((today.getTime() - start.getTime()) / 86_400_000);
+	if (daysAgo === 0) return 'Heute';
+	if (daysAgo === 1) return 'Gestern';
+	if (daysAgo > 1 && daysAgo < 7) return WEEKDAY_FORMAT.format(start);
+	return (start.getFullYear() === today.getFullYear() ? DATE_FORMAT : DATE_YEAR_FORMAT).format(
+		start,
+	);
+}
+
+/** Last message a member has read, as its creation time. */
+export interface ChatReadMarker {
+	memberId: string;
+	lastReadAt: string;
+}
+
+/** How many of `readerIds` have read up to a message created at `createdAt`. */
+export function countChatReaders(
+	createdAt: string,
+	reads: readonly ChatReadMarker[],
+	readerIds: readonly string[],
+): number {
+	const at = Date.parse(createdAt);
+	if (!Number.isFinite(at)) return 0;
+	const readers = new Set(readerIds);
+	return reads.filter((read) => readers.has(read.memberId) && Date.parse(read.lastReadAt) >= at)
+		.length;
 }

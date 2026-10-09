@@ -1,10 +1,15 @@
 import { berlinDayKey, prevBerlinDayStart, startOfBerlinDay } from '@/core/utils/berlin-day';
 import { formatShortDateRange as formatSharedShortDateRange } from '@/core/utils/time';
-import { auditDetail, formatAuditActivityText, getAuditHref } from './activity-audit';
+import {
+	ACTIVITY_HIDDEN_AUDIT_EVENT_TYPES,
+	auditDetail,
+	formatAuditActivityText,
+	getAuditHref,
+} from './activity-audit';
 import type { ActivityFilter, ActivityItem, ActivityKind, ActivityScope } from './activity-types';
 
 export type { ActivityFilter, ActivityItem, ActivityKind, ActivityScope };
-export { formatAuditActivityText, getAuditHref };
+export { ACTIVITY_HIDDEN_AUDIT_EVENT_TYPES, formatAuditActivityText, getAuditHref };
 export {
 	type ActivityReminder,
 	REMINDER_ANNOUNCEMENT_KINDS,
@@ -18,11 +23,9 @@ export function activityItemKey(
 	},
 	index: number,
 ): string {
-	return (
-		item.id ??
-		item.href ??
-		`${item.kind}:${item.timestamp}:${item.memberName}:${item.text}:${index}`
-	);
+	// Dashboard items have no id and hrefs repeat (several events per entity),
+	// so the key must always carry the index.
+	return item.id ?? `${item.kind}:${item.timestamp}:${item.href ?? item.text}:${index}`;
 }
 
 interface MemberInput {
@@ -43,6 +46,7 @@ interface ActivityTimelineInput {
 	shoppingItems: Array<{
 		id: string;
 		addedByMemberId: string;
+		boughtByMemberId?: string | null;
 		name: string;
 		createdAt: string;
 		boughtAt: string | null;
@@ -134,12 +138,16 @@ export function buildActivityTimeline(input: ActivityTimelineInput): ActivityIte
 	}
 
 	for (const item of input.shoppingItems) {
+		// A purchase belongs to the buyer, not to whoever added the item.
+		const actorId = item.boughtAt
+			? (item.boughtByMemberId ?? item.addedByMemberId)
+			: item.addedByMemberId;
 		items.push({
 			id: item.id,
 			kind: 'shopping',
 			timestamp: item.boughtAt ?? item.createdAt,
-			memberId: item.addedByMemberId,
-			memberName: memberName(members, item.addedByMemberId),
+			memberId: actorId,
+			memberName: memberName(members, actorId),
 			text: item.boughtAt ? `${item.name} gekauft` : `${item.name} hinzugefügt`,
 			completed: item.boughtAt !== null,
 			href: `/einkauf?highlight=${encodeURIComponent(item.id)}`,
@@ -199,6 +207,7 @@ export function buildActivityTimeline(input: ActivityTimelineInput): ActivityIte
 			memberName: memberName(members, item.memberId),
 			text: 'ist abwesend',
 			completed: false,
+			sentence: true,
 			detail: item.reason
 				? `${shortDateRange(item.startDate, item.endDate)} · ${item.reason}`
 				: shortDateRange(item.startDate, item.endDate),
@@ -217,6 +226,7 @@ export function buildActivityTimeline(input: ActivityTimelineInput): ActivityIte
 			memberId: item.memberId,
 			memberName: actorName,
 			text: formatAuditActivityText(item.summary, actorName),
+			sentence: true,
 			completed: false,
 			...(detail ? { detail } : {}),
 			...(href ? { href } : {}),

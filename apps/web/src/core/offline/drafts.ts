@@ -1,5 +1,6 @@
 import { formatEuroInput } from '@/core/utils/amount';
 import { safeLocalStorage } from '@/core/utils/browser';
+import { todayInputValue } from '@/core/utils/local-date';
 import type { OfflineAction, OfflineActionType } from './offline-queue';
 
 export type DraftModule = 'announcement' | 'expense' | 'shopping' | 'chore' | 'absence';
@@ -85,6 +86,9 @@ export function isEmptyModuleDraft(
 			paidByMemberId: memberId,
 			splitMode: 'equal',
 			manualSplits: {},
+			// The form always stores its date and participants; today / everyone is the untouched state.
+			occurredOn: todayInputValue(),
+			participantIds: null,
 			queueEditId: null,
 			queueEditType: null,
 			recurringIntervalMonths: 1,
@@ -210,6 +214,10 @@ export function buildQueueEditDraft(action: OfflineAction): QueueEditDraft | nul
 					imageUrl: typeof action.payload.imageUrl === 'string' ? action.payload.imageUrl : null,
 					paidByMemberId:
 						typeof action.payload.paidByMemberId === 'string' ? action.payload.paidByMemberId : '',
+					// Re-queuing must keep the day the expense happened, not the day of the edit.
+					...(action.type === 'expense.create' && typeof action.payload.occurredAt === 'string'
+						? { occurredOn: todayInputValue(new Date(action.payload.occurredAt)) }
+						: {}),
 					splitMode: manualSplits && Object.keys(manualSplits).length > 0 ? 'manual' : 'equal',
 					recurringIntervalMonths:
 						typeof action.payload.intervalMonths === 'number'

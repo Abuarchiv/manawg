@@ -273,7 +273,17 @@ test.describe('settlement scope', () => {
 					splits: [{ id: '44444444-4444-4444-8444-444444444444', amountCents: 1000 }],
 				},
 			};
-			expect(parseSettlementConfirmation(validReview)).toEqual({ ok: true, value: validReview });
+			// The parser normalises the optional `offset` flag to an explicit false.
+			expect(parseSettlementConfirmation(validReview)).toEqual({
+				ok: true,
+				value: {
+					...validReview,
+					expected: {
+						...validReview.expected,
+						splits: validReview.expected.splits.map((split) => ({ ...split, offset: false })),
+					},
+				},
+			});
 
 			expect(parseSettlementConfirmation({ fromMemberId: memberB, toMemberId: memberA })).toEqual({
 				ok: false,
@@ -583,6 +593,14 @@ test.describe('currency-scoped accounting', () => {
 					currency: 'CHF',
 				}),
 			).toMatchObject({ body: expect.stringContaining('CHF') });
+			expect(
+				formatNotificationMessage('expense.debt_settled', {
+					actorName: 'Ben',
+					amountCents: 2000,
+					currency: 'CHF',
+					direction: 'paid',
+				}),
+			).toMatchObject({ body: expect.stringContaining('CHF'), urlPath: '/ausgaben' });
 
 			const health = getWgHealth({
 				shareCode: 'WGCODE01',

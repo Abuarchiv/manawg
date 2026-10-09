@@ -1,5 +1,12 @@
 import { recordAuditEvent } from '@/core/audit';
-import { db, wgChatMentions, wgChatMessages, wgChatReactions, wgMembers } from '@/core/db';
+import {
+	db,
+	wgChatMentions,
+	wgChatMessages,
+	wgChatReactions,
+	wgChatReads,
+	wgMembers,
+} from '@/core/db';
 import { responseCodec, withIdempotentWrite } from '@/core/db/idempotent-write';
 import { assertPrivateImageCanBeAttached } from '@/core/db/private-image-deletions';
 import {
@@ -27,6 +34,7 @@ import {
 	sanitizeMessageBody,
 } from '@/features/chat/chat-pure';
 import { buildChatCursorWhere } from '@/features/chat/server/chat-unread-query';
+import { loadOwnReadMarker } from '@/features/chat/server/own-read-marker';
 import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -87,6 +95,12 @@ export const GET = withWgRoute('chat messages GET', async (req, { code }) => {
 	if (!auth.ok) return auth.response;
 	const wg = auth.wg;
 
+	// Only the bootstrap asks for it (before it marks the chat read), so polls skip the query.
+	const readMarkerPayload =
+		url.searchParams.get('includeReadMarker') === '1'
+			? { readMarker: await loadOwnReadMarker(wg.id, auth.member.memberId) }
+			: {};
+
 	const where = beforeId
 		? and(
 				eq(wgChatMessages.wgId, wg.id),
@@ -94,12 +108,22 @@ export const GET = withWgRoute('chat messages GET', async (req, { code }) => {
 			)
 		: eq(wgChatMessages.wgId, wg.id);
 
-	const pageRows = await db
-		.select()
-		.from(wgChatMessages)
-		.where(where)
-		.orderBy(desc(wgChatMessages.createdAt), desc(wgChatMessages.id))
-		.limit(limit);
+	// Read markers drive the read ticks; only the latest page (the poll) needs them.
+	const [pageRows, reads] = await Promise.all([
+		db
+			.select()
+			.from(wgChatMessages)
+			.where(where)
+			.orderBy(desc(wgChatMessages.createdAt), desc(wgChatMessages.id))
+			.limit(limit),
+		beforeId
+			? []
+			: db
+					.select({ memberId: wgChatReads.memberId, lastReadAt: wgChatMessages.createdAt })
+					.from(wgChatReads)
+					.innerJoin(wgChatMessages, eq(wgChatMessages.id, wgChatReads.lastReadMessageId))
+					.where(eq(wgChatReads.wgId, wg.id)),
+	]);
 
 	const pageIds = new Set(pageRows.map((row) => row.id));
 	const refreshIds = [...new Set(refreshIdParams)].filter((id) => !pageIds.has(id));
@@ -112,18 +136,12 @@ export const GET = withWgRoute('chat messages GET', async (req, { code }) => {
 			: [];
 	const rows = [...pageRows, ...refreshedRows];
 
-	if (rows.length === 0) {
-		return NextResponse.json({
-			...chatMessagesReadPayload(pageRows, refreshedRows),
-			reactions: [],
-			mentions: [],
-		});
-	}
-
 	const liveMessageIds = rows.filter((row) => !row.deletedAt).map((row) => row.id);
 	if (liveMessageIds.length === 0) {
 		return NextResponse.json({
 			...chatMessagesReadPayload(pageRows, refreshedRows),
+			reads,
+			...readMarkerPayload,
 			reactions: [],
 			mentions: [],
 		});
@@ -151,6 +169,8 @@ export const GET = withWgRoute('chat messages GET', async (req, { code }) => {
 
 	return NextResponse.json({
 		...chatMessagesReadPayload(pageRows, refreshedRows),
+		reads,
+		...readMarkerPayload,
 		reactions: reactionRows,
 		mentions: mentionRows,
 	});

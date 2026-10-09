@@ -27,7 +27,12 @@ export function usePinnwandPage() {
 	const [highlightedId, setHighlightedId] = useState<string | null>(null);
 	const { isPending, start, end } = usePendingSet();
 
-	const data = useAnnouncementsData({ wg, identity, encodedShareCode });
+	const data = useAnnouncementsData({
+		wg,
+		identity,
+		encodedShareCode,
+		onQueueSynced: () => setNotice(null),
+	});
 	const { items, itemsRef, initialLoading } = data;
 	const itemCount = items.length;
 
@@ -129,6 +134,7 @@ export function usePinnwandPage() {
 	const stableDelete = useStableCallback((a: Announcement) => actions.remove(a.id));
 	const stableTogglePinned = useStableCallback(actions.togglePinned);
 	const stableToggleStatus = useStableCallback(actions.toggleStatus);
+	const stableEdit = useStableCallback(actions.editAnnouncement);
 	const stableToggleReaction = useStableCallback((a: Announcement, reaction: ReactionKey) => {
 		const now = Date.now();
 		const acknowledged = { ...a, myReactions: [...a.myReactions, reaction] };
@@ -176,6 +182,7 @@ export function usePinnwandPage() {
 		stableDelete,
 		stableTogglePinned,
 		stableToggleStatus,
+		stableEdit,
 		stableToggleReaction,
 		stableAddComment,
 		stableUpdateComment,

@@ -18,7 +18,7 @@ export interface StatementMemberInput {
 	active: boolean;
 }
 
-export interface StatementMemberRow {
+interface StatementMemberRow {
 	id: string;
 	name: string;
 	paidCents: number;
@@ -26,7 +26,7 @@ export interface StatementMemberRow {
 	balanceCents: number;
 }
 
-export interface StatementItem {
+interface StatementItem {
 	id: string;
 	occurredAt: string;
 	description: string;
