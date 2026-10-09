@@ -61,6 +61,7 @@ const MEMBER_READS: Record<string, MemberRead> = {
 	events: () => NextResponse.json({ events: [] }),
 	expenses: () => NextResponse.json({ expenses: [], payments: [] }),
 	export: exportResponse,
+	imports: () => NextResponse.json({ imports: [] }),
 	inventory: () => {
 		const items: never[] = [];
 		return NextResponse.json({ items, grouped: groupItemsByCategory(items) });

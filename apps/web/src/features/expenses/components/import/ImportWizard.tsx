@@ -18,6 +18,7 @@ import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+import { ImportHistory } from './ImportHistory';
 import { ImportInputStep } from './ImportInputStep';
 import { ImportProgress } from './ImportProgress';
 import { ImportResultStep } from './ImportResultStep';
@@ -149,6 +150,7 @@ export function ImportWizard() {
 							else wizard.chooseSource(value);
 						}}
 					/>
+					<ImportHistory />
 				</section>
 			)}
 			{step === 'input' && source && (
