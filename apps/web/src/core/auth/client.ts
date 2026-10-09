@@ -248,6 +248,10 @@ export async function clearLocalAccountData(): Promise<void> {
 						),
 					),
 	]);
+	// The wipe took the offline page with it; the worker fetches it again.
+	if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+		navigator.serviceWorker.controller?.postMessage('refresh-shell');
+	}
 }
 
 export async function signOutSocialAccount(
