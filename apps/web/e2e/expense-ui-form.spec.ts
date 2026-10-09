@@ -258,19 +258,19 @@ test.describe('finance dialog mobile', () => {
 			document.documentElement.style.fontSize = '16px';
 		});
 		await page.setViewportSize({ width: 1440, height: 900 });
-		// The dialog re-renders for the wide layout after the resize event, so poll until it settles.
+		// Wide screens keep the 28rem phone dialog, so split rows stay stacked with a full-width amount.
 		await expect
 			.poll(() =>
-				rows.first().evaluate((element) => {
-					const row = element as HTMLElement;
+				rows.first().evaluate((row) => {
 					const amount = row.querySelector<HTMLElement>('[data-slot="input-group"]');
 					return {
+						dialogWidth: Math.round(row.closest('[role="dialog"]')?.clientWidth ?? 0),
 						direction: getComputedStyle(row).flexDirection,
 						amountWidth: Math.round(amount?.getBoundingClientRect().width ?? 0),
 					};
 				}),
 			)
-			.toEqual({ direction: 'row', amountWidth: 128 });
+			.toEqual({ dialogWidth: 448, direction: 'column', amountWidth: 416 });
 	}
 
 	test('keeps finance forms in narrow viewports at 200% text size', async ({ page }) => {
