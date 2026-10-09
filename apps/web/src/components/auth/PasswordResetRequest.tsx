@@ -1,0 +1,84 @@
+'use client';
+
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { Spinner } from '@/components/ui/spinner';
+import { classifyAuthError } from '@/core/auth/password-errors';
+import type { AuthFailure } from '@/core/auth/password-errors';
+import { useState } from 'react';
+import { GenericAuthError, isValidEmail } from './auth-form-shared';
+
+/** Requests a fresh reset link without leaving the reset page; the answer never reveals an account. */
+export function PasswordResetRequest() {
+	const [email, setEmail] = useState('');
+	const [busy, setBusy] = useState(false);
+	const [state, setState] = useState<'idle' | 'invalid' | 'sent' | 'failed'>('idle');
+	const [failure, setFailure] = useState<AuthFailure>('other');
+
+	async function submit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
+		event.preventDefault();
+		if (busy) return;
+		const normalizedEmail = email.trim().toLowerCase();
+		if (!isValidEmail(normalizedEmail)) {
+			setState('invalid');
+			return;
+		}
+		setBusy(true);
+		setState('idle');
+		try {
+			const { requestPasswordReset } = await import('@/core/auth/client');
+			await requestPasswordReset(normalizedEmail);
+			setState('sent');
+		} catch (error) {
+			setFailure(classifyAuthError(error));
+			setState('failed');
+		} finally {
+			setBusy(false);
+		}
+	}
+
+	return (
+		<form noValidate onSubmit={(event) => void submit(event)} className="flex flex-col gap-4">
+			<FieldGroup>
+				<Field data-invalid={state === 'invalid'}>
+					<FieldLabel htmlFor="reset-request-email">E-Mail-Adresse</FieldLabel>
+					<Input
+						id="reset-request-email"
+						name="email"
+						type="email"
+						value={email}
+						onChange={(event) => setEmail(event.target.value)}
+						readOnly={busy}
+						autoComplete="email"
+						inputMode="email"
+						enterKeyHint="go"
+						required
+						aria-invalid={state === 'invalid' || undefined}
+						aria-describedby={state === 'invalid' ? 'reset-request-error' : undefined}
+						className="text-base"
+					/>
+				</Field>
+				{state === 'invalid' && (
+					<p id="reset-request-error" role="alert" className="text-sm text-destructive">
+						Bitte gib eine gültige E-Mail-Adresse ein.
+					</p>
+				)}
+				{state === 'failed' && <GenericAuthError failure={failure} />}
+				{state === 'sent' && (
+					<Alert>
+						<AlertDescription>
+							Wenn zu dieser E-Mail-Adresse ein Konto gehört, erhältst du gleich einen Link zum
+							Zurücksetzen des Passworts.
+						</AlertDescription>
+					</Alert>
+				)}
+				<Button type="submit" disabled={busy}>
+					{busy && <Spinner data-icon="inline-start" aria-hidden />}
+					Link senden
+				</Button>
+			</FieldGroup>
+		</form>
+	);
+}

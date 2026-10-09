@@ -23,13 +23,13 @@ export default async function PasswordResetPage() {
 			description={
 				recoveryRequested
 					? 'Lege ein neues Passwort für dein Konto fest.'
-					: 'Fordere einen neuen Link an.'
+					: 'Fordere unten einen neuen Link an.'
 			}
 			headingId="password-reset-heading"
 			backHref="/neu"
 			backLabel="ManaWG, zurück zur Anmeldung"
 		>
-			<PasswordResetForm recoveryRequested={recoveryRequested} signedIn={Boolean(user)} />
+			<PasswordResetForm recoveryRequested={recoveryRequested} />
 		</EntryFrame>
 	);
 }
