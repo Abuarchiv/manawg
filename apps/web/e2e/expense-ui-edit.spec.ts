@@ -280,10 +280,9 @@ test.describe('expense currency edit', () => {
 				}
 			}
 
+			// Back on the saved equal split, so nothing changed and closing asks nothing.
 			await page.getByRole('button', { name: 'Abbrechen', exact: true }).click();
-			const confirmClose = page.getByRole('alertdialog');
-			await expect(confirmClose).toBeVisible();
-			await confirmClose.getByRole('button', { name: 'Entwurf behalten', exact: true }).click();
+			await expect(page.getByRole('alertdialog')).toBeHidden();
 			await expect(dialog).toBeHidden();
 		}
 	});
