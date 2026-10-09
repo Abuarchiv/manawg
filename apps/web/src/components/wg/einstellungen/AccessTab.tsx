@@ -5,6 +5,7 @@ import type { Member, WgSummary } from '@/components/wg/WgContextProvider';
 import { AccountSignOutSection } from '@/components/wg/einstellungen/AccountSignOutSection';
 import { DangerZoneSection } from '@/components/wg/einstellungen/DangerZoneSection';
 import { MembersSection } from '@/components/wg/einstellungen/MembersSection';
+import { PasswordChangeRow } from '@/components/wg/einstellungen/PasswordChangeRow';
 import { Section } from '@/components/wg/einstellungen/Section';
 import { ShareAccessSection } from '@/components/wg/einstellungen/ShareAccessSection';
 import type { StoredIdentity } from '@/core/auth/identity';
@@ -56,7 +57,8 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 				onJoiningEnabledChange={setJoiningEnabled}
 			/>
 			<Section title="Anmeldemethoden">
-				<div className="p-3">
+				<div className="flex flex-col gap-3 p-3">
+					<PasswordChangeRow />
 					{googleLinked ? (
 						<p className="text-sm text-muted-foreground">Google ist mit deinem Konto verknüpft.</p>
 					) : (

@@ -111,6 +111,7 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
 	const accountDeletionPending = searchParams.get('accountDeletion') === 'pending';
+	const leftWg = searchParams.get('left') === '1';
 	const [memberships, setMemberships] = useState<AccountWg[]>([]);
 	const [membershipState, setMembershipState] = useState<
 		'loading' | 'signed-out' | 'authenticated-empty' | 'member-list' | 'error'
@@ -275,6 +276,15 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 							<AlertDescription className="text-foreground">
 								ManaWG hat deine Zugänge zu allen WGs entfernt. Die Löschung beim Anmeldedienst
 								steht noch aus und wird automatisch erneut versucht.
+							</AlertDescription>
+						</Alert>
+					)}
+					{leftWg && (
+						<Alert>
+							<AlertTitle>Du hast die WG verlassen</AlertTitle>
+							<AlertDescription className="text-foreground">
+								Deine Mitgliedschaft wurde beendet. Mit einem WG-Code kannst du jederzeit einer WG
+								beitreten.
 							</AlertDescription>
 						</Alert>
 					)}

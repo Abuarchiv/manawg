@@ -122,6 +122,16 @@ export async function requestPasswordReset(email: string): Promise<void> {
 	if (error) throw error;
 }
 
+/** The signed-in account's e-mail and whether it signs in with an e-mail/password identity. */
+export async function getEmailAccount(): Promise<{ email: string; hasPassword: boolean } | null> {
+	const { data, error } = await createSupabaseBrowserClient().auth.getUser();
+	if (error || !data.user?.email) return null;
+	const hasPassword = (data.user.identities ?? []).some(
+		(identity) => identity.provider === 'email',
+	);
+	return { email: data.user.email, hasPassword };
+}
+
 export async function updatePassword(password: string): Promise<void> {
 	const { error } = await createSupabaseBrowserClient().auth.updateUser({ password });
 	if (error) throw error;
