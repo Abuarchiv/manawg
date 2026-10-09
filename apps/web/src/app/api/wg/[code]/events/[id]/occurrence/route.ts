@@ -78,6 +78,9 @@ export const POST = withWgRoute<{ id: string }>('events occurrence', async (req,
 				scope: `event-occurrence:${wgId}:${auth.member.memberId}:${id}`,
 				key: readIdempotencyKey(req),
 				codec: responseCodec(),
+				// The answer carries the series rule and, for a detach, the new event: up to two
+				// rules of EVENT_RECURRENCE_MAX characters. The default replay budget would be too small.
+				maxStoredBytes: 256 * 1024,
 				prepare: async () => {
 					const limit = await checkRateLimit(
 						wgWriteLimiter,
