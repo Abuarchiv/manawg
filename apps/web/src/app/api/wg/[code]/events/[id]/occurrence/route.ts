@@ -95,7 +95,9 @@ export const POST = withWgRoute<{ id: string }>('events occurrence', async (req,
 					.select({ deactivatedAt: wgMembers.deactivatedAt })
 					.from(wgMembers)
 					.where(and(eq(wgMembers.id, auth.member.memberId), eq(wgMembers.wgId, wgId)))
-					.limit(1);
+					.limit(1)
+					// A shared lock until commit: moving the member out waits for this write.
+					.for('share');
 				if (!caller || caller.deactivatedAt) {
 					return rejectWrite(unauthorized('member_deactivated'));
 				}

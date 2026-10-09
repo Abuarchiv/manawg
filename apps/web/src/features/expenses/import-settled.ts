@@ -71,29 +71,41 @@ export async function findSettledImportIds(
 				gte(expensePayments.completedAt, earliest),
 			),
 		);
-	let allExpenses: Awaited<ReturnType<typeof loadOpenExpenses>> | null = null;
 	for (const item of imports) {
 		const currencySet = currencies.get(item.id);
 		if (settled.has(item.id) || !currencySet) continue;
 		// Only payments made since this import can have covered its shares; older ones are
 		// part of the history before it and stay out of the comparison.
-		const since = payments
-			.filter(
-				(payment) =>
-					payment.completedAt !== null &&
-					payment.completedAt >= item.startedAt &&
-					currencySet.has(normalizeCurrency(payment.currency)),
-			)
-			.map((payment) => ({
-				fromMemberId: payment.from,
-				toMemberId: payment.to,
-				amountCents: payment.amountCents,
-				currency: payment.currency,
-			}));
-		if (since.length === 0) continue;
-		allExpenses ??= await loadOpenExpenses(wgId, executor);
-		const current = computeBalances(allExpenses, since);
-		const without = computeBalances(await loadOpenExpenses(wgId, executor, item.id), since);
+		const sincePayments = payments.filter(
+			(payment) =>
+				payment.completedAt !== null &&
+				payment.completedAt >= item.startedAt &&
+				currencySet.has(normalizeCurrency(payment.currency)),
+		);
+		const lastPaymentAt = sincePayments.reduce<Date | null>(
+			(latest, payment) =>
+				payment.completedAt !== null && (!latest || payment.completedAt > latest)
+					? payment.completedAt
+					: latest,
+			null,
+		);
+		if (!lastPaymentAt) continue;
+		const since = sincePayments.map((payment) => ({
+			fromMemberId: payment.from,
+			toMemberId: payment.to,
+			amountCents: payment.amountCents,
+			currency: payment.currency,
+		}));
+		// The ledger as it stood at the last payment: purchases booked afterwards must not
+		// make a payment that covered the import look like it paid something newer.
+		const current = computeBalances(
+			await loadOpenExpenses(wgId, executor, undefined, lastPaymentAt),
+			since,
+		);
+		const without = computeBalances(
+			await loadOpenExpenses(wgId, executor, item.id, lastPaymentAt),
+			since,
+		);
 		if (createsDebts(current, without)) settled.add(item.id);
 	}
 	return settled;

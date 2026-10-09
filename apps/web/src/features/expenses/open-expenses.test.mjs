@@ -36,6 +36,7 @@ function load() {
 				const defined = conditions.filter(Boolean);
 				return defined.length === 1 ? defined[0] : { operator: 'and', defined };
 			},
+			lte: (field, value) => ({ operator: 'lte', field, value }),
 			isNull: (field) => ({ operator: 'isNull', field }),
 			ne: (field, value) => ({ operator: 'ne', field, value }),
 			or: (...conditions) => ({ operator: 'or', conditions }),

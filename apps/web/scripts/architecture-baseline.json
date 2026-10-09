@@ -271,7 +271,7 @@
 		"e2e/calendar.spec.ts": 1131,
 		"e2e/chores.spec.ts": 1060,
 		"e2e/dashboard.spec.ts": 1684,
-		"e2e/expense-idempotency-retry.spec.ts": 999,
+		"e2e/expense-idempotency-retry.spec.ts": 997,
 		"e2e/expense-integrity.spec.ts": 2285,
 		"e2e/expense-ui.spec.ts": 1812,
 		"e2e/inventory.spec.ts": 880,

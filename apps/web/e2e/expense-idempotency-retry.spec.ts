@@ -300,17 +300,12 @@ test('an ambiguously acknowledged expense replays its queued request with the or
 	await expect.poll(() => attempts.length).toBe(2);
 	await expect.poll(() => queuedActionCount(replayPage, 'expense.create')).toBe(0);
 	expect(attempts).toHaveLength(2);
-
 	expect(attempts[0]?.key).toBeTruthy();
 	expect(attempts[1]?.key).toBe(attempts[0]?.key);
-	// The queued copy also carries the booking day shown at entry; the server replays by key, so
-	// the extra field changes nothing for an attempt that did commit.
-	const { occurredAt, ...replayed } = normalizeExpenseCreateBody(attempts[1]?.body) as Record<
-		string,
-		unknown
-	>;
-	expect(typeof occurredAt).toBe('string');
-	expect(replayed).toEqual(normalizeExpenseCreateBody(attempts[0]?.body));
+	expect(normalizeExpenseCreateBody(attempts[1]?.body)).toEqual({
+		...(normalizeExpenseCreateBody(attempts[0]?.body) as object),
+		occurredAt: expect.any(String),
+	});
 });
 
 test('discarding an ambiguous expense starts a new request key for identical form data', async ({
@@ -575,7 +570,6 @@ test('malformed recurring-template success queues once across split rotation, dr
 	await expect.poll(() => attempts.length).toBe(2);
 	await expect.poll(() => queuedActionCount(restoredPage, 'recurring.create')).toBe(0);
 	expect(attempts).toHaveLength(2);
-
 	expect(attempts[0]?.key).toBeTruthy();
 	expect(attempts[1]?.key).toBe(attempts[0]?.key);
 	expect(attempts[1]?.body).toEqual(attempts[0]?.body);
@@ -729,7 +723,6 @@ test('a malformed recurring-expense success replays the queued request with its 
 	await expect.poll(() => attempts.length).toBe(2);
 	await expect.poll(() => queuedRecurringExpenseCount(replayPage)).toBe(0);
 	expect(attempts).toHaveLength(2);
-
 	expect(attempts[0]?.key).toBeTruthy();
 	expect(attempts[1]?.key).toBe(attempts[0]?.key);
 	expect(attempts[0]?.body).toMatchObject({

@@ -1,7 +1,7 @@
 import { db, expenseSplits, expenses } from '@/core/db';
 import type { DbTransaction } from '@/core/db/transaction';
 import type { DebtExpenseInput } from '@/features/expenses/debts';
-import { and, eq, isNull, ne, or } from 'drizzle-orm';
+import { and, eq, isNull, lte, ne, or } from 'drizzle-orm';
 
 /**
  * Load every expense of a WG together with its splits, shaped for the pure
@@ -9,18 +9,21 @@ import { and, eq, isNull, ne, or } from 'drizzle-orm';
  * all splits (settled and unsettled) because `computeBalances` decides which
  * ones still count. Extracted here so the balances route and the member
  * move-out check share one query instead of drifting apart. `withoutImportId`
- * leaves out the expenses of that import, to see the balances without it.
+ * leaves out the expenses of that import, to see the balances without it; `createdAtOrBefore`
+ * leaves out expenses booked after that moment, to see the ledger as it stood then.
  */
 export async function loadOpenExpenses(
 	wgId: string,
 	client: typeof db | DbTransaction = db,
 	withoutImportId?: string,
+	createdAtOrBefore?: Date,
 ): Promise<DebtExpenseInput[]> {
 	const scope = and(
 		eq(expenses.wgId, wgId),
 		withoutImportId
 			? or(isNull(expenses.importId), ne(expenses.importId, withoutImportId))
 			: undefined,
+		createdAtOrBefore ? lte(expenses.createdAt, createdAtOrBefore) : undefined,
 	);
 	const expenseRows = await client
 		.select({

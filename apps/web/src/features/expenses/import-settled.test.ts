@@ -15,6 +15,7 @@ interface Payment {
 	completedAt?: Date;
 }
 interface Expense {
+	createdAt?: Date;
 	paidByMemberId: string;
 	currency: string;
 	occurredAt: string;
@@ -44,13 +45,25 @@ mock.module('drizzle-orm', {
 });
 mock.module('./open-expenses.ts', {
 	namedExports: {
-		loadOpenExpenses: async (_wgId: string, _client: unknown, withoutImportId?: string) =>
-			withoutImportId
+		loadOpenExpenses: async (
+			_wgId: string,
+			_client: unknown,
+			withoutImportId?: string,
+			createdAtOrBefore?: Date,
+		) => {
+			const all = withoutImportId
 				? state.otherExpenses
 				: [
 						...state.otherExpenses,
 						...state.importRows.map((row) => expense(row.paidBy, row.debtor, row.amount)),
-					],
+					];
+			return all.filter(
+				(item) =>
+					!createdAtOrBefore ||
+					!item.createdAt ||
+					item.createdAt.getTime() <= createdAtOrBefore.getTime(),
+			);
+		},
 	},
 });
 
@@ -133,4 +146,15 @@ test('a payment that another debt of the same debtor fully backs does not block 
 	state.otherExpenses = [expense('C', 'B', 500)];
 	state.payments = [{ fromMemberId: 'B', toMemberId: 'C', amountCents: 200, currency: 'EUR' }];
 	assert.equal(await isSettled(), false);
+});
+
+test('a later purchase does not undo the evidence of an earlier payment', async () => {
+	// B owes A 1 (import) and pays it; a new B→A purchase of 1 booked afterwards must not
+	// make the payment look like it paid the newer purchase.
+	state.importRows = [{ paidBy: 'A', debtor: 'B', amount: 100 }];
+	state.otherExpenses = [
+		{ ...expense('A', 'B', 100), createdAt: new Date('2026-10-05T10:00:00Z') },
+	];
+	state.payments = [{ fromMemberId: 'B', toMemberId: 'A', amountCents: 100, currency: 'EUR' }];
+	assert.equal(await isSettled(), true);
 });
