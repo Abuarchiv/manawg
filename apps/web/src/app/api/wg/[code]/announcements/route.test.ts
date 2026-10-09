@@ -61,7 +61,9 @@ const withAnnouncementReplay = async (
 					assert.equal(table, chores);
 					return {
 						where: () => ({
-							limit: async () => (state.existingChoreId ? [{ id: state.existingChoreId }] : []),
+							limit: () => ({
+								for: async () => (state.existingChoreId ? [{ id: state.existingChoreId }] : []),
+							}),
 						}),
 					};
 				},

@@ -1,7 +1,29 @@
 import 'server-only';
 import { announcements, db } from '@/core/db';
+import type { DbTransaction } from '@/core/db/transaction';
 import { logApiError } from '@/core/infra/observability';
 import { and, eq } from 'drizzle-orm';
+
+/** Closes the open swap request inside the caller's transaction; a failure aborts it. */
+export async function closeChoreSwapRequest(
+	executor: DbTransaction | typeof db,
+	wgId: string,
+	choreId: string,
+	resolvedByMemberId: string,
+): Promise<void> {
+	const now = new Date();
+	await executor
+		.update(announcements)
+		.set({ status: 'resolved', resolvedAt: now, resolvedByMemberId, updatedAt: now })
+		.where(
+			and(
+				eq(announcements.wgId, wgId),
+				eq(announcements.status, 'open'),
+				eq(announcements.source, 'chore_swap'),
+				eq(announcements.sourcePath, `/putzen?highlight=${encodeURIComponent(choreId)}`),
+			),
+		);
+}
 
 /**
  * Closes the open Pinnwand swap request of a chore once the question is settled
@@ -14,18 +36,7 @@ export async function resolveChoreSwapRequest(
 	resolvedByMemberId: string,
 ): Promise<void> {
 	try {
-		const now = new Date();
-		await db
-			.update(announcements)
-			.set({ status: 'resolved', resolvedAt: now, resolvedByMemberId, updatedAt: now })
-			.where(
-				and(
-					eq(announcements.wgId, wgId),
-					eq(announcements.status, 'open'),
-					eq(announcements.source, 'chore_swap'),
-					eq(announcements.sourcePath, `/putzen?highlight=${encodeURIComponent(choreId)}`),
-				),
-			);
+		await closeChoreSwapRequest(db, wgId, choreId, resolvedByMemberId);
 	} catch (err) {
 		logApiError('[chores] swap request resolve failed', err);
 	}

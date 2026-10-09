@@ -177,7 +177,7 @@ export function useChoreActions(ctx: ChorePageContext) {
 		setActionNotice(null);
 
 		const status = getChoreStatus(chore.nextDueAt);
-		const result = await apiFetch<Record<string, never>>(
+		const result = await apiFetch<{ duplicate?: boolean }>(
 			`/api/wg/${encodedShareCode}/announcements`,
 			{
 				method: 'POST',
@@ -196,7 +196,12 @@ export function useChoreActions(ctx: ChorePageContext) {
 			setActionError(choreActionErrorMessage('Tauschanfrage konnte nicht gepostet werden', result));
 		} else {
 			setSwapRequestedIds((current) => new Set(current).add(chore.id));
-			toast.success('Tauschanfrage wurde auf der Pinnwand gepostet.');
+			// The server answers with the existing post instead of creating a second one.
+			toast.success(
+				result.data.duplicate
+					? 'Für diese Aufgabe gibt es schon eine offene Tauschanfrage auf der Pinnwand.'
+					: 'Tauschanfrage wurde auf der Pinnwand gepostet.',
+			);
 		}
 
 		endPending(pendingKey);
@@ -230,6 +235,7 @@ export function useChoreActions(ctx: ChorePageContext) {
 			assigneeName && Object.keys(changes).length === 1
 				? `Zuständig: ${assigneeName}.`
 				: 'Änderungen gespeichert.',
+			chore.updatedAt,
 		);
 	}
 
@@ -239,6 +245,7 @@ export function useChoreActions(ctx: ChorePageContext) {
 		pendingKey: string,
 		errorMessage: (result: { error: string; status: number }) => string,
 		notice: string,
+		expectedUpdatedAt?: string,
 	): Promise<boolean> {
 		if (isPending(pendingKey) || isStillQueued(chore)) return false;
 		startPending(pendingKey);
@@ -250,7 +257,7 @@ export function useChoreActions(ctx: ChorePageContext) {
 			{
 				method: 'PATCH',
 				memberId: identity.memberId,
-				body: JSON.stringify(changes),
+				body: JSON.stringify(expectedUpdatedAt ? { ...changes, expectedUpdatedAt } : changes),
 			},
 		);
 
@@ -266,8 +273,13 @@ export function useChoreActions(ctx: ChorePageContext) {
 				if (result.status === 409 && result.error === 'chore_changed') void load(false);
 				return false;
 			}
+			const savedVersion = result.data.chore.updatedAt
+				? { updatedAt: result.data.chore.updatedAt }
+				: {};
 			updateChores((current) =>
-				current.map((item) => (item.id === chore.id ? { ...item, ...changes } : item)),
+				current.map((item) =>
+					item.id === chore.id ? { ...item, ...changes, ...savedVersion } : item,
+				),
 			);
 			// A new assignee settles the open swap request, so the chore can ask again later.
 			if (changes.assignedMemberId !== undefined) {
