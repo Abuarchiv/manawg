@@ -106,3 +106,52 @@ test('direct and net summaries ignore payments from departed members', () => {
 	assert.deepEqual(computeDirectDebts([], members, historicalPayment), []);
 	assert.deepEqual(canonicalDebts([], historicalPayment), []);
 });
+
+test('a cash payment netted through a third member clears the chain instead of a reverse debt', () => {
+	const expenses = [expense('B', 'A', 1000), expense('C', 'B', 1000)];
+	assert.deepEqual(computeBalances(expenses, [payment('A', 'C', 1000)]), []);
+	const partial = computeBalances(expenses, [payment('A', 'C', 400)]);
+	assert.deepEqual(
+		partial.map((pair) => [pair.debtorId, pair.creditorId, pair.amountCents]).sort(),
+		[
+			['A', 'B', 600],
+			['B', 'C', 600],
+		],
+	);
+});
+
+test('a netted payment also clears the chain when the payer is already owed a smaller amount', () => {
+	const balances = computeBalances(
+		[expense('B', 'A', 2000), expense('C', 'B', 2000), expense('A', 'C', 500)],
+		[payment('A', 'C', 1500)],
+	);
+	assert.deepEqual(balances, []);
+});
+
+test('a payment that only reduces a direct debt still clears the circle it sits in', () => {
+	const balances = computeBalances(
+		[expense('C', 'A', 100), expense('A', 'B', 100), expense('B', 'C', 200)],
+		[payment('C', 'B', 100)],
+	);
+	assert.deepEqual(balances, []);
+});
+
+test('equally short chains behind a payment resolve the same way in any row order', () => {
+	// C pays A 1; A is owed through B→... and D→...: two chains of equal length close the circle.
+	const rows = [
+		expense('B', 'A', 100),
+		expense('C', 'B', 100),
+		expense('D', 'A', 100),
+		expense('C', 'D', 100),
+	];
+	const payments = [payment('C', 'A', 100)];
+	const key = (list: PairDebt[]) =>
+		list
+			.map((pair) => `${pair.debtorId}>${pair.creditorId}:${pair.amountCents}`)
+			.sort()
+			.join('|');
+	assert.equal(
+		key(computeBalances(rows, payments)),
+		key(computeBalances([...rows].reverse(), payments)),
+	);
+});
