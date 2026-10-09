@@ -31,8 +31,9 @@ const OCCURRED_AT_MAX_FUTURE_MS = 24 * 60 * 60 * 1000;
 const OCCURRED_AT_MAX_PAST_YEARS = 10;
 
 /**
- * Ten calendar years back, from the start of that UTC day minus one more day: the date field
- * sends a day as Berlin noon, so the whole anniversary date stays valid at any time of day.
+ * Ten calendar years back, from the start of that UTC day minus one more day. The server does
+ * not know the caller's time zone: west of UTC the local date lags the UTC date by up to a day,
+ * and the extra day keeps the caller's own anniversary date valid there.
  */
 function oldestAllowedOccurredAt(now: number): number {
 	const boundary = new Date(now);

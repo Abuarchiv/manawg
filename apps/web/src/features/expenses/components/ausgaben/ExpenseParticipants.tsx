@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import type { Member } from '@/components/wg/WgContextProvider';
 import { parseEuroAmount } from '@/core/utils/amount';
 import { CENTS_PER_EURO } from '@/core/utils/money';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { equalSharesAmong } from './manual-split-distribute';
 
 interface ExpenseParticipantsProps {
@@ -15,6 +15,8 @@ interface ExpenseParticipantsProps {
 	disabled: boolean;
 	/** The form's split mode; going back to the equal split restores everyone. */
 	splitMode: string;
+	/** The manual shares typed so far; a person with a nonzero share counts as involved. */
+	manualSplits: Readonly<Record<string, string>>;
 	/** Switches the form to manual shares computed for the chosen people. */
 	onChoose: (shares: Record<string, string>) => void;
 }
@@ -25,15 +27,17 @@ export function ExpenseParticipants({
 	amountStr,
 	disabled,
 	splitMode,
+	manualSplits,
 	onChoose,
 }: ExpenseParticipantsProps) {
 	const [hint, setHint] = useState<string | null>(null);
-	const [excluded, setExcluded] = useState<ReadonlySet<string>>(new Set());
 	const everyone = members.map((member) => member.id);
-
-	useEffect(() => {
-		if (splitMode === 'equal') setExcluded(new Set());
-	}, [splitMode]);
+	// Derived from the shares, so editing an amount by hand keeps the checkboxes truthful.
+	const excluded: ReadonlySet<string> = new Set(
+		splitMode === 'equal'
+			? []
+			: everyone.filter((id) => (parseEuroAmount(manualSplits[id] ?? '') ?? 0) <= 0),
+	);
 
 	function toggle(memberId: string): void {
 		const euros = parseEuroAmount(amountStr);
@@ -54,7 +58,6 @@ export function ExpenseParticipants({
 			return;
 		}
 		setHint(null);
-		setExcluded(next);
 		onChoose(shares);
 	}
 

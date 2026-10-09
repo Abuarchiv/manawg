@@ -192,6 +192,7 @@ export function ExpenseSplitFieldset({
 						amountStr={amountStr}
 						disabled={formSaving}
 						splitMode={splitMode}
+						manualSplits={manualSplits}
 						onChoose={(shares) => {
 							onClearSplitsError();
 							setManualSplits(shares);

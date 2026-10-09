@@ -1,5 +1,4 @@
-import { recordAuditEvent } from '@/core/audit';
-import { wgEvents } from '@/core/db';
+import { auditEvents, wgEvents } from '@/core/db';
 import { rejectWrite, responseCodec, withIdempotentWrite } from '@/core/db/idempotent-write';
 import { TransactionAbort } from '@/core/db/transaction';
 import { requireOwnerOrAdmin } from '@/core/guards/admin';
@@ -139,13 +138,28 @@ export const POST = withWgRoute<{ id: string }>('events occurrence', async (req,
 						.returning();
 					if (!created) throw new TransactionAbort('insert_failed');
 				}
+				// Written with the change, so a replayed request never finds a change without its audit entry.
+				await tx.insert(auditEvents).values({
+					wgId,
+					memberId: auth.member.memberId,
+					eventType: 'event.updated',
+					entityType: 'wg_event',
+					entityId: id,
+					summary:
+						body.action === 'cancel'
+							? `${auth.member.name} hat einen Termin der Serie „${updated.title}“ entfernt.`
+							: `${auth.member.name} hat einen Termin der Serie „${updated.title}“ geändert.`,
+					metadataJson: JSON.stringify({
+						occurrenceStartsAt: body.occurrenceStartsAt,
+						action: body.action,
+					}),
+				});
 				return {
 					status: 200,
 					body: {
 						event: serializeWgEvent(updated),
 						created: created ? serializeWgEvent(created) : null,
 					},
-					context: { title: updated.title },
 				};
 			},
 		);
@@ -154,18 +168,6 @@ export const POST = withWgRoute<{ id: string }>('events occurrence', async (req,
 			return NextResponse.json(result.body, { status: result.status });
 		}
 		if (result.context && 'rejected' in result.context) return result.context.rejected;
-		await recordAuditEvent({
-			wgId,
-			memberId: auth.member.memberId,
-			eventType: 'event.updated',
-			entityType: 'wg_event',
-			entityId: id,
-			summary:
-				body.action === 'cancel'
-					? `${auth.member.name} hat einen Termin der Serie „${result.context?.title ?? ''}“ entfernt.`
-					: `${auth.member.name} hat einen Termin der Serie „${result.context?.title ?? ''}“ geändert.`,
-			metadata: { occurrenceStartsAt: body.occurrenceStartsAt, action: body.action },
-		});
 		return NextResponse.json(result.body, { status: result.status });
 	} catch (err) {
 		if (err instanceof TransactionAbort) return badRequest(err.code);

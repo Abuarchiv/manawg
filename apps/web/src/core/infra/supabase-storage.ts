@@ -41,7 +41,6 @@ function getSupabaseServiceClient(timeoutMs?: number) {
 	const publicSupabaseURL = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
 	const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 	if (!publicSupabaseURL || !serviceRoleKey) throw new ImageStorageConfigurationError();
-	const timeoutSignal = timeoutMs ? AbortSignal.timeout(timeoutMs) : null;
 
 	return createClient(publicSupabaseURL, serviceRoleKey, {
 		auth: {
@@ -49,10 +48,12 @@ function getSupabaseServiceClient(timeoutMs?: number) {
 			autoRefreshToken: false,
 			detectSessionInUrl: false,
 		},
-		...(timeoutSignal
+		...(timeoutMs
 			? {
 					global: {
+						// Every request gets its own deadline, so a long paginated listing is not cut off.
 						fetch: (input, init) => {
+							const timeoutSignal = AbortSignal.timeout(timeoutMs);
 							const signal = init?.signal
 								? AbortSignal.any([init.signal, timeoutSignal])
 								: timeoutSignal;
