@@ -45,25 +45,18 @@ mock.module('drizzle-orm', {
 });
 mock.module('./open-expenses.ts', {
 	namedExports: {
-		loadOpenExpenses: async (
-			_wgId: string,
-			_client: unknown,
-			withoutImportId?: string,
-			createdAtOrBefore?: Date,
-		) => {
-			const all = withoutImportId
-				? state.otherExpenses
-				: [
-						...state.otherExpenses,
-						...state.importRows.map((row) => expense(row.paidBy, row.debtor, row.amount)),
-					];
-			return all.filter(
-				(item) =>
-					!createdAtOrBefore ||
-					!item.createdAt ||
-					item.createdAt.getTime() <= createdAtOrBefore.getTime(),
-			);
-		},
+		loadLedger: async () => [
+			...state.otherExpenses.map((item) => ({
+				importId: null,
+				createdAt: item.createdAt ?? new Date('2026-09-01T00:00:00Z'),
+				debt: item,
+			})),
+			...state.importRows.map((row) => ({
+				importId: IMPORT_ID,
+				createdAt: new Date('2026-10-01T10:00:00Z'),
+				debt: expense(row.paidBy, row.debtor, row.amount),
+			})),
+		],
 	},
 });
 
@@ -173,6 +166,28 @@ test('an unrelated later payment does not erase an earlier settlement', async ()
 			amountCents: 50,
 			currency: 'EUR',
 			completedAt: new Date('2026-10-07T10:00:00Z'),
+		},
+	];
+	assert.equal(await isSettled(), true);
+});
+
+test('a settling payment after many unrelated payments is still found', async () => {
+	state.importRows = [{ paidBy: 'A', debtor: 'B', amount: 100 }];
+	state.otherExpenses = [];
+	state.payments = [
+		...Array.from({ length: 60 }, (_, index) => ({
+			fromMemberId: 'C',
+			toMemberId: 'D',
+			amountCents: 10,
+			currency: 'EUR',
+			completedAt: new Date(Date.UTC(2026, 9, 2, 10, index)),
+		})),
+		{
+			fromMemberId: 'B',
+			toMemberId: 'A',
+			amountCents: 100,
+			currency: 'EUR',
+			completedAt: new Date('2026-10-04T10:00:00Z'),
 		},
 	];
 	assert.equal(await isSettled(), true);

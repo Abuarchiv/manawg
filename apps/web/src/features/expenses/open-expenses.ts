@@ -1,39 +1,45 @@
 import { db, expenseSplits, expenses } from '@/core/db';
 import type { DbTransaction } from '@/core/db/transaction';
 import type { DebtExpenseInput } from '@/features/expenses/debts';
-import { and, eq, isNull, lte, ne, or } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 
 /**
  * Load every expense of a WG together with its splits, shaped for the pure
  * balance math in `debts.ts`. "Open" is a misnomer kept for history: we load
  * all splits (settled and unsettled) because `computeBalances` decides which
  * ones still count. Extracted here so the balances route and the member
- * move-out check share one query instead of drifting apart. `withoutImportId`
- * leaves out the expenses of that import, to see the balances without it; `createdAtOrBefore`
- * leaves out expenses booked after that moment, to see the ledger as it stood then.
+ * move-out check share one query instead of drifting apart.
  */
 export async function loadOpenExpenses(
 	wgId: string,
 	client: typeof db | DbTransaction = db,
-	withoutImportId?: string,
-	createdAtOrBefore?: Date,
 ): Promise<DebtExpenseInput[]> {
-	const scope = and(
-		eq(expenses.wgId, wgId),
-		withoutImportId
-			? or(isNull(expenses.importId), ne(expenses.importId, withoutImportId))
-			: undefined,
-		createdAtOrBefore ? lte(expenses.createdAt, createdAtOrBefore) : undefined,
-	);
+	return (await loadLedger(wgId, client)).map((entry) => entry.debt);
+}
+
+/** An expense of the ledger with what is needed to see the ledger as it stood at a past moment. */
+export interface LedgerEntry {
+	importId: string | null;
+	createdAt: Date;
+	debt: DebtExpenseInput;
+}
+
+/** The whole ledger of a WG in two queries, each expense with its import and booking time. */
+export async function loadLedger(
+	wgId: string,
+	client: typeof db | DbTransaction = db,
+): Promise<LedgerEntry[]> {
 	const expenseRows = await client
 		.select({
 			id: expenses.id,
 			paidByMemberId: expenses.paidByMemberId,
 			currency: expenses.currency,
 			occurredAt: expenses.occurredAt,
+			importId: expenses.importId,
+			createdAt: expenses.createdAt,
 		})
 		.from(expenses)
-		.where(scope);
+		.where(eq(expenses.wgId, wgId));
 	if (expenseRows.length === 0) return [];
 
 	// Joined by WG instead of `inArray(expenseIds)`: one bind parameter per
@@ -47,16 +53,20 @@ export async function loadOpenExpenses(
 		})
 		.from(expenseSplits)
 		.innerJoin(expenses, eq(expenseSplits.expenseId, expenses.id))
-		.where(scope);
+		.where(eq(expenses.wgId, wgId));
 
 	const splitsByExpense = groupSplitsByExpense(splitRows);
 
 	return expenseRows.map((row) => ({
-		paidByMemberId: row.paidByMemberId,
-		...(row.currency ? { currency: row.currency } : {}),
-		occurredAt:
-			row.occurredAt instanceof Date ? row.occurredAt.toISOString() : String(row.occurredAt),
-		splits: splitsByExpense.get(row.id) ?? [],
+		importId: row.importId ?? null,
+		createdAt: row.createdAt,
+		debt: {
+			paidByMemberId: row.paidByMemberId,
+			...(row.currency ? { currency: row.currency } : {}),
+			occurredAt:
+				row.occurredAt instanceof Date ? row.occurredAt.toISOString() : String(row.occurredAt),
+			splits: splitsByExpense.get(row.id) ?? [],
+		},
 	}));
 }
 

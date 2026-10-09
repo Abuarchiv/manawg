@@ -3,10 +3,7 @@ import type { DbTransaction } from '@/core/db/transaction';
 import { normalizeCurrency } from '@/core/utils/money';
 import { and, eq, gte, inArray } from 'drizzle-orm';
 import { type PairBalance, computeBalances } from './debts';
-import { loadOpenExpenses } from './open-expenses';
-
-/** Payment boundaries judged per import; imports see few payments, this only bounds the work. */
-const MAX_BOUNDARIES = 50;
+import { type LedgerEntry, loadLedger } from './open-expenses';
 
 export interface ImportToCheck {
 	id: string;
@@ -74,6 +71,7 @@ export async function findSettledImportIds(
 				gte(expensePayments.completedAt, earliest),
 			),
 		);
+	let ledger: LedgerEntry[] | null = null;
 	for (const item of imports) {
 		const currencySet = currencies.get(item.id);
 		if (settled.has(item.id) || !currencySet) continue;
@@ -89,9 +87,7 @@ export async function findSettledImportIds(
 		// later purchase or an unrelated later payment cannot erase an earlier settlement.
 		const boundaries = [
 			...new Set(sincePayments.map((payment) => payment.completedAt?.getTime() ?? 0)),
-		]
-			.sort((a, b) => a - b)
-			.slice(0, MAX_BOUNDARIES);
+		].sort((a, b) => a - b);
 		for (const boundary of boundaries) {
 			const at = new Date(boundary);
 			const upTo = sincePayments
@@ -102,8 +98,17 @@ export async function findSettledImportIds(
 					amountCents: payment.amountCents,
 					currency: payment.currency,
 				}));
-			const current = computeBalances(await loadOpenExpenses(wgId, executor, undefined, at), upTo);
-			const without = computeBalances(await loadOpenExpenses(wgId, executor, item.id, at), upTo);
+			// The ledger is read once and cut in memory: booked by then, with and without the import.
+			ledger ??= await loadLedger(wgId, executor);
+			const booked = ledger.filter((entry) => entry.createdAt <= at);
+			const current = computeBalances(
+				booked.map((entry) => entry.debt),
+				upTo,
+			);
+			const without = computeBalances(
+				booked.filter((entry) => entry.importId !== item.id).map((entry) => entry.debt),
+				upTo,
+			);
 			if (createsDebts(current, without)) {
 				settled.add(item.id);
 				break;

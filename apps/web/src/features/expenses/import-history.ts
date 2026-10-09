@@ -3,7 +3,6 @@ import { and, desc, eq, gt } from 'drizzle-orm';
 import { findSettledImportIds } from './import-settled';
 
 const BATCH_SIZE = 50;
-const MAX_BATCHES = 10;
 const HISTORY_LIMIT = 10;
 
 export interface ImportHistoryEntry {
@@ -25,7 +24,7 @@ export async function listUndoableImports(
 	onlyMemberId: string | null,
 ): Promise<ImportHistoryEntry[]> {
 	const found: ImportHistoryEntry[] = [];
-	for (let batch = 0; batch < MAX_BATCHES && found.length < HISTORY_LIMIT; batch += 1) {
+	for (let batch = 0; found.length < HISTORY_LIMIT; batch += 1) {
 		const rows = await db
 			.select({
 				id: expenseImports.id,
