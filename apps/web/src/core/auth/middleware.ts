@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { type NextRequest, NextResponse } from 'next/server';
 import { isTransientAuthError } from './auth-errors';
+import { authCookieOptions } from './cookie-options';
 import { getSupabaseEnv, hasSupabaseEnv } from './supabase-env';
 
 function signInRedirect(request: NextRequest, response: NextResponse): NextResponse {
@@ -40,6 +41,7 @@ export async function refreshSupabaseSession(
 	const { url, publishableKey } = getSupabaseEnv();
 	let refreshedResponse = response;
 	const supabase = createServerClient(url, publishableKey, {
+		cookieOptions: authCookieOptions(request.nextUrl.protocol === 'https:'),
 		cookies: {
 			getAll: () => request.cookies.getAll(),
 			setAll: (cookiesToSet, headers = {}) => {
