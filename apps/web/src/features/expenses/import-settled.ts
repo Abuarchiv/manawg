@@ -1,6 +1,10 @@
 import { type db, expensePayments, expenseSplits, expenses } from '@/core/db';
+import type { DbTransaction } from '@/core/db/transaction';
 import { normalizeCurrency } from '@/core/utils/money';
 import { and, eq, gte, inArray } from 'drizzle-orm';
+import { type PairBalance, computeBalances } from './debts';
+import { loadCompletedExpensePayments } from './expense-payments';
+import { loadOpenExpenses } from './open-expenses';
 
 export interface ImportToCheck {
 	id: string;
@@ -11,11 +15,13 @@ export interface ImportToCheck {
  * The imports whose expenses cannot be taken back: a non-payer share was settled, or a payment
  * completed after the import may have covered the imported balance. That is a payment, in one of
  * the import's currencies, from someone who owes through the import (a netted chain can carry it
- * on to a third member) or to someone the import owes money. A payment by the creditor, or
- * between other members, leaves the imported balance open and does not count.
+ * on to a third member) or to someone the import owes money. A payment by the creditor leaves
+ * the imported balance open and does not count. A payment between other members counts only
+ * when the balances show it: taking the import out must not leave debts that the payments
+ * made against it had cancelled, for example a circle that the payment closed.
  */
 export async function findSettledImportIds(
-	executor: Pick<typeof db, 'select'>,
+	executor: typeof db | DbTransaction,
 	wgId: string,
 	imports: ReadonlyArray<ImportToCheck>,
 ): Promise<Set<string>> {
@@ -88,5 +94,38 @@ export async function findSettledImportIds(
 		);
 		if (related) settled.add(item.id);
 	}
+
+	const later = (item: ImportToCheck, currencySet: Set<string>) =>
+		payments.some(
+			(payment) =>
+				payment.completedAt !== null &&
+				payment.completedAt >= item.startedAt &&
+				currencySet.has(normalizeCurrency(payment.currency)),
+		);
+	const open = imports.filter((item) => {
+		const currencySet = currencies.get(item.id);
+		return !settled.has(item.id) && currencySet !== undefined && later(item, currencySet);
+	});
+	if (open.length === 0) return settled;
+	const allPayments = await loadCompletedExpensePayments(wgId, executor);
+	const current = computeBalances(await loadOpenExpenses(wgId, executor), allPayments);
+	for (const item of open) {
+		const without = computeBalances(await loadOpenExpenses(wgId, executor, item.id), allPayments);
+		if (createsDebts(current, without)) settled.add(item.id);
+	}
 	return settled;
+}
+
+/** True when `after` holds a debt that `before` does not, or a larger one. */
+function createsDebts(before: ReadonlyArray<PairBalance>, after: ReadonlyArray<PairBalance>) {
+	const known = new Map(
+		before.map((pair) => [
+			`${pair.currency}:${pair.debtorId}:${pair.creditorId}`,
+			pair.amountCents,
+		]),
+	);
+	return after.some(
+		(pair) =>
+			pair.amountCents > (known.get(`${pair.currency}:${pair.debtorId}:${pair.creditorId}`) ?? 0),
+	);
 }

@@ -31,6 +31,14 @@ function load() {
 		'@/core/db': { db: null, expenseSplits, expenses },
 		'drizzle-orm': {
 			eq,
+			// Like drizzle, a single defined condition stays as it is.
+			and: (...conditions) => {
+				const defined = conditions.filter(Boolean);
+				return defined.length === 1 ? defined[0] : { operator: 'and', defined };
+			},
+			isNull: (field) => ({ operator: 'isNull', field }),
+			ne: (field, value) => ({ operator: 'ne', field, value }),
+			or: (...conditions) => ({ operator: 'or', conditions }),
 			inArray: () => assert.fail('splits must not be loaded by an id list'),
 		},
 	};

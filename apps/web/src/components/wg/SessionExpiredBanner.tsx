@@ -5,7 +5,7 @@ import { SESSION_EXPIRED_EVENT } from '@/core/infra/api-client';
 import { cn } from '@/shared/lib/cn';
 import { AlertCircle } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 /**
  * Any request answered with "session expired" lands here, so every screen shows the same
@@ -22,11 +22,32 @@ export function SessionExpiredBanner() {
 		return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired);
 	}, []);
 
+	// Sticky chrome below (home header, settings tabs, chat frame) reads the banner's real
+	// height from --session-banner-height, like the offline banner does for its own.
+	const observerRef = useRef<ResizeObserver | null>(null);
+	const bannerRef = useCallback((el: HTMLDivElement | null) => {
+		observerRef.current?.disconnect();
+		observerRef.current = null;
+		const root = document.documentElement;
+		if (!el) {
+			root.style.removeProperty('--session-banner-height');
+			return;
+		}
+		const measure = () =>
+			root.style.setProperty('--session-banner-height', `${el.getBoundingClientRect().height}px`);
+		measure();
+		observerRef.current = new ResizeObserver(measure);
+		observerRef.current.observe(el);
+	}, []);
+
 	if (!returnTo) return null;
 	return (
 		<div
+			ref={bannerRef}
 			role="alert"
-			className="bg-muted text-foreground border-border sticky top-0 z-20 border-b px-4 py-2 text-meta font-medium"
+			data-session-banner
+			style={{ top: 'var(--offline-banner-height, 0px)' }}
+			className="bg-muted text-foreground border-border sticky z-20 border-b px-4 py-2 text-meta font-medium"
 		>
 			<div className="mx-auto flex w-full max-w-2xl flex-wrap items-center justify-between gap-x-3 gap-y-1">
 				<div className="flex min-w-0 flex-[1_1_8rem] items-center gap-2">

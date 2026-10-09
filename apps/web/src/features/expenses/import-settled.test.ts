@@ -1,0 +1,105 @@
+import assert from 'node:assert/strict';
+import { mock, test } from 'node:test';
+
+// findSettledImportIds against a stub executor: the import's rows first, then the completed
+// payments. The balance math is the real computeBalances.
+
+const IMPORT_ID = 'import-1';
+const startedAt = new Date('2026-10-01T10:00:00Z');
+
+interface Payment {
+	fromMemberId: string;
+	toMemberId: string;
+	amountCents: number;
+	currency: string;
+}
+interface Expense {
+	paidByMemberId: string;
+	currency: string;
+	occurredAt: string;
+	splits: Array<{ debtorMemberId: string; amountCents: number; settledAt: null }>;
+}
+const state: {
+	importRows: Array<{ paidBy: string; debtor: string; amount: number }>;
+	otherExpenses: Expense[];
+	payments: Payment[];
+} = { importRows: [], otherExpenses: [], payments: [] };
+
+function expense(paidByMemberId: string, debtorMemberId: string, amountCents: number): Expense {
+	return {
+		paidByMemberId,
+		currency: 'EUR',
+		occurredAt: '2026-10-01T10:00:00.000Z',
+		splits: [{ debtorMemberId, amountCents, settledAt: null }],
+	};
+}
+
+mock.module('@/core/db', {
+	namedExports: { expensePayments: {}, expenseSplits: {}, expenses: {}, db: {} },
+});
+mock.module('@/core/db/transaction', { namedExports: {} });
+mock.module('drizzle-orm', {
+	namedExports: { and: () => ({}), eq: () => ({}), gte: () => ({}), inArray: () => ({}) },
+});
+mock.module('./expense-payments.ts', {
+	namedExports: { loadCompletedExpensePayments: async () => state.payments },
+});
+mock.module('./open-expenses.ts', {
+	namedExports: {
+		loadOpenExpenses: async (_wgId: string, _client: unknown, withoutImportId?: string) =>
+			withoutImportId
+				? state.otherExpenses
+				: [
+						...state.otherExpenses,
+						...state.importRows.map((row) => expense(row.paidBy, row.debtor, row.amount)),
+					],
+	},
+});
+
+const { findSettledImportIds } = await import('./import-settled');
+
+const executor = {
+	select: () => ({
+		from: () => ({
+			leftJoin: () => ({
+				where: async () =>
+					state.importRows.map((row) => ({
+						importId: IMPORT_ID,
+						paidBy: row.paidBy,
+						currency: 'EUR',
+						debtor: row.debtor,
+						settledAt: null,
+					})),
+			}),
+			where: async () =>
+				state.payments.map((payment) => ({
+					from: payment.fromMemberId,
+					to: payment.toMemberId,
+					currency: 'EUR',
+					completedAt: new Date('2026-10-02T10:00:00Z'),
+				})),
+		}),
+	}),
+};
+
+async function isSettled(): Promise<boolean> {
+	const settled = await findSettledImportIds(executor as never, 'wg-1', [
+		{ id: IMPORT_ID, startedAt },
+	]);
+	return settled.has(IMPORT_ID);
+}
+
+test('a payment that closes a circle through the import counts as settling it', async () => {
+	// B owes A 1 (import), A owes C 1, C owes B 2; C pays B 1 and the circle cancels.
+	state.importRows = [{ paidBy: 'A', debtor: 'B', amount: 100 }];
+	state.otherExpenses = [expense('C', 'A', 100), expense('B', 'C', 200)];
+	state.payments = [{ fromMemberId: 'C', toMemberId: 'B', amountCents: 100, currency: 'EUR' }];
+	assert.equal(await isSettled(), true);
+});
+
+test('a payment between other members that leaves the import untouched does not block undo', async () => {
+	state.importRows = [{ paidBy: 'A', debtor: 'B', amount: 100 }];
+	state.otherExpenses = [expense('D', 'C', 500)];
+	state.payments = [{ fromMemberId: 'C', toMemberId: 'D', amountCents: 200, currency: 'EUR' }];
+	assert.equal(await isSettled(), false);
+});

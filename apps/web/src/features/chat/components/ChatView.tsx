@@ -51,6 +51,18 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 	const messageCount = messages.length;
 	const { hasMoreOlder, loadingOlder, olderError } = chat;
 	const loadOlderForHash = useStableCallback(() => void chat.loadOlder());
+	// A mention opened while the chat is already showing changes only the fragment: run the jump again.
+	const [hashVersion, setHashVersion] = useState(0);
+	useEffect(() => {
+		const onHashChange = () => {
+			jumpedToHashRef.current = false;
+			hashPagesLoadedRef.current = 0;
+			setHashVersion((version) => version + 1);
+		};
+		window.addEventListener('hashchange', onHashChange);
+		return () => window.removeEventListener('hashchange', onHashChange);
+	}, []);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: hashVersion restarts the jump when the fragment changes
 	useEffect(() => {
 		if (jumpedToHashRef.current || messageCount === 0) return;
 		const target = /^#(message-[\w-]+)$/.exec(window.location.hash)?.[1];
@@ -76,7 +88,7 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 			window.setTimeout(() => element.classList.remove('ring-2', 'ring-inset', 'ring-ring'), 2500);
 		}, 120);
 		return () => window.clearTimeout(timer);
-	}, [messageCount, hasMoreOlder, loadingOlder, olderError, loadOlderForHash]);
+	}, [messageCount, hasMoreOlder, loadingOlder, olderError, loadOlderForHash, hashVersion]);
 
 	const replyTo = replyToId ? (messages.find((m) => m.id === replyToId) ?? null) : null;
 	const replyToSender = replyTo?.senderMemberId

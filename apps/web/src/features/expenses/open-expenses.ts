@@ -1,19 +1,27 @@
 import { db, expenseSplits, expenses } from '@/core/db';
 import type { DbTransaction } from '@/core/db/transaction';
 import type { DebtExpenseInput } from '@/features/expenses/debts';
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull, ne, or } from 'drizzle-orm';
 
 /**
  * Load every expense of a WG together with its splits, shaped for the pure
  * balance math in `debts.ts`. "Open" is a misnomer kept for history: we load
  * all splits (settled and unsettled) because `computeBalances` decides which
  * ones still count. Extracted here so the balances route and the member
- * move-out check share one query instead of drifting apart.
+ * move-out check share one query instead of drifting apart. `withoutImportId`
+ * leaves out the expenses of that import, to see the balances without it.
  */
 export async function loadOpenExpenses(
 	wgId: string,
 	client: typeof db | DbTransaction = db,
+	withoutImportId?: string,
 ): Promise<DebtExpenseInput[]> {
+	const scope = and(
+		eq(expenses.wgId, wgId),
+		withoutImportId
+			? or(isNull(expenses.importId), ne(expenses.importId, withoutImportId))
+			: undefined,
+	);
 	const expenseRows = await client
 		.select({
 			id: expenses.id,
@@ -22,7 +30,7 @@ export async function loadOpenExpenses(
 			occurredAt: expenses.occurredAt,
 		})
 		.from(expenses)
-		.where(eq(expenses.wgId, wgId));
+		.where(scope);
 	if (expenseRows.length === 0) return [];
 
 	// Joined by WG instead of `inArray(expenseIds)`: one bind parameter per
@@ -36,7 +44,7 @@ export async function loadOpenExpenses(
 		})
 		.from(expenseSplits)
 		.innerJoin(expenses, eq(expenseSplits.expenseId, expenses.id))
-		.where(eq(expenses.wgId, wgId));
+		.where(scope);
 
 	const splitsByExpense = groupSplitsByExpense(splitRows);
 
