@@ -100,7 +100,14 @@ export async function loadStatementPlans(monthKey: string): Promise<WgStatementP
 		const wantsMail = memberRows.filter(
 			(member) => member.deactivatedAt === null && member.notifyStatementEmail && member.authUserId,
 		);
-		const emails = await loadConfirmedEmails(wantsMail.map((member) => member.authUserId ?? ''));
+		const { emails, unresolved } = await loadConfirmedEmails(
+			wantsMail.map((member) => member.authUserId ?? ''),
+		);
+		if (unresolved.size > 0) {
+			console.warn(
+				`[statement-mail] ${unresolved.size} Auth lookups failed; members left for a later run`,
+			);
+		}
 		for (const wg of wgRows) {
 			const members: StatementWgMember[] = memberRows
 				.filter((member) => member.wgId === wg.id)
@@ -110,6 +117,7 @@ export async function loadStatementPlans(monthKey: string): Promise<WgStatementP
 					active: member.deactivatedAt === null,
 					notify: member.notifyStatementEmail,
 					email: (member.authUserId && emails.get(member.authUserId)) || null,
+					lookupFailed: member.authUserId !== null && unresolved.has(member.authUserId),
 				}));
 			result.push({
 				wg,

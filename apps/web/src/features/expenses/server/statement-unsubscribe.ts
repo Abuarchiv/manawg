@@ -37,7 +37,21 @@ export function unsubscribeUrl(memberId: string): string {
 	return `${APP_ORIGIN}/api/email/unsubscribe?t=${encodeURIComponent(signUnsubscribeToken(memberId))}`;
 }
 
-/** Turns the statement mail off for the member. Idempotent. */
+/**
+ * Turns the statement mail off for the member and for every other membership of
+ * the same account, because the mail's one-click unsubscribe reads as a global
+ * opt-out. Idempotent.
+ */
 export async function disableStatementEmail(memberId: string): Promise<void> {
-	await db.update(wgMembers).set({ notifyStatementEmail: false }).where(eq(wgMembers.id, memberId));
+	const [member] = await db
+		.select({ authUserId: wgMembers.authUserId })
+		.from(wgMembers)
+		.where(eq(wgMembers.id, memberId));
+	if (!member) return;
+	await db
+		.update(wgMembers)
+		.set({ notifyStatementEmail: false })
+		.where(
+			member.authUserId ? eq(wgMembers.authUserId, member.authUserId) : eq(wgMembers.id, memberId),
+		);
 }

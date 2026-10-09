@@ -148,6 +148,13 @@
       "when": 1791500580201,
       "tag": "0020_monthly_statement_emails",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1791515709684,
+      "tag": "0021_statement_emails_sending",
+      "breakpoints": true
     }
   ]
 }

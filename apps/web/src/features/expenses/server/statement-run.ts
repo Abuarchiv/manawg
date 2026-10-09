@@ -1,16 +1,18 @@
 import 'server-only';
-import { db, statementEmails, withTransaction } from '@/core/db';
-import { and, asc, eq, inArray, lt, notInArray } from 'drizzle-orm';
 import { renderStatementMail } from '../statement-mail';
 import type { StatementRecipient } from '../statement-recipients';
+import {
+	CLAIM_BATCH_SIZE,
+	type ClaimedRow,
+	type RowUpdate,
+	claimBatch,
+	closeInterruptedRows,
+	queueRows,
+	recordOutcomes,
+} from './statement-ledger';
 import { type WgStatementPlan, loadStatementPlans } from './statement-plans';
 import { type MailTransport, type OutgoingMail, readAllowlist } from './statement-transport';
 import { unsubscribeUrl } from './statement-unsubscribe';
-
-export const CLAIM_BATCH_SIZE = 100;
-/** Failed rows are retried until they reach this many attempts (one per cron day 1-5). */
-export const MAX_ATTEMPTS = 5;
-const INSERT_CHUNK = 500;
 
 export interface StatementRunSummary {
 	monthKey: string;
@@ -19,27 +21,15 @@ export interface StatementRunSummary {
 	skipped: number;
 	sent: number;
 	failed: number;
+	/** Rows whose mail may have gone out without a recorded result; they are never resent. */
+	unconfirmed: number;
 	/** The provider refused further mails (quota/rate limit); the rest waits for the next run. */
 	quotaReached: boolean;
 }
 
-interface ClaimedRow {
-	id: string;
-	memberId: string;
-	attempts: number;
-}
-
-interface RowUpdate {
-	id: string;
-	status: 'sent' | 'failed' | 'skipped';
-	skipReason?: string;
-	providerId?: string;
-	error?: string;
-}
-
 interface DispatchResult {
 	updates: RowUpdate[];
-	/** Rows left untouched because the provider deferred them. */
+	/** Rows handed back as pending because the provider deferred them. */
 	deferred: number;
 }
 
@@ -87,139 +77,129 @@ export async function dispatchStatementBatch(
 			updates.push({ id: mail.ledgerId, status: 'sent', providerId: outcome.providerId });
 		} else if (outcome?.kind === 'deferred') {
 			deferred += 1;
+			updates.push({ id: mail.ledgerId, status: 'pending' });
 		} else {
 			updates.push({
 				id: mail.ledgerId,
 				status: 'failed',
 				error: outcome?.kind === 'failed' ? outcome.error : 'no_outcome',
+				unconfirmed: outcome?.kind === 'failed' && outcome.unconfirmed === true,
 			});
 		}
 	});
 	return { updates, deferred };
 }
 
-/** Inserts the month's ledger rows; rows that already exist stay untouched and are not counted. */
-async function queueRows(
-	plans: readonly WgStatementPlan[],
-	monthKey: string,
-	allowlist: Set<string> | null,
-) {
-	const values: Array<typeof statementEmails.$inferInsert> = [];
-	for (const { wg, plan } of plans) {
-		for (const recipient of plan.recipients) {
-			if (allowlist && !allowlist.has(recipient.email.toLowerCase())) continue;
-			values.push({ wgId: wg.id, memberId: recipient.memberId, monthKey, status: 'pending' });
-		}
-		for (const skip of plan.skipped) {
-			values.push({
-				wgId: wg.id,
-				memberId: skip.memberId,
-				monthKey,
-				status: 'skipped',
-				skipReason: skip.reason,
-			});
-		}
+type RecipientMap = Map<string, { wg: WgStatementPlan['wg']; recipient: StatementRecipient }>;
+
+function logUnfinished(summary: StatementRunSummary, interrupted: number): void {
+	if (
+		summary.failed === 0 &&
+		summary.unconfirmed === 0 &&
+		!summary.quotaReached &&
+		interrupted === 0
+	)
+		return;
+	console.warn(
+		`[statement-mail] month=${summary.monthKey} failed=${summary.failed} unconfirmed=${summary.unconfirmed} interrupted=${interrupted} quotaReached=${summary.quotaReached}`,
+	);
+}
+
+/** Dry run: renders and logs every mail, touches no ledger row. */
+async function logDryRun(recipients: RecipientMap, transport: MailTransport): Promise<void> {
+	const rows = [...recipients.keys()].map((memberId) => ({ id: memberId, memberId, attempts: 1 }));
+	for (let start = 0; start < rows.length; start += CLAIM_BATCH_SIZE) {
+		await dispatchStatementBatch(
+			rows.slice(start, start + CLAIM_BATCH_SIZE),
+			recipients,
+			transport,
+		);
 	}
-	let queued = 0;
-	let skipped = 0;
-	for (let start = 0; start < values.length; start += INSERT_CHUNK) {
-		const inserted = await db
-			.insert(statementEmails)
-			.values(values.slice(start, start + INSERT_CHUNK))
-			.onConflictDoNothing()
-			.returning({ status: statementEmails.status });
-		for (const row of inserted) {
-			if (row.status === 'pending') queued += 1;
-			else skipped += 1;
-		}
-	}
-	return { queued, skipped };
 }
 
 /**
- * One cron run for a month: queue ledger rows (existing ones stay untouched),
- * then claim open rows in batches with `FOR UPDATE SKIP LOCKED` and send them.
- * The claim transaction stays open while sending, so a parallel or repeated
- * run skips these rows and a crash rolls them back to pending.
+ * One run for a month's plans: queue ledger rows (existing ones stay untouched),
+ * then claim open rows in batches. A claim is committed as `sending` before the
+ * mail goes out and the result is written afterwards in a short transaction, so
+ * a repeated or parallel run skips rows in flight and a crash leaves them
+ * `sending` (closed as unconfirmed later, never resent). The dry-run transport
+ * never writes the ledger.
  */
-export async function runMonthlyStatements(
+export async function runStatementPlans(
+	plans: readonly WgStatementPlan[],
 	monthKey: string,
 	transport: MailTransport,
 ): Promise<StatementRunSummary> {
-	const plans = await loadStatementPlans(monthKey);
 	const allowlist = readAllowlist();
-	const { queued, skipped } = await queueRows(plans, monthKey, allowlist);
-
-	const recipients = new Map<
-		string,
-		{ wg: WgStatementPlan['wg']; recipient: StatementRecipient }
-	>();
+	const recipients: RecipientMap = new Map();
 	for (const { wg, plan } of plans) {
 		for (const recipient of plan.recipients) {
 			if (allowlist && !allowlist.has(recipient.email.toLowerCase())) continue;
 			recipients.set(recipient.memberId, { wg, recipient });
 		}
 	}
-
 	const summary: StatementRunSummary = {
 		monthKey,
 		transport: transport.name,
-		queued,
-		skipped,
+		queued: 0,
+		skipped: 0,
 		sent: 0,
 		failed: 0,
+		unconfirmed: 0,
 		quotaReached: false,
 	};
+	if (transport.name === 'dry-run') {
+		await logDryRun(recipients, transport);
+		summary.queued = recipients.size;
+		return summary;
+	}
+
+	const interrupted = await closeInterruptedRows();
+	summary.unconfirmed = interrupted;
+	const { queued, skipped } = await queueRows(plans, monthKey, allowlist);
+	summary.queued = queued;
+	summary.skipped = skipped;
 	// Rows the allow-list holds back must not be claimed at all.
 	const claimable = allowlist ? [...recipients.keys()] : null;
 	if (claimable?.length === 0) return summary;
 
 	const attempted = new Set<string>();
 	for (;;) {
-		const stop = await withTransaction(async (tx) => {
-			const filters = [
-				eq(statementEmails.monthKey, monthKey),
-				inArray(statementEmails.status, ['pending', 'failed']),
-				lt(statementEmails.attempts, MAX_ATTEMPTS),
-			];
-			if (claimable) filters.push(inArray(statementEmails.memberId, claimable));
-			// Rows already handled in this run (failed ones are still open) are not claimed twice.
-			if (attempted.size > 0) filters.push(notInArray(statementEmails.id, [...attempted]));
-			const rows = await tx
-				.select({
-					id: statementEmails.id,
-					memberId: statementEmails.memberId,
-					attempts: statementEmails.attempts,
-				})
-				.from(statementEmails)
-				.where(and(...filters))
-				.orderBy(asc(statementEmails.createdAt))
-				.limit(CLAIM_BATCH_SIZE)
-				.for('update', { skipLocked: true });
-			if (rows.length === 0) return true;
-			for (const row of rows) attempted.add(row.id);
+		const rows = await claimBatch(monthKey, claimable, attempted);
+		if (rows.length === 0) break;
+		for (const row of rows) attempted.add(row.id);
 
-			const { updates, deferred } = await dispatchStatementBatch(rows, recipients, transport);
-			const attemptsById = new Map(rows.map((row) => [row.id, row.attempts]));
-			for (const update of updates) {
-				await tx
-					.update(statementEmails)
-					.set({
-						status: update.status,
-						skipReason: update.skipReason ?? null,
-						providerId: update.providerId ?? null,
-						error: update.error ?? null,
-						attempts: (attemptsById.get(update.id) ?? 0) + (update.status === 'skipped' ? 0 : 1),
-						sentAt: update.status === 'sent' ? new Date() : null,
-					})
-					.where(eq(statementEmails.id, update.id));
-				if (update.status === 'sent') summary.sent += 1;
-				if (update.status === 'failed') summary.failed += 1;
-			}
-			if (deferred > 0) summary.quotaReached = true;
-			return deferred > 0;
-		});
-		if (stop) break;
+		let result: DispatchResult;
+		try {
+			result = await dispatchStatementBatch(rows, recipients, transport);
+		} catch (error) {
+			const failed = rows.map((row) => ({
+				id: row.id,
+				status: 'failed' as const,
+				error: 'dispatch_error',
+			}));
+			await recordOutcomes(failed, rows).catch(() => undefined);
+			throw error;
+		}
+		await recordOutcomes(result.updates, rows);
+		for (const update of result.updates) {
+			if (update.status === 'sent') summary.sent += 1;
+			if (update.status === 'failed') summary.failed += 1;
+			if (update.unconfirmed) summary.unconfirmed += 1;
+		}
+		if (result.deferred > 0) {
+			summary.quotaReached = true;
+			break;
+		}
 	}
+	logUnfinished(summary, interrupted);
 	return summary;
+}
+
+/** One cron run for a month: loads the plans and runs them. */
+export async function runMonthlyStatements(
+	monthKey: string,
+	transport: MailTransport,
+): Promise<StatementRunSummary> {
+	return runStatementPlans(await loadStatementPlans(monthKey), monthKey, transport);
 }

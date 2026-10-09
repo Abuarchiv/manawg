@@ -10,6 +10,9 @@ const MONTH_PARAM = /^\d{4}-(0[1-9]|1[0-2])$/;
 // Day 1 sends; days 2-5 retry what failed or was deferred by the provider quota.
 const LAST_SEND_DAY = 5;
 
+// Many batches plus paced single resends can outlast the default function limit.
+export const maxDuration = 60;
+
 export const GET = withCronLogging(
 	'monthly-statements',
 	async (req: NextRequest): Promise<NextResponse> => {

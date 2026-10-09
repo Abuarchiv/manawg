@@ -90,3 +90,16 @@ test('expenses of other months are ignored', () => {
 	);
 	assert.deepEqual(plan, { recipients: [], skipped: [] });
 });
+
+test('a member whose address lookup failed is neither mailed nor skipped', () => {
+	const plan = planStatementMails(
+		[member('A'), member('B'), member('C', { email: null, lookupFailed: true })],
+		[expense('A', { A: 500, B: 500, C: 500 })],
+		'2026-09',
+	);
+	assert.deepEqual(
+		plan.recipients.map((recipient) => recipient.memberId),
+		['A', 'B'],
+	);
+	assert.deepEqual(plan.skipped, []);
+});

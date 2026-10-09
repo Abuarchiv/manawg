@@ -38,7 +38,7 @@ function fakeTransport(outcomeFor: (mail: OutgoingMail) => MailOutcome) {
 	return { transport, sent };
 }
 
-test('sent, failed, deferred and not-eligible rows each end in their own state', async () => {
+test('sent, failed, deferred and not-eligible rows each get their own state', async () => {
 	const recipients = new Map([
 		[ID(1), { wg, recipient: recipient(ID(1), 'ok@example.org') }],
 		[ID(2), { wg, recipient: recipient(ID(2), 'bad@example.org') }],
@@ -59,6 +59,7 @@ test('sent, failed, deferred and not-eligible rows each end in their own state',
 	assert.deepEqual(Object.fromEntries(updates.map((u) => [u.id, u.status])), {
 		row1: 'sent',
 		row2: 'failed',
+		row3: 'pending',
 		row4: 'skipped',
 	});
 	assert.equal(updates.find((u) => u.id === 'row4')?.skipReason, 'not_eligible_at_send');

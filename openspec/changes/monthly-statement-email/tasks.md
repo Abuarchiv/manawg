@@ -11,7 +11,7 @@
 
 ## 3. Cron and settings
 
-- [x] 3.1 `/api/cron/monthly-statements` with `requireCronSecret`, `withCronLogging`, Berlin day 1–5 gate, claim/send/mark loop; regression test for double invocation.
+- [x] 3.1 `/api/cron/monthly-statements` with `requireCronSecret`, `withCronLogging`, Berlin day 1–5 gate, claim/send/mark loop; ledger regression test for double invocation, retries, skipped revival and interrupted rows (`apps/web/tests/statement-run-ledger.test.ts`, opt-in: `STATEMENT_TEST_DB_URL` = disposable local Postgres with all migrations applied).
 - [x] 3.2 `vercel.json` cron `0 7 * * *`.
 - [x] 3.3 Toggle "Monatsabrechnung per E-Mail" in Einstellungen → Benachrichtigungen.
 

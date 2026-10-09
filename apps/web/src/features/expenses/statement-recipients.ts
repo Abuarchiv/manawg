@@ -19,6 +19,8 @@ export interface StatementWgMember {
 	notify: boolean;
 	/** Confirmed Auth e-mail address, `null` without an account or while unconfirmed. */
 	email: string | null;
+	/** The Auth lookup failed: the address is unknown, so the member is neither mailed nor skipped. */
+	lookupFailed?: boolean;
 }
 
 export interface StatementRecipient {
@@ -49,7 +51,8 @@ function skipReason(
  * Who of one WG gets the statement mail for a month. A WG without EUR
  * expenses yields an empty plan; a WG with fewer than two participants mails
  * nobody. Every other member is either a recipient or skipped with the first
- * reason that applies.
+ * reason that applies. Members whose address lookup failed appear in neither
+ * list, so a later run decides about them.
  */
 export function planStatementMails(
 	members: readonly StatementWgMember[],
@@ -64,6 +67,7 @@ export function planStatementMails(
 		statement.members.filter((row) => row.paidCents > 0 || row.shareCents > 0).map((row) => row.id),
 	);
 	for (const member of members) {
+		if (member.lookupFailed) continue;
 		const reason = skipReason(member, participants);
 		if (reason) plan.skipped.push({ memberId: member.id, reason });
 		else if (member.email) {

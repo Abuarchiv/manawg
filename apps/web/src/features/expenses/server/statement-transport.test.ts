@@ -40,7 +40,7 @@ test('outside production or without a key nothing is sent', async () => {
 		async (calls) => {
 			for (const env of [
 				{ VERCEL_ENV: 'preview', RESEND_API_KEY: 're_test' },
-				{ VERCEL_ENV: 'production' },
+				{ VERCEL_ENV: 'preview' },
 			]) {
 				const transport = createStatementTransport(env);
 				assert.equal(transport.name, 'dry-run');
@@ -49,6 +49,14 @@ test('outside production or without a key nothing is sent', async () => {
 			}
 			assert.equal(calls.length, 0);
 		},
+	);
+});
+
+test('production without a key fails instead of degrading to a dry run', () => {
+	assert.throws(() => createStatementTransport({ VERCEL_ENV: 'production' }), /RESEND_API_KEY/);
+	assert.throws(
+		() => createStatementTransport({ VERCEL_ENV: 'production', RESEND_API_KEY: '  ' }),
+		/RESEND_API_KEY/,
 	);
 });
 
@@ -111,6 +119,27 @@ test('a provider error fails the mails without leaking the address', async () =>
 			assert.doesNotMatch(JSON.stringify(outcome), /example\.org/);
 		},
 	);
+});
+
+test('a timeout is unconfirmed, a refused connection is a plain failure', async () => {
+	const original = globalThis.fetch;
+	try {
+		for (const [name, unconfirmed] of [
+			['TimeoutError', true],
+			['TypeError', false],
+		] as const) {
+			globalThis.fetch = (async () => {
+				const error = new Error('boom');
+				error.name = name;
+				throw error;
+			}) as typeof fetch;
+			const [outcome] = await createStatementTransport(production).sendBatch([mail('a')]);
+			assert.equal(outcome?.kind, 'failed');
+			assert.equal(outcome?.kind === 'failed' && Boolean(outcome.unconfirmed), unconfirmed);
+		}
+	} finally {
+		globalThis.fetch = original;
+	}
 });
 
 test('log lines carry a masked address only', () => {

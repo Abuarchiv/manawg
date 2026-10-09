@@ -20,7 +20,8 @@ export interface OutgoingMail {
 
 export type MailOutcome =
 	| { kind: 'sent'; providerId: string }
-	| { kind: 'failed'; error: string }
+	/** `unconfirmed`: the request timed out, so the provider may have accepted it; never resend. */
+	| { kind: 'failed'; error: string; unconfirmed?: boolean }
 	/** Quota or rate limit reached: the mail was not attempted and stays queued. */
 	| { kind: 'deferred' };
 
@@ -92,8 +93,13 @@ function createResendTransport(apiKey: string, from: string): MailTransport {
 				body: JSON.stringify(payload),
 				signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
 			});
-		} catch {
-			return mails.map(() => ({ kind: 'failed', error: 'network_error' }));
+		} catch (error) {
+			const timedOut = error instanceof Error && error.name === 'TimeoutError';
+			return mails.map(() => ({
+				kind: 'failed',
+				error: timedOut ? 'timeout' : 'network_error',
+				unconfirmed: timedOut,
+			}));
 		}
 		const body: unknown = await response.json().catch(() => null);
 		if (response.ok) {
@@ -129,7 +135,7 @@ function createResendTransport(apiKey: string, from: string): MailTransport {
 	return { name: 'resend', sendBatch: post };
 }
 
-/** Logs what would be sent; nothing leaves the process. */
+/** Logs what would be sent; nothing leaves the process and the run writes no ledger rows. */
 function createDryRunTransport(): MailTransport {
 	return {
 		name: 'dry-run',
@@ -146,14 +152,18 @@ function createDryRunTransport(): MailTransport {
 }
 
 /**
- * Resend in production with a key; elsewhere only when an allow-list limits
- * the recipients (Preview testing). Otherwise the dry-run transport.
+ * Resend in production (a missing key throws instead of degrading to a dry
+ * run); elsewhere only when an allow-list limits the recipients and a key is
+ * set (Preview testing). Otherwise the dry-run transport.
  */
 export function createStatementTransport(
 	env: Readonly<Record<string, string | undefined>> = process.env,
 ): MailTransport {
 	const apiKey = env.RESEND_API_KEY?.trim();
 	const mayReallySend = env.VERCEL_ENV === 'production' || readAllowlist(env) !== null;
+	if (env.VERCEL_ENV === 'production' && !apiKey) {
+		throw new Error('RESEND_API_KEY is not set in production');
+	}
 	if (!mayReallySend || !apiKey) return createDryRunTransport();
 	return createResendTransport(apiKey, env.STATEMENT_EMAIL_FROM?.trim() || DEFAULT_FROM);
 }
