@@ -37,13 +37,10 @@ export interface AccountWg {
 export type StartStep = 'choose' | 'create' | 'join' | 'joinName' | 'invite';
 export type StartField = 'wgName' | 'creatorName' | 'joinCode' | 'joinName';
 
-export function isNeuPath(path: string): boolean {
-	try {
-		return new URL(path, 'https://manawg.invalid').pathname === '/neu';
-	} catch {
-		return false;
-	}
-}
+// Most failed callbacks are an expired or reused link, or a link opened in a
+// different browser than the one that requested it (no PKCE verifier there).
+export const AUTH_CALLBACK_ERROR =
+	'Der Link konnte nicht verwendet werden. Er ist abgelaufen oder bereits benutzt, oder du hast ihn in einem anderen Browser geöffnet. Hast du gerade deine E-Mail-Adresse bestätigt, kannst du dich jetzt anmelden. Sonst fordere einen neuen Link an.';
 
 export function getWgCodeFromPath(path: string): string | null {
 	const match = path.match(/^\/wg\/([^/]+)/);

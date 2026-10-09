@@ -1,5 +1,6 @@
 'use client';
 
+import { isAuthPagePath } from '@/core/auth/auth-intent';
 import { safeNextPath } from '@/core/auth/next-path';
 import { hasSessionCookie } from '@/core/auth/session-hint';
 import { REQUEST_TIMEOUT_MS } from '@/core/infra/api-client';
@@ -15,7 +16,6 @@ import {
 	getNeuIntentFromSearch,
 	getWgCodeFromPath,
 	isAccountWg,
-	isNeuPath,
 	markJustSignedIn,
 } from './start-flow';
 
@@ -106,7 +106,7 @@ export function useAccountWgs({
 		const next = safeNextPath(searchParams.get('next'));
 		const [onlyWg] = accountWgs;
 		// One WG: skip the picker, like the public start page does.
-		if (next === '/' || isNeuPath(next)) {
+		if (next === '/' || isAuthPagePath(next)) {
 			if (consumeJustSignedIn() && accountWgs.length === 1 && onlyWg && step === 'choose') {
 				router.replace(`/wg/${encodeURIComponent(onlyWg.code)}`);
 			}

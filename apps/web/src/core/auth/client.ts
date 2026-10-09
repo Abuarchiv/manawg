@@ -105,6 +105,16 @@ export async function signUpWithEmailPassword(
 	return { sessionEstablished: data.session !== null };
 }
 
+/** Sends the sign-up confirmation mail again; the response never reveals whether the address exists. */
+export async function resendSignupConfirmation(email: string, next: string): Promise<void> {
+	const { error } = await createSupabaseBrowserClient().auth.resend({
+		type: 'signup',
+		email,
+		options: { emailRedirectTo: authCallbackUrl(next) },
+	});
+	if (error) throw error;
+}
+
 export async function requestPasswordReset(email: string): Promise<void> {
 	const { error } = await createSupabaseBrowserClient().auth.resetPasswordForEmail(email, {
 		redirectTo: authCallbackUrl('/auth/reset'),

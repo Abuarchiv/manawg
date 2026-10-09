@@ -174,17 +174,116 @@ test.describe('start credentials auth validation', () => {
 			);
 		});
 
-		test('password field switches to new-password only for "Konto erstellen"', async ({ page }) => {
+		test('sign-in keeps current-password and links to the registration page', async ({ page }) => {
 			await page.route('**/api/wg/mine', (route) =>
 				route.fulfill({ status: 401, contentType: 'application/json', body: '{}' }),
 			);
-			await page.goto('/neu');
-			const password = page.locator('#auth-password');
-			await expect(password).toHaveAttribute('autocomplete', 'current-password');
-			await page.getByRole('button', { name: 'Konto erstellen' }).focus();
+			await page.goto('/neu?code=mte8pzat&utm=x');
+			await expect(page.locator('#auth-password')).toHaveAttribute(
+				'autocomplete',
+				'current-password',
+			);
+			await expect(page.getByRole('button', { name: 'Konto erstellen' })).toHaveCount(0);
+			await page.getByRole('link', { name: 'Konto erstellen', exact: true }).click();
+			await expect(page).toHaveURL(/\/registrieren\?code=MTE8PZAT$/);
+			await expect(
+				page.getByRole('heading', { name: 'Konto erstellen', exact: true, level: 1 }),
+			).toBeVisible();
+			await expect(page.getByText('um mit deinem WG-Code beizutreten')).toBeVisible();
+			await page.getByRole('link', { name: 'Anmelden', exact: true }).click();
+			await expect(page).toHaveURL(/\/neu\?code=MTE8PZAT$/);
+		});
+
+		test('registration validates locally and never sends invalid sign-ups', async ({ page }) => {
+			let signUpRequests = 0;
+			await page.route(
+				(url) => url.pathname === '/auth/v1/signup',
+				async (route) => {
+					signUpRequests += 1;
+					await route.abort();
+				},
+			);
+			await page.goto('/registrieren?action=create');
+			const email = page.getByLabel('E-Mail-Adresse');
+			const password = page.getByLabel('Passwort', { exact: true });
+			const confirmation = page.getByLabel('Passwort wiederholen');
+			const submit = page.getByRole('button', { name: 'Konto erstellen', exact: true });
 			await expect(password).toHaveAttribute('autocomplete', 'new-password');
-			await password.focus();
-			await expect(password).toHaveAttribute('autocomplete', 'current-password');
+			await expect(confirmation).toHaveAttribute('autocomplete', 'new-password');
+			await expect(page.getByText('danach legst du deine neue WG an')).toBeVisible();
+
+			await email.fill('nicht-gueltig');
+			await password.fill('langes-passwort');
+			await confirmation.fill('langes-passwort');
+			await submit.click();
+			await expect(page.locator('#signup-error')).toContainText('gültige E-Mail-Adresse');
+			await expect(email).toHaveAttribute('aria-invalid', 'true');
+
+			await email.fill('neu@example.invalid');
+			await password.fill('kurz');
+			await confirmation.fill('kurz');
+			await submit.click();
+			await expect(page.locator('#signup-error')).toContainText('mindestens 8 Zeichen');
+			await expect(password).toHaveAttribute('aria-invalid', 'true');
+
+			await password.fill('langes-passwort');
+			await confirmation.fill('anderes-passwort');
+			await submit.click();
+			await expect(page.locator('#signup-error')).toContainText('stimmen nicht überein');
+			await expect(confirmation).toHaveAttribute('aria-invalid', 'true');
+			expect(signUpRequests).toBe(0);
+		});
+
+		test('registration shows a neutral inbox state with a throttled resend', async ({ page }) => {
+			test.skip(process.env.AUTH_UI_E2E !== 'true', 'Requires the isolated fake Supabase fixture.');
+			let resendRequests = 0;
+			await page.route('**/auth/v1/**', async (route) => {
+				const { pathname } = new URL(route.request().url());
+				if (pathname.endsWith('/signup')) {
+					await route.fulfill({
+						status: 200,
+						contentType: 'application/json',
+						body: JSON.stringify({ id: 'fixture-user', identities: [] }),
+					});
+					return;
+				}
+				if (pathname.endsWith('/resend')) {
+					resendRequests += 1;
+					await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+					return;
+				}
+				await route.fulfill({
+					status: 200,
+					contentType: 'application/json',
+					body: JSON.stringify({ external: {} }),
+				});
+			});
+			await page.goto('/registrieren');
+			await page.getByLabel('E-Mail-Adresse').fill('Neu@Example.invalid');
+			await page.getByLabel('Passwort', { exact: true }).fill('langes-passwort');
+			await page.getByLabel('Passwort wiederholen').fill('langes-passwort');
+			await page.getByRole('button', { name: 'Konto erstellen', exact: true }).click();
+
+			await expect(page.getByText('Prüfe dein Postfach')).toBeVisible();
+			await expect(page.getByText('neu@example.invalid')).toBeVisible();
+			await expect(page.getByRole('button', { name: /Erneut senden in \d+ s/ })).toBeDisabled();
+			expect(resendRequests).toBe(0);
+			await page.getByRole('button', { name: 'Andere E-Mail-Adresse verwenden' }).click();
+			await expect(page.getByLabel('E-Mail-Adresse')).toBeVisible();
+		});
+
+		test('registration fits a 320px viewport without horizontal scroll', async ({ page }) => {
+			await page.setViewportSize({ width: 320, height: 780 });
+			for (const scheme of ['light', 'dark'] as const) {
+				await page.emulateMedia({ colorScheme: scheme });
+				await page.goto('/registrieren');
+				await expect(
+					page.getByRole('heading', { name: 'Konto erstellen', level: 1 }),
+				).toBeVisible();
+				expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+					320,
+				);
+			}
 		});
 	});
 });
@@ -195,6 +294,20 @@ test.describe('entry accessibility', () => {
 			process.env.E2E_FIXTURE_MODE !== 'true' || process.env.NEXT_PUBLIC_DB_DOWN !== 'true',
 			'Requires the database-down fixture server.',
 		);
+
+		test('public start page offers registration next to sign-in for guests', async ({ page }) => {
+			await page.route('**/api/wg/mine', (route) =>
+				route.fulfill({ status: 401, contentType: 'application/json', body: '{}' }),
+			);
+			await page.goto('/?code=mte8pzat');
+			await expect(
+				page.getByRole('link', { name: 'Konto erstellen', exact: true }),
+			).toHaveAttribute('href', '/registrieren?code=MTE8PZAT');
+			await page.goto('/');
+			await expect(
+				page.getByRole('link', { name: 'Konto erstellen', exact: true }),
+			).toHaveAttribute('href', '/registrieren?action=create');
+		});
 
 		test('public start page links the legal pages without an account', async ({ page }) => {
 			await page.goto('/');

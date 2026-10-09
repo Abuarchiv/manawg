@@ -10,8 +10,9 @@ const [IMPRESSUM, DATENSCHUTZ, AGB] = LEGAL_LINKS;
 // Public entry and sign-up must reach the legal pages without an account (§ 5 DDG, Art. 13 DSGVO).
 export function LegalLinks({
 	consent = false,
+	registration = false,
 	className,
-}: { consent?: boolean; className?: string }) {
+}: { consent?: boolean; registration?: boolean; className?: string }) {
 	return (
 		<footer
 			className={cn(
@@ -19,9 +20,9 @@ export function LegalLinks({
 				className,
 			)}
 		>
-			{consent && (
+			{(consent || registration) && (
 				<p>
-					Mit der Anmeldung akzeptierst du unsere{' '}
+					Mit der {registration ? 'Registrierung' : 'Anmeldung'} akzeptierst du unsere{' '}
 					<a href={AGB.href} className="-my-3.5 inline-block py-3.5 underline underline-offset-4">
 						AGB
 					</a>{' '}
@@ -36,7 +37,7 @@ export function LegalLinks({
 				</p>
 			)}
 			<nav aria-label="Rechtliches" className="flex flex-wrap justify-center">
-				{(consent ? [IMPRESSUM] : LEGAL_LINKS).map((link) => (
+				{(consent || registration ? [IMPRESSUM] : LEGAL_LINKS).map((link) => (
 					<a
 						key={link.href}
 						href={link.href}

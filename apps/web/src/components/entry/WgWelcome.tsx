@@ -1,10 +1,15 @@
+import { SignUpPrompt } from '@/components/auth/SignUpPrompt';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/shared/lib/cn';
 import Link from 'next/link';
 
-type WgWelcomeProps =
+type WgWelcomeProps = (
 	| { variant: 'create'; outline?: boolean }
-	| { variant: 'invitation'; code: string };
+	| { variant: 'invitation'; code: string }
+) & {
+	/** Signed-out visitors also get a way to register instead of only signing in. */
+	guest?: boolean;
+};
 
 /** Names the invitation (code only; the WG name is unknown before joining) above the example. */
 export function InvitationNotice({ code }: { code: string }) {
@@ -32,6 +37,11 @@ export function WgWelcome(props: WgWelcomeProps) {
 			>
 				{invitation ? 'Einladung annehmen' : 'WG erstellen'}
 			</Link>
+			{props.guest && (
+				<SignUpPrompt
+					intentQuery={invitation ? `code=${encodeURIComponent(props.code)}` : 'action=create'}
+				/>
+			)}
 		</div>
 	);
 }
