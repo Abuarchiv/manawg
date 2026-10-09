@@ -47,16 +47,16 @@ import type { ExpenseFormSupport } from './use-expense-form-support';
 export type ExpenseCreateResponse = { expense: Expense; warning: NotificationWarning };
 type ExpenseMutationResponse = Expense | ExpenseCreateResponse;
 
-/**
- * Create/edit of a single expense: validation, optimistic list update,
- * request with idempotency key (reused while the same unsent form is
- * retried) and offline queueing. A booked recurring template is advanced by the
- * server in the same transaction as the expense.
- */
+/** Create/edit of one expense: validation, optimistic update, idempotent request (key reused
+ * while the same unsent form is retried), offline queueing and the recurring-template advance. */
 export function useExpenseSubmit(
 	ctx: ExpensePageContext,
 	form: ExpenseFormState,
 	support: ExpenseFormSupport,
+	advanceRecurringTemplate: (
+		templateId: string,
+		expectedNextDueAt: string | undefined,
+	) => Promise<boolean>,
 ) {
 	const {
 		wg,
@@ -373,6 +373,13 @@ export function useExpenseSubmit(
 				isEdit
 					? 'Ausgabe aktualisiert. Hier wird kein Geld überwiesen.'
 					: 'Ausgabe gespeichert. Hier wird kein Geld überwiesen.',
+			);
+		}
+		if (recurringSourceId) {
+			await advanceRecurringTemplate(
+				recurringSourceId,
+				expectedRecurringNextDueAt ??
+					recurringExpenses.find((item) => item.id === recurringSourceId)?.nextDueAt,
 			);
 		}
 		form.setShowForm(false);

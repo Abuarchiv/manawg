@@ -97,7 +97,7 @@ export function useAusgabenPage() {
 	};
 	const support = useExpenseFormSupport(ctx, form);
 	const recurring = useRecurringExpenseActions(ctx, form, support);
-	const expenseSubmit = useExpenseSubmit(ctx, form, support);
+	const expenseSubmit = useExpenseSubmit(ctx, form, support, recurring.advanceRecurringTemplate);
 	const rowActions = useExpenseRowActions(ctx);
 
 	useEffect(() => {

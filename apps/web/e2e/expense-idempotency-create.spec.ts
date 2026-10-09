@@ -19,8 +19,10 @@ test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local f
 function normalizeExpenseCreateBody(body: unknown): unknown {
 	if (typeof body !== 'object' || body === null || Array.isArray(body)) return body;
 	const payload = body as Record<string, unknown>;
-	// The expense API accepts missing or null imageUrl and stores both as null.
-	return { ...payload, imageUrl: payload.imageUrl ?? null };
+	// The expense API accepts missing or null imageUrl and stores both as null. A queued request
+	// is stamped with the day it was queued, which the first online attempt leaves to the server.
+	const { occurredAt: _occurredAt, ...rest } = payload;
+	return { ...rest, imageUrl: payload.imageUrl ?? null };
 }
 
 test('expense retries keep the key for the same payload and change it when the payload changes', async ({

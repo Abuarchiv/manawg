@@ -86,6 +86,9 @@ export function isEmptyModuleDraft(
 			paidByMemberId: memberId,
 			splitMode: 'equal',
 			manualSplits: {},
+			// The form always stores its date and participants; today / everyone is the untouched state.
+			occurredOn: todayInputValue(),
+			participantIds: null,
 			queueEditId: null,
 			queueEditType: null,
 			recurringIntervalMonths: 1,

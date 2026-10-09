@@ -8,6 +8,7 @@ import type { RecurringExpense } from '@/features/expenses/components/ausgaben/e
 import {
 	expenseSaveErrorMessage,
 	isPermanentClientError,
+	recurringAdvanceWarningMessage,
 } from '@/features/expenses/expense-errors';
 import { buildOptimisticExpense } from '@/features/expenses/optimistic-expense';
 import { withQueuedOccurredAt } from '@/features/expenses/queued-occurred-at';
@@ -20,18 +21,57 @@ const OFFLINE_RECURRING_EXPENSE_MESSAGE =
 	'Fixkosten-Ausgabe offline vorgemerkt. Die Vorlage bleibt bis zur Synchronisierung unverändert.';
 
 /**
- * Booking a due fixed cost: create the expense from the template; the server advances the
- * template's due date with it. Offline, the expense is queued with the due date it books, so it
- * is booked once.
+ * Booking a due fixed cost: create the expense from the template, then advance the template's
+ * due date. Offline, the expense is queued with the due date it books, so it is booked once.
  */
 export function useRecurringBooking(ctx: ExpensePageContext) {
-	const { wg, identity, toast, notify, pending, updateExpenses, reload, refreshQueuedCount } = ctx;
+	const {
+		wg,
+		identity,
+		toast,
+		notify,
+		pending,
+		updateExpenses,
+		updateRecurringExpenses,
+		reload,
+		refreshQueuedCount,
+	} = ctx;
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
+	const recurringApiUrl = `/api/wg/${encodedShareCode}/recurring-expenses`;
 	const [creatingRecurringId, setCreatingRecurringId] = useState<string | null>(null);
 	const creatingRecurringRef = useRef(false);
 	const expenseRequestsRef = useRef(
 		new Map<string, { fingerprint: string; key: string; expectedRecurringNextDueAt: string }>(),
 	);
+
+	// Always awaited, so an advance failure surfaces as a warning even if the tab closes next.
+	async function advanceRecurringTemplate(
+		templateId: string,
+		expectedNextDueAt: string | undefined,
+	): Promise<boolean> {
+		const advanceRes = await apiFetch<{ recurringExpense: RecurringExpense }>(recurringApiUrl, {
+			method: 'PATCH',
+			memberId: identity.memberId,
+			body: JSON.stringify({
+				id: templateId,
+				...(expectedNextDueAt ? { expectedNextDueAt } : {}),
+			}),
+		});
+		if (advanceRes.ok) {
+			updateRecurringExpenses((current) =>
+				current.map((item) =>
+					item.id === advanceRes.data.recurringExpense.id ? advanceRes.data.recurringExpense : item,
+				),
+			);
+			return true;
+		}
+		if (advanceRes.status === 409 && advanceRes.error === 'recurring_expense_already_advanced') {
+			await reload();
+			return true;
+		}
+		notify.warning(recurringAdvanceWarningMessage(advanceRes.status, advanceRes.error));
+		return false;
+	}
 
 	async function createFromRecurringTemplate(template: RecurringExpense): Promise<void> {
 		if (creatingRecurringRef.current) return;
@@ -157,14 +197,16 @@ export function useRecurringBooking(ctx: ExpensePageContext) {
 				: [createRes.data.expense, ...withoutOptimistic];
 		});
 		pending.end(optimisticId);
-		// The server moved the template on in the same transaction as the booking.
-		expenseRequestsRef.current.delete(template.id);
-		const pushWarning = notificationWarningMessage(createRes.data.warning);
-		if (pushWarning) notify.warning(pushWarning);
-		else notify.success('Fixkosten-Ausgabe wurde erstellt.');
+		const advanced = await advanceRecurringTemplate(template.id, expectedRecurringNextDueAt);
+		if (advanced) {
+			expenseRequestsRef.current.delete(template.id);
+			const pushWarning = notificationWarningMessage(createRes.data.warning);
+			if (pushWarning) notify.warning(pushWarning);
+			else notify.success('Fixkosten-Ausgabe wurde erstellt.');
+		}
 		finishCreating();
 		void reload();
 	}
 
-	return { createFromRecurringTemplate, creatingRecurringId };
+	return { advanceRecurringTemplate, createFromRecurringTemplate, creatingRecurringId };
 }

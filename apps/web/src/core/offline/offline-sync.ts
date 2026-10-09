@@ -13,7 +13,9 @@ import {
 	MISSING_PENDING_IMAGE_ERROR,
 	REAUTH_REQUIRED_ERROR,
 	backfillIdempotencyKey,
+	createRecurringAdvanceRetry,
 	explainPendingImageUploadError,
+	getRecurringAdvancePayload,
 	isChoreAlreadyCompleted,
 	isRecurringAlreadyAdvanced,
 	isShoppingAlreadyOnList,
@@ -91,13 +93,6 @@ async function replaceQueuedSnapshot(
 	return saved && replaced;
 }
 
-function failedAttemptFields(
-	action: OfflineAction,
-	now: number,
-): Pick<OfflineAction, 'attempts' | 'lastAttemptAt'> {
-	return { attempts: (action.attempts ?? 0) + 1, lastAttemptAt: new Date(now).toISOString() };
-}
-
 export async function syncOfflineActions(
 	shareCode?: string,
 	options?: OfflineSyncOptions,
@@ -133,6 +128,8 @@ async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions):
 		string,
 		{ snapshot: OfflineAction; retry?: OfflineAction; reviewOnEdit?: boolean }
 	>();
+	const additions: OfflineAction[] = [];
+	const recurringRetrySourceIds = new Set<string>();
 	const reviewIds = new Set<string>();
 	let synced = 0;
 	const syncedActionIds: string[] = [];
@@ -142,6 +139,12 @@ async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions):
 		synced += 1;
 		syncedActionIds.push(action.id);
 		syncedByShareCode[action.shareCode] = (syncedByShareCode[action.shareCode] ?? 0) + 1;
+	};
+	const queueRecurringRetry = (action: OfflineAction) => {
+		const retry = createRecurringAdvanceRetry(action, now);
+		if (!retry) return;
+		additions.push(retry);
+		recurringRetrySourceIds.add(action.id);
 	};
 	const reviewEditedSnapshot = (snapshot: OfflineAction) => {
 		const current = readOfflineQueue().find((action) => action.id === snapshot.id);
@@ -225,6 +228,29 @@ async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions):
 			if (res.ok) {
 				recordSynced(readyAction);
 				outcomes.set(action.id, { snapshot: requestSnapshot, reviewOnEdit: true });
+				const recurringAdvance = getRecurringAdvancePayload(readyAction);
+				if (recurringAdvance) {
+					if (options?.signal?.aborted) {
+						queueRecurringRetry(readyAction);
+						break;
+					}
+					try {
+						const advanceRes = await apiFetch<unknown>(
+							`/api/wg/${encodeURIComponent(readyAction.shareCode)}/recurring-expenses`,
+							{
+								method: 'PATCH',
+								memberId: readyAction.memberId,
+								body: JSON.stringify(recurringAdvance),
+								...(options?.signal ? { signal: options.signal } : {}),
+							},
+						);
+						if (!advanceRes.ok && !isRecurringAlreadyAdvanced(advanceRes)) {
+							queueRecurringRetry(readyAction);
+						}
+					} catch {
+						queueRecurringRetry(readyAction);
+					}
+				}
 			} else if (
 				(readyAction.type === 'recurring.advance' && isRecurringAlreadyAdvanced(res)) ||
 				isChoreAlreadyCompleted(readyAction, res) ||
@@ -239,9 +265,8 @@ async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions):
 					reviewOnEdit: res.status === 0 || res.status >= 500,
 					retry: {
 						...readyAction,
-						// A plain connection failure (status 0) is not a server rejection: it must not
-						// grow the backoff, or the first sync after reconnecting would be skipped.
-						...(res.status === 0 ? {} : failedAttemptFields(readyAction, now)),
+						attempts: (readyAction.attempts ?? 0) + 1,
+						lastAttemptAt: new Date(now).toISOString(),
 						lastError:
 							res.error === 'member_context_changed'
 								? REAUTH_REQUIRED_ERROR
@@ -269,10 +294,8 @@ async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions):
 				snapshot: requestSnapshot,
 				retry: {
 					...requestSnapshot,
-					// Network errors and timeouts (no upload/sign error code) skip the backoff.
-					...(pendingImageUploadError || missingPendingImage
-						? failedAttemptFields(requestSnapshot, now)
-						: {}),
+					attempts: (requestSnapshot.attempts ?? 0) + 1,
+					lastAttemptAt: new Date(now).toISOString(),
 					lastError,
 				},
 			});
@@ -291,6 +314,13 @@ async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions):
 			return false;
 		}
 		const merged = mergeSyncOutcomes(current, outcomes, reviewIds);
+		const mergedIds = new Set(merged.map((action) => action.id));
+		for (const action of additions) {
+			if (!mergedIds.has(action.id)) {
+				merged.push(action);
+				mergedIds.add(action.id);
+			}
+		}
 		if (reviewIds.size > 0) persistOfflineReviewIds(storage, [...reviewIds]);
 		const queueToWrite = merged.map((action) =>
 			reviewIds.has(action.id) ? { ...action, lastError: REVIEW_REQUIRED_ERROR } : action,
@@ -299,14 +329,17 @@ async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions):
 			(actionId) => !queueToWrite.some((action) => action.id === actionId),
 		);
 		const queueSaved =
-			outcomes.size === 0 && reviewIds.size === 0
+			outcomes.size === 0 && additions.length === 0 && reviewIds.size === 0
 				? true
 				: persistOfflineQueue(queueToWrite, storage);
 		if (!queueSaved) {
-			for (const actionId of flushedActionIds) {
+			const markerIds = flushedActionIds.filter(
+				(actionId) => !recurringRetrySourceIds.has(actionId),
+			);
+			for (const actionId of markerIds) {
 				syncedAfterFailedQueueSave.add(actionId);
 			}
-			persistSyncedIds(storage, flushedActionIds);
+			persistSyncedIds(storage, markerIds);
 			if (reviewIds.size > 0) {
 				window.dispatchEvent(new CustomEvent('manawg:offline-queue'));
 			}

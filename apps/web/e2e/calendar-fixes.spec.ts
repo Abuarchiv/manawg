@@ -382,7 +382,7 @@ test.describe('calendar fixes', () => {
 			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
 			'requires the local fixture server',
 		);
-		const event: EventInput = {
+		const event = {
 			id: '33333333-3333-4333-8333-333333333333',
 			title: 'Termin mit laufender Aktualisierung',
 			description: null,
@@ -391,6 +391,8 @@ test.describe('calendar fixes', () => {
 			allDay: false,
 			location: null,
 			recurrence: null,
+			// Own event, so the UI offers delete.
+			createdByMemberId: FIXTURE_WG.memberId,
 		};
 		let markDeleteStarted: () => void = () => {};
 		let releaseDelete: () => void = () => {};

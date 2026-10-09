@@ -246,6 +246,8 @@ test.describe('expense currency edit', () => {
 			const amountGroup = dialog.getByLabel('Betrag').locator('xpath=..');
 			await expect(amountGroup).toContainText(expense.currency);
 			await expect(amountGroup).not.toContainText('€');
+			// A single-debtor split is an equal split among participants, so open the manual fields.
+			await dialog.getByRole('button', { name: 'Aufteilung: Manuell', exact: true }).click();
 			const shareGroup = dialog
 				.getByLabel(`Anteil Mina in ${expense.currency}`)
 				.locator('xpath=..');
