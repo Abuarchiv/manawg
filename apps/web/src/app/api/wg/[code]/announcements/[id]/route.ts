@@ -126,12 +126,16 @@ export const PATCH = withWgRoute<{ id: string }>(
 		// cannot save, and moving out waits for this write.
 		const outcome = await withTransaction(async (tx) => {
 			const [caller] = await tx
-				.select({ deactivatedAt: wgMembers.deactivatedAt })
+				.select({ deactivatedAt: wgMembers.deactivatedAt, role: wgMembers.role })
 				.from(wgMembers)
 				.where(and(eq(wgMembers.id, auth.member.memberId), eq(wgMembers.wgId, wg.id)))
 				.limit(1)
 				.for('share');
 			if (!caller || caller.deactivatedAt) return 'member_deactivated' as const;
+			// The owner-or-admin decision is repeated with the role as it is now.
+			if (changesModeratedFields && !isAuthor && caller.role !== 'admin') {
+				return 'not_allowed' as const;
+			}
 			const [row] = await tx
 				.update(announcements)
 				.set(patch)
@@ -148,6 +152,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 			return row ?? null;
 		});
 		if (outcome === 'member_deactivated') return unauthorized('member_deactivated');
+		if (outcome === 'not_allowed') return forbidden('not_owner', 'not_owner');
 		const updated = outcome;
 		if (!updated) {
 			const [stillThere] = await db

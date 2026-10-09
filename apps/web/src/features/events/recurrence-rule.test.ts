@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { EVENT_RECURRENCE_MAX } from '@/features/events/event-limits';
 import { expandRecurrence } from './events';
 import {
 	MAX_EXDATES,
@@ -68,4 +69,14 @@ test('an occurrence is removed only once and only up to the limit', () => {
 
 test('malformed exception dates make the rule invalid', () => {
 	assert.equal(parseRecurrenceRule('FREQ=WEEKLY;EXDATE=nonsense'), null);
+});
+
+test('a series with the most exceptions still fits the edit schema', () => {
+	let rule = 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR,SA,SU;INTERVAL=365;UNTIL=2200-12-31T23:59:59.000Z';
+	for (let day = 0; day < MAX_EXDATES; day += 1) {
+		const next = withExcludedOccurrence(rule, new Date(Date.UTC(2026, 9, 1 + day)).toISOString());
+		assert.ok(next);
+		rule = next;
+	}
+	assert.ok(rule.length <= EVENT_RECURRENCE_MAX, `${rule.length} characters`);
 });

@@ -2,7 +2,8 @@
 export const EVENT_TITLE_MAX = 200;
 export const EVENT_DESCRIPTION_MAX = 2_000;
 export const EVENT_LOCATION_MAX = 200;
-export const EVENT_RECURRENCE_MAX = 1_500;
+/** Room for the rule head and 500 single-occurrence exceptions of about 25 characters each. */
+export const EVENT_RECURRENCE_MAX = 14_000;
 
 // Wide enough for yearly birthdays and long-range planning; anything outside is
 // a typo (year 0026, 20266) that would otherwise be stored and expanded.
