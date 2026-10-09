@@ -113,7 +113,8 @@ export interface StoredImageObject {
 }
 
 const LIST_PAGE_SIZE = 1000;
-const LIST_MAX_PAGES = 5;
+/** Safety bound only: 200 pages are 200,000 objects in one folder. */
+const LIST_MAX_PAGES = 200;
 
 /** The files directly under `folder` (no recursion); sub-folders carry no id and are skipped. */
 export async function listSupabaseImageObjects(folder: string): Promise<StoredImageObject[]> {

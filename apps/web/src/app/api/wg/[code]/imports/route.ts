@@ -13,10 +13,7 @@ export const GET = withWgRoute('imports GET', async (req, { code }) => {
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
 	const admin = await isWgAdmin(auth.wg.id, auth.member.memberId);
-	const rows = await listUndoableImports(
-		auth.wg.id,
-		(importedBy) => admin || importedBy === auth.member.memberId,
-	);
+	const rows = await listUndoableImports(auth.wg.id, admin ? null : auth.member.memberId);
 	return NextResponse.json({
 		imports: rows.map((row) => ({ ...row, startedAt: row.startedAt.toISOString() })),
 	});

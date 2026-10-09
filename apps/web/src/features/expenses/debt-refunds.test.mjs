@@ -141,3 +141,17 @@ test('a cash payment netted through a third member clears the chain instead of a
 		],
 	);
 });
+
+test('a netted payment also clears the chain when the payer is already owed a smaller amount', () => {
+	const expense = (paidBy, debtor, cents) => ({
+		paidByMemberId: paidBy,
+		currency: 'EUR',
+		occurredAt: '2026-10-01T10:00:00.000Z',
+		splits: [{ debtorMemberId: debtor, amountCents: cents, settledAt: null }],
+	});
+	const balances = computeBalances(
+		[expense('B', 'A', 2000), expense('C', 'B', 2000), expense('A', 'C', 500)],
+		[{ fromMemberId: 'A', toMemberId: 'C', amountCents: 1500, currency: 'EUR' }],
+	);
+	assert.deepEqual(balances, []);
+});

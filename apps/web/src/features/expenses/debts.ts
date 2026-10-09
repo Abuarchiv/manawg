@@ -76,10 +76,10 @@ export function computeBalances(
 		if (pair.amountCents >= 0) continue;
 		const key = `${pair.currency}:${pair.creditorId}:${pair.debtorId}`;
 		const reverse = totals.get(key);
+		derivedKeys.add(key);
 		if (reverse) {
 			reverse.amountCents -= pair.amountCents;
 		} else {
-			derivedKeys.add(key);
 			totals.set(key, {
 				creditorId: pair.debtorId,
 				debtorId: pair.creditorId,

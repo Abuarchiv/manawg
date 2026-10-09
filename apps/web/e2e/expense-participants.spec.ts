@@ -70,4 +70,46 @@ test.describe('expense participants', () => {
 			.poll(() => body?.splits)
 			.toEqual([{ debtorMemberId: memberId, amountCents: 1000 }]);
 	});
+
+	test('the selector stays open for a second exclusion and restores a member', async ({ page }) => {
+		const third = {
+			id: '33333333-4444-4555-8666-777777777777',
+			name: 'Noah',
+			color: null,
+			active: true,
+		};
+		await setupMember(page);
+		await page.route(`**/api/wg/${shareCode}/members`, (route) =>
+			route.fulfill({
+				json: {
+					members: [{ id: memberId, name: memberName, color: null, active: true }, other, third],
+					viewerIsAdmin: false,
+				},
+			}),
+		);
+		await page.route(`**/api/wg/${shareCode}/expenses**`, (route) =>
+			route.fulfill({ json: { expenses: [], payments: [] } }),
+		);
+		await page.route(`**/api/wg/${shareCode}/recurring-expenses*`, (route) =>
+			route.fulfill({ json: { recurringExpenses: [] } }),
+		);
+		await page.route(`**/api/wg/${shareCode}/dashboard`, (route) =>
+			route.fulfill({ json: { openShoppingCount: 0, dueChores: [], dueRecurringExpenses: [] } }),
+		);
+		await mockUnreadCount(page, `/api/wg/${shareCode}`);
+		await navigateToFeature(page, `/wg/${shareCode}/ausgaben`);
+		await dismissOnboarding(page);
+		await page.getByRole('button', { name: 'Ausgabe hinzufügen' }).first().click();
+		await page.getByLabel('Beschreibung').fill('Pizza');
+		await page.getByLabel('Betrag').fill('10,00');
+
+		await page.getByText('Nicht alle beteiligt?').click();
+		await page.getByRole('checkbox', { name: 'Mara' }).click();
+		await expect(page.getByRole('checkbox', { name: 'Mara' })).not.toBeChecked();
+		await page.getByRole('checkbox', { name: 'Noah' }).click();
+		await expect(page.getByRole('checkbox', { name: 'Noah' })).not.toBeChecked();
+		await page.getByRole('checkbox', { name: 'Mara' }).click();
+		await expect(page.getByRole('checkbox', { name: 'Mara' })).toBeChecked();
+		await expect(page.getByRole('checkbox', { name: 'Noah' })).not.toBeChecked();
+	});
 });

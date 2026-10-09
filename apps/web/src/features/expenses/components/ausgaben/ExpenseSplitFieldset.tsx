@@ -20,7 +20,7 @@ import type { Member } from '@/components/wg/WgContextProvider';
 import { formatEuroInput, parseEuroAmount } from '@/core/utils/amount';
 import { formatEuroCents } from '@/core/utils/money';
 import { remainderCandidates } from '@/features/expenses/expense-split-input';
-import type { Dispatch, SetStateAction } from 'react';
+import { type Dispatch, type SetStateAction, useEffect, useState } from 'react';
 import { ExpenseParticipants } from './ExpenseParticipants';
 import { ManualSplitSummary } from './ManualSplitSummary';
 import { SplitReview } from './SplitReview';
@@ -63,6 +63,12 @@ export function ExpenseSplitFieldset({
 	isEditingExpense,
 	formSaving,
 }: ExpenseSplitFieldsetProps) {
+	// The participant selector stays open while its choice drives the manual shares.
+	const [participantsActive, setParticipantsActive] = useState(false);
+	useEffect(() => {
+		if (splitMode !== 'manual') setParticipantsActive(false);
+	}, [splitMode]);
+
 	const splitErrorId = 'expense-splits-error';
 	const hasLockedHistoricalShare =
 		isEditingExpense && splitCandidates.some((member) => !member.active);
@@ -178,18 +184,22 @@ export function ExpenseSplitFieldset({
 					)}
 				</FieldGroup>
 			)}
-			{splitMode === 'equal' && !hasLockedHistoricalShare && !isEditingExpense && (
-				<ExpenseParticipants
-					members={splitCandidates}
-					amountStr={amountStr}
-					disabled={formSaving}
-					onChoose={(shares) => {
-						onClearSplitsError();
-						setManualSplits(shares);
-						setSplitMode('manual');
-					}}
-				/>
-			)}
+			{(splitMode === 'equal' || (splitMode === 'manual' && participantsActive)) &&
+				!hasLockedHistoricalShare &&
+				!isEditingExpense && (
+					<ExpenseParticipants
+						members={splitCandidates}
+						amountStr={amountStr}
+						disabled={formSaving}
+						splitMode={splitMode}
+						onChoose={(shares) => {
+							onClearSplitsError();
+							setManualSplits(shares);
+							setParticipantsActive(true);
+							setSplitMode('manual');
+						}}
+					/>
+				)}
 			{splitMode !== 'manual' && (
 				<SplitReview
 					members={splitCandidates}
