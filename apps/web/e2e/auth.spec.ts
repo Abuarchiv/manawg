@@ -194,6 +194,16 @@ test.describe('start credentials auth validation', () => {
 			await expect(page).toHaveURL(/\/neu\?code=MTE8PZAT$/);
 		});
 
+		test('a malformed invitation code is explained on the sign-in page', async ({ page }) => {
+			await page.route('**/api/wg/mine', (route) =>
+				route.fulfill({ status: 401, contentType: 'application/json', body: '{}' }),
+			);
+			await page.goto('/neu?code=abc');
+			await expect(
+				page.getByText('Dieser Einladungslink ist unvollständig oder ungültig.'),
+			).toBeVisible();
+		});
+
 		test('registration validates locally and never sends invalid sign-ups', async ({ page }) => {
 			let signUpRequests = 0;
 			await page.route(

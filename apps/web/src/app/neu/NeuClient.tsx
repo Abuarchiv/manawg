@@ -21,8 +21,8 @@ import { CreateStep } from './CreateStep';
 import { InviteStep } from './InviteStep';
 import { JoinCodeStep } from './JoinCodeStep';
 import { JoinNameStep } from './JoinNameStep';
+import { StartNotices } from './StartNotices';
 import {
-	AUTH_CALLBACK_ERROR,
 	getJoinCodeFromSearch,
 	getNeuIntentFromSearch,
 	getWgCodeFromPath,
@@ -72,6 +72,7 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 		setAuthState,
 		retryAuth,
 		handleAuthenticated,
+		signedInHere,
 	} = useAccountWgs({ interactive, step, clearError });
 	useSaveStartDraft({ interactive, step, wgName, creatorName, joinCode, joinName, joinWg });
 	const { goTo, goBack } = useStepHistory({
@@ -196,9 +197,8 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 		};
 	}, [showsSignIn]);
 
-	useClearCallbackError(authState === 'authenticated');
+	useClearCallbackError(signedInHere);
 
-	const callbackError = searchParams.get('error') === 'auth_callback';
 	const movedOut = searchParams.get('reason') === 'moved_out';
 	const deniedWgCode = (() => {
 		const code = getWgCodeFromPath(safeNextPath(searchParams.get('next')));
@@ -222,7 +222,7 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 				backHref={explorationHref()}
 			>
 				{accountSwitchError && <ErrorBox>{accountSwitchError}</ErrorBox>}
-				{callbackError && <ErrorBox>{AUTH_CALLBACK_ERROR}</ErrorBox>}
+				<StartNotices search={searchParams.toString()} />
 				{(authState === 'error' || (retried && authState === 'loading')) && (
 					<div className="flex flex-col gap-2">
 						<ErrorBox>Deine Anmeldung konnte gerade nicht geprüft werden.</ErrorBox>
@@ -317,12 +317,13 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 			}
 			backHref={explorationHref()}
 		>
+			<StartNotices search={searchParams.toString()} />
 			{accountSwitchError && <ErrorBox>{accountSwitchError}</ErrorBox>}
 			{deniedWgCode && step === 'choose' && (
 				<ErrorBox>
 					{movedOut
 						? `Du bist in der WG ${deniedWgCode} als ausgezogen markiert. Eine Admin-Person kann dich wieder aktivieren.`
-						: `Auf die WG ${deniedWgCode} hast du mit diesem Konto keinen Zugriff. Wähle eine deiner WGs oder tritt mit dem WG-Code bei.`}
+						: `Der Link zur WG ${deniedWgCode} ist veraltet, oder du bist mit diesem Konto nicht Mitglied. Wähle eine deiner WGs oder tritt mit dem WG-Code bei.`}
 				</ErrorBox>
 			)}
 			{step === 'choose' && (
@@ -344,6 +345,7 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 					onCreatorNameChange={setCreatorName}
 					error={error}
 					invalidField={invalidField}
+					clearError={clearError}
 					busy={busy}
 					onSubmit={() => void createWg()}
 					onBack={() => goBack('choose')}

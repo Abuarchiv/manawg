@@ -39,6 +39,8 @@ export function useAccountWgs({
 	const [accountWgs, setAccountWgs] = useState<AccountWg[]>([]);
 	const [authState, setAuthState] = useState<AuthState>('loading');
 	const [authRetryNonce, setAuthRetryNonce] = useState(0);
+	// A failed-callback notice stays on load; it is dropped only once the visitor signs in here.
+	const [signedInHere, setSignedInHere] = useState(false);
 	// Client-only: a session cookie exists, so the check is for someone already signed in.
 	const [sessionHint, setSessionHint] = useState(false);
 
@@ -103,6 +105,8 @@ export function useAccountWgs({
 			}
 			return;
 		}
+		// A failed callback stays on this page so its message is seen, not skipped by the redirect.
+		if (searchParams.get('error') === 'auth_callback') return;
 		const next = safeNextPath(searchParams.get('next'));
 		const [onlyWg] = accountWgs;
 		// One WG: skip the picker, like the public start page does.
@@ -122,6 +126,7 @@ export function useAccountWgs({
 	}
 
 	function handleAuthenticated(): void {
+		setSignedInHere(true);
 		markJustSignedIn();
 		setSessionHint(true);
 		setAuthState('loading');
@@ -136,5 +141,6 @@ export function useAccountWgs({
 		setAuthState,
 		retryAuth,
 		handleAuthenticated,
+		signedInHere,
 	};
 }

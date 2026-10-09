@@ -16,6 +16,7 @@ interface CreateStepProps {
 	onCreatorNameChange: (value: string) => void;
 	error: string | null;
 	invalidField: StartField | null;
+	clearError: () => void;
 	busy: boolean;
 	onSubmit: () => void;
 	onBack: () => void;
@@ -28,6 +29,7 @@ export function CreateStep({
 	onCreatorNameChange,
 	error,
 	invalidField,
+	clearError,
 	busy,
 	onSubmit,
 	onBack,
@@ -47,7 +49,10 @@ export function CreateStep({
 					label="WG-Name"
 					placeholder="z. B. WG Nord"
 					value={wgName}
-					onChange={onWgNameChange}
+					onChange={(value) => {
+						if (error) clearError();
+						onWgNameChange(value);
+					}}
 					maxLength={WG_NAME_MAX}
 					autoComplete="organization"
 					autoFocus
@@ -62,7 +67,10 @@ export function CreateStep({
 					label="Dein Anzeigename"
 					placeholder="z. B. Anna"
 					value={creatorName}
-					onChange={onCreatorNameChange}
+					onChange={(value) => {
+						if (error) clearError();
+						onCreatorNameChange(value);
+					}}
 					maxLength={NAME_MAX}
 					autoComplete="given-name"
 					required
