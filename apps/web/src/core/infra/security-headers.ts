@@ -13,7 +13,7 @@
  * target to allow at all, only the bucket-scoped legacy endpoint.
  */
 function usesSupabaseImageStorage(): boolean {
-	return process.env.IMAGE_STORAGE_PROVIDER?.trim() === 'supabase';
+	return process.env.IMAGE_STORAGE_PROVIDER?.trim().toLowerCase() === 'supabase';
 }
 
 function s3UploadOrigins(): string[] {

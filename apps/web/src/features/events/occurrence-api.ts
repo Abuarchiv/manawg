@@ -7,6 +7,8 @@ interface OccurrencePayload {
 	endsAt: string | null;
 	allDay: boolean;
 	location: string | null;
+	/** The series version the form was opened on; a newer one rejects the change. */
+	expectedUpdatedAt?: string | undefined;
 }
 
 /** `payload` null cancels the date; otherwise the date becomes a single event with these values. */
@@ -33,6 +35,7 @@ export function postOccurrenceChange<E>(
 							endsAt: payload.endsAt,
 							allDay: payload.allDay,
 							location: payload.location,
+							expectedUpdatedAt: payload.expectedUpdatedAt,
 						}
 					: { action: 'cancel', occurrenceStartsAt },
 			),

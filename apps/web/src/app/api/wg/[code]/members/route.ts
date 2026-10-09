@@ -24,7 +24,7 @@ import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey } from '@/core/idempotency-store';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, clientIpKey, wgWriteLimiter } from '@/core/rate-limit';
-import { and, asc, count, eq, isNull } from 'drizzle-orm';
+import { and, asc, count, eq, isNotNull, isNull } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -68,7 +68,8 @@ export const GET = withWgRoute('members GET', async (req, { code }) => {
 			})
 			.from(wgMembers)
 			.where(eq(wgMembers.wgId, wgId))
-			.orderBy(asc(wgMembers.createdAt), asc(wgMembers.id))
+			// Active members first, so a page cap can only cut off moved-out members.
+			.orderBy(asc(isNotNull(wgMembers.deactivatedAt)), asc(wgMembers.createdAt), asc(wgMembers.id))
 			.limit(limit)
 			.offset(offset),
 		db.select({ total: count() }).from(wgMembers).where(eq(wgMembers.wgId, wgId)),

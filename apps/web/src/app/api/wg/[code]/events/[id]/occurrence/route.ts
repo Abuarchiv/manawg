@@ -31,6 +31,7 @@ const occurrenceSchema = z.discriminatedUnion('action', [
 		endsAt: eventDateTimeSchema.nullable().optional(),
 		allDay: z.boolean().optional().default(false),
 		location: eventLocationSchema.optional(),
+		expectedUpdatedAt: z.string().datetime({ offset: true }).optional(),
 	}),
 ]);
 
@@ -48,6 +49,7 @@ export const POST = withWgRoute<{ id: string }>('events occurrence', async (req,
 			description: 'description_invalid',
 			location: 'location_invalid',
 			occurrenceStartsAt: 'occurrence_invalid',
+			expectedUpdatedAt: 'expected_state_invalid',
 		},
 	});
 	if (!parsed.ok) return parsed.response;
@@ -78,6 +80,14 @@ export const POST = withWgRoute<{ id: string }>('events occurrence', async (req,
 			denied = await requireOwnerOrAdmin(wgId, auth.member, root.createdByMemberId);
 			if (denied) return { error: denied };
 			if (!root.recurrence) return { error: badRequest('not_recurring') };
+			// The values come from a form opened on an older version of the series.
+			if (
+				body.action === 'detach' &&
+				body.expectedUpdatedAt &&
+				root.updatedAt.getTime() !== new Date(body.expectedUpdatedAt).getTime()
+			) {
+				return { error: conflict('event_changed') };
+			}
 
 			// Only a real occurrence of the series can be changed, not an arbitrary instant.
 			const occurrenceMs = Date.parse(body.occurrenceStartsAt);

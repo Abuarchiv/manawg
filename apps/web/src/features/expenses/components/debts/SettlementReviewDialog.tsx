@@ -91,7 +91,7 @@ export function SettlementReviewDialog({
 						})}
 					</ItemGroup>
 				)}
-				{preview && preview.netCents > 0 && (
+				{preview && preview.remainingCents > 0 && (
 					<Alert>
 						<AlertDescription>
 							{formatEuroCents(preview.remainingCents, debt.currency)} des verrechneten Saldos sind
@@ -121,7 +121,7 @@ export function SettlementReviewDialog({
 					<AlertDialogCancel className="min-h-11" disabled={settling}>
 						Abbrechen
 					</AlertDialogCancel>
-					{preview && preview.remainingCents > 0 && (
+					{preview && preview.netCents > 0 && (
 						<Button
 							variant="outline"
 							className="h-auto min-h-11 whitespace-normal py-2 leading-snug"
