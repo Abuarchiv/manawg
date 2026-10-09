@@ -1,0 +1,129 @@
+import 'server-only';
+import { loadConfirmedEmails } from '@/core/auth/auth-user-emails';
+import { db, expenseSplits, expenses, wgMembers, wgs } from '@/core/db';
+import { and, asc, eq, gte, inArray, lt } from 'drizzle-orm';
+import type { StatementExpense } from '../monthly-statement';
+import {
+	type StatementPlan,
+	type StatementWgMember,
+	planStatementMails,
+} from '../statement-recipients';
+
+const WG_CHUNK = 25;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+export interface WgStatementPlan {
+	wg: { id: string; name: string; shareCode: string };
+	plan: StatementPlan;
+}
+
+/** The month padded by a day on both sides, so Berlin-local month edges are never cut off. */
+function monthWindow(monthKey: string): { from: Date; to: Date } {
+	const [year = 0, month = 1] = monthKey.split('-').map(Number);
+	return {
+		from: new Date(Date.UTC(year, month - 1, 1) - DAY_MS),
+		to: new Date(Date.UTC(year, month, 1) + DAY_MS),
+	};
+}
+
+async function loadWgExpenses(
+	wgIds: string[],
+	window: { from: Date; to: Date },
+): Promise<Map<string, StatementExpense[]>> {
+	const inWindow = and(
+		inArray(expenses.wgId, wgIds),
+		gte(expenses.occurredAt, window.from),
+		lt(expenses.occurredAt, window.to),
+	);
+	const rows = await db.select().from(expenses).where(inWindow).orderBy(asc(expenses.occurredAt));
+	const splits = await db
+		.select({
+			expenseId: expenseSplits.expenseId,
+			debtorMemberId: expenseSplits.debtorMemberId,
+			amountCents: expenseSplits.amountCents,
+			settledAt: expenseSplits.settledAt,
+		})
+		.from(expenseSplits)
+		.innerJoin(expenses, eq(expenseSplits.expenseId, expenses.id))
+		.where(inWindow);
+	const splitsByExpense = new Map<string, StatementExpense['splits']>();
+	for (const split of splits) {
+		const list = splitsByExpense.get(split.expenseId) ?? [];
+		list.push({
+			debtorMemberId: split.debtorMemberId,
+			amountCents: split.amountCents,
+			settledAt: split.settledAt?.toISOString() ?? null,
+		});
+		splitsByExpense.set(split.expenseId, list);
+	}
+	const byWg = new Map<string, StatementExpense[]>();
+	for (const row of rows) {
+		const list = byWg.get(row.wgId) ?? [];
+		list.push({
+			id: row.id,
+			paidByMemberId: row.paidByMemberId,
+			amountCents: row.amountCents,
+			currency: row.currency,
+			description: row.description,
+			occurredAt: row.occurredAt.toISOString(),
+			splits: splitsByExpense.get(row.id) ?? [],
+		});
+		byWg.set(row.wgId, list);
+	}
+	return byWg;
+}
+
+/**
+ * Statement plans for every WG that booked an expense in the month. Only the
+ * month's expenses are read, and only active members who kept the preference on
+ * are looked up in Auth.
+ */
+export async function loadStatementPlans(monthKey: string): Promise<WgStatementPlan[]> {
+	const window = monthWindow(monthKey);
+	const active = await db
+		.selectDistinct({ wgId: expenses.wgId })
+		.from(expenses)
+		.where(and(gte(expenses.occurredAt, window.from), lt(expenses.occurredAt, window.to)));
+	const wgIds = active.map((row) => row.wgId);
+
+	const result: WgStatementPlan[] = [];
+	for (let start = 0; start < wgIds.length; start += WG_CHUNK) {
+		const chunk = wgIds.slice(start, start + WG_CHUNK);
+		const [wgRows, memberRows, expensesByWg] = await Promise.all([
+			db
+				.select({ id: wgs.id, name: wgs.name, shareCode: wgs.shareCode })
+				.from(wgs)
+				.where(inArray(wgs.id, chunk)),
+			db.select().from(wgMembers).where(inArray(wgMembers.wgId, chunk)),
+			loadWgExpenses(chunk, window),
+		]);
+		const wantsMail = memberRows.filter(
+			(member) => member.deactivatedAt === null && member.notifyStatementEmail && member.authUserId,
+		);
+		const { emails, unresolved } = await loadConfirmedEmails(
+			wantsMail.map((member) => member.authUserId ?? ''),
+		);
+		if (unresolved.size > 0) {
+			console.warn(
+				`[statement-mail] ${unresolved.size} Auth lookups failed; members left for a later run`,
+			);
+		}
+		for (const wg of wgRows) {
+			const members: StatementWgMember[] = memberRows
+				.filter((member) => member.wgId === wg.id)
+				.map((member) => ({
+					id: member.id,
+					name: member.name,
+					active: member.deactivatedAt === null,
+					notify: member.notifyStatementEmail,
+					email: (member.authUserId && emails.get(member.authUserId)) || null,
+					lookupFailed: member.authUserId !== null && unresolved.has(member.authUserId),
+				}));
+			result.push({
+				wg,
+				plan: planStatementMails(members, expensesByWg.get(wg.id) ?? [], monthKey),
+			});
+		}
+	}
+	return result;
+}

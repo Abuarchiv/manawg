@@ -86,3 +86,4 @@ export function withTransaction<T>(fn: (tx: DbTransaction) => Promise<T>): Promi
 }
 
 export * from './schema';
+export * from './schema-statement-emails';

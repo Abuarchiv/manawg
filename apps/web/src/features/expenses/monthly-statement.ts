@@ -2,7 +2,7 @@ import { berlinDayKey } from '@/core/utils/berlin-day';
 import { normalizeCurrency } from '@/core/utils/money';
 import { type SimplifiedDebt, simplifyDebts } from './debt-reduction';
 
-interface StatementExpense {
+export interface StatementExpense {
 	id: string;
 	paidByMemberId: string;
 	amountCents: number;
@@ -12,7 +12,7 @@ interface StatementExpense {
 	splits: Array<{ debtorMemberId: string; amountCents: number; settledAt: string | null }>;
 }
 
-interface StatementMemberInput {
+export interface StatementMemberInput {
 	id: string;
 	name: string;
 	active: boolean;

@@ -11,10 +11,12 @@ On Berlin day 1 of a month the system SHALL send each eligible member one statem
 #### Scenario: Cron runs twice or crashes mid-run
 - **WHEN** the cron is invoked again on the same day or after a crash
 - **THEN** members already marked `sent` receive nothing, unsent members are mailed exactly once
+- **AND** a row whose result was never written down (`sending` for over 15 minutes) is closed as unconfirmed and never resent
 
 #### Scenario: Provider error or daily quota reached
 - **WHEN** Resend rejects a mail or the daily quota is exhausted
 - **THEN** the row stays `failed`/`pending` and is retried on days 2–5; after day 5 it stays failed and is logged
+- **AND** a request that timed out is unconfirmed (the provider may have accepted it) and is not retried automatically
 
 #### Scenario: Member in two WGs
 - **WHEN** Mira is a member of two WGs that both had expenses
@@ -44,13 +46,21 @@ The system SHALL mail only active members with an Auth account, a confirmed e-ma
 - **WHEN** the member has no linked Auth user or the address is unconfirmed
 - **THEN** the member is skipped with reason `no_email`
 
+#### Scenario: Address lookup fails or is unconfigured
+- **WHEN** Supabase Auth does not answer for a member (timeout, 429, 5xx) or the service-role configuration is missing
+- **THEN** no ledger row is written for that member and the next run decides again; a missing configuration fails the run
+
+#### Scenario: Skipped member qualifies on a later day
+- **WHEN** a member skipped on day 1 confirms the address, switches the preference on, or the WG books a back-dated expense, before day 6
+- **THEN** the next run queues and mails the member
+
 #### Scenario: Moved-out or deleted member
 - **WHEN** the member is deactivated or the account was deleted
 - **THEN** the member is skipped; the other members' statements still count that member's expenses
 
 #### Scenario: Unsubscribe
 - **WHEN** a member uses the unsubscribe link or the List-Unsubscribe one-click action
-- **THEN** `notify_statement_email` becomes false without login and no later statement mail is sent; Einstellungen shows the switch off and can turn it back on
+- **THEN** `notify_statement_email` becomes false without login and no later statement mail is sent for any WG of the same account; Einstellungen shows the switch off and can turn it back on
 
 ### Requirement: Mail content matches the in-app statement
 
@@ -74,4 +84,8 @@ The system SHALL send statement mails only from the production deployment.
 
 #### Scenario: Preview deployment
 - **WHEN** the cron runs with `VERCEL_ENV` other than `production`
-- **THEN** mails are rendered and logged but not sent
+- **THEN** mails are rendered and logged but not sent, and no ledger row is written
+
+#### Scenario: Production without mail key
+- **WHEN** the cron runs in production and `RESEND_API_KEY` is missing
+- **THEN** the run fails loudly instead of recording anything

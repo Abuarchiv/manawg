@@ -157,6 +157,7 @@ test.describe('contrast tokens', () => {
 		notifyInventory: true,
 		notifyChat: true,
 		notifyEvents: true,
+		notifyStatementEmail: true,
 		quietStartHour: null,
 		quietEndHour: null,
 	};
