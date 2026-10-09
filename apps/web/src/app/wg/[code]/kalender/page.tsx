@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SubNav } from '@/components/wg/SubNav';
 import { ThumbAction } from '@/components/wg/ThumbAction';
 import { useWg } from '@/components/wg/WgContextProvider';
+import { apiFetch } from '@/core/infra/api-client';
 import { CalendarMonth } from '@/features/events/components/CalendarMonth';
 import { CalendarSubscriptionSection } from '@/features/events/components/CalendarSubscriptionSection';
 import {
@@ -20,7 +21,7 @@ import { useCalendarPage } from '@/features/events/hooks/use-calendar-page';
 import { haptic } from '@/shared/lib/haptics';
 import { CalendarDays, List, Plus } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 type ViewMode = 'month' | 'list';
 
@@ -42,6 +43,31 @@ export default function KalenderPage() {
 	// month, so the grid is the exception view, not the entry point.
 	const [view, setView] = useState<ViewMode>('list');
 	const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+
+	// A push link to an event beyond the agenda window has nothing to highlight in the list:
+	// open that event directly instead of landing on an unrelated page.
+	const openedLinkedEventRef = useRef<string | null>(null);
+	const { upcomingOccurrences, openEvent } = calendar;
+	useEffect(() => {
+		if (!highlightEventId || loading || openedLinkedEventRef.current === highlightEventId) return;
+		openedLinkedEventRef.current = highlightEventId;
+		if (upcomingOccurrences.some((occurrence) => occurrence.eventId === highlightEventId)) return;
+		void apiFetch<{ event: Parameters<typeof openEvent>[0] }>(
+			`/api/wg/${encodedShareCode}/events/${encodeURIComponent(highlightEventId)}`,
+			{ memberId: identity.memberId },
+		).then((res) => {
+			if (res.ok) openEvent(res.data.event);
+			// A failed lookup that may succeed later is retried on the next refresh.
+			else if (res.status !== 404 && res.status !== 403) openedLinkedEventRef.current = null;
+		});
+	}, [
+		highlightEventId,
+		loading,
+		upcomingOccurrences,
+		openEvent,
+		encodedShareCode,
+		identity.memberId,
+	]);
 
 	function changeMonth(delta: number): void {
 		setMonth((current) => new Date(current.getFullYear(), current.getMonth() + delta, 1));

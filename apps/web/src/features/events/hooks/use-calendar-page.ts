@@ -342,6 +342,11 @@ export function useCalendarPage(month: Date) {
 		setCreateOpen,
 		editing,
 		setEditing,
+		/** Opens an event on its own, with no occurrence left over from an earlier one. */
+		openEvent: (event: EditableEvent) => {
+			setEditingOccurrence(null);
+			setEditingState(event);
+		},
 		editingOccurrence,
 		actionError,
 		selectOccurrence,
