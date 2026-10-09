@@ -1,4 +1,5 @@
 import { apiFetch } from '@/core/infra/api-client';
+import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 
 interface OccurrencePayload {
 	title: string;
@@ -11,19 +12,27 @@ interface OccurrencePayload {
 	expectedUpdatedAt?: string | undefined;
 }
 
+// A retry of the same change reuses its key, so a change whose answer was lost is replayed by
+// the server instead of failing with "occurrence not found".
+const pendingKeys = new Map<string, string>();
+
 /** `payload` null cancels the date; otherwise the date becomes a single event with these values. */
-export function postOccurrenceChange<E>(
+export async function postOccurrenceChange<E>(
 	eventsBaseUrl: string,
 	memberId: string,
 	eventId: string,
 	occurrenceStartsAt: string,
 	payload: OccurrencePayload | null,
 ) {
-	return apiFetch<{ event: E; created: E | null }>(
+	const requestId = JSON.stringify([eventId, occurrenceStartsAt, payload]);
+	const idempotencyKey = pendingKeys.get(requestId) ?? createOfflineIdempotencyKey();
+	if (idempotencyKey) pendingKeys.set(requestId, idempotencyKey);
+	const res = await apiFetch<{ event: E; created: E | null }>(
 		`${eventsBaseUrl}/${encodeURIComponent(eventId)}/occurrence`,
 		{
 			method: 'POST',
 			memberId,
+			...(idempotencyKey ? { headers: { 'Idempotency-Key': idempotencyKey } } : {}),
 			body: JSON.stringify(
 				payload
 					? {
@@ -41,4 +50,7 @@ export function postOccurrenceChange<E>(
 			),
 		},
 	);
+	// An answer from the server (also a refusal) ends the attempt; a lost one keeps the key.
+	if (res.ok || res.status >= 400) pendingKeys.delete(requestId);
+	return res;
 }

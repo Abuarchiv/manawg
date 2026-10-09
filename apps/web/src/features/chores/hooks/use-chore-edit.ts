@@ -94,6 +94,8 @@ export function useChoreEdit(ctx: ChorePageContext) {
 							recurrenceType: saved.recurrenceType,
 							nextDueAt: saved.nextDueAt,
 							assignedMemberId: saved.assignedMemberId,
+							// The next edit must carry this save's version, not the one the list loaded.
+							...(saved.updatedAt ? { updatedAt: saved.updatedAt } : {}),
 						}
 					: item,
 			),

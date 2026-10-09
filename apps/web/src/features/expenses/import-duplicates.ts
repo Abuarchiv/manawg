@@ -1,5 +1,6 @@
 import { expenses } from '@/core/db';
 import type { DbTransaction } from '@/core/db/transaction';
+import { berlinDayKey } from '@/core/utils/berlin-day';
 import { eq } from 'drizzle-orm';
 
 export function buildDuplicateKey(
@@ -37,8 +38,9 @@ export async function loadDuplicateState(tx: DbTransaction, wgId: string): Promi
 	const counts = new Map<string, number>();
 	const usedKeys = new Set<string>();
 	for (const r of rows) {
-		const iso = new Date(r.occurredAt).toISOString();
-		const key = buildDuplicateKey(iso, r.description, r.amountCents, r.paidByMemberId, r.currency);
+		// The day the expense list shows (Berlin), which is also the day an imported row names.
+		const day = berlinDayKey(new Date(r.occurredAt));
+		const key = buildDuplicateKey(day, r.description, r.amountCents, r.paidByMemberId, r.currency);
 		counts.set(key, (counts.get(key) ?? 0) + 1);
 		if (r.importDuplicateKey) usedKeys.add(r.importDuplicateKey);
 	}

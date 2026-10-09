@@ -140,7 +140,11 @@ function runCommit(existingExpenses, { rows, mapping, mayRecordForOthers = false
 	};
 	mocks['./import-duplicates'] = loadTsModule(
 		path.join(process.cwd(), 'src/features/expenses/import-duplicates.ts'),
-		{ '@/core/db': { expenses }, 'drizzle-orm': mocks['drizzle-orm'] },
+		{
+			'@/core/db': { expenses },
+			'@/core/utils/berlin-day': { berlinDayKey: (date) => date.toISOString().slice(0, 10) },
+			'drizzle-orm': mocks['drizzle-orm'],
+		},
 	);
 	mocks['@/core/db/claimed-response'] = loadClaimedResponse(mocks);
 	mocks['@/core/db/idempotent-write'] = loadIdempotentWrite(mocks);

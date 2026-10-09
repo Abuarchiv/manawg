@@ -226,7 +226,12 @@ export function useAnnouncementActions(
 			if (res.error === 'announcement_changed') void load();
 			return announcementActionErrorMessage(res.error);
 		}
-		updateItem(announcement.id, (item) => ({ ...item, content }));
+		const savedAt = res.data.announcement?.updatedAt;
+		updateItem(announcement.id, (item) => ({
+			...item,
+			content,
+			...(savedAt ? { updatedAt: savedAt } : {}),
+		}));
 		toast.success('Beitrag gespeichert.');
 		void load();
 		return null;

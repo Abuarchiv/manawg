@@ -354,7 +354,8 @@ export function useCalendarPage(month: Date) {
 		const { event, created } = res.data;
 		updateEvents((current) => [
 			...current.map((item) => (item.id === id ? event : item)),
-			...(created ? [created] : []),
+			// A refresh that ran in between may already hold the detached event.
+			...(created && !current.some((item) => item.id === created.id) ? [created] : []),
 		]);
 		setEditing(null);
 		toast.success(payload ? 'Termin geändert.' : 'Termin entfernt.');
