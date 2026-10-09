@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next';
 
-// Seiten bleiben crawlbar, damit Suchmaschinen das noindex aus layout.tsx sehen
+// Pages stay crawlable so search engines can read the noindex from layout.tsx
 export default function robots(): MetadataRoute.Robots {
 	return {
 		rules: [{ userAgent: '*', allow: ['/'], disallow: ['/api/'] }],
