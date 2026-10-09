@@ -13,9 +13,9 @@ export interface ImportHistoryEntry {
 }
 
 /**
- * The newest imports that `mayList` allows and that `undoImport` would still accept: no payment
- * completed since the import and no share of a non-payer settled. Imports that can no longer be
- * undone are skipped before the limit, so they cannot push an older, still undoable one out.
+ * The newest imports that `mayList` allows and that `undoImport` accepts: no payment completed
+ * since the import and no share of a non-payer settled. Imports that fail these checks are
+ * skipped before the limit, so they cannot crowd an undoable import out of the list.
  */
 export async function listUndoableImports(
 	wgId: string,
