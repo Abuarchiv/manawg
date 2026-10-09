@@ -248,17 +248,6 @@ export function useExpenseSubmit(
 		});
 
 		if (!res.ok) {
-			if (res.status === 0 && occurredAtIso) {
-				// The offline queue does not carry a date; saving it as today would be wrong.
-				rollbackOptimisticExpense();
-				pending.end(optimisticId);
-				finishSubmitting();
-				const message =
-					'Ohne Verbindung kann die Ausgabe nicht mit anderem Datum vorgemerkt werden. Stelle das Datum auf heute oder speichere online.';
-				form.setFormError(message);
-				toast.error(message);
-				return;
-			}
 			if (res.status === 0) {
 				const queuedAction = isEdit
 					? createQueuedExpenseUpdate({
@@ -283,6 +272,7 @@ export function useExpenseSubmit(
 							paidByMemberId,
 							splits,
 							imageUrl,
+							...(occurredAtIso ? { occurredAt: occurredAtIso } : {}),
 							...recurringSource,
 						});
 				const queuedCount = await enqueueOfflineAction(queuedAction);

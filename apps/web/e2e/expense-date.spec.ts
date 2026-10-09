@@ -82,15 +82,18 @@ test.describe('expense date', () => {
 		expect(body).not.toHaveProperty('occurredAt');
 	});
 
-	test('a changed date is not queued offline', async ({ page }) => {
+	test('a changed date is queued offline with its date', async ({ page }) => {
 		await openForm(page, (route) => route.abort('connectionfailed'));
 		await page.getByLabel('Datum').fill('2026-01-15');
 		await page.getByRole('button', { name: 'Ausgabe speichern', exact: true }).click();
 
-		await expect(
-			page
-				.getByText('Ohne Verbindung kann die Ausgabe nicht mit anderem Datum vorgemerkt werden.')
-				.first(),
-		).toBeVisible();
+		await expect
+			.poll(() =>
+				page.evaluate(() => {
+					const queue = JSON.parse(localStorage.getItem('manawg:offline-actions') ?? '[]');
+					return queue[0]?.payload?.occurredAt ?? null;
+				}),
+			)
+			.toBe('2026-01-15T11:00:00.000Z');
 	});
 });

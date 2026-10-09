@@ -32,6 +32,8 @@ export function computeBalances(
 	payments: ReadonlyArray<ExpensePaymentInput> = [],
 ): PairBalance[] {
 	const totals = new Map<string, PairBalance>();
+	// Debts a payment touched; a circle through one of them is a netted chain, not separate debts.
+	const derivedKeys = new Set<string>();
 
 	for (const expense of expenses) {
 		const creditorId = expense.paidByMemberId;
@@ -59,6 +61,7 @@ export function computeBalances(
 		if (payment.amountCents <= 0 || payment.fromMemberId === payment.toMemberId) continue;
 		const currency = normalizeCurrency(payment.currency);
 		const key = `${currency}:${payment.fromMemberId}:${payment.toMemberId}`;
+		derivedKeys.add(key);
 		const current = totals.get(key);
 		if (current) {
 			current.amountCents -= payment.amountCents;
@@ -71,7 +74,6 @@ export function computeBalances(
 			});
 		}
 	}
-	const derivedKeys = new Set<string>();
 	for (const pair of totals.values()) {
 		if (pair.amountCents >= 0) continue;
 		const key = `${pair.currency}:${pair.creditorId}:${pair.debtorId}`;

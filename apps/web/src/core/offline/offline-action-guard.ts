@@ -80,7 +80,8 @@ function hasValidPayload(type: OfflineActionType, payload: Record<string, unknow
 				typeof payload.amountCents === 'number' &&
 				typeof payload.paidByMemberId === 'string' &&
 				isSplitArray(payload.splits) &&
-				isOptionalStringOrNull(payload.imageUrl)
+				isOptionalStringOrNull(payload.imageUrl) &&
+				(payload.occurredAt === undefined || typeof payload.occurredAt === 'string')
 			);
 		case 'expense.update':
 			return (

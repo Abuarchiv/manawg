@@ -1,4 +1,5 @@
 import { formatEuroInput } from '@/core/utils/amount';
+import { berlinDayKey } from '@/core/utils/berlin-day';
 import { safeLocalStorage } from '@/core/utils/browser';
 import type { OfflineAction, OfflineActionType } from './offline-queue';
 
@@ -209,6 +210,11 @@ export function buildQueueEditDraft(action: OfflineAction): QueueEditDraft | nul
 							? formatEuroInput(action.payload.amountCents / 100)
 							: '',
 					imageUrl: typeof action.payload.imageUrl === 'string' ? action.payload.imageUrl : null,
+					// A back-dated booking keeps its day when it is edited again.
+					...(typeof action.payload.occurredAt === 'string' &&
+					!Number.isNaN(Date.parse(action.payload.occurredAt))
+						? { occurredOn: berlinDayKey(new Date(action.payload.occurredAt)) }
+						: {}),
 					paidByMemberId:
 						typeof action.payload.paidByMemberId === 'string' ? action.payload.paidByMemberId : '',
 					splitMode: manualSplits && Object.keys(manualSplits).length > 0 ? 'manual' : 'equal',

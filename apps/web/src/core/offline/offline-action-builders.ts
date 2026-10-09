@@ -73,6 +73,8 @@ interface QueuedExpenseInput extends QueuedIdentityInput {
 	paidByMemberId: string;
 	splits: Array<{ debtorMemberId: string; amountCents: number }>;
 	imageUrl?: string | null;
+	/** Back-dated expenses keep their date, so the replay sends the original body. */
+	occurredAt?: string;
 	recurringExpenseId?: string;
 	expectedRecurringNextDueAt?: string;
 	now?: number;
@@ -251,6 +253,7 @@ export function createQueuedExpense(input: QueuedExpenseInput): OfflineAction {
 			paidByMemberId: input.paidByMemberId,
 			splits: input.splits,
 			imageUrl: input.imageUrl ?? null,
+			...(input.occurredAt ? { occurredAt: input.occurredAt } : {}),
 			...(input.recurringExpenseId ? { recurringExpenseId: input.recurringExpenseId } : {}),
 			...(input.expectedRecurringNextDueAt
 				? { expectedRecurringNextDueAt: input.expectedRecurringNextDueAt }

@@ -155,3 +155,17 @@ test('a netted payment also clears the chain when the payer is already owed a sm
 	);
 	assert.deepEqual(balances, []);
 });
+
+test('a payment that only reduces a direct debt still clears the circle it sits in', () => {
+	const expense = (paidBy, debtor, cents) => ({
+		paidByMemberId: paidBy,
+		currency: 'EUR',
+		occurredAt: '2026-10-01T10:00:00.000Z',
+		splits: [{ debtorMemberId: debtor, amountCents: cents, settledAt: null }],
+	});
+	const balances = computeBalances(
+		[expense('C', 'A', 100), expense('A', 'B', 100), expense('B', 'C', 200)],
+		[{ fromMemberId: 'C', toMemberId: 'B', amountCents: 100, currency: 'EUR' }],
+	);
+	assert.deepEqual(balances, []);
+});
