@@ -176,8 +176,13 @@ export const PATCH = withWgRoute<{ id: string }>('chores PATCH', async (req, { c
 			.set(update)
 			.where(and(eq(chores.id, id), eq(chores.wgId, wgId), currentMatch, expectedVersion))
 			.returning();
-		// A swap request is answered once someone else holds the chore, however that happened.
-		if (row && previousAssignee !== undefined && previousAssignee !== row.assignedMemberId) {
+		// A swap request is answered once someone else holds the chore, however that happened;
+		// an unassigned chore leaves the request open.
+		if (
+			row?.assignedMemberId &&
+			previousAssignee !== undefined &&
+			previousAssignee !== row.assignedMemberId
+		) {
 			const now = new Date();
 			await tx
 				.update(announcements)

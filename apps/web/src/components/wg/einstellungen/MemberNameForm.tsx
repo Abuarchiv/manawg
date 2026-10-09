@@ -13,6 +13,7 @@ import { type FormEvent, useEffect, useState } from 'react';
 
 const NAME_ERRORS: Record<string, string> = {
 	name_taken: 'Dieser Name ist in der WG schon vergeben.',
+	name_changed: 'Dein Name wurde inzwischen geändert. Lade die Seite neu und versuche es erneut.',
 	name_invalid: `Dein Name muss 1 bis ${MEMBER_NAME_MAX_LENGTH} Zeichen haben.`,
 	member_deactivated: 'Als ausgezogenes Mitglied kannst du deinen Namen nicht ändern.',
 };
@@ -38,7 +39,11 @@ export function MemberNameForm() {
 		setError(null);
 		const res = await apiFetch<unknown>(
 			`/api/wg/${encodeURIComponent(wg.shareCode)}/members/${encodeURIComponent(identity.memberId)}`,
-			{ method: 'PUT', memberId: identity.memberId, body: JSON.stringify({ name: trimmed }) },
+			{
+				method: 'PUT',
+				memberId: identity.memberId,
+				body: JSON.stringify({ name: trimmed, expectedName: identity.name }),
+			},
 		);
 		setPending(false);
 		if (!res.ok) {

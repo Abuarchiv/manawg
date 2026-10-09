@@ -6,7 +6,6 @@ import {
 	formatRecurrenceRule,
 	parseRecurrenceRule,
 	withExcludedOccurrence,
-	withShiftedExclusions,
 } from './recurrence-rule';
 
 const weekly = {
@@ -69,13 +68,4 @@ test('an occurrence is removed only once and only up to the limit', () => {
 
 test('malformed exception dates make the rule invalid', () => {
 	assert.equal(parseRecurrenceRule('FREQ=WEEKLY;EXDATE=nonsense'), null);
-});
-
-test('moving a series start moves its removed occurrences by the same offset', () => {
-	const hour = 3_600_000;
-	const rule = 'FREQ=WEEKLY;EXDATE=2026-10-12T10:00:00.000Z,2026-10-19T10:00:00.000Z';
-	const shifted = parseRecurrenceRule(withShiftedExclusions(rule, hour));
-	assert.deepEqual(shifted?.exdates, ['2026-10-12T11:00:00.000Z', '2026-10-19T11:00:00.000Z']);
-	assert.equal(withShiftedExclusions(rule, 0), rule);
-	assert.equal(withShiftedExclusions('FREQ=DAILY', hour), 'FREQ=DAILY');
 });

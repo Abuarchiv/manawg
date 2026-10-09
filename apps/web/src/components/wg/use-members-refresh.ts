@@ -20,6 +20,38 @@ import type { Member } from './WgContextProvider';
  * Members list and admin flag from /api/wg/[code]/members, refetched when the
  * identity changes and retried with backoff after transient failures.
  */
+type MemberRow = Member & { active?: boolean };
+type MembersPage = {
+	members: MemberRow[];
+	viewerIsAdmin?: boolean;
+	pagination?: { total: number };
+};
+
+const MEMBERS_PAGE_SIZE = 500;
+const MEMBERS_MAX_PAGES = 20;
+
+/** The whole roster: moved-out members stay needed for history and balances, so every page is read. */
+async function fetchAllMembers(encodedShareCode: string, memberId: string) {
+	const members: MemberRow[] = [];
+	let first: Awaited<ReturnType<typeof apiFetch<MembersPage>>> | null = null;
+	for (let page = 0; page < MEMBERS_MAX_PAGES; page += 1) {
+		// The first request is the plain list; only a longer roster needs further pages.
+		const query = page === 0 ? '' : `?limit=${MEMBERS_PAGE_SIZE}&offset=${members.length}`;
+		const res = await apiFetch<MembersPage>(`/api/wg/${encodedShareCode}/members${query}`, {
+			memberId,
+		});
+		if (!res.ok) return res;
+		first ??= res;
+		members.push(...res.data.members);
+		const total = res.data.pagination?.total ?? members.length;
+		if (res.data.members.length === 0 || members.length >= total) break;
+	}
+	return {
+		ok: true as const,
+		data: { members, viewerIsAdmin: first?.ok ? first.data.viewerIsAdmin : undefined },
+	};
+}
+
 export function useMembersRefresh({
 	wgId,
 	encodedShareCode,
@@ -54,12 +86,7 @@ export function useMembersRefresh({
 		if (!identity || !accountReady) return;
 		const authGeneration = authGenerationRef.current;
 		try {
-			const res = await apiFetch<{
-				members: Array<Member & { active?: boolean }>;
-				viewerIsAdmin?: boolean;
-			}>(`/api/wg/${encodedShareCode}/members`, {
-				memberId: identity.memberId,
-			});
+			const res = await fetchAllMembers(encodedShareCode, identity.memberId);
 			if (authGeneration !== authGenerationRef.current) return;
 			// Normalize defensively: an omitted flag (e.g. E2E fixtures) means active.
 			if (res.ok) {

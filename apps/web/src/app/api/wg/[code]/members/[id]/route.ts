@@ -248,14 +248,18 @@ export const PATCH = withWgRoute<{ id: string }>(
 	},
 );
 
-const renameSchema = z.object({ name: z.string().trim().min(1).max(LIMITS.NAME_MAX) });
+const renameSchema = z.object({
+	name: z.string().trim().min(1).max(LIMITS.NAME_MAX),
+	// The name the form was opened on; a different current name means someone renamed meanwhile.
+	expectedName: z.string().trim().min(1).max(LIMITS.NAME_MAX).optional(),
+});
 
 /** PUT changes the display name; a member renames themselves, an admin may rename anyone active. */
 export const PUT = withWgRoute<{ id: string }>('members/[id] PUT', async (req, { code, id }) => {
 	if (!UUID_PATTERN.test(id)) return badRequest('id_invalid');
 	const parsed = await parseBody(req, renameSchema, { fieldErrors: { name: 'name_invalid' } });
 	if (!parsed.ok) return parsed.response;
-	const { name } = parsed.data;
+	const { name, expectedName } = parsed.data;
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
 	const wgId = auth.wg.id;
@@ -279,6 +283,9 @@ export const PUT = withWgRoute<{ id: string }>('members/[id] PUT', async (req, {
 		}
 		if (target.deactivatedAt) {
 			return { ok: false as const, response: conflict('member_deactivated', 'member_deactivated') };
+		}
+		if (expectedName !== undefined && target.name !== expectedName) {
+			return { ok: false as const, response: conflict('name_changed', 'name_changed') };
 		}
 		if (target.name === name) return { ok: true as const, before: target.name, name };
 		if (!(await releaseMemberName(tx, wgId, name, target.id))) {
