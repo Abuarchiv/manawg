@@ -34,6 +34,7 @@ import {
 	sanitizeMessageBody,
 } from '@/features/chat/chat-pure';
 import { buildChatCursorWhere } from '@/features/chat/server/chat-unread-query';
+import { loadOwnReadMarker } from '@/features/chat/server/own-read-marker';
 import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -95,16 +96,10 @@ export const GET = withWgRoute('chat messages GET', async (req, { code }) => {
 	const wg = auth.wg;
 
 	// Only the bootstrap asks for it (before it marks the chat read), so polls skip the query.
-	let readMarkerPayload: { readMarker?: { messageId: string; createdAt: Date } | null } = {};
-	if (url.searchParams.get('includeReadMarker') === '1') {
-		const [marker] = await db
-			.select({ messageId: wgChatMessages.id, createdAt: wgChatMessages.createdAt })
-			.from(wgChatReads)
-			.innerJoin(wgChatMessages, eq(wgChatMessages.id, wgChatReads.lastReadMessageId))
-			.where(and(eq(wgChatReads.wgId, wg.id), eq(wgChatReads.memberId, auth.member.memberId)))
-			.limit(1);
-		readMarkerPayload = { readMarker: marker ?? null };
-	}
+	const readMarkerPayload =
+		url.searchParams.get('includeReadMarker') === '1'
+			? { readMarker: await loadOwnReadMarker(wg.id, auth.member.memberId) }
+			: {};
 
 	const where = beforeId
 		? and(
@@ -140,16 +135,6 @@ export const GET = withWgRoute('chat messages GET', async (req, { code }) => {
 					.where(and(eq(wgChatMessages.wgId, wg.id), inArray(wgChatMessages.id, refreshIds)))
 			: [];
 	const rows = [...pageRows, ...refreshedRows];
-
-	if (rows.length === 0) {
-		return NextResponse.json({
-			...chatMessagesReadPayload(pageRows, refreshedRows),
-			reads,
-			...readMarkerPayload,
-			reactions: [],
-			mentions: [],
-		});
-	}
 
 	const liveMessageIds = rows.filter((row) => !row.deletedAt).map((row) => row.id);
 	if (liveMessageIds.length === 0) {

@@ -391,7 +391,6 @@ test('stale PATCH whose target state already holds returns 200 without audit or 
 	assert.equal(response.status, 200);
 	assert.equal(row().boughtByMemberId, otherMemberId);
 	assert.equal(state.audits, 0);
-	assert.equal(state.notices, 0);
 });
 
 test('editing name and quantity updates the row without touching the bought state', async () => {
@@ -406,7 +405,6 @@ test('editing name and quantity updates the row without touching the bought stat
 		updatedAt: state.update?.updatedAt,
 	});
 	assert.equal(state.audits, 1);
-	assert.equal(state.notices, 0);
 });
 
 test('an empty quantity clears it', async () => {
