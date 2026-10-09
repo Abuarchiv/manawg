@@ -37,9 +37,12 @@ export interface EditableEvent {
 	location: string | null;
 	recurrence: string | null;
 	createdByMemberId?: string | undefined;
+	updatedAt?: string | undefined;
 }
 
-export type UpdateEventPayload = Omit<EditableEvent, 'id'>;
+export type UpdateEventPayload = Omit<EditableEvent, 'id' | 'updatedAt'> & {
+	expectedUpdatedAt?: string | undefined;
+};
 
 interface EventEditModalProps {
 	event: EditableEvent | null;
@@ -200,6 +203,7 @@ export function EventEditModal({
 				allDay,
 				location: location.trim() || null,
 				recurrence: onlyThis ? null : recurrence.trim() || null,
+				...(event.updatedAt ? { expectedUpdatedAt: event.updatedAt } : {}),
 			};
 			if (onlyThis && occurrence && onUpdateOccurrence) {
 				await onUpdateOccurrence(event.id, occurrence.startsAt, payload);

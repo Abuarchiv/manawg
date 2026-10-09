@@ -2,7 +2,7 @@
 
 import { useWg } from '@/components/wg/WgContextProvider';
 import { subscribeOnline } from '@/core/hooks/use-online-status';
-import { REQUEST_TIMEOUT_MS } from '@/core/infra/api-client';
+import { REQUEST_TIMEOUT_MS, noteSessionExpiry } from '@/core/infra/api-client';
 import {
 	type ImageUploadPurpose,
 	isPendingImageToken,
@@ -197,6 +197,7 @@ export function useImageUpload({
 				body: JSON.stringify({ shareCode, purpose, mimeType: file.type, fileSize: file.size }),
 				signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
 			});
+			noteSessionExpiry(sigRes);
 			const signError = sigRes.ok ? '' : await readUploadSignError(sigRes);
 			if (
 				sigRes.status === 503 &&

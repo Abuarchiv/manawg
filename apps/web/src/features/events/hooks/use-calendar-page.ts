@@ -1,7 +1,7 @@
 import { useToast } from '@/components/ui/Toast';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
-import { RATE_LIMITED_MESSAGE, isNetworkError, isRateLimited } from '@/core/http/error-codes';
+import { isNetworkError } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import { MS_PER_DAY } from '@/core/utils/time';
@@ -11,6 +11,7 @@ import type {
 	EditableEvent,
 	UpdateEventPayload,
 } from '@/features/events/components/EventEditModal';
+import { eventSaveError, isEventGone } from '@/features/events/event-save-errors';
 import {
 	type EventInput,
 	type EventOccurrence,
@@ -33,6 +34,7 @@ interface CalendarEvent {
 	location: string | null;
 	recurrence: string | null;
 	createdByMemberId?: string | undefined;
+	updatedAt?: string | undefined;
 }
 
 type CalendarCreateResponse = {
@@ -75,25 +77,6 @@ function buildChoreOccurrences(
 		})
 		.map((chore) => ({ choreId: chore.id, title: chore.title, startsAt: chore.nextDueAt }))
 		.sort((a, b) => a.startsAt.localeCompare(b.startsAt));
-}
-
-/** Offline, 429 und fehlende Rechte brauchen einen konkreten nächsten Schritt statt der pauschalen Meldung. */
-function eventSaveError(base: string, res: { status: number; error: string }): string {
-	if (isNetworkError(res.error, res.status)) {
-		return `${base}: Prüfe deine Verbindung und versuche es erneut.`;
-	}
-	if (isRateLimited(res.error, res.status)) return RATE_LIMITED_MESSAGE;
-	// Die API lässt nur die Person, die den Termin angelegt hat, und WG-Admins ändern oder löschen.
-	if (res.status === 403) {
-		return `${base}: Das dürfen nur WG-Admins und wer den Termin angelegt hat.`;
-	}
-	if (res.status === 404) return `${base}: Der Termin existiert nicht mehr.`;
-	return `${base}.`;
-}
-
-/** Der Termin wurde inzwischen von jemand anderem gelöscht; ihn lokal wiederherzustellen wäre falsch. */
-function isEventGone(res: { status: number; error: string }): boolean {
-	return res.status === 404 && res.error === 'event_not_found';
 }
 
 /** Termine und Putzplan-Fälligkeiten laden, optimistisch anlegen/ändern/löschen. */
@@ -300,6 +283,7 @@ export function useCalendarPage(month: Date) {
 				updateEvents((current) => current.map((event) => (event.id === id ? previous : event)));
 			}
 			const message = eventSaveError('Termin konnte nicht aktualisiert werden', res);
+			if (res.error === 'event_changed') void load(false);
 			toast.error(message);
 			throw new Error(message);
 		}

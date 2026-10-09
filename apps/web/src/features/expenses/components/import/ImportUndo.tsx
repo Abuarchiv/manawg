@@ -21,7 +21,7 @@ function undoErrorMessage(error: string): string {
 }
 
 /** Takes back everything an import created. Needs a second tap, because it removes expenses. */
-export function ImportUndo({ importId }: { importId: string }) {
+export function ImportUndo({ importId, label }: { importId: string; label?: string }) {
 	const { wg, identity } = useWg();
 	const [armed, setArmed] = useState(false);
 	const [pending, setPending] = useState(false);
@@ -67,6 +67,7 @@ export function ImportUndo({ importId }: { importId: string }) {
 				variant={armed ? 'destructive' : 'outline'}
 				className="min-h-11"
 				disabled={pending}
+				{...(label ? { 'aria-label': armed ? `${label}: wirklich entfernen` : label } : {})}
 				onClick={() => (armed ? void undo() : setArmed(true))}
 			>
 				{pending && <Spinner aria-hidden />}

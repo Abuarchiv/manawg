@@ -37,6 +37,23 @@ export const SESSION_EXPIRED_EVENT = 'manawg:session-expired';
 const MEMBERSHIP_LOST_ERRORS = new Set(['not_a_member', 'member_deactivated', 'wg_not_found']);
 
 /**
+ * For the few WG calls that use plain `fetch` (uploads, downloads, deleting the WG): lets a
+ * 401 `auth_required` raise the same session-expired banner as `apiFetch` does.
+ */
+export function noteSessionExpiry(response: Response): void {
+	if (response.status !== 401 || typeof window === 'undefined') return;
+	void response
+		.clone()
+		.json()
+		.then((body: { error?: unknown; code?: unknown }) => {
+			if (body.error === 'auth_required' || body.code === 'auth_required') {
+				window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
+			}
+		})
+		.catch(() => undefined);
+}
+
+/**
  * Increases after every settled non-GET request. A cached read that started
  * before the latest mutation may not contain its effect (useCachedFetch).
  */

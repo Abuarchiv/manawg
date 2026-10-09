@@ -12,6 +12,7 @@ import {
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { SETTINGS_TABS, getSettingsTabFromHash } from '@/core/guards/settings-tabs';
 import type { SettingsTab } from '@/core/guards/settings-tabs';
+import { noteSessionExpiry } from '@/core/infra/api-client';
 import { memberContextHeader } from '@/shared/lib/identity';
 import dynamic from 'next/dynamic';
 import { useEffect, useRef, useState } from 'react';
@@ -84,6 +85,7 @@ export default function EinstellungenPage() {
 					headers: memberContextHeader(identity.memberId),
 				});
 				if (cancelled) return;
+				noteSessionExpiry(response);
 				if (!response.ok) {
 					setExportSummaryError(
 						getWgLoadErrorMessage(

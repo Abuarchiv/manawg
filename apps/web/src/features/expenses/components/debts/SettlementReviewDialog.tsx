@@ -91,7 +91,7 @@ export function SettlementReviewDialog({
 						})}
 					</ItemGroup>
 				)}
-				{preview && preview.remainingCents > 0 && (
+				{preview && preview.netCents > 0 && (
 					<Alert>
 						<AlertDescription>
 							{formatEuroCents(preview.remainingCents, debt.currency)} des verrechneten Saldos sind

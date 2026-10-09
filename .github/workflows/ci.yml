@@ -443,7 +443,7 @@ jobs:
               'Set the SUPABASE_PREVIEW_PROJECT_HOST repository variable to the Preview Supabase project hostname (e.g. project.supabase.co).',
             );
           }
-          if (projectHost.includes('bwsvsvfgbrsonepffqff')) {
+          if (projectHost.toLowerCase().includes('bwsvsvfgbrsonepffqff')) {
             throw new Error('SUPABASE_PREVIEW_PROJECT_HOST points at the Production project.');
           }
           const url = new URL(process.env.E2E_SUPABASE_URL);

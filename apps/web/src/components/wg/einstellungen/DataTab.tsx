@@ -12,6 +12,7 @@ import {
 	exportErrorMessage,
 	readResponseErrorCode,
 } from '@/components/wg/einstellungen/settings-errors';
+import { noteSessionExpiry } from '@/core/infra/api-client';
 import { cn } from '@/shared/lib/cn';
 import type { StoredIdentity } from '@/shared/lib/identity';
 import { memberContextHeader } from '@/shared/lib/identity';
@@ -57,6 +58,7 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 					? `/api/wg/${encodedShareCode}/export?format=csv&section=${encodeURIComponent(csvSection)}`
 					: `/api/wg/${encodedShareCode}/export`;
 			const res = await fetch(url, { headers: memberContextHeader(identity.memberId) });
+			noteSessionExpiry(res);
 			if (!res.ok) {
 				setExportError(exportErrorMessage(res.status, await readResponseErrorCode(res)));
 				return;
