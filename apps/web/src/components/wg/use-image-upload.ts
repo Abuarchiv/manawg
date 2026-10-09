@@ -60,6 +60,10 @@ export function useImageUpload({
 	const [notice, setNotice] = useState<string | null>(null);
 	const [featureDisabled, setFeatureDisabled] = useState(false);
 	const [localPreview, setLocalPreview] = useState<string | null>(null);
+	// The latest callback without making it an effect dependency: a new function identity on
+	// every parent render must not restart a pending upload.
+	const onChangeRef = useRef(onChange);
+	onChangeRef.current = onChange;
 	const uploadPendingRef = useRef(false);
 	const syncPendingRef = useRef<string | null>(null);
 
@@ -79,7 +83,7 @@ export function useImageUpload({
 					setLocalPreview(null);
 					setNotice(null);
 					setError(MISSING_PENDING_IMAGE_MESSAGE);
-					onChange(null);
+					onChangeRef.current(null);
 					return;
 				}
 				objectUrl = URL.createObjectURL(record.file);
@@ -89,7 +93,7 @@ export function useImageUpload({
 					setLocalPreview(null);
 					setNotice(null);
 					setError(MISSING_PENDING_IMAGE_MESSAGE);
-					onChange(null);
+					onChangeRef.current(null);
 				}
 			}
 		}
@@ -99,7 +103,7 @@ export function useImageUpload({
 			cancelled = true;
 			if (objectUrl) URL.revokeObjectURL(objectUrl);
 		};
-	}, [identity.memberId, onChange, value]);
+	}, [identity.memberId, value]);
 
 	useEffect(() => {
 		if (!isPendingImageToken(value)) return;
@@ -113,7 +117,7 @@ export function useImageUpload({
 			setNotice(null);
 			try {
 				const publicUrl = await uploadPendingImageToken(value, identity.memberId);
-				onChange(publicUrl);
+				onChangeRef.current(publicUrl);
 				// Chat cannot send while the token is pending, so no queued action will ever
 				// replay it; the stored copy (up to 8 MB) would stay on the device otherwise.
 				if (purpose === 'chat') void removePendingImage(value, identity.memberId).catch(() => {});
@@ -121,7 +125,7 @@ export function useImageUpload({
 				if (err instanceof Error && err.message === 'pending-image-missing') {
 					setNotice(null);
 					setError(MISSING_PENDING_IMAGE_MESSAGE);
-					onChange(null);
+					onChangeRef.current(null);
 					return;
 				}
 				const actionableMessage = pendingUploadErrorMessage(err);
@@ -139,7 +143,7 @@ export function useImageUpload({
 
 		void syncPending();
 		return subscribeOnline(() => void syncPending());
-	}, [identity.memberId, onChange, purpose, value]);
+	}, [identity.memberId, purpose, value]);
 
 	async function handleFile(file: File): Promise<void> {
 		if (disabled) return;

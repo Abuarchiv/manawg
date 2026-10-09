@@ -192,3 +192,17 @@ test('a settling payment after many unrelated payments is still found', async ()
 	];
 	assert.equal(await isSettled(), true);
 });
+
+test('a split settled only after a payment is still open at that payment', async () => {
+	// An older B→A split of 1 was settled by hand at t3; at the t1 payment of the import it was open.
+	const older = expense('A', 'B', 100);
+	older.splits = older.splits.map((split) => ({
+		...split,
+		settledAt: '2026-10-06T10:00:00.000Z' as unknown as null,
+	}));
+	state.importRows = [{ paidBy: 'A', debtor: 'B', amount: 100 }];
+	state.otherExpenses = [older];
+	state.payments = [{ fromMemberId: 'B', toMemberId: 'A', amountCents: 100, currency: 'EUR' }];
+	// At t1: open older 1 + import 1, payment 1 leaves 1; without the import 0 left and no new debt.
+	assert.equal(await isSettled(), false);
+});

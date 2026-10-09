@@ -17,7 +17,7 @@ The system SHALL let either member of a netted debt record a cash payment for th
 #### Scenario: Stale amount
 
 - **WHEN** another expense changed the net debt after the dialog showed it
-- **THEN** the server answers `balance_changed` and records nothing
+- **THEN** the server answers `settlement_changed` and records nothing
 
 ### Requirement: Cash payments are attributed and idempotent
 

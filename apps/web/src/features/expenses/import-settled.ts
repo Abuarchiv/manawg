@@ -2,7 +2,7 @@ import { type db, expensePayments, expenseSplits, expenses } from '@/core/db';
 import type { DbTransaction } from '@/core/db/transaction';
 import { normalizeCurrency } from '@/core/utils/money';
 import { and, eq, gte, inArray } from 'drizzle-orm';
-import { type PairBalance, computeBalances } from './debts';
+import { type DebtExpenseInput, type PairBalance, computeBalances } from './debts';
 import { type LedgerEntry, loadLedger } from './open-expenses';
 
 export interface ImportToCheck {
@@ -102,11 +102,13 @@ export async function findSettledImportIds(
 			ledger ??= await loadLedger(wgId, executor);
 			const booked = ledger.filter((entry) => entry.createdAt <= at);
 			const current = computeBalances(
-				booked.map((entry) => entry.debt),
+				booked.map((entry) => settledAsOf(entry.debt, at)),
 				upTo,
 			);
 			const without = computeBalances(
-				booked.filter((entry) => entry.importId !== item.id).map((entry) => entry.debt),
+				booked
+					.filter((entry) => entry.importId !== item.id)
+					.map((entry) => settledAsOf(entry.debt, at)),
 				upTo,
 			);
 			if (createsDebts(current, without)) {
@@ -116,6 +118,18 @@ export async function findSettledImportIds(
 		}
 	}
 	return settled;
+}
+
+/** The expense with only the splits that were already settled at `at` counted as settled. */
+function settledAsOf(debt: DebtExpenseInput, at: Date): DebtExpenseInput {
+	return {
+		...debt,
+		splits: debt.splits.map((split) => ({
+			...split,
+			settledAt:
+				split.settledAt !== null && new Date(split.settledAt) <= at ? split.settledAt : null,
+		})),
+	};
 }
 
 /** True when `after` holds a debt that `before` does not, or a larger one. */

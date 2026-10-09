@@ -33,6 +33,8 @@ export function ImportHistory() {
 	const shareCode = wg.shareCode;
 	const memberId = identity.memberId;
 
+	// The list depends on the role (an admin sees every import), so a role change loads it again.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: isAdmin only triggers the reload
 	useEffect(() => {
 		let cancelled = false;
 		void apiFetch<{ imports: PastImport[] }>(`/api/wg/${encodeURIComponent(shareCode)}/imports`, {
@@ -43,7 +45,7 @@ export function ImportHistory() {
 		return () => {
 			cancelled = true;
 		};
-	}, [shareCode, memberId]);
+	}, [shareCode, memberId, isAdmin]);
 
 	if (imports.length === 0) return null;
 	return (

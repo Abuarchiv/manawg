@@ -284,10 +284,11 @@ export const PUT = withWgRoute<{ id: string }>('members/[id] PUT', async (req, {
 		if (target.deactivatedAt) {
 			return { ok: false as const, response: conflict('member_deactivated', 'member_deactivated') };
 		}
+		// Already renamed (a retry after a lost response, or the same name saved twice): success.
+		if (target.name === name) return { ok: true as const, before: target.name, name };
 		if (expectedName !== undefined && target.name !== expectedName) {
 			return { ok: false as const, response: conflict('name_changed', 'name_changed') };
 		}
-		if (target.name === name) return { ok: true as const, before: target.name, name };
 		if (!(await releaseMemberName(tx, wgId, name, target.id))) {
 			return { ok: false as const, response: conflict('name_taken', 'name_taken') };
 		}
