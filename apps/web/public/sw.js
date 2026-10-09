@@ -111,12 +111,10 @@ const fetchWithTimeout = async (request) => {
 	try {
 		const response = await fetch(request, { signal: controller.signal });
 		if (response.type === 'opaqueredirect' || !response.body) return response;
-		const body = await response.arrayBuffer();
-		return new Response(body, {
-			status: response.status,
-			statusText: response.statusText,
-			headers: response.headers,
-		});
+		// A clone is read to the end under the timer; the response itself, with its redirect and
+		// URL, then hands the already received body to the browser.
+		await response.clone().arrayBuffer();
+		return response;
 	} finally {
 		clearTimeout(timer);
 	}

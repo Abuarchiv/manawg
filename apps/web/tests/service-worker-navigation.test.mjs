@@ -181,11 +181,12 @@ test('a page whose body stalls after the headers falls back to the offline page'
 				ok: true,
 				type: 'basic',
 				body: {},
-				clone: () => undefined,
-				arrayBuffer: () =>
-					new Promise((_resolve, reject) => {
-						signal.addEventListener('abort', () => reject(new Error('aborted')));
-					}),
+				clone: () => ({
+					arrayBuffer: () =>
+						new Promise((_resolve, reject) => {
+							signal.addEventListener('abort', () => reject(new Error('aborted')));
+						}),
+				}),
 			};
 		},
 		cached: { '/offline': 'offline-page' },

@@ -30,11 +30,15 @@ export const expenseDescriptionSchema = z.string().trim().min(1).max(DESCRIPTION
 const OCCURRED_AT_MAX_FUTURE_MS = 24 * 60 * 60 * 1000;
 const OCCURRED_AT_MAX_PAST_YEARS = 10;
 
-/** Ten calendar years back, so leap days do not shorten the allowed range. */
+/**
+ * Ten calendar years back, from the start of that UTC day minus one more day: the date field
+ * sends a day as Berlin noon, so the whole anniversary date stays valid at any time of day.
+ */
 function oldestAllowedOccurredAt(now: number): number {
 	const boundary = new Date(now);
 	boundary.setUTCFullYear(boundary.getUTCFullYear() - OCCURRED_AT_MAX_PAST_YEARS);
-	return boundary.getTime();
+	boundary.setUTCHours(0, 0, 0, 0);
+	return boundary.getTime() - 24 * 60 * 60 * 1000;
 }
 
 /** When the expense happened: not later than tomorrow and not older than ten years. */

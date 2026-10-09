@@ -11,7 +11,7 @@
 ## Decisions
 
 1. Reuse `expense_payments` with `provider = 'manual'`, `status = 'completed'`, `completed_at = now()`, `payee_merchant_id = 'manual'`, and a synthetic unique `provider_order_id` (`manual:<uuid>`). The provider check constraint changes to `in ('paypal', 'manual')`. This keeps every reader of completed payments correct without a second ledger.
-2. One route, `POST /api/wg/[code]/payments/manual`, with `{ fromMemberId, toMemberId, currency, amountCents }`. The server recomputes the net debt inside `withExpensePaymentLock`, rejects when `amountCents` differs from the current net (`409 balance_changed`), when a PayPal payment is capturing (`409 paypal_payment_pending`), or when the caller is neither party (`403 not_party_to_debt`). Both members must be active in the WG.
+2. One route, `POST /api/wg/[code]/payments/manual`, with `{ fromMemberId, toMemberId, currency, expectedNetCents }`, where `expectedNetCents` is the net debt the person reviewed. The server recomputes the net debt inside `withExpensePaymentLock`, rejects when `expectedNetCents` differs from the current net (`409 settlement_changed`), when a PayPal payment is capturing (`409 paypal_payment_pending`), or when the caller is neither party (`403 not_party_to_debt`). Both members must be active in the WG.
 3. The amount is always the full net debt of that pair at the time of the review, so a cash payment cannot leave a hidden remainder. Partial cash payments are out of scope.
 4. An idempotency key makes a double tap safe; the stored response is replayed.
 5. The dialog offers cash whenever the netted debt exists, and explains that nothing is transferred by ManaWG. After success it reloads expenses and payments.
