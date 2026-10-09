@@ -1,7 +1,8 @@
-import { expenseImports, expensePayments, expenseSplits, expenses } from '@/core/db';
+import { expenseImports, expenses } from '@/core/db';
 import { TransactionAbort } from '@/core/db/transaction';
-import { and, eq, gte, inArray, isNotNull, ne } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { hasCapturingExpensePayment, withExpensePaymentLock } from './expense-payments';
+import { findSettledImportIds } from './import-settled';
 
 export type UndoImportResult =
 	| { ok: true; removed: number; source: string; importedByMemberId: string | null }
@@ -38,20 +39,10 @@ export async function undoImport(
 				throw new TransactionAbort('paypal_payment_pending');
 			}
 
-			// A payment completed since the import may have covered its expenses through a netted
-			// balance; which of them is not recoverable, so any such payment blocks the undo.
-			const [laterPayment] = await tx
-				.select({ id: expensePayments.id })
-				.from(expensePayments)
-				.where(
-					and(
-						eq(expensePayments.wgId, wgId),
-						eq(expensePayments.status, 'completed'),
-						gte(expensePayments.completedAt, imp.startedAt),
-					),
-				)
-				.limit(1);
-			if (laterPayment) return { ok: false as const, error: 'import_settled' as const };
+			const settled = await findSettledImportIds(tx, wgId, [
+				{ id: importId, startedAt: imp.startedAt },
+			]);
+			if (settled.has(importId)) return { ok: false as const, error: 'import_settled' as const };
 
 			const rows = await tx
 				.select({ id: expenses.id })
@@ -59,20 +50,6 @@ export async function undoImport(
 				.where(and(eq(expenses.wgId, wgId), eq(expenses.importId, importId)));
 			const ids = rows.map((row) => row.id);
 			if (ids.length > 0) {
-				// A payer's own share is settled from the start; anyone else's means money moved.
-				const [paid] = await tx
-					.select({ id: expenseSplits.id })
-					.from(expenseSplits)
-					.innerJoin(expenses, eq(expenseSplits.expenseId, expenses.id))
-					.where(
-						and(
-							inArray(expenseSplits.expenseId, ids),
-							isNotNull(expenseSplits.settledAt),
-							ne(expenseSplits.debtorMemberId, expenses.paidByMemberId),
-						),
-					)
-					.limit(1);
-				if (paid) return { ok: false as const, error: 'import_settled' as const };
 				await tx.delete(expenses).where(inArray(expenses.id, ids));
 			}
 			await tx.delete(expenseImports).where(eq(expenseImports.id, importId));

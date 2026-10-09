@@ -116,3 +116,28 @@ test('direct and net summaries ignore payments from departed members', () => {
 	assert.deepEqual(computeDirectDebts([], members, historicalPayment), []);
 	assert.deepEqual(canonicalDebts([], historicalPayment), []);
 });
+
+test('a cash payment netted through a third member clears the chain instead of a reverse debt', () => {
+	const expense = (paidBy, debtor, cents) => ({
+		paidByMemberId: paidBy,
+		currency: 'EUR',
+		occurredAt: '2026-10-01T10:00:00.000Z',
+		splits: [{ debtorMemberId: debtor, amountCents: cents, settledAt: null }],
+	});
+	const payments = [{ fromMemberId: 'A', toMemberId: 'C', amountCents: 1000, currency: 'EUR' }];
+	assert.deepEqual(
+		computeBalances([expense('B', 'A', 1000), expense('C', 'B', 1000)], payments),
+		[],
+	);
+	const partial = computeBalances(
+		[expense('B', 'A', 1000), expense('C', 'B', 1000)],
+		[{ ...payments[0], amountCents: 400 }],
+	);
+	assert.deepEqual(
+		partial.map((pair) => [pair.debtorId, pair.creditorId, pair.amountCents]).sort(),
+		[
+			['A', 'B', 600],
+			['B', 'C', 600],
+		],
+	);
+});

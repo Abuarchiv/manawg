@@ -68,7 +68,14 @@ export function useChoreEdit(ctx: ChorePageContext) {
 		setError(null);
 		const result = await apiFetch<{ chore: Chore }>(
 			`/api/wg/${encodedShareCode}/chores/${encodeURIComponent(editing.id)}`,
-			{ method: 'PATCH', memberId: identity.memberId, body: JSON.stringify(patch) },
+			{
+				method: 'PATCH',
+				memberId: identity.memberId,
+				body: JSON.stringify({
+					...patch,
+					...(editing.updatedAt ? { expectedUpdatedAt: editing.updatedAt } : {}),
+				}),
+			},
 		);
 		setPending(false);
 		if (!result.ok) {

@@ -26,6 +26,8 @@ const patchSchema = z
 		intervalDays: z.number().int().min(INTERVAL_MIN).optional(),
 		// z.enum requires a mutable tuple; spread the readonly schema constant.
 		recurrenceType: z.enum([...CHORE_RECURRENCE_TYPES]).optional(),
+		// The version the editor was opened on; a newer one means someone saved meanwhile.
+		expectedUpdatedAt: z.string().datetime({ offset: true }).optional(),
 	})
 	.superRefine((data, ctx) => {
 		// Only validate the interval cap when intervalDays is being changed;
@@ -71,6 +73,7 @@ export const PATCH = withWgRoute<{ id: string }>('chores PATCH', async (req, { c
 			nextDueAt: 'due_date_invalid',
 			intervalDays: 'interval_invalid',
 			recurrenceType: 'recurrence_type_invalid',
+			expectedUpdatedAt: 'expected_state_invalid',
 		},
 	});
 	if (!parsed.ok) return parsed.response;
@@ -136,6 +139,9 @@ export const PATCH = withWgRoute<{ id: string }>('chores PATCH', async (req, { c
 	};
 	if (parsed.data.title !== undefined) update.title = parsed.data.title;
 	if (recurrencePatch) Object.assign(update, recurrencePatch.update);
+	const expectedVersion = parsed.data.expectedUpdatedAt
+		? sql`date_trunc('milliseconds', ${chores.updatedAt}) = ${new Date(parsed.data.expectedUpdatedAt)}`
+		: undefined;
 	if (parsed.data.assignedMemberId !== undefined) {
 		const nextAssignee = parsed.data.assignedMemberId;
 		update.assignedMemberId = nextAssignee;
@@ -168,7 +174,7 @@ export const PATCH = withWgRoute<{ id: string }>('chores PATCH', async (req, { c
 		const [row] = await tx
 			.update(chores)
 			.set(update)
-			.where(and(eq(chores.id, id), eq(chores.wgId, wgId), currentMatch))
+			.where(and(eq(chores.id, id), eq(chores.wgId, wgId), currentMatch, expectedVersion))
 			.returning();
 		// A swap request is answered once someone else holds the chore, however that happened.
 		if (row && previousAssignee !== undefined && previousAssignee !== row.assignedMemberId) {
@@ -194,7 +200,7 @@ export const PATCH = withWgRoute<{ id: string }>('chores PATCH', async (req, { c
 	});
 
 	if (!updated) {
-		if (currentChore) {
+		if (currentChore || expectedVersion) {
 			const stillExists = await db
 				.select({ id: chores.id })
 				.from(chores)
