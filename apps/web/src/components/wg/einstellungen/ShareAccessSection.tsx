@@ -101,9 +101,10 @@ export function ShareAccessSection({
 			if (!data) return;
 			setRotateConfirm(false);
 			setJoiningEnabled(data.wg.joiningEnabled);
-			if (!data.wg.joiningEnabled) {
-				toast.info('Neuer WG-Code ist aktiv. Beitritte sind weiterhin gesperrt.');
-			}
+			// Rotating the code keeps the joining switch as it was; say which way it stands.
+			toast.success(
+				`WG-Code erneuert. Neue Beitritte sind ${data.wg.joiningEnabled ? 'erlaubt' : 'gesperrt'}.`,
+			);
 			// Old code is dead after rotation; drop it so the WG list doesn't show a stale duplicate.
 			forgetWg(wg.shareCode);
 			// Go to #zugang; otherwise the user lands in the profile tab again after renewing.
