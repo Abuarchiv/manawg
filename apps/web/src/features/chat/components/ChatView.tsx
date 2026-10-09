@@ -11,7 +11,7 @@ import { useWg } from '@/components/wg/WgContextProvider';
 import { useStableCallback } from '@/core/hooks/useStableCallback';
 import { haptic } from '@/shared/lib/haptics';
 import { ChevronDown } from 'lucide-react';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { previewBody } from '../chat-pure';
 import { type ChatMessageDto, type ChatReactionRow, useChatRoom } from '../hooks/use-chat-room';
 import { useChatViewportFit } from '../hooks/use-chat-viewport-fit';
@@ -48,6 +48,46 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 		() => members.map((m) => ({ id: m.id, name: m.name, color: m.color ?? null })),
 		[members],
 	);
+
+	// A mention push opens `/chat#message-<id>`: bring that message into view once it is rendered.
+	const jumpedToHashRef = useRef(false);
+	const messageCount = messages.length;
+	const { hasMoreOlder, loadingOlder, olderError } = chat;
+	const loadOlderForHash = useStableCallback(() => void chat.loadOlder());
+	// A mention opened while the chat is already showing changes only the fragment: run the jump again.
+	const [hashVersion, setHashVersion] = useState(0);
+	useEffect(() => {
+		const onHashChange = () => {
+			jumpedToHashRef.current = false;
+			setHashVersion((version) => version + 1);
+		};
+		window.addEventListener('hashchange', onHashChange);
+		return () => window.removeEventListener('hashchange', onHashChange);
+	}, []);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: hashVersion restarts the jump when the fragment changes
+	useEffect(() => {
+		if (jumpedToHashRef.current || messageCount === 0) return;
+		const target = /^#(message-[\w-]+)$/.exec(window.location.hash)?.[1];
+		if (!target) {
+			jumpedToHashRef.current = true;
+			return;
+		}
+		const timer = window.setTimeout(() => {
+			const element = document.getElementById(target);
+			if (!element) {
+				// An older message is not in the first page: page backwards until it appears or the
+				// history is exhausted.
+				if (hasMoreOlder && !loadingOlder && !olderError) loadOlderForHash();
+				else if (!hasMoreOlder) jumpedToHashRef.current = true;
+				return;
+			}
+			jumpedToHashRef.current = true;
+			element.scrollIntoView({ block: 'center' });
+			element.classList.add('ring-2', 'ring-inset', 'ring-ring');
+			window.setTimeout(() => element.classList.remove('ring-2', 'ring-inset', 'ring-ring'), 2500);
+		}, 120);
+		return () => window.clearTimeout(timer);
+	}, [messageCount, hasMoreOlder, loadingOlder, olderError, loadOlderForHash, hashVersion]);
 
 	const replyTo = replyToId ? (messages.find((m) => m.id === replyToId) ?? null) : null;
 	const replyToSender = replyTo?.senderMemberId
