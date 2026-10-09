@@ -90,3 +90,16 @@ test('chore.due copy follows the Berlin day distance to nextDueAt', (t) => {
 	assert.equal(body('2026-10-03T08:00:00.000Z'), 'Bad putzen ist am 03.10. in WG fällig.');
 	assert.equal(body(undefined), 'Bad putzen ist heute in WG fällig.');
 });
+
+test('chore.due copy names the missing assignee for unassigned chores', (t) => {
+	t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-09-29T09:00:00.000Z') });
+	assert.equal(
+		formatNotificationMessage('chore.due', {
+			wgName: 'WG',
+			title: 'Bad putzen',
+			nextDueAt: '2026-09-29T08:00:00.000Z',
+			unassigned: true,
+		}).body,
+		'Bad putzen ist heute in WG fällig. Niemand ist zuständig.',
+	);
+});

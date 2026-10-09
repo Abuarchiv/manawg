@@ -35,9 +35,11 @@ const state = {
 	inFlight: 0,
 	maxInFlight: 0,
 	dispatched: [] as string[],
-	payloads: [] as { choreId: string; nextDueAt?: string }[],
+	payloads: [] as { choreId: string; nextDueAt?: string; unassigned?: boolean }[],
+	targets: [] as (string[] | undefined)[],
 	stamped: null as unknown[] | null,
 	rows: [] as Record<string, unknown>[],
+	unassignedRows: [] as Record<string, unknown>[],
 };
 
 const op =
@@ -46,24 +48,28 @@ const op =
 const db = {
 	select() {
 		let table: unknown;
+		let joinsMembers = false;
 		const query = {
 			from(selected: unknown) {
 				table = selected;
 				return query;
 			},
-			innerJoin() {
+			innerJoin(joined: unknown) {
+				if (joined === wgMembers) joinsMembers = true;
 				return query;
 			},
 			where(predicate: Op) {
 				if (table === choreCompletions) return Promise.resolve([]);
-				state.candidateWhere = predicate;
+				// The unassigned-chore query has no member join and finds nothing here.
+				if (joinsMembers) state.candidateWhere = predicate;
 				return query;
 			},
 			orderBy(...order: Op[]) {
-				state.orderBy = order;
+				if (joinsMembers) state.orderBy = order;
 				return query;
 			},
 			limit(value: number) {
+				if (!joinsMembers) return Promise.resolve(state.unassignedRows.slice(0, value));
 				state.limit = value;
 				return Promise.resolve(state.rows.slice(0, value));
 			},
@@ -91,13 +97,17 @@ mock.module('@/core/infra/observability', {
 });
 mock.module('@/core/notifications/notification-dispatch', {
 	namedExports: {
-		dispatchNotification: async (notification: { payload: { choreId: string } }) => {
+		dispatchNotification: async (notification: {
+			payload: { choreId: string };
+			targetMemberIds?: string[];
+		}) => {
 			state.inFlight += 1;
 			state.maxInFlight = Math.max(state.maxInFlight, state.inFlight);
 			await new Promise((resolve) => setImmediate(resolve));
 			state.inFlight -= 1;
 			state.dispatched.push(notification.payload.choreId);
 			state.payloads.push(notification.payload);
+			state.targets.push(notification.targetMemberIds);
 			return { sent: 1, failures: [] };
 		},
 	},
@@ -132,7 +142,23 @@ const { GET } = await import('./route');
 // The route remembers claimed chore ids per process, so every harness uses fresh ids.
 let harnessRuns = 0;
 
-function harness({ choreCount }: { choreCount: number }) {
+function chore(index: number) {
+	return {
+		id: `chore-${harnessRuns}-${index}`,
+		title: `Chore ${index}`,
+		nextDueAt: new Date('2026-09-23T08:00:00.000Z'),
+		assignedMemberId: `member-${index}`,
+		lastReminderAt: null,
+		wgId: 'wg-1',
+		wgName: 'WG',
+		shareCode: 'MTE8PZAT',
+	};
+}
+
+function harness({
+	choreCount,
+	unassignedCount = 0,
+}: { choreCount: number; unassignedCount?: number }) {
 	harnessRuns += 1;
 	Object.assign(state, {
 		candidateWhere: null,
@@ -142,16 +168,14 @@ function harness({ choreCount }: { choreCount: number }) {
 		maxInFlight: 0,
 		dispatched: [],
 		payloads: [],
+		targets: [],
 		stamped: null,
-		rows: Array.from({ length: choreCount }, (_, index) => ({
-			id: `chore-${harnessRuns}-${index}`,
-			title: `Chore ${index}`,
-			nextDueAt: new Date('2026-09-23T08:00:00.000Z'),
-			assignedMemberId: `member-${index}`,
-			lastReminderAt: null,
-			wgId: 'wg-1',
-			wgName: 'WG',
-			shareCode: 'MTE8PZAT',
+		rows: Array.from({ length: choreCount }, (_, index) => chore(index)),
+		unassignedRows: Array.from({ length: unassignedCount }, (_, index) => ({
+			...chore(index),
+			id: `orphan-${harnessRuns}-${index}`,
+			title: `Unassigned ${index}`,
+			assignedMemberId: null,
 		})),
 	});
 	return {
@@ -256,4 +280,20 @@ test('a large reminder backlog is dispatched in batches of ten', async (t) => {
 	assert.equal(state.dispatched.length, 45);
 	assert.equal(state.stamped?.length, 45);
 	assert.equal(new Set(state.stamped).size, 45);
+});
+
+test('a chore nobody is assigned to is announced to the whole WG', async (t) => {
+	t.mock.timers.enable({ apis: ['Date'], now });
+	const { state, get } = harness({ choreCount: 1, unassignedCount: 1 });
+	await withCronSecret(async () => {
+		const response = await get();
+		assert.deepEqual(await response.json(), { ok: true, sent: 2 });
+	});
+
+	const orphan = state.payloads.findIndex((payload) => payload.choreId.startsWith('orphan-'));
+	assert.equal(state.payloads[orphan]?.unassigned, true);
+	assert.equal(state.targets[orphan], undefined, 'no target list means every eligible member');
+	const assigned = state.payloads.findIndex((payload) => payload.choreId.startsWith('chore-'));
+	assert.deepEqual(state.targets[assigned], ['member-0']);
+	assert.equal(state.payloads[assigned]?.unassigned, undefined);
 });
