@@ -14,7 +14,7 @@ export function extractInviteCode(text: string): string {
 	return isValidShareCode(code) ? code : '';
 }
 
-export const RATE_LIMITED_MESSAGE =
+const RATE_LIMITED_MESSAGE =
 	'Zu viele Versuche. Bitte warte einige Minuten und versuche es dann erneut.';
 export const DELETION_PENDING_MESSAGE =
 	'Dein Konto wird gerade gelöscht. Neue WGs oder Beitritte sind nicht mehr möglich.';

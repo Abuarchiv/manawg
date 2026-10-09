@@ -12,7 +12,7 @@ export function detectMention(value: string, cursor: number): MentionTrigger | n
 	return { query: match[1] ?? '', startIndex: start };
 }
 
-export function escapeRegExp(value: string): string {
+function escapeRegExp(value: string): string {
 	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 

@@ -18,7 +18,7 @@ interface ChatMemberLike {
 }
 
 // Text helpers (mentions, links) live in ./chat-text; re-exported for existing callers.
-export { detectMention, type MentionTrigger } from './chat-text';
+export { detectMention } from './chat-text';
 
 /** The viewer's last read message as the server reports it when the chat opens. */
 export interface OwnReadMarker {
