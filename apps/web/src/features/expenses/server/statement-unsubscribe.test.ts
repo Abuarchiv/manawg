@@ -21,3 +21,9 @@ test('tampered, foreign or malformed tokens are rejected', () => {
 	assert.equal(verifyUnsubscribeToken('not-a-token', SECRET), null);
 	assert.equal(verifyUnsubscribeToken(`${token}.extra`, SECRET), null);
 });
+
+test('a token signed with a previous secret verifies while that secret is still accepted', () => {
+	const token = signUnsubscribeToken(MEMBER, 'old-secret');
+	assert.equal(verifyUnsubscribeToken(token, ['new-secret', 'old-secret']), MEMBER);
+	assert.equal(verifyUnsubscribeToken(token, ['new-secret']), null);
+});

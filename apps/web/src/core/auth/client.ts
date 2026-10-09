@@ -31,7 +31,9 @@ export function isPhoneAuthUnavailable(error: unknown): boolean {
 export function createSupabaseBrowserClient() {
 	const { url, publishableKey } = getSupabaseEnv();
 	return createBrowserClient(url, publishableKey, {
-		cookieOptions: authCookieOptions(window.location.protocol === 'https:'),
+		cookieOptions: authCookieOptions(
+			typeof window !== 'undefined' && window.location.protocol === 'https:',
+		),
 	});
 }
 

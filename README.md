@@ -50,7 +50,7 @@ Minimum variables in `apps/web/.env.local` (`checkEnv` in `src/core/infra/env.ts
 | --- | --- |
 | `POSTGRES_URL` (or `DATABASE_URL`) | Runtime database. Remote URLs need an explicit port; TLS is enforced (`src/core/db/connection.ts`). |
 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase Auth. Without them every `/wg/*` page redirects to `/neu`. |
-| `MEMBER_SESSION_SECRET` | Signs calendar feed URLs and verifies legacy-profile recovery proofs (`openssl rand -hex 32`). Not used for normal API access. |
+| `MEMBER_SESSION_SECRET` | Signs calendar feed URLs and verifies legacy-profile recovery proofs (`openssl rand -hex 32`). Not used for normal API access. Rotate by moving the old value to `MEMBER_SESSION_SECRET_PREVIOUS`, so existing feeds keep working. |
 
 Optional features degrade when unset and are reported as `[env] DEGRADED ...`: Upstash rate
 limiting (`UPSTASH_REDIS_REST_*`, fails open outside production), Web Push (`VAPID_*`,
