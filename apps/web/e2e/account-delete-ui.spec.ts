@@ -11,6 +11,17 @@ async function openConfirmation(page: import('@playwright/test').Page) {
 	await page.getByLabel('Tippe LÖSCHEN').fill('LÖSCHEN');
 }
 
+/**
+ * The pending notice as the page announces it. Next streams the entry page's Suspense content
+ * into a hidden segment before React reveals it, so for a moment the text exists twice in the
+ * DOM; a role query only sees the rendered, accessible copy.
+ */
+function pendingNotice(page: import('@playwright/test').Page) {
+	return page
+		.getByRole('status')
+		.filter({ hasText: /ManaWG hat deine Zugänge zu allen WGs entfernt/ });
+}
+
 function fulfillDeletion(page: import('@playwright/test').Page, status: number) {
 	return page.route('**/api/account', (route) =>
 		route.request().method() === 'DELETE'
@@ -38,7 +49,7 @@ test('HTTP 202 signs out and announces that Auth deletion is pending', async ({ 
 	await openConfirmation(page);
 	await page.getByRole('button', { name: 'Konto löschen', exact: true }).click();
 	await expect(page).toHaveURL(/accountDeletion=pending/);
-	await expect(page.getByText(/ManaWG hat deine Zugänge zu allen WGs entfernt/)).toBeVisible();
+	await expect(pendingNotice(page)).toBeVisible();
 	expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
 		true,
 	);
@@ -92,7 +103,7 @@ test('localStorage removal failure does not turn an accepted deletion into an er
 	await openConfirmation(page);
 	await page.getByRole('button', { name: 'Konto löschen', exact: true }).click();
 	await expect(page).toHaveURL(/accountDeletion=pending/);
-	await expect(page.getByText(/ManaWG hat deine Zugänge zu allen WGs entfernt/)).toBeVisible();
+	await expect(pendingNotice(page)).toBeVisible();
 	expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
 		true,
 	);
