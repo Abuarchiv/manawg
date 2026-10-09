@@ -170,8 +170,6 @@ export const GET = withCronLogging(
 			.where(
 				and(
 					lte(chores.nextDueAt, endOfDay),
-					// Overdue for long and never announced still gets its one announcement.
-					or(gte(chores.nextDueAt, lookbackStart), isNull(chores.lastReminderAt)),
 					isNull(chores.assignedMemberId),
 					or(isNull(chores.lastReminderAt), lte(chores.lastReminderAt, throttleCutoff)),
 					// Only chores somebody can be told about, as in the assigned query; otherwise

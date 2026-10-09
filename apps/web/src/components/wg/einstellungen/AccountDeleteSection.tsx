@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { Section } from '@/components/wg/einstellungen/Section';
 import { RATE_LIMITED_MESSAGE } from '@/core/http/error-codes';
+import { noteSessionExpiry } from '@/core/infra/api-client';
 import { UserX } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
@@ -44,6 +45,7 @@ export function AccountDeleteSection() {
 		setError(null);
 		try {
 			const res = await fetch('/api/account', { method: 'DELETE' });
+			noteSessionExpiry(res);
 			if (res.status === 503) {
 				const result = await res.json().catch(() => null);
 				if (

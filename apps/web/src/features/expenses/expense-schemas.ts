@@ -28,7 +28,14 @@ export const expenseAmountSchema = z
 export const expenseDescriptionSchema = z.string().trim().min(1).max(DESCRIPTION_MAX_LENGTH);
 
 const OCCURRED_AT_MAX_FUTURE_MS = 24 * 60 * 60 * 1000;
-const OCCURRED_AT_MAX_PAST_MS = 10 * 365 * 24 * 60 * 60 * 1000;
+const OCCURRED_AT_MAX_PAST_YEARS = 10;
+
+/** Ten calendar years back, so leap days do not shorten the allowed range. */
+function oldestAllowedOccurredAt(now: number): number {
+	const boundary = new Date(now);
+	boundary.setUTCFullYear(boundary.getUTCFullYear() - OCCURRED_AT_MAX_PAST_YEARS);
+	return boundary.getTime();
+}
 
 /** When the expense happened: not later than tomorrow and not older than ten years. */
 export const expenseOccurredAtSchema = z
@@ -37,5 +44,5 @@ export const expenseOccurredAtSchema = z
 	.refine((value) => {
 		const time = Date.parse(value);
 		const now = Date.now();
-		return time <= now + OCCURRED_AT_MAX_FUTURE_MS && time >= now - OCCURRED_AT_MAX_PAST_MS;
+		return time <= now + OCCURRED_AT_MAX_FUTURE_MS && time >= oldestAllowedOccurredAt(now);
 	}, 'occurred_at_out_of_range');

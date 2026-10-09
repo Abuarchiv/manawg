@@ -75,16 +75,27 @@ export async function dequeueImageDeletions(objectKeys: readonly string[]): Prom
 		);
 }
 
+const QUEUE_LOOKUP_BATCH = 5000;
+
 /** The keys among `objectKeys` that already wait in the deletion queue. */
 export async function findQueuedImageDeletionKeys(
 	objectKeys: readonly string[],
 ): Promise<Set<string>> {
-	if (objectKeys.length === 0) return new Set();
-	const rows = await db
-		.select({ objectKey: privateImageDeletions.objectKey })
-		.from(privateImageDeletions)
-		.where(inArray(privateImageDeletions.objectKey, [...objectKeys]));
-	return new Set(rows.map(({ objectKey }) => objectKey));
+	const queued = new Set<string>();
+	// Bounded batches keep the bind-parameter count below what PostgreSQL accepts.
+	for (let offset = 0; offset < objectKeys.length; offset += QUEUE_LOOKUP_BATCH) {
+		const rows = await db
+			.select({ objectKey: privateImageDeletions.objectKey })
+			.from(privateImageDeletions)
+			.where(
+				inArray(
+					privateImageDeletions.objectKey,
+					objectKeys.slice(offset, offset + QUEUE_LOOKUP_BATCH),
+				),
+			);
+		for (const { objectKey } of rows) queued.add(objectKey);
+	}
+	return queued;
 }
 
 export async function assertPrivateImageCanBeAttached(
