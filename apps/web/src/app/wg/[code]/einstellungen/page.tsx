@@ -13,6 +13,7 @@ import { memberContextHeader } from '@/core/auth/identity';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { SETTINGS_TABS, getSettingsTabFromHash } from '@/core/guards/settings-tabs';
 import type { SettingsTab } from '@/core/guards/settings-tabs';
+import { noteSessionExpiry } from '@/core/infra/api-client';
 import dynamic from 'next/dynamic';
 import { useEffect, useRef, useState } from 'react';
 
@@ -83,6 +84,7 @@ export default function EinstellungenPage() {
 					headers: memberContextHeader(identity.memberId),
 				});
 				if (cancelled) return;
+				noteSessionExpiry(response);
 				if (!response.ok) {
 					setExportSummaryError(
 						getWgLoadErrorMessage(
@@ -172,9 +174,9 @@ export default function EinstellungenPage() {
 				>
 					<TabsList
 						data-sticky-tabs
-						className="sticky z-20 flex flex-wrap before:absolute before:-inset-x-4 before:-top-[calc(env(safe-area-inset-top,0px)+var(--offline-banner-height,0px)+0.5rem)] before:h-[calc(env(safe-area-inset-top,0px)+var(--offline-banner-height,0px)+0.5rem)] before:bg-background before:content-[''] h-auto min-w-0 max-w-full w-full gap-1 rounded-xl p-1"
+						className="sticky z-20 flex flex-wrap before:absolute before:-inset-x-4 before:-top-[calc(env(safe-area-inset-top,0px)+var(--banner-stack-height,0px)+0.5rem)] before:h-[calc(env(safe-area-inset-top,0px)+var(--banner-stack-height,0px)+0.5rem)] before:bg-background before:content-[''] h-auto min-w-0 max-w-full w-full gap-1 rounded-xl p-1"
 						style={{
-							top: 'calc(env(safe-area-inset-top, 0px) + var(--offline-banner-height, 0px) + 0.5rem)',
+							top: 'calc(env(safe-area-inset-top, 0px) + var(--banner-stack-height, 0px) + 0.5rem)',
 						}}
 					>
 						{SETTINGS_TABS.map((tab) => (

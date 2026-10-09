@@ -5,14 +5,17 @@ import { WG_SECTIONS } from '@/components/app/navigation';
 import { ToastContainer } from '@/components/ui/Toast';
 import { NavItem } from '@/components/wg/NavItem';
 import { OfflineBanner } from '@/components/wg/OfflineBanner';
+import { SessionExpiredBanner } from '@/components/wg/SessionExpiredBanner';
 import { WgContextProvider } from '@/components/wg/WgContextProvider';
 import type { StoredIdentity } from '@/core/auth/identity';
+import { REQUEST_PATH_HEADER, wgReturnPath } from '@/core/auth/next-path';
 import { getAuthenticatedUserFromCookies } from '@/core/auth/server';
 import { db, wgMembers, wgs } from '@/core/db';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import { loadFixtureWgView } from '@/fixtures/pages';
 import { and, eq, isNotNull, isNull } from 'drizzle-orm';
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import { type ReactNode, cache } from 'react';
 import { TabWarmup } from './_components/TabWarmup';
@@ -74,6 +77,14 @@ const getWgViewer = cache(async (code: string) => {
 	return { user, access };
 });
 
+async function requestedPath(): Promise<string | null> {
+	return (await headers()).get(REQUEST_PATH_HEADER);
+}
+
+async function signInPath(code: string): Promise<string> {
+	return `/neu?next=${encodeURIComponent(wgReturnPath(code, await requestedPath()))}`;
+}
+
 export default async function WgLayout({ children, params }: Props) {
 	const { code: rawCode } = await params;
 	const code = normalizeShareCode(rawCode);
@@ -92,10 +103,10 @@ export default async function WgLayout({ children, params }: Props) {
 	}
 
 	const viewer = await getWgViewer(code);
-	if (!viewer) redirect(`/neu?next=${encodeURIComponent(`/wg/${encodeURIComponent(code)}`)}`);
+	if (!viewer) redirect(await signInPath(code));
 	const { user, access } = viewer;
 	if (!access) {
-		const next = encodeURIComponent(`/wg/${encodeURIComponent(code)}`);
+		const next = encodeURIComponent(wgReturnPath(code, await requestedPath()));
 		// Tell moved-out members why the WG is gone instead of suggesting to join again.
 		const [movedOut] = await db
 			.select({ id: wgMembers.id })
@@ -203,6 +214,7 @@ function WgShell({
 				}}
 			>
 				<OfflineBanner />
+				<SessionExpiredBanner />
 				<RouteFocusOnNavigate />
 				<WgAppHeader />
 				{/* WCAG 1.3.1 / 2.4.1 — single <main> landmark.

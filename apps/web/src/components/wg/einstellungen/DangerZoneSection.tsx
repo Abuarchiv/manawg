@@ -26,6 +26,7 @@ import {
 } from '@/components/wg/einstellungen/settings-errors';
 import type { StoredIdentity } from '@/core/auth/identity';
 import { clearIdentity, forgetWg, memberContextHeader } from '@/core/auth/identity';
+import { noteSessionExpiry } from '@/core/infra/api-client';
 import { LogOut, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
@@ -80,6 +81,7 @@ export function DangerZoneSection({ wg, members, identity }: DangerZoneSectionPr
 				method: 'DELETE',
 				headers: memberContextHeader(identity.memberId),
 			});
+			noteSessionExpiry(res);
 			if (res.status === 403) {
 				setDeleteError('Nur Admins können die WG löschen.');
 				setDeleteStage('confirm');

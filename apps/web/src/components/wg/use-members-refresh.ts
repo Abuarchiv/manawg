@@ -71,11 +71,8 @@ export function useMembersRefresh({
 				return;
 			}
 			// Keep counting transient failures so the retry backs off (5 s → 60 s).
-			if (res.status === 401 && res.error === 'auth_required') {
-				window.location.replace(
-					`/neu?next=${encodeURIComponent(window.location.pathname + window.location.search)}`,
-				);
-			} else if (
+			// An expired session (401 auth_required) is shown by the shared session banner.
+			if (
 				res.status === 401 &&
 				(res.error === 'not_a_member' || res.error === 'member_deactivated')
 			) {

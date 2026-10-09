@@ -1,4 +1,5 @@
 import { refreshSupabaseSession } from '@/core/auth/middleware';
+import { REQUEST_PATH_HEADER } from '@/core/auth/next-path';
 import {
 	contentSecurityPolicy,
 	crossOriginOpenerPolicy,
@@ -47,6 +48,8 @@ async function withPageSecurityHeaders(
 	const requestHeaders = new Headers(req.headers);
 	requestHeaders.set('x-nonce', nonce);
 	requestHeaders.set('Content-Security-Policy', csp);
+	// Server layouts cannot see the URL; a sign-in redirect there keeps the deep link with it.
+	requestHeaders.set(REQUEST_PATH_HEADER, `${req.nextUrl.pathname}${req.nextUrl.search}`);
 
 	const res = NextResponse.next({
 		request: {
