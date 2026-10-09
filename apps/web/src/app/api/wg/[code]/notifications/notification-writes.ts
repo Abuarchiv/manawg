@@ -20,6 +20,7 @@ export interface NotificationSettingsUpdate {
 	notifyReminders?: boolean;
 	notifyChat?: boolean;
 	notifyEvents?: boolean;
+	notifyStatementEmail?: boolean;
 	quietStartHour?: number | null;
 	quietEndHour?: number | null;
 }

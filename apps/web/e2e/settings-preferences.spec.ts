@@ -27,6 +27,7 @@ test.describe('settings notifications responsive', () => {
 			notifyInventory: true,
 			notifyChat: true,
 			notifyEvents: true,
+			notifyStatementEmail: true,
 			quietStartHour: 22,
 			quietEndHour: 7,
 			pushConfigured: false,

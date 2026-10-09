@@ -29,6 +29,7 @@ export interface NotificationStatus {
 	notifyInventory: boolean;
 	notifyChat: boolean;
 	notifyEvents: boolean;
+	notifyStatementEmail: boolean;
 	quietStartHour: number | null;
 	quietEndHour: number | null;
 	pushConfigured: boolean;
@@ -42,7 +43,8 @@ export type NotificationPreferenceKey =
 	| 'notifyShopping'
 	| 'notifyInventory'
 	| 'notifyChat'
-	| 'notifyEvents';
+	| 'notifyEvents'
+	| 'notifyStatementEmail';
 
 export const NOTIFICATION_PREFERENCES: ReadonlyArray<{
 	key: NotificationPreferenceKey;
@@ -57,6 +59,11 @@ export const NOTIFICATION_PREFERENCES: ReadonlyArray<{
 	{ key: 'notifyInventory', label: 'Vorräte', description: 'Wenn etwas bald leer ist' },
 	{ key: 'notifyChat', label: 'Chat' },
 	{ key: 'notifyEvents', label: 'Kalender' },
+	{
+		key: 'notifyStatementEmail',
+		label: 'Monatsabrechnung per E-Mail',
+		description: 'Einmal im Monat, am Ersten',
+	},
 ];
 
 interface NotificationSettingsInput {

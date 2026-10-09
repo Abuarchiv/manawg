@@ -42,7 +42,13 @@ export const SAFE_TAG_VALUES: Record<string, ReadonlySet<string>> = {
 		'wg-putzen',
 		'wg-vorraete',
 	]),
-	cronJob: new Set(['event-reminders', 'chore-reminders', 'maintenance', 'recurring-advance']),
+	cronJob: new Set([
+		'event-reminders',
+		'chore-reminders',
+		'maintenance',
+		'recurring-advance',
+		'monthly-statements',
+	]),
 	method: new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD']),
 };
 

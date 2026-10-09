@@ -75,8 +75,7 @@ export const wgs = pgTable(
 //   reference would corrupt records once member-removal ships.
 // - onDelete: 'cascade' — tables (absences, debts, chat) whose rows are meaningless without
 //   the member and can safely disappear with them.
-// When implementing member removal, keep 'restrict' tables intact (reassign/soft-delete the
-// member instead of hard-deleting) rather than relaxing these to 'cascade'.
+// Member removal keeps 'restrict' tables intact (soft-delete instead of relaxing to 'cascade').
 export const wgMembers = pgTable(
 	'wg_members',
 	{
@@ -98,6 +97,7 @@ export const wgMembers = pgTable(
 		notifyReminders: boolean('notify_reminders').notNull().default(true),
 		notifyChat: boolean('notify_chat').notNull().default(true),
 		notifyEvents: boolean('notify_events').notNull().default(true),
+		notifyStatementEmail: boolean('notify_statement_email').notNull().default(true),
 		quietStartHour: integer('quiet_start_hour'),
 		quietEndHour: integer('quiet_end_hour'),
 		// Soft-delete for "Auszug" (move-out). A member who ever paid an expense,

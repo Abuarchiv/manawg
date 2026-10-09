@@ -50,6 +50,7 @@ const patchSchema = z.object({
 	notifyReminders: z.boolean().optional(),
 	notifyChat: z.boolean().optional(),
 	notifyEvents: z.boolean().optional(),
+	notifyStatementEmail: z.boolean().optional(),
 	quietStartHour: z.number().int().min(0).max(23).nullable().optional(),
 	quietEndHour: z.number().int().min(0).max(23).nullable().optional(),
 });
@@ -78,6 +79,7 @@ const NOTIFICATION_FIELD_LABELS: Record<string, string> = {
 	notifyReminders: 'Erinnerungen',
 	notifyChat: 'Chat',
 	notifyEvents: 'Kalender',
+	notifyStatementEmail: 'Monatsabrechnung per E-Mail',
 	quietStartHour: 'Ruhezeit Start',
 	quietEndHour: 'Ruhezeit Ende',
 };
@@ -99,6 +101,7 @@ export const GET = withWgRoute('notifications GET', async (req, { code }) => {
 			notifyReminders: true,
 			notifyChat: true,
 			notifyEvents: true,
+			notifyStatementEmail: true,
 			quietStartHour: true,
 			quietEndHour: true,
 		},
@@ -115,6 +118,7 @@ export const GET = withWgRoute('notifications GET', async (req, { code }) => {
 		notifyReminders: member.notifyReminders,
 		notifyChat: member.notifyChat,
 		notifyEvents: member.notifyEvents,
+		notifyStatementEmail: member.notifyStatementEmail,
 		quietStartHour: member.quietStartHour,
 		quietEndHour: member.quietEndHour,
 		pushConfigured: !checkEnv(process.env).degraded.some(
@@ -144,6 +148,7 @@ function settingsUpdate(data: z.infer<typeof patchSchema>): NotificationSettings
 		'notifyReminders',
 		'notifyChat',
 		'notifyEvents',
+		'notifyStatementEmail',
 	] as const) {
 		const value = data[field];
 		if (typeof value === 'boolean') update[field] = value;

@@ -364,6 +364,7 @@ test.describe('settings pending switches', () => {
 			notifyInventory: true,
 			notifyChat: true,
 			notifyEvents: true,
+			notifyStatementEmail: true,
 			quietStartHour: null,
 			quietEndHour: null,
 		};
