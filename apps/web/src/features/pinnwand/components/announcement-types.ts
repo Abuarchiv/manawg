@@ -27,6 +27,7 @@ export interface Announcement {
 	resolvedAt: string | null;
 	resolvedByMemberId: string | null;
 	createdAt: string;
+	updatedAt?: string;
 	reactionCounts: Partial<Record<ReactionKey, number>>;
 	myReactions: ReactionKey[];
 	takers: AnnouncementTaker[];

@@ -20,3 +20,16 @@ test('rejects blank, oversized and unknown values', () => {
 	assert.equal(patchAnnouncementSchema.safeParse({ content: 'x'.repeat(2001) }).success, false);
 	assert.equal(patchAnnouncementSchema.safeParse({ kind: 'nope' }).success, false);
 });
+
+test('a version alone is no change, next to a field it must be an ISO timestamp', () => {
+	const expectedUpdatedAt = '2026-01-01T10:00:00.000Z';
+	assert.equal(patchAnnouncementSchema.safeParse({ expectedUpdatedAt }).success, false);
+	assert.equal(
+		patchAnnouncementSchema.safeParse({ content: 'Neu', expectedUpdatedAt }).success,
+		true,
+	);
+	assert.equal(
+		patchAnnouncementSchema.safeParse({ content: 'Neu', expectedUpdatedAt: 'gestern' }).success,
+		false,
+	);
+});

@@ -1,12 +1,19 @@
 import { recordAuditEvent } from '@/core/audit';
-import { announcementReactions, announcements, db } from '@/core/db';
+import { announcementReactions, announcements, db, wgMembers } from '@/core/db';
 import { revokePrivateImageIfUnreferenced } from '@/core/db/private-image-deletions';
 import { lockExpensePayments, withTransaction } from '@/core/db/transaction';
 import { isWgAdmin, requireOwnerOrAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, forbidden, notFound, tooMany } from '@/core/http/api-errors';
+import {
+	badRequest,
+	conflict,
+	forbidden,
+	notFound,
+	tooMany,
+	unauthorized,
+} from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import {
 	type NotificationDispatchWarning,
@@ -14,7 +21,7 @@ import {
 } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { patchAnnouncementSchema } from '@/features/pinnwand/server/announcement-patch-schema';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 export const PATCH = withWgRoute<{ id: string }>(
@@ -28,6 +35,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 				pinned: 'pinned_invalid',
 				kind: 'kind_invalid',
 				content: 'content_invalid',
+				expectedUpdatedAt: 'expected_state_invalid',
 			},
 		});
 		if (!parsed.ok) return parsed.response;
@@ -54,17 +62,19 @@ export const PATCH = withWgRoute<{ id: string }>(
 		const row = existing[0];
 		if (!row) return notFound('announcement_not_found');
 
+		// Posts generated from a chore or an expense carry system text; only manual posts are editable.
+		if (parsed.data.content !== undefined && row.source !== 'manual') {
+			return forbidden('content_locked', 'content_locked');
+		}
+
 		const changesModeratedFields =
-			parsed.data.kind !== undefined || parsed.data.pinned !== undefined;
+			parsed.data.kind !== undefined ||
+			parsed.data.pinned !== undefined ||
+			parsed.data.content !== undefined;
 		const isAuthor = row.authorMemberId === auth.member.memberId;
 		if (changesModeratedFields) {
 			const denied = await requireOwnerOrAdmin(wg.id, auth.member, row.authorMemberId);
 			if (denied) return denied;
-		}
-
-		// Only the author rewrites the text, and only of posts they typed themselves.
-		if (parsed.data.content !== undefined && (!isAuthor || row.source !== 'manual')) {
-			return forbidden('not_owner', 'not_owner');
 		}
 
 		const now = new Date();
@@ -104,12 +114,46 @@ export const PATCH = withWgRoute<{ id: string }>(
 			patch.resolvedByMemberId = parsed.data.status === 'resolved' ? auth.member.memberId : null;
 		}
 
-		const [updated] = await db
-			.update(announcements)
-			.set(patch)
-			.where(and(eq(announcements.id, id), eq(announcements.wgId, wg.id)))
-			.returning();
-		if (!updated) return notFound('announcement_not_found');
+		// The caller is read again with the write: a member who moved out since the request began
+		// cannot save, and moving out waits for this write.
+		const outcome = await withTransaction(async (tx) => {
+			const [caller] = await tx
+				.select({ deactivatedAt: wgMembers.deactivatedAt, role: wgMembers.role })
+				.from(wgMembers)
+				.where(and(eq(wgMembers.id, auth.member.memberId), eq(wgMembers.wgId, wg.id)))
+				.limit(1)
+				.for('share');
+			if (!caller || caller.deactivatedAt) return 'member_deactivated' as const;
+			// The owner-or-admin decision is repeated with the role as it is now.
+			if (changesModeratedFields && !isAuthor && caller.role !== 'admin') {
+				return 'not_allowed' as const;
+			}
+			const [saved] = await tx
+				.update(announcements)
+				.set(patch)
+				.where(
+					and(
+						eq(announcements.id, id),
+						eq(announcements.wgId, wg.id),
+						parsed.data.expectedUpdatedAt
+							? sql`date_trunc('milliseconds', ${announcements.updatedAt}) = ${new Date(parsed.data.expectedUpdatedAt)}`
+							: undefined,
+					),
+				)
+				.returning();
+			return saved ?? null;
+		});
+		if (outcome === 'member_deactivated') return unauthorized('member_deactivated');
+		if (outcome === 'not_allowed') return forbidden('not_owner', 'not_owner');
+		const updated = outcome;
+		if (!updated) {
+			const [stillThere] = await db
+				.select({ id: announcements.id })
+				.from(announcements)
+				.where(and(eq(announcements.id, id), eq(announcements.wgId, wg.id)))
+				.limit(1);
+			return stillThere ? conflict('announcement_changed') : notFound('announcement_not_found');
+		}
 		await recordAuditEvent({
 			wgId: wg.id,
 			memberId: auth.member.memberId,
