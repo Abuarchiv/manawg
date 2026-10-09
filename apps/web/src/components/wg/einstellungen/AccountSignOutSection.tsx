@@ -1,5 +1,6 @@
 'use client';
 
+import { rememberLogoutNotice } from '@/components/entry/LogoutNotice';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
@@ -35,8 +36,10 @@ export function AccountSignOutSection({
 			]);
 			clearIdentity(wg.id);
 			forgetWg(wg.shareCode);
+			// Local data is gone, so the visitor leaves the household screen either way; a failed
+			// push cleanup is told on the page they land on.
 			if (pushCleanup === 'failed') {
-				window.alert(
+				rememberLogoutNotice(
 					'Du bist abgemeldet, aber Push konnte auf diesem Browser nicht sicher beendet werden. Deaktiviere Website-Benachrichtigungen in den Browsereinstellungen.',
 				);
 			}

@@ -32,21 +32,27 @@ export default function WgHomePage() {
 		queuedOccurrences: completion.queuedOccurrences,
 	});
 
+	// Entries do not make the WG complete: until a second person lives in it, the invitation
+	// card stays (until dismissed) instead of vanishing with the first expense.
+	const stillAlone = Boolean(data) && members.filter((member) => member.active).length < 2;
+
 	return (
 		<div
 			data-home-content
 			className="mx-auto flex w-full min-w-0 max-w-[var(--app-frame-width)] flex-col gap-3 px-4 py-3"
 		>
-			{view.isNewWg && (
+			{(view.isNewWg || stillAlone) && (
 				<div>
 					<StartWelcome
 						dismissedFallback={
-							<ForYouSection
-								items={view.forYouItems}
-								loaded={Boolean(data)}
-								failed={Boolean(error)}
-								completion={completion}
-							/>
+							view.isNewWg ? (
+								<ForYouSection
+									items={view.forYouItems}
+									loaded={Boolean(data)}
+									failed={Boolean(error)}
+									completion={completion}
+								/>
+							) : null
 						}
 					/>
 				</div>

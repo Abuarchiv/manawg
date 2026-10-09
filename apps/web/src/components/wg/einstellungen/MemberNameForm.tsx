@@ -14,6 +14,9 @@ import { type FormEvent, useEffect, useState } from 'react';
 
 function renameErrorMessage(status: number, error: string): string {
 	if (error === 'name_taken') return joinErrorMessage(status, error);
+	if (error === 'name_changed') {
+		return 'Dein Name wurde inzwischen geändert. Lade die Seite neu und versuche es erneut.';
+	}
 	if (status === 429) return RATE_LIMITED_MESSAGE;
 	if (status === 0) {
 		return 'Name konnte nicht geändert werden: Prüfe deine Verbindung und versuche es erneut.';
@@ -53,7 +56,11 @@ export function MemberNameForm({
 		try {
 			const res = await apiFetch<unknown>(
 				`/api/wg/${encodeURIComponent(shareCode)}/members/${encodeURIComponent(memberId)}`,
-				{ method: 'PATCH', memberId, body: JSON.stringify({ name: trimmed }) },
+				{
+					method: 'PATCH',
+					memberId,
+					body: JSON.stringify({ name: trimmed, expectedName: memberName }),
+				},
 			);
 			if (!res.ok) {
 				setError(renameErrorMessage(res.status, res.error));

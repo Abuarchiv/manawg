@@ -1,6 +1,7 @@
 import 'server-only';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { db, wgMembers } from '@/core/db';
+import { acceptedSigningSecrets, currentSigningSecret } from '@/core/infra/signing-secrets';
 import { eq } from 'drizzle-orm';
 import { APP_ORIGIN } from '../statement-mail';
 
@@ -12,25 +13,27 @@ function signature(memberId: string, secret: string): string {
 		.digest('base64url');
 }
 
-function secretFromEnv(): string | null {
-	return process.env.MEMBER_SESSION_SECRET?.trim() || null;
-}
-
 /** `<memberId>.<hmac>`: lets a mail recipient opt out without logging in. */
-export function signUnsubscribeToken(memberId: string, secret = secretFromEnv()): string {
+export function signUnsubscribeToken(memberId: string, secret = currentSigningSecret()): string {
 	if (!secret) throw new Error('MEMBER_SESSION_SECRET is not set');
 	return `${memberId}.${signature(memberId, secret)}`;
 }
 
 /** The member id of a valid token; `null` for anything tampered, malformed or unverifiable. */
-export function verifyUnsubscribeToken(token: string, secret = secretFromEnv()): string | null {
-	if (!secret) return null;
+export function verifyUnsubscribeToken(
+	token: string,
+	secrets: string | null | readonly string[] = acceptedSigningSecrets(),
+): string | null {
 	const [memberId, mac, ...rest] = token.split('.');
 	if (!memberId || !mac || rest.length > 0 || !UUID.test(memberId)) return null;
-	const expected = Buffer.from(signature(memberId, secret));
 	const provided = Buffer.from(mac);
-	if (expected.length !== provided.length || !timingSafeEqual(expected, provided)) return null;
-	return memberId;
+	// Every accepted secret is checked, so the time taken does not tell which one matched.
+	let valid = false;
+	for (const secret of typeof secrets === 'string' ? [secrets] : (secrets ?? [])) {
+		const expected = Buffer.from(signature(memberId, secret));
+		if (expected.length === provided.length && timingSafeEqual(expected, provided)) valid = true;
+	}
+	return valid ? memberId : null;
 }
 
 export function unsubscribeUrl(memberId: string): string {

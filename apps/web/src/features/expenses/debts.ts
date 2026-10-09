@@ -32,6 +32,8 @@ export function computeBalances(
 	payments: ReadonlyArray<ExpensePaymentInput> = [],
 ): PairBalance[] {
 	const totals = new Map<string, PairBalance>();
+	// Debts a payment touched; a circle through one of them is a netted chain, not separate debts.
+	const derivedKeys = new Set<string>();
 
 	for (const expense of expenses) {
 		const creditorId = expense.paidByMemberId;
@@ -59,6 +61,7 @@ export function computeBalances(
 		if (payment.amountCents <= 0 || payment.fromMemberId === payment.toMemberId) continue;
 		const currency = normalizeCurrency(payment.currency);
 		const key = `${currency}:${payment.fromMemberId}:${payment.toMemberId}`;
+		derivedKeys.add(key);
 		const current = totals.get(key);
 		if (current) {
 			current.amountCents -= payment.amountCents;
@@ -75,6 +78,7 @@ export function computeBalances(
 		if (pair.amountCents >= 0) continue;
 		const key = `${pair.currency}:${pair.creditorId}:${pair.debtorId}`;
 		const reverse = totals.get(key);
+		derivedKeys.add(key);
 		if (reverse) {
 			reverse.amountCents -= pair.amountCents;
 		} else {
@@ -98,7 +102,60 @@ export function computeBalances(
 		reverse.amountCents -= offset;
 	}
 
+	cancelNettedPaymentCycles(totals, derivedKeys);
 	return Array.from(totals.values()).filter((pair) => pair.amountCents > 0);
+}
+
+/** The debts that lead from `from` to `to`, shortest chain first, or null when none does. */
+function findDebtChain(
+	totals: ReadonlyMap<string, PairBalance>,
+	currency: string,
+	from: string,
+	to: string,
+): PairBalance[] | null {
+	const reached = new Map<string, PairBalance[]>([[from, []]]);
+	const queue = [from];
+	for (let head = 0; head < queue.length; head += 1) {
+		const node = queue[head] as string;
+		const chain = reached.get(node) as PairBalance[];
+		// Sorted by member id: row order in the database must not decide which chain is shown.
+		const outgoing = Array.from(totals.values())
+			.filter(
+				(pair) => pair.currency === currency && pair.amountCents > 0 && pair.debtorId === node,
+			)
+			.sort((a, b) => a.creditorId.localeCompare(b.creditorId));
+		for (const pair of outgoing) {
+			if (reached.has(pair.creditorId)) continue;
+			const next = [...chain, pair];
+			if (pair.creditorId === to) return next;
+			reached.set(pair.creditorId, next);
+			queue.push(pair.creditorId);
+		}
+	}
+	return null;
+}
+
+/**
+ * A payment between two members who owe each other only through a third one (A owes B, B owes
+ * C, A pays C) has no direct debt to reduce and shows up as a reverse debt. That reverse debt
+ * closes a circle with the chain behind it, so the circle is cancelled and the chain shrinks by
+ * what the payment covered.
+ */
+function cancelNettedPaymentCycles(
+	totals: Map<string, PairBalance>,
+	derivedKeys: ReadonlySet<string>,
+): void {
+	for (const key of [...derivedKeys].sort()) {
+		for (;;) {
+			const edge = totals.get(key);
+			if (!edge || edge.amountCents <= 0) break;
+			const chain = findDebtChain(totals, edge.currency, edge.creditorId, edge.debtorId);
+			if (!chain) break;
+			const covered = Math.min(edge.amountCents, ...chain.map((pair) => pair.amountCents));
+			edge.amountCents -= covered;
+			for (const pair of chain) pair.amountCents -= covered;
+		}
+	}
 }
 
 /**

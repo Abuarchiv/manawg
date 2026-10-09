@@ -485,6 +485,42 @@ test.describe('calendar fixes', () => {
 		).toBeVisible();
 	});
 
+	test('push link to an event beyond the agenda window opens that event', async ({ page }) => {
+		test.skip(
+			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
+			'requires the local fixture server',
+		);
+		const startsAt = new Date(Date.now() + 120 * 86_400_000).toISOString();
+		const event = {
+			id: '55555555-5555-4555-8555-555555555555',
+			title: 'Fernes Sommerfest',
+			description: null,
+			startsAt,
+			endsAt: null,
+			allDay: false,
+			location: null,
+			recurrence: null,
+			wgId: FIXTURE_WG.id,
+			createdByMemberId: FIXTURE_WG.memberId,
+			createdAt: startsAt,
+			updatedAt: startsAt,
+		};
+		await setupMember(page);
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/events*`, (route) =>
+			route.fulfill({ json: { events: [] } }),
+		);
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/events/${event.id}`, (route) =>
+			route.fulfill({ json: { event } }),
+		);
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/chores*`, (route) =>
+			route.fulfill({ json: { chores: [] } }),
+		);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/kalender?highlight=${event.id}`);
+		await dismissOnboarding(page);
+		await expect(page.getByRole('heading', { name: 'Termin bearbeiten' })).toBeVisible();
+		await expect(page.locator(`input[value="${event.title}"]`)).toBeVisible();
+	});
+
 	test('keeps complex recurrence on title-only save and replaces it explicitly', async ({
 		page,
 	}) => {

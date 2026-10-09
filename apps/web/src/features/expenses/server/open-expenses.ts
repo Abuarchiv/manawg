@@ -15,12 +15,29 @@ export async function loadOpenExpenses(
 	wgId: string,
 	client: typeof db | DbTransaction = db,
 ): Promise<DebtExpenseInput[]> {
+	return (await loadLedger(wgId, client)).map((entry) => entry.debt);
+}
+
+/** An expense of the ledger with what is needed to see the ledger as it stood at a past moment. */
+export interface LedgerEntry {
+	importId: string | null;
+	createdAt: Date;
+	debt: DebtExpenseInput;
+}
+
+/** The whole ledger of a WG in two queries, each expense with its import and booking time. */
+export async function loadLedger(
+	wgId: string,
+	client: typeof db | DbTransaction = db,
+): Promise<LedgerEntry[]> {
 	const expenseRows = await client
 		.select({
 			id: expenses.id,
 			paidByMemberId: expenses.paidByMemberId,
 			currency: expenses.currency,
 			occurredAt: expenses.occurredAt,
+			importId: expenses.importId,
+			createdAt: expenses.createdAt,
 		})
 		.from(expenses)
 		.where(eq(expenses.wgId, wgId));
@@ -42,11 +59,15 @@ export async function loadOpenExpenses(
 	const splitsByExpense = groupSplitsByExpense(splitRows);
 
 	return expenseRows.map((row) => ({
-		paidByMemberId: row.paidByMemberId,
-		...(row.currency ? { currency: row.currency } : {}),
-		occurredAt:
-			row.occurredAt instanceof Date ? row.occurredAt.toISOString() : String(row.occurredAt),
-		splits: splitsByExpense.get(row.id) ?? [],
+		importId: row.importId ?? null,
+		createdAt: row.createdAt,
+		debt: {
+			paidByMemberId: row.paidByMemberId,
+			...(row.currency ? { currency: row.currency } : {}),
+			occurredAt:
+				row.occurredAt instanceof Date ? row.occurredAt.toISOString() : String(row.occurredAt),
+			splits: splitsByExpense.get(row.id) ?? [],
+		},
 	}));
 }
 

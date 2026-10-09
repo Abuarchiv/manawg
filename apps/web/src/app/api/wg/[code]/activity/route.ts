@@ -4,6 +4,7 @@ import {
 	buildActivityTimeline,
 	getActivityReminders,
 } from '@/composition/activity';
+import { publicAuditMetadata } from '@/core/audit-visibility';
 import {
 	announcements,
 	auditEvents,
@@ -16,10 +17,11 @@ import {
 	shoppingItems,
 	wgMembers,
 } from '@/core/db';
+import { feedAuditCondition } from '@/core/db/feed-audit-filter';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { MEMBER_ANNOUNCEMENT_SOURCES } from '@/features/pinnwand/announcement-workflow';
-import { and, asc, desc, eq, inArray, isNull, lte, notInArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, lte, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 const DEFAULT_LIMIT = 80;
@@ -150,12 +152,7 @@ export const GET = withWgRoute('activity GET', async (req, { code }) => {
 			})
 			.from(auditEvents)
 			// Filtered in SQL so chat noise never eats the row limit.
-			.where(
-				and(
-					eq(auditEvents.wgId, wg.id),
-					notInArray(auditEvents.eventType, [...ACTIVITY_HIDDEN_AUDIT_EVENT_TYPES]),
-				),
-			)
+			.where(feedAuditCondition(wg.id, ACTIVITY_HIDDEN_AUDIT_EVENT_TYPES))
 			.orderBy(desc(auditEvents.createdAt))
 			.limit(limit),
 		// Reminders read their own open rows, oldest first, so bought items
@@ -239,6 +236,7 @@ export const GET = withWgRoute('activity GET', async (req, { code }) => {
 			})),
 			auditEvents: auditRows.map((item) => ({
 				...item,
+				metadataJson: publicAuditMetadata(item.eventType, item.metadataJson),
 				createdAt: item.createdAt.toISOString(),
 			})),
 			limit,

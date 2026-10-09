@@ -1,9 +1,11 @@
 import { deleteAuthUser } from '@/core/auth/delete-user';
 import { getSupabaseEnv, hasSupabaseEnv } from '@/core/auth/supabase-env';
 import { retryPendingAccountDeletions } from '@/core/db/account-deletion';
+import { sweepOrphanUploads } from '@/core/db/orphan-uploads';
 import {
 	claimPrivateImageCleanupBatch,
 	countPendingPrivateImageDeletions,
+	dequeueImageDeletions,
 	findLivePrivateImageReferenceKeys,
 	markPrivateImageStorageDeleted,
 } from '@/core/db/private-image-deletions';
@@ -11,7 +13,7 @@ import { purgeExpiredIdempotencyResponses } from '@/core/idempotency-store';
 import { requireCronSecret } from '@/core/infra/cron-auth';
 import { logApiError, withCronLogging } from '@/core/infra/observability';
 import { isPayPalConfigured } from '@/core/infra/paypal';
-import { removeSupabaseImages } from '@/core/infra/supabase-storage';
+import { getImageStorageProvider, removeSupabaseImages } from '@/core/infra/supabase-storage';
 import { reconcileStaleCapturingPayments } from '@/features/expenses/server/paypal-reconcile';
 import { type NextRequest, NextResponse } from 'next/server';
 
@@ -20,6 +22,7 @@ async function cleanupPrivateImages(): Promise<{
 	completed: number;
 	failed: number;
 	skippedReferenced: number;
+	rescued: number;
 	pending: number;
 	error: string | null;
 }> {
@@ -30,11 +33,21 @@ async function cleanupPrivateImages(): Promise<{
 	let failed = 0;
 	let errorCode: string | null = null;
 
+	let rescued = 0;
 	if (referenced.size > 0) {
+		// A row points at the picture, so it stays: a draft attached while the orphan sweep
+		// queued it comes back off the queue instead of reading as removed.
 		logApiError(
 			'[maintenance] private image deletion found a live reference',
-			new Error('private_image_cleanup_live_reference_invariant'),
+			new Error('private_image_cleanup_live_reference_rescued'),
 		);
+		try {
+			await dequeueImageDeletions([...referenced]);
+			rescued = referenced.size;
+		} catch (err) {
+			errorCode = 'live_reference_rescue_failed';
+			logApiError('[maintenance] rescuing a live private image failed', err);
+		}
 	}
 	if (removable.length > 0) {
 		try {
@@ -61,9 +74,15 @@ async function cleanupPrivateImages(): Promise<{
 		completed,
 		failed,
 		skippedReferenced: referenced.size,
+		rescued,
 		pending: await countPendingPrivateImageDeletions(),
-		error: errorCode ?? (referenced.size > 0 ? 'live_reference_invariant' : null),
+		error: errorCode,
 	};
+}
+
+/** Only the private Supabase bucket can be listed; other providers have nothing to sweep. */
+async function sweepOrphans(): Promise<{ wgsChecked: number; queued: number } | null> {
+	return getImageStorageProvider() === 'supabase' ? sweepOrphanUploads() : null;
 }
 
 /** Purges expired replay rows and runs bounded account/image deletion recovery. */
@@ -79,12 +98,15 @@ export const GET = withCronLogging(
 			auth && serviceRoleKey
 				? (authUserId: string) => deleteAuthUser(auth.url, serviceRoleKey, authUserId)
 				: null;
-		const [purge, deletions, privateImages, paypal] = await Promise.allSettled([
+		const [purge, deletions, privateImages, paypal, orphans] = await Promise.allSettled([
 			purgeExpiredIdempotencyResponses(),
 			retryPendingAccountDeletions(deleteAuth),
 			cleanupPrivateImages(),
 			isPayPalConfigured() ? reconcileStaleCapturingPayments() : Promise.resolve(null),
+			sweepOrphans(),
 		]);
+		if (orphans.status === 'rejected')
+			logApiError('[maintenance] orphan upload sweep failed', orphans.reason);
 		if (paypal.status === 'rejected')
 			logApiError('[maintenance] PayPal capture reconcile failed', paypal.reason);
 		if (purge.status === 'rejected')
@@ -101,10 +123,13 @@ export const GET = withCronLogging(
 		const imageCleanupProblem =
 			privateImages.status === 'rejected' ||
 			(privateImages.status === 'fulfilled' &&
-				(privateImages.value.failed > 0 || privateImages.value.skippedReferenced > 0));
+				(privateImages.value.failed > 0 ||
+					privateImages.value.skippedReferenced > privateImages.value.rescued));
 		const ok =
 			purge.status === 'fulfilled' &&
 			deletions.status === 'fulfilled' &&
+			paypal.status === 'fulfilled' &&
+			orphans.status === 'fulfilled' &&
 			!recoveryPending &&
 			!imageCleanupProblem;
 		return NextResponse.json(
@@ -112,6 +137,7 @@ export const GET = withCronLogging(
 				ok,
 				purgedIdempotencyRows: purge.status === 'fulfilled' ? purge.value : null,
 				paypalReconcile: paypal.status === 'fulfilled' ? paypal.value : null,
+				orphanUploads: orphans.status === 'fulfilled' ? orphans.value : null,
 				accountDeletions:
 					deletions.status === 'fulfilled'
 						? { ...deletions.value, authAdminAvailable: Boolean(deleteAuth) }

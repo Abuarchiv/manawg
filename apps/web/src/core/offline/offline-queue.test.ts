@@ -175,3 +175,9 @@ test('known codes win over the status bucket; unknown codes fall back to it', ()
 	);
 	assert.equal(explainOfflineActionFailure(500).title, 'Server gerade nicht bereit');
 });
+
+test('401 reads as an expired session, 403 as missing access, a deactivated member as moved out', () => {
+	assert.equal(explainOfflineActionFailure(401).title, 'Sitzung abgelaufen');
+	assert.equal(explainOfflineActionFailure(403).title, 'Zugriff fehlt');
+	assert.equal(explainOfflineActionFailure(401, 'member_deactivated').title, 'Du bist ausgezogen');
+});

@@ -3,23 +3,32 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useEffect, useState } from 'react';
 import { EmailAuthForm, useEmailAuth } from './EmailAuthForm';
+import { EmailSignUpForm, useEmailSignUp } from './EmailSignUpForm';
 import { PhoneAuthForm, usePhoneAuth } from './PhoneAuthForm';
 import type { BusyAction } from './auth-form-shared';
 
 type CredentialsAuthProps = {
+	/** Sign-in and registration share the tabs; only the e-mail form differs. */
+	mode?: 'sign-in' | 'sign-up';
 	next: string;
 	onAuthenticated: () => void;
 	/** Lets the parent lock sibling controls (Google) while a request runs. */
 	onBusyChange?: (busy: boolean) => void;
 };
 
-export function CredentialsAuth({ next, onAuthenticated, onBusyChange }: CredentialsAuthProps) {
+export function CredentialsAuth({
+	mode = 'sign-in',
+	next,
+	onAuthenticated,
+	onBusyChange,
+}: CredentialsAuthProps) {
 	const [authMethod, setAuthMethod] = useState<'email' | 'phone'>('email');
 	const [busy, setBusy] = useState<BusyAction>(null);
 	// Offer SMS only where the Supabase project actually has it switched on.
 	const [phoneEnabled, setPhoneEnabled] = useState(false);
 	// Both forms keep their input while the other tab is shown.
 	const emailAuth = useEmailAuth({ next, busy, setBusy, onAuthenticated });
+	const emailSignUp = useEmailSignUp({ next, busy, setBusy, onAuthenticated });
 	const phoneAuth = usePhoneAuth({ busy, setBusy, onAuthenticated });
 
 	const isBusy = busy !== null;
@@ -58,8 +67,16 @@ export function CredentialsAuth({ next, onAuthenticated, onBusyChange }: Credent
 					</TabsTrigger>
 				</TabsList>
 			)}
-			<TabsContent value="email" aria-label="Mit E-Mail anmelden" tabIndex={-1}>
-				<EmailAuthForm auth={emailAuth} busy={busy} />
+			<TabsContent
+				value="email"
+				aria-label={mode === 'sign-up' ? 'Mit E-Mail registrieren' : 'Mit E-Mail anmelden'}
+				tabIndex={-1}
+			>
+				{mode === 'sign-up' ? (
+					<EmailSignUpForm auth={emailSignUp} busy={busy} />
+				) : (
+					<EmailAuthForm auth={emailAuth} busy={busy} />
+				)}
 			</TabsContent>
 
 			{phoneEnabled && (

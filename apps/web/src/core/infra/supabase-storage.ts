@@ -41,7 +41,6 @@ function getSupabaseServiceClient(timeoutMs?: number) {
 	const publicSupabaseURL = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
 	const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 	if (!publicSupabaseURL || !serviceRoleKey) throw new ImageStorageConfigurationError();
-	const timeoutSignal = timeoutMs ? AbortSignal.timeout(timeoutMs) : null;
 
 	return createClient(publicSupabaseURL, serviceRoleKey, {
 		auth: {
@@ -49,10 +48,12 @@ function getSupabaseServiceClient(timeoutMs?: number) {
 			autoRefreshToken: false,
 			detectSessionInUrl: false,
 		},
-		...(timeoutSignal
+		...(timeoutMs
 			? {
 					global: {
+						// Every request gets its own deadline, so a long paginated listing is not cut off.
 						fetch: (input, init) => {
+							const timeoutSignal = AbortSignal.timeout(timeoutMs);
 							const signal = init?.signal
 								? AbortSignal.any([init.signal, timeoutSignal])
 								: timeoutSignal;
@@ -105,6 +106,47 @@ export async function removeSupabaseImages(objectKeys: readonly string[]): Promi
 	const { client, bucketName } = await getPrivateBucket(10_000);
 	const { error } = await client.storage.from(bucketName).remove([...objectKeys]);
 	if (error) throw error;
+}
+
+export interface StoredImageObject {
+	key: string;
+	createdAt: Date;
+}
+
+const LIST_PAGE_SIZE = 1000;
+/** Safety bound only: 200 pages are 200,000 objects in one folder. */
+const LIST_MAX_PAGES = 200;
+
+async function listStorageEntries(folder: string) {
+	const { client, bucketName } = await getPrivateBucket(10_000);
+	const entries: Array<{ name: string; id: string | null; created_at: string | null }> = [];
+	for (let page = 0; page < LIST_MAX_PAGES; page += 1) {
+		const { data, error } = await client.storage.from(bucketName).list(folder, {
+			limit: LIST_PAGE_SIZE,
+			offset: page * LIST_PAGE_SIZE,
+		});
+		if (error) throw error;
+		entries.push(...(data ?? []));
+		if ((data?.length ?? 0) < LIST_PAGE_SIZE) break;
+	}
+	return entries;
+}
+
+/** The files directly under `folder` (no recursion); sub-folders carry no id and are skipped. */
+export async function listSupabaseImageObjects(folder: string): Promise<StoredImageObject[]> {
+	const objects: StoredImageObject[] = [];
+	for (const entry of await listStorageEntries(folder)) {
+		const createdAt = entry.created_at ? new Date(entry.created_at) : null;
+		if (entry.id && createdAt && !Number.isNaN(createdAt.getTime())) {
+			objects.push({ key: `${folder}/${entry.name}`, createdAt });
+		}
+	}
+	return objects;
+}
+
+/** The names of the sub-folders directly under `folder`; files carry an id and are skipped. */
+export async function listSupabaseImageFolders(folder: string): Promise<string[]> {
+	return (await listStorageEntries(folder)).filter((entry) => !entry.id).map((entry) => entry.name);
 }
 
 function limitPrivateImageStream(stream: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> {

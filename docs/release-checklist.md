@@ -31,6 +31,7 @@ Names only. `checkEnv` (`apps/web/src/core/infra/env.ts`) treats these as requir
 - [ ] `POSTGRES_URL` (or `DATABASE_URL`)
 - [ ] `MEMBER_SESSION_SECRET`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - [ ] `CRON_SECRET`
+- [ ] `SUPABASE_SERVICE_ROLE_KEY` (account deletion; missing it makes `/api/health` answer 503)
 - [ ] `UPSTASH_REDIS_REST_URL` (https) and `UPSTASH_REDIS_REST_TOKEN`
 - [ ] Image storage for the configured provider:
       `supabase`: `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_STORAGE_BUCKET` (plus an https
@@ -40,7 +41,6 @@ Names only. `checkEnv` (`apps/web/src/core/infra/env.ts`) treats these as requir
 
 Not fatal, but expected in Production:
 
-- [ ] `SUPABASE_SERVICE_ROLE_KEY` (account deletion answers 503 without it).
 - [ ] `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (push; `VAPID_SUBJECT`
       throws in production when push is used without it).
 - [ ] `NEXT_PUBLIC_APP_URL` (invite links, OG images, PayPal return origin).

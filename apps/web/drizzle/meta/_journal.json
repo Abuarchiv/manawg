@@ -155,6 +155,20 @@
       "when": 1791515709684,
       "tag": "0021_statement_emails_sending",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1791554945578,
+      "tag": "0022_expense_payments_manual_provider",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1791558050929,
+      "tag": "0023_cron_scan_indexes",
+      "breakpoints": true
     }
   ]
 }

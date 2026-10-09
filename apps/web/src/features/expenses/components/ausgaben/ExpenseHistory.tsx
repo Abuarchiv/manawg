@@ -1,7 +1,7 @@
 'use client';
 
 import { Button, buttonVariants } from '@/components/ui/button';
-import { Empty, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Input } from '@/components/ui/input';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ExpenseRow } from '@/features/expenses/components/ausgaben/ExpenseRow';
@@ -73,6 +73,9 @@ export function ExpenseHistory({
 				<Empty>
 					<EmptyHeader>
 						<EmptyTitle>Noch keine Ausgaben</EmptyTitle>
+						<EmptyDescription>
+							Trage die erste gemeinsame Ausgabe ein, danach rechnet ManaWG den Ausgleich aus.
+						</EmptyDescription>
 					</EmptyHeader>
 				</Empty>
 			) : (

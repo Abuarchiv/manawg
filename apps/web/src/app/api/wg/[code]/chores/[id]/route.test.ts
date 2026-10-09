@@ -74,6 +74,9 @@ mock.module('@/core/audit', { namedExports: { recordAuditEvent: async () => unde
 mock.module('@/core/db', {
 	namedExports: { CHORE_RECURRENCE_TYPES: ['days', 'months'], chores, db, wgMembers: {} },
 });
+mock.module('@/core/db/transaction', {
+	namedExports: { withTransaction: async (fn: (tx: typeof db) => Promise<unknown>) => fn(db) },
+});
 mock.module('@/core/guards/admin', { namedExports: { isWgAdmin: () => true } });
 mock.module('@/core/guards/api-auth', {
 	namedExports: {
@@ -98,7 +101,10 @@ mock.module('@/core/notifications/notification-dispatch', {
 	namedExports: { dispatchNotificationSafely: async () => ({ warning: null }) },
 });
 mock.module('@/features/chores/server/resolve-swap-request', {
-	namedExports: { resolveChoreSwapRequest: async () => undefined },
+	namedExports: {
+		resolveChoreSwapRequest: async () => undefined,
+		closeChoreSwapRequest: async () => undefined,
+	},
 });
 mock.module('@/features/chores/chore-patch', {
 	namedExports: { buildChorePatchUpdate: () => ({}) },

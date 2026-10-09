@@ -2,6 +2,7 @@
 
 import { ErrorBox } from '@/components/app/ErrorBox';
 import { CredentialsAuth } from '@/components/auth/CredentialsAuth';
+import { SignUpPrompt } from '@/components/auth/SignUpPrompt';
 import { SocialLoginButtons } from '@/components/auth/SocialLoginButtons';
 import { EntryFrame } from '@/components/entry/EntryFrame';
 import { LegalLinks } from '@/components/entry/LegalLinks';
@@ -9,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { FieldGroup, FieldSeparator } from '@/components/ui/field';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
+import { isAuthPagePath } from '@/core/auth/auth-intent';
 import { getIdentity } from '@/core/auth/identity';
 import { safeNextPath } from '@/core/auth/next-path';
 import { normalizeShareCode } from '@/core/utils/share-code';
@@ -19,11 +21,11 @@ import { CreateStep } from './CreateStep';
 import { InviteStep } from './InviteStep';
 import { JoinCodeStep } from './JoinCodeStep';
 import { JoinNameStep } from './JoinNameStep';
+import { StartNotices } from './StartNotices';
 import {
 	getJoinCodeFromSearch,
 	getNeuIntentFromSearch,
 	getWgCodeFromPath,
-	isNeuPath,
 	startSocialLogin,
 } from './start-flow';
 import { useAccountWgs } from './use-account-wgs';
@@ -34,11 +36,6 @@ import { useJoinWg } from './use-join-wg';
 import { useSaveStartDraft, useStartDraft } from './use-start-draft';
 import { useStartError } from './use-start-error';
 import { useStepHistory } from './use-step-history';
-
-// Most failed callbacks are an expired or reused link, or a link opened in a
-// different browser than the one that requested it (no PKCE verifier there).
-const AUTH_CALLBACK_ERROR =
-	'Die Anmeldung konnte nicht abgeschlossen werden. Melde dich erneut an und öffne Anmeldelinks im selben Browser, in dem du sie angefordert hast.';
 
 export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 	const router = useRouter();
@@ -75,6 +72,7 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 		setAuthState,
 		retryAuth,
 		handleAuthenticated,
+		signedInHere,
 	} = useAccountWgs({ interactive, step, clearError });
 	useSaveStartDraft({ interactive, step, wgName, creatorName, joinCode, joinName, joinWg });
 	const { goTo, goBack } = useStepHistory({
@@ -97,7 +95,7 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 			params.set('code', normalizeShareCode(code));
 		}
 		const next = safeNextPath(searchParams.get('next'));
-		if (next !== '/' && !isNeuPath(next)) params.set('next', next);
+		if (next !== '/' && !isAuthPagePath(next)) params.set('next', next);
 		const query = params.toString();
 		return query ? `/neu?${query}` : '/neu';
 	}
@@ -199,9 +197,8 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 		};
 	}, [showsSignIn]);
 
-	useClearCallbackError(authState === 'authenticated');
+	useClearCallbackError(signedInHere);
 
-	const callbackError = searchParams.get('error') === 'auth_callback';
 	const movedOut = searchParams.get('reason') === 'moved_out';
 	const deniedWgCode = (() => {
 		const code = getWgCodeFromPath(safeNextPath(searchParams.get('next')));
@@ -225,7 +222,7 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 				backHref={explorationHref()}
 			>
 				{accountSwitchError && <ErrorBox>{accountSwitchError}</ErrorBox>}
-				{callbackError && <ErrorBox>{AUTH_CALLBACK_ERROR}</ErrorBox>}
+				<StartNotices search={searchParams.toString()} />
 				{(authState === 'error' || (retried && authState === 'loading')) && (
 					<div className="flex flex-col gap-2">
 						<ErrorBox>Deine Anmeldung konnte gerade nicht geprüft werden.</ErrorBox>
@@ -283,6 +280,7 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 							onAuthenticated={handleAuthenticated}
 							onBusyChange={setCredentialsBusy}
 						/>
+						<SignUpPrompt intentQuery={loginNextPath().split('?')[1] ?? ''} />
 					</FieldGroup>
 				)}
 				{!checkingSession && <LegalLinks consent />}
@@ -319,12 +317,13 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 			}
 			backHref={explorationHref()}
 		>
+			<StartNotices search={searchParams.toString()} />
 			{accountSwitchError && <ErrorBox>{accountSwitchError}</ErrorBox>}
 			{deniedWgCode && step === 'choose' && (
 				<ErrorBox>
 					{movedOut
 						? `Du bist in der WG ${deniedWgCode} als ausgezogen markiert. Eine Admin-Person kann dich wieder aktivieren.`
-						: `Auf die WG ${deniedWgCode} hast du mit diesem Konto keinen Zugriff. Wähle eine deiner WGs oder tritt mit dem WG-Code bei.`}
+						: `Der Link zur WG ${deniedWgCode} ist veraltet, oder du bist mit diesem Konto nicht Mitglied. Wähle eine deiner WGs oder tritt mit dem WG-Code bei.`}
 				</ErrorBox>
 			)}
 			{step === 'choose' && (
@@ -346,6 +345,7 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 					onCreatorNameChange={setCreatorName}
 					error={error}
 					invalidField={invalidField}
+					clearError={clearError}
 					busy={busy}
 					onSubmit={() => void createWg()}
 					onBack={() => goBack('choose')}

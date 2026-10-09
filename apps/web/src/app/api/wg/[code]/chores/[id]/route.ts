@@ -1,6 +1,7 @@
 import { recordAuditEvent } from '@/core/audit';
 import { CHORE_RECURRENCE_TYPES, chores, db, wgMembers } from '@/core/db';
 import type { ChoreRecurrenceType } from '@/core/db';
+import { withTransaction } from '@/core/db/transaction';
 import { isWgAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
@@ -11,7 +12,10 @@ import { dispatchNotificationSafely } from '@/core/notifications/notification-di
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { MS_PER_DAY } from '@/core/utils/time';
 import { buildChorePatchUpdate } from '@/features/chores/chore-patch';
-import { resolveChoreSwapRequest } from '@/features/chores/server/resolve-swap-request';
+import {
+	closeChoreSwapRequest,
+	resolveChoreSwapRequest,
+} from '@/features/chores/server/resolve-swap-request';
 import { type SQL, and, eq, isNull, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -30,6 +34,8 @@ const patchSchema = z
 		intervalDays: z.number().int().min(INTERVAL_MIN).optional(),
 		// z.enum requires a mutable tuple; spread the readonly schema constant.
 		recurrenceType: z.enum([...CHORE_RECURRENCE_TYPES]).optional(),
+		// The version the editor was opened on; a newer one means someone saved meanwhile.
+		expectedUpdatedAt: z.string().datetime({ offset: true }).optional(),
 	})
 	.superRefine((data, ctx) => {
 		// Only validate the interval cap when intervalDays is being changed;
@@ -75,6 +81,7 @@ export const PATCH = withWgRoute<{ id: string }>('chores PATCH', async (req, { c
 			nextDueAt: 'due_date_invalid',
 			intervalDays: 'interval_invalid',
 			recurrenceType: 'recurrence_type_invalid',
+			expectedUpdatedAt: 'expected_state_invalid',
 		},
 	});
 	if (!parsed.ok) return parsed.response;
@@ -98,18 +105,6 @@ export const PATCH = withWgRoute<{ id: string }>('chores PATCH', async (req, { c
 			)
 			.limit(1);
 		if (member.length === 0) return badRequest('member_not_in_wg');
-	}
-	// Read before the update: a changed assignee closes the swap request and
-	// notifies the new one, a re-saved one does nothing.
-	let previousAssigneeId: string | null = null;
-	if (parsed.data.assignedMemberId !== undefined) {
-		const [previous] = await db
-			.select({ assignedMemberId: chores.assignedMemberId })
-			.from(chores)
-			.where(and(eq(chores.id, id), eq(chores.wgId, wgId)))
-			.limit(1);
-		if (!previous) return notFound('chore_not_found');
-		previousAssigneeId = previous.assignedMemberId;
 	}
 	const cadenceChanged =
 		parsed.data.intervalDays !== undefined || parsed.data.recurrenceType !== undefined;
@@ -160,6 +155,9 @@ export const PATCH = withWgRoute<{ id: string }>('chores PATCH', async (req, { c
 		update.lastReminderAt = sql`case when ${chores.assignedMemberId} is distinct from ${nextAssignee}::uuid then null else ${chores.lastReminderAt} end`;
 	}
 
+	const expectedVersion = parsed.data.expectedUpdatedAt
+		? sql`date_trunc('milliseconds', ${chores.updatedAt}) = ${new Date(parsed.data.expectedUpdatedAt)}`
+		: undefined;
 	const currentMatch = currentChore
 		? and(
 				eq(chores.intervalDays, currentChore.intervalDays),
@@ -167,14 +165,40 @@ export const PATCH = withWgRoute<{ id: string }>('chores PATCH', async (req, { c
 				eq(chores.nextDueAt, currentChore.nextDueAt),
 			)
 		: undefined;
-	const [updated] = await db
-		.update(chores)
-		.set(update)
-		.where(and(eq(chores.id, id), eq(chores.wgId, wgId), currentMatch))
-		.returning();
+	// The chore and the swap request it answers change together: a failure in between would
+	// leave an open request that no retry could ever close.
+	const { updated, previousAssigneeId } = await withTransaction(async (tx) => {
+		// Read under the row lock that the update below keeps: a request opened by someone who
+		// took the chore a moment ago is only answered by a change this transaction really makes.
+		const previousAssigneeId =
+			parsed.data.assignedMemberId !== undefined
+				? ((
+						await tx
+							.select({ assignedMemberId: chores.assignedMemberId })
+							.from(chores)
+							.where(and(eq(chores.id, id), eq(chores.wgId, wgId)))
+							.limit(1)
+							.for('update')
+					)[0]?.assignedMemberId ?? null)
+				: undefined;
+		const [row] = await tx
+			.update(chores)
+			.set(update)
+			.where(and(eq(chores.id, id), eq(chores.wgId, wgId), currentMatch, expectedVersion))
+			.returning();
+		// An unassigned chore leaves the request open: nobody took it over.
+		if (
+			row?.assignedMemberId &&
+			previousAssigneeId !== undefined &&
+			previousAssigneeId !== row.assignedMemberId
+		) {
+			await closeChoreSwapRequest(tx, wgId, row.id, auth.member.memberId);
+		}
+		return { updated: row, previousAssigneeId };
+	});
 
 	if (!updated) {
-		if (currentChore) {
+		if (currentChore || expectedVersion) {
 			const stillExists = await db
 				.select({ id: chores.id })
 				.from(chores)
@@ -199,8 +223,7 @@ export const PATCH = withWgRoute<{ id: string }>('chores PATCH', async (req, { c
 		},
 	});
 	const assigneeChanged =
-		parsed.data.assignedMemberId !== undefined && previousAssigneeId !== updated.assignedMemberId;
-	if (assigneeChanged) await resolveChoreSwapRequest(wgId, id, auth.member.memberId);
+		previousAssigneeId !== undefined && previousAssigneeId !== updated.assignedMemberId;
 	// Taking over a chore yourself needs no push; handing a due chore to someone else does.
 	if (
 		assigneeChanged &&

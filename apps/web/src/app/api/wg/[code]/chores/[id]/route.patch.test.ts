@@ -13,6 +13,8 @@ interface Calls {
 }
 let calls: Calls;
 let current: { assignedMemberId: string | null; nextDueAt: Date };
+// When false the guarded update matches no row, like a chore saved by someone else meanwhile.
+let updateMatches = true;
 
 const chores = {
 	id: 'chores.id',
@@ -28,15 +30,20 @@ const db = {
 	select: () => ({
 		from: () => ({
 			where: () => ({
-				limit: async () => [
-					{
-						assignedMemberId: current.assignedMemberId,
-						nextDueAt: current.nextDueAt,
-						intervalDays: 7,
-						recurrenceType: 'days',
-					},
-					// The member lookup shares this stub: any row means "found".
-				],
+				limit: () => {
+					const rows = [
+						{
+							id: choreId,
+							assignedMemberId: current.assignedMemberId,
+							nextDueAt: current.nextDueAt,
+							intervalDays: 7,
+							recurrenceType: 'days',
+						},
+						// The member lookup shares this stub: any row means "found".
+					];
+					// Awaitable as is, and after `.for('update')` like the real builder.
+					return Object.assign(Promise.resolve(rows), { for: async () => rows });
+				},
 			}),
 		}),
 	}),
@@ -45,18 +52,23 @@ const db = {
 			calls.set.push(values);
 			return {
 				where: () => ({
-					returning: async () => [
-						{
-							id: choreId,
-							title: 'Bad putzen',
-							intervalDays: 7,
-							recurrenceType: 'days',
-							nextDueAt: current.nextDueAt,
-							assignedMemberId:
-								'assignedMemberId' in values ? values.assignedMemberId : current.assignedMemberId,
-							...values,
-						},
-					],
+					returning: async () =>
+						!updateMatches
+							? []
+							: [
+									{
+										id: choreId,
+										title: 'Bad putzen',
+										intervalDays: 7,
+										recurrenceType: 'days',
+										nextDueAt: current.nextDueAt,
+										assignedMemberId:
+											'assignedMemberId' in values
+												? values.assignedMemberId
+												: current.assignedMemberId,
+										...values,
+									},
+								],
 				}),
 			};
 		},
@@ -69,6 +81,9 @@ const db = {
 mock.module('@/core/audit', { namedExports: { recordAuditEvent: async () => undefined } });
 mock.module('@/core/db', {
 	namedExports: { CHORE_RECURRENCE_TYPES: ['days', 'months'], chores, db, wgMembers: {} },
+});
+mock.module('@/core/db/transaction', {
+	namedExports: { withTransaction: async (fn: (tx: typeof db) => Promise<unknown>) => fn(db) },
 });
 mock.module('@/core/guards/admin', { namedExports: { isWgAdmin: async () => true } });
 mock.module('@/core/guards/api-auth', {
@@ -104,6 +119,10 @@ mock.module('@/features/chores/server/resolve-swap-request', {
 		resolveChoreSwapRequest: async (...args: string[]) => {
 			calls.resolved.push(args);
 		},
+		// The first argument is the transaction.
+		closeChoreSwapRequest: async (_tx: unknown, ...args: string[]) => {
+			calls.resolved.push(args);
+		},
 	},
 });
 mock.module('drizzle-orm', {
@@ -122,6 +141,7 @@ const inHours = (hours: number) => new Date(Date.now() + hours * 3_600_000);
 function setup(assignedMemberId: string | null = actorId, nextDueAt = inHours(2)) {
 	calls = { set: [], resolved: [], dispatched: [] };
 	current = { assignedMemberId, nextDueAt };
+	updateMatches = true;
 }
 
 function patch(body: unknown) {
@@ -183,6 +203,34 @@ test('Re-saving the same assignee or a title-only change leaves the swap request
 	await patch({ title: 'Neu' });
 	assert.equal(calls.resolved.length, 0);
 	assert.equal(calls.dispatched.length, 0);
+});
+
+test('PATCH to no assignee leaves the swap request open', async () => {
+	setup(actorId, inHours(2));
+	const response = await patch({ assignedMemberId: null });
+	assert.equal(response.status, 200);
+	assert.equal(calls.resolved.length, 0);
+	assert.equal(calls.dispatched.length, 0);
+});
+
+test('PATCH with an outdated version answers chore_changed and closes nothing', async () => {
+	setup(actorId, inHours(2));
+	updateMatches = false;
+	const response = await patch({
+		assignedMemberId: otherId,
+		expectedUpdatedAt: '2026-01-01T00:00:00.000Z',
+	});
+	assert.equal(response.status, 409);
+	assert.deepEqual(await response.json(), { error: 'chore_changed' });
+	assert.equal(calls.resolved.length, 0);
+	assert.equal(calls.dispatched.length, 0);
+});
+
+test('PATCH rejects a malformed expectedUpdatedAt', async () => {
+	setup();
+	const response = await patch({ title: 'Neu', expectedUpdatedAt: 'gestern' });
+	assert.equal(response.status, 400);
+	assert.deepEqual(await response.json(), { error: 'expected_state_invalid' });
 });
 
 test('DELETE closes the swap request of the removed chore', async () => {

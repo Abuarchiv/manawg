@@ -18,17 +18,24 @@ function redirect(location: string): NextResponse {
 	});
 }
 
+/** No trusted app origin to send the visitor back to, so say so on a page instead of raw JSON. */
+function unavailablePage(): NextResponse {
+	const html = `<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>PayPal-Verbindung – ManaWG</title></head><body style="font-family:system-ui,sans-serif;max-width:32rem;margin:3rem auto;padding:0 1rem;line-height:1.5"><h1>PayPal-Verbindung gerade nicht möglich</h1><p>Die Verbindung konnte nicht abgeschlossen werden. Öffne ManaWG und versuche es in den Einstellungen deiner WG erneut.</p><p><a href="/">Zu ManaWG</a></p></body></html>`;
+	return new NextResponse(html, {
+		status: 503,
+		headers: {
+			'Content-Type': 'text/html; charset=utf-8',
+			'Cache-Control': 'no-store',
+			'Referrer-Policy': 'no-referrer',
+		},
+	});
+}
+
 export function GET(req: NextRequest): NextResponse {
 	const environment = getPayPalEnvironment();
 	const appOrigin = getTrustedPayPalAppOrigin(environment);
 	if (!environment || !appOrigin) {
-		return NextResponse.json(
-			{ error: 'paypal_connection_expired' },
-			{
-				status: 503,
-				headers: { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' },
-			},
-		);
+		return unavailablePage();
 	}
 
 	const callbackUrl = new URL(req.url);

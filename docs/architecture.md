@@ -269,7 +269,9 @@ All `online`/`offline` and `visibilitychange` listeners go through
   deletion tombstones, and streams with `no-store`. The bucket (`SUPABASE_STORAGE_BUCKET`) must be
   private with an 8 MiB limit and exactly the MIME types in `core/infra/private-image-policy.ts`;
   otherwise the provider reports itself unconfigured. Deletions are tombstoned in
-  `private_image_deletions` and removed by the maintenance cron.
+  `private_image_deletions` and removed by the maintenance cron. The same cron queues pictures no
+  row points at after 14 days (`core/db/orphan-uploads.ts`, a few WGs per run); a queued picture that
+  a row points at again is taken off the queue.
 - `aws` (default when unset, legacy): presigned S3 PUT (`core/infra/s3.ts`); images are stored
   as public URLs under `S3_PUBLIC_URL`. There is no S3 delete path.
 
@@ -352,3 +354,45 @@ Route folders under `app/wg/[code]/`, with the code names behind them.
 
 "Erinnerungen" for chores and events are push notifications sent by the `chore-reminders` and
 `event-reminders` crons, not the `reminders` API.
+
+## Decisions on trust, retention and exposure
+
+These behaviors were reviewed in the October 2026 audit and are kept on purpose.
+
+- **Expenses run on household trust.** A member may log an expense paid by someone else only while
+  carrying a positive share themselves (`features/expenses/paid-by-guard.ts`); any debtor may remove
+  an expense or mark their own share settled. The audit trail records who did it. Stricter rules
+  (payer confirmation) would end the "log it for a flatmate" flow and are not planned.
+- **Edit rights.** Editing an expense is payer-only; removing is payer or any debtor. The UI offers
+  only what the server accepts (`ExpenseRow`).
+- **Account deletion keeps names.** The member leaves like an "Auszug": login link, PayPal id and push
+  subscriptions are removed, the display name stays on past entries so that balances, chat and
+  history of the remaining flatmates stay understandable. The name is a household-internal label, not
+  an account identifier. Changing this is a legal decision, not a technical one.
+- **PayPal merchant ids are public identifiers.** They are sent to every member because the PayPal SDK
+  needs the payee's id on the client; no secret is involved. Orders and amounts are always built on
+  the server.
+- **Activity feed.** Every member reads it. Private details (one person's quiet hours, push opt-in,
+  the creation-time share code) are removed before the response (`core/audit-visibility.ts`).
+- **Share-code rotation** keeps the "joining enabled" switch as it was and says which way it stands.
+- **Member names** are unique ignoring case among active members. A moved-out member who holds a name
+  a current member wants is renamed to "Name (ausgezogen)". The cap of 20 counts active members only.
+- **Time zones.** Event times are entered and shown in the device's zone; repeats, reminders and the
+  calendar feed follow Berlin wall time. A device elsewhere gets a notice on the calendar page
+  (`TimeZoneNotice`). Pinning every display to Berlin would change the month grid, the agenda and
+  all-day handling together and is not planned.
+- **One date of a series.** A repeating event keeps its removed dates as `EXDATE=` in the rule
+  (`features/events/event-recurrence-rule.ts`, capped by `MAX_EXDATES`); changing one date removes it
+  and creates a single event in one transaction (`POST /events/[id]/occurrence`). Removed dates still
+  count toward `COUNT`.
+- **Import.** Duplicates are counted, not collapsed: the n-th identical row of a file is skipped only
+  while the WG already holds n of them. An import can be taken back by the member who ran it or an
+  admin until any of its shares is settled.
+- **Fixed-cost cents.** An even split's extra cents move on to another member with every booking
+  (`recurring-split-rotation.ts`); uneven custom splits stay as entered.
+- **Uploads.** Pictures that no row points at after 14 days are removed from the private bucket by
+  the maintenance cron, a few WGs per run.
+- **Signing secret rotation.** `MEMBER_SESSION_SECRET_PREVIOUS` keeps calendar feed URLs and recovery
+  proofs valid while the secret changes.
+- **Preview limiter.** A configured rate limiter that fails does not pass traffic on Preview; an
+  unconfigured one still does (fixtures, local runs).

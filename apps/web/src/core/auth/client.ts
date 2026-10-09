@@ -2,6 +2,7 @@
 
 import { retireWebPushEndpoint } from '@/core/notifications/push-subscribe';
 import { createBrowserClient } from '@supabase/ssr';
+import { authCookieOptions } from './cookie-options';
 import { safeNextPath } from './next-path';
 import { getSupabaseEnv } from './supabase-env';
 
@@ -29,7 +30,11 @@ export function isPhoneAuthUnavailable(error: unknown): boolean {
 
 export function createSupabaseBrowserClient() {
 	const { url, publishableKey } = getSupabaseEnv();
-	return createBrowserClient(url, publishableKey);
+	return createBrowserClient(url, publishableKey, {
+		cookieOptions: authCookieOptions(
+			typeof window !== 'undefined' && window.location.protocol === 'https:',
+		),
+	});
 }
 
 export async function isAuthProviderEnabled(provider: SocialProvider | 'phone'): Promise<boolean> {
@@ -105,11 +110,31 @@ export async function signUpWithEmailPassword(
 	return { sessionEstablished: data.session !== null };
 }
 
+/** Sends the sign-up confirmation mail again; the response never reveals whether the address exists. */
+export async function resendSignupConfirmation(email: string, next: string): Promise<void> {
+	const { error } = await createSupabaseBrowserClient().auth.resend({
+		type: 'signup',
+		email,
+		options: { emailRedirectTo: authCallbackUrl(next) },
+	});
+	if (error) throw error;
+}
+
 export async function requestPasswordReset(email: string): Promise<void> {
 	const { error } = await createSupabaseBrowserClient().auth.resetPasswordForEmail(email, {
 		redirectTo: authCallbackUrl('/auth/reset'),
 	});
 	if (error) throw error;
+}
+
+/** The signed-in account's e-mail and whether it signs in with an e-mail/password identity. */
+export async function getEmailAccount(): Promise<{ email: string; hasPassword: boolean } | null> {
+	const { data, error } = await createSupabaseBrowserClient().auth.getUser();
+	if (error || !data.user?.email) return null;
+	const hasPassword = (data.user.identities ?? []).some(
+		(identity) => identity.provider === 'email',
+	);
+	return { email: data.user.email, hasPassword };
 }
 
 export async function updatePassword(password: string): Promise<void> {
@@ -223,6 +248,10 @@ export async function clearLocalAccountData(): Promise<void> {
 						),
 					),
 	]);
+	// The wipe took the offline page with it; the worker fetches it again.
+	if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+		navigator.serviceWorker.controller?.postMessage('refresh-shell');
+	}
 }
 
 export async function signOutSocialAccount(

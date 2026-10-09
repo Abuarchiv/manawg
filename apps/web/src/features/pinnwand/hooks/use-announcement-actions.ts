@@ -52,10 +52,12 @@ export function useAnnouncementActions(
 			status?: AnnouncementStatus;
 			kind?: AnnouncementKind;
 			content?: string;
+			expectedUpdatedAt?: string;
 		},
 		pendingKey: string,
 		rollback: () => void,
 		onSuccess?: () => void,
+		onError?: (error: string) => void,
 	): Promise<boolean> {
 		if (isPending(pendingKey)) return false;
 		start(pendingKey);
@@ -74,6 +76,7 @@ export function useAnnouncementActions(
 			} else {
 				rollback();
 				setActionError(announcementActionErrorMessage(res.error));
+				onError?.(res.error);
 			}
 			return false;
 		}
@@ -124,7 +127,7 @@ export function useAnnouncementActions(
 		);
 	}
 
-	/** Text and type of an own post; resolves true once saved so the editor can close. */
+	/** Text and type of a manual post; resolves true once saved so the editor can close. */
 	function editAnnouncement(
 		announcement: Announcement,
 		next: { content: string; kind: AnnouncementKind },
@@ -134,10 +137,13 @@ export function useAnnouncementActions(
 		if (next.kind !== announcement.kind) body.kind = next.kind;
 		return patchAnnouncement(
 			announcement.id,
-			body,
+			announcement.updatedAt ? { ...body, expectedUpdatedAt: announcement.updatedAt } : body,
 			`${announcement.id}:edit`,
 			() => undefined,
 			() => updateItem(announcement.id, (item) => ({ ...item, ...body })),
+			(error) => {
+				if (error === 'announcement_changed') void load();
+			},
 		);
 	}
 

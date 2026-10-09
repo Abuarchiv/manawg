@@ -1,5 +1,6 @@
 'use client';
 
+import { isAuthPagePath } from '@/core/auth/auth-intent';
 import { safeNextPath } from '@/core/auth/next-path';
 import { hasSessionCookie } from '@/core/auth/session-hint';
 import { REQUEST_TIMEOUT_MS } from '@/core/infra/api-client';
@@ -15,7 +16,6 @@ import {
 	getNeuIntentFromSearch,
 	getWgCodeFromPath,
 	isAccountWg,
-	isNeuPath,
 	markJustSignedIn,
 } from './start-flow';
 
@@ -39,6 +39,8 @@ export function useAccountWgs({
 	const [accountWgs, setAccountWgs] = useState<AccountWg[]>([]);
 	const [authState, setAuthState] = useState<AuthState>('loading');
 	const [authRetryNonce, setAuthRetryNonce] = useState(0);
+	// A failed-callback notice stays on load; it is dropped only once the visitor signs in here.
+	const [signedInHere, setSignedInHere] = useState(false);
 	// Client-only: a session cookie exists, so the check is for someone already signed in.
 	const [sessionHint, setSessionHint] = useState(false);
 
@@ -103,10 +105,12 @@ export function useAccountWgs({
 			}
 			return;
 		}
+		// A failed callback stays on this page so its message is seen, not skipped by the redirect.
+		if (searchParams.get('error') === 'auth_callback') return;
 		const next = safeNextPath(searchParams.get('next'));
 		const [onlyWg] = accountWgs;
 		// One WG: skip the picker, like the public start page does.
-		if (next === '/' || isNeuPath(next)) {
+		if (next === '/' || isAuthPagePath(next)) {
 			if (consumeJustSignedIn() && accountWgs.length === 1 && onlyWg && step === 'choose') {
 				router.replace(`/wg/${encodeURIComponent(onlyWg.code)}`);
 			}
@@ -122,6 +126,7 @@ export function useAccountWgs({
 	}
 
 	function handleAuthenticated(): void {
+		setSignedInHere(true);
 		markJustSignedIn();
 		setSessionHint(true);
 		setAuthState('loading');
@@ -136,5 +141,6 @@ export function useAccountWgs({
 		setAuthState,
 		retryAuth,
 		handleAuthenticated,
+		signedInHere,
 	};
 }

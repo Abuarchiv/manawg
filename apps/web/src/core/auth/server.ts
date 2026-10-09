@@ -5,6 +5,7 @@ import type { User } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { type NextRequest, NextResponse } from 'next/server';
 import { isTransientAuthError } from './auth-errors';
+import { authCookieOptions } from './cookie-options';
 import { getSupabaseEnv, hasSupabaseEnv } from './supabase-env';
 
 const SUPABASE_AUTH_TOKEN_COOKIE = /^sb-[A-Za-z0-9-]+-auth-token(?:\.\d+)?$/;
@@ -20,6 +21,7 @@ export function createSupabaseServerClient(request: NextRequest, response: NextR
 	const { url, publishableKey } = getSupabaseEnv();
 
 	return createServerClient(url, publishableKey, {
+		cookieOptions: authCookieOptions(request.nextUrl.protocol === 'https:'),
 		cookies: {
 			getAll: () => request.cookies.getAll(),
 			setAll: (cookiesToSet, headers) => {

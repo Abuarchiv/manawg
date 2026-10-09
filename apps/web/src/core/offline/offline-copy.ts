@@ -68,3 +68,9 @@ export const QUEUE_EDIT_ALREADY_SENT_MESSAGE =
 /** Shown after a successful online save when clearing the now-stale local draft fails. */
 export const DRAFT_CLEANUP_FAILED_MESSAGE =
 	'Gespeichert, aber der alte Offline-Entwurf konnte nicht entfernt werden.';
+
+/** Actions that sync will not retry on its own: the person has to look at them first. */
+export function formatOfflineReviewNeeded(count: number): string {
+	if (count === 1) return '1 Aktion braucht deine Prüfung.';
+	return `${count} Aktionen brauchen deine Prüfung.`;
+}

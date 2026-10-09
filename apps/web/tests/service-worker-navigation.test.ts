@@ -113,3 +113,107 @@ test('does not navigate to a foreign target and opens the app root', async () =>
 	assert.deepEqual(calls, []);
 	assert.deepEqual(opened, ['/']);
 });
+
+type Timer = { fn: () => void; ms: number };
+
+// The worker reads fetch, caches and setTimeout from the global scope when an event fires, so a
+// test swaps those globals around one navigation and restores them afterwards.
+async function withNetwork(
+	{
+		fetch,
+		cached,
+	}: {
+		fetch: (request: unknown, init: { signal: AbortSignal }) => Promise<unknown>;
+		cached: Record<string, unknown>;
+	},
+	run: (timers: Timer[]) => Promise<void>,
+) {
+	const scope = globalThis as unknown as Record<string, unknown>;
+	const names = ['fetch', 'caches', 'setTimeout', 'clearTimeout'];
+	const original = names.map((name) => scope[name]);
+	const timers: Timer[] = [];
+	scope.fetch = fetch;
+	scope.caches = {
+		match: async (key: string | { url: string }) =>
+			cached[typeof key === 'string' ? key : new URL(key.url).pathname],
+		open: async () => ({ put: async () => undefined, addAll: async () => undefined }),
+	};
+	scope.setTimeout = (fn: () => void, ms: number) => timers.push({ fn, ms });
+	scope.clearTimeout = () => undefined;
+	try {
+		await run(timers);
+	} finally {
+		names.forEach((name, index) => {
+			scope[name] = original[index];
+		});
+	}
+}
+
+function navigateTo(pathname: string) {
+	let response: Promise<unknown> | undefined;
+	handlers.get('fetch')?.({
+		request: {
+			method: 'GET',
+			mode: 'navigate',
+			url: `${APP_ORIGIN}${pathname}`,
+			headers: { get: () => 'text/html' },
+		},
+		respondWith: (promise: Promise<unknown>) => {
+			response = promise;
+		},
+	});
+	return response;
+}
+
+test('a navigation the network does not answer in time falls back to the offline page', async () => {
+	await withNetwork(
+		{
+			fetch: (_request, { signal }) =>
+				new Promise((_resolve, reject) => {
+					signal.addEventListener('abort', () => reject(new Error('aborted')));
+				}),
+			cached: { '/offline': 'offline-page' },
+		},
+		async (timers) => {
+			const pending = navigateTo('/wg/ABCD2345/ausgaben');
+			assert.equal(timers.length, 1);
+			assert.equal(timers[0]?.ms, 8000);
+			timers[0]?.fn();
+
+			assert.equal(await pending, 'offline-page');
+		},
+	);
+});
+
+test('a timely answer is served as is', async () => {
+	const answer = { ok: true, clone: () => answer };
+	await withNetwork({ fetch: async () => answer, cached: {} }, async () => {
+		assert.equal(await navigateTo('/wg/ABCD2345/ausgaben'), answer);
+	});
+});
+
+test('a page whose body stalls after the headers falls back to the offline page', async () => {
+	await withNetwork(
+		{
+			fetch: async (_request, { signal }) => ({
+				ok: true,
+				type: 'basic',
+				body: {},
+				clone: () => ({
+					arrayBuffer: () =>
+						new Promise((_resolve, reject) => {
+							signal.addEventListener('abort', () => reject(new Error('aborted')));
+						}),
+				}),
+			}),
+			cached: { '/offline': 'offline-page' },
+		},
+		async (timers) => {
+			const pending = navigateTo('/wg/ABCD2345/ausgaben');
+			await new Promise((resolve) => setImmediate(resolve));
+			assert.equal(timers.length, 1);
+			timers[0]?.fn();
+			assert.equal(await pending, 'offline-page');
+		},
+	);
+});

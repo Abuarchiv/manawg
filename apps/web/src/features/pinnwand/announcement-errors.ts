@@ -28,7 +28,11 @@ const ACTION_ERRORS: Record<string, string> = {
 	pinned_invalid: 'Fixierung konnte nicht gespeichert werden: Der Wert ist ungültig.',
 	kind_invalid: `${ACTION_SUBJECT}: Die Beitragsart ist ungültig.`,
 	content_invalid: `${ACTION_SUBJECT}: Der Text muss 1 bis 2000 Zeichen haben.`,
-	not_owner: `${ACTION_SUBJECT}: Nur wer den Beitrag geschrieben hat, kann ihn bearbeiten.`,
+	expected_state_invalid: `${ACTION_SUBJECT}: Der Stand des Beitrags ist ungültig.`,
+	announcement_changed:
+		'Der Beitrag wurde inzwischen geändert. Die Ansicht wird aktualisiert, dann kannst du erneut bearbeiten.',
+	content_locked: 'Dieser Beitrag wurde automatisch erstellt und lässt sich nicht bearbeiten.',
+	not_owner: `${ACTION_SUBJECT}: Nur wer den Beitrag geschrieben hat oder WG-Admins können ihn bearbeiten.`,
 	announcement_resolved: 'Dieser Beitrag wurde inzwischen geklärt.',
 	status_change_not_allowed:
 		'Nur wer den Beitrag geschrieben oder übernommen hat und WG-Admins können diesen Beitrag als geklärt markieren.',

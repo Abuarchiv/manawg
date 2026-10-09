@@ -111,6 +111,7 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
 	const accountDeletionPending = searchParams.get('accountDeletion') === 'pending';
+	const leftWg = searchParams.get('left') === '1';
 	const [memberships, setMemberships] = useState<AccountWg[]>([]);
 	const [membershipState, setMembershipState] = useState<
 		'loading' | 'signed-out' | 'authenticated-empty' | 'member-list' | 'error'
@@ -132,6 +133,8 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 	const singleWg =
 		membershipState === 'member-list' && memberships.length === 1 ? memberships[0] : null;
 	const checkingSession = sessionPending && membershipState === 'loading';
+	const guest =
+		membershipState === 'signed-out' || (membershipState === 'loading' && !sessionPending);
 	const multi = membershipState === 'member-list' && memberships.length > 1 && !inviteCode;
 	const accountAction =
 		membershipState === 'member-list'
@@ -276,6 +279,15 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 							</AlertDescription>
 						</Alert>
 					)}
+					{leftWg && (
+						<Alert>
+							<AlertTitle>Du hast die WG verlassen</AlertTitle>
+							<AlertDescription className="text-foreground">
+								Deine Mitgliedschaft wurde beendet. Mit einem WG-Code kannst du jederzeit einer WG
+								beitreten.
+							</AlertDescription>
+						</Alert>
+					)}
 					{section && (
 						<SubNav
 							label={`${section.label} – entdecken`}
@@ -311,9 +323,9 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 								</ErrorBox>
 							)}
 							{inviteCode ? (
-								<WgWelcome variant="invitation" code={inviteCode} />
+								<WgWelcome variant="invitation" code={inviteCode} guest={guest} />
 							) : (
-								membershipState !== 'member-list' && <WgWelcome variant="create" />
+								membershipState !== 'member-list' && <WgWelcome variant="create" guest={guest} />
 							)}
 						</>
 					)}

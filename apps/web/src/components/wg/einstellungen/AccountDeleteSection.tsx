@@ -21,6 +21,7 @@ import {
 	readResponseErrorCode,
 } from '@/components/wg/einstellungen/settings-errors';
 import { RATE_LIMITED_MESSAGE } from '@/core/http/error-codes';
+import { noteSessionExpiry } from '@/core/infra/api-client';
 import { UserX } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
@@ -48,6 +49,7 @@ export function AccountDeleteSection() {
 		setError(null);
 		try {
 			const res = await fetch('/api/account', { method: 'DELETE' });
+			noteSessionExpiry(res);
 			if (res.status === 503) {
 				const result = await res.json().catch(() => null);
 				if (
@@ -55,6 +57,11 @@ export function AccountDeleteSection() {
 					result?.error === 'account_deletion_outcome_unconfirmed'
 				) {
 					setError(UNKNOWN_DELETE_OUTCOME_MESSAGE);
+					setStage('confirm');
+					return;
+				}
+				if (result?.error === 'account_deletion_unavailable') {
+					setError('Das Löschen ist gerade nicht verfügbar. Bitte versuche es später erneut.');
 					setStage('confirm');
 					return;
 				}

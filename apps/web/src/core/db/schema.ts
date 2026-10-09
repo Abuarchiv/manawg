@@ -68,14 +68,10 @@ export const wgs = pgTable(
 	}),
 );
 
-// FK policy toward wgMembers (intentional placeholder — no member-removal feature exists yet,
-// only whole-WG deletion, so this is currently dead protection):
-// - onDelete: 'restrict' — financial/audit tables (expenses, expenseSplits, shoppingItems,
-//   announcements, choreCompletions, recurringExpenses) where losing the historical member
-//   reference would corrupt records once member-removal ships.
-// - onDelete: 'cascade' — tables (absences, debts, chat) whose rows are meaningless without
-//   the member and can safely disappear with them.
-// Member removal keeps 'restrict' tables intact (soft-delete instead of relaxing to 'cascade').
+// FK policy toward wgMembers: 'restrict' on the financial and audit tables (expenses, splits,
+// shopping items, announcements, chore completions, recurring expenses) keeps history intact, so
+// members leave through deactivated_at ("Auszug") and are never deleted; 'cascade' on tables
+// (absences, debts, chat) whose rows mean nothing without the member.
 export const wgMembers = pgTable(
 	'wg_members',
 	{
@@ -285,7 +281,10 @@ export const expensePayments = pgTable(
 			'expense_payments_members_check',
 			sql`${t.fromMemberId} <> ${t.toMemberId}`,
 		),
-		providerCheck: check('expense_payments_provider_check', sql`${t.provider} = 'paypal'`),
+		providerCheck: check(
+			'expense_payments_provider_check',
+			sql`${t.provider} in ('paypal', 'manual')`,
+		),
 		statusCheck: check(
 			'expense_payments_status_check',
 			sql`${t.status} in ('created', 'capturing', 'completed', 'failed')`,
@@ -444,6 +443,8 @@ export const chores = pgTable(
 	},
 	(t) => ({
 		wgIdx: index('chores_wg_idx').on(t.wgId, t.nextDueAt),
+		// The reminder cron scans every WG's chores due in a window.
+		nextDueIdx: index('chores_next_due_idx').on(t.nextDueAt),
 		// Mirrors CHORE_RECURRENCE_TYPES below — every write goes through a zod
 		// enum of the same two values, and the column has always defaulted to
 		// 'days'. Added NOT VALID out of caution for any row from before that
@@ -525,6 +526,10 @@ export const recurringExpenses = pgTable(
 	},
 	(t) => ({
 		wgIdx: index('recurring_expenses_wg_idx').on(t.wgId, t.nextDueAt),
+		// The recurring-expense cron scans all active entries that are due.
+		nextDueIdx: index('recurring_expenses_next_due_idx')
+			.on(t.nextDueAt)
+			.where(sql`${t.pausedAt} IS NULL`),
 		amountCheck: check('recurring_expenses_amount_cents_check', sql`${t.amountCents} > 0`),
 	}),
 );
@@ -984,9 +989,6 @@ export type Announcement = typeof announcements.$inferSelect;
 export type AnnouncementReaction = typeof announcementReactions.$inferSelect;
 export type AnnouncementComment = typeof announcementComments.$inferSelect;
 export type Chore = typeof chores.$inferSelect;
-// Calendar-aware recurrence cadence for chores. 'days' = ms-based arithmetic
-// (legacy default); 'months' = Date.setMonth() so 12-month chores land on the
-// exact same calendar day each year instead of drifting ~5 days off.
 export const idempotencyResponses = pgTable(
 	'idempotency_responses',
 	{

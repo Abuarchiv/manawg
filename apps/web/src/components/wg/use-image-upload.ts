@@ -2,7 +2,7 @@
 
 import { useWg } from '@/components/wg/WgContextProvider';
 import { subscribeOnline } from '@/core/hooks/use-online-status';
-import { REQUEST_TIMEOUT_MS } from '@/core/infra/api-client';
+import { REQUEST_TIMEOUT_MS, noteSessionExpiry } from '@/core/infra/api-client';
 import {
 	UPLOAD_TIMEOUT_MS,
 	isPendingImageToken,
@@ -119,6 +119,9 @@ export function useImageUpload({
 			try {
 				const publicUrl = await uploadPendingImageToken(value, identity.memberId);
 				onChangeRef.current(publicUrl);
+				// Chat cannot send while the token is pending, so no queued action will ever
+				// replay it; the stored copy (up to 8 MB) would stay on the device otherwise.
+				if (purpose === 'chat') void removePendingImage(value, identity.memberId).catch(() => {});
 			} catch (err) {
 				if (err instanceof Error && err.message === 'pending-image-missing') {
 					setNotice(null);
@@ -146,7 +149,7 @@ export function useImageUpload({
 
 		void syncPending();
 		return subscribeOnline(() => void syncPending());
-	}, [identity.memberId, value]);
+	}, [identity.memberId, purpose, value]);
 
 	async function handleFile(original: File): Promise<void> {
 		if (disabled) return;
@@ -218,6 +221,7 @@ export function useImageUpload({
 				body: JSON.stringify({ shareCode, purpose, mimeType: file.type, fileSize: file.size }),
 				signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
 			});
+			noteSessionExpiry(sigRes);
 			const signError = sigRes.ok ? '' : await readUploadSignError(sigRes);
 			if (
 				sigRes.status === 503 &&

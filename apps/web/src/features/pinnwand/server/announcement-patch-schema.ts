@@ -10,6 +10,12 @@ export const patchAnnouncementSchema = z
 		pinned: z.boolean().optional(),
 		kind: z.enum(ANNOUNCEMENT_KINDS).optional(),
 		content: z.string().trim().min(1).max(CONTENT_MAX).optional(),
+		// The version the edit drawer was opened on; a newer one means someone saved meanwhile.
+		expectedUpdatedAt: z.string().datetime({ offset: true }).optional(),
 	})
 	.strict()
-	.refine((value) => Object.values(value).some((field) => field !== undefined));
+	.refine((value) =>
+		Object.entries(value).some(
+			([key, field]) => key !== 'expectedUpdatedAt' && field !== undefined,
+		),
+	);

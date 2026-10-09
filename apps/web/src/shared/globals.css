@@ -198,6 +198,15 @@ html:has([data-offline-banner]) {
 	scroll-padding-top: calc(var(--offline-banner-height) + 0.5rem);
 }
 
+/* The sticky banners stack: the offline bar on top, the session-expired bar below it.
+   --banner-stack-height is the room both take; every sticky offset below uses it. */
+:root {
+	--banner-stack-height: calc(var(--offline-banner-height, 0px) + var(--session-banner-height, 0px));
+}
+html:has([data-session-banner]) {
+	scroll-padding-top: calc(var(--banner-stack-height) + 0.5rem);
+}
+
 /* 1b. WCAG 2.4.11 — the settings page's sticky tab strip (TabsList) must not
       hide content scrolled/focused into view beneath it (e.g. Shift+Tab
       landing right under it). Scoped via :has() to pages that render this
@@ -209,7 +218,7 @@ html:has([data-offline-banner]) {
 html:has([data-sticky-tabs]) {
 	scroll-padding-top: calc(
 		env(safe-area-inset-top, 0px) +
-		var(--offline-banner-height, 0px) +
+		var(--banner-stack-height, 0px) +
 		0.5rem +
 		var(--settings-tabs-height, 3.5rem) +
 		0.5rem
@@ -349,7 +358,7 @@ textarea,
    animation-timeline oder bei weniger Bewegung ist die Leiste immer deckend. */
 [data-home-header] {
 	position: sticky;
-	top: calc(env(safe-area-inset-top, 0px) + var(--offline-banner-height, 0px));
+	top: calc(env(safe-area-inset-top, 0px) + var(--banner-stack-height, 0px));
 	z-index: 20;
 	background-color: var(--background);
 }
@@ -501,7 +510,7 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 
 		--text-1: var(--foreground);
 		--text-2: oklch(0.439 0 0);
-		--text-3: oklch(0.556 0 0);
+		--text-3: oklch(0.52 0 0);
 		--text-label: var(--foreground);
 
 		--accent: oklch(0.97 0 0);
@@ -543,7 +552,7 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 		--bg-raised: var(--secondary);
 		--paper: var(--card);
 		--ink-2: oklch(0.439 0 0);
-		--ink-3: oklch(0.556 0 0);
+		--ink-3: oklch(0.52 0 0);
 		--accent-fg: var(--accent-foreground);
 		--red: var(--destructive);
 		--background: oklch(1 0 0);
@@ -557,13 +566,14 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 		--secondary: oklch(0.97 0 0);
 		--secondary-foreground: oklch(0.205 0 0);
 		--muted: oklch(0.97 0 0);
-		--muted-foreground: oklch(0.556 0 0);
+		/* Secondary text measured 4.35:1 on --muted surfaces at 0.556; 0.52 gives 5.0:1 there and 5.9:1 on white. */
+		--muted-foreground: oklch(0.52 0 0);
 		--accent-foreground: oklch(0.205 0 0);
 		--destructive: oklch(0.577 0.245 27.325);
 		/* Darkened from the stock oklch(0.922 0 0)/oklch(0.708 0 0): the shadcn defaults measured
 		   1.26:1 (input/switch-track border) and 2.59:1 (focus ring) against white, both below the
-		   WCAG 1.4.11 non-text-contrast minimum of 3:1. --ring reuses --muted-foreground's lightness
-		   so the focus state stays visibly darker than the resting border. */
+		   WCAG 1.4.11 non-text-contrast minimum of 3:1. --ring keeps the 0.556 lightness (independent of
+		   --muted-foreground) so the focus state stays visibly darker than the resting border. */
 		--input: oklch(0.65 0 0);
 		--ring: oklch(0.556 0 0);
 		--radius: 0.625rem;

@@ -185,6 +185,7 @@ export async function makeQueueModule({
 		apiFetch,
 		REQUEST_TIMEOUT_MS: 15_000,
 		anySignal: (signals: AbortSignal[]) => AbortSignal.any(signals),
+		noteSessionExpiry() {},
 	});
 	mockInstance('@/core/utils/browser', { safeLocalStorage: () => storage });
 	mockInstance('@/core/auth/identity', { getIdentity: identity });

@@ -1,100 +1,40 @@
 import { useToast } from '@/components/ui/Toast';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
-import { RATE_LIMITED_MESSAGE, isNetworkError, isRateLimited } from '@/core/http/error-codes';
+import { isNetworkError } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import { MS_PER_DAY } from '@/core/utils/time';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
+import {
+	type CalendarEvent,
+	type ChoreSummary,
+	buildChoreOccurrences,
+	eventToInput,
+} from '@/features/events/calendar-page-model';
 import type { CreateEventPayload } from '@/features/events/components/EventCreateModal';
 import type {
 	EditableEvent,
 	UpdateEventPayload,
 } from '@/features/events/components/EventEditModal';
+import { eventSaveError, isEventGone } from '@/features/events/event-save-errors';
 import {
-	type EventInput,
 	type EventOccurrence,
 	expandAgendaRecurrence,
 	expandRecurrence,
 	getCalendarDayBounds,
 	getMonthBounds,
 } from '@/features/events/events';
+import { postOccurrenceChange } from '@/features/events/occurrence-api';
 import { haptic } from '@/shared/lib/haptics';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-
-interface CalendarEvent {
-	id: string;
-	title: string;
-	description: string | null;
-	startsAt: string;
-	endsAt: string | null;
-	allDay: boolean;
-	location: string | null;
-	recurrence: string | null;
-	/** Absent only on optimistic rows; the API always sends it. */
-	createdByMemberId?: string | null;
-}
 
 type CalendarCreateResponse = {
 	event: CalendarEvent;
 	warning: null | 'notification_delivery_failed' | 'notification_delivery_unknown';
 };
 
-interface ChoreSummary {
-	id: string;
-	title: string;
-	nextDueAt: string;
-}
-
 const UPCOMING_DAYS = 30;
-
-function eventToInput(event: CalendarEvent): EventInput {
-	return {
-		id: event.id,
-		title: event.title,
-		description: event.description,
-		startsAt: event.startsAt,
-		endsAt: event.endsAt,
-		allDay: event.allDay,
-		location: event.location,
-		recurrence: event.recurrence,
-	};
-}
-
-function buildChoreOccurrences(
-	chores: ChoreSummary[],
-	from: Date,
-	to: Date,
-): Array<{ choreId: string; title: string; startsAt: string }> {
-	const fromMs = from.getTime();
-	const toMs = to.getTime();
-	return chores
-		.filter((chore) => {
-			const ts = Date.parse(chore.nextDueAt);
-			return ts >= fromMs && ts <= toMs;
-		})
-		.map((chore) => ({ choreId: chore.id, title: chore.title, startsAt: chore.nextDueAt }))
-		.sort((a, b) => a.startsAt.localeCompare(b.startsAt));
-}
-
-/** Offline, 429 and missing permissions need a concrete next step instead of the generic message. */
-function eventSaveError(base: string, res: { status: number; error: string }): string {
-	if (isNetworkError(res.error, res.status)) {
-		return `${base}: Prüfe deine Verbindung und versuche es erneut.`;
-	}
-	if (isRateLimited(res.error, res.status)) return RATE_LIMITED_MESSAGE;
-	// The API lets only the person who created the event, and WG admins, change or delete it.
-	if (res.status === 403) {
-		return `${base}: Das dürfen nur WG-Admins und wer den Termin angelegt hat.`;
-	}
-	if (res.status === 404) return `${base}: Der Termin existiert nicht mehr.`;
-	return `${base}.`;
-}
-
-/** The event has been deleted by someone else in the meantime; restoring it locally would be wrong. */
-function isEventGone(res: { status: number; error: string }): boolean {
-	return res.status === 404 && res.error === 'event_not_found';
-}
 
 /** Loads events and cleaning-plan due dates; create/update/delete optimistically. */
 export function useCalendarPage(month: Date) {
@@ -139,8 +79,13 @@ export function useCalendarPage(month: Date) {
 	const createEventRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
 
 	const [createOpen, setCreateOpen] = useState(false);
-	const [editing, setEditing] = useState<EditableEvent | null>(null);
+	const [editing, setEditingState] = useState<EditableEvent | null>(null);
 	const [editingOccurrence, setEditingOccurrence] = useState<EventOccurrence | null>(null);
+	// Closing the drawer also drops the occurrence it was opened on, so the next event starts clean.
+	function setEditing(event: EditableEvent | null): void {
+		setEditingState(event);
+		if (event === null) setEditingOccurrence(null);
+	}
 	const [actionError, setActionError] = useState<string | null>(null);
 
 	function updateEvents(update: (current: CalendarEvent[]) => CalendarEvent[]): void {
@@ -313,6 +258,7 @@ export function useCalendarPage(month: Date) {
 				updateEvents((current) => current.map((event) => (event.id === id ? previous : event)));
 			}
 			const message = eventSaveError('Termin konnte nicht aktualisiert werden', res);
+			if (res.error === 'event_changed') void load(false);
 			toast.error(message);
 			throw new Error(message);
 		}
@@ -349,6 +295,39 @@ export function useCalendarPage(month: Date) {
 		if (res.ok) toast.success('Termin gelöscht.');
 	}
 
+	/** One date of a series: cancel it, or replace it with a single event built from `payload`. */
+	async function changeOccurrence(
+		id: string,
+		occurrenceStartsAt: string,
+		payload: UpdateEventPayload | null,
+	): Promise<void> {
+		setActionError(null);
+		const res = await postOccurrenceChange<CalendarEvent>(
+			eventsBaseUrl,
+			identity.memberId,
+			id,
+			occurrenceStartsAt,
+			payload,
+		);
+		if (!res.ok) {
+			if (isEventGone(res)) {
+				updateEvents((current) => current.filter((event) => event.id !== id));
+			}
+			const message = eventSaveError('Termin konnte nicht geändert werden', res);
+			if (res.status === 409 || res.status === 404) void load(false);
+			toast.error(message);
+			throw new Error(message);
+		}
+		const { event, created } = res.data;
+		updateEvents((current) => [
+			...current.map((item) => (item.id === id ? event : item)),
+			// A refresh that ran in between may already hold the detached event.
+			...(created && !current.some((item) => item.id === created.id) ? [created] : []),
+		]);
+		setEditing(null);
+		toast.success(payload ? 'Termin geändert.' : 'Termin entfernt.');
+	}
+
 	return {
 		eventCount: events.length,
 		loading,
@@ -363,6 +342,11 @@ export function useCalendarPage(month: Date) {
 		setCreateOpen,
 		editing,
 		setEditing,
+		/** Opens an event on its own, with no occurrence left over from an earlier one. */
+		openEvent: (event: EditableEvent) => {
+			setEditingOccurrence(null);
+			setEditingState(event);
+		},
 		editingOccurrence,
 		actionError,
 		selectOccurrence,
@@ -370,5 +354,9 @@ export function useCalendarPage(month: Date) {
 		createEvent,
 		updateEvent,
 		deleteEvent,
+		updateOccurrence: (id: string, occurrenceStartsAt: string, payload: UpdateEventPayload) =>
+			changeOccurrence(id, occurrenceStartsAt, payload),
+		deleteOccurrence: (id: string, occurrenceStartsAt: string) =>
+			changeOccurrence(id, occurrenceStartsAt, null),
 	};
 }

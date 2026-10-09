@@ -12,6 +12,8 @@ export interface Chore {
 	lastCompletedAt: string | null;
 	lastCompletedByName: string | null;
 	openGapCountForAssignee: number;
+	/** Version of the chore as listed; an edit sends it back to detect a concurrent save. */
+	updatedAt?: string;
 }
 
 /** A chore as the plan shows it: the list data plus what only the client derives. */

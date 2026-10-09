@@ -251,6 +251,24 @@ test('re-importing a file only skips the copies the WG already holds', async () 
 	assert.deepEqual([partial.inserted, partial.skipped], [1, 1]);
 });
 
+test('a deleted first copy leaves a gap that the next import fills without losing a row', async () => {
+	const baseKey = '2025-03-01|kaffee|300|33333333-3333-4333-8333-333333333333';
+	// Only the second copy of an earlier import is left; the WG holds one coffee.
+	const run = runCommit([{ ...existingCoffee, importDuplicateKey: `${baseKey}|#2` }], {
+		rows: [coffee, coffee],
+	});
+	const result = await run.commit();
+	assert.deepEqual([result.inserted, result.skipped], [1, 1]);
+	assert.equal(run.state.inserted[0]?.importDuplicateKey, baseKey);
+});
+
+test('an expense late on a Berlin evening counts as that Berlin day for duplicates', async () => {
+	// 23:30 UTC on 28 Feb is already 1 March in Berlin.
+	const lateExisting = { ...existingCoffee, occurredAt: new Date('2025-02-28T23:30:00.000Z') };
+	const result = await runCommit([lateExisting], { rows: [coffee] }).commit();
+	assert.deepEqual([result.inserted, result.skipped], [0, 1]);
+});
+
 const foreignRow: ParsedExpense = {
 	date: '2025-02-01',
 	description: 'Strom',

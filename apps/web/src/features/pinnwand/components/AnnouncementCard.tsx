@@ -89,8 +89,8 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 	const isPinned = Boolean(announcement.pinnedAt);
 	const isAuthor = announcement.authorMemberId === currentMemberId;
 	const canModerate = isAuthor || isAdmin;
-	// Only the author rewrites a post, and only one they typed themselves (not system posts).
-	const canEdit = isAuthor && announcement.source === 'manual';
+	// Author or admin rewrite a post, but only one typed by hand (not system posts).
+	const canEdit = canModerate && announcement.source === 'manual';
 	const canResolve = isAuthor || isAdmin || announcement.myReactions.includes('take');
 	const sourceLabel = SOURCE_LABELS[announcement.source];
 	const sourceHref = announcement.sourcePath

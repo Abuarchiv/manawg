@@ -33,6 +33,10 @@ export function rateLimitFailMode(): 'open' | 'closed' {
 		: 'open';
 }
 
+// A configured but unusable Upstash setup (a bad URL, or only one of URL and token); Preview
+// answers it closed so the mistake shows up there. Neither variable set is a deliberate choice.
+let configuredButInvalid = (url === undefined) !== (token === undefined);
+
 function createConfiguredRedis(): Redis | null {
 	if (!url || !token) return null;
 	try {
@@ -47,6 +51,7 @@ function createConfiguredRedis(): Redis | null {
 			if (rateLimitFailMode() === 'closed') {
 				throw new Error('UPSTASH_REDIS_REST_URL must use https');
 			}
+			configuredButInvalid = true;
 			return null;
 		}
 		return new Redis({ url, token });
@@ -54,6 +59,7 @@ function createConfiguredRedis(): Redis | null {
 		if (rateLimitFailMode() === 'closed') {
 			throw new Error('UPSTASH_REDIS_REST_URL must be a valid https URL');
 		}
+		configuredButInvalid = true;
 		return null;
 	}
 }
@@ -201,8 +207,9 @@ export async function checkRateLimit(
 	failMode: 'open' | 'closed' = rateLimitFailMode(),
 ): Promise<RateLimitResult> {
 	if (!limiter) {
-		reportUnavailable('upstash-not-configured', failMode);
-		if (failMode === 'closed') {
+		const mode = configuredButInvalid && process.env.VERCEL_ENV === 'preview' ? 'closed' : failMode;
+		reportUnavailable('upstash-not-configured', mode);
+		if (mode === 'closed') {
 			return { success: false, remaining: 0, reset: Date.now() + 60_000, limiterUnavailable: true };
 		}
 		return { success: true, remaining: -1, reset: 0 };
@@ -212,8 +219,11 @@ export async function checkRateLimit(
 		if (r.reason === 'timeout') throw new Error('Upstash rate-limit timed out');
 		return { success: r.success, remaining: r.remaining, reset: r.reset };
 	} catch {
-		reportUnavailable('limiter-call-failed', failMode, true);
-		if (failMode === 'closed') {
+		// A configured limiter that fails must not pass traffic on Preview either: that is where
+		// a wrong token or URL should surface, before it reaches production.
+		const mode = process.env.VERCEL_ENV === 'preview' ? 'closed' : failMode;
+		reportUnavailable('limiter-call-failed', mode, true);
+		if (mode === 'closed') {
 			return { success: false, remaining: 0, reset: Date.now() + 60_000, limiterUnavailable: true };
 		}
 		return { success: true, remaining: -1, reset: 0 };

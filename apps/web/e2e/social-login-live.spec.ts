@@ -42,7 +42,7 @@ test.describe('live social-login entry', () => {
 		await expect(page).toHaveURL(/\/neu\?error=auth_callback/);
 		expect(new URL(page.url()).searchParams.get('next')).toBe('/wg/ZZZZZZZZ/ausgaben');
 		await expect(page.getByRole('main').getByRole('alert')).toContainText(
-			'Die Anmeldung konnte nicht abgeschlossen werden.',
+			'Der Link konnte nicht verwendet werden.',
 		);
 		await expect(page.getByLabel('E-Mail-Adresse')).toBeVisible();
 	});

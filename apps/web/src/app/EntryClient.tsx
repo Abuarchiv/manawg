@@ -1,5 +1,6 @@
 'use client';
 
+import { LogoutNotice } from '@/components/entry/LogoutNotice';
 import { PublicApp } from '@/components/entry/PublicApp';
 
 /**
@@ -9,5 +10,10 @@ import { PublicApp } from '@/components/entry/PublicApp';
  *
  */
 export function EntryClient() {
-	return <PublicApp />;
+	return (
+		<>
+			<LogoutNotice />
+			<PublicApp />
+		</>
+	);
 }

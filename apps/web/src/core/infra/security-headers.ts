@@ -13,6 +13,9 @@
  * target to allow at all, only the bucket-scoped legacy endpoint.
  */
 function s3UploadOrigins(): string[] {
+	// Uploads go to Supabase Storage (its origin is added below), so S3 is no upload target.
+	// Pictures stored at public S3 URLs stay readable through `img-src`.
+	if (process.env.IMAGE_STORAGE_PROVIDER?.trim().toLowerCase() === 'supabase') return [];
 	const bucket = process.env.S3_BUCKET?.trim();
 	const region = process.env.AWS_REGION?.trim();
 	if (bucket && region) {

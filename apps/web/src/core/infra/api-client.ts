@@ -33,7 +33,25 @@ type ApiFetchResult<T> = { ok: true; data: T } | { ok: false; status: number; er
 let mutationCount = 0;
 
 export const MEMBERSHIP_LOST_EVENT = 'manawg:membership-lost';
+export const SESSION_EXPIRED_EVENT = 'manawg:session-expired';
 const MEMBERSHIP_LOST_ERRORS = new Set(['not_a_member', 'member_deactivated', 'wg_not_found']);
+
+/**
+ * For the few WG calls that use plain `fetch` (uploads, downloads, deleting the WG): lets a
+ * 401 `auth_required` raise the same session-expired banner as `apiFetch` does.
+ */
+export function noteSessionExpiry(response: Response): void {
+	if (response.status !== 401 || typeof window === 'undefined') return;
+	void response
+		.clone()
+		.json()
+		.then((body: { error?: unknown; code?: unknown }) => {
+			if (body.error === 'auth_required' || body.code === 'auth_required') {
+				window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
+			}
+		})
+		.catch(() => undefined);
+}
 
 /**
  * Increases after every settled non-GET request. A cached read that started
@@ -92,6 +110,14 @@ export async function apiFetch<T>(
 				path.startsWith('/api/wg/')
 			) {
 				window.dispatchEvent(new CustomEvent(MEMBERSHIP_LOST_EVENT, { detail: { path, error } }));
+			}
+			if (
+				res.status === 401 &&
+				error === 'auth_required' &&
+				typeof window !== 'undefined' &&
+				path.startsWith('/api/')
+			) {
+				window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
 			}
 			return { ok: false, status: res.status, error };
 		}

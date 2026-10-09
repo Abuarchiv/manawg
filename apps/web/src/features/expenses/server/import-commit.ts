@@ -15,7 +15,8 @@ import {
 } from '@/features/expenses/server/expense-payments';
 import {
 	buildDuplicateKey,
-	loadDuplicateKeys,
+	claimStorageKey,
+	loadDuplicateState,
 } from '@/features/expenses/server/import-duplicate-keys';
 import { settledAtForOwnShare } from '@/features/expenses/split-math';
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
@@ -192,9 +193,9 @@ async function writeImport(tx: DbTransaction, input: CommitInput) {
 	let skipped = 0;
 	let totalAmountCents = 0;
 
-	const existingCounts = input.skipDuplicates
-		? await loadDuplicateKeys(tx, input.wg.id)
-		: new Map<string, number>();
+	const existing = input.skipDuplicates
+		? await loadDuplicateState(tx, input.wg.id)
+		: { counts: new Map<string, number>(), usedKeys: new Set<string>() };
 	const seenInFile = new Map<string, number>();
 
 	for (let i = 0; i < input.expenses.length; i += 1) {
@@ -212,13 +213,14 @@ async function writeImport(tx: DbTransaction, input: CommitInput) {
 		}
 		const occurrence = (seenInFile.get(prepared.duplicateKey) ?? 0) + 1;
 		seenInFile.set(prepared.duplicateKey, occurrence);
-		if (input.skipDuplicates && occurrence <= (existingCounts.get(prepared.duplicateKey) ?? 0)) {
+		if (input.skipDuplicates && occurrence <= (existing.counts.get(prepared.duplicateKey) ?? 0)) {
 			skipped += 1;
 			continue;
 		}
-		// Later copies get a suffix so the unique index keeps them.
-		const storedKey =
-			occurrence === 1 ? prepared.duplicateKey : `${prepared.duplicateKey}|#${occurrence}`;
+		// Later copies get a suffix so the unique index keeps them; earlier deletions leave gaps.
+		const storedKey = input.skipDuplicates
+			? claimStorageKey(prepared.duplicateKey, existing.usedKeys)
+			: null;
 
 		const expenseInsert = tx.insert(expenses).values({
 			wgId: input.wg.id,
@@ -227,7 +229,7 @@ async function writeImport(tx: DbTransaction, input: CommitInput) {
 			currency: parsed.currency,
 			description: parsed.description,
 			importId: imp.id,
-			importDuplicateKey: input.skipDuplicates ? storedKey : null,
+			importDuplicateKey: storedKey,
 			occurredAt: new Date(parsed.date),
 		});
 		const [row] = input.skipDuplicates
