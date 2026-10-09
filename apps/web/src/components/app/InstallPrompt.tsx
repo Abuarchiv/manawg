@@ -16,10 +16,23 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { InstallButton } from './InstallButton';
 
+// Not under `manawg:`/`manawg_`: signing out wipes those, and a dismissal is a device choice.
+const DISMISSED_KEY = 'manawg-install-dismissed-at';
+const DISMISS_COOLDOWN_MS = 14 * 24 * 60 * 60 * 1000;
+
+function dismissedRecently(): boolean {
+	try {
+		const at = Number(localStorage.getItem(DISMISSED_KEY));
+		return Number.isFinite(at) && at > 0 && Date.now() - at < DISMISS_COOLDOWN_MS;
+	} catch {
+		return false;
+	}
+}
+
 /**
  * Floating install prompt — shown on the start page of every app start until
  * ManaWG is installed.
- * Dismissing hides it until the next page load. Browsers without a native prompt
+ * Dismissing hides it for two weeks. Browsers without a native prompt
  * (iOS, Firefox) get the manual steps from `InstallButton`. Reads the
  * `beforeinstallprompt` event from the global pub/sub module
  * (`@/shared/lib/pwa-install`) so it cannot race the `InstallButton` in the
@@ -40,7 +53,7 @@ export function InstallPrompt() {
 	const onStartPage = pathname === '/' || /^\/wg\/[^/]+\/?$/.test(pathname);
 
 	useEffect(() => {
-		if (isAppInstalled()) return;
+		if (isAppInstalled() || dismissedRecently()) return;
 
 		// Chromium fires beforeinstallprompt only while the app is not installed,
 		// so there we wait for it. Other browsers can only install manually.
@@ -95,6 +108,11 @@ export function InstallPrompt() {
 		if (promptRef.current?.contains(document.activeElement))
 			document.getElementById('main')?.focus({ preventScroll: true });
 		setHidden(true);
+		try {
+			localStorage.setItem(DISMISSED_KEY, String(Date.now()));
+		} catch {
+			// Without storage the prompt simply returns on the next visit.
+		}
 	};
 
 	const install = async () => {
