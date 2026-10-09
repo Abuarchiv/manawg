@@ -70,6 +70,15 @@ const db = {
 };
 
 mock.module('@/core/db', { namedExports: { db, ...tables } });
+mock.module('@/core/db/feed-audit-filter', {
+	namedExports: {
+		feedAuditCondition: (wgId: string, alsoHidden: readonly string[]) => [
+			'feedAudit',
+			wgId,
+			alsoHidden,
+		],
+	},
+});
 mock.module('@/core/guards/require-wg-member', {
 	namedExports: { requireWgMember: async () => ({ ok: true, wg: { id: 'wg-1' } }) },
 });
@@ -218,9 +227,9 @@ test('timeline queries drop system notices and noisy audits in SQL and sort shop
 		['inArray', 'announcements.source', ['manual', 'chore_swap']],
 	]);
 	assert.deepEqual(find('auditEvents')?.where, [
-		'and',
-		['eq', 'auditEvents.wgId', 'wg-1'],
-		['notInArray', 'auditEvents.eventType', ['chat.message.created', 'shopping.created']],
+		'feedAudit',
+		'wg-1',
+		['chat.message.created', 'shopping.created'],
 	]);
 	const shoppingQuery = state.queries.find(
 		(query) => query.table === 'shoppingItems' && query.limit === 80,

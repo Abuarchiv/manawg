@@ -12,8 +12,9 @@ import {
 	shoppingItems,
 	wgMembers,
 } from '@/core/db';
+import { feedAuditCondition } from '@/core/db/feed-audit-filter';
 import { captureException } from '@/core/infra/observability';
-import { and, count, desc, eq, isNull, notInArray, sql } from 'drizzle-orm';
+import { and, count, desc, eq, isNull, sql } from 'drizzle-orm';
 
 import { CHAT_AUDIT_EVENT_TYPES } from './activity-audit';
 
@@ -200,12 +201,7 @@ export function loadSecondaryRows(wgId: string, currentMemberId: string | null |
 				})
 				.from(auditEvents)
 				// Chat audits carry no content worth a feed row and would crowd out real events.
-				.where(
-					and(
-						eq(auditEvents.wgId, wgId),
-						notInArray(auditEvents.eventType, [...CHAT_AUDIT_EVENT_TYPES]),
-					),
-				)
+				.where(feedAuditCondition(wgId, CHAT_AUDIT_EVENT_TYPES))
 				.orderBy(desc(auditEvents.createdAt))
 				.limit(ACTIVITY_LIMIT),
 			() => [],
