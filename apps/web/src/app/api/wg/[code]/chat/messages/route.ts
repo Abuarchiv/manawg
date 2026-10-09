@@ -94,6 +94,18 @@ export const GET = withWgRoute('chat messages GET', async (req, { code }) => {
 	if (!auth.ok) return auth.response;
 	const wg = auth.wg;
 
+	// Only the bootstrap asks for it (before it marks the chat read), so polls skip the query.
+	let readMarkerPayload: { readMarker?: { messageId: string; createdAt: Date } | null } = {};
+	if (url.searchParams.get('includeReadMarker') === '1') {
+		const [marker] = await db
+			.select({ messageId: wgChatMessages.id, createdAt: wgChatMessages.createdAt })
+			.from(wgChatReads)
+			.innerJoin(wgChatMessages, eq(wgChatMessages.id, wgChatReads.lastReadMessageId))
+			.where(and(eq(wgChatReads.wgId, wg.id), eq(wgChatReads.memberId, auth.member.memberId)))
+			.limit(1);
+		readMarkerPayload = { readMarker: marker ?? null };
+	}
+
 	const where = beforeId
 		? and(
 				eq(wgChatMessages.wgId, wg.id),
@@ -133,6 +145,7 @@ export const GET = withWgRoute('chat messages GET', async (req, { code }) => {
 		return NextResponse.json({
 			...chatMessagesReadPayload(pageRows, refreshedRows),
 			reads,
+			...readMarkerPayload,
 			reactions: [],
 			mentions: [],
 		});
@@ -143,6 +156,7 @@ export const GET = withWgRoute('chat messages GET', async (req, { code }) => {
 		return NextResponse.json({
 			...chatMessagesReadPayload(pageRows, refreshedRows),
 			reads,
+			...readMarkerPayload,
 			reactions: [],
 			mentions: [],
 		});
@@ -171,6 +185,7 @@ export const GET = withWgRoute('chat messages GET', async (req, { code }) => {
 	return NextResponse.json({
 		...chatMessagesReadPayload(pageRows, refreshedRows),
 		reads,
+		...readMarkerPayload,
 		reactions: reactionRows,
 		mentions: mentionRows,
 	});

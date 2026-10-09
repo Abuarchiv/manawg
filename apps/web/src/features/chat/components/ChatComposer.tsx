@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { InputGroup, InputGroupTextarea } from '@/components/ui/input-group';
 import { Spinner } from '@/components/ui/spinner';
 import { readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
+import { isPendingImageToken } from '@/core/offline/offline-images';
 import { haptic } from '@/shared/lib/haptics';
 import { Send, X } from 'lucide-react';
 import {
@@ -16,7 +17,8 @@ import {
 	useRef,
 	useState,
 } from 'react';
-import { type MentionTrigger, detectMention, escapeRegExp } from '../chat-pure';
+import { type MentionTrigger, detectMention, findMentions } from '../chat-text';
+import { ComposerImageButton, ComposerImagePanel } from './ComposerImage';
 import {
 	MentionAutocomplete,
 	type MentionMember,
@@ -27,6 +29,7 @@ import {
 const BODY_MAX = 4000;
 
 interface ChatComposerProps {
+	shareCode: string;
 	draftKey: string;
 	error: string | null;
 	members: MentionMember[];
@@ -41,10 +44,12 @@ interface ChatComposerProps {
 		body: string;
 		mentionMemberIds: string[];
 		replyToMessageId: string | null;
+		imageUrl?: string;
 	}) => Promise<boolean>;
 }
 
 export function ChatComposer({
+	shareCode,
 	draftKey,
 	error,
 	members,
@@ -65,6 +70,11 @@ export function ChatComposer({
 	replyToMessageIdRef.current = replyToMessageId;
 	const [draft, setDraft] = useState('');
 	const [pending, setPending] = useState(false);
+	// The image is deliberately not part of the stored draft: it only lives until sent or removed.
+	const [imageUrl, setImageUrl] = useState<string | null>(null);
+	const imageUrlRef = useRef(imageUrl);
+	const [imageOpen, setImageOpen] = useState(false);
+	const [imageError, setImageError] = useState<string | null>(null);
 	const pendingRef = useRef(false);
 	const [draftHydrated, setDraftHydrated] = useState(false);
 	const [draftStorageFailed, setDraftStorageFailed] = useState(false);
@@ -151,28 +161,41 @@ export function ChatComposer({
 		});
 	}
 
+	function changeImage(url: string | null): void {
+		imageUrlRef.current = url;
+		setImageUrl(url);
+		setImageError(null);
+	}
 	async function submit(): Promise<void> {
 		const outgoingDraft = draftRef.current;
 		const outgoingReplyToMessageId = replyToMessageIdRef.current;
+		const outgoingImageUrl = imageUrlRef.current;
 		const text = outgoingDraft.trim();
-		if (text.length === 0 || text.length > BODY_MAX || pendingRef.current) return;
+		if ((text.length === 0 && !outgoingImageUrl) || text.length > BODY_MAX || pendingRef.current)
+			return;
+		// Offline or still uploading: the server would reject the local token as image_invalid.
+		if (outgoingImageUrl && isPendingImageToken(outgoingImageUrl)) {
+			setImageError('Bild wird noch hochgeladen. Bitte kurz warten und nochmal versuchen.');
+			return;
+		}
 		pendingRef.current = true;
 		haptic('selection');
 		setPending(true);
-		// Trailing `\b` misses names ending in a diacritic (e.g. "René"): `\b` only
-		// matches at a word/non-word transition, and JS regex `\w` is ASCII-only, so
-		// a non-ASCII trailing letter followed by a space/end never satisfies it.
-		// A negative lookahead against `\p{L}\p{N}_-` (any Unicode letter/digit, not
-		// just the enumerated German charset) avoids matching a longer name that
-		// merely starts with this one — e.g. "@René" must not also match member "Ren".
-		const mentionedIds = visibleMembers
-			.filter((m) => new RegExp(`@${escapeRegExp(m.name)}(?![\\p{L}\\p{N}_-])`, 'u').test(text))
-			.map((m) => m.id);
+		// Same matcher as the display (longest name first), over all names so that the sender's own
+		// "Anna Lena" cannot turn into a mention of member "Anna".
+		const matchedNames = new Set(
+			findMentions(
+				text,
+				members.map((m) => m.name),
+			).map((match) => match.name),
+		);
+		const mentionedIds = visibleMembers.filter((m) => matchedNames.has(m.name)).map((m) => m.id);
 		try {
 			const ok = await onSend({
 				body: text,
 				mentionMemberIds: mentionedIds,
 				replyToMessageId: outgoingReplyToMessageId,
+				...(outgoingImageUrl ? { imageUrl: outgoingImageUrl } : {}),
 			});
 			if (ok) {
 				haptic('medium');
@@ -182,6 +205,10 @@ export function ChatComposer({
 					draftRef.current = '';
 					setDraft('');
 					setMention(null);
+				}
+				if (imageUrlRef.current === outgoingImageUrl) {
+					changeImage(null);
+					setImageOpen(false);
 				}
 				if (replyToMessageIdRef.current === outgoingReplyToMessageId) {
 					onClearReply();
@@ -269,9 +296,25 @@ export function ChatComposer({
 						</Button>
 					</div>
 				)}
+				{(imageOpen || imageUrl) && (
+					<ComposerImagePanel
+						shareCode={shareCode}
+						value={imageUrl}
+						onChange={changeImage}
+						disabled={pending}
+					/>
+				)}
+				{imageError && (
+					<Alert variant="destructive">
+						<AlertDescription>{imageError}</AlertDescription>
+					</Alert>
+				)}
 				{error && (
 					<Alert variant="destructive">
-						<AlertDescription>{error} Dein Text ist noch da.</AlertDescription>
+						<AlertDescription>
+							{error}{' '}
+							{imageUrl ? 'Dein Text und dein Bild sind noch da.' : 'Dein Text ist noch da.'}
+						</AlertDescription>
 					</Alert>
 				)}
 				{draftStorageFailed && (
@@ -293,6 +336,12 @@ export function ChatComposer({
 			<div className="mx-auto flex w-full max-w-3xl items-end gap-2 px-3 py-2">
 				{/* WhatsApp layout: white pill field, round green send button next to it. */}
 				<InputGroup className="h-auto items-end rounded-3xl border-[#8696a0]/60 bg-white dark:bg-[#2a3942]">
+					{/* Before the textarea in the DOM so tab order matches the visual order (order-first). */}
+					<ComposerImageButton
+						disabled={pending || !draftHydrated}
+						expanded={imageOpen || Boolean(imageUrl)}
+						onToggle={() => setImageOpen((open) => !open)}
+					/>
 					<InputGroupTextarea
 						ref={textareaRef}
 						value={draft}
@@ -314,7 +363,7 @@ export function ChatComposer({
 					size="icon"
 					onMouseDown={(event) => event.preventDefault()}
 					onClick={() => void submit()}
-					disabled={pending || !draftHydrated || draft.trim().length === 0}
+					disabled={pending || !draftHydrated || (draft.trim().length === 0 && !imageUrl)}
 					aria-label="Nachricht senden"
 					className="size-11 shrink-0 rounded-full bg-[#008069] text-white hover:bg-[#006e5a] active:bg-[#006e5a] disabled:bg-[#008069]/50 disabled:text-white dark:bg-[#00a884] dark:text-[#111b21] dark:hover:bg-[#06cf9c] dark:active:bg-[#06cf9c] dark:disabled:text-[#111b21]"
 				>

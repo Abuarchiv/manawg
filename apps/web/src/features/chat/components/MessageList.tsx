@@ -19,6 +19,8 @@ interface MessageListProps {
 	members: { id: string; name: string; color: string | null }[];
 	currentMemberId: string;
 	shareCode: string;
+	/** The divider "Neue Nachrichten" goes before this message. */
+	firstUnreadId?: string | null;
 	isAdmin: boolean;
 	reactionsByMessage: Map<string, ReactionSummary[]>;
 	reads: readonly ChatReadMarker[];
@@ -62,6 +64,7 @@ export function MessageList({
 	members,
 	currentMemberId,
 	shareCode,
+	firstUnreadId = null,
 	isAdmin,
 	reactionsByMessage,
 	reads,
@@ -161,8 +164,19 @@ export function MessageList({
 							</span>
 						</div>
 					)}
+					{message.id === firstUnreadId && (
+						<div className="flex justify-center py-2">
+							<span
+								data-slot="chat-unread"
+								className="max-w-full rounded-lg bg-white text-center [overflow-wrap:anywhere] px-3 py-1 text-xs font-medium text-[#54656f] shadow-xs dark:bg-[#182229] dark:text-[#8696a0]"
+							>
+								Neue Nachrichten
+							</span>
+						</div>
+					)}
 					{message.kind === 'system' && !message.deletedAt ? (
 						<SystemMessage
+							shareCode={shareCode}
 							systemKind={(message as BubbleMessage & { systemKind?: string }).systemKind ?? null}
 							payload={
 								(message as BubbleMessage & { systemPayload?: Record<string, unknown> })

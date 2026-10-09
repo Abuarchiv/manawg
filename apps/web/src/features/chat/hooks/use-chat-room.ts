@@ -5,7 +5,12 @@ import { notificationWarningMessage } from '@/core/notifications/notification-wa
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { explainChatError } from '../chat-errors';
-import { type ChatReadMarker, mergePagedMessagesById, mergePagedReactions } from '../chat-pure';
+import {
+	type ChatReadMarker,
+	findFirstUnreadId,
+	mergePagedMessagesById,
+	mergePagedReactions,
+} from '../chat-pure';
 import { summarizeReactions } from '../chat-reactions';
 import { CHAT_PAGE_SIZE, createChatRefresher } from '../chat-refresh';
 import { type ChatMessageInput, type PendingChatSend, postChatMessage } from '../chat-send';
@@ -47,6 +52,8 @@ export function useChatRoom({
 	const [loadingOlder, setLoadingOlder] = useState(false);
 	const [olderError, setOlderError] = useState(false);
 	const [refreshError, setRefreshError] = useState(false);
+	// Where the "Neue Nachrichten" divider goes; set once at the first load and kept until the chat closes.
+	const [firstUnreadId, setFirstUnreadId] = useState<string | null>(null);
 	const [sendError, setSendError] = useState<string | null>(null);
 	const loadingOlderRef = useRef(false);
 	const pendingSendRef = useRef<PendingChatSend['current']>(null);
@@ -79,10 +86,18 @@ export function useChatRoom({
 				setReactionRows,
 				setHasMoreOlder,
 				setReads,
+				onReadMarker: (marker, latest) =>
+					setFirstUnreadId(findFirstUnreadId(latest, marker, identity.memberId)),
 			}),
 		[identity.memberId, messagesUrl, reactionTracker],
 	);
-	const refresh = refresher.refresh;
+	// A successful poll also clears the first-load error screen; otherwise it would stay up
+	// (hiding the loaded messages) until the user taps "Erneut versuchen".
+	const refresh = useCallback(async () => {
+		const ok = await refresher.refresh();
+		if (ok) setBootstrapError(false);
+		return ok;
+	}, [refresher]);
 
 	useVisibilityPausedInterval(() => void refresh(), wgId ? CHAT_POLL_INTERVAL_MS : null);
 
@@ -92,10 +107,10 @@ export function useChatRoom({
 	const loadInitialMessages = useCallback(async () => {
 		setBootstrapError(false);
 		setBootstrapping(true);
-		const loaded = await refresh();
+		const loaded = await refresher.refresh();
 		setBootstrapError(!loaded);
 		setBootstrapping(false);
-	}, [refresh]);
+	}, [refresher]);
 	useEffect(() => {
 		if (bootstrappedRef.current) return;
 		bootstrappedRef.current = true;
@@ -202,6 +217,7 @@ export function useChatRoom({
 		messages,
 		reads,
 		reactionsByMessage,
+		firstUnreadId,
 		hasMoreOlder,
 		bootstrapping,
 		bootstrapError,
