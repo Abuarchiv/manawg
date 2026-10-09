@@ -8,11 +8,14 @@ import { subscribeConnectivity, useOnlineStatus } from '@/core/hooks/use-online-
 import {
 	countOfflineActions,
 	getSyncedCountForWg,
+	needsManualOfflineResolution,
+	readOfflineQueue,
 	syncOfflineActions,
 } from '@/core/offline/offline-client';
 import { formatOfflineQueueCount } from '@/core/offline/offline-copy';
 import {
 	formatManualOfflineSyncResult,
+	formatOfflineReviewNeeded,
 	formatQueuedOfflineActions,
 	getOfflineSyncFailureMessage,
 } from '@/core/offline/offline-copy';
@@ -33,6 +36,8 @@ export function OfflineBanner() {
 	const settingsDataHref = `/wg/${encodeURIComponent(wg.shareCode)}/einstellungen#daten`;
 	const online = useOnlineStatus();
 	const [queueCount, setQueueCount] = useState(0);
+	// Actions sync will not retry; "Jetzt senden" cannot help with them.
+	const [reviewCount, setReviewCount] = useState(0);
 	const [syncing, setSyncing] = useState(false);
 	// Only a warning stays in the bar; a finished sync is a toast so the page below never shifts.
 	const [notice, setNotice] = useState<string | null>(null);
@@ -61,6 +66,14 @@ export function OfflineBanner() {
 		const update = (options?: { clearNotice?: boolean }) => {
 			const nextCount = countOfflineActions(wg.shareCode, { memberId: identity.memberId });
 			setQueueCount(nextCount);
+			setReviewCount(
+				readOfflineQueue().filter(
+					(item) =>
+						item.shareCode === wg.shareCode &&
+						item.memberId === identity.memberId &&
+						needsManualOfflineResolution(item),
+				).length,
+			);
 			if (options?.clearNotice !== false) setNotice(null);
 		};
 		const updateFromEvent = () => update();
@@ -141,6 +154,7 @@ export function OfflineBanner() {
 	}
 
 	if (queueCount === 0) return null;
+	const nothingToRetry = reviewCount >= queueCount;
 
 	return (
 		<output
@@ -154,21 +168,26 @@ export function OfflineBanner() {
 					href={settingsDataHref}
 					className="flex min-h-[44px] min-w-0 flex-[1_1_8rem] items-center leading-snug text-pretty"
 				>
-					{notice ?? formatQueuedOfflineActions(queueCount)}
+					{notice ??
+						(nothingToRetry
+							? formatOfflineReviewNeeded(reviewCount)
+							: formatQueuedOfflineActions(queueCount))}
 				</Link>
-				<Button
-					type="button"
-					variant="outline"
-					onClick={() => void retry()}
-					disabled={syncing}
-					aria-label={
-						syncing ? 'Offline-Aktionen werden gesendet' : 'Offline-Aktionen jetzt senden'
-					}
-					className="min-h-[44px] shrink-0 text-meta"
-				>
-					{syncing ? <Spinner aria-hidden /> : notice ? <AlertCircle aria-hidden /> : null}
-					Jetzt senden
-				</Button>
+				{nothingToRetry ? null : (
+					<Button
+						type="button"
+						variant="outline"
+						onClick={() => void retry()}
+						disabled={syncing}
+						aria-label={
+							syncing ? 'Offline-Aktionen werden gesendet' : 'Offline-Aktionen jetzt senden'
+						}
+						className="min-h-[44px] shrink-0 text-meta"
+					>
+						{syncing ? <Spinner aria-hidden /> : notice ? <AlertCircle aria-hidden /> : null}
+						Jetzt senden
+					</Button>
+				)}
 			</div>
 		</output>
 	);
