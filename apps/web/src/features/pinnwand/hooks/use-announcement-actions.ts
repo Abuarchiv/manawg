@@ -211,7 +211,10 @@ export function useAnnouncementActions(
 			{
 				method: 'PATCH',
 				memberId: identity.memberId,
-				body: JSON.stringify({ content }),
+				body: JSON.stringify({
+					content,
+					...(announcement.updatedAt ? { expectedUpdatedAt: announcement.updatedAt } : {}),
+				}),
 			},
 		);
 		end(pendingKey);
@@ -220,6 +223,7 @@ export function useAnnouncementActions(
 				dropVanishedAnnouncement(announcement.id);
 				return null;
 			}
+			if (res.error === 'announcement_changed') void load();
 			return announcementActionErrorMessage(res.error);
 		}
 		updateItem(announcement.id, (item) => ({ ...item, content }));

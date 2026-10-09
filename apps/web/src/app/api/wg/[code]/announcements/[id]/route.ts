@@ -6,7 +6,7 @@ import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, forbidden, notFound, tooMany } from '@/core/http/api-errors';
+import { badRequest, conflict, forbidden, notFound, tooMany } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import {
 	type NotificationDispatchWarning,
@@ -14,7 +14,7 @@ import {
 } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { ANNOUNCEMENT_KINDS } from '@/features/pinnwand/announcement-workflow';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -23,6 +23,8 @@ const patchAnnouncementSchema = z.object({
 	pinned: z.boolean().optional(),
 	kind: z.enum(ANNOUNCEMENT_KINDS).optional(),
 	content: z.string().trim().min(1).max(2000).optional(),
+	// The version the edit dialog was opened on; a newer one means someone saved meanwhile.
+	expectedUpdatedAt: z.string().datetime({ offset: true }).optional(),
 });
 
 export const PATCH = withWgRoute<{ id: string }>(
@@ -36,6 +38,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 				pinned: 'pinned_invalid',
 				kind: 'kind_invalid',
 				content: 'content_invalid',
+				expectedUpdatedAt: 'expected_state_invalid',
 			},
 		});
 		if (!parsed.ok) return parsed.response;
@@ -115,9 +118,24 @@ export const PATCH = withWgRoute<{ id: string }>(
 		const [updated] = await db
 			.update(announcements)
 			.set(patch)
-			.where(and(eq(announcements.id, id), eq(announcements.wgId, wg.id)))
+			.where(
+				and(
+					eq(announcements.id, id),
+					eq(announcements.wgId, wg.id),
+					parsed.data.content !== undefined && parsed.data.expectedUpdatedAt
+						? sql`date_trunc('milliseconds', ${announcements.updatedAt}) = ${new Date(parsed.data.expectedUpdatedAt)}`
+						: undefined,
+				),
+			)
 			.returning();
-		if (!updated) return notFound('announcement_not_found');
+		if (!updated) {
+			const [stillThere] = await db
+				.select({ id: announcements.id })
+				.from(announcements)
+				.where(and(eq(announcements.id, id), eq(announcements.wgId, wg.id)))
+				.limit(1);
+			return stillThere ? conflict('announcement_changed') : notFound('announcement_not_found');
+		}
 		await recordAuditEvent({
 			wgId: wg.id,
 			memberId: auth.member.memberId,

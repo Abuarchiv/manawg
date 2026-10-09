@@ -61,8 +61,12 @@ const chainedSplits = [
 	{ id: 's2', expenseId: 'e2', debtorMemberId: B, amountCents: 1000, settledAt: null },
 ];
 
-function datasets(caller: unknown[], capturing: unknown[] = []) {
-	return [caller, members, chainedExpenses, chainedSplits, [], capturing];
+function datasets(
+	caller: unknown[],
+	capturing: unknown[] = [],
+	activePair: unknown[] = [{ id: A }, { id: B }, { id: C }].slice(0, 2),
+) {
+	return [caller, members, chainedExpenses, chainedSplits, [], activePair, capturing];
 }
 
 const input = { fromMemberId: B, toMemberId: A, currency: 'EUR' as const, expectedNetCents: 1000 };
@@ -118,6 +122,13 @@ test('a moved-out caller is refused', async () => {
 	const result = await recordCashPayment(tx, WG, B, input);
 	assert.equal(result.status, 401);
 	assert.equal(result.context?.kind, 'member_deactivated');
+	assert.equal(inserted.length, 0);
+});
+
+test('a moved-out counterparty is refused', async () => {
+	const { tx, inserted } = fakeTx(datasets([{ id: B }], [], [{ id: B }]));
+	const result = await recordCashPayment(tx, WG, B, input);
+	assert.equal(result.context?.kind, 'member_not_in_wg');
 	assert.equal(inserted.length, 0);
 });
 

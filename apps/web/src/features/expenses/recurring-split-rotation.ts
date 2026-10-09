@@ -14,7 +14,7 @@ export function rotateRemainderCents(
 	const count = splits.length;
 	const base = Math.floor(amountCents / count);
 	const extra = amountCents - base * count;
-	if (count < 2 || extra === 0) return [...splits];
+	if (count < 2 || extra === 0 || Number.isNaN(dueAt.getTime())) return [...splits];
 	const evenWithRemainder =
 		splits.every((split) => split.amountCents === base || split.amountCents === base + 1) &&
 		splits.filter((split) => split.amountCents === base + 1).length === extra;

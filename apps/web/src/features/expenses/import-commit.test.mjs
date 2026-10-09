@@ -138,6 +138,10 @@ function runCommit(existingExpenses, { rows, mapping, mayRecordForOthers = false
 			sql: (parts, ...values) => ({ parts, values }),
 		},
 	};
+	mocks['./import-duplicates'] = loadTsModule(
+		path.join(process.cwd(), 'src/features/expenses/import-duplicates.ts'),
+		{ '@/core/db': { expenses }, 'drizzle-orm': mocks['drizzle-orm'] },
+	);
 	mocks['@/core/db/claimed-response'] = loadClaimedResponse(mocks);
 	mocks['@/core/db/idempotent-write'] = loadIdempotentWrite(mocks);
 	const module = loadTsModule(sourcePath, mocks);
@@ -221,6 +225,33 @@ test('two identical purchases inside one file are both imported', async () => {
 			'2025-03-01|kaffee|300|33333333-3333-4333-8333-333333333333|#2',
 		],
 	);
+});
+
+test('a deleted first copy leaves a gap that the next import fills without losing a row', async () => {
+	const coffee = {
+		date: '2025-03-01',
+		description: 'Kaffee',
+		amountCents: 300,
+		currency: 'EUR',
+		paidByName: 'Alice',
+		splits: [{ memberName: 'Alice', amountCents: 300 }],
+		warnings: [],
+	};
+	const base = '2025-03-01|kaffee|300|33333333-3333-4333-8333-333333333333';
+	// Only the second copy of an earlier import is left; the WG holds one coffee.
+	const existing = {
+		wgId,
+		paidByMemberId: memberId,
+		description: 'Kaffee',
+		amountCents: 300,
+		currency: 'EUR',
+		occurredAt: new Date('2025-03-01T12:00:00.000Z'),
+		importDuplicateKey: `${base}|#2`,
+	};
+	const run = runCommit([existing], { rows: [coffee, coffee] });
+	const result = await run.commit();
+	assert.deepEqual([result.inserted, result.skipped], [1, 1]);
+	assert.equal(run.state.inserted[0].importDuplicateKey, base);
 });
 
 test('a re-imported file skips as many rows as the WG already holds, no more', async () => {

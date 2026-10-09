@@ -1,3 +1,5 @@
+import { normalizeShareCode } from '@/core/utils/share-code';
+
 export function safeNextPath(value: string | null): string {
 	if (!value || !value.startsWith('/') || value.startsWith('//') || value.includes('\\')) {
 		return '/';
@@ -27,6 +29,14 @@ export const REQUEST_PATH_HEADER = 'x-manawg-path';
 export function wgReturnPath(code: string, requested: string | null): string {
 	const base = `/wg/${encodeURIComponent(code)}`;
 	const path = safeNextPath(requested);
-	const [pathname = ''] = path.split(/[?#]/, 1);
-	return pathname === base || pathname.startsWith(`${base}/`) ? path : base;
+	const match = /^\/wg\/([^/?#]+)([\s\S]*)$/.exec(path);
+	if (!match) return base;
+	let segment: string;
+	try {
+		segment = decodeURIComponent(match[1] ?? '');
+	} catch {
+		return base;
+	}
+	// The layout compares the normalized code, so a lowercase or look-alike spelling counts.
+	return normalizeShareCode(segment) === code ? `${base}${match[2] ?? ''}` : base;
 }

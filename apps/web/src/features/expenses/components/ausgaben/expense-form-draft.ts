@@ -4,6 +4,7 @@ import { CENTS_PER_EURO } from '@/core/utils/money';
 import { parseTimestamp } from '@/core/utils/time';
 import { currencySchema } from '@/core/validators/currency';
 import type { buildExpensePrefillDraft } from '@/features/expenses/expense-prefill';
+import { rotateRemainderCents } from '@/features/expenses/recurring-split-rotation';
 import type { Expense, RecurringExpense } from './expense-types';
 
 export type SplitMode = 'equal' | 'manual';
@@ -91,15 +92,24 @@ export function splitsToManualInput(
 	);
 }
 
-/** A one-off expense prefilled from a due fixed-cost template. */
+/**
+ * A one-off expense prefilled from a due fixed-cost template. Its extra cents are placed as the
+ * monthly booking would place them, so booking by hand charges the same member as the cron.
+ */
 export function recurringTemplateSuggestion(template: RecurringExpense): ExpenseSuggestion {
+	const splits = rotateRemainderCents(
+		template.splits,
+		template.amountCents,
+		new Date(template.nextDueAt),
+		template.intervalMonths,
+	);
 	return {
 		description: template.description,
 		amountStr: formatEuroInput(template.amountCents / CENTS_PER_EURO),
 		imageUrl: null,
 		paidByMemberId: template.paidByMemberId,
 		splitMode: 'manual',
-		manualSplits: splitsToManualInput(template.splits),
+		manualSplits: splitsToManualInput(splits),
 		recurringSourceId: template.id,
 	};
 }

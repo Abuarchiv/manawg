@@ -29,6 +29,8 @@ const ACTION_ERRORS: Record<string, string> = {
 	kind_invalid: `${ACTION_SUBJECT}: Die Beitragsart ist ungültig.`,
 	content_invalid:
 		'Beitrag konnte nicht gespeichert werden: Der Text muss 1 bis 2000 Zeichen haben.',
+	announcement_changed:
+		'Der Beitrag wurde inzwischen geändert. Die Ansicht wird aktualisiert, dann kannst du erneut bearbeiten.',
 	content_locked: 'Dieser Beitrag wurde automatisch erstellt und lässt sich nicht bearbeiten.',
 	not_owner: 'Nur wer den Beitrag geschrieben hat oder WG-Admins können ihn bearbeiten.',
 	status_change_not_allowed:

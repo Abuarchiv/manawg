@@ -15,6 +15,7 @@ import {
 import { checkPaidByGuard } from '@/features/expenses/paid-by-guard';
 import { settledAtForOwnShare } from '@/features/expenses/split-math';
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { buildDuplicateKey, claimStorageKey, loadDuplicateState } from './import-duplicates';
 import type { ImportSource, ParsedExpense } from './import-parsers';
 
 export interface CommitInput {
@@ -39,39 +40,6 @@ interface CommitResult {
 	skipped: number;
 	errors: Array<{ index: number; reason: string }>;
 	warning: NotificationDispatchWarning;
-}
-
-function buildDuplicateKey(
-	date: string,
-	description: string,
-	amountCents: number,
-	paidByMemberId: string,
-	currency: string,
-): string {
-	const key = [date.slice(0, 10), description.trim().toLowerCase(), amountCents, paidByMemberId];
-	// EUR import keys already persisted in this four-part format; keep them stable.
-	return (currency === 'EUR' ? key : [...key, currency]).join('|');
-}
-
-// Counts, not a set: identical real purchases are separate expenses.
-async function loadDuplicateCounts(tx: DbTransaction, wgId: string): Promise<Map<string, number>> {
-	const rows = await tx
-		.select({
-			occurredAt: expenses.occurredAt,
-			description: expenses.description,
-			amountCents: expenses.amountCents,
-			currency: expenses.currency,
-			paidByMemberId: expenses.paidByMemberId,
-		})
-		.from(expenses)
-		.where(eq(expenses.wgId, wgId));
-	const counts = new Map<string, number>();
-	for (const r of rows) {
-		const iso = new Date(r.occurredAt).toISOString();
-		const key = buildDuplicateKey(iso, r.description, r.amountCents, r.paidByMemberId, r.currency);
-		counts.set(key, (counts.get(key) ?? 0) + 1);
-	}
-	return counts;
 }
 
 /**
@@ -221,11 +189,10 @@ async function writeImport(tx: DbTransaction, input: CommitInput) {
 	let skipped = 0;
 	let totalAmountCents = 0;
 
-	const existingCounts = input.skipDuplicates
-		? await loadDuplicateCounts(tx, input.wg.id)
-		: new Map<string, number>();
-	// The file's n-th row with a key is a duplicate only while the WG already holds n like it;
-	// later ones are numbered so the stored keys stay unique.
+	const existing = input.skipDuplicates
+		? await loadDuplicateState(tx, input.wg.id)
+		: { counts: new Map<string, number>(), usedKeys: new Set<string>() };
+	// The file's n-th row with a key is a duplicate only while the WG already holds n like it.
 	const occurrences = new Map<string, number>();
 
 	for (let i = 0; i < input.expenses.length; i += 1) {
@@ -243,12 +210,13 @@ async function writeImport(tx: DbTransaction, input: CommitInput) {
 		}
 		const occurrence = (occurrences.get(prepared.duplicateKey) ?? 0) + 1;
 		occurrences.set(prepared.duplicateKey, occurrence);
-		if (input.skipDuplicates && occurrence <= (existingCounts.get(prepared.duplicateKey) ?? 0)) {
+		if (input.skipDuplicates && occurrence <= (existing.counts.get(prepared.duplicateKey) ?? 0)) {
 			skipped += 1;
 			continue;
 		}
-		const storedKey =
-			occurrence === 1 ? prepared.duplicateKey : `${prepared.duplicateKey}|#${occurrence}`;
+		const storedKey = input.skipDuplicates
+			? claimStorageKey(prepared.duplicateKey, existing.usedKeys)
+			: null;
 
 		const expenseInsert = tx.insert(expenses).values({
 			wgId: input.wg.id,
@@ -257,7 +225,7 @@ async function writeImport(tx: DbTransaction, input: CommitInput) {
 			currency: parsed.currency,
 			description: parsed.description,
 			importId: imp.id,
-			importDuplicateKey: input.skipDuplicates ? storedKey : null,
+			importDuplicateKey: storedKey,
 			occurredAt: new Date(parsed.date),
 		});
 		const [row] = input.skipDuplicates

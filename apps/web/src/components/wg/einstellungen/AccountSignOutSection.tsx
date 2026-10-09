@@ -1,5 +1,6 @@
 'use client';
 
+import { rememberLogoutNotice } from '@/components/entry/LogoutNotice';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
@@ -20,7 +21,6 @@ export function AccountSignOutSection({
 	const router = useRouter();
 	const [accountSignOutPending, setAccountSignOutPending] = useState(false);
 	const [accountSignOutError, setAccountSignOutError] = useState<string | null>(null);
-	const [pushNotice, setPushNotice] = useState<string | null>(null);
 
 	async function handleAccountSignOut(): Promise<void> {
 		if (accountSignOutPending) return;
@@ -36,12 +36,12 @@ export function AccountSignOutSection({
 			]);
 			clearIdentity(wg.id);
 			forgetWg(wg.shareCode);
+			// The session and the local data are gone, so the visitor leaves the household screen
+			// either way; a failed push cleanup is told on the page they land on.
 			if (pushCleanup === 'failed') {
-				// Stay until the visitor has read it; the session is already gone.
-				setPushNotice(
+				rememberLogoutNotice(
 					'Du bist abgemeldet, aber Push konnte auf diesem Browser nicht sicher beendet werden. Deaktiviere Website-Benachrichtigungen in den Browsereinstellungen.',
 				);
-				return;
 			}
 			router.push('/');
 		} catch {
@@ -49,19 +49,6 @@ export function AccountSignOutSection({
 		} finally {
 			setAccountSignOutPending(false);
 		}
-	}
-
-	if (pushNotice) {
-		return (
-			<div className="flex flex-col gap-2">
-				<Alert>
-					<AlertDescription>{pushNotice}</AlertDescription>
-				</Alert>
-				<Button type="button" onClick={() => router.push('/')}>
-					Weiter
-				</Button>
-			</div>
-		);
 	}
 
 	return (

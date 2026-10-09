@@ -58,8 +58,19 @@ test.describe('import replay atomic', () => {
 				) => Promise<{ result: CommitResult }>;
 			},
 		};
+		// These replays never meet an existing expense, so no duplicate is ever found.
+		const duplicates = {
+			buildDuplicateKey: (...parts: unknown[]) => parts.join('|'),
+			loadDuplicateState: async () => ({ counts: new Map(), usedKeys: new Set() }),
+			claimStorageKey: (key: string) => key,
+		};
 		new Function('require', 'module', 'exports', source)(
-			(name: string) => (name in overrides ? overrides[name] : requireFromWeb(name)),
+			(name: string) =>
+				name in overrides
+					? overrides[name]
+					: name === './import-duplicates'
+						? duplicates
+						: requireFromWeb(name),
 			module,
 			module.exports,
 		);

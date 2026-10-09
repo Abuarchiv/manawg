@@ -41,6 +41,9 @@ test('a due template becomes a manual-split expense suggestion', () => {
 		description: 'Internet',
 		amountCents: 2499,
 		paidByMemberId: 'a',
+		intervalMonths: 1,
+		// January: the extra cent sits with the first member, as in the monthly booking.
+		nextDueAt: '2026-01-05T08:00:00.000Z',
 		splits,
 	} as never);
 	assert.equal(suggestion.recurringSourceId, 'tpl-1');
@@ -48,4 +51,15 @@ test('a due template becomes a manual-split expense suggestion', () => {
 	assert.equal(suggestion.amountStr, '24,99');
 	assert.equal(suggestion.imageUrl, null);
 	assert.deepEqual(suggestion.manualSplits, { a: '12,50', b: '12,49' });
+
+	const february = recurringTemplateSuggestion({
+		id: 'tpl-1',
+		description: 'Internet',
+		amountCents: 2499,
+		paidByMemberId: 'a',
+		intervalMonths: 1,
+		nextDueAt: '2026-02-05T08:00:00.000Z',
+		splits,
+	} as never);
+	assert.deepEqual(february.manualSplits, { a: '12,49', b: '12,50' });
 });

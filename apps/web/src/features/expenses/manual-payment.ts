@@ -6,7 +6,7 @@ import { currencySchema } from '@/core/validators/currency';
 import { hasCapturingExpensePayment } from '@/features/expenses/expense-payments';
 import { loadSettlementSnapshot, pairIsInWg } from '@/features/expenses/settle-debt';
 import { selectSettlementScope } from '@/features/expenses/settlement-scope';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 
 /** A cash payment between two members, entered by one of them after the money changed hands. */
@@ -69,6 +69,18 @@ export async function recordCashPayment(
 	if (!pairIsInWg(snapshot, input.fromMemberId, input.toMemberId)) {
 		return rejected('member_not_in_wg');
 	}
+	// Both sides must still live in the WG; a moved-out member's debt is settled by other means.
+	const activePair = await tx
+		.select({ id: wgMembers.id })
+		.from(wgMembers)
+		.where(
+			and(
+				eq(wgMembers.wgId, wgId),
+				inArray(wgMembers.id, [input.fromMemberId, input.toMemberId]),
+				isNull(wgMembers.deactivatedAt),
+			),
+		);
+	if (activePair.length !== 2) return rejected('member_not_in_wg');
 	if (await hasCapturingExpensePayment(tx, wgId)) return rejected('blocked');
 
 	const preview = selectSettlementScope(

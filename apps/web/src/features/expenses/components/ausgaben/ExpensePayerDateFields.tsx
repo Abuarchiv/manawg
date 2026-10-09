@@ -41,7 +41,8 @@ export function ExpensePayerDateFields({
 						type="date"
 						value={occurredOn || todayKey}
 						max={todayKey}
-						onChange={(event) => setOccurredOn(event.target.value)}
+						// A cleared field means today; storing that day keeps what is shown and what is saved equal.
+						onChange={(event) => setOccurredOn(event.target.value || todayKey)}
 						disabled={disabled}
 						className="text-base"
 					/>
