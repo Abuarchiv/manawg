@@ -303,9 +303,14 @@ test('an ambiguously acknowledged expense replays its queued request with the or
 
 	expect(attempts[0]?.key).toBeTruthy();
 	expect(attempts[1]?.key).toBe(attempts[0]?.key);
-	expect(normalizeExpenseCreateBody(attempts[1]?.body)).toEqual(
-		normalizeExpenseCreateBody(attempts[0]?.body),
-	);
+	// The queued copy also carries the booking day shown at entry; the server replays by key, so
+	// the extra field changes nothing for an attempt that did commit.
+	const { occurredAt, ...replayed } = normalizeExpenseCreateBody(attempts[1]?.body) as Record<
+		string,
+		unknown
+	>;
+	expect(typeof occurredAt).toBe('string');
+	expect(replayed).toEqual(normalizeExpenseCreateBody(attempts[0]?.body));
 });
 
 test('discarding an ambiguous expense starts a new request key for identical form data', async ({

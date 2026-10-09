@@ -33,8 +33,9 @@ export function rateLimitFailMode(): 'open' | 'closed' {
 		: 'open';
 }
 
-// A configured but unusable Upstash URL; Preview answers it closed so the mistake shows up there.
-let configuredButInvalid = false;
+// A configured but unusable Upstash setup (a bad URL, or only one of URL and token); Preview
+// answers it closed so the mistake shows up there. Neither variable set is a deliberate choice.
+let configuredButInvalid = (url === undefined) !== (token === undefined);
 
 export function createConfiguredRedis(): Redis | null {
 	if (!url || !token) return null;

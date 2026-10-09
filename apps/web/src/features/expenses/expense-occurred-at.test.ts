@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { berlinDayKey } from '@/core/utils/berlin-day';
-import { resolveOccurredAt } from '@/features/expenses/expense-occurred-at';
+import { displayedDayAsInstant, resolveOccurredAt } from '@/features/expenses/expense-occurred-at';
 
 const today = berlinDayKey(new Date());
 
@@ -28,4 +28,11 @@ test('a date that is not a day is reported', () => {
 
 test('editing compares against the expense day, not today', () => {
 	assert.equal(resolveOccurredAt(today, '2026-01-15T11:00:00.000Z').iso !== null, true);
+});
+
+test('a queued create keeps the displayed day as its booking day', () => {
+	assert.equal(displayedDayAsInstant('2026-01-15'), '2026-01-15T11:00:00.000Z');
+	assert.equal(displayedDayAsInstant('2026-07-15'), '2026-07-15T10:00:00.000Z');
+	// An empty field means today in Berlin: noon of that day, not the replay instant.
+	assert.equal(displayedDayAsInstant(''), displayedDayAsInstant(today));
 });

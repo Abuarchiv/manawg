@@ -247,7 +247,10 @@ export const POST = withWgRoute('announcements POST', async (req, { code }) => {
 						.select({ id: chores.id })
 						.from(chores)
 						.where(and(eq(chores.wgId, wg.id), eq(chores.id, swapChoreId)))
-						.limit(1);
+						.limit(1)
+						// Held until commit: a reassignment of the chore waits for this request and then
+						// answers it, so no open request outlives the change it asked about.
+						.for('update');
 					if (chore) {
 						safeSource = 'chore_swap';
 						safeSourcePath = choreSwapSourcePath(chore.id);

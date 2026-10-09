@@ -80,7 +80,7 @@ function loadRateLimit({ env = {}, decisions = [] } = {}) {
 		loaded,
 		loaded.exports,
 		{ env },
-		{ error: (...args) => logs.push(args) },
+		{ error: (...args) => logs.push(args), warn: () => {} },
 	);
 
 	return {
@@ -173,4 +173,37 @@ test('a configured limiter that fails does not pass traffic on Preview', async (
 	const development = loadRateLimit({ env: { NODE_ENV: 'development' } });
 	const allowed = await development.rateLimit.checkRateLimit(failing, '198.51.100.50');
 	assert.equal(allowed.success, true);
+});
+
+test('Preview answers a half-configured limiter closed, an unconfigured one open', async () => {
+	const anyLimiter = null;
+	const half = loadRateLimit({
+		env: {
+			NODE_ENV: 'production',
+			VERCEL_ENV: 'preview',
+			UPSTASH_REDIS_REST_URL: 'https://example.upstash.io',
+		},
+	});
+	const denied = await half.rateLimit.checkRateLimit(anyLimiter, '198.51.100.51', 'open');
+	assert.equal(denied.success, false);
+	assert.equal(denied.limiterUnavailable, true);
+
+	const blankToken = loadRateLimit({
+		env: {
+			NODE_ENV: 'production',
+			VERCEL_ENV: 'preview',
+			UPSTASH_REDIS_REST_URL: 'https://example.upstash.io',
+			UPSTASH_REDIS_REST_TOKEN: '   ',
+		},
+	});
+	assert.equal(
+		(await blankToken.rateLimit.checkRateLimit(anyLimiter, '198.51.100.52', 'open')).success,
+		false,
+	);
+
+	const none = loadRateLimit({ env: { NODE_ENV: 'production', VERCEL_ENV: 'preview' } });
+	assert.equal(
+		(await none.rateLimit.checkRateLimit(anyLimiter, '198.51.100.53', 'open')).success,
+		true,
+	);
 });

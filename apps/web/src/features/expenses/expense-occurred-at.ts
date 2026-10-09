@@ -16,3 +16,9 @@ export function resolveOccurredAt(
 	const instant = instantAtBerlinWallTime(occurredOn, NOON_MINUTES);
 	return instant ? { iso: instant.toISOString(), invalid: false } : { iso: null, invalid: true };
 }
+
+/** The Berlin day the form shows, as the stored point in time (noon), for a queued create. */
+export function displayedDayAsInstant(occurredOn: string): string | null {
+	const day = occurredOn || berlinDayKey(new Date());
+	return instantAtBerlinWallTime(day, NOON_MINUTES)?.toISOString() ?? null;
+}

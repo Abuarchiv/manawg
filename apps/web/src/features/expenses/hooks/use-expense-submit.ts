@@ -31,7 +31,7 @@ import {
 	isPermanentClientError,
 	splitInputErrorMessage,
 } from '@/features/expenses/expense-errors';
-import { resolveOccurredAt } from '@/features/expenses/expense-occurred-at';
+import { displayedDayAsInstant, resolveOccurredAt } from '@/features/expenses/expense-occurred-at';
 import { manualSplitsFingerprint } from '@/features/expenses/expense-split-input';
 import { buildOptimisticExpense } from '@/features/expenses/optimistic-expense';
 import type { DebtorShare } from '@/features/expenses/split-math';
@@ -273,7 +273,11 @@ export function useExpenseSubmit(
 							paidByMemberId,
 							splits,
 							imageUrl,
-							...(occurredAtIso ? { occurredAt: occurredAtIso } : {}),
+							// The day shown now is the booking day, however late the queue replays.
+							...(() => {
+								const day = occurredAtIso ?? displayedDayAsInstant(form.occurredOn);
+								return day ? { occurredAt: day } : {};
+							})(),
 							...recurringSource,
 						});
 				const queuedCount = await enqueueOfflineAction(queuedAction);

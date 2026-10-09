@@ -1,11 +1,11 @@
-import { auditEvents, wgEvents } from '@/core/db';
+import { auditEvents, wgEvents, wgMembers } from '@/core/db';
 import { rejectWrite, responseCodec, withIdempotentWrite } from '@/core/db/idempotent-write';
 import { TransactionAbort } from '@/core/db/transaction';
 import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, conflict, notFound, tooMany } from '@/core/http/api-errors';
+import { badRequest, conflict, notFound, tooMany, unauthorized } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey } from '@/core/idempotency-store';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
@@ -90,6 +90,15 @@ export const POST = withWgRoute<{ id: string }>('events occurrence', async (req,
 					.limit(1)
 					.for('update');
 				if (!root) return rejectWrite(notFound('event_not_found'));
+				// The member resolved before the transaction may have moved out since.
+				const [caller] = await tx
+					.select({ deactivatedAt: wgMembers.deactivatedAt })
+					.from(wgMembers)
+					.where(and(eq(wgMembers.id, auth.member.memberId), eq(wgMembers.wgId, wgId)))
+					.limit(1);
+				if (!caller || caller.deactivatedAt) {
+					return rejectWrite(unauthorized('member_deactivated'));
+				}
 				const denied = await requireOwnerOrAdmin(wgId, auth.member, root.createdByMemberId);
 				if (denied) return rejectWrite(denied);
 				if (!root.recurrence) return rejectWrite(badRequest('not_recurring'));
