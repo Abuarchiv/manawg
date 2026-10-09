@@ -9,6 +9,8 @@ export interface RecurrenceRule {
 	byDay?: RecurrenceByDay[];
 	count?: number;
 	until?: string;
+	/** Starts of single occurrences that were taken out of the series (ISO instants, sorted). */
+	exdates?: string[];
 }
 const FREQS: ReadonlySet<RecurrenceFreq> = new Set(['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY']);
 const BYDAYS: ReadonlySet<RecurrenceByDay> = new Set(['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU']);
@@ -29,6 +31,8 @@ export const BYDAY_TO_INDEX: Record<RecurrenceByDay, number> = {
 	SA: 6,
 };
 export const MAX_OCCURRENCES = 366;
+/** Longest list of removed occurrences one series keeps: about four years of a daily series, thirty of a weekly one. */
+export const MAX_EXDATES = 1_500;
 
 function isRecurrenceFreq(value: string): value is RecurrenceFreq {
 	return FREQS.has(value as RecurrenceFreq);
@@ -36,6 +40,17 @@ function isRecurrenceFreq(value: string): value is RecurrenceFreq {
 
 function isRecurrenceByDay(value: string): value is RecurrenceByDay {
 	return BYDAYS.has(value as RecurrenceByDay);
+}
+
+function parseExdates(value: string): string[] | null {
+	const instants = new Set<string>();
+	for (const item of value.split(',')) {
+		const ts = parseTimestamp(item.trim());
+		if (ts === null) return null;
+		instants.add(new Date(ts).toISOString());
+	}
+	if (instants.size > MAX_EXDATES) return null;
+	return [...instants].sort();
 }
 
 export function parseRecurrenceRule(value: string | null | undefined): RecurrenceRule | null {
@@ -78,6 +93,11 @@ export function parseRecurrenceRule(value: string | null | undefined): Recurrenc
 		if (ts === null) return null;
 		rule.until = new Date(ts).toISOString();
 	}
+	if (map.EXDATE) {
+		const exdates = parseExdates(map.EXDATE);
+		if (!exdates) return null;
+		rule.exdates = exdates;
+	}
 	return rule;
 }
 
@@ -87,5 +107,28 @@ export function formatRecurrenceRule(rule: RecurrenceRule): string {
 	if (rule.byDay && rule.byDay.length > 0) parts.push(`BYDAY=${rule.byDay.join(',')}`);
 	if (rule.count !== undefined) parts.push(`COUNT=${rule.count}`);
 	if (rule.until !== undefined) parts.push(`UNTIL=${rule.until}`);
+	if (rule.exdates && rule.exdates.length > 0) parts.push(`EXDATE=${rule.exdates.join(',')}`);
 	return parts.join(';');
+}
+
+/**
+ * The rule with one occurrence taken out, or null when the rule is invalid, the occurrence is
+ * already out, or the series already holds the most exceptions it may keep.
+ */
+export function withExcludedOccurrence(
+	recurrence: string,
+	occurrenceStartsAt: string,
+): string | null {
+	const rule = parseRecurrenceRule(recurrence);
+	const ts = parseTimestamp(occurrenceStartsAt);
+	if (!rule || ts === null) return null;
+	const instant = new Date(ts).toISOString();
+	const exdates = rule.exdates ?? [];
+	if (exdates.includes(instant) || exdates.length >= MAX_EXDATES) return null;
+	return formatRecurrenceRule({ ...rule, exdates: [...exdates, instant].sort() });
+}
+
+/** True when this exact occurrence start was taken out of the series. */
+export function isExcludedOccurrence(rule: RecurrenceRule, startMs: number): boolean {
+	return rule.exdates?.some((instant) => Date.parse(instant) === startMs) ?? false;
 }

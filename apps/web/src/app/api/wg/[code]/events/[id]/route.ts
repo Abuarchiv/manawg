@@ -4,7 +4,7 @@ import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, notFound, tooMany } from '@/core/http/api-errors';
+import { badRequest, conflict, notFound, tooMany } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { checkRateLimit, clientIpKey, wgReadLimiter, wgWriteLimiter } from '@/core/rate-limit';
 import {
@@ -19,7 +19,7 @@ import {
 	parseRecurrenceRule,
 	serializeWgEvent,
 } from '@/features/events/events';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -31,6 +31,9 @@ const patchSchema = z.object({
 	allDay: z.boolean().optional(),
 	location: eventLocationSchema.optional(),
 	recurrence: eventRecurrenceSchema.optional(),
+	// The version the form was opened on; a newer one means the series changed meanwhile
+	// (an edit, or one date taken out of it).
+	expectedUpdatedAt: z.string().datetime({ offset: true }).optional(),
 });
 
 function normalizeRecurrence(value: string | null): string | null | 'invalid' {
@@ -69,6 +72,7 @@ export const PATCH = withWgRoute<{ id: string }>('events PATCH', async (req, { c
 			description: 'description_invalid',
 			location: 'location_invalid',
 			recurrence: 'recurrence_invalid',
+			expectedUpdatedAt: 'expected_state_invalid',
 		},
 	});
 	if (!parsed.ok) return parsed.response;
@@ -117,9 +121,25 @@ export const PATCH = withWgRoute<{ id: string }>('events PATCH', async (req, { c
 	const [row] = await db
 		.update(wgEvents)
 		.set(update)
-		.where(and(eq(wgEvents.id, id), eq(wgEvents.wgId, wgId)))
+		.where(
+			and(
+				eq(wgEvents.id, id),
+				eq(wgEvents.wgId, wgId),
+				parsed.data.expectedUpdatedAt
+					? sql`date_trunc('milliseconds', ${wgEvents.updatedAt}) = ${new Date(parsed.data.expectedUpdatedAt)}`
+					: undefined,
+			),
+		)
 		.returning();
-	if (!row) return notFound('event_not_found');
+	if (!row) {
+		// Still there means the version differed: someone saved or changed a date meanwhile.
+		const [stillThere] = await db
+			.select({ id: wgEvents.id })
+			.from(wgEvents)
+			.where(and(eq(wgEvents.id, id), eq(wgEvents.wgId, wgId)))
+			.limit(1);
+		return stillThere ? conflict('event_changed') : notFound('event_not_found');
+	}
 
 	await recordAuditEvent({
 		wgId,

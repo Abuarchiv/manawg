@@ -5,6 +5,7 @@ import {
 	MAX_OCCURRENCES,
 	type RecurrenceFreq,
 	type RecurrenceRule,
+	isExcludedOccurrence,
 	parseRecurrenceRule,
 } from './event-recurrence-rule';
 
@@ -284,7 +285,10 @@ export function expandRecurrence(
 		}
 
 		if (emit) {
-			if (withinWindow(occurrenceMs, occurrenceMs + baseDuration, window, event.allDay)) {
+			if (
+				!isExcludedOccurrence(rule, occurrenceMs) &&
+				withinWindow(occurrenceMs, occurrenceMs + baseDuration, window, event.allDay)
+			) {
 				occurrences.push(buildOccurrence(event, occurrenceMs, baseDuration, index, true));
 			}
 			index += 1;

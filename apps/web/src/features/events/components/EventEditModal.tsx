@@ -2,30 +2,20 @@
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
-	AlertDialog,
-	AlertDialogAction,
-	AlertDialogCancel,
-	AlertDialogContent,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogHeader,
-	AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { Button } from '@/components/ui/button';
-import {
 	Drawer,
 	DrawerContent,
 	DrawerDescription,
-	DrawerFooter,
 	DrawerHeader,
 	DrawerTitle,
 } from '@/components/ui/drawer';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
-import { Spinner } from '@/components/ui/spinner';
-import { DiscardChangesDialog } from '@/features/events/components/DiscardChangesDialog';
+import { EventEditDialogs } from '@/features/events/components/EventEditDialogs';
+import { EventEditFooter } from '@/features/events/components/EventEditFooter';
 import { EventFormFields, focusEventField } from '@/features/events/components/EventFormFields';
+import { type EventScope, EventScopeSwitch } from '@/features/events/components/EventScopeSwitch';
 import {
+	type EventOccurrence,
 	RECURRENCE_OPTIONS,
 	type RecurrenceFreq,
 	eventDateForDisplay,
@@ -33,8 +23,8 @@ import {
 	parseRecurrenceRule,
 	validateEventForm,
 } from '@/features/events/events';
-import { CalendarPlus, Trash2 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { shiftedSeriesRule } from '@/features/events/recurrence-shift';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 const KEEP_EXISTING_RECURRENCE = '__keep__';
 
@@ -48,20 +38,29 @@ export interface EditableEvent {
 	location: string | null;
 	recurrence: string | null;
 	createdByMemberId?: string | null;
+	updatedAt?: string | undefined;
 }
 
-export type UpdateEventPayload = Omit<EditableEvent, 'id' | 'createdByMemberId'>;
+export type UpdateEventPayload = Omit<EditableEvent, 'id' | 'createdByMemberId' | 'updatedAt'> & {
+	expectedUpdatedAt?: string | undefined;
+};
 
 interface EventEditModalProps {
 	event: EditableEvent | null;
 	onClose: () => void;
 	onUpdate: (id: string, payload: UpdateEventPayload) => Promise<void>;
 	onDelete: (id: string) => Promise<void>;
+	/** The opened date of a series; with the two handlers below a change can apply to just it. */
+	occurrence?: EventOccurrence | null | undefined;
+	onUpdateOccurrence?:
+		| ((id: string, occurrenceStartsAt: string, payload: UpdateEventPayload) => Promise<void>)
+		| undefined;
+	onDeleteOccurrence?: ((id: string, occurrenceStartsAt: string) => Promise<void>) | undefined;
 	actionError?: string | null;
-	/** The API only lets the creator and WG admins change an event; others get a read-only view. */
-	readOnly?: boolean;
 	/** Exports the chosen event as .ics for the user's own calendar app. */
 	onExportIcs?: (() => void) | undefined;
+	/** The API only lets the creator and WG admins change an event; others get a read-only view. */
+	readOnly?: boolean;
 }
 
 function toLocalInputValue(iso: string, allDay: boolean): string {
@@ -75,10 +74,14 @@ export function EventEditModal({
 	onClose,
 	onUpdate,
 	onDelete,
+	occurrence,
+	onUpdateOccurrence,
+	onDeleteOccurrence,
 	actionError,
-	readOnly = false,
 	onExportIcs,
+	readOnly = false,
 }: EventEditModalProps) {
+	const [scope, setScope] = useState<EventScope>('series');
 	const [title, setTitle] = useState('');
 	const [description, setDescription] = useState('');
 	const [startsAt, setStartsAt] = useState('');
@@ -108,20 +111,25 @@ export function EventEditModal({
 			document.getElementById('event-edit-error')?.scrollIntoView({ block: 'nearest' });
 	}, [shownError, errorField]);
 
+	const showValues = useCallback((source: EditableEvent | EventOccurrence, rule: string | null) => {
+		setTitle(source.title);
+		setDescription(source.description ?? '');
+		setStartsAt(toLocalInputValue(source.startsAt, source.allDay));
+		setEndsAt(source.endsAt ? toLocalInputValue(source.endsAt, source.allDay) : '');
+		setAllDay(source.allDay);
+		setLocation(source.location ?? '');
+		setRecurrence(rule ?? '');
+	}, []);
+
 	useEffect(() => {
 		if (!event) return;
-		setTitle(event.title);
-		setDescription(event.description ?? '');
-		setStartsAt(toLocalInputValue(event.startsAt, event.allDay));
-		setEndsAt(event.endsAt ? toLocalInputValue(event.endsAt, event.allDay) : '');
-		setAllDay(event.allDay);
-		setLocation(event.location ?? '');
-		setRecurrence(event.recurrence ?? '');
+		setScope('series');
+		showValues(event, event.recurrence);
 		setError(null);
 		setErrorField(null);
 		setConfirmingDelete(false);
 		setConfirmingDiscard(false);
-	}, [event]);
+	}, [event, showValues]);
 
 	const busy = saving || deleting;
 	const locked = busy || readOnly;
@@ -139,16 +147,34 @@ export function EventEditModal({
 			: KEEP_EXISTING_RECURRENCE
 		: '';
 
+	const onlyThis =
+		scope === 'occurrence' &&
+		Boolean(occurrence && event.recurrence && onUpdateOccurrence && onDeleteOccurrence);
+	const canSwitchScope = Boolean(
+		!readOnly && occurrence && event.recurrence && onUpdateOccurrence && onDeleteOccurrence,
+	);
+	// What the form started from: the series, or the opened date when only that one is edited.
+	const baseline: EditableEvent | EventOccurrence = onlyThis && occurrence ? occurrence : event;
+	const baselineRule = onlyThis ? '' : (event.recurrence ?? '');
+
+	function chooseScope(next: EventScope): void {
+		setScope(next);
+		setError(null);
+		setErrorField(null);
+		if (next === 'occurrence' && occurrence) showValues(occurrence, null);
+		else if (event) showValues(event, event.recurrence);
+	}
+
 	function requestClose(): void {
 		if (!event || busy) return;
 		const dirty =
-			title !== event.title ||
-			description !== (event.description ?? '') ||
-			startsAt !== toLocalInputValue(event.startsAt, event.allDay) ||
-			endsAt !== (event.endsAt ? toLocalInputValue(event.endsAt, event.allDay) : '') ||
-			allDay !== event.allDay ||
-			location !== (event.location ?? '') ||
-			recurrence !== (event.recurrence ?? '');
+			title !== baseline.title ||
+			description !== (baseline.description ?? '') ||
+			startsAt !== toLocalInputValue(baseline.startsAt, baseline.allDay) ||
+			endsAt !== (baseline.endsAt ? toLocalInputValue(baseline.endsAt, baseline.allDay) : '') ||
+			allDay !== baseline.allDay ||
+			location !== (baseline.location ?? '') ||
+			recurrence !== baselineRule;
 		if (dirty) setConfirmingDiscard(true);
 		else onClose();
 	}
@@ -159,7 +185,7 @@ export function EventEditModal({
 		setError(null);
 		setErrorField(null);
 		if (!event) return;
-		const validation = validateEventForm({ title, startsAt, endsAt, allDay, original: event });
+		const validation = validateEventForm({ title, startsAt, endsAt, allDay, original: baseline });
 		if (!validation.ok) {
 			setError(validation.error);
 			setErrorField(validation.field);
@@ -171,15 +197,23 @@ export function EventEditModal({
 		const endDate = validation.endsAt;
 		setSaving(true);
 		try {
-			await onUpdate(event.id, {
+			const payload: UpdateEventPayload = {
 				title: trimmedTitle,
 				description: description.trim() || null,
 				startsAt: startDate.toISOString(),
 				endsAt: endDate ? endDate.toISOString() : null,
 				allDay,
 				location: location.trim() || null,
-				recurrence: recurrence.trim() || null,
-			});
+				recurrence: onlyThis
+					? null
+					: shiftedSeriesRule(recurrence.trim(), event.startsAt, startDate, allDay, event.allDay),
+				...(event.updatedAt ? { expectedUpdatedAt: event.updatedAt } : {}),
+			};
+			if (onlyThis && occurrence && onUpdateOccurrence) {
+				await onUpdateOccurrence(event.id, occurrence.startsAt, payload);
+			} else {
+				await onUpdate(event.id, payload);
+			}
 		} catch (err) {
 			setError(
 				err instanceof Error ? err.message : 'Speichern fehlgeschlagen. Versuche es erneut.',
@@ -197,7 +231,11 @@ export function EventEditModal({
 		deletingRef.current = true;
 		setDeleting(true);
 		try {
-			await onDelete(event.id);
+			if (onlyThis && occurrence && onDeleteOccurrence) {
+				await onDeleteOccurrence(event.id, occurrence.startsAt);
+			} else {
+				await onDelete(event.id);
+			}
 		} catch (err) {
 			setError(err instanceof Error ? err.message : 'Löschen fehlgeschlagen. Versuche es erneut.');
 		} finally {
@@ -222,20 +260,30 @@ export function EventEditModal({
 				<DrawerContent className="mx-auto w-full max-w-md">
 					<DrawerHeader className="border-b pb-3">
 						<DrawerTitle>{readOnly ? 'Termin' : 'Termin bearbeiten'}</DrawerTitle>
-						{readOnly ? (
+						{readOnly && (
 							<DrawerDescription>
 								Nur wer den Termin angelegt hat und WG-Admins können ihn ändern.
 							</DrawerDescription>
-						) : (
-							event.recurrence && (
-								<DrawerDescription>
-									Änderungen gelten für die gesamte Terminserie.
-								</DrawerDescription>
-							)
+						)}
+						{!readOnly && event.recurrence && !canSwitchScope && (
+							<DrawerDescription>Änderungen gelten für die gesamte Terminserie.</DrawerDescription>
 						)}
 					</DrawerHeader>
 					<form noValidate onSubmit={handleSave} className="flex min-h-0 flex-col">
 						<div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-4">
+							{canSwitchScope && occurrence && (
+								<EventScopeSwitch
+									scope={scope}
+									dateLabel={new Intl.DateTimeFormat('de-DE', {
+										weekday: 'short',
+										day: '2-digit',
+										month: '2-digit',
+										...(occurrence.allDay ? { timeZone: 'UTC' } : {}),
+									}).format(new Date(occurrence.startsAt))}
+									disabled={busy}
+									onChange={chooseScope}
+								/>
+							)}
 							<EventFormFields
 								idPrefix="event-edit"
 								title={title}
@@ -266,38 +314,40 @@ export function EventEditModal({
 								errorField={errorField}
 								errorId="event-edit-error"
 								recurrenceField={
-									<Field data-disabled={locked}>
-										<FieldLabel htmlFor="event-edit-recurrence">Wiederholung</FieldLabel>
-										<NativeSelect
-											id="event-edit-recurrence"
-											value={recurrenceOption}
-											onChange={(event) =>
-												event.target.value === KEEP_EXISTING_RECURRENCE
-													? undefined
-													: setRecurrence(
-															event.target.value
-																? formatRecurrenceRule({
-																		freq: event.target.value as RecurrenceFreq,
-																		interval: 1,
-																	})
-																: '',
-														)
-											}
-											disabled={locked}
-											className="w-full [&_select]:min-h-11 [&_select]:text-base"
-										>
-											{recurrence && !isSimpleRecurrence && (
-												<NativeSelectOption value={KEEP_EXISTING_RECURRENCE}>
-													Bestehende Serie
-												</NativeSelectOption>
-											)}
-											{RECURRENCE_OPTIONS.map((option) => (
-												<NativeSelectOption key={option.value} value={option.value}>
-													{option.label}
-												</NativeSelectOption>
-											))}
-										</NativeSelect>
-									</Field>
+									onlyThis ? null : (
+										<Field data-disabled={locked}>
+											<FieldLabel htmlFor="event-edit-recurrence">Wiederholung</FieldLabel>
+											<NativeSelect
+												id="event-edit-recurrence"
+												value={recurrenceOption}
+												onChange={(event) =>
+													event.target.value === KEEP_EXISTING_RECURRENCE
+														? undefined
+														: setRecurrence(
+																event.target.value
+																	? formatRecurrenceRule({
+																			freq: event.target.value as RecurrenceFreq,
+																			interval: 1,
+																		})
+																	: '',
+															)
+												}
+												disabled={locked}
+												className="w-full [&_select]:min-h-11 [&_select]:text-base"
+											>
+												{recurrence && !isSimpleRecurrence && (
+													<NativeSelectOption value={KEEP_EXISTING_RECURRENCE}>
+														Bestehende Serie
+													</NativeSelectOption>
+												)}
+												{RECURRENCE_OPTIONS.map((option) => (
+													<NativeSelectOption key={option.value} value={option.value}>
+														{option.label}
+													</NativeSelectOption>
+												))}
+											</NativeSelect>
+										</Field>
+									)
 								}
 							/>
 							{(error || actionError) && (
@@ -306,89 +356,30 @@ export function EventEditModal({
 								</Alert>
 							)}
 						</div>
-						<DrawerFooter className="border-t pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-							<div className="flex flex-wrap gap-2">
-								{!readOnly && (
-									<Button type="submit" className="min-w-fit flex-1" disabled={busy}>
-										{saving && <Spinner data-icon="inline-start" aria-hidden />}
-										{saving ? 'Speichert…' : 'Speichern'}
-									</Button>
-								)}
-								<Button
-									type="button"
-									variant="outline"
-									className="min-w-fit flex-1"
-									onClick={requestClose}
-									disabled={busy}
-								>
-									{readOnly ? 'Schließen' : 'Abbrechen'}
-								</Button>
-							</div>
-							<div className="flex flex-wrap gap-2">
-								{onExportIcs && (
-									<Button
-										type="button"
-										variant="outline"
-										className="h-auto min-h-8 min-w-fit flex-1 py-1.5"
-										onClick={onExportIcs}
-										aria-label="In Kalender-App übernehmen"
-									>
-										<CalendarPlus data-icon="inline-start" aria-hidden />
-										In Kalender
-									</Button>
-								)}
-								{!readOnly && (
-									<Button
-										type="button"
-										variant="destructive"
-										className="h-auto min-h-8 min-w-fit flex-1 py-1.5"
-										onClick={() => setConfirmingDelete(true)}
-										disabled={busy}
-										aria-label="Termin löschen"
-									>
-										<Trash2 data-icon="inline-start" aria-hidden />
-										Termin löschen
-									</Button>
-								)}
-							</div>
-						</DrawerFooter>
+						<EventEditFooter
+							readOnly={readOnly}
+							busy={busy}
+							saving={saving}
+							onCancel={requestClose}
+							onDelete={() => setConfirmingDelete(true)}
+							deleteLabel={onlyThis ? 'Nur diesen Termin löschen' : 'Termin löschen'}
+							onExportIcs={onExportIcs}
+						/>
 					</form>
 				</DrawerContent>
 			</Drawer>
-			<AlertDialog
-				open={confirmingDelete}
-				onOpenChange={(open) => {
+			<EventEditDialogs
+				title={event.title}
+				recurring={Boolean(event.recurrence)}
+				onlyThis={onlyThis}
+				confirmingDelete={confirmingDelete}
+				onConfirmingDeleteChange={(open) => {
 					if (!deletingRef.current) setConfirmingDelete(open);
 				}}
-			>
-				<AlertDialogContent className="w-[calc(100%-2rem)]">
-					<AlertDialogHeader>
-						<AlertDialogTitle>Termin löschen?</AlertDialogTitle>
-						<AlertDialogDescription>
-							{event.recurrence
-								? `„${event.title}“ wird unwiderruflich entfernt, mit allen zukünftigen Terminen der Serie.`
-								: `„${event.title}“ wird unwiderruflich entfernt.`}
-						</AlertDialogDescription>
-					</AlertDialogHeader>
-					<AlertDialogFooter>
-						<AlertDialogCancel disabled={deleting} className="min-h-11">
-							Abbrechen
-						</AlertDialogCancel>
-						<AlertDialogAction
-							variant="destructive"
-							onClick={() => void handleDelete()}
-							disabled={deleting}
-							className="min-h-11"
-						>
-							{deleting && <Spinner data-icon="inline-start" aria-hidden />}
-							{deleting ? 'Löscht…' : 'Löschen'}
-						</AlertDialogAction>
-					</AlertDialogFooter>
-				</AlertDialogContent>
-			</AlertDialog>
-			<DiscardChangesDialog
-				open={confirmingDiscard}
-				onOpenChange={setConfirmingDiscard}
+				deleting={deleting}
+				onDelete={() => void handleDelete()}
+				confirmingDiscard={confirmingDiscard}
+				onConfirmingDiscardChange={setConfirmingDiscard}
 				onDiscard={() => {
 					setConfirmingDiscard(false);
 					onClose();
