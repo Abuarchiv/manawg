@@ -68,14 +68,10 @@ export const wgs = pgTable(
 	}),
 );
 
-// FK policy toward wgMembers (intentional placeholder — no member-removal feature exists yet,
-// only whole-WG deletion, so this is currently dead protection):
-// - onDelete: 'restrict' — financial/audit tables (expenses, expenseSplits, shoppingItems,
-//   announcements, choreCompletions, recurringExpenses) where losing the historical member
-//   reference would corrupt records once member-removal ships.
-// - onDelete: 'cascade' — tables (absences, debts, chat) whose rows are meaningless without
-//   the member and can safely disappear with them.
-// Member removal keeps 'restrict' tables intact (soft-delete instead of relaxing to 'cascade').
+// FK policy toward wgMembers: 'restrict' on the financial and audit tables (expenses, splits,
+// shopping items, announcements, chore completions, recurring expenses) keeps history intact, so
+// members leave through deactivated_at ("Auszug") and are never deleted; 'cascade' on tables
+// (absences, debts, chat) whose rows mean nothing without the member.
 export const wgMembers = pgTable(
 	'wg_members',
 	{
@@ -285,7 +281,10 @@ export const expensePayments = pgTable(
 			'expense_payments_members_check',
 			sql`${t.fromMemberId} <> ${t.toMemberId}`,
 		),
-		providerCheck: check('expense_payments_provider_check', sql`${t.provider} = 'paypal'`),
+		providerCheck: check(
+			'expense_payments_provider_check',
+			sql`${t.provider} in ('paypal', 'manual')`,
+		),
 		statusCheck: check(
 			'expense_payments_status_check',
 			sql`${t.status} in ('created', 'capturing', 'completed', 'failed')`,

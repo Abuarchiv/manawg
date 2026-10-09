@@ -1,0 +1,2 @@
+ALTER TABLE "expense_payments" DROP CONSTRAINT "expense_payments_provider_check";--> statement-breakpoint
+ALTER TABLE "expense_payments" ADD CONSTRAINT "expense_payments_provider_check" CHECK ("expense_payments"."provider" in ('paypal', 'manual'));

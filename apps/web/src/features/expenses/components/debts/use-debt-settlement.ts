@@ -50,7 +50,9 @@ export function useDebtSettlement({
 	const [error, setError] = useState<string | null>(null);
 	const settlingRef = useRef(false);
 	const settlementRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
+	const cashRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
 	const endpoint = `/api/wg/${encodeURIComponent(shareCode)}/expenses/settle-batch`;
+	const cashEndpoint = `/api/wg/${encodeURIComponent(shareCode)}/payments/manual`;
 
 	async function review(): Promise<void> {
 		if (settlingRef.current) return;
@@ -150,6 +152,67 @@ export function useDebtSettlement({
 		}
 	}
 
+	/** Enter the whole net debt as a cash payment, for debts no single share can express. */
+	async function settleCash(): Promise<void> {
+		if (settlingRef.current || !preview || preview.netCents <= 0) return;
+		settlingRef.current = true;
+		setSettling(true);
+		setError(null);
+		const body = {
+			fromMemberId: debt.fromId,
+			toMemberId: debt.toId,
+			currency: debt.currency ?? 'EUR',
+			expectedNetCents: preview.netCents,
+		};
+		const fingerprint = JSON.stringify(body);
+		const pendingRequest = cashRequestRef.current;
+		const idempotencyKey =
+			pendingRequest?.fingerprint === fingerprint
+				? pendingRequest.key
+				: createOfflineIdempotencyKey();
+		if (!idempotencyKey) {
+			const message = 'Barzahlung konnte nicht sicher gespeichert werden. Versuche es erneut.';
+			setError(message);
+			toast.error(message);
+			settlingRef.current = false;
+			setSettling(false);
+			return;
+		}
+		cashRequestRef.current = { fingerprint, key: idempotencyKey };
+		try {
+			const res = await apiFetch<{ amountCents: number }>(cashEndpoint, {
+				method: 'POST',
+				memberId: currentMemberId,
+				headers: { 'Idempotency-Key': idempotencyKey },
+				body: JSON.stringify(body),
+			});
+			if (!res.ok) {
+				if (res.status > 0 && res.status < 500) cashRequestRef.current = null;
+				const message = settlementErrorMessage(res.error);
+				setError(message);
+				toast.error(message);
+				if (res.error === 'settlement_changed') {
+					setPreview(null);
+					setReviewOpen(false);
+				}
+				return;
+			}
+			cashRequestRef.current = null;
+			setPreview(null);
+			setReviewOpen(false);
+			onSettled(
+				`Barzahlung eingetragen: ${formatEuroCents(res.data.amountCents, debt.currency)} von ${debt.fromName} an ${debt.toName}.`,
+			);
+		} catch {
+			const message = settlementErrorMessage('Netzwerkfehler');
+			setError(message);
+			toast.error(message);
+		} finally {
+			settlingRef.current = false;
+			setSettling(false);
+		}
+	}
+
 	/** Closing the dialog also clears a failed attempt's error so it does not stick to the row. */
 	function setReviewDialogOpen(open: boolean): void {
 		if (settling) return;
@@ -167,6 +230,7 @@ export function useDebtSettlement({
 		error,
 		review,
 		settle,
+		settleCash,
 	};
 }
 
