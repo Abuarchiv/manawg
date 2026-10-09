@@ -54,6 +54,8 @@ export default function KalenderPage() {
 			{ memberId: identity.memberId },
 		).then((res) => {
 			if (res.ok) setEditing(res.data.event);
+			// A failed lookup that may succeed later is retried on the next refresh.
+			else if (res.status !== 404 && res.status !== 403) openedLinkedEventRef.current = null;
 		});
 	}, [
 		highlightEventId,

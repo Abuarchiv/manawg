@@ -118,3 +118,16 @@ export function withExcludedOccurrence(
 export function isExcludedOccurrence(rule: RecurrenceRule, startMs: number): boolean {
 	return rule.exdates?.some((instant) => Date.parse(instant) === startMs) ?? false;
 }
+
+/**
+ * The rule with every removed occurrence moved by the same offset as the series start, so a
+ * shifted series keeps its exceptions on the same occurrences. Unchanged when there are none.
+ */
+export function withShiftedExclusions(recurrence: string, offsetMs: number): string {
+	const rule = parseRecurrenceRule(recurrence);
+	if (!rule?.exdates || rule.exdates.length === 0 || offsetMs === 0) return recurrence;
+	const exdates = rule.exdates.map((instant) =>
+		new Date(Date.parse(instant) + offsetMs).toISOString(),
+	);
+	return formatRecurrenceRule({ ...rule, exdates: exdates.sort() });
+}

@@ -23,6 +23,7 @@ import {
 	parseRecurrenceRule,
 	validateEventForm,
 } from '@/features/events/events';
+import { withShiftedExclusions } from '@/features/events/recurrence-rule';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 const KEEP_EXISTING_RECURRENCE = '__keep__';
@@ -60,6 +61,15 @@ interface EventEditModalProps {
 	onExportIcs?: (() => void) | undefined;
 	/** Only the creator and admins may change an event; everyone else gets a read-only view. */
 	readOnly?: boolean;
+}
+
+/** The series rule for a save; removed occurrences follow a moved series start. */
+function shiftedRecurrence(rule: string, previousStart: string, nextStart: Date): string | null {
+	if (!rule) return null;
+	const previous = Date.parse(previousStart);
+	return Number.isFinite(previous)
+		? withShiftedExclusions(rule, nextStart.getTime() - previous)
+		: rule;
 }
 
 function toLocalInputValue(iso: string, allDay: boolean): string {
@@ -202,7 +212,9 @@ export function EventEditModal({
 				endsAt: endDate ? endDate.toISOString() : null,
 				allDay,
 				location: location.trim() || null,
-				recurrence: onlyThis ? null : recurrence.trim() || null,
+				recurrence: onlyThis
+					? null
+					: shiftedRecurrence(recurrence.trim(), event.startsAt, startDate),
 				...(event.updatedAt ? { expectedUpdatedAt: event.updatedAt } : {}),
 			};
 			if (onlyThis && occurrence && onUpdateOccurrence) {

@@ -1,4 +1,5 @@
 import { db, expenseImports } from '@/core/db';
+import { isWgAdmin } from '@/core/guards/admin';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { tooMany } from '@/core/http/api-errors';
@@ -8,12 +9,13 @@ import { NextResponse } from 'next/server';
 
 const HISTORY_LIMIT = 10;
 
-/** The latest imports that still hold expenses, so an import can be taken back after the wizard. */
+/** The latest imports the caller may take back (own ones, or all for an admin) after the wizard. */
 export const GET = withWgRoute('imports GET', async (req, { code }) => {
 	const limit = await checkRateLimit(wgReadLimiter, `imports:${clientIpKey(req)}`);
 	if (!limit.success) return tooMany('rate_limited');
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
+	const admin = await isWgAdmin(auth.wg.id, auth.member.memberId);
 	const rows = await db
 		.select({
 			id: expenseImports.id,
@@ -23,7 +25,13 @@ export const GET = withWgRoute('imports GET', async (req, { code }) => {
 			importedByMemberId: expenseImports.importedByMemberId,
 		})
 		.from(expenseImports)
-		.where(and(eq(expenseImports.wgId, auth.wg.id), gt(expenseImports.rowCountInserted, 0)))
+		.where(
+			and(
+				eq(expenseImports.wgId, auth.wg.id),
+				gt(expenseImports.rowCountInserted, 0),
+				admin ? undefined : eq(expenseImports.importedByMemberId, auth.member.memberId),
+			),
+		)
 		.orderBy(desc(expenseImports.startedAt))
 		.limit(HISTORY_LIMIT);
 	return NextResponse.json({
