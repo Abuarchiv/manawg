@@ -44,7 +44,7 @@ export default function KalenderPage() {
 	// A push link to an event beyond the agenda window has nothing to highlight in the list:
 	// open that event directly instead of landing on an unrelated page.
 	const openedLinkedEventRef = useRef<string | null>(null);
-	const { upcomingOccurrences, setEditing } = calendar;
+	const { upcomingOccurrences, openEvent } = calendar;
 	useEffect(() => {
 		if (!highlightEventId || loading || openedLinkedEventRef.current === highlightEventId) return;
 		openedLinkedEventRef.current = highlightEventId;
@@ -53,7 +53,7 @@ export default function KalenderPage() {
 			`/api/wg/${encodedShareCode}/events/${encodeURIComponent(highlightEventId)}`,
 			{ memberId: identity.memberId },
 		).then((res) => {
-			if (res.ok) setEditing(res.data.event);
+			if (res.ok) openEvent(res.data.event);
 			// A failed lookup that may succeed later is retried on the next refresh.
 			else if (res.status !== 404 && res.status !== 403) openedLinkedEventRef.current = null;
 		});
@@ -61,7 +61,7 @@ export default function KalenderPage() {
 		highlightEventId,
 		loading,
 		upcomingOccurrences,
-		setEditing,
+		openEvent,
 		encodedShareCode,
 		identity.memberId,
 	]);

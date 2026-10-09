@@ -47,7 +47,10 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 
 	// A mention push opens `/chat#message-<id>`: bring that message into view once it is rendered.
 	const jumpedToHashRef = useRef(false);
+	const hashPagesLoadedRef = useRef(0);
 	const messageCount = messages.length;
+	const { hasMoreOlder, loadingOlder, olderError } = chat;
+	const loadOlderForHash = useStableCallback(() => void chat.loadOlder());
 	useEffect(() => {
 		if (jumpedToHashRef.current || messageCount === 0) return;
 		const target = /^#(message-[\w-]+)$/.exec(window.location.hash)?.[1];
@@ -57,14 +60,23 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 		}
 		const timer = window.setTimeout(() => {
 			const element = document.getElementById(target);
-			if (!element) return;
+			if (!element) {
+				// An older message is not in the first page: page backwards until it appears.
+				if (hasMoreOlder && !loadingOlder && !olderError && hashPagesLoadedRef.current < 20) {
+					hashPagesLoadedRef.current += 1;
+					loadOlderForHash();
+				} else if (!hasMoreOlder || hashPagesLoadedRef.current >= 20) {
+					jumpedToHashRef.current = true;
+				}
+				return;
+			}
 			jumpedToHashRef.current = true;
 			element.scrollIntoView({ block: 'center' });
 			element.classList.add('ring-2', 'ring-inset', 'ring-ring');
 			window.setTimeout(() => element.classList.remove('ring-2', 'ring-inset', 'ring-ring'), 2500);
 		}, 120);
 		return () => window.clearTimeout(timer);
-	}, [messageCount]);
+	}, [messageCount, hasMoreOlder, loadingOlder, olderError, loadOlderForHash]);
 
 	const replyTo = replyToId ? (messages.find((m) => m.id === replyToId) ?? null) : null;
 	const replyToSender = replyTo?.senderMemberId

@@ -122,8 +122,13 @@ export function useCalendarPage(month: Date) {
 	const createEventRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
 
 	const [createOpen, setCreateOpen] = useState(false);
-	const [editing, setEditing] = useState<EditableEvent | null>(null);
+	const [editing, setEditingState] = useState<EditableEvent | null>(null);
 	const [editingOccurrence, setEditingOccurrence] = useState<EventOccurrence | null>(null);
+	// Closing the drawer also drops the occurrence it was opened on, so the next event starts clean.
+	function setEditing(event: EditableEvent | null): void {
+		setEditingState(event);
+		if (event === null) setEditingOccurrence(null);
+	}
 	const [actionError, setActionError] = useState<string | null>(null);
 
 	function updateEvents(update: (current: CalendarEvent[]) => CalendarEvent[]): void {
@@ -368,6 +373,11 @@ export function useCalendarPage(month: Date) {
 		setCreateOpen,
 		editing,
 		setEditing,
+		/** Opens an event on its own, with no occurrence left over from an earlier one. */
+		openEvent: (event: EditableEvent) => {
+			setEditingOccurrence(null);
+			setEditingState(event);
+		},
 		editingOccurrence,
 		actionError,
 		selectOccurrence,
