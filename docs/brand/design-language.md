@@ -49,6 +49,10 @@ On 2026-09-26 the product owner requested colored member avatars; the color is i
 - Tablet Home uses balanced columns; phone Home remains a single column. Forms
   retain internal scrolling and reachable actions on short viewports.
 
+## Secondary text contrast
+
+Chapter 10's light `--muted-foreground` (`oklch(0.556 0 0)`) reaches 4.74:1 on white but only 4.35:1 on `--muted` surfaces, below the 4.5:1 AA minimum for body-size text. Light mode uses `oklch(0.52 0 0)` instead (5.0:1 on muted, 5.9:1 on white); dark mode already passes and is unchanged. `--ring` keeps its original lightness so focus stays distinguishable from the resting border.
+
 ## Resolved source inconsistencies
 
 Specific component references take precedence over broad summaries: chapter 10 white background over chapter 7's FAFAFA; chapter 11.5 neutral zero over general settled wording; chapter 12 Lucide 1.5px over chapter 9's 1.75px; chapter 30 keeps eight favicon bodies over chapter 25's removal of tiny satellites. Use 1200ms loader from the repeated product contract rather than the 1600ms showcase. The 44px interaction region is separate from smaller visual icons. Explicit switch geometry is a documented component exception. Floating navigation retains 20px outer and 16px inner curves on the web with an opaque surface; platform material and geometry are separate.
