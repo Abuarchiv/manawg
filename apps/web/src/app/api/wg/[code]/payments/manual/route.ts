@@ -17,6 +17,7 @@ import {
 	manualPaymentSchema,
 	recordCashPayment,
 } from '@/features/expenses/server/manual-payment';
+import { notifySettlement } from '@/features/expenses/server/settle-notify';
 import { NextResponse } from 'next/server';
 
 /**
@@ -72,6 +73,16 @@ export const POST = withWgRoute('manual payment POST', async (req, { code }) => 
 	if (outcome.kind === 'member_not_in_wg') return badRequest('member_not_in_wg');
 	if (outcome.kind === 'blocked') return conflict('paypal_payment_pending');
 	if (outcome.kind === 'changed') return conflict('settlement_changed');
+
+	const paid = caller === input.fromMemberId;
+	await notifySettlement({
+		wg: auth.wg,
+		actor: auth.member,
+		otherMemberId: paid ? input.toMemberId : input.fromMemberId,
+		amountCents: outcome.amountCents,
+		currency: input.currency,
+		direction: paid ? 'paid' : 'received',
+	});
 
 	return NextResponse.json(result.body, {
 		status: result.status,
