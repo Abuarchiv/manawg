@@ -154,3 +154,63 @@ test('SDK timeout results use the existing open and closed failure policies', as
 		restoreEnv();
 	}
 });
+
+test('a configured limiter that fails does not pass traffic on Preview', async (t) => {
+	t.mock.method(console, 'error', () => {});
+	const failing = {
+		limit: async () => {
+			throw new Error('upstash down');
+		},
+	};
+	const restorePreview = withEnv({ NODE_ENV: 'production', VERCEL_ENV: 'preview' });
+	try {
+		const denied = await rateLimit.checkRateLimit(failing, '198.51.100.50');
+		assert.equal(denied.success, false);
+		assert.equal(denied.limiterUnavailable, true);
+	} finally {
+		restorePreview();
+	}
+
+	const restoreDevelopment = withEnv({ NODE_ENV: 'development', VERCEL_ENV: undefined });
+	try {
+		const allowed = await rateLimit.checkRateLimit(failing, '198.51.100.50');
+		assert.equal(allowed.success, true);
+	} finally {
+		restoreDevelopment();
+	}
+});
+
+test('Preview answers a half-configured limiter closed, an unconfigured one open', async (t) => {
+	t.mock.method(console, 'warn', () => {});
+	t.mock.method(console, 'error', () => {});
+	const loadWith = async (tag: string, env: Record<string, string | undefined>) => {
+		const restore = withEnv(env);
+		try {
+			return await import(`./rate-limit?${tag}`);
+		} finally {
+			restore();
+		}
+	};
+	const base = { UPSTASH_REDIS_REST_URL: undefined, UPSTASH_REDIS_REST_TOKEN: undefined };
+	const half = await loadWith('half', {
+		...base,
+		UPSTASH_REDIS_REST_URL: 'https://example.upstash.io',
+	});
+	const blankToken = await loadWith('blank', {
+		...base,
+		UPSTASH_REDIS_REST_URL: 'https://example.upstash.io',
+		UPSTASH_REDIS_REST_TOKEN: '   ',
+	});
+	const none = await loadWith('none', base);
+
+	const restorePreview = withEnv({ NODE_ENV: 'production', VERCEL_ENV: 'preview' });
+	try {
+		const denied = await half.checkRateLimit(null, '198.51.100.51', 'open');
+		assert.equal(denied.success, false);
+		assert.equal(denied.limiterUnavailable, true);
+		assert.equal((await blankToken.checkRateLimit(null, '198.51.100.52', 'open')).success, false);
+		assert.equal((await none.checkRateLimit(null, '198.51.100.53', 'open')).success, true);
+	} finally {
+		restorePreview();
+	}
+});
