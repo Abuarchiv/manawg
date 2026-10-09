@@ -25,9 +25,12 @@ export function ImportUndo({ importId, label }: { importId: string; label?: stri
 	const { wg, identity } = useWg();
 	const [armed, setArmed] = useState(false);
 	const [pending, setPending] = useState(false);
-	const [removed, setRemoved] = useState<number | null>(null);
+	// null: not undone yet; 'unknown': undone, but the first answer was lost so the count is not.
+	const [removed, setRemoved] = useState<number | 'unknown' | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const pendingRef = useRef(false);
+	// An attempt that ended without an answer may still have deleted everything.
+	const uncertainRef = useRef(false);
 
 	async function undo(): Promise<void> {
 		if (pendingRef.current) return;
@@ -40,7 +43,11 @@ export function ImportUndo({ importId, label }: { importId: string; label?: stri
 				{ method: 'DELETE', memberId: identity.memberId },
 			);
 			if (res.ok) setRemoved(res.data.removed);
-			else setError(undoErrorMessage(res.error));
+			else if (res.error === 'import_not_found' && uncertainRef.current) setRemoved('unknown');
+			else {
+				uncertainRef.current = res.status === 0 || res.status >= 500;
+				setError(undoErrorMessage(res.error));
+			}
 		} finally {
 			pendingRef.current = false;
 			setPending(false);
@@ -53,7 +60,9 @@ export function ImportUndo({ importId, label }: { importId: string; label?: stri
 			<Alert>
 				<AlertDescription>
 					<output>
-						Import rückgängig gemacht: {removed} {removed === 1 ? 'Ausgabe' : 'Ausgaben'} entfernt.
+						{removed === 'unknown'
+							? 'Import rückgängig gemacht.'
+							: `Import rückgängig gemacht: ${removed} ${removed === 1 ? 'Ausgabe' : 'Ausgaben'} entfernt.`}
 					</output>
 				</AlertDescription>
 			</Alert>

@@ -12,6 +12,7 @@ interface Payment {
 	toMemberId: string;
 	amountCents: number;
 	currency: string;
+	completedAt?: Date;
 }
 interface Expense {
 	paidByMemberId: string;
@@ -40,9 +41,6 @@ mock.module('@/core/db', {
 mock.module('@/core/db/transaction', { namedExports: {} });
 mock.module('drizzle-orm', {
 	namedExports: { and: () => ({}), eq: () => ({}), gte: () => ({}), inArray: () => ({}) },
-});
-mock.module('./expense-payments.ts', {
-	namedExports: { loadCompletedExpensePayments: async () => state.payments },
 });
 mock.module('./open-expenses.ts', {
 	namedExports: {
@@ -75,8 +73,9 @@ const executor = {
 				state.payments.map((payment) => ({
 					from: payment.fromMemberId,
 					to: payment.toMemberId,
+					amountCents: payment.amountCents,
 					currency: 'EUR',
-					completedAt: new Date('2026-10-02T10:00:00Z'),
+					completedAt: payment.completedAt ?? new Date('2026-10-02T10:00:00Z'),
 				})),
 		}),
 	}),
@@ -101,5 +100,22 @@ test('a payment between other members that leaves the import untouched does not 
 	state.importRows = [{ paidBy: 'A', debtor: 'B', amount: 100 }];
 	state.otherExpenses = [expense('D', 'C', 500)];
 	state.payments = [{ fromMemberId: 'C', toMemberId: 'D', amountCents: 200, currency: 'EUR' }];
+	assert.equal(await isSettled(), false);
+});
+
+test('a payment from before the import is not counted against it', async () => {
+	// C owes B 1 (import); an older C→B payment (its expense was deleted) is offset by the import.
+	state.importRows = [{ paidBy: 'B', debtor: 'C', amount: 100 }];
+	state.otherExpenses = [];
+	state.payments = [
+		{
+			fromMemberId: 'C',
+			toMemberId: 'B',
+			amountCents: 100,
+			currency: 'EUR',
+			completedAt: new Date('2026-09-01T10:00:00Z'),
+		},
+		{ fromMemberId: 'E', toMemberId: 'F', amountCents: 50, currency: 'EUR' },
+	];
 	assert.equal(await isSettled(), false);
 });

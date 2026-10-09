@@ -68,6 +68,11 @@ const FAILURE_BY_CODE: Readonly<Record<string, OfflineFailureExplanation>> = {
 		detail:
 			'Öffne die WG erneut oder tritt mit einem aktuellen Einladungslink bei, bevor du diese Aktion sendest.',
 	}),
+	member_deactivated: {
+		title: 'Du bist ausgezogen',
+		detail:
+			'Dein Mitglied ist in dieser WG als ausgezogen markiert. Neu anmelden hilft nicht: Bitte die WG, dich wieder aufzunehmen, bevor du diese Aktion sendest.',
+	},
 	member_not_in_wg: {
 		title: 'Mitglied in Aktion prüfen',
 		detail:

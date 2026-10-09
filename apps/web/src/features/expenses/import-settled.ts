@@ -3,7 +3,6 @@ import type { DbTransaction } from '@/core/db/transaction';
 import { normalizeCurrency } from '@/core/utils/money';
 import { and, eq, gte, inArray } from 'drizzle-orm';
 import { type PairBalance, computeBalances } from './debts';
-import { loadCompletedExpensePayments } from './expense-payments';
 import { loadOpenExpenses } from './open-expenses';
 
 export interface ImportToCheck {
@@ -69,6 +68,7 @@ export async function findSettledImportIds(
 		.select({
 			from: expensePayments.fromMemberId,
 			to: expensePayments.toMemberId,
+			amountCents: expensePayments.amountCents,
 			currency: expensePayments.currency,
 			completedAt: expensePayments.completedAt,
 		})
@@ -95,22 +95,29 @@ export async function findSettledImportIds(
 		if (related) settled.add(item.id);
 	}
 
-	const later = (item: ImportToCheck, currencySet: Set<string>) =>
-		payments.some(
-			(payment) =>
-				payment.completedAt !== null &&
-				payment.completedAt >= item.startedAt &&
-				currencySet.has(normalizeCurrency(payment.currency)),
-		);
-	const open = imports.filter((item) => {
+	let allExpenses: Awaited<ReturnType<typeof loadOpenExpenses>> | null = null;
+	for (const item of imports) {
 		const currencySet = currencies.get(item.id);
-		return !settled.has(item.id) && currencySet !== undefined && later(item, currencySet);
-	});
-	if (open.length === 0) return settled;
-	const allPayments = await loadCompletedExpensePayments(wgId, executor);
-	const current = computeBalances(await loadOpenExpenses(wgId, executor), allPayments);
-	for (const item of open) {
-		const without = computeBalances(await loadOpenExpenses(wgId, executor, item.id), allPayments);
+		if (settled.has(item.id) || !currencySet) continue;
+		// Only payments made since this import can have covered its shares; older ones are
+		// part of the history before it and stay out of the comparison.
+		const since = payments
+			.filter(
+				(payment) =>
+					payment.completedAt !== null &&
+					payment.completedAt >= item.startedAt &&
+					currencySet.has(normalizeCurrency(payment.currency)),
+			)
+			.map((payment) => ({
+				fromMemberId: payment.from,
+				toMemberId: payment.to,
+				amountCents: payment.amountCents,
+				currency: payment.currency,
+			}));
+		if (since.length === 0) continue;
+		allExpenses ??= await loadOpenExpenses(wgId, executor);
+		const current = computeBalances(allExpenses, since);
+		const without = computeBalances(await loadOpenExpenses(wgId, executor, item.id), since);
 		if (createsDebts(current, without)) settled.add(item.id);
 	}
 	return settled;

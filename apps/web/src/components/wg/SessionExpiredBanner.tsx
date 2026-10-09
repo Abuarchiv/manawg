@@ -16,7 +16,7 @@ export function SessionExpiredBanner() {
 
 	useEffect(() => {
 		function onExpired(): void {
-			setReturnTo(`${window.location.pathname}${window.location.search}`);
+			setReturnTo(`${window.location.pathname}${window.location.search}${window.location.hash}`);
 		}
 		window.addEventListener(SESSION_EXPIRED_EVENT, onExpired);
 		return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired);
