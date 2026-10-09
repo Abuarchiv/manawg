@@ -12,6 +12,7 @@ import {
 	shoppingItems,
 	wgMembers,
 } from '@/core/db';
+import { feedAuditCondition } from '@/core/db/feed-audit-filter';
 import { captureException } from '@/core/infra/observability';
 import {
 	berlinDayKey,
@@ -434,8 +435,7 @@ export async function loadDashboardData(
 			})
 			.from(expensePayments)
 			.where(and(eq(expensePayments.wgId, wgId), eq(expensePayments.status, 'completed'))),
-		// Bought items accumulate forever; the dashboard only needs the open list
-		// (count and top entries) plus the latest few for the activity preview.
+		// Bought items pile up forever; only the open list and the latest few are needed.
 		db
 			.select({ name: shoppingItems.name, quantity: shoppingItems.quantity })
 			.from(shoppingItems)
@@ -619,7 +619,7 @@ export async function loadDashboardData(
 						createdAt: auditEvents.createdAt,
 					})
 					.from(auditEvents)
-					.where(eq(auditEvents.wgId, wgId))
+					.where(feedAuditCondition(wgId))
 					.orderBy(desc(auditEvents.createdAt))
 					.limit(ACTIVITY_LIMIT),
 				() => [],

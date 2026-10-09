@@ -5,6 +5,7 @@ import { sweepOrphanUploads } from '@/core/db/orphan-uploads';
 import {
 	claimPrivateImageCleanupBatch,
 	countPendingPrivateImageDeletions,
+	dequeueImageDeletions,
 	findLivePrivateImageReferenceKeys,
 	markPrivateImageStorageDeleted,
 } from '@/core/db/private-image-deletions';
@@ -21,6 +22,7 @@ async function cleanupPrivateImages(): Promise<{
 	completed: number;
 	failed: number;
 	skippedReferenced: number;
+	rescued: number;
 	pending: number;
 	error: string | null;
 }> {
@@ -31,11 +33,21 @@ async function cleanupPrivateImages(): Promise<{
 	let failed = 0;
 	let errorCode: string | null = null;
 
+	let rescued = 0;
 	if (referenced.size > 0) {
+		// A row points at the picture, so it stays: a draft attached while the orphan sweep
+		// queued it comes back off the queue instead of reading as removed.
 		logApiError(
 			'[maintenance] private image deletion found a live reference',
-			new Error('private_image_cleanup_live_reference_invariant'),
+			new Error('private_image_cleanup_live_reference_rescued'),
 		);
+		try {
+			await dequeueImageDeletions([...referenced]);
+			rescued = referenced.size;
+		} catch (err) {
+			errorCode = 'live_reference_rescue_failed';
+			logApiError('[maintenance] rescuing a live private image failed', err);
+		}
 	}
 	if (removable.length > 0) {
 		try {
@@ -62,8 +74,9 @@ async function cleanupPrivateImages(): Promise<{
 		completed,
 		failed,
 		skippedReferenced: referenced.size,
+		rescued,
 		pending: await countPendingPrivateImageDeletions(),
-		error: errorCode ?? (referenced.size > 0 ? 'live_reference_invariant' : null),
+		error: errorCode,
 	};
 }
 

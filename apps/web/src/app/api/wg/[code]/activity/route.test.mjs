@@ -62,6 +62,7 @@ test('due chores are the overdue ones, oldest first, so the 120-row cap keeps th
 		}),
 	};
 	const { GET } = loadTs('src/app/api/wg/[code]/activity/route.ts', {
+		'@/core/db/feed-audit-filter': { feedAuditCondition: () => ['feedAudit'] },
 		'@/core/audit-visibility': {
 			HIDDEN_FROM_FEED_EVENT_TYPES: [],
 			publicAuditMetadata: (_type, json) => json,
@@ -178,6 +179,7 @@ test('reminders read open shopping items and open announcements from their own o
 	};
 	let reminderInput = null;
 	const { GET } = loadTs('src/app/api/wg/[code]/activity/route.ts', {
+		'@/core/db/feed-audit-filter': { feedAuditCondition: () => ['feedAudit'] },
 		'@/core/audit-visibility': {
 			HIDDEN_FROM_FEED_EVENT_TYPES: [],
 			publicAuditMetadata: (_type, json) => json,

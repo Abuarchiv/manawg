@@ -142,6 +142,7 @@ test('maintenance attempts deletion recovery when idempotency cleanup fails', as
 					return [];
 				},
 				countPendingPrivateImageDeletions: async () => 0,
+				dequeueImageDeletions: async () => undefined,
 				findLivePrivateImageReferenceKeys: async () => new Set(),
 				markPrivateImageStorageDeleted: async () => undefined,
 			},
@@ -176,6 +177,7 @@ test('maintenance attempts deletion recovery when idempotency cleanup fails', as
 			completed: 0,
 			failed: 0,
 			skippedReferenced: 0,
+			rescued: 0,
 			pending: 0,
 			error: null,
 		},
@@ -199,6 +201,7 @@ test('maintenance attempts deletion recovery when idempotency cleanup fails', as
 			completed: 0,
 			failed: 0,
 			skippedReferenced: 0,
+			rescued: 0,
 			pending: 0,
 			error: null,
 		},

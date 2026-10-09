@@ -1,5 +1,6 @@
 'use client';
 
+import { noteSessionExpiry } from '@/core/infra/api-client';
 import { EXPECTED_MEMBER_ID_HEADER } from '@/shared/lib/member-header';
 import { createOfflineIdempotencyKey } from './offline-queue';
 
@@ -165,6 +166,7 @@ export async function uploadPendingImageToken(
 			fileSize: record.size,
 		}),
 	});
+	noteSessionExpiry(sigRes);
 	if (!sigRes.ok) {
 		const error = await readUploadSignError(sigRes);
 		throw new Error(

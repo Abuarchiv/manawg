@@ -19,7 +19,7 @@ import { buildPinnwandPrefill } from '@/features/pinnwand/pinnwand-prefill';
 import { cn } from '@/shared/lib/cn';
 import type { MemberInfo } from '@/shared/lib/member-types';
 import { Pin } from 'lucide-react';
-import { type ReactElement, memo, useState } from 'react';
+import { type ReactElement, memo, useRef, useState } from 'react';
 import { AnnouncementActionsMenu } from './AnnouncementActionsMenu';
 import { AnnouncementBody } from './AnnouncementBody';
 import { AnnouncementDeleteDialog } from './AnnouncementDeleteDialog';
@@ -81,6 +81,8 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 	const bodyText = announcement.content.trim();
 	const [deleteOpen, setDeleteOpen] = useState(false);
 	const [editOpen, setEditOpen] = useState(false);
+	// The post as the dialog opened, so the save carries the version the text came from.
+	const editBaseRef = useRef(announcement);
 	const [touchedReactions, setTouchedReactions] = useState<ReactionKey[]>([]);
 	const draftKey = `manawg:draft:${shareCode}:${currentMemberId}:announcement:${announcement.id}`;
 
@@ -154,7 +156,10 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 							canModerate={canModerate}
 							canResolve={canResolve}
 							canEdit={canEdit}
-							onEdit={() => setEditOpen(true)}
+							onEdit={() => {
+								editBaseRef.current = announcement;
+								setEditOpen(true);
+							}}
 							deletePending={deletePending}
 							pinPending={pinPending}
 							statusPending={statusPending}
@@ -197,7 +202,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 				open={editOpen}
 				onOpenChange={setEditOpen}
 				initialContent={bodyText}
-				onSave={(content) => onEdit(announcement, content)}
+				onSave={(content) => onEdit(editBaseRef.current, content)}
 			/>
 			<AnnouncementDeleteDialog
 				open={deleteOpen}

@@ -770,14 +770,14 @@ test('resolved upload URL is persisted to the queue before its IndexedDB blob is
 			return request;
 		},
 	};
-	const storage = makeStorage();
-	const localStorage = storage;
+	const localStorage = makeStorage();
 	const locks = makeLockManager();
 	const window = { localStorage, dispatchEvent() {} };
 	const images = loadTs(
 		'src/core/offline/offline-images.ts',
 		{
 			'./offline-queue': { createOfflineIdempotencyKey: () => VALID_KEY },
+			'@/core/infra/api-client': { noteSessionExpiry() {} },
 			'@/shared/lib/member-header': { EXPECTED_MEMBER_ID_HEADER: 'x-manawg-expected-member-id' },
 		},
 		{

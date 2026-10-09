@@ -51,6 +51,10 @@ function harness() {
 				assert.deepEqual(objectKeys, state.keys);
 				return state.referenced;
 			},
+			dequeueImageDeletions: async (objectKeys) => {
+				state.events.push('dequeue');
+				state.dequeued = objectKeys;
+			},
 			markPrivateImageStorageDeleted: async (objectKeys) => {
 				state.events.push('mark');
 				state.marked = objectKeys;
@@ -118,11 +122,13 @@ test('maintenance reports reference violations and provider failures while keepi
 		assert.equal(response.status, 503);
 		assert.deepEqual(state.removed, [keys[0], keys[2]]);
 		assert.deepEqual(state.marked, []);
+		assert.deepEqual(state.dequeued, [keys[1]]);
 		assert.deepEqual(body.privateImageCleanup, {
 			attempted: 3,
 			completed: 0,
 			failed: 2,
 			skippedReferenced: 1,
+			rescued: 1,
 			pending: 9,
 			error: 'storage_remove_failed',
 		});

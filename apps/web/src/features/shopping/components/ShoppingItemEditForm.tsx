@@ -17,7 +17,13 @@ interface ShoppingItemEditFormProps {
 }
 
 /** Name and amount of an open item, shown inside the item's action drawer. */
-export function ShoppingItemEditForm({ item, onSave, onDone }: ShoppingItemEditFormProps) {
+export function ShoppingItemEditForm({
+	item: latestItem,
+	onSave,
+	onDone,
+}: ShoppingItemEditFormProps) {
+	// The row as the form opened: a background refresh must not hand a newer version to the save.
+	const [item] = useState(latestItem);
 	const [name, setName] = useState(item.name);
 	const [quantity, setQuantity] = useState(item.quantity ?? '');
 	const [saving, setSaving] = useState(false);

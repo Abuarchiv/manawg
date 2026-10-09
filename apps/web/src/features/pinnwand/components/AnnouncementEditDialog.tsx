@@ -13,7 +13,7 @@ import {
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const CONTENT_MAX = 2000;
 
@@ -35,12 +35,15 @@ export function AnnouncementEditDialog({
 	const [content, setContent] = useState(initialContent);
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-	// Every opening starts from the current text, without the previous attempt's error.
+	// Every opening starts from the current text, without the previous attempt's error; a
+	// background refresh while the dialog is open must not replace what is being typed.
+	const wasOpenRef = useRef(false);
 	useEffect(() => {
-		if (open) {
+		if (open && !wasOpenRef.current) {
 			setContent(initialContent);
 			setError(null);
 		}
+		wasOpenRef.current = open;
 	}, [open, initialContent]);
 	const trimmed = content.trim();
 	const unchanged = trimmed === initialContent.trim();
