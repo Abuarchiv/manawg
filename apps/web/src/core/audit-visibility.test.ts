@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { publicAuditMetadata } from '@/core/audit-visibility';
+import { HIDDEN_FROM_FEED_EVENT_TYPES, publicAuditMetadata } from '@/core/audit-visibility';
 
 test('notification settings keep the changed fields but not push state or quiet hours', () => {
 	const json = JSON.stringify({
@@ -30,4 +30,9 @@ test('other events and empty metadata pass through unchanged', () => {
 
 test('unreadable metadata of a private event is withheld', () => {
 	assert.equal(publicAuditMetadata('wg.created', '{not json'), null);
+});
+
+test('push opt-in and opt-out events stay out of the shared feed', () => {
+	assert.ok(HIDDEN_FROM_FEED_EVENT_TYPES.includes('notification.push.subscribed'));
+	assert.ok(HIDDEN_FROM_FEED_EVENT_TYPES.includes('notification.push.unsubscribed'));
 });

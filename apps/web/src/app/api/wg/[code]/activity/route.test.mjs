@@ -62,7 +62,10 @@ test('due chores are the overdue ones, oldest first, so the 120-row cap keeps th
 		}),
 	};
 	const { GET } = loadTs('src/app/api/wg/[code]/activity/route.ts', {
-		'@/core/audit-visibility': { publicAuditMetadata: (_type, json) => json },
+		'@/core/audit-visibility': {
+			HIDDEN_FROM_FEED_EVENT_TYPES: [],
+			publicAuditMetadata: (_type, json) => json,
+		},
 		'@/core/db': { db, ...tables },
 		'@/core/guards/require-wg-member': {
 			requireWgMember: async () => ({ ok: true, wg: { id: 'wg-1' } }),
@@ -81,6 +84,7 @@ test('due chores are the overdue ones, oldest first, so the 120-row cap keeps th
 			desc: (column) => ['desc', column],
 			eq: (...parts) => ['eq', ...parts],
 			inArray: (column, values) => ['inArray', column, values],
+			notInArray: (column, values) => ['notInArray', column, values],
 			isNull: (column) => ['isNull', column],
 			lte: (column, value) => ['lte', column, value instanceof Date ? 'now' : value],
 		},
@@ -174,7 +178,10 @@ test('reminders read open shopping items and open announcements from their own o
 	};
 	let reminderInput = null;
 	const { GET } = loadTs('src/app/api/wg/[code]/activity/route.ts', {
-		'@/core/audit-visibility': { publicAuditMetadata: (_type, json) => json },
+		'@/core/audit-visibility': {
+			HIDDEN_FROM_FEED_EVENT_TYPES: [],
+			publicAuditMetadata: (_type, json) => json,
+		},
 		'@/core/db': { db, ...tables },
 		'@/core/guards/require-wg-member': {
 			requireWgMember: async () => ({ ok: true, wg: { id: 'wg-1' } }),
@@ -196,6 +203,7 @@ test('reminders read open shopping items and open announcements from their own o
 			desc: (column) => ['desc', column],
 			eq: (...parts) => ['eq', ...parts],
 			inArray: (column, values) => ['inArray', column, values],
+			notInArray: (column, values) => ['notInArray', column, values],
 			isNull: (column) => ['isNull', column],
 			lte: (column, value) => ['lte', column, value instanceof Date ? 'now' : value],
 		},

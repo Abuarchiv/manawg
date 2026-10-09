@@ -3,7 +3,7 @@ import {
 	buildActivityTimeline,
 	getActivityReminders,
 } from '@/composition/activity';
-import { publicAuditMetadata } from '@/core/audit-visibility';
+import { HIDDEN_FROM_FEED_EVENT_TYPES, publicAuditMetadata } from '@/core/audit-visibility';
 import {
 	announcements,
 	auditEvents,
@@ -18,7 +18,7 @@ import {
 } from '@/core/db';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { and, asc, desc, eq, inArray, isNull, lte } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, lte, notInArray } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 export const GET = withWgRoute('activity GET', async (req, { code }) => {
@@ -132,7 +132,12 @@ export const GET = withWgRoute('activity GET', async (req, { code }) => {
 				createdAt: auditEvents.createdAt,
 			})
 			.from(auditEvents)
-			.where(eq(auditEvents.wgId, wg.id))
+			.where(
+				and(
+					eq(auditEvents.wgId, wg.id),
+					notInArray(auditEvents.eventType, [...HIDDEN_FROM_FEED_EVENT_TYPES]),
+				),
+			)
 			.orderBy(desc(auditEvents.createdAt))
 			.limit(120),
 		// Reminders read their own open rows, oldest first, so bought items

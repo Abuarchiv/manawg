@@ -8,10 +8,11 @@ export interface ImportToCheck {
 }
 
 /**
- * The imports whose expenses cannot be taken back: a non-payer share was settled, or a
- * payment completed since the import between members of it in one of its currencies. Such a
- * payment may have covered the imported balance through a netted chain, and which part it
- * covered is not recoverable. Payments between other members or in other currencies do not count.
+ * The imports whose expenses cannot be taken back: a non-payer share was settled, or a payment
+ * completed after the import may have covered the imported balance. That is a payment, in one of
+ * the import's currencies, from someone who owes through the import (a netted chain can carry it
+ * on to a third member) or to someone the import owes money. A payment by the creditor, or
+ * between other members, leaves the imported balance open and does not count.
  */
 export async function findSettledImportIds(
 	executor: Pick<typeof db, 'select'>,
@@ -39,18 +40,21 @@ export async function findSettledImportIds(
 				),
 			),
 		);
-	const members = new Map<string, Set<string>>();
+	const payers = new Map<string, Set<string>>();
+	const debtors = new Map<string, Set<string>>();
 	const currencies = new Map<string, Set<string>>();
 	for (const row of rows) {
 		if (!row.importId) continue;
-		const memberSet = members.get(row.importId) ?? new Set<string>();
+		const payerSet = payers.get(row.importId) ?? new Set<string>();
+		const debtorSet = debtors.get(row.importId) ?? new Set<string>();
 		const currencySet = currencies.get(row.importId) ?? new Set<string>();
-		memberSet.add(row.paidBy);
+		payerSet.add(row.paidBy);
 		currencySet.add(normalizeCurrency(row.currency));
-		if (row.debtor) memberSet.add(row.debtor);
+		if (row.debtor && row.debtor !== row.paidBy) debtorSet.add(row.debtor);
 		// A payer's own share is settled from the start; anyone else's means money moved.
 		if (row.debtor && row.settledAt && row.debtor !== row.paidBy) settled.add(row.importId);
-		members.set(row.importId, memberSet);
+		payers.set(row.importId, payerSet);
+		debtors.set(row.importId, debtorSet);
 		currencies.set(row.importId, currencySet);
 	}
 
@@ -71,15 +75,16 @@ export async function findSettledImportIds(
 			),
 		);
 	for (const item of imports) {
-		const memberSet = members.get(item.id);
+		const payerSet = payers.get(item.id);
+		const debtorSet = debtors.get(item.id);
 		const currencySet = currencies.get(item.id);
-		if (!memberSet || !currencySet) continue;
+		if (!payerSet || !debtorSet || !currencySet) continue;
 		const related = payments.some(
 			(payment) =>
 				payment.completedAt !== null &&
 				payment.completedAt >= item.startedAt &&
 				currencySet.has(normalizeCurrency(payment.currency)) &&
-				(memberSet.has(payment.from) || memberSet.has(payment.to)),
+				(debtorSet.has(payment.from) || payerSet.has(payment.to)),
 		);
 		if (related) settled.add(item.id);
 	}

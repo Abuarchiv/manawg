@@ -8,6 +8,12 @@ const PRIVATE_METADATA_KEYS: Readonly<Record<string, readonly string[]>> = {
 	'wg.created': ['shareCode'],
 };
 
+/** Events about one person's own notification choice; the feed leaves them out entirely. */
+export const HIDDEN_FROM_FEED_EVENT_TYPES: readonly string[] = [
+	'notification.push.subscribed',
+	'notification.push.unsubscribed',
+];
+
 /** The metadata JSON of an audit event as the whole WG may see it. */
 export function publicAuditMetadata(
 	eventType: string,

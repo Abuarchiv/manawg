@@ -50,6 +50,15 @@ export function SettlementReviewDialog({
 						{formatEuroCents(preview?.settleableCents || (preview?.netCents ?? 0), debt.currency)}{' '}
 						bereits an {debt.toId === currentMemberId ? 'dich' : debt.toName} gezahlt{' '}
 						{debt.fromId === currentMemberId ? 'hast' : 'hat'}. Es wird kein Geld überwiesen.
+						{preview &&
+							preview.settleableCents > 0 &&
+							preview.settleableCents < preview.netCents && (
+								<>
+									{' '}
+									„Gesamten Saldo bar eintragen“ bestätigt dagegen den ganzen verrechneten Saldo von{' '}
+									{formatEuroCents(preview.netCents, debt.currency)}.
+								</>
+							)}
 					</AlertDialogDescription>
 				</AlertDialogHeader>
 				{(preview?.splits.length ?? 0) > 0 && (

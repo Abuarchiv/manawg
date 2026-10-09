@@ -11,6 +11,7 @@ import {
 	recurringAdvanceWarningMessage,
 } from '@/features/expenses/expense-errors';
 import { buildOptimisticExpense } from '@/features/expenses/optimistic-expense';
+import { rotateRemainderCents } from '@/features/expenses/recurring-split-rotation';
 import { isRecurringBookingQueued } from '@/features/expenses/recurring-template-plan';
 import { useRef, useState } from 'react';
 import type { ExpensePageContext } from './expense-page-context';
@@ -91,11 +92,19 @@ export function useRecurringBooking(ctx: ExpensePageContext) {
 		};
 		setCreatingRecurringId(template.id);
 		notify.error(null);
+		// The same cent rotation as the automatic booking, so a manual booking of this due date
+		// charges the extra cent to the same person.
+		const bookedSplits = rotateRemainderCents(
+			template.splits,
+			template.amountCents,
+			new Date(template.nextDueAt),
+			template.intervalMonths,
+		);
 		const requestBody = {
 			description: template.description,
 			amountCents: template.amountCents,
 			paidByMemberId: template.paidByMemberId,
-			splits: template.splits,
+			splits: bookedSplits,
 		};
 		const fingerprint = JSON.stringify({ recurringExpenseId: template.id, ...requestBody });
 		const pendingRequest = expenseRequestsRef.current.get(template.id);
@@ -125,7 +134,7 @@ export function useRecurringBooking(ctx: ExpensePageContext) {
 			amountCents: template.amountCents,
 			paidByMemberId: template.paidByMemberId,
 			imageUrl: null,
-			splits: template.splits,
+			splits: bookedSplits,
 		});
 		pending.start(optimisticId);
 		updateExpenses((current) => [optimisticExpense, ...current]);
@@ -154,7 +163,7 @@ export function useRecurringBooking(ctx: ExpensePageContext) {
 						description: template.description,
 						amountCents: template.amountCents,
 						paidByMemberId: template.paidByMemberId,
-						splits: template.splits,
+						splits: bookedSplits,
 						recurringExpenseId: template.id,
 						expectedRecurringNextDueAt,
 					}),

@@ -30,6 +30,8 @@ export function useEmailAuth({
 		null,
 	);
 	const [failure, setFailure] = useState<AuthFailure>('other');
+	// The unconfirmed address behind the last sign-in; the resend action outlives later feedback.
+	const [unconfirmedEmail, setUnconfirmedEmail] = useState<string | null>(null);
 	const [emailMessage, setEmailMessage] = useState<string | null>(null);
 	// Kept across sign-in attempts, so repeating the failed sign-in cannot mail again at once.
 	const [resendCooldown, setResendCooldown] = useState(0);
@@ -68,7 +70,9 @@ export function useEmailAuth({
 				);
 			}
 		} catch (error) {
-			setFailure(classifyAuthError(error));
+			const classified = classifyAuthError(error);
+			setFailure(classified);
+			setUnconfirmedEmail(classified === 'unconfirmed' ? normalizedEmail : null);
 			setEmailError('generic');
 		} finally {
 			setBusy(null);
@@ -122,6 +126,8 @@ export function useEmailAuth({
 		}
 	}
 
+	const canResendConfirmation =
+		unconfirmedEmail !== null && unconfirmedEmail === email.trim().toLowerCase();
 	const emailFieldInvalid =
 		emailError === 'reset-invalid' ||
 		(emailError === 'invalid' && !isValidEmail(email.trim().toLowerCase()));
@@ -138,6 +144,7 @@ export function useEmailAuth({
 		submitEmail,
 		resendConfirmation,
 		resendCooldown,
+		canResendConfirmation,
 		requestPasswordReset,
 		emailFieldInvalid,
 		passwordFieldInvalid,
@@ -159,6 +166,7 @@ export function EmailAuthForm({
 		submitEmail,
 		resendConfirmation,
 		resendCooldown,
+		canResendConfirmation,
 		requestPasswordReset,
 		emailFieldInvalid,
 		passwordFieldInvalid,
@@ -240,7 +248,7 @@ export function EmailAuthForm({
 						</AlertDescription>
 					</Alert>
 				)}
-				{failure === 'unconfirmed' && emailError === 'generic' && (
+				{canResendConfirmation && (
 					<Button
 						type="button"
 						variant="outline"
