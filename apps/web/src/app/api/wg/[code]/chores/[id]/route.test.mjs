@@ -71,6 +71,7 @@ function makeRoute(state) {
 			notFound: (code) => json({ error: code }, 404),
 			tooMany: (code) => json({ error: code }, 429),
 		},
+		'@/core/db/transaction': { withTransaction: async (operation) => operation(db) },
 		'@/core/guards/admin': { isWgAdmin: () => true },
 		'@/core/guards/api-auth': {
 			UUID_PATTERN: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,

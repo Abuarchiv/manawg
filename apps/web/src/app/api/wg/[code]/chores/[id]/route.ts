@@ -1,6 +1,7 @@
 import { recordAuditEvent } from '@/core/audit';
 import { CHORE_RECURRENCE_TYPES, announcements, chores, db, wgMembers } from '@/core/db';
 import type { ChoreRecurrenceType } from '@/core/db';
+import { withTransaction } from '@/core/db/transaction';
 import { isWgAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
@@ -161,11 +162,36 @@ export const PATCH = withWgRoute<{ id: string }>('chores PATCH', async (req, { c
 				eq(chores.nextDueAt, currentChore.nextDueAt),
 			)
 		: undefined;
-	const [updated] = await db
-		.update(chores)
-		.set(update)
-		.where(and(eq(chores.id, id), eq(chores.wgId, wgId), currentMatch))
-		.returning();
+	// The chore and the swap requests it answers change together: a failure in between would
+	// leave an open request that no retry could ever close.
+	const updated = await withTransaction(async (tx) => {
+		const [row] = await tx
+			.update(chores)
+			.set(update)
+			.where(and(eq(chores.id, id), eq(chores.wgId, wgId), currentMatch))
+			.returning();
+		// A swap request is answered once someone else holds the chore, however that happened.
+		if (row && previousAssignee !== undefined && previousAssignee !== row.assignedMemberId) {
+			const now = new Date();
+			await tx
+				.update(announcements)
+				.set({
+					status: 'resolved',
+					resolvedAt: now,
+					resolvedByMemberId: auth.member.memberId,
+					updatedAt: now,
+				})
+				.where(
+					and(
+						eq(announcements.wgId, wgId),
+						eq(announcements.status, 'open'),
+						eq(announcements.source, 'chore_swap'),
+						eq(announcements.sourcePath, `/putzen?highlight=${encodeURIComponent(row.id)}`),
+					),
+				);
+		}
+		return row;
+	});
 
 	if (!updated) {
 		if (currentChore) {
@@ -177,26 +203,6 @@ export const PATCH = withWgRoute<{ id: string }>('chores PATCH', async (req, { c
 			if (stillExists.length > 0) return conflict('chore_changed');
 		}
 		return notFound('chore_not_found');
-	}
-	// A swap request is answered once someone else holds the chore, however that happened.
-	if (previousAssignee !== undefined && previousAssignee !== updated.assignedMemberId) {
-		const now = new Date();
-		await db
-			.update(announcements)
-			.set({
-				status: 'resolved',
-				resolvedAt: now,
-				resolvedByMemberId: auth.member.memberId,
-				updatedAt: now,
-			})
-			.where(
-				and(
-					eq(announcements.wgId, wgId),
-					eq(announcements.status, 'open'),
-					eq(announcements.source, 'chore_swap'),
-					eq(announcements.sourcePath, `/putzen?highlight=${encodeURIComponent(updated.id)}`),
-				),
-			);
 	}
 	await recordAuditEvent({
 		wgId,

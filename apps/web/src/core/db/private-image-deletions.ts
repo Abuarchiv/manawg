@@ -62,6 +62,19 @@ export async function queueImageDeletions(objectKeys: readonly string[]): Promis
 	}
 }
 
+/** Takes keys back off the queue that no deletion has run for yet. */
+export async function dequeueImageDeletions(objectKeys: readonly string[]): Promise<void> {
+	if (objectKeys.length === 0) return;
+	await db
+		.delete(privateImageDeletions)
+		.where(
+			and(
+				inArray(privateImageDeletions.objectKey, [...objectKeys]),
+				isNull(privateImageDeletions.storageDeletedAt),
+			),
+		);
+}
+
 /** The keys among `objectKeys` that already wait in the deletion queue. */
 export async function findQueuedImageDeletionKeys(
 	objectKeys: readonly string[],

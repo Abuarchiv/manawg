@@ -7,6 +7,7 @@ import type { StoredImageObject } from '@/core/infra/supabase-storage';
 import { asc } from 'drizzle-orm';
 import { selectOrphanKeys } from './orphan-upload-selection';
 import {
+	dequeueImageDeletions,
 	findQueuedImageDeletionKeys,
 	findWgReferencedImageKeys,
 	queueImageDeletions,
@@ -48,7 +49,12 @@ export async function sweepOrphanUploads(now = new Date()): Promise<{
 		const orphans = selectOrphanKeys(objects, referenced, alreadyQueued, now);
 		if (orphans.length === 0) continue;
 		await queueImageDeletions(orphans);
-		queuedTotal += orphans.length;
+		// A picture attached while the sweep was deciding is live now; queued, it would read as
+		// removed, so it comes off the queue again.
+		const attachedMeanwhile = await findWgReferencedImageKeys(row.id);
+		const rescued = orphans.filter((key) => attachedMeanwhile.has(key));
+		await dequeueImageDeletions(rescued);
+		queuedTotal += orphans.length - rescued.length;
 	}
 	return { wgsChecked: batch.length, queued: queuedTotal };
 }
