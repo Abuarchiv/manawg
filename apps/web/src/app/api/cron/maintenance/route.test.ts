@@ -14,6 +14,7 @@ const state = {
 	removeError: null as Error | null,
 	removed: [] as string[],
 	marked: [] as string[],
+	dequeued: [] as string[],
 	events: [] as string[],
 };
 
@@ -40,6 +41,10 @@ mock.module('@/core/db/private-image-deletions', {
 			assert.deepEqual(objectKeys, state.keys);
 			return state.referenced;
 		},
+		dequeueImageDeletions: async (objectKeys: string[]) => {
+			state.events.push('dequeue');
+			state.dequeued = objectKeys;
+		},
 		markPrivateImageStorageDeleted: async (objectKeys: string[]) => {
 			state.events.push('mark');
 			state.marked = objectKeys;
@@ -64,8 +69,12 @@ mock.module('@/core/infra/paypal', { namedExports: { isPayPalConfigured: () => f
 mock.module('@/features/expenses/server/paypal-reconcile', {
 	namedExports: { reconcileStaleCapturingPayments: async () => null },
 });
+mock.module('@/core/db/orphan-uploads', {
+	namedExports: { sweepOrphanUploads: async () => ({ wgsChecked: 0, queued: 0 }) },
+});
 mock.module('@/core/infra/supabase-storage', {
 	namedExports: {
+		getImageStorageProvider: () => 'aws',
 		removeSupabaseImages: async (objectKeys: string[]) => {
 			state.events.push('remove');
 			state.removed = objectKeys;
@@ -84,6 +93,7 @@ function harness() {
 		removeError: null,
 		removed: [],
 		marked: [],
+		dequeued: [],
 		events: [],
 	});
 	return {
@@ -116,11 +126,13 @@ test('maintenance reports reference violations and provider failures while keepi
 		assert.equal(response.status, 503);
 		assert.deepEqual(state.removed, [keys[0], keys[2]]);
 		assert.deepEqual(state.marked, []);
+		assert.deepEqual(state.dequeued, [keys[1]]);
 		assert.deepEqual(body.privateImageCleanup, {
 			attempted: 3,
 			completed: 0,
 			failed: 2,
 			skippedReferenced: 1,
+			rescued: 1,
 			pending: 9,
 			error: 'storage_remove_failed',
 		});
@@ -138,6 +150,16 @@ test('maintenance reports reference violations and provider failures while keepi
 		assert.equal(completedBody.privateImageCleanup.completed, 2);
 		assert.deepEqual(state.marked, [keys[0], keys[2]]);
 		assert.ok(state.events.indexOf('remove') < state.events.indexOf('mark'));
+
+		state.keys = [keys[1]];
+		state.referenced = new Set([keys[1]]);
+		state.dequeued = [];
+		const rescuedOnly = await get();
+		const rescuedBody = await rescuedOnly.json();
+		assert.equal(rescuedOnly.status, 200, 'a successful rescue is not a maintenance failure');
+		assert.equal(rescuedBody.ok, true);
+		assert.equal(rescuedBody.privateImageCleanup.rescued, 1);
+		assert.deepEqual(state.dequeued, [keys[1]]);
 	} finally {
 		if (previousSecret === undefined) Reflect.deleteProperty(process.env, 'CRON_SECRET');
 		else process.env.CRON_SECRET = previousSecret;

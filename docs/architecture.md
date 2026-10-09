@@ -269,7 +269,9 @@ All `online`/`offline` and `visibilitychange` listeners go through
   deletion tombstones, and streams with `no-store`. The bucket (`SUPABASE_STORAGE_BUCKET`) must be
   private with an 8 MiB limit and exactly the MIME types in `core/infra/private-image-policy.ts`;
   otherwise the provider reports itself unconfigured. Deletions are tombstoned in
-  `private_image_deletions` and removed by the maintenance cron.
+  `private_image_deletions` and removed by the maintenance cron. The same cron queues pictures no
+  row points at after 14 days (`core/db/orphan-uploads.ts`, a few WGs per run); a queued picture that
+  a row points at again is taken off the queue.
 - `aws` (default when unset, legacy): presigned S3 PUT (`core/infra/s3.ts`); images are stored
   as public URLs under `S3_PUBLIC_URL`. There is no S3 delete path.
 

@@ -116,6 +116,7 @@ mock.module('@/core/db/private-image-deletions', {
 			return [];
 		},
 		countPendingPrivateImageDeletions: async () => 0,
+		dequeueImageDeletions: async () => undefined,
 		findLivePrivateImageReferenceKeys: async () => new Set(),
 		markPrivateImageStorageDeleted: async () => undefined,
 	},
@@ -128,8 +129,12 @@ mock.module('@/core/infra/paypal', { namedExports: { isPayPalConfigured: () => f
 mock.module('@/features/expenses/server/paypal-reconcile', {
 	namedExports: { reconcileStaleCapturingPayments: async () => null },
 });
+mock.module('@/core/db/orphan-uploads', { namedExports: { sweepOrphanUploads: async () => null } });
 mock.module('@/core/infra/supabase-storage', {
-	namedExports: { removeSupabaseImages: async () => undefined },
+	namedExports: {
+		getImageStorageProvider: () => 'aws',
+		removeSupabaseImages: async () => undefined,
+	},
 });
 
 const route = await import('../src/app/api/cron/maintenance/route.ts');
@@ -149,12 +154,14 @@ test('maintenance attempts deletion recovery when idempotency cleanup fails', as
 		ok: false,
 		purgedIdempotencyRows: null,
 		paypalReconcile: null,
+		orphanUploads: null,
 		accountDeletions: { ...harness.recoveryResult, authAdminAvailable: false },
 		privateImageCleanup: {
 			attempted: 0,
 			completed: 0,
 			failed: 0,
 			skippedReferenced: 0,
+			rescued: 0,
 			pending: 0,
 			error: null,
 		},
@@ -171,12 +178,14 @@ test('maintenance attempts deletion recovery when idempotency cleanup fails', as
 		ok: true,
 		purgedIdempotencyRows: 1,
 		paypalReconcile: null,
+		orphanUploads: null,
 		accountDeletions: { ...harness.recoveryResult, authAdminAvailable: false },
 		privateImageCleanup: {
 			attempted: 0,
 			completed: 0,
 			failed: 0,
 			skippedReferenced: 0,
+			rescued: 0,
 			pending: 0,
 			error: null,
 		},

@@ -43,6 +43,61 @@ async function getWgPrivateImageKeys(
 	return keys;
 }
 
+/** Every private image key any row of the WG still points at, deleted chat messages included. */
+export async function findWgReferencedImageKeys(wgId: string): Promise<Set<string>> {
+	return withTransaction((tx) => getWgPrivateImageKeys(tx, wgId, true));
+}
+
+/**
+ * Puts keys on the deletion queue. From then on attaching them is refused, and the regular
+ * cleanup removes them later after checking once more that no row points at them.
+ */
+export async function queueImageDeletions(objectKeys: readonly string[]): Promise<void> {
+	for (let offset = 0; offset < objectKeys.length; offset += 250) {
+		const batch = objectKeys.slice(offset, offset + 250);
+		await db
+			.insert(privateImageDeletions)
+			.values(batch.map((objectKey) => ({ objectKey })))
+			.onConflictDoNothing();
+	}
+}
+
+/** Takes keys back off the queue that no deletion has run for yet. */
+export async function dequeueImageDeletions(objectKeys: readonly string[]): Promise<void> {
+	if (objectKeys.length === 0) return;
+	await db
+		.delete(privateImageDeletions)
+		.where(
+			and(
+				inArray(privateImageDeletions.objectKey, [...objectKeys]),
+				isNull(privateImageDeletions.storageDeletedAt),
+			),
+		);
+}
+
+const QUEUE_LOOKUP_BATCH = 5000;
+
+/** The keys among `objectKeys` that already wait in the deletion queue. */
+export async function findQueuedImageDeletionKeys(
+	objectKeys: readonly string[],
+): Promise<Set<string>> {
+	const queued = new Set<string>();
+	// Bounded batches keep the bind-parameter count below what PostgreSQL accepts.
+	for (let offset = 0; offset < objectKeys.length; offset += QUEUE_LOOKUP_BATCH) {
+		const rows = await db
+			.select({ objectKey: privateImageDeletions.objectKey })
+			.from(privateImageDeletions)
+			.where(
+				inArray(
+					privateImageDeletions.objectKey,
+					objectKeys.slice(offset, offset + QUEUE_LOOKUP_BATCH),
+				),
+			);
+		for (const { objectKey } of rows) queued.add(objectKey);
+	}
+	return queued;
+}
+
 export async function assertPrivateImageCanBeAttached(
 	tx: DbTransaction,
 	wgId: string,
