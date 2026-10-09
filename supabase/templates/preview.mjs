@@ -7,8 +7,11 @@ import { pathToFileURL } from 'node:url';
 
 const log = (line) => process.stdout.write(`${line}\n`);
 
-const [email = 'lina@posteo.de', token = '482913', out = resolve(tmpdir(), 'manawg-mail-preview')] =
-	process.argv.slice(2);
+const [
+	email = 'lina@posteo.de',
+	token = '48291374',
+	out = resolve(tmpdir(), 'manawg-mail-preview'),
+] = process.argv.slice(2);
 const urls = {
 	'.ConfirmationURL':
 		'https://bwsvsvfgbrsonepffqff.supabase.co/auth/v1/verify?token=8f3a1c9e4b7d&type=signup&redirect_to=https://app.manawg.com/auth/callback',
