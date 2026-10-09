@@ -155,7 +155,9 @@ export default function PinnwandPage(): React.ReactElement {
 					Noch keine Beiträge geladen.
 				</EmptyState>
 			) : items.length === 0 ? (
-				<EmptyState icon={Megaphone}>Noch keine Beiträge</EmptyState>
+				<EmptyState icon={Megaphone} hint="Teile eine Info oder eine Frage mit deiner WG.">
+					Noch keine Beiträge
+				</EmptyState>
 			) : (
 				<>
 					{openItems.length === 0 ? (
