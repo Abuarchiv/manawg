@@ -123,7 +123,8 @@ export const GET = withCronLogging(
 		const imageCleanupProblem =
 			privateImages.status === 'rejected' ||
 			(privateImages.status === 'fulfilled' &&
-				(privateImages.value.failed > 0 || privateImages.value.skippedReferenced > 0));
+				(privateImages.value.failed > 0 ||
+					privateImages.value.skippedReferenced > privateImages.value.rescued));
 		const ok =
 			purge.status === 'fulfilled' &&
 			deletions.status === 'fulfilled' &&

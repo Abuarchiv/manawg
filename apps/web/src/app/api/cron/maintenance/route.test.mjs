@@ -146,6 +146,16 @@ test('maintenance reports reference violations and provider failures while keepi
 		assert.equal(completedBody.privateImageCleanup.completed, 2);
 		assert.deepEqual(state.marked, [keys[0], keys[2]]);
 		assert.ok(state.events.indexOf('remove') < state.events.indexOf('mark'));
+
+		state.keys = [keys[1]];
+		state.referenced = new Set([keys[1]]);
+		state.dequeued = [];
+		const rescuedOnly = await get();
+		const rescuedBody = await rescuedOnly.json();
+		assert.equal(rescuedOnly.status, 200, 'a successful rescue is not a maintenance failure');
+		assert.equal(rescuedBody.ok, true);
+		assert.equal(rescuedBody.privateImageCleanup.rescued, 1);
+		assert.deepEqual(state.dequeued, [keys[1]]);
 	} finally {
 		if (previousSecret === undefined) Reflect.deleteProperty(process.env, 'CRON_SECRET');
 		else process.env.CRON_SECRET = previousSecret;
