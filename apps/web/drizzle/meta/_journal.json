@@ -162,6 +162,13 @@
       "when": 1791554945578,
       "tag": "0022_expense_payments_manual_provider",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1791558050929,
+      "tag": "0023_cron_scan_indexes",
+      "breakpoints": true
     }
   ]
 }

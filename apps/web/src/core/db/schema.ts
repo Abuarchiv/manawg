@@ -443,6 +443,8 @@ export const chores = pgTable(
 	},
 	(t) => ({
 		wgIdx: index('chores_wg_idx').on(t.wgId, t.nextDueAt),
+		// The reminder cron scans every WG's chores due in a window.
+		nextDueIdx: index('chores_next_due_idx').on(t.nextDueAt),
 		// Mirrors CHORE_RECURRENCE_TYPES below — every write goes through a zod
 		// enum of the same two values, and the column has always defaulted to
 		// 'days'. Added NOT VALID out of caution for any row from before that
@@ -524,6 +526,10 @@ export const recurringExpenses = pgTable(
 	},
 	(t) => ({
 		wgIdx: index('recurring_expenses_wg_idx').on(t.wgId, t.nextDueAt),
+		// The recurring-expense cron scans all active entries that are due.
+		nextDueIdx: index('recurring_expenses_next_due_idx')
+			.on(t.nextDueAt)
+			.where(sql`${t.pausedAt} IS NULL`),
 		amountCheck: check('recurring_expenses_amount_cents_check', sql`${t.amountCents} > 0`),
 	}),
 );
