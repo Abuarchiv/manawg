@@ -17,7 +17,7 @@
 ## 3. Recurring expenses
 
 - [x] 3.1 "Erfassen" shows the server error message and reloads on permanent 4xx; booking is offered only to members the server accepts (payer or own share > 0).
-- [x] 3.2 Redundant client advance PATCH removed (server advances in the booking transaction); the PATCH endpoint stays for old clients and queues.
+- [ ] 3.2 Redundant client advance PATCH: kept for now. The server advances in the booking transaction, but the offline replay contract (e2e expense-idempotency-*) still expects the follow-up PATCH; removing it needs its own change.
 - [x] 3.3 `advanceRecurringTemplate` advances only when an expense exists for the current due date, otherwise `409 recurring_expense_not_booked` without audit entry.
 - [x] 3.4 Start-date hint "beim nächsten täglichen Lauf werden N Buchungen nachgetragen" (`countMissedOccurrences`, cap 13); preview "Nächste Buchungen" uses `anchorAt`.
 - [x] 3.5 Deleting a recurring expense that is already gone (404) reloads instead of restoring the row.
