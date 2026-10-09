@@ -62,8 +62,8 @@ test('an occurrence is removed only once and only up to the limit', () => {
 		assert.ok(next);
 		rule = next;
 	}
-	assert.equal(withExcludedOccurrence(rule, '2027-01-01T00:00:00.000Z'), null);
-	assert.equal(parseRecurrenceRule(`${rule},2027-01-01T00:00:00.000Z`), null);
+	assert.equal(withExcludedOccurrence(rule, '2031-01-01T00:00:00.000Z'), null);
+	assert.equal(parseRecurrenceRule(`${rule},2031-01-01T00:00:00.000Z`), null);
 });
 
 test('malformed exception dates make the rule invalid', () => {

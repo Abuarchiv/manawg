@@ -14,8 +14,8 @@ export interface RecurrenceRule {
 }
 
 export const MAX_OCCURRENCES = 366;
-/** Longest list of removed occurrences one series keeps. */
-export const MAX_EXDATES = 40;
+/** Longest list of removed occurrences one series keeps (about ten years of a daily series). */
+export const MAX_EXDATES = 500;
 
 const FREQS: ReadonlySet<RecurrenceFreq> = new Set(['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY']);
 const BYDAYS: ReadonlySet<RecurrenceByDay> = new Set(['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU']);

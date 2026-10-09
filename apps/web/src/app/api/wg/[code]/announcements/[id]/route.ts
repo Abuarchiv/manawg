@@ -1,12 +1,19 @@
 import { recordAuditEvent } from '@/core/audit';
-import { announcementReactions, announcements, db } from '@/core/db';
+import { announcementReactions, announcements, db, wgMembers } from '@/core/db';
 import { revokePrivateImageIfUnreferenced } from '@/core/db/private-image-deletions';
 import { lockExpensePayments, withTransaction } from '@/core/db/transaction';
 import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, conflict, forbidden, notFound, tooMany } from '@/core/http/api-errors';
+import {
+	badRequest,
+	conflict,
+	forbidden,
+	notFound,
+	tooMany,
+	unauthorized,
+} from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import {
 	type NotificationDispatchWarning,
@@ -115,19 +122,33 @@ export const PATCH = withWgRoute<{ id: string }>(
 			patch.resolvedByMemberId = parsed.data.status === 'resolved' ? auth.member.memberId : null;
 		}
 
-		const [updated] = await db
-			.update(announcements)
-			.set(patch)
-			.where(
-				and(
-					eq(announcements.id, id),
-					eq(announcements.wgId, wg.id),
-					parsed.data.content !== undefined && parsed.data.expectedUpdatedAt
-						? sql`date_trunc('milliseconds', ${announcements.updatedAt}) = ${new Date(parsed.data.expectedUpdatedAt)}`
-						: undefined,
-				),
-			)
-			.returning();
+		// The caller is read again with the write: a member who moved out since the request began
+		// cannot save, and moving out waits for this write.
+		const outcome = await withTransaction(async (tx) => {
+			const [caller] = await tx
+				.select({ deactivatedAt: wgMembers.deactivatedAt })
+				.from(wgMembers)
+				.where(and(eq(wgMembers.id, auth.member.memberId), eq(wgMembers.wgId, wg.id)))
+				.limit(1)
+				.for('share');
+			if (!caller || caller.deactivatedAt) return 'member_deactivated' as const;
+			const [row] = await tx
+				.update(announcements)
+				.set(patch)
+				.where(
+					and(
+						eq(announcements.id, id),
+						eq(announcements.wgId, wg.id),
+						parsed.data.content !== undefined && parsed.data.expectedUpdatedAt
+							? sql`date_trunc('milliseconds', ${announcements.updatedAt}) = ${new Date(parsed.data.expectedUpdatedAt)}`
+							: undefined,
+					),
+				)
+				.returning();
+			return row ?? null;
+		});
+		if (outcome === 'member_deactivated') return unauthorized('member_deactivated');
+		const updated = outcome;
 		if (!updated) {
 			const [stillThere] = await db
 				.select({ id: announcements.id })

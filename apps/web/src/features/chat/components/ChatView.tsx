@@ -47,7 +47,6 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 
 	// A mention push opens `/chat#message-<id>`: bring that message into view once it is rendered.
 	const jumpedToHashRef = useRef(false);
-	const hashPagesLoadedRef = useRef(0);
 	const messageCount = messages.length;
 	const { hasMoreOlder, loadingOlder, olderError } = chat;
 	const loadOlderForHash = useStableCallback(() => void chat.loadOlder());
@@ -56,7 +55,6 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 	useEffect(() => {
 		const onHashChange = () => {
 			jumpedToHashRef.current = false;
-			hashPagesLoadedRef.current = 0;
 			setHashVersion((version) => version + 1);
 		};
 		window.addEventListener('hashchange', onHashChange);
@@ -73,13 +71,10 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 		const timer = window.setTimeout(() => {
 			const element = document.getElementById(target);
 			if (!element) {
-				// An older message is not in the first page: page backwards until it appears.
-				if (hasMoreOlder && !loadingOlder && !olderError && hashPagesLoadedRef.current < 20) {
-					hashPagesLoadedRef.current += 1;
-					loadOlderForHash();
-				} else if (!hasMoreOlder || hashPagesLoadedRef.current >= 20) {
-					jumpedToHashRef.current = true;
-				}
+				// An older message is not in the first page: page backwards until it appears or the
+				// history is exhausted.
+				if (hasMoreOlder && !loadingOlder && !olderError) loadOlderForHash();
+				else if (!hasMoreOlder) jumpedToHashRef.current = true;
 				return;
 			}
 			jumpedToHashRef.current = true;

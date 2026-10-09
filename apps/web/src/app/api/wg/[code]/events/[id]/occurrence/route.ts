@@ -16,7 +16,11 @@ import {
 	eventTitleSchema,
 } from '@/features/events/event-schemas';
 import { expandRecurrence, serializeWgEvent } from '@/features/events/events';
-import { withExcludedOccurrence } from '@/features/events/recurrence-rule';
+import {
+	MAX_EXDATES,
+	parseRecurrenceRule,
+	withExcludedOccurrence,
+} from '@/features/events/recurrence-rule';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -122,6 +126,9 @@ export const POST = withWgRoute<{ id: string }>('events occurrence', async (req,
 				).some((occurrence) => Date.parse(occurrence.startsAt) === occurrenceMs);
 				if (!isOccurrence) return rejectWrite(notFound('occurrence_not_found'));
 
+				if ((parseRecurrenceRule(root.recurrence)?.exdates?.length ?? 0) >= MAX_EXDATES) {
+					return rejectWrite(conflict('exception_limit_reached'));
+				}
 				const recurrence = withExcludedOccurrence(root.recurrence, body.occurrenceStartsAt);
 				if (!recurrence) return rejectWrite(conflict('occurrence_changed'));
 				const [updated] = await tx

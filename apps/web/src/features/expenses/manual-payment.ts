@@ -10,6 +10,9 @@ import { selectSettlementScope } from '@/features/expenses/settlement-scope';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 
+/** Largest amount the payment column holds (PostgreSQL integer). */
+const PAYMENT_AMOUNT_MAX_CENTS = 2_147_483_647;
+
 /** A cash payment between two members, entered by one of them after the money changed hands. */
 export const manualPaymentSchema = z
 	.object({
@@ -17,7 +20,8 @@ export const manualPaymentSchema = z
 		toMemberId: z.string().uuid(),
 		currency: currencySchema.default('EUR'),
 		/** The net debt the person reviewed; the payment is refused unless it still matches. */
-		expectedNetCents: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+		// Within the integer column of `expense_payments.amount_cents`.
+		expectedNetCents: z.number().int().positive().max(PAYMENT_AMOUNT_MAX_CENTS),
 	})
 	.strict();
 
