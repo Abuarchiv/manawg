@@ -52,9 +52,11 @@ Minimum variables in `apps/web/.env.local` (`checkEnv` in `src/core/infra/env.ts
 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase Auth. Without them every `/wg/*` page redirects to `/neu`. |
 | `MEMBER_SESSION_SECRET` | Signs calendar feed URLs and verifies legacy-profile recovery proofs (`openssl rand -hex 32`). Not used for normal API access. Rotate by moving the old value to `MEMBER_SESSION_SECRET_PREVIOUS`, so existing feeds keep working. |
 
+In production `SUPABASE_SERVICE_ROLE_KEY` is also required (account deletion, Supabase image storage).
+
 Optional features degrade when unset and are reported as `[env] DEGRADED ...`: Upstash rate
 limiting (`UPSTASH_REDIS_REST_*`, fails open outside production), Web Push (`VAPID_*`,
-`NEXT_PUBLIC_VAPID_PUBLIC_KEY`), account deletion (`SUPABASE_SERVICE_ROLE_KEY`), image uploads
+`NEXT_PUBLIC_VAPID_PUBLIC_KEY`), image uploads
 (`IMAGE_STORAGE_PROVIDER` plus its provider variables). PayPal stays off while all `PAYPAL_*`
 values are empty. Every variable is described in `apps/web/.env.example`. Never commit or print
 env values.
@@ -110,7 +112,7 @@ More scripts in `apps/web/package.json`:
 
 | Command | What it runs |
 | --- | --- |
-| `pnpm test` (root) | `playwright test` in `apps/web` (dev server with your `.env.local`), **not** the unit tests |
+| `pnpm test` (root) | The unit tests (`test:unit`); Playwright is `pnpm e2e` (dev server with your `.env.local`) |
 | `pnpm --filter @manawg/web test:unit` | `node --test` over `src/**/*.test.mjs` and `tests/*` |
 | `pnpm --filter @manawg/web test:e2e:fixtures` | Playwright against a production build in fixture mode |
 | `pnpm --filter @manawg/web test:e2e:webkit` | WebKit fixture config (`playwright.webkit-fixtures.config.ts`) |

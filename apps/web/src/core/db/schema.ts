@@ -989,9 +989,6 @@ export type Announcement = typeof announcements.$inferSelect;
 export type AnnouncementReaction = typeof announcementReactions.$inferSelect;
 export type AnnouncementComment = typeof announcementComments.$inferSelect;
 export type Chore = typeof chores.$inferSelect;
-// Calendar-aware recurrence cadence for chores. 'days' = ms-based arithmetic
-// (legacy default); 'months' = Date.setMonth() so 12-month chores land on the
-// exact same calendar day each year instead of drifting ~5 days off.
 export const idempotencyResponses = pgTable(
 	'idempotency_responses',
 	{
