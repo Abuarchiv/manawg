@@ -169,3 +169,22 @@ test('a payment that only reduces a direct debt still clears the circle it sits 
 	);
 	assert.deepEqual(balances, []);
 });
+
+test('equally short chains behind a payment resolve the same way in any row order', () => {
+	// C pays A 1; A is owed through B→... and D→...: two chains of equal length close the circle.
+	const rows = [
+		expense('B', 'A', 100),
+		expense('C', 'B', 100),
+		expense('D', 'A', 100),
+		expense('C', 'D', 100),
+	];
+	const payments = [payment('C', 'A', 100)];
+	const forward = computeBalances(rows, payments);
+	const backward = computeBalances([...rows].reverse(), payments);
+	const key = (list) =>
+		list
+			.map((pair) => `${pair.debtorId}>${pair.creditorId}:${pair.amountCents}`)
+			.sort()
+			.join('|');
+	assert.equal(key(forward), key(backward));
+});

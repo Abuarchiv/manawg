@@ -1,4 +1,4 @@
-import { expenseImports, expenses } from '@/core/db';
+import { auditEvents, expenseImports, expenses, wgMembers } from '@/core/db';
 import { TransactionAbort } from '@/core/db/transaction';
 import { and, eq, inArray } from 'drizzle-orm';
 import { hasCapturingExpensePayment, withExpensePaymentLock } from './expense-payments';
@@ -14,11 +14,13 @@ export type UndoImportResult =
 /**
  * Removes every expense an import created, then the import record. Refused once any share of
  * it is paid, because deleting it would undo money that already moved between members.
+ * The caller is read again under the payment lock: only the member who imported or the admin,
+ * still active, may undo, and the audit entry is written with the deletion.
  */
 export async function undoImport(
 	wgId: string,
 	importId: string,
-	mayUndo: (importedByMemberId: string | null) => Promise<boolean>,
+	actor: { memberId: string; name: string },
 ): Promise<UndoImportResult> {
 	try {
 		return await withExpensePaymentLock(wgId, async (tx) => {
@@ -32,9 +34,16 @@ export async function undoImport(
 				.where(and(eq(expenseImports.id, importId), eq(expenseImports.wgId, wgId)))
 				.limit(1);
 			if (!imp) return { ok: false as const, error: 'import_not_found' as const };
-			if (!(await mayUndo(imp.importedBy))) {
-				return { ok: false as const, error: 'not_allowed' as const };
-			}
+			const [caller] = await tx
+				.select({ role: wgMembers.role, deactivatedAt: wgMembers.deactivatedAt })
+				.from(wgMembers)
+				.where(and(eq(wgMembers.id, actor.memberId), eq(wgMembers.wgId, wgId)))
+				.limit(1);
+			const mayUndo =
+				caller !== undefined &&
+				caller.deactivatedAt === null &&
+				(imp.importedBy === actor.memberId || caller.role === 'admin');
+			if (!mayUndo) return { ok: false as const, error: 'not_allowed' as const };
 			if (await hasCapturingExpensePayment(tx, wgId)) {
 				throw new TransactionAbort('paypal_payment_pending');
 			}
@@ -53,6 +62,15 @@ export async function undoImport(
 				await tx.delete(expenses).where(inArray(expenses.id, ids));
 			}
 			await tx.delete(expenseImports).where(eq(expenseImports.id, importId));
+			await tx.insert(auditEvents).values({
+				wgId,
+				memberId: actor.memberId,
+				eventType: 'import.undone',
+				entityType: 'expense_import',
+				entityId: importId,
+				summary: `${actor.name} hat einen Import rückgängig gemacht (${ids.length} ${ids.length === 1 ? 'Ausgabe' : 'Ausgaben'}).`,
+				metadataJson: JSON.stringify({ source: imp.source, removed: ids.length }),
+			});
 			return {
 				ok: true as const,
 				removed: ids.length,

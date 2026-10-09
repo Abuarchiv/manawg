@@ -11,13 +11,12 @@ export interface ImportToCheck {
 }
 
 /**
- * The imports whose expenses cannot be taken back: a non-payer share was settled, or a payment
- * completed after the import may have covered the imported balance. That is a payment, in one of
- * the import's currencies, from someone who owes through the import (a netted chain can carry it
- * on to a third member) or to someone the import owes money. A payment by the creditor leaves
- * the imported balance open and does not count. A payment between other members counts only
- * when the balances show it: taking the import out must not leave debts that the payments
- * made against it had cancelled, for example a circle that the payment closed.
+ * The imports whose expenses cannot be taken back: a non-payer share was settled, or the
+ * payments completed since the import show it. The balances decide that, not who paid whom:
+ * taking the import out must not leave a debt, or a larger one, that the current balances do
+ * not have. That holds for a payment of the imported debt itself, for one carried on through a
+ * netted chain, and for a payment that closed a circle through the import. A payment by the
+ * creditor or one that a different debt fully backs leaves undo possible.
  */
 export async function findSettledImportIds(
 	executor: typeof db | DbTransaction,
@@ -45,21 +44,13 @@ export async function findSettledImportIds(
 				),
 			),
 		);
-	const payers = new Map<string, Set<string>>();
-	const debtors = new Map<string, Set<string>>();
 	const currencies = new Map<string, Set<string>>();
 	for (const row of rows) {
 		if (!row.importId) continue;
-		const payerSet = payers.get(row.importId) ?? new Set<string>();
-		const debtorSet = debtors.get(row.importId) ?? new Set<string>();
 		const currencySet = currencies.get(row.importId) ?? new Set<string>();
-		payerSet.add(row.paidBy);
 		currencySet.add(normalizeCurrency(row.currency));
-		if (row.debtor && row.debtor !== row.paidBy) debtorSet.add(row.debtor);
 		// A payer's own share is settled from the start; anyone else's means money moved.
 		if (row.debtor && row.settledAt && row.debtor !== row.paidBy) settled.add(row.importId);
-		payers.set(row.importId, payerSet);
-		debtors.set(row.importId, debtorSet);
 		currencies.set(row.importId, currencySet);
 	}
 
@@ -80,21 +71,6 @@ export async function findSettledImportIds(
 				gte(expensePayments.completedAt, earliest),
 			),
 		);
-	for (const item of imports) {
-		const payerSet = payers.get(item.id);
-		const debtorSet = debtors.get(item.id);
-		const currencySet = currencies.get(item.id);
-		if (!payerSet || !debtorSet || !currencySet) continue;
-		const related = payments.some(
-			(payment) =>
-				payment.completedAt !== null &&
-				payment.completedAt >= item.startedAt &&
-				currencySet.has(normalizeCurrency(payment.currency)) &&
-				(debtorSet.has(payment.from) || payerSet.has(payment.to)),
-		);
-		if (related) settled.add(item.id);
-	}
-
 	let allExpenses: Awaited<ReturnType<typeof loadOpenExpenses>> | null = null;
 	for (const item of imports) {
 		const currencySet = currencies.get(item.id);

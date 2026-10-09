@@ -119,3 +119,18 @@ test('a payment from before the import is not counted against it', async () => {
 	];
 	assert.equal(await isSettled(), false);
 });
+
+test('a payment of the imported debt itself counts as settling it', async () => {
+	state.importRows = [{ paidBy: 'A', debtor: 'B', amount: 100 }];
+	state.otherExpenses = [];
+	state.payments = [{ fromMemberId: 'B', toMemberId: 'A', amountCents: 100, currency: 'EUR' }];
+	assert.equal(await isSettled(), true);
+});
+
+test('a payment that another debt of the same debtor fully backs does not block undo', async () => {
+	// B owes A 1 (import) and C 5; B pays C 2, which the remaining 3 of the C debt backs.
+	state.importRows = [{ paidBy: 'A', debtor: 'B', amount: 100 }];
+	state.otherExpenses = [expense('C', 'B', 500)];
+	state.payments = [{ fromMemberId: 'B', toMemberId: 'C', amountCents: 200, currency: 'EUR' }];
+	assert.equal(await isSettled(), false);
+});

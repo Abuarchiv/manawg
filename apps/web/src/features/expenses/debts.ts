@@ -118,8 +118,13 @@ function findDebtChain(
 	for (let head = 0; head < queue.length; head += 1) {
 		const node = queue[head] as string;
 		const chain = reached.get(node) as PairBalance[];
-		for (const pair of totals.values()) {
-			if (pair.currency !== currency || pair.amountCents <= 0 || pair.debtorId !== node) continue;
+		// Sorted by member id: row order in the database must not decide which chain is shown.
+		const outgoing = Array.from(totals.values())
+			.filter(
+				(pair) => pair.currency === currency && pair.amountCents > 0 && pair.debtorId === node,
+			)
+			.sort((a, b) => a.creditorId.localeCompare(b.creditorId));
+		for (const pair of outgoing) {
 			if (reached.has(pair.creditorId)) continue;
 			const next = [...chain, pair];
 			if (pair.creditorId === to) return next;
@@ -140,7 +145,7 @@ function cancelNettedPaymentCycles(
 	totals: Map<string, PairBalance>,
 	derivedKeys: ReadonlySet<string>,
 ): void {
-	for (const key of derivedKeys) {
+	for (const key of [...derivedKeys].sort()) {
 		for (;;) {
 			const edge = totals.get(key);
 			if (!edge || edge.amountCents <= 0) break;
