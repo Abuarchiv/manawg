@@ -5,6 +5,9 @@ import { and, eq, gte, inArray } from 'drizzle-orm';
 import { type PairBalance, computeBalances } from './debts';
 import { loadOpenExpenses } from './open-expenses';
 
+/** Payment boundaries judged per import; imports see few payments, this only bounds the work. */
+const MAX_BOUNDARIES = 50;
+
 export interface ImportToCheck {
 	id: string;
 	startedAt: Date;
@@ -82,31 +85,30 @@ export async function findSettledImportIds(
 				payment.completedAt >= item.startedAt &&
 				currencySet.has(normalizeCurrency(payment.currency)),
 		);
-		const lastPaymentAt = sincePayments.reduce<Date | null>(
-			(latest, payment) =>
-				payment.completedAt !== null && (!latest || payment.completedAt > latest)
-					? payment.completedAt
-					: latest,
-			null,
-		);
-		if (!lastPaymentAt) continue;
-		const since = sincePayments.map((payment) => ({
-			fromMemberId: payment.from,
-			toMemberId: payment.to,
-			amountCents: payment.amountCents,
-			currency: payment.currency,
-		}));
-		// The ledger as it stood at the last payment: purchases booked afterwards must not
-		// make a payment that covered the import look like it paid something newer.
-		const current = computeBalances(
-			await loadOpenExpenses(wgId, executor, undefined, lastPaymentAt),
-			since,
-		);
-		const without = computeBalances(
-			await loadOpenExpenses(wgId, executor, item.id, lastPaymentAt),
-			since,
-		);
-		if (createsDebts(current, without)) settled.add(item.id);
+		// Each payment boundary is judged on the ledger and payments as they stood then, so a
+		// later purchase or an unrelated later payment cannot erase an earlier settlement.
+		const boundaries = [
+			...new Set(sincePayments.map((payment) => payment.completedAt?.getTime() ?? 0)),
+		]
+			.sort((a, b) => a - b)
+			.slice(0, MAX_BOUNDARIES);
+		for (const boundary of boundaries) {
+			const at = new Date(boundary);
+			const upTo = sincePayments
+				.filter((payment) => payment.completedAt !== null && payment.completedAt <= at)
+				.map((payment) => ({
+					fromMemberId: payment.from,
+					toMemberId: payment.to,
+					amountCents: payment.amountCents,
+					currency: payment.currency,
+				}));
+			const current = computeBalances(await loadOpenExpenses(wgId, executor, undefined, at), upTo);
+			const without = computeBalances(await loadOpenExpenses(wgId, executor, item.id, at), upTo);
+			if (createsDebts(current, without)) {
+				settled.add(item.id);
+				break;
+			}
+		}
 	}
 	return settled;
 }

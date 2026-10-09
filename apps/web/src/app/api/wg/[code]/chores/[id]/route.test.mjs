@@ -40,15 +40,21 @@ function makeRoute(state) {
 		select: () => ({
 			from: (table) => ({
 				where: (conditions) => ({
-					limit: async (limit) => {
-						state.queries.push({ table, conditions, limit });
-						if (table === wgMembers) return state.members;
-						const filters = new Map(conditions.map(({ column, value }) => [column, value]));
-						return state.rows
-							.filter(
-								(row) => row.id === filters.get(chores.id) && row.wgId === filters.get(chores.wgId),
-							)
-							.slice(0, limit);
+					limit: (limit) => {
+						const run = async () => {
+							state.queries.push({ table, conditions, limit });
+							if (table === wgMembers) return state.members;
+							const filters = new Map(conditions.map(({ column, value }) => [column, value]));
+							return state.rows
+								.filter(
+									(row) =>
+										row.id === filters.get(chores.id) && row.wgId === filters.get(chores.wgId),
+								)
+								.slice(0, limit);
+						};
+						// Awaitable as is, and after `.for('update')` like the real builder.
+						const query = run();
+						return Object.assign(query, { for: () => query });
 					},
 				}),
 			}),

@@ -150,17 +150,6 @@ export const PATCH = withWgRoute<{ id: string }>('chores PATCH', async (req, { c
 		update.lastReminderAt = sql`case when ${chores.assignedMemberId} is distinct from ${nextAssignee}::uuid then null else ${chores.lastReminderAt} end`;
 	}
 
-	const previousAssignee =
-		parsed.data.assignedMemberId !== undefined
-			? ((
-					await db
-						.select({ assignedMemberId: chores.assignedMemberId })
-						.from(chores)
-						.where(and(eq(chores.id, id), eq(chores.wgId, wgId)))
-						.limit(1)
-				)[0]?.assignedMemberId ?? null)
-			: undefined;
-
 	const currentMatch = currentChore
 		? and(
 				eq(chores.intervalDays, currentChore.intervalDays),
@@ -171,6 +160,19 @@ export const PATCH = withWgRoute<{ id: string }>('chores PATCH', async (req, { c
 	// The chore and the swap requests it answers change together: a failure in between would
 	// leave an open request that no retry could ever close.
 	const updated = await withTransaction(async (tx) => {
+		// Read under the row lock that the update below keeps: a request opened by someone who
+		// took the chore a moment ago is only answered by a change this transaction really makes.
+		const previousAssignee =
+			parsed.data.assignedMemberId !== undefined
+				? ((
+						await tx
+							.select({ assignedMemberId: chores.assignedMemberId })
+							.from(chores)
+							.where(and(eq(chores.id, id), eq(chores.wgId, wgId)))
+							.limit(1)
+							.for('update')
+					)[0]?.assignedMemberId ?? null)
+				: undefined;
 		const [row] = await tx
 			.update(chores)
 			.set(update)

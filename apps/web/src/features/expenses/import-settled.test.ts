@@ -158,3 +158,22 @@ test('a later purchase does not undo the evidence of an earlier payment', async 
 	state.payments = [{ fromMemberId: 'B', toMemberId: 'A', amountCents: 100, currency: 'EUR' }];
 	assert.equal(await isSettled(), true);
 });
+
+test('an unrelated later payment does not erase an earlier settlement', async () => {
+	// The import B→A 1 is paid at t1, a new B→A purchase follows at t2, an unrelated C→D payment at t3.
+	state.importRows = [{ paidBy: 'A', debtor: 'B', amount: 100 }];
+	state.otherExpenses = [
+		{ ...expense('A', 'B', 100), createdAt: new Date('2026-10-05T10:00:00Z') },
+	];
+	state.payments = [
+		{ fromMemberId: 'B', toMemberId: 'A', amountCents: 100, currency: 'EUR' },
+		{
+			fromMemberId: 'C',
+			toMemberId: 'D',
+			amountCents: 50,
+			currency: 'EUR',
+			completedAt: new Date('2026-10-07T10:00:00Z'),
+		},
+	];
+	assert.equal(await isSettled(), true);
+});
