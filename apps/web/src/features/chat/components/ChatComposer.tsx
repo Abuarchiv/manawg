@@ -4,7 +4,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { InputGroup, InputGroupTextarea } from '@/components/ui/input-group';
 import { Spinner } from '@/components/ui/spinner';
-import { readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
+import { removeDraft } from '@/core/offline/drafts';
 import { isPendingImageToken } from '@/core/offline/offline-images';
 import { haptic } from '@/shared/lib/haptics';
 import { Send, X } from 'lucide-react';
@@ -17,6 +17,7 @@ import {
 	useRef,
 	useState,
 } from 'react';
+import { readChatDraft, writeChatDraft } from '../chat-draft';
 import { type MentionTrigger, detectMention, findMentions } from '../chat-text';
 import { ComposerImageButton, ComposerImagePanel } from './ComposerImage';
 import {
@@ -70,7 +71,7 @@ export function ChatComposer({
 	replyToMessageIdRef.current = replyToMessageId;
 	const [draft, setDraft] = useState('');
 	const [pending, setPending] = useState(false);
-	// The image is deliberately not part of the stored draft: it only lives until sent or removed.
+	// The attached picture is part of the stored draft; without it the upload would be left behind.
 	const [imageUrl, setImageUrl] = useState<string | null>(null);
 	const imageUrlRef = useRef(imageUrl);
 	const [imageOpen, setImageOpen] = useState(false);
@@ -95,11 +96,12 @@ export function ChatComposer({
 		? mentionOptionId(mentionListboxId, mentionActiveIndex)
 		: undefined;
 	useEffect(() => {
-		const saved = readDraft<{ body?: string; replyToMessageId?: string }>(draftKey);
-		const restoredDraft = typeof saved?.body === 'string' ? saved.body.slice(0, BODY_MAX) : '';
-		draftRef.current = restoredDraft;
-		setDraft(restoredDraft);
-		onRestoreReply(typeof saved?.replyToMessageId === 'string' ? saved.replyToMessageId : null);
+		const saved = readChatDraft(draftKey, BODY_MAX);
+		draftRef.current = saved.body;
+		setDraft(saved.body);
+		imageUrlRef.current = saved.imageUrl;
+		setImageUrl(saved.imageUrl);
+		onRestoreReply(saved.replyToMessageId);
 		setDraftHydrated(true);
 	}, [draftKey, onRestoreReply]);
 
@@ -120,13 +122,13 @@ export function ChatComposer({
 
 	useEffect(() => {
 		if (!draftHydrated) return;
-		if (!draft && !replyToMessageId) {
+		if (!draft && !replyToMessageId && !imageUrl) {
 			removeDraft(draftKey);
 			setDraftStorageFailed(false);
 			return;
 		}
-		setDraftStorageFailed(!writeDraft(draftKey, { body: draft, replyToMessageId }));
-	}, [draft, draftHydrated, draftKey, replyToMessageId]);
+		setDraftStorageFailed(!writeChatDraft(draftKey, { body: draft, replyToMessageId, imageUrl }));
+	}, [draft, draftHydrated, draftKey, replyToMessageId, imageUrl]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: mentionItems identity change is the correct trigger
 	useEffect(() => {
