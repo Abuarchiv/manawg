@@ -45,6 +45,14 @@ jobs:
       - run: pnpm --dir apps/web analytics:check
       - run: pnpm --filter @manawg/web exec node scripts/check-architecture.mjs
       - run: pnpm --filter @manawg/web exec node scripts/check-wg-auth-invariant.mjs
+      - name: Schema matches the committed migrations
+        run: |
+          DATABASE_URL=postgres://u:p@localhost:5432/x pnpm --filter @manawg/web db:generate --name=ci_drift
+          if [ -n "$(git status --porcelain apps/web/drizzle)" ]; then
+            git status --porcelain apps/web/drizzle >&2
+            echo 'schema.ts differs from the committed migrations: run drizzle-kit generate and commit the result.' >&2
+            exit 1
+          fi
       - run: pnpm typecheck
       - run: pnpm --filter @manawg/web test:unit
       - run: pnpm build
@@ -250,6 +258,9 @@ jobs:
           fi
           node <<'NODE'
           const projectHost = process.env.SUPABASE_PREVIEW_PROJECT_HOST.toLowerCase();
+          if (projectHost.includes('bwsvsvfgbrsonepffqff')) {
+            throw new Error('SUPABASE_PREVIEW_PROJECT_HOST points at the Production project.');
+          }
           const url = new URL(process.env.DATABASE_MIGRATION_URL);
           if (
             !['postgres:', 'postgresql:'].includes(url.protocol) ||
@@ -432,6 +443,9 @@ jobs:
               'Set the SUPABASE_PREVIEW_PROJECT_HOST repository variable to the Preview Supabase project hostname (e.g. project.supabase.co).',
             );
           }
+          if (projectHost.toLowerCase().includes('bwsvsvfgbrsonepffqff')) {
+            throw new Error('SUPABASE_PREVIEW_PROJECT_HOST points at the Production project.');
+          }
           const url = new URL(process.env.E2E_SUPABASE_URL);
           if (
             url.protocol !== 'https:' ||
@@ -462,7 +476,23 @@ jobs:
           AUTH_LIVE_E2E: 'true'
           SUPABASE_AUTH_LIVE_E2E: 'true'
           SUPABASE_AUTH_PASSWORD_RESET_SMOKE: 'true'
-        run: pnpm --filter @manawg/web exec playwright test --retries=0 preview-protection.spec.ts smoke-launch.spec.ts public-entry-live.spec.ts social-login-live.spec.ts supabase-auth-live.spec.ts
+          PLAYWRIGHT_JSON_OUTPUT_NAME: ${{ runner.temp }}/preview-results.json
+        run: pnpm --filter @manawg/web exec playwright test --retries=0 --reporter=list,json preview-protection.spec.ts smoke-launch.spec.ts public-entry-live.spec.ts social-login-live.spec.ts supabase-auth-live.spec.ts
+      - name: Require executed Preview tests
+        env:
+          RESULTS_FILE: ${{ runner.temp }}/preview-results.json
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          const { stats } = JSON.parse(readFileSync(process.env.RESULTS_FILE, 'utf8'));
+          const line = `expected=${stats.expected} skipped=${stats.skipped} unexpected=${stats.unexpected} flaky=${stats.flaky}`;
+          console.log(line);
+          if (process.env.GITHUB_STEP_SUMMARY) {
+            const { appendFileSync } = await import('node:fs');
+            appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### Preview test counts\n- ${line}\n`);
+          }
+          if (stats.expected === 0) throw new Error('No Preview test actually ran; skips are not proof.');
+          NODE
       - name: Record protected Preview execution evidence
         if: always()
         env:
