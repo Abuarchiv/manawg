@@ -1,7 +1,8 @@
-import { expensePayments, wgMembers } from '@/core/db';
+import { auditEvents, expensePayments, wgMembers } from '@/core/db';
 import { type WriteOutcome, responseCodec } from '@/core/db/idempotent-write';
 import type { DbTransaction } from '@/core/db/transaction';
 import { HTTP } from '@/core/http/api-errors';
+import { formatEuroCents } from '@/core/utils/money';
 import { currencySchema } from '@/core/validators/currency';
 import { hasCapturingExpensePayment } from '@/features/expenses/expense-payments';
 import { loadSettlementSnapshot, pairIsInWg } from '@/features/expenses/settle-debt';
@@ -54,6 +55,7 @@ export async function recordCashPayment(
 	wgId: string,
 	callerId: string,
 	input: ManualPaymentInput,
+	callerName = 'Ein Mitglied',
 ): Promise<WriteOutcome<unknown, ManualPaymentOutcome>> {
 	const [activeCaller] = await tx
 		.select({ id: wgMembers.id })
@@ -113,6 +115,21 @@ export async function recordCashPayment(
 		})
 		.returning({ id: expensePayments.id });
 	if (!payment) throw new Error('manual_payment_insert_failed');
+	// Written with the payment, so a replayed request never finds a payment without its author.
+	await tx.insert(auditEvents).values({
+		wgId,
+		memberId: callerId,
+		eventType: 'expense.debt.settled.manual',
+		entityType: 'expense_payment',
+		entityId: payment.id,
+		summary: `${callerName} hat eine Barzahlung über ${formatEuroCents(preview.netCents, preview.currency)} eingetragen.`,
+		metadataJson: JSON.stringify({
+			fromMemberId: input.fromMemberId,
+			toMemberId: input.toMemberId,
+			amountCents: preview.netCents,
+			currency: preview.currency,
+		}),
+	});
 	return {
 		status: 200,
 		body: {

@@ -1,4 +1,3 @@
-import { recordAuditEvent } from '@/core/audit';
 import { withIdempotentWrite } from '@/core/db/idempotent-write';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
@@ -12,7 +11,6 @@ import {
 import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey } from '@/core/idempotency-store';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
-import { formatEuroCents } from '@/core/utils/money';
 import { withExpensePaymentLock } from '@/features/expenses/expense-payments';
 import {
 	manualPaymentCodec,
@@ -58,7 +56,7 @@ export const POST = withWgRoute('manual payment POST', async (req, { code }) => 
 				return limited ? { stop: limited } : { input: undefined };
 			},
 		},
-		(tx) => recordCashPayment(tx, auth.wg.id, caller, input),
+		(tx) => recordCashPayment(tx, auth.wg.id, caller, input, auth.member.name),
 	);
 	if (result.kind === 'stopped') return result.response;
 	if (result.kind === 'replayed') {
@@ -75,20 +73,6 @@ export const POST = withWgRoute('manual payment POST', async (req, { code }) => 
 	if (outcome.kind === 'blocked') return conflict('paypal_payment_pending');
 	if (outcome.kind === 'changed') return conflict('settlement_changed');
 
-	await recordAuditEvent({
-		wgId: auth.wg.id,
-		memberId: caller,
-		eventType: 'expense.debt.settled.manual',
-		entityType: 'expense_payment',
-		entityId: outcome.paymentId,
-		summary: `${auth.member.name} hat eine Barzahlung über ${formatEuroCents(outcome.amountCents, input.currency)} eingetragen.`,
-		metadata: {
-			fromMemberId: input.fromMemberId,
-			toMemberId: input.toMemberId,
-			amountCents: outcome.amountCents,
-			currency: input.currency,
-		},
-	});
 	return NextResponse.json(result.body, {
 		status: result.status,
 		headers: { 'Cache-Control': 'no-store' },

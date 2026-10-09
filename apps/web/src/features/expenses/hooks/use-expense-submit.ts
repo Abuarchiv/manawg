@@ -261,6 +261,7 @@ export function useExpenseSubmit(
 							paidByMemberId,
 							splits,
 							imageUrl,
+							...(occurredAtIso ? { occurredAt: occurredAtIso } : {}),
 						})
 					: createQueuedExpense({
 							wgId: wg.id,

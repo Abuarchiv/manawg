@@ -282,6 +282,7 @@ export function createQueuedExpenseUpdate(input: QueuedExpenseUpdateInput): Offl
 			paidByMemberId: input.paidByMemberId,
 			splits: input.splits,
 			imageUrl: input.imageUrl,
+			...(input.occurredAt ? { occurredAt: input.occurredAt } : {}),
 		},
 		now,
 	);

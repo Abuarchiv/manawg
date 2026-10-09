@@ -5,7 +5,14 @@ import type { DbTransaction } from '@/core/db/transaction';
 // The database layer connects on import; the logic under test only needs table markers.
 mock.module('server-only', { namedExports: {} });
 mock.module('@/core/db', {
-	namedExports: { expensePayments: {}, wgMembers: {}, expenseSplits: {}, expenses: {}, db: {} },
+	namedExports: {
+		auditEvents: {},
+		expensePayments: {},
+		wgMembers: {},
+		expenseSplits: {},
+		expenses: {},
+		db: {},
+	},
 });
 mock.module('@/core/db/transaction', {
 	namedExports: {
@@ -73,9 +80,13 @@ const input = { fromMemberId: B, toMemberId: A, currency: 'EUR' as const, expect
 
 test('a netted debt is recorded as one completed manual payment for the whole net amount', async () => {
 	const { tx, inserted } = fakeTx(datasets([{ id: B }]));
-	const result = await recordCashPayment(tx, WG, B, input);
+	const result = await recordCashPayment(tx, WG, B, input, 'Ben');
 	assert.equal(result.status, 200);
-	assert.equal(inserted.length, 1);
+	// The payment and the audit event that names its author are written together.
+	assert.equal(inserted.length, 2);
+	assert.equal(inserted[1]?.eventType, 'expense.debt.settled.manual');
+	assert.equal(inserted[1]?.entityId, 'payment-1');
+	assert.match(String(inserted[1]?.summary), /^Ben hat eine Barzahlung/);
 	assert.deepEqual(
 		{ ...inserted[0], providerOrderId: undefined, expiresAt: undefined, completedAt: undefined },
 		{
