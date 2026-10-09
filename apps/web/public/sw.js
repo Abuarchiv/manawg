@@ -103,10 +103,23 @@ const refreshOfflinePage = async (request, response) => {
 	await cache.put(request, response);
 };
 
-const fetchWithTimeout = (request) => {
+// The timer covers the headers and the body: a server that sends headers and then stalls must
+// not leave the navigation hanging, so the page is read completely before it is handed on.
+const fetchWithTimeout = async (request) => {
 	const controller = new AbortController();
 	const timer = setTimeout(() => controller.abort(), NAVIGATION_TIMEOUT_MS);
-	return fetch(request, { signal: controller.signal }).finally(() => clearTimeout(timer));
+	try {
+		const response = await fetch(request, { signal: controller.signal });
+		if (response.type === 'opaqueredirect' || !response.body) return response;
+		const body = await response.arrayBuffer();
+		return new Response(body, {
+			status: response.status,
+			statusText: response.statusText,
+			headers: response.headers,
+		});
+	} finally {
+		clearTimeout(timer);
+	}
 };
 
 const fallbackPushData = {

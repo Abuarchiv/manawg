@@ -205,7 +205,7 @@ export function EventEditModal({
 				location: location.trim() || null,
 				recurrence: onlyThis
 					? null
-					: shiftedSeriesRule(recurrence.trim(), event.startsAt, startDate, allDay),
+					: shiftedSeriesRule(recurrence.trim(), event.startsAt, startDate, allDay, event.allDay),
 				...(event.updatedAt ? { expectedUpdatedAt: event.updatedAt } : {}),
 			};
 			if (onlyThis && occurrence && onUpdateOccurrence) {

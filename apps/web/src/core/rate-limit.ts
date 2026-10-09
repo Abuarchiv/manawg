@@ -33,6 +33,9 @@ export function rateLimitFailMode(): 'open' | 'closed' {
 		: 'open';
 }
 
+// A configured but unusable Upstash URL; Preview answers it closed so the mistake shows up there.
+let configuredButInvalid = false;
+
 export function createConfiguredRedis(): Redis | null {
 	if (!url || !token) return null;
 	try {
@@ -47,6 +50,7 @@ export function createConfiguredRedis(): Redis | null {
 			if (rateLimitFailMode() === 'closed') {
 				throw new Error('UPSTASH_REDIS_REST_URL must use https');
 			}
+			configuredButInvalid = true;
 			return null;
 		}
 		return new Redis({ url, token });
@@ -54,6 +58,7 @@ export function createConfiguredRedis(): Redis | null {
 		if (rateLimitFailMode() === 'closed') {
 			throw new Error('UPSTASH_REDIS_REST_URL must be a valid https URL');
 		}
+		configuredButInvalid = true;
 		return null;
 	}
 }
@@ -200,8 +205,9 @@ export async function checkRateLimit(
 	failMode: 'open' | 'closed' = rateLimitFailMode(),
 ): Promise<RateLimitResult> {
 	if (!limiter) {
-		reportUnavailable('upstash-not-configured', failMode);
-		if (failMode === 'closed') {
+		const mode = configuredButInvalid && process.env.VERCEL_ENV === 'preview' ? 'closed' : failMode;
+		reportUnavailable('upstash-not-configured', mode);
+		if (mode === 'closed') {
 			return { success: false, remaining: 0, reset: Date.now() + 60_000, limiterUnavailable: true };
 		}
 		return { success: true, remaining: -1, reset: 0 };

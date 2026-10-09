@@ -171,3 +171,30 @@ test('a timely answer is served as is', async () => {
 
 	assert.equal(await navigateTo(handlers, '/wg/ABCD2345/ausgaben'), answer);
 });
+
+test('a page whose body stalls after the headers falls back to the offline page', async () => {
+	let abortSignal;
+	const { handlers, timers } = loadTimeoutWorker({
+		fetch: async (_request, { signal }) => {
+			abortSignal = signal;
+			return {
+				ok: true,
+				type: 'basic',
+				body: {},
+				clone: () => undefined,
+				arrayBuffer: () =>
+					new Promise((_resolve, reject) => {
+						signal.addEventListener('abort', () => reject(new Error('aborted')));
+					}),
+			};
+		},
+		cached: { '/offline': 'offline-page' },
+	});
+
+	const pending = navigateTo(handlers, '/wg/ABCD2345/ausgaben');
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.equal(timers.length, 1);
+	timers[0].fn();
+	assert.equal(await pending, 'offline-page');
+	assert.ok(abortSignal);
+});

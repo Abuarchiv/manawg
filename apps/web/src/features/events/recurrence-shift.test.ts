@@ -33,3 +33,28 @@ test('moving a series start moves its removed occurrences by the same wall-time 
 		'FREQ=DAILY',
 	);
 });
+
+test('switching between timed and all-day keeps each exception on its calendar day', () => {
+	// A summer 10:00 Berlin series with a winter (CET) exception becomes all-day, and back.
+	const timed = 'FREQ=WEEKLY;EXDATE=2026-12-04T09:00:00.000Z';
+	const toAllDay = parseRecurrenceRule(
+		withShiftedExclusions(
+			timed,
+			'2026-06-05T08:00:00.000Z',
+			'2026-06-05T00:00:00.000Z',
+			true,
+			false,
+		),
+	);
+	assert.deepEqual(toAllDay?.exdates, ['2026-12-04T00:00:00.000Z']);
+	const toTimed = parseRecurrenceRule(
+		withShiftedExclusions(
+			'FREQ=WEEKLY;EXDATE=2026-12-04T00:00:00.000Z',
+			'2026-06-05T00:00:00.000Z',
+			'2026-06-05T08:00:00.000Z',
+			false,
+			true,
+		),
+	);
+	assert.deepEqual(toTimed?.exdates, ['2026-12-04T09:00:00.000Z']);
+});
