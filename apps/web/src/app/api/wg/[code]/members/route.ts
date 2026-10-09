@@ -3,6 +3,7 @@ import { getAuthenticatedUser } from '@/core/auth/server';
 import { db, wgMembers, wgs } from '@/core/db';
 import { assertAccountCanAcquireMembership } from '@/core/db/account-deletion';
 import { type WriteOutcome, responseCodec, withIdempotentWrite } from '@/core/db/idempotent-write';
+import { releaseMemberName } from '@/core/db/member-names';
 import { LIMITS } from '@/core/db/schema';
 import { type DbTransaction, TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { isWgAdmin } from '@/core/guards/admin';
@@ -167,16 +168,9 @@ async function insertJoiningMember(
 	if ((counts?.active ?? 0) >= MAX_MEMBERS_PER_WG || (counts?.total ?? 0) >= MAX_MEMBER_ROWS_PER_WG)
 		return reject('limit');
 
-	const existing = await tx
-		.select({ id: wgMembers.id, name: wgMembers.name, color: wgMembers.color })
-		.from(wgMembers)
-		// Case-insensitive: "anna" next to "Anna" could not be told apart in chat and balances.
-		// The unique index stays exact and only catches the race.
-		.where(
-			and(eq(wgMembers.wgId, input.wgId), sql`lower(${wgMembers.name}) = lower(${input.name})`),
-		)
-		.limit(1);
-	if (existing.length > 0) return reject('name_taken');
+	// Case-insensitive: "anna" next to "Anna" could not be told apart in chat and balances. A
+	// moved-out member with the name is renamed aside; the unique index only catches the race.
+	if (!(await releaseMemberName(tx, input.wgId, input.name))) return reject('name_taken');
 	let inserted: typeof wgMembers.$inferSelect | undefined;
 	try {
 		// A savepoint keeps the transaction usable when the unique index catches a race.
