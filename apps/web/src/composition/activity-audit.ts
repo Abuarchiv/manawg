@@ -190,10 +190,10 @@ export function formatAuditActivityText(summary: string, actorName: string): str
 	return trimmed;
 }
 
-export function announcementHref(announcementId: string): string {
+function announcementHref(announcementId: string): string {
 	return `/pinnwand#announcement-${encodeURIComponent(announcementId)}`;
 }
 
-export function recurringExpenseHref(recurringId: string): string {
+function recurringExpenseHref(recurringId: string): string {
 	return `/ausgaben?recurring=${encodeURIComponent(recurringId)}`;
 }

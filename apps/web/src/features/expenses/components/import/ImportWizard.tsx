@@ -14,6 +14,7 @@ import {
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/shared/lib/cn';
+import { markOverlayNavigation, overlayNavigationPending } from '@/shared/lib/use-dismiss-on-back';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -76,6 +77,7 @@ function useImportBackGuard(active: boolean, onBack: () => void) {
 			window.removeEventListener('popstate', onPopState);
 			// Deferred so a concurrently started navigation can replace the state first.
 			setTimeout(() => {
+				if (overlayNavigationPending()) return;
 				if (window.history.state?.importGuard) window.history.back();
 			}, 50);
 		};
@@ -102,7 +104,11 @@ export function ImportWizard() {
 		else if (rawPayload) setLeaveOpen(true);
 	});
 	// With a marker in history, leaving replaces it instead of stacking another entry.
-	const leave = () => (backGuardActive ? router.replace(returnHref) : router.push(returnHref));
+	const leave = () => {
+		markOverlayNavigation();
+		if (backGuardActive) router.replace(returnHref);
+		else router.push(returnHref);
+	};
 
 	return (
 		<div className="flex flex-col gap-5">

@@ -23,6 +23,21 @@ let nextId = 0;
 // Number of popstates caused by our own history.back() that must be ignored.
 let ownPops = 0;
 let listening = false;
+// When an overlay action starts a navigation, the router replaces the marker
+// entry itself once the new route has loaded. That can take longer than any
+// fixed delay on a slow device, so the cleanup must not pop the entry in the
+// meantime: a back() during the pending navigation cancels it.
+let navigationStartedAt = 0;
+const NAVIGATION_GRACE_MS = 5000;
+
+/** Call right before `router.push`/`router.replace` from inside an overlay action. */
+export function markOverlayNavigation(): void {
+	navigationStartedAt = Date.now();
+}
+
+export function overlayNavigationPending(): boolean {
+	return Date.now() - navigationStartedAt < NAVIGATION_GRACE_MS;
+}
 
 function onPopState() {
 	if (ownPops > 0) {
@@ -43,8 +58,9 @@ function onPopState() {
  * drops the marker entry. Touch-only for CloseWatcher: with a keyboard, Base UI
  * already owns Escape.
  *
- * A navigation started while the overlay closes (e.g. "Verwerfen" → router.push)
- * replaces history.state, so the marker is gone and no back() is issued.
+ * A navigation started while the overlay closes (e.g. "Verwerfen" → router.replace)
+ * replaces the marker entry once it commits; the caller announces it through
+ * `markOverlayNavigation` so no back() is issued while it is pending.
  *
  * Known limit: closing an outer overlay before an inner one leaves a stale entry.
  */
@@ -78,6 +94,7 @@ export function useDismissOnBack(
 			stack.splice(i, 1);
 			// Defer so a navigation started by the same click can replace the state first.
 			setTimeout(() => {
+				if (overlayNavigationPending()) return;
 				if (window.history.state?.overlayId !== entry.id) return;
 				ownPops++;
 				window.history.back();

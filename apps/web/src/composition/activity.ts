@@ -9,7 +9,7 @@ import {
 import type { ActivityFilter, ActivityItem, ActivityKind, ActivityScope } from './activity-types';
 
 export type { ActivityFilter, ActivityItem, ActivityKind, ActivityScope };
-export { ACTIVITY_HIDDEN_AUDIT_EVENT_TYPES, formatAuditActivityText, getAuditHref };
+export { ACTIVITY_HIDDEN_AUDIT_EVENT_TYPES, formatAuditActivityText };
 export {
 	type ActivityReminder,
 	REMINDER_ANNOUNCEMENT_KINDS,

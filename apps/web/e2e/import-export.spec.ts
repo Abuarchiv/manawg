@@ -297,6 +297,10 @@ test.describe('import error notice', () => {
 		await page.goBack();
 		await page.goBack();
 		await expect(page.getByRole('alertdialog')).toContainText('Import-Eingaben verwerfen?');
+		// A slow device commits the navigation after the overlay markers are cleaned
+		// up; throttling the CPU reproduces that order.
+		const cdp = await page.context().newCDPSession(page);
+		await cdp.send('Emulation.setCPUThrottlingRate', { rate: 20 });
 		await page.getByRole('button', { name: 'Verwerfen' }).click();
 		await expect(page).toHaveURL(new RegExp(`/wg/${FIXTURE_WG.shareCode}/ausgaben`));
 	});
