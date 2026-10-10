@@ -44,6 +44,8 @@
 	"files": {
 		"ignore": [
 			"node_modules",
+			"graphify-out",
+			"supabase/.temp",
 			"dist",
 			".next",
 			".next-*",

@@ -120,7 +120,9 @@ test('wrapper never forwards secret-bearing child output, including success and 
 			stderr.mock.restore();
 		}
 		assert.ok(!output.join('').includes(childSecret));
-		assert.equal(output.length, 1);
+		// The TAP reporter also writes to stdout from this process; count only wrapper lines.
+		const wrapperLines = output.filter((value) => String(value).startsWith('[preview-db]'));
+		assert.equal(wrapperLines.length, 1);
 		assert.equal(process.exitCode, outcome.status === 0 ? 0 : 1);
 	}
 });

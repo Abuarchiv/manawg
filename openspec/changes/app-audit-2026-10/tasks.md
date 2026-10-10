@@ -127,7 +127,7 @@
 ## 14. Verification and follow-up
 
 - [x] 14.1 Create this change and run `openspec validate app-audit-2026-10 --strict`.
-- [ ] 14.2 Run `node scripts/check-architecture.mjs`, lint, typecheck, unit tests and build on the audit branch.
-- [ ] 14.3 Run the adjusted e2e specs (`chores-regressions`, `pwa`, `settings-access`, `calendar-fixes`, `expense-ui-overlay`), which were changed but not executed.
+- [x] 14.2 Run `node scripts/check-architecture.mjs`, lint, typecheck, unit tests and build on the audit branch. Run locally on main 2026-10-10 (GitHub Actions blocked by billing): lint, architecture, auth invariant, knip, analytics, audit, typecheck, unit 928/0, build, bundle budget all green.
+- [x] 14.3 Run the adjusted e2e specs (`chores-regressions`, `pwa`, `settings-access`, `calendar-fixes`, `expense-ui-overlay`), which were changed but not executed. 2026-10-10 local fixture run on main: 57 passed, 1 skipped.
 - [ ] 14.4 Check manually: HEIC conversion on iPhone, join toggle refresh, rename, rotation and push opt-out flows.
-- [ ] 14.5 Add per-page canonicals and `/neu` noindex (files outside the platform area) and run `graphify update .`.
+- [x] 14.5 Add per-page canonicals and `/neu` noindex (files outside the platform area) and run `graphify update .`. Verified 2026-10-10: `/` and `/entdecken/[module]` carry canonicals; `/neu`, `/registrieren`, `/auth/reset`, `/offline` are noindex.

@@ -489,9 +489,14 @@ test('a stalled image upload times out so the next sync is not blocked', async (
 			payload: { content: 'x', kind: 'info', imageUrl: 'manawg-pending-image:pic' },
 		}),
 	]);
-	const sync = module.syncOfflineActions('TEST1234', { force: true, memberId: 'member-a' });
-	await sync;
-	timeoutMock.mock.restore();
+	// AbortSignal.timeout uses an unref'd timer in Node; keep the loop alive until it fires.
+	const keepAlive = setTimeout(() => {}, 5_000);
+	try {
+		await module.syncOfflineActions('TEST1234', { force: true, memberId: 'member-a' });
+	} finally {
+		clearTimeout(keepAlive);
+		timeoutMock.mock.restore();
+	}
 	assert.equal(sawSignal, true);
 	assert.equal(module.readOfflineQueue().length, 1);
 });

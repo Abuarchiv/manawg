@@ -19,4 +19,4 @@
 
 - [x] 4.1 Previous signing secrets, Preview limiter policy, secondary text contrast, cron indexes.
 - [x] 4.2 Unit and e2e tests for each item; lint, typecheck, architecture check, build.
-- [ ] 4.3 Preview migration `0023` and a hosted check before promotion.
+- [x] 4.3 Preview migration `0023` and a hosted check before promotion. Applied 2026-10-10 directly to Production via `supabase db query` (dry run with rollback first); ledger 24, both indexes present. Preview database was not migrated (ledger 18).
