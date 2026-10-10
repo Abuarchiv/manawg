@@ -149,7 +149,7 @@ export function getAuditHref(event: {
 				? event.entityId
 				: null;
 
-	if (announcementId) return `/pinnwand#announcement-${encodeURIComponent(announcementId)}`;
+	if (announcementId) return announcementHref(announcementId);
 	if (event.entityType === 'shopping_item' && event.entityId) {
 		return `/einkauf?highlight=${encodeURIComponent(event.entityId)}`;
 	}
@@ -163,7 +163,7 @@ export function getAuditHref(event: {
 		return '/ausgaben?filter=recurring';
 	}
 	if (event.entityType === 'recurring_expense' && event.entityId) {
-		return `/ausgaben?recurring=${encodeURIComponent(event.entityId)}`;
+		return recurringExpenseHref(event.entityId);
 	}
 	if (
 		event.entityType === 'expense' ||
@@ -188,4 +188,12 @@ export function formatAuditActivityText(summary: string, actorName: string): str
 		return trimmed.slice(prefix.length);
 	}
 	return trimmed;
+}
+
+export function announcementHref(announcementId: string): string {
+	return `/pinnwand#announcement-${encodeURIComponent(announcementId)}`;
+}
+
+export function recurringExpenseHref(recurringId: string): string {
+	return `/ausgaben?recurring=${encodeURIComponent(recurringId)}`;
 }
