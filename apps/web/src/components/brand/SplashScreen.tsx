@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 /**
  * Cold-start overlay. It is part of the SSR HTML so the app never flashes underneath;
  * the bootstrap script sets html[data-splash=off] before paint when it must not show
- * (already shown in this tab, or fixture build) and globals.css hides it then.
+ * (already shown, browser tab instead of the installed app, automation) and globals.css hides it then.
  */
 export function SplashScreen() {
 	const [phase, setPhase] = useState<'show' | 'fade' | 'gone'>('show');
