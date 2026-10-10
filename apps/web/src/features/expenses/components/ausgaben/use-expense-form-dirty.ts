@@ -4,6 +4,7 @@ import type { SplitMode } from './expense-form-draft';
 
 interface ExpenseFormDirtyInput {
 	description: string;
+	category: string;
 	amountStr: string;
 	paidByMemberId: string;
 	splitMode: SplitMode;
@@ -22,6 +23,7 @@ interface ExpenseFormDirtyInput {
 /** Whether the form differs from what it started with, so closing it should ask first. */
 export function useExpenseFormDirty({
 	description,
+	category,
 	amountStr,
 	paidByMemberId,
 	splitMode,
@@ -36,6 +38,7 @@ export function useExpenseFormDirty({
 }: ExpenseFormDirtyInput): boolean {
 	const formStateKey = JSON.stringify({
 		description,
+		category,
 		amountStr,
 		paidByMemberId,
 		splitMode,
@@ -47,6 +50,7 @@ export function useExpenseFormDirty({
 	});
 	const emptyFormStateKey = JSON.stringify({
 		description: '',
+		category: 'sonstiges',
 		amountStr: '',
 		paidByMemberId: identityMemberId,
 		splitMode: 'equal',

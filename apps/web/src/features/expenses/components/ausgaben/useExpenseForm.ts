@@ -10,7 +10,11 @@ import {
 import type { OfflineActionType } from '@/core/offline/offline-queue';
 import { formatEuroInput } from '@/core/utils/amount';
 import { CENTS_PER_EURO } from '@/core/utils/money';
-import { buildExpensePrefillDraft } from '@/features/expenses/expense-prefill';
+import {
+	DEFAULT_EXPENSE_CATEGORY,
+	EXPENSE_CATEGORIES,
+	type ExpenseCategory,
+} from '@/features/expenses/expense-categories';
 import { equalSplitParticipants } from '@/features/expenses/expense-split-input';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -21,11 +25,11 @@ import {
 	parseDraftEditTarget,
 	participantsOrAll,
 	queuedEqualParticipants,
-	recurringTemplateSuggestion,
 	splitsToManualInput,
 } from './expense-form-draft';
 import type { Expense, RecurringExpense } from './expense-types';
 import { isoToInputDate, useExpenseFormExtras } from './use-expense-form-extras';
+import { useExpensePrefillHandoff } from './use-expense-prefill-handoff';
 
 /** The member fields this hook reads; structural so it needs no WG context provider. */
 interface FormMember {
@@ -71,6 +75,7 @@ export function useExpenseForm({
 }: UseExpenseFormOptions) {
 	const [showForm, setShowForm] = useState(false);
 	const [description, setDescription] = useState('');
+	const [category, setCategory] = useState<ExpenseCategory>(DEFAULT_EXPENSE_CATEGORY);
 	const [amountStr, setAmountStr] = useState('');
 	const [imageUrl, setImageUrl] = useState<string | null>(null);
 	const [paidByMemberId, setPaidByMemberId] = useState<string>(identityMemberId);
@@ -96,10 +101,6 @@ export function useExpenseForm({
 	// Lets the once-per-draft restore read the current members.
 	const membersRef = useRef(members);
 	membersRef.current = members;
-	// Each prefill source applies once per distinct URL so re-renders cannot overwrite edits.
-	const appliedPrefillRef = useRef<string | null>(null);
-	const appliedRecurringRef = useRef<string | null>(null);
-	const prefillKey = `${prefillDescription ?? ''}|${prefillAmount ?? ''}|${prefillPaidBy ?? ''}`;
 
 	// Restore the stored draft once; `draftHydrated` keeps the empty initial state from overwriting it.
 	useEffect(() => {
@@ -123,6 +124,9 @@ export function useExpenseForm({
 			);
 		}
 		if (draft.description) setDescription(draft.description);
+		// A draft is untrusted storage; only known category codes are restored.
+		const draftCategory = EXPENSE_CATEGORIES.find((code) => code === draft.category);
+		if (draftCategory) setCategory(draftCategory);
 		if (draft.amountStr) setAmountStr(draft.amountStr);
 		if (draft.imageUrl !== undefined) setImageUrl(draft.imageUrl);
 		if (draft.paidByMemberId) setPaidByMemberId(draft.paidByMemberId);
@@ -153,6 +157,7 @@ export function useExpenseForm({
 			recurringSourceId,
 			editingExpense: invalidEditDraft ? { invalid: true } : editingExpense,
 			description,
+			category,
 			amountStr,
 			imageUrl,
 			paidByMemberId,
@@ -167,6 +172,7 @@ export function useExpenseForm({
 	}, [
 		extras.draftFields,
 		amountStr,
+		category,
 		description,
 		editingExpense,
 		invalidEditDraft,
@@ -200,6 +206,7 @@ export function useExpenseForm({
 			setRecurringNextDueAt(null);
 			setConflictExpenseId(null);
 			setDescription(prefill.description);
+			setCategory(prefill.category ?? DEFAULT_EXPENSE_CATEGORY);
 			setAmountStr(prefill.amountStr);
 			setImageUrl(prefill.imageUrl);
 			setPaidByMemberId(prefill.paidByMemberId);
@@ -231,44 +238,22 @@ export function useExpenseForm({
 		[applyPrefill, draftKey, identityMemberId],
 	);
 
-	// A handoff is a new draft, so it must not overwrite unfinished input.
-	useEffect(() => {
-		if (recurringId) return;
-		const prefill = buildExpensePrefillDraft({
-			description: prefillDescription,
-			amount: prefillAmount,
-			paidByMemberId: members.find((member) => member.id === prefillPaidBy)?.id ?? identityMemberId,
-		});
-		if (!prefill || appliedPrefillRef.current === prefillKey) return;
-		appliedPrefillRef.current = prefillKey;
-		suggestPrefill({ ...prefill, recurringSourceId: null });
-	}, [
+	useExpensePrefillHandoff({
 		suggestPrefill,
-		identityMemberId,
 		members,
-		prefillAmount,
+		identityMemberId,
 		prefillDescription,
+		prefillAmount,
 		prefillPaidBy,
-		prefillKey,
 		recurringId,
-	]);
-
-	// `?recurring=<id>` — turns a due fixed cost into a prefilled one-off
-	// expense. This creates a NEW expense from the template, so it must not set
-	// `editingRecurringExpense`.
-	useEffect(() => {
-		if (!recurringId) return;
-		if (appliedRecurringRef.current === recurringId) return;
-		const template = recurringExpenses.find((item) => item.id === recurringId);
-		if (!template) return;
-		appliedRecurringRef.current = recurringId;
-		suggestPrefill(recurringTemplateSuggestion(template));
-	}, [suggestPrefill, recurringExpenses, recurringId]);
+		recurringExpenses,
+	});
 
 	function resetForm(): void {
 		removeDraft(draftKey);
 		setRecurringSourceId(null);
 		setDescription('');
+		setCategory(DEFAULT_EXPENSE_CATEGORY);
 		setAmountStr('');
 		setImageUrl(null);
 		setPaidByMemberId(identityMemberId);
@@ -291,6 +276,7 @@ export function useExpenseForm({
 		setRecurringSourceId(null);
 		setPendingPrefill(null);
 		setDescription(expense.description);
+		setCategory(expense.category);
 		setAmountStr(formatEuroInput(expense.amountCents / CENTS_PER_EURO));
 		setImageUrl(expense.imageUrl);
 		setPaidByMemberId(expense.paidByMemberId);
@@ -327,6 +313,7 @@ export function useExpenseForm({
 		setRecurringSourceId(null);
 		setPendingPrefill(null);
 		setDescription(template.description);
+		setCategory(template.category);
 		setAmountStr(formatEuroInput(template.amountCents / CENTS_PER_EURO));
 		setImageUrl(null);
 		setPaidByMemberId(template.paidByMemberId);
@@ -350,6 +337,8 @@ export function useExpenseForm({
 		setShowForm,
 		description,
 		setDescription,
+		category,
+		setCategory,
 		amountStr,
 		setAmountStr,
 		imageUrl,

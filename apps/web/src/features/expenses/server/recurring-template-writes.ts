@@ -30,6 +30,7 @@ interface Caller {
 export interface RecurringTemplateEdit {
 	id: string;
 	description?: string | undefined;
+	category?: string | undefined;
 	amountCents?: number | undefined;
 	paidByMemberId?: string | undefined;
 	intervalMonths?: number | undefined;
@@ -115,6 +116,7 @@ const AUDIT = {
 
 const EDIT_FIELDS = [
 	'description',
+	'category',
 	'amountCents',
 	'paidByMemberId',
 	'intervalMonths',
@@ -192,6 +194,7 @@ export async function editRecurringTemplate(
 		.update(recurringExpenses)
 		.set({
 			description: edit.description ?? template.description,
+			category: edit.category ?? template.category,
 			amountCents,
 			paidByMemberId,
 			intervalMonths,

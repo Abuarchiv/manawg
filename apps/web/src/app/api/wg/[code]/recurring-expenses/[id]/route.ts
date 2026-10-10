@@ -6,6 +6,7 @@ import { badRequest, notFound, tooMany } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
+import { expenseCategorySchema } from '@/features/expenses/expense-categories';
 import { MAX_SPLITS, RECURRING_INTERVAL_MAX_MONTHS } from '@/features/expenses/expense-constants';
 import {
 	expenseAmountSchema,
@@ -23,6 +24,7 @@ import { z } from 'zod';
 
 const patchSchema = z.object({
 	description: expenseDescriptionSchema.optional(),
+	category: expenseCategorySchema.optional(),
 	amountCents: expenseAmountSchema.optional(),
 	currency: currencySchema.optional(),
 	paidByMemberId: z.string().uuid().optional(),
@@ -62,6 +64,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 				amountCents: 'amount_invalid',
 				currency: 'currency_invalid',
 				description: 'description_invalid',
+				category: 'category_invalid',
 				paidByMemberId: 'member_id_invalid',
 				intervalMonths: 'interval_invalid',
 				nextDueAt: 'due_date_invalid',
@@ -76,6 +79,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 		}
 		const hasAnyField =
 			parsed.data.description !== undefined ||
+			parsed.data.category !== undefined ||
 			parsed.data.amountCents !== undefined ||
 			parsed.data.currency !== undefined ||
 			parsed.data.paidByMemberId !== undefined ||

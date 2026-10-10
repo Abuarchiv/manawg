@@ -63,6 +63,7 @@ interface InsertExpenseInput {
 	amountCents: number;
 	currency: string;
 	description: string;
+	category: string;
 	imageUrl: string | null;
 	occurredAt: Date;
 	splits: readonly ExpenseSplitInput[];
@@ -92,6 +93,7 @@ export async function insertExpenseWithSplits(
 			amountCents: input.amountCents,
 			currency: input.currency,
 			description: input.description,
+			category: input.category,
 			imageUrl: input.imageUrl,
 			occurredAt: input.occurredAt,
 			recurringExpenseId: input.recurringExpenseId,

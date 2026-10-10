@@ -1,3 +1,5 @@
+import type { ExpenseCategory } from '@/features/expenses/expense-categories';
+
 export interface AboSplit {
 	debtorMemberId: string;
 	amountCents: number;
@@ -6,6 +8,7 @@ export interface AboSplit {
 export interface Abo {
 	id: string;
 	description: string;
+	category: ExpenseCategory;
 	amountCents: number;
 	currency: string;
 	paidByMemberId: string;

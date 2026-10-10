@@ -16,7 +16,12 @@ import { formatEuroInput, parseEuroAmount } from '@/core/utils/amount';
 import { inputDateToIso, todayInputValue } from '@/core/utils/local-date';
 import { CENTS_PER_EURO } from '@/core/utils/money';
 import type { MemberOption } from '@/features/expenses/components/abos/abos-types';
+import { ExpenseCategoryField } from '@/features/expenses/components/ausgaben/ExpenseCategoryField';
 import { amountErrorMessage } from '@/features/expenses/components/ausgaben/constants';
+import {
+	DEFAULT_EXPENSE_CATEGORY,
+	type ExpenseCategory,
+} from '@/features/expenses/expense-categories';
 import { splitInputErrorMessage } from '@/features/expenses/expense-errors';
 import { countMissedOccurrences } from '@/features/expenses/recurring-expenses';
 import { useEffect, useMemo, useState } from 'react';
@@ -63,6 +68,9 @@ export function AboForm({
 	const activeMembers = useMemo(() => members.filter((member) => member.active), [members]);
 
 	const [description, setDescription] = useState(initial?.description ?? '');
+	const [category, setCategory] = useState<ExpenseCategory>(
+		initial?.category ?? DEFAULT_EXPENSE_CATEGORY,
+	);
 	const [amountStr, setAmountStr] = useState(
 		initial ? formatEuroInput(initial.amountCents / CENTS_PER_EURO) : '',
 	);
@@ -89,6 +97,7 @@ export function AboForm({
 	useEffect(() => {
 		if (!initial) return;
 		setDescription(initial.description);
+		setCategory(initial.category);
 		setAmountStr(formatEuroInput(initial.amountCents / CENTS_PER_EURO));
 		setPaidByMemberId(initial.paidByMemberId);
 		setIntervalMonths(initial.intervalMonths);
@@ -191,6 +200,7 @@ export function AboForm({
 		}
 		onSubmit({
 			description: trimmedDescription,
+			category,
 			amountCents: parsedAmountCents,
 			paidByMemberId,
 			intervalMonths,
@@ -219,6 +229,12 @@ export function AboForm({
 					/>
 					<FieldError id="abo-description-error">{descriptionError}</FieldError>
 				</Field>
+				<ExpenseCategoryField
+					id="abo-category"
+					value={category}
+					onChange={setCategory}
+					disabled={submitting}
+				/>
 				<Field data-disabled={submitting} data-invalid={Boolean(amountError)}>
 					<FieldLabel htmlFor="abo-amount">Betrag</FieldLabel>
 					<InputGroup>

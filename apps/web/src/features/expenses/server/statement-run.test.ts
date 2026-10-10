@@ -17,6 +17,7 @@ function recipient(memberId: string, email: string): StatementRecipient {
 			monthKey: '2026-09',
 			totalCents: 1000,
 			items: [],
+			categories: [],
 			members: [
 				{ id: memberId, name: memberId, paidCents: 1000, shareCents: 500, balanceCents: 500 },
 			],

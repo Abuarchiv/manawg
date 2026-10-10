@@ -176,6 +176,13 @@
       "when": 1791660102087,
       "tag": "0024_mail_log_and_digest",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1791661654841,
+      "tag": "0025_expense_categories",
+      "breakpoints": true
     }
   ]
 }

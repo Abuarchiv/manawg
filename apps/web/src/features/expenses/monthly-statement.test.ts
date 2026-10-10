@@ -68,6 +68,35 @@ test('month balances, Berlin month edges and fewest transfers', () => {
 	assert.equal(statement.settled, false);
 });
 
+test('categories are summed per month, largest first, "sonstiges" last', () => {
+	const withCategory = (category: string | undefined, id: string, cents: number) => ({
+		...expense(id, 'L', '2026-09-10T10:00:00Z', { L: cents }),
+		...(category ? { category } : {}),
+	});
+	const statement = buildMonthlyStatement(
+		[
+			withCategory('sonstiges', 'a', 10000),
+			withCategory('freizeit', 'b', 2000),
+			withCategory('lebensmittel', 'c', 5000),
+			withCategory('lebensmittel', 'd', 1000),
+			// Missing or unknown categories count as "sonstiges".
+			withCategory(undefined, 'e', 1000),
+			withCategory('unbekannt', 'f', 1000),
+		],
+		members,
+		'2026-09',
+	);
+	assert.deepEqual(
+		statement.categories.map(({ category, cents, share }) => [category, cents, share]),
+		[
+			['lebensmittel', 6000, 30],
+			['freizeit', 2000, 10],
+			['sonstiges', 12000, 60],
+		],
+	);
+	assert.equal(statement.categories[0]?.label, 'Lebensmittel');
+});
+
 test('month key arithmetic crosses years', () => {
 	assert.equal(shiftMonthKey('2026-01', -1), '2025-12');
 	assert.equal(shiftMonthKey('2026-12', 1), '2027-01');

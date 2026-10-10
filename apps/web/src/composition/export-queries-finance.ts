@@ -1,4 +1,5 @@
 import { db, expensePayments, expenseSplits, expenses, recurringExpenses } from '@/core/db';
+import { expenseCategoryLabel } from '@/features/expenses/expense-categories';
 import { type SQL, and, desc, eq, inArray } from 'drizzle-orm';
 import { formatExpenseSplitsForExport, parseRecurringSplitsForExport } from './export';
 import type { ExportPage } from './export-queries-types';
@@ -54,6 +55,7 @@ export async function fetchExpenseRows(wgId: string, page: ExportPage) {
 		.select({
 			id: expenses.id,
 			description: expenses.description,
+			category: expenses.category,
 			amountCents: expenses.amountCents,
 			currency: expenses.currency,
 			paidByMemberId: expenses.paidByMemberId,
@@ -74,6 +76,7 @@ export function mapExpenseRows(
 	return expenseRows.map((expense) => ({
 		id: expense.id,
 		description: expense.description,
+		category: expenseCategoryLabel(expense.category),
 		amountCents: expense.amountCents,
 		currency: expense.currency,
 		paidBy: memberById.get(expense.paidByMemberId) ?? '',
@@ -121,6 +124,7 @@ export async function fetchRecurringRows(wgId: string, page: ExportPage) {
 		.select({
 			id: recurringExpenses.id,
 			description: recurringExpenses.description,
+			category: recurringExpenses.category,
 			amountCents: recurringExpenses.amountCents,
 			paidByMemberId: recurringExpenses.paidByMemberId,
 			intervalMonths: recurringExpenses.intervalMonths,
@@ -143,6 +147,7 @@ export function mapRecurringRows(
 	return recurringRows.map((item) => ({
 		id: item.id,
 		description: item.description,
+		category: expenseCategoryLabel(item.category),
 		amountCents: item.amountCents,
 		currency: 'EUR',
 		paidBy: memberById.get(item.paidByMemberId) ?? '',

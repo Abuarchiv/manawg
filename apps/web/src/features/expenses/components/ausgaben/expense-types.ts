@@ -1,3 +1,5 @@
+import type { ExpenseCategory } from '@/features/expenses/expense-categories';
+
 export interface ExpenseSplit {
 	id: string;
 	debtorMemberId: string;
@@ -11,6 +13,7 @@ export interface Expense {
 	amountCents: number;
 	currency: string;
 	description: string;
+	category: ExpenseCategory;
 	imageUrl: string | null;
 	occurredAt: string;
 	createdAt: string;
@@ -21,6 +24,7 @@ export interface Expense {
 export interface RecurringExpense {
 	id: string;
 	description: string;
+	category: ExpenseCategory;
 	amountCents: number;
 	currency: string;
 	paidByMemberId: string;

@@ -1,4 +1,5 @@
 import type { Expense } from '@/features/expenses/components/ausgaben/expense-types';
+import type { ExpenseCategory } from '@/features/expenses/expense-categories';
 import type { DebtorShare } from '@/features/expenses/split-math';
 
 /**
@@ -9,6 +10,7 @@ import type { DebtorShare } from '@/features/expenses/split-math';
 export function buildOptimisticExpense({
 	id,
 	description,
+	category,
 	amountCents,
 	paidByMemberId,
 	imageUrl,
@@ -18,6 +20,7 @@ export function buildOptimisticExpense({
 }: {
 	id: string;
 	description: string;
+	category: ExpenseCategory;
 	amountCents: number;
 	paidByMemberId: string;
 	imageUrl: string | null;
@@ -33,6 +36,7 @@ export function buildOptimisticExpense({
 		amountCents,
 		currency: previous?.currency ?? 'EUR',
 		description,
+		category,
 		imageUrl,
 		occurredAt: occurredAt ?? previous?.occurredAt ?? now,
 		createdAt: previous?.createdAt ?? now,

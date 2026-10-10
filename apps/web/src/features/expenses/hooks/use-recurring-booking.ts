@@ -103,6 +103,7 @@ export function useRecurringBooking(ctx: ExpensePageContext) {
 		);
 		const requestBody = {
 			description: template.description,
+			category: template.category,
 			amountCents: template.amountCents,
 			paidByMemberId: template.paidByMemberId,
 			splits: bookedSplits,
@@ -132,6 +133,7 @@ export function useRecurringBooking(ctx: ExpensePageContext) {
 		const optimisticExpense = buildOptimisticExpense({
 			id: optimisticId,
 			description: template.description,
+			category: template.category,
 			amountCents: template.amountCents,
 			paidByMemberId: template.paidByMemberId,
 			imageUrl: null,

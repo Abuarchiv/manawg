@@ -3,6 +3,7 @@ import { formatEuroInput, parseEuroAmount } from '@/core/utils/amount';
 import { CENTS_PER_EURO } from '@/core/utils/money';
 import { parseTimestamp } from '@/core/utils/time';
 import { currencySchema } from '@/core/validators/currency';
+import type { ExpenseCategory } from '@/features/expenses/expense-categories';
 import type { buildExpensePrefillDraft } from '@/features/expenses/expense-prefill';
 import {
 	type SplitMemberLike,
@@ -18,6 +19,7 @@ export type ExpenseSuggestion = Omit<
 > & {
 	splitMode: SplitMode;
 	recurringSourceId: string | null;
+	category?: ExpenseCategory;
 };
 
 /**
@@ -32,6 +34,7 @@ export type ExpenseDraft = {
 	recurringSourceId?: string | null;
 	editingExpense?: unknown;
 	description?: string;
+	category?: string;
 	amountStr?: string;
 	imageUrl?: string | null;
 	paidByMemberId?: string;
@@ -99,6 +102,7 @@ export function splitsToManualInput(
 export function recurringTemplateSuggestion(template: RecurringExpense): ExpenseSuggestion {
 	return {
 		description: template.description,
+		category: template.category,
 		amountStr: formatEuroInput(template.amountCents / CENTS_PER_EURO),
 		imageUrl: null,
 		paidByMemberId: template.paidByMemberId,

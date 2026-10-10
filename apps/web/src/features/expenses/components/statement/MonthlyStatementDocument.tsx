@@ -47,7 +47,7 @@ export function MonthlyStatementDocument({
 	viewerId,
 	viewerName,
 }: MonthlyStatementDocumentProps) {
-	const { monthKey, members, transfers, items, totalCents, settled } = statement;
+	const { monthKey, members, transfers, categories, items, totalCents, settled } = statement;
 	const number = `MWG-${monthKey.slice(2, 4)}${monthKey.slice(5, 7)}-${shareCode.slice(0, 3).toUpperCase()}`;
 	const viewerShare = members.find((member) => member.id === viewerId)?.shareCents ?? 0;
 	const empty = items.length === 0;
@@ -206,6 +206,30 @@ export function MonthlyStatementDocument({
 									)}
 								>
 									{settled ? 'erledigt' : 'offen'}
+								</span>
+							</li>
+						))}
+					</ul>
+				</section>
+			)}
+
+			{!empty && (
+				<section aria-labelledby="statement-categories" className="flex flex-col gap-3">
+					<h2 id="statement-categories" className={H2}>
+						Kategorien
+					</h2>
+					<ul className="flex flex-col border-t border-border">
+						{categories.map((entry) => (
+							<li
+								key={entry.category}
+								className="flex items-center gap-3 border-b border-border py-2.5 text-[14px]"
+							>
+								<span className="min-w-0 flex-1 font-medium">{entry.label}</span>
+								<span className={cn(MONEY, 'text-[13px] font-medium')}>
+									{formatEuroCents(entry.cents)}
+								</span>
+								<span className={cn(MONEY, 'w-10 text-right text-[12px] text-muted-foreground')}>
+									{entry.share} %
 								</span>
 							</li>
 						))}

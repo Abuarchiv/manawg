@@ -6,6 +6,7 @@ const { filterExpenses } = await import('./expense-filter');
 const expense = (id: string, description: string, paidBy: string, debtors: string[]) => ({
 	id,
 	description,
+	category: 'sonstiges' as const,
 	paidByMemberId: paidBy,
 	amountCents: 1000,
 	currency: 'EUR',

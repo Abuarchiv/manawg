@@ -3,6 +3,7 @@ import { todayInputValue } from '@/core/utils/local-date';
 import { CENTS_PER_EURO } from '@/core/utils/money';
 import type { AboSplit, MemberOption } from '@/features/expenses/components/abos/abos-types';
 import { participantsOrAll } from '@/features/expenses/components/ausgaben/expense-form-draft';
+import type { ExpenseCategory } from '@/features/expenses/expense-categories';
 import { equalSplitParticipants } from '@/features/expenses/expense-split-input';
 
 export const DESCRIPTION_MAX = 200;
@@ -18,6 +19,7 @@ export const INTERVAL_OPTIONS = [
 
 export interface AboFormValues {
 	description: string;
+	category: ExpenseCategory;
 	amountCents: number;
 	paidByMemberId: string;
 	intervalMonths: number;

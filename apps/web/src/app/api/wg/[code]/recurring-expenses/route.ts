@@ -14,6 +14,7 @@ import {
 	isRecurringAnchorAllowed,
 	recurringDueAtSchema,
 } from '@/core/validators/recurring-due-date';
+import { expenseCategorySchema } from '@/features/expenses/expense-categories';
 import { MAX_SPLITS, RECURRING_INTERVAL_MAX_MONTHS } from '@/features/expenses/expense-constants';
 import {
 	expenseAmountSchema,
@@ -46,12 +47,14 @@ const EXPENSE_FIELD_ERRORS = {
 	amountCents: 'amount_invalid',
 	currency: 'currency_invalid',
 	description: 'description_invalid',
+	category: 'category_invalid',
 	paidByMemberId: 'member_id_invalid',
 	intervalMonths: 'interval_invalid',
 } as const;
 
 const createRecurringSchema = z.object({
 	description: expenseDescriptionSchema,
+	category: expenseCategorySchema,
 	amountCents: expenseAmountSchema,
 	currency: currencySchema.optional().default('EUR'),
 	paidByMemberId: z.string().uuid(),
@@ -65,6 +68,7 @@ const createRecurringSchema = z.object({
 const advanceSchema = z.object({
 	id: z.string().uuid(),
 	description: expenseDescriptionSchema.optional(),
+	category: expenseCategorySchema.optional(),
 	amountCents: expenseAmountSchema.optional(),
 	currency: currencySchema.optional(),
 	paidByMemberId: z.string().uuid().optional(),
@@ -160,6 +164,7 @@ export const POST = withWgRoute('recurring-expenses POST', async (req, { code })
 						createdByMemberId: member.memberId,
 						paidByMemberId: input.paidByMemberId,
 						description: input.description,
+						category: input.category,
 						amountCents: input.amountCents,
 						intervalMonths: input.intervalMonths,
 						nextDueAt: new Date(input.nextDueAt),
@@ -220,6 +225,7 @@ export const PATCH = withWgRoute('recurring-expenses PATCH', async (req, { code 
 	}
 	const isTemplateUpdate =
 		edit.description !== undefined ||
+		edit.category !== undefined ||
 		edit.amountCents !== undefined ||
 		edit.currency !== undefined ||
 		edit.paidByMemberId !== undefined ||

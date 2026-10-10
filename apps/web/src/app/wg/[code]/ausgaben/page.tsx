@@ -120,6 +120,8 @@ export default function AusgabenPage() {
 					notice={page.actionNotice}
 					description={form.description}
 					setDescription={form.setDescription}
+					category={form.category}
+					setCategory={form.setCategory}
 					amountStr={form.amountStr}
 					setAmountStr={form.setAmountStr}
 					paidByMemberId={form.paidByMemberId}

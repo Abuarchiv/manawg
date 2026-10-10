@@ -84,6 +84,7 @@ export function useRecurringTemplateSave(
 				: null;
 		const fingerprint = JSON.stringify({
 			description: desc,
+			category: form.category,
 			amountCents,
 			paidByMemberId,
 			intervalMonths: recurringIntervalMonths,
@@ -167,6 +168,7 @@ export function useRecurringTemplateSave(
 			body: JSON.stringify({
 				id: editingRecurringExpense?.id,
 				description: desc,
+				category: form.category,
 				amountCents,
 				paidByMemberId,
 				intervalMonths: recurringIntervalMonths,
@@ -189,6 +191,7 @@ export function useRecurringTemplateSave(
 					memberId: identity.memberId,
 					...(idempotencyKey ? { idempotencyKey } : {}),
 					description: desc,
+					category: form.category,
 					amountCents,
 					paidByMemberId,
 					intervalMonths: recurringIntervalMonths,
@@ -210,6 +213,7 @@ export function useRecurringTemplateSave(
 					{
 						id: queued.id,
 						description: desc,
+						category: form.category,
 						amountCents,
 						currency: 'EUR',
 						paidByMemberId,

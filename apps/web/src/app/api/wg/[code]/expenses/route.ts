@@ -125,6 +125,7 @@ export const POST = withWgRoute('expenses POST', async (req, { code }) => {
 		amountCents: body.amountCents,
 		currency: body.currency,
 		description: body.description,
+		category: body.category,
 		imageUrl,
 		occurredAt: body.occurredAt ? new Date(body.occurredAt) : new Date(),
 		splits: body.splits,

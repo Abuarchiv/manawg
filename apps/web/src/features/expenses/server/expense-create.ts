@@ -7,6 +7,7 @@ import { badRequest, conflict, notFound } from '@/core/http/api-errors';
 import type { NotificationDispatchWarning } from '@/core/notifications/notification-dispatch';
 import { currencySchema } from '@/core/validators/currency';
 import { imageUrlSchema } from '@/core/validators/image-url';
+import { expenseCategorySchema } from '@/features/expenses/expense-categories';
 import { MAX_SPLITS } from '@/features/expenses/expense-constants';
 import {
 	expenseAmountSchema,
@@ -37,6 +38,7 @@ export const createExpenseSchema = z
 		amountCents: expenseAmountSchema,
 		currency: currencySchema.optional().default('EUR'),
 		description: expenseDescriptionSchema,
+		category: expenseCategorySchema,
 		imageUrl: imageUrlSchema,
 		occurredAt: occurredAtSchema.optional(),
 		recurringExpenseId: z.string().uuid().optional(),
@@ -61,6 +63,7 @@ export const createExpenseSchema = z
 export const EXPENSE_CREATE_FIELD_ERRORS = {
 	amountCents: 'amount_invalid',
 	description: 'description_invalid',
+	category: 'category_invalid',
 	paidByMemberId: 'member_id_invalid',
 	currency: 'currency_invalid',
 	imageUrl: 'image_invalid',
@@ -77,6 +80,7 @@ export interface ExpenseCreateInput {
 	amountCents: number;
 	currency: string;
 	description: string;
+	category: string;
 	imageUrl: string | null;
 	occurredAt: Date;
 	splits: Split[];
@@ -160,6 +164,8 @@ export async function writeExpense(tx: DbTransaction, input: ExpenseCreateInput)
 		amountCents: input.amountCents,
 		currency: input.currency,
 		description: input.description,
+		// A booked template charge keeps the template's category.
+		category: template ? template.category : input.category,
 		imageUrl: input.imageUrl,
 		occurredAt: input.occurredAt,
 		splits: input.splits,

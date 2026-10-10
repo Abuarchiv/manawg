@@ -19,13 +19,6 @@ import {
 import { parseEuroAmount } from '@/core/utils/amount';
 import { inputDateToIso, todayInputValue } from '@/core/utils/local-date';
 import { CENTS_PER_EURO } from '@/core/utils/money';
-import type { ExpenseFormFieldErrors } from '@/features/expenses/components/ausgaben/ExpenseFormSection';
-import {
-	AMOUNT_MAX_EUROS,
-	AMOUNT_MIN_EUROS,
-	DESCRIPTION_MAX,
-	amountErrorMessage,
-} from '@/features/expenses/components/ausgaben/constants';
 import type { Expense } from '@/features/expenses/components/ausgaben/expense-types';
 import { isoToInputDate } from '@/features/expenses/components/ausgaben/use-expense-form-extras';
 import {
@@ -42,6 +35,7 @@ import { withQueuedOccurredAt } from '@/features/expenses/queued-occurred-at';
 import type { DebtorShare } from '@/features/expenses/split-math';
 import { useRef, useState } from 'react';
 import type { ExpenseFormState, ExpensePageContext } from './expense-page-context';
+import { validateExpenseFields } from './expense-submit-validation';
 import type { ExpenseFormSupport } from './use-expense-form-support';
 
 export type ExpenseCreateResponse = { expense: Expense; warning: NotificationWarning };
@@ -101,17 +95,13 @@ export function useExpenseSubmit(
 		form.setConflictExpenseId(null);
 		const desc = form.description.trim();
 		const amountEuros = parseEuroAmount(form.amountStr);
-		const validationErrors: ExpenseFormFieldErrors = {};
-		if (desc.length === 0 || desc.length > DESCRIPTION_MAX) {
-			validationErrors.description = 'Gib eine kurze Beschreibung ein.';
-		}
-		if (amountEuros === null || amountEuros < AMOUNT_MIN_EUROS || amountEuros > AMOUNT_MAX_EUROS) {
-			validationErrors.amount = amountErrorMessage(amountEuros, form.amountStr);
-		}
 		const { occurredOn } = form.extras;
-		if (occurredOn.length === 0 || occurredOn > todayInputValue()) {
-			validationErrors.date = 'Wähle ein Datum, das nicht in der Zukunft liegt.';
-		}
+		const validationErrors = validateExpenseFields({
+			description: desc,
+			amountEuros,
+			amountText: form.amountStr,
+			occurredOn,
+		});
 		if (Object.keys(validationErrors).length > 0) {
 			support.setValidationErrors(validationErrors);
 			return;
@@ -122,6 +112,7 @@ export function useExpenseSubmit(
 		const fingerprint = JSON.stringify({
 			recurringSourceId,
 			description: desc,
+			category: form.category,
 			amountCents,
 			paidByMemberId,
 			imageUrl,
@@ -188,6 +179,7 @@ export function useExpenseSubmit(
 			paidByMemberId,
 			amountCents,
 			description: desc,
+			category: form.category,
 			imageUrl,
 			splits,
 			expectedUpdatedAt: editingExpense?.updatedAt,
@@ -230,6 +222,7 @@ export function useExpenseSubmit(
 		const optimisticExpense = buildOptimisticExpense({
 			id: optimisticId,
 			description: desc,
+			category: form.category,
 			amountCents,
 			paidByMemberId,
 			imageUrl,
@@ -265,6 +258,7 @@ export function useExpenseSubmit(
 								shareCode: wg.shareCode,
 								memberId: identity.memberId,
 								description: desc,
+								category: form.category,
 								amountCents,
 								paidByMemberId,
 								splits,
@@ -279,6 +273,7 @@ export function useExpenseSubmit(
 								memberId: identity.memberId,
 								...(idempotencyKey ? { idempotencyKey } : {}),
 								description: desc,
+								category: form.category,
 								amountCents,
 								paidByMemberId,
 								splits,

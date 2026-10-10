@@ -13,8 +13,10 @@ import { cn } from '@/shared/lib/cn';
 import { useKeyboardOpen } from '@/shared/lib/use-keyboard-open';
 import { ArrowLeft } from 'lucide-react';
 import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from 'react';
+import { ExpenseCategoryField } from './ExpenseCategoryField';
 import { CloseDraftDialog, ReplaceDraftDialog } from './ExpenseDraftDialogs';
 import { ExpenseExtras } from './ExpenseExtras';
+import { ExpenseFormNotices } from './ExpenseFormNotices';
 import { ExpensePayerDateFields } from './ExpensePayerDateFields';
 import { ExpenseSplitFieldset } from './ExpenseSplitFieldset';
 import { TextField } from './TextField';
@@ -24,6 +26,8 @@ import type { RecurringExpense } from './expense-types';
 import { useExpenseFormDirty } from './use-expense-form-dirty';
 import type { ExpenseFormExtras } from './use-expense-form-extras';
 
+import type { ExpenseCategory } from '@/features/expenses/expense-categories';
+
 const EXPENSE_DESCRIPTION_FIELD_ID = 'expense-description';
 
 export type ExpenseFormField = 'description' | 'amount' | 'date' | 'splits';
@@ -32,6 +36,8 @@ export type ExpenseFormFieldErrors = Partial<Record<ExpenseFormField, string>>;
 interface ExpenseFormSectionProps {
 	description: string;
 	setDescription: Dispatch<SetStateAction<string>>;
+	category: ExpenseCategory;
+	setCategory: Dispatch<SetStateAction<ExpenseCategory>>;
 	amountStr: string;
 	setAmountStr: Dispatch<SetStateAction<string>>;
 	paidByMemberId: string;
@@ -85,6 +91,8 @@ interface ExpenseFormSectionProps {
 export function ExpenseFormSection({
 	description,
 	setDescription,
+	category,
+	setCategory,
 	amountStr,
 	setAmountStr,
 	paidByMemberId,
@@ -148,6 +156,7 @@ export function ExpenseFormSection({
 			: 'new';
 	const isDirty = useExpenseFormDirty({
 		description,
+		category,
 		amountStr,
 		paidByMemberId,
 		splitMode,
@@ -220,27 +229,12 @@ export function ExpenseFormSection({
 						<div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4">
 							<FieldGroup>
 								{notice && <ActionNoticeBanner notice={notice} />}
-								{pendingPrefillDescription && (
-									<Alert>
-										<AlertDescription>Dein vorhandener Entwurf bleibt erhalten.</AlertDescription>
-										<Button
-											type="button"
-											variant="outline"
-											className="mt-3 h-auto w-full whitespace-normal"
-											disabled={formSaving}
-											onClick={() => setReplaceOpen(true)}
-										>
-											Entwurf verwerfen und „{pendingPrefillDescription}“ übernehmen
-										</Button>
-									</Alert>
-								)}
-								{(isEditingQueuedExpense || isEditingQueuedRecurring) && (
-									<Alert>
-										<AlertDescription className="text-foreground">
-											Noch nicht synchronisiert. Die Änderung wird gesendet, sobald du online bist.
-										</AlertDescription>
-									</Alert>
-								)}
+								<ExpenseFormNotices
+									pendingPrefillDescription={pendingPrefillDescription}
+									isEditingQueued={isEditingQueuedExpense || isEditingQueuedRecurring}
+									formSaving={formSaving}
+									onAskReplace={() => setReplaceOpen(true)}
+								/>
 								<TextField
 									id={EXPENSE_DESCRIPTION_FIELD_ID}
 									label="Beschreibung"
@@ -254,6 +248,12 @@ export function ExpenseFormSection({
 									disabled={formSaving}
 									error={fieldErrors.description}
 									enterKeyHint="next"
+								/>
+								<ExpenseCategoryField
+									id="expense-category"
+									value={category}
+									onChange={setCategory}
+									disabled={formSaving}
 								/>
 								<TextField
 									label="Betrag"

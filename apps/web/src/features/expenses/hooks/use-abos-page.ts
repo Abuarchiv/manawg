@@ -152,6 +152,7 @@ export function useAbosPage() {
 		const optimisticAbo: Abo = {
 			id: optimisticId,
 			description: values.description,
+			category: values.category,
 			amountCents: values.amountCents,
 			currency: 'EUR',
 			paidByMemberId: values.paidByMemberId,

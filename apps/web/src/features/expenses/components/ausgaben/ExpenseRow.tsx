@@ -31,6 +31,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatTimeFull } from '@/core/utils/time';
+import { EXPENSE_CATEGORY_LABELS } from '@/features/expenses/expense-categories';
 import { type ExpenseImpact, getExpenseImpact } from '@/features/expenses/expense-impact';
 import { cn } from '@/shared/lib/cn';
 import { Check, MoreHorizontal, Pencil, Receipt, Trash2 } from 'lucide-react';
@@ -117,6 +118,12 @@ export const ExpenseRow = memo(function ExpenseRow({
 													</span>
 												)}
 											</span>
+											{expense.category !== 'sonstiges' && (
+												<>
+													{' · '}
+													{EXPENSE_CATEGORY_LABELS[expense.category]}
+												</>
+											)}
 											{expense.imageUrl && (
 												<>
 													{' · '}

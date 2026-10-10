@@ -17,6 +17,7 @@ import { MEMBER_NAME_MAX_LENGTH, WG_NAME_MAX_LENGTH } from '@/shared/lib/limits'
 import { EXPECTED_MEMBER_ID_HEADER } from '@/shared/lib/member-header';
 import { type NextRequest, NextResponse } from 'next/server';
 import { type E2EWgFixture, E2E_CREATED_WG, buildE2EDashboardData, getE2EWgFixture } from './data';
+import { buildE2EExpenses } from './expenses';
 
 /**
  * API answers of the database-free Playwright build, served by the middleware
@@ -59,7 +60,8 @@ const MEMBER_READS: Record<string, MemberRead> = {
 		}),
 	dashboard: (_req, fixture) => NextResponse.json(buildE2EDashboardData(fixture.shareCode)),
 	events: () => NextResponse.json({ events: [] }),
-	expenses: () => NextResponse.json({ expenses: [], payments: [] }),
+	expenses: (_req, fixture) =>
+		NextResponse.json({ expenses: buildE2EExpenses(fixture), payments: [] }),
 	export: exportResponse,
 	imports: () => NextResponse.json({ imports: [] }),
 	inventory: () => {
@@ -76,6 +78,7 @@ const MEMBER_READS: Record<string, MemberRead> = {
 					createdByMemberId: fixture.members[0]?.id ?? '',
 					paidByMemberId: fixture.members[0]?.id ?? '',
 					description: 'Internet',
+					category: 'wohnen',
 					amountCents: 3290,
 					currency: 'EUR',
 					intervalMonths: 1,

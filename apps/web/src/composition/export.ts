@@ -69,6 +69,7 @@ const SECTION_HEADERS: Record<ExportSectionKey, string[]> = {
 	expenses: [
 		'id',
 		'description',
+		'category',
 		'amountCents',
 		'currency',
 		'paidBy',
@@ -90,6 +91,7 @@ const SECTION_HEADERS: Record<ExportSectionKey, string[]> = {
 	recurringExpenses: [
 		'id',
 		'description',
+		'category',
 		'amountCents',
 		'currency',
 		'paidBy',

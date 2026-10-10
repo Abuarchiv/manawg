@@ -1,0 +1,4 @@
+ALTER TABLE "expenses" ADD COLUMN "category" text DEFAULT 'sonstiges' NOT NULL;--> statement-breakpoint
+ALTER TABLE "recurring_expenses" ADD COLUMN "category" text DEFAULT 'sonstiges' NOT NULL;--> statement-breakpoint
+ALTER TABLE "expenses" ADD CONSTRAINT "expenses_category_check" CHECK ("expenses"."category" IN ('lebensmittel', 'haushalt', 'wohnen', 'freizeit', 'mobilitaet', 'sonstiges'));--> statement-breakpoint
+ALTER TABLE "recurring_expenses" ADD CONSTRAINT "recurring_expenses_category_check" CHECK ("recurring_expenses"."category" IN ('lebensmittel', 'haushalt', 'wohnen', 'freizeit', 'mobilitaet', 'sonstiges'));

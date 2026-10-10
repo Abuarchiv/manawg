@@ -200,6 +200,7 @@ export const expenses = pgTable(
 			{ onDelete: 'set null' },
 		),
 		recurringDueAt: timestamp('recurring_due_at', { withTimezone: true }),
+		category: text('category').notNull().default('sonstiges'),
 		importId: uuid('import_id').references(() => expenseImports.id, { onDelete: 'set null' }),
 		importDuplicateKey: text('import_duplicate_key'),
 		occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull().defaultNow(),
@@ -222,6 +223,11 @@ export const expenses = pgTable(
 		// before it existed could still be 0 or negative — new writes are
 		// checked immediately either way.
 		amountCheck: check('expenses_amount_cents_check', sql`${t.amountCents} > 0`),
+		// Keep in sync with EXPENSE_CATEGORIES in features/expenses/expense-categories.ts.
+		categoryCheck: check(
+			'expenses_category_check',
+			sql`${t.category} IN ('lebensmittel', 'haushalt', 'wohnen', 'freizeit', 'mobilitaet', 'sonstiges')`,
+		),
 	}),
 );
 
@@ -523,6 +529,7 @@ export const recurringExpenses = pgTable(
 		lastCreatedAt: timestamp('last_created_at', { withTimezone: true }),
 		pausedAt: timestamp('paused_at', { withTimezone: true }),
 		splitsJson: text('splits_json').notNull(),
+		category: text('category').notNull().default('sonstiges'),
 		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 	},
@@ -533,6 +540,11 @@ export const recurringExpenses = pgTable(
 			.on(t.nextDueAt)
 			.where(sql`${t.pausedAt} IS NULL`),
 		amountCheck: check('recurring_expenses_amount_cents_check', sql`${t.amountCents} > 0`),
+		// Keep in sync with EXPENSE_CATEGORIES in features/expenses/expense-categories.ts.
+		categoryCheck: check(
+			'recurring_expenses_category_check',
+			sql`${t.category} IN ('lebensmittel', 'haushalt', 'wohnen', 'freizeit', 'mobilitaet', 'sonstiges')`,
+		),
 	}),
 );
 

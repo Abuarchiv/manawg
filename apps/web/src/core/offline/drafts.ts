@@ -81,6 +81,7 @@ export function isEmptyModuleDraft(
 	const defaults: Record<DraftModule, Record<string, unknown>> = {
 		expense: {
 			description: '',
+			category: 'sonstiges',
 			amountStr: '',
 			imageUrl: null,
 			paidByMemberId: memberId,
@@ -207,6 +208,9 @@ export function buildQueueEditDraft(action: OfflineAction): QueueEditDraft | nul
 					queueEditId: action.id,
 					queueEditType: action.type,
 					description: String(action.payload.description ?? ''),
+					...(typeof action.payload.category === 'string'
+						? { category: action.payload.category }
+						: {}),
 					amountStr:
 						typeof action.payload.amountCents === 'number'
 							? formatEuroInput(action.payload.amountCents / 100)

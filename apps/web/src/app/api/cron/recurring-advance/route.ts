@@ -31,6 +31,7 @@ interface DueRecurring {
 	wgId: string;
 	paidByMemberId: string;
 	description: string;
+	category: string;
 	amountCents: number;
 	intervalMonths: number;
 	nextDueAt: Date;
@@ -67,6 +68,7 @@ async function createExpenseForDueAt(
 				.select({
 					paidByMemberId: recurringExpenses.paidByMemberId,
 					description: recurringExpenses.description,
+					category: recurringExpenses.category,
 					amountCents: recurringExpenses.amountCents,
 					intervalMonths: recurringExpenses.intervalMonths,
 					nextDueAt: recurringExpenses.nextDueAt,
@@ -84,6 +86,7 @@ async function createExpenseForDueAt(
 				current.pausedAt !== null ||
 				current.paidByMemberId !== template.paidByMemberId ||
 				current.description !== template.description ||
+				current.category !== template.category ||
 				current.amountCents !== template.amountCents ||
 				current.intervalMonths !== template.intervalMonths ||
 				current.nextDueAt.getTime() !== template.nextDueAt.getTime() ||
@@ -125,6 +128,7 @@ async function createExpenseForDueAt(
 					amountCents: template.amountCents,
 					currency: 'EUR',
 					description: template.description,
+					category: template.category,
 					recurringExpenseId: template.id,
 					recurringDueAt: dueAt,
 					occurredAt: dueAt,
@@ -258,6 +262,7 @@ export const GET = withCronLogging(
 				wgId: recurringExpenses.wgId,
 				paidByMemberId: recurringExpenses.paidByMemberId,
 				description: recurringExpenses.description,
+				category: recurringExpenses.category,
 				amountCents: recurringExpenses.amountCents,
 				intervalMonths: recurringExpenses.intervalMonths,
 				nextDueAt: recurringExpenses.nextDueAt,

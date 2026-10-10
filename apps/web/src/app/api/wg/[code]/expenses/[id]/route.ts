@@ -21,6 +21,7 @@ import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
 import { imageUrlSchema, isAllowedImageUrlForWg } from '@/core/validators/image-url';
+import { EXPENSE_CATEGORIES } from '@/features/expenses/expense-categories';
 import { MAX_SPLITS } from '@/features/expenses/expense-constants';
 import {
 	expenseAmountSchema,
@@ -43,6 +44,7 @@ import { z } from 'zod';
 
 const patchSchema = z.object({
 	description: expenseDescriptionSchema.optional(),
+	category: z.enum(EXPENSE_CATEGORIES).optional(),
 	amountCents: expenseAmountSchema.optional(),
 	currency: currencySchema.optional(),
 	imageUrl: imageUrlSchema,
@@ -125,6 +127,7 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 		fieldErrors: {
 			amountCents: 'amount_invalid',
 			description: 'description_invalid',
+			category: 'category_invalid',
 			currency: 'currency_invalid',
 			imageUrl: 'image_invalid',
 			occurredAt: 'occurred_at_invalid',
@@ -134,8 +137,16 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 	});
 	if (!parsed.ok) return parsed.response;
 
-	const { description, amountCents, currency, imageUrl, occurredAt, expectedUpdatedAt, splits } =
-		parsed.data;
+	const {
+		description,
+		category,
+		amountCents,
+		currency,
+		imageUrl,
+		occurredAt,
+		expectedUpdatedAt,
+		splits,
+	} = parsed.data;
 
 	// A total change without a matching splits array would silently desync
 	// expenses.amountCents from sum(expenseSplits.amountCents) — the invariant
@@ -198,6 +209,7 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 
 	const updates: Partial<typeof expenses.$inferInsert> = {};
 	if (description !== undefined) updates.description = description;
+	if (category !== undefined) updates.category = category;
 	if (amountCents !== undefined) updates.amountCents = amountCents;
 	if (currency !== undefined) updates.currency = currency;
 	if (imageUrl !== undefined) updates.imageUrl = imageUrl ?? null;

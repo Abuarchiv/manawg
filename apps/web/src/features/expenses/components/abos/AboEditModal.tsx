@@ -31,6 +31,7 @@ export function AboEditModal({
 	const initial = useMemo(
 		() => ({
 			description: abo.description,
+			category: abo.category,
 			amountCents: abo.amountCents,
 			paidByMemberId: abo.paidByMemberId,
 			intervalMonths: abo.intervalMonths,

@@ -1,6 +1,11 @@
 import { berlinDayKey } from '@/core/utils/berlin-day';
 import { normalizeCurrency } from '@/core/utils/money';
 import { type SimplifiedDebt, simplifyDebts } from './debt-reduction';
+import {
+	EXPENSE_CATEGORIES,
+	EXPENSE_CATEGORY_LABELS,
+	type ExpenseCategory,
+} from './expense-categories';
 
 export interface StatementExpense {
 	id: string;
@@ -8,6 +13,7 @@ export interface StatementExpense {
 	amountCents: number;
 	currency: string;
 	description: string;
+	category?: string;
 	occurredAt: string;
 	splits: Array<{ debtorMemberId: string; amountCents: number; settledAt: string | null }>;
 }
@@ -34,10 +40,20 @@ interface StatementItem {
 	amountCents: number;
 }
 
+interface StatementCategory {
+	category: ExpenseCategory;
+	label: string;
+	cents: number;
+	/** Share of the month total, whole percent. */
+	share: number;
+}
+
 export interface MonthlyStatement {
 	monthKey: string;
 	totalCents: number;
 	items: StatementItem[];
+	/** Spending per category, largest first; the catch-all category always last. */
+	categories: StatementCategory[];
 	members: StatementMemberRow[];
 	transfers: SimplifiedDebt[];
 	/** Every share owed to someone else in this month is settled. */
@@ -54,6 +70,31 @@ export function shiftMonthKey(monthKey: string, delta: number): string {
 	const [year, month] = monthKey.split('-').map(Number);
 	const index = (year ?? 0) * 12 + (month ?? 1) - 1 + delta;
 	return `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, '0')}`;
+}
+
+/** Sums per category, descending; the catch-all category goes last whatever its size. */
+function buildCategories(
+	expenses: readonly StatementExpense[],
+	totalCents: number,
+): StatementCategory[] {
+	const sums = new Map<ExpenseCategory, number>();
+	for (const expense of expenses) {
+		const category = EXPENSE_CATEGORIES.find((code) => code === expense.category) ?? 'sonstiges';
+		sums.set(category, (sums.get(category) ?? 0) + expense.amountCents);
+	}
+	return [...sums]
+		.map(([category, cents]) => ({
+			category,
+			label: EXPENSE_CATEGORY_LABELS[category],
+			cents,
+			share: totalCents > 0 ? Math.round((cents / totalCents) * 100) : 0,
+		}))
+		.sort((a, b) => {
+			if (a.category === 'sonstiges' || b.category === 'sonstiges') {
+				return a.category === 'sonstiges' ? 1 : -1;
+			}
+			return b.cents - a.cents;
+		});
 }
 
 /**
@@ -115,9 +156,11 @@ export function buildMonthlyStatement(
 		})),
 	);
 
+	const totalCents = inMonth.reduce((sum, expense) => sum + expense.amountCents, 0);
 	return {
 		monthKey,
-		totalCents: inMonth.reduce((sum, expense) => sum + expense.amountCents, 0),
+		totalCents,
+		categories: buildCategories(inMonth, totalCents),
 		items: inMonth.map((expense) => ({
 			id: expense.id,
 			occurredAt: expense.occurredAt,

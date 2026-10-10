@@ -69,6 +69,7 @@ interface QueuedAbsenceInput extends QueuedIdentityInput {
 interface QueuedExpenseInput extends QueuedIdentityInput {
 	idempotencyKey?: string;
 	description: string;
+	category?: string;
 	amountCents: number;
 	paidByMemberId: string;
 	splits: Array<{ debtorMemberId: string; amountCents: number }>;
@@ -86,6 +87,7 @@ interface QueuedExpenseUpdateInput extends QueuedExpenseInput {
 interface QueuedRecurringInput extends QueuedIdentityInput {
 	idempotencyKey?: string;
 	description: string;
+	category?: string;
 	amountCents: number;
 	paidByMemberId: string;
 	intervalMonths: number;
@@ -247,6 +249,7 @@ export function createQueuedExpense(input: QueuedExpenseInput): OfflineAction {
 		input.memberId,
 		{
 			description: input.description,
+			...(input.category ? { category: input.category } : {}),
 			amountCents: input.amountCents,
 			paidByMemberId: input.paidByMemberId,
 			splits: input.splits,
@@ -275,6 +278,7 @@ export function createQueuedExpenseUpdate(input: QueuedExpenseUpdateInput): Offl
 			expenseId: input.expenseId,
 			expectedUpdatedAt: input.expectedUpdatedAt,
 			description: input.description,
+			...(input.category ? { category: input.category } : {}),
 			amountCents: input.amountCents,
 			paidByMemberId: input.paidByMemberId,
 			splits: input.splits,
@@ -294,6 +298,7 @@ export function createQueuedRecurring(input: QueuedRecurringInput): OfflineActio
 		input.memberId,
 		{
 			description: input.description,
+			...(input.category ? { category: input.category } : {}),
 			amountCents: input.amountCents,
 			paidByMemberId: input.paidByMemberId,
 			intervalMonths: input.intervalMonths,
