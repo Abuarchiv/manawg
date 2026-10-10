@@ -329,9 +329,9 @@ textarea,
 	}
 }
 
-/* Aktive Registerkarte als erhabene Glas-Pille (iOS 27 Tab-Leiste): heller
-   Körper, dunkle Kante, kurzer Schatten. Bei weniger Transparenz / mehr
-   Kontrast bleibt die Pille, nur ohne Schatten; forced-colors zeichnet Rand. */
+/* Active tab as a raised glass pill (iOS 27 tab bar): light body, dark edge,
+   short shadow. With reduced transparency / more contrast the pill stays,
+   just without the shadow; forced-colors draws a border. */
 .glass-pill {
 	background: rgb(255 255 255 / 0.96);
 	box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.08), 0 1px 3px rgb(0 0 0 / 0.12);
@@ -353,9 +353,9 @@ textarea,
 	}
 }
 
-/* Start-Kopfzeile bleibt stehen und bekommt beim Scrollen eine deckende Leiste
-   mit Haarlinie (iOS 27 Scroll-Edge-Effekt), scroll-getrieben ohne JS. Ohne
-   animation-timeline oder bei weniger Bewegung ist die Leiste immer deckend. */
+/* The start header stays put and gains an opaque bar with a hairline when
+   scrolling (iOS 27 scroll-edge effect), scroll-driven without JS. Without
+   animation-timeline or with reduced motion the bar is always opaque. */
 [data-home-header] {
 	position: sticky;
 	top: calc(env(safe-area-inset-top, 0px) + var(--banner-stack-height, 0px));
@@ -380,8 +380,8 @@ textarea,
 	}
 }
 
-/* Safari 27 / Chrome 135: eigenes Dropdown ohne JS. Ältere Browser behalten das
-   native Steuerelement, das Chevron-Icon bleibt in beiden Fällen unseres. */
+/* Safari 27 / Chrome 135: custom dropdown without JS. Older browsers keep the
+   native control; the chevron icon is ours in both cases. */
 @supports (appearance: base-select) {
 	[data-slot="native-select"] {
 		appearance: base-select;
@@ -431,11 +431,11 @@ video {
       shrink their text proportionally instead of looking zoomed in.
       Percent bounds keep the user's browser text size as base. */
 html {
-	/* 90 % (14,4 px) ist die Lesbarkeitsgrenze, die pilot-mobile-layout prüft. */
+	/* 90 % (14.4 px) is the readability limit that pilot-mobile-layout checks. */
 	font-size: 90%;
 }
 body {
-	/* Kompakt wie Messenger-Apps: 16 px mit 1.6 wirkte auf dem Handy aufgeblasen. */
+	/* Compact like messenger apps: 16 px at 1.6 looked bloated on the phone. */
 	font-size: 0.875rem;
 	line-height: 1.5;
 }
@@ -657,9 +657,9 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 		--muted-foreground: oklch(0.708 0 0);
 		--accent-foreground: oklch(0.985 0 0);
 		--destructive: oklch(0.704 0.191 22.216);
-		/* Vorher weiß mit 15 % Deckkraft (1,5:1 gegen den Grund). 0,55 ergibt ca. 4,1:1 auf der Seite,
-		   3,7:1 auf Karten und 3,1:1 auf muted-Flächen (WCAG 1.4.11). Flächen mit --input nutzen
-		   foreground/…-Alpha, damit die Füllung nicht mit aufhellt. */
+		/* Previously white at 15 % opacity (1.5:1 against the background). 0.55 gives about 4.1:1 on the page,
+		   3.7:1 on cards and 3.1:1 on muted surfaces (WCAG 1.4.11). Surfaces using --input use
+		   foreground/…-alpha so the fill does not lighten along with it. */
 		--input: oklch(0.55 0 0);
 		--ring: oklch(0.556 0 0);
 		--sidebar: oklch(0.205 0 0);
@@ -750,8 +750,8 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 		text-decoration: none;
 		transition: transform 150ms ease-out;
 	}
-	/* Offene modale Dialoge setzen aria-hidden auf den Skip-Link; dann darf er auch nicht
-	   mehr per Tab erreichbar sein (visibility:hidden nimmt ihn aus der Tab-Reihenfolge). */
+	/* Open modal dialogs set aria-hidden on the skip link; then it must not be
+	   reachable by Tab either (visibility:hidden removes it from the tab order). */
 	.skip-link[aria-hidden="true"],
 	body:has(:is([role="dialog"], [role="alertdialog"])[data-open]) .skip-link {
 		visibility: hidden;

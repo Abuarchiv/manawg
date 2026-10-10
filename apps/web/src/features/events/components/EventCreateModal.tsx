@@ -94,7 +94,7 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 	// Day the draft was last prefilled with.
 	const lastSeedDayRef = useRef('');
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: nur beim Öffnen bzw. neuem Tag vorbelegen, nicht bei jedem Tastendruck.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: prefill only on open or a new day, not on every keystroke.
 	useEffect(() => {
 		if (!open) return;
 		const day = defaultDate?.toDateString() ?? '';

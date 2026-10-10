@@ -1,7 +1,14 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item';
+import {
+	Item,
+	ItemContent,
+	ItemDescription,
+	ItemGroup,
+	ItemGroupEntry,
+	ItemTitle,
+} from '@/components/ui/item';
 import type { KnownWg } from '@/core/auth/identity';
 import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
@@ -60,8 +67,7 @@ export function KnownWgsCard({
 				) : (
 					<ItemGroup aria-label="Bekannte WGs">
 						{knownWgs.slice(0, 3).map((wg) => (
-							// biome-ignore lint/a11y/useSemanticElements: ItemGroup is a div[role=list], a bare <li> would be invalid HTML
-							<div key={wg.code} role="listitem" className="w-full min-w-0">
+							<ItemGroupEntry key={wg.code} className="w-full min-w-0">
 								<Item
 									variant="outline"
 									render={
@@ -82,7 +88,7 @@ export function KnownWgsCard({
 										<ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
 									)}
 								</Item>
-							</div>
+							</ItemGroupEntry>
 						))}
 					</ItemGroup>
 				)}

@@ -46,7 +46,7 @@ export function ShoppingReceiptPrompt({
 		0,
 		...myFreshBought.map((item) => Date.parse(item.boughtAt ?? '')),
 	);
-	// biome-ignore lint/correctness/useExhaustiveDependencies: nur auf die Anzahl reagieren
+	// biome-ignore lint/correctness/useExhaustiveDependencies: react to the count only
 	useEffect(() => {
 		const rose = freshCount > previousCount.current;
 		previousCount.current = freshCount;

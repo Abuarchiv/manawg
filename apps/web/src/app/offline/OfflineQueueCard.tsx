@@ -1,6 +1,12 @@
 'use client';
 
-import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item';
+import {
+	ItemContent,
+	ItemDescription,
+	ItemEntry,
+	ItemGroup,
+	ItemTitle,
+} from '@/components/ui/item';
 import { Separator } from '@/components/ui/separator';
 import type { KnownWg } from '@/core/auth/identity';
 import {
@@ -51,8 +57,7 @@ export function OfflineQueueCard({
 						const summary = getOfflineActionSummary(item);
 						const risk = getOfflineActionRisk(item);
 						return (
-							// biome-ignore lint/a11y/useSemanticElements: ItemGroup is a div[role=list], a bare <li> would be invalid HTML
-							<Item key={item.id} variant="outline" role="listitem" className="items-start">
+							<ItemEntry key={item.id} variant="outline" className="items-start">
 								<ItemContent className="basis-40">
 									<ItemTitle className="line-clamp-none [overflow-wrap:break-word]">
 										{summary.title}
@@ -69,7 +74,7 @@ export function OfflineQueueCard({
 								<span className="shrink-0 text-xs whitespace-nowrap text-muted-foreground tabular-nums">
 									{formatOfflineAge(item.createdAt)}
 								</span>
-							</Item>
+							</ItemEntry>
 						);
 					})}
 				</ItemGroup>

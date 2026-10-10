@@ -33,7 +33,7 @@ export function ForYouSection({ items, loaded, failed, completion }: ForYouSecti
 	// Once done, the row and its button disappear: move focus to the heading, otherwise it would fall back to body.
 	const doneSeen = useRef(0);
 	const needsFocus = useRef(false);
-	// biome-ignore lint/correctness/useExhaustiveDependencies: läuft bei neuem Erledigen und bei neuer Liste (nach dem Neuladen)
+	// biome-ignore lint/correctness/useExhaustiveDependencies: runs on a new completion and on a new list (after reload)
 	useEffect(() => {
 		if (completion.doneTick !== doneSeen.current) {
 			doneSeen.current = completion.doneTick;

@@ -1,7 +1,14 @@
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item';
+import {
+	Item,
+	ItemContent,
+	ItemDescription,
+	ItemGroup,
+	ItemGroupEntry,
+	ItemTitle,
+} from '@/components/ui/item';
 import { ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 
@@ -23,8 +30,7 @@ export function MembershipCard({ memberships }: { memberships: AccountWg[] }) {
 			<CardContent>
 				<ItemGroup>
 					{memberships.map((membership) => (
-						// biome-ignore lint/a11y/useSemanticElements: ItemGroup is a div[role=list], a bare <li> would be invalid HTML
-						<div key={membership.id} role="listitem" className="w-full min-w-0">
+						<ItemGroupEntry key={membership.id} className="w-full min-w-0">
 							<Item
 								variant="outline"
 								render={<Link href={`/wg/${encodeURIComponent(membership.code)}`} />}
@@ -35,7 +41,7 @@ export function MembershipCard({ memberships }: { memberships: AccountWg[] }) {
 								</ItemContent>
 								<ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
 							</Item>
-						</div>
+						</ItemGroupEntry>
 					))}
 				</ItemGroup>
 			</CardContent>

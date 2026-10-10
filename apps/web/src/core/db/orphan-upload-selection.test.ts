@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { ORPHAN_MIN_AGE_MS, selectOrphanKeys } from './orphan-upload-selection';
+import { selectOrphanKeys } from './orphan-upload-selection';
 
 const now = new Date('2026-10-20T12:00:00Z');
-const old = new Date(now.getTime() - ORPHAN_MIN_AGE_MS - 1000);
+// The retention window is 14 days: an upload 14 days and one second old is orphan-eligible.
+const old = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000 - 1000);
 const fresh = new Date(now.getTime() - 60_000);
 
 test('only old, unreferenced and unqueued pictures are orphans', () => {

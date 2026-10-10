@@ -11,7 +11,14 @@ import {
 	EmptyTitle,
 } from '@/components/ui/empty';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
-import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item';
+import {
+	Item,
+	ItemContent,
+	ItemDescription,
+	ItemGroup,
+	ItemGroupEntry,
+	ItemTitle,
+} from '@/components/ui/item';
 import { Marker, MarkerContent } from '@/components/ui/marker';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -224,10 +231,8 @@ export default function AktivitaetPage() {
 					<CardContent>
 						<ItemGroup aria-label="Offene Klärungen">
 							{inboxItems.map((item) => (
-								<div
+								<ItemGroupEntry
 									key={item.id}
-									// biome-ignore lint/a11y/useSemanticElements: ItemGroup is a div role="list"; the wrapper keeps the link a plain item.
-									role="listitem"
 									className="w-full min-w-0 border-b border-border last:border-b-0"
 								>
 									<Item
@@ -249,7 +254,7 @@ export default function AktivitaetPage() {
 											</ItemDescription>
 										</ItemContent>
 									</Item>
-								</div>
+								</ItemGroupEntry>
 							))}
 						</ItemGroup>
 					</CardContent>

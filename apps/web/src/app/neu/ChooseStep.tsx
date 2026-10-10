@@ -12,6 +12,7 @@ import {
 	ItemContent,
 	ItemDescription,
 	ItemGroup,
+	ItemGroupEntry,
 	ItemMedia,
 	ItemTitle,
 } from '@/components/ui/item';
@@ -51,8 +52,7 @@ export function ChooseStep({
 					</h2>
 					<ItemGroup>
 						{accountWgs.map((accountWg) => (
-							// biome-ignore lint/a11y/useSemanticElements: ItemGroup is a div[role=list], a bare <li> would be invalid HTML
-							<div key={accountWg.id} role="listitem" className="w-full min-w-0">
+							<ItemGroupEntry key={accountWg.id} className="w-full min-w-0">
 								<Item
 									variant="outline"
 									render={<Link href={`/wg/${encodeURIComponent(accountWg.code)}`} />}
@@ -65,7 +65,7 @@ export function ChooseStep({
 										<ItemDescription>WG öffnen</ItemDescription>
 									</ItemContent>
 								</Item>
-							</div>
+							</ItemGroupEntry>
 						))}
 					</ItemGroup>
 				</section>

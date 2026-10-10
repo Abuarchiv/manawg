@@ -12,8 +12,14 @@ import {
 	DrawerTitle,
 } from '@/components/ui/drawer';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
-import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item';
-import { ItemGroup } from '@/components/ui/item';
+import {
+	ItemActions,
+	ItemContent,
+	ItemDescription,
+	ItemEntry,
+	ItemGroup,
+	ItemTitle,
+} from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
 import { apiFetch } from '@/core/infra/api-client';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
@@ -134,12 +140,7 @@ export function QuickRestockSheet({
 									{sorted.map((item) => {
 										const amount = restockAmount(item);
 										return (
-											<Item
-												key={item.id}
-												// biome-ignore lint/a11y/useSemanticElements: ItemGroup is a div[role=list], a bare <li> would be invalid HTML.
-												role="listitem"
-												className="px-3 py-2.5 not-last:border-b-border"
-											>
+											<ItemEntry key={item.id} className="px-3 py-2.5 not-last:border-b-border">
 												{/* min-w instead of min-w-0: at large font sizes the button wraps below the text
 											    instead of squeezing the name character by character. */}
 												<ItemContent className="min-w-[10ch] flex-1">
@@ -177,7 +178,7 @@ export function QuickRestockSheet({
 														)}
 													</Button>
 												</ItemActions>
-											</Item>
+											</ItemEntry>
 										);
 									})}
 								</ItemGroup>

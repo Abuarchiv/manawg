@@ -2,7 +2,14 @@
 
 import { useToast } from '@/components/ui/Toast';
 import { Button } from '@/components/ui/button';
-import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item';
+import {
+	Item,
+	ItemActions,
+	ItemContent,
+	ItemDescription,
+	ItemGroupEntry,
+	ItemTitle,
+} from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
 import { apiFetch } from '@/core/infra/api-client';
 import { useInventoryQuantity } from '@/features/inventory/hooks/use-inventory-quantity';
@@ -138,12 +145,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 	return (
 		// The wrapper is the group's list item (role=list); it also carries the divider
 		// (the group's divide-y) and the jump target for ?highlight=.
-		<div
-			// biome-ignore lint/a11y/useSemanticElements: ItemGroup ist role=list über <div>, Kinder brauchen role=listitem.
-			role="listitem"
-			id={`inventory-${item.id}`}
-			className="w-full min-w-0"
-		>
+		<ItemGroupEntry id={`inventory-${item.id}`} className="w-full min-w-0">
 			<Item
 				className={`flex-col items-stretch gap-2 ${highlighted ? 'ring-2 ring-inset ring-ring' : ''}`}
 				aria-busy={pending}
@@ -259,6 +261,6 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 					</ItemActions>
 				</div>
 			</Item>
-		</div>
+		</ItemGroupEntry>
 	);
 });

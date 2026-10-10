@@ -21,6 +21,12 @@ function ItemGroup({ className, ...props }: React.ComponentProps<'div'>) {
 	);
 }
 
+// ItemGroup is a div[role=list], so its entries need role=listitem on a div (a bare <li>
+// would be invalid HTML). The role lives here once instead of at every call site.
+function ItemGroupEntry({ className, ...props }: React.ComponentProps<'div'>) {
+	return <div role="listitem" data-slot="item-group-entry" className={className} {...props} />;
+}
+
 const itemVariants = cva(
 	'group/item flex w-full min-w-0 max-w-full flex-wrap items-center rounded-lg border text-sm [overflow-wrap:anywhere] transition-colors duration-100 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 [a]:transition-colors [a]:hover:bg-muted',
 	{
@@ -65,6 +71,11 @@ function Item({
 			size,
 		},
 	});
+}
+
+// An Item that is itself the list entry of an ItemGroup.
+function ItemEntry(props: React.ComponentProps<typeof Item>) {
+	return <Item role="listitem" {...props} />;
 }
 
 const itemMediaVariants = cva(
@@ -167,6 +178,8 @@ export {
 	ItemContent,
 	ItemActions,
 	ItemGroup,
+	ItemGroupEntry,
+	ItemEntry,
 	ItemTitle,
 	ItemDescription,
 	ItemFooter,
