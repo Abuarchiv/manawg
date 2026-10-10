@@ -1,6 +1,36 @@
 import { safeNextPath } from '@/core/auth/next-path';
 import { createSupabaseServerClient } from '@/core/auth/server';
+import { afterResponse } from '@/core/infra/after-response';
+import { sendMailSafely } from '@/core/mail/send-mail';
+import { renderWelcomeMail } from '@/core/mail/templates';
+import type { User } from '@supabase/supabase-js';
 import { type NextRequest, NextResponse } from 'next/server';
+
+// A session for an account younger than this is the first one: the welcome mail (E1) goes out once.
+const NEW_ACCOUNT_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+function firstName(user: User): string | null {
+	const meta = user.user_metadata as Record<string, unknown> | undefined;
+	const raw = [meta?.full_name, meta?.name, meta?.given_name].find(
+		(value): value is string => typeof value === 'string' && value.trim().length > 0,
+	);
+	return raw ? (raw.trim().split(/\s+/)[0] ?? null) : null;
+}
+
+function queueWelcomeMail(user: User): void {
+	const createdAt = Date.parse(user.created_at);
+	if (!user.email || !user.email_confirmed_at || !Number.isFinite(createdAt)) return;
+	if (Date.now() - createdAt > NEW_ACCOUNT_WINDOW_MS) return;
+	const to = user.email;
+	afterResponse(() =>
+		sendMailSafely({
+			kind: 'welcome',
+			dedupeKey: `welcome:${user.id}`,
+			to,
+			mail: renderWelcomeMail({ firstName: firstName(user) }),
+		}),
+	);
+}
 
 function callbackError(request: NextRequest, response?: NextResponse): NextResponse {
 	const url = new URL('/neu', request.url);
@@ -33,6 +63,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 			flowId !== null ? { flowId } : undefined,
 		);
 		if (error || !data.session) return callbackError(request, response);
+		queueWelcomeMail(data.session.user);
 		if (next === '/auth/reset') {
 			response.cookies.set({
 				name: 'manawg_password_recovery',

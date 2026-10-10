@@ -9,7 +9,9 @@ import {
 import { removeAccountFromWgs } from '@/core/db/delete-account';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { conflict, serverError, serviceUnavailable, unauthorized } from '@/core/http/api-errors';
+import { afterResponse } from '@/core/infra/after-response';
 import { logApiError } from '@/core/infra/observability';
+import { confirmedEmailOf, sendAccountDeletedMail } from '@/core/mail/account-deleted';
 import { eq } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 
@@ -76,11 +78,14 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
 			return { deletedWgs: removed.deletedWgIds.length, completedAt: deletion.completedAt };
 		});
 
+		const email = local.completedAt ? null : await confirmedEmailOf(user.id);
 		const completed =
 			Boolean(local.completedAt) ||
 			(await tryCompleteAccountDeletion(user.id, (authUserId) =>
 				deleteAuthUser(url, serviceRoleKey, authUserId),
 			));
+		if (completed && !local.completedAt)
+			afterResponse(() => sendAccountDeletedMail(user.id, email));
 		return acceptedDeletionResponse(req, completed, local.deletedWgs);
 	} catch (err) {
 		if (err instanceof TransactionAbort && err.code === 'paypal_payment_pending') {

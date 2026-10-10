@@ -169,6 +169,13 @@
       "when": 1791558050929,
       "tag": "0023_cron_scan_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1791660102087,
+      "tag": "0024_mail_log_and_digest",
+      "breakpoints": true
     }
   ]
 }

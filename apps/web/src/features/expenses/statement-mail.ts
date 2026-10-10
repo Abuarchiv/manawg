@@ -1,7 +1,7 @@
 import { formatEuroCents } from '@/core/utils/money';
 import type { MonthlyStatement } from './monthly-statement';
 
-export const APP_ORIGIN = 'https://app.manawg.com';
+import { APP_ORIGIN } from '@/core/mail/brand-mail';
 
 export interface StatementMailInput {
 	wgName: string;

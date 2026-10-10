@@ -14,6 +14,7 @@ import { requireCronSecret } from '@/core/infra/cron-auth';
 import { logApiError, withCronLogging } from '@/core/infra/observability';
 import { isPayPalConfigured } from '@/core/infra/paypal';
 import { getImageStorageProvider, removeSupabaseImages } from '@/core/infra/supabase-storage';
+import { confirmedEmailOf, sendAccountDeletedMail } from '@/core/mail/account-deleted';
 import { reconcileStaleCapturingPayments } from '@/features/expenses/server/paypal-reconcile';
 import { type NextRequest, NextResponse } from 'next/server';
 
@@ -96,7 +97,13 @@ export const GET = withCronLogging(
 		const auth = hasSupabaseEnv() && serviceRoleKey ? getSupabaseEnv() : null;
 		const deleteAuth =
 			auth && serviceRoleKey
-				? (authUserId: string) => deleteAuthUser(auth.url, serviceRoleKey, authUserId)
+				? async (authUserId: string) => {
+						// Read the address first; after the Auth delete it is gone. The mail (E10) follows a confirmed delete.
+						const email = await confirmedEmailOf(authUserId);
+						const confirmed = await deleteAuthUser(auth.url, serviceRoleKey, authUserId);
+						if (confirmed) await sendAccountDeletedMail(authUserId, email);
+						return confirmed;
+					}
 				: null;
 		const [purge, deletions, privateImages, paypal, orphans] = await Promise.allSettled([
 			purgeExpiredIdempotencyResponses(),

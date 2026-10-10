@@ -60,6 +60,12 @@ mock.module('@/core/auth/server', {
 	namedExports: { getAuthenticatedUser: async () => ({ id: userId }) },
 });
 mock.module('@/core/db', { namedExports: { accountDeletions, auditEvents } });
+mock.module('@/core/mail/account-deleted', {
+	namedExports: {
+		confirmedEmailOf: async () => null,
+		sendAccountDeletedMail: async () => undefined,
+	},
+});
 mock.module('@/core/db/account-deletion', {
 	namedExports: {
 		tryCompleteAccountDeletion: async () => {

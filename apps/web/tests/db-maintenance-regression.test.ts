@@ -84,6 +84,7 @@ mock.module('drizzle-orm', {
 mock.module('@/core/db', {
 	namedExports: {
 		idempotencyResponses: {},
+		mailLog: {},
 		db: {
 			delete: () => ({
 				where: () => ({

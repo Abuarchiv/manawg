@@ -94,6 +94,8 @@ export const wgMembers = pgTable(
 		notifyChat: boolean('notify_chat').notNull().default(true),
 		notifyEvents: boolean('notify_events').notNull().default(true),
 		notifyStatementEmail: boolean('notify_statement_email').notNull().default(true),
+		/** Daily mail digest for members without push; see the Touchpoints design (E7). */
+		notifyDigestEmail: boolean('notify_digest_email').notNull().default(true),
 		quietStartHour: integer('quiet_start_hour'),
 		quietEndHour: integer('quiet_end_hour'),
 		// Soft-delete for "Auszug" (move-out). A member who ever paid an expense,

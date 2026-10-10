@@ -89,6 +89,7 @@ export const wgShareCodeLookupLimiter = build(120, 60, 'wg-code-lookup'); // 120
 export const wgShareCodeMissLimiter = build(20, 3600, 'wg-code-miss'); // 20 unknown/foreign share codes / hour / account
 export const notifTestLimiter = build(3, 60, 'notif-test'); // 3 test notifications / min / member — anti-spam
 export const reminderSendLimiter = build(10, 3600, 'reminder-send'); // 10 Mahnungen / hour / member — global anti-spam
+export const inviteMailLimiter = build(10, 3600, 'invite-mail'); // 10 invitation mails / hour / member — anti-spam
 
 export const chatReadLimiter = build(120, 60, 'chat-read'); // 120 read-receipts / min / member
 export const chatMessageLimiter = build(20, 60, 'chat-msg'); // 20 messages / min / member — anti-spam

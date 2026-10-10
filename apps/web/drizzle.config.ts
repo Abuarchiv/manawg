@@ -24,7 +24,11 @@ if (migrationUrl) {
 }
 
 export default defineConfig({
-	schema: ['./src/core/db/schema.ts', './src/core/db/schema-statement-emails.ts'],
+	schema: [
+		'./src/core/db/schema.ts',
+		'./src/core/db/schema-statement-emails.ts',
+		'./src/core/db/schema-mail-log.ts',
+	],
 	out: './drizzle',
 	dialect: 'postgresql',
 	...(url ? { dbCredentials: { url } } : {}),

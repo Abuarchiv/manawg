@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Field, FieldContent, FieldDescription, FieldTitle } from '@/components/ui/field';
 import { Spinner } from '@/components/ui/spinner';
+import { InviteByMailForm } from '@/components/wg/InviteByMailForm';
 import { ShareWgCard } from '@/components/wg/ShareWgCard';
 import type { WgSummary } from '@/components/wg/WgContextProvider';
 import { useWg } from '@/components/wg/WgContextProvider';
@@ -127,6 +128,11 @@ export function ShareAccessSection({
 				{/* ShareWgCard already centres QR and aligns copy buttons */}
 				<div className="p-3">
 					<ShareWgCard wgName={wg.name} shareCode={wg.shareCode} joiningEnabled={joiningEnabled} />
+					<InviteByMailForm
+						shareCode={wg.shareCode}
+						memberId={identity.memberId}
+						joiningEnabled={joiningEnabled}
+					/>
 				</div>
 			</Section>
 

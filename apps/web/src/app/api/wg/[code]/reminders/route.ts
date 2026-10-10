@@ -7,6 +7,7 @@ import { withWgRoute } from '@/core/guards/with-wg-route';
 import { HTTP, badRequest, conflict, forbidden, tooMany } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
+import { afterResponse } from '@/core/infra/after-response';
 import { logApiError } from '@/core/infra/observability';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, reminderSendLimiter } from '@/core/rate-limit';
@@ -24,6 +25,7 @@ import {
 } from '@/features/expenses/reminders';
 import { loadCompletedExpensePayments } from '@/features/expenses/server/expense-payments';
 import { loadOpenExpenses } from '@/features/expenses/server/open-expenses';
+import { sendReminderMail } from '@/features/expenses/server/reminder-mail';
 import { and, desc, eq, gte, inArray, isNull, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -86,6 +88,8 @@ export const POST = withWgRoute('reminders POST', async (req, { code }) => {
 			id: wgMembers.id,
 			name: wgMembers.name,
 			notifyReminders: wgMembers.notifyReminders,
+			pushOptIn: wgMembers.pushOptIn,
+			authUserId: wgMembers.authUserId,
 		})
 		.from(wgMembers)
 		.where(
@@ -206,6 +210,20 @@ export const POST = withWgRoute('reminders POST', async (req, { code }) => {
 		return tooMany('reminder_cooldown', 'reminder_cooldown');
 	}
 	const inserted = result.context.reminder;
+	// Without push the reminder would go unseen; the mail (E8) stands in. Push users get only the push.
+	if (channel === 'push' && !debtor.pushOptIn && debtor.authUserId) {
+		const debtorAuthUserId = debtor.authUserId;
+		afterResponse(() =>
+			sendReminderMail({
+				reminderId: inserted.id,
+				wg: { id: wg.id, name: wg.name, shareCode: wg.shareCode },
+				debtor: { id: debtor.id, authUserId: debtorAuthUserId },
+				creditor: { id: creditor.id, name: creditor.name },
+				amountCents: pair.amountCents,
+				oldestDebtAgeDays: inserted.oldestDebtAgeDays,
+			}),
+		);
+	}
 
 	await recordAuditEvent({
 		wgId: wg.id,

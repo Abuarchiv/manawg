@@ -1,9 +1,10 @@
 import { tooMany } from '@/core/http/api-errors';
-import { checkRateLimit, clientIpKey, unsubscribeLimiter } from '@/core/rate-limit';
 import {
-	disableStatementEmail,
+	type UnsubscribeKind,
+	disableMailKind,
 	verifyUnsubscribeToken,
-} from '@/features/expenses/server/statement-unsubscribe';
+} from '@/core/mail/unsubscribe';
+import { checkRateLimit, clientIpKey, unsubscribeLimiter } from '@/core/rate-limit';
 import { type NextRequest, NextResponse } from 'next/server';
 
 const PAGE_HEADERS = {
@@ -11,6 +12,33 @@ const PAGE_HEADERS = {
 	'Cache-Control': 'private, no-store',
 	'Referrer-Policy': 'no-referrer',
 	'X-Robots-Tag': 'noindex',
+};
+
+const COPY: Record<
+	UnsubscribeKind,
+	{ title: string; question: string; explain: string; done: string }
+> = {
+	statement: {
+		title: 'Monatsabrechnung abbestellen',
+		question: 'Monatsabrechnung abbestellen?',
+		explain:
+			'Du bekommst die Abrechnung am Monatsanfang dann nicht mehr per E-Mail. In der App bleibt sie abrufbar.',
+		done: 'Du bekommst keine Monatsabrechnung mehr per E-Mail. Unter Einstellungen in der App kannst du sie wieder einschalten.',
+	},
+	digest: {
+		title: 'Tageszusammenfassung abbestellen',
+		question: 'Tageszusammenfassung abbestellen?',
+		explain:
+			'Du bekommst dann keine E-Mail mehr darüber, was in deiner WG passiert ist. In der App siehst du weiterhin alles.',
+		done: 'Du bekommst keine Tageszusammenfassung mehr per E-Mail. Unter Einstellungen in der App kannst du sie wieder einschalten.',
+	},
+	reminders: {
+		title: 'Erinnerungen abbestellen',
+		question: 'Erinnerungen an offene Beträge abbestellen?',
+		explain:
+			'Mitbewohner können dich dann nicht mehr per E-Mail oder Push an offene Beträge erinnern. Deine Salden bleiben in der App sichtbar.',
+		done: 'Du bekommst keine Erinnerungen mehr. Unter Einstellungen in der App kannst du sie wieder einschalten.',
+	},
 };
 
 function page(title: string, body: string): NextResponse {
@@ -26,10 +54,7 @@ function invalid(): NextResponse {
 }
 
 async function limited(req: NextRequest): Promise<boolean> {
-	const result = await checkRateLimit(
-		unsubscribeLimiter,
-		`statement-unsubscribe:${clientIpKey(req)}`,
-	);
+	const result = await checkRateLimit(unsubscribeLimiter, `mail-unsubscribe:${clientIpKey(req)}`);
 	return !result.success;
 }
 
@@ -37,21 +62,20 @@ async function limited(req: NextRequest): Promise<boolean> {
 export async function GET(req: NextRequest): Promise<NextResponse> {
 	if (await limited(req)) return tooMany('rate_limited');
 	const token = req.nextUrl.searchParams.get('t') ?? '';
-	if (!verifyUnsubscribeToken(token)) return invalid();
+	const parsed = verifyUnsubscribeToken(token);
+	if (!parsed) return invalid();
+	const copy = COPY[parsed.kind];
 	return page(
-		'Monatsabrechnung abbestellen',
-		`<h1>Monatsabrechnung abbestellen?</h1><p>Du bekommst die Abrechnung am Monatsanfang dann nicht mehr per E-Mail. In der App bleibt sie abrufbar.</p><form method="post" action="/api/email/unsubscribe?t=${encodeURIComponent(token)}"><input type="hidden" name="List-Unsubscribe" value="One-Click"><button type="submit">Abbestellen</button></form><small>Du kannst es jederzeit unter Einstellungen wieder einschalten.</small>`,
+		copy.title,
+		`<h1>${copy.question}</h1><p>${copy.explain}</p><form method="post" action="/api/email/unsubscribe?t=${encodeURIComponent(token)}"><input type="hidden" name="List-Unsubscribe" value="One-Click"><button type="submit">Abbestellen</button></form><small>Du kannst es jederzeit unter Einstellungen wieder einschalten.</small>`,
 	);
 }
 
 /** RFC 8058 one-click target and the confirm form's submit. */
 export async function POST(req: NextRequest): Promise<NextResponse> {
 	if (await limited(req)) return tooMany('rate_limited');
-	const memberId = verifyUnsubscribeToken(req.nextUrl.searchParams.get('t') ?? '');
-	if (!memberId) return invalid();
-	await disableStatementEmail(memberId);
-	return page(
-		'Abbestellt',
-		'<h1>Abbestellt.</h1><p>Du bekommst keine Monatsabrechnung mehr per E-Mail. Unter Einstellungen in der App kannst du sie wieder einschalten.</p>',
-	);
+	const parsed = verifyUnsubscribeToken(req.nextUrl.searchParams.get('t') ?? '');
+	if (!parsed) return invalid();
+	await disableMailKind(parsed.memberId, parsed.kind);
+	return page('Abbestellt', `<h1>Abbestellt.</h1><p>${COPY[parsed.kind].done}</p>`);
 }

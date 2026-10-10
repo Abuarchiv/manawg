@@ -1,0 +1,78 @@
+import 'server-only';
+import { loadConfirmedEmails } from '@/core/auth/auth-user-emails';
+import { db, expenseSplits, expenses } from '@/core/db';
+import { logApiError } from '@/core/infra/observability';
+import { sendMailSafely } from '@/core/mail/send-mail';
+import { renderReminderMail } from '@/core/mail/templates';
+import { unsubscribeUrl } from '@/core/mail/unsubscribe';
+import { and, desc, eq, isNull } from 'drizzle-orm';
+
+const ITEM_LIMIT = 5;
+
+const dateFormat = new Intl.DateTimeFormat('de-DE', {
+	day: '2-digit',
+	month: '2-digit',
+	timeZone: 'Europe/Berlin',
+});
+
+export interface ReminderMailInput {
+	reminderId: string;
+	wg: { id: string; name: string; shareCode: string };
+	debtor: { id: string; authUserId: string };
+	creditor: { id: string; name: string };
+	amountCents: number;
+	oldestDebtAgeDays: number;
+}
+
+/**
+ * E8: the reminder as a mail for a debtor without push. Lists the newest open
+ * items the creditor paid for the debtor. Sent once per reminder row.
+ */
+export async function sendReminderMail(input: ReminderMailInput): Promise<void> {
+	try {
+		const { emails } = await loadConfirmedEmails([input.debtor.authUserId]);
+		const to = emails.get(input.debtor.authUserId);
+		if (!to) return;
+		const rows = await db
+			.select({
+				description: expenses.description,
+				occurredAt: expenses.occurredAt,
+				cents: expenseSplits.amountCents,
+			})
+			.from(expenseSplits)
+			.innerJoin(expenses, eq(expenseSplits.expenseId, expenses.id))
+			.where(
+				and(
+					eq(expenses.wgId, input.wg.id),
+					eq(expenses.paidByMemberId, input.creditor.id),
+					eq(expenseSplits.debtorMemberId, input.debtor.id),
+					isNull(expenseSplits.settledAt),
+				),
+			)
+			.orderBy(desc(expenses.occurredAt))
+			.limit(ITEM_LIMIT);
+		await sendMailSafely({
+			kind: 'reminder',
+			dedupeKey: `reminder:${input.reminderId}`,
+			to,
+			wgId: input.wg.id,
+			memberId: input.debtor.id,
+			unsubscribeUrl: unsubscribeUrl(input.debtor.id, 'reminders'),
+			mail: renderReminderMail({
+				wgName: input.wg.name,
+				shareCode: input.wg.shareCode,
+				creditorName: input.creditor.name,
+				amountCents: input.amountCents,
+				oldestDebtAgeDays: input.oldestDebtAgeDays,
+				items: rows.map((row) => ({
+					description: row.description,
+					date: dateFormat.format(row.occurredAt),
+					cents: row.cents,
+				})),
+				unsubscribeUrl: unsubscribeUrl(input.debtor.id, 'reminders'),
+			}),
+		});
+	} catch (err) {
+		logApiError('[mail] reminder mail failed', err);
+	}
+}
