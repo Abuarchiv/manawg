@@ -1,4 +1,4 @@
-/* Brandbook: satellites gather into the core in a 1200ms loop, without rotation. */
+/* Brandbook: start = bodies grow outward from the core (1400ms); loop = satellites gather into the core in a 1200ms loop, without rotation. */
 .loading .body {
 	transform-box: fill-box;
 	transform-origin: center;
@@ -7,37 +7,45 @@
 .loading .body:first-child {
 	animation-name: pulse;
 }
-.loading .body:nth-child(2) {
+.grow .body {
+	transform-box: fill-box;
+	transform-origin: center;
+	animation: grow 1400ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.grow .body:first-child {
+	animation-name: grow-core;
+}
+:is(.loading, .grow) .body:nth-child(2) {
 	--gather-x: 98.4px;
 	--gather-y: 74.4px;
 	animation-delay: 0.00ms;
 }
-.loading .body:nth-child(3) {
+:is(.loading, .grow) .body:nth-child(3) {
 	--gather-x: 46.4px;
 	--gather-y: -83.2px;
 	animation-delay: -171.43ms;
 }
-.loading .body:nth-child(4) {
+:is(.loading, .grow) .body:nth-child(4) {
 	--gather-x: -59.2px;
 	--gather-y: -79.2px;
 	animation-delay: -342.86ms;
 }
-.loading .body:nth-child(5) {
+:is(.loading, .grow) .body:nth-child(5) {
 	--gather-x: 4.8px;
 	--gather-y: 132.8px;
 	animation-delay: -514.29ms;
 }
-.loading .body:nth-child(6) {
+:is(.loading, .grow) .body:nth-child(6) {
 	--gather-x: -70.4px;
 	--gather-y: 102.4px;
 	animation-delay: -685.71ms;
 }
-.loading .body:nth-child(7) {
+:is(.loading, .grow) .body:nth-child(7) {
 	--gather-x: -128.0px;
 	--gather-y: 16.8px;
 	animation-delay: -857.14ms;
 }
-.loading .body:nth-child(8) {
+:is(.loading, .grow) .body:nth-child(8) {
 	--gather-x: 126.4px;
 	--gather-y: -32.8px;
 	animation-delay: -1028.57ms;
@@ -52,6 +60,23 @@
 		transform: translate(var(--gather-x), var(--gather-y)) scale(0.75);
 	}
 }
+/* Satellites emerge from the core and settle at their final place. */
+@keyframes grow {
+	from {
+		transform: translate(var(--gather-x), var(--gather-y)) scale(0);
+	}
+	to {
+		transform: none;
+	}
+}
+@keyframes grow-core {
+	from {
+		transform: scale(0.4);
+	}
+	to {
+		transform: none;
+	}
+}
 @keyframes pulse {
 	0%,
 	100% {
@@ -62,7 +87,7 @@
 	}
 }
 @media (prefers-reduced-motion: reduce) {
-	.loading .body {
+	:is(.loading, .grow) .body {
 		animation: none;
 		transform: none;
 	}

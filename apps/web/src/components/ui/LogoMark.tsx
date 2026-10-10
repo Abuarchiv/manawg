@@ -12,6 +12,7 @@ interface LogoMarkProps extends ComponentProps<'svg'> {
 	markFill?: string;
 	radius?: ComponentProps<'svg'>['radius'];
 	loading?: boolean;
+	grow?: boolean;
 }
 
 /** The supplied eight-body organism. Unique mask IDs allow multiple marks per page. */
@@ -23,6 +24,7 @@ export function LogoMark({
 	markFill,
 	radius = 0,
 	loading = false,
+	grow = false,
 	...props
 }: LogoMarkProps) {
 	const id = useId().replace(/:/g, '');
@@ -38,7 +40,7 @@ export function LogoMark({
 			role="img"
 			aria-label="ManaWG"
 			data-brand-mark="organism"
-			className={cn('shrink-0', loading && styles.loading, className)}
+			className={cn('shrink-0', loading && styles.loading, grow && styles.grow, className)}
 			{...props}
 		>
 			<defs>
@@ -49,7 +51,11 @@ export function LogoMark({
 				<mask id={maskId} maskUnits="userSpaceOnUse" x="0" y="0" width="416" height="346">
 					<g filter={`url(#${filterId})`} fill="white">
 						{geometry.bodies.map((body) => (
-							<circle key={body.cx} {...body} className={loading ? styles.body : undefined} />
+							<circle
+								key={body.cx}
+								{...body}
+								className={loading || grow ? styles.body : undefined}
+							/>
 						))}
 					</g>
 					<circle cx={geometry.aperture.cx} cy={geometry.aperture.cy} r={aperture} fill="black" />

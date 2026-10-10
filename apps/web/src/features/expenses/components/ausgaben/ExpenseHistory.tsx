@@ -1,5 +1,6 @@
 'use client';
 
+import { LogoMark } from '@/components/ui/LogoMark';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Input } from '@/components/ui/input';
@@ -72,10 +73,9 @@ export function ExpenseHistory({
 			) : loadFailed && expenseCount === 0 ? null : expenseCount === 0 && !initialLoading ? (
 				<Empty>
 					<EmptyHeader>
+						<LogoMark size={48} tile={false} aria-hidden className="text-neutral-300" />
 						<EmptyTitle>Noch keine Ausgaben</EmptyTitle>
-						<EmptyDescription>
-							Trage die erste gemeinsame Ausgabe ein, danach rechnet ManaWG den Ausgleich aus.
-						</EmptyDescription>
+						<EmptyDescription>Trag die erste ein, dann rechnet ManaWG mit.</EmptyDescription>
 					</EmptyHeader>
 				</Empty>
 			) : (

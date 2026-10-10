@@ -1,7 +1,9 @@
 import { InstallPrompt } from '@/components/app/InstallPrompt';
 import { PwaRegister } from '@/components/app/PwaRegister';
 import { ThemeProvider } from '@/components/app/ThemeProvider';
+import { SplashScreen } from '@/components/brand/SplashScreen';
 import { getAppUrl } from '@/shared/lib/app-url';
+import { SPLASH_BOOTSTRAP_SCRIPT } from '@/shared/lib/splash';
 import { THEME_BOOTSTRAP_SCRIPT } from '@/shared/lib/theme';
 import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
@@ -167,6 +169,12 @@ export default async function RootLayout({
 					// biome-ignore lint/security/noDangerouslySetInnerHtml: static constant, no dynamic data
 					dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }}
 				/>
+				<script
+					nonce={nonce}
+					suppressHydrationWarning
+					// biome-ignore lint/security/noDangerouslySetInnerHtml: static constant, no dynamic data
+					dangerouslySetInnerHTML={{ __html: SPLASH_BOOTSTRAP_SCRIPT }}
+				/>
 				{/* Organization + SoftwareApplication JSON-LD for rich results. Content is static JSON.stringify of trusted constants — no XSS surface. */}
 				<Script
 					id="manawg-org-schema"
@@ -183,6 +191,7 @@ export default async function RootLayout({
 				<a href="#main" className="skip-link">
 					Zum Hauptinhalt springen
 				</a>
+				<SplashScreen />
 				<ThemeProvider>
 					{/* Phone column on every screen; wider viewports show backdrop
 					    and a hairline edge around it. */}

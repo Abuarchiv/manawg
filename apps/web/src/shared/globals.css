@@ -840,3 +840,8 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 		padding: 0 !important;
 	}
 }
+
+/* Cold-start splash is skipped (flag set before paint) once shown in this tab. */
+html[data-splash="off"] [data-splash-overlay] {
+	display: none;
+}
