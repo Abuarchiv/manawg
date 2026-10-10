@@ -17,4 +17,4 @@
 
 - [x] 3.1 Unit tests: templates (no exclamation marks, escaping, links), unsubscribe kinds; full suite green.
 - [x] 3.2 E2E: settings-preferences, settings-access, notifications, settlement-debts, account-delete-ui on the fixture build (39 passed, 2026-10-10).
-- [ ] 3.3 Prod migration 0024 and deploy; first real mails need `RESEND_API_KEY` in Vercel Production.
+- [x] 3.3 Prod migration 0024 applied 2026-10-10 (ledger 25) and deployed (dpl_5pySr87RYz9LD4xmJq7bddmSxP3c). First real mails still need `RESEND_API_KEY` in Vercel Production; until then every send is logged as an error in the function logs.
