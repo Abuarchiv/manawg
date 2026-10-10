@@ -8,7 +8,13 @@ import {
 	EmptyMedia,
 	EmptyTitle,
 } from '@/components/ui/empty';
-import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item';
+import {
+	ItemContent,
+	ItemDescription,
+	ItemEntry,
+	ItemGroup,
+	ItemTitle,
+} from '@/components/ui/item';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatRelativeTime, formatTimeFull } from '@/core/utils/time';
 import { Bell } from 'lucide-react';
@@ -57,8 +63,7 @@ export function ReminderHistory({ items, memberName, currentMemberId }: Reminder
 	return (
 		<ItemGroup>
 			{items.map((item) => (
-				// biome-ignore lint/a11y/useSemanticElements: ItemGroup ist ein div mit role="list", die Kinder brauchen role="listitem"
-				<Item key={item.id} role="listitem" variant="outline" size="sm">
+				<ItemEntry key={item.id} variant="outline" size="sm">
 					<ItemContent className="min-w-[min(100%,12rem)]">
 						<ItemTitle className="line-clamp-none break-words">
 							{item.debtorMemberId === currentMemberId
@@ -81,7 +86,7 @@ export function ReminderHistory({ items, memberName, currentMemberId }: Reminder
 					>
 						{formatEuroCents(item.amountCents, item.currency)}
 					</Badge>
-				</Item>
+				</ItemEntry>
 			))}
 		</ItemGroup>
 	);

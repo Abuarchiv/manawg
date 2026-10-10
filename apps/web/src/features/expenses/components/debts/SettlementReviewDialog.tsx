@@ -12,7 +12,13 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item';
+import {
+	ItemContent,
+	ItemDescription,
+	ItemEntry,
+	ItemGroup,
+	ItemTitle,
+} from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatShortDate } from '@/core/utils/time';
@@ -66,10 +72,8 @@ export function SettlementReviewDialog({
 						{(preview?.splits ?? []).map((split) => {
 							const expense = expenses.find((item) => item.id === split.expenseId);
 							return (
-								<Item
+								<ItemEntry
 									key={split.id}
-									// biome-ignore lint/a11y/useSemanticElements: ItemGroup ist role="list"; Item bleibt ein div für das Layout.
-									role="listitem"
 									variant="muted"
 									size="xs"
 									className="relative min-h-11 has-[a:focus-visible]:ring-[3px] has-[a:focus-visible]:ring-ring/50"
@@ -100,7 +104,7 @@ export function SettlementReviewDialog({
 										{split.offset ? '−' : ''}
 										{formatEuroCents(split.amountCents, debt.currency)}
 									</Badge>
-								</Item>
+								</ItemEntry>
 							);
 						})}
 					</ItemGroup>

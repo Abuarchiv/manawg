@@ -3,7 +3,7 @@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Item, ItemContent, ItemFooter, ItemTitle } from '@/components/ui/item';
+import { ItemContent, ItemEntry, ItemFooter, ItemTitle } from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { isPayPalSdkEnabled } from '@/core/infra/security-headers';
@@ -91,8 +91,7 @@ export function SettlementDebtRow({
 	const owedToMe = debt.toId === currentMemberId;
 
 	return (
-		// biome-ignore lint/a11y/useSemanticElements: ItemGroup ist role="list"; Item bleibt ein div für das Layout.
-		<Item role="listitem" size="sm" className="flex-wrap items-center gap-x-2.5 px-0 py-1">
+		<ItemEntry size="sm" className="flex-wrap items-center gap-x-2.5 px-0 py-1">
 			<div aria-hidden className="flex shrink-0 items-center -space-x-0.5">
 				<MemberAvatar name={debt.fromName} size={24} className="ring-2 ring-card" />
 				<MemberAvatar name={debt.toName} size={24} className="ring-2 ring-card" />
@@ -196,6 +195,6 @@ export function SettlementDebtRow({
 				finalFocusRef={settleButtonRef}
 				currentMemberId={currentMemberId}
 			/>
-		</Item>
+		</ItemEntry>
 	);
 }
