@@ -17,5 +17,5 @@
 
 ## 4. Release
 
-- [ ] 4.1 `RESEND_API_KEY`, `STATEMENT_EMAIL_FROM` in Vercel Production; mail to the test account via manual cron call on Preview with an allow-list.
+- [x] 4.1 `RESEND_API_KEY` set in Vercel Production 2026-10-10 (sending-access key, sender defaults to noreply@manawg.com). Manual cron call is not possible: `CRON_SECRET` is a sensitive variable; evidence comes from the scheduled runs and `mail_log`.
 - [ ] 4.2 Prod migration, deploy, first real run on the 1st with log check.

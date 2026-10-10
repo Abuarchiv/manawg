@@ -23,6 +23,7 @@ const template = {
 	pausedAt: null,
 	lastCreatedAt: null,
 	splitsJson: '[]',
+	createdAt: new Date('2026-01-01T00:00:00.000Z'),
 };
 
 const state = { updates: [] as Array<Record<string, unknown>>, casMatches: true };
@@ -104,6 +105,11 @@ test('a recurring booking advances its template in the booking transaction', asy
 	assert.ok(outcome.context && 'created' in outcome.context);
 	assert.equal(outcome.context.created.recurringDueAt, DUE);
 	assert.equal(outcome.context.advanced?.nextDueAt.toISOString(), '2026-02-28T00:00:00.000Z');
+	// The response carries the advanced template, so no follow-up PATCH is needed.
+	assert.equal(
+		(outcome.body as { recurringExpense?: { nextDueAt: string } }).recurringExpense?.nextDueAt,
+		'2026-02-28T00:00:00.000Z',
+	);
 });
 
 test('a lost compare-and-set aborts the booking so the insert rolls back', async () => {

@@ -230,7 +230,10 @@ async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions):
 				recordSynced(readyAction);
 				outcomes.set(action.id, { snapshot: requestSnapshot, reviewOnEdit: true });
 				const recurringAdvance = getRecurringAdvancePayload(readyAction);
-				if (recurringAdvance) {
+				// A create response that carries the advanced template needs no follow-up.
+				const advancedByCreate =
+					typeof res.data === 'object' && res.data !== null && 'recurringExpense' in res.data;
+				if (recurringAdvance && !advancedByCreate) {
 					if (options?.signal?.aborted) {
 						queueRecurringRetry(readyAction);
 						break;

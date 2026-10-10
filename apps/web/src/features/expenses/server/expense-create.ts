@@ -15,6 +15,7 @@ import {
 	expenseSplitSchema,
 	occurredAtSchema,
 } from '@/features/expenses/expense-schemas';
+import { serializeRecurringExpense } from '@/features/expenses/recurring-expenses';
 import { hasCapturingExpensePayment } from '@/features/expenses/server/expense-payments';
 import { insertExpenseWithSplits } from '@/features/expenses/server/expenses';
 import { advanceRecurringDue } from '@/features/expenses/server/recurring-booking';
@@ -22,7 +23,12 @@ import { and, eq } from 'drizzle-orm';
 import type { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-export type ExpenseCreateResponseBody = { expense: unknown; warning: NotificationDispatchWarning };
+/** `recurringExpense` is the template the booking advanced, so the client needs no follow-up PATCH. */
+export type ExpenseCreateResponseBody = {
+	expense: unknown;
+	warning: NotificationDispatchWarning;
+	recurringExpense?: unknown;
+};
 type ExpenseRow = typeof expenses.$inferSelect;
 type RecurringTemplate = typeof recurringExpenses.$inferSelect;
 type Split = { debtorMemberId: string; amountCents: number };
@@ -176,6 +182,7 @@ export async function writeExpense(tx: DbTransaction, input: ExpenseCreateInput)
 	const body: ExpenseCreateResponseBody = {
 		expense: { ...created.expense, splits: created.splits },
 		warning: null,
+		...(advanced ? { recurringExpense: serializeRecurringExpense(advanced) } : {}),
 	};
 	return {
 		status: 200,

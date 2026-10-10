@@ -59,6 +59,7 @@ const PREVIOUS_STEP: Partial<Record<ImportStep, ImportStep>> = {
  */
 function useImportBackGuard(active: boolean, onBack: () => void) {
 	const onBackRef = useRef(onBack);
+	const leavingRef = useRef(false);
 	useEffect(() => {
 		onBackRef.current = onBack;
 	});
@@ -68,6 +69,7 @@ function useImportBackGuard(active: boolean, onBack: () => void) {
 			window.history.pushState({ ...window.history.state, importGuard: true }, '');
 		pushGuard();
 		function onPopState() {
+			if (leavingRef.current) return;
 			if (window.history.state?.importGuard) return;
 			pushGuard();
 			onBackRef.current();
@@ -77,11 +79,25 @@ function useImportBackGuard(active: boolean, onBack: () => void) {
 			window.removeEventListener('popstate', onPopState);
 			// Deferred so a concurrently started navigation can replace the state first.
 			setTimeout(() => {
-				if (overlayNavigationPending()) return;
+				if (leavingRef.current || overlayNavigationPending()) return;
 				if (window.history.state?.importGuard) window.history.back();
 			}, 50);
 		};
 	}, [active]);
+	/**
+	 * Leaves the wizard without leaving marker entries behind: pops the guard entry
+	 * (and the dialog's, when open) back to the wizard's own entry, then replaces
+	 * that one. Back from the target page skips the wizard.
+	 */
+	return (markerEntries: number, navigate: () => void) => {
+		leavingRef.current = true;
+		const onPop = () => {
+			window.removeEventListener('popstate', onPop);
+			navigate();
+		};
+		window.addEventListener('popstate', onPop);
+		window.history.go(-markerEntries);
+	};
 }
 
 export function ImportWizard() {
@@ -97,17 +113,19 @@ export function ImportWizard() {
 		step !== 'commit' &&
 		wizard.commitState !== 'done' &&
 		(step !== 'source' || Boolean(rawPayload));
-	useImportBackGuard(backGuardActive, () => {
+	const leaveThroughGuard = useImportBackGuard(backGuardActive, () => {
 		if (busy || ocrRunning) return;
 		const previous = PREVIOUS_STEP[step];
 		if (previous) wizard.goTo(previous);
 		else if (rawPayload) setLeaveOpen(true);
 	});
-	// With a marker in history, leaving replaces it instead of stacking another entry.
 	const leave = () => {
 		markOverlayNavigation();
-		if (backGuardActive) router.replace(returnHref);
-		else router.push(returnHref);
+		if (!backGuardActive) {
+			router.push(returnHref);
+			return;
+		}
+		leaveThroughGuard(leaveOpen ? 2 : 1, () => router.replace(returnHref));
 	};
 
 	return (

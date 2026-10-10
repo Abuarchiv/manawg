@@ -20,6 +20,7 @@ import { parseEuroAmount } from '@/core/utils/amount';
 import { inputDateToIso, todayInputValue } from '@/core/utils/local-date';
 import { CENTS_PER_EURO } from '@/core/utils/money';
 import type { Expense } from '@/features/expenses/components/ausgaben/expense-types';
+import type { RecurringExpense } from '@/features/expenses/components/ausgaben/expense-types';
 import { isoToInputDate } from '@/features/expenses/components/ausgaben/use-expense-form-extras';
 import {
 	expenseSaveErrorMessage,
@@ -37,8 +38,14 @@ import { useRef, useState } from 'react';
 import type { ExpenseFormState, ExpensePageContext } from './expense-page-context';
 import { validateExpenseFields } from './expense-submit-validation';
 import type { ExpenseFormSupport } from './use-expense-form-support';
+import type { AdvanceRecurringTemplate } from './use-recurring-booking';
 
-export type ExpenseCreateResponse = { expense: Expense; warning: NotificationWarning };
+export type ExpenseCreateResponse = {
+	expense: Expense;
+	warning: NotificationWarning;
+	/** Set when the booking advanced its template; older servers and replays leave it out. */
+	recurringExpense?: RecurringExpense;
+};
 type ExpenseMutationResponse = Expense | ExpenseCreateResponse;
 
 /** Create/edit of one expense: validation, optimistic update, idempotent request (key reused
@@ -47,10 +54,7 @@ export function useExpenseSubmit(
 	ctx: ExpensePageContext,
 	form: ExpenseFormState,
 	support: ExpenseFormSupport,
-	advanceRecurringTemplate: (
-		templateId: string,
-		expectedNextDueAt: string | undefined,
-	) => Promise<boolean>,
+	advanceRecurringTemplate: AdvanceRecurringTemplate,
 ) {
 	const {
 		wg,
@@ -375,6 +379,7 @@ export function useExpenseSubmit(
 				recurringSourceId,
 				expectedRecurringNextDueAt ??
 					recurringExpenses.find((item) => item.id === recurringSourceId)?.nextDueAt,
+				'expense' in res.data ? res.data.recurringExpense : undefined,
 			);
 		}
 		form.setShowForm(false);

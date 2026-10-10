@@ -18,6 +18,16 @@ import { useRef, useState } from 'react';
 import type { ExpensePageContext } from './expense-page-context';
 import type { ExpenseCreateResponse } from './use-expense-submit';
 
+/**
+ * Advances a template after its booking. `served` is the template the create response
+ * already advanced; the PATCH is only the fallback for a response without it (older replay bodies).
+ */
+export type AdvanceRecurringTemplate = (
+	templateId: string,
+	expectedNextDueAt: string | undefined,
+	served?: RecurringExpense,
+) => Promise<boolean>;
+
 const OFFLINE_RECURRING_EXPENSE_MESSAGE =
 	'Fixkosten-Ausgabe offline vorgemerkt. Die Vorlage bleibt bis zur Synchronisierung unverändert.';
 
@@ -46,10 +56,17 @@ export function useRecurringBooking(ctx: ExpensePageContext) {
 	);
 
 	// Always awaited, so an advance failure surfaces as a warning even if the tab closes next.
-	async function advanceRecurringTemplate(
-		templateId: string,
-		expectedNextDueAt: string | undefined,
-	): Promise<boolean> {
+	const advanceRecurringTemplate: AdvanceRecurringTemplate = async (
+		templateId,
+		expectedNextDueAt,
+		served,
+	) => {
+		if (served) {
+			updateRecurringExpenses((current) =>
+				current.map((item) => (item.id === served.id ? served : item)),
+			);
+			return true;
+		}
 		const advanceRes = await apiFetch<{ recurringExpense: RecurringExpense }>(recurringApiUrl, {
 			method: 'PATCH',
 			memberId: identity.memberId,
@@ -72,7 +89,7 @@ export function useRecurringBooking(ctx: ExpensePageContext) {
 		}
 		notify.warning(recurringAdvanceWarningMessage(advanceRes.status, advanceRes.error));
 		return false;
-	}
+	};
 
 	async function createFromRecurringTemplate(template: RecurringExpense): Promise<void> {
 		if (creatingRecurringRef.current) return;
@@ -208,7 +225,11 @@ export function useRecurringBooking(ctx: ExpensePageContext) {
 				: [createRes.data.expense, ...withoutOptimistic];
 		});
 		pending.end(optimisticId);
-		const advanced = await advanceRecurringTemplate(template.id, expectedRecurringNextDueAt);
+		const advanced = await advanceRecurringTemplate(
+			template.id,
+			expectedRecurringNextDueAt,
+			createRes.data.recurringExpense,
+		);
 		if (advanced) {
 			expenseRequestsRef.current.delete(template.id);
 			const pushWarning = notificationWarningMessage(createRes.data.warning);

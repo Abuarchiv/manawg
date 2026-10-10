@@ -303,6 +303,9 @@ test.describe('import error notice', () => {
 		await cdp.send('Emulation.setCPUThrottlingRate', { rate: 20 });
 		await page.getByRole('button', { name: 'Verwerfen' }).click();
 		await expect(page).toHaveURL(new RegExp(`/wg/${FIXTURE_WG.shareCode}/ausgaben`));
+		// The wizard's marker entries are gone: back does not land on the empty wizard.
+		await page.goBack();
+		await expect(page).not.toHaveURL(/\/import/);
 	});
 
 	test('going back from the preview step clears a stale commit error', async ({ page }) => {

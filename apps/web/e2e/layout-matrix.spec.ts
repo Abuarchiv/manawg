@@ -600,9 +600,12 @@ test.describe('mobile layout matrix', () => {
 						await page.setViewportSize({ width: 320, height: 740 });
 						await expect.poll(() => page.evaluate(() => window.innerWidth)).toBe(320);
 					}
-					const rootFontSize = await page.evaluate(
-						() => getComputedStyle(document.documentElement).fontSize,
-					);
+					// Chromium answers the first computed-style read after a device-metrics
+					// override with the previous value; poll until the style has settled.
+					const readRootFontSize = () =>
+						page.evaluate(() => getComputedStyle(document.documentElement).fontSize);
+					if (textScale === '200%') await expect.poll(readRootFontSize).toBe('32px');
+					const rootFontSize = await readRootFontSize();
 					// Normal text scales fluidly on narrow phones (90-100%); 200% stays exact.
 					if (textScale === '200%') {
 						expect(rootFontSize).toBe('32px');
@@ -685,9 +688,12 @@ test.describe('mobile layout matrix', () => {
 				await page.setViewportSize({ width, height: 740 });
 				await expect.poll(() => page.evaluate(() => window.innerWidth)).toBe(width);
 			}
-			const rootFontSize = await page.evaluate(
-				() => getComputedStyle(document.documentElement).fontSize,
-			);
+			// Chromium answers the first computed-style read after a device-metrics
+			// override with the previous value; poll until the style has settled.
+			const readRootFontSize = () =>
+				page.evaluate(() => getComputedStyle(document.documentElement).fontSize);
+			if (textScale === '200%') await expect.poll(readRootFontSize).toBe('32px');
+			const rootFontSize = await readRootFontSize();
 			if (textScale === '200%') {
 				expect(rootFontSize).toBe('32px');
 			} else {

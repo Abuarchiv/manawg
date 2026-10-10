@@ -82,6 +82,8 @@ function freshState(templateWgId: string, templateDueAt: string, pausedAt: Date 
 			wgId: templateWgId,
 			nextDueAt: new Date(templateDueAt),
 			pausedAt,
+			createdAt: new Date('2026-01-01T00:00:00.000Z'),
+			splitsJson: '[]',
 		} as Loose,
 		members: [
 			{ id: firstMemberId, wgId },
@@ -436,7 +438,11 @@ mock.module('@/features/expenses/server/expense-payments', {
 });
 mock.module('@/features/expenses/server/recurring-booking', {
 	namedExports: {
-		advanceRecurringDue: async (_tx: unknown, template: Loose) => ({ ...template, advanced: true }),
+		advanceRecurringDue: async (_tx: unknown, template: Loose) => ({
+			...template,
+			nextDueAt: new Date('2026-11-01T00:00:00.000Z'),
+			advanced: true,
+		}),
 		recordRecurringAdvanced: async () => undefined,
 	},
 });
@@ -482,11 +488,16 @@ test('different members and idempotency keys replay one recurring due after its 
 	const firstResponse = await post({ memberId: firstMemberId, key: 'first-member-key' });
 	assert.equal(firstResponse.status, 200);
 	const canonical = await firstResponse.json();
+	// The booking returns the advanced template, so the client sends no follow-up PATCH.
+	assert.equal(canonical.recurringExpense?.id, recurringExpenseId);
+	assert.notEqual(canonical.recurringExpense?.nextDueAt, dueAt);
 
 	state.template.nextDueAt = new Date('2026-11-01T00:00:00.000Z');
 	const secondResponse = await post({ memberId: secondMemberId, key: 'second-member-key' });
 	assert.equal(secondResponse.status, 200);
-	assert.deepEqual(await secondResponse.json(), canonical);
+	// The replay answers with the existing booking only; the client falls back to the PATCH.
+	const { recurringExpense: _served, ...canonicalBooking } = canonical;
+	assert.deepEqual(await secondResponse.json(), canonicalBooking);
 	assert.equal(state.expenses.length, 1);
 	assert.equal(state.splits.length, 2);
 	assert.equal(state.expenses[0].recurringExpenseId, recurringExpenseId);
