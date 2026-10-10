@@ -16,7 +16,8 @@ import { copyText } from '@/core/utils/clipboard';
 import { cn } from '@/shared/lib/cn';
 import { haptic } from '@/shared/lib/haptics';
 import { Copy, ExternalLink, Pencil, Plus, Reply, Trash2 } from 'lucide-react';
-import { type ReactNode, type RefObject, useMemo } from 'react';
+import { type ReactNode, type RefObject, useLayoutEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { reactorNames } from '../chat-reactions';
 import { extractLinks, splitMentions } from '../chat-text';
 import type { BubbleMessage, ReactionSummary } from '../chat-types';
@@ -48,6 +49,31 @@ interface MessageActionsMenuProps {
 	onReply: (messageId: string) => void;
 	onEdit: () => void;
 	onDelete: () => void;
+}
+
+/**
+ * While the menu is open the page behind it is dimmed and blurred; this puts a sharp, inert copy of the
+ * pressed bubble (tail included) above that backdrop at the same viewport position, as WhatsApp does.
+ */
+function PressedBubbleCopy({ source }: { source: HTMLElement | null }) {
+	const [copy, setCopy] = useState<{ html: string; rect: DOMRect } | null>(null);
+	useLayoutEffect(() => {
+		const bubble = source?.parentElement;
+		setCopy(bubble ? { html: bubble.outerHTML, rect: bubble.getBoundingClientRect() } : null);
+	}, [source]);
+	if (!copy) return null;
+	const { rect } = copy;
+	return createPortal(
+		<div
+			aria-hidden
+			inert
+			className="pointer-events-none fixed z-50 flex"
+			style={{ left: rect.left, top: rect.top, width: rect.width, height: rect.height }}
+			// biome-ignore lint/security/noDangerouslySetInnerHtml: DOM copy of an already rendered, React-escaped bubble
+			dangerouslySetInnerHTML={{ __html: copy.html }}
+		/>,
+		document.body,
+	);
 }
 
 /** The bubble itself as a menu trigger: tap, long press or right click opens react, reply, copy, edit and delete. */
@@ -88,164 +114,172 @@ export function MessageActionsMenu({
 	const links = useMemo(() => extractLinks(message.body ?? ''), [message.body]);
 	const toast = useToast();
 	return (
-		<DropdownMenu open={open} onOpenChange={(next, details) => onOpenChange(next, details.reason)}>
-			<DropdownMenuTrigger
-				ref={triggerRef}
-				disabled={disabled}
-				onContextMenu={(event) => {
-					event.preventDefault();
-					if (!disabled) onOpenChange(true);
-				}}
-				render={
-					<BubbleContent
-						// The trigger would otherwise set data-slot="dropdown-menu-trigger"; the bubble colors key off the slot.
-						data-slot="bubble-content"
-						render={<button type="button" />}
-						// No text selection or iOS callout: a long press opens the menu instead.
-						className={cn(BUBBLE_TEXT, 'cursor-pointer select-none [-webkit-touch-callout:none]')}
-					/>
-				}
+		<>
+			{open && <PressedBubbleCopy source={triggerRef.current} />}
+			<DropdownMenu
+				open={open}
+				onOpenChange={(next, details) => onOpenChange(next, details.reason)}
 			>
-				<span className="sr-only">Aktionen für Nachricht von {senderName}: </span>
-				{showSenderName && (
-					<span
-						aria-hidden
-						className="block text-[13px] font-medium [overflow-wrap:anywhere]"
-						style={{ color: memberTint(senderName).color }}
-					>
-						{senderName}
-					</span>
-				)}
-				{(replyTo || message.replyToMessageId) && (
-					<span className="mb-1.5 block rounded-md border-s-2 border-current/40 bg-current/5 px-2 py-1">
-						{/* replyTo is null when the quoted message is older than the loaded pages. */}
-						<span className="block text-xs font-medium [overflow-wrap:anywhere]">
-							↪{' '}
-							{replyTo ? (replyToSender?.name ?? 'Unbekannt') : 'Antwort auf eine ältere Nachricht'}
-						</span>
-						{replyTo && (
-							<span className="line-clamp-2 whitespace-pre-wrap text-xs opacity-80 [overflow-wrap:anywhere]">
-								{replyTo.deletedAt
-									? 'Diese Nachricht wurde gelöscht.'
-									: (replyTo.body ?? (replyTo.imageUrl ? 'Bild' : '…'))}
-							</span>
-						)}
-					</span>
-				)}
-				{/* Spans instead of <p>: paragraph elements are not allowed inside a <button>. */}
-				<span className="block whitespace-pre-wrap [overflow-wrap:anywhere]">
-					{bodySegments.map((segment, index) =>
-						segment.mention ? (
-							<span
-								// biome-ignore lint/suspicious/noArrayIndexKey: segments are static per body
-								key={index}
-								className={cn(
-									'font-semibold',
-									segment.mention === ownName && 'underline underline-offset-2',
-								)}
-							>
-								{segment.text}
-							</span>
-						) : (
-							segment.text
-						),
-					)}
-					{timeStamp}
-				</span>
-			</DropdownMenuTrigger>
-			<DropdownMenuContent backdrop align={isOwn ? 'end' : 'start'} className="w-auto min-w-48">
-				<DropdownMenuGroup
-					aria-label="Reagieren"
-					className="flex max-w-[calc(100vw-2rem)] flex-wrap items-center gap-0.5"
+				<DropdownMenuTrigger
+					ref={triggerRef}
+					disabled={disabled}
+					onContextMenu={(event) => {
+						event.preventDefault();
+						if (!disabled) onOpenChange(true);
+					}}
+					render={
+						<BubbleContent
+							// The trigger would otherwise set data-slot="dropdown-menu-trigger"; the bubble colors key off the slot.
+							data-slot="bubble-content"
+							render={<button type="button" />}
+							// No text selection or iOS callout: a long press opens the menu instead.
+							className={cn(BUBBLE_TEXT, 'cursor-pointer select-none [-webkit-touch-callout:none]')}
+						/>
+					}
 				>
-					{QUICK_REACTIONS.map((emoji) => {
-						const mine = reactions.some((reaction) => reaction.emoji === emoji && reaction.mine);
-						return (
+					<span className="sr-only">Aktionen für Nachricht von {senderName}: </span>
+					{showSenderName && (
+						<span
+							aria-hidden
+							className="block text-[13px] font-medium [overflow-wrap:anywhere]"
+							style={{ color: memberTint(senderName).color }}
+						>
+							{senderName}
+						</span>
+					)}
+					{(replyTo || message.replyToMessageId) && (
+						<span className="mb-1.5 block rounded-md border-s-2 border-current/40 bg-current/5 px-2 py-1">
+							{/* replyTo is null when the quoted message is older than the loaded pages. */}
+							<span className="block text-xs font-medium [overflow-wrap:anywhere]">
+								↪{' '}
+								{replyTo
+									? (replyToSender?.name ?? 'Unbekannt')
+									: 'Antwort auf eine ältere Nachricht'}
+							</span>
+							{replyTo && (
+								<span className="line-clamp-2 whitespace-pre-wrap text-xs opacity-80 [overflow-wrap:anywhere]">
+									{replyTo.deletedAt
+										? 'Diese Nachricht wurde gelöscht.'
+										: (replyTo.body ?? (replyTo.imageUrl ? 'Bild' : '…'))}
+								</span>
+							)}
+						</span>
+					)}
+					{/* Spans instead of <p>: paragraph elements are not allowed inside a <button>. */}
+					<span className="block whitespace-pre-wrap [overflow-wrap:anywhere]">
+						{bodySegments.map((segment, index) =>
+							segment.mention ? (
+								<span
+									// biome-ignore lint/suspicious/noArrayIndexKey: segments are static per body
+									key={index}
+									className={cn(
+										'font-semibold',
+										segment.mention === ownName && 'underline underline-offset-2',
+									)}
+								>
+									{segment.text}
+								</span>
+							) : (
+								segment.text
+							),
+						)}
+						{timeStamp}
+					</span>
+				</DropdownMenuTrigger>
+				<DropdownMenuContent backdrop align={isOwn ? 'end' : 'start'} className="w-auto min-w-48">
+					<DropdownMenuGroup
+						aria-label="Reagieren"
+						className="flex max-w-[calc(100vw-2rem)] flex-wrap items-center gap-0.5"
+					>
+						{QUICK_REACTIONS.map((emoji) => {
+							const mine = reactions.some((reaction) => reaction.emoji === emoji && reaction.mine);
+							return (
+								<DropdownMenuItem
+									key={emoji}
+									aria-label={mine ? `Reaktion ${emoji} entfernen` : `Mit ${emoji} reagieren`}
+									disabled={reactionPending}
+									className={cn(
+										'size-11 justify-center rounded-full p-0 text-[22px] leading-none',
+										mine && 'bg-accent',
+									)}
+									onClick={() => onQuickReact(emoji, mine)}
+								>
+									{emoji}
+								</DropdownMenuItem>
+							);
+						})}
+						<DropdownMenuItem
+							aria-label="Weitere Reaktionen"
+							disabled={reactionPending}
+							className="size-11 justify-center rounded-full bg-muted p-0"
+							onClick={onReactOpen}
+						>
+							<Plus aria-hidden />
+						</DropdownMenuItem>
+					</DropdownMenuGroup>
+					{reactions.length > 0 && (
+						// Touch has no tooltip: list who reacted here (aria-hidden: the reaction chips already name them).
+						<div
+							aria-hidden="true"
+							className="px-2 py-1.5 text-xs text-muted-foreground [overflow-wrap:anywhere]"
+						>
+							{reactions.map((reaction) => (
+								<div key={reaction.emoji}>
+									{reaction.emoji} {reactorNames(reaction.memberIds, members, identity.memberId)}
+								</div>
+							))}
+						</div>
+					)}
+					<DropdownMenuSeparator />
+					<DropdownMenuGroup>
+						<DropdownMenuItem
+							className="min-h-11"
+							onClick={() => {
+								haptic('selection');
+								onReply(message.id);
+							}}
+						>
+							<Reply aria-hidden /> Antworten
+						</DropdownMenuItem>
+						{message.body && (
 							<DropdownMenuItem
-								key={emoji}
-								aria-label={mine ? `Reaktion ${emoji} entfernen` : `Mit ${emoji} reagieren`}
-								disabled={reactionPending}
-								className={cn(
-									'size-11 justify-center rounded-full p-0 text-[22px] leading-none',
-									mine && 'bg-accent',
-								)}
-								onClick={() => onQuickReact(emoji, mine)}
+								className="min-h-11"
+								// copyText catches a rejected async clipboard call (otherwise a pageerror without feedback).
+								onClick={() =>
+									void copyText(message.body ?? '').then((copied) =>
+										copied
+											? toast.success('Nachricht kopiert.')
+											: toast.error('Kopieren hat nicht geklappt. Versuche es erneut.'),
+									)
+								}
 							>
-								{emoji}
+								<Copy aria-hidden /> Kopieren
 							</DropdownMenuItem>
-						);
-					})}
-					<DropdownMenuItem
-						aria-label="Weitere Reaktionen"
-						disabled={reactionPending}
-						className="size-11 justify-center rounded-full bg-muted p-0"
-						onClick={onReactOpen}
-					>
-						<Plus aria-hidden />
-					</DropdownMenuItem>
-				</DropdownMenuGroup>
-				{reactions.length > 0 && (
-					// Touch has no tooltip: list who reacted here (aria-hidden: the reaction chips already name them).
-					<div
-						aria-hidden="true"
-						className="px-2 py-1.5 text-xs text-muted-foreground [overflow-wrap:anywhere]"
-					>
-						{reactions.map((reaction) => (
-							<div key={reaction.emoji}>
-								{reaction.emoji} {reactorNames(reaction.memberIds, members, identity.memberId)}
-							</div>
+						)}
+						{links.map((url) => (
+							<DropdownMenuItem
+								key={url}
+								className="min-h-11"
+								// biome-ignore lint/a11y/useAnchorContent: the menu item renders its children into this anchor
+								render={<a href={url} target="_blank" rel="noopener noreferrer" />}
+							>
+								<ExternalLink aria-hidden />
+								{links.length > 1 ? `Link öffnen: ${new URL(url).hostname}` : 'Link öffnen'}
+							</DropdownMenuItem>
 						))}
-					</div>
-				)}
-				<DropdownMenuSeparator />
-				<DropdownMenuGroup>
-					<DropdownMenuItem
-						className="min-h-11"
-						onClick={() => {
-							haptic('selection');
-							onReply(message.id);
-						}}
-					>
-						<Reply aria-hidden /> Antworten
-					</DropdownMenuItem>
-					{message.body && (
-						<DropdownMenuItem
-							className="min-h-11"
-							// copyText catches a rejected async clipboard call (otherwise a pageerror without feedback).
-							onClick={() =>
-								void copyText(message.body ?? '').then((copied) =>
-									copied
-										? toast.success('Nachricht kopiert.')
-										: toast.error('Kopieren hat nicht geklappt. Versuche es erneut.'),
-								)
-							}
-						>
-							<Copy aria-hidden /> Kopieren
-						</DropdownMenuItem>
-					)}
-					{links.map((url) => (
-						<DropdownMenuItem
-							key={url}
-							className="min-h-11"
-							// biome-ignore lint/a11y/useAnchorContent: the menu item renders its children into this anchor
-							render={<a href={url} target="_blank" rel="noopener noreferrer" />}
-						>
-							<ExternalLink aria-hidden />
-							{links.length > 1 ? `Link öffnen: ${new URL(url).hostname}` : 'Link öffnen'}
-						</DropdownMenuItem>
-					))}
-					{editable && (
-						<DropdownMenuItem className="min-h-11" onClick={onEdit}>
-							<Pencil aria-hidden /> {hasDraft ? 'Entwurf weiterbearbeiten' : 'Bearbeiten'}
-						</DropdownMenuItem>
-					)}
-					{deletable && (
-						<DropdownMenuItem className="min-h-11" variant="destructive" onClick={onDelete}>
-							<Trash2 aria-hidden /> Löschen
-						</DropdownMenuItem>
-					)}
-				</DropdownMenuGroup>
-			</DropdownMenuContent>
-		</DropdownMenu>
+						{editable && (
+							<DropdownMenuItem className="min-h-11" onClick={onEdit}>
+								<Pencil aria-hidden /> {hasDraft ? 'Entwurf weiterbearbeiten' : 'Bearbeiten'}
+							</DropdownMenuItem>
+						)}
+						{deletable && (
+							<DropdownMenuItem className="min-h-11" variant="destructive" onClick={onDelete}>
+								<Trash2 aria-hidden /> Löschen
+							</DropdownMenuItem>
+						)}
+					</DropdownMenuGroup>
+				</DropdownMenuContent>
+			</DropdownMenu>
+		</>
 	);
 }
