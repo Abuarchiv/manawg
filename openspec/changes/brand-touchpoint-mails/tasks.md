@@ -9,7 +9,7 @@
 
 - [x] 2.1 E1 welcome in the auth callback for accounts younger than 24 h.
 - [x] 2.2 E6 invitation route + `InviteByMailForm` under the share card; rate limiter `invite-mail`; audit event without the address.
-- [x] 2.3 E7 digest job `core/mail/daily-digest.ts`, cron route and `vercel.json` entry (06:30 UTC); settings toggle "Tageszusammenfassung per E-Mail".
+- [x] 2.3 E7 digest job `composition/daily-digest.ts`, cron route and `vercel.json` entry (06:30 UTC); settings toggle "Tageszusammenfassung per E-Mail".
 - [x] 2.4 E8 reminder mail from the reminders route for debtors without push.
 - [x] 2.5 E10 account-deleted mail from the account route and the maintenance retry.
 

@@ -9,12 +9,14 @@ import {
 	countOfflineActions,
 	getSyncedCountForWg,
 	needsManualOfflineResolution,
+	offlineQueueReplaySupported,
 	readOfflineQueue,
 	syncOfflineActions,
 } from '@/core/offline/offline-client';
-import { formatOfflineQueueCount } from '@/core/offline/offline-copy';
 import {
+	OFFLINE_REPLAY_UNSUPPORTED_NOTICE,
 	formatManualOfflineSyncResult,
+	formatOfflineQueueCount,
 	formatOfflineReviewNeeded,
 	formatQueuedOfflineActions,
 	getOfflineSyncFailureMessage,
@@ -154,7 +156,8 @@ export function OfflineBanner() {
 	}
 
 	if (queueCount === 0) return null;
-	const nothingToRetry = reviewCount >= queueCount;
+	const replayUnsupported = !offlineQueueReplaySupported();
+	const nothingToRetry = replayUnsupported || reviewCount >= queueCount;
 
 	return (
 		<output
@@ -169,9 +172,11 @@ export function OfflineBanner() {
 					className="flex min-h-[44px] min-w-0 flex-[1_1_8rem] items-center leading-snug text-pretty"
 				>
 					{notice ??
-						(nothingToRetry
-							? formatOfflineReviewNeeded(reviewCount)
-							: formatQueuedOfflineActions(queueCount))}
+						(replayUnsupported
+							? OFFLINE_REPLAY_UNSUPPORTED_NOTICE
+							: nothingToRetry
+								? formatOfflineReviewNeeded(reviewCount)
+								: formatQueuedOfflineActions(queueCount))}
 				</Link>
 				{nothingToRetry ? null : (
 					<Button

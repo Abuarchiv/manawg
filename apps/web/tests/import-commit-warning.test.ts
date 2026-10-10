@@ -107,7 +107,6 @@ mock.module('@/features/expenses/server/import-hash', {
 });
 mock.module('@/features/expenses/import-parsers', {
 	namedExports: {
-		UnsupportedCurrencyError: class extends Error {},
 		findMappingConflicts: () => [],
 		parseSplidCsv: () => [{ paidByName: 'Member', splits: [] }],
 		parseSplitwiseCsv: () => [{ paidByName: 'Member', splits: [] }],

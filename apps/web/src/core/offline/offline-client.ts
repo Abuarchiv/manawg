@@ -12,6 +12,7 @@ export {
 	enqueueOfflineAction,
 	filterOfflineActionsForAuthUser,
 	isOfflineActionQueued,
+	offlineQueueReplaySupported,
 	readOfflineQueue,
 	updateOfflineQueue,
 } from './offline-store';

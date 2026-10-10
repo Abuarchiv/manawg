@@ -19,6 +19,7 @@ import {
 	isChoreAlreadyCompleted,
 	isRecurringAlreadyAdvanced,
 	isShoppingAlreadyOnList,
+	isTerminalReplayStatus,
 	mergeSyncOutcomes,
 	needsManualOfflineResolution,
 	needsReviewAfterRequest,
@@ -260,6 +261,18 @@ async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions):
 				outcomes.set(action.id, { snapshot: requestSnapshot, reviewOnEdit: true });
 			} else {
 				const failure = explainOfflineActionFailure(res.status, res.error);
+				// A rejected request gets the same answer on every replay; the "Server
+				// prüfen" prefix hands it to the settings queue instead of resending it
+				// every 15 minutes forever. The two explicit messages already tell the
+				// person what to do, so they stay unprefixed.
+				const message =
+					res.error === 'member_context_changed'
+						? REAUTH_REQUIRED_ERROR
+						: res.error === 'image_removed'
+							? 'Bild wurde entfernt: Entferne den Anhang in der Offline-Warteschlange oder wähle das Bild erneut aus.'
+							: isTerminalReplayStatus(res.status)
+								? `Server prüfen: ${failure.title}: ${failure.detail}`
+								: `${failure.title}: ${failure.detail}`;
 				outcomes.set(action.id, {
 					snapshot: requestSnapshot,
 					reviewOnEdit: res.status === 0 || res.status >= 500,
@@ -267,12 +280,7 @@ async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions):
 						...readyAction,
 						attempts: (readyAction.attempts ?? 0) + 1,
 						lastAttemptAt: new Date(now).toISOString(),
-						lastError:
-							res.error === 'member_context_changed'
-								? REAUTH_REQUIRED_ERROR
-								: res.error === 'image_removed'
-									? 'Bild wurde entfernt: Entferne den Anhang in der Offline-Warteschlange oder wähle das Bild erneut aus.'
-									: `${failure.title}: ${failure.detail}`,
+						lastError: message,
 					},
 				});
 				// The rate limit applies to the whole session: the remaining actions would

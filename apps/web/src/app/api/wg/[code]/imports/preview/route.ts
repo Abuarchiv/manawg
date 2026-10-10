@@ -10,9 +10,7 @@ import {
 	readImportJsonBody,
 } from '@/features/expenses/import-body';
 import {
-	type ParsedExpense,
 	type RejectedRow,
-	UnsupportedCurrencyError,
 	collectUniqueNames,
 	findMappingConflicts,
 	matchMembers,
@@ -51,24 +49,13 @@ export const POST = withWgRoute('imports/preview', async (req, { code }) => {
 	);
 	if (!limited.success) return tooMany();
 
-	let parsedExpenses: ParsedExpense[];
 	const rejected: RejectedRow[] = [];
-	try {
-		parsedExpenses =
-			source === 'splitwise_csv'
-				? parseSplitwiseCsv(payload, rejected)
-				: source === 'splid_csv'
-					? parseSplidCsv(payload, rejected)
-					: parseOcrText(payload).expenses;
-	} catch (parseErr) {
-		if (parseErr instanceof UnsupportedCurrencyError) {
-			return NextResponse.json(
-				{ error: 'unsupported_currency', message: parseErr.message, currency: parseErr.currency },
-				{ status: 400 },
-			);
-		}
-		throw parseErr;
-	}
+	const parsedExpenses =
+		source === 'splitwise_csv'
+			? parseSplitwiseCsv(payload, rejected)
+			: source === 'splid_csv'
+				? parseSplidCsv(payload, rejected)
+				: parseOcrText(payload).expenses;
 
 	if (parsedExpenses.length > MAX_IMPORT_ROWS) return badRequest('too_many_rows');
 

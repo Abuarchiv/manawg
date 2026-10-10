@@ -5,6 +5,7 @@ import {
 	parseAmountToCents,
 	parseCsv,
 	parseDateIso,
+	rejectForeignCurrencyRow,
 	stripBom,
 } from './import-csv-helpers';
 import {
@@ -53,7 +54,11 @@ export function parseSplidCsv(csv: string, rejected?: RejectedRow[]): ParsedExpe
 		}
 		if (idxCurrency !== -1) {
 			const currencyRaw = (fields[idxCurrency] ?? 'EUR').trim().toUpperCase();
-			if (currencyRaw && currencyRaw !== 'EUR') {
+			if (
+				currencyRaw &&
+				currencyRaw !== 'EUR' &&
+				!rejectForeignCurrencyRow(rejected, line, currencyRaw, descRaw)
+			) {
 				throw new UnsupportedCurrencyError(currencyRaw);
 			}
 		}

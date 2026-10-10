@@ -3,12 +3,7 @@ import type { ParsedExpense } from './import-types';
 
 export { parseSplidCsv } from './import-splid-csv';
 export { parseSplitwiseCsv } from './import-splitwise-csv';
-export {
-	type ImportSource,
-	type ParsedExpense,
-	type RejectedRow,
-	UnsupportedCurrencyError,
-} from './import-types';
+export type { ImportSource, ParsedExpense, RejectedRow } from './import-types';
 
 /** Short names differ by one letter all the time (Tom/Tim); only longer ones may be fuzzy. */
 function maxFuzzyDistance(length: number): number {
@@ -21,6 +16,7 @@ const REJECTED_ROW_REASONS: Record<string, string> = {
 	amount_invalid: 'Betrag nicht lesbar',
 	no_participants: 'Keine beteiligte Person',
 	payer_missing: 'Zahlende Person fehlt',
+	currency_unsupported: 'Fremdwährung – importiert wird nur EUR',
 };
 
 export function describeRejectedRowReason(reason: string): string {

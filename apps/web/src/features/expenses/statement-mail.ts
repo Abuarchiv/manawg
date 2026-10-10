@@ -1,7 +1,7 @@
 import { formatEuroCents } from '@/core/utils/money';
 import type { MonthlyStatement } from './monthly-statement';
 
-import { APP_ORIGIN } from '@/core/mail/brand-mail';
+import { APP_ORIGIN, escapeHtml } from '@/core/mail/brand-mail';
 
 export interface StatementMailInput {
 	wgName: string;
@@ -47,14 +47,6 @@ const SEGMENT_LABELS: Record<StatusKind, string> = {
 	owed: 'Du bekommst',
 	owes: 'Du schuldest',
 };
-
-function escapeHtml(value: string): string {
-	return value
-		.replaceAll('&', '&amp;')
-		.replaceAll('<', '&lt;')
-		.replaceAll('>', '&gt;')
-		.replaceAll('"', '&quot;');
-}
 
 function monthParts(monthKey: string): { monthName: string; year: string } {
 	const [year = '', month = '1'] = monthKey.split('-');

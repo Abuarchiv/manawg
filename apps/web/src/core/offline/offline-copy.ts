@@ -74,3 +74,7 @@ export function formatOfflineReviewNeeded(count: number): string {
 	if (count === 1) return '1 Aktion braucht deine Prüfung.';
 	return `${count} Aktionen brauchen deine Prüfung.`;
 }
+
+/** Shown when this browser can hold the queue but never replay it (no Web Locks). */
+export const OFFLINE_REPLAY_UNSUPPORTED_NOTICE =
+	'Dieser Browser kann die Warteschlange hier nicht senden. Öffne die App über https in einer aktuellen Browser-Version, damit die Aktionen übertragen werden.';

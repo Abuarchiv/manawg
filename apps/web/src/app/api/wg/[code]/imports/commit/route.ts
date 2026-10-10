@@ -14,7 +14,7 @@ import {
 } from '@/features/expenses/import-body';
 import {
 	type ParsedExpense,
-	UnsupportedCurrencyError,
+	type RejectedRow,
 	findMappingConflicts,
 	parseSplidCsv,
 	parseSplitwiseCsv,
@@ -35,8 +35,11 @@ const commitSchema = z.object({
 });
 
 function parseFor(source: string, payload: string): ParsedExpense[] {
-	if (source === 'splitwise_csv') return parseSplitwiseCsv(payload);
-	if (source === 'splid_csv') return parseSplidCsv(payload);
+	// Rejected rows are already listed in the preview, so the commit must skip
+	// them the same way instead of aborting on the first one.
+	const rejected: RejectedRow[] = [];
+	if (source === 'splitwise_csv') return parseSplitwiseCsv(payload, rejected);
+	if (source === 'splid_csv') return parseSplidCsv(payload, rejected);
 	return parseOcrText(payload).expenses;
 }
 
@@ -76,24 +79,7 @@ export const POST = withWgRoute('imports/commit', async (req, { code }) => {
 			);
 			if (!limited.success) return { stop: tooMany() };
 
-			let parsedExpenses: ParsedExpense[];
-			try {
-				parsedExpenses = parseFor(source, payload);
-			} catch (parseErr) {
-				if (parseErr instanceof UnsupportedCurrencyError) {
-					return {
-						stop: NextResponse.json(
-							{
-								error: 'unsupported_currency',
-								message: parseErr.message,
-								currency: parseErr.currency,
-							},
-							{ status: 400 },
-						),
-					};
-				}
-				throw parseErr;
-			}
+			const parsedExpenses = parseFor(source, payload);
 			if (parsedExpenses.length === 0) return { stop: badRequest('empty_payload') };
 			if (parsedExpenses.length > MAX_IMPORT_ROWS) return { stop: badRequest('too_many_rows') };
 			if (skipIndexes.some((index) => index >= parsedExpenses.length)) {

@@ -1,5 +1,6 @@
 import { CENTS_PER_EURO } from '@/core/utils/money';
 import { AMOUNT_MAX_CENTS } from '@/features/expenses/expense-constants';
+import type { RejectedRow } from './import-types';
 const MIN_PLAUSIBLE_YEAR = 2000;
 const MAX_PLAUSIBLE_YEAR = 2100;
 const BOM = '﻿';
@@ -198,4 +199,25 @@ export function distributeRemainder(total: number, shares: number[]): number[] {
 		}
 	}
 	return out;
+}
+
+/**
+ * Only EUR is supported, but one foreign-currency row must not sink the whole
+ * file: the preview lists rejected rows one by one. Callers without a
+ * `rejected` channel still abort, which is what the commit route relies on
+ * when it re-parses a payload the preview already cleared.
+ */
+export function rejectForeignCurrencyRow(
+	rejected: RejectedRow[] | undefined,
+	line: number,
+	currency: string,
+	description: string,
+): boolean {
+	if (!rejected) return false;
+	rejected.push({
+		line,
+		reason: 'currency_unsupported',
+		description: `${description} (${currency})`,
+	});
+	return true;
 }

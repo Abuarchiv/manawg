@@ -2,15 +2,18 @@ import { normalizeCurrency } from '@/core/utils/money';
 import { MS_PER_DAY } from '@/core/utils/time';
 import type { ExpensePaymentInput } from './expense-payment-input';
 
-export interface DebtExpenseInput {
+export interface PairExpenseInput {
 	paidByMemberId: string;
 	currency?: string;
-	occurredAt: string;
 	splits: Array<{
 		debtorMemberId: string;
 		amountCents: number;
 		settledAt: string | null;
 	}>;
+}
+
+export interface DebtExpenseInput extends PairExpenseInput {
+	occurredAt: string;
 }
 
 export interface PairBalance {
@@ -21,19 +24,18 @@ export interface PairBalance {
 }
 
 /**
- * Aggregate unsettled debts per (debtor, creditor) pair.
- *
- * The result is reduced — if Alice paid for Ben twice (10€ + 5€) and Ben never
- * paid Alice back, we return a single { debtor: Ben, creditor: Alice, 15€ } row.
- * Pairs with zero balance are omitted.
+ * Phase one to three of the pair maths: aggregate unsettled splits per
+ * (debtor, creditor) pair, subtract payments, flip a negative residual into its
+ * reverse pair. Netting and cycle cancellation are deliberately left out —
+ * `computeBalances` adds them, `computeDirectDebts` must not.
  */
-export function computeBalances(
-	expenses: ReadonlyArray<DebtExpenseInput>,
+export function aggregatePairTotals(
+	expenses: ReadonlyArray<PairExpenseInput>,
 	payments: ReadonlyArray<ExpensePaymentInput> = [],
-): PairBalance[] {
+	// Filled with every pair a payment or a flip touched; only cycle cancellation needs it.
+	derivedKeys: Set<string> = new Set(),
+): Map<string, PairBalance> {
 	const totals = new Map<string, PairBalance>();
-	// Debts a payment touched; a circle through one of them is a netted chain, not separate debts.
-	const derivedKeys = new Set<string>();
 
 	for (const expense of expenses) {
 		const creditorId = expense.paidByMemberId;
@@ -91,6 +93,23 @@ export function computeBalances(
 		}
 		pair.amountCents = 0;
 	}
+	return totals;
+}
+
+/**
+ * Aggregate unsettled debts per (debtor, creditor) pair.
+ *
+ * The result is reduced — if Alice paid for Ben twice (10€ + 5€) and Ben never
+ * paid Alice back, we return a single { debtor: Ben, creditor: Alice, 15€ } row.
+ * Pairs with zero balance are omitted.
+ */
+export function computeBalances(
+	expenses: ReadonlyArray<DebtExpenseInput>,
+	payments: ReadonlyArray<ExpensePaymentInput> = [],
+): PairBalance[] {
+	// Debts a payment touched; a circle through one of them is a netted chain, not separate debts.
+	const derivedKeys = new Set<string>();
+	const totals = aggregatePairTotals(expenses, payments, derivedKeys);
 
 	// Net opposite directions per pair: A owes B 42,95 € and B owes A 38,52 €
 	// is a single 4,43 € debt from A to B, never two remindable rows.

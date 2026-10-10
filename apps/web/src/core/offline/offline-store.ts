@@ -44,6 +44,15 @@ function supportsOfflineQueueLocks(): boolean {
 	return typeof navigator !== 'undefined' && Boolean(navigator.locks?.request);
 }
 
+/**
+ * Cross-tab Web Locks need a secure context (https or localhost). Without them
+ * the queue can be written but never replayed, so the UI has to say so instead
+ * of showing a "send now" button that does nothing.
+ */
+export function offlineQueueReplaySupported(): boolean {
+	return supportsOfflineQueueLocks();
+}
+
 export async function withOfflineQueueLock<T>(
 	update: (storage: Storage) => T | Promise<T>,
 ): Promise<OfflineQueueLockResult<T>> {

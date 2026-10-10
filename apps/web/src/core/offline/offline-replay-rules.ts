@@ -120,6 +120,16 @@ export function isShoppingAlreadyOnList(
 	);
 }
 
+/**
+ * The server answered and will answer the same way again, so replaying changes
+ * nothing: only transport failures (0), timeouts (408), Too Early (425) and the
+ * rate limit (429) are worth another attempt. 409 conflicts are handled before
+ * this and count as done.
+ */
+export function isTerminalReplayStatus(status: number): boolean {
+	return status >= 400 && status < 500 && status !== 408 && status !== 425 && status !== 429;
+}
+
 export function needsManualOfflineResolution(action: OfflineAction): boolean {
 	if (replayWindowReviewError(action)) return true;
 	if (action.lastError?.startsWith('Server prüfen:')) return true;

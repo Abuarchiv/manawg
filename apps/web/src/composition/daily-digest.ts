@@ -2,6 +2,9 @@ import 'server-only';
 import { loadConfirmedEmails } from '@/core/auth/auth-user-emails';
 import { chores, db, expenses, wgEvents, wgInventoryItems, wgMembers, wgs } from '@/core/db';
 import { logApiError } from '@/core/infra/observability';
+import { type SendMailResult, sendMail } from '@/core/mail/send-mail';
+import { type DigestItem, renderDigestMail } from '@/core/mail/templates';
+import { unsubscribeUrl } from '@/core/mail/unsubscribe';
 import {
 	berlinDayKey,
 	endOfBerlinDay,
@@ -12,9 +15,6 @@ import { formatEuroCents } from '@/core/utils/money';
 import { MS_PER_DAY } from '@/core/utils/time';
 import { expandRecurrence } from '@/features/events/events';
 import { and, asc, eq, gte, inArray, isNull, lte, or, sql } from 'drizzle-orm';
-import { type SendMailResult, sendMail } from './send-mail';
-import { type DigestItem, renderDigestMail } from './templates';
-import { unsubscribeUrl } from './unsubscribe';
 
 const ITEMS_PER_SECTION = 5;
 

@@ -155,3 +155,13 @@ test('equally short chains behind a payment resolve the same way in any row orde
 		key(computeBalances([...rows].reverse(), payments)),
 	);
 });
+
+test('a pair naming a member outside the roster stays in the raw balances but never in the direct debts', () => {
+	// 'X' is not in `members`, so the shared pair maths must keep the row and the
+	// roster view must drop it — the two callers disagree on purpose.
+	const expenses = [expense('X', 'B', 500)];
+	const expected = [{ fromId: 'B', toId: 'X', cents: 500, currency: 'EUR' }];
+
+	assert.deepEqual(pairRows(computeBalances(expenses)), expected);
+	assert.deepEqual(directRows(computeDirectDebts(expenses, members)), []);
+});

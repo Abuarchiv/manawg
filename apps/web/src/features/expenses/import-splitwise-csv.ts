@@ -6,6 +6,7 @@ import {
 	parseAmountToCents,
 	parseCsv,
 	parseDateIso,
+	rejectForeignCurrencyRow,
 	stripBom,
 } from './import-csv-helpers';
 import {
@@ -92,7 +93,11 @@ export function parseSplitwiseCsv(csv: string, rejected?: RejectedRow[]): Parsed
 		}
 		const currencyRaw =
 			idxCurrency === -1 ? 'EUR' : (fields[idxCurrency] ?? 'EUR').trim().toUpperCase();
-		if (currencyRaw && currencyRaw !== 'EUR') {
+		if (
+			currencyRaw &&
+			currencyRaw !== 'EUR' &&
+			!rejectForeignCurrencyRow(rejected, line, currencyRaw, descRaw)
+		) {
 			throw new UnsupportedCurrencyError(currencyRaw);
 		}
 

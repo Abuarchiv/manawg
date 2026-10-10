@@ -1,4 +1,5 @@
 import { normalizeCurrency } from '@/core/utils/money';
+import { type PairExpenseInput, aggregatePairTotals } from './debts';
 import type { ExpensePaymentInput } from './expense-payment-input';
 
 export interface SimplifiedDebt {
@@ -59,88 +60,26 @@ function currenciesFor(
 }
 
 export function computeDirectDebts(
-	expenses: ExpenseInput[],
+	expenses: PairExpenseInput[],
 	members: MemberInput[],
 	payments: readonly ExpensePaymentInput[] = [],
 ): SimplifiedDebt[] {
 	const memberNames = new Map(members.map((m) => [m.id, m.name]));
-	const totals = new Map<string, SimplifiedDebt>();
-
-	for (const expense of expenses) {
-		const currency = normalizeCurrency(expense.currency);
-		const toId = expense.paidByMemberId;
-		const toName = memberNames.get(toId);
-		if (!toName) continue;
-
-		for (const split of expense.splits) {
-			if (split.settledAt !== null) continue;
-			if (split.amountCents <= 0) continue;
-			if (split.debtorMemberId === toId) continue;
-
-			const fromName = memberNames.get(split.debtorMemberId);
-			if (!fromName) continue;
-
-			const key = currencyKey(currency, `${split.debtorMemberId}:${toId}`);
-			const current = totals.get(key);
-			if (current) {
-				current.cents += split.amountCents;
-			} else {
-				totals.set(key, {
-					fromId: split.debtorMemberId,
-					fromName,
-					toId,
-					toName,
-					cents: split.amountCents,
-					currency,
-				});
-			}
-		}
-	}
-	for (const payment of payments) {
-		if (payment.amountCents <= 0 || payment.fromMemberId === payment.toMemberId) continue;
-		const currency = normalizeCurrency(payment.currency);
-		const fromName = memberNames.get(payment.fromMemberId);
-		const toName = memberNames.get(payment.toMemberId);
-		if (!fromName || !toName) continue;
-		const key = currencyKey(currency, `${payment.fromMemberId}:${payment.toMemberId}`);
-		const current = totals.get(key);
-		if (current) {
-			current.cents -= payment.amountCents;
-		} else {
-			totals.set(key, {
-				fromId: payment.fromMemberId,
-				fromName,
-				toId: payment.toMemberId,
-				toName,
-				cents: -payment.amountCents,
-				currency,
-			});
-		}
-	}
-
-	// Negative payment residuals are refunds owed in reverse; keep positive gross pairs separate.
-	for (const debt of totals.values()) {
-		if (debt.cents >= 0) continue;
-		const currency = normalizeCurrency(debt.currency);
-		const key = currencyKey(currency, `${debt.toId}:${debt.fromId}`);
-		const reverse = totals.get(key);
-		if (reverse) {
-			reverse.cents -= debt.cents;
-		} else {
-			totals.set(key, {
-				fromId: debt.toId,
-				fromName: debt.toName,
-				toId: debt.fromId,
-				toName: debt.fromName,
-				cents: -debt.cents,
-				currency,
-			});
-		}
-		debt.cents = 0;
-	}
-
-	return Array.from(totals.values())
-		.filter((debt) => debt.cents > 0)
+	// The roster decides who still owes anything: a pair that names a member
+	// outside the roster (moved out) is dropped.
+	return Array.from(aggregatePairTotals(expenses, payments).values())
+		.filter(
+			(pair) =>
+				pair.amountCents > 0 && memberNames.has(pair.debtorId) && memberNames.has(pair.creditorId),
+		)
+		.map((pair) => ({
+			fromId: pair.debtorId,
+			fromName: memberNames.get(pair.debtorId) ?? '',
+			toId: pair.creditorId,
+			toName: memberNames.get(pair.creditorId) ?? '',
+			cents: pair.amountCents,
+			currency: pair.currency,
+		}))
 		.sort(
 			(a, b) =>
 				normalizeCurrency(a.currency).localeCompare(normalizeCurrency(b.currency)) ||

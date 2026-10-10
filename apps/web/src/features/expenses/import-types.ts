@@ -16,7 +16,13 @@ export interface ParsedExpense {
 /** A CSV data row the parser could not turn into an expense; `line` is the 1-based file line. */
 export interface RejectedRow {
 	line: number;
-	reason: 'date_invalid' | 'amount_invalid' | 'no_participants' | 'payer_missing';
+	reason:
+		| 'date_invalid'
+		| 'amount_invalid'
+		| 'no_participants'
+		| 'payer_missing'
+		| 'currency_unsupported';
+	/** Row description, plus the offending currency for `currency_unsupported`. */
 	description: string;
 }
 
