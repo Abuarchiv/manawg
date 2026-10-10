@@ -49,6 +49,17 @@ test('archives resolved posts and quiet unpinned infos, keeps open asks on the b
 		isAnnouncementArchived({ ...base, comments: [{ createdAt: '2026-09-25T12:00:00Z' }] }, now),
 		false,
 	);
+	// A reply after my acknowledgement brings the post back; a reply before it does not.
+	const acked = { ...fresh, myReactions: ['seen'], myAcknowledgedAt: '2026-09-26T13:00:00Z' };
+	assert.equal(isAnnouncementArchived(acked, now), true);
+	assert.equal(
+		isAnnouncementArchived({ ...acked, comments: [{ createdAt: '2026-09-26T12:30:00Z' }] }, now),
+		true,
+	);
+	assert.equal(
+		isAnnouncementArchived({ ...acked, comments: [{ createdAt: '2026-09-26T14:00:00Z' }] }, now),
+		false,
+	);
 	assert.equal(
 		isAnnouncementArchived({ ...base, kind: 'problem', status: 'resolved', pinnedAt: old }, now),
 		true,
@@ -63,14 +74,26 @@ test('summarizes known reactions per announcement and marks my own', () => {
 			{ announcementId: 'a', memberId: 'bob', reaction: 'seen' },
 			{ announcementId: 'a', memberId: 'me', reaction: 'unknown' },
 			{ announcementId: 'b', memberId: 'bob', reaction: 'ok' },
+			{
+				announcementId: 'c',
+				memberId: 'me',
+				reaction: 'seen',
+				createdAt: '2026-09-26T13:00:00.000Z',
+			},
 		],
 		'me',
 	);
 	assert.deepEqual(summary.get('a'), {
 		reactionCounts: { take: 2, seen: 1 },
 		myReactions: ['take'],
+		myAcknowledgedAt: null,
 	});
-	assert.deepEqual(summary.get('b'), { reactionCounts: { ok: 1 }, myReactions: [] });
+	assert.deepEqual(summary.get('b'), {
+		reactionCounts: { ok: 1 },
+		myReactions: [],
+		myAcknowledgedAt: null,
+	});
+	assert.equal(summary.get('c')?.myAcknowledgedAt, '2026-09-26T13:00:00.000Z');
 	assert.equal(
 		summarizeAnnouncementReactions(
 			[{ announcementId: 'a', memberId: 'me', reaction: 'ok' }],

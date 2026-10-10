@@ -24,6 +24,9 @@ export function withToggledReaction(
 		myReactions: active
 			? item.myReactions.filter((current) => current !== reaction)
 			: [...item.myReactions, reaction],
+		...(reaction === 'seen' || reaction === 'ok'
+			? { myAcknowledgedAt: active ? null : new Date().toISOString() }
+			: {}),
 		reactionCounts: {
 			...item.reactionCounts,
 			[reaction]: Math.max(0, (item.reactionCounts[reaction] ?? 0) + (active ? -1 : 1)),

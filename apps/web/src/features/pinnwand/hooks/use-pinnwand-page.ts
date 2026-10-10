@@ -137,7 +137,11 @@ export function usePinnwandPage() {
 	const stableEdit = useStableCallback(actions.editAnnouncement);
 	const stableToggleReaction = useStableCallback((a: Announcement, reaction: ReactionKey) => {
 		const now = Date.now();
-		const acknowledged = { ...a, myReactions: [...a.myReactions, reaction] };
+		const acknowledged = {
+			...a,
+			myReactions: [...a.myReactions, reaction],
+			myAcknowledgedAt: new Date(now).toISOString(),
+		};
 		if (
 			!a.myReactions.includes(reaction) &&
 			!isAnnouncementArchived(a, now) &&

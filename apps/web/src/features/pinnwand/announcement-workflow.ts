@@ -21,11 +21,15 @@ interface AnnouncementReactionInput {
 	announcementId: string;
 	memberId: string;
 	reaction: string;
+	/** When the reaction was set; lets a later reply lift an acknowledged post again. */
+	createdAt?: Date | string;
 }
 
 interface AnnouncementReactionSummary {
 	reactionCounts: Partial<Record<AnnouncementReactionKey, number>>;
 	myReactions: AnnouncementReactionKey[];
+	/** Newest of my 'seen'/'ok' reactions, ISO; null when unknown. */
+	myAcknowledgedAt: string | null;
 }
 
 export function getAnnouncementHash(id: string): string {
@@ -48,10 +52,15 @@ export function summarizeAnnouncementReactions(
 		const entry = summary.get(reaction.announcementId) ?? {
 			reactionCounts: {},
 			myReactions: [],
+			myAcknowledgedAt: null,
 		};
 		entry.reactionCounts[reaction.reaction] = (entry.reactionCounts[reaction.reaction] ?? 0) + 1;
 		if (currentMemberId && reaction.memberId === currentMemberId) {
 			entry.myReactions.push(reaction.reaction);
+			if (reaction.createdAt && (reaction.reaction === 'seen' || reaction.reaction === 'ok')) {
+				const at = new Date(reaction.createdAt).toISOString();
+				if (!entry.myAcknowledgedAt || at > entry.myAcknowledgedAt) entry.myAcknowledgedAt = at;
+			}
 		}
 		summary.set(reaction.announcementId, entry);
 	}
@@ -73,17 +82,21 @@ export function isAnnouncementArchived(
 		createdAt: string;
 		comments?: readonly { createdAt: string }[];
 		myReactions?: readonly string[];
+		myAcknowledgedAt?: string | null;
 	},
 	now: number,
 ): boolean {
 	if (item.status === 'resolved') return true;
 	if (item.pinnedAt || (item.kind !== 'info' && item.kind !== 'decision')) return false;
-	// Reactions carry no timestamp, so a reply after the acknowledgement keeps it archived.
-	if (item.myReactions?.some((reaction) => reaction === 'seen' || reaction === 'ok')) return true;
 	const lastActivity = Math.max(
 		Date.parse(item.createdAt),
 		...(item.comments ?? []).map((comment) => Date.parse(comment.createdAt)),
 	);
+	if (item.myReactions?.some((reaction) => reaction === 'seen' || reaction === 'ok')) {
+		// A reply after the acknowledgement brings the post back up; without a timestamp it stays archived.
+		const acknowledgedAt = item.myAcknowledgedAt ? Date.parse(item.myAcknowledgedAt) : Number.NaN;
+		return Number.isNaN(acknowledgedAt) || lastActivity <= acknowledgedAt;
+	}
 	return now - lastActivity > ANNOUNCEMENT_FADE_MS;
 }
 

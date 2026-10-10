@@ -158,6 +158,7 @@ export const GET = withWgRoute('announcements GET', async (req, { code }) => {
 			announcementId: announcementReactions.announcementId,
 			memberId: announcementReactions.memberId,
 			reaction: announcementReactions.reaction,
+			createdAt: announcementReactions.createdAt,
 			memberName: wgMembers.name,
 			memberColor: wgMembers.color,
 		})
@@ -205,6 +206,7 @@ export const GET = withWgRoute('announcements GET', async (req, { code }) => {
 			...item,
 			reactionCounts: reactionSummary.get(item.id)?.reactionCounts ?? {},
 			myReactions: reactionSummary.get(item.id)?.myReactions ?? [],
+			myAcknowledgedAt: reactionSummary.get(item.id)?.myAcknowledgedAt ?? null,
 			takers: takersByAnnouncement.get(item.id) ?? [],
 			comments: commentsByAnnouncement.get(item.id) ?? [],
 		})),

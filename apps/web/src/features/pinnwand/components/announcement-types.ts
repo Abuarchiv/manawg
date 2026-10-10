@@ -30,6 +30,8 @@ export interface Announcement {
 	updatedAt?: string;
 	reactionCounts: Partial<Record<ReactionKey, number>>;
 	myReactions: ReactionKey[];
+	/** When I last set 'seen'/'ok'; a newer comment lifts the post out of the archive. */
+	myAcknowledgedAt?: string | null;
 	takers: AnnouncementTaker[];
 	comments: AnnouncementComment[];
 }
