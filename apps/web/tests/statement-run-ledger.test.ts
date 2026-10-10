@@ -84,6 +84,7 @@ async function setup(mailCount: number) {
 		members: [],
 		transfers: [],
 		settled: true,
+		categories: [],
 	};
 	const recipient = (index: number) => ({
 		memberId: members[index]?.id ?? '',

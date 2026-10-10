@@ -36,6 +36,7 @@ test('manual splits must add up to the amount', () => {
 test('an abo whose shares match the equal split opens in equal mode', () => {
 	const initial = {
 		description: 'Netflix',
+		category: 'freizeit' as const,
 		amountCents: 1000,
 		paidByMemberId: 'a',
 		intervalMonths: 1,

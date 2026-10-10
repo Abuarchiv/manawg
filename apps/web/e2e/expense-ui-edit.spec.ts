@@ -315,6 +315,7 @@ test.describe('expense edit payer', () => {
 	const expense: Expense = {
 		id: 'fixture-expense-edit-payer',
 		paidByMemberId: MEMBER.id,
+		category: 'sonstiges',
 		amountCents: 1250,
 		currency: 'EUR',
 		description: 'Payer contract test',

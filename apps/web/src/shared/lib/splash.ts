@@ -1,8 +1,8 @@
 export const SPLASH_DURATION_MS = 1400;
 export const SPLASH_FADE_MS = 200;
-export const SPLASH_STORAGE_KEY = 'manawg:splash-shown';
+const SPLASH_STORAGE_KEY = 'manawg:splash-shown';
 /** Opt-in for screenshot runs: shows the splash even under automation. */
-export const SPLASH_DEMO_KEY = 'manawg:splash-demo';
+const SPLASH_DEMO_KEY = 'manawg:splash-demo';
 
 /**
  * Runs before first paint: the splash shows once per PWA window ("Kaltstart"), never in a
