@@ -6,6 +6,7 @@ import { SignUpPrompt } from '@/components/auth/SignUpPrompt';
 import { SocialLoginButtons } from '@/components/auth/SocialLoginButtons';
 import { EntryFrame } from '@/components/entry/EntryFrame';
 import { LegalLinks } from '@/components/entry/LegalLinks';
+import { useConfirmLogoutDiscard } from '@/components/entry/useConfirmLogoutDiscard';
 import { Button } from '@/components/ui/button';
 import { FieldGroup, FieldSeparator } from '@/components/ui/field';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -115,6 +116,7 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 		if (authState !== 'loading') setRetried(false);
 	}, [authState]);
 
+	const { confirmDiscard, dialog: logoutDiscardDialog } = useConfirmLogoutDiscard();
 	const errorActions = { clearError, setFormError, setFieldError };
 	const { createdWg, setCreatedWg, createWg } = useCreateWg({
 		wgName,
@@ -148,16 +150,12 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 			const { signOutSocialAccount } = await import('@/core/auth/client');
 			const pushTargets = accountWgs.flatMap((wg) => {
 				const identity = getIdentity(wg.id);
-				return identity
-					? [
-							{
-								code: wg.code,
-								memberId: identity.memberId,
-							},
-						]
-					: [];
+				return identity ? [{ code: wg.code, memberId: identity.memberId }] : [];
 			});
-			const { pushCleanup } = await signOutSocialAccount(pushTargets);
+			const { pushCleanup, cancelled } = await signOutSocialAccount(pushTargets, {
+				confirmDiscard,
+			});
+			if (cancelled) return;
 			resetDraft(getNeuIntentFromSearch(searchParams.toString()));
 			setCreatedWg(null);
 			clearError();
@@ -394,6 +392,7 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 					{switching ? 'Bitte warten…' : 'Mit anderem Konto anmelden'}
 				</Button>
 			)}
+			{logoutDiscardDialog}
 		</EntryFrame>
 	);
 }

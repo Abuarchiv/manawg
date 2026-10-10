@@ -1,6 +1,7 @@
 'use client';
 
 import { ErrorBox } from '@/components/app/ErrorBox';
+import { useConfirmLogoutDiscard } from '@/components/entry/useConfirmLogoutDiscard';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { AccountDeleteSection } from '@/components/wg/einstellungen/AccountDeleteSection';
@@ -9,6 +10,7 @@ import { useState } from 'react';
 
 // Signed-in users without a WG never reach WG settings, so offer sign-out and deletion here.
 export function SignOutActions({ onSignedOut }: { onSignedOut: () => void }) {
+	const { confirmDiscard, dialog } = useConfirmLogoutDiscard();
 	const [signingOut, setSigningOut] = useState(false);
 	const [signOutError, setSignOutError] = useState(false);
 
@@ -19,8 +21,8 @@ export function SignOutActions({ onSignedOut }: { onSignedOut: () => void }) {
 		setSignOutError(false);
 		try {
 			const { signOutSocialAccount } = await import('@/core/auth/client');
-			await signOutSocialAccount();
-			onSignedOut();
+			const { cancelled } = await signOutSocialAccount([], { confirmDiscard });
+			if (!cancelled) onSignedOut();
 		} catch {
 			setSignOutError(true);
 		} finally {
@@ -46,6 +48,7 @@ export function SignOutActions({ onSignedOut }: { onSignedOut: () => void }) {
 				)}
 			</div>
 			<AccountDeleteSection />
+			{dialog}
 		</div>
 	);
 }

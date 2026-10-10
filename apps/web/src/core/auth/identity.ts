@@ -149,6 +149,28 @@ export function hasLocalIdentityFor(authUserId: string | null): boolean {
 	return false;
 }
 
+/**
+ * The one account this browser holds identities for, or null when there are none or several.
+ * Lets the offline page keep a signed-in user's queue when the expired access token cannot be
+ * refreshed without network.
+ */
+export function soleStoredAuthUserId(): string | null {
+	const ls = safeLocalStorage();
+	if (!ls) return null;
+	const ids = new Set<string>();
+	try {
+		for (let index = 0; index < ls.length; index += 1) {
+			const key = ls.key(index);
+			if (!key?.startsWith(STORAGE_PREFIX)) continue;
+			const authUserId = getIdentity(key.slice(STORAGE_PREFIX.length))?.authUserId;
+			if (authUserId) ids.add(authUserId);
+		}
+	} catch {
+		// Storage may become inaccessible between individual reads.
+	}
+	return ids.size === 1 ? ([...ids][0] ?? null) : null;
+}
+
 export function clearIdentity(wgId: string): void {
 	const ls = safeLocalStorage();
 	if (!ls) return;

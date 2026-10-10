@@ -37,6 +37,18 @@ mock.module('@supabase/ssr', {
 		}),
 	},
 });
+const queue = { unsent: 0, synced: [] as string[] };
+mock.module('@/core/offline/offline-client', {
+	namedExports: {
+		readOfflineQueue: () =>
+			queue.unsent > 0 ? [{ shareCode: 'ABCD2345', memberId: 'member-a' }] : [],
+		syncOfflineActions: async (code: string) => {
+			queue.synced.push(code);
+			return 0;
+		},
+		countOfflineActions: () => queue.unsent,
+	},
+});
 mock.module('./supabase-env', {
 	namedExports: {
 		getSupabaseEnv: () => ({ url: 'https://auth.example.test', publishableKey: 'test' }),
@@ -134,6 +146,49 @@ test('logout reports when browser unsubscribe failed but still clears the auth s
 		assert.deepEqual(result, { pushCleanup: 'failed' });
 		assert.equal(state.events.at(-1)?.type, 'sign-out');
 		assert.equal(state.isSubscriptionActive(), true);
+	} finally {
+		state.cleanup();
+	}
+});
+
+test('logout with unsent actions asks first and keeps the session when declined', async () => {
+	const state = harness();
+	queue.unsent = 2;
+	queue.synced = [];
+	try {
+		const asked: number[] = [];
+		const declined = await state.client.signOutSocialAccount([], {
+			confirmDiscard: async (count) => {
+				asked.push(count);
+				return false;
+			},
+		});
+		assert.deepEqual(declined, { pushCleanup: 'none', cancelled: true });
+		assert.deepEqual(asked, [2]);
+		assert.deepEqual(queue.synced, ['ABCD2345']);
+		assert.equal(
+			state.events.some((event) => event.type === 'sign-out'),
+			false,
+		);
+		const accepted = await state.client.signOutSocialAccount([], {
+			confirmDiscard: async () => true,
+		});
+		assert.deepEqual(accepted, { pushCleanup: 'unsubscribed' });
+		assert.equal(state.events.at(-1)?.type, 'sign-out');
+	} finally {
+		queue.unsent = 0;
+		state.cleanup();
+	}
+});
+
+test('logout does not ask when the queue is empty', async () => {
+	const state = harness();
+	try {
+		const result = await state.client.signOutSocialAccount([], {
+			confirmDiscard: async () => assert.fail('must not ask'),
+		});
+		assert.equal(result.cancelled, undefined);
+		assert.equal(state.events.at(-1)?.type, 'sign-out');
 	} finally {
 		state.cleanup();
 	}

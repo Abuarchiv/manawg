@@ -7,6 +7,7 @@ import {
 	rememberWg,
 	setIdentity,
 } from '@/core/auth/identity';
+import { isSessionExpired } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
 import {
 	type Dispatch,
@@ -50,9 +51,16 @@ export function useSessionMember({
 }) {
 	const [hydrated, setHydrated] = useState(false);
 	const [memberLoadError, setMemberLoadError] = useState(false);
+	// The Supabase session is gone (sign-out, expired refresh token): not the same as "not a member".
+	const [sessionEnded, setSessionEnded] = useState(false);
 
 	useEffect(() => {
 		const storedIdentity = getIdentity(wg.id);
+		// The server already verified this member (SSR); cache it so the transient-error
+		// fallback in loadSessionMember has something to fall back to.
+		if (initialIdentity?.authUserId && storedIdentity?.authUserId !== initialIdentity.authUserId) {
+			setIdentity(wg.id, initialIdentity);
+		}
 		// A sessionless WG (the database-free Playwright build) has no Supabase
 		// session by design; the locally stored identity is the member.
 		if (sessionless) {
@@ -86,6 +94,7 @@ export function useSessionMember({
 			if (generation !== authGenerationRef.current) return;
 			const member = res.ok ? res.data.currentMember : undefined;
 			if (member) {
+				setSessionEnded(false);
 				const nextIdentity: StoredIdentity = {
 					memberId: member.memberId,
 					name: member.name,
@@ -118,6 +127,7 @@ export function useSessionMember({
 				setMemberLoaded(true);
 				return;
 			}
+			if (!res.ok && res.status === 401 && isSessionExpired(res.error)) setSessionEnded(true);
 			clearIdentity(wg.id);
 			setStateIdentity(null);
 			setIsAdmin(false);
@@ -149,6 +159,7 @@ export function useSessionMember({
 				syncAbortRef.current?.abort();
 				syncAbortRef.current = null;
 				authUserIdRef.current = null;
+				setSessionEnded(true);
 				clearIdentity(wg.id);
 				setStateIdentity(null);
 				setIsAdmin(false);
@@ -159,6 +170,7 @@ export function useSessionMember({
 			const loadForUser = (nextUserId: string) => {
 				if (nextUserId !== authUserIdRef.current) {
 					authUserIdRef.current = nextUserId;
+					setSessionEnded(false);
 					const generation = ++authGenerationRef.current;
 					syncAbortRef.current?.abort();
 					syncAbortRef.current = null;
@@ -220,5 +232,5 @@ export function useSessionMember({
 		wg.id,
 	]);
 
-	return { hydrated, memberLoadError, loadSessionMember };
+	return { hydrated, memberLoadError, sessionEnded, loadSessionMember };
 }

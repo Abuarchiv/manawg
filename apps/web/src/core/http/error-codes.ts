@@ -58,12 +58,7 @@ function isInvalidShareCode(code: string | null): boolean {
 }
 
 function isAuthInvalidated(code: string | null, status?: number): boolean {
-	return (
-		status === HTTP_UNAUTHORIZED ||
-		code === 'not_a_member' ||
-		code === 'member_id_required' ||
-		code === 'member_id_invalid'
-	);
+	return status === HTTP_UNAUTHORIZED || code === 'not_a_member';
 }
 
 /** Supabase session expired (guards answer 401 `auth_required`); unlike `authInvalidated`, the membership is intact. */

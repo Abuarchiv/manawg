@@ -1,4 +1,5 @@
 import { getIdentity } from '@/core/auth/identity';
+import { isSessionExpired } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
 import { isPendingImageToken, removePendingImage, uploadPendingImageToken } from './offline-images';
 import {
@@ -273,7 +274,7 @@ async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions):
 						? REAUTH_REQUIRED_ERROR
 						: res.error === 'image_removed'
 							? 'Bild wurde entfernt: Entferne den Anhang in der Offline-Warteschlange oder wähle das Bild erneut aus.'
-							: isTerminalReplayStatus(res.status)
+							: isTerminalReplayStatus(res.status) && !isSessionExpired(res.error)
 								? `Server prüfen: ${failure.title}: ${failure.detail}`
 								: `${failure.title}: ${failure.detail}`;
 				outcomes.set(action.id, {
@@ -281,14 +282,16 @@ async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions):
 					reviewOnEdit: res.status === 0 || res.status >= 500,
 					retry: {
 						...readyAction,
-						attempts: (readyAction.attempts ?? 0) + 1,
+						// An expired session is not the action's fault: no attempt, no review prefix.
+						attempts: (readyAction.attempts ?? 0) + (isSessionExpired(res.error) ? 0 : 1),
 						lastAttemptAt: new Date(now).toISOString(),
 						lastError: message,
 					},
 				});
 				// The rate limit applies to the whole session: the remaining actions would
 				// also get 429 and only push out their own retry delay. The next sync sends them.
-				if (res.status === 429) break;
+				// The same goes for an expired session: every action would get its own 401.
+				if (res.status === 429 || isSessionExpired(res.error)) break;
 			}
 		} catch (err) {
 			if (options?.signal?.aborted) break;

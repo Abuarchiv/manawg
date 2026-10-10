@@ -5,7 +5,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { createSupabaseBrowserClient } from '@/core/auth/client';
-import { type KnownWg, getKnownWgs, hasLocalIdentityFor } from '@/core/auth/identity';
+import {
+	type KnownWg,
+	getKnownWgs,
+	hasLocalIdentityFor,
+	soleStoredAuthUserId,
+} from '@/core/auth/identity';
 import { subscribeConnectivity } from '@/core/hooks/use-online-status';
 import {
 	filterOfflineActionsForAuthUser,
@@ -18,6 +23,7 @@ import {
 	getOfflineSyncFailureMessage,
 } from '@/core/offline/offline-copy';
 import type { OfflineAction } from '@/core/offline/offline-queue';
+import { isAuthRetryableFetchError } from '@supabase/supabase-js';
 import { CloudOff, RefreshCw, RotateCw, Wifi } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -38,7 +44,9 @@ async function getLocalAuthUserId(sessionless: boolean): Promise<string | null> 
 	if (sessionless) return null;
 	try {
 		const { data, error } = await createSupabaseBrowserClient().auth.getSession();
-		return error ? null : (data.session?.user.id ?? null);
+		if (!error) return data.session?.user.id ?? null;
+		// Expired access token and no network: still signed in, the refresh just cannot run.
+		return isAuthRetryableFetchError(error) ? soleStoredAuthUserId() : null;
 	} catch {
 		return null;
 	}

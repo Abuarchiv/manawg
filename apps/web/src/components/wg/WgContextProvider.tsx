@@ -102,7 +102,7 @@ export function WgContextProvider({
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const identitySetters = { setStateIdentity, setIsAdmin, setAccountReady, setMemberLoaded };
 
-	const { hydrated, memberLoadError, loadSessionMember } = useSessionMember({
+	const { hydrated, memberLoadError, sessionEnded, loadSessionMember } = useSessionMember({
 		wg,
 		initialIdentity,
 		sessionless,
@@ -250,6 +250,26 @@ export function WgContextProvider({
 						{retrying ? 'Lädt…' : 'Erneut versuchen'}
 					</Button>
 					{backToWgs}
+				</Alert>
+			</main>
+		);
+	}
+
+	if (sessionEnded && !identity) {
+		const next = encodeURIComponent(`${window.location.pathname}${window.location.search}`);
+		return (
+			<main id="main" tabIndex={-1} className={standaloneMain}>
+				<Alert variant="destructive">
+					<AlertTitle>Sitzung beendet</AlertTitle>
+					<AlertDescription className="text-current">
+						Melde dich erneut an, um weiterzumachen.
+					</AlertDescription>
+					<a
+						href={`/neu?next=${next}`}
+						className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'mt-3 w-full')}
+					>
+						Neu anmelden
+					</a>
 				</Alert>
 			</main>
 		);

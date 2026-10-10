@@ -216,3 +216,23 @@ test('concurrent failed queue saves retain every synced marker', async () => {
 	const reloaded = (await makeQueueModule({ storage, locks })).module;
 	assert.equal(reloaded.readOfflineQueue().length, 0);
 });
+
+test('401 auth_required stays retryable: no review prefix, no attempt counted, replay stops', async () => {
+	let requests = 0;
+	const { module, storage } = await makeQueueModule({
+		apiFetch: async () => {
+			requests += 1;
+			return { ok: false, status: 401, error: 'auth_required' };
+		},
+	});
+	await setQueue(module, [createAction(), createAction({ id: 'action-2' })]);
+	await module.syncOfflineActions('TEST1234', { force: true, memberId: 'member-a' });
+	assert.equal(requests, 1);
+	const queue = readStoredQueue(storage);
+	assert.deepEqual(
+		queue.map((action) => action.id),
+		['action-1', 'action-2'],
+	);
+	assert.equal(queue[0]?.lastError?.startsWith('Server prüfen:'), false);
+	assert.equal(queue[0]?.attempts ?? 0, 0);
+});

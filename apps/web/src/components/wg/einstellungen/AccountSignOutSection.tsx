@@ -1,6 +1,7 @@
 'use client';
 
 import { rememberLogoutNotice } from '@/components/entry/LogoutNotice';
+import { useConfirmLogoutDiscard } from '@/components/entry/useConfirmLogoutDiscard';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
@@ -19,6 +20,7 @@ export function AccountSignOutSection({
 	identity: StoredIdentity;
 }) {
 	const router = useRouter();
+	const { confirmDiscard, dialog } = useConfirmLogoutDiscard();
 	const [accountSignOutPending, setAccountSignOutPending] = useState(false);
 	const [accountSignOutError, setAccountSignOutError] = useState<string | null>(null);
 
@@ -28,12 +30,16 @@ export function AccountSignOutSection({
 		setAccountSignOutError(null);
 		try {
 			const { signOutSocialAccount } = await import('@/core/auth/client');
-			const { pushCleanup } = await signOutSocialAccount([
-				{
-					code: wg.shareCode,
-					memberId: identity.memberId,
-				},
-			]);
+			const { pushCleanup, cancelled } = await signOutSocialAccount(
+				[
+					{
+						code: wg.shareCode,
+						memberId: identity.memberId,
+					},
+				],
+				{ confirmDiscard },
+			);
+			if (cancelled) return;
 			clearIdentity(wg.id);
 			forgetWg(wg.shareCode);
 			// Local data is gone, so the visitor leaves the household screen either way; a failed
@@ -69,6 +75,7 @@ export function AccountSignOutSection({
 					<AlertDescription>{accountSignOutError}</AlertDescription>
 				</Alert>
 			)}
+			{dialog}
 		</div>
 	);
 }

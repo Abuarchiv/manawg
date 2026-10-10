@@ -254,9 +254,57 @@ export async function clearLocalAccountData(): Promise<void> {
 	}
 }
 
+const LOGOUT_SYNC_TIMEOUT_MS = 5_000;
+
+/** Best effort: send what the offline queue still holds before the wipe takes it. */
+async function flushOfflineQueueBeforeLogout(): Promise<number> {
+	try {
+		const { readOfflineQueue, syncOfflineActions, countOfflineActions } = await import(
+			'@/core/offline/offline-client'
+		);
+		const pairs = new Map(
+			readOfflineQueue().map((a) => [`${a.shareCode}:${a.memberId}`, a] as const),
+		);
+		if (pairs.size > 0) {
+			const abort = new AbortController();
+			const timeout = setTimeout(() => abort.abort(), LOGOUT_SYNC_TIMEOUT_MS);
+			try {
+				await Promise.race([
+					Promise.all(
+						[...pairs.values()].map((a) =>
+							syncOfflineActions(a.shareCode, {
+								force: true,
+								memberId: a.memberId,
+								signal: abort.signal,
+							}),
+						),
+					),
+					new Promise((resolve) => abort.signal.addEventListener('abort', resolve)),
+				]);
+			} finally {
+				clearTimeout(timeout);
+			}
+		}
+		return countOfflineActions();
+	} catch {
+		return 0;
+	}
+}
+
+/**
+ * `confirmDiscard` is asked when actions are still queued after a sync attempt, since the wipe
+ * below deletes them; answering false keeps the session and resolves with `cancelled`.
+ */
 export async function signOutSocialAccount(
 	pushTargets: readonly LogoutPushTarget[] = [],
-): Promise<{ pushCleanup: LogoutPushCleanup }> {
+	options: { confirmDiscard?: (count: number) => Promise<boolean> } = {},
+): Promise<{ pushCleanup: LogoutPushCleanup; cancelled?: true }> {
+	if (options.confirmDiscard) {
+		const unsent = await flushOfflineQueueBeforeLogout();
+		if (unsent > 0 && !(await options.confirmDiscard(unsent))) {
+			return { pushCleanup: 'none', cancelled: true };
+		}
+	}
 	const pushCleanup = await removeCurrentBrowserPushSubscription(pushTargets).catch(
 		() => 'failed' as const,
 	);
