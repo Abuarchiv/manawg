@@ -158,7 +158,7 @@ export function MessageList({
 						<div className="flex justify-center py-2">
 							<span
 								data-slot="chat-day"
-								className="max-w-full rounded-lg bg-white text-center [overflow-wrap:anywhere] px-3 py-1 text-xs font-medium text-[#54656f] shadow-xs dark:bg-[#182229] dark:text-[#8696a0]"
+								className="max-w-full rounded-full bg-muted text-center [overflow-wrap:anywhere] px-3 py-1 text-xs font-medium text-muted-foreground"
 							>
 								{chatDayLabel(group.day, now)}
 							</span>
@@ -168,7 +168,7 @@ export function MessageList({
 						<div className="flex justify-center py-2">
 							<span
 								data-slot="chat-unread"
-								className="max-w-full rounded-lg bg-white text-center [overflow-wrap:anywhere] px-3 py-1 text-xs font-medium text-[#54656f] shadow-xs dark:bg-[#182229] dark:text-[#8696a0]"
+								className="max-w-full rounded-full bg-muted text-center [overflow-wrap:anywhere] px-3 py-1 text-xs font-medium text-muted-foreground"
 							>
 								Neue Nachrichten
 							</span>

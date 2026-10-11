@@ -8,24 +8,17 @@ import {
 	wgMembers,
 } from '@/core/db';
 import { responseCodec, withIdempotentWrite } from '@/core/db/idempotent-write';
-import { assertPrivateImageCanBeAttached } from '@/core/db/private-image-deletions';
-import {
-	type DbTransaction,
-	TransactionAbort,
-	lockExpensePayments,
-	withTransaction,
-} from '@/core/db/transaction';
+import { type DbTransaction, lockExpensePayments, withTransaction } from '@/core/db/transaction';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { HTTP, badRequest, conflict } from '@/core/http/api-errors';
+import { HTTP, badRequest } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
 import { readListLimit } from '@/core/infra/env';
 import { logApiError } from '@/core/infra/observability';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { chatMessageLimiter, checkRateLimit } from '@/core/rate-limit';
-import { imageUrlSchema, isAllowedImageUrlForWg } from '@/core/validators/image-url';
 import {
 	CHAT_REFRESH_BATCH_SIZE,
 	chatMessagesReadPayload,
@@ -55,19 +48,16 @@ const MENTIONS_MAX = 20;
 const chatMessageCodec = responseCodec();
 const storeChatStatus = (status: number) => status !== HTTP.TOO_MANY;
 
+// Text only: storage is limited, so new messages carry no pictures.
 const createMessageSchema = z
 	.object({
 		body: z.string().max(BODY_MAX).optional(),
-		imageUrl: imageUrlSchema,
 		replyToMessageId: z.string().uuid().optional().nullable(),
 		mentionMemberIds: z.array(z.string().uuid()).max(MENTIONS_MAX).optional(),
 	})
-	.refine(
-		(value) =>
-			(typeof value.body === 'string' && value.body.trim().length > 0) ||
-			(typeof value.imageUrl === 'string' && value.imageUrl.length > 0),
-		{ message: 'empty_message' },
-	);
+	.refine((value) => typeof value.body === 'string' && value.body.trim().length > 0, {
+		message: 'empty_message',
+	});
 
 export const GET = withWgRoute('chat messages GET', async (req, { code }) => {
 	const url = new URL(req.url);
@@ -182,7 +172,6 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 		formErrors: { empty_message: 'empty_message' },
 		formErrorsFirst: true,
 		fieldErrors: {
-			imageUrl: 'image_invalid',
 			replyToMessageId: 'reply_to_invalid',
 			mentionMemberIds: 'mentions_invalid',
 		},
@@ -191,18 +180,12 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 	if (!parsed.ok) return parsed.response;
 
 	const cleanBody = sanitizeMessageBody(parsed.data.body ?? null, BODY_MAX);
-	const imageUrl =
-		typeof parsed.data.imageUrl === 'string' && parsed.data.imageUrl.length > 0
-			? parsed.data.imageUrl
-			: null;
-	const kind = imageUrl ? 'image' : 'text';
 	const replyToMessageId = parsed.data.replyToMessageId ?? null;
 	const requestedMentionIds = parsed.data.mentionMemberIds ?? [];
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
 	const wg = auth.wg;
 	const member = auth.member;
-	if (!isAllowedImageUrlForWg(imageUrl, wg.id)) return badRequest('image_invalid');
 
 	const key = readIdempotencyKey(req);
 	const scope = `chat-message:${wg.id}:${member.memberId}`;
@@ -231,29 +214,19 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 				return insertMessage(tx, {
 					wgId: wg.id,
 					senderMemberId: member.memberId,
-					kind,
 					body: cleanBody,
-					imageUrl,
 					replyToMessageId,
 					requestedMentionIds,
 				});
 			},
 		);
-	let result: Awaited<ReturnType<typeof send>>;
-	try {
-		result = await send();
-	} catch (err) {
-		if (err instanceof TransactionAbort && err.code === 'image_removed') {
-			return conflict('image_removed', 'image_removed');
-		}
-		throw err;
-	}
+	const result = await send();
 	if (result.kind === 'replayed' || !result.context) {
 		return NextResponse.json(result.body, { status: result.status });
 	}
 	const { created, mentionIds } = result.context;
 
-	const preview = previewBody(cleanBody ?? (imageUrl ? 'Bild' : ''), PREVIEW_LENGTH);
+	const preview = previewBody(cleanBody ?? '', PREVIEW_LENGTH);
 	const notificationDispatches = [
 		dispatchNotificationSafely({
 			wg,
@@ -283,7 +256,7 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 		entityId: created.id,
 		summary: `${member.name} hat im Chat eine Nachricht gesendet.`,
 		// No text preview: audit rows outlive message deletion, chat text must not.
-		metadata: { kind, mentions: mentionIds.length },
+		metadata: { kind: 'text', mentions: mentionIds.length },
 	});
 
 	const notificationResults = await Promise.all(notificationDispatches);
@@ -321,9 +294,7 @@ async function insertMessage(
 	input: {
 		wgId: string;
 		senderMemberId: string;
-		kind: 'image' | 'text';
 		body: string | null;
-		imageUrl: string | null;
 		replyToMessageId: string | null;
 		requestedMentionIds: string[];
 	},
@@ -347,8 +318,6 @@ async function insertMessage(
 			return { status: HTTP.BAD_REQUEST, body: { error: 'reply_to_not_found' } };
 		}
 	}
-	await assertPrivateImageCanBeAttached(tx, input.wgId, input.imageUrl);
-
 	const requestedMentionIds = Array.from(
 		new Set(input.requestedMentionIds.filter((id) => UUID_PATTERN.test(id))),
 	);
@@ -366,9 +335,8 @@ async function insertMessage(
 		.values({
 			wgId: input.wgId,
 			senderMemberId: input.senderMemberId,
-			kind: input.kind,
+			kind: 'text',
 			body: input.body,
-			imageUrl: input.imageUrl,
 			replyToMessageId: input.replyToMessageId,
 		})
 		.returning();

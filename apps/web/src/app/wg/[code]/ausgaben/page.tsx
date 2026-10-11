@@ -238,8 +238,6 @@ export default function AusgabenPage() {
 			<ExpenseHistory
 				expenseCount={expenses.length}
 				shownCount={page.shownExpenseCount}
-				query={page.searchQuery}
-				onQueryChange={page.setSearchQuery}
 				scope={page.scope}
 				onScopeChange={page.setScope}
 				weeks={page.expenseWeeks}

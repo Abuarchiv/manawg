@@ -21,7 +21,6 @@ export interface NotificationSettingsUpdate {
 	notifyChat?: boolean;
 	notifyEvents?: boolean;
 	notifyStatementEmail?: boolean;
-	notifyDigestEmail?: boolean;
 	quietStartHour?: number | null;
 	quietEndHour?: number | null;
 }

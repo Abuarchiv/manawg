@@ -31,10 +31,10 @@ const bubbleVariants = cva(
 					'*:data-[slot=bubble-content]:border-border *:data-[slot=bubble-content]:bg-background [@media(any-hover:hover)]:[&>[data-slot=bubble-content]:is(button,a):hover]:bg-muted [@media(any-hover:hover)]:[&>[data-slot=bubble-content]:is(button,a):hover]:text-foreground dark:[@media(any-hover:hover)]:[&>[data-slot=bubble-content]:is(button,a):hover]:bg-input/30',
 				ghost:
 					'border-none *:data-[slot=bubble-content]:rounded-none *:data-[slot=bubble-content]:bg-transparent *:data-[slot=bubble-content]:p-0 [@media(any-hover:hover)]:[&>[data-slot=bubble-content]:is(button,a):hover]:bg-muted [@media(any-hover:hover)]:[&>[data-slot=bubble-content]:is(button,a):hover]:text-foreground dark:[@media(any-hover:hover)]:[&>[data-slot=bubble-content]:is(button,a):hover]:bg-muted/50',
-				// Messenger colors (WhatsApp palette): own messages green, incoming white on the chat wallpaper.
-				sent: '*:data-[slot=bubble-content]:bg-[#d9fdd3] *:data-[slot=bubble-content]:text-[#111b21] *:data-[slot=bubble-content]:shadow-xs dark:*:data-[slot=bubble-content]:bg-[#005c4b] dark:*:data-[slot=bubble-content]:text-[#e9edef] [@media(any-hover:hover)]:[&>[data-slot=bubble-content]:is(button,a):hover]:bg-[#cdf3c6] dark:[@media(any-hover:hover)]:[&>[data-slot=bubble-content]:is(button,a):hover]:bg-[#00685a]',
+				// Chat: own messages in the primary color, incoming ones muted.
+				sent: '*:data-[slot=bubble-content]:bg-primary *:data-[slot=bubble-content]:text-primary-foreground [@media(any-hover:hover)]:[&>[data-slot=bubble-content]:is(button,a):hover]:bg-primary/80',
 				received:
-					'*:data-[slot=bubble-content]:bg-white *:data-[slot=bubble-content]:text-[#111b21] *:data-[slot=bubble-content]:shadow-xs dark:*:data-[slot=bubble-content]:bg-[#202c33] dark:*:data-[slot=bubble-content]:text-[#e9edef] [@media(any-hover:hover)]:[&>[data-slot=bubble-content]:is(button,a):hover]:bg-[#f5f6f6] dark:[@media(any-hover:hover)]:[&>[data-slot=bubble-content]:is(button,a):hover]:bg-[#26343d]',
+					'*:data-[slot=bubble-content]:bg-muted *:data-[slot=bubble-content]:text-foreground [@media(any-hover:hover)]:[&>[data-slot=bubble-content]:is(button,a):hover]:bg-[color-mix(in_oklch,var(--muted),var(--foreground)_5%)]',
 				destructive:
 					'*:data-[slot=bubble-content]:bg-destructive/10 *:data-[slot=bubble-content]:text-destructive dark:*:data-[slot=bubble-content]:bg-destructive/20 [@media(any-hover:hover)]:[&>[data-slot=bubble-content]:is(button,a):hover]:bg-destructive/20 dark:[@media(any-hover:hover)]:[&>[data-slot=bubble-content]:is(button,a):hover]:bg-destructive/30',
 			},
@@ -91,7 +91,7 @@ function BubbleTail({ className, ...props }: React.ComponentProps<'span'>) {
 			aria-hidden
 			data-slot="bubble-tail"
 			className={cn(
-				'pointer-events-none absolute top-0 size-2 group-data-[align=end]/bubble:-end-2 group-data-[align=end]/bubble:[clip-path:polygon(0_0,100%_0,0_100%)] group-data-[align=start]/bubble:-start-2 group-data-[align=start]/bubble:[clip-path:polygon(0_0,100%_0,100%_100%)] group-data-[variant=received]/bubble:bg-white group-data-[variant=sent]/bubble:bg-[#d9fdd3] dark:group-data-[variant=received]/bubble:bg-[#202c33] dark:group-data-[variant=sent]/bubble:bg-[#005c4b]',
+				'pointer-events-none absolute top-0 size-2 group-data-[align=end]/bubble:-end-2 group-data-[align=end]/bubble:[clip-path:polygon(0_0,100%_0,0_100%)] group-data-[align=start]/bubble:-start-2 group-data-[align=start]/bubble:[clip-path:polygon(0_0,100%_0,100%_100%)] group-data-[variant=received]/bubble:bg-muted group-data-[variant=sent]/bubble:bg-primary',
 				className,
 			)}
 			{...props}

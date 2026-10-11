@@ -28,7 +28,6 @@ test.describe('settings notifications responsive', () => {
 			notifyChat: true,
 			notifyEvents: true,
 			notifyStatementEmail: true,
-			notifyDigestEmail: true,
 			quietStartHour: 22,
 			quietEndHour: 7,
 			pushConfigured: false,

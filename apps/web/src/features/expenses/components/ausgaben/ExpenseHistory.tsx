@@ -3,7 +3,6 @@
 import { LogoMark } from '@/components/ui/LogoMark';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
-import { Input } from '@/components/ui/input';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ExpenseRow } from '@/features/expenses/components/ausgaben/ExpenseRow';
 import { ExpensesSkeleton } from '@/features/expenses/components/ausgaben/ExpensesSkeleton';
@@ -19,8 +18,6 @@ const FILTER_MIN_EXPENSES = 6;
 interface ExpenseHistoryProps {
 	expenseCount: number;
 	shownCount: number;
-	query: string;
-	onQueryChange: (query: string) => void;
 	scope: ExpenseScope;
 	onScopeChange: (scope: ExpenseScope) => void;
 	weeks: Array<{ label: string; items: Expense[] }>;
@@ -44,8 +41,6 @@ interface ExpenseHistoryProps {
 export function ExpenseHistory({
 	expenseCount,
 	shownCount,
-	query,
-	onQueryChange,
 	scope,
 	onScopeChange,
 	weeks,
@@ -82,15 +77,6 @@ export function ExpenseHistory({
 				<div className="flex flex-col gap-4">
 					{expenseCount >= FILTER_MIN_EXPENSES && (
 						<div className="flex flex-col gap-2">
-							<Input
-								type="search"
-								value={query}
-								onChange={(event) => onQueryChange(event.target.value)}
-								placeholder="Ausgaben suchen"
-								aria-label="Ausgaben suchen"
-								enterKeyHint="search"
-								className="text-base"
-							/>
 							<ToggleGroup
 								variant="segmented"
 								value={[scope]}

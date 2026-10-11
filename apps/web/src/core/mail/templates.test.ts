@@ -3,7 +3,6 @@ import test from 'node:test';
 import { formatEuroCents } from '@/core/utils/money';
 import {
 	renderAccountDeletedMail,
-	renderDigestMail,
 	renderInvitationMail,
 	renderReminderMail,
 	renderWelcomeMail,
@@ -18,16 +17,6 @@ const ALL = [
 		wgName: 'Kastanienallee',
 		inviteToken: 'aB3_-xYz09aB3_-xYz09kQ',
 		memberNames: ['Lina', 'Jonas', 'Mira'],
-	}),
-	renderDigestMail({
-		wgName: 'Kastanienallee',
-		shareCode: 'KST48210',
-		dayLabel: 'Sa. · 04.10.',
-		items: [
-			{ label: 'Putzplan', text: 'Bad ist heute dran.' },
-			{ label: 'Ausgabe', text: 'Lina hat den Einkauf eingetragen.', value: '18,90 €' },
-		],
-		unsubscribeUrl: 'https://app.manawg.com/api/email/unsubscribe?t=x',
 	}),
 	renderReminderMail({
 		wgName: 'Kastanienallee',
@@ -71,21 +60,13 @@ test('invitation carries the invitation link, its lifetime and who is already in
 });
 
 test('reminder names the creditor and amount in the subject and lists the items', () => {
-	const mail = ALL[3];
+	const mail = ALL[2];
 	assert.ok(mail);
 	assert.equal(mail.subject, `Noch offen bei Jonas: ${formatEuroCents(2340)}`);
 	assert.equal(mail.preheader, 'Ältester Posten 9 Tage alt.');
 	assert.ok(mail.text.includes(`Einkauf Edeka (25.09.) ${formatEuroCents(1420)}`));
 	assert.ok(mail.html.includes('#E7000B'), 'owed amount uses the debt colour');
 	assert.ok(mail.text.includes('Abbestellen: https://app.manawg.com/api/email/unsubscribe?t=y'));
-});
-
-test('digest subject names the WG and the preheader summarises the first items', () => {
-	const mail = ALL[2];
-	assert.ok(mail);
-	assert.equal(mail.subject, 'Heute in der Kastanienallee');
-	assert.equal(mail.preheader, 'Bad ist heute dran, Lina hat den Einkauf eingetragen.');
-	assert.ok(mail.text.includes('18,90 €'));
 });
 
 test('welcome without a name still greets and lists the three steps', () => {

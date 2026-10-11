@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import { mock, test } from 'node:test';
 import { TransactionAbort } from '@/core/db/transaction-abort';
 import { PgDialect, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
-import { z } from 'zod';
 
 const key = '11111111-1111-4111-8111-111111111111';
 const memberId = '22222222-2222-4222-8222-222222222222';
@@ -49,7 +48,6 @@ const state = {
 	releaseWhere: '',
 	errors: [] as string[],
 	locks: 0,
-	rejectImageAttachment: false,
 	readMarkerRows: [] as Json[],
 	readMarkerQueries: 0,
 };
@@ -70,7 +68,6 @@ function reset(): void {
 	state.releaseWhere = '';
 	state.errors = [];
 	state.locks = 0;
-	state.rejectImageAttachment = false;
 	state.readMarkerRows = [];
 	state.readMarkerQueries = 0;
 }
@@ -197,13 +194,6 @@ mock.module('@/core/db', {
 		wgMembers,
 	},
 });
-mock.module('@/core/db/private-image-deletions', {
-	namedExports: {
-		assertPrivateImageCanBeAttached: async () => {
-			if (state.rejectImageAttachment) throw new TransactionAbort('image_removed');
-		},
-	},
-});
 mock.module('@/core/db/transaction', {
 	namedExports: {
 		TransactionAbort,
@@ -270,26 +260,18 @@ mock.module('@/core/rate-limit', {
 	namedExports: { chatMessageLimiter: {}, checkRateLimit: async () => ({ success: true }) },
 });
 
-// URL validation is not under test; any attached image counts as allowed for the WG.
-mock.module('@/core/validators/image-url', {
-	namedExports: {
-		imageUrlSchema: z.string().nullable().optional(),
-		isAllowedImageUrlForWg: () => true,
-	},
-});
-
 const { GET, POST } = await import('./route');
 
 function harness() {
 	reset();
 	return {
 		state,
-		post: (imageUrl: string | null = null) =>
+		post: () =>
 			POST(
 				new Request('https://example.invalid', {
 					method: 'POST',
 					headers: { 'Idempotency-Key': key },
-					body: JSON.stringify({ body: 'Hello', imageUrl, mentionMemberIds: [mentionedId] }),
+					body: JSON.stringify({ body: 'Hello', mentionMemberIds: [mentionedId] }),
 				}) as never,
 				{ params: Promise.resolve({ code: 'MTE8PZAT' }) } as never,
 			),
@@ -363,19 +345,6 @@ test('persisted notification warning is replayed without a second dispatch', asy
 	assert.equal(replay.warning, state.warning);
 	assert.equal(state.messages.length, 1);
 	assert.equal(state.notifications, 2);
-});
-
-test('revoked private image attachment returns 409 and creates no chat row', async () => {
-	const { state, post } = harness();
-	state.rejectImageAttachment = true;
-	const response = await post(
-		'https://app.example/api/upload/read?key=manawg%2F44444444-4444-4444-8444-444444444444%2Fannouncement%2F55555555-5555-4555-8555-555555555555.jpg',
-	);
-	assert.equal(response.status, 409);
-	assert.deepEqual(await response.json(), { error: 'image_removed', code: 'image_removed' });
-	assert.equal(state.messages.length, 0);
-	assert.equal(state.notifications, 0);
-	assert.ok(state.locks > 0);
 });
 
 test('GET returns the read marker only when the bootstrap asks for it', async () => {

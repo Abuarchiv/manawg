@@ -144,8 +144,7 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 						data-scroll-y
 						role="log"
 						aria-label="Chat-Nachrichten"
-						// Chat wallpaper as in WhatsApp: warm beige with a faint dot pattern.
-						className="bg-[#efeae2] [background-image:radial-gradient(rgb(0_0_0/0.05)_1px,transparent_1px)] [background-size:18px_18px] dark:bg-[#0b141a] dark:[background-image:radial-gradient(rgb(255_255_255/0.04)_1px,transparent_1px)] [scroll-behavior:auto]!"
+						className="[scroll-behavior:auto]!"
 					>
 						<MessageScrollerContent className="mx-auto w-full max-w-3xl gap-2 px-3 py-2">
 							{chat.bootstrapping ? (
@@ -195,7 +194,6 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 			</MessageScrollerProvider>
 			<ChatComposer
 				key={`${shareCode}:${identity.memberId}`}
-				shareCode={shareCode}
 				draftKey={`manawg:draft:${shareCode}:${identity.memberId}:chat`}
 				error={chat.sendError}
 				members={members.filter((m) => m.active).map((m) => ({ id: m.id, name: m.name }))}

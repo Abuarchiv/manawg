@@ -5,7 +5,7 @@ import { eq, sql } from 'drizzle-orm';
 import type { RenderedMail } from './brand-mail';
 import { type MailTransport, createMailTransport, maskEmail } from './transport';
 
-type MailKind = 'welcome' | 'invitation' | 'reminder' | 'digest' | 'account_deleted';
+type MailKind = 'welcome' | 'invitation' | 'reminder' | 'account_deleted';
 
 export interface SendMailInput {
 	kind: MailKind;
@@ -15,7 +15,7 @@ export interface SendMailInput {
 	mail: RenderedMail;
 	wgId?: string;
 	memberId?: string;
-	/** Present for optional mails (digest, reminder); drives the List-Unsubscribe header. */
+	/** Present for optional mails (reminder); drives the List-Unsubscribe header. */
 	unsubscribeUrl?: string;
 }
 

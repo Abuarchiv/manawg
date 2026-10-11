@@ -172,12 +172,10 @@ export function useAusgabenPage() {
 	// History by calendar week; the API returns newest first.
 	// Render only the newest entries (balances still use all); "Mehr anzeigen" loads more.
 	const [visibleLimit, setVisibleLimit] = useState(EXPENSE_RENDER_PAGE);
-	const [searchQuery, setSearchQuery] = useState('');
 	const [scope, setScope] = useState<ExpenseScope>('all');
 	const shownExpenses = useMemo(
-		() =>
-			filterExpenses(expenses, { query: searchQuery, scope }, identity.memberId, stableMemberName),
-		[expenses, searchQuery, scope, identity.memberId, stableMemberName],
+		() => filterExpenses(expenses, scope, identity.memberId),
+		[expenses, scope, identity.memberId],
 	);
 	const highlightIndex = highlightedId
 		? shownExpenses.findIndex((e) => e.id === highlightedId)
@@ -286,8 +284,6 @@ export function useAusgabenPage() {
 		hasMoreExpenses: renderLimit < shownExpenses.length,
 		hiddenExpenseCount: Math.max(0, shownExpenses.length - renderLimit),
 		shownExpenseCount: shownExpenses.length,
-		searchQuery,
-		setSearchQuery,
 		scope,
 		setScope,
 		showMoreExpenses: () => setVisibleLimit(renderLimit + EXPENSE_RENDER_PAGE),

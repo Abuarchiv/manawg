@@ -118,10 +118,7 @@ export const MessageBubble = memo(function MessageBubble({
 								? `Von ${readCount} von ${readTotal} gelesen`
 								: 'Gesendet'
 					}
-					className={cn(
-						'inline-flex',
-						readByAll ? 'text-[#027eb5] dark:text-[#53bdeb]' : 'opacity-80',
-					)}
+					className={cn('inline-flex', readByAll ? 'font-semibold' : 'opacity-60')}
 				>
 					{readCount > 0 ? (
 						<CheckCheck aria-hidden className="size-3.5" />

@@ -72,50 +72,6 @@ export function renderInvitationMail(input: {
 	});
 }
 
-export interface DigestItem {
-	/** Mono label at the start of the row: Putzplan, Ausgabe, Termin, Vorrat. */
-	label: string;
-	text: string;
-	/** Formatted amount or quantity shown right-aligned. */
-	value?: string;
-}
-
-/** E7 · once a day for members without push, only when something happened. */
-export function renderDigestMail(input: {
-	wgName: string;
-	shareCode: string;
-	dayLabel: string;
-	items: readonly DigestItem[];
-	unsubscribeUrl: string;
-}): RenderedMail {
-	const summary = input.items
-		.slice(0, 3)
-		.map((item) => item.text.replace(/\.$/, ''))
-		.join(', ');
-	const rows: MailBlock = {
-		kind: 'rows',
-		rows: input.items.map((item) => ({
-			label: item.text,
-			detail: item.label,
-			...(item.value === undefined ? {} : { value: item.value }),
-		})),
-	};
-	return renderBrandMail({
-		subject: `Heute in der ${input.wgName}`,
-		preheader: `${summary}.`,
-		eyebrow: input.wgName,
-		headLabel: input.dayLabel,
-		title: `Heute in der ${input.wgName}.`,
-		blocks: [rows],
-		button: { label: 'WG öffnen', url: WG_PATH(input.shareCode) },
-		footerNote: 'Höchstens eine Zusammenfassung pro Tag. Kommt nur, wenn etwas passiert ist.',
-		footerLinks: [
-			{ label: 'Einstellungen ändern', url: `${WG_PATH(input.shareCode)}/einstellungen` },
-			{ label: 'Abbestellen', url: input.unsubscribeUrl },
-		],
-	});
-}
-
 /** E8 · a creditor reminds a debtor who has no push; the debtor sees who and how much. */
 export function renderReminderMail(input: {
 	wgName: string;

@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { InputGroup, InputGroupTextarea } from '@/components/ui/input-group';
 import { Spinner } from '@/components/ui/spinner';
 import { removeDraft } from '@/core/offline/drafts';
-import { isPendingImageToken } from '@/core/offline/offline-images';
 import { haptic } from '@/shared/lib/haptics';
 import { Send, X } from 'lucide-react';
 import {
@@ -19,7 +18,6 @@ import {
 } from 'react';
 import { readChatDraft, writeChatDraft } from '../chat-draft';
 import { type MentionTrigger, detectMention, findMentions } from '../chat-text';
-import { ComposerImageButton, ComposerImagePanel } from './ComposerImage';
 import {
 	MentionAutocomplete,
 	type MentionMember,
@@ -30,7 +28,6 @@ import {
 const BODY_MAX = 4000;
 
 interface ChatComposerProps {
-	shareCode: string;
 	draftKey: string;
 	error: string | null;
 	members: MentionMember[];
@@ -45,12 +42,10 @@ interface ChatComposerProps {
 		body: string;
 		mentionMemberIds: string[];
 		replyToMessageId: string | null;
-		imageUrl?: string;
 	}) => Promise<boolean>;
 }
 
 export function ChatComposer({
-	shareCode,
 	draftKey,
 	error,
 	members,
@@ -71,11 +66,6 @@ export function ChatComposer({
 	replyToMessageIdRef.current = replyToMessageId;
 	const [draft, setDraft] = useState('');
 	const [pending, setPending] = useState(false);
-	// The attached picture is part of the stored draft; without it the upload would be left behind.
-	const [imageUrl, setImageUrl] = useState<string | null>(null);
-	const imageUrlRef = useRef(imageUrl);
-	const [imageOpen, setImageOpen] = useState(false);
-	const [imageError, setImageError] = useState<string | null>(null);
 	const pendingRef = useRef(false);
 	const [draftHydrated, setDraftHydrated] = useState(false);
 	const [draftStorageFailed, setDraftStorageFailed] = useState(false);
@@ -99,8 +89,6 @@ export function ChatComposer({
 		const saved = readChatDraft(draftKey, BODY_MAX);
 		draftRef.current = saved.body;
 		setDraft(saved.body);
-		imageUrlRef.current = saved.imageUrl;
-		setImageUrl(saved.imageUrl);
 		onRestoreReply(saved.replyToMessageId);
 		setDraftHydrated(true);
 	}, [draftKey, onRestoreReply]);
@@ -122,13 +110,13 @@ export function ChatComposer({
 
 	useEffect(() => {
 		if (!draftHydrated) return;
-		if (!draft && !replyToMessageId && !imageUrl) {
+		if (!draft && !replyToMessageId) {
 			removeDraft(draftKey);
 			setDraftStorageFailed(false);
 			return;
 		}
-		setDraftStorageFailed(!writeChatDraft(draftKey, { body: draft, replyToMessageId, imageUrl }));
-	}, [draft, draftHydrated, draftKey, replyToMessageId, imageUrl]);
+		setDraftStorageFailed(!writeChatDraft(draftKey, { body: draft, replyToMessageId }));
+	}, [draft, draftHydrated, draftKey, replyToMessageId]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: mentionItems identity change is the correct trigger
 	useEffect(() => {
@@ -163,23 +151,11 @@ export function ChatComposer({
 		});
 	}
 
-	function changeImage(url: string | null): void {
-		imageUrlRef.current = url;
-		setImageUrl(url);
-		setImageError(null);
-	}
 	async function submit(): Promise<void> {
 		const outgoingDraft = draftRef.current;
 		const outgoingReplyToMessageId = replyToMessageIdRef.current;
-		const outgoingImageUrl = imageUrlRef.current;
 		const text = outgoingDraft.trim();
-		if ((text.length === 0 && !outgoingImageUrl) || text.length > BODY_MAX || pendingRef.current)
-			return;
-		// Offline or still uploading: the server would reject the local token as image_invalid.
-		if (outgoingImageUrl && isPendingImageToken(outgoingImageUrl)) {
-			setImageError('Bild wird noch hochgeladen. Bitte kurz warten und nochmal versuchen.');
-			return;
-		}
+		if (text.length === 0 || text.length > BODY_MAX || pendingRef.current) return;
 		pendingRef.current = true;
 		haptic('selection');
 		setPending(true);
@@ -197,7 +173,6 @@ export function ChatComposer({
 				body: text,
 				mentionMemberIds: mentionedIds,
 				replyToMessageId: outgoingReplyToMessageId,
-				...(outgoingImageUrl ? { imageUrl: outgoingImageUrl } : {}),
 			});
 			if (ok) {
 				haptic('medium');
@@ -207,10 +182,6 @@ export function ChatComposer({
 					draftRef.current = '';
 					setDraft('');
 					setMention(null);
-				}
-				if (imageUrlRef.current === outgoingImageUrl) {
-					changeImage(null);
-					setImageOpen(false);
 				}
 				if (replyToMessageIdRef.current === outgoingReplyToMessageId) {
 					onClearReply();
@@ -273,15 +244,15 @@ export function ChatComposer({
 		<div
 			ref={rootRef}
 			data-chat-composer
-			className="relative shrink-0 bg-[#f0f2f5] dark:bg-[#202c33]"
+			className="relative shrink-0 border-t bg-background"
 			aria-busy={pending}
 		>
 			{/* Hints scroll internally so the history stays visible at large font sizes. */}
 			<div className="max-h-[25dvh] overflow-y-auto">
 				{replyToMessageId && (
-					<div className="mx-3 mt-2 flex items-start gap-2 rounded-lg border-s-4 border-[#06cf9c] bg-white py-1.5 ps-2.5 pe-1 text-xs dark:bg-[#1d282f]">
+					<div className="mx-3 mt-2 flex items-start gap-2 rounded-lg border-s-4 border-primary bg-muted py-1.5 ps-2.5 pe-1 text-xs">
 						<div className="min-w-0 flex-1">
-							<div className="font-medium text-[#008069] dark:text-[#06cf9c]">
+							<div className="font-medium text-foreground">
 								Antwort an {replyToSenderName ?? 'Unbekannt'}
 							</div>
 							<div className="truncate text-muted-foreground">{replyToPreview ?? '…'}</div>
@@ -298,25 +269,9 @@ export function ChatComposer({
 						</Button>
 					</div>
 				)}
-				{(imageOpen || imageUrl) && (
-					<ComposerImagePanel
-						shareCode={shareCode}
-						value={imageUrl}
-						onChange={changeImage}
-						disabled={pending}
-					/>
-				)}
-				{imageError && (
-					<Alert variant="destructive">
-						<AlertDescription>{imageError}</AlertDescription>
-					</Alert>
-				)}
 				{error && (
 					<Alert variant="destructive">
-						<AlertDescription>
-							{error}{' '}
-							{imageUrl ? 'Dein Text und dein Bild sind noch da.' : 'Dein Text ist noch da.'}
-						</AlertDescription>
+						<AlertDescription>{error} Dein Text ist noch da.</AlertDescription>
 					</Alert>
 				)}
 				{draftStorageFailed && (
@@ -336,14 +291,7 @@ export function ChatComposer({
 				onHoverIndex={setMentionActiveIndex}
 			/>
 			<div className="mx-auto flex w-full max-w-3xl items-end gap-2 px-3 py-2">
-				{/* WhatsApp layout: white pill field, round green send button next to it. */}
-				<InputGroup className="h-auto items-end rounded-3xl border-[#8696a0]/60 bg-white dark:bg-[#2a3942]">
-					{/* Before the textarea in the DOM so tab order matches the visual order (order-first). */}
-					<ComposerImageButton
-						disabled={pending || !draftHydrated}
-						expanded={imageOpen || Boolean(imageUrl)}
-						onToggle={() => setImageOpen((open) => !open)}
-					/>
+				<InputGroup className="h-auto items-end rounded-3xl">
 					<InputGroupTextarea
 						ref={textareaRef}
 						value={draft}
@@ -365,9 +313,9 @@ export function ChatComposer({
 					size="icon"
 					onMouseDown={(event) => event.preventDefault()}
 					onClick={() => void submit()}
-					disabled={pending || !draftHydrated || (draft.trim().length === 0 && !imageUrl)}
+					disabled={pending || !draftHydrated || draft.trim().length === 0}
 					aria-label="Nachricht senden"
-					className="size-11 shrink-0 rounded-full bg-[#008069] text-white hover:bg-[#006e5a] active:bg-[#006e5a] disabled:bg-[#008069]/50 disabled:text-white dark:bg-[#00a884] dark:text-[#111b21] dark:hover:bg-[#06cf9c] dark:active:bg-[#06cf9c] dark:disabled:text-[#111b21]"
+					className="size-11 shrink-0 rounded-full"
 				>
 					{pending ? <Spinner aria-hidden /> : <Send aria-hidden />}
 				</Button>
