@@ -266,7 +266,7 @@ async function flushOfflineQueueBeforeLogout(): Promise<number> {
  */
 export async function signOutSocialAccount(
 	pushTargets: readonly LogoutPushTarget[] = [],
-	options: { confirmDiscard?: (count: number) => Promise<boolean> } = {},
+	options: { confirmDiscard?: (count: number) => Promise<boolean>; everywhere?: boolean } = {},
 ): Promise<{ pushCleanup: LogoutPushCleanup; cancelled?: true }> {
 	if (options.confirmDiscard) {
 		const unsent = await flushOfflineQueueBeforeLogout();
@@ -277,7 +277,7 @@ export async function signOutSocialAccount(
 	const pushCleanup = await removeCurrentBrowserPushSubscription(pushTargets).catch(
 		() => 'failed' as const,
 	);
-	await authRequest('/api/auth/sign-out', {});
+	await authRequest('/api/auth/sign-out', options.everywhere ? { everywhere: true } : {});
 	await clearLocalAccountData();
 	return { pushCleanup };
 }

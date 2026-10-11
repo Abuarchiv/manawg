@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import type { WgSummary } from '@/components/wg/WgContextProvider';
 import type { SessionMember } from '@/core/auth/local-account';
-import { LogOut } from 'lucide-react';
+import { LogOut, MonitorOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
@@ -20,12 +20,14 @@ export function AccountSignOutSection({
 }) {
 	const router = useRouter();
 	const { confirmDiscard, dialog } = useConfirmLogoutDiscard();
-	const [accountSignOutPending, setAccountSignOutPending] = useState(false);
+	const [accountSignOutPending, setAccountSignOutPending] = useState<'here' | 'everywhere' | null>(
+		null,
+	);
 	const [accountSignOutError, setAccountSignOutError] = useState<string | null>(null);
 
-	async function handleAccountSignOut(): Promise<void> {
+	async function handleAccountSignOut(everywhere: boolean): Promise<void> {
 		if (accountSignOutPending) return;
-		setAccountSignOutPending(true);
+		setAccountSignOutPending(everywhere ? 'everywhere' : 'here');
 		setAccountSignOutError(null);
 		try {
 			const { signOutSocialAccount } = await import('@/core/auth/client');
@@ -36,7 +38,7 @@ export function AccountSignOutSection({
 						memberId: identity.memberId,
 					},
 				],
-				{ confirmDiscard },
+				{ confirmDiscard, everywhere },
 			);
 			if (cancelled) return;
 			// Local data is gone, so the visitor leaves the household screen either way; a failed
@@ -50,25 +52,39 @@ export function AccountSignOutSection({
 		} catch {
 			setAccountSignOutError('Konto konnte nicht abgemeldet werden. Bitte versuche es erneut.');
 		} finally {
-			setAccountSignOutPending(false);
+			setAccountSignOutPending(null);
 		}
 	}
 
 	return (
-		<div>
+		<div className="flex flex-col gap-2">
 			<Button
 				type="button"
 				variant="outline"
-				onClick={() => void handleAccountSignOut()}
-				disabled={accountSignOutPending}
+				onClick={() => void handleAccountSignOut(false)}
+				disabled={accountSignOutPending !== null}
 				aria-label="Konto abmelden"
 				className="w-full"
 			>
-				{accountSignOutPending ? <Spinner aria-hidden /> : <LogOut aria-hidden />}
-				{accountSignOutPending ? 'Meldet ab…' : 'Konto abmelden'}
+				{accountSignOutPending === 'here' ? <Spinner aria-hidden /> : <LogOut aria-hidden />}
+				{accountSignOutPending === 'here' ? 'Meldet ab…' : 'Konto abmelden'}
+			</Button>
+			<Button
+				type="button"
+				variant="ghost"
+				onClick={() => void handleAccountSignOut(true)}
+				disabled={accountSignOutPending !== null}
+				className="w-full text-muted-foreground"
+			>
+				{accountSignOutPending === 'everywhere' ? (
+					<Spinner aria-hidden />
+				) : (
+					<MonitorOff aria-hidden />
+				)}
+				{accountSignOutPending === 'everywhere' ? 'Meldet ab…' : 'Auf allen Geräten abmelden'}
 			</Button>
 			{accountSignOutError && (
-				<Alert variant="destructive" className="mt-2">
+				<Alert variant="destructive">
 					<AlertDescription>{accountSignOutError}</AlertDescription>
 				</Alert>
 			)}

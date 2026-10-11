@@ -3,6 +3,7 @@
 import { SocialLoginButtons, type SocialProvider } from '@/components/auth/SocialLoginButtons';
 import type { Member, WgSummary } from '@/components/wg/WgContextProvider';
 import { AccountSignOutSection } from '@/components/wg/einstellungen/AccountSignOutSection';
+import { AccountWgsSection } from '@/components/wg/einstellungen/AccountWgsSection';
 import { DangerZoneSection } from '@/components/wg/einstellungen/DangerZoneSection';
 import { EmailChangeRow } from '@/components/wg/einstellungen/EmailChangeRow';
 import { InvitesSection } from '@/components/wg/einstellungen/InvitesSection';
@@ -65,6 +66,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 				</div>
 			</Section>
 
+			<AccountWgsSection currentCode={wg.shareCode} />
 			<MembersSection wg={wg} members={members} identity={identity} />
 			<Section title="Konto">
 				<div className="p-3">
