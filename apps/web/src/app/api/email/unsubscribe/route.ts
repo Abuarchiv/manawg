@@ -25,13 +25,6 @@ const COPY: Record<
 			'Du bekommst die Abrechnung am Monatsanfang dann nicht mehr per E-Mail. In der App bleibt sie abrufbar.',
 		done: 'Du bekommst keine Monatsabrechnung mehr per E-Mail. Unter Einstellungen in der App kannst du sie wieder einschalten.',
 	},
-	digest: {
-		title: 'Tageszusammenfassung abbestellen',
-		question: 'Tageszusammenfassung abbestellen?',
-		explain:
-			'Du bekommst dann keine E-Mail mehr darüber, was in deiner WG passiert ist. In der App siehst du weiterhin alles.',
-		done: 'Du bekommst keine Tageszusammenfassung mehr per E-Mail. Unter Einstellungen in der App kannst du sie wieder einschalten.',
-	},
 	reminders: {
 		title: 'Erinnerungen abbestellen',
 		question: 'Erinnerungen an offene Beträge abbestellen?',

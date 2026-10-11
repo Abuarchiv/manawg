@@ -11,18 +11,16 @@ test('statement tokens keep the two-part format already in sent mails', () => {
 	assert.deepEqual(verifyUnsubscribeToken(token, SECRET), { memberId: MEMBER, kind: 'statement' });
 });
 
-test('digest and reminder tokens name their kind and verify to it', () => {
-	for (const kind of ['digest', 'reminders'] as const) {
-		const token = signUnsubscribeToken(MEMBER, kind, SECRET);
-		assert.equal(token.split('.')[1], kind);
-		assert.deepEqual(verifyUnsubscribeToken(token, SECRET), { memberId: MEMBER, kind });
-	}
+test('reminder tokens name their kind and verify to it', () => {
+	const token = signUnsubscribeToken(MEMBER, 'reminders', SECRET);
+	assert.equal(token.split('.')[1], 'reminders');
+	assert.deepEqual(verifyUnsubscribeToken(token, SECRET), { memberId: MEMBER, kind: 'reminders' });
 });
 
 test('a kind cannot be swapped without re-signing', () => {
-	const token = signUnsubscribeToken(MEMBER, 'digest', SECRET);
+	const token = signUnsubscribeToken(MEMBER, 'reminders', SECRET);
 	const mac = token.split('.')[2] ?? '';
-	assert.equal(verifyUnsubscribeToken(`${MEMBER}.reminders.${mac}`, SECRET), null);
+	assert.equal(verifyUnsubscribeToken(`${MEMBER}.statement.${mac}`, SECRET), null);
 	assert.equal(verifyUnsubscribeToken(`${MEMBER}.${mac}`, SECRET), null);
 	assert.equal(verifyUnsubscribeToken(`${MEMBER}.unknown.${mac}`, SECRET), null);
 });

@@ -8,7 +8,7 @@ import { APP_ORIGIN } from './brand-mail';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Which optional mail an unsubscribe link turns off. */
-const UNSUBSCRIBE_KINDS = ['statement', 'digest', 'reminders'] as const;
+const UNSUBSCRIBE_KINDS = ['statement', 'reminders'] as const;
 export type UnsubscribeKind = (typeof UNSUBSCRIBE_KINDS)[number];
 
 export interface UnsubscribeToken {
@@ -65,7 +65,6 @@ export function unsubscribeUrl(memberId: string, kind: UnsubscribeKind = 'statem
 
 const PREFERENCE_KEY = {
 	statement: 'notifyStatementEmail',
-	digest: 'notifyDigestEmail',
 	reminders: 'notifyReminders',
 } as const;
 

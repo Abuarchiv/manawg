@@ -1,0 +1,1 @@
+ALTER TABLE "wg_members" DROP COLUMN "notify_digest_email";
