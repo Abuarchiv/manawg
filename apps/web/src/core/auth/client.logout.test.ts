@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { mock, test } from 'node:test';
 
-// Real client.ts and push-subscribe.ts run against a recording fake of the network, the Supabase
-// auth client and the browser's push subscription; the events array keeps their order.
+// Real client.ts and push-subscribe.ts run against a recording fake of the network
+// and the browser's push subscription; the events array keeps their order.
 
 type Event = {
 	type: string;
@@ -18,23 +18,15 @@ const current = {
 mock.module('@/core/infra/api-client', {
 	namedExports: {
 		apiFetch: async (url: string, init?: Event['init']) => {
+			if (url === '/api/auth/sign-out') {
+				current.events.push({ type: 'sign-out' });
+				return { ok: true, data: { ok: true } };
+			}
 			current.events.push({ type: 'server-unsubscribe', url, init });
 			return current.serverAvailable
 				? { ok: true, data: { ok: true } }
 				: { ok: false, status: 503, error: 'server_error' };
 		},
-	},
-});
-mock.module('@supabase/ssr', {
-	namedExports: {
-		createBrowserClient: () => ({
-			auth: {
-				signOut: async () => {
-					current.events.push({ type: 'sign-out' });
-					return { error: null };
-				},
-			},
-		}),
 	},
 });
 const queue = { unsent: 0, synced: [] as string[] };
@@ -49,13 +41,6 @@ mock.module('@/core/offline/offline-client', {
 		countOfflineActions: () => queue.unsent,
 	},
 });
-mock.module('./supabase-env', {
-	namedExports: {
-		getSupabaseEnv: () => ({ url: 'https://auth.example.test', publishableKey: 'test' }),
-	},
-});
-mock.module('./next-path', { namedExports: { safeNextPath: (value: string) => value } });
-
 const client = await import('./client');
 
 function harness({ serverAvailable = true, unsubscribeResult = true } = {}) {

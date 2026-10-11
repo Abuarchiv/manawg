@@ -2,8 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { authIntentQuery, authPageHref } from '@/core/auth/auth-intent';
 
-test('keeps a valid share code and drops everything else', () => {
-	assert.equal(authIntentQuery('code=mte8pzat&utm=1&token=secret'), 'code=MTE8PZAT');
+test('drops an old share code and everything unknown; an invitation travels as next', () => {
+	assert.equal(authIntentQuery('code=mte8pzat&utm=1&token=secret'), '');
+	assert.equal(authIntentQuery('next=%2Feinladung%2Fabc123&utm=1'), 'next=%2Feinladung%2Fabc123');
 });
 
 test('keeps the create action and a safe return path', () => {
@@ -13,12 +14,7 @@ test('keeps the create action and a safe return path', () => {
 	);
 });
 
-test('a share code wins over the create action', () => {
-	assert.equal(authIntentQuery('action=create&code=MTE8PZAT'), 'code=MTE8PZAT');
-});
-
 test('rejects invalid codes, foreign targets and the auth pages themselves', () => {
-	assert.equal(authIntentQuery('code=abc'), '');
 	assert.equal(authIntentQuery('next=https%3A%2F%2Fevil.com'), '');
 	assert.equal(authIntentQuery('next=%2F%2Fevil.com'), '');
 	assert.equal(authIntentQuery('next=%2Fneu%3Faction%3Dcreate'), '');
@@ -28,6 +24,9 @@ test('rejects invalid codes, foreign targets and the auth pages themselves', () 
 
 test('builds page links with and without intent', () => {
 	assert.equal(authPageHref('/registrieren', ''), '/registrieren');
-	assert.equal(authPageHref('/neu', 'code=MTE8PZAT'), '/neu?code=MTE8PZAT');
+	assert.equal(
+		authPageHref('/neu', 'next=%2Feinladung%2Fabc123'),
+		'/neu?next=%2Feinladung%2Fabc123',
+	);
 	assert.equal(authPageHref('/registrieren', 'action=create'), '/registrieren?action=create');
 });

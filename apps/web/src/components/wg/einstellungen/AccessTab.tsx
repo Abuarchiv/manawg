@@ -4,10 +4,10 @@ import { SocialLoginButtons, type SocialProvider } from '@/components/auth/Socia
 import type { Member, WgSummary } from '@/components/wg/WgContextProvider';
 import { AccountSignOutSection } from '@/components/wg/einstellungen/AccountSignOutSection';
 import { DangerZoneSection } from '@/components/wg/einstellungen/DangerZoneSection';
+import { InvitesSection } from '@/components/wg/einstellungen/InvitesSection';
 import { MembersSection } from '@/components/wg/einstellungen/MembersSection';
 import { PasswordChangeRow } from '@/components/wg/einstellungen/PasswordChangeRow';
 import { Section } from '@/components/wg/einstellungen/Section';
-import { ShareAccessSection } from '@/components/wg/einstellungen/ShareAccessSection';
 import type { SessionMember } from '@/core/auth/local-account';
 import { useEffect, useState } from 'react';
 
@@ -41,21 +41,11 @@ function useGoogleLinked(): boolean {
 }
 
 export function AccessTab({ wg, members, identity }: AccessTabProps) {
-	const [joiningEnabled, setJoiningEnabled] = useState(wg.joiningEnabled);
 	const googleLinked = useGoogleLinked();
-
-	useEffect(() => {
-		setJoiningEnabled(wg.joiningEnabled);
-	}, [wg.joiningEnabled]);
 
 	return (
 		<>
-			<ShareAccessSection
-				wg={wg}
-				identity={identity}
-				joiningEnabled={joiningEnabled}
-				onJoiningEnabledChange={setJoiningEnabled}
-			/>
+			<InvitesSection wg={wg} identity={identity} />
 			<Section title="Anmeldemethoden">
 				<div className="flex flex-col gap-3 p-3">
 					<PasswordChangeRow />

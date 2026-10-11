@@ -81,8 +81,6 @@ test.describe('wg cached fetch', () => {
 						id: E2E_EXISTING_WG.id,
 						name: E2E_EXISTING_WG.name,
 						shareCode: E2E_EXISTING_WG.shareCode,
-						joiningEnabled: true,
-						shareCodeRotatedAt: null,
 						createdAt: '2026-09-20T08:00:00.000Z',
 					},
 					members: [

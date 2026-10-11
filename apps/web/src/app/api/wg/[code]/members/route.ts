@@ -1,17 +1,19 @@
 import { recordAuditEvent } from '@/core/audit';
 import { getAuthenticatedUser } from '@/core/auth/server';
-import { db, wgMembers, wgs } from '@/core/db';
+import { db, wgInvites, wgMembers, wgs } from '@/core/db';
 import { assertAccountCanAcquireMembership } from '@/core/db/account-deletion';
 import { type WriteOutcome, responseCodec, withIdempotentWrite } from '@/core/db/idempotent-write';
 import { releaseMemberName } from '@/core/db/member-names';
 import { LIMITS } from '@/core/db/schema';
 import { type DbTransaction, TransactionAbort, withTransaction } from '@/core/db/transaction';
+import { inviteStatus } from '@/core/db/wg-invites';
 import { isWgAdmin } from '@/core/guards/admin';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { shareCodeMissResponse } from '@/core/guards/share-code-miss';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import {
 	HTTP,
+	apiError,
 	conflict,
 	forbidden,
 	notFound,
@@ -23,6 +25,7 @@ import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey } from '@/core/idempotency-store';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, clientIpKey, wgWriteLimiter } from '@/core/rate-limit';
+import { isInviteToken } from '@/core/utils/invite-token';
 import { MAX_MEMBERS_PER_WG } from '@/shared/lib/limits';
 import { and, asc, count, eq, sql } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -100,6 +103,7 @@ export const GET = withWgRoute('members GET', async (req, { code }) => {
 const joinMemberSchema = z.object({
 	name: z.string().trim().min(1).max(LIMITS.NAME_MAX),
 	color: z.string().trim().max(16).nullish(),
+	inviteToken: z.string().trim().max(64).optional(),
 });
 
 type JoinRejection =
@@ -108,13 +112,15 @@ type JoinRejection =
 	| 'already_joined'
 	| 'member_deactivated'
 	| 'not_found'
-	| 'joining_disabled';
+	| 'invite_required'
+	| 'invite_expired';
 
 const joinCodec = responseCodec();
 
 function joinRejectionResponse(reason: JoinRejection): NextResponse {
 	if (reason === 'not_found') return notFound('wg_not_found');
-	if (reason === 'joining_disabled') return forbidden('joining_disabled', 'joining_disabled');
+	if (reason === 'invite_required') return forbidden('invite_required', 'invite_required');
+	if (reason === 'invite_expired') return apiError('invite_expired', HTTP.GONE, 'invite_expired');
 	if (reason === 'limit') return conflict('member_limit_reached', 'member_limit_reached');
 	if (reason === 'member_deactivated') return forbidden('member_deactivated', 'member_deactivated');
 	if (reason === 'already_joined') return conflict('already_joined', 'already_joined');
@@ -122,15 +128,26 @@ function joinRejectionResponse(reason: JoinRejection): NextResponse {
 }
 
 /**
- * The share code is the invite key. The per-WG member cap and unique names keep a leaked code
- * from flooding the WG; count check and insert run behind a row lock on the WG, because two
- * concurrent joins would otherwise both pass the cap check.
+ * An invitation token is the only way in; the share code is just the WG's address. The per-WG
+ * member cap and unique names keep a leaked link from flooding the WG; token check, count check
+ * and insert run behind a row lock on the WG, because two concurrent joins would otherwise both
+ * pass the cap and use-count checks.
  */
 async function insertJoiningMember(
 	tx: DbTransaction,
-	input: { wgId: string; code: string; authUserId: string; name: string; color: string | null },
+	input: {
+		wgId: string;
+		code: string;
+		authUserId: string;
+		name: string;
+		color: string | null;
+		inviteToken: string;
+	},
 ): Promise<
-	WriteOutcome<unknown, { member: typeof wgMembers.$inferSelect } | { reason: JoinRejection }>
+	WriteOutcome<
+		unknown,
+		{ member: typeof wgMembers.$inferSelect; inviteId: string } | { reason: JoinRejection }
+	>
 > {
 	const reject = (reason: JoinRejection) => ({
 		status: HTTP.CONFLICT,
@@ -139,7 +156,7 @@ async function insertJoiningMember(
 	});
 	await assertAccountCanAcquireMembership(tx, input.authUserId);
 	const [lockedWg] = await tx
-		.select({ shareCode: wgs.shareCode, joiningEnabled: wgs.joiningEnabled })
+		.select({ shareCode: wgs.shareCode })
 		.from(wgs)
 		.where(eq(wgs.id, input.wgId))
 		.for('update');
@@ -153,7 +170,14 @@ async function insertJoiningMember(
 	// picker); an admin has to reactivate them.
 	if (existingForUser[0]?.deactivatedAt) return reject('member_deactivated');
 	if (existingForUser.length > 0) return reject('already_joined');
-	if (!lockedWg.joiningEnabled) return reject('joining_disabled');
+	if (!isInviteToken(input.inviteToken)) return reject('invite_required');
+	const [invite] = await tx
+		.select()
+		.from(wgInvites)
+		.where(and(eq(wgInvites.token, input.inviteToken), eq(wgInvites.wgId, input.wgId)))
+		.for('update');
+	if (!invite) return reject('invite_required');
+	if (inviteStatus(invite) !== 'valid') return reject('invite_expired');
 	// The cap counts active members only (moved-out rows are soft-deleted and never removed),
 	// plus a hard ceiling on all rows so the roster always fits one GET page.
 	const [counts] = await tx
@@ -192,7 +216,15 @@ async function insertJoiningMember(
 		throw insertErr;
 	}
 	if (!inserted) return reject('name_taken');
-	return { status: 200, body: { member: inserted }, context: { member: inserted } };
+	await tx
+		.update(wgInvites)
+		.set({ useCount: sql`${wgInvites.useCount} + 1` })
+		.where(eq(wgInvites.id, invite.id));
+	return {
+		status: 200,
+		body: { member: inserted },
+		context: { member: inserted, inviteId: invite.id },
+	};
 }
 
 async function accountDeletionReplayResponse(authUserId: string): Promise<NextResponse | null> {
@@ -210,7 +242,7 @@ async function accountDeletionReplayResponse(authUserId: string): Promise<NextRe
 export const POST = withWgRoute('members POST', async (req, { code }) => {
 	const parsed = await parseBody(req, joinMemberSchema, { fieldErrors: { name: 'name_invalid' } });
 	if (!parsed.ok) return parsed.response;
-	const { name } = parsed.data;
+	const { name, inviteToken = '' } = parsed.data;
 	const color = parsed.data.color ?? null;
 	const limit = await checkRateLimit(wgWriteLimiter, `join:${clientIpKey(req)}`);
 	if (!limit.success) {
@@ -228,7 +260,7 @@ export const POST = withWgRoute('members POST', async (req, { code }) => {
 	const user = authUser;
 	const wg = await db.query.wgs.findFirst({
 		where: (w, { eq }) => eq(w.shareCode, code),
-		columns: { id: true, joiningEnabled: true },
+		columns: { id: true },
 	});
 	if (!wg) return shareCodeMissResponse(user.id, notFound('wg_not_found'));
 
@@ -240,22 +272,30 @@ export const POST = withWgRoute('members POST', async (req, { code }) => {
 				codec: joinCodec,
 				beforeReplay: () => accountDeletionReplayResponse(user.id),
 			},
-			(tx) => insertJoiningMember(tx, { wgId: wg.id, code, authUserId: user.id, name, color }),
+			(tx) =>
+				insertJoiningMember(tx, {
+					wgId: wg.id,
+					code,
+					authUserId: user.id,
+					name,
+					color,
+					inviteToken,
+				}),
 		);
 		if (result.kind === 'stopped') return result.response;
 		if (result.kind === 'replayed' || !result.context) {
 			return NextResponse.json(result.body, { status: result.status });
 		}
 		if ('reason' in result.context) return joinRejectionResponse(result.context.reason);
-		const { member } = result.context;
+		const { member, inviteId } = result.context;
 		await recordAuditEvent({
 			wgId: wg.id,
 			memberId: member.id,
 			eventType: 'member.joined',
 			entityType: 'member',
 			entityId: member.id,
-			summary: `${member.name} ist der WG beigetreten.`,
-			metadata: { name: member.name },
+			summary: `${member.name} ist der WG per Einladung beigetreten.`,
+			metadata: { name: member.name, inviteId },
 		});
 		return NextResponse.json({ member });
 	} catch (err) {

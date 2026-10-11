@@ -317,11 +317,11 @@ test.describe('settings theme responsive', () => {
 	});
 });
 
-test.describe('share card', () => {
+test.describe('invitations', () => {
 	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
 
 	test('native share success does not mark the invite link as copied', async ({ page }) => {
-		// Stub the Web Share API so `nativeShare()` takes its success branch instead
+		// Stub the Web Share API so the share button takes its success branch instead
 		// of falling back to clipboard copy.
 		await page.addInitScript(() => {
 			Object.defineProperty(window.navigator, 'share', {
@@ -332,18 +332,16 @@ test.describe('share card', () => {
 		await setupMember(page);
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen#zugang`);
 
-		const linkButton = page.getByRole('button', { name: 'Einladungslink kopieren' });
-		await expect(linkButton).toBeVisible();
-		const shareButton = page.getByRole('button', { name: 'WG-Einladung teilen' });
-		await shareButton.click();
+		await page.getByRole('button', { name: 'Neue Einladung', exact: true }).click();
+		await expect(page.getByText('Neuer Einladungslink')).toBeVisible();
+		await expect(page.getByText('/einladung/fixture-invite-token01')).toBeVisible();
 
-		// A real share (not a clipboard copy) must not relabel the link row or
-		// swap its icon to a checkmark — nothing was copied.
-		await expect(page.getByRole('button', { name: 'Link kopiert' })).toHaveCount(0);
-		await expect(linkButton).toBeVisible();
+		await page.getByRole('button', { name: 'Teilen', exact: true }).click();
 
-		// The generic "ready" note is still fine to show after a successful share.
-		await expect(page.getByText('Einladungslink bereit.')).toBeVisible();
+		// A real share (not a clipboard copy) must not announce that anything was copied.
+		await expect(page.getByText('Einladung kopiert.')).toHaveCount(0);
+		await expect(page.getByText('Link kopiert.')).toHaveCount(0);
+		await expect(page.getByRole('button', { name: 'Einladungslink kopieren' })).toBeVisible();
 	});
 
 	test('deactivating another member shows their open balances and succeeds', async ({ page }) => {
@@ -482,17 +480,18 @@ test.describe('share card', () => {
 	});
 });
 
-test.describe('invite code copy', () => {
-	test.describe('invite code copy feedback', () => {
+test.describe('invite link copy', () => {
+	test.describe('invite link copy feedback', () => {
 		test.skip(
 			process.env.E2E_FIXTURE_MODE !== 'true' || process.env.NEXT_PUBLIC_DB_DOWN !== 'true',
 			'Requires the local database-down fixture server.',
 		);
 
-		test('announces a copied code without reporting that the invitation link was copied', async ({
+		test('announces a copied link without reporting that the invitation was shared', async ({
 			page,
 		}) => {
 			const code = 'MTE8PZAT';
+			const inviteUrl = 'http://localhost/einladung/fixture-invite-token01';
 			await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
 			await page.addInitScript(() => window.localStorage.clear());
 			await mockNoWgs(page);
@@ -508,6 +507,11 @@ test.describe('invite code copy', () => {
 				}
 				await route.continue();
 			});
+			await page.route(`**/api/wg/${code}/invites`, (route) =>
+				route.fulfill({
+					json: { id: 'fixture-invite', url: inviteUrl, expiresAt: '2026-10-18T12:00:00.000Z' },
+				}),
+			);
 
 			await page.goto('/neu');
 			await page.getByRole('button', { name: 'Neue WG erstellen', exact: true }).click();
@@ -515,22 +519,22 @@ test.describe('invite code copy', () => {
 			await page.getByLabel('Dein Anzeigename').fill('Anna');
 			await page.getByRole('button', { name: 'WG erstellen', exact: true }).click();
 
-			const copyCodeButton = page.getByRole('button', {
-				name: `Code ${code} kopieren`,
+			const copyLinkButton = page.getByRole('button', {
+				name: 'Einladungslink kopieren',
 				exact: true,
 			});
-			await expect(copyCodeButton).toBeVisible();
-			await copyCodeButton.focus();
-			await expect(copyCodeButton).toBeFocused();
+			await expect(copyLinkButton).toBeEnabled();
+			await copyLinkButton.focus();
+			await expect(copyLinkButton).toBeFocused();
 			await page.keyboard.press('Enter');
 
-			await expect(page.locator('#share-status-live')).toHaveText('WG-Code wurde kopiert.');
+			await expect(page.locator('#share-status-live')).toHaveText('Einladungslink wurde kopiert.');
 			await expect(
 				page.getByRole('button', { name: 'Mitbewohner einladen', exact: true }),
 			).toBeVisible();
-			await expect(page.getByText('Code kopiert', { exact: true })).toBeVisible();
-			await expect(page.getByText('Link kopiert', { exact: true })).toHaveCount(0);
-			expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(code);
+			await expect(page.getByText('Link kopiert', { exact: true })).toBeVisible();
+			await expect(page.getByText('Einladung kopiert', { exact: true })).toHaveCount(0);
+			expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(inviteUrl);
 		});
 	});
 });

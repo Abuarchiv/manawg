@@ -11,10 +11,11 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 function describeIntent(intent: URLSearchParams): string {
-	if (intent.get('code')) return 'Erstelle dein Konto, um mit deinem WG-Code beizutreten.';
+	if (intent.get('next')?.startsWith('/einladung/'))
+		return 'Erstelle dein Konto, um der Einladung zu folgen.';
 	if (intent.get('action') === 'create')
 		return 'Erstelle dein Konto, danach legst du deine neue WG an.';
-	return 'Mit deinem Konto erstellst du eine WG oder trittst mit einem Code bei.';
+	return 'Mit deinem Konto erstellst du eine WG oder trittst per Einladung bei.';
 }
 
 /** Registration page: Google or e-mail/password, then back into the `/neu` start flow. */
@@ -23,14 +24,13 @@ export function RegistrierenClient({ intentQuery }: { intentQuery: string }) {
 	const [credentialsBusy, setCredentialsBusy] = useState(false);
 	const intent = new URLSearchParams(intentQuery);
 	const afterAuthPath = authPageHref('/neu', intentQuery);
-	const code = intent.get('code');
 
 	return (
 		<EntryFrame
 			title="Konto erstellen"
 			headingId="signup-heading"
 			description={describeIntent(intent)}
-			backHref={code ? `/?code=${encodeURIComponent(code)}` : '/'}
+			backHref="/"
 		>
 			<FieldGroup>
 				<SocialLoginButtons

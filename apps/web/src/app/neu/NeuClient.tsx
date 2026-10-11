@@ -13,31 +13,29 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { isAuthPagePath } from '@/core/auth/auth-intent';
 import { safeNextPath } from '@/core/auth/next-path';
-import { normalizeShareCode } from '@/core/utils/share-code';
+import { invitePath } from '@/core/utils/invite-token';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { ChooseStep } from './ChooseStep';
 import { CreateStep } from './CreateStep';
 import { InviteStep } from './InviteStep';
-import { JoinCodeStep } from './JoinCodeStep';
-import { JoinNameStep } from './JoinNameStep';
+import { JoinInviteStep } from './JoinInviteStep';
 import { StartNotices } from './StartNotices';
 import {
-	getJoinCodeFromSearch,
 	getNeuIntentFromSearch,
 	getWgCodeFromPath,
+	resolveInviteInput,
 	startSocialLogin,
 } from './start-flow';
 import { useAccountWgs } from './use-account-wgs';
 import { useBusyLock } from './use-busy-lock';
 import { useClearCallbackError } from './use-clear-callback-error';
 import { useCreateWg } from './use-create-wg';
-import { useJoinWg } from './use-join-wg';
 import { useAccountNamePrefill, useSaveStartDraft, useStartDraft } from './use-start-draft';
 import { useStartError } from './use-start-error';
 import { useStepHistory } from './use-step-history';
 
-export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
+export function NeuClient() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const {
@@ -47,12 +45,8 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 		setWgName,
 		creatorName,
 		setCreatorName,
-		joinCode,
-		setJoinCode,
-		joinName,
-		setJoinName,
-		joinWg,
-		setJoinWg,
+		inviteLink,
+		setInviteLink,
 		interactive,
 		resetDraft,
 	} = useStartDraft();
@@ -73,36 +67,29 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 		handleAuthenticated,
 		signedInHere,
 	} = useAccountWgs({ interactive, step, clearError });
-	useAccountNamePrefill(authState === 'authenticated', setCreatorName, setJoinName);
-	useSaveStartDraft({ interactive, step, wgName, creatorName, joinCode, joinName, joinWg });
+	useAccountNamePrefill(authState === 'authenticated', setCreatorName);
+	useSaveStartDraft({ interactive, step, wgName, creatorName });
 	const { goTo, goBack } = useStepHistory({
 		interactive,
 		step,
 		setStep,
-		onPop: (target) => {
-			clearError();
-			if (target === 'choose') setJoinWg(null);
-		},
-		canEnter: (target) =>
-			target === 'joinName' ? joinWg !== null : target === 'invite' ? createdWg !== null : true,
+		onPop: clearError,
+		canEnter: (target) => (target === 'invite' ? createdWg !== null : true),
 	});
 
 	function loginNextPath(): string {
 		const params = new URLSearchParams();
 		if (step === 'create') params.set('action', 'create');
-		const code = joinCode || getJoinCodeFromSearch(searchParams.toString()) || joinWg?.code;
-		if ((step === 'join' || step === 'joinName') && code) {
-			params.set('code', normalizeShareCode(code));
-		}
-		const next = safeNextPath(searchParams.get('next'));
+		const invite = getNeuIntentFromSearch(searchParams.toString()).inviteToken;
+		const next = invite ? invitePath(invite) : safeNextPath(searchParams.get('next'));
 		if (next !== '/' && !isAuthPagePath(next)) params.set('next', next);
 		const query = params.toString();
 		return query ? `/neu?${query}` : '/neu';
 	}
 
 	function explorationHref(): string {
-		const code = getJoinCodeFromSearch(searchParams.toString());
-		return code ? `/?code=${encodeURIComponent(code)}` : '/';
+		const invite = getNeuIntentFromSearch(searchParams.toString()).inviteToken;
+		return invite ? `/?invite=${encodeURIComponent(invite)}` : '/';
 	}
 
 	function returnToSignIn(): void {
@@ -126,18 +113,15 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 		...errorActions,
 		returnToSignIn,
 	});
-	const { verifyJoinCode, joinExistingWg } = useJoinWg({
-		joinCode,
-		joinName,
-		joinWg,
-		setJoinWg,
-		setStep: goTo,
-		busyRef,
-		setBusy,
-		...errorActions,
-		returnToSignIn,
-		sessionless,
-	});
+
+	function openInvite(): void {
+		const result = resolveInviteInput(inviteLink);
+		if ('error' in result) {
+			setFieldError('inviteLink', result.error);
+			return;
+		}
+		router.push(invitePath(result.token));
+	}
 
 	async function switchAccount(): Promise<void> {
 		if (busyRef.current) return;
@@ -211,8 +195,8 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 						? undefined
 						: step === 'create'
 							? 'Melde dich an, danach erstellst du deine neue WG.'
-							: joinCode
-								? 'Melde dich an, um mit deinem WG-Code beizutreten.'
+							: getNeuIntentFromSearch(searchParams.toString()).inviteToken
+								? 'Melde dich an, um die Einladung anzunehmen.'
 								: undefined
 				}
 				backHref={explorationHref()}
@@ -293,23 +277,19 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 					: step === 'create'
 						? 'Neue WG erstellen'
 						: step === 'join'
-							? 'Per Code beitreten'
-							: step === 'joinName'
-								? 'Dein Name in der WG'
-								: 'WG erstellt'
+							? 'Mit Einladung beitreten'
+							: 'WG erstellt'
 			}
 			description={
 				step === 'invite'
 					? 'Deine WG ist erstellt. Jetzt kannst du die Einladung teilen.'
-					: step === 'joinName'
-						? 'Mit diesem Namen sehen dich deine Mitbewohner.'
-						: step === 'create'
-							? 'Gib eurer WG einen Namen. Danach erhältst du euren WG-Code.'
-							: step === 'join'
-								? 'Gib den WG-Code deiner Mitbewohner ein.'
-								: accountWgs.length > 0
-									? 'Öffne eine deiner WGs, erstelle eine neue oder tritt per Code bei.'
-									: 'Du hast noch keine WG. Erstelle eine neue oder tritt mit einem Code bei.'
+					: step === 'create'
+						? 'Gib eurer WG einen Namen. Danach lädst du deine Mitbewohner ein.'
+						: step === 'join'
+							? 'Füge den Einladungslink deiner Mitbewohner ein.'
+							: accountWgs.length > 0
+								? 'Öffne eine deiner WGs, erstelle eine neue oder tritt mit einer Einladung bei.'
+								: 'Du hast noch keine WG. Erstelle eine neue oder tritt mit einer Einladung bei.'
 			}
 			backHref={explorationHref()}
 		>
@@ -319,7 +299,7 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 				<ErrorBox>
 					{movedOut
 						? `Du bist in der WG ${deniedWgCode} als ausgezogen markiert. Eine Admin-Person kann dich wieder aktivieren.`
-						: `Der Link zur WG ${deniedWgCode} ist veraltet, oder du bist mit diesem Konto nicht Mitglied. Wähle eine deiner WGs oder tritt mit dem WG-Code bei.`}
+						: `Der Link zur WG ${deniedWgCode} ist veraltet, oder du bist mit diesem Konto nicht Mitglied. Wähle eine deiner WGs oder tritt mit einer Einladung bei.`}
 				</ErrorBox>
 			)}
 			{step === 'choose' && (
@@ -349,32 +329,19 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 				<InviteStep
 					code={createdWg.code}
 					wgName={createdWg.name}
+					memberId={createdWg.memberId}
 					onSkip={() => router.push(`/wg/${encodeURIComponent(createdWg.code)}`)}
 				/>
 			)}
 			{step === 'join' && (
-				<JoinCodeStep
-					joinCode={joinCode}
-					onJoinCodeChange={setJoinCode}
+				<JoinInviteStep
+					inviteLink={inviteLink}
+					onInviteLinkChange={setInviteLink}
 					error={error}
 					invalidField={invalidField}
 					clearError={clearError}
-					busy={busy}
-					onSubmit={() => void verifyJoinCode()}
+					onSubmit={openInvite}
 					onBack={() => goBack('choose')}
-				/>
-			)}
-			{step === 'joinName' && joinWg && (
-				<JoinNameStep
-					joinWg={joinWg}
-					joinName={joinName}
-					onJoinNameChange={setJoinName}
-					error={error}
-					invalidField={invalidField}
-					clearError={clearError}
-					busy={busy}
-					onSubmit={() => void joinExistingWg()}
-					onBack={() => goBack('join')}
 				/>
 			)}
 			{step !== 'invite' && (

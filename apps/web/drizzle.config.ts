@@ -28,6 +28,7 @@ export default defineConfig({
 		'./src/core/db/schema.ts',
 		'./src/core/db/schema-statement-emails.ts',
 		'./src/core/db/schema-mail-log.ts',
+		'./src/core/db/schema-invites.ts',
 	],
 	out: './drizzle',
 	dialect: 'postgresql',

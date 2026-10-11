@@ -1,3 +1,4 @@
+import { INVITE_VALID_DAYS, invitePath } from '@/core/utils/invite-token';
 import { formatEuroCents } from '@/core/utils/money';
 import { APP_ORIGIN, type MailBlock, type RenderedMail, renderBrandMail } from './brand-mail';
 
@@ -33,7 +34,7 @@ export function renderWelcomeMail(input: { firstName: string | null }): Rendered
 			{
 				kind: 'steps',
 				items: [
-					'WG anlegen oder mit Code beitreten',
+					'WG anlegen oder per Einladung beitreten',
 					'Mitbewohner einladen',
 					'Erste Ausgabe eintragen',
 				],
@@ -44,11 +45,11 @@ export function renderWelcomeMail(input: { firstName: string | null }): Rendered
 	});
 }
 
-/** E6 · a member types an address; the code is the same one the share card shows. */
+/** E6 · a member types an address; the mail carries a personal invitation link, valid for 7 days. */
 export function renderInvitationMail(input: {
 	inviterName: string;
 	wgName: string;
-	shareCode: string;
+	inviteToken: string;
 	memberNames: readonly string[];
 }): RenderedMail {
 	const others = input.memberNames.filter((name) => name !== input.inviterName);
@@ -57,20 +58,17 @@ export function renderInvitationMail(input: {
 		names.length === 1
 			? `${input.inviterName} ist schon dabei.`
 			: `${joinNames(names.slice(0, 3))}${names.length > 3 ? ` und ${names.length - 3} weitere` : ''} sind schon dabei.`;
-	const joinUrl = `${APP_ORIGIN}/?code=${encodeURIComponent(input.shareCode)}`;
+	const joinUrl = `${APP_ORIGIN}${invitePath(input.inviteToken)}`;
 	const count = names.length;
 	return renderBrandMail({
 		subject: `${input.inviterName} lädt dich in die WG ${input.wgName} ein`,
 		preheader: count === 1 ? 'Eine Person ist schon dabei.' : `${count} Leute sind schon dabei.`,
 		eyebrow: 'Einladung',
 		title: `${input.inviterName} lädt dich in die WG ${input.wgName} ein.`,
-		blocks: [
-			{ kind: 'people', names, caption },
-			{ kind: 'code', label: 'Oder in der App mit diesem Code beitreten', value: input.shareCode },
-		],
+		blocks: [{ kind: 'people', names, caption }],
 		button: { label: 'Einladung annehmen', url: joinUrl },
 		linkFallback: joinUrl,
-		footerNote: `Der Code gilt, solange die WG Beitritte erlaubt. ${input.inviterName} hat deine Adresse eingegeben, wir speichern sie nicht weiter.`,
+		footerNote: `Der Link gilt ${INVITE_VALID_DAYS} Tage. ${input.inviterName} hat deine Adresse eingegeben, wir speichern sie nicht weiter.`,
 	});
 }
 

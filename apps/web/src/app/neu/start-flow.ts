@@ -4,7 +4,12 @@
  */
 import type { SocialProvider } from '@/components/auth/SocialLoginButtons';
 import { safeNextPath } from '@/core/auth/next-path';
-import { DELETION_PENDING_MESSAGE, getInitialJoinCode } from '@/core/infra/join-flow';
+import {
+	DELETION_PENDING_MESSAGE,
+	LEGACY_CODE_MESSAGE,
+	extractInviteCode,
+} from '@/core/infra/join-flow';
+import { extractInviteToken, isInviteToken } from '@/core/utils/invite-token';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 
 import { MEMBER_NAME_MAX_LENGTH, WG_NAME_MAX_LENGTH } from '@/shared/lib/limits';
@@ -21,11 +26,8 @@ export interface CreateResponse {
 export interface CreatedWg {
 	code: string;
 	name: string;
-}
-
-export interface JoinWg {
-	code: string;
-	name: string;
+	/** The creator's member, needed to authorise the first invitation request. */
+	memberId: string;
 }
 
 export interface AccountWg {
@@ -36,8 +38,8 @@ export interface AccountWg {
 	memberId?: string;
 }
 
-export type StartStep = 'choose' | 'create' | 'join' | 'joinName' | 'invite';
-export type StartField = 'wgName' | 'creatorName' | 'joinCode' | 'joinName';
+export type StartStep = 'choose' | 'create' | 'join' | 'invite';
+export type StartField = 'wgName' | 'creatorName' | 'inviteLink';
 
 export function getWgCodeFromPath(path: string): string | null {
 	const match = path.match(/^\/wg\/([^/]+)/);
@@ -50,21 +52,27 @@ export function getWgCodeFromPath(path: string): string | null {
 	}
 }
 
-export function getNeuIntentFromSearch(search: string): { joinCode: string; create: boolean } {
+export function getNeuIntentFromSearch(search: string): { inviteToken: string; create: boolean } {
 	const currentSearch = search.startsWith('?') ? search : `?${search}`;
 	const nested = safeNextPath(new URLSearchParams(currentSearch).get('next'));
 	for (const candidate of [currentSearch, nested]) {
 		const url = new URL(candidate, 'https://manawg.invalid/neu');
 		if (url.pathname !== '/neu') continue;
-		const joinCode = getInitialJoinCode(url.search);
-		if (joinCode) return { joinCode, create: false };
-		if (url.searchParams.get('action') === 'create') return { joinCode: '', create: true };
+		const inviteToken = url.searchParams.get('invite') ?? '';
+		if (isInviteToken(inviteToken)) return { inviteToken, create: false };
+		if (url.searchParams.get('action') === 'create') return { inviteToken: '', create: true };
 	}
-	return { joinCode: '', create: false };
+	return { inviteToken: '', create: false };
 }
 
-export function getJoinCodeFromSearch(search: string): string {
-	return getNeuIntentFromSearch(search).joinCode;
+/** What a pasted invitation (link or bare token) leads to: the token, or the reason it fails. */
+export function resolveInviteInput(text: string): { token: string } | { error: string } {
+	const token = extractInviteToken(text);
+	if (token) return { token };
+	if (extractInviteCode(text) || isValidShareCode(normalizeShareCode(text))) {
+		return { error: LEGACY_CODE_MESSAGE };
+	}
+	return { error: 'Das ist kein Einladungslink. Füge den ganzen Link ein.' };
 }
 
 // Only a fresh sign-in skips the WG picker; a deliberate visit to /neu (second WG) keeps it.
@@ -98,9 +106,6 @@ export interface StartDraft extends Record<string, unknown> {
 	step?: StartStep;
 	wgName?: string;
 	creatorName?: string;
-	joinCode?: string;
-	joinName?: string;
-	joinWg?: JoinWg;
 }
 
 export async function readStartError(response: Response): Promise<string> {
@@ -154,14 +159,8 @@ export function createWgErrorField(status: number, error: string): StartField | 
 	return null;
 }
 
-export function joinErrorField(status: number, error: string): StartField | null {
-	if (status === 404 || error === 'wg_not_found' || error === 'invalid_share_code') {
-		return 'joinCode';
-	}
-	return null;
-}
-
-export function isJoinWg(value: unknown): value is JoinWg {
+export function isAccountWg(value: unknown): value is AccountWg {
+	const memberId = typeof value === 'object' && value ? Reflect.get(value, 'memberId') : undefined;
 	if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
 	const code = Reflect.get(value, 'code');
 	const name = Reflect.get(value, 'name');
@@ -169,11 +168,7 @@ export function isJoinWg(value: unknown): value is JoinWg {
 		typeof code === 'string' &&
 		isValidShareCode(normalizeShareCode(code)) &&
 		typeof name === 'string' &&
-		name.trim().length > 0
+		name.trim().length > 0 &&
+		(memberId === undefined || typeof memberId === 'string')
 	);
-}
-
-export function isAccountWg(value: unknown): value is AccountWg {
-	const memberId = typeof value === 'object' && value ? Reflect.get(value, 'memberId') : undefined;
-	return isJoinWg(value) && (memberId === undefined || typeof memberId === 'string');
 }

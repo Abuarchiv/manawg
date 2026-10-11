@@ -1,0 +1,16 @@
+import { authPost } from '@/core/auth/route-helpers';
+import { passwordField } from '@/core/auth/route-schemas';
+import { AuthSessionMissingError } from '@supabase/supabase-js';
+import { z } from 'zod';
+
+const schema = z.object({ password: passwordField });
+
+/** Sets a new password for the signed-in account (settings or recovery link). */
+export const POST = authPost(schema, async ({ supabase, data }) => {
+	const { data: current, error: sessionError } = await supabase.auth.getUser();
+	if (sessionError) throw sessionError;
+	if (!current.user) throw new AuthSessionMissingError();
+	const { error } = await supabase.auth.updateUser({ password: data.password });
+	if (error) throw error;
+	return { ok: true };
+});

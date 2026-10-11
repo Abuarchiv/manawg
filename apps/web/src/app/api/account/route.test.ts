@@ -145,7 +145,7 @@ test('committed fence followed by a lost COMMIT acknowledgement returns accepted
 	assert.deepEqual(await response.json(), { status: 'pending' });
 	assert.equal(state.statusReads, 1);
 	assert.equal(state.authCompletionAttempts, 0);
-	assert.equal(response.clearedCookies.length, 1);
+	assert.equal(response.clearedCookies.length, 2);
 });
 
 test('completed fence followed by a lost COMMIT acknowledgement returns completed', async () => {
@@ -154,7 +154,7 @@ test('completed fence followed by a lost COMMIT acknowledgement returns complete
 	assert.equal(response.status, 200);
 	assert.deepEqual(await response.json(), { status: 'completed' });
 	assert.equal(state.statusReads, 1);
-	assert.equal(response.clearedCookies.length, 1);
+	assert.equal(response.clearedCookies.length, 2);
 });
 
 test('confirmed rollback with no fence returns failure and does not attempt Auth deletion', async () => {

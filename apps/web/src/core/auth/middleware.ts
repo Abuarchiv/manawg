@@ -1,7 +1,13 @@
 import { createServerClient } from '@supabase/ssr';
 import { type NextRequest, NextResponse } from 'next/server';
 import { isTransientAuthError } from './auth-errors';
-import { authCookieOptions } from './cookie-options';
+import {
+	SESSION_COOKIE_MAX_AGE_SECONDS,
+	SESSION_HINT_COOKIE,
+	authCookieOptions,
+	sessionHintCookieOptions,
+} from './cookie-options';
+import { applySessionHint, isAuthTokenCookie } from './session-hint-cookie';
 import { getSupabaseEnv, hasSupabaseEnv } from './supabase-env';
 
 function signInRedirect(request: NextRequest, response: NextResponse): NextResponse {
@@ -26,6 +32,35 @@ function signInRedirect(request: NextRequest, response: NextResponse): NextRespo
 }
 
 /**
+ * Keep `manawg_signed_in` in step with the session cookies the browser sent. A session that
+ * predates the hint (cookies written by the old browser client, readable by scripts) is
+ * migrated once: the same values are written again, now HttpOnly, next to the hint.
+ */
+function syncSessionHint(request: NextRequest, response: NextResponse, signedIn: boolean): void {
+	const https = request.nextUrl.protocol === 'https:';
+	const tokens = request.cookies.getAll().filter((c) => isAuthTokenCookie(c.name) && c.value);
+	const hasHint = request.cookies.get(SESSION_HINT_COOKIE)?.value === '1';
+	if (tokens.length === 0) {
+		if (hasHint) {
+			response.cookies.set(SESSION_HINT_COOKIE, '', {
+				...sessionHintCookieOptions(https),
+				maxAge: 0,
+			});
+		}
+		return;
+	}
+	if (!signedIn || hasHint || response.cookies.has(SESSION_HINT_COOKIE)) return;
+	response.cookies.set(SESSION_HINT_COOKIE, '1', sessionHintCookieOptions(https));
+	for (const { name, value } of tokens) {
+		if (response.cookies.has(name)) continue;
+		response.cookies.set(name, value, {
+			...authCookieOptions(https),
+			maxAge: SESSION_COOKIE_MAX_AGE_SECONDS,
+		});
+	}
+}
+
+/**
  * Refresh sessions and require social authentication before serving WG pages.
  * `requireWgSignIn: false` is only passed for builds that serve WG pages
  * without a Supabase session at all.
@@ -39,9 +74,10 @@ export async function refreshSupabaseSession(
 	if (!hasSupabaseEnv()) return requiresSignIn ? signInRedirect(request, response) : response;
 
 	const { url, publishableKey } = getSupabaseEnv();
+	const https = request.nextUrl.protocol === 'https:';
 	let refreshedResponse = response;
 	const supabase = createServerClient(url, publishableKey, {
-		cookieOptions: authCookieOptions(request.nextUrl.protocol === 'https:'),
+		cookieOptions: authCookieOptions(https),
 		cookies: {
 			getAll: () => request.cookies.getAll(),
 			setAll: (cookiesToSet, headers = {}) => {
@@ -68,6 +104,7 @@ export async function refreshSupabaseSession(
 				for (const { name, value, options } of cookiesToSet) {
 					nextResponse.cookies.set(name, value, options);
 				}
+				applySessionHint(nextResponse.cookies, cookiesToSet, https);
 				for (const [name, value] of Object.entries(headers)) {
 					nextResponse.headers.set(name, value);
 				}
@@ -78,6 +115,7 @@ export async function refreshSupabaseSession(
 
 	try {
 		const { data, error } = await supabase.auth.getUser();
+		syncSessionHint(request, refreshedResponse, !error && Boolean(data.user));
 		// A transient Auth failure is not "signed out": serve the page and let
 		// app/wg/[code]/layout.tsx fail closed. That layout is then the only
 		// barrier for /wg/*, which scripts/check-wg-auth-invariant.mjs keeps

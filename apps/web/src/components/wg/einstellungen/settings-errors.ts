@@ -26,19 +26,6 @@ function messageFor(
 	return (kind && messages[kind]) || fallback;
 }
 
-const ACCESS_MESSAGES: KindMessages = {
-	network: 'Zugang konnte nicht geändert werden: Prüfe deine Verbindung und versuche es erneut.',
-	wgUnavailable: 'Diese WG wurde nicht gefunden. Öffne sie über den aktuellen WG-Link erneut.',
-	invalidShareCode: 'Der WG-Code ist ungültig. Öffne die WG über einen gültigen Link.',
-	retryable: 'Zugang konnte nicht geändert werden: Versuche es gleich erneut.',
-	authInvalidated: 'Deine lokale Mitgliedschaft ist nicht mehr gültig. Tritt der WG erneut bei.',
-};
-
-export function accessErrorMessage(status: number, code: string | null): string {
-	const kind = code === 'share_code_generation_failed' ? 'retryable' : undefined;
-	return messageFor(ACCESS_MESSAGES, 'Zugang konnte nicht geändert werden.', status, code, kind);
-}
-
 // Worth being explicit here above all: on a dropped connection the request
 // may or may not have reached the server, and "Löschen fehlgeschlagen"
 // would tell the user the WG still exists when it might not.

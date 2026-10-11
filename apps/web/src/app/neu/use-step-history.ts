@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useRef } from 'react';
 import type { StartStep } from './start-flow';
 
-const STEPS: readonly StartStep[] = ['choose', 'create', 'join', 'joinName', 'invite'];
-const RANK: Record<StartStep, number> = { choose: 0, create: 1, join: 1, joinName: 2, invite: 3 };
+const STEPS: readonly StartStep[] = ['choose', 'create', 'join', 'invite'];
+const RANK: Record<StartStep, number> = { choose: 0, create: 1, join: 1, invite: 2 };
 
 function isStep(value: unknown): value is StartStep {
 	return typeof value === 'string' && (STEPS as readonly string[]).includes(value);
@@ -35,7 +35,7 @@ export function useStepHistory({
 	setStep: (step: StartStep) => void;
 	/** Called after the browser moved to `target` (clear errors etc.). */
 	onPop: (target: StartStep) => void;
-	/** Steps that need data (joinName, invite) fall back to the choose step without it. */
+	/** Steps that need data (invite) fall back to the choose step without it. */
 	canEnter: (target: StartStep) => boolean;
 }) {
 	const stepRef = useRef(step);
@@ -57,7 +57,7 @@ export function useStepHistory({
 			}
 			expectedPopRef.current = null;
 			const { setStep, onPop, canEnter } = callbacksRef.current;
-			const next = canEnter(target) ? target : target === 'joinName' ? 'join' : 'choose';
+			const next = canEnter(target) ? target : 'choose';
 			setStep(next);
 			onPop(next);
 		};

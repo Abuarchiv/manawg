@@ -16,7 +16,7 @@ const ALL = [
 	renderInvitationMail({
 		inviterName: 'Lina',
 		wgName: 'Kastanienallee',
-		shareCode: 'KST48210',
+		inviteToken: 'aB3_-xYz09aB3_-xYz09kQ',
 		memberNames: ['Lina', 'Jonas', 'Mira'],
 	}),
 	renderDigestMail({
@@ -59,12 +59,13 @@ test('every mail renders HTML and text with the same title and footer reason', (
 	}
 });
 
-test('invitation carries code, join link and who is already in', () => {
+test('invitation carries the invitation link, its lifetime and who is already in', () => {
 	const mail = ALL[1];
 	assert.ok(mail);
 	assert.equal(mail.subject, 'Lina lädt dich in die WG Kastanienallee ein');
-	assert.ok(mail.html.includes('KST48210'));
-	assert.ok(mail.text.includes('https://app.manawg.com/?code=KST48210'));
+	assert.ok(mail.text.includes('https://app.manawg.com/einladung/aB3_-xYz09aB3_-xYz09kQ'));
+	assert.ok(!mail.text.includes('KST48210'));
+	assert.ok(mail.text.includes('Der Link gilt 7 Tage.'));
 	assert.ok(mail.text.includes('Lina, Jonas und Mira sind schon dabei.'));
 	assert.ok(mail.text.includes('wir speichern sie nicht weiter'));
 });
@@ -98,7 +99,7 @@ test('html escapes user supplied names', () => {
 	const mail = renderInvitationMail({
 		inviterName: '<b>Eve</b>',
 		wgName: 'WG & Co',
-		shareCode: 'ABCD1234',
+		inviteToken: 'aB3_-xYz09aB3_-xYz09kQ',
 		memberNames: ['<b>Eve</b>'],
 	});
 	assert.ok(!mail.html.includes('<b>Eve</b>'));

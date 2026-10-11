@@ -65,7 +65,7 @@ test.describe('live public dashboard entry', () => {
 		await expect(page).toHaveURL(/\/registrieren$/);
 		let signUpRequests = 0;
 		await page.route(
-			(url) => url.pathname === '/auth/v1/signup',
+			(url) => url.pathname === '/api/auth/sign-up',
 			async (route) => {
 				signUpRequests += 1;
 				await route.abort();
@@ -87,25 +87,25 @@ test.describe('live public dashboard entry', () => {
 	test('an invitation survives public navigation and enters join only after selection', async ({
 		page,
 	}) => {
-		const code = 'ABCD2345';
-		await page.goto(`/?code=${code}`);
+		const token = 'aB3_-xYz09aB3_-xYz09kQ';
+		await page.goto(`/?invite=${token}`);
 		await expect(
 			page.getByRole('link', { name: 'Einladung annehmen', exact: true }),
-		).toHaveAttribute('href', `/neu?code=${code}`);
+		).toHaveAttribute('href', `/einladung/${token}`);
 		await page
 			.getByRole('navigation', { name: 'Öffentliche Hauptnavigation' })
 			.getByRole('link', { name: 'Haushalt', exact: true })
 			.click();
-		await expect(page).toHaveURL(`/entdecken/einkauf?code=${code}`);
+		await expect(page).toHaveURL(`/entdecken/einkauf?invite=${token}`);
 		await expect(
 			page
 				.getByRole('navigation', { name: 'Öffentliche Hauptnavigation' })
 				.getByRole('link', { name: 'Start', exact: true }),
-		).toHaveAttribute('href', `/?code=${code}`);
+		).toHaveAttribute('href', `/?invite=${token}`);
 		await page.reload();
 		await page.getByRole('link', { name: 'Einladung annehmen', exact: true }).first().click();
-		await expect(page).toHaveURL(`/neu?code=${code}`);
-		await expect(page.getByText('Melde dich an, um mit deinem WG-Code beizutreten.')).toBeVisible();
+		await expect(page).toHaveURL(`/einladung/${token}`);
+		await expect(page.getByText('Melde dich an, um der WG beizutreten.')).toBeVisible();
 	});
 
 	test('membership lookup failures stay visible and can be retried', async ({ page }) => {

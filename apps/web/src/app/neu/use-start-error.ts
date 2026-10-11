@@ -6,8 +6,7 @@ import type { StartField } from './start-flow';
 const FIELD_INPUT_ID: Record<StartField, string> = {
 	wgName: 'wg-name',
 	creatorName: 'creator-name',
-	joinCode: 'join-code',
-	joinName: 'join-name',
+	inviteLink: 'invite-link',
 };
 
 /** The single error line of the start flow, optionally tied to the input it concerns. */

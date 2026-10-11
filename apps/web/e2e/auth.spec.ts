@@ -1,9 +1,11 @@
 // Sign-in / create-or-join entry flow (fixture lane): validation, tabs, code login, account switch.
 // Live Supabase auth is covered by supabase-auth-live and social-login-live.
 
-import { expect, test } from '@playwright/test';
+import { type Route, expect, test } from '@playwright/test';
 
 import { mockNoWgs } from './support/helpers';
+
+const INVITE_TOKEN = 'fixture-invite-token01';
 
 test.describe('auth e-mail code flow', () => {
 	test.describe('e-mail code authentication fixture', () => {
@@ -11,39 +13,44 @@ test.describe('auth e-mail code flow', () => {
 
 		test('signs in with a mailed code and prefills the account name', async ({ page }) => {
 			await page.setViewportSize({ width: 320, height: 780 });
-			const user = {
-				id: '00000000-0000-4000-8000-000000000001',
-				aud: 'authenticated',
-				role: 'authenticated',
-				email: 'mina@example.invalid',
-				app_metadata: {},
-				user_metadata: { full_name: 'Mina Muster' },
-				created_at: '2026-01-01T00:00:00Z',
-			};
+			const user = { email: 'mina@example.invalid' };
 			const verifyBodies: unknown[] = [];
 			let signedIn = false;
-			await page.route('**/auth/v1/**', async (route) => {
-				const { pathname } = new URL(route.request().url());
-				const json = (status: number, body: unknown) =>
-					route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
-				if (pathname.endsWith('/otp')) return json(200, {});
-				if (pathname.endsWith('/verify')) {
-					verifyBodies.push(route.request().postDataJSON());
-					if (verifyBodies.length === 1) {
-						return json(403, { code: 'otp_expired', message: 'Token has expired or is invalid' });
-					}
-					signedIn = true;
-					return json(200, {
-						access_token: 'fixture-access',
-						token_type: 'bearer',
-						expires_in: 3600,
-						refresh_token: 'fixture-refresh',
-						user,
-					});
+			const json = (
+				route: Route,
+				status: number,
+				body: unknown,
+				headers: Record<string, string> = {},
+			) =>
+				route.fulfill({
+					status,
+					contentType: 'application/json',
+					headers,
+					body: JSON.stringify(body),
+				});
+			await page.route('**/api/auth/code-request', (route) => json(route, 200, { ok: true }));
+			await page.route('**/api/auth/code-verify', (route) => {
+				verifyBodies.push(route.request().postDataJSON());
+				if (verifyBodies.length === 1) {
+					return json(route, 403, { error: 'otp_expired', code: 'otp_expired' });
 				}
-				if (pathname.endsWith('/user')) return json(200, user);
-				return json(404, {});
+				signedIn = true;
+				// The real route sets the HttpOnly session cookies and this hint.
+				return json(
+					route,
+					200,
+					{ sessionEstablished: true },
+					{ 'set-cookie': 'manawg_signed_in=1; Path=/' },
+				);
 			});
+			await page.route('**/api/auth/identities', (route) =>
+				json(route, 200, {
+					email: user.email,
+					hasPassword: false,
+					hasGoogle: false,
+					name: 'Mina Muster',
+				}),
+			);
 			await page.route('**/api/wg/mine', (route) =>
 				signedIn
 					? route.fulfill({ status: 200, contentType: 'application/json', body: '{"wgs":[]}' })
@@ -79,10 +86,9 @@ test.describe('auth e-mail code flow', () => {
 			// The second attempt is accepted and lands on the start page with the account name known.
 			await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
 			await page.getByRole('button', { name: 'Neue WG erstellen', exact: true }).click();
-			expect(verifyBodies.at(-1)).toMatchObject({
+			expect(verifyBodies.at(-1)).toEqual({
 				email: 'mina@example.invalid',
 				token: '12345678',
-				type: 'email',
 			});
 			await expect(page.getByLabel('Dein Anzeigename')).toHaveValue('Mina Muster');
 		});
@@ -101,9 +107,6 @@ test.describe('auth tab responsive', () => {
 				await page.setViewportSize({ width: 320, height: 780 });
 				await page.emulateMedia({ colorScheme: scheme });
 				await page.addInitScript((theme) => localStorage.setItem('manawg-theme', theme), scheme);
-				await page.route('**/auth/v1/**', (route) =>
-					route.fulfill({ status: 404, contentType: 'application/json', body: '{}' }),
-				);
 				await page.route('**/__auth-test-root32.css', (route) =>
 					route.fulfill({
 						status: 200,
@@ -204,7 +207,7 @@ test.describe('start credentials auth validation', () => {
 			await page.route('**/api/wg/mine', (route) =>
 				route.fulfill({ status: 401, contentType: 'application/json', body: '{}' }),
 			);
-			await page.goto('/neu?code=mte8pzat&utm=x');
+			await page.goto(`/neu?invite=${INVITE_TOKEN}&utm=x`);
 			await page.getByRole('tab', { name: 'Passwort', exact: true }).click();
 			await expect(page.locator('#auth-password')).toHaveAttribute(
 				'autocomplete',
@@ -212,22 +215,27 @@ test.describe('start credentials auth validation', () => {
 			);
 			await expect(page.getByRole('button', { name: 'Konto erstellen' })).toHaveCount(0);
 			await page.getByRole('link', { name: 'Konto erstellen', exact: true }).click();
-			await expect(page).toHaveURL(/\/registrieren\?code=MTE8PZAT$/);
+			await expect(page).toHaveURL(/\/registrieren\?next=%2Feinladung%2Ffixture-invite-token01$/);
 			await expect(
 				page.getByRole('heading', { name: 'Konto erstellen', exact: true, level: 1 }),
 			).toBeVisible();
-			await expect(page.getByText('um mit deinem WG-Code beizutreten')).toBeVisible();
 			await page.getByRole('link', { name: 'Anmelden', exact: true }).click();
-			await expect(page).toHaveURL(/\/neu\?code=MTE8PZAT$/);
+			await expect(page).toHaveURL(/\/neu\?next=%2Feinladung%2Ffixture-invite-token01$/);
 		});
 
-		test('a malformed invitation code is explained on the sign-in page', async ({ page }) => {
+		test('a malformed invitation and an old share-code link are explained on the sign-in page', async ({
+			page,
+		}) => {
 			await page.route('**/api/wg/mine', (route) =>
 				route.fulfill({ status: 401, contentType: 'application/json', body: '{}' }),
 			);
-			await page.goto('/neu?code=abc');
+			await page.goto('/neu?invite=abc');
 			await expect(
 				page.getByText('Dieser Einladungslink ist unvollständig oder ungültig.'),
+			).toBeVisible();
+			await page.goto('/neu?code=mte8pzat');
+			await expect(
+				page.getByText('Ein WG-Code reicht nicht mehr. Lass dir einen Einladungslink schicken.'),
 			).toBeVisible();
 		});
 
@@ -244,7 +252,7 @@ test.describe('start credentials auth validation', () => {
 		test('registration validates locally and never sends invalid sign-ups', async ({ page }) => {
 			let signUpRequests = 0;
 			await page.route(
-				(url) => url.pathname === '/auth/v1/signup',
+				(url) => url.pathname === '/api/auth/sign-up',
 				async (route) => {
 					signUpRequests += 1;
 					await route.abort();
@@ -291,27 +299,17 @@ test.describe('start credentials auth validation', () => {
 			test.skip(process.env.AUTH_UI_E2E !== 'true', 'Requires the isolated fake Supabase fixture.');
 			let resendRequests = 0;
 			let signUpBody: unknown;
-			await page.route('**/auth/v1/**', async (route) => {
-				const { pathname } = new URL(route.request().url());
-				if (pathname.endsWith('/signup')) {
-					signUpBody = route.request().postDataJSON();
-					await route.fulfill({
-						status: 200,
-						contentType: 'application/json',
-						body: JSON.stringify({ id: 'fixture-user', identities: [] }),
-					});
-					return;
-				}
-				if (pathname.endsWith('/resend')) {
-					resendRequests += 1;
-					await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
-					return;
-				}
+			await page.route('**/api/auth/sign-up', async (route) => {
+				signUpBody = route.request().postDataJSON();
 				await route.fulfill({
 					status: 200,
 					contentType: 'application/json',
-					body: JSON.stringify({ external: {} }),
+					body: JSON.stringify({ sessionEstablished: false }),
 				});
+			});
+			await page.route('**/api/auth/resend', async (route) => {
+				resendRequests += 1;
+				await route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' });
 			});
 			await page.goto('/registrieren');
 			await page.getByLabel('Dein Name').fill('Mina');
@@ -321,7 +319,7 @@ test.describe('start credentials auth validation', () => {
 			await page.getByRole('button', { name: 'Konto erstellen', exact: true }).click();
 
 			await expect(page.getByText('Prüfe dein Postfach')).toBeVisible();
-			expect(signUpBody).toMatchObject({ data: { full_name: 'Mina' } });
+			expect(signUpBody).toMatchObject({ name: 'Mina', email: 'neu@example.invalid' });
 			await expect(page.getByText('neu@example.invalid')).toBeVisible();
 			await expect(page.getByRole('button', { name: /Erneut senden in \d+ s/ })).toBeDisabled();
 			expect(resendRequests).toBe(0);
@@ -356,10 +354,10 @@ test.describe('entry accessibility', () => {
 			await page.route('**/api/wg/mine', (route) =>
 				route.fulfill({ status: 401, contentType: 'application/json', body: '{}' }),
 			);
-			await page.goto('/?code=mte8pzat');
+			await page.goto(`/?invite=${INVITE_TOKEN}`);
 			await expect(
 				page.getByRole('link', { name: 'Konto erstellen', exact: true }),
-			).toHaveAttribute('href', '/registrieren?code=MTE8PZAT');
+			).toHaveAttribute('href', '/registrieren?next=%2Feinladung%2Ffixture-invite-token01');
 			// Account first: without an invitation the WG is created after sign-in, so no intent is carried.
 			await page.goto('/');
 			await expect(
@@ -421,20 +419,28 @@ test.describe('entry accessibility', () => {
 			await expect(creatorName).toHaveAttribute('aria-invalid', 'false');
 
 			await page.getByRole('button', { name: 'Zurück', exact: true }).click();
-			await page.getByRole('button', { name: 'Per Code beitreten', exact: true }).click();
-			const joinCode = page.locator('#join-code');
-			await expect(joinCode).toBeFocused();
-			await expect(joinCode).toHaveAttribute('required', '');
+			await page.getByRole('button', { name: 'Mit Einladung beitreten', exact: true }).click();
+			const inviteLink = page.locator('#invite-link');
+			await expect(inviteLink).toBeFocused();
+			await expect(inviteLink).toHaveAttribute('required', '');
 
-			await joinCode.fill('MTE8PZAT');
-			await page.getByRole('button', { name: 'WG-Code prüfen', exact: true }).click();
+			// A bare share code is only the WG's address and cannot open an invitation.
+			await inviteLink.fill('MTE8PZAT');
+			await page.getByRole('button', { name: 'Einladung öffnen', exact: true }).click();
+			await expect(inviteLink).toBeFocused();
+			await expect(inviteLink).toHaveAttribute('aria-invalid', 'true');
+			await expect(
+				page.getByText('Ein WG-Code reicht nicht mehr. Lass dir einen Einladungslink schicken.'),
+			).toBeVisible();
+
+			await inviteLink.fill(`http://localhost/einladung/${INVITE_TOKEN}`);
+			await page.getByRole('button', { name: 'Einladung öffnen', exact: true }).click();
+			await expect(page).toHaveURL(`/einladung/${INVITE_TOKEN}`);
 			await expect(page.getByLabel('Dein Anzeigename')).toBeFocused();
 			await expect(page.getByLabel('Dein Anzeigename')).toHaveAttribute('required', '');
-
-			// The real WG name can't be fetched before joining (privacy-by-design), so the
-			// confirmation copy must reference the actual code rather than a fabricated name.
-			await expect(page.getByText('Du trittst', { exact: false })).toContainText('MTE8PZAT');
-			await expect(page.getByText('WG-Einladung', { exact: false })).toHaveCount(0);
+			// The invitation names the WG before joining; the share code never appears.
+			await expect(page.getByRole('heading', { name: 'Tritt der WG „sadf“ bei' })).toBeVisible();
+			await expect(page.getByText('MTE8PZAT')).toHaveCount(0);
 		});
 	});
 });
@@ -450,7 +456,9 @@ test.describe('entry account switch', () => {
 			page,
 		}) => {
 			await mockNoWgs(page);
-			await page.route('**/auth/v1/logout', (route) => route.fulfill({ status: 204, body: '' }));
+			await page.route('**/api/auth/sign-out', (route) =>
+				route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' }),
+			);
 
 			await page.goto('/neu');
 			await page.getByRole('button', { name: 'Neue WG erstellen', exact: true }).click();

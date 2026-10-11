@@ -10,18 +10,18 @@ import { type FormEvent, useId, useState } from 'react';
 interface Props {
 	shareCode: string;
 	memberId: string;
-	joiningEnabled: boolean;
 }
 
 const ERRORS: Record<string, string> = {
 	email_invalid: 'Das sieht nicht wie eine E-Mail-Adresse aus.',
-	joining_disabled: 'Beitritte sind gerade gesperrt.',
+	invite_limit_reached:
+		'Es gibt schon 20 aktive Einladungen. Widerrufe eine, bevor du eine neue verschickst.',
 	invite_rate_limited: 'Zu viele Einladungen auf einmal. Versuch es in einer Stunde noch mal.',
 	mail_unavailable: 'Die Mail konnte nicht verschickt werden. Teile stattdessen den Link.',
 };
 
 /** Sends the invitation mail (E6); the address is only used for this one mail. */
-export function InviteByMailForm({ shareCode, memberId, joiningEnabled }: Props) {
+export function InviteByMailForm({ shareCode, memberId }: Props) {
 	const id = useId();
 	const [email, setEmail] = useState('');
 	const [pending, setPending] = useState(false);
@@ -29,7 +29,7 @@ export function InviteByMailForm({ shareCode, memberId, joiningEnabled }: Props)
 
 	async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
 		event.preventDefault();
-		if (pending || !joiningEnabled) return;
+		if (pending) return;
 		setPending(true);
 		setMessage(null);
 		const res = await apiFetch<{ status: 'sent' | 'duplicate' }>(
@@ -71,7 +71,7 @@ export function InviteByMailForm({ shareCode, memberId, joiningEnabled }: Props)
 					placeholder="name@beispiel.de"
 					value={email}
 					onChange={(event) => setEmail(event.target.value)}
-					disabled={!joiningEnabled || pending}
+					disabled={pending}
 					required
 					aria-describedby={message ? `${id}-status` : undefined}
 					aria-invalid={message?.tone === 'error' ? true : undefined}
@@ -79,7 +79,7 @@ export function InviteByMailForm({ shareCode, memberId, joiningEnabled }: Props)
 				<Button
 					type="submit"
 					variant="outline"
-					disabled={!joiningEnabled || pending || email.trim().length === 0}
+					disabled={pending || email.trim().length === 0}
 					aria-label={pending ? 'Einladung wird gesendet…' : 'Einladung senden'}
 				>
 					{pending ? <Spinner aria-hidden /> : <Mail aria-hidden />}

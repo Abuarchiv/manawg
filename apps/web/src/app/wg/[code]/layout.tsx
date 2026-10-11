@@ -59,8 +59,6 @@ const getWgViewer = cache(async (code: string) => {
 			id: wgs.id,
 			name: wgs.name,
 			shareCode: wgs.shareCode,
-			joiningEnabled: wgs.joiningEnabled,
-			shareCodeRotatedAt: wgs.shareCodeRotatedAt,
 			memberId: wgMembers.id,
 			memberName: wgMembers.name,
 		})
@@ -185,8 +183,6 @@ function WgShell({
 		id: string;
 		name: string;
 		shareCode: string;
-		joiningEnabled: boolean;
-		shareCodeRotatedAt?: string | Date | null;
 	};
 	members: Array<{
 		id: string;

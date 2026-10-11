@@ -90,7 +90,7 @@ export function useCreateWg({
 			createRequestRef.current = null;
 			posthog.capture('wg_created');
 			removeDraft(START_DRAFT_KEY);
-			setCreatedWg({ code: data.wg.shareCode, name: data.wg.name });
+			setCreatedWg({ code: data.wg.shareCode, name: data.wg.name, memberId: data.creator.id });
 			setStep('invite');
 		} catch {
 			setFormError(

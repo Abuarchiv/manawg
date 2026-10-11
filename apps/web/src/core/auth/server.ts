@@ -6,6 +6,7 @@ import { cookies } from 'next/headers';
 import { type NextRequest, NextResponse } from 'next/server';
 import { isTransientAuthError } from './auth-errors';
 import { authCookieOptions } from './cookie-options';
+import { applySessionHint } from './session-hint-cookie';
 import { getSupabaseEnv, hasSupabaseEnv } from './supabase-env';
 
 const SUPABASE_AUTH_TOKEN_COOKIE = /^sb-[A-Za-z0-9-]+-auth-token(?:\.\d+)?$/;
@@ -17,17 +18,28 @@ function hasSupabaseAuthAttempt(request: NextRequest): boolean {
 	);
 }
 
-export function createSupabaseServerClient(request: NextRequest, response: NextResponse) {
+/**
+ * `clientIp` is forwarded as `X-Forwarded-For`: Supabase Auth rate-limits sign-in, sign-up and
+ * code verification per IP, and from the server every visitor would otherwise share ours.
+ */
+export function createSupabaseServerClient(
+	request: NextRequest,
+	response: NextResponse,
+	clientIp?: string,
+) {
 	const { url, publishableKey } = getSupabaseEnv();
+	const https = request.nextUrl.protocol === 'https:';
 
 	return createServerClient(url, publishableKey, {
-		cookieOptions: authCookieOptions(request.nextUrl.protocol === 'https:'),
+		cookieOptions: authCookieOptions(https),
+		...(clientIp ? { global: { headers: { 'x-forwarded-for': clientIp } } } : {}),
 		cookies: {
 			getAll: () => request.cookies.getAll(),
 			setAll: (cookiesToSet, headers) => {
 				for (const { name, value, options } of cookiesToSet) {
 					response.cookies.set(name, value, options);
 				}
+				applySessionHint(response.cookies, cookiesToSet, https);
 				for (const [name, value] of Object.entries(headers)) {
 					response.headers.set(name, value);
 				}

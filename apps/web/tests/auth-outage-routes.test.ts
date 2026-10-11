@@ -52,6 +52,7 @@ mock.module('@/core/db', {
 		accountDeletions: {},
 		auditEvents: {},
 		mailLog: {},
+		wgInvites: {},
 	},
 });
 mock.module('@/core/guards/api-auth', {

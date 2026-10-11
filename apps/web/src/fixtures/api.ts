@@ -8,7 +8,15 @@ import {
 	isExportSectionKey,
 	toCsv,
 } from '@/composition/export';
-import { badRequest, notFound, unauthorized } from '@/core/http/api-errors';
+import {
+	HTTP,
+	apiError,
+	badRequest,
+	forbidden,
+	notFound,
+	unauthorized,
+} from '@/core/http/api-errors';
+import { INVITE_VALID_DAYS, invitePath } from '@/core/utils/invite-token';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import { MS_PER_DAY } from '@/core/utils/time';
 import { toChatUnreadCountResponse } from '@/features/chat/chat-unread-count';
@@ -16,7 +24,15 @@ import { groupItemsByCategory } from '@/features/inventory/inventory';
 import { MEMBER_NAME_MAX_LENGTH, WG_NAME_MAX_LENGTH } from '@/shared/lib/limits';
 import { EXPECTED_MEMBER_ID_HEADER } from '@/shared/lib/member-header';
 import { type NextRequest, NextResponse } from 'next/server';
-import { type E2EWgFixture, E2E_CREATED_WG, buildE2EDashboardData, getE2EWgFixture } from './data';
+import {
+	type E2EWgFixture,
+	E2E_CREATED_WG,
+	E2E_EXISTING_WG,
+	E2E_EXPIRED_INVITE_TOKEN,
+	E2E_INVITE_TOKEN,
+	buildE2EDashboardData,
+	getE2EWgFixture,
+} from './data';
 import { buildE2EExpenses } from './expenses';
 
 /**
@@ -27,6 +43,9 @@ import { buildE2EExpenses } from './expenses';
  */
 
 type MemberRead = (req: NextRequest, fixture: E2EWgFixture) => NextResponse;
+
+const E2E_JOINED_MEMBER_ID = 'c4d1a8b2-6f3e-4a59-9d70-1e2f3a4b5c6d';
+const E2E_INVITE_ID = '5b8f2f0e-3f0b-4d57-a0c4-2c5a3b7f9e11';
 
 /** Member-gated `GET /api/wg/[code]/<path>` reads, keyed by the path after the share code. */
 const MEMBER_READS: Record<string, MemberRead> = {
@@ -68,6 +87,19 @@ const MEMBER_READS: Record<string, MemberRead> = {
 		const items: never[] = [];
 		return NextResponse.json({ items, grouped: groupItemsByCategory(items) });
 	},
+	invites: (_req, fixture) =>
+		NextResponse.json({
+			invites: [
+				{
+					id: E2E_INVITE_ID,
+					createdAt: new Date().toISOString(),
+					expiresAt: new Date(Date.now() + INVITE_VALID_DAYS * MS_PER_DAY).toISOString(),
+					maxUses: 10,
+					useCount: 0,
+					createdByName: fixture.members[0]?.name ?? null,
+				},
+			],
+		}),
 	members: (_req, fixture) => NextResponse.json({ members: fixture.members }),
 	'recurring-expenses': (_req, fixture) =>
 		NextResponse.json({
@@ -165,8 +197,6 @@ function wgBootstrap(code: string): NextResponse {
 			id: fixture.id,
 			name: fixture.name,
 			shareCode: fixture.shareCode,
-			joiningEnabled: fixture.joiningEnabled,
-			shareCodeRotatedAt: fixture.shareCodeRotatedAt,
 			createdAt: new Date().toISOString(),
 		},
 		members: fixture.members,
@@ -207,6 +237,42 @@ async function createWg(req: NextRequest): Promise<NextResponse | null> {
 	});
 }
 
+/** `GET /api/wg/invites/[token]`: one valid, one expired fixture invitation, anything else unknown. */
+function inviteLookup(token: string): NextResponse {
+	if (token === E2E_INVITE_TOKEN) {
+		return NextResponse.json({
+			wg: { name: E2E_EXISTING_WG.name, shareCode: E2E_EXISTING_WG.shareCode },
+			expiresAt: new Date(Date.now() + INVITE_VALID_DAYS * MS_PER_DAY).toISOString(),
+		});
+	}
+	if (token === E2E_EXPIRED_INVITE_TOKEN)
+		return apiError('invite_expired', HTTP.GONE, 'invite_expired');
+	return notFound('invite_invalid', 'invite_invalid');
+}
+
+/** `POST /api/wg/[code]/members`: joining works with the valid fixture invitation only. */
+async function joinWg(req: NextRequest, code: string): Promise<NextResponse | null> {
+	const fixture = getE2EWgFixture(code);
+	if (!fixture) return notFound('wg_not_found');
+	let raw: unknown;
+	try {
+		raw = await req.clone().json();
+	} catch {
+		return null;
+	}
+	if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+	const body = raw as Record<string, unknown>;
+	const name = trimmedName(body.name, MEMBER_NAME_MAX_LENGTH);
+	if (!name) return null;
+	const token = typeof body.inviteToken === 'string' ? body.inviteToken : '';
+	if (token === E2E_EXPIRED_INVITE_TOKEN)
+		return apiError('invite_expired', HTTP.GONE, 'invite_expired');
+	if (token !== E2E_INVITE_TOKEN) return forbidden('invite_required', 'invite_required');
+	return NextResponse.json({
+		member: { id: E2E_JOINED_MEMBER_ID, wgId: fixture.id, name, color: null, role: 'member' },
+	});
+}
+
 function readShareCode(segment: string): string | null {
 	let decoded: string;
 	try {
@@ -222,12 +288,27 @@ function readShareCode(segment: string): string | null {
 export async function answerFixtureApiRequest(req: NextRequest): Promise<NextResponse | null> {
 	const path = req.nextUrl.pathname;
 	if (path === '/api/wg') return req.method === 'POST' ? createWg(req) : null;
-	if (req.method !== 'GET') return null;
-
 	const [, api, wgSegment, codeSegment, ...rest] = path.split('/');
 	if (api !== 'api' || wgSegment !== 'wg' || !codeSegment) return null;
+	if (codeSegment === 'invites') {
+		return req.method === 'GET' && rest[0] && rest.length === 1 ? inviteLookup(rest[0]) : null;
+	}
 	const code = readShareCode(codeSegment);
 	if (!code) return null;
+	if (req.method === 'POST' && rest.join('/') === 'members') return joinWg(req, code);
+	if (req.method === 'POST' && rest.join('/') === 'invites') {
+		return memberRead(req, code, (request) =>
+			NextResponse.json({
+				id: E2E_INVITE_ID,
+				url: `${request.nextUrl.origin}${invitePath(E2E_INVITE_TOKEN)}`,
+				expiresAt: new Date(Date.now() + INVITE_VALID_DAYS * MS_PER_DAY).toISOString(),
+			}),
+		);
+	}
+	if (req.method === 'DELETE' && rest[0] === 'invites' && rest.length === 2) {
+		return memberRead(req, code, () => NextResponse.json({ revoked: true }));
+	}
+	if (req.method !== 'GET') return null;
 	if (rest.length === 0) return wgBootstrap(code);
 
 	const key =

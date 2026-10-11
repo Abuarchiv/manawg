@@ -8,7 +8,7 @@
  */
 
 /** Deprecated `execCommand` path, for when the async clipboard is unavailable. */
-export function copyViaTextArea(text: string): boolean {
+function copyViaTextArea(text: string): boolean {
 	if (typeof document === 'undefined') return false;
 	const textArea = document.createElement('textarea');
 	textArea.value = text;

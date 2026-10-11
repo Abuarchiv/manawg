@@ -77,6 +77,8 @@ function build(limit: number, windowSec: number, prefix: string): Ratelimit | nu
 }
 
 export const registerLimiter = build(3, 3600, 'reg'); // 3 / hour / IP
+// Credential guessing and auth mails: 20 / 5 min / IP across /api/auth/* (a household behind one router stays far below it)
+export const authAttemptLimiter = build(20, 300, 'auth-attempt');
 export const wgReadLimiter = build(120, 60, 'wg-read'); // 120 reads / min / IP — WG GET endpoints
 export const wgWriteLimiter = build(30, 60, 'wg-write'); // 30 writes / min / IP — WG mutation endpoints
 // Every full page load of a WG does one lookup, and flatmates share their router's IP,

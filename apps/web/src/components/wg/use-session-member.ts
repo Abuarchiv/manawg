@@ -15,9 +15,10 @@ import {
 import type { WgSummary } from './WgContextProvider';
 
 /**
- * Resolves the signed-in Supabase user to this WG's member: hydration, the auth listener, and the
- * /api/wg/[code] member lookup. The member always comes from the server (the WG layout, then the
- * lookup); nothing about it is persisted.
+ * Resolves the signed-in Supabase user to this WG's member: hydration and the /api/wg/[code] member
+ * lookup. The member always comes from the server (the WG layout, then the lookup); nothing about
+ * it is persisted. The session cookies are HttpOnly, so there is no auth listener: the lookup runs
+ * on mount and whenever the tab becomes visible again, and a 401 `auth_required` ends the session.
  */
 export function useSessionMember({
 	wg,
@@ -79,22 +80,25 @@ export function useSessionMember({
 	]);
 
 	const loadSessionMember = useCallback(
-		async (authUserId: string, generation: number, keepCurrentContext = false) => {
+		async (authUserId: string | null, generation: number, keepCurrentContext = false) => {
 			if (!keepCurrentContext) setMemberLoaded(false);
 			setMemberLoadError(false);
 			const res = await apiFetch<{
-				currentMember?: { memberId: string; name: string };
+				currentMember?: { memberId: string; name: string; authUserId?: string };
 			}>(`/api/wg/${encodedShareCode}`);
 			if (generation !== authGenerationRef.current) return;
 			const member = res.ok ? res.data.currentMember : undefined;
 			if (member) {
+				// The server names the account behind the cookie, which may have changed in another tab.
+				const accountId = member.authUserId ?? authUserId ?? undefined;
 				setSessionEnded(false);
 				const nextIdentity: SessionMember = {
 					memberId: member.memberId,
 					name: member.name,
-					authUserId,
+					...(accountId ? { authUserId: accountId } : {}),
 				};
-				void adoptLocalAccount(authUserId);
+				authUserIdRef.current = accountId ?? null;
+				if (accountId) void adoptLocalAccount(accountId);
 				// Keep the same object when nothing changed: a new identity re-runs
 				// refreshMembers and every page fetch keyed on it.
 				setStateIdentity((prev) =>
@@ -114,6 +118,7 @@ export function useSessionMember({
 			if (
 				!res.ok &&
 				(res.status === 0 || res.status === 429 || res.status >= 500) &&
+				authUserId !== null &&
 				initialIdentity?.authUserId === authUserId
 			) {
 				setStateIdentity((prev) => prev ?? initialIdentity);
@@ -121,7 +126,12 @@ export function useSessionMember({
 				setMemberLoaded(true);
 				return;
 			}
-			if (!res.ok && res.status === 401 && isSessionExpired(res.error)) setSessionEnded(true);
+			if (!res.ok && res.status === 401 && isSessionExpired(res.error)) {
+				authUserIdRef.current = null;
+				syncAbortRef.current?.abort();
+				syncAbortRef.current = null;
+				setSessionEnded(true);
+			}
 			setStateIdentity(null);
 			setIsAdmin(false);
 			setAccountReady(false);
@@ -130,95 +140,40 @@ export function useSessionMember({
 		},
 		[
 			authGenerationRef,
+			authUserIdRef,
 			encodedShareCode,
 			initialIdentity,
 			setAccountReady,
 			setIsAdmin,
 			setMemberLoaded,
 			setStateIdentity,
+			syncAbortRef,
 		],
 	);
 
 	useEffect(() => {
-		if (!hydrated) return;
-		if (sessionless) return;
-		let cancelled = false;
-		let unsubscribe: (() => void) | undefined;
-		void import('@/core/auth/client').then(({ createSupabaseBrowserClient }) => {
-			if (cancelled) return;
-			const supabase = createSupabaseBrowserClient();
-			const clearSessionIdentity = () => {
-				authGenerationRef.current += 1;
-				syncAbortRef.current?.abort();
-				syncAbortRef.current = null;
-				authUserIdRef.current = null;
-				setSessionEnded(true);
-				setStateIdentity(null);
-				setIsAdmin(false);
-				setAccountReady(false);
-				setMemberLoaded(true);
-			};
-			let revalidating = false;
-			const loadForUser = (nextUserId: string) => {
-				if (nextUserId !== authUserIdRef.current) {
-					authUserIdRef.current = nextUserId;
-					setSessionEnded(false);
-					const generation = ++authGenerationRef.current;
-					syncAbortRef.current?.abort();
-					syncAbortRef.current = null;
-					setIsAdmin(false);
-					setAccountReady(false);
-					setMemberLoaded(false);
-					setStateIdentity((prev) => (prev?.authUserId === nextUserId ? prev : null));
-					window.setTimeout(() => void loadSessionMember(nextUserId, generation), 0);
-					return;
-				}
-				// getSession and INITIAL_SESSION both land here on mount; one revalidation is enough.
-				if (revalidating) return;
-				revalidating = true;
-				const generation = authGenerationRef.current;
-				window.setTimeout(() => {
-					void loadSessionMember(nextUserId, generation, true).finally(() => {
-						revalidating = false;
-					});
-				}, 0);
-			};
-			const { data } = supabase.auth.onAuthStateChange((event, session) => {
-				const nextUserId = session?.user.id ?? null;
-				if (event === 'SIGNED_OUT' || !nextUserId) {
-					clearSessionIdentity();
-					return;
-				}
-				if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') loadForUser(nextUserId);
+		if (!hydrated || sessionless) return;
+		let revalidating = false;
+		const revalidate = () => {
+			if (revalidating) return;
+			revalidating = true;
+			void loadSessionMember(authUserIdRef.current, authGenerationRef.current, true).finally(() => {
+				revalidating = false;
 			});
-			const generation = authGenerationRef.current;
-			void supabase.auth.getSession().then(({ data: sessionData, error }) => {
-				if (error || generation !== authGenerationRef.current) return;
-				const userId = sessionData.session?.user.id;
-				if (userId) loadForUser(userId);
-				else clearSessionIdentity();
-			});
-			unsubscribe = () => data.subscription.unsubscribe();
-		});
+		};
+		revalidate();
+		// Sign-out or an account switch in another tab shows up on the next lookup.
+		const onVisible = () => {
+			if (document.visibilityState === 'visible') revalidate();
+		};
+		document.addEventListener('visibilitychange', onVisible);
 		return () => {
-			cancelled = true;
-			unsubscribe?.();
+			document.removeEventListener('visibilitychange', onVisible);
 			authGenerationRef.current += 1;
 			syncAbortRef.current?.abort();
 			syncAbortRef.current = null;
 		};
-	}, [
-		authGenerationRef,
-		authUserIdRef,
-		hydrated,
-		loadSessionMember,
-		sessionless,
-		setAccountReady,
-		setIsAdmin,
-		setMemberLoaded,
-		setStateIdentity,
-		syncAbortRef,
-	]);
+	}, [authGenerationRef, authUserIdRef, hydrated, loadSessionMember, sessionless, syncAbortRef]);
 
 	return { hydrated, memberLoadError, sessionEnded, loadSessionMember };
 }

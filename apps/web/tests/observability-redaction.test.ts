@@ -126,6 +126,14 @@ test('Sentry strips personal data and WG codes from error events', async () => {
 		'GET /api/calendar/[redacted]/[redacted]',
 	);
 
+	for (const path of ['/einladung/', '/api/wg/invites/']) {
+		assert.equal(
+			sanitizeSentryEvent({ request: { url: `https://manawg.com${path}aB3_-xYz09aB3_-xYz09kQ` } })
+				.request?.url,
+			`https://manawg.com${path}[redacted]`,
+		);
+	}
+
 	const signedUpload = sanitizeSentryBreadcrumb({
 		category: 'fetch',
 		data: {

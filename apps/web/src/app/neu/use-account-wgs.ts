@@ -4,13 +4,12 @@ import { isAuthPagePath } from '@/core/auth/auth-intent';
 import { safeNextPath } from '@/core/auth/next-path';
 import { hasSessionCookie } from '@/core/auth/session-hint';
 import { REQUEST_TIMEOUT_MS } from '@/core/infra/api-client';
-import { removeDraft } from '@/core/offline/drafts';
+import { invitePath } from '@/core/utils/invite-token';
 import { normalizeShareCode } from '@/core/utils/share-code';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import {
 	type AccountWg,
-	START_DRAFT_KEY,
 	type StartStep,
 	consumeJustSignedIn,
 	getNeuIntentFromSearch,
@@ -97,14 +96,12 @@ export function useAccountWgs({
 	useEffect(() => {
 		if (authState !== 'authenticated') return;
 		const intent = getNeuIntentFromSearch(searchParams.toString());
-		if (intent.joinCode || intent.create) {
-			// An invite link for a WG the account already belongs to needs no name or code step.
-			if (intent.joinCode && accountWgs.some((wg) => wg.code === intent.joinCode)) {
-				removeDraft(START_DRAFT_KEY);
-				router.replace(`/wg/${encodeURIComponent(intent.joinCode)}`);
-			}
+		// The invitation page asks for the name; it also sends existing members on to their WG.
+		if (intent.inviteToken) {
+			router.replace(invitePath(intent.inviteToken));
 			return;
 		}
+		if (intent.create) return;
 		// A failed callback stays on this page so its message is seen, not skipped by the redirect.
 		if (searchParams.get('error') === 'auth_callback') return;
 		const next = safeNextPath(searchParams.get('next'));

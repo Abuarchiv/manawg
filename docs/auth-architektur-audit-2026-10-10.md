@@ -227,3 +227,10 @@ Unverändert: Kontotrennung im Cache, Legacy-Claim nach Prod-Zählung löschen, 
 ### Reihenfolge
 
 C → B → A → D. C ist klein und nimmt den iPhone-Schmerz sofort. B macht die Sitzung sicher und stabil. A ändert das Produkt (Einladung mit Ablauf, Freigabe) und braucht Migration plus Kommunikation an bestehende WGs (alte Code-Links zeigen dann „Bitte um neue Einladung").
+
+### Paket B: Stand 2026-10-11 (lokal umgesetzt)
+
+- Alle Auth-Vorgänge laufen über `app/api/auth/*` (sign-in, sign-up, resend, password-reset, password, code-request, code-verify, oauth-start, identity-link, identities, sign-out) mit `createSupabaseServerClient`. Supabase-Fehlercodes stehen 1:1 in `code`. `core/auth/client.ts` behält seine Signaturen und ruft nur noch diese Routen auf; kein Supabase-Client mehr im Browser.
+- Session-Cookies sind `HttpOnly` (`authCookieOptions`). Das Hint-Cookie `manawg_signed_in=1` (nicht HttpOnly, 400 Tage) wird überall gesetzt und gelöscht, wo der Server Session-Cookies schreibt (`createSupabaseServerClient`, Middleware-Refresh, Konto-Löschung, sign-out). Die Middleware migriert bestehende Sitzungen einmalig: fehlt der Hint, schreibt sie die Token-Cookies HttpOnly neu und setzt den Hint.
+- `use-session-member` hat keinen Auth-Listener mehr; es prüft beim Mount und bei `visibilitychange` über `GET /api/wg/[code]` (liefert jetzt `currentMember.authUserId`). `OfflineClient` nutzt `getLocalAccount` und `/api/wg/mine`.
+- Bekannte Grenze: Supabase begrenzt Anmeldungen pro IP; der Server leitet die Client-IP als `X-Forwarded-For` weiter, ob Supabase sie dafür nutzt, ist nicht geprüft. Dazu ein eigener Limiter `authAttemptLimiter` (20 / 5 min / IP).

@@ -1,7 +1,8 @@
 'use client';
 
 import { ErrorBox } from '@/components/app/ErrorBox';
-import { getInitialJoinCode } from '@/core/infra/join-flow';
+import { LEGACY_CODE_MESSAGE } from '@/core/infra/join-flow';
+import { isInviteToken } from '@/core/utils/invite-token';
 import { isAppInstalled, isIosLikeDevice } from '@/shared/lib/pwa-install';
 import { useEffect, useState } from 'react';
 
@@ -15,11 +16,12 @@ const AUTH_CALLBACK_ERROR =
 const IOS_STANDALONE_NOTICE =
 	'Auf dem iPhone ist die installierte App von Safari getrennt. Melde dich hier einmal an, danach bleibst du angemeldet.';
 
-/** Messages from a failed auth callback or a malformed invitation `?code=`, shown above the flow. */
+/** Messages from a failed auth callback, an old `?code=` link or a malformed `?invite=`, shown above the flow. */
 export function StartNotices({ search, signedIn }: { search: string; signedIn: boolean }) {
 	const params = new URLSearchParams(search);
-	const rawCode = (params.get('code') ?? '').trim();
-	const badInvite = rawCode !== '' && getInitialJoinCode(search) === '';
+	const legacyCode = (params.get('code') ?? '').trim() !== '';
+	const rawInvite = (params.get('invite') ?? '').trim();
+	const badInvite = rawInvite !== '' && !isInviteToken(rawInvite);
 	const [iosStandalone, setIosStandalone] = useState(false);
 	useEffect(() => {
 		setIosStandalone(isAppInstalled() && isIosLikeDevice(window.navigator));
@@ -30,6 +32,7 @@ export function StartNotices({ search, signedIn }: { search: string; signedIn: b
 				<p className="text-sm text-muted-foreground">{IOS_STANDALONE_NOTICE}</p>
 			)}
 			{params.get('error') === 'auth_callback' && <ErrorBox>{AUTH_CALLBACK_ERROR}</ErrorBox>}
+			{legacyCode && <ErrorBox>{LEGACY_CODE_MESSAGE}</ErrorBox>}
 			{badInvite && (
 				<ErrorBox>
 					Dieser Einladungslink ist unvollständig oder ungültig. Frag die WG nach einem neuen Link.

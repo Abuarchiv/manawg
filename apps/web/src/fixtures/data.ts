@@ -23,12 +23,14 @@ export const E2E_CREATED_WG = {
 	},
 } as const;
 
+/** 22-character fixture invitations: the first joins `E2E_EXISTING_WG`, the second has expired. */
+export const E2E_INVITE_TOKEN = 'fixture-invite-token01';
+export const E2E_EXPIRED_INVITE_TOKEN = 'expired-invite-token-1';
+
 export interface E2EWgFixture {
 	id: string;
 	name: string;
 	shareCode: string;
-	joiningEnabled: boolean;
-	shareCodeRotatedAt: string | null;
 	members: Array<{ id: string; name: string; color: string | null }>;
 }
 
@@ -38,8 +40,6 @@ export function getE2EWgFixture(code: string): E2EWgFixture | null {
 			id: E2E_EXISTING_WG.id,
 			name: E2E_EXISTING_WG.name,
 			shareCode: E2E_EXISTING_WG.shareCode,
-			joiningEnabled: true,
-			shareCodeRotatedAt: null,
 			members: [
 				E2E_EXISTING_WG.member,
 				{ id: '0ab8c8f2-5d03-4a84-aadc-4c5d7e8abf55', name: 'Mina', color: '#0f766e' },
@@ -52,8 +52,6 @@ export function getE2EWgFixture(code: string): E2EWgFixture | null {
 			id: E2E_CREATED_WG.id,
 			name: 'Smoke Test WG',
 			shareCode: E2E_CREATED_WG.shareCode,
-			joiningEnabled: true,
-			shareCodeRotatedAt: null,
 			members: [{ ...E2E_CREATED_WG.member, name: 'Smoke Tester' }],
 		};
 	}

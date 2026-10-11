@@ -48,7 +48,7 @@
 		{
 			"name": "WG beitreten",
 			"short_name": "Beitreten",
-			"description": "Mit einem Einladungscode einer WG beitreten",
+			"description": "Mit einem Einladungslink einer WG beitreten",
 			"url": "/neu?source=pwa-shortcut",
 			"icons": [
 				{

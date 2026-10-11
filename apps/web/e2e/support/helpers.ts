@@ -104,6 +104,13 @@ export async function mockUnreadCount(page: Page, base: string, count = 0): Prom
 
 /** Mocks the signed-in user's WG list as empty (entry/onboarding pages). */
 export async function mockNoWgs(page: Page): Promise<void> {
+	// With Supabase configured (AUTH_UI lane) the client probes /api/wg/mine only behind the hint
+	// cookie, and the middleware keeps the hint only next to a session cookie.
+	const base = new URL(process.env.BASE_URL ?? 'http://localhost:3101');
+	await page.context().addCookies([
+		{ name: 'sb-fixture-auth-token', value: 'fixture', domain: base.hostname, path: '/' },
+		{ name: 'manawg_signed_in', value: '1', domain: base.hostname, path: '/' },
+	]);
 	await page.route('**/api/wg/mine', (route) => route.fulfill({ status: 200, json: { wgs: [] } }));
 }
 

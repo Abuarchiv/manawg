@@ -21,6 +21,8 @@ import { NavItem } from '@/components/wg/NavItem';
 import { SubNav } from '@/components/wg/SubNav';
 import { hasSessionCookie } from '@/core/auth/session-hint';
 import { REQUEST_TIMEOUT_MS, anySignal } from '@/core/infra/api-client';
+import { LEGACY_CODE_MESSAGE } from '@/core/infra/join-flow';
+import { invitePath, isInviteToken } from '@/core/utils/invite-token';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import { cn } from '@/shared/lib/cn';
 import {
@@ -36,7 +38,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 
 type PublicModule = PublicPreviewModule;
 
@@ -87,8 +89,8 @@ function moduleFor(slug: string | undefined): PublicModule | null {
 	return PUBLIC_MODULES.find((item) => item.slug === slug) ?? null;
 }
 
-function withInvitation(path: string, code: string): string {
-	return `${path}?code=${encodeURIComponent(code)}`;
+function withInvitation(path: string, token: string): string {
+	return `${path}?invite=${encodeURIComponent(token)}`;
 }
 
 export function PublicApp(props: { activeModule?: string }) {
@@ -122,20 +124,19 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 	// Client-only: set once a session cookie exists, so guests never see a skeleton flash.
 	const [sessionPending, setSessionPending] = useState(false);
 	const module = moduleFor(activeModule);
-	const rawCode = (searchParams.get('code') ?? '').trim();
-	const inviteCode = useMemo(() => {
-		const code = normalizeShareCode(rawCode);
-		return isValidShareCode(code) ? code : '';
-	}, [rawCode]);
-	const badInvite = rawCode !== '' && inviteCode === '';
+	const rawInvite = (searchParams.get('invite') ?? '').trim();
+	const inviteToken = isInviteToken(rawInvite) ? rawInvite : '';
+	const badInvite = rawInvite !== '' && inviteToken === '';
+	// A `?code=` link is a dead end: the share code is only the WG's address.
+	const legacyCode = (searchParams.get('code') ?? '').trim() !== '' && inviteToken === '';
 	const publicHref = (path: string): string =>
-		inviteCode ? withInvitation(path, inviteCode) : path;
+		inviteToken ? withInvitation(path, inviteToken) : path;
 	const singleWg =
 		membershipState === 'member-list' && memberships.length === 1 ? memberships[0] : null;
 	const checkingSession = sessionPending && membershipState === 'loading';
 	const guest =
 		membershipState === 'signed-out' || (membershipState === 'loading' && !sessionPending);
-	const multi = membershipState === 'member-list' && memberships.length > 1 && !inviteCode;
+	const multi = membershipState === 'member-list' && memberships.length > 1 && !inviteToken;
 	const accountAction =
 		membershipState === 'member-list'
 			? {
@@ -143,8 +144,8 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 					label: singleWg ? 'WG öffnen' : 'Deine WGs',
 				}
 			: membershipState === 'authenticated-empty'
-				? inviteCode
-					? { href: publicHref('/neu'), label: 'Einladung annehmen' }
+				? inviteToken
+					? { href: invitePath(inviteToken), label: 'Einladung annehmen' }
 					: { href: '/neu?action=create', label: 'WG erstellen' }
 				: { href: publicHref('/neu'), label: 'Anmelden' };
 
@@ -195,12 +196,12 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 	}, [retryNonce]);
 
 	useEffect(() => {
-		if (module || inviteCode || membershipState !== 'member-list' || memberships.length !== 1)
+		if (module || inviteToken || membershipState !== 'member-list' || memberships.length !== 1)
 			return;
 		const membership = memberships[0];
 		if (!membership) return;
 		router.replace(`/wg/${encodeURIComponent(membership.code)}`);
-	}, [inviteCode, memberships, membershipState, module, router]);
+	}, [inviteToken, memberships, membershipState, module, router]);
 
 	const section = WG_SECTIONS.find(
 		(item) =>
@@ -283,7 +284,7 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 						<Alert>
 							<AlertTitle>Du hast die WG verlassen</AlertTitle>
 							<AlertDescription className="text-foreground">
-								Deine Mitgliedschaft wurde beendet. Mit einem WG-Code kannst du jederzeit einer WG
+								Deine Mitgliedschaft wurde beendet. Mit einer Einladung kannst du jederzeit einer WG
 								beitreten.
 							</AlertDescription>
 						</Alert>
@@ -309,21 +310,22 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 						</output>
 					) : (
 						<>
-							{inviteCode && <InvitationNotice code={inviteCode} />}
+							{inviteToken && <InvitationNotice />}
 							{multi && <MembershipCard memberships={memberships} />}
 							{module ? (
 								<PublicModulePreview module={module} />
 							) : (
 								!multi && <PublicModulePreviews modules={PRIMARY_MODULES} hrefFor={discoveryHref} />
 							)}
+							{legacyCode && <ErrorBox>{LEGACY_CODE_MESSAGE}</ErrorBox>}
 							{badInvite && (
 								<ErrorBox>
 									Dieser Einladungslink ist unvollständig oder ungültig. Frag die WG nach einem
 									neuen Link.
 								</ErrorBox>
 							)}
-							{inviteCode ? (
-								<WgWelcome variant="invitation" code={inviteCode} guest={guest} />
+							{inviteToken ? (
+								<WgWelcome variant="invitation" token={inviteToken} guest={guest} />
 							) : (
 								membershipState !== 'member-list' && <WgWelcome variant="create" guest={guest} />
 							)}

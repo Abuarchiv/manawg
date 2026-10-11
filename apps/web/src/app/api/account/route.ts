@@ -1,3 +1,4 @@
+import { SESSION_HINT_COOKIE } from '@/core/auth/cookie-options';
 import { deleteAuthUser } from '@/core/auth/delete-user';
 import { getAuthenticatedUser } from '@/core/auth/server';
 import { getSupabaseEnv, hasSupabaseEnv } from '@/core/auth/supabase-env';
@@ -32,6 +33,7 @@ function acceptedDeletionResponse(
 	for (const { name } of req.cookies.getAll()) {
 		if (SUPABASE_AUTH_COOKIE.test(name)) {
 			response.cookies.set({ name, value: '', maxAge: 0, path: '/' });
+			response.cookies.set({ name: SESSION_HINT_COOKIE, value: '', maxAge: 0, path: '/' });
 		}
 	}
 	return response;

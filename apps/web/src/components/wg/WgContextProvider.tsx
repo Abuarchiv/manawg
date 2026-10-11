@@ -30,8 +30,6 @@ export interface WgSummary {
 	id: string;
 	name: string;
 	shareCode: string;
-	joiningEnabled: boolean;
-	shareCodeRotatedAt?: string | Date | null;
 }
 
 export interface Member {

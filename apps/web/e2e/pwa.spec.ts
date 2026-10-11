@@ -518,7 +518,7 @@ test.describe('offline banner focus', () => {
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen#zugang`);
 		await dismissOnboarding(page);
 
-		const target = page.getByRole('button', { name: 'Einladungslink kopieren' });
+		const target = page.getByRole('button', { name: 'Neue Einladung', exact: true });
 		await expect(target).toBeVisible();
 		await page.waitForLoadState('networkidle');
 

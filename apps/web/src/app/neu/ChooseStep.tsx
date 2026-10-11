@@ -61,7 +61,7 @@ export function ChooseStep({ accountWgs, interactive, busy, onCreate, onJoin }: 
 					onClick={onJoin}
 					className="w-full"
 				>
-					<KeyRound data-icon="inline-start" aria-hidden /> Per Code beitreten
+					<KeyRound data-icon="inline-start" aria-hidden /> Mit Einladung beitreten
 				</Button>
 			</div>
 		</div>

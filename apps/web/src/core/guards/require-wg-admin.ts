@@ -8,13 +8,12 @@ import type { NextRequest } from 'next/server';
 interface AdminWg {
 	id: string;
 	name: string;
-	joiningEnabled: boolean;
 }
 
 function loadAdminWg(code: string): Promise<AdminWg | undefined> {
 	return db.query.wgs.findFirst({
 		where: (w, { eq }) => eq(w.shareCode, code),
-		columns: { id: true, name: true, joiningEnabled: true },
+		columns: { id: true, name: true },
 	});
 }
 

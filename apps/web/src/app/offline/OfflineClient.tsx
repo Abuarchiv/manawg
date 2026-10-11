@@ -4,7 +4,6 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import { createSupabaseBrowserClient } from '@/core/auth/client';
 import { type KnownWg, getKnownWgs, getLocalAccount } from '@/core/auth/local-account';
 import { subscribeConnectivity } from '@/core/hooks/use-online-status';
 import {
@@ -18,7 +17,6 @@ import {
 	getOfflineSyncFailureMessage,
 } from '@/core/offline/offline-copy';
 import type { OfflineAction } from '@/core/offline/offline-queue';
-import { isAuthRetryableFetchError } from '@supabase/supabase-js';
 import { CloudOff, RefreshCw, RotateCw, Wifi } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -34,16 +32,10 @@ import {
 	wgHref,
 } from './offline-page-helpers';
 
-async function getLocalAuthUserId(sessionless: boolean): Promise<string | null> {
-	if (sessionless) return null;
-	try {
-		const { data, error } = await createSupabaseBrowserClient().auth.getSession();
-		if (!error) return data.session?.user.id ?? null;
-		// Expired access token and no network: still signed in, the refresh just cannot run.
-		return isAuthRetryableFetchError(error) ? getLocalAccount() : null;
-	} catch {
-		return null;
-	}
+// The session cookies are HttpOnly, so offline the account is the one this browser last loaded a
+// member for; online, /api/wg/mine decides.
+function getLocalAuthUserId(sessionless: boolean): string | null {
+	return sessionless ? null : getLocalAccount();
 }
 
 /** `sessionless`: database-free test build without a Supabase session; the whole local queue is the user's. */
@@ -83,7 +75,7 @@ export function OfflineClient({ sessionless = false }: { sessionless?: boolean }
 		const generation = ++refreshGenerationRef.current;
 		const current = () => generation === refreshGenerationRef.current;
 		const browserOffline = typeof navigator !== 'undefined' && !navigator.onLine;
-		const localAuthUserId = await getLocalAuthUserId(sessionless);
+		const localAuthUserId = getLocalAuthUserId(sessionless);
 		if (!current()) return [];
 		setOnline(!browserOffline);
 		setMessage(null);
@@ -122,34 +114,16 @@ export function OfflineClient({ sessionless = false }: { sessionless?: boolean }
 	useEffect(() => {
 		void refresh();
 		const refreshOnEvent = () => void refresh();
-		const onAuthStateChange = () => {
-			refreshGenerationRef.current += 1;
-			syncAbortRef.current?.abort();
-			syncAbortRef.current = null;
-			setKnownWgs([]);
-			setQueue([]);
-			window.setTimeout(refreshOnEvent, 0);
-		};
 		const unsubscribeConnectivity = subscribeConnectivity(refreshOnEvent);
 		window.addEventListener('manawg:offline-queue', refreshOnEvent);
 		window.addEventListener('storage', refreshOnEvent);
-		let unsubscribe = () => {};
-		if (!sessionless) {
-			try {
-				const { data } = createSupabaseBrowserClient().auth.onAuthStateChange(onAuthStateChange);
-				unsubscribe = () => data.subscription.unsubscribe();
-			} catch {
-				// No cached auth client means local queue data remains hidden.
-			}
-		}
 		return () => {
-			unsubscribe();
 			syncAbortRef.current?.abort();
 			unsubscribeConnectivity();
 			window.removeEventListener('manawg:offline-queue', refreshOnEvent);
 			window.removeEventListener('storage', refreshOnEvent);
 		};
-	}, [refresh, sessionless]);
+	}, [refresh]);
 
 	const queueCounts = useMemo(() => countByShareCode(queue), [queue]);
 	const hasRetryableQueue = queue.some((action) => !needsManualOfflineResolution(action));

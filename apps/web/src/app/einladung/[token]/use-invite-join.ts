@@ -1,0 +1,145 @@
+'use client';
+
+import { hasSessionCookie } from '@/core/auth/session-hint';
+import { REQUEST_TIMEOUT_MS, anySignal } from '@/core/infra/api-client';
+import { INVITE_EXPIRED_MESSAGE, joinErrorMessage } from '@/core/infra/join-flow';
+import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
+import { isInviteToken } from '@/core/utils/invite-token';
+import posthog from '@/shared/lib/analytics';
+import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
+
+export type InvitePhase =
+	| { kind: 'loading' }
+	| { kind: 'signed-out' }
+	| { kind: 'ready'; wgName: string; code: string }
+	| { kind: 'dead' }
+	| { kind: 'error' };
+
+async function readError(res: Response): Promise<{ error: string; shareCode: string }> {
+	try {
+		const body = (await res.json()) as { error?: unknown; code?: unknown; shareCode?: unknown };
+		return {
+			error: typeof body.error === 'string' ? body.error : '',
+			shareCode: typeof body.shareCode === 'string' ? body.shareCode : '',
+		};
+	} catch {
+		return { error: '', shareCode: '' };
+	}
+}
+
+/** Looks the invitation up for the signed-in account, then joins the WG with the typed name. */
+export function useInviteJoin(token: string) {
+	const router = useRouter();
+	const [phase, setPhase] = useState<InvitePhase>({ kind: 'loading' });
+	const [retryNonce, setRetryNonce] = useState(0);
+	const [name, setName] = useState('');
+	const [error, setError] = useState<string | null>(null);
+	const [nameInvalid, setNameInvalid] = useState(false);
+	const [busy, setBusy] = useState(false);
+	const busyRef = useRef(false);
+	const requestRef = useRef<{ fingerprint: string; key: string } | null>(null);
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `retryNonce` re-runs the lookup after a transient error.
+	useEffect(() => {
+		if (!isInviteToken(token)) {
+			setPhase({ kind: 'dead' });
+			return;
+		}
+		if (!hasSessionCookie()) {
+			setPhase({ kind: 'signed-out' });
+			return;
+		}
+		const controller = new AbortController();
+		setPhase({ kind: 'loading' });
+		fetch(`/api/wg/invites/${encodeURIComponent(token)}`, {
+			cache: 'no-store',
+			signal: anySignal([controller.signal, AbortSignal.timeout(REQUEST_TIMEOUT_MS)]),
+		})
+			.then(async (res) => {
+				if (res.status === 401) return setPhase({ kind: 'signed-out' });
+				if (res.status === 409) {
+					const { shareCode } = await readError(res);
+					if (shareCode) return router.replace(`/wg/${encodeURIComponent(shareCode)}`);
+				}
+				if (res.status === 404 || res.status === 410) return setPhase({ kind: 'dead' });
+				if (!res.ok) return setPhase({ kind: 'error' });
+				const data = (await res.json()) as { wg: { name: string; shareCode: string } };
+				setPhase({ kind: 'ready', wgName: data.wg.name, code: data.wg.shareCode });
+			})
+			.catch((err: unknown) => {
+				if (err instanceof DOMException && err.name === 'AbortError' && controller.signal.aborted)
+					return;
+				setPhase({ kind: 'error' });
+			});
+		return () => controller.abort();
+	}, [token, retryNonce, router]);
+
+	async function join(): Promise<void> {
+		if (busyRef.current || phase.kind !== 'ready') return;
+		const trimmed = name.trim();
+		if (trimmed.length === 0) {
+			setNameInvalid(true);
+			setError('Dein Anzeigename fehlt.');
+			return;
+		}
+		busyRef.current = true;
+		setBusy(true);
+		setError(null);
+		setNameInvalid(false);
+		// A retry of the same request keeps its key, so a lost response cannot join twice.
+		const fingerprint = JSON.stringify({ token, name: trimmed });
+		const pending = requestRef.current;
+		const key = pending?.fingerprint === fingerprint ? pending.key : createOfflineIdempotencyKey();
+		if (!key) {
+			setError('WG-Beitritt konnte nicht sicher gesendet werden. Versuche es erneut.');
+			busyRef.current = false;
+			setBusy(false);
+			return;
+		}
+		requestRef.current = { fingerprint, key };
+		const target = `/wg/${encodeURIComponent(phase.code)}`;
+		try {
+			const res = await fetch(`/api/wg/${encodeURIComponent(phase.code)}/members`, {
+				method: 'POST',
+				headers: { 'content-type': 'application/json', 'Idempotency-Key': key },
+				body: JSON.stringify({ name: trimmed, inviteToken: token }),
+				signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+			});
+			if (res.status === 401) return setPhase({ kind: 'signed-out' });
+			if (!res.ok) {
+				if (res.status < 500) requestRef.current = null;
+				const { error: apiError } = await readError(res);
+				if (res.status === 409 && apiError === 'already_joined') return router.push(target);
+				if (apiError === 'invite_expired' || apiError === 'invite_required') {
+					return setPhase({ kind: 'dead' });
+				}
+				const nameProblem =
+					apiError === 'name_invalid' || (res.status === 409 && apiError === 'name_taken');
+				setNameInvalid(nameProblem);
+				setError(joinErrorMessage(res.status, apiError));
+				return;
+			}
+			requestRef.current = null;
+			posthog.capture('wg_joined');
+			router.push(target);
+		} catch {
+			setError(joinErrorMessage(0, ''));
+		} finally {
+			busyRef.current = false;
+			setBusy(false);
+		}
+	}
+
+	return {
+		phase,
+		name,
+		setName,
+		error,
+		nameInvalid,
+		busy,
+		join,
+		retry: () => setRetryNonce((n) => n + 1),
+		deadMessage: INVITE_EXPIRED_MESSAGE,
+	};
+}

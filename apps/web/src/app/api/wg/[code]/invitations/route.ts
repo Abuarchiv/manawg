@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { recordAuditEvent } from '@/core/audit';
-import { db, wgMembers, wgs } from '@/core/db';
+import { db, wgInvites, wgMembers } from '@/core/db';
+import { createWgInvite } from '@/core/db/wg-invites';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { conflict, serviceUnavailable, tooMany } from '@/core/http/api-errors';
@@ -17,10 +18,15 @@ const postSchema = z.object({
 	email: z.string().trim().toLowerCase().email().max(254),
 });
 
+async function revokeInvite(id: string): Promise<void> {
+	await db.update(wgInvites).set({ revokedAt: new Date() }).where(eq(wgInvites.id, id));
+}
+
 /**
- * E6: a member invites someone by address. The mail carries the share code
- * and link the card already shows; the address itself is not stored, only a
- * hash in the dedupe key (one mail per address, WG and day).
+ * E6: a member invites someone by address. The mail carries a fresh invitation
+ * link (7 days); the address itself is not stored, only a hash in the dedupe
+ * key (one mail per address, WG and day). A link whose mail was not sent is
+ * revoked again, so a duplicate or failure leaves no live token behind.
  */
 export const POST = withWgRoute('invitations POST', async (req, { code }) => {
 	const parsed = await parseBody(req, postSchema, { fieldErrors: { email: 'email_invalid' } });
@@ -32,16 +38,14 @@ export const POST = withWgRoute('invitations POST', async (req, { code }) => {
 	const rl = await checkRateLimit(inviteMailLimiter, `invite-mail:${auth.member.memberId}`);
 	if (!rl.success) return tooMany('invite_rate_limited', 'invite_rate_limited');
 
-	const [[access], members] = await Promise.all([
-		db.select({ joiningEnabled: wgs.joiningEnabled }).from(wgs).where(eq(wgs.id, wg.id)).limit(1),
-		db
-			.select({ name: wgMembers.name })
-			.from(wgMembers)
-			.where(and(eq(wgMembers.wgId, wg.id), isNull(wgMembers.deactivatedAt)))
-			.orderBy(asc(wgMembers.createdAt)),
-	]);
-	if (!access?.joiningEnabled) return conflict('joining_disabled', 'joining_disabled');
+	const members = await db
+		.select({ name: wgMembers.name })
+		.from(wgMembers)
+		.where(and(eq(wgMembers.wgId, wg.id), isNull(wgMembers.deactivatedAt)))
+		.orderBy(asc(wgMembers.createdAt));
 
+	const invite = await createWgInvite(wg.id, auth.member.memberId);
+	if (!invite) return conflict('invite_limit_reached', 'invite_limit_reached');
 	const emailHash = createHash('sha256').update(parsed.data.email).digest('hex').slice(0, 32);
 	let result: Awaited<ReturnType<typeof sendMail>>;
 	try {
@@ -54,13 +58,15 @@ export const POST = withWgRoute('invitations POST', async (req, { code }) => {
 			mail: renderInvitationMail({
 				inviterName: auth.member.name,
 				wgName: wg.name,
-				shareCode: wg.shareCode,
+				inviteToken: invite.token,
 				memberNames: members.map((member) => member.name),
 			}),
 		});
 	} catch {
+		await revokeInvite(invite.id);
 		return serviceUnavailable('mail_unavailable', 'mail_unavailable');
 	}
+	if (result !== 'sent') await revokeInvite(invite.id);
 	if (result === 'failed' || result === 'deferred') {
 		return serviceUnavailable('mail_unavailable', 'mail_unavailable');
 	}

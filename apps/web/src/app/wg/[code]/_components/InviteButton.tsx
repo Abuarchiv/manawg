@@ -3,7 +3,7 @@
 import { useToast } from '@/components/ui/Toast';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import { type NavigatorWithShare, copyViaTextArea } from '@/core/utils/clipboard';
+import { createInvite, shareInvite } from '@/components/wg/invite-share';
 import { cn } from '@/shared/lib/cn';
 import { AlertTriangle, Check, Share2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -11,22 +11,25 @@ import { useEffect, useRef, useState } from 'react';
 const RESET_MS = 1500;
 const FAILED_RESET_MS = 4000;
 
-interface CopyCodeButtonProps {
+interface InviteButtonProps {
 	code: string;
-	wgName?: string;
+	memberId: string;
+	wgName: string;
 	variant?: 'default' | 'ghost';
 	className?: string;
 }
 
-type CopyState = 'idle' | 'shared' | 'copied' | 'failed';
+type ShareState = 'idle' | 'shared' | 'copied' | 'failed';
 
-export function CopyCodeButton({
+/** Creates a fresh 7-day invitation link and hands it to the share sheet or the clipboard. */
+export function InviteButton({
 	code,
+	memberId,
 	wgName,
 	variant = 'ghost',
 	className,
-}: CopyCodeButtonProps) {
-	const [state, setState] = useState<CopyState>('idle');
+}: InviteButtonProps) {
+	const [state, setState] = useState<ShareState>('idle');
 	const [sharing, setSharing] = useState(false);
 	const timerRef = useRef<number | null>(null);
 	const sharingRef = useRef(false);
@@ -38,10 +41,8 @@ export function CopyCodeButton({
 		};
 	}, []);
 
-	function flash(next: CopyState): void {
+	function flash(next: ShareState): void {
 		setState(next);
-		if (next === 'failed')
-			toast.error('Einladung konnte nicht geteilt werden. Kopiere den Code manuell.');
 		if (timerRef.current !== null) window.clearTimeout(timerRef.current);
 		timerRef.current = window.setTimeout(
 			() => {
@@ -56,37 +57,17 @@ export function CopyCodeButton({
 		if (sharingRef.current) return;
 		sharingRef.current = true;
 		setSharing(true);
-		const url =
-			typeof window !== 'undefined'
-				? `${window.location.origin}/neu?code=${encodeURIComponent(code)}`
-				: `/neu?code=${encodeURIComponent(code)}`;
-		const host = typeof window !== 'undefined' ? window.location.host : '';
-		const text = wgName
-			? `Komm in unsere WG „${wgName}“ auf ManaWG: ${url}\n(oder mit Code ${code} unter ${host} beitreten)`
-			: `Komm in unsere WG auf ManaWG: ${url}\n(oder mit Code ${code})`;
-		const shareData = { title: 'ManaWG', text, url };
-
 		try {
-			const nav = (typeof navigator !== 'undefined' ? navigator : null) as
-				| (Navigator & NavigatorWithShare)
-				| null;
-			if (nav?.share && (!nav.canShare || nav.canShare(shareData))) {
-				await nav.share(shareData);
-				flash('shared');
+			const created = await createInvite(code, memberId);
+			if (!created.ok) {
+				toast.error(created.message);
+				flash('failed');
 				return;
 			}
-			if (nav?.clipboard?.writeText) {
-				await nav.clipboard.writeText(text);
-				flash('copied');
-				return;
-			}
-			flash(copyViaTextArea(text) ? 'copied' : 'failed');
-		} catch (err) {
-			if (err instanceof Error && err.name === 'AbortError') {
-				setState('idle');
-				return;
-			}
-			flash(copyViaTextArea(text) ? 'copied' : 'failed');
+			const outcome = await shareInvite(wgName, created.invite.url);
+			if (outcome === 'cancelled') return;
+			if (outcome === 'failed') toast.error('Einladung konnte nicht geteilt werden.');
+			flash(outcome);
 		} finally {
 			sharingRef.current = false;
 			setSharing(false);

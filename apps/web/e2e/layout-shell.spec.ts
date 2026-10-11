@@ -193,12 +193,10 @@ test.describe('app shell state', () => {
 
 			await mockNoWgs(page);
 
-			await page.goto(`/neu?code=${FIXTURE_WG.shareCode}`);
+			await page.goto('/neu?invite=fixture-invite-token01');
 			await page.getByRole('button', { name: 'Mit anderem Konto anmelden', exact: true }).click();
 
-			await expect(
-				page.getByText('Melde dich an, um mit deinem WG-Code beizutreten.'),
-			).toBeVisible();
+			await expect(page.getByText('Melde dich an, um die Einladung anzunehmen.')).toBeVisible();
 		});
 
 		test('lets a signed-in single-WG user open that WG from a module preview', async ({ page }) => {
@@ -246,7 +244,7 @@ test.describe('app shell state', () => {
 				}),
 			);
 
-			await page.goto(`/entdecken/einkauf?code=${FIXTURE_WG.shareCode}`);
+			await page.goto('/entdecken/einkauf?invite=fixture-invite-token01');
 			const openWgs = page.getByRole('link', { name: 'Deine WGs', exact: true });
 			await expect(openWgs).toBeVisible();
 			await openWgs.click();

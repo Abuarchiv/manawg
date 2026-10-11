@@ -24,10 +24,7 @@ import { gzipSync } from 'node:zlib';
 const KILOBYTE = 1024;
 const SHARED_JS_BUDGET_KB = 120;
 const PER_ROUTE_BUDGET_KB = 55;
-// /offline must run without network: the service worker precaches only the
-// scripts in its HTML, so the Supabase auth client stays a static import there.
-// Every other page loads that client lazily, which leaves the chunk to /offline.
-const ROUTE_BUDGET_OVERRIDES_KB = { '/offline/page': 85 };
+const ROUTE_BUDGET_OVERRIDES_KB = {};
 const TESSERACT_INFO_BUDGET_KB = 2500;
 const LAZY_CHUNK_HINTS = ['tesseract'];
 const TESSERACT_CHUNK_HINT = 'tesseract';

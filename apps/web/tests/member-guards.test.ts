@@ -4,7 +4,7 @@ import { mock, test } from 'node:test';
 // The guards are tested against their real modules; only the Supabase user,
 // the database rows and the rate limiter are stand-ins.
 
-const WG = { id: 'wg-1', name: 'WG', shareCode: 'MTE8PZAT', joiningEnabled: true };
+const WG = { id: 'wg-1', name: 'WG', shareCode: 'MTE8PZAT' };
 
 interface MemberRow {
 	id: string;

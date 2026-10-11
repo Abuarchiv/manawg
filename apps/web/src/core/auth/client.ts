@@ -1,11 +1,10 @@
 'use client';
 
+import { apiFetch } from '@/core/infra/api-client';
 import { retireWebPushEndpoint } from '@/core/notifications/push-subscribe';
-import { MEMBER_NAME_MAX_LENGTH } from '@/shared/lib/limits';
-import { createBrowserClient } from '@supabase/ssr';
-import { authCookieOptions } from './cookie-options';
-import { safeNextPath } from './next-path';
-import { getSupabaseEnv } from './supabase-env';
+
+// The session lives in HttpOnly cookies that only the server reads and writes. Every call below
+// goes through /api/auth/*; there is no Supabase client in the browser.
 
 export type SocialProvider = 'google';
 
@@ -20,131 +19,109 @@ export type LogoutPushTarget = {
 
 export type LogoutPushCleanup = 'none' | 'unsubscribed' | 'failed';
 
-export function createSupabaseBrowserClient() {
-	const { url, publishableKey } = getSupabaseEnv();
-	return createBrowserClient(url, publishableKey, {
-		cookieOptions: authCookieOptions(
-			typeof window !== 'undefined' && window.location.protocol === 'https:',
-		),
-	});
+/** An auth route failure; `code` is the Supabase error code (e.g. `invalid_credentials`). */
+class AuthRequestError extends Error {
+	readonly code: string;
+	readonly status: number;
+
+	constructor(code: string, status: number) {
+		super(code);
+		// classifyAuthError reads these three fields.
+		this.name = status === 0 || status === 503 ? 'AuthRetryableFetchError' : 'AuthApiError';
+		this.code = code;
+		this.status = status;
+	}
 }
 
-function authCallbackUrl(next: string): string {
-	const callback = new URL('/auth/callback', window.location.origin);
-	callback.searchParams.set('next', safeNextPath(next));
-	return callback.toString();
+async function authRequest<T>(path: string, body?: object): Promise<T> {
+	const res = await apiFetch<T>(
+		path,
+		body === undefined ? {} : { method: 'POST', body: JSON.stringify(body) },
+	);
+	if (!res.ok)
+		throw new AuthRequestError(res.status === 0 ? 'network_error' : res.error, res.status);
+	return res.data;
 }
 
-export async function startSocialLogin(provider: SocialProvider, next: string): Promise<void> {
-	const { error } = await createSupabaseBrowserClient().auth.signInWithOAuth({
-		provider,
-		options: { redirectTo: authCallbackUrl(next) },
-	});
-	if (error) throw error;
+async function followProviderUrl(
+	path: string,
+	provider: SocialProvider,
+	next: string,
+): Promise<void> {
+	const { url } = await authRequest<{ url: string }>(path, { provider, next });
+	window.location.assign(url);
 }
 
-export async function linkSocialIdentity(provider: SocialProvider, next: string): Promise<void> {
-	const { error } = await createSupabaseBrowserClient().auth.linkIdentity({
-		provider,
-		options: { redirectTo: authCallbackUrl(next) },
-	});
-	if (error) throw error;
+export function startSocialLogin(provider: SocialProvider, next: string): Promise<void> {
+	return followProviderUrl('/api/auth/oauth-start', provider, next);
 }
+
+export function linkSocialIdentity(provider: SocialProvider, next: string): Promise<void> {
+	return followProviderUrl('/api/auth/identity-link', provider, next);
+}
+
+type AccountInfo = {
+	email: string | null;
+	hasPassword: boolean;
+	hasGoogle: boolean;
+	name: string | null;
+};
+
+const readAccount = () => authRequest<AccountInfo>('/api/auth/identities');
 
 /** Whether the signed-in account already has this provider attached (linking it again fails). */
 export async function hasLinkedIdentity(provider: SocialProvider): Promise<boolean> {
-	const { data, error } = await createSupabaseBrowserClient().auth.getUserIdentities();
-	if (error) throw error;
-	return data.identities.some((identity) => identity.provider === provider);
+	const account = await readAccount();
+	return provider === 'google' && account.hasGoogle;
 }
 
-export async function signInWithEmailPassword(
+export function signInWithEmailPassword(
 	email: string,
 	password: string,
 ): Promise<AuthSessionResult> {
-	const { data, error } = await createSupabaseBrowserClient().auth.signInWithPassword({
-		email,
-		password,
-	});
-	if (error) throw error;
-	return { sessionEstablished: data.session !== null };
+	return authRequest('/api/auth/sign-in', { email, password });
 }
 
-export async function signUpWithEmailPassword(
+export function signUpWithEmailPassword(
 	email: string,
 	password: string,
 	next: string,
 	name: string,
 ): Promise<AuthSessionResult> {
-	const { data, error } = await createSupabaseBrowserClient().auth.signUp({
-		email,
-		password,
-		options: { emailRedirectTo: authCallbackUrl(next), data: { full_name: name } },
-	});
-	if (error) throw error;
-	return { sessionEstablished: data.session !== null };
+	return authRequest('/api/auth/sign-up', { email, password, next, name });
 }
 
 /** Sends the sign-up confirmation mail again; the response never reveals whether the address exists. */
 export async function resendSignupConfirmation(email: string, next: string): Promise<void> {
-	const { error } = await createSupabaseBrowserClient().auth.resend({
-		type: 'signup',
-		email,
-		options: { emailRedirectTo: authCallbackUrl(next) },
-	});
-	if (error) throw error;
+	await authRequest('/api/auth/resend', { email, next });
 }
 
 export async function requestPasswordReset(email: string): Promise<void> {
-	const { error } = await createSupabaseBrowserClient().auth.resetPasswordForEmail(email, {
-		redirectTo: authCallbackUrl('/auth/reset'),
-	});
-	if (error) throw error;
+	await authRequest('/api/auth/password-reset', { email });
 }
 
 /** The signed-in account's e-mail and whether it signs in with an e-mail/password identity. */
 export async function getEmailAccount(): Promise<{ email: string; hasPassword: boolean } | null> {
-	const { data, error } = await createSupabaseBrowserClient().auth.getUser();
-	if (error || !data.user?.email) return null;
-	const hasPassword = (data.user.identities ?? []).some(
-		(identity) => identity.provider === 'email',
-	);
-	return { email: data.user.email, hasPassword };
+	const account = await readAccount().catch(() => null);
+	return account?.email ? { email: account.email, hasPassword: account.hasPassword } : null;
 }
 
 /** Display name from the account metadata (sign-up form or Google), trimmed to the member limit. */
 export async function getAccountName(): Promise<string | null> {
-	const { data, error } = await createSupabaseBrowserClient().auth.getUser();
-	if (error || !data.user) return null;
-	const meta = data.user.user_metadata as Record<string, unknown>;
-	const raw = [meta.full_name, meta.name, meta.given_name].find(
-		(value): value is string => typeof value === 'string' && value.trim().length > 0,
-	);
-	return raw ? raw.trim().slice(0, MEMBER_NAME_MAX_LENGTH) : null;
+	return (await readAccount().catch(() => null))?.name ?? null;
 }
 
 export async function updatePassword(password: string): Promise<void> {
-	const { error } = await createSupabaseBrowserClient().auth.updateUser({ password });
-	if (error) throw error;
+	await authRequest('/api/auth/password', { password });
 }
 
 /** Mails a one-time code to an existing account; unknown addresses are rejected instead of created. */
 export async function requestEmailCode(email: string): Promise<void> {
-	const { error } = await createSupabaseBrowserClient().auth.signInWithOtp({
-		email,
-		options: { shouldCreateUser: false },
-	});
-	if (error) throw error;
+	await authRequest('/api/auth/code-request', { email });
 }
 
-export async function verifyEmailCode(email: string, token: string): Promise<AuthSessionResult> {
-	const { data, error } = await createSupabaseBrowserClient().auth.verifyOtp({
-		email,
-		token,
-		type: 'email',
-	});
-	if (error) throw error;
-	return { sessionEstablished: data.session !== null };
+export function verifyEmailCode(email: string, token: string): Promise<AuthSessionResult> {
+	return authRequest('/api/auth/code-verify', { email, token });
 }
 
 async function removeCurrentBrowserPushSubscription(
@@ -295,8 +272,7 @@ export async function signOutSocialAccount(
 	const pushCleanup = await removeCurrentBrowserPushSubscription(pushTargets).catch(
 		() => 'failed' as const,
 	);
-	const { error } = await createSupabaseBrowserClient().auth.signOut({ scope: 'local' });
-	if (error) throw error;
+	await authRequest('/api/auth/sign-out', {});
 	await clearLocalAccountData();
 	return { pushCleanup };
 }

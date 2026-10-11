@@ -14,11 +14,11 @@ import { cn } from '@/shared/lib/cn';
 import { X } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { CopyCodeButton } from './CopyCodeButton';
+import { InviteButton } from './InviteButton';
 
 export function StartWelcome({ dismissedFallback }: { dismissedFallback?: React.ReactNode }) {
 	const { wg, identity, members } = useWg();
-	// Stable WG/member IDs survive invitation-code changes and isolate preferences.
+	// Stable WG/member IDs isolate the preference per WG and member.
 	const storageKey = `manawg:start-welcome-dismissed:${wg.id}:${identity.memberId}`;
 	// null until localStorage was read, so the fallback does not flash on load.
 	const [status, setStatus] = useState<{ key: string; dismissed: boolean } | null>(null);
@@ -75,24 +75,13 @@ export function StartWelcome({ dismissedFallback }: { dismissedFallback?: React.
 							Einkauf öffnen
 						</Link>
 					)}
-					{wg.joiningEnabled ? (
-						<CopyCodeButton
-							code={wg.shareCode}
-							wgName={wg.name}
-							className="w-full"
-							variant={hasRoommates ? 'ghost' : 'default'}
-						/>
-					) : (
-						<p className="text-sm text-muted-foreground">
-							Beitritte sind gesperrt.{' '}
-							<Link
-								href={`${baseHref}/einstellungen#zugang`}
-								className="inline-block py-2 text-foreground underline underline-offset-4"
-							>
-								Einladungen verwalten
-							</Link>
-						</p>
-					)}
+					<InviteButton
+						code={wg.shareCode}
+						memberId={identity.memberId}
+						wgName={wg.name}
+						className="w-full"
+						variant={hasRoommates ? 'ghost' : 'default'}
+					/>
 				</CardContent>
 			</Card>
 		</section>

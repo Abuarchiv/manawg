@@ -1,4 +1,3 @@
-import { getInitialJoinCode } from '@/core/infra/join-flow';
 import { safeNextPath } from './next-path';
 
 /** The pages that start an account flow; neither may be a post-login `next` target. */
@@ -12,16 +11,14 @@ export function isAuthPagePath(path: string): boolean {
 }
 
 /**
- * Reduces a query string to the intent the start flow understands: a valid share code,
- * the create action, and a safe return path. Anything else is dropped, so the result
- * can be appended to links and to the e-mail confirmation target.
+ * Reduces a query string to the intent the start flow understands: the create action and
+ * a safe return path (an invitation travels as `next=/einladung/<token>`). Anything else
+ * is dropped, so the result can be appended to links and to the e-mail confirmation target.
  */
 export function authIntentQuery(search: string): string {
 	const source = new URLSearchParams(search);
 	const params = new URLSearchParams();
-	const code = getInitialJoinCode(search);
-	if (code) params.set('code', code);
-	else if (source.get('action') === 'create') params.set('action', 'create');
+	if (source.get('action') === 'create') params.set('action', 'create');
 	const next = safeNextPath(source.get('next'));
 	if (next !== '/' && !isAuthPagePath(next)) params.set('next', next);
 	return params.toString();

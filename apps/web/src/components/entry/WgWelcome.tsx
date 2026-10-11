@@ -1,32 +1,29 @@
 import { SignUpPrompt } from '@/components/auth/SignUpPrompt';
 import { buttonVariants } from '@/components/ui/button';
+import { invitePath } from '@/core/utils/invite-token';
 import { cn } from '@/shared/lib/cn';
 import Link from 'next/link';
 
 type WgWelcomeProps = (
 	| { variant: 'create'; outline?: boolean }
-	| { variant: 'invitation'; code: string }
+	| { variant: 'invitation'; token: string }
 ) & {
 	/** Signed-out visitors also get a way to register instead of only signing in. */
 	guest?: boolean;
 };
 
-/** Names the invitation (code only; the WG name is unknown before joining) above the example. */
-export function InvitationNotice({ code }: { code: string }) {
-	return (
-		<p className="text-sm">
-			Einladung zur WG, Code <span className="font-mono font-semibold tracking-wider">{code}</span>
-		</p>
-	);
+/** Tells the visitor an invitation is waiting; the WG name is only shown once signed in. */
+export function InvitationNotice() {
+	return <p className="text-sm">Du wurdest in eine WG eingeladen.</p>;
 }
 
 export function WgWelcome(props: WgWelcomeProps) {
 	const invitation = props.variant === 'invitation';
 	// Account first: a signed-out visitor registers, then creates or joins a WG from /neu.
-	// Only an invitation keeps its intent through sign-in, so the code is not lost.
+	// Only an invitation keeps its intent through sign-in, so the link is not lost.
 	const guestCreate = !invitation && props.guest === true;
 	const actionHref = invitation
-		? `/neu?code=${encodeURIComponent(props.code)}`
+		? invitePath(props.token)
 		: guestCreate
 			? '/registrieren'
 			: '/neu?action=create';
@@ -44,11 +41,11 @@ export function WgWelcome(props: WgWelcomeProps) {
 			</Link>
 			{guestCreate && (
 				<p className="text-sm text-muted-foreground">
-					Danach erstellst du eure WG oder trittst per Code bei.
+					Danach erstellst du eure WG oder trittst mit einer Einladung bei.
 				</p>
 			)}
 			{props.guest && invitation && (
-				<SignUpPrompt intentQuery={`code=${encodeURIComponent(props.code)}`} />
+				<SignUpPrompt intentQuery={`next=${encodeURIComponent(invitePath(props.token))}`} />
 			)}
 		</div>
 	);

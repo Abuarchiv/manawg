@@ -24,17 +24,14 @@ const hostedHttps = isHostedHttpsUrl(baseUrl);
 const testEmail = process.env.SUPABASE_AUTH_TEST_EMAIL?.trim() ?? '';
 const testPassword = process.env.SUPABASE_AUTH_TEST_PASSWORD ?? '';
 const memberWgCode = process.env.SUPABASE_AUTH_TEST_MEMBER_WG_CODE?.trim().toUpperCase() ?? '';
-const memberDisplayName = process.env.SUPABASE_AUTH_TEST_MEMBER_NAME?.trim() ?? '';
+const memberInviteToken = process.env.SUPABASE_AUTH_TEST_MEMBER_INVITE_TOKEN?.trim() ?? '';
 const credentialsReady =
-	testEmail.length > 0 &&
-	testPassword.length >= 6 &&
-	memberWgCode.length > 0 &&
-	memberDisplayName.length > 0;
+	testEmail.length > 0 && testPassword.length >= 6 && memberWgCode.length > 0;
 
 function requireMemberTestConfig(): void {
 	expect(
 		credentialsReady,
-		'SUPABASE_AUTH_TEST_EMAIL, SUPABASE_AUTH_TEST_PASSWORD, SUPABASE_AUTH_TEST_MEMBER_WG_CODE, and SUPABASE_AUTH_TEST_MEMBER_NAME are required for this live test.',
+		'SUPABASE_AUTH_TEST_EMAIL, SUPABASE_AUTH_TEST_PASSWORD and SUPABASE_AUTH_TEST_MEMBER_WG_CODE are required for this live test.',
 	).toBe(true);
 }
 
@@ -97,12 +94,12 @@ test.describe('hosted Supabase auth release coverage', () => {
 	}) => {
 		requireMemberTestConfig();
 
-		await page.goto(`/neu?code=${encodeURIComponent(memberWgCode)}`);
+		await page.goto('/neu?action=create');
 		await page.getByRole('tab', { name: 'Passwort', exact: true }).click();
 		await page.getByLabel('E-Mail-Adresse').fill(testEmail);
 		await page.getByLabel('Passwort', { exact: true }).fill(testPassword);
 		await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
-		await expect(page.getByRole('heading', { name: 'Per Code beitreten' })).toBeVisible({
+		await expect(page.getByRole('heading', { name: 'Neue WG erstellen' })).toBeVisible({
 			timeout: 20_000,
 		});
 
@@ -114,12 +111,12 @@ test.describe('hosted Supabase auth release coverage', () => {
 	test('a normal account session cannot open the password reset form', async ({ page }) => {
 		requireMemberTestConfig();
 
-		await page.goto(`/neu?code=${encodeURIComponent(memberWgCode)}`);
+		await page.goto('/neu?action=create');
 		await page.getByRole('tab', { name: 'Passwort', exact: true }).click();
 		await page.getByLabel('E-Mail-Adresse').fill(testEmail);
 		await page.getByLabel('Passwort', { exact: true }).fill(testPassword);
 		await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
-		await expect(page.getByRole('heading', { name: 'Per Code beitreten' })).toBeVisible({
+		await expect(page.getByRole('heading', { name: 'Neue WG erstellen' })).toBeVisible({
 			timeout: 20_000,
 		});
 
@@ -131,10 +128,14 @@ test.describe('hosted Supabase auth release coverage', () => {
 		await expect(page.getByRole('button', { name: 'Passwort speichern' })).toHaveCount(0);
 	});
 
-	test('an existing member must explicitly follow their invite after signing in', async ({
+	test('an existing member opening an invitation to their WG lands in it without joining', async ({
 		page,
 	}) => {
 		requireMemberTestConfig();
+		test.skip(
+			memberInviteToken === '',
+			'Set SUPABASE_AUTH_TEST_MEMBER_INVITE_TOKEN to a live invitation token of the member WG.',
+		);
 
 		const mutationRequests: string[] = [];
 		page.on('request', (request) => {
@@ -144,38 +145,15 @@ test.describe('hosted Supabase auth release coverage', () => {
 			}
 		});
 
-		await page.goto(`/neu?code=${encodeURIComponent(memberWgCode)}`);
+		await page.goto(`/einladung/${memberInviteToken}`);
+		await page.getByRole('link', { name: 'Anmelden', exact: true }).click();
 		await page.getByRole('tab', { name: 'Passwort', exact: true }).click();
 		await page.getByLabel('E-Mail-Adresse').fill(testEmail);
 		await page.getByLabel('Passwort', { exact: true }).fill(testPassword);
 		await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
 
-		await expect(page.getByRole('heading', { name: 'Per Code beitreten' })).toBeVisible({
-			timeout: 20_000,
-		});
-		await expect(page.getByRole('button', { name: 'WG erstellen', exact: true })).toHaveCount(0);
-		await expect(page.getByRole('button', { name: 'WG beitreten', exact: true })).toHaveCount(0);
+		await expect(page).toHaveURL(hostedUrl(`/wg/${memberWgCode}`), { timeout: 30_000 });
 		expect(mutationRequests).toEqual([]);
-
-		await page.getByRole('button', { name: 'WG-Code prüfen', exact: true }).click();
-		await expect(
-			page.getByRole('heading', { name: 'Dein Name in der WG', exact: true }),
-		).toBeVisible();
-		expect(mutationRequests).toEqual([]);
-
-		await page.getByLabel('Dein Anzeigename').fill(memberDisplayName);
-		const [joinResponse] = await Promise.all([
-			page.waitForResponse(
-				(response) =>
-					response.request().method() === 'POST' &&
-					new URL(response.url()).pathname === `/api/wg/${memberWgCode}/members`,
-			),
-			page.getByRole('button', { name: 'WG beitreten', exact: true }).click(),
-		]);
-		const joinBody = await joinResponse.json();
-		expect(joinResponse.status(), `Join error code: ${joinBody.code ?? 'none'}`).toBe(409);
-		expect(joinBody).toMatchObject({ code: 'already_joined' });
-		await expect(page).toHaveURL(hostedUrl(`/wg/${memberWgCode}`));
 	});
 });
 
