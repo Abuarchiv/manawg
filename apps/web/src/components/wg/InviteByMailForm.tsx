@@ -62,7 +62,7 @@ export function InviteByMailForm({ shareCode, memberId }: Props) {
 			>
 				Per E-Mail einladen
 			</label>
-			<div className="mt-1 flex gap-2">
+			<div className="mt-1 flex flex-wrap gap-2">
 				<Input
 					id={id}
 					type="email"
@@ -75,6 +75,7 @@ export function InviteByMailForm({ shareCode, memberId }: Props) {
 					required
 					aria-describedby={message ? `${id}-status` : undefined}
 					aria-invalid={message?.tone === 'error' ? true : undefined}
+					className="min-w-0 flex-1 basis-40"
 				/>
 				<Button
 					type="submit"

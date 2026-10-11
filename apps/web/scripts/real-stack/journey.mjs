@@ -228,5 +228,5 @@ await wait(1500);
 note(
 	`A nach Reload: ${a.p.url()} signedIn-Cookie: ${(await a.c.cookies()).some((c) => c.name === 'manawg_signed_in')}`,
 );
-for (const entry of bugs) console.log('-', entry);
+for (const entry of bugs) process.stdout.write(`- ${entry}\n`);
 await browser.close();

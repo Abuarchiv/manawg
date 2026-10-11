@@ -189,7 +189,7 @@ export function MessageActionsMenu({
 				<DropdownMenuContent backdrop align={isOwn ? 'end' : 'start'} className="w-auto min-w-48">
 					<DropdownMenuGroup
 						aria-label="Reagieren"
-						className="flex max-w-[calc(100vw-2rem)] flex-wrap items-center gap-0.5"
+						className="grid max-w-[calc(100vw-2rem)] grid-cols-7 items-center gap-0.5"
 					>
 						{QUICK_REACTIONS.map((emoji) => {
 							const mine = reactions.some((reaction) => reaction.emoji === emoji && reaction.mine);
@@ -199,7 +199,7 @@ export function MessageActionsMenu({
 									aria-label={mine ? `Reaktion ${emoji} entfernen` : `Mit ${emoji} reagieren`}
 									disabled={reactionPending}
 									className={cn(
-										'size-11 justify-center rounded-full p-0 text-[22px] leading-none',
+										'h-11 w-auto min-w-0 justify-center rounded-full p-0 text-[22px] leading-none',
 										mine && 'bg-accent',
 									)}
 									onClick={() => onQuickReact(emoji, mine)}
@@ -211,7 +211,7 @@ export function MessageActionsMenu({
 						<DropdownMenuItem
 							aria-label="Weitere Reaktionen"
 							disabled={reactionPending}
-							className="size-11 justify-center rounded-full bg-muted p-0"
+							className="h-11 w-auto min-w-0 justify-center rounded-full bg-muted p-0"
 							onClick={onReactOpen}
 						>
 							<Plus aria-hidden />

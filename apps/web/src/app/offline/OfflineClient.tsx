@@ -216,6 +216,8 @@ export function OfflineClient({ sessionless = false }: { sessionless?: boolean }
 							</span>
 							<Badge
 								variant={status === 'ready' || status === 'checking' ? 'secondary' : 'outline'}
+								// Bei 200 % Textgröße darf das Label umbrechen statt abgeschnitten zu werden.
+								className="h-auto min-w-0 shrink whitespace-normal text-center"
 							>
 								{statusLabel}
 							</Badge>

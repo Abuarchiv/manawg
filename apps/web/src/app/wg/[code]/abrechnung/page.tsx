@@ -93,6 +93,7 @@ export default function AbrechnungPage() {
 				</Button>
 			</div>
 
+			{!statement && <h1 className="sr-only">Monatsabrechnung</h1>}
 			{error && !data && (
 				<LoadErrorBanner
 					message={getWgLoadErrorMessage('Ausgaben', error.status, error.error, {

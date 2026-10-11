@@ -135,7 +135,7 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 							value={csvExportSection}
 							disabled={exportPending !== null}
 							onChange={(event) => setCsvExportSection(event.target.value)}
-							className="min-w-36 max-w-full flex-1 text-base"
+							className="min-w-0 max-w-full flex-1 basis-36 text-base"
 						>
 							{exportSummary.map((section) => (
 								<NativeSelectOption key={section.key} value={section.key}>

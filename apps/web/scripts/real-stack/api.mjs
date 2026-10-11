@@ -361,4 +361,4 @@ expect(
 // S8 delete account
 const _delA = await call(B, 'DELETE', '/api/account', {});
 const _stillB = await call(B, 'GET', '/api/wg/mine');
-for (const entry of bugs) console.log('-', entry);
+for (const entry of bugs) process.stdout.write(`- ${entry}\n`);

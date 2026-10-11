@@ -115,13 +115,14 @@ export function InvitesSection({ wg, identity }: { wg: WgSummary; identity: Sess
 				title="Einladungen"
 				hint={`Wer einen Link hat, kann beitreten. Jeder Link gilt ${INVITE_VALID_DAYS} Tage.`}
 			>
-				<div className="grid gap-3 p-3">
+				{/* minmax(0,1fr): sonst weitet ein nicht umbrechender Knopf bei 200 % Text die ganze Karte. */}
+				<div className="grid grid-cols-[minmax(0,1fr)] gap-3 p-3">
 					<Button
 						type="button"
 						onClick={() => void create()}
 						disabled={creating || revokingId !== null}
 						aria-busy={creating}
-						className="w-full"
+						className="h-auto min-h-11 w-full whitespace-normal"
 					>
 						{creating ? <Spinner aria-hidden /> : <Plus aria-hidden />}
 						Neue Einladung
@@ -172,11 +173,11 @@ export function InvitesSection({ wg, identity }: { wg: WgSummary; identity: Sess
 							</AlertDescription>
 						</Alert>
 					)}
-					<ul className="grid gap-2" aria-label="Aktive Einladungen">
+					<ul className="grid grid-cols-[minmax(0,1fr)] gap-2" aria-label="Aktive Einladungen">
 						{invites.map((invite) => (
 							<li
 								key={invite.id}
-								className="flex min-h-[44px] items-center justify-between gap-3 rounded-lg border border-border px-3 py-2"
+								className="flex min-h-[44px] flex-wrap items-center justify-between gap-3 rounded-lg border border-border px-3 py-2"
 							>
 								<div className="min-w-0">
 									<p className="text-foreground text-sm font-medium">
