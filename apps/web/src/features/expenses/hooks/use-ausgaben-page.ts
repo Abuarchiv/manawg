@@ -18,7 +18,11 @@ import {
 	computeDirectDebts,
 	computeNetBalances,
 } from '@/features/expenses/debt-reduction';
-import { type ExpenseScope, filterExpenses } from '@/features/expenses/expense-filter';
+import {
+	type ExpenseScope,
+	filterExpenses,
+	matchesExpenseQuery,
+} from '@/features/expenses/expense-filter';
 import {
 	payerOptions,
 	settledSharesAffectedByEdit,
@@ -173,9 +177,13 @@ export function useAusgabenPage() {
 	// Render only the newest entries (balances still use all); "Mehr anzeigen" loads more.
 	const [visibleLimit, setVisibleLimit] = useState(EXPENSE_RENDER_PAGE);
 	const [scope, setScope] = useState<ExpenseScope>('all');
+	const [query, setQuery] = useState('');
 	const shownExpenses = useMemo(
-		() => filterExpenses(expenses, scope, identity.memberId),
-		[expenses, scope, identity.memberId],
+		() =>
+			filterExpenses(expenses, scope, identity.memberId).filter((expense) =>
+				matchesExpenseQuery(expense, query, stableMemberName),
+			),
+		[expenses, scope, identity.memberId, query, stableMemberName],
 	);
 	const highlightIndex = highlightedId
 		? shownExpenses.findIndex((e) => e.id === highlightedId)
@@ -286,6 +294,8 @@ export function useAusgabenPage() {
 		shownExpenseCount: shownExpenses.length,
 		scope,
 		setScope,
+		query,
+		setQuery,
 		showMoreExpenses: () => setVisibleLimit(renderLimit + EXPENSE_RENDER_PAGE),
 		directDebts,
 		memberBalances,

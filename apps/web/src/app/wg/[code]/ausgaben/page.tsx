@@ -240,6 +240,8 @@ export default function AusgabenPage() {
 				shownCount={page.shownExpenseCount}
 				scope={page.scope}
 				onScopeChange={page.setScope}
+				query={page.query}
+				onQueryChange={page.setQuery}
 				weeks={page.expenseWeeks}
 				showSkeleton={page.showSkeleton}
 				initialLoading={initialLoading}

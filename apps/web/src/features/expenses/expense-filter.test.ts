@@ -33,3 +33,16 @@ test('the history filter narrows by the member role', () => {
 	assert.deepEqual(ids(filterExpenses(list, 'paid', 'me')), ['1']);
 	assert.deepEqual(ids(filterExpenses(list, 'involved', 'me')), ['1', '2']);
 });
+
+test('search matches description, category and payer, ignoring case and umlauts', async () => {
+	const { matchesExpenseQuery } = await import('./expense-filter');
+	const e = {
+		...expense('e1', 'Wocheneinkauf Müsli', 'm1', ['m2']),
+		category: 'lebensmittel' as const,
+	};
+	const name = (id: string) => (id === 'm1' ? 'Jürgen' : 'Mina');
+	assert.equal(matchesExpenseQuery(e, 'musli', name), true);
+	assert.equal(matchesExpenseQuery(e, 'JURGEN woche', name), true);
+	assert.equal(matchesExpenseQuery(e, 'miete', name), false);
+	assert.equal(matchesExpenseQuery(e, '  ', name), true);
+});

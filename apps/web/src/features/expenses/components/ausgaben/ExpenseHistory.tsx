@@ -3,13 +3,14 @@
 import { LogoMark } from '@/components/ui/LogoMark';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ExpenseRow } from '@/features/expenses/components/ausgaben/ExpenseRow';
 import { ExpensesSkeleton } from '@/features/expenses/components/ausgaben/ExpensesSkeleton';
 import type { Expense, ExpenseSplit } from '@/features/expenses/components/ausgaben/expense-types';
 import type { ExpenseScope } from '@/features/expenses/expense-filter';
 import { cn } from '@/shared/lib/cn';
-import { FileInput } from 'lucide-react';
+import { FileInput, Search } from 'lucide-react';
 import Link from 'next/link';
 
 /** Below this many expenses the list is short enough to scan without a filter. */
@@ -20,6 +21,8 @@ interface ExpenseHistoryProps {
 	shownCount: number;
 	scope: ExpenseScope;
 	onScopeChange: (scope: ExpenseScope) => void;
+	query: string;
+	onQueryChange: (query: string) => void;
 	weeks: Array<{ label: string; items: Expense[] }>;
 	showSkeleton: boolean;
 	initialLoading: boolean;
@@ -43,6 +46,8 @@ export function ExpenseHistory({
 	shownCount,
 	scope,
 	onScopeChange,
+	query,
+	onQueryChange,
 	weeks,
 	showSkeleton,
 	initialLoading,
@@ -77,6 +82,21 @@ export function ExpenseHistory({
 				<div className="flex flex-col gap-4">
 					{expenseCount >= FILTER_MIN_EXPENSES && (
 						<div className="flex flex-col gap-2">
+							<InputGroup>
+								<InputGroupAddon align="inline-start">
+									<Search className="h-4 w-4" aria-hidden />
+								</InputGroupAddon>
+								<InputGroupInput
+									type="search"
+									value={query}
+									onChange={(event) => onQueryChange(event.currentTarget.value)}
+									placeholder="Suchen"
+									aria-label="Ausgaben durchsuchen"
+									enterKeyHint="search"
+									autoCapitalize="none"
+									className="min-h-11 text-base"
+								/>
+							</InputGroup>
 							<ToggleGroup
 								variant="segmented"
 								value={[scope]}
