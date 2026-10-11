@@ -19,6 +19,8 @@ export interface OfflineAction {
 	wgId?: string;
 	shareCode: string;
 	memberId: string;
+	/** Account that queued the action; missing on entries from before account binding. */
+	authUserId?: string;
 	createdAt: string;
 	payload: Record<string, unknown>;
 	attempts?: number;

@@ -1,6 +1,6 @@
 'use client';
 
-import { type StoredIdentity, clearIdentity } from '@/core/auth/identity';
+import type { SessionMember } from '@/core/auth/local-account';
 import { subscribeOnline } from '@/core/hooks/use-online-status';
 import { apiFetch } from '@/core/infra/api-client';
 import { captureException } from '@/core/infra/capture-client';
@@ -21,29 +21,21 @@ import type { Member } from './WgContextProvider';
  * identity changes and retried with backoff after transient failures.
  */
 export function useMembersRefresh({
-	wgId,
 	encodedShareCode,
 	identity,
 	accountReady,
 	serverVerified,
 	authGenerationRef,
-	authUserIdRef,
-	loadSessionMember,
 	setMembers,
 	setIsAdmin,
-	setStateIdentity,
 }: {
-	wgId: string;
 	encodedShareCode: string;
-	identity: StoredIdentity | null;
+	identity: SessionMember | null;
 	accountReady: boolean;
 	serverVerified: boolean;
 	authGenerationRef: RefObject<number>;
-	authUserIdRef: RefObject<string | null>;
-	loadSessionMember: (authUserId: string, generation: number) => Promise<void>;
 	setMembers: Dispatch<SetStateAction<Member[]>>;
 	setIsAdmin: (isAdmin: boolean) => void;
-	setStateIdentity: Dispatch<SetStateAction<StoredIdentity | null>>;
 }): () => Promise<void> {
 	// Consecutive non-auth failures (429, 5xx, network) of the members/admin
 	// fetch. Without retries isAdmin would stay false for
@@ -72,15 +64,9 @@ export function useMembersRefresh({
 			}
 			// Keep counting transient failures so the retry backs off (5 s → 60 s).
 			// An expired session (401 auth_required) is shown by the shared session banner.
-			if (
-				res.status === 401 &&
-				(res.error === 'not_a_member' || res.error === 'member_deactivated')
-			) {
-				clearIdentity(wgId);
-				setStateIdentity(null);
-				setMembersRefreshFailures(0);
-			} else if (res.error === 'member_context_changed' && authUserIdRef.current) {
-				await loadSessionMember(authUserIdRef.current, authGeneration);
+			if (res.error === 'member_context_changed') {
+				// Another tab switched accounts: the layout resolves the new member.
+				window.location.reload();
 			} else {
 				setMembersRefreshFailures((failures) => failures + 1);
 			}
@@ -91,18 +77,7 @@ export function useMembersRefresh({
 			// vanishing into an empty catch block.
 			captureException(err, { action: 'refreshMembers', shareCode: encodedShareCode });
 		}
-	}, [
-		accountReady,
-		authGenerationRef,
-		authUserIdRef,
-		encodedShareCode,
-		identity,
-		loadSessionMember,
-		setIsAdmin,
-		setMembers,
-		setStateIdentity,
-		wgId,
-	]);
+	}, [accountReady, authGenerationRef, encodedShareCode, identity, setIsAdmin, setMembers]);
 
 	// The layout already delivered members/isAdmin for a server-verified session.
 	const skipFirstMembersFetch = useRef(serverVerified);

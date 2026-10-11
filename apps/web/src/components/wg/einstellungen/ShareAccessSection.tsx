@@ -12,15 +12,15 @@ import type { WgSummary } from '@/components/wg/WgContextProvider';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { Section } from '@/components/wg/einstellungen/Section';
 import { accessErrorMessage } from '@/components/wg/einstellungen/settings-errors';
-import type { StoredIdentity } from '@/core/auth/identity';
-import { forgetWg } from '@/core/auth/identity';
+import type { SessionMember } from '@/core/auth/local-account';
+import { forgetWg } from '@/core/auth/local-account';
 import { apiFetch } from '@/core/infra/api-client';
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 
 interface ShareAccessSectionProps {
 	wg: WgSummary;
-	identity: StoredIdentity;
+	identity: SessionMember;
 	joiningEnabled: boolean;
 	onJoiningEnabledChange: (enabled: boolean) => void;
 }

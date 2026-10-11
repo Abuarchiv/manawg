@@ -25,6 +25,7 @@ export interface QueueModule {
 	readOfflineQueue(): [Action, ...Action[]];
 	needsManualOfflineResolution(action: Action): boolean;
 	isOfflineActionQueued(id: string): boolean;
+	adoptLocalAccount(authUserId: string): Promise<void>;
 	filterOfflineActionsForAuthUser(actions: Action[], authUserId: string | null): Action[];
 }
 
@@ -151,7 +152,6 @@ let instances = 0;
 
 export interface QueueOptions {
 	apiFetch?: (path: string, init: Action) => Promise<unknown>;
-	identity?: (wgId?: string) => unknown;
 	/** Replacement for the offline-images module; `null` keeps the real one. */
 	images?: Record<string, unknown> | null;
 	storage?: FakeStorage;
@@ -161,11 +161,10 @@ export interface QueueOptions {
 
 /**
  * Loads a fresh offline-client module graph. Browser globals are shared by all instances of a
- * test (they are the same in every tab); the storage, API and identity belong to the instance.
+ * test (they are the same in every tab); the storage and API belong to the instance.
  */
 export async function makeQueueModule({
 	apiFetch = async () => ({ ok: false, status: 0, error: 'network' }),
-	identity = () => ({ memberId: 'member-a' }),
 	images = {},
 	storage = makeStorage(),
 	clock = Date,
@@ -188,7 +187,6 @@ export async function makeQueueModule({
 		noteSessionExpiry() {},
 	});
 	mockInstance('@/core/utils/browser', { safeLocalStorage: () => storage });
-	mockInstance('@/core/auth/identity', { getIdentity: identity });
 	mockInstance('@/core/offline/offline-queue', defaultQueue);
 	if (images !== null) {
 		mockInstance('@/core/offline/offline-images', {

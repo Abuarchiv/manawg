@@ -29,7 +29,7 @@ import type { Member, WgSummary } from '@/components/wg/WgContextProvider';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { Section } from '@/components/wg/einstellungen/Section';
 import { PAYPAL_PAYMENT_PENDING_MESSAGE } from '@/components/wg/einstellungen/settings-errors';
-import type { StoredIdentity } from '@/core/auth/identity';
+import type { SessionMember } from '@/core/auth/local-account';
 import { RATE_LIMITED_MESSAGE, isRateLimited } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
 import { MAX_MEMBERS_PER_WG } from '@/shared/lib/limits';
@@ -39,7 +39,7 @@ import { useEffect, useState } from 'react';
 interface MembersSectionProps {
 	wg: WgSummary;
 	members: Member[];
-	identity: StoredIdentity;
+	identity: SessionMember;
 }
 
 /** Member list with admin handover, move-out and reactivation (admins only). */

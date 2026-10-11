@@ -1,4 +1,4 @@
-import { type KnownWg, getKnownWgs } from '@/core/auth/identity';
+import { type KnownWg, belongsToAccount, getKnownWgs } from '@/core/auth/local-account';
 import { type OfflineAction, getOfflineActionSummary } from '@/core/offline/offline-queue';
 import { parseTimestamp } from '@/core/utils/time';
 
@@ -72,14 +72,9 @@ export async function getAccountMemberships(
 	);
 }
 
-/** With a matching local identity every remembered WG stays reachable, otherwise only those with queued actions. */
-export function visibleKnownWgs(queueCodes: Set<string>, hasIdentity: boolean): KnownWg[] {
-	const known = getKnownWgs();
-	return hasIdentity ? known : known.filter((wg) => queueCodes.has(wg.code));
-}
-
-export function visibleQueueCodes(actions: OfflineAction[]): Set<string> {
-	return new Set(actions.map((action) => action.shareCode));
+/** The remembered WGs of the signed-in account. */
+export function visibleKnownWgs(authUserId: string | null): KnownWg[] {
+	return getKnownWgs().filter((wg) => belongsToAccount(wg.authUserId, authUserId));
 }
 
 /** Badge, heading and description of the offline page for a connection status. */

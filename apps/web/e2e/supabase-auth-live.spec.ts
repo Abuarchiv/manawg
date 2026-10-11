@@ -53,28 +53,17 @@ test.describe('hosted Supabase auth release coverage', () => {
 	test.describe.configure({ retries: 0 });
 
 	test('the guest auth screen exposes only the supported Supabase choices', async ({ page }) => {
-		const authSettings = page.waitForResponse((response) =>
-			response.url().endsWith('/auth/v1/settings'),
-		);
 		await page.goto('/neu?action=create');
 		await expect(page.getByRole('heading', { name: 'Anmelden', exact: true })).toBeVisible();
 		await expect(
 			page.getByRole('button', { name: 'Mit Google anmelden', exact: true }),
 		).toBeVisible();
 		await expect(page.getByLabel('E-Mail-Adresse')).toBeVisible();
+		await page.getByRole('tab', { name: 'Passwort', exact: true }).click();
 		await expect(page.getByLabel('Passwort', { exact: true })).toBeVisible();
 		await expect(page.getByRole('button', { name: /Apple|Facebook/i })).toHaveCount(0);
 		await expect(page.locator('input[name="name"], input[name="code"]')).toHaveCount(0);
 		await expect(page.getByText(/lokal|Name-Code|Namencode/i)).toHaveCount(0);
-		const phoneTab = page.getByRole('tab', { name: 'Telefon / SMS', exact: true });
-		const { external } = (await (await authSettings).json()) as { external?: { phone?: boolean } };
-		if (external?.phone === true) {
-			await phoneTab.click();
-			await expect(page.getByLabel('Telefonnummer')).toBeVisible();
-		} else {
-			await expect(phoneTab).toHaveCount(0);
-			await expect(page.getByLabel('Telefonnummer')).toHaveCount(0);
-		}
 		await expect(page.getByRole('button', { name: /Apple|Facebook/i })).toHaveCount(0);
 		await expect(page.locator('input[name="name"], input[name="code"]')).toHaveCount(0);
 		await expect(page.getByText(/lokal|Name-Code|Namencode/i)).toHaveCount(0);
@@ -109,6 +98,7 @@ test.describe('hosted Supabase auth release coverage', () => {
 		requireMemberTestConfig();
 
 		await page.goto(`/neu?code=${encodeURIComponent(memberWgCode)}`);
+		await page.getByRole('tab', { name: 'Passwort', exact: true }).click();
 		await page.getByLabel('E-Mail-Adresse').fill(testEmail);
 		await page.getByLabel('Passwort', { exact: true }).fill(testPassword);
 		await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
@@ -125,6 +115,7 @@ test.describe('hosted Supabase auth release coverage', () => {
 		requireMemberTestConfig();
 
 		await page.goto(`/neu?code=${encodeURIComponent(memberWgCode)}`);
+		await page.getByRole('tab', { name: 'Passwort', exact: true }).click();
 		await page.getByLabel('E-Mail-Adresse').fill(testEmail);
 		await page.getByLabel('Passwort', { exact: true }).fill(testPassword);
 		await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
@@ -154,6 +145,7 @@ test.describe('hosted Supabase auth release coverage', () => {
 		});
 
 		await page.goto(`/neu?code=${encodeURIComponent(memberWgCode)}`);
+		await page.getByRole('tab', { name: 'Passwort', exact: true }).click();
 		await page.getByLabel('E-Mail-Adresse').fill(testEmail);
 		await page.getByLabel('Passwort', { exact: true }).fill(testPassword);
 		await page.getByRole('button', { name: 'Anmelden', exact: true }).click();

@@ -11,30 +11,6 @@ test.describe('live social-login entry', () => {
 	);
 	test.describe.configure({ retries: 0 });
 
-	test('the built browser login reads hosted Supabase Auth settings', async ({ page }) => {
-		await page.goto('/neu');
-		const [response] = await Promise.all([
-			page.waitForResponse(
-				(response) => {
-					const url = new URL(response.url());
-					return url.hostname.endsWith('.supabase.co') && url.pathname === '/auth/v1/settings';
-				},
-				{ timeout: 10_000 },
-			),
-			page.getByRole('button', { name: 'Mit Google anmelden', exact: true }).click(),
-		]);
-		expect(response.status()).toBe(200);
-		const settings = (await response.json()) as { external: Record<string, boolean> };
-		if (!settings.external.google) {
-			await expect(page.getByRole('main').getByRole('alert')).toContainText(
-				'Dieser Anmeldedienst ist gerade nicht verfügbar.',
-			);
-		}
-		await expect(
-			page.getByText('Anmeldung konnte nicht gestartet werden.', { exact: true }),
-		).toHaveCount(0);
-	});
-
 	test('cancelled OAuth returns a visible error without losing the safe destination', async ({
 		page,
 	}) => {

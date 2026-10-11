@@ -32,6 +32,8 @@ export interface AccountWg {
 	id: string;
 	code: string;
 	name: string;
+	/** The account's member in this WG; present on real /api/wg/mine answers. */
+	memberId?: string;
 }
 
 export type StartStep = 'choose' | 'create' | 'join' | 'joinName' | 'invite';
@@ -172,5 +174,6 @@ export function isJoinWg(value: unknown): value is JoinWg {
 }
 
 export function isAccountWg(value: unknown): value is AccountWg {
-	return isJoinWg(value);
+	const memberId = typeof value === 'object' && value ? Reflect.get(value, 'memberId') : undefined;
+	return isJoinWg(value) && (memberId === undefined || typeof memberId === 'string');
 }

@@ -683,30 +683,6 @@ test.describe('enter key hint forms', () => {
 		await expect(page.locator('#expense-description')).toHaveAttribute('enterkeyhint', 'next');
 		await expect(page.locator('#f-betrag')).toHaveAttribute('enterkeyhint', 'next');
 	});
-
-	test('legacy account recovery share code field hints "done"', async ({ page }) => {
-		await page.route('**/api/wg/mine', (route) =>
-			route.fulfill({ status: 200, json: { wgs: [] } }),
-		);
-		// The section only appears when this device holds a legacy profile with a recovery token.
-		await page.addInitScript(() => {
-			const uuid = (n: string) => `${n}${n}${n}${n}${n}${n}${n}${n}-1111-4111-8111-111111111111`;
-			localStorage.setItem(
-				`manawg_identity:${uuid('a')}`,
-				JSON.stringify({ memberId: uuid('b'), name: 'Anna', memberToken: 'token' }),
-			);
-		});
-
-		await page.goto('/neu');
-		await page
-			.getByRole('button', { name: 'Altes Profil auf diesem Gerät wiederherstellen' })
-			.click();
-
-		await expect(page.locator('#legacy-recovery-share-code')).toHaveAttribute(
-			'enterkeyhint',
-			'done',
-		);
-	});
 });
 
 test.describe('enter key next field', () => {

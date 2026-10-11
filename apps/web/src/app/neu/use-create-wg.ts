@@ -1,6 +1,5 @@
 'use client';
 
-import { rememberWg } from '@/core/auth/identity';
 import { REQUEST_TIMEOUT_MS } from '@/core/infra/api-client';
 import { removeDraft } from '@/core/offline/drafts';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
@@ -90,11 +89,6 @@ export function useCreateWg({
 			// with the same key, or the retry would create a second WG.
 			createRequestRef.current = null;
 			posthog.capture('wg_created');
-			rememberWg({
-				code: data.wg.shareCode,
-				name: data.wg.name,
-				lastVisitedAt: Date.now(),
-			});
 			removeDraft(START_DRAFT_KEY);
 			setCreatedWg({ code: data.wg.shareCode, name: data.wg.name });
 			setStep('invite');

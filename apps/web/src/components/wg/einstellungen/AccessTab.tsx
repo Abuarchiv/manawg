@@ -8,13 +8,13 @@ import { MembersSection } from '@/components/wg/einstellungen/MembersSection';
 import { PasswordChangeRow } from '@/components/wg/einstellungen/PasswordChangeRow';
 import { Section } from '@/components/wg/einstellungen/Section';
 import { ShareAccessSection } from '@/components/wg/einstellungen/ShareAccessSection';
-import type { StoredIdentity } from '@/core/auth/identity';
+import type { SessionMember } from '@/core/auth/local-account';
 import { useEffect, useState } from 'react';
 
 interface AccessTabProps {
 	wg: WgSummary;
 	members: Member[];
-	identity: StoredIdentity;
+	identity: SessionMember;
 }
 
 async function linkSocialIdentity(provider: SocialProvider, next: string): Promise<void> {

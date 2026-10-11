@@ -1,8 +1,8 @@
 'use client';
 
-import type { StoredIdentity } from '@/core/auth/identity';
-import { subscribeOnline } from '@/core/hooks/use-online-status';
+import type { SessionMember } from '@/core/auth/local-account';
 import { captureException } from '@/core/infra/capture-client';
+import { subscribeOnline } from '@/core/hooks/use-online-status';
 import { countOfflineActions, syncOfflineActions } from '@/core/offline/offline-client';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { type RefObject, useCallback, useEffect, useRef } from 'react';
@@ -18,19 +18,18 @@ export function useOfflineAutoSync({
 	syncAbortRef,
 }: {
 	shareCode: string;
-	identity: StoredIdentity | null;
+	identity: SessionMember | null;
 	accountReady: boolean;
 	syncAbortRef: RefObject<AbortController | null>;
 }): (force?: boolean) => Promise<void> {
 	const syncingRef = useRef(false);
 
-	// `force` skips the retry backoff; the online event uses it because the backoff was built
-	// up while the device had no connection.
 	const sync = useCallback(
 		async (force = false) => {
 			if (
-				!accountReady ||
+				// Without a connection every attempt fails with status 0; the online event triggers the replay.
 				(typeof navigator !== 'undefined' && navigator.onLine === false) ||
+				!accountReady ||
 				!identity ||
 				syncingRef.current ||
 				countOfflineActions(shareCode, { memberId: identity.memberId }) === 0
@@ -48,7 +47,7 @@ export function useOfflineAutoSync({
 				});
 			} catch (err) {
 				// Automatic sync retries on the next app event or interval.
-				captureException(err, { action: 'syncOfflineActions' });
+				captureException(err, { action: 'offlineAutoSync' });
 			} finally {
 				syncingRef.current = false;
 			}
@@ -69,12 +68,13 @@ export function useOfflineAutoSync({
  */
 export function useSyncOnFocusAndOnline(
 	sync: (force?: boolean) => Promise<void>,
-	identity: StoredIdentity | null,
+	identity: SessionMember | null,
 	accountReady: boolean,
 ): void {
 	useEffect(() => {
 		if (!identity || !accountReady) return;
 		void sync();
+		// Coming back online must not wait out a backoff that only grew while offline.
 		const unsubscribeOnline = subscribeOnline(() => void sync(true));
 		const onFocus = () => void sync();
 		window.addEventListener('focus', onFocus);

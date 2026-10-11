@@ -24,9 +24,10 @@ import {
 	deleteWgErrorMessage,
 	readResponseErrorCode,
 } from '@/components/wg/einstellungen/settings-errors';
-import type { StoredIdentity } from '@/core/auth/identity';
-import { clearIdentity, forgetWg, memberContextHeader } from '@/core/auth/identity';
+import type { SessionMember } from '@/core/auth/local-account';
+import { forgetWg } from '@/core/auth/local-account';
 import { noteSessionExpiry } from '@/core/infra/api-client';
+import { memberContextHeader } from '@/shared/lib/member-header';
 import { LogOut, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
@@ -34,7 +35,7 @@ import { useRef, useState } from 'react';
 interface DangerZoneSectionProps {
 	wg: WgSummary;
 	members: Member[];
-	identity: StoredIdentity;
+	identity: SessionMember;
 }
 
 /** Leave WG and delete WG. */
@@ -51,7 +52,6 @@ export function DangerZoneSection({ wg, members, identity }: DangerZoneSectionPr
 	const activeMemberCount = members.filter((m) => m.active).length;
 
 	function leaveWg(): void {
-		clearIdentity(wg.id);
 		forgetWg(wg.shareCode);
 		router.push('/?left=1');
 	}

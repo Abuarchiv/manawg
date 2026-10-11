@@ -44,9 +44,6 @@ test.describe('live public dashboard entry', () => {
 	test('creation is explicit and exposes credential choices without creating a WG', async ({
 		page,
 	}) => {
-		const authSettings = page.waitForResponse((response) =>
-			response.url().endsWith('/auth/v1/settings'),
-		);
 		await page.goto('/');
 		// Account first: the guest start page offers registration; sign-in sits in the header.
 		await expect(page.getByRole('link', { name: 'Konto erstellen', exact: true })).toHaveAttribute(
@@ -56,17 +53,8 @@ test.describe('live public dashboard entry', () => {
 		await page.getByRole('link', { name: 'Anmelden', exact: true }).click();
 		await expect(page).toHaveURL(/\/neu$/);
 		await expect(page.getByLabel('E-Mail-Adresse')).toBeVisible();
+		await page.getByRole('tab', { name: 'Passwort', exact: true }).click();
 		await expect(page.getByLabel('Passwort', { exact: true })).toBeVisible();
-		const phoneTab = page.getByRole('tab', { name: 'Telefon / SMS', exact: true });
-		const { external } = (await (await authSettings).json()) as { external?: { phone?: boolean } };
-		if (external?.phone === true) {
-			await phoneTab.click();
-			await expect(page.getByLabel('Telefonnummer')).toBeVisible();
-			await page.getByRole('tab', { name: 'E-Mail', exact: true }).click();
-		} else {
-			await expect(phoneTab).toHaveCount(0);
-			await expect(page.getByLabel('Telefonnummer')).toHaveCount(0);
-		}
 		await expect(
 			page.getByRole('button', { name: 'Mit Google anmelden', exact: true }),
 		).toBeVisible();

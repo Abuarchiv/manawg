@@ -425,23 +425,34 @@ test('server guard rejects a stale expected member only after cookie membership 
 	assert.equal(matching.member.memberId, 'member-a');
 });
 
-test('offline data is visible only for the currently bound local account', async () => {
-	const identities = new Map([
-		['wg-1', { memberId: 'member-a', authUserId: 'user-a' }],
-		['wg-2', { memberId: 'member-b' }],
-	]);
-	const { module } = await makeQueueModule({
-		identity: (wgId) => identities.get(wgId ?? '') ?? null,
-	});
-	assert.equal(typeof module.filterOfflineActionsForAuthUser, 'function');
-	const scoped = [
-		createAction(),
-		createAction({ id: 'legacy', wgId: 'wg-2', memberId: 'member-b' }),
-		createAction({ id: 'unscoped', wgId: undefined }),
+test('offline data follows the local account and an account switch drops the old queue', async () => {
+	const { module, storage } = await makeQueueModule();
+	storage.setItem('manawg_account', 'user-a');
+	await module.enqueueOfflineAction(createAction({ id: 'new' }));
+	assert.equal(module.readOfflineQueue()[0].authUserId, 'user-a');
+	const queue = [
+		createAction({ id: 'a', authUserId: 'user-a' }),
+		createAction({ id: 'legacy' }),
+		createAction({ id: 'b', authUserId: 'user-b' }),
 	];
-	assert.equal(module.filterOfflineActionsForAuthUser(scoped, 'user-a').length, 1);
-	assert.equal(module.filterOfflineActionsForAuthUser(scoped, 'user-b').length, 0);
-	assert.equal(module.filterOfflineActionsForAuthUser(scoped, null).length, 0);
+	// Entries from before account binding belong to the one account recorded on the device.
+	assert.deepEqual(
+		module.filterOfflineActionsForAuthUser(queue, 'user-a').map((action) => action.id),
+		['a', 'legacy'],
+	);
+	assert.deepEqual(
+		module.filterOfflineActionsForAuthUser(queue, 'user-b').map((action) => action.id),
+		['b'],
+	);
+	assert.equal(module.filterOfflineActionsForAuthUser(queue, null).length, 0);
+
+	await setQueue(module, queue);
+	await module.adoptLocalAccount('user-b');
+	assert.equal(storage.getItem('manawg_account'), 'user-b');
+	assert.deepEqual(
+		module.readOfflineQueue().map((action) => action.id),
+		['b'],
+	);
 });
 
 test('a synced queue entry no longer counts as queued for an open queue edit', async () => {

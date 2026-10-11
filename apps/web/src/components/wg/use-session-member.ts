@@ -1,15 +1,10 @@
 'use client';
 
-import {
-	type StoredIdentity,
-	clearIdentity,
-	getIdentity,
-	rememberWg,
-	setIdentity,
-} from '@/core/auth/identity';
+import { type SessionMember, rememberWg } from '@/core/auth/local-account';
 import { isSessionExpired } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
 import { captureException } from '@/core/infra/capture-client';
+import { adoptLocalAccount } from '@/core/offline/offline-client';
 import {
 	type Dispatch,
 	type RefObject,
@@ -21,9 +16,9 @@ import {
 import type { WgSummary } from './WgContextProvider';
 
 /**
- * Resolves the signed-in Supabase user to this WG's member: hydration (and the
- * stored identity of a sessionless WG), the auth listener, and the
- * /api/wg/[code] member lookup.
+ * Resolves the signed-in Supabase user to this WG's member: hydration, the auth listener, and the
+ * /api/wg/[code] member lookup. The member always comes from the server (the WG layout, then the
+ * lookup); nothing about it is persisted.
  */
 export function useSessionMember({
 	wg,
@@ -39,13 +34,13 @@ export function useSessionMember({
 	setMemberLoaded,
 }: {
 	wg: WgSummary;
-	initialIdentity: StoredIdentity | undefined;
+	initialIdentity: SessionMember | undefined;
 	sessionless: boolean;
 	encodedShareCode: string;
 	authGenerationRef: RefObject<number>;
 	authUserIdRef: RefObject<string | null>;
 	syncAbortRef: RefObject<AbortController | null>;
-	setStateIdentity: Dispatch<SetStateAction<StoredIdentity | null>>;
+	setStateIdentity: Dispatch<SetStateAction<SessionMember | null>>;
 	setIsAdmin: (isAdmin: boolean) => void;
 	setAccountReady: (accountReady: boolean) => void;
 	setMemberLoaded: (memberLoaded: boolean) => void;
@@ -56,31 +51,30 @@ export function useSessionMember({
 	const [sessionEnded, setSessionEnded] = useState(false);
 
 	useEffect(() => {
-		const storedIdentity = getIdentity(wg.id);
-		// The server already verified this member (SSR); cache it so the transient-error
-		// fallback in loadSessionMember has something to fall back to.
-		if (initialIdentity?.authUserId && storedIdentity?.authUserId !== initialIdentity.authUserId) {
-			setIdentity(wg.id, initialIdentity);
-		}
+		// The server already verified this member (SSR); remember the account for the offline page.
+		if (initialIdentity?.authUserId) void adoptLocalAccount(initialIdentity.authUserId);
 		// A sessionless WG (the database-free Playwright build) has no Supabase
-		// session by design; the locally stored identity is the member.
+		// session by design; the fixture member is the member.
 		if (sessionless) {
-			const localIdentity = storedIdentity ?? initialIdentity;
-			if (localIdentity) {
-				setStateIdentity(localIdentity);
+			if (initialIdentity) {
+				setStateIdentity(initialIdentity);
 				setAccountReady(true);
 			}
 			setMemberLoaded(true);
 		}
 		setHydrated(true);
-		rememberWg({ code: wg.shareCode, name: wg.name, lastVisitedAt: Date.now() });
+		rememberWg({
+			code: wg.shareCode,
+			name: wg.name,
+			lastVisitedAt: Date.now(),
+			authUserId: initialIdentity?.authUserId,
+		});
 	}, [
 		initialIdentity,
 		sessionless,
 		setAccountReady,
 		setMemberLoaded,
 		setStateIdentity,
-		wg.id,
 		wg.shareCode,
 		wg.name,
 	]);
@@ -96,12 +90,12 @@ export function useSessionMember({
 			const member = res.ok ? res.data.currentMember : undefined;
 			if (member) {
 				setSessionEnded(false);
-				const nextIdentity: StoredIdentity = {
+				const nextIdentity: SessionMember = {
 					memberId: member.memberId,
 					name: member.name,
 					authUserId,
 				};
-				setIdentity(wg.id, nextIdentity);
+				void adoptLocalAccount(authUserId);
 				// Keep the same object when nothing changed: a new identity re-runs
 				// refreshMembers and every page fetch keyed on it.
 				setStateIdentity((prev) =>
@@ -117,19 +111,18 @@ export function useSessionMember({
 				return;
 			}
 
-			const cachedIdentity = getIdentity(wg.id);
+			// A transient failure keeps the member the server verified when the WG layout rendered.
 			if (
 				!res.ok &&
 				(res.status === 0 || res.status === 429 || res.status >= 500) &&
-				cachedIdentity?.authUserId === authUserId
+				initialIdentity?.authUserId === authUserId
 			) {
-				setStateIdentity(cachedIdentity);
+				setStateIdentity((prev) => prev ?? initialIdentity);
 				setAccountReady(true);
 				setMemberLoaded(true);
 				return;
 			}
 			if (!res.ok && res.status === 401 && isSessionExpired(res.error)) setSessionEnded(true);
-			clearIdentity(wg.id);
 			setStateIdentity(null);
 			setIsAdmin(false);
 			setAccountReady(false);
@@ -139,11 +132,11 @@ export function useSessionMember({
 		[
 			authGenerationRef,
 			encodedShareCode,
+			initialIdentity,
 			setAccountReady,
 			setIsAdmin,
 			setMemberLoaded,
 			setStateIdentity,
-			wg.id,
 		],
 	);
 
@@ -162,7 +155,6 @@ export function useSessionMember({
 					syncAbortRef.current = null;
 					authUserIdRef.current = null;
 					setSessionEnded(true);
-					clearIdentity(wg.id);
 					setStateIdentity(null);
 					setIsAdmin(false);
 					setAccountReady(false);
@@ -179,10 +171,7 @@ export function useSessionMember({
 						setIsAdmin(false);
 						setAccountReady(false);
 						setMemberLoaded(false);
-						if (getIdentity(wg.id)?.authUserId !== nextUserId) {
-							clearIdentity(wg.id);
-							setStateIdentity(null);
-						}
+						setStateIdentity((prev) => (prev?.authUserId === nextUserId ? prev : null));
 						window.setTimeout(() => void loadSessionMember(nextUserId, generation), 0);
 						return;
 					}
@@ -232,7 +221,6 @@ export function useSessionMember({
 		setMemberLoaded,
 		setStateIdentity,
 		syncAbortRef,
-		wg.id,
 	]);
 
 	return { hydrated, memberLoadError, sessionEnded, loadSessionMember };

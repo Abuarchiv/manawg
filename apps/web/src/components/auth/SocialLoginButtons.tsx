@@ -70,11 +70,7 @@ export function SocialLoginButtons({
 		try {
 			await onOAuthStart(provider, next);
 		} catch (error) {
-			if (error instanceof Error && error.message === 'provider_unavailable') {
-				setError(
-					'Dieser Anmeldedienst ist gerade nicht verfügbar. Bitte versuche es später erneut.',
-				);
-			} else if (
+			if (
 				variant === 'link' &&
 				error instanceof Error &&
 				typeof Reflect.get(error, 'code') === 'string'

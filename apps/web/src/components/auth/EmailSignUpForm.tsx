@@ -12,6 +12,7 @@ import {
 	classifyAuthError,
 	isWeakPasswordError,
 } from '@/core/auth/password-errors';
+import { MEMBER_NAME_MAX_LENGTH } from '@/shared/lib/limits';
 import { useEffect, useRef, useState } from 'react';
 import {
 	type AuthFormProps,
@@ -24,7 +25,14 @@ import {
 /** Seconds before the confirmation mail can be requested again; the server limits stay authoritative. */
 const RESEND_COOLDOWN_SECONDS = 60;
 
-type SignUpError = 'invalid' | 'too-short' | 'mismatch' | 'weak-password' | 'generic' | null;
+type SignUpError =
+	| 'name'
+	| 'invalid'
+	| 'too-short'
+	| 'mismatch'
+	| 'weak-password'
+	| 'generic'
+	| null;
 
 /** E-mail registration: validates locally, then waits for the confirmation mail when required. */
 export function useEmailSignUp({
@@ -33,6 +41,7 @@ export function useEmailSignUp({
 	setBusy,
 	onAuthenticated,
 }: AuthFormProps & { next: string }) {
+	const [name, setName] = useState('');
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
 	const [confirmation, setConfirmation] = useState('');
@@ -58,6 +67,11 @@ export function useEmailSignUp({
 	async function submit(): Promise<void> {
 		if (busy) return;
 		clearFeedback();
+		const trimmedName = name.trim();
+		if (trimmedName.length === 0) {
+			setError('name');
+			return;
+		}
 		const normalizedEmail = email.trim().toLowerCase();
 		if (!isValidEmail(normalizedEmail)) {
 			setError('invalid');
@@ -74,7 +88,7 @@ export function useEmailSignUp({
 		setBusy('email-sign-up');
 		try {
 			const { signUpWithEmailPassword } = await import('@/core/auth/client');
-			const result = await signUpWithEmailPassword(normalizedEmail, password, next);
+			const result = await signUpWithEmailPassword(normalizedEmail, password, next, trimmedName);
 			if (result.sessionEstablished) {
 				onAuthenticated();
 				return;
@@ -116,6 +130,8 @@ export function useEmailSignUp({
 	}
 
 	return {
+		name,
+		setName,
 		email,
 		setEmail,
 		password,
@@ -181,6 +197,7 @@ const SIGN_UP_FAILED =
 	'Die Registrierung konnte gerade nicht abgeschlossen werden. Bitte versuche es erneut.';
 
 const ERROR_MESSAGES = {
+	name: 'Bitte gib deinen Namen ein.',
 	invalid: 'Bitte gib eine gültige E-Mail-Adresse ein.',
 	'too-short': `Dein Passwort braucht mindestens ${NEW_PASSWORD_MIN_LENGTH} Zeichen.`,
 	mismatch: 'Die Passwörter stimmen nicht überein.',
@@ -191,10 +208,21 @@ export function EmailSignUpForm({
 	auth,
 	busy,
 }: { auth: ReturnType<typeof useEmailSignUp>; busy: BusyAction }) {
-	const { email, setEmail, password, setPassword, confirmation, setConfirmation, error, failure } =
-		auth;
+	const {
+		name,
+		setName,
+		email,
+		setEmail,
+		password,
+		setPassword,
+		confirmation,
+		setConfirmation,
+		error,
+		failure,
+	} = auth;
 	if (auth.sentTo) return <InboxNotice auth={auth} busy={busy} />;
 
+	const nameInvalid = error === 'name';
 	const emailInvalid = error === 'invalid';
 	const passwordInvalid = error === 'too-short' || error === 'weak-password';
 	const confirmationInvalid = error === 'mismatch';
@@ -211,6 +239,24 @@ export function EmailSignUpForm({
 			className="flex flex-col gap-4"
 		>
 			<FieldGroup>
+				<Field data-invalid={nameInvalid}>
+					<FieldLabel htmlFor="signup-name">Dein Name</FieldLabel>
+					<Input
+						id="signup-name"
+						name="name"
+						type="text"
+						value={name}
+						onChange={(event) => setName(event.target.value)}
+						readOnly={busy !== null}
+						autoComplete="name"
+						enterKeyHint="next"
+						maxLength={MEMBER_NAME_MAX_LENGTH}
+						required
+						aria-describedby={describedBy(nameInvalid)}
+						aria-invalid={nameInvalid || undefined}
+						className="text-base"
+					/>
+				</Field>
 				<Field data-invalid={emailInvalid}>
 					<FieldLabel htmlFor="signup-email">E-Mail-Adresse</FieldLabel>
 					<Input

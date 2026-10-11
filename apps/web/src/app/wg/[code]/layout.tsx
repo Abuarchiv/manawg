@@ -7,7 +7,7 @@ import { NavItem } from '@/components/wg/NavItem';
 import { OfflineBanner } from '@/components/wg/OfflineBanner';
 import { SessionExpiredBanner } from '@/components/wg/SessionExpiredBanner';
 import { WgContextProvider } from '@/components/wg/WgContextProvider';
-import type { StoredIdentity } from '@/core/auth/identity';
+import type { SessionMember } from '@/core/auth/local-account';
 import { REQUEST_PATH_HEADER, wgReturnPath } from '@/core/auth/next-path';
 import { getAuthenticatedUserFromCookies } from '@/core/auth/server';
 import { db, wgMembers, wgs } from '@/core/db';
@@ -95,8 +95,16 @@ export default async function WgLayout({ children, params }: Props) {
 	const fixture = loadFixtureWgView(code);
 	if (fixture === 'not_found') notFound();
 	if (fixture) {
+		// No session in this build: the first fixture member is the caller (as the fixture API assumes).
+		const [first] = fixture.members;
 		return (
-			<WgShell code={code} wg={fixture.wg} members={fixture.members} sessionless>
+			<WgShell
+				code={code}
+				wg={fixture.wg}
+				members={fixture.members}
+				{...(first ? { initialIdentity: { memberId: first.id, name: first.name } } : {})}
+				sessionless
+			>
 				{children}
 			</WgShell>
 		);
@@ -123,7 +131,7 @@ export default async function WgLayout({ children, params }: Props) {
 		redirect(`/neu?next=${next}${movedOut ? '&reason=moved_out' : ''}`);
 	}
 	const { memberId, memberName, ...wg } = access;
-	const initialIdentity: StoredIdentity = { memberId, name: memberName, authUserId: user.id };
+	const initialIdentity: SessionMember = { memberId, name: memberName, authUserId: user.id };
 
 	// Load the full roster including deactivated members: history and balances
 	// need every name. Choice UIs filter on `active` downstream (see
@@ -189,7 +197,7 @@ function WgShell({
 		isAdmin?: boolean;
 		hasAccount?: boolean;
 	}>;
-	initialIdentity?: StoredIdentity;
+	initialIdentity?: SessionMember;
 	initialIsAdmin?: boolean;
 	sessionless?: boolean;
 	children: ReactNode;

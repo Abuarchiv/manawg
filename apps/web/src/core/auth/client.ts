@@ -1,6 +1,7 @@
 'use client';
 
 import { retireWebPushEndpoint } from '@/core/notifications/push-subscribe';
+import { MEMBER_NAME_MAX_LENGTH } from '@/shared/lib/limits';
 import { createBrowserClient } from '@supabase/ssr';
 import { authCookieOptions } from './cookie-options';
 import { safeNextPath } from './next-path';
@@ -19,15 +20,6 @@ export type LogoutPushTarget = {
 
 export type LogoutPushCleanup = 'none' | 'unsubscribed' | 'failed';
 
-const PHONE_PROVIDER_UNAVAILABLE_CODES = new Set(['phone_provider_disabled', 'provider_disabled']);
-
-/** Public Supabase error codes that mean SMS auth is unavailable, not invalid input. */
-export function isPhoneAuthUnavailable(error: unknown): boolean {
-	if (!error || typeof error !== 'object') return false;
-	const code = Reflect.get(error, 'code');
-	return typeof code === 'string' && PHONE_PROVIDER_UNAVAILABLE_CODES.has(code);
-}
-
 export function createSupabaseBrowserClient() {
 	const { url, publishableKey } = getSupabaseEnv();
 	return createBrowserClient(url, publishableKey, {
@@ -37,22 +29,6 @@ export function createSupabaseBrowserClient() {
 	});
 }
 
-export async function isAuthProviderEnabled(provider: SocialProvider | 'phone'): Promise<boolean> {
-	const { url, publishableKey } = getSupabaseEnv();
-	const response = await fetch(new URL('/auth/v1/settings', url), {
-		headers: { apikey: publishableKey },
-		cache: 'no-store',
-		signal: AbortSignal.timeout(10_000),
-	});
-	if (!response.ok) throw new Error('auth_unavailable');
-	const settings = (await response.json()) as { external?: Record<string, boolean> };
-	return settings.external?.[provider] === true;
-}
-
-async function requireEnabledProvider(provider: SocialProvider): Promise<void> {
-	if (!(await isAuthProviderEnabled(provider))) throw new Error('provider_unavailable');
-}
-
 function authCallbackUrl(next: string): string {
 	const callback = new URL('/auth/callback', window.location.origin);
 	callback.searchParams.set('next', safeNextPath(next));
@@ -60,7 +36,6 @@ function authCallbackUrl(next: string): string {
 }
 
 export async function startSocialLogin(provider: SocialProvider, next: string): Promise<void> {
-	await requireEnabledProvider(provider);
 	const { error } = await createSupabaseBrowserClient().auth.signInWithOAuth({
 		provider,
 		options: { redirectTo: authCallbackUrl(next) },
@@ -69,7 +44,6 @@ export async function startSocialLogin(provider: SocialProvider, next: string): 
 }
 
 export async function linkSocialIdentity(provider: SocialProvider, next: string): Promise<void> {
-	await requireEnabledProvider(provider);
 	const { error } = await createSupabaseBrowserClient().auth.linkIdentity({
 		provider,
 		options: { redirectTo: authCallbackUrl(next) },
@@ -100,11 +74,12 @@ export async function signUpWithEmailPassword(
 	email: string,
 	password: string,
 	next: string,
+	name: string,
 ): Promise<AuthSessionResult> {
 	const { data, error } = await createSupabaseBrowserClient().auth.signUp({
 		email,
 		password,
-		options: { emailRedirectTo: authCallbackUrl(next) },
+		options: { emailRedirectTo: authCallbackUrl(next), data: { full_name: name } },
 	});
 	if (error) throw error;
 	return { sessionEstablished: data.session !== null };
@@ -137,24 +112,36 @@ export async function getEmailAccount(): Promise<{ email: string; hasPassword: b
 	return { email: data.user.email, hasPassword };
 }
 
+/** Display name from the account metadata (sign-up form or Google), trimmed to the member limit. */
+export async function getAccountName(): Promise<string | null> {
+	const { data, error } = await createSupabaseBrowserClient().auth.getUser();
+	if (error || !data.user) return null;
+	const meta = data.user.user_metadata as Record<string, unknown>;
+	const raw = [meta.full_name, meta.name, meta.given_name].find(
+		(value): value is string => typeof value === 'string' && value.trim().length > 0,
+	);
+	return raw ? raw.trim().slice(0, MEMBER_NAME_MAX_LENGTH) : null;
+}
+
 export async function updatePassword(password: string): Promise<void> {
 	const { error } = await createSupabaseBrowserClient().auth.updateUser({ password });
 	if (error) throw error;
 }
 
-export async function requestPhoneOtp(phone: string): Promise<void> {
+/** Mails a one-time code to an existing account; unknown addresses are rejected instead of created. */
+export async function requestEmailCode(email: string): Promise<void> {
 	const { error } = await createSupabaseBrowserClient().auth.signInWithOtp({
-		phone,
-		options: { shouldCreateUser: true },
+		email,
+		options: { shouldCreateUser: false },
 	});
 	if (error) throw error;
 }
 
-export async function verifyPhoneOtp(phone: string, token: string): Promise<AuthSessionResult> {
+export async function verifyEmailCode(email: string, token: string): Promise<AuthSessionResult> {
 	const { data, error } = await createSupabaseBrowserClient().auth.verifyOtp({
-		phone,
+		email,
 		token,
-		type: 'sms',
+		type: 'email',
 	});
 	if (error) throw error;
 	return { sessionEstablished: data.session !== null };

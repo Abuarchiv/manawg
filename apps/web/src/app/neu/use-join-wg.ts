@@ -1,6 +1,5 @@
 'use client';
 
-import { rememberWg } from '@/core/auth/identity';
 import { REQUEST_TIMEOUT_MS } from '@/core/infra/api-client';
 import { joinErrorMessage } from '@/core/infra/join-flow';
 import { removeDraft } from '@/core/offline/drafts';
@@ -161,7 +160,6 @@ export function useJoinWg({
 			await res.json();
 			joinRequestRef.current = null;
 			posthog.capture('wg_joined');
-			rememberWg({ code: joinWg.code, name: joinWg.name, lastVisitedAt: Date.now() });
 			removeDraft(START_DRAFT_KEY);
 			router.push(`/wg/${encodeURIComponent(joinWg.code)}`);
 		} catch {

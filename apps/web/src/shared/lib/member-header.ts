@@ -13,6 +13,11 @@
  */
 export const EXPECTED_MEMBER_ID_HEADER = 'x-manawg-expected-member-id';
 
+/** Member-context header for plain `fetch` calls outside `apiFetch` (downloads, WG delete). */
+export function memberContextHeader(memberId: string): Record<string, string> {
+	return { [EXPECTED_MEMBER_ID_HEADER]: memberId };
+}
+
 /**
  * Legacy-profile recovery only (`POST /api/wg/[code]/members/[id]/claim`):
  * the stored member id and its HMAC token from before account login. See

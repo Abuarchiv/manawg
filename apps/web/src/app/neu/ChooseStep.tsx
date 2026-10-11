@@ -1,11 +1,5 @@
 'use client';
 
-import {
-	Collapsible,
-	CollapsiblePanel,
-	CollapsibleTrigger,
-} from '@/components/animate-ui/primitives/base/collapsible';
-import { LegacyAccountRecovery } from '@/components/auth/LegacyAccountRecovery';
 import { Button } from '@/components/ui/button';
 import {
 	Item,
@@ -16,33 +10,19 @@ import {
 	ItemMedia,
 	ItemTitle,
 } from '@/components/ui/item';
-import { getLegacyIdentityCandidates } from '@/core/auth/identity';
-import { ChevronDown, Home, KeyRound, Plus } from 'lucide-react';
+import { Home, KeyRound, Plus } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
 import type { AccountWg } from './start-flow';
 
 interface ChooseStepProps {
 	accountWgs: AccountWg[];
 	interactive: boolean;
 	busy: boolean;
-	legacyOpen: boolean;
-	onLegacyOpenChange: (open: boolean) => void;
 	onCreate: () => void;
 	onJoin: () => void;
 }
 
-export function ChooseStep({
-	accountWgs,
-	interactive,
-	busy,
-	legacyOpen,
-	onLegacyOpenChange,
-	onCreate,
-	onJoin,
-}: ChooseStepProps) {
-	// Only offered when this device holds an old profile; ChooseStep renders after the client-side session check.
-	const [hasLegacyProfile] = useState(() => getLegacyIdentityCandidates().length > 0);
+export function ChooseStep({ accountWgs, interactive, busy, onCreate, onJoin }: ChooseStepProps) {
 	return (
 		<div className="flex flex-col gap-4">
 			{accountWgs.length > 0 && (
@@ -84,30 +64,6 @@ export function ChooseStep({
 					<KeyRound data-icon="inline-start" aria-hidden /> Per Code beitreten
 				</Button>
 			</div>
-			{hasLegacyProfile && (
-				<Collapsible open={legacyOpen} onOpenChange={onLegacyOpenChange}>
-					<CollapsibleTrigger
-						render={
-							<Button
-								variant="ghost"
-								className="h-auto w-full justify-between whitespace-normal py-2 text-left"
-							/>
-						}
-					>
-						Altes Profil auf diesem Gerät wiederherstellen
-						<ChevronDown
-							data-icon="inline-end"
-							aria-hidden
-							className="transition-transform group-aria-expanded/button:rotate-180 motion-reduce:transition-none"
-						/>
-					</CollapsibleTrigger>
-					<CollapsiblePanel keepRendered>
-						<div inert={!legacyOpen} className="pt-3">
-							<LegacyAccountRecovery />
-						</div>
-					</CollapsiblePanel>
-				</Collapsible>
-			)}
 		</div>
 	);
 }
