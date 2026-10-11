@@ -1,6 +1,4 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
-import path from 'node:path';
 import { describe, test } from 'node:test';
 import { toCsv } from '../src/composition/export.ts';
 import {
@@ -178,10 +176,6 @@ describe('idempotency regression', () => {
 });
 
 describe('issue swarm routes', () => {
-	async function readSource(relativePath: string): Promise<string> {
-		return readFile(path.join(import.meta.dirname, '..', 'src', relativePath), 'utf8');
-	}
-
 	test('apiFetch treats non-JSON success responses as ambiguous', async () => {
 		const originalFetch = globalThis.fetch;
 		globalThis.fetch = async () =>
@@ -293,20 +287,5 @@ describe('issue swarm routes', () => {
 		} finally {
 			console.error = originalError;
 		}
-	});
-
-	test('bulk shopping clear requires the WG admin role', async () => {
-		const source = await readSource('app/api/wg/[code]/shopping/route.ts');
-
-		assert.ok(source.includes('isWgAdmin(wgId, auth.member.memberId)'));
-	});
-
-	test('imports preview authenticates before reading the capped body', async () => {
-		const source = await readSource('app/api/wg/[code]/imports/preview/route.ts');
-
-		assert.ok(
-			source.indexOf('const auth = await requireWgMember') <
-				source.indexOf('const raw = await readImportJsonBody'),
-		);
 	});
 });

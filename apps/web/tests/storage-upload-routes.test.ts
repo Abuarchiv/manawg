@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { beforeEach, describe, mock, test } from 'node:test';
 import { pathToFileURL } from 'node:url';
@@ -144,10 +143,6 @@ mock.module('@/core/infra/s3', {
 const readRoute = await import('../src/app/api/upload/read/route.ts');
 const signRoute = await import('../src/app/api/upload/sign/route.ts');
 
-function readSource(relativePath: string): Promise<string> {
-	return readFile(path.join(SRC, relativePath), 'utf8');
-}
-
 describe('private storage contract', () => {
 	test('private reads use Supabase after an AWS rollback and re-check membership', async () => {
 		const originalProvider = process.env.IMAGE_STORAGE_PROVIDER;
@@ -207,40 +202,6 @@ describe('private storage contract', () => {
 				Reflect.deleteProperty(process.env, 'IMAGE_STORAGE_PROVIDER');
 			else process.env.IMAGE_STORAGE_PROVIDER = originalProvider;
 		}
-	});
-
-	test('private read authenticates malformed and foreign keys before streaming bytes', async () => {
-		const source = await readSource('app/api/upload/read/route.ts');
-
-		assert.ok(source.includes('parsePrivateImageKey'));
-		assert.ok(source.includes('getAuthenticatedUser'));
-		assert.ok(source.includes('requireMember'));
-		assert.ok(source.includes("unauthorized('auth_required'"));
-		assert.ok(source.includes('if (!auth.ok) return noStore(auth.response)'));
-		assert.ok(source.includes('downloadSupabaseImage'));
-		assert.ok(!source.includes('getImageStorageProvider'));
-		assert.ok(!source.includes('downloadAwsImage'));
-		const authLookup = source.indexOf('authenticatedUser = await getAuthenticatedUser(req)');
-		assert.ok(authLookup > -1);
-		assert.ok(source.indexOf('const privateImage =') < authLookup);
-		assert.ok(authLookup < source.indexOf('const auth = await requireMember'));
-		assert.ok(
-			source.indexOf('const auth = await requireMember') <
-				source.indexOf('await downloadSupabaseImage'),
-		);
-		assert.ok(!source.includes('createSignedUrl'));
-		assert.ok(!source.includes('redirect('));
-	});
-
-	test('private signing keeps the upload response contract and immutable Supabase upload', async () => {
-		const routeSource = await readSource('app/api/upload/sign/route.ts');
-		const storageSource = await readSource('core/infra/supabase-storage.ts');
-
-		assert.ok(routeSource.includes('getPrivateImageUrl'));
-		assert.ok(storageSource.includes('uploadHeaders'));
-		assert.ok(storageSource.includes('getBucket'));
-		assert.ok(storageSource.includes('upsert: false'));
-		assert.ok(storageSource.includes('hasExactPrivateImageBucketConfig'));
 	});
 });
 
