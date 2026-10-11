@@ -9,6 +9,8 @@ import { and, asc, eq, inArray, isNotNull, isNull, lte, or, sql } from 'drizzle-
 const CLEANUP_DELAY_MS = 2 * 60 * 60 * 1000 + 5 * 60 * 1000;
 const CLEANUP_RECHECK_MS = 24 * 60 * 60 * 1000;
 const CLEANUP_BATCH_SIZE = 50;
+/** A finished tombstone is kept this long (replayed offline uploads cannot outlive it), then dropped. */
+const TOMBSTONE_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 
 // Full per-WG image-history scan; normalizing reference keys would help if measured delete latency warrants it.
 async function getWgPrivateImageKeys(
@@ -165,7 +167,12 @@ export async function claimPrivateImageCleanupBatch(now = new Date()): Promise<s
 					lte(privateImageDeletions.requestedAt, eligibleBefore),
 					or(
 						isNull(privateImageDeletions.storageDeletedAt),
-						lte(privateImageDeletions.storageDeletedAt, recheckBefore),
+						// One recheck a day after the removal: a claim stamps lastAttemptAt past
+						// storageDeletedAt, which takes the row out of this branch for good.
+						and(
+							lte(privateImageDeletions.storageDeletedAt, recheckBefore),
+							sql`${privateImageDeletions.lastAttemptAt} <= ${privateImageDeletions.storageDeletedAt}`,
+						),
 					),
 				),
 			)
@@ -225,8 +232,25 @@ export async function markPrivateImageStorageDeleted(
 		tx
 			.update(privateImageDeletions)
 			.set({ storageDeletedAt: now })
-			.where(inArray(privateImageDeletions.objectKey, [...objectKeys])),
+			.where(
+				and(
+					inArray(privateImageDeletions.objectKey, [...objectKeys]),
+					// A recheck keeps the original removal time, otherwise it would restart the retention.
+					isNull(privateImageDeletions.storageDeletedAt),
+				),
+			),
 	);
+}
+
+/** Drops tombstones whose storage object has been gone for the retention period; returns the count. */
+export async function purgeFinishedPrivateImageDeletions(now = new Date()): Promise<number> {
+	const deleted = await db
+		.delete(privateImageDeletions)
+		.where(
+			lte(privateImageDeletions.storageDeletedAt, new Date(now.getTime() - TOMBSTONE_RETENTION_MS)),
+		)
+		.returning({ objectKey: privateImageDeletions.objectKey });
+	return deleted.length;
 }
 
 export async function countPendingPrivateImageDeletions(): Promise<number> {

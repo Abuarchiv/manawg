@@ -3,56 +3,62 @@ import { type ReplayCodec, withIdempotentWrite } from '@/core/db/idempotent-writ
 import { type DbTransaction, lockExpensePayments, withTransaction } from '@/core/db/transaction';
 import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
 
-export interface AnnouncementReplayResponse {
+export interface IdempotentReplayResponse {
 	status: number;
 	body: unknown;
 	entityId?: string;
 }
 
-export interface AnnouncementMutation<T> {
-	response: AnnouncementReplayResponse;
+export interface IdempotentReplayMutation<T> {
+	response: IdempotentReplayResponse;
 	effect: T | null;
 }
 
-function isCompletedResponse(value: unknown): value is AnnouncementReplayResponse {
+function isCompletedResponse(value: unknown): value is IdempotentReplayResponse {
 	return (
 		value !== null &&
 		typeof value === 'object' &&
 		!Array.isArray(value) &&
-		Number.isInteger((value as AnnouncementReplayResponse).status) &&
-		(value as AnnouncementReplayResponse).status >= 200 &&
-		(value as AnnouncementReplayResponse).status < 600 &&
+		Number.isInteger((value as IdempotentReplayResponse).status) &&
+		(value as IdempotentReplayResponse).status >= 200 &&
+		(value as IdempotentReplayResponse).status < 600 &&
 		'body' in value
 	);
 }
 
-const announcementCodec: ReplayCodec<unknown> = {
-	// `entityId` stays in the stored row so a post-commit warning finds its response.
-	encode: (response) => {
-		const { status, body, entityId } = response as AnnouncementReplayResponse;
-		return entityId === undefined ? { status, body } : { status, body, entityId };
-	},
-	decode: (stored) => (isCompletedResponse(stored) ? stored : null),
-};
+function replayCodec(
+	legacyResponse?: (value: unknown) => IdempotentReplayResponse | null,
+): ReplayCodec<unknown> {
+	return {
+		// `entityId` stays in the stored row so a post-commit warning finds its response.
+		encode: (response) => {
+			const { status, body, entityId } = response as IdempotentReplayResponse;
+			return entityId === undefined ? { status, body } : { status, body, entityId };
+		},
+		decode: (stored) => (isCompletedResponse(stored) ? stored : (legacyResponse?.(stored) ?? null)),
+	};
+}
 
 /**
- * Pinnwand writes (posts, comments, reactions and shopping notices) behind the shared claim.
+ * A write whose outcome is stored as `{ status, body }` behind the shared claim (pinnwand posts,
+ * comments, reactions, shopping item updates).
  * Every outcome except a rate limit is stored, so a retry of a rejected write replays the
  * rejection; a rate-limited write can run again once the limit clears. `wgId` takes the WG's
  * payment lock first, in the same order as expense writes.
  */
-export async function withAnnouncementReplay<T>(
+export async function withIdempotentReplay<T>(
 	req: Request,
 	scope: string,
-	mutate: (tx: DbTransaction) => Promise<AnnouncementMutation<T>>,
+	mutate: (tx: DbTransaction) => Promise<IdempotentReplayMutation<T>>,
+	legacyResponse?: (value: unknown) => IdempotentReplayResponse | null,
 	wgId?: string,
-): Promise<AnnouncementMutation<T> & { key: string | null }> {
+): Promise<IdempotentReplayMutation<T> & { key: string | null }> {
 	const key = readIdempotencyKey(req);
 	const result = await withIdempotentWrite(
 		{
 			scope,
 			key,
-			codec: announcementCodec,
+			codec: replayCodec(legacyResponse),
 			storeStatus: (status) => status !== 429,
 			inTransaction: (work) =>
 				withTransaction(async (tx) => {
@@ -70,7 +76,7 @@ export async function withAnnouncementReplay<T>(
 	return { response, effect: null, key };
 }
 
-export function persistAnnouncementReplayWarning(
+export function persistReplayWarning(
 	scope: string,
 	key: string,
 	entityId: string,

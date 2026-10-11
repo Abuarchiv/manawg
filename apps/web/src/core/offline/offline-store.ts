@@ -252,9 +252,26 @@ export async function adoptLocalAccount(authUserId: string): Promise<void> {
 	});
 }
 
+/**
+ * Entries this build cannot read (e.g. an action type from a newer deploy) are kept verbatim,
+ * so a stale tab never drops them when it rewrites the queue.
+ */
+function readUnknownQueueEntries(storage: Storage): string[] {
+	try {
+		const parsed = JSON.parse(storage.getItem(OFFLINE_QUEUE_KEY) ?? '[]') as unknown;
+		if (!Array.isArray(parsed)) return [];
+		return parsed
+			.filter((entry) => isRecord(entry) && !isOfflineAction(entry))
+			.map((entry) => JSON.stringify(entry));
+	} catch {
+		return [];
+	}
+}
+
 export function persistOfflineQueue(actions: OfflineAction[], storage: Storage): boolean {
 	try {
-		storage.setItem(OFFLINE_QUEUE_KEY, `[${actions.map(serializeOfflineAction).join(',')}]`);
+		const entries = [...actions.map(serializeOfflineAction), ...readUnknownQueueEntries(storage)];
+		storage.setItem(OFFLINE_QUEUE_KEY, `[${entries.join(',')}]`);
 		for (const action of actions) {
 			syncedAfterFailedQueueSave.delete(action.id);
 		}

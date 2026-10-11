@@ -1,4 +1,9 @@
-import { type ApiErrorKind, classifyApiError } from '@/core/http/error-codes';
+import {
+	type ApiErrorKind,
+	READ_ONLY_MESSAGE,
+	SESSION_EXPIRED_MESSAGE,
+	classifyApiError,
+} from '@/core/http/error-codes';
 
 export async function readResponseErrorCode(response: Response): Promise<string | null> {
 	try {
@@ -49,7 +54,7 @@ export function deleteWgErrorMessage(status: number, code: string | null): strin
 	);
 }
 
-const NOTIFICATION_SAVE_MESSAGES: KindMessages = {
+const NOTIFICATION_SAVE_MESSAGES: Record<ApiErrorKind, string> = {
 	network:
 		'Benachrichtigungen konnten nicht gespeichert werden: Prüfe deine Verbindung und versuche es erneut.',
 	retryable: 'Benachrichtigungen konnten nicht gespeichert werden: Versuche es gleich erneut.',
@@ -60,13 +65,15 @@ const NOTIFICATION_SAVE_MESSAGES: KindMessages = {
 	invalidShareCode:
 		'Benachrichtigungen konnten nicht gespeichert werden: Öffne die WG über den aktuellen Link erneut.',
 	authInvalidated: 'Benachrichtigungen konnten nicht gespeichert werden: Tritt der WG erneut bei.',
+	readOnly: `Benachrichtigungen konnten nicht gespeichert werden: ${READ_ONLY_MESSAGE}`,
+	sessionExpired: `Benachrichtigungen konnten nicht gespeichert werden: ${SESSION_EXPIRED_MESSAGE}`,
 };
 
 export function notificationSaveErrorMessage(status: number, code: string | null): string {
-	if (code === 'insert_failed') return NOTIFICATION_SAVE_MESSAGES.retryable as string;
-	if (code === 'member_not_found') return NOTIFICATION_SAVE_MESSAGES.authInvalidated as string;
+	if (code === 'insert_failed') return NOTIFICATION_SAVE_MESSAGES.retryable;
+	if (code === 'member_not_found') return NOTIFICATION_SAVE_MESSAGES.authInvalidated;
 	const kind = classifyApiError(code, status);
-	if (kind) return NOTIFICATION_SAVE_MESSAGES[kind] as string;
+	if (kind) return NOTIFICATION_SAVE_MESSAGES[kind];
 	if (code === 'quiet_hours_invalid') {
 		return 'Ruhezeiten konnten nicht gespeichert werden: Wähle Stunden zwischen 0 und 23.';
 	}

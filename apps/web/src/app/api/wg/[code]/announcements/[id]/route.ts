@@ -165,10 +165,6 @@ export const PATCH = withWgRoute<{ id: string }>(
 				status: updated.status,
 				kind: updated.kind,
 				pinned: updated.pinnedAt !== null,
-				...(parsed.data.content !== undefined && {
-					contentBefore: row.content.slice(0, 160),
-					contentAfter: updated.content.slice(0, 160),
-				}),
 			},
 		});
 		let warning: NotificationDispatchWarning = null;
@@ -223,7 +219,6 @@ export const DELETE = withWgRoute<{ id: string }>(
 			const [row] = await tx
 				.select({
 					authorMemberId: announcements.authorMemberId,
-					content: announcements.content,
 					imageUrl: announcements.imageUrl,
 				})
 				.from(announcements)
@@ -242,10 +237,9 @@ export const DELETE = withWgRoute<{ id: string }>(
 				return { ok: false as const, response: notFound('announcement_not_found') };
 			}
 			await revokePrivateImageIfUnreferenced(tx, wgId, row.imageUrl);
-			return { ok: true as const, row };
+			return { ok: true as const };
 		});
 		if (!deletion.ok) return deletion.response;
-		const { row } = deletion;
 		await recordAuditEvent({
 			wgId,
 			memberId: auth.member.memberId,
@@ -253,7 +247,6 @@ export const DELETE = withWgRoute<{ id: string }>(
 			entityType: 'announcement',
 			entityId: id,
 			summary: `${auth.member.name} hat einen Pinnwand-Beitrag entfernt.`,
-			metadata: { content: row.content.slice(0, 160) },
 		});
 		return NextResponse.json({ deleted: true });
 	},

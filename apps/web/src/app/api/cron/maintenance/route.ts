@@ -8,6 +8,7 @@ import {
 	dequeueImageDeletions,
 	findLivePrivateImageReferenceKeys,
 	markPrivateImageStorageDeleted,
+	purgeFinishedPrivateImageDeletions,
 } from '@/core/db/private-image-deletions';
 import { purgeExpiredIdempotencyResponses } from '@/core/idempotency-store';
 import { requireCronSecret } from '@/core/infra/cron-auth';
@@ -15,6 +16,7 @@ import { logApiError, withCronLogging } from '@/core/infra/observability';
 import { isPayPalConfigured } from '@/core/infra/paypal';
 import { getImageStorageProvider, removeSupabaseImages } from '@/core/infra/supabase-storage';
 import { confirmedEmailOf, sendAccountDeletedMail } from '@/core/mail/account-deleted';
+import { purgeOldDigestMailLog } from '@/core/mail/mail-retention';
 import { reconcileStaleCapturingPayments } from '@/features/expenses/server/paypal-reconcile';
 import { type NextRequest, NextResponse } from 'next/server';
 
@@ -86,6 +88,18 @@ async function sweepOrphans(): Promise<{ wgsChecked: number; queued: number } | 
 	return getImageStorageProvider() === 'supabase' ? sweepOrphanUploads() : null;
 }
 
+/** Drops old ledger rows (finished image tombstones, digest mail log); failures only get logged. */
+async function purgeRetention(): Promise<void> {
+	const results = await Promise.allSettled([
+		purgeFinishedPrivateImageDeletions(),
+		purgeOldDigestMailLog(),
+	]);
+	for (const result of results) {
+		if (result.status === 'rejected')
+			logApiError('[maintenance] retention purge failed', result.reason);
+	}
+}
+
 /** Purges expired replay rows and runs bounded account/image deletion recovery. */
 export const GET = withCronLogging(
 	'maintenance',
@@ -107,11 +121,13 @@ export const GET = withCronLogging(
 				: null;
 		const [purge, deletions, privateImages, paypal, orphans] = await Promise.allSettled([
 			purgeExpiredIdempotencyResponses(),
+
 			retryPendingAccountDeletions(deleteAuth),
 			cleanupPrivateImages(),
 			isPayPalConfigured() ? reconcileStaleCapturingPayments() : Promise.resolve(null),
 			sweepOrphans(),
 		]);
+		await purgeRetention();
 		if (orphans.status === 'rejected')
 			logApiError('[maintenance] orphan upload sweep failed', orphans.reason);
 		if (paypal.status === 'rejected')

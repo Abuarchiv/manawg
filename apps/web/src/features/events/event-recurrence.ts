@@ -2,7 +2,6 @@ import { berlinDayKey, berlinWallMinutes, instantAtBerlinWallTime } from '@/core
 import { MS_PER_DAY, addMonths, addMonthsFromAnchor, parseTimestamp } from '@/core/utils/time';
 import {
 	BYDAY_TO_INDEX,
-	MAX_OCCURRENCES,
 	type RecurrenceFreq,
 	type RecurrenceRule,
 	isExcludedOccurrence,
@@ -218,6 +217,8 @@ export function expandRecurrence(
 	event: EventInput,
 	from: Date | string,
 	to: Date | string,
+	/** Bounds iterations and returned occurrences; wide windows (the calendar feed) raise it. */
+	maxExpand = MAX_EXPAND_ITERATIONS,
 ): EventOccurrence[] {
 	const startMs = parseTimestamp(event.startsAt);
 	const fromMs = parseTimestamp(from instanceof Date ? from.toISOString() : from);
@@ -265,7 +266,7 @@ export function expandRecurrence(
 	let stepIndex = rule.freq === 'MONTHLY' || rule.freq === 'YEARLY' ? skip.index : 0;
 	let iterations = 0;
 
-	while (iterations < MAX_EXPAND_ITERATIONS) {
+	while (iterations < maxExpand) {
 		iterations += 1;
 		const occurrenceDayMs = current.getTime();
 		// Resolve the anchor's Berlin wall time on each recurrence date. If that
@@ -292,7 +293,7 @@ export function expandRecurrence(
 				occurrences.push(buildOccurrence(event, occurrenceMs, baseDuration, index, true));
 			}
 			index += 1;
-			if (occurrences.length >= MAX_OCCURRENCES) break;
+			if (occurrences.length >= maxExpand) break;
 		}
 
 		if (weeklyByDay) {

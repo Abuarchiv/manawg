@@ -54,15 +54,58 @@ mock.module('@/core/infra/observability', {
 	namedExports: { captureException: () => undefined, logApiError: () => undefined },
 });
 mock.module('@/core/guards/api-auth', { namedExports: { UUID_PATTERN: /^[0-9a-f-]{36}$/i } });
-mock.module('@/core/guards/require-wg-admin', {
+mock.module('@/core/guards/require-wg-member', {
 	namedExports: {
-		requireWgAdmin: async () => ({
+		requireWgMember: async () => ({
 			ok: true,
 			wg: { id: wgId },
 			member: { memberId: adminId, name: 'Ada' },
 			authUserId: 'auth-1',
 		}),
 	},
+});
+// Minimal stand-in for the replay protocol: a stored 2xx response of the same scope and key is
+// replayed before the write runs; other outcomes are not stored.
+const replayStore = new Map<string, { status: number; body: unknown }>();
+mock.module('@/core/db/idempotent-write', {
+	namedExports: {
+		responseCodec: () => ({}),
+		rejectWrite: (response: { status: number }) => ({
+			status: response.status,
+			body: null,
+			context: { rejected: response },
+		}),
+		withIdempotentWrite: async (
+			options: {
+				scope: string;
+				key: string | null;
+				inTransaction: (work: (tx: unknown) => Promise<unknown>) => Promise<unknown>;
+				prepare: () => Promise<{ stop: unknown } | { input: unknown }>;
+			},
+			write: (tx: unknown) => Promise<{ status: number; body: unknown; context?: unknown }>,
+		) => {
+			const id = `${options.scope}:${options.key}`;
+			const stored = options.key ? replayStore.get(id) : undefined;
+			if (stored) return { kind: 'replayed', ...stored };
+			const prepared = await options.prepare();
+			if ('stop' in prepared) return { kind: 'stopped', response: prepared.stop };
+			const outcome = (await options.inTransaction(write)) as {
+				status: number;
+				body: unknown;
+				context?: unknown;
+			};
+			if (options.key && outcome.status < 300) {
+				replayStore.set(id, { status: outcome.status, body: outcome.body });
+			}
+			return { kind: 'written', ...outcome };
+		},
+	},
+});
+mock.module('@/core/idempotency-store', {
+	namedExports: { readIdempotencyKey: (req: Request) => req.headers.get('idempotency-key') },
+});
+mock.module('@/core/rate-limit', {
+	namedExports: { checkRateLimit: async () => ({ success: true }), wgWriteLimiter: {} },
 });
 mock.module('@/features/expenses/server/expense-payments', {
 	namedExports: {
@@ -83,9 +126,10 @@ function harness({
 	state.target = target;
 	state.updates = [];
 	state.audits = [];
-	const post = (id: string, body = '{}') =>
+	replayStore.clear();
+	const post = (id: string, body = '{}', headers: Record<string, string> = {}) =>
 		POST(
-			new Request('https://example.invalid/x', { method: 'POST', body }) as never,
+			new Request('https://example.invalid/x', { method: 'POST', body, headers }) as never,
 			{ params: Promise.resolve({ code: 'MTE8PZAT', id }) } as never,
 		);
 	return { post, state };
@@ -115,6 +159,24 @@ test('rejects inactive, unlinked, missing, self and non-admin-actor targets with
 		assert.equal((await post(id)).status, status);
 		assert.equal(state.updates.length, 0);
 	}
+});
+
+test('a retry with the same key replays the applied transfer instead of answering 403', async () => {
+	const { post, state } = harness();
+	const headers = { 'idempotency-key': '55555555-5555-4555-8555-555555555555' };
+	const first = await post(targetId, '{}', headers);
+	assert.equal(first.status, 200);
+	// The caller has already been demoted when the retry arrives.
+	state.actorRole = 'member';
+	state.updates = [];
+	state.audits = [];
+	const retry = await post(targetId, '{}', headers);
+	assert.equal(retry.status, 200);
+	assert.deepEqual(await retry.json(), await first.json());
+	assert.equal(state.updates.length, 0);
+	assert.equal(state.audits.length, 0);
+	// Without a key the same request is still refused.
+	assert.equal((await post(targetId)).status, 403);
 });
 
 test('oversized body is rejected', async () => {

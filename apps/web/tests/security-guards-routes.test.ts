@@ -25,6 +25,7 @@ mock.module('@/core/rate-limit', {
 		clientIpKey: () => '127.0.0.1',
 		healthLimiter: null,
 		uploadSignLimiter: null,
+		uploadSignDayLimiter: null,
 	},
 });
 mock.module('@/core/db', {

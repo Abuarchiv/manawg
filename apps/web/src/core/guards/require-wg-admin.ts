@@ -1,7 +1,7 @@
 import { db } from '@/core/db';
 import { isWgAdmin } from '@/core/guards/admin';
 import { type WgMembershipResult, requireWgMembership } from '@/core/guards/require-wg-member';
-import { forbidden, tooMany } from '@/core/http/api-errors';
+import { forbidden, rateLimitResponse } from '@/core/http/api-errors';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import type { NextRequest } from 'next/server';
 
@@ -41,7 +41,8 @@ export async function requireWgAdmin(
 		wgWriteLimiter,
 		`${scope}:${auth.wg.id}:${auth.member.memberId}`,
 	);
-	if (!rate.success) return { ok: false, response: tooMany() };
+	const limited = rateLimitResponse(rate);
+	if (limited) return { ok: false, response: limited };
 
 	return auth;
 }

@@ -63,7 +63,7 @@ const FAILURE_BY_CODE: Readonly<Record<string, OfflineFailureExplanation>> = {
 		detail:
 			'Die Aktion bleibt in der Warteschlange und wird gesendet, sobald die Wartung vorbei ist.',
 	},
-	...withCodes(['not_a_member', 'member_id_required', 'member_id_invalid'], {
+	...withCodes(['not_a_member'], {
 		title: 'Mitglied nicht mehr gültig',
 		detail:
 			'Öffne die WG erneut oder tritt mit einem aktuellen Einladungslink bei, bevor du diese Aktion sendest.',

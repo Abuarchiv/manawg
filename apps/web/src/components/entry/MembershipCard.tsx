@@ -9,14 +9,11 @@ import {
 	ItemGroupEntry,
 	ItemTitle,
 } from '@/components/ui/item';
+import type { AccountWg } from '@/core/infra/account-wgs';
 import { ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 
-export interface AccountWg {
-	id: string;
-	code: string;
-	name: string;
-}
+export type { AccountWg };
 
 export function MembershipCard({ memberships }: { memberships: AccountWg[] }) {
 	return (

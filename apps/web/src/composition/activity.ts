@@ -6,9 +6,9 @@ import {
 	formatAuditActivityText,
 	getAuditHref,
 } from './activity-audit';
-import type { ActivityFilter, ActivityItem, ActivityKind, ActivityScope } from './activity-types';
+import type { ActivityFilter, ActivityItem, ActivityKind } from './activity-types';
 
-export type { ActivityFilter, ActivityItem, ActivityKind, ActivityScope };
+export type { ActivityFilter, ActivityItem, ActivityKind };
 export { ACTIVITY_HIDDEN_AUDIT_EVENT_TYPES, formatAuditActivityText };
 export {
 	type ActivityReminder,
@@ -251,24 +251,6 @@ export function filterActivityItems(
 		return `${item.memberName} ${item.text} ${item.detail ?? ''}`
 			.toLocaleLowerCase('de-DE')
 			.includes(query);
-	});
-}
-
-export function filterActivityByScope(
-	items: ActivityItem[],
-	scope: ActivityScope,
-	currentMemberName: string,
-	currentMemberId?: string | null,
-): ActivityItem[] {
-	if (scope === 'all') return items;
-	return items.filter((item) => {
-		const done = item.completed || /erledigt|gekauft|bezahlt/i.test(item.text);
-		const system = item.memberName === 'System';
-		if (scope === 'system') return system;
-		if (scope === 'mine') return isCurrentMemberActivity(item, currentMemberName, currentMemberId);
-		if (scope === 'done') return done;
-		if (scope === 'changes') return !done;
-		return true;
 	});
 }
 

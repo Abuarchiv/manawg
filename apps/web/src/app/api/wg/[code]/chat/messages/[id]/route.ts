@@ -10,6 +10,7 @@ import { badRequest, conflict, forbidden, notFound, tooMany } from '@/core/http/
 import { parseBody } from '@/core/http/parse-body';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { canEditMessage, sanitizeMessageBody } from '@/features/chat/chat-pure';
+import { replaceMessageMentions } from '@/features/chat/server/chat-mentions';
 import { and, eq, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -53,20 +54,32 @@ export const PATCH = withWgRoute<{ id: string }>(
 		}
 
 		const now = new Date();
-		const [updated] = await db
-			.update(wgChatMessages)
-			.set({ body: cleanBody, editedAt: now })
-			// Author, kind and deletedAt guard against a DELETE that landed after the read above.
-			.where(
-				and(
-					eq(wgChatMessages.id, id),
-					eq(wgChatMessages.wgId, wgId),
-					eq(wgChatMessages.senderMemberId, auth.member.memberId),
-					eq(wgChatMessages.kind, 'text'),
-					isNull(wgChatMessages.deletedAt),
-				),
-			)
-			.returning();
+		// The mention rows follow the text in the same transaction, so an edit never keeps a
+		// mention of someone the new text does not name.
+		const updated = await withTransaction(async (tx) => {
+			const [edited] = await tx
+				.update(wgChatMessages)
+				.set({ body: cleanBody, editedAt: now })
+				// Author, kind and deletedAt guard against a DELETE that landed after the read above.
+				.where(
+					and(
+						eq(wgChatMessages.id, id),
+						eq(wgChatMessages.wgId, wgId),
+						eq(wgChatMessages.senderMemberId, auth.member.memberId),
+						eq(wgChatMessages.kind, 'text'),
+						isNull(wgChatMessages.deletedAt),
+					),
+				)
+				.returning();
+			if (!edited) return null;
+			await replaceMessageMentions(tx, {
+				wgId,
+				messageId: id,
+				senderMemberId: auth.member.memberId,
+				body: cleanBody,
+			});
+			return edited;
+		});
 		// Row, author and kind are fixed after the check, so no row means a parallel delete.
 		if (!updated) return conflict('message_deleted', 'message_deleted');
 

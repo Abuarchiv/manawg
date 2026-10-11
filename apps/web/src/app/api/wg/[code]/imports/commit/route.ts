@@ -44,6 +44,11 @@ function parseFor(source: string, payload: string): ParsedExpense[] {
 }
 
 export const POST = withWgRoute('imports/commit', async (req, { code }) => {
+	// Authenticate before reading the body (up to MAX_CSV_BYTES).
+	const auth = await requireWgMember(req, code);
+	if (!auth.ok) return auth.response;
+	const { wg, member } = auth;
+
 	const raw = await readImportJsonBody(req);
 	if (!raw.ok) return badRequest(raw.error);
 	const parsedBody = commitSchema.safeParse(raw.value);
@@ -63,10 +68,6 @@ export const POST = withWgRoute('imports/commit', async (req, { code }) => {
 	}
 
 	try {
-		const auth = await requireWgMember(req, code);
-		if (!auth.ok) return auth.response;
-		const { wg, member } = auth;
-
 		// A re-submitted commit (double click, retry after a client timeout) must replay the
 		// same result: with skipDuplicates false nothing else keeps the expenses from being
 		// inserted twice. The scope holds WG and member, so a key never reaches another member.

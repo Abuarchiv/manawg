@@ -38,7 +38,7 @@ import {
 	splitValidationErrorCode,
 	validateSplits,
 } from '@/features/expenses/split-math';
-import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, isNull, ne, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -92,6 +92,22 @@ export const DELETE = withWgRoute<{ id: string }>('expense DELETE', async (req, 
 
 		if (await hasCapturingExpensePayment(tx, wgId)) {
 			return { ok: false as const, response: conflict('paypal_payment_pending') };
+		}
+		// Same rule as the import undo: a share someone else already settled means money
+		// moved, and deleting the expense would silently undo it.
+		const settledShare = await tx
+			.select({ id: expenseSplits.id })
+			.from(expenseSplits)
+			.where(
+				and(
+					eq(expenseSplits.expenseId, id),
+					ne(expenseSplits.debtorMemberId, row.paidByMemberId),
+					isNotNull(expenseSplits.settledAt),
+				),
+			)
+			.limit(1);
+		if (settledShare.length > 0) {
+			return { ok: false as const, response: conflict('expense_has_settled_shares') };
 		}
 		const deleted = await tx
 			.delete(expenses)

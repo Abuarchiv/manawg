@@ -247,3 +247,59 @@ describe('rate limit fail open stats', () => {
 		}
 	});
 });
+
+describe('rate limit subjects', () => {
+	function ipRequest(forwarded: string): { headers: Headers } {
+		return { headers: new Headers({ 'x-forwarded-for': forwarded }) };
+	}
+
+	test('IPv6 clients share one bucket per /64, IPv4 stays exact', async () => {
+		const restore = pinEnv({ NODE_ENV: 'test' });
+		try {
+			const { clientIpKey } = await loadRateLimit();
+			const key = clientIpKey(ipRequest('2001:db8:1:2:aaaa:bbbb:cccc:dddd'));
+			assert.equal(key, '2001:db8:1:2::/64');
+			assert.equal(clientIpKey(ipRequest('2001:0db8:0001:0002::1')), key);
+			assert.equal(clientIpKey(ipRequest('[2001:DB8:1:2:1:2:3:4]')), key);
+			assert.equal(clientIpKey(ipRequest('2001:db8:1:3::1')), '2001:db8:1:3::/64');
+			assert.equal(clientIpKey(ipRequest('::1')), '0:0:0:0::/64');
+			assert.equal(clientIpKey(ipRequest('::ffff:203.0.113.7')), '203.0.113.7');
+			assert.equal(clientIpKey(ipRequest('203.0.113.7')), '203.0.113.7');
+			assert.equal(clientIpKey({ headers: new Headers() }), 'anonymous');
+		} finally {
+			restore();
+		}
+	});
+
+	test('two sessions behind the same IP are counted separately', async () => {
+		const restore = pinEnv({ NODE_ENV: 'test' });
+		try {
+			const { sessionRateLimitKey } = await loadRateLimit();
+			const cookies = (...entries: [string, string][]) => ({
+				cookies: { getAll: () => entries.map(([name, value]) => ({ name, value })) },
+			});
+			const alice = await sessionRateLimitKey(cookies(['sb-proj-auth-token', 'alice-secret']));
+			const bob = await sessionRateLimitKey(cookies(['sb-proj-auth-token', 'bob-secret']));
+			assert.ok(alice && bob);
+			assert.notEqual(alice, bob);
+			assert.equal(
+				alice,
+				await sessionRateLimitKey(cookies(['sb-proj-auth-token', 'alice-secret'])),
+			);
+			// Chunked cookies hash together regardless of header order; the value is never exposed.
+			const chunked = await sessionRateLimitKey(
+				cookies(['sb-proj-auth-token.1', 'b'], ['sb-proj-auth-token.0', 'a']),
+			);
+			assert.equal(
+				chunked,
+				await sessionRateLimitKey(
+					cookies(['sb-proj-auth-token.0', 'a'], ['sb-proj-auth-token.1', 'b']),
+				),
+			);
+			assert.ok(!alice.includes('alice-secret'));
+			assert.equal(await sessionRateLimitKey(cookies(['theme', 'dark'])), null);
+		} finally {
+			restore();
+		}
+	});
+});

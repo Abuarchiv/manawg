@@ -2,6 +2,7 @@ import { recordAuditEvent } from '@/core/audit';
 import { calendarSubscriptions, db } from '@/core/db';
 import { type ActiveAccountMember, lockActiveAccountMember } from '@/core/db/account-deletion';
 import {
+	type ReplayCodec,
 	type StoredResponse,
 	responseCodec,
 	withIdempotentWrite,
@@ -27,7 +28,27 @@ type MutationResult = {
 	audit?: Parameters<typeof recordAuditEvent>[0];
 };
 
-const calendarCodec = responseCodec();
+// Rows written before responses were stored with their status hold the bare body.
+const storedCodec = responseCodec<unknown>((stored) =>
+	'subscription' in stored || (stored as { revoked?: unknown }).revoked === true
+		? { status: 200, body: stored }
+		: null,
+);
+
+function withoutFeedUrl(body: unknown): unknown {
+	if (!body || typeof body !== 'object' || !('subscription' in body)) return body;
+	const { subscription } = body as { subscription: unknown };
+	if (!subscription || typeof subscription !== 'object') return body;
+	const { feedUrl: _feedUrl, ...rest } = subscription as { feedUrl?: unknown };
+	return { ...body, subscription: rest };
+}
+
+// The feed URL carries the secret token, so it is never stored: a replay derives it from the
+// member's current subscription instead, which also keeps it correct after a later rotation.
+const calendarCodec: ReplayCodec<unknown> = {
+	decode: (stored) => storedCodec.decode(stored),
+	encode: (response) => storedCodec.encode({ ...response, body: withoutFeedUrl(response.body) }),
+};
 
 function memberDeactivated(): NextResponse {
 	return NextResponse.json({ error: 'member_deactivated' }, { status: 401 });
@@ -70,6 +91,16 @@ async function withCalendarMutation(
 		);
 		if (result.kind === 'stopped') return result.response;
 		if (result.kind === 'written' && result.context) await recordAuditEvent(result.context);
+		if (result.kind === 'replayed' && result.status === 200) {
+			const body = withoutFeedUrl(result.body);
+			if (body && typeof body === 'object' && 'subscription' in body) {
+				const row = await findActiveSubscription(auth.wg.id, auth.member.memberId);
+				return NextResponse.json(
+					{ ...body, subscription: row ? responseFor(row) : null },
+					{ status: 200 },
+				);
+			}
+		}
 		return NextResponse.json(result.body, { status: result.status });
 	} catch (err) {
 		if (err instanceof TransactionAbort) return serverError(err.code);
@@ -91,18 +122,22 @@ function responseFor(row: CalendarSubscriptionRow): {
 	};
 }
 
+function findActiveSubscription(wgId: string, memberId: string) {
+	return db.query.calendarSubscriptions.findFirst({
+		where: and(
+			eq(calendarSubscriptions.wgId, wgId),
+			eq(calendarSubscriptions.memberId, memberId),
+			isNull(calendarSubscriptions.revokedAt),
+		),
+	});
+}
+
 export const GET = withWgRoute('calendar subscription GET', async (req, { code }) => {
 	const limit = await checkRateLimit(wgReadLimiter, `calendar-subscription:${clientIpKey(req)}`);
 	if (!limit.success) return tooMany('rate_limited');
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
-	const row = await db.query.calendarSubscriptions.findFirst({
-		where: and(
-			eq(calendarSubscriptions.wgId, auth.wg.id),
-			eq(calendarSubscriptions.memberId, auth.member.memberId),
-			isNull(calendarSubscriptions.revokedAt),
-		),
-	});
+	const row = await findActiveSubscription(auth.wg.id, auth.member.memberId);
 	return NextResponse.json(
 		{ subscription: row ? responseFor(row) : null },
 		{ headers: { 'Cache-Control': 'private, no-store' } },

@@ -28,5 +28,3 @@ export interface ActivityFilter {
 	mineOnly: boolean;
 	query: string;
 }
-
-export type ActivityScope = 'all' | 'system' | 'mine' | 'changes' | 'done';

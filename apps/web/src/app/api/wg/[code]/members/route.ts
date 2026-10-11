@@ -17,8 +17,8 @@ import {
 	conflict,
 	forbidden,
 	notFound,
+	rateLimitResponse,
 	serviceUnavailable,
-	tooMany,
 	unauthorized,
 } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
@@ -245,9 +245,8 @@ export const POST = withWgRoute('members POST', async (req, { code }) => {
 	const { name, inviteToken = '' } = parsed.data;
 	const color = parsed.data.color ?? null;
 	const limit = await checkRateLimit(wgWriteLimiter, `join:${clientIpKey(req)}`);
-	if (!limit.success) {
-		return tooMany('join_rate_limited', 'join_rate_limited');
-	}
+	const limited = rateLimitResponse(limit, 'join_rate_limited', 'join_rate_limited');
+	if (limited) return limited;
 	let authUser: Awaited<ReturnType<typeof getAuthenticatedUser>>;
 	try {
 		authUser = await getAuthenticatedUser(req);

@@ -88,7 +88,7 @@ export function useOfflineQueueSync({
 		// dispatches on success regardless of caller. Calling it here too would
 		// double-fire it for this hook's own reconnect-triggered syncs.
 		const sync = (): void => {
-			syncOfflineActions(shareCode, { memberId })
+			syncOfflineActions(shareCode, { memberId, force: true })
 				.then(() => {
 					if (!active) return;
 					updateCount();

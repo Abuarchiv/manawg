@@ -101,3 +101,40 @@ test('month key arithmetic crosses years', () => {
 	assert.equal(shiftMonthKey('2026-01', -1), '2025-12');
 	assert.equal(shiftMonthKey('2026-12', 1), '2027-01');
 });
+
+test('completed payments of the month offset open shares', () => {
+	const expenses = [expense('a', 'L', '2026-09-02T10:00:00Z', { L: 2000, J: 1000 })];
+	const payment = (completedAt: string, cents = 1000) => ({
+		fromMemberId: 'J',
+		toMemberId: 'L',
+		amountCents: cents,
+		currency: 'EUR',
+		completedAt,
+	});
+	const paid = buildMonthlyStatement(expenses, members, '2026-09', [
+		payment('2026-09-10T10:00:00Z'),
+	]);
+	assert.deepEqual(
+		paid.members.map(({ id, balanceCents }) => [id, balanceCents]),
+		[
+			['L', 0],
+			['J', 0],
+		],
+	);
+	assert.deepEqual(paid.transfers, []);
+	assert.equal(paid.settled, true);
+
+	// A payment from another month leaves this month open.
+	const other = buildMonthlyStatement(expenses, members, '2026-09', [
+		payment('2026-10-10T10:00:00Z'),
+	]);
+	assert.equal(other.settled, false);
+	assert.equal(other.transfers.length, 1);
+
+	// A partial payment keeps the month open with the remainder.
+	const partial = buildMonthlyStatement(expenses, members, '2026-09', [
+		payment('2026-09-10T10:00:00Z', 400),
+	]);
+	assert.equal(partial.settled, false);
+	assert.equal(partial.transfers[0]?.cents, 600);
+});

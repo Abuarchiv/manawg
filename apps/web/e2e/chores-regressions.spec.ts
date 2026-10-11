@@ -2,7 +2,6 @@
 // Why: Cache and retry paths must not resurrect removed state.
 
 import { expect, test } from '@playwright/test';
-import { type ActivityItem, filterActivityByScope } from '../src/composition/activity';
 import * as offlineClient from '../src/core/offline/offline-client';
 import { buildChoreFairness } from '../src/features/chores/chore-fairness';
 import { getChoreStatus } from '../src/features/chores/chore-status';
@@ -338,20 +337,8 @@ test.describe('chore swap coordination (pilot DB worker)', () => {
 	});
 });
 
-test.describe('domain regressions (recurring retry, activity, fairness)', () => {
+test.describe('domain regressions (recurring retry, fairness)', () => {
 	const NOW = Date.parse('2026-09-19T12:00:00.000Z');
-
-	function activity(id: string, text: string, completed: boolean): ActivityItem {
-		return {
-			id,
-			kind: 'chore',
-			timestamp: new Date(NOW).toISOString(),
-			memberId: 'member-1',
-			memberName: 'Abu',
-			text,
-			completed,
-		} as ActivityItem;
-	}
 
 	test('retries a recurring advance carried by an expense action', () => {
 		const retry = offlineClient.createRecurringAdvanceRetry(
@@ -376,17 +363,6 @@ test.describe('domain regressions (recurring retry, activity, fairness)', () => 
 				expectedRecurringNextDueAt: '2026-10-01T00:00:00.000Z',
 			},
 		});
-	});
-
-	test('activity done and changes scopes respect chore completion state', () => {
-		const items = [activity('open', 'Flur geplant', false), activity('done', 'Bad erledigt', true)];
-
-		expect(filterActivityByScope(items, 'done', 'Abu', 'member-1').map((item) => item.id)).toEqual([
-			'done',
-		]);
-		expect(
-			filterActivityByScope(items, 'changes', 'Abu', 'member-1').map((item) => item.id),
-		).toEqual(['open']);
 	});
 
 	test('uses the API-repeated open-gap total once for an assignee', () => {

@@ -1,4 +1,5 @@
 import { apiFetch, mutationGeneration } from '@/core/infra/api-client';
+import { captureException } from '@/core/infra/capture-client';
 
 /**
  * Module-level read cache behind `useCachedFetch`: one snapshot per (member, URL), shared GETs,
@@ -172,11 +173,16 @@ function startFetch<T>(key: string, url: string, options: CachedFetchOptions): P
 				});
 			}
 		})
-		.catch(() => {
+		.catch((err) => {
+			captureException(err, { action: 'cachedFetch', key });
 			const current = readCachedSnapshot<T>(key);
 			publish(key, {
 				...current,
-				error: { status: 0, error: 'Netzwerkfehler' },
+				// Keep a real error status that was already published; 0 only marks "no response".
+				error:
+					current.error && current.error.status > 0
+						? current.error
+						: { status: 0, error: 'Netzwerkfehler' },
 				isLoading: false,
 				isFetching: false,
 			});

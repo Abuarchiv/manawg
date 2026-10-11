@@ -17,6 +17,7 @@ import {
 import { readJsonLimited } from '@/core/http/read-json';
 import { readIdempotencyKey } from '@/core/idempotency-store';
 import { logApiError } from '@/core/infra/observability';
+import { OFFLINE_REPLAY_MAX_AGE_MS } from '@/core/offline/replay-retention';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { startOfBerlinDay } from '@/core/utils/berlin-day';
 import { getAbsentMemberIds } from '@/features/chores/absence';
@@ -25,7 +26,7 @@ import {
 	computeOpenGapsByMember,
 } from '@/features/chores/chore-fairness';
 import { computeNextDueAt, isLateCompletion } from '@/features/chores/chore-recurrence';
-import { and, eq, gte, isNull } from 'drizzle-orm';
+import { and, eq, gte, isNull, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 type ChoreCompleteResponseBody = { chore: unknown };
@@ -55,18 +56,27 @@ type CompletionPlan = {
 };
 
 /**
+ * The tap time the client reports, clamped to the offline replay window so a queued completion
+ * keeps its real time but a wrong device clock cannot reach into the future or the far past.
+ */
+function clampTapTime(tapAt: Date, now: number): Date {
+	return new Date(Math.min(now, Math.max(now - OFFLINE_REPLAY_MAX_AGE_MS, tapAt.getTime())));
+}
+
+/**
  * The client sends the occurrence it completed. Queued actions that carry only the chore id
  * stay a visible conflict and are never reinterpreted as a completion of the current one.
+ * On success it returns the client's tap time, or null when the body carries none.
  */
 async function readExpectedOccurrence(
 	req: Request,
 	chore: ChoreSnapshot,
-): Promise<NextResponse | null> {
+): Promise<{ response: NextResponse } | { tapAt: Date | null }> {
 	let raw: unknown;
 	try {
 		raw = await readJsonLimited(req);
 	} catch (err) {
-		return unreadableJsonBody(err);
+		return { response: unreadableJsonBody(err) };
 	}
 	const body =
 		raw !== null && typeof raw === 'object' && !Array.isArray(raw)
@@ -76,23 +86,32 @@ async function readExpectedOccurrence(
 	const hasExpectedAssignee = Object.hasOwn(body, 'expectedAssignedMemberId');
 	const expectedAssignedMemberId = body.expectedAssignedMemberId;
 	if (typeof expectedNextDueAt !== 'string' || !hasExpectedAssignee) {
-		return conflict('chore_occurrence_changed');
+		return { response: conflict('chore_occurrence_changed') };
 	}
+	const completedAt = body.completedAt;
 	if (
 		!Number.isFinite(Date.parse(expectedNextDueAt)) ||
 		(expectedAssignedMemberId !== null &&
 			(typeof expectedAssignedMemberId !== 'string' ||
 				!UUID_PATTERN.test(expectedAssignedMemberId)))
 	) {
-		return badRequest('expected_occurrence_invalid');
+		return { response: badRequest('expected_occurrence_invalid') };
+	}
+	if (
+		completedAt !== undefined &&
+		(typeof completedAt !== 'string' || !Number.isFinite(Date.parse(completedAt)))
+	) {
+		return { response: badRequest('completed_at_invalid') };
 	}
 	if (
 		Date.parse(expectedNextDueAt) !== chore.nextDueAt.getTime() ||
 		expectedAssignedMemberId !== chore.assignedMemberId
 	) {
-		return conflict('chore_occurrence_changed');
+		return { response: conflict('chore_occurrence_changed') };
 	}
-	return null;
+	return {
+		tapAt: completedAt === undefined ? null : clampTapTime(new Date(completedAt), Date.now()),
+	};
 }
 
 /**
@@ -101,8 +120,8 @@ async function readExpectedOccurrence(
  * a monthly cycle on its completion time. Only active members join the rotation, and the
  * score-aware ranker sees the same chore snapshot as the UI's "Nächste:r" hint.
  */
-async function planCompletion(c: ChoreSnapshot): Promise<CompletionPlan> {
-	const completedAt = new Date();
+async function planCompletion(c: ChoreSnapshot, tapAt: Date | null): Promise<CompletionPlan> {
+	const completedAt = tapAt ?? new Date();
 	const nextDueAt = computeNextDueAt(
 		c.nextDueAt,
 		c.intervalDays,
@@ -192,6 +211,8 @@ async function writeCompletion(
 			nextDueAt: plan.nextDueAt,
 			assignedMemberId: plan.nextAssigned,
 			anchorAt: plan.effectiveAnchor,
+			// Bumps the version `expectedUpdatedAt` edits compare against, never backwards.
+			updatedAt: sql`greatest(clock_timestamp(), ${chores.updatedAt} + interval '1 millisecond')`,
 			...reminderReset,
 		})
 		.where(
@@ -210,7 +231,7 @@ async function writeCompletion(
 
 	const [completion] = await tx
 		.insert(choreCompletions)
-		.values({ choreId: c.id, completedByMemberId: completedBy })
+		.values({ choreId: c.id, completedByMemberId: completedBy, completedAt: plan.completedAt })
 		.returning({ id: choreCompletions.id });
 	if (!completion) throw new TransactionAbort('completion_insert_failed');
 
@@ -270,11 +291,11 @@ export const POST = withWgRoute<{ id: string }>(
 					codec: choreCompleteCodec,
 					completeFailureCode: 'idempotency_response_write_failed',
 					prepare: async () => {
-						const invalid = await readExpectedOccurrence(req, c);
-						if (invalid) return { stop: invalid };
+						const occurrence = await readExpectedOccurrence(req, c);
+						if ('response' in occurrence) return { stop: occurrence.response };
 						const limited = await checkRateLimit(wgWriteLimiter, `chore:${c.wgId}:${completedBy}`);
 						if (!limited.success) return { stop: tooMany() };
-						return { input: await planCompletion(c) };
+						return { input: await planCompletion(c, occurrence.tapAt) };
 					},
 				},
 				(tx, plan: CompletionPlan) => {

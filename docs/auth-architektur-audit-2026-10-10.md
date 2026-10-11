@@ -253,7 +253,7 @@ Offen:
 
 - CI auf main war rot: `analytics:check` las die gelöschte Beitrittsdatei. Behoben (7eab2a6a). Alle CI-Schritte lokal grün: Audit (nur moderate), lint, knip, Analytics, Architektur, WG-Auth-Invariante, Schema-Drift, typecheck, Unit 985/0, Build, Bundle-Budget.
 - Der Code-Login braucht 8 Ziffern. `scripts/supabase-auth-templates.mjs --apply` setzt jetzt `mailer_otp_length: 8` zusammen mit den Mail-Vorlagen (Vorlage `magic_link` zeigt den Code).
-- Branch `audit-integration` enthält ebenfalls 0026/0027 (andere Inhalte). Vor einem Merge dort umnummerieren.
+- Branch `audit-integration` wurde am 2026-10-11 gemerged; seine Migrationen heißen jetzt 0029 (Vorräte-Unique-Index) und 0030 (Audit-Inhalte bereinigen).
 - Release-Reihenfolge: Migration 0026 in Prod, Template-Skript mit `--apply`, Deploy, danach WGs informieren.
 
 ### Nachtrag 2026-10-11 (2): Übernahmeweg und Feinschliff

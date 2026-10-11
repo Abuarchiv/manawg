@@ -4,4 +4,6 @@ export interface ExpensePaymentInput {
 	toMemberId: string;
 	amountCents: number;
 	currency: string;
+	/** ISO instant the payment completed; month statements only count payments of their month. */
+	completedAt?: string | null;
 }

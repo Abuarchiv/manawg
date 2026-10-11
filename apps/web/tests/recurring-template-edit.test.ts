@@ -33,7 +33,11 @@ function template(overrides: Record<string, unknown> = {}) {
 	};
 }
 
-const state = { sets: [] as Array<Record<string, unknown>>, memberWhere: [] as string[] };
+const state = {
+	sets: [] as Array<Record<string, unknown>>,
+	memberWhere: [] as string[],
+	updateWhere: [] as string[],
+};
 
 mock.module('@/core/db', {
 	namedExports: {
@@ -49,8 +53,9 @@ mock.module('@/core/db', {
 			}),
 			update: () => ({
 				set: (values: Record<string, unknown>) => ({
-					where: () => ({
+					where: (condition: Parameters<typeof dialect.sqlToQuery>[0]) => ({
 						returning: async () => {
+							state.updateWhere.push(dialect.sqlToQuery(condition).sql);
 							state.sets.push(values);
 							return [{ ...template(), ...values }];
 						},
@@ -121,4 +126,15 @@ test('a split total that does not match the amount is refused before any write',
 	assert.equal(response.status, 400);
 	assert.deepEqual(await response.json(), { error: 'splits_sum_mismatch' });
 	assert.equal(state.sets.length, 0);
+});
+
+test('pause and resume compare the loaded due date like an edit', async () => {
+	state.updateWhere = [];
+	await editRecurringTemplate(caller, template() as never, { id: 'template-1', paused: true });
+	await editRecurringTemplate(caller, template({ pausedAt: anchorAt }) as never, {
+		id: 'template-1',
+		paused: false,
+	});
+	assert.equal(state.updateWhere.length, 2);
+	for (const where of state.updateWhere) assert.match(where, /"next_due_at" = \$/);
 });

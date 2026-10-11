@@ -1,3 +1,4 @@
+import type { ExpensePaymentInput } from './expense-payment-input';
 import {
 	type MonthlyStatement,
 	type StatementExpense,
@@ -58,8 +59,9 @@ export function planStatementMails(
 	members: readonly StatementWgMember[],
 	expenses: readonly StatementExpense[],
 	monthKey: string,
+	payments: readonly ExpensePaymentInput[] = [],
 ): StatementPlan {
-	const statement = buildMonthlyStatement(expenses, members, monthKey);
+	const statement = buildMonthlyStatement(expenses, members, monthKey, payments);
 	const plan: StatementPlan = { recipients: [], skipped: [] };
 	if (statement.items.length === 0) return plan;
 

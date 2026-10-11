@@ -94,13 +94,12 @@ export const wgMembers = pgTable(
 		notifyStatementEmail: boolean('notify_statement_email').notNull().default(true),
 		quietStartHour: integer('quiet_start_hour'),
 		quietEndHour: integer('quiet_end_hour'),
-		// Soft-delete for "Auszug" (move-out). A member who ever paid an expense,
-		// owes a split, added a shopping item, wrote an announcement, completed a
-		// chore, or created a recurring expense cannot be hard-deleted — six
-		// RESTRICT foreign keys reference wg_members. Instead we set this
-		// timestamp: the member drops out of every *active* roster (chore
-		// rotation, split candidates, identity picker, dropdowns) while all
-		// history and balances stay intact. NULL = active. Reversible.
+		// Soft-delete for "Auszug" (move-out). A member who ever paid an expense, owes a
+		// split, added a shopping item, wrote an announcement, completed a chore, or
+		// created a recurring expense cannot be hard-deleted — six RESTRICT foreign keys
+		// reference wg_members. Instead this timestamp is set: the member drops out of every
+		// *active* roster (chore rotation, split candidates, identity picker, dropdowns)
+		// while all history and balances stay intact. NULL = active. Reversible.
 		deactivatedAt: timestamp('deactivated_at', { withTimezone: true }),
 		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 	},
@@ -615,6 +614,7 @@ export const wgInventoryItems = pgTable(
 			t.wgId,
 			t.lastDecrementedAt,
 		),
+		nameKey: uniqueIndex('wg_inventory_items_unique_name').on(t.wgId, sql`lower(btrim(${t.name}))`),
 	}),
 );
 

@@ -63,10 +63,16 @@ function readStoredResponse(value: unknown): StoredResponse | null {
 }
 
 /** Stores `{ status, body }`. */
-export function responseCodec<B = unknown>(): ReplayCodec<B> {
+export function responseCodec<B = unknown>(
+	legacy?: (stored: object) => StoredResponse<B> | null,
+): ReplayCodec<B> {
 	return {
 		encode: (response) => ({ status: response.status, body: response.body }),
-		decode: (stored) => readStoredResponse(stored) as StoredResponse<B> | null,
+		decode: (stored) => {
+			const response = readStoredResponse(stored) as StoredResponse<B> | null;
+			if (response) return response;
+			return stored && typeof stored === 'object' ? (legacy?.(stored) ?? null) : null;
+		},
 	};
 }
 

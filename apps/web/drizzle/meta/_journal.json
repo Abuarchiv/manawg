@@ -204,6 +204,20 @@
       "when": 1791727955707,
       "tag": "0028_drop_unused_wg_join_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1791738742950,
+      "tag": "0029_inventory_unique_name",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1791738750073,
+      "tag": "0030_audit_strip_content",
+      "breakpoints": true
     }
   ]
 }

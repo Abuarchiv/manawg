@@ -168,13 +168,7 @@ export function OfflineQueueSection({
 	}
 
 	function setServerCheckError(id: string, status: number, error: string): void {
-		if (
-			error === 'not_a_member' ||
-			error === 'member_id_required' ||
-			error === 'member_id_invalid' ||
-			error === 'wg_not_found' ||
-			error === 'invalid_share_code'
-		) {
+		if (error === 'not_a_member' || error === 'wg_not_found' || error === 'invalid_share_code') {
 			const failure = explainOfflineActionFailure(status, error);
 			setConflictNote(id, `${failure.title}: ${failure.detail}`);
 			return;

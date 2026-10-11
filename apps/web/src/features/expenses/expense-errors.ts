@@ -61,6 +61,8 @@ const ACTION_ERRORS: Record<string, string> = {
 		'Der Anhang wurde entfernt. Lade ihn erneut hoch, bevor du die Ausgabe speicherst.',
 	settled_invalid:
 		'Diese Zahlung konnte nicht markiert werden: Lade die Ausgaben neu und versuche es erneut.',
+	expense_has_settled_shares:
+		'Ausgabe hat schon beglichene Anteile und kann nicht gelöscht werden.',
 	split_already_offset:
 		'Dieser Anteil ist durch andere Ausgleiche ganz oder teilweise verrechnet. Den vollen Betrag als beglichen zu markieren würde den Saldo überschreiten; die Ausgabenliste wird aktualisiert.',
 };

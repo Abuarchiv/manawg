@@ -54,9 +54,6 @@ export function auditDetail(metadataJson?: string | null): string | undefined {
 		if (typeof metadata.quantity === 'string' && metadata.quantity.length > 0) {
 			parts.push(metadata.quantity);
 		}
-		if (typeof metadata.contentPreview === 'string' && metadata.contentPreview.length > 0) {
-			parts.push(`„${metadata.contentPreview}“`);
-		}
 		// Only known pinboard kinds: chat audits carry kind 'text'/'image', which is not user text.
 		const kindLabel =
 			typeof metadata.kind === 'string'

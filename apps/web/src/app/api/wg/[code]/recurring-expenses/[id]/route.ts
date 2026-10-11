@@ -17,6 +17,7 @@ import { serializeRecurringExpense } from '@/features/expenses/recurring-expense
 import {
 	deleteRecurringTemplate,
 	editRecurringTemplate,
+	hasEditFields,
 } from '@/features/expenses/server/recurring-template-writes';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
@@ -77,16 +78,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 		if (parsed.data.currency !== undefined && parsed.data.currency !== 'EUR') {
 			return badRequest('recurring_currency_unsupported');
 		}
-		const hasAnyField =
-			parsed.data.description !== undefined ||
-			parsed.data.category !== undefined ||
-			parsed.data.amountCents !== undefined ||
-			parsed.data.currency !== undefined ||
-			parsed.data.paidByMemberId !== undefined ||
-			parsed.data.intervalMonths !== undefined ||
-			parsed.data.nextDueAt !== undefined ||
-			parsed.data.splits !== undefined ||
-			parsed.data.paused !== undefined;
+		const hasAnyField = hasEditFields(parsed.data) || parsed.data.paused !== undefined;
 		if (!hasAnyField) return badRequest('invalid_body');
 		const auth = await requireWgMember(req, code);
 		if (!auth.ok) return auth.response;

@@ -107,3 +107,10 @@ test('the Supabase auth templates carry the same dark block as the app mails', (
 		assert.ok(html.includes('manawg-mark-96-light.png'), name);
 	}
 });
+
+test('the farewell mail states what is removed and that the name stays in WG entries', () => {
+	const { text } = renderAccountDeletedMail();
+	assert.match(text, /Login sowie deine Push- und Kalender-Abos sind entfernt/);
+	assert.match(text, /Dein Name bleibt in den bisherigen Einträgen/);
+	assert.ok(!text.includes('Anhänge'));
+});

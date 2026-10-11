@@ -42,6 +42,7 @@ const initialState = () => ({
 		limiterUnavailable?: boolean;
 		reset?: number;
 	},
+	dayLimitResult: { success: true } as { success: boolean; reset?: number },
 });
 let state = initialState();
 beforeEach(() => {
@@ -114,10 +115,13 @@ mock.module('@/core/infra/supabase-storage', {
 		},
 	},
 });
+const uploadSignDayLimiter = {};
 mock.module('@/core/rate-limit', {
 	namedExports: {
-		checkRateLimit: async () => state.limitResult,
+		checkRateLimit: async (limiter: unknown) =>
+			limiter === uploadSignDayLimiter ? state.dayLimitResult : state.limitResult,
 		uploadSignLimiter: {},
+		uploadSignDayLimiter,
 	},
 });
 mock.module('@/core/infra/s3', {
@@ -312,6 +316,20 @@ describe('upload sign s3 config contract', () => {
 			assert.equal(response.status, 503);
 			assert.equal((await response.json()).error, 'rate_limiter_unavailable');
 			assert.notEqual(response.headers.get('retry-after'), null);
+			assert.equal(response.headers.get('cache-control'), 'no-store');
+		} finally {
+			restore();
+		}
+	});
+
+	test('upload signing stops at the per-WG daily quota', async () => {
+		const restore = pinS3Env({});
+		try {
+			await useS3();
+			state.dayLimitResult = { success: false, reset: Date.now() + 60_000 };
+			const response = await post();
+			assert.equal(response.status, 429);
+			assert.equal((await response.json()).error, 'upload_sign_rate_limited');
 			assert.equal(response.headers.get('cache-control'), 'no-store');
 		} finally {
 			restore();

@@ -32,7 +32,11 @@ test('queued chore completion preserves the original due and assignee occurrence
 		now: Date.parse(expected.expectedNextDueAt),
 	});
 	assert.equal(action.idempotencyKey, key);
-	assert.deepEqual(getOfflineActionRequest(action).body, expected);
+	assert.deepEqual(getOfflineActionRequest(action).body, {
+		...expected,
+		// The tap time is replayed so the server records when the chore was done.
+		completedAt: expected.expectedNextDueAt,
+	});
 
 	const legacy = {
 		id: 'legacy',

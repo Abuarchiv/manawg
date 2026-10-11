@@ -106,7 +106,12 @@ mock.module('@/core/audit', {
 mock.module('@/core/db', {
 	namedExports: {
 		db: {
-			query: { calendarSubscriptions: { findFirst: async () => null } },
+			query: {
+				calendarSubscriptions: {
+					findFirst: async () =>
+						state.subscription && !state.subscription.revokedAt ? state.subscription : null,
+				},
+			},
 			delete: (table: unknown) => ({
 				where: (where: Condition) => ({
 					returning: async () => {
@@ -282,6 +287,20 @@ test('rotation retry returns the committed feed URL while audit is pending', asy
 	assert.equal(state.claims, 1);
 });
 
+test('a replay never stores the feed URL and follows a later rotation', async () => {
+	const { state, call } = harness({ subscription: activeSubscription() });
+	const first = await call('PATCH');
+	assert.match((await first.json()).subscription.feedUrl, /seed-1-token/);
+	assert.ok(!JSON.stringify(state.slot).includes('feedUrl'));
+	assert.ok(!JSON.stringify(state.slot).includes('seed-1'));
+	// Another rotation happens before the client retries the first request.
+	if (state.subscription) state.subscription.tokenSeed = 'seed-9';
+	const replay = await call('PATCH');
+	assert.equal(replay.status, 200);
+	assert.match((await replay.json()).subscription.feedUrl, /seed-9-token/);
+	assert.equal(state.seeds, 1);
+});
+
 test('failed replay publication rolls token rotation back', async () => {
 	const { state, call } = harness({ subscription: activeSubscription(), failReplayWrite: true });
 	const response = await call('PATCH');
@@ -314,6 +333,25 @@ test('revoke retry replays success after the subscription is already revoked', a
 	assert.equal(first.status, 200);
 	assert.ok(state.subscription?.revokedAt);
 	assert.equal(state.audits, 1);
+});
+
+test('older flat subscription response replays as HTTP 200 without rotating', async () => {
+	const { state, call } = harness({ subscription: activeSubscription() });
+	const body = {
+		subscription: { feedUrl: '/feed/old', createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+	};
+	state.slot = { body, expiresAt: new Date(Date.now() + 60_000) };
+	const response = await call('POST');
+	assert.equal(response.status, 200);
+	assert.deepEqual(await response.json(), {
+		subscription: {
+			feedUrl: '/feed/subscription-1/seed-0-token',
+			createdAt: '2026-01-01T00:00:00.000Z',
+			updatedAt: '2026-01-01T00:00:00.000Z',
+		},
+	});
+	assert.equal(state.seeds, 0);
+	assert.equal(state.audits, 0);
 });
 
 test('cached calendar credentials are not replayed after member detachment', async () => {

@@ -2,6 +2,7 @@ import 'server-only';
 
 import { db } from '@/core/db';
 import { wgs } from '@/core/db/schema';
+import { logApiError } from '@/core/infra/observability';
 import { listSupabaseImageFolders, listSupabaseImageObjects } from '@/core/infra/supabase-storage';
 import type { StoredImageObject } from '@/core/infra/supabase-storage';
 import { asc } from 'drizzle-orm';
@@ -43,10 +44,18 @@ async function sweepWgFolder(wgId: string, now: Date): Promise<number> {
 	await queueImageDeletions(orphans);
 	// A picture attached while the sweep was deciding is live now; queued, it would read as
 	// removed, so it comes off the queue again.
-	const attachedMeanwhile = await findWgReferencedImageKeys(wgId);
-	const rescued = orphans.filter((key) => attachedMeanwhile.has(key));
-	await dequeueImageDeletions(rescued);
-	return orphans.length - rescued.length;
+	// Retried once; if both tries fail, the cleanup cron's own live-reference check dequeues it.
+	for (let attempt = 1; attempt <= 2; attempt += 1) {
+		try {
+			const attachedMeanwhile = await findWgReferencedImageKeys(wgId);
+			const rescued = orphans.filter((key) => attachedMeanwhile.has(key));
+			await dequeueImageDeletions(rescued);
+			return orphans.length - rescued.length;
+		} catch (err) {
+			logApiError(`[orphan-uploads] rescue after queueing failed (attempt ${attempt})`, err);
+		}
+	}
+	return orphans.length;
 }
 
 /**
@@ -75,6 +84,13 @@ export async function sweepOrphanUploads(now = new Date()): Promise<{
 	];
 
 	let queuedTotal = 0;
-	for (const wgId of batch) queuedTotal += await sweepWgFolder(wgId, now);
+	for (const wgId of batch) {
+		// One broken folder must not stop the sweep of the others.
+		try {
+			queuedTotal += await sweepWgFolder(wgId, now);
+		} catch (err) {
+			logApiError('[orphan-uploads] sweeping a WG folder failed', err);
+		}
+	}
 	return { wgsChecked: batch.length, queued: queuedTotal };
 }

@@ -229,6 +229,8 @@ export const PATCH = withWgRoute<{ id: string }>(
 
 			const updateValues = {
 				...(activeChanged ? { deactivatedAt: active ? null : new Date() } : {}),
+				// A moved-out member keeps no push opt-in, same as account deletion.
+				...(activeChanged && !active ? { pushOptIn: false } : {}),
 				...(nameChanged ? { name } : {}),
 				...(returnName ? { name: returnName } : {}),
 			};

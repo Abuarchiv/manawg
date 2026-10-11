@@ -4,11 +4,16 @@ import { db, wgInvites, wgMembers } from '@/core/db';
 import { createWgInvite } from '@/core/db/wg-invites';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { conflict, serviceUnavailable, tooMany } from '@/core/http/api-errors';
+import { conflict, rateLimitResponse, serviceUnavailable } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { sendMail } from '@/core/mail/send-mail';
 import { renderInvitationMail } from '@/core/mail/templates';
-import { checkRateLimit, inviteMailLimiter } from '@/core/rate-limit';
+import {
+	checkRateLimit,
+	inviteMailAccountLimiter,
+	inviteMailLimiter,
+	inviteMailRecipientLimiter,
+} from '@/core/rate-limit';
 import { berlinDayKey } from '@/core/utils/berlin-day';
 import { and, asc, eq, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
@@ -35,8 +40,20 @@ export const POST = withWgRoute('invitations POST', async (req, { code }) => {
 	if (!auth.ok) return auth.response;
 	const wg = auth.wg;
 
-	const rl = await checkRateLimit(inviteMailLimiter, `invite-mail:${auth.member.memberId}`);
-	if (!rl.success) return tooMany('invite_rate_limited', 'invite_rate_limited');
+	const emailHash = createHash('sha256').update(parsed.data.email).digest('hex').slice(0, 32);
+	// Per member, per account (all WGs) and per recipient (all WGs); a limiter outage answers 503.
+	for (const [limiter, key] of [
+		[inviteMailLimiter, `invite-mail:${auth.member.memberId}`],
+		[inviteMailAccountLimiter, `invite-mail-account:${auth.authUserId}`],
+		[inviteMailRecipientLimiter, `invite-mail-recipient:${emailHash}`],
+	] as const) {
+		const limited = rateLimitResponse(
+			await checkRateLimit(limiter, key),
+			'invite_rate_limited',
+			'invite_rate_limited',
+		);
+		if (limited) return limited;
+	}
 
 	const members = await db
 		.select({ name: wgMembers.name })
@@ -46,7 +63,6 @@ export const POST = withWgRoute('invitations POST', async (req, { code }) => {
 
 	const invite = await createWgInvite(wg.id, auth.member.memberId);
 	if (!invite) return conflict('invite_limit_reached', 'invite_limit_reached');
-	const emailHash = createHash('sha256').update(parsed.data.email).digest('hex').slice(0, 32);
 	let result: Awaited<ReturnType<typeof sendMail>>;
 	try {
 		result = await sendMail({

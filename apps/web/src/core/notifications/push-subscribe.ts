@@ -4,12 +4,7 @@ import { apiFetch } from '@/core/infra/api-client';
 import { setPushOptOut } from '@/core/notifications/push-priming';
 
 function isStaleMembershipError(error: string): boolean {
-	return (
-		error === 'not_a_member' ||
-		error === 'member_id_required' ||
-		error === 'member_id_invalid' ||
-		error === 'member_not_found'
-	);
+	return error === 'not_a_member' || error === 'member_not_found';
 }
 
 function isRetryableServerError(status: number, error: string): boolean {
