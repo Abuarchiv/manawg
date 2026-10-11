@@ -1,4 +1,13 @@
-import { RATE_LIMITED_MESSAGE, isNetworkError, isRateLimited } from '@/core/http/error-codes';
+import {
+	RATE_LIMITED_MESSAGE,
+	READ_ONLY_MESSAGE,
+	SESSION_EXPIRED_MESSAGE,
+	isNetworkError,
+	isRateLimited,
+	isReadOnlyMode,
+	isRetryableServerError,
+	isSessionExpired,
+} from '@/core/http/error-codes';
 
 /** Offline, 429 and missing permission each need a concrete next step instead of the generic message. */
 export function eventSaveError(base: string, res: { status: number; error: string }): string {
@@ -17,6 +26,9 @@ export function eventSaveError(base: string, res: { status: number; error: strin
 		return 'Dieser Termin wurde inzwischen geändert. Die Ansicht wird aktualisiert.';
 	}
 	if (res.status === 404) return `${base}: Der Termin existiert nicht mehr.`;
+	if (isReadOnlyMode(res.error)) return `${base}: ${READ_ONLY_MESSAGE}`;
+	if (isSessionExpired(res.error)) return `${base}: ${SESSION_EXPIRED_MESSAGE}`;
+	if (isRetryableServerError(res.error, res.status)) return `${base}: Versuche es gleich erneut.`;
 	return `${base}.`;
 }
 

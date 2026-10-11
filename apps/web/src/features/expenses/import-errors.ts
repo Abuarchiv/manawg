@@ -1,4 +1,4 @@
-import { isRateLimited } from '@/core/http/error-codes';
+import { READ_ONLY_MESSAGE, isRateLimited, isRetryableServerError } from '@/core/http/error-codes';
 
 /**
  * German copy and the next step to offer for each error the import routes
@@ -21,6 +21,9 @@ const IMPORT_ERROR_MESSAGES: Readonly<Record<string, string>> = {
 	unexpected_error: 'Der Import konnte gerade nicht verarbeitet werden. Versuche es gleich erneut.',
 	server_error: 'Der Import konnte gerade nicht verarbeitet werden. Versuche es gleich erneut.',
 	db_error: 'Der Import konnte gerade nicht verarbeitet werden. Versuche es gleich erneut.',
+	service_unavailable:
+		'Der Import konnte gerade nicht verarbeitet werden. Versuche es gleich erneut.',
+	migration_read_only: READ_ONLY_MESSAGE,
 	wg_not_found: 'Die WG wurde nicht gefunden. Öffne den aktuellen WG-Link erneut.',
 	invalid_share_code: 'Der WG-Link ist ungültig. Öffne die WG erneut.',
 	auth_required: 'Öffne die WG erneut, damit deine Mitgliedschaft geladen wird.',
@@ -95,10 +98,8 @@ export function recoveryActionFor(
 	if (
 		error === 'Netzwerkfehler' ||
 		error === 'Failed to fetch' ||
-		isRateLimited(error) ||
-		error === 'unexpected_error' ||
-		error === 'server_error' ||
-		error === 'db_error'
+		error === 'migration_read_only' ||
+		isRetryableServerError(error)
 	) {
 		return {
 			kind: operation === 'preview' ? 'retry_preview' : 'retry_commit',

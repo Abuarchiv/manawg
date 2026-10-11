@@ -9,7 +9,19 @@ if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
 const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
 const host = process.env.NEXT_PUBLIC_POSTHOG_HOST;
 
-if (key && host === 'https://eu.i.posthog.com') {
+/**
+ * Analytics is not needed for the first paint: the ~90 kB SDK loads in idle time so it does
+ * not compete with the page's own chunks on slow mobile connections.
+ */
+function whenIdle(task: () => void): void {
+	if (typeof window.requestIdleCallback === 'function') {
+		window.requestIdleCallback(task, { timeout: 5000 });
+	} else {
+		window.setTimeout(task, 2000);
+	}
+}
+
+function loadAnalytics(key: string, host: string): void {
 	import('posthog-js')
 		.then(({ default: posthog }) => {
 			posthog.init(key, {
@@ -56,6 +68,10 @@ if (key && host === 'https://eu.i.posthog.com') {
 		.catch(() => {
 			console.warn('[manawg] Analytics initialization unavailable');
 		});
+}
+
+if (key && host === 'https://eu.i.posthog.com') {
+	whenIdle(() => loadAnalytics(key, host));
 } else if (process.env.NODE_ENV === 'development') {
 	for (const variable of [
 		...(key ? [] : ['NEXT_PUBLIC_POSTHOG_KEY']),
