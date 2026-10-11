@@ -1,6 +1,6 @@
 import { db, idempotencyResponses } from '@/core/db';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
-import { type SQL, and, eq, gt, lte, or, sql } from 'drizzle-orm';
+import { type SQL, and, eq, gt, or, sql } from 'drizzle-orm';
 
 // Response replay lives in Postgres, never in Redis: an empty UPSTASH_* configuration once let a
 // silently disabled Redis client wave duplicate expense inserts through.
@@ -149,16 +149,29 @@ export async function setReplayWarning(
 	return rows.length === 1;
 }
 
+const PURGE_BATCH_ROWS = 5000;
+const PURGE_BUDGET_MS = 3000;
+
 /**
  * Deletes idempotency rows whose `expiresAt` has passed.
  *
  * Readers already ignore expired rows; this keeps the table from growing without bound. Runs from
  * the maintenance cron; the `idempotency_responses_expires_idx` index keeps the delete cheap.
+ * The pool's 5 s statement_timeout would abort one unbounded delete after a long backlog, so the
+ * rows go in batches of {@link PURGE_BATCH_ROWS} within a time budget; the next run continues.
  */
 export async function purgeExpiredIdempotencyResponses(now: Date = new Date()): Promise<number> {
-	const deleted = await db
-		.delete(idempotencyResponses)
-		.where(lte(idempotencyResponses.expiresAt, now))
-		.returning({ key: idempotencyResponses.key });
-	return deleted.length;
+	const startedAt = Date.now();
+	let total = 0;
+	while (Date.now() - startedAt < PURGE_BUDGET_MS) {
+		const result = await db.execute(
+			sql`delete from idempotency_responses where ctid in (
+				select ctid from idempotency_responses where expires_at <= ${now} limit ${PURGE_BATCH_ROWS}
+			)`,
+		);
+		const deleted = result.rowCount ?? 0;
+		total += deleted;
+		if (deleted < PURGE_BATCH_ROWS) break;
+	}
+	return total;
 }

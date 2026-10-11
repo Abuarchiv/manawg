@@ -110,6 +110,42 @@ test('expense DELETE rechecks authorization and blocks an active capture under t
 	assert.equal(deleted, 0);
 });
 
+test('expense DELETE refuses an expense with a settled share of someone else', async () => {
+	let deleted = 0;
+	const tx = {
+		select: () => ({
+			from: (table: unknown) => ({
+				where: () => ({
+					limit: async () =>
+						table === expenses
+							? [{ paidByMemberId: CALLER_ID, description: 'Einkauf' }]
+							: [{ id: 'split-1' }],
+				}),
+			}),
+		}),
+		delete: () => ({
+			where: () => ({
+				returning: async () => {
+					deleted += 1;
+					return [{ id: EXPENSE_ID }];
+				},
+			}),
+		}),
+	};
+	env.payments = {
+		withExpensePaymentLock: async (
+			_wgId: string,
+			operation: (value: typeof tx) => Promise<unknown>,
+		) => operation(tx),
+		hasCapturingExpensePayment: async () => false,
+	} as never;
+
+	const response = await DELETE(jsonRequest('DELETE'), routeContext({ id: EXPENSE_ID }));
+	assert.equal(response.status, 409);
+	assert.equal(await errorOf(response), 'expense_has_settled_shares');
+	assert.equal(deleted, 0);
+});
+
 test('split settle authenticates before lookup and scopes expenses to the WG', async () => {
 	const foreignExpense = {
 		id: EXPENSE_ID,

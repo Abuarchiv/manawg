@@ -6,6 +6,7 @@ import {
 	EXPENSE_CATEGORY_LABELS,
 	type ExpenseCategory,
 } from './expense-categories';
+import type { ExpensePaymentInput } from './expense-payment-input';
 
 export interface StatementExpense {
 	id: string;
@@ -99,14 +100,17 @@ function buildCategories(
 
 /**
  * One month of a WG's expenses: what each member paid, their share, the
- * month balance (paid minus share) and the fewest transfers that clear it.
- * Balances count settled shares too, so a paid-off month still shows who
- * carried what. Only EUR expenses are counted.
+ * month balance (paid minus share, adjusted by the month's completed
+ * payments) and the fewest transfers that clear it. Balances count settled
+ * shares too, so a paid-off month still shows who carried what. Payments
+ * (PayPal, cash) never set `settledAt`, so they are netted against the open
+ * shares per debtor/payer pair. Only EUR expenses and payments are counted.
  */
 export function buildMonthlyStatement(
 	expenses: readonly StatementExpense[],
 	members: readonly StatementMemberInput[],
 	monthKey: string,
+	payments: readonly ExpensePaymentInput[] = [],
 ): MonthlyStatement {
 	const inMonth = expenses
 		.filter(
@@ -118,16 +122,36 @@ export function buildMonthlyStatement(
 
 	const paid = new Map<string, number>();
 	const share = new Map<string, number>();
-	let settled = true;
+	const adjustment = new Map<string, number>();
+	// Open (unsettled) amount per `debtor>payer` pair, reduced by payments below.
+	const openByPair = new Map<string, number>();
 	for (const expense of inMonth) {
 		paid.set(expense.paidByMemberId, (paid.get(expense.paidByMemberId) ?? 0) + expense.amountCents);
 		for (const split of expense.splits) {
 			share.set(split.debtorMemberId, (share.get(split.debtorMemberId) ?? 0) + split.amountCents);
 			if (split.debtorMemberId !== expense.paidByMemberId && split.settledAt === null) {
-				settled = false;
+				const pair = `${split.debtorMemberId}>${expense.paidByMemberId}`;
+				openByPair.set(pair, (openByPair.get(pair) ?? 0) + split.amountCents);
 			}
 		}
 	}
+	for (const payment of payments) {
+		if (
+			payment.amountCents <= 0 ||
+			normalizeCurrency(payment.currency) !== 'EUR' ||
+			!payment.completedAt ||
+			berlinMonthKey(new Date(payment.completedAt)) !== monthKey
+		) {
+			continue;
+		}
+		const { fromMemberId: from, toMemberId: to } = payment;
+		adjustment.set(from, (adjustment.get(from) ?? 0) + payment.amountCents);
+		adjustment.set(to, (adjustment.get(to) ?? 0) - payment.amountCents);
+		const pair = `${from}>${to}`;
+		if (openByPair.has(pair))
+			openByPair.set(pair, (openByPair.get(pair) ?? 0) - payment.amountCents);
+	}
+	const settled = [...openByPair.values()].every((cents) => cents <= 0);
 
 	const nameOf = (id: string) =>
 		members.find((member) => member.id === id)?.name ?? 'Ehemaliges Mitglied';
@@ -142,7 +166,7 @@ export function buildMonthlyStatement(
 				name: member.name,
 				paidCents,
 				shareCents,
-				balanceCents: paidCents - shareCents,
+				balanceCents: paidCents - shareCents + (adjustment.get(member.id) ?? 0),
 			};
 		});
 

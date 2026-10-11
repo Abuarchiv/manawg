@@ -114,15 +114,24 @@ const AUDIT = {
 	edit: { eventType: 'recurring.updated', action: 'hat die Fixkosten-Vorlage {d} aktualisiert.' },
 } as const;
 
-const EDIT_FIELDS = [
+/** The body fields that change the template itself; `paused` and `expectedNextDueAt` do not. */
+export const EDIT_FIELDS = [
 	'description',
 	'category',
 	'amountCents',
+	'currency',
 	'paidByMemberId',
 	'intervalMonths',
 	'nextDueAt',
 	'splits',
 ] as const;
+
+/** Whether a parsed PATCH body touches any template field (`currency` is validated by the routes). */
+export function hasEditFields(
+	edit: Partial<Record<(typeof EDIT_FIELDS)[number], unknown>>,
+): boolean {
+	return EDIT_FIELDS.some((field) => edit[field] !== undefined);
+}
 
 /**
  * Edit, pause or resume a template; that is the owner's (or an admin's) call. The update is a
@@ -158,8 +167,7 @@ export async function editRecurringTemplate(
 	const splitCheck = validateSplits(amountCents, splits);
 	if (!splitCheck.ok) return badRequest(splitValidationErrorCode(splitCheck.reason));
 
-	const onlyPause =
-		edit.paused !== undefined && EDIT_FIELDS.every((field) => edit[field] === undefined);
+	const onlyPause = edit.paused !== undefined && !hasEditFields(edit);
 	const memberIds = Array.from(new Set([paidByMemberId, ...splits.map((s) => s.debtorMemberId)]));
 	const memberRows = await db
 		.select({ id: wgMembers.id })
@@ -211,11 +219,14 @@ export async function editRecurringTemplate(
 		.where(
 			and(
 				byId,
+				// Pause and resume rewrite every field from the loaded snapshot, so they
+				// compare the due date too: a booking or edit in between must not be undone.
+				eq(recurringExpenses.nextDueAt, template.nextDueAt),
 				transition === 'pause'
 					? isNull(recurringExpenses.pausedAt)
 					: transition === 'resume'
 						? isNotNull(recurringExpenses.pausedAt)
-						: eq(recurringExpenses.nextDueAt, template.nextDueAt),
+						: undefined,
 			),
 		)
 		.returning();
@@ -223,7 +234,10 @@ export async function editRecurringTemplate(
 		const [current] = await db.select().from(recurringExpenses).where(byId).limit(1);
 		if (!current) return notFound('recurring_expense_not_found');
 		// A concurrent request already paused or resumed it.
-		if (transition !== null) {
+		if (
+			(transition === 'pause' && current.pausedAt !== null) ||
+			(transition === 'resume' && current.pausedAt === null)
+		) {
 			return NextResponse.json({ recurringExpense: serializeRecurringExpense(current) });
 		}
 		return conflict('recurring_expense_changed', 'recurring_expense_changed');

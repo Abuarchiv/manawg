@@ -10,15 +10,17 @@ export async function loadCompletedExpensePayments(
 	wgId: string,
 	client: typeof db | DbTransaction = db,
 ): Promise<ExpensePaymentInput[]> {
-	return client
+	const rows = await client
 		.select({
 			fromMemberId: expensePayments.fromMemberId,
 			toMemberId: expensePayments.toMemberId,
 			amountCents: expensePayments.amountCents,
 			currency: expensePayments.currency,
+			completedAt: expensePayments.completedAt,
 		})
 		.from(expensePayments)
 		.where(and(eq(expensePayments.wgId, wgId), eq(expensePayments.status, 'completed')));
+	return rows.map((row) => ({ ...row, completedAt: row.completedAt?.toISOString() ?? null }));
 }
 
 function activeExpensePaymentCondition(wgId: string, now = new Date()) {
