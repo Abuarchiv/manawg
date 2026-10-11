@@ -7,7 +7,7 @@ import {
 	badRequest,
 	conflict,
 	notFound,
-	tooMany,
+	rateLimitResponse,
 	unreadableJsonBody,
 } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
@@ -52,11 +52,10 @@ export const POST = withWgRoute<{ id: string }>(
 		if (!auth.ok) return auth.response;
 		const wgId = auth.wg.id;
 
-		const limited = await checkRateLimit(
-			wgWriteLimiter,
-			`chat-react:${wgId}:${auth.member.memberId}`,
+		const limited = rateLimitResponse(
+			await checkRateLimit(wgWriteLimiter, `chat-react:${wgId}:${auth.member.memberId}`),
 		);
-		if (!limited.success) return tooMany();
+		if (limited) return limited;
 
 		const messageCheck = await ensureMessage(id, wgId);
 		if (!messageCheck.exists) return notFound('message_not_found');
@@ -95,11 +94,10 @@ export const DELETE = withWgRoute<{ id: string }>(
 		if (!auth.ok) return auth.response;
 		const wgId = auth.wg.id;
 
-		const limited = await checkRateLimit(
-			wgWriteLimiter,
-			`chat-react:${wgId}:${auth.member.memberId}`,
+		const limited = rateLimitResponse(
+			await checkRateLimit(wgWriteLimiter, `chat-react:${wgId}:${auth.member.memberId}`),
 		);
-		if (!limited.success) return tooMany();
+		if (limited) return limited;
 
 		const messageCheck = await ensureMessage(id, wgId);
 		if (!messageCheck.exists) return notFound('message_not_found');

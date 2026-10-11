@@ -4,7 +4,14 @@ import { bodyCodec, withIdempotentWrite } from '@/core/db/idempotent-write';
 import { TransactionAbort } from '@/core/db/transaction';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, forbidden, notFound, serverError, tooMany } from '@/core/http/api-errors';
+import {
+	badRequest,
+	forbidden,
+	notFound,
+	rateLimitResponse,
+	serverError,
+	tooMany,
+} from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey } from '@/core/idempotency-store';
 import { logApiError } from '@/core/infra/observability';
@@ -242,11 +249,10 @@ export const PATCH = withWgRoute('recurring-expenses PATCH', async (req, { code 
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
 	const wg = auth.wg;
-	const limited = await checkRateLimit(
-		wgWriteLimiter,
-		`recurring-expense:${wg.id}:${auth.member.memberId}`,
+	const limited = rateLimitResponse(
+		await checkRateLimit(wgWriteLimiter, `recurring-expense:${wg.id}:${auth.member.memberId}`),
 	);
-	if (!limited.success) return tooMany();
+	if (limited) return limited;
 	const rows = await db
 		.select()
 		.from(recurringExpenses)
@@ -266,11 +272,10 @@ export const DELETE = withWgRoute('recurring-expenses DELETE', async (req, { cod
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
 	const wg = auth.wg;
-	const limited = await checkRateLimit(
-		wgWriteLimiter,
-		`recurring-expense:${wg.id}:${auth.member.memberId}`,
+	const limited = rateLimitResponse(
+		await checkRateLimit(wgWriteLimiter, `recurring-expense:${wg.id}:${auth.member.memberId}`),
 	);
-	if (!limited.success) return tooMany();
+	if (limited) return limited;
 
 	return deleteRecurringTemplate({ wgId: wg.id, member: auth.member }, parsed.data.id);
 });

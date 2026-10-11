@@ -132,7 +132,7 @@ const nameDup = await call(
 	{ 'idempotency-key': randomUUID() },
 );
 expect(nameDup.status === 409, 'S2 Name gleich (case-insensitive) = 409', JSON.stringify(nameDup));
-// S10 Parallel-Beitritt bei max_uses
+// S10 concurrent join at max_uses
 const inv2 = await call(A, 'POST', `/api/wg/${code}/invites`, {});
 const tok2 = inv2.body.url.split('/').pop();
 sql(`update wg_invites set max_uses=1 where token='${tok2}'`);
@@ -246,13 +246,13 @@ const sum = sql(
 	`select (select coalesce(sum(es.amount_cents),0) from expense_splits es join expenses e on e.id=es.expense_id where e.wg_id=w.id)-(select coalesce(sum(amount_cents),0) from expenses where wg_id=w.id) from wgs w where share_code='${code}'`,
 );
 expect(+sum === 0, 'S3 Summe aller Splits = Summe aller Ausgaben (DB)', sum);
-// Fremde Ausgabe löschen als Nicht-Mitglied
+// Delete a foreign expense as a non-member
 const eid = e1.body.expense?.id;
 expect(
 	(await call(notJoined[0], 'DELETE', `/api/wg/${code}/expenses/${eid}`)).status >= 400,
 	'S6 Nicht-Mitglied kann Ausgabe nicht löschen',
 );
-// Cross-WG: B legt eigene WG an, versucht A-Ausgabe über seine WG-Adresse anzufassen
+// Cross-WG: B creates an own WG and tries to touch A's expense via its own WG address
 const wB = await call(
 	B,
 	'POST',
@@ -328,7 +328,7 @@ const empty = await call(
 	{ 'idempotency-key': randomUUID() },
 );
 expect(empty.status === 400, 'S5 leere Nachricht = 400', JSON.stringify(empty));
-// S7 Übernahme
+// S7 profile takeover
 const unl = sql(
 	`insert into wg_members (wg_id,name,color,role) select id,'AltMitglied','#ff0000','member' from wgs where share_code='${code}' returning id`,
 ).split('\n')[0];
@@ -358,7 +358,7 @@ expect(
 	'S7 bereits verknüpftes Mitglied nicht übernehmbar',
 	JSON.stringify(again),
 );
-// S8 Konto löschen
+// S8 delete account
 const _delA = await call(B, 'DELETE', '/api/account', {});
 const _stillB = await call(B, 'GET', '/api/wg/mine');
 for (const entry of bugs) console.log('-', entry);

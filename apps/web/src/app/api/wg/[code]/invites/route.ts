@@ -3,7 +3,7 @@ import { db, wgInvites, wgMembers } from '@/core/db';
 import { activeInvitesOf, createWgInvite } from '@/core/db/wg-invites';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { conflict, tooMany } from '@/core/http/api-errors';
+import { conflict, rateLimitResponse } from '@/core/http/api-errors';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { invitePath } from '@/core/utils/invite-token';
 import { desc, eq } from 'drizzle-orm';
@@ -33,11 +33,12 @@ export const POST = withWgRoute('invites POST', async (req, { code }) => {
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
 	const wgId = auth.wg.id;
-	const rate = await checkRateLimit(
-		wgWriteLimiter,
-		`invite-create:${wgId}:${auth.member.memberId}`,
+	const rate = rateLimitResponse(
+		await checkRateLimit(wgWriteLimiter, `invite-create:${wgId}:${auth.member.memberId}`),
+		'rate_limited',
+		'rate_limited',
 	);
-	if (!rate.success) return tooMany('rate_limited', 'rate_limited');
+	if (rate) return rate;
 
 	const invite = await createWgInvite(wgId, auth.member.memberId);
 	if (!invite) return conflict('invite_limit_reached', 'invite_limit_reached');

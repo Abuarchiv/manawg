@@ -10,7 +10,7 @@ import {
 import { type DbTransaction, TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { serverError, tooMany } from '@/core/http/api-errors';
+import { rateLimitResponse, serverError } from '@/core/http/api-errors';
 import { readIdempotencyKey } from '@/core/idempotency-store';
 import { checkRateLimit, clientIpKey, wgReadLimiter, wgWriteLimiter } from '@/core/rate-limit';
 import {
@@ -133,8 +133,11 @@ function findActiveSubscription(wgId: string, memberId: string) {
 }
 
 export const GET = withWgRoute('calendar subscription GET', async (req, { code }) => {
-	const limit = await checkRateLimit(wgReadLimiter, `calendar-subscription:${clientIpKey(req)}`);
-	if (!limit.success) return tooMany('rate_limited');
+	const limit = rateLimitResponse(
+		await checkRateLimit(wgReadLimiter, `calendar-subscription:${clientIpKey(req)}`),
+		'rate_limited',
+	);
+	if (limit) return limit;
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
 	const row = await findActiveSubscription(auth.wg.id, auth.member.memberId);
@@ -147,11 +150,14 @@ export const GET = withWgRoute('calendar subscription GET', async (req, { code }
 export const POST = withWgRoute('calendar subscription POST', async (req, { code }) => {
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
-	const limit = await checkRateLimit(
-		wgWriteLimiter,
-		`calendar-subscription:${auth.wg.id}:${auth.member.memberId}`,
+	const limit = rateLimitResponse(
+		await checkRateLimit(
+			wgWriteLimiter,
+			`calendar-subscription:${auth.wg.id}:${auth.member.memberId}`,
+		),
+		'rate_limited',
 	);
-	if (!limit.success) return tooMany('rate_limited');
+	if (limit) return limit;
 
 	return withCalendarMutation(
 		req,
@@ -222,11 +228,14 @@ export const POST = withWgRoute('calendar subscription POST', async (req, { code
 export const PATCH = withWgRoute('calendar subscription PATCH', async (req, { code }) => {
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
-	const limit = await checkRateLimit(
-		wgWriteLimiter,
-		`calendar-subscription:${auth.wg.id}:${auth.member.memberId}`,
+	const limit = rateLimitResponse(
+		await checkRateLimit(
+			wgWriteLimiter,
+			`calendar-subscription:${auth.wg.id}:${auth.member.memberId}`,
+		),
+		'rate_limited',
 	);
-	if (!limit.success) return tooMany('rate_limited');
+	if (limit) return limit;
 
 	return withCalendarMutation(
 		req,
@@ -266,11 +275,14 @@ export const PATCH = withWgRoute('calendar subscription PATCH', async (req, { co
 export const DELETE = withWgRoute('calendar subscription DELETE', async (req, { code }) => {
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
-	const limit = await checkRateLimit(
-		wgWriteLimiter,
-		`calendar-subscription:${auth.wg.id}:${auth.member.memberId}`,
+	const limit = rateLimitResponse(
+		await checkRateLimit(
+			wgWriteLimiter,
+			`calendar-subscription:${auth.wg.id}:${auth.member.memberId}`,
+		),
+		'rate_limited',
 	);
-	if (!limit.success) return tooMany('rate_limited');
+	if (limit) return limit;
 
 	return withCalendarMutation(
 		req,

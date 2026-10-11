@@ -6,7 +6,13 @@ import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, conflict, forbidden, notFound, tooMany } from '@/core/http/api-errors';
+import {
+	badRequest,
+	conflict,
+	forbidden,
+	notFound,
+	rateLimitResponse,
+} from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { canEditMessage, sanitizeMessageBody } from '@/features/chat/chat-pure';
@@ -35,11 +41,10 @@ export const PATCH = withWgRoute<{ id: string }>(
 		const auth = await requireWgMember(req, code);
 		if (!auth.ok) return auth.response;
 		const wgId = auth.wg.id;
-		const limited = await checkRateLimit(
-			wgWriteLimiter,
-			`chat-edit:${wgId}:${auth.member.memberId}`,
+		const limited = rateLimitResponse(
+			await checkRateLimit(wgWriteLimiter, `chat-edit:${wgId}:${auth.member.memberId}`),
 		);
-		if (!limited.success) return tooMany();
+		if (limited) return limited;
 
 		const existing = await db
 			.select()
@@ -103,11 +108,10 @@ export const DELETE = withWgRoute<{ id: string }>(
 		const auth = await requireWgMember(req, code);
 		if (!auth.ok) return auth.response;
 		const wgId = auth.wg.id;
-		const limited = await checkRateLimit(
-			wgWriteLimiter,
-			`chat-delete:${wgId}:${auth.member.memberId}`,
+		const limited = rateLimitResponse(
+			await checkRateLimit(wgWriteLimiter, `chat-delete:${wgId}:${auth.member.memberId}`),
 		);
-		if (!limited.success) return tooMany();
+		if (limited) return limited;
 
 		const deletion = await withTransaction(async (tx) => {
 			await lockExpensePayments(tx, wgId);

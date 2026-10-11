@@ -10,7 +10,13 @@ import type { ShoppingItem } from '@/core/db/schema';
 import { isWgAdmin } from '@/core/guards/admin';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { conflict, forbidden, serverError, tooMany } from '@/core/http/api-errors';
+import {
+	conflict,
+	forbidden,
+	rateLimitResponse,
+	serverError,
+	tooMany,
+} from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
 import { readListLimit } from '@/core/infra/env';
@@ -202,11 +208,10 @@ export const DELETE = withWgRoute('shopping DELETE', async (req, { code }) => {
 		return forbidden('not_admin', 'not_admin');
 	}
 
-	const limited = await checkRateLimit(
-		wgWriteLimiter,
-		`shopping:clear-bought:${wgId}:${auth.member.memberId}`,
+	const limited = rateLimitResponse(
+		await checkRateLimit(wgWriteLimiter, `shopping:clear-bought:${wgId}:${auth.member.memberId}`),
 	);
-	if (!limited.success) return tooMany();
+	if (limited) return limited;
 
 	const deleted = await db
 		.delete(shoppingItems)

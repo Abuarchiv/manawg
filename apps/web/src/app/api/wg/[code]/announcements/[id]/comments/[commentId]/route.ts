@@ -4,7 +4,7 @@ import { isWgAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, forbidden, notFound, tooMany } from '@/core/http/api-errors';
+import { badRequest, forbidden, notFound, rateLimitResponse } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { and, eq } from 'drizzle-orm';
@@ -56,11 +56,10 @@ export const PATCH = withWgRoute<{ id: string; commentId: string }>(
 		const auth = await requireWgMember(req, code);
 		if (!auth.ok) return auth.response;
 		const wgId = auth.wg.id;
-		const limited = await checkRateLimit(
-			wgWriteLimiter,
-			`comment-edit:${wgId}:${auth.member.memberId}`,
+		const limited = rateLimitResponse(
+			await checkRateLimit(wgWriteLimiter, `comment-edit:${wgId}:${auth.member.memberId}`),
 		);
-		if (!limited.success) return tooMany();
+		if (limited) return limited;
 
 		const owner = await assertCommentOwner(wgId, id, commentId, auth.member.memberId);
 		if (owner.status !== 'ok') {
@@ -95,11 +94,10 @@ export const DELETE = withWgRoute<{ id: string; commentId: string }>(
 		const auth = await requireWgMember(req, code);
 		if (!auth.ok) return auth.response;
 		const wgId = auth.wg.id;
-		const limited = await checkRateLimit(
-			wgWriteLimiter,
-			`comment-delete:${wgId}:${auth.member.memberId}`,
+		const limited = rateLimitResponse(
+			await checkRateLimit(wgWriteLimiter, `comment-delete:${wgId}:${auth.member.memberId}`),
 		);
-		if (!limited.success) return tooMany();
+		if (limited) return limited;
 
 		const owner = await assertCommentOwner(wgId, id, commentId, auth.member.memberId, true);
 		if (owner.status !== 'ok') {

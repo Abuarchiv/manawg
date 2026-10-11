@@ -4,7 +4,13 @@ import { responseCodec, withIdempotentWrite } from '@/core/db/idempotent-write';
 import { TransactionAbort } from '@/core/db/transaction';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, serverError, serviceUnavailable, tooMany } from '@/core/http/api-errors';
+import {
+	badRequest,
+	rateLimitResponse,
+	serverError,
+	serviceUnavailable,
+	tooMany,
+} from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
@@ -52,8 +58,11 @@ function normalizeRecurrence(value: string | null | undefined): string | null {
 }
 
 export const GET = withWgRoute('events GET', async (req, { code }) => {
-	const limit = await checkRateLimit(wgReadLimiter, `events:${clientIpKey(req)}`);
-	if (!limit.success) return tooMany('rate_limited');
+	const limit = rateLimitResponse(
+		await checkRateLimit(wgReadLimiter, `events:${clientIpKey(req)}`),
+		'rate_limited',
+	);
+	if (limit) return limit;
 
 	const url = new URL(req.url);
 	const fromParam = url.searchParams.get('from');

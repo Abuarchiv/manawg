@@ -12,7 +12,7 @@ import {
 	conflict,
 	forbidden,
 	notFound,
-	tooMany,
+	rateLimitResponse,
 	unauthorized,
 } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
@@ -140,11 +140,10 @@ export const PATCH = withWgRoute<{ id: string }>(
 		const auth = await requireWgMember(req, code);
 		if (!auth.ok) return auth.response;
 		const wgId = auth.wg.id;
-		const limited = await checkRateLimit(
-			wgWriteLimiter,
-			`member-update:${wgId}:${auth.member.memberId}`,
+		const limited = rateLimitResponse(
+			await checkRateLimit(wgWriteLimiter, `member-update:${wgId}:${auth.member.memberId}`),
 		);
-		if (!limited.success) return tooMany();
+		if (limited) return limited;
 
 		const result = await withExpensePaymentLock(wgId, async (tx) => {
 			const actor = await lockActiveAccountMember(tx, wgId, auth.member.memberId, auth.authUserId);

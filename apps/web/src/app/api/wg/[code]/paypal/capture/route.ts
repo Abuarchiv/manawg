@@ -2,7 +2,7 @@ import { db, expensePayments, wgMembers } from '@/core/db';
 import { lockActiveAccountMember } from '@/core/db/account-deletion';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { conflict, forbidden, serverError, tooMany } from '@/core/http/api-errors';
+import { conflict, forbidden, rateLimitResponse, serverError } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { logApiError } from '@/core/infra/observability';
 import {
@@ -41,11 +41,10 @@ export const POST = withWgRoute('paypal capture POST', async (req, { code }) => 
 
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
-	const limited = await checkRateLimit(
-		wgWriteLimiter,
-		`paypal-capture:${auth.wg.id}:${auth.member.memberId}`,
+	const limited = rateLimitResponse(
+		await checkRateLimit(wgWriteLimiter, `paypal-capture:${auth.wg.id}:${auth.member.memberId}`),
 	);
-	if (!limited.success) return tooMany();
+	if (limited) return limited;
 
 	try {
 		const [payment] = await db

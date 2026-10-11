@@ -2,7 +2,7 @@ import { db, wgChatMessages, wgChatReads } from '@/core/db';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, notFound, tooMany } from '@/core/http/api-errors';
+import { badRequest, notFound, rateLimitResponse } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { chatReadLimiter, checkRateLimit } from '@/core/rate-limit';
 import { buildChatReadMarkerSetWhere } from '@/features/chat/server/chat-read-query';
@@ -23,11 +23,10 @@ export const POST = withWgRoute('chat read POST', async (req, { code }) => {
 	if (!auth.ok) return auth.response;
 	const wgId = auth.wg.id;
 
-	const limited = await checkRateLimit(
-		chatReadLimiter,
-		`chat-read:${wgId}:${auth.member.memberId}`,
+	const limited = rateLimitResponse(
+		await checkRateLimit(chatReadLimiter, `chat-read:${wgId}:${auth.member.memberId}`),
 	);
-	if (!limited.success) return tooMany();
+	if (limited) return limited;
 
 	const messageId = parsed.data.lastReadMessageId;
 	if (messageId) {

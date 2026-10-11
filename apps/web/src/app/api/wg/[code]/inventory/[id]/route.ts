@@ -5,7 +5,7 @@ import type { WgInventoryItem } from '@/core/db/schema';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, conflict, notFound, tooMany } from '@/core/http/api-errors';
+import { badRequest, conflict, notFound, rateLimitResponse, tooMany } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey } from '@/core/idempotency-store';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
@@ -179,11 +179,10 @@ export const DELETE = withWgRoute<{ id: string }>('inventory DELETE', async (req
 	if (!auth.ok) return auth.response;
 	const wgId = auth.wg.id;
 
-	const limitedDelete = await checkRateLimit(
-		wgWriteLimiter,
-		`inventory-delete:${wgId}:${auth.member.memberId}`,
+	const limitedDelete = rateLimitResponse(
+		await checkRateLimit(wgWriteLimiter, `inventory-delete:${wgId}:${auth.member.memberId}`),
 	);
-	if (!limitedDelete.success) return tooMany();
+	if (limitedDelete) return limitedDelete;
 
 	const deleted = await db
 		.delete(wgInventoryItems)

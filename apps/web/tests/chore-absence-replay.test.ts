@@ -140,6 +140,8 @@ mock.module('@/core/http/api-errors', {
 		payloadTooLarge: () => jsonError('payload_too_large', 413),
 		serverError: (code: string) => jsonError(code, 500),
 		tooMany: () => jsonError('too_many', 429),
+		rateLimitResponse: (result: { success: boolean }) =>
+			result.success ? null : jsonError('too_many', 429),
 	},
 });
 mock.module('@/core/guards/admin', {

@@ -3,13 +3,7 @@ import { withIdempotentWrite } from '@/core/db/idempotent-write';
 import { TransactionAbort } from '@/core/db/transaction';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import {
-	badRequest,
-	forbidden,
-	rateLimitResponse,
-	serverError,
-	tooMany,
-} from '@/core/http/api-errors';
+import { badRequest, forbidden, rateLimitResponse, serverError } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
 import { logApiError } from '@/core/infra/observability';
@@ -48,11 +42,11 @@ export const GET = withWgRoute('expenses GET', async (req, { code }) => {
 
 	// Per-member bucket on top of the middleware's per-IP read limit: this
 	// returns the WG's whole expense history.
-	const limit = await checkRateLimit(
-		expensesReadLimiter,
-		`expenses:${wgId}:${auth.member.memberId}`,
+	const limit = rateLimitResponse(
+		await checkRateLimit(expensesReadLimiter, `expenses:${wgId}:${auth.member.memberId}`),
+		'rate_limited',
 	);
-	if (!limit.success) return tooMany('rate_limited');
+	if (limit) return limit;
 
 	const rows = await db
 		.select()

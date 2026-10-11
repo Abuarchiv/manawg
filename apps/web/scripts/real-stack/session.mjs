@@ -28,7 +28,7 @@ await fetch(`${SB}/auth/v1/admin/users`, {
 const browser = await chromium.launch();
 const c = await browser.newContext({ ...devices['iPhone 13'], baseURL: BASE });
 const p = await c.newPage();
-// 1 Passwort-Login falsch/richtig
+// 1 password login wrong/right
 await p.goto('/neu');
 await p.getByRole('tab', { name: 'Passwort' }).click();
 await p.getByLabel('E-Mail-Adresse').fill(email);
@@ -40,7 +40,7 @@ if (!/E-Mail oder Passwort/.test(await p.locator('main').innerText()))
 await p.locator('#auth-password').fill(pw);
 await p.getByRole('button', { name: 'Anmelden', exact: true }).click();
 await wait(2500);
-// 2 abgelaufenes Access-Token: Server muss per Refresh-Token erneuern
+// 2 expired access token: the server has to renew it via the refresh token
 const ck = await c.cookies();
 const tokenCookie = ck.find((x) => /^sb-.*-auth-token$/.test(x.name));
 const raw = decodeURIComponent(tokenCookie.value).replace(/^base64-/, '');
@@ -63,7 +63,7 @@ const s2 = JSON.parse(
 	Buffer.from(decodeURIComponent(t2.value).replace(/^base64-/, ''), 'base64').toString(),
 );
 if (s2.access_token === sess.access_token) bug('abgelaufenes Token wurde nicht erneuert');
-// 3 Passwort vergessen
+// 3 forgot password
 const p2 = await (await browser.newContext({ ...devices['iPhone 13'], baseURL: BASE })).newPage();
 await p2.goto('/neu');
 await p2.getByRole('tab', { name: 'Passwort' }).click();

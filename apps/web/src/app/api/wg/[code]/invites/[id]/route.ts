@@ -3,7 +3,7 @@ import { db, wgInvites } from '@/core/db';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, notFound, tooMany } from '@/core/http/api-errors';
+import { badRequest, notFound, rateLimitResponse } from '@/core/http/api-errors';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { and, eq, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
@@ -14,11 +14,12 @@ export const DELETE = withWgRoute<{ id: string }>('invites DELETE', async (req, 
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
 	const wgId = auth.wg.id;
-	const rate = await checkRateLimit(
-		wgWriteLimiter,
-		`invite-revoke:${wgId}:${auth.member.memberId}`,
+	const rate = rateLimitResponse(
+		await checkRateLimit(wgWriteLimiter, `invite-revoke:${wgId}:${auth.member.memberId}`),
+		'rate_limited',
+		'rate_limited',
 	);
-	if (!rate.success) return tooMany('rate_limited', 'rate_limited');
+	if (rate) return rate;
 
 	const revoked = await db
 		.update(wgInvites)

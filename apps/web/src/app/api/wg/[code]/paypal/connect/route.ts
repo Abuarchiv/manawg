@@ -7,8 +7,8 @@ import {
 	badRequest,
 	conflict,
 	notFound,
+	rateLimitResponse,
 	serverError,
-	tooMany,
 	unauthorized,
 	unreadableJsonBody,
 } from '@/core/http/api-errors';
@@ -60,11 +60,10 @@ export const GET = withWgRoute<{ code: string }>('paypal connect GET', async (re
 	const config = getPayPalOnboardingConfig();
 	if (!config) return noStoreResponse({ available: false, connected: false });
 	// The status check calls PayPal, so it gets its own per-member bucket.
-	const limited = await checkRateLimit(
-		wgReadLimiter,
-		`paypal-status:${auth.wg.id}:${auth.member.memberId}`,
+	const limited = rateLimitResponse(
+		await checkRateLimit(wgReadLimiter, `paypal-status:${auth.wg.id}:${auth.member.memberId}`),
 	);
-	if (!limited.success) return tooMany();
+	if (limited) return limited;
 
 	try {
 		const [member] = await db
@@ -108,11 +107,10 @@ export const POST = withWgRoute<{ code: string }>('paypal connect POST', async (
 
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
-	const limited = await checkRateLimit(
-		wgWriteLimiter,
-		`paypal-connect:${auth.wg.id}:${auth.member.memberId}`,
+	const limited = rateLimitResponse(
+		await checkRateLimit(wgWriteLimiter, `paypal-connect:${auth.wg.id}:${auth.member.memberId}`),
 	);
-	if (!limited.success) return tooMany();
+	if (limited) return limited;
 
 	// Needs no PayPal call, so a member can still remove the stored ID after the integration is off.
 	if (disconnect.success) {

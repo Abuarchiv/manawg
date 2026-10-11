@@ -20,7 +20,7 @@ import {
 } from '@/composition/export-queries';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { readShareCode } from '@/core/guards/route-preamble';
-import { badRequest, serverError, tooMany } from '@/core/http/api-errors';
+import { badRequest, rateLimitResponse, serverError } from '@/core/http/api-errors';
 import type { RouteCtx } from '@/core/infra/api-types';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, wgExportLimiter } from '@/core/rate-limit';
@@ -145,8 +145,11 @@ export async function GET(
 
 		// Keyed per member rather than per IP: a whole WG can sit behind one NAT,
 		// and one member's export budget must not lock out their flatmates.
-		const limit = await checkRateLimit(wgExportLimiter, `export:${wg.id}:${auth.member.memberId}`);
-		if (!limit.success) return tooMany('rate_limited');
+		const limit = rateLimitResponse(
+			await checkRateLimit(wgExportLimiter, `export:${wg.id}:${auth.member.memberId}`),
+			'rate_limited',
+		);
+		if (limit) return limit;
 
 		if (wantsCountsOnly(req)) {
 			return NextResponse.json({ counts: await countExportSections(wg.id) });

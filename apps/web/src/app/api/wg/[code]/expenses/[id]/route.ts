@@ -13,8 +13,8 @@ import {
 	conflict,
 	forbidden,
 	notFound,
+	rateLimitResponse,
 	serverError,
-	tooMany,
 } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { logApiError } from '@/core/infra/observability';
@@ -59,8 +59,10 @@ export const DELETE = withWgRoute<{ id: string }>('expense DELETE', async (req, 
 	if (!auth.ok) return auth.response;
 	const wgId = auth.wg.id;
 
-	const limited = await checkRateLimit(wgWriteLimiter, `expense:${wgId}:${auth.member.memberId}`);
-	if (!limited.success) return tooMany();
+	const limited = rateLimitResponse(
+		await checkRateLimit(wgWriteLimiter, `expense:${wgId}:${auth.member.memberId}`),
+	);
+	if (limited) return limited;
 
 	// Allow deletion by: the original payer OR any debtor in the expense splits.
 	// This lets victims of fake expenses remove them without being the payer.
@@ -193,8 +195,10 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 	const wgId = auth.wg.id;
 	if (!isAllowedImageUrlForWg(imageUrl, wgId)) return badRequest('image_invalid');
 
-	const limited = await checkRateLimit(wgWriteLimiter, `expense:${wgId}:${auth.member.memberId}`);
-	if (!limited.success) return tooMany();
+	const limited = rateLimitResponse(
+		await checkRateLimit(wgWriteLimiter, `expense:${wgId}:${auth.member.memberId}`),
+	);
+	if (limited) return limited;
 
 	const existing = await db
 		.select({

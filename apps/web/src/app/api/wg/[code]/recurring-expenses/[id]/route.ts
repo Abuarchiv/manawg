@@ -2,7 +2,7 @@ import { db, recurringExpenses } from '@/core/db';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, notFound, tooMany } from '@/core/http/api-errors';
+import { badRequest, notFound, rateLimitResponse } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
@@ -83,11 +83,10 @@ export const PATCH = withWgRoute<{ id: string }>(
 		const auth = await requireWgMember(req, code);
 		if (!auth.ok) return auth.response;
 		const wgId = auth.wg.id;
-		const limited = await checkRateLimit(
-			wgWriteLimiter,
-			`recurring-expense:${wgId}:${auth.member.memberId}`,
+		const limited = rateLimitResponse(
+			await checkRateLimit(wgWriteLimiter, `recurring-expense:${wgId}:${auth.member.memberId}`),
 		);
-		if (!limited.success) return tooMany();
+		if (limited) return limited;
 
 		const rows = await db
 			.select()
@@ -110,11 +109,10 @@ export const DELETE = withWgRoute<{ id: string }>(
 		const auth = await requireWgMember(req, code);
 		if (!auth.ok) return auth.response;
 		const wgId = auth.wg.id;
-		const limited = await checkRateLimit(
-			wgWriteLimiter,
-			`recurring-expense:${wgId}:${auth.member.memberId}`,
+		const limited = rateLimitResponse(
+			await checkRateLimit(wgWriteLimiter, `recurring-expense:${wgId}:${auth.member.memberId}`),
 		);
-		if (!limited.success) return tooMany();
+		if (limited) return limited;
 
 		return deleteRecurringTemplate({ wgId, member: auth.member }, id);
 	},

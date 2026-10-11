@@ -1,7 +1,12 @@
 import { calendarSubscriptions, wgEvents, wgMembers, wgs } from '@/core/db';
 import { withTransaction } from '@/core/db/transaction';
 import { isUuid } from '@/core/guards/api-auth';
-import { notFound, serverError, serviceUnavailable, tooMany } from '@/core/http/api-errors';
+import {
+	notFound,
+	rateLimitResponse,
+	serverError,
+	serviceUnavailable,
+} from '@/core/http/api-errors';
 import type { RouteCtx } from '@/core/infra/api-types';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, clientIpKey, wgReadLimiter } from '@/core/rate-limit';
@@ -50,8 +55,11 @@ export async function GET(
 	const { id, token } = await ctx.params;
 	if (!isUuid(id) || !isCalendarFeedToken(token)) return notFound('calendar_feed_not_found');
 
-	const limit = await checkRateLimit(wgReadLimiter, `calendar-feed:${clientIpKey(req)}`);
-	if (!limit.success) return tooMany('rate_limited');
+	const limit = rateLimitResponse(
+		await checkRateLimit(wgReadLimiter, `calendar-feed:${clientIpKey(req)}`),
+		'rate_limited',
+	);
+	if (limit) return limit;
 
 	const now = Date.now();
 	const from = startOfBerlinDay(new Date(now - FEED_HISTORY_DAYS * MS_PER_DAY));

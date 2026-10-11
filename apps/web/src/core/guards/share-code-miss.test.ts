@@ -18,6 +18,8 @@ mock.module('@/core/http/api-errors', {
 	namedExports: {
 		tooMany: (message: string, code: string) =>
 			Response.json({ error: message, code }, { status: 429 }),
+		rateLimitResponse: (result: { success: boolean }) =>
+			result.success ? null : Response.json({ error: 'too_many' }, { status: 429 }),
 	},
 });
 mock.module('@/core/rate-limit', {

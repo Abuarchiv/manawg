@@ -1,7 +1,7 @@
 import { db, wgMembers } from '@/core/db';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, tooMany } from '@/core/http/api-errors';
+import { badRequest, rateLimitResponse } from '@/core/http/api-errors';
 import { checkRateLimit, importLimiter } from '@/core/rate-limit';
 import {
 	MAX_CSV_BYTES,
@@ -43,11 +43,10 @@ export const POST = withWgRoute('imports/preview', async (req, { code }) => {
 	const limit = source === 'ocr_text' ? MAX_OCR_BYTES : MAX_CSV_BYTES;
 	if (payloadSize > limit) return badRequest('payload_too_large');
 
-	const limited = await checkRateLimit(
-		importLimiter,
-		`import-preview:${wg.id}:${auth.member.memberId}`,
+	const limited = rateLimitResponse(
+		await checkRateLimit(importLimiter, `import-preview:${wg.id}:${auth.member.memberId}`),
 	);
-	if (!limited.success) return tooMany();
+	if (limited) return limited;
 
 	const rejected: RejectedRow[] = [];
 	const parsedExpenses =

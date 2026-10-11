@@ -12,7 +12,14 @@ import {
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { forbidden, notFound, serverError, tooMany, unauthorized } from '@/core/http/api-errors';
+import {
+	forbidden,
+	notFound,
+	rateLimitResponse,
+	serverError,
+	tooMany,
+	unauthorized,
+} from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey } from '@/core/idempotency-store';
 import { checkEnv } from '@/core/infra/env';
@@ -167,11 +174,10 @@ export const PATCH = withWgRoute('notifications PATCH', async (req, { code }) =>
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
 	const wg = auth.wg;
-	const limited = await checkRateLimit(
-		wgWriteLimiter,
-		`notif-patch:${wg.id}:${auth.member.memberId}`,
+	const limited = rateLimitResponse(
+		await checkRateLimit(wgWriteLimiter, `notif-patch:${wg.id}:${auth.member.memberId}`),
 	);
-	if (!limited.success) return tooMany();
+	if (limited) return limited;
 	const writer = { wgId: wg.id, memberId: auth.member.memberId, authUserId: auth.authUserId };
 	const update = settingsUpdate(parsed.data);
 
@@ -242,11 +248,10 @@ export const POST = withWgRoute('notifications POST', async (req, { code }) => {
 		action.action === 'test_notification' ? 'test' : `${action.action}:${requestEndpoint}`;
 
 	if (action.action === 'push_subscribe') {
-		const subscribeLimit = await checkRateLimit(
-			wgWriteLimiter,
-			`push-subscribe:${wg.id}:${auth.member.memberId}`,
+		const subscribeLimit = rateLimitResponse(
+			await checkRateLimit(wgWriteLimiter, `push-subscribe:${wg.id}:${auth.member.memberId}`),
 		);
-		if (!subscribeLimit.success) return tooMany();
+		if (subscribeLimit) return subscribeLimit;
 	}
 
 	type PostContext = Rejected | PushAuditContext;

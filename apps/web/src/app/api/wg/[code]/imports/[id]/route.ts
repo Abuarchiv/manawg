@@ -1,7 +1,13 @@
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, conflict, forbidden, notFound, tooMany } from '@/core/http/api-errors';
+import {
+	badRequest,
+	conflict,
+	forbidden,
+	notFound,
+	rateLimitResponse,
+} from '@/core/http/api-errors';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { undoImport } from '@/features/expenses/server/import-undo';
 import { NextResponse } from 'next/server';
@@ -13,8 +19,10 @@ export const DELETE = withWgRoute<{ id: string }>('imports DELETE', async (req, 
 	if (!auth.ok) return auth.response;
 	const { wg, member } = auth;
 
-	const limited = await checkRateLimit(wgWriteLimiter, `import-undo:${wg.id}:${member.memberId}`);
-	if (!limited.success) return tooMany();
+	const limited = rateLimitResponse(
+		await checkRateLimit(wgWriteLimiter, `import-undo:${wg.id}:${member.memberId}`),
+	);
+	if (limited) return limited;
 
 	const result = await undoImport(wg.id, id, { memberId: member.memberId, name: member.name });
 	if (!result.ok) {

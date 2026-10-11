@@ -74,7 +74,7 @@ async function register(p, u, tag) {
 	note(`${tag} nach Bestätigung: ${p.url()}`);
 	return true;
 }
-// ---- Konto A
+// ---- account A
 const a = await ctx();
 watch(a.p, 'A');
 if (!(await register(a.p, A, 'A'))) process.exit(1);
@@ -107,7 +107,7 @@ note(`A Einladungslink: ${inviteUrl}`);
 if (!/einladung\/[\w-]{22}/.test(inviteUrl)) bug('Einladungslink fehlt/ungültig');
 const token = inviteUrl.split('/').pop();
 await a.p.screenshot({ path: `${process.env.SHOTS_DIR}/real-created.png` });
-// ---- Konto B tritt bei
+// ---- account B joins
 const b = await ctx();
 watch(b.p, 'B');
 await b.p.goto(`/einladung/${token}`);
@@ -156,7 +156,7 @@ note(`A Einkauf: ${(await a.p.locator('main').innerText()).replace(/\s+/g, ' ').
 await b.p.goto(`${wgPath}/einkauf`);
 await wait(2000);
 if (!(await b.p.locator('text=Hafermilch').count())) bug('B sieht Hafermilch von A nicht');
-// Putzplan + Ausgabe API-nah über UI sind lang; Dashboard laden
+// Chores + expense via UI take long; load the dashboard instead
 for (const sub of [
 	'',
 	'/ausgaben',

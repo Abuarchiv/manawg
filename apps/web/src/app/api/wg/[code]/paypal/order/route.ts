@@ -2,7 +2,13 @@ import { randomUUID } from 'node:crypto';
 import { db, expensePayments, wgMembers } from '@/core/db';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, conflict, forbidden, serverError, tooMany } from '@/core/http/api-errors';
+import {
+	badRequest,
+	conflict,
+	forbidden,
+	rateLimitResponse,
+	serverError,
+} from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { logApiError } from '@/core/infra/observability';
 import {
@@ -104,11 +110,10 @@ export const POST = withWgRoute('paypal order POST', async (req, { code }) => {
 	if (auth.member.memberId !== parsed.data.fromMemberId) {
 		return forbidden('not_party_to_debt', 'not_party_to_debt');
 	}
-	const limited = await checkRateLimit(
-		wgWriteLimiter,
-		`paypal-order:${auth.wg.id}:${auth.member.memberId}`,
+	const limited = rateLimitResponse(
+		await checkRateLimit(wgWriteLimiter, `paypal-order:${auth.wg.id}:${auth.member.memberId}`),
 	);
-	if (!limited.success) return tooMany();
+	if (limited) return limited;
 
 	try {
 		const reservation = await withExpensePaymentLock(auth.wg.id, async (tx) => {

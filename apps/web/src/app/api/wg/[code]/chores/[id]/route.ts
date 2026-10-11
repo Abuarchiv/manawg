@@ -6,7 +6,13 @@ import { isWgAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, conflict, forbidden, notFound, tooMany } from '@/core/http/api-errors';
+import {
+	badRequest,
+	conflict,
+	forbidden,
+	notFound,
+	rateLimitResponse,
+} from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
@@ -92,8 +98,10 @@ export const PATCH = withWgRoute<{ id: string }>('chores PATCH', async (req, { c
 	if (!auth.ok) return auth.response;
 	const wgId = auth.wg.id;
 
-	const limited = await checkRateLimit(wgWriteLimiter, `chore:${wgId}:${auth.member.memberId}`);
-	if (!limited.success) return tooMany();
+	const limited = rateLimitResponse(
+		await checkRateLimit(wgWriteLimiter, `chore:${wgId}:${auth.member.memberId}`),
+	);
+	if (limited) return limited;
 
 	if (parsed.data.assignedMemberId) {
 		const member = await db
@@ -263,8 +271,10 @@ export const DELETE = withWgRoute<{ id: string }>('chores DELETE', async (req, {
 		return forbidden('admin_required', 'admin_required');
 	}
 
-	const limited = await checkRateLimit(wgWriteLimiter, `chore:${wgId}:${auth.member.memberId}`);
-	if (!limited.success) return tooMany();
+	const limited = rateLimitResponse(
+		await checkRateLimit(wgWriteLimiter, `chore:${wgId}:${auth.member.memberId}`),
+	);
+	if (limited) return limited;
 
 	const existing = await db
 		.select({ title: chores.title })

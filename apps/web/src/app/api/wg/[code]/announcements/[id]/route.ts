@@ -11,7 +11,7 @@ import {
 	conflict,
 	forbidden,
 	notFound,
-	tooMany,
+	rateLimitResponse,
 	unauthorized,
 } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
@@ -42,11 +42,10 @@ export const PATCH = withWgRoute<{ id: string }>(
 		const auth = await requireWgMember(req, code);
 		if (!auth.ok) return auth.response;
 		const wg = auth.wg;
-		const limited = await checkRateLimit(
-			wgWriteLimiter,
-			`announcement-patch:${wg.id}:${auth.member.memberId}`,
+		const limited = rateLimitResponse(
+			await checkRateLimit(wgWriteLimiter, `announcement-patch:${wg.id}:${auth.member.memberId}`),
 		);
-		if (!limited.success) return tooMany();
+		if (limited) return limited;
 
 		const existing = await db
 			.select({
@@ -206,11 +205,10 @@ export const DELETE = withWgRoute<{ id: string }>(
 		const auth = await requireWgMember(req, code);
 		if (!auth.ok) return auth.response;
 		const wgId = auth.wg.id;
-		const limited = await checkRateLimit(
-			wgWriteLimiter,
-			`announcement-delete:${wgId}:${auth.member.memberId}`,
+		const limited = rateLimitResponse(
+			await checkRateLimit(wgWriteLimiter, `announcement-delete:${wgId}:${auth.member.memberId}`),
 		);
-		if (!limited.success) return tooMany();
+		if (limited) return limited;
 
 		// Author OR admin may delete an announcement. Authors own their own posts; the WG admin
 		// can moderate stale or inappropriate content, e.g. posts of members who moved out.

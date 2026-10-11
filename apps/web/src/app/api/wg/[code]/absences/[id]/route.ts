@@ -4,7 +4,7 @@ import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, notFound, tooMany } from '@/core/http/api-errors';
+import { badRequest, notFound, rateLimitResponse } from '@/core/http/api-errors';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
@@ -29,8 +29,10 @@ export const DELETE = withWgRoute<{ id: string }>('absences DELETE', async (req,
 	if (!target) return notFound('absence_not_found');
 	const denied = await requireOwnerOrAdmin(wgId, auth.member, target.memberId);
 	if (denied) return denied;
-	const limited = await checkRateLimit(wgWriteLimiter, `absence:${wgId}:${auth.member.memberId}`);
-	if (!limited.success) return tooMany();
+	const limited = rateLimitResponse(
+		await checkRateLimit(wgWriteLimiter, `absence:${wgId}:${auth.member.memberId}`),
+	);
+	if (limited) return limited;
 
 	const deleted = await db
 		.delete(memberAbsences)

@@ -4,7 +4,7 @@ import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, conflict, notFound, tooMany } from '@/core/http/api-errors';
+import { badRequest, conflict, notFound, rateLimitResponse } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { checkRateLimit, clientIpKey, wgReadLimiter, wgWriteLimiter } from '@/core/rate-limit';
 import {
@@ -46,8 +46,11 @@ function normalizeRecurrence(value: string | null): string | null | 'invalid' {
 export const GET = withWgRoute<{ id: string }>('events GET id', async (req, { code, id }) => {
 	if (!UUID_PATTERN.test(id)) return badRequest('id_invalid');
 
-	const limit = await checkRateLimit(wgReadLimiter, `events:${clientIpKey(req)}`);
-	if (!limit.success) return tooMany('rate_limited');
+	const limit = rateLimitResponse(
+		await checkRateLimit(wgReadLimiter, `events:${clientIpKey(req)}`),
+		'rate_limited',
+	);
+	if (limit) return limit;
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
 	const wgId = auth.wg.id;
@@ -83,8 +86,11 @@ export const PATCH = withWgRoute<{ id: string }>('events PATCH', async (req, { c
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
 	const wgId = auth.wg.id;
-	const limit = await checkRateLimit(wgWriteLimiter, `events:item:${wgId}:${auth.member.memberId}`);
-	if (!limit.success) return tooMany('rate_limited');
+	const limit = rateLimitResponse(
+		await checkRateLimit(wgWriteLimiter, `events:item:${wgId}:${auth.member.memberId}`),
+		'rate_limited',
+	);
+	if (limit) return limit;
 
 	const existing = await db
 		.select({
@@ -161,8 +167,11 @@ export const DELETE = withWgRoute<{ id: string }>('events DELETE', async (req, {
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
 	const wgId = auth.wg.id;
-	const limit = await checkRateLimit(wgWriteLimiter, `events:item:${wgId}:${auth.member.memberId}`);
-	if (!limit.success) return tooMany('rate_limited');
+	const limit = rateLimitResponse(
+		await checkRateLimit(wgWriteLimiter, `events:item:${wgId}:${auth.member.memberId}`),
+		'rate_limited',
+	);
+	if (limit) return limit;
 
 	const existing = await db
 		.select({ createdByMemberId: wgEvents.createdByMemberId, title: wgEvents.title })

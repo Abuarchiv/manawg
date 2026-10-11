@@ -5,7 +5,7 @@ import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, conflict, notFound, tooMany } from '@/core/http/api-errors';
+import { badRequest, conflict, notFound, rateLimitResponse } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey } from '@/core/idempotency-store';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
@@ -62,11 +62,10 @@ export const PATCH = withWgRoute<{ id: string }>('shopping PATCH', async (req, {
 		return badRequest('expected_state_invalid');
 	}
 
-	const limited = await checkRateLimit(
-		wgWriteLimiter,
-		`shopping:item:${wgId}:${auth.member.memberId}`,
+	const limited = rateLimitResponse(
+		await checkRateLimit(wgWriteLimiter, `shopping:item:${wgId}:${auth.member.memberId}`),
 	);
-	if (!limited.success) return tooMany();
+	if (limited) return limited;
 
 	// SECURITY: bought-by is always the authenticated caller. Body-supplied
 	// ids are ignored to prevent attribution spoofing.
@@ -163,11 +162,10 @@ export const DELETE = withWgRoute<{ id: string }>('shopping DELETE', async (req,
 	if (!auth.ok) return auth.response;
 	const wgId = auth.wg.id;
 
-	const limited = await checkRateLimit(
-		wgWriteLimiter,
-		`shopping:item:${wgId}:${auth.member.memberId}`,
+	const limited = rateLimitResponse(
+		await checkRateLimit(wgWriteLimiter, `shopping:item:${wgId}:${auth.member.memberId}`),
 	);
-	if (!limited.success) return tooMany();
+	if (limited) return limited;
 
 	// The member who added the item, or the WG admin, may delete it.
 	const existing = await db

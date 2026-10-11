@@ -58,6 +58,8 @@ mock.module('@/core/http/api-errors', {
 		conflict: () => new Response(null, { status: 409 }),
 		serverError: () => new Response(null, { status: 500 }),
 		tooMany: () => new Response(null, { status: 429 }),
+		rateLimitResponse: (result: { success: boolean }) =>
+			result.success ? null : jsonResponse({ error: 'too_many' }, 429),
 	},
 });
 mock.module('@/core/guards/admin', { namedExports: { isWgAdmin: async () => false } });

@@ -8,7 +8,7 @@ import {
 	conflict,
 	forbidden,
 	notFound,
-	tooMany,
+	rateLimitResponse,
 	unreadableJsonBody,
 } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
@@ -80,11 +80,10 @@ export const POST = withWgRoute<{ id: string; splitId: string }>(
 		const isDebtor = split.debtorMemberId === auth.member.memberId;
 		const isPayer = expense.paidByMemberId === auth.member.memberId;
 		if (!isDebtor && !isPayer) return forbidden('not_split_party', 'not_split_party');
-		const limited = await checkRateLimit(
-			wgWriteLimiter,
-			`split-settle:${expense.wgId}:${auth.member.memberId}`,
+		const limited = rateLimitResponse(
+			await checkRateLimit(wgWriteLimiter, `split-settle:${expense.wgId}:${auth.member.memberId}`),
 		);
-		if (!limited.success) return tooMany();
+		if (limited) return limited;
 
 		// Keep this state predicate in the write as a final stale-toggle guard.
 		const change = await withExpensePaymentLock(expense.wgId, async (tx) => {
