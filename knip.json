@@ -1,15 +1,13 @@
 {
 	"$schema": "https://unpkg.com/knip@6/schema.json",
 	"workspaces": {
-		".": {
-			"entry": [],
-			"project": []
-		},
+		".": { "entry": [], "project": [] },
 		"apps/web": {
 			"entry": [
 				"drizzle.config.ts",
 				"sentry.*.config.ts",
 				"scripts/*.mjs",
+				"scripts/real-stack/*.mjs",
 				"tests/**/*.test.{mjs,cjs,ts}",
 				"tests/support/*.{mjs,cjs}",
 				"src/**/*.test.{mjs,ts}",
@@ -22,7 +20,8 @@
 				"e2e/**/*.ts",
 				"tests/**/*.{mjs,cjs,ts}"
 			],
-			"drizzle": false
+			"drizzle": false,
+			"ignoreBinaries": ["psql"]
 		}
 	}
 }

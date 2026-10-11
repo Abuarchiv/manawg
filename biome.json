@@ -15,7 +15,9 @@
 				"noExplicitAny": "error",
 				"noConsole": {
 					"level": "error",
-					"options": { "allow": ["warn", "error"] }
+					"options": {
+						"allow": ["warn", "error"]
+					}
 				}
 			}
 		}
@@ -61,5 +63,17 @@
 			"drizzle/meta",
 			"skills-lock.json"
 		]
-	}
+	},
+	"overrides": [
+		{
+			"include": ["apps/web/scripts/real-stack/*.mjs"],
+			"linter": {
+				"rules": {
+					"suspicious": {
+						"noConsole": "off"
+					}
+				}
+			}
+		}
+	]
 }
