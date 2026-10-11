@@ -256,3 +256,11 @@ Offen:
 - Branch `audit-integration` enthält ebenfalls 0026/0027 (andere Inhalte). Vor einem Merge dort umnummerieren.
 - Release-Reihenfolge: Migration 0026 in Prod, Template-Skript mit `--apply`, Deploy, danach WGs informieren.
 
+### Nachtrag 2026-10-11 (2): Übernahmeweg und Feinschliff
+
+- **Profile ohne Konto.** Die Einladungsseite listet Mitglieder ohne Konto („Schon Mitglied? Ich bin Anna"). Die Übernahme läuft über `POST /api/wg/<code>/members/<id>/claim?invite=<token>`. Nachweis ist die gültige Einladung der WG. Der alte HMAC-Nachweis (`legacy-claim-proof.ts`, `LEGACY_CLAIM_*`) ist gelöscht, damit ist Phase 3 erledigt. Die Prod-Zählung entscheidet nur noch, ob die WGs den Hinweis brauchen.
+- **Willkommensmail** geht jetzt auch nach dem Code-Login raus (einmal pro Konto, gleicher Dedupe-Schlüssel wie beim Link).
+- **Code-Login** verrät nicht mehr, ob zur Adresse ein Konto existiert. Die Antwort ist immer „ok", der Text nennt die Registrierung.
+- **Abmelden bei Netzfehler** bleibt bewusst so: Cookies bleiben stehen, damit man nicht glaubt, abgemeldet zu sein, obwohl die Sitzung serverseitig noch gilt.
+- **Text an die WGs, Ergänzung:** Wer die App installiert hat, schließt sie einmal komplett und öffnet sie neu.
+

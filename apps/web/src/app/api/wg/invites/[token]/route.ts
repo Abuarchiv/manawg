@@ -13,7 +13,7 @@ import {
 import type { RouteCtx } from '@/core/infra/api-types';
 import { logApiError } from '@/core/infra/observability';
 import { isInviteToken } from '@/core/utils/invite-token';
-import { and, eq } from 'drizzle-orm';
+import { and, asc, eq, isNull } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -63,8 +63,22 @@ export async function GET(req: NextRequest, ctx: RouteCtx<{ token: string }>) {
 		}
 		if (inviteStatus(row) !== 'valid')
 			return apiError('invite_expired', HTTP.GONE, 'invite_expired');
+		// Members created before accounts existed; they can take their profile over after joining in.
+		const unclaimed = await db
+			.select({ id: wgMembers.id, name: wgMembers.name })
+			.from(wgMembers)
+			.where(
+				and(
+					eq(wgMembers.wgId, row.wgId),
+					isNull(wgMembers.authUserId),
+					isNull(wgMembers.deactivatedAt),
+				),
+			)
+			.orderBy(asc(wgMembers.name))
+			.limit(50);
 		return NextResponse.json({
 			wg: { name: row.name, shareCode: row.shareCode },
+			unclaimed,
 			expiresAt: row.expiresAt,
 		});
 	} catch (err) {

@@ -1,10 +1,8 @@
 import assert from 'node:assert/strict';
-import { createHmac } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { describe, mock, test } from 'node:test';
 import { inspect } from 'node:util';
-import { verifyLegacyClaimProof } from '../src/core/guards/legacy-claim-proof.ts';
 import { captureException, logApiError } from '../src/core/infra/observability.ts';
 
 // Trust-boundary contracts of guards and API routes: membership checks (no 404 oracle), the
@@ -103,27 +101,13 @@ describe('require wg member regression', () => {
 	});
 });
 
-describe('legacy claim proof', () => {
-	const wgId = '989ac820-58b7-431f-9c65-28721264f333';
-	const memberId = '7d898f9e-5ad7-4f5d-abed-8c3e99a76973';
-
-	test('legacy claim proof accepts the stored HMAC and rejects trailing data or a missing secret', () => {
-		const previousSecret = process.env.MEMBER_SESSION_SECRET;
-		process.env.MEMBER_SESSION_SECRET = 'auth-regression-secret';
-		try {
-			const token = createHmac('sha256', 'auth-regression-secret')
-				.update(`${wgId}:${memberId}`)
-				.digest('hex');
-			assert.equal(verifyLegacyClaimProof(wgId, memberId, token), true);
-			assert.equal(verifyLegacyClaimProof(wgId, memberId, `${token}g`), false);
-			assert.equal(verifyLegacyClaimProof(wgId, memberId, null), false);
-			Reflect.deleteProperty(process.env, 'MEMBER_SESSION_SECRET');
-			assert.equal(verifyLegacyClaimProof(wgId, memberId, token), false);
-		} finally {
-			if (previousSecret === undefined)
-				Reflect.deleteProperty(process.env, 'MEMBER_SESSION_SECRET');
-			else process.env.MEMBER_SESSION_SECRET = previousSecret;
-		}
+describe('server membership identity', () => {
+	test('taking over an unlinked member needs a valid invitation to that WG', async () => {
+		const source = await readSource('app/api/wg/[code]/members/[id]/claim/route.ts');
+		assert.ok(source.includes('isInviteToken(inviteToken)'));
+		assert.ok(source.includes('eq(wgInvites.wgId, wg.id)'));
+		assert.ok(source.includes("inviteStatus(invite) !== 'valid'"));
+		assert.ok(source.indexOf('inviteStatus(invite)') < source.indexOf('withTransaction('));
 	});
 
 	test('normal server membership derives identity from auth alone, without member tokens', async () => {

@@ -9,10 +9,12 @@ import posthog from '@/shared/lib/analytics';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
+type UnclaimedMember = { id: string; name: string };
+
 export type InvitePhase =
 	| { kind: 'loading' }
 	| { kind: 'signed-out' }
-	| { kind: 'ready'; wgName: string; code: string }
+	| { kind: 'ready'; wgName: string; code: string; unclaimed: UnclaimedMember[] }
 	| { kind: 'dead' }
 	| { kind: 'error' };
 
@@ -64,8 +66,16 @@ export function useInviteJoin(token: string) {
 				}
 				if (res.status === 404 || res.status === 410) return setPhase({ kind: 'dead' });
 				if (!res.ok) return setPhase({ kind: 'error' });
-				const data = (await res.json()) as { wg: { name: string; shareCode: string } };
-				setPhase({ kind: 'ready', wgName: data.wg.name, code: data.wg.shareCode });
+				const data = (await res.json()) as {
+					wg: { name: string; shareCode: string };
+					unclaimed?: UnclaimedMember[];
+				};
+				setPhase({
+					kind: 'ready',
+					wgName: data.wg.name,
+					code: data.wg.shareCode,
+					unclaimed: Array.isArray(data.unclaimed) ? data.unclaimed : [],
+				});
 			})
 			.catch((err: unknown) => {
 				if (err instanceof DOMException && err.name === 'AbortError' && controller.signal.aborted)
@@ -131,8 +141,45 @@ export function useInviteJoin(token: string) {
 		}
 	}
 
+	/** Takes over a profile that was created before accounts existed instead of joining as new. */
+	async function claim(memberId: string): Promise<void> {
+		if (busyRef.current || phase.kind !== 'ready') return;
+		busyRef.current = true;
+		setBusy(true);
+		setError(null);
+		setNameInvalid(false);
+		try {
+			const res = await fetch(
+				`/api/wg/${encodeURIComponent(phase.code)}/members/${encodeURIComponent(memberId)}/claim?invite=${encodeURIComponent(token)}`,
+				{ method: 'POST', signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) },
+			);
+			if (res.status === 401) return setPhase({ kind: 'signed-out' });
+			if (!res.ok) {
+				const { error: apiError } = await readError(res);
+				if (apiError === 'invite_expired' || apiError === 'invite_required') {
+					return setPhase({ kind: 'dead' });
+				}
+				setError(
+					apiError === 'member_already_linked'
+						? 'Dieses Profil gehört schon zu einem Konto.'
+						: apiError === 'account_already_linked'
+							? 'Dein Konto ist in dieser WG schon Mitglied.'
+							: joinErrorMessage(res.status, apiError),
+				);
+				return;
+			}
+			router.push(`/wg/${encodeURIComponent(phase.code)}`);
+		} catch {
+			setError(joinErrorMessage(0, ''));
+		} finally {
+			busyRef.current = false;
+			setBusy(false);
+		}
+	}
+
 	return {
 		phase,
+		claim,
 		name,
 		setName,
 		error,

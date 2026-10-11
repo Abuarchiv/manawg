@@ -1,5 +1,6 @@
 import { authPost } from '@/core/auth/route-helpers';
 import { emailField } from '@/core/auth/route-schemas';
+import { queueWelcomeMail } from '@/core/auth/welcome-mail';
 import { z } from 'zod';
 
 const schema = z.object({ email: emailField, token: z.string().regex(/^\d{4,12}$/) });
@@ -10,6 +11,7 @@ export const POST = authPost(
 	async ({ supabase, data }) => {
 		const { data: result, error } = await supabase.auth.verifyOtp({ ...data, type: 'email' });
 		if (error) throw error;
+		if (result.session?.user) queueWelcomeMail(result.session.user);
 		return { sessionEstablished: result.session !== null };
 	},
 	{ limited: true },

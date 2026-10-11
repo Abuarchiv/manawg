@@ -89,10 +89,9 @@ Rules:
   `db_error`). `x-manawg-expected-member-id` mismatch yields `409 member_context_changed`, so a
   stale tab cannot act as a different member. `requireWgMember` and `requireWgAdmin`
   (`core/guards/require-wg-*.ts`) share the auth and share-code resolution steps.
-- **Legacy-profile recovery** (`POST /api/wg/<code>/members/<id>/claim`,
-  `core/guards/legacy-claim-proof.ts`): links an unlinked member row to the signed-in account
-  only with the `HMAC-SHA256(MEMBER_SESSION_SECRET, "<wgId>:<memberId>")` token that browsers
-  stored before account login. Normal API access never uses it.
+- **Legacy-profile takeover** (`POST /api/wg/<code>/members/<id>/claim?invite=<token>`): links an
+  unlinked member row (no account yet) to the signed-in account. The proof is a valid invitation
+  to that WG; the invitation page lists the unlinked members. Normal API access never uses it.
 - **Admin**: `wg_members.role` is `admin` or `member`, at most one admin per WG (partial unique
   index). `core/guards/admin.ts`: `isWgAdmin` and `requireOwnerOrAdmin` (owner or admin for
   edits/deletes of others' items); `requireWgAdmin` gates WG rename/delete/share-code

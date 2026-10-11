@@ -17,11 +17,3 @@ export const EXPECTED_MEMBER_ID_HEADER = 'x-manawg-expected-member-id';
 export function memberContextHeader(memberId: string): Record<string, string> {
 	return { [EXPECTED_MEMBER_ID_HEADER]: memberId };
 }
-
-/**
- * Legacy-profile recovery only (`POST /api/wg/[code]/members/[id]/claim`):
- * the stored member id and its HMAC token from before account login. See
- * `@/core/guards/legacy-claim-proof`.
- */
-export const LEGACY_CLAIM_MEMBER_ID_HEADER = 'x-manawg-member-id';
-export const LEGACY_CLAIM_TOKEN_HEADER = 'x-manawg-member-token';

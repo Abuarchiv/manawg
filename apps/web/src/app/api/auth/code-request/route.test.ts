@@ -22,10 +22,10 @@ test('asks for a code without creating accounts', async () => {
 	assert.deepEqual(received, { email: 'a@b.test', options: { shouldCreateUser: false } });
 });
 
-test('passes otp_disabled through so the client can say there is no account', async () => {
+test('answers ok for an address without an account, so existence is not revealed', async () => {
 	kit.auth.signInWithOtp = async () => ({
 		error: new AuthApiError('no signups', 422, 'otp_disabled'),
 	});
 	const res = await call(POST, '/api/auth/code-request', { email: 'a@b.test' });
-	assert.equal(res.json.code, 'otp_disabled');
+	assert.deepEqual(res.json, { ok: true });
 });

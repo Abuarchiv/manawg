@@ -82,8 +82,7 @@ const PRODUCTION_REQUIRED = ['CRON_SECRET', 'SUPABASE_SERVICE_ROLE_KEY'] as cons
 /**
  * Required in every environment, alongside the database. `MEMBER_SESSION_SECRET`
  * signs calendar feed URLs (`features/events/server/calendar-subscription.ts`) and
- * verifies legacy-profile recovery proofs (`core/guards/legacy-claim-proof.ts`).
- * Without it every calendar feed and every recovery attempt fails with no
+ * unsubscribe links. Without it every calendar feed fails with no
  * client-visible cause, so it has to be loud at boot the same way a missing
  * database is.
  */

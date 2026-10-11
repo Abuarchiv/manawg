@@ -19,23 +19,11 @@ const RESEND_COOLDOWN_SECONDS = 30;
 type CodeError =
 	| 'invalid-email'
 	| 'invalid-code'
-	| 'no-account'
 	| 'wrong-code'
 	| 'rate-limit'
 	| 'network'
 	| 'generic'
 	| null;
-
-/** Supabase answers `otp_disabled` / "Signups not allowed for otp" when no account exists for the address. */
-function isNoAccountError(error: unknown): boolean {
-	if (error === null || typeof error !== 'object') return false;
-	const message = Reflect.get(error, 'message');
-	return (
-		Reflect.get(error, 'code') === 'otp_disabled' ||
-		Reflect.get(error, 'code') === 'user_not_found' ||
-		(typeof message === 'string' && /signups? not allowed/i.test(message))
-	);
-}
 
 /** Sign-in with a one-time code mailed to an existing account. */
 export function useEmailCode({
@@ -74,7 +62,7 @@ export function useEmailCode({
 			setCooldown(RESEND_COOLDOWN_SECONDS);
 			setResendNotice(isResend);
 		} catch (caught) {
-			setError(isNoAccountError(caught) ? 'no-account' : failureOf(caught, 'generic'));
+			setError(failureOf(caught, 'generic'));
 		} finally {
 			setBusy(null);
 		}
@@ -155,25 +143,11 @@ const ERROR_MESSAGES = {
 	generic: 'Die Anmeldung konnte gerade nicht abgeschlossen werden. Bitte versuche es erneut.',
 } as const;
 
-function CodeErrorBox({ error, intentQuery }: { error: CodeError; intentQuery: string }) {
+function CodeErrorBox({ error }: { error: CodeError }) {
 	if (!error) return null;
 	return (
 		<div id="auth-code-error">
-			<ErrorBox>
-				{error === 'no-account' ? (
-					<>
-						Zu dieser E-Mail-Adresse gibt es kein Konto.{' '}
-						<Link
-							href={authPageHref('/registrieren', intentQuery)}
-							className="font-medium underline underline-offset-4"
-						>
-							Erstelle zuerst ein Konto.
-						</Link>
-					</>
-				) : (
-					ERROR_MESSAGES[error]
-				)}
-			</ErrorBox>
+			<ErrorBox>{ERROR_MESSAGES[error]}</ErrorBox>
 		</div>
 	);
 }
@@ -198,7 +172,7 @@ export function EmailCodeForm({
 	}, [codeStep]);
 	// A failed request keeps the form; send focus back to the field that needs fixing.
 	useEffect(() => {
-		if (error === 'invalid-email' || error === 'no-account') emailRef.current?.focus();
+		if (error === 'invalid-email') emailRef.current?.focus();
 		if (error === 'invalid-code' || error === 'wrong-code') codeRef.current?.focus();
 	}, [error]);
 
@@ -233,7 +207,7 @@ export function EmailCodeForm({
 							className="text-base"
 						/>
 					</Field>
-					<CodeErrorBox error={error} intentQuery={intentQuery} />
+					<CodeErrorBox error={error} />
 					<Button type="submit" variant="default" disabled={busy !== null}>
 						{busy === 'code-request' && <Spinner data-icon="inline-start" aria-hidden />}
 						Code per E-Mail senden
@@ -257,7 +231,13 @@ export function EmailCodeForm({
 				<Alert>
 					<AlertDescription className="[overflow-wrap:anywhere]">
 						Wir haben einen Code an {sentTo} geschickt, sofern dort ein Konto besteht. Schau auch im
-						Spam-Ordner nach.
+						Spam-Ordner nach. Noch kein Konto?{' '}
+						<Link
+							href={authPageHref('/registrieren', intentQuery)}
+							className="font-medium underline underline-offset-4"
+						>
+							Jetzt erstellen.
+						</Link>
 					</AlertDescription>
 				</Alert>
 				<Field data-invalid={invalid}>
@@ -288,7 +268,7 @@ export function EmailCodeForm({
 				{resendNotice && (
 					<output className="text-sm text-muted-foreground">Der Code wurde erneut gesendet.</output>
 				)}
-				<CodeErrorBox error={error} intentQuery={intentQuery} />
+				<CodeErrorBox error={error} />
 				<Button type="submit" variant="default" disabled={busy !== null}>
 					{busy === 'code-verify' && <Spinner data-icon="inline-start" aria-hidden />}
 					Anmelden

@@ -134,9 +134,6 @@ mock.module('@/core/db/delete-wg', {
 	namedExports: { deleteWgCascade: unreachable('deleteWgCascade') },
 });
 mock.module('@/core/guards/admin', { namedExports: { isWgAdmin: unreachable('isWgAdmin') } });
-mock.module('@/core/guards/legacy-claim-proof', {
-	namedExports: { verifyLegacyClaimProof: unreachable('verifyLegacyClaimProof') },
-});
 mock.module('@/core/guards/require-wg-admin', {
 	namedExports: { requireWgAdmin: unreachable('requireWgAdmin') },
 });

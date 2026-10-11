@@ -21,7 +21,7 @@ import { useInviteJoin } from './use-invite-join';
 /** The page behind an invitation link: sign in if needed, show the WG, ask for a name, join. */
 export function EinladungClient({ token }: { token: string }) {
 	const router = useRouter();
-	const { phase, name, setName, error, nameInvalid, busy, join, retry, deadMessage } =
+	const { phase, claim, name, setName, error, nameInvalid, busy, join, retry, deadMessage } =
 		useInviteJoin(token);
 	useAccountNamePrefill(phase.kind === 'ready', setName);
 	const next = encodeURIComponent(invitePath(token));
@@ -131,6 +131,29 @@ export function EinladungClient({ token }: { token: string }) {
 					</Button>
 				</div>
 			</form>
+			{phase.unclaimed.length > 0 && (
+				<section aria-labelledby="claim-heading" className="flex flex-col gap-2 border-t pt-4">
+					<h2 id="claim-heading" className="text-sm font-medium">
+						Schon Mitglied?
+					</h2>
+					<p className="text-muted-foreground text-xs">
+						Wurde dein Profil angelegt, bevor es Konten gab? Übernimm es mit deinem Konto.
+					</p>
+					<div className="flex flex-wrap gap-2">
+						{phase.unclaimed.map((member) => (
+							<Button
+								key={member.id}
+								type="button"
+								variant="outline"
+								disabled={busy}
+								onClick={() => void claim(member.id)}
+							>
+								Ich bin {member.name}
+							</Button>
+						))}
+					</div>
+				</section>
+			)}
 		</EntryFrame>
 	);
 }

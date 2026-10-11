@@ -1,12 +1,14 @@
 import { getAuthenticatedUser } from '@/core/auth/server';
-import { db, wgMembers } from '@/core/db';
+import { db, wgInvites, wgMembers } from '@/core/db';
 import { assertAccountCanAcquireMembership } from '@/core/db/account-deletion';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
+import { inviteStatus } from '@/core/db/wg-invites';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
-import { verifyLegacyClaimProof } from '@/core/guards/legacy-claim-proof';
 import { shareCodeMissResponse } from '@/core/guards/share-code-miss';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import {
+	HTTP,
+	apiError,
 	badRequest,
 	conflict,
 	forbidden,
@@ -15,10 +17,7 @@ import {
 	unauthorized,
 } from '@/core/http/api-errors';
 import { logApiError } from '@/core/infra/observability';
-import {
-	LEGACY_CLAIM_MEMBER_ID_HEADER,
-	LEGACY_CLAIM_TOKEN_HEADER,
-} from '@/shared/lib/member-header';
+import { isInviteToken } from '@/core/utils/invite-token';
 import { and, eq, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
@@ -48,11 +47,17 @@ export const POST = withWgRoute<{ id: string }>('members claim POST', async (req
 	});
 	if (!wg) return shareCodeMissResponse(user.id, notFound('wg_not_found'));
 
-	const legacyMemberId = req.headers.get(LEGACY_CLAIM_MEMBER_ID_HEADER)?.trim();
-	const legacyToken = req.headers.get(LEGACY_CLAIM_TOKEN_HEADER);
-	if (legacyMemberId !== id || !verifyLegacyClaimProof(wg.id, id, legacyToken)) {
-		return forbidden('legacy_proof_required', 'legacy_proof_required');
-	}
+	// A valid invitation to this WG is the proof: it is only ever shown to people the WG invited.
+	const inviteToken = new URL(req.url).searchParams.get('invite') ?? '';
+	if (!isInviteToken(inviteToken)) return forbidden('invite_required', 'invite_required');
+	const [invite] = await db
+		.select()
+		.from(wgInvites)
+		.where(and(eq(wgInvites.token, inviteToken), eq(wgInvites.wgId, wg.id)))
+		.limit(1);
+	if (!invite) return forbidden('invite_required', 'invite_required');
+	if (inviteStatus(invite) !== 'valid')
+		return apiError('invite_expired', HTTP.GONE, 'invite_expired');
 
 	let claimed: ClaimResult;
 	try {
