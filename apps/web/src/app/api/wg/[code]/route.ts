@@ -22,17 +22,7 @@ const patchWgSchema = z.object({
 
 export const GET = withWgRoute('api/wg/[code] GET', async (req, { code }) => {
 	{
-		const auth = await requireWgMembership(req, code, 'api/wg/[code] GET', (shareCode) =>
-			db.query.wgs.findFirst({
-				where: (w, { eq }) => eq(w.shareCode, shareCode),
-				columns: {
-					id: true,
-					name: true,
-					shareCode: true,
-					createdAt: true,
-				},
-			}),
-		);
+		const auth = await requireWgMembership(req, code, 'api/wg/[code] GET');
 		if (!auth.ok) return auth.response;
 		const { wg } = auth;
 

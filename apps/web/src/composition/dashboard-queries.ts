@@ -14,7 +14,7 @@ import {
 } from '@/core/db';
 import { feedAuditCondition } from '@/core/db/feed-audit-filter';
 import { captureException } from '@/core/infra/observability';
-import { and, count, desc, eq, isNull, sql } from 'drizzle-orm';
+import { and, count, desc, eq, gte, isNull, sql } from 'drizzle-orm';
 
 import { CHAT_AUDIT_EVENT_TYPES } from './activity-audit';
 
@@ -30,7 +30,12 @@ function withFallback<T>(label: string, query: Promise<T>, fallback: () => T): P
 	});
 }
 
-export function loadPrimaryRows(wgId: string) {
+/**
+ * The dashboard is polled every 30 s per member, so the expense history is never read whole:
+ * balances come from SQL totals, the spend widgets from the last `spendSince` days and the
+ * activity preview from the newest rows.
+ */
+export function loadPrimaryRows(wgId: string, spendSince: Date) {
 	return Promise.all([
 		db
 			.select({ id: wgMembers.id, name: wgMembers.name, color: wgMembers.color })
@@ -47,17 +52,20 @@ export function loadPrimaryRows(wgId: string) {
 			})
 			.from(expenses)
 			.where(eq(expenses.wgId, wgId))
-			.orderBy(desc(expenses.occurredAt)),
+			.orderBy(desc(expenses.occurredAt))
+			.limit(ACTIVITY_LIMIT),
+		// Open debt per (payer, debtor, currency); the payer's own share stays in for gross "owed".
 		db
 			.select({
-				expenseId: expenseSplits.expenseId,
+				paidByMemberId: expenses.paidByMemberId,
 				debtorMemberId: expenseSplits.debtorMemberId,
-				amountCents: expenseSplits.amountCents,
-				settledAt: expenseSplits.settledAt,
+				currency: expenses.currency,
+				totalCents: sql<number>`sum(${expenseSplits.amountCents})::int`,
 			})
 			.from(expenseSplits)
 			.innerJoin(expenses, eq(expenseSplits.expenseId, expenses.id))
-			.where(eq(expenses.wgId, wgId)),
+			.where(and(eq(expenses.wgId, wgId), isNull(expenseSplits.settledAt)))
+			.groupBy(expenses.paidByMemberId, expenseSplits.debtorMemberId, expenses.currency),
 		db
 			.select({
 				fromMemberId: expensePayments.fromMemberId,
@@ -126,6 +134,24 @@ export function loadPrimaryRows(wgId: string) {
 				),
 			() => [],
 		),
+		// Everything ever paid, per payer and currency: gross "paid" and the all-time total.
+		db
+			.select({
+				paidByMemberId: expenses.paidByMemberId,
+				currency: expenses.currency,
+				totalCents: sql<number>`sum(${expenses.amountCents})::int`,
+			})
+			.from(expenses)
+			.where(eq(expenses.wgId, wgId))
+			.groupBy(expenses.paidByMemberId, expenses.currency),
+		db
+			.select({
+				amountCents: expenses.amountCents,
+				currency: expenses.currency,
+				occurredAt: expenses.occurredAt,
+			})
+			.from(expenses)
+			.where(and(eq(expenses.wgId, wgId), gte(expenses.occurredAt, spendSince))),
 	]);
 }
 

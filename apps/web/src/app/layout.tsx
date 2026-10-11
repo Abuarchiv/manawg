@@ -33,6 +33,8 @@ const jetbrainsMono = localFont({
 	weight: '100 800',
 	variable: '--font-jetbrains-mono',
 	display: 'swap',
+	// Amounts only: not worth 31 kB on the critical path of every first paint.
+	preload: false,
 });
 
 const appUrl = getAppUrl();

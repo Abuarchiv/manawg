@@ -7,6 +7,7 @@ import {
 import { normalizeCurrency } from '@/core/utils/money';
 
 const SPARKLINE_DAYS = 14;
+const MONTH_DAYS = 30;
 
 export function addCurrencyTotal(totals: CurrencyTotals, currency: string, cents: number): void {
 	totals[currency] = (totals[currency] ?? 0) + cents;
@@ -41,6 +42,15 @@ function berlinDaysAgoStart(todayStart: Date, daysAgo: number): Date {
 	return day;
 }
 
+/** The oldest Berlin day the spend widgets look at; rows before it only feed the all-time total. */
+export function dashboardSpendSince(now = new Date()): Date {
+	return berlinDaysAgoStart(startOfBerlinDay(now), Math.max(SPARKLINE_DAYS - 1, MONTH_DAYS - 1));
+}
+
+/**
+ * `expenses` only has to cover the days since `dashboardSpendSince(now)`; `allTimeTotals`
+ * (per currency) replaces summing the whole history and defaults to the rows given.
+ */
 export function summarizeDashboardSpend(
 	expenses: ReadonlyArray<{
 		amountCents: number;
@@ -48,11 +58,12 @@ export function summarizeDashboardSpend(
 		occurredAt: Date | string;
 	}>,
 	now = new Date(),
+	allTimeTotals?: ReadonlyArray<{ currency?: string; totalCents: number }>,
 ): DashboardSpendSummary {
 	const todayStart = startOfBerlinDay(now);
 	const sparklineStart = berlinDaysAgoStart(todayStart, SPARKLINE_DAYS - 1);
 	const weekStart = berlinDaysAgoStart(todayStart, 6);
-	const monthStart = berlinDaysAgoStart(todayStart, 29);
+	const monthStart = berlinDaysAgoStart(todayStart, MONTH_DAYS - 1);
 	const spendBuckets = new Map<string, CurrencyTotals>();
 	let bucketDay = sparklineStart;
 	for (let i = 0; i < SPARKLINE_DAYS; i++) {
@@ -62,9 +73,12 @@ export function summarizeDashboardSpend(
 	const totalSpendByCurrency: CurrencyTotals = {};
 	const weekSpendByCurrency: CurrencyTotals = {};
 	const monthSpendByCurrency: CurrencyTotals = {};
+	for (const total of allTimeTotals ?? []) {
+		addCurrencyTotal(totalSpendByCurrency, normalizeCurrency(total.currency), total.totalCents);
+	}
 	for (const expense of expenses) {
 		const currency = normalizeCurrency(expense.currency);
-		addCurrencyTotal(totalSpendByCurrency, currency, expense.amountCents);
+		if (!allTimeTotals) addCurrencyTotal(totalSpendByCurrency, currency, expense.amountCents);
 		const occurredAt =
 			expense.occurredAt instanceof Date ? expense.occurredAt : new Date(expense.occurredAt);
 		if (occurredAt >= weekStart)
