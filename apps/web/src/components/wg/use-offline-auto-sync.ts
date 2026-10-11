@@ -1,8 +1,8 @@
 'use client';
 
 import type { SessionMember } from '@/core/auth/local-account';
-import { captureException } from '@/core/infra/capture-client';
 import { subscribeOnline } from '@/core/hooks/use-online-status';
+import { captureException } from '@/core/infra/capture-client';
 import { countOfflineActions, syncOfflineActions } from '@/core/offline/offline-client';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { type RefObject, useCallback, useEffect, useRef } from 'react';
