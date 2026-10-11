@@ -507,7 +507,9 @@ test.describe('chore next assignee', () => {
 		});
 		await page.getByRole('button', { name: 'Aufgabe speichern' }).click();
 		await expect(
-			page.getByText('Putzaufgabe konnte nicht gespeichert werden: Versuche es gleich erneut.'),
+			page.getByText(
+				'Putzaufgabe konnte nicht gespeichert werden: Zu viele Anfragen. Warte kurz und versuche es dann erneut.',
+			),
 		).toBeVisible();
 	});
 

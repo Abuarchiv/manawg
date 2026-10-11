@@ -21,6 +21,7 @@ import {
 	ItemTitle,
 } from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
+import { mutationErrorMessage } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import {
@@ -94,7 +95,14 @@ export function QuickRestockSheet({
 			setError(`${item.name} existiert nicht mehr und wurde aus der Liste entfernt.`);
 		} else {
 			if (res.status > 0 && res.status < 500) restockRequestKeysRef.current.delete(requestKey);
-			setError('Aktualisierung fehlgeschlagen. Versuche es erneut.');
+			setError(
+				mutationErrorMessage(
+					'Aktualisierung fehlgeschlagen',
+					res.error,
+					{},
+					'Aktualisierung fehlgeschlagen. Versuche es erneut.',
+				),
+			);
 		}
 	}
 

@@ -21,6 +21,7 @@ import {
 	DrawerTitle,
 } from '@/components/ui/drawer';
 import { Spinner } from '@/components/ui/spinner';
+import { mutationErrorMessage } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import {
@@ -59,6 +60,8 @@ interface InventoryAddModalProps {
 }
 
 type InventoryEditorItem = NonNullable<InventoryAddModalProps['initial']>;
+
+const SAVE_SUBJECT = 'Vorrat konnte nicht gespeichert werden';
 
 const DEFAULT_UNIT: InventoryUnit = 'Stück';
 const DEFAULT_CATEGORY: InventoryCategory = 'sonstiges';
@@ -269,14 +272,28 @@ export function InventoryAddModal({
 		) {
 			setSaving(false);
 			if (res.status !== 429) createRequestRef.current = null;
-			setServerError('Speichern fehlgeschlagen. Bitte versuche es erneut.');
+			setServerError(
+				mutationErrorMessage(
+					SAVE_SUBJECT,
+					res.error,
+					{},
+					'Speichern fehlgeschlagen. Bitte versuche es erneut.',
+				),
+			);
 		} else if (res.error === 'name_invalid') {
 			setSaving(false);
 			if (mode === 'create') createRequestRef.current = null;
 			setNameError('Bitte gib einen gültigen Namen ein.');
 		} else {
 			setSaving(false);
-			setServerError('Speichern fehlgeschlagen. Bitte versuche es erneut.');
+			setServerError(
+				mutationErrorMessage(
+					SAVE_SUBJECT,
+					res.error,
+					{},
+					'Speichern fehlgeschlagen. Bitte versuche es erneut.',
+				),
+			);
 		}
 	}
 

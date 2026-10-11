@@ -1,3 +1,4 @@
+import { InputModality } from '@/components/app/InputModality';
 import { InstallPrompt } from '@/components/app/InstallPrompt';
 import { PwaRegister } from '@/components/app/PwaRegister';
 import { ThemeProvider } from '@/components/app/ThemeProvider';
@@ -192,6 +193,7 @@ export default async function RootLayout({
 					Zum Hauptinhalt springen
 				</a>
 				<SplashScreen />
+				<InputModality />
 				<ThemeProvider>
 					{/* Phone column on every screen; wider viewports show backdrop
 					    and a hairline edge around it. */}

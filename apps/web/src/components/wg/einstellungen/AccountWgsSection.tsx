@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Item, ItemContent, ItemGroup, ItemTitle } from '@/components/ui/item';
+import { Item, ItemContent, ItemGroup, ItemGroupEntry, ItemTitle } from '@/components/ui/item';
 import { Section } from '@/components/wg/einstellungen/Section';
 import { apiFetch } from '@/core/infra/api-client';
 import { ChevronRight, Plus } from 'lucide-react';
@@ -31,16 +31,17 @@ export function AccountWgsSection({ currentCode }: { currentCode: string }) {
 				{others.length > 0 && (
 					<ItemGroup>
 						{others.map((wg) => (
-							<Item
-								key={wg.id}
-								variant="outline"
-								render={<Link href={`/wg/${encodeURIComponent(wg.code)}`} />}
-							>
-								<ItemContent className="min-w-0">
-									<ItemTitle className="line-clamp-none break-words">{wg.name}</ItemTitle>
-								</ItemContent>
-								<ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-							</Item>
+							<ItemGroupEntry key={wg.id} className="w-full min-w-0">
+								<Item
+									variant="outline"
+									render={<Link href={`/wg/${encodeURIComponent(wg.code)}`} />}
+								>
+									<ItemContent className="min-w-0">
+										<ItemTitle className="line-clamp-none break-words">{wg.name}</ItemTitle>
+									</ItemContent>
+									<ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+								</Item>
+							</ItemGroupEntry>
 						))}
 					</ItemGroup>
 				)}

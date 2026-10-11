@@ -5,7 +5,7 @@ import { aboActionErrorMessage, aboDeleteErrorMessage, aboSaveErrorMessage } fro
 // Regression: the recurring-expense texts did not know the shared 429/503/401 answers and
 // showed the generic sentence without a next step.
 test('shared API answers name the next step', () => {
-	assert.match(aboSaveErrorMessage('rate_limited', 'angelegt'), /Versuche es gleich erneut/);
+	assert.match(aboSaveErrorMessage('rate_limited', 'angelegt'), /Zu viele Anfragen/);
 	assert.match(aboActionErrorMessage('migration_read_only'), /Wartung/);
 	assert.match(aboDeleteErrorMessage('auth_required'), /Melde dich neu an/);
 });

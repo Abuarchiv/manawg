@@ -3,6 +3,7 @@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
+import { mutationErrorMessage } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import {
@@ -98,7 +99,14 @@ export function InventoryRestockPrompt({
 			onRestocked();
 		} else {
 			if (res.status > 0 && res.status < 500) keysRef.current.delete(requestKey);
-			setError('Aktualisierung fehlgeschlagen. Versuche es erneut.');
+			setError(
+				mutationErrorMessage(
+					'Aktualisierung fehlgeschlagen',
+					res.error,
+					{},
+					'Aktualisierung fehlgeschlagen. Versuche es erneut.',
+				),
+			);
 		}
 	}
 

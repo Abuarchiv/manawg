@@ -265,7 +265,7 @@ export function CalendarMonth({
 												aria-current={isToday ? 'date' : undefined}
 												className={cn(
 													'relative min-h-11 w-full px-0 hover:bg-transparent active:bg-transparent dark:hover:bg-transparent',
-													!day.inCurrentMonth && 'opacity-50',
+													!day.inCurrentMonth && 'opacity-60',
 												)}
 											>
 												<span

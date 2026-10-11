@@ -6,7 +6,7 @@ import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { useWg } from '@/components/wg/WgContextProvider';
-import { RATE_LIMITED_MESSAGE } from '@/core/http/error-codes';
+import { mutationErrorMessage } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
 import { joinErrorMessage } from '@/core/infra/join-flow';
 import { MEMBER_NAME_MAX_LENGTH } from '@/shared/lib/limits';
@@ -17,11 +17,12 @@ function renameErrorMessage(status: number, error: string): string {
 	if (error === 'name_changed') {
 		return 'Dein Name wurde inzwischen geändert. Lade die Seite neu und versuche es erneut.';
 	}
-	if (status === 429) return RATE_LIMITED_MESSAGE;
-	if (status === 0) {
-		return 'Name konnte nicht geändert werden: Prüfe deine Verbindung und versuche es erneut.';
-	}
-	return 'Name konnte nicht geändert werden: Versuche es gleich erneut.';
+	return mutationErrorMessage(
+		'Name konnte nicht geändert werden',
+		status === 0 ? 'Netzwerkfehler' : error,
+		{},
+		'Name konnte nicht geändert werden: Versuche es gleich erneut.',
+	);
 }
 
 /** Lets a member fix their own display name (typo, nickname). */

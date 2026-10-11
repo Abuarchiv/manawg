@@ -106,6 +106,8 @@ export function mutationErrorMessage(
 	retrySubject: string = subject,
 ): string {
 	if (isNetworkError(code)) return `${subject}: Prüfe deine Verbindung und versuche es erneut.`;
+	// Before the retryable bucket: a 429 is retryable, but "warte kurz" is the useful next step.
+	if (isRateLimited(code)) return `${subject}: ${RATE_LIMITED_MESSAGE}`;
 	if (isReadOnlyMode(code)) return `${subject}: ${READ_ONLY_MESSAGE}`;
 	if (isSessionExpired(code)) return `${subject}: ${SESSION_EXPIRED_MESSAGE}`;
 	if (isRetryableServerError(code)) return `${retrySubject}: Versuche es gleich erneut.`;

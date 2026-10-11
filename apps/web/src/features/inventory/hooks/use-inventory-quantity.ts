@@ -1,6 +1,7 @@
 'use client';
 
 import { useToast } from '@/components/ui/Toast';
+import { mutationErrorMessage } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
 import {
 	type NotificationWarning,
@@ -84,12 +85,11 @@ export function useInventoryQuantity(options: UseInventoryQuantityOptions) {
 		}
 		if (res.status === 404 && res.error === 'item_not_found') {
 			onGone();
-		} else if (res.status === 429) {
-			toast.error('Zu viele Änderungen in kurzer Zeit. Bitte versuche es später erneut.');
 		} else {
-			if (res.status > 0 && res.status < 500) keysRef.current.delete(mapKey);
+			if (res.status > 0 && res.status < 500 && res.status !== 429) keysRef.current.delete(mapKey);
+			const subject = `„${item.name}“ ließ sich nicht ${consume ? 'verringern' : 'erhöhen'}`;
 			toast.error(
-				`Aktualisierung fehlgeschlagen. „${item.name}“ ließ sich nicht ${consume ? 'verringern' : 'erhöhen'}.`,
+				mutationErrorMessage(subject, res.error, {}, `Aktualisierung fehlgeschlagen. ${subject}.`),
 			);
 		}
 		return false;

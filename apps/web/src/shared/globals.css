@@ -207,9 +207,9 @@ html:has([data-session-banner]) {
 	scroll-padding-top: calc(var(--banner-stack-height) + 0.5rem);
 }
 
-/* Die klebende Tab-Leiste der Einstellungen deckt den Streifen über sich ab (Statusleiste + Lücke),
-   damit beim Scrollen nichts durchscheint. Banner sind selbst deckend: dann bleibt nur die Lücke,
-   sonst würde die Maske schon ungescrollt Kopfzeile und Titel verdecken. */
+/* The sticky settings tab strip masks the band above it (status bar + gap) so nothing shows
+   through while scrolling. Banners are opaque themselves: then only the gap remains, otherwise
+   the mask would already cover header and title before any scroll. */
 :root {
 	--sticky-tabs-mask: calc(env(safe-area-inset-top, 0px) + 0.5rem);
 }
@@ -724,6 +724,16 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 	.skip-link:focus-visible {
 		transform: translateY(0);
 		outline: 2px solid var(--accent-bright, var(--accent));
+		outline-offset: 2px;
+	}
+}
+
+/* Buttons tie their ring to any-hover (iOS would otherwise show it after focus returns via touch).
+   Keyboard users on a touch device still need it: after a Tab key InputModality sets
+   html[data-input=keyboard] until the next pointer event. */
+@media (any-hover: none) {
+	html[data-input="keyboard"] :focus-visible {
+		outline: 2px solid var(--ring);
 		outline-offset: 2px;
 	}
 }
