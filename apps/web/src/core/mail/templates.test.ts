@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
+import { readFileSync, readdirSync } from 'node:fs';
 import test from 'node:test';
 import { formatEuroCents } from '@/core/utils/money';
+import { MAIL_DARK_STYLE } from './dark-mode';
 import {
 	renderAccountDeletedMail,
 	renderInvitationMail,
@@ -86,4 +88,22 @@ test('html escapes user supplied names', () => {
 	assert.ok(!mail.html.includes('<b>Eve</b>'));
 	assert.ok(mail.html.includes('&lt;b&gt;Eve&lt;/b&gt;'));
 	assert.ok(mail.html.includes('WG &amp; Co'));
+});
+
+test('every mail renders a dark mode: colour-scheme meta, dark block, both mark images', () => {
+	for (const mail of ALL) {
+		assert.ok(mail.html.includes('content="light dark"'), mail.subject);
+		assert.ok(mail.html.includes(MAIL_DARK_STYLE), mail.subject);
+		assert.ok(mail.html.includes('manawg-mark-96-light.png'), mail.subject);
+	}
+});
+
+test('the Supabase auth templates carry the same dark block as the app mails', () => {
+	const dir = new URL('../../../../../supabase/templates/', import.meta.url);
+	for (const name of readdirSync(dir).filter((file) => file.endsWith('.html'))) {
+		const html = readFileSync(new URL(name, dir), 'utf8');
+		assert.ok(html.includes(MAIL_DARK_STYLE), name);
+		assert.ok(html.includes('content="light dark"'), name);
+		assert.ok(html.includes('manawg-mark-96-light.png'), name);
+	}
 });

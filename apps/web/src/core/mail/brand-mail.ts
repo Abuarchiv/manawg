@@ -2,8 +2,10 @@
  * The e-mail shell from the Touchpoints design: 600 px wide, mark and wordmark
  * in the head, eyebrow in mono, title in Inter Tight, 15 px body, one black
  * button, footer on #FAFAFA that names the reason for the mail. Colour is used
- * only for owed and settled amounts. Every mail is rendered as HTML and text.
+ * only for owed and settled amounts. Every mail is rendered as HTML and text, in light and dark.
  */
+
+import { MAIL_COLOR_SCHEME_META, MAIL_DARK_STYLE, markImages } from './dark-mode';
 
 export const APP_ORIGIN = 'https://app.manawg.com';
 
@@ -152,7 +154,7 @@ function blockText(block: MailBlock): string[] {
 }
 
 function head(label: string | undefined): string {
-	const mark = `<img src="${APP_ORIGIN}/email/manawg-mark-96.png" width="24" height="20" alt="" style="display:block;width:24px;height:20px;border:0;">`;
+	const mark = markImages();
 	const right = label
 		? `<td align="right" valign="middle" style="font-family:${MONO};font-size:11px;line-height:1;letter-spacing:0.14em;text-transform:uppercase;color:${MUTED};white-space:nowrap;">${escapeHtml(label)}</td>`
 		: '';
@@ -187,9 +189,9 @@ export function renderBrandMail(spec: BrandMailSpec): RenderedMail {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="light">
-<meta name="supported-color-schemes" content="light">
+${MAIL_COLOR_SCHEME_META}
 <title>${escapeHtml(spec.subject)}</title>
+${MAIL_DARK_STYLE}
 </head>
 <body style="margin:0;padding:0;background-color:#F5F5F5;">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;font-size:1px;line-height:1px;">${escapeHtml(spec.preheader)}</div>

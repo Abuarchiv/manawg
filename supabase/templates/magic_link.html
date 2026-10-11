@@ -3,16 +3,38 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="light">
-<meta name="supported-color-schemes" content="light">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
 <title>ManaWG</title>
+<style>
+:root{color-scheme:light dark;supported-color-schemes:light dark;}
+.m-dark{display:none;}
+@media (prefers-color-scheme: dark){
+body,table[style*="background-color:#F5F5F5"]{background-color:#0A0A0A!important;}
+table[bgcolor="#FFFFFF"]{background-color:#171717!important;border-color:#2E2E2E!important;}
+td[bgcolor="#FAFAFA"]{background-color:#0F0F0F!important;}
+td[bgcolor="#171717"]{background-color:#FAFAFA!important;}
+div[style*="background-color:#F5F5F5"]{background-color:#262626!important;}
+[style*="#E5E5E5"]{border-color:#2E2E2E!important;}
+[style*="color:#0A0A0A"]{color:#FAFAFA!important;}
+[style*="color:#404040"]{color:#D4D4D4!important;}
+[style*="color:#737373"]{color:#A3A3A3!important;}
+a[style*="color:#FAFAFA"]{color:#0A0A0A!important;}
+[style*="color:#E7000B"]{color:#FF6467!important;}
+[style*="background-color:#E7000B"]{background-color:#FF6467!important;}
+[style*="color:#14874E"]{color:#3FCF8E!important;}
+[style*="background-color:#14874E"]{background-color:#3FCF8E!important;}
+.m-light{display:none!important;}
+.m-dark{display:block!important;}
+}
+</style>
 </head>
 <body style="margin:0;padding:0;background-color:#F5F5F5;">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;font-size:1px;line-height:1px;">Gültig für eine Stunde.</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F5F5F5" style="background-color:#F5F5F5;">
 <tr><td align="center" style="padding:32px 16px;">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" bgcolor="#FFFFFF" style="width:100%;max-width:600px;background-color:#FFFFFF;border:1px solid #E5E5E5;">
-<tr><td style="padding:22px 40px;border-bottom:1px solid #E5E5E5;"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td valign="middle" style="padding-right:10px;"><img src="https://app.manawg.com/email/manawg-mark-96.png" width="24" height="20" alt="" style="display:block;width:24px;height:20px;border:0;"></td><td valign="middle" style="font-family:'Inter Tight', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-weight:600;font-size:15px;line-height:1;letter-spacing:-0.02em;color:#0A0A0A;">ManaWG</td></tr></table></td></tr>
+<tr><td style="padding:22px 40px;border-bottom:1px solid #E5E5E5;"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td valign="middle" style="padding-right:10px;"><img class="m-light" src="https://app.manawg.com/email/manawg-mark-96.png" width="24" height="20" alt="" style="display:block;width:24px;height:20px;border:0;"><img class="m-dark" src="https://app.manawg.com/email/manawg-mark-96-light.png" width="24" height="20" alt="" style="display:none;width:24px;height:20px;border:0;mso-hide:all;"></td><td valign="middle" style="font-family:'Inter Tight', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-weight:600;font-size:15px;line-height:1;letter-spacing:-0.02em;color:#0A0A0A;">ManaWG</td></tr></table></td></tr>
 <tr><td style="padding:40px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
 <tr><td style="padding:0 0 20px 0;font-family:'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;font-size:11px;line-height:1.4;letter-spacing:0.14em;text-transform:uppercase;color:#737373;">Anmelden</td></tr>
 <tr><td style="padding:0 0 20px 0;font-family:'Inter Tight', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-weight:600;font-size:28px;line-height:1.1;letter-spacing:-0.025em;color:#0A0A0A;">Dein Anmeldecode.</td></tr>
