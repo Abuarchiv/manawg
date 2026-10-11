@@ -51,7 +51,7 @@ export function EinladungClient({ token }: { token: string }) {
 
 	if (phase.kind === 'dead') {
 		return (
-			<EntryFrame title="Einladung nicht mehr gültig" headingId="invite-heading">
+			<EntryFrame title="Einladung nicht gültig" headingId="invite-heading">
 				<ErrorBox>{deadMessage}</ErrorBox>
 				<Link href="/neu" className={cn(buttonVariants({ variant: 'outline' }), 'w-full')}>
 					Zu deinen WGs

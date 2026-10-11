@@ -15,7 +15,7 @@ export type InvitePhase =
 	| { kind: 'loading' }
 	| { kind: 'signed-out' }
 	| { kind: 'ready'; wgName: string; code: string; unclaimed: UnclaimedMember[] }
-	| { kind: 'dead' }
+	| { kind: 'dead'; reason: 'invalid' | 'expired' }
 	| { kind: 'error' };
 
 async function readError(res: Response): Promise<{ error: string; shareCode: string }> {
@@ -45,7 +45,7 @@ export function useInviteJoin(token: string) {
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `retryNonce` re-runs the lookup after a transient error.
 	useEffect(() => {
 		if (!isInviteToken(token)) {
-			setPhase({ kind: 'dead' });
+			setPhase({ kind: 'dead', reason: 'invalid' });
 			return;
 		}
 		if (!hasSessionCookie()) {
@@ -64,7 +64,8 @@ export function useInviteJoin(token: string) {
 					const { shareCode } = await readError(res);
 					if (shareCode) return router.replace(`/wg/${encodeURIComponent(shareCode)}`);
 				}
-				if (res.status === 404 || res.status === 410) return setPhase({ kind: 'dead' });
+				if (res.status === 404) return setPhase({ kind: 'dead', reason: 'invalid' });
+				if (res.status === 410) return setPhase({ kind: 'dead', reason: 'expired' });
 				if (!res.ok) return setPhase({ kind: 'error' });
 				const data = (await res.json()) as {
 					wg: { name: string; shareCode: string };
@@ -122,7 +123,7 @@ export function useInviteJoin(token: string) {
 				const { error: apiError } = await readError(res);
 				if (res.status === 409 && apiError === 'already_joined') return router.push(target);
 				if (apiError === 'invite_expired' || apiError === 'invite_required') {
-					return setPhase({ kind: 'dead' });
+					return setPhase({ kind: 'dead', reason: 'expired' });
 				}
 				const nameProblem =
 					apiError === 'name_invalid' || (res.status === 409 && apiError === 'name_taken');
@@ -157,7 +158,7 @@ export function useInviteJoin(token: string) {
 			if (!res.ok) {
 				const { error: apiError } = await readError(res);
 				if (apiError === 'invite_expired' || apiError === 'invite_required') {
-					return setPhase({ kind: 'dead' });
+					return setPhase({ kind: 'dead', reason: 'expired' });
 				}
 				setError(
 					apiError === 'member_already_linked'
@@ -187,6 +188,9 @@ export function useInviteJoin(token: string) {
 		busy,
 		join,
 		retry: () => setRetryNonce((n) => n + 1),
-		deadMessage: INVITE_EXPIRED_MESSAGE,
+		deadMessage:
+			phase.kind === 'dead' && phase.reason === 'invalid'
+				? 'Dieser Einladungslink stimmt nicht. Prüfe, ob er vollständig kopiert wurde, oder bitte ein Mitglied um einen neuen.'
+				: INVITE_EXPIRED_MESSAGE,
 	};
 }
