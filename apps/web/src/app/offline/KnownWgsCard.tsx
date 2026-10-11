@@ -9,7 +9,7 @@ import {
 	ItemGroupEntry,
 	ItemTitle,
 } from '@/components/ui/item';
-import type { KnownWg } from '@/core/auth/identity';
+import type { KnownWg } from '@/core/auth/local-account';
 import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { type OfflineStatus, formatWgQueuedActionCount, wgHref } from './offline-page-helpers';
@@ -17,7 +17,7 @@ import { type OfflineStatus, formatWgQueuedActionCount, wgHref } from './offline
 interface KnownWgsCardProps {
 	status: OfflineStatus;
 	knownWgs: KnownWg[];
-	hasIdentity: boolean;
+	inWg: boolean;
 	queueCounts: Map<string, number>;
 	primaryWg: KnownWg | null;
 }
@@ -26,7 +26,7 @@ interface KnownWgsCardProps {
 export function KnownWgsCard({
 	status,
 	knownWgs,
-	hasIdentity,
+	inWg,
 	queueCounts,
 	primaryWg,
 }: KnownWgsCardProps) {
@@ -54,15 +54,13 @@ export function KnownWgsCard({
 					<p className="text-sm leading-relaxed text-muted-foreground">
 						{status === 'checking'
 							? 'Gemerkte WGs werden gesucht…'
-							: hasIdentity
+							: inWg
 								? status === 'ready'
 									? 'Auf diesem Gerät bist du angemeldet, aber der Code deiner WG ist hier nicht gespeichert. Gib den Code ein, um sie zu öffnen.'
 									: 'Auf diesem Gerät bist du in einer WG angemeldet, aber ihr Code ist hier nicht gespeichert. Sobald du wieder online bist, lade die Seite neu, dann kannst du deine WG wieder öffnen.'
-								: status === 'browser-offline'
-									? 'Ohne Netz zeigen wir nur WGs mit wartenden Aktionen. Sobald du wieder online bist, lade die Seite neu, dann kannst du deine WG wieder öffnen.'
-									: status === 'ready'
-										? 'Noch keine WG auf diesem Gerät gemerkt. Gib deinen Code ein, um beizutreten.'
-										: 'Noch keine WG auf diesem Gerät gemerkt. Sobald du wieder online bist, kannst du mit deinem Code erneut beitreten.'}
+								: status === 'ready'
+									? 'Noch keine WG auf diesem Gerät gemerkt. Gib deinen Code ein, um beizutreten.'
+									: 'Noch keine WG auf diesem Gerät gemerkt. Sobald du wieder online bist, kannst du mit deinem Code erneut beitreten.'}
 					</p>
 				) : (
 					<ItemGroup aria-label="Bekannte WGs">

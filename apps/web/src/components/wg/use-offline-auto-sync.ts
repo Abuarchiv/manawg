@@ -1,6 +1,6 @@
 'use client';
 
-import type { StoredIdentity } from '@/core/auth/identity';
+import type { SessionMember } from '@/core/auth/local-account';
 import { subscribeOnline } from '@/core/hooks/use-online-status';
 import { countOfflineActions, syncOfflineActions } from '@/core/offline/offline-client';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
@@ -17,7 +17,7 @@ export function useOfflineAutoSync({
 	syncAbortRef,
 }: {
 	shareCode: string;
-	identity: StoredIdentity | null;
+	identity: SessionMember | null;
 	accountReady: boolean;
 	syncAbortRef: RefObject<AbortController | null>;
 }): () => Promise<void> {
@@ -60,7 +60,7 @@ export function useOfflineAutoSync({
  */
 export function useSyncOnFocusAndOnline(
 	sync: () => Promise<void>,
-	identity: StoredIdentity | null,
+	identity: SessionMember | null,
 	accountReady: boolean,
 ): void {
 	useEffect(() => {

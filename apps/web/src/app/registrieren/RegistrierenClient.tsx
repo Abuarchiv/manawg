@@ -17,7 +17,7 @@ function describeIntent(intent: URLSearchParams): string {
 	return 'Mit deinem Konto erstellst du eine WG oder trittst mit einem Code bei.';
 }
 
-/** Registration page: Google, e-mail/password or SMS, then back into the `/neu` start flow. */
+/** Registration page: Google or e-mail/password, then back into the `/neu` start flow. */
 export function RegistrierenClient({ intentQuery }: { intentQuery: string }) {
 	const router = useRouter();
 	const [credentialsBusy, setCredentialsBusy] = useState(false);

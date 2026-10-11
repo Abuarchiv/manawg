@@ -5,12 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { createSupabaseBrowserClient } from '@/core/auth/client';
-import {
-	type KnownWg,
-	getKnownWgs,
-	hasLocalIdentityFor,
-	soleStoredAuthUserId,
-} from '@/core/auth/identity';
+import { type KnownWg, getKnownWgs, getLocalAccount } from '@/core/auth/local-account';
 import { subscribeConnectivity } from '@/core/hooks/use-online-status';
 import {
 	filterOfflineActionsForAuthUser,
@@ -36,7 +31,6 @@ import {
 	moduleLabel,
 	offlineStatusCopy,
 	visibleKnownWgs,
-	visibleQueueCodes,
 	wgHref,
 } from './offline-page-helpers';
 
@@ -46,7 +40,7 @@ async function getLocalAuthUserId(sessionless: boolean): Promise<string | null> 
 		const { data, error } = await createSupabaseBrowserClient().auth.getSession();
 		if (!error) return data.session?.user.id ?? null;
 		// Expired access token and no network: still signed in, the refresh just cannot run.
-		return isAuthRetryableFetchError(error) ? soleStoredAuthUserId() : null;
+		return isAuthRetryableFetchError(error) ? getLocalAccount() : null;
 	} catch {
 		return null;
 	}
@@ -56,7 +50,7 @@ async function getLocalAuthUserId(sessionless: boolean): Promise<string | null> 
 export function OfflineClient({ sessionless = false }: { sessionless?: boolean }) {
 	const [online, setOnline] = useState(true);
 	const [knownWgs, setKnownWgs] = useState<KnownWg[]>([]);
-	const [hasIdentity, setHasIdentity] = useState(false);
+	const [inWg, setInWg] = useState(false);
 	const [queue, setQueue] = useState<OfflineAction[]>([]);
 	const [syncing, setSyncing] = useState(false);
 	const [rechecking, setRechecking] = useState(false);
@@ -65,6 +59,25 @@ export function OfflineClient({ sessionless = false }: { sessionless?: boolean }
 	const syncingRef = useRef(false);
 	const syncAbortRef = useRef<AbortController | null>(null);
 	const refreshGenerationRef = useRef(0);
+
+	// Offline and server-unreachable: only what belongs to the signed-in account is shown.
+	const showLocalData = useCallback(
+		(authUserId: string | null): OfflineAction[] => {
+			const all = readOfflineQueue();
+			const mine = sessionless ? all : filterOfflineActionsForAuthUser(all, authUserId);
+			setInWg(sessionless || Boolean(authUserId));
+			setKnownWgs(sessionless ? getKnownWgs() : visibleKnownWgs(authUserId));
+			setQueue(mine);
+			// Queued by a different account (after an account switch): not shown, not sent.
+			setMessage(
+				authUserId && mine.length < all.length
+					? 'Aktionen eines anderen Kontos auf diesem Gerät werden hier nicht angezeigt.'
+					: null,
+			);
+			return mine;
+		},
+		[sessionless],
+	);
 
 	const refresh = useCallback(async (): Promise<OfflineAction[]> => {
 		const generation = ++refreshGenerationRef.current;
@@ -75,13 +88,7 @@ export function OfflineClient({ sessionless = false }: { sessionless?: boolean }
 		setOnline(!browserOffline);
 		setMessage(null);
 		if (browserOffline) {
-			const localQueue = sessionless
-				? readOfflineQueue()
-				: filterOfflineActionsForAuthUser(readOfflineQueue(), localAuthUserId);
-			const identityOnDevice = hasLocalIdentityFor(localAuthUserId);
-			setHasIdentity(identityOnDevice);
-			setKnownWgs(visibleKnownWgs(visibleQueueCodes(localQueue), identityOnDevice));
-			setQueue(localQueue);
+			const localQueue = showLocalData(localAuthUserId);
 			setStatus(sessionless || localAuthUserId ? 'browser-offline' : 'unauthenticated');
 			return localQueue;
 		}
@@ -99,24 +106,18 @@ export function OfflineClient({ sessionless = false }: { sessionless?: boolean }
 			const nextQueue = readOfflineQueue().filter((action) =>
 				memberKeys.has(`${action.shareCode}:${action.memberId}`),
 			);
-			setHasIdentity(hasLocalIdentityFor(localAuthUserId));
+			setInWg(memberships.length > 0);
 			setKnownWgs(getKnownWgs().filter((wg) => memberCodes.has(wg.code)));
 			setQueue(nextQueue);
 			setStatus('ready');
 			return nextQueue;
 		} catch {
 			if (!current()) return [];
-			const localQueue = sessionless
-				? readOfflineQueue()
-				: filterOfflineActionsForAuthUser(readOfflineQueue(), localAuthUserId);
-			const identityOnDevice = hasLocalIdentityFor(localAuthUserId);
-			setHasIdentity(identityOnDevice);
-			setKnownWgs(visibleKnownWgs(visibleQueueCodes(localQueue), identityOnDevice));
-			setQueue(localQueue);
+			const localQueue = showLocalData(localAuthUserId);
 			setStatus(sessionless || localAuthUserId ? 'server-unreachable' : 'unauthenticated');
 			return localQueue;
 		}
-	}, [sessionless]);
+	}, [sessionless, showLocalData]);
 
 	useEffect(() => {
 		void refresh();
@@ -329,7 +330,7 @@ export function OfflineClient({ sessionless = false }: { sessionless?: boolean }
 					<KnownWgsCard
 						status={status}
 						knownWgs={knownWgs}
-						hasIdentity={hasIdentity}
+						inWg={inWg}
 						queueCounts={queueCounts}
 						primaryWg={primaryWg}
 					/>

@@ -12,7 +12,6 @@ import { FieldGroup, FieldSeparator } from '@/components/ui/field';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { isAuthPagePath } from '@/core/auth/auth-intent';
-import { getIdentity } from '@/core/auth/identity';
 import { safeNextPath } from '@/core/auth/next-path';
 import { normalizeShareCode } from '@/core/utils/share-code';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -34,7 +33,7 @@ import { useBusyLock } from './use-busy-lock';
 import { useClearCallbackError } from './use-clear-callback-error';
 import { useCreateWg } from './use-create-wg';
 import { useJoinWg } from './use-join-wg';
-import { useSaveStartDraft, useStartDraft } from './use-start-draft';
+import { useAccountNamePrefill, useSaveStartDraft, useStartDraft } from './use-start-draft';
 import { useStartError } from './use-start-error';
 import { useStepHistory } from './use-step-history';
 
@@ -60,7 +59,6 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 	const { busy, busyRef, setBusy } = useBusyLock();
 	const { error, invalidField, clearError, setFormError, setFieldError } = useStartError();
 	const [accountSwitchError, setAccountSwitchError] = useState<string | null>(null);
-	const [legacyOpen, setLegacyOpen] = useState(false);
 	const [switching, setSwitching] = useState(false);
 	const [credentialsBusy, setCredentialsBusy] = useState(false);
 	// Keeps the retry button mounted (and focused) while the check reruns.
@@ -75,6 +73,7 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 		handleAuthenticated,
 		signedInHere,
 	} = useAccountWgs({ interactive, step, clearError });
+	useAccountNamePrefill(authState === 'authenticated', setCreatorName, setJoinName);
 	useSaveStartDraft({ interactive, step, wgName, creatorName, joinCode, joinName, joinWg });
 	const { goTo, goBack } = useStepHistory({
 		interactive,
@@ -148,10 +147,9 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 		setAccountSwitchError(null);
 		try {
 			const { signOutSocialAccount } = await import('@/core/auth/client');
-			const pushTargets = accountWgs.flatMap((wg) => {
-				const identity = getIdentity(wg.id);
-				return identity ? [{ code: wg.code, memberId: identity.memberId }] : [];
-			});
+			const pushTargets = accountWgs.flatMap((wg) =>
+				wg.memberId ? [{ code: wg.code, memberId: wg.memberId }] : [],
+			);
 			const { pushCleanup, cancelled } = await signOutSocialAccount(pushTargets, {
 				confirmDiscard,
 			});
@@ -329,8 +327,6 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 					accountWgs={accountWgs}
 					interactive={interactive}
 					busy={busy}
-					legacyOpen={legacyOpen}
-					onLegacyOpenChange={setLegacyOpen}
 					onCreate={() => goTo('create')}
 					onJoin={() => goTo('join')}
 				/>

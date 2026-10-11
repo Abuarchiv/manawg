@@ -9,7 +9,7 @@ import { type Page, expect } from '@playwright/test';
 
 declare global {
 	interface Window {
-		/** Set by `setupMember` when the fixture identity cannot be written. */
+		/** Set by `setupMember` when local storage cannot be written. */
 		__manawgStorageBlocked?: boolean;
 	}
 }
@@ -22,33 +22,22 @@ export const FIXTURE_WG = {
 } as const;
 
 /**
- * Pre-seeds the CI-only fixture identity so `WgContextProvider` can render the
- * requested feature page without a Supabase session.
+ * Prepares a fixture WG visit: the fixture layout already renders as the WG's first member, so
+ * only stale local state from earlier specs is wiped.
  *
  * Flags blocked storage on `window` so `navigateToFeature` fails with a clear
- * cause instead of an opaque "identity not accepted" assertion later.
+ * cause instead of an opaque assertion later.
  */
 export async function setupMember(page: Page): Promise<void> {
-	await page.addInitScript(
-		({ wgId, memberId, memberName }) => {
-			try {
-				localStorage.setItem(
-					`manawg_identity:${wgId}`,
-					JSON.stringify({ memberId, name: memberName }),
-				);
-				// Wipe any stale offline queue from previous specs.
-				localStorage.removeItem('manawg:offline-actions');
-			} catch {
-				window.__manawgStorageBlocked = true;
-				document.documentElement?.setAttribute('data-manawg-storage-blocked', 'true');
-			}
-		},
-		{
-			wgId: FIXTURE_WG.id,
-			memberId: FIXTURE_WG.memberId,
-			memberName: FIXTURE_WG.memberName,
-		},
-	);
+	await page.addInitScript(() => {
+		try {
+			// Wipe any stale offline queue from previous specs.
+			localStorage.removeItem('manawg:offline-actions');
+		} catch {
+			window.__manawgStorageBlocked = true;
+			document.documentElement?.setAttribute('data-manawg-storage-blocked', 'true');
+		}
+	});
 }
 
 /**
@@ -63,7 +52,7 @@ export async function navigateToFeature(page: Page, path: string): Promise<void>
 			const storageBlocked = await page.evaluate(() => Boolean(window.__manawgStorageBlocked));
 			if (storageBlocked) {
 				throw new Error(
-					'localStorage is blocked in this browser context (private mode?) — fixture identity was not written',
+					'localStorage is blocked in this browser context (private mode?) — the stale offline queue could not be wiped',
 				);
 			}
 			const body = await page.locator('body').innerText();
@@ -75,7 +64,7 @@ export async function navigateToFeature(page: Page, path: string): Promise<void>
 			}
 			if (new URL(page.url()).pathname.startsWith('/neu')) {
 				throw new Error(
-					`redirected to login (${page.url()}) — fixture identity missing? run the fixtures lane, not the live lane`,
+					`redirected to login (${page.url()}) — unexpected sign-in redirect; run the fixtures lane, not the live lane`,
 				);
 			}
 			return;
@@ -97,7 +86,9 @@ export async function dismissOnboarding(page: Page): Promise<void> {
 	await expect(accessDenied)
 		.toBeHidden({ timeout: 2_000 })
 		.catch(() => {
-			throw new Error('Fixture identity was not accepted — setupMember() must run first');
+			throw new Error(
+				'Fixture member was not accepted — the WG shell shows the access-denied state',
+			);
 		});
 }
 

@@ -1,4 +1,4 @@
-import { getIdentity } from '@/core/auth/identity';
+import { belongsToAccount, getLocalAccount, setLocalAccount } from '@/core/auth/local-account';
 import { safeLocalStorage } from '@/core/utils/browser';
 import { isRecord } from '@/core/utils/is-record';
 import { isOfflineAction } from './offline-action-guard';
@@ -230,15 +230,25 @@ export function countOfflineActions(shareCode?: string, options?: { memberId?: s
 	).length;
 }
 
+/** Actions that belong to the signed-in account; entries from before account binding go to the account recorded on this device. */
 export function filterOfflineActionsForAuthUser(
 	actions: OfflineAction[],
 	authUserId: string | null | undefined,
 ): OfflineAction[] {
 	if (!authUserId) return [];
-	return actions.filter((action) => {
-		if (!action.wgId) return false;
-		const identity = getIdentity(action.wgId);
-		return identity?.authUserId === authUserId && identity.memberId === action.memberId;
+	return actions.filter((action) => belongsToAccount(action.authUserId, authUserId));
+}
+
+/**
+ * Records the signed-in account. On an account switch the previous account's queued actions are
+ * dropped: they could only be replayed under the wrong session.
+ */
+export async function adoptLocalAccount(authUserId: string): Promise<void> {
+	const previous = setLocalAccount(authUserId);
+	if (!previous) return;
+	await updateOfflineQueue((actions) => {
+		const own = actions.filter((action) => (action.authUserId ?? previous) === authUserId);
+		return own.length === actions.length ? null : own;
 	});
 }
 
@@ -298,8 +308,11 @@ export async function discardQueuedEntry(
 
 export async function enqueueOfflineAction(action: OfflineAction): Promise<number> {
 	let count = 0;
+	// Tag the owner here, once: the account recorded when this tab loaded its member.
+	const authUserId = action.authUserId ?? getLocalAccount();
+	const owned = authUserId ? { ...action, authUserId } : action;
 	const saved = await updateOfflineQueue((actions) => {
-		const next = [...actions, action];
+		const next = [...actions, owned];
 		count = next.length;
 		return next;
 	});

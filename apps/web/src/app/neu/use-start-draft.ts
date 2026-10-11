@@ -85,6 +85,32 @@ export function useStartDraft() {
 }
 
 /**
+ * Fills empty name fields with the account's name once the visitor is signed in
+ * (Google profile or the sign-up form); typed or restored names are never overwritten.
+ */
+export function useAccountNamePrefill(
+	authenticated: boolean,
+	setCreatorName: (update: (current: string) => string) => void,
+	setJoinName: (update: (current: string) => string) => void,
+): void {
+	useEffect(() => {
+		if (!authenticated) return;
+		let active = true;
+		import('@/core/auth/client')
+			.then(({ getAccountName }) => getAccountName())
+			.then((name) => {
+				if (!active || !name) return;
+				setCreatorName((current) => current || name);
+				setJoinName((current) => current || name);
+			})
+			.catch(() => {});
+		return () => {
+			active = false;
+		};
+	}, [authenticated, setCreatorName, setJoinName]);
+}
+
+/**
  * Persists the in-progress inputs under START_DRAFT_KEY and drops the draft
  * once the WG exists. Separate from useStartDraft so it runs after the
  * account-WG effects, in the original effect order.

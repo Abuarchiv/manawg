@@ -123,6 +123,7 @@ export function isOfflineAction(value: unknown): value is OfflineAction {
 		return false;
 	}
 	if (value.wgId !== undefined && typeof value.wgId !== 'string') return false;
+	if (value.authUserId !== undefined && typeof value.authUserId !== 'string') return false;
 	const type = value.type as OfflineActionType;
 	return OFFLINE_ACTION_TYPES.has(type) && hasValidPayload(type, value.payload);
 }

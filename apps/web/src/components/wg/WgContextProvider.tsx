@@ -4,7 +4,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
-import type { StoredIdentity } from '@/core/auth/identity';
+import type { SessionMember } from '@/core/auth/local-account';
 import {
 	subscribeOnline,
 	subscribeVisibility,
@@ -52,7 +52,7 @@ export interface Member {
 interface WgContextValue {
 	wg: WgSummary;
 	members: Member[];
-	identity: StoredIdentity;
+	identity: SessionMember;
 	refreshMembers: (memberId?: string) => Promise<void>;
 	// Whether the caller is the WG admin — UI gating only (deactivate/
 	// reactivate buttons, chat admin-delete). Every mutation re-checks
@@ -67,7 +67,7 @@ const WgContext = createContext<WgContextValue | null>(null);
 interface Props {
 	wg: WgSummary;
 	members: Member[];
-	initialIdentity?: StoredIdentity | undefined;
+	initialIdentity?: SessionMember | undefined;
 	/** Server-verified admin flag; only meaningful together with initialIdentity.authUserId. */
 	initialIsAdmin?: boolean | undefined;
 	/**
@@ -93,7 +93,7 @@ export function WgContextProvider({
 	const serverVerified = Boolean(initialIdentity?.authUserId);
 	const [members, setMembers] = useState<Member[]>(initialMembers);
 	const [isAdmin, setIsAdmin] = useState(serverVerified && initialIsAdmin === true);
-	const [identity, setStateIdentity] = useState<StoredIdentity | null>(initialIdentity ?? null);
+	const [identity, setStateIdentity] = useState<SessionMember | null>(initialIdentity ?? null);
 	const [accountReady, setAccountReady] = useState(serverVerified);
 	const [memberLoaded, setMemberLoaded] = useState(serverVerified);
 	const syncAbortRef = useRef<AbortController | null>(null);
@@ -122,17 +122,13 @@ export function WgContextProvider({
 	});
 
 	const refreshMembers = useMembersRefresh({
-		wgId: wg.id,
 		encodedShareCode,
 		identity,
 		accountReady,
 		serverVerified,
 		authGenerationRef,
-		authUserIdRef,
-		loadSessionMember,
 		setMembers,
 		setIsAdmin,
-		setStateIdentity,
 	});
 
 	const value = useMemo<WgContextValue | null>(() => {

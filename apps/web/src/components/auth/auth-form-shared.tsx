@@ -5,14 +5,14 @@ import type { ReactElement } from 'react';
 /** Minimum for passwords chosen now (sign-up, reset); Supabase enforces the same value. */
 export const NEW_PASSWORD_MIN_LENGTH = 8;
 
-/** The request in flight; one at a time across e-mail and phone sign-in. */
+/** The request in flight; one at a time across all sign-in forms. */
 export type BusyAction =
 	| 'email-sign-in'
 	| 'email-sign-up'
 	| 'email-resend'
 	| 'password-reset'
-	| 'phone-request'
-	| 'phone-verify'
+	| 'code-request'
+	| 'code-verify'
 	| null;
 
 export interface AuthFormProps {

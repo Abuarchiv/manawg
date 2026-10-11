@@ -198,7 +198,7 @@ test('logout wipes account-bound browser data but keeps the theme', async () => 
 	const store = new Map([
 		['manawg:offline-actions', '[]'],
 		['manawg:draft:ABCD2345:m:expense', '{}'],
-		['manawg_identity:wg', '{}'],
+		['manawg_account', 'user-a'],
 		['manawg-theme', 'dark'],
 	]);
 	const deleted: string[] = [];

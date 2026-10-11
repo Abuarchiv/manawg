@@ -6,8 +6,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import type { WgSummary } from '@/components/wg/WgContextProvider';
-import type { StoredIdentity } from '@/core/auth/identity';
-import { clearIdentity, forgetWg } from '@/core/auth/identity';
+import type { SessionMember } from '@/core/auth/local-account';
 import { LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -17,7 +16,7 @@ export function AccountSignOutSection({
 	identity,
 }: {
 	wg: WgSummary;
-	identity: StoredIdentity;
+	identity: SessionMember;
 }) {
 	const router = useRouter();
 	const { confirmDiscard, dialog } = useConfirmLogoutDiscard();
@@ -40,8 +39,6 @@ export function AccountSignOutSection({
 				{ confirmDiscard },
 			);
 			if (cancelled) return;
-			clearIdentity(wg.id);
-			forgetWg(wg.shareCode);
 			// Local data is gone, so the visitor leaves the household screen either way; a failed
 			// push cleanup is told on the page they land on.
 			if (pushCleanup === 'failed') {

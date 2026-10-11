@@ -1,84 +1,109 @@
-// Sign-in / create-or-join entry flow (fixture lane): validation, tabs, phone layout, account switch.
+// Sign-in / create-or-join entry flow (fixture lane): validation, tabs, code login, account switch.
 // Live Supabase auth is covered by supabase-auth-live and social-login-live.
 
 import { expect, test } from '@playwright/test';
 
 import { mockNoWgs } from './support/helpers';
 
-test.describe('auth phone flow', () => {
-	test.describe('phone authentication fixture', () => {
+test.describe('auth e-mail code flow', () => {
+	test.describe('e-mail code authentication fixture', () => {
 		test.skip(process.env.AUTH_UI_E2E !== 'true', 'Requires the isolated fake Supabase fixture.');
 
-		test('keeps the SMS tab selected and reports incomplete codes on the code field', async ({
-			page,
-		}) => {
+		test('signs in with a mailed code and prefills the account name', async ({ page }) => {
 			await page.setViewportSize({ width: 320, height: 780 });
+			const user = {
+				id: '00000000-0000-4000-8000-000000000001',
+				aud: 'authenticated',
+				role: 'authenticated',
+				email: 'mina@example.invalid',
+				app_metadata: {},
+				user_metadata: { full_name: 'Mina Muster' },
+				created_at: '2026-01-01T00:00:00Z',
+			};
+			const verifyBodies: unknown[] = [];
+			let signedIn = false;
 			await page.route('**/auth/v1/**', async (route) => {
 				const { pathname } = new URL(route.request().url());
-				if (pathname.endsWith('/settings')) {
-					await route.fulfill({
-						status: 200,
-						contentType: 'application/json',
-						body: JSON.stringify({ external: { phone: true } }),
+				const json = (status: number, body: unknown) =>
+					route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+				if (pathname.endsWith('/otp')) return json(200, {});
+				if (pathname.endsWith('/verify')) {
+					verifyBodies.push(route.request().postDataJSON());
+					if (verifyBodies.length === 1) {
+						return json(403, { code: 'otp_expired', message: 'Token has expired or is invalid' });
+					}
+					signedIn = true;
+					return json(200, {
+						access_token: 'fixture-access',
+						token_type: 'bearer',
+						expires_in: 3600,
+						refresh_token: 'fixture-refresh',
+						user,
 					});
-					return;
 				}
-				if (pathname.endsWith('/otp')) {
-					await route.fulfill({
-						status: 200,
-						contentType: 'application/json',
-						body: JSON.stringify({ message_id: 'fixture-message' }),
-					});
-					return;
-				}
-				await route.fulfill({ status: 404, contentType: 'application/json', body: '{}' });
+				if (pathname.endsWith('/user')) return json(200, user);
+				return json(404, {});
 			});
+			await page.route('**/api/wg/mine', (route) =>
+				signedIn
+					? route.fulfill({ status: 200, contentType: 'application/json', body: '{"wgs":[]}' })
+					: route.fulfill({ status: 401, contentType: 'application/json', body: '{}' }),
+			);
 
 			await page.goto('/neu');
-			const phoneTab = page.getByRole('tab', { name: 'Telefon / SMS' });
-			await phoneTab.click();
+			await expect(page.getByRole('tab', { name: 'Code per E-Mail' })).toHaveAttribute(
+				'aria-selected',
+				'true',
+			);
+			await page.getByLabel('E-Mail-Adresse').fill('Mina@Example.invalid');
+			await page.getByRole('button', { name: 'Code per E-Mail senden' }).click();
 
-			const phone = page.getByLabel('Telefonnummer');
-			await phone.fill('+491701234567');
-			await page.getByRole('button', { name: 'SMS-Code anfordern' }).click();
-
-			const otp = page.getByLabel('6-stelliger SMS-Code');
-			await expect(otp).toBeVisible();
-			await expect(phoneTab).toHaveAttribute('aria-selected', 'true');
-
-			await otp.fill('123');
-			await page.getByRole('button', { name: 'Code bestätigen' }).click();
+			const code = page.getByLabel('8-stelliger Code');
+			await expect(code).toBeFocused();
+			await expect(code).toHaveAttribute('autocomplete', 'one-time-code');
 			await expect(
-				page.getByText('Gib einen sechsstelligen SMS-Code ein.', { exact: true }),
+				page.getByRole('button', { name: /Code erneut senden in \d+ s/ }),
+			).toBeDisabled();
+
+			await code.fill('123');
+			await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
+			await expect(code).toHaveAttribute('aria-invalid', 'true');
+			expect(verifyBodies).toHaveLength(0);
+
+			await code.fill('12345678');
+			await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
+			await expect(
+				page.getByText('Code falsch oder abgelaufen. Fordere einen neuen an.'),
 			).toBeVisible();
-			await expect(otp).toHaveAttribute('aria-invalid', 'true');
-			await expect(phone).not.toHaveAttribute('aria-invalid', 'true');
+
+			// The second attempt is accepted and lands on the start page with the account name known.
+			await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
+			await page.getByRole('button', { name: 'Neue WG erstellen', exact: true }).click();
+			expect(verifyBodies.at(-1)).toMatchObject({
+				email: 'mina@example.invalid',
+				token: '12345678',
+				type: 'email',
+			});
+			await expect(page.getByLabel('Dein Anzeigename')).toHaveValue('Mina Muster');
 		});
 	});
 });
 
 test.describe('auth tab responsive', () => {
-	test.describe('phone authentication tab at large text', () => {
+	test.describe('password tab at large text', () => {
 		test.skip(
 			process.env.AUTH_UI_E2E !== 'true' || process.env.AUTH_TAB_RESPONSIVE_E2E !== 'true',
 			'Requires the isolated fake Supabase server and 32px root-font fixture.',
 		);
 
 		for (const scheme of ['light', 'dark'] as const) {
-			test(`keeps the phone tab label intact at 320px in ${scheme} mode`, async ({ page }) => {
+			test(`keeps the password tab label intact at 320px in ${scheme} mode`, async ({ page }) => {
 				await page.setViewportSize({ width: 320, height: 780 });
 				await page.emulateMedia({ colorScheme: scheme });
 				await page.addInitScript((theme) => localStorage.setItem('manawg-theme', theme), scheme);
-				await page.route('**/auth/v1/**', (route) => {
-					if (new URL(route.request().url()).pathname.endsWith('/settings')) {
-						return route.fulfill({
-							status: 200,
-							contentType: 'application/json',
-							body: JSON.stringify({ external: { phone: true } }),
-						});
-					}
-					return route.fulfill({ status: 404, contentType: 'application/json', body: '{}' });
-				});
+				await page.route('**/auth/v1/**', (route) =>
+					route.fulfill({ status: 404, contentType: 'application/json', body: '{}' }),
+				);
 				await page.route('**/__auth-test-root32.css', (route) =>
 					route.fulfill({
 						status: 200,
@@ -106,34 +131,34 @@ test.describe('auth tab responsive', () => {
 					{ dark: scheme === 'dark' },
 				);
 
-				const phoneTab = page.getByRole('tab', { name: 'Telefon / SMS', exact: true });
-				await expect(phoneTab).toBeVisible();
-				const geometry = await phoneTab.evaluate((tab) => {
+				const passwordTab = page.getByRole('tab', { name: 'Passwort', exact: true });
+				await expect(passwordTab).toBeVisible();
+				const geometry = await passwordTab.evaluate((tab) => {
 					const rect = tab.getBoundingClientRect();
 					const walker = document.createTreeWalker(tab, NodeFilter.SHOW_TEXT);
-					let telefonRects: Array<{ right: number }> = [];
+					let wordRects: Array<{ right: number }> = [];
 					while (walker.nextNode()) {
 						const text = walker.currentNode.nodeValue ?? '';
-						const start = text.indexOf('Telefon');
+						const start = text.indexOf('Passwort');
 						if (start < 0) continue;
 						const range = document.createRange();
 						range.setStart(walker.currentNode, start);
-						range.setEnd(walker.currentNode, start + 'Telefon'.length);
-						telefonRects = Array.from(range.getClientRects(), (line) => ({ right: line.right }));
+						range.setEnd(walker.currentNode, start + 'Passwort'.length);
+						wordRects = Array.from(range.getClientRects(), (line) => ({ right: line.right }));
 						break;
 					}
 					return {
 						rootFontSize: getComputedStyle(document.documentElement).fontSize,
 						documentWidth: document.documentElement.scrollWidth,
 						tabRight: rect.right,
-						telefonRects,
+						wordRects,
 					};
 				});
 
 				expect(geometry.rootFontSize).toBe('32px');
 				expect(geometry.documentWidth).toBe(320);
-				expect(geometry.telefonRects).toHaveLength(1);
-				expect(geometry.telefonRects[0]?.right).toBeLessThanOrEqual(geometry.tabRight);
+				expect(geometry.wordRects).toHaveLength(1);
+				expect(geometry.wordRects[0]?.right).toBeLessThanOrEqual(geometry.tabRight);
 			});
 		}
 	});
@@ -155,6 +180,7 @@ test.describe('start credentials auth validation', () => {
 				}),
 			);
 			await page.goto('/neu');
+			await page.getByRole('tab', { name: 'Passwort', exact: true }).click();
 
 			const email = page.locator('#auth-email');
 			const password = page.locator('#auth-password');
@@ -179,6 +205,7 @@ test.describe('start credentials auth validation', () => {
 				route.fulfill({ status: 401, contentType: 'application/json', body: '{}' }),
 			);
 			await page.goto('/neu?code=mte8pzat&utm=x');
+			await page.getByRole('tab', { name: 'Passwort', exact: true }).click();
 			await expect(page.locator('#auth-password')).toHaveAttribute(
 				'autocomplete',
 				'current-password',
@@ -224,6 +251,7 @@ test.describe('start credentials auth validation', () => {
 				},
 			);
 			await page.goto('/registrieren?action=create');
+			const name = page.getByLabel('Dein Name');
 			const email = page.getByLabel('E-Mail-Adresse');
 			const password = page.getByLabel('Passwort', { exact: true });
 			const confirmation = page.getByLabel('Passwort wiederholen');
@@ -235,6 +263,11 @@ test.describe('start credentials auth validation', () => {
 			await email.fill('nicht-gueltig');
 			await password.fill('langes-passwort');
 			await confirmation.fill('langes-passwort');
+			await submit.click();
+			await expect(page.locator('#signup-error')).toContainText('Namen');
+			await expect(name).toHaveAttribute('aria-invalid', 'true');
+
+			await name.fill('Mina');
 			await submit.click();
 			await expect(page.locator('#signup-error')).toContainText('gültige E-Mail-Adresse');
 			await expect(email).toHaveAttribute('aria-invalid', 'true');
@@ -257,9 +290,11 @@ test.describe('start credentials auth validation', () => {
 		test('registration shows a neutral inbox state with a throttled resend', async ({ page }) => {
 			test.skip(process.env.AUTH_UI_E2E !== 'true', 'Requires the isolated fake Supabase fixture.');
 			let resendRequests = 0;
+			let signUpBody: unknown;
 			await page.route('**/auth/v1/**', async (route) => {
 				const { pathname } = new URL(route.request().url());
 				if (pathname.endsWith('/signup')) {
+					signUpBody = route.request().postDataJSON();
 					await route.fulfill({
 						status: 200,
 						contentType: 'application/json',
@@ -279,12 +314,14 @@ test.describe('start credentials auth validation', () => {
 				});
 			});
 			await page.goto('/registrieren');
+			await page.getByLabel('Dein Name').fill('Mina');
 			await page.getByLabel('E-Mail-Adresse').fill('Neu@Example.invalid');
 			await page.getByLabel('Passwort', { exact: true }).fill('langes-passwort');
 			await page.getByLabel('Passwort wiederholen').fill('langes-passwort');
 			await page.getByRole('button', { name: 'Konto erstellen', exact: true }).click();
 
 			await expect(page.getByText('Prüfe dein Postfach')).toBeVisible();
+			expect(signUpBody).toMatchObject({ data: { full_name: 'Mina' } });
 			await expect(page.getByText('neu@example.invalid')).toBeVisible();
 			await expect(page.getByRole('button', { name: /Erneut senden in \d+ s/ })).toBeDisabled();
 			expect(resendRequests).toBe(0);

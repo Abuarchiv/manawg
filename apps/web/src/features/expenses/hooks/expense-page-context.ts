@@ -1,6 +1,6 @@
 import type { useToast } from '@/components/ui/Toast';
 import type { Member, WgSummary } from '@/components/wg/WgContextProvider';
-import type { StoredIdentity } from '@/core/auth/identity';
+import type { SessionMember } from '@/core/auth/local-account';
 import type {
 	Expense,
 	RecurringExpense,
@@ -22,7 +22,7 @@ interface PendingIds {
 /** What the Ausgaben mutation hooks share: who acts, where results go, how to reload. */
 export interface ExpensePageContext {
 	wg: Pick<WgSummary, 'id' | 'shareCode'>;
-	identity: StoredIdentity;
+	identity: SessionMember;
 	members: Member[];
 	toast: ReturnType<typeof useToast>;
 	notify: ActionNotifier;

@@ -12,10 +12,10 @@ import {
 	exportErrorMessage,
 	readResponseErrorCode,
 } from '@/components/wg/einstellungen/settings-errors';
-import type { StoredIdentity } from '@/core/auth/identity';
-import { memberContextHeader } from '@/core/auth/identity';
+import type { SessionMember } from '@/core/auth/local-account';
 import { noteSessionExpiry } from '@/core/infra/api-client';
 import { cn } from '@/shared/lib/cn';
+import { memberContextHeader } from '@/shared/lib/member-header';
 import { Download, Upload } from 'lucide-react';
 import Link from 'next/link';
 import { useRef, useState } from 'react';
@@ -29,7 +29,7 @@ export interface ExportSectionOption {
 
 interface DataTabProps {
 	wg: WgSummary;
-	identity: StoredIdentity;
+	identity: SessionMember;
 	exportSummary: ExportSectionOption[];
 	exportSummaryError: string | null;
 }

@@ -8,7 +8,7 @@ import {
 	ItemTitle,
 } from '@/components/ui/item';
 import { Separator } from '@/components/ui/separator';
-import type { KnownWg } from '@/core/auth/identity';
+import type { KnownWg } from '@/core/auth/local-account';
 import {
 	type OfflineAction,
 	getOfflineActionRisk,

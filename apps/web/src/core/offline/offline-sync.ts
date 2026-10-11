@@ -1,4 +1,3 @@
-import { getIdentity } from '@/core/auth/identity';
 import { isSessionExpired } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
 import { isPendingImageToken, removePendingImage, uploadPendingImageToken } from './offline-images';
@@ -49,12 +48,12 @@ let syncTail: Promise<unknown> = Promise.resolve();
 
 interface OfflineSyncOptions {
 	force?: boolean;
-	memberId?: string;
+	memberId: string;
 	signal?: AbortSignal;
 }
 
-function getSyncScopeKey(shareCode?: string, options?: OfflineSyncOptions): string {
-	return `${shareCode ?? '*'}:${options?.memberId ?? '*'}:${options?.force ? 'force' : 'auto'}`;
+function getSyncScopeKey(shareCode: string | undefined, options: OfflineSyncOptions): string {
+	return `${shareCode ?? '*'}:${options.memberId}:${options.force ? 'force' : 'auto'}`;
 }
 
 async function resolvePendingImages(
@@ -96,8 +95,8 @@ async function replaceQueuedSnapshot(
 }
 
 export async function syncOfflineActions(
-	shareCode?: string,
-	options?: OfflineSyncOptions,
+	shareCode: string | undefined,
+	options: OfflineSyncOptions,
 ): Promise<number> {
 	const scopeKey = getSyncScopeKey(shareCode, options);
 	const running = syncInFlight.get(scopeKey);
@@ -112,8 +111,11 @@ export async function syncOfflineActions(
 	}
 }
 
-async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions): Promise<number> {
-	if (options?.signal?.aborted) return 0;
+async function runOfflineSync(
+	shareCode: string | undefined,
+	options: OfflineSyncOptions,
+): Promise<number> {
+	if (options.signal?.aborted) return 0;
 	const preflight = await withOfflineQueueLock((storage) => {
 		const storedQueue = readOfflineQueueFromStorage(storage);
 		if (!storedQueue) return null;
@@ -154,15 +156,15 @@ async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions):
 	};
 
 	for (const action of queue) {
-		if (options?.signal?.aborted) break;
+		if (options.signal?.aborted) break;
 		if (shareCode && action.shareCode !== shareCode) {
 			continue;
 		}
-		if (options?.memberId && action.memberId !== options.memberId) {
+		if (action.memberId !== options.memberId) {
 			continue;
 		}
 		if (needsManualOfflineResolution(action)) continue;
-		if (!options?.force && !shouldRetryOfflineAction(action, now)) {
+		if (!options.force && !shouldRetryOfflineAction(action, now)) {
 			continue;
 		}
 		const idempotencyKey = action.idempotencyKey;
@@ -178,24 +180,10 @@ async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions):
 			});
 			continue;
 		}
-		const identity = action.wgId ? getIdentity(action.wgId) : null;
-		const activeMemberId = options?.memberId ?? identity?.memberId;
-		if (!activeMemberId || activeMemberId !== action.memberId) {
-			outcomes.set(action.id, {
-				snapshot: action,
-				retry: {
-					...action,
-					attempts: (action.attempts ?? 0) + 1,
-					lastAttemptAt: new Date(now).toISOString(),
-					lastError: REAUTH_REQUIRED_ERROR,
-				},
-			});
-			continue;
-		}
 		let requestSnapshot = action;
 		try {
-			const { action: readyAction, tokens } = await resolvePendingImages(action, options?.signal);
-			if (options?.signal?.aborted) break;
+			const { action: readyAction, tokens } = await resolvePendingImages(action, options.signal);
+			if (options.signal?.aborted) break;
 			if (!sameOfflineAction(action, readyAction)) {
 				if (!(await replaceQueuedSnapshot(action, readyAction))) continue;
 				requestSnapshot = readyAction;
@@ -205,7 +193,7 @@ async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions):
 					),
 				);
 			}
-			if (options?.signal?.aborted) break;
+			if (options.signal?.aborted) break;
 			if (needsManualOfflineResolution(readyAction)) continue;
 			if (
 				!readOfflineQueue().some(
@@ -220,10 +208,10 @@ async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions):
 				method: request.method,
 				memberId: readyAction.memberId,
 				body: JSON.stringify(request.body),
-				...(options?.signal ? { signal: options.signal } : {}),
+				...(options.signal ? { signal: options.signal } : {}),
 				headers: { 'Idempotency-Key': idempotencyKey },
 			});
-			if (options?.signal?.aborted) {
+			if (options.signal?.aborted) {
 				reviewEditedSnapshot(requestSnapshot);
 				break;
 			}
@@ -235,7 +223,7 @@ async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions):
 				const advancedByCreate =
 					typeof res.data === 'object' && res.data !== null && 'recurringExpense' in res.data;
 				if (recurringAdvance && !advancedByCreate) {
-					if (options?.signal?.aborted) {
+					if (options.signal?.aborted) {
 						queueRecurringRetry(readyAction);
 						break;
 					}
@@ -246,7 +234,7 @@ async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions):
 								method: 'PATCH',
 								memberId: readyAction.memberId,
 								body: JSON.stringify(recurringAdvance),
-								...(options?.signal ? { signal: options.signal } : {}),
+								...(options.signal ? { signal: options.signal } : {}),
 							},
 						);
 						if (!advanceRes.ok && !isRecurringAlreadyAdvanced(advanceRes)) {
@@ -294,7 +282,7 @@ async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions):
 				if (res.status === 429 || isSessionExpired(res.error)) break;
 			}
 		} catch (err) {
-			if (options?.signal?.aborted) break;
+			if (options.signal?.aborted) break;
 			const missingPendingImage = err instanceof Error && err.message === 'pending-image-missing';
 			const pendingImageUploadError = explainPendingImageUploadError(err);
 			const lastError = missingPendingImage

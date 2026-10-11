@@ -1,6 +1,6 @@
 'use client';
 
-import { type StoredIdentity, clearIdentity } from '@/core/auth/identity';
+import type { SessionMember } from '@/core/auth/local-account';
 import { MEMBERSHIP_LOST_EVENT } from '@/core/infra/api-client';
 import { type Dispatch, type RefObject, type SetStateAction, useEffect } from 'react';
 
@@ -22,7 +22,7 @@ export function useMembershipLost({
 	encodedShareCode: string;
 	authGenerationRef: RefObject<number>;
 	syncAbortRef: RefObject<AbortController | null>;
-	setStateIdentity: Dispatch<SetStateAction<StoredIdentity | null>>;
+	setStateIdentity: Dispatch<SetStateAction<SessionMember | null>>;
 	setIsAdmin: (isAdmin: boolean) => void;
 	setAccountReady: (accountReady: boolean) => void;
 	setMemberLoaded: (memberLoaded: boolean) => void;
@@ -38,7 +38,6 @@ export function useMembershipLost({
 			syncAbortRef.current?.abort();
 			syncAbortRef.current = null;
 			const showLost = () => {
-				clearIdentity(wgId);
 				setStateIdentity(null);
 				setIsAdmin(false);
 				setAccountReady(false);

@@ -3,12 +3,12 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useEffect, useState } from 'react';
 import { EmailAuthForm, useEmailAuth } from './EmailAuthForm';
+import { EmailCodeForm, useEmailCode } from './EmailCodeForm';
 import { EmailSignUpForm, useEmailSignUp } from './EmailSignUpForm';
-import { PhoneAuthForm, usePhoneAuth } from './PhoneAuthForm';
 import type { BusyAction } from './auth-form-shared';
 
 type CredentialsAuthProps = {
-	/** Sign-in and registration share the tabs; only the e-mail form differs. */
+	/** Sign-in offers a mailed code or a password; registration is the password form only. */
 	mode?: 'sign-in' | 'sign-up';
 	next: string;
 	onAuthenticated: () => void;
@@ -22,14 +22,18 @@ export function CredentialsAuth({
 	onAuthenticated,
 	onBusyChange,
 }: CredentialsAuthProps) {
-	const [authMethod, setAuthMethod] = useState<'email' | 'phone'>('email');
+	const [method, setMethod] = useState<'code' | 'password'>('code');
 	const [busy, setBusy] = useState<BusyAction>(null);
-	// Offer SMS only where the Supabase project actually has it switched on.
-	const [phoneEnabled, setPhoneEnabled] = useState(false);
-	// Both forms keep their input while the other tab is shown.
+	// The forms keep their input while the other tab is shown; the address is shared.
 	const emailAuth = useEmailAuth({ next, busy, setBusy, onAuthenticated });
+	const emailCode = useEmailCode({
+		email: emailAuth.email,
+		setEmail: emailAuth.setEmail,
+		busy,
+		setBusy,
+		onAuthenticated,
+	});
 	const emailSignUp = useEmailSignUp({ next, busy, setBusy, onAuthenticated });
-	const phoneAuth = usePhoneAuth({ busy, setBusy, onAuthenticated });
 
 	const isBusy = busy !== null;
 	useEffect(() => {
@@ -37,53 +41,35 @@ export function CredentialsAuth({
 		return () => onBusyChange?.(false);
 	}, [isBusy, onBusyChange]);
 
-	useEffect(() => {
-		let active = true;
-		import('@/core/auth/client')
-			.then(({ isAuthProviderEnabled }) => isAuthProviderEnabled('phone'))
-			.then((enabled) => {
-				if (active) setPhoneEnabled(enabled);
-			})
-			.catch(() => {});
-		return () => {
-			active = false;
-		};
-	}, []);
+	if (mode === 'sign-up') {
+		return (
+			<section aria-label="Mit E-Mail registrieren" aria-busy={isBusy}>
+				<EmailSignUpForm auth={emailSignUp} busy={busy} />
+			</section>
+		);
+	}
 
 	return (
 		<Tabs
-			value={phoneEnabled ? authMethod : 'email'}
-			onValueChange={(value) => setAuthMethod(value === 'phone' ? 'phone' : 'email')}
-			aria-busy={busy !== null}
+			value={method}
+			onValueChange={(value) => setMethod(value === 'password' ? 'password' : 'code')}
+			aria-busy={isBusy}
 			className="gap-4"
 		>
-			{phoneEnabled && (
-				<TabsList className="min-h-12 w-full">
-					<TabsTrigger value="email" disabled={busy !== null} className="min-h-11">
-						E-Mail
-					</TabsTrigger>
-					<TabsTrigger value="phone" disabled={busy !== null} className="min-h-11">
-						Telefon / SMS
-					</TabsTrigger>
-				</TabsList>
-			)}
-			<TabsContent
-				value="email"
-				aria-label={mode === 'sign-up' ? 'Mit E-Mail registrieren' : 'Mit E-Mail anmelden'}
-				tabIndex={-1}
-			>
-				{mode === 'sign-up' ? (
-					<EmailSignUpForm auth={emailSignUp} busy={busy} />
-				) : (
-					<EmailAuthForm auth={emailAuth} busy={busy} />
-				)}
+			<TabsList className="min-h-12 w-full">
+				<TabsTrigger value="code" disabled={isBusy} className="min-h-11 flex-auto">
+					Code per E-Mail
+				</TabsTrigger>
+				<TabsTrigger value="password" disabled={isBusy} className="min-h-11 flex-auto">
+					Passwort
+				</TabsTrigger>
+			</TabsList>
+			<TabsContent value="code" aria-label="Mit E-Mail-Code anmelden" tabIndex={-1}>
+				<EmailCodeForm auth={emailCode} busy={busy} intentQuery={next.split('?')[1] ?? ''} />
 			</TabsContent>
-
-			{phoneEnabled && (
-				<TabsContent value="phone" aria-labelledby="phone-auth-heading" tabIndex={-1}>
-					<PhoneAuthForm auth={phoneAuth} busy={busy} />
-				</TabsContent>
-			)}
+			<TabsContent value="password" aria-label="Mit Passwort anmelden" tabIndex={-1}>
+				<EmailAuthForm auth={emailAuth} busy={busy} />
+			</TabsContent>
 		</Tabs>
 	);
 }
