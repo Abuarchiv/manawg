@@ -102,16 +102,6 @@ export function auditDetail(metadataJson?: string | null): string | undefined {
 				parts.push(`${metadata.nameBefore} → ${metadata.nameAfter}`);
 			}
 		}
-		if (
-			typeof metadata.joiningEnabledBefore === 'boolean' &&
-			typeof metadata.joiningEnabledAfter === 'boolean' &&
-			metadata.joiningEnabledBefore !== metadata.joiningEnabledAfter
-		) {
-			parts.push(metadata.joiningEnabledAfter ? 'Beitritt offen' : 'Beitritt gesperrt');
-		}
-		if (metadata.shareCodeRotated === true) {
-			parts.push('neuer WG-Code');
-		}
 		if (typeof metadata.intervalDays === 'number') {
 			parts.push(metadata.intervalDays === 1 ? 'täglich' : `alle ${metadata.intervalDays} Tage`);
 		}

@@ -58,8 +58,6 @@ export const wgs = pgTable(
 		id: uuid('id').primaryKey().defaultRandom(),
 		shareCode: text('share_code').notNull(),
 		name: text('name').notNull(),
-		joiningEnabled: boolean('joining_enabled').notNull().default(true),
-		shareCodeRotatedAt: timestamp('share_code_rotated_at', { withTimezone: true }),
 		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 	},
