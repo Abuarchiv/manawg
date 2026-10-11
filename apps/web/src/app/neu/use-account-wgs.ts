@@ -93,6 +93,18 @@ export function useAccountWgs({
 		};
 	}, [authRetryNonce, clearError, interactive]);
 
+	// Another tab signed in or out of this browser's one account: re-check when this tab returns.
+	useEffect(() => {
+		if (!interactive) return;
+		const onVisible = () => {
+			if (document.visibilityState !== 'visible') return;
+			if (authState === 'loading' || authState === 'error') return;
+			if (hasSessionCookie() !== (authState === 'authenticated')) setAuthRetryNonce((n) => n + 1);
+		};
+		document.addEventListener('visibilitychange', onVisible);
+		return () => document.removeEventListener('visibilitychange', onVisible);
+	}, [authState, interactive]);
+
 	useEffect(() => {
 		if (authState !== 'authenticated') return;
 		const intent = getNeuIntentFromSearch(searchParams.toString());
