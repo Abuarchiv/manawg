@@ -16,7 +16,8 @@ test.describe('live public dashboard entry', () => {
 		await expect(
 			page.getByRole('heading', { name: 'ManaWG', exact: true, level: 1 }),
 		).toBeVisible();
-		await expect(page.getByRole('link', { name: 'WG erstellen', exact: true })).toBeVisible();
+		await expect(page.getByRole('link', { name: 'Konto erstellen', exact: true })).toBeVisible();
+		await expect(page.getByRole('link', { name: 'WG erstellen', exact: true })).toHaveCount(0);
 		const examples = page.getByRole('region', { name: 'So kann euer Alltag aussehen' });
 		await expect(examples).toBeVisible();
 		await expect(page.locator('[data-liquid-glass]')).toHaveCount(0);
@@ -47,8 +48,13 @@ test.describe('live public dashboard entry', () => {
 			response.url().endsWith('/auth/v1/settings'),
 		);
 		await page.goto('/');
-		await page.getByRole('link', { name: 'WG erstellen', exact: true }).click();
-		await expect(page).toHaveURL(/\/neu\?action=create$/);
+		// Account first: the guest start page offers registration; sign-in sits in the header.
+		await expect(page.getByRole('link', { name: 'Konto erstellen', exact: true })).toHaveAttribute(
+			'href',
+			'/registrieren',
+		);
+		await page.getByRole('link', { name: 'Anmelden', exact: true }).click();
+		await expect(page).toHaveURL(/\/neu$/);
 		await expect(page.getByLabel('E-Mail-Adresse')).toBeVisible();
 		await expect(page.getByLabel('Passwort', { exact: true })).toBeVisible();
 		const phoneTab = page.getByRole('tab', { name: 'Telefon / SMS', exact: true });
@@ -68,7 +74,7 @@ test.describe('live public dashboard entry', () => {
 
 		// Registration has its own page; short passwords are rejected before any sign-up request.
 		await page.getByRole('link', { name: 'Konto erstellen', exact: true }).click();
-		await expect(page).toHaveURL(/\/registrieren\?action=create$/);
+		await expect(page).toHaveURL(/\/registrieren$/);
 		let signUpRequests = 0;
 		await page.route(
 			(url) => url.pathname === '/auth/v1/signup',

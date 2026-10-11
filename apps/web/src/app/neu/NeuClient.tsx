@@ -220,7 +220,7 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 				backHref={explorationHref()}
 			>
 				{accountSwitchError && <ErrorBox>{accountSwitchError}</ErrorBox>}
-				<StartNotices search={searchParams.toString()} />
+				<StartNotices search={searchParams.toString()} signedIn={false} />
 				{(authState === 'error' || (retried && authState === 'loading')) && (
 					<div className="flex flex-col gap-2">
 						<ErrorBox>Deine Anmeldung konnte gerade nicht geprüft werden.</ErrorBox>
@@ -315,7 +315,7 @@ export function NeuClient({ sessionless = false }: { sessionless?: boolean }) {
 			}
 			backHref={explorationHref()}
 		>
-			<StartNotices search={searchParams.toString()} />
+			<StartNotices search={searchParams.toString()} signedIn />
 			{accountSwitchError && <ErrorBox>{accountSwitchError}</ErrorBox>}
 			{deniedWgCode && step === 'choose' && (
 				<ErrorBox>

@@ -22,9 +22,14 @@ export function InvitationNotice({ code }: { code: string }) {
 
 export function WgWelcome(props: WgWelcomeProps) {
 	const invitation = props.variant === 'invitation';
+	// Account first: a signed-out visitor registers, then creates or joins a WG from /neu.
+	// Only an invitation keeps its intent through sign-in, so the code is not lost.
+	const guestCreate = !invitation && props.guest === true;
 	const actionHref = invitation
 		? `/neu?code=${encodeURIComponent(props.code)}`
-		: '/neu?action=create';
+		: guestCreate
+			? '/registrieren'
+			: '/neu?action=create';
 
 	return (
 		<div className="flex flex-col gap-2">
@@ -35,12 +40,15 @@ export function WgWelcome(props: WgWelcomeProps) {
 					'w-full',
 				)}
 			>
-				{invitation ? 'Einladung annehmen' : 'WG erstellen'}
+				{invitation ? 'Einladung annehmen' : guestCreate ? 'Konto erstellen' : 'WG erstellen'}
 			</Link>
-			{props.guest && (
-				<SignUpPrompt
-					intentQuery={invitation ? `code=${encodeURIComponent(props.code)}` : 'action=create'}
-				/>
+			{guestCreate && (
+				<p className="text-sm text-muted-foreground">
+					Danach erstellst du eure WG oder trittst per Code bei.
+				</p>
+			)}
+			{props.guest && invitation && (
+				<SignUpPrompt intentQuery={`code=${encodeURIComponent(props.code)}`} />
 			)}
 		</div>
 	);

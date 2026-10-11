@@ -323,10 +323,16 @@ test.describe('entry accessibility', () => {
 			await expect(
 				page.getByRole('link', { name: 'Konto erstellen', exact: true }),
 			).toHaveAttribute('href', '/registrieren?code=MTE8PZAT');
+			// Account first: without an invitation the WG is created after sign-in, so no intent is carried.
 			await page.goto('/');
 			await expect(
 				page.getByRole('link', { name: 'Konto erstellen', exact: true }),
-			).toHaveAttribute('href', '/registrieren?action=create');
+			).toHaveAttribute('href', '/registrieren');
+			await expect(page.getByRole('link', { name: 'WG erstellen', exact: true })).toHaveCount(0);
+			await expect(page.getByRole('link', { name: 'Anmelden', exact: true })).toHaveAttribute(
+				'href',
+				'/neu',
+			);
 		});
 
 		test('public start page links the legal pages without an account', async ({ page }) => {

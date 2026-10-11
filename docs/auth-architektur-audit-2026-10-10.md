@@ -176,3 +176,13 @@ N8 (Wrapper + 403), N9, N10, N11, N16, N17, N18-Glossar, M10 (Source-Tests → A
 | `src/fixtures/*`, `sessionless`, `isE2EDbDownMode`, `setupMember`, Fixture-Env | Phase 4 |
 | Source-lesende Tests (3 Dateien) | Phase 5, ersetzt durch Arch-Regel |
 | `MEMBER_SESSION_SECRET` | bleibt; nur umbenennen, wenn Rotation ohnehin ansteht |
+
+## 6. Nachtrag 2026-10-11: Einstieg und installierte App
+
+Zwei Rückmeldungen nach Phase 1, beide geprüft:
+
+**„WG erstellen ohne Login"**: Auf Prod (Stand 76c5ddf4) ist das Erstellen serverseitig gesperrt (`POST /api/wg` → 401 ohne Session) und auch die Oberfläche zeigt vor dem Formular die Anmeldung. Der Eindruck entsteht durch die Reihenfolge: Die Gast-Startseite führte mit „WG erstellen" (→ `/neu?action=create`), erst dann kam „Melde dich an, danach erstellst du deine neue WG". Das ist der Rest der alten Denkweise „WG zuerst, Konto später". Fix (umgesetzt): Für Gäste heißt der Hauptknopf „Konto erstellen" (→ `/registrieren`), die Anmeldung bleibt im Kopf der Seite; WG erstellen oder beitreten gibt es erst nach der Anmeldung in `/neu`. Einladungslinks (`?code=`) behalten ihre Absicht über Anmeldung und Registrierung hinweg, sonst ginge der Code verloren. `WgWelcome.tsx`, Live-Spec `public-entry-live.spec.ts` angepasst.
+
+**„Nach der Installation nicht angemeldet"**: Auf dem iPhone hat eine Home-Bildschirm-App einen eigenen Speicher (Cookies, localStorage), getrennt von Safari. Eine Anmeldung in Safari erreicht die installierte App daher nie; das ist Plattformverhalten, nicht die App. Android (WebAPK) und Desktop-Chrome teilen das Browserprofil, dort bleibt die Sitzung erhalten. Die Supabase-Cookies sind 400 Tage gültig (`@supabase/ssr`-Default, `authCookieOptions` überschreibt nur `path`/`sameSite`/`secure`). Fix (umgesetzt): iOS-Installationsanleitung bekommt Schritt 4 „App öffnen und einmal anmelden"; die Anmeldeseite zeigt in der installierten iOS-App einen Hinweis, warum einmal neu angemeldet wird (`StartNotices.tsx`, erkannt über `display-mode: standalone` + iOS-Gerät). Nicht möglich: Sitzung in die iOS-App übertragen (kein geteilter Speicher, `start_url` ist statisch, Token in der URL wäre dauerhaft im Lesezeichen).
+
+Offen, wenn Android/Desktop trotzdem abgemeldet startet: dann liegt es nicht an der Installation, sondern an der Sitzung selbst (Refresh-Token ungültig, z. B. nach Logout in einem anderen Tab, oder Konto-Löschung). Dazu braucht es ein konkretes Gerät und den Netzwerk-Log von `/api/wg/mine`.

@@ -170,6 +170,10 @@ function IosSteps() {
 			<Step num={3}>
 				Oben rechts auf <span className="font-medium text-foreground">Hinzufügen</span> tippen.
 			</Step>
+			<Step num={4}>
+				ManaWG vom Home-Bildschirm öffnen und einmal anmelden. Das iPhone trennt App und Safari,
+				danach bleibst du angemeldet.
+			</Step>
 		</ItemGroup>
 	);
 }
