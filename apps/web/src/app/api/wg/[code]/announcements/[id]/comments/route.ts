@@ -10,7 +10,7 @@ import { persistReplayWarning, withIdempotentReplay } from '@/core/db/with-repla
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, notFound } from '@/core/http/api-errors';
+import { badRequest, notFound, rateLimitedReplayResponse } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { logApiError } from '@/core/infra/observability';
 import {
@@ -78,13 +78,10 @@ export const POST = withWgRoute<{ id: string }>(
 		const wg = auth.wg;
 		const scope = `announcement-comment:${wg.id}:${auth.member.memberId}:${id}`;
 		const outcome = await withIdempotentReplay(req, scope, async (tx) => {
-			const limited = await checkRateLimit(
-				wgWriteLimiter,
-				`comment:${wg.id}:${auth.member.memberId}`,
+			const limited = rateLimitedReplayResponse(
+				await checkRateLimit(wgWriteLimiter, `comment:${wg.id}:${auth.member.memberId}`),
 			);
-			if (!limited.success) {
-				return { response: { status: 429, body: { error: 'too_many_requests' } }, effect: null };
-			}
+			if (limited) return { response: limited, effect: null };
 
 			const [announcement] = await tx
 				.select({ id: announcements.id, authorMemberId: announcements.authorMemberId })

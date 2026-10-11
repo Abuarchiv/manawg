@@ -123,7 +123,7 @@ export function MonthlyStatementDocument({
 						Geteilt auf {members.length} Personen
 					</span>
 				</div>
-				{/* Vier Spalten passen bei 320 px nicht: die Tabelle scrollt seitlich statt die Seite. */}
+				{/* Four columns do not fit at 320 px: the table scrolls sideways instead of the page. */}
 				<div className="overflow-x-auto">
 					<table className="w-full border-collapse text-[14px]">
 						<thead>

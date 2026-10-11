@@ -10,7 +10,7 @@ import {
 import { LIMITS } from '@/core/db/schema';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { requireAccount } from '@/core/guards/require-account';
-import { conflict, serverError, tooMany } from '@/core/http/api-errors';
+import { conflict, rateLimitResponse, serverError } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey } from '@/core/idempotency-store';
 import { logApiError } from '@/core/infra/observability';
@@ -59,21 +59,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 	// Local/CI dev servers have no Upstash service and must still exercise the
 	// real DB flow; fail-closed deployments reject missing limiter state.
 	const limit = await checkRateLimit(registerLimiter, ip, rateLimitFailMode());
-	if (!limit.success) {
-		if (limit.limiterUnavailable) {
-			const retryAfter = Math.max(1, Math.ceil((limit.reset - Date.now()) / 1000));
-			return NextResponse.json(
-				{ error: 'rate_limiter_unavailable', retryAfterMs: Math.max(0, limit.reset - Date.now()) },
-				{
-					status: 503,
-					headers: {
-						'Retry-After': retryAfter.toString(),
-					},
-				},
-			);
-		}
-		return tooMany('rate_limited', 'wg_create_rate_limited');
-	}
+	const limited = rateLimitResponse(limit, 'rate_limited', 'wg_create_rate_limited');
+	if (limited) return limited;
 	const accountDeletionReplayResponse = async () => {
 		try {
 			await withTransaction((tx) => assertAccountCanAcquireMembership(tx, authUserId));

@@ -1,4 +1,4 @@
-import { tooMany } from '@/core/http/api-errors';
+import { rateLimitResponse } from '@/core/http/api-errors';
 import {
 	type UnsubscribeKind,
 	disableMailKind,
@@ -46,14 +46,16 @@ function invalid(): NextResponse {
 	return new NextResponse('invalid_token', { status: 400 });
 }
 
-async function limited(req: NextRequest): Promise<boolean> {
-	const result = await checkRateLimit(unsubscribeLimiter, `mail-unsubscribe:${clientIpKey(req)}`);
-	return !result.success;
+function limited(req: NextRequest): Promise<NextResponse | null> {
+	return checkRateLimit(unsubscribeLimiter, `mail-unsubscribe:${clientIpKey(req)}`).then((result) =>
+		rateLimitResponse(result, 'rate_limited'),
+	);
 }
 
 /** Confirm page: opening the link alone never changes anything (mail scanners prefetch links). */
 export async function GET(req: NextRequest): Promise<NextResponse> {
-	if (await limited(req)) return tooMany('rate_limited');
+	const throttled = await limited(req);
+	if (throttled) return throttled;
 	const token = req.nextUrl.searchParams.get('t') ?? '';
 	const parsed = verifyUnsubscribeToken(token);
 	if (!parsed) return invalid();
@@ -66,7 +68,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
 /** RFC 8058 one-click target and the confirm form's submit. */
 export async function POST(req: NextRequest): Promise<NextResponse> {
-	if (await limited(req)) return tooMany('rate_limited');
+	const throttled = await limited(req);
+	if (throttled) return throttled;
 	const parsed = verifyUnsubscribeToken(req.nextUrl.searchParams.get('t') ?? '');
 	if (!parsed) return invalid();
 	await disableMailKind(parsed.memberId, parsed.kind);

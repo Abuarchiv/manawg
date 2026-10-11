@@ -19,9 +19,8 @@ import {
 	toMemberById,
 } from '@/composition/export-queries';
 import { requireWgMember } from '@/core/guards/require-wg-member';
-import { readShareCode } from '@/core/guards/route-preamble';
+import { withWgRoute } from '@/core/guards/with-wg-route';
 import { badRequest, rateLimitResponse, serverError } from '@/core/http/api-errors';
-import type { RouteCtx } from '@/core/infra/api-types';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, wgExportLimiter } from '@/core/rate-limit';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -128,17 +127,10 @@ function csvExportResponse(
 	});
 }
 
-export async function GET(
-	req: NextRequest,
-	ctx: RouteCtx<{ code: string }>,
-): Promise<NextResponse> {
-	const codeResult = await readShareCode(ctx);
-	if (!codeResult.ok) return codeResult.response;
-	const { code } = codeResult;
+export const GET = withWgRoute('export GET', async (req, { code }) => {
 	const format = getExportFormat(req);
 	if (!format) return badRequest('format_invalid');
-
-	try {
+	{
 		const auth = await requireWgMember(req, code);
 		if (!auth.ok) return auth.response;
 		const wg = auth.wg;
@@ -235,8 +227,5 @@ export async function GET(
 			failedSections,
 			...(pageExplicit ? { pagination: { limit: page.limit, offset: page.offset } } : {}),
 		});
-	} catch (err) {
-		logApiError('[export GET]', err);
-		return serverError(err);
 	}
-}
+});

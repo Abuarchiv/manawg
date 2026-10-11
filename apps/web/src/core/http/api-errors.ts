@@ -121,6 +121,19 @@ export function rateLimitResponse(
 }
 
 /**
+ * The replay-stored twin of {@link rateLimitResponse} for writes inside an idempotent mutation:
+ * `null` when admitted, else the status and body the caller returns (neither is stored).
+ */
+export function rateLimitedReplayResponse(
+	result: RateLimitResult,
+): { status: number; body: ApiErrorBody } | null {
+	if (result.success) return null;
+	return result.limiterUnavailable
+		? { status: HTTP.SERVICE_UNAVAILABLE, body: { error: 'rate_limiter_unavailable' } }
+		: { status: HTTP.TOO_MANY, body: { error: 'too_many_requests' } };
+}
+
+/**
  * Response for a body `readJsonLimited` refused: 413 when it exceeded the byte
  * cap (the client should shorten it, not retry), otherwise 400 `invalid_json`.
  */

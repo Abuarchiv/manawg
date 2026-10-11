@@ -10,7 +10,6 @@ import {
 	notFound,
 	rateLimitResponse,
 	serverError,
-	tooMany,
 } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey } from '@/core/idempotency-store';
@@ -136,11 +135,10 @@ export const POST = withWgRoute('recurring-expenses POST', async (req, { code })
 				codec: recurringCreateCodec,
 				inTransaction: (work) => withExpensePaymentLock(wg.id, work),
 				prepare: async () => {
-					const limited = await checkRateLimit(
-						wgWriteLimiter,
-						`recurring-expense:${wg.id}:${member.memberId}`,
+					const limited = rateLimitResponse(
+						await checkRateLimit(wgWriteLimiter, `recurring-expense:${wg.id}:${member.memberId}`),
 					);
-					if (!limited.success) return { stop: tooMany() };
+					if (limited) return { stop: limited };
 					if (!checkPaidByGuard(input.paidByMemberId, member.memberId, input.splits).ok) {
 						return {
 							stop: forbidden('paid_by_must_include_caller', 'paid_by_must_include_caller'),

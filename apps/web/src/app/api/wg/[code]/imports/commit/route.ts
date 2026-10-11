@@ -2,7 +2,7 @@ import { TransactionAbort } from '@/core/db/transaction';
 import { isWgAdmin } from '@/core/guards/admin';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, conflict, tooMany } from '@/core/http/api-errors';
+import { badRequest, conflict, rateLimitResponse } from '@/core/http/api-errors';
 import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, importCommitLimiter } from '@/core/rate-limit';
@@ -74,11 +74,10 @@ export const POST = withWgRoute('imports/commit', async (req, { code }) => {
 		const scope = `import-commit:${wg.id}:${member.memberId}`;
 		const key = readIdempotencyKey(req);
 		const outcome = await commitImport({ scope, key }, async () => {
-			const limited = await checkRateLimit(
-				importCommitLimiter,
-				`import-commit:${wg.id}:${member.memberId}`,
+			const limited = rateLimitResponse(
+				await checkRateLimit(importCommitLimiter, `import-commit:${wg.id}:${member.memberId}`),
 			);
-			if (!limited.success) return { stop: tooMany() };
+			if (limited) return { stop: limited };
 
 			const parsedExpenses = parseFor(source, payload);
 			if (parsedExpenses.length === 0) return { stop: badRequest('empty_payload') };

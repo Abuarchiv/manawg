@@ -17,7 +17,6 @@ import {
 	notFound,
 	rateLimitResponse,
 	serverError,
-	tooMany,
 	unauthorized,
 } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
@@ -266,15 +265,12 @@ export const POST = withWgRoute('notifications POST', async (req, { code }) => {
 			},
 			async (tx) => {
 				if (action.action === 'test_notification') {
-					const rl = await checkRateLimit(
-						notifTestLimiter,
-						`notif-test:${wg.id}:${auth.member.memberId}`,
+					const rl = rateLimitResponse(
+						await checkRateLimit(notifTestLimiter, `notif-test:${wg.id}:${auth.member.memberId}`),
+						'test_notification_rate_limited',
+						'test_notification_rate_limited',
 					);
-					if (!rl.success) {
-						return rejectWrite(
-							tooMany('test_notification_rate_limited', 'test_notification_rate_limited'),
-						);
-					}
+					if (rl) return rejectWrite(rl);
 					try {
 						await dispatchNotification({
 							wg,
@@ -302,11 +298,10 @@ export const POST = withWgRoute('notifications POST', async (req, { code }) => {
 						context: { audit: 'subscribed', name: member.name, pushOptIn: true },
 					};
 				}
-				const unsubscribeLimit = await checkRateLimit(
-					wgWriteLimiter,
-					`push-unsubscribe:${wg.id}:${auth.member.memberId}`,
+				const unsubscribeLimit = rateLimitResponse(
+					await checkRateLimit(wgWriteLimiter, `push-unsubscribe:${wg.id}:${auth.member.memberId}`),
 				);
-				if (!unsubscribeLimit.success) return rejectWrite(tooMany());
+				if (unsubscribeLimit) return rejectWrite(unsubscribeLimit);
 				const removed = await unsubscribePush(tx, writer, requestEndpoint);
 				if (!removed) return rejectWrite(unauthorized('member_deactivated', 'member_deactivated'));
 				return {

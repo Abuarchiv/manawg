@@ -12,7 +12,7 @@ import { type DbTransaction, lockExpensePayments, withTransaction } from '@/core
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { HTTP, badRequest } from '@/core/http/api-errors';
+import { HTTP, badRequest, rateLimitedReplayResponse } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
 import { readListLimit } from '@/core/infra/env';
@@ -46,7 +46,8 @@ const MENTIONS_MAX = 20;
 
 // Rejected replies (400) replay as stored; a rate-limited send may retry the same key.
 const chatMessageCodec = responseCodec();
-const storeChatStatus = (status: number) => status !== HTTP.TOO_MANY;
+const storeChatStatus = (status: number) =>
+	status !== HTTP.TOO_MANY && status !== HTTP.SERVICE_UNAVAILABLE;
 
 // Text only: storage is limited, so new messages carry no pictures.
 const createMessageSchema = z
@@ -204,13 +205,10 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 			},
 			async (tx) => {
 				// The rate limit runs under the claim, so only the request that sends counts.
-				const limited = await checkRateLimit(
-					chatMessageLimiter,
-					`chat:${wg.id}:${member.memberId}`,
+				const limited = rateLimitedReplayResponse(
+					await checkRateLimit(chatMessageLimiter, `chat:${wg.id}:${member.memberId}`),
 				);
-				if (!limited.success) {
-					return { status: HTTP.TOO_MANY, body: { error: 'too_many_requests' } };
-				}
+				if (limited) return limited;
 				return insertMessage(tx, {
 					wgId: wg.id,
 					senderMemberId: member.memberId,

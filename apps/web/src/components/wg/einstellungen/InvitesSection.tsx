@@ -115,7 +115,7 @@ export function InvitesSection({ wg, identity }: { wg: WgSummary; identity: Sess
 				title="Einladungen"
 				hint={`Wer einen Link hat, kann beitreten. Jeder Link gilt ${INVITE_VALID_DAYS} Tage.`}
 			>
-				{/* minmax(0,1fr): sonst weitet ein nicht umbrechender Knopf bei 200 % Text die ganze Karte. */}
+				{/* minmax(0,1fr): otherwise a non-wrapping button widens the whole card at 200 % text. */}
 				<div className="grid grid-cols-[minmax(0,1fr)] gap-3 p-3">
 					<Button
 						type="button"

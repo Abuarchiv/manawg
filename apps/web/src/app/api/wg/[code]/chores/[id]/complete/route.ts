@@ -10,8 +10,8 @@ import {
 	badRequest,
 	conflict,
 	notFound,
+	rateLimitResponse,
 	serverError,
-	tooMany,
 	unreadableJsonBody,
 } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
@@ -293,8 +293,10 @@ export const POST = withWgRoute<{ id: string }>(
 					prepare: async () => {
 						const occurrence = await readExpectedOccurrence(req, c);
 						if ('response' in occurrence) return { stop: occurrence.response };
-						const limited = await checkRateLimit(wgWriteLimiter, `chore:${c.wgId}:${completedBy}`);
-						if (!limited.success) return { stop: tooMany() };
+						const limited = rateLimitResponse(
+							await checkRateLimit(wgWriteLimiter, `chore:${c.wgId}:${completedBy}`),
+						);
+						if (limited) return { stop: limited };
 						return { input: await planCompletion(c, occurrence.tapAt) };
 					},
 				},

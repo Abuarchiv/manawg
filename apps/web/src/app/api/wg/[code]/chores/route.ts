@@ -4,7 +4,7 @@ import { bodyCodec, withIdempotentWrite } from '@/core/db/idempotent-write';
 import { TransactionAbort } from '@/core/db/transaction';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, serverError, tooMany } from '@/core/http/api-errors';
+import { badRequest, rateLimitResponse, serverError } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
 import { logApiError } from '@/core/infra/observability';
@@ -184,8 +184,10 @@ export const POST = withWgRoute('chores POST', async (req, { code }) => {
 				codec: choreCreateCodec,
 				completeFailureCode: 'idempotency_response_write_failed',
 				prepare: async () => {
-					const limited = await checkRateLimit(wgWriteLimiter, `chore:${wg.id}:${member.memberId}`);
-					if (!limited.success) return { stop: tooMany() };
+					const limited = rateLimitResponse(
+						await checkRateLimit(wgWriteLimiter, `chore:${wg.id}:${member.memberId}`),
+					);
+					if (limited) return { stop: limited };
 					if (!assignedMemberId) return { input: undefined };
 					// A chore may only be assigned to an active member, never to someone who
 					// moved out.

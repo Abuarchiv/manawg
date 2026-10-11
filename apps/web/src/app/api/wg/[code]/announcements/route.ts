@@ -16,7 +16,7 @@ import {
 } from '@/core/db/with-replay';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, conflict } from '@/core/http/api-errors';
+import { badRequest, conflict, rateLimitedReplayResponse } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { logApiError } from '@/core/infra/observability';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
@@ -249,13 +249,10 @@ export const POST = withWgRoute('announcements POST', async (req, { code }) => {
 			req,
 			scope,
 			async (tx) => {
-				const limited = await checkRateLimit(
-					wgWriteLimiter,
-					`announcement:${wg.id}:${auth.member.memberId}`,
+				const limited = rateLimitedReplayResponse(
+					await checkRateLimit(wgWriteLimiter, `announcement:${wg.id}:${auth.member.memberId}`),
 				);
-				if (!limited.success) {
-					return { response: { status: 429, body: { error: 'too_many_requests' } }, effect: null };
-				}
+				if (limited) return { response: limited, effect: null };
 				await assertPrivateImageCanBeAttached(tx, wg.id, safeImageUrl);
 				if (swapChoreId) {
 					const [chore] = await tx

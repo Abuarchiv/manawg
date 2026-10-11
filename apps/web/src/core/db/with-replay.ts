@@ -59,7 +59,7 @@ export async function withIdempotentReplay<T>(
 			scope,
 			key,
 			codec: replayCodec(legacyResponse),
-			storeStatus: (status) => status !== 429,
+			storeStatus: (status) => status !== 429 && status !== 503,
 			inTransaction: (work) =>
 				withTransaction(async (tx) => {
 					if (wgId) await lockExpensePayments(tx, wgId);

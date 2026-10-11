@@ -16,6 +16,9 @@
  *   comment-lang    a comment written in German (code comments are English)
  *   comment-history a comment that narrates history ("used to", "previously", ...)
  *   banned-import   an import of a removed dependency
+ *   route-limiter   a route answers a failed limiter check itself instead of via rateLimitResponse
+ *   route-auth      a route calls getAuthenticatedUser instead of requireAccount/requireWgMember
+ *   route-wrapper   a /api/wg/[code]/ route exports a handler outside withWgRoute
  *
  * `scripts/architecture-baseline.json` lists known violations that are still being paid down.
  * The check fails on any violation that is not listed, on a file-size entry that grew, and on a
@@ -175,6 +178,19 @@ function collect() {
 				}
 			}
 			if (/\bapiError\(\s*[^,()]+,\s*\d{3}\b/.test(source)) add('status-literal', r);
+			if (/^src\/app\/api\//.test(r)) {
+				for (const match of source.matchAll(/const (\w+) = await checkRateLimit\(/g)) {
+					if (new RegExp(`!${match[1]}\\.success\\b`).test(source))
+						add('route-limiter', r, match[1]);
+				}
+				if (/\bgetAuthenticatedUser\(/.test(source)) add('route-auth', r);
+				if (
+					/^src\/app\/api\/wg\/\[code\]\//.test(r) &&
+					/export (?:async )?function (GET|POST|PATCH|PUT|DELETE)\b/.test(source)
+				) {
+					add('route-wrapper', r);
+				}
+			}
 			if (
 				/^src\/features\/[^/]+\/server\//.test(r) &&
 				!/import\s+['"]server-only['"]/.test(source)

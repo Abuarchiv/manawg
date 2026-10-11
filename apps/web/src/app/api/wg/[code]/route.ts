@@ -5,15 +5,13 @@ import { deleteWgCascade } from '@/core/db/delete-wg';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { requireWgAdmin } from '@/core/guards/require-wg-admin';
 import { requireWgMembership } from '@/core/guards/require-wg-member';
-import { readShareCode } from '@/core/guards/route-preamble';
-import { conflict, forbidden, notFound, serverError } from '@/core/http/api-errors';
+import { withWgRoute } from '@/core/guards/with-wg-route';
+import { conflict, forbidden, notFound } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
-import type { RouteCtx } from '@/core/infra/api-types';
-import { logApiError } from '@/core/infra/observability';
 import { withExpensePaymentLock } from '@/features/expenses/server/expense-payments';
 import { WG_NAME_MAX_LENGTH } from '@/shared/lib/limits';
 import { eq } from 'drizzle-orm';
-import { type NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 const WG_NAME_MIN = 1;
@@ -22,15 +20,8 @@ const patchWgSchema = z.object({
 	name: z.string().trim().min(WG_NAME_MIN).max(WG_NAME_MAX_LENGTH),
 });
 
-export async function GET(
-	req: NextRequest,
-	ctx: RouteCtx<{ code: string }>,
-): Promise<NextResponse> {
-	const codeResult = await readShareCode(ctx);
-	if (!codeResult.ok) return codeResult.response;
-	const { code } = codeResult;
-
-	try {
+export const GET = withWgRoute('api/wg/[code] GET', async (req, { code }) => {
+	{
 		const auth = await requireWgMembership(req, code, 'api/wg/[code] GET', (shareCode) =>
 			db.query.wgs.findFirst({
 				where: (w, { eq }) => eq(w.shareCode, shareCode),
@@ -58,24 +49,14 @@ export async function GET(
 				authUserId: auth.authUserId,
 			},
 		});
-	} catch (err) {
-		logApiError('[api/wg/[code] GET] failed', err);
-		return serverError('db_error');
 	}
-}
+});
 
-export async function PATCH(
-	req: NextRequest,
-	ctx: RouteCtx<{ code: string }>,
-): Promise<NextResponse> {
-	const codeResult = await readShareCode(ctx);
-	if (!codeResult.ok) return codeResult.response;
-	const { code } = codeResult;
+export const PATCH = withWgRoute('api/wg/[code] PATCH', async (req, { code }) => {
 	const parsed = await parseBody(req, patchWgSchema, { invalid: 'wg_update_invalid' });
 	if (!parsed.ok) return parsed.response;
 	const { name } = parsed.data;
-
-	try {
+	{
 		const admin = await requireWgAdmin(req, code, 'wg-settings');
 		if (!admin.ok) return admin.response;
 		const { wg, member } = admin;
@@ -109,19 +90,10 @@ export async function PATCH(
 			metadata: { nameBefore: result.currentWg.name, nameAfter: result.updated.name },
 		});
 		return NextResponse.json({ wg: result.updated });
-	} catch (err) {
-		logApiError('[api/wg/[code] PATCH] failed', err);
-		return serverError('db_error');
 	}
-}
+});
 
-export async function DELETE(
-	req: NextRequest,
-	ctx: RouteCtx<{ code: string }>,
-): Promise<NextResponse> {
-	const codeResult = await readShareCode(ctx);
-	if (!codeResult.ok) return codeResult.response;
-	const { code } = codeResult;
+export const DELETE = withWgRoute('api/wg/[code] DELETE', async (req, { code }) => {
 	try {
 		const admin = await requireWgAdmin(req, code, 'wg-settings');
 		if (!admin.ok) return admin.response;
@@ -140,7 +112,6 @@ export async function DELETE(
 		if (err instanceof TransactionAbort && err.code === 'paypal_payment_pending') {
 			return conflict('paypal_payment_pending');
 		}
-		logApiError('[api/wg/[code] DELETE] failed', err);
-		return serverError('db_error');
+		throw err;
 	}
-}
+});

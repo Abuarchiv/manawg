@@ -9,7 +9,14 @@ import {
 import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { HTTP, badRequest, conflict, forbidden, tooMany } from '@/core/http/api-errors';
+import {
+	HTTP,
+	badRequest,
+	conflict,
+	forbidden,
+	rateLimitResponse,
+	tooMany,
+} from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
 import { afterResponse } from '@/core/infra/after-response';
@@ -133,8 +140,12 @@ export const POST = withWgRoute('reminders POST', async (req, { code }) => {
 			return { stop: forbidden('debtor_opted_out', 'debtor_opted_out') };
 		}
 
-		const rl = await checkRateLimit(reminderSendLimiter, `reminder:${auth.member.memberId}`);
-		if (!rl.success) return { stop: tooMany('reminder_rate_limited', 'reminder_rate_limited') };
+		const rl = rateLimitResponse(
+			await checkRateLimit(reminderSendLimiter, `reminder:${auth.member.memberId}`),
+			'reminder_rate_limited',
+			'reminder_rate_limited',
+		);
+		if (rl) return { stop: rl };
 
 		const [openExpenses, payments] = await Promise.all([
 			loadOpenExpenses(wg.id),

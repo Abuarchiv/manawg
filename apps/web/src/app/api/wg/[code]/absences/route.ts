@@ -5,7 +5,7 @@ import { TransactionAbort } from '@/core/db/transaction';
 import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, conflict, serverError, tooMany } from '@/core/http/api-errors';
+import { badRequest, conflict, rateLimitResponse, serverError } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey } from '@/core/idempotency-store';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
@@ -96,11 +96,10 @@ export const POST = withWgRoute('absences POST', async (req, { code }) => {
 				codec: absenceCreateCodec,
 				completeFailureCode: 'idempotency_response_write_failed',
 				prepare: async () => {
-					const limited = await checkRateLimit(
-						wgWriteLimiter,
-						`absence:${wg.id}:${auth.member.memberId}`,
+					const limited = rateLimitResponse(
+						await checkRateLimit(wgWriteLimiter, `absence:${wg.id}:${auth.member.memberId}`),
 					);
-					if (!limited.success) return { stop: tooMany() };
+					if (limited) return { stop: limited };
 					const member = await db
 						.select({ id: wgMembers.id })
 						.from(wgMembers)

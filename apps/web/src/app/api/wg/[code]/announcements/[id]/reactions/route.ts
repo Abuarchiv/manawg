@@ -4,7 +4,7 @@ import { persistReplayWarning, withIdempotentReplay } from '@/core/db/with-repla
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest } from '@/core/http/api-errors';
+import { badRequest, rateLimitedReplayResponse } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { logApiError } from '@/core/infra/observability';
 import {
@@ -47,13 +47,10 @@ export const POST = withWgRoute<{ id: string }>(
 		const wg = auth.wg;
 		const scope = `announcement-reaction:${wg.id}:${auth.member.memberId}:${id}:${parsed.data.reaction}`;
 		const outcome = await withIdempotentReplay<ReactionEffect>(req, scope, async (tx) => {
-			const limited = await checkRateLimit(
-				wgWriteLimiter,
-				`reaction:${wg.id}:${auth.member.memberId}`,
+			const limited = rateLimitedReplayResponse(
+				await checkRateLimit(wgWriteLimiter, `reaction:${wg.id}:${auth.member.memberId}`),
 			);
-			if (!limited.success) {
-				return { response: { status: 429, body: { error: 'too_many_requests' } }, effect: null };
-			}
+			if (limited) return { response: limited, effect: null };
 
 			// Lock the announcement while resolving a legacy toggle, so distinct
 			// idempotency keys cannot both read the same old reaction state.
