@@ -2,6 +2,7 @@
 
 import { AppBottomNav } from '@/components/app/AppBottomNav';
 import { ErrorBox } from '@/components/app/ErrorBox';
+import { RouteFocusOnNavigate } from '@/components/app/RouteFocusOnNavigate';
 import { WG_SECTIONS } from '@/components/app/navigation';
 import { LegalLinks } from '@/components/entry/LegalLinks';
 import { type AccountWg, MembershipCard } from '@/components/entry/MembershipCard';
@@ -20,7 +21,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { NavItem } from '@/components/wg/NavItem';
 import { SubNav } from '@/components/wg/SubNav';
 import { hasSessionCookie } from '@/core/auth/session-hint';
-import { REQUEST_TIMEOUT_MS, anySignal } from '@/core/infra/api-client';
+import { fetchAccountWgs } from '@/core/infra/account-wgs';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import { cn } from '@/shared/lib/cn';
 import {
@@ -35,7 +36,7 @@ import {
 	Sparkles,
 } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useState } from 'react';
 
 type PublicModule = PublicPreviewModule;
@@ -57,31 +58,6 @@ const OTHER_MODULES: PublicModule[] = [
 ];
 
 const PUBLIC_MODULES = [...PRIMARY_MODULES, ...OTHER_MODULES];
-
-// PublicApp remounts on every public route, so the previous path has to outlive it.
-let lastPublicPath: string | null = null;
-
-function isAccountWg(value: unknown): value is AccountWg {
-	if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-	const id = Reflect.get(value, 'id');
-	const code = Reflect.get(value, 'code');
-	const name = Reflect.get(value, 'name');
-	return (
-		typeof id === 'string' &&
-		id.length > 0 &&
-		typeof code === 'string' &&
-		isValidShareCode(normalizeShareCode(code)) &&
-		typeof name === 'string' &&
-		name.trim().length > 0
-	);
-}
-
-function parseMemberships(value: unknown): AccountWg[] | null {
-	if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-	const wgs = Reflect.get(value, 'wgs');
-	if (!Array.isArray(wgs) || !wgs.every(isAccountWg)) return null;
-	return wgs.map((wg) => ({ ...wg, code: normalizeShareCode(wg.code), name: wg.name.trim() }));
-}
 
 function moduleFor(slug: string | undefined): PublicModule | null {
 	return PUBLIC_MODULES.find((item) => item.slug === slug) ?? null;
@@ -108,7 +84,6 @@ export function PublicApp(props: { activeModule?: string }) {
 
 function PublicAppContent({ activeModule }: { activeModule?: string }) {
 	const router = useRouter();
-	const pathname = usePathname();
 	const searchParams = useSearchParams();
 	const accountDeletionPending = searchParams.get('accountDeletion') === 'pending';
 	const leftWg = searchParams.get('left') === '1';
@@ -148,15 +123,6 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 					: { href: '/neu?action=create', label: 'WG erstellen' }
 				: { href: publicHref('/neu'), label: 'Anmelden' };
 
-	// Client navigation between public pages: land on #main like the WG shell does.
-	useEffect(() => {
-		const previous = lastPublicPath;
-		lastPublicPath = pathname;
-		if (previous === null || previous === pathname) return;
-		const main = document.getElementById('main');
-		if (main && !main.contains(document.activeElement)) main.focus({ preventScroll: true });
-	}, [pathname]);
-
 	useEffect(() => {
 		if (membershipState !== 'loading') setRetried(false);
 	}, [membershipState]);
@@ -171,26 +137,20 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 		}
 		setSessionPending(true);
 		setMembershipState('loading');
-		fetch('/api/wg/mine', {
-			cache: 'no-store',
-			signal: anySignal([controller.signal, AbortSignal.timeout(REQUEST_TIMEOUT_MS)]),
-		})
-			.then(async (response) => {
-				if (response.status === 401) {
+		fetchAccountWgs(controller.signal).then((result) => {
+			if (controller.signal.aborted) return;
+			if (!result.ok) {
+				if (result.status === 401) {
 					setMemberships([]);
 					setMembershipState('signed-out');
-					return;
+				} else {
+					setMembershipState('error');
 				}
-				if (!response.ok) throw new Error('membership_lookup_failed');
-				const parsed = parseMemberships(await response.json());
-				if (!parsed) throw new Error('membership_response_invalid');
-				setMemberships(parsed);
-				setMembershipState(parsed.length === 0 ? 'authenticated-empty' : 'member-list');
-			})
-			.catch((error: unknown) => {
-				if (error instanceof DOMException && error.name === 'AbortError') return;
-				setMembershipState('error');
-			});
+				return;
+			}
+			setMemberships(result.wgs);
+			setMembershipState(result.wgs.length === 0 ? 'authenticated-empty' : 'member-list');
+		});
 		return () => controller.abort();
 	}, [retryNonce]);
 
@@ -227,6 +187,7 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 				paddingBottom: 'calc(var(--app-nav-height, 5rem) + 0.5rem)',
 			}}
 		>
+			<RouteFocusOnNavigate />
 			<main
 				id="main"
 				tabIndex={-1}
