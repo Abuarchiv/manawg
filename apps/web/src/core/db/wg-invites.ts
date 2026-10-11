@@ -2,8 +2,8 @@ import { randomBytes } from 'node:crypto';
 import { INVITE_VALID_DAYS } from '@/core/utils/invite-token';
 import { MS_PER_DAY } from '@/core/utils/time';
 import { and, count, eq, gt, isNull, lt, sql } from 'drizzle-orm';
-import { withTransaction } from './index';
 import { wgInvites } from './schema-invites';
+import { withTransaction } from './transaction';
 
 /** Active (unexpired, unrevoked, not used up) invitations one WG may hold at a time. */
 const MAX_ACTIVE_INVITES = 20;

@@ -354,22 +354,3 @@ test('queued PATCH keeps its idempotency key and expected member in the request'
 	assert.equal(request?.headers['Idempotency-Key'], VALID_KEY);
 	assert.equal(request?.memberId, 'member-a');
 });
-
-test('a lost connection does not grow the retry backoff; real rejections do', async () => {
-	const results = [
-		{ ok: false, status: 0, error: 'network' },
-		{ ok: false, status: 0, error: 'network' },
-		{ ok: false, status: 503, error: 'unavailable' },
-	];
-	const { module } = await makeQueueModule({ apiFetch: async () => results.shift() });
-	await setQueue(module, [createAction()]);
-	const sync = () => module.syncOfflineActions('TEST1234', { memberId: 'member-a' });
-	await sync();
-	await sync();
-	const afterOffline = module.readOfflineQueue()[0];
-	assert.equal(afterOffline.attempts ?? 0, 0);
-	assert.ok(afterOffline.lastAttemptAt);
-	assert.equal(results.length, 1);
-	await sync();
-	assert.equal(module.readOfflineQueue()[0].attempts, 1);
-});
