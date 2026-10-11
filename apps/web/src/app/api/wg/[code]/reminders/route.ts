@@ -1,6 +1,11 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, expenseReminders, wgMembers } from '@/core/db';
-import { type WriteOutcome, responseCodec, withIdempotentWrite } from '@/core/db/idempotent-write';
+import {
+	type Prepared,
+	type WriteOutcome,
+	responseCodec,
+	withIdempotentWrite,
+} from '@/core/db/idempotent-write';
 import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
@@ -62,7 +67,23 @@ export const GET = withWgRoute('reminders GET', async (req, { code }) => {
 
 const reminderCodec = responseCodec();
 
-type ReminderContext = { cooledDown: true } | { reminder: typeof expenseReminders.$inferSelect };
+type MemberRow = {
+	id: string;
+	name: string;
+	notifyReminders: boolean;
+	pushOptIn: boolean;
+	authUserId: string | null;
+};
+type ReminderContext =
+	| { cooledDown: true }
+	| { reminder: typeof expenseReminders.$inferSelect; input: ReminderInput };
+
+interface ReminderInput {
+	debtor: MemberRow;
+	creditor: MemberRow;
+	openExpenses: Awaited<ReturnType<typeof loadOpenExpenses>>;
+	pair: { amountCents: number };
+}
 
 export const POST = withWgRoute('reminders POST', async (req, { code }) => {
 	const parsed = await parseBody(req, postSchema, {
@@ -83,51 +104,57 @@ export const POST = withWgRoute('reminders POST', async (req, { code }) => {
 	const denied = await requireOwnerOrAdmin(wg.id, auth.member, creditorMemberId, 'not_creditor');
 	if (denied) return denied;
 
-	const memberRows = await db
-		.select({
-			id: wgMembers.id,
-			name: wgMembers.name,
-			notifyReminders: wgMembers.notifyReminders,
-			pushOptIn: wgMembers.pushOptIn,
-			authUserId: wgMembers.authUserId,
-		})
-		.from(wgMembers)
-		.where(
-			and(
-				eq(wgMembers.wgId, wg.id),
-				inArray(wgMembers.id, [debtorMemberId, creditorMemberId]),
-				isNull(wgMembers.deactivatedAt),
-			),
-		);
-	if (memberRows.length !== 2) return badRequest('member_not_in_wg');
+	// Replay comes first: a retry after the debt was paid must get the stored answer, not
+	// "no_open_debt". Everything that can reject a fresh request runs in `prepare`.
+	const prepare = async (): Promise<Prepared<ReminderInput, NextResponse>> => {
+		const memberRows = await db
+			.select({
+				id: wgMembers.id,
+				name: wgMembers.name,
+				notifyReminders: wgMembers.notifyReminders,
+				pushOptIn: wgMembers.pushOptIn,
+				authUserId: wgMembers.authUserId,
+			})
+			.from(wgMembers)
+			.where(
+				and(
+					eq(wgMembers.wgId, wg.id),
+					inArray(wgMembers.id, [debtorMemberId, creditorMemberId]),
+					isNull(wgMembers.deactivatedAt),
+				),
+			);
+		if (memberRows.length !== 2) return { stop: badRequest('member_not_in_wg') };
 
-	const debtor = memberRows.find((row) => row.id === debtorMemberId);
-	const creditor = memberRows.find((row) => row.id === creditorMemberId);
-	if (!debtor || !creditor) return badRequest('member_not_in_wg');
+		const debtor = memberRows.find((row) => row.id === debtorMemberId);
+		const creditor = memberRows.find((row) => row.id === creditorMemberId);
+		if (!debtor || !creditor) return { stop: badRequest('member_not_in_wg') };
 
-	if (!debtor.notifyReminders) {
-		return forbidden('debtor_opted_out', 'debtor_opted_out');
-	}
+		if (!debtor.notifyReminders) {
+			return { stop: forbidden('debtor_opted_out', 'debtor_opted_out') };
+		}
 
-	const rl = await checkRateLimit(reminderSendLimiter, `reminder:${auth.member.memberId}`);
-	if (!rl.success) return tooMany('reminder_rate_limited', 'reminder_rate_limited');
+		const rl = await checkRateLimit(reminderSendLimiter, `reminder:${auth.member.memberId}`);
+		if (!rl.success) return { stop: tooMany('reminder_rate_limited', 'reminder_rate_limited') };
 
-	const [openExpenses, payments] = await Promise.all([
-		loadOpenExpenses(wg.id),
-		loadCompletedExpensePayments(wg.id),
-	]);
-	const balances = computeBalances(openExpenses, payments);
-	const pair = findPairBalance(balances, debtorMemberId, creditorMemberId, currency);
-	if (!pair || pair.amountCents <= 0) {
-		return conflict('no_open_debt', 'no_open_debt');
-	}
+		const [openExpenses, payments] = await Promise.all([
+			loadOpenExpenses(wg.id),
+			loadCompletedExpensePayments(wg.id),
+		]);
+		const balances = computeBalances(openExpenses, payments);
+		const pair = findPairBalance(balances, debtorMemberId, creditorMemberId, currency);
+		if (!pair || pair.amountCents <= 0) {
+			return { stop: conflict('no_open_debt', 'no_open_debt') };
+		}
+		return { input: { debtor, creditor, openExpenses, pair } };
+	};
 
 	const recentSince = new Date(Date.now() - REMINDER_COOLDOWN_HOURS * 60 * 60 * 1000);
 	const scope = `reminder:${wg.id}:${auth.member.memberId}:${debtorMemberId}:${creditorMemberId}:${currency}:${channel}`;
 	const key = readIdempotencyKey(req);
 	const result = await withIdempotentWrite(
-		{ scope, key, codec: reminderCodec },
-		async (tx): Promise<WriteOutcome<unknown, ReminderContext>> => {
+		{ scope, key, codec: reminderCodec, prepare },
+		async (tx, input): Promise<WriteOutcome<unknown, ReminderContext>> => {
+			const { debtor, creditor, openExpenses, pair } = input;
 			// Cooldown check and insert must be atomic: two parallel requests would both pass the
 			// check and push twice. A transaction-scoped advisory lock per (wg, debtor, creditor)
 			// serializes them.
@@ -202,14 +229,20 @@ export const POST = withWgRoute('reminders POST', async (req, { code }) => {
 			if (!row) {
 				return { status: HTTP.TOO_MANY, body: null, context: { cooledDown: true } };
 			}
-			return { status: 200, body: { reminder: row, warning: null }, context: { reminder: row } };
+			return {
+				status: 200,
+				body: { reminder: row, warning: null },
+				context: { reminder: row, input },
+			};
 		},
 	);
 	if (result.kind === 'replayed') return NextResponse.json(result.body, { status: result.status });
+	if (result.kind === 'stopped') return result.response;
 	if (!result.context || 'cooledDown' in result.context) {
 		return tooMany('reminder_cooldown', 'reminder_cooldown');
 	}
-	const inserted = result.context.reminder;
+	const { reminder: inserted, input } = result.context;
+	const { debtor, creditor, pair } = input;
 	// Without push the reminder would go unseen; the mail (E8) stands in. Push users get only the push.
 	if (channel === 'push' && !debtor.pushOptIn && debtor.authUserId) {
 		const debtorAuthUserId = debtor.authUserId;

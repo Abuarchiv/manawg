@@ -28,6 +28,7 @@ import {
 	advanceRecurringTemplate,
 	deleteRecurringTemplate,
 	editRecurringTemplate,
+	hasEditFields,
 } from '@/features/expenses/server/recurring-template-writes';
 import { splitValidationErrorCode, validateSplits } from '@/features/expenses/split-math';
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
@@ -223,15 +224,7 @@ export const PATCH = withWgRoute('recurring-expenses PATCH', async (req, { code 
 	if (edit.currency !== undefined && edit.currency !== 'EUR') {
 		return badRequest('recurring_currency_unsupported');
 	}
-	const isTemplateUpdate =
-		edit.description !== undefined ||
-		edit.category !== undefined ||
-		edit.amountCents !== undefined ||
-		edit.currency !== undefined ||
-		edit.paidByMemberId !== undefined ||
-		edit.intervalMonths !== undefined ||
-		edit.nextDueAt !== undefined ||
-		edit.splits !== undefined;
+	const isTemplateUpdate = hasEditFields(edit);
 	if (isTemplateUpdate && edit.splits) {
 		// amountCents may be omitted on a partial update (kept from the template); the splits'
 		// own sum stands in, so only shape issues (duplicates, invalid amounts) are caught here.

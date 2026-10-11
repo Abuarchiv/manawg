@@ -1,12 +1,16 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { recordWgImageDeletions } from './private-image-deletions';
 import {
 	announcements,
+	auditEvents,
 	chores,
 	expensePayments,
 	expenses,
 	recurringExpenses,
 	shoppingItems,
+	wgChatMessages,
+	wgInventoryItems,
+	wgInventoryLog,
 	wgs,
 } from './schema';
 import { type DbTransaction, TransactionAbort, lockExpensePayments } from './transaction';
@@ -29,6 +33,23 @@ export async function deleteWgCascade(tx: DbTransaction, wgId: string): Promise<
 	const [wg] = await tx.select({ id: wgs.id }).from(wgs).where(eq(wgs.id, wgId)).for('update');
 	if (!wg) return false;
 	await recordWgImageDeletions(tx, wgId);
+	// The pool's 5 s statement_timeout would abort the final cascade of a large WG, so it could
+	// never be deleted. Raise it for this transaction only and clear the biggest child tables
+	// first, as separate statements, so the closing `delete from wgs` has little left to cascade.
+	await tx.execute(sql`set local statement_timeout = '60s'`);
+	await tx.delete(wgChatMessages).where(eq(wgChatMessages.wgId, wgId));
+	await tx.delete(auditEvents).where(eq(auditEvents.wgId, wgId));
+	await tx
+		.delete(wgInventoryLog)
+		.where(
+			inArray(
+				wgInventoryLog.itemId,
+				tx
+					.select({ id: wgInventoryItems.id })
+					.from(wgInventoryItems)
+					.where(eq(wgInventoryItems.wgId, wgId)),
+			),
+		);
 	await tx.delete(expenses).where(eq(expenses.wgId, wgId));
 	await tx.delete(expensePayments).where(eq(expensePayments.wgId, wgId));
 	await tx.delete(shoppingItems).where(eq(shoppingItems.wgId, wgId));

@@ -100,6 +100,7 @@ function freshState(initialDueAt: Date, intervalMonths: number, anchorAt: Date |
 		wgExists: true,
 		loggedErrors: [] as unknown[],
 		memberQueries: [] as string[][],
+		pauses: [] as unknown[],
 	};
 }
 
@@ -175,6 +176,21 @@ const transaction = {
 			},
 		};
 		return query;
+	},
+	update(table: unknown) {
+		assert.equal(table, recurringExpenses);
+		let values: Partial<Template> = {};
+		return {
+			set(nextValues: Partial<Template>) {
+				values = nextValues;
+				return this;
+			},
+			async where(predicate: Predicate) {
+				assert.equal(matches(predicate), true);
+				state.pauses.push(values);
+				state.template = { ...state.template, ...values };
+			},
+		};
 	},
 	insert(table: unknown) {
 		return {
@@ -644,5 +660,25 @@ test('a template with a moved-out payer or debtor is skipped without advancing',
 		assert.deepEqual(state.updateResults, []);
 		assert.equal(state.template.nextDueAt.toISOString(), julyDueAt.toISOString());
 		assert.equal(state.loggedErrors.length, 1);
+		// Paused: the candidate query excludes it, so the second run finds nothing due.
+		assert.equal(state.pauses.length, 1);
+		assert.notEqual(state.template.pausedAt, null);
+		assert.deepEqual(await (await get()).json(), { ok: true, charged: 0 });
+		assert.equal(state.memberQueries.length, 1);
+	});
+});
+
+test('a template whose splits do not add up is logged and paused', async (t) => {
+	t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-09-25T12:00:00.000Z') });
+	const { state, get } = harness({
+		initialDueAt: new Date('2026-07-01T00:00:00.000Z'),
+		patchAfterInsert: null,
+	});
+	state.template.splitsJson = JSON.stringify([{ debtorMemberId: memberId, amountCents: 400 }]);
+	await withCronSecret(async () => {
+		await get();
+		assert.equal(state.expenses.length, 0);
+		assert.equal(state.loggedErrors.length, 1);
+		assert.notEqual(state.template.pausedAt, null);
 	});
 });

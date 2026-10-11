@@ -56,6 +56,7 @@ const predicateOperators = {
 	isNotNull: (column: Column): Predicate => ({ kind: 'notNull', column }),
 	isNull: (column: Column): Predicate => ({ kind: 'null', column }),
 	lt: () => undefined,
+	ne: () => undefined,
 	or: () => undefined,
 	sql: (strings: TemplateStringsArray, _column: unknown, value: unknown): Predicate =>
 		strings[0]?.includes('greatest') ? { kind: 'nextVersion' } : { kind: 'millisEq', value },

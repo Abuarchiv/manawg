@@ -8,6 +8,7 @@ import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
 import type { Expense } from '@/features/expenses/components/ausgaben/expense-types';
 import { MonthlyStatementDocument } from '@/features/expenses/components/statement/MonthlyStatementDocument';
+import type { ExpensePaymentInput } from '@/features/expenses/expense-payment-input';
 import {
 	berlinMonthKey,
 	buildMonthlyStatement,
@@ -30,12 +31,12 @@ export default function AbrechnungPage() {
 	const monthKey =
 		MONTH_PARAM.test(param) && param <= currentMonth ? param : shiftMonthKey(currentMonth, -1);
 
-	const { data, error, isFetching, refresh } = useCachedFetch<{ expenses: Expense[] }>(
-		`/api/wg/${encodeURIComponent(wg.shareCode)}/expenses`,
-		{ memberId: identity.memberId },
-	);
+	const { data, error, isFetching, refresh } = useCachedFetch<{
+		expenses: Expense[];
+		payments?: ExpensePaymentInput[];
+	}>(`/api/wg/${encodeURIComponent(wg.shareCode)}/expenses`, { memberId: identity.memberId });
 	const statement = useMemo(
-		() => (data ? buildMonthlyStatement(data.expenses, members, monthKey) : null),
+		() => (data ? buildMonthlyStatement(data.expenses, members, monthKey, data.payments) : null),
 		[data, members, monthKey],
 	);
 

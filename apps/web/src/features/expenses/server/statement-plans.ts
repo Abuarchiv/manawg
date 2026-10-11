@@ -1,7 +1,8 @@
 import 'server-only';
 import { loadConfirmedEmails } from '@/core/auth/auth-user-emails';
-import { db, expenseSplits, expenses, wgMembers, wgs } from '@/core/db';
+import { db, expensePayments, expenseSplits, expenses, wgMembers, wgs } from '@/core/db';
 import { and, asc, eq, gte, inArray, lt } from 'drizzle-orm';
+import type { ExpensePaymentInput } from '../expense-payment-input';
 import type { StatementExpense } from '../monthly-statement';
 import {
 	type StatementPlan,
@@ -73,6 +74,38 @@ async function loadWgExpenses(
 	return byWg;
 }
 
+/** Completed payments of the window per WG; `buildMonthlyStatement` narrows them to the Berlin month. */
+async function loadWgPayments(
+	wgIds: string[],
+	window: { from: Date; to: Date },
+): Promise<Map<string, ExpensePaymentInput[]>> {
+	const rows = await db
+		.select({
+			wgId: expensePayments.wgId,
+			fromMemberId: expensePayments.fromMemberId,
+			toMemberId: expensePayments.toMemberId,
+			amountCents: expensePayments.amountCents,
+			currency: expensePayments.currency,
+			completedAt: expensePayments.completedAt,
+		})
+		.from(expensePayments)
+		.where(
+			and(
+				inArray(expensePayments.wgId, wgIds),
+				eq(expensePayments.status, 'completed'),
+				gte(expensePayments.completedAt, window.from),
+				lt(expensePayments.completedAt, window.to),
+			),
+		);
+	const byWg = new Map<string, ExpensePaymentInput[]>();
+	for (const { wgId, completedAt, ...payment } of rows) {
+		const list = byWg.get(wgId) ?? [];
+		list.push({ ...payment, completedAt: completedAt?.toISOString() ?? null });
+		byWg.set(wgId, list);
+	}
+	return byWg;
+}
+
 /**
  * Statement plans for every WG that booked an expense in the month. Only the
  * month's expenses are read, and only active members who kept the preference on
@@ -89,13 +122,14 @@ export async function loadStatementPlans(monthKey: string): Promise<WgStatementP
 	const result: WgStatementPlan[] = [];
 	for (let start = 0; start < wgIds.length; start += WG_CHUNK) {
 		const chunk = wgIds.slice(start, start + WG_CHUNK);
-		const [wgRows, memberRows, expensesByWg] = await Promise.all([
+		const [wgRows, memberRows, expensesByWg, paymentsByWg] = await Promise.all([
 			db
 				.select({ id: wgs.id, name: wgs.name, shareCode: wgs.shareCode })
 				.from(wgs)
 				.where(inArray(wgs.id, chunk)),
 			db.select().from(wgMembers).where(inArray(wgMembers.wgId, chunk)),
 			loadWgExpenses(chunk, window),
+			loadWgPayments(chunk, window),
 		]);
 		const wantsMail = memberRows.filter(
 			(member) => member.deactivatedAt === null && member.notifyStatementEmail && member.authUserId,
@@ -121,7 +155,12 @@ export async function loadStatementPlans(monthKey: string): Promise<WgStatementP
 				}));
 			result.push({
 				wg,
-				plan: planStatementMails(members, expensesByWg.get(wg.id) ?? [], monthKey),
+				plan: planStatementMails(
+					members,
+					expensesByWg.get(wg.id) ?? [],
+					monthKey,
+					paymentsByWg.get(wg.id) ?? [],
+				),
 			});
 		}
 	}

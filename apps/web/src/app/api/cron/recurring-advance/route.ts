@@ -97,9 +97,9 @@ async function createExpenseForDueAt(
 			}
 			if (await hasCapturingExpensePayment(tx, template.wgId)) return null;
 			// A payer or debtor who moved out must not be charged new shares.
-			// Skip without advancing: the template stays due, so it is booked
-			// once someone edits or pauses it, and the loop stops here for this
-			// run instead of spinning.
+			// Pause instead of skipping silently: an unpaused due template would
+			// stay at the front of the oldest-first run window and starve the
+			// others. Resuming (after an edit) books it again.
 			const memberIds = Array.from(
 				new Set([template.paidByMemberId, ...splits.map((split) => split.debtorMemberId)]),
 			);
@@ -114,7 +114,13 @@ async function createExpenseForDueAt(
 					),
 				);
 			if (activeMembers.length !== memberIds.length) {
-				logApiError('[cron/recurring-advance] skipped template with inactive members', {
+				await tx
+					.update(recurringExpenses)
+					.set({ pausedAt: new Date() })
+					.where(
+						and(eq(recurringExpenses.id, template.id), eq(recurringExpenses.wgId, template.wgId)),
+					);
+				logApiError('[cron/recurring-advance] paused template with inactive members', {
 					recurringExpenseId: template.id,
 					wgId: template.wgId,
 				});
@@ -178,7 +184,18 @@ async function createExpenseForDueAt(
 
 async function advanceTemplate(template: DueRecurring): Promise<CreatedAdvance[]> {
 	const splits = parseRecurringSplits(template.splitsJson);
-	if (!recurringSplitsMatchAmount(splits, template.amountCents)) return [];
+	if (!recurringSplitsMatchAmount(splits, template.amountCents)) {
+		// Same starvation as an inactive member: take the broken template out of the run window.
+		await db
+			.update(recurringExpenses)
+			.set({ pausedAt: new Date() })
+			.where(and(eq(recurringExpenses.id, template.id), eq(recurringExpenses.wgId, template.wgId)));
+		logApiError('[cron/recurring-advance] paused template with split sum mismatch', {
+			recurringExpenseId: template.id,
+			wgId: template.wgId,
+		});
+		return [];
+	}
 
 	const now = new Date();
 	const intervalMonths = Math.max(1, Math.floor(template.intervalMonths));

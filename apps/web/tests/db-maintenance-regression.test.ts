@@ -7,6 +7,8 @@ const harness = {
 	commitError: null as Error | null,
 	attempts: 0,
 	deleteError: null as Error | null,
+	purgeCalls: 0,
+	purgeRowCounts: [] as number[],
 	imageCleanupRuns: 0,
 	retentionPurges: 0,
 	retentionError: null as Error | null,
@@ -88,14 +90,11 @@ mock.module('@/core/db', {
 		idempotencyResponses: {},
 		mailLog: {},
 		db: {
-			delete: () => ({
-				where: () => ({
-					returning: async () => {
-						if (harness.deleteError) throw harness.deleteError;
-						return [{ key: 'expired' }];
-					},
-				}),
-			}),
+			execute: async () => {
+				if (harness.deleteError) throw harness.deleteError;
+				harness.purgeCalls += 1;
+				return { rowCount: harness.purgeRowCounts.shift() ?? 1 };
+			},
 		},
 	},
 });
@@ -222,4 +221,12 @@ test('maintenance runs the retention purges and a failing purge does not change 
 	assert.equal(harness.retentionPurges, 2);
 	assert.equal(response.status, 200);
 	harness.retentionError = null;
+});
+
+test('idempotency purge deletes in batches until a batch comes back short', async () => {
+	const { purgeExpiredIdempotencyResponses } = await import('../src/core/idempotency-store.ts');
+	harness.purgeCalls = 0;
+	harness.purgeRowCounts = [5000, 5000, 7];
+	assert.equal(await purgeExpiredIdempotencyResponses(), 10_007);
+	assert.equal(harness.purgeCalls, 3);
 });
