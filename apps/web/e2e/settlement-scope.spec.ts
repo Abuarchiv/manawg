@@ -3,7 +3,11 @@
 
 import { expect, test } from '@playwright/test';
 import { buildActivityTimeline } from '../src/composition/activity';
-import { computeMemberBalances, summarizeDashboardSpend } from '../src/composition/dashboard-data';
+import {
+	balanceTotalsFromRows,
+	computeMemberBalances,
+	summarizeDashboardSpend,
+} from '../src/composition/dashboard-data';
 import { getTodayImportantItems, getWgHealth } from '../src/composition/dashboard-insights';
 import { formatNotificationMessage } from '../src/core/notifications/notifications';
 import { computeNetBalances } from '../src/features/expenses/debt-reduction';
@@ -435,7 +439,8 @@ test.describe('currency-scoped accounting', () => {
 				{ expenseId: 'chf', debtorMemberId: ben, amountCents: 1000, settledAt: null },
 			];
 
-			expect(computeMemberBalances(members, expenses, splits)).toEqual([
+			const totals = balanceTotalsFromRows(expenses, splits);
+			expect(computeMemberBalances(members, totals.payerTotals, totals.openDebts)).toEqual([
 				{
 					memberId: alice,
 					memberName: 'Alice',

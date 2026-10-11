@@ -1,3 +1,4 @@
+import { InputModality } from '@/components/app/InputModality';
 import { InstallPrompt } from '@/components/app/InstallPrompt';
 import { PwaRegister } from '@/components/app/PwaRegister';
 import { ThemeProvider } from '@/components/app/ThemeProvider';
@@ -32,6 +33,8 @@ const jetbrainsMono = localFont({
 	weight: '100 800',
 	variable: '--font-jetbrains-mono',
 	display: 'swap',
+	// Amounts only: not worth 31 kB on the critical path of every first paint.
+	preload: false,
 });
 
 const appUrl = getAppUrl();
@@ -192,6 +195,7 @@ export default async function RootLayout({
 					Zum Hauptinhalt springen
 				</a>
 				<SplashScreen />
+				<InputModality />
 				<ThemeProvider>
 					{/* Phone column on every screen; wider viewports show backdrop
 					    and a hairline edge around it. */}

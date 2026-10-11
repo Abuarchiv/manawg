@@ -1,37 +1,22 @@
+import { mutationErrorMessage } from '@/core/http/error-codes';
+
+const SUBJECT = 'Ausgleich konnte nicht gespeichert werden';
+const ERRORS: Record<string, string> = {
+	settlement_changed:
+		'Die offenen Beträge haben sich geändert. Prüfe die Zahlung erneut, bevor du sie einträgst.',
+	settlement_review_required: 'Prüfe zuerst die betroffenen Ausgaben und den Betrag.',
+	member_not_in_wg: `${SUBJECT}: Mindestens ein Mitglied ist nicht mehr in dieser WG.`,
+	not_party_to_debt: `${SUBJECT}: Du bist an dieser Schuld nicht beteiligt.`,
+	same_member: `${SUBJECT}: Die Anfrage war ungültig.`,
+	member_ids_invalid: `${SUBJECT}: Die Anfrage war ungültig.`,
+	invalid_json: `${SUBJECT}: Die Anfrage war ungültig.`,
+	invalid_body: `${SUBJECT}: Die Anfrage war ungültig.`,
+	amount_invalid: 'Barzahlung konnte nicht gespeichert werden: Der Betrag ist ungültig.',
+	currency_invalid: 'Barzahlung konnte nicht gespeichert werden: Der Betrag ist ungültig.',
+	paypal_payment_pending: 'Eine PayPal-Zahlung läuft noch. Warte auf deren Abschluss.',
+};
+
 /** Copy for a failed manual settlement (`POST /expenses/settle-batch`). */
 export function settlementErrorMessage(error: string): string {
-	if (error === 'settlement_changed')
-		return 'Die offenen Beträge haben sich geändert. Prüfe die Zahlung erneut, bevor du sie einträgst.';
-	if (error === 'settlement_review_required')
-		return 'Prüfe zuerst die betroffenen Ausgaben und den Betrag.';
-	if (error === 'unexpected_error' || error === 'server_error' || error === 'db_error') {
-		return 'Ausgleich konnte nicht gespeichert werden: Versuche es gleich erneut.';
-	}
-	if (error === 'Netzwerkfehler' || error === 'Failed to fetch') {
-		return 'Ausgleich konnte nicht gespeichert werden: Prüfe deine Verbindung und versuche es erneut.';
-	}
-	if (error === 'wg_not_found') {
-		return 'Ausgleich konnte nicht gespeichert werden: Öffne die WG über den aktuellen Link erneut.';
-	}
-	if (error === 'invalid_share_code') {
-		return 'Ausgleich konnte nicht gespeichert werden: Der WG-Code ist ungültig.';
-	}
-	if (error === 'not_a_member') {
-		return 'Ausgleich konnte nicht gespeichert werden: Tritt der WG erneut bei.';
-	}
-	if (error === 'member_not_in_wg') {
-		return 'Ausgleich konnte nicht gespeichert werden: Mindestens ein Mitglied ist nicht mehr in dieser WG.';
-	}
-	if (error === 'not_party_to_debt') {
-		return 'Ausgleich konnte nicht gespeichert werden: Du bist an dieser Schuld nicht beteiligt.';
-	}
-	if (error === 'same_member' || error === 'member_ids_invalid' || error === 'invalid_json') {
-		return 'Ausgleich konnte nicht gespeichert werden: Die Anfrage war ungültig.';
-	}
-	if (error === 'amount_invalid' || error === 'currency_invalid') {
-		return 'Barzahlung konnte nicht gespeichert werden: Der Betrag ist ungültig.';
-	}
-	if (error === 'paypal_payment_pending')
-		return 'Eine PayPal-Zahlung läuft noch. Warte auf deren Abschluss.';
-	return 'Ausgleich konnte nicht gespeichert werden.';
+	return mutationErrorMessage(SUBJECT, error, ERRORS, `${SUBJECT}.`);
 }

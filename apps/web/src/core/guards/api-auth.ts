@@ -1,10 +1,10 @@
 import { getAuthenticatedUser } from '@/core/auth/server';
 import { db, wgMembers } from '@/core/db';
+import { type RequireMemberResult, memberFailure, memberFromRow } from '@/core/guards/member-row';
 import { HTTP, apiError } from '@/core/http/api-errors';
 import { logApiError } from '@/core/infra/observability';
-import { EXPECTED_MEMBER_ID_HEADER } from '@/shared/lib/member-header';
 import { and, eq } from 'drizzle-orm';
-import type { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
 /**
  * Strict UUID v4 shape check: version nibble `4` plus the RFC 4122 variant
@@ -22,36 +22,7 @@ export function isUuid(value: unknown): value is string {
 	return typeof value === 'string' && UUID_PATTERN.test(value);
 }
 
-/** The caller's active membership, resolved from their server-verified Supabase user. */
-export interface AuthenticatedMember {
-	memberId: string;
-	name: string;
-}
-
-type MemberFailureReason =
-	| 'auth_required'
-	| 'not_a_member'
-	| 'member_deactivated'
-	| 'member_context_changed'
-	| 'db_error';
-
-interface MemberOk {
-	ok: true;
-	member: AuthenticatedMember;
-}
-
-interface MemberFail {
-	ok: false;
-	reason: MemberFailureReason;
-	response: NextResponse;
-}
-
-type RequireMemberResult = MemberOk | MemberFail;
 export type AuthenticatedUser = NonNullable<Awaited<ReturnType<typeof getAuthenticatedUser>>>;
-
-function fail(reason: MemberFailureReason, status: number): MemberFail {
-	return { ok: false, reason, response: apiError(reason, status, reason) };
-}
 
 /**
  * Resolve the caller's active membership from their server-verified Supabase
@@ -70,19 +41,12 @@ export async function requireMember(
 ): Promise<RequireMemberResult> {
 	try {
 		const user = authenticatedUser ?? (await getAuthenticatedUser(req));
-		if (!user) return fail('auth_required', HTTP.UNAUTHORIZED);
+		if (!user) return memberFailure('auth_required', HTTP.UNAUTHORIZED);
 		const row = await db.query.wgMembers.findFirst({
 			where: and(eq(wgMembers.wgId, wgId), eq(wgMembers.authUserId, user.id)),
 			columns: { id: true, name: true, deactivatedAt: true },
 		});
-		if (!row) return fail('not_a_member', HTTP.UNAUTHORIZED);
-		// Moved-out members lose API access even while their account stays linked to the row.
-		if (row.deactivatedAt) return fail('member_deactivated', HTTP.UNAUTHORIZED);
-		const expectedMemberId = req.headers.get(EXPECTED_MEMBER_ID_HEADER);
-		if (expectedMemberId !== null && expectedMemberId !== row.id) {
-			return fail('member_context_changed', HTTP.CONFLICT);
-		}
-		return { ok: true, member: { memberId: row.id, name: row.name } };
+		return memberFromRow(req, row);
 	} catch (err) {
 		logApiError('[requireMember] db error', err);
 		return {

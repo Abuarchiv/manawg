@@ -65,11 +65,25 @@ mock.module('@/core/db', {
 			},
 			select: () => ({
 				from: (table: unknown) => ({
+					// resolveWg: the WG row left-joined with the caller's member row.
+					leftJoin: () => ({
+						where: () => ({
+							limit: async () => {
+								if (table !== wgsTable || !state.wg) return [];
+								return [
+									{
+										...state.wg,
+										createdAt: new Date(0),
+										memberId: state.member?.id ?? null,
+										memberName: state.member?.name ?? null,
+										memberDeactivatedAt: state.member?.deactivatedAt ?? null,
+									},
+								];
+							},
+						}),
+					}),
 					where: () => ({
-						limit: async () => {
-							if (table === wgsTable) return state.wg ? [state.wg] : [];
-							return state.adminId ? [{ id: state.adminId }] : [];
-						},
+						limit: async () => (state.adminId ? [{ id: state.adminId }] : []),
 					}),
 				}),
 			}),
@@ -217,7 +231,7 @@ test('requireWgAdmin admits only the active admin and rate-limits the write', as
 	state.adminId = 'member-1';
 	const ok = await requireWgAdmin(request(), WG.shareCode, 'wg-settings');
 	assert.equal(ok.ok, true);
-	if (ok.ok) assert.deepEqual(ok.wg, WG);
+	if (ok.ok) assert.deepEqual(ok.wg, { ...WG, createdAt: new Date(0) });
 
 	reset();
 	state.adminId = 'member-2';

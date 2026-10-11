@@ -4,6 +4,7 @@ import { useToast } from '@/components/ui/Toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
+import { mutationErrorMessage } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import { REMINDER_COOLDOWN_HOURS } from '@/features/expenses/reminders';
@@ -44,10 +45,12 @@ function errorMessage(error: string): string {
 	if (error === 'debtor_opted_out') return 'Diese Person erhält keine Erinnerungen.';
 	if (error === 'no_open_debt') return 'Keine offene Schuld zwischen euch.';
 	if (error === 'not_a_member') return 'Tritt der WG bitte erneut bei.';
-	if (error === 'Failed to fetch' || error === 'Netzwerkfehler') {
-		return 'Erinnerung konnte nicht gesendet werden. Verbindung prüfen.';
-	}
-	return 'Erinnerung konnte nicht gesendet werden.';
+	return mutationErrorMessage(
+		'Erinnerung konnte nicht gesendet werden',
+		error,
+		{},
+		'Erinnerung konnte nicht gesendet werden.',
+	);
 }
 
 function successMessage(warning: RemindResponseWarning): string {

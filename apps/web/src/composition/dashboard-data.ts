@@ -1,7 +1,7 @@
 import { getAbsentMemberIds } from '@/features/chores/absence';
 import { getChoreStatus } from '@/features/chores/chore-status';
 import { getDueRecurringExpenses } from '@/features/expenses/recurring-expenses';
-import { computeMemberBalances } from './dashboard-balances';
+import { balanceTotalsFromRows, computeMemberBalances } from './dashboard-balances';
 import type { MemberBalance } from './dashboard-balances';
 import { type ActivityItem, appendSecondaryActivity, buildPrimaryActivity } from './dashboard-feed';
 import { type WgHealth, getWgHealth } from './dashboard-insights';
@@ -10,11 +10,12 @@ import {
 	type CurrencyTotals,
 	type DaySpend,
 	addCurrencyTotal,
+	dashboardSpendSince,
 	singleCurrencyTotal,
 	summarizeDashboardSpend,
 } from './dashboard-spend';
 
-export { computeMemberBalances, summarizeDashboardSpend };
+export { balanceTotalsFromRows, computeMemberBalances, summarizeDashboardSpend };
 
 interface ChoreDue {
 	id: string;
@@ -143,21 +144,23 @@ export async function loadDashboardData(
 
 	const [
 		memberRows,
-		expenseRows,
-		splitRows,
+		recentExpenses,
+		openDebts,
 		paymentRows,
 		openShopping,
 		recentShopping,
 		choreRows,
 		announcementRows,
 		openAnnouncementCountRows,
-	] = await loadPrimaryRows(wgId);
+		payerTotals,
+		spendRows,
+	] = await loadPrimaryRows(wgId, dashboardSpendSince(now));
 
 	const memberById = new Map(memberRows.map((m) => [m.id, m]));
 
-	const balances = computeMemberBalances(memberRows, expenseRows, splitRows, paymentRows);
+	const balances = computeMemberBalances(memberRows, payerTotals, openDebts, paymentRows);
 
-	const spendSummary = summarizeDashboardSpend(expenseRows, now);
+	const spendSummary = summarizeDashboardSpend(spendRows, now, payerTotals);
 
 	const openShoppingTop = openShopping
 		.slice(0, 3)
@@ -167,7 +170,7 @@ export async function loadDashboardData(
 	const dueChores = allDueChores;
 
 	const { activity, rawActivityByKey } = buildPrimaryActivity(
-		expenseRows,
+		recentExpenses,
 		recentShopping,
 		announcementRows,
 		memberById,
@@ -260,7 +263,7 @@ export async function loadDashboardData(
 		absentMembers,
 		setup: {
 			choreCount: choreRows.length,
-			hasExpense: expenseRows.length > 0,
+			hasExpense: payerTotals.length > 0,
 			hasShoppingItem: recentShopping.length > 0,
 			hasAnnouncement,
 			notificationsEnabled: Boolean(currentMember && currentMemberNotification?.pushOptIn),

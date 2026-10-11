@@ -1,21 +1,9 @@
-import { db } from '@/core/db';
 import { isWgAdmin } from '@/core/guards/admin';
 import { type WgMembershipResult, requireWgMembership } from '@/core/guards/require-wg-member';
+import type { ResolvedWg } from '@/core/guards/resolve';
 import { forbidden, rateLimitResponse } from '@/core/http/api-errors';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import type { NextRequest } from 'next/server';
-
-interface AdminWg {
-	id: string;
-	name: string;
-}
-
-function loadAdminWg(code: string): Promise<AdminWg | undefined> {
-	return db.query.wgs.findFirst({
-		where: (w, { eq }) => eq(w.shareCode, code),
-		columns: { id: true, name: true },
-	});
-}
 
 /**
  * The guard for WG-settings writes: resolve the share code, verify the caller
@@ -29,8 +17,8 @@ export async function requireWgAdmin(
 	code: string,
 	/** Rate-limit bucket, e.g. `wg-settings`. Scoped by WG and member. */
 	scope: string,
-): Promise<WgMembershipResult<AdminWg>> {
-	const auth = await requireWgMembership(req, code, 'requireWgAdmin', loadAdminWg);
+): Promise<WgMembershipResult<ResolvedWg>> {
+	const auth = await requireWgMembership(req, code, 'requireWgAdmin');
 	if (!auth.ok) return auth;
 
 	if (!(await isWgAdmin(auth.wg.id, auth.member.memberId))) {

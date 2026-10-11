@@ -103,7 +103,9 @@ test.describe('inventory restock retry', () => {
 			.filter({ hasText: 'Schnell nachfüllen' });
 
 		await drawer.getByRole('button', { name: 'Reis um eins erhöhen' }).click();
-		await expect(drawer.getByText('Aktualisierung fehlgeschlagen.')).toBeVisible();
+		await expect(
+			drawer.getByText('Aktualisierung fehlgeschlagen: Versuche es gleich erneut.'),
+		).toBeVisible();
 		await drawer.getByRole('button', { name: 'Linsen um eins erhöhen' }).click();
 		await expect.poll(() => keysByItem.get(secondId)?.length).toBe(1);
 		await drawer.getByRole('button', { name: 'Reis um eins erhöhen' }).click();

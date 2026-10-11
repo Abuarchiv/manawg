@@ -16,8 +16,11 @@ const host = process.env.NEXT_PUBLIC_POSTHOG_HOST;
 function whenIdle(task: () => void): void {
 	if (typeof window.requestIdleCallback === 'function') {
 		window.requestIdleCallback(task, { timeout: 5000 });
-	} else {
+	} else if (typeof window.setTimeout === 'function') {
 		window.setTimeout(task, 2000);
+	} else {
+		// Minimal window stubs (the analytics privacy check) run the init straight away.
+		task();
 	}
 }
 

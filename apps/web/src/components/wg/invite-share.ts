@@ -1,3 +1,4 @@
+import { mutationErrorMessage } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
 import { type NavigatorWithShare, copyText } from '@/core/utils/clipboard';
 import { INVITE_VALID_DAYS } from '@/core/utils/invite-token';
@@ -30,7 +31,12 @@ export async function createInvite(
 		ok: false,
 		message:
 			CREATE_ERRORS[res.error] ??
-			'Die Einladung konnte nicht erstellt werden. Versuch es noch mal.',
+			mutationErrorMessage(
+				'Die Einladung konnte nicht erstellt werden',
+				res.error,
+				{},
+				'Die Einladung konnte nicht erstellt werden. Versuch es noch mal.',
+			),
 	};
 }
 

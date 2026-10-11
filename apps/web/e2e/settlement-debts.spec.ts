@@ -2,7 +2,7 @@
 // Why: Dashboard, debt list and settlement must agree to the cent.
 
 import { expect, test } from '@playwright/test';
-import { computeMemberBalances } from '../src/composition/dashboard-data';
+import { balanceTotalsFromRows, computeMemberBalances } from '../src/composition/dashboard-data';
 import { getDebtOverview } from '../src/features/expenses/debt-overview';
 import {
 	buildSettlementSummary,
@@ -441,7 +441,8 @@ test.describe('dashboard balance consistency', () => {
 		splits: DashboardSplit[],
 		payments: Payment[] = [],
 	) {
-		return computeMemberBalances(members, expenses, splits, payments);
+		const { payerTotals, openDebts } = balanceTotalsFromRows(expenses, splits);
+		return computeMemberBalances(members, payerTotals, openDebts, payments);
 	}
 	test.describe('Dashboard balance consistency', () => {
 		test('matches expected balances for an unsettled three-person expense', () => {

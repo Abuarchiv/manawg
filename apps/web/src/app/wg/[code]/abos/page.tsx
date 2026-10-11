@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Item, ItemContent, ItemGroup } from '@/components/ui/item';
+import { ItemContent, ItemEntry, ItemGroup } from '@/components/ui/item';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { ActionNoticeBanner } from '@/components/wg/ActionNoticeBanner';
@@ -254,13 +254,13 @@ function AbosSkeleton() {
 			</Card>
 			<ItemGroup aria-busy="true" aria-label="Fixkosten werden geladen">
 				{['s1', 's2', 's3', 's4'].map((key) => (
-					<Item key={key} variant="outline" aria-hidden="true">
+					<ItemEntry key={key} variant="outline" aria-hidden="true">
 						<ItemContent>
 							<Skeleton className="h-4 w-2/3" />
 							<Skeleton className="h-3 w-1/3" />
 						</ItemContent>
 						<Skeleton className="h-4 w-16" />
-					</Item>
+					</ItemEntry>
 				))}
 			</ItemGroup>
 		</>
