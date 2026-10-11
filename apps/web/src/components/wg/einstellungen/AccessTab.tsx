@@ -4,6 +4,7 @@ import { SocialLoginButtons, type SocialProvider } from '@/components/auth/Socia
 import type { Member, WgSummary } from '@/components/wg/WgContextProvider';
 import { AccountSignOutSection } from '@/components/wg/einstellungen/AccountSignOutSection';
 import { DangerZoneSection } from '@/components/wg/einstellungen/DangerZoneSection';
+import { EmailChangeRow } from '@/components/wg/einstellungen/EmailChangeRow';
 import { InvitesSection } from '@/components/wg/einstellungen/InvitesSection';
 import { MembersSection } from '@/components/wg/einstellungen/MembersSection';
 import { PasswordChangeRow } from '@/components/wg/einstellungen/PasswordChangeRow';
@@ -49,6 +50,9 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 			<Section title="Anmeldemethoden">
 				<div className="flex flex-col gap-3 p-3">
 					<PasswordChangeRow />
+					<EmailChangeRow
+						returnPath={`/wg/${encodeURIComponent(wg.shareCode)}/einstellungen#zugang`}
+					/>
 					{googleLinked ? (
 						<p className="text-sm text-muted-foreground">Google ist mit deinem Konto verknüpft.</p>
 					) : (

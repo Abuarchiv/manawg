@@ -111,6 +111,11 @@ export async function getAccountName(): Promise<string | null> {
 	return (await readAccount().catch(() => null))?.name ?? null;
 }
 
+/** Asks for an e-mail change; the address only changes once the link in the mail is opened. */
+export async function requestEmailChange(email: string, next: string): Promise<void> {
+	await authRequest('/api/auth/email', { email, next });
+}
+
 export async function updatePassword(password: string): Promise<void> {
 	await authRequest('/api/auth/password', { password });
 }
