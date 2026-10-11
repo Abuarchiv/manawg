@@ -4,10 +4,10 @@ import { createServerClient } from '@supabase/ssr';
 import type { User } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { type NextRequest, NextResponse } from 'next/server';
-import { isTransientAuthError } from './auth-errors';
 import { authCookieOptions } from './cookie-options';
 import { applySessionHint } from './session-hint-cookie';
 import { getSupabaseEnv, hasSupabaseEnv } from './supabase-env';
+import { readVerifiedUser } from './verified-user';
 
 const SUPABASE_AUTH_TOKEN_COOKIE = /^sb-[A-Za-z0-9-]+-auth-token(?:\.\d+)?$/;
 
@@ -51,10 +51,7 @@ export function createSupabaseServerClient(
 export async function getAuthenticatedUser(request: NextRequest): Promise<Pick<User, 'id'> | null> {
 	if (!hasSupabaseAuthAttempt(request)) return null;
 	const supabase = createSupabaseServerClient(request, NextResponse.next());
-	const { data, error } = await supabase.auth.getUser();
-
-	if (isTransientAuthError(error)) throw error;
-	return error || !data.user ? null : { id: data.user.id };
+	return readVerifiedUser(supabase.auth);
 }
 
 /** Read the middleware-refreshed session in a server component without a module-level client. */
@@ -68,7 +65,5 @@ export async function getAuthenticatedUserFromCookies(): Promise<Pick<User, 'id'
 			setAll: () => undefined,
 		},
 	});
-	const { data, error } = await supabase.auth.getUser();
-	if (isTransientAuthError(error)) throw error;
-	return error || !data.user ? null : { id: data.user.id };
+	return readVerifiedUser(supabase.auth);
 }

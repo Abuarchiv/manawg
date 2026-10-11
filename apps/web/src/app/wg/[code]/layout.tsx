@@ -49,7 +49,7 @@ export async function generateMetadata({
 
 /**
  * Session and membership once per request: generateMetadata and the layout both
- * need them, and getUser() is a network call to Supabase Auth.
+ * need them, and an expired token costs a refresh round trip to Supabase Auth.
  */
 const getWgViewer = cache(async (code: string) => {
 	const user = await getAuthenticatedUserFromCookies();

@@ -20,13 +20,46 @@ after(() => {
 	globalThis.fetch = originalFetch;
 });
 
-function authenticatedRequest(path = '/api/wg/mine') {
+const KID = 'test-signing-key';
+const JWKS_PATH = '/auth/v1/.well-known/jwks.json';
+let signingKey: CryptoKeyPair;
+let foreignKey: CryptoKeyPair;
+let publicJwk: JsonWebKey & { kid: string };
+
+const generateKey = () =>
+	crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
+
+before(async () => {
+	signingKey = await generateKey();
+	foreignKey = await generateKey();
+	publicJwk = { ...(await crypto.subtle.exportKey('jwk', signingKey.publicKey)), kid: KID };
+});
+
+const base64url = (input: string | ArrayBuffer) =>
+	Buffer.from(input as never).toString('base64url');
+
+/** A real ES256 session token: getClaims verifies it locally against the JWKS endpoint. */
+async function accessToken(key: CryptoKeyPair, expiresAt: number): Promise<string> {
+	const header = base64url(JSON.stringify({ alg: 'ES256', typ: 'JWT', kid: KID }));
+	const payload = base64url(
+		JSON.stringify({ sub: 'user-1', aud: 'authenticated', role: 'authenticated', exp: expiresAt }),
+	);
+	const signature = await crypto.subtle.sign(
+		{ name: 'ECDSA', hash: 'SHA-256' },
+		key.privateKey,
+		new TextEncoder().encode(`${header}.${payload}`),
+	);
+	return `${header}.${payload}.${base64url(signature)}`;
+}
+
+async function authenticatedRequest(path = '/api/wg/mine', key = signingKey, token?: string) {
+	const expiresAt = Math.floor(Date.now() / 1000) + 3600;
 	const session = Buffer.from(
 		JSON.stringify({
-			access_token: 'test-access-token',
+			access_token: token ?? (await accessToken(key, expiresAt)),
 			refresh_token: 'test-refresh-token',
 			token_type: 'bearer',
-			expires_at: Math.floor(Date.now() / 1000) + 3600,
+			expires_at: expiresAt,
 			expires_in: 3600,
 		}),
 	).toString('base64url');
@@ -35,16 +68,19 @@ function authenticatedRequest(path = '/api/wg/mine') {
 	});
 }
 
+/** Every Auth call (JWKS discovery, token refresh, /user) answers with `status`. */
 function mockAuthResponse(status: number) {
 	authFetchCalls = 0;
 	const body =
-		status === 401
-			? { code: 'bad_jwt', message: 'Invalid JWT' }
+		status === 200
+			? { keys: [publicJwk] }
 			: status === 429
 				? { code: 'over_request_rate_limit', message: 'Too many requests' }
 				: { code: 'server_error', message: 'Auth service unavailable' };
-	globalThis.fetch = (async () => {
+	globalThis.fetch = (async (input: RequestInfo | URL) => {
 		authFetchCalls += 1;
+		const url = String(input instanceof Request ? input.url : input);
+		assert.ok(url.includes(JWKS_PATH) || url.includes('/auth/v1/'), `unexpected fetch ${url}`);
 		return new Response(JSON.stringify(body), {
 			status,
 			headers: { 'Content-Type': 'application/json' },
@@ -65,7 +101,7 @@ test('transient Supabase Auth failures propagate instead of becoming an unauthen
 	mockAuthResponse(503);
 	let authError: unknown;
 	try {
-		await getAuthenticatedUser(authenticatedRequest());
+		await getAuthenticatedUser(await authenticatedRequest());
 	} catch (error) {
 		authError = error;
 	}
@@ -78,7 +114,7 @@ test('temporary Auth failures keep WG page headers and cookies for the retry bou
 		mockAuthResponse(status);
 		const response = middlewareResponse();
 		const result = await refreshSupabaseSession(
-			authenticatedRequest('/wg/ABC123/ausgaben'),
+			await authenticatedRequest('/wg/ABC123/ausgaben'),
 			response,
 		);
 
@@ -98,7 +134,7 @@ test('an upstream Auth rate limit propagates instead of becoming an unauthentica
 	mockAuthResponse(429);
 	let authError: unknown;
 	try {
-		await getAuthenticatedUser(authenticatedRequest());
+		await getAuthenticatedUser(await authenticatedRequest());
 	} catch (error) {
 		authError = error;
 	}
@@ -106,15 +142,29 @@ test('an upstream Auth rate limit propagates instead of becoming an unauthentica
 	assert.equal((authError as { status?: number }).status, 429);
 });
 
-test('an invalid session still redirects to sign-in', async () => {
-	mockAuthResponse(401);
-	assert.equal(await getAuthenticatedUser(authenticatedRequest()), null);
+test('a cookie that is not a JWT is an invalid session, not an outage', async () => {
+	mockAuthResponse(503);
+	const request = await authenticatedRequest('/api/wg/mine', signingKey, 'not-a-jwt');
+	assert.equal(await getAuthenticatedUser(request), null);
+	assert.equal(authFetchCalls, 0, 'a malformed token never reaches Supabase Auth');
+});
+
+// Last: a successful JWKS fetch is cached process-wide, after which the outage cases above
+// would no longer reach the network.
+test('an invalid signature still redirects to sign-in', async () => {
+	mockAuthResponse(200);
+	assert.equal(
+		await getAuthenticatedUser(await authenticatedRequest('/api/wg/mine', foreignKey)),
+		null,
+	);
+	assert.ok(authFetchCalls > 0, 'the signing key must be fetched from Supabase Auth');
 	const response = await refreshSupabaseSession(
-		authenticatedRequest('/wg/ABC123/ausgaben'),
+		await authenticatedRequest('/wg/ABC123/ausgaben', foreignKey),
 		NextResponse.next(),
 	);
-
-	assert.ok(authFetchCalls > 0, 'the active session must reach Supabase Auth');
 	assert.equal(response.status, 307);
 	assert.equal(new URL(response.headers.get('location') ?? '').pathname, '/neu');
+
+	const user = await getAuthenticatedUser(await authenticatedRequest());
+	assert.deepEqual(user, { id: 'user-1' });
 });
