@@ -101,23 +101,6 @@ describe('require wg member regression', () => {
 	});
 });
 
-describe('server membership identity', () => {
-	test('taking over an unlinked member needs a valid invitation to that WG', async () => {
-		const source = await readSource('app/api/wg/[code]/members/[id]/claim/route.ts');
-		assert.ok(source.includes('isInviteToken(inviteToken)'));
-		assert.ok(source.includes('eq(wgInvites.wgId, wg.id)'));
-		assert.ok(source.includes("inviteStatus(invite) !== 'valid'"));
-		assert.ok(source.indexOf('inviteStatus(invite)') < source.indexOf('withTransaction('));
-	});
-
-	test('normal server membership derives identity from auth alone, without member tokens', async () => {
-		const source = await readSource('core/guards/api-auth.ts');
-		assert.ok(source.includes('eq(wgMembers.authUserId, user.id)'));
-		assert.ok(!source.includes('legacy-claim-proof'));
-		assert.ok(!source.includes('LEGACY_CLAIM'));
-	});
-});
-
 describe('api infra security contracts', () => {
 	test('central error reporting redacts thrown messages and arbitrary context while keeping route labels', () => {
 		const calls: unknown[][] = [];

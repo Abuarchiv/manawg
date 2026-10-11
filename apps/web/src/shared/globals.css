@@ -500,13 +500,8 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 		/* Backdrop shown in the margins outside the centered app frame. */
 		--app-backdrop: var(--secondary);
 		/* Chapter 10: exact shadcn Neutral light tokens. */
-		--bg-base: var(--background);
-		--bg-1: var(--card);
-		--bg-2: var(--secondary);
 		--surface: var(--card);
-		--surface-strong: var(--secondary);
 		--border: oklch(0.922 0 0);
-		--border-strong: oklch(0.145 0 0 / 14%);
 
 		--text-1: var(--foreground);
 		--text-2: oklch(0.439 0 0);
@@ -515,15 +510,11 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 
 		--accent: oklch(0.97 0 0);
 		--accent-bright: var(--foreground);
-		--accent-deep: var(--primary);
-		--accent-soft: var(--secondary);
 
 		--success: var(--settled);
 		--warning: var(--muted-foreground);
 		--danger: var(--destructive);
 		--info: var(--muted-foreground);
-		/* Foreground tokens retained for legacy state consumers. */
-		--danger-fg: var(--primary-foreground);
 		/* State surfaces stay neutral; only settled and destructive carry meaning. */
 		--success-fg: var(--foreground);
 		--success-bg: color-mix(in oklab, var(--settled) 12%, var(--background));
@@ -531,30 +522,13 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 		--warning-fg: var(--foreground);
 		--warning-bg: var(--secondary);
 		--warning-border: var(--border);
-		--danger-bg: color-mix(in oklab, var(--destructive) 12%, var(--background));
-		--danger-border: color-mix(in oklab, var(--destructive) 35%, var(--border));
-		--info-fg: var(--foreground);
-		--info-bg: var(--secondary);
-		--info-border: var(--border);
 		--chart-1: oklch(0.205 0 0);
 		--chart-2: oklch(0.372 0 0);
 		--chart-3: oklch(0.556 0 0);
 		--chart-4: oklch(0.708 0 0);
 		--chart-5: oklch(0.87 0 0);
-		--chart-6: oklch(0.145 0 0);
-
-		/* Legacy aliases map to the Neutral scale. */
-		--clay: var(--foreground);
 		--ink: var(--foreground);
-
-		/* Legacy aliases retained for older consumers. */
 		--bg: var(--background);
-		--bg-raised: var(--secondary);
-		--paper: var(--card);
-		--ink-2: oklch(0.439 0 0);
-		--ink-3: oklch(0.52 0 0);
-		--accent-fg: var(--accent-foreground);
-		--red: var(--destructive);
 		--background: oklch(1 0 0);
 		--foreground: oklch(0.145 0 0);
 		--card: oklch(1 0 0);
@@ -592,13 +566,8 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 		color-scheme: dark;
 		/* Chapter 10: exact shadcn Neutral dark tokens. */
 		--app-backdrop: var(--background);
-		--bg-base: var(--background);
-		--bg-1: var(--card);
-		--bg-2: var(--secondary);
 		--surface: var(--card);
-		--surface-strong: var(--secondary);
 		--border: oklch(1 0 0 / 10%);
-		--border-strong: oklch(0.985 0 0 / 16%);
 
 		--text-1: var(--foreground);
 		--text-2: var(--muted-foreground);
@@ -607,8 +576,6 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 
 		--accent: oklch(0.269 0 0);
 		--accent-bright: var(--foreground);
-		--accent-deep: var(--primary);
-		--accent-soft: var(--secondary);
 
 		--success: var(--settled);
 		--warning: var(--muted-foreground);
@@ -620,28 +587,15 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 		--warning-fg: var(--foreground);
 		--warning-bg: var(--secondary);
 		--warning-border: var(--border);
-		--danger-bg: color-mix(in oklab, var(--destructive) 12%, var(--background));
-		--danger-border: color-mix(in oklab, var(--destructive) 35%, var(--border));
-		--info-fg: var(--foreground);
-		--info-bg: var(--secondary);
-		--info-border: var(--border);
 		--chart-1: oklch(0.985 0 0);
 		--chart-2: oklch(0.87 0 0);
 		--chart-3: oklch(0.708 0 0);
 		--chart-4: oklch(0.556 0 0);
 		--chart-5: oklch(0.372 0 0);
-		--chart-6: oklch(0.985 0 0);
 
 		/* Dark-mode compatibility aliases. */
 		--bg: var(--background);
-		--bg-raised: var(--secondary);
-		--paper: var(--card);
 		--ink: var(--foreground);
-		--ink-2: var(--muted-foreground);
-		--ink-3: var(--muted-foreground);
-		--accent-fg: var(--accent-foreground);
-		--danger-fg: var(--primary-foreground);
-		--red: var(--destructive);
 		--settled: oklch(0.7 0.14 155);
 		--background: oklch(0.145 0 0);
 		--foreground: oklch(0.985 0 0);
