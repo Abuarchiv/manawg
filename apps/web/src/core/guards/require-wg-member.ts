@@ -1,13 +1,8 @@
-import { getAuthenticatedUser } from '@/core/auth/server';
-import {
-	type AuthenticatedMember,
-	type AuthenticatedUser,
-	requireMember,
-} from '@/core/guards/api-auth';
+import { type AuthenticatedMember, requireMember } from '@/core/guards/api-auth';
+import { requireAccount } from '@/core/guards/require-account';
 import { type ResolvedWg, resolveWg } from '@/core/guards/resolve';
 import { shareCodeMissResponse } from '@/core/guards/share-code-miss';
-import { notFound, serviceUnavailable, unauthorized } from '@/core/http/api-errors';
-import { logApiError } from '@/core/infra/observability';
+import { notFound } from '@/core/http/api-errors';
 import type { NextRequest, NextResponse } from 'next/server';
 
 interface WgMembershipOk<W> {
@@ -42,20 +37,9 @@ export async function requireWgMembership<W extends { id: string }>(
 	label: string,
 	loadWg: (code: string) => Promise<W | null | undefined>,
 ): Promise<WgMembershipResult<W>> {
-	let user: AuthenticatedUser | null;
-	try {
-		user = await getAuthenticatedUser(req);
-	} catch (err) {
-		// A transient Auth outage is retryable, not an unauthenticated caller.
-		logApiError(`[${label}] auth error`, err);
-		return { ok: false, response: serviceUnavailable('db_error') };
-	}
-	if (!user) {
-		return {
-			ok: false,
-			response: unauthorized('auth_required', 'auth_required'),
-		};
-	}
+	const account = await requireAccount(req, label);
+	if (!account.ok) return { ok: false, response: account.response };
+	const user = account.user;
 
 	const wg = await loadWg(code);
 	if (!wg) {

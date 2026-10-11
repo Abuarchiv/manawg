@@ -1,6 +1,5 @@
 import { SESSION_HINT_COOKIE } from '@/core/auth/cookie-options';
 import { deleteAuthUser } from '@/core/auth/delete-user';
-import { getAuthenticatedUser } from '@/core/auth/server';
 import { getSupabaseEnv, hasSupabaseEnv } from '@/core/auth/supabase-env';
 import { accountDeletions, auditEvents } from '@/core/db';
 import {
@@ -9,7 +8,8 @@ import {
 } from '@/core/db/account-deletion';
 import { removeAccountFromWgs } from '@/core/db/delete-account';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
-import { conflict, serverError, serviceUnavailable, unauthorized } from '@/core/http/api-errors';
+import { requireAccount } from '@/core/guards/require-account';
+import { conflict, serverError, serviceUnavailable } from '@/core/http/api-errors';
 import { afterResponse } from '@/core/infra/after-response';
 import { logApiError } from '@/core/infra/observability';
 import { confirmedEmailOf, sendAccountDeletedMail } from '@/core/mail/account-deleted';
@@ -45,15 +45,9 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
 	if (!hasSupabaseEnv() || !serviceRoleKey) {
 		return serviceUnavailable('account_deletion_unavailable', 'account_deletion_unavailable');
 	}
-	let user: Awaited<ReturnType<typeof getAuthenticatedUser>>;
-	try {
-		user = await getAuthenticatedUser(req);
-	} catch (err) {
-		// A transient Auth outage is retryable, not an unauthenticated caller.
-		logApiError('[api/account DELETE] auth error', err);
-		return serviceUnavailable('db_error');
-	}
-	if (!user) return unauthorized('auth_required', 'auth_required');
+	const account = await requireAccount(req, 'api/account DELETE');
+	if (!account.ok) return account.response;
+	const user = account.user;
 
 	try {
 		const { url } = getSupabaseEnv();

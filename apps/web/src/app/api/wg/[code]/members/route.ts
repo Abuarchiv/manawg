@@ -1,5 +1,4 @@
 import { recordAuditEvent } from '@/core/audit';
-import { getAuthenticatedUser } from '@/core/auth/server';
 import { db, wgInvites, wgMembers, wgs } from '@/core/db';
 import { assertAccountCanAcquireMembership } from '@/core/db/account-deletion';
 import { type WriteOutcome, responseCodec, withIdempotentWrite } from '@/core/db/idempotent-write';
@@ -8,6 +7,7 @@ import { LIMITS } from '@/core/db/schema';
 import { type DbTransaction, TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { inviteStatus } from '@/core/db/wg-invites';
 import { isWgAdmin } from '@/core/guards/admin';
+import { requireAccount } from '@/core/guards/require-account';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { shareCodeMissResponse } from '@/core/guards/share-code-miss';
 import { withWgRoute } from '@/core/guards/with-wg-route';
@@ -18,12 +18,9 @@ import {
 	forbidden,
 	notFound,
 	rateLimitResponse,
-	serviceUnavailable,
-	unauthorized,
 } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey } from '@/core/idempotency-store';
-import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, clientIpKey, wgWriteLimiter } from '@/core/rate-limit';
 import { isInviteToken } from '@/core/utils/invite-token';
 import { MAX_MEMBERS_PER_WG } from '@/shared/lib/limits';
@@ -247,16 +244,9 @@ export const POST = withWgRoute('members POST', async (req, { code }) => {
 	const limit = await checkRateLimit(wgWriteLimiter, `join:${clientIpKey(req)}`);
 	const limited = rateLimitResponse(limit, 'join_rate_limited', 'join_rate_limited');
 	if (limited) return limited;
-	let authUser: Awaited<ReturnType<typeof getAuthenticatedUser>>;
-	try {
-		authUser = await getAuthenticatedUser(req);
-	} catch (err) {
-		// A transient Auth outage is retryable, not an unauthenticated caller.
-		logApiError('[members POST] auth error', err);
-		return serviceUnavailable('db_error');
-	}
-	if (!authUser) return unauthorized('auth_required', 'auth_required');
-	const user = authUser;
+	const account = await requireAccount(req, 'members POST');
+	if (!account.ok) return account.response;
+	const { user } = account;
 	const wg = await db.query.wgs.findFirst({
 		where: (w, { eq }) => eq(w.shareCode, code),
 		columns: { id: true },

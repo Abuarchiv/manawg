@@ -1,22 +1,12 @@
-import { getAuthenticatedUser } from '@/core/auth/server';
 import { db, wgInvites, wgMembers } from '@/core/db';
 import { assertAccountCanAcquireMembership } from '@/core/db/account-deletion';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { inviteStatus } from '@/core/db/wg-invites';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
+import { requireAccount } from '@/core/guards/require-account';
 import { shareCodeMissResponse } from '@/core/guards/share-code-miss';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import {
-	HTTP,
-	apiError,
-	badRequest,
-	conflict,
-	forbidden,
-	notFound,
-	serviceUnavailable,
-	unauthorized,
-} from '@/core/http/api-errors';
-import { logApiError } from '@/core/infra/observability';
+import { HTTP, apiError, badRequest, conflict, forbidden, notFound } from '@/core/http/api-errors';
 import { isInviteToken } from '@/core/utils/invite-token';
 import { and, eq, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
@@ -30,16 +20,9 @@ type ClaimResult =
 
 export const POST = withWgRoute<{ id: string }>('members claim POST', async (req, { code, id }) => {
 	if (!UUID_PATTERN.test(id)) return badRequest('id_invalid');
-	let authUser: Awaited<ReturnType<typeof getAuthenticatedUser>>;
-	try {
-		authUser = await getAuthenticatedUser(req);
-	} catch (err) {
-		// A transient Auth outage is retryable, not an unauthenticated caller.
-		logApiError('[members claim POST] auth error', err);
-		return serviceUnavailable('db_error');
-	}
-	if (!authUser) return unauthorized('auth_required', 'auth_required');
-	const user = authUser;
+	const account = await requireAccount(req, 'members claim POST');
+	if (!account.ok) return account.response;
+	const { user } = account;
 
 	const wg = await db.query.wgs.findFirst({
 		where: (w, { eq }) => eq(w.shareCode, code),

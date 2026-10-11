@@ -1,5 +1,4 @@
 import { recordAuditEvent } from '@/core/audit';
-import { getAuthenticatedUser } from '@/core/auth/server';
 import { db, wgMembers, wgs } from '@/core/db';
 import { assertAccountCanAcquireMembership } from '@/core/db/account-deletion';
 import {
@@ -10,13 +9,8 @@ import {
 } from '@/core/db/idempotent-write';
 import { LIMITS } from '@/core/db/schema';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
-import {
-	conflict,
-	serverError,
-	serviceUnavailable,
-	tooMany,
-	unauthorized,
-} from '@/core/http/api-errors';
+import { requireAccount } from '@/core/guards/require-account';
+import { conflict, serverError, tooMany } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey } from '@/core/idempotency-store';
 import { logApiError } from '@/core/infra/observability';
@@ -52,16 +46,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 	if (!parsed.ok) return parsed.response;
 	const { name, creatorName } = parsed.data;
 
-	let user: { id: string } | null;
-	try {
-		user = await getAuthenticatedUser(req);
-	} catch (err) {
-		// A transient Auth outage is retryable, not an unauthenticated caller.
-		logApiError('[api/wg POST] auth lookup failed', err);
-		return serviceUnavailable('db_error');
-	}
-	if (!user) return unauthorized('auth_required', 'auth_required');
-	const authUserId = user.id;
+	const account = await requireAccount(req, 'api/wg POST');
+	if (!account.ok) return account.response;
+	const authUserId = account.user.id;
 
 	// Defense in depth: middleware already covers /api/wg with wgWriteLimiter
 	// (30/min/IP). WG creation is rarer than other writes, so apply the

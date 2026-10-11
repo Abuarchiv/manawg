@@ -1,21 +1,15 @@
-import { getAuthenticatedUser } from '@/core/auth/server';
 import { db, wgMembers, wgs } from '@/core/db';
-import { serverError, serviceUnavailable, unauthorized } from '@/core/http/api-errors';
+import { requireAccount } from '@/core/guards/require-account';
+import { serverError } from '@/core/http/api-errors';
 import { logApiError } from '@/core/infra/observability';
 import { and, desc, eq, isNull } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 
 /** Return WGs that belong to the signed-in account, so recovery needs no local data or code. */
 export async function GET(req: NextRequest): Promise<NextResponse> {
-	let user: Awaited<ReturnType<typeof getAuthenticatedUser>>;
-	try {
-		user = await getAuthenticatedUser(req);
-	} catch (err) {
-		// A transient Auth outage is retryable, not an unauthenticated caller.
-		logApiError('[api/wg/mine GET] auth error', err);
-		return serviceUnavailable('db_error');
-	}
-	if (!user) return unauthorized('auth_required', 'auth_required');
+	const account = await requireAccount(req, 'api/wg/mine GET');
+	if (!account.ok) return account.response;
+	const user = account.user;
 	try {
 		const memberships = await db
 			.select({ id: wgs.id, memberId: wgMembers.id, name: wgs.name, code: wgs.shareCode })

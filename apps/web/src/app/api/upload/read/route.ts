@@ -1,14 +1,7 @@
-import { getAuthenticatedUser } from '@/core/auth/server';
 import { isPrivateImageKeyRevoked } from '@/core/db/private-image-deletions';
 import { requireMember } from '@/core/guards/api-auth';
-import {
-	badRequest,
-	notFound,
-	serverError,
-	serviceUnavailable,
-	unauthorized,
-} from '@/core/http/api-errors';
-import { logApiError } from '@/core/infra/observability';
+import { requireAccount } from '@/core/guards/require-account';
+import { badRequest, notFound, serverError } from '@/core/http/api-errors';
 import {
 	ImageStorageConfigurationError,
 	ImageStorageObjectNotFoundError,
@@ -27,15 +20,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 	const privateImage = key ? parsePrivateImageKey(key) : null;
 	if (!key || !privateImage) return noStore(badRequest('invalid_image_key'));
 
-	let authenticatedUser: Awaited<ReturnType<typeof getAuthenticatedUser>>;
-	try {
-		authenticatedUser = await getAuthenticatedUser(req);
-	} catch (err) {
-		// A transient Auth outage is retryable, not an unauthenticated caller.
-		logApiError('[upload read] auth error', err);
-		return noStore(serviceUnavailable('db_error'));
-	}
-	if (!authenticatedUser) return noStore(unauthorized('auth_required', 'auth_required'));
+	const account = await requireAccount(req, 'upload read');
+	if (!account.ok) return noStore(account.response);
+	const authenticatedUser = account.user;
 
 	const auth = await requireMember(req, privateImage.wgId, authenticatedUser);
 	if (!auth.ok) return noStore(auth.response);

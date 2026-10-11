@@ -1,17 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import { getAuthenticatedUser } from '@/core/auth/server';
 import { db } from '@/core/db';
 import { requireMember } from '@/core/guards/api-auth';
-import {
-	badRequest,
-	notFound,
-	rateLimitResponse,
-	serverError,
-	serviceUnavailable,
-	unauthorized,
-} from '@/core/http/api-errors';
+import { requireAccount } from '@/core/guards/require-account';
+import { badRequest, notFound, rateLimitResponse, serverError } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
-import { logApiError } from '@/core/infra/observability';
 import { PRIVATE_IMAGE_MIME_TYPES } from '@/core/infra/private-image-policy';
 import {
 	S3ConfigurationError,
@@ -72,15 +64,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 	if (!isValidShareCode(code)) return noStore(badRequest('invalid_share_code'));
 	if (!isAllowedMimeType(mimeType)) return noStore(badRequest('invalid_mime_type'));
 
-	let authenticatedUser: Awaited<ReturnType<typeof getAuthenticatedUser>>;
-	try {
-		authenticatedUser = await getAuthenticatedUser(req);
-	} catch (err) {
-		// A transient Auth outage is retryable, not an unauthenticated caller.
-		logApiError('[upload sign] auth error', err);
-		return noStore(serviceUnavailable('db_error'));
-	}
-	if (!authenticatedUser) return noStore(unauthorized('auth_required', 'auth_required'));
+	const account = await requireAccount(req, 'upload sign');
+	if (!account.ok) return noStore(account.response);
+	const authenticatedUser = account.user;
 
 	const wg = await db.query.wgs.findFirst({
 		where: (w, { eq }) => eq(w.shareCode, code),

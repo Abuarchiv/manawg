@@ -1,15 +1,8 @@
-import { getAuthenticatedUser } from '@/core/auth/server';
 import { db, wgInvites, wgMembers, wgs } from '@/core/db';
 import { inviteStatus } from '@/core/db/wg-invites';
+import { requireAccount } from '@/core/guards/require-account';
 import { shareCodeMissResponse } from '@/core/guards/share-code-miss';
-import {
-	HTTP,
-	apiError,
-	notFound,
-	serverError,
-	serviceUnavailable,
-	unauthorized,
-} from '@/core/http/api-errors';
+import { HTTP, apiError, notFound, serverError } from '@/core/http/api-errors';
 import type { RouteCtx } from '@/core/infra/api-types';
 import { logApiError } from '@/core/infra/observability';
 import { isInviteToken } from '@/core/utils/invite-token';
@@ -23,14 +16,9 @@ import { type NextRequest, NextResponse } from 'next/server';
  */
 export async function GET(req: NextRequest, ctx: RouteCtx<{ token: string }>) {
 	const { token } = await ctx.params;
-	let user: Awaited<ReturnType<typeof getAuthenticatedUser>>;
-	try {
-		user = await getAuthenticatedUser(req);
-	} catch (err) {
-		logApiError('[api/wg/invites GET] auth error', err);
-		return serviceUnavailable('db_error');
-	}
-	if (!user) return unauthorized('auth_required', 'auth_required');
+	const account = await requireAccount(req, 'api/wg/invites GET');
+	if (!account.ok) return account.response;
+	const user = account.user;
 	const invalid = () =>
 		shareCodeMissResponse(user.id, notFound('invite_invalid', 'invite_invalid'));
 	if (!isInviteToken(token)) return invalid();
