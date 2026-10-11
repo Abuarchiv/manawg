@@ -9,8 +9,11 @@ import {
 	checkRateLimit,
 	clientIpKey,
 	rateLimitFailMode,
+	sessionRateLimitKey,
+	wgReadIpBackstop,
 	wgReadLimiter,
 	wgShareCodeLookupLimiter,
+	wgWriteIpBackstop,
 	wgWriteLimiter,
 } from '@/core/rate-limit';
 import { type FixtureRequest, resolveFixtureRequest } from '@/fixtures/middleware';
@@ -141,7 +144,17 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 			? wgReadLimiter
 			: wgWriteLimiter;
 
-	const result = await checkRateLimit(limiter, ip, rateLimitFailMode());
+	// Members of one WG share a router IP (and strangers share carrier NAT), so WG routes count per
+	// session; the IP stays as a coarser backstop because the cookie is not verified here.
+	const sessionKey =
+		path.startsWith('/api/wg/') && !isShareCodeLookupRequest
+			? await sessionRateLimitKey(req)
+			: null;
+	const failMode = rateLimitFailMode();
+	let result = await checkRateLimit(limiter, sessionKey ?? ip, failMode);
+	if (result.success && sessionKey) {
+		result = await checkRateLimit(isRead ? wgReadIpBackstop : wgWriteIpBackstop, ip, failMode);
+	}
 	if (!result.success) {
 		if (result.limiterUnavailable) {
 			const retryAfter = Math.max(1, Math.ceil((result.reset - Date.now()) / 1000));

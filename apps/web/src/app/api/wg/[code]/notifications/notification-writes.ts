@@ -1,7 +1,9 @@
 import { pushSubscriptions, wgMembers } from '@/core/db';
 import { type ActiveAccountMember, lockActiveAccountMember } from '@/core/db/account-deletion';
 import { type DbTransaction, TransactionAbort } from '@/core/db/transaction';
-import { and, eq, inArray, isNotNull, isNull, ne, or, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull, isNull, ne, notInArray, or, sql } from 'drizzle-orm';
+
+const MAX_PUSH_SUBSCRIPTIONS_PER_MEMBER = 10;
 
 /** Who is writing: the member row is locked against a concurrent move-out or account deletion. */
 export interface NotificationWriter {
@@ -30,14 +32,24 @@ function lockWriter(tx: DbTransaction, writer: NotificationWriter) {
 	return lockActiveAccountMember(tx, writer.wgId, writer.memberId, writer.authUserId);
 }
 
-/** Store the settings; `null` when the member moved out or the account is being deleted. */
+/**
+ * Store the settings; `null` when the member moved out or the account is being deleted.
+ * `changed` lists the fields whose stored value actually differed.
+ */
 export async function updateNotificationSettings(
 	tx: DbTransaction,
 	writer: NotificationWriter,
 	update: NotificationSettingsUpdate,
-): Promise<ActiveAccountMember | null> {
+): Promise<(ActiveAccountMember & { changed: string[] }) | null> {
 	const current = await lockWriter(tx, writer);
 	if (!current) return null;
+	const fields = Object.keys(update) as (keyof NotificationSettingsUpdate)[];
+	const [before] = await tx
+		.select(Object.fromEntries(fields.map((field) => [field, wgMembers[field]])))
+		.from(wgMembers)
+		.where(and(eq(wgMembers.id, current.id), eq(wgMembers.wgId, writer.wgId)))
+		.limit(1);
+	const changed = fields.filter((field) => before?.[field] !== update[field]);
 	const [updated] = await tx
 		.update(wgMembers)
 		.set(update)
@@ -47,7 +59,7 @@ export async function updateNotificationSettings(
 	if (update.pushOptIn === false) {
 		await tx.delete(pushSubscriptions).where(eq(pushSubscriptions.memberId, current.id));
 	}
-	return current;
+	return { ...current, changed };
 }
 
 /**
@@ -103,8 +115,25 @@ export async function subscribePush(
 		.values({ memberId: current.id, endpoint, ...keys })
 		.onConflictDoUpdate({
 			target: [pushSubscriptions.memberId, pushSubscriptions.endpoint],
-			set: keys,
+			set: { ...keys, createdAt: sql`now()` },
 		});
+	// Keep the newest MAX_PUSH_SUBSCRIPTIONS_PER_MEMBER; the member row lock serializes writers.
+	await tx
+		.delete(pushSubscriptions)
+		.where(
+			and(
+				eq(pushSubscriptions.memberId, current.id),
+				notInArray(
+					pushSubscriptions.id,
+					tx
+						.select({ id: pushSubscriptions.id })
+						.from(pushSubscriptions)
+						.where(eq(pushSubscriptions.memberId, current.id))
+						.orderBy(desc(pushSubscriptions.createdAt), desc(pushSubscriptions.id))
+						.limit(MAX_PUSH_SUBSCRIPTIONS_PER_MEMBER),
+				),
+			),
+		);
 	return current;
 }
 

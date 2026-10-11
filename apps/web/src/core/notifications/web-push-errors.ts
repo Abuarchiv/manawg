@@ -52,3 +52,13 @@ export function parseWebPushStatusCode(err: unknown): number {
 export function isTransientWebPushStatus(statusCode: number): boolean {
 	return statusCode === 408 || statusCode === 429 || statusCode >= 500;
 }
+
+// Messages web-push throws locally (encryption-helper) when a stored subscription's own keys are
+// unusable. VAPID (server key) errors never match these prefixes.
+const INVALID_SUBSCRIPTION_KEY_MESSAGE =
+	/^(The subscription (p256dh|auth key)\b|No user (public key|auth) provided)/;
+
+/** A local web-push failure caused by the subscription's keys: it can never be delivered. */
+export function isInvalidSubscriptionKeyError(err: unknown): boolean {
+	return err instanceof Error && INVALID_SUBSCRIPTION_KEY_MESSAGE.test(err.message);
+}

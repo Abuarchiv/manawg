@@ -93,7 +93,9 @@ export const inviteMailLimiter = build(10, 3600, 'invite-mail'); // 10 invitatio
 
 export const chatReadLimiter = build(120, 60, 'chat-read'); // 120 read-receipts / min / member
 export const chatMessageLimiter = build(20, 60, 'chat-msg'); // 20 messages / min / member — anti-spam
-export const uploadSignLimiter = build(20, 60, 'upload-sign'); // 20 upload signatures / min / member
+export const uploadSignLimiter = build(10, 60, 'upload-sign'); // 10 upload signatures / min / member
+// Bounds the storage a WG can fill per day: the per-minute bucket alone allows ~14,000 a day.
+export const uploadSignDayLimiter = build(50, 86400, 'upload-sign-day'); // 50 upload signatures / day / WG
 // A single export request dumps the WG's entire dataset (expenses, chores,
 // chat, announcements). The middleware's 120 reads/min is far too generous for
 // that, so it gets its own bucket on top.
@@ -125,13 +127,69 @@ function forwardedForClientIp(headers: Headers): string | null {
 // Keying on the share code instead would create one shared bucket per WG that
 // any code-holder could exhaust pre-auth, locking out every member.
 export function clientIpKey(req: { headers: Headers }): string {
-	return (
+	const ip =
 		forwardedForClientIp(req.headers) ||
 		req.headers.get('cf-connecting-ip') ||
-		req.headers.get('x-real-ip') ||
-		'anonymous'
-	);
+		req.headers.get('x-real-ip');
+	return ip ? ipRateLimitKey(ip) : 'anonymous';
 }
+
+// A single IPv6 host usually owns a whole /64, so keying on the full address lets one client
+// rotate through 2^64 buckets. IPv4 (and IPv4-mapped IPv6) keys stay as they are.
+function ipRateLimitKey(ip: string): string {
+	const bare = ip.replace(/^\[|\]$/g, '').split('%')[0] ?? ip;
+	if (!bare.includes(':')) return bare;
+	const mapped = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/i.exec(bare);
+	if (mapped?.[1]) return mapped[1];
+	const [head = '', tail, ...extra] = bare.split('::');
+	if (extra.length > 0) return bare;
+	const headGroups = head ? head.split(':') : [];
+	const tailGroups = tail ? tail.split(':') : [];
+	const groups =
+		tail === undefined
+			? headGroups
+			: [
+					...headGroups,
+					...Array(Math.max(0, 8 - headGroups.length - tailGroups.length)).fill('0'),
+					...tailGroups,
+				];
+	if (groups.length !== 8 || groups.some((group) => !/^[0-9a-f]{1,4}$/i.test(group))) return bare;
+	return `${groups
+		.slice(0, 4)
+		.map((group) => Number.parseInt(group, 16).toString(16))
+		.join(':')}::/64`;
+}
+
+// The same pattern the auth layer uses to spot a Supabase session (it may be chunked as .0, .1).
+const SESSION_COOKIE_NAME = /^sb-[A-Za-z0-9-]+-auth-token(?:\.\d+)?$/;
+
+/**
+ * Per-session key for the WG routes: a short hash of the Supabase session cookie, so flatmates on
+ * one router IP (or strangers behind carrier NAT) get separate buckets. Only the hash is kept.
+ * `null` without a session cookie. The cookie is not verified here, so callers must pair this
+ * with an IP-level backstop (`wgReadIpBackstop`/`wgWriteIpBackstop`).
+ */
+export async function sessionRateLimitKey(req: {
+	cookies: { getAll(): { name: string; value: string }[] };
+}): Promise<string | null> {
+	const session = req.cookies
+		.getAll()
+		.filter(({ name }) => SESSION_COOKIE_NAME.test(name))
+		.sort((a, b) => a.name.localeCompare(b.name))
+		.map(({ name, value }) => `${name}=${value}`)
+		.join(';');
+	if (!session) return null;
+	const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(session));
+	const hex = Array.from(new Uint8Array(digest).slice(0, 8), (byte) =>
+		byte.toString(16).padStart(2, '0'),
+	).join('');
+	return `session:${hex}`;
+}
+
+// Per-IP ceilings that stay on when the middleware keys by session: a forged cookie value would
+// otherwise open a fresh bucket per request.
+export const wgReadIpBackstop = build(600, 60, 'wg-read-ip'); // 600 reads / min / IP
+export const wgWriteIpBackstop = build(150, 60, 'wg-write-ip'); // 150 writes / min / IP
 
 export interface RateLimitResult {
 	success: boolean;

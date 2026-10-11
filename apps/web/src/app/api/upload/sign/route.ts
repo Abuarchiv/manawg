@@ -5,9 +5,9 @@ import { requireMember } from '@/core/guards/api-auth';
 import {
 	badRequest,
 	notFound,
+	rateLimitResponse,
 	serverError,
 	serviceUnavailable,
-	tooMany,
 	unauthorized,
 } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
@@ -24,7 +24,7 @@ import {
 	createSupabaseSignedUpload,
 	getImageStorageProvider,
 } from '@/core/infra/supabase-storage';
-import { checkRateLimit, uploadSignLimiter } from '@/core/rate-limit';
+import { checkRateLimit, uploadSignDayLimiter, uploadSignLimiter } from '@/core/rate-limit';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import { getPrivateImageUrl } from '@/core/validators/image-url';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -93,22 +93,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 		return noStore(auth.response.status === 401 ? notFound('wg_not_found') : auth.response);
 	}
 
-	const limited = await checkRateLimit(uploadSignLimiter, `${wg.id}:${auth.member.memberId}`);
-	if (!limited.success) {
-		if (limited.limiterUnavailable) {
-			const retryAfterMs = Math.max(0, limited.reset - Date.now());
-			return noStore(
-				NextResponse.json(
-					{ error: 'rate_limiter_unavailable', retryAfterMs },
-					{
-						status: 503,
-						headers: { 'Retry-After': Math.max(1, Math.ceil(retryAfterMs / 1000)).toString() },
-					},
-				),
-			);
-		}
-		return noStore(tooMany('upload_sign_rate_limited', 'upload_sign_rate_limited'));
-	}
+	const limited =
+		rateLimitResponse(
+			await checkRateLimit(uploadSignLimiter, `${wg.id}:${auth.member.memberId}`),
+			'upload_sign_rate_limited',
+			'upload_sign_rate_limited',
+		) ??
+		rateLimitResponse(
+			await checkRateLimit(uploadSignDayLimiter, wg.id),
+			'upload_sign_rate_limited',
+			'upload_sign_rate_limited',
+		);
+	if (limited) return noStore(limited);
 
 	try {
 		const ext = extFromMime(mimeType);

@@ -301,12 +301,14 @@ describe('issue swarm routes', () => {
 		assert.ok(source.includes('isWgAdmin(wgId, auth.member.memberId)'));
 	});
 
-	test('imports preview authenticates before reading the capped body', async () => {
-		const source = await readSource('app/api/wg/[code]/imports/preview/route.ts');
+	for (const route of ['preview', 'commit']) {
+		test(`imports ${route} authenticates before reading the capped body`, async () => {
+			const source = await readSource(`app/api/wg/[code]/imports/${route}/route.ts`);
 
-		assert.ok(
-			source.indexOf('const auth = await requireWgMember') <
-				source.indexOf('const raw = await readImportJsonBody'),
-		);
-	});
+			assert.ok(
+				source.indexOf('const auth = await requireWgMember') <
+					source.indexOf('const raw = await readImportJsonBody'),
+			);
+		});
+	}
 });

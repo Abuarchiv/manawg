@@ -172,9 +172,13 @@ export const PATCH = withWgRoute('notifications PATCH', async (req, { code }) =>
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
 	const wg = auth.wg;
+	const limited = await checkRateLimit(
+		wgWriteLimiter,
+		`notif-patch:${wg.id}:${auth.member.memberId}`,
+	);
+	if (!limited.success) return tooMany();
 	const writer = { wgId: wg.id, memberId: auth.member.memberId, authUserId: auth.authUserId };
 	const update = settingsUpdate(parsed.data);
-	const changedFields = Object.keys(update);
 
 	const result = await withIdempotentWrite(
 		{
@@ -183,11 +187,19 @@ export const PATCH = withWgRoute('notifications PATCH', async (req, { code }) =>
 			codec: notificationCodec,
 			beforeReplay: memberGate(writer),
 		},
-		async (tx): Promise<WriteOutcome<unknown, Rejected | { memberName: string }>> => {
-			if (changedFields.length === 0) return { status: 200, body: { ok: true } };
+		async (
+			tx,
+		): Promise<WriteOutcome<unknown, Rejected | { memberName: string; changed: string[] }>> => {
+			if (Object.keys(update).length === 0) return { status: 200, body: { ok: true } };
 			const member = await updateNotificationSettings(tx, writer, update);
 			if (!member) return rejectWrite(unauthorized('member_deactivated', 'member_deactivated'));
-			return { status: 200, body: { ok: true }, context: { memberName: member.name } };
+			// An unchanged save is not worth an audit row.
+			if (member.changed.length === 0) return { status: 200, body: { ok: true } };
+			return {
+				status: 200,
+				body: { ok: true },
+				context: { memberName: member.name, changed: member.changed },
+			};
 		},
 	);
 	if (result.kind === 'stopped') return result.response;
@@ -201,7 +213,9 @@ export const PATCH = withWgRoute('notifications PATCH', async (req, { code }) =>
 			entityId: auth.member.memberId,
 			summary: `${result.context.memberName} hat Benachrichtigungseinstellungen geändert.`,
 			metadata: {
-				notificationFields: changedFields.map((field) => NOTIFICATION_FIELD_LABELS[field] ?? field),
+				notificationFields: result.context.changed.map(
+					(field) => NOTIFICATION_FIELD_LABELS[field] ?? field,
+				),
 				pushOptIn: typeof update.pushOptIn === 'boolean' ? update.pushOptIn : undefined,
 				quietStartHour: update.quietStartHour,
 				quietEndHour: update.quietEndHour,

@@ -15,7 +15,7 @@ import { berlinDayKey, startOfBerlinDay } from '@/core/utils/berlin-day';
 import { MS_PER_DAY } from '@/core/utils/time';
 import { computeOpenGapsByMember } from '@/features/chores/chore-fairness';
 import { computeNextDueAt } from '@/features/chores/chore-recurrence';
-import { and, asc, desc, eq, gte, inArray, isNull, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, isNull, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -73,13 +73,13 @@ export const GET = withWgRoute('chores GET', async (req, { code }) => {
 		return NextResponse.json({ chores: [] });
 	}
 
-	const choreIds = items.map((item) => item.id);
 	const now = Date.now();
 	const monthStart = startOfBerlinDay(new Date(`${berlinDayKey(new Date(now)).slice(0, 7)}-01`));
 	// Only the latest completion per chore and this month's per-member counts
 	// are returned, so load exactly that instead of the full history. The
 	// (chore_id, completed_at) index serves the DISTINCT ON; counts keep the
-	// previous key order (most recent completer first).
+	// previous key order (most recent completer first). Completions are joined by WG instead of
+	// `inArray(choreIds)`: one bind parameter per chore would exceed PostgreSQL's 65,535 limit.
 	const [latestRows, monthRows] = await Promise.all([
 		db
 			.selectDistinctOn([choreCompletions.choreId], {
@@ -88,8 +88,9 @@ export const GET = withWgRoute('chores GET', async (req, { code }) => {
 				completedByName: wgMembers.name,
 			})
 			.from(choreCompletions)
+			.innerJoin(chores, eq(chores.id, choreCompletions.choreId))
 			.innerJoin(wgMembers, eq(wgMembers.id, choreCompletions.completedByMemberId))
-			.where(inArray(choreCompletions.choreId, choreIds))
+			.where(eq(chores.wgId, wgId))
 			.orderBy(choreCompletions.choreId, desc(choreCompletions.completedAt)),
 		db
 			.select({
@@ -97,12 +98,8 @@ export const GET = withWgRoute('chores GET', async (req, { code }) => {
 				count: sql<number>`count(*)::int`,
 			})
 			.from(choreCompletions)
-			.where(
-				and(
-					inArray(choreCompletions.choreId, choreIds),
-					gte(choreCompletions.completedAt, monthStart),
-				),
-			)
+			.innerJoin(chores, eq(chores.id, choreCompletions.choreId))
+			.where(and(eq(chores.wgId, wgId), gte(choreCompletions.completedAt, monthStart)))
 			.groupBy(choreCompletions.completedByMemberId)
 			.orderBy(sql`max(${choreCompletions.completedAt}) desc`),
 	]);

@@ -165,3 +165,9 @@ test('rename audit summary starts with the current name so the actor prefix is s
 		'hat sich umbenannt (vorher Anna).',
 	);
 });
+
+test('old audit rows that still carry comment text render without a quote', async () => {
+	const { auditDetail } = await import('../src/composition/activity-audit.ts');
+	const metadata = JSON.stringify({ announcementId: 'a1', contentPreview: 'geheimer Text' });
+	assert.equal(auditDetail(metadata), undefined);
+});

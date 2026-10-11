@@ -26,7 +26,7 @@ import {
 	readPayPalConnectionCookie,
 	verifyPayPalConnectionCookie,
 } from '@/core/infra/paypal-onboarding';
-import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
+import { checkRateLimit, wgReadLimiter, wgWriteLimiter } from '@/core/rate-limit';
 import {
 	hasActiveExpensePayment,
 	withExpensePaymentLock,
@@ -59,6 +59,12 @@ export const GET = withWgRoute<{ code: string }>('paypal connect GET', async (re
 	if (!auth.ok) return auth.response;
 	const config = getPayPalOnboardingConfig();
 	if (!config) return noStoreResponse({ available: false, connected: false });
+	// The status check calls PayPal, so it gets its own per-member bucket.
+	const limited = await checkRateLimit(
+		wgReadLimiter,
+		`paypal-status:${auth.wg.id}:${auth.member.memberId}`,
+	);
+	if (!limited.success) return tooMany();
 
 	try {
 		const [member] = await db
