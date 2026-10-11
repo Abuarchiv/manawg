@@ -1,7 +1,6 @@
 'use client';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { OfflineQueueNotice } from '@/components/wg/OfflineQueueNotice';
 import { SubNav } from '@/components/wg/SubNav';
@@ -14,7 +13,7 @@ import { MyOpenAnnouncements } from '@/features/pinnwand/components/MyOpenAnnoun
 import { PinnwandComposer } from '@/features/pinnwand/components/PinnwandComposer';
 import type { Announcement } from '@/features/pinnwand/components/announcement-types';
 import { usePinnwandPage } from '@/features/pinnwand/hooks/use-pinnwand-page';
-import { ChevronDown, Megaphone, Plus } from 'lucide-react';
+import { Megaphone, Plus } from 'lucide-react';
 import type React from 'react';
 
 const UNKNOWN_AUTHOR = { name: '?', color: null };
@@ -26,12 +25,9 @@ export default function PinnwandPage(): React.ReactElement {
 		isAdmin,
 		items,
 		openItems,
-		archivedItems,
 		myOpenItems,
 		visibleOpenCount,
-		visibleArchivedCount,
 		showMoreOpen,
-		showMoreArchived,
 		showSkeleton,
 		loadError,
 		refreshing,
@@ -43,8 +39,6 @@ export default function PinnwandPage(): React.ReactElement {
 		setNotice,
 		highlightedId,
 		scrollToAnnouncement,
-		archiveOpen,
-		setArchiveOpen,
 		authorByMemberId,
 		isPending,
 		stableDelete,
@@ -161,7 +155,10 @@ export default function PinnwandPage(): React.ReactElement {
 			) : (
 				<>
 					{openItems.length === 0 ? (
-						<EmptyState icon={Megaphone} hint="Geklärtes und ältere Infos liegen unten.">
+						<EmptyState
+							icon={Megaphone}
+							hint="Geklärtes und Abgehaktes verschwindet von der Pinnwand."
+						>
 							Nichts Offenes
 						</EmptyState>
 					) : (
@@ -176,38 +173,6 @@ export default function PinnwandPage(): React.ReactElement {
 						<Button variant="outline" onClick={showMoreOpen}>
 							Mehr anzeigen ({openItems.length - visibleOpenCount})
 						</Button>
-					)}
-					{archivedItems.length > 0 && (
-						<Collapsible open={archiveOpen} onOpenChange={setArchiveOpen}>
-							<CollapsibleTrigger
-								render={
-									<Button
-										variant="ghost"
-										className="group min-h-11 w-full justify-between px-1 text-muted-foreground"
-									/>
-								}
-							>
-								Geklärt & älter ({archivedItems.length})
-								<ChevronDown
-									aria-hidden
-									className="size-4 shrink-0 group-aria-expanded:rotate-180"
-								/>
-							</CollapsibleTrigger>
-							{/* Linked archive posts must stay reachable by hash. */}
-							<CollapsibleContent keepMounted>
-								<ul
-									className="flex flex-col divide-y overflow-hidden rounded-xl border"
-									aria-label="Geklärte und ältere Beiträge"
-								>
-									{archivedItems.slice(0, visibleArchivedCount).map(renderCard)}
-								</ul>
-								{visibleArchivedCount < archivedItems.length && (
-									<Button variant="outline" className="mt-2 w-full" onClick={showMoreArchived}>
-										Mehr anzeigen ({archivedItems.length - visibleArchivedCount})
-									</Button>
-								)}
-							</CollapsibleContent>
-						</Collapsible>
 					)}
 				</>
 			)}

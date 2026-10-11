@@ -1,4 +1,4 @@
-// Pinnwand (announcements): archive, comment edit focus/layout and refresh.
+// Pinnwand (announcements): done posts leave the board, comment edit focus/layout and refresh.
 // Why: refreshes must not clobber a comment being edited.
 
 import { expect, test } from '@playwright/test';
@@ -11,7 +11,7 @@ import {
 	setupMember,
 } from './support/helpers';
 
-test.describe('pinnwand archive', () => {
+test.describe('pinnwand done posts', () => {
 	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
 
 	const SHARE_CODE = 'MTE8PZAT';
@@ -61,7 +61,7 @@ test.describe('pinnwand archive', () => {
 			for (const width of [320, 390]) {
 				if (!inMinimalMatrix({ width, dark: colorScheme === 'dark', large: textScale === '200%' }))
 					continue;
-				test(`Pinnwand archive toggle fits at ${width}px, ${colorScheme} mode, and ${textScale} text`, async ({
+				test(`done posts stay off the board at ${width}px, ${colorScheme} mode, and ${textScale} text`, async ({
 					page,
 				}) => {
 					await page.setViewportSize({ width, height: 800 });
@@ -81,20 +81,9 @@ test.describe('pinnwand archive', () => {
 
 					const board = page.getByRole('list', { name: 'Pinnwand-Beiträge' });
 					await expect(board.getByText('Offene Frage')).toBeVisible();
-					await expect(board.getByText('Geklärte Frage')).toHaveCount(0);
-					await expect(board.getByText('Alte Info')).toHaveCount(0);
-
-					const toggle = page.getByRole('button', { name: 'Geklärt & älter (2)' });
-					await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-					await expect(page.getByText('Geklärte Frage')).toBeHidden();
-					await toggle.click();
-					await expect(toggle).toHaveAttribute('aria-expanded', 'true');
-					const archive = page.getByRole('list', { name: 'Geklärte und ältere Beiträge' });
-					await expect(archive.getByText('Geklärte Frage')).toBeVisible();
-					await expect(archive.getByText('Alte Info')).toBeVisible();
-
-					const box = await toggle.boundingBox();
-					expect(box?.height).toBeGreaterThanOrEqual(44);
+					await expect(page.getByText('Geklärte Frage')).toHaveCount(0);
+					await expect(page.getByText('Alte Info')).toHaveCount(0);
+					await expect(page.getByRole('button', { name: /Geklärt & älter/ })).toHaveCount(0);
 					expect(
 						await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
 					).toBe(true);
@@ -103,7 +92,7 @@ test.describe('pinnwand archive', () => {
 		}
 	}
 
-	test('a hash link to an archived post opens the archive and highlights it', async ({ page }) => {
+	test('a hash link to a done post explains that it left the board', async ({ page }) => {
 		await setupMember(page);
 		await page.route(`**/api/wg/${SHARE_CODE}/announcements*`, (route) =>
 			route.request().method() === 'GET'
@@ -114,14 +103,15 @@ test.describe('pinnwand archive', () => {
 		await navigateToFeature(page, `/wg/${SHARE_CODE}/pinnwand#announcement-archive-resolved`);
 		await dismissOnboarding(page);
 
-		await expect(page.getByRole('button', { name: 'Geklärt & älter (1)' })).toHaveAttribute(
-			'aria-expanded',
-			'true',
-		);
-		await expect(page.locator('li#announcement-archive-resolved')).toBeInViewport();
+		await expect(
+			page.getByText(
+				'Dieser Beitrag ist geklärt oder abgehakt und steht nicht mehr auf der Pinnwand.',
+			),
+		).toBeVisible();
+		await expect(page.locator('li#announcement-archive-resolved')).toHaveCount(0);
 	});
 
-	test('Geklärt moves an open question into the archive', async ({ page }) => {
+	test('Geklärt removes an open question from the board', async ({ page }) => {
 		await setupMember(page);
 		let current = openPost;
 		const patches: unknown[] = [];
@@ -152,10 +142,8 @@ test.describe('pinnwand archive', () => {
 
 		await expect.poll(() => patches).toEqual([{ status: 'resolved' }]);
 		await expect(page.getByText('Nichts Offenes')).toBeVisible();
-		await expect(page.getByRole('button', { name: 'Geklärt & älter (1)' })).toHaveAttribute(
-			'aria-expanded',
-			'false',
-		);
+		await expect(page.getByText('Offene Frage')).toHaveCount(0);
+		await expect(page.getByRole('button', { name: /Geklärt & älter/ })).toHaveCount(0);
 	});
 });
 

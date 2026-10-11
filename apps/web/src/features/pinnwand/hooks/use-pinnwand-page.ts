@@ -7,7 +7,6 @@ import {
 	isAnnouncementArchived,
 } from '@/features/pinnwand/announcement-workflow';
 import type { Announcement, ReactionKey } from '@/features/pinnwand/components/announcement-types';
-import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { AnnouncementPageContext } from './announcement-page-context';
 import { useAnnouncementActions } from './use-announcement-actions';
@@ -17,13 +16,14 @@ import { useAnnouncementsData } from './use-announcements-data';
 const CARD_RENDER_PAGE = 30;
 
 /** Pinboard page: connects loading, composing and card actions and derives the display. */
+const ARCHIVED_LINK_NOTICE =
+	'Dieser Beitrag ist geklärt oder abgehakt und steht nicht mehr auf der Pinnwand.';
+
 export function usePinnwandPage() {
 	const { wg, members, identity, isAdmin } = useWg();
 	const toast = useToast();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
-	const searchParams = useSearchParams();
 	const [notice, setNotice] = useState<string | null>(null);
-	const [archiveOpen, setArchiveOpen] = useState(searchParams.get('status') === 'resolved');
 	const [highlightedId, setHighlightedId] = useState<string | null>(null);
 	const { isPending, start, end } = usePendingSet();
 
@@ -86,44 +86,36 @@ export function usePinnwandPage() {
 
 	useEffect(() => {
 		if (!highlightedId || itemCount === 0) return;
-		// Linked posts can be in the collapsed archive.
+		// Done posts leave the board; a link to one says so instead of scrolling nowhere.
 		const target = itemsRef.current.find((item) => item.id === highlightedId);
-		const archived = Boolean(target && isAnnouncementArchived(target, Date.now()));
-		if (archived) setArchiveOpen(true);
-		const scroll = () =>
-			document.getElementById(`announcement-${highlightedId}`)?.scrollIntoView({
-				block: 'center',
-			});
-		// The archive expands animated: scroll a second time after the animation, otherwise the card stays under the tab bar.
-		const timers = (archived ? [80, 400] : [80]).map((ms) => window.setTimeout(scroll, ms));
-		return () => {
-			for (const timer of timers) window.clearTimeout(timer);
-		};
+		if (target && isAnnouncementArchived(target, Date.now())) {
+			setNotice(ARCHIVED_LINK_NOTICE);
+			return;
+		}
+		const timer = window.setTimeout(
+			() =>
+				document.getElementById(`announcement-${highlightedId}`)?.scrollIntoView({
+					block: 'center',
+				}),
+			80,
+		);
+		return () => window.clearTimeout(timer);
 	}, [highlightedId, itemCount, itemsRef]);
 
 	const composer = useAnnouncementComposer(ctx, scrollToAnnouncement);
 	const actions = useAnnouncementActions(ctx, data.commentOverridesRef);
 
 	const showSkeleton = initialLoading && items.length === 0;
-	const { openItems, archivedItems } = useMemo(() => {
+	// Resolved posts and acknowledged infos are not shown at all: the board holds only what is open.
+	const openItems = useMemo(() => {
 		const now = Date.now();
-		const openItems: Announcement[] = [];
-		const archivedItems: Announcement[] = [];
-		for (const item of items) {
-			(isAnnouncementArchived(item, now) ? archivedItems : openItems).push(item);
-		}
-		return { openItems, archivedItems };
+		return items.filter((item) => !isAnnouncementArchived(item, now));
 	}, [items]);
 	const [openLimit, setOpenLimit] = useState(CARD_RENDER_PAGE);
-	const [archivedLimit, setArchivedLimit] = useState(CARD_RENDER_PAGE);
 	// The linked/highlighted element must always be in the DOM.
 	const visibleOpenCount = Math.max(
 		openLimit,
 		openItems.findIndex((item) => item.id === highlightedId) + 1,
-	);
-	const visibleArchivedCount = Math.max(
-		archivedLimit,
-		archivedItems.findIndex((item) => item.id === highlightedId) + 1,
 	);
 	const myOpenItems = useMemo(() => getMyOpenAnnouncements(items), [items]);
 
@@ -147,7 +139,7 @@ export function usePinnwandPage() {
 			!isAnnouncementArchived(a, now) &&
 			isAnnouncementArchived(acknowledged, now)
 		) {
-			toast.info('Abgehakt. Liegt jetzt unter „Geklärt & älter“.');
+			toast.info('Abgehakt. Der Beitrag verschwindet von der Pinnwand.');
 		}
 		void actions.toggleReaction(a, reaction);
 	});
@@ -161,12 +153,9 @@ export function usePinnwandPage() {
 		isAdmin,
 		items,
 		openItems,
-		archivedItems,
 		myOpenItems,
 		visibleOpenCount,
-		visibleArchivedCount,
 		showMoreOpen: () => setOpenLimit(visibleOpenCount + CARD_RENDER_PAGE),
-		showMoreArchived: () => setArchivedLimit(visibleArchivedCount + CARD_RENDER_PAGE),
 		initialLoading,
 		showSkeleton,
 		loadError: data.loadError,
@@ -179,8 +168,6 @@ export function usePinnwandPage() {
 		setNotice,
 		highlightedId,
 		scrollToAnnouncement,
-		archiveOpen,
-		setArchiveOpen,
 		authorByMemberId,
 		isPending,
 		stableDelete,
