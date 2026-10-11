@@ -668,11 +668,7 @@ test('an accepted offline recurring expense is not queued again after reload', a
 	await expect.poll(() => queuedRecurringExpenseCount(reloadedPage)).toBe(1);
 
 	replayEnabled = true;
-	await reloadedPage.evaluate(() => {
-		Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => true });
-		window.dispatchEvent(new Event('online'));
-	});
-	await reloadedPage.getByRole('button', { name: 'Offline-Aktionen jetzt senden' }).click();
+	await sendQueueIfStillPending(reloadedPage, () => queuedRecurringExpenseCount(reloadedPage));
 	await expect.poll(() => replayAttempts.length).toBe(1);
 	await expect.poll(() => queuedRecurringExpenseCount(reloadedPage)).toBe(0);
 	expect(replayAttempts[0]?.key).toBeTruthy();

@@ -270,11 +270,8 @@ async function runOfflineSync(
 					reviewOnEdit: res.status === 0 || res.status >= 500,
 					retry: {
 						...readyAction,
-						// An expired session or a missing connection says nothing about the action:
-						// no attempt, no backoff growth.
-						attempts:
-							(readyAction.attempts ?? 0) +
-							(res.status === 0 || isSessionExpired(res.error) ? 0 : 1),
+						// An expired session is not the action's fault: no attempt, no review prefix.
+						attempts: (readyAction.attempts ?? 0) + (isSessionExpired(res.error) ? 0 : 1),
 						lastAttemptAt: new Date(now).toISOString(),
 						lastError: message,
 					},
@@ -288,8 +285,6 @@ async function runOfflineSync(
 			if (options.signal?.aborted) break;
 			const missingPendingImage = err instanceof Error && err.message === 'pending-image-missing';
 			const pendingImageUploadError = explainPendingImageUploadError(err);
-			// A thrown request without a classified cause is a lost connection (see apiFetch).
-			const noConnection = !missingPendingImage && pendingImageUploadError === null;
 			const lastError = missingPendingImage
 				? MISSING_PENDING_IMAGE_ERROR
 				: (pendingImageUploadError ??
@@ -301,7 +296,7 @@ async function runOfflineSync(
 				snapshot: requestSnapshot,
 				retry: {
 					...requestSnapshot,
-					attempts: (requestSnapshot.attempts ?? 0) + (noConnection ? 0 : 1),
+					attempts: (requestSnapshot.attempts ?? 0) + 1,
 					lastAttemptAt: new Date(now).toISOString(),
 					lastError,
 				},
