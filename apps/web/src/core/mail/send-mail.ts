@@ -24,7 +24,8 @@ export type SendMailResult = 'sent' | 'duplicate' | 'failed' | 'deferred';
 /**
  * Sends one transactional mail at most once. The ledger row is claimed first
  * (`sending`), then the provider is called, then the outcome is written. A
- * `failed` row can be claimed again; `sent` and in-flight rows are not.
+ * `failed` row can be claimed again, and so can a `sending` row older than 15 minutes (a crashed
+ * run); `sent` and recent in-flight rows are not.
  */
 export async function sendMail(
 	input: SendMailInput,
@@ -41,8 +42,17 @@ export async function sendMail(
 		})
 		.onConflictDoUpdate({
 			target: mailLog.dedupeKey,
-			set: { status: 'sending', attempts: sql`${mailLog.attempts} + 1`, error: null },
-			setWhere: eq(mailLog.status, 'failed'),
+			// A `sending` row with no recorded outcome (the process died mid-request) is taken
+			// over after 15 minutes. Its attempt count stays, so the provider's
+			// Idempotency-Key is the same and a mail that did go out is not delivered twice;
+			// `created_at` restarts the window for the new owner.
+			set: {
+				status: 'sending',
+				attempts: sql`${mailLog.attempts} + case when ${mailLog.status} = 'failed' then 1 else 0 end`,
+				error: null,
+				createdAt: sql`now()`,
+			},
+			setWhere: sql`${mailLog.status} = 'failed' or (${mailLog.status} = 'sending' and ${mailLog.createdAt} < now() - interval '15 minutes')`,
 		})
 		.returning({ id: mailLog.id, attempts: mailLog.attempts });
 	if (!claimed) return 'duplicate';
