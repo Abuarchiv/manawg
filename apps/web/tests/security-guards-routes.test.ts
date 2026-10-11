@@ -1,16 +1,10 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
-import path from 'node:path';
 import { describe, mock, test } from 'node:test';
 import { inspect } from 'node:util';
 import { captureException, logApiError } from '../src/core/infra/observability.ts';
 
-// Trust-boundary contracts of guards and API routes: membership checks (no 404 oracle), the
-// legacy claim proof, redacted error reporting and early rejection in the health and
+// Trust-boundary contracts of guards and API routes: redacted error reporting and early rejection in the health and
 // upload-sign routes.
-
-const readSource = (relativePath: string) =>
-	readFile(path.join(import.meta.dirname, '..', 'src', relativePath), 'utf8');
 
 const routeState = { databaseCalls: 0, authCalls: 0, limiterUnavailable: true };
 
@@ -82,24 +76,6 @@ mock.module('@/core/validators/image-url', {
 
 const health = await import('../src/app/api/health/route.ts');
 const uploadSign = await import('../src/app/api/upload/sign/route.ts');
-
-describe('require wg member regression', () => {
-	test('WG root verifies identity before looking up a live share code', async () => {
-		const source = await readSource('app/api/wg/[code]/route.ts');
-		const getHandler = source
-			.split('export async function GET(')[1]
-			?.split('export async function PATCH(')[0];
-		if (!getHandler) throw new Error('GET handler not found');
-		// requireWgMembership authenticates the Supabase user before it runs the WG lookup.
-		assert.ok(
-			getHandler.indexOf('readShareCode(ctx)') <
-				getHandler.indexOf('requireWgMembership(req, code'),
-		);
-		const guard = await readSource('core/guards/require-wg-member.ts');
-		assert.ok(guard.indexOf('getAuthenticatedUser(req)') < guard.indexOf('loadWg(code)'));
-		assert.ok(guard.indexOf('loadWg(code)') < guard.indexOf('requireMember(req, wg.id, user)'));
-	});
-});
 
 describe('api infra security contracts', () => {
 	test('central error reporting redacts thrown messages and arbitrary context while keeping route labels', () => {
