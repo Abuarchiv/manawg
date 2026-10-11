@@ -234,3 +234,17 @@ C → B → A → D. C ist klein und nimmt den iPhone-Schmerz sofort. B macht di
 - Session-Cookies sind `HttpOnly` (`authCookieOptions`). Das Hint-Cookie `manawg_signed_in=1` (nicht HttpOnly, 400 Tage) wird überall gesetzt und gelöscht, wo der Server Session-Cookies schreibt (`createSupabaseServerClient`, Middleware-Refresh, Konto-Löschung, sign-out). Die Middleware migriert bestehende Sitzungen einmalig: fehlt der Hint, schreibt sie die Token-Cookies HttpOnly neu und setzt den Hint.
 - `use-session-member` hat keinen Auth-Listener mehr; es prüft beim Mount und bei `visibilitychange` über `GET /api/wg/[code]` (liefert jetzt `currentMember.authUserId`). `OfflineClient` nutzt `getLocalAccount` und `/api/wg/mine`.
 - Bekannte Grenze: Supabase begrenzt Anmeldungen pro IP; der Server leitet die Client-IP als `X-Forwarded-For` weiter, ob Supabase sie dafür nutzt, ist nicht geprüft. Dazu ein eigener Limiter `authAttemptLimiter` (20 / 5 min / IP).
+
+## 8. Stand 2026-10-11 nach Umsetzung (lokal, nicht gepusht)
+
+| Commit | Inhalt |
+|---|---|
+| 7419f861 | Phase 1 (Sitzung getrennt von Mitgliedschaft, Offline-Replay, Logout-Sync) |
+| 95485495 | Einstieg: Konto zuerst, iOS-Hinweis |
+| 2854e8b6 | Name bei der Registrierung, Code per E-Mail (Paket C), Phone-Pfad weg, `manawg_identity` weg (Phase 2) |
+| 31d49363 | Paket B (HttpOnly, `/api/auth/*`) und Paket A (`wg_invites`, Migration 0026) |
+
+Offen:
+- **Phase 3, Server-Claim-Pfad** (`claim/route.ts`, `legacy-claim-proof.ts`, `LEGACY_CLAIM_*`): kein Aufrufer mehr, Löschung wartet auf die Prod-Zählung `select count(*) from wg_members where auth_user_id is null and deactivated_at is null`.
+- **Phase 4, Fixture-Modus** durch echte Test-Session ersetzen (2–3 Tage, CI-Umbau).
+- **Vor dem Prod-Release:** Migration 0026 manuell einspielen (`supabase db query --linked`), Supabase-Vorlage „Magic Link" zeigt `{{ .Token }}` (8 Stellen, versioniert in `supabase/templates/magic_link.html`), E-Mail-OTP-Länge im Supabase-Projekt muss 8 sein (`EMAIL_CODE_LENGTH`), bestehende WGs über den Wechsel auf Einladungslinks informieren (Text in Abschnitt 7 / Commit 31d49363).
