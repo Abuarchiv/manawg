@@ -24,6 +24,8 @@ const FEED_HORIZON_DAYS = 365;
 // Calendar apps mirror the feed: an occurrence that leaves the feed is deleted
 // on the next sync, so recent history stays in instead of vanishing at midnight.
 const FEED_HISTORY_DAYS = 90;
+// The 455-day window holds up to 455 daily occurrences, more than the default expansion cap.
+const FEED_MAX_EXPAND = 500;
 const FEED_CALENDAR_NAME = 'ManaWG';
 
 function eventToInput(row: typeof wgEvents.$inferSelect): EventInput {
@@ -124,7 +126,7 @@ export async function GET(
 		}
 
 		const occurrences: CalendarFeedOccurrence[] = feed.rows.flatMap((row) =>
-			expandRecurrence(eventToInput(row), from, to),
+			expandRecurrence(eventToInput(row), from, to, FEED_MAX_EXPAND),
 		);
 		// Several subscribed WGs must stay distinguishable in the calendar app.
 		const body = calendarFeedToIcs(occurrences, `${FEED_CALENDAR_NAME} · ${feed.wgName}`);

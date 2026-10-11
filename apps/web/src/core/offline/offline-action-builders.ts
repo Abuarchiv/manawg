@@ -195,6 +195,7 @@ export function createQueuedChoreCompletion(input: QueuedChoreCompletionInput): 
 			choreId: input.choreId,
 			expectedNextDueAt: input.expectedNextDueAt,
 			expectedAssignedMemberId: input.expectedAssignedMemberId,
+			completedAt: new Date(now).toISOString(),
 		},
 		now,
 		input.idempotencyKey,

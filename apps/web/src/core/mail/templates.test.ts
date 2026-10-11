@@ -105,3 +105,10 @@ test('html escapes user supplied names', () => {
 	assert.ok(mail.html.includes('&lt;b&gt;Eve&lt;/b&gt;'));
 	assert.ok(mail.html.includes('WG &amp; Co'));
 });
+
+test('the farewell mail states what is removed and that the name stays in WG entries', () => {
+	const { text } = renderAccountDeletedMail();
+	assert.match(text, /Login sowie deine Push- und Kalender-Abos sind entfernt/);
+	assert.match(text, /Dein Name bleibt in den bisherigen Einträgen/);
+	assert.ok(!text.includes('Anhänge'));
+});

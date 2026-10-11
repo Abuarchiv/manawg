@@ -10,12 +10,7 @@ export function uploadSignErrorMessage(status: number, error: string): string {
 	if (error === 'invalid_share_code') {
 		return 'Bild konnte nicht hochgeladen werden: Der WG-Code ist ungültig.';
 	}
-	if (
-		status === 401 ||
-		error === 'not_a_member' ||
-		error === 'member_id_required' ||
-		error === 'member_id_invalid'
-	) {
+	if (status === 401 || error === 'not_a_member') {
 		return 'Bild konnte nicht hochgeladen werden: Tritt der WG erneut bei.';
 	}
 	if (error === 'invalid_file') {

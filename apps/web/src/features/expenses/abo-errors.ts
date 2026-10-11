@@ -1,5 +1,5 @@
 const RETRYABLE_ERRORS = new Set(['unexpected_error', 'server_error', 'db_error']);
-const MEMBERSHIP_ERRORS = new Set(['not_a_member', 'member_id_required', 'member_id_invalid']);
+const MEMBERSHIP_ERRORS = new Set(['not_a_member']);
 const NETWORK_ERRORS = new Set(['Netzwerkfehler', 'Failed to fetch']);
 // The server lets only the creator or a WG admin change recurring expenses; everyone sees the buttons.
 const NOT_OWNER_HINT = 'Nur wer die Fixkosten angelegt hat oder Admin der WG ist, darf das.';

@@ -39,7 +39,7 @@ const state = {
 let cache = new Map<string, Cached>();
 let prior: Promise<void> = Promise.resolve();
 
-const withAnnouncementReplay = async (
+const withIdempotentReplay = async (
 	req: Request,
 	scope: string,
 	mutate: (tx: unknown) => Promise<{ response: Cached }>,
@@ -132,8 +132,8 @@ mock.module('@/core/notifications/notification-dispatch', {
 mock.module('@/core/rate-limit', {
 	namedExports: { wgWriteLimiter: {}, checkRateLimit: async () => ({ success: true }) },
 });
-mock.module('@/features/pinnwand/server/announcement-replay', {
-	namedExports: { withAnnouncementReplay, persistAnnouncementReplayWarning: async () => true },
+mock.module('@/core/db/with-replay', {
+	namedExports: { withIdempotentReplay, persistReplayWarning: async () => true },
 });
 mock.module('@/features/pinnwand/announcement-workflow', {
 	namedExports: { ANNOUNCEMENT_REACTIONS: ['seen', 'take', 'ok'] },

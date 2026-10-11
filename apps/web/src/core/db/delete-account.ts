@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull, isNull, ne, sql } from 'drizzle-orm';
 import { hasCapturingMemberPayment, lockAccount } from './account-deletion';
 import { deleteWgCascade } from './delete-wg';
 import { releaseMemberChores } from './member-departure';
@@ -17,8 +17,8 @@ export type LeftWg = { wgId: string; memberId: string; name: string; newAdminId:
  * Detaches an auth user from every WG before the account is deleted. The
  * member moves out like an "Auszug": history and balances stay with the WG,
  * the login link, push subscriptions and PayPal id are removed, and an admin
- * hands the role to the longest-standing active flatmate (preferring one who
- * can sign in). A WG with no other active member is deleted entirely.
+ * hands the role to the longest-standing active flatmate who can sign in. A WG with no
+ * such member is deleted entirely.
  */
 export async function removeAccountFromWgs(
 	tx: DbTransaction,
@@ -69,9 +69,11 @@ export async function removeAccountFromWgs(
 					eq(wgMembers.wgId, membership.wgId),
 					ne(wgMembers.id, membership.id),
 					isNull(wgMembers.deactivatedAt),
+					// The successor becomes admin; an unlinked row could never act as one.
+					isNotNull(wgMembers.authUserId),
 				),
 			)
-			.orderBy(sql`${wgMembers.authUserId} is null`, asc(wgMembers.createdAt), asc(wgMembers.id))
+			.orderBy(asc(wgMembers.createdAt), asc(wgMembers.id))
 			.limit(1);
 		if (!successor) {
 			await deleteWgCascade(tx, membership.wgId);

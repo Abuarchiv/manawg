@@ -177,13 +177,13 @@ export function renderReminderMail(input: {
 export function renderAccountDeletedMail(): RenderedMail {
 	return renderBrandMail({
 		subject: 'Dein Konto ist gelöscht',
-		preheader: 'Deine Daten sind entfernt.',
+		preheader: 'Dein Login ist entfernt.',
 		eyebrow: 'ManaWG',
 		title: 'Dein Konto ist gelöscht.',
 		blocks: [
 			{
 				kind: 'paragraph',
-				text: 'Profil, Anhänge und Push-Geräte sind entfernt. In euren WG-Ausgaben steht künftig „Ehemaliges Mitglied“, damit die Beträge für die anderen stimmen.',
+				text: 'Dein Login sowie deine Push- und Kalender-Abos sind entfernt. Dein Name bleibt in den bisherigen Einträgen eurer WG stehen, damit die Beträge für die anderen stimmen.',
 			},
 			{
 				kind: 'paragraph',

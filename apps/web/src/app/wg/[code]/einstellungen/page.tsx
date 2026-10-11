@@ -61,9 +61,8 @@ export default function EinstellungenPage() {
 	const [exportSummary, setExportSummary] =
 		useState<ReturnType<typeof buildExportSummaryFromCounts>>(buildEmptyExportSummary);
 	const [exportSummaryError, setExportSummaryError] = useState<string | null>(null);
-	const [activeTab, setActiveTab] = useState<SettingsTab>(() =>
-		typeof window === 'undefined' ? 'profile' : getSettingsTabFromHash(window.location.hash),
-	);
+	// The hash is read in the mount effect below: reading it here would differ from the server render.
+	const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
 
 	// Preload tab chunks: offline, every tab switch would otherwise fail, and the import stays cached.
 	useEffect(() => {

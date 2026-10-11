@@ -9,6 +9,11 @@ import {
 } from '@/core/db';
 import { assertPrivateImageCanBeAttached } from '@/core/db/private-image-deletions';
 import { TransactionAbort } from '@/core/db/transaction';
+import {
+	type IdempotentReplayResponse,
+	persistReplayWarning,
+	withIdempotentReplay,
+} from '@/core/db/with-replay';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { badRequest, conflict } from '@/core/http/api-errors';
@@ -24,11 +29,6 @@ import {
 	MEMBER_ANNOUNCEMENT_SOURCES,
 	summarizeAnnouncementReactions,
 } from '@/features/pinnwand/announcement-workflow';
-import {
-	type AnnouncementReplayResponse,
-	persistAnnouncementReplayWarning,
-	withAnnouncementReplay,
-} from '@/features/pinnwand/server/announcement-replay';
 import {
 	and,
 	asc,
@@ -61,7 +61,7 @@ function announcementCreateIdempotencyScope(wgId: string, memberId: string): str
 	return `announcements-create:${wgId}:${memberId}`;
 }
 
-function legacyCreateReplay(value: unknown): AnnouncementReplayResponse | null {
+function legacyCreateReplay(value: unknown): IdempotentReplayResponse | null {
 	if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
 	const body = value as { announcement?: unknown; warning?: unknown };
 	if (!body.announcement || typeof body.announcement !== 'object') return null;
@@ -240,12 +240,12 @@ export const POST = withWgRoute('announcements POST', async (req, { code }) => {
 
 	// SECURITY: author is always the authenticated caller.
 	let outcome: {
-		response: AnnouncementReplayResponse;
+		response: IdempotentReplayResponse;
 		effect: typeof announcements.$inferSelect | null;
 		key: string | null;
 	};
 	try {
-		outcome = await withAnnouncementReplay(
+		outcome = await withIdempotentReplay(
 			req,
 			scope,
 			async (tx) => {
@@ -364,7 +364,7 @@ export const POST = withWgRoute('announcements POST', async (req, { code }) => {
 	}
 	if (warning && outcome.key) {
 		try {
-			if (!(await persistAnnouncementReplayWarning(scope, outcome.key, item.id, warning))) {
+			if (!(await persistReplayWarning(scope, outcome.key, item.id, warning))) {
 				logApiError(
 					'[announcements POST] replay warning persistence failed',
 					new Error('replay_row_missing'),

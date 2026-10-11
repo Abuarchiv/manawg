@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { mock, test } from 'node:test';
 import { TransactionAbort } from '@/core/db/transaction-abort';
+import { OFFLINE_REPLAY_MAX_AGE_MS } from '@/core/offline/replay-retention';
 
 const choreId = '11111111-1111-4111-8111-111111111111';
 const wgId = '22222222-2222-4222-8222-222222222222';
@@ -41,6 +42,7 @@ const tables = {
 		id: 'chore_completions.id',
 		choreId: 'chore_completions.chore_id',
 		completedByMemberId: 'chore_completions.completed_by_member_id',
+		completedAt: 'chore_completions.completed_at',
 	},
 	chores: {
 		id: 'chores.id',
@@ -271,7 +273,7 @@ mock.module('drizzle-orm', {
 		gt: (...values: unknown[]) => values,
 		gte: (...values: unknown[]) => values,
 		isNull: (value: unknown) => [value, null],
-		sql: () => null,
+		sql: () => 'sql-updated-at',
 	},
 });
 
@@ -352,4 +354,49 @@ test('rotation checks absences on the next due day, not at completion time', asy
 	const response = await route.post(route.request(), route.context);
 	assert.equal(response.status, 200);
 	assert.equal(state.absenceCheckedAt, originalDueAt.getTime() + 7 * 86_400_000);
+});
+
+test('completion bumps the chore version so a stale expectedUpdatedAt edit conflicts', async () => {
+	const state = makeState();
+	const route = makeRoute(state);
+	const response = await route.post(route.request(), route.context);
+	assert.equal(response.status, 200);
+	assert.equal((state.chore as Chore & { updatedAt?: unknown }).updatedAt, 'sql-updated-at');
+});
+
+test('a queued completion keeps its tap time, clamped to the replay window', async () => {
+	const tapAt = new Date(Date.now() - 60 * 60_000);
+	const state = makeState();
+	let route = makeRoute(state);
+	const body = (completedAt: unknown) => ({
+		expectedNextDueAt: originalDueAt.toISOString(),
+		expectedAssignedMemberId: memberA,
+		completedAt,
+	});
+	const tapped = await route.post(route.request(body(tapAt.toISOString())), route.context);
+	assert.equal(tapped.status, 200);
+	const [tappedRow] = state.completions as { completedAt: Date }[];
+	assert.equal(tappedRow?.completedAt.getTime(), tapAt.getTime());
+
+	// A device clock in the future never lands after the server's now.
+	const future = makeState();
+	route = makeRoute(future);
+	const before = Date.now();
+	await route.post(route.request(body(new Date(before + 86_400_000).toISOString())), route.context);
+	const [futureRow] = future.completions as { completedAt: Date }[];
+	assert.ok(futureRow && futureRow.completedAt.getTime() <= Date.now());
+
+	// Older than the replay window is pulled up to its edge.
+	const ancient = makeState();
+	route = makeRoute(ancient);
+	await route.post(route.request(body('2001-01-01T00:00:00.000Z')), route.context);
+	const [ancientRow] = ancient.completions as { completedAt: Date }[];
+	assert.ok(
+		ancientRow &&
+			ancientRow.completedAt.getTime() >= Date.now() - OFFLINE_REPLAY_MAX_AGE_MS - 5_000,
+	);
+
+	route = makeRoute(makeState());
+	const invalid = await route.post(route.request(body('not-a-date')), route.context);
+	assert.equal(invalid.status, 400);
 });

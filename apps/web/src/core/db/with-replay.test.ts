@@ -50,9 +50,7 @@ mock.module('@/core/guards/replay-slot', {
 });
 mock.module('@/core/infra/observability', { namedExports: { logApiError: () => undefined } });
 
-const { persistAnnouncementReplayWarning, withAnnouncementReplay } = await import(
-	'./announcement-replay'
-);
+const { persistReplayWarning, withIdempotentReplay } = await import('./with-replay');
 
 function harness() {
 	const state = {
@@ -178,15 +176,10 @@ function harness() {
 	};
 	return {
 		state,
-		run: (legacyResponse?: Parameters<typeof withAnnouncementReplay>[3]) =>
-			withAnnouncementReplay(request, scope, mutate as never, legacyResponse),
+		run: (legacyResponse?: Parameters<typeof withIdempotentReplay>[3]) =>
+			withIdempotentReplay(request, scope, mutate as never, legacyResponse),
 		persistWarning: () =>
-			persistAnnouncementReplayWarning(
-				scope,
-				claimKey,
-				'comment-1',
-				'notification_delivery_failed',
-			),
+			persistReplayWarning(scope, claimKey, 'comment-1', 'notification_delivery_failed'),
 	};
 }
 
