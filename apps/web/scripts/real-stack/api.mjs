@@ -3,7 +3,9 @@ import { randomUUID } from 'node:crypto';
 import { request } from '@playwright/test';
 const BASE = 'http://localhost:3140';
 const SB = 'http://127.0.0.1:54321';
+// Service key of the local `supabase start` stack: `supabase status -o env` prints it.
 const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
+if (!SERVICE) throw new Error('SUPABASE_SERVICE_ROLE_KEY missing (see supabase status -o env)');
 const sql = (q) =>
 	execSync(
 		`psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -Atc "${q.replace(/"/g, '\\"')}"`,
