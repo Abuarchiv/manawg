@@ -1,3 +1,4 @@
+import { captureException } from '@/core/infra/observability';
 import { after } from 'next/server';
 
 /**
@@ -6,9 +7,10 @@ import { after } from 'next/server';
  * mail is silently dropped.
  */
 export function afterResponse(task: () => Promise<unknown>): void {
+	const guarded = () => task().catch((err: unknown) => captureException(err));
 	try {
-		after(task);
+		after(guarded);
 	} catch {
-		void task();
+		void guarded();
 	}
 }

@@ -1,5 +1,5 @@
 import { db, pushSubscriptions, wgMembers } from '@/core/db';
-import { logApiError } from '@/core/infra/observability';
+import { captureException, logApiError } from '@/core/infra/observability';
 import { isQuietHoursActive } from '@/core/notifications/notification-preferences';
 import {
 	type NotificationEvent,
@@ -309,7 +309,8 @@ export async function dispatchNotificationSafely(
 			sent: result.sent,
 			warning: result.failures.length > 0 ? 'notification_delivery_failed' : null,
 		};
-	} catch {
+	} catch (err) {
+		captureException(err, { action: 'dispatchNotificationSafely', event: input.event });
 		return { sent: 0, warning: 'notification_delivery_unknown' };
 	} finally {
 		if (timeoutId !== undefined) clearTimeout(timeoutId);

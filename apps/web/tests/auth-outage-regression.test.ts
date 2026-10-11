@@ -150,7 +150,7 @@ test('a cookie that is not a JWT is an invalid session, not an outage', async ()
 });
 
 // Last: a successful JWKS fetch is cached process-wide, after which the outage cases above
-// would no longer reach the network.
+// stop reaching the network.
 test('an invalid signature still redirects to sign-in', async () => {
 	mockAuthResponse(200);
 	assert.equal(
