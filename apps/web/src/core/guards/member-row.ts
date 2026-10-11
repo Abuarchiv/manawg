@@ -15,12 +15,12 @@ export type MemberFailureReason =
 	| 'member_context_changed'
 	| 'db_error';
 
-export interface MemberOk {
+interface MemberOk {
 	ok: true;
 	member: AuthenticatedMember;
 }
 
-export interface MemberFail {
+interface MemberFail {
 	ok: false;
 	reason: MemberFailureReason;
 	response: NextResponse;

@@ -22,7 +22,6 @@ export function isUuid(value: unknown): value is string {
 	return typeof value === 'string' && UUID_PATTERN.test(value);
 }
 
-export type { AuthenticatedMember, RequireMemberResult } from '@/core/guards/member-row';
 export type AuthenticatedUser = NonNullable<Awaited<ReturnType<typeof getAuthenticatedUser>>>;
 
 /**
