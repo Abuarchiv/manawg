@@ -8,6 +8,8 @@ const harness = {
 	attempts: 0,
 	deleteError: null as Error | null,
 	imageCleanupRuns: 0,
+	retentionPurges: 0,
+	retentionError: null as Error | null,
 	recoveryCalls: [] as unknown[],
 	recoveryResult: { attempted: 1, completed: 0, failed: 1, pending: 1 },
 };
@@ -120,6 +122,19 @@ mock.module('@/core/db/private-image-deletions', {
 		dequeueImageDeletions: async () => undefined,
 		findLivePrivateImageReferenceKeys: async () => new Set(),
 		markPrivateImageStorageDeleted: async () => undefined,
+		purgeFinishedPrivateImageDeletions: async () => {
+			harness.retentionPurges++;
+			if (harness.retentionError) throw harness.retentionError;
+			return 0;
+		},
+	},
+});
+mock.module('@/core/mail/mail-retention', {
+	namedExports: {
+		purgeOldDigestMailLog: async () => {
+			harness.retentionPurges++;
+			return 0;
+		},
 	},
 });
 mock.module('@/core/infra/cron-auth', { namedExports: { requireCronSecret: () => null } });
@@ -193,4 +208,18 @@ test('maintenance attempts deletion recovery when idempotency cleanup fails', as
 	});
 	assert.equal(harness.recoveryCalls.length, 2);
 	assert.equal(harness.imageCleanupRuns, 2);
+});
+
+test('maintenance runs the retention purges and a failing purge does not change the result', async () => {
+	mock.method(console, 'error', () => {});
+	harness.deleteError = null;
+	harness.recoveryResult = { attempted: 0, completed: 0, failed: 0, pending: 0 };
+	harness.retentionPurges = 0;
+	harness.retentionError = new Error('database unavailable');
+	const response = await route.GET(
+		new Request('https://example.com/api/cron/maintenance') as never,
+	);
+	assert.equal(harness.retentionPurges, 2);
+	assert.equal(response.status, 200);
+	harness.retentionError = null;
 });

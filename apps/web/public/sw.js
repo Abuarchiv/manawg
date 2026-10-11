@@ -20,9 +20,9 @@ const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const MAX_RUNTIME_ENTRIES = 200;
 const PUBLIC_DOCUMENT_PATHS = new Set(['/', '/offline']);
-// A navigation the network has not answered by then falls back to the cache, so a bad
+// A navigation whose headers the network has not delivered by then falls back to the cache, so a bad
 // connection shows the offline page instead of a page that never finishes loading.
-const NAVIGATION_TIMEOUT_MS = 8000;
+const NAVIGATION_TIMEOUT_MS = 15000;
 
 const SHELL_ASSETS = [
 	'/',
@@ -103,18 +103,13 @@ const refreshOfflinePage = async (request, response) => {
 	await cache.put(request, response);
 };
 
-// The timer covers the headers and the body: a server that sends headers and then stalls must
-// not leave the navigation hanging, so the page is read completely before it is handed on.
+// The timer covers only the wait for the response headers. Once they are here the response goes
+// to the browser untouched, so the body keeps streaming (slow server starts are not cut off).
 const fetchWithTimeout = async (request) => {
 	const controller = new AbortController();
 	const timer = setTimeout(() => controller.abort(), NAVIGATION_TIMEOUT_MS);
 	try {
-		const response = await fetch(request, { signal: controller.signal });
-		if (response.type === 'opaqueredirect' || !response.body) return response;
-		// A clone is read to the end under the timer; the response itself, with its redirect and
-		// URL, then hands the already received body to the browser.
-		await response.clone().arrayBuffer();
-		return response;
+		return await fetch(request, { signal: controller.signal });
 	} finally {
 		clearTimeout(timer);
 	}

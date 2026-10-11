@@ -9,6 +9,7 @@ import {
 } from '@/core/auth/identity';
 import { isSessionExpired } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
+import { captureException } from '@/core/infra/capture-client';
 import {
 	type Dispatch,
 	type RefObject,
@@ -210,7 +211,7 @@ export function useSessionMember({
 				else clearSessionIdentity();
 			});
 			unsubscribe = () => data.subscription.unsubscribe();
-		});
+		}).catch((err) => captureException(err, { action: 'sessionMemberAuthInit' }));
 		return () => {
 			cancelled = true;
 			unsubscribe?.();

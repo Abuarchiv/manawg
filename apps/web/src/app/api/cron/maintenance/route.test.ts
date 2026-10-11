@@ -53,7 +53,11 @@ mock.module('@/core/db/private-image-deletions', {
 			state.events.push('pending');
 			return state.pending;
 		},
+		purgeFinishedPrivateImageDeletions: async () => 0,
 	},
+});
+mock.module('@/core/mail/mail-retention', {
+	namedExports: { purgeOldDigestMailLog: async () => 0 },
 });
 mock.module('@/core/idempotency-store', {
 	namedExports: { purgeExpiredIdempotencyResponses: async () => 0 },

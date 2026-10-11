@@ -4,6 +4,7 @@ import { chores, db, expenses, wgEvents, wgInventoryItems, wgMembers, wgs } from
 import { logApiError } from '@/core/infra/observability';
 import { type SendMailResult, sendMail } from '@/core/mail/send-mail';
 import { type DigestItem, renderDigestMail } from '@/core/mail/templates';
+import { SINGLE_SEND_GAP_MS } from '@/core/mail/transport';
 import { unsubscribeUrl } from '@/core/mail/unsubscribe';
 import {
 	berlinDayKey,
@@ -17,6 +18,8 @@ import { expandRecurrence } from '@/features/events/events';
 import { and, asc, eq, gte, inArray, isNull, lte, or, sql } from 'drizzle-orm';
 
 const ITEMS_PER_SECTION = 5;
+/** The cron route allows 60 s; stop sending early enough to leave room for the response. */
+const SEND_TIME_BUDGET_MS = 45_000;
 
 const timeFormat = new Intl.DateTimeFormat('de-DE', {
 	hour: '2-digit',
@@ -56,6 +59,10 @@ export interface DigestRunSummary {
 	duplicate: number;
 	skipped: number;
 	failed: number;
+	/** Mails the provider refused for quota/rate limit; the run stops at the first one. */
+	deferred: number;
+	/** The time budget ran out before every member was handled. */
+	timedOut: boolean;
 }
 
 /** Caps a section and says how much was left out, so the mail stays one screen long. */
@@ -96,7 +103,8 @@ async function loadDigests(now: Date): Promise<WgDigest[]> {
 				sql`${wgMembers.authUserId} is not null`,
 				isNull(wgMembers.deactivatedAt),
 			),
-		);
+		)
+		.orderBy(asc(wgs.id), asc(wgMembers.id));
 	const byWg = new Map<string, WgDigest>();
 	for (const row of memberRows) {
 		if (!row.authUserId) continue;
@@ -266,13 +274,21 @@ export async function runDailyDigest(now = new Date()): Promise<DigestRunSummary
 		duplicate: 0,
 		skipped: 0,
 		failed: 0,
+		deferred: 0,
+		timedOut: false,
 	};
 	const authUserIds = digests.flatMap((digest) => digest.members.map((m) => m.authUserId));
 	const { emails } = await loadConfirmedEmails(authUserIds);
 	const dayLabel = dayLabelFormat.format(now).replace(',', ' ·');
 
+	const startedAt = Date.now();
 	for (const digest of digests) {
 		for (const member of digest.members) {
+			if (summary.deferred > 0) return summary;
+			if (Date.now() - startedAt > SEND_TIME_BUDGET_MS) {
+				summary.timedOut = true;
+				return summary;
+			}
 			summary.candidates += 1;
 			const items = itemsFor(member, digest);
 			const to = emails.get(member.authUserId);
@@ -302,9 +318,15 @@ export async function runDailyDigest(now = new Date()): Promise<DigestRunSummary
 				summary.failed += 1;
 				continue;
 			}
+			if (result === 'duplicate') {
+				summary.duplicate += 1;
+				continue;
+			}
 			if (result === 'sent') summary.sent += 1;
-			else if (result === 'duplicate') summary.duplicate += 1;
+			else if (result === 'deferred') summary.deferred += 1;
 			else summary.failed += 1;
+			// Resend allows two requests per second.
+			await new Promise((resolve) => setTimeout(resolve, SINGLE_SEND_GAP_MS));
 		}
 	}
 	return summary;

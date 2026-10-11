@@ -5,7 +5,7 @@ const RESEND_BATCH_URL = 'https://api.resend.com/emails/batch';
 const DEFAULT_FROM = 'ManaWG <noreply@manawg.com>';
 const REQUEST_TIMEOUT_MS = 15_000;
 // Resend allows two requests per second; single retries after a rejected batch pace themselves.
-const SINGLE_SEND_GAP_MS = 550;
+export const SINGLE_SEND_GAP_MS = 550;
 
 export interface OutgoingMail {
 	/** Ledger row id and its attempt count; together they key the Idempotency-Key of the request. */

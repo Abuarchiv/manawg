@@ -177,7 +177,7 @@ test('a navigation the network does not answer in time falls back to the offline
 		async (timers) => {
 			const pending = navigateTo('/wg/ABCD2345/ausgaben');
 			assert.equal(timers.length, 1);
-			assert.equal(timers[0]?.ms, 8000);
+			assert.equal(timers[0]?.ms, 15000);
 			timers[0]?.fn();
 
 			assert.equal(await pending, 'offline-page');
@@ -192,28 +192,19 @@ test('a timely answer is served as is', async () => {
 	});
 });
 
-test('a page whose body stalls after the headers falls back to the offline page', async () => {
-	await withNetwork(
-		{
-			fetch: async (_request, { signal }) => ({
-				ok: true,
-				type: 'basic',
-				body: {},
-				clone: () => ({
-					arrayBuffer: () =>
-						new Promise((_resolve, reject) => {
-							signal.addEventListener('abort', () => reject(new Error('aborted')));
-						}),
-				}),
-			}),
-			cached: { '/offline': 'offline-page' },
+test('a response whose headers arrived is passed on without reading the body', async () => {
+	const answer = {
+		ok: true,
+		type: 'basic',
+		body: {},
+		clone: () => {
+			throw new Error('body must not be buffered');
 		},
-		async (timers) => {
-			const pending = navigateTo('/wg/ABCD2345/ausgaben');
-			await new Promise((resolve) => setImmediate(resolve));
-			assert.equal(timers.length, 1);
-			timers[0]?.fn();
-			assert.equal(await pending, 'offline-page');
+	};
+	await withNetwork(
+		{ fetch: async () => answer, cached: { '/offline': 'offline-page' } },
+		async () => {
+			assert.equal(await navigateTo('/wg/ABCD2345/ausgaben'), answer);
 		},
 	);
 });

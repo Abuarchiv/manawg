@@ -236,3 +236,22 @@ test('401 auth_required stays retryable: no review prefix, no attempt counted, r
 	assert.equal(queue[0]?.lastError?.startsWith('Server prüfen:'), false);
 	assert.equal(queue[0]?.attempts ?? 0, 0);
 });
+
+test('entries of an unknown action type survive enqueue and discard', async () => {
+	const storage = makeStorage();
+	const unknown = { id: 'future-1', type: 'future.thing', payload: { x: 1 } };
+	storage.setItem('manawg:offline-actions', JSON.stringify([createAction(), unknown]));
+	const { module } = await makeQueueModule({ storage });
+	assert.deepEqual(
+		module.readOfflineQueue().map((action) => action.id),
+		['action-1'],
+	);
+	assert.equal(await module.enqueueOfflineAction(createAction({ id: 'action-2' })), 2);
+	assert.equal(await module.discardQueuedEntry('TEST1234', 'action-1'), 'removed');
+	const stored = JSON.parse(storage.getItem('manawg:offline-actions') ?? '[]');
+	assert.deepEqual(
+		stored.map((entry: { id: string }) => entry.id),
+		['action-2', 'future-1'],
+	);
+	assert.deepEqual(stored[1], unknown);
+});
