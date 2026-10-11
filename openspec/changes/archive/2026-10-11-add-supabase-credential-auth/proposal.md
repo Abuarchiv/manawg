@@ -1,3 +1,5 @@
+> Überholt am 2026-10-11: Telefon/SMS und der Browser-Client sind entfernt. Anmeldung läuft über `/api/auth/*` mit E-Mail-Code, Passwort und Google. Siehe `docs/auth-architektur-audit-2026-10-10.md`.
+
 ## Why
 
 ManaWG currently offers only social providers in its visible sign-in surface, although the production Supabase project has email enabled and the product requires an alternative to Google. The product must use one recoverable Supabase account model without restoring browser-local name or code login.

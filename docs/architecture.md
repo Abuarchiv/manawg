@@ -77,8 +77,14 @@ Rules:
 
 ## Identity model
 
-- **Auth user**: Supabase Auth (social, email/password). Callback `app/auth/callback/route.ts`,
-  password reset `app/auth/reset`.
+- **Auth user**: Supabase Auth (Google, e-mail code, e-mail/password). All auth calls go through
+  the route handlers `app/api/auth/*` (`core/auth/route-helpers.ts`); there is no Supabase client
+  in the browser. The session cookies are HttpOnly (`core/auth/cookie-options.ts`), the middleware
+  refreshes them and keeps the readable hint cookie `manawg_signed_in` in step. Callback
+  `app/auth/callback/route.ts`, password reset `app/auth/reset`. The account name entered at
+  registration is `user_metadata.full_name` and prefills the member name.
+- **Invitations**: `wg_invites` (token, 7 days, max 10 uses, revocable). Joining needs a valid
+  token (`POST /api/wg/<code>/members` with `inviteToken`); the share code is only an address.
 - **Member**: one `wg_members` row per WG and auth user (`auth_user_id`, unique per WG). A user
   can be a member of several WGs. `deactivated_at` is the move-out soft delete; deactivated
   members lose API access and push, history stays.
@@ -94,8 +100,7 @@ Rules:
   to that WG; the invitation page lists the unlinked members. Normal API access never uses it.
 - **Admin**: `wg_members.role` is `admin` or `member`, at most one admin per WG (partial unique
   index). `core/guards/admin.ts`: `isWgAdmin` and `requireOwnerOrAdmin` (owner or admin for
-  edits/deletes of others' items); `requireWgAdmin` gates WG rename/delete/share-code
-  rotation/joining toggle.
+  edits/deletes of others' items); `requireWgAdmin` gates WG rename/delete and invitations.
 
 ## Idempotency
 
@@ -373,7 +378,6 @@ These behaviors were reviewed in the October 2026 audit and are kept on purpose.
   the server.
 - **Activity feed.** Every member reads it. Private details (one person's quiet hours, push opt-in,
   the creation-time share code) are removed before the response (`core/audit-visibility.ts`).
-- **Share-code rotation** keeps the "joining enabled" switch as it was and says which way it stands.
 - **Member names** are unique ignoring case among active members. A moved-out member who holds a name
   a current member wants is renamed to "Name (ausgezogen)". The cap of 20 counts active members only.
 - **Time zones.** Event times are entered and shown in the device's zone; repeats, reminders and the
