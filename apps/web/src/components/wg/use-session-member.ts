@@ -8,6 +8,7 @@ import {
 	setIdentity,
 } from '@/core/auth/identity';
 import { apiFetch } from '@/core/infra/api-client';
+import { captureException } from '@/core/infra/capture-client';
 import {
 	type Dispatch,
 	type RefObject,
@@ -141,64 +142,66 @@ export function useSessionMember({
 		if (sessionless) return;
 		let cancelled = false;
 		let unsubscribe: (() => void) | undefined;
-		void import('@/core/auth/client').then(({ createSupabaseBrowserClient }) => {
-			if (cancelled) return;
-			const supabase = createSupabaseBrowserClient();
-			const clearSessionIdentity = () => {
-				authGenerationRef.current += 1;
-				syncAbortRef.current?.abort();
-				syncAbortRef.current = null;
-				authUserIdRef.current = null;
-				clearIdentity(wg.id);
-				setStateIdentity(null);
-				setIsAdmin(false);
-				setAccountReady(false);
-				setMemberLoaded(true);
-			};
-			let revalidating = false;
-			const loadForUser = (nextUserId: string) => {
-				if (nextUserId !== authUserIdRef.current) {
-					authUserIdRef.current = nextUserId;
-					const generation = ++authGenerationRef.current;
+		void import('@/core/auth/client')
+			.then(({ createSupabaseBrowserClient }) => {
+				if (cancelled) return;
+				const supabase = createSupabaseBrowserClient();
+				const clearSessionIdentity = () => {
+					authGenerationRef.current += 1;
 					syncAbortRef.current?.abort();
 					syncAbortRef.current = null;
+					authUserIdRef.current = null;
+					clearIdentity(wg.id);
+					setStateIdentity(null);
 					setIsAdmin(false);
 					setAccountReady(false);
-					setMemberLoaded(false);
-					if (getIdentity(wg.id)?.authUserId !== nextUserId) {
-						clearIdentity(wg.id);
-						setStateIdentity(null);
+					setMemberLoaded(true);
+				};
+				let revalidating = false;
+				const loadForUser = (nextUserId: string) => {
+					if (nextUserId !== authUserIdRef.current) {
+						authUserIdRef.current = nextUserId;
+						const generation = ++authGenerationRef.current;
+						syncAbortRef.current?.abort();
+						syncAbortRef.current = null;
+						setIsAdmin(false);
+						setAccountReady(false);
+						setMemberLoaded(false);
+						if (getIdentity(wg.id)?.authUserId !== nextUserId) {
+							clearIdentity(wg.id);
+							setStateIdentity(null);
+						}
+						window.setTimeout(() => void loadSessionMember(nextUserId, generation), 0);
+						return;
 					}
-					window.setTimeout(() => void loadSessionMember(nextUserId, generation), 0);
-					return;
-				}
-				// getSession and INITIAL_SESSION both land here on mount; one revalidation is enough.
-				if (revalidating) return;
-				revalidating = true;
+					// getSession and INITIAL_SESSION both land here on mount; one revalidation is enough.
+					if (revalidating) return;
+					revalidating = true;
+					const generation = authGenerationRef.current;
+					window.setTimeout(() => {
+						void loadSessionMember(nextUserId, generation, true).finally(() => {
+							revalidating = false;
+						});
+					}, 0);
+				};
+				const { data } = supabase.auth.onAuthStateChange((event, session) => {
+					const nextUserId = session?.user.id ?? null;
+					if (event === 'SIGNED_OUT' || !nextUserId) {
+						clearSessionIdentity();
+						return;
+					}
+					if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') loadForUser(nextUserId);
+				});
 				const generation = authGenerationRef.current;
-				window.setTimeout(() => {
-					void loadSessionMember(nextUserId, generation, true).finally(() => {
-						revalidating = false;
-					});
-				}, 0);
-			};
-			const { data } = supabase.auth.onAuthStateChange((event, session) => {
-				const nextUserId = session?.user.id ?? null;
-				if (event === 'SIGNED_OUT' || !nextUserId) {
-					clearSessionIdentity();
-					return;
-				}
-				if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') loadForUser(nextUserId);
-			});
-			const generation = authGenerationRef.current;
-			void supabase.auth.getSession().then(({ data: sessionData, error }) => {
-				if (error || generation !== authGenerationRef.current) return;
-				const userId = sessionData.session?.user.id;
-				if (userId) loadForUser(userId);
-				else clearSessionIdentity();
-			});
-			unsubscribe = () => data.subscription.unsubscribe();
-		});
+				void supabase.auth.getSession().then(({ data: sessionData, error }) => {
+					if (error || generation !== authGenerationRef.current) return;
+					const userId = sessionData.session?.user.id;
+					if (userId) loadForUser(userId);
+					else clearSessionIdentity();
+				});
+				unsubscribe = () => data.subscription.unsubscribe();
+			})
+			.catch((err) => captureException(err, { action: 'sessionMemberAuthInit' }));
 		return () => {
 			cancelled = true;
 			unsubscribe?.();

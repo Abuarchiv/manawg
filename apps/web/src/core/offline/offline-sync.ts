@@ -281,7 +281,9 @@ async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions):
 					reviewOnEdit: res.status === 0 || res.status >= 500,
 					retry: {
 						...readyAction,
-						attempts: (readyAction.attempts ?? 0) + 1,
+						// No connection says nothing about the action, so it must not grow the backoff.
+						attempts:
+							res.status === 0 ? (readyAction.attempts ?? 0) : (readyAction.attempts ?? 0) + 1,
 						lastAttemptAt: new Date(now).toISOString(),
 						lastError: message,
 					},
@@ -294,6 +296,8 @@ async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions):
 			if (options?.signal?.aborted) break;
 			const missingPendingImage = err instanceof Error && err.message === 'pending-image-missing';
 			const pendingImageUploadError = explainPendingImageUploadError(err);
+			// A thrown request without a classified cause is a lost connection (see apiFetch).
+			const noConnection = !missingPendingImage && pendingImageUploadError === null;
 			const lastError = missingPendingImage
 				? MISSING_PENDING_IMAGE_ERROR
 				: (pendingImageUploadError ??
@@ -305,7 +309,7 @@ async function runOfflineSync(shareCode?: string, options?: OfflineSyncOptions):
 				snapshot: requestSnapshot,
 				retry: {
 					...requestSnapshot,
-					attempts: (requestSnapshot.attempts ?? 0) + 1,
+					attempts: (requestSnapshot.attempts ?? 0) + (noConnection ? 0 : 1),
 					lastAttemptAt: new Date(now).toISOString(),
 					lastError,
 				},
