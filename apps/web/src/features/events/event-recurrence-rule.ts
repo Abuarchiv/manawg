@@ -30,7 +30,7 @@ export const BYDAY_TO_INDEX: Record<RecurrenceByDay, number> = {
 	FR: 5,
 	SA: 6,
 };
-export const MAX_OCCURRENCES = 366;
+const MAX_OCCURRENCES = 366;
 /** Longest list of removed occurrences one series keeps: about four years of a daily series, thirty of a weekly one. */
 export const MAX_EXDATES = 1_500;
 
