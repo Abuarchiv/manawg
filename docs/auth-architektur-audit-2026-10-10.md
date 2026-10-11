@@ -264,3 +264,17 @@ Offen:
 - **Abmelden bei Netzfehler** bleibt bewusst so: Cookies bleiben stehen, damit man nicht glaubt, abgemeldet zu sein, obwohl die Sitzung serverseitig noch gilt.
 - **Text an die WGs, Ergänzung:** Wer die App installiert hat, schließt sie einmal komplett und öffnet sie neu.
 
+### Nachtrag 2026-10-11 (3): Reihenfolge der Migrationen im Release
+
+Prod läuft mit Code, der alle Spalten von `wgs` und `wg_members` ausdrücklich liest. Zwei neue Migrationen löschen Spalten, die dieser Code noch liest. Sie dürfen deshalb erst nach dem Deploy laufen.
+
+| Schritt | Migration | Wann |
+|---|---|---|
+| 1 | 0026 `wg_invites` (neue Tabelle) | vor dem Deploy |
+| 2 | Mail-Vorlagen mit `--apply` (Code-Länge 8) | vor dem Deploy |
+| 3 | Deploy | |
+| 4 | 0027 `notify_digest_email` löschen | nach dem Deploy |
+| 5 | 0028 `joining_enabled`, `share_code_rotated_at` löschen | nach dem Deploy |
+
+Läuft 0027 oder 0028 vor dem Deploy, scheitert in Prod jede Abfrage auf die betroffene Tabelle, bis der neue Code live ist.
+
