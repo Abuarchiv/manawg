@@ -186,3 +186,44 @@ Zwei Rückmeldungen nach Phase 1, beide geprüft:
 **„Nach der Installation nicht angemeldet"**: Auf dem iPhone hat eine Home-Bildschirm-App einen eigenen Speicher (Cookies, localStorage), getrennt von Safari. Eine Anmeldung in Safari erreicht die installierte App daher nie; das ist Plattformverhalten, nicht die App. Android (WebAPK) und Desktop-Chrome teilen das Browserprofil, dort bleibt die Sitzung erhalten. Die Supabase-Cookies sind 400 Tage gültig (`@supabase/ssr`-Default, `authCookieOptions` überschreibt nur `path`/`sameSite`/`secure`). Fix (umgesetzt): iOS-Installationsanleitung bekommt Schritt 4 „App öffnen und einmal anmelden"; die Anmeldeseite zeigt in der installierten iOS-App einen Hinweis, warum einmal neu angemeldet wird (`StartNotices.tsx`, erkannt über `display-mode: standalone` + iOS-Gerät). Nicht möglich: Sitzung in die iOS-App übertragen (kein geteilter Speicher, `start_url` ist statisch, Token in der URL wäre dauerhaft im Lesezeichen).
 
 Offen, wenn Android/Desktop trotzdem abgemeldet startet: dann liegt es nicht an der Installation, sondern an der Sitzung selbst (Refresh-Token ungültig, z. B. nach Logout in einem anderen Tab, oder Konto-Löschung). Dazu braucht es ein konkretes Gerät und den Netzwerk-Log von `/api/wg/mine`.
+
+## 7. Zielbild Anmeldung und Zugang (2026-10-11, nach Rückmeldung)
+
+Die echten Lücken, nach Wirkung sortiert:
+
+| # | Lücke | Folge |
+|---|---|---|
+| L1 | Der WG-Code ist zugleich URL-Slug (`/wg/CODE`), dauerhaftes Beitrittsgeheimnis und Einladung. Kein Ablauf, keine Freigabe durch die WG, nur ein globaler Schalter `joiningEnabled`. | Wer die URL je gesehen hat (Screenshot, Verlauf, weitergeleiteter Link), kann jederzeit beitreten. Ausgezogene behalten den Schlüssel. |
+| L2 | Session-Cookies sind nicht HttpOnly, weil der Browser-Client sie liest und per `document.cookie` erneuert. | XSS könnte die Sitzung stehlen. Safari (nicht installiert) löscht skriptgeschriebene Cookies nach 7 Tagen ohne Besuch: „plötzlich abgemeldet". |
+| L3 | Nur Google oder E-Mail+Passwort. Kein Anmeldecode per E-Mail, Telefon-Pfad tot. | In der installierten iPhone-App muss ein Passwort getippt werden; Bestätigungs- und Reset-Links öffnen Safari, nicht die App. |
+| L4 | Konto-Zustand liegt in vier Rollen in einem localStorage-Key, Legacy-Claim und Fixture-Modus leben im Prod-Bundle (Abschnitt 3, Phasen 2–4). | Fehlerquellen, mehr Code, mehr Angriffsfläche. |
+| L5 | iOS-Home-Bildschirm-App hat eigenen Speicher. | Einmalige Neuanmeldung in der App ist unvermeidbar; sie muss nur schnell sein (L3). |
+
+Zielbild in einem Satz: **Konto zuerst, Zugang per Einladung mit Ablauf und Freigabe, Sitzung nur serverseitig, Anmeldung ohne Passwort möglich.**
+
+### Paket A: Einladungen statt Dauer-Code (ca. 2 Tage, Migration)
+
+- Neue Tabelle `wg_invites` (id, wg_id, token 128 Bit, created_by, expires_at 7 Tage, max_uses 1 oder n, used_count, revoked_at). Einladung erzeugen und widerrufen nur für Mitglieder; Liste in den Einstellungen.
+- Beitritt nur mit gültigem Token (`/einladung/<token>`), nicht mehr mit dem Code. Optional Freigabe: `wgs.join_approval` (bool); dann landet der Beitritt als `pending` und ein Mitglied bestätigt (Push/Mail E-Vorlage vorhanden).
+- Der 8-stellige Code bleibt URL-Slug und Anzeige, verliert seine Geheimnis-Rolle. `joiningEnabled` entfällt, `GET /api/wg/[code]` ohne Mitgliedschaft bleibt 404.
+- Nötig in der UI: `InviteStep` teilt den Token-Link, `PublicApp`/`/neu` nehmen `?invite=` statt `?code=`, Beitrittsseite zeigt WG-Name (Token erlaubt den Blick vorab).
+
+### Paket B: Sitzung nur auf dem Server, HttpOnly (ca. 1,5 Tage)
+
+- Passwort-Login, Registrierung, Reset, OTP-Verify und Logout laufen über Route-Handler (`/auth/sign-in` usw.) mit `createSupabaseServerClient`; Google-OAuth startet serverseitig (`signInWithOAuth` mit `skipBrowserRedirect` auf dem Server, Redirect-URL zurückgeben).
+- Cookies dann `httpOnly: true`; Refresh ausschließlich in der Middleware. Browser-Client entfällt bis auf nichts; `use-session-member` liest den Zustand über `/api/wg/mine` bzw. die Member-Antwort, `OfflineClient` über den lokalen Cache (`soleStoredAuthUserId`), `session-hint` über ein zweites, nicht-sensibles Cookie `manawg_signed_in=1`.
+- Gewinn: kein Session-Diebstahl per Skript, kein 7-Tage-Verlust in Safari, kein Client-Refresh-Rennen zwischen Tabs.
+
+### Paket C: Anmeldecode per E-Mail und Passkeys (ca. 1 Tag + Supabase-Konfiguration)
+
+- „Code per E-Mail" als erste Option neben Google: `signInWithOtp({ email })` + `verifyOtp({ type: 'email' })`, 8-stelliger Code wie in der bestehenden Anmeldecode-Mail. Funktioniert in der installierten App, kein Link-Sprung nach Safari, kein Passwort.
+- Passwort wird optional (Konto-Einstellung), Telefon-Pfad löschen.
+- Passkeys erst, wenn Supabase sie als ersten Faktor anbietet; bis dahin nicht bauen.
+
+### Paket D: Aufräumen (Phasen 2–4 aus Abschnitt 4, ca. 4 Tage)
+
+Unverändert: Kontotrennung im Cache, Legacy-Claim nach Prod-Zählung löschen, Fixture-Modus durch echte Test-Session ersetzen.
+
+### Reihenfolge
+
+C → B → A → D. C ist klein und nimmt den iPhone-Schmerz sofort. B macht die Sitzung sicher und stabil. A ändert das Produkt (Einladung mit Ablauf, Freigabe) und braucht Migration plus Kommunikation an bestehende WGs (alte Code-Links zeigen dann „Bitte um neue Einladung").
