@@ -1,9 +1,9 @@
 import { SubNav } from '@/components/wg/SubNav';
-import { db, type wgChatMessages, wgs } from '@/core/db';
+import type { wgChatMessages } from '@/core/db';
+import { loadWgViewer } from '@/core/guards/load-wg-viewer';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import { ChatView } from '@/features/chat/components/ChatView';
 import { loadFixtureWgView } from '@/fixtures/pages';
-import { eq } from 'drizzle-orm';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
@@ -30,18 +30,13 @@ export default async function ChatPage({ params }: PageProps) {
 	if (fixture === 'not_found') notFound();
 	if (fixture) return <ChatPageContent wgRow={fixture.wg} messages={fixture.chatMessages()} />;
 
-	const wg = await db
-		.select({ id: wgs.id, name: wgs.name, shareCode: wgs.shareCode })
-		.from(wgs)
-		.where(eq(wgs.shareCode, code))
-		.limit(1);
-	const wgRow = wg[0];
-	if (!wgRow) notFound();
+	// The layout redirects visitors without a session; a WG they do not belong to is a plain 404.
+	const viewer = await loadWgViewer(code);
+	if (!viewer?.access) notFound();
+	const wgRow = viewer.access;
 
-	// SECURITY: no server-side message loading here. The RSC has no member
-	// identity (headers are only sent by apiFetch), so anything loaded here
-	// would leak chat history to anyone holding the share code. ChatView
-	// bootstraps its first page through the membership-gated API instead.
+	// No server-side message loading here: ChatView bootstraps its first page through the
+	// membership-gated API, which also checks the expected-member header.
 	return <ChatPageContent wgRow={wgRow} messages={[]} />;
 }
 

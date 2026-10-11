@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { haptic } from '@/shared/lib/haptics';
 import { CheckCircle, Info, X, XCircle } from 'lucide-react';
 import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
+import { pushToast } from './toast-queue';
 
 type ToastVariant = 'success' | 'error' | 'info';
 
@@ -38,14 +39,14 @@ function subscribe(listener: () => void): () => void {
 	};
 }
 
-// More than two stacked toasts cover the list and sit next to the FAB; the oldest give way.
+// More than two stacked toasts cover the list and sit next to the FAB; the oldest non-error gives way.
 const MAX_TOASTS = 2;
 
 function addToast(message: string, variant: ToastVariant): void {
 	const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 	// The same message again restarts one toast (new id = fresh timer) instead of stacking copies.
 	const rest = toasts.filter((t) => !(t.message === message && t.variant === variant));
-	setToasts([...rest, { id, message, variant }].slice(-MAX_TOASTS));
+	setToasts(pushToast(rest, { id, message, variant }, MAX_TOASTS));
 	haptic(variant === 'error' ? 'heavy' : variant === 'success' ? 'medium' : 'light');
 }
 
@@ -103,8 +104,8 @@ function ToastItem({ toast }: { toast: Toast }) {
 	return (
 		<Alert
 			variant={toast.variant === 'error' ? 'destructive' : 'default'}
-			role={toast.variant === 'error' ? 'alert' : 'status'}
-			aria-live={toast.variant === 'error' ? undefined : 'polite'}
+			// Non-errors are announced by the always-mounted polite stack; errors interrupt as alerts.
+			role={toast.variant === 'error' ? 'alert' : undefined}
 			className="flex flex-wrap items-center gap-x-3 gap-y-1"
 			// Mouse only: a tap fires emulated mouseenter but mouseleave comes after the next tap
 			// elsewhere, which would pin the toast on touch screens.
@@ -138,13 +139,13 @@ export function ToastContainer() {
 		() => NO_TOASTS,
 	);
 
-	if (current.length === 0) return null;
-
 	return (
 		<div
 			data-toast-stack
 			className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--app-nav-height,5rem)+0.5rem+var(--thumb-action-space,0px))] z-50 mx-auto flex max-h-[60svh] w-full max-w-[var(--app-frame-width)] flex-col-reverse gap-2 overflow-y-auto overscroll-contain px-4"
 			aria-label="Benachrichtigungen"
+			// Mounted while empty: a live region that appears together with its content is often not announced.
+			aria-live="polite"
 			// biome-ignore lint/a11y/useSemanticElements: role="region" names the fixed toast stack; <section> would add another landmark.
 			role="region"
 		>
