@@ -142,10 +142,7 @@ export const POST = withWgRoute<{ id: string }>(
 			entityType: 'announcement_comment',
 			entityId: comment.id,
 			summary: `${auth.member.name} hat einen Kommentar geschrieben.`,
-			metadata: {
-				announcementId: id,
-				contentPreview: parsed.data.content.slice(0, 120),
-			},
+			metadata: { announcementId: id },
 		});
 
 		let warning: NotificationDispatchWarning = null;

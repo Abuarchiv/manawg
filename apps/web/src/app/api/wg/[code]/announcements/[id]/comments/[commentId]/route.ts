@@ -21,12 +21,9 @@ async function assertCommentOwner(
 	commentId: string,
 	memberId: string,
 	allowAdmin = false,
-): Promise<
-	{ status: 'ok'; content: string; moderated: boolean } | { status: 'not_found' | 'forbidden' }
-> {
+): Promise<{ status: 'ok'; moderated: boolean } | { status: 'not_found' | 'forbidden' }> {
 	const rows = await db
 		.select({
-			content: announcementComments.content,
 			memberId: announcementComments.memberId,
 		})
 		.from(announcementComments)
@@ -41,16 +38,12 @@ async function assertCommentOwner(
 		.limit(1);
 	const row = rows[0];
 	if (!row) return { status: 'not_found' };
-	if (row.memberId === memberId) return { status: 'ok', content: row.content, moderated: false };
+	if (row.memberId === memberId) return { status: 'ok', moderated: false };
 	// Editing stays with the author; only removal may be moderated by the WG admin.
 	if (allowAdmin && (await isWgAdmin(wgId, memberId))) {
-		return { status: 'ok', content: row.content, moderated: true };
+		return { status: 'ok', moderated: true };
 	}
 	return { status: 'forbidden' };
-}
-
-function auditCommentSnippet(content: string): string {
-	return content.slice(0, 160);
 }
 
 export const PATCH = withWgRoute<{ id: string; commentId: string }>(
@@ -89,11 +82,7 @@ export const PATCH = withWgRoute<{ id: string; commentId: string }>(
 			entityType: 'announcement_comment',
 			entityId: comment.id,
 			summary: `${auth.member.name} hat einen Kommentar aktualisiert.`,
-			metadata: {
-				announcementId: id,
-				contentBefore: auditCommentSnippet(owner.content),
-				contentAfter: auditCommentSnippet(comment.content),
-			},
+			metadata: { announcementId: id },
 		});
 		return NextResponse.json({ comment });
 	},
@@ -135,7 +124,6 @@ export const DELETE = withWgRoute<{ id: string; commentId: string }>(
 				: `${auth.member.name} hat einen Kommentar entfernt.`,
 			metadata: {
 				announcementId: id,
-				content: owner.content.slice(0, 160),
 				moderated: owner.moderated,
 			},
 		});

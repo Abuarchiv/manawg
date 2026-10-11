@@ -183,6 +183,13 @@
       "when": 1791661654841,
       "tag": "0025_expense_categories",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1791750000000,
+      "tag": "0029_audit_strip_content",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,1 @@
+UPDATE "audit_events" SET "metadata_json" = ("metadata_json"::jsonb - 'contentPreview' - 'content' - 'contentBefore' - 'contentAfter')::text WHERE "event_type" LIKE 'announcement.%' AND "metadata_json" LIKE '%content%';

@@ -190,8 +190,16 @@ mock.module('@/core/infra/paypal-onboarding', {
 		},
 	},
 });
+const readLimiter = {};
+let readAllowed = true;
 mock.module('@/core/rate-limit', {
-	namedExports: { checkRateLimit: async () => ({ success: true }), wgWriteLimiter: {} },
+	namedExports: {
+		checkRateLimit: async (limiter: unknown) => ({
+			success: limiter === readLimiter ? readAllowed : true,
+		}),
+		wgReadLimiter: readLimiter,
+		wgWriteLimiter: {},
+	},
 });
 mock.module('@/features/expenses/server/expense-payments', {
 	namedExports: {
@@ -226,6 +234,17 @@ test('GET exposes only provider readiness and returns no-store', async () => {
 	assert.equal(response.status, 200);
 	assert.deepEqual(await response.json(), { available: true, connected: true });
 	assert.equal(response.headers.get('cache-control'), 'no-store');
+});
+
+test('GET status check is rate limited per member before it calls PayPal', async () => {
+	const { connect } = harness({ savedMerchantId: merchantId });
+	readAllowed = false;
+	try {
+		const response = await connect.GET(new Request('https://manawg.example/api/connect'), { code });
+		assert.equal(response.status, 429);
+	} finally {
+		readAllowed = true;
+	}
 });
 
 test('start requires affirmative consent and fixes the callback to the configured generic URL', async () => {

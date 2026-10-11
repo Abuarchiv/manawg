@@ -340,7 +340,6 @@ export const POST = withWgRoute('announcements POST', async (req, { code }) => {
 		entityId: item.id,
 		summary: `${auth.member.name} hat einen Pinnwand-Beitrag erstellt.`,
 		metadata: {
-			contentPreview: content.slice(0, 120),
 			kind,
 			source: safeSource,
 			hasImage: Boolean(safeImageUrl),

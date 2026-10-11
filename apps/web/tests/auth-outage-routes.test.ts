@@ -82,6 +82,7 @@ mock.module('@/core/rate-limit', {
 		registerLimiter: {},
 		wgWriteLimiter: {},
 		uploadSignLimiter: {},
+		uploadSignDayLimiter: {},
 	},
 });
 mock.module('@/core/utils/share-code', {

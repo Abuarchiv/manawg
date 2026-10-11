@@ -8,6 +8,7 @@ import {
 	notificationPriorityForEvent,
 } from '@/core/notifications/notifications';
 import {
+	isInvalidSubscriptionKeyError,
 	isTransientWebPushStatus,
 	parseWebPushStatusCode,
 } from '@/core/notifications/web-push-errors';
@@ -169,7 +170,7 @@ async function sendWebPush(
 				}
 			} catch (err) {
 				const statusCode = parseWebPushStatusCode(err);
-				if (statusCode === 404 || statusCode === 410) {
+				if (statusCode === 404 || statusCode === 410 || isInvalidSubscriptionKeyError(err)) {
 					staleSubscriptionIds.push(sub.id);
 				} else {
 					failures.push(err);
