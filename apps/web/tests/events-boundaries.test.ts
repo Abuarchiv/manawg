@@ -325,3 +325,20 @@ test('spring-gap recurrence keeps the existing raw-instant fallback', () => {
 		['2026-03-29T01:30:00.000Z'],
 	);
 });
+
+test('a wide window can raise the expansion cap past one year of daily occurrences', () => {
+	const event = {
+		id: 'daily',
+		title: 'Daily',
+		description: null,
+		startsAt: '2026-01-01T09:00:00.000Z',
+		endsAt: null,
+		allDay: false,
+		location: null,
+		recurrence: 'FREQ=DAILY',
+	};
+	const from = '2026-01-01T00:00:00.000Z';
+	const to = '2027-04-01T00:00:00.000Z';
+	assert.equal(expandRecurrence(event, from, to).length, 366);
+	assert.ok(expandRecurrence(event, from, to, 500).length > 366);
+});

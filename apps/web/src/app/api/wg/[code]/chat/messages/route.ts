@@ -35,7 +35,7 @@ import {
 } from '@/features/chat/chat-pure';
 import { buildChatCursorWhere } from '@/features/chat/server/chat-unread-query';
 import { loadOwnReadMarker } from '@/features/chat/server/own-read-marker';
-import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -370,6 +370,9 @@ async function insertMessage(
 			body: input.body,
 			imageUrl: input.imageUrl,
 			replyToMessageId: input.replyToMessageId,
+			// The insert runs behind the WG lock: the transaction start would stamp it before an
+			// earlier message committed meanwhile, and the unread cursor would skip that message.
+			createdAt: sql`clock_timestamp()`,
 		})
 		.returning();
 	if (!inserted) throw new Error('chat_message_insert_failed');

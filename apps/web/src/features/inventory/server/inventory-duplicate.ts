@@ -6,8 +6,10 @@ import { and, eq, sql } from 'drizzle-orm';
 
 /**
  * Whether another inventory item of the WG already has this name (case and surrounding
- * whitespace ignored, like the shopping list). Not atomic: two simultaneous creates can
- * still both pass. An item that keeps its own name is never flagged, so old duplicates stay editable.
+ * whitespace ignored, like the shopping list). Not atomic on its own: two simultaneous creates
+ * can both pass, and `wg_inventory_items_unique_name` rejects the second (see
+ * `isInventoryNameViolation`). An item that keeps its own name is never flagged, so old
+ * duplicates stay editable.
  */
 export async function isInventoryNameTaken(
 	tx: DbTransaction,
@@ -32,4 +34,23 @@ export async function isInventoryNameTaken(
 		)
 		.limit(1);
 	return rows.length > 0;
+}
+
+const INVENTORY_UNIQUE_NAME = 'wg_inventory_items_unique_name';
+
+/** True when the error (or a wrapped cause) is a hit on the unique inventory name index. */
+export function isInventoryNameViolation(err: unknown): boolean {
+	const seen = new Set<object>();
+	let current: unknown = err;
+	while (current && typeof current === 'object' && !seen.has(current)) {
+		seen.add(current);
+		if (
+			(current as { code?: unknown }).code === '23505' &&
+			(current as { constraint?: unknown }).constraint === INVENTORY_UNIQUE_NAME
+		) {
+			return true;
+		}
+		current = (current as { cause?: unknown }).cause;
+	}
+	return false;
 }

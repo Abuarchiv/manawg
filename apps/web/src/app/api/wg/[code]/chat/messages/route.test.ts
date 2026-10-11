@@ -52,6 +52,7 @@ const state = {
 	rejectImageAttachment: false,
 	readMarkerRows: [] as Json[],
 	readMarkerQueries: 0,
+	insertedCreatedAt: undefined as unknown,
 };
 
 function reset(): void {
@@ -146,7 +147,13 @@ const withTransaction = async <R>(operation: (tx: unknown) => Promise<R>): Promi
 			values: (value: Json | unknown[]) => ({
 				returning: async () => {
 					assert.equal(table, wgChatMessages);
-					const message = { ...(value as Json), id: `message-${messages.length + 1}` };
+					// The database resolves the `clock_timestamp()` expression; keep what the route sent.
+					state.insertedCreatedAt = (value as Json).createdAt;
+					const message = {
+						...(value as Json),
+						createdAt: new Date().toISOString(),
+						id: `message-${messages.length + 1}`,
+					};
 					messages.push(message);
 					return [message];
 				},
@@ -305,6 +312,11 @@ test('concurrent claimed retries commit one chat message and replay one response
 	assert.equal(state.mentions.length, 1);
 	assert.equal(state.audits, 1);
 	assert.equal(state.notifications, 2);
+	// Stamped by the database clock at insert time (after the WG lock), not at transaction start.
+	assert.match(
+		new PgDialect().sqlToQuery(state.insertedCreatedAt as never).sql,
+		/clock_timestamp\(\)/,
+	);
 });
 
 test('failed replay write rolls back message and mentions before a safe retry', async () => {

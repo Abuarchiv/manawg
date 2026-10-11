@@ -1,7 +1,5 @@
 import type { ChoreRecurrenceType } from '@/core/db';
-
-const INTERVAL_MAX_DAYS = 365;
-const INTERVAL_MAX_MONTHS = 60;
+import { CHORE_INTERVAL_MAX_DAYS, CHORE_INTERVAL_MAX_MONTHS } from '@/features/chores/chore-limits';
 
 interface ChoreCadence {
 	intervalDays: number;
@@ -40,6 +38,6 @@ export function buildChorePatchUpdate(
 		update.anchorAt = current.nextDueAt;
 	}
 
-	const maximum = recurrenceType === 'months' ? INTERVAL_MAX_MONTHS : INTERVAL_MAX_DAYS;
+	const maximum = recurrenceType === 'months' ? CHORE_INTERVAL_MAX_MONTHS : CHORE_INTERVAL_MAX_DAYS;
 	return { update, validCadence: intervalDays >= 1 && intervalDays <= maximum };
 }

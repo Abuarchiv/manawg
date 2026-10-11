@@ -16,7 +16,7 @@ export function settlementErrorMessage(error: string): string {
 	if (error === 'invalid_share_code') {
 		return 'Ausgleich konnte nicht gespeichert werden: Der WG-Code ist ungültig.';
 	}
-	if (error === 'not_a_member' || error === 'member_id_required' || error === 'member_id_invalid') {
+	if (error === 'not_a_member') {
 		return 'Ausgleich konnte nicht gespeichert werden: Tritt der WG erneut bei.';
 	}
 	if (error === 'member_not_in_wg') {

@@ -90,6 +90,8 @@ export const wgShareCodeMissLimiter = build(20, 3600, 'wg-code-miss'); // 20 unk
 export const notifTestLimiter = build(3, 60, 'notif-test'); // 3 test notifications / min / member — anti-spam
 export const reminderSendLimiter = build(10, 3600, 'reminder-send'); // 10 Mahnungen / hour / member — global anti-spam
 export const inviteMailLimiter = build(10, 3600, 'invite-mail'); // 10 invitation mails / hour / member — anti-spam
+export const inviteMailAccountLimiter = build(20, 86_400, 'invite-mail-account'); // 20 invitation mails / day / account across WGs — a second member row does not reset it
+export const inviteMailRecipientLimiter = build(2, 86_400, 'invite-mail-recipient'); // 2 invitation mails / day / address across all WGs — keeps one inbox from being mailed by many WGs
 
 export const chatReadLimiter = build(120, 60, 'chat-read'); // 120 read-receipts / min / member
 export const chatMessageLimiter = build(20, 60, 'chat-msg'); // 20 messages / min / member — anti-spam

@@ -14,7 +14,10 @@ import {
 	INVENTORY_LIMITS,
 	INVENTORY_UNITS,
 } from '@/features/inventory/inventory';
-import { isInventoryNameTaken } from '@/features/inventory/server/inventory-duplicate';
+import {
+	isInventoryNameTaken,
+	isInventoryNameViolation,
+} from '@/features/inventory/server/inventory-duplicate';
 import { updateInventoryItemMutation } from '@/features/inventory/server/inventory-mutations';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
@@ -103,37 +106,48 @@ export const PATCH = withWgRoute<{ id: string }>('inventory PATCH', async (req, 
 	if (!auth.ok) return auth.response;
 	const wgId = auth.wg.id;
 
-	const result = await withIdempotentWrite(
-		{
-			scope: `inventory-patch:${wgId}:${auth.member.memberId}:${id}`,
-			key: readIdempotencyKey(req),
-			codec: inventoryPatchCodec,
-			prepare: async () => {
-				const limited = await checkRateLimit(
-					wgWriteLimiter,
-					`inventory-patch:${wgId}:${auth.member.memberId}`,
-				);
-				return limited.success ? { input: undefined } : { stop: tooMany() };
+	const write = () =>
+		withIdempotentWrite(
+			{
+				scope: `inventory-patch:${wgId}:${auth.member.memberId}:${id}`,
+				key: readIdempotencyKey(req),
+				codec: inventoryPatchCodec,
+				prepare: async () => {
+					const limited = await checkRateLimit(
+						wgWriteLimiter,
+						`inventory-patch:${wgId}:${auth.member.memberId}`,
+					);
+					return limited.success ? { input: undefined } : { stop: tooMany() };
+				},
 			},
-		},
-		async (tx) => {
-			if (
-				parsed.data.name !== undefined &&
-				(await isInventoryNameTaken(tx, wgId, parsed.data.name, id))
-			) {
-				return rejectWrite(conflict('inventory_item_duplicate'));
-			}
-			const mutation = await updateInventoryItemMutation(tx, {
-				...parsed.data,
-				itemId: id,
-				wgId,
-				memberId: auth.member.memberId,
-			});
-			if (mutation.kind === 'not_found') return rejectWrite(notFound('item_not_found'));
-			if (mutation.kind === 'conflict') return rejectWrite(conflict('version_conflict'));
-			return { status: 200, body: { item: mutation.updated }, context: mutation };
-		},
-	);
+			async (tx) => {
+				if (
+					parsed.data.name !== undefined &&
+					(await isInventoryNameTaken(tx, wgId, parsed.data.name, id))
+				) {
+					return rejectWrite(conflict('inventory_item_duplicate'));
+				}
+				const mutation = await updateInventoryItemMutation(tx, {
+					...parsed.data,
+					itemId: id,
+					wgId,
+					memberId: auth.member.memberId,
+				});
+				if (mutation.kind === 'not_found') return rejectWrite(notFound('item_not_found'));
+				if (mutation.kind === 'conflict') return rejectWrite(conflict('version_conflict'));
+				return { status: 200, body: { item: mutation.updated }, context: mutation };
+			},
+		);
+	// The unique index catches two creates or renames racing for one name; answer it like the
+	// check above, after the helper rolled back the aborted transaction.
+	let result: Awaited<ReturnType<typeof write>>;
+	try {
+		result = await write();
+	} catch (err) {
+		if (isInventoryNameViolation(err)) return conflict('inventory_item_duplicate');
+		throw err;
+	}
+
 	if (result.kind === 'stopped') return result.response;
 	if (result.kind === 'written' && result.context) {
 		if ('rejected' in result.context) return result.context.rejected;

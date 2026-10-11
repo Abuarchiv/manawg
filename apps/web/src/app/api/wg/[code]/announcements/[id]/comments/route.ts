@@ -6,6 +6,7 @@ import {
 	db,
 	wgMembers,
 } from '@/core/db';
+import { persistReplayWarning, withIdempotentReplay } from '@/core/db/with-replay';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
@@ -17,10 +18,6 @@ import {
 	dispatchNotificationSafely,
 } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
-import {
-	persistAnnouncementReplayWarning,
-	withAnnouncementReplay,
-} from '@/features/pinnwand/server/announcement-replay';
 import { and, asc, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -80,7 +77,7 @@ export const POST = withWgRoute<{ id: string }>(
 		if (!auth.ok) return auth.response;
 		const wg = auth.wg;
 		const scope = `announcement-comment:${wg.id}:${auth.member.memberId}:${id}`;
-		const outcome = await withAnnouncementReplay(req, scope, async (tx) => {
+		const outcome = await withIdempotentReplay(req, scope, async (tx) => {
 			const limited = await checkRateLimit(
 				wgWriteLimiter,
 				`comment:${wg.id}:${auth.member.memberId}`,
@@ -182,7 +179,7 @@ export const POST = withWgRoute<{ id: string }>(
 
 		if (warning && outcome.key) {
 			try {
-				if (!(await persistAnnouncementReplayWarning(scope, outcome.key, comment.id, warning))) {
+				if (!(await persistReplayWarning(scope, outcome.key, comment.id, warning))) {
 					logApiError(
 						'[announcement/comments] replay warning persistence failed',
 						new Error('replay_row_missing'),

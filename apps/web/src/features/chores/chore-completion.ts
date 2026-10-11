@@ -68,6 +68,9 @@ export async function submitChoreCompletion(
 	const idempotencyKey = ctx.keys.get(requestKey) ?? createOfflineIdempotencyKey();
 	if (!idempotencyKey) return { kind: 'key_unavailable' };
 	ctx.keys.set(requestKey, idempotencyKey);
+	// The tap time travels with the request and with the queued action, so a replay hours later
+	// still records when the member actually did the chore.
+	const tappedAt = Date.now();
 
 	const result = await apiFetch<{ chore?: ConfirmedChore }>(
 		`/api/wg/${encodeURIComponent(ctx.shareCode)}/chores/${encodeURIComponent(chore.id)}/complete`,
@@ -78,6 +81,7 @@ export async function submitChoreCompletion(
 			body: JSON.stringify({
 				expectedNextDueAt: chore.nextDueAt,
 				expectedAssignedMemberId: chore.assignedMemberId,
+				completedAt: new Date(tappedAt).toISOString(),
 			}),
 		},
 	);
@@ -99,6 +103,7 @@ export async function submitChoreCompletion(
 				choreId: chore.id,
 				expectedNextDueAt: chore.nextDueAt,
 				expectedAssignedMemberId: chore.assignedMemberId,
+				now: tappedAt,
 			}),
 		);
 		if (queuedCount === 0) return { kind: 'queue_blocked' };

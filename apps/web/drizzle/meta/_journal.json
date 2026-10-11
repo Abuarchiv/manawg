@@ -183,6 +183,13 @@
       "when": 1791661654841,
       "tag": "0025_expense_categories",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1791711169628,
+      "tag": "0026_inventory_unique_name",
+      "breakpoints": true
     }
   ]
 }

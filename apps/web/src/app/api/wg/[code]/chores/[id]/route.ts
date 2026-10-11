@@ -11,6 +11,14 @@ import { parseBody } from '@/core/http/parse-body';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { MS_PER_DAY } from '@/core/utils/time';
+import {
+	CHORE_INTERVAL_MAX_DAYS,
+	CHORE_INTERVAL_MAX_MONTHS,
+	CHORE_INTERVAL_MIN,
+	CHORE_TITLE_MAX,
+	CHORE_TITLE_MIN,
+	choreDueAtSchema,
+} from '@/features/chores/chore-limits';
 import { buildChorePatchUpdate } from '@/features/chores/chore-patch';
 import {
 	closeChoreSwapRequest,
@@ -20,18 +28,12 @@ import { type SQL, and, eq, isNull, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-const TITLE_MIN = 1;
-const TITLE_MAX = 120;
-const INTERVAL_MIN = 1;
-const INTERVAL_MAX_DAYS = 365;
-const INTERVAL_MAX_MONTHS = 60;
-
 const patchSchema = z
 	.object({
-		title: z.string().trim().min(TITLE_MIN).max(TITLE_MAX).optional(),
+		title: z.string().trim().min(CHORE_TITLE_MIN).max(CHORE_TITLE_MAX).optional(),
 		assignedMemberId: z.string().uuid().nullable().optional(),
-		nextDueAt: z.string().datetime({ offset: true }).optional(),
-		intervalDays: z.number().int().min(INTERVAL_MIN).optional(),
+		nextDueAt: choreDueAtSchema.optional(),
+		intervalDays: z.number().int().min(CHORE_INTERVAL_MIN).optional(),
 		// z.enum requires a mutable tuple; spread the readonly schema constant.
 		recurrenceType: z.enum([...CHORE_RECURRENCE_TYPES]).optional(),
 		// The version the editor was opened on; a newer one means someone saved meanwhile.
@@ -44,7 +46,8 @@ const patchSchema = z
 		// Use the most permissive cap if recurrenceType is not provided in the
 		// patch (the existing column value may be either). The cap mainly
 		// guards against absurd values like intervalDays=999999.
-		const cap = data.recurrenceType === 'months' ? INTERVAL_MAX_MONTHS : INTERVAL_MAX_DAYS;
+		const cap =
+			data.recurrenceType === 'months' ? CHORE_INTERVAL_MAX_MONTHS : CHORE_INTERVAL_MAX_DAYS;
 		if (data.intervalDays > cap) {
 			ctx.addIssue({
 				code: z.ZodIssueCode.too_big,

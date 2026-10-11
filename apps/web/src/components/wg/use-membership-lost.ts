@@ -1,6 +1,6 @@
 'use client';
 
-import { type StoredIdentity, clearIdentity } from '@/core/auth/identity';
+import { type StoredIdentity, clearIdentity, forgetWg } from '@/core/auth/identity';
 import { MEMBERSHIP_LOST_EVENT } from '@/core/infra/api-client';
 import { type Dispatch, type RefObject, type SetStateAction, useEffect } from 'react';
 
@@ -52,6 +52,8 @@ export function useMembershipLost({
 				.then((data: { wgs?: Array<{ id: string; code: string }> } | null) => {
 					const next = data?.wgs?.find((entry) => entry.id === wgId)?.code;
 					if (!next) return showLost();
+					// The old code stays in the known-WG list otherwise and offers a dead link.
+					forgetWg(encodedShareCode);
 					const { pathname, search } = window.location;
 					window.location.replace(
 						pathname.replace(`/wg/${encodedShareCode}`, `/wg/${encodeURIComponent(next)}`) + search,

@@ -14,7 +14,7 @@ mock.module('drizzle-orm', {
 	},
 });
 
-const { isInventoryNameTaken } = await import('./inventory-duplicate');
+const { isInventoryNameTaken, isInventoryNameViolation } = await import('./inventory-duplicate');
 
 /** Answers the own-row lookup first, then the same-name lookup. */
 function fakeTx(answers: unknown[][]) {
@@ -42,4 +42,14 @@ test('an item keeping its own name is not a duplicate of itself or of old twins'
 test('renaming onto another item is a duplicate', async () => {
 	const tx = fakeTx([[{ name: 'Salz' }], [{ id: 'other' }]]);
 	assert.equal(await isInventoryNameTaken(tx as never, 'wg', 'Klopapier', 'own'), true);
+});
+
+test('the unique name index violation is recognised through a wrapped cause', () => {
+	const pg = Object.assign(new Error('duplicate key'), {
+		code: '23505',
+		constraint: 'wg_inventory_items_unique_name',
+	});
+	assert.equal(isInventoryNameViolation(new Error('query failed', { cause: pg })), true);
+	assert.equal(isInventoryNameViolation({ ...pg, constraint: 'other_unique_key' }), false);
+	assert.equal(isInventoryNameViolation(new Error('boom')), false);
 });

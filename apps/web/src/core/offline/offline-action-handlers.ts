@@ -141,6 +141,7 @@ export const offlineActionHandlers: Record<OfflineActionType, OfflineActionHandl
 			body: {
 				expectedNextDueAt: action.payload.expectedNextDueAt,
 				expectedAssignedMemberId: action.payload.expectedAssignedMemberId,
+				completedAt: action.payload.completedAt,
 			},
 		}),
 		summary: () => ({

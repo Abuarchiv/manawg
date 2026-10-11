@@ -1,5 +1,6 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, shoppingItems } from '@/core/db';
+import { withIdempotentReplay } from '@/core/db/with-replay';
 import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
@@ -8,7 +9,6 @@ import { badRequest, conflict, notFound, tooMany } from '@/core/http/api-errors'
 import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey } from '@/core/idempotency-store';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
-import { withAnnouncementReplay } from '@/features/pinnwand/server/announcement-replay';
 import { NAME_MAX, QUANTITY_MAX } from '@/features/shopping/components/constants';
 import { isOpenShoppingItemDuplicate } from '@/features/shopping/shopping-duplicate';
 import { and, eq, isNull, sql } from 'drizzle-orm';
@@ -72,7 +72,7 @@ export const PATCH = withWgRoute<{ id: string }>('shopping PATCH', async (req, {
 	// ids are ignored to prevent attribution spoofing.
 	const boughtBy = isBought ? auth.member.memberId : null;
 	const edited = name !== undefined || quantity !== undefined;
-	const replay = await withAnnouncementReplay(
+	const replay = await withIdempotentReplay(
 		req,
 		`shopping-item:${wgId}:${auth.member.memberId}:${id}`,
 		async (tx) => {

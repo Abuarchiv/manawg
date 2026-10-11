@@ -16,7 +16,10 @@ import {
 	groupItemsByCategory,
 } from '@/features/inventory/inventory';
 import { getRecentDecrementCounts } from '@/features/inventory/server/inventory-decrements';
-import { isInventoryNameTaken } from '@/features/inventory/server/inventory-duplicate';
+import {
+	isInventoryNameTaken,
+	isInventoryNameViolation,
+} from '@/features/inventory/server/inventory-duplicate';
 import { createInventoryItemMutation } from '@/features/inventory/server/inventory-mutations';
 import { and, asc, eq, lte } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
@@ -97,29 +100,40 @@ export const POST = withWgRoute('inventory POST', async (req, { code }) => {
 	const wgId = auth.wg.id;
 	const replayScope = `inventory-create:${wgId}:${auth.member.memberId}`;
 
-	const result = await withIdempotentWrite(
-		{
-			scope: replayScope,
-			key: readIdempotencyKey(req),
-			codec: inventoryCreateCodec,
-			prepare: async () => {
-				const limited = await checkRateLimit(wgWriteLimiter, replayScope);
-				return limited.success ? { input: undefined } : { stop: tooMany() };
+	const write = () =>
+		withIdempotentWrite(
+			{
+				scope: replayScope,
+				key: readIdempotencyKey(req),
+				codec: inventoryCreateCodec,
+				prepare: async () => {
+					const limited = await checkRateLimit(wgWriteLimiter, replayScope);
+					return limited.success ? { input: undefined } : { stop: tooMany() };
+				},
 			},
-		},
-		async (tx) => {
-			if (await isInventoryNameTaken(tx, wgId, parsed.data.name)) {
-				return rejectWrite(conflict('inventory_item_duplicate'));
-			}
-			const mutation = await createInventoryItemMutation(tx, {
-				...parsed.data,
-				wgId,
-				memberId: auth.member.memberId,
-			});
-			if (mutation.kind !== 'ok') return rejectWrite(serverError('insert_failed'));
-			return { status: 200, body: { item: mutation.item }, context: { item: mutation.item } };
-		},
-	);
+			async (tx) => {
+				if (await isInventoryNameTaken(tx, wgId, parsed.data.name)) {
+					return rejectWrite(conflict('inventory_item_duplicate'));
+				}
+				const mutation = await createInventoryItemMutation(tx, {
+					...parsed.data,
+					wgId,
+					memberId: auth.member.memberId,
+				});
+				if (mutation.kind !== 'ok') return rejectWrite(serverError('insert_failed'));
+				return { status: 200, body: { item: mutation.item }, context: { item: mutation.item } };
+			},
+		);
+	// The unique index catches two creates or renames racing for one name; answer it like the
+	// check above, after the helper rolled back the aborted transaction.
+	let result: Awaited<ReturnType<typeof write>>;
+	try {
+		result = await write();
+	} catch (err) {
+		if (isInventoryNameViolation(err)) return conflict('inventory_item_duplicate');
+		throw err;
+	}
+
 	if (result.kind === 'stopped') return result.response;
 	if (result.kind === 'written' && result.context) {
 		if ('rejected' in result.context) return result.context.rejected;

@@ -14,17 +14,18 @@ import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { berlinDayKey, startOfBerlinDay } from '@/core/utils/berlin-day';
 import { MS_PER_DAY } from '@/core/utils/time';
 import { computeOpenGapsByMember } from '@/features/chores/chore-fairness';
+import {
+	CHORE_INTERVAL_MAX_DAYS,
+	CHORE_INTERVAL_MAX_MONTHS,
+	CHORE_INTERVAL_MIN,
+	CHORE_TITLE_MAX,
+	CHORE_TITLE_MIN,
+	choreDueAtSchema,
+} from '@/features/chores/chore-limits';
 import { computeNextDueAt } from '@/features/chores/chore-recurrence';
 import { and, asc, desc, eq, gte, inArray, isNull, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-
-const TITLE_MIN = 1;
-const TITLE_MAX = 120;
-const INTERVAL_MIN = 1;
-// Cap depends on unit: 365 days or 60 months (5 years), both reasonable for a WG.
-const INTERVAL_MAX_DAYS = 365;
-const INTERVAL_MAX_MONTHS = 60;
 
 type ChoreCreateResponseBody = { chore: unknown; warning: NotificationWarning };
 
@@ -35,18 +36,19 @@ const choreCreateCodec = bodyCodec(
 
 const createChoreSchema = z
 	.object({
-		title: z.string().trim().min(TITLE_MIN).max(TITLE_MAX),
-		intervalDays: z.number().int().min(INTERVAL_MIN).optional().default(7),
+		title: z.string().trim().min(CHORE_TITLE_MIN).max(CHORE_TITLE_MAX),
+		intervalDays: z.number().int().min(CHORE_INTERVAL_MIN).optional().default(7),
 		// z.enum requires a mutable tuple; spread the readonly schema constant.
 		recurrenceType: z
 			.enum([...CHORE_RECURRENCE_TYPES])
 			.optional()
 			.default('days'),
 		assignedMemberId: z.string().uuid().optional().nullable(),
-		nextDueAt: z.string().datetime({ offset: true }).optional(),
+		nextDueAt: choreDueAtSchema.optional(),
 	})
 	.superRefine((data, ctx) => {
-		const cap = data.recurrenceType === 'months' ? INTERVAL_MAX_MONTHS : INTERVAL_MAX_DAYS;
+		const cap =
+			data.recurrenceType === 'months' ? CHORE_INTERVAL_MAX_MONTHS : CHORE_INTERVAL_MAX_DAYS;
 		if (data.intervalDays > cap) {
 			ctx.addIssue({
 				code: z.ZodIssueCode.too_big,
