@@ -57,7 +57,7 @@ export function MonthlyStatementDocument({
 	return (
 		<article className="flex flex-col gap-8 text-foreground print:gap-10">
 			<header className="flex flex-col gap-6">
-				<div className="flex items-start justify-between gap-4">
+				<div className="flex flex-wrap items-start justify-between gap-4">
 					<span className="flex items-center gap-2">
 						<LogoMark size={28} tile={false} aria-hidden />
 						<span className="font-heading text-[18px] font-semibold tracking-[-0.03em]">
@@ -66,9 +66,9 @@ export function MonthlyStatementDocument({
 					</span>
 					<dl className="grid grid-cols-[auto_auto] gap-x-3 gap-y-0.5 text-right text-[12px]">
 						<dt className="text-left text-muted-foreground">Abrechnung</dt>
-						<dd className="font-mono">{number}</dd>
+						<dd className="font-mono whitespace-nowrap">{number}</dd>
 						<dt className="text-left text-muted-foreground">Zeitraum</dt>
-						<dd className="font-mono">{period(monthKey)}</dd>
+						<dd className="font-mono whitespace-nowrap">{period(monthKey)}</dd>
 						<dt className="text-left text-muted-foreground">Erstellt für</dt>
 						<dd>{viewerName}</dd>
 					</dl>
@@ -123,58 +123,64 @@ export function MonthlyStatementDocument({
 						Geteilt auf {members.length} Personen
 					</span>
 				</div>
-				<table className="w-full border-collapse text-[14px]">
-					<thead>
-						<tr className={cn(EYEBROW, 'border-b border-foreground')}>
-							<th scope="col" className={cn(TH, 'text-left')}>
-								Person
-							</th>
-							<th scope="col" className={cn(TH, 'pl-3 text-right')}>
-								Bezahlt
-							</th>
-							<th scope="col" className={cn(TH, 'pl-3 text-right')}>
-								Anteil
-							</th>
-							<th scope="col" className={cn(TH, 'pl-3 text-right')}>
-								Saldo
-							</th>
-						</tr>
-					</thead>
-					<tbody>
-						{members.map((member) => (
-							<tr key={member.id} className="border-b border-border">
-								<th scope="row" className="py-2.5 text-left font-medium">
-									<span className="flex min-w-0 items-center gap-2">
-										<MemberAvatar name={member.name} size={24} />
-										<span className="truncate">{member.name}</span>
-										{member.id === viewerId && (
-											<span className="text-[12px] font-normal text-muted-foreground">du</span>
-										)}
-									</span>
+				{/* Vier Spalten passen bei 320 px nicht: die Tabelle scrollt seitlich statt die Seite. */}
+				<div className="overflow-x-auto">
+					<table className="w-full border-collapse text-[14px]">
+						<thead>
+							<tr className={cn(EYEBROW, 'border-b border-foreground')}>
+								<th scope="col" className={cn(TH, 'text-left')}>
+									Person
 								</th>
-								<td className={cn(MONEY, 'pl-3 text-right text-[13px]')}>
-									{formatEuroCents(member.paidCents)}
-								</td>
-								<td className={cn(MONEY, 'pl-3 text-right text-[13px] text-muted-foreground')}>
-									{formatEuroCents(member.shareCents)}
-								</td>
-								<td
-									className={cn(
-										MONEY,
-										'pl-3 text-right text-[13px] font-medium',
-										member.balanceCents === 0
-											? 'text-muted-foreground'
-											: member.balanceCents > 0
-												? 'text-settled'
-												: 'text-destructive',
-									)}
-								>
-									{formatEuroCents(member.balanceCents, 'EUR', { signed: true }).replace('-', '−')}
-								</td>
+								<th scope="col" className={cn(TH, 'pl-3 text-right')}>
+									Bezahlt
+								</th>
+								<th scope="col" className={cn(TH, 'pl-3 text-right')}>
+									Anteil
+								</th>
+								<th scope="col" className={cn(TH, 'pl-3 text-right')}>
+									Saldo
+								</th>
 							</tr>
-						))}
-					</tbody>
-				</table>
+						</thead>
+						<tbody>
+							{members.map((member) => (
+								<tr key={member.id} className="border-b border-border">
+									<th scope="row" className="py-2.5 text-left font-medium">
+										<span className="flex min-w-0 items-center gap-2">
+											<MemberAvatar name={member.name} size={24} />
+											<span className="truncate">{member.name}</span>
+											{member.id === viewerId && (
+												<span className="text-[12px] font-normal text-muted-foreground">du</span>
+											)}
+										</span>
+									</th>
+									<td className={cn(MONEY, 'pl-3 text-right text-[13px]')}>
+										{formatEuroCents(member.paidCents)}
+									</td>
+									<td className={cn(MONEY, 'pl-3 text-right text-[13px] text-muted-foreground')}>
+										{formatEuroCents(member.shareCents)}
+									</td>
+									<td
+										className={cn(
+											MONEY,
+											'pl-3 text-right text-[13px] font-medium',
+											member.balanceCents === 0
+												? 'text-muted-foreground'
+												: member.balanceCents > 0
+													? 'text-settled'
+													: 'text-destructive',
+										)}
+									>
+										{formatEuroCents(member.balanceCents, 'EUR', { signed: true }).replace(
+											'-',
+											'−',
+										)}
+									</td>
+								</tr>
+							))}
+						</tbody>
+					</table>
+				</div>
 			</section>
 
 			{transfers.length > 0 && (
@@ -247,61 +253,63 @@ export function MonthlyStatementDocument({
 							{items.length} Einträge, nach Datum
 						</span>
 					</div>
-					<table className="w-full border-collapse text-[13px]">
-						<thead>
-							<tr className={cn(EYEBROW, 'border-b border-foreground')}>
-								<th scope="col" className={cn(TH, 'w-12 text-left print:w-16')}>
-									Datum
-								</th>
-								<th scope="col" className={cn(TH, 'pl-3 text-left')}>
-									Beschreibung
-								</th>
-								<th scope="col" className={cn(TH, 'hidden pl-3 text-left print:table-cell')}>
-									Von
-								</th>
-								<th scope="col" className={cn(TH, 'pl-3 text-right')}>
-									Betrag
-								</th>
-							</tr>
-						</thead>
-						<tbody>
-							{items.map((item) => (
-								<tr
-									key={item.id}
-									className="break-inside-avoid border-b border-border/60 align-top"
-								>
-									<td className="py-2 font-mono text-[12px] text-muted-foreground">
-										{dayMonth.format(new Date(item.occurredAt))}
-									</td>
-									<td className="py-2 pl-3 break-words">
-										{item.description}
-										<span className="block text-[12px] text-muted-foreground print:hidden">
+					<div className="overflow-x-auto">
+						<table className="w-full border-collapse text-[13px]">
+							<thead>
+								<tr className={cn(EYEBROW, 'border-b border-foreground')}>
+									<th scope="col" className={cn(TH, 'w-12 text-left print:w-16')}>
+										Datum
+									</th>
+									<th scope="col" className={cn(TH, 'pl-3 text-left')}>
+										Beschreibung
+									</th>
+									<th scope="col" className={cn(TH, 'hidden pl-3 text-left print:table-cell')}>
+										Von
+									</th>
+									<th scope="col" className={cn(TH, 'pl-3 text-right')}>
+										Betrag
+									</th>
+								</tr>
+							</thead>
+							<tbody>
+								{items.map((item) => (
+									<tr
+										key={item.id}
+										className="break-inside-avoid border-b border-border/60 align-top"
+									>
+										<td className="py-2 font-mono text-[12px] text-muted-foreground">
+											{dayMonth.format(new Date(item.occurredAt))}
+										</td>
+										<td className="py-2 pl-3 break-words">
+											{item.description}
+											<span className="block text-[12px] text-muted-foreground print:hidden">
+												{item.payerName}
+											</span>
+										</td>
+										<td className="hidden py-2 pl-3 text-muted-foreground print:table-cell">
 											{item.payerName}
-										</span>
-									</td>
-									<td className="hidden py-2 pl-3 text-muted-foreground print:table-cell">
-										{item.payerName}
-									</td>
-									<td className={cn(MONEY, 'py-2 pl-3 text-right text-[12px]')}>
-										{formatEuroCents(item.amountCents)}
+										</td>
+										<td className={cn(MONEY, 'py-2 pl-3 text-right text-[12px]')}>
+											{formatEuroCents(item.amountCents)}
+										</td>
+									</tr>
+								))}
+							</tbody>
+							<tfoot>
+								<tr className="border-t border-foreground font-semibold">
+									<th scope="row" colSpan={2} className="py-3 text-left print:hidden">
+										Summe
+									</th>
+									<th scope="row" colSpan={3} className="hidden py-3 text-left print:table-cell">
+										Summe
+									</th>
+									<td className={cn(MONEY, 'py-3 pl-3 text-right text-[13px]')}>
+										{formatEuroCents(totalCents)}
 									</td>
 								</tr>
-							))}
-						</tbody>
-						<tfoot>
-							<tr className="border-t border-foreground font-semibold">
-								<th scope="row" colSpan={2} className="py-3 text-left print:hidden">
-									Summe
-								</th>
-								<th scope="row" colSpan={3} className="hidden py-3 text-left print:table-cell">
-									Summe
-								</th>
-								<td className={cn(MONEY, 'py-3 pl-3 text-right text-[13px]')}>
-									{formatEuroCents(totalCents)}
-								</td>
-							</tr>
-						</tfoot>
-					</table>
+							</tfoot>
+						</table>
+					</div>
 				</section>
 			)}
 

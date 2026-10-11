@@ -174,7 +174,7 @@ export default function EinstellungenPage() {
 				>
 					<TabsList
 						data-sticky-tabs
-						className="sticky z-20 flex flex-wrap before:absolute before:-inset-x-4 before:-top-[calc(env(safe-area-inset-top,0px)+var(--banner-stack-height,0px)+0.5rem)] before:h-[calc(env(safe-area-inset-top,0px)+var(--banner-stack-height,0px)+0.5rem)] before:bg-background before:content-[''] h-auto min-w-0 max-w-full w-full gap-1 rounded-xl p-1"
+						className="sticky z-20 flex flex-wrap before:absolute before:-inset-x-4 before:-top-[var(--sticky-tabs-mask)] before:h-[var(--sticky-tabs-mask)] before:bg-background before:content-[''] h-auto min-w-0 max-w-full w-full gap-1 rounded-xl p-1"
 						style={{
 							top: 'calc(env(safe-area-inset-top, 0px) + var(--banner-stack-height, 0px) + 0.5rem)',
 						}}

@@ -207,6 +207,16 @@ html:has([data-session-banner]) {
 	scroll-padding-top: calc(var(--banner-stack-height) + 0.5rem);
 }
 
+/* Die klebende Tab-Leiste der Einstellungen deckt den Streifen über sich ab (Statusleiste + Lücke),
+   damit beim Scrollen nichts durchscheint. Banner sind selbst deckend: dann bleibt nur die Lücke,
+   sonst würde die Maske schon ungescrollt Kopfzeile und Titel verdecken. */
+:root {
+	--sticky-tabs-mask: calc(env(safe-area-inset-top, 0px) + 0.5rem);
+}
+html:has([data-offline-banner], [data-session-banner]) {
+	--sticky-tabs-mask: 0.5rem;
+}
+
 /* 1b. WCAG 2.4.11 — the settings page's sticky tab strip (TabsList) must not
       hide content scrolled/focused into view beneath it (e.g. Shift+Tab
       landing right under it). Scoped via :has() to pages that render this
