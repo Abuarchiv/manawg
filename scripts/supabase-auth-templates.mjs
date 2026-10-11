@@ -20,6 +20,8 @@ for (const name of ['confirmation', 'recovery', 'magic_link', 'email_change']) {
 	body[`mailer_subjects_${name}`] = subjects[name];
 	body[`mailer_templates_${name}_content`] = await html(name);
 }
+// The sign-in code form expects EMAIL_CODE_LENGTH (8) digits; Supabase defaults to 6.
+body.mailer_otp_length = 8;
 body.mailer_notifications_password_changed_enabled = true;
 body.mailer_subjects_password_changed_notification = subjects.password_changed;
 body.mailer_templates_password_changed_notification_content = await html('password_changed');

@@ -248,3 +248,11 @@ Offen:
 - **Phase 3, Server-Claim-Pfad** (`claim/route.ts`, `legacy-claim-proof.ts`, `LEGACY_CLAIM_*`): kein Aufrufer mehr, Löschung wartet auf die Prod-Zählung `select count(*) from wg_members where auth_user_id is null and deactivated_at is null`.
 - **Phase 4, Fixture-Modus** durch echte Test-Session ersetzen (2–3 Tage, CI-Umbau).
 - **Vor dem Prod-Release:** Migration 0026 manuell einspielen (`supabase db query --linked`), Supabase-Vorlage „Magic Link" zeigt `{{ .Token }}` (8 Stellen, versioniert in `supabase/templates/magic_link.html`), E-Mail-OTP-Länge im Supabase-Projekt muss 8 sein (`EMAIL_CODE_LENGTH`), bestehende WGs über den Wechsel auf Einladungslinks informieren (Text in Abschnitt 7 / Commit 31d49363).
+
+### Nachtrag 2026-10-11: Release-Lücken
+
+- CI auf main war rot: `analytics:check` las die gelöschte Beitrittsdatei. Behoben (7eab2a6a). Alle CI-Schritte lokal grün: Audit (nur moderate), lint, knip, Analytics, Architektur, WG-Auth-Invariante, Schema-Drift, typecheck, Unit 985/0, Build, Bundle-Budget.
+- Der Code-Login braucht 8 Ziffern. `scripts/supabase-auth-templates.mjs --apply` setzt jetzt `mailer_otp_length: 8` zusammen mit den Mail-Vorlagen (Vorlage `magic_link` zeigt den Code).
+- Branch `audit-integration` enthält ebenfalls 0026/0027 (andere Inhalte). Vor einem Merge dort umnummerieren.
+- Release-Reihenfolge: Migration 0026 in Prod, Template-Skript mit `--apply`, Deploy, danach WGs informieren.
+
