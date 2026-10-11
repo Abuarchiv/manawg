@@ -429,16 +429,6 @@ test('an unreadable stored response fails instead of replaying', async () => {
 	);
 });
 
-test('responseCodec reads legacy rows through its fallback', () => {
-	const legacy = responseCodec<unknown>((stored) =>
-		'event' in stored ? { status: 200, body: stored } : null,
-	);
-	assert.deepEqual(legacy.decode({ status: 201, body: { a: 1 } }), { status: 201, body: { a: 1 } });
-	assert.deepEqual(legacy.decode({ event: 1 }), { status: 200, body: { event: 1 } });
-	assert.equal(legacy.decode({ other: 1 }), null);
-	assert.deepEqual(legacy.encode({ status: 200, body: { a: 1 } }), { status: 200, body: { a: 1 } });
-});
-
 // Account deletion fences membership writes: a stored join response must not replay once the
 // account is being deleted, but replays normally while the gate allows it.
 test('a stored membership response is blocked when the account fence is present', async () => {

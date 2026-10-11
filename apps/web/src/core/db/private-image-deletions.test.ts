@@ -754,7 +754,6 @@ test(
 							effect: null,
 						};
 					},
-					undefined,
 					accountWgId,
 				);
 				const lockObservedBeforeReplay = await Promise.race([

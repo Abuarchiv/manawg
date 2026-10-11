@@ -32,10 +32,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 type EventCreateResponseBody = { event: SerializedWgEvent; warning: NotificationWarning };
-// Rows written before responses were stored with their status hold the bare body.
-const eventCreateCodec = responseCodec((stored) =>
-	'event' in stored ? { status: 200, body: stored } : null,
-);
+const eventCreateCodec = responseCodec();
 
 const createSchema = z.object({
 	title: eventTitleSchema,

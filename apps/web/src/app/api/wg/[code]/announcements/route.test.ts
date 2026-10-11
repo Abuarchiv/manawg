@@ -19,7 +19,6 @@ const state = {
 	notifications: 0,
 	warning: null as string | null,
 	warningUpdateSucceeds: true,
-	legacy: null as unknown,
 	rejectImageAttachment: false,
 	replayWgId: null as string | null,
 	existingChoreId: null as string | null,
@@ -34,7 +33,6 @@ const withAnnouncementReplay = async (
 	req: Request,
 	scope: string,
 	mutate: (tx: unknown) => Promise<{ response: Cached }>,
-	legacyResponse: (value: unknown) => unknown,
 	wgIdForLock?: string,
 ) => {
 	state.replayWgId = wgIdForLock ?? null;
@@ -47,9 +45,6 @@ const withAnnouncementReplay = async (
 	});
 	await waitFor;
 	try {
-		if (state.legacy) {
-			return { response: legacyResponse(state.legacy), effect: null, key: replayKey };
-		}
 		const cached = cache.get(cacheKey);
 		if (cached) return { response: cached, effect: null, key: replayKey };
 		const tx = {
@@ -188,7 +183,6 @@ function harness() {
 	state.notifications = 0;
 	state.warning = null;
 	state.warningUpdateSucceeds = true;
-	state.legacy = null;
 	state.rejectImageAttachment = false;
 	state.replayWgId = null;
 	state.existingChoreId = null;
@@ -229,14 +223,6 @@ test('concurrent create retry returns one announcement and runs push once', asyn
 	assert.equal(state.audits, 1);
 	assert.equal(state.notifications, 1);
 	assert.equal(state.replayWgId, wgId);
-});
-
-test('old flat cached response replays without another create', async () => {
-	const { state, post } = harness();
-	state.legacy = { announcement: { id: 'legacy-id' }, warning: null };
-	assert.deepEqual(await (await post()).json(), state.legacy);
-	assert.equal(state.created.length, 0);
-	assert.equal(state.notifications, 0);
 });
 
 test('warning is returned only when its completed response is updated', async () => {

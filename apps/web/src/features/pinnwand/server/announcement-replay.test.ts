@@ -178,8 +178,7 @@ function harness() {
 	};
 	return {
 		state,
-		run: (legacyResponse?: Parameters<typeof withAnnouncementReplay>[3]) =>
-			withAnnouncementReplay(request, scope, mutate as never, legacyResponse),
+		run: () => withAnnouncementReplay(request, scope, mutate as never),
 		persistWarning: () =>
 			persistAnnouncementReplayWarning(
 				scope,
@@ -266,20 +265,4 @@ test('warning enrichment is conditional on entity and completed response', async
 	assert.match(state.warningWhere, /entityId/);
 	assert.match(state.warningWhere, /expires_at/);
 	assert.match(state.warningWhere, /warning/);
-});
-
-test('legacy flat response replays from cache and from locked row', async () => {
-	const legacyResponse = (value: unknown) => {
-		const id = (value as { announcement?: { id?: string } } | null)?.announcement?.id;
-		return id ? { status: 200, body: value, entityId: id } : null;
-	};
-	for (const staleRead of [false, true]) {
-		const { state, run } = harness();
-		state.slot = { announcement: { id: 'old-post' }, warning: null };
-		state.staleRead = staleRead;
-		const result = await run(legacyResponse);
-		assert.deepEqual(result.response.body, state.slot);
-		assert.equal(result.effect, null);
-		assert.deepEqual(state.rows, []);
-	}
 });

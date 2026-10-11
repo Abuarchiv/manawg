@@ -62,20 +62,11 @@ function readStoredResponse(value: unknown): StoredResponse | null {
 	return null;
 }
 
-/**
- * Stores `{ status, body }`. `legacy` reads rows written in an older format
- * that are still inside the replay window.
- */
-export function responseCodec<B = unknown>(
-	legacy?: (stored: object) => StoredResponse<B> | null,
-): ReplayCodec<B> {
+/** Stores `{ status, body }`. */
+export function responseCodec<B = unknown>(): ReplayCodec<B> {
 	return {
 		encode: (response) => ({ status: response.status, body: response.body }),
-		decode: (stored) => {
-			const response = readStoredResponse(stored) as StoredResponse<B> | null;
-			if (response) return response;
-			return stored && typeof stored === 'object' ? (legacy?.(stored) ?? null) : null;
-		},
+		decode: (stored) => readStoredResponse(stored) as StoredResponse<B> | null,
 	};
 }
 

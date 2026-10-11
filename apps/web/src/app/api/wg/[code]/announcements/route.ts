@@ -61,21 +61,6 @@ function announcementCreateIdempotencyScope(wgId: string, memberId: string): str
 	return `announcements-create:${wgId}:${memberId}`;
 }
 
-function legacyCreateReplay(value: unknown): AnnouncementReplayResponse | null {
-	if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-	const body = value as { announcement?: unknown; warning?: unknown };
-	if (!body.announcement || typeof body.announcement !== 'object') return null;
-	const id = (body.announcement as { id?: unknown }).id;
-	if (typeof id !== 'string') return null;
-	if (
-		body.warning !== null &&
-		body.warning !== 'notification_delivery_failed' &&
-		body.warning !== 'notification_delivery_unknown'
-	)
-		return null;
-	return { status: 200, body: value, entityId: id };
-}
-
 const createAnnouncementSchema = z.object({
 	content: z.string().trim().min(CONTENT_MIN).max(CONTENT_MAX),
 	imageUrl: imageUrlSchema,
@@ -318,7 +303,6 @@ export const POST = withWgRoute('announcements POST', async (req, { code }) => {
 					effect: item,
 				};
 			},
-			legacyCreateReplay,
 			wg.id,
 		);
 	} catch (error) {

@@ -26,18 +26,14 @@ function isCompletedResponse(value: unknown): value is AnnouncementReplayRespons
 	);
 }
 
-function announcementCodec(
-	legacyResponse?: (value: unknown) => AnnouncementReplayResponse | null,
-): ReplayCodec<unknown> {
-	return {
-		// `entityId` stays in the stored row so a post-commit warning finds its response.
-		encode: (response) => {
-			const { status, body, entityId } = response as AnnouncementReplayResponse;
-			return entityId === undefined ? { status, body } : { status, body, entityId };
-		},
-		decode: (stored) => (isCompletedResponse(stored) ? stored : (legacyResponse?.(stored) ?? null)),
-	};
-}
+const announcementCodec: ReplayCodec<unknown> = {
+	// `entityId` stays in the stored row so a post-commit warning finds its response.
+	encode: (response) => {
+		const { status, body, entityId } = response as AnnouncementReplayResponse;
+		return entityId === undefined ? { status, body } : { status, body, entityId };
+	},
+	decode: (stored) => (isCompletedResponse(stored) ? stored : null),
+};
 
 /**
  * Pinnwand writes (posts, comments, reactions and shopping notices) behind the shared claim.
@@ -49,7 +45,6 @@ export async function withAnnouncementReplay<T>(
 	req: Request,
 	scope: string,
 	mutate: (tx: DbTransaction) => Promise<AnnouncementMutation<T>>,
-	legacyResponse?: (value: unknown) => AnnouncementReplayResponse | null,
 	wgId?: string,
 ): Promise<AnnouncementMutation<T> & { key: string | null }> {
 	const key = readIdempotencyKey(req);
@@ -57,7 +52,7 @@ export async function withAnnouncementReplay<T>(
 		{
 			scope,
 			key,
-			codec: announcementCodec(legacyResponse),
+			codec: announcementCodec,
 			storeStatus: (status) => status !== 429,
 			inTransaction: (work) =>
 				withTransaction(async (tx) => {

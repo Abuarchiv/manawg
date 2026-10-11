@@ -27,12 +27,7 @@ type MutationResult = {
 	audit?: Parameters<typeof recordAuditEvent>[0];
 };
 
-// Rows written before responses were stored with their status hold the bare body.
-const calendarCodec = responseCodec((stored) =>
-	'subscription' in stored || (stored as { revoked?: unknown }).revoked === true
-		? { status: 200, body: stored }
-		: null,
-);
+const calendarCodec = responseCodec();
 
 function memberDeactivated(): NextResponse {
 	return NextResponse.json({ error: 'member_deactivated' }, { status: 401 });

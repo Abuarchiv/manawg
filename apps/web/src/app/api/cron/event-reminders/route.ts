@@ -58,14 +58,8 @@ type ReminderDelivery = EventRow & {
 	reminderCopy: EventReminderCopy;
 };
 
-function legacyReminderClaimKey(
-	item: Pick<EventRow, 'id'> & { occurrenceStartsAt: string },
-): string {
-	return `${item.id}:${item.occurrenceStartsAt}`;
-}
-
 function reminderClaimKey(item: ReminderDelivery): string {
-	return `${legacyReminderClaimKey(item)}:${item.memberId}`;
+	return `${item.id}:${item.occurrenceStartsAt}:${item.memberId}`;
 }
 
 async function claimReminderDispatch(item: ReminderDelivery, now: Date): Promise<boolean> {
@@ -193,21 +187,7 @@ export const GET = withCronLogging(
 
 				if (occurrences.length === 0) return NextResponse.json({ ok: true, sent: 0 });
 
-				const legacyKeys = [...new Set(occurrences.map(legacyReminderClaimKey))];
-				const legacyClaims = await db
-					.select({ key: idempotencyResponses.key })
-					.from(idempotencyResponses)
-					.where(
-						and(
-							eq(idempotencyResponses.scope, REMINDER_CLAIM_SCOPE),
-							gt(idempotencyResponses.expiresAt, now),
-							inArray(idempotencyResponses.key, legacyKeys),
-						),
-					);
-				const legacyClaimKeys = new Set(legacyClaims.map((claim) => claim.key));
-				const eligibleOccurrences = occurrences.filter(
-					(occurrence) => !legacyClaimKeys.has(legacyReminderClaimKey(occurrence)),
-				);
+				const eligibleOccurrences = occurrences;
 				if (eligibleOccurrences.length === 0) return NextResponse.json({ ok: true, sent: 0 });
 
 				const wgIds = [...new Set(eligibleOccurrences.map((occurrence) => occurrence.wgId))];
