@@ -178,12 +178,13 @@ function getChoreGroup(
 export function groupChoresForPlan<T extends ChoreRepairInput>(
 	chores: T[],
 	currentMemberId: string,
+	now = Date.now(),
 ): { key: ChoreGroupKey; label: string; chores: T[] }[] {
-	const needsRepair = (chore: T) => (getChoreRepairHint(chore) !== null ? 0 : 1);
+	const needsRepair = (chore: T) => (getChoreRepairHint(chore, now) !== null ? 0 : 1);
 	const sorted = [...chores].sort((a, b) => needsRepair(a) - needsRepair(b));
 	return CHORE_GROUPS.map((group) => ({
 		...group,
-		chores: sorted.filter((chore) => getChoreGroup(chore, currentMemberId) === group.key),
+		chores: sorted.filter((chore) => getChoreGroup(chore, currentMemberId, now) === group.key),
 	})).filter((group) => group.chores.length > 0);
 }
 

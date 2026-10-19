@@ -47,6 +47,7 @@ test('chores with an absent assignee sort ahead within their group', () => {
 			{ id: 'b', assignedMemberId: 'anna', nextDueAt: day(3), assigneeAbsent: true },
 		],
 		'me',
+		NOW,
 	);
 	assert.deepEqual(
 		groups[0]?.chores.map((chore) => chore.id),
@@ -62,8 +63,9 @@ test('the overdue filter keeps only overdue chores and drops empty groups', () =
 			{ id: 'mine-late', assignedMemberId: 'me', nextDueAt: day(-1) },
 		],
 		'me',
+		NOW,
 	);
-	const filtered = filterOverdueGroups(groups);
+	const filtered = filterOverdueGroups(groups, NOW);
 	assert.deepEqual(filtered.flatMap((group) => group.chores.map((chore) => chore.id)).sort(), [
 		'late',
 		'mine-late',

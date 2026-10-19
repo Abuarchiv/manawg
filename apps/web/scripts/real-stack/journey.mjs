@@ -174,7 +174,8 @@ for (const sub of [
 	]) {
 		await pg.goto(wgPath + sub);
 		await wait(900);
-		const t = await pg.locator('body').innerText();
+		// The settings page links "Fehler per E-Mail melden"; that is not an error state.
+		const t = (await pg.locator('body').innerText()).replace(/Fehler per E-Mail melden/g, '');
 		if (/Fehler|konnte nicht|nicht geladen/i.test(t))
 			bug(
 				`${who} ${sub || '/'} zeigt Fehlertext: ${t.match(/[^\n]*(Fehler|konnte nicht|nicht geladen)[^\n]*/i)?.[0] ?? ''}`,

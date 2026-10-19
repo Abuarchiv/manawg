@@ -33,6 +33,10 @@ const nextConfig: NextConfig = {
 	eslint: {
 		ignoreDuringBuilds: false,
 	},
+	// Browsers and bookmark importers still ask for /favicon.ico; the metadata icons are PNG/SVG.
+	async rewrites() {
+		return [{ source: '/favicon.ico', destination: '/favicon-32.png' }];
+	},
 	// next/image is not used; without remote patterns /_next/image cannot be
 	// used as a free proxy for arbitrary S3 buckets on this project's quota.
 	async headers() {
