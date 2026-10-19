@@ -7,5 +7,6 @@ Prüft Anmeldung, Mails, Einladungen, Ausgaben, Putzplan, Chat, Übernahme, Kont
 3. Migrationen in Journal-Reihenfolge per `psql -f` einspielen (`db:migrate` verlangt Port 5432).
 4. App im Produktionsmodus bauen und auf Port 3140 starten. Alle Variablen aus `.env.local` leeren oder auf lokale Werte setzen, sonst trifft der Lauf Prod-Dienste.
 5. `SUPABASE_SERVICE_ROLE_KEY` aus `supabase status -o env` setzen, dann `node scripts/real-stack/api.mjs`, `journey.mjs` (mit `SHOTS_DIR`) und `session.mjs`.
+6. `modules.mjs` (braucht zusätzlich `CRON_SECRET`, läuft `modules-admin.mjs` mit) prüft jedes Modul über die API; `ui.mjs` (mit `SHOTS_DIR`) klickt alle Seiten im Handy-Viewport durch und legt Screenshots ab. Der Server braucht `VERCEL_ENV=development`, sonst sperrt der Rate-Limiter ohne Upstash.
 
 Die Skripte erwarten die lokalen Standardschlüssel von `supabase start`.
