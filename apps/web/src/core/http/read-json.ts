@@ -34,11 +34,22 @@ export async function readJsonBody(req: Request, maxBytes: number): Promise<Json
 		bytes.set(chunk, offset);
 		offset += chunk.byteLength;
 	}
+	let body: unknown;
 	try {
-		return { ok: true, body: JSON.parse(new TextDecoder().decode(bytes)) };
+		body = JSON.parse(new TextDecoder().decode(bytes));
 	} catch {
 		return { ok: false, reason: 'invalid_json' };
 	}
+	// Postgres text columns cannot hold U+0000; it would surface as a 500 deep in a transaction.
+	if (containsNul(body)) return { ok: false, reason: 'invalid_json' };
+	return { ok: true, body };
+}
+
+function containsNul(value: unknown): boolean {
+	if (typeof value === 'string') return value.includes('\u0000');
+	if (Array.isArray(value)) return value.some(containsNul);
+	if (value && typeof value === 'object') return Object.values(value).some(containsNul);
+	return false;
 }
 
 /** Default cap for ordinary JSON mutations; the platform limit (4.5 MB) is far above any legitimate body. */

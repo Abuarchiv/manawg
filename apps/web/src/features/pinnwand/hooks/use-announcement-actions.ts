@@ -121,9 +121,7 @@ export function useAnnouncementActions(
 			{ status: nextStatus },
 			pendingKey,
 			rollback,
-			nextStatus === 'resolved'
-				? () => toast.success('Geklärt – liegt jetzt unter „Geklärt & älter“.')
-				: undefined,
+			nextStatus === 'resolved' ? () => toast.success('Als geklärt markiert.') : undefined,
 		);
 	}
 
