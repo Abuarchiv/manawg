@@ -92,7 +92,15 @@ await step(A, 'neu', async (p) => {
 	await p.getByRole('button', { name: 'Neue WG erstellen', exact: true }).click();
 	await p.getByLabel('WG-Name').fill('Echte WG');
 	await p.getByRole('button', { name: 'WG erstellen', exact: true }).click();
-	await p.getByText('ist live').waitFor({ timeout: 15_000 });
+	// An early submit races the account-name prefill; the stale "fehlt" error must clear by itself.
+	const live = p.getByText('ist live');
+	const stale = p.getByText('Dein Anzeigename fehlt.');
+	await live.or(stale).first().waitFor({ timeout: 15_000 });
+	if (await stale.count()) {
+		await stale.waitFor({ state: 'detached', timeout: 5000 });
+		await p.getByRole('button', { name: 'WG erstellen', exact: true }).click();
+		await live.waitFor({ timeout: 15_000 });
+	}
 });
 let inviteUrl = '';
 await step(A, 'einladungslink', async (p) => {
