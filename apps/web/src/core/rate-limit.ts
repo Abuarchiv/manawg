@@ -76,11 +76,18 @@ function build(limit: number, windowSec: number, prefix: string): Ratelimit | nu
 	});
 }
 
-export const registerLimiter = build(3, 3600, 'reg'); // 3 / hour / IP
+// 10 / hour / IP: a flat signs up together on one Wi-Fi; the fourth member must not wait an hour.
+export const registerLimiter = build(10, 3600, 'reg');
 // Credential guessing and auth mails: 20 / 5 min / IP across /api/auth/* (a household behind one router stays far below it)
 export const authAttemptLimiter = build(20, 300, 'auth-attempt');
-export const wgReadLimiter = build(120, 60, 'wg-read'); // 120 reads / min / IP — WG GET endpoints
-export const wgWriteLimiter = build(30, 60, 'wg-write'); // 30 writes / min / IP — WG mutation endpoints
+// 300 reads / min / session — WG GET endpoints. Every page load fans out to about eight module
+// reads, so 120 allowed only 15 navigations a minute and a member flipping through the tabs saw
+// "konnte nicht laden"; reads need a valid session, the share-code lookup has its own limiter.
+export const wgReadLimiter = build(300, 60, 'wg-read');
+// 60 writes / min / session — WG mutation endpoints. A shopping trip (typing the list, ticking it
+// off) reaches 30 within a minute and lost the 31st item; chat, mails, uploads and reminders keep
+// their own tighter limits, and the IP backstop below still caps a whole household.
+export const wgWriteLimiter = build(60, 60, 'wg-write');
 // Every full page load of a WG does one lookup, and flatmates share their router's IP,
 // so 20/min locked whole WGs out ("Deine WG konnte nicht geladen werden"). With
 // 32^8 codes, one IP at 120/min still needs ~17,000 years to walk the code space.
@@ -192,7 +199,7 @@ export async function sessionRateLimitKey(req: {
 
 // Per-IP ceilings that stay on when the middleware keys by session: a forged cookie value would
 // otherwise open a fresh bucket per request.
-export const wgReadIpBackstop = build(600, 60, 'wg-read-ip'); // 600 reads / min / IP
+export const wgReadIpBackstop = build(1200, 60, 'wg-read-ip'); // 1200 reads / min / IP (a household behind one router)
 export const wgWriteIpBackstop = build(150, 60, 'wg-write-ip'); // 150 writes / min / IP
 
 export interface RateLimitResult {
