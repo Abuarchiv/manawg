@@ -1,7 +1,7 @@
 // Second UI pass on the phone viewport: action sheets, edit and delete flows, settings tabs,
 // dark mode, long texts and the empty states left behind. Same env and output as ui.mjs.
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { chromium, devices } from '@playwright/test';
+import { chromium, devices, webkit } from '@playwright/test';
 import { DAY, iso, setup } from './modules-lib.mjs';
 import { seed } from './ui-edit-seed.mjs';
 
@@ -18,13 +18,19 @@ const { A, B, code, annaId, benId } = await setup();
 const wg = `/wg/${code}`;
 await seed({ A, B, code, annaId, benId, LONG });
 
-const browser = await chromium.launch();
+// BROWSER=webkit and DEVICE='Pixel 7' switch engine and viewport; default is Chromium on iPhone 13.
+const browser = await (process.env.BROWSER === 'webkit' ? webkit : chromium).launch();
+const device = devices[process.env.DEVICE ?? 'iPhone 13'];
+const HARNESS_NOISE = /interactive-widget|Refused to apply a stylesheet/;
 async function session(u, tag) {
-	const context = await browser.newContext({ ...devices['iPhone 13'], baseURL: BASE });
+	const context = await browser.newContext({ ...device, baseURL: BASE });
 	const page = await context.newPage();
 	page.on('pageerror', (e) => bugs.push(`${tag} pageerror ${e.message.slice(0, 200)}`));
 	page.on('console', (m) => {
-		if (m.type() === 'error') bugs.push(`${tag} console ${m.text().slice(0, 200)}`);
+		// WebKit only: it ignores the viewport key interactive-widget, and the Playwright screenshot
+		// probe injects a <style> without nonce that the CSP rejects. Neither is an app fault.
+		if (m.type() === 'error' && !HARNESS_NOISE.test(m.text()))
+			bugs.push(`${tag} console ${m.text().slice(0, 200)}`);
 	});
 	page.on('response', (r) => {
 		const url = r.url().replace(BASE, '');

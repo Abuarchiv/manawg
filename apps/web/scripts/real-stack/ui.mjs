@@ -1,5 +1,5 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { chromium, devices } from '@playwright/test';
+import { chromium, devices, webkit } from '@playwright/test';
 
 // Drives the real UI (phone viewport) against the local real stack: every WG page, the main
 // create/edit flows, two members. Writes screenshots and an aria snapshot per step to SHOTS_DIR
@@ -37,13 +37,19 @@ async function makeUser(name) {
 	return { name, email, password };
 }
 
-const browser = await chromium.launch();
+// BROWSER=webkit and DEVICE='Pixel 7' switch engine and viewport; default is Chromium on iPhone 13.
+const browser = await (process.env.BROWSER === 'webkit' ? webkit : chromium).launch();
+const device = devices[process.env.DEVICE ?? 'iPhone 13'];
+const HARNESS_NOISE = /interactive-widget|Refused to apply a stylesheet/;
 async function session(u, tag) {
-	const context = await browser.newContext({ ...devices['iPhone 13'], baseURL: BASE });
+	const context = await browser.newContext({ ...device, baseURL: BASE });
 	const page = await context.newPage();
 	page.on('pageerror', (e) => bug(`${tag} pageerror ${e.message.slice(0, 200)}`));
 	page.on('console', (m) => {
-		if (m.type() === 'error') bug(`${tag} console ${m.text().slice(0, 200)}`);
+		// WebKit only: it ignores the viewport key interactive-widget, and the Playwright screenshot
+		// probe injects a <style> without nonce that the CSP rejects. Neither is an app fault.
+		if (m.type() === 'error' && !HARNESS_NOISE.test(m.text()))
+			bug(`${tag} console ${m.text().slice(0, 200)}`);
 	});
 	page.on('response', (r) => {
 		const url = r.url().replace(BASE, '');
@@ -129,12 +135,15 @@ await step(B, 'beitreten', async (p) => {
 // ---- Einkauf
 await step(A, 'einkauf-add', async (p) => {
 	await p.goto(`${wgPath}/einkauf`);
+	// WebKit hydrates later than Chromium; typing before hydration is lost.
+	await p.waitForLoadState('networkidle');
 	await p.getByPlaceholder(/Reis/).fill('Hafermilch');
 	await p.keyboard.press('Enter');
 	await p.getByText('Hafermilch').first().waitFor();
 });
 await step(B, 'einkauf-check', async (p) => {
 	await p.goto(`${wgPath}/einkauf`);
+	await p.waitForLoadState('networkidle');
 	await p.getByRole('checkbox', { name: 'Hafermilch erledigen' }).click();
 	await wait(800);
 });
