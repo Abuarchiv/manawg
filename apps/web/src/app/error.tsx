@@ -9,6 +9,7 @@ import {
 	EmptyMedia,
 } from '@/components/ui/empty';
 import { captureException } from '@/core/infra/capture-client';
+import { isChunkLoadError, reloadOnStaleChunk } from '@/core/infra/stale-chunk';
 import { TriangleAlert } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useRef } from 'react';
@@ -20,6 +21,7 @@ export default function ErrorBoundary({
 	const mainRef = useRef<HTMLElement>(null);
 
 	useEffect(() => {
+		if (reloadOnStaleChunk(error)) return;
 		captureException(error, { boundary: 'root' });
 	}, [error]);
 
@@ -61,7 +63,11 @@ export default function ErrorBoundary({
 							{error.message}
 						</pre>
 					)}
-					<Button type="button" size="lg" onClick={() => reset()}>
+					<Button
+						type="button"
+						size="lg"
+						onClick={() => (isChunkLoadError(error) ? window.location.reload() : reset())}
+					>
 						Erneut versuchen
 					</Button>
 					<Button variant="outline" size="lg" render={<Link href="/" />} nativeButton={false}>

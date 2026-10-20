@@ -10,6 +10,7 @@ import {
 	EmptyMedia,
 } from '@/components/ui/empty';
 import { captureException } from '@/core/infra/capture-client';
+import { isChunkLoadError, reloadOnStaleChunk } from '@/core/infra/stale-chunk';
 import { TriangleAlert } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -45,6 +46,7 @@ export function WgRouteErrorBoundary({
 	const rootRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
+		if (reloadOnStaleChunk(error)) return;
 		captureException(error, { boundary });
 	}, [error, boundary]);
 
@@ -88,7 +90,12 @@ export function WgRouteErrorBoundary({
 								</pre>
 							)}
 							<div className="flex w-full flex-col items-stretch gap-2">
-								<Button type="button" size="lg" onClick={reset} className="w-full">
+								<Button
+									type="button"
+									size="lg"
+									onClick={() => (isChunkLoadError(error) ? window.location.reload() : reset())}
+									className="w-full"
+								>
 									Erneut versuchen
 								</Button>
 								<Button

@@ -9,6 +9,7 @@ import {
 	EmptyMedia,
 } from '@/components/ui/empty';
 import { captureException } from '@/core/infra/capture-client';
+import { isChunkLoadError, reloadOnStaleChunk } from '@/core/infra/stale-chunk';
 import { THEME_BOOTSTRAP_SCRIPT, applyStoredTheme } from '@/shared/lib/theme';
 import '@/shared/globals.css';
 import { TriangleAlert } from 'lucide-react';
@@ -22,6 +23,7 @@ export default function GlobalError({
 	// before paint so dark devices do not flash white.
 	useLayoutEffect(applyStoredTheme, []);
 	useEffect(() => {
+		if (reloadOnStaleChunk(error)) return;
 		captureException(error, { boundary: 'global' });
 	}, [error]);
 
@@ -47,7 +49,11 @@ export default function GlobalError({
 							<EmptyDescription>Bitte lade die Seite neu.</EmptyDescription>
 						</EmptyHeader>
 						<EmptyContent>
-							<Button type="button" size="lg" onClick={() => reset()}>
+							<Button
+								type="button"
+								size="lg"
+								onClick={() => (isChunkLoadError(error) ? window.location.reload() : reset())}
+							>
 								Erneut versuchen
 							</Button>
 							{/* No next/link: this error sits above the root layout, so only a hard page load helps. */}
