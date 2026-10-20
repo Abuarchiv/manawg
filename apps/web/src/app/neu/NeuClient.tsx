@@ -68,6 +68,10 @@ export function NeuClient() {
 		signedInHere,
 	} = useAccountWgs({ interactive, step, clearError });
 	useAccountNamePrefill(authState === 'authenticated', setCreatorName);
+	// The account name can arrive after an early submit; the "fehlt" error must not outlive it.
+	useEffect(() => {
+		if (invalidField === 'creatorName' && creatorName.trim()) clearError();
+	}, [creatorName, invalidField, clearError]);
 	useSaveStartDraft({ interactive, step, wgName, creatorName });
 	const { goTo, goBack } = useStepHistory({
 		interactive,

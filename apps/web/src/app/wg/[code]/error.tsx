@@ -10,6 +10,7 @@ import {
 	EmptyMedia,
 } from '@/components/ui/empty';
 import { captureException } from '@/core/infra/capture-client';
+import { isChunkLoadError, reloadOnStaleChunk } from '@/core/infra/stale-chunk';
 import { TriangleAlert } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useRef } from 'react';
@@ -22,6 +23,7 @@ interface WgErrorProps {
 export default function WgError({ error, reset }: WgErrorProps) {
 	const headingRef = useRef<HTMLHeadingElement>(null);
 	useEffect(() => {
+		if (reloadOnStaleChunk(error)) return;
 		captureException(error, { boundary: 'wg-code' });
 	}, [error]);
 	// Focus was on the element that disappeared; move it here so the error is announced.
@@ -64,7 +66,12 @@ export default function WgError({ error, reset }: WgErrorProps) {
 								</pre>
 							)}
 							<div className="flex w-full flex-col items-stretch gap-2">
-								<Button type="button" size="lg" onClick={reset} className="w-full">
+								<Button
+									type="button"
+									size="lg"
+									onClick={() => (isChunkLoadError(error) ? window.location.reload() : reset())}
+									className="w-full"
+								>
 									Erneut versuchen
 								</Button>
 								<Button

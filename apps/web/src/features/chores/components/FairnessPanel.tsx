@@ -47,7 +47,7 @@ export function FairnessPanel({
 					Diesen Monat
 					{fairness.suggestedAssignee && (
 						<span className="font-normal text-muted-foreground">
-							{' · Als Nächstes dran: '}
+							{' · Neue Aufgabe am besten für: '}
 							<span className="font-medium text-foreground">
 								{fairness.suggestedAssignee.id === currentMemberId
 									? 'du'

@@ -42,6 +42,14 @@ export function useInviteJoin(token: string) {
 	const busyRef = useRef(false);
 	const requestRef = useRef<{ fingerprint: string; key: string } | null>(null);
 
+	// The prefilled account name can arrive after an early submit; the "fehlt" error must not outlive it.
+	useEffect(() => {
+		if (nameInvalid && name.trim()) {
+			setNameInvalid(false);
+			setError(null);
+		}
+	}, [name, nameInvalid]);
+
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `retryNonce` re-runs the lookup after a transient error.
 	useEffect(() => {
 		if (!isInviteToken(token)) {

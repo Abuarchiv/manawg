@@ -228,7 +228,12 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 								{editing ? (
 									<ShoppingEditForm
 										item={item}
-										onSave={(fields) => onEdit(item, fields)}
+										onSave={async (fields) => {
+											const message = await onEdit(item, fields);
+											// Saved: back to the list, like the other modules.
+											if (message === null) setDrawerOpen(false);
+											return message;
+										}}
 										onDone={() => setEditing(false)}
 									/>
 								) : (

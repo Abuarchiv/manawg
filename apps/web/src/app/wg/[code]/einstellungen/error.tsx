@@ -11,7 +11,7 @@ export default function EinstellungenError({ error, reset }: EinstellungenErrorP
 	return (
 		<WgRouteErrorBoundary
 			error={error}
-			reset={() => (error.name === 'ChunkLoadError' ? window.location.reload() : reset())}
+			reset={reset}
 			boundary="wg-einstellungen"
 			title="Einstellungen konnten gerade nicht geladen werden"
 			body="In den Einstellungen ist ein Fehler aufgetreten. Bitte versuche es erneut oder kehre zur WG-Übersicht zurück."

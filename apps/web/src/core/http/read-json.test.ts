@@ -22,3 +22,9 @@ test('readJsonLimited rejects malformed or missing bodies', async () => {
 	await assert.rejects(readJsonLimited(post('{nope')), /invalid_json/);
 	await assert.rejects(readJsonLimited(new Request('http://x.test/')), /invalid_json/);
 });
+
+test('readJsonLimited rejects NUL bytes in any string (Postgres cannot store them)', async () => {
+	await assert.rejects(readJsonLimited(post('{"name":"a\\u0000b"}')), /invalid_json/);
+	await assert.rejects(readJsonLimited(post('{"splits":[{"note":"\\u0000"}]}')), /invalid_json/);
+	assert.deepEqual(await readJsonLimited(post('{"name":"a\\\\u0000"}')), { name: 'a\\u0000' });
+});
