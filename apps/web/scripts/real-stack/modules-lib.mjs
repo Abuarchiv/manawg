@@ -7,7 +7,7 @@ import { request } from '@playwright/test';
 // subscription, export, crons, WG rename and deletion, account deletion.
 export const BASE = 'http://localhost:3140';
 export const SB = 'http://127.0.0.1:54321';
-const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
+export const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
 export const CRON = process.env.CRON_SECRET ?? '';
 if (!SERVICE) throw new Error('SUPABASE_SERVICE_ROLE_KEY missing (see supabase status -o env)');
 if (!CRON) throw new Error('CRON_SECRET missing (same value the server runs with)');
