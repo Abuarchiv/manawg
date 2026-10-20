@@ -42,7 +42,11 @@ async function withPageSecurityHeaders(
 	fixture: FixtureRequest | null,
 ): Promise<NextResponse> {
 	const nonce = crypto.randomUUID().replaceAll('-', '');
-	const localFixtureHttp = fixture?.localHttp === true;
+	// Plain http on localhost (fixtures, real-stack runs): WebKit would otherwise upgrade every
+	// asset request to https and fail; production is always served over https.
+	const localFixtureHttp =
+		fixture?.localHttp === true ||
+		(req.nextUrl.protocol === 'http:' && req.nextUrl.hostname === 'localhost');
 	const payPalSdkEnabled = isPayPalSdkEnabled(
 		process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID,
 		process.env.NEXT_PUBLIC_PAYPAL_PARTNER_ATTRIBUTION_ID,
