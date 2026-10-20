@@ -90,3 +90,34 @@ test('parsers report rows they cannot read instead of dropping them silently', (
 	assert.equal(parseSplidCsv(splid, splidRejected).length, 0);
 	assert.deepEqual(splidRejected, [{ line: 2, reason: 'payer_missing', description: 'Pizza' }]);
 });
+
+test('a reported foreign-currency row is never imported as euros', () => {
+	const splitwise = [
+		'Date,Description,Cost,Currency,Anna,Bob',
+		'2026-01-15,Miete,30.00,EUR,15.00,-15.00',
+		'2026-01-16,Dollar,5.00,USD,2.50,-2.50',
+	].join('\n');
+	const rejected: RejectedRow[] = [];
+	const parsed = parseSplitwiseCsv(splitwise, rejected);
+	assert.deepEqual(
+		parsed.map((row) => row.description),
+		['Miete'],
+	);
+	assert.deepEqual(rejected, [
+		{ line: 3, reason: 'currency_unsupported', description: 'Dollar (USD)' },
+	]);
+
+	const splid = [
+		'Datum,Beschreibung,Betrag,Währung,Bezahlt von,Teilnehmer',
+		'2026-01-15,Pizza,12.00,EUR,Anna,Anna;Bob',
+		'2026-01-16,Franken,12.00,CHF,Anna,Anna;Bob',
+	].join('\n');
+	const splidRejected: RejectedRow[] = [];
+	assert.deepEqual(
+		parseSplidCsv(splid, splidRejected).map((row) => row.description),
+		['Pizza'],
+	);
+	assert.deepEqual(splidRejected, [
+		{ line: 3, reason: 'currency_unsupported', description: 'Franken (CHF)' },
+	]);
+});

@@ -54,11 +54,9 @@ export function parseSplidCsv(csv: string, rejected?: RejectedRow[]): ParsedExpe
 		}
 		if (idxCurrency !== -1) {
 			const currencyRaw = (fields[idxCurrency] ?? 'EUR').trim().toUpperCase();
-			if (
-				currencyRaw &&
-				currencyRaw !== 'EUR' &&
-				!rejectForeignCurrencyRow(rejected, line, currencyRaw, descRaw)
-			) {
+			if (currencyRaw && currencyRaw !== 'EUR') {
+				// A reported row must not also be imported as euros.
+				if (rejectForeignCurrencyRow(rejected, line, currencyRaw, descRaw)) continue;
 				throw new UnsupportedCurrencyError(currencyRaw);
 			}
 		}

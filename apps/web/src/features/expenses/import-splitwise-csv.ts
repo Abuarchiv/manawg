@@ -93,11 +93,9 @@ export function parseSplitwiseCsv(csv: string, rejected?: RejectedRow[]): Parsed
 		}
 		const currencyRaw =
 			idxCurrency === -1 ? 'EUR' : (fields[idxCurrency] ?? 'EUR').trim().toUpperCase();
-		if (
-			currencyRaw &&
-			currencyRaw !== 'EUR' &&
-			!rejectForeignCurrencyRow(rejected, line, currencyRaw, descRaw)
-		) {
+		if (currencyRaw && currencyRaw !== 'EUR') {
+			// A reported row must not also be imported as euros.
+			if (rejectForeignCurrencyRow(rejected, line, currencyRaw, descRaw)) continue;
 			throw new UnsupportedCurrencyError(currencyRaw);
 		}
 
