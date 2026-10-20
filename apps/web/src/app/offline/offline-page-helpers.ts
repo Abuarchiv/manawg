@@ -1,4 +1,5 @@
 import { type KnownWg, belongsToAccount, getKnownWgs } from '@/core/auth/local-account';
+import { hasSessionCookie } from '@/core/auth/session-hint';
 import { type OfflineAction, getOfflineActionSummary } from '@/core/offline/offline-queue';
 import { parseTimestamp } from '@/core/utils/time';
 
@@ -53,6 +54,8 @@ export type OfflineStatus =
 export async function getAccountMemberships(
 	signal?: AbortSignal,
 ): Promise<AccountMembership[] | null> {
+	// Signed-out visitors: no probe, no 401 in the console (same as /neu).
+	if (!hasSessionCookie()) return null;
 	const res = await fetch('/api/wg/mine', {
 		cache: 'no-store',
 		...(signal ? { signal } : {}),
