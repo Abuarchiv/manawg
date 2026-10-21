@@ -19,7 +19,7 @@ const PUBLIC_MODULES: Record<string, { title: string; description: string }> = {
 };
 
 // Own-property lookup: `in` / bare indexing would match Object.prototype keys like "constructor".
-// Demo-Module sind Duplikate der Themenseiten auf manawg.com; dort soll das Ranking landen.
+// Demo modules duplicate the topic pages on manawg.com; the landing should rank, not the app.
 const LANDING_CANONICAL: Record<string, string> = {
 	putzen: 'https://manawg.com/putzplan',
 	ausgaben: 'https://manawg.com/wg-kasse',

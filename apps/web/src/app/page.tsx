@@ -4,7 +4,7 @@ import { EntryClient } from './EntryClient';
 export const metadata: Metadata = {
 	title: 'ManaWG',
 	description: 'Ausgaben, Einkauf, Putzen und Pinnwand für deine WG.',
-	// Marke auf manawg.com bündeln: Startseite der App ist noindex, Canonical zeigt auf die Landing.
+	// Entry page is noindex; canonical points at the landing so the brand consolidates on manawg.com.
 	alternates: { canonical: 'https://manawg.com/' },
 };
 
