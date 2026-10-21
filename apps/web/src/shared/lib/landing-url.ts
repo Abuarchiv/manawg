@@ -4,7 +4,7 @@
  * JSON-LD reference to the landing is built from this one constant so the
  * two origins cannot drift apart.
  */
-export const LANDING_ORIGIN = 'https://manawg.com';
+const LANDING_ORIGIN = 'https://manawg.com';
 
 /** Absolute URL on the landing origin, e.g. `landingUrl('/putzplan')`. */
 export function landingUrl(path = '/'): string {
