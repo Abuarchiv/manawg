@@ -1,14 +1,23 @@
+import { OG_BASE, TWITTER_BASE } from '@/shared/lib/og';
 import type { Metadata } from 'next';
 import { EinladungClient } from './EinladungClient';
 
 export const dynamic = 'force-dynamic';
 
+const title = 'Du bist in eine WG eingeladen — ManaWG';
+const description =
+	'Tritt deiner WG auf ManaWG bei: Ausgaben, Putzplan, Einkauf und Pinnwand. Kostenlos, im Browser, in Deutschland gehostet.';
+
+// Invite links are mostly shared in chats; the preview card names the invitation,
+// never the WG or the token (the token is the secret of this URL).
 export const metadata: Metadata = {
-	title: 'Einladung — ManaWG',
-	description: 'Tritt einer WG auf ManaWG mit deiner Einladung bei.',
+	title,
+	description,
 	robots: { index: false, follow: false },
-	// The token is the secret of this URL; keep it out of Referer headers.
+	// Keep the token out of Referer headers.
 	referrer: 'no-referrer',
+	openGraph: { ...OG_BASE, title, description },
+	twitter: { ...TWITTER_BASE, title, description },
 };
 
 export default async function EinladungPage({ params }: { params: Promise<{ token: string }> }) {

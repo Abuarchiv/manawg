@@ -1,4 +1,5 @@
 import { PublicApp } from '@/components/entry/PublicApp';
+import { OG_BASE, TWITTER_BASE } from '@/shared/lib/og';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
@@ -19,27 +20,26 @@ const PUBLIC_MODULES: Record<string, { title: string; description: string }> = {
 };
 
 // Own-property lookup: `in` / bare indexing would match Object.prototype keys like "constructor".
-// Demo modules duplicate the topic pages on manawg.com; the landing should rank, not the app.
-const LANDING_CANONICAL: Record<string, string> = {
-	putzen: 'https://manawg.com/putzplan',
-	ausgaben: 'https://manawg.com/wg-kasse',
-	einkauf: 'https://manawg.com/einkaufsliste',
-	pinnwand: 'https://manawg.com/wg-app',
-};
-
 const publicModule = (slug: string) =>
 	Object.hasOwn(PUBLIC_MODULES, slug) ? PUBLIC_MODULES[slug] : undefined;
 
+// Demo modules duplicate the topic pages on manawg.com; the landing ranks, these pages
+// stay noindex (layout). No canonical here: combined with noindex it is a contradictory
+// signal, and a self-canonical on a noindex page is pointless.
 export async function generateMetadata({
 	params,
 }: { params: Promise<{ module: string }> }): Promise<Metadata> {
 	const { module } = await params;
 	const entry = publicModule(module);
 	if (!entry) notFound();
+	const title = `${entry.title} — ManaWG`;
+	const description = `${entry.description} Die WG-App für Ausgaben, Putzplan, Einkauf und Pinnwand.`;
 	return {
-		title: `${entry.title} — ManaWG`,
-		description: `${entry.description} Die WG-App für Ausgaben, Putzplan, Einkauf und Pinnwand.`,
-		alternates: { canonical: LANDING_CANONICAL[module] ?? `/entdecken/${module}` },
+		title,
+		description,
+		// Shared links (chat previews) show the module, not the generic app card from the layout.
+		openGraph: { ...OG_BASE, title, description, url: `/entdecken/${module}` },
+		twitter: { ...TWITTER_BASE, title, description },
 	};
 }
 
