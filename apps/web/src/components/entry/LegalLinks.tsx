@@ -1,11 +1,12 @@
 import { cn } from '@/shared/lib/cn';
 
 const LEGAL_LINKS = [
+	{ href: 'https://manawg.com/', label: 'Über ManaWG' },
 	{ href: 'https://manawg.com/impressum', label: 'Impressum' },
 	{ href: 'https://manawg.com/datenschutz', label: 'Datenschutz' },
 	{ href: 'https://manawg.com/agb', label: 'AGB' },
 ] as const;
-const [IMPRESSUM, DATENSCHUTZ, AGB] = LEGAL_LINKS;
+const [, IMPRESSUM, DATENSCHUTZ, AGB] = LEGAL_LINKS;
 
 // Public entry and sign-up must reach the legal pages without an account (§ 5 DDG, Art. 13 DSGVO).
 export function LegalLinks({

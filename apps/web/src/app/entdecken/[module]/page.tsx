@@ -19,6 +19,14 @@ const PUBLIC_MODULES: Record<string, { title: string; description: string }> = {
 };
 
 // Own-property lookup: `in` / bare indexing would match Object.prototype keys like "constructor".
+// Demo-Module sind Duplikate der Themenseiten auf manawg.com; dort soll das Ranking landen.
+const LANDING_CANONICAL: Record<string, string> = {
+	putzen: 'https://manawg.com/putzplan',
+	ausgaben: 'https://manawg.com/wg-kasse',
+	einkauf: 'https://manawg.com/einkaufsliste',
+	pinnwand: 'https://manawg.com/wg-app',
+};
+
 const publicModule = (slug: string) =>
 	Object.hasOwn(PUBLIC_MODULES, slug) ? PUBLIC_MODULES[slug] : undefined;
 
@@ -31,7 +39,7 @@ export async function generateMetadata({
 	return {
 		title: `${entry.title} — ManaWG`,
 		description: `${entry.description} Die WG-App für Ausgaben, Putzplan, Einkauf und Pinnwand.`,
-		alternates: { canonical: `/entdecken/${module}` },
+		alternates: { canonical: LANDING_CANONICAL[module] ?? `/entdecken/${module}` },
 	};
 }
 
