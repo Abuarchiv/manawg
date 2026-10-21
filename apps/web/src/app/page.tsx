@@ -1,11 +1,18 @@
 import type { Metadata } from 'next';
 import { EntryClient } from './EntryClient';
 
+const title = 'ManaWG, die WG-App: Ausgaben, Einkauf, Putzplan für eure WG';
+const description =
+	'Mit ManaWG teilt ihr Ausgaben, organisiert Einkäufe und verteilt Aufgaben im Putzplan. Die App ist kostenlos und läuft im Browser.';
+
+// Entry page stays noindex (inherited from the layout) and carries no canonical:
+// a cross-domain canonical on a noindex page is a contradictory signal to Google.
+// The brand ranks through manawg.com, which this page links to in its footer.
 export const metadata: Metadata = {
-	title: 'ManaWG',
-	description: 'Ausgaben, Einkauf, Putzen und Pinnwand für deine WG.',
-	// Entry page is noindex; canonical points at the landing so the brand consolidates on manawg.com.
-	alternates: { canonical: 'https://manawg.com/' },
+	title,
+	description,
+	openGraph: { title, description, url: '/' },
+	twitter: { title, description },
 };
 
 export default function Entry() {

@@ -1,10 +1,11 @@
 import { cn } from '@/shared/lib/cn';
+import { landingUrl } from '@/shared/lib/landing-url';
 
 const LEGAL_LINKS = [
-	{ href: 'https://manawg.com/', label: 'Über ManaWG' },
-	{ href: 'https://manawg.com/impressum', label: 'Impressum' },
-	{ href: 'https://manawg.com/datenschutz', label: 'Datenschutz' },
-	{ href: 'https://manawg.com/agb', label: 'AGB' },
+	{ href: landingUrl('/ueber-manawg'), label: 'Über ManaWG' },
+	{ href: landingUrl('/impressum'), label: 'Impressum' },
+	{ href: landingUrl('/datenschutz'), label: 'Datenschutz' },
+	{ href: landingUrl('/agb'), label: 'AGB' },
 ] as const;
 const [, IMPRESSUM, DATENSCHUTZ, AGB] = LEGAL_LINKS;
 

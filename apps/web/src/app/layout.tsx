@@ -4,6 +4,7 @@ import { PwaRegister } from '@/components/app/PwaRegister';
 import { ThemeProvider } from '@/components/app/ThemeProvider';
 import { SplashScreen } from '@/components/brand/SplashScreen';
 import { getAppUrl } from '@/shared/lib/app-url';
+import { LANDING_SCHEMA_IDS } from '@/shared/lib/landing-url';
 import { SPLASH_BOOTSTRAP_SCRIPT } from '@/shared/lib/splash';
 import { THEME_BOOTSTRAP_SCRIPT } from '@/shared/lib/theme';
 import type { Metadata, Viewport } from 'next';
@@ -39,36 +40,32 @@ const jetbrainsMono = localFont({
 
 const appUrl = getAppUrl();
 
+// Brand title and description are word-for-word the landing's (manawg.com layout.tsx),
+// so link previews and crawlers read one product definition across both origins.
+const brandTitle = 'ManaWG, die WG-App: Ausgaben, Einkauf, Putzplan für eure WG';
 const metaDescription =
-	'Die WG-App für Ausgaben, Putzplan, Einkauf und Pinnwand. In Deutschland gehostet.';
+	'Mit ManaWG teilt ihr Ausgaben, organisiert Einkäufe und verteilt Aufgaben im Putzplan. Die App ist kostenlos und läuft im Browser.';
 
-const organizationSchema = {
-	'@context': 'https://schema.org',
-	'@type': 'Organization',
-	name: 'ManaWG',
-	url: appUrl,
-	logo: `${appUrl}/icon-512.png`,
-	description: metaDescription,
-};
-
+// Same entity the landing declares on manawg.com (same @id, same publisher), so both
+// origins describe one app and one organisation instead of two competing ones.
 const softwareApplicationSchema = {
 	'@context': 'https://schema.org',
 	'@type': 'SoftwareApplication',
+	'@id': `${appUrl}/#app`,
 	name: 'ManaWG',
 	description: metaDescription,
 	url: appUrl,
 	applicationCategory: 'LifestyleApplication',
-	operatingSystem: 'Web, iOS, Android',
-	offers: {
-		'@type': 'Offer',
-		price: '0',
-		priceCurrency: 'EUR',
-	},
+	operatingSystem: 'Web',
+	inLanguage: 'de-DE',
+	isAccessibleForFree: true,
+	offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' },
+	publisher: { '@id': LANDING_SCHEMA_IDS.organisation },
 };
 
 export const metadata: Metadata = {
 	metadataBase: new URL(appUrl),
-	title: 'ManaWG — Deine WG-App',
+	title: brandTitle,
 	description: metaDescription,
 	keywords: ['WG', 'Wohngemeinschaft', 'Ausgaben teilen', 'Putzplan', 'WG App', 'DSGVO'],
 	authors: [{ name: 'ManaWG' }],
@@ -79,7 +76,7 @@ export const metadata: Metadata = {
 		follow: true,
 	},
 	openGraph: {
-		title: 'ManaWG — Deine WG-App',
+		title: brandTitle,
 		description: metaDescription,
 		type: 'website',
 		locale: 'de_DE',
@@ -95,7 +92,7 @@ export const metadata: Metadata = {
 	},
 	twitter: {
 		card: 'summary_large_image',
-		title: 'ManaWG — Deine WG-App',
+		title: brandTitle,
 		description: metaDescription,
 		images: ['/opengraph-image'],
 	},
@@ -178,15 +175,15 @@ export default async function RootLayout({
 					// biome-ignore lint/security/noDangerouslySetInnerHtml: static constant, no dynamic data
 					dangerouslySetInnerHTML={{ __html: SPLASH_BOOTSTRAP_SCRIPT }}
 				/>
-				{/* Organization + SoftwareApplication JSON-LD for rich results. Content is static JSON.stringify of trusted constants — no XSS surface. */}
-				<Script
-					id="manawg-org-schema"
+				{/* Plain <script>, not next/script: next/script injects after hydration, so the JSON-LD
+				    never appeared in the server HTML crawlers read. Static JSON.stringify of constants, no XSS surface. */}
+				<script
 					type="application/ld+json"
-				>{`${JSON.stringify(organizationSchema)}`}</Script>
-				<Script
-					id="manawg-software-schema"
-					type="application/ld+json"
-				>{`${JSON.stringify(softwareApplicationSchema)}`}</Script>
+					nonce={nonce}
+					suppressHydrationWarning
+					// biome-ignore lint/security/noDangerouslySetInnerHtml: static constant, no dynamic data
+					dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareApplicationSchema) }}
+				/>
 			</head>
 			<body suppressHydrationWarning>
 				{/* WCAG 2.4.1 Bypass Blocks — keyboard-only skip link.
