@@ -4,7 +4,7 @@ import { PwaRegister } from '@/components/app/PwaRegister';
 import { ThemeProvider } from '@/components/app/ThemeProvider';
 import { SplashScreen } from '@/components/brand/SplashScreen';
 import { getAppUrl } from '@/shared/lib/app-url';
-import { LANDING_SCHEMA_IDS } from '@/shared/lib/landing-url';
+import { APP_SCHEMA_ID, LANDING_SCHEMA_IDS } from '@/shared/lib/landing-url';
 import { SPLASH_BOOTSTRAP_SCRIPT } from '@/shared/lib/splash';
 import { THEME_BOOTSTRAP_SCRIPT } from '@/shared/lib/theme';
 import type { Metadata, Viewport } from 'next';
@@ -51,7 +51,7 @@ const metaDescription =
 const softwareApplicationSchema = {
 	'@context': 'https://schema.org',
 	'@type': 'SoftwareApplication',
-	'@id': `${appUrl}/#app`,
+	'@id': APP_SCHEMA_ID,
 	name: 'ManaWG',
 	description: metaDescription,
 	url: appUrl,

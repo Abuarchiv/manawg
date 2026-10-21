@@ -1,3 +1,4 @@
+import { OG_BASE, TWITTER_BASE } from '@/shared/lib/og';
 import type { Metadata } from 'next';
 import { EinladungClient } from './EinladungClient';
 
@@ -15,8 +16,8 @@ export const metadata: Metadata = {
 	robots: { index: false, follow: false },
 	// Keep the token out of Referer headers.
 	referrer: 'no-referrer',
-	openGraph: { title, description },
-	twitter: { title, description },
+	openGraph: { ...OG_BASE, title, description },
+	twitter: { ...TWITTER_BASE, title, description },
 };
 
 export default async function EinladungPage({ params }: { params: Promise<{ token: string }> }) {

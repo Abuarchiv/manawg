@@ -1,4 +1,5 @@
 import { PublicApp } from '@/components/entry/PublicApp';
+import { OG_BASE, TWITTER_BASE } from '@/shared/lib/og';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
@@ -37,8 +38,8 @@ export async function generateMetadata({
 		title,
 		description,
 		// Shared links (chat previews) show the module, not the generic app card from the layout.
-		openGraph: { title, description, url: `/entdecken/${module}` },
-		twitter: { title, description },
+		openGraph: { ...OG_BASE, title, description, url: `/entdecken/${module}` },
+		twitter: { ...TWITTER_BASE, title, description },
 	};
 }
 

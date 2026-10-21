@@ -16,3 +16,7 @@ export const LANDING_SCHEMA_IDS = {
 	organisation: `${LANDING_ORIGIN}/#organisation`,
 	webseite: `${LANDING_ORIGIN}/#webseite`,
 } as const;
+
+// Fixed on purpose: the landing references exactly this @id (schema-ids.ts there),
+// so it must not follow NEXT_PUBLIC_APP_URL or a preview host.
+export const APP_SCHEMA_ID = 'https://app.manawg.com/#app';

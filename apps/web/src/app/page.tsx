@@ -1,3 +1,4 @@
+import { OG_BASE, TWITTER_BASE } from '@/shared/lib/og';
 import type { Metadata } from 'next';
 import { EntryClient } from './EntryClient';
 
@@ -11,8 +12,8 @@ const description =
 export const metadata: Metadata = {
 	title,
 	description,
-	openGraph: { title, description, url: '/' },
-	twitter: { title, description },
+	openGraph: { ...OG_BASE, title, description, url: '/' },
+	twitter: { ...TWITTER_BASE, title, description },
 };
 
 export default function Entry() {
