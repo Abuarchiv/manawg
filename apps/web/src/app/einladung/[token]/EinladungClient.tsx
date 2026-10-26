@@ -1,7 +1,6 @@
 'use client';
 
-import { NAME_MAX } from '@/app/neu/start-flow';
-import { useAccountNamePrefill } from '@/app/neu/use-start-draft';
+import { useAccountNamePrefill } from '@/app/use-account-name-prefill';
 import { BackButton } from '@/components/app/BackButton';
 import { ErrorBox } from '@/components/app/ErrorBox';
 import { TextField } from '@/components/app/TextField';
@@ -13,6 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { invitePath } from '@/core/utils/invite-token';
 import { cn } from '@/shared/lib/cn';
+import { MEMBER_NAME_MAX_LENGTH } from '@/shared/lib/limits';
 import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -108,7 +108,7 @@ export function EinladungClient({ token }: { token: string }) {
 						placeholder="z. B. Anna"
 						value={name}
 						onChange={setName}
-						maxLength={NAME_MAX}
+						maxLength={MEMBER_NAME_MAX_LENGTH}
 						autoComplete="given-name"
 						autoFocus
 						required

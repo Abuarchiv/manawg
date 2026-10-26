@@ -1,5 +1,6 @@
 'use client';
 
+import { SUPPORT_MAILTO } from '@/app/support-mailto';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
 	Empty,
@@ -61,7 +62,7 @@ export default function GlobalError({
 								Zur Startseite
 							</a>
 							<a
-								href="mailto:info@manawg.com?subject=Fehler%20in%20ManaWG"
+								href={SUPPORT_MAILTO}
 								className={buttonVariants({ variant: 'outline', size: 'lg' })}
 							>
 								Fehler per E-Mail melden
