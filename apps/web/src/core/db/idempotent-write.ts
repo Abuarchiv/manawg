@@ -8,6 +8,7 @@ import { type DbTransaction, TransactionAbort, withTransaction } from '@/core/db
 import { claimReplaySlot } from '@/core/guards/replay-slot';
 import { claimResponseSlot, getCachedResponse } from '@/core/idempotency-store';
 import { logApiError } from '@/core/infra/observability';
+import { isRecord } from '@/core/utils/is-record';
 
 /**
  * The one entry point for mutations that accept an `Idempotency-Key`.
@@ -47,19 +48,22 @@ export interface ReplayCodec<B> {
 	decode(stored: unknown): StoredResponse<B> | null;
 }
 
+/** A stored row holding an HTTP status (200-599) and a `body`; extra keys stay on the row. */
+export function isStoredResponse(
+	value: unknown,
+): value is Record<string, unknown> & StoredResponse {
+	return (
+		isRecord(value) &&
+		typeof value.status === 'number' &&
+		Number.isInteger(value.status) &&
+		value.status >= 200 &&
+		value.status <= 599 &&
+		'body' in value
+	);
+}
+
 function readStoredResponse(value: unknown): StoredResponse | null {
-	if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-	const row = value as Record<string, unknown>;
-	if (
-		typeof row.status === 'number' &&
-		Number.isInteger(row.status) &&
-		row.status >= 200 &&
-		row.status <= 599 &&
-		'body' in row
-	) {
-		return { status: row.status, body: row.body };
-	}
-	return null;
+	return isStoredResponse(value) ? { status: value.status, body: value.body } : null;
 }
 
 /** Stores `{ status, body }`. */

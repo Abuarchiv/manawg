@@ -3,6 +3,7 @@ import type { DbTransaction } from '@/core/db/transaction';
 import { TransactionAbort } from '@/core/db/transaction-abort';
 import { logApiError } from '@/core/infra/observability';
 import { RESPONSE_REPLAY_TTL_SECONDS } from '@/core/offline/replay-retention';
+import { isRecord } from '@/core/utils/is-record';
 import { and, eq, sql } from 'drizzle-orm';
 
 /**
@@ -21,13 +22,7 @@ export type LockedClaim<T> =
 	| { kind: 'completed'; body: T };
 
 function isClaimPlaceholder(body: unknown): boolean {
-	return (
-		body !== null &&
-		typeof body === 'object' &&
-		!Array.isArray(body) &&
-		Object.keys(body).length === 1 &&
-		(body as { _claimed?: unknown })._claimed === true
-	);
+	return isRecord(body) && Object.keys(body).length === 1 && body._claimed === true;
 }
 
 function placeholderBody() {

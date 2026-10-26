@@ -1,4 +1,5 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
+import { isRecord } from '@/core/utils/is-record';
 import { isPayPalConfigured, requestPayPalApi } from './paypal';
 
 export type PayPalEnvironment = 'sandbox' | 'live';
@@ -323,9 +324,8 @@ export async function getPayPalMerchantIdByTracking(trackingId: string): Promise
 		`/v1/customer/partners/${encodeURIComponent(config.partnerMerchantId)}/merchant-integrations?tracking_id=${encodeURIComponent(trackingId)}`,
 		{ method: 'GET' },
 	);
-	if (!integration || typeof integration !== 'object' || Array.isArray(integration)) return null;
-	const merchant = integration as { merchant_id?: unknown; tracking_id?: unknown };
-	return merchant.tracking_id === trackingId && isPayPalMerchantId(merchant.merchant_id)
-		? merchant.merchant_id
+	if (!isRecord(integration)) return null;
+	return integration.tracking_id === trackingId && isPayPalMerchantId(integration.merchant_id)
+		? integration.merchant_id
 		: null;
 }

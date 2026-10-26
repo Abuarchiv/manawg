@@ -81,16 +81,16 @@ export const registerLimiter = build(10, 3600, 'reg');
 // Credential guessing and auth mails: 20 / 5 min / IP across /api/auth/* (a household behind one router stays far below it)
 export const authAttemptLimiter = build(20, 300, 'auth-attempt');
 // 300 reads / min / session — WG GET endpoints. Every page load fans out to about eight module
-// reads, so 120 allowed only 15 navigations a minute and a member flipping through the tabs saw
-// "konnte nicht laden"; reads need a valid session, the share-code lookup has its own limiter.
+// reads, so this allows ~37 navigations a minute; reads need a valid session, the share-code
+// lookup has its own limiter.
 export const wgReadLimiter = build(300, 60, 'wg-read');
 // 60 writes / min / session — WG mutation endpoints. A shopping trip (typing the list, ticking it
-// off) reaches 30 within a minute and lost the 31st item; chat, mails, uploads and reminders keep
-// their own tighter limits, and the IP backstop below still caps a whole household.
+// off) reaches 30 within a minute; chat, mails, uploads and reminders keep their own tighter
+// limits, and the IP backstop below still caps a whole household.
 export const wgWriteLimiter = build(60, 60, 'wg-write');
-// Every full page load of a WG does one lookup, and flatmates share their router's IP,
-// so 20/min locked whole WGs out ("Deine WG konnte nicht geladen werden"). With
-// 32^8 codes, one IP at 120/min still needs ~17,000 years to walk the code space.
+// Every full page load of a WG does one lookup, and flatmates share their router's IP, so the
+// limit must stay generous. With 32^8 codes, one IP at 120/min still needs ~17,000 years to walk
+// the code space.
 export const wgShareCodeLookupLimiter = build(120, 60, 'wg-code-lookup'); // 120 share-code lookups / min / IP — brute-force defense
 // Nested /api/wg/<code>/… routes answer differently for an unknown code and
 // for a foreign WG. Only misses are counted (per signed-in account), so
@@ -106,13 +106,13 @@ export const chatReadLimiter = build(120, 60, 'chat-read'); // 120 read-receipts
 export const chatMessageLimiter = build(20, 60, 'chat-msg'); // 20 messages / min / member — anti-spam
 export const uploadSignLimiter = build(10, 60, 'upload-sign'); // 10 upload signatures / min / member
 // Bounds the storage a WG can fill per day: the per-minute bucket alone allows ~14,000 a day.
-export const uploadSignDayLimiter = build(50, 86400, 'upload-sign-day'); // 50 upload signatures / day / WG
+export const uploadSignDayLimiter = build(50, 86_400, 'upload-sign-day'); // 50 upload signatures / day / WG
 // A single export request dumps the WG's entire dataset (expenses, chores,
-// chat, announcements). The middleware's 120 reads/min is far too generous for
+// chat, announcements). The middleware's 300 reads/min per session is far too generous for
 // that, so it gets its own bucket on top.
 export const wgExportLimiter = build(20, 3600, 'wg-export'); // 20 exports / hour / member
 // The dashboard aggregates the WG's financial state. The middleware's
-// 120 reads/min is per IP and shared with every other GET, so the route gets
+// 300 reads/min per session is shared with every other GET, so the route gets
 // its own per-member bucket: scraping balances stays throttled even from a
 // rotating pool of IPs.
 export const dashboardLimiter = build(60, 60, 'dashboard'); // 60 dashboard reads / min / member
@@ -271,6 +271,17 @@ export function resetOpenStateReporting(): void {
 	lastReportedAt.clear();
 }
 
+const LIMITER_UNAVAILABLE_RETRY_MS = 60_000;
+
+function unavailableResult(): RateLimitResult {
+	return {
+		success: false,
+		remaining: 0,
+		reset: Date.now() + LIMITER_UNAVAILABLE_RETRY_MS,
+		limiterUnavailable: true,
+	};
+}
+
 export async function checkRateLimit(
 	limiter: Pick<Ratelimit, 'limit'> | null,
 	key: string,
@@ -280,7 +291,7 @@ export async function checkRateLimit(
 		const mode = configuredButInvalid && process.env.VERCEL_ENV === 'preview' ? 'closed' : failMode;
 		reportUnavailable('upstash-not-configured', mode);
 		if (mode === 'closed') {
-			return { success: false, remaining: 0, reset: Date.now() + 60_000, limiterUnavailable: true };
+			return unavailableResult();
 		}
 		return { success: true, remaining: -1, reset: 0 };
 	}
@@ -294,7 +305,7 @@ export async function checkRateLimit(
 		const mode = process.env.VERCEL_ENV === 'preview' ? 'closed' : failMode;
 		reportUnavailable('limiter-call-failed', mode, true);
 		if (mode === 'closed') {
-			return { success: false, remaining: 0, reset: Date.now() + 60_000, limiterUnavailable: true };
+			return unavailableResult();
 		}
 		return { success: true, remaining: -1, reset: 0 };
 	}

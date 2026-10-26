@@ -2,6 +2,7 @@ import { belongsToAccount, getLocalAccount, setLocalAccount } from '@/core/auth/
 import { safeLocalStorage } from '@/core/utils/browser';
 import { isRecord } from '@/core/utils/is-record';
 import { isOfflineAction } from './offline-action-guard';
+import { SERVER_CHECK_PREFIX } from './offline-failure-copy';
 import {
 	type OfflineAction,
 	isQueuedCreateId,
@@ -31,12 +32,9 @@ export const syncedAfterFailedQueueSave = new Set<string>();
 export const reviewAfterFailedQueueSave = new Set<string>();
 // This fallback lasts for the current page only; recovery across reloads would need IndexedDB.
 let cachedOfflineQueue: OfflineAction[] | null = null;
-export const REVIEW_REQUIRED_ERROR =
-	'Server prüfen: Die erste Version kann bereits gespeichert sein. Die Bearbeitung wurde nicht gesendet. Vergleiche den WG-Eintrag und verwirf diese Aktion erst danach; lege benötigte Änderungen neu an.';
-const REPLAY_EXPIRED_ERROR =
-	'Server prüfen: Die sichere Wiederholungsfrist ist abgelaufen. Diese Aktion kann bereits gespeichert sein und wird nicht erneut gesendet. Vergleiche den WG-Eintrag und verwirf diese Aktion erst danach; lege nur fehlende Änderungen neu an.';
-const INVALID_ACTION_TIME_ERROR =
-	'Server prüfen: Der Zeitpunkt dieser Aktion ist unklar. Sie kann bereits gespeichert sein und wird nicht erneut gesendet. Vergleiche den WG-Eintrag und verwirf diese Aktion erst danach; lege nur fehlende Änderungen neu an.';
+export const REVIEW_REQUIRED_ERROR = `${SERVER_CHECK_PREFIX} Die erste Version kann bereits gespeichert sein. Die Bearbeitung wurde nicht gesendet. Vergleiche den WG-Eintrag und verwirf diese Aktion erst danach; lege benötigte Änderungen neu an.`;
+const REPLAY_EXPIRED_ERROR = `${SERVER_CHECK_PREFIX} Die sichere Wiederholungsfrist ist abgelaufen. Diese Aktion kann bereits gespeichert sein und wird nicht erneut gesendet. Vergleiche den WG-Eintrag und verwirf diese Aktion erst danach; lege nur fehlende Änderungen neu an.`;
+const INVALID_ACTION_TIME_ERROR = `${SERVER_CHECK_PREFIX} Der Zeitpunkt dieser Aktion ist unklar. Sie kann bereits gespeichert sein und wird nicht erneut gesendet. Vergleiche den WG-Eintrag und verwirf diese Aktion erst danach; lege nur fehlende Änderungen neu an.`;
 
 type OfflineQueueLockResult<T> = { acquired: true; value: T } | { acquired: false };
 
@@ -70,20 +68,25 @@ export async function withOfflineQueueLock<T>(
 	}
 }
 
+/** Marker map `id -> timestamp`; anything that is not a finite-number entry is dropped. */
+function readTimestampMap(storage: Storage, key: string): Record<string, number> {
+	const raw = storage.getItem(key);
+	const parsed = raw ? (JSON.parse(raw) as unknown) : null;
+	if (!isRecord(parsed)) return {};
+	return Object.fromEntries(
+		Object.entries(parsed).filter(
+			(entry): entry is [string, number] => typeof entry[1] === 'number',
+		),
+	);
+}
+
 function readPersistedSyncedIds(): string[] {
 	const storage = safeLocalStorage();
 	if (!storage) return [];
 	try {
-		const raw = storage.getItem(SYNCED_IDS_KEY);
-		if (!raw) return [];
-		const parsed = JSON.parse(raw) as unknown;
-		if (!isRecord(parsed)) return [];
 		const now = Date.now();
-		return Object.entries(parsed)
-			.filter(
-				([id, ts]) =>
-					typeof id === 'string' && typeof ts === 'number' && now - ts < SYNCED_IDS_TTL_MS,
-			)
+		return Object.entries(readTimestampMap(storage, SYNCED_IDS_KEY))
+			.filter(([, ts]) => now - ts < SYNCED_IDS_TTL_MS)
 			.map(([id]) => id);
 	} catch {
 		return [];
@@ -92,14 +95,10 @@ function readPersistedSyncedIds(): string[] {
 
 export function persistSyncedIds(storage: Storage, ids: string[]): void {
 	try {
-		const raw = storage.getItem(SYNCED_IDS_KEY);
-		const parsed = isRecord(raw ? (JSON.parse(raw) as unknown) : null) ? raw : null;
-		const map: Record<string, number> = parsed
-			? (JSON.parse(parsed) as Record<string, number>)
-			: {};
+		const map = readTimestampMap(storage, SYNCED_IDS_KEY);
 		const now = Date.now();
 		for (const [id, ts] of Object.entries(map)) {
-			if (typeof ts !== 'number' || now - ts >= SYNCED_IDS_TTL_MS) delete map[id];
+			if (now - ts >= SYNCED_IDS_TTL_MS) delete map[id];
 		}
 		for (const id of ids) map[id] = now;
 		storage.setItem(SYNCED_IDS_KEY, JSON.stringify(map));
@@ -112,13 +111,7 @@ function readPersistedReviewIds(): string[] {
 	const storage = safeLocalStorage();
 	if (!storage) return [];
 	try {
-		const raw = storage.getItem(OFFLINE_REVIEW_IDS_KEY);
-		if (!raw) return [];
-		const parsed = JSON.parse(raw) as unknown;
-		if (!isRecord(parsed)) return [];
-		return Object.entries(parsed)
-			.filter(([id, ts]) => typeof id === 'string' && typeof ts === 'number')
-			.map(([id]) => id);
+		return Object.keys(readTimestampMap(storage, OFFLINE_REVIEW_IDS_KEY));
 	} catch {
 		return [];
 	}
@@ -126,15 +119,8 @@ function readPersistedReviewIds(): string[] {
 
 export function persistOfflineReviewIds(storage: Storage, ids: string[]): void {
 	try {
-		const raw = storage.getItem(OFFLINE_REVIEW_IDS_KEY);
-		const parsed = isRecord(raw ? (JSON.parse(raw) as unknown) : null) ? raw : null;
-		const map: Record<string, number> = parsed
-			? (JSON.parse(parsed) as Record<string, number>)
-			: {};
+		const map = readTimestampMap(storage, OFFLINE_REVIEW_IDS_KEY);
 		const now = Date.now();
-		for (const [id, ts] of Object.entries(map)) {
-			if (typeof ts !== 'number') delete map[id];
-		}
 		for (const id of ids) map[id] = now;
 		storage.setItem(OFFLINE_REVIEW_IDS_KEY, JSON.stringify(map));
 	} catch {
@@ -148,14 +134,10 @@ function clearReviewIdsForMissingActions(actions: OfflineAction[], storage: Stor
 		if (!currentIds.has(id)) reviewAfterFailedQueueSave.delete(id);
 	}
 	try {
-		const raw = storage.getItem(OFFLINE_REVIEW_IDS_KEY);
-		const parsed = isRecord(raw ? (JSON.parse(raw) as unknown) : null) ? raw : null;
-		const map: Record<string, number> = parsed
-			? (JSON.parse(parsed) as Record<string, number>)
-			: {};
+		const map = readTimestampMap(storage, OFFLINE_REVIEW_IDS_KEY);
 		let changed = false;
-		for (const [id, ts] of Object.entries(map)) {
-			if (typeof ts !== 'number' || !currentIds.has(id)) {
+		for (const id of Object.keys(map)) {
+			if (!currentIds.has(id)) {
 				delete map[id];
 				changed = true;
 			}

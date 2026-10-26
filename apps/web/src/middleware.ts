@@ -19,6 +19,8 @@ import {
 import { type FixtureRequest, resolveFixtureRequest } from '@/fixtures/middleware';
 import { type NextRequest, NextResponse } from 'next/server';
 
+/** Seconds, as a string: it is both the `Retry-After` header and the body field. */
+const MIGRATION_RETRY_AFTER_SECONDS = '300';
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 function isRateLimitedApiPath(path: string): boolean {
@@ -115,18 +117,11 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 		if (path === '/api/health') {
 			return refreshSupabaseSession(req, NextResponse.next());
 		}
-		if (path.startsWith('/api/cron/')) {
-			const retryAfter = '300';
+		// Cron routes are blocked on every method, all other routes on writes only.
+		if (path.startsWith('/api/cron/') || !isRead) {
 			return NextResponse.json(
-				{ error: 'migration_read_only', retryAfter: retryAfter },
-				{ status: 503, headers: { 'Retry-After': retryAfter } },
-			);
-		}
-		if (!READ_METHODS.has(req.method)) {
-			const retryAfter = '300';
-			return NextResponse.json(
-				{ error: 'migration_read_only', retryAfter: retryAfter },
-				{ status: 503, headers: { 'Retry-After': retryAfter } },
+				{ error: 'migration_read_only', retryAfter: MIGRATION_RETRY_AFTER_SECONDS },
+				{ status: 503, headers: { 'Retry-After': MIGRATION_RETRY_AFTER_SECONDS } },
 			);
 		}
 		return refreshSupabaseSession(req, NextResponse.next());
@@ -160,26 +155,19 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 		result = await checkRateLimit(isRead ? wgReadIpBackstop : wgWriteIpBackstop, ip, failMode);
 	}
 	if (!result.success) {
+		const retryAfterMs = Math.max(0, result.reset - Date.now());
+		const retryAfter = String(Math.max(1, Math.ceil(retryAfterMs / 1000)));
 		if (result.limiterUnavailable) {
-			const retryAfter = Math.max(1, Math.ceil((result.reset - Date.now()) / 1000));
 			return NextResponse.json(
-				{ error: 'rate_limiter_unavailable', retryAfterMs: Math.max(0, result.reset - Date.now()) },
-				{
-					status: 503,
-					headers: {
-						'Retry-After': retryAfter.toString(),
-					},
-				},
+				{ error: 'rate_limiter_unavailable', retryAfterMs },
+				{ status: 503, headers: { 'Retry-After': retryAfter } },
 			);
 		}
 		return NextResponse.json(
-			{ error: 'rate_limited', retryAfterMs: Math.max(0, result.reset - Date.now()) },
+			{ error: 'rate_limited', retryAfterMs },
 			{
 				status: 429,
-				headers: {
-					'Retry-After': Math.max(1, Math.ceil((result.reset - Date.now()) / 1000)).toString(),
-					'X-RateLimit-Remaining': String(result.remaining),
-				},
+				headers: { 'Retry-After': retryAfter, 'X-RateLimit-Remaining': String(result.remaining) },
 			},
 		);
 	}
@@ -192,8 +180,8 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 
 export const config = {
 	// /api/wg (root) is matched explicitly because Next's :path* zero-or-more
-	// matcher does not include the bare prefix without a trailing slash.
-	// Missing it before meant POST /api/wg (create-WG) bypassed all limits.
+	// matcher does not include the bare prefix without a trailing slash, so
+	// POST /api/wg (create-WG) would otherwise bypass all limits.
 	matcher: [
 		'/((?!api|_next/static|_next/image|favicon.ico|manifest.json|.*\\..*).*)',
 		'/api/account',

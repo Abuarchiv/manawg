@@ -1,5 +1,6 @@
 import { isSessionExpired } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
+import { IMAGE_REMOVED_ERROR, SERVER_CHECK_PREFIX } from './offline-failure-copy';
 import { isPendingImageToken, removePendingImage, uploadPendingImageToken } from './offline-images';
 import {
 	type OfflineAction,
@@ -261,9 +262,9 @@ async function runOfflineSync(
 					res.error === 'member_context_changed'
 						? REAUTH_REQUIRED_ERROR
 						: res.error === 'image_removed'
-							? 'Bild wurde entfernt: Entferne den Anhang in der Offline-Warteschlange oder wähle das Bild erneut aus.'
+							? IMAGE_REMOVED_ERROR
 							: isTerminalReplayStatus(res.status) && !isSessionExpired(res.error)
-								? `Server prüfen: ${failure.title}: ${failure.detail}`
+								? `${SERVER_CHECK_PREFIX} ${failure.title}: ${failure.detail}`
 								: `${failure.title}: ${failure.detail}`;
 				outcomes.set(action.id, {
 					snapshot: requestSnapshot,

@@ -1,3 +1,4 @@
+import { logApiError } from '@/core/infra/observability';
 import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 import { accountDeletions, expensePayments, wgMembers, wgs } from './schema';
 import { type DbTransaction, withFreshTransaction, withTransaction } from './transaction';
@@ -112,14 +113,16 @@ export async function tryCompleteAccountDeletion(
 		});
 		if (state === 'completed') return true;
 		if (state === 'missing') return false;
-	} catch {
+	} catch (err) {
+		logApiError('[account-deletion] claim failed', err);
 		return false;
 	}
 
 	let confirmed: boolean;
 	try {
 		confirmed = await deleteAuthUser(authUserId);
-	} catch {
+	} catch (err) {
+		logApiError('[account-deletion] auth deletion failed', err);
 		return false;
 	}
 	if (!confirmed) return false;
@@ -139,7 +142,8 @@ export async function tryCompleteAccountDeletion(
 				.limit(1),
 		);
 		return Boolean(record?.completedAt);
-	} catch {
+	} catch (err) {
+		logApiError('[account-deletion] completion failed', err);
 		return false;
 	}
 }

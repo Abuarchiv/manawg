@@ -1,25 +1,8 @@
-const PUSH_ACTIVATION_ERROR_MESSAGES = new Set([
-	'Push wird von diesem Browser nicht unterstützt.',
-	'Push ist noch nicht konfiguriert.',
-	'Benachrichtigungen wurden nicht erlaubt.',
-	'Push-Abo konnte nicht gelesen werden.',
-	'Push-Abo konnte nicht gespeichert werden.',
-	'Push-Abo konnte nicht gespeichert werden: Aktiviere Web Push neu.',
-	'Push-Abo konnte nicht gespeichert werden: Tritt der WG erneut bei.',
-	'Push-Abo konnte nicht gespeichert werden: Versuche es gleich erneut.',
-	'Push-Abo konnte nicht gespeichert werden: Dieser Browser ist mit einem anderen Konto verbunden. Versuche es erneut.',
-]);
-
-const PUSH_DEACTIVATION_ERROR_MESSAGES = new Set([
-	'Push-Abo konnte nicht deaktiviert werden.',
-	'Push-Abo konnte nicht deaktiviert werden: Tritt der WG erneut bei.',
-	'Push-Abo konnte nicht deaktiviert werden: Versuche es gleich erneut.',
-]);
+/** A push (de)activation failure whose message is German copy meant for the user. */
+export class PushError extends Error {}
 
 export function formatPushActivationError(error: unknown): string {
-	if (error instanceof Error && PUSH_ACTIVATION_ERROR_MESSAGES.has(error.message)) {
-		return error.message;
-	}
+	if (error instanceof PushError) return error.message;
 	if (error instanceof Error && error.name === 'NotAllowedError') {
 		return 'Benachrichtigungen wurden nicht erlaubt.';
 	}
@@ -30,10 +13,7 @@ export function formatPushActivationError(error: unknown): string {
 }
 
 export function formatPushDeactivationError(error: unknown): string {
-	if (error instanceof Error && PUSH_DEACTIVATION_ERROR_MESSAGES.has(error.message)) {
-		return error.message;
-	}
-	return 'Web Push konnte nicht deaktiviert werden.';
+	return error instanceof PushError ? error.message : 'Web Push konnte nicht deaktiviert werden.';
 }
 
 export function parseWebPushStatusCode(err: unknown): number {

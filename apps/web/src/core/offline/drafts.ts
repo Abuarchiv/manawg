@@ -1,5 +1,6 @@
 import { formatEuroInput } from '@/core/utils/amount';
 import { safeLocalStorage } from '@/core/utils/browser';
+import { isRecord } from '@/core/utils/is-record';
 import { todayInputValue } from '@/core/utils/local-date';
 import type { OfflineAction, OfflineActionType } from './offline-queue';
 
@@ -33,8 +34,7 @@ function parseDraft<T extends Record<string, unknown>>(raw: string | null): T | 
 	if (!raw) return null;
 	try {
 		const parsed = JSON.parse(raw) as unknown;
-		if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
-		return parsed as T;
+		return isRecord(parsed) ? (parsed as T) : null;
 	} catch {
 		return null;
 	}

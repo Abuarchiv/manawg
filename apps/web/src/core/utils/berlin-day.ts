@@ -7,8 +7,9 @@
  * including both DST transitions (23h spring-forward and 25h fall-back days).
  */
 
+import { MS_PER_HOUR } from './time';
+
 const BERLIN_TZ = 'Europe/Berlin';
-const MS_PER_HOUR = 60 * 60 * 1000;
 // Berlin is UTC+1 (CET) in winter and UTC+2 (CEST) in summer.
 const BERLIN_UTC_OFFSET_HOURS = [1, 2];
 // From any Berlin midnight, +30h lands mid-morning of the following Berlin

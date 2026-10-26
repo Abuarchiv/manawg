@@ -126,7 +126,7 @@ export function appendSecondaryActivity(
 			memberName: 'System',
 			text: recurring.lastCreatedAt
 				? `${recurring.description} aus Vorlage erstellt`
-				: `${recurring.description} als Vorlage angelegt`,
+				: `${recurring.description} als Fixkosten-Vorlage angelegt`,
 			amountCents: recurring.amountCents,
 			currency: 'EUR',
 			href: getDashboardActivityHref(shareCode, 'recurring', recurring.id),
