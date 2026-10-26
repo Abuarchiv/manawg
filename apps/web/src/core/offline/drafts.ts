@@ -87,8 +87,7 @@ export function isEmptyModuleDraft(
 			paidByMemberId: memberId,
 			splitMode: 'equal',
 			manualSplits: {},
-			// The form always stores its date and participants; today / everyone is the untouched state.
-			occurredOn: todayInputValue(),
+			// The form always stores its participants; everyone is the untouched state.
 			participantIds: null,
 			queueEditId: null,
 			queueEditType: null,
@@ -118,7 +117,9 @@ export function isEmptyModuleDraft(
 	const known = module === 'chore' ? { ...defaults.chore, ...defaults.absence } : defaults[module];
 	return Object.entries(draft).every(
 		([key, value]) =>
-			Object.hasOwn(known, key) && JSON.stringify(value) === JSON.stringify(known[key]),
+			// An expense date alone is no content: an untouched form from yesterday is still empty.
+			(module === 'expense' && key === 'occurredOn') ||
+			(Object.hasOwn(known, key) && JSON.stringify(value) === JSON.stringify(known[key])),
 	);
 }
 

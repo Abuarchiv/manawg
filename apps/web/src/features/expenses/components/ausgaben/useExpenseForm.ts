@@ -9,6 +9,7 @@ import {
 } from '@/core/offline/drafts';
 import type { OfflineActionType } from '@/core/offline/offline-queue';
 import { formatEuroInput } from '@/core/utils/amount';
+import { todayInputValue } from '@/core/utils/local-date';
 import { CENTS_PER_EURO } from '@/core/utils/money';
 import {
 	DEFAULT_EXPENSE_CATEGORY,
@@ -138,7 +139,12 @@ export function useExpenseForm({
 		const queuedEqual = queuedParticipants !== null;
 		if (draft.splitMode) setSplitMode(queuedEqual ? 'equal' : draft.splitMode);
 		if (draft.manualSplits && !queuedEqual) setManualSplits(draft.manualSplits);
-		extras.restore(draft);
+		// An untouched form opens on today, not on the day it was last open.
+		extras.restore(
+			isEmptyModuleDraft('expense', draft, identityMemberId)
+				? { ...draft, occurredOn: todayInputValue() }
+				: draft,
+		);
 		if (queuedParticipants) {
 			extras.setParticipantIds(participantsOrAll(queuedParticipants, membersRef.current));
 		}
