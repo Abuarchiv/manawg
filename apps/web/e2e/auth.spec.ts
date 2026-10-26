@@ -3,7 +3,7 @@
 
 import { type Route, expect, test } from '@playwright/test';
 
-import { mockNoWgs } from './support/helpers';
+import { mockNoWgs, skipUnlessDbDown } from './support/helpers';
 
 const INVITE_TOKEN = 'fixture-invite-token01';
 
@@ -97,10 +97,7 @@ test.describe('auth e-mail code flow', () => {
 
 test.describe('auth tab responsive', () => {
 	test.describe('password tab at large text', () => {
-		test.skip(
-			process.env.AUTH_UI_E2E !== 'true' || process.env.AUTH_TAB_RESPONSIVE_E2E !== 'true',
-			'Requires the isolated fake Supabase server and 32px root-font fixture.',
-		);
+		test.skip(process.env.AUTH_UI_E2E !== 'true', 'Requires the isolated fake Supabase fixture.');
 
 		for (const scheme of ['light', 'dark'] as const) {
 			test(`keeps the password tab label intact at 320px in ${scheme} mode`, async ({ page }) => {
@@ -169,10 +166,7 @@ test.describe('auth tab responsive', () => {
 
 test.describe('start credentials auth validation', () => {
 	test.describe('credentials auth form validation fixture', () => {
-		test.skip(
-			process.env.E2E_FIXTURE_MODE !== 'true' || process.env.NEXT_PUBLIC_DB_DOWN !== 'true',
-			'Requires the database-down fixture server.',
-		);
+		skipUnlessDbDown();
 
 		test('shows the custom error box instead of native browser validation', async ({ page }) => {
 			await page.route('**/api/wg/mine', (route) =>
@@ -345,10 +339,7 @@ test.describe('start credentials auth validation', () => {
 
 test.describe('entry accessibility', () => {
 	test.describe('new WG form accessibility fixture', () => {
-		test.skip(
-			process.env.E2E_FIXTURE_MODE !== 'true' || process.env.NEXT_PUBLIC_DB_DOWN !== 'true',
-			'Requires the database-down fixture server.',
-		);
+		skipUnlessDbDown();
 
 		test('public start page offers registration next to sign-in for guests', async ({ page }) => {
 			await page.route('**/api/wg/mine', (route) =>

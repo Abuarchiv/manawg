@@ -1,10 +1,16 @@
 // Calendar: changing or removing one date of a repeating event leaves the rest of the series alone.
 
 import { type Route, expect, test } from '@playwright/test';
-import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './support/helpers';
+import {
+	FIXTURE_WG,
+	dismissOnboarding,
+	navigateToFeature,
+	setupMember,
+	skipUnlessFixtures,
+} from './support/helpers';
 
 test.describe('single occurrence of a series', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	// Events are stored at minute precision, like the form writes them.
 	const startsAt = new Date(
@@ -115,7 +121,7 @@ const emptyCalendar = async (page: import('@playwright/test').Page) => {
 };
 
 test.describe('device time zone notice outside Berlin', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 	test.use({ timezoneId: 'America/New_York' });
 
 	test('a device outside Berlin is told how times are read', async ({ page }) => {
@@ -125,7 +131,7 @@ test.describe('device time zone notice outside Berlin', () => {
 });
 
 test.describe('device time zone notice in Berlin', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	test('a device in Berlin sees no notice', async ({ page }) => {
 		await emptyCalendar(page);

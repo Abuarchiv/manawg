@@ -9,10 +9,11 @@ import {
 	navigateToFeature,
 	nextHistoryPop,
 	setupMember,
+	skipUnlessFixtures,
 } from './support/helpers';
 
 test.describe('manual split validation', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	const INVALID_SPLIT_MESSAGE =
 		'Mindestens ein Anteil ist ungültig. Gib einen gültigen Betrag ein oder lasse das Feld leer.';
@@ -178,7 +179,7 @@ test.describe('manual split validation', () => {
 });
 
 test.describe('finance dialog mobile', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	async function expectManualSplitLayout(
 		page: Page,

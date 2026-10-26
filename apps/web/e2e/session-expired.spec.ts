@@ -2,13 +2,10 @@
 // Why: an expired session must show one explanation and a way back to the same page.
 
 import { expect, test } from '@playwright/test';
-import { FIXTURE_WG, setupMember } from './support/helpers';
+import { FIXTURE_WG, setupMember, skipUnlessDbDown } from './support/helpers';
 
 test.describe('session expired banner', () => {
-	test.skip(
-		process.env.E2E_FIXTURE_MODE !== 'true' || process.env.NEXT_PUBLIC_DB_DOWN !== 'true',
-		'Requires the database-down fixture server.',
-	);
+	skipUnlessDbDown();
 
 	test('an auth_required answer offers signing in again and returns to the page', async ({
 		page,

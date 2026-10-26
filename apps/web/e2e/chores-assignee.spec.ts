@@ -11,10 +11,11 @@ import {
 	mockUnreadCount,
 	navigateToFeature,
 	setupMember,
+	skipUnlessFixtures,
 } from './support/helpers';
 
 test.describe('chore next assignee', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	const SHARE_CODE = FIXTURE_WG.shareCode;
 	const CURRENT_MEMBER = FIXTURE_WG.memberId;

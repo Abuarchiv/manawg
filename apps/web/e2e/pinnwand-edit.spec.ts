@@ -2,10 +2,16 @@
 
 import { expect, test } from '@playwright/test';
 import type { Announcement } from '../src/features/pinnwand/components/announcement-types';
-import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './support/helpers';
+import {
+	FIXTURE_WG,
+	dismissOnboarding,
+	navigateToFeature,
+	setupMember,
+	skipUnlessFixtures,
+} from './support/helpers';
 
 test.describe('pinnwand edit', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	const post: Announcement = {
 		id: 'edit-post',

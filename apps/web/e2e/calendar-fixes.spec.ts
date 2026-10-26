@@ -10,7 +10,13 @@ import {
 	expandRecurrence,
 } from '../src/features/events/events';
 import { computeTomorrowUtcWindow } from '../src/features/events/server/event-reminder-window';
-import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './support/helpers';
+import {
+	FIXTURE_WG,
+	dismissOnboarding,
+	navigateToFeature,
+	setupMember,
+	skipUnlessFixtures,
+} from './support/helpers';
 
 test.describe('calendar fixes', () => {
 	const ALL_DAY_EVENT: EventInput = {
@@ -99,10 +105,7 @@ test.describe('calendar fixes', () => {
 	});
 
 	test('shows a fetched multi-day event on every overlapping month-grid day', async ({ page }) => {
-		test.skip(
-			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
-			'requires the local fixture server',
-		);
+		skipUnlessFixtures();
 
 		const now = new Date();
 		const year = Number(
@@ -159,10 +162,7 @@ test.describe('calendar fixes', () => {
 	test('keeps the month grid accessible and keyboard focus after paging at 320px', async ({
 		page,
 	}) => {
-		test.skip(
-			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
-			'requires the local fixture server',
-		);
+		skipUnlessFixtures();
 
 		await page.setViewportSize({ width: 320, height: 812 });
 		await setupMember(page);
@@ -319,10 +319,7 @@ test.describe('calendar fixes', () => {
 	});
 
 	test('edit recurrence uses the canonical select and sends an RFC rule', async ({ page }) => {
-		test.skip(
-			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
-			'requires the local fixture server',
-		);
+		skipUnlessFixtures();
 
 		const startsAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 		const event = {
@@ -378,10 +375,7 @@ test.describe('calendar fixes', () => {
 	test('successful deletion removes an event restored by a concurrent refresh', async ({
 		page,
 	}) => {
-		test.skip(
-			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
-			'requires the local fixture server',
-		);
+		skipUnlessFixtures();
 		const event = {
 			id: '33333333-3333-4333-8333-333333333333',
 			title: 'Termin mit laufender Aktualisierung',
@@ -443,10 +437,7 @@ test.describe('calendar fixes', () => {
 	});
 
 	test('push link highlights its event and a 403 names who may change it', async ({ page }) => {
-		test.skip(
-			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
-			'requires the local fixture server',
-		);
+		skipUnlessFixtures();
 		const event = {
 			id: '44444444-4444-4444-8444-444444444444',
 			title: 'Termin aus Push-Link',
@@ -486,10 +477,7 @@ test.describe('calendar fixes', () => {
 	});
 
 	test('push link to an event beyond the agenda window opens that event', async ({ page }) => {
-		test.skip(
-			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
-			'requires the local fixture server',
-		);
+		skipUnlessFixtures();
 		const startsAt = new Date(Date.now() + 120 * 86_400_000).toISOString();
 		const event = {
 			id: '55555555-5555-4555-8555-555555555555',
@@ -524,10 +512,7 @@ test.describe('calendar fixes', () => {
 	test('keeps complex recurrence on title-only save and replaces it explicitly', async ({
 		page,
 	}) => {
-		test.skip(
-			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
-			'requires the local fixture server',
-		);
+		skipUnlessFixtures();
 		await page.setViewportSize({ width: 320, height: 740 });
 		await page.addInitScript(() => localStorage.setItem('manawg-theme', 'light'));
 
@@ -600,10 +585,7 @@ test.describe('calendar fixes', () => {
 	});
 
 	test('members who did not create an event get a read-only view', async ({ page }) => {
-		test.skip(
-			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
-			'requires the local fixture server',
-		);
+		skipUnlessFixtures();
 		const event = {
 			id: '55555555-5555-4555-8555-555555555555',
 			title: 'Fremder Termin',

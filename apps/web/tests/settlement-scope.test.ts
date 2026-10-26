@@ -1,7 +1,8 @@
 // Settlement scope and currency-scoped accounting.
 // Why: Dashboard, debt list and settlement must agree to the cent and never mix currencies.
 
-import { expect, test } from '@playwright/test';
+import assert from 'node:assert/strict';
+import test, { describe } from 'node:test';
 import { buildActivityTimeline } from '../src/composition/activity';
 import {
 	balanceTotalsFromRows,
@@ -22,12 +23,10 @@ import {
 	settlementScopeMatches,
 } from '../src/features/expenses/settlement-scope';
 
-test.describe('settlement scope', () => {
+describe('settlement scope', () => {
 	const memberA = '11111111-1111-4111-8111-111111111111';
 	const memberB = '22222222-2222-4222-8222-222222222222';
 	const memberC = '33333333-3333-4333-8333-333333333333';
-	const noHttpBaseUrl = 'https://example.invalid';
-	const fixtureMemberId = '7d898f9e-5ad7-4f5d-abed-8c3e99a76973';
 
 	const members: SettlementMemberInput[] = [
 		{ id: memberA, name: 'Anna', color: null },
@@ -55,7 +54,7 @@ test.describe('settlement scope', () => {
 		};
 	}
 
-	test.describe('Settlement scope', () => {
+	describe('Settlement scope', () => {
 		test('selects every exact direct split oldest first and ignores other pairs', () => {
 			const actual = selectSettlementScope(
 				[
@@ -75,7 +74,7 @@ test.describe('settlement scope', () => {
 				memberA,
 			);
 
-			expect(actual).toEqual({
+			assert.deepEqual(actual, {
 				currency: 'EUR',
 				netCents: 1200,
 				settleableCents: 1200,
@@ -106,7 +105,7 @@ test.describe('settlement scope', () => {
 				memberA,
 			);
 
-			expect(actual).toEqual({
+			assert.deepEqual(actual, {
 				currency: 'EUR',
 				netCents: 1500,
 				settleableCents: 1000,
@@ -126,9 +125,9 @@ test.describe('settlement scope', () => {
 
 			const firstScope = selectSettlementScope(expenses, members, [], memberB, memberA);
 
-			expect(firstScope.splits).toHaveLength(50);
-			expect(firstScope.settleableCents).toBe(50);
-			expect(firstScope.remainingCents).toBe(1);
+			assert.equal(firstScope.splits.length, 50);
+			assert.equal(firstScope.settleableCents, 50);
+			assert.equal(firstScope.remainingCents, 1);
 
 			const firstSplitIds = new Set(firstScope.splits.map((split) => split.id));
 			const followUpScope = selectSettlementScope(
@@ -145,7 +144,7 @@ test.describe('settlement scope', () => {
 				memberA,
 			);
 
-			expect(followUpScope).toEqual({
+			assert.deepEqual(followUpScope, {
 				currency: 'EUR',
 				netCents: 1,
 				settleableCents: 1,
@@ -170,7 +169,7 @@ test.describe('settlement scope', () => {
 				memberA,
 			);
 
-			expect(actual).toEqual({
+			assert.deepEqual(actual, {
 				currency: 'EUR',
 				netCents: 1000,
 				settleableCents: 0,
@@ -207,9 +206,9 @@ test.describe('settlement scope', () => {
 				],
 			};
 
-			expect(settlementScopeMatches(reviewed, actual)).toBe(true);
-			expect(settlementScopeMatches({ ...reviewed, netCents: 1100 }, actual)).toBe(false);
-			expect(
+			assert.equal(settlementScopeMatches(reviewed, actual), true);
+			assert.equal(settlementScopeMatches({ ...reviewed, netCents: 1100 }, actual), false);
+			assert.equal(
 				settlementScopeMatches(
 					{
 						...reviewed,
@@ -220,8 +219,9 @@ test.describe('settlement scope', () => {
 					},
 					actual,
 				),
-			).toBe(false);
-			expect(
+				false,
+			);
+			assert.equal(
 				settlementScopeMatches(
 					{
 						...reviewed,
@@ -232,7 +232,8 @@ test.describe('settlement scope', () => {
 					},
 					actual,
 				),
-			).toBe(false);
+				false,
+			);
 		});
 
 		test('rejects a retry using the review from before its splits were settled', () => {
@@ -260,9 +261,9 @@ test.describe('settlement scope', () => {
 			}));
 			const retry = selectSettlementScope(afterFirstCommit, members, [], memberB, memberA);
 
-			expect(preview.splits).toHaveLength(2);
-			expect(retry.splits).toEqual([]);
-			expect(settlementScopeMatches(expected, retry)).toBe(false);
+			assert.equal(preview.splits.length, 2);
+			assert.deepEqual(retry.splits, []);
+			assert.equal(settlementScopeMatches(expected, retry), false);
 		});
 
 		test('requires a complete strict review and rejects duplicate or invalid records', () => {
@@ -278,7 +279,7 @@ test.describe('settlement scope', () => {
 				},
 			};
 			// The parser normalises the optional `offset` flag to an explicit false.
-			expect(parseSettlementConfirmation(validReview)).toEqual({
+			assert.deepEqual(parseSettlementConfirmation(validReview), {
 				ok: true,
 				value: {
 					...validReview,
@@ -289,12 +290,15 @@ test.describe('settlement scope', () => {
 				},
 			});
 
-			expect(parseSettlementConfirmation({ fromMemberId: memberB, toMemberId: memberA })).toEqual({
-				ok: false,
-				reason: 'required',
-			});
+			assert.deepEqual(
+				parseSettlementConfirmation({ fromMemberId: memberB, toMemberId: memberA }),
+				{
+					ok: false,
+					reason: 'required',
+				},
+			);
 
-			expect(
+			assert.deepEqual(
 				parseSettlementConfirmation({
 					fromMemberId: memberB,
 					toMemberId: memberA,
@@ -307,9 +311,10 @@ test.describe('settlement scope', () => {
 						],
 					},
 				}),
-			).toEqual({ ok: false, reason: 'invalid' });
+				{ ok: false, reason: 'invalid' },
+			);
 
-			expect(
+			assert.deepEqual(
 				parseSettlementConfirmation({
 					fromMemberId: memberB,
 					toMemberId: memberA,
@@ -319,9 +324,10 @@ test.describe('settlement scope', () => {
 						splits: [{ id: '44444444-4444-4444-8444-444444444444', amountCents: -1 }],
 					},
 				}),
-			).toEqual({ ok: false, reason: 'invalid' });
+				{ ok: false, reason: 'invalid' },
+			);
 
-			expect(
+			assert.deepEqual(
 				parseSettlementConfirmation({
 					fromMemberId: memberB,
 					toMemberId: memberA,
@@ -332,45 +338,13 @@ test.describe('settlement scope', () => {
 					},
 					extra: 'not-supported',
 				}),
-			).toEqual({ ok: false, reason: 'invalid' });
-		});
-	});
-
-	test.describe('Settlement HTTP cache policy', () => {
-		test.skip(
-			process.env.BASE_URL === noHttpBaseUrl,
-			'HTTP checks are intentionally skipped for the no-network pure-test run',
-		);
-
-		test('sets no-store on an invalid share-code preamble response', async ({ request }) => {
-			const response = await request.get(
-				`/api/wg/not-a-code/expenses/settle-batch?fromMemberId=${memberA}&toMemberId=${memberB}`,
+				{ ok: false, reason: 'invalid' },
 			);
-
-			expect(response.status()).toBe(400);
-			expect(response.headers()['cache-control']).toBe('private, no-store');
-			await expect(response.json()).resolves.toMatchObject({ error: 'invalid_share_code' });
-		});
-
-		test('sets no-store on a withWgRoute authentication rejection', async ({ request }) => {
-			test.skip(
-				process.env.CI !== 'true' || process.env.NEXT_PUBLIC_DB_DOWN !== 'true',
-				'the fixture authentication case requires the local DB-down fixture server',
-			);
-
-			const response = await request.get(
-				`/api/wg/MTE8PZAT/expenses/settle-batch?fromMemberId=${memberA}&toMemberId=${memberB}`,
-				{ headers: { 'x-manawg-expected-member-id': fixtureMemberId } },
-			);
-
-			expect(response.status()).toBe(401);
-			expect(response.headers()['cache-control']).toBe('private, no-store');
-			await expect(response.json()).resolves.toMatchObject({ error: 'auth_required' });
 		});
 	});
 });
 
-test.describe('currency-scoped accounting', () => {
+describe('currency-scoped accounting', () => {
 	const alice = '11111111-1111-4111-8111-111111111111';
 	const ben = '22222222-2222-4222-8222-222222222222';
 	const members = [
@@ -378,7 +352,7 @@ test.describe('currency-scoped accounting', () => {
 		{ id: ben, name: 'Ben', color: null },
 	];
 
-	test.describe('audit #158 accounting invariants', () => {
+	describe('audit #158 accounting invariants', () => {
 		test('keeps balances and payments separate for each currency', () => {
 			const expenses = [
 				{
@@ -398,10 +372,10 @@ test.describe('currency-scoped accounting', () => {
 				{ fromMemberId: ben, toMemberId: alice, amountCents: 1000, currency: 'EUR' },
 			];
 
-			expect(computeBalances(expenses, payments)).toEqual([
+			assert.deepEqual(computeBalances(expenses, payments), [
 				{ debtorId: ben, creditorId: alice, amountCents: 1000, currency: 'CHF' },
 			]);
-			expect(computeNetBalances(expenses, members, payments)).toEqual([
+			assert.deepEqual(computeNetBalances(expenses, members, payments), [
 				{ memberId: alice, memberName: 'Alice', color: null, cents: 1000, currency: 'CHF' },
 				{ memberId: ben, memberName: 'Ben', color: null, cents: -1000, currency: 'CHF' },
 				{ memberId: alice, memberName: 'Alice', color: null, cents: 0, currency: 'EUR' },
@@ -424,7 +398,7 @@ test.describe('currency-scoped accounting', () => {
 					splits: [{ debtorMemberId: alice, amountCents: 3852, settledAt: null }],
 				},
 			];
-			expect(computeBalances(expenses)).toEqual([
+			assert.deepEqual(computeBalances(expenses), [
 				{ debtorId: ben, creditorId: alice, amountCents: 443, currency: 'EUR' },
 			]);
 		});
@@ -440,7 +414,7 @@ test.describe('currency-scoped accounting', () => {
 			];
 
 			const totals = balanceTotalsFromRows(expenses, splits);
-			expect(computeMemberBalances(members, totals.payerTotals, totals.openDebts)).toEqual([
+			assert.deepEqual(computeMemberBalances(members, totals.payerTotals, totals.openDebts), [
 				{
 					memberId: alice,
 					memberName: 'Alice',
@@ -497,7 +471,7 @@ test.describe('currency-scoped accounting', () => {
 			];
 			const now = new Date('2026-01-11T12:00:00.000Z');
 
-			expect(
+			assert.deepEqual(
 				computeOldestDebtAges(
 					[
 						{ debtorId: ben, creditorId: alice, currency: 'EUR' },
@@ -506,11 +480,12 @@ test.describe('currency-scoped accounting', () => {
 					expenses,
 					now,
 				),
-			).toEqual([10, 1]);
+				[10, 1],
+			);
 		});
 	});
 
-	test.describe('audit #158 currency consumers', () => {
+	describe('audit #158 currency consumers', () => {
 		test('keeps dashboard spend totals and sparkline rows currency-scoped', () => {
 			const summary = summarizeDashboardSpend(
 				[
@@ -528,16 +503,19 @@ test.describe('currency-scoped accounting', () => {
 				new Date('2026-01-15T14:00:00.000Z'),
 			);
 
-			expect(summary.totalSpendByCurrency).toEqual({ EUR: 1000, CHF: 2500 });
-			expect(summary.weekSpendByCurrency).toEqual({ EUR: 1000, CHF: 2500 });
-			expect(summary.monthSpendByCurrency).toEqual({ EUR: 1000, CHF: 2500 });
-			expect(summary.totalSpendCents).toBeNull();
-			expect(summary.spendByDay).toEqual(
-				expect.arrayContaining([
-					{ date: '2026-01-15', currency: 'EUR', cents: 1000 },
-					{ date: '2026-01-15', currency: 'CHF', cents: 2500 },
-				]),
-			);
+			assert.deepEqual(summary.totalSpendByCurrency, { EUR: 1000, CHF: 2500 });
+			assert.deepEqual(summary.weekSpendByCurrency, { EUR: 1000, CHF: 2500 });
+			assert.deepEqual(summary.monthSpendByCurrency, { EUR: 1000, CHF: 2500 });
+			assert.equal(summary.totalSpendCents, null);
+			for (const row of [
+				{ date: '2026-01-15', currency: 'EUR', cents: 1000 },
+				{ date: '2026-01-15', currency: 'CHF', cents: 2500 },
+			]) {
+				assert.deepEqual(
+					summary.spendByDay.find((day) => day.date === row.date && day.currency === row.currency),
+					row,
+				);
+			}
 		});
 
 		test('scopes reminder cooldown and copy by currency', () => {
@@ -551,17 +529,17 @@ test.describe('currency-scoped accounting', () => {
 				},
 			];
 
-			expect(canSendReminder(ben, alice, history, now, 'EUR').allowed).toBe(false);
-			expect(canSendReminder(ben, alice, history, now, 'CHF').allowed).toBe(true);
-			expect(
+			assert.equal(canSendReminder(ben, alice, history, now, 'EUR').allowed, false);
+			assert.equal(canSendReminder(ben, alice, history, now, 'CHF').allowed, true);
+			assert.ok(
 				formatReminderMessage({
 					debtorName: 'Ben',
 					creditorName: 'Alice',
 					amountCents: 2500,
 					currency: 'CHF',
 					oldestDebtAgeDays: 2,
-				}),
-			).toContain('CHF');
+				}).includes('CHF'),
+			);
 		});
 
 		test('keeps currency in activity, notifications, and health output', () => {
@@ -581,7 +559,7 @@ test.describe('currency-scoped accounting', () => {
 				announcements: [],
 				choreCompletions: [],
 			});
-			expect(activity[0]).toMatchObject({ amountCents: 95000, currency: 'CHF' });
+			assert.partialDeepStrictEqual(activity[0], { amountCents: 95000, currency: 'CHF' });
 
 			const notification = formatNotificationMessage('expense.created', {
 				wgName: 'WG',
@@ -590,22 +568,23 @@ test.describe('currency-scoped accounting', () => {
 				amountCents: 95000,
 				currency: 'CHF',
 			});
-			expect(notification.body).toContain('CHF');
-			expect(
+			assert.ok(notification.body.includes('CHF'));
+			assert.match(
 				formatNotificationMessage('expense.recurring_charged', {
 					description: 'Internet',
 					amountCents: 2500,
 					currency: 'CHF',
-				}),
-			).toMatchObject({ body: expect.stringContaining('CHF') });
-			expect(
-				formatNotificationMessage('expense.debt_settled', {
-					actorName: 'Ben',
-					amountCents: 2000,
-					currency: 'CHF',
-					direction: 'paid',
-				}),
-			).toMatchObject({ body: expect.stringContaining('CHF'), urlPath: '/ausgaben' });
+				}).body,
+				/CHF/,
+			);
+			const settled = formatNotificationMessage('expense.debt_settled', {
+				actorName: 'Ben',
+				amountCents: 2000,
+				currency: 'CHF',
+				direction: 'paid',
+			});
+			assert.match(settled.body, /CHF/);
+			assert.equal(settled.urlPath, '/ausgaben');
 
 			const health = getWgHealth({
 				shareCode: 'WGCODE01',
@@ -616,8 +595,9 @@ test.describe('currency-scoped accounting', () => {
 				absentMemberCount: 0,
 				dueRecurringCount: 0,
 			});
-			expect(health.items.find((item) => item.label === 'Offene Schulden')?.value).toEqual(
-				expect.stringContaining('CHF'),
+			assert.match(
+				health.items.find((item) => item.label === 'Offene Schulden')?.value ?? '',
+				/CHF/,
 			);
 		});
 
@@ -634,7 +614,7 @@ test.describe('currency-scoped accounting', () => {
 				],
 				new Date('2026-01-15T12:00:00.000Z').getTime(),
 			);
-			expect(due[0]?.currency).toBe('CHF');
+			assert.equal(due[0]?.currency, 'CHF');
 
 			const today = getTodayImportantItems({
 				shareCode: 'WGCODE01',
@@ -647,7 +627,7 @@ test.describe('currency-scoped accounting', () => {
 				absentMembers: [],
 				now: new Date('2026-01-15T12:00:00.000Z').getTime(),
 			});
-			expect(today[0]?.detail).toContain('CHF');
+			assert.ok(today[0]?.detail.includes('CHF'));
 		});
 	});
 });

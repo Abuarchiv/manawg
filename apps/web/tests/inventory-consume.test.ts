@@ -1,7 +1,8 @@
 // Inventory consume and save regressions.
 // Why: Stock changes must be exact and replay-safe.
 
-import { expect, test } from '@playwright/test';
+import assert from 'node:assert/strict';
+import test, { describe } from 'node:test';
 import {
 	idempotencyResponses,
 	shoppingItems,
@@ -17,7 +18,7 @@ import {
 } from '../src/features/inventory/server/consume-mutation';
 import * as inventoryMutations from '../src/features/inventory/server/inventory-mutations';
 
-test.describe('inventory consume regression', () => {
+describe('inventory consume regression', () => {
 	type InventoryState = {
 		item: WgInventoryItem;
 		logs: Array<Record<string, unknown>>;
@@ -177,24 +178,24 @@ test.describe('inventory consume regression', () => {
 			sleep: async () => undefined,
 		};
 
-		await expect(mutateIfWinner(dependencies, state, cache)).resolves.toEqual({
+		assert.deepEqual(await mutateIfWinner(dependencies, state, cache), {
 			won: true,
 			body: { quantity: 4 },
 		});
-		await expect(mutateIfWinner(dependencies, state, cache)).resolves.toEqual({
+		assert.deepEqual(await mutateIfWinner(dependencies, state, cache), {
 			won: false,
 			cached: { quantity: 4 },
 		});
 
-		expect(state.item.quantity).toBe(4);
-		expect(state.updateCount).toBe(1);
-		expect(state.logs).toHaveLength(1);
-		expect(state.logs[0]).toMatchObject({ delta: -1, kind: 'consume' });
-		expect(state.shopping).toHaveLength(1);
+		assert.equal(state.item.quantity, 4);
+		assert.equal(state.updateCount, 1);
+		assert.equal(state.logs.length, 1);
+		assert.partialDeepStrictEqual(state.logs[0], { delta: -1, kind: 'consume' });
+		assert.equal(state.shopping.length, 1);
 	});
 });
 
-test.describe('inventory save regression', () => {
+describe('inventory save regression', () => {
 	type State = {
 		items: WgInventoryItem[];
 		logs: Array<Record<string, unknown>>;
@@ -361,7 +362,7 @@ test.describe('inventory save regression', () => {
 
 	test('creating a below-threshold inventory item adds one open shopping item', async () => {
 		const createMutation = Reflect.get(inventoryMutations, 'createInventoryItemMutation');
-		expect(typeof createMutation).toBe('function');
+		assert.equal(typeof createMutation, 'function');
 		if (typeof createMutation !== 'function') return;
 
 		const state = createState(0);
@@ -369,13 +370,15 @@ test.describe('inventory save regression', () => {
 		await createMutation(tx, mutationInput);
 		await createMutation(tx, mutationInput);
 
-		expect(state.items).toHaveLength(3);
-		expect(state.shopping).toEqual([{ id: 'shopping-1', name: 'Toilettenpapier', boughtAt: null }]);
+		assert.equal(state.items.length, 3);
+		assert.deepEqual(state.shopping, [
+			{ id: 'shopping-1', name: 'Toilettenpapier', boughtAt: null },
+		]);
 	});
 
 	test('updating inventory below threshold records quantity history and queues shopping once', async () => {
 		const updateMutation = Reflect.get(inventoryMutations, 'updateInventoryItemMutation');
-		expect(typeof updateMutation).toBe('function');
+		assert.equal(typeof updateMutation, 'function');
 		if (typeof updateMutation !== 'function') return;
 
 		const state = createState();
@@ -400,15 +403,18 @@ test.describe('inventory save regression', () => {
 			expectedUpdatedAt: updated.updatedAt.toISOString(),
 		});
 
-		expect(onlyItem(state).quantity).toBe(3);
-		expect(state.logs).toHaveLength(2);
-		expect(state.logs.map((log) => log.delta)).toEqual([-1, -1]);
-		expect(state.shopping).toHaveLength(1);
+		assert.equal(onlyItem(state).quantity, 3);
+		assert.equal(state.logs.length, 2);
+		assert.deepEqual(
+			state.logs.map((log) => log.delta),
+			[-1, -1],
+		);
+		assert.equal(state.shopping.length, 1);
 	});
 
 	test('stale absolute inventory quantity updates are rejected', async () => {
 		const updateMutation = Reflect.get(inventoryMutations, 'updateInventoryItemMutation');
-		expect(typeof updateMutation).toBe('function');
+		assert.equal(typeof updateMutation, 'function');
 		if (typeof updateMutation !== 'function') return;
 
 		const state = createState();
@@ -425,14 +431,14 @@ test.describe('inventory save regression', () => {
 			expectedUpdatedAt: staleUpdatedAt,
 		});
 
-		expect(result).toMatchObject({ kind: 'conflict' });
-		expect(state.updateCount).toBe(0);
-		expect(state.logs).toHaveLength(0);
+		assert.partialDeepStrictEqual(result, { kind: 'conflict' });
+		assert.equal(state.updateCount, 0);
+		assert.equal(state.logs.length, 0);
 	});
 
 	test('absolute quantity compare-and-swap catches a changed quantity in the same timestamp millisecond', async () => {
 		const updateMutation = Reflect.get(inventoryMutations, 'updateInventoryItemMutation');
-		expect(typeof updateMutation).toBe('function');
+		assert.equal(typeof updateMutation, 'function');
 		if (typeof updateMutation !== 'function') return;
 
 		const state = createState();
@@ -448,8 +454,8 @@ test.describe('inventory save regression', () => {
 			expectedUpdatedAt,
 		});
 
-		expect(result).toMatchObject({ kind: 'conflict' });
-		expect(state.updateCount).toBe(0);
-		expect(onlyItem(state).quantity).toBe(4);
+		assert.partialDeepStrictEqual(result, { kind: 'conflict' });
+		assert.equal(state.updateCount, 0);
+		assert.equal(onlyItem(state).quantity, 4);
 	});
 });

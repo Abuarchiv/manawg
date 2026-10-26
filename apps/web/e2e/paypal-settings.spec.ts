@@ -2,10 +2,10 @@
 // Why: Settings errors must be announced and partner data must never leak into the document.
 
 import { expect, test } from '@playwright/test';
-import { FIXTURE_WG, navigateToFeature, setupMember } from './support/helpers';
+import { FIXTURE_WG, navigateToFeature, setupMember, skipUnlessFixtures } from './support/helpers';
 
 test.describe('paypal settings error association', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	test('PayPal status failure is announced and can be retried from the keyboard', async ({
 		page,
@@ -51,7 +51,7 @@ test.describe('paypal settings error association', () => {
 test.describe('paypal settings load error', () => {
 	// page.route provider doubles must not be bypassed by the built app's service worker.
 	test.use({ serviceWorkers: 'block' });
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	for (const width of [320, 360]) {
 		for (const theme of ['Hell', 'Dunkel'] as const) {

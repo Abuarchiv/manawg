@@ -2,16 +2,22 @@
 // Why: Phone-only product; nothing may overflow at the smallest supported viewport.
 
 import { type Locator, type Page, expect, test } from '@playwright/test';
-import { dismissOnboarding, navigateToFeature, setupMember } from './support/helpers';
+import {
+	FIXTURE_WG,
+	dismissOnboarding,
+	navigateToFeature,
+	setupMember,
+	skipUnlessFixtures,
+} from './support/helpers';
 
 test.describe('mobile layout matrix', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 	test.setTimeout(120_000);
 	test.use({ hasTouch: true, isMobile: true });
 
-	const SHARE_CODE = 'MTE8PZAT';
-	const MEMBER_ID = '7d898f9e-5ad7-4f5d-abed-8c3e99a76973';
-	const WG_ID = '989ac820-58b7-431f-9c65-28721264f333';
+	const SHARE_CODE = FIXTURE_WG.shareCode;
+	const MEMBER_ID = FIXTURE_WG.memberId;
+	const WG_ID = FIXTURE_WG.id;
 	type LayoutRoute = 'home' | 'chores' | 'shopping' | 'inventory';
 	const LONG_INVENTORY_NAME = 'Spülmaschinenreinigung mit Entkalkung und gründlicher Küchenhygiene';
 

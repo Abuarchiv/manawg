@@ -2,14 +2,11 @@
 // Why: The frame around every page must not overflow or lose navigation state.
 
 import { expect, test } from '@playwright/test';
-import { FIXTURE_WG, mockNoWgs, setupMember } from './support/helpers';
+import { FIXTURE_WG, mockNoWgs, setupMember, skipUnlessDbDown } from './support/helpers';
 
 test.describe('entry frame overflow', () => {
 	test.describe('entry headings on narrow screens', () => {
-		test.skip(
-			process.env.E2E_FIXTURE_MODE !== 'true' || process.env.NEXT_PUBLIC_DB_DOWN !== 'true',
-			'Requires the local database-down fixture server.',
-		);
+		skipUnlessDbDown();
 
 		test('wraps an unbroken WG name at handset widths and 32px text', async ({ page }) => {
 			const wgName = 'Donaudampfschifffahrtsgesellschaftskapitänswohngemeinschaft';
@@ -200,10 +197,7 @@ test.describe('app shell state', () => {
 		});
 
 		test('lets a signed-in single-WG user open that WG from a module preview', async ({ page }) => {
-			test.skip(
-				process.env.E2E_FIXTURE_MODE !== 'true' || process.env.NEXT_PUBLIC_DB_DOWN !== 'true',
-				'Requires the database-down fixture server.',
-			);
+			skipUnlessDbDown();
 
 			await setupMember(page);
 			await page.route('**/api/wg/mine', (route) =>
@@ -226,10 +220,7 @@ test.describe('app shell state', () => {
 		test('opens the WG chooser from a module preview with an invitation query', async ({
 			page,
 		}) => {
-			test.skip(
-				process.env.E2E_FIXTURE_MODE !== 'true' || process.env.NEXT_PUBLIC_DB_DOWN !== 'true',
-				'Requires the database-down fixture server.',
-			);
+			skipUnlessDbDown();
 
 			await page.route('**/api/wg/mine', (route) =>
 				route.fulfill({

@@ -8,10 +8,12 @@ import {
 	mockNoWgs,
 	navigateToFeature,
 	setupMember,
+	skipUnlessDbDown,
+	skipUnlessFixtures,
 } from './support/helpers';
 
 test.describe('settings notifications responsive', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	test('quiet-time controls stay within the settings card at mobile widths and 200% text', async ({
 		page,
@@ -123,7 +125,7 @@ test.describe('settings notifications responsive', () => {
 });
 
 test.describe('settings offline queue responsive', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	const queuedAction = {
 		id: `shopping:${FIXTURE_WG.shareCode}:responsive-test`,
@@ -243,7 +245,7 @@ test.describe('settings offline queue responsive', () => {
 });
 
 test.describe('settings theme responsive', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 	test.use({ viewport: { width: 320, height: 720 }, bypassCSP: true });
 
 	test('all theme choices stay reachable at 320px with 200% text', async ({ page }) => {
@@ -317,7 +319,7 @@ test.describe('settings theme responsive', () => {
 });
 
 test.describe('invitations', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	test('native share success does not mark the invite link as copied', async ({ page }) => {
 		// Stub the Web Share API so the share button takes its success branch instead
@@ -481,15 +483,12 @@ test.describe('invitations', () => {
 
 test.describe('invite link copy', () => {
 	test.describe('invite link copy feedback', () => {
-		test.skip(
-			process.env.E2E_FIXTURE_MODE !== 'true' || process.env.NEXT_PUBLIC_DB_DOWN !== 'true',
-			'Requires the local database-down fixture server.',
-		);
+		skipUnlessDbDown();
 
 		test('announces a copied link without reporting that the invitation was shared', async ({
 			page,
 		}) => {
-			const code = 'MTE8PZAT';
+			const code = FIXTURE_WG.shareCode;
 			const inviteUrl = 'http://localhost/einladung/fixture-invite-token01';
 			await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
 			await page.addInitScript(() => window.localStorage.clear());

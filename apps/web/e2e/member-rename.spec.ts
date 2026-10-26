@@ -1,10 +1,10 @@
 // Changing the own display name in the settings profile.
 
 import { expect, test } from '@playwright/test';
-import { FIXTURE_WG, navigateToFeature, setupMember } from './support/helpers';
+import { FIXTURE_WG, navigateToFeature, setupMember, skipUnlessFixtures } from './support/helpers';
 
 test.describe('member rename', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	test('sends the trimmed name with the expected old name and names a taken name', async ({
 		page,

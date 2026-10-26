@@ -3,10 +3,16 @@
 
 import { expect, test } from '@playwright/test';
 import { buildDraftKey } from '../src/core/offline/drafts';
-import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './support/helpers';
+import {
+	FIXTURE_WG,
+	dismissOnboarding,
+	navigateToFeature,
+	setupMember,
+	skipUnlessFixtures,
+} from './support/helpers';
 
 test.describe('private attachment draft recovery', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	const SHARE_CODE = FIXTURE_WG.shareCode;
 	const FIRST_KEY = `manawg/${FIXTURE_WG.id}/expense/550e8400-e29b-41d4-a716-446655440001.png`;

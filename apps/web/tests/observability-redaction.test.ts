@@ -6,6 +6,7 @@ import { mock, test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { format } from 'node:util';
 import { contentSecurityPolicy } from '../src/core/infra/security-headers.ts';
+import { withEnv } from './support/env.ts';
 
 // The envelope test drives the browser SDK; @sentry/browser is only reachable through
 // @sentry/nextjs, which pins the version the app ships.
@@ -160,17 +161,6 @@ function setEnv(env: Record<string, string | undefined>): void {
 	for (const [key, value] of Object.entries(env)) {
 		if (value === undefined) Reflect.deleteProperty(process.env, key);
 		else process.env[key] = value;
-	}
-}
-
-/** Runs `body` with the given environment variables set (undefined removes one), then restores them. */
-async function withEnv<T>(env: Record<string, string | undefined>, body: () => Promise<T>) {
-	const previous = new Map(Object.keys(env).map((key) => [key, process.env[key]]));
-	setEnv(env);
-	try {
-		return await body();
-	} finally {
-		setEnv(Object.fromEntries(previous));
 	}
 }
 
