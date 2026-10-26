@@ -46,7 +46,7 @@ export function useExpenseRowActions({
 			}
 			const message =
 				res.status === 403
-					? 'Nur wer bezahlt hat oder beteiligt ist, kann diese Ausgabe entfernen.'
+					? 'Nur wer bezahlt hat oder beteiligt ist, kann diese Ausgabe löschen.'
 					: expenseActionErrorMessage(res.error);
 			notify.error(message);
 			toast.error(message);
@@ -57,7 +57,7 @@ export function useExpenseRowActions({
 		if (alreadyGone) {
 			notify.error('Diese Ausgabe existiert nicht mehr und wurde aus der Liste entfernt.');
 		} else {
-			toast.success('Ausgabe entfernt.');
+			toast.success('Ausgabe gelöscht.');
 		}
 		pending.end(id);
 		void reload();

@@ -312,7 +312,7 @@ export function RecurringExpensesSection({
 					<AlertDialogHeader>
 						<AlertDialogTitle>Vorlage löschen?</AlertDialogTitle>
 						<AlertDialogDescription>
-							„{deleteCandidate?.description}“ wird entfernt. Bereits erfasste Ausgaben bleiben
+							„{deleteCandidate?.description}“ wird gelöscht. Bereits erfasste Ausgaben bleiben
 							erhalten.
 						</AlertDialogDescription>
 					</AlertDialogHeader>

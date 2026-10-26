@@ -145,7 +145,7 @@ test.describe('expense row reflow', () => {
 			.getByRole('alertdialog')
 			.getByRole('button', { name: 'Löschen', exact: true })
 			.click();
-		await expect(page.getByText('Ausgabe entfernt.')).toBeVisible();
+		await expect(page.getByText('Ausgabe gelöscht.')).toBeVisible();
 	});
 });
 
