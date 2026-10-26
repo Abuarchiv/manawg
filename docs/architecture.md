@@ -43,7 +43,7 @@ Unknown or foreign share codes count against `wgShareCodeMissLimiter` (20/hour/a
 WG-settings writes use `requireWgAdmin` (`core/guards/require-wg-admin.ts`).
 
 **Pages under `app/wg/[code]/`** are authenticated only by `app/wg/[code]/layout.tsx`
-(`getAuthenticatedUserFromCookies()`). The middleware is not an independent barrier there: on a
+(`loadWgViewer`, which calls `getAuthenticatedUserFromCookies()`). The middleware is not an independent barrier there: on a
 transient Supabase Auth failure it serves the page instead of redirecting.
 `scripts/check-wg-auth-invariant.mjs` therefore fails on any `route.ts` or `'use server'` file
 under `app/wg/**`; WG APIs belong under `app/api/wg/**`.
