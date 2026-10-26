@@ -95,13 +95,13 @@ test.describe('daily overview navigation', () => {
 			dueChores: [
 				{
 					id: 'mine-due',
-					assignedMemberId: '7d898f9e-5ad7-4f5d-abed-8c3e99a76973',
+					assignedMemberId: FIXTURE_WG.memberId,
 					nextDueAt: yesterday,
 				},
 				{ id: 'theirs-due', assignedMemberId: 'other-member', nextDueAt: yesterday },
 				{
 					id: 'mine-later',
-					assignedMemberId: '7d898f9e-5ad7-4f5d-abed-8c3e99a76973',
+					assignedMemberId: FIXTURE_WG.memberId,
 					nextDueAt: nextQuarter,
 				},
 			],

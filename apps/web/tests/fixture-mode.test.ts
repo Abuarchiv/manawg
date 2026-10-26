@@ -7,6 +7,7 @@ import { resolveFixtureRequest } from '@/fixtures/middleware';
 import { isE2EDbDownMode } from '@/fixtures/mode';
 import { loadFixtureWgView } from '@/fixtures/pages';
 import { NextRequest } from 'next/server.js';
+import { withEnv } from './support/env.ts';
 
 // `next` has no package exports map, so Node's ESM resolver needs the file
 // name for the `next/server` import inside the lazily loaded fixture API.
@@ -16,39 +17,15 @@ registerHooks({
 	},
 });
 
-const FIXTURE_ENV: Record<string, string> = {
+const FIXTURE_ENV: Record<string, string | undefined> = {
 	E2E_FIXTURE_MODE: 'true',
 	NEXT_PUBLIC_DB_DOWN: 'true',
 	CI: 'true',
 	VERCEL_ENV: 'preview',
-	POSTGRES_URL: '',
-	DATABASE_URL: '',
-	VERCEL: '',
+	POSTGRES_URL: undefined,
+	DATABASE_URL: undefined,
+	VERCEL: undefined,
 };
-
-function withEnv<T>(overrides: Record<string, string>, fn: () => T): T {
-	const previous: Record<string, string | undefined> = {};
-	for (const [key, value] of Object.entries(overrides)) {
-		previous[key] = process.env[key];
-		if (value === '') delete process.env[key];
-		else process.env[key] = value;
-	}
-	const restore = () => {
-		for (const [key, value] of Object.entries(previous)) {
-			if (value === undefined) delete process.env[key];
-			else process.env[key] = value;
-		}
-	};
-	try {
-		const result = fn();
-		if (result instanceof Promise) return result.finally(restore) as T;
-		restore();
-		return result;
-	} catch (err) {
-		restore();
-		throw err;
-	}
-}
 
 test('fixture mode activates for the local/CI fixture run', () => {
 	assert.equal(
@@ -67,9 +44,9 @@ test('fixture mode never activates on a hosted Vercel deployment', () => {
 test('fixture mode needs every condition', () => {
 	for (const override of [
 		{ VERCEL_ENV: 'production' },
-		{ NEXT_PUBLIC_DB_DOWN: '' },
-		{ CI: '' },
-		{ E2E_FIXTURE_MODE: '' },
+		{ NEXT_PUBLIC_DB_DOWN: undefined },
+		{ CI: undefined },
+		{ E2E_FIXTURE_MODE: undefined },
 		{ POSTGRES_URL: 'postgres://db.invalid:5432/app' },
 		{ DATABASE_URL: 'postgres://db.invalid:5432/app' },
 	]) {
@@ -92,11 +69,11 @@ test('client fixture mode needs both public flags', () => {
 		{ sessionless: true },
 	);
 	assert.deepEqual(
-		withEnv({ ...both, NEXT_PUBLIC_E2E_FIXTURE_MODE: '' }, () => fixtureClientProps()),
+		withEnv({ ...both, NEXT_PUBLIC_E2E_FIXTURE_MODE: undefined }, () => fixtureClientProps()),
 		{ sessionless: false },
 	);
 	assert.equal(
-		withEnv({ ...both, NEXT_PUBLIC_DB_DOWN: '' }, () => isClientFixtureMode()),
+		withEnv({ ...both, NEXT_PUBLIC_DB_DOWN: undefined }, () => isClientFixtureMode()),
 		false,
 	);
 });

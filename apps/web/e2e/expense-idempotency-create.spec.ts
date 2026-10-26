@@ -12,9 +12,15 @@ import {
 	recordAttempt,
 	sendQueueIfStillPending,
 } from './support/expense-idempotency';
-import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './support/helpers';
+import {
+	FIXTURE_WG,
+	dismissOnboarding,
+	navigateToFeature,
+	setupMember,
+	skipUnlessFixtures,
+} from './support/helpers';
 
-test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+skipUnlessFixtures();
 
 function normalizeExpenseCreateBody(body: unknown): unknown {
 	if (typeof body !== 'object' || body === null || Array.isArray(body)) return body;

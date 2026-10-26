@@ -4,7 +4,13 @@
 import { writeFile } from 'node:fs/promises';
 import { type Page, type Route, expect, test } from '@playwright/test';
 import { isIosLikeDevice } from '../src/shared/lib/pwa-install';
-import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './support/helpers';
+import {
+	FIXTURE_WG,
+	dismissOnboarding,
+	navigateToFeature,
+	setupMember,
+	skipUnlessFixtures,
+} from './support/helpers';
 
 test.describe('pwa platform', () => {
 	test('iPadOS desktop Safari is treated as an iOS-like device', () => {
@@ -507,7 +513,7 @@ test.describe('offline page', () => {
 });
 
 test.describe('offline banner focus', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	// WCAG 2.4.11: the sticky offline banner must not cover focused content or the
 	// sticky settings tabs.

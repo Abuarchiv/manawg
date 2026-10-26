@@ -4,7 +4,13 @@
 import { expect, test } from '@playwright/test';
 import { isEmptyModuleDraft } from '../src/core/offline/drafts';
 import { E2E_EXISTING_WG } from '../src/fixtures/data';
-import { dismissOnboarding, navigateToFeature, setupMember } from './support/helpers';
+import {
+	FIXTURE_WG,
+	dismissOnboarding,
+	navigateToFeature,
+	setupMember,
+	skipUnlessFixtures,
+} from './support/helpers';
 
 test.describe('offline drafts', () => {
 	const MEMBER = 'member-1';
@@ -30,14 +36,14 @@ test.describe('offline drafts', () => {
 });
 
 test.describe('wg cached fetch', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 	test.use({ hasTouch: true, isMobile: true });
 
-	const SHARE_CODE = 'MTE8PZAT';
+	const SHARE_CODE = FIXTURE_WG.shareCode;
 	const shoppingItems = [
 		{
 			id: 'shopping-oat-milk',
-			addedByMemberId: '7d898f9e-5ad7-4f5d-abed-8c3e99a76973',
+			addedByMemberId: FIXTURE_WG.memberId,
 			name: 'Ungesüßte Hafermilch',
 			quantity: '1 Packung',
 			boughtAt: null,
@@ -197,10 +203,10 @@ test.describe('wg cached fetch', () => {
 });
 
 test.describe('wg optimistic actions', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 	test.use({ hasTouch: true, isMobile: true });
 
-	const SHARE_CODE = 'MTE8PZAT';
+	const SHARE_CODE = FIXTURE_WG.shareCode;
 	const CHORE_ID = 'chore-bath';
 
 	test('failed chore completion rolls back the row and shows its dialog error', async ({
@@ -216,7 +222,7 @@ test.describe('wg optimistic actions', () => {
 			intervalDays: 7,
 			recurrenceType: 'days',
 			nextDueAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-			assignedMemberId: '7d898f9e-5ad7-4f5d-abed-8c3e99a76973',
+			assignedMemberId: FIXTURE_WG.memberId,
 			lastCompletedAt: null,
 			lastCompletedByName: null,
 			openGapCountForAssignee: 0,

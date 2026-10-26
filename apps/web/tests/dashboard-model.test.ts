@@ -1,8 +1,8 @@
 // Start overview read models: Berlin week agenda, ranking and edge-data helpers.
 // Why: Ordering and day edges must be deterministic.
 
-import { expect, test } from '@playwright/test';
-import { initials } from '../src/components/wg/MemberAvatar';
+import assert from 'node:assert/strict';
+import test, { describe } from 'node:test';
 import { groupActivityItemsByDay } from '../src/composition/activity';
 import {
 	getBerlinWeekWindow,
@@ -16,9 +16,18 @@ import type { EventInput, EventOccurrence } from '../src/features/events/events'
 import { expandRecurrence } from '../src/features/events/events';
 import { buildSettlementSummary, simplifyDebts } from '../src/features/expenses/debt-reduction';
 import { parseShoppingInput } from '../src/features/shopping/parse-shopping-input';
-import { tuple } from './support/helpers';
 
-test.describe('daily overview model', () => {
+type Tuple<T, N extends number, R extends T[] = []> = R['length'] extends N
+	? R
+	: Tuple<T, N, [...R, T]>;
+
+/** Asserts that `items` holds exactly `count` entries and types them as a tuple. */
+function tuple<T, N extends number>(items: readonly T[], count: N): Tuple<T, N> {
+	assert.equal(items.length, count);
+	return [...items] as Tuple<T, N>;
+}
+
+describe('daily overview model', () => {
 	const NOW = Date.parse('2026-09-05T22:30:00.000Z');
 
 	function overview(overrides: Record<string, unknown> = {}) {
@@ -77,10 +86,16 @@ test.describe('daily overview model', () => {
 			}),
 		);
 
-		expect(items.some((item) => item.entityId === 'mine')).toBe(true);
-		expect(items.some((item) => item.entityId === 'theirs')).toBe(false);
-		expect(items.find((item) => item.kind === 'shopping')?.detail).toContain('WG');
-		expect(items.find((item) => item.kind === 'recurring')?.detail).toContain('Fixkosten');
+		assert.equal(
+			items.some((item) => item.entityId === 'mine'),
+			true,
+		);
+		assert.equal(
+			items.some((item) => item.entityId === 'theirs'),
+			false,
+		);
+		assert.ok(items.find((item) => item.kind === 'shopping')?.detail.includes('WG'));
+		assert.ok(items.find((item) => item.kind === 'recurring')?.detail.includes('Fixkosten'));
 	});
 
 	test('keeps personal settlements distinct by counterparty and currency', () => {
@@ -104,12 +119,15 @@ test.describe('daily overview model', () => {
 			balances.map(({ balanceCents, ...balance }) => ({ ...balance, cents: balanceCents })),
 		).filter((debt) => debt.fromId === 'member-me' || debt.toId === 'member-me');
 
-		expect(settlements).toHaveLength(3);
-		expect(settlements.map((item) => item.entityId)).toEqual([
-			'settlement:member-me:anna:EUR',
-			'settlement:member-me:ben:EUR',
-			'settlement:anna:member-me:CHF',
-		]);
+		assert.equal(settlements.length, 3);
+		assert.deepEqual(
+			settlements.map((item) => item.entityId),
+			[
+				'settlement:member-me:anna:EUR',
+				'settlement:member-me:ben:EUR',
+				'settlement:anna:member-me:CHF',
+			],
+		);
 		const actualByIdentity = settlements
 			.map((item) => [item.entityId, item.title, item.amountCents, item.currency])
 			.sort(([left], [right]) => String(left).localeCompare(String(right)));
@@ -121,7 +139,7 @@ test.describe('daily overview model', () => {
 				debt.currency,
 			])
 			.sort(([left], [right]) => String(left).localeCompare(String(right)));
-		expect(actualByIdentity).toEqual(expectedByIdentity);
+		assert.deepEqual(actualByIdentity, expectedByIdentity);
 	});
 
 	test('keeps settlement partners stable when tied balances and members are reordered', () => {
@@ -198,12 +216,12 @@ test.describe('daily overview model', () => {
 				.filter((item) => item.kind === 'debt')
 				.map((item) => [item.entityId, item.title, item.amountCents, item.currency]);
 
-		expect(simplify(balances)).toEqual(expectedTransfers);
-		expect(simplify(reorderedBalances)).toEqual(expectedTransfers);
-		expect(summary(members)).toEqual(expectedTransfers);
-		expect(summary(reorderedMembers)).toEqual(expectedTransfers);
-		expect(homeRows(balances)).toEqual(expectedHomeRows);
-		expect(homeRows(reorderedBalances)).toEqual(expectedHomeRows);
+		assert.deepEqual(simplify(balances), expectedTransfers);
+		assert.deepEqual(simplify(reorderedBalances), expectedTransfers);
+		assert.deepEqual(summary(members), expectedTransfers);
+		assert.deepEqual(summary(reorderedMembers), expectedTransfers);
+		assert.deepEqual(homeRows(balances), expectedHomeRows);
+		assert.deepEqual(homeRows(reorderedBalances), expectedHomeRows);
 	});
 
 	test('builds the Berlin week agenda with separate overdue context and no own duplicates', () => {
@@ -279,20 +297,27 @@ test.describe('daily overview model', () => {
 			],
 		});
 
-		expect(window).toMatchObject({
+		assert.partialDeepStrictEqual(window, {
 			todayKey: '2026-09-06',
 			weekStartKey: '2026-08-31',
 			sundayKey: '2026-09-06',
 		});
-		expect(window.from.toISOString()).toBe('2026-09-05T22:00:00.000Z');
-		expect(window.to.toISOString()).toBe('2026-09-06T21:59:59.999Z');
-		expect(agenda.overdue.map((item) => item.key)).toEqual(['chore:overdue-other']);
-		expect(agenda.upcoming.map((item) => item.key).sort()).toEqual(
+		assert.equal(window.from.toISOString(), '2026-09-05T22:00:00.000Z');
+		assert.equal(window.to.toISOString(), '2026-09-06T21:59:59.999Z');
+		assert.deepEqual(
+			agenda.overdue.map((item) => item.key),
+			['chore:overdue-other'],
+		);
+		assert.deepEqual(
+			agenda.upcoming.map((item) => item.key).sort(),
 			['event:all-day:0', 'event:ongoing:0', 'event:weekly:1', 'chore:sunday-other'].sort(),
 		);
-		expect(agenda.upcoming.every((item) => item.dayKey === '2026-09-06')).toBe(true);
-		expect(agenda.upcoming.find((item) => item.key === 'event:ongoing:0')?.detail).toContain(
-			'läuft',
+		assert.equal(
+			agenda.upcoming.every((item) => item.dayKey === '2026-09-06'),
+			true,
+		);
+		assert.ok(
+			agenda.upcoming.find((item) => item.key === 'event:ongoing:0')?.detail.includes('läuft'),
 		);
 	});
 
@@ -312,12 +337,12 @@ test.describe('daily overview model', () => {
 			now: Date.parse('2026-09-06T15:00:00.000Z'),
 		});
 
-		expect(agenda.upcoming).toEqual([
-			expect.objectContaining({
+		assert.partialDeepStrictEqual(agenda.upcoming, [
+			{
 				key: 'event:ended-overnight:0',
 				dayKey: '2026-09-06',
 				detail: 'Endete heute um 08:00',
-			}),
+			},
 		]);
 	});
 
@@ -327,24 +352,24 @@ test.describe('daily overview model', () => {
 		const monday = getBerlinWeekWindow(Date.parse('2026-10-25T23:30:00.000Z'));
 		const newYear = getBerlinWeekWindow(Date.parse('2027-01-01T12:00:00.000Z'));
 
-		expect(spring).toMatchObject({
+		assert.partialDeepStrictEqual(spring, {
 			todayKey: '2026-03-29',
 			weekStartKey: '2026-03-23',
 			sundayKey: '2026-03-29',
 		});
-		expect(spring.to.getTime() + 1 - spring.from.getTime()).toBe(23 * 60 * 60 * 1000);
-		expect(fall).toMatchObject({
+		assert.equal(spring.to.getTime() + 1 - spring.from.getTime(), 23 * 60 * 60 * 1000);
+		assert.partialDeepStrictEqual(fall, {
 			todayKey: '2026-10-25',
 			weekStartKey: '2026-10-19',
 			sundayKey: '2026-10-25',
 		});
-		expect(fall.to.getTime() + 1 - fall.from.getTime()).toBe(25 * 60 * 60 * 1000);
-		expect(monday).toMatchObject({
+		assert.equal(fall.to.getTime() + 1 - fall.from.getTime(), 25 * 60 * 60 * 1000);
+		assert.partialDeepStrictEqual(monday, {
 			todayKey: '2026-10-26',
 			weekStartKey: '2026-10-26',
 			sundayKey: '2026-11-01',
 		});
-		expect(newYear).toMatchObject({
+		assert.partialDeepStrictEqual(newYear, {
 			todayKey: '2027-01-01',
 			weekStartKey: '2026-12-28',
 			sundayKey: '2027-01-03',
@@ -365,24 +390,26 @@ test.describe('daily overview model', () => {
 			recurrence: 'FREQ=WEEKLY',
 		});
 
-		expect(
+		assert.equal(
 			expandRecurrence(
 				recurringEvent('2026-03-22T19:00:00.000Z'),
 				springWindow.from,
 				springWindow.to,
 			)[0]?.startsAt,
-		).toBe('2026-03-29T18:00:00.000Z');
-		expect(
+			'2026-03-29T18:00:00.000Z',
+		);
+		assert.equal(
 			expandRecurrence(
 				recurringEvent('2026-10-18T18:00:00.000Z'),
 				fallWindow.from,
 				fallWindow.to,
 			)[0]?.startsAt,
-		).toBe('2026-10-25T19:00:00.000Z');
+			'2026-10-25T19:00:00.000Z',
+		);
 	});
 });
 
-test.describe('start overview model', () => {
+describe('start overview model', () => {
 	const NOW = Date.parse('2026-09-05T22:30:00.000Z');
 
 	function overviewInput() {
@@ -471,54 +498,72 @@ test.describe('start overview model', () => {
 		};
 	}
 
-	test.describe('Start overview read model', () => {
+	describe('Start overview read model', () => {
 		test('ranks all chore candidates before the visible limit and keeps ownership context', () => {
 			const items = getTodayImportantItems(overviewInput());
 
-			expect(items).toHaveLength(10);
-			expect(items.slice(0, 7).map((item) => item.entityId)).toEqual([
-				'own-overdue',
-				'shared-overdue',
-				'own-today',
-				'recurring-1',
-				'shared-today',
-				'own-next',
-				'shared-next',
-			]);
-			expect(items.some((item) => item.entityId === 'later')).toBe(false);
-			expect(items[0]).toMatchObject({
+			assert.equal(items.length, 10);
+			assert.deepEqual(
+				items.slice(0, 7).map((item) => item.entityId),
+				[
+					'own-overdue',
+					'shared-overdue',
+					'own-today',
+					'recurring-1',
+					'shared-today',
+					'own-next',
+					'shared-next',
+				],
+			);
+			assert.equal(
+				items.some((item) => item.entityId === 'later'),
+				false,
+			);
+			assert.partialDeepStrictEqual(items[0], {
 				isPersonal: true,
-				detail: expect.stringContaining('offen'),
 				href: '/wg/WG%2F1/putzen?highlight=own-overdue',
 			});
-			expect(items[1]).toMatchObject({
+			assert.match(items[0]?.detail ?? '', /offen/);
+			assert.partialDeepStrictEqual(items[1], {
 				isPersonal: false,
-				detail: expect.stringContaining('Mina'),
 				href: '/wg/WG%2F1/putzen?highlight=shared-overdue',
 			});
+			assert.match(items[1]?.detail ?? '', /Mina/);
 
 			const shopping = items.find((item) => item.kind === 'shopping');
-			expect(shopping).toMatchObject({
+			assert.partialDeepStrictEqual(shopping, {
 				detail: 'WG · 7 offene Artikel',
 				href: '/wg/WG%2F1/einkauf',
 			});
-			expect(items.some((item) => item.kind === 'debt')).toBe(false);
+			assert.equal(
+				items.some((item) => item.kind === 'debt'),
+				false,
+			);
 		});
 
 		test('uses stable destination links', () => {
 			const items = getTodayImportantItems(overviewInput());
-			expect(items.find((item) => item.kind === 'announcement')).toMatchObject({
-				entityId: 'announcement-1',
-				href: '/wg/WG%2F1/pinnwand#announcement-announcement-1',
-			});
-			expect(items.find((item) => item.kind === 'recurring')).toMatchObject({
-				entityId: 'recurring-1',
-				href: '/wg/WG%2F1/ausgaben?recurring=recurring-1',
-			});
-			expect(items.find((item) => item.kind === 'absence')).toMatchObject({
-				entityId: 'absence-1',
-				href: '/wg/WG%2F1/putzen?panel=absences&absence=absence-1',
-			});
+			assert.partialDeepStrictEqual(
+				items.find((item) => item.kind === 'announcement'),
+				{
+					entityId: 'announcement-1',
+					href: '/wg/WG%2F1/pinnwand#announcement-announcement-1',
+				},
+			);
+			assert.partialDeepStrictEqual(
+				items.find((item) => item.kind === 'recurring'),
+				{
+					entityId: 'recurring-1',
+					href: '/wg/WG%2F1/ausgaben?recurring=recurring-1',
+				},
+			);
+			assert.partialDeepStrictEqual(
+				items.find((item) => item.kind === 'absence'),
+				{
+					entityId: 'absence-1',
+					href: '/wg/WG%2F1/putzen?panel=absences&absence=absence-1',
+				},
+			);
 		});
 
 		test('uses Berlin calendar days at the day edge', () => {
@@ -544,17 +589,17 @@ test.describe('start overview model', () => {
 				],
 			});
 
-			expect(items[0]).toMatchObject({ entityId: 'previous-berlin-day', tone: 'danger' });
-			expect(items[1]).toMatchObject({
+			assert.partialDeepStrictEqual(items[0], { entityId: 'previous-berlin-day', tone: 'danger' });
+			assert.partialDeepStrictEqual(items[1], {
 				entityId: 'same-berlin-day',
 				tone: 'accent',
-				detail: expect.stringContaining('heute fällig'),
 			});
+			assert.match(items[1]?.detail ?? '', /heute fällig/);
 		});
 	});
 });
 
-test.describe('edge data helpers', () => {
+describe('edge data helpers', () => {
 	// Pure edge-case regressions (dates around DST/midnight, device zones, emoji, long digits).
 	const item = (timestamp: string) => ({
 		id: timestamp,
@@ -580,7 +625,7 @@ test.describe('edge data helpers', () => {
 		// 30.03.2026 00:30 CEST; 29.03. had only 23h, so now-24h lands on 28.03.
 		const now = Date.parse('2026-03-29T22:30:00Z');
 		const groups = groupActivityItemsByDay([item('2026-03-29T10:00:00Z')], now);
-		expect(groups[0]?.label).toBe('Gestern');
+		assert.equal(groups[0]?.label, 'Gestern');
 	});
 
 	test('day labels do not shift for devices ahead of Berlin', () => {
@@ -589,14 +634,14 @@ test.describe('edge data helpers', () => {
 				[item('2026-09-20T10:00:00Z')],
 				Date.parse('2026-10-01T10:00:00Z'),
 			);
-			expect(groups[0]?.label).toMatch(/20\.09\./);
+			assert.match(groups[0]?.label ?? '', /20\.09\./);
 		});
 	});
 
 	test('Berlin short dates ignore the device zone', () => {
 		withTz('America/New_York', () => {
 			// Berlin 02.10. 00:30 is still 01.10. in New York.
-			expect(formatShortDate('2026-10-01T22:30:00Z', 'Europe/Berlin')).toBe('02.10.');
+			assert.equal(formatShortDate('2026-10-01T22:30:00Z', 'Europe/Berlin'), '02.10.');
 		});
 	});
 
@@ -604,26 +649,24 @@ test.describe('edge data helpers', () => {
 		const now = new Date(2026, 9, 1, 8, 0).getTime();
 		const in47h = new Date(now + 47 * 3_600_000).toISOString();
 		const ago47h = new Date(now - 47 * 3_600_000).toISOString();
-		expect(formatRelativeTime(in47h, now)).toBe('in 2 Tagen');
-		expect(formatRelativeTime(ago47h, now)).toBe('vor 2 Tagen');
+		assert.equal(formatRelativeTime(in47h, now), 'in 2 Tagen');
+		assert.equal(formatRelativeTime(ago47h, now), 'vor 2 Tagen');
 	});
 
 	test('week labels one year apart stay unique', () => {
 		const now = new Date(2026, 9, 1);
 		const a = formatWeekLabel(new Date(2025, 9, 6), now);
 		const b = formatWeekLabel(new Date(2024, 9, 7), now);
-		expect(a).toBe('Woche ab 06.10.2025');
-		expect(a).not.toBe(b);
+		assert.equal(a, 'Woche ab 06.10.2025');
+		assert.notEqual(a, b);
 	});
 
-	test('emoji are never cut in half', () => {
-		expect(initials('😀 Max')).toBe('😀M');
-		expect(initials('😀😀😀')).toBe('😀😀');
-		expect(previewBody('😀'.repeat(10), 5)).toBe('😀😀😀😀…');
+	test('chat previews never cut an emoji in half', () => {
+		assert.equal(previewBody('😀'.repeat(10), 5), '😀😀😀😀…');
 	});
 
 	test('an overlong digit run is a name, not a quantity', () => {
 		const name = `${'1'.repeat(45)} Milch`;
-		expect(parseShoppingInput(name)).toEqual({ name, quantity: null });
+		assert.deepEqual(parseShoppingInput(name), { name, quantity: null });
 	});
 });

@@ -8,10 +8,11 @@ import {
 	mockUnreadCount,
 	navigateToFeature,
 	setupMember,
+	skipUnlessFixtures,
 } from './support/helpers';
 
 test.describe('chat edit focus', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	const MESSAGE_ID = '8c1bb4a9-4722-42fe-bb86-aebf2e2d5b11';
 
@@ -163,7 +164,7 @@ test.describe('chat edit focus', () => {
 });
 
 test.describe('chat ios keyboard', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	test('chat composer sits on the iOS keyboard after Safari pans the page', async ({ page }) => {
 		await page.setViewportSize({ width: 393, height: 659 });
@@ -256,7 +257,7 @@ test.describe('chat ios keyboard', () => {
 });
 
 test.describe('chat read retry', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	for (const colorScheme of ['light'] as const) {
 		test(`chat read failures remain visible and retryable (${colorScheme}, 320px)`, async ({
@@ -320,11 +321,11 @@ test.describe('chat read retry', () => {
 });
 
 test.describe('chat compose', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
-	const SHARE_CODE = 'MTE8PZAT';
+	const SHARE_CODE = FIXTURE_WG.shareCode;
 	const MEMBER = {
-		id: '7d898f9e-5ad7-4f5d-abed-8c3e99a76973',
+		id: FIXTURE_WG.memberId,
 		name: 'dsaf',
 		active: true,
 	};
@@ -347,7 +348,7 @@ test.describe('chat compose', () => {
 				sentBodies.push(payload.body);
 				sentMessage = {
 					id: `sent-${sentBodies.length}`,
-					wgId: '989ac820-58b7-431f-9c65-28721264f333',
+					wgId: FIXTURE_WG.id,
 					senderMemberId: MEMBER.id,
 					kind: 'user',
 					body: payload.body,
@@ -431,7 +432,7 @@ test.describe('chat compose', () => {
 });
 
 test.describe('chat pinnwand reflow 200', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	// WCAG 1.4.10 Reflow + 1.4.4 Resize Text: existing specs cover Chat's edit-focus
 	// behaviour and Pinnwand's individual comment layout at 320px/32px root font-size, but

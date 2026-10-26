@@ -2,10 +2,10 @@
 // Why: the share code is only the WG's address; the link is the only way in.
 
 import { expect, test } from '@playwright/test';
-import { FIXTURE_WG, mockNoWgs, setupMember } from './support/helpers';
+import { FIXTURE_WG, mockNoWgs, setupMember, skipUnlessFixtures } from './support/helpers';
 
 test.describe('invitation link', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	test('the created WG offers a personal link; opening it and entering a name joins the WG', async ({
 		page,

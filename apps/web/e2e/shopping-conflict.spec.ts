@@ -8,7 +8,13 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import * as schema from '../src/core/db/schema';
 import { isOpenShoppingItemDuplicate } from '../src/features/shopping/shopping-duplicate';
-import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './support/helpers';
+import {
+	FIXTURE_WG,
+	dismissOnboarding,
+	navigateToFeature,
+	setupMember,
+	skipUnlessFixtures,
+} from './support/helpers';
 
 test.describe('shopping conflict handling', () => {
 	const testDatabaseUrl = process.env.PILOT_SHOPPING_DATABASE_URL?.trim() ?? '';
@@ -98,10 +104,7 @@ test.describe('shopping conflict handling', () => {
 	}
 
 	test('hides clearing bought items from non-admins', async ({ page }) => {
-		test.skip(
-			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
-			'requires the local fixture server',
-		);
+		skipUnlessFixtures();
 		await mockShoppingPage(page, false);
 		await setupMember(page);
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einkauf`);
@@ -115,10 +118,7 @@ test.describe('shopping conflict handling', () => {
 	test('keeps an item removal pending until the server answers, then clears it on failure and success', async ({
 		page,
 	}) => {
-		test.skip(
-			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
-			'requires the local fixture server',
-		);
+		skipUnlessFixtures();
 		const { shareCode, memberId } = FIXTURE_WG;
 		const item: FixtureShoppingItem = {
 			id: 'shopping-milk',
@@ -175,10 +175,7 @@ test.describe('shopping conflict handling', () => {
 	});
 
 	test('explains the admin requirement when clear-bought returns 403', async ({ page }) => {
-		test.skip(
-			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
-			'requires the local fixture server',
-		);
+		skipUnlessFixtures();
 		await mockShoppingPage(page, true, 403);
 		await setupMember(page);
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einkauf`);
@@ -192,11 +189,8 @@ test.describe('shopping conflict handling', () => {
 	});
 
 	test('refreshes the list after a duplicate add and keeps the draft values', async ({ page }) => {
-		test.skip(
-			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
-			'requires the local fixture server',
-		);
-		const shareCode = 'MTE8PZAT';
+		skipUnlessFixtures();
+		const shareCode = FIXTURE_WG.shareCode;
 		let getCalls = 0;
 		let postCalls = 0;
 		await page.route(`**/api/wg/${shareCode}/shopping*`, async (route) => {
@@ -209,7 +203,7 @@ test.describe('shopping conflict handling', () => {
 								? [
 										{
 											id: 'shopping-existing',
-											addedByMemberId: '7d898f9e-5ad7-4f5d-abed-8c3e99a76973',
+											addedByMemberId: FIXTURE_WG.memberId,
 											name: 'Milch',
 											quantity: '1 L',
 											boughtAt: null,
@@ -246,12 +240,9 @@ test.describe('shopping conflict handling', () => {
 	test('adds and checks items instantly, then rolls a failed add back with a footer error', async ({
 		page,
 	}) => {
-		test.skip(
-			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
-			'requires the local fixture server',
-		);
-		const shareCode = 'MTE8PZAT';
-		const memberId = '7d898f9e-5ad7-4f5d-abed-8c3e99a76973';
+		skipUnlessFixtures();
+		const shareCode = FIXTURE_WG.shareCode;
+		const memberId = FIXTURE_WG.memberId;
 		let releaseCreate: (() => void) | undefined;
 		const createGate = new Promise<void>((resolve) => {
 			releaseCreate = resolve;
@@ -303,7 +294,7 @@ test.describe('shopping conflict handling', () => {
 	test('reopening a bought duplicate restores both items and explains the conflict at 320px', async ({
 		page,
 	}) => {
-		test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+		skipUnlessFixtures();
 		const { memberId } = FIXTURE_WG;
 		const items: FixtureShoppingItem[] = [
 			{
@@ -442,10 +433,7 @@ test.describe('shopping conflict handling', () => {
 	});
 
 	test('wraps quick shopping suggestions at phone widths and large text', async ({ page }) => {
-		test.skip(
-			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
-			'requires the local fixture server',
-		);
+		skipUnlessFixtures();
 
 		const { shareCode, memberId, memberName } = FIXTURE_WG;
 		await setupMember(page);

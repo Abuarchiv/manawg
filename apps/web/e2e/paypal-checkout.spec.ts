@@ -8,10 +8,11 @@ import {
 	mockUnreadCount,
 	navigateToFeature,
 	setupMember,
+	skipUnlessFixtures,
 } from './support/helpers';
 
 test.describe('paypal checkout', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	const PAYPAL_CONFIGURED = Boolean(
 		process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID &&
@@ -300,7 +301,7 @@ test.describe('paypal checkout', () => {
 test.describe('paypal profile free', () => {
 	// page.route provider doubles must not be bypassed by the built app's service worker.
 	test.use({ serviceWorkers: 'block' });
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	test('profile can start and confirm PayPal while legacy status lookup is unavailable', async ({
 		page,

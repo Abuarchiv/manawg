@@ -5,7 +5,8 @@
 // the WG layout renders without a real Postgres instance. Individual feature
 // API endpoints are mocked per-test via `page.route()`.
 
-import { type Page, expect } from '@playwright/test';
+import { type Page, expect, test } from '@playwright/test';
+import { E2E_EXISTING_WG } from '../../src/fixtures/data';
 
 declare global {
 	interface Window {
@@ -15,11 +16,24 @@ declare global {
 }
 
 export const FIXTURE_WG = {
-	id: '989ac820-58b7-431f-9c65-28721264f333',
-	shareCode: 'MTE8PZAT',
-	memberId: '7d898f9e-5ad7-4f5d-abed-8c3e99a76973',
-	memberName: 'dsaf',
+	id: E2E_EXISTING_WG.id,
+	shareCode: E2E_EXISTING_WG.shareCode,
+	memberId: E2E_EXISTING_WG.member.id,
+	memberName: E2E_EXISTING_WG.member.name,
 } as const;
+
+/** Skips the surrounding test or describe unless the app runs against the in-memory fixture server. */
+export function skipUnlessFixtures(): void {
+	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+}
+
+/** Skips unless the fixture server runs with the database reported as down. */
+export function skipUnlessDbDown(): void {
+	test.skip(
+		process.env.E2E_FIXTURE_MODE !== 'true' || process.env.NEXT_PUBLIC_DB_DOWN !== 'true',
+		'requires database-down fixture server',
+	);
+}
 
 /**
  * Prepares a fixture WG visit: the fixture layout already renders as the WG's first member, so

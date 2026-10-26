@@ -11,6 +11,7 @@ import {
 	mockUnreadCount,
 	navigateToFeature,
 	setupMember,
+	skipUnlessFixtures,
 } from './support/helpers';
 
 test.describe('daily overview home', () => {
@@ -508,7 +509,7 @@ test.describe('daily overview home', () => {
 });
 
 test.describe('large data render limit', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	const TOTAL = 500;
 
@@ -567,7 +568,7 @@ test.describe('large data render limit', () => {
 });
 
 test.describe('member avatar color', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	// Colored avatars are an intentional brand exception (docs/brand/design-language.md).
 	test('member avatars get distinct, stable colors per person', async ({ page }) => {

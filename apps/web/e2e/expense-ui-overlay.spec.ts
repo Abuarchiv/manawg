@@ -2,15 +2,18 @@
 // Why: Overlays and dates must hold at 320px / 200% text.
 
 import { type Page, expect, test } from '@playwright/test';
-import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './support/helpers';
+import {
+	FIXTURE_WG,
+	dismissOnboarding,
+	navigateToFeature,
+	setupMember,
+	skipUnlessFixtures,
+} from './support/helpers';
 
 test.describe('fab summary overlay', () => {
-	test.skip(
-		process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
-		'requires the local fixture server',
-	);
+	skipUnlessFixtures();
 
-	const SHARE_CODE = 'MTE8PZAT';
+	const SHARE_CODE = FIXTURE_WG.shareCode;
 
 	async function useLargeText(page: Page): Promise<void> {
 		await page.evaluate(() => {
@@ -286,12 +289,9 @@ test.describe('fab summary overlay', () => {
 });
 
 test.describe('date integrity ui', () => {
-	test.skip(
-		process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
-		'requires the local fixture server',
-	);
+	skipUnlessFixtures();
 
-	const SHARE_CODE = 'MTE8PZAT';
+	const SHARE_CODE = FIXTURE_WG.shareCode;
 	const MOBILE_VIEWPORT = { width: 320, height: 740 } as const;
 
 	type CapturedPost = {

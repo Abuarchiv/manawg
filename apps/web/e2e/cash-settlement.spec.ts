@@ -7,10 +7,11 @@ import {
 	mockUnreadCount,
 	navigateToFeature,
 	setupMember,
+	skipUnlessFixtures,
 } from './support/helpers';
 
 test.describe('cash settlement', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	const MINA_ID = '0ab8c8f2-5d03-4a84-aadc-4c5d7e8abf55';
 

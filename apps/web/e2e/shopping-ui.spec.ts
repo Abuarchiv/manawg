@@ -1,5 +1,11 @@
 import { expect, test } from '@playwright/test';
-import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './support/helpers';
+import {
+	FIXTURE_WG,
+	dismissOnboarding,
+	navigateToFeature,
+	setupMember,
+	skipUnlessFixtures,
+} from './support/helpers';
 
 test.describe('haushalt shopping checkbox hitarea', () => {
 	// Regression for a <44px touch target: ShoppingItemRow's checkbox grows its hit
@@ -9,10 +15,7 @@ test.describe('haushalt shopping checkbox hitarea', () => {
 	// leftward hit-area extension to an effective ~34px target, so `overflow-hidden` only
 	// applies while a swipe is in progress.
 	test('shopping item checkbox keeps its full hit area when not swiping', async ({ page }) => {
-		test.skip(
-			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
-			'requires the local fixture server',
-		);
+		skipUnlessFixtures();
 		await page.route('**/api/wg/MTE8PZAT/shopping', async (route) => {
 			if (route.request().method() !== 'GET') {
 				await route.continue();
@@ -27,7 +30,7 @@ test.describe('haushalt shopping checkbox hitarea', () => {
 							id: 'hitarea-item',
 							name: 'Milch',
 							quantity: null,
-							addedByMemberId: '7d898f9e-5ad7-4f5d-abed-8c3e99a76973',
+							addedByMemberId: FIXTURE_WG.memberId,
 							boughtAt: null,
 							boughtByMemberId: null,
 							createdAt: new Date().toISOString(),
@@ -70,10 +73,7 @@ test.describe('haushalt shopping swipe pointer capture', () => {
 	// and completes the toggle) and leave the row stuck mid-swipe. setPointerCapture on
 	// pointerdown keeps move/up on the row for the whole gesture, like touch events.
 	test('shopping row captures the pointer when a touch swipe starts', async ({ page }) => {
-		test.skip(
-			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
-			'requires the local fixture server',
-		);
+		skipUnlessFixtures();
 		await page.route('**/api/wg/MTE8PZAT/shopping', async (route) => {
 			if (route.request().method() !== 'GET') {
 				await route.continue();
@@ -88,7 +88,7 @@ test.describe('haushalt shopping swipe pointer capture', () => {
 							id: 'capture-item',
 							name: 'Milch',
 							quantity: null,
-							addedByMemberId: '7d898f9e-5ad7-4f5d-abed-8c3e99a76973',
+							addedByMemberId: FIXTURE_WG.memberId,
 							boughtAt: null,
 							boughtByMemberId: null,
 							createdAt: new Date().toISOString(),
@@ -129,7 +129,7 @@ test.describe('haushalt shopping swipe pointer capture', () => {
 });
 
 test.describe('household list UI', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	const shareCode = FIXTURE_WG.shareCode;
 	const memberId = FIXTURE_WG.memberId;

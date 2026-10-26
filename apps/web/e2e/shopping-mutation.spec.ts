@@ -13,7 +13,13 @@ import {
 	shoppingCreateHttpResponse,
 	withShoppingCreatePostCommitFallback,
 } from '../src/features/shopping/server/shopping-mutation';
-import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './support/helpers';
+import {
+	FIXTURE_WG,
+	dismissOnboarding,
+	navigateToFeature,
+	setupMember,
+	skipUnlessFixtures,
+} from './support/helpers';
 
 test.describe('shopping input', () => {
 	test('splits a leading amount from the item name', () => {
@@ -43,10 +49,7 @@ test.describe('shopping retry', () => {
 	});
 
 	test('retries an uncertain shopping create with the same idempotency key', async ({ page }) => {
-		test.skip(
-			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
-			'requires the local fixture server',
-		);
+		skipUnlessFixtures();
 		const keys: string[] = [];
 		await page.route('**/api/wg/MTE8PZAT/shopping', async (route) => {
 			if (route.request().method() !== 'POST') {
@@ -94,10 +97,7 @@ test.describe('shopping retry', () => {
 	test('queues a second Enter while the first add is saving and ignores a repeated Enter on the same text', async ({
 		page,
 	}) => {
-		test.skip(
-			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
-			'requires the local fixture server',
-		);
+		skipUnlessFixtures();
 		const posted: string[] = [];
 		let releaseFirst: () => void = () => {};
 		const firstGate = new Promise<void>((resolve) => {
@@ -145,10 +145,7 @@ test.describe('shopping retry', () => {
 	});
 
 	test('uses a fresh idempotency key after an offline-queued shopping create', async ({ page }) => {
-		test.skip(
-			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
-			'requires the local fixture server',
-		);
+		skipUnlessFixtures();
 		await page.route('**/api/wg/MTE8PZAT/shopping', async (route) => {
 			if (route.request().method() !== 'POST') {
 				await route.continue();

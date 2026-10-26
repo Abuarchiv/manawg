@@ -8,10 +8,11 @@ import {
 	inMinimalMatrix,
 	navigateToFeature,
 	setupMember,
+	skipUnlessFixtures,
 } from './support/helpers';
 
 test.describe('settings access responsive', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	async function mockMemberRole(page: Page, viewerIsAdmin: () => boolean): Promise<void> {
 		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/members`, async (route) => {
@@ -117,7 +118,7 @@ test.describe('settings access responsive', () => {
 });
 
 test.describe('settings data summary responsive', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	const width = 320;
 	for (const colorScheme of ['light', 'dark'] as const) {
@@ -174,7 +175,7 @@ test.describe('settings data summary responsive', () => {
 });
 
 test.describe('settings legal links responsive', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	test('legal links fit at 320px with normal and 200% text sizes', async ({ page }) => {
 		await page.setViewportSize({ width: 320, height: 760 });
@@ -259,7 +260,7 @@ test.describe('settings legal links responsive', () => {
 });
 
 test.describe('settings pending switches', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	test('notification switches reject additional changes until the pending save completes', async ({
 		page,
@@ -339,7 +340,7 @@ test.describe('settings pending switches', () => {
 });
 
 test.describe('settings tabs focus obscured', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	// WCAG 2.4.11: the settings page's sticky tab strip (TabsList) must not cover
 	// content that gets scrolled/focused into view right beneath it, e.g. when a

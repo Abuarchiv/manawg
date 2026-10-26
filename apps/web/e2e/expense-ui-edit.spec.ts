@@ -13,10 +13,11 @@ import {
 	mockUnreadCount,
 	navigateToFeature,
 	setupMember,
+	skipUnlessFixtures,
 } from './support/helpers';
 
 test.describe('expense row reflow', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 	test.use({ hasTouch: true });
 
 	const EXPENSE_ID = '9af0f27a-3d2b-4983-b5cb-3920f6d6e51f';
@@ -150,7 +151,7 @@ test.describe('expense row reflow', () => {
 });
 
 test.describe('expense currency edit', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	const currencies = ['CHF', 'USD', 'GBP'] as const;
 	const splitCurrencyLabels: Record<(typeof currencies)[number], string> = {
@@ -289,7 +290,7 @@ test.describe('expense currency edit', () => {
 });
 
 test.describe('expense edit payer', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	const SHARE_CODE = FIXTURE_WG.shareCode;
 	const MEMBER = {
@@ -482,7 +483,7 @@ test.describe('offline expense edit', () => {
 		const action = createQueuedExpenseUpdate({
 			expenseId: 'expense-1',
 			expectedUpdatedAt: '2026-09-19T10:00:00.000Z',
-			shareCode: 'MTE8PZAT',
+			shareCode: FIXTURE_WG.shareCode,
 			memberId: 'member-1',
 			description: 'Wocheneinkauf',
 			amountCents: 1250,

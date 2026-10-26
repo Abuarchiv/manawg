@@ -59,40 +59,45 @@ const database = (await import('../src/core/db/index.ts')) as unknown as {
 	) => Promise<T>;
 };
 
+const runtimeUrl = 'postgresql://postgres@127.0.0.1:6543/postgres?sslmode=disable';
+
+test('runtime database pools are configured with timeouts and share one pool', async () => {
+	const expected = {
+		connectionString: runtimeUrl,
+		max: 5,
+		connectionTimeoutMillis: 2_000,
+		lock_timeout: 2_000,
+		query_timeout: 5_500,
+		statement_timeout: 5_000,
+	};
+	for (const parameter of ['lock_timeout', 'query_timeout', 'statement_timeout']) {
+		const url = new URL(runtimeUrl);
+		url.searchParams.set(parameter, '0');
+		process.env.POSTGRES_URL = url.href;
+		assert.throws(() => resolveConnectionString(), new RegExp(parameter));
+	}
+	const configuredUrl = new URL(runtimeUrl);
+	configuredUrl.searchParams.set('application_name', 'runtime-pool-test');
+	configuredUrl.searchParams.set('connect_timeout', '0');
+	process.env.POSTGRES_URL = configuredUrl.href;
+	const preserved = new URL(resolveConnectionString());
+	assert.equal(preserved.searchParams.get('application_name'), 'runtime-pool-test');
+	assert.equal(preserved.searchParams.get('connect_timeout'), '0');
+
+	process.env.POSTGRES_URL = runtimeUrl;
+	const { pools: configPools } = harness;
+	assert.deepEqual(database.db.getConfig(), expected);
+	assert.deepEqual(await database.withTransaction(() => undefined), expected);
+	assert.equal(configPools.length, 1, 'queries and transactions share one pool');
+});
+
 test(
 	'runtime database pools time out stalled, locked, and slow queries and recover',
-	{ timeout: 60_000 },
+	{
+		timeout: 60_000,
+		skip: process.env.RUN_DB_TIMEOUT_INTEGRATION !== '1' && 'set RUN_DB_TIMEOUT_INTEGRATION=1',
+	},
 	async (t) => {
-		const runtimeUrl = 'postgresql://postgres@127.0.0.1:6543/postgres?sslmode=disable';
-		const expected = {
-			connectionString: runtimeUrl,
-			max: 5,
-			connectionTimeoutMillis: 2_000,
-			lock_timeout: 2_000,
-			query_timeout: 5_500,
-			statement_timeout: 5_000,
-		};
-		for (const parameter of ['lock_timeout', 'query_timeout', 'statement_timeout']) {
-			const url = new URL(runtimeUrl);
-			url.searchParams.set(parameter, '0');
-			process.env.POSTGRES_URL = url.href;
-			assert.throws(() => resolveConnectionString(), new RegExp(parameter));
-		}
-		const configuredUrl = new URL(runtimeUrl);
-		configuredUrl.searchParams.set('application_name', 'runtime-pool-test');
-		configuredUrl.searchParams.set('connect_timeout', '0');
-		process.env.POSTGRES_URL = configuredUrl.href;
-		const preserved = new URL(resolveConnectionString());
-		assert.equal(preserved.searchParams.get('application_name'), 'runtime-pool-test');
-		assert.equal(preserved.searchParams.get('connect_timeout'), '0');
-
-		process.env.POSTGRES_URL = runtimeUrl;
-		const { pools: configPools } = harness;
-		assert.deepEqual(database.db.getConfig(), expected);
-		assert.deepEqual(await database.withTransaction(() => undefined), expected);
-		assert.equal(configPools.length, 1, 'queries and transactions share one pool');
-
-		if (process.env.RUN_DB_TIMEOUT_INTEGRATION !== '1') return;
 		const initdb = spawnSync('which', ['initdb'], { encoding: 'utf8' });
 		const pgCtl = spawnSync('which', ['pg_ctl'], { encoding: 'utf8' });
 		if (initdb.status !== 0 || pgCtl.status !== 0 || process.getuid?.() === 0) {
@@ -230,6 +235,9 @@ test(
 			assert.equal(readRecovered.rows[0]?.answer, 43);
 
 			const { withTransaction } = db;
+			// The shared pool now holds an idle connection; a changed connection string rebuilds it
+			// empty, so the next transaction has to open (and stall on) a new connection.
+			process.env.POSTGRES_URL = `${testRuntimeUrl}&application_name=runtime-pool-tx`;
 			await expectConnectTimeout(() => withTransaction((tx) => tx.execute(sql`select 1`)));
 
 			const transactionSettings = await withTransaction((tx) =>

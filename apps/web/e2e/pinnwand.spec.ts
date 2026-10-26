@@ -9,13 +9,14 @@ import {
 	inMinimalMatrix,
 	navigateToFeature,
 	setupMember,
+	skipUnlessFixtures,
 } from './support/helpers';
 
 test.describe('pinnwand done posts', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
-	const SHARE_CODE = 'MTE8PZAT';
-	const MEMBER_ID = '7d898f9e-5ad7-4f5d-abed-8c3e99a76973';
+	const SHARE_CODE = FIXTURE_WG.shareCode;
+	const MEMBER_ID = FIXTURE_WG.memberId;
 
 	function announcement(
 		id: string,
@@ -148,7 +149,7 @@ test.describe('pinnwand done posts', () => {
 });
 
 test.describe('pinnwand comment edit focus', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	const ANNOUNCEMENT_ID = 'comment-edit-focus';
 
@@ -252,7 +253,7 @@ test.describe('pinnwand comment edit focus', () => {
 });
 
 test.describe('pinnwand comment layout', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	const ANNOUNCEMENT_ID = 'comment-layout';
 	const AUTHOR_NAME = 'MaximilianMustermannLangname';
@@ -386,11 +387,11 @@ test.describe('pinnwand comment layout', () => {
 });
 
 test.describe('pinnwand refresh', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 	test.use({ serviceWorkers: 'block' });
 
-	const SHARE_CODE = 'MTE8PZAT';
-	const MEMBER_ID = '7d898f9e-5ad7-4f5d-abed-8c3e99a76973';
+	const SHARE_CODE = FIXTURE_WG.shareCode;
+	const MEMBER_ID = FIXTURE_WG.memberId;
 
 	function announcement(id: string, content: string, comments: Record<string, unknown>[] = []) {
 		return {

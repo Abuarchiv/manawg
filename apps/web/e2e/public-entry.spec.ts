@@ -3,7 +3,7 @@
 import { expect, test } from '@playwright/test';
 import { apiFetch } from '../src/core/infra/api-client';
 import { E2E_EXISTING_WG } from '../src/fixtures/data';
-import { defined } from './support/helpers';
+import { defined, skipUnlessDbDown } from './support/helpers';
 
 test.describe('public entry api', () => {
 	test('guest membership lookup ignores unrelated and PKCE cookies', async ({ request }) => {
@@ -62,10 +62,7 @@ test.describe('public entry api', () => {
 		request,
 		baseURL,
 	}) => {
-		test.skip(
-			process.env.E2E_FIXTURE_MODE !== 'true' || process.env.NEXT_PUBLIC_DB_DOWN !== 'true',
-			'Requires the database-down fixture server.',
-		);
+		skipUnlessDbDown();
 
 		const code = E2E_EXISTING_WG.shareCode;
 		const memberId = E2E_EXISTING_WG.member.id;
