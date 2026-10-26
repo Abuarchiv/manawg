@@ -1,6 +1,7 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
+import { SUPPORT_MAILTO } from '@/app/support-mailto';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
 	Empty,
@@ -83,6 +84,16 @@ export default function WgError({ error, reset }: WgErrorProps) {
 								>
 									Zur Startseite
 								</Button>
+								<a
+									href={SUPPORT_MAILTO}
+									className={buttonVariants({
+										variant: 'outline',
+										size: 'lg',
+										className: 'w-full',
+									})}
+								>
+									Fehler per E-Mail melden
+								</a>
 							</div>
 						</EmptyContent>
 					</Empty>

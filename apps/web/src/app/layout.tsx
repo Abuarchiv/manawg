@@ -128,10 +128,7 @@ export const viewport: Viewport = {
 	// Default 'resizes-visual' would let the keyboard overlay them.
 	interactiveWidget: 'resizes-content',
 	// The app icon and system chrome use the brand's Neutral 950.
-	themeColor: [
-		{ media: '(prefers-color-scheme: light)', color: '#0a0a0a' },
-		{ media: '(prefers-color-scheme: dark)', color: '#0a0a0a' },
-	],
+	themeColor: '#0a0a0a',
 };
 
 export default async function RootLayout({

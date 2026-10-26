@@ -9,15 +9,15 @@ import { SessionExpiredBanner } from '@/components/wg/SessionExpiredBanner';
 import { WgContextProvider } from '@/components/wg/WgContextProvider';
 import type { SessionMember } from '@/core/auth/local-account';
 import { REQUEST_PATH_HEADER, wgReturnPath } from '@/core/auth/next-path';
-import { getAuthenticatedUserFromCookies } from '@/core/auth/server';
 import { db, wgMembers, wgs } from '@/core/db';
+import { loadWgViewer } from '@/core/guards/load-wg-viewer';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import { loadFixtureWgView } from '@/fixtures/pages';
-import { and, eq, isNotNull, isNull } from 'drizzle-orm';
+import { and, eq, isNotNull } from 'drizzle-orm';
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
-import { type ReactNode, cache } from 'react';
+import type { ReactNode } from 'react';
 import { TabWarmup } from './_components/TabWarmup';
 
 interface Props {
@@ -40,40 +40,12 @@ export async function generateMetadata({
 			robots: { index: false, follow: false },
 		};
 	}
-	const viewer = await getWgViewer(code);
+	const viewer = await loadWgViewer(code);
 	return {
 		title: viewer?.access ? `${viewer.access.name} — ManaWG` : 'WG — ManaWG',
 		robots: { index: false, follow: false },
 	};
 }
-
-/**
- * Session and membership once per request: generateMetadata and the layout both
- * need them, and an expired token costs a refresh round trip to Supabase Auth.
- */
-const getWgViewer = cache(async (code: string) => {
-	const user = await getAuthenticatedUserFromCookies();
-	if (!user) return null;
-	const [access] = await db
-		.select({
-			id: wgs.id,
-			name: wgs.name,
-			shareCode: wgs.shareCode,
-			memberId: wgMembers.id,
-			memberName: wgMembers.name,
-		})
-		.from(wgMembers)
-		.innerJoin(wgs, eq(wgMembers.wgId, wgs.id))
-		.where(
-			and(
-				eq(wgs.shareCode, code),
-				eq(wgMembers.authUserId, user.id),
-				isNull(wgMembers.deactivatedAt),
-			),
-		)
-		.limit(1);
-	return { user, access };
-});
 
 async function requestedPath(): Promise<string | null> {
 	return (await headers()).get(REQUEST_PATH_HEADER);
@@ -108,7 +80,7 @@ export default async function WgLayout({ children, params }: Props) {
 		);
 	}
 
-	const viewer = await getWgViewer(code);
+	const viewer = await loadWgViewer(code);
 	if (!viewer) redirect(await signInPath(code));
 	const { user, access } = viewer;
 	if (!access) {
@@ -246,10 +218,6 @@ function WgShell({
 						)}
 					/>
 				))}
-				{/* Four destinations: Start, Household (Einkauf/Vorräte/
-				    Putzen/Kalender), Finance (Ausgaben/Fixkosten/Mahnungen/Import),
-				    Exchange (Pinnwand/Chat). All deep links resolve;
-				    Activity/Settings stay reachable through header and Start links. */}
 			</AppBottomNav>
 			{/* Last in the DOM so Tab reaches a toast's dismiss button right after
 			    whatever the user just did, instead of jumping back to the page top. */}

@@ -1,5 +1,6 @@
 'use client';
 
+import { useAccountNamePrefill } from '@/app/use-account-name-prefill';
 import { ErrorBox } from '@/components/app/ErrorBox';
 import { CredentialsAuth } from '@/components/auth/CredentialsAuth';
 import { SignUpPrompt } from '@/components/auth/SignUpPrompt';
@@ -31,7 +32,7 @@ import { useAccountWgs } from './use-account-wgs';
 import { useBusyLock } from './use-busy-lock';
 import { useClearCallbackError } from './use-clear-callback-error';
 import { useCreateWg } from './use-create-wg';
-import { useAccountNamePrefill, useSaveStartDraft, useStartDraft } from './use-start-draft';
+import { useSaveStartDraft, useStartDraft } from './use-start-draft';
 import { useStartError } from './use-start-error';
 import { useStepHistory } from './use-step-history';
 

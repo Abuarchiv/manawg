@@ -20,7 +20,7 @@ export type InvitePhase =
 
 async function readError(res: Response): Promise<{ error: string; shareCode: string }> {
 	try {
-		const body = (await res.json()) as { error?: unknown; code?: unknown; shareCode?: unknown };
+		const body = (await res.json()) as { error?: unknown; shareCode?: unknown };
 		return {
 			error: typeof body.error === 'string' ? body.error : '',
 			shareCode: typeof body.shareCode === 'string' ? body.shareCode : '',

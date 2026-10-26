@@ -40,7 +40,7 @@ import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-
 import { cn } from '@/shared/lib/cn';
 import { History, Search } from 'lucide-react';
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ActivityFeed } from '../_components/ActivityFeed';
 
 interface ActivityResponse {
@@ -50,6 +50,7 @@ interface ActivityResponse {
 
 const PAGE_SIZE = 80;
 const MAX_ITEMS = 320;
+const ACTIVITY_REFRESH_INTERVAL_MS = 30_000;
 
 function formatVisibleActivityCount(count: number): string {
 	if (count === 0) return 'Keine sichtbaren Einträge.';
@@ -67,49 +68,21 @@ export default function AktivitaetPage() {
 		data: cachedActivity,
 		error: activityError,
 		isLoading: activityLoading,
+		isFetching,
 		refresh: refreshActivity,
 	} = useCachedFetch<ActivityResponse>(`/api/wg/${encodedShareCode}/activity?limit=${limit}`, {
 		memberId: identity.memberId,
 	});
+	// A larger limit lives under a new cache key; keep the previous page visible until it lands.
 	const [data, setData] = useState<ActivityResponse | null>(cachedActivity ?? null);
-	const [error, setError] = useState<string | null>(null);
-	const [loading, setLoading] = useState(activityLoading);
+	if (cachedActivity && cachedActivity !== data) setData(cachedActivity);
+	const error = activityError
+		? getWgLoadErrorMessage('Aktivität', activityError.status, activityError.error)
+		: null;
+	const loading = activityLoading || isFetching;
 	const [filter, setFilter] = useState<ActivityFilter>({ kind: 'all', mineOnly: false, query: '' });
-	const requestIdRef = useRef(0);
 
-	const load = useCallback(async (): Promise<void> => {
-		const requestId = requestIdRef.current + 1;
-		requestIdRef.current = requestId;
-		setLoading(true);
-		try {
-			const res = await refreshActivity();
-			if (requestId !== requestIdRef.current) return;
-			if (res.ok) {
-				setData(res.data);
-				setError(null);
-			} else {
-				setError(getWgLoadErrorMessage('Aktivität', res.status, res.error));
-			}
-		} finally {
-			if (requestId === requestIdRef.current) setLoading(false);
-		}
-	}, [refreshActivity]);
-
-	useEffect(() => {
-		void load();
-	}, [load]);
-	useVisibilityPausedInterval(() => void load(), 30_000);
-
-	useEffect(() => {
-		if (cachedActivity) {
-			setData(cachedActivity);
-			setError(null);
-			setLoading(false);
-		} else if (activityError) {
-			setError(getWgLoadErrorMessage('Aktivität', activityError.status, activityError.error));
-			setLoading(false);
-		}
-	}, [activityError, cachedActivity]);
+	useVisibilityPausedInterval(() => void refreshActivity(), ACTIVITY_REFRESH_INTERVAL_MS);
 
 	const filteredItems = useMemo(
 		() => filterActivityItems(data?.items ?? [], filter, identity.name, identity.memberId),
@@ -155,7 +128,7 @@ export default function AktivitaetPage() {
 			{error && (
 				<LoadErrorBanner
 					message={error}
-					onRetry={() => void load()}
+					onRetry={() => void refreshActivity()}
 					busy={loading}
 					retryLabel="Aktivität erneut laden"
 				/>
