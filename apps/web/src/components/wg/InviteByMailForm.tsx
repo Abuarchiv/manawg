@@ -32,7 +32,7 @@ export function InviteByMailForm({ shareCode, memberId }: Props) {
 		if (pending) return;
 		setPending(true);
 		setMessage(null);
-		const res = await apiFetch<{ status: 'sent' | 'duplicate' }>(
+		const res = await apiFetch<{ status: 'sent' | 'duplicate' | 'unconfirmed' }>(
 			`/api/wg/${encodeURIComponent(shareCode)}/invitations`,
 			{ method: 'POST', memberId, body: JSON.stringify({ email }) },
 		);
@@ -50,7 +50,9 @@ export function InviteByMailForm({ shareCode, memberId }: Props) {
 			text:
 				res.data.status === 'duplicate'
 					? 'Diese Adresse hat heute schon eine Einladung bekommen.'
-					: 'Einladung ist unterwegs.',
+					: res.data.status === 'unconfirmed'
+						? 'Die Einladung ist wahrscheinlich unterwegs, der Versand wurde aber nicht bestätigt. Kommt sie nicht an, teile den Einladungslink.'
+						: 'Einladung ist unterwegs.',
 		});
 	}
 

@@ -31,7 +31,9 @@ async function revokeInvite(id: string): Promise<void> {
  * E6: a member invites someone by address. The mail carries a fresh invitation
  * link (7 days); the address itself is not stored, only a hash in the dedupe
  * key (one mail per address, WG and day). A link whose mail was not sent is
- * revoked again, so a duplicate or failure leaves no live token behind.
+ * revoked again, so a duplicate or failure leaves no live token behind. A mail
+ * whose delivery is unconfirmed (provider timeout) may have arrived, so its
+ * link stays valid.
  */
 export const POST = withWgRoute('invitations POST', async (req, { code }) => {
 	const parsed = await parseBody(req, postSchema, { fieldErrors: { email: 'email_invalid' } });
@@ -82,11 +84,11 @@ export const POST = withWgRoute('invitations POST', async (req, { code }) => {
 		await revokeInvite(invite.id);
 		return serviceUnavailable('mail_unavailable', 'mail_unavailable');
 	}
-	if (result !== 'sent') await revokeInvite(invite.id);
+	if (result !== 'sent' && result !== 'unconfirmed') await revokeInvite(invite.id);
 	if (result === 'failed' || result === 'deferred') {
 		return serviceUnavailable('mail_unavailable', 'mail_unavailable');
 	}
-	if (result === 'sent') {
+	if (result === 'sent' || result === 'unconfirmed') {
 		await recordAuditEvent({
 			wgId: wg.id,
 			memberId: auth.member.memberId,
