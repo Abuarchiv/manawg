@@ -85,7 +85,8 @@ interface ReminderMessageInput {
 }
 
 export function formatReminderMessage(input: ReminderMessageInput): string {
-	const amount = formatEuroCents(input.amountCents, input.currency).replace(/ /g, ' ');
+	// Intl puts a no-break space before the currency sign; the push text uses a normal space.
+	const amount = formatEuroCents(input.amountCents, input.currency).replace(/\u00a0/g, ' ');
 	const ageSuffix =
 		input.oldestDebtAgeDays >= 1
 			? ` seit ${input.oldestDebtAgeDays} ${input.oldestDebtAgeDays === 1 ? 'Tag' : 'Tagen'}`

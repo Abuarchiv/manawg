@@ -4,9 +4,10 @@ import { CENTS_PER_EURO } from '@/core/utils/money';
 import type { AboSplit, MemberOption } from '@/features/expenses/components/abos/abos-types';
 import { participantsOrAll } from '@/features/expenses/components/ausgaben/expense-form-draft';
 import type { ExpenseCategory } from '@/features/expenses/expense-categories';
+import { DESCRIPTION_MAX_LENGTH } from '@/features/expenses/expense-constants';
 import { equalSplitParticipants } from '@/features/expenses/expense-split-input';
 
-export const DESCRIPTION_MAX = 200;
+export const DESCRIPTION_MAX = DESCRIPTION_MAX_LENGTH;
 export const AMOUNT_MIN_EUROS = 0.01;
 export const AMOUNT_MAX_EUROS = 1_000_000;
 

@@ -13,13 +13,6 @@ import { parseEuroAmount } from '@/core/utils/amount';
 import { todayAtLocalNoon } from '@/core/utils/local-date';
 import { CENTS_PER_EURO } from '@/core/utils/money';
 import { parseTimestamp } from '@/core/utils/time';
-import type { ExpenseFormFieldErrors } from '@/features/expenses/components/ausgaben/ExpenseFormSection';
-import {
-	AMOUNT_MAX_EUROS,
-	AMOUNT_MIN_EUROS,
-	DESCRIPTION_MAX,
-	amountErrorMessage,
-} from '@/features/expenses/components/ausgaben/constants';
 import type { RecurringExpense } from '@/features/expenses/components/ausgaben/expense-types';
 import {
 	isPermanentClientError,
@@ -33,6 +26,7 @@ import { planTemplateSchedule } from '@/features/expenses/recurring-template-pla
 import type { DebtorShare } from '@/features/expenses/split-math';
 import { useRef, useState } from 'react';
 import type { ExpenseFormState, ExpensePageContext } from './expense-page-context';
+import { validateDescriptionAndAmount } from './expense-submit-validation';
 import type { ExpenseFormSupport } from './use-expense-form-support';
 
 /**
@@ -66,13 +60,11 @@ export function useRecurringTemplateSave(
 		if (support.discardSentQueueEdit('recurring.create')) return;
 		const desc = form.description.trim();
 		const amountEuros = parseEuroAmount(form.amountStr);
-		const validationErrors: ExpenseFormFieldErrors = {};
-		if (!desc || desc.length > DESCRIPTION_MAX) {
-			validationErrors.description = 'Gib eine kurze Beschreibung ein.';
-		}
-		if (amountEuros === null || amountEuros < AMOUNT_MIN_EUROS || amountEuros > AMOUNT_MAX_EUROS) {
-			validationErrors.amount = amountErrorMessage(amountEuros, form.amountStr);
-		}
+		const validationErrors = validateDescriptionAndAmount({
+			description: desc,
+			amountEuros,
+			amountText: form.amountStr,
+		});
 		if (Object.keys(validationErrors).length > 0 || amountEuros === null) {
 			support.setValidationErrors(validationErrors);
 			return;

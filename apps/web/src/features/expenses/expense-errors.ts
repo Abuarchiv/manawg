@@ -1,7 +1,8 @@
 import { mutationErrorMessage } from '@/core/http/error-codes';
+import { DESCRIPTION_MAX_LENGTH } from '@/features/expenses/expense-constants';
 
 /** Shared with abo-errors.ts so both forms say the same thing. */
-const SPLIT_SUM_MISMATCH =
+export const SPLIT_SUM_MISMATCH =
 	'Beträge stimmen nicht überein — Summe muss exakt dem Gesamtbetrag entsprechen.';
 const PAID_BY_MUST_INCLUDE_CALLER =
 	'Wenn du für jemand anderen buchst, muss dein eigener Anteil größer als 0 sein.';
@@ -12,8 +13,7 @@ const NOT_TEMPLATE_OWNER =
 const SAVE_SUBJECT = 'Ausgabe konnte nicht gespeichert werden';
 const SAVE_ERRORS: Record<string, string> = {
 	amount_invalid: `${SAVE_SUBJECT}: Der Betrag ist ungültig.`,
-	// 200 = DESCRIPTION_MAX in the expense schema; deliberately not imported so the unit-test loader can load this file alone.
-	description_invalid: `${SAVE_SUBJECT}: Die Beschreibung muss 1 bis 200 Zeichen haben.`,
+	description_invalid: `${SAVE_SUBJECT}: Die Beschreibung muss 1 bis ${DESCRIPTION_MAX_LENGTH} Zeichen haben.`,
 	currency_invalid: `${SAVE_SUBJECT}: Die Währung ist ungültig.`,
 	image_invalid: `${SAVE_SUBJECT}: Der Anhang ist ungültig.`,
 	image_removed: `${SAVE_SUBJECT}: Der Anhang wurde entfernt. Lade ihn erneut hoch.`,

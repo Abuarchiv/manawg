@@ -25,8 +25,8 @@ export interface ReminderMailInput {
 }
 
 /**
- * E8: the reminder as a mail for a debtor without push. Lists the newest open
- * items the creditor paid for the debtor. Sent once per reminder row.
+ * Sends a reminder as a mail to a debtor without push. Lists the newest open
+ * items the creditor paid for the debtor; one mail per reminder row.
  */
 export async function sendReminderMail(input: ReminderMailInput): Promise<void> {
 	try {

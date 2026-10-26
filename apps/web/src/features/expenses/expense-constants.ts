@@ -14,3 +14,6 @@ export const DESCRIPTION_MAX_LENGTH = 200;
 export const MAX_SPLITS = 50;
 /** Longest billing interval of a recurring template. */
 export const RECURRING_INTERVAL_MAX_MONTHS = 24;
+
+/** Refresh period of the expense, fixed-cost and reminder pages while the tab is visible. */
+export const PAGE_REFRESH_MS = 30_000;

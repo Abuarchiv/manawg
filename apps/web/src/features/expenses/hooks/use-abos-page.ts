@@ -13,9 +13,12 @@ import {
 } from '@/features/expenses/abo-errors';
 import type { AboFormValues } from '@/features/expenses/components/abos/AboForm';
 import type { Abo, AboFilter } from '@/features/expenses/components/abos/abos-types';
+import { PAGE_REFRESH_MS } from '@/features/expenses/expense-constants';
+import { isPermanentClientError } from '@/features/expenses/expense-errors';
 import { getDueRecurringExpenses } from '@/features/expenses/recurring-expenses';
 import { haptic } from '@/shared/lib/haptics';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { updateCachedList } from './cached-list';
 
 interface RecurringExpensesResponse {
 	recurringExpenses: Abo[];
@@ -73,12 +76,7 @@ export function useAbosPage() {
 
 	function updateAbos(update: (current: Abo[]) => Abo[]): void {
 		setAbos(update);
-		setCachedAbos((current) => {
-			const previous = current?.recurringExpenses ?? abos;
-			const next = update(previous);
-			if (!current && next === previous) return current;
-			return { ...(current ?? { recurringExpenses: previous }), recurringExpenses: next };
-		});
+		setCachedAbos((current) => updateCachedList(current, 'recurringExpenses', abos, update));
 	}
 
 	const load = useCallback(
@@ -119,7 +117,7 @@ export function useAbosPage() {
 		void load(true);
 	}, [load]);
 	// Auto refresh like the dashboard instead of a manual reload button.
-	useVisibilityPausedInterval(() => void load(false), 30_000);
+	useVisibilityPausedInterval(() => void load(false), PAGE_REFRESH_MS);
 
 	function setNoticeMessage(tone: ActionNoticeTone, message: string): void {
 		// Success as a toast: it dismisses itself, shifts nothing and is visible even far down the list.
@@ -185,7 +183,7 @@ export function useAbosPage() {
 			setNoticeMessage('success', 'Fixkosten angelegt.');
 		} else {
 			updateAbos((current) => current.filter((abo) => abo.id !== optimisticId));
-			if (res.status > 0 && res.status < 500 && res.status !== 429) createRequestRef.current = null;
+			if (isPermanentClientError(res.status)) createRequestRef.current = null;
 			const message = aboSaveErrorMessage(res.error, 'angelegt');
 			setNoticeMessage('error', message);
 		}

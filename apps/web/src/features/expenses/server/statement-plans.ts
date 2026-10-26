@@ -1,6 +1,7 @@
 import 'server-only';
 import { loadConfirmedEmails } from '@/core/auth/auth-user-emails';
 import { db, expensePayments, expenseSplits, expenses, wgMembers, wgs } from '@/core/db';
+import { MS_PER_DAY } from '@/core/utils/time';
 import { and, asc, eq, gte, inArray, lt } from 'drizzle-orm';
 import type { ExpensePaymentInput } from '../expense-payment-input';
 import type { StatementExpense } from '../monthly-statement';
@@ -11,7 +12,6 @@ import {
 } from '../statement-recipients';
 
 const WG_CHUNK = 25;
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 export interface WgStatementPlan {
 	wg: { id: string; name: string; shareCode: string };
@@ -22,8 +22,8 @@ export interface WgStatementPlan {
 function monthWindow(monthKey: string): { from: Date; to: Date } {
 	const [year = 0, month = 1] = monthKey.split('-').map(Number);
 	return {
-		from: new Date(Date.UTC(year, month - 1, 1) - DAY_MS),
-		to: new Date(Date.UTC(year, month, 1) + DAY_MS),
+		from: new Date(Date.UTC(year, month - 1, 1) - MS_PER_DAY),
+		to: new Date(Date.UTC(year, month, 1) + MS_PER_DAY),
 	};
 }
 
@@ -135,7 +135,7 @@ export async function loadStatementPlans(monthKey: string): Promise<WgStatementP
 			(member) => member.deactivatedAt === null && member.notifyStatementEmail && member.authUserId,
 		);
 		const { emails, unresolved } = await loadConfirmedEmails(
-			wantsMail.map((member) => member.authUserId ?? ''),
+			wantsMail.flatMap((member) => (member.authUserId ? [member.authUserId] : [])),
 		);
 		if (unresolved.size > 0) {
 			console.warn(

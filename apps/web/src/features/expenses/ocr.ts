@@ -49,6 +49,7 @@ const OCR_RECOGNITION_TIMEOUT_MS = 20_000;
 let pendingWorkerInitialization: Promise<TesseractWorkerLike> | null = null;
 
 async function loadTesseract(): Promise<TesseractModuleLike> {
+	// The bundler may expose the CommonJS module either directly or under `default`.
 	const mod = (await import(/* webpackChunkName: "tesseract" */ 'tesseract.js')) as unknown as
 		| TesseractModuleLike
 		| { default: TesseractModuleLike };
@@ -146,7 +147,7 @@ export async function runOcrOnImage(
 				initializationAbandoned = true;
 			},
 		);
-		return data.text ?? '';
+		return data.text;
 	} finally {
 		initializationAbandoned = true;
 		if (worker) await terminateWorker(worker);

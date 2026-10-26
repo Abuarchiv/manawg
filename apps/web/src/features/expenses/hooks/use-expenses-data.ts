@@ -11,8 +11,10 @@ import type {
 	Expense,
 	RecurringExpense,
 } from '@/features/expenses/components/ausgaben/expense-types';
+import { PAGE_REFRESH_MS } from '@/features/expenses/expense-constants';
 import type { ExpensePaymentInput } from '@/features/expenses/expense-payment-input';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { updateCachedList } from './cached-list';
 
 interface UseExpensesDataOptions {
 	shareCode: string;
@@ -64,24 +66,16 @@ export function useExpensesData({ shareCode, memberId, setActionNotice }: UseExp
 
 	function updateExpenses(update: (current: Expense[]) => Expense[]): void {
 		setExpenses(update);
-		setCachedExpenses((current) => {
-			const previous = current?.expenses ?? expenses;
-			const next = update(previous);
-			if (!current && next === previous) return current;
-			return { ...(current ?? { expenses: previous }), expenses: next };
-		});
+		setCachedExpenses((current) => updateCachedList(current, 'expenses', expenses, update));
 	}
 
 	function updateRecurringExpenses(
 		update: (current: RecurringExpense[]) => RecurringExpense[],
 	): void {
 		setRecurringExpenses(update);
-		setCachedRecurringExpenses((current) => {
-			const previous = current?.recurringExpenses ?? recurringExpenses;
-			const next = update(previous);
-			if (!current && next === previous) return current;
-			return { ...(current ?? { recurringExpenses: previous }), recurringExpenses: next };
-		});
+		setCachedRecurringExpenses((current) =>
+			updateCachedList(current, 'recurringExpenses', recurringExpenses, update),
+		);
 	}
 
 	const load = useCallback(
@@ -185,7 +179,7 @@ export function useExpensesData({ shareCode, memberId, setActionNotice }: UseExp
 	}, [load]);
 
 	// Auto-refresh as on the dashboard; replaces the manual reload button.
-	useVisibilityPausedInterval(() => void load(false), 30_000);
+	useVisibilityPausedInterval(() => void load(false), PAGE_REFRESH_MS);
 
 	const { queuedCount, refreshCount: refreshQueuedCount } = useOfflineQueueSync({
 		shareCode,

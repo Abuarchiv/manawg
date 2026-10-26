@@ -1,6 +1,8 @@
+import { DESCRIPTION_MAX_LENGTH } from '@/features/expenses/expense-constants';
+
 export const AMOUNT_MIN_EUROS = 0.01;
 export const AMOUNT_MAX_EUROS = 1_000_000;
-export const DESCRIPTION_MAX = 200;
+export const DESCRIPTION_MAX = DESCRIPTION_MAX_LENGTH;
 
 // Above the maximum, "over 0 €" would be misleading: the amount is too large, not too small.
 export function amountErrorMessage(euros: number | null, raw = ''): string {
