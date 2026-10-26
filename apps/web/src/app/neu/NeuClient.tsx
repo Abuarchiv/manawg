@@ -222,7 +222,7 @@ export function NeuClient() {
 							}}
 						>
 							{retried && <Spinner data-icon="inline-start" aria-hidden />}
-							{retried ? 'Prüfe …' : 'Erneut prüfen'}
+							{retried ? 'Prüfe…' : 'Erneut prüfen'}
 						</Button>
 					</div>
 				)}

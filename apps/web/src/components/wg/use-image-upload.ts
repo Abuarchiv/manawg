@@ -32,7 +32,7 @@ interface SignResponse {
 }
 
 export const MAX_UPLOAD_MB = PRIVATE_IMAGE_MAX_BYTES / 1024 / 1024;
-const OFFLINE_PREPARED_NOTICE =
+const NETWORK_UNSTABLE_NOTICE =
 	'Bild vorbereitet. Der Upload startet automatisch, sobald das Netz wieder stabil ist.';
 
 interface ImageUploadInput {
@@ -232,7 +232,7 @@ export function useImageUpload({
 				return;
 			}
 			if (sigRes.status >= 500) {
-				await keepPending(OFFLINE_PREPARED_NOTICE);
+				await keepPending(NETWORK_UNSTABLE_NOTICE);
 				return;
 			}
 			if (!sigRes.ok) {
@@ -249,13 +249,13 @@ export function useImageUpload({
 				signal: AbortSignal.timeout(UPLOAD_TIMEOUT_MS),
 			});
 			if (!uploadRes.ok) {
-				await keepPending(OFFLINE_PREPARED_NOTICE);
+				await keepPending(NETWORK_UNSTABLE_NOTICE);
 				return;
 			}
 			setNotice(null);
 			onChange(sig.publicUrl);
 		} catch {
-			await keepPending(OFFLINE_PREPARED_NOTICE);
+			await keepPending(NETWORK_UNSTABLE_NOTICE);
 		} finally {
 			uploadPendingRef.current = false;
 			setUploading(false);

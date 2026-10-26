@@ -14,7 +14,7 @@ export function PwaRegister() {
 		const register = () => {
 			// Non-fatal: the site still works without a service worker.
 			navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch((err) => {
-				captureException(err, { boundary: 'sw-register' });
+				captureException(err, { action: 'swRegister' });
 			});
 		};
 
