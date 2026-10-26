@@ -17,7 +17,6 @@ export function PwaRegister() {
 
 			serviceWorker.register('/sw.js', { scope: '/' }).catch((err) => {
 				// Non-fatal: site still works without SW
-				// eslint-disable-next-line no-console
 				console.warn('[manawg] SW registration failed:', err);
 			});
 		};

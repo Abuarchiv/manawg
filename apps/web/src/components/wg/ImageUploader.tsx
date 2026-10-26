@@ -57,7 +57,6 @@ export function ImageUploader({
 			<>
 				<div className="relative aspect-[16/9] w-full overflow-hidden rounded-lg border border-border bg-card">
 					{previewSrc ? (
-						// eslint-disable-next-line @next/next/no-img-element
 						<img
 							src={previewSrc}
 							alt={
