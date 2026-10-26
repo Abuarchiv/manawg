@@ -1,7 +1,12 @@
-import { DESCRIPTION_MAX_LENGTH } from '@/features/expenses/expense-constants';
+import { CENTS_PER_EURO } from '@/core/utils/money';
+import {
+	AMOUNT_MAX_CENTS,
+	AMOUNT_MIN_CENTS,
+	DESCRIPTION_MAX_LENGTH,
+} from '@/features/expenses/expense-constants';
 
-export const AMOUNT_MIN_EUROS = 0.01;
-export const AMOUNT_MAX_EUROS = 1_000_000;
+export const AMOUNT_MIN_EUROS = AMOUNT_MIN_CENTS / CENTS_PER_EURO;
+export const AMOUNT_MAX_EUROS = AMOUNT_MAX_CENTS / CENTS_PER_EURO;
 export const DESCRIPTION_MAX = DESCRIPTION_MAX_LENGTH;
 
 // Above the maximum, "over 0 €" would be misleading: the amount is too large, not too small.

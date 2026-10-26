@@ -72,11 +72,17 @@ export const ExpenseRow = memo(function ExpenseRow({
 	highlighted,
 }: ExpenseRowProps) {
 	const isPayer = expense.paidByMemberId === currentMemberId;
-	// The server lets only the payer or a debtor remove an expense.
-	const canRemove =
+	// The server lets only the payer or a debtor delete an expense.
+	const canDelete =
 		isPayer || expense.splits.some((split) => split.debtorMemberId === currentMemberId);
 	const impact = getExpenseImpact(expense, currentMemberId);
 	const who = (id: string) => (id === currentMemberId ? 'Du' : memberName(id));
+	const shareStatusLabel = (split: ExpenseSplit, ownShare: boolean): string => {
+		if (ownShare) return 'Eigener Anteil der zahlenden Person';
+		if (split.amountCents === 0) return 'Kein Anteil';
+		if (split.settledAt !== null) return 'Bezahlt';
+		return isPayer ? 'Offen an dich' : `Offen an ${memberName(expense.paidByMemberId)}`;
+	};
 	const [deleteOpen, setDeleteOpen] = useState(false);
 	const [settleCandidate, setSettleCandidate] = useState<ExpenseSplit | null>(null);
 	return (
@@ -104,10 +110,10 @@ export const ExpenseRow = memo(function ExpenseRow({
 								<span className="flex min-w-0 flex-1 flex-col gap-1 @[15rem]:flex-row @[15rem]:gap-3">
 									<span className="flex min-w-0 flex-1 flex-col gap-0.5">
 										<span className="sr-only">Details öffnen:</span>
-										<span className="line-clamp-2 min-w-0 hyphens-auto text-[14px] font-medium leading-snug [overflow-wrap:break-word]">
+										<span className="line-clamp-2 min-w-0 hyphens-auto text-body font-medium leading-snug [overflow-wrap:break-word]">
 											{expense.description}
 										</span>
-										<span className="text-[12px] leading-normal font-normal text-muted-foreground">
+										<span className="text-meta leading-normal font-normal text-muted-foreground">
 											{/* The same amount already appears on the right; on the left only when the share differs. */}
 											<span className="whitespace-nowrap">
 												{isPayer ? 'Du zahltest' : `${memberName(expense.paidByMemberId)} zahlte`}
@@ -137,7 +143,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 									<span className="flex shrink-0 flex-row flex-wrap items-baseline gap-x-1.5 @[15rem]:flex-col @[15rem]:items-end @[15rem]:gap-0.5 @[15rem]:text-right">
 										<span
 											className={cn(
-												'whitespace-nowrap font-mono text-[14px] leading-snug tabular-nums',
+												'whitespace-nowrap font-mono text-body leading-snug tabular-nums',
 												impact.kind === 'lent'
 													? 'text-settled'
 													: impact.kind === 'owe'
@@ -147,7 +153,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 										>
 											{formatEuroCents(impact.cents, expense.currency)}
 										</span>
-										<span className="whitespace-nowrap text-[12px] font-normal text-muted-foreground">
+										<span className="whitespace-nowrap text-meta font-normal text-muted-foreground">
 											{IMPACT_LABEL[impact.kind]}
 										</span>
 									</span>
@@ -156,7 +162,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 						</CollapsibleTrigger>
 					</ItemContent>
 					<ItemActions className="shrink-0">
-						{canRemove && (
+						{canDelete && (
 							<DropdownMenu>
 								<DropdownMenuTrigger
 									render={<Button variant="ghost" size="icon" />}
@@ -181,7 +187,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 											disabled={pendingIds.has(expense.id)}
 										>
 											<Trash2 />
-											Entfernen
+											Löschen
 										</DropdownMenuItem>
 									</DropdownMenuGroup>
 								</DropdownMenuContent>
@@ -197,12 +203,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 							<Button
 								variant="outline"
 								render={
-									<a
-										href={expense.imageUrl}
-										target="_blank"
-										rel="noopener noreferrer"
-										aria-label="Beleg öffnen"
-									>
+									<a href={expense.imageUrl} target="_blank" rel="noopener noreferrer">
 										<Receipt data-icon="inline-start" />
 										Beleg öffnen
 									</a>
@@ -224,17 +225,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 													{formatEuroCents(split.amountCents, expense.currency)}
 												</span>
 											</ItemTitle>
-											<ItemDescription>
-												{ownShare
-													? 'Eigener Anteil der zahlenden Person'
-													: split.amountCents === 0
-														? 'Kein Anteil'
-														: settled
-															? 'Als beglichen vermerkt'
-															: expense.paidByMemberId === currentMemberId
-																? 'Offen an dich'
-																: `Offen an ${memberName(expense.paidByMemberId)}`}
-											</ItemDescription>
+											<ItemDescription>{shareStatusLabel(split, ownShare)}</ItemDescription>
 										</ItemContent>
 										{!ownShare && split.amountCents > 0 && (
 											<Button
@@ -243,14 +234,14 @@ export const ExpenseRow = memo(function ExpenseRow({
 												className="ml-auto"
 												onClick={() => setSettleCandidate(split)}
 												disabled={pendingIds.has(split.id) || pendingIds.has(expense.id)}
-												aria-label={`${settled ? 'Wieder öffnen' : 'Als bezahlt eintragen'}: ${who(split.debtorMemberId)}`}
+												aria-label={`${settled ? 'Wieder als offen markieren' : 'Als bezahlt markieren'}: ${who(split.debtorMemberId)}`}
 											>
 												{pendingIds.has(split.id) ? (
 													<Spinner data-icon="inline-start" />
 												) : (
 													<Check data-icon="inline-start" />
 												)}
-												{settled ? 'Wieder öffnen' : 'Bezahlt'}
+												{settled ? 'Wieder als offen markieren' : 'Als bezahlt markieren'}
 											</Button>
 										)}
 									</Item>
@@ -266,13 +257,13 @@ export const ExpenseRow = memo(function ExpenseRow({
 			<AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>Ausgabe entfernen?</AlertDialogTitle>
+						<AlertDialogTitle>Ausgabe löschen?</AlertDialogTitle>
 						<AlertDialogDescription>
 							„{expense.description}“ mit{' '}
 							<span className="font-mono tabular-nums">
 								{formatEuroCents(expense.amountCents, expense.currency)}
 							</span>{' '}
-							und den zugehörigen Anteilen wird entfernt.
+							und den zugehörigen Anteilen wird gelöscht.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
@@ -286,7 +277,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 								onDelete(expense.id);
 							}}
 						>
-							Entfernen
+							Löschen
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
@@ -300,7 +291,9 @@ export const ExpenseRow = memo(function ExpenseRow({
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>
-							{settleCandidate?.settledAt ? 'Zahlung wieder öffnen?' : 'Bereits bezahlt?'}
+							{settleCandidate?.settledAt
+								? 'Wieder als offen markieren?'
+								: 'Als bezahlt markieren?'}
 						</AlertDialogTitle>
 						<AlertDialogDescription>
 							{settleCandidate && (
@@ -312,8 +305,8 @@ export const ExpenseRow = memo(function ExpenseRow({
 									für „{expense.description}“, bezahlt von{' '}
 									{isPayer ? 'dir' : memberName(expense.paidByMemberId)}.{' '}
 									{settleCandidate.settledAt
-										? 'Dieser Anteil wird wieder als offen vermerkt.'
-										: 'Dieser Anteil wird als beglichen vermerkt.'}{' '}
+										? 'Dieser Anteil wird wieder als offen markiert.'
+										: 'Dieser Anteil wird als bezahlt markiert.'}{' '}
 									Es wird kein Geld überwiesen.
 								</>
 							)}
@@ -331,7 +324,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 								setSettleCandidate(null);
 							}}
 						>
-							{settleCandidate?.settledAt ? 'Als offen markieren' : 'Zahlung verbuchen'}
+							{settleCandidate?.settledAt ? 'Wieder als offen markieren' : 'Als bezahlt markieren'}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>

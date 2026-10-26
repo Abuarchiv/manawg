@@ -1,8 +1,13 @@
 'use client';
 
-import { LogoMark } from '@/components/ui/LogoMark';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
+import {
+	Empty,
+	EmptyDescription,
+	EmptyHeader,
+	EmptyMedia,
+	EmptyTitle,
+} from '@/components/ui/empty';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ExpenseRow } from '@/features/expenses/components/ausgaben/ExpenseRow';
@@ -10,7 +15,7 @@ import { ExpensesSkeleton } from '@/features/expenses/components/ausgaben/Expens
 import type { Expense, ExpenseSplit } from '@/features/expenses/components/ausgaben/expense-types';
 import type { ExpenseScope } from '@/features/expenses/expense-filter';
 import { cn } from '@/shared/lib/cn';
-import { FileInput, Search } from 'lucide-react';
+import { FileInput, Receipt, Search } from 'lucide-react';
 import Link from 'next/link';
 
 /** Below this many expenses the list is short enough to scan without a filter. */
@@ -73,7 +78,9 @@ export function ExpenseHistory({
 			) : loadFailed && expenseCount === 0 ? null : expenseCount === 0 && !initialLoading ? (
 				<Empty>
 					<EmptyHeader>
-						<LogoMark size={48} tile={false} aria-hidden className="text-neutral-300" />
+						<EmptyMedia variant="icon">
+							<Receipt aria-hidden />
+						</EmptyMedia>
 						<EmptyTitle>Noch keine Ausgaben</EmptyTitle>
 						<EmptyDescription>Trag die erste ein, dann rechnet ManaWG mit.</EmptyDescription>
 					</EmptyHeader>
@@ -128,7 +135,7 @@ export function ExpenseHistory({
 					)}
 					{weeks.map((week) => (
 						<section key={week.label} aria-label={week.label} className="flex flex-col gap-1.5">
-							<h3 className="px-0 text-[12px] font-medium text-muted-foreground">{week.label}</h3>
+							<h3 className="px-0 text-meta font-medium text-muted-foreground">{week.label}</h3>
 							<ul
 								className={cn(
 									'divide-y divide-border/60 overflow-hidden rounded-xl border',

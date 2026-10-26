@@ -1,22 +1,12 @@
 import { formatEuroInput, parseEuroAmount } from '@/core/utils/amount';
-import { todayInputValue } from '@/core/utils/local-date';
 import { CENTS_PER_EURO } from '@/core/utils/money';
 import type { AboSplit, MemberOption } from '@/features/expenses/components/abos/abos-types';
 import { participantsOrAll } from '@/features/expenses/components/ausgaben/expense-form-draft';
 import type { ExpenseCategory } from '@/features/expenses/expense-categories';
-import { DESCRIPTION_MAX_LENGTH } from '@/features/expenses/expense-constants';
-import { equalSplitParticipants } from '@/features/expenses/expense-split-input';
+import { type SplitMode, equalSplitParticipants } from '@/features/expenses/expense-split-input';
+import { distributeCentsEqually } from '@/features/expenses/split-math';
 
-export const DESCRIPTION_MAX = DESCRIPTION_MAX_LENGTH;
-export const AMOUNT_MIN_EUROS = 0.01;
-export const AMOUNT_MAX_EUROS = 1_000_000;
-
-export const INTERVAL_OPTIONS = [
-	{ value: 1, label: '1 Monat' },
-	{ value: 3, label: '3 Monate (Quartal)' },
-	{ value: 6, label: '6 Monate' },
-	{ value: 12, label: '12 Monate (Jahr)' },
-] as const;
+export type { SplitMode };
 
 export interface AboFormValues {
 	description: string;
@@ -28,7 +18,6 @@ export interface AboFormValues {
 	splits: AboSplit[];
 }
 
-export type SplitMode = 'equal' | 'manual';
 export type AboSplitBuildError =
 	| 'amount_invalid'
 	| 'invalid_share'
@@ -50,21 +39,14 @@ export function buildEqualSplits(
 		? active.filter((member) => participantIds.includes(member.id))
 		: active;
 	if (participants.length === 0) return [];
-	const base = Math.floor(amountCents / participants.length);
-	const remainder = amountCents - base * participants.length;
+	const shares = distributeCentsEqually(
+		amountCents,
+		participants.map((member) => member.id),
+	);
 	return participants.map((member, index) => ({
 		debtorMemberId: member.id,
-		amountCents: base + (index < remainder ? 1 : 0),
+		amountCents: shares[index] ?? 0,
 	}));
-}
-
-export function isoDateToInput(iso: string): string {
-	const date = new Date(iso);
-	if (Number.isNaN(date.getTime())) return todayInputValue();
-	const year = date.getFullYear();
-	const month = String(date.getMonth() + 1).padStart(2, '0');
-	const day = String(date.getDate()).padStart(2, '0');
-	return `${year}-${month}-${day}`;
 }
 
 /** The members of a saved equal split (null = everyone), or 'manual' when the shares differ. */

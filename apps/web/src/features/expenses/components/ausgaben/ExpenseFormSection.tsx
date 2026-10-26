@@ -22,6 +22,7 @@ import { ExpenseSplitFieldset } from './ExpenseSplitFieldset';
 import { TextField } from './TextField';
 import { DESCRIPTION_MAX } from './constants';
 import type { SplitMode } from './expense-form-draft';
+import { expenseFormModeKey, expenseSubmitLabel } from './expense-form-mode';
 import type { RecurringExpense } from './expense-types';
 import { useExpenseFormDirty } from './use-expense-form-dirty';
 import type { ExpenseFormExtras } from './use-expense-form-extras';
@@ -149,11 +150,12 @@ export function ExpenseFormSection({
 		editingRecurringExpense && !isEditingQueuedExpense && !isEditingQueuedRecurring,
 	);
 	const savesTemplate = isEditingQueuedRecurring || editingTemplate;
-	const formModeKey = editingRecurringExpense
-		? `recurring:${editingRecurringExpense.id}`
-		: isEditingExpense
-			? `expense:${editingExpenseId ?? 'invalid'}`
-			: 'new';
+	const formModeKey = expenseFormModeKey({
+		editingRecurringExpense,
+		isEditingExpense,
+		editingExpenseId,
+	});
+	const submitLabel = expenseSubmitLabel({ savesTemplate, editingRecurringExpense });
 	const isDirty = useExpenseFormDirty({
 		description,
 		category,
@@ -180,7 +182,7 @@ export function ExpenseFormSection({
 	}, [formError]);
 
 	function requestClose() {
-		if (formSaving || savingRecurringTemplate) return;
+		if (formSaving) return;
 		if (isDirty) setConfirmClose(true);
 		else onCancel();
 	}
@@ -221,7 +223,7 @@ export function ExpenseFormSection({
 						className="flex min-h-0 flex-1 flex-col"
 						onSubmit={(event) => {
 							event.preventDefault();
-							if (formSaving || savingRecurringTemplate) return;
+							if (formSaving) return;
 							if (editingTemplate) onSaveRecurringTemplate();
 							else onSubmit();
 						}}
@@ -345,22 +347,18 @@ export function ExpenseFormSection({
 								<Button
 									type="submit"
 									className="w-full"
-									disabled={formSaving || savingRecurringTemplate}
-									aria-label={savesTemplate ? 'Fixkosten-Vorlage speichern' : 'Ausgabe speichern'}
+									disabled={formSaving}
+									aria-label={submitLabel.accessibleName}
 								>
-									{(formSaving || savingRecurringTemplate) && <Spinner data-icon="inline-start" />}
-									{savesTemplate
-										? 'Vorlage speichern'
-										: editingRecurringExpense
-											? 'Als Ausgabe speichern'
-											: 'Speichern'}
+									{formSaving && <Spinner data-icon="inline-start" />}
+									{submitLabel.text}
 								</Button>
 								<Button
 									type="button"
 									variant="ghost"
 									className={cn('w-full', keyboardOpen && 'hidden')}
 									onClick={requestClose}
-									disabled={formSaving || savingRecurringTemplate}
+									disabled={formSaving}
 								>
 									Abbrechen
 								</Button>
@@ -371,7 +369,7 @@ export function ExpenseFormSection({
 									variant="ghost"
 									size="sm"
 									className="self-start"
-									disabled={formSaving || savingRecurringTemplate}
+									disabled={formSaving}
 									onClick={onSubmit}
 								>
 									Als Ausgabe speichern

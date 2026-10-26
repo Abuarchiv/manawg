@@ -30,6 +30,7 @@ const DAY_FORMATTER = new Intl.DateTimeFormat('de-DE', {
 export function ImportHistory() {
 	const { wg, identity, members, isAdmin } = useWg();
 	const [imports, setImports] = useState<PastImport[]>([]);
+	const [loadFailed, setLoadFailed] = useState(false);
 	const shareCode = wg.shareCode;
 	const memberId = identity.memberId;
 
@@ -40,13 +41,20 @@ export function ImportHistory() {
 		void apiFetch<{ imports: PastImport[] }>(`/api/wg/${encodeURIComponent(shareCode)}/imports`, {
 			memberId,
 		}).then((res) => {
-			if (!cancelled && res.ok) setImports(res.data.imports);
+			if (cancelled) return;
+			setLoadFailed(!res.ok);
+			if (res.ok) setImports(res.data.imports);
 		});
 		return () => {
 			cancelled = true;
 		};
 	}, [shareCode, memberId, isAdmin]);
 
+	if (loadFailed && imports.length === 0) {
+		return (
+			<p className="text-sm text-muted-foreground">Frühere Importe konnten nicht geladen werden.</p>
+		);
+	}
 	if (imports.length === 0) return null;
 	return (
 		<section aria-labelledby="import-history-heading" className="flex flex-col gap-2">

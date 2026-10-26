@@ -28,7 +28,7 @@ export function ExpenseCategoryField({ id, value, onChange, disabled }: ExpenseC
 					if (next) onChange(next);
 				}}
 				disabled={disabled}
-				className="w-full [&_select]:h-auto [&_select]:py-[0.5625rem] [&_select]:text-base"
+				className="w-full"
 			>
 				{EXPENSE_CATEGORIES.map((code) => (
 					<NativeSelectOption key={code} value={code}>

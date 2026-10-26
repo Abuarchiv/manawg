@@ -297,7 +297,7 @@ test('creating an expense from a recurring template reuses its key after a serve
 
 	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/ausgaben?filter=recurring`);
 	await dismissOnboarding(page);
-	const create = page.getByRole('button', { name: 'Fixkosten-Ausgabe direkt erstellen: Miete' });
+	const create = page.getByRole('button', { name: 'Erfassen: Miete' });
 	await create.click();
 	await expect.poll(() => attempts.length).toBe(1);
 	await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
@@ -354,7 +354,7 @@ test('a malformed recurring-expense success replays the queued request with its 
 
 	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/ausgaben?filter=recurring`);
 	await dismissOnboarding(page);
-	const create = page.getByRole('button', { name: 'Fixkosten-Ausgabe direkt erstellen: Miete' });
+	const create = page.getByRole('button', { name: 'Erfassen: Miete' });
 
 	await create.click();
 	await expect.poll(() => attempts.length).toBe(1);
@@ -493,9 +493,9 @@ test('recurring template retries keep separate keys when requests are interleave
 
 	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/ausgaben?filter=recurring`);
 	await dismissOnboarding(page);
-	const rent = page.getByRole('button', { name: 'Fixkosten-Ausgabe direkt erstellen: Miete' });
+	const rent = page.getByRole('button', { name: 'Erfassen: Miete' });
 	const internet = page.getByRole('button', {
-		name: 'Fixkosten-Ausgabe direkt erstellen: Internet',
+		name: 'Erfassen: Internet',
 	});
 	try {
 		for (const [index, button] of [rent, internet, rent].entries()) {
@@ -547,7 +547,7 @@ test('recurring expense retry keeps its key until template advance succeeds', as
 
 	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/ausgaben?filter=recurring`);
 	await dismissOnboarding(page);
-	const create = page.getByRole('button', { name: 'Fixkosten-Ausgabe direkt erstellen: Miete' });
+	const create = page.getByRole('button', { name: 'Erfassen: Miete' });
 	await create.click();
 	await expect.poll(() => attempts.length).toBe(1);
 	await expect.poll(() => advanceAttempts).toBe(1);
@@ -608,7 +608,7 @@ test('an already-advanced period gets a new key and due date on the next create'
 
 	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/ausgaben?filter=recurring`);
 	await dismissOnboarding(page);
-	const create = page.getByRole('button', { name: 'Fixkosten-Ausgabe direkt erstellen: Miete' });
+	const create = page.getByRole('button', { name: 'Erfassen: Miete' });
 	await create.click();
 	await expect.poll(() => postAttempts.length).toBe(1);
 	await expect.poll(() => advanceAttempts.length).toBe(1);
@@ -642,7 +642,7 @@ test('an accepted offline recurring expense is not queued again after reload', a
 
 	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/ausgaben?filter=recurring`);
 	await dismissOnboarding(page);
-	await page.getByRole('button', { name: 'Fixkosten-Ausgabe direkt erstellen: Miete' }).click();
+	await page.getByRole('button', { name: 'Erfassen: Miete' }).click();
 	await expect(page.getByText(/Fixkosten-Ausgabe offline vorgemerkt/)).toBeVisible();
 	await expect.poll(() => queuedRecurringExpenseCount(page)).toBe(1);
 
@@ -667,7 +667,7 @@ test('an accepted offline recurring expense is not queued again after reload', a
 	await dismissOnboarding(reloadedPage);
 	await expect.poll(() => queuedRecurringExpenseCount(reloadedPage)).toBe(1);
 	const create = reloadedPage.getByRole('button', {
-		name: 'Fixkosten-Ausgabe direkt erstellen: Miete',
+		name: 'Erfassen: Miete',
 	});
 	await expect(create).toBeVisible();
 	await create.click();

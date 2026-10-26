@@ -78,7 +78,8 @@ export function ExpenseSplitFieldset({
 	const historicalShareHintId = `${splitErrorId}-inactive-share`;
 	const remainderMembers = remainderCandidates(members);
 	const firstSplitMemberId = splitCandidates[0]?.id;
-	const memberName = (id: string) => members.find((member) => member.id === id)?.name ?? '?';
+	const memberName = (id: string) =>
+		members.find((member) => member.id === id)?.name ?? 'Unbekannt';
 	const splitErrorTargetsMode =
 		Boolean(splitsError) && (splitMode !== 'manual' || firstSplitMemberId === undefined);
 	return (

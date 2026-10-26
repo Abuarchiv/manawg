@@ -17,7 +17,14 @@ import { inputDateToIso, todayInputValue } from '@/core/utils/local-date';
 import { CENTS_PER_EURO } from '@/core/utils/money';
 import type { MemberOption } from '@/features/expenses/components/abos/abos-types';
 import { ExpenseCategoryField } from '@/features/expenses/components/ausgaben/ExpenseCategoryField';
-import { amountErrorMessage } from '@/features/expenses/components/ausgaben/constants';
+import {
+	AMOUNT_MAX_EUROS,
+	AMOUNT_MIN_EUROS,
+	DESCRIPTION_MAX,
+	RECURRING_INTERVAL_OPTIONS,
+	amountErrorMessage,
+} from '@/features/expenses/components/ausgaben/constants';
+import { isoToInputDate } from '@/features/expenses/components/ausgaben/use-expense-form-extras';
 import {
 	DEFAULT_EXPENSE_CATEGORY,
 	type ExpenseCategory,
@@ -27,16 +34,11 @@ import { countMissedOccurrences } from '@/features/expenses/recurring-expenses';
 import { useEffect, useMemo, useState } from 'react';
 import { AboSplitFields } from './AboSplitFields';
 import {
-	AMOUNT_MAX_EUROS,
-	AMOUNT_MIN_EUROS,
 	type AboFormValues,
-	DESCRIPTION_MAX,
-	INTERVAL_OPTIONS,
 	type SplitMode,
 	buildAboSplits,
 	initialEqualParticipants,
 	initialManualMap,
-	isoDateToInput,
 } from './abo-form-model';
 
 export type { AboFormValues } from './abo-form-model';
@@ -79,7 +81,7 @@ export function AboForm({
 	);
 	const [intervalMonths, setIntervalMonths] = useState(initial?.intervalMonths ?? 1);
 	const [nextDueAt, setNextDueAt] = useState(
-		initial ? isoDateToInput(initial.nextDueAt) : todayInputValue(),
+		initial ? isoToInputDate(initial.nextDueAt) : todayInputValue(),
 	);
 	const initialParticipants = initialEqualParticipants(initial, activeMembers);
 	const [splitMode, setSplitMode] = useState<SplitMode>(
@@ -101,7 +103,7 @@ export function AboForm({
 		setAmountStr(formatEuroInput(initial.amountCents / CENTS_PER_EURO));
 		setPaidByMemberId(initial.paidByMemberId);
 		setIntervalMonths(initial.intervalMonths);
-		setNextDueAt(isoDateToInput(initial.nextDueAt));
+		setNextDueAt(isoToInputDate(initial.nextDueAt));
 		const participants = initialEqualParticipants(initial, activeMembers);
 		setSplitMode(participants === 'manual' ? 'manual' : 'equal');
 		setParticipantIds(participants === 'manual' ? null : participants);
@@ -123,7 +125,7 @@ export function AboForm({
 			? amountErrorMessage(parseEuroAmount(amountStr), amountStr)
 			: null;
 	// A start in the past is booked retroactively by the daily run; say so before it happens.
-	const dueDateChanged = !initial || nextDueAt !== isoDateToInput(initial.nextDueAt);
+	const dueDateChanged = !initial || nextDueAt !== isoToInputDate(initial.nextDueAt);
 	const missedBookings =
 		dueDateChanged && nextDueAt.length > 0 && nextDueAt < todayInputValue()
 			? countMissedOccurrences(inputDateToIso(nextDueAt) ?? '', intervalMonths)
@@ -178,7 +180,7 @@ export function AboForm({
 		// An unchanged date keeps the stored timestamp: otherwise every edit would move it to
 		// 12:00 local time, and the server would reject a long-overdue date as out of range.
 		const nextDueAtIso =
-			initial && nextDueAt === isoDateToInput(initial.nextDueAt)
+			initial && nextDueAt === isoToInputDate(initial.nextDueAt)
 				? initial.nextDueAt
 				: inputDateToIso(nextDueAt);
 		if (nextDueAtIso === null) {
@@ -267,7 +269,7 @@ export function AboForm({
 						value={paidByMemberId}
 						onChange={(event) => setPaidByMemberId(event.target.value)}
 						disabled={submitting}
-						className="w-full [&_select]:h-11 [&_select]:text-base"
+						className="w-full"
 					>
 						{payerOptions.map((member) => (
 							<NativeSelectOption key={member.id} value={member.id}>
@@ -283,14 +285,14 @@ export function AboForm({
 						value={intervalMonths}
 						onChange={(event) => setIntervalMonths(Number(event.target.value))}
 						disabled={submitting}
-						className="w-full [&_select]:h-11 [&_select]:text-base"
+						className="w-full"
 					>
-						{!INTERVAL_OPTIONS.some((option) => option.value === intervalMonths) && (
+						{!RECURRING_INTERVAL_OPTIONS.some((option) => option.value === intervalMonths) && (
 							<NativeSelectOption value={intervalMonths}>
 								{intervalMonths} Monate
 							</NativeSelectOption>
 						)}
-						{INTERVAL_OPTIONS.map((option) => (
+						{RECURRING_INTERVAL_OPTIONS.map((option) => (
 							<NativeSelectOption key={option.value} value={option.value}>
 								{option.label}
 							</NativeSelectOption>

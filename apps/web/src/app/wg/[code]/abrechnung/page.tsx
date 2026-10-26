@@ -114,10 +114,14 @@ export default function AbrechnungPage() {
 				/>
 			) : (
 				!error && (
-					<div className="flex flex-col gap-4" aria-busy="true">
+					<output
+						className="flex flex-col gap-4"
+						aria-busy="true"
+						aria-label="Abrechnung wird geladen"
+					>
 						<Skeleton className="h-24 w-full" />
 						<Skeleton className="h-40 w-full" />
-					</div>
+					</output>
 				)
 			)}
 		</div>

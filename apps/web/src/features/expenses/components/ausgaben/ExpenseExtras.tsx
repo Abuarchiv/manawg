@@ -125,7 +125,7 @@ export function ExpenseExtras({
 								value={recurringIntervalMonths}
 								onChange={(event) => setRecurringIntervalMonths(Number(event.target.value))}
 								disabled={formSaving}
-								className="w-full [&_select]:h-auto [&_select]:py-[0.5625rem] [&_select]:text-base"
+								className="w-full"
 							>
 								{RECURRING_INTERVAL_OPTIONS.map(({ value, label }) => (
 									<NativeSelectOption key={value} value={value}>

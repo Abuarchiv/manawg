@@ -120,7 +120,7 @@ export function MonthlyStatementDocument({
 						Salden
 					</h2>
 					<span className="text-[12px] text-muted-foreground">
-						Geteilt auf {members.length} Personen
+						Geteilt auf {members.length === 1 ? '1 Person' : `${members.length} Personen`}
 					</span>
 				</div>
 				{/* Four columns do not fit at 320 px: the table scrolls sideways instead of the page. */}
@@ -250,7 +250,7 @@ export function MonthlyStatementDocument({
 							Alle Ausgaben
 						</h2>
 						<span className="text-[12px] text-muted-foreground">
-							{items.length} Einträge, nach Datum
+							{items.length === 1 ? '1 Eintrag' : `${items.length} Einträge`}, nach Datum
 						</span>
 					</div>
 					<div className="overflow-x-auto">
