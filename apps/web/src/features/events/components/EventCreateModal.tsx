@@ -18,6 +18,7 @@ import {
 	RECURRENCE_OPTIONS,
 	type RecurrenceFreq,
 	formatRecurrenceRule,
+	toDatetimeLocalValue,
 	validateEventForm,
 } from '@/features/events/events';
 import { useEffect, useRef, useState } from 'react';
@@ -42,28 +43,21 @@ export interface CreateEventPayload {
 const QUICK_TEMPLATES: ReadonlyArray<{
 	label: string;
 	title: string;
-	recurrence: string | null;
+	freq: RecurrenceFreq | '';
 	allDay: boolean;
 }> = [
-	{ label: 'Geburtstag', title: 'Geburtstag', recurrence: 'FREQ=YEARLY', allDay: true },
+	{ label: 'Geburtstag', title: 'Geburtstag', freq: 'YEARLY', allDay: true },
 	{
 		label: 'Heizungsablesung',
 		title: 'Heizungsablesung',
-		recurrence: 'FREQ=YEARLY',
+		freq: 'YEARLY',
 		allDay: true,
 	},
-	{ label: 'Stromableser', title: 'Stromableser kommt', recurrence: null, allDay: false },
+	{ label: 'Stromableser', title: 'Stromableser kommt', freq: '', allDay: false },
 	// The form only knows the frequency; a BYDAY would have been silently dropped.
-	{ label: 'WG-Meeting', title: 'WG-Meeting', recurrence: 'FREQ=WEEKLY', allDay: false },
-	{ label: 'Müll raus', title: 'Müll raus', recurrence: 'FREQ=WEEKLY', allDay: false },
+	{ label: 'WG-Meeting', title: 'WG-Meeting', freq: 'WEEKLY', allDay: false },
+	{ label: 'Müll raus', title: 'Müll raus', freq: 'WEEKLY', allDay: false },
 ];
-
-function buildIsoLocal(date: Date): string {
-	const pad = (n: number) => n.toString().padStart(2, '0');
-	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(
-		date.getHours(),
-	)}:${pad(date.getMinutes())}`;
-}
 
 export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: EventCreateModalProps) {
 	const [title, setTitle] = useState('');
@@ -115,7 +109,7 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 		seeded.setHours(nextHour.getHours(), 0, 0, 0);
 		// Today after 23:00 would seed 00:00 of today, which has already passed.
 		const pickedToday = seeded.toDateString() === new Date().toDateString();
-		setStartsAt(buildIsoLocal(pickedToday && seeded < nextHour ? nextHour : seeded));
+		setStartsAt(toDatetimeLocalValue(pickedToday && seeded < nextHour ? nextHour : seeded));
 		setEndsAt('');
 	}, [open, defaultDate]);
 
@@ -126,8 +120,7 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 		setActiveTemplate(template.label);
 		clearErrorFor('title');
 		setAllDay(template.allDay);
-		const freq = template.recurrence ? template.recurrence.replace(/.*FREQ=([A-Z]+).*/, '$1') : '';
-		setRecurrenceFreq(freq);
+		setRecurrenceFreq(template.freq);
 	}
 
 	async function handleSubmit(e: React.FormEvent): Promise<void> {
@@ -188,7 +181,7 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 				<DrawerHeader className="border-b pb-3">
 					<DrawerTitle>Neuer Termin</DrawerTitle>
 					<DrawerDescription className="sr-only">
-						Für eure WG · Datum und Uhrzeit wie auf deinem Gerät.
+						Für deine WG. Datum und Uhrzeit wie auf deinem Gerät.
 					</DrawerDescription>
 				</DrawerHeader>
 				<form noValidate onSubmit={handleSubmit} className="flex min-h-0 flex-col">
@@ -267,7 +260,7 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 						)}
 					</div>
 					<DrawerFooter className="border-t pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-						<Button type="submit" disabled={submitting} aria-label="Termin speichern">
+						<Button type="submit" disabled={submitting}>
 							{submitting && <Spinner data-icon="inline-start" aria-hidden />}
 							{submitting ? 'Speichert…' : 'Termin speichern'}
 						</Button>

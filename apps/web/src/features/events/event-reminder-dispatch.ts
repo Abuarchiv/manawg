@@ -1,8 +1,8 @@
 import { berlinDayKey } from '@/core/utils/berlin-day';
+import { DEFAULT_DURATION_MS } from './event-recurrence';
 
 export const EVENT_REMINDER_BUDGET = 10_000;
 const DISPATCH_BATCH_SIZE = 10;
-const DEFAULT_EVENT_DURATION_MS = 60 * 60 * 1000;
 
 export type EventReminderCopy = 'today' | 'tomorrow';
 
@@ -35,9 +35,7 @@ export function reminderCopyForOccurrence(
 			: null;
 	}
 
-	const endMs = occurrence.endsAt
-		? Date.parse(occurrence.endsAt)
-		: startMs + DEFAULT_EVENT_DURATION_MS;
+	const endMs = occurrence.endsAt ? Date.parse(occurrence.endsAt) : startMs + DEFAULT_DURATION_MS;
 	return startMs < tomorrowStart.getTime() && Number.isFinite(endMs) && endMs > now.getTime()
 		? 'today'
 		: null;

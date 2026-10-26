@@ -2,6 +2,7 @@ import { SubNav } from '@/components/wg/SubNav';
 import type { wgChatMessages } from '@/core/db';
 import { loadWgViewer } from '@/core/guards/load-wg-viewer';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
+import { CHAT_FRAME_STYLE } from '@/features/chat/chat-frame';
 import { ChatView } from '@/features/chat/components/ChatView';
 import { loadFixtureWgView } from '@/fixtures/pages';
 import type { Metadata } from 'next';
@@ -12,7 +13,6 @@ interface PageProps {
 }
 
 type MessageRow = typeof wgChatMessages.$inferSelect;
-type ReactionRow = { messageId: string; memberId: string; emoji: string };
 
 export const dynamic = 'force-dynamic';
 
@@ -43,23 +43,12 @@ export default async function ChatPage({ params }: PageProps) {
 function ChatPageContent({
 	wgRow,
 	messages,
-	reactions = [],
 }: {
-	wgRow: { id: string; name: string; shareCode: string };
+	wgRow: { id: string; shareCode: string };
 	messages: MessageRow[];
-	reactions?: ReactionRow[];
 }) {
 	return (
-		<div
-			data-chat-frame
-			className="flex min-h-0 flex-col"
-			style={{
-				height:
-					'calc(100dvh - env(safe-area-inset-top, 0px) - var(--safe-area-bottom, 0px) - var(--banner-stack-height, 0px) - var(--app-header-height, 0px))',
-				// ChatView already ends the frame above the nav; cancel the shell's nav padding.
-				marginBottom: 'calc(-1 * (var(--app-nav-height, 5rem) + 0.5rem))',
-			}}
-		>
+		<div data-chat-frame className="flex min-h-0 flex-col" style={CHAT_FRAME_STYLE}>
 			<header className="flex shrink-0 flex-col gap-2 border-b border-border bg-background px-4 pt-3 pb-2">
 				<div className="mx-auto flex w-full max-w-4xl items-center gap-2">
 					{/* The segment replaces the visible title so the chat does not lose
@@ -80,12 +69,11 @@ function ChatPageContent({
 						m.systemPayload && typeof m.systemPayload === 'object'
 							? (m.systemPayload as Record<string, unknown>)
 							: null,
-					createdAt: m.createdAt instanceof Date ? m.createdAt.toISOString() : String(m.createdAt),
-					editedAt: m.editedAt instanceof Date ? m.editedAt.toISOString() : (m.editedAt ?? null),
-					deletedAt:
-						m.deletedAt instanceof Date ? m.deletedAt.toISOString() : (m.deletedAt ?? null),
+					createdAt: m.createdAt.toISOString(),
+					editedAt: m.editedAt?.toISOString() ?? null,
+					deletedAt: m.deletedAt?.toISOString() ?? null,
 				}))}
-				initialReactions={reactions}
+				initialReactions={[]}
 			/>
 		</div>
 	);

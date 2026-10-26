@@ -9,6 +9,7 @@ import {
 	CardTitle,
 } from '@/components/ui/card';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
+import { buildDraftKey } from '@/core/offline/drafts';
 import { formatRelativeTime, formatTimeFull } from '@/core/utils/time';
 import {
 	REACTION_OPTIONS,
@@ -83,7 +84,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 	const [deleteOpen, setDeleteOpen] = useState(false);
 	const [editOpen, setEditOpen] = useState(false);
 	const [touchedReactions, setTouchedReactions] = useState<ReactionKey[]>([]);
-	const draftKey = `manawg:draft:${shareCode}:${currentMemberId}:announcement:${announcement.id}`;
+	const draftKey = `${buildDraftKey(shareCode, currentMemberId, 'announcement')}:${announcement.id}`;
 
 	const isResolved = announcement.status === 'resolved';
 	const isPinned = Boolean(announcement.pinnedAt);
@@ -126,7 +127,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 				<CardHeader>
 					<CardTitle className="flex min-w-0 items-center gap-2 font-sans font-normal">
 						<MemberAvatar name={author.name} size={28} />
-						<span className="min-w-0 break-words text-[12px] leading-snug text-muted-foreground">
+						<span className="min-w-0 break-words text-meta leading-snug text-muted-foreground">
 							<span className="font-medium text-foreground">{author.name}</span> ·{' '}
 							<time
 								dateTime={announcement.createdAt}

@@ -4,7 +4,9 @@ import { Button } from '@/components/ui/button';
 import { MessageGroup } from '@/components/ui/message';
 import { MessageScrollerItem } from '@/components/ui/message-scroller';
 import { Spinner } from '@/components/ui/spinner';
+import { SYSTEM_MESSAGE_KIND } from '@/core/feed-kinds';
 import { type RefObject, useEffect, useMemo, useRef } from 'react';
+import { chatEditDraftKey } from '../chat-draft';
 import {
 	type ChatReadMarker,
 	chatDayLabel,
@@ -48,8 +50,8 @@ function groupsWithPreviousMessage(
 	const currentTime = Date.parse(current.createdAt);
 	return Boolean(
 		previous &&
-			previous.kind !== 'system' &&
-			current.kind !== 'system' &&
+			previous.kind !== SYSTEM_MESSAGE_KIND &&
+			current.kind !== SYSTEM_MESSAGE_KIND &&
 			previous.senderMemberId &&
 			previous.senderMemberId === current.senderMemberId &&
 			Number.isFinite(previousTime) &&
@@ -174,14 +176,11 @@ export function MessageList({
 							</span>
 						</div>
 					)}
-					{message.kind === 'system' && !message.deletedAt ? (
+					{message.kind === SYSTEM_MESSAGE_KIND && !message.deletedAt ? (
 						<SystemMessage
 							shareCode={shareCode}
-							systemKind={(message as BubbleMessage & { systemKind?: string }).systemKind ?? null}
-							payload={
-								(message as BubbleMessage & { systemPayload?: Record<string, unknown> })
-									.systemPayload ?? null
-							}
+							systemKind={message.systemKind ?? null}
+							payload={message.systemPayload ?? null}
 						/>
 					) : (
 						<MessageGroup>
@@ -199,7 +198,7 @@ export function MessageList({
 										: 0
 								}
 								readTotal={readerIds.length}
-								draftKey={`manawg:draft:${shareCode}:${currentMemberId}:chat:edit:${message.id}`}
+								draftKey={chatEditDraftKey(shareCode, currentMemberId, message.id)}
 								reactions={reactionsByMessage.get(message.id) ?? NO_REACTIONS}
 								replyTo={replyTo}
 								replyToSender={replyToSender}

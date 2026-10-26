@@ -29,6 +29,7 @@ import {
 	MEMBER_ANNOUNCEMENT_SOURCES,
 	summarizeAnnouncementReactions,
 } from '@/features/pinnwand/announcement-workflow';
+import { CONTENT_MAX } from '@/features/pinnwand/constants';
 import {
 	and,
 	asc,
@@ -46,7 +47,6 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 const CONTENT_MIN = 1;
-const CONTENT_MAX = 2000;
 const ANNOUNCEMENTS_LIST_LIMIT = 300;
 /** Done posts (resolved, or infos/decisions) leave the board this long after the last activity. */
 const BOARD_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;

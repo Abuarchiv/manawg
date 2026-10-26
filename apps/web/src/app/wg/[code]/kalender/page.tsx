@@ -4,6 +4,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { SubNav } from '@/components/wg/SubNav';
 import { ThumbAction } from '@/components/wg/ThumbAction';
 import { useWg } from '@/components/wg/WgContextProvider';
@@ -113,7 +114,7 @@ export default function KalenderPage() {
 				<p>
 					{loading
 						? 'Lädt…'
-						: `${calendar.eventCount} WG-Termin${calendar.eventCount === 1 ? '' : 'e'}`}
+						: `${calendar.eventCount} ${calendar.eventCount === 1 ? 'WG-Termin' : 'WG-Termine'}`}
 				</p>
 			</header>
 
@@ -126,14 +127,12 @@ export default function KalenderPage() {
 			<TimeZoneNotice />
 
 			{loadError && (
-				<Alert variant="destructive">
-					<AlertDescription className="flex flex-wrap items-center justify-between gap-2">
-						<span>{loadError}</span>
-						<Button type="button" variant="outline" onClick={() => void calendar.reload()}>
-							Erneut laden
-						</Button>
-					</AlertDescription>
-				</Alert>
+				<LoadErrorBanner
+					message={loadError}
+					onRetry={() => void calendar.reload()}
+					busy={loading}
+					retryLabel="Kalender erneut laden"
+				/>
 			)}
 
 			<Tabs
@@ -146,13 +145,7 @@ export default function KalenderPage() {
 			>
 				<div className="flex flex-wrap items-center justify-end gap-2">
 					{view === 'month' && !isCurrentMonth && (
-						<Button
-							variant="outline"
-							size="sm"
-							className="mr-auto"
-							onClick={handleJumpToToday}
-							aria-label="Zum aktuellen Monat springen"
-						>
+						<Button variant="outline" size="sm" className="mr-auto" onClick={handleJumpToToday}>
 							Heute
 						</Button>
 					)}

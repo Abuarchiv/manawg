@@ -20,7 +20,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ImageUploader } from '@/components/wg/ImageUploader';
 import type { AnnouncementKind } from '@/features/pinnwand/components/announcement-types';
-import { CONTENT_MAX, KIND_OPTIONS } from '@/features/pinnwand/components/constants';
+import { KIND_OPTIONS } from '@/features/pinnwand/components/constants';
+import { CONTENT_MAX } from '@/features/pinnwand/constants';
 import { ChevronDown, ImagePlus, Send } from 'lucide-react';
 import { type ReactElement, type RefObject, useState } from 'react';
 
@@ -119,7 +120,6 @@ export function PinnwandComposer({
 								aria-busy={submitting}
 								maxLength={CONTENT_MAX}
 								rows={3}
-								aria-label="Beitragstext"
 								aria-invalid={fieldInvalid}
 								aria-describedby={error ? 'announcement-error' : 'announcement-count'}
 								placeholder={`Was gibt es Neues, ${authorName}?`}

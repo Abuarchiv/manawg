@@ -17,10 +17,9 @@ import { type EventScope, EventScopeSwitch } from '@/features/events/components/
 import {
 	type EventOccurrence,
 	RECURRENCE_OPTIONS,
-	type RecurrenceFreq,
 	eventDateForDisplay,
-	formatRecurrenceRule,
 	parseRecurrenceRule,
+	toDatetimeLocalValue,
 	validateEventForm,
 } from '@/features/events/events';
 import { shiftedSeriesRule } from '@/features/events/recurrence-shift';
@@ -64,9 +63,7 @@ interface EventEditModalProps {
 }
 
 function toLocalInputValue(iso: string, allDay: boolean): string {
-	const d = eventDateForDisplay(iso, allDay);
-	const pad = (n: number) => n.toString().padStart(2, '0');
-	return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+	return toDatetimeLocalValue(eventDateForDisplay(iso, allDay));
 }
 
 export function EventEditModal({
@@ -248,7 +245,7 @@ export function EventEditModal({
 	return (
 		<>
 			<Drawer
-				open={event !== null}
+				open
 				onOpenChange={(open, details) => {
 					// The confirm dialogs are siblings of the drawer: their clicks and Esc count here
 					// as "outside" and must not close the drawer.
@@ -320,18 +317,11 @@ export function EventEditModal({
 											<NativeSelect
 												id="event-edit-recurrence"
 												value={recurrenceOption}
-												onChange={(event) =>
-													event.target.value === KEEP_EXISTING_RECURRENCE
-														? undefined
-														: setRecurrence(
-																event.target.value
-																	? formatRecurrenceRule({
-																			freq: event.target.value as RecurrenceFreq,
-																			interval: 1,
-																		})
-																	: '',
-															)
-												}
+												onChange={(changed) => {
+													const value = changed.target.value;
+													if (value !== KEEP_EXISTING_RECURRENCE)
+														setRecurrence(value && `FREQ=${value}`);
+												}}
 												disabled={locked}
 												className="w-full [&_select]:min-h-11 [&_select]:text-base"
 											>
@@ -350,9 +340,9 @@ export function EventEditModal({
 									)
 								}
 							/>
-							{(error || actionError) && (
+							{shownError && (
 								<Alert variant="destructive">
-									<AlertDescription id="event-edit-error">{error || actionError}</AlertDescription>
+									<AlertDescription id="event-edit-error">{shownError}</AlertDescription>
 								</Alert>
 							)}
 						</div>

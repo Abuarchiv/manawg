@@ -333,10 +333,10 @@ export function CalendarMonth({
 											className="flex min-h-11 w-full min-w-0 items-center gap-2 py-1.5 text-left outline-none transition-colors hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/50 active:bg-muted"
 										>
 											<span className="flex min-w-0 flex-1 flex-col">
-												<span className="text-[14px] font-medium break-words">
+												<span className="text-body font-medium break-words">
 													{occurrence.title}
 												</span>
-												<span className="text-[12px] break-words text-muted-foreground">
+												<span className="text-meta break-words text-muted-foreground">
 													{formatEventTimeOfDay(occurrence)}
 													{occurrence.location && ` · ${occurrence.location}`}
 												</span>
@@ -353,8 +353,8 @@ export function CalendarMonth({
 											className="flex min-h-11 w-full min-w-0 items-center gap-2 py-1.5 text-left outline-none transition-colors hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/50 active:bg-muted"
 										>
 											<span className="flex min-w-0 flex-1 flex-col">
-												<span className="text-[14px] font-medium break-words">{chore.title}</span>
-												<span className="inline-flex items-center gap-1 text-[12px] text-muted-foreground">
+												<span className="text-body font-medium break-words">{chore.title}</span>
+												<span className="inline-flex items-center gap-1 text-meta text-muted-foreground">
 													<Sparkles className="size-4 shrink-0" aria-hidden />
 													Putzplan
 												</span>

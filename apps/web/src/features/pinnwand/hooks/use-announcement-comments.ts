@@ -42,6 +42,11 @@ export function useAnnouncementComments(
 	async function addComment(announcement: Announcement, content: string): Promise<boolean> {
 		const pendingKey = `${announcement.id}:comment`;
 		if (isPending(pendingKey)) return false;
+		const commentRequestKey = `${announcement.id}:${content}`;
+		const idempotencyKey =
+			commentIdempotencyKeysRef.current.get(commentRequestKey) ?? createOfflineIdempotencyKey();
+		if (!idempotencyKey) return false;
+		commentIdempotencyKeysRef.current.set(commentRequestKey, idempotencyKey);
 		const optimisticComment: AnnouncementComment = {
 			id: `temp-${Date.now()}`,
 			announcementId: announcement.id,
@@ -57,14 +62,6 @@ export function useAnnouncementComments(
 			comments: [...item.comments, optimisticComment],
 		}));
 		start(pendingKey);
-		const commentRequestKey = `${announcement.id}:${content}`;
-		const idempotencyKey =
-			commentIdempotencyKeysRef.current.get(commentRequestKey) ?? createOfflineIdempotencyKey();
-		if (!idempotencyKey) {
-			end(pendingKey);
-			return false;
-		}
-		commentIdempotencyKeysRef.current.set(commentRequestKey, idempotencyKey);
 		const res = await apiFetch<AnnouncementCommentResponse>(commentUrl(announcement.id), {
 			method: 'POST',
 			memberId: identity.memberId,

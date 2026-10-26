@@ -26,6 +26,12 @@ export function serializeWgEvent(row: typeof wgEvents.$inferSelect) {
 
 export type SerializedWgEvent = ReturnType<typeof serializeWgEvent>;
 
+/** Value of an `<input type="datetime-local">`: local wall time as `YYYY-MM-DDTHH:mm`. */
+export function toDatetimeLocalValue(date: Date): string {
+	const pad = (n: number) => n.toString().padStart(2, '0');
+	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 type EventFormValidation =
 	| { ok: true; startsAt: Date; endsAt: Date | null }
 	| { ok: false; error: string; field: 'title' | 'startsAt' | 'endsAt' };
