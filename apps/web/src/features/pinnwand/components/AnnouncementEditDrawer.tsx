@@ -18,7 +18,8 @@ import type {
 	Announcement,
 	AnnouncementKind,
 } from '@/features/pinnwand/components/announcement-types';
-import { CONTENT_MAX, KIND_OPTIONS } from '@/features/pinnwand/components/constants';
+import { KIND_OPTIONS } from '@/features/pinnwand/components/constants';
+import { CONTENT_MAX } from '@/features/pinnwand/constants';
 import { Check } from 'lucide-react';
 import { type ReactElement, useRef, useState } from 'react';
 

@@ -45,10 +45,10 @@ export function EventEditDialogs({
 						</AlertDialogTitle>
 						<AlertDialogDescription>
 							{onlyThis
-								? `Nur dieser Termin von „${title}“ wird entfernt, die übrigen Termine der Serie bleiben.`
+								? `Nur dieser Termin von „${title}“ wird gelöscht, die übrigen Termine der Serie bleiben.`
 								: recurring
-									? `„${title}“ wird unwiderruflich entfernt, mit allen zukünftigen Terminen der Serie.`
-									: `„${title}“ wird unwiderruflich entfernt.`}
+									? `„${title}“ wird unwiderruflich gelöscht, mit allen zukünftigen Terminen der Serie.`
+									: `„${title}“ wird unwiderruflich gelöscht.`}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>

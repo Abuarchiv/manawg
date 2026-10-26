@@ -9,7 +9,7 @@ import {
 	applyCommentOverrides as applyOverrides,
 } from '@/features/pinnwand/comment-overrides';
 import type { Announcement } from '@/features/pinnwand/components/announcement-types';
-import { REFRESH_INTERVAL_MS } from '@/features/pinnwand/components/constants';
+import { REFRESH_INTERVAL_MS } from '@/features/pinnwand/constants';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface AnnouncementsDataParams {

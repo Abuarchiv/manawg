@@ -130,7 +130,7 @@ test.describe('chat edit focus', () => {
 
 		await second.actions.click();
 		await page.getByRole('menuitem', { name: 'Löschen' }).click();
-		await page.getByRole('button', { name: 'Nachricht endgültig löschen' }).click();
+		await page.getByRole('button', { name: 'Jetzt löschen' }).click();
 		await expect(second.message).toContainText('gelöscht');
 		await expect(second.message).not.toContainText('bearbeitet');
 	});

@@ -17,6 +17,7 @@ import {
 	useState,
 } from 'react';
 import { readChatDraft, writeChatDraft } from '../chat-draft';
+import { CHAT_BODY_MAX } from '../chat-pure';
 import { type MentionTrigger, detectMention, findMentions } from '../chat-text';
 import {
 	MentionAutocomplete,
@@ -24,8 +25,6 @@ import {
 	filterMentionMembers,
 	mentionOptionId,
 } from './MentionAutocomplete';
-
-const BODY_MAX = 4000;
 
 interface ChatComposerProps {
 	draftKey: string;
@@ -86,7 +85,7 @@ export function ChatComposer({
 		? mentionOptionId(mentionListboxId, mentionActiveIndex)
 		: undefined;
 	useEffect(() => {
-		const saved = readChatDraft(draftKey, BODY_MAX);
+		const saved = readChatDraft(draftKey, CHAT_BODY_MAX);
 		draftRef.current = saved.body;
 		setDraft(saved.body);
 		onRestoreReply(saved.replyToMessageId);
@@ -138,7 +137,7 @@ export function ChatComposer({
 		const after = value.slice(mention.startIndex + 1 + mention.query.length);
 		const insertion = `@${member.name} `;
 		const next = `${before}${insertion}${after}`;
-		if (next.length > BODY_MAX) return;
+		if (next.length > CHAT_BODY_MAX) return;
 		draftRef.current = next;
 		setDraft(next);
 		setMention(null);
@@ -155,7 +154,7 @@ export function ChatComposer({
 		const outgoingDraft = draftRef.current;
 		const outgoingReplyToMessageId = replyToMessageIdRef.current;
 		const text = outgoingDraft.trim();
-		if (text.length === 0 || text.length > BODY_MAX || pendingRef.current) return;
+		if (text.length === 0 || text.length > CHAT_BODY_MAX || pendingRef.current) return;
 		pendingRef.current = true;
 		haptic('selection');
 		setPending(true);
@@ -299,7 +298,7 @@ export function ChatComposer({
 						onChange={handleChange}
 						onKeyDown={onKey}
 						placeholder="Nachricht schreiben"
-						maxLength={BODY_MAX}
+						maxLength={CHAT_BODY_MAX}
 						rows={1}
 						aria-label="Chat-Nachricht"
 						aria-autocomplete="list"

@@ -13,6 +13,7 @@ import {
 } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
+import { logApiError } from '@/core/infra/observability';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import type { NotificationWarning } from '@/core/notifications/notification-warning';
 import { checkRateLimit, clientIpKey, wgReadLimiter, wgWriteLimiter } from '@/core/rate-limit';
@@ -25,8 +26,7 @@ import {
 } from '@/features/events/event-schemas';
 import {
 	type SerializedWgEvent,
-	formatRecurrenceRule,
-	parseRecurrenceRule,
+	canonicalRecurrenceRule,
 	serializeWgEvent,
 } from '@/features/events/events';
 import {
@@ -49,13 +49,6 @@ const createSchema = z.object({
 	location: eventLocationSchema.optional(),
 	recurrence: eventRecurrenceSchema.optional(),
 });
-
-function normalizeRecurrence(value: string | null | undefined): string | null {
-	if (value === undefined || value === null || value.length === 0) return null;
-	const parsed = parseRecurrenceRule(value);
-	if (!parsed) return 'invalid';
-	return formatRecurrenceRule(parsed);
-}
 
 export const GET = withWgRoute('events GET', async (req, { code }) => {
 	const limit = rateLimitResponse(
@@ -120,8 +113,8 @@ export const POST = withWgRoute('events POST', async (req, { code }) => {
 	if (endsAt && endsAt.getTime() < startsAt.getTime()) {
 		return badRequest('ends_before_start');
 	}
-	const recurrence = normalizeRecurrence(parsed.data.recurrence ?? null);
-	if (recurrence === 'invalid') return badRequest('recurrence_invalid');
+	const recurrence = canonicalRecurrenceRule(parsed.data.recurrence);
+	if (!recurrence.ok) return badRequest('recurrence_invalid');
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
 	const wg = auth.wg;
@@ -152,7 +145,7 @@ export const POST = withWgRoute('events POST', async (req, { code }) => {
 						endsAt,
 						allDay: data.allDay ?? false,
 						location: data.location ?? null,
-						recurrence,
+						recurrence: recurrence.rule,
 						createdByMemberId: member.memberId,
 					})
 					.returning();
@@ -218,9 +211,9 @@ export const POST = withWgRoute('events POST', async (req, { code }) => {
 				warning,
 			);
 			if (!persisted) responseWarning = null;
-		} catch {
+		} catch (err) {
 			responseWarning = null;
-			console.warn('[events POST] warning replay update failed');
+			logApiError('[events POST] warning replay update failed', err);
 		}
 	}
 	const body: EventCreateResponseBody = { event: serializeWgEvent(row), warning: responseWarning };

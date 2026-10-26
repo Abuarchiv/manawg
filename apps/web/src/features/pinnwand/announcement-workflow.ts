@@ -1,3 +1,4 @@
+import { MS_PER_DAY } from '@/core/utils/time';
 export const ANNOUNCEMENT_KINDS = ['info', 'question', 'problem', 'request', 'decision'] as const;
 export const ANNOUNCEMENT_SOURCES = [
 	'manual',
@@ -15,7 +16,7 @@ export const ANNOUNCEMENT_REACTIONS = ['seen', 'take', 'ok'] as const;
 
 export type AnnouncementKind = (typeof ANNOUNCEMENT_KINDS)[number];
 export type AnnouncementSource = (typeof ANNOUNCEMENT_SOURCES)[number];
-type AnnouncementReactionKey = (typeof ANNOUNCEMENT_REACTIONS)[number];
+export type AnnouncementReactionKey = (typeof ANNOUNCEMENT_REACTIONS)[number];
 export type AnnouncementStatus = 'open' | 'resolved';
 interface AnnouncementReactionInput {
 	announcementId: string;
@@ -68,12 +69,12 @@ export function summarizeAnnouncementReactions(
 	return summary;
 }
 
+const ARCHIVE_AFTER_MS = 7 * MS_PER_DAY;
+
 /**
  * Infos and decisions need no clarification; without a pin they move to the archive once the
  * viewer acknowledged them ("Gesehen"/"Passt") or after a week without reply.
  */
-const ANNOUNCEMENT_FADE_MS = 7 * 24 * 60 * 60 * 1000;
-
 export function isAnnouncementArchived(
 	item: {
 		kind: string;
@@ -97,7 +98,7 @@ export function isAnnouncementArchived(
 		const acknowledgedAt = item.myAcknowledgedAt ? Date.parse(item.myAcknowledgedAt) : Number.NaN;
 		return Number.isNaN(acknowledgedAt) || lastActivity <= acknowledgedAt;
 	}
-	return now - lastActivity > ANNOUNCEMENT_FADE_MS;
+	return now - lastActivity > ARCHIVE_AFTER_MS;
 }
 
 export function getMyOpenAnnouncements<
@@ -129,14 +130,9 @@ export function reconcilePendingAnnouncements<T extends { id: string }>(
 }
 
 /**
- * Refresh already-visible announcements in place from a background poll,
- * without inserting or reordering rows (new posts stay gated behind the
- * "N new posts" banner via `getNewAnnouncementCount`, so a growing list never
- * jumps under the reader). Posts missing from the server response are removed.
- * Without this, a background poll that finds no
- * brand-new post silently drops the whole response — reactions, comments,
- * taker lists and resolved status on already-loaded posts would never
- * update on their own, only on a manual reload or full refresh.
+ * Refresh already-visible announcements in place from a background poll, without inserting or
+ * reordering rows (new posts stay gated behind the "neue Beiträge" button via
+ * `getNewAnnouncementCount`). Posts missing from the server response are removed.
  */
 export function mergeBackgroundAnnouncements<T extends { id: string }>(
 	currentItems: readonly T[],

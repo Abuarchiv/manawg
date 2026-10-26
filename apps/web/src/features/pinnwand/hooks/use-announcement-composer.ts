@@ -20,8 +20,9 @@ import {
 	createQueuedAnnouncement,
 } from '@/core/offline/offline-queue';
 import { announcementCreateErrorMessage } from '@/features/pinnwand/announcement-errors';
+import { ANNOUNCEMENT_KINDS } from '@/features/pinnwand/announcement-workflow';
 import type { AnnouncementKind } from '@/features/pinnwand/components/announcement-types';
-import { CONTENT_MAX } from '@/features/pinnwand/components/constants';
+import { CONTENT_MAX } from '@/features/pinnwand/constants';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import type {
@@ -30,16 +31,7 @@ import type {
 } from './announcement-page-context';
 
 function kindFromParam(value: string | null): AnnouncementKind | null {
-	if (
-		value === 'info' ||
-		value === 'question' ||
-		value === 'problem' ||
-		value === 'request' ||
-		value === 'decision'
-	) {
-		return value;
-	}
-	return null;
+	return ANNOUNCEMENT_KINDS.find((kind) => kind === value) ?? null;
 }
 
 /** Compose a post: composer state, localStorage draft, prefill from the URL and creation (online/offline). */
@@ -157,7 +149,7 @@ export function useAnnouncementComposer(
 	async function submit(): Promise<void> {
 		const text = content.trim();
 		if (text.length === 0 || text.length > CONTENT_MAX) {
-			setError('Inhalt fehlt oder zu lang.');
+			setError(announcementCreateErrorMessage('content_invalid'));
 			return;
 		}
 		if (submittingRef.current) return;
@@ -180,7 +172,7 @@ export function useAnnouncementComposer(
 		// error, and the draft state stays — they'd be stuck retrying. Online
 		// path needs the public URL; offline path is fine (sync resolves later).
 		if (imageUrl && isPendingImageToken(imageUrl) && navigator.onLine) {
-			setError('Bild wird noch hochgeladen. Bitte kurz warten und nochmal versuchen.');
+			setError('Das Bild wird noch hochgeladen. Warte kurz und versuche es erneut.');
 			return;
 		}
 		if (submittingRef.current) return;

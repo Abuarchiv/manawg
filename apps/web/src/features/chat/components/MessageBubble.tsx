@@ -10,6 +10,7 @@ import { cn } from '@/shared/lib/cn';
 import type { MemberInfo } from '@/shared/lib/member-types';
 import { Check, CheckCheck, Reply } from 'lucide-react';
 import { memo, useEffect, useRef, useState } from 'react';
+import { DELETED_MESSAGE_TEXT } from '../chat-errors';
 import { canDeleteMessage, canEditMessage } from '../chat-pure';
 import type { BubbleMessage, ReactionSummary } from '../chat-types';
 import { useBubbleGestures } from '../hooks/use-bubble-gestures';
@@ -101,7 +102,7 @@ export const MessageBubble = memo(function MessageBubble({
 	const readByAll = readTotal > 0 && readCount >= readTotal;
 	// Time and read ticks sit small at the bottom right of the bubble; the date is in the day pill.
 	const timeStamp = (
-		<span className="float-end ms-2 mt-1.5 inline-flex items-center gap-0.5 text-[11px] leading-none tabular-nums">
+		<span className="float-end ms-2 mt-1.5 inline-flex items-center gap-0.5 text-meta leading-none tabular-nums">
 			<span className="opacity-80">
 				{message.editedAt && !isDeleted && 'bearbeitet · '}
 				<time dateTime={message.createdAt} title={formatTimeFull(message.createdAt)}>
@@ -205,7 +206,7 @@ export const MessageBubble = memo(function MessageBubble({
 								{isDeleted ? (
 									<BubbleContent className={BUBBLE_TEXT}>
 										<p ref={deletedRef} tabIndex={-1} className="outline-none">
-											Diese Nachricht wurde gelöscht.
+											{DELETED_MESSAGE_TEXT}
 											{timeStamp}
 										</p>
 									</BubbleContent>

@@ -8,6 +8,10 @@ import {
 	isSessionExpired,
 } from '@/core/http/error-codes';
 
+import { EDIT_WINDOW_MS } from './chat-pure';
+
+export const DELETED_MESSAGE_TEXT = 'Diese Nachricht wurde gelöscht.';
+
 export type ChatAction = 'send' | 'react' | 'unreact' | 'edit' | 'delete';
 
 const OFFLINE_ERRORS: Record<ChatAction, string> = {
@@ -38,9 +42,9 @@ export function explainChatError(action: ChatAction, error: string): string {
 	if (error === 'reply_to_not_found' || error === 'reply_to_invalid') {
 		return 'Die Nachricht, auf die du antwortest, gibt es nicht mehr. Entferne die Antwort und sende erneut.';
 	}
-	if (error === 'message_deleted') return 'Diese Nachricht wurde gelöscht.';
+	if (error === 'message_deleted') return DELETED_MESSAGE_TEXT;
 	if (error === 'edit_not_allowed') {
-		return 'Nachrichten lassen sich nur 15 Minuten nach dem Senden bearbeiten.';
+		return `Nachrichten lassen sich nur ${Math.round(EDIT_WINDOW_MS / 60_000)} Minuten nach dem Senden bearbeiten.`;
 	}
 	if (error === 'Netzwerkfehler' || error === 'Failed to fetch') return OFFLINE_ERRORS[action];
 	if (isReadOnlyMode(error)) return READ_ONLY_MESSAGE;

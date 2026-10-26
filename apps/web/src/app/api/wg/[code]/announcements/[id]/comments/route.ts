@@ -18,11 +18,11 @@ import {
 	dispatchNotificationSafely,
 } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
+import { COMMENT_MAX } from '@/features/pinnwand/constants';
 import { and, asc, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-const COMMENT_MAX = 600;
 const COMMENTS_LIST_LIMIT = 500;
 
 const commentSchema = z.object({

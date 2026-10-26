@@ -18,6 +18,7 @@ import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
 import { formatRelativeTime, formatTimeFull } from '@/core/utils/time';
 import { isRestorableDraft } from '@/features/pinnwand/announcement-edits';
+import { COMMENT_MAX } from '@/features/pinnwand/constants';
 import { Pencil, Trash2 } from 'lucide-react';
 import { type ReactElement, useEffect, useRef, useState } from 'react';
 import type { AnnouncementComment } from './announcement-types';
@@ -192,7 +193,7 @@ export function CommentRow({
 								onChange={(event) => draft.change(event.target.value)}
 								readOnly={pending}
 								aria-busy={pending}
-								maxLength={600}
+								maxLength={COMMENT_MAX}
 								rows={2}
 								aria-label="Antwort bearbeiten"
 								aria-invalid={error}

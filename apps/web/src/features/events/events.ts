@@ -6,6 +6,7 @@ export {
 	BYDAY_TO_INDEX,
 	parseRecurrenceRule,
 	formatRecurrenceRule,
+	canonicalRecurrenceRule,
 } from './event-recurrence-rule';
 export {
 	type EventInput,
@@ -28,5 +29,6 @@ export {
 	type SerializedWgEvent,
 	serializeWgEvent,
 	normalizeEventDateTime,
+	toDatetimeLocalValue,
 	validateEventForm,
 } from './event-form';

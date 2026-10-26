@@ -12,6 +12,7 @@ import { useStableCallback } from '@/core/hooks/useStableCallback';
 import { haptic } from '@/shared/lib/haptics';
 import { ChevronDown } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { chatDraftKey } from '../chat-draft';
 import { previewBody } from '../chat-pure';
 import { type ChatMessageDto, type ChatReactionRow, useChatRoom } from '../hooks/use-chat-room';
 import { useChatViewportFit } from '../hooks/use-chat-viewport-fit';
@@ -23,6 +24,11 @@ import {
 	ChatLoadingPlaceholder,
 } from './ChatPlaceholder';
 import { MessageList } from './MessageList';
+
+const HIGHLIGHT_MS = 2500;
+// Lets the first page lay out before the deep-linked message is scrolled to.
+const HASH_JUMP_DELAY_MS = 120;
+const SCROLL_AFTER_SEND_DELAY_MS = 100;
 
 interface ChatViewProps {
 	wgId: string;
@@ -84,8 +90,11 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 			jumpedToHashRef.current = true;
 			element.scrollIntoView({ block: 'center' });
 			element.classList.add('ring-2', 'ring-inset', 'ring-ring');
-			window.setTimeout(() => element.classList.remove('ring-2', 'ring-inset', 'ring-ring'), 2500);
-		}, 120);
+			window.setTimeout(
+				() => element.classList.remove('ring-2', 'ring-inset', 'ring-ring'),
+				HIGHLIGHT_MS,
+			);
+		}, HASH_JUMP_DELAY_MS);
 		return () => window.clearTimeout(timer);
 	}, [messageCount, hasMoreOlder, loadingOlder, olderError, loadOlderForHash, hashVersion]);
 
@@ -106,7 +115,7 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 			setTimeout(() => {
 				const el = chat.scrollRef.current;
 				if (el) el.scrollTop = el.scrollHeight;
-			}, 100);
+			}, SCROLL_AFTER_SEND_DELAY_MS);
 		}
 		return ok;
 	});
@@ -194,7 +203,7 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 			</MessageScrollerProvider>
 			<ChatComposer
 				key={`${shareCode}:${identity.memberId}`}
-				draftKey={`manawg:draft:${shareCode}:${identity.memberId}:chat`}
+				draftKey={chatDraftKey(shareCode, identity.memberId)}
 				error={chat.sendError}
 				members={members.filter((m) => m.active).map((m) => ({ id: m.id, name: m.name }))}
 				currentMemberId={identity.memberId}

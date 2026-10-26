@@ -33,7 +33,7 @@ export function AnnouncementBody({
 					<p
 						id={`announcement-body-${announcement.id}`}
 						className={cn(
-							'text-[14px] whitespace-pre-wrap leading-normal [overflow-wrap:anywhere]',
+							'text-body whitespace-pre-wrap leading-normal [overflow-wrap:anywhere]',
 							isLong && !expanded && 'line-clamp-4',
 						)}
 					>
@@ -83,7 +83,7 @@ export function AnnouncementBody({
 				</a>
 			)}
 			{(takerNames.length > 0 || announcement.resolvedAt) && (
-				<p className="flex flex-wrap items-center gap-x-2 text-[12px] text-muted-foreground [overflow-wrap:anywhere]">
+				<p className="flex flex-wrap items-center gap-x-2 text-meta text-muted-foreground [overflow-wrap:anywhere]">
 					{takerNames.length > 0 && (
 						<span className="inline-flex items-center gap-1 text-foreground">
 							<Hand className="size-3.5 shrink-0" aria-hidden />

@@ -1,5 +1,6 @@
 import { SYSTEM_MESSAGE_KIND } from '@/core/feed-kinds';
-const EDIT_WINDOW_MS_DEFAULT = 15 * 60 * 1000;
+export const EDIT_WINDOW_MS = 15 * 60 * 1000;
+export const CHAT_BODY_MAX = 4000;
 const TEXT_MESSAGE_KIND = 'text';
 
 export const CHAT_REFRESH_BATCH_SIZE = 100;
@@ -105,7 +106,7 @@ export function canEditMessage(
 	message: ChatMessageLike,
 	member: ChatMemberLike,
 	now: Date | number = Date.now(),
-	maxEditWindowMs = EDIT_WINDOW_MS_DEFAULT,
+	maxEditWindowMs = EDIT_WINDOW_MS,
 ): boolean {
 	if (message.kind !== TEXT_MESSAGE_KIND) return false;
 	if (message.deletedAt) return false;
@@ -139,7 +140,7 @@ export function isSingleEmoji(value: unknown): boolean {
 	}
 }
 
-export function sanitizeMessageBody(body: unknown, maxLength = 4000): string | null {
+export function sanitizeMessageBody(body: unknown, maxLength = CHAT_BODY_MAX): string | null {
 	if (typeof body !== 'string') return null;
 	const trimmed = body.trim();
 	if (trimmed.length === 0) return null;

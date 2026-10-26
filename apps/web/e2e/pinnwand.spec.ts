@@ -602,7 +602,7 @@ test.describe('pinnwand refresh', () => {
 		await page.waitForLoadState('networkidle');
 
 		phase = 'controlled';
-		const pendingButton = page.getByRole('button', { name: /neue Beitr/ });
+		const pendingButton = page.getByRole('button', { name: /neuer? Beitr/ });
 		nextRefresh = [retained, deleted];
 		await page.evaluate(() => window.dispatchEvent(new Event('focus')));
 		await expect.poll(() => refreshReads).toBe(1);
