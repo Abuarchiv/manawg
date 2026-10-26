@@ -9,7 +9,9 @@ import {
 	type InventoryCategory,
 	type InventoryUnit,
 	isBelowThreshold,
+	wholeNumberText,
 } from '@/features/inventory/inventory';
+import { useState } from 'react';
 
 interface InventoryFormFieldsProps {
 	mode: 'create' | 'edit';
@@ -46,6 +48,12 @@ export function InventoryFormFields({
 	onUnitChange,
 	onCategoryChange,
 }: InventoryFormFieldsProps) {
+	const [decimalTyped, setDecimalTyped] = useState(false);
+	// Amounts are whole numbers: "1,5" keeps "1" instead of silently becoming "15".
+	function integerText(raw: string): string {
+		if (/[.,]/.test(raw)) setDecimalTyped(true);
+		return wholeNumberText(raw);
+	}
 	return (
 		<FieldGroup>
 			<Field data-invalid={Boolean(nameError)}>
@@ -79,7 +87,7 @@ export function InventoryFormFields({
 						pattern="[0-9]*"
 						maxLength={String(INVENTORY_LIMITS.QUANTITY_MAX).length}
 						value={quantityText}
-						onChange={(event) => onQuantityTextChange(event.target.value.replace(/\D/g, ''))}
+						onChange={(event) => onQuantityTextChange(integerText(event.target.value))}
 						onFocus={(event) => event.currentTarget.select()}
 						disabled={disabled}
 						className="text-base"
@@ -94,7 +102,7 @@ export function InventoryFormFields({
 						pattern="[0-9]*"
 						maxLength={String(INVENTORY_LIMITS.THRESHOLD_MAX).length}
 						value={thresholdText}
-						onChange={(event) => onThresholdTextChange(event.target.value.replace(/\D/g, ''))}
+						onChange={(event) => onThresholdTextChange(integerText(event.target.value))}
 						onFocus={(event) => event.currentTarget.select()}
 						disabled={disabled}
 						className="text-base"
@@ -136,9 +144,11 @@ export function InventoryFormFields({
 				</Field>
 			</div>
 			<FieldDescription aria-live="polite">
-				{mode === 'create' && isBelowThreshold({ quantity, threshold })
-					? 'Kommt beim Speichern direkt auf die Einkaufsliste.'
-					: 'Ab diesem Bestand kommt der Vorrat auf die Einkaufsliste.'}
+				{decimalTyped
+					? 'Nur ganze Zahlen – Kommastellen werden nicht übernommen.'
+					: mode === 'create' && isBelowThreshold({ quantity, threshold })
+						? 'Kommt beim Speichern direkt auf die Einkaufsliste.'
+						: 'Ab diesem Bestand kommt der Vorrat auf die Einkaufsliste.'}
 			</FieldDescription>
 		</FieldGroup>
 	);

@@ -154,3 +154,8 @@ export function groupItemsByCategory<T extends { category: string }>(
 	}
 	return groups;
 }
+
+/** Digits before the first decimal separator: "1,5" is 1, not 15. */
+export function wholeNumberText(raw: string): string {
+	return (raw.split(/[.,]/)[0] ?? '').replace(/\D/g, '');
+}

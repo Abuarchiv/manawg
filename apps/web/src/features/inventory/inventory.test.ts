@@ -5,6 +5,7 @@ import {
 	buildShoppingPushPayload,
 	quickRestockCandidates,
 	restockAmount,
+	wholeNumberText,
 } from './inventory';
 
 test('shopping payload asks for enough to get back above the threshold', () => {
@@ -50,4 +51,11 @@ test('quick restock lists scarce items first and skips idle full ones', () => {
 test('bought names match scarce items case-insensitively', () => {
 	const items = [stock('Klopapier', 0, 2), stock('Salz', 5, 1)];
 	assert.deepEqual(boughtRestockMatches(items, [' klopapier ', 'Salz']), [items[0]]);
+});
+
+test('wholeNumberText drops decimals instead of joining their digits', () => {
+	assert.equal(wholeNumberText('1,5'), '1');
+	assert.equal(wholeNumberText('0.5'), '0');
+	assert.equal(wholeNumberText('12 Stk'), '12');
+	assert.equal(wholeNumberText(''), '');
 });
