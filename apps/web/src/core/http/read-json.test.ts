@@ -28,3 +28,10 @@ test('readJsonLimited rejects NUL bytes in any string (Postgres cannot store the
 	await assert.rejects(readJsonLimited(post('{"splits":[{"note":"\\u0000"}]}')), /invalid_json/);
 	assert.deepEqual(await readJsonLimited(post('{"name":"a\\\\u0000"}')), { name: 'a\\u0000' });
 });
+
+test('readJsonLimited survives a deeply nested body', async () => {
+	const depth = 60_000;
+	const nested = `${'['.repeat(depth)}"ok"${']'.repeat(depth)}`;
+	const body = await readJsonLimited(post(nested));
+	assert.ok(Array.isArray(body));
+});

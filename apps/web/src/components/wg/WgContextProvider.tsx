@@ -275,8 +275,8 @@ export function WgContextProvider({
 				<Alert variant="destructive">
 					<AlertTitle>Kein Zugriff</AlertTitle>
 					<AlertDescription className="text-current">
-						Du bist in dieser WG nicht (mehr) Mitglied, z. B. weil du ausgezogen bist oder entfernt
-						wurdest.
+						Du bist in dieser WG nicht (mehr) Mitglied, z. B. weil du ausgezogen bist, entfernt
+						wurdest oder die WG gelöscht wurde.
 					</AlertDescription>
 					{backToWgs}
 				</Alert>

@@ -168,13 +168,20 @@ export function getAuditHref(event: {
 	return undefined;
 }
 
+/**
+ * The feed puts the actor's current name in front, so the summary loses the name it was written
+ * with ("Anna hat …" → "hat …"). After a rename that stored name differs; summaries are written as
+ * "<Name> hat/ist …", so the part before the first " hat "/" ist " is the old name.
+ */
 export function formatAuditActivityText(summary: string, actorName: string): string {
 	const trimmed = summary.trim();
 	const prefix = `${actorName} `;
 	if (trimmed.toLocaleLowerCase('de-DE').startsWith(prefix.toLocaleLowerCase('de-DE'))) {
 		return trimmed.slice(prefix.length);
 	}
-	return trimmed;
+	if (actorName === 'System') return trimmed;
+	const verb = /^\S.*? (?=(?:hat|ist) )/u.exec(trimmed);
+	return verb ? trimmed.slice(verb[0].length) : trimmed;
 }
 
 function announcementHref(announcementId: string): string {
