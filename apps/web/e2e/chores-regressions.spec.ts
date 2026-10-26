@@ -64,13 +64,13 @@ test.describe('chore absence cache', () => {
 		await dismissOnboarding(page);
 		const absenceRow = page.locator(`#absence-${absence.id}`);
 		await absenceRow.getByRole('button', { name: /entfernen$/ }).click();
-		await absenceRow.getByRole('button', { name: /endgültig entfernen$/ }).click();
+		await absenceRow.getByRole('button', { name: /^Wirklich entfernen\?/ }).click();
 		await expect(absenceRow).toHaveCount(0);
 
 		await page.getByRole('button', { name: 'Als erledigt markieren: Bad putzen' }).click();
 		await page.getByRole('button', { name: 'Erledigt bestätigen: Bad putzen' }).click();
 		await expect(page.getByRole('alertdialog').getByRole('alert')).toContainText(
-			'Erledigt-Aktion konnte nicht gespeichert werden',
+			'Die Erledigung konnte nicht gespeichert werden',
 		);
 		await expect(absenceRow).toHaveCount(0);
 	});
@@ -103,10 +103,10 @@ test.describe('chore absence cache', () => {
 		await dismissOnboarding(page);
 		const absenceRow = page.locator(`#absence-${absence.id}`);
 		await absenceRow.getByRole('button', { name: /entfernen$/ }).click();
-		await expect(absenceRow.getByRole('button', { name: /endgültig entfernen$/ })).toBeVisible();
+		await expect(absenceRow.getByRole('button', { name: /^Wirklich entfernen\?/ })).toBeVisible();
 		await absenceRow.getByRole('button', { name: /abbrechen$/ }).click();
 
-		await expect(absenceRow.getByRole('button', { name: /endgültig entfernen$/ })).toHaveCount(0);
+		await expect(absenceRow.getByRole('button', { name: /^Wirklich entfernen\?/ })).toHaveCount(0);
 		await expect(absenceRow).toBeVisible();
 		expect(deleteCalls).toBe(0);
 	});
@@ -147,7 +147,7 @@ test.describe('chore absence cache', () => {
 		await navigateToFeature(page, `/wg/${shareCode}/putzen`);
 		await dismissOnboarding(page);
 		const absenceRow = page.locator(`#absence-${absence.id}`);
-		const remove = absenceRow.getByRole('button', { name: /entfernen$/ });
+		const remove = absenceRow.getByRole('button', { name: /entfernen/ });
 		await remove.click();
 		await remove.click();
 		await expect(remove).toBeDisabled();

@@ -263,7 +263,7 @@ test.describe('wg optimistic actions', () => {
 
 		await expect(row).toBeVisible();
 		await expect(page.getByRole('alertdialog').getByRole('alert')).toContainText(
-			'Erledigt-Aktion konnte nicht vollständig gespeichert werden: Lade den Plan neu und prüfe den Verlauf.',
+			'Die Erledigung konnte nicht vollständig gespeichert werden: Lade den Plan neu und prüfe den Verlauf.',
 		);
 	});
 });

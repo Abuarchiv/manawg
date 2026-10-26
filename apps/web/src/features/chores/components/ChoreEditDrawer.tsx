@@ -16,11 +16,11 @@ import { Spinner } from '@/components/ui/spinner';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { dueDayKey } from '@/features/chores/chore-due-date';
 import { type ChoreEditChanges, diffChoreEdit } from '@/features/chores/chore-edit';
+import { CHORE_TITLE_MAX } from '@/features/chores/chore-limits';
 import type { Chore, ChoreMember } from '@/features/chores/components/chore-types';
 import {
 	INTERVAL_PRESETS_DAYS,
 	INTERVAL_PRESETS_MONTHS,
-	TITLE_MAX,
 } from '@/features/chores/components/constants';
 import { type ReactElement, useState } from 'react';
 
@@ -69,7 +69,7 @@ function EditFields({
 							id={`chore-edit-title-${chore.id}`}
 							value={title}
 							onChange={(event) => setTitle(event.target.value)}
-							maxLength={TITLE_MAX}
+							maxLength={CHORE_TITLE_MAX}
 							disabled={pending}
 							enterKeyHint="done"
 							className="text-base"

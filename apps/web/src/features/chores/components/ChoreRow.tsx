@@ -11,13 +11,19 @@ import {
 	DrawerTitle,
 	DrawerTrigger,
 } from '@/components/ui/drawer';
-import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item';
+import {
+	ItemActions,
+	ItemContent,
+	ItemDescription,
+	ItemEntry,
+	ItemTitle,
+} from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
 import { formatRelativeTime, parseValidDate } from '@/core/utils/time';
 import type { ChoreEditChanges } from '@/features/chores/chore-edit';
-import { getChoreRepairHint, getChoreStatus } from '@/features/chores/chore-status';
+import { choreNeedsRepair, getChoreStatus } from '@/features/chores/chore-status';
 import {
 	ChoreCompleteDialog,
 	completeTriggerLabel,
@@ -28,6 +34,10 @@ import type {
 	PlanChore,
 	RecurrenceType,
 } from '@/features/chores/components/chore-types';
+import {
+	INTERVAL_PRESETS_DAYS,
+	INTERVAL_PRESETS_MONTHS,
+} from '@/features/chores/components/constants';
 import { cn } from '@/shared/lib/cn';
 import type { MemberInfo } from '@/shared/lib/member-types';
 
@@ -65,19 +75,13 @@ const DUE_DATE_FORMAT = new Intl.DateTimeFormat('de-DE', {
 	timeZone: 'Europe/Berlin',
 });
 
+// The non-breaking space keeps the unit abbreviation with its number in the narrow row.
 function formatChoreCadence(interval: number, type: RecurrenceType): string {
 	if (interval <= 0) return 'einmalig';
-	if (type === 'months') {
-		if (interval === 1) return 'monatlich';
-		if (interval === 3) return 'quartalsweise';
-		if (interval === 6) return 'halbjährlich';
-		if (interval === 12) return 'jährlich';
-		return `alle ${interval}\u00a0Mon.`;
-	}
-	if (interval === 1) return 'täglich';
-	if (interval === 7) return 'wöchentlich';
-	if (interval === 14) return 'alle 14\u00a0T.';
-	return `alle ${interval}\u00a0T.`;
+	const presets = type === 'months' ? INTERVAL_PRESETS_MONTHS : INTERVAL_PRESETS_DAYS;
+	const preset = presets.find((candidate) => candidate.interval === interval);
+	if (preset) return preset.label.replace(' T.', '\u00a0T.');
+	return `alle ${interval}\u00a0${type === 'months' ? 'Mon.' : 'T.'}`;
 }
 
 export const ChoreRow = memo(function ChoreRow({
@@ -107,15 +111,14 @@ export const ChoreRow = memo(function ChoreRow({
 	const removeConfirm = useConfirmDelete();
 	const status = getChoreStatus(chore.nextDueAt);
 	// Taking over your own chore is a no-op, so the shortcut only shows for others'.
-	const needsTakeOver = !isMine && getChoreRepairHint(chore) !== null;
+	const needsTakeOver = !isMine && choreNeedsRepair(chore);
 	const cadence = formatChoreCadence(chore.intervalDays, chore.recurrenceType);
 	const busy = isPending || isTakePending || isSwapPending || isEditPending;
 	const dueDate = parseValidDate(chore.nextDueAt);
 
 	return (
-		<Item
+		<ItemEntry
 			id={`chore-${chore.id}`}
-			render={<li />}
 			className={cn(
 				'scroll-mt-24 rounded-none py-2 pr-1.5 transition-colors duration-700 [contain-intrinsic-size:auto_4.5rem] [content-visibility:auto]',
 				highlighted && 'bg-primary/10',
@@ -134,10 +137,10 @@ export const ChoreRow = memo(function ChoreRow({
 			)}
 			{/* Minimum width in rem: with large text the buttons wrap below the title instead of squashing it. */}
 			<ItemContent className="min-w-[7rem] gap-0.5">
-				<ItemTitle className="line-clamp-none w-auto break-words text-[14px] [overflow-wrap:anywhere]">
+				<ItemTitle className="line-clamp-none w-auto break-words text-body [overflow-wrap:anywhere]">
 					{chore.title}
 				</ItemTitle>
-				<ItemDescription className="line-clamp-none break-words text-[12px] leading-snug">
+				<ItemDescription className="line-clamp-none break-words text-meta leading-snug">
 					<span className="sr-only">Zuständig: {isMine ? 'du' : assignee.name} · </span>
 					<span className={cn(status.state === 'overdue' && 'font-medium text-foreground')}>
 						{status.label}
@@ -152,8 +155,8 @@ export const ChoreRow = memo(function ChoreRow({
 						size="sm"
 						onClick={() => onTakeOver(chore)}
 						disabled={busy}
-						aria-label={`Aufgabe übernehmen: ${chore.title}`}
-						className="h-auto self-start px-0 text-[12px]"
+						aria-label={`Ich übernehme: ${chore.title}`}
+						className="h-auto self-start px-0 text-meta"
 					>
 						{isTakePending && <Spinner data-icon="inline-start" aria-hidden />}Ich übernehme
 					</Button>
@@ -317,6 +320,6 @@ export const ChoreRow = memo(function ChoreRow({
 				onCancel={onCancelComplete}
 				onConfirm={() => onComplete(chore)}
 			/>
-		</Item>
+		</ItemEntry>
 	);
 });

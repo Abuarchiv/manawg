@@ -404,7 +404,7 @@ test.describe('daily overview home', () => {
 		};
 		const dialogError = page
 			.getByRole('alertdialog')
-			.getByText('Erledigt-Aktion konnte nicht gespeichert werden: Versuche es gleich erneut.');
+			.getByText('Die Erledigung konnte nicht gespeichert werden: Versuche es gleich erneut.');
 
 		await page.getByRole('button', { name: 'Als erledigt markieren: Bad putzen' }).click();
 		await confirmCompletion();

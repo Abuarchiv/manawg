@@ -87,7 +87,7 @@ export function useInventoryQuantity(options: UseInventoryQuantityOptions) {
 			onGone();
 		} else {
 			if (res.status > 0 && res.status < 500 && res.status !== 429) keysRef.current.delete(mapKey);
-			const subject = `„${item.name}“ ließ sich nicht ${consume ? 'verringern' : 'erhöhen'}`;
+			const subject = `„${item.name}“ konnte nicht ${consume ? 'verringert' : 'erhöht'} werden`;
 			toast.error(
 				mutationErrorMessage(subject, res.error, {}, `Aktualisierung fehlgeschlagen. ${subject}.`),
 			);

@@ -11,6 +11,7 @@ import { chooseNextAvailableMember } from '@/features/chores/chore-fairness';
 import { computeNextDueAt } from '@/features/chores/chore-recurrence';
 import { getChoreStatus } from '@/features/chores/chore-status';
 import type { Chore } from '@/features/chores/components/chore-types';
+import { pendingKeys } from '@/features/chores/pending-keys';
 import { useState } from 'react';
 import type { ChorePageContext } from './chore-page-context';
 import { useChoreCompletion } from './use-chore-completion';
@@ -169,7 +170,7 @@ export function useChoreActions(ctx: ChorePageContext) {
 	}
 
 	async function handleSwapRequest(chore: Chore): Promise<void> {
-		const pendingKey = `${chore.id}:swap`;
+		const pendingKey = pendingKeys.swap(chore.id);
 		if (isPending(pendingKey) || swapRequestedIds.has(chore.id) || isStillQueued(chore)) return;
 
 		startPending(pendingKey);
@@ -211,7 +212,7 @@ export function useChoreActions(ctx: ChorePageContext) {
 		await patchChore(
 			chore,
 			{ assignedMemberId: identity.memberId },
-			`${chore.id}:take`,
+			pendingKeys.take(chore.id),
 			(result) => choreActionErrorMessage('Aufgabe konnte nicht übernommen werden', result),
 			'Du bist jetzt für die Aufgabe eingetragen.',
 		);
@@ -230,7 +231,7 @@ export function useChoreActions(ctx: ChorePageContext) {
 		return patchChore(
 			chore,
 			changes,
-			`${chore.id}:edit`,
+			pendingKeys.edit(chore.id),
 			(result) => choreEditErrorMessage(result.error),
 			assigneeName && Object.keys(changes).length === 1
 				? `Zuständig: ${assigneeName}.`

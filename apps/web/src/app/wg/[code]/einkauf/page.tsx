@@ -12,28 +12,25 @@ import { SubNav } from '@/components/wg/SubNav';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
 import { formatQueuedOfflineEntries } from '@/core/offline/offline-copy';
+import { MS_PER_DAY } from '@/core/utils/time';
 import { InventoryRestockPrompt } from '@/features/inventory/components/InventoryRestockPrompt';
-import {
-	type InventoryItemDto,
-	isBelowThreshold,
-	normalizeForMatch,
-} from '@/features/inventory/inventory';
+import type { InventoryItemDto } from '@/features/inventory/inventory';
 import { ClearBoughtDialog } from '@/features/shopping/components/ClearBoughtDialog';
 import { ListSkeleton, SuggestionsSkeleton } from '@/features/shopping/components/ListSkeleton';
 import { ShoppingAddBar } from '@/features/shopping/components/ShoppingAddBar';
 import { ShoppingList } from '@/features/shopping/components/ShoppingList';
 import { ShoppingReceiptPrompt } from '@/features/shopping/components/ShoppingReceiptPrompt';
 import { ShoppingSuggestions } from '@/features/shopping/components/ShoppingSuggestions';
-import { QUICK_SHOPPING_ITEMS } from '@/features/shopping/components/constants';
 import { useShoppingPage } from '@/features/shopping/hooks/use-shopping-page';
 import { splitShoppingItems } from '@/features/shopping/shopping-view';
 import { ListChecks } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useRef, useState } from 'react';
+import { buildSuggestionGroups } from './shopping-suggestions';
 
 const NO_INVENTORY: InventoryItemDto[] = [];
-const RECENTLY_BOUGHT_MS = 24 * 60 * 60 * 1000;
-const RESTOCK_WINDOW_MS = 12 * 60 * 60 * 1000;
+/** Only the buyer's own purchases of the last hours trigger the restock prompt. */
+const RESTOCK_WINDOW_MS = MS_PER_DAY / 2;
 
 export default function EinkaufPage() {
 	const { wg, members, identity, isAdmin } = useWg();
@@ -66,34 +63,6 @@ export default function EinkaufPage() {
 	const actionError =
 		shopping.toggleError ?? (shopping.removeErrorId ? null : shopping.removeError);
 
-	// Suggestions for articles that are not already open on the list.
-	const openNames = new Set(open.map((item) => normalizeForMatch(item.name)));
-	// Do not offer just-bought items again right away: otherwise ticking one off pops up a chip,
-	// shifts the list and invites buying it again.
-	const recentCutoff = Date.now() - RECENTLY_BOUGHT_MS;
-	const recentlyBought = new Set(
-		done
-			.filter((item) => item.boughtAt !== null && Date.parse(item.boughtAt) > recentCutoff)
-			.map((item) => normalizeForMatch(item.name)),
-	);
-	const lowStock = inventory
-		.filter((item) => {
-			const key = normalizeForMatch(item.name);
-			return isBelowThreshold(item) && !openNames.has(key) && !recentlyBought.has(key);
-		})
-		.map((item) => item.name);
-	const taken = new Set([...openNames, ...recentlyBought, ...lowStock.map(normalizeForMatch)]);
-	const frequent = [
-		...inventory
-			.filter((item) => item.decrementCount30d > 0)
-			.sort((a, b) => b.decrementCount30d - a.decrementCount30d)
-			.map((item) => item.name),
-	].filter((name) => {
-		const key = normalizeForMatch(name);
-		if (taken.has(key)) return false;
-		taken.add(key);
-		return true;
-	});
 	// Suggestions and list appear together once list and pantry are loaded: otherwise
 	// the groups swap after loading and push the list down (layout shift).
 	// Without a list (load error) the open items are unknown, so nothing is offered for adding.
@@ -102,18 +71,10 @@ export default function EinkaufPage() {
 	// request must never hide the list itself.
 	const inventoryPending = inventoryLoading && !inventoryError && cachedInventory === undefined;
 	const suggestionsPending = initialLoading || inventoryPending || listUnknown;
-	const suggestionGroups = [
-		{ label: 'Bald leer', names: lowStock.slice(0, 4) },
-		frequent.length > 0
-			? { label: 'Oft gekauft', names: frequent.slice(0, 4) }
-			: {
-					label: 'Vorschläge',
-					names:
-						items.length === 0
-							? QUICK_SHOPPING_ITEMS.filter((name) => !taken.has(normalizeForMatch(name)))
-							: [],
-				},
-	].filter((group) => !suggestionsPending && group.names.length > 0);
+	const now = Date.now();
+	const suggestionGroups = suggestionsPending
+		? []
+		: buildSuggestionGroups({ items, inventory, now });
 
 	return (
 		<div data-household-content className="mx-auto flex w-full max-w-4xl flex-col gap-3 px-4 py-3">
@@ -124,7 +85,7 @@ export default function EinkaufPage() {
 					Einkäufe
 				</h1>
 				<p
-					className="mt-0.5 text-[12px] text-muted-foreground tabular-nums"
+					className="mt-0.5 text-meta text-muted-foreground tabular-nums"
 					aria-live="polite"
 					aria-atomic="true"
 				>
@@ -189,6 +150,7 @@ export default function EinkaufPage() {
 					isAdmin={isAdmin}
 					clearingBought={shopping.clearingBought}
 					onClearRequest={() => setClearConfirmOpen(true)}
+					queuedCount={shopping.queuedCount}
 				/>
 			)}
 			<ShoppingReceiptPrompt
@@ -203,7 +165,7 @@ export default function EinkaufPage() {
 						(item) =>
 							item.boughtByMemberId === identity.memberId &&
 							item.boughtAt !== null &&
-							Date.now() - Date.parse(item.boughtAt) < RESTOCK_WINDOW_MS,
+							now - Date.parse(item.boughtAt) < RESTOCK_WINDOW_MS,
 					)
 					.map((item) => item.name)}
 				shareCode={wg.shareCode}

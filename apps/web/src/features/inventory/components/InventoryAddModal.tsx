@@ -213,7 +213,7 @@ export function InventoryAddModal({
 						{
 							method: 'POST',
 							memberId,
-							headers: { 'Idempotency-Key': idempotencyKey as string },
+							headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {},
 							body: JSON.stringify(body),
 						},
 					);

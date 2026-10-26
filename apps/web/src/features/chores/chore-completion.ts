@@ -142,7 +142,7 @@ export interface ChoreCompletionFeedback {
 }
 
 export const CHORE_COMPLETION_COPY = {
-	keyUnavailable: 'Erledigt-Aktion konnte nicht sicher gespeichert werden. Versuche es erneut.',
+	keyUnavailable: 'Die Erledigung konnte nicht sicher gespeichert werden. Versuche es erneut.',
 	queued:
 		'Erledigung offline vorgemerkt. Nächster Termin und Zuständigkeit werden nach der Synchronisierung bestätigt.',
 	queueBlocked:
@@ -152,10 +152,10 @@ export const CHORE_COMPLETION_COPY = {
 	alreadyCompleted: 'Diese Putzaufgabe wurde bereits erledigt. Der Plan wird aktualisiert.',
 	occurrenceChanged: 'Termin oder Zuständigkeit haben sich geändert. Der Plan wird aktualisiert.',
 	insertFailed:
-		'Erledigt-Aktion konnte nicht vollständig gespeichert werden: Lade den Plan neu und prüfe den Verlauf.',
-	readOnly: `Erledigt-Aktion konnte nicht gespeichert werden: ${READ_ONLY_MESSAGE}`,
-	sessionExpired: `Erledigt-Aktion konnte nicht gespeichert werden: ${SESSION_EXPIRED_MESSAGE}`,
-	failed: 'Erledigt-Aktion konnte nicht gespeichert werden: Versuche es gleich erneut.',
+		'Die Erledigung konnte nicht vollständig gespeichert werden: Lade den Plan neu und prüfe den Verlauf.',
+	readOnly: `Die Erledigung konnte nicht gespeichert werden: ${READ_ONLY_MESSAGE}`,
+	sessionExpired: `Die Erledigung konnte nicht gespeichert werden: ${SESSION_EXPIRED_MESSAGE}`,
+	failed: 'Die Erledigung konnte nicht gespeichert werden: Versuche es gleich erneut.',
 } as const;
 
 function choreCompletedMessage(

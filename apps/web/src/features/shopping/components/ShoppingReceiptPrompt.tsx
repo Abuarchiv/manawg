@@ -1,6 +1,7 @@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
 import type { ShoppingItem } from '@/features/shopping/components/shopping-types';
+import { expensePrefillHref } from '@/features/shopping/shopping-view';
 import { cn } from '@/shared/lib/cn';
 import { Receipt } from 'lucide-react';
 import Link from 'next/link';
@@ -70,16 +71,17 @@ export function ShoppingReceiptPrompt({
 	return (
 		<Alert ref={promptRef}>
 			<Receipt aria-hidden />
-			<AlertDescription className="flex flex-col gap-2 text-[13px]">
+			<AlertDescription className="flex flex-col gap-2 text-xs">
 				<span>Beleg für {myFreshBought.length} Artikel als Ausgabe erfassen?</span>
 				<span className="flex flex-wrap gap-2">
 					<Link
-						href={`/wg/${encodeURIComponent(shareCode)}/ausgaben?new=1&desc=${encodeURIComponent(
-							`Einkauf: ${myFreshBought
+						href={expensePrefillHref(shareCode, {
+							new: '1',
+							desc: `Einkauf: ${myFreshBought
 								.slice(0, 5)
 								.map((item) => item.name)
 								.join(', ')}`,
-						)}`}
+						})}
 						onClick={dismissReceiptPrompt}
 						className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'no-underline!')}
 					>
