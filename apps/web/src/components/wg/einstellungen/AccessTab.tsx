@@ -42,24 +42,43 @@ function useGoogleLinked(): boolean {
 	return linked;
 }
 
+/** The account e-mail for password accounts; null for others and while unknown. */
+function usePasswordAccountEmail(): string | null {
+	const [email, setEmail] = useState<string | null>(null);
+	useEffect(() => {
+		let active = true;
+		import('@/core/auth/client')
+			.then(({ getEmailAccount }) => getEmailAccount())
+			.then((account) => {
+				if (active && account?.hasPassword) setEmail(account.email);
+			})
+			// Without an answer the rows stay hidden; sign-in and reset remain available.
+			.catch(() => {});
+		return () => {
+			active = false;
+		};
+	}, []);
+	return email;
+}
+
 export function AccessTab({ wg, members, identity }: AccessTabProps) {
 	const googleLinked = useGoogleLinked();
+	const accountEmail = usePasswordAccountEmail();
+	const settingsReturnPath = `/wg/${encodeURIComponent(wg.shareCode)}/einstellungen#zugang`;
 
 	return (
 		<>
 			<InvitesSection wg={wg} identity={identity} />
 			<Section title="Anmeldemethoden">
 				<div className="flex flex-col gap-3 p-3">
-					<PasswordChangeRow />
-					<EmailChangeRow
-						returnPath={`/wg/${encodeURIComponent(wg.shareCode)}/einstellungen#zugang`}
-					/>
+					<PasswordChangeRow email={accountEmail} />
+					<EmailChangeRow current={accountEmail} returnPath={settingsReturnPath} />
 					{googleLinked ? (
 						<p className="text-sm text-muted-foreground">Google ist mit deinem Konto verknüpft.</p>
 					) : (
 						<SocialLoginButtons
 							variant="link"
-							next={`/wg/${encodeURIComponent(wg.shareCode)}/einstellungen#zugang`}
+							next={settingsReturnPath}
 							onOAuthStart={linkSocialIdentity}
 						/>
 					)}

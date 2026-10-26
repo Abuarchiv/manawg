@@ -4,7 +4,7 @@ import { LogoMark } from '@/components/ui/LogoMark';
 import { useHasToasts } from '@/components/ui/Toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
-import { isEditingTarget } from '@/core/utils/browser';
+import { isEditingTarget, safeLocalStorage } from '@/core/utils/browser';
 import {
 	type BeforeInstallEvent,
 	isAppInstalled,
@@ -19,14 +19,14 @@ import { InstallButton } from './InstallButton';
 // Not under `manawg:`/`manawg_`: signing out wipes those, and a dismissal is a device choice.
 const DISMISSED_KEY = 'manawg-install-dismissed-at';
 const DISMISS_COOLDOWN_MS = 14 * 24 * 60 * 60 * 1000;
+/** Delay before the prompt appears, so it does not compete with the first paint. */
+const SHOW_DELAY_MS = 1200;
+/** Gap in px between the prompt and the content that ends above it. */
+const PROMPT_GAP_PX = 8;
 
 function dismissedRecently(): boolean {
-	try {
-		const at = Number(localStorage.getItem(DISMISSED_KEY));
-		return Number.isFinite(at) && at > 0 && Date.now() - at < DISMISS_COOLDOWN_MS;
-	} catch {
-		return false;
-	}
+	const at = Number(safeLocalStorage()?.getItem(DISMISSED_KEY));
+	return Number.isFinite(at) && at > 0 && Date.now() - at < DISMISS_COOLDOWN_MS;
 }
 
 /**
@@ -60,7 +60,7 @@ export function InstallPrompt() {
 		setManual(!('onbeforeinstallprompt' in window));
 		const timer = window.setTimeout(() => {
 			if (!isEditingTarget()) setHidden(false);
-		}, 1200);
+		}, SHOW_DELAY_MS);
 
 		// Retract the prompt when the user taps into a composer so it never
 		// sits over the input or its send button.
@@ -93,7 +93,7 @@ export function InstallPrompt() {
 		if (!visible || !el) return;
 		const root = document.documentElement;
 		const publish = () =>
-			root.style.setProperty('--install-prompt-space', `${el.offsetHeight + 8}px`);
+			root.style.setProperty('--install-prompt-space', `${el.offsetHeight + PROMPT_GAP_PX}px`);
 		publish();
 		const observer = new ResizeObserver(publish);
 		observer.observe(el);
@@ -109,7 +109,7 @@ export function InstallPrompt() {
 			document.getElementById('main')?.focus({ preventScroll: true });
 		setHidden(true);
 		try {
-			localStorage.setItem(DISMISSED_KEY, String(Date.now()));
+			safeLocalStorage()?.setItem(DISMISSED_KEY, String(Date.now()));
 		} catch {
 			// Without storage the prompt simply returns on the next visit.
 		}
@@ -163,7 +163,7 @@ export function InstallPrompt() {
 							Jetzt installieren
 						</Button>
 					) : (
-						<InstallButton variant="solid" label="So installierst du ManaWG" className="w-full" />
+						<InstallButton variant="primary" label="So installierst du ManaWG" className="w-full" />
 					)}
 				</Card>
 			</section>

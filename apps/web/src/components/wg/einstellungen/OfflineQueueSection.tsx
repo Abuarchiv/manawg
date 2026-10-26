@@ -229,7 +229,7 @@ export function OfflineQueueSection({
 				<div
 					className={cn(
 						'flex flex-wrap items-center justify-between gap-3',
-						hasRetryableItems && 'min-h-[44px]',
+						hasRetryableItems && 'min-h-11',
 					)}
 				>
 					<p className="text-muted-foreground text-xs">{formatOfflineQueueCount(items.length)}</p>

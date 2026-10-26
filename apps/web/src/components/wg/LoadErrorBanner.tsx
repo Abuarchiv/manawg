@@ -15,13 +15,8 @@ interface LoadErrorBannerProps {
 }
 
 /**
- * "Loading failed, try again" — the banner seven pages showed above their
- * content.
- *
- * The seven copies had drifted: only the activity page gave the retry button a
- * focus ring and the danger text colour, search dropped the icon and the gap,
- * and two different refresh icons were in use. This keeps the most complete
- * version, so every page gets the focus ring.
+ * Inline "loading failed" alert with a retry button. While a reload is in
+ * flight the button stays focusable (aria-disabled) so keyboard focus is not lost.
  */
 export function LoadErrorBanner({ message, onRetry, busy, retryLabel }: LoadErrorBannerProps) {
 	return (

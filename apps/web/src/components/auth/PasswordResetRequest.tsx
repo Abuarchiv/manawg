@@ -8,7 +8,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { classifyAuthError } from '@/core/auth/password-errors';
 import type { AuthFailure } from '@/core/auth/password-errors';
 import { useState } from 'react';
-import { GenericAuthError, isValidEmail } from './auth-form-shared';
+import { GenericAuthError, isValidEmail, normalizeEmail } from './auth-form-shared';
 
 /** Requests a fresh reset link without leaving the reset page; the answer never reveals an account. */
 export function PasswordResetRequest() {
@@ -20,7 +20,7 @@ export function PasswordResetRequest() {
 	async function submit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
 		event.preventDefault();
 		if (busy) return;
-		const normalizedEmail = email.trim().toLowerCase();
+		const normalizedEmail = normalizeEmail(email);
 		if (!isValidEmail(normalizedEmail)) {
 			setState('invalid');
 			return;

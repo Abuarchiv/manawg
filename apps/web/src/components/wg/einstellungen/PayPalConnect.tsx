@@ -110,32 +110,24 @@ export function PayPalConnect({
 		async (expectedScope: string, signal?: AbortSignal): Promise<PayPalConnectionStatus | null> => {
 			if (scopeRef.current !== expectedScope) return null;
 			setLoading(true);
-			try {
-				const result = await apiFetch<unknown>(endpoint, {
-					memberId,
-					...(signal ? { signal } : {}),
-				});
-				if (scopeRef.current !== expectedScope) return null;
-				setLoading(false);
-				if (!result.ok || !isConnectionStatus(result.data)) {
-					setStatus(null);
-					setError(
-						result.ok
-							? 'PayPal-Verbindung konnte nicht geprüft werden.'
-							: connectionError(result.error),
-					);
-					return null;
-				}
-				setStatus(result.data);
-				setError(null);
-				return result.data;
-			} catch {
-				if (scopeRef.current !== expectedScope) return null;
-				setLoading(false);
+			const result = await apiFetch<unknown>(endpoint, {
+				memberId,
+				...(signal ? { signal } : {}),
+			});
+			if (scopeRef.current !== expectedScope) return null;
+			setLoading(false);
+			if (!result.ok || !isConnectionStatus(result.data)) {
 				setStatus(null);
-				setError('PayPal-Verbindung konnte nicht geprüft werden. Bitte versuche es erneut.');
+				setError(
+					result.ok
+						? 'PayPal-Verbindung konnte nicht geprüft werden.'
+						: connectionError(result.error),
+				);
 				return null;
 			}
+			setStatus(result.data);
+			setError(null);
+			return result.data;
 		},
 		[endpoint, memberId],
 	);
@@ -184,11 +176,6 @@ export function PayPalConnect({
 						? 'PayPal-Verbindung konnte nicht bestätigt werden.'
 						: connectionError(result.error),
 				);
-			} catch {
-				if (scopeRef.current === expectedScope) {
-					pendingReturn.current = { scope: expectedScope, merchantId };
-					setError('PayPal-Verbindung konnte nicht geprüft werden. Bitte versuche es erneut.');
-				}
 			} finally {
 				if (scopeRef.current === expectedScope) setBusy(false);
 			}
@@ -238,12 +225,7 @@ export function PayPalConnect({
 			}
 		}
 
-		void loadConnection().catch(() => {
-			if (!isCurrent()) return;
-			setStatus(null);
-			setLoading(false);
-			setError('PayPal-Verbindung konnte nicht geprüft werden. Bitte versuche es erneut.');
-		});
+		void loadConnection();
 		return () => {
 			active = false;
 			controller.abort();
@@ -275,10 +257,6 @@ export function PayPalConnect({
 				return;
 			}
 			window.location.assign(result.data.url);
-		} catch {
-			if (scopeRef.current === currentScope) {
-				setError('PayPal-Verbindung konnte nicht gestartet werden. Bitte versuche es erneut.');
-			}
 		} finally {
 			if (scopeRef.current === currentScope) setBusy(false);
 		}
@@ -301,10 +279,6 @@ export function PayPalConnect({
 			}
 			setStatus({ available: true, connected: false });
 			void refreshMembers(memberId);
-		} catch {
-			if (scopeRef.current === currentScope) {
-				setError('PayPal konnte nicht getrennt werden. Bitte versuche es erneut.');
-			}
 		} finally {
 			if (scopeRef.current === currentScope) setBusy(false);
 		}

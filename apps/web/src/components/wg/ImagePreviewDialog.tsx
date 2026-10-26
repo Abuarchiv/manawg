@@ -17,17 +17,11 @@ export function ImagePreviewDialog({
 		const dialog = previewDialogRef.current;
 		if (!dialog) return;
 
-		if (!dialog.open) {
-			if (typeof dialog.showModal === 'function') {
-				dialog.showModal();
-			} else {
-				dialog.setAttribute('open', '');
-			}
-		}
+		if (!dialog.open) dialog.showModal();
 		requestAnimationFrame(() => previewCloseButtonRef.current?.focus());
 
 		return () => {
-			if (dialog.open && typeof dialog.close === 'function') dialog.close();
+			if (dialog.open) dialog.close();
 		};
 	}, []);
 

@@ -40,7 +40,7 @@ export function ProfileTab({ memberName, wgName, shareCode, memberId }: ProfileT
 	return (
 		<>
 			<Section title="Dein Profil">
-				<div className="flex min-h-[44px] items-center gap-3 px-3 py-2">
+				<div className="flex min-h-11 items-center gap-3 px-3 py-2">
 					<MemberAvatar name={memberName} size={32} />
 					<div className="min-w-0 flex-1">
 						<div className="text-foreground text-sm font-medium [overflow-wrap:break-word]">

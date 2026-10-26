@@ -41,7 +41,7 @@ export function SignOutActions({ onSignedOut }: { onSignedOut: () => void }) {
 					className="w-full"
 				>
 					{signingOut ? <Spinner data-icon="inline-start" aria-hidden /> : <LogOut aria-hidden />}
-					{signingOut ? 'Meldet ab …' : 'Mit anderem Konto anmelden'}
+					{signingOut ? 'Meldet ab…' : 'Mit anderem Konto anmelden'}
 				</Button>
 				{signOutError && (
 					<ErrorBox>Konto konnte nicht abgemeldet werden. Bitte versuche es erneut.</ErrorBox>

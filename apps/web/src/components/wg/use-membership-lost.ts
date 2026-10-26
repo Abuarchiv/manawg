@@ -1,6 +1,7 @@
 'use client';
 
 import type { SessionMember } from '@/core/auth/local-account';
+import { fetchAccountWgs } from '@/core/infra/account-wgs';
 import { MEMBERSHIP_LOST_EVENT } from '@/core/infra/api-client';
 import { type Dispatch, type RefObject, type SetStateAction, useEffect } from 'react';
 
@@ -46,17 +47,14 @@ export function useMembershipLost({
 			if (error !== 'wg_not_found') return showLost();
 			// Same WG under a new code: follow it instead of leaving a broken page.
 			setMemberLoaded(false);
-			void fetch('/api/wg/mine', { cache: 'no-store' })
-				.then((res) => (res.ok ? res.json() : null))
-				.then((data: { wgs?: Array<{ id: string; code: string }> } | null) => {
-					const next = data?.wgs?.find((entry) => entry.id === wgId)?.code;
-					if (!next) return showLost();
-					const { pathname, search } = window.location;
-					window.location.replace(
-						pathname.replace(`/wg/${encodedShareCode}`, `/wg/${encodeURIComponent(next)}`) + search,
-					);
-				})
-				.catch(showLost);
+			void fetchAccountWgs().then((res) => {
+				const next = res.ok ? res.wgs.find((entry) => entry.id === wgId)?.code : undefined;
+				if (!next) return showLost();
+				const { pathname, search } = window.location;
+				window.location.replace(
+					pathname.replace(`/wg/${encodedShareCode}`, `/wg/${encodeURIComponent(next)}`) + search,
+				);
+			});
 		};
 		window.addEventListener(MEMBERSHIP_LOST_EVENT, onLost);
 		return () => window.removeEventListener(MEMBERSHIP_LOST_EVENT, onLost);
