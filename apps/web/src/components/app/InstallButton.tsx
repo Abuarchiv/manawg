@@ -25,17 +25,12 @@ import { useEffect, useRef, useState } from 'react';
 type Platform = 'desktop' | 'android' | 'ios' | 'unknown';
 
 type Props = {
-	/** Compatibility variants mapped to the official primary and outline buttons. */
-	variant?: 'solid' | 'ghost';
+	variant?: 'primary' | 'outline';
 	className?: string;
-	label?: string;
+	label: string;
 };
 
-export function InstallButton({
-	variant = 'ghost',
-	className = '',
-	label = 'Auf Homescreen',
-}: Props) {
+export function InstallButton({ variant = 'outline', className, label }: Props) {
 	const [event, setEvent] = useState<BeforeInstallEvent | null>(null);
 	const [platform, setPlatform] = useState<Platform>('unknown');
 	const [installed, setInstalled] = useState(false);
@@ -44,8 +39,6 @@ export function InstallButton({
 	const closeButtonRef = useRef<HTMLButtonElement>(null);
 
 	useEffect(() => {
-		if (typeof window === 'undefined') return;
-
 		if (isAppInstalled()) {
 			setInstalled(true);
 			return;
@@ -93,7 +86,7 @@ export function InstallButton({
 				ref={installButtonRef}
 				type="button"
 				onClick={click}
-				variant={variant === 'solid' ? 'default' : 'outline'}
+				variant={variant === 'primary' ? 'default' : 'outline'}
 				className={cn('h-auto whitespace-normal py-2', className)}
 			>
 				<Download data-icon="inline-start" aria-hidden />
@@ -103,7 +96,6 @@ export function InstallButton({
 				initialFocus={closeButtonRef}
 				finalFocus={installButtonRef}
 				showCloseButton={false}
-				className="max-h-[calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-2rem)] overflow-y-auto"
 			>
 				<DialogHeader className="pr-12">
 					<DialogTitle>ManaWG als App installieren</DialogTitle>
@@ -130,7 +122,7 @@ export function InstallButton({
 				{(platform === 'desktop' || platform === 'unknown') && <DesktopSteps />}
 				<DialogFooter>
 					<p className="text-sm text-muted-foreground">
-						Danach startet ManaWG ohne Browser-Leiste, direkt vom Homescreen.
+						Danach startet ManaWG ohne Browser-Leiste, direkt vom Startbildschirm.
 					</p>
 				</DialogFooter>
 			</DialogContent>
@@ -161,17 +153,17 @@ function IosSteps() {
 	return (
 		<ItemGroup aria-label="Installationsschritte für iOS">
 			<Step num={1}>
-				In Safari auf <span className="font-medium text-foreground">Teilen</span> tippen.
+				Tippe in Safari auf <span className="font-medium text-foreground">Teilen</span>.
 			</Step>
 			<Step num={2}>
-				Nach unten scrollen und{' '}
-				<span className="font-medium text-foreground">„Zum Home-Bildschirm“</span> wählen.
+				Scrolle nach unten und wähle{' '}
+				<span className="font-medium text-foreground">„Zum Home-Bildschirm“</span>.
 			</Step>
 			<Step num={3}>
-				Oben rechts auf <span className="font-medium text-foreground">Hinzufügen</span> tippen.
+				Tippe oben rechts auf <span className="font-medium text-foreground">Hinzufügen</span>.
 			</Step>
 			<Step num={4}>
-				ManaWG vom Home-Bildschirm öffnen und einmal anmelden. Das iPhone trennt App und Safari,
+				Öffne ManaWG vom Home-Bildschirm und melde dich einmal an. Das iPhone trennt App und Safari,
 				danach bleibst du angemeldet.
 			</Step>
 		</ItemGroup>
@@ -182,14 +174,13 @@ function AndroidSteps() {
 	return (
 		<ItemGroup aria-label="Installationsschritte für Android">
 			<Step num={1}>
-				In Chrome oben rechts auf <span className="font-medium text-foreground">⋮ Menü</span>{' '}
-				tippen.
+				Tippe in Chrome oben rechts auf <span className="font-medium text-foreground">⋮ Menü</span>.
 			</Step>
 			<Step num={2}>
 				Wähle <span className="font-medium text-foreground">„App installieren“</span> oder „Zum
 				Startbildschirm“.
 			</Step>
-			<Step num={3}>Bestätigen. ManaWG liegt dann auf dem Homescreen.</Step>
+			<Step num={3}>Bestätige. ManaWG liegt dann auf dem Startbildschirm.</Step>
 		</ItemGroup>
 	);
 }
@@ -198,14 +189,14 @@ function DesktopSteps() {
 	return (
 		<ItemGroup aria-label="Installationsschritte im Browser">
 			<Step num={1}>
-				In der Adressleiste auf <span className="font-medium text-foreground">Installieren</span>{' '}
-				klicken.
+				Klicke in der Adressleiste auf{' '}
+				<span className="font-medium text-foreground">Installieren</span>.
 			</Step>
 			<Step num={2}>
-				Alternativ: <span className="font-medium text-foreground">⋮ Menü</span> → „ManaWG
-				installieren“.
+				Alternativ öffnest du das <span className="font-medium text-foreground">⋮ Menü</span> und
+				wählst „ManaWG installieren“.
 			</Step>
-			<Step num={3}>Bestätigen. ManaWG startet dann wie eine App.</Step>
+			<Step num={3}>Bestätige. ManaWG startet dann wie eine App.</Step>
 		</ItemGroup>
 	);
 }

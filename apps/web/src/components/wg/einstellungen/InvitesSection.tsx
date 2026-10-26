@@ -177,7 +177,7 @@ export function InvitesSection({ wg, identity }: { wg: WgSummary; identity: Sess
 						{invites.map((invite) => (
 							<li
 								key={invite.id}
-								className="flex min-h-[44px] flex-wrap items-center justify-between gap-3 rounded-lg border border-border px-3 py-2"
+								className="flex min-h-11 flex-wrap items-center justify-between gap-3 rounded-lg border border-border px-3 py-2"
 							>
 								<div className="min-w-0">
 									<p className="text-foreground text-sm font-medium">

@@ -4,12 +4,13 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
+import { PRIVATE_IMAGE_MIME_TYPES } from '@/core/infra/private-image-policy';
 import { isPendingImageToken } from '@/core/offline/offline-images';
 import { cn } from '@/shared/lib/cn';
 import { AlertTriangle, ImagePlus, Maximize2, X } from 'lucide-react';
 import { useState } from 'react';
 import { ImagePreviewDialog } from './ImagePreviewDialog';
-import { useImageUpload } from './use-image-upload';
+import { MAX_UPLOAD_MB, useImageUpload } from './use-image-upload';
 
 interface Props {
 	shareCode: string;
@@ -140,11 +141,11 @@ export function ImageUploader({
 				)}
 				<span aria-live="polite">{uploading ? 'Lädt hoch…' : 'Bild hinzufügen'}</span>
 				<span className="text-center text-xs text-muted-foreground">
-					JPG, PNG, WebP, HEIC · max. 8 MB
+					JPG, PNG, WebP, HEIC · max. {MAX_UPLOAD_MB} MB
 				</span>
 				<input
 					type="file"
-					accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+					accept={PRIVATE_IMAGE_MIME_TYPES.join(',')}
 					className="sr-only"
 					aria-label="Bild auswählen"
 					disabled={disabled || uploading}

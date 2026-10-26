@@ -3,12 +3,10 @@
 import { Button } from '@/components/ui/button';
 import { Item, ItemContent, ItemGroup, ItemGroupEntry, ItemTitle } from '@/components/ui/item';
 import { Section } from '@/components/wg/einstellungen/Section';
-import { apiFetch } from '@/core/infra/api-client';
+import { type AccountWg, fetchAccountWgs } from '@/core/infra/account-wgs';
 import { ChevronRight, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-
-type AccountWg = { id: string; code: string; name: string };
 
 /** The account's other WGs, so switching never needs the browser's back button. */
 export function AccountWgsSection({ currentCode }: { currentCode: string }) {
@@ -16,9 +14,9 @@ export function AccountWgsSection({ currentCode }: { currentCode: string }) {
 
 	useEffect(() => {
 		let active = true;
-		void apiFetch<{ wgs?: AccountWg[] }>('/api/wg/mine').then((res) => {
+		void fetchAccountWgs().then((res) => {
 			if (!active || !res.ok) return;
-			setOthers((res.data.wgs ?? []).filter((wg) => wg.code !== currentCode));
+			setOthers(res.wgs.filter((wg) => wg.code !== currentCode));
 		});
 		return () => {
 			active = false;

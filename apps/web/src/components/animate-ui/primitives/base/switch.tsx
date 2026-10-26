@@ -1,13 +1,7 @@
 'use client';
 
 import { Switch as SwitchPrimitives } from '@base-ui/react/switch';
-import {
-	type HTMLMotionProps,
-	type LegacyAnimationControls,
-	type TargetAndTransition,
-	type VariantLabels,
-	useReducedMotion,
-} from 'motion/react';
+import { type HTMLMotionProps, useReducedMotion } from 'motion/react';
 import * as m from 'motion/react-m';
 import * as React from 'react';
 
@@ -109,16 +103,9 @@ function Switch({
 type SwitchThumbProps = Omit<React.ComponentProps<typeof SwitchPrimitives.Thumb>, 'render'> &
 	HTMLMotionProps<'div'> & {
 		pressedWidth?: number;
-		pressedAnimation?: TargetAndTransition | VariantLabels | boolean | LegacyAnimationControls;
 	};
 
-function SwitchThumb({
-	pressedWidth = 59,
-	pressedAnimation: _pressedAnimation,
-	transition: _transition,
-	children,
-	...props
-}: SwitchThumbProps) {
+function SwitchThumb({ pressedWidth = 59, children, ...props }: SwitchThumbProps) {
 	const { isChecked, isPressed } = useSwitch();
 	const left = isPressed ? (isChecked ? 17 : -8) : isChecked ? 27.5 : 2.5;
 	const top = isPressed ? 2.5 : 9.5;
@@ -216,34 +203,4 @@ function SwitchThumb({
 	);
 }
 
-type SwitchIconPosition = 'left' | 'right' | 'thumb';
-
-type SwitchIconProps = HTMLMotionProps<'div'> & {
-	position: SwitchIconPosition;
-};
-
-function SwitchIcon({
-	position,
-	transition = { duration: 0.28, ease: 'easeOut' },
-	...props
-}: SwitchIconProps) {
-	const { isChecked } = useSwitch();
-
-	const isAnimated = React.useMemo(() => {
-		if (position === 'right') return !isChecked;
-		if (position === 'left') return isChecked;
-		if (position === 'thumb') return true;
-		return false;
-	}, [position, isChecked]);
-
-	return (
-		<m.div
-			data-slot={`switch-${position}-icon`}
-			animate={isAnimated ? { scale: 1, opacity: 1 } : { scale: 0, opacity: 0 }}
-			transition={transition}
-			{...props}
-		/>
-	);
-}
-
-export { Switch, SwitchThumb, SwitchIcon, type SwitchProps };
+export { Switch, SwitchThumb, type SwitchProps };

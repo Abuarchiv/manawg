@@ -4,6 +4,10 @@ import { useWg } from '@/components/wg/WgContextProvider';
 import { subscribeOnline } from '@/core/hooks/use-online-status';
 import { REQUEST_TIMEOUT_MS, noteSessionExpiry } from '@/core/infra/api-client';
 import {
+	PRIVATE_IMAGE_MAX_BYTES,
+	isAllowedPrivateImageMimeType,
+} from '@/core/infra/private-image-policy';
+import {
 	UPLOAD_TIMEOUT_MS,
 	isPendingImageToken,
 	readPendingImage,
@@ -24,18 +28,12 @@ import { prepareUploadImage } from './prepare-upload-image';
 interface SignResponse {
 	presignedUrl: string;
 	publicUrl: string;
-	maxFileSize: number;
 	uploadHeaders?: Record<string, string>;
 }
 
-const MAX_FILE_BYTES = 8 * 1024 * 1024;
-const ALLOWED_IMAGE_TYPES = new Set([
-	'image/jpeg',
-	'image/png',
-	'image/webp',
-	'image/heic',
-	'image/heif',
-]);
+export const MAX_UPLOAD_MB = PRIVATE_IMAGE_MAX_BYTES / 1024 / 1024;
+const OFFLINE_PREPARED_NOTICE =
+	'Bild vorbereitet. Der Upload startet automatisch, sobald das Netz wieder stabil ist.';
 
 interface ImageUploadInput {
 	shareCode: string;
@@ -120,7 +118,7 @@ export function useImageUpload({
 				const publicUrl = await uploadPendingImageToken(value, identity.memberId);
 				onChangeRef.current(publicUrl);
 				// Chat cannot send while the token is pending, so no queued action will ever
-				// replay it; the stored copy (up to 8 MB) would stay on the device otherwise.
+				// replay it; the stored copy (up to the upload size cap) would stay on the device otherwise.
 				if (purpose === 'chat') void removePendingImage(value, identity.memberId).catch(() => {});
 			} catch (err) {
 				if (err instanceof Error && err.message === 'pending-image-missing') {
@@ -159,7 +157,7 @@ export function useImageUpload({
 			setError('Bitte ein Bild auswählen.');
 			return;
 		}
-		if (!ALLOWED_IMAGE_TYPES.has(original.type)) {
+		if (!isAllowedPrivateImageMimeType(original.type)) {
 			setNotice(null);
 			setError('Bitte JPG, PNG, WebP oder HEIC wählen.');
 			return;
@@ -177,8 +175,8 @@ export function useImageUpload({
 			setUploading(false);
 			return;
 		}
-		if (file.size > MAX_FILE_BYTES) {
-			setError('Bild zu groß (max. 8 MB). Wähle ein kleineres Bild.');
+		if (file.size > PRIVATE_IMAGE_MAX_BYTES) {
+			setError(`Bild zu groß (max. ${MAX_UPLOAD_MB} MB). Wähle ein kleineres Bild.`);
 			uploadPendingRef.current = false;
 			setUploading(false);
 			return;
@@ -201,7 +199,7 @@ export function useImageUpload({
 				return false;
 			}
 		}
-		if (typeof navigator !== 'undefined' && !navigator.onLine) {
+		if (!navigator.onLine) {
 			try {
 				await keepPending(
 					'Bild vorbereitet. Der Upload startet automatisch, sobald du wieder online bist.',
@@ -234,9 +232,7 @@ export function useImageUpload({
 				return;
 			}
 			if (sigRes.status >= 500) {
-				await keepPending(
-					'Bild vorbereitet. Der Upload startet automatisch, sobald das Netz wieder stabil ist.',
-				);
+				await keepPending(OFFLINE_PREPARED_NOTICE);
 				return;
 			}
 			if (!sigRes.ok) {
@@ -253,17 +249,13 @@ export function useImageUpload({
 				signal: AbortSignal.timeout(UPLOAD_TIMEOUT_MS),
 			});
 			if (!uploadRes.ok) {
-				await keepPending(
-					'Bild vorbereitet. Der Upload startet automatisch, sobald das Netz wieder stabil ist.',
-				);
+				await keepPending(OFFLINE_PREPARED_NOTICE);
 				return;
 			}
 			setNotice(null);
 			onChange(sig.publicUrl);
 		} catch {
-			await keepPending(
-				'Bild vorbereitet. Der Upload startet automatisch, sobald das Netz wieder stabil ist.',
-			);
+			await keepPending(OFFLINE_PREPARED_NOTICE);
 		} finally {
 			uploadPendingRef.current = false;
 			setUploading(false);

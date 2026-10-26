@@ -3,7 +3,7 @@
 import { AppBottomNav } from '@/components/app/AppBottomNav';
 import { ErrorBox } from '@/components/app/ErrorBox';
 import { RouteFocusOnNavigate } from '@/components/app/RouteFocusOnNavigate';
-import { WG_SECTIONS } from '@/components/app/navigation';
+import { WG_SECTIONS, isActivePage, moduleSlugOf } from '@/components/app/navigation';
 import { LegalLinks } from '@/components/entry/LegalLinks';
 import { type AccountWg, MembershipCard } from '@/components/entry/MembershipCard';
 import {
@@ -164,20 +164,15 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 
 	const section = WG_SECTIONS.find(
 		(item) =>
-			item.pages.some(
-				(page) =>
-					page.slug === activeModule || (page.slug === 'abos' && activeModule === 'fixkosten'),
-			) || item.related.some((slug) => slug === activeModule),
+			item.pages.some((page) => isActivePage(page.slug, activeModule)) ||
+			item.related.some((slug) => slug === activeModule),
 	);
 	// Related pages (Erinnerungen, Import) have no segment of their own, so they keep a visible h1.
-	const inSectionPages = section?.pages.some(
-		(page) => page.slug === activeModule || (page.slug === 'abos' && activeModule === 'fixkosten'),
-	);
+	const inSectionPages = section?.pages.some((page) => isActivePage(page.slug, activeModule));
 	// On the home the list of WGs is already right below the header.
 	// The welcome block below already offers the same action for signed-in users without a WG.
 	const hideAccountLink = (multi && !module) || membershipState === 'authenticated-empty';
-	const discoveryHref = (slug: string) =>
-		publicHref(`/entdecken/${slug === 'abos' ? 'fixkosten' : slug}`);
+	const discoveryHref = (slug: string) => publicHref(`/entdecken/${moduleSlugOf(slug)}`);
 
 	return (
 		<div
@@ -312,7 +307,7 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 								}}
 							>
 								{retried && <Spinner data-icon="inline-start" aria-hidden />}
-								{retried ? 'Prüfe …' : 'Erneut prüfen'}
+								{retried ? 'Prüfe…' : 'Erneut prüfen'}
 							</Button>
 						</div>
 					)}

@@ -1,6 +1,6 @@
 'use client';
 
-import { isValidEmail } from '@/components/auth/auth-form-shared';
+import { isValidEmail, normalizeEmail } from '@/components/auth/auth-form-shared';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Field, FieldLabel } from '@/components/ui/field';
@@ -8,38 +8,26 @@ import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { AUTH_FAILURE_MESSAGES, classifyAuthError } from '@/core/auth/password-errors';
 import { Mail } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 type Notice = { kind: 'sent' | 'error'; text: string } | null;
 
 /** E-mail change for password accounts: the new address only takes over once its link is opened. */
-export function EmailChangeRow({ returnPath }: { returnPath: string }) {
-	const [current, setCurrent] = useState<string | null>(null);
+export function EmailChangeRow({
+	current,
+	returnPath,
+}: { current: string | null; returnPath: string }) {
 	const [open, setOpen] = useState(false);
 	const [email, setEmail] = useState('');
 	const [busy, setBusy] = useState(false);
 	const [notice, setNotice] = useState<Notice>(null);
-
-	useEffect(() => {
-		let active = true;
-		import('@/core/auth/client')
-			.then(({ getEmailAccount }) => getEmailAccount())
-			.then((account) => {
-				if (active && account?.hasPassword) setCurrent(account.email);
-			})
-			// Without an answer the row stays hidden; the rest of the settings keep working.
-			.catch(() => {});
-		return () => {
-			active = false;
-		};
-	}, []);
 
 	if (!current) return null;
 
 	async function submit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
 		event.preventDefault();
 		if (busy) return;
-		const next = email.trim().toLowerCase();
+		const next = normalizeEmail(email);
 		if (!isValidEmail(next)) {
 			setNotice({ kind: 'error', text: 'Bitte gib eine gültige E-Mail-Adresse ein.' });
 			return;

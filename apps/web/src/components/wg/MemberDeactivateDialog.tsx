@@ -79,22 +79,17 @@ export function MemberDeactivateDialog({
 		setLoading(true);
 		setLoadError(null);
 		async function loadOpenBalances(): Promise<void> {
-			try {
-				const res = await apiFetch<OpenBalancesResponse>(
-					`/api/wg/${encodedShareCode}/members/${member.id}`,
-					{ memberId: viewerMemberId },
-				);
-				if (cancelled) return;
-				if (res.ok) {
-					setOpenBalances(res.data.openBalances);
-				} else {
-					setLoadError('Offene Salden konnten nicht geladen werden.');
-				}
-			} catch {
-				if (!cancelled) setLoadError('Offene Salden konnten nicht geladen werden.');
-			} finally {
-				if (!cancelled) setLoading(false);
+			const res = await apiFetch<OpenBalancesResponse>(
+				`/api/wg/${encodedShareCode}/members/${member.id}`,
+				{ memberId: viewerMemberId },
+			);
+			if (cancelled) return;
+			if (res.ok) {
+				setOpenBalances(res.data.openBalances);
+			} else {
+				setLoadError('Offene Salden konnten nicht geladen werden.');
 			}
+			setLoading(false);
 		}
 		void loadOpenBalances();
 		return () => {
@@ -167,9 +162,9 @@ export function MemberDeactivateDialog({
 
 				<div className="grid gap-2">
 					{loading ? (
-						<p className="text-muted-foreground flex min-h-[44px] items-center gap-2 text-meta">
+						<p className="text-muted-foreground flex min-h-11 items-center gap-2 text-meta">
 							<Spinner aria-hidden />
-							Offene Salden werden geprüft …
+							Offene Salden werden geprüft…
 						</p>
 					) : loadError ? (
 						<Alert>

@@ -51,12 +51,7 @@ export function ConfirmDialog({
 				if (!nextOpen) onClose();
 			}}
 		>
-			<DialogContent
-				initialFocus={cancelBtnRef}
-				finalFocus={true}
-				showCloseButton={false}
-				className="max-h-[calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-2rem)] overflow-y-auto"
-			>
+			<DialogContent initialFocus={cancelBtnRef} finalFocus={true} showCloseButton={false}>
 				<DialogHeader>
 					<DialogTitle className="flex items-start gap-2">
 						{Icon && <Icon className="size-5 shrink-0" aria-hidden="true" />}

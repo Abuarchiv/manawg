@@ -137,7 +137,6 @@ export function useNotificationSettings({ code, memberId }: NotificationSettings
 			const resyncKey = `${code}:${memberId}`;
 			if (pushResyncAttemptedKeyRef.current === resyncKey) return;
 			pushResyncAttemptedKeyRef.current = resyncKey;
-			if (typeof window === 'undefined') return;
 			if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
 			let subscription: PushSubscription | null = null;
 			try {

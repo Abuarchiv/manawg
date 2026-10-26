@@ -209,82 +209,87 @@ export function WgContextProvider({
 		);
 	}
 
-	const backToWgs = (
-		<a
-			href="/neu"
-			className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'mt-3 w-full')}
-		>
-			Zurück zu deinen WGs
-		</a>
-	);
-
-	// No WG header or bottom nav around these two screens, so the status bar inset is theirs.
-	const standaloneMain =
-		'mx-auto max-w-md px-6 pb-6 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] focus:outline-none';
+	const backToWgs = <ShellLink href="/neu">Zurück zu deinen WGs</ShellLink>;
 
 	if (memberLoadError || retrying) {
 		return (
-			<main id="main" tabIndex={-1} className={standaloneMain}>
-				<Alert variant="destructive">
-					<AlertTitle>WG nicht geladen</AlertTitle>
-					<AlertDescription className="text-current">
-						{online
-							? 'Deine WG konnte nicht geladen werden. Bitte versuche es erneut.'
-							: 'Du bist offline. Sobald die Verbindung zurück ist, lädt deine WG von selbst.'}
-					</AlertDescription>
-					<Button
-						type="button"
-						variant="outline"
-						size="lg"
-						className="mt-3 w-full aria-disabled:opacity-50"
-						aria-disabled={retrying}
-						onClick={() => void retryMemberLoad()}
-					>
-						{retrying && <Spinner data-icon="inline-start" aria-hidden />}
-						{retrying ? 'Lädt…' : 'Erneut versuchen'}
-					</Button>
-					{backToWgs}
-				</Alert>
-			</main>
+			<ShellAlert
+				title="WG nicht geladen"
+				description={
+					online
+						? 'Deine WG konnte nicht geladen werden. Bitte versuche es erneut.'
+						: 'Du bist offline. Sobald die Verbindung zurück ist, lädt deine WG von selbst.'
+				}
+			>
+				<Button
+					type="button"
+					variant="outline"
+					size="lg"
+					className="mt-3 w-full aria-disabled:opacity-50"
+					aria-disabled={retrying}
+					onClick={() => void retryMemberLoad()}
+				>
+					{retrying && <Spinner data-icon="inline-start" aria-hidden />}
+					{retrying ? 'Lädt…' : 'Erneut versuchen'}
+				</Button>
+				{backToWgs}
+			</ShellAlert>
 		);
 	}
 
 	if (sessionEnded && !identity) {
 		const next = encodeURIComponent(`${window.location.pathname}${window.location.search}`);
 		return (
-			<main id="main" tabIndex={-1} className={standaloneMain}>
-				<Alert variant="destructive">
-					<AlertTitle>Sitzung beendet</AlertTitle>
-					<AlertDescription className="text-current">
-						Melde dich erneut an, um weiterzumachen.
-					</AlertDescription>
-					<a
-						href={`/neu?next=${next}`}
-						className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'mt-3 w-full')}
-					>
-						Neu anmelden
-					</a>
-				</Alert>
-			</main>
+			<ShellAlert title="Sitzung beendet" description="Melde dich erneut an, um weiterzumachen.">
+				<ShellLink href={`/neu?next=${next}`}>Neu anmelden</ShellLink>
+			</ShellAlert>
 		);
 	}
 
 	if (!identity) {
 		return (
-			<main id="main" tabIndex={-1} className={standaloneMain}>
-				<Alert variant="destructive">
-					<AlertTitle>Kein Zugriff</AlertTitle>
-					<AlertDescription className="text-current">
-						Du bist in dieser WG nicht (mehr) Mitglied, z. B. weil du ausgezogen bist oder entfernt
-						wurdest.
-					</AlertDescription>
-					{backToWgs}
-				</Alert>
-			</main>
+			<ShellAlert
+				title="Kein Zugriff"
+				description="Du bist in dieser WG nicht (mehr) Mitglied, z. B. weil du ausgezogen bist oder entfernt wurdest."
+			>
+				{backToWgs}
+			</ShellAlert>
 		);
 	}
 
 	return <WgContext.Provider value={value}>{children}</WgContext.Provider>;
+}
+
+// No WG header or bottom nav around the shell alerts, so the status bar inset is theirs.
+const STANDALONE_MAIN =
+	'mx-auto max-w-md px-6 pb-6 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] focus:outline-none';
+
+/** Full-page alert shown instead of the app when the WG shell cannot render its content. */
+function ShellAlert({
+	title,
+	description,
+	children,
+}: { title: string; description: string; children: ReactNode }) {
+	return (
+		<main id="main" tabIndex={-1} className={STANDALONE_MAIN}>
+			<Alert variant="destructive">
+				<AlertTitle>{title}</AlertTitle>
+				<AlertDescription className="text-current">{description}</AlertDescription>
+				{children}
+			</Alert>
+		</main>
+	);
+}
+
+function ShellLink({ href, children }: { href: string; children: ReactNode }) {
+	return (
+		<a
+			href={href}
+			className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'mt-3 w-full')}
+		>
+			{children}
+		</a>
+	);
 }
 
 export function useWg(): WgContextValue {

@@ -146,7 +146,7 @@ export function OfflineBanner() {
 					<Link
 						href="/offline"
 						aria-label="Offline-Übersicht prüfen"
-						className="focus-visible:ring-ring inline-flex min-h-[44px] shrink-0 items-center rounded-md px-2 underline underline-offset-2 focus-visible:ring-2 focus-visible:outline-none"
+						className="focus-visible:ring-ring inline-flex min-h-11 shrink-0 items-center rounded-md px-2 underline underline-offset-2 focus-visible:ring-2 focus-visible:outline-none"
 					>
 						Prüfen
 					</Link>
@@ -169,7 +169,7 @@ export function OfflineBanner() {
 			<div className="mx-auto flex w-full max-w-2xl flex-wrap items-center justify-between gap-x-3">
 				<Link
 					href={settingsDataHref}
-					className="flex min-h-[44px] min-w-0 flex-[1_1_8rem] items-center leading-snug text-pretty"
+					className="flex min-h-11 min-w-0 flex-[1_1_8rem] items-center leading-snug text-pretty"
 				>
 					{notice ??
 						(replayUnsupported
@@ -187,7 +187,7 @@ export function OfflineBanner() {
 						aria-label={
 							syncing ? 'Offline-Aktionen werden gesendet' : 'Offline-Aktionen jetzt senden'
 						}
-						className="min-h-[44px] shrink-0 text-meta"
+						className="min-h-11 shrink-0 text-meta"
 					>
 						{syncing ? <Spinner aria-hidden /> : notice ? <AlertCircle aria-hidden /> : null}
 						Jetzt senden
