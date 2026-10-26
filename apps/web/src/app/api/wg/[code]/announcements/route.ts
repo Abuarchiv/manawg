@@ -38,6 +38,8 @@ import {
 	gt,
 	inArray,
 	isNotNull,
+	isNull,
+	ne,
 	notInArray,
 	or,
 	sql,
@@ -164,7 +166,13 @@ export const GET = withWgRoute('announcements GET', async (req, { code }) => {
 		})
 		.from(announcementReactions)
 		.innerJoin(wgMembers, eq(announcementReactions.memberId, wgMembers.id))
-		.where(inArray(announcementReactions.announcementId, ids));
+		.where(
+			and(
+				inArray(announcementReactions.announcementId, ids),
+				// A moved-out member no longer takes care of anything; "seen" and "ok" stay history.
+				or(ne(announcementReactions.reaction, 'take'), isNull(wgMembers.deactivatedAt)),
+			),
+		);
 	const comments = await db
 		.select({
 			id: announcementComments.id,

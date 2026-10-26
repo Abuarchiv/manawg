@@ -52,7 +52,9 @@ export async function deleteWgCascade(tx: DbTransaction, wgId: string): Promise<
  */
 function raiseClientReadTimeout(tx: DbTransaction, ms: number): () => void {
 	const params = (
-		tx as { session?: { client?: { connectionParameters?: { query_timeout?: number | undefined } } } }
+		tx as {
+			session?: { client?: { connectionParameters?: { query_timeout?: number | undefined } } };
+		}
 	).session?.client?.connectionParameters;
 	if (!params) return () => {};
 	const previous = params.query_timeout;

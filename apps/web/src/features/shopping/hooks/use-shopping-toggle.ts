@@ -187,7 +187,12 @@ export function useShoppingToggle(ctx: ShoppingActionContext) {
 		async (item: ShoppingItem): Promise<void> => {
 			if (isPending(item.id) || togglingRef.current.has(item.id) || isTempItemId(item.id)) return;
 			const queue = readOfflineQueue();
-			if (hasQueuedShoppingUpdate(queue, wg.shareCode, memberId, item.id)) return;
+			if (hasQueuedShoppingUpdate(queue, wg.shareCode, memberId, item.id)) {
+				setToggleError(
+					`„${item.name}“ hat noch eine nicht gesendete Änderung. Sie steht unter Einstellungen → Daten → Offline-Warteschlange.`,
+				);
+				return;
+			}
 			const bought = item.boughtAt === null;
 			const queuedCreate = queue.some(
 				(queued) =>
