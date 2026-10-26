@@ -3,6 +3,7 @@
 import { useToast } from '@/components/ui/Toast';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
+import { apiFetch } from '@/core/infra/api-client';
 import {
 	PUSH_PRIMING_DISMISS_KEY,
 	isPushOptedOut,
@@ -10,7 +11,11 @@ import {
 	shouldAutoResubscribePush,
 	shouldShowPushPriming,
 } from '@/core/notifications/push-priming';
-import { isPushSupported, subscribeWebPush } from '@/core/notifications/push-subscribe';
+import {
+	isPushSupported,
+	persistExistingWebPushSubscription,
+	subscribeWebPush,
+} from '@/core/notifications/push-subscribe';
 import { isEditingTarget, safeLocalStorage } from '@/core/utils/browser';
 import { X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -98,14 +103,29 @@ export function PushPrimingPrompt({
 			const configured = !!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 			const permission = supported ? Notification.permission : null;
 			if (permission !== 'granted' || !configured) return;
-			let hasSubscription = true;
+			let existing: PushSubscription | null | undefined;
 			try {
 				const registration = await navigator.serviceWorker.getRegistration();
 				if (cancelled) return;
-				const existing = await registration?.pushManager.getSubscription();
+				existing = await registration?.pushManager.getSubscription();
 				if (cancelled) return;
-				hasSubscription = !!existing;
 			} catch {
+				return;
+			}
+			const hasSubscription = !!existing;
+			// One browser subscription serves every WG of the account. A WG joined (or rejoined)
+			// after push was turned on has never seen it, so hand it over once the server says off.
+			if (existing && !isPushOptedOut(memberId)) {
+				const status = await apiFetch<{ pushOptIn: boolean }>(
+					`/api/wg/${encodeURIComponent(code)}/notifications`,
+					{ memberId },
+				);
+				if (cancelled || !status.ok || status.data.pushOptIn !== false) return;
+				try {
+					await persistExistingWebPushSubscription(code, memberId, existing);
+				} catch {
+					// Silent like the resubscribe below; Einstellungen retries with a real error.
+				}
 				return;
 			}
 			if (

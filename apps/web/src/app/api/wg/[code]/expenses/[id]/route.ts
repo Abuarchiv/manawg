@@ -302,6 +302,15 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 							nextAmounts.get(split.debtorMemberId) !== split.amountCents,
 					);
 				if (changedInactiveSplit) throw new TransactionAbort('member_not_in_wg');
+				// Same rule as delete: a share someone else already settled means money moved,
+				// and changing or dropping it would silently reopen or erase that payment.
+				const changedSettledShare = previousSplits.some(
+					(split) =>
+						split.settledAt !== null &&
+						split.debtorMemberId !== row.paidByMemberId &&
+						nextAmounts.get(split.debtorMemberId) !== split.amountCents,
+				);
+				if (changedSettledShare) throw new TransactionAbort('expense_has_settled_shares');
 			}
 
 			const updateConditions = [eq(expenses.id, id), eq(expenses.wgId, wgId)];
@@ -367,6 +376,8 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 			if (writeErr.code === 'expense_changed')
 				return conflict('expense_changed', 'expense_conflict');
 			if (writeErr.code === 'member_not_in_wg') return badRequest('member_not_in_wg');
+			if (writeErr.code === 'expense_has_settled_shares')
+				return conflict('expense_has_settled_shares');
 			return serverError(writeErr.code);
 		}
 		logApiError('[expense PATCH] update failed', writeErr);

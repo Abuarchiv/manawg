@@ -57,13 +57,14 @@ test('month balances, Berlin month edges and fewest transfers', () => {
 			balanceCents,
 		]),
 		[
-			['L', 2000, 1500, 500],
-			['J', 1000, 1500, -500],
+			// L's settled 300 of "b" no longer counts as open.
+			['L', 2000, 1500, 800],
+			['J', 1000, 1500, -800],
 		],
 	);
 	assert.deepEqual(
 		statement.transfers.map(({ fromId, toId, cents }) => [fromId, toId, cents]),
-		[['J', 'L', 500]],
+		[['J', 'L', 800]],
 	);
 	assert.equal(statement.settled, false);
 });
@@ -124,12 +125,12 @@ test('completed payments of the month offset open shares', () => {
 	assert.deepEqual(paid.transfers, []);
 	assert.equal(paid.settled, true);
 
-	// A payment from another month leaves this month open.
-	const other = buildMonthlyStatement(expenses, members, '2026-09', [
+	// A later payment settles this month too.
+	const later = buildMonthlyStatement(expenses, members, '2026-09', [
 		payment('2026-10-10T10:00:00Z'),
 	]);
-	assert.equal(other.settled, false);
-	assert.equal(other.transfers.length, 1);
+	assert.equal(later.settled, true);
+	assert.deepEqual(later.transfers, []);
 
 	// A partial payment keeps the month open with the remainder.
 	const partial = buildMonthlyStatement(expenses, members, '2026-09', [
@@ -137,4 +138,31 @@ test('completed payments of the month offset open shares', () => {
 	]);
 	assert.equal(partial.settled, false);
 	assert.equal(partial.transfers[0]?.cents, 600);
+});
+
+test('a payment for an older month never shows up as a reverse debt in its own month', () => {
+	const expenses = [
+		expense('sep', 'L', '2026-09-02T10:00:00Z', { L: 1000, J: 1000 }),
+		expense('oct', 'L', '2026-10-05T10:00:00Z', { L: 500, J: 500 }),
+	];
+	const payments = [
+		{
+			fromMemberId: 'J',
+			toMemberId: 'L',
+			amountCents: 1200,
+			currency: 'EUR',
+			completedAt: '2026-10-20T10:00:00Z',
+		},
+	];
+	const september = buildMonthlyStatement(expenses, members, '2026-09', payments);
+	assert.equal(september.settled, true);
+	assert.deepEqual(september.transfers, []);
+
+	// 1000 of the payment went to September; October keeps 300 of its 500 open, same direction.
+	const october = buildMonthlyStatement(expenses, members, '2026-10', payments);
+	assert.equal(october.settled, false);
+	assert.deepEqual(
+		october.transfers.map(({ fromId, toId, cents }) => [fromId, toId, cents]),
+		[['J', 'L', 300]],
+	);
 });

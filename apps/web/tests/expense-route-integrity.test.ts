@@ -385,6 +385,40 @@ test('expense PATCH preserves split integrity with fractional timestamps and con
 	assert.deepEqual(currentSplits, [
 		{ expenseId: EXPENSE_ID, debtorMemberId: CALLER_ID, amountCents: 2000, settledAt: null },
 	]);
+
+	const settledSplits = [
+		{ expenseId: EXPENSE_ID, debtorMemberId: CALLER_ID, amountCents: 1000, settledAt: null },
+		{
+			expenseId: EXPENSE_ID,
+			debtorMemberId: debtorId,
+			amountCents: 1000,
+			settledAt: new Date('2026-09-12T00:00:00.000Z'),
+		},
+	];
+	currentSplits = settledSplits;
+	const reopenedSettledResponse = await patch({
+		amountCents: 2400,
+		splits: [
+			{ debtorMemberId: CALLER_ID, amountCents: 1200 },
+			{ debtorMemberId: debtorId, amountCents: 1200 },
+		],
+	});
+	assert.equal(reopenedSettledResponse.status, 409);
+	assert.equal(await errorOf(reopenedSettledResponse), 'expense_has_settled_shares');
+	assert.deepEqual(currentSplits, settledSplits);
+	const keptSettledResponse = await patch({
+		amountCents: 2400,
+		splits: [
+			{ debtorMemberId: CALLER_ID, amountCents: 1400 },
+			{ debtorMemberId: debtorId, amountCents: 1000 },
+		],
+	});
+	assert.equal(keptSettledResponse.status, 200);
+	assert.deepEqual(
+		currentSplits.find((split) => split.debtorMemberId === debtorId)?.settledAt,
+		settledSplits[1]?.settledAt,
+	);
+
 	capturing = true;
 	const blockedFinancialEdit = await patch({ currency: 'USD' });
 	assert.equal(blockedFinancialEdit.status, 409);
