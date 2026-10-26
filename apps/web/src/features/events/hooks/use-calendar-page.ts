@@ -77,6 +77,10 @@ export function useCalendarPage(month: Date) {
 	const [loadError, setLoadError] = useState<string | null>(null);
 	const hasCalendarDataRef = useRef(Boolean(cachedEvents && cachedChores));
 	const createEventRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
+	// Month switches start a new load; an older one answering late must not overwrite it.
+	const loadSeqRef = useRef(0);
+	const monthCachedRef = useRef(Boolean(cachedEvents));
+	monthCachedRef.current = Boolean(cachedEvents);
 
 	const [createOpen, setCreateOpen] = useState(false);
 	const [editing, setEditingState] = useState<EditableEvent | null>(null);
@@ -101,8 +105,13 @@ export function useCalendarPage(month: Date) {
 	const load = useCallback(
 		async (isInitial: boolean): Promise<void> => {
 			if (isInitial && !hasCalendarDataRef.current) setLoading(true);
+			const seq = ++loadSeqRef.current;
 
 			const [eventsRes, choreRes] = await Promise.all([refreshEvents(), refreshChores()]);
+			if (seq !== loadSeqRef.current) {
+				if (isInitial) setLoading(false);
+				return;
+			}
 
 			// Offline with an existing cache: keep showing data, no error state.
 			const keepCached = (res: { ok: boolean; status?: number; error?: string }): boolean =>
@@ -110,6 +119,9 @@ export function useCalendarPage(month: Date) {
 			let nextError: string | null = null;
 			if (eventsRes.ok) setEvents(eventsRes.data.events);
 			else if (!keepCached(eventsRes)) nextError = 'Termine konnten nicht geladen werden.';
+			// The events shown belong to another month's window; say so instead of an empty month.
+			else if (!monthCachedRef.current)
+				nextError = 'Termine dieses Monats sind offline nicht verfügbar.';
 			if (choreRes.ok) {
 				setChores(
 					choreRes.data.chores.map(({ id, title, nextDueAt }) => ({ id, title, nextDueAt })),
