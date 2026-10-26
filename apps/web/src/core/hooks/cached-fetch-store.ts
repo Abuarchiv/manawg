@@ -1,3 +1,4 @@
+import { NETWORK_ERROR_CODE } from '@/core/http/error-codes';
 import { apiFetch, mutationGeneration } from '@/core/infra/api-client';
 import { captureException } from '@/core/infra/capture-client';
 
@@ -182,7 +183,7 @@ function startFetch<T>(key: string, url: string, options: CachedFetchOptions): P
 				error:
 					current.error && current.error.status > 0
 						? current.error
-						: { status: 0, error: 'Netzwerkfehler' },
+						: { status: 0, error: NETWORK_ERROR_CODE },
 				isLoading: false,
 				isFetching: false,
 			});
@@ -218,7 +219,7 @@ export async function refreshCacheEntry<T>(
 			serverRevision: current.serverRevision,
 		};
 	}
-	return { ok: false, status: 0, error: 'Netzwerkfehler' };
+	return { ok: false, status: 0, error: NETWORK_ERROR_CODE };
 }
 
 export function updateCache<T>(key: string, update: CachedDataUpdate<T>): void {

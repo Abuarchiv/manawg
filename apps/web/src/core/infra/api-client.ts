@@ -1,3 +1,4 @@
+import { INVALID_RESPONSE_CODE, NETWORK_ERROR_CODE } from '@/core/http/error-codes';
 import { EXPECTED_MEMBER_ID_HEADER } from '@/shared/lib/member-header';
 
 /** A request the server has not answered by then counts as a network failure. */
@@ -128,7 +129,7 @@ export async function apiFetch<T>(
 			return {
 				ok: false,
 				status: 0,
-				error: 'Unerwartete Serverantwort',
+				error: INVALID_RESPONSE_CODE,
 			};
 		}
 		try {
@@ -138,11 +139,11 @@ export async function apiFetch<T>(
 			return {
 				ok: false,
 				status: 0,
-				error: 'Unerwartete Serverantwort',
+				error: INVALID_RESPONSE_CODE,
 			};
 		}
 	} catch {
-		return { ok: false, status: 0, error: 'Netzwerkfehler' };
+		return { ok: false, status: 0, error: NETWORK_ERROR_CODE };
 	} finally {
 		if (isMutation) mutationCount += 1;
 	}

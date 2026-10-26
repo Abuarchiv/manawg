@@ -120,6 +120,6 @@ test('dashboard due recurring count matches active Abos and retains paused activ
 			.filter((item) => item.kind === 'recurring')
 			.map((item) => item.text)
 			.sort(),
-		['Internet als Vorlage angelegt', 'Wasser als Vorlage angelegt'],
+		['Internet als Fixkosten-Vorlage angelegt', 'Wasser als Fixkosten-Vorlage angelegt'],
 	);
 });

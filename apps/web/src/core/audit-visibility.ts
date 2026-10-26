@@ -1,3 +1,5 @@
+import { isRecord } from '@/core/utils/is-record';
+
 /**
  * Audit metadata keys that stay with the person or the system. Every member can read the
  * activity feed, so details such as one person's quiet hours or a WG's creation-time share
@@ -24,7 +26,7 @@ export function publicAuditMetadata(
 	if (!hidden) return metadataJson;
 	try {
 		const parsed: unknown = JSON.parse(metadataJson);
-		if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return metadataJson;
+		if (!isRecord(parsed)) return metadataJson;
 		const visible = Object.fromEntries(
 			Object.entries(parsed).filter(([key]) => !hidden.includes(key)),
 		);

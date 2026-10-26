@@ -147,18 +147,22 @@ export function unreadableJsonBody(err: unknown): NextResponse<ApiErrorBody> {
  * Return a server error response. Idempotency safety failures are returned as
  * an explicit retryable 503 so callers never continue into the mutation.
  *
- * Supports two calling styles (backward-compatible):
- *   - `serverError()` — reports `server_error`, so bare calls are still
- *     visible to error monitoring instead of failing silently
- *   - `serverError('share_code_exhausted')` — response message, also reported
- *   - `serverError(err, 'message')` — reports the caught error, then returns 500
+ * Every call is reported to error monitoring:
+ *   - `serverError()` reports `server_error`
+ *   - `serverError('share_code_exhausted')` uses the string as response message
+ *   - `serverError(err, 'message')` reports the caught error, then returns 500
+ *   - `serverError(null, 'message')` reports a new `Error(message)`
  *
- * Heuristic: if the first arg is a `string` (or omitted), it is treated as the
- * response message. Anything else is treated as the error to report.
- *
- * Using this helper from API route catch blocks keeps error reporting out of
- * every individual route file.
+ * A string first argument is the message; any other value is the error to
+ * report. Using this helper from API route catch blocks keeps error reporting
+ * out of every individual route file.
  */
+export function serverError(message?: string): NextResponse<ApiErrorBody>;
+export function serverError(
+	err: unknown,
+	message?: string,
+	code?: string,
+): NextResponse<ApiErrorBody>;
 export function serverError(
 	errOrMessage?: unknown,
 	message = 'server_error',

@@ -15,6 +15,16 @@ export interface OfflineFailureExplanation {
 /** Also tells a fresh connection failure apart from a server answer. */
 export const OFFLINE_NO_CONNECTION_TITLE = 'Noch keine Verbindung';
 
+/**
+ * Prefixes of `lastError` texts that mark an action as held for manual review.
+ * Persisted queue entries carry them, so the replay rules match on them.
+ */
+export const SERVER_CHECK_PREFIX = 'Server prüfen:';
+export const IMAGE_MISSING_PREFIX = 'Bild fehlt:';
+export const IMAGE_REMOVED_PREFIX = 'Bild wurde entfernt:';
+
+export const IMAGE_REMOVED_ERROR = `${IMAGE_REMOVED_PREFIX} Entferne den Anhang in der Offline-Warteschlange oder wähle das Bild erneut aus.`;
+
 const NO_CONNECTION: OfflineFailureExplanation = {
 	title: OFFLINE_NO_CONNECTION_TITLE,
 	detail: 'Die Aktion bleibt gespeichert und wird erneut versucht, sobald das Netz zurück ist.',
@@ -71,7 +81,7 @@ const FAILURE_BY_CODE: Readonly<Record<string, OfflineFailureExplanation>> = {
 	member_deactivated: {
 		title: 'Du bist ausgezogen',
 		detail:
-			'Dein Mitglied ist in dieser WG als ausgezogen markiert. Neu anmelden hilft nicht: Bitte die WG, dich wieder aufzunehmen, bevor du diese Aktion sendest.',
+			'Dein Mitglied ist in dieser WG als ausgezogen markiert. Neu anmelden hilft nicht. Frag die WG, ob sie dich wieder aufnimmt, bevor du diese Aktion sendest.',
 	},
 	member_not_in_wg: {
 		title: 'Mitglied in Aktion prüfen',

@@ -1,4 +1,4 @@
-import { parseTimestamp } from '@/core/utils/time';
+import { MS_PER_HOUR, parseTimestamp } from '@/core/utils/time';
 import type { OfflineAction } from './offline-action';
 import {
 	type OfflineActionRequest,
@@ -85,10 +85,15 @@ export function getOfflineActionSummary(action: OfflineAction): OfflineActionSum
 	return offlineActionHandlers[action.type].summary(action);
 }
 
+const BASE_RETRY_DELAY_MS = 15_000;
+const MAX_RETRY_DELAY_MS = 15 * 60_000;
+/** Older queued actions get a risk hint even without an error. */
+const REVIEW_AFTER_HOURS = 6;
+
 function getOfflineRetryDelayMs(action: OfflineAction): number {
 	const attempts = action.attempts ?? 0;
 	if (attempts <= 0) return 0;
-	return Math.min(15 * 60_000, 15_000 * 2 ** attempts);
+	return Math.min(MAX_RETRY_DELAY_MS, BASE_RETRY_DELAY_MS * 2 ** attempts);
 }
 
 export function shouldRetryOfflineAction(action: OfflineAction, now = Date.now()): boolean {
@@ -119,9 +124,10 @@ export function getOfflineActionRisk(
 			detail: 'Der gespeicherte Zeitpunkt liegt in der Zukunft. Prüfe den Eintrag vor dem Senden.',
 		};
 	}
-	const ageHours = Math.floor((now - createdAt) / 3_600_000);
-	if (ageHours < 6 && !action.lastError) return null;
+	const ageHours = Math.floor((now - createdAt) / MS_PER_HOUR);
+	if (ageHours < REVIEW_AFTER_HOURS && !action.lastError) return null;
 	// A fresh no-connection failure says nothing about the server state.
-	if (ageHours < 6 && action.lastError?.startsWith(OFFLINE_NO_CONNECTION_TITLE)) return null;
+	if (ageHours < REVIEW_AFTER_HOURS && action.lastError?.startsWith(OFFLINE_NO_CONNECTION_TITLE))
+		return null;
 	return offlineActionHandlers[action.type].risk(action);
 }

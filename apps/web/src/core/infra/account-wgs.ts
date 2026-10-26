@@ -1,4 +1,5 @@
 import { apiFetch } from '@/core/infra/api-client';
+import { isRecord } from '@/core/utils/is-record';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 
 export interface AccountWg {
@@ -8,10 +9,10 @@ export interface AccountWg {
 }
 
 function isAccountWg(value: unknown): value is AccountWg {
-	if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-	const id = Reflect.get(value, 'id');
-	const code = Reflect.get(value, 'code');
-	const name = Reflect.get(value, 'name');
+	if (!isRecord(value)) return false;
+	const id = value.id;
+	const code = value.code;
+	const name = value.name;
 	return (
 		typeof id === 'string' &&
 		id.length > 0 &&
@@ -24,8 +25,8 @@ function isAccountWg(value: unknown): value is AccountWg {
 
 /** Validates the `/api/wg/mine` body; null when any entry is malformed. */
 export function parseAccountWgs(value: unknown): AccountWg[] | null {
-	if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-	const wgs = Reflect.get(value, 'wgs');
+	if (!isRecord(value)) return null;
+	const wgs = value.wgs;
 	if (!Array.isArray(wgs) || !wgs.every(isAccountWg)) return null;
 	return wgs.map((wg) => ({
 		id: wg.id,

@@ -1,5 +1,5 @@
 const MS_PER_MINUTE = 60_000;
-const MS_PER_HOUR = 60 * MS_PER_MINUTE;
+export const MS_PER_HOUR = 60 * MS_PER_MINUTE;
 export const MS_PER_DAY = 24 * MS_PER_HOUR;
 
 export function parseTimestamp(value: string | Date): number | null {
@@ -26,19 +26,8 @@ export function formatRelativeTime(iso: string, now = Date.now()): string {
 	if (!date) return 'Zeit unbekannt';
 	const diff = now - date.getTime();
 
-	// A diff at least a minute negative is a genuine future timestamp (e.g. a
-	// mahnung cooldown's nextAllowedAt, always hours away). Without this
-	// branch every future date fell into `diff < MS_PER_MINUTE` (any negative
-	// number is < 60_000) and rendered as "gerade eben" — reading as "possible
-	// again right now" for something that is, say, still 48h away.
-	//
-	// The `-MS_PER_MINUTE` cutoff (rather than `< 0`) is deliberate: a
-	// just-sent chat message's `createdAt` routinely lands a few hundred ms
-	// ahead of the reading client's `now` — ordinary clock skew plus the
-	// round-trip before the optimistic render — which produced a small
-	// negative diff and misfired this branch as "gleich" for a message that
-	// had, from the user's point of view, already been sent. Below one
-	// minute stays in the ordinary "gerade eben" bucket on the other branch.
+	// From one minute in the future on, show "in …"; smaller negative diffs
+	// (client clock skew against a just-created timestamp) count as "gerade eben".
 	if (diff <= -MS_PER_MINUTE) {
 		const until = -diff;
 		if (until < MS_PER_HOUR) {

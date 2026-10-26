@@ -1,20 +1,12 @@
 'use client';
 
+import { isRetryableServerError } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
 import { setPushOptOut } from '@/core/notifications/push-priming';
+import { PushError } from '@/core/notifications/web-push-errors';
 
 function isStaleMembershipError(error: string): boolean {
 	return error === 'not_a_member' || error === 'member_not_found';
-}
-
-function isRetryableServerError(status: number, error: string): boolean {
-	return (
-		status >= 500 ||
-		status === 429 ||
-		error === 'server_error' ||
-		error === 'unexpected_error' ||
-		error === 'db_error'
-	);
 }
 
 /** Resolves to whether another WG of this account still uses the endpoint. */
@@ -36,12 +28,12 @@ async function saveServerPushOptOut(
 	);
 	if (!saved.ok) {
 		if (isStaleMembershipError(saved.error)) {
-			throw new Error('Push-Abo konnte nicht deaktiviert werden: Tritt der WG erneut bei.');
+			throw new PushError('Web Push konnte nicht deaktiviert werden: Tritt der WG erneut bei.');
 		}
-		if (isRetryableServerError(saved.status, saved.error)) {
-			throw new Error('Push-Abo konnte nicht deaktiviert werden: Versuche es gleich erneut.');
+		if (isRetryableServerError(saved.error, saved.status)) {
+			throw new PushError('Web Push konnte nicht deaktiviert werden: Versuche es gleich erneut.');
 		}
-		throw new Error('Push-Abo konnte nicht deaktiviert werden.');
+		throw new PushError('Web Push konnte nicht deaktiviert werden.');
 	}
 	return saved.data?.endpointInUse === true;
 }
@@ -56,10 +48,10 @@ export async function retireWebPushEndpoint(
 }
 
 /** The browser endpoint is registered for a member of another account. */
-class EndpointOwnedError extends Error {}
+class EndpointOwnedError extends PushError {}
 
 const ENDPOINT_OWNED_MESSAGE =
-	'Push-Abo konnte nicht gespeichert werden: Dieser Browser ist mit einem anderen Konto verbunden. Versuche es erneut.';
+	'Web Push konnte nicht gespeichert werden: Dieser Browser ist mit einem anderen Konto verbunden. Versuche es erneut.';
 
 async function saveServerPushOptIn(
 	code: string,
@@ -73,7 +65,9 @@ async function saveServerPushOptIn(
 	const json = subscription.toJSON();
 	if (!json.endpoint || !json.keys?.p256dh || !json.keys.auth) {
 		if (createdSubscription) await subscription.unsubscribe().catch(() => undefined);
-		throw new Error('Push-Abo konnte nicht gelesen werden.');
+		throw new PushError(
+			'Web Push konnte nicht aktiviert werden: Der Browser lieferte unvollständige Daten.',
+		);
 	}
 
 	const encodedCode = encodeURIComponent(code);
@@ -91,15 +85,15 @@ async function saveServerPushOptIn(
 		if (createdSubscription) await subscription.unsubscribe().catch(() => undefined);
 		if (saved.error === 'endpoint_owned') throw new EndpointOwnedError(ENDPOINT_OWNED_MESSAGE);
 		if (saved.error === 'push_subscription_invalid') {
-			throw new Error('Push-Abo konnte nicht gespeichert werden: Aktiviere Web Push neu.');
+			throw new PushError('Web Push konnte nicht gespeichert werden: Aktiviere es neu.');
 		}
 		if (isStaleMembershipError(saved.error)) {
-			throw new Error('Push-Abo konnte nicht gespeichert werden: Tritt der WG erneut bei.');
+			throw new PushError('Web Push konnte nicht gespeichert werden: Tritt der WG erneut bei.');
 		}
-		if (isRetryableServerError(saved.status, saved.error)) {
-			throw new Error('Push-Abo konnte nicht gespeichert werden: Versuche es gleich erneut.');
+		if (isRetryableServerError(saved.error, saved.status)) {
+			throw new PushError('Web Push konnte nicht gespeichert werden: Versuche es gleich erneut.');
 		}
-		throw new Error('Push-Abo konnte nicht gespeichert werden.');
+		throw new PushError('Web Push konnte nicht gespeichert werden.');
 	}
 }
 
@@ -152,15 +146,15 @@ export async function persistExistingWebPushSubscription(
 
 export async function subscribeWebPush(code: string, memberId: string): Promise<void> {
 	if (!isPushSupported()) {
-		throw new Error('Push wird von diesem Browser nicht unterstützt.');
+		throw new PushError('Push wird von diesem Browser nicht unterstützt.');
 	}
 	const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 	if (!vapidKey) {
-		throw new Error('Push ist noch nicht konfiguriert.');
+		throw new PushError('Push ist noch nicht konfiguriert.');
 	}
 	const permission = await Notification.requestPermission();
 	if (permission !== 'granted') {
-		throw new Error('Benachrichtigungen wurden nicht erlaubt.');
+		throw new PushError('Benachrichtigungen wurden nicht erlaubt.');
 	}
 
 	const registration = await navigator.serviceWorker.ready;
