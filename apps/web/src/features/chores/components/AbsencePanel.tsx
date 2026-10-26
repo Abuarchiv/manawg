@@ -281,7 +281,7 @@ export function AbsencePanel({
 											onClick={() => {
 												if (requestRemove(absence.id)) onRemove(absence.id);
 											}}
-											aria-label={`${armed ? 'Wirklich entfernen?: ' : ''}Abwesenheit von ${absence.memberName} (${formatShortDateRange(absence.startDate, absence.endDate)})${armed ? '' : ' entfernen'}`}
+											aria-label={`${armed ? 'Wirklich entfernen? ' : ''}Abwesenheit von ${absence.memberName} (${formatShortDateRange(absence.startDate, absence.endDate)})${armed ? '' : ' entfernen'}`}
 										>
 											{removing && <Spinner data-icon="inline-start" aria-hidden />}
 											{armed ? 'Wirklich entfernen?' : 'Entfernen'}
