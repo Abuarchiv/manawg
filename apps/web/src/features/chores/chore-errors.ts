@@ -6,13 +6,21 @@ import {
 	isSessionExpired,
 	mutationErrorMessage,
 } from '@/core/http/error-codes';
+import {
+	ABSENCE_REASON_MAX,
+	CHORE_INTERVAL_MAX_DAYS,
+	CHORE_INTERVAL_MAX_MONTHS,
+	CHORE_INTERVAL_MIN,
+	CHORE_TITLE_MAX,
+	CHORE_TITLE_MIN,
+} from '@/features/chores/chore-limits';
 
 const ABSENCE_SUBJECT = 'Abwesenheit konnte nicht gespeichert werden';
 const ABSENCE_ERRORS: Record<string, string> = {
 	date_range_invalid: `${ABSENCE_SUBJECT}: Das Enddatum liegt vor dem Startdatum.`,
 	absence_overlaps_existing: `${ABSENCE_SUBJECT}: Für diese Person gibt es im Zeitraum schon eine Abwesenheit.`,
 	not_owner: `${ABSENCE_SUBJECT}: Nur die Person selbst oder ein WG-Admin darf das eintragen.`,
-	reason_invalid: `${ABSENCE_SUBJECT}: Der Grund darf höchstens 120 Zeichen haben.`,
+	reason_invalid: `${ABSENCE_SUBJECT}: Der Grund darf höchstens ${ABSENCE_REASON_MAX} Zeichen haben.`,
 	member_not_in_wg: `${ABSENCE_SUBJECT}: Dieses Mitglied ist nicht mehr in dieser WG.`,
 	insert_failed: `${ABSENCE_SUBJECT}: Prüfe den Putzplan und versuche es erneut.`,
 	invalid_json: `${ABSENCE_SUBJECT}: Die Anfrage war ungültig.`,
@@ -26,8 +34,8 @@ export function absenceSaveErrorMessage(error: string): string {
 const CHORE_SUBJECT = 'Putzaufgabe konnte nicht gespeichert werden';
 const CHORE_CREATE_ERRORS: Record<string, string> = {
 	member_not_in_wg: `${CHORE_SUBJECT}: Dieses Mitglied ist nicht mehr in dieser WG.`,
-	interval_invalid: `${CHORE_SUBJECT}: Das Intervall muss zwischen 1 und 365 Tagen oder 1 und 60 Monaten liegen.`,
-	title_invalid: `${CHORE_SUBJECT}: Der Titel muss 1 bis 120 Zeichen haben.`,
+	interval_invalid: `${CHORE_SUBJECT}: Das Intervall muss zwischen ${CHORE_INTERVAL_MIN} und ${CHORE_INTERVAL_MAX_DAYS} Tagen oder ${CHORE_INTERVAL_MIN} und ${CHORE_INTERVAL_MAX_MONTHS} Monaten liegen.`,
+	title_invalid: `${CHORE_SUBJECT}: Der Titel muss ${CHORE_TITLE_MIN} bis ${CHORE_TITLE_MAX} Zeichen haben.`,
 	due_date_invalid: `${CHORE_SUBJECT}: Das Fälligkeitsdatum ist ungültig.`,
 	insert_failed: `${CHORE_SUBJECT}: Prüfe den Putzplan und versuche es erneut.`,
 	invalid_body: `${CHORE_SUBJECT}: Die Anfrage war ungültig.`,
@@ -61,8 +69,8 @@ export function choreActionErrorMessage(
 
 const EDIT_SUBJECT = 'Aufgabe konnte nicht bearbeitet werden';
 const CHORE_EDIT_ERRORS: Record<string, string> = {
-	title_invalid: `${EDIT_SUBJECT}: Der Titel muss 1 bis 120 Zeichen haben.`,
-	interval_invalid: `${EDIT_SUBJECT}: Das Intervall muss zwischen 1 und 365 Tagen oder 1 und 60 Monaten liegen.`,
+	title_invalid: `${EDIT_SUBJECT}: Der Titel muss ${CHORE_TITLE_MIN} bis ${CHORE_TITLE_MAX} Zeichen haben.`,
+	interval_invalid: `${EDIT_SUBJECT}: Das Intervall muss zwischen ${CHORE_INTERVAL_MIN} und ${CHORE_INTERVAL_MAX_DAYS} Tagen oder ${CHORE_INTERVAL_MIN} und ${CHORE_INTERVAL_MAX_MONTHS} Monaten liegen.`,
 	due_date_invalid: `${EDIT_SUBJECT}: Das Fälligkeitsdatum ist ungültig.`,
 	member_not_in_wg: `${EDIT_SUBJECT}: Dieses Mitglied ist nicht mehr in dieser WG.`,
 	chore_changed:

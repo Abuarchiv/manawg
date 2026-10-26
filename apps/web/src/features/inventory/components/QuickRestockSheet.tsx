@@ -21,9 +21,6 @@ import {
 	ItemTitle,
 } from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
-import { mutationErrorMessage } from '@/core/http/error-codes';
-import { apiFetch } from '@/core/infra/api-client';
-import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import {
 	type InventoryItemDto,
 	type InventoryMutationItemDto,
@@ -31,6 +28,7 @@ import {
 	quickRestockCandidates,
 	restockAmount,
 } from '@/features/inventory/inventory';
+import { restockItem } from '@/features/inventory/restock-request';
 import { Plus } from 'lucide-react';
 import { useRef, useState } from 'react';
 
@@ -51,7 +49,6 @@ export function QuickRestockSheet({
 	onClose,
 	onChanged,
 }: QuickRestockSheetProps) {
-	const encodedShareCode = encodeURIComponent(shareCode);
 	const [pendingId, setPendingId] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const restockRequestKeysRef = useRef(new Map<string, string>());
@@ -64,45 +61,22 @@ export function QuickRestockSheet({
 
 	async function quickRestock(item: InventoryItemDto): Promise<void> {
 		if (pendingId !== null) return;
-		const amount = restockAmount(item);
-		const requestKey = `${item.id}:${amount}`;
 		setPendingId(item.id);
 		setError(null);
-		const idempotencyKey =
-			restockRequestKeysRef.current.get(requestKey) ?? createOfflineIdempotencyKey();
-		if (!idempotencyKey) {
-			setPendingId(null);
-			setError('Aktualisierung konnte nicht sicher gesendet werden. Versuche es erneut.');
-			return;
-		}
-		restockRequestKeysRef.current.set(requestKey, idempotencyKey);
-		const res = await apiFetch<{ item: InventoryMutationItemDto }>(
-			`/api/wg/${encodedShareCode}/inventory/${encodeURIComponent(item.id)}`,
-			{
-				method: 'PATCH',
-				memberId,
-				headers: { 'Idempotency-Key': idempotencyKey },
-				body: JSON.stringify({ quantityDelta: amount }),
-			},
-		);
+		const outcome = await restockItem({
+			shareCode,
+			memberId,
+			item,
+			keys: restockRequestKeysRef.current,
+		});
 		setPendingId(null);
-		if (res.ok) {
-			restockRequestKeysRef.current.delete(requestKey);
-			onChanged(res.data.item);
-		} else if (res.status === 404 && res.error === 'item_not_found') {
-			restockRequestKeysRef.current.delete(requestKey);
+		if (outcome.kind === 'ok') {
+			onChanged(outcome.item);
+		} else if (outcome.kind === 'gone') {
 			onChanged(undefined, item.id);
 			setError(`${item.name} existiert nicht mehr und wurde aus der Liste entfernt.`);
 		} else {
-			if (res.status > 0 && res.status < 500) restockRequestKeysRef.current.delete(requestKey);
-			setError(
-				mutationErrorMessage(
-					'Aktualisierung fehlgeschlagen',
-					res.error,
-					{},
-					'Aktualisierung fehlgeschlagen. Versuche es erneut.',
-				),
-			);
+			setError(outcome.message);
 		}
 	}
 
@@ -135,7 +109,7 @@ export function QuickRestockSheet({
 					{sorted.length === 0 ? (
 						<Empty className="border border-dashed">
 							<EmptyHeader>
-								<EmptyTitle>Noch keine Verbrauchs-Daten</EmptyTitle>
+								<EmptyTitle>Noch keine Verbrauchsdaten</EmptyTitle>
 								<EmptyDescription>
 									Sobald Vorräte verbraucht werden, erscheinen hier Vorschläge.
 								</EmptyDescription>

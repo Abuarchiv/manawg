@@ -15,6 +15,7 @@ import {
 import { endOfBerlinDay, instantAtBerlinWallTime } from '@/core/utils/berlin-day';
 import type { AbsenceInput } from '@/features/chores/absence';
 import { absenceSaveErrorMessage } from '@/features/chores/chore-errors';
+import { pendingKeys } from '@/features/chores/pending-keys';
 import { useRef, useState } from 'react';
 import type { ChorePageContext } from './chore-page-context';
 import type { QueueEdit } from './use-chore-create';
@@ -79,7 +80,7 @@ export function useAbsences(ctx: ChorePageContext, form: AbsenceFormState, queue
 			setAbsenceError('Das Ende der Abwesenheit liegt in der Vergangenheit.');
 			return;
 		}
-		const pendingKey = 'absence:add';
+		const pendingKey = pendingKeys.ABSENCE_ADD;
 		if (isPending(pendingKey)) return;
 		if (editedQueueItemWasSent('absence.create')) {
 			setQueueEditId(null);
@@ -167,7 +168,7 @@ export function useAbsences(ctx: ChorePageContext, form: AbsenceFormState, queue
 					setAbsenceEnd('');
 					setAbsenceReason('');
 					setQueueEditId(null);
-					toast.success('Offline gespeichert. Die Rotation nutzt diese Abwesenheit sofort lokal.');
+					toast.success('Offline gespeichert. Der Putzplan berücksichtigt die Abwesenheit sofort.');
 					return;
 				}
 				setAbsenceError(absenceSaveErrorMessage(result.error));
@@ -192,7 +193,7 @@ export function useAbsences(ctx: ChorePageContext, form: AbsenceFormState, queue
 	}
 
 	async function removeAbsence(id: string): Promise<void> {
-		const pendingKey = `absence:${id}:remove`;
+		const pendingKey = pendingKeys.absenceRemove(id);
 		if (isPending(pendingKey)) return;
 		startPending(pendingKey);
 		setAbsenceListError(null);

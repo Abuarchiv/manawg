@@ -1,14 +1,6 @@
 'use client';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import {
-	Empty,
-	EmptyContent,
-	EmptyDescription,
-	EmptyHeader,
-	EmptyMedia,
-	EmptyTitle,
-} from '@/components/ui/empty';
 import { ItemGroup } from '@/components/ui/item';
 import { ActionNoticeBanner } from '@/components/wg/ActionNoticeBanner';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
@@ -18,13 +10,14 @@ import { ThumbAction } from '@/components/wg/ThumbAction';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { AbsencePanel } from '@/features/chores/components/AbsencePanel';
 import { ChoreForm } from '@/features/chores/components/ChoreForm';
+import { ChoreListEmpty } from '@/features/chores/components/ChoreListEmpty';
 import { ChoreRow } from '@/features/chores/components/ChoreRow';
 import { FairnessPanel } from '@/features/chores/components/FairnessPanel';
 import { ListSkeleton } from '@/features/chores/components/ListSkeleton';
 import { PutzenHeader } from '@/features/chores/components/PutzenHeader';
-import { QUICK_CHORE_TEMPLATES } from '@/features/chores/components/constants';
 import { usePutzenPage } from '@/features/chores/hooks/use-putzen-page';
-import { Plus, Sparkles } from 'lucide-react';
+import { pendingKeys } from '@/features/chores/pending-keys';
+import { Plus } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useEffect } from 'react';
 
@@ -38,7 +31,7 @@ export default function PutzenPage() {
 		absenceAddPending,
 		absenceEnd,
 		absenceError,
-		absenceId,
+		absenceParam,
 		absenceListError,
 		absenceMemberId,
 		absenceReason,
@@ -192,41 +185,16 @@ export default function PutzenPage() {
 
 			{showSkeleton ? (
 				<ListSkeleton />
-			) : loadError && items.length === 0 ? (
-				<Empty>
-					<EmptyHeader>
-						<EmptyTitle>Noch keine Aufgaben geladen</EmptyTitle>
-						<EmptyDescription>
-							Versuche es erneut, sobald die Verbindung wieder da ist.
-						</EmptyDescription>
-					</EmptyHeader>
-				</Empty>
-			) : items.length === 0 && !initialLoading ? (
-				<Empty>
-					<EmptyHeader>
-						<EmptyMedia variant="icon">
-							<Sparkles aria-hidden />
-						</EmptyMedia>
-						<EmptyTitle>Noch keine Aufgaben</EmptyTitle>
-						<EmptyDescription>Starte mit einer typischen WG-Aufgabe:</EmptyDescription>
-					</EmptyHeader>
-					<EmptyContent className="flex-row flex-wrap justify-center">
-						{QUICK_CHORE_TEMPLATES.map((template) => (
-							<Button
-								key={template.title}
-								variant="outline"
-								onClick={() => applyQuickChore(template)}
-							>
-								{template.title}
-							</Button>
-						))}
-					</EmptyContent>
-				</Empty>
+			) : (loadError && items.length === 0) || (items.length === 0 && !initialLoading) ? (
+				<ChoreListEmpty
+					loadFailed={items.length === 0 && Boolean(loadError)}
+					onQuickChore={applyQuickChore}
+				/>
 			) : (
 				<div id="chore-list" className="flex flex-col gap-4">
 					{overdueFilter.active && (
 						<div className="flex flex-wrap items-center justify-between gap-2">
-							<p className="text-[13px] text-muted-foreground">Nur überfällige Aufgaben</p>
+							<p className="text-xs text-muted-foreground">Nur überfällige Aufgaben</p>
 							<Button variant="outline" size="sm" onClick={overdueFilter.showAll}>
 								Alle anzeigen
 							</Button>
@@ -240,7 +208,7 @@ export default function PutzenPage() {
 						>
 							<h2
 								id={`chore-group-${group.key}`}
-								className="text-[12px] font-medium text-muted-foreground"
+								className="text-meta font-medium text-muted-foreground"
 							>
 								{group.label}
 							</h2>
@@ -257,10 +225,10 @@ export default function PutzenPage() {
 										members={activeMembers}
 										isMine={chore.assignedMemberId === identity.memberId}
 										isPending={isPending(chore.id)}
-										isSwapPending={isPending(`${chore.id}:swap`)}
+										isSwapPending={isPending(pendingKeys.swap(chore.id))}
 										isSwapRequested={swapRequestedIds.has(chore.id)}
-										isTakePending={isPending(`${chore.id}:take`)}
-										isEditPending={isPending(`${chore.id}:edit`)}
+										isTakePending={isPending(pendingKeys.take(chore.id))}
+										isEditPending={isPending(pendingKeys.edit(chore.id))}
 										isCompleteArmed={completeConfirmId === chore.id}
 										completeError={actionError}
 										nextAssigneeName={nextAssigneeNameByChoreId.get(chore.id) ?? null}
@@ -308,7 +276,7 @@ export default function PutzenPage() {
 					totalCount={absences.length}
 					allAbsencesHref={`${wgBaseHref}/putzen?panel=absences`}
 					visibleAbsences={visibleAbsences}
-					highlightedAbsenceId={absenceId}
+					highlightedAbsenceId={absenceParam}
 					flashedAbsenceId={flashAbsenceId}
 					onRemove={(id) => void removeAbsence(id)}
 					isPending={isPending}

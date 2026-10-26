@@ -31,9 +31,11 @@ import { berlinDayKey } from '@/core/utils/berlin-day';
 import { dueAtForDay } from '@/features/chores/chore-due-date';
 import { choreCreateErrorMessage } from '@/features/chores/chore-errors';
 import type { ChoreFairness } from '@/features/chores/chore-fairness';
+import { CHORE_TITLE_MAX } from '@/features/chores/chore-limits';
 import { computeNextDueAt } from '@/features/chores/chore-recurrence';
 import type { RecurrenceType } from '@/features/chores/components/chore-types';
-import { type QUICK_CHORE_TEMPLATES, TITLE_MAX } from '@/features/chores/components/constants';
+import type { QUICK_CHORE_TEMPLATES } from '@/features/chores/components/constants';
+import { pendingKeys } from '@/features/chores/pending-keys';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChorePageContext } from './chore-page-context';
 import type { AbsenceFormState } from './use-absences';
@@ -163,7 +165,7 @@ export function useChoreCreate(
 		url.searchParams.delete('title');
 		window.history.replaceState(window.history.state, '', url);
 		suggestChore({
-			title: prefillTitle.slice(0, TITLE_MAX),
+			title: prefillTitle.slice(0, CHORE_TITLE_MAX),
 			intervalDays: 7,
 			recurrenceType: 'days',
 		});
@@ -198,7 +200,7 @@ export function useChoreCreate(
 	async function add(): Promise<void> {
 		const title = newTitle.trim();
 		if (title.length === 0) return;
-		const pendingKey = 'chore:add';
+		const pendingKey = pendingKeys.CHORE_ADD;
 		if (isPending(pendingKey)) return;
 		if (editedQueueItemWasSent('chore.create')) {
 			setQueueEditId(null);

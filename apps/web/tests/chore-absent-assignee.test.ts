@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 const { getAbsentAssigneeChoreIds } = await import('../src/features/chores/absence.ts');
-const { filterOverdueGroups, getChoreRepairHint, groupChoresForPlan } = await import(
+const { filterOverdueGroups, choreNeedsRepair, groupChoresForPlan } = await import(
 	'../src/features/chores/chore-status.ts'
 );
 
@@ -32,12 +32,8 @@ test('an overdue chore is judged by today, not by its past due day', () => {
 
 test('an absent assignee gets a take-over hint before the chore is escalated', () => {
 	const chore = { assignedMemberId: 'anna', nextDueAt: day(1), assigneeAbsent: true };
-	assert.deepEqual(getChoreRepairHint(chore, NOW), {
-		tone: 'danger',
-		title: 'Zuständig ist abwesend',
-		action: 'Ich übernehme',
-	});
-	assert.equal(getChoreRepairHint({ ...chore, assigneeAbsent: false }, NOW), null);
+	assert.equal(choreNeedsRepair(chore, NOW), true);
+	assert.equal(choreNeedsRepair({ ...chore, assigneeAbsent: false }, NOW), false);
 });
 
 test('chores with an absent assignee sort ahead within their group', () => {

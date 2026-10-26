@@ -3,15 +3,13 @@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import { mutationErrorMessage } from '@/core/http/error-codes';
-import { apiFetch } from '@/core/infra/api-client';
-import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import {
 	type InventoryItemDto,
 	boughtRestockMatches,
 	formatQuantity,
 	restockAmount,
 } from '@/features/inventory/inventory';
+import { restockItem } from '@/features/inventory/restock-request';
 import { PackagePlus } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -73,47 +71,22 @@ export function InventoryRestockPrompt({
 
 	async function restock(item: InventoryItemDto): Promise<void> {
 		if (pendingId !== null) return;
-		const amount = restockAmount(item);
-		const requestKey = `${item.id}:${amount}`;
-		const idempotencyKey = keysRef.current.get(requestKey) ?? createOfflineIdempotencyKey();
-		if (!idempotencyKey) {
-			setError('Aktualisierung konnte nicht sicher gesendet werden. Versuche es erneut.');
-			return;
-		}
-		keysRef.current.set(requestKey, idempotencyKey);
 		setPendingId(item.id);
 		setError(null);
-		const res = await apiFetch(
-			`/api/wg/${encodeURIComponent(shareCode)}/inventory/${encodeURIComponent(item.id)}`,
-			{
-				method: 'PATCH',
-				memberId,
-				headers: { 'Idempotency-Key': idempotencyKey },
-				body: JSON.stringify({ quantityDelta: amount }),
-			},
-		);
+		const outcome = await restockItem({ shareCode, memberId, item, keys: keysRef.current });
 		setPendingId(null);
-		if (res.ok || (res.status === 404 && res.error === 'item_not_found')) {
-			keysRef.current.delete(requestKey);
-			hide(item.id);
-			onRestocked();
-		} else {
-			if (res.status > 0 && res.status < 500) keysRef.current.delete(requestKey);
-			setError(
-				mutationErrorMessage(
-					'Aktualisierung fehlgeschlagen',
-					res.error,
-					{},
-					'Aktualisierung fehlgeschlagen. Versuche es erneut.',
-				),
-			);
+		if (outcome.kind === 'error') {
+			setError(outcome.message);
+			return;
 		}
+		hide(item.id);
+		onRestocked();
 	}
 
 	return (
 		<Alert>
 			<PackagePlus aria-hidden />
-			<AlertDescription className="flex flex-col gap-2 text-[13px]">
+			<AlertDescription className="flex flex-col gap-2 text-xs">
 				{visible.map((item) => (
 					<span key={item.id} className="flex flex-col gap-2">
 						<span>
