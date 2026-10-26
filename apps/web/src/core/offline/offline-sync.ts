@@ -270,16 +270,19 @@ async function runOfflineSync(
 					reviewOnEdit: res.status === 0 || res.status >= 500,
 					retry: {
 						...readyAction,
-						// An expired session is not the action's fault: no attempt, no review prefix.
-						attempts: (readyAction.attempts ?? 0) + (isSessionExpired(res.error) ? 0 : 1),
+						// An expired session or a lost connection is not the action's fault: no attempt.
+						attempts:
+							(readyAction.attempts ?? 0) +
+							(isSessionExpired(res.error) || res.status === 0 ? 0 : 1),
 						lastAttemptAt: new Date(now).toISOString(),
 						lastError: message,
 					},
 				});
 				// The rate limit applies to the whole session: the remaining actions would
 				// also get 429 and only push out their own retry delay. The next sync sends them.
-				// The same goes for an expired session: every action would get its own 401.
-				if (res.status === 429 || isSessionExpired(res.error)) break;
+				// The same goes for an expired session: every action would get its own 401, and for
+				// a lost connection: every action would wait out its own timeout.
+				if (res.status === 429 || res.status === 0 || isSessionExpired(res.error)) break;
 			}
 		} catch (err) {
 			if (options.signal?.aborted) break;
