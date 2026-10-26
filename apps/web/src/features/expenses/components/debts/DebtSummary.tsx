@@ -81,7 +81,7 @@ export function DebtSummary({
 				currentMemberId={currentMemberId}
 				memberPayPalMerchantId={memberPayPalMerchantId}
 				showPayPalHint={showPayPalHint}
-				payPalEligible={
+				backedByDirectDebt={
 					summary === undefined ||
 					debts.some(
 						(direct) =>
