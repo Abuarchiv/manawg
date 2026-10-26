@@ -205,6 +205,13 @@ async function sendWebPush(
 	return { sent, failures };
 }
 
+export class NoPushSubscriptionError extends Error {
+	constructor() {
+		super('no_push_subscription');
+		this.name = 'NoPushSubscriptionError';
+	}
+}
+
 export async function dispatchNotification(
 	input: DispatchInput,
 ): Promise<{ sent: number; failures: unknown[] }> {
@@ -285,7 +292,13 @@ export async function dispatchNotification(
 		result.status === 'fulfilled' ? result.value.failures : [result.reason],
 	);
 	if (input.event === 'notification.test' && sentTotal === 0) {
-		throw failures[0] ?? new Error('notification_delivery_failed');
+		if (failures[0]) throw failures[0];
+		// Push is configured, but the member has no live subscription left
+		// (opted out, or the push service answered 404/410 and it was removed).
+		if (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+			throw new NoPushSubscriptionError();
+		}
+		throw new Error('notification_delivery_failed');
 	}
 	return { sent: sentTotal, failures };
 }
