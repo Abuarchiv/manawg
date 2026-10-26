@@ -89,6 +89,7 @@ interface ReminderInput {
 	debtor: MemberRow;
 	creditor: MemberRow;
 	openExpenses: Awaited<ReturnType<typeof loadOpenExpenses>>;
+	payments: Awaited<ReturnType<typeof loadCompletedExpensePayments>>;
 	pair: { amountCents: number };
 }
 
@@ -156,7 +157,7 @@ export const POST = withWgRoute('reminders POST', async (req, { code }) => {
 		if (!pair || pair.amountCents <= 0) {
 			return { stop: conflict('no_open_debt', 'no_open_debt') };
 		}
-		return { input: { debtor, creditor, openExpenses, pair } };
+		return { input: { debtor, creditor, openExpenses, payments, pair } };
 	};
 
 	const recentSince = new Date(Date.now() - REMINDER_COOLDOWN_HOURS * 60 * 60 * 1000);
@@ -165,7 +166,7 @@ export const POST = withWgRoute('reminders POST', async (req, { code }) => {
 	const result = await withIdempotentWrite(
 		{ scope, key, codec: reminderCodec, prepare },
 		async (tx, input): Promise<WriteOutcome<unknown, ReminderContext>> => {
-			const { debtor, creditor, openExpenses, pair } = input;
+			const { debtor, creditor, openExpenses, payments, pair } = input;
 			// Cooldown check and insert must be atomic: two parallel requests would both pass the
 			// check and push twice. A transaction-scoped advisory lock per (wg, debtor, creditor)
 			// serializes them.
@@ -214,6 +215,7 @@ export const POST = withWgRoute('reminders POST', async (req, { code }) => {
 				openExpenses,
 				new Date(),
 				currency,
+				payments,
 			);
 			const message = formatReminderMessage({
 				debtorName: debtor.name,
