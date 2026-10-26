@@ -132,7 +132,7 @@ test.describe('expense row reflow', () => {
 			}
 		}
 
-		// Removing confirms with a success message, like recurring costs.
+		// Deleting confirms with a success message, like recurring costs.
 		await page.route(`**/api/wg/${shareCode}/expenses/${EXPENSE_ID}`, (route) =>
 			route.fulfill({ json: { deleted: true } }),
 		);
@@ -140,10 +140,10 @@ test.describe('expense row reflow', () => {
 			document.documentElement.style.fontSize = '';
 		});
 		await action.tap();
-		await page.getByRole('menuitem', { name: 'Entfernen', exact: true }).click();
+		await page.getByRole('menuitem', { name: 'Löschen', exact: true }).click();
 		await page
 			.getByRole('alertdialog')
-			.getByRole('button', { name: 'Entfernen', exact: true })
+			.getByRole('button', { name: 'Löschen', exact: true })
 			.click();
 		await expect(page.getByText('Ausgabe entfernt.')).toBeVisible();
 	});

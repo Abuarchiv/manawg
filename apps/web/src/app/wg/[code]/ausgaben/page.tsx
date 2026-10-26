@@ -11,6 +11,7 @@ import { removeDraft } from '@/core/offline/drafts';
 import { AusgabenHeader } from '@/features/expenses/components/ausgaben/AusgabenHeader';
 import { ExpenseHistory } from '@/features/expenses/components/ausgaben/ExpenseHistory';
 import { RecurringExpensesSection } from '@/features/expenses/components/ausgaben/RecurringExpensesSection';
+import { expenseFormTitle } from '@/features/expenses/components/ausgaben/expense-form-mode';
 import { DebtSummary } from '@/features/expenses/components/debts/DebtSummary';
 import { useAusgabenPage } from '@/features/expenses/hooks/use-ausgaben-page';
 import { haptic } from '@/shared/lib/haptics';
@@ -49,6 +50,7 @@ export default function AusgabenPage() {
 	const { expenses, recurringExpenses, initialLoading, refreshing, loadError } = data;
 	const { showForm, setShowForm, editingExpense, editingRecurringExpense } = form;
 	const isEditingQueuedRecurring = form.queueEditType === 'recurring.create';
+	const isEditingQueuedExpense = form.queueEditType === 'expense.create';
 	const formSaving = submit.submitting || recurring.savingRecurringTemplate;
 	// The form stays mounted after closing until the exit animation finishes; every open starts fresh.
 	const [formSession, setFormSession] = useState({ mounted: showForm, key: 0 });
@@ -62,13 +64,13 @@ export default function AusgabenPage() {
 	async function resolveConflict(choice: 'server' | 'draft'): Promise<void> {
 		const editedId = form.editingExpense?.id;
 		const fresh = await data.load(false);
-		const serverExpense = fresh?.find((expense) => expense.id === editedId);
 		if (!fresh || !editedId) {
 			form.setFormError(
 				'Die Liste konnte nicht neu geladen werden. Versuche es gleich noch einmal.',
 			);
 			return;
 		}
+		const serverExpense = fresh.find((expense) => expense.id === editedId);
 		if (!serverExpense) {
 			form.setConflictExpenseId(null);
 			form.setFormError(
@@ -97,17 +99,12 @@ export default function AusgabenPage() {
 					key={formSession.key}
 					open={showForm}
 					onExited={() => setFormSession((session) => ({ ...session, mounted: false }))}
-					title={
-						editingRecurringExpense
-							? 'Fixkosten-Vorlage bearbeiten'
-							: isEditingQueuedRecurring
-								? 'Wartende Fixkosten-Vorlage bearbeiten'
-								: form.queueEditType === 'expense.create'
-									? 'Wartende Ausgabe bearbeiten'
-									: editingExpense
-										? 'Ausgabe bearbeiten'
-										: 'Ausgabe hinzufügen'
-					}
+					title={expenseFormTitle({
+						editingRecurringExpense,
+						isEditingQueuedRecurring,
+						isEditingQueuedExpense,
+						isEditingExpense: editingExpense !== null,
+					})}
 					previewSplits={page.splitPreview?.ok ? page.splitPreview.splits : null}
 					pendingPrefillDescription={form.pendingPrefill?.description ?? null}
 					onReplacePrefill={() => {
@@ -141,7 +138,7 @@ export default function AusgabenPage() {
 					imageUrl={form.imageUrl}
 					setImageUrl={form.setImageUrl}
 					shareCode={wg.shareCode}
-					isEditingQueuedExpense={form.queueEditType === 'expense.create'}
+					isEditingQueuedExpense={isEditingQueuedExpense}
 					isEditingQueuedRecurring={isEditingQueuedRecurring}
 					formError={form.formError}
 					fieldErrors={support.fieldErrors}

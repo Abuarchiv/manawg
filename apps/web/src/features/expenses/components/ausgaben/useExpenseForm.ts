@@ -300,6 +300,9 @@ export function useExpenseForm({
 		setQueueEditId(null);
 		setQueueEditType(null);
 		setEditingExpense({ id: expense.id, updatedAt: expense.updatedAt, currency: expense.currency });
+		setEditingRecurringExpense(null);
+		setRecurringIntervalMonths(1);
+		setRecurringNextDueAt(null);
 		setInvalidEditDraft(false);
 		setShowForm(true);
 	}
@@ -323,6 +326,7 @@ export function useExpenseForm({
 		setManualSplits(splitsToManualInput(template.splits));
 		extras.reset();
 		setRecurringIntervalMonths(template.intervalMonths);
+		setRecurringNextDueAt(null);
 		setEditingExpense(null);
 		setInvalidEditDraft(false);
 		setEditingRecurringExpense(template);

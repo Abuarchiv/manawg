@@ -261,7 +261,7 @@ export function RecurringExpensesSection({
 															className="flex-1"
 															onClick={() => onCreateFromTemplate(item)}
 															disabled={pending}
-															aria-label={`Fixkosten-Ausgabe direkt erstellen: ${item.description}`}
+															aria-label={`Erfassen: ${item.description}`}
 														>
 															{creatingRecurringId === item.id && (
 																<Spinner data-icon="inline-start" />

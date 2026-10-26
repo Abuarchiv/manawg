@@ -563,10 +563,10 @@ test.describe('label in name audit', () => {
 		await dismissOnboarding(page);
 		await page.getByRole('button', { name: /Details öffnen/ }).click();
 
-		// WCAG 2.5.3 — "Als bezahlt eintragen"/"Wieder öffnen" must lead the
+		// WCAG 2.5.3 — "Als bezahlt markieren"/"Wieder als offen markieren" must lead the
 		// accessible name, disambiguated by the debtor's name.
 		await expect(
-			page.getByRole('button', { name: 'Als bezahlt eintragen: Mina', exact: true }),
+			page.getByRole('button', { name: 'Als bezahlt markieren: Mina', exact: true }),
 		).toBeVisible();
 	});
 });

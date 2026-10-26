@@ -118,7 +118,7 @@ export function RemindButton({
 		const idempotencyKey = requestKeyRef.current ?? createOfflineIdempotencyKey();
 		if (!idempotencyKey) {
 			rollbackOptimistic?.();
-			const message = errorMessage('Netzwerkfehler');
+			const message = 'Erinnerung konnte nicht sicher gesendet werden. Versuche es erneut.';
 			setStatus('error');
 			setFeedback(message);
 			toast.error(message);

@@ -75,14 +75,14 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 					<span className="@container flex min-w-0 flex-1 flex-col gap-0.5">
 						<span className="flex min-w-0 flex-col gap-0.5 @[14rem]:flex-row @[14rem]:items-baseline @[14rem]:gap-3">
 							<span className="sr-only">Details öffnen:</span>
-							<span className="min-w-0 flex-1 hyphens-auto text-[14px] font-medium leading-snug [overflow-wrap:break-word]">
+							<span className="min-w-0 flex-1 hyphens-auto text-body font-medium leading-snug [overflow-wrap:break-word]">
 								{abo.description}
 							</span>
 							<span className="whitespace-nowrap font-mono tabular-nums @[14rem]:shrink-0">
 								{formatEuroCents(abo.amountCents, abo.currency)}
 							</span>
 						</span>
-						<span className="text-[12px] leading-normal font-normal text-muted-foreground">
+						<span className="text-meta leading-normal font-normal text-muted-foreground">
 							{isPaused ? (
 								'pausiert'
 							) : blockedByMovedOut ? (
@@ -96,7 +96,14 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 							)}
 							{` · ${formatIntervalLabel(abo.intervalMonths)} · `}
 							<span className="sr-only">bezahlt von </span>
-							{abo.paidByMemberId === identity.memberId ? 'du' : payerName}
+							{abo.paidByMemberId === identity.memberId ? (
+								<>
+									<span aria-hidden>du</span>
+									<span className="sr-only">dir</span>
+								</>
+							) : (
+								payerName
+							)}
 						</span>
 					</span>
 					<ChevronDown
@@ -169,7 +176,6 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 									aria-label={`${abo.description} bearbeiten`}
 								>
 									<Pencil />
-									<span className="sr-only">{abo.description} bearbeiten</span>
 								</Button>
 								<Button
 									variant="outline"
@@ -180,7 +186,6 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 									aria-label={`${abo.description} löschen`}
 								>
 									<Trash2 />
-									<span className="sr-only">{abo.description} löschen</span>
 								</Button>
 							</div>
 						) : (

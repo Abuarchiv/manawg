@@ -29,7 +29,7 @@ export function SplitReview({
 	return (
 		<ItemGroup aria-label="Anteile vor dem Speichern" aria-live="polite" className="gap-1">
 			{members.map((member) => {
-				const share = splits?.find((split) => split.debtorMemberId === member.id);
+				const share = splits.find((split) => split.debtorMemberId === member.id);
 				return (
 					<ItemEntry key={member.id} variant="muted" size="xs">
 						<ItemContent className="min-w-0">
@@ -44,7 +44,7 @@ export function SplitReview({
 							)}
 						</ItemContent>
 						<Badge variant="outline" className="font-mono tabular-nums">
-							{splits ? formatEuroCents(share?.amountCents ?? 0, currency) : '—'}
+							{formatEuroCents(share?.amountCents ?? 0, currency)}
 						</Badge>
 					</ItemEntry>
 				);

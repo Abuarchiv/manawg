@@ -184,12 +184,8 @@ test.describe('paused fixed cost in expenses', () => {
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/ausgaben?filter=recurring`);
 		await dismissOnboarding(page);
 
-		await expect(
-			page.getByRole('button', { name: 'Fixkosten-Ausgabe direkt erstellen: Strom' }),
-		).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Erfassen: Strom' })).toBeVisible();
 		await expect(page.getByText('pausiert', { exact: false }).first()).toBeVisible();
-		await expect(
-			page.getByRole('button', { name: 'Fixkosten-Ausgabe direkt erstellen: Netflix' }),
-		).toHaveCount(0);
+		await expect(page.getByRole('button', { name: 'Erfassen: Netflix' })).toHaveCount(0);
 	});
 });

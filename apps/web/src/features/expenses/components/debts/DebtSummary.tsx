@@ -166,7 +166,7 @@ export function DebtSummary({
 				{/* Balances always open: who is ahead and who is behind is the core of this page. */}
 				{showBalances && (
 					<section aria-labelledby="balances-heading" className="flex flex-col gap-2">
-						<h3 id="balances-heading" className="text-[12px] font-medium text-muted-foreground">
+						<h3 id="balances-heading" className="text-meta font-medium text-muted-foreground">
 							Salden
 						</h3>
 						<ul aria-label="Saldo pro Mitglied" className="flex flex-col gap-1.5">
@@ -207,7 +207,7 @@ export function DebtSummary({
 				)}
 				{(personal.length > 0 || others.length > 0) && (
 					<section aria-labelledby="settle-heading" className="flex flex-col gap-1">
-						<h3 id="settle-heading" className="text-[12px] font-medium text-muted-foreground">
+						<h3 id="settle-heading" className="text-meta font-medium text-muted-foreground">
 							So wird ausgeglichen
 						</h3>
 						{personal.length > 0 && (

@@ -26,12 +26,6 @@ interface PayPalNamespace {
 	}): PayPalButtonsInstance;
 }
 
-declare global {
-	interface Window {
-		[key: string]: unknown;
-	}
-}
-
 const PAYPAL_CLIENT_ID = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
 const PAYPAL_PARTNER_ATTRIBUTION_ID = process.env.NEXT_PUBLIC_PAYPAL_PARTNER_ATTRIBUTION_ID;
 const PAYPAL_ERROR =
@@ -39,6 +33,8 @@ const PAYPAL_ERROR =
 const PAYPAL_STATUS_ERROR =
 	'Der Zahlungsstatus konnte nicht geladen werden. Prüfe deine Verbindung und versuche es erneut.';
 const payPalSdkLoads = new Map<string, Promise<void>>();
+/** How often a capture is re-checked before the payment counts as still pending. */
+const CAPTURE_MAX_ATTEMPTS = 3;
 
 type CaptureOutcome = 'completed' | 'pending' | 'failed';
 
@@ -49,7 +45,8 @@ function sdkNamespace(merchantId: string): string {
 function paypalFor(merchantId: string): PayPalNamespace | undefined {
 	// The namespace is written by PayPal's injected script — treat it as
 	// untrusted input instead of casting blindly.
-	const candidate: unknown = window[sdkNamespace(merchantId)];
+	// The namespace is dynamic per merchant, so window is read as a plain record here.
+	const candidate = (window as unknown as Record<string, unknown>)[sdkNamespace(merchantId)];
 	if (typeof candidate !== 'object' || candidate === null) return undefined;
 	if (typeof (candidate as { Buttons?: unknown }).Buttons !== 'function') return undefined;
 	return candidate as PayPalNamespace;
@@ -79,7 +76,7 @@ function loadPayPalSdk(merchantId: string): Promise<void> {
 		script.onload = () => resolve();
 		script.onerror = () => {
 			payPalSdkLoads.delete(merchantId);
-			reject(new Error());
+			reject(new Error('PayPal SDK failed to load'));
 		};
 		document.head.appendChild(script);
 	});
@@ -144,7 +141,7 @@ export function PayPalPaymentButton({
 		};
 
 		const reconcileCapture = async (orderId: string): Promise<CaptureOutcome> => {
-			for (let attempt = 0; attempt < 3; attempt += 1) {
+			for (let attempt = 0; attempt < CAPTURE_MAX_ATTEMPTS; attempt += 1) {
 				const result = await apiFetch<{ status: string }>(
 					`/api/wg/${encodeURIComponent(shareCode)}/paypal/capture`,
 					{

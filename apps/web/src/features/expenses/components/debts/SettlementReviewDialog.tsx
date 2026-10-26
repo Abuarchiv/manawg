@@ -155,13 +155,13 @@ export function SettlementReviewDialog({
 					{preview && preview.settleableCents > 0 && (
 						<Button
 							className="h-auto min-h-11 whitespace-normal py-2 leading-snug"
-							disabled={settling || !preview || preview.settleableCents <= 0}
+							disabled={settling}
 							onClick={() => void settle()}
 						>
 							{settling && <Spinner data-icon="inline-start" />}
 							{settling
 								? 'Speichert…'
-								: `${formatEuroCents(preview?.settleableCents ?? 0, debt.currency)} als bezahlt eintragen`}
+								: `${formatEuroCents(preview.settleableCents, debt.currency)} als bezahlt eintragen`}
 						</Button>
 					)}
 				</AlertDialogFooter>
