@@ -233,8 +233,18 @@ describe('issue swarm routes', () => {
 
 	test('CSV writes all-day events as a plain date, not a Berlin clock time', () => {
 		assert.equal(
-			toCsv([{ startsAt: '2026-07-05T00:00:00.000Z', allDay: true }], ['startsAt', 'allDay']),
-			'\uFEFFstartsAt;allDay\n2026-07-05;true',
+			toCsv(
+				[
+					{
+						startsAt: '2026-07-05T00:00:00.000Z',
+						allDay: true,
+						createdAt: '2026-07-01T22:30:00.000Z',
+					},
+				],
+				['startsAt', 'allDay', 'createdAt'],
+			),
+			// createdAt is a real instant: Berlin time, already 2 July.
+			'\uFEFFstartsAt;allDay;createdAt\n2026-07-05;true;2026-07-02 00:30',
 		);
 	});
 

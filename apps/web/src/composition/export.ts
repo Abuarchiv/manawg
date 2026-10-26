@@ -251,7 +251,8 @@ function csvCell(header: string, value: unknown, row: ExportRow): string {
 	if (header === 'splits' && Array.isArray(value)) return escapeCsv(formatSplitsCell(value));
 	if (TIMESTAMP_HEADER.test(header) && typeof value === 'string' && ISO_INSTANT.test(value)) {
 		// All-day events are stored as UTC midnight: show the date only, not a Berlin clock time.
-		return row.allDay === true ? value.slice(0, 10) : formatBerlinMinutes(value);
+		const allDayDate = row.allDay === true && (header === 'startsAt' || header === 'endsAt');
+		return allDayDate ? value.slice(0, 10) : formatBerlinMinutes(value);
 	}
 	return escapeCsv(value);
 }
