@@ -30,13 +30,6 @@ const query = {
 	limit: async () => [harness.payment],
 };
 
-mock.module('@/core/audit', {
-	namedExports: {
-		recordAuditEvent: async () => {
-			harness.writes += 1;
-		},
-	},
-});
 mock.module('@/core/db', {
 	namedExports: { db: { select: () => query }, expensePayments: {}, wgMembers: {} },
 });
@@ -51,7 +44,6 @@ mock.module('@/core/infra/paypal', {
 		},
 	},
 });
-mock.module('@/core/utils/money', { namedExports: { formatEuroCents: () => '12,34 €' } });
 mock.module('drizzle-orm', {
 	namedExports: { and: () => {}, asc: () => {}, eq: () => {}, lt: () => {} },
 });
@@ -67,6 +59,13 @@ mock.module(sibling('server/expense-payments.ts'), {
 					}),
 				}),
 			});
+		},
+	},
+});
+mock.module(sibling('server/settle-notify.ts'), {
+	namedExports: {
+		recordPayPalSettlementAudit: async () => {
+			harness.writes += 1;
 		},
 	},
 });

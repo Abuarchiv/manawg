@@ -126,9 +126,14 @@ async function findRecurringExpense(
 	return { ...expense, splits };
 }
 
-function existingOutcome(expense: unknown) {
-	const body: ExpenseCreateResponseBody = { expense, warning: null };
-	return { status: 200, body, context: { existing: true } as ExpenseCreateContext };
+interface ExpenseCreateOutcome {
+	status: number;
+	body: ExpenseCreateResponseBody;
+	context: ExpenseCreateContext;
+}
+
+function existingOutcome(expense: unknown): ExpenseCreateOutcome {
+	return { status: 200, body: { expense, warning: null }, context: { existing: true } };
 }
 
 /**
@@ -138,7 +143,10 @@ function existingOutcome(expense: unknown) {
  * date in the same transaction, so a lost follow-up request cannot leave the charge due.
  * Aborts while a PayPal capture is in flight.
  */
-export async function writeExpense(tx: DbTransaction, input: ExpenseCreateInput) {
+export async function writeExpense(
+	tx: DbTransaction,
+	input: ExpenseCreateInput,
+): Promise<ExpenseCreateOutcome> {
 	await assertPrivateImageCanBeAttached(tx, input.wgId, input.imageUrl);
 
 	let template: RecurringTemplate | null = null;
@@ -187,7 +195,7 @@ export async function writeExpense(tx: DbTransaction, input: ExpenseCreateInput)
 	return {
 		status: 200,
 		body,
-		context: { created: created.expense, advanced } as ExpenseCreateContext,
+		context: { created: created.expense, advanced },
 	};
 }
 

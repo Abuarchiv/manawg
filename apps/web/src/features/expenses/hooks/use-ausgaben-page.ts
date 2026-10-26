@@ -42,6 +42,9 @@ const EXPENSE_RENDER_PAGE = 60;
 /** The recurring-expense preview shows at most this many templates unless the filter is active. */
 const RECURRING_PREVIEW_LIMIT = 4;
 
+/** Delay before scrolling to a deep-linked row, so the list has laid out first. */
+const SCROLL_SETTLE_MS = 80;
+
 /** Expenses page: loads data, keeps form and mutations together and provides the display derivations. */
 export function useAusgabenPage() {
 	const { wg, members, identity, isAdmin } = useWg();
@@ -135,7 +138,7 @@ export function useAusgabenPage() {
 			document.getElementById(`expense-${highlightedId}`)?.scrollIntoView({
 				block: 'center',
 			});
-		}, 80);
+		}, SCROLL_SETTLE_MS);
 		return () => window.clearTimeout(timerId);
 	}, [highlightedId, expenseCount]);
 
@@ -145,7 +148,7 @@ export function useAusgabenPage() {
 			document.getElementById('recurring-expenses')?.scrollIntoView({
 				block: 'start',
 			});
-		}, 80);
+		}, SCROLL_SETTLE_MS);
 		return () => window.clearTimeout(timerId);
 	}, [recurringFilterActive, recurringId]);
 

@@ -8,9 +8,11 @@ import {
 	computeBalances,
 	computeOldestDebtAges,
 } from '@/features/expenses/debts';
+import { PAGE_REFRESH_MS } from '@/features/expenses/expense-constants';
 import type { ExpensePaymentInput } from '@/features/expenses/expense-payment-input';
 import { canSendReminder } from '@/features/expenses/reminders';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { updateCachedList } from './cached-list';
 
 interface ExpenseSplitDto {
 	id: string;
@@ -80,8 +82,8 @@ export function useRemindersPage() {
 		expenses: string | null;
 		reminders: string | null;
 	}>({ expenses: null, reminders: null });
-	const [expensesLoadFailed, setExpensesLoadFailed] = useState(false);
-	const [remindersLoadFailed, setRemindersLoadFailed] = useState(false);
+	const expensesLoadFailed = loadErrors.expenses !== null;
+	const remindersLoadFailed = loadErrors.reminders !== null;
 	const [primaryReminderKey, setPrimaryReminderKey] = useState<string | null>(null);
 	// Server said 403 debtor_opted_out; the page has no data source for it, so remember it locally.
 	const [optedOutIds, setOptedOutIds] = useState<ReadonlySet<string>>(() => new Set());
@@ -94,12 +96,7 @@ export function useRemindersPage() {
 		update: (current: ReminderHistoryItem[]) => ReminderHistoryItem[],
 	): void {
 		setReminders(update);
-		setCachedReminders((current) => {
-			const previous = current?.reminders ?? reminders;
-			const next = update(previous);
-			if (!current && next === previous) return current;
-			return { ...(current ?? { reminders: previous }), reminders: next };
-		});
+		setCachedReminders((current) => updateCachedList(current, 'reminders', reminders, update));
 	}
 
 	const load = useCallback(
@@ -119,9 +116,7 @@ export function useRemindersPage() {
 			if (expensesRes.ok) {
 				setExpenses(expensesRes.data.expenses);
 				setPayments(expensesRes.data.payments ?? []);
-				setExpensesLoadFailed(false);
 			} else {
-				setExpensesLoadFailed(true);
 				nextErrors.expenses = getWgLoadErrorMessage(
 					'Ausgaben',
 					expensesRes.status,
@@ -133,9 +128,7 @@ export function useRemindersPage() {
 			}
 			if (remindersRes.ok) {
 				setReminders(remindersRes.data.reminders);
-				setRemindersLoadFailed(false);
 			} else {
-				setRemindersLoadFailed(true);
 				nextErrors.reminders = getWgLoadErrorMessage(
 					'Erinnerungen',
 					remindersRes.status,
@@ -156,18 +149,15 @@ export function useRemindersPage() {
 			hasPageCacheRef.current = true;
 			setExpenses(cachedExpenses.expenses);
 			setPayments(cachedExpenses.payments ?? []);
-			setExpensesLoadFailed(false);
 			setLoadErrors((current) => ({ ...current, expenses: null }));
 		}
 		if (cachedReminders) {
 			hasPageCacheRef.current = true;
 			setReminders(cachedReminders.reminders);
-			setRemindersLoadFailed(false);
 			setLoadErrors((current) => ({ ...current, reminders: null }));
 		}
 		if (cachedExpenses || cachedReminders) setLoading(false);
 		if (expensesReadError) {
-			setExpensesLoadFailed(true);
 			setLoadErrors((current) => ({
 				...current,
 				expenses: getWgLoadErrorMessage(
@@ -179,7 +169,6 @@ export function useRemindersPage() {
 			}));
 		}
 		if (remindersReadError) {
-			setRemindersLoadFailed(true);
 			setLoadErrors((current) => ({
 				...current,
 				reminders: getWgLoadErrorMessage(
@@ -196,7 +185,7 @@ export function useRemindersPage() {
 		void load(true);
 	}, [load]);
 	// Auto refresh like the dashboard instead of a manual reload button.
-	useVisibilityPausedInterval(() => void load(false), 30_000);
+	useVisibilityPausedInterval(() => void load(false), PAGE_REFRESH_MS);
 
 	const memberName = useCallback(
 		(id: string) => members.find((m) => m.id === id)?.name ?? '?',
@@ -266,8 +255,6 @@ export function useRemindersPage() {
 		!loading &&
 		rows.length === 0 &&
 		reminders.length === 0 &&
-		!loadErrors.expenses &&
-		!loadErrors.reminders &&
 		!expensesLoadFailed &&
 		!remindersLoadFailed;
 

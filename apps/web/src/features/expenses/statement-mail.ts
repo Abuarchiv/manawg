@@ -38,6 +38,11 @@ const MONO = "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace";
 const INK = '#0A0A0A';
 const MUTED = '#737373';
 const LINE = '#E5E5E5';
+const BODY = '#404040';
+const SURFACE = '#FAFAFA';
+const PAGE_BG = '#F5F5F5';
+const CARD_BG = '#FFFFFF';
+const BUTTON_BG = '#171717';
 // The two semantic colors of the design: debt (`destructive`) and `settled`.
 const OWES_COLOR = '#E7000B';
 const SETTLED_COLOR = '#14874E';
@@ -90,7 +95,7 @@ function statusAmount(view: StatementView): string {
 }
 
 function preheader(view: StatementView): string {
-	const people = `${view.participants} Personen`;
+	const people = view.participants === 1 ? '1 Person' : `${view.participants} Personen`;
 	const expenses = view.expenseCount === 1 ? '1 Ausgabe' : `${view.expenseCount} Ausgaben`;
 	const status =
 		view.kind === 'settled'
@@ -156,8 +161,8 @@ function statusRow(view: StatementView): string {
 	const transfers = transferLines(view)
 		.map(
 			(line) =>
-				`<tr><td style="padding:6px 0 0 17px;font-family:${SANS};font-size:14px;line-height:1.5;color:#404040;">${escapeHtml(line.label)}</td>` +
-				`<td align="right" style="padding:6px 0 0 0;font-family:${MONO};font-size:13px;line-height:1.5;color:#404040;white-space:nowrap;">${line.amount}</td></tr>`,
+				`<tr><td style="padding:6px 0 0 17px;font-family:${SANS};font-size:14px;line-height:1.5;color:${BODY};">${escapeHtml(line.label)}</td>` +
+				`<td align="right" style="padding:6px 0 0 0;font-family:${MONO};font-size:13px;line-height:1.5;color:${BODY};white-space:nowrap;">${line.amount}</td></tr>`,
 		)
 		.join('');
 	return `<tr><td style="padding:0 0 24px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td valign="middle" style="font-family:${SANS};font-weight:500;font-size:15px;line-height:1.4;color:${color};">${dot}${SEGMENT_LABELS[view.kind]}</td><td align="right" valign="middle" style="font-family:${MONO};font-size:14px;line-height:1.4;color:${amountColor};white-space:nowrap;">${statusAmount(view)}</td></tr>${transfers}</table></td></tr>`;
@@ -170,11 +175,11 @@ function header(monthLabel: string): string {
 
 function footer(links: Links): string {
 	const link = `style="color:${MUTED};text-decoration:underline;"`;
-	return `<tr><td bgcolor="#FAFAFA" style="background-color:#FAFAFA;border-top:1px solid ${LINE};padding:22px 40px;"><div style="font-family:${SANS};font-size:12px;line-height:1.55;color:${MUTED};">Einmal im Monat, am Ersten. Als PDF in der App.</div><div style="padding-top:6px;font-family:${MONO};font-size:11px;line-height:1.55;letter-spacing:0.06em;color:${MUTED};"><a href="${escapeHtml(links.settings)}" ${link}>Einstellungen ändern</a> &middot; <a href="${escapeHtml(links.unsubscribe)}" ${link}>Abbestellen</a></div></td></tr>`;
+	return `<tr><td bgcolor="${SURFACE}" style="background-color:${SURFACE};border-top:1px solid ${LINE};padding:22px 40px;"><div style="font-family:${SANS};font-size:12px;line-height:1.55;color:${MUTED};">Einmal im Monat, am Ersten. Als PDF in der App.</div><div style="padding-top:6px;font-family:${MONO};font-size:11px;line-height:1.55;letter-spacing:0.06em;color:${MUTED};"><a href="${escapeHtml(links.settings)}" ${link}>Einstellungen ändern</a> &middot; <a href="${escapeHtml(links.unsubscribe)}" ${link}>Abbestellen</a></div></td></tr>`;
 }
 
 function htmlDocument(input: StatementMailInput, view: StatementView, links: Links): string {
-	const button = `<tr><td style="padding:0;"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="#171717" style="background-color:#171717;border-radius:10px;"><a href="${escapeHtml(links.statement)}" style="display:inline-block;padding:13px 20px;font-family:${SANS};font-size:15px;line-height:1.3;font-weight:500;color:#FAFAFA;text-decoration:none;border-radius:10px;">Abrechnung ansehen</a></td></tr></table></td></tr>`;
+	const button = `<tr><td style="padding:0;"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="${BUTTON_BG}" style="background-color:${BUTTON_BG};border-radius:10px;"><a href="${escapeHtml(links.statement)}" style="display:inline-block;padding:13px 20px;font-family:${SANS};font-size:15px;line-height:1.3;font-weight:500;color:${SURFACE};text-decoration:none;border-radius:10px;">Abrechnung ansehen</a></td></tr></table></td></tr>`;
 	const tiles = `<tr><td style="padding:0 0 24px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid ${LINE};border-radius:14px;border-collapse:separate;"><tr>${tile('Gesamt', formatEuroCents(input.statement.totalCents), false)}${tile('Ausgaben', String(view.expenseCount), true)}${tile('Dein Anteil', formatEuroCents(view.shareCents), true)}</tr></table></td></tr>`;
 	const eyebrow = `<tr><td style="padding:0 0 14px 0;font-family:${MONO};font-size:11px;line-height:1.4;letter-spacing:0.14em;text-transform:uppercase;color:${MUTED};">${escapeHtml(input.wgName)}</td></tr>`;
 	const title = `<tr><td style="padding:0 0 28px 0;font-family:${HEADLINE};font-weight:600;font-size:34px;line-height:1.1;letter-spacing:-0.03em;color:${INK};">${escapeHtml(view.monthName)} ist abgerechnet.</td></tr>`;
@@ -187,11 +192,11 @@ function htmlDocument(input: StatementMailInput, view: StatementView, links: Lin
 <meta name="supported-color-schemes" content="light">
 <title>${escapeHtml(view.monthName)} ist abgerechnet</title>
 </head>
-<body style="margin:0;padding:0;background-color:#F5F5F5;">
+<body style="margin:0;padding:0;background-color:${PAGE_BG};">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;font-size:1px;line-height:1px;">${escapeHtml(preheader(view))}</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F5F5F5" style="background-color:#F5F5F5;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${PAGE_BG}" style="background-color:${PAGE_BG};">
 <tr><td align="center" style="padding:32px 16px;">
-<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" bgcolor="#FFFFFF" style="width:100%;max-width:600px;background-color:#FFFFFF;border:1px solid ${LINE};">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" bgcolor="${CARD_BG}" style="width:100%;max-width:600px;background-color:${CARD_BG};border:1px solid ${LINE};">
 ${header(view.monthLabel)}
 <tr><td style="padding:40px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
 ${eyebrow}

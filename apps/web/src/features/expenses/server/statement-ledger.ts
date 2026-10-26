@@ -181,7 +181,8 @@ export async function recordOutcomes(
 	const claimed = new Map(rows.map((row) => [row.id, row.attempts]));
 	try {
 		await writeOutcomes(updates, claimed);
-	} catch {
+	} catch (error) {
+		console.warn('[statement-mail] outcome write failed, retrying', error);
 		await writeOutcomes(updates, claimed);
 	}
 }

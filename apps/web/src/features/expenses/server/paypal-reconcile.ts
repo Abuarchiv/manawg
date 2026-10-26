@@ -1,12 +1,11 @@
 import 'server-only';
-import { recordAuditEvent } from '@/core/audit';
 import { db, expensePayments, wgMembers } from '@/core/db';
 import { logApiError } from '@/core/infra/observability';
 import { getPayPalOrder } from '@/core/infra/paypal';
-import { formatEuroCents } from '@/core/utils/money';
 import { and, asc, eq, lt } from 'drizzle-orm';
 import { parsePayPalAmountCents, terminalPayPalCaptureOutcome } from '../paypal-settlement';
 import { withExpensePaymentLock } from './expense-payments';
+import { recordPayPalSettlementAudit } from './settle-notify';
 
 const STALE_CAPTURE_MS = 15 * 60 * 1000;
 /** Grace after the order expired before an unapproved `capturing` row is given up. */
@@ -119,20 +118,11 @@ export async function reconcileStaleCapturingPayments(
 				.from(wgMembers)
 				.where(eq(wgMembers.id, payment.fromMemberId))
 				.limit(1);
-			await recordAuditEvent({
-				wgId: payment.wgId,
-				memberId: payment.fromMemberId,
-				eventType: 'expense.debt.paid.paypal',
-				entityType: 'expense_payment',
-				entityId: payment.id,
-				summary: `${payer?.name ?? 'Jemand'} hat ${formatEuroCents(payment.amountCents, payment.currency)} per PayPal beglichen.`,
-				metadata: {
-					fromMemberId: payment.fromMemberId,
-					toMemberId: payment.toMemberId,
-					amountCents: payment.amountCents,
-					providerOrderId: payment.providerOrderId,
-				},
-			});
+			await recordPayPalSettlementAudit(
+				payment.wgId,
+				{ memberId: payment.fromMemberId, name: payer?.name ?? 'Jemand' },
+				payment,
+			);
 		} catch (auditError) {
 			logApiError('[paypal reconcile] audit failed', auditError);
 		}
