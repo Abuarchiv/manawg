@@ -51,9 +51,9 @@ export function DangerZoneSection({ wg, members, identity }: DangerZoneSectionPr
 	const cancelRef = useRef<HTMLButtonElement>(null);
 	const activeMemberCount = members.filter((m) => m.active).length;
 
-	function leaveWg(): void {
+	function leaveWg(outcome: 'left' | 'deleted' = 'left'): void {
 		forgetWg(wg.shareCode);
-		router.push('/?left=1');
+		router.push(outcome === 'deleted' ? '/?deleted=1' : '/?left=1');
 	}
 
 	function openLeaveConfirm(): void {
@@ -92,7 +92,7 @@ export function DangerZoneSection({ wg, members, identity }: DangerZoneSectionPr
 				setDeleteStage('confirm');
 				return;
 			}
-			leaveWg();
+			leaveWg('deleted');
 		} catch {
 			setDeleteError(
 				'WG konnte nicht gelöscht werden: Prüfe deine Verbindung und versuche es erneut.',
@@ -229,7 +229,7 @@ export function DangerZoneSection({ wg, members, identity }: DangerZoneSectionPr
 					selfLeave
 					viewerMemberId={identity.memberId}
 					onClose={() => setLeaving(false)}
-					onDeactivated={leaveWg}
+					onDeactivated={() => leaveWg()}
 				/>
 			)}
 		</>
