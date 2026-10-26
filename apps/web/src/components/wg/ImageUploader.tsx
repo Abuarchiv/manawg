@@ -7,7 +7,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { isPendingImageToken } from '@/core/offline/offline-images';
 import { cn } from '@/shared/lib/cn';
 import { AlertTriangle, ImagePlus, Maximize2, X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ImagePreviewDialog } from './ImagePreviewDialog';
 import { useImageUpload } from './use-image-upload';
 
@@ -18,6 +18,8 @@ interface Props {
 	onChange: (url: string | null) => void;
 	disabled?: boolean;
 	imageLabel?: string;
+	/** True while a file is being prepared or uploaded, so the form can hold its submit. */
+	onUploadingChange?: (uploading: boolean) => void;
 }
 
 function UploadFeedback({ error, notice }: { error: string | null; notice: string | null }) {
@@ -44,9 +46,17 @@ export function ImageUploader({
 	onChange,
 	disabled = false,
 	imageLabel,
+	onUploadingChange,
 }: Props) {
 	const { uploading, error, notice, featureDisabled, localPreview, handleFile, remove } =
 		useImageUpload({ shareCode, purpose, value, onChange, disabled });
+	const onUploadingChangeRef = useRef(onUploadingChange);
+	onUploadingChangeRef.current = onUploadingChange;
+	useEffect(() => {
+		onUploadingChangeRef.current?.(uploading);
+	}, [uploading]);
+	// A closed form must not stay blocked by an upload it no longer shows.
+	useEffect(() => () => onUploadingChangeRef.current?.(false), []);
 	const [previewOpen, setPreviewOpen] = useState(false);
 	const accessibleImageLabel = imageLabel ?? (purpose === 'expense' ? 'Belegbild' : 'Beitragsbild');
 

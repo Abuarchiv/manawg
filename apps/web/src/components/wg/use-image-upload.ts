@@ -67,6 +67,14 @@ export function useImageUpload({
 	// Callers pass a fresh onChange on every render (the chat composer); effects must not restart for that.
 	const onChangeRef = useRef(onChange);
 	onChangeRef.current = onChange;
+	// An upload that finishes after its form closed must not write into the next form.
+	const mountedRef = useRef(true);
+	useEffect(() => {
+		mountedRef.current = true;
+		return () => {
+			mountedRef.current = false;
+		};
+	}, []);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -191,6 +199,10 @@ export function useImageUpload({
 					memberId: identity.memberId,
 					purpose,
 				});
+				if (!mountedRef.current) {
+					void removePendingImage(token, identity.memberId).catch(() => undefined);
+					return false;
+				}
 				onChange(token);
 				setError(null);
 				setNotice(message);
@@ -259,7 +271,7 @@ export function useImageUpload({
 				return;
 			}
 			setNotice(null);
-			onChange(sig.publicUrl);
+			if (mountedRef.current) onChange(sig.publicUrl);
 		} catch {
 			await keepPending(
 				'Bild vorbereitet. Der Upload startet automatisch, sobald das Netz wieder stabil ist.',

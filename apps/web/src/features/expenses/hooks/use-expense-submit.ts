@@ -11,6 +11,7 @@ import {
 	OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
 	OFFLINE_SAVED_NOTICE,
 } from '@/core/offline/offline-copy';
+import { isPendingImageToken } from '@/core/offline/offline-images';
 import {
 	createOfflineIdempotencyKey,
 	createQueuedExpense,
@@ -111,6 +112,12 @@ export function useExpenseSubmit(
 			return;
 		}
 		if (amountEuros === null) return;
+		// Online the server needs the uploaded URL, not the device token; offline the queue
+		// replay uploads the image first.
+		if (imageUrl && isPendingImageToken(imageUrl) && navigator.onLine) {
+			form.setFormError('Beleg wird noch hochgeladen. Bitte kurz warten und nochmal versuchen.');
+			return;
+		}
 		const amountCents = Math.round(amountEuros * CENTS_PER_EURO);
 		const isEdit = editingExpense !== null;
 		const fingerprint = JSON.stringify({
