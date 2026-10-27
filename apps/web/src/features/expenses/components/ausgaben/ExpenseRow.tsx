@@ -71,6 +71,9 @@ export const ExpenseRow = memo(function ExpenseRow({
 	currentMemberId,
 	highlighted,
 }: ExpenseRowProps) {
+	// An offline-queued expense has only a placeholder id until it syncs; the
+	// server knows nothing to edit, delete or settle yet.
+	const locked = pendingIds.has(expense.id) || expense.id.startsWith('pending:');
 	const isPayer = expense.paidByMemberId === currentMemberId;
 	// The server lets only the payer or a debtor remove an expense.
 	const canRemove =
@@ -167,10 +170,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 								<DropdownMenuContent align="end">
 									<DropdownMenuGroup>
 										{isPayer && (
-											<DropdownMenuItem
-												onClick={() => onEdit(expense)}
-												disabled={pendingIds.has(expense.id)}
-											>
+											<DropdownMenuItem onClick={() => onEdit(expense)} disabled={locked}>
 												<Pencil />
 												Bearbeiten
 											</DropdownMenuItem>
@@ -178,7 +178,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 										<DropdownMenuItem
 											variant="destructive"
 											onClick={() => setDeleteOpen(true)}
-											disabled={pendingIds.has(expense.id)}
+											disabled={locked}
 										>
 											<Trash2 />
 											Entfernen
@@ -192,6 +192,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 						{/* The week is already a heading; the exact time only appears in the details. */}
 						<p className="mb-2 text-xs text-muted-foreground">
 							<time dateTime={expense.occurredAt}>{formatTimeFull(expense.occurredAt)}</time>
+							{expense.id.startsWith('pending:') && ' · Wartet auf Verbindung, danach bearbeitbar'}
 						</p>
 						{expense.imageUrl && (
 							<Button
@@ -242,7 +243,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 												size="sm"
 												className="ml-auto"
 												onClick={() => setSettleCandidate(split)}
-												disabled={pendingIds.has(split.id) || pendingIds.has(expense.id)}
+												disabled={pendingIds.has(split.id) || locked}
 												aria-label={`${settled ? 'Wieder öffnen' : 'Als bezahlt eintragen'}: ${who(split.debtorMemberId)}`}
 											>
 												{pendingIds.has(split.id) ? (
@@ -280,7 +281,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 						<AlertDialogAction
 							variant="destructive"
 							className="min-h-11"
-							disabled={pendingIds.has(expense.id)}
+							disabled={locked}
 							onClick={() => {
 								setDeleteOpen(false);
 								onDelete(expense.id);
@@ -323,9 +324,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 						<AlertDialogCancel className="min-h-11">Abbrechen</AlertDialogCancel>
 						<AlertDialogAction
 							className="min-h-11"
-							disabled={
-								!settleCandidate || pendingIds.has(settleCandidate.id) || pendingIds.has(expense.id)
-							}
+							disabled={!settleCandidate || pendingIds.has(settleCandidate.id) || locked}
 							onClick={() => {
 								if (settleCandidate) onToggleSettle(expense.id, settleCandidate);
 								setSettleCandidate(null);
