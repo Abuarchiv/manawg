@@ -355,7 +355,16 @@ test.describe('offline page', () => {
 			contentType: 'application/json',
 			body: JSON.stringify(
 				status === 200
-					? { wgs: [{ code: FIXTURE_WG.shareCode, memberId: FIXTURE_WG.memberId }] }
+					? {
+							wgs: [
+								{
+									id: FIXTURE_WG.id,
+									code: FIXTURE_WG.shareCode,
+									name: knownWg.name,
+									memberId: FIXTURE_WG.memberId,
+								},
+							],
+						}
 					: { error: 'auth_required', code: 'auth_required' },
 			),
 		});
