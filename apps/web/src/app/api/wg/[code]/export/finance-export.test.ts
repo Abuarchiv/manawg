@@ -164,6 +164,7 @@ const db = {
 };
 
 mock.module('@/core/db', { namedExports: { db, ...tables } });
+mock.module('@/core/db/feed-audit-filter', { namedExports: { feedAuditCondition: () => null } });
 mock.module('drizzle-orm', {
 	namedExports: {
 		and: (...items: Condition[]) => ({ op: 'and', items }),

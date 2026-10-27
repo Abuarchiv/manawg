@@ -14,6 +14,8 @@ let caller: { deactivatedAt: Date | null; role: string } | undefined;
 let updateMatches = true;
 let guardAllows = true;
 let sets: Record<string, unknown>[] = [];
+let storedStatus = 'open';
+let dispatched = 0;
 
 const announcements = {
 	id: 'announcements.id',
@@ -25,27 +27,29 @@ const wgMembers = { id: 'wg_members.id', wgId: 'wg_members.wg_id' };
 const db = {
 	select: (fields: Record<string, unknown>) => ({
 		from: (table: unknown) => ({
-			where: () => ({
-				limit: () => {
-					const rows =
-						table === wgMembers
-							? caller
-								? [caller]
-								: []
-							: 'content' in fields
-								? [
-										{
-											id: announcementId,
-											authorMemberId,
-											content: 'Alt',
-											status: 'open',
-											source,
-										},
-									]
-								: [{ id: announcementId }];
-					return Object.assign(Promise.resolve(rows), { for: async () => rows });
-				},
-			}),
+			// Unlimited reads (the takers of a resolved post) find none.
+			where: () =>
+				Object.assign(Promise.resolve([]), {
+					limit: () => {
+						const rows =
+							table === wgMembers
+								? caller
+									? [caller]
+									: []
+								: 'status' in fields
+									? [
+											{
+												id: announcementId,
+												authorMemberId,
+												content: 'Alt',
+												status: storedStatus,
+												source,
+											},
+										]
+									: [{ id: announcementId }];
+						return Object.assign(Promise.resolve(rows), { for: async () => rows });
+					},
+				}),
 		}),
 	}),
 	update: () => ({
@@ -106,7 +110,12 @@ mock.module('@/core/rate-limit', {
 	namedExports: { checkRateLimit: async () => ({ success: true }), wgWriteLimiter: {} },
 });
 mock.module('@/core/notifications/notification-dispatch', {
-	namedExports: { dispatchNotificationSafely: async () => ({ warning: null }) },
+	namedExports: {
+		dispatchNotificationSafely: async () => {
+			dispatched += 1;
+			return { warning: null };
+		},
+	},
 });
 mock.module('drizzle-orm', {
 	namedExports: {
@@ -125,6 +134,8 @@ function setup() {
 	updateMatches = true;
 	guardAllows = true;
 	sets = [];
+	storedStatus = 'open';
+	dispatched = 0;
 }
 
 function patch(body: unknown) {
@@ -182,4 +193,23 @@ test('generated posts keep their text', async () => {
 	const response = await patch({ content: 'Neu' });
 	assert.equal(response.status, 403);
 	assert.equal(sets.length, 0);
+});
+
+test('resolving an open post stamps the resolver and pushes once', async () => {
+	setup();
+	authorMemberId = actorId;
+	assert.equal((await patch({ status: 'resolved' })).status, 200);
+	assert.equal(sets[0]?.status, 'resolved');
+	assert.equal(sets[0]?.resolvedByMemberId, actorId);
+	assert.equal(dispatched, 1);
+});
+
+test('resolving an already resolved post keeps the first resolver and does not push', async () => {
+	setup();
+	authorMemberId = actorId;
+	storedStatus = 'resolved';
+	assert.equal((await patch({ status: 'resolved' })).status, 200);
+	assert.equal(sets[0]?.resolvedAt, undefined);
+	assert.equal(sets[0]?.resolvedByMemberId, undefined);
+	assert.equal(dispatched, 0);
 });

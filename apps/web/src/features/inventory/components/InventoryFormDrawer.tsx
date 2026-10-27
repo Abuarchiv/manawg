@@ -173,22 +173,28 @@ export function InventoryFormDrawer({
 			setServerError(null);
 			return;
 		}
+		// An edit sends only the fields that changed, so it never resets one a housemate saved
+		// meanwhile. A name/threshold-only edit must not carry the version check either: it
+		// would 409 whenever a housemate tapped +/- since the form was opened.
+		const edited = mode === 'edit' ? current : null;
+		const quantityChanged = !edited || quantity !== edited.quantity;
+		const body = {
+			...(!edited || trimmedName !== edited.name ? { name: trimmedName } : {}),
+			...(!edited || unit !== coerceUnit(edited.unit) ? { unit } : {}),
+			...(!edited || threshold !== edited.threshold ? { threshold } : {}),
+			...(!edited || category !== coerceCategory(edited.category) ? { category } : {}),
+			...(quantityChanged ? { quantity } : {}),
+			...(edited && quantityChanged
+				? { expectedQuantity: edited.quantity, expectedUpdatedAt: edited.updatedAt }
+				: {}),
+		};
+		if (edited && Object.keys(body).length === 0) {
+			onClose();
+			return;
+		}
 		setSaving(true);
 		setNameError(null);
 		setServerError(null);
-		// A name/threshold-only edit must not carry the version check: it would 409
-		// whenever a housemate tapped +/- since the form was opened.
-		const quantityChanged = mode === 'create' || !current || quantity !== current.quantity;
-		const body = {
-			name: trimmedName,
-			unit,
-			threshold,
-			category,
-			...(quantityChanged ? { quantity } : {}),
-			...(mode === 'edit' && current && quantityChanged
-				? { expectedQuantity: current.quantity, expectedUpdatedAt: current.updatedAt }
-				: {}),
-		};
 		const fingerprint = JSON.stringify(body);
 		const idempotencyKey =
 			mode === 'create' ? resolveIdempotencyKey(createRequestRef.current, fingerprint) : null;

@@ -6,6 +6,7 @@ import {
 	wgChatMessages,
 	wgEvents,
 } from '@/core/db';
+import { feedAuditCondition } from '@/core/db/feed-audit-filter';
 import { asc, desc, eq } from 'drizzle-orm';
 import type { ExportPage } from './export-queries-types';
 
@@ -152,6 +153,7 @@ export function mapChatMessageRows(
 	});
 }
 
+// Every member may export, so the dump leaves out the same private events as the shared feed.
 export async function fetchAuditRows(wgId: string, page: ExportPage) {
 	return db
 		.select({
@@ -163,7 +165,7 @@ export async function fetchAuditRows(wgId: string, page: ExportPage) {
 			createdAt: auditEvents.createdAt,
 		})
 		.from(auditEvents)
-		.where(eq(auditEvents.wgId, wgId))
+		.where(feedAuditCondition(wgId))
 		.orderBy(desc(auditEvents.createdAt), desc(auditEvents.id))
 		.limit(page.limit)
 		.offset(page.offset);

@@ -50,7 +50,7 @@ function parseExportPage(req: NextRequest): { page: ExportPage; explicit: boolea
 	if (!Number.isFinite(limit) || limit < 1 || (rawLimit !== null && limit > EXPORT_LIMIT_MAX)) {
 		return null;
 	}
-	if (!Number.isFinite(offset) || offset < 0) return null;
+	if (!Number.isSafeInteger(offset) || offset < 0) return null;
 	return { page: { limit, offset }, explicit: rawLimit !== null || rawOffset !== null };
 }
 
