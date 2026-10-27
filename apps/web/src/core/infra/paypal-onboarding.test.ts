@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { mock, test } from 'node:test';
+import { PayPalApiError } from './paypal';
 
 type PayPalInit = { method?: string; body?: string } | undefined;
 type PayPalCall = { url: string; init: PayPalInit };
@@ -11,6 +12,7 @@ const paypalApi = {
 
 mock.module('./paypal', {
 	namedExports: {
+		PayPalApiError,
 		isPayPalConfigured: () => true,
 		requestPayPalApi: (url: string, init?: PayPalInit) => paypalApi.request(url, init),
 	},
@@ -178,11 +180,16 @@ test('a provider 404 means the saved merchant is disconnected, while other failu
 	process.env.PAYPAL_PARTNER_MERCHANT_ID = '2A23456789ABC';
 	process.env.NEXT_PUBLIC_APP_URL = 'https://manawg.example';
 	paypalApi.request = async () => {
-		throw new Error('paypal_api_404');
+		throw new PayPalApiError(404, null);
 	};
 	assert.equal(await isPayPalMerchantReady('2B23456789ABC'), false);
+	// A plain Error that merely carries the message is not a provider 404.
 	paypalApi.request = async () => {
-		throw new Error('paypal_api_503');
+		throw new Error('paypal_api_404');
+	};
+	await assert.rejects(isPayPalMerchantReady('2B23456789ABC'), /paypal_api_404/);
+	paypalApi.request = async () => {
+		throw new PayPalApiError(503, null);
 	};
 	await assert.rejects(isPayPalMerchantReady('2B23456789ABC'), /paypal_api_503/);
 });
@@ -224,7 +231,7 @@ test('tracking lookup accepts only the documented single object with exact track
 		]);
 	}
 	paypalApi.request = async () => {
-		throw new Error('paypal_api_404');
+		throw new PayPalApiError(404, null);
 	};
 	await assert.rejects(getPayPalMerchantIdByTracking(binding.trackingId), /paypal_api_404/);
 });

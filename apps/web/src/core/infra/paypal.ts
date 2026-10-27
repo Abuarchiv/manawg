@@ -74,6 +74,19 @@ function createPayPalAuthAssertion(clientId: string, merchantId: string): string
 	return `${encode({ alg: 'none' })}.${encode({ iss: clientId, payer_id: merchantId })}.`;
 }
 
+/** A non-2xx PayPal answer; `issue` is the PAYEE_* detail when the call was made for a payee. */
+export class PayPalApiError extends Error {
+	readonly status: number;
+	readonly issue: string | null;
+
+	constructor(status: number, issue: string | null) {
+		super(`paypal_api_${status}${issue ? `_${issue}` : ''}`);
+		this.status = status;
+		this.issue = issue;
+		this.name = 'PayPalApiError';
+	}
+}
+
 export async function requestPayPalApi<T>(
 	path: string,
 	init: RequestInit,
@@ -109,15 +122,16 @@ export async function requestPayPalApi<T>(
 				// Keep the HTTP status when PayPal returns a non-JSON error body.
 			}
 		}
-		throw new Error(`paypal_api_${response.status}${issue ? `_${issue}` : ''}`);
+		throw new PayPalApiError(response.status, issue ?? null);
 	}
 	return (await response.json()) as T;
 }
 
 export function isTerminalPayPalOrderCreationError(error: unknown): boolean {
 	return (
-		error instanceof Error &&
-		/^paypal_api_(400|401|403|404|422)_PAYEE_[A-Z0-9_]+$/.test(error.message)
+		error instanceof PayPalApiError &&
+		[400, 401, 403, 404, 422].includes(error.status) &&
+		error.issue?.startsWith('PAYEE_') === true
 	);
 }
 

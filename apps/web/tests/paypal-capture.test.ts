@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { mock, test } from 'node:test';
-import { isTerminalPayPalOrderCreationError } from '../src/core/infra/paypal.ts';
+import { PayPalApiError, isTerminalPayPalOrderCreationError } from '../src/core/infra/paypal.ts';
 import { computeNetBalances, simplifyDebts } from '../src/features/expenses/debt-reduction.ts';
 import { computeBalances } from '../src/features/expenses/debts.ts';
 import type { DebtExpenseInput } from '../src/features/expenses/debts.ts';
@@ -564,7 +564,7 @@ test('an ambiguous order creation retries the same reservation with the same pro
 test('a definitive Payee rejection frees the reservation for a corrected merchant', async () => {
 	const fixture = createPayPalFixture({
 		initialStatus: 'failed',
-		createdOrderErrors: [new Error('paypal_api_422_PAYEE_ACCOUNT_INVALID')],
+		createdOrderErrors: [new PayPalApiError(422, 'PAYEE_ACCOUNT_INVALID')],
 		createdOrderIds: ['paypal-order-after-correction'],
 	});
 	const first = await fixture.createOrder();

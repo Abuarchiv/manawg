@@ -1,7 +1,7 @@
 import 'server-only';
 import { db, expensePayments, wgMembers } from '@/core/db';
 import { logApiError } from '@/core/infra/observability';
-import { getPayPalOrder } from '@/core/infra/paypal';
+import { PayPalApiError, getPayPalOrder } from '@/core/infra/paypal';
 import { and, asc, eq, lt } from 'drizzle-orm';
 import { parsePayPalAmountCents, terminalPayPalCaptureOutcome } from '../paypal-settlement';
 import { withExpensePaymentLock } from './expense-payments';
@@ -55,7 +55,7 @@ export async function reconcileStaleCapturingPayments(
 			order = await getPayPalOrder(payment.providerOrderId, payment.payeeMerchantId);
 		} catch (err) {
 			logApiError('[paypal reconcile] order lookup failed', err);
-			if (abandoned && err instanceof Error && err.message.startsWith('paypal_api_404')) {
+			if (abandoned && err instanceof PayPalApiError && err.status === 404) {
 				if (await finish('failed')) result.failed += 1;
 			} else {
 				result.pending += 1;

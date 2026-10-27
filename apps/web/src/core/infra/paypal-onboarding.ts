@@ -1,6 +1,6 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { isRecord } from '@/core/utils/is-record';
-import { isPayPalConfigured, requestPayPalApi } from './paypal';
+import { PayPalApiError, isPayPalConfigured, requestPayPalApi } from './paypal';
 
 export type PayPalEnvironment = 'sandbox' | 'live';
 
@@ -306,7 +306,7 @@ export async function isPayPalMerchantReady(
 			{ method: 'GET' },
 		);
 	} catch (err) {
-		if (err instanceof Error && err.message === 'paypal_api_404') return false;
+		if (err instanceof PayPalApiError && err.status === 404) return false;
 		throw err;
 	}
 	return (
