@@ -44,22 +44,16 @@ export default function VorraetePage() {
 			<SubNav />
 			{/* The active tab already names the page; title and count stay for screen readers. */}
 			<header className="sr-only">
-				<div className="min-w-0 flex-1">
-					<h1 tabIndex={-1}>Vorräte</h1>
-					<p
-						className="mt-0.5 text-meta text-muted-foreground tabular-nums"
-						aria-live="polite"
-						aria-atomic="true"
-					>
-						{initialLoading && items.length === 0
-							? 'Lädt…'
-							: loadError && items.length === 0
-								? 'Derzeit nicht verfügbar'
-								: items.length === 0
-									? null
-									: `${items.length} Artikel im Bestand`}
-					</p>
-				</div>
+				<h1 tabIndex={-1}>Vorräte</h1>
+				<p aria-live="polite" aria-atomic="true">
+					{initialLoading && items.length === 0
+						? 'Lädt…'
+						: loadError && items.length === 0
+							? 'Derzeit nicht verfügbar'
+							: items.length === 0
+								? null
+								: `${items.length} Artikel im Bestand`}
+				</p>
 			</header>
 
 			{loadError && (

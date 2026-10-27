@@ -84,7 +84,7 @@ export function MessageEditForm({
 				</Button>
 				<Button disabled={pending || !draft.trim()} onClick={onSave}>
 					{pending && <Spinner data-icon="inline-start" />}
-					{pending ? 'Wird gespeichert…' : 'Speichern'}
+					{pending ? 'Speichert…' : 'Speichern'}
 				</Button>
 			</div>
 		</FieldGroup>
@@ -202,7 +202,7 @@ export function MessageDeleteDialog({
 						onClick={onConfirm}
 					>
 						{pending && <Spinner data-icon="inline-start" />}
-						{pending ? 'Wird gelöscht…' : 'Jetzt löschen'}
+						{pending ? 'Löscht…' : 'Jetzt löschen'}
 					</AlertDialogAction>
 				</AlertDialogFooter>
 			</AlertDialogContent>

@@ -84,11 +84,7 @@ export default function EinkaufPage() {
 				<h1 ref={headingRef} tabIndex={-1}>
 					Einkäufe
 				</h1>
-				<p
-					className="mt-0.5 text-meta text-muted-foreground tabular-nums"
-					aria-live="polite"
-					aria-atomic="true"
-				>
+				<p aria-live="polite" aria-atomic="true">
 					{initialLoading && items.length === 0 ? 'Lädt…' : `${open.length} offen`}
 				</p>
 			</header>

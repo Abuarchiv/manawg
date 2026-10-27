@@ -146,7 +146,7 @@ export function CommentRow({
 					</time>
 					{comment.id.startsWith('temp-') && (
 						<output className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-							<Spinner /> Wird gesendet…
+							<Spinner /> Sendet…
 						</output>
 					)}
 					{(canEdit || canDelete) && !editing && (
@@ -220,7 +220,7 @@ export function CommentRow({
 								aria-label={`Antwort speichern: ${actionSubject}`}
 							>
 								{pending && <Spinner data-icon="inline-start" />}{' '}
-								{pending ? 'Wird gespeichert…' : 'Speichern'}
+								{pending ? 'Speichert…' : 'Speichern'}
 							</Button>
 						</div>
 					</FieldGroup>
@@ -271,7 +271,7 @@ export function CommentRow({
 							onClick={() => void remove()}
 						>
 							{pending && <Spinner data-icon="inline-start" />}
-							{pending ? 'Wird entfernt…' : 'Entfernen'}
+							{pending ? 'Entfernt…' : 'Entfernen'}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
