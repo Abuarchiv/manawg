@@ -46,5 +46,3 @@ export function useExpenseFormExtras() {
 		restore,
 	};
 }
-
-export type ExpenseFormExtras = ReturnType<typeof useExpenseFormExtras>;

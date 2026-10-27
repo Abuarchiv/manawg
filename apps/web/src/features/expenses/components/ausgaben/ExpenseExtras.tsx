@@ -26,7 +26,6 @@ interface ExpenseExtrasProps {
 	editingRecurringExpense: RecurringExpense | null;
 	isEditingQueuedExpense: boolean;
 	isEditingQueuedRecurring: boolean;
-	savingRecurringTemplate: boolean;
 	onSaveRecurringTemplate: () => void;
 	/** Number of known templates: if it grows while saving, the save succeeded. */
 	recurringTemplateCount: number;
@@ -43,7 +42,6 @@ export function ExpenseExtras({
 	editingRecurringExpense,
 	isEditingQueuedExpense,
 	isEditingQueuedRecurring,
-	savingRecurringTemplate,
 	onSaveRecurringTemplate,
 	recurringTemplateCount,
 	formSaving,
@@ -55,7 +53,7 @@ export function ExpenseExtras({
 	const wasSavingTemplate = useRef(false);
 	// The form scrolls and a toast would sit beneath the fullscreen sheet, so a line right at the button confirms instead.
 	useEffect(() => {
-		if (savingRecurringTemplate) {
+		if (formSaving) {
 			if (!wasSavingTemplate.current) templateCountAtStart.current = recurringTemplateCount;
 			wasSavingTemplate.current = true;
 			setTemplateSaved(false);
@@ -64,7 +62,7 @@ export function ExpenseExtras({
 		if (!wasSavingTemplate.current) return;
 		wasSavingTemplate.current = false;
 		if (recurringTemplateCount > templateCountAtStart.current) setTemplateSaved(true);
-	}, [savingRecurringTemplate, recurringTemplateCount]);
+	}, [formSaving, recurringTemplateCount]);
 	useEffect(() => {
 		if (!templateSaved) return;
 		const timer = window.setTimeout(() => setTemplateSaved(false), 6000);
@@ -144,7 +142,7 @@ export function ExpenseExtras({
 								onClick={onSaveRecurringTemplate}
 								disabled={formSaving}
 							>
-								{savingRecurringTemplate && <Spinner data-icon="inline-start" />}Als Vorlage merken
+								{formSaving && <Spinner data-icon="inline-start" />}Als Vorlage merken
 							</Button>
 						)}
 						<output

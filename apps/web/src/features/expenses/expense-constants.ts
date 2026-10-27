@@ -23,7 +23,6 @@ export const PAGE_REFRESH_MS = LIST_REFRESH_INTERVAL_MS;
 
 export const AMOUNT_MIN_EUROS = AMOUNT_MIN_CENTS / CENTS_PER_EURO;
 export const AMOUNT_MAX_EUROS = AMOUNT_MAX_CENTS / CENTS_PER_EURO;
-export const DESCRIPTION_MAX = DESCRIPTION_MAX_LENGTH;
 
 // Above the maximum, "over 0 €" would be misleading: the amount is too large, not too small.
 export function amountErrorMessage(euros: number | null, raw = ''): string {

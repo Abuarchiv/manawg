@@ -17,6 +17,7 @@ import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import { eurosToCents, parseEuroAmount } from '@/core/utils/amount';
 import { inputDateToIso, isoToInputDate, todayInputValue } from '@/core/utils/local-date';
 import {
+	EDITED_EXPENSE_DELETED_MESSAGE,
 	expenseSaveErrorMessage,
 	isPermanentClientError,
 	splitInputErrorMessage,
@@ -296,9 +297,7 @@ export function useExpenseSubmit(
 				pendingRequestRef.current = null;
 			}
 			if (isEdit && res.status === 404 && res.error === 'expense_not_found') {
-				form.setFormError(
-					'Die ursprüngliche Ausgabe wurde gelöscht. Deine ungespeicherten Änderungen bleiben im Entwurf; du kannst sie kopieren oder den Entwurf verwerfen.',
-				);
+				form.setFormError(EDITED_EXPENSE_DELETED_MESSAGE);
 				updateExpenses((current) => current.filter((expense) => expense.id !== editingExpense.id));
 				pending.end(optimisticId);
 				reportError('Diese Ausgabe existiert nicht mehr und wurde aus der Liste entfernt.');

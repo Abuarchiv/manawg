@@ -29,7 +29,7 @@ import {
 import {
 	AMOUNT_MAX_EUROS,
 	AMOUNT_MIN_EUROS,
-	DESCRIPTION_MAX,
+	DESCRIPTION_MAX_LENGTH,
 	RECURRING_INTERVAL_OPTIONS,
 	amountErrorMessage,
 } from '@/features/expenses/expense-constants';
@@ -111,7 +111,7 @@ export function AboForm({
 		return eurosToCents(euros);
 	}, [amountStr]);
 	const descriptionError =
-		error && (description.trim().length === 0 || description.trim().length > DESCRIPTION_MAX)
+		error && (description.trim().length === 0 || description.trim().length > DESCRIPTION_MAX_LENGTH)
 			? 'Gib eine kurze Beschreibung ein.'
 			: null;
 	const amountError =
@@ -159,7 +159,7 @@ export function AboForm({
 		setError(null);
 		setSplitError(null);
 		const trimmedDescription = description.trim();
-		if (trimmedDescription.length === 0 || trimmedDescription.length > DESCRIPTION_MAX) {
+		if (trimmedDescription.length === 0 || trimmedDescription.length > DESCRIPTION_MAX_LENGTH) {
 			setError('Gib eine kurze Beschreibung ein.');
 			return;
 		}
@@ -214,7 +214,7 @@ export function AboForm({
 					<Input
 						id="abo-description"
 						value={description}
-						maxLength={DESCRIPTION_MAX}
+						maxLength={DESCRIPTION_MAX_LENGTH}
 						onChange={(event) => setDescription(event.target.value)}
 						placeholder="z. B. Netflix"
 						disabled={submitting}

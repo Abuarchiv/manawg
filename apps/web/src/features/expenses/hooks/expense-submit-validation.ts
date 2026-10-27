@@ -2,7 +2,7 @@ import { todayInputValue } from '@/core/utils/local-date';
 import {
 	AMOUNT_MAX_EUROS,
 	AMOUNT_MIN_EUROS,
-	DESCRIPTION_MAX,
+	DESCRIPTION_MAX_LENGTH,
 	amountErrorMessage,
 } from '@/features/expenses/expense-constants';
 import type { ExpenseFormFieldErrors } from '@/features/expenses/expense-types';
@@ -15,7 +15,7 @@ export function validateDescriptionAndAmount(input: {
 }): ExpenseFormFieldErrors {
 	const { description, amountEuros, amountText } = input;
 	const errors: ExpenseFormFieldErrors = {};
-	if (description.length === 0 || description.length > DESCRIPTION_MAX) {
+	if (description.length === 0 || description.length > DESCRIPTION_MAX_LENGTH) {
 		errors.description = 'Gib eine kurze Beschreibung ein.';
 	}
 	if (amountEuros === null || amountEuros < AMOUNT_MIN_EUROS || amountEuros > AMOUNT_MAX_EUROS) {

@@ -13,11 +13,13 @@ import {
 	computeNetBalances,
 } from '@/features/expenses/debt-reduction';
 import { AMOUNT_MAX_EUROS, AMOUNT_MIN_EUROS } from '@/features/expenses/expense-constants';
+import { EDITED_EXPENSE_DELETED_MESSAGE } from '@/features/expenses/expense-errors';
 import {
 	type ExpenseScope,
 	filterExpenses,
 	matchesExpenseQuery,
 } from '@/features/expenses/expense-filter';
+import { expenseFormTitle } from '@/features/expenses/expense-form-mode';
 import {
 	payerOptions,
 	settledSharesAffectedByEdit,
@@ -263,6 +265,41 @@ export function useAusgabenPage() {
 			'EUR')
 		: (form.editingRecurringExpense?.currency ?? 'EUR');
 
+	const isEditingQueuedRecurring = form.queueEditType === 'recurring.create';
+	const isEditingQueuedExpense = form.queueEditType === 'expense.create';
+	const formTitle = expenseFormTitle({
+		editingRecurringExpense: form.editingRecurringExpense,
+		isEditingQueuedRecurring,
+		isEditingQueuedExpense,
+		isEditingExpense: form.editingExpense !== null,
+	});
+	const saving = expenseSubmit.submitting || recurring.savingRecurringTemplate;
+
+	/** After an edit conflict, decide against the fresh server version. */
+	async function resolveConflict(choice: 'server' | 'draft'): Promise<void> {
+		const editedId = form.editingExpense?.id;
+		const fresh = await data.load(false);
+		if (!fresh || !editedId) {
+			form.setFormError(
+				'Die Liste konnte nicht neu geladen werden. Versuche es gleich noch einmal.',
+			);
+			return;
+		}
+		const serverExpense = fresh.find((expense) => expense.id === editedId);
+		if (!serverExpense) {
+			form.setConflictExpenseId(null);
+			form.setFormError(EDITED_EXPENSE_DELETED_MESSAGE);
+			return;
+		}
+		if (choice === 'server') {
+			form.startEdit(serverExpense);
+			return;
+		}
+		form.rebaseEdit(serverExpense.updatedAt);
+		form.setConflictExpenseId(null);
+		form.setFormError(null);
+	}
+
 	function clearPendingCreateRequests(): void {
 		expenseSubmit.forgetPendingRequest();
 		recurring.forgetPendingRequest();
@@ -310,6 +347,10 @@ export function useAusgabenPage() {
 		splitPreview,
 		reopenedShares,
 		formCurrency,
+		formTitle,
+		saving,
+		isEditingQueuedRecurring,
+		resolveConflict,
 		clearPendingCreateRequests,
 		memberName,
 		memberPayPalMerchantId,
