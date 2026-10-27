@@ -1,6 +1,5 @@
 import type { OfflineActionType } from '@/core/offline/offline-queue';
-import { formatEuroInput, parseEuroAmount } from '@/core/utils/amount';
-import { CENTS_PER_EURO } from '@/core/utils/money';
+import { eurosToCents, formatCentsInput, parseEuroAmount } from '@/core/utils/amount';
 import { parseTimestamp } from '@/core/utils/time';
 import { currencySchema } from '@/core/validators/currency';
 import type { ExpenseCategory } from '@/features/expenses/expense-categories';
@@ -96,10 +95,7 @@ export function splitsToManualInput(
 	splits: ReadonlyArray<ExpenseSplitShare>,
 ): Record<string, string> {
 	return Object.fromEntries(
-		splits.map((split) => [
-			split.debtorMemberId,
-			formatEuroInput(split.amountCents / CENTS_PER_EURO),
-		]),
+		splits.map((split) => [split.debtorMemberId, formatCentsInput(split.amountCents)]),
 	);
 }
 
@@ -108,7 +104,7 @@ export function recurringTemplateSuggestion(template: RecurringExpense): Expense
 	return {
 		description: template.description,
 		category: template.category,
-		amountStr: formatEuroInput(template.amountCents / CENTS_PER_EURO),
+		amountStr: formatCentsInput(template.amountCents),
 		imageUrl: null,
 		paidByMemberId: template.paidByMemberId,
 		splitMode: 'manual',
@@ -126,11 +122,9 @@ export function queuedEqualParticipants(
 	if (amount === null || !draft.manualSplits) return null;
 	const splits = Object.entries(draft.manualSplits).flatMap(([debtorMemberId, value]) => {
 		const share = parseEuroAmount(value);
-		return share === null
-			? []
-			: [{ debtorMemberId, amountCents: Math.round(share * CENTS_PER_EURO) }];
+		return share === null ? [] : [{ debtorMemberId, amountCents: eurosToCents(share) }];
 	});
-	return equalSplitParticipants(Math.round(amount * CENTS_PER_EURO), splits, members);
+	return equalSplitParticipants(eurosToCents(amount), splits, members);
 }
 
 /** `null` stands for "every active member". */

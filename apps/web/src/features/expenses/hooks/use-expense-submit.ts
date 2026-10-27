@@ -14,9 +14,8 @@ import {
 	OFFLINE_SAVED_NOTICE,
 } from '@/core/offline/offline-copy';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
-import { parseEuroAmount } from '@/core/utils/amount';
+import { eurosToCents, parseEuroAmount } from '@/core/utils/amount';
 import { inputDateToIso, isoToInputDate, todayInputValue } from '@/core/utils/local-date';
-import { CENTS_PER_EURO } from '@/core/utils/money';
 import {
 	expenseSaveErrorMessage,
 	isPermanentClientError,
@@ -107,7 +106,7 @@ export function useExpenseSubmit(
 			return;
 		}
 		if (amountEuros === null) return;
-		const amountCents = Math.round(amountEuros * CENTS_PER_EURO);
+		const amountCents = eurosToCents(amountEuros);
 		const isEdit = editingExpense !== null;
 		const fingerprint = JSON.stringify({
 			recurringSourceId,

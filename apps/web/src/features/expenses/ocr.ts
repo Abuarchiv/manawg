@@ -1,6 +1,6 @@
-import { parseEuroAmount } from '@/core/utils/amount';
-import { CENTS_PER_EURO } from '@/core/utils/money';
+import { eurosToCents, parseEuroAmount } from '@/core/utils/amount';
 import { AMOUNT_MAX_CENTS } from '@/features/expenses/expense-constants';
+import { parseDayMonthYear } from './import-csv-helpers';
 import type { ParsedExpense } from './import-parsers';
 
 const OCR_LANGS = 'deu+eng';
@@ -170,30 +170,15 @@ function parseOcrAmount(raw: string): number | null {
 	}
 	const amountEuros = parseEuroAmount(normalized);
 	if (amountEuros === null) return null;
-	const amountCents = Math.round(amountEuros * CENTS_PER_EURO);
+	const amountCents = eurosToCents(amountEuros);
 	return Number.isSafeInteger(amountCents) && amountCents <= AMOUNT_MAX_CENTS ? amountCents : null;
 }
 
 function parseDate(raw: string): string | null {
 	const match = raw.match(DATE_PATTERN);
 	if (!match) return null;
-	const [, d, m, y] = match;
-	const year = (y ?? '').length === 2 ? `20${y}` : y;
-	const dayNum = Number(d);
-	const monthNum = Number(m);
-	const yearNum = Number(year);
-	const date = new Date(
-		`${year}-${(m ?? '').padStart(2, '0')}-${(d ?? '').padStart(2, '0')}T00:00:00Z`,
-	);
-	if (Number.isNaN(date.getTime())) return null;
-	if (
-		date.getUTCFullYear() !== yearNum ||
-		date.getUTCMonth() + 1 !== monthNum ||
-		date.getUTCDate() !== dayNum
-	) {
-		return null;
-	}
-	return date.toISOString();
+	const [, day = '', month = '', year = ''] = match;
+	return parseDayMonthYear(day, month, year);
 }
 
 function cleanDescription(raw: string): string {

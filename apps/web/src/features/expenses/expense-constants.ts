@@ -1,4 +1,5 @@
 import { CENTS_PER_EURO } from '@/core/utils/money';
+import { LIST_REFRESH_INTERVAL_MS } from '@/core/utils/use-visibility-paused-interval';
 
 /**
  * Money bounds for expense amounts, in cents.
@@ -18,7 +19,7 @@ export const MAX_SPLITS = 50;
 export const RECURRING_INTERVAL_MAX_MONTHS = 24;
 
 /** Refresh period of the expense, fixed-cost and reminder pages while the tab is visible. */
-export const PAGE_REFRESH_MS = 30_000;
+export const PAGE_REFRESH_MS = LIST_REFRESH_INTERVAL_MS;
 
 export const AMOUNT_MIN_EUROS = AMOUNT_MIN_CENTS / CENTS_PER_EURO;
 export const AMOUNT_MAX_EUROS = AMOUNT_MAX_CENTS / CENTS_PER_EURO;

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { apiFetch } from '@/core/infra/api-client';
+import { pluralize } from '@/shared/lib/plural';
 import { useRef, useState } from 'react';
 
 const UNDO_ERRORS: Readonly<Record<string, string>> = {
@@ -62,7 +63,7 @@ export function ImportUndo({ importId, label }: { importId: string; label?: stri
 					<output>
 						{removed === 'unknown'
 							? 'Import rückgängig gemacht.'
-							: `Import rückgängig gemacht: ${removed} ${removed === 1 ? 'Ausgabe' : 'Ausgaben'} entfernt.`}
+							: `Import rückgängig gemacht: ${pluralize(removed, 'Ausgabe', 'Ausgaben')} entfernt.`}
 					</output>
 				</AlertDescription>
 			</Alert>

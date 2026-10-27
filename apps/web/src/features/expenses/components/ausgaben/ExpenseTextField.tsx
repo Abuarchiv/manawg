@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/input-group';
 import { cn } from '@/shared/lib/cn';
 
-interface TextFieldProps {
+interface ExpenseTextFieldProps {
 	id?: string;
 	label: string;
 	value: string;
@@ -23,7 +23,7 @@ interface TextFieldProps {
 	enterKeyHint?: 'done' | 'next' | 'go' | 'search' | 'send';
 }
 
-export function TextField({
+export function ExpenseTextField({
 	id: providedId,
 	label,
 	value,
@@ -35,7 +35,7 @@ export function TextField({
 	disabled = false,
 	error,
 	enterKeyHint,
-}: TextFieldProps) {
+}: ExpenseTextFieldProps) {
 	const id = providedId ?? `f-${label.toLowerCase().replace(/\s+/g, '-')}`;
 	const errorId = `${id}-error`;
 	return (

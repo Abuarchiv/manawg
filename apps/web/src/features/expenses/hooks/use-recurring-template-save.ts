@@ -9,9 +9,8 @@ import {
 	OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
 } from '@/core/offline/offline-copy';
 import { createOfflineIdempotencyKey, createQueuedRecurring } from '@/core/offline/offline-queue';
-import { parseEuroAmount } from '@/core/utils/amount';
+import { eurosToCents, parseEuroAmount } from '@/core/utils/amount';
 import { todayAtLocalNoon } from '@/core/utils/local-date';
-import { CENTS_PER_EURO } from '@/core/utils/money';
 import { parseTimestamp } from '@/core/utils/time';
 import {
 	isPermanentClientError,
@@ -69,7 +68,7 @@ export function useRecurringTemplateSave(
 			support.setValidationErrors(validationErrors);
 			return;
 		}
-		const amountCents = Math.round(amountEuros * CENTS_PER_EURO);
+		const amountCents = eurosToCents(amountEuros);
 		const queuedNextDueAt =
 			wasEditingQueuedRecurring && form.recurringNextDueAt
 				? parseTimestamp(form.recurringNextDueAt)

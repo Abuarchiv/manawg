@@ -29,7 +29,7 @@ import { ExpenseExtras } from './ExpenseExtras';
 import { ExpenseFormNotices } from './ExpenseFormNotices';
 import { ExpensePayerDateFields } from './ExpensePayerDateFields';
 import { ExpenseSplitFieldset } from './ExpenseSplitFieldset';
-import { TextField } from './TextField';
+import { ExpenseTextField } from './ExpenseTextField';
 import { useExpenseFormDirty } from './use-expense-form-dirty';
 
 import type { ExpenseCategory } from '@/features/expenses/expense-categories';
@@ -239,7 +239,7 @@ export function ExpenseFormSection({
 									formSaving={formSaving}
 									onAskReplace={() => setReplaceOpen(true)}
 								/>
-								<TextField
+								<ExpenseTextField
 									id={EXPENSE_DESCRIPTION_FIELD_ID}
 									label="Beschreibung"
 									value={description}
@@ -259,7 +259,7 @@ export function ExpenseFormSection({
 									onChange={setCategory}
 									disabled={formSaving}
 								/>
-								<TextField
+								<ExpenseTextField
 									label="Betrag"
 									value={amountStr}
 									onChange={(value) => {

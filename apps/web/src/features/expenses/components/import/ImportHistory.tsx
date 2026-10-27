@@ -2,6 +2,7 @@
 
 import { useWg } from '@/components/wg/WgContextProvider';
 import { apiFetch } from '@/core/infra/api-client';
+import { pluralize } from '@/shared/lib/plural';
 import { useEffect, useState } from 'react';
 import { ImportUndo } from './ImportUndo';
 
@@ -19,6 +20,7 @@ const SOURCE_LABELS: Record<string, string> = {
 	ocr_screenshot: 'Screenshot',
 };
 
+// Timestamp of the import run, not a due date, so it keeps its own formatter.
 const DAY_FORMATTER = new Intl.DateTimeFormat('de-DE', {
 	day: '2-digit',
 	month: '2-digit',
@@ -70,7 +72,7 @@ export function ImportHistory() {
 					return (
 						<li key={item.id} className="flex flex-col gap-2 p-3 text-sm">
 							<span>
-								{description}: {item.inserted} {item.inserted === 1 ? 'Ausgabe' : 'Ausgaben'}
+								{description}: {pluralize(item.inserted, 'Ausgabe', 'Ausgaben')}
 								{author ? `, von ${author}` : ''}
 							</span>
 							{mayUndo && (

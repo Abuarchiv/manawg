@@ -16,8 +16,8 @@ import {
 	InputGroupText,
 } from '@/components/ui/input-group';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { parseEuroAmount } from '@/core/utils/amount';
-import { CENTS_PER_EURO, formatEuroCents } from '@/core/utils/money';
+import { eurosToCents, parseEuroAmount } from '@/core/utils/amount';
+import { formatEuroCents } from '@/core/utils/money';
 import type { AboSplitBuildError, SplitMode } from '@/features/expenses/abo-form-model';
 import { EqualParticipantsPicker } from '@/features/expenses/components/ausgaben/EqualParticipantsPicker';
 import { SplitReview } from '@/features/expenses/components/ausgaben/SplitReview';
@@ -53,7 +53,7 @@ function splitSumHint(manualSplits: Record<string, string>, totalCents: number |
 	let sumCents = 0;
 	for (const raw of Object.values(manualSplits)) {
 		const parsed = parseEuroAmount(raw);
-		if (parsed !== null && parsed > 0) sumCents += Math.round(parsed * CENTS_PER_EURO);
+		if (parsed !== null && parsed > 0) sumCents += eurosToCents(parsed);
 	}
 	const base = `Verteilt ${formatEuroCents(sumCents)} von ${formatEuroCents(totalCents)}`;
 	if (sumCents === totalCents) return `${base} · passt`;

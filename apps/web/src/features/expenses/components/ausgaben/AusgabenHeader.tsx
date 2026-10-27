@@ -1,5 +1,7 @@
 'use client';
 
+import { pluralize } from '@/shared/lib/plural';
+
 interface AusgabenHeaderProps {
 	expenseCount: number;
 	initialLoading: boolean;
@@ -14,7 +16,7 @@ export function AusgabenHeader({
 		<header className="sr-only">
 			<h1>Ausgaben</h1>
 			<p aria-live="polite" aria-atomic="true">
-				{initialLoading ? '' : `${expenseCount} ${expenseCount === 1 ? 'Eintrag' : 'Einträge'}`}
+				{initialLoading ? '' : pluralize(expenseCount, 'Eintrag', 'Einträge')}
 			</p>
 		</header>
 	);

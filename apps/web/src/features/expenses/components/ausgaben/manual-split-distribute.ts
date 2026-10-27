@@ -1,5 +1,4 @@
-import { formatEuroInput, parseEuroAmount } from '@/core/utils/amount';
-import { CENTS_PER_EURO } from '@/core/utils/money';
+import { eurosToCents, formatCentsInput, parseEuroAmount } from '@/core/utils/amount';
 
 /**
  * Pure remainder-distribution step behind "Rest aufteilen", kept out of the
@@ -45,7 +44,7 @@ export function distributeRemainderCents(
 		const nextTargets: { id: string }[] = [];
 		for (const t of remainingTargets) {
 			const curEuros = parseEuroAmount(next[t.id] ?? '') ?? 0;
-			const curCents = Math.round(curEuros * CENTS_PER_EURO);
+			const curCents = eurosToCents(curEuros);
 			const addCents = perCent + (leftover > 0 ? 1 : leftover < 0 ? -1 : 0);
 			if (leftover > 0) leftover--;
 			else if (leftover < 0) leftover++;
@@ -53,7 +52,7 @@ export function distributeRemainderCents(
 			const nextCents = Math.max(0, curCents + addCents);
 			unappliedCents += curCents + addCents - nextCents;
 			if (nextCents > 0) nextTargets.push(t);
-			next[t.id] = formatEuroInput(nextCents / CENTS_PER_EURO);
+			next[t.id] = formatCentsInput(nextCents);
 		}
 		remainingCents = unappliedCents;
 		remainingTargets = nextTargets;

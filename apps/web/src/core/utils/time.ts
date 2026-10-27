@@ -84,6 +84,19 @@ export function formatShortDate(iso: string, timeZone?: 'Europe/Berlin'): string
 	);
 }
 
+const BERLIN_DAY_MONTH_YEAR = new Intl.DateTimeFormat('de-DE', {
+	day: '2-digit',
+	month: '2-digit',
+	year: 'numeric',
+	timeZone: 'Europe/Berlin',
+});
+
+/** Berlin calendar day with year ("06.10.2026"), for due dates; see `formatShortDate`. */
+export function formatDayMonthYear(iso: string): string {
+	const date = parseValidDate(iso);
+	return date ? BERLIN_DAY_MONTH_YEAR.format(date) : 'Datum unbekannt';
+}
+
 /** Absence range: Berlin days, see `formatShortDate`. */
 export function formatShortDateRange(startIso: string, endIso: string): string {
 	return `${formatShortDate(startIso, 'Europe/Berlin')} bis ${formatShortDate(endIso, 'Europe/Berlin')}`;

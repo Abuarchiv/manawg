@@ -12,9 +12,8 @@ import {
 } from '@/components/ui/input-group';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Spinner } from '@/components/ui/spinner';
-import { formatEuroInput, parseEuroAmount } from '@/core/utils/amount';
+import { eurosToCents, formatCentsInput, parseEuroAmount } from '@/core/utils/amount';
 import { inputDateToIso, isoToInputDate, todayInputValue } from '@/core/utils/local-date';
-import { CENTS_PER_EURO } from '@/core/utils/money';
 import {
 	type AboFormValues,
 	type SplitMode,
@@ -70,9 +69,7 @@ export function AboForm({
 	const [category, setCategory] = useState<ExpenseCategory>(
 		initial?.category ?? DEFAULT_EXPENSE_CATEGORY,
 	);
-	const [amountStr, setAmountStr] = useState(
-		initial ? formatEuroInput(initial.amountCents / CENTS_PER_EURO) : '',
-	);
+	const [amountStr, setAmountStr] = useState(initial ? formatCentsInput(initial.amountCents) : '');
 	const [paidByMemberId, setPaidByMemberId] = useState(
 		initial?.paidByMemberId ?? defaultPaidByMemberId,
 	);
@@ -97,7 +94,7 @@ export function AboForm({
 		if (!initial) return;
 		setDescription(initial.description);
 		setCategory(initial.category);
-		setAmountStr(formatEuroInput(initial.amountCents / CENTS_PER_EURO));
+		setAmountStr(formatCentsInput(initial.amountCents));
 		setPaidByMemberId(initial.paidByMemberId);
 		setIntervalMonths(initial.intervalMonths);
 		setNextDueAt(isoToInputDate(initial.nextDueAt));
@@ -111,7 +108,7 @@ export function AboForm({
 	const parsedAmountCents = useMemo(() => {
 		const euros = parseEuroAmount(amountStr);
 		if (euros === null || euros < AMOUNT_MIN_EUROS || euros > AMOUNT_MAX_EUROS) return null;
-		return Math.round(euros * CENTS_PER_EURO);
+		return eurosToCents(euros);
 	}, [amountStr]);
 	const descriptionError =
 		error && (description.trim().length === 0 || description.trim().length > DESCRIPTION_MAX)

@@ -8,9 +8,8 @@ import {
 	writeDraft,
 } from '@/core/offline/drafts';
 import type { OfflineActionType } from '@/core/offline/offline-queue';
-import { formatEuroInput } from '@/core/utils/amount';
+import { formatCentsInput } from '@/core/utils/amount';
 import { isoToInputDate } from '@/core/utils/local-date';
-import { CENTS_PER_EURO } from '@/core/utils/money';
 import {
 	DEFAULT_EXPENSE_CATEGORY,
 	EXPENSE_CATEGORIES,
@@ -278,7 +277,7 @@ export function useExpenseForm({
 		setPendingPrefill(null);
 		setDescription(expense.description);
 		setCategory(expense.category);
-		setAmountStr(formatEuroInput(expense.amountCents / CENTS_PER_EURO));
+		setAmountStr(formatCentsInput(expense.amountCents));
 		setImageUrl(expense.imageUrl);
 		setPaidByMemberId(expense.paidByMemberId);
 		// "Equal" only if every share is an equal part among active members (all or a subset), as
@@ -318,7 +317,7 @@ export function useExpenseForm({
 		setPendingPrefill(null);
 		setDescription(template.description);
 		setCategory(template.category);
-		setAmountStr(formatEuroInput(template.amountCents / CENTS_PER_EURO));
+		setAmountStr(formatCentsInput(template.amountCents));
 		setImageUrl(null);
 		setPaidByMemberId(template.paidByMemberId);
 		// A template stores explicit per-member shares, so editing it always

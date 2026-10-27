@@ -10,7 +10,7 @@ import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { berlinDayKey } from '@/core/utils/berlin-day';
 import { formatEuroCents } from '@/core/utils/money';
-import { formatShortDate, parseValidDate } from '@/core/utils/time';
+import { formatDayMonthYear, formatShortDate } from '@/core/utils/time';
 import type { Abo, MemberOption } from '@/features/expenses/expense-types';
 import {
 	canManageRecurringTemplate,
@@ -19,16 +19,9 @@ import {
 } from '@/features/expenses/recurring-expenses';
 import { ChevronDown, Pause, Pencil, Play, Trash2 } from 'lucide-react';
 
-const DATE_WITH_YEAR = new Intl.DateTimeFormat('de-DE', {
-	day: '2-digit',
-	month: '2-digit',
-	year: 'numeric',
-});
-
 /** Yearly recurring expenses: without the year all dates would look the same (03.02., 03.02., 03.02.). */
 function formatAboDate(iso: string, intervalMonths: number): string {
-	const date = intervalMonths >= 12 ? parseValidDate(iso) : null;
-	return date ? DATE_WITH_YEAR.format(date) : formatShortDate(iso);
+	return intervalMonths >= 12 ? formatDayMonthYear(iso) : formatShortDate(iso, 'Europe/Berlin');
 }
 
 interface AboRowProps {

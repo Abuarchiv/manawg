@@ -5,8 +5,7 @@ import type { ActionNotice } from '@/components/wg/ActionNoticeBanner';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { usePendingSet } from '@/core/hooks/usePendingSet';
 import { useStableCallback } from '@/core/hooks/useStableCallback';
-import { parseEuroAmount } from '@/core/utils/amount';
-import { CENTS_PER_EURO } from '@/core/utils/money';
+import { eurosToCents, parseEuroAmount } from '@/core/utils/amount';
 import { formatWeekLabel, parseValidDate, startOfWeek } from '@/core/utils/time';
 import {
 	buildSettlementSummary,
@@ -245,7 +244,7 @@ export function useAusgabenPage() {
 	const previewAmount = parseEuroAmount(form.amountStr);
 	const splitPreview =
 		previewAmount !== null && previewAmount >= AMOUNT_MIN_EUROS && previewAmount <= AMOUNT_MAX_EUROS
-			? support.buildSplits(Math.round(previewAmount * CENTS_PER_EURO))
+			? support.buildSplits(eurosToCents(previewAmount))
 			: null;
 	const editedExpense = form.editingExpense
 		? expenses.find((expense) => expense.id === form.editingExpense?.id)
