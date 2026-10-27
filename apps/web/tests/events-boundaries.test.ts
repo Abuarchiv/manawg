@@ -2,10 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { SQL } from 'drizzle-orm';
 import { PgDialect } from 'drizzle-orm/pg-core';
-import {
-	collectReminderOccurrences,
-	startsInReminderWindow,
-} from '../src/features/events/event-reminder-dispatch.ts';
+import { startsInReminderWindow } from '../src/features/events/event-reminder-dispatch.ts';
 import { eventOverlapsCalendarDay, expandRecurrence } from '../src/features/events/events.ts';
 import { buildEventsWindowFilter } from '../src/features/events/server/event-reminder-window.ts';
 
@@ -272,11 +269,11 @@ test('reminders include only occurrences that start tomorrow', () => {
 		recurrence: null,
 	};
 	const tomorrow = { ...ongoing, id: 'tomorrow', startsAt: '2026-09-23T00:00:00.000Z' };
-	const due = collectReminderOccurrences([ongoing, tomorrow], (event) =>
+	const due = [ongoing, tomorrow].flatMap((event) =>
 		expandRecurrence(event, from, to).filter((occ) => startsInReminderWindow(occ, from, to)),
 	);
 	assert.deepEqual(
-		due?.map(({ eventId }) => eventId),
+		due.map(({ eventId }) => eventId),
 		['tomorrow'],
 	);
 });

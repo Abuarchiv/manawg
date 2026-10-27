@@ -170,12 +170,11 @@ mock.module('@/features/events/server/event-reminder-window', {
 			const end = new Date(nextBerlinDayStart(start).getTime() - 1);
 			return { start, end };
 		},
-		withEventWindowCandidates: async (
+		forEachEventWindowPage: async (
 			_from: unknown,
 			fetchPage: (cursor: null, size: number) => Promise<unknown>,
-			_overflow: unknown,
-			processRows: (rows: unknown) => Promise<unknown>,
-		) => processRows(await fetchPage(null, 500)),
+			onPage: (rows: unknown) => Promise<boolean>,
+		) => onPage(await fetchPage(null, 500)),
 	},
 });
 mock.module('drizzle-orm', {

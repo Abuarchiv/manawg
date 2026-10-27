@@ -230,7 +230,6 @@ export async function withEventWindowCandidates<
 	fetchPage: (cursor: EventWindowCursor | null, limit: number) => Promise<readonly T[]>,
 	onOverflow: () => TOverflowResult | Promise<TOverflowResult>,
 	processRows: (rows: readonly T[]) => TResult | Promise<TResult>,
-	maxCandidates = EVENTS_LIST_LIMIT,
 ): Promise<TOverflowResult | TResult> {
 	const rows: T[] = [];
 	let cursor: EventWindowCursor | null = null;
@@ -246,7 +245,7 @@ export async function withEventWindowCandidates<
 		for (const candidate of page) {
 			if (from && isExpiredFiniteRecurrence(candidate, from)) continue;
 			rows.push(candidate);
-			if (rows.length > maxCandidates) return onOverflow();
+			if (rows.length > EVENTS_LIST_LIMIT) return onOverflow();
 		}
 
 		const last = page[page.length - 1];
@@ -259,6 +258,27 @@ export async function withEventWindowCandidates<
 		}
 	}
 	return onOverflow();
+}
+
+/**
+ * Walks candidates in keyset pages without a scan limit; the caller bounds the run.
+ * Returns false when `onPage` asks to stop, true once every page is handled.
+ */
+export async function forEachEventWindowPage<T extends EventWindowCandidate>(
+	from: Date | null,
+	fetchPage: (cursor: EventWindowCursor | null, limit: number) => Promise<readonly T[]>,
+	onPage: (rows: readonly T[]) => Promise<boolean>,
+): Promise<boolean> {
+	let cursor: EventWindowCursor | null = null;
+	for (;;) {
+		const page = await fetchPage(cursor, EVENT_WINDOW_PAGE_SIZE);
+		const last = page.at(-1);
+		if (!last) return true;
+		const rows = from ? page.filter((c) => !isExpiredFiniteRecurrence(c, from)) : page;
+		if (!(await onPage(rows))) return false;
+		if (page.length < EVENT_WINDOW_PAGE_SIZE) return true;
+		cursor = { startsAt: last.startsAt, id: last.id };
+	}
 }
 
 /** Shared date filter for the calendar API and reminder cron; recurring roots have no age bound. */
