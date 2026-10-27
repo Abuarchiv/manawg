@@ -1,6 +1,7 @@
 import { deleteAuthUser } from '@/core/auth/delete-user';
 import { getSupabaseEnv, hasSupabaseEnv } from '@/core/auth/supabase-env';
 import { retryPendingAccountDeletions } from '@/core/db/account-deletion';
+import { healAdminlessWgs } from '@/core/db/admin-succession';
 import { sweepOrphanUploads } from '@/core/db/orphan-uploads';
 import {
 	claimPrivateImageCleanupBatch,
@@ -100,7 +101,10 @@ async function purgeRetention(): Promise<void> {
 	}
 }
 
-/** Purges expired replay rows and runs bounded account/image deletion recovery. */
+/**
+ * Purges expired replay rows, runs bounded account/image deletion recovery
+ * and hands the admin role to a member with an account in WGs that lack one.
+ */
 export const GET = withCronLogging(
 	'maintenance',
 	async (req: NextRequest): Promise<NextResponse> => {
@@ -119,19 +123,22 @@ export const GET = withCronLogging(
 						return confirmed;
 					}
 				: null;
-		const [purge, deletions, privateImages, paypal, orphans] = await Promise.allSettled([
+		const [purge, deletions, privateImages, paypal, orphans, adminHeal] = await Promise.allSettled([
 			purgeExpiredIdempotencyResponses(),
 
 			retryPendingAccountDeletions(deleteAuth),
 			cleanupPrivateImages(),
 			isPayPalConfigured() ? reconcileStaleCapturingPayments() : Promise.resolve(null),
 			sweepOrphans(),
+			healAdminlessWgs(),
 		]);
 		await purgeRetention();
 		if (orphans.status === 'rejected')
 			logApiError('[maintenance] orphan upload sweep failed', orphans.reason);
 		if (paypal.status === 'rejected')
 			logApiError('[maintenance] PayPal capture reconcile failed', paypal.reason);
+		if (adminHeal.status === 'rejected')
+			logApiError('[maintenance] admin handover heal failed', adminHeal.reason);
 		if (purge.status === 'rejected')
 			logApiError('[maintenance] idempotency cleanup failed', purge.reason);
 		if (deletions.status === 'rejected') {
@@ -153,6 +160,8 @@ export const GET = withCronLogging(
 			deletions.status === 'fulfilled' &&
 			paypal.status === 'fulfilled' &&
 			orphans.status === 'fulfilled' &&
+			adminHeal.status === 'fulfilled' &&
+			adminHeal.value.failed === 0 &&
 			!recoveryPending &&
 			!imageCleanupProblem;
 		return NextResponse.json(
@@ -161,6 +170,7 @@ export const GET = withCronLogging(
 				purgedIdempotencyRows: purge.status === 'fulfilled' ? purge.value : null,
 				paypalReconcile: paypal.status === 'fulfilled' ? paypal.value : null,
 				orphanUploads: orphans.status === 'fulfilled' ? orphans.value : null,
+				adminHeal: adminHeal.status === 'fulfilled' ? adminHeal.value : null,
 				accountDeletions:
 					deletions.status === 'fulfilled'
 						? { ...deletions.value, authAdminAvailable: Boolean(deleteAuth) }

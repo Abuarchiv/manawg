@@ -13,6 +13,8 @@ const state = {
 	fenceCommitted: false,
 	statusReads: 0,
 	authCompletionAttempts: 0,
+	left: [] as unknown[],
+	audits: [] as Array<Record<string, unknown>>,
 };
 
 const tx = {
@@ -35,8 +37,9 @@ const tx = {
 	},
 	insert(table: unknown) {
 		return {
-			values: async () => {
+			values: async (row: Record<string, unknown>) => {
 				assert.equal(table, auditEvents);
+				state.audits.push(row);
 			},
 		};
 	},
@@ -84,7 +87,7 @@ mock.module('@/core/db/delete-account', {
 	namedExports: {
 		removeAccountFromWgs: async () => {
 			state.fenceCommitted = true;
-			return { left: [], deletedWgIds: [] };
+			return { left: state.left, deletedWgIds: [] };
 		},
 	},
 });
@@ -123,6 +126,8 @@ function harness({
 		fenceCommitted: false,
 		statusReads: 0,
 		authCompletionAttempts: 0,
+		left: [],
+		audits: [],
 	});
 	process.env.SUPABASE_SERVICE_ROLE_KEY = 'unit-test-service-role-key';
 	const request = new Request('https://example.test/api/account', { method: 'DELETE' });
@@ -179,4 +184,22 @@ test('unavailable fence status check returns an explicit unconfirmed outcome', a
 	assert.equal(state.statusReads, 1);
 	assert.equal(state.authCompletionAttempts, 0);
 	assert.equal(response.clearedCookies.length, 0);
+});
+
+test('the audit entry names the member who takes over as admin', async () => {
+	const { state, deleteAccount } = harness();
+	state.left = [
+		{ wgId: 'wg-1', memberId: 'm1', name: 'Jonas', newAdminId: 'm2', newAdminName: 'Lena' },
+		{ wgId: 'wg-2', memberId: 'm3', name: 'Jonas', newAdminId: null, newAdminName: null },
+	];
+	await deleteAccount();
+	assert.equal(
+		state.audits[0]?.summary,
+		'Jonas hat die Kontolöschung angefragt und ist ausgezogen. Lena ist jetzt Admin.',
+	);
+	assert.equal(
+		state.audits[1]?.summary,
+		'Jonas hat die Kontolöschung angefragt und ist ausgezogen.',
+	);
+	assert.match(String(state.audits[0]?.metadataJson), /"newAdminId":"m2"/);
 });
