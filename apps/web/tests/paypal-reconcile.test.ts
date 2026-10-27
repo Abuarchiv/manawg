@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { mock, test } from 'node:test';
+import { PayPalApiError } from '../src/core/infra/paypal.ts';
 import {
 	parsePayPalAmountCents,
 	terminalPayPalCaptureOutcome,
@@ -36,6 +37,7 @@ mock.module('@/core/db', {
 mock.module('@/core/infra/observability', { namedExports: { logApiError: () => {} } });
 mock.module('@/core/infra/paypal', {
 	namedExports: {
+		PayPalApiError,
 		getPayPalOrder: async (orderId: string, merchantId: string) => {
 			assert.equal(orderId, harness.payment.providerOrderId);
 			assert.equal(merchantId, harness.payment.payeeMerchantId);
@@ -129,8 +131,22 @@ test('an unapproved order is only given up once it is long past its expiry', asy
 			null,
 			{ pending: 1 },
 		],
-		['abandoned 404', -2 * hour, null, new Error('paypal_api_404'), { failed: 1 }],
-		['fresh 404', 10 * hour, null, new Error('paypal_api_404'), { pending: 1 }],
+		['abandoned 404', -2 * hour, null, new PayPalApiError(404, null), { failed: 1 }],
+		['fresh 404', 10 * hour, null, new PayPalApiError(404, null), { pending: 1 }],
+		[
+			'abandoned 404 with a payee issue',
+			-2 * hour,
+			null,
+			new PayPalApiError(404, 'PAYEE_ACCOUNT_INVALID'),
+			{ failed: 1 },
+		],
+		[
+			'abandoned plain Error with the 404 message',
+			-2 * hour,
+			null,
+			new Error('paypal_api_404'),
+			{ pending: 1 },
+		],
 	];
 	for (const [label, expiresIn, order, lookupError, expected] of cases) {
 		harness.payment.expiresAt = new Date(now.getTime() + expiresIn);

@@ -2,9 +2,10 @@
 // offline-client module graph (`?instance=N`, see resolve-hooks.mjs) wired to its own mocks.
 import assert from 'node:assert/strict';
 import { mock } from 'node:test';
+import { PendingImageMissingError } from '../../src/core/offline/offline-images.ts';
 import { deferred } from './deferred.ts';
 
-export { deferred };
+export { PendingImageMissingError, deferred };
 
 export const { OFFLINE_REPLAY_MAX_AGE_MS, RESPONSE_REPLAY_TTL_SECONDS } = await import(
 	'../../src/core/offline/replay-retention.ts'
@@ -189,6 +190,7 @@ export async function makeQueueModule({
 		mockInstance('@/core/offline/offline-images', {
 			isPendingImageToken: (value: unknown) =>
 				typeof value === 'string' && value.startsWith('manawg-pending-image:'),
+			PendingImageMissingError,
 			uploadPendingImageToken: async () => 'https://app.invalid/image',
 			removePendingImage: async () => {},
 			...images,

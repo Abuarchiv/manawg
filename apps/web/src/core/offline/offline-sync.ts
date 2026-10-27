@@ -2,7 +2,12 @@ import { isSessionExpired } from '@/core/http/error-codes';
 import { isIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
 import { IMAGE_REMOVED_ERROR, SERVER_CHECK_PREFIX } from './offline-failure-copy';
-import { isPendingImageToken, removePendingImage, uploadPendingImageToken } from './offline-images';
+import {
+	PendingImageMissingError,
+	isPendingImageToken,
+	removePendingImage,
+	uploadPendingImageToken,
+} from './offline-images';
 import {
 	type OfflineAction,
 	explainOfflineActionFailure,
@@ -286,7 +291,7 @@ async function runOfflineSync(
 			}
 		} catch (err) {
 			if (options.signal?.aborted) break;
-			const missingPendingImage = err instanceof Error && err.message === 'pending-image-missing';
+			const missingPendingImage = err instanceof PendingImageMissingError;
 			const pendingImageUploadError = explainPendingImageUploadError(err);
 			const lastError = missingPendingImage
 				? MISSING_PENDING_IMAGE_ERROR

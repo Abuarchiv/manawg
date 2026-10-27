@@ -339,12 +339,12 @@ test('readiness and provider availability failures retry the same pending paymen
 	const harness = makeOrderHarness({
 		isPayPalMerchantReady: async () => {
 			readinessCalls += 1;
-			if (readinessCalls === 1) throw new Error('paypal_api_503');
+			if (readinessCalls === 1) throw new realPayPal.PayPalApiError(503, null);
 			return true;
 		},
 		createPayPalOrder: async () => {
 			createCalls += 1;
-			if (createCalls === 1) throw new Error('paypal_api_503');
+			if (createCalls === 1) throw new realPayPal.PayPalApiError(503, null);
 			return { id: 'paypal-order-recovered' };
 		},
 	});
@@ -436,17 +436,20 @@ test('PayPal API helper keeps onboarding status errors, PAYEE classification, an
 		const paypal = realPayPal;
 		assert.equal(
 			paypal.isTerminalPayPalOrderCreationError(
-				new Error('paypal_api_403_PAYEE_ACCOUNT_RESTRICTED'),
+				new realPayPal.PayPalApiError(403, 'PAYEE_ACCOUNT_RESTRICTED'),
 			),
 			true,
 		);
 		assert.equal(
 			paypal.isTerminalPayPalOrderCreationError(
-				new Error('paypal_api_503_PAYEE_ACCOUNT_RESTRICTED'),
+				new realPayPal.PayPalApiError(503, 'PAYEE_ACCOUNT_RESTRICTED'),
 			),
 			false,
 		);
-		assert.equal(paypal.isTerminalPayPalOrderCreationError(new Error('paypal_api_403')), false);
+		assert.equal(
+			paypal.isTerminalPayPalOrderCreationError(new realPayPal.PayPalApiError(403, null)),
+			false,
+		);
 
 		await assert.rejects(
 			paypal.requestPayPalApi('/v2/checkout/orders', { method: 'POST' }, '2B23456789ABC'),

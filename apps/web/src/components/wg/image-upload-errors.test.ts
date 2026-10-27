@@ -15,3 +15,11 @@ test('timeouts, rate limits and 5xx answers stay silently retryable', () => {
 		assert.equal(pendingUploadErrorMessage(err), null);
 	}
 });
+
+test('a request that never got an answer is retried silently', () => {
+	for (const message of ['sign-network-failed', 'put-network-failed']) {
+		const err = new Error(message);
+		assert.equal(isRejectedPendingUpload(err), false);
+		assert.equal(pendingUploadErrorMessage(err), null);
+	}
+});

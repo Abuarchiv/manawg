@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { afterEach, mock, test } from 'node:test';
 import {
 	type Action,
+	PendingImageMissingError,
 	createAction,
 	deferred,
 	makeQueueModule,
@@ -243,7 +244,7 @@ test('missing and revoked image blobs stay visible and are never silently droppe
 		},
 		images: {
 			uploadPendingImageToken: async () => {
-				throw new Error('pending-image-missing');
+				throw new PendingImageMissingError();
 			},
 		},
 	});
@@ -510,4 +511,69 @@ test('a stalled image upload times out so the next sync is not blocked', async (
 	}
 	assert.equal(sawSignal, true);
 	assert.equal(module.readOfflineQueue().length, 1);
+});
+
+test('signAndPut reports sign and PUT failures by kind and status', async () => {
+	const { signAndPut, PendingImageMissingError: Missing } = await import(
+		'../src/core/offline/offline-images.ts'
+	);
+	const input = {
+		shareCode: 'TEST1234',
+		purpose: 'expense' as const,
+		file: new Blob(['abc'], { type: 'image/png' }),
+		contentType: 'image/png',
+		memberId: 'member-a',
+	};
+	const calls: { url: string; init: RequestInit }[] = [];
+	const answer = (sign: () => Response, put?: () => Response) =>
+		setGlobal('fetch', async (url: string, init: RequestInit) => {
+			calls.push({ url, init });
+			if (url === '/api/upload/sign') return sign();
+			if (put) return put();
+			throw new Error('unexpected request');
+		});
+	const signed = () =>
+		Response.json({
+			presignedUrl: 'https://storage.invalid/upload',
+			publicUrl: 'https://app.invalid/read?key=1',
+			uploadHeaders: { 'x-amz-acl': 'private' },
+		});
+
+	answer(signed, () => new Response(null, { status: 200 }));
+	assert.deepEqual(await signAndPut(input), {
+		ok: true,
+		publicUrl: 'https://app.invalid/read?key=1',
+	});
+	const signCall = calls[0] as (typeof calls)[number];
+	const putCall = calls[1] as (typeof calls)[number];
+	const signHeaders = signCall.init.headers as Record<string, string>;
+	assert.equal(signHeaders['x-manawg-expected-member-id'], 'member-a');
+	assert.deepEqual(JSON.parse(String(signCall.init.body)), {
+		shareCode: 'TEST1234',
+		purpose: 'expense',
+		mimeType: 'image/png',
+		fileSize: 3,
+	});
+	assert.deepEqual(putCall.init.headers, { 'x-amz-acl': 'private', 'Content-Type': 'image/png' });
+
+	answer(() => Response.json({ error: 'file_too_large' }, { status: 400 }));
+	assert.deepEqual(await signAndPut(input), {
+		ok: false,
+		kind: 'sign',
+		status: 400,
+		code: 'file_too_large',
+	});
+	answer(() => new Response('boom', { status: 503 }));
+	assert.deepEqual(await signAndPut(input), { ok: false, kind: 'sign', status: 503, code: '' });
+	answer(signed, () => new Response(null, { status: 403 }));
+	assert.deepEqual(await signAndPut(input), { ok: false, kind: 'put', status: 403 });
+	setGlobal('fetch', async () => {
+		throw new TypeError('Failed to fetch');
+	});
+	assert.deepEqual(await signAndPut(input), { ok: false, kind: 'sign', status: 0, code: '' });
+	answer(signed, () => {
+		throw new TypeError('Failed to fetch');
+	});
+	assert.deepEqual(await signAndPut(input), { ok: false, kind: 'put', status: 0 });
+	assert.equal(new Missing().message, 'pending-image-missing');
 });
