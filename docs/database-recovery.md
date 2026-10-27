@@ -49,6 +49,7 @@ gh run download <run-id> --repo Abuarchiv/manawg-app --dir backup
 security find-generic-password -s 'ManaWG Backup GPG passphrase' -w |
   gpg --batch --pinentry-mode loopback --passphrase-fd 0 --decrypt backup/*/manawg-*.dump.gpg > manawg.dump
 pg_restore --list manawg.dump | head
+psql <disposable-url> -c 'create schema drizzle'
 pg_restore --no-owner --no-privileges --schema=public --schema=drizzle --dbname=<disposable-url> manawg.dump
 ```
 
