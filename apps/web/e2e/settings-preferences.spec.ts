@@ -50,12 +50,12 @@ test.describe('settings notifications responsive', () => {
 		const card = page.locator('#benachrichtigungen > .overflow-hidden');
 		const startHour = page.getByRole('combobox', { name: 'Ruhezeit von' });
 		const endHour = page.getByRole('combobox', { name: 'Ruhezeit bis' });
-		const disableButton = page
+		const quietSwitch = page
 			.locator('#benachrichtigungen')
-			.getByRole('button', { name: 'Ausschalten', exact: true });
+			.getByRole('switch', { name: 'Ruhezeit', exact: true });
 		await expect(startHour).toBeVisible({ timeout: 30_000 });
 		await expect(endHour).toBeVisible();
-		await expect(disableButton).toBeVisible();
+		await expect(quietSwitch).toBeVisible();
 
 		const overflows: string[] = [];
 		for (const width of [320, 360, 390]) {
@@ -75,15 +75,15 @@ test.describe('settings notifications responsive', () => {
 					const cardBox = await card.boundingBox();
 					const startBox = await startHour.boundingBox();
 					const selectBox = await endHour.boundingBox();
-					const buttonBox = await disableButton.boundingBox();
-					if (!cardBox || !startBox || !selectBox || !buttonBox) {
+					const switchBox = await quietSwitch.boundingBox();
+					if (!cardBox || !startBox || !selectBox || !switchBox) {
 						throw new Error('Expected the quiet-time controls to have layout boxes');
 					}
 					const cardRight = cardBox.x + cardBox.width;
 					for (const [name, box] of [
 						['Von', startBox],
 						['Bis', selectBox],
-						['Ausschalten', buttonBox],
+						['Ruhezeit-Switch', switchBox],
 					] as const) {
 						if (box.x < cardBox.x - 1 || box.x + box.width > cardRight + 1) {
 							overflows.push(
