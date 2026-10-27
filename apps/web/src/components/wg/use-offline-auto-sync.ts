@@ -6,21 +6,22 @@ import { captureException } from '@/core/infra/capture-client';
 import { countOfflineActions, syncOfflineActions } from '@/core/offline/offline-client';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { type RefObject, useCallback, useEffect, useRef } from 'react';
+import type { WgAuthRef } from './wg-session-state';
 
 /**
  * Replays this member's queued offline actions every 60 s while visible. The
- * shared syncAbortRef lets an auth change cancel a running replay.
+ * shared auth ref lets an auth change cancel a running replay.
  */
 export function useOfflineAutoSync({
 	shareCode,
 	identity,
 	accountReady,
-	syncAbortRef,
+	auth,
 }: {
 	shareCode: string;
 	identity: SessionMember | null;
 	accountReady: boolean;
-	syncAbortRef: RefObject<AbortController | null>;
+	auth: RefObject<WgAuthRef>;
 }): (force?: boolean) => Promise<void> {
 	const syncingRef = useRef(false);
 
@@ -36,8 +37,8 @@ export function useOfflineAutoSync({
 			) {
 				return;
 			}
-			const controller = syncAbortRef.current ?? new AbortController();
-			syncAbortRef.current = controller;
+			const controller = auth.current.syncAbort ?? new AbortController();
+			auth.current.syncAbort = controller;
 			syncingRef.current = true;
 			try {
 				await syncOfflineActions(shareCode, {
@@ -52,7 +53,7 @@ export function useOfflineAutoSync({
 				syncingRef.current = false;
 			}
 		},
-		[accountReady, identity, shareCode, syncAbortRef],
+		[accountReady, identity, shareCode, auth],
 	);
 
 	useVisibilityPausedInterval(() => void sync(), identity && accountReady ? 60_000 : null);

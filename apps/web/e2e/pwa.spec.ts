@@ -8,6 +8,7 @@ import {
 	FIXTURE_WG,
 	dismissOnboarding,
 	navigateToFeature,
+	seedLocalAccount,
 	setupMember,
 	skipUnlessFixtures,
 } from './support/helpers';
@@ -338,6 +339,7 @@ test.describe('offline page', () => {
 	};
 
 	async function seedOfflineState(page: Page): Promise<void> {
+		await seedLocalAccount(page);
 		await page.addInitScript(
 			({ storedWg, storedAction }) => {
 				localStorage.setItem('manawg_known_wgs', JSON.stringify([storedWg]));
@@ -408,6 +410,7 @@ test.describe('offline page', () => {
 		}) => {
 			await page.route('**/api/wg/mine', (route) => fulfillMembership(route));
 			await setupMember(page);
+			await seedLocalAccount(page);
 			await page.addInitScript((storedWg) => {
 				localStorage.setItem('manawg_known_wgs', JSON.stringify([storedWg]));
 			}, knownWg);
@@ -482,6 +485,7 @@ test.describe('offline page', () => {
 					body: JSON.stringify({ error: 'rate_limited' }),
 				});
 			});
+			await seedLocalAccount(page);
 			await page.addInitScript(
 				({ storedWg, storedActions }) => {
 					localStorage.setItem('manawg_known_wgs', JSON.stringify([storedWg]));

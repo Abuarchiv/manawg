@@ -6,7 +6,7 @@
 // API endpoints are mocked per-test via `page.route()`.
 
 import { type Page, expect, test } from '@playwright/test';
-import { E2E_EXISTING_WG } from '../../src/fixtures/data';
+import { E2E_EXISTING_WG, FIXTURE_AUTH_USER_ID } from '../../src/fixtures/data';
 
 declare global {
 	interface Window {
@@ -52,6 +52,21 @@ export async function setupMember(page: Page): Promise<void> {
 			document.documentElement?.setAttribute('data-manawg-storage-blocked', 'true');
 		}
 	});
+}
+
+/**
+ * Records the fixture account as this browser's local account, as a WG visit does. Needed by specs
+ * that seed the offline queue or open /offline without visiting a WG first: the queue and the
+ * remembered WGs are filtered by that account.
+ */
+export async function seedLocalAccount(page: Page): Promise<void> {
+	await page.addInitScript((authUserId) => {
+		try {
+			localStorage.setItem('manawg_account', authUserId);
+		} catch {
+			// Blocked storage is reported by setupMember / navigateToFeature.
+		}
+	}, FIXTURE_AUTH_USER_ID);
 }
 
 /**

@@ -17,6 +17,7 @@ import {
 	useContext,
 	useEffect,
 	useMemo,
+	useReducer,
 	useRef,
 	useState,
 } from 'react';
@@ -25,6 +26,7 @@ import { useMembersPolling, useMembersRefresh } from './use-members-refresh';
 import { useMembershipLost } from './use-membership-lost';
 import { useOfflineAutoSync, useSyncOnFocusAndOnline } from './use-offline-auto-sync';
 import { useSessionMember } from './use-session-member';
+import { type WgAuthRef, initWgSessionState, wgSessionReducer } from './wg-session-state';
 
 export interface WgSummary {
 	id: string;
@@ -68,11 +70,6 @@ interface Props {
 	initialIdentity?: SessionMember | undefined;
 	/** Server-verified admin flag; only meaningful together with initialIdentity.authUserId. */
 	initialIsAdmin?: boolean | undefined;
-	/**
-	 * The WG is served without any Supabase session; the identity comes from
-	 * the locally stored member (database-free test builds only).
-	 */
-	sessionless?: boolean | undefined;
 	children: ReactNode;
 }
 
@@ -81,7 +78,6 @@ export function WgContextProvider({
 	members: initialMembers,
 	initialIdentity,
 	initialIsAdmin,
-	sessionless = false,
 	children,
 }: Props) {
 	// The WG layout resolved the Supabase session and membership on the server
@@ -90,43 +86,34 @@ export function WgContextProvider({
 	// background and clears everything on sign-out.
 	const serverVerified = Boolean(initialIdentity?.authUserId);
 	const [members, setMembers] = useState<Member[]>(initialMembers);
-	const [isAdmin, setIsAdmin] = useState(serverVerified && initialIsAdmin === true);
-	const [identity, setStateIdentity] = useState<SessionMember | null>(initialIdentity ?? null);
-	const [accountReady, setAccountReady] = useState(serverVerified);
-	const [memberLoaded, setMemberLoaded] = useState(serverVerified);
-	const syncAbortRef = useRef<AbortController | null>(null);
-	const authUserIdRef = useRef<string | null>(initialIdentity?.authUserId ?? null);
-	const authGenerationRef = useRef(0);
+	const [session, dispatch] = useReducer(wgSessionReducer, undefined, () =>
+		initWgSessionState(initialIdentity, initialIsAdmin),
+	);
+	const { identity, isAdmin, accountReady, memberLoaded, memberLoadError, sessionEnded } = session;
+	const auth = useRef<WgAuthRef>({
+		userId: initialIdentity?.authUserId ?? null,
+		generation: 0,
+		syncAbort: null,
+	});
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
-	const identitySetters = { setStateIdentity, setIsAdmin, setAccountReady, setMemberLoaded };
 
-	const { hydrated, memberLoadError, sessionEnded, loadSessionMember } = useSessionMember({
+	const { hydrated, loadSessionMember } = useSessionMember({
 		wg,
 		initialIdentity,
-		sessionless,
-		encodedShareCode,
-		authGenerationRef,
-		authUserIdRef,
-		syncAbortRef,
-		...identitySetters,
+		auth,
+		dispatch,
 	});
 
-	useMembershipLost({
-		wgId: wg.id,
-		encodedShareCode,
-		authGenerationRef,
-		syncAbortRef,
-		...identitySetters,
-	});
+	useMembershipLost({ wgId: wg.id, encodedShareCode, auth, dispatch });
 
 	const refreshMembers = useMembersRefresh({
 		encodedShareCode,
 		identity,
 		accountReady,
 		serverVerified,
-		authGenerationRef,
+		auth,
 		setMembers,
-		setIsAdmin,
+		dispatch,
 	});
 
 	const value = useMemo<WgContextValue | null>(() => {
@@ -144,7 +131,7 @@ export function WgContextProvider({
 		shareCode: wg.shareCode,
 		identity,
 		accountReady,
-		syncAbortRef,
+		auth,
 	});
 	useMembersPolling(refreshMembers, Boolean(identity && accountReady));
 	useSyncOnFocusAndOnline(sync, identity, accountReady);
@@ -154,7 +141,7 @@ export function WgContextProvider({
 	const [retrying, setRetrying] = useState(false);
 	const retryingRef = useRef(false);
 	const retryMemberLoad = useCallback(async () => {
-		const userId = authUserIdRef.current;
+		const userId = auth.current.userId;
 		if (!userId) {
 			window.location.reload();
 			return;
@@ -163,7 +150,7 @@ export function WgContextProvider({
 		retryingRef.current = true;
 		setRetrying(true);
 		try {
-			await loadSessionMember(userId, authGenerationRef.current, true);
+			await loadSessionMember(userId, auth.current.generation, true);
 		} finally {
 			retryingRef.current = false;
 			setRetrying(false);

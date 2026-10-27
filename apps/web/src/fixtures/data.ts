@@ -13,6 +13,9 @@ export const E2E_EXISTING_WG = {
 	},
 } as const;
 
+/** The account the fixture API answers as; the layout and `GET /api/wg/[code]` report it as `authUserId`. */
+export const FIXTURE_AUTH_USER_ID = 'fixture-auth-user';
+
 export const E2E_CREATED_WG = {
 	id: 'f3cfbb01-844c-4ba6-9ea7-0ee8d68b0d83',
 	shareCode: 'SMKETEST',

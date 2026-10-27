@@ -8,6 +8,7 @@ import {
 	isExportSectionKey,
 	toCsv,
 } from '@/composition/export';
+import { SESSION_HINT_COOKIE } from '@/core/auth/cookie-options';
 import {
 	HTTP,
 	apiError,
@@ -30,6 +31,7 @@ import {
 	E2E_EXISTING_WG,
 	E2E_EXPIRED_INVITE_TOKEN,
 	E2E_INVITE_TOKEN,
+	FIXTURE_AUTH_USER_ID,
 	buildE2EDashboardData,
 	getE2EWgFixture,
 } from './data';
@@ -202,10 +204,31 @@ function wgBootstrap(code: string): NextResponse {
 		members: fixture.members,
 		...(fixture.members[0]
 			? {
-					currentMember: { memberId: fixture.members[0].id, name: fixture.members[0].name },
+					currentMember: {
+						memberId: fixture.members[0].id,
+						name: fixture.members[0].name,
+						authUserId: FIXTURE_AUTH_USER_ID,
+					},
 				}
 			: {}),
 	});
+}
+
+/**
+ * `GET /api/wg/mine`: both fixture WGs, each with its first member as the account's member.
+ * Only for a browser carrying the signed-in hint cookie; a guest falls through to the real route
+ * and gets its 401.
+ */
+function accountWgs(req: NextRequest): NextResponse | null {
+	if (req.cookies.get(SESSION_HINT_COOKIE)?.value !== '1') return null;
+	const wgs = [E2E_EXISTING_WG.shareCode, E2E_CREATED_WG.shareCode].flatMap((code) => {
+		const fixture = getE2EWgFixture(code);
+		const [first] = fixture?.members ?? [];
+		return fixture && first
+			? [{ id: fixture.id, code: fixture.shareCode, name: fixture.name, memberId: first.id }]
+			: [];
+	});
+	return NextResponse.json({ wgs });
 }
 
 /**
@@ -290,6 +313,8 @@ export async function answerFixtureApiRequest(req: NextRequest): Promise<NextRes
 	if (path === '/api/wg') return req.method === 'POST' ? createWg(req) : null;
 	const [, api, wgSegment, codeSegment, ...rest] = path.split('/');
 	if (api !== 'api' || wgSegment !== 'wg' || !codeSegment) return null;
+	if (codeSegment === 'mine')
+		return req.method === 'GET' && rest.length === 0 ? accountWgs(req) : null;
 	if (codeSegment === 'invites') {
 		return req.method === 'GET' && rest[0] && rest.length === 1 ? inviteLookup(rest[0]) : null;
 	}

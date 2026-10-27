@@ -30,13 +30,7 @@ export interface CreatedWg {
 	memberId: string;
 }
 
-export interface AccountWg {
-	id: string;
-	code: string;
-	name: string;
-	/** The account's member in this WG; present on real /api/wg/mine answers. */
-	memberId?: string;
-}
+export type { AccountWg } from '@/core/infra/account-wgs';
 
 export type StartStep = 'choose' | 'create' | 'join' | 'invite';
 export type StartField = 'wgName' | 'creatorName' | 'inviteLink';
@@ -146,18 +140,4 @@ export function createWgErrorField(status: number, error: string): StartField | 
 	if (status === 400 && error === 'name_invalid') return 'wgName';
 	if (status === 400 && error === 'creator_name_invalid') return 'creatorName';
 	return null;
-}
-
-export function isAccountWg(value: unknown): value is AccountWg {
-	const memberId = typeof value === 'object' && value ? Reflect.get(value, 'memberId') : undefined;
-	if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-	const code = Reflect.get(value, 'code');
-	const name = Reflect.get(value, 'name');
-	return (
-		typeof code === 'string' &&
-		isValidShareCode(normalizeShareCode(code)) &&
-		typeof name === 'string' &&
-		name.trim().length > 0 &&
-		(memberId === undefined || typeof memberId === 'string')
-	);
 }

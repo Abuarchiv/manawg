@@ -9,11 +9,9 @@ import { SessionExpiredBanner } from '@/components/wg/SessionExpiredBanner';
 import { WgContextProvider } from '@/components/wg/WgContextProvider';
 import type { SessionMember } from '@/core/auth/local-account';
 import { REQUEST_PATH_HEADER, wgReturnPath } from '@/core/auth/next-path';
-import { db, wgMembers, wgs } from '@/core/db';
-import { loadWgViewer } from '@/core/guards/load-wg-viewer';
+import { loadWgShell, loadWgViewer } from '@/core/guards/load-wg-viewer';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import { loadFixtureWgView } from '@/fixtures/pages';
-import { and, eq, isNotNull } from 'drizzle-orm';
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
@@ -71,7 +69,9 @@ export default async function WgLayout({ children, params }: Props) {
 	const fixture = loadFixtureWgView(code);
 	if (fixture === 'not_found') notFound();
 	if (fixture) {
-		// No session in this build: the first fixture member is the caller (as the fixture API assumes).
+		// The first fixture member is the caller, as the fixture API answers. Without authUserId the
+		// provider is not server-verified: the member lookup (answered by the fixture API as
+		// FIXTURE_AUTH_USER_ID) confirms the account, and the roster is fetched like in the app.
 		const [first] = fixture.members;
 		return (
 			<WgShell
@@ -79,60 +79,22 @@ export default async function WgLayout({ children, params }: Props) {
 				wg={fixture.wg}
 				members={fixture.members}
 				{...(first ? { initialIdentity: { memberId: first.id, name: first.name } } : {})}
-				sessionless
 			>
 				{children}
 			</WgShell>
 		);
 	}
 
-	const viewer = await loadWgViewer(code);
-	if (!viewer) redirect(await signInPath(code));
-	const { user, access } = viewer;
+	const shell = await loadWgShell(code);
+	if (!shell) redirect(await signInPath(code));
+	const { user, access, movedOut, members, initialIsAdmin } = shell;
 	if (!access) {
 		const next = encodeURIComponent(wgReturnPath(code, await requestedPath()));
 		// Tell moved-out members why the WG is gone instead of suggesting to join again.
-		const [movedOut] = await db
-			.select({ id: wgMembers.id })
-			.from(wgMembers)
-			.innerJoin(wgs, eq(wgMembers.wgId, wgs.id))
-			.where(
-				and(
-					eq(wgs.shareCode, code),
-					eq(wgMembers.authUserId, user.id),
-					isNotNull(wgMembers.deactivatedAt),
-				),
-			)
-			.limit(1);
 		redirect(`/neu?next=${next}${movedOut ? '&reason=moved_out' : ''}`);
 	}
 	const { memberId, memberName, ...wg } = access;
 	const initialIdentity: SessionMember = { memberId, name: memberName, authUserId: user.id };
-
-	// Load the full roster including deactivated members: history and balances
-	// need every name. Choice UIs filter on `active` downstream (see
-	// WgContextProvider). NULL deactivated_at means active.
-	const memberRows = await db
-		.select({
-			id: wgMembers.id,
-			name: wgMembers.name,
-			color: wgMembers.color,
-			role: wgMembers.role,
-			paypalMerchantId: wgMembers.paypalMerchantId,
-			authUserId: wgMembers.authUserId,
-			deactivatedAt: wgMembers.deactivatedAt,
-		})
-		.from(wgMembers)
-		.where(eq(wgMembers.wgId, wg.id));
-	// Same rule as isWgAdmin: the first active admin row. Session is server-verified.
-	const initialIsAdmin =
-		memberRows.find((row) => row.role === 'admin' && row.deactivatedAt === null)?.id === memberId;
-	const members = memberRows.map(({ deactivatedAt, role, authUserId, ...member }) => ({
-		...member,
-		active: deactivatedAt === null,
-		isAdmin: role === 'admin' && deactivatedAt === null,
-		hasAccount: authUserId !== null,
-	}));
 
 	return (
 		<WgShell
@@ -153,7 +115,6 @@ function WgShell({
 	members,
 	initialIdentity,
 	initialIsAdmin,
-	sessionless,
 	children,
 }: {
 	code: string;
@@ -173,7 +134,6 @@ function WgShell({
 	}>;
 	initialIdentity?: SessionMember;
 	initialIsAdmin?: boolean;
-	sessionless?: boolean;
 	children: ReactNode;
 }) {
 	const wgBaseHref = `/wg/${encodeURIComponent(code)}`;
@@ -185,7 +145,6 @@ function WgShell({
 			members={members}
 			initialIdentity={initialIdentity}
 			initialIsAdmin={initialIsAdmin}
-			sessionless={sessionless}
 		>
 			<TabWarmup />
 			<div

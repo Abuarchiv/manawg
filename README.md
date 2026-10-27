@@ -90,10 +90,13 @@ this and builds an isolated server on port `3101` (`E2E_PORT`).
 Only `src/app/` (including `src/middleware.ts`) imports `src/fixtures/`, through one seam per
 entry: `resolveFixtureRequest` in the middleware answers fixture API reads and `POST /api/wg`
 before any route runs, `loadFixtureWgView` feeds the WG layout and chat page,
-and `fixtureClientProps` hands `sessionless` to the `/neu` and `/offline` clients. The API client
-needs no fixture switch: it always sends `x-manawg-expected-member-id`, which the fixture API
-reads as the caller. Core, components and features receive plain options (`requireWgSignIn`,
-`sessionless`) and never see fixture mode.
+and the WG layout hands the first fixture member to the provider as a server-verified identity.
+The fixture API answers as the account `FIXTURE_AUTH_USER_ID` (`src/fixtures/data.ts`): `GET
+/api/wg/[code]` reports it as `authUserId` and `GET /api/wg/mine` lists the fixture WGs. The API
+client needs no fixture switch: it always sends `x-manawg-expected-member-id`, which the fixture
+API reads as the caller. Core, components and features receive plain options (`requireWgSignIn`)
+and never see fixture mode. Specs that seed the offline queue or open `/offline` before visiting a
+WG store that account as `manawg_account` first (`seedLocalAccount` in `e2e/support/helpers.ts`).
 
 ## Commands
 

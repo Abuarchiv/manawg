@@ -1,9 +1,9 @@
 'use client';
 
-import type { SessionMember } from '@/core/auth/local-account';
 import { fetchAccountWgs } from '@/core/infra/account-wgs';
 import { MEMBERSHIP_LOST_EVENT } from '@/core/infra/api-client';
-import { type Dispatch, type RefObject, type SetStateAction, useEffect } from 'react';
+import { type Dispatch, type RefObject, useEffect } from 'react';
+import type { WgAuthRef, WgSessionAction } from './wg-session-state';
 
 /**
  * Any API call can discover that this member was removed or left, or that the
@@ -12,21 +12,13 @@ import { type Dispatch, type RefObject, type SetStateAction, useEffect } from 'r
 export function useMembershipLost({
 	wgId,
 	encodedShareCode,
-	authGenerationRef,
-	syncAbortRef,
-	setStateIdentity,
-	setIsAdmin,
-	setAccountReady,
-	setMemberLoaded,
+	auth,
+	dispatch,
 }: {
 	wgId: string;
 	encodedShareCode: string;
-	authGenerationRef: RefObject<number>;
-	syncAbortRef: RefObject<AbortController | null>;
-	setStateIdentity: Dispatch<SetStateAction<SessionMember | null>>;
-	setIsAdmin: (isAdmin: boolean) => void;
-	setAccountReady: (accountReady: boolean) => void;
-	setMemberLoaded: (memberLoaded: boolean) => void;
+	auth: RefObject<WgAuthRef>;
+	dispatch: Dispatch<WgSessionAction>;
 }): void {
 	useEffect(() => {
 		let handling = false;
@@ -35,18 +27,13 @@ export function useMembershipLost({
 				(event as CustomEvent<{ path?: string; error?: string }>).detail ?? {};
 			if (!path.startsWith(`/api/wg/${encodedShareCode}`) || handling) return;
 			handling = true;
-			authGenerationRef.current += 1;
-			syncAbortRef.current?.abort();
-			syncAbortRef.current = null;
-			const showLost = () => {
-				setStateIdentity(null);
-				setIsAdmin(false);
-				setAccountReady(false);
-				setMemberLoaded(true);
-			};
+			auth.current.generation += 1;
+			auth.current.syncAbort?.abort();
+			auth.current.syncAbort = null;
+			const showLost = () => dispatch({ type: 'member-lost' });
 			if (error !== 'wg_not_found') return showLost();
 			// Same WG under a new code: follow it instead of leaving a broken page.
-			setMemberLoaded(false);
+			dispatch({ type: 'loading' });
 			void fetchAccountWgs().then((res) => {
 				const next = res.ok ? res.wgs.find((entry) => entry.id === wgId)?.code : undefined;
 				if (!next) return showLost();
@@ -58,14 +45,5 @@ export function useMembershipLost({
 		};
 		window.addEventListener(MEMBERSHIP_LOST_EVENT, onLost);
 		return () => window.removeEventListener(MEMBERSHIP_LOST_EVENT, onLost);
-	}, [
-		authGenerationRef,
-		encodedShareCode,
-		setAccountReady,
-		setIsAdmin,
-		setMemberLoaded,
-		setStateIdentity,
-		syncAbortRef,
-		wgId,
-	]);
+	}, [auth, dispatch, encodedShareCode, wgId]);
 }

@@ -4,7 +4,10 @@ import type { SessionMember } from '@/core/auth/local-account';
 import { subscribeOnline } from '@/core/hooks/use-online-status';
 import { apiFetch } from '@/core/infra/api-client';
 import { captureException } from '@/core/infra/capture-client';
-import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
+import {
+	LIST_REFRESH_INTERVAL_MS,
+	useVisibilityPausedInterval,
+} from '@/core/utils/use-visibility-paused-interval';
 import {
 	type Dispatch,
 	type RefObject,
@@ -15,6 +18,7 @@ import {
 	useState,
 } from 'react';
 import type { Member } from './WgContextProvider';
+import type { WgAuthRef, WgSessionAction } from './wg-session-state';
 
 /**
  * Members list and admin flag from /api/wg/[code]/members, refetched when the
@@ -25,17 +29,17 @@ export function useMembersRefresh({
 	identity,
 	accountReady,
 	serverVerified,
-	authGenerationRef,
+	auth,
 	setMembers,
-	setIsAdmin,
+	dispatch,
 }: {
 	encodedShareCode: string;
 	identity: SessionMember | null;
 	accountReady: boolean;
 	serverVerified: boolean;
-	authGenerationRef: RefObject<number>;
+	auth: RefObject<WgAuthRef>;
 	setMembers: Dispatch<SetStateAction<Member[]>>;
-	setIsAdmin: (isAdmin: boolean) => void;
+	dispatch: Dispatch<WgSessionAction>;
 }): () => Promise<void> {
 	// Consecutive non-auth failures (429, 5xx, network) of the members/admin
 	// fetch. Without retries isAdmin would stay false for
@@ -44,7 +48,7 @@ export function useMembersRefresh({
 
 	const refreshMembers = useCallback(async () => {
 		if (!identity || !accountReady) return;
-		const authGeneration = authGenerationRef.current;
+		const authGeneration = auth.current.generation;
 		try {
 			const res = await apiFetch<{
 				members: Array<Member & { active?: boolean }>;
@@ -52,13 +56,13 @@ export function useMembersRefresh({
 			}>(`/api/wg/${encodedShareCode}/members`, {
 				memberId: identity.memberId,
 			});
-			if (authGeneration !== authGenerationRef.current) return;
+			if (authGeneration !== auth.current.generation) return;
 			// Normalize defensively: an omitted flag (e.g. E2E fixtures) means active.
 			if (res.ok) {
 				const next = res.data.members.map((m) => ({ ...m, active: m.active !== false }));
 				// Polled every 30 s: keep an unchanged list, otherwise every useWg() consumer re-renders for nothing.
 				setMembers((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
-				setIsAdmin(res.data.viewerIsAdmin === true);
+				dispatch({ type: 'admin', isAdmin: res.data.viewerIsAdmin === true });
 				setMembersRefreshFailures(0);
 				return;
 			}
@@ -77,7 +81,7 @@ export function useMembersRefresh({
 			// vanishing into an empty catch block.
 			captureException(err, { action: 'refreshMembers', shareCode: encodedShareCode });
 		}
-	}, [accountReady, authGenerationRef, encodedShareCode, identity, setIsAdmin, setMembers]);
+	}, [accountReady, auth, dispatch, encodedShareCode, identity, setMembers]);
 
 	// The layout already delivered members/isAdmin for a server-verified session.
 	const skipFirstMembersFetch = useRef(serverVerified);
@@ -114,5 +118,8 @@ export function useMembersRefresh({
  * reload; a 401 here is also how a removed member finds out.
  */
 export function useMembersPolling(refreshMembers: () => Promise<void>, active: boolean): void {
-	useVisibilityPausedInterval(() => void refreshMembers(), active ? 30_000 : null);
+	useVisibilityPausedInterval(
+		() => void refreshMembers(),
+		active ? LIST_REFRESH_INTERVAL_MS : null,
+	);
 }
