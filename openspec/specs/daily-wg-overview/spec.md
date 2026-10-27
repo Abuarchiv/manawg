@@ -104,3 +104,11 @@ Changed views SHALL work at 320px and 390px in light and dark mode, retain at le
 #### Scenario: A user requests reduced motion or increased contrast
 - **WHEN** platform accessibility preferences are enabled
 - **THEN** the changed views SHALL retain the current static motion fallback, visible focus, and opaque/high-contrast navigation fallback
+
+### Requirement: Own later chores stay in the agenda
+
+An own chore that is not in "Für dich" because it is four or more days away SHALL appear in "Anstehend", labelled "Du". Overdue status SHALL be derived from the Europe/Berlin calendar day.
+
+#### Scenario: Own chore next week
+- **WHEN** a member's chore is due in five days
+- **THEN** the agenda SHALL list it under "Anstehend" with the label "Du" and not under "Für dich"

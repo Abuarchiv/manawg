@@ -6,7 +6,7 @@ Pfade relativ zu `apps/web/src`, sofern nicht anders angegeben. Grundlage: 5 Les
 
 Der Server ist sauber: Identität ist ausschließlich die Supabase-Cookie-Session, aufgelöst zu `wg_members.auth_user_id`. Die Vermischung lebt im Client und im Test-Modus.
 
-```
+```text
 Browser ──Cookie sb-*-auth-token──▶ middleware.ts (Refresh, /wg/* Redirect)
                                       │
                                       ▼

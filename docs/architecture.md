@@ -5,7 +5,7 @@ otherwise. Setup, commands and deployment are in the [README](../README.md).
 
 ## Request flow
 
-```
+```text
 browser
   -> middleware.ts                    CSP nonce, Origin check, rate limit, Supabase session refresh
   -> app/api/wg/[code]/**/route.ts    thin handler
@@ -95,6 +95,15 @@ Rules:
   `db_error`). `x-manawg-expected-member-id` mismatch yields `409 member_context_changed`, so a
   stale tab cannot act as a different member. `requireWgMember` and `requireWgAdmin`
   (`core/guards/require-wg-*.ts`) share the auth and share-code resolution steps.
+- **Client session state**: `components/wg/wg-session-state.ts` is the one reducer behind the WG
+  context. It holds the member identity plus `accountReady`, `memberLoaded`, `memberLoadError` and
+  `sessionEnded`, so a transient failure keeps the server-verified member while a gone session or
+  a lost membership is told apart. The layout hands in the server-verified member read by
+  `loadWgShell` (`core/guards/load-wg-viewer.ts`: viewer, moved-out check, roster and admin flag in
+  one memoized call); an identity without `authUserId` is never enough to write offline, because
+  `KnownWg.authUserId` is required for queued writes.
+- **Fixture mode** answers as `FIXTURE_AUTH_USER_ID` (`fixtures/data.ts`) through the same member
+  lookup the app uses; product code has no fixture branch beyond the `app/` seams named in the README.
 - **Legacy-profile takeover** (`POST /api/wg/<code>/members/<id>/claim?invite=<token>`): links an
   unlinked member row (no account yet) to the signed-in account. The proof is a valid invitation
   to that WG; the invitation page lists the unlinked members. Normal API access never uses it.
@@ -148,7 +157,15 @@ Side effects that must not undo the write (audit events, push, pinboard notices)
 call, for `written` results only, so a replay never repeats them. A warning that only becomes
 known then (a failed push) is written into the stored response with `setReplayWarning`. Without a
 key the write runs in a plain transaction (`retryAfterRollback` still applies). The protocol is specified in
-[`openspec/changes/unify-idempotency-claims`](../openspec/changes/unify-idempotency-claims/proposal.md).
+[`openspec/changes/archive/2026-10-08-unify-idempotency-claims`](../openspec/changes/archive/2026-10-08-unify-idempotency-claims/proposal.md).
+
+**Client side.** One key lifecycle lives in `core/http/idempotency-key.ts`, client-safe.
+`createIdempotencyKey` makes the UUID, `resolveIdempotencyKey` reuses the pending key for an
+identical retry (same request fingerprint) and otherwise makes a fresh one, and
+`shouldReleaseIdempotencyKey` decides after an answer whether the key is spent. A definitive
+answer (a final 4xx other than 429, a success) releases it. A 429, a server error and an in-flight
+duplicate (`idempotency_response_pending`) keep it, so the retry replays instead of writing twice.
+Keeping the key on 429 is safe because no route stores a 429 as a replayable response.
 
 ## Money
 
@@ -197,18 +214,43 @@ key the write runs in a plain transaction (`retryAfterRollback` still applies). 
 ## Client data sync
 
 `core/sync/use-synced-collection.ts` keeps one server collection in sync on the client. It owns
-the cached fetch (`core/hooks/useCachedFetch`, store in `cached-fetch-store.ts`), the overlay of
-unconfirmed rows (`pending`), offline replay after a successful load, polling paused while the
+the cached fetch (`core/hooks/use-cached-fetch.ts`, store in `cached-fetch-store.ts`), the overlay
+of unconfirmed rows (`pending`), offline replay after a successful load, polling paused while the
 tab is hidden, the refresh on reconnect, and the single place where server responses and local
-changes (`commit`) are reconciled into the rows on screen. Feature hooks (shopping, chores and
-absences, inventory, Pinnwand) only describe the resource (URL, `select`/`assemble`, id, an
-optional `reconcile` merge, error policy, offline page) and keep their domain actions. Chat
+changes (`commit`) are reconciled into the rows on screen. Feature hooks for shopping, chores and
+absences, inventory, Pinnwand, expenses, Abos, Mahnungen, Kalender and Aktivität only describe the
+resource (URL, `select`/`assemble`, id, an optional `reconcile` merge, error policy, offline page)
+and keep their domain actions. A direct `useCachedFetch` is only for single documents and side
+reads (a detail view, a lookup next to a list), never for a second copy of a collection. Chat
 pages through its history, so its refresh loop is a separate framework-free module
 (`features/chat/chat-refresh.ts`).
+
+Other client hooks that several features share live in `core/hooks/` (`use-confirm-delete.ts`,
+`use-pending-set.ts`, `use-stable-callback.ts`); the offline queue sync hook is
+`core/offline/use-offline-queue-sync.ts`. Hook files are kebab-case (`use-*.ts`), enforced by
+`scripts/check-architecture.mjs`.
 
 All `online`/`offline` and `visibilitychange` listeners go through
 `core/hooks/use-online-status.ts` (`subscribeConnectivity`, `subscribeOnline`,
 `subscribeVisibility`, `useOnlineStatus`), so one listener pair serves the whole app.
+
+## Shared helpers
+
+Small helpers that several features use, with the layer they live in:
+
+| Helper | Layer | Purpose |
+| --- | --- | --- |
+| `core/utils/amount.ts` | core | Euro text to cents and back: `parseEuroAmount`, `formatEuroInput`, `eurosToCents`, `formatCentsInput` |
+| `core/utils/time.ts` `formatDayMonthYear` | core | Berlin day with year (`06.10.2026`) from an ISO timestamp; the parse counterpart is `parseDayMonthYear` in `features/expenses/import-csv-helpers.ts` |
+| `shared/lib/plural.ts` `pluralize` | shared | German singular/plural by count |
+| `shared/lib/support-mailto.ts` `SUPPORT_MAILTO` | shared | The support `mailto:` link used by error screens |
+| `core/db/pg-errors.ts` | core | Pure Postgres error inspection (`isUniqueViolation`, `findUniqueViolation`); no server imports, so client-safe feature files may use it |
+| `core/infra/api-client.ts` `readApiErrorCode` | core | Reads the `error` code of a failed API response |
+| `core/offline/offline-copy.ts` `keyUnavailableMessage` | core | User copy for a write that cannot get an idempotency key |
+| `core/utils/use-visibility-paused-interval.ts` `LIST_REFRESH_INTERVAL_MS` | core | The one list polling interval |
+
+Mutation error copy goes through `mutationErrorMessage` (`core/http/error-codes.ts`); feature
+`*-errors.ts` files only add their own codes.
 
 ## Notifications
 
@@ -343,7 +385,7 @@ Route folders under `app/wg/[code]/`, with the code names behind them.
 | WG (`/wg/[code]`, share code) | `wgs` | `/api/wg/<code>` | `wgs` |
 | Mitglied, Auszug | members, `deactivatedAt` | `members` | `wg_members` |
 | Ausgaben (`ausgaben`) | `features/expenses` | `expenses` | `expenses`, `expense_splits`, `expense_payments` |
-| Abos (`abos`) | recurring expenses (`features/expenses/recurring-expenses.ts`) | `recurring-expenses` | `recurring_expenses` |
+| Abos (`abos`), UI label "Fixkosten" | recurring expense, one entity: `type Abo = RecurringExpense` in `features/expenses/expense-types.ts` (`features/expenses/recurring-expenses.ts`) | `recurring-expenses` | `recurring_expenses` |
 | Import (`import`) | expense import (`features/expenses/import-*.ts`, commit in `features/expenses/server/import-commit.ts`) | `imports` | `expense_imports` |
 | Mahnungen / Erinnerungen (`mahnungen`) | payment reminders (`features/expenses/reminders.ts`) | `reminders` | `expense_reminders` |
 | Putzen / Putzplan (`putzen`) | `features/chores` | `chores` | `chores`, `chore_completions` |
@@ -397,5 +439,10 @@ These behaviors were reviewed in the October 2026 audit and are kept on purpose.
   the maintenance cron, a few WGs per run.
 - **Signing secret rotation.** `MEMBER_SESSION_SECRET_PREVIOUS` keeps calendar feed URLs and recovery
   proofs valid while the secret changes.
+- **Session JWT verified locally.** `readVerifiedUser` (`core/auth/verified-user.ts`) checks the
+  session JWT with `getClaims` instead of a Supabase round trip per request. The cost is that a
+  revoked session ("sign out on all devices") or a deleted account stays valid on other devices
+  until the access token expires, about 1 hour (Supabase default). The database lock after account
+  deletion is unaffected by this.
 - **Preview limiter.** A configured rate limiter that fails does not pass traffic on Preview; an
   unconfigured one still does (fixtures, local runs).

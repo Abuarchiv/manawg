@@ -86,3 +86,22 @@ Not fatal, but expected in Production:
       (as in `releases/2026-10-01-release-evidence.md`).
 - [ ] Next cron runs succeed (Vercel cron logs; `/api/cron/maintenance` returns `ok: true`).
 - [ ] Record SHA, CI/Preview run IDs, migration run and health result in `docs/releases/`.
+
+## Offene Hosted-Nachweise
+
+Tasks of OpenSpec changes whose code is in `main` and which only need hosted Preview or Production
+evidence. Each is an owner action; tick the line and record the evidence in `docs/releases/`.
+
+- [ ] `add-privacy-safe-product-analytics` 2.2: Create the PostHog EU organization/project, configure the hosted environment, and prove live event ingestion.
+- [ ] `add-rls-defense-in-depth` 3.1: Apply and verify the migration in Preview under release/database ownership; retain catalog and direct anonymous/authenticated client-denial evidence.
+- [ ] `add-rls-defense-in-depth` 3.2: Run the required application fixture and protected Preview gates against the rehearsed build and verify no server-side route regression.
+- [ ] `add-rls-defense-in-depth` 3.3: Promote to Production only after the Preview handoff, exact ledger/RLS/access checks, and Terra review are green; record rollback readiness and leave the task open if any external evidence is missing.
+- [ ] `add-signup-page` 4.3: Hosted check in Preview (real confirmation mail, redirect allowlist) before promotion.
+- [ ] `app-audit-2026-10` 14.4: Check manually: HEIC conversion on iPhone, join toggle refresh, rename, rotation and push opt-out flows.
+- [ ] `establish-playwright-verification` 4.3: Use the dedicated QA identity and a unique run-tagged namespace to exercise launch, authenticated household access, and one representative mutation/read flow against the validated Preview; require successful removal of created data before passing and verify one authorized run passes while cleanup failure returns non-zero with the namespace reported.
+- [ ] `establish-playwright-verification` 4.4: Emit the validated Preview origin, deployment identifier, source revision, execution mode, and result as reviewable CI evidence without secrets; verify target, source, authentication, flow, and cleanup failures return non-zero.
+- [ ] `harden-account-deletion` 5.3: After application code changes, update the knowledge graph with `graphify update .` and obtain an independent review of authorization, lock order, rollback/retry behavior, and retained data; verify every actionable finding is resolved on the final candidate SHA.
+- [ ] `harden-account-deletion` 5.4: Record exact-SHA hosted Preview migration/Auth checks and any external blockers separately from local evidence; verify service-role availability and the provider's missing-user behavior without exposing credentials, and keep the PR open if required Preview/Auth/RLS gates remain failed.
+- [ ] `monthly-statement-email` 4.2: Prod migration, deploy, first real run on the 1st with log check.
+- [ ] `private-attachment-deletion` 4.3: Document schema-first deployment and compatible reader/writer cutover, including inaccessible/drained old deployments and fence-aware rollback. The design is documented; exact-SHA hosted Preview migration, create/read/revoke, and provider-removal proof remains unrun.
+- [ ] `public-dashboard-entry` 2.1: Run Luna browser E2E against an authorized hosted preview backed by Supabase; verify guest navigation, create/invite transitions, member welcome, and mobile layout.

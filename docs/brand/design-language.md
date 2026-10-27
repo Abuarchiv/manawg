@@ -12,6 +12,8 @@ Source: [Brandbook v1.0](brandbook.html), supplied by the product owner on 2026-
 - Supplied eight-circle organism and off-center aperture replace the former keyhole everywhere in the app identity. Reproduce the source filter/mask geometry without invented motifs. Icons are white on Neutral 950, no baked rounding, shadows, or gradients.
 - No button scaling, tab bounce, or page entrance animations. Loading uses the organism, 1200ms, and becomes static for reduced motion. No artificial startup delay.
 - Plain German, no guilt, advertising badges or decorative status colors. Labels above fields; visible focus and invalid states retained.
+- Text on destructive tints uses `--destructive-text` (derived from `destructive`, at least 4.5:1 AA contrast in light and dark), never the raw `destructive` fill. The armed confirm step of a destructive action uses the `destructive-solid` button variant.
+- Pending labels are present tense without "Wird", with an ellipsis character: "Speichert…", "Löscht…", "Lädt…".
 
 ## Explicit handset transition exception
 
