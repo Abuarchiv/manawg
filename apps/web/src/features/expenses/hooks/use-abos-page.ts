@@ -207,7 +207,11 @@ export function useAbosPage() {
 			{
 				method: 'PATCH',
 				memberId: identity.memberId,
-				body: JSON.stringify({ ...values, expectedNextDueAt: previousAbo.nextDueAt }),
+				body: JSON.stringify({
+					...values,
+					expectedNextDueAt: previousAbo.nextDueAt,
+					...(previousAbo.updatedAt ? { expectedUpdatedAt: previousAbo.updatedAt } : {}),
+				}),
 			},
 		);
 		if (res.ok) {

@@ -35,6 +35,8 @@ const patchSchema = z.object({
 	paused: z.boolean().optional(),
 	/** The due date the editor loaded; a booking since then makes the edit stale. */
 	expectedNextDueAt: z.string().datetime({ offset: true }).optional(),
+	/** The version the editor loaded; any save since then makes the edit stale. */
+	expectedUpdatedAt: z.string().datetime({ offset: true }).optional(),
 });
 
 export const GET = withWgRoute<{ id: string }>(
@@ -69,6 +71,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 				paidByMemberId: 'member_id_invalid',
 				intervalMonths: 'interval_invalid',
 				nextDueAt: 'due_date_invalid',
+				expectedUpdatedAt: 'expected_updated_at_invalid',
 				splits: 'splits_invalid',
 				paused: 'paused_invalid',
 			},

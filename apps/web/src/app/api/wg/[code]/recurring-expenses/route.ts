@@ -82,6 +82,7 @@ const advanceSchema = z.object({
 	intervalMonths: z.number().int().min(1).max(RECURRING_INTERVAL_MAX_MONTHS).optional(),
 	nextDueAt: z.string().datetime({ offset: true }).optional(),
 	expectedNextDueAt: z.string().datetime({ offset: true }).optional(),
+	expectedUpdatedAt: z.string().datetime({ offset: true }).optional(),
 	splits: z.array(expenseSplitSchema).min(1).max(MAX_SPLITS).optional(),
 });
 
@@ -221,6 +222,7 @@ export const PATCH = withWgRoute('recurring-expenses PATCH', async (req, { code 
 			...EXPENSE_FIELD_ERRORS,
 			nextDueAt: 'due_date_invalid',
 			expectedNextDueAt: 'due_date_invalid',
+			expectedUpdatedAt: 'expected_updated_at_invalid',
 			splits: 'splits_invalid',
 		},
 	});

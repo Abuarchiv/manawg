@@ -32,6 +32,8 @@ export interface RecurringExpense {
 	nextDueAt: string;
 	createdByMemberId?: string;
 	lastCreatedAt: string | null;
+	/** Row version for the optimistic edit check; absent on pending offline rows. */
+	updatedAt?: string;
 	/** Paused templates are neither booked by the cron nor captured manually (API: abo_paused). */
 	pausedAt?: string | null;
 	splits: Array<{ debtorMemberId: string; amountCents: number }>;
