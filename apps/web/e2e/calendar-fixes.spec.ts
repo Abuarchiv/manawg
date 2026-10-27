@@ -201,7 +201,7 @@ test.describe('calendar fixes', () => {
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/kalender`);
 		await dismissOnboarding(page);
 		await page
-			.getByRole('button', { name: 'Termin bearbeiten: WG-Meeting', exact: true })
+			.getByRole('button', { name: 'Termin öffnen: WG-Meeting', exact: true })
 			.first()
 			.click();
 
@@ -254,7 +254,7 @@ test.describe('calendar fixes', () => {
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/kalender`);
 		await dismissOnboarding(page);
 		const eventButton = page.getByRole('button', {
-			name: `Termin bearbeiten: ${event.title}`,
+			name: `Termin öffnen: ${event.title}`,
 			exact: true,
 			includeHidden: true,
 		});
@@ -306,9 +306,7 @@ test.describe('calendar fixes', () => {
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/kalender?highlight=${event.id}`);
 		await dismissOnboarding(page);
 		await expect(page.locator(`#event-${event.id}`)).toBeVisible();
-		await page
-			.getByRole('button', { name: `Termin bearbeiten: ${event.title}`, exact: true })
-			.click();
+		await page.getByRole('button', { name: `Termin öffnen: ${event.title}`, exact: true }).click();
 		await page.getByRole('button', { name: 'Termin löschen', exact: true }).click();
 		await page
 			.getByRole('alertdialog')
@@ -397,7 +395,7 @@ test.describe('calendar fixes', () => {
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/kalender`);
 		await dismissOnboarding(page);
 		const openEdit = (title: string) =>
-			page.getByRole('button', { name: `Termin bearbeiten: ${title}`, exact: true }).first();
+			page.getByRole('button', { name: `Termin öffnen: ${title}`, exact: true }).first();
 		await openEdit('WG-Meeting').click();
 
 		const recurrence = page.locator('#event-edit-recurrence');
@@ -449,9 +447,7 @@ test.describe('calendar fixes', () => {
 		);
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/kalender`);
 		await dismissOnboarding(page);
-		await page
-			.getByRole('button', { name: `Termin bearbeiten: ${event.title}`, exact: true })
-			.click();
+		await page.getByRole('button', { name: `Termin öffnen: ${event.title}`, exact: true }).click();
 		await expect(page.getByRole('heading', { name: 'Termin', exact: true })).toBeVisible();
 		await expect(page.getByRole('button', { name: 'Speichern', exact: true })).toHaveCount(0);
 		await expect(page.getByRole('button', { name: 'Termin löschen', exact: true })).toHaveCount(0);

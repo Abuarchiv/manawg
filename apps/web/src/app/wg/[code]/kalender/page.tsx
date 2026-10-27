@@ -20,6 +20,7 @@ import { EventEditModal } from '@/features/events/components/EventEditModal';
 import { TimeZoneNotice } from '@/features/events/components/TimeZoneNotice';
 import { useCalendarPage } from '@/features/events/hooks/use-calendar-page';
 import { haptic } from '@/shared/lib/haptics';
+import { pluralize } from '@/shared/lib/plural';
 import { CalendarDays, List, Plus } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -111,11 +112,7 @@ export default function KalenderPage() {
 			{/* The tab above already names the page; title and count stay for screen readers. */}
 			<header className="sr-only">
 				<h1>Kalender</h1>
-				<p>
-					{loading
-						? 'Lädt…'
-						: `${calendar.eventCount} ${calendar.eventCount === 1 ? 'WG-Termin' : 'WG-Termine'}`}
-				</p>
+				<p>{loading ? 'Lädt…' : pluralize(calendar.eventCount, 'WG-Termin', 'WG-Termine')}</p>
 			</header>
 
 			{actionError && (
