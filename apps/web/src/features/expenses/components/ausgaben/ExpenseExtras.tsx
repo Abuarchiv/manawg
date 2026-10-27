@@ -51,6 +51,9 @@ export function ExpenseExtras({
 	const [templateSaved, setTemplateSaved] = useState(false);
 	const templateCountAtStart = useRef(recurringTemplateCount);
 	const wasSavingTemplate = useRef(false);
+	// Only a click on "Als Vorlage merken" makes a save a template save; the main submit shares `formSaving`.
+	const templateRequested = useRef(false);
+	const [templateSaving, setTemplateSaving] = useState(false);
 	// The form scrolls and a toast would sit beneath the fullscreen sheet, so a line right at the button confirms instead.
 	useEffect(() => {
 		if (formSaving) {
@@ -61,8 +64,19 @@ export function ExpenseExtras({
 		}
 		if (!wasSavingTemplate.current) return;
 		wasSavingTemplate.current = false;
-		if (recurringTemplateCount > templateCountAtStart.current) setTemplateSaved(true);
+		const wasTemplateSave = templateRequested.current;
+		templateRequested.current = false;
+		setTemplateSaving(false);
+		if (wasTemplateSave && recurringTemplateCount > templateCountAtStart.current) {
+			setTemplateSaved(true);
+		}
 	}, [formSaving, recurringTemplateCount]);
+	// A click that fails validation never starts a save; drop the request so it cannot mark a later submit.
+	useEffect(() => {
+		if (!templateSaving || formSaving) return;
+		templateRequested.current = false;
+		setTemplateSaving(false);
+	}, [templateSaving, formSaving]);
 	useEffect(() => {
 		if (!templateSaved) return;
 		const timer = window.setTimeout(() => setTemplateSaved(false), 6000);
@@ -139,10 +153,14 @@ export function ExpenseExtras({
 							<Button
 								type="button"
 								variant="outline"
-								onClick={onSaveRecurringTemplate}
+								onClick={() => {
+									templateRequested.current = true;
+									setTemplateSaving(true);
+									onSaveRecurringTemplate();
+								}}
 								disabled={formSaving}
 							>
-								{formSaving && <Spinner data-icon="inline-start" />}Als Vorlage merken
+								{templateSaving && <Spinner data-icon="inline-start" />}Als Vorlage merken
 							</Button>
 						)}
 						<output
