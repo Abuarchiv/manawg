@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { formatNotificationMessage } from './notifications';
+import {
+	formatNotificationMessage,
+	notificationCategoryForEvent,
+	notificationPriorityForEvent,
+} from './notifications';
 
 test('event notification times use Europe/Berlin in summer and winter', () => {
 	const previousTimezone = process.env.TZ;
@@ -102,4 +106,67 @@ test('chore.due copy names the missing assignee for unassigned chores', (t) => {
 		}).body,
 		'Bad putzen ist heute in WG fällig. Niemand ist zuständig.',
 	);
+});
+
+test('moved and cancelled event pushes name the actor and follow the calendar preference', () => {
+	const previousTimezone = process.env.TZ;
+	process.env.TZ = 'UTC';
+	try {
+		const base = {
+			wgName: 'WG',
+			actorName: 'Alex',
+			title: 'Plenum',
+			startsAt: '2026-01-01T18:00:00.000Z',
+			eventId: 'e1',
+		};
+		const moved = formatNotificationMessage('event.moved', base);
+		const cancelled = formatNotificationMessage('event.cancelled', base);
+		const series = formatNotificationMessage('event.moved', { ...base, recurring: true });
+		const seriesCancelled = formatNotificationMessage('event.cancelled', {
+			...base,
+			recurring: true,
+		});
+		const gone = formatNotificationMessage('event.cancelled', { ...base, eventId: undefined });
+
+		assert.equal(moved.title, 'Termin verschoben');
+		assert.equal(moved.body, 'Alex hat „Plenum“ in WG auf den 01.01., 19:00 verschoben.');
+		assert.equal(moved.urlPath, '/kalender?highlight=e1');
+		assert.equal(cancelled.title, 'Termin abgesagt');
+		assert.equal(cancelled.body, 'Alex hat „Plenum“ am 01.01., 19:00 in WG abgesagt.');
+		assert.equal(series.body, 'Alex hat die Terminserie „Plenum“ in WG verschoben.');
+		assert.equal(seriesCancelled.body, 'Alex hat die Terminserie „Plenum“ in WG abgesagt.');
+		assert.equal(gone.urlPath, '/kalender');
+		for (const event of ['event.moved', 'event.cancelled'] as const) {
+			assert.equal(notificationCategoryForEvent(event), 'events');
+			assert.equal(notificationPriorityForEvent(event), 'normal');
+		}
+	} finally {
+		if (previousTimezone === undefined) Reflect.deleteProperty(process.env, 'TZ');
+		else process.env.TZ = previousTimezone;
+	}
+});
+
+test('low-stock push shows German decimals', () => {
+	const message = formatNotificationMessage('inventory.low_stock', {
+		title: 'Milch',
+		quantity: 0.5,
+		threshold: 1,
+		wgName: 'WG',
+	});
+	assert.ok(message.body.includes('(0,5 von 1)'));
+});
+
+test('a voided cash payment tells the other side that the amount is open again', () => {
+	const message = formatNotificationMessage('expense.payment_voided', {
+		wgName: 'WG',
+		actorName: 'Anna',
+		amountCents: 1250,
+		currency: 'EUR',
+	});
+	assert.equal(message.title, 'Barzahlung storniert');
+	assert.match(
+		message.body,
+		/^Anna hat die Barzahlung über 12,50\s€ storniert\. Der Betrag ist wieder offen\.$/,
+	);
+	assert.equal(notificationCategoryForEvent('expense.payment_voided'), 'expenses');
 });

@@ -1,0 +1,2 @@
+ALTER TABLE "expense_payments" DROP CONSTRAINT "expense_payments_status_check";--> statement-breakpoint
+ALTER TABLE "expense_payments" ADD CONSTRAINT "expense_payments_status_check" CHECK ("expense_payments"."status" in ('created', 'capturing', 'completed', 'failed', 'voided'));

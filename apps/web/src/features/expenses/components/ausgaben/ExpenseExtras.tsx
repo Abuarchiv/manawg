@@ -31,6 +31,7 @@ interface ExpenseExtrasProps {
 	/** Number of known templates: if it grows while saving, the save succeeded. */
 	recurringTemplateCount: number;
 	formSaving: boolean;
+	onImageUploadingChange: (uploading: boolean) => void;
 }
 
 /** Optional parts of an expense: the receipt image and the recurring template. */
@@ -47,6 +48,7 @@ export function ExpenseExtras({
 	onSaveRecurringTemplate,
 	recurringTemplateCount,
 	formSaving,
+	onImageUploadingChange,
 }: ExpenseExtrasProps) {
 	const [showRecurring, setShowRecurring] = useState(false);
 	const [showReceipt, setShowReceipt] = useState(Boolean(imageUrl));
@@ -100,6 +102,7 @@ export function ExpenseExtras({
 							onChange={setImageUrl}
 							disabled={formSaving}
 							imageLabel="Beleg"
+							onUploadingChange={onImageUploadingChange}
 						/>
 					</div>
 				</CollapsiblePanel>

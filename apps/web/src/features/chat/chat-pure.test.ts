@@ -8,6 +8,7 @@ import {
 	findFirstUnreadId,
 	isSingleEmoji,
 	reconcileChatMessages,
+	sanitizeMessageBody,
 } from './chat-pure';
 import { extractLinks, findMentions, splitMentions } from './chat-text';
 
@@ -125,4 +126,9 @@ test('read ticks count only the given readers who read up to the message', () =>
 	assert.equal(countChatReaders(createdAt, reads, ['anna', 'ben', 'cleo']), 1);
 	assert.equal(countChatReaders('2026-09-23T09:00:00.000Z', reads, ['anna', 'ben']), 2);
 	assert.equal(countChatReaders('kaputt', reads, ['anna']), 0);
+});
+
+test('message length counts emoji once, like the request schema', () => {
+	assert.equal(sanitizeMessageBody('😀'.repeat(3000), 4000), '😀'.repeat(3000));
+	assert.equal(sanitizeMessageBody('😀'.repeat(4001), 4000), null);
 });

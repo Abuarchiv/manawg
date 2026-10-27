@@ -111,8 +111,14 @@ export function MessageList({
 		() => new Map(members.map((member) => [member.id, member])),
 		[members],
 	);
-	const groups = useMemo(() => groupMessagesByDay(messages), [messages]);
-	const oldestId = messages[0]?.id;
+	// A withdrawn system notice (e.g. its expense was deleted) leaves no trace,
+	// unlike a deleted member message, which keeps its "gelöscht" bubble.
+	const visibleMessages = useMemo(
+		() => messages.filter((message) => !(message.kind === 'system' && message.deletedAt)),
+		[messages],
+	);
+	const groups = useMemo(() => groupMessagesByDay(visibleMessages), [visibleMessages]);
+	const oldestId = visibleMessages[0]?.id;
 	const now = new Date();
 
 	// Each message is a direct, stable child of MessageScrollerContent. Inserting

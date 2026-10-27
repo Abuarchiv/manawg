@@ -18,6 +18,8 @@ export interface Abo {
 	anchorAt?: string | null;
 	createdByMemberId?: string;
 	lastCreatedAt: string | null;
+	/** Row version for the optimistic edit check; absent on pending offline rows. */
+	updatedAt?: string;
 	pausedAt: string | null;
 	splits: AboSplit[];
 }

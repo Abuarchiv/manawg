@@ -255,3 +255,28 @@ test('entries of an unknown action type survive enqueue and discard', async () =
 	);
 	assert.deepEqual(stored[1], unknown);
 });
+
+test('a lost connection stops the replay and backs off only the action it tried', async () => {
+	const storage = makeStorage();
+	storage.setItem(
+		'manawg:offline-actions',
+		JSON.stringify([createAction(), createAction({ id: 'action-2' })]),
+	);
+	let requests = 0;
+	const { module } = await makeQueueModule({
+		storage,
+		apiFetch: async () => {
+			requests += 1;
+			return { ok: false, status: 0, error: 'Netzwerkfehler' };
+		},
+	});
+	await module.syncOfflineActions('TEST1234', { force: true, memberId: 'member-a' });
+	assert.equal(requests, 1);
+	assert.deepEqual(
+		readStoredQueue(storage).map((action) => [action.id, action.attempts ?? 0]),
+		[
+			['action-1', 1],
+			['action-2', 0],
+		],
+	);
+});

@@ -89,6 +89,7 @@ interface ReminderInput {
 	debtor: MemberRow;
 	creditor: MemberRow;
 	openExpenses: Awaited<ReturnType<typeof loadOpenExpenses>>;
+	payments: Awaited<ReturnType<typeof loadCompletedExpensePayments>>;
 	pair: { amountCents: number };
 }
 
@@ -156,7 +157,7 @@ export const POST = withWgRoute('reminders POST', async (req, { code }) => {
 		if (!pair || pair.amountCents <= 0) {
 			return { stop: conflict('no_open_debt', 'no_open_debt') };
 		}
-		return { input: { debtor, creditor, openExpenses, pair } };
+		return { input: { debtor, creditor, openExpenses, payments, pair } };
 	};
 
 	const recentSince = new Date(Date.now() - REMINDER_COOLDOWN_HOURS * 60 * 60 * 1000);
@@ -165,7 +166,7 @@ export const POST = withWgRoute('reminders POST', async (req, { code }) => {
 	const result = await withIdempotentWrite(
 		{ scope, key, codec: reminderCodec, prepare },
 		async (tx, input): Promise<WriteOutcome<unknown, ReminderContext>> => {
-			const { debtor, creditor, openExpenses, pair } = input;
+			const { debtor, creditor, openExpenses, payments, pair } = input;
 			// Cooldown check and insert must be atomic: two parallel requests would both pass the
 			// check and push twice. A transaction-scoped advisory lock per (wg, debtor, creditor)
 			// serializes them.
@@ -214,6 +215,7 @@ export const POST = withWgRoute('reminders POST', async (req, { code }) => {
 				openExpenses,
 				new Date(),
 				currency,
+				payments,
 			);
 			const message = formatReminderMessage({
 				debtorName: debtor.name,
@@ -254,21 +256,6 @@ export const POST = withWgRoute('reminders POST', async (req, { code }) => {
 	}
 	const { reminder: inserted, input } = result.context;
 	const { debtor, creditor, pair } = input;
-	// Without push the reminder would go unseen; the mail (E8) stands in. Push users get only the push.
-	if (channel === 'push' && !debtor.pushOptIn && debtor.authUserId) {
-		const debtorAuthUserId = debtor.authUserId;
-		afterResponse(() =>
-			sendReminderMail({
-				reminderId: inserted.id,
-				wg: { id: wg.id, name: wg.name, shareCode: wg.shareCode },
-				debtor: { id: debtor.id, authUserId: debtorAuthUserId },
-				creditor: { id: creditor.id, name: creditor.name },
-				amountCents: pair.amountCents,
-				oldestDebtAgeDays: inserted.oldestDebtAgeDays,
-			}),
-		);
-	}
-
 	await recordAuditEvent({
 		wgId: wg.id,
 		memberId: auth.member.memberId,
@@ -284,18 +271,34 @@ export const POST = withWgRoute('reminders POST', async (req, { code }) => {
 		},
 	});
 
-	const { warning }: { warning: ReminderResponseWarning } = await dispatchNotificationSafely({
-		wg,
-		event: 'expense.reminder',
-		payload: {
-			amountCents: pair.amountCents,
-			currency,
-			creditorName: creditor.name,
-			debtorName: debtor.name,
-			oldestDebtAgeDays: inserted.oldestDebtAgeDays,
-		},
-		targetMemberIds: [debtorMemberId],
-	});
+	const { sent, warning }: { sent: number; warning: ReminderResponseWarning } =
+		await dispatchNotificationSafely({
+			wg,
+			event: 'expense.reminder',
+			payload: {
+				amountCents: pair.amountCents,
+				currency,
+				creditorName: creditor.name,
+				debtorName: debtor.name,
+				oldestDebtAgeDays: inserted.oldestDebtAgeDays,
+			},
+			targetMemberIds: [debtorMemberId],
+		});
+	// Without a delivered push the reminder would go unseen (no push, quiet hours, no live
+	// subscription); the mail (E8) stands in. Push users who got the push get only that.
+	if (channel === 'push' && sent === 0 && debtor.authUserId) {
+		const debtorAuthUserId = debtor.authUserId;
+		afterResponse(() =>
+			sendReminderMail({
+				reminderId: inserted.id,
+				wg: { id: wg.id, name: wg.name, shareCode: wg.shareCode },
+				debtor: { id: debtor.id, authUserId: debtorAuthUserId },
+				creditor: { id: creditor.id, name: creditor.name },
+				amountCents: pair.amountCents,
+				oldestDebtAgeDays: inserted.oldestDebtAgeDays,
+			}),
+		);
+	}
 	if (key && warning !== null) {
 		const target = {
 			match: [{ path: ['body', 'reminder', 'id'], equals: inserted.id }],

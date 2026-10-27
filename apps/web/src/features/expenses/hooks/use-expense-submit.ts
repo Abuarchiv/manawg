@@ -17,7 +17,7 @@ import {
 	createQueuedExpenseUpdate,
 } from '@/core/offline/offline-queue';
 import { parseEuroAmount } from '@/core/utils/amount';
-import { inputDateToIso, todayInputValue } from '@/core/utils/local-date';
+import { inputDateOrToday, inputDateToIso, todayInputValue } from '@/core/utils/local-date';
 import { CENTS_PER_EURO } from '@/core/utils/money';
 import type { Expense } from '@/features/expenses/components/ausgaben/expense-types';
 import type { RecurringExpense } from '@/features/expenses/components/ausgaben/expense-types';
@@ -30,6 +30,7 @@ import {
 import { manualSplitsFingerprint } from '@/features/expenses/expense-split-input';
 import {
 	buildOptimisticExpense,
+	rollbackExpense,
 	sortExpensesNewestFirst,
 } from '@/features/expenses/optimistic-expense';
 import { withQueuedOccurredAt } from '@/features/expenses/queued-occurred-at';
@@ -37,6 +38,7 @@ import type { DebtorShare } from '@/features/expenses/split-math';
 import { useRef, useState } from 'react';
 import type { ExpenseFormState, ExpensePageContext } from './expense-page-context';
 import { validateExpenseFields } from './expense-submit-validation';
+import { RECEIPT_UPLOAD_FAILED, resolveSubmitImage } from './resolve-submit-image';
 import type { ExpenseFormSupport } from './use-expense-form-support';
 import type { AdvanceRecurringTemplate } from './use-recurring-booking';
 
@@ -85,7 +87,7 @@ export function useExpenseSubmit(
 			queueEditType,
 			splitMode,
 			paidByMemberId,
-			imageUrl,
+			imageUrl: formImageUrl,
 		} = form;
 		support.setFieldErrors({});
 		if (form.invalidEditDraft) {
@@ -99,18 +101,21 @@ export function useExpenseSubmit(
 		form.setConflictExpenseId(null);
 		const desc = form.description.trim();
 		const amountEuros = parseEuroAmount(form.amountStr);
-		const { occurredOn } = form.extras;
+		const occurredOn = inputDateOrToday(form.extras.pickedOccurredOn);
 		const validationErrors = validateExpenseFields({
 			description: desc,
 			amountEuros,
 			amountText: form.amountStr,
 			occurredOn,
 		});
-		if (Object.keys(validationErrors).length > 0) {
+		if (Object.keys(validationErrors).length > 0 || amountEuros === null) {
 			support.setValidationErrors(validationErrors);
 			return;
 		}
-		if (amountEuros === null) return;
+		const image = await resolveSubmitImage(formImageUrl, identity.memberId, navigator.onLine);
+		if (!image) return form.setFormError(RECEIPT_UPLOAD_FAILED);
+		const imageUrl = image.url;
+		if (imageUrl !== formImageUrl) form.setImageUrl(imageUrl);
 		const amountCents = Math.round(amountEuros * CENTS_PER_EURO);
 		const isEdit = editingExpense !== null;
 		const fingerprint = JSON.stringify({
@@ -172,12 +177,13 @@ export function useExpenseSubmit(
 				? { recurringExpenseId: recurringSourceId, expectedRecurringNextDueAt }
 				: {};
 		// Only a changed day is sent: an unchanged one keeps the real time of day.
-		const editedOccurredAt = isEdit
-			? expenses.find((expense) => expense.id === editingExpense.id)?.occurredAt
-			: undefined;
-		const dateChanged =
-			occurredOn !== (editedOccurredAt ? isoToInputDate(editedOccurredAt) : todayInputValue());
-		const occurredAt = dateChanged ? inputDateToIso(occurredOn) : null;
+		const previousExpense = isEdit
+			? (expenses.find((expense) => expense.id === editingExpense.id) ?? null)
+			: null;
+		const shownDay = previousExpense
+			? isoToInputDate(previousExpense.occurredAt)
+			: todayInputValue();
+		const occurredAt = occurredOn !== shownDay ? inputDateToIso(occurredOn) : null;
 		const requestBody = {
 			...(occurredAt ? { occurredAt } : {}),
 			paidByMemberId,
@@ -211,18 +217,8 @@ export function useExpenseSubmit(
 			? `/api/wg/${encodedShareCode}/expenses/${encodeURIComponent(editingExpense.id)}`
 			: `/api/wg/${encodedShareCode}/expenses`;
 		const optimisticId = isEdit ? editingExpense.id : `pending:${idempotencyKey}`;
-		const previousExpense = isEdit
-			? (expenses.find((expense) => expense.id === editingExpense.id) ?? null)
-			: null;
 		const rollbackOptimisticExpense = () =>
-			updateExpenses((current) => {
-				if (!previousExpense) return current.filter((expense) => expense.id !== optimisticId);
-				return current.some((expense) => expense.id === previousExpense.id)
-					? current.map((expense) =>
-							expense.id === previousExpense.id ? previousExpense : expense,
-						)
-					: [previousExpense, ...current];
-			});
+			updateExpenses((current) => rollbackExpense(current, optimisticId, previousExpense));
 		const optimisticExpense = buildOptimisticExpense({
 			id: optimisticId,
 			description: desc,

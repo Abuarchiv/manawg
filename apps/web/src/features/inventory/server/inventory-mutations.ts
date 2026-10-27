@@ -1,11 +1,12 @@
 import 'server-only';
 import { shoppingItems, wgInventoryItems, wgInventoryLog } from '@/core/db';
-import type { WgInventoryItem } from '@/core/db/schema';
+import type { WgInventoryItem } from '@/core/db/schema-inventory';
 import type { DbTransaction } from '@/core/db/transaction';
 import {
 	buildShoppingPushPayload,
 	clampQuantity,
 	isBelowThreshold,
+	roundQuantity,
 } from '@/features/inventory/inventory';
 import { and, eq, sql } from 'drizzle-orm';
 
@@ -145,7 +146,7 @@ export async function updateInventoryItemMutation(
 		return stillExistsRows[0] ? { kind: 'conflict' as const } : { kind: 'not_found' as const };
 	}
 
-	const delta = nextQuantity - existing.quantity;
+	const delta = roundQuantity(nextQuantity - existing.quantity);
 	if (delta !== 0) {
 		await tx.insert(wgInventoryLog).values({
 			itemId: updated.id,

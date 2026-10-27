@@ -190,67 +190,70 @@ export function computeOldestDebtAgeDays(
 	expenses: ReadonlyArray<DebtExpenseInput>,
 	now: Date = new Date(),
 	currency?: string,
+	payments: ReadonlyArray<ExpensePaymentInput> = [],
 ): number {
-	let oldestTs: number | null = null;
-	for (const expense of expenses) {
-		if (expense.paidByMemberId !== creditorId) continue;
-		if (
-			currency !== undefined &&
-			normalizeCurrency(expense.currency) !== normalizeCurrency(currency)
-		) {
-			continue;
-		}
-		const ts = Date.parse(expense.occurredAt);
-		if (Number.isNaN(ts)) continue;
-		for (const split of expense.splits) {
-			if (split.debtorMemberId !== debtorId) continue;
-			if (split.settledAt !== null) continue;
-			if (split.amountCents <= 0) continue;
-			if (oldestTs === null || ts < oldestTs) oldestTs = ts;
-		}
-	}
-
-	if (oldestTs === null) return 0;
-	const diffMs = now.getTime() - oldestTs;
-	if (diffMs <= 0) return 0;
-	return Math.floor(diffMs / MS_PER_DAY);
+	const currencies =
+		currency === undefined
+			? new Set(expenses.map((expense) => normalizeCurrency(expense.currency)))
+			: new Set([normalizeCurrency(currency)]);
+	const ages = computeOldestDebtAges(
+		[...currencies].map((code) => ({ debtorId, creditorId, currency: code })),
+		expenses,
+		now,
+		payments,
+	);
+	return Math.max(0, ...ages);
 }
 
 /**
  * Batch form of `computeOldestDebtAgeDays` for rendering a whole balances
- * list: a single pass over `expenses` builds the oldest-unsettled-split
- * timestamp for every (debtor, creditor) pair, instead of rescanning all
- * expenses once per pair (O(expenses × splits) instead of
- * O(pairs × expenses × splits)). Returns ages in the same order as `pairs`.
+ * list: a single pass over `expenses` collects the unsettled splits of every
+ * (debtor, creditor) pair. Payments from the debtor to the creditor pay off
+ * that pair's splits oldest first (they never set `settledAt`), so a paid
+ * old debt does not date the reminder. Returns ages in the same order as
+ * `pairs`.
  */
 export function computeOldestDebtAges(
 	pairs: ReadonlyArray<{ debtorId: string; creditorId: string; currency?: string }>,
 	expenses: ReadonlyArray<DebtExpenseInput>,
 	now: Date = new Date(),
+	payments: ReadonlyArray<ExpensePaymentInput> = [],
 ): number[] {
-	const oldestTsByPair = new Map<string, number>();
-
+	const splitsByPair = new Map<string, Array<{ ts: number; cents: number }>>();
 	for (const expense of expenses) {
 		const ts = Date.parse(expense.occurredAt);
 		if (Number.isNaN(ts)) continue;
-		const creditorId = expense.paidByMemberId;
+		const currency = normalizeCurrency(expense.currency);
 		for (const split of expense.splits) {
 			if (split.settledAt !== null) continue;
 			if (split.amountCents <= 0) continue;
-			const currency = normalizeCurrency(expense.currency);
-			const key = `${currency}:${split.debtorMemberId}:${creditorId}`;
-			const current = oldestTsByPair.get(key);
-			if (current === undefined || ts < current) oldestTsByPair.set(key, ts);
+			const key = `${currency}:${split.debtorMemberId}:${expense.paidByMemberId}`;
+			const list = splitsByPair.get(key) ?? [];
+			list.push({ ts, cents: split.amountCents });
+			splitsByPair.set(key, list);
 		}
+	}
+	const paidByPair = new Map<string, number>();
+	for (const payment of payments) {
+		if (payment.amountCents <= 0) continue;
+		const key = `${normalizeCurrency(payment.currency)}:${payment.fromMemberId}:${payment.toMemberId}`;
+		paidByPair.set(key, (paidByPair.get(key) ?? 0) + payment.amountCents);
 	}
 
 	const nowMs = now.getTime();
 	return pairs.map((pair) => {
-		const oldestTs = oldestTsByPair.get(
-			`${normalizeCurrency(pair.currency)}:${pair.debtorId}:${pair.creditorId}`,
-		);
-		if (oldestTs === undefined) return 0;
-		const diffMs = nowMs - oldestTs;
+		const key = `${normalizeCurrency(pair.currency)}:${pair.debtorId}:${pair.creditorId}`;
+		const splits = [...(splitsByPair.get(key) ?? [])].sort((a, b) => a.ts - b.ts);
+		let paid = paidByPair.get(key) ?? 0;
+		const oldest = splits.find((split) => {
+			if (paid >= split.cents) {
+				paid -= split.cents;
+				return false;
+			}
+			return true;
+		});
+		if (!oldest) return 0;
+		const diffMs = nowMs - oldest.ts;
 		return diffMs <= 0 ? 0 : Math.floor(diffMs / MS_PER_DAY);
 	});
 }

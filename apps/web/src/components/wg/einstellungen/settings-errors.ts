@@ -94,6 +94,9 @@ const NOTIFICATION_TEST_MESSAGES: KindMessages = {
 };
 
 export function notificationTestErrorMessage(status: number, code: string | null): string {
+	if (code === 'no_push_subscription') {
+		return 'Dieses Gerät ist nicht mehr für Push angemeldet. Schalte Push-Benachrichtigungen aus und wieder ein.';
+	}
 	return messageFor(NOTIFICATION_TEST_MESSAGES, 'Test konnte nicht gesendet werden.', status, code);
 }
 

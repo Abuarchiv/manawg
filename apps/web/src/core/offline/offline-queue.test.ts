@@ -10,6 +10,7 @@ import {
 	getOfflineActionRequest,
 	hasQueuedShoppingUpdate,
 	isQueuedCreateId,
+	pendingChoreCompletions,
 	withoutQueuedEntry,
 } from './offline-queue';
 
@@ -184,4 +185,23 @@ test('401 reads as an expired session, 403 as missing access, a deactivated memb
 	assert.equal(explainOfflineActionFailure(401).title, 'Sitzung abgelaufen');
 	assert.equal(explainOfflineActionFailure(403).title, 'Zugriff fehlt');
 	assert.equal(explainOfflineActionFailure(401, 'member_deactivated').title, 'Du bist ausgezogen');
+});
+
+test('a rejected chore completion is not pending; one waiting on the connection is', () => {
+	const queued = createQueuedChoreCompletion({
+		wgId: 'wg-1',
+		shareCode,
+		memberId,
+		choreId: 'chore-1',
+		expectedNextDueAt: '2026-10-27T08:00:00.000Z',
+		expectedAssignedMemberId: memberId,
+	});
+	const offlineRetry = { ...queued, attempts: 2, lastError: 'Keine Verbindung: Netz fehlt' };
+	const rejected = { ...queued, attempts: 1, lastError: 'Server prüfen: Konflikt: Schon erledigt' };
+	const pending = [{ id: 'chore-1', nextDueAt: '2026-10-27T08:00:00.000Z' }];
+
+	assert.deepEqual(pendingChoreCompletions([queued], shareCode), pending);
+	assert.deepEqual(pendingChoreCompletions([offlineRetry], shareCode), pending);
+	assert.deepEqual(pendingChoreCompletions([rejected], shareCode), []);
+	assert.deepEqual(pendingChoreCompletions([queued], 'OTHER'), []);
 });

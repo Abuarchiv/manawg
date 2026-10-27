@@ -1,5 +1,6 @@
 'use client';
 
+import { useTodayInputValue } from '@/core/hooks/use-today-input-value';
 import { todayInputValue } from '@/core/utils/local-date';
 import { useCallback, useMemo, useState } from 'react';
 import type { ExpenseDraft } from './expense-form-draft';
@@ -17,11 +18,14 @@ export function isoToInputDate(iso: string): string {
  * the form state; `null` participants means every active member.
  */
 export function useExpenseFormExtras() {
-	const [occurredOn, setOccurredOn] = useState(() => todayInputValue());
+	// null until the resident picks a day, so the form follows the current day.
+	const [pickedOccurredOn, setOccurredOn] = useState<string | null>(null);
+	const today = useTodayInputValue();
+	const occurredOn = pickedOccurredOn ?? today;
 	const [participantIds, setParticipantIds] = useState<string[] | null>(null);
 
 	const reset = useCallback(() => {
-		setOccurredOn(todayInputValue());
+		setOccurredOn(null);
 		setParticipantIds(null);
 	}, []);
 	const load = useCallback((values: { occurredOn: string; participantIds: string[] | null }) => {
@@ -38,10 +42,16 @@ export function useExpenseFormExtras() {
 		}
 	}, []);
 	// Stable while neither field changes, so effects can list it as a dependency.
-	const draftFields = useMemo(() => ({ occurredOn, participantIds }), [occurredOn, participantIds]);
+	const draftFields = useMemo(
+		() => ({ occurredOn: pickedOccurredOn, participantIds }),
+		[pickedOccurredOn, participantIds],
+	);
 
 	return {
+		/** The shown day: the picked one, else today. */
 		occurredOn,
+		/** The day the resident picked; null while untouched. */
+		pickedOccurredOn,
 		setOccurredOn,
 		participantIds,
 		setParticipantIds,

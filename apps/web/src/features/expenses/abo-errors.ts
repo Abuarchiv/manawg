@@ -44,7 +44,10 @@ export function aboActionErrorMessage(error: string): string {
 	return mutationErrorMessage(
 		prefix,
 		error,
-		commonTexts(prefix),
+		{
+			...commonTexts(prefix),
+			recurring_expense_changed: `${prefix}: Die Fixkosten wurden gerade gebucht oder geändert. Die Liste ist neu geladen, versuche es noch einmal.`,
+		},
 		`${prefix}. Versuche es gleich erneut.`,
 	);
 }

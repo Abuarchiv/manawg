@@ -32,14 +32,14 @@ const createInventorySchema = z.object({
 	name: z.string().trim().min(INVENTORY_LIMITS.NAME_MIN).max(INVENTORY_LIMITS.NAME_MAX),
 	quantity: z
 		.number()
-		.int()
+		.multipleOf(0.01)
 		.min(INVENTORY_LIMITS.QUANTITY_MIN)
 		.max(INVENTORY_LIMITS.QUANTITY_MAX)
 		.default(0),
 	unit: z.enum(INVENTORY_UNITS).default('Stück'),
 	threshold: z
 		.number()
-		.int()
+		.multipleOf(0.01)
 		.min(INVENTORY_LIMITS.THRESHOLD_MIN)
 		.max(INVENTORY_LIMITS.THRESHOLD_MAX)
 		.default(1),

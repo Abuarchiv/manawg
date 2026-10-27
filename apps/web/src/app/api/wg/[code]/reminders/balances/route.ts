@@ -43,6 +43,8 @@ export const GET = withWgRoute('reminders/balances GET', async (req, { code }) =
 			currency: pair.currency,
 		})),
 		openExpenses,
+		new Date(),
+		payments,
 	);
 	const balances: BalanceDto[] = myCredits.map((pair, i) => ({
 		debtor_id: pair.debtorId,

@@ -9,10 +9,9 @@ import {
 	recurringExpenses,
 	shoppingItems,
 	wgChatMessages,
-	wgInventoryItems,
-	wgInventoryLog,
 	wgs,
 } from './schema';
+import { wgInventoryItems, wgInventoryLog } from './schema-inventory';
 import { type DbTransaction, TransactionAbort, lockExpensePayments } from './transaction';
 
 /**
@@ -37,6 +36,34 @@ export async function deleteWgCascade(tx: DbTransaction, wgId: string): Promise<
 	// never be deleted. Raise it for this transaction only and clear the biggest child tables
 	// first, as separate statements, so the closing `delete from wgs` has little left to cascade.
 	await tx.execute(sql`set local statement_timeout = '60s'`);
+	// pg's own read deadline (query_timeout 5.5 s) would still end the connection first.
+	const restoreReadTimeout = raiseClientReadTimeout(tx, 61_000);
+	try {
+		return await deleteWgRows(tx, wgId);
+	} finally {
+		restoreReadTimeout();
+	}
+}
+
+/**
+ * Sets the client-side read deadline of the transaction's pooled connection and returns
+ * the undo; the connection goes back to the pool afterwards and must not keep it.
+ */
+function raiseClientReadTimeout(tx: DbTransaction, ms: number): () => void {
+	const params = (
+		tx as {
+			session?: { client?: { connectionParameters?: { query_timeout?: number | undefined } } };
+		}
+	).session?.client?.connectionParameters;
+	if (!params) return () => {};
+	const previous = params.query_timeout;
+	params.query_timeout = ms;
+	return () => {
+		params.query_timeout = previous;
+	};
+}
+
+async function deleteWgRows(tx: DbTransaction, wgId: string): Promise<boolean> {
 	await tx.delete(wgChatMessages).where(eq(wgChatMessages.wgId, wgId));
 	await tx.delete(auditEvents).where(eq(auditEvents.wgId, wgId));
 	await tx

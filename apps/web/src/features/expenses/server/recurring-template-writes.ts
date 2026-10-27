@@ -16,7 +16,7 @@ import {
 	recordRecurringAdvanced,
 } from '@/features/expenses/server/recurring-booking';
 import { splitValidationErrorCode, validateSplits } from '@/features/expenses/split-math';
-import { and, eq, inArray, isNotNull, isNull } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 type RecurringTemplate = typeof recurringExpenses.$inferSelect;
@@ -37,6 +37,8 @@ export interface RecurringTemplateEdit {
 	nextDueAt?: string | undefined;
 	/** The due date the editor loaded; a booking since then makes the edit stale. */
 	expectedNextDueAt?: string | undefined;
+	/** The version the editor loaded; any save since then makes the edit stale. */
+	expectedUpdatedAt?: string | undefined;
 	splits?: Split[] | undefined;
 	paused?: boolean | undefined;
 }
@@ -114,7 +116,10 @@ const AUDIT = {
 	edit: { eventType: 'recurring.updated', action: 'hat die Fixkosten-Vorlage {d} aktualisiert.' },
 } as const;
 
-/** The body fields that change the template itself; `paused` and `expectedNextDueAt` do not. */
+/**
+ * The body fields that change the template itself; `paused`, `expectedNextDueAt` and
+ * `expectedUpdatedAt` do not.
+ */
 export const EDIT_FIELDS = [
 	'description',
 	'category',
@@ -137,7 +142,8 @@ export function hasEditFields(
  * Edit, pause or resume a template; that is the owner's (or an admin's) call. The update is a
  * compare-and-set on the due date (or on the pause state): an editor that loaded an older due
  * date, or a booking (cron or "Erfassen") that moved it meanwhile, must not get the stale date
- * written back.
+ * written back. It also compares the `updatedAt` version, so two members editing the same
+ * template cannot silently overwrite each other.
  */
 export async function editRecurringTemplate(
 	caller: Caller,
@@ -150,6 +156,12 @@ export async function editRecurringTemplate(
 	if (
 		edit.expectedNextDueAt !== undefined &&
 		!recurringDueDateMatchesExpected(template.nextDueAt.toISOString(), edit.expectedNextDueAt)
+	) {
+		return conflict('recurring_expense_changed', 'recurring_expense_changed');
+	}
+	if (
+		edit.expectedUpdatedAt !== undefined &&
+		new Date(edit.expectedUpdatedAt).getTime() !== template.updatedAt.getTime()
 	) {
 		return conflict('recurring_expense_changed', 'recurring_expense_changed');
 	}
@@ -197,6 +209,9 @@ export async function editRecurringTemplate(
 	// lose the 31st.
 	const moved = movedDueAt(edit.nextDueAt, template);
 	const dueAt = moved ?? template.nextDueAt;
+	const expectedVersion = edit.expectedUpdatedAt
+		? new Date(edit.expectedUpdatedAt)
+		: template.updatedAt;
 	const byId = and(eq(recurringExpenses.id, template.id), eq(recurringExpenses.wgId, wgId));
 	const [updated] = await db
 		.update(recurringExpenses)
@@ -222,6 +237,7 @@ export async function editRecurringTemplate(
 				// Pause and resume rewrite every field from the loaded snapshot, so they
 				// compare the due date too: a booking or edit in between must not be undone.
 				eq(recurringExpenses.nextDueAt, template.nextDueAt),
+				sql`date_trunc('milliseconds', ${recurringExpenses.updatedAt}) = ${expectedVersion}`,
 				transition === 'pause'
 					? isNull(recurringExpenses.pausedAt)
 					: transition === 'resume'

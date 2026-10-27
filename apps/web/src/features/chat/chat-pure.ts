@@ -143,7 +143,8 @@ export function sanitizeMessageBody(body: unknown, maxLength = 4000): string | n
 	if (typeof body !== 'string') return null;
 	const trimmed = body.trim();
 	if (trimmed.length === 0) return null;
-	return trimmed.length > maxLength ? null : trimmed;
+	// Code points, like the zod max on the request body: an emoji counts once, not twice.
+	return [...trimmed].length > maxLength ? null : trimmed;
 }
 
 export function previewBody(body: string | null | undefined, max = 120): string {

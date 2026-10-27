@@ -3,19 +3,25 @@
 import { useToast } from '@/components/ui/Toast';
 import type { Member } from '@/components/wg/WgContextProvider';
 import type { TodayImportantItem } from '@/composition/dashboard-insights';
+import { pendingChoreCompletions } from '@/core/offline/offline-queue';
+import { readOfflineQueue } from '@/core/offline/offline-store';
 import {
 	type ChoreOccurrence,
 	choreCompletionFeedback,
 	completionRequestKey,
 } from '@/features/chores/chore-completion';
 import { useChoreCompletion } from '@/features/chores/hooks/use-chore-completion';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 interface HomeChoreCompletionInput {
 	wg: { id: string; shareCode: string };
 	identity: { memberId: string };
 	members: Member[];
 	reload: () => void;
+}
+
+function queuedChoreCompletions(shareCode: string): ReadonlySet<string> {
+	return new Set(pendingChoreCompletions(readOfflineQueue(), shareCode).map(completionRequestKey));
 }
 
 /**
@@ -36,6 +42,19 @@ export function useHomeChoreCompletion({
 	const [completeError, setCompleteError] = useState<string | null>(null);
 	const [queuedOccurrences, setQueuedOccurrences] = useState<ReadonlySet<string>>(() => new Set());
 
+	// Read from the queue itself: a completion that synced, was discarded or
+	// was rejected on replay shows its chore again instead of hiding it for the session.
+	useEffect(() => {
+		const update = () => setQueuedOccurrences(queuedChoreCompletions(wg.shareCode));
+		update();
+		window.addEventListener('manawg:offline-queue', update);
+		window.addEventListener('manawg:offline-synced', update);
+		return () => {
+			window.removeEventListener('manawg:offline-queue', update);
+			window.removeEventListener('manawg:offline-synced', update);
+		};
+	}, [wg.shareCode]);
+
 	async function confirm(item: TodayImportantItem): Promise<void> {
 		const choreId = item.entityId;
 		if (!choreId || !item.expectedNextDueAt || pendingChoreId) return;
@@ -49,9 +68,7 @@ export function useHomeChoreCompletion({
 		setPendingChoreId(choreId);
 		const outcome = await complete(chore);
 		setPendingChoreId(null);
-		if (outcome.kind === 'queued') {
-			setQueuedOccurrences((current) => new Set(current).add(completionRequestKey(chore)));
-		}
+		if (outcome.kind === 'queued') setQueuedOccurrences(queuedChoreCompletions(wg.shareCode));
 
 		const feedback = choreCompletionFeedback(
 			outcome,

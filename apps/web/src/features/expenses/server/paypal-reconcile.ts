@@ -6,9 +6,8 @@ import { getPayPalOrder } from '@/core/infra/paypal';
 import { formatEuroCents } from '@/core/utils/money';
 import { and, asc, eq, lt } from 'drizzle-orm';
 import { parsePayPalAmountCents, terminalPayPalCaptureOutcome } from '../paypal-settlement';
-import { withExpensePaymentLock } from './expense-payments';
+import { STALE_CAPTURE_MS, withExpensePaymentLock } from './expense-payments';
 
-const STALE_CAPTURE_MS = 15 * 60 * 1000;
 /** Grace after the order expired before an unapproved `capturing` row is given up. */
 const ABANDONED_BUFFER_MS = 60 * 60 * 1000;
 
@@ -18,12 +17,14 @@ const ABANDONED_BUFFER_MS = 60 * 60 * 1000;
  */
 export async function reconcileStaleCapturingPayments(
 	now = new Date(),
+	wgId?: string,
 ): Promise<{ completed: number; failed: number; pending: number }> {
 	const stale = await db
 		.select()
 		.from(expensePayments)
 		.where(
 			and(
+				...(wgId ? [eq(expensePayments.wgId, wgId)] : []),
 				eq(expensePayments.status, 'capturing'),
 				lt(expensePayments.createdAt, new Date(now.getTime() - STALE_CAPTURE_MS)),
 			),

@@ -8,6 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { type ActionNotice, ActionNoticeBanner } from '@/components/wg/ActionNoticeBanner';
 import type { Member } from '@/components/wg/WgContextProvider';
+import type { ExpenseCategory } from '@/features/expenses/expense-categories';
 import type { ReopenedShare } from '@/features/expenses/expense-split-input';
 import { cn } from '@/shared/lib/cn';
 import { useKeyboardOpen } from '@/shared/lib/use-keyboard-open';
@@ -25,8 +26,6 @@ import type { SplitMode } from './expense-form-draft';
 import type { RecurringExpense } from './expense-types';
 import { useExpenseFormDirty } from './use-expense-form-dirty';
 import type { ExpenseFormExtras } from './use-expense-form-extras';
-
-import type { ExpenseCategory } from '@/features/expenses/expense-categories';
 
 const EXPENSE_DESCRIPTION_FIELD_ID = 'expense-description';
 
@@ -179,6 +178,10 @@ export function ExpenseFormSection({
 		if (formError) formErrorRef.current?.scrollIntoView({ block: 'nearest' });
 	}, [formError]);
 
+	// Saving while the receipt still uploads would book the expense without it.
+	const [imageUploading, setImageUploading] = useState(false);
+	const submitBlocked = formSaving || savingRecurringTemplate || imageUploading;
+
 	function requestClose() {
 		if (formSaving || savingRecurringTemplate) return;
 		if (isDirty) setConfirmClose(true);
@@ -189,12 +192,8 @@ export function ExpenseFormSection({
 		<>
 			<Dialog
 				open={open}
-				onOpenChange={(next) => {
-					if (!next) requestClose();
-				}}
-				onOpenChangeComplete={(next) => {
-					if (!next) onExited();
-				}}
+				onOpenChange={(next) => !next && requestClose()}
+				onOpenChangeComplete={(next) => !next && onExited()}
 			>
 				<DialogContent
 					showCloseButton={false}
@@ -221,7 +220,7 @@ export function ExpenseFormSection({
 						className="flex min-h-0 flex-1 flex-col"
 						onSubmit={(event) => {
 							event.preventDefault();
-							if (formSaving || savingRecurringTemplate) return;
+							if (submitBlocked) return;
 							if (editingTemplate) onSaveRecurringTemplate();
 							else onSubmit();
 						}}
@@ -315,6 +314,7 @@ export function ExpenseFormSection({
 									onSaveRecurringTemplate={onSaveRecurringTemplate}
 									recurringTemplateCount={recurringTemplateCount}
 									formSaving={formSaving}
+									onImageUploadingChange={setImageUploading}
 								/>
 								{formError && (
 									<Alert ref={formErrorRef} variant="destructive">
@@ -345,7 +345,7 @@ export function ExpenseFormSection({
 								<Button
 									type="submit"
 									className="w-full"
-									disabled={formSaving || savingRecurringTemplate}
+									disabled={submitBlocked}
 									aria-label={savesTemplate ? 'Fixkosten-Vorlage speichern' : 'Ausgabe speichern'}
 								>
 									{(formSaving || savingRecurringTemplate) && <Spinner data-icon="inline-start" />}
@@ -371,7 +371,7 @@ export function ExpenseFormSection({
 									variant="ghost"
 									size="sm"
 									className="self-start"
-									disabled={formSaving || savingRecurringTemplate}
+									disabled={submitBlocked}
 									onClick={onSubmit}
 								>
 									Als Ausgabe speichern

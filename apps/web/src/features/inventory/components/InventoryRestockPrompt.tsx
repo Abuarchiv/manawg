@@ -16,6 +16,8 @@ import { PackagePlus } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 const MAX_ROWS = 3;
+// "Nicht jetzt" covers this shopping trip; the next purchase of the item asks again.
+const DISMISS_MS = 24 * 60 * 60 * 1000;
 
 /**
  * After shopping: scarce stock whose name was just ticked off (by the caller) is still low, because
@@ -47,7 +49,8 @@ export function InventoryRestockPrompt({
 	useEffect(() => {
 		const dismissed = matchIds.split(',').filter((id) => {
 			try {
-				return id !== '' && window.localStorage.getItem(storageKey(id)) !== null;
+				const dismissedAt = Date.parse(window.localStorage.getItem(storageKey(id)) ?? '');
+				return id !== '' && Date.now() - dismissedAt < DISMISS_MS;
 			} catch {
 				return false;
 			}

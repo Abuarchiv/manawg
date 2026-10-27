@@ -164,6 +164,20 @@ test('rename audit summary starts with the current name so the actor prefix is s
 		formatAuditActivityText('Bea hat sich umbenannt (vorher Anna).', 'Bea'),
 		'hat sich umbenannt (vorher Anna).',
 	);
+	// Written before a rename: the old name goes, the feed shows the current one in front.
+	assert.equal(
+		formatAuditActivityText('Anna Maria hat Brot gekauft.', 'Moritz'),
+		'hat Brot gekauft.',
+	);
+	assert.equal(formatAuditActivityText('Miete wurde gebucht.', 'System'), 'Miete wurde gebucht.');
+	// A booked template keeps its description, even when it contains "ist" or "hat".
+	assert.equal(
+		formatAuditActivityText(
+			'WLAN ist inklusive wurde aus einer Fixkosten-Vorlage übernommen.',
+			'Moritz',
+		),
+		'WLAN ist inklusive wurde aus einer Fixkosten-Vorlage übernommen.',
+	);
 });
 
 test('old audit rows that still carry comment text render without a quote', async () => {

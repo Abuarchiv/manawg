@@ -140,7 +140,6 @@ export function MessageImage({ imageUrl, senderName }: { imageUrl: string; sende
 	return (
 		<Attachment state="done" className="min-w-0 max-w-full">
 			<AttachmentMedia variant="image" className="size-20">
-				{/* eslint-disable-next-line @next/next/no-img-element */}
 				<img src={imageUrl} alt={`Bild von ${senderName}`} loading="lazy" />
 			</AttachmentMedia>
 			<AttachmentContent>

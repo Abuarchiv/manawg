@@ -80,7 +80,8 @@ export function ExpenseHistory({
 				</Empty>
 			) : (
 				<div className="flex flex-col gap-4">
-					{expenseCount >= FILTER_MIN_EXPENSES && (
+					{/* An active filter keeps its controls, or the list could stay empty with no way back. */}
+					{(expenseCount >= FILTER_MIN_EXPENSES || query !== '' || scope !== 'all') && (
 						<div className="flex flex-col gap-2">
 							<InputGroup>
 								<InputGroupAddon align="inline-start">

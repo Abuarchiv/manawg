@@ -1,4 +1,3 @@
-import { todayInputValue } from '@/core/utils/local-date';
 import { useEffect, useRef } from 'react';
 import type { SplitMode } from './expense-form-draft';
 
@@ -10,7 +9,7 @@ interface ExpenseFormDirtyInput {
 	splitMode: SplitMode;
 	manualSplits: Record<string, string>;
 	imageUrl: string | null;
-	occurredOn: string;
+	occurredOn: string | null;
 	participantIds: string[] | null;
 	recurringIntervalMonths: number;
 	identityMemberId: string;
@@ -56,7 +55,7 @@ export function useExpenseFormDirty({
 		splitMode: 'equal',
 		manualSplits: [],
 		imageUrl: null,
-		occurredOn: todayInputValue(),
+		occurredOn: null,
 		participantIds: null,
 		recurringIntervalMonths: 1,
 	});

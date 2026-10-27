@@ -100,11 +100,14 @@ function buildCategories(
 
 /**
  * One month of a WG's expenses: what each member paid, their share, the
- * month balance (paid minus share, adjusted by the month's completed
- * payments) and the fewest transfers that clear it. Balances count settled
- * shares too, so a paid-off month still shows who carried what. Payments
- * (PayPal, cash) never set `settledAt`, so they are netted against the open
- * shares per debtor/payer pair. Only EUR expenses and payments are counted.
+ * month balance (what is still open: paid minus share, minus shares marked
+ * settled and payments) and the fewest transfers that clear it. Paid and
+ * share count settled shares too, so a paid-off month still shows who
+ * carried what. Payments (PayPal, cash) never set
+ * `settledAt`; each pays off the open shares of its debtor/payer pair oldest
+ * first, whenever it was made, so a later payment settles an earlier month
+ * and never turns into a reverse debt. Pass all expenses and payments of the
+ * WG, not only the month's. Only EUR expenses and payments are counted.
  */
 export function buildMonthlyStatement(
 	expenses: readonly StatementExpense[],
@@ -112,44 +115,54 @@ export function buildMonthlyStatement(
 	monthKey: string,
 	payments: readonly ExpensePaymentInput[] = [],
 ): MonthlyStatement {
-	const inMonth = expenses
-		.filter(
-			(expense) =>
-				normalizeCurrency(expense.currency) === 'EUR' &&
-				berlinMonthKey(new Date(expense.occurredAt)) === monthKey,
-		)
+	const eur = expenses
+		.filter((expense) => normalizeCurrency(expense.currency) === 'EUR')
 		.sort((a, b) => a.occurredAt.localeCompare(b.occurredAt));
+	const inMonth = eur.filter(
+		(expense) => berlinMonthKey(new Date(expense.occurredAt)) === monthKey,
+	);
 
 	const paid = new Map<string, number>();
 	const share = new Map<string, number>();
 	const adjustment = new Map<string, number>();
-	// Open (unsettled) amount per `debtor>payer` pair, reduced by payments below.
-	const openByPair = new Map<string, number>();
 	for (const expense of inMonth) {
 		paid.set(expense.paidByMemberId, (paid.get(expense.paidByMemberId) ?? 0) + expense.amountCents);
 		for (const split of expense.splits) {
 			share.set(split.debtorMemberId, (share.get(split.debtorMemberId) ?? 0) + split.amountCents);
-			if (split.debtorMemberId !== expense.paidByMemberId && split.settledAt === null) {
-				const pair = `${split.debtorMemberId}>${expense.paidByMemberId}`;
-				openByPair.set(pair, (openByPair.get(pair) ?? 0) + split.amountCents);
-			}
 		}
 	}
+	// Payment total per `debtor>payer` pair, spent on that pair's open shares oldest first.
+	const paymentPool = new Map<string, number>();
 	for (const payment of payments) {
 		if (
 			payment.amountCents <= 0 ||
 			normalizeCurrency(payment.currency) !== 'EUR' ||
-			!payment.completedAt ||
-			berlinMonthKey(new Date(payment.completedAt)) !== monthKey
+			!payment.completedAt
 		) {
 			continue;
 		}
-		const { fromMemberId: from, toMemberId: to } = payment;
-		adjustment.set(from, (adjustment.get(from) ?? 0) + payment.amountCents);
-		adjustment.set(to, (adjustment.get(to) ?? 0) - payment.amountCents);
-		const pair = `${from}>${to}`;
-		if (openByPair.has(pair))
-			openByPair.set(pair, (openByPair.get(pair) ?? 0) - payment.amountCents);
+		const pair = `${payment.fromMemberId}>${payment.toMemberId}`;
+		paymentPool.set(pair, (paymentPool.get(pair) ?? 0) + payment.amountCents);
+	}
+	// Open amount of this month per pair after settled shares and payments.
+	const openByPair = new Map<string, number>();
+	for (const expense of eur) {
+		const isInMonth = berlinMonthKey(new Date(expense.occurredAt)) === monthKey;
+		for (const split of expense.splits) {
+			const { debtorMemberId: from } = split;
+			const to = expense.paidByMemberId;
+			if (from === to || split.amountCents <= 0) continue;
+			const pair = `${from}>${to}`;
+			let covered = split.amountCents;
+			if (split.settledAt === null) {
+				covered = Math.min(paymentPool.get(pair) ?? 0, split.amountCents);
+				paymentPool.set(pair, (paymentPool.get(pair) ?? 0) - covered);
+			}
+			if (!isInMonth) continue;
+			openByPair.set(pair, (openByPair.get(pair) ?? 0) + split.amountCents - covered);
+			adjustment.set(from, (adjustment.get(from) ?? 0) + covered);
+			adjustment.set(to, (adjustment.get(to) ?? 0) - covered);
+		}
 	}
 	const settled = [...openByPair.values()].every((cents) => cents <= 0);
 

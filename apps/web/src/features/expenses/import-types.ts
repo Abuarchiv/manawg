@@ -21,6 +21,7 @@ export interface RejectedRow {
 		| 'amount_invalid'
 		| 'no_participants'
 		| 'payer_missing'
+		| 'multiple_payers'
 		| 'currency_unsupported';
 	/** Row description, plus the offending currency for `currency_unsupported`. */
 	description: string;

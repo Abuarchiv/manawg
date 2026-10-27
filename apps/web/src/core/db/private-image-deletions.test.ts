@@ -567,7 +567,19 @@ test(
 				routeLockStarted = resolve;
 			});
 			const deletingWg = db.transaction(async (tx) => {
+				const readDeadline = () =>
+					(
+						tx as unknown as {
+							session: { client: { connectionParameters: { query_timeout?: number } } };
+						}
+					).session.client.connectionParameters.query_timeout;
+				const poolDeadline = readDeadline();
 				assert.equal(await deleteWg.deleteWgCascade(tx, wgId), true);
+				assert.equal(
+					readDeadline(),
+					poolDeadline,
+					'the raised read deadline is undone for the pool',
+				);
 				cascadeApplied();
 				await waitForCascadeRelease;
 			});

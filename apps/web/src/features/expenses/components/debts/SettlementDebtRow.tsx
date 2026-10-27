@@ -34,7 +34,11 @@ interface DebtRowProps {
 	shareCode: string;
 	currentMemberId: string;
 	memberPayPalMerchantId: (id: string) => string | null;
-	payPalEligible: boolean;
+	/**
+	 * A direct debt between the two covers this (possibly simplified) one. PayPal orders and
+	 * reminders are booked on direct debts, so both are offered only then.
+	 */
+	backedByDirectDebt: boolean;
 	/** PayPal hint only in the first matching row per card. */
 	showPayPalHint: boolean;
 	onSettled: (message?: string) => void;
@@ -47,7 +51,7 @@ export function SettlementDebtRow({
 	shareCode,
 	currentMemberId,
 	memberPayPalMerchantId,
-	payPalEligible,
+	backedByDirectDebt,
 	showPayPalHint,
 	onSettled,
 }: DebtRowProps) {
@@ -85,7 +89,7 @@ export function SettlementDebtRow({
 		(debt.currency ?? 'EUR') === 'EUR' &&
 		debt.fromId === currentMemberId &&
 		payeeMerchantId !== null &&
-		payPalEligible &&
+		backedByDirectDebt &&
 		PAYPAL_ENABLED;
 	const iOwe = debt.fromId === currentMemberId;
 	const owedToMe = debt.toId === currentMemberId;
@@ -124,7 +128,7 @@ export function SettlementDebtRow({
 						{reviewing && <Spinner data-icon="inline-start" />}
 						{reviewing ? 'Wird geprüft…' : 'Ausgleichen'}
 					</Button>
-					{owedToMe && (
+					{owedToMe && backedByDirectDebt && (
 						<RemindButton
 							shareCode={shareCode}
 							debtorMemberId={debt.fromId}

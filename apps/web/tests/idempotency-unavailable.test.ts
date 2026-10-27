@@ -102,3 +102,16 @@ test('rateLimitResponse: admitted, limited, and limiter outage', async () => {
 	assert.equal(body.error, 'rate_limiter_unavailable');
 	assert.ok(body.retryAfterMs > 0 && body.retryAfterMs <= 2500);
 });
+
+test('serverError answers a lock timeout, wrapped or not, with a retryable 503', async () => {
+	const lockTimeout = Object.assign(new Error('canceling statement due to lock timeout'), {
+		code: '55P03',
+	});
+	for (const err of [lockTimeout, new Error('Failed query', { cause: lockTimeout })]) {
+		const response = serverError(err);
+		assert.equal(response.status, 503);
+		assert.equal(response.headers.get('Retry-After'), '2');
+		assert.deepEqual(await response.json(), { error: 'service_unavailable', code: 'busy_retry' });
+	}
+	assert.equal(serverError(new Error('boom')).status, 500);
+});

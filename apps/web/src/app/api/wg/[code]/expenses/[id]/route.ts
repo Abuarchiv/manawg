@@ -1,3 +1,4 @@
+import { withdrawExpenseChatNotice } from '@/core/activity-feed';
 import { recordAuditEvent } from '@/core/audit';
 import { db, expenseSplits, expenses, wgMembers } from '@/core/db';
 import {
@@ -35,6 +36,7 @@ import {
 } from '@/features/expenses/server/expense-payments';
 import {
 	settledAtForOwnShare,
+	splitChangeViolation,
 	splitValidationErrorCode,
 	validateSplits,
 } from '@/features/expenses/split-math';
@@ -119,6 +121,8 @@ export const DELETE = withWgRoute<{ id: string }>('expense DELETE', async (req, 
 			return { ok: false as const, response: notFound('expense_not_found') };
 		}
 		await revokePrivateImageIfUnreferenced(tx, wgId, row.imageUrl);
+		// The chat notice "X hat Y eingetragen" would otherwise announce an expense that is gone.
+		await withdrawExpenseChatNotice(tx, wgId, id);
 		return { ok: true as const, row };
 	});
 	if (!deletion.ok) return deletion.response;
@@ -284,24 +288,13 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 						),
 					);
 				const activeDebtorIds = new Set(activeMembers.map((member) => member.id));
-				const previousAmounts = new Map(
-					previousSplits.map((split) => [split.debtorMemberId, split.amountCents]),
+				const violation = splitChangeViolation(
+					previousSplits,
+					splits,
+					activeDebtorIds,
+					row.paidByMemberId,
 				);
-				const nextAmounts = new Map(
-					splits.map((split) => [split.debtorMemberId, split.amountCents]),
-				);
-				const changedInactiveSplit =
-					splits.some(
-						(split) =>
-							!activeDebtorIds.has(split.debtorMemberId) &&
-							previousAmounts.get(split.debtorMemberId) !== split.amountCents,
-					) ||
-					previousSplits.some(
-						(split) =>
-							!activeDebtorIds.has(split.debtorMemberId) &&
-							nextAmounts.get(split.debtorMemberId) !== split.amountCents,
-					);
-				if (changedInactiveSplit) throw new TransactionAbort('member_not_in_wg');
+				if (violation) throw new TransactionAbort(violation);
 			}
 
 			const updateConditions = [eq(expenses.id, id), eq(expenses.wgId, wgId)];
@@ -367,6 +360,8 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 			if (writeErr.code === 'expense_changed')
 				return conflict('expense_changed', 'expense_conflict');
 			if (writeErr.code === 'member_not_in_wg') return badRequest('member_not_in_wg');
+			if (writeErr.code === 'expense_has_settled_shares')
+				return conflict('expense_has_settled_shares');
 			return serverError(writeErr.code);
 		}
 		logApiError('[expense PATCH] update failed', writeErr);

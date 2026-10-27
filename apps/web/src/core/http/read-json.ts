@@ -45,10 +45,17 @@ export async function readJsonBody(req: Request, maxBytes: number): Promise<Json
 	return { ok: true, body };
 }
 
-function containsNul(value: unknown): boolean {
-	if (typeof value === 'string') return value.includes('\u0000');
-	if (Array.isArray(value)) return value.some(containsNul);
-	if (value && typeof value === 'object') return Object.values(value).some(containsNul);
+// Iterative: a deeply nested body would overflow the call stack of a recursive walk.
+function containsNul(root: unknown): boolean {
+	const pending: unknown[] = [root];
+	while (pending.length > 0) {
+		const value = pending.pop();
+		if (typeof value === 'string') {
+			if (value.includes('\u0000')) return true;
+		} else if (value && typeof value === 'object') {
+			for (const child of Object.values(value)) pending.push(child);
+		}
+	}
 	return false;
 }
 

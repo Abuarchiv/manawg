@@ -8,7 +8,11 @@ import {
 	notificationWarningMessage,
 } from '@/core/notifications/notification-warning';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
-import type { InventoryItemDto, InventoryMutationItemDto } from '@/features/inventory/inventory';
+import {
+	type InventoryItemDto,
+	type InventoryMutationItemDto,
+	clampQuantity,
+} from '@/features/inventory/inventory';
 import { useRef, useState } from 'react';
 
 type QuantityAction = 'decrement' | 'increment';
@@ -116,11 +120,12 @@ export function useInventoryQuantity(options: UseInventoryQuantityOptions) {
 
 	function tap(delta: number): void {
 		const current = shownRef.current ?? latest.current.item.quantity;
-		const next = Math.max(0, current + delta);
+		const next = clampQuantity(current + delta);
 		if (next === current) return;
 		shownRef.current = next;
 		setShown(next);
-		queuedRef.current += next - current;
+		// Whole-unit steps keep the requests integral; the server clamps a 0,5 stock at 0.
+		queuedRef.current += delta;
 		void flush();
 	}
 

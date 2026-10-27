@@ -114,3 +114,19 @@ test('the farewell mail states what is removed and that the name stays in WG ent
 	assert.match(text, /Dein Name bleibt in den bisherigen Einträgen/);
 	assert.ok(!text.includes('Anhänge'));
 });
+
+test('reminder mail explains items that do not add up to the netted amount', () => {
+	const input = {
+		wgName: 'Kastanienallee',
+		shareCode: 'KST48210',
+		creditorName: 'Jonas',
+		oldestDebtAgeDays: 9,
+		items: [
+			{ description: 'Einkauf Edeka', date: '25.09.', cents: 1420 },
+			{ description: 'Klopapier', date: '30.09.', cents: 920 },
+		],
+		unsubscribeUrl: 'https://app.manawg.com/api/email/unsubscribe?t=y',
+	};
+	assert.ok(!renderReminderMail({ ...input, amountCents: 2340 }).text.includes('verrechnet'));
+	assert.ok(renderReminderMail({ ...input, amountCents: 1000 }).text.includes('verrechnet'));
+});
