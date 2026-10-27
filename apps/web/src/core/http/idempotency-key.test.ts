@@ -46,6 +46,20 @@ describe('resolveIdempotencyKey', () => {
 	});
 });
 
+describe('resolveIdempotencyKey with a key factory', () => {
+	test('asks the factory only when the pending key cannot be reused', () => {
+		let calls = 0;
+		const createKey = () => {
+			calls += 1;
+			return null;
+		};
+		assert.equal(resolveIdempotencyKey({ fingerprint: 'a', key: 'k' }, 'a', createKey), 'k');
+		assert.equal(calls, 0);
+		assert.equal(resolveIdempotencyKey({ fingerprint: 'a', key: 'k' }, 'b', createKey), null);
+		assert.equal(calls, 1);
+	});
+});
+
 describe('isIdempotencyKey', () => {
 	test('accepts UUIDs only', () => {
 		assert.equal(isIdempotencyKey(crypto.randomUUID()), true);
