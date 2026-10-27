@@ -17,7 +17,7 @@ import { formatEuroCents } from '@/core/utils/money';
 import { formatRelativeTime, formatTimeFull } from '@/core/utils/time';
 import type { ExpensePaymentInput } from '@/features/expenses/expense-payment-input';
 import { useRef, useState } from 'react';
-import { settlementErrorMessage } from './settlement-errors';
+import { cashVoidErrorMessage } from './settlement-errors';
 
 const MAX_LISTED = 5;
 
@@ -118,7 +118,7 @@ function CashPaymentRow({
 			);
 			if (!res.ok) {
 				if (res.status > 0 && res.status < 500) keyRef.current = null;
-				toast.error(settlementErrorMessage(res.error));
+				toast.error(cashVoidErrorMessage(res.error));
 				return;
 			}
 			keyRef.current = null;
@@ -126,7 +126,7 @@ function CashPaymentRow({
 				`Barzahlung storniert: ${amount} von ${memberName(payment.fromMemberId)} an ${memberName(payment.toMemberId)}.`,
 			);
 		} catch {
-			toast.error(settlementErrorMessage('Netzwerkfehler'));
+			toast.error(cashVoidErrorMessage('Netzwerkfehler'));
 		} finally {
 			voidingRef.current = false;
 			setVoiding(false);

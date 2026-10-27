@@ -21,3 +21,7 @@ test('feature codes keep their own texts', () => {
 		'Fixkosten konnten nicht angelegt werden.',
 	);
 });
+
+test('a pause that collides with another edit says the list was reloaded', () => {
+	assert.match(aboActionErrorMessage('recurring_expense_changed'), /neu geladen/);
+});
