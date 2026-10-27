@@ -170,6 +170,14 @@ test('rename audit summary starts with the current name so the actor prefix is s
 		'hat Brot gekauft.',
 	);
 	assert.equal(formatAuditActivityText('Miete wurde gebucht.', 'System'), 'Miete wurde gebucht.');
+	// A booked template keeps its description, even when it contains "ist" or "hat".
+	assert.equal(
+		formatAuditActivityText(
+			'WLAN ist inklusive wurde aus einer Fixkosten-Vorlage übernommen.',
+			'Moritz',
+		),
+		'WLAN ist inklusive wurde aus einer Fixkosten-Vorlage übernommen.',
+	);
 });
 
 test('old audit rows that still carry comment text render without a quote', async () => {
