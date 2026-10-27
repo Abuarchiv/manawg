@@ -53,7 +53,8 @@ export async function postOccurrenceChange<E>(
 			),
 		},
 	);
-	// A definitive answer (also a refusal) ends the attempt; a lost, rate-limited or failed one keeps the key.
+	// A definitive answer (also a refusal) ends the attempt; a lost, rate-limited or failed one
+	// keeps the key.
 	if (res.ok || shouldReleaseIdempotencyKey(res.status, res.error)) pendingKeys.delete(requestId);
 	return res;
 }

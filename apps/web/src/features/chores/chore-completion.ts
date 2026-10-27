@@ -57,7 +57,8 @@ export function completionRequestKey(chore: Pick<ChoreOccurrence, 'id' | 'nextDu
 /**
  * Completes one chore occurrence. Network failures queue the completion offline with the
  * same idempotency key, so the later replay deduplicates against an attempt that did reach
- * the server. The key survives 5xx, 429 and in-flight (`idempotency_response_pending`) answers for the same reason.
+ * the server. The key survives 5xx, 429 and in-flight (`idempotency_response_pending`) answers
+ * for the same reason.
  */
 export async function submitChoreCompletion(
 	ctx: ChoreCompletionContext,
