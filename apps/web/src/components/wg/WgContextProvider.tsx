@@ -82,8 +82,8 @@ export function WgContextProvider({
 }: Props) {
 	// The WG layout resolved the Supabase session and membership on the server
 	// (authUserId is only set there). Start ready instead of waiting for
-	// getSession -> /api/wg/[code]; the auth listener still revalidates in the
-	// background and clears everything on sign-out.
+	// the /api/wg/[code] lookup; it still revalidates in the background and
+	// clears everything once the session ends.
 	const serverVerified = Boolean(initialIdentity?.authUserId);
 	const [members, setMembers] = useState<Member[]>(initialMembers);
 	const [session, dispatch] = useReducer(wgSessionReducer, undefined, () =>

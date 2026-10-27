@@ -10,9 +10,9 @@ import {
 	ItemMedia,
 	ItemTitle,
 } from '@/components/ui/item';
+import type { AccountWg } from '@/core/infra/account-wgs';
 import { Home, KeyRound, Plus } from 'lucide-react';
 import Link from 'next/link';
-import type { AccountWg } from './start-flow';
 
 interface ChooseStepProps {
 	accountWgs: AccountWg[];

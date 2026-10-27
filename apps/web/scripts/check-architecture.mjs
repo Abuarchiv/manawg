@@ -58,7 +58,7 @@ const CLAIM_PROTOCOL_IDENTIFIERS = [
 	'ReplayCache',
 	'claimIdempotencySlot',
 ];
-const FIXTURE_IDENTIFIERS = /\b(isE2EDbDownMode|isClientFixtureMode)\b/;
+const FIXTURE_IDENTIFIERS = /\bisE2EDbDownMode\b/;
 const SPECIFIER_RE = /(?:from\s+|require\s*\(\s*|import\s*\(\s*|import\s+)['"]([^'"]+)['"]/g;
 const GERMAN_RE =
 	/\b(und|nicht|wird|werden|wenn|damit|oder|auch|noch|sonst|bereits|immer|keine?|sind|ist|dass|weil|beim|nach|soll|muss|kann|bei|zum|zur|eine?n?|der|das|dem|den|für|über|wäre|sähe|hält|müssen|können|würde)\b/i;

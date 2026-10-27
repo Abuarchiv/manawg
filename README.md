@@ -94,9 +94,8 @@ and the WG layout hands the first fixture member to the provider as the initial 
 `authUserId`: the provider is not server-verified there and confirms the account through the member
 lookup like in the app. The fixture API answers as the account `FIXTURE_AUTH_USER_ID`
 (`src/fixtures/data.ts`): `GET /api/wg/[code]` reports it as `authUserId` and `GET /api/wg/mine`
-lists the fixture WGs. The API
-client needs no fixture switch: it always sends `x-manawg-expected-member-id`, which the fixture
-API reads as the caller. Core, components and features receive plain options (`requireWgSignIn`)
+lists the fixture WGs. The API client needs no fixture switch: it always sends
+`x-manawg-expected-member-id`, which the fixture API reads as the caller. Core, components and features receive plain options (`requireWgSignIn`)
 and never see fixture mode. Specs that seed the offline queue or open `/offline` before visiting a
 WG store that account as `manawg_account` first (`seedLocalAccount` in `e2e/support/helpers.ts`).
 

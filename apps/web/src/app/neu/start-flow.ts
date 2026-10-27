@@ -30,8 +30,6 @@ export interface CreatedWg {
 	memberId: string;
 }
 
-export type { AccountWg } from '@/core/infra/account-wgs';
-
 export type StartStep = 'choose' | 'create' | 'join' | 'invite';
 export type StartField = 'wgName' | 'creatorName' | 'inviteLink';
 

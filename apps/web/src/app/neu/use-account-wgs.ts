@@ -3,12 +3,12 @@
 import { isAuthPagePath } from '@/core/auth/auth-intent';
 import { safeNextPath } from '@/core/auth/next-path';
 import { hasSessionCookie } from '@/core/auth/session-hint';
-import { fetchAccountWgs } from '@/core/infra/account-wgs';
+import { subscribeVisibility } from '@/core/hooks/use-online-status';
+import { type AccountWg, fetchAccountWgs } from '@/core/infra/account-wgs';
 import { invitePath } from '@/core/utils/invite-token';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import {
-	type AccountWg,
 	type StartStep,
 	consumeJustSignedIn,
 	getNeuIntentFromSearch,
@@ -76,13 +76,11 @@ export function useAccountWgs({
 	// Another tab signed in or out of this browser's one account: re-check when this tab returns.
 	useEffect(() => {
 		if (!interactive) return;
-		const onVisible = () => {
-			if (document.visibilityState !== 'visible') return;
+		return subscribeVisibility((visible) => {
+			if (!visible) return;
 			if (authState === 'loading' || authState === 'error') return;
 			if (hasSessionCookie() !== (authState === 'authenticated')) setAuthRetryNonce((n) => n + 1);
-		};
-		document.addEventListener('visibilitychange', onVisible);
-		return () => document.removeEventListener('visibilitychange', onVisible);
+		});
 	}, [authState, interactive]);
 
 	useEffect(() => {
