@@ -123,6 +123,7 @@ mock.module('@/features/expenses/server/expense-payments', {
 mock.module('@/features/expenses/split-math', {
 	namedExports: {
 		settledAtForOwnShare: () => null,
+		splitChangeViolation: () => null,
 		splitValidationErrorCode: (reason: string) => reason,
 		validateSplits: () => ({ ok: true }),
 	},
@@ -576,11 +577,7 @@ test(
 					).session.client.connectionParameters.query_timeout;
 				const poolDeadline = readDeadline();
 				assert.equal(await deleteWg.deleteWgCascade(tx, wgId), true);
-				assert.equal(
-					readDeadline(),
-					poolDeadline,
-					'the raised read deadline is undone for the pool',
-				);
+				assert.equal(readDeadline(), poolDeadline, 'raised read deadline is undone for the pool');
 				cascadeApplied();
 				await waitForCascadeRelease;
 			});
