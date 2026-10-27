@@ -218,6 +218,13 @@
       "when": 1791738750073,
       "tag": "0030_audit_strip_content",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1793075253026,
+      "tag": "0031_expense_payment_voided",
+      "breakpoints": true
     }
   ]
 }

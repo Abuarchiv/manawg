@@ -13,6 +13,8 @@ const ERRORS: Record<string, string> = {
 	invalid_body: `${SUBJECT}: Die Anfrage war ungültig.`,
 	amount_invalid: 'Barzahlung konnte nicht gespeichert werden: Der Betrag ist ungültig.',
 	currency_invalid: 'Barzahlung konnte nicht gespeichert werden: Der Betrag ist ungültig.',
+	payment_not_found: 'Diese Barzahlung gibt es nicht mehr.',
+	payment_voided: 'Diese Barzahlung ist schon storniert.',
 	paypal_payment_pending: 'Eine PayPal-Zahlung läuft noch. Warte auf deren Abschluss.',
 };
 

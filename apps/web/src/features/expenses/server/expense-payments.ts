@@ -16,6 +16,8 @@ export async function loadCompletedExpensePayments(
 ): Promise<ExpensePaymentInput[]> {
 	const rows = await client
 		.select({
+			id: expensePayments.id,
+			provider: expensePayments.provider,
 			fromMemberId: expensePayments.fromMemberId,
 			toMemberId: expensePayments.toMemberId,
 			amountCents: expensePayments.amountCents,

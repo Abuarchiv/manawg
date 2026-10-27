@@ -290,7 +290,7 @@ export const expensePayments = pgTable(
 		),
 		statusCheck: check(
 			'expense_payments_status_check',
-			sql`${t.status} in ('created', 'capturing', 'completed', 'failed')`,
+			sql`${t.status} in ('created', 'capturing', 'completed', 'failed', 'voided')`,
 		),
 	}),
 );

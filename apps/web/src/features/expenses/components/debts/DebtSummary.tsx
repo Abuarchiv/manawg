@@ -15,9 +15,11 @@ import { formatEuroCents } from '@/core/utils/money';
 import type { Expense } from '@/features/expenses/components/ausgaben/expense-types';
 import { getDebtOverview, listedMemberBalances } from '@/features/expenses/debt-overview';
 import type { SettlementSummary, SimplifiedDebt } from '@/features/expenses/debt-reduction';
+import type { ExpensePaymentInput } from '@/features/expenses/expense-payment-input';
 import { cn } from '@/shared/lib/cn';
 import { Bell, FileText } from 'lucide-react';
 import Link from 'next/link';
+import { CashPaymentList, ownCashPayments } from './CashPaymentList';
 import { SALDO_HEADING_ID, SettlementDebtRow } from './SettlementDebtRow';
 
 interface MemberBalance {
@@ -38,6 +40,9 @@ interface DebtSummaryProps {
 	/** Net balance per member for the balance list. */
 	balances?: readonly MemberBalance[];
 	expenses: readonly Expense[];
+	/** Completed payments; the viewer's cash payments can be voided from here. */
+	payments?: readonly ExpensePaymentInput[];
+	memberName?: (id: string) => string;
 	shareCode: string;
 	currentMemberId: string;
 	memberPayPalMerchantId?: (id: string) => string | null;
@@ -53,13 +58,22 @@ export function DebtSummary({
 	summary,
 	balances = [],
 	expenses,
+	payments = [],
+	memberName = () => '',
 	shareCode,
 	currentMemberId,
 	memberPayPalMerchantId = () => null,
 	onSettled,
 }: DebtSummaryProps) {
 	const { personal, others } = getDebtOverview(debts, currentMemberId, summary);
-	if (debts.length === 0 && personal.length === 0 && others.length === 0 && balances.length === 0)
+	const hasCashPayments = ownCashPayments(payments, currentMemberId).length > 0;
+	if (
+		debts.length === 0 &&
+		personal.length === 0 &&
+		others.length === 0 &&
+		balances.length === 0 &&
+		!hasCashPayments
+	)
 		return null;
 
 	const hinted = new Set<string>();
@@ -228,6 +242,13 @@ export function DebtSummary({
 						)}
 					</section>
 				)}
+				<CashPaymentList
+					payments={payments}
+					currentMemberId={currentMemberId}
+					shareCode={shareCode}
+					memberName={memberName}
+					onSettled={onSettled}
+				/>
 			</CardContent>
 		</Card>
 	);

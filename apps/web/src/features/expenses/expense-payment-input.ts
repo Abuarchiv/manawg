@@ -1,5 +1,8 @@
 /** A completed settlement payment between two members. */
 export interface ExpensePaymentInput {
+	/** Present when the payment comes from `GET /expenses`; the balance math ignores it. */
+	id?: string;
+	provider?: string;
 	fromMemberId: string;
 	toMemberId: string;
 	amountCents: number;

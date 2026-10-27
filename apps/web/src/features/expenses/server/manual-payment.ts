@@ -29,25 +29,42 @@ export const manualPaymentSchema = z
 export type ManualPaymentInput = z.infer<typeof manualPaymentSchema>;
 
 export const manualPaymentCodec = responseCodec();
+export const voidCashPaymentCodec = responseCodec();
 
-type ManualPaymentOutcome =
+type RecordOutcome =
 	| { kind: 'member_deactivated' }
 	| { kind: 'member_not_in_wg' }
 	| { kind: 'blocked' }
 	| { kind: 'changed' }
 	| { kind: 'recorded'; paymentId: string; amountCents: number };
 
+type VoidOutcome = {
+	kind: 'member_deactivated' | 'not_found' | 'not_party' | 'already_voided' | 'blocked' | 'voided';
+};
+
+const REJECTION_STATUS: Record<string, number> = {
+	member_deactivated: HTTP.UNAUTHORIZED,
+	member_not_in_wg: HTTP.BAD_REQUEST,
+	not_found: HTTP.NOT_FOUND,
+	not_party: HTTP.FORBIDDEN,
+};
+
 /** Rejections are answered by the route and not stored, so the same key can run again. */
-function rejected(
-	kind: Exclude<ManualPaymentOutcome['kind'], 'recorded'>,
-): WriteOutcome<unknown, ManualPaymentOutcome> {
-	const status =
-		kind === 'member_deactivated'
-			? HTTP.UNAUTHORIZED
-			: kind === 'member_not_in_wg'
-				? HTTP.BAD_REQUEST
-				: HTTP.CONFLICT;
-	return { status, body: null, context: { kind } };
+function rejected<K extends string>(kind: K): WriteOutcome<unknown, { kind: K }> {
+	return { status: REJECTION_STATUS[kind] ?? HTTP.CONFLICT, body: null, context: { kind } };
+}
+
+/** Lock the acting member's row; a member who moved out cannot write. */
+async function lockActiveCaller(tx: DbTransaction, wgId: string, callerId: string) {
+	const [activeCaller] = await tx
+		.select({ id: wgMembers.id })
+		.from(wgMembers)
+		.where(
+			and(eq(wgMembers.id, callerId), eq(wgMembers.wgId, wgId), isNull(wgMembers.deactivatedAt)),
+		)
+		.limit(1)
+		.for('update');
+	return activeCaller;
 }
 
 /**
@@ -61,16 +78,8 @@ export async function recordCashPayment(
 	callerId: string,
 	input: ManualPaymentInput,
 	callerName = 'Ein Mitglied',
-): Promise<WriteOutcome<unknown, ManualPaymentOutcome>> {
-	const [activeCaller] = await tx
-		.select({ id: wgMembers.id })
-		.from(wgMembers)
-		.where(
-			and(eq(wgMembers.id, callerId), eq(wgMembers.wgId, wgId), isNull(wgMembers.deactivatedAt)),
-		)
-		.limit(1)
-		.for('update');
-	if (!activeCaller) return rejected('member_deactivated');
+): Promise<WriteOutcome<unknown, RecordOutcome>> {
+	if (!(await lockActiveCaller(tx, wgId, callerId))) return rejected('member_deactivated');
 
 	const snapshot = await loadSettlementSnapshot(tx, wgId);
 	if (!pairIsInWg(snapshot, input.fromMemberId, input.toMemberId)) {
@@ -145,5 +154,66 @@ export async function recordCashPayment(
 			creditor: input.toMemberId,
 		},
 		context: { kind: 'recorded', paymentId: payment.id, amountCents: preview.netCents },
+	};
+}
+
+/**
+ * Void a completed cash payment. The status flip takes it out of every balance, debt and statement
+ * because all of them read only `completed` payments; correcting a payment means voiding it and
+ * entering it again. Run it under the WG's payment lock.
+ */
+export async function voidCashPayment(
+	tx: DbTransaction,
+	wgId: string,
+	callerId: string,
+	paymentId: string,
+	callerName = 'Ein Mitglied',
+): Promise<WriteOutcome<unknown, VoidOutcome>> {
+	if (!(await lockActiveCaller(tx, wgId, callerId))) return rejected('member_deactivated');
+
+	const [payment] = await tx
+		.select({
+			fromMemberId: expensePayments.fromMemberId,
+			toMemberId: expensePayments.toMemberId,
+			amountCents: expensePayments.amountCents,
+			currency: expensePayments.currency,
+			status: expensePayments.status,
+			provider: expensePayments.provider,
+		})
+		.from(expensePayments)
+		.where(and(eq(expensePayments.id, paymentId), eq(expensePayments.wgId, wgId)))
+		.limit(1)
+		.for('update');
+	// A PayPal payment moved real money; only cash entries can be taken back.
+	if (!payment || payment.provider !== 'manual') return rejected('not_found');
+	if (callerId !== payment.fromMemberId && callerId !== payment.toMemberId) {
+		return rejected('not_party');
+	}
+	if (payment.status !== 'completed') return rejected('already_voided');
+	if (await hasCapturingExpensePayment(tx, wgId)) return rejected('blocked');
+
+	await tx
+		.update(expensePayments)
+		.set({ status: 'voided' })
+		.where(and(eq(expensePayments.id, paymentId), eq(expensePayments.status, 'completed')));
+	// Written with the status change, so the feed shows who voided it and when.
+	await tx.insert(auditEvents).values({
+		wgId,
+		memberId: callerId,
+		eventType: 'expense.debt.settled.manual.voided',
+		entityType: 'expense_payment',
+		entityId: paymentId,
+		summary: `${callerName} hat eine Barzahlung über ${formatEuroCents(payment.amountCents, payment.currency)} storniert.`,
+		metadataJson: JSON.stringify({
+			fromMemberId: payment.fromMemberId,
+			toMemberId: payment.toMemberId,
+			amountCents: payment.amountCents,
+			currency: payment.currency,
+		}),
+	});
+	return {
+		status: 200,
+		body: { paymentId, voided: true, amountCents: payment.amountCents, currency: payment.currency },
+		context: { kind: 'voided' },
 	};
 }
