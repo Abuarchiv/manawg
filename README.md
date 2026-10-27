@@ -11,7 +11,7 @@ Further reading: [architecture](docs/architecture.md), [release checklist](docs/
 
 ## Layout
 
-```
+```text
 apps/web/
   src/app/        routes only: pages, layouts, API handlers (thin, call core/features)
   src/core/       domain-neutral building blocks: db, auth, guards, http, offline, notifications, infra
@@ -20,6 +20,7 @@ apps/web/
                   a feature may import core/, shared/ and itself, never another feature
                   features/<x>/server/ holds database and server-only code (import 'server-only')
   src/components/ reusable UI: ui/ (shadcn), animate-ui/ (motion variants), app/ (shell, PWA, theme), wg/ (WG-wide)
+  src/fixtures/   in-memory fixture build for e2e (see Fixture mode); only src/app/ imports it
   src/shared/     framework-light utilities (lib/, fonts, css): theme, brand, analytics
   drizzle/        SQL migrations (`pnpm --filter @manawg/web db:generate` / `db:migrate`)
   e2e/            Playwright specs (fixture mode needs no database)
@@ -101,7 +102,7 @@ WG store that account as `manawg_account` first (`seedLocalAccount` in `e2e/supp
 
 ## Commands
 
-```
+```sh
 pnpm install
 pnpm dev                          # http://localhost:3000
 pnpm lint                         # biome (whole repo)
@@ -117,7 +118,7 @@ More scripts in `apps/web/package.json`:
 | Command | What it runs |
 | --- | --- |
 | `pnpm test` (root) | The unit tests (`test:unit`); Playwright is `pnpm e2e` (dev server with your `.env.local`) |
-| `pnpm --filter @manawg/web test:unit` | `node --test` over `src/**/*.test.mjs` and `tests/*` |
+| `pnpm --filter @manawg/web test:unit` | `node --test` over `src/**/*.test.mjs`, `src/**/*.test.ts` and `tests/*.test.ts` |
 | `pnpm --filter @manawg/web test:e2e:fixtures` | Playwright against a production build in fixture mode |
 | `pnpm --filter @manawg/web test:e2e:webkit` | WebKit fixture config (`playwright.webkit-fixtures.config.ts`) |
 | `pnpm --filter @manawg/web test:e2e:account-delete-db` | Account deletion against a disposable loopback Postgres in `ACCOUNT_DELETE_TEST_URL` |
@@ -155,8 +156,8 @@ CI (`.github/workflows/ci.yml`, job `validate`) runs, in this order:
 3. `pnpm lint`
 4. `pnpm knip` (unused files, exports and dependencies; config in `knip.json`)
 5. `pnpm --dir apps/web analytics:check`
-6. `node scripts/check-architecture.mjs`
-7. `node scripts/check-wg-auth-invariant.mjs`
+6. `pnpm --filter @manawg/web exec node scripts/check-architecture.mjs`
+7. `pnpm --filter @manawg/web exec node scripts/check-wg-auth-invariant.mjs`
 8. `pnpm typecheck` (app, plus `tsconfig.e2e.json` for `e2e/`, `tests/*.test.ts` and Playwright configs)
 9. `pnpm --filter @manawg/web test:unit`
 10. `pnpm build`
