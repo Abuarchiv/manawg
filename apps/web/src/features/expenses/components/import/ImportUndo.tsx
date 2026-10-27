@@ -4,6 +4,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { useWg } from '@/components/wg/WgContextProvider';
+import { NETWORK_ERROR_CODE } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
 import { pluralize } from '@/shared/lib/plural';
 import { useRef, useState } from 'react';
@@ -14,7 +15,7 @@ const UNDO_ERRORS: Readonly<Record<string, string>> = {
 	paypal_payment_pending: 'Eine PayPal-Zahlung läuft noch. Versuche es danach erneut.',
 	not_owner: 'Nur wer importiert hat oder ein Admin kann diesen Import rückgängig machen.',
 	import_not_found: 'Dieser Import ist nicht mehr vorhanden.',
-	Netzwerkfehler: 'Prüfe deine Verbindung und versuche es erneut.',
+	[NETWORK_ERROR_CODE]: 'Prüfe deine Verbindung und versuche es erneut.',
 };
 
 function undoErrorMessage(error: string): string {

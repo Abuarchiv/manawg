@@ -1,3 +1,4 @@
+import { NETWORK_ERROR_CODE } from '@/core/http/error-codes';
 import { createIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
 import { type Dispatch, type SetStateAction, useRef } from 'react';
@@ -33,7 +34,7 @@ export function useChatReactions({
 		const requestKeyId = `${kind}:${messageId}:${emoji}`;
 		const idempotencyKey = requestKeysRef.current.get(requestKeyId) ?? createIdempotencyKey();
 		if (!idempotencyKey) {
-			return explainChatError(action, 'Netzwerkfehler');
+			return explainChatError(action, NETWORK_ERROR_CODE);
 		}
 		requestKeysRef.current.set(requestKeyId, idempotencyKey);
 

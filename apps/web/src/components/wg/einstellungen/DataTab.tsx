@@ -10,6 +10,7 @@ import { OfflineQueueSection } from '@/components/wg/einstellungen/OfflineQueueS
 import { Section } from '@/components/wg/einstellungen/Section';
 import { exportErrorMessage } from '@/components/wg/einstellungen/settings-errors';
 import type { SessionMember } from '@/core/auth/local-account';
+import { NETWORK_ERROR_CODE } from '@/core/http/error-codes';
 import { noteSessionExpiry, readApiErrorCode } from '@/core/infra/api-client';
 import { cn } from '@/shared/lib/cn';
 import { memberContextHeader } from '@/shared/lib/member-header';
@@ -76,7 +77,7 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 					: 'JSON-Export gestartet. Die Datei wird im Browser-Download gespeichert.',
 			);
 		} catch {
-			setExportError(exportErrorMessage(0, 'Netzwerkfehler'));
+			setExportError(exportErrorMessage(0, NETWORK_ERROR_CODE));
 		} finally {
 			exportPendingRef.current = false;
 			setExportPending(null);

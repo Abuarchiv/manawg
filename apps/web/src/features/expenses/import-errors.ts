@@ -1,5 +1,6 @@
 import {
 	type ApiErrorKind,
+	NETWORK_ERROR_CODE,
 	READ_ONLY_MESSAGE,
 	classifyApiError,
 	isRateLimited,
@@ -107,7 +108,7 @@ export function recoveryActionFor(
 		return { kind: 'input', label: 'Eingabe korrigieren' };
 	}
 	if (
-		error === 'Netzwerkfehler' ||
+		error === NETWORK_ERROR_CODE ||
 		error === 'Failed to fetch' ||
 		error === 'migration_read_only' ||
 		isRetryableServerError(error)

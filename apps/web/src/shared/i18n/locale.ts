@@ -1,11 +1,11 @@
-export const LOCALES = ['de', 'en'] as const;
+const LOCALES = ['de', 'en'] as const;
 export type Locale = (typeof LOCALES)[number];
 export const DEFAULT_LOCALE: Locale = 'de';
 export const LOCALE_COOKIE = 'manawg_locale';
 
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
 
-export function isLocale(value: unknown): value is Locale {
+function isLocale(value: unknown): value is Locale {
 	return typeof value === 'string' && (LOCALES as readonly string[]).includes(value);
 }
 

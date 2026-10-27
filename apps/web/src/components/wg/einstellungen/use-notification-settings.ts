@@ -5,6 +5,7 @@ import {
 	notificationTestErrorMessage,
 } from '@/components/wg/einstellungen/settings-errors';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
+import { NETWORK_ERROR_CODE } from '@/core/http/error-codes';
 import { createIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
 import { isPushOptedOut } from '@/core/notifications/push-priming';
@@ -307,7 +308,7 @@ export function useNotificationSettings({ code, memberId }: NotificationSettings
 				if (res.error === 'no_push_subscription') void loadStatus();
 			}
 		} catch {
-			setError(notificationTestErrorMessage(0, 'Netzwerkfehler'));
+			setError(notificationTestErrorMessage(0, NETWORK_ERROR_CODE));
 		} finally {
 			pendingRef.current = false;
 			setPending(null);

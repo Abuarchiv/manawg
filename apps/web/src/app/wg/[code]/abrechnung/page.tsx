@@ -4,7 +4,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { BackLink } from '@/components/wg/BackLink';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { useWg } from '@/components/wg/WgContextProvider';
-import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
+import { wgLoadError } from '@/core/guards/load-errors';
 import { useCachedFetch } from '@/core/hooks/use-cached-fetch';
 import { MonthlyStatementDocument } from '@/features/expenses/components/statement/MonthlyStatementDocument';
 import type { ExpensePaymentInput } from '@/features/expenses/expense-payment-input';
@@ -96,9 +96,11 @@ export default function AbrechnungPage() {
 			{!statement && <h1 className="sr-only">Monatsabrechnung</h1>}
 			{error && !data && (
 				<LoadErrorBanner
-					message={getWgLoadErrorMessage('Ausgaben', error.status, error.error, {
-						verb: 'konnten',
-					})}
+					message={wgLoadError(
+						{ key: 'common.loadError.lead.expenses' },
+						error.status,
+						error.error,
+					)}
 					onRetry={() => void refresh()}
 					busy={isFetching}
 					retryLabel="Erneut laden"

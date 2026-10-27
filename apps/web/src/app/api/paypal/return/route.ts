@@ -1,3 +1,5 @@
+import { requestLocale } from '@/core/i18n/request-locale';
+import { serverT } from '@/core/i18n/server-t';
 import {
 	getPayPalEnvironment,
 	getTrustedPayPalAppOrigin,
@@ -5,6 +7,7 @@ import {
 	readPayPalConnectionCookie,
 	verifyPayPalConnectionCookie,
 } from '@/core/infra/paypal-onboarding';
+import { htmlLang } from '@/shared/i18n/locale';
 import { type NextRequest, NextResponse } from 'next/server';
 
 function redirect(location: string): NextResponse {
@@ -19,8 +22,10 @@ function redirect(location: string): NextResponse {
 }
 
 /** No trusted app origin to send the visitor back to, so say so on a page instead of raw JSON. */
-function unavailablePage(): NextResponse {
-	const html = `<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>PayPal-Verbindung – ManaWG</title></head><body style="font-family:system-ui,sans-serif;max-width:32rem;margin:3rem auto;padding:0 1rem;line-height:1.5"><h1>PayPal-Verbindung gerade nicht möglich</h1><p>Die Verbindung konnte nicht abgeschlossen werden. Öffne ManaWG und versuche es in den Einstellungen deiner WG erneut.</p><p><a href="/">Zu ManaWG</a></p></body></html>`;
+function unavailablePage(req: NextRequest): NextResponse {
+	const locale = requestLocale(req);
+	const t = serverT(locale, 'server-pages');
+	const html = `<!doctype html><html lang="${htmlLang(locale)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>${t('paypalReturn.title')}</title></head><body style="font-family:system-ui,sans-serif;max-width:32rem;margin:3rem auto;padding:0 1rem;line-height:1.5"><h1>${t('paypalReturn.heading')}</h1><p>${t('paypalReturn.body')}</p><p><a href="/">${t('paypalReturn.home')}</a></p></body></html>`;
 	return new NextResponse(html, {
 		status: 503,
 		headers: {
@@ -35,7 +40,7 @@ export function GET(req: NextRequest): NextResponse {
 	const environment = getPayPalEnvironment();
 	const appOrigin = getTrustedPayPalAppOrigin(environment);
 	if (!environment || !appOrigin) {
-		return unavailablePage();
+		return unavailablePage(req);
 	}
 
 	const callbackUrl = new URL(req.url);

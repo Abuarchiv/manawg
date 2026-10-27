@@ -6,7 +6,7 @@ import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { useWg } from '@/components/wg/WgContextProvider';
-import { mutationErrorMessage } from '@/core/http/error-codes';
+import { NETWORK_ERROR_CODE, mutationErrorMessage } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
 import { joinErrorMessage } from '@/core/infra/join-flow';
 import { MEMBER_NAME_MAX_LENGTH } from '@/shared/lib/limits';
@@ -19,7 +19,7 @@ function renameErrorMessage(status: number, error: string): string {
 	}
 	return mutationErrorMessage(
 		'Name konnte nicht geändert werden',
-		status === 0 ? 'Netzwerkfehler' : error,
+		status === 0 ? NETWORK_ERROR_CODE : error,
 		{},
 		'Name konnte nicht geändert werden: Versuche es gleich erneut.',
 	);

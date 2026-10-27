@@ -1,11 +1,13 @@
+import type { Message } from '@/shared/i18n/message';
+
 /**
  * Classification for the generic API-error taxonomy shared by every WG
  * mutation/load path: network failure, retryable server failure,
  * WG-unavailable, invalid share code, and auth-invalidated.
  *
- * These predicates classify a `(code, status?)` pair. `mutationErrorMessage`
- * turns the shared buckets into one German sentence; each feature only supplies
- * its subject and its feature-specific codes.
+ * These predicates classify a `(code, status?)` pair. `mutationError` turns the
+ * shared buckets into one `Message` (`mutationErrorMessage` into one German
+ * sentence); each feature only supplies its subject and its feature-specific codes.
  */
 
 const HTTP_NOT_FOUND = 404;
@@ -14,8 +16,10 @@ const HTTP_TOO_MANY = 429;
 const HTTP_SERVER_ERROR = 500;
 
 /** `error` that `apiFetch` reports with status 0 when the request never got an answer. */
+// i18n-ignore internal error code, never displayed
 export const NETWORK_ERROR_CODE = 'Netzwerkfehler';
 /** `error` that `apiFetch` reports with status 0 when the answer was not readable JSON. */
+// i18n-ignore internal error code, never displayed
 export const INVALID_RESPONSE_CODE = 'Unerwartete Serverantwort';
 
 export const RATE_LIMITED_MESSAGE = 'Zu viele Anfragen. Warte kurz und versuche es dann erneut.';
@@ -120,4 +124,30 @@ export function mutationErrorMessage(
 	if (isInvalidShareCode(code)) return `${subject}: Der WG-Code ist ungültig.`;
 	if (isAuthInvalidated(code)) return `${subject}: Tritt der WG erneut bei.`;
 	return Object.hasOwn(specific, code) ? (specific[code] as string) : fallback;
+}
+
+function withSubject(subject: Message, detailKey: Message['key']): Message {
+	return { key: 'common.errors.withSubject', values: { subject, detail: { key: detailKey } } };
+}
+
+/**
+ * `mutationErrorMessage` as data: the same buckets in the same order, with the
+ * feature's `specific` and `fallback` texts passed as messages.
+ */
+export function mutationError(
+	subject: Message,
+	code: string,
+	specific: Readonly<Record<string, Message>>,
+	fallback: Message,
+	retrySubject: Message = subject,
+): Message {
+	if (isNetworkError(code)) return withSubject(subject, 'common.errors.network');
+	if (isRateLimited(code)) return withSubject(subject, 'common.errors.rateLimited');
+	if (isReadOnlyMode(code)) return withSubject(subject, 'common.errors.readOnly');
+	if (isSessionExpired(code)) return withSubject(subject, 'common.errors.sessionExpired');
+	if (isRetryableServerError(code)) return withSubject(retrySubject, 'common.errors.retry');
+	if (isWgUnavailable(code)) return withSubject(subject, 'common.errors.wgUnavailable');
+	if (isInvalidShareCode(code)) return withSubject(subject, 'common.errors.invalidShareCode');
+	if (isAuthInvalidated(code)) return withSubject(subject, 'common.errors.authInvalidated');
+	return Object.hasOwn(specific, code) ? (specific[code] as Message) : fallback;
 }

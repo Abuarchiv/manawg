@@ -11,6 +11,7 @@ import {
 	ItemGroup,
 	ItemTitle,
 } from '@/components/ui/item';
+import { NETWORK_ERROR_CODE } from '@/core/http/error-codes';
 import { createIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
 import { keyUnavailableMessage } from '@/core/offline/offline-copy';
@@ -127,7 +128,7 @@ function CashPaymentRow({
 				`Barzahlung storniert: ${amount} von ${memberName(payment.fromMemberId)} an ${memberName(payment.toMemberId)}.`,
 			);
 		} catch {
-			toast.error(cashVoidErrorMessage('Netzwerkfehler'));
+			toast.error(cashVoidErrorMessage(NETWORK_ERROR_CODE));
 		} finally {
 			voidingRef.current = false;
 			setVoiding(false);

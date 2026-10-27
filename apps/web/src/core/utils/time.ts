@@ -1,3 +1,7 @@
+import { dateTimeFormat } from '@/shared/i18n/intl';
+import type { Locale } from '@/shared/i18n/locale';
+import type { Message } from '@/shared/i18n/message';
+
 const MS_PER_MINUTE = 60_000;
 export const MS_PER_HOUR = 60 * MS_PER_MINUTE;
 export const MS_PER_DAY = 24 * MS_PER_HOUR;
@@ -20,6 +24,15 @@ function calendarDaysBetween(from: Date, to: Date): number {
 	const day = (d: Date) => Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
 	return Math.round((day(to) - day(from)) / MS_PER_DAY);
 }
+
+// i18n-ignore words of the string formatters; the Message helpers read the catalog
+const FALLBACK_WORDS: Record<
+	Locale,
+	{ unknownDate: string; unknownTime: string; rangeTo: string }
+> = {
+	de: { unknownDate: 'Datum unbekannt', unknownTime: 'Zeit unbekannt', rangeTo: 'bis' },
+	en: { unknownDate: 'Date unknown', unknownTime: 'Time unknown', rangeTo: 'to' },
+};
 
 export function formatRelativeTime(iso: string, now = Date.now()): string {
 	const date = parseValidDate(iso);
@@ -71,41 +84,99 @@ export function formatRelativeTime(iso: string, now = Date.now()): string {
 	}).format(date);
 }
 
+const SHORT_DATE_TIME: Intl.DateTimeFormatOptions = {
+	day: '2-digit',
+	month: '2-digit',
+	hour: '2-digit',
+	minute: '2-digit',
+};
+
+/** Same buckets as `formatRelativeTime`, as data; the date fallback is formatted in `locale`. */
+export function relativeTimeMessage(iso: string, now = Date.now(), locale: Locale = 'de'): Message {
+	const date = parseValidDate(iso);
+	if (!date) return { key: 'common.time.unknown' };
+	const diff = now - date.getTime();
+	const absolute = (): Message => ({
+		key: 'common.time.date',
+		values: { date: dateTimeFormat(locale, SHORT_DATE_TIME).format(date) },
+	});
+
+	if (diff <= -MS_PER_MINUTE) {
+		const until = -diff;
+		if (until < MS_PER_HOUR) {
+			return {
+				key: 'common.time.minutesAhead',
+				values: { count: Math.floor(until / MS_PER_MINUTE) },
+			};
+		}
+		if (until < MS_PER_DAY) {
+			return { key: 'common.time.hoursAhead', values: { count: Math.floor(until / MS_PER_HOUR) } };
+		}
+		if (until < 7 * MS_PER_DAY) {
+			const d = calendarDaysBetween(new Date(now), date);
+			return d === 1
+				? { key: 'common.time.tomorrow' }
+				: { key: 'common.time.daysAhead', values: { count: d } };
+		}
+		return absolute();
+	}
+
+	if (diff < MS_PER_MINUTE) return { key: 'common.time.justNow' };
+	if (diff < MS_PER_HOUR) {
+		return { key: 'common.time.minutesAgo', values: { count: Math.floor(diff / MS_PER_MINUTE) } };
+	}
+	if (diff < MS_PER_DAY) {
+		return { key: 'common.time.hoursAgo', values: { count: Math.floor(diff / MS_PER_HOUR) } };
+	}
+	if (diff < 7 * MS_PER_DAY) {
+		const d = calendarDaysBetween(date, new Date(now));
+		return d === 1
+			? { key: 'common.time.yesterday' }
+			: { key: 'common.time.daysAgo', values: { count: d } };
+	}
+	return absolute();
+}
+
 /**
  * `timeZone: 'Europe/Berlin'` for dates that are Berlin calendar days (chore due
  * dates, absences): a device in New York must show the same day the status
  * label ("morgen", "heute fällig") was computed for.
  */
-export function formatShortDate(iso: string, timeZone?: 'Europe/Berlin'): string {
+export function formatShortDate(
+	iso: string,
+	timeZone?: 'Europe/Berlin',
+	locale: Locale = 'de',
+): string {
 	const date = parseValidDate(iso);
-	if (!date) return 'Datum unbekannt';
-	return new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit', timeZone }).format(
-		date,
-	);
+	if (!date) return FALLBACK_WORDS[locale].unknownDate;
+	return dateTimeFormat(locale, { day: '2-digit', month: '2-digit', timeZone }).format(date);
 }
 
-const BERLIN_DAY_MONTH_YEAR = new Intl.DateTimeFormat('de-DE', {
-	day: '2-digit',
-	month: '2-digit',
-	year: 'numeric',
-	timeZone: 'Europe/Berlin',
-});
-
 /** Berlin calendar day with year ("06.10.2026"), for due dates; see `formatShortDate`. */
-export function formatDayMonthYear(iso: string): string {
+export function formatDayMonthYear(iso: string, locale: Locale = 'de'): string {
 	const date = parseValidDate(iso);
-	return date ? BERLIN_DAY_MONTH_YEAR.format(date) : 'Datum unbekannt';
+	if (!date) return FALLBACK_WORDS[locale].unknownDate;
+	return dateTimeFormat(locale, {
+		day: '2-digit',
+		month: '2-digit',
+		year: 'numeric',
+		timeZone: 'Europe/Berlin',
+	}).format(date);
 }
 
 /** Absence range: Berlin days, see `formatShortDate`. */
-export function formatShortDateRange(startIso: string, endIso: string): string {
-	return `${formatShortDate(startIso, 'Europe/Berlin')} bis ${formatShortDate(endIso, 'Europe/Berlin')}`;
+export function formatShortDateRange(
+	startIso: string,
+	endIso: string,
+	locale: Locale = 'de',
+): string {
+	return `${formatShortDate(startIso, 'Europe/Berlin', locale)} ${FALLBACK_WORDS[locale].rangeTo} ${formatShortDate(endIso, 'Europe/Berlin', locale)}`;
 }
 
-export function formatTimeFull(iso: string): string {
+export function formatTimeFull(iso: string, locale: Locale = 'de'): string {
 	const date = parseValidDate(iso);
-	if (!date) return 'Zeit unbekannt';
-	return new Intl.DateTimeFormat('de-DE', {
+	if (!date) return FALLBACK_WORDS[locale].unknownTime;
+	return dateTimeFormat(locale, {
 		day: '2-digit',
 		month: '2-digit',
 		year: 'numeric',
@@ -131,6 +202,27 @@ export function formatWeekLabel(weekStart: Date, now = new Date()): string {
 	// Without a year, weeks exactly 52 weeks apart share a label and key.
 	const year = weekStart.getFullYear() === now.getFullYear() ? '' : `${weekStart.getFullYear()}`;
 	return `Woche ab ${formatShortDate(weekStart.toISOString())}${year}`;
+}
+
+/** `formatWeekLabel` as data; the date is formatted in `locale`. */
+export function weekLabelMessage(
+	weekStart: Date,
+	now = new Date(),
+	locale: Locale = 'de',
+): Message {
+	const weeksAgo = Math.round(
+		(startOfWeek(now).getTime() - weekStart.getTime()) / (7 * MS_PER_DAY),
+	);
+	if (weeksAgo === 0) return { key: 'common.time.thisWeek' };
+	if (weeksAgo === 1) return { key: 'common.time.lastWeek' };
+	// Without a year, weeks exactly 52 weeks apart share a label and key.
+	const sameYear = weekStart.getFullYear() === now.getFullYear();
+	const date = dateTimeFormat(locale, {
+		day: '2-digit',
+		month: '2-digit',
+		...(sameYear ? {} : { year: 'numeric' }),
+	}).format(weekStart);
+	return { key: 'common.time.weekOf', values: { date } };
 }
 
 export function addMonths(date: Date, months: number): Date {
