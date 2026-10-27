@@ -127,9 +127,22 @@ export const PATCH = withWgRoute<{ id: string }>(
 			if (changesModeratedFields && !isAuthor && caller.role !== 'admin') {
 				return 'not_allowed' as const;
 			}
+			const [current] = await tx
+				.select({ status: announcements.status })
+				.from(announcements)
+				.where(and(eq(announcements.id, id), eq(announcements.wgId, wg.id)))
+				.limit(1)
+				.for('update');
+			if (!current) return null;
+			// A repeated resolve (stale board, retry) keeps who resolved the post and when.
+			const statusChanged = patch.status !== undefined && patch.status !== current.status;
 			const [saved] = await tx
 				.update(announcements)
-				.set(patch)
+				.set(
+					statusChanged
+						? patch
+						: { ...patch, status: undefined, resolvedAt: undefined, resolvedByMemberId: undefined },
+				)
 				.where(
 					and(
 						eq(announcements.id, id),
@@ -140,12 +153,11 @@ export const PATCH = withWgRoute<{ id: string }>(
 					),
 				)
 				.returning();
-			return saved ?? null;
+			return saved ? { saved, statusChanged } : null;
 		});
 		if (outcome === 'member_deactivated') return unauthorized('member_deactivated');
 		if (outcome === 'not_allowed') return forbidden('not_owner', 'not_owner');
-		const updated = outcome;
-		if (!updated) {
+		if (!outcome) {
 			const [stillThere] = await db
 				.select({ id: announcements.id })
 				.from(announcements)
@@ -153,6 +165,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 				.limit(1);
 			return stillThere ? conflict('announcement_changed') : notFound('announcement_not_found');
 		}
+		const updated = outcome.saved;
 		await recordAuditEvent({
 			wgId: wg.id,
 			memberId: auth.member.memberId,
@@ -167,8 +180,8 @@ export const PATCH = withWgRoute<{ id: string }>(
 			},
 		});
 		let warning: NotificationDispatchWarning = null;
-		// A repeated resolve (double tap, retry) must not push the same notice twice.
-		if (parsed.data.status === 'resolved' && row.status !== 'resolved') {
+		// Decided under the row lock, so a double tap or two concurrent resolves push once.
+		if (parsed.data.status === 'resolved' && outcome.statusChanged) {
 			const takers = await db
 				.select({ memberId: announcementReactions.memberId })
 				.from(announcementReactions)
