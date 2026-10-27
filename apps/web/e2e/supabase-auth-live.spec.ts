@@ -57,7 +57,7 @@ test.describe('hosted Supabase auth release coverage', () => {
 		).toBeVisible();
 		await expect(page.getByLabel('E-Mail-Adresse')).toBeVisible();
 		await page.getByRole('tab', { name: 'Passwort', exact: true }).click();
-		await expect(page.getByLabel('Passwort', { exact: true })).toBeVisible();
+		await expect(page.getByRole('textbox', { name: 'Passwort', exact: true })).toBeVisible();
 		await expect(page.getByRole('button', { name: /Apple|Facebook/i })).toHaveCount(0);
 		await expect(page.locator('input[name="name"], input[name="code"]')).toHaveCount(0);
 		await expect(page.getByText(/lokal|Name-Code|Namencode/i)).toHaveCount(0);
@@ -97,7 +97,7 @@ test.describe('hosted Supabase auth release coverage', () => {
 		await page.goto('/neu?action=create');
 		await page.getByRole('tab', { name: 'Passwort', exact: true }).click();
 		await page.getByLabel('E-Mail-Adresse').fill(testEmail);
-		await page.getByLabel('Passwort', { exact: true }).fill(testPassword);
+		await page.getByRole('textbox', { name: 'Passwort', exact: true }).fill(testPassword);
 		await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
 		await expect(page.getByRole('heading', { name: 'Neue WG erstellen' })).toBeVisible({
 			timeout: 20_000,
@@ -114,7 +114,7 @@ test.describe('hosted Supabase auth release coverage', () => {
 		await page.goto('/neu?action=create');
 		await page.getByRole('tab', { name: 'Passwort', exact: true }).click();
 		await page.getByLabel('E-Mail-Adresse').fill(testEmail);
-		await page.getByLabel('Passwort', { exact: true }).fill(testPassword);
+		await page.getByRole('textbox', { name: 'Passwort', exact: true }).fill(testPassword);
 		await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
 		await expect(page.getByRole('heading', { name: 'Neue WG erstellen' })).toBeVisible({
 			timeout: 20_000,
@@ -149,7 +149,7 @@ test.describe('hosted Supabase auth release coverage', () => {
 		await page.getByRole('link', { name: 'Anmelden', exact: true }).click();
 		await page.getByRole('tab', { name: 'Passwort', exact: true }).click();
 		await page.getByLabel('E-Mail-Adresse').fill(testEmail);
-		await page.getByLabel('Passwort', { exact: true }).fill(testPassword);
+		await page.getByRole('textbox', { name: 'Passwort', exact: true }).fill(testPassword);
 		await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
 
 		await expect(page).toHaveURL(hostedUrl(`/wg/${memberWgCode}`), { timeout: 30_000 });
