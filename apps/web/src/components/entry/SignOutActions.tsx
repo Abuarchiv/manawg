@@ -1,7 +1,7 @@
 'use client';
 
 import { ErrorBox } from '@/components/app/ErrorBox';
-import { useConfirmLogoutDiscard } from '@/components/entry/useConfirmLogoutDiscard';
+import { useConfirmLogoutDiscard } from '@/components/entry/use-confirm-logout-discard';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { AccountDeleteSection } from '@/components/wg/einstellungen/AccountDeleteSection';

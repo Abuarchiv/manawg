@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
-import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
+import { useConfirmDelete } from '@/core/hooks/use-confirm-delete';
 import { formatDayMonthYear, formatRelativeTime, parseValidDate } from '@/core/utils/time';
 import { type NextAssignee, nextAssigneeLabel } from '@/features/chores/chore-completion';
 import type { ChoreEditChanges } from '@/features/chores/chore-edit';

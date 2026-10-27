@@ -3,8 +3,8 @@
 import { useToast } from '@/components/ui/Toast';
 import type { ActionNotice } from '@/components/wg/ActionNoticeBanner';
 import { useWg } from '@/components/wg/WgContextProvider';
-import { usePendingSet } from '@/core/hooks/usePendingSet';
-import { useStableCallback } from '@/core/hooks/useStableCallback';
+import { usePendingSet } from '@/core/hooks/use-pending-set';
+import { useStableCallback } from '@/core/hooks/use-stable-callback';
 import { eurosToCents, parseEuroAmount } from '@/core/utils/amount';
 import { formatWeekLabel, parseValidDate, startOfWeek } from '@/core/utils/time';
 import {

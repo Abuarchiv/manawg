@@ -9,7 +9,7 @@ import type { WgSummary } from '@/components/wg/WgContextProvider';
 import { Section } from '@/components/wg/einstellungen/Section';
 import { createInvite, shareInvite } from '@/components/wg/invite-share';
 import type { SessionMember } from '@/core/auth/local-account';
-import { useCachedFetch } from '@/core/hooks/useCachedFetch';
+import { useCachedFetch } from '@/core/hooks/use-cached-fetch';
 import { apiFetch } from '@/core/infra/api-client';
 import { copyText } from '@/core/utils/clipboard';
 import { INVITE_VALID_DAYS } from '@/core/utils/invite-token';

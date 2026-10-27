@@ -9,9 +9,9 @@ import {
 import { OFFLINE_NO_CONNECTION_TITLE, explainOfflineActionFailure } from './offline-failure-copy';
 
 export { explainOfflineActionFailure };
-export {
-	type OfflineAction,
-	type OfflineActionType,
+export type {
+	OfflineAction,
+	OfflineActionType,
 } from './offline-action';
 export {
 	createQueuedAbsence,

@@ -2,7 +2,7 @@
 
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
-import { useChatUnreadCount } from '@/components/wg/useWgCounts';
+import { useChatUnreadCount } from '@/components/wg/use-wg-counts';
 import {
 	LIST_REFRESH_INTERVAL_MS,
 	useVisibilityPausedInterval,

@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/item';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Spinner } from '@/components/ui/spinner';
-import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
+import { useConfirmDelete } from '@/core/hooks/use-confirm-delete';
 import { berlinDayKey } from '@/core/utils/berlin-day';
 import { formatShortDateRange } from '@/core/utils/time';
 import type { AbsenceInput } from '@/features/chores/absence';

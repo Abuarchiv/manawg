@@ -5,7 +5,7 @@ import { BackLink } from '@/components/wg/BackLink';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
-import { useCachedFetch } from '@/core/hooks/useCachedFetch';
+import { useCachedFetch } from '@/core/hooks/use-cached-fetch';
 import { MonthlyStatementDocument } from '@/features/expenses/components/statement/MonthlyStatementDocument';
 import type { ExpensePaymentInput } from '@/features/expenses/expense-payment-input';
 import type { Expense } from '@/features/expenses/expense-types';

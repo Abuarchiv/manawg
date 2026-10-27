@@ -19,6 +19,7 @@
  *   route-limiter   a route answers a failed limiter check itself instead of via rateLimitResponse
  *   route-auth      a route calls getAuthenticatedUser instead of requireAccount/requireWgMember
  *   route-wrapper   a /api/wg/[code]/ route exports a handler outside withWgRoute
+ *   hook-filename   a file under src/ named useFoo.ts instead of use-foo.ts
  *
  * `scripts/architecture-baseline.json` lists known violations that are still being paid down.
  * The check fails on any violation that is not listed, on a file-size entry that grew, and on a
@@ -28,7 +29,7 @@
  */
 
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
-import { dirname, join, relative, resolve, sep } from 'node:path';
+import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 
 const ROOT = process.cwd();
 const SRC = join(ROOT, 'src');
@@ -141,6 +142,10 @@ function collect() {
 				? /\.spec\.ts$/.test(r) || r.startsWith('e2e/support/') || /\.config\.(ts|cjs)$/.test(r)
 				: /\.test\.ts$/.test(r) || r.startsWith('tests/support/');
 			if (!okName) add('test-location', r);
+		}
+
+		if (r.startsWith('src/') && /^use[A-Z]/.test(basename(r))) {
+			add('hook-filename', r, 'hook files are kebab-case (use-foo.ts)');
 		}
 
 		if (r.startsWith('src/') && !test) {

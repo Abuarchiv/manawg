@@ -1,6 +1,6 @@
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
-import { useCachedFetch } from '@/core/hooks/useCachedFetch';
+import { useCachedFetch } from '@/core/hooks/use-cached-fetch';
 import { useSyncedCollection } from '@/core/sync/use-synced-collection';
 import { LIST_REFRESH_INTERVAL_MS } from '@/core/utils/use-visibility-paused-interval';
 import {

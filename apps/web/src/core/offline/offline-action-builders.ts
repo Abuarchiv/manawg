@@ -1,7 +1,5 @@
 import { createIdempotencyKey, isIdempotencyKey } from '@/core/http/idempotency-key';
-import {
-	type OfflineAction,
-} from './offline-action';
+import type { OfflineAction } from './offline-action';
 
 /**
  * Builders for queued actions. The id encodes type, WG, time and target; the server never issues

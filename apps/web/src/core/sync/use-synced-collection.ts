@@ -1,10 +1,10 @@
 'use client';
 
 import type { CachedFetchError, CachedFetchResult } from '@/core/hooks/cached-fetch-store';
-import { useCachedFetch } from '@/core/hooks/useCachedFetch';
+import { useCachedFetch } from '@/core/hooks/use-cached-fetch';
 import { captureException } from '@/core/infra/capture-client';
 import { syncOfflineActions } from '@/core/offline/offline-client';
-import { useOfflineQueueSync } from '@/core/offline/useOfflineQueueSync';
+import { useOfflineQueueSync } from '@/core/offline/use-offline-queue-sync';
 import {
 	LIST_REFRESH_INTERVAL_MS,
 	useVisibilityPausedInterval,

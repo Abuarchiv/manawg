@@ -7,7 +7,7 @@ import { SignUpPrompt } from '@/components/auth/SignUpPrompt';
 import { SocialLoginButtons } from '@/components/auth/SocialLoginButtons';
 import { EntryFrame } from '@/components/entry/EntryFrame';
 import { LegalLinks } from '@/components/entry/LegalLinks';
-import { useConfirmLogoutDiscard } from '@/components/entry/useConfirmLogoutDiscard';
+import { useConfirmLogoutDiscard } from '@/components/entry/use-confirm-logout-discard';
 import { Button } from '@/components/ui/button';
 import { FieldGroup, FieldSeparator } from '@/components/ui/field';
 import { Skeleton } from '@/components/ui/skeleton';

@@ -1,5 +1,5 @@
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
-import { usePendingSet } from '@/core/hooks/usePendingSet';
+import { usePendingSet } from '@/core/hooks/use-pending-set';
 import { readOfflineQueue } from '@/core/offline/offline-client';
 import { useSyncedCollection } from '@/core/sync/use-synced-collection';
 import type { ShoppingItem } from '@/features/shopping/components/shopping-types';

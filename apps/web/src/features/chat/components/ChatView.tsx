@@ -8,7 +8,7 @@ import {
 	MessageScrollerViewport,
 } from '@/components/ui/message-scroller';
 import { useWg } from '@/components/wg/WgContextProvider';
-import { useStableCallback } from '@/core/hooks/useStableCallback';
+import { useStableCallback } from '@/core/hooks/use-stable-callback';
 import { haptic } from '@/shared/lib/haptics';
 import { ChevronDown } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';

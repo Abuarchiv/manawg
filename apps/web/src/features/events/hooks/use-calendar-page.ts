@@ -1,6 +1,6 @@
 import { useToast } from '@/components/ui/Toast';
 import { useWg } from '@/components/wg/WgContextProvider';
-import { useCachedFetch } from '@/core/hooks/useCachedFetch';
+import { useCachedFetch } from '@/core/hooks/use-cached-fetch';
 import { isNetworkError } from '@/core/http/error-codes';
 import {
 	type PendingIdempotentRequest,

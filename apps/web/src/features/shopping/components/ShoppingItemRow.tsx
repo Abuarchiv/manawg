@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
 import { useWg } from '@/components/wg/WgContextProvider';
-import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
+import { useConfirmDelete } from '@/core/hooks/use-confirm-delete';
 import { ShoppingEditForm } from '@/features/shopping/components/ShoppingEditForm';
 import type { ShoppingItem } from '@/features/shopping/components/shopping-types';
 import type { EditShoppingItem } from '@/features/shopping/hooks/use-shopping-edit';

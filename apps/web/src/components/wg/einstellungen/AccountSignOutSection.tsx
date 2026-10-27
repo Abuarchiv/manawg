@@ -1,7 +1,7 @@
 'use client';
 
 import { rememberLogoutNotice } from '@/components/entry/LogoutNotice';
-import { useConfirmLogoutDiscard } from '@/components/entry/useConfirmLogoutDiscard';
+import { useConfirmLogoutDiscard } from '@/components/entry/use-confirm-logout-discard';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';

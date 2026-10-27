@@ -1,6 +1,6 @@
 'use client';
 
-import { prefetchCachedFetch } from '@/core/hooks/useCachedFetch';
+import { prefetchCachedFetch } from '@/core/hooks/use-cached-fetch';
 import { useEffect } from 'react';
 
 /**

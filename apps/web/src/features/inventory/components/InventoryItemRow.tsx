@@ -11,7 +11,7 @@ import {
 	ItemTitle,
 } from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
-import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
+import { useConfirmDelete } from '@/core/hooks/use-confirm-delete';
 import { apiFetch } from '@/core/infra/api-client';
 import { useInventoryQuantity } from '@/features/inventory/hooks/use-inventory-quantity';
 import {

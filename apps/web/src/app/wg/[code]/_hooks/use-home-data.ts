@@ -3,8 +3,8 @@
 import type { DashboardData } from '@/composition/dashboard-data';
 import { getBerlinWeekWindow } from '@/composition/dashboard-insights';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
+import { useCachedFetch } from '@/core/hooks/use-cached-fetch';
 import { subscribeVisibility, useOnlineStatus } from '@/core/hooks/use-online-status';
-import { useCachedFetch } from '@/core/hooks/useCachedFetch';
 import { OFFLINE_SYNCED_EVENT, getSyncedCountForWg } from '@/core/offline/offline-client';
 import { berlinDayKey } from '@/core/utils/berlin-day';
 import {
