@@ -22,6 +22,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
 import { formatDayMonthYear, formatRelativeTime, parseValidDate } from '@/core/utils/time';
+import { type NextAssignee, nextAssigneeLabel } from '@/features/chores/chore-completion';
 import type { ChoreEditChanges } from '@/features/chores/chore-edit';
 import { choreNeedsRepair, getChoreStatus } from '@/features/chores/chore-status';
 import {
@@ -29,15 +30,8 @@ import {
 	completeTriggerLabel,
 } from '@/features/chores/components/ChoreCompleteDialog';
 import { ChoreEditDrawer } from '@/features/chores/components/ChoreEditDrawer';
-import type {
-	ChoreMember,
-	PlanChore,
-	RecurrenceType,
-} from '@/features/chores/components/chore-types';
-import {
-	INTERVAL_PRESETS_DAYS,
-	INTERVAL_PRESETS_MONTHS,
-} from '@/features/chores/components/constants';
+import { formatChoreCadence } from '@/features/chores/components/chore-cadence';
+import type { ChoreMember, PlanChore } from '@/features/chores/components/chore-types';
 import { cn } from '@/shared/lib/cn';
 import type { MemberInfo } from '@/shared/lib/member-types';
 
@@ -57,7 +51,7 @@ interface ChoreRowProps {
 	isEditPending: boolean;
 	isCompleteArmed: boolean;
 	completeError: string | null;
-	nextAssigneeName: string | null;
+	nextAssignee: NextAssignee | null;
 	onCancelComplete: () => void;
 	onComplete: (chore: PlanChore) => void;
 	onSwapRequest: (chore: PlanChore) => void;
@@ -65,15 +59,6 @@ interface ChoreRowProps {
 	onEdit: (chore: PlanChore, changes: ChoreEditChanges) => Promise<boolean>;
 	onRemove: (id: string) => void;
 	highlighted: boolean;
-}
-
-// The non-breaking space keeps the unit abbreviation with its number in the narrow row.
-function formatChoreCadence(interval: number, type: RecurrenceType): string {
-	if (interval <= 0) return 'einmalig';
-	const presets = type === 'months' ? INTERVAL_PRESETS_MONTHS : INTERVAL_PRESETS_DAYS;
-	const preset = presets.find((candidate) => candidate.interval === interval);
-	if (preset) return preset.label.replace(' T.', '\u00a0T.');
-	return `alle ${interval}\u00a0${type === 'months' ? 'Mon.' : 'T.'}`;
 }
 
 export const ChoreRow = memo(function ChoreRow({
@@ -89,7 +74,7 @@ export const ChoreRow = memo(function ChoreRow({
 	isEditPending,
 	isCompleteArmed,
 	completeError,
-	nextAssigneeName,
+	nextAssignee,
 	onCancelComplete,
 	onComplete,
 	onSwapRequest,
@@ -201,7 +186,7 @@ export const ChoreRow = memo(function ChoreRow({
 								<dt className="text-muted-foreground">Rhythmus</dt>
 								<dd>{cadence}</dd>
 								<dt className="text-muted-foreground">Danach</dt>
-								<dd>{nextAssigneeName ?? 'niemand verfügbar'}</dd>
+								<dd>{nextAssignee ? nextAssigneeLabel(nextAssignee) : 'niemand verfügbar'}</dd>
 								{chore.lastCompletedAt && chore.lastCompletedByName && (
 									<>
 										<dt className="text-muted-foreground">Zuletzt</dt>
@@ -308,7 +293,7 @@ export const ChoreRow = memo(function ChoreRow({
 				actionLabel={status.actionLabel}
 				busy={busy}
 				error={completeError}
-				nextAssigneeName={nextAssigneeName}
+				nextAssignee={nextAssignee}
 				onCancel={onCancelComplete}
 				onConfirm={() => onComplete(chore)}
 			/>

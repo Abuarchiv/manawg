@@ -24,7 +24,7 @@ export function LegalLinks({
 	return (
 		<footer
 			className={cn(
-				'flex flex-col items-center gap-1 text-center text-[13px] text-muted-foreground',
+				'flex flex-col items-center gap-1 text-center text-xs text-muted-foreground',
 				className,
 			)}
 		>

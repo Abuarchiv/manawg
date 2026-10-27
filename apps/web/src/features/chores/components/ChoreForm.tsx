@@ -21,6 +21,7 @@ import {
 	INTERVAL_PRESETS_DAYS,
 	INTERVAL_PRESETS_MONTHS,
 } from '@/features/chores/components/constants';
+import { pluralize } from '@/shared/lib/plural';
 import type React from 'react';
 
 interface ChoreFormProps {
@@ -67,8 +68,8 @@ export function ChoreForm({
 	const presets = recurrenceType === 'months' ? INTERVAL_PRESETS_MONTHS : INTERVAL_PRESETS_DAYS;
 	const firstDue =
 		recurrenceType === 'months'
-			? `in ${interval} ${interval === 1 ? 'Monat' : 'Monaten'}`
-			: `in ${interval} ${interval === 1 ? 'Tag' : 'Tagen'}`;
+			? `in ${pluralize(interval, 'Monat', 'Monaten')}`
+			: `in ${pluralize(interval, 'Tag', 'Tagen')}`;
 	return (
 		<Drawer
 			open={open}

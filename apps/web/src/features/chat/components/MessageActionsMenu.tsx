@@ -142,7 +142,7 @@ export function MessageActionsMenu({
 					{showSenderName && (
 						<span
 							aria-hidden
-							className="block text-[13px] font-medium [overflow-wrap:anywhere]"
+							className="block text-xs font-medium [overflow-wrap:anywhere]"
 							style={{ color: memberTint(senderName).color }}
 						>
 							{senderName}

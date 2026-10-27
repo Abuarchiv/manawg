@@ -148,9 +148,11 @@ export function useChoreActions(ctx: ChorePageContext) {
 				restore(previousChore);
 		}
 
-		const feedback = choreCompletionFeedback(outcome, chore, (id) =>
-			id === identity.memberId ? 'du' : members.find((member) => member.id === id)?.name,
-		);
+		const feedback = choreCompletionFeedback(outcome, chore, (id) => {
+			if (id === identity.memberId) return { name: identity.name, isSelf: true };
+			const name = members.find((member) => member.id === id)?.name;
+			return name === undefined ? undefined : { name, isSelf: false };
+		});
 		if (feedback.tone === 'success') toast.success(feedback.message);
 		else if (feedback.tone === 'notice') setActionNotice(feedback.message);
 		else setActionError(feedback.message);

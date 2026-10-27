@@ -113,7 +113,7 @@ export function WgNewsSection({
 							href={`${wgBaseHref}/aktivitaet`}
 							className={cn(
 								buttonVariants({ variant: 'ghost' }),
-								'min-w-0 max-w-full self-end whitespace-normal px-0 text-[12px] text-muted-foreground leading-snug',
+								'min-w-0 max-w-full self-end whitespace-normal px-0 text-meta text-muted-foreground leading-snug',
 							)}
 						>
 							Gesamte Aktivität <ChevronRight data-icon="inline-end" aria-hidden />

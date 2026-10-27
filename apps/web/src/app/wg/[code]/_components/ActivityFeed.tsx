@@ -87,20 +87,20 @@ export function ActivityFeed({ items, inset }: { items: ActivityItem[]; inset?: 
 								<p
 									className={cn(
 										'line-clamp-3 break-words text-sm leading-5',
-										inset && 'text-[14px] font-medium',
+										inset && 'text-body font-medium',
 									)}
 								>
 									{sentence && <span className="font-medium">{who} </span>}
 									{text}
 								</p>
-								<p className="line-clamp-2 text-[12px] text-muted-foreground">
+								<p className="line-clamp-2 text-meta text-muted-foreground">
 									{!sentence && `${who} · `}
 									<time dateTime={item.timestamp}>{formatRelativeTime(item.timestamp, now)}</time>
 									{item.detail && ` · ${item.detail}`}
 								</p>
 							</div>
 							{item.amountCents !== undefined && (
-								<span className="ml-auto shrink-0 font-mono text-[12px] tabular-nums">
+								<span className="ml-auto shrink-0 font-mono text-meta tabular-nums">
 									{formatEuroCents(item.amountCents, item.currency ?? 'EUR')}
 								</span>
 							)}

@@ -76,7 +76,7 @@ export default function PutzenPage() {
 		newInterval,
 		newRecurrenceType,
 		newTitle,
-		nextAssigneeNameByChoreId,
+		nextAssigneeByChoreId,
 		overdueFilter,
 		ownDueCount,
 		pendingSuggestion,
@@ -231,7 +231,7 @@ export default function PutzenPage() {
 										isEditPending={isPending(pendingKeys.edit(chore.id))}
 										isCompleteArmed={completeConfirmId === chore.id}
 										completeError={actionError}
-										nextAssigneeName={nextAssigneeNameByChoreId.get(chore.id) ?? null}
+										nextAssignee={nextAssigneeByChoreId.get(chore.id) ?? null}
 										onCancelComplete={cancelComplete}
 										onComplete={handleComplete}
 										onSwapRequest={handleSwapRequest}

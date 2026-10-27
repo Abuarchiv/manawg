@@ -5,11 +5,18 @@ const {
 	CHORE_COMPLETION_COPY,
 	choreCompletionFeedback,
 	completionRequestKey,
+	nextAssigneeLabel,
+	nextAssigneeVerb,
 	submitChoreCompletion,
 } = await import('../src/features/chores/chore-completion.ts');
 
 const chore = { title: 'Bad putzen' };
-const names = (id: string | null) => (id === 'anna' ? 'Anna' : undefined);
+const names = (id: string | null) =>
+	id === 'anna'
+		? { name: 'Anna', isSelf: false }
+		: id === 'me'
+			? { name: 'Mia', isSelf: true }
+			: undefined;
 
 test('completionRequestKey is stable per occurrence', () => {
 	const occurrence = { id: 'c1', nextDueAt: '2026-10-06T10:00:00.000Z' };
@@ -33,6 +40,32 @@ test('a confirmed completion names the next date and assignee', () => {
 	assert.match(feedback.message, /^Bad putzen erledigt\. Als Nächstes ist Anna am .+ dran\.$/);
 	assert.equal(feedback.done, true);
 	assert.equal(feedback.reload, true);
+});
+
+test('a completion addresses the own member as du and others by name', () => {
+	const next = (assignedMemberId: string) => ({
+		kind: 'completed' as const,
+		next: { id: 'c1', nextDueAt: '2026-10-13T10:00:00.000Z', assignedMemberId },
+	});
+	assert.match(
+		choreCompletionFeedback(next('me'), chore, names).message,
+		/^Bad putzen erledigt\. Als Nächstes bist du am .+ dran\.$/,
+	);
+	assert.match(
+		choreCompletionFeedback(next('anna'), chore, names).message,
+		/^Bad putzen erledigt\. Als Nächstes ist Anna am .+ dran\.$/,
+	);
+	assert.match(
+		choreCompletionFeedback(next('nobody'), chore, names).message,
+		/noch niemand zugewiesen\.$/,
+	);
+});
+
+test('the flag, not the name, decides how the next assignee is addressed', () => {
+	assert.equal(nextAssigneeVerb({ name: 'du', isSelf: false }), 'ist');
+	assert.equal(nextAssigneeLabel({ name: 'du', isSelf: false }), 'du');
+	assert.equal(nextAssigneeLabel({ name: 'Mia', isSelf: true }), 'du');
+	assert.equal(nextAssigneeVerb({ name: 'Mia', isSelf: true }), 'bist');
 });
 
 test('an unconfirmed completion still says it is done', () => {

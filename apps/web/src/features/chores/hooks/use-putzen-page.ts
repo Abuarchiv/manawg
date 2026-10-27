@@ -6,6 +6,7 @@ import {
 	getAbsentMemberIds,
 	pickVisibleAbsences,
 } from '@/features/chores/absence';
+import type { NextAssignee } from '@/features/chores/chore-completion';
 import { buildChoreFairness, predictNextAssigneeId } from '@/features/chores/chore-fairness';
 import {
 	filterOverdueGroups,
@@ -166,13 +167,14 @@ export function usePutzenPage() {
 		() => pickVisibleAbsences(absences, absencesPanelActive, absenceParam),
 		[absenceParam, absences, absencesPanelActive],
 	);
-	const nextAssigneeNameByChoreId = new Map<string, string | null>(
-		items.map((chore): [string, string | null] => {
+	const nextAssigneeByChoreId = new Map<string, NextAssignee | null>(
+		items.map((chore): [string, NextAssignee | null] => {
 			const nextAssigneeId = predictNextAssigneeId(chore, items, activeMembers, absences);
 			if (!nextAssigneeId) return [chore.id, null];
+			const isSelf = nextAssigneeId === identity.memberId;
 			return [
 				chore.id,
-				nextAssigneeId === identity.memberId ? 'du' : memberLookup(nextAssigneeId).name,
+				{ name: isSelf ? identity.name : memberLookup(nextAssigneeId).name, isSelf },
 			];
 		}),
 	);
@@ -224,7 +226,7 @@ export function usePutzenPage() {
 		newInterval: create.newInterval,
 		newRecurrenceType: create.newRecurrenceType,
 		newTitle: create.newTitle,
-		nextAssigneeNameByChoreId,
+		nextAssigneeByChoreId,
 		ownDueCount,
 		pendingSuggestion: create.pendingSuggestion,
 		queuedCount: data.queuedCount,

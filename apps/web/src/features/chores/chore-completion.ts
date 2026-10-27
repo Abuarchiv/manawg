@@ -158,28 +158,43 @@ export const CHORE_COMPLETION_COPY = {
 	failed: 'Die Erledigung konnte nicht gespeichert werden: Versuche es gleich erneut.',
 } as const;
 
+/** The member who is up next; `isSelf` marks the viewer, so views can say "du" instead of the name. */
+export interface NextAssignee {
+	name: string;
+	isSelf: boolean;
+}
+
+/** How the viewer is addressed: "du" for themselves, else the member name. */
+export function nextAssigneeLabel(assignee: NextAssignee): string {
+	return assignee.isSelf ? 'du' : assignee.name;
+}
+
+/** The verb that goes with `nextAssigneeLabel`: "du bist", "Anna ist". */
+export function nextAssigneeVerb(assignee: NextAssignee): 'bist' | 'ist' {
+	return assignee.isSelf ? 'bist' : 'ist';
+}
+
 function choreCompletedMessage(
 	title: string,
 	next: ConfirmedChore | null,
-	nextAssigneeName: string | undefined,
+	nextAssignee: NextAssignee | undefined,
 ): string {
 	if (!next) {
 		return `${title} erledigt. Der bestätigte nächste Termin und die Zuständigkeit werden geladen.`;
 	}
 	const date = formatShortDate(next.nextDueAt, 'Europe/Berlin');
-	if (!nextAssigneeName) {
+	if (!nextAssignee?.name) {
 		return `${title} erledigt. Nächster Termin: ${date}, noch niemand zugewiesen.`;
 	}
-	// "du" is the own member (callers map it), the dialog before says "Danach bist du dran".
-	const verb = nextAssigneeName === 'du' ? 'bist' : 'ist';
-	return `${title} erledigt. Als Nächstes ${verb} ${nextAssigneeName} am ${date} dran.`;
+	// The dialog before says "Danach bist du dran", so the own member is addressed the same way here.
+	return `${title} erledigt. Als Nächstes ${nextAssigneeVerb(nextAssignee)} ${nextAssigneeLabel(nextAssignee)} am ${date} dran.`;
 }
 
 /** What the member sees for an outcome; the start page and the cleaning plan share it. */
 export function choreCompletionFeedback(
 	outcome: ChoreCompletionOutcome,
 	chore: Pick<ChoreOccurrence, 'title'>,
-	memberName: (memberId: string | null) => string | undefined,
+	lookupAssignee: (memberId: string | null) => NextAssignee | undefined,
 ): ChoreCompletionFeedback {
 	const copy = CHORE_COMPLETION_COPY;
 	const error = (message: string, done: boolean, reload: boolean, toast: string | null = null) =>
@@ -191,7 +206,7 @@ export function choreCompletionFeedback(
 				message: choreCompletedMessage(
 					chore.title,
 					outcome.next,
-					outcome.next ? memberName(outcome.next.assignedMemberId) : undefined,
+					outcome.next ? lookupAssignee(outcome.next.assignedMemberId) : undefined,
 				),
 				toast: null,
 				done: true,

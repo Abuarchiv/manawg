@@ -41,8 +41,8 @@ function AgendaRow({ item, todayKey }: { item: WeekAgendaItem; todayKey: string 
 				className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-lg py-1.5 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
 			>
 				<span className="flex min-w-0 flex-1 flex-col">
-					<span className="text-[14px] font-medium leading-snug break-words">{item.title}</span>
-					<span className="text-[12px] text-muted-foreground">
+					<span className="text-body font-medium leading-snug break-words">{item.title}</span>
+					<span className="text-meta text-muted-foreground">
 						{formatAgendaDay(item.dayKey, todayKey)} · {item.detail}
 					</span>
 				</span>
