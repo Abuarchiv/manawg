@@ -380,9 +380,13 @@ test.describe('ManaWG launch smoke', () => {
 
 			await gotoWithRetry(page, `/wg/${createdShareCode}/putzen`);
 			await expect(page.getByText(choreTitle, { exact: true })).toBeVisible({ timeout: 30_000 });
+			// Like the app, the completion names the occurrence it saw.
 			const completion = await page.request.post(
 				`/api/wg/${createdShareCode}/chores/${choreId}/complete`,
-				{ headers: memberHeaders },
+				{
+					headers: memberHeaders,
+					data: { expectedNextDueAt: firstDueAt, expectedAssignedMemberId: memberId },
+				},
 			);
 			expect(completion.status(), await completion.text()).toBe(200);
 			const choreList = await page.request.get(`/api/wg/${createdShareCode}/chores`, {
