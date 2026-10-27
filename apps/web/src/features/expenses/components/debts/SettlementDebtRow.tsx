@@ -1,29 +1,18 @@
 'use client';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Button, buttonVariants } from '@/components/ui/button';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Button } from '@/components/ui/button';
 import { ItemContent, ItemEntry, ItemFooter, ItemTitle } from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
-import { isPayPalSdkEnabled } from '@/core/infra/security-headers';
 import { formatEuroCents } from '@/core/utils/money';
-import { PayPalPaymentButton } from '@/features/expenses/components/debts/PayPalPaymentButton';
 import { RemindButton } from '@/features/expenses/components/debts/RemindButton';
 import type { SimplifiedDebt } from '@/features/expenses/debt-reduction';
 import type { Expense } from '@/features/expenses/expense-types';
 import { cn } from '@/shared/lib/cn';
-import { ChevronDown } from 'lucide-react';
-import Link from 'next/link';
 import { useEffect, useRef } from 'react';
 import { SettlementReviewDialog } from './SettlementReviewDialog';
 import { useDebtSettlement } from './use-debt-settlement';
-
-// Without PayPal credentials there is neither connecting nor paying, so no PayPal hints.
-const PAYPAL_ENABLED = isPayPalSdkEnabled(
-	process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID,
-	process.env.NEXT_PUBLIC_PAYPAL_PARTNER_ATTRIBUTION_ID,
-);
 
 /** Focus target when the row disappears after settling (heading in DebtSummary). */
 export const SALDO_HEADING_ID = 'saldo-heading';
@@ -33,26 +22,21 @@ interface DebtRowProps {
 	expenses: readonly Expense[];
 	shareCode: string;
 	currentMemberId: string;
-	memberPayPalMerchantId: (id: string) => string | null;
 	/**
-	 * A direct debt between the two covers this (possibly simplified) one. PayPal orders and
-	 * reminders are booked on direct debts, so both are offered only then.
+	 * A direct debt between the two covers this (possibly simplified) one. Reminders are booked
+	 * on direct debts, so they are offered only then.
 	 */
 	backedByDirectDebt: boolean;
-	/** PayPal hint only in the first matching row per card. */
-	showPayPalHint: boolean;
 	onSettled: (message?: string) => void;
 }
 
-/** One simplified debt with settle, remind and PayPal actions for the members involved. */
+/** One simplified debt with settle and remind actions for the members involved. */
 export function SettlementDebtRow({
 	debt,
 	expenses,
 	shareCode,
 	currentMemberId,
-	memberPayPalMerchantId,
 	backedByDirectDebt,
-	showPayPalHint,
 	onSettled,
 }: DebtRowProps) {
 	const settledRef = useRef(false);
@@ -84,13 +68,6 @@ export function SettlementDebtRow({
 		wasReviewingRef.current = reviewing;
 	}, [reviewing, reviewOpen]);
 	const canSettle = debt.fromId === currentMemberId || debt.toId === currentMemberId;
-	const payeeMerchantId = memberPayPalMerchantId(debt.toId);
-	const canPayWithPayPal =
-		(debt.currency ?? 'EUR') === 'EUR' &&
-		debt.fromId === currentMemberId &&
-		payeeMerchantId !== null &&
-		backedByDirectDebt &&
-		PAYPAL_ENABLED;
 	const iOwe = debt.fromId === currentMemberId;
 	const owedToMe = debt.toId === currentMemberId;
 
@@ -137,50 +114,6 @@ export function SettlementDebtRow({
 							currentMemberId={currentMemberId}
 							size="sm"
 						/>
-					)}
-					{PAYPAL_ENABLED && showPayPalHint && !payeeMerchantId && owedToMe && (
-						<div className="col-span-full min-w-0">
-							<p className="text-sm text-muted-foreground">
-								Verbinde PayPal, damit andere Mitglieder dir Geld senden können.
-							</p>
-							<Link
-								href={`/wg/${encodeURIComponent(shareCode)}/einstellungen`}
-								className={cn(buttonVariants({ variant: 'link' }), 'justify-start px-0 underline')}
-							>
-								PayPal verbinden
-							</Link>
-						</div>
-					)}
-					{PAYPAL_ENABLED && showPayPalHint && !payeeMerchantId && iOwe && (
-						<p className="col-span-full text-sm text-muted-foreground">
-							PayPal-Zahlungen sind erst möglich, wenn {debt.toName} PayPal verbunden hat.
-						</p>
-					)}
-					{canPayWithPayPal && (
-						<Collapsible className="basis-full">
-							<CollapsibleTrigger
-								render={<Button variant="outline" className="w-full justify-between" />}
-							>
-								Mit PayPal zahlen
-								<ChevronDown
-									data-icon="inline-end"
-									className="transition-transform group-aria-expanded/button:rotate-180"
-								/>
-							</CollapsibleTrigger>
-							<CollapsibleContent>
-								<PayPalPaymentButton
-									shareCode={shareCode}
-									currentMemberId={currentMemberId}
-									fromMemberId={debt.fromId}
-									toMemberId={debt.toId}
-									payeeMerchantId={payeeMerchantId}
-									amountCents={debt.cents}
-									currency={debt.currency ?? 'EUR'}
-									onPaid={handleSettled}
-									onStale={() => onSettled()}
-								/>
-							</CollapsibleContent>
-						</Collapsible>
 					)}
 				</ItemFooter>
 			)}

@@ -11,7 +11,6 @@ import { useRef, useState } from 'react';
 const UNDO_ERRORS: Readonly<Record<string, string>> = {
 	import_settled:
 		'Einige Anteile dieses Imports sind schon bezahlt. Entferne die Ausgaben einzeln, wenn sie falsch sind.',
-	paypal_payment_pending: 'Eine PayPal-Zahlung läuft noch. Versuche es danach erneut.',
 	not_owner: 'Nur wer importiert hat oder ein Admin kann diesen Import rückgängig machen.',
 	import_not_found: 'Dieser Import ist nicht mehr vorhanden.',
 	Netzwerkfehler: 'Prüfe deine Verbindung und versuche es erneut.',

@@ -43,7 +43,6 @@ interface RosterRow {
 	id: string;
 	name: string;
 	color: string | null;
-	paypalMerchantId: string | null;
 	active: boolean;
 	isAdmin: boolean;
 	hasAccount: boolean;
@@ -82,7 +81,6 @@ export const loadWgShell = cache(async (code: string) => {
 			name: wgMembers.name,
 			color: wgMembers.color,
 			role: wgMembers.role,
-			paypalMerchantId: wgMembers.paypalMerchantId,
 			authUserId: wgMembers.authUserId,
 			deactivatedAt: wgMembers.deactivatedAt,
 		})

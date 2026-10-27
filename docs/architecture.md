@@ -34,7 +34,7 @@ browser
      reads and `POST /api/wg` are answered here; every other build gets `null` from
      `resolveFixtureRequest` and skips this step.
   5. Supabase session refresh.
-- `/api/health` and `/api/paypal/*` are outside the matcher; `/api/health` applies its own limiter.
+- `/api/health` is outside the matcher and applies its own limiter.
 
 **Route handlers** use `withWgRoute` (`core/guards/with-wg-route.ts`) for the share-code
 preamble and the catch-all `logApiError` + `server_error`. It deliberately does not authenticate;
@@ -175,20 +175,16 @@ Keeping the key on 429 is safe because no route stores a 429 as a replayable res
   `validateSplits` rejects duplicates, negative/non-finite cents and sums that differ from the
   total. The payer's own split is stored as already settled (`settledAtForOwnShare`).
 - Balances: `features/expenses/debts.ts` aggregates unsettled splits per debtor/creditor pair;
-  `debt-reduction.ts` computes net balances (including completed PayPal payments) and
+  `debt-reduction.ts` computes net balances (including completed cash payments) and
   `simplifyDebts` for settlement suggestions.
 - Paid-by rule (`features/expenses/paid-by-guard.ts`): whoever records an expense paid by
   someone else must bear a positive share. It applies to manual entry, Abos and CSV/OCR imports;
   only the WG admin may import a shared history with rows they are not part of.
 - Manual settlement sets `expense_splits.settled_at`
   (`/api/wg/<code>/expenses/[id]/splits/[splitId]/settle`, `/expenses/settle-batch`).
-- PayPal (`/api/wg/<code>/paypal/{connect,order,capture}`, `features/expenses/paypal-settlement.ts`, `features/expenses/server/paypal-reconcile.ts`): the
-  payee connects via PayPal partner referrals (`paypal_merchant_id`). An order is created for the
-  simplified net debt; `expense_payments.status` goes `created -> capturing -> completed|failed`,
-  with one active payment per member pair. Only a server-confirmed capture counts. Payment work
-  takes a per-WG advisory lock (`lockExpensePayments`). The maintenance cron reconciles
-  `capturing` rows older than 15 minutes, because they block the WG's finances. All of PayPal is
-  off when `PAYPAL_*` is empty. Operator setup: [paypal-setup.md](paypal-setup.md).
+- Cash payments (`/api/wg/<code>/payments/manual`, `features/expenses/server/manual-payment.ts`)
+  record the whole net debt of a pair as one `expense_payments` row with status `completed`;
+  voiding sets it to `voided`. Payment work takes a per-WG advisory lock (`lockExpensePayments`).
 - Recurring expenses ("Abos") are templates in `recurring_expenses`, materialized by the
   `recurring-advance` cron. `anchor_at` keeps the day-of-month (31.01 → 28.02 → 31.03); edits are
   a compare-and-set on `next_due_at` so a concurrent booking is never written back
@@ -352,7 +348,7 @@ with claim rows/throttle timestamps so a re-run does not notify twice.
 - **Offline handlers in one core table.** Splitting them per feature would need a registration
   bootstrap; a `Record<OfflineActionType, ...>` lets `tsc` enforce a handler per type
   (`core/offline/offline-action-handlers.ts`).
-- **Redacted logging.** Raw errors copied stacks and provider payloads (Postgres, PayPal) into
+- **Redacted logging.** Raw errors copied stacks and provider payloads (Postgres) into
   long-lived logs, so only label and error name are logged (`core/infra/observability.ts`).
 - **Shared input limits.** Forms and API validation read name limits from
   `shared/lib/limits.ts`, so browser and server reject the same values; a test keeps it equal to
@@ -412,13 +408,10 @@ These behaviors were reviewed in the October 2026 audit and are kept on purpose.
   (payer confirmation) would end the "log it for a flatmate" flow and are not planned.
 - **Edit rights.** Editing an expense is payer-only; removing is payer or any debtor. The UI offers
   only what the server accepts (`ExpenseRow`).
-- **Account deletion keeps names.** The member leaves like an "Auszug": login link, PayPal id and push
+- **Account deletion keeps names.** The member leaves like an "Auszug": login link and push
   subscriptions are removed, the display name stays on past entries so that balances, chat and
   history of the remaining flatmates stay understandable. The name is a household-internal label, not
   an account identifier. Changing this is a legal decision, not a technical one.
-- **PayPal merchant ids are public identifiers.** They are sent to every member because the PayPal SDK
-  needs the payee's id on the client; no secret is involved. Orders and amounts are always built on
-  the server.
 - **Activity feed.** Every member reads it. Private details (one person's quiet hours, push opt-in,
   the creation-time share code) are removed before the response (`core/audit-visibility.ts`).
 - **Member names** are unique ignoring case among active members. A moved-out member who holds a name

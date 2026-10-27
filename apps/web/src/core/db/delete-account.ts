@@ -1,5 +1,5 @@
 import { and, asc, eq, inArray, isNotNull, isNull, ne, sql } from 'drizzle-orm';
-import { hasCapturingMemberPayment, lockAccount } from './account-deletion';
+import { lockAccount } from './account-deletion';
 import { ensureWgAdmin } from './admin-succession';
 import { deleteWgCascade } from './delete-wg';
 import { releaseMemberChores } from './member-departure';
@@ -10,7 +10,7 @@ import {
 	wgMembers,
 	wgs,
 } from './schema';
-import { type DbTransaction, TransactionAbort, lockExpensePayments } from './transaction';
+import { type DbTransaction, lockExpensePayments } from './transaction';
 
 export type LeftWg = {
 	wgId: string;
@@ -23,7 +23,7 @@ export type LeftWg = {
 /**
  * Detaches an auth user from every WG before the account is deleted. The
  * member moves out like an "Auszug": history and balances stay with the WG,
- * the login link, push subscriptions and PayPal id are removed, and the WG
+ * the login link and push subscriptions are removed, and the WG
  * keeps an admin who can sign in: the role passes to the longest-standing
  * active flatmate with an account. A WG with no such member is deleted entirely.
  */
@@ -65,9 +65,6 @@ export async function removeAccountFromWgs(
 	const left: LeftWg[] = [];
 	const deletedWgIds: string[] = [];
 	for (const membership of memberships) {
-		if (await hasCapturingMemberPayment(tx, membership.wgId, membership.id)) {
-			throw new TransactionAbort('paypal_payment_pending');
-		}
 		const [successor] = await tx
 			.select({ id: wgMembers.id })
 			.from(wgMembers)
@@ -95,7 +92,6 @@ export async function removeAccountFromWgs(
 				authUserId: null,
 				role: 'member',
 				deactivatedAt: sql`coalesce(${wgMembers.deactivatedAt}, now())`,
-				paypalMerchantId: null,
 				pushOptIn: false,
 			})
 			.where(eq(wgMembers.id, membership.id));

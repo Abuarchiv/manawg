@@ -4,7 +4,6 @@ import { type WriteOutcome, responseCodec } from '@/core/db/idempotent-write';
 import type { DbTransaction } from '@/core/db/transaction';
 import { HTTP } from '@/core/http/api-errors';
 import type { ExpensePaymentInput } from '@/features/expenses/expense-payment-input';
-import { hasCapturingExpensePayment } from '@/features/expenses/server/expense-payments';
 import {
 	type SettlementConfirmation,
 	type SettlementExpenseInput,
@@ -139,7 +138,6 @@ function buildSettlementResponse(
 type SettlementOutcome =
 	| { kind: 'member_deactivated' }
 	| { kind: 'member_not_in_wg' }
-	| { kind: 'blocked' }
 	| { kind: 'changed' }
 	| { kind: 'settled'; settledIds: string[]; settledCents: number };
 
@@ -192,7 +190,6 @@ export async function settleDebtPair(
 		confirmation.toMemberId,
 		confirmation.currency,
 	);
-	if (await hasCapturingExpensePayment(tx, wgId)) return rejected('blocked');
 	if (!settlementScopeMatches(confirmation.expected, preview)) return rejected('changed');
 
 	let settledIds: string[] = [];

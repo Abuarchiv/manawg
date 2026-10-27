@@ -5,7 +5,6 @@ import type { DbTransaction } from '@/core/db/transaction';
 import { HTTP } from '@/core/http/api-errors';
 import { formatEuroCents } from '@/core/utils/money';
 import { currencySchema } from '@/core/validators/currency';
-import { hasCapturingExpensePayment } from '@/features/expenses/server/expense-payments';
 import { loadSettlementSnapshot, pairIsInWg } from '@/features/expenses/server/settle-debt';
 import { selectSettlementScope } from '@/features/expenses/settlement-scope';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
@@ -34,12 +33,11 @@ export const voidCashPaymentCodec = responseCodec();
 type RecordOutcome =
 	| { kind: 'member_deactivated' }
 	| { kind: 'member_not_in_wg' }
-	| { kind: 'blocked' }
 	| { kind: 'changed' }
 	| { kind: 'recorded'; paymentId: string; amountCents: number };
 
 type VoidOutcome =
-	| { kind: 'member_deactivated' | 'not_found' | 'not_party' | 'already_voided' | 'blocked' }
+	| { kind: 'member_deactivated' | 'not_found' | 'not_party' | 'already_voided' }
 	| { kind: 'voided'; otherMemberId: string; amountCents: number; currency: string };
 
 const REJECTION_STATUS: Record<string, number> = {
@@ -97,7 +95,6 @@ export async function recordCashPayment(
 			),
 		);
 	if (activePair.length !== 2) return rejected('member_not_in_wg');
-	if (await hasCapturingExpensePayment(tx, wgId)) return rejected('blocked');
 
 	const preview = selectSettlementScope(
 		snapshot.expenses,
@@ -111,7 +108,6 @@ export async function recordCashPayment(
 		return rejected('changed');
 	}
 
-	const now = new Date();
 	const [payment] = await tx
 		.insert(expensePayments)
 		.values({
@@ -120,12 +116,8 @@ export async function recordCashPayment(
 			toMemberId: input.toMemberId,
 			amountCents: preview.netCents,
 			currency: preview.currency,
-			provider: 'manual',
-			providerOrderId: `manual:${crypto.randomUUID()}`,
-			payeeMerchantId: 'manual',
 			status: 'completed',
-			expiresAt: now,
-			completedAt: now,
+			completedAt: new Date(),
 		})
 		.returning({ id: expensePayments.id });
 	if (!payment) throw new Error('manual_payment_insert_failed');
@@ -178,19 +170,16 @@ export async function voidCashPayment(
 			amountCents: expensePayments.amountCents,
 			currency: expensePayments.currency,
 			status: expensePayments.status,
-			provider: expensePayments.provider,
 		})
 		.from(expensePayments)
 		.where(and(eq(expensePayments.id, paymentId), eq(expensePayments.wgId, wgId)))
 		.limit(1)
 		.for('update');
-	// A PayPal payment moved real money; only cash entries can be taken back.
-	if (!payment || payment.provider !== 'manual') return rejected('not_found');
+	if (!payment) return rejected('not_found');
 	if (callerId !== payment.fromMemberId && callerId !== payment.toMemberId) {
 		return rejected('not_party');
 	}
 	if (payment.status !== 'completed') return rejected('already_voided');
-	if (await hasCapturingExpensePayment(tx, wgId)) return rejected('blocked');
 
 	await tx
 		.update(expensePayments)

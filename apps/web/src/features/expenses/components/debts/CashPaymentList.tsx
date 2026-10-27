@@ -32,7 +32,6 @@ export function ownCashPayments(
 	return payments
 		.filter(
 			(payment): payment is CashPayment =>
-				payment.provider === 'manual' &&
 				Boolean(payment.id) &&
 				(payment.fromMemberId === currentMemberId || payment.toMemberId === currentMemberId),
 		)

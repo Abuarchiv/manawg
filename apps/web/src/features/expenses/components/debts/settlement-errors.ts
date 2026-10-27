@@ -15,7 +15,6 @@ const ERRORS: Record<string, string> = {
 	currency_invalid: 'Barzahlung konnte nicht gespeichert werden: Der Betrag ist ungültig.',
 	payment_not_found: 'Diese Barzahlung gibt es nicht mehr.',
 	payment_voided: 'Diese Barzahlung ist schon storniert.',
-	paypal_payment_pending: 'Eine PayPal-Zahlung läuft noch. Warte auf deren Abschluss.',
 };
 
 /** Copy for a failed manual settlement (`POST /expenses/settle-batch`). */
@@ -28,7 +27,6 @@ const VOID_ERRORS: Record<string, string> = {
 	not_party_to_debt: `${VOID_SUBJECT}: Du bist an dieser Zahlung nicht beteiligt.`,
 	payment_not_found: ERRORS.payment_not_found as string,
 	payment_voided: ERRORS.payment_voided as string,
-	paypal_payment_pending: ERRORS.paypal_payment_pending as string,
 };
 
 /** Copy for a failed void (`DELETE /payments/manual/[id]`). */

@@ -70,14 +70,14 @@ const completedPayments = [
 		completedAt: new Date('2026-02-03T12:00:00Z'),
 	},
 	{
-		id: 'payment-pending',
+		id: 'payment-voided',
 		wgId: 'wg',
 		fromMemberId: 'bob',
 		toMemberId: 'alice',
 		amountCents: 4000,
 		currency: 'EUR',
-		status: 'created',
-		completedAt: null,
+		status: 'voided',
+		completedAt: new Date('2026-02-05T12:00:00Z'),
 	},
 ];
 
@@ -264,8 +264,6 @@ test('exported expenses and completed payments reconstruct the app balances by c
 		},
 	]);
 	assert.equal(JSON.stringify(exported).includes('privateDbPassword123'), false);
-	assert.equal(JSON.stringify(exported).includes('providerOrderId'), false);
-	assert.equal(JSON.stringify(exported).includes('payeeMerchantId'), false);
 	assert.equal(exported.sections.expensePayments.length, 2);
 
 	const exportedBalances = computeNetBalances(

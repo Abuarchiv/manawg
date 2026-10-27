@@ -5,6 +5,7 @@ import {
 	canEditMessage,
 	chatDayLabel,
 	countChatReaders,
+	filterPersistedMentionIds,
 	findFirstUnreadId,
 	isSingleEmoji,
 	reconcileChatMessages,
@@ -131,4 +132,14 @@ test('read ticks count only the given readers who read up to the message', () =>
 test('message length counts emoji once, like the request schema', () => {
 	assert.equal(sanitizeMessageBody('😀'.repeat(3000), 4000), '😀'.repeat(3000));
 	assert.equal(sanitizeMessageBody('😀'.repeat(4001), 4000), null);
+});
+
+test('returns only mention IDs confirmed by the database insert', () => {
+	assert.deepEqual(
+		filterPersistedMentionIds(
+			['member-a', 'member-b', 'member-c'],
+			[{ mentionedMemberId: 'member-c' }, { mentionedMemberId: 'member-a' }],
+		),
+		['member-a', 'member-c'],
+	);
 });

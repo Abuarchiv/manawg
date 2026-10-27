@@ -74,7 +74,6 @@ function defaultBody(overrides: Loose = {}) {
 
 function freshState(templateWgId: string, templateDueAt: string, pausedAt: Date | null) {
 	return {
-		capturing: false,
 		memberId: firstMemberId,
 		body: defaultBody() as Loose,
 		template: {
@@ -403,7 +402,6 @@ mock.module('@/core/validators/image-url', {
 });
 mock.module('@/features/expenses/server/expense-payments', {
 	namedExports: {
-		hasCapturingExpensePayment: async () => state.capturing,
 		loadCompletedExpensePayments: async () => [],
 		withExpensePaymentLock: async (_id: string, operation: (tx: unknown) => Promise<unknown>) => {
 			const local = {
@@ -559,24 +557,6 @@ test('rejects foreign, stale, and paused recurring templates without creating an
 	}
 });
 
-test('expense creation waits for capture without leaving an idempotency claim', async () => {
-	const { state, post } = harness();
-	const body = defaultBody({
-		recurringExpenseId: undefined,
-		expectedRecurringNextDueAt: undefined,
-	});
-	state.capturing = true;
-	const blocked = await post({ body });
-	assert.equal(blocked.status, 409);
-	assert.equal((await blocked.json()).error, 'paypal_payment_pending');
-	assert.equal(state.expenses.length, 0);
-	assert.equal(state.idempotency.size, 0);
-	state.capturing = false;
-	const retried = await post({ body });
-	assert.equal(retried.status, 200);
-	assert.equal(state.expenses.length, 1);
-});
-
 test('ordinary expenses remain unlinked to recurring templates', async () => {
 	const { state, post } = harness();
 	const response = await post({
@@ -661,11 +641,14 @@ test('an uncertain COMMIT keeps the expense claim fail-closed', async () => {
 
 test('a rolled-back expense keeps a claim that another request took over', async () => {
 	const { state, post } = harness();
-	state.capturing = true;
+	state.rejectImageAttachment = true;
 	state.reclaimOnRollback = true;
 	const response = await post({
 		key: 'reclaimed-key',
-		body: defaultBody({ recurringExpenseId: undefined, expectedRecurringNextDueAt: undefined }),
+		body: defaultBody({
+			imageUrl:
+				'https://app.example/api/upload/read?key=manawg%2F11111111-1111-4111-8111-111111111111%2Fexpense%2F22222222-2222-4222-8222-222222222222.jpg',
+		}),
 	});
 	assert.equal(response.status, 409);
 	assert.deepEqual(

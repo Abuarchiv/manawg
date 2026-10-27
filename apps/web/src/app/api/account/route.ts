@@ -7,9 +7,9 @@ import {
 	tryCompleteAccountDeletion,
 } from '@/core/db/account-deletion';
 import { removeAccountFromWgs } from '@/core/db/delete-account';
-import { TransactionAbort, withTransaction } from '@/core/db/transaction';
+import { withTransaction } from '@/core/db/transaction';
 import { requireAccount } from '@/core/guards/require-account';
-import { conflict, serverError, serviceUnavailable } from '@/core/http/api-errors';
+import { serverError, serviceUnavailable } from '@/core/http/api-errors';
 import { afterResponse } from '@/core/infra/after-response';
 import { logApiError } from '@/core/infra/observability';
 import { confirmedEmailOf, sendAccountDeletedMail } from '@/core/mail/account-deleted';
@@ -86,9 +86,6 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
 			afterResponse(() => sendAccountDeletedMail(user.id, email));
 		return acceptedDeletionResponse(req, completed, local.deletedWgs);
 	} catch (err) {
-		if (err instanceof TransactionAbort && err.code === 'paypal_payment_pending') {
-			return conflict('paypal_payment_pending');
-		}
 		logApiError('[api/account DELETE] failed', err);
 		try {
 			const deletion = await readAccountDeletionStatusWithFreshConnection(user.id);

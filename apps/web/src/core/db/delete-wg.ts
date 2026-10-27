@@ -1,4 +1,4 @@
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 import { recordWgImageDeletions } from './private-image-deletions';
 import {
 	announcements,
@@ -12,7 +12,7 @@ import {
 	wgs,
 } from './schema';
 import { wgInventoryItems, wgInventoryLog } from './schema-inventory';
-import { type DbTransaction, TransactionAbort, lockExpensePayments } from './transaction';
+import { type DbTransaction, lockExpensePayments } from './transaction';
 
 /**
  * Deletes a WG and everything it owns. Several historical/member references
@@ -23,12 +23,6 @@ import { type DbTransaction, TransactionAbort, lockExpensePayments } from './tra
  */
 export async function deleteWgCascade(tx: DbTransaction, wgId: string): Promise<boolean> {
 	await lockExpensePayments(tx, wgId);
-	const [capturing] = await tx
-		.select({ id: expensePayments.id })
-		.from(expensePayments)
-		.where(and(eq(expensePayments.wgId, wgId), eq(expensePayments.status, 'capturing')))
-		.limit(1);
-	if (capturing) throw new TransactionAbort('paypal_payment_pending');
 	const [wg] = await tx.select({ id: wgs.id }).from(wgs).where(eq(wgs.id, wgId)).for('update');
 	if (!wg) return false;
 	await recordWgImageDeletions(tx, wgId);

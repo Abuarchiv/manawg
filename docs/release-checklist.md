@@ -52,12 +52,10 @@ Not fatal, but expected in Production:
 
 - [ ] `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (push; `VAPID_SUBJECT`
       throws in production when push is used without it).
-- [ ] `NEXT_PUBLIC_APP_URL` (invite links, OG images, PayPal return origin).
+- [ ] `NEXT_PUBLIC_APP_URL` (invite links, OG images).
 - [ ] `NEXT_PUBLIC_SENTRY_DSN` set, so errors are reported at all.
 - [ ] `NEXT_PUBLIC_POSTHOG_KEY` and `NEXT_PUBLIC_POSTHOG_HOST=https://eu.i.posthog.com` if
       analytics should run (any other host disables it).
-- [ ] PayPal: all `PAYPAL_*`/`NEXT_PUBLIC_PAYPAL_*` empty (off) or a complete live set
-      ([paypal-setup.md](paypal-setup.md)). No sandbox values in Production.
 - [ ] `MIGRATION_READ_ONLY` unset or not `true` after the migration window.
 
 ## Configuration the code cannot check
