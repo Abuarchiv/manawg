@@ -54,7 +54,7 @@ test.describe('live public dashboard entry', () => {
 		await expect(page).toHaveURL(/\/neu$/);
 		await expect(page.getByLabel('E-Mail-Adresse')).toBeVisible();
 		await page.getByRole('tab', { name: 'Passwort', exact: true }).click();
-		await expect(page.getByLabel('Passwort', { exact: true })).toBeVisible();
+		await expect(page.getByRole('textbox', { name: 'Passwort', exact: true })).toBeVisible();
 		await expect(
 			page.getByRole('button', { name: 'Mit Google anmelden', exact: true }),
 		).toBeVisible();
@@ -75,6 +75,7 @@ test.describe('live public dashboard entry', () => {
 			.getByRole('alert')
 			.filter({ hasText: 'Dein Passwort braucht mindestens 8 Zeichen.' });
 		for (const short of ['12345', '1234567']) {
+			await page.getByLabel('Dein Name').fill('Kurz');
 			await page.getByLabel('E-Mail-Adresse').fill('kurz@example.invalid');
 			await page.getByLabel('Passwort', { exact: true }).fill(short);
 			await page.getByLabel('Passwort wiederholen').fill(short);
@@ -96,7 +97,7 @@ test.describe('live public dashboard entry', () => {
 			.getByRole('navigation', { name: 'Öffentliche Hauptnavigation' })
 			.getByRole('link', { name: 'Haushalt', exact: true })
 			.click();
-		await expect(page).toHaveURL(`/entdecken/einkauf?invite=${token}`);
+		await expect(page).toHaveURL(`/entdecken/putzen?invite=${token}`);
 		await expect(
 			page
 				.getByRole('navigation', { name: 'Öffentliche Hauptnavigation' })
@@ -109,6 +110,11 @@ test.describe('live public dashboard entry', () => {
 	});
 
 	test('membership lookup failures stay visible and can be retried', async ({ page }) => {
+		// Only a browser marked as signed in asks for its WGs; the middleware clears the mark
+		// without a session, so set it again before the page scripts run.
+		await page.addInitScript(() => {
+			document.cookie = 'manawg_signed_in=1; path=/';
+		});
 		let attempts = 0;
 		await page.route('**/api/wg/mine', async (route) => {
 			attempts += 1;
@@ -130,7 +136,7 @@ test.describe('live public dashboard entry', () => {
 		await expect(page.getByText('Deine WGs konnten gerade nicht geladen werden.')).toBeVisible();
 		await page.getByRole('button', { name: 'Erneut prüfen', exact: true }).click();
 		await expect.poll(() => attempts).toBeGreaterThan(1);
-		await expect(page.getByText('Hafermilch', { exact: true })).toBeVisible();
+		await expect(page.getByRole('article', { name: 'Einkäufe, Beispiel-WG' })).toBeVisible();
 	});
 
 	test('keeps web navigation opaque in high contrast', async ({ page }) => {
