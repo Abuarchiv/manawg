@@ -122,7 +122,6 @@ export function RecurringTemplateItem({
 		) : null;
 	return (
 		<Item
-			key={item.id}
 			id={`recurring-${item.id}`}
 			variant="outline"
 			className={cn('scroll-mt-24', highlighted && 'ring-2 ring-ring')}
