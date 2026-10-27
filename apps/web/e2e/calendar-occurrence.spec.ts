@@ -57,10 +57,7 @@ test.describe('single occurrence of a series', () => {
 		);
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/kalender`);
 		await dismissOnboarding(page);
-		await page
-			.getByRole('button', { name: 'Termin bearbeiten: Plenum', exact: true })
-			.first()
-			.click();
+		await page.getByRole('button', { name: 'Termin öffnen: Plenum', exact: true }).first().click();
 	}
 
 	test('"Nur" this date can be removed without touching the series', async ({ page }) => {

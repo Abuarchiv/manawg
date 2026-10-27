@@ -2,10 +2,15 @@ import { useToast } from '@/components/ui/Toast';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
 import { isNetworkError } from '@/core/http/error-codes';
+import {
+	type PendingIdempotentRequest,
+	resolveIdempotencyKey,
+	shouldReleaseIdempotencyKey,
+} from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
-import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
+import { keyUnavailableMessage } from '@/core/offline/offline-copy';
+import { useSyncedCollection } from '@/core/sync/use-synced-collection';
 import { MS_PER_DAY } from '@/core/utils/time';
-import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import {
 	type CalendarEvent,
 	type ChoreSummary,
@@ -27,7 +32,7 @@ import {
 } from '@/features/events/events';
 import { postOccurrenceChange } from '@/features/events/occurrence-api';
 import { haptic } from '@/shared/lib/haptics';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 
 type CalendarCreateResponse = {
 	event: CalendarEvent;
@@ -58,25 +63,41 @@ export function useCalendarPage(month: Date) {
 	const choresUrl = `/api/wg/${encodedShareCode}/chores`;
 
 	const {
-		data: cachedEvents,
-		error: eventsReadError,
-		refresh: refreshEvents,
-		setData: setCachedEvents,
-	} = useCachedFetch<{ events: CalendarEvent[] }>(calendarEventsUrl, {
-		memberId: identity.memberId,
-	});
-	const {
 		data: cachedChores,
 		error: choresReadError,
 		refresh: refreshChores,
 	} = useCachedFetch<{ chores: ChoreSummary[] }>(choresUrl, { memberId: identity.memberId });
+	const chores = useMemo<ChoreSummary[]>(
+		() => cachedChores?.chores.map(({ id, title, nextDueAt }) => ({ id, title, nextDueAt })) ?? [],
+		[cachedChores],
+	);
 
-	const [events, setEvents] = useState<CalendarEvent[]>(() => cachedEvents?.events ?? []);
-	const [chores, setChores] = useState<ChoreSummary[]>(() => cachedChores?.chores ?? []);
-	const [loading, setLoading] = useState(!cachedEvents || !cachedChores);
-	const [loadError, setLoadError] = useState<string | null>(null);
-	const hasCalendarDataRef = useRef(Boolean(cachedEvents && cachedChores));
-	const createEventRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
+	// Events are no offline actions, so the collection has no offline queue. The URL follows the
+	// month; the shown events stay until the new range arrives.
+	const collection = useSyncedCollection<{ events: CalendarEvent[] }, CalendarEvent>({
+		url: calendarEventsUrl,
+		memberId: identity.memberId,
+		select: (data) => data.events,
+		assemble: (nextEvents, current) => ({ ...current, events: nextEvents }),
+		getId: (event) => event.id,
+		describeError: () => 'Termine konnten nicht geladen werden.',
+		// Offline with data on screen: keep showing it, no error state.
+		hideError: (error, { hasData }) => hasData && isNetworkError(error.error, error.status),
+		// The chores side read refreshes with every events load, including the poll.
+		reload: (reason) => {
+			void refreshChores();
+			void collection.load(reason === 'mount' ? {} : { silent: true });
+		},
+	});
+	const { items: events, commit, pending, load: loadEvents } = collection;
+	const choresError =
+		choresReadError &&
+		!(cachedChores && isNetworkError(choresReadError.error, choresReadError.status))
+			? 'Putzplan-Aufgaben konnten nicht geladen werden.'
+			: null;
+	const loadError = collection.loadError ?? choresError;
+	const loading = collection.initialLoading || (!cachedChores && !choresReadError);
+	const createEventRequestRef = useRef<PendingIdempotentRequest | null>(null);
 
 	const [createOpen, setCreateOpen] = useState(false);
 	const [editing, setEditingState] = useState<EditableEvent | null>(null);
@@ -88,60 +109,10 @@ export function useCalendarPage(month: Date) {
 	}
 	const [actionError, setActionError] = useState<string | null>(null);
 
-	function updateEvents(update: (current: CalendarEvent[]) => CalendarEvent[]): void {
-		setEvents(update);
-		setCachedEvents((current) => {
-			const previous = current?.events ?? events;
-			const next = update(previous);
-			if (!current && next === previous) return current;
-			return { ...(current ?? { events: previous }), events: next };
-		});
+	// A conflict means the shown list is stale: fetch again even if a GET is already running.
+	function reloadAfterConflict(): void {
+		void loadEvents({ silent: true, afterMutation: true });
 	}
-
-	const load = useCallback(
-		async (isInitial: boolean): Promise<void> => {
-			if (isInitial && !hasCalendarDataRef.current) setLoading(true);
-
-			const [eventsRes, choreRes] = await Promise.all([refreshEvents(), refreshChores()]);
-
-			// Offline with an existing cache: keep showing data, no error state.
-			const keepCached = (res: { ok: boolean; status?: number; error?: string }): boolean =>
-				hasCalendarDataRef.current && !res.ok && isNetworkError(res.error ?? null, res.status);
-			let nextError: string | null = null;
-			if (eventsRes.ok) setEvents(eventsRes.data.events);
-			else if (!keepCached(eventsRes)) nextError = 'Termine konnten nicht geladen werden.';
-			if (choreRes.ok) {
-				setChores(
-					choreRes.data.chores.map(({ id, title, nextDueAt }) => ({ id, title, nextDueAt })),
-				);
-			} else if (!nextError && !keepCached(choreRes))
-				nextError = 'Putzplan-Aufgaben konnten nicht geladen werden.';
-			setLoadError(nextError);
-			if (isInitial) setLoading(false);
-		},
-		[refreshChores, refreshEvents],
-	);
-
-	useEffect(() => {
-		if (cachedEvents) setEvents(cachedEvents.events);
-		if (cachedChores) {
-			hasCalendarDataRef.current = true;
-			setChores(cachedChores.chores.map(({ id, title, nextDueAt }) => ({ id, title, nextDueAt })));
-		}
-		if (cachedEvents && cachedChores) {
-			setLoadError(null);
-			setLoading(false);
-		} else if (eventsReadError || choresReadError) {
-			setLoadError('Termine oder Putzplan-Aufgaben konnten nicht geladen werden.');
-			setLoading(false);
-		}
-	}, [cachedChores, cachedEvents, choresReadError, eventsReadError]);
-
-	// Auto-refresh as on the dashboard; replaces the manual reload button.
-	useVisibilityPausedInterval(() => void load(false), 30_000);
-	useEffect(() => {
-		void load(true);
-	}, [load]);
 
 	const monthOccurrences = useMemo<EventOccurrence[]>(() => {
 		const bounds = getMonthBounds(month);
@@ -193,10 +164,8 @@ export function useCalendarPage(month: Date) {
 
 	async function createEvent(payload: CreateEventPayload): Promise<void> {
 		const fingerprint = JSON.stringify(payload);
-		const pending = createEventRequestRef.current;
-		const idempotencyKey =
-			pending?.fingerprint === fingerprint ? pending.key : createOfflineIdempotencyKey();
-		if (!idempotencyKey) throw new Error('Termin konnte nicht sicher gesendet werden.');
+		const idempotencyKey = resolveIdempotencyKey(createEventRequestRef.current, fingerprint);
+		if (!idempotencyKey) throw new Error(keyUnavailableMessage('Termin', 'gesendet'));
 		createEventRequestRef.current = { fingerprint, key: idempotencyKey };
 		const optimisticId = `pending:${idempotencyKey}`;
 		const optimisticEvent: CalendarEvent = {
@@ -204,24 +173,26 @@ export function useCalendarPage(month: Date) {
 			...payload,
 			createdByMemberId: identity.memberId,
 		};
-		updateEvents((current) => [...current, optimisticEvent]);
+		// The overlay keeps the optimistic row through a poll that lands while the POST runs.
+		pending.set(optimisticEvent);
+		commit((current) => [...current, optimisticEvent]);
 		const res = await apiFetch<CalendarCreateResponse>(eventsBaseUrl, {
 			method: 'POST',
 			memberId: identity.memberId,
 			headers: { 'Idempotency-Key': idempotencyKey },
 			body: JSON.stringify(payload),
 		});
+		pending.delete(optimisticId);
 		if (!res.ok) {
-			if (res.status > 0 && res.status < 500 && res.status !== 429)
-				createEventRequestRef.current = null;
-			updateEvents((current) => current.filter((event) => event.id !== optimisticId));
+			if (shouldReleaseIdempotencyKey(res.status, res.error)) createEventRequestRef.current = null;
+			commit((current) => current.filter((event) => event.id !== optimisticId));
 			const message = eventSaveError('Termin konnte nicht gespeichert werden', res);
 			toast.error(message);
 			throw new Error(message);
 		}
 		createEventRequestRef.current = null;
 		haptic('medium');
-		updateEvents((current) => {
+		commit((current) => {
 			const withoutOptimistic = current.filter((event) => event.id !== optimisticId);
 			return withoutOptimistic.some((event) => event.id === res.data.event.id)
 				? withoutOptimistic
@@ -239,7 +210,8 @@ export function useCalendarPage(month: Date) {
 		setActionError(null);
 		const previous = events.find((event) => event.id === id);
 		if (previous) {
-			updateEvents((current) =>
+			pending.set({ ...previous, ...payload });
+			commit((current) =>
 				current.map((event) => (event.id === id ? { ...event, ...payload } : event)),
 			);
 		}
@@ -251,18 +223,19 @@ export function useCalendarPage(month: Date) {
 				body: JSON.stringify(payload),
 			},
 		);
+		pending.delete(id);
 		if (!res.ok) {
 			if (isEventGone(res)) {
-				updateEvents((current) => current.filter((event) => event.id !== id));
+				commit((current) => current.filter((event) => event.id !== id));
 			} else if (previous) {
-				updateEvents((current) => current.map((event) => (event.id === id ? previous : event)));
+				commit((current) => current.map((event) => (event.id === id ? previous : event)));
 			}
 			const message = eventSaveError('Termin konnte nicht aktualisiert werden', res);
-			if (res.error === 'event_changed') void load(false);
+			if (res.error === 'event_changed') reloadAfterConflict();
 			toast.error(message);
 			throw new Error(message);
 		}
-		updateEvents((current) => current.map((event) => (event.id === id ? res.data.event : event)));
+		commit((current) => current.map((event) => (event.id === id ? res.data.event : event)));
 		setEditing(null);
 	}
 
@@ -270,7 +243,7 @@ export function useCalendarPage(month: Date) {
 		setActionError(null);
 		const previousEventIndex = events.findIndex((event) => event.id === id);
 		const previousEvent = events[previousEventIndex];
-		updateEvents((current) => current.filter((event) => event.id !== id));
+		commit((current) => current.filter((event) => event.id !== id));
 		const res = await apiFetch<unknown>(`${eventsBaseUrl}/${encodeURIComponent(id)}`, {
 			method: 'DELETE',
 			memberId: identity.memberId,
@@ -278,7 +251,7 @@ export function useCalendarPage(month: Date) {
 		// Already deleted by someone else: goal reached, do not restore.
 		if (!res.ok && !isEventGone(res)) {
 			if (previousEvent) {
-				updateEvents((current) => {
+				commit((current) => {
 					if (current.some((event) => event.id === id)) return current;
 					const restored = [...current];
 					restored.splice(Math.min(previousEventIndex, restored.length), 0, previousEvent);
@@ -290,7 +263,7 @@ export function useCalendarPage(month: Date) {
 			toast.error(message);
 			return;
 		}
-		updateEvents((current) => current.filter((event) => event.id !== id));
+		commit((current) => current.filter((event) => event.id !== id));
 		setEditing(null);
 		if (res.ok) toast.success('Termin gelöscht.');
 	}
@@ -311,15 +284,16 @@ export function useCalendarPage(month: Date) {
 		);
 		if (!res.ok) {
 			if (isEventGone(res)) {
-				updateEvents((current) => current.filter((event) => event.id !== id));
+				commit((current) => current.filter((event) => event.id !== id));
 			}
+			// Status 0 with `idempotency_key_unavailable` ends in eventSaveError's fallback text.
 			const message = eventSaveError('Termin konnte nicht geändert werden', res);
-			if (res.status === 409 || res.status === 404) void load(false);
+			if (res.status === 409 || res.status === 404) reloadAfterConflict();
 			toast.error(message);
 			throw new Error(message);
 		}
 		const { event, created } = res.data;
-		updateEvents((current) => [
+		commit((current) => [
 			...current.map((item) => (item.id === id ? event : item)),
 			// A refresh that ran in between may already hold the detached event.
 			...(created && !current.some((item) => item.id === created.id) ? [created] : []),
@@ -332,7 +306,9 @@ export function useCalendarPage(month: Date) {
 		eventCount: events.length,
 		loading,
 		loadError,
-		reload: () => load(true),
+		reload: async (): Promise<void> => {
+			await Promise.all([refreshChores(), loadEvents()]);
+		},
 		monthOccurrences,
 		upcomingOccurrences,
 		recurrenceByEventId,

@@ -8,6 +8,7 @@ import {
 	EmptyTitle,
 } from '@/components/ui/empty';
 import { MS_PER_DAY } from '@/core/utils/time';
+import { CALENDAR_ROW_CLASS } from '@/features/events/components/calendar-row';
 import { isSameDay } from '@/features/events/event-display';
 import {
 	type EventOccurrence,
@@ -38,8 +39,7 @@ interface CalendarUpcomingListProps {
 	highlightEventId?: string | null;
 }
 
-const ROW_CLASS =
-	'flex min-h-11 w-full min-w-0 items-center gap-2 py-1.5 pr-3 pl-1 text-left outline-none transition-colors hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/50 active:bg-muted';
+const ROW_CLASS = cn(CALENDAR_ROW_CLASS, 'pr-3 pl-1');
 
 const DAY_FORMATTER = new Intl.DateTimeFormat('de-DE', {
 	weekday: 'long',
@@ -211,7 +211,7 @@ export function CalendarUpcomingList({
 										<button
 											type="button"
 											onClick={() => onSelect(entry.occurrence)}
-											aria-label={`Termin bearbeiten: ${entry.occurrence.title}`}
+											aria-label={`Termin öffnen: ${entry.occurrence.title}`}
 											className={ROW_CLASS}
 										>
 											<span className="flex min-w-0 flex-1 flex-col">
