@@ -1,3 +1,9 @@
+import { config as zodConfig } from 'zod';
+
+// zod probes `new Function` to speed up parsing; the CSP forbids eval, so the probe would be
+// reported as a violation on every page. Runs before any app code parses.
+zodConfig({ jitless: true });
+
 if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
 	import('@/core/infra/sentry')
 		.then(({ initializeSentry }) => initializeSentry())
