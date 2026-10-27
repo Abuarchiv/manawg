@@ -12,6 +12,11 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
+import {
+	type NextAssignee,
+	nextAssigneeLabel,
+	nextAssigneeVerb,
+} from '@/features/chores/chore-completion';
 import type { ReactElement } from 'react';
 
 /** Trigger wording: Start and cleaning plan use the same labels. */
@@ -28,7 +33,7 @@ export function ChoreCompleteDialog({
 	actionLabel,
 	busy,
 	error,
-	nextAssigneeName,
+	nextAssignee,
 	onCancel,
 	onConfirm,
 }: {
@@ -37,7 +42,7 @@ export function ChoreCompleteDialog({
 	actionLabel: string;
 	busy: boolean;
 	error: string | null;
-	nextAssigneeName?: string | null;
+	nextAssignee?: NextAssignee | null;
 	onCancel: () => void;
 	onConfirm: () => void;
 }): ReactElement {
@@ -52,11 +57,10 @@ export function ChoreCompleteDialog({
 				<AlertDialogHeader>
 					<AlertDialogTitle>„{title}“ erledigt?</AlertDialogTitle>
 					<AlertDialogDescription>
-						{nextAssigneeName === undefined
+						{nextAssignee === undefined
 							? null
-							: nextAssigneeName
-								? // The hook returns "du" for the own member, which needs "bist".
-									`Danach ${nextAssigneeName === 'du' ? 'bist' : 'ist'} ${nextAssigneeName} dran. `
+							: nextAssignee
+								? `Danach ${nextAssigneeVerb(nextAssignee)} ${nextAssigneeLabel(nextAssignee)} dran. `
 								: 'Für die nächste Runde ist gerade niemand verfügbar. '}
 						Lässt sich nicht rückgängig machen.
 					</AlertDialogDescription>
@@ -82,7 +86,7 @@ export function ChoreCompleteDialog({
 						{busy ? (
 							<>
 								<Spinner data-icon="inline-start" aria-hidden />
-								Wird gespeichert…
+								Speichert…
 							</>
 						) : (
 							`${actionLabel} bestätigen`

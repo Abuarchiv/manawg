@@ -7,11 +7,12 @@ import { subscribeVisibility, useOnlineStatus } from '@/core/hooks/use-online-st
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
 import { OFFLINE_SYNCED_EVENT, getSyncedCountForWg } from '@/core/offline/offline-client';
 import { berlinDayKey } from '@/core/utils/berlin-day';
-import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
+import {
+	LIST_REFRESH_INTERVAL_MS,
+	useVisibilityPausedInterval,
+} from '@/core/utils/use-visibility-paused-interval';
 import { type SerializedWgEvent, expandRecurrence } from '@/features/events/events';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-
-const REFRESH_INTERVAL_MS = 30_000;
 
 interface HomeDataIdentity {
 	memberId: string;
@@ -57,7 +58,7 @@ export function useHomeData(shareCode: string, identity: HomeDataIdentity) {
 		void dashboardRead.refresh();
 	}, [berlinTodayKey, dashboardRead.refresh, eventRead.refresh]);
 
-	useVisibilityPausedInterval(() => void load(), REFRESH_INTERVAL_MS);
+	useVisibilityPausedInterval(() => void load(), LIST_REFRESH_INTERVAL_MS);
 	useEffect(() => {
 		const onShow = () => {
 			if (document.visibilityState === 'visible') load();

@@ -27,30 +27,20 @@ import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { useWg } from '@/components/wg/WgContextProvider';
 import {
 	type ActivityFilter,
-	type ActivityItem,
 	type ActivityKind,
-	type ActivityReminder,
 	buildActivityInbox,
 	filterActivityItems,
 	groupActivityItemsByDay,
 } from '@/composition/activity';
-import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
-import { useCachedFetch } from '@/core/hooks/useCachedFetch';
-import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { cn } from '@/shared/lib/cn';
 import { History, Search } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { ActivityFeed } from '../_components/ActivityFeed';
-
-interface ActivityResponse {
-	items: ActivityItem[];
-	reminders: ActivityReminder[];
-}
+import { useActivityFeed } from './use-activity-feed';
 
 const PAGE_SIZE = 80;
 const MAX_ITEMS = 320;
-const ACTIVITY_REFRESH_INTERVAL_MS = 30_000;
 
 function formatVisibleActivityCount(count: number): string {
 	if (count === 0) return 'Keine sichtbaren Einträge.';
@@ -65,28 +55,18 @@ export default function AktivitaetPage() {
 	// The server returns the newest N entries; "load more" raises N (see the activity route).
 	const [limit, setLimit] = useState(PAGE_SIZE);
 	const {
-		data: cachedActivity,
-		error: activityError,
-		isLoading: activityLoading,
-		isFetching,
-		refresh: refreshActivity,
-	} = useCachedFetch<ActivityResponse>(`/api/wg/${encodedShareCode}/activity?limit=${limit}`, {
-		memberId: identity.memberId,
-	});
-	// A larger limit lives under a new cache key; keep the previous page visible until it lands.
-	const [data, setData] = useState<ActivityResponse | null>(cachedActivity ?? null);
-	if (cachedActivity && cachedActivity !== data) setData(cachedActivity);
-	const error = activityError
-		? getWgLoadErrorMessage('Aktivität', activityError.status, activityError.error)
-		: null;
-	const loading = activityLoading || isFetching;
+		items,
+		reminders,
+		loaded,
+		loading,
+		error,
+		reload: reloadActivity,
+	} = useActivityFeed({ shareCode: wg.shareCode, memberId: identity.memberId, limit });
 	const [filter, setFilter] = useState<ActivityFilter>({ kind: 'all', mineOnly: false, query: '' });
 
-	useVisibilityPausedInterval(() => void refreshActivity(), ACTIVITY_REFRESH_INTERVAL_MS);
-
 	const filteredItems = useMemo(
-		() => filterActivityItems(data?.items ?? [], filter, identity.name, identity.memberId),
-		[data?.items, filter, identity.memberId, identity.name],
+		() => filterActivityItems(items, filter, identity.name, identity.memberId),
+		[items, filter, identity.memberId, identity.name],
 	);
 	const chronicleGroups = useMemo(
 		() =>
@@ -98,8 +78,8 @@ export default function AktivitaetPage() {
 		[filteredItems, wgBaseHref],
 	);
 	const inboxItems = useMemo(
-		() => (data ? buildActivityInbox({ reminders: data.reminders }) : []),
-		[data],
+		() => (reminders ? buildActivityInbox({ reminders }) : []),
+		[reminders],
 	);
 
 	function setKind(kind: ActivityKind | 'all'): void {
@@ -108,7 +88,7 @@ export default function AktivitaetPage() {
 
 	const hasActiveFilter =
 		filter.kind !== 'all' || filter.mineOnly || filter.query.trim().length > 0;
-	const canLoadMore = data !== null && data.items.length >= limit && limit < MAX_ITEMS;
+	const canLoadMore = loaded && items.length >= limit && limit < MAX_ITEMS;
 
 	function resetFilters(): void {
 		setFilter({ kind: 'all', mineOnly: false, query: '' });
@@ -128,14 +108,14 @@ export default function AktivitaetPage() {
 			{error && (
 				<LoadErrorBanner
 					message={error}
-					onRetry={() => void refreshActivity()}
+					onRetry={() => reloadActivity()}
 					busy={loading}
 					retryLabel="Aktivität erneut laden"
 				/>
 			)}
 
 			{/* Filters stay above the inbox: the inbox disappears while searching, which would otherwise shift the field out from under the finger. */}
-			{data && data.items.length > 0 && (
+			{loaded && items.length > 0 && (
 				<Card className="overflow-visible border-0 bg-transparent py-0 shadow-none">
 					<CardContent className="space-y-3 p-0">
 						<InputGroup>
@@ -193,7 +173,7 @@ export default function AktivitaetPage() {
 				</Card>
 			)}
 
-			{data && inboxItems.length > 0 && !hasActiveFilter && (
+			{loaded && inboxItems.length > 0 && !hasActiveFilter && (
 				<Card>
 					<CardHeader>
 						<div className="flex min-w-0 items-baseline justify-between gap-2">
@@ -236,14 +216,14 @@ export default function AktivitaetPage() {
 
 			<Card className="overflow-visible border-0 bg-transparent py-0 shadow-none">
 				<CardContent className="p-0">
-					{data ? (
+					{loaded ? (
 						<div className="space-y-3">
 							{/* Always mounted so screen readers announce every change of the result count. */}
-							{data.items.length > 0 && (
+							{items.length > 0 && (
 								<output
 									aria-live="polite"
 									className={cn(
-										'block text-[12px] text-muted-foreground',
+										'block text-meta text-muted-foreground',
 										(!hasActiveFilter || chronicleGroups.length === 0) && 'sr-only',
 									)}
 								>
@@ -288,9 +268,9 @@ export default function AktivitaetPage() {
 									</EmptyHeader>
 								</Empty>
 							)}
-							{data.items.length > 0 && hasActiveFilter && canLoadMore && (
-								<p className="text-[12px] text-muted-foreground">
-									Gefiltert wird in den neuesten {data.items.length} Einträgen.
+							{items.length > 0 && hasActiveFilter && canLoadMore && (
+								<p className="text-meta text-muted-foreground">
+									Gefiltert wird in den neuesten {items.length} Einträgen.
 								</p>
 							)}
 							{canLoadMore && (
@@ -323,7 +303,7 @@ export default function AktivitaetPage() {
 							))}
 						</div>
 					) : error ? null : (
-						<p className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-[12px] text-muted-foreground">
+						<p className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-meta text-muted-foreground">
 							Keine Aktivität geladen. Versuche es erneut.
 						</p>
 					)}

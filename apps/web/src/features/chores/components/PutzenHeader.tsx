@@ -1,5 +1,6 @@
 'use client';
 import type { getChorePlanHealth } from '@/features/chores/chore-status';
+import { pluralize } from '@/shared/lib/plural';
 
 interface PutzenHeaderProps {
 	itemCount: number;
@@ -16,7 +17,7 @@ export function PutzenHeader({ itemCount, loading, health }: PutzenHeaderProps) 
 				{loading
 					? 'Lädt…'
 					: [
-							`${itemCount} Aufgabe${itemCount === 1 ? '' : 'n'}`,
+							pluralize(itemCount, 'Aufgabe', 'Aufgaben'),
 							health?.gaps ? `${health.gaps} überfällig` : null,
 							health?.dueToday ? `${health.dueToday} heute` : null,
 						]

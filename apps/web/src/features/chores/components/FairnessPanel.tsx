@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/item';
 import type { ChoreFairness } from '@/features/chores/chore-fairness';
 import type { MemberRef } from '@/shared/lib/member-types';
+import { pluralize } from '@/shared/lib/plural';
 import { ChevronDown } from 'lucide-react';
 
 const FAIRNESS_RULES = [
@@ -135,7 +136,7 @@ export function FairnessPanel({
 												{row.id === currentMemberId ? 'Du' : row.name}
 											</ItemTitle>
 											<ItemDescription className="line-clamp-none">
-												{row.assignedCount} Aufgabe{row.assignedCount === 1 ? '' : 'n'}
+												{pluralize(row.assignedCount, 'Aufgabe', 'Aufgaben')}
 												{row.openGapCount > 0 && ` · ${row.openGapCount} offen`}
 											</ItemDescription>
 										</ItemContent>

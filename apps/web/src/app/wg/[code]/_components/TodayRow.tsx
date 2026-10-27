@@ -66,21 +66,21 @@ export function TodayRow({
 				className="flex min-h-11 min-w-0 flex-1 flex-wrap items-center gap-x-2 rounded-lg py-1.5 outline-none transition-colors duration-75 active:bg-muted/60 focus-visible:ring-3 focus-visible:ring-ring/50"
 			>
 				<span className="flex min-w-16 flex-1 flex-col">
-					<span className="line-clamp-3 text-[14px] font-medium leading-snug break-words">
+					<span className="line-clamp-3 text-body font-medium leading-snug break-words">
 						{item.title}
 					</span>
 					<span
 						className={cn(
-							'text-pretty text-[12px] text-muted-foreground',
+							'text-pretty text-meta text-muted-foreground',
 							item.kind === 'recurring' && 'tabular-nums',
 						)}
 					>
-						{pending ? 'Wird gespeichert…' : item.detail}
+						{pending ? 'Speichert…' : item.detail}
 					</span>
 				</span>
 				<span className="ml-auto flex shrink-0 items-center gap-2">
 					{debtAmount !== undefined && !pending && (
-						<span className="whitespace-nowrap font-mono text-[12px] font-medium tabular-nums">
+						<span className="whitespace-nowrap font-mono text-meta font-medium tabular-nums">
 							{debtAmount}
 						</span>
 					)}
