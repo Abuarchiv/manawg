@@ -1,5 +1,5 @@
 import { recordAuditEvent } from '@/core/audit';
-import { db, expenseSplits, expenses, wgMembers } from '@/core/db';
+import { db, expenseSplits, expenses, wgChatMessages, wgMembers } from '@/core/db';
 import {
 	assertPrivateImageCanBeAttached,
 	revokePrivateImageIfUnreferenced,
@@ -119,6 +119,18 @@ export const DELETE = withWgRoute<{ id: string }>('expense DELETE', async (req, 
 			return { ok: false as const, response: notFound('expense_not_found') };
 		}
 		await revokePrivateImageIfUnreferenced(tx, wgId, row.imageUrl);
+		// The chat notice "X hat Y eingetragen" would otherwise announce an expense that is gone.
+		await tx
+			.update(wgChatMessages)
+			.set({ deletedAt: new Date(), systemPayload: null })
+			.where(
+				and(
+					eq(wgChatMessages.wgId, wgId),
+					eq(wgChatMessages.systemKind, 'expense.created'),
+					sql`${wgChatMessages.systemPayload}->>'expenseId' = ${id}`,
+					isNull(wgChatMessages.deletedAt),
+				),
+			);
 		return { ok: true as const, row };
 	});
 	if (!deletion.ok) return deletion.response;

@@ -23,7 +23,7 @@ const { DELETE, PATCH } = await import('../src/app/api/wg/[code]/expenses/[id]/r
 const { POST: settle } = await import(
 	'../src/app/api/wg/[code]/expenses/[id]/splits/[splitId]/settle/route.ts'
 );
-const { expenseSplits, expenses } = tables;
+const { expenseSplits, expenses, wgChatMessages } = tables;
 
 test('expense DELETE rechecks authorization and blocks an active capture under the payment lock', async () => {
 	let locked = false;
@@ -144,6 +144,45 @@ test('expense DELETE refuses an expense with a settled share of someone else', a
 	assert.equal(response.status, 409);
 	assert.equal(await errorOf(response), 'expense_has_settled_shares');
 	assert.equal(deleted, 0);
+});
+
+test('expense DELETE withdraws its chat notice in the same transaction', async () => {
+	const updated: Array<{ table: unknown; values: Record<string, unknown> }> = [];
+	const tx = {
+		select: () => ({
+			from: (table: unknown) => ({
+				where: () => ({
+					limit: async () =>
+						table === expenses
+							? [{ paidByMemberId: CALLER_ID, description: 'Einkauf', amountCents: 1200 }]
+							: [],
+				}),
+			}),
+		}),
+		delete: () => ({ where: () => ({ returning: async () => [{ id: EXPENSE_ID }] }) }),
+		update: (table: unknown) => ({
+			set: (values: Record<string, unknown>) => ({
+				where: async () => {
+					updated.push({ table, values });
+				},
+			}),
+		}),
+	};
+	env.payments = {
+		withExpensePaymentLock: async (
+			_wgId: string,
+			operation: (value: typeof tx) => Promise<unknown>,
+		) => operation(tx),
+		hasCapturingExpensePayment: async () => false,
+	} as never;
+
+	const response = await DELETE(jsonRequest('DELETE'), routeContext({ id: EXPENSE_ID }));
+
+	assert.equal(response.status, 200);
+	assert.equal(updated.length, 1);
+	assert.equal(updated[0]?.table, wgChatMessages);
+	assert.ok(updated[0]?.values.deletedAt instanceof Date);
+	assert.equal(updated[0]?.values.systemPayload, null);
 });
 
 test('split settle authenticates before lookup and scopes expenses to the WG', async () => {

@@ -134,6 +134,7 @@ export const tables = {
 	expenses: fakeTable('expenses'),
 	idempotencyResponses: fakeTable('idempotencyResponses'),
 	recurringExpenses: fakeTable('recurringExpenses'),
+	wgChatMessages: fakeTable('wgChatMessages'),
 	wgMembers: fakeTable('wgMembers'),
 };
 
