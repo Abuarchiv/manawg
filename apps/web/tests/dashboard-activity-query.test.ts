@@ -12,8 +12,8 @@ const expenseQueries: Array<{ where: string; orderBy: string }> = [];
 function chain(): unknown {
 	let table: unknown;
 	let where = '';
-	let orderBy = '';
-	const query: Record<string, unknown> = {};
+	// A settled promise with the builder methods on it, so `await query` and `.catch` work.
+	const query = Object.assign(Promise.resolve([]), {} as Record<string, unknown>);
 	for (const name of ['innerJoin', 'leftJoin', 'groupBy', 'having']) query[name] = () => query;
 	query.from = (next: unknown) => {
 		table = next;
@@ -24,17 +24,11 @@ function chain(): unknown {
 		return query;
 	};
 	query.orderBy = (...columns: SQL[]) => {
-		orderBy = columns.map((column) => new PgDialect().sqlToQuery(column).sql).join(', ');
+		const orderBy = columns.map((column) => new PgDialect().sqlToQuery(column).sql).join(', ');
+		if (table === schema.expenses) expenseQueries.push({ where, orderBy });
 		return query;
 	};
-	const settle = () => {
-		if (table === schema.expenses && orderBy) expenseQueries.push({ where, orderBy });
-		return Promise.resolve([]);
-	};
-	query.limit = settle;
-	query.then = (resolve: (value: unknown) => unknown, reject: (err: unknown) => unknown) =>
-		settle().then(resolve, reject);
-	query.catch = (reject: (err: unknown) => unknown) => settle().catch(reject);
+	query.limit = async () => [];
 	return query;
 }
 
