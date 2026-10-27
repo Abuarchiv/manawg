@@ -8,6 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { type ActionNotice, ActionNoticeBanner } from '@/components/wg/ActionNoticeBanner';
 import type { Member } from '@/components/wg/WgContextProvider';
+import type { ExpenseCategory } from '@/features/expenses/expense-categories';
 import type { ReopenedShare } from '@/features/expenses/expense-split-input';
 import { cn } from '@/shared/lib/cn';
 import { useKeyboardOpen } from '@/shared/lib/use-keyboard-open';
@@ -25,8 +26,6 @@ import type { SplitMode } from './expense-form-draft';
 import type { RecurringExpense } from './expense-types';
 import { useExpenseFormDirty } from './use-expense-form-dirty';
 import type { ExpenseFormExtras } from './use-expense-form-extras';
-
-import type { ExpenseCategory } from '@/features/expenses/expense-categories';
 
 const EXPENSE_DESCRIPTION_FIELD_ID = 'expense-description';
 
@@ -193,12 +192,8 @@ export function ExpenseFormSection({
 		<>
 			<Dialog
 				open={open}
-				onOpenChange={(next) => {
-					if (!next) requestClose();
-				}}
-				onOpenChangeComplete={(next) => {
-					if (!next) onExited();
-				}}
+				onOpenChange={(next) => !next && requestClose()}
+				onOpenChangeComplete={(next) => !next && onExited()}
 			>
 				<DialogContent
 					showCloseButton={false}

@@ -169,7 +169,7 @@ export const GET = withWgRoute('announcements GET', async (req, { code }) => {
 		.where(
 			and(
 				inArray(announcementReactions.announcementId, ids),
-				// A moved-out member no longer takes care of anything; "seen" and "ok" stay history.
+				// A moved-out member takes care of nothing; "seen" and "ok" stay history.
 				or(ne(announcementReactions.reaction, 'take'), isNull(wgMembers.deactivatedAt)),
 			),
 		);

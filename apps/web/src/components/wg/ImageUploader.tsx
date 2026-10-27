@@ -55,7 +55,7 @@ export function ImageUploader({
 	useEffect(() => {
 		onUploadingChangeRef.current?.(uploading);
 	}, [uploading]);
-	// A closed form must not stay blocked by an upload it no longer shows.
+	// A closed form must not stay blocked by an upload it does not show.
 	useEffect(() => () => onUploadingChangeRef.current?.(false), []);
 	const [previewOpen, setPreviewOpen] = useState(false);
 	const accessibleImageLabel = imageLabel ?? (purpose === 'expense' ? 'Belegbild' : 'Beitragsbild');

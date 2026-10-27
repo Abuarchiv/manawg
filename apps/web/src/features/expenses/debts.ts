@@ -210,7 +210,7 @@ export function computeOldestDebtAgeDays(
  * list: a single pass over `expenses` collects the unsettled splits of every
  * (debtor, creditor) pair. Payments from the debtor to the creditor pay off
  * that pair's splits oldest first (they never set `settledAt`), so a paid
- * old debt no longer dates the reminder. Returns ages in the same order as
+ * old debt does not date the reminder. Returns ages in the same order as
  * `pairs`.
  */
 export function computeOldestDebtAges(

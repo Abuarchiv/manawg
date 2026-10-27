@@ -57,7 +57,7 @@ test('month balances, Berlin month edges and fewest transfers', () => {
 			balanceCents,
 		]),
 		[
-			// L's settled 300 of "b" no longer counts as open.
+			// L's settled 300 of "b" does not count as open.
 			['L', 2000, 1500, 800],
 			['J', 1000, 1500, -800],
 		],

@@ -31,6 +31,7 @@ import {
 import { manualSplitsFingerprint } from '@/features/expenses/expense-split-input';
 import {
 	buildOptimisticExpense,
+	rollbackExpense,
 	sortExpensesNewestFirst,
 } from '@/features/expenses/optimistic-expense';
 import { withQueuedOccurredAt } from '@/features/expenses/queued-occurred-at';
@@ -107,13 +108,11 @@ export function useExpenseSubmit(
 			amountText: form.amountStr,
 			occurredOn,
 		});
-		if (Object.keys(validationErrors).length > 0) {
+		if (Object.keys(validationErrors).length > 0 || amountEuros === null) {
 			support.setValidationErrors(validationErrors);
 			return;
 		}
-		if (amountEuros === null) return;
-		// Online the server needs the uploaded URL, not the device token; offline the queue
-		// replay uploads the image first.
+		// Online the server needs the uploaded URL; offline the replay uploads the image first.
 		if (imageUrl && isPendingImageToken(imageUrl) && navigator.onLine) {
 			form.setFormError('Beleg wird noch hochgeladen. Bitte kurz warten und nochmal versuchen.');
 			return;
@@ -179,12 +178,13 @@ export function useExpenseSubmit(
 				? { recurringExpenseId: recurringSourceId, expectedRecurringNextDueAt }
 				: {};
 		// Only a changed day is sent: an unchanged one keeps the real time of day.
-		const editedOccurredAt = isEdit
-			? expenses.find((expense) => expense.id === editingExpense.id)?.occurredAt
-			: undefined;
-		const dateChanged =
-			occurredOn !== (editedOccurredAt ? isoToInputDate(editedOccurredAt) : todayInputValue());
-		const occurredAt = dateChanged ? inputDateToIso(occurredOn) : null;
+		const previousExpense = isEdit
+			? (expenses.find((expense) => expense.id === editingExpense.id) ?? null)
+			: null;
+		const shownDay = previousExpense
+			? isoToInputDate(previousExpense.occurredAt)
+			: todayInputValue();
+		const occurredAt = occurredOn !== shownDay ? inputDateToIso(occurredOn) : null;
 		const requestBody = {
 			...(occurredAt ? { occurredAt } : {}),
 			paidByMemberId,
@@ -218,18 +218,8 @@ export function useExpenseSubmit(
 			? `/api/wg/${encodedShareCode}/expenses/${encodeURIComponent(editingExpense.id)}`
 			: `/api/wg/${encodedShareCode}/expenses`;
 		const optimisticId = isEdit ? editingExpense.id : `pending:${idempotencyKey}`;
-		const previousExpense = isEdit
-			? (expenses.find((expense) => expense.id === editingExpense.id) ?? null)
-			: null;
 		const rollbackOptimisticExpense = () =>
-			updateExpenses((current) => {
-				if (!previousExpense) return current.filter((expense) => expense.id !== optimisticId);
-				return current.some((expense) => expense.id === previousExpense.id)
-					? current.map((expense) =>
-							expense.id === previousExpense.id ? previousExpense : expense,
-						)
-					: [previousExpense, ...current];
-			});
+			updateExpenses((current) => rollbackExpense(current, optimisticId, previousExpense));
 		const optimisticExpense = buildOptimisticExpense({
 			id: optimisticId,
 			description: desc,

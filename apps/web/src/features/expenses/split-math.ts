@@ -153,3 +153,41 @@ export function splitValidationErrorCode(
 export function settledAtForOwnShare(debtorMemberId: string, paidByMemberId: string): Date | null {
 	return debtorMemberId === paidByMemberId ? new Date() : null;
 }
+
+type ShareAmount = { debtorMemberId: string; amountCents: number };
+
+/**
+ * Why a PATCH may not replace these splits: a share of a moved-out member must
+ * stay as it is, and so must a share someone else already settled, because
+ * money moved and changing or dropping it would reopen or erase that payment.
+ */
+export function splitChangeViolation(
+	previous: ReadonlyArray<ShareAmount & { settledAt: Date | null }>,
+	next: readonly ShareAmount[],
+	activeDebtorIds: ReadonlySet<string>,
+	paidByMemberId: string,
+): 'member_not_in_wg' | 'expense_has_settled_shares' | null {
+	const previousAmounts = new Map(
+		previous.map((split) => [split.debtorMemberId, split.amountCents]),
+	);
+	const nextAmounts = new Map(next.map((split) => [split.debtorMemberId, split.amountCents]));
+	const changedInactiveSplit =
+		next.some(
+			(split) =>
+				!activeDebtorIds.has(split.debtorMemberId) &&
+				previousAmounts.get(split.debtorMemberId) !== split.amountCents,
+		) ||
+		previous.some(
+			(split) =>
+				!activeDebtorIds.has(split.debtorMemberId) &&
+				nextAmounts.get(split.debtorMemberId) !== split.amountCents,
+		);
+	if (changedInactiveSplit) return 'member_not_in_wg';
+	const changedSettledShare = previous.some(
+		(split) =>
+			split.settledAt !== null &&
+			split.debtorMemberId !== paidByMemberId &&
+			nextAmounts.get(split.debtorMemberId) !== split.amountCents,
+	);
+	return changedSettledShare ? 'expense_has_settled_shares' : null;
+}

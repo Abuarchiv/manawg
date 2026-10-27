@@ -1,5 +1,6 @@
+import { withdrawExpenseChatNotice } from '@/core/activity-feed';
 import { recordAuditEvent } from '@/core/audit';
-import { db, expenseSplits, expenses, wgChatMessages, wgMembers } from '@/core/db';
+import { db, expenseSplits, expenses, wgMembers } from '@/core/db';
 import {
 	assertPrivateImageCanBeAttached,
 	revokePrivateImageIfUnreferenced,
@@ -35,6 +36,7 @@ import {
 } from '@/features/expenses/server/expense-payments';
 import {
 	settledAtForOwnShare,
+	splitChangeViolation,
 	splitValidationErrorCode,
 	validateSplits,
 } from '@/features/expenses/split-math';
@@ -120,17 +122,7 @@ export const DELETE = withWgRoute<{ id: string }>('expense DELETE', async (req, 
 		}
 		await revokePrivateImageIfUnreferenced(tx, wgId, row.imageUrl);
 		// The chat notice "X hat Y eingetragen" would otherwise announce an expense that is gone.
-		await tx
-			.update(wgChatMessages)
-			.set({ deletedAt: new Date(), systemPayload: null })
-			.where(
-				and(
-					eq(wgChatMessages.wgId, wgId),
-					eq(wgChatMessages.systemKind, 'expense.created'),
-					sql`${wgChatMessages.systemPayload}->>'expenseId' = ${id}`,
-					isNull(wgChatMessages.deletedAt),
-				),
-			);
+		await withdrawExpenseChatNotice(tx, wgId, id);
 		return { ok: true as const, row };
 	});
 	if (!deletion.ok) return deletion.response;
@@ -296,33 +288,13 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 						),
 					);
 				const activeDebtorIds = new Set(activeMembers.map((member) => member.id));
-				const previousAmounts = new Map(
-					previousSplits.map((split) => [split.debtorMemberId, split.amountCents]),
+				const violation = splitChangeViolation(
+					previousSplits,
+					splits,
+					activeDebtorIds,
+					row.paidByMemberId,
 				);
-				const nextAmounts = new Map(
-					splits.map((split) => [split.debtorMemberId, split.amountCents]),
-				);
-				const changedInactiveSplit =
-					splits.some(
-						(split) =>
-							!activeDebtorIds.has(split.debtorMemberId) &&
-							previousAmounts.get(split.debtorMemberId) !== split.amountCents,
-					) ||
-					previousSplits.some(
-						(split) =>
-							!activeDebtorIds.has(split.debtorMemberId) &&
-							nextAmounts.get(split.debtorMemberId) !== split.amountCents,
-					);
-				if (changedInactiveSplit) throw new TransactionAbort('member_not_in_wg');
-				// Same rule as delete: a share someone else already settled means money moved,
-				// and changing or dropping it would silently reopen or erase that payment.
-				const changedSettledShare = previousSplits.some(
-					(split) =>
-						split.settledAt !== null &&
-						split.debtorMemberId !== row.paidByMemberId &&
-						nextAmounts.get(split.debtorMemberId) !== split.amountCents,
-				);
-				if (changedSettledShare) throw new TransactionAbort('expense_has_settled_shares');
+				if (violation) throw new TransactionAbort(violation);
 			}
 
 			const updateConditions = [eq(expenses.id, id), eq(expenses.wgId, wgId)];
