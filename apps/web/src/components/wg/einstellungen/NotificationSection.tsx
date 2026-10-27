@@ -10,10 +10,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { Section } from '@/components/wg/einstellungen/Section';
-import { QUIET_HOURS_HINT, parseQuietHour } from '@/core/notifications/notification-preferences';
+import { QUIET_HOURS_HINT } from '@/core/notifications/notification-preferences';
 import { Bell, CheckCircle2 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { NOTIFICATION_PREFERENCES, useNotificationSettings } from './use-notification-settings';
+
+const PUSH_HINT_ID = 'notification-push-hint';
+const DEFAULT_QUIET_START = 22;
+const DEFAULT_QUIET_END = 7;
 
 const HOUR_OPTIONS = Array.from({ length: 24 }, (_, hour) => ({
 	value: hour,
@@ -29,21 +33,20 @@ function HourSelect({
 }: {
 	label: string;
 	ariaLabel: string;
-	value: number | null | undefined;
+	value: number;
 	disabled: boolean;
-	onChange: (hour: number | null) => void;
+	onChange: (hour: number) => void;
 }) {
 	return (
 		<Field className="min-w-0">
 			<FieldTitle>{label}</FieldTitle>
 			<NativeSelect
-				value={value ?? ''}
+				value={value}
 				disabled={disabled}
-				onChange={(e) => onChange(parseQuietHour(e.target.value))}
+				onChange={(e) => onChange(Number(e.target.value))}
 				aria-label={ariaLabel}
 				className="w-full min-w-0 text-base"
 			>
-				<NativeSelectOption value="">Aus</NativeSelectOption>
 				{HOUR_OPTIONS.map((option) => (
 					<NativeSelectOption key={option.label} value={option.value}>
 						{option.label}
@@ -79,7 +82,9 @@ export function NotificationSection({
 	const notificationBusy = pending !== null || loadingStatus;
 	const notificationControlsDisabled = !status || notificationBusy;
 	const pushConfigured = status?.pushConfigured !== false;
-	const quietHoursSet = status?.quietStartHour != null || status?.quietEndHour != null;
+	// Exactly one hint shows at a time; the switch points at it so a screen reader hears why it is off or disabled.
+	const pushHint = !pushConfigured || (!pushActive && (pushBlocked || status?.pushOptIn === true));
+	const quietHoursSet = status?.quietStartHour != null && status?.quietEndHour != null;
 	const feedbackRef = useRef<HTMLDivElement>(null);
 	// The message sits below all switches; a user toggling one at the top would not see it.
 	useEffect(() => {
@@ -114,15 +119,19 @@ export function NotificationSection({
 									Web Push
 									{pushActive && <Bell className="text-muted-foreground h-3.5 w-3.5" aria-hidden />}
 								</FieldTitle>
-								{!pushConfigured && <FieldDescription>Nicht konfiguriert</FieldDescription>}
+								{!pushConfigured && (
+									<FieldDescription id={PUSH_HINT_ID}>Nicht konfiguriert</FieldDescription>
+								)}
 								{pushConfigured && !pushActive && pushBlocked && (
-									<FieldDescription>
+									<FieldDescription id={PUSH_HINT_ID}>
 										Benachrichtigungen sind im Browser blockiert. Erlaube sie in den
 										Website-Einstellungen.
 									</FieldDescription>
 								)}
 								{pushConfigured && !pushActive && !pushBlocked && status.pushOptIn && (
-									<FieldDescription>Auf diesem Gerät noch nicht aktiv</FieldDescription>
+									<FieldDescription id={PUSH_HINT_ID}>
+										Auf diesem Gerät noch nicht aktiv
+									</FieldDescription>
 								)}
 								{pushActive && (
 									<Button
@@ -150,6 +159,7 @@ export function NotificationSection({
 								}
 								aria-busy={pending === 'push'}
 								aria-label="Web Push"
+								{...(pushHint ? { 'aria-describedby': PUSH_HINT_ID } : {})}
 								onCheckedChange={setPushEnabled}
 							/>
 						</Field>
@@ -164,12 +174,19 @@ export function NotificationSection({
 									>
 										<FieldContent>
 											<FieldTitle>{pref.label}</FieldTitle>
-											{pref.description && <FieldDescription>{pref.description}</FieldDescription>}
+											{pref.description && (
+												<FieldDescription id={`notification-pref-${pref.key}-hint`}>
+													{pref.description}
+												</FieldDescription>
+											)}
 										</FieldContent>
 										<Switch
 											checked={status?.[pref.key] ?? true}
 											disabled={notificationControlsDisabled}
 											aria-label={pref.label}
+											{...(pref.description
+												? { 'aria-describedby': `notification-pref-${pref.key}-hint` }
+												: {})}
 											onCheckedChange={() => void togglePreference(pref.key)}
 										/>
 									</Field>
@@ -177,45 +194,49 @@ export function NotificationSection({
 							))}
 						</div>
 
-						<div className="border-border grid min-w-0 max-w-full grid-cols-1 gap-1 border-t pt-2">
-							<div className="flex min-h-11 flex-wrap items-center justify-between gap-2">
-								<div className="text-foreground min-w-0 text-sm font-medium">Ruhezeit</div>
-								{quietHoursSet && (
-									<Button
-										type="button"
-										variant="ghost"
-										onClick={() => void saveQuietHours(null, null)}
+						<div className="border-border grid min-w-0 max-w-full grid-cols-1 gap-2 border-t pt-2">
+							<Field
+								orientation="horizontal"
+								className="min-h-11 py-1 has-[>[data-slot=field-content]]:items-center"
+							>
+								<FieldContent>
+									<FieldTitle>Ruhezeit</FieldTitle>
+									<FieldDescription id="notification-quiet-hint">{QUIET_HOURS_HINT}</FieldDescription>
+								</FieldContent>
+								<Switch
+									checked={quietHoursSet}
+									disabled={notificationControlsDisabled}
+									aria-label="Ruhezeit"
+									aria-describedby="notification-quiet-hint"
+									onCheckedChange={(next) =>
+										void (next
+											? saveQuietHours(DEFAULT_QUIET_START, DEFAULT_QUIET_END)
+											: saveQuietHours(null, null))
+									}
+								/>
+							</Field>
+							{quietHoursSet && (
+								<div className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] gap-2">
+									<HourSelect
+										label="Von"
+										ariaLabel="Ruhezeit von"
+										value={status.quietStartHour ?? DEFAULT_QUIET_START}
 										disabled={notificationControlsDisabled}
-									>
-										Ausschalten
-									</Button>
-								)}
-							</div>
-							<FieldDescription>{QUIET_HOURS_HINT}</FieldDescription>
-							<div className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] gap-2">
-								<HourSelect
-									label="Von"
-									ariaLabel="Ruhezeit von"
-									value={status?.quietStartHour}
-									disabled={notificationControlsDisabled}
-									onChange={(value) =>
-										void (value === null
-											? saveQuietHours(null, null)
-											: saveQuietHours(value, status?.quietEndHour ?? (value + 8) % 24))
-									}
-								/>
-								<HourSelect
-									label="Bis"
-									ariaLabel="Ruhezeit bis"
-									value={status?.quietEndHour}
-									disabled={notificationControlsDisabled}
-									onChange={(value) =>
-										void (value === null
-											? saveQuietHours(null, null)
-											: saveQuietHours(status?.quietStartHour ?? (value + 16) % 24, value))
-									}
-								/>
-							</div>
+										onChange={(value) =>
+											void saveQuietHours(value, status.quietEndHour ?? (value + 8) % 24)
+										}
+									/>
+									<HourSelect
+										label="Bis"
+										ariaLabel="Ruhezeit bis"
+										value={status.quietEndHour ?? DEFAULT_QUIET_END}
+										disabled={notificationControlsDisabled}
+										onChange={(value) =>
+											void saveQuietHours(status.quietStartHour ?? (value + 16) % 24, value)
+										}
+									/>
+								</div>
+							)}
 						</div>
 					</>
 				)}

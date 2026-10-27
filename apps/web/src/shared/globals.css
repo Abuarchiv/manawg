@@ -364,6 +364,22 @@ textarea,
 	}
 }
 
+/* Switch in forced colors: backgrounds and shadows drop out, so track and thumb get a border
+   and the checked track fills with Highlight. */
+@media (forced-colors: active) {
+	[data-slot="switch"]::before {
+		border: 2px solid CanvasText;
+	}
+
+	[data-slot="switch"][data-checked]::before {
+		background-color: Highlight;
+	}
+
+	[data-slot="switch-thumb"] {
+		border: 2px solid CanvasText;
+	}
+}
+
 /* The start header stays put and gains an opaque bar with a hairline when
    scrolling (iOS 27 scroll-edge effect), scroll-driven without JS. Without
    animation-timeline or with reduced motion the bar is always opaque. */

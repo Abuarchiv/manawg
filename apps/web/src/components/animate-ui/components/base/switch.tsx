@@ -9,8 +9,8 @@ function Switch({ className, ...props }: SwitchProps) {
 	return (
 		<SwitchPrimitive
 			className={cn(
-				// No border: it would shrink the 68px track and push the thumb off-centre. Height in px: the thumb is positioned in px, a rem height would drift apart at 200 % text.
-				'group/switch relative isolate peer inline-flex h-[44px] w-[68px] shrink-0 items-center rounded-[22px] border-0 bg-transparent px-0 outline-none before:absolute before:inset-x-0 before:top-1/2 before:h-[30px] before:-translate-y-1/2 before:pointer-events-none before:rounded-[15px] before:bg-(--switch-track) before:content-[""] focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50',
+				// Focus ring sits on the 30px track (outline follows its radius), not on the 44px touch box, where it would float 7px away from the visible shape. No border: it would shrink the 68px track and push the thumb off-centre. Height in px: the thumb is positioned in px, a rem height would drift apart at 200 % text.
+				'group/switch relative isolate peer inline-flex h-[44px] w-[68px] shrink-0 items-center rounded-[22px] border-0 bg-transparent px-0 outline-none before:absolute before:inset-x-0 before:top-1/2 before:h-[30px] before:-translate-y-1/2 before:pointer-events-none before:rounded-[15px] before:bg-(--switch-track) before:content-[""] focus-visible:before:outline-2 focus-visible:before:outline-offset-2 focus-visible:before:outline-ring disabled:cursor-not-allowed disabled:opacity-50',
 				// The thumb's pressed glass paints this colour too.
 				'[--switch-track:var(--input)] data-[checked]:[--switch-track:var(--primary)] dark:data-[unchecked]:[--switch-track:color-mix(in_oklab,var(--muted-foreground)_60%,transparent)]',
 				className,

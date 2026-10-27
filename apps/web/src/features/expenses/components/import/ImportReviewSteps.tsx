@@ -1,6 +1,6 @@
 'use client';
 
-import { Checkbox } from '@/components/animate-ui/components/base/checkbox';
+import { Switch } from '@/components/animate-ui/components/base/switch';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -103,20 +103,24 @@ export function ImportPreviewStep({ headingRef, wizard }: StepProps) {
 				disabled={busy}
 			/>
 			<FieldGroup>
-				<Field orientation="horizontal" className="min-h-11 items-start" data-disabled={busy}>
-					<Checkbox
-						className="relative mt-0.5 after:absolute after:-inset-3"
-						id="import-duplicates"
-						checked={wizard.skipDuplicates}
-						onCheckedChange={(checked) => wizard.setSkipDuplicates(checked === true)}
-						disabled={busy}
-					/>
+				<Field
+					orientation="horizontal"
+					className="min-h-11 items-center justify-between"
+					data-disabled={busy}
+				>
 					<div className="flex flex-col gap-1">
 						<FieldLabel htmlFor="import-duplicates">Duplikate überspringen</FieldLabel>
 						<FieldDescription>
 							Gleiches Datum, Beschreibung, Betrag und zahlende Person.
 						</FieldDescription>
 					</div>
+					<Switch
+						className="shrink-0"
+						id="import-duplicates"
+						checked={wizard.skipDuplicates}
+						onCheckedChange={(checked) => wizard.setSkipDuplicates(checked === true)}
+						disabled={busy}
+					/>
 				</Field>
 			</FieldGroup>
 			<div className="sticky bottom-[var(--app-nav-height,5rem)] flex min-w-0 flex-wrap gap-2 bg-background py-3">
