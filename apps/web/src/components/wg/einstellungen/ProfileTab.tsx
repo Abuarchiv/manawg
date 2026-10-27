@@ -7,19 +7,11 @@ import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { LinkRow } from '@/components/wg/einstellungen/LinkRow';
 import { MemberNameForm } from '@/components/wg/einstellungen/MemberNameForm';
-import { PayPalConnect } from '@/components/wg/einstellungen/PayPalConnect';
 import { Section } from '@/components/wg/einstellungen/Section';
 import { WgNameSection } from '@/components/wg/einstellungen/WgNameSection';
-import { isPayPalSdkEnabled } from '@/core/infra/security-headers';
 import { haptic } from '@/shared/lib/haptics';
 import { SUPPORT_MAILTO } from '@/shared/lib/support-mailto';
 import { Monitor, Moon, Sun } from 'lucide-react';
-
-// Without PayPal credentials, do not show a half-finished PayPal section.
-const PAYPAL_ENABLED = isPayPalSdkEnabled(
-	process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID,
-	process.env.NEXT_PUBLIC_PAYPAL_PARTNER_ATTRIBUTION_ID,
-);
 
 const THEMES = [
 	{ value: 'light', label: 'Hell', icon: Sun },
@@ -77,12 +69,6 @@ export function ProfileTab({ memberName, wgName, shareCode, memberId }: ProfileT
 			</Section>
 
 			{isAdmin && <WgNameSection wgName={wgName} shareCode={shareCode} memberId={memberId} />}
-
-			{PAYPAL_ENABLED && (
-				<Section title="PayPal">
-					<PayPalConnect shareCode={shareCode} memberId={memberId} />
-				</Section>
-			)}
 
 			<Section title="Hilfe">
 				<ul>

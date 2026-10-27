@@ -123,7 +123,7 @@ export interface RouteEnv {
 	/** The fake `db` behind `@/core/db`. */
 	db: Record<string, Fn>;
 	requireWgMember: Fn;
-	payments: { withExpensePaymentLock: Fn; hasCapturingExpensePayment: Fn };
+	payments: { withExpensePaymentLock: Fn };
 }
 
 /** Table stand-ins behind the mocked `@/core/db`; fake queries compare them by identity. */
@@ -155,7 +155,6 @@ export function installWgRouteMocks(): RouteEnv {
 		payments: {
 			withExpensePaymentLock: (async (_wgId: string, work: (tx: unknown) => unknown) =>
 				work({})) as Fn,
-			hasCapturingExpensePayment: async () => false,
 		},
 	};
 	mock.module('drizzle-orm', { namedExports: predicateOperators });
@@ -163,7 +162,6 @@ export function installWgRouteMocks(): RouteEnv {
 	mock.module('@/features/expenses/server/settle-notify', {
 		namedExports: {
 			notifySettlement: async () => undefined,
-			announcePayPalSettlement: async () => undefined,
 		},
 	});
 	mock.module('@/core/db', { namedExports: { ...tables, db: delegate(() => env.db) } });
@@ -206,11 +204,7 @@ export function installWgRouteMocks(): RouteEnv {
 	});
 	mock.module('@/features/expenses/server/expense-payments', {
 		namedExports: {
-			PAYPAL_ORDER_TTL_MS: 3 * 60 * 60 * 1000,
-			hasActiveExpensePayment: async () => false,
 			loadCompletedExpensePayments: async () => [],
-			hasCapturingExpensePayment: (...args: never[]) =>
-				env.payments.hasCapturingExpensePayment(...args),
 			withExpensePaymentLock: (...args: never[]) => env.payments.withExpensePaymentLock(...args),
 		},
 	});

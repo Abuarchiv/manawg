@@ -14,14 +14,14 @@
 - [x] 1.6 Wire `NextIntlClientProvider`, `lang` and the skip link in `src/app/layout.tsx`; verify the German `<head>` snapshot of `/`, `/neu`, `/registrieren` and `/entdecken/<module>` equals `main`
 - [x] 1.7 Add optional `locale` to money, amount and time helpers, the English `parseEuroAmount` branch and `relativeTimeMessage`/`weekLabelMessage`; verify existing tests unchanged and new en cases pass
 - [x] 1.8 Add additive `mutationError`, mark the D11 codes `// i18n-ignore` and replace the 7 literal sites with the constants; verify the unit suite passes without test edits
-- [x] 1.9 Migrate the pilot consumers (`load-errors.ts`, `LoadErrorBanner.tsx`, `api/paypal/return/route.ts`); verify `pnpm knip` is clean
+- [x] 1.9 Migrate the pilot consumers (`load-errors.ts`, `LoadErrorBanner.tsx`, `api/email/unsubscribe/route.ts`); verify `pnpm knip` is clean
 - [x] 1.10 Add the `i18n-literal` (TypeScript AST) and `i18n-catalog-import` rules and regenerate the baseline; verify `[architecture] OK` and only `i18n-literal` plus the two size entries are baselined
 - [x] 1.11 Add `tests/i18n-catalog.test.ts`, `e2e/support/i18n.ts` and `e2e/i18n-en-shell-smoke.spec.ts`; verify both pass and `e2e/pwa.spec.ts` stays German
 - [x] 1.12 Record bundle and HTML gzip deltas for `/` and `/wg/[code]`; verify `bundle:check` passes and apply the nested provider fallback if the HTML delta exceeds 30 KB
 
 ## 2. Persistence and language switch (one PR)
 
-- [ ] 2.1 Add `wg_members.locale` with check constraint and migration `0036`; verify it applies on throwaway Postgres, `pnpm db:check` passes and a second `drizzle-kit generate` has no diff
+- [ ] 2.1 Add `wg_members.locale` with check constraint and migration `0037`; verify it applies on throwaway Postgres, `pnpm db:check` passes and a second `drizzle-kit generate` has no diff
 - [ ] 2.2 Store the request locale on WG creation, join and claim; verify with route unit tests
 - [ ] 2.3 Add `PATCH /api/account { locale }` (all memberships and account metadata) and `options.data.locale` on sign-up; verify 200, 400 and 401 cases
 - [ ] 2.4 Add `LanguageSwitch` to `ProfileTab.tsx` and `LegalLinks.tsx`, with fixture answer; verify `e2e/i18n-en-switch.spec.ts` (persistence, signed in and out, offline disabled, browser language)
@@ -45,7 +45,7 @@
 
 - [ ] 4.1 Package M push with per-recipient locale and SW fallback; verify a dispatch test with one de and one en recipient
 - [ ] 4.2 Package N mails, unsubscribe page and Supabase templates; verify both locales render and German template tests are unchanged
-- [ ] 4.3 Package O export, PayPal description, chat payload `amountCents`; verify English CSV uses `,` and `.` and German CSV is unchanged
+- [ ] 4.3 Package O export and chat payload `amountCents`; verify English CSV uses `,` and `.` and German CSV is unchanged
 
 ## 5. Audit and activity
 

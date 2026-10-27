@@ -6,8 +6,8 @@ Tailwind 4 with shadcn/base-ui, Playwright.
 
 Further reading: [architecture](docs/architecture.md), [release checklist](docs/release-checklist.md),
 [external release prerequisites](docs/releases/external-prerequisites.md),
-[database recovery](docs/database-recovery.md), [support runbook](docs/support-runbook.md),
-[PayPal setup](docs/paypal-setup.md). Agent rules are in `AGENTS.md`.
+[database recovery](docs/database-recovery.md), [support runbook](docs/support-runbook.md).
+Agent rules are in `AGENTS.md`.
 
 ## Layout
 
@@ -58,9 +58,8 @@ In production `SUPABASE_SERVICE_ROLE_KEY` is also required (account deletion, Su
 Optional features degrade when unset and are reported as `[env] DEGRADED ...`: Upstash rate
 limiting (`UPSTASH_REDIS_REST_*`, fails open outside production), Web Push (`VAPID_*`,
 `NEXT_PUBLIC_VAPID_PUBLIC_KEY`), image uploads
-(`IMAGE_STORAGE_PROVIDER` plus its provider variables). PayPal stays off while all `PAYPAL_*`
-values are empty. Every variable is described in `apps/web/.env.example`. Never commit or print
-env values.
+(`IMAGE_STORAGE_PROVIDER` plus its provider variables). Every variable is described in
+`apps/web/.env.example`. Never commit or print env values.
 
 ### Database migrations
 
@@ -180,7 +179,7 @@ answers `503 cron_secret_missing`, with a wrong header `401`.
 
 | Path | Schedule | Does |
 | --- | --- | --- |
-| `/api/cron/maintenance` | `45 4 * * *` | Purges expired `idempotency_responses`, retries pending account deletions, deletes tombstoned private images from Supabase Storage, reconciles stale PayPal `capturing` payments (when PayPal is configured). |
+| `/api/cron/maintenance` | `45 4 * * *` | Purges expired `idempotency_responses`, retries pending account deletions, deletes tombstoned private images from Supabase Storage. |
 | `/api/cron/recurring-advance` | `10 6 * * *` | Turns due, unpaused recurring-expense templates into expenses (max 500 per run, batches of 10) and advances them. |
 | `/api/cron/chore-reminders` | `0 8 * * *` | Push reminders for assigned chores due today or overdue up to 7 days (18 h throttle per chore, max 500). |
 | `/api/cron/event-reminders` | `0 9 * * *` | Push reminders for calendar events (including recurring occurrences) starting tomorrow (Berlin day). |

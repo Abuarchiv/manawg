@@ -97,7 +97,6 @@ function freshState(initialDueAt: Date, intervalMonths: number, anchorAt: Date |
 		lockPatchApplied: false,
 		lockReads: 0,
 		lockOrder: [] as string[],
-		capturing: false,
 		wgExists: true,
 		loggedErrors: [] as unknown[],
 		memberQueries: [] as string[][],
@@ -318,7 +317,6 @@ mock.module('@/core/notifications/notification-dispatch', {
 });
 mock.module('@/features/expenses/server/expense-payments', {
 	namedExports: {
-		hasCapturingExpensePayment: async () => state.capturing,
 		withExpensePaymentLock: async (_id: string, operation: (tx: unknown) => unknown) => {
 			if (!state.lockPatchApplied && opts.patchBeforeLock) {
 				state.lockPatchApplied = true;
@@ -391,23 +389,6 @@ function harness(overrides: Partial<Options> = {}) {
 async function withCronSecret(run: () => Promise<void>) {
 	return withEnv({ CRON_SECRET: 'test-cron-secret' }, run);
 }
-
-test('recurring charge waits for PayPal capture and advances on retry', async (t) => {
-	t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-09-25T12:00:00.000Z') });
-	const { state, get } = harness();
-	const dueAtBeforeCapture = state.template.nextDueAt.toISOString();
-	state.capturing = true;
-	await withCronSecret(async () => {
-		const blocked = await get();
-		assert.equal(blocked.status, 200);
-		assert.equal(state.expenses.length, 0);
-		assert.equal(state.template.nextDueAt.toISOString(), dueAtBeforeCapture);
-		state.capturing = false;
-		const retried = await get();
-		assert.equal(retried.status, 200);
-		assert.equal(state.expenses.length, 1);
-	});
-});
 
 test('a concurrent schedule edit wins while the inserted charge is still notified and counted', async (t) => {
 	t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-09-25T12:00:00.000Z') });

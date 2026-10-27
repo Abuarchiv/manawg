@@ -17,7 +17,6 @@ import {
 	occurredAtSchema,
 } from '@/features/expenses/expense-schemas';
 import { serializeRecurringExpense } from '@/features/expenses/recurring-expenses';
-import { hasCapturingExpensePayment } from '@/features/expenses/server/expense-payments';
 import { insertExpenseWithSplits } from '@/features/expenses/server/expenses';
 import { advanceRecurringDue } from '@/features/expenses/server/recurring-booking';
 import { and, eq } from 'drizzle-orm';
@@ -142,7 +141,6 @@ function existingOutcome(expense: unknown): ExpenseCreateOutcome {
  * an existing booking answers instead, and the template must still be due, unpaused and
  * locked for the rest of the transaction. The booking moves the template on to its next due
  * date in the same transaction, so a lost follow-up request cannot leave the charge due.
- * Aborts while a PayPal capture is in flight.
  */
 export async function writeExpense(
 	tx: DbTransaction,
@@ -169,9 +167,6 @@ export async function writeExpense(
 			throw new TransactionAbort('recurring_expense_already_advanced');
 		}
 		template = locked;
-	}
-	if (await hasCapturingExpensePayment(tx, input.wgId)) {
-		throw new TransactionAbort('paypal_payment_pending');
 	}
 	const created = await insertExpenseWithSplits(tx, {
 		wgId: input.wgId,
@@ -221,7 +216,6 @@ export function isRecurringDueUniqueViolation(error: unknown): boolean {
 export function expenseCreateAbortResponse(error: unknown): NextResponse | null {
 	if (!(error instanceof TransactionAbort)) return null;
 	if (error.code === 'image_removed') return conflict('image_removed', 'image_removed');
-	if (error.code === 'paypal_payment_pending') return conflict('paypal_payment_pending');
 	if (error.code === 'recurring_expense_not_found') return notFound('recurring_expense_not_found');
 	if (error.code === 'abo_paused') return badRequest('abo_paused');
 	if (error.code === 'recurring_expense_already_advanced') {

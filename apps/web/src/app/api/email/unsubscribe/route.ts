@@ -1,10 +1,9 @@
 import { rateLimitResponse } from '@/core/http/api-errors';
-import {
-	type UnsubscribeKind,
-	disableMailKind,
-	verifyUnsubscribeToken,
-} from '@/core/mail/unsubscribe';
+import { requestLocale } from '@/core/i18n/request-locale';
+import { serverT } from '@/core/i18n/server-t';
+import { disableMailKind, verifyUnsubscribeToken } from '@/core/mail/unsubscribe';
 import { checkRateLimit, clientIpKey, unsubscribeLimiter } from '@/core/rate-limit';
+import { type Locale, htmlLang } from '@/shared/i18n/locale';
 import { type NextRequest, NextResponse } from 'next/server';
 
 const PAGE_HEADERS = {
@@ -14,29 +13,9 @@ const PAGE_HEADERS = {
 	'X-Robots-Tag': 'noindex',
 };
 
-const COPY: Record<
-	UnsubscribeKind,
-	{ title: string; question: string; explain: string; done: string }
-> = {
-	statement: {
-		title: 'Monatsabrechnung abbestellen',
-		question: 'Monatsabrechnung abbestellen?',
-		explain:
-			'Du bekommst die Abrechnung am Monatsanfang dann nicht mehr per E-Mail. In der App bleibt sie abrufbar.',
-		done: 'Du bekommst keine Monatsabrechnung mehr per E-Mail. Unter Einstellungen in der App kannst du sie wieder einschalten.',
-	},
-	reminders: {
-		title: 'Erinnerungen abbestellen',
-		question: 'Erinnerungen an offene Beträge abbestellen?',
-		explain:
-			'Mitbewohner können dich dann nicht mehr per E-Mail oder Push an offene Beträge erinnern. Deine Salden bleiben in der App sichtbar.',
-		done: 'Du bekommst keine Erinnerungen mehr. Unter Einstellungen in der App kannst du sie wieder einschalten.',
-	},
-};
-
-function page(title: string, body: string): NextResponse {
+function page(locale: Locale, title: string, body: string): NextResponse {
 	const html = `<!DOCTYPE html>
-<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>${title}</title>
+<html lang="${htmlLang(locale)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>${title}</title>
 <style>body{margin:0;background:#f5f5f5;font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#0a0a0a}main{box-sizing:border-box;max-width:480px;margin:48px auto;padding:32px;background:#fff;border:1px solid #e5e5e5}h1{margin:0 0 12px;font-size:24px;letter-spacing:-0.02em}p{margin:0 0 24px;font-size:15px;line-height:1.6;color:#404040}button{padding:13px 20px;border:0;border-radius:10px;background:#171717;color:#fafafa;font:500 15px Inter,sans-serif;cursor:pointer}small{display:block;margin-top:24px;font-size:12px;color:#737373}</style></head>
 <body><main><div style="font-weight:600;margin-bottom:24px">ManaWG</div>${body}</main></body></html>`;
 	return new NextResponse(html, { status: 200, headers: PAGE_HEADERS });
@@ -59,10 +38,12 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 	const token = req.nextUrl.searchParams.get('t') ?? '';
 	const parsed = verifyUnsubscribeToken(token);
 	if (!parsed) return invalid();
-	const copy = COPY[parsed.kind];
+	const locale = requestLocale(req);
+	const t = serverT(locale, 'server-pages');
 	return page(
-		copy.title,
-		`<h1>${copy.question}</h1><p>${copy.explain}</p><form method="post" action="/api/email/unsubscribe?t=${encodeURIComponent(token)}"><input type="hidden" name="List-Unsubscribe" value="One-Click"><button type="submit">Abbestellen</button></form><small>Du kannst es jederzeit unter Einstellungen wieder einschalten.</small>`,
+		locale,
+		t(`unsubscribe.${parsed.kind}.title`),
+		`<h1>${t(`unsubscribe.${parsed.kind}.question`)}</h1><p>${t(`unsubscribe.${parsed.kind}.explain`)}</p><form method="post" action="/api/email/unsubscribe?t=${encodeURIComponent(token)}"><input type="hidden" name="List-Unsubscribe" value="One-Click"><button type="submit">${t('unsubscribe.submit')}</button></form><small>${t('unsubscribe.hint')}</small>`,
 	);
 }
 
@@ -73,5 +54,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 	const parsed = verifyUnsubscribeToken(req.nextUrl.searchParams.get('t') ?? '');
 	if (!parsed) return invalid();
 	await disableMailKind(parsed.memberId, parsed.kind);
-	return page('Abbestellt', `<h1>Abbestellt.</h1><p>${COPY[parsed.kind].done}</p>`);
+	const locale = requestLocale(req);
+	const t = serverT(locale, 'server-pages');
+	return page(
+		locale,
+		t('unsubscribe.doneTitle'),
+		`<h1>${t('unsubscribe.doneHeading')}</h1><p>${t(`unsubscribe.${parsed.kind}.done`)}</p>`,
+	);
 }

@@ -171,10 +171,6 @@ export function useAusgabenPage() {
 		return members.find((m) => m.id === id)?.name ?? '?';
 	}
 
-	function memberPayPalMerchantId(id: string): string | null {
-		return members.find((m) => m.id === id)?.paypalMerchantId ?? null;
-	}
-
 	const [expanded, setExpanded] = useState<Set<string>>(new Set());
 	function toggleExpand(id: string): void {
 		setExpanded((prev) => {
@@ -370,7 +366,6 @@ export function useAusgabenPage() {
 		resolveConflict,
 		clearPendingCreateRequests,
 		memberName,
-		memberPayPalMerchantId,
 		stable: {
 			toggleExpand: stableToggleExpand,
 			deleteExpense: stableDelete,

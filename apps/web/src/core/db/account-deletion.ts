@@ -1,6 +1,6 @@
 import { logApiError } from '@/core/infra/observability';
 import { and, asc, eq, isNull, sql } from 'drizzle-orm';
-import { accountDeletions, expensePayments, wgMembers, wgs } from './schema';
+import { accountDeletions, wgMembers, wgs } from './schema';
 import { type DbTransaction, withFreshTransaction, withTransaction } from './transaction';
 import { TransactionAbort } from './transaction-abort';
 
@@ -20,26 +20,6 @@ export async function lockAccount(tx: DbTransaction, authUserId: string): Promis
 	await tx.execute(
 		sql`select pg_advisory_xact_lock(hashtextextended('manawg:account-membership:v1:' || ${authUserId}, 0))`,
 	);
-}
-
-/** Call while holding the WG payment lock before removing the payer's retry identity. */
-export async function hasCapturingMemberPayment(
-	tx: DbTransaction,
-	wgId: string,
-	memberId: string,
-): Promise<boolean> {
-	const [payment] = await tx
-		.select({ id: expensePayments.id })
-		.from(expensePayments)
-		.where(
-			and(
-				eq(expensePayments.wgId, wgId),
-				eq(expensePayments.fromMemberId, memberId),
-				eq(expensePayments.status, 'capturing'),
-			),
-		)
-		.limit(1);
-	return Boolean(payment);
 }
 
 export async function readAccountDeletionStatusWithFreshConnection(authUserId: string) {

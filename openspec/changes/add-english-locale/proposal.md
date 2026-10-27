@@ -6,12 +6,12 @@ ManaWG only speaks German. Many WGs share a flat with international students and
 
 - Every person can choose German or English. The choice is per person, not per WG; German stays the default and its output stays byte-identical.
 - Locale resolution for rendering: `manawg_locale` cookie, then `Accept-Language`, then German. Routes stay German and unprefixed.
-- `wg_members.locale` (`'de' | 'en'`, default `'de'`) stores the language for server senders. Migration `0036`.
+- `wg_members.locale` (`'de' | 'en'`, default `'de'`) stores the language for server senders. Migration `0037`.
 - `PATCH /api/account { locale }` stores the choice for the signed-in person across all their memberships.
 - A language switch in the profile settings and in the entry footer.
 - All UI text, metadata, aria labels, toasts and error copy come from typed de/en message catalogs.
 - Dates, numbers, currency, CSV export and amount input follow the locale; `Europe/Berlin` stays authoritative for WG days.
-- Push, mails, unsubscribe and PayPal pages, CSV labels and the activity feed render in the recipient's language.
+- Push, mails, the unsubscribe page, CSV labels and the activity feed render in the recipient's language.
 - New audit rows store their sentence parameters so the feed can render them in the reader's language; old rows keep their German text.
 - Offline queue and chore status stop using German text as logic; legacy stored German prefixes keep working.
 - New gates: an `i18n-literal` architecture ratchet against hard-coded UI text, a catalog parity test, and English E2E specs.

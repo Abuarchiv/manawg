@@ -81,7 +81,6 @@ mock.module('@/core/rate-limit', {
 });
 mock.module('@/features/expenses/server/expense-payments', {
 	namedExports: {
-		hasCapturingExpensePayment: async () => false,
 		loadCompletedExpensePayments: async () => [],
 		withExpensePaymentLock: (...args: [string, (tx: unknown) => Promise<unknown>]) =>
 			current.withExpensePaymentLock(...args),

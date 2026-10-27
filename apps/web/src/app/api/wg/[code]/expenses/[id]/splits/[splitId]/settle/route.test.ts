@@ -194,7 +194,6 @@ mock.module('@/features/expenses/server/settle-notify', {
 });
 mock.module('@/features/expenses/server/expense-payments', {
 	namedExports: {
-		hasCapturingExpensePayment: async () => false,
 		loadCompletedExpensePayments: async () => state.payments,
 		withExpensePaymentLock: async (_wgId: string, run: (tx: unknown) => unknown) => {
 			state.lockActive = true;

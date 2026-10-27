@@ -2,7 +2,6 @@
 	"violations": [
 		"i18n-literal src/app/api/account/route.ts",
 		"i18n-literal src/app/api/cron/recurring-advance/route.ts",
-		"i18n-literal src/app/api/email/unsubscribe/route.ts",
 		"i18n-literal src/app/api/wg/[code]/absences/[id]/route.ts",
 		"i18n-literal src/app/api/wg/[code]/absences/route.ts",
 		"i18n-literal src/app/api/wg/[code]/announcements/[id]/comments/[commentId]/route.ts",
@@ -167,8 +166,6 @@
 		"i18n-literal src/components/wg/einstellungen/OfflineQueueItem.tsx",
 		"i18n-literal src/components/wg/einstellungen/OfflineQueueSection.tsx",
 		"i18n-literal src/components/wg/einstellungen/PasswordChangeRow.tsx",
-		"i18n-literal src/components/wg/einstellungen/PayPalConnect.tsx",
-		"i18n-literal src/components/wg/einstellungen/PayPalDisconnectDialog.tsx",
 		"i18n-literal src/components/wg/einstellungen/ProfileTab.tsx",
 		"i18n-literal src/components/wg/einstellungen/WgNameSection.tsx",
 		"i18n-literal src/components/wg/einstellungen/offline-queue-server-checks.ts",
@@ -285,12 +282,10 @@
 		"i18n-literal src/features/expenses/components/debts/CashPaymentList.tsx",
 		"i18n-literal src/features/expenses/components/debts/DebtRow.tsx",
 		"i18n-literal src/features/expenses/components/debts/DebtSummary.tsx",
-		"i18n-literal src/features/expenses/components/debts/PayPalPaymentButton.tsx",
 		"i18n-literal src/features/expenses/components/debts/RemindButton.tsx",
 		"i18n-literal src/features/expenses/components/debts/ReminderHistory.tsx",
 		"i18n-literal src/features/expenses/components/debts/SettlementDebtRow.tsx",
 		"i18n-literal src/features/expenses/components/debts/SettlementReviewDialog.tsx",
-		"i18n-literal src/features/expenses/components/debts/paypal-errors.ts",
 		"i18n-literal src/features/expenses/components/debts/settlement-errors.ts",
 		"i18n-literal src/features/expenses/components/debts/use-debt-settlement.ts",
 		"i18n-literal src/features/expenses/components/import/ImportHistory.tsx",
@@ -331,7 +326,6 @@
 		"i18n-literal src/features/expenses/server/import-commit.ts",
 		"i18n-literal src/features/expenses/server/import-undo.ts",
 		"i18n-literal src/features/expenses/server/manual-payment.ts",
-		"i18n-literal src/features/expenses/server/paypal-reconcile.ts",
 		"i18n-literal src/features/expenses/server/recurring-booking.ts",
 		"i18n-literal src/features/expenses/server/recurring-template-writes.ts",
 		"i18n-literal src/features/expenses/statement-mail.ts",
@@ -380,7 +374,7 @@
 		"i18n-literal src/shared/lib/support-mailto.ts"
 	],
 	"fileSize": {
-		"src/core/db/schema.ts": 984,
+		"src/core/db/schema.ts": 971,
 		"e2e/account-delete-db.spec.ts": 1156
 	}
 }

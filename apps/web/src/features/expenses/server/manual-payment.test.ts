@@ -77,10 +77,9 @@ const chainedSplits = [
 
 function datasets(
 	caller: unknown[],
-	capturing: unknown[] = [],
 	activePair: unknown[] = [{ id: A }, { id: B }, { id: C }].slice(0, 2),
 ) {
-	return [caller, members, chainedExpenses, chainedSplits, [], activePair, capturing];
+	return [caller, members, chainedExpenses, chainedSplits, [], activePair];
 }
 
 const input = { fromMemberId: B, toMemberId: A, currency: 'EUR' as const, expectedNetCents: 1000 };
@@ -95,22 +94,18 @@ test('a netted debt is recorded as one completed manual payment for the whole ne
 	assert.equal(inserted[1]?.entityId, 'payment-1');
 	assert.match(String(inserted[1]?.summary), /^Ben hat eine Barzahlung/);
 	assert.deepEqual(
-		{ ...inserted[0], providerOrderId: undefined, expiresAt: undefined, completedAt: undefined },
+		{ ...inserted[0], completedAt: undefined },
 		{
 			wgId: WG,
 			fromMemberId: B,
 			toMemberId: A,
 			amountCents: 1000,
 			currency: 'EUR',
-			provider: 'manual',
-			providerOrderId: undefined,
-			payeeMerchantId: 'manual',
 			status: 'completed',
-			expiresAt: undefined,
 			completedAt: undefined,
 		},
 	);
-	assert.match(String(inserted[0]?.providerOrderId), /^manual:/);
+	assert.ok(inserted[0]?.completedAt instanceof Date);
 });
 
 test('a net amount that changed since the review records nothing', async () => {
@@ -128,13 +123,6 @@ test('a debt that does not exist records nothing', async () => {
 	assert.equal(inserted.length, 0);
 });
 
-test('a running PayPal capture blocks the payment', async () => {
-	const { tx, inserted } = fakeTx(datasets([{ id: B }], [{ id: 'capturing' }]));
-	const result = await recordCashPayment(tx, WG, B, input);
-	assert.equal(result.context?.kind, 'blocked');
-	assert.equal(inserted.length, 0);
-});
-
 test('a moved-out caller is refused', async () => {
 	const { tx, inserted } = fakeTx(datasets([]));
 	const result = await recordCashPayment(tx, WG, B, input);
@@ -144,7 +132,7 @@ test('a moved-out caller is refused', async () => {
 });
 
 test('a moved-out counterparty is refused', async () => {
-	const { tx, inserted } = fakeTx(datasets([{ id: B }], [], [{ id: B }]));
+	const { tx, inserted } = fakeTx(datasets([{ id: B }], [{ id: B }]));
 	const result = await recordCashPayment(tx, WG, B, input);
 	assert.equal(result.context?.kind, 'member_not_in_wg');
 	assert.equal(inserted.length, 0);
@@ -169,19 +157,13 @@ test('the request body is strict and needs a positive whole amount', () => {
 const PAYMENT = '55555555-5555-4555-8555-555555555555';
 const manualRow = { fromMemberId: B, toMemberId: A, amountCents: 1000, currency: 'EUR' };
 
-/** Selects in the order voidCashPayment asks: caller, payment row, capturing check. */
-function voidDatasets(
-	row: Record<string, unknown> | null,
-	capturing: unknown[] = [],
-	caller = [{ id: A }],
-) {
-	return [caller, row ? [row] : [], capturing];
+/** Selects in the order voidCashPayment asks: caller, payment row. */
+function voidDatasets(row: Record<string, unknown> | null, caller = [{ id: A }]) {
+	return [caller, row ? [row] : []];
 }
 
 test('the receiving member voids a completed manual payment and the audit row names it', async () => {
-	const { tx, inserted, updated } = fakeTx(
-		voidDatasets({ ...manualRow, provider: 'manual', status: 'completed' }),
-	);
+	const { tx, inserted, updated } = fakeTx(voidDatasets({ ...manualRow, status: 'completed' }));
 	const result = await voidCashPayment(tx, WG, A, PAYMENT, 'Anna');
 	assert.equal(result.status, 200);
 	assert.deepEqual(updated, [{ status: 'voided' }]);
@@ -198,29 +180,12 @@ test('the receiving member voids a completed manual payment and the audit row na
 	});
 });
 
-test('voiding is refused for outsiders, PayPal payments, voided payments and running captures', async () => {
+test('voiding is refused for outsiders, missing and voided payments', async () => {
 	const cases = [
-		[
-			'not_party',
-			voidDatasets({ ...manualRow, provider: 'manual', status: 'completed' }, [], [{ id: C }]),
-			C,
-			403,
-		],
-		['not_found', voidDatasets({ ...manualRow, provider: 'paypal', status: 'completed' }), A, 404],
+		['not_party', voidDatasets({ ...manualRow, status: 'completed' }, [{ id: C }]), C, 403],
 		['not_found', voidDatasets(null), A, 404],
-		[
-			'already_voided',
-			voidDatasets({ ...manualRow, provider: 'manual', status: 'voided' }),
-			A,
-			409,
-		],
-		[
-			'blocked',
-			voidDatasets({ ...manualRow, provider: 'manual', status: 'completed' }, [{ id: 'c' }]),
-			A,
-			409,
-		],
-		['member_deactivated', voidDatasets(null, [], []), A, 401],
+		['already_voided', voidDatasets({ ...manualRow, status: 'voided' }), A, 409],
+		['member_deactivated', voidDatasets(null, []), A, 401],
 	] as const;
 	for (const [kind, data, caller, status] of cases) {
 		const { tx, inserted, updated } = fakeTx(data.map((rows) => [...rows]));

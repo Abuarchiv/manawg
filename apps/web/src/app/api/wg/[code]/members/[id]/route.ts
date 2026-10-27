@@ -1,6 +1,6 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, pushSubscriptions, wgMembers, wgs } from '@/core/db';
-import { hasCapturingMemberPayment, lockActiveAccountMember } from '@/core/db/account-deletion';
+import { lockActiveAccountMember } from '@/core/db/account-deletion';
 import { releaseMemberChores } from '@/core/db/member-departure';
 import { availableMemberName, releaseMemberName } from '@/core/db/member-names';
 import { LIMITS } from '@/core/db/schema';
@@ -56,7 +56,6 @@ export const GET = withWgRoute<{ id: string }>('members/[id] GET', async (req, {
 			id: wgMembers.id,
 			name: wgMembers.name,
 			deactivatedAt: wgMembers.deactivatedAt,
-			paypalMerchantId: wgMembers.paypalMerchantId,
 		})
 		.from(wgMembers)
 		.where(and(eq(wgMembers.id, id), eq(wgMembers.wgId, wgId)))
@@ -104,7 +103,6 @@ export const GET = withWgRoute<{ id: string }>('members/[id] GET', async (req, {
 			id: target.id,
 			name: target.name,
 			active: target.deactivatedAt === null,
-			...(auth.member.memberId === target.id ? { paypalMerchantId: target.paypalMerchantId } : {}),
 		},
 		openBalances,
 	});
@@ -154,7 +152,6 @@ export const PATCH = withWgRoute<{ id: string }>(
 					name: wgMembers.name,
 					role: wgMembers.role,
 					deactivatedAt: wgMembers.deactivatedAt,
-					paypalMerchantId: wgMembers.paypalMerchantId,
 				})
 				.from(wgMembers)
 				.where(and(eq(wgMembers.id, id), eq(wgMembers.wgId, wgId)))
@@ -183,13 +180,6 @@ export const PATCH = withWgRoute<{ id: string }>(
 				return { ok: false as const, response: forbidden('admin_required', 'admin_required') };
 			}
 
-			if (
-				active === false &&
-				target.deactivatedAt === null &&
-				(await hasCapturingMemberPayment(tx, wgId, id))
-			) {
-				return { ok: false as const, response: conflict('paypal_payment_pending') };
-			}
 			let returnName: string | null = null;
 			const activeChanged = active !== undefined && active !== (target.deactivatedAt === null);
 			const nameChanged = name !== undefined && name !== target.name;
@@ -233,9 +223,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 				...(nameChanged ? { name } : {}),
 				...(returnName ? { name: returnName } : {}),
 			};
-			let updated:
-				| Pick<typeof wgMembers.$inferSelect, 'id' | 'name' | 'deactivatedAt' | 'paypalMerchantId'>
-				| undefined;
+			let updated: Pick<typeof wgMembers.$inferSelect, 'id' | 'name' | 'deactivatedAt'> | undefined;
 			try {
 				// A savepoint keeps the transaction usable when the unique index catches a race.
 				[updated] = await tx.transaction((savepoint) =>
@@ -247,7 +235,6 @@ export const PATCH = withWgRoute<{ id: string }>(
 							id: wgMembers.id,
 							name: wgMembers.name,
 							deactivatedAt: wgMembers.deactivatedAt,
-							paypalMerchantId: wgMembers.paypalMerchantId,
 						}),
 				);
 			} catch (updateErr) {
@@ -305,9 +292,6 @@ export const PATCH = withWgRoute<{ id: string }>(
 				id: result.member.id,
 				name: result.member.name,
 				active: result.member.deactivatedAt === null,
-				...(auth.member.memberId === result.member.id
-					? { paypalMerchantId: result.member.paypalMerchantId }
-					: {}),
 			},
 		});
 	},

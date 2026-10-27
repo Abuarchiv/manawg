@@ -2,17 +2,14 @@ import 'server-only';
 import { recordAuditEvent } from '@/core/audit';
 import { db, expenseImports, expenseSplits, expenses, wgMembers } from '@/core/db';
 import { type Prepared, bodyCodec, withIdempotentWrite } from '@/core/db/idempotent-write';
-import { type DbTransaction, TransactionAbort } from '@/core/db/transaction';
+import type { DbTransaction } from '@/core/db/transaction';
 import {
 	type NotificationDispatchWarning,
 	dispatchNotificationSafely,
 } from '@/core/notifications/notification-dispatch';
 import { formatEuroCents } from '@/core/utils/money';
 import { checkPaidByGuard } from '@/features/expenses/paid-by-guard';
-import {
-	hasCapturingExpensePayment,
-	withExpensePaymentLock,
-} from '@/features/expenses/server/expense-payments';
+import { withExpensePaymentLock } from '@/features/expenses/server/expense-payments';
 import {
 	buildDuplicateKey,
 	claimStorageKey,
@@ -173,9 +170,6 @@ function isCommitResult(value: unknown): value is CommitResult {
  * row that documents where they came from, would both be wrong balances.
  */
 async function writeImport(tx: DbTransaction, input: CommitInput) {
-	if (await hasCapturingExpensePayment(tx, input.wg.id)) {
-		throw new TransactionAbort('paypal_payment_pending');
-	}
 	const [imp] = await tx
 		.insert(expenseImports)
 		.values({

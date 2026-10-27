@@ -41,7 +41,7 @@ Without one plan, parallel sessions would collide in the same few files and the 
 1. **Every user-visible string is available in English (en-GB).** That covers:
    - UI, metadata, toasts, aria labels and error messages;
    - offline copy and push;
-   - all mails, the unsubscribe and PayPal HTML pages;
+   - all mails and the unsubscribe HTML page;
    - CSV section labels and the SW fallback.
 
    The exceptions are listed in section 3.
@@ -147,7 +147,7 @@ Without one plan, parallel sessions would collide in the same few files and the 
 
 ### DB
 
-- The next migration number is `0036`. The schema files are listed in `drizzle.config.ts`.
+- PayPal is removed from the app by a parallel change (`paypal-entfernen-20261027`, migration `0036_remove_paypal.sql`). This change builds on it, so every PayPal file, route and string is out of scope and the next migration number is `0037`. The schema files are listed in `drizzle.config.ts`.
 - `drizzle(pool, { schema })` only gets `./schema` (`core/db/index.ts:5,69`).
 - `wgMembersRelations` references `pushSubscriptions` (`schema.ts:863`).
 - `wg_members` already uses `check()` (`schema.ts:120`).
@@ -342,7 +342,7 @@ Without one plan, parallel sessions would collide in the same few files and the 
 
 ### D4. Locale storage (server senders)
 
-**Column:** `wg_members.locale text NOT NULL DEFAULT 'de'` with `CHECK (locale in ('de','en'))` (migration `0036`, D13).
+**Column:** `wg_members.locale text NOT NULL DEFAULT 'de'` with `CHECK (locale in ('de','en'))` (migration `0037`, D13).
 
 **Why this table**
 
@@ -491,7 +491,7 @@ Without one plan, parallel sessions would collide in the same few files and the 
 | Client component, or a directive-less component rendered in RSC | `const t = useTranslations('chores')` |
 | Async Server Component, `generateMetadata` | `const t = await getTranslations('meta')`. Static `metadata` exports become `generateMetadata`. |
 | Pure TS that produces copy (error mappers, status helpers, offline copy, `chore-completion.ts`, word-producing time helpers) | Returns a `Message`. Components render it with `useMessage()`. The modules stay pure. Their tests assert keys and values. |
-| Server senders (push, mail, export, feeds, unsubscribe and PayPal HTML) | `serverT(locale, namespace)` from `src/core/i18n/server-t.ts`, which wraps `createTranslator` and the catalog. |
+| Server senders (push, mail, export, feeds, unsubscribe HTML) | `serverT(locale, namespace)` from `src/core/i18n/server-t.ts`, which wraps `createTranslator` and the catalog. |
 | Client code outside React (offline sync, `invite-share.ts`) | Stores or returns a `Message`. Text is rendered at display time. |
 | Plurals | ICU `{count, plural, one {# Tag} other {# Tage}}`. `shared/lib/plural.ts` is removed in Phase 6 when knip reports it unused. |
 | Shared error copy | **Additive (Builder decision).** Phase 1 adds `mutationError(subjectKey, code, map, fallbackKey, retrySubjectKey?): Message` next to the unchanged `mutationErrorMessage`. The shared buckets become `common.errors.*`. The German pattern `"{subject}: {detail}"` is one message, `common.errors.withSubject`, with nested `Message` values. Each package migrates its own callers. Phase 6 deletes `mutationErrorMessage` and the `*_MESSAGE` constants. |
@@ -552,8 +552,6 @@ Without one plan, parallel sessions would collide in the same few files and the 
 | Account-deleted mail | `core/mail/account-deleted.ts` | `sendAccountDeletedMail(authUserId, email, locale)`. The request path (`api/account/route.ts:86`) passes `requestLocale(req)`. The cron retry (`api/cron/maintenance/route.ts:122`) passes `'de'`. Builder decision: a rare path, and the member rows are already gone. |
 | Brand mail shell | `core/mail/brand-mail.ts` | `lang` attribute and footer strings by locale. Impressum and Datenschutz stay German pages, labelled "(German)" in English. |
 | Unsubscribe HTML | `app/api/email/unsubscribe/route.ts` | The member's `locale`, found through `memberId` from the token (`core/mail/unsubscribe.ts`). Falls back to `requestLocale(req)`. |
-| PayPal return HTML | `app/api/paypal/return/route.ts` | `requestLocale(req)`. This is the Phase 1 pilot. |
-| PayPal order description | `app/api/wg/[code]/paypal/order/route.ts:280` | The payer's request locale. |
 | Activity and dashboard feeds | `composition/activity.ts`, `activity-audit.ts`, `dashboard-feed.ts` (served by `/api/wg/[code]/activity` and `/dashboard`) | `requestLocale(req)`. Items keep their shape and gain `selfText?: string` (D12). |
 | Supabase auth mails | `supabase/templates/*.html`, `subjects.json`, `<root>/scripts/supabase-auth-templates.mjs` | `{{ if eq .Data.locale "en" }}…{{ else }}…{{ end }}` in each body and subject. Subjects already use Go templating (`{{ .Token }}`). [verify that `.Data` exposes `user_metadata` and that conditionals work in hosted subjects] If not, the fallback is a bilingual subject `"<de> / <en>"`. Pushing to the hosted project is **owner only**. |
 
@@ -606,7 +604,7 @@ Without one plan, parallel sessions would collide in the same few files and the 
   - The API fallbacks in `members/[id]/route.ts:84,91` and `reminders/balances/route.ts:51` become `null`.
   - Clients render `common.unknownPerson`. Client-side fallbacks (`pinnwand/page.tsx:23`, chat components, `ExpenseSplitFieldset.tsx:83`, `CommentRow.tsx`) use the same key.
 
-### D13. Migration `0036_member_locale.sql`
+### D13. Migration `0037_member_locale.sql`
 
 Generated by `drizzle-kit generate` from the `schema.ts` change (D4). Expected SQL:
 
@@ -803,7 +801,7 @@ Binding for all packages. The file `docs/brand/glossary-en.md` is created in Pha
 | Old audit rows stay German for English readers | Mixed activity feed | Accepted and documented. New rows are fully localized. |
 | Audit metadata leaks content | Privacy regression | Only parameters already in the summary. `content*` keys banned (D12). Review checklist item in Phase 5. |
 | English quality varies across many agents | Unprofessional product | Glossary and D16 are inputs to every package. Phase 6 runs one consistency review over all `en/*.ts`. |
-| Files over 400 lines after adding hooks or metadata | Lint red | Watch list: `expenses/[id]/route.ts` 393, `paypal/capture/route.ts` 392, `use-expense-form.ts` 390, `InventoryFormDrawer.tsx` 388, `ExpenseFormSection.tsx` 387, `offline-sync.ts` 387, `announcements/route.ts` 385, `EventEditModal.tsx` 380, `CalendarMonth.tsx` 377, `use-ausgaben-page.ts` 377, `AboForm.tsx` 371, `NeuClient.tsx` 368, `PayPalConnect.tsx` 367, `PublicApp.tsx` 363, `notifications.ts` 360, `fixtures/api.ts` 347. Split along responsibilities and keep the entry file. |
+| Files over 400 lines after adding hooks or metadata | Lint red | Watch list: `expenses/[id]/route.ts` 393, `use-expense-form.ts` 390, `InventoryFormDrawer.tsx` 388, `ExpenseFormSection.tsx` 387, `offline-sync.ts` 387, `announcements/route.ts` 385, `EventEditModal.tsx` 380, `CalendarMonth.tsx` 377, `use-ausgaben-page.ts` 377, `AboForm.tsx` 371, `NeuClient.tsx` 368, `PayPalConnect.tsx` 367, `PublicApp.tsx` 363, `notifications.ts` 360, `fixtures/api.ts` 347. Split along responsibilities and keep the entry file. |
 | `schema.ts` may not grow | Lint red in Phase 2 | Comment trim, net 0 lines (D4). |
 | Supabase template conditionals unsupported | Auth mails only German | Bilingual fallback subject and body (D10). |
 | Existing English-browser users see English after rollout | Surprise | One-tap switch. The owner can drop Accept-Language (D3). |
@@ -879,7 +877,7 @@ Binding for all packages. The file `docs/brand/glossary-en.md` is created in Pha
   - additive `relativeTimeMessage` and `weekLabelMessage`.
 - **Pilot consumers, so knip and the provider are exercised:**
   - `src/core/guards/load-errors.ts` and `src/components/wg/LoadErrorBanner.tsx` (`Message` plus `useMessage`);
-  - `src/app/api/paypal/return/route.ts` (`requestLocale` plus `serverT`; moved here from O).
+  - `src/app/api/email/unsubscribe/route.ts` (`requestLocale` plus `serverT`, German HTML unchanged; the PayPal return page it replaced is removed with PayPal). Package N adds the member locale from the token.
 - `scripts/check-architecture.mjs` (`i18n-literal` on the AST, `i18n-catalog-import`) and `scripts/architecture-baseline.json` (regenerated).
 - `tests/i18n-catalog.test.ts`, `e2e/support/i18n.ts` and `e2e/i18n-en-shell-smoke.spec.ts`.
 - The `common` and `meta` catalogs.
@@ -908,7 +906,7 @@ Binding for all packages. The file `docs/brand/glossary-en.md` is created in Pha
 **Owns**
 
 - `src/core/db/schema.ts`: column, check, comment trim (D4).
-- `drizzle/0036_*.sql`, the snapshot and the journal.
+- `drizzle/0037_*.sql`, the snapshot and the journal.
 - `src/app/api/account/route.ts` (the re-export only) and the new `src/app/api/account/locale-patch.ts`.
 - The locale lines only (Phase 5 edits these files later):
   - the two `insert(wgMembers)` calls in `src/app/api/wg/route.ts` and `src/app/api/wg/[code]/members/route.ts`;
@@ -941,8 +939,8 @@ May run **in parallel with Phase 3**. Phase 3 packages must not touch the files 
 | Pkg | Namespaces | Owns (globs) | DE lines (approx.) |
 |---|---|---|---|
 | A shell | `shell`, `home`, `activity` (client part) | `components/app/**` (except `LanguageSwitch.tsx`), `components/ui/**`, `components/animate-ui/**`, `components/brand/**`, `components/wg/*` (root files only, not `einstellungen/`; `LoadErrorBanner.tsx` after Phase 1), `app/wg/[code]/{layout,page,loading,error}.tsx`, `app/wg/[code]/_components/**`, `app/wg/[code]/_hooks/**`, `app/wg/[code]/aktivitaet/**`, `app/error.tsx`, `app/not-found.tsx`, `app/wg/not-found.tsx`, `app/global-error.tsx` (inline map, D6), `composition/{dashboard-today,dashboard-week-agenda,dashboard-insights,dashboard-balances,dashboard-data,dashboard-spend,activity-reminders,dashboard-links}.ts` | about 300 |
-| B expenses | `expenses`, `expenses-form` | `features/expenses/**` except `components/{debts,import,abos,statement}/**`, `import-*.ts`, `ocr.ts`, `abo-*.ts`, `recurring-*.ts`, `monthly-statement*.ts`, `statement-mail.ts`, `statement-recipients.ts`, `debt-*.ts`, `debts.ts`, `settlement-scope.ts`, `paypal-settlement.ts`, `reminders.ts`, `hooks/{use-abos-page,use-reminders-page}.ts`, `server/**`; plus `app/wg/[code]/ausgaben/**` | about 250 |
-| C debts | `expenses-debts` | `features/expenses/components/debts/**` (incl. `settlement-errors.ts`, `paypal-errors.ts`), `features/expenses/{reminders,debts,settlement-scope,paypal-settlement}.ts`, `features/expenses/debt-*.ts`, `features/expenses/hooks/use-reminders-page.ts`, `app/wg/[code]/mahnungen/**` | about 110 |
+| B expenses | `expenses`, `expenses-form` | `features/expenses/**` except `components/{debts,import,abos,statement}/**`, `import-*.ts`, `ocr.ts`, `abo-*.ts`, `recurring-*.ts`, `monthly-statement*.ts`, `statement-mail.ts`, `statement-recipients.ts`, `debt-*.ts`, `debts.ts`, `settlement-scope.ts`, `reminders.ts`, `hooks/{use-abos-page,use-reminders-page}.ts`, `server/**`; plus `app/wg/[code]/ausgaben/**` | about 250 |
+| C debts | `expenses-debts` | `features/expenses/components/debts/**` (incl. `settlement-errors.ts`), `features/expenses/{reminders,debts,settlement-scope}.ts`, `features/expenses/debt-*.ts`, `features/expenses/hooks/use-reminders-page.ts`, `app/wg/[code]/mahnungen/**` | about 110 |
 | D import | `expenses-import` | `features/expenses/components/import/**`, `features/expenses/import-*.ts`, `features/expenses/ocr.ts`, `app/wg/[code]/import/**` | about 100 |
 | E abos and statement | `expenses-abos`, `statement` | `features/expenses/components/{abos,statement}/**`, `features/expenses/{abo-*,recurring-*,monthly-statement*}.ts` (not `server/`), `features/expenses/hooks/use-abos-page.ts`, `app/wg/[code]/{abos,abrechnung}/**` | about 90 |
 | F chores | `chores` | `features/chores/**` except `server/**`, `app/wg/[code]/putzen/**`; plus the `action` consumer lines in `app/wg/[code]/_components/TodayRow.tsx` (D11, after A is merged) | about 160 |
@@ -977,7 +975,7 @@ Package-specific acceptance, on top of the shared criteria:
 |---|---|---|
 | M push | `core/notifications/**` (incl. the client modules `push-subscribe.ts`, `notification-warning.ts`, `notification-preferences.ts`, `push-priming.ts`, `web-push-errors.ts`), `public/sw.js` (fallback text, `VERSION` bump), the `amountFormatted` line in `features/expenses/server/import-commit.ts` | Dispatch selects `locale` and formats once per locale. Unit test: two recipients get de and en. German texts in `notifications.test.ts` are unchanged. |
 | N mail | `core/mail/**`, `core/auth/welcome-mail.ts` plus its locale argument in `app/auth/callback/route.ts` and `app/api/auth/code-verify/route.ts`, `features/expenses/{statement-mail,statement-recipients}.ts`, `features/expenses/server/{statement-*,reminder-mail}.ts`, `app/api/email/unsubscribe/**`, the mail call lines in `app/api/wg/[code]/invitations/route.ts`, `app/api/account/route.ts:86` and `app/api/cron/maintenance/route.ts:122`, `supabase/templates/**`, `<root>/scripts/supabase-auth-templates.mjs` | Every mail renders in both locales. `templates.test.ts` German values are unchanged and an en case is added. Templates are validated locally with `supabase/templates/preview.mjs`. Pushing them to the hosted project is "Owner only". |
-| O export, PayPal, chat writer | `composition/export*.ts` (incl. `export-queries-*.ts`), `app/api/wg/[code]/export/**`, the description line in `app/api/wg/[code]/paypal/order/route.ts:280`, `features/expenses/server/{expenses,paypal-reconcile}.ts` (chat payload `amountCents`, fallback name) | English CSV uses `,` and `.` while German output is unchanged (unit test). Section labels are localized. New chat rows carry `amountCents` and `currency`. |
+| O export, chat writer | `composition/export*.ts` (incl. `export-queries-*.ts`), `app/api/wg/[code]/export/**`, `features/expenses/server/expenses.ts` (chat payload `amountCents`) | English CSV uses `,` and `.` while German output is unchanged (unit test). Section labels are localized. New chat rows carry `amountCents` and `currency`. |
 
 ### Phase 5: Audit and activity (1 agent, 1–2 PRs, needs Phase 4)
 
@@ -1038,7 +1036,7 @@ The defaults in this document apply until they are answered. None of them blocks
 7. **The Brandbook addenda (D16).**
 8. **Owner actions:**
    - pushing the bilingual Supabase auth templates to the hosted project (Phase 4 N);
-   - the production release with migration `0036` (`release-production.yml`).
+   - the production release with migration `0037` (`release-production.yml`), after the PayPal removal with `0036`.
 
 ## 11. Items to verify early
 
