@@ -7,6 +7,8 @@
 
 export { createRecurringAdvanceRetry, needsManualOfflineResolution } from './offline-replay-rules';
 export {
+	OFFLINE_QUEUE_EVENT,
+	OFFLINE_SYNCED_EVENT,
 	adoptLocalAccount,
 	countOfflineActions,
 	discardQueuedEntry,
@@ -15,6 +17,7 @@ export {
 	isOfflineActionQueued,
 	offlineQueueReplaySupported,
 	readOfflineQueue,
+	removeQueuedAction,
 	updateOfflineQueue,
 } from './offline-store';
 export { getSyncedCountForWg, syncOfflineActions } from './offline-sync';

@@ -8,12 +8,9 @@ import type { WgSummary } from '@/components/wg/WgContextProvider';
 import { LinkRow } from '@/components/wg/einstellungen/LinkRow';
 import { OfflineQueueSection } from '@/components/wg/einstellungen/OfflineQueueSection';
 import { Section } from '@/components/wg/einstellungen/Section';
-import {
-	exportErrorMessage,
-	readResponseErrorCode,
-} from '@/components/wg/einstellungen/settings-errors';
+import { exportErrorMessage } from '@/components/wg/einstellungen/settings-errors';
 import type { SessionMember } from '@/core/auth/local-account';
-import { noteSessionExpiry } from '@/core/infra/api-client';
+import { noteSessionExpiry, readApiErrorCode } from '@/core/infra/api-client';
 import { cn } from '@/shared/lib/cn';
 import { memberContextHeader } from '@/shared/lib/member-header';
 import { Download, Upload } from 'lucide-react';
@@ -60,7 +57,7 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 			const res = await fetch(url, { headers: memberContextHeader(identity.memberId) });
 			noteSessionExpiry(res);
 			if (!res.ok) {
-				setExportError(exportErrorMessage(res.status, await readResponseErrorCode(res)));
+				setExportError(exportErrorMessage(res.status, (await readApiErrorCode(res)) || null));
 				return;
 			}
 			const blob = await res.blob();

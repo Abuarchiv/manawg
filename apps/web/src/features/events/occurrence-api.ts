@@ -1,5 +1,5 @@
+import { createIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
-import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 
 interface OccurrencePayload {
 	title: string;
@@ -25,14 +25,17 @@ export async function postOccurrenceChange<E>(
 	payload: OccurrencePayload | null,
 ) {
 	const requestId = JSON.stringify([eventId, occurrenceStartsAt, payload]);
-	const idempotencyKey = pendingKeys.get(requestId) ?? createOfflineIdempotencyKey();
-	if (idempotencyKey) pendingKeys.set(requestId, idempotencyKey);
+	const idempotencyKey = pendingKeys.get(requestId) ?? createIdempotencyKey();
+	// Without a key a lost answer could not be replayed, so nothing is sent.
+	if (!idempotencyKey)
+		return { ok: false as const, status: 0, error: 'idempotency_key_unavailable' };
+	pendingKeys.set(requestId, idempotencyKey);
 	const res = await apiFetch<{ event: E; created: E | null }>(
 		`${eventsBaseUrl}/${encodeURIComponent(eventId)}/occurrence`,
 		{
 			method: 'POST',
 			memberId,
-			...(idempotencyKey ? { headers: { 'Idempotency-Key': idempotencyKey } } : {}),
+			headers: { 'Idempotency-Key': idempotencyKey },
 			body: JSON.stringify(
 				payload
 					? {
@@ -50,7 +53,7 @@ export async function postOccurrenceChange<E>(
 			),
 		},
 	);
-	// An answer from the server (also a refusal) ends the attempt; a lost one keeps the key.
-	if (res.ok || res.status >= 400) pendingKeys.delete(requestId);
+	// A definitive answer (also a refusal) ends the attempt; a lost, rate-limited or failed one keeps the key.
+	if (res.ok || shouldReleaseIdempotencyKey(res.status, res.error)) pendingKeys.delete(requestId);
 	return res;
 }

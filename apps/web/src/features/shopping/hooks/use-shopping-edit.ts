@@ -1,6 +1,6 @@
+import { createIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
 import { readOfflineQueue } from '@/core/offline/offline-client';
-import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import type { ShoppingItem } from '@/features/shopping/components/shopping-types';
 import {
 	shoppingActionErrorMessage,
@@ -43,7 +43,7 @@ export function useShoppingEdit(ctx: ShoppingActionContext): EditShoppingItem {
 			if (waitingForSync || isPending(item.id) || togglingRef.current.has(item.id)) {
 				return 'Dieser Artikel wartet noch auf Synchronisierung. Bearbeiten geht danach.';
 			}
-			const idempotencyKey = createOfflineIdempotencyKey();
+			const idempotencyKey = createIdempotencyKey();
 			if (!item.updatedAt || !idempotencyKey) {
 				void load(true);
 				return 'Der Artikelstand wird aktualisiert. Versuche es gleich erneut.';

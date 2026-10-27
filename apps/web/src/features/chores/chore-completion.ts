@@ -4,12 +4,11 @@ import {
 	isReadOnlyMode,
 	isSessionExpired,
 } from '@/core/http/error-codes';
+import { createIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
 import { enqueueOfflineAction } from '@/core/offline/offline-client';
-import {
-	createOfflineIdempotencyKey,
-	createQueuedChoreCompletion,
-} from '@/core/offline/offline-queue';
+import { keyUnavailableMessage } from '@/core/offline/offline-copy';
+import { createQueuedChoreCompletion } from '@/core/offline/offline-queue';
 import { formatShortDate, parseTimestamp } from '@/core/utils/time';
 
 /** The occurrence a member confirms as done: the server rejects it once date or assignee moved. */
@@ -58,14 +57,14 @@ export function completionRequestKey(chore: Pick<ChoreOccurrence, 'id' | 'nextDu
 /**
  * Completes one chore occurrence. Network failures queue the completion offline with the
  * same idempotency key, so the later replay deduplicates against an attempt that did reach
- * the server. The key survives 5xx and 429 answers for the same reason.
+ * the server. The key survives 5xx, 429 and in-flight (`idempotency_response_pending`) answers for the same reason.
  */
 export async function submitChoreCompletion(
 	ctx: ChoreCompletionContext,
 	chore: ChoreOccurrence,
 ): Promise<ChoreCompletionOutcome> {
 	const requestKey = completionRequestKey(chore);
-	const idempotencyKey = ctx.keys.get(requestKey) ?? createOfflineIdempotencyKey();
+	const idempotencyKey = ctx.keys.get(requestKey) ?? createIdempotencyKey();
 	if (!idempotencyKey) return { kind: 'key_unavailable' };
 	ctx.keys.set(requestKey, idempotencyKey);
 	// The tap time travels with the request and with the queued action, so a replay hours later
@@ -112,7 +111,7 @@ export async function submitChoreCompletion(
 		return { kind: 'queued' };
 	}
 
-	if (result.status < 500 && result.status !== 429) ctx.keys.delete(requestKey);
+	if (shouldReleaseIdempotencyKey(result.status, result.error)) ctx.keys.delete(requestKey);
 	if (result.status === 404 && result.error === 'chore_not_found') return { kind: 'not_found' };
 	if (
 		(result.status === 404 || result.status === 409) &&
@@ -142,7 +141,7 @@ export interface ChoreCompletionFeedback {
 }
 
 export const CHORE_COMPLETION_COPY = {
-	keyUnavailable: 'Die Erledigung konnte nicht sicher gespeichert werden. Versuche es erneut.',
+	keyUnavailable: keyUnavailableMessage('Die Erledigung', 'gespeichert'),
 	queued:
 		'Erledigung offline vorgemerkt. Nächster Termin und Zuständigkeit werden nach der Synchronisierung bestätigt.',
 	queueBlocked:

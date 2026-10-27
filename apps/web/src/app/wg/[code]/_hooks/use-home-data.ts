@@ -5,7 +5,7 @@ import { getBerlinWeekWindow } from '@/composition/dashboard-insights';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { subscribeVisibility, useOnlineStatus } from '@/core/hooks/use-online-status';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
-import { getSyncedCountForWg } from '@/core/offline/offline-client';
+import { OFFLINE_SYNCED_EVENT, getSyncedCountForWg } from '@/core/offline/offline-client';
 import { berlinDayKey } from '@/core/utils/berlin-day';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { type SerializedWgEvent, expandRecurrence } from '@/features/events/events';
@@ -70,11 +70,11 @@ export function useHomeData(shareCode: string, identity: HomeDataIdentity) {
 			if (getSyncedCountForWg(event, shareCode) > 0) load();
 		};
 		window.addEventListener('focus', onShow);
-		window.addEventListener('manawg:offline-synced', onSynced);
+		window.addEventListener(OFFLINE_SYNCED_EVENT, onSynced);
 		return () => {
 			unsubscribeVisibility();
 			window.removeEventListener('focus', onShow);
-			window.removeEventListener('manawg:offline-synced', onSynced);
+			window.removeEventListener(OFFLINE_SYNCED_EVENT, onSynced);
 		};
 	}, [load, shareCode]);
 

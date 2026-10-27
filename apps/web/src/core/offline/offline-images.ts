@@ -1,8 +1,13 @@
 'use client';
 
-import { REQUEST_TIMEOUT_MS, anySignal, noteSessionExpiry } from '@/core/infra/api-client';
+import { createIdempotencyKey } from '@/core/http/idempotency-key';
+import {
+	REQUEST_TIMEOUT_MS,
+	anySignal,
+	noteSessionExpiry,
+	readApiErrorCode,
+} from '@/core/infra/api-client';
 import { EXPECTED_MEMBER_ID_HEADER } from '@/shared/lib/member-header';
-import { createOfflineIdempotencyKey } from './offline-queue';
 
 const DB_NAME = 'manawg-offline-images';
 const STORE_NAME = 'images';
@@ -29,21 +34,6 @@ interface SignResponse {
 	publicUrl: string;
 	maxFileSize: number;
 	uploadHeaders?: Record<string, string>;
-}
-
-interface ErrorResponse {
-	error?: string;
-	code?: string;
-}
-
-/** Error code of a failed /api/upload/sign response, or '' when the body is unreadable. */
-export async function readUploadSignError(response: Response): Promise<string> {
-	try {
-		const body = (await response.clone().json()) as ErrorResponse;
-		return body.error ?? body.code ?? '';
-	} catch {
-		return '';
-	}
 }
 
 function createPendingImageToken(id: string): string {
@@ -111,7 +101,7 @@ export async function storePendingImage(input: {
 	const now = Date.now();
 	// Local IndexedDB key only: prefer UUID, but keep browsers without Web Crypto usable.
 	const suffix =
-		createOfflineIdempotencyKey() ?? `${now.toString(36)}-${Math.random().toString(36).slice(2)}`;
+		createIdempotencyKey() ?? `${now.toString(36)}-${Math.random().toString(36).slice(2)}`;
 	const id = `${input.shareCode}:${input.purpose}:${now}:${suffix}`;
 	const record: PendingImageRecord = {
 		id,
@@ -170,7 +160,7 @@ export async function uploadPendingImageToken(
 	});
 	noteSessionExpiry(sigRes);
 	if (!sigRes.ok) {
-		const error = await readUploadSignError(sigRes);
+		const error = await readApiErrorCode(sigRes);
 		throw new Error(
 			error ? `sign-failed:${sigRes.status}:${error}` : `sign-failed:${sigRes.status}`,
 		);

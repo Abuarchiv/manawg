@@ -6,6 +6,8 @@ import { Spinner } from '@/components/ui/spinner';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { subscribeConnectivity, useOnlineStatus } from '@/core/hooks/use-online-status';
 import {
+	OFFLINE_QUEUE_EVENT,
+	OFFLINE_SYNCED_EVENT,
 	countOfflineActions,
 	getSyncedCountForWg,
 	needsManualOfflineResolution,
@@ -90,12 +92,12 @@ export function OfflineBanner() {
 		};
 		update();
 		const unsubscribeConnectivity = subscribeConnectivity(updateFromEvent);
-		window.addEventListener('manawg:offline-queue', updateFromEvent);
-		window.addEventListener('manawg:offline-synced', onSynced);
+		window.addEventListener(OFFLINE_QUEUE_EVENT, updateFromEvent);
+		window.addEventListener(OFFLINE_SYNCED_EVENT, onSynced);
 		return () => {
 			unsubscribeConnectivity();
-			window.removeEventListener('manawg:offline-queue', updateFromEvent);
-			window.removeEventListener('manawg:offline-synced', onSynced);
+			window.removeEventListener(OFFLINE_QUEUE_EVENT, updateFromEvent);
+			window.removeEventListener(OFFLINE_SYNCED_EVENT, onSynced);
 		};
 	}, [identity, wg.shareCode, toast]);
 

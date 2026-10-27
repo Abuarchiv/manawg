@@ -28,18 +28,7 @@ export interface OfflineAction {
 	lastError?: string;
 }
 
-const OFFLINE_IDEMPOTENCY_KEY_PATTERN =
-	/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-export function isOfflineIdempotencyKey(value: unknown): value is string {
-	return typeof value === 'string' && OFFLINE_IDEMPOTENCY_KEY_PATTERN.test(value);
-}
-
-export function createOfflineIdempotencyKey(): string | null {
-	try {
-		const key = crypto.randomUUID();
-		return isOfflineIdempotencyKey(key) ? key : null;
-	} catch {
-		return null;
-	}
-}
+export {
+	createIdempotencyKey as createOfflineIdempotencyKey,
+	isIdempotencyKey as isOfflineIdempotencyKey,
+} from '@/core/http/idempotency-key';

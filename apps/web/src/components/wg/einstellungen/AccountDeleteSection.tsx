@@ -16,12 +16,9 @@ import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { Section } from '@/components/wg/einstellungen/Section';
-import {
-	PAYPAL_PAYMENT_PENDING_MESSAGE,
-	readResponseErrorCode,
-} from '@/components/wg/einstellungen/settings-errors';
+import { PAYPAL_PAYMENT_PENDING_MESSAGE } from '@/components/wg/einstellungen/settings-errors';
 import { RATE_LIMITED_MESSAGE } from '@/core/http/error-codes';
-import { noteSessionExpiry } from '@/core/infra/api-client';
+import { noteSessionExpiry, readApiErrorCode } from '@/core/infra/api-client';
 import { UserX } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
@@ -76,7 +73,7 @@ export function AccountDeleteSection() {
 				setStage('confirm');
 				return;
 			}
-			if (res.status === 409 && (await readResponseErrorCode(res)) === 'paypal_payment_pending') {
+			if (res.status === 409 && (await readApiErrorCode(res)) === 'paypal_payment_pending') {
 				setError(PAYPAL_PAYMENT_PENDING_MESSAGE);
 				setStage('confirm');
 				return;

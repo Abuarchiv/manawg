@@ -25,6 +25,7 @@ import {
 	writeDraft,
 } from '@/core/offline/drafts';
 import {
+	OFFLINE_QUEUE_EVENT,
 	needsManualOfflineResolution,
 	readOfflineQueue,
 	syncOfflineActions,
@@ -75,8 +76,8 @@ export function OfflineQueueSection({
 
 	useEffect(() => {
 		refresh();
-		window.addEventListener('manawg:offline-queue', refresh);
-		return () => window.removeEventListener('manawg:offline-queue', refresh);
+		window.addEventListener(OFFLINE_QUEUE_EVENT, refresh);
+		return () => window.removeEventListener(OFFLINE_QUEUE_EVENT, refresh);
 	}, [refresh]);
 
 	async function remove(item: OfflineAction): Promise<void> {

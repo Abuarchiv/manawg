@@ -1,3 +1,8 @@
+import {
+	type PendingIdempotentRequest,
+	resolveIdempotencyKey,
+	shouldReleaseIdempotencyKey,
+} from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
 import {
 	type NotificationWarning,
@@ -13,7 +18,7 @@ import {
 import {
 	enqueueOfflineAction,
 	isOfflineActionQueued,
-	updateOfflineQueue,
+	removeQueuedAction,
 } from '@/core/offline/offline-client';
 import {
 	DRAFT_CLEANUP_FAILED_MESSAGE,
@@ -21,12 +26,9 @@ import {
 	OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
 	OFFLINE_SAVED_NOTICE,
 	QUEUE_EDIT_ALREADY_SENT_MESSAGE,
+	keyUnavailableMessage,
 } from '@/core/offline/offline-copy';
-import {
-	type OfflineActionType,
-	createOfflineIdempotencyKey,
-	createQueuedChore,
-} from '@/core/offline/offline-queue';
+import { type OfflineActionType, createQueuedChore } from '@/core/offline/offline-queue';
 import { berlinDayKey } from '@/core/utils/berlin-day';
 import { dueAtForDay } from '@/features/chores/chore-due-date';
 import { choreCreateErrorMessage } from '@/features/chores/chore-errors';
@@ -99,7 +101,7 @@ export function useChoreCreate(
 	const draftKey = buildDraftKey(wg.shareCode, identity.memberId, 'chore');
 	const appliedPrefillRef = useRef<string | null>(null);
 	const titleInputRef = useRef<HTMLInputElement>(null);
-	const choreCreateRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
+	const choreCreateRequestRef = useRef<PendingIdempotentRequest | null>(null);
 	const draftHydrated = useChoreDraftSync({
 		draftKey,
 		memberId: identity.memberId,
@@ -171,14 +173,11 @@ export function useChoreCreate(
 		});
 	}, [prefillTitle, suggestChore]);
 
-	async function clearEditedQueueItem(expectedTypes?: OfflineActionType[]): Promise<boolean> {
+	async function clearEditedQueueItem(
+		expectedTypes?: readonly OfflineActionType[],
+	): Promise<boolean> {
 		if (!queueEditId) return true;
-		const saved = await updateOfflineQueue((actions) => {
-			const queued = actions.find((item) => item.id === queueEditId);
-			if (!queued || (expectedTypes && !expectedTypes.includes(queued.type))) return null;
-			return actions.filter((item) => item.id !== queueEditId);
-		});
-		if (!saved) return false;
+		if (!(await removeQueuedAction(queueEditId, expectedTypes))) return false;
 		setQueueEditId(null);
 		return true;
 	}
@@ -232,13 +231,9 @@ export function useChoreCreate(
 			assignedMemberId: newAssigned || null,
 			nextDueAt: firstDueAt,
 		});
-		const pendingRequest = choreCreateRequestRef.current;
-		const idempotencyKey =
-			pendingRequest?.fingerprint === fingerprint
-				? pendingRequest.key
-				: createOfflineIdempotencyKey();
+		const idempotencyKey = resolveIdempotencyKey(choreCreateRequestRef.current, fingerprint);
 		if (!idempotencyKey) {
-			setActionError('Aufgabe konnte nicht sicher gespeichert werden. Versuche es erneut.');
+			setActionError(keyUnavailableMessage('Aufgabe', 'gespeichert'));
 			endPending(pendingKey);
 			return;
 		}
@@ -259,8 +254,9 @@ export function useChoreCreate(
 			});
 
 			if (!result.ok) {
-				if (result.status > 0 && result.status < 500 && result.status !== 429)
+				if (shouldReleaseIdempotencyKey(result.status, result.error)) {
 					choreCreateRequestRef.current = null;
+				}
 				if (result.status === 0) {
 					const base = createQueuedChore({
 						wgId: wg.id,

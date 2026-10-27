@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test, { type TestContext } from 'node:test';
 
-const { anySignal, apiFetch } = await import('../src/core/infra/api-client.ts');
+const { anySignal, apiFetch, readApiErrorCode } = await import('../src/core/infra/api-client.ts');
 const { postChatMessage } = await import('../src/features/chat/chat-send.ts');
 
 function replaceFetch(t: TestContext, implementation: typeof fetch) {
@@ -198,4 +198,31 @@ test('anySignal aborts with the first source, also without AbortSignal.any', asy
 	} finally {
 		signalStatics.any = nativeAny;
 	}
+});
+
+test('readApiErrorCode prefers error over code, falls back to code and never throws', async () => {
+	assert.equal(await readApiErrorCode(Response.json({ error: 'a', code: 'b' })), 'a');
+	assert.equal(await readApiErrorCode(Response.json({ error: '', code: 'b' })), 'b');
+	assert.equal(await readApiErrorCode(Response.json({ code: 'b' })), 'b');
+	assert.equal(await readApiErrorCode(Response.json({ error: 4 })), '');
+	assert.equal(await readApiErrorCode(new Response('not json')), '');
+	const response = Response.json({ error: 'kept' });
+	assert.equal(await readApiErrorCode(response), 'kept');
+	assert.equal((await response.json()).error, 'kept');
+});
+
+test('a rate-limited or still-pending chat message keeps its key', async (t) => {
+	const answers = [
+		Response.json({ error: 'rate_limited' }, { status: 429 }),
+		Response.json({ error: 'idempotency_response_pending' }, { status: 409 }),
+	];
+	replaceFetch(t, async () => answers.shift() as Response);
+	const pending = { current: null as { fingerprint: string; key: string } | null };
+	const message = { body: 'hi', mentionMemberIds: [], replyToMessageId: null };
+	const deps = { messagesUrl: '/api/x', memberId: 'member-1', pending, createKey: () => 'key' };
+
+	await postChatMessage(message, deps);
+	assert.equal(pending.current?.key, 'key');
+	await postChatMessage(message, deps);
+	assert.equal(pending.current?.key, 'key');
 });

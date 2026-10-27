@@ -1,8 +1,13 @@
 'use client';
 
-import { REQUEST_TIMEOUT_MS } from '@/core/infra/api-client';
+import {
+	type PendingIdempotentRequest,
+	resolveIdempotencyKey,
+	shouldReleaseIdempotencyKey,
+} from '@/core/http/idempotency-key';
+import { REQUEST_TIMEOUT_MS, readApiErrorCode } from '@/core/infra/api-client';
 import { removeDraft } from '@/core/offline/drafts';
-import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
+import { keyUnavailableMessage } from '@/core/offline/offline-copy';
 import posthog from '@/shared/lib/analytics';
 import { useRef, useState } from 'react';
 import {
@@ -12,7 +17,6 @@ import {
 	type StartStep,
 	createWgErrorField,
 	createWgErrorMessage,
-	readStartError,
 } from './start-flow';
 import type { BusyLock } from './use-busy-lock';
 import type { StartErrorActions } from './use-start-error';
@@ -39,7 +43,7 @@ export function useCreateWg({
 		returnToSignIn: () => void;
 	}) {
 	const [createdWg, setCreatedWg] = useState<CreatedWg | null>(null);
-	const createRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
+	const createRequestRef = useRef<PendingIdempotentRequest | null>(null);
 
 	async function createWg(): Promise<void> {
 		if (busyRef.current) return;
@@ -52,13 +56,9 @@ export function useCreateWg({
 		clearError();
 		const body = { name: trimmedWg, creatorName: trimmedMe };
 		const fingerprint = JSON.stringify(body);
-		const pendingRequest = createRequestRef.current;
-		const idempotencyKey =
-			pendingRequest?.fingerprint === fingerprint
-				? pendingRequest.key
-				: createOfflineIdempotencyKey();
+		const idempotencyKey = resolveIdempotencyKey(createRequestRef.current, fingerprint);
 		if (!idempotencyKey) {
-			setFormError('WG konnte nicht sicher erstellt werden. Versuche es erneut.');
+			setFormError(keyUnavailableMessage('WG', 'erstellt'));
 			busyRef.current = false;
 			setBusy(false);
 			return;
@@ -76,8 +76,8 @@ export function useCreateWg({
 				return;
 			}
 			if (!res.ok) {
-				if (res.status > 0 && res.status < 500) createRequestRef.current = null;
-				const apiError = await readStartError(res);
+				const apiError = await readApiErrorCode(res);
+				if (shouldReleaseIdempotencyKey(res.status, apiError)) createRequestRef.current = null;
 				const message = createWgErrorMessage(res.status, apiError);
 				const field = createWgErrorField(res.status, apiError);
 				if (field) setFieldError(field, message);

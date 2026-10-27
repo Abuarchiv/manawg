@@ -1,7 +1,8 @@
 import { mutationErrorMessage } from '@/core/http/error-codes';
+import { createIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
 import { notificationWarningMessage } from '@/core/notifications/notification-warning';
-import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
+import { keyUnavailableMessage } from '@/core/offline/offline-copy';
 import { withToggledReaction } from '@/features/pinnwand/announcement-edits';
 import { announcementActionErrorMessage } from '@/features/pinnwand/announcement-errors';
 import type { CommentOverrides } from '@/features/pinnwand/comment-overrides';
@@ -161,11 +162,11 @@ export function useAnnouncementActions(
 		const reactionRequestKey = `${announcement.id}:${reaction}`;
 		const pendingReaction = reactionIdempotencyKeysRef.current.get(reactionRequestKey);
 		const idempotencyKey =
-			pendingReaction?.active === !active ? pendingReaction.key : createOfflineIdempotencyKey();
+			pendingReaction?.active === !active ? pendingReaction.key : createIdempotencyKey();
 		if (!idempotencyKey) {
 			rollback();
 			end(pendingKey);
-			setActionError('Reaktion konnte nicht sicher gesendet werden. Versuche es erneut.');
+			setActionError(keyUnavailableMessage('Reaktion', 'gesendet'));
 			return;
 		}
 		reactionIdempotencyKeysRef.current.set(reactionRequestKey, {
@@ -183,7 +184,7 @@ export function useAnnouncementActions(
 		);
 		end(pendingKey);
 		if (!res.ok) {
-			if (res.status > 0 && res.status < 500 && res.status !== 429) {
+			if (shouldReleaseIdempotencyKey(res.status, res.error)) {
 				reactionIdempotencyKeysRef.current.delete(reactionRequestKey);
 			}
 			if (res.status === 404 && res.error === 'announcement_not_found') {

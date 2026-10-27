@@ -108,17 +108,6 @@ export interface StartDraft extends Record<string, unknown> {
 	creatorName?: string;
 }
 
-export async function readStartError(response: Response): Promise<string> {
-	try {
-		const body = (await response.clone().json()) as { code?: unknown; error?: unknown };
-		if (typeof body.error === 'string') return body.error;
-		if (typeof body.code === 'string') return body.code;
-	} catch {
-		return '';
-	}
-	return '';
-}
-
 export function createWgErrorMessage(status: number, error: string): string {
 	if (status === 429) {
 		return 'Du hast gerade mehrere WGs erstellt. Bitte versuche es in etwa einer Stunde erneut.';

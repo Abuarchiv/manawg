@@ -3,7 +3,13 @@
 import { subscribeOnline } from '@/core/hooks/use-online-status';
 import { captureException } from '@/core/infra/capture-client';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { countOfflineActions, getSyncedCountForWg, syncOfflineActions } from './offline-client';
+import {
+	OFFLINE_QUEUE_EVENT,
+	OFFLINE_SYNCED_EVENT,
+	countOfflineActions,
+	getSyncedCountForWg,
+	syncOfflineActions,
+} from './offline-client';
 
 interface UseOfflineQueueSyncOptions {
 	/** `null` turns the hook off: no listeners, a count of 0. */
@@ -104,14 +110,14 @@ export function useOfflineQueueSync({
 		};
 
 		const unsubscribeOnline = subscribeOnline(sync);
-		window.addEventListener('manawg:offline-queue', updateCount);
-		window.addEventListener('manawg:offline-synced', onExternalSync);
+		window.addEventListener(OFFLINE_QUEUE_EVENT, updateCount);
+		window.addEventListener(OFFLINE_SYNCED_EVENT, onExternalSync);
 		return () => {
 			active = false;
 			mountedRef.current = false;
 			unsubscribeOnline();
-			window.removeEventListener('manawg:offline-queue', updateCount);
-			window.removeEventListener('manawg:offline-synced', onExternalSync);
+			window.removeEventListener(OFFLINE_QUEUE_EVENT, updateCount);
+			window.removeEventListener(OFFLINE_SYNCED_EVENT, onExternalSync);
 		};
 	}, [shareCode, memberId]);
 

@@ -62,6 +62,21 @@ export function mutationGeneration(): number {
 	return mutationCount;
 }
 
+/**
+ * The error code of a failed raw `fetch` response (`error` first, then `code`), or '' when the
+ * body has none. Reads a clone, so the caller can still consume the response; never throws.
+ */
+export async function readApiErrorCode(response: Response): Promise<string> {
+	try {
+		const body = (await response.clone().json()) as { code?: unknown; error?: unknown } | null;
+		if (typeof body?.error === 'string' && body.error.length > 0) return body.error;
+		if (typeof body?.code === 'string' && body.code.length > 0) return body.code;
+	} catch {
+		// No JSON body.
+	}
+	return '';
+}
+
 export async function apiFetch<T>(
 	path: string,
 	init: ApiFetchInit = {},

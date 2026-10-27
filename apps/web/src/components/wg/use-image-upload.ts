@@ -2,7 +2,7 @@
 
 import { useWg } from '@/components/wg/WgContextProvider';
 import { subscribeOnline } from '@/core/hooks/use-online-status';
-import { REQUEST_TIMEOUT_MS, noteSessionExpiry } from '@/core/infra/api-client';
+import { REQUEST_TIMEOUT_MS, noteSessionExpiry, readApiErrorCode } from '@/core/infra/api-client';
 import {
 	PRIVATE_IMAGE_MAX_BYTES,
 	isAllowedPrivateImageMimeType,
@@ -11,7 +11,6 @@ import {
 	UPLOAD_TIMEOUT_MS,
 	isPendingImageToken,
 	readPendingImage,
-	readUploadSignError,
 	removePendingImage,
 	storePendingImage,
 	uploadPendingImageToken,
@@ -220,7 +219,7 @@ export function useImageUpload({
 				signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
 			});
 			noteSessionExpiry(sigRes);
-			const signError = sigRes.ok ? '' : await readUploadSignError(sigRes);
+			const signError = sigRes.ok ? '' : await readApiErrorCode(sigRes);
 			if (
 				sigRes.status === 503 &&
 				(signError === '' ||

@@ -1,4 +1,9 @@
 import { isNetworkError } from '@/core/http/error-codes';
+import {
+	type PendingIdempotentRequest,
+	resolveIdempotencyKey,
+	shouldReleaseIdempotencyKey,
+} from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
 import { discardQueuedEntry, enqueueOfflineAction } from '@/core/offline/offline-client';
 import {
@@ -6,12 +11,9 @@ import {
 	OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE,
 	OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
 	QUEUE_EDIT_ALREADY_SENT_MESSAGE,
+	keyUnavailableMessage,
 } from '@/core/offline/offline-copy';
-import {
-	createOfflineIdempotencyKey,
-	createQueuedAbsence,
-	isQueuedCreateId,
-} from '@/core/offline/offline-queue';
+import { createQueuedAbsence, isQueuedCreateId } from '@/core/offline/offline-queue';
 import { endOfBerlinDay, instantAtBerlinWallTime } from '@/core/utils/berlin-day';
 import type { AbsenceInput } from '@/features/chores/absence';
 import { absenceSaveErrorMessage } from '@/features/chores/chore-errors';
@@ -60,7 +62,7 @@ export function useAbsences(ctx: ChorePageContext, form: AbsenceFormState, queue
 	const { setQueueEditId, clearEditedQueueItem, editedQueueItemWasSent } = queueEdit;
 	const [absenceError, setAbsenceError] = useState<string | null>(null);
 	const [absenceListError, setAbsenceListError] = useState<string | null>(null);
-	const absenceCreateRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
+	const absenceCreateRequestRef = useRef<PendingIdempotentRequest | null>(null);
 
 	async function addAbsence(): Promise<void> {
 		if (!absenceStart || !absenceEnd) return;
@@ -103,13 +105,9 @@ export function useAbsences(ctx: ChorePageContext, form: AbsenceFormState, queue
 			endDate,
 			reason: absenceReason.trim() || null,
 		});
-		const pendingRequest = absenceCreateRequestRef.current;
-		const idempotencyKey =
-			pendingRequest?.fingerprint === fingerprint
-				? pendingRequest.key
-				: createOfflineIdempotencyKey();
+		const idempotencyKey = resolveIdempotencyKey(absenceCreateRequestRef.current, fingerprint);
 		if (!idempotencyKey) {
-			setAbsenceError('Abwesenheit konnte nicht sicher gespeichert werden. Versuche es erneut.');
+			setAbsenceError(keyUnavailableMessage('Abwesenheit', 'gespeichert'));
 			endPending(pendingKey);
 			return;
 		}
@@ -130,8 +128,9 @@ export function useAbsences(ctx: ChorePageContext, form: AbsenceFormState, queue
 				},
 			);
 			if (!result.ok) {
-				if (result.status > 0 && result.status < 500 && result.status !== 429)
+				if (shouldReleaseIdempotencyKey(result.status, result.error)) {
 					absenceCreateRequestRef.current = null;
+				}
 				if (result.status === 0) {
 					const queued = createQueuedAbsence({
 						wgId: wg.id,

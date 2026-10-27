@@ -1,5 +1,5 @@
+import { createIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
-import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import { type Dispatch, type SetStateAction, useRef } from 'react';
 import { explainChatError } from '../chat-errors';
 import { withOwnReaction } from '../chat-reactions';
@@ -31,8 +31,7 @@ export function useChatReactions({
 	): Promise<string | null> {
 		const action = kind === 'add' ? 'react' : 'unreact';
 		const requestKeyId = `${kind}:${messageId}:${emoji}`;
-		const idempotencyKey =
-			requestKeysRef.current.get(requestKeyId) ?? createOfflineIdempotencyKey();
+		const idempotencyKey = requestKeysRef.current.get(requestKeyId) ?? createIdempotencyKey();
 		if (!idempotencyKey) {
 			return explainChatError(action, 'Netzwerkfehler');
 		}
@@ -60,7 +59,8 @@ export function useChatReactions({
 							headers: { 'Idempotency-Key': idempotencyKey },
 						});
 			if (!res.ok) {
-				if (res.status > 0 && res.status < 500) requestKeysRef.current.delete(requestKeyId);
+				if (shouldReleaseIdempotencyKey(res.status, res.error))
+					requestKeysRef.current.delete(requestKeyId);
 				return explainChatError(action, res.error);
 			}
 			committed = true;

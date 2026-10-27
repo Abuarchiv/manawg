@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { PgDialect, jsonb, pgTable, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { explainChatError } from '../src/features/chat/chat-errors.ts';
 import * as chat from '../src/features/chat/chat-pure.ts';
 import * as unreadCount from '../src/features/chat/chat-unread-count.ts';
 import * as chatReadQuery from '../src/features/chat/server/chat-read-query.ts';
@@ -284,4 +285,27 @@ test('reconciliation preserves database order when timestamps lose microseconds'
 		newer,
 		latest,
 	]);
+});
+
+test('chat errors keep their own codes and use the shared buckets with a per-action subject', () => {
+	assert.match(explainChatError('send', 'image_removed'), /Bild wurde entfernt/);
+	assert.match(explainChatError('send', 'reply_to_invalid'), /gibt es nicht mehr/);
+	assert.equal(explainChatError('edit', 'message_deleted'), 'Diese Nachricht wurde gelöscht.');
+	assert.match(explainChatError('edit', 'edit_not_allowed'), /Minuten nach dem Senden/);
+	assert.equal(
+		explainChatError('send', 'Netzwerkfehler'),
+		'Nachricht konnte nicht gesendet werden: Prüfe deine Verbindung und versuche es erneut.',
+	);
+	assert.match(
+		explainChatError('react', 'rate_limited'),
+		/^Reaktion konnte nicht gespeichert werden: Zu viele Anfragen/,
+	);
+	assert.equal(
+		explainChatError('delete', 'db_error'),
+		'Nachricht konnte nicht gelöscht werden: Versuche es gleich erneut.',
+	);
+	assert.equal(
+		explainChatError('unreact', 'whatever'),
+		'Reaktion konnte nicht gespeichert werden.',
+	);
 });

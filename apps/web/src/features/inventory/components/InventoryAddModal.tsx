@@ -22,8 +22,13 @@ import {
 } from '@/components/ui/drawer';
 import { Spinner } from '@/components/ui/spinner';
 import { mutationErrorMessage } from '@/core/http/error-codes';
+import {
+	type PendingIdempotentRequest,
+	resolveIdempotencyKey,
+	shouldReleaseIdempotencyKey,
+} from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
-import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
+import { keyUnavailableMessage } from '@/core/offline/offline-copy';
 import {
 	INVENTORY_CATEGORIES,
 	INVENTORY_UNITS,
@@ -110,7 +115,7 @@ export function InventoryAddModal({
 	const [nameError, setNameError] = useState<string | null>(null);
 	const [serverError, setServerError] = useState<string | null>(null);
 	const alertRef = useRef<HTMLDivElement>(null);
-	const createRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
+	const createRequestRef = useRef<PendingIdempotentRequest | null>(null);
 	const quantity = parseCount(quantityText);
 	const threshold = parseCount(thresholdText);
 	const initialRef = useRef(initial);
@@ -189,16 +194,11 @@ export function InventoryAddModal({
 				: {}),
 		};
 		const fingerprint = JSON.stringify(body);
-		const pendingRequest = createRequestRef.current;
 		const idempotencyKey =
-			mode === 'create'
-				? pendingRequest?.fingerprint === fingerprint
-					? pendingRequest.key
-					: createOfflineIdempotencyKey()
-				: null;
+			mode === 'create' ? resolveIdempotencyKey(createRequestRef.current, fingerprint) : null;
 		if (mode === 'create' && !idempotencyKey) {
 			setSaving(false);
-			setServerError('Vorrat konnte nicht sicher gespeichert werden. Versuche es erneut.');
+			setServerError(keyUnavailableMessage('Vorrat', 'gespeichert'));
 			return;
 		}
 		if (idempotencyKey) createRequestRef.current = { fingerprint, key: idempotencyKey };
@@ -271,7 +271,7 @@ export function InventoryAddModal({
 			res.error !== 'name_invalid'
 		) {
 			setSaving(false);
-			if (res.status !== 429) createRequestRef.current = null;
+			if (shouldReleaseIdempotencyKey(res.status, res.error)) createRequestRef.current = null;
 			setServerError(
 				mutationErrorMessage(
 					SAVE_SUBJECT,

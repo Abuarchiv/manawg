@@ -255,3 +255,30 @@ test('entries of an unknown action type survive enqueue and discard', async () =
 	);
 	assert.deepEqual(stored[1], unknown);
 });
+
+test('removeQueuedAction drops a matching action, keeps one of another type and ignores a missing id', async () => {
+	const { module, storage } = await makeQueueModule();
+	await setQueue(module, [
+		createAction({ id: 'announcement-1' }),
+		createAction({
+			id: 'chore-1',
+			type: 'chore.create',
+			payload: { title: 'Bad putzen', intervalDays: 7, assignedMemberId: null },
+		}),
+	]);
+	const ids = () => readStoredQueue(storage).map((action) => action.id);
+
+	assert.equal(await module.removeQueuedAction('chore-1', ['announcement.create']), true);
+	assert.deepEqual(ids(), ['announcement-1', 'chore-1']);
+	assert.equal(await module.removeQueuedAction('missing'), true);
+	assert.deepEqual(ids(), ['announcement-1', 'chore-1']);
+	assert.equal(await module.removeQueuedAction('chore-1', ['chore.create']), true);
+	assert.deepEqual(ids(), ['announcement-1']);
+	assert.equal(await module.removeQueuedAction('announcement-1'), true);
+	assert.deepEqual(ids(), []);
+});
+
+test('removeQueuedAction reports false when Web Locks are unavailable', async () => {
+	const { module } = await makeQueueModule({ locks: null });
+	assert.equal(await module.removeQueuedAction('action-1'), false);
+});

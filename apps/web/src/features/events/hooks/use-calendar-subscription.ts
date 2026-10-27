@@ -1,7 +1,8 @@
 import { useToast } from '@/components/ui/Toast';
 import { useWg } from '@/components/wg/WgContextProvider';
+import { createIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
-import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
+import { keyUnavailableMessage } from '@/core/offline/offline-copy';
 import { copyText } from '@/core/utils/clipboard';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -100,8 +101,7 @@ export function useCalendarSubscription(encodedShareCode: string) {
 		setBusy(true);
 		setError(null);
 		setNotice(null);
-		const idempotencyKey =
-			requestKeysRef.current.get(requestKeyId) ?? createOfflineIdempotencyKey();
+		const idempotencyKey = requestKeysRef.current.get(requestKeyId) ?? createIdempotencyKey();
 		if (idempotencyKey) {
 			requestKeysRef.current.set(requestKeyId, idempotencyKey);
 			await run(idempotencyKey);
@@ -114,15 +114,15 @@ export function useCalendarSubscription(encodedShareCode: string) {
 		setBusy(false);
 	}
 
-	function releaseKeyUnlessRetryable(requestKeyId: string, status: number): void {
-		if (status > 0 && status < 500 && status !== 429) requestKeysRef.current.delete(requestKeyId);
+	function releaseKeyUnlessRetryable(requestKeyId: string, status: number, error: string): void {
+		if (shouldReleaseIdempotencyKey(status, error)) requestKeysRef.current.delete(requestKeyId);
 	}
 
 	async function save(method: 'POST' | 'PATCH', message: string): Promise<void> {
 		const requestKeyId = `subscription:${method}`;
 		await runExclusive(
 			requestKeyId,
-			'Kalender-Feed konnte nicht sicher gespeichert werden. Versuche es erneut.',
+			keyUnavailableMessage('Kalender-Feed', 'gespeichert'),
 			async (idempotencyKey) => {
 				const res = await apiFetch<CalendarSubscriptionResponse>(endpoint, {
 					method,
@@ -135,7 +135,7 @@ export function useCalendarSubscription(encodedShareCode: string) {
 					setCopyState('idle');
 					setNotice(message);
 				} else {
-					if (!res.ok) releaseKeyUnlessRetryable(requestKeyId, res.status);
+					if (!res.ok) releaseKeyUnlessRetryable(requestKeyId, res.status, res.error);
 					setError('Kalender-Feed konnte nicht gespeichert werden.');
 				}
 			},
@@ -146,7 +146,7 @@ export function useCalendarSubscription(encodedShareCode: string) {
 		const requestKeyId = 'subscription:DELETE';
 		await runExclusive(
 			requestKeyId,
-			'Kalender-Feed konnte nicht sicher widerrufen werden. Versuche es erneut.',
+			keyUnavailableMessage('Kalender-Feed', 'widerrufen'),
 			async (idempotencyKey) => {
 				const previousSubscription = subscription;
 				setSubscription(null);
@@ -161,7 +161,7 @@ export function useCalendarSubscription(encodedShareCode: string) {
 					setNotice('Kalender-Feed widerrufen.');
 				} else {
 					setSubscription(previousSubscription);
-					releaseKeyUnlessRetryable(requestKeyId, res.status);
+					releaseKeyUnlessRetryable(requestKeyId, res.status, res.error);
 					setError('Kalender-Feed konnte nicht widerrufen werden.');
 					toast.error('Kalender-Feed konnte nicht widerrufen werden.');
 				}

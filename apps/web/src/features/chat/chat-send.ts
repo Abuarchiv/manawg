@@ -1,6 +1,11 @@
+import {
+	type PendingIdempotentRequest,
+	createIdempotencyKey,
+	resolveIdempotencyKey,
+	shouldReleaseIdempotencyKey,
+} from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
 import type { NotificationWarning } from '@/core/notifications/notification-warning';
-import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import type { ChatMessageDto } from './chat-types';
 
 export interface ChatMessageInput {
@@ -11,7 +16,7 @@ export interface ChatMessageInput {
 
 /** The key of a send whose outcome is unknown; a retry of the same input reuses it. */
 export interface PendingChatSend {
-	current: { fingerprint: string; key: string } | null;
+	current: PendingIdempotentRequest | null;
 }
 
 export type ChatSendResult =
@@ -32,12 +37,10 @@ interface ChatSendDeps {
  */
 export async function postChatMessage(
 	input: ChatMessageInput,
-	{ messagesUrl, memberId, pending, createKey = createOfflineIdempotencyKey }: ChatSendDeps,
+	{ messagesUrl, memberId, pending, createKey = createIdempotencyKey }: ChatSendDeps,
 ): Promise<ChatSendResult> {
 	const fingerprint = JSON.stringify(input);
-	const pendingRequest = pending.current;
-	const idempotencyKey =
-		pendingRequest?.fingerprint === fingerprint ? pendingRequest.key : createKey();
+	const idempotencyKey = resolveIdempotencyKey(pending.current, fingerprint, createKey);
 	if (!idempotencyKey) return { ok: false, reason: 'key_unavailable' };
 	pending.current = { fingerprint, key: idempotencyKey };
 	const res = await apiFetch<{ message: ChatMessageDto; warning: NotificationWarning }>(
@@ -50,7 +53,7 @@ export async function postChatMessage(
 		},
 	);
 	if (!res.ok) {
-		if (res.status > 0 && res.status < 500) pending.current = null;
+		if (shouldReleaseIdempotencyKey(res.status, res.error)) pending.current = null;
 		return { ok: false, reason: 'rejected', error: res.error };
 	}
 	pending.current = null;

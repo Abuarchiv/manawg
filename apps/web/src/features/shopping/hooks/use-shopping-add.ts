@@ -1,5 +1,10 @@
 import { useToast } from '@/components/ui/Toast';
 import { isReadOnlyMode } from '@/core/http/error-codes';
+import {
+	type PendingIdempotentRequest,
+	resolveIdempotencyKey,
+	shouldReleaseIdempotencyKey,
+} from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
 import {
 	type NotificationWarning,
@@ -9,7 +14,7 @@ import { buildDraftKey, readDraft, removeDraft, writeDraft } from '@/core/offlin
 import {
 	enqueueOfflineAction,
 	isOfflineActionQueued,
-	updateOfflineQueue,
+	removeQueuedAction,
 } from '@/core/offline/offline-client';
 import {
 	DRAFT_CLEANUP_FAILED_MESSAGE,
@@ -17,11 +22,9 @@ import {
 	OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
 	OFFLINE_SAVED_NOTICE,
 	QUEUE_EDIT_ALREADY_SENT_MESSAGE,
+	keyUnavailableMessage,
 } from '@/core/offline/offline-copy';
-import {
-	createOfflineIdempotencyKey,
-	createQueuedShoppingItem,
-} from '@/core/offline/offline-queue';
+import { createQueuedShoppingItem } from '@/core/offline/offline-queue';
 import type { PendingOverlay } from '@/core/sync/use-synced-collection';
 import { NAME_MAX } from '@/features/shopping/components/constants';
 import type { ShoppingItem } from '@/features/shopping/components/shopping-types';
@@ -74,7 +77,7 @@ export function useShoppingAdd({
 	const addingRef = useRef(false);
 	const inFlightRef = useRef<Promise<void> | null>(null);
 	const inFlightTextRef = useRef<string | null>(null);
-	const addIdempotencyKeyRef = useRef<{ fingerprint: string; key: string } | null>(null);
+	const addIdempotencyKeyRef = useRef<PendingIdempotentRequest | null>(null);
 	const nameValueRef = useRef('');
 	const appliedPrefillRef = useRef<string | null>(null);
 	const draftKey = buildDraftKey(wg.shareCode, identity.memberId, 'shopping');
@@ -109,12 +112,7 @@ export function useShoppingAdd({
 
 	async function clearEditedQueueItem(): Promise<boolean> {
 		if (!queueEditId) return true;
-		const saved = await updateOfflineQueue((actions) =>
-			actions.some((item) => item.id === queueEditId)
-				? actions.filter((item) => item.id !== queueEditId)
-				: null,
-		);
-		if (!saved) return false;
+		if (!(await removeQueuedAction(queueEditId))) return false;
 		setQueueEditId(null);
 		return true;
 	}
@@ -155,13 +153,9 @@ export function useShoppingAdd({
 		setAddError(null);
 		setAddNotice(null);
 		const fingerprint = JSON.stringify({ name, quantity });
-		const pendingRequest = addIdempotencyKeyRef.current;
-		const idempotencyKey =
-			pendingRequest?.fingerprint === fingerprint
-				? pendingRequest.key
-				: createOfflineIdempotencyKey();
+		const idempotencyKey = resolveIdempotencyKey(addIdempotencyKeyRef.current, fingerprint);
 		if (!idempotencyKey) {
-			setAddError('Artikel konnte nicht sicher gespeichert werden. Versuche es erneut.');
+			setAddError(keyUnavailableMessage('Artikel', 'gespeichert'));
 			addingRef.current = false;
 			inFlightRef.current = null;
 			inFlightTextRef.current = null;
@@ -215,7 +209,7 @@ export function useShoppingAdd({
 			if (!res.ok) {
 				const retryableResponse =
 					res.status === 429 || res.status >= 500 || res.error === 'idempotency_response_pending';
-				if (res.status !== 0 && !retryableResponse) addIdempotencyKeyRef.current = null;
+				if (shouldReleaseIdempotencyKey(res.status, res.error)) addIdempotencyKeyRef.current = null;
 				if (res.status === 0) {
 					const queued = createQueuedShoppingItem({
 						wgId: wg.id,

@@ -1,4 +1,5 @@
 import { isSessionExpired } from '@/core/http/error-codes';
+import { isIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
 import { IMAGE_REMOVED_ERROR, SERVER_CHECK_PREFIX } from './offline-failure-copy';
 import { isPendingImageToken, removePendingImage, uploadPendingImageToken } from './offline-images';
@@ -6,7 +7,6 @@ import {
 	type OfflineAction,
 	explainOfflineActionFailure,
 	getOfflineActionRequest,
-	isOfflineIdempotencyKey,
 	shouldRetryOfflineAction,
 } from './offline-queue';
 import {
@@ -27,6 +27,8 @@ import {
 	sameOfflineAction,
 } from './offline-replay-rules';
 import {
+	OFFLINE_QUEUE_EVENT,
+	OFFLINE_SYNCED_EVENT,
 	REVIEW_REQUIRED_ERROR,
 	persistOfflineQueue,
 	persistOfflineReviewIds,
@@ -169,7 +171,7 @@ async function runOfflineSync(
 			continue;
 		}
 		const idempotencyKey = action.idempotencyKey;
-		if (!isOfflineIdempotencyKey(idempotencyKey)) {
+		if (!isIdempotencyKey(idempotencyKey)) {
 			outcomes.set(action.id, {
 				snapshot: action,
 				retry: {
@@ -313,7 +315,7 @@ async function runOfflineSync(
 			const uncertainIds = [...new Set([...syncedActionIds, ...reviewIds])];
 			for (const actionId of uncertainIds) reviewAfterFailedQueueSave.add(actionId);
 			persistOfflineReviewIds(storage, uncertainIds);
-			window.dispatchEvent(new CustomEvent('manawg:offline-queue'));
+			window.dispatchEvent(new CustomEvent(OFFLINE_QUEUE_EVENT));
 			return false;
 		}
 		const merged = mergeSyncOutcomes(current, outcomes, reviewIds);
@@ -344,7 +346,7 @@ async function runOfflineSync(
 			}
 			persistSyncedIds(storage, markerIds);
 			if (reviewIds.size > 0) {
-				window.dispatchEvent(new CustomEvent('manawg:offline-queue'));
+				window.dispatchEvent(new CustomEvent(OFFLINE_QUEUE_EVENT));
 			}
 		}
 		return queueSaved;
@@ -353,11 +355,11 @@ async function runOfflineSync(
 		for (const actionId of [...new Set([...syncedActionIds, ...reviewIds])]) {
 			reviewAfterFailedQueueSave.add(actionId);
 		}
-		window.dispatchEvent(new CustomEvent('manawg:offline-queue'));
+		window.dispatchEvent(new CustomEvent(OFFLINE_QUEUE_EVENT));
 	}
 	if (synced > 0) {
 		window.dispatchEvent(
-			new CustomEvent('manawg:offline-synced', { detail: { synced, syncedByShareCode } }),
+			new CustomEvent(OFFLINE_SYNCED_EVENT, { detail: { synced, syncedByShareCode } }),
 		);
 	}
 	return synced;

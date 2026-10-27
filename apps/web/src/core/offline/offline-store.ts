@@ -5,6 +5,7 @@ import { isOfflineAction } from './offline-action-guard';
 import { SERVER_CHECK_PREFIX } from './offline-failure-copy';
 import {
 	type OfflineAction,
+	type OfflineActionType,
 	isQueuedCreateId,
 	serializeOfflineAction,
 	withoutQueuedEntry,
@@ -24,6 +25,10 @@ import {
 const OFFLINE_QUEUE_KEY = 'manawg:offline-actions';
 const SYNCED_IDS_KEY = 'manawg:offline-synced-ids';
 const OFFLINE_QUEUE_LOCK_NAME = 'manawg:offline-queue';
+/** Window event fired whenever the queue is rewritten; older tabs and e2e specs rely on the string. */
+export const OFFLINE_QUEUE_EVENT = 'manawg:offline-queue';
+/** Window event fired after a sync pass moved actions out of the queue. */
+export const OFFLINE_SYNCED_EVENT = 'manawg:offline-synced';
 /** No expiry: replaying an edited action under its original key can drop the edit. */
 const OFFLINE_REVIEW_IDS_KEY = 'manawg:offline-review-ids';
 /** How long a "synced but queue-write failed" marker survives reloads. */
@@ -259,7 +264,7 @@ export function persistOfflineQueue(actions: OfflineAction[], storage: Storage):
 		}
 		clearReviewIdsForMissingActions(actions, storage);
 		cachedOfflineQueue = filterOfflineQueue(actions);
-		window.dispatchEvent(new CustomEvent('manawg:offline-queue'));
+		window.dispatchEvent(new CustomEvent(OFFLINE_QUEUE_EVENT));
 		return true;
 	} catch {
 		// Offline queue persistence is best-effort when browser storage is blocked.
@@ -277,6 +282,21 @@ export async function updateOfflineQueue(
 		return next === null || persistOfflineQueue(next, storage);
 	});
 	return result.acquired && result.value;
+}
+
+/**
+ * Drops one queued action, optionally only if its type matches. True when it is gone, never
+ * existed or has another type (kept); false when storage or the queue lock failed.
+ */
+export async function removeQueuedAction(
+	id: string,
+	expectedTypes?: readonly OfflineActionType[],
+): Promise<boolean> {
+	return updateOfflineQueue((actions) => {
+		const queued = actions.find((action) => action.id === id);
+		if (!queued || (expectedTypes && !expectedTypes.includes(queued.type))) return null;
+		return actions.filter((action) => action.id !== id);
+	});
 }
 
 /**

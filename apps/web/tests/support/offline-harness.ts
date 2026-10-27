@@ -17,6 +17,7 @@ export interface QueueModule {
 	enqueueOfflineAction(action: Action): Promise<number>;
 	updateOfflineQueue(update: (actions: Action[]) => Action[]): Promise<boolean>;
 	discardQueuedEntry(shareCode: string, id: string): Promise<string>;
+	removeQueuedAction(id: string, expectedTypes?: readonly string[]): Promise<boolean>;
 	syncOfflineActions(
 		shareCode: string,
 		options: { force?: boolean; memberId?: string; signal?: AbortSignal },
@@ -185,6 +186,7 @@ export async function makeQueueModule({
 		REQUEST_TIMEOUT_MS: 15_000,
 		anySignal: (signals: AbortSignal[]) => AbortSignal.any(signals),
 		noteSessionExpiry() {},
+		readApiErrorCode: async () => '',
 	});
 	mockInstance('@/core/utils/browser', { safeLocalStorage: () => storage });
 	mockInstance('@/core/offline/offline-queue', defaultQueue);

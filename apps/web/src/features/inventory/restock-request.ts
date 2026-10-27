@@ -1,6 +1,7 @@
 import { mutationErrorMessage } from '@/core/http/error-codes';
+import { createIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
-import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
+import { keyUnavailableMessage } from '@/core/offline/offline-copy';
 import {
 	type InventoryItemDto,
 	type InventoryMutationItemDto,
@@ -25,11 +26,11 @@ export async function restockItem(args: {
 	const { shareCode, memberId, item, keys } = args;
 	const amount = restockAmount(item);
 	const requestKey = `${item.id}:${amount}`;
-	const idempotencyKey = keys.get(requestKey) ?? createOfflineIdempotencyKey();
+	const idempotencyKey = keys.get(requestKey) ?? createIdempotencyKey();
 	if (!idempotencyKey) {
 		return {
 			kind: 'error',
-			message: 'Aktualisierung konnte nicht sicher gesendet werden. Versuche es erneut.',
+			message: keyUnavailableMessage('Aktualisierung', 'gesendet'),
 		};
 	}
 	keys.set(requestKey, idempotencyKey);
@@ -50,8 +51,7 @@ export async function restockItem(args: {
 		keys.delete(requestKey);
 		return { kind: 'gone' };
 	}
-	// A rate-limited request (429) was not processed, so the retry keeps its key.
-	if (res.status > 0 && res.status < 500 && res.status !== 429) keys.delete(requestKey);
+	if (shouldReleaseIdempotencyKey(res.status, res.error)) keys.delete(requestKey);
 	return {
 		kind: 'error',
 		message: mutationErrorMessage(
