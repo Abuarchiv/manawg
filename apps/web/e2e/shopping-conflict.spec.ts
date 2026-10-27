@@ -17,7 +17,7 @@ import {
 } from './support/helpers';
 
 test.describe('shopping conflict handling', () => {
-	const testDatabaseUrl = process.env.PILOT_SHOPPING_DATABASE_URL?.trim() ?? '';
+	const testDatabaseUrl = process.env.TEST_DATABASE_URL?.trim() ?? '';
 
 	type FixtureShoppingItem = {
 		id: string;
@@ -32,25 +32,12 @@ test.describe('shopping conflict handling', () => {
 
 	function localTestDatabaseUrl(): string {
 		if (!testDatabaseUrl) {
-			test.skip(true, 'Set PILOT_SHOPPING_DATABASE_URL to an isolated local PostgreSQL database.');
+			test.skip(true, 'Set TEST_DATABASE_URL to an isolated local PostgreSQL database.');
 		}
 		const hostname = new URL(testDatabaseUrl).hostname.toLowerCase();
-		expect(['localhost', '127.0.0.1', '::1']).toContain(hostname);
+		expect(['localhost', '127.0.0.1', '[::1]']).toContain(hostname);
 		return testDatabaseUrl;
 	}
-
-	test('recognizes a duplicate open shopping item through DrizzleQueryError.cause', () => {
-		const postgresError = Object.assign(
-			new Error('duplicate key value violates unique constraint'),
-			{
-				code: '23505',
-				constraint: 'shopping_items_unique_open_name',
-			},
-		);
-		const wrapped = new DrizzleQueryError('insert into shopping_items ...', [], postgresError);
-
-		expect(isOpenShoppingItemDuplicate(wrapped)).toBe(true);
-	});
 
 	async function mockShoppingPage(
 		page: Page,

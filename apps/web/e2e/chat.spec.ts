@@ -267,13 +267,13 @@ test.describe('chat read retry', () => {
 			await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
 			await setupMember(page);
 			const member = { id: '0ab8c8f2-5d03-4a84-aadc-4c5d7e8abf55', name: 'Test', active: true };
-			await page.route('**/api/wg/MTE8PZAT', (route) =>
+			await page.route(`**/api/wg/${FIXTURE_WG.shareCode}`, (route) =>
 				route.fulfill({ json: { currentMember: { memberId: member.id, name: member.name } } }),
 			);
-			await page.route('**/api/wg/MTE8PZAT/members', (route) =>
+			await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/members`, (route) =>
 				route.fulfill({ json: { members: [member] } }),
 			);
-			await page.route('**/api/wg/MTE8PZAT/chat/unread-count', (route) =>
+			await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/chat/unread-count`, (route) =>
 				route.fulfill({ json: { count: 2 } }),
 			);
 			const receipts: string[] = [];
@@ -281,7 +281,7 @@ test.describe('chat read retry', () => {
 			const successGate = new Promise<void>((resolve) => {
 				releaseSuccess = resolve;
 			});
-			await page.route('**/api/wg/MTE8PZAT/chat/read', async (route) => {
+			await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/chat/read`, async (route) => {
 				receipts.push(route.request().postDataJSON().lastReadMessageId);
 				if (receipts.length === 1) return route.abort('failed');
 				if (receipts.length === 2)
@@ -289,7 +289,7 @@ test.describe('chat read retry', () => {
 				await successGate;
 				await route.fulfill({ json: { ok: true } });
 			});
-			await page.goto('/wg/MTE8PZAT/chat');
+			await page.goto(`/wg/${FIXTURE_WG.shareCode}/chat`);
 			await expect.poll(() => receipts.length).toBe(1);
 			const error = page
 				.getByRole('alert')

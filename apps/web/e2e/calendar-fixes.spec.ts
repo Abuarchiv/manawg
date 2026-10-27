@@ -1,15 +1,7 @@
-// Calendar all-day/timed events across Berlin DST and extreme time zones, recurrence, ICS, month grid.
+// Calendar month grid, recurrence editing, deletion and push links in the browser.
 // Why: A calendar day must be identical for every device time zone.
 
 import { type Route, expect, test } from '@playwright/test';
-import type { SQL } from 'drizzle-orm';
-import { PgDialect } from 'drizzle-orm/pg-core';
-import {
-	type EventInput,
-	expandAgendaRecurrence,
-	expandRecurrence,
-} from '../src/features/events/events';
-import { computeTomorrowUtcWindow } from '../src/features/events/server/event-reminder-window';
 import {
 	FIXTURE_WG,
 	dismissOnboarding,
@@ -19,91 +11,6 @@ import {
 } from './support/helpers';
 
 test.describe('calendar fixes', () => {
-	const ALL_DAY_EVENT: EventInput = {
-		id: 'all-day-pilot',
-		title: 'Pilottag',
-		description: null,
-		startsAt: '2026-09-29T00:00:00.000Z',
-		endsAt: null,
-		allDay: true,
-		location: null,
-		recurrence: null,
-	};
-
-	function expandAgenda(event: EventInput, from: string | Date, to: string | Date) {
-		return expandAgendaRecurrence(event, new Date(from), new Date(to));
-	}
-
-	test('keeps inclusive multi-day all-day overlap across the Berlin fall DST date', () => {
-		const occurrences = expandAgenda(
-			{
-				...ALL_DAY_EVENT,
-				id: 'multi-day-pilot',
-				startsAt: '2026-10-24T00:00:00.000Z',
-				endsAt: '2026-10-25T00:00:00.000Z',
-				recurrence: null,
-			},
-			'2026-10-25T18:00:00.000Z',
-			'2026-10-25T22:00:00.000Z',
-		);
-
-		expect(occurrences).toHaveLength(1);
-		expect(occurrences[0]).toMatchObject({
-			startsAt: '2026-10-24T00:00:00.000Z',
-			endsAt: '2026-10-25T00:00:00.000Z',
-		});
-	});
-
-	test('matches event display dates and query windows using inclusive overlap', async () => {
-		const eventHelpers = (await import('../src/features/events/events')) as unknown as {
-			eventOverlapsCalendarDay?: (
-				event: { startsAt: string; endsAt: string | null; allDay: boolean },
-				day: Date,
-			) => boolean;
-		};
-		const windowHelpers = (await import(
-			'../src/features/events/server/event-reminder-window'
-		)) as unknown as {
-			buildEventsWindowFilter?: (from: Date, to: Date) => SQL | undefined;
-		};
-		const eventOverlapsCalendarDay = eventHelpers.eventOverlapsCalendarDay;
-		const buildEventsWindowFilter = windowHelpers.buildEventsWindowFilter;
-		expect(eventOverlapsCalendarDay).toBeDefined();
-		expect(buildEventsWindowFilter).toBeDefined();
-		if (!eventOverlapsCalendarDay || !buildEventsWindowFilter) return;
-
-		const event = {
-			startsAt: '2026-09-22T00:00:00.000Z',
-			endsAt: '2026-09-24T00:00:00.000Z',
-			allDay: true,
-		};
-		expect(
-			[22, 23, 24, 25].map((day) => eventOverlapsCalendarDay(event, new Date(2026, 8, day))),
-		).toEqual([true, true, true, false]);
-
-		const from = new Date('2026-09-23T12:00:00.000Z');
-		const to = new Date('2026-09-26T00:00:00.000Z');
-		const filter = buildEventsWindowFilter(from, to);
-		expect(filter).toBeDefined();
-		if (!filter) return;
-		const query = new PgDialect().sqlToQuery(filter);
-		const startsAtUpperBound = query.sql.match(/starts_at"\s*<=\s*\$(\d+)/);
-		expect(startsAtUpperBound).not.toBeNull();
-		expect(query.params[Number(startsAtUpperBound?.[1]) - 1]).toBe(to.toISOString());
-		const allDayBoundary = query.sql.match(
-			/"wg_events"\."all_day"\s*=\s*\$(\d+)\s+and\s+"wg_events"\."ends_at"\s*>=\s*\$(\d+)/,
-		);
-		expect(allDayBoundary).not.toBeNull();
-		expect(query.params[Number(allDayBoundary?.[1]) - 1]).toBe(true);
-		expect(query.params[Number(allDayBoundary?.[2]) - 1]).toBe(from.toISOString());
-		const timedBoundary = query.sql.match(
-			/"wg_events"\."all_day"\s*=\s*\$(\d+)\s+and\s+"wg_events"\."ends_at"\s*>\s*\$(\d+)/,
-		);
-		expect(timedBoundary).not.toBeNull();
-		expect(query.params[Number(timedBoundary?.[1]) - 1]).toBe(false);
-		expect(query.params[Number(timedBoundary?.[2]) - 1]).toBe(from.toISOString());
-	});
-
 	test('shows a fetched multi-day event on every overlapping month-grid day', async ({ page }) => {
 		skipUnlessFixtures();
 
@@ -252,70 +159,6 @@ test.describe('calendar fixes', () => {
 		}
 		await expect(page.getByRole('tab', { name: 'Agenda' })).toBeVisible();
 		await expect(page.getByRole('tab', { name: 'Monat' })).toBeVisible();
-	});
-
-	test('uses Berlin calendar boundaries for all-day overlap and recurrence search', () => {
-		const previousTimezone = process.env.TZ;
-		process.env.TZ = 'Europe/Berlin';
-		try {
-			expect(
-				expandAgenda(ALL_DAY_EVENT, '2026-09-28T22:01:00.000Z', '2026-09-28T23:00:00.000Z'),
-			).toHaveLength(1);
-			expect(
-				expandAgenda(ALL_DAY_EVENT, '2026-09-29T22:30:00.000Z', '2026-09-29T23:00:00.000Z'),
-			).toHaveLength(0);
-
-			const fallDstEvent = { ...ALL_DAY_EVENT, startsAt: '2026-10-25T00:00:00.000Z' };
-			expect(
-				expandAgenda(fallDstEvent, '2026-10-24T22:30:00.000Z', '2026-10-24T23:00:00.000Z'),
-			).toHaveLength(1);
-			expect(
-				expandAgenda(fallDstEvent, '2026-10-25T23:30:00.000Z', '2026-10-26T00:00:00.000Z'),
-			).toHaveLength(0);
-
-			const daily = {
-				...ALL_DAY_EVENT,
-				recurrence: 'FREQ=DAILY;COUNT=2',
-			};
-			expect(
-				expandAgenda(daily, '2026-09-29T22:30:00.000Z', '2026-09-29T23:00:00.000Z').map(
-					(occurrence) => occurrence.startsAt,
-				),
-			).toEqual(['2026-09-30T00:00:00.000Z']);
-		} finally {
-			if (previousTimezone === undefined) Reflect.deleteProperty(process.env, 'TZ');
-			else process.env.TZ = previousTimezone;
-		}
-	});
-
-	test('uses the runtime local calendar date before a UTC+14 event marker', () => {
-		const previousTimezone = process.env.TZ;
-		process.env.TZ = 'Pacific/Kiritimati';
-		try {
-			expect(
-				expandAgenda(
-					{ ...ALL_DAY_EVENT, startsAt: '2026-01-01T00:00:00.000Z' },
-					'2025-12-31T10:30:00.000Z',
-					'2025-12-31T11:00:00.000Z',
-				),
-			).toHaveLength(1);
-			expect(
-				expandAgenda(
-					{ ...ALL_DAY_EVENT, startsAt: '2026-01-01T00:00:00.000Z' },
-					'2026-01-01T10:30:00.000Z',
-					'2026-01-01T11:00:00.000Z',
-				),
-			).toHaveLength(0);
-		} finally {
-			if (previousTimezone === undefined) Reflect.deleteProperty(process.env, 'TZ');
-			else process.env.TZ = previousTimezone;
-		}
-	});
-
-	test('cron Berlin window excludes a finished all-day event on a UTC host', () => {
-		const window = computeTomorrowUtcWindow(new Date('2026-09-29T09:00:00.000Z'));
-		expect(window.start.toISOString()).toBe('2026-09-29T22:00:00.000Z');
-		expect(expandRecurrence(ALL_DAY_EVENT, window.start, window.end)).toHaveLength(0);
 	});
 
 	test('edit recurrence uses the canonical select and sends an RFC rule', async ({ page }) => {

@@ -117,9 +117,30 @@ More scripts in `apps/web/package.json`:
 | `pnpm --filter @manawg/web test:e2e:fixtures` | Playwright against a production build in fixture mode |
 | `pnpm --filter @manawg/web test:e2e:webkit` | WebKit fixture config (`playwright.webkit-fixtures.config.ts`) |
 | `pnpm --filter @manawg/web test:e2e:account-delete-db` | Account deletion against a disposable loopback Postgres in `ACCOUNT_DELETE_TEST_URL` |
+| `pnpm --filter @manawg/web test:db` | Database-backed unit tests against the loopback Postgres in `TEST_DATABASE_URL` (exits 2 when it is unset) |
+| `pnpm --filter @manawg/web test:db-timeouts` | Runtime pool timeouts against a throwaway local Postgres (`RUN_DB_TIMEOUT_INTEGRATION=1` is set by the script) |
 | `pnpm --filter @manawg/web bundle:check` | Bundle budget (`scripts/check-bundle-budget.mjs`, needs a build) |
 | `pnpm --filter @manawg/web analytics:check` | PostHog privacy contract (`scripts/check-analytics-privacy.mjs`) |
 | `pnpm --filter @manawg/web analyze` | Build with the Next bundle analyzer |
+
+### Opt-in test gates
+
+These tests skip themselves unless their variable is set. `pnpm test:unit` and `test:e2e:fixtures` (the CI lanes) never set them, because each needs something CI does not provide: a database, a public network, or real credentials. The auth UI specs (`e2e/auth-ui.spec.ts`) are not gated: `test:e2e:fixtures` starts a second fixture server on `E2E_PORT` + 1000 whose Supabase browser client points at a fake project (the specs answer its requests through page routes), so they run in CI.
+
+| Variable | Enables | How to run | Why not in CI |
+| --- | --- | --- | --- |
+| `TEST_DATABASE_URL` | `tests/statement-run-ledger.test.ts`, `tests/db-connection.test.ts` (live transaction check), `src/core/db/private-image-deletions.test.ts` and the real-PostgreSQL case of `e2e/shopping-conflict.spec.ts` | `TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55432/manawg_test pnpm --filter @manawg/web test:db`; the shopping case runs inside `test:e2e:fixtures e2e/shopping-conflict.spec.ts` with the same variable. The URL must be a disposable loopback Postgres with all migrations applied | No Postgres service in the CI jobs; the tests write to the database |
+| `RUN_DB_TIMEOUT_INTEGRATION` | The pool timeout case in `tests/runtime-pool.test.ts` | `pnpm --filter @manawg/web test:db-timeouts` (needs `initdb` and `pg_ctl` on the PATH and a non-root user) | Needs local PostgreSQL binaries and takes up to a minute |
+| `ACCOUNT_DELETE_TEST_URL` | `e2e/account-delete-db.spec.ts` (account deletion against real data) | `ACCOUNT_DELETE_TEST_URL=postgresql://postgres@127.0.0.1:55432/manawg_test pnpm --filter @manawg/web test:e2e:account-delete-db` (loopback host and explicit port required) | Needs a disposable Postgres; the script refuses to run without it |
+| `OCR_RUNTIME_E2E` | The real Tesseract worker proof in `e2e/expense-ui-form.spec.ts` | `OCR_RUNTIME_E2E=true pnpm --filter @manawg/web test:e2e:fixtures e2e/expense-ui-form.spec.ts` | Downloads the WASM core and the German and English models from `cdn.jsdelivr.net` |
+| `PREVIEW_E2E` | `e2e/preview-protection.spec.ts` and the Preview branches of `e2e/smoke-launch.spec.ts` | Set by the `e2e-preview` job in `.github/workflows/ci.yml` against a trusted Vercel Preview URL (`BASE_URL`) with `VERCEL_AUTOMATION_BYPASS_SECRET` | Needs a deployed, protected Preview and the bypass secret |
+| `REAL_PRODUCT_E2E` | The real-account path of `e2e/smoke-launch.spec.ts` | Same job as `PREVIEW_E2E`, or locally against a hosted `BASE_URL` with the `E2E_SUPABASE_*` credentials | Needs a hosted deployment and a real test account |
+| `PUBLIC_ENTRY_E2E` | `e2e/public-entry-live.spec.ts` (hosted public entry) | `BASE_URL=<hosted origin> PUBLIC_ENTRY_E2E=true pnpm --filter @manawg/web exec playwright test public-entry-live.spec.ts` | Needs a deployed app on real Supabase |
+| `AUTH_LIVE_E2E` | `e2e/social-login-live.spec.ts` (OAuth callback errors) | `BASE_URL=<hosted origin> AUTH_LIVE_E2E=true pnpm --filter @manawg/web exec playwright test social-login-live.spec.ts` | Needs a deployed app on real Supabase |
+| `SUPABASE_AUTH_LIVE_E2E` | `e2e/supabase-auth-live.spec.ts` (live sign-in and session checks; needs `SUPABASE_AUTH_TEST_EMAIL`, `SUPABASE_AUTH_TEST_PASSWORD` and the member WG variables) | `BASE_URL=<hosted origin> SUPABASE_AUTH_LIVE_E2E=true pnpm --filter @manawg/web exec playwright test supabase-auth-live.spec.ts` | Needs a deployed app and real test credentials |
+| `SUPABASE_AUTH_PASSWORD_RESET_SMOKE` | The no-session password reset page check in `e2e/supabase-auth-live.spec.ts` (sends no e-mail) | `BASE_URL=<hosted origin> SUPABASE_AUTH_PASSWORD_RESET_SMOKE=true pnpm --filter @manawg/web exec playwright test supabase-auth-live.spec.ts` | Needs a deployed app on real Supabase |
+
+`PREVIEW_E2E`, `REAL_PRODUCT_E2E`, `PUBLIC_ENTRY_E2E`, `AUTH_LIVE_E2E`, `SUPABASE_AUTH_LIVE_E2E` and `SUPABASE_AUTH_PASSWORD_RESET_SMOKE` are set to `true` by the `e2e-preview` job of the CI workflow; `test:e2e:fixtures` sets `PREVIEW_E2E`, `REAL_PRODUCT_E2E`, `PUBLIC_ENTRY_E2E`, `AUTH_LIVE_E2E` and `SUPABASE_AUTH_LIVE_E2E` to `false`.
 
 ## Quality gates
 

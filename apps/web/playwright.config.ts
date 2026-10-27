@@ -4,17 +4,6 @@ import path from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
 import { parse } from 'dotenv';
 
-// Specs import `features/<x>/server/` modules directly in Node, outside Next's bundler, where
-// `server-only` would throw. Workers load this config too, so the patch reaches every spec.
-const emptyServerOnly = require.resolve('next/dist/compiled/server-only/empty.js');
-const Module = require('node:module') as {
-	_resolveFilename: (request: string, ...rest: unknown[]) => string;
-};
-const resolveFilename = Module._resolveFilename;
-Module._resolveFilename = function (request: string, ...rest: unknown[]) {
-	return resolveFilename.call(this, request === 'server-only' ? emptyServerOnly : request, ...rest);
-};
-
 const DEFAULT_E2E_PORT = process.env.E2E_PORT ?? '3101';
 const BASE_URL = process.env.BASE_URL ?? `http://localhost:${DEFAULT_E2E_PORT}`;
 const previewE2E = process.env.PREVIEW_E2E === 'true';
@@ -42,17 +31,20 @@ if (previewE2E) {
 const parsedBaseUrl = new URL(BASE_URL);
 const isLocalBase = ['localhost', '127.0.0.1', '::1'].includes(parsedBaseUrl.hostname);
 const isRemoteBase = /^https?:\/\//i.test(BASE_URL) && !isLocalBase;
-const authUiE2E = process.env.AUTH_UI_E2E === 'true';
-if (authUiE2E && (!isLocalBase || parsedBaseUrl.protocol !== 'http:')) {
-	throw new Error('AUTH_UI_E2E requires a local HTTP BASE_URL.');
-}
 const serverPort = parsedBaseUrl.port || (parsedBaseUrl.protocol === 'https:' ? '443' : '80');
 const APP_DIR = __dirname;
 const useBuiltServer = process.env.PLAYWRIGHT_USE_BUILD === 'true';
-const authSupabaseEnv = authUiE2E
-	? `NEXT_PUBLIC_SUPABASE_URL=${parsedBaseUrl.origin} NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=auth-ui-fixture-key`
-	: 'NEXT_PUBLIC_SUPABASE_URL= NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=';
-if (!isRemoteBase && (useBuiltServer || authUiE2E || process.env.NEXT_PUBLIC_DB_DOWN === 'true')) {
+const isFixtureServer =
+	!isRemoteBase && (useBuiltServer || process.env.NEXT_PUBLIC_DB_DOWN === 'true');
+// The auth UI specs need the browser client to be configured, which Next inlines at build time.
+// They run on a second fixture server whose Supabase project is the server's own origin; the
+// specs answer its /auth/v1 and /api/auth requests through page routes. Every other spec runs
+// against the first server, where the browser client is unconfigured.
+const AUTH_UI_SPEC = /auth-ui\.spec\.ts$/;
+const authUiPort = String(Number(serverPort) + 1000);
+const authUiUrl = `http://localhost:${authUiPort}`;
+const FAKE_SUPABASE_KEY = 'auth-ui-fixture-key';
+if (isFixtureServer) {
 	const storageKeys = new Set([
 		'AWS_ACCESS_KEY_ID',
 		'AWS_SECRET_ACCESS_KEY',
@@ -72,16 +64,27 @@ if (!isRemoteBase && (useBuiltServer || authUiE2E || process.env.NEXT_PUBLIC_DB_
 	}
 	for (const key of storageKeys) process.env[key] = '';
 }
-const e2eDistDir = `.next-e2e-${serverPort}`;
-const e2eTsconfigPath = `.next-e2e-tsconfig-${serverPort}.json`;
-const isolatedNextEnv = `NEXT_DIST_DIR=${e2eDistDir} NEXT_TSCONFIG_PATH=${e2eTsconfigPath}`;
-const prepareIsolatedNext = `cp "${path.join(APP_DIR, 'tsconfig.json')}" "${e2eTsconfigPath}"`;
-const webServerCommand =
-	useBuiltServer || authUiE2E
-		? `${prepareIsolatedNext} && CI=true E2E_FIXTURE_MODE=true NEXT_PUBLIC_E2E_FIXTURE_MODE=true NEXT_PUBLIC_DB_DOWN=true POSTGRES_URL= DATABASE_URL= ${authSupabaseEnv} UPSTASH_REDIS_REST_URL= UPSTASH_REDIS_REST_TOKEN= VERCEL= VERCEL_ENV=preview ${isolatedNextEnv} pnpm exec next build && CI=true E2E_FIXTURE_MODE=true NEXT_PUBLIC_E2E_FIXTURE_MODE=true NEXT_PUBLIC_DB_DOWN=true POSTGRES_URL= DATABASE_URL= ${authSupabaseEnv} UPSTASH_REDIS_REST_URL= UPSTASH_REDIS_REST_TOKEN= VERCEL= VERCEL_ENV=preview ${isolatedNextEnv} pnpm exec next start --port ${serverPort}`
-		: process.env.NEXT_PUBLIC_DB_DOWN === 'true'
-			? `${prepareIsolatedNext} && CI=true E2E_FIXTURE_MODE=true NEXT_PUBLIC_E2E_FIXTURE_MODE=true NEXT_PUBLIC_DB_DOWN=true POSTGRES_URL= DATABASE_URL= ${authSupabaseEnv} UPSTASH_REDIS_REST_URL= UPSTASH_REDIS_REST_TOKEN= VERCEL= VERCEL_ENV=preview ${isolatedNextEnv} pnpm exec next dev --port ${serverPort}`
-			: `${prepareIsolatedNext} && if [ "\${CI:-}" != "true" ] && [ -f .env.local ]; then set -a; . ./.env.local; set +a; fi; VERCEL_ENV=development ${isolatedNextEnv} pnpm exec next dev --port ${serverPort}`;
+const prepareIsolatedNext = (port: string) =>
+	`cp "${path.join(APP_DIR, 'tsconfig.json')}" ".next-e2e-tsconfig-${port}.json"`;
+const fixtureEnv = (port: string, supabaseEnv: string) =>
+	`CI=true E2E_FIXTURE_MODE=true NEXT_PUBLIC_E2E_FIXTURE_MODE=true NEXT_PUBLIC_DB_DOWN=true POSTGRES_URL= DATABASE_URL= ${supabaseEnv} UPSTASH_REDIS_REST_URL= UPSTASH_REDIS_REST_TOKEN= VERCEL= VERCEL_ENV=preview NEXT_DIST_DIR=.next-e2e-${port} NEXT_TSCONFIG_PATH=.next-e2e-tsconfig-${port}.json`;
+function fixtureServerCommand(port: string, supabaseEnv: string): string {
+	const env = fixtureEnv(port, supabaseEnv);
+	return useBuiltServer
+		? `${prepareIsolatedNext(port)} && ${env} pnpm exec next build && ${env} pnpm exec next start --port ${port}`
+		: `${prepareIsolatedNext(port)} && ${env} pnpm exec next dev --port ${port}`;
+}
+const unconfiguredSupabase = 'NEXT_PUBLIC_SUPABASE_URL= NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=';
+const webServerCommand = isFixtureServer
+	? fixtureServerCommand(serverPort, unconfiguredSupabase)
+	: `${prepareIsolatedNext(serverPort)} && if [ "\${CI:-}" != "true" ] && [ -f .env.local ]; then set -a; . ./.env.local; set +a; fi; VERCEL_ENV=development NEXT_DIST_DIR=.next-e2e-${serverPort} NEXT_TSCONFIG_PATH=.next-e2e-tsconfig-${serverPort}.json pnpm exec next dev --port ${serverPort}`;
+const webServer = (command: string, url: string) => ({
+	command,
+	cwd: APP_DIR,
+	url,
+	reuseExistingServer: false,
+	timeout: 180_000,
+});
 
 export default defineConfig({
 	...(previewE2E ? { globalSetup: path.join(APP_DIR, 'e2e/support/preview-global-setup.ts') } : {}),
@@ -105,22 +108,41 @@ export default defineConfig({
 		timezoneId: 'Europe/Berlin',
 		locale: 'de-DE',
 	},
+	// The auth UI specs only run on their own server; no other project picks them up.
+	testIgnore: AUTH_UI_SPEC,
 	projects: [
 		{
 			name: 'chromium',
 			use: { ...devices['Desktop Chrome'] },
 		},
+		...(isFixtureServer
+			? [
+					{
+						name: 'chromium-auth-ui',
+						testIgnore: [],
+						testMatch: AUTH_UI_SPEC,
+						use: { ...devices['Desktop Chrome'], baseURL: authUiUrl },
+					},
+				]
+			: []),
 	],
 	// Skip local dev server when running against a remote BASE_URL (e.g. preview/prod).
 	...(isRemoteBase
 		? {}
 		: {
-				webServer: {
-					command: webServerCommand,
-					cwd: APP_DIR,
-					url: BASE_URL,
-					reuseExistingServer: false,
-					timeout: 180_000,
-				},
+				webServer: [
+					webServer(webServerCommand, BASE_URL),
+					...(isFixtureServer
+						? [
+								webServer(
+									fixtureServerCommand(
+										authUiPort,
+										`NEXT_PUBLIC_SUPABASE_URL=${authUiUrl} NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${FAKE_SUPABASE_KEY}`,
+									),
+									authUiUrl,
+								),
+							]
+						: []),
+				],
 			}),
 });
