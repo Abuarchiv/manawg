@@ -51,8 +51,9 @@ export function hasQueuedShoppingUpdate(
 }
 
 /**
- * Chore occurrences with a completion still waiting to sync. Lost connections
- * do not count as attempts, so a counted one was rejected and needs the user.
+ * Chore occurrences with a completion still waiting to sync. Lost connections and server errors
+ * retry later; a completion the server rejected carries the "Server prüfen:" prefix and needs
+ * the user, so its chore shows again.
  */
 export function pendingChoreCompletions(
 	actions: readonly OfflineAction[],
@@ -61,7 +62,9 @@ export function pendingChoreCompletions(
 	return actions
 		.filter(
 			(action) =>
-				action.type === 'chore.complete' && action.shareCode === shareCode && !action.attempts,
+				action.type === 'chore.complete' &&
+				action.shareCode === shareCode &&
+				!action.lastError?.startsWith('Server prüfen:'),
 		)
 		.map((action) => ({
 			id: String(action.payload.choreId),

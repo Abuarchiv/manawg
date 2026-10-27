@@ -270,10 +270,8 @@ async function runOfflineSync(
 					reviewOnEdit: res.status === 0 || res.status >= 500,
 					retry: {
 						...readyAction,
-						// An expired session or a lost connection is not the action's fault: no attempt.
-						attempts:
-							(readyAction.attempts ?? 0) +
-							(isSessionExpired(res.error) || res.status === 0 ? 0 : 1),
+						// An expired session is not the action's fault: no attempt, no review prefix.
+						attempts: (readyAction.attempts ?? 0) + (isSessionExpired(res.error) ? 0 : 1),
 						lastAttemptAt: new Date(now).toISOString(),
 						lastError: message,
 					},

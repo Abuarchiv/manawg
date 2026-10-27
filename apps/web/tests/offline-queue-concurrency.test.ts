@@ -256,7 +256,7 @@ test('entries of an unknown action type survive enqueue and discard', async () =
 	assert.deepEqual(stored[1], unknown);
 });
 
-test('a lost connection stops the replay without counting an attempt', async () => {
+test('a lost connection stops the replay and backs off only the action it tried', async () => {
 	const storage = makeStorage();
 	storage.setItem(
 		'manawg:offline-actions',
@@ -275,7 +275,7 @@ test('a lost connection stops the replay without counting an attempt', async () 
 	assert.deepEqual(
 		readStoredQueue(storage).map((action) => [action.id, action.attempts ?? 0]),
 		[
-			['action-1', 0],
+			['action-1', 1],
 			['action-2', 0],
 		],
 	);

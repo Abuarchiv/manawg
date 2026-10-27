@@ -187,7 +187,7 @@ test('401 reads as an expired session, 403 as missing access, a deactivated memb
 	assert.equal(explainOfflineActionFailure(401, 'member_deactivated').title, 'Du bist ausgezogen');
 });
 
-test('a rejected chore completion no longer counts as pending; a lost connection does', () => {
+test('a rejected chore completion is not pending; one waiting on the connection is', () => {
 	const queued = createQueuedChoreCompletion({
 		wgId: 'wg-1',
 		shareCode,
@@ -196,8 +196,8 @@ test('a rejected chore completion no longer counts as pending; a lost connection
 		expectedNextDueAt: '2026-10-27T08:00:00.000Z',
 		expectedAssignedMemberId: memberId,
 	});
-	const offlineRetry = { ...queued, attempts: 0, lastError: 'Keine Verbindung' };
-	const rejected = { ...queued, attempts: 1, lastError: 'Konflikt' };
+	const offlineRetry = { ...queued, attempts: 2, lastError: 'Keine Verbindung: Netz fehlt' };
+	const rejected = { ...queued, attempts: 1, lastError: 'Server prüfen: Konflikt: Schon erledigt' };
 	const pending = [{ id: 'chore-1', nextDueAt: '2026-10-27T08:00:00.000Z' }];
 
 	assert.deepEqual(pendingChoreCompletions([queued], shareCode), pending);
