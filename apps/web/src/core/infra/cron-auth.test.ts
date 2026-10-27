@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { withEnv } from '../../../tests/support/env';
 import { requireCronSecret } from './cron-auth';
 
 function request(authorization: string | null) {
@@ -9,15 +10,7 @@ function request(authorization: string | null) {
 }
 
 function withSecret<T>(value: string | undefined, run: () => T): T {
-	const previous = process.env.CRON_SECRET;
-	if (value === undefined) Reflect.deleteProperty(process.env, 'CRON_SECRET');
-	else process.env.CRON_SECRET = value;
-	try {
-		return run();
-	} finally {
-		if (previous === undefined) Reflect.deleteProperty(process.env, 'CRON_SECRET');
-		else process.env.CRON_SECRET = previous;
-	}
+	return withEnv({ CRON_SECRET: value }, run);
 }
 
 test('cron routes fail closed when CRON_SECRET is not configured', () => {

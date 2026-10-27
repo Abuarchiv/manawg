@@ -5,6 +5,7 @@ import {
 	crossOriginOpenerPolicy,
 	isPayPalSdkEnabled,
 } from '../src/core/infra/security-headers.ts';
+import { withEnv } from './support/env.ts';
 
 const payPalOrigins = ['https://www.paypal.com', 'https://www.sandbox.paypal.com'];
 const ocrLanguageDataUrls = [
@@ -72,9 +73,7 @@ test('PayPal hosts and popup policy stay disabled without both public SDK keys',
 });
 
 test('Tesseract gets WASM compilation and only its pinned German and English data files', () => {
-	const previousNodeEnv = process.env.NODE_ENV;
-	try {
-		Reflect.set(process.env, 'NODE_ENV', 'production');
+	withEnv({ NODE_ENV: 'production' }, () => {
 		const policy = directives(contentSecurityPolicy('ocr-nonce', true, false));
 		const scriptSrc = policy.get('script-src') ?? [];
 		const connectSrc = policy.get('connect-src') ?? [];
@@ -88,36 +87,21 @@ test('Tesseract gets WASM compilation and only its pinned German and English dat
 			connectSrc.filter((source) => source.startsWith('https://cdn.jsdelivr.net')).length,
 			ocrLanguageDataUrls.length,
 		);
-	} finally {
-		Reflect.set(process.env, 'NODE_ENV', previousNodeEnv ?? '');
-	}
+	});
 });
 
 test('Supabase image storage drops S3 as an upload target but keeps reading legacy S3 pictures', () => {
-	const previous = process.env.IMAGE_STORAGE_PROVIDER;
-	const previousBucket = process.env.S3_BUCKET;
-	const previousRegion = process.env.AWS_REGION;
-	try {
-		process.env.S3_BUCKET = 'legacy-bucket';
-		process.env.AWS_REGION = 'eu-central-1';
+	withEnv(
+		{ S3_BUCKET: 'legacy-bucket', AWS_REGION: 'eu-central-1', IMAGE_STORAGE_PROVIDER: 'supabase' },
+		() => {
+			const supabasePolicy = directives(contentSecurityPolicy('nonce', true, false));
+			assert.doesNotMatch(supabasePolicy.get('connect-src')?.join(' ') ?? '', /amazonaws/);
+			assert.ok(supabasePolicy.get('img-src')?.includes('https://*.amazonaws.com'));
 
-		process.env.IMAGE_STORAGE_PROVIDER = 'supabase';
-		const supabasePolicy = directives(contentSecurityPolicy('nonce', true, false));
-		assert.doesNotMatch(supabasePolicy.get('connect-src')?.join(' ') ?? '', /amazonaws/);
-		assert.ok(supabasePolicy.get('img-src')?.includes('https://*.amazonaws.com'));
-
-		process.env.IMAGE_STORAGE_PROVIDER = 'aws';
-		const awsPolicy = directives(contentSecurityPolicy('nonce', true, false));
-		assert.match(awsPolicy.get('connect-src')?.join(' ') ?? '', /legacy-bucket/);
-		assert.ok(awsPolicy.get('media-src')?.includes('https://*.amazonaws.com'));
-	} finally {
-		for (const [name, value] of [
-			['IMAGE_STORAGE_PROVIDER', previous],
-			['S3_BUCKET', previousBucket],
-			['AWS_REGION', previousRegion],
-		] as const) {
-			if (value === undefined) Reflect.deleteProperty(process.env, name);
-			else process.env[name] = value;
-		}
-	}
+			process.env.IMAGE_STORAGE_PROVIDER = 'aws';
+			const awsPolicy = directives(contentSecurityPolicy('nonce', true, false));
+			assert.match(awsPolicy.get('connect-src')?.join(' ') ?? '', /legacy-bucket/);
+			assert.ok(awsPolicy.get('media-src')?.includes('https://*.amazonaws.com'));
+		},
+	);
 });

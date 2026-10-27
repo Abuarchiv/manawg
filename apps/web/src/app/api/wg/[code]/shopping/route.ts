@@ -22,6 +22,7 @@ import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
 import { readListLimit } from '@/core/infra/env';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
+import { NAME_MAX, QUANTITY_MAX } from '@/features/shopping/components/constants';
 import {
 	SHOPPING_CREATE_DUPLICATE_RESPONSE,
 	type ShoppingCreateReplayResponse,
@@ -36,8 +37,6 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 const NAME_MIN = 1;
-const NAME_MAX = 120;
-const QUANTITY_MAX = 40;
 const SHOPPING_ITEMS_LIST_LIMIT = 1000;
 /** Hard ceiling for `SHOPPING_ITEMS_LIST_LIMIT` — env can lower or raise, never unbound. */
 const SHOPPING_ITEMS_LIST_LIMIT_MAX = 5000;

@@ -8,6 +8,7 @@ import {
 	shouldReleaseIdempotencyKey,
 } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
+import { keyUnavailableMessage } from '@/core/offline/offline-copy';
 import { useSyncedCollection } from '@/core/sync/use-synced-collection';
 import { LIST_REFRESH_INTERVAL_MS } from '@/core/utils/use-visibility-paused-interval';
 import {
@@ -99,10 +100,7 @@ export function useAbosPage() {
 		const fingerprint = JSON.stringify(values);
 		const idempotencyKey = resolveIdempotencyKey(createRequestRef.current, fingerprint);
 		if (!idempotencyKey) {
-			setNoticeMessage(
-				'error',
-				'Fixkosten konnten nicht sicher gespeichert werden. Versuche es erneut.',
-			);
+			setNoticeMessage('error', keyUnavailableMessage('Die Fixkosten-Vorlage', 'gespeichert'));
 			setSubmitting(false);
 			return;
 		}

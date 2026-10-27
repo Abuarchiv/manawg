@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { Client } from 'pg';
 import { resolveConnectionString } from '../src/core/db/connection.ts';
+import { applyEnv } from './support/env.ts';
 
 // Runtime connection settings and the live Preview transaction check.
 
@@ -17,13 +18,7 @@ const KEYS = [
 
 /** Snapshots `keys` and returns a function that restores them. */
 function snapshotEnv(keys: readonly string[]): () => void {
-	const previous = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
-	return () => {
-		for (const key of keys) {
-			if (previous[key] === undefined) delete process.env[key];
-			else process.env[key] = previous[key];
-		}
-	};
+	return applyEnv(Object.fromEntries(keys.map((key) => [key, process.env[key]])));
 }
 
 for (const migrationUrl of [

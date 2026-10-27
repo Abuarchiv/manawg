@@ -1,11 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { withEnv } from '../../../tests/support/env';
 import { formatNotificationMessage } from './notifications';
 
 test('event notification times use Europe/Berlin in summer and winter', () => {
-	const previousTimezone = process.env.TZ;
-	process.env.TZ = 'UTC';
-	try {
+	withEnv({ TZ: 'UTC' }, () => {
 		const summer = formatNotificationMessage('event.upcoming', {
 			wgName: 'WG',
 			title: 'Treffen',
@@ -41,16 +40,11 @@ test('event notification times use Europe/Berlin in summer and winter', () => {
 		assert.match(allDay.body, /ist ganztägig/);
 		assert.doesNotMatch(allDay.body, /23:00|00:00/);
 		assert.match(ongoing.body, /läuft noch/);
-	} finally {
-		if (previousTimezone === undefined) Reflect.deleteProperty(process.env, 'TZ');
-		else process.env.TZ = previousTimezone;
-	}
+	});
 });
 
 test('all-day event pushes show the Berlin date without a clock time', () => {
-	const previousTimezone = process.env.TZ;
-	process.env.TZ = 'UTC';
-	try {
+	withEnv({ TZ: 'UTC' }, () => {
 		// All-day events are stored at Berlin midnight (22:00/23:00 UTC the day before).
 		const created = formatNotificationMessage('event.created', {
 			wgName: 'WG',
@@ -71,10 +65,7 @@ test('all-day event pushes show the Berlin date without a clock time', () => {
 		for (const message of [created, upcoming]) {
 			assert.doesNotMatch(message.body, /\d{2}:\d{2}/);
 		}
-	} finally {
-		if (previousTimezone === undefined) Reflect.deleteProperty(process.env, 'TZ');
-		else process.env.TZ = previousTimezone;
-	}
+	});
 });
 
 test('chore.due copy follows the Berlin day distance to nextDueAt', (t) => {

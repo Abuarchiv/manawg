@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { mock, test } from 'node:test';
+import { applyEnv } from '../../../tests/support/env';
 
 const state = {
 	bucket: null as unknown,
@@ -44,10 +45,6 @@ function harness() {
 test('cleanup removes through Supabase with a bounded request even when uploads use AWS', async () => {
 	const previous = {
 		fetch: globalThis.fetch,
-		url: process.env.NEXT_PUBLIC_SUPABASE_URL,
-		serviceRole: process.env.SUPABASE_SERVICE_ROLE_KEY,
-		bucketName: process.env.SUPABASE_STORAGE_BUCKET,
-		provider: process.env.IMAGE_STORAGE_PROVIDER,
 	};
 	const { state, removeSupabaseImages } = harness();
 	state.bucket = {
@@ -60,10 +57,12 @@ test('cleanup removes through Supabase with a bounded request even when uploads 
 		state.fetchOptions = options ?? null;
 		return new Response(null, { status: 204 });
 	};
-	process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://supabase.example';
-	process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-role-key';
-	process.env.SUPABASE_STORAGE_BUCKET = 'private-images';
-	process.env.IMAGE_STORAGE_PROVIDER = 'aws';
+	const restoreEnv = applyEnv({
+		NEXT_PUBLIC_SUPABASE_URL: 'https://supabase.example',
+		SUPABASE_SERVICE_ROLE_KEY: 'test-service-role-key',
+		SUPABASE_STORAGE_BUCKET: 'private-images',
+		IMAGE_STORAGE_PROVIDER: 'aws',
+	});
 	try {
 		const keys = [
 			'manawg/11111111-1111-4111-8111-111111111111/expense/22222222-2222-4222-8222-222222222222.jpg',
@@ -76,30 +75,18 @@ test('cleanup removes through Supabase with a bounded request even when uploads 
 		assert.equal(state.fetchOptions?.method, 'DELETE');
 	} finally {
 		globalThis.fetch = previous.fetch;
-		const restore: Array<[string, string | undefined]> = [
-			['NEXT_PUBLIC_SUPABASE_URL', previous.url],
-			['SUPABASE_SERVICE_ROLE_KEY', previous.serviceRole],
-			['SUPABASE_STORAGE_BUCKET', previous.bucketName],
-			['IMAGE_STORAGE_PROVIDER', previous.provider],
-		];
-		for (const [name, value] of restore) {
-			if (value === undefined) Reflect.deleteProperty(process.env, name);
-			else process.env[name] = value;
-		}
+		restoreEnv();
 	}
 });
 
 test('cleanup fails closed when bucket policy no longer matches the private image contract', async () => {
-	const previous = {
-		url: process.env.NEXT_PUBLIC_SUPABASE_URL,
-		serviceRole: process.env.SUPABASE_SERVICE_ROLE_KEY,
-		bucketName: process.env.SUPABASE_STORAGE_BUCKET,
-	};
 	const { state, ImageStorageConfigurationError, removeSupabaseImages } = harness();
 	state.bucket = { public: true, file_size_limit: 8 * 1024 * 1024, allowed_mime_types: [] };
-	process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://supabase.example';
-	process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-role-key';
-	process.env.SUPABASE_STORAGE_BUCKET = 'private-images';
+	const restoreEnv = applyEnv({
+		NEXT_PUBLIC_SUPABASE_URL: 'https://supabase.example',
+		SUPABASE_SERVICE_ROLE_KEY: 'test-service-role-key',
+		SUPABASE_STORAGE_BUCKET: 'private-images',
+	});
 	try {
 		await assert.rejects(
 			removeSupabaseImages([
@@ -109,14 +96,6 @@ test('cleanup fails closed when bucket policy no longer matches the private imag
 		);
 		assert.equal(state.keys, null);
 	} finally {
-		const restore: Array<[string, string | undefined]> = [
-			['NEXT_PUBLIC_SUPABASE_URL', previous.url],
-			['SUPABASE_SERVICE_ROLE_KEY', previous.serviceRole],
-			['SUPABASE_STORAGE_BUCKET', previous.bucketName],
-		];
-		for (const [name, value] of restore) {
-			if (value === undefined) Reflect.deleteProperty(process.env, name);
-			else process.env[name] = value;
-		}
+		restoreEnv();
 	}
 });

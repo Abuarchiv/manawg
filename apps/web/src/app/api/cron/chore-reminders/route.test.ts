@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { mock, test } from 'node:test';
+import { withEnv } from '../../../../../tests/support/env';
 
 const now = new Date('2026-09-25T06:00:00.000Z');
 
@@ -185,14 +186,7 @@ function harness({
 }
 
 async function withCronSecret<T>(run: () => Promise<T>): Promise<T> {
-	const previousSecret = process.env.CRON_SECRET;
-	process.env.CRON_SECRET = 'test-cron-secret';
-	try {
-		return await run();
-	} finally {
-		if (previousSecret === undefined) Reflect.deleteProperty(process.env, 'CRON_SECRET');
-		else process.env.CRON_SECRET = previousSecret;
-	}
+	return withEnv({ CRON_SECRET: 'test-cron-secret' }, run);
 }
 
 test('chore reminder candidates are bounded to a recent window and capped', async (t) => {

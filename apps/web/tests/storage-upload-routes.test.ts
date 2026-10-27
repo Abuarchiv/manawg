@@ -5,6 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { NextResponse } from 'next/server';
 import { checkEnv } from '../src/core/infra/env.ts';
 import * as privateImagePolicy from '../src/core/infra/private-image-policy.ts';
+import { applyEnv } from './support/env.ts';
 
 // Private image read and upload signing routes: the read route re-checks membership and streams
 // only through Supabase, the sign route answers storage configuration failures as 503.
@@ -149,14 +150,13 @@ const signRoute = await import('../src/app/api/upload/sign/route.ts');
 
 describe('private storage contract', () => {
 	test('private reads use Supabase after an AWS rollback and re-check membership', async () => {
-		const originalProvider = process.env.IMAGE_STORAGE_PROVIDER;
 		const originalFetch = globalThis.fetch;
 		let awsFetches = 0;
 		globalThis.fetch = (async () => {
 			awsFetches += 1;
 			throw new Error('AWS private read must not fetch');
 		}) as typeof fetch;
-		process.env.IMAGE_STORAGE_PROVIDER = 'aws';
+		const restoreEnv = applyEnv({ IMAGE_STORAGE_PROVIDER: 'aws' });
 		const request = {
 			nextUrl: new URL(
 				`https://app.example/api/upload/read?key=${encodeURIComponent(PRIVATE_KEY)}`,
@@ -202,26 +202,17 @@ describe('private storage contract', () => {
 			assert.equal(awsFetches, 0);
 		} finally {
 			globalThis.fetch = originalFetch;
-			if (originalProvider === undefined)
-				Reflect.deleteProperty(process.env, 'IMAGE_STORAGE_PROVIDER');
-			else process.env.IMAGE_STORAGE_PROVIDER = originalProvider;
+			restoreEnv();
 		}
 	});
 });
 
 describe('upload sign s3 config contract', () => {
 	function pinS3Env(values: Partial<Record<(typeof S3_ENV_KEYS)[number], string>>): () => void {
-		const saved = S3_ENV_KEYS.map((key) => [key, process.env[key]] as const);
-		for (const key of S3_ENV_KEYS) delete process.env[key];
-		for (const [key, value] of Object.entries(values)) {
-			if (value !== undefined) process.env[key] = value;
-		}
-		return () => {
-			for (const [key, value] of saved) {
-				if (value === undefined) delete process.env[key];
-				else process.env[key] = value;
-			}
-		};
+		return applyEnv({
+			...Object.fromEntries(S3_ENV_KEYS.map((key) => [key, undefined])),
+			...values,
+		});
 	}
 
 	/** Loads a fresh s3 module under the pinned env and routes the sign route through it. */

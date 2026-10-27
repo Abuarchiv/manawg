@@ -3,6 +3,7 @@ import { hasSessionCookie } from '@/core/auth/session-hint';
 import { parseAccountWgs } from '@/core/infra/account-wgs';
 import { type OfflineAction, getOfflineActionSummary } from '@/core/offline/offline-queue';
 import { parseTimestamp } from '@/core/utils/time';
+import { pluralize } from '@/shared/lib/plural';
 
 export function moduleLabel(action: OfflineAction): string {
 	return getOfflineActionSummary(action).title;
@@ -19,7 +20,7 @@ export function formatOfflineAge(iso: string, now = Date.now()): string {
 	const hours = Math.floor(minutes / 60);
 	if (hours < 24) return `vor ${hours} Std.`;
 	const days = Math.floor(hours / 24);
-	return days === 1 ? 'vor 1 Tag' : `vor ${days} Tagen`;
+	return `vor ${pluralize(days, 'Tag', 'Tagen')}`;
 }
 
 export function countByShareCode(items: OfflineAction[]): Map<string, number> {

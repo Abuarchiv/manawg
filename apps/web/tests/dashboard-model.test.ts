@@ -16,6 +16,7 @@ import type { EventInput, EventOccurrence } from '../src/features/events/events'
 import { expandRecurrence } from '../src/features/events/events';
 import { buildSettlementSummary, simplifyDebts } from '../src/features/expenses/debt-reduction';
 import { parseShoppingInput } from '../src/features/shopping/parse-shopping-input';
+import { withEnv } from './support/env.ts';
 
 type Tuple<T, N extends number, R extends T[] = []> = R['length'] extends N
 	? R
@@ -611,14 +612,7 @@ describe('edge data helpers', () => {
 	});
 
 	function withTz(tz: string, run: () => void): void {
-		const previous = process.env.TZ;
-		process.env.TZ = tz;
-		try {
-			run();
-		} finally {
-			if (previous === undefined) Reflect.deleteProperty(process.env, 'TZ');
-			else process.env.TZ = previous;
-		}
+		withEnv({ TZ: tz }, run);
 	}
 
 	test('"Gestern" is the previous Berlin day on the day after spring-forward', () => {

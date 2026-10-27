@@ -36,6 +36,11 @@ if (accountDeleteDatabaseUrl) {
 	}
 }
 
+test.skip(
+	!accountDeleteTestUrl,
+	'Requires ACCOUNT_DELETE_TEST_URL pointing at a disposable database.',
+);
+
 interface PgResolvedClient {
 	connectionParameters: { host: string; port: number; database: string; user: string };
 }
@@ -92,9 +97,7 @@ test.afterEach(async () => {
 // Runs against a throwaway Postgres with the repo migrations applied:
 // ACCOUNT_DELETE_TEST_URL=postgresql://postgres@127.0.0.1:55432/manawg_test
 test('account deletion hands over admin, moves out, and deletes solo WGs', async () => {
-	const url = process.env.ACCOUNT_DELETE_TEST_URL;
-	test.skip(!url, 'Requires ACCOUNT_DELETE_TEST_URL pointing at a disposable database.');
-	process.env.POSTGRES_URL = url;
+	process.env.POSTGRES_URL = accountDeleteTestUrl;
 	process.env.DATABASE_MIGRATION_URL = 'placeholder';
 	const { withTransaction } = await import('../src/core/db/transaction');
 	const { removeAccountFromWgs } = await import('../src/core/db/delete-account');
@@ -171,9 +174,7 @@ test('account deletion hands over admin, moves out, and deletes solo WGs', async
 });
 
 test('account deletion keeps a durable fence and revokes only the departing member credentials', async () => {
-	const url = process.env.ACCOUNT_DELETE_TEST_URL;
-	test.skip(!url, 'Requires ACCOUNT_DELETE_TEST_URL pointing at disposable database.');
-	process.env.POSTGRES_URL = url;
+	process.env.POSTGRES_URL = accountDeleteTestUrl;
 	process.env.DATABASE_MIGRATION_URL = 'placeholder';
 
 	const { Pool } = await import('pg');
@@ -231,7 +232,7 @@ test('account deletion keeps a durable fence and revokes only the departing memb
 
 	await withTransaction((tx) => removeAccountFromWgs(tx, user));
 
-	const pool = new Pool({ connectionString: url });
+	const pool = new Pool({ connectionString: accountDeleteTestUrl });
 	try {
 		const { rows: deletions } = await pool.query(
 			' SELECT auth_user_id, requested_at, completed_at FROM account_deletions WHERE auth_user_id = $1',
@@ -273,10 +274,8 @@ test('account deletion keeps a durable fence and revokes only the departing memb
 });
 
 test('account deletion fence is private to anonymous and authenticated Data API roles', async () => {
-	const url = process.env.ACCOUNT_DELETE_TEST_URL;
-	test.skip(!url, 'Requires ACCOUNT_DELETE_TEST_URL pointing at disposable database.');
 	const { Client } = await import('pg');
-	const client = new Client({ connectionString: url });
+	const client = new Client({ connectionString: accountDeleteTestUrl });
 	await client.connect();
 	try {
 		const { rows: roles } = await client.query(
@@ -338,9 +337,7 @@ async function waitForBlockedQuery(client: import('pg').Client, applicationName:
 }
 
 test('a fresh deletion status read waits for the account fence transaction', async () => {
-	const url = process.env.ACCOUNT_DELETE_TEST_URL;
-	test.skip(!url, 'Requires ACCOUNT_DELETE_TEST_URL pointing at disposable database.');
-	process.env.POSTGRES_URL = url;
+	process.env.POSTGRES_URL = accountDeleteTestUrl;
 	process.env.DATABASE_MIGRATION_URL = 'placeholder';
 	const { Client } = await import('pg');
 	const { accountDeletions } = await import('../src/core/db/schema');
@@ -351,7 +348,7 @@ test('a fresh deletion status read waits for the account fence transaction', asy
 	const { sql } = await import('drizzle-orm');
 	const authUserId = crypto.randomUUID();
 	trackDeletionFixture(authUserId);
-	const observer = new Client({ connectionString: url });
+	const observer = new Client({ connectionString: accountDeleteTestUrl });
 	await observer.connect();
 	const deletionReady = deferred();
 	const releaseDeletion = deferred();
@@ -394,9 +391,7 @@ test('a fresh deletion status read waits for the account fence transaction', asy
 });
 
 test('a committed deletion fence blocks a stale authenticated membership acquisition', async () => {
-	const url = process.env.ACCOUNT_DELETE_TEST_URL;
-	test.skip(!url, 'Requires ACCOUNT_DELETE_TEST_URL pointing at disposable database.');
-	process.env.POSTGRES_URL = url;
+	process.env.POSTGRES_URL = accountDeleteTestUrl;
 	process.env.DATABASE_MIGRATION_URL = 'placeholder';
 	const { Client } = await import('pg');
 	const { accountDeletions } = await import('../src/core/db/schema');
@@ -409,7 +404,7 @@ test('a committed deletion fence blocks a stale authenticated membership acquisi
 	trackDeletionFixture(user);
 	const deletionApp = `delete-${crypto.randomUUID()}`;
 	const acquireApp = `acquire-${crypto.randomUUID()}`;
-	const observer = new Client({ connectionString: url });
+	const observer = new Client({ connectionString: accountDeleteTestUrl });
 	await observer.connect();
 	const deletionReady = deferred();
 	const releaseDeletion = deferred();
@@ -451,9 +446,7 @@ test('a committed deletion fence blocks a stale authenticated membership acquisi
 });
 
 test('deletion includes a membership whose join transaction commits first', async () => {
-	const url = process.env.ACCOUNT_DELETE_TEST_URL;
-	test.skip(!url, 'Requires ACCOUNT_DELETE_TEST_URL pointing at disposable database.');
-	process.env.POSTGRES_URL = url;
+	process.env.POSTGRES_URL = accountDeleteTestUrl;
 	process.env.DATABASE_MIGRATION_URL = 'placeholder';
 	const { Client } = await import('pg');
 	const { removeAccountFromWgs } = await import('../src/core/db/delete-account');
@@ -483,7 +476,7 @@ test('deletion includes a membership whose join transaction commits first', asyn
 	});
 	const joinApp = `join-${crypto.randomUUID()}`;
 	const deleteApp = `delete-${crypto.randomUUID()}`;
-	const observer = new Client({ connectionString: url });
+	const observer = new Client({ connectionString: accountDeleteTestUrl });
 	await observer.connect();
 	const joinReady = deferred();
 	const releaseJoin = deferred();
@@ -536,9 +529,7 @@ test('deletion includes a membership whose join transaction commits first', asyn
 });
 
 test('an unrelated account joining a solo WG before deletion becomes the successor admin', async () => {
-	const url = process.env.ACCOUNT_DELETE_TEST_URL;
-	test.skip(!url, 'Requires ACCOUNT_DELETE_TEST_URL pointing at disposable database.');
-	process.env.POSTGRES_URL = url;
+	process.env.POSTGRES_URL = accountDeleteTestUrl;
 	process.env.DATABASE_MIGRATION_URL = 'placeholder';
 	const { Client } = await import('pg');
 	const { removeAccountFromWgs } = await import('../src/core/db/delete-account');
@@ -573,7 +564,7 @@ test('an unrelated account joining a solo WG before deletion becomes the success
 	});
 	const joinApp = `join-${crypto.randomUUID()}`;
 	const deleteApp = `delete-${crypto.randomUUID()}`;
-	const observer = new Client({ connectionString: url });
+	const observer = new Client({ connectionString: accountDeleteTestUrl });
 	await observer.connect();
 	const joinReady = deferred();
 	const releaseJoin = deferred();
@@ -640,9 +631,7 @@ test('an unrelated account joining a solo WG before deletion becomes the success
 });
 
 test('admin deletion chooses a fallback after its pending successor moves out', async () => {
-	const url = process.env.ACCOUNT_DELETE_TEST_URL;
-	test.skip(!url, 'Requires ACCOUNT_DELETE_TEST_URL pointing at disposable database.');
-	process.env.POSTGRES_URL = url;
+	process.env.POSTGRES_URL = accountDeleteTestUrl;
 	process.env.DATABASE_MIGRATION_URL = 'placeholder';
 	const { Client } = await import('pg');
 	const { lockActiveAccountMember } = await import('../src/core/db/account-deletion');
@@ -692,7 +681,7 @@ test('admin deletion chooses a fallback after its pending successor moves out', 
 	});
 	const leaveApp = `leave-${crypto.randomUUID()}`;
 	const deleteApp = `delete-${crypto.randomUUID()}`;
-	const observer = new Client({ connectionString: url });
+	const observer = new Client({ connectionString: accountDeleteTestUrl });
 	await observer.connect();
 	const leaveReady = deferred();
 	const releaseLeave = deferred();
@@ -765,9 +754,7 @@ test('admin deletion chooses a fallback after its pending successor moves out', 
 });
 
 test('a calendar writer waiting behind account cleanup cannot restore its credential', async () => {
-	const url = process.env.ACCOUNT_DELETE_TEST_URL;
-	test.skip(!url, 'Requires ACCOUNT_DELETE_TEST_URL pointing at disposable database.');
-	process.env.POSTGRES_URL = url;
+	process.env.POSTGRES_URL = accountDeleteTestUrl;
 	process.env.DATABASE_MIGRATION_URL = 'placeholder';
 	const { Client } = await import('pg');
 	const { lockActiveAccountMember } = await import('../src/core/db/account-deletion');
@@ -805,7 +792,7 @@ test('a calendar writer waiting behind account cleanup cannot restore its creden
 	});
 	const deleteApp = `delete-${crypto.randomUUID()}`;
 	const calendarApp = `calendar-${crypto.randomUUID()}`;
-	const observer = new Client({ connectionString: url });
+	const observer = new Client({ connectionString: accountDeleteTestUrl });
 	await observer.connect();
 	const deletionReady = deferred();
 	const releaseDeletion = deferred();
@@ -853,9 +840,7 @@ test('a calendar writer waiting behind account cleanup cannot restore its creden
 });
 
 test('concurrent account deletions across two shared WGs retain each remaining member and balance', async () => {
-	const url = process.env.ACCOUNT_DELETE_TEST_URL;
-	test.skip(!url, 'Requires ACCOUNT_DELETE_TEST_URL pointing at disposable database.');
-	process.env.POSTGRES_URL = url;
+	process.env.POSTGRES_URL = accountDeleteTestUrl;
 	process.env.DATABASE_MIGRATION_URL = 'placeholder';
 	const { withTransaction } = await import('../src/core/db/transaction');
 	const { removeAccountFromWgs } = await import('../src/core/db/delete-account');
@@ -939,9 +924,7 @@ test('concurrent account deletions across two shared WGs retain each remaining m
 });
 
 test('a failed local deletion transaction leaves no fence, cleanup, audit, or Auth attempt', async () => {
-	const url = process.env.ACCOUNT_DELETE_TEST_URL;
-	test.skip(!url, 'Requires ACCOUNT_DELETE_TEST_URL pointing at disposable database.');
-	process.env.POSTGRES_URL = url;
+	process.env.POSTGRES_URL = accountDeleteTestUrl;
 	process.env.DATABASE_MIGRATION_URL = 'placeholder';
 	const { withTransaction } = await import('../src/core/db/transaction');
 	const { removeAccountFromWgs } = await import('../src/core/db/delete-account');
@@ -1063,9 +1046,7 @@ test('a failed local deletion transaction leaves no fence, cleanup, audit, or Au
 });
 
 test('Auth success is not marked complete when the completion write fails, and retries resume', async () => {
-	const url = process.env.ACCOUNT_DELETE_TEST_URL;
-	test.skip(!url, 'Requires ACCOUNT_DELETE_TEST_URL pointing at disposable database.');
-	process.env.POSTGRES_URL = url;
+	process.env.POSTGRES_URL = accountDeleteTestUrl;
 	process.env.DATABASE_MIGRATION_URL = 'placeholder';
 	const { Pool } = await import('pg');
 	const { accountDeletions } = await import('../src/core/db/schema');
@@ -1077,7 +1058,7 @@ test('Auth success is not marked complete when the completion write fails, and r
 	const suffix = crypto.randomUUID().replaceAll('-', '').slice(0, 12);
 	const functionName = `manawg_test_fail_completion_${suffix}`;
 	const triggerName = `manawg_test_fail_completion_${suffix}`;
-	const pool = new Pool({ connectionString: url });
+	const pool = new Pool({ connectionString: accountDeleteTestUrl });
 	await withTransaction((tx) => tx.insert(accountDeletions).values({ authUserId: user }));
 	try {
 		await pool.query(`
@@ -1133,9 +1114,7 @@ test('Auth success is not marked complete when the completion write fails, and r
 });
 
 test('maintenance retries unattempted and least-recently-attempted deletions first', async () => {
-	const url = process.env.ACCOUNT_DELETE_TEST_URL;
-	test.skip(!url, 'Requires ACCOUNT_DELETE_TEST_URL pointing at disposable database.');
-	process.env.POSTGRES_URL = url;
+	process.env.POSTGRES_URL = accountDeleteTestUrl;
 	process.env.DATABASE_MIGRATION_URL = 'placeholder';
 	const { accountDeletions } = await import('../src/core/db/schema');
 	const { withTransaction } = await import('../src/core/db/transaction');

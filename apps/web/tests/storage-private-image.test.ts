@@ -12,6 +12,7 @@ import {
 	isAllowedImageUrlForWg,
 	parsePrivateImageKey,
 } from '../src/core/validators/image-url.ts';
+import { applyEnv } from './support/env.ts';
 
 // Private image URL grammar, origin selection, storage provider env requirements and the upload
 // size / MIME allowlist. Protects against path traversal and leaking private object URLs.
@@ -33,7 +34,9 @@ const ENV_KEYS = [
 	'SUPABASE_STORAGE_BUCKET',
 ] as const;
 
-const originalEnv = new Map(ENV_KEYS.map((key) => [key, process.env[key]]));
+const restoreOriginalEnv = applyEnv(
+	Object.fromEntries(ENV_KEYS.map((key) => [key, process.env[key]])),
+);
 
 function setEnv(values: Partial<Record<(typeof ENV_KEYS)[number], string | undefined>>): void {
 	for (const [key, value] of Object.entries(values)) {
@@ -70,7 +73,7 @@ describe('private image URL contract', () => {
 	});
 
 	after(() => {
-		for (const [key, value] of originalEnv) setEnv({ [key]: value });
+		restoreOriginalEnv();
 	});
 
 	test('parses only the exact WG-scoped private key grammar', () => {

@@ -16,6 +16,7 @@ import { MyOpenAnnouncements } from '@/features/pinnwand/components/MyOpenAnnoun
 import { PinnwandComposer } from '@/features/pinnwand/components/PinnwandComposer';
 import type { Announcement } from '@/features/pinnwand/components/announcement-types';
 import { usePinnwandPage } from '@/features/pinnwand/hooks/use-pinnwand-page';
+import { pluralize } from '@/shared/lib/plural';
 import { Megaphone, Plus } from 'lucide-react';
 import type React from 'react';
 
@@ -96,7 +97,7 @@ export default function PinnwandPage(): React.ReactElement {
 					className="w-full"
 					aria-live="polite"
 				>
-					{newCount === 1 ? '1 neuer Beitrag' : `${newCount} neue Beiträge`}
+					{pluralize(newCount, 'neuer Beitrag', 'neue Beiträge')}
 				</Button>
 			)}
 			<OfflineQueueNotice queuedCount={queuedCount} />

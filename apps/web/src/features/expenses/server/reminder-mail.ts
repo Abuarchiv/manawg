@@ -5,15 +5,10 @@ import { logApiError } from '@/core/infra/observability';
 import { sendMailSafely } from '@/core/mail/send-mail';
 import { renderReminderMail } from '@/core/mail/templates';
 import { unsubscribeUrl } from '@/core/mail/unsubscribe';
+import { formatShortDate } from '@/core/utils/time';
 import { and, desc, eq, isNull } from 'drizzle-orm';
 
 const ITEM_LIMIT = 5;
-
-const dateFormat = new Intl.DateTimeFormat('de-DE', {
-	day: '2-digit',
-	month: '2-digit',
-	timeZone: 'Europe/Berlin',
-});
 
 export interface ReminderMailInput {
 	reminderId: string;
@@ -66,7 +61,7 @@ export async function sendReminderMail(input: ReminderMailInput): Promise<void> 
 				oldestDebtAgeDays: input.oldestDebtAgeDays,
 				items: rows.map((row) => ({
 					description: row.description,
-					date: dateFormat.format(row.occurredAt),
+					date: formatShortDate(row.occurredAt.toISOString(), 'Europe/Berlin'),
 					cents: row.cents,
 				})),
 				unsubscribeUrl: unsubscribeUrl(input.debtor.id, 'reminders'),

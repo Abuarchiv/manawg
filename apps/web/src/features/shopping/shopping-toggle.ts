@@ -1,3 +1,4 @@
+import { resolveIdempotencyKey } from '@/core/http/idempotency-key';
 import { OFFLINE_NO_CONNECTION_TITLE } from '@/core/offline/offline-failure-copy';
 import type { OfflineAction } from '@/core/offline/offline-queue';
 import type { ShoppingItem } from '@/features/shopping/components/shopping-types';
@@ -31,7 +32,7 @@ export function planShoppingPatch(
 		expectedBoughtAt: item.boughtAt,
 		bought,
 	});
-	const idempotencyKey = previous?.fingerprint === fingerprint ? previous.key : createKey();
+	const idempotencyKey = resolveIdempotencyKey(previous, fingerprint, createKey);
 	if (!idempotencyKey) return { ok: false, reason: 'key_unavailable' };
 	return {
 		ok: true,

@@ -2,6 +2,7 @@ import { berlinCalendarDayDistance } from '@/core/utils/berlin-day';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatShortDate, parseTimestamp } from '@/core/utils/time';
 import { simplifyDebts } from '@/features/expenses/debt-reduction';
+import { pluralize } from '@/shared/lib/plural';
 
 export type TodayImportantKind =
 	| 'chore'
@@ -81,7 +82,7 @@ export function dueLabel(iso: string, now: number): string {
 	if (days === null) return 'Datum prüfen';
 	if (days < 0) {
 		const n = Math.abs(days);
-		return `seit ${n} ${n === 1 ? 'Tag' : 'Tagen'} offen`;
+		return `seit ${pluralize(n, 'Tag', 'Tagen')} offen`;
 	}
 	if (days === 0) return 'heute fällig';
 	if (days === 1) return 'morgen fällig';
@@ -155,7 +156,7 @@ export function getTodayImportantItems(input: TodayImportantInput): TodayImporta
 				title: input.openShoppingTop[0]
 					? `${input.openShoppingTop[0]} fehlt noch`
 					: 'Einkauf offen',
-				detail: `WG · ${input.openShoppingCount} ${input.openShoppingCount === 1 ? 'offener Artikel' : 'offene Artikel'}`,
+				detail: `WG · ${pluralize(input.openShoppingCount, 'offener Artikel', 'offene Artikel')}`,
 				href: `${base}/einkauf`,
 				tone: 'neutral',
 				isPersonal: false,

@@ -2,6 +2,7 @@
 
 import { useWg } from '@/components/wg/WgContextProvider';
 import { apiFetch } from '@/core/infra/api-client';
+import { formatDayMonthYear } from '@/core/utils/time';
 import { pluralize } from '@/shared/lib/plural';
 import { useEffect, useState } from 'react';
 import { ImportUndo } from './ImportUndo';
@@ -19,14 +20,6 @@ const SOURCE_LABELS: Record<string, string> = {
 	splid_csv: 'Splid',
 	ocr_screenshot: 'Screenshot',
 };
-
-// Timestamp of the import run, not a due date, so it keeps its own formatter.
-const DAY_FORMATTER = new Intl.DateTimeFormat('de-DE', {
-	day: '2-digit',
-	month: '2-digit',
-	year: 'numeric',
-	timeZone: 'Europe/Berlin',
-});
 
 /** Earlier imports with their undo, for whoever ran them and for admins. */
 export function ImportHistory() {
@@ -66,7 +59,7 @@ export function ImportHistory() {
 			<ul className="flex flex-col divide-y rounded-xl border">
 				{imports.map((item) => {
 					const author = members.find((member) => member.id === item.importedByMemberId)?.name;
-					const when = DAY_FORMATTER.format(new Date(item.startedAt));
+					const when = formatDayMonthYear(item.startedAt);
 					const description = `${SOURCE_LABELS[item.source] ?? 'Import'} vom ${when}`;
 					const mayUndo = isAdmin || item.importedByMemberId === memberId;
 					return (

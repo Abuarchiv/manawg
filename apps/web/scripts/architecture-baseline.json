@@ -2,6 +2,6 @@
 	"violations": [],
 	"fileSize": {
 		"src/core/db/schema.ts": 1051,
-		"e2e/account-delete-db.spec.ts": 1177
+		"e2e/account-delete-db.spec.ts": 1156
 	}
 }

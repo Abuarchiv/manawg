@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { mock, test } from 'node:test';
+import { applyEnv } from './support/env.ts';
 
 // Routes that call getAuthenticatedUser outside their own try/catch must turn
 // a transient Supabase Auth outage into the same structured, retryable 503
@@ -227,13 +228,7 @@ test('upload read returns a retryable 503 when Supabase Auth is unavailable', as
 });
 
 test('account DELETE returns a retryable 503 when Supabase Auth is unavailable', async (t) => {
-	const previousServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-	process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-key';
-	t.after(() => {
-		if (previousServiceRoleKey === undefined) {
-			Reflect.deleteProperty(process.env, 'SUPABASE_SERVICE_ROLE_KEY');
-		} else process.env.SUPABASE_SERVICE_ROLE_KEY = previousServiceRoleKey;
-	});
+	t.after(applyEnv({ SUPABASE_SERVICE_ROLE_KEY: 'service-role-key' }));
 	freshState();
 
 	const response = await account.DELETE(
