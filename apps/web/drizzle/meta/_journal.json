@@ -232,6 +232,13 @@
       "when": 1793075682841,
       "tag": "0032_inventory_decimal_quantity",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1793107105238,
+      "tag": "0033_runtime_role_grants",
+      "breakpoints": true
     }
   ]
 }
