@@ -42,6 +42,7 @@ export function useDebtSettlement({
 	currentMemberId,
 	onSettled,
 }: DebtSettlementInput) {
+	// Settle errors stay visible inline (dialog or row, role=alert); only the review has no inline spot.
 	const toast = useToast();
 	const [reviewOpen, setReviewOpen] = useState(false);
 	const [settling, setSettling] = useState(false);
@@ -107,7 +108,6 @@ export function useDebtSettlement({
 		if (!idempotencyKey) {
 			const message = 'Ausgleich konnte nicht sicher gespeichert werden. Versuche es erneut.';
 			setError(message);
-			toast.error(message);
 			settlingRef.current = false;
 			setSettling(false);
 			return;
@@ -124,7 +124,6 @@ export function useDebtSettlement({
 				if (res.status > 0 && res.status < 500) settlementRequestRef.current = null;
 				const message = settlementErrorMessage(res.error);
 				setError(message);
-				toast.error(message);
 				if (res.error === 'settlement_changed') {
 					setPreview(null);
 					setReviewOpen(false);
@@ -145,7 +144,6 @@ export function useDebtSettlement({
 		} catch {
 			const message = settlementErrorMessage('Netzwerkfehler');
 			setError(message);
-			toast.error(message);
 		} finally {
 			settlingRef.current = false;
 			setSettling(false);
@@ -173,7 +171,6 @@ export function useDebtSettlement({
 		if (!idempotencyKey) {
 			const message = 'Barzahlung konnte nicht sicher gespeichert werden. Versuche es erneut.';
 			setError(message);
-			toast.error(message);
 			settlingRef.current = false;
 			setSettling(false);
 			return;
@@ -190,7 +187,6 @@ export function useDebtSettlement({
 				if (res.status > 0 && res.status < 500) cashRequestRef.current = null;
 				const message = settlementErrorMessage(res.error);
 				setError(message);
-				toast.error(message);
 				if (res.error === 'settlement_changed') {
 					setPreview(null);
 					setReviewOpen(false);
@@ -206,7 +202,6 @@ export function useDebtSettlement({
 		} catch {
 			const message = settlementErrorMessage('Netzwerkfehler');
 			setError(message);
-			toast.error(message);
 		} finally {
 			settlingRef.current = false;
 			setSettling(false);
