@@ -22,7 +22,11 @@ import { errorCodeSuffix, safeFailureReason } from './db-migrate/failure.mjs';
 import { main } from './db-migrate/run.mjs';
 
 export { assertCatalogSecurity } from './db-migrate/catalog-security.mjs';
-export { previewSessionDatabaseUrl, validateDatabaseUrl } from './db-migrate/connection.mjs';
+export {
+	previewSessionDatabaseUrl,
+	productionSessionDatabaseUrl,
+	validateDatabaseUrl,
+} from './db-migrate/connection.mjs';
 export { assertMigrationLedgerPrefix } from './db-migrate/ledger.mjs';
 export { assertBaselineSchema } from './db-migrate/legacy-adoption.mjs';
 export { expectedBaselineSchema } from './db-migrate/migrations.mjs';
