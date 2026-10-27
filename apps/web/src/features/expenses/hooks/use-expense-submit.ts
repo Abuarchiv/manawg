@@ -18,7 +18,7 @@ import {
 	createQueuedExpenseUpdate,
 } from '@/core/offline/offline-queue';
 import { parseEuroAmount } from '@/core/utils/amount';
-import { inputDateToIso, todayInputValue } from '@/core/utils/local-date';
+import { inputDateOrToday, inputDateToIso, todayInputValue } from '@/core/utils/local-date';
 import { CENTS_PER_EURO } from '@/core/utils/money';
 import type { Expense } from '@/features/expenses/components/ausgaben/expense-types';
 import type { RecurringExpense } from '@/features/expenses/components/ausgaben/expense-types';
@@ -101,7 +101,7 @@ export function useExpenseSubmit(
 		form.setConflictExpenseId(null);
 		const desc = form.description.trim();
 		const amountEuros = parseEuroAmount(form.amountStr);
-		const { occurredOn } = form.extras;
+		const occurredOn = inputDateOrToday(form.extras.pickedOccurredOn);
 		const validationErrors = validateExpenseFields({
 			description: desc,
 			amountEuros,

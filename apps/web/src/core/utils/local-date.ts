@@ -16,6 +16,11 @@ export function todayInputValue(now = new Date()): string {
 	return `${year}-${month}-${day}`;
 }
 
+/** An untouched date input (null) is the current day, also in a tab left open past midnight. */
+export function inputDateOrToday(picked: string | null, now = new Date()): string {
+	return picked ?? todayInputValue(now);
+}
+
 /**
  * Today at local noon. Due dates are stored at noon so their UTC calendar day
  * equals the local one; `new Date()` shortly after midnight would otherwise

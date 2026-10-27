@@ -12,8 +12,9 @@ import {
 } from '@/components/ui/input-group';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Spinner } from '@/components/ui/spinner';
+import { useTodayInputValue } from '@/core/hooks/use-today-input-value';
 import { formatEuroInput, parseEuroAmount } from '@/core/utils/amount';
-import { inputDateToIso, todayInputValue } from '@/core/utils/local-date';
+import { inputDateOrToday, inputDateToIso } from '@/core/utils/local-date';
 import { CENTS_PER_EURO } from '@/core/utils/money';
 import type { MemberOption } from '@/features/expenses/components/abos/abos-types';
 import { ExpenseCategoryField } from '@/features/expenses/components/ausgaben/ExpenseCategoryField';
@@ -78,9 +79,12 @@ export function AboForm({
 		initial?.paidByMemberId ?? defaultPaidByMemberId,
 	);
 	const [intervalMonths, setIntervalMonths] = useState(initial?.intervalMonths ?? 1);
-	const [nextDueAt, setNextDueAt] = useState(
-		initial ? isoDateToInput(initial.nextDueAt) : todayInputValue(),
+	// null until the resident picks a day, so a new subscription follows the current day.
+	const [pickedNextDueAt, setNextDueAt] = useState<string | null>(
+		initial ? isoDateToInput(initial.nextDueAt) : null,
 	);
+	const today = useTodayInputValue();
+	const nextDueAt = pickedNextDueAt ?? today;
 	const initialParticipants = initialEqualParticipants(initial, activeMembers);
 	const [splitMode, setSplitMode] = useState<SplitMode>(
 		initialParticipants === 'manual' ? 'manual' : 'equal',
@@ -125,7 +129,7 @@ export function AboForm({
 	// A start in the past is booked retroactively by the daily run; say so before it happens.
 	const dueDateChanged = !initial || nextDueAt !== isoDateToInput(initial.nextDueAt);
 	const missedBookings =
-		dueDateChanged && nextDueAt.length > 0 && nextDueAt < todayInputValue()
+		dueDateChanged && nextDueAt.length > 0 && nextDueAt < today
 			? countMissedOccurrences(inputDateToIso(nextDueAt) ?? '', intervalMonths)
 			: 0;
 	const nextDueError = error && nextDueAt.trim().length === 0 ? 'Fälligkeit fehlt.' : null;
@@ -162,6 +166,7 @@ export function AboForm({
 		event.preventDefault();
 		setError(null);
 		setSplitError(null);
+		const dueOn = inputDateOrToday(pickedNextDueAt);
 		const trimmedDescription = description.trim();
 		if (trimmedDescription.length === 0 || trimmedDescription.length > DESCRIPTION_MAX) {
 			setError('Gib eine kurze Beschreibung ein.');
@@ -171,16 +176,16 @@ export function AboForm({
 			setError(amountErrorMessage(parseEuroAmount(amountStr), amountStr));
 			return;
 		}
-		if (nextDueAt.trim().length === 0) {
+		if (dueOn.trim().length === 0) {
 			setError('Fälligkeit fehlt.');
 			return;
 		}
 		// An unchanged date keeps the stored timestamp: otherwise every edit would move it to
 		// 12:00 local time, and the server would reject a long-overdue date as out of range.
 		const nextDueAtIso =
-			initial && nextDueAt === isoDateToInput(initial.nextDueAt)
+			initial && dueOn === isoDateToInput(initial.nextDueAt)
 				? initial.nextDueAt
-				: inputDateToIso(nextDueAt);
+				: inputDateToIso(dueOn);
 		if (nextDueAtIso === null) {
 			setError('Fälligkeit fehlt.');
 			return;
