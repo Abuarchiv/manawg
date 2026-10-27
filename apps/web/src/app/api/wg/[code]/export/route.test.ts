@@ -44,6 +44,7 @@ const state = {
 	rowsByTable: {} as Record<string, Row[]>,
 	limits: [] as number[],
 	inArrayCalls: [] as number[],
+	feedAuditWgIds: [] as string[],
 };
 
 const db = {
@@ -81,6 +82,14 @@ mock.module('drizzle-orm', {
 		eq: () => null,
 		inArray: (_column: unknown, values: unknown[]) => {
 			state.inArrayCalls.push(values.length);
+			return null;
+		},
+	},
+});
+mock.module('@/core/db/feed-audit-filter', {
+	namedExports: {
+		feedAuditCondition: (wgId: string) => {
+			state.feedAuditWgIds.push(wgId);
 			return null;
 		},
 	},
@@ -150,6 +159,14 @@ test('explicit export limits remain bounded', async () => {
 	assert.ok(route.limits.every((limit) => limit === 20));
 	assert.equal((await route.get('?limit=100001')).status, 400);
 	assert.equal((await route.get('?limit=0')).status, 400);
+	assert.equal((await route.get('?offset=99999999999999999999')).status, 400);
+});
+
+test('the audit section leaves out the events the shared feed hides', async () => {
+	state.feedAuditWgIds = [];
+	const response = await exportRoute().get('?format=csv&section=auditEvents');
+	assert.equal(response.status, 200, await response.text());
+	assert.deepEqual(state.feedAuditWgIds, ['wg']);
 });
 
 test('large expense id sets load splits in bind-param-safe chunks', async () => {

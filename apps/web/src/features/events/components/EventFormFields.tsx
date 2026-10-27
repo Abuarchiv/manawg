@@ -1,6 +1,6 @@
 'use client';
 
-import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/animate-ui/components/base/switch';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -71,8 +71,13 @@ export function EventFormFields({
 					className="text-base"
 				/>
 			</Field>
-			<Field orientation="horizontal" data-disabled={disabled} className="min-h-9">
-				<Checkbox
+			<Field
+				orientation="horizontal"
+				data-disabled={disabled}
+				className="min-h-11 items-center justify-between"
+			>
+				<FieldLabel htmlFor={`${idPrefix}-all-day`}>Ganztägig</FieldLabel>
+				<Switch
 					id={`${idPrefix}-all-day`}
 					checked={allDay}
 					onCheckedChange={(checked) => {
@@ -84,11 +89,7 @@ export function EventFormFields({
 						}
 					}}
 					disabled={disabled}
-					className="relative after:absolute after:-inset-3"
 				/>
-				<FieldLabel htmlFor={`${idPrefix}-all-day`} className="min-h-9">
-					Ganztägig
-				</FieldLabel>
 			</Field>
 			<Field data-disabled={disabled} className="min-w-0">
 				<FieldLabel htmlFor={`${idPrefix}-start`}>Beginn</FieldLabel>

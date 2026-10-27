@@ -15,6 +15,7 @@ import {
 	wgInventoryItems,
 	wgMembers,
 } from '@/core/db';
+import { feedAuditCondition } from '@/core/db/feed-audit-filter';
 import { type SQL, count, eq } from 'drizzle-orm';
 import type { PgTable } from 'drizzle-orm/pg-core';
 import type { ExportRow, ExportSectionCounts, ExportSectionKey } from './export';
@@ -184,7 +185,7 @@ export async function countExportSections(wgId: string): Promise<ExportSectionCo
 			.then(([row]) => row?.value ?? 0),
 		countRows(wgEvents, eq(wgEvents.wgId, wgId)),
 		countRows(wgChatMessages, eq(wgChatMessages.wgId, wgId)),
-		countRows(auditEvents, eq(auditEvents.wgId, wgId)),
+		countRows(auditEvents, feedAuditCondition(wgId)),
 	]);
 	return {
 		members,

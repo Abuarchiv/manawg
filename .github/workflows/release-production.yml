@@ -89,6 +89,11 @@ jobs:
               echo "$runs" >&2
               exit 1
             fi
+            # The gate only trusts the current main tip; a newer main needs a new release dispatch.
+            if [ "$(git ls-remote origin refs/heads/main | cut -f1)" != "$SHA" ]; then
+              echo "main moved past $SHA; dispatch the release again for the new tip." >&2
+              exit 1
+            fi
             sleep 30
           done
           echo "Preview gate did not pass in time for $SHA:" >&2

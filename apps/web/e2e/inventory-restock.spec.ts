@@ -431,4 +431,47 @@ test.describe('inventory restock retry', () => {
 		await expect(page.getByRole('button', { name: 'Reis entfernen', exact: true })).toBeFocused();
 		expect(deleteCalls).toBe(0);
 	});
+
+	test('an edit sends only the fields that changed', async ({ page }) => {
+		const item = {
+			id: '11111111-1111-4111-8111-111111111111',
+			wgId: FIXTURE_WG.id,
+			name: 'Spülmittel',
+			quantity: 3,
+			unit: 'L',
+			threshold: 2,
+			category: 'kueche',
+			lastDecrementedAt: null,
+			decrementCount30d: 0,
+			createdAt: '2026-09-20T10:00:00.000Z',
+			updatedAt: '2026-09-23T10:00:00.000Z',
+		};
+		const bodies: unknown[] = [];
+
+		await setupMember(page);
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/inventory`, async (route) => {
+			if (route.request().method() !== 'GET') return route.continue();
+			await route.fulfill({
+				json: {
+					items: [item],
+					grouped: { bad: [], kueche: [item], putzmittel: [], sonstiges: [] },
+				},
+			});
+		});
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/inventory/${item.id}`, async (route) => {
+			if (route.request().method() !== 'PATCH') return route.continue();
+			const body = route.request().postDataJSON() as { name: string };
+			bodies.push(body);
+			await route.fulfill({ json: { item: { ...item, name: body.name } } });
+		});
+
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/vorraete`);
+		await dismissOnboarding(page);
+		await page.getByRole('button', { name: 'Spülmittel bearbeiten' }).click();
+		await page.locator('#inventory-name').fill('Spüli');
+		await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+
+		// A housemate's newer threshold or unit is not reset by values the form only displayed.
+		await expect.poll(() => bodies).toEqual([{ name: 'Spüli' }]);
+	});
 });
