@@ -54,7 +54,6 @@ export function useExpenseSubmit(
 	const {
 		wg,
 		identity,
-		toast,
 		notify,
 		pending,
 		expenses,
@@ -160,11 +159,8 @@ export function useExpenseSubmit(
 			submittingRef.current = false;
 			setSubmitting(false);
 		};
-		// Banner on the page plus a toast, for failures the form itself cannot show.
-		const reportError = (message: string, toastMessage = message) => {
-			notify.error(message);
-			toast.error(toastMessage);
-		};
+		// Page banner for failures the form itself cannot show.
+		const reportError = (message: string) => notify.error(message);
 		setSubmitting(true);
 
 		const recurringSource =
@@ -277,10 +273,7 @@ export function useExpenseSubmit(
 					rollbackOptimisticExpense();
 					pending.end(optimisticId);
 					finishSubmitting();
-					reportError(
-						OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
-						'Offline-Speicher ist blockiert. Die Ausgabe wurde zurückgesetzt.',
-					);
+					reportError(OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE);
 					return;
 				}
 				if (!isEdit) pendingRequestRef.current = null;
@@ -308,10 +301,7 @@ export function useExpenseSubmit(
 				);
 				updateExpenses((current) => current.filter((expense) => expense.id !== editingExpense.id));
 				pending.end(optimisticId);
-				reportError(
-					'Diese Ausgabe existiert nicht mehr und wurde aus der Liste entfernt.',
-					'Diese Ausgabe existiert nicht mehr.',
-				);
+				reportError('Diese Ausgabe existiert nicht mehr und wurde aus der Liste entfernt.');
 				void reload();
 				finishSubmitting();
 				return;
@@ -326,7 +316,6 @@ export function useExpenseSubmit(
 			rollbackOptimisticExpense();
 			pending.end(optimisticId);
 			form.setFormError(msg);
-			toast.error(msg);
 			finishSubmitting();
 			return;
 		}

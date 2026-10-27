@@ -17,8 +17,7 @@ export function useRecurringExpenseActions(
 	form: ExpenseFormState,
 	support: ExpenseFormSupport,
 ) {
-	const { identity, toast, notify, pending, recurringExpenses, updateRecurringExpenses, reload } =
-		ctx;
+	const { identity, notify, pending, recurringExpenses, updateRecurringExpenses, reload } = ctx;
 	const recurringApiUrl = `/api/wg/${encodeURIComponent(ctx.wg.shareCode)}/recurring-expenses`;
 	const templateSave = useRecurringTemplateSave(ctx, form, support);
 	const booking = useRecurringBooking(ctx);
@@ -47,7 +46,6 @@ export function useRecurringExpenseActions(
 			});
 			const message = recurringTemplateDeleteErrorMessage(res.error);
 			notify.error(message);
-			toast.error(message);
 			pending.end(template.id);
 			return;
 		}

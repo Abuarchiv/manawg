@@ -39,7 +39,6 @@ export function useRecurringBooking(ctx: ExpensePageContext) {
 	const {
 		wg,
 		identity,
-		toast,
 		notify,
 		pending,
 		updateExpenses,
@@ -195,9 +194,8 @@ export function useRecurringBooking(ctx: ExpensePageContext) {
 					rollbackOptimisticExpense();
 					pending.end(optimisticId);
 					notify.error(
-						'Offline-Speicher ist blockiert. Die Fixkosten-Ausgabe konnte nicht vorgemerkt werden.',
+						'Offline-Speicher ist blockiert. Die Fixkosten-Ausgabe konnte nicht vorgemerkt werden und wurde zurückgesetzt.',
 					);
-					toast.error('Die Fixkosten-Ausgabe wurde zurückgesetzt.');
 					finishCreating();
 					return;
 				}
@@ -212,7 +210,6 @@ export function useRecurringBooking(ctx: ExpensePageContext) {
 			pending.end(optimisticId);
 			const message = expenseSaveErrorMessage(createRes.error);
 			notify.error(message);
-			toast.error(message);
 			finishCreating();
 			// The template changed under us (already booked, paused or deleted): show its current state.
 			if (isPermanentClientError(createRes.status)) void reload();
