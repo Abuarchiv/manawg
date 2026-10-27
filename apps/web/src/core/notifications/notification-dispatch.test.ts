@@ -4,6 +4,7 @@ import { afterEach, mock, test } from 'node:test';
 const pushSubscriptions = { __table: 'push_subscriptions' };
 const wgMembers = { __table: 'wg_members' };
 let memberRows: unknown[] = [];
+let subscriptionRows: unknown[] = [];
 
 mock.module('@/core/db', {
 	namedExports: {
@@ -12,7 +13,7 @@ mock.module('@/core/db', {
 		db: {
 			select: () => ({
 				from: (table: unknown) => ({
-					where: async () => (table === wgMembers ? memberRows : []),
+					where: async () => (table === wgMembers ? memberRows : subscriptionRows),
 				}),
 			}),
 		},
@@ -63,4 +64,36 @@ test('test push without VAPID keys stays a server-side delivery failure', async 
 		assert.equal((err as Error).message, 'notification_delivery_failed');
 		return true;
 	});
+});
+
+test('an urgent push reaches a member in quiet hours, a normal one does not', async () => {
+	process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY = 'public';
+	process.env.VAPID_PRIVATE_KEY = 'private';
+	const hour = Number(
+		new Intl.DateTimeFormat('en-GB', {
+			hour: 'numeric',
+			hourCycle: 'h23',
+			timeZone: 'Europe/Berlin',
+		}).format(new Date()),
+	);
+	memberRows = [
+		{
+			...member(true),
+			notifyEvents: true,
+			quietStartHour: hour,
+			quietEndHour: (hour + 1) % 24,
+		},
+	];
+	subscriptionRows = [{ id: 'sub-1', endpoint: 'https://push.test', p256dh: 'p', authKey: 'a' }];
+	const change = {
+		wg: input.wg,
+		event: 'event.cancelled' as const,
+		payload: { title: 'Plenum', startsAt: new Date().toISOString(), allDay: false },
+	};
+	try {
+		assert.equal((await dispatchNotification(change)).sent, 0);
+		assert.equal((await dispatchNotification({ ...change, urgent: true })).sent, 1);
+	} finally {
+		subscriptionRows = [];
+	}
 });

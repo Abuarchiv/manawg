@@ -1,17 +1,27 @@
 'use client';
 
 import { subscribeVisibility } from '@/core/hooks/use-online-status';
-import { todayInputValue } from '@/core/utils/local-date';
+import { msUntilNextLocalDay, todayInputValue } from '@/core/utils/local-date';
 import { useEffect, useState } from 'react';
 
-/** Today's date as an `<input type="date">` value; rolls over when a tab left open past midnight returns. */
+/**
+ * Today's date as an `<input type="date">` value. Rolls over at midnight, also in a tab that
+ * stays in front, and when a tab left open past midnight returns.
+ */
 export function useTodayInputValue(): string {
 	const [today, setToday] = useState(() => todayInputValue());
 	useEffect(() => {
-		const refresh = () => setToday(todayInputValue());
+		let timer: ReturnType<typeof setTimeout> | undefined;
+		const refresh = () => {
+			setToday(todayInputValue());
+			clearTimeout(timer);
+			timer = setTimeout(refresh, msUntilNextLocalDay());
+		};
+		refresh();
 		window.addEventListener('focus', refresh);
 		const unsubscribeVisibility = subscribeVisibility(refresh);
 		return () => {
+			clearTimeout(timer);
 			window.removeEventListener('focus', refresh);
 			unsubscribeVisibility();
 		};
