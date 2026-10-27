@@ -34,6 +34,8 @@ jobs:
           DATABASE_MIGRATION_URL: ${{ secrets.DATABASE_MIGRATION_URL }}
           BACKUP_GPG_PRIVATE_KEY: ${{ secrets.BACKUP_GPG_PRIVATE_KEY }}
           BACKUP_GPG_PASSPHRASE: ${{ secrets.BACKUP_GPG_PASSPHRASE }}
+          SUPABASE_BACKUP_SECRET_KEY: ${{ secrets.SUPABASE_BACKUP_SECRET_KEY }}
+          SUPABASE_URL: https://bwsvsvfgbrsonepffqff.supabase.co
         run: |
           umask 077
           export WORK_DIR="$RUNNER_TEMP/backup" KEY_DIR="$RUNNER_TEMP/backup-key"
@@ -42,9 +44,10 @@ jobs:
           node --experimental-strip-types .github/scripts/pg-env.mjs production "$WORK_DIR"
           printf '%s\n' "$BACKUP_GPG_PRIVATE_KEY" > "$KEY_DIR/private.asc"
           printf '%s' "$BACKUP_GPG_PASSPHRASE" > "$KEY_DIR/passphrase"
+          printf '%s' "$SUPABASE_BACKUP_SECRET_KEY" > "$KEY_DIR/storage-key"
           FILE="$(PG_ENV_FILE="$WORK_DIR/pg.env" PUBLIC_KEY_FILE=.github/backup-public-key.asc \
             PRIVATE_KEY_FILE="$KEY_DIR/private.asc" PASSPHRASE_FILE="$KEY_DIR/passphrase" \
-            .github/scripts/db-backup.sh)"
+            STORAGE_KEY_FILE="$KEY_DIR/storage-key" .github/scripts/db-backup.sh)"
           rm -rf "$KEY_DIR" "$WORK_DIR/pg.env"
           echo "file=$FILE" >> "$GITHUB_OUTPUT"
           echo "Encrypted backup: $(basename "$FILE") ($(stat -c %s "$FILE") bytes)" >> "$GITHUB_STEP_SUMMARY"
