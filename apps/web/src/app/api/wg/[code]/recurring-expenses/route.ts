@@ -20,7 +20,10 @@ import {
 	isRecurringAnchorAllowed,
 	recurringDueAtSchema,
 } from '@/core/validators/recurring-due-date';
-import { expenseCategorySchema } from '@/features/expenses/expense-categories';
+import {
+	expenseCategorySchema,
+	expenseCategoryValueSchema,
+} from '@/features/expenses/expense-categories';
 import { MAX_SPLITS, RECURRING_INTERVAL_MAX_MONTHS } from '@/features/expenses/expense-constants';
 import {
 	expenseAmountSchema,
@@ -75,7 +78,7 @@ const createRecurringSchema = z.object({
 const advanceSchema = z.object({
 	id: z.string().uuid(),
 	description: expenseDescriptionSchema.optional(),
-	category: expenseCategorySchema.optional(),
+	category: expenseCategoryValueSchema.optional(),
 	amountCents: expenseAmountSchema.optional(),
 	currency: currencySchema.optional(),
 	paidByMemberId: z.string().uuid().optional(),

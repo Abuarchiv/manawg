@@ -6,7 +6,7 @@ import { badRequest, notFound, rateLimitResponse } from '@/core/http/api-errors'
 import { parseBody } from '@/core/http/parse-body';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
-import { expenseCategorySchema } from '@/features/expenses/expense-categories';
+import { expenseCategoryValueSchema } from '@/features/expenses/expense-categories';
 import { MAX_SPLITS, RECURRING_INTERVAL_MAX_MONTHS } from '@/features/expenses/expense-constants';
 import {
 	expenseAmountSchema,
@@ -25,7 +25,7 @@ import { z } from 'zod';
 
 const patchSchema = z.object({
 	description: expenseDescriptionSchema.optional(),
-	category: expenseCategorySchema.optional(),
+	category: expenseCategoryValueSchema.optional(),
 	amountCents: expenseAmountSchema.optional(),
 	currency: currencySchema.optional(),
 	paidByMemberId: z.string().uuid().optional(),
