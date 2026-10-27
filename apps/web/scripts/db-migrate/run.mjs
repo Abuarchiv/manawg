@@ -9,6 +9,7 @@ import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import pg from 'pg';
 import {
 	previewSessionDatabaseUrl,
+	productionSessionDatabaseUrl,
 	resolveConnectionString,
 	validateSupabaseDirectUrl,
 } from './connection.mjs';
@@ -34,9 +35,15 @@ export async function main(progress) {
 	progress.stage = 'connection-config';
 	const sourceConnection = resolveConnectionString();
 	validateSupabaseDirectUrl(sourceConnection, 'Database migration connection');
-	const connectionString =
-		process.env.MANAWG_PREVIEW_CI_SESSION === 'true'
-			? previewSessionDatabaseUrl(sourceConnection)
+	const previewSession = process.env.MANAWG_PREVIEW_CI_SESSION === 'true';
+	const productionSession = process.env.MANAWG_PRODUCTION_CI_SESSION === 'true';
+	if (previewSession && productionSession) {
+		throw new Error('Preview and Production CI sessions are mutually exclusive.');
+	}
+	const connectionString = previewSession
+		? previewSessionDatabaseUrl(sourceConnection)
+		: productionSession
+			? productionSessionDatabaseUrl(sourceConnection)
 			: sourceConnection;
 	const pool = new pg.Pool({ connectionString, max: 1 });
 	progress.stage = 'connect';

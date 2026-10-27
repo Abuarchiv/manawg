@@ -50,30 +50,45 @@ export function validateSupabaseDirectUrl(url, label) {
 	}
 }
 
-/** Explicit CI transport for the pinned Preview verifier; never a Production fallback. */
-export function previewSessionDatabaseUrl(value) {
+const SESSION_POOLER_HOST = 'aws-0-eu-central-1.pooler.supabase.com';
+
+/**
+ * GitHub runners have no IPv6, and the direct Supabase host has no IPv4: CI keeps the pinned
+ * direct URL as its secret and connects through the session pooler (port 5432, session locks).
+ */
+function pinnedSessionPoolerUrl(value, projectRef, user, failure) {
 	let url;
 	try {
 		url = new URL(value);
 	} catch {
-		throw new Error('Preview CI database configuration is invalid.');
+		throw new Error(`${failure} configuration is invalid.`);
 	}
 	if (
 		!['postgres:', 'postgresql:'].includes(url.protocol) ||
-		url.hostname !== 'db.sthiwjebcwwiphashgla.supabase.co' ||
+		url.hostname !== `db.${projectRef}.supabase.co` ||
 		url.port !== '5432' ||
 		url.pathname !== '/postgres' ||
-		url.username !== 'manawg_preview_ci' ||
+		url.username !== user ||
 		!url.password ||
 		url.hash ||
 		url.searchParams.size !== 1 ||
 		url.searchParams.get('sslmode') !== 'verify-full'
 	) {
-		throw new Error('Preview CI requires its pinned verifier connection with verified TLS.');
+		throw new Error(`${failure} requires its pinned connection with verified TLS.`);
 	}
-	url.hostname = 'aws-0-eu-central-1.pooler.supabase.com';
-	url.username = 'manawg_preview_ci.sthiwjebcwwiphashgla';
+	url.hostname = SESSION_POOLER_HOST;
+	url.username = `${user}.${projectRef}`;
 	return url.href;
+}
+
+/** Explicit CI transport for the pinned Preview verifier; never a Production fallback. */
+export function previewSessionDatabaseUrl(value) {
+	return pinnedSessionPoolerUrl(value, 'sthiwjebcwwiphashgla', 'manawg_preview_ci', 'Preview CI');
+}
+
+/** Explicit CI transport for the protected Production migration workflow. */
+export function productionSessionDatabaseUrl(value) {
+	return pinnedSessionPoolerUrl(value, 'bwsvsvfgbrsonepffqff', 'postgres', 'Production CI');
 }
 
 /**
