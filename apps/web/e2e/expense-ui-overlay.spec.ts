@@ -395,7 +395,7 @@ test.describe('date integrity ui', () => {
 		const end = page.getByLabel('Ende (optional)');
 		await start.fill('2026-09-22T14:00');
 		await end.fill('2026-09-22T15:00');
-		await page.getByRole('checkbox', { name: 'Ganztägig', exact: true }).click();
+		await page.getByRole('switch', { name: 'Ganztägig', exact: true }).click();
 
 		await expect(start).toHaveValue('2026-09-22');
 		await expect(end).toHaveValue('2026-09-22');

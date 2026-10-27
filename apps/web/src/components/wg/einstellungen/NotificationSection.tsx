@@ -201,7 +201,9 @@ export function NotificationSection({
 							>
 								<FieldContent>
 									<FieldTitle>Ruhezeit</FieldTitle>
-									<FieldDescription id="notification-quiet-hint">{QUIET_HOURS_HINT}</FieldDescription>
+									<FieldDescription id="notification-quiet-hint">
+										{QUIET_HOURS_HINT}
+									</FieldDescription>
 								</FieldContent>
 								<Switch
 									checked={quietHoursSet}

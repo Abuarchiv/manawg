@@ -76,9 +76,7 @@ export function EventFormFields({
 				data-disabled={disabled}
 				className="min-h-11 items-center justify-between"
 			>
-				<FieldLabel htmlFor={`${idPrefix}-all-day`}>
-					Ganztägig
-				</FieldLabel>
+				<FieldLabel htmlFor={`${idPrefix}-all-day`}>Ganztägig</FieldLabel>
 				<Switch
 					id={`${idPrefix}-all-day`}
 					checked={allDay}
