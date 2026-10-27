@@ -38,9 +38,9 @@ type RecordOutcome =
 	| { kind: 'changed' }
 	| { kind: 'recorded'; paymentId: string; amountCents: number };
 
-type VoidOutcome = {
-	kind: 'member_deactivated' | 'not_found' | 'not_party' | 'already_voided' | 'blocked' | 'voided';
-};
+type VoidOutcome =
+	| { kind: 'member_deactivated' | 'not_found' | 'not_party' | 'already_voided' | 'blocked' }
+	| { kind: 'voided'; otherMemberId: string; amountCents: number; currency: string };
 
 const REJECTION_STATUS: Record<string, number> = {
 	member_deactivated: HTTP.UNAUTHORIZED,
@@ -214,6 +214,11 @@ export async function voidCashPayment(
 	return {
 		status: 200,
 		body: { paymentId, voided: true, amountCents: payment.amountCents, currency: payment.currency },
-		context: { kind: 'voided' },
+		context: {
+			kind: 'voided',
+			otherMemberId: payment.fromMemberId === callerId ? payment.toMemberId : payment.fromMemberId,
+			amountCents: payment.amountCents,
+			currency: payment.currency,
+		},
 	};
 }

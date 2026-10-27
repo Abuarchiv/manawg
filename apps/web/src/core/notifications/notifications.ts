@@ -7,6 +7,7 @@ export type NotificationEvent =
 	| 'expense.recurring_charged'
 	| 'expense.reminder'
 	| 'expense.debt_settled'
+	| 'expense.payment_voided'
 	| 'import.completed'
 	| 'notification.test'
 	| 'announcement.posted'
@@ -214,6 +215,15 @@ export function formatNotificationMessage(
 					payload.direction === 'received'
 						? `${actorName} hat den Eingang von ${amount} von dir bestätigt.`
 						: `${actorName} hat ${amount} an dich beglichen. Stimmt das nicht, öffne die Ausgaben und widersprich dort.`,
+				urlPath: '/ausgaben',
+			};
+		}
+		case 'expense.payment_voided': {
+			const actorName = text(payload.actorName, 'Jemand');
+			const amount = money(payload.amountCents, payload.currency);
+			return {
+				title: 'Barzahlung storniert',
+				body: `${actorName} hat die Barzahlung über ${amount} storniert. Der Betrag ist wieder offen.`,
 				urlPath: '/ausgaben',
 			};
 		}

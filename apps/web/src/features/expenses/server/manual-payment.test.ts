@@ -189,6 +189,13 @@ test('the receiving member voids a completed manual payment and the audit row na
 	assert.equal(inserted[0]?.eventType, 'expense.debt.settled.manual.voided');
 	assert.equal(inserted[0]?.entityId, PAYMENT);
 	assert.match(String(inserted[0]?.summary), /^Anna hat eine Barzahlung über .* storniert\.$/);
+	// The route tells the payer, the other side of the pair, that the debt is open again.
+	assert.deepEqual(result.context, {
+		kind: 'voided',
+		otherMemberId: B,
+		amountCents: 1000,
+		currency: 'EUR',
+	});
 });
 
 test('voiding is refused for outsiders, PayPal payments, voided payments and running captures', async () => {

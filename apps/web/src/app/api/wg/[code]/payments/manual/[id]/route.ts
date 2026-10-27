@@ -11,6 +11,8 @@ import {
 	unauthorized,
 } from '@/core/http/api-errors';
 import { readIdempotencyKey } from '@/core/idempotency-store';
+import { afterResponse } from '@/core/infra/after-response';
+import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { withExpensePaymentLock } from '@/features/expenses/server/expense-payments';
 import { voidCashPayment, voidCashPaymentCodec } from '@/features/expenses/server/manual-payment';
@@ -53,6 +55,22 @@ export const DELETE = withWgRoute<{ id: string }>(
 			if (kind === 'not_party') return forbidden('not_party_to_debt', 'not_party_to_debt');
 			if (kind === 'already_voided') return conflict('payment_voided');
 			if (kind === 'blocked') return conflict('paypal_payment_pending');
+			const voided = result.context;
+			if (voided?.kind === 'voided') {
+				afterResponse(() =>
+					dispatchNotificationSafely({
+						wg: auth.wg,
+						event: 'expense.payment_voided',
+						payload: {
+							actorName: auth.member.name,
+							amountCents: voided.amountCents,
+							currency: voided.currency,
+						},
+						targetMemberIds: [voided.otherMemberId],
+						excludeMemberId: caller,
+					}),
+				);
+			}
 		}
 		return NextResponse.json(result.body, {
 			status: result.status,

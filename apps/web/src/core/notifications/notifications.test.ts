@@ -155,3 +155,18 @@ test('low-stock push shows German decimals', () => {
 	});
 	assert.ok(message.body.includes('(0,5 von 1)'));
 });
+
+test('a voided cash payment tells the other side that the amount is open again', () => {
+	const message = formatNotificationMessage('expense.payment_voided', {
+		wgName: 'WG',
+		actorName: 'Anna',
+		amountCents: 1250,
+		currency: 'EUR',
+	});
+	assert.equal(message.title, 'Barzahlung storniert');
+	assert.match(
+		message.body,
+		/^Anna hat die Barzahlung über 12,50\s€ storniert\. Der Betrag ist wieder offen\.$/,
+	);
+	assert.equal(notificationCategoryForEvent('expense.payment_voided'), 'expenses');
+});
