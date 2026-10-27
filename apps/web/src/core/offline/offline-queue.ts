@@ -50,6 +50,25 @@ export function hasQueuedShoppingUpdate(
 	);
 }
 
+/**
+ * Chore occurrences with a completion still waiting to sync. Lost connections
+ * do not count as attempts, so a counted one was rejected and needs the user.
+ */
+export function pendingChoreCompletions(
+	actions: readonly OfflineAction[],
+	shareCode: string,
+): Array<{ id: string; nextDueAt: string }> {
+	return actions
+		.filter(
+			(action) =>
+				action.type === 'chore.complete' && action.shareCode === shareCode && !action.attempts,
+		)
+		.map((action) => ({
+			id: String(action.payload.choreId),
+			nextDueAt: String(action.payload.expectedNextDueAt),
+		}));
+}
+
 const QUEUED_CREATE_ID_RE = /^(?:shopping|chore-create|absence):[^:]+:\d+:/;
 
 /**
