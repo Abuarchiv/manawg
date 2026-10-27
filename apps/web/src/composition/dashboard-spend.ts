@@ -9,11 +9,11 @@ import { normalizeCurrency } from '@/core/utils/money';
 const SPARKLINE_DAYS = 14;
 const MONTH_DAYS = 30;
 
-export function addCurrencyTotal(totals: CurrencyTotals, currency: string, cents: number): void {
+function addCurrencyTotal(totals: CurrencyTotals, currency: string, cents: number): void {
 	totals[currency] = (totals[currency] ?? 0) + cents;
 }
 
-export function singleCurrencyTotal(totals: Readonly<CurrencyTotals>): number | null {
+function singleCurrencyTotal(totals: Readonly<CurrencyTotals>): number | null {
 	const currencies = Object.keys(totals).filter((currency) => totals[currency] !== 0);
 	return currencies.length <= 1 ? (currencies[0] ? (totals[currencies[0]] ?? 0) : 0) : null;
 }

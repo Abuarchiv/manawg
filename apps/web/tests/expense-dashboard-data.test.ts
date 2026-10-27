@@ -111,10 +111,7 @@ test('dashboard due recurring count matches active Abos and retains paused activ
 		dashboard.dueRecurringExpenses.map((abo) => abo.id),
 		abosDue.map((abo) => abo.id),
 	);
-	assert.equal(
-		dashboard.wgHealth.items.find((item) => item.label === 'Fixkosten fällig')?.value,
-		String(abosDue.length),
-	);
+	assert.equal(dashboard.dueRecurringExpenses.length, abosDue.length);
 	assert.deepEqual(
 		dashboard.activity
 			.filter((item) => item.kind === 'recurring')

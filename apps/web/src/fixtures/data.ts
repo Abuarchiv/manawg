@@ -1,6 +1,5 @@
 // In-memory WGs, dashboard and chat for the database-free Playwright build.
 import type { DashboardData } from '@/composition/dashboard-data';
-import { getWgHealth } from '@/composition/dashboard-insights';
 import type { wgChatMessages } from '@/core/db';
 
 export const E2E_EXISTING_WG = {
@@ -123,15 +122,6 @@ export function buildE2EDashboardData(code: string): DashboardData {
 		],
 		latestAnnouncement: null,
 		myOpenAnnouncements: [],
-		wgHealth: getWgHealth({
-			shareCode: code,
-			openShoppingCount: 1,
-			overdueChoreCount: 0,
-			openDebtCents: 0,
-			openAnnouncementCount: 0,
-			absentMemberCount: 0,
-			dueRecurringCount: 1,
-		}),
 		dueRecurringExpenses: [
 			{
 				id: 'a1ef32d5-d40a-4df2-9977-7684dce7df3f',

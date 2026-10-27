@@ -15,7 +15,7 @@ import {
 } from './support/helpers';
 
 test.describe('daily overview home', () => {
-	const BASE = '/api/wg/MTE8PZAT';
+	const BASE = `/api/wg/${FIXTURE_WG.shareCode}`;
 
 	function dayKeyOffset(dayKey: string, offset: number): string {
 		const [year, month, day] = dayKey.split('-').map(Number);
@@ -96,7 +96,6 @@ test.describe('daily overview home', () => {
 					createdAt: new Date().toISOString(),
 				},
 			],
-			wgHealth: { score: 100, label: 'ruhig', items: [] },
 			dueRecurringExpenses: [
 				{
 					id: 'internet',
@@ -160,7 +159,7 @@ test.describe('daily overview home', () => {
 			},
 		];
 		await mockChoresDashboard(page, chores);
-		await page.route(/\/api\/wg\/MTE8PZAT\/events\?/, (route) =>
+		await page.route(new RegExp(`${BASE}/events\\?`), (route) =>
 			route.fulfill({
 				status: 200,
 				json: {
@@ -347,7 +346,7 @@ test.describe('daily overview home', () => {
 				assignedColor: null,
 			},
 		]);
-		await page.route(/\/api\/wg\/MTE8PZAT\/events\?/, (route) =>
+		await page.route(new RegExp(`${BASE}/events\\?`), (route) =>
 			route.fulfill({ status: 503, json: { error: 'temporarily_unavailable' } }),
 		);
 
@@ -381,12 +380,12 @@ test.describe('daily overview home', () => {
 			});
 		});
 		await mockUnreadCount(page, BASE);
-		await page.route(/\/api\/wg\/MTE8PZAT\/events\?/, (route) =>
+		await page.route(new RegExp(`${BASE}/events\\?`), (route) =>
 			route.fulfill({ status: 200, json: { events: [] } }),
 		);
 		const attempts: Array<number | 'offline'> = [503, 429, 'offline', 200];
 		const idempotencyKeys: string[] = [];
-		await page.route(/\/api\/wg\/MTE8PZAT\/chores\/mine\/complete$/, async (route) => {
+		await page.route(new RegExp(`${BASE}/chores/mine/complete$`), async (route) => {
 			const response = attempts[idempotencyKeys.length];
 			idempotencyKeys.push(route.request().headers()['idempotency-key'] ?? '');
 			if (response === 'offline') return route.abort('failed');
@@ -436,14 +435,14 @@ test.describe('daily overview home', () => {
 			assignedColor: null,
 		};
 		await mockChoresDashboard(page, [chore]);
-		await page.route(/\/api\/wg\/MTE8PZAT\/events\?/, (route) =>
+		await page.route(new RegExp(`${BASE}/events\\?`), (route) =>
 			route.fulfill({ status: 200, json: { events: [] } }),
 		);
 		let resolveComplete: (() => void) | undefined;
 		const held = new Promise<void>((resolve) => {
 			resolveComplete = resolve;
 		});
-		await page.route(/\/api\/wg\/MTE8PZAT\/chores\/mine\/complete$/, async (route) => {
+		await page.route(new RegExp(`${BASE}/chores/mine/complete$`), async (route) => {
 			await held;
 			return route.fulfill({ status: 200, json: { ok: true } });
 		});
@@ -470,7 +469,7 @@ test.describe('daily overview home', () => {
 			route.fulfill({ status: 503, json: { error: 'temporarily_unavailable' } }),
 		);
 		await mockUnreadCount(page, BASE);
-		await page.route(/\/api\/wg\/MTE8PZAT\/events\?/, (route) =>
+		await page.route(new RegExp(`${BASE}/events\\?`), (route) =>
 			route.fulfill({ status: 200, json: { events: [] } }),
 		);
 
@@ -491,7 +490,7 @@ test.describe('daily overview home', () => {
 		await mockChoresDashboard(page, []);
 		await mockUnreadCount(page, BASE);
 		const eventRangeStarts: string[] = [];
-		await page.route(/\/api\/wg\/MTE8PZAT\/events\?/, (route) => {
+		await page.route(new RegExp(`${BASE}/events\\?`), (route) => {
 			const url = new URL(route.request().url());
 			eventRangeStarts.push(url.searchParams.get('from') ?? '');
 			return route.fulfill({ status: 200, json: { events: [] } });

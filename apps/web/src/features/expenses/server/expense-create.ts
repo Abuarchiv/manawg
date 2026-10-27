@@ -1,6 +1,7 @@
 import 'server-only';
 import { expenseSplits, expenses, recurringExpenses } from '@/core/db';
 import { bodyCodec } from '@/core/db/idempotent-write';
+import { isUniqueViolation } from '@/core/db/pg-errors';
 import { assertPrivateImageCanBeAttached } from '@/core/db/private-image-deletions';
 import { type DbTransaction, TransactionAbort } from '@/core/db/transaction';
 import { badRequest, conflict, notFound } from '@/core/http/api-errors';
@@ -214,14 +215,7 @@ export function replayRecurringBooking(error: unknown) {
 }
 
 export function isRecurringDueUniqueViolation(error: unknown): boolean {
-	const cause = error instanceof Error && error.cause !== undefined ? error.cause : error;
-	if (!cause || typeof cause !== 'object') return false;
-	const pgError = cause as { code?: unknown; constraint?: unknown; constraint_name?: unknown };
-	return (
-		pgError.code === '23505' &&
-		(pgError.constraint === 'expenses_recurring_due_unique_idx' ||
-			pgError.constraint_name === 'expenses_recurring_due_unique_idx')
-	);
+	return isUniqueViolation(error, 'expenses_recurring_due_unique_idx');
 }
 
 export function expenseCreateAbortResponse(error: unknown): NextResponse | null {

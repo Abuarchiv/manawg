@@ -40,9 +40,9 @@ function isDuplicateAuditActivity(
 }
 
 export function buildPrimaryActivity(
-	expenseRows: PrimaryRows[1],
-	recentShopping: PrimaryRows[5],
-	announcementRows: PrimaryRows[7],
+	expenseRows: PrimaryRows['recentExpenses'],
+	recentShopping: PrimaryRows['recentShopping'],
+	announcementRows: PrimaryRows['announcementRows'],
 	memberById: Map<string, { name: string }>,
 	shareCode: string,
 ): { activity: ActivityItem[]; rawActivityByKey: Map<string, number> } {
@@ -92,9 +92,9 @@ export function buildPrimaryActivity(
 export function appendSecondaryActivity(
 	activity: ActivityItem[],
 	rawActivityByKey: Map<string, number>,
-	absenceRows: SecondaryRows[1],
-	recurringRows: SecondaryRows[2],
-	auditRows: SecondaryRows[3],
+	absenceRows: SecondaryRows['absenceRows'],
+	recurringRows: SecondaryRows['recurringRows'],
+	auditRows: SecondaryRows['auditRows'],
 	memberById: Map<string, { name: string }>,
 	shareCode: string,
 ): void {
@@ -114,7 +114,8 @@ export function appendSecondaryActivity(
 		});
 		rawActivityByKey.set(`absence:${absence.id}`, absence.createdAt.getTime());
 	}
-	const recurringTime = (r: SecondaryRows[2][number]) => (r.lastCreatedAt ?? r.createdAt).getTime();
+	const recurringTime = (r: SecondaryRows['recurringRows'][number]) =>
+		(r.lastCreatedAt ?? r.createdAt).getTime();
 	const newestRecurring = [...recurringRows]
 		.sort((a, b) => recurringTime(b) - recurringTime(a))
 		.slice(0, ACTIVITY_LIMIT);

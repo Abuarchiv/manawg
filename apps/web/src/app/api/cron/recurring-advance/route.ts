@@ -1,5 +1,6 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, expenseSplits, expenses, recurringExpenses, wgMembers, wgs } from '@/core/db';
+import { isUniqueViolation } from '@/core/db/pg-errors';
 import { TransactionAbort } from '@/core/db/transaction';
 import { requireCronSecret } from '@/core/infra/cron-auth';
 import { logApiError } from '@/core/infra/observability';
@@ -162,21 +163,7 @@ async function createExpenseForDueAt(
 	} catch (err) {
 		if (err instanceof TransactionAbort) return null;
 		// Unique (recurring_expense_id, recurring_due_at) ⇒ already advanced for this window.
-		for (const candidate of [err, err instanceof Error ? err.cause : null]) {
-			if (!candidate || typeof candidate !== 'object') continue;
-			const pgError = candidate as {
-				code?: unknown;
-				constraint?: unknown;
-				constraint_name?: unknown;
-			};
-			if (
-				pgError.code === '23505' &&
-				(pgError.constraint === 'expenses_recurring_due_unique_idx' ||
-					pgError.constraint_name === 'expenses_recurring_due_unique_idx')
-			) {
-				return 'duplicate';
-			}
-		}
+		if (isUniqueViolation(err, 'expenses_recurring_due_unique_idx')) return 'duplicate';
 		logApiError('[cron/recurring-advance] insert failed', err);
 		return null;
 	}
