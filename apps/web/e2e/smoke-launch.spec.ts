@@ -430,10 +430,12 @@ test.describe('ManaWG launch smoke', () => {
 			expect(listedChat.messages?.filter((message) => message.id === messageId)).toEqual([
 				expect.objectContaining({ body: editedMessage }),
 			]);
+			// The bubble also holds the "bearbeitet" time stamp, so match the body as a substring.
+			const chatBubble = page.getByText(editedMessage);
 			await gotoWithRetry(page, `/wg/${createdShareCode}/chat`);
-			await expect(page.getByText(editedMessage, { exact: true })).toBeVisible({ timeout: 30_000 });
+			await expect(chatBubble).toBeVisible({ timeout: 30_000 });
 			await page.reload();
-			await expect(page.getByText(editedMessage, { exact: true })).toBeVisible({ timeout: 30_000 });
+			await expect(chatBubble).toBeVisible({ timeout: 30_000 });
 
 			const eventTitle = `Smoke Event ${runNamespace}`;
 			const editedEventTitle = `${eventTitle} edited`;
