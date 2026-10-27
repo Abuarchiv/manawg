@@ -152,6 +152,7 @@ body:has(.group\/wg-shell) [data-slot="field-group"] {
 	--color-accent-foreground: var(--accent-foreground);
 	--color-settled: var(--settled);
 	--color-destructive: var(--destructive);
+	--color-destructive-text: var(--destructive-text);
 	--color-border: var(--border);
 	--color-input: var(--input);
 	--color-ring: var(--ring);
@@ -544,6 +545,8 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 		--muted-foreground: oklch(0.52 0 0);
 		--accent-foreground: oklch(0.205 0 0);
 		--destructive: oklch(0.577 0.245 27.325);
+		/* Text on the destructive tint: 5.9:1 on destructive/10 over white. */
+		--destructive-text: oklch(0.505 0.213 27.518);
 		/* Darkened from the stock oklch(0.922 0 0)/oklch(0.708 0 0): the shadcn defaults measured
 		   1.26:1 (input/switch-track border) and 2.59:1 (focus ring) against white, both below the
 		   WCAG 1.4.11 non-text-contrast minimum of 3:1. --ring keeps the 0.556 lightness (independent of
@@ -601,6 +604,8 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 		--muted-foreground: oklch(0.708 0 0);
 		--accent-foreground: oklch(0.985 0 0);
 		--destructive: oklch(0.704 0.191 22.216);
+		/* Text on the destructive tint: 4.8:1 on destructive/20 over the page background. */
+		--destructive-text: oklch(0.808 0.114 19.571);
 		/* Previously white at 15 % opacity (1.5:1 against the background). 0.55 gives about 4.1:1 on the page,
 		   3.7:1 on cards and 3.1:1 on muted surfaces (WCAG 1.4.11). Surfaces using --input use
 		   foreground/…-alpha so the fill does not lighten along with it. */

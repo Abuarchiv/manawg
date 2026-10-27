@@ -185,12 +185,7 @@ export function AccountDeleteSection() {
 							Abbrechen
 						</AlertDialogCancel>
 						<Button
-							variant="destructive"
-							className={
-								armed
-									? 'bg-destructive text-white hover:bg-destructive/90 dark:bg-destructive dark:text-background dark:hover:bg-destructive/90'
-									: undefined
-							}
+							variant={armed ? 'destructive-solid' : 'destructive'}
 							onClick={(event) => {
 								event.preventDefault();
 								void handleDelete();

@@ -11,6 +11,7 @@ import {
 	ItemTitle,
 } from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
+import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
 import { apiFetch } from '@/core/infra/api-client';
 import { useInventoryQuantity } from '@/features/inventory/hooks/use-inventory-quantity';
 import {
@@ -19,7 +20,7 @@ import {
 	formatQuantity,
 } from '@/features/inventory/inventory';
 import { Minus, Pencil, Plus, Trash2 } from 'lucide-react';
-import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 
 interface InventoryItemRowProps {
 	item: InventoryItemDto;
@@ -27,18 +28,12 @@ interface InventoryItemRowProps {
 	memberId: string;
 	onChanged: (item?: InventoryMutationItemDto, deletedId?: string) => void;
 	onEdit: (item: InventoryItemDto) => void;
-	/** Delete confirmation; the list holds only one armed row so never two are open. */
-	deleteArmed: boolean;
-	onDeleteArmedChange: (id: string | null) => void;
 	/** Deep-link hit (?highlight=<id>): ring around the row. */
 	highlighted?: boolean;
 }
 
 // While a request runs, focus stays on the button (aria-disabled instead of disabled).
 const BUSY_CLASS = 'aria-disabled:pointer-events-none aria-disabled:opacity-50';
-
-/** How long "Entfernen/Abbrechen" stays before the row falls back. */
-const DELETE_CONFIRM_MS = 6000;
 
 export const InventoryItemRow = memo(function InventoryItemRow({
 	item,
@@ -47,17 +42,18 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 	memberId,
 	onChanged,
 	onEdit,
-	deleteArmed,
-	onDeleteArmedChange,
 }: InventoryItemRowProps) {
 	const toast = useToast();
+	// One armed row per page and the shared timed fallback live in the hook.
+	const confirmDelete = useConfirmDelete();
+	const deleteArmed = confirmDelete.confirmId === item.id;
 	const encodedShareCode = encodeURIComponent(shareCode);
 	const [deleting, setDeleting] = useState(false);
 	// Hide a deleted row right away; until the refetch lands it would stay tappable.
 	const [removed, setRemoved] = useState(false);
 	const rowRef = useRef<HTMLDivElement>(null);
 	const trashRef = useRef<HTMLButtonElement>(null);
-	const cancelRef = useRef<HTMLButtonElement>(null);
+	const cancelRef = useRef<HTMLButtonElement | null>(null);
 	const { quantity, action, tap } = useInventoryQuantity({
 		item,
 		shareCode,
@@ -110,32 +106,32 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 
 	function handleDelete(): void {
 		if (pending) return;
-		if (!deleteArmed) {
-			onDeleteArmedChange(item.id);
+		if (!confirmDelete.request(item.id)) {
 			// The trash button is swapped out: focus moves to the safe choice.
 			requestAnimationFrame(() => cancelRef.current?.focus());
 			return;
 		}
-		onDeleteArmedChange(null);
 		void remove();
 	}
 
 	function handleCancel(): void {
 		if (pending) return;
-		onDeleteArmedChange(null);
-		requestAnimationFrame(() => trashRef.current?.focus());
+		confirmDelete.cancel();
 	}
 
-	// The confirmation falls back after a few seconds; focus stays in the row meanwhile.
+	// Cancel, another row arming and the timed fallback all swap the cancel button out.
+	// The ref callback sees the focus before the node leaves the DOM; the effect then
+	// moves it to the trash button instead of letting it fall back to BODY.
+	const focusLost = useRef(false);
+	const setCancelRef = useCallback((node: HTMLButtonElement | null) => {
+		if (!node && document.activeElement === cancelRef.current) focusLost.current = true;
+		cancelRef.current = node;
+	}, []);
 	useEffect(() => {
-		if (!deleteArmed || pending) return;
-		const timer = window.setTimeout(() => {
-			const hadFocus = document.activeElement === cancelRef.current;
-			onDeleteArmedChange(null);
-			if (hadFocus) requestAnimationFrame(() => trashRef.current?.focus());
-		}, DELETE_CONFIRM_MS);
-		return () => window.clearTimeout(timer);
-	}, [deleteArmed, pending, onDeleteArmedChange]);
+		if (armed || !focusLost.current) return;
+		focusLost.current = false;
+		trashRef.current?.focus();
+	}, [armed]);
 
 	if (removed) return null;
 
@@ -230,7 +226,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 									type="button"
 									variant="outline"
 									size="sm"
-									ref={cancelRef}
+									ref={setCancelRef}
 									onClick={handleCancel}
 									disabled={pending}
 									focusableWhenDisabled

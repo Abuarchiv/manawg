@@ -43,7 +43,7 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import { InventoryFormFields } from './InventoryFormFields';
 
-interface InventoryAddModalProps {
+interface InventoryFormDrawerProps {
 	open: boolean;
 	shareCode: string;
 	memberId: string;
@@ -64,7 +64,7 @@ interface InventoryAddModalProps {
 	onItemRefreshed: (item: InventoryItemDto) => void;
 }
 
-type InventoryEditorItem = NonNullable<InventoryAddModalProps['initial']>;
+type InventoryEditorItem = NonNullable<InventoryFormDrawerProps['initial']>;
 
 const SAVE_SUBJECT = 'Vorrat konnte nicht gespeichert werden';
 
@@ -90,7 +90,7 @@ function coerceCategory(category: string | undefined): InventoryCategory {
 	return DEFAULT_CATEGORY;
 }
 
-export function InventoryAddModal({
+export function InventoryFormDrawer({
 	open,
 	shareCode,
 	memberId,
@@ -100,7 +100,7 @@ export function InventoryAddModal({
 	onClose,
 	onSaved,
 	onItemRefreshed,
-}: InventoryAddModalProps) {
+}: InventoryFormDrawerProps) {
 	const toast = useToast();
 	const encodedShareCode = encodeURIComponent(shareCode);
 	const [name, setName] = useState('');

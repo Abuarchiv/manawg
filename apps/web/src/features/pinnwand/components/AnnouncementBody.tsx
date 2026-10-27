@@ -98,7 +98,7 @@ export function AnnouncementBody({
 				</p>
 			)}
 			{/* Screen readers only: a visible line would shift the action bar while typing. */}
-			{busy && <output className="sr-only">Wird gespeichert…</output>}
+			{busy && <output className="sr-only">Speichert…</output>}
 		</>
 	);
 }

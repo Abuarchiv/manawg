@@ -10,7 +10,7 @@ import {
 	EmptyTitle,
 } from '@/components/ui/empty';
 import { ItemGroup } from '@/components/ui/item';
-import { InventoryAddModal } from '@/features/inventory/components/InventoryAddModal';
+import { InventoryFormDrawer } from '@/features/inventory/components/InventoryFormDrawer';
 import { InventoryItemRow } from '@/features/inventory/components/InventoryItemRow';
 import { QuickRestockSheet } from '@/features/inventory/components/QuickRestockSheet';
 import {
@@ -51,7 +51,6 @@ export function InventoryList({
 }: InventoryListProps) {
 	const [quickOpen, setQuickOpen] = useState(false);
 	const [editing, setEditing] = useState<InventoryItemDto | null>(null);
-	const [armedDeleteId, setArmedDeleteId] = useState<string | null>(null);
 	// Scarce items are collected at the top, the rest stays sorted by category. A known
 	// row's group only changes after a rest period; the quantity stays live.
 	const settledLowRef = useRef(new Map<string, boolean>());
@@ -124,8 +123,6 @@ export function InventoryList({
 												memberId={memberId}
 												onChanged={onChanged}
 												onEdit={openEdit}
-												deleteArmed={armedDeleteId === item.id}
-												onDeleteArmedChange={setArmedDeleteId}
 											/>
 										))}
 									</ItemGroup>
@@ -166,8 +163,6 @@ export function InventoryList({
 												memberId={memberId}
 												onChanged={onChanged}
 												onEdit={openEdit}
-												deleteArmed={armedDeleteId === item.id}
-												onDeleteArmedChange={setArmedDeleteId}
 											/>
 										))}
 									</ItemGroup>
@@ -178,7 +173,7 @@ export function InventoryList({
 				</div>
 			)}
 
-			<InventoryAddModal
+			<InventoryFormDrawer
 				open={addOpen || editing !== null}
 				shareCode={shareCode}
 				memberId={memberId}

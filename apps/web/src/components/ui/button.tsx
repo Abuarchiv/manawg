@@ -17,7 +17,9 @@ const buttonVariantsRaw = cva(
 				ghost:
 					'hover:bg-muted hover:text-foreground active:bg-muted aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50',
 				destructive:
-					'bg-destructive/10 text-red-700 hover:bg-destructive/20 active:bg-destructive/30 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:text-red-300 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40',
+					'bg-destructive/10 text-destructive-text hover:bg-destructive/20 active:bg-destructive/30 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40',
+				'destructive-solid':
+					'bg-destructive text-white hover:bg-destructive/90 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:text-background dark:focus-visible:ring-destructive/40',
 				link: 'text-primary underline underline-offset-4 active:text-primary/80',
 			},
 			size: {

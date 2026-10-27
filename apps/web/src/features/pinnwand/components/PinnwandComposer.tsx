@@ -170,7 +170,7 @@ export function PinnwandComposer({
 						) : (
 							<Send data-icon="inline-start" aria-hidden />
 						)}
-						{submitting ? 'Wird gepostet…' : 'Posten'}
+						{submitting ? 'Postet…' : 'Posten'}
 					</Button>
 					<Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
 						Abbrechen

@@ -140,7 +140,7 @@ export function AnnouncementEditDrawer({
 						) : (
 							<Check data-icon="inline-start" aria-hidden />
 						)}
-						{saving ? 'Wird gespeichert…' : 'Speichern'}
+						{saving ? 'Speichert…' : 'Speichern'}
 					</Button>
 					<Button
 						type="button"
