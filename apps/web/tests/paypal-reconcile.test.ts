@@ -58,6 +58,7 @@ mock.module('drizzle-orm', {
 mock.module(sibling('server/expense-payments.ts'), {
 	namedExports: {
 		PAYPAL_ORDER_TTL_MS: 3 * 60 * 60 * 1000,
+		STALE_CAPTURE_MS: 15 * 60 * 1000,
 		withExpensePaymentLock: async (_wgId: string, action: (tx: unknown) => Promise<unknown>) => {
 			harness.writes += 1;
 			return action({
