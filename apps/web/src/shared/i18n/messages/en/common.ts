@@ -4,6 +4,7 @@ import type de from '../de/common';
 export default {
 	skipToContent: 'Skip to main content',
 	loading: 'Loading…',
+	unknownPerson: 'Unknown',
 	errors: {
 		withSubject: '{subject}: {detail}',
 		network: 'Check your connection and try again.',

@@ -34,6 +34,9 @@ const EN_CASES: [string, number | null][] = [
 	['.', null],
 	['abc', null],
 	['-5', null],
+	['1 2', null],
+	['12 3', null],
+	['9'.repeat(400), null],
 ];
 
 for (const [input, expected] of EN_CASES) {

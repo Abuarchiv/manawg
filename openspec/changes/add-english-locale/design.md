@@ -294,7 +294,12 @@ Without one plan, parallel sessions would collide in the same few files and the 
 - `pnpm install --frozen-lockfile` and `pnpm audit --prod --audit-level high` pass with next-intl's transitive dependencies (`@swc/core`, `@parcel/watcher`, `@eloqnt/*`). Record the result.
 - If audit fails, stop and report. Pinning or overriding versions follows the existing `pnpm.overrides` pattern.
 - `use-intl/core` imports under `test:unit`.
-- The client runtime delta fits `bundle:check`. If it does not, enable precompiled messages: next-intl/icu-minify with the `use-intl/format-message/format-only` runtime. The flag is `createNextIntlPlugin({ experimental: { messages: { path, locales, precompile: true } } })`. It belongs to the extractor catalog pipeline (`messages.path`), so it does not apply to the TypeScript catalogs without further work. Phase 1 measured the shared first-load JS at 102.6 kB gzip against the 120 kB budget (`bundle:check` passes), so it is not needed. Only then reconsider D1.
+- The client runtime delta fits `bundle:check`. If it does not, enable precompiled messages: next-intl/icu-minify with the `use-intl/format-message/format-only` runtime. The flag is `createNextIntlPlugin({ experimental: { messages: { path, locales, precompile: true } } })`. It belongs to the extractor catalog pipeline (`messages.path`), so it does not apply to the TypeScript catalogs without further work. **Builder decision (Phase 1): no precompile, the full runtime stays.**
+  - Measured against the branch base: the shared first-load JS is unchanged at 102.6 kB gzip (budget 120 kB). The runtime sits in one lazy chunk of 11.7 kB gzip (`intl-messageformat`), reached through `useMessage` in `LoadErrorBanner`. Today 11 of 22 pages share it, so neither budget counts it.
+  - Every route that reaches it grows: `/wg/[code]` 234.0 to 246.2 kB gzip first-load JS (+12.2 kB; Next's own table says 239 to 252 kB), `/wg/[code]/ausgaben` +12.8 kB, `/` +0.1 kB, `/neu` +0.3 kB.
+  - Projection: once a root-level or non-WG client component uses `useMessage`, the chunk joins the all-pages set, and the shared first-load JS becomes about 102.6 + 11.7 = 114.3 kB, which leaves about 5.7 kB of headroom under 120 kB. That fits, so the extractor pipeline for precompiled messages is not built.
+  - Trigger: if `bundle:check` reports a shared first-load JS above 118 kB in any phase, switch to precompiled messages before merging.
+  - `bundle:check` also prints the largest `/wg/[code]` first-load JS (informational, currently `/wg/[code]/ausgaben` at 308.6 kB) so the growth is visible in every PR.
 
 ### D2. Locale model
 
@@ -440,7 +445,7 @@ Without one plan, parallel sessions would collide in the same few files and the 
   - ICU `#` and number arguments format with the locale ("1.000" in German for 1000, where `pluralize` gives "1000"). Accepted: no realistic count reaches 1000.
   - One formatting path means no hydration drift and no next-intl time-zone warnings.
 
-**`common` is frozen after Phase 1.** Packages that need a generic string put it in their own namespace. Phase 6 consolidates duplicates.
+**`common` is frozen after Phase 1.** Phase 1 seeds the keys the design assigns to packages (`common.unknownPerson`, D12 and package I). Packages that need another generic string put it in their own namespace. Phase 6 consolidates duplicates.
 
 **Catalogs are server-only for value imports**
 
@@ -625,6 +630,13 @@ ALTER TABLE "wg_members" ADD CONSTRAINT "wg_members_locale_check" CHECK ("wg_mem
 - **German `<head>`.** The German values are the existing literals. Phase 1 snapshots the server HTML `<head>` of `/`, `/neu`, `/registrieren` and `/entdecken/<module>` before and after.
   - The snapshot normalizes the per-request nonce and build hashes.
   - It must match exactly in German.
+  - **Result (Phase 1, production build in the fixture environment, base `f8241466` against the branch):** every `<html>` attribute, `meta`, `link`, `title` and JSON-LD tag is identical for `/`, `/neu`, `/registrieren` and `/entdecken/ausgaben`. The only difference is one additional async `<script>` for the shared chunk that holds the message runtime (26 to 27, 24 to 25, 22 to 23, 26 to 27 chunk scripts). Chunk file names differ between builds, so scripts are compared by count.
+  - **Builder decision:** the extra chunk script is accepted. The acceptance reads "metadata, link and JSON-LD tags identical".
+- **Route titles are pre-seeded.** Phase 1 puts every static title and description of the 24 sites into `meta` in both locales, so no package edits `meta` and parallel packages cannot collide:
+  - `meta.brand.*` (root, `page.tsx`), `meta.authReset.title`, `meta.invite.{title,description}`, `meta.discover.description` (`{description}` suffix of the module pages, the module title and description stay data), `meta.join.{title,description}` (`neu/layout.tsx`), `meta.notFound.title`, `meta.offline.title`, `meta.register.{title,description}`, `meta.wg.{fallbackName,notFound}`;
+  - `meta.pages.<route>` for the 13 `wg/[code]` section titles (`abos` to `vorraete`, including `chat`).
+  - The sites switch to `getTranslations('meta')` inside their owning package (section 9). They only read keys, so `meta` stays frozen.
+  - The suffix ` — ManaWG` and the title template are brand text and stay in code.
 - **English brand text.** English title, description and keywords for the entry pages are an owner decision coordinated with the landing.
   - Until then, the English `meta` brand entries reuse the German brand title and description.
   - All app pages are noindex anyway (`layout.tsx:74–77`).
@@ -1036,7 +1048,11 @@ The defaults in this document apply until they are answered. None of them blocks
 
    The peer compatibility with Next 15.5 and React 19 is already confirmed.
    Resolved in Phase 1: next-intl and use-intl 4.14.9 install with a frozen lockfile, `pnpm audit --prod --audit-level high` reports no known vulnerabilities, and `use-intl/core` runs under `test:unit`. The only warning is the unmet optional peer `@swc/helpers@>=0.5.17` (found 0.5.15) under next-intl > @swc/core.
-2. Phase 1 (measured, production build with the fixture environment): shared first-load JS is 102.6 kB gzip (budget 120 kB), the heaviest route 34.3 kB (budget 55 kB), `bundle:check` passes. The HTML of `/` is 11,108 B gzip with the `de` cookie and 11,036 B with `en`. `/wg/MTE8PZAT` is 10,079 B (`de`) and 10,008 B (`en`). Before the provider, `/` was 10,102 B, so the catalog adds about 1.0 KB gzip (3.4 KB raw) today, and the same constant applies to every page. The nested provider fallback is not needed yet; the projection for the full catalog is in D6. The precompile flag is described in D1.
+2. Phase 1 (measured, production build with the fixture environment): shared first-load JS is 102.6 kB gzip (budget 120 kB), the heaviest route 34.3 kB (budget 55 kB), `bundle:check` passes. The HTML of `/` is 11,108 B gzip with the `de` cookie and 11,036 B with `en`. `/wg/MTE8PZAT` is 10,079 B (`de`) and 10,008 B (`en`). Before the provider, `/` was 10,102 B, so the catalog added about 1.0 KB gzip (3.4 KB raw) before the `meta` pre-seed, and the same constant applies to every page. The nested provider fallback is not needed yet; the projection for the full catalog is in D6.
+   Deltas against the branch base `f8241466` (same build, fixture environment), gzip:
+   - First-load JS: `/` +0.1 kB, `/neu` +0.3 kB, `/wg/[code]` +12.2 kB (234.0 to 246.2), `/wg/[code]/ausgaben` +12.8 kB, `/wg/[code]/chat` +0.9 kB. The shared set is unchanged (102.7 to 102.6 kB). The growth is the lazy message runtime chunk (11.7 kB, 11 of 22 pages), which the two budgets do not count.
+   - HTML after the meta pre-seed (D14): `/` 10,082 to 11,461 B (`de`) and 11,431 B (`en`), `/wg/MTE8PZAT` 9,047 to 10,416 B (`de`) and 10,371 B (`en`), so +1.4 KB per page.
+   - Decision and trigger for the runtime: D1.
 3. Phase 1: `tsc` behaviour with strict ICU argument inference at scale (D6). Resolved, no problem at 400 messages.
 4. Phase 1: whether `e2e/pwa.spec.ts:288` inherits `locale: 'de-DE'`. Resolved, it does.
 5. Phase 1, only if the D6 fallback is needed: nested `NextIntlClientProvider` semantics.

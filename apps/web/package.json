@@ -56,6 +56,7 @@
 		"zod": "^4.6.7"
 	},
 	"devDependencies": {
+		"@formatjs/icu-messageformat-parser": "^3.5.18",
 		"@next/bundle-analyzer": "^15.5.27",
 		"@playwright/test": "^1.52.0",
 		"@tailwindcss/postcss": "^4.1.0",

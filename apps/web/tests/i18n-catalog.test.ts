@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { type MessageFormatElement, TYPE, parse } from '@formatjs/icu-messageformat-parser';
 import { createTranslator } from 'use-intl/core';
 
 const { default: messages } = await import('@/shared/i18n/messages');
@@ -20,21 +21,38 @@ function flatten(tree: Tree, prefix = ''): Map<string, string> {
 	return out;
 }
 
-/** Names of the ICU arguments in a message: `{name}` and `{name, plural|select|...}`. */
+function collectArguments(elements: MessageFormatElement[], names: Set<string>): void {
+	for (const element of elements) {
+		if (element.type === TYPE.literal || element.type === TYPE.pound) continue;
+		if (element.type === TYPE.tag) {
+			collectArguments(element.children, names);
+			continue;
+		}
+		names.add(element.value);
+		if (element.type === TYPE.select || element.type === TYPE.plural) {
+			for (const option of Object.values(element.options)) collectArguments(option.value, names);
+		}
+	}
+}
+
+/** Names of the ICU arguments in a message, from its AST; throws on malformed ICU. */
 function argumentNames(message: string): string[] {
 	const names = new Set<string>();
-	for (const match of message.matchAll(/\{\s*([A-Za-z_]\w*)\s*[,}]/g)) names.add(match[1] ?? '');
+	collectArguments(parse(message), names);
 	return [...names].sort();
 }
 
 const de = flatten(messages.de as Tree);
 const en = flatten(messages.en as Tree);
 
-function translator(locale: 'de' | 'en'): Translate {
+function translator(locale: 'de' | 'en', source: object = messages[locale]): Translate {
 	return createTranslator({
 		locale,
-		messages: messages[locale],
+		messages: source,
 		timeZone: TIME_ZONE,
+		onError: (error) => {
+			throw error;
+		},
 	}) as unknown as Translate;
 }
 
@@ -78,4 +96,16 @@ test('English values contain no sharp s or umlauts', () => {
 		if (ENGLISH_GERMAN_EXEMPT.test(key)) continue;
 		assert.doesNotMatch(text, /[äöüÄÖÜß]/, key);
 	}
+});
+
+test('argument names come from the ICU tree, not from branch text', () => {
+	assert.deepEqual(argumentNames('{gender, select, male {Er} other {Sie}}'), ['gender']);
+	assert.deepEqual(argumentNames('{n, plural, one {# Tag} other {# Tage {name}}}'), ['n', 'name']);
+	assert.throws(() => argumentNames('Hallo {name'));
+});
+
+test('the translator throws on malformed ICU and on missing arguments', () => {
+	const t = translator('en', { broken: 'Hello {name', needsName: 'Hello {name}' });
+	assert.throws(() => t('broken', { name: 1 }));
+	assert.throws(() => t('needsName', { other: 1 }));
 });

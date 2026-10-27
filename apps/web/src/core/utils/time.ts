@@ -25,11 +25,12 @@ function calendarDaysBetween(from: Date, to: Date): number {
 	return Math.round((day(to) - day(from)) / MS_PER_DAY);
 }
 
-// i18n-ignore words of the string formatters; the Message helpers read the catalog
+// Words of the string formatters; the Message helpers read the catalog.
 const FALLBACK_WORDS: Record<
 	Locale,
 	{ unknownDate: string; unknownTime: string; rangeTo: string }
 > = {
+	// i18n-ignore German words of the string formatters
 	de: { unknownDate: 'Datum unbekannt', unknownTime: 'Zeit unbekannt', rangeTo: 'bis' },
 	en: { unknownDate: 'Date unknown', unknownTime: 'Time unknown', rangeTo: 'to' },
 };

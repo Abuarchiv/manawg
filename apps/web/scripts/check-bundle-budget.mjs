@@ -157,6 +157,15 @@ function main() {
 		info(`  ${r.page.padEnd(48)} ${r.sizeKb.toFixed(1)} kB`);
 	}
 
+	// Informational: chunks shared by only some pages (the client message runtime) count here, not in the budgets.
+	const firstLoad = pageEntries
+		.filter(([page]) => page.startsWith('/wg/[code]'))
+		.map(([page, chunks]) => ({ page, sizeKb: sumGzipKb(new Set(chunks)) }))
+		.sort((a, b) => b.sizeKb - a.sizeKb)[0];
+	if (firstLoad) {
+		info(`Largest /wg/[code] first-load JS: ${firstLoad.page} ${firstLoad.sizeKb.toFixed(1)} kB`);
+	}
+
 	if (failures.length > 0) {
 		console.error('\n[bundle-budget] Budget violations:');
 		for (const f of failures) console.error(`  - ${f}`);

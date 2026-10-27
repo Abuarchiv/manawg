@@ -8,7 +8,13 @@ import type { Locale } from '@/shared/i18n/locale';
  * thousands. A three-digit tail ("1,234" or "1.234") is grouping, valid only with ",".
  */
 function parseEnglishAmount(value: string): number | null {
-	const text = value.replace(/€|EUR/gi, '').replace(/\s/g, '');
+	const text = value
+		.replace(/€|EUR/gi, '')
+		.trim()
+		.replace(
+			/^(\d{1,3})((?:\s\d{3})+)(?=[.,]|$)/,
+			(_, head: string, rest: string) => head + rest.replace(/\s/g, ''),
+		);
 	const decimal = /^(.*?)([.,])(\d{0,2})$/.exec(text);
 	const whole = decimal ? (decimal[1] ?? '') : text;
 	const fraction = decimal?.[3] ?? '';
@@ -16,7 +22,8 @@ function parseEnglishAmount(value: string): number | null {
 	const grouping = decimal?.[2] === ',' ? '.' : ',';
 	const grouped = new RegExp(`^\\d{1,3}(?:[${grouping}]\\d{3})+$`).test(whole);
 	if (!grouped && !/^\d*$/.test(whole)) return null;
-	return Number(`${whole.split(grouping).join('') || '0'}.${fraction || '0'}`);
+	const amount = Number(`${whole.split(grouping).join('') || '0'}.${fraction || '0'}`);
+	return Number.isFinite(amount) ? amount : null;
 }
 
 export function parseEuroAmount(value: string, locale: Locale = 'de'): number | null {

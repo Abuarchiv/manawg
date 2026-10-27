@@ -1,6 +1,7 @@
 export default {
 	skipToContent: 'Zum Hauptinhalt springen',
 	loading: 'Lädt…',
+	unknownPerson: 'Unbekannt',
 	errors: {
 		withSubject: '{subject}: {detail}',
 		network: 'Prüfe deine Verbindung und versuche es erneut.',
