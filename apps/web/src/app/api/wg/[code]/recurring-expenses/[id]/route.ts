@@ -6,7 +6,7 @@ import { badRequest, notFound, rateLimitResponse } from '@/core/http/api-errors'
 import { parseBody } from '@/core/http/parse-body';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
-import { expenseCategorySchema } from '@/features/expenses/expense-categories';
+import { expenseCategoryValueSchema } from '@/features/expenses/expense-categories';
 import { MAX_SPLITS, RECURRING_INTERVAL_MAX_MONTHS } from '@/features/expenses/expense-constants';
 import {
 	expenseAmountSchema,
@@ -25,7 +25,7 @@ import { z } from 'zod';
 
 const patchSchema = z.object({
 	description: expenseDescriptionSchema.optional(),
-	category: expenseCategorySchema.optional(),
+	category: expenseCategoryValueSchema.optional(),
 	amountCents: expenseAmountSchema.optional(),
 	currency: currencySchema.optional(),
 	paidByMemberId: z.string().uuid().optional(),
@@ -35,6 +35,8 @@ const patchSchema = z.object({
 	paused: z.boolean().optional(),
 	/** The due date the editor loaded; a booking since then makes the edit stale. */
 	expectedNextDueAt: z.string().datetime({ offset: true }).optional(),
+	/** The version the editor loaded; any save since then makes the edit stale. */
+	expectedUpdatedAt: z.string().datetime({ offset: true }).optional(),
 });
 
 export const GET = withWgRoute<{ id: string }>(
@@ -69,6 +71,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 				paidByMemberId: 'member_id_invalid',
 				intervalMonths: 'interval_invalid',
 				nextDueAt: 'due_date_invalid',
+				expectedUpdatedAt: 'expected_updated_at_invalid',
 				splits: 'splits_invalid',
 				paused: 'paused_invalid',
 			},

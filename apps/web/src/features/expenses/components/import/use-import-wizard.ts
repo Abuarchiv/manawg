@@ -18,9 +18,11 @@ import {
 	type ImportStep,
 	MAX_IMAGE_BYTES,
 	type PreviewResponse,
+	SKIP_NAME,
 	mergeMemberMapping,
 	namesInPreview,
 	payloadKey,
+	rowsWithSkippedNames,
 } from './import-wizard-types';
 import { useImportInput } from './use-import-input';
 
@@ -80,6 +82,11 @@ export function useImportWizard() {
 		[members],
 	);
 	const namesNeedingMapping = useMemo(() => namesInPreview(preview), [preview]);
+	// Rows naming someone chosen as "Nicht übernehmen" stay skipped whatever the toggles say.
+	const effectiveSkipIndexes = useMemo(
+		() => new Set([...skipIndexes, ...rowsWithSkippedNames(preview, mapping)]),
+		[skipIndexes, preview, mapping],
+	);
 	const commitRecoveryAction = useMemo(() => {
 		if (!commitResult) return null;
 		for (const item of commitResult.errors) {
@@ -146,9 +153,11 @@ export function useImportWizard() {
 			source: payloadKey(source),
 			payload: rawPayload,
 			previewPayloadHash: preview.payloadHash,
-			memberMapping: mapping,
+			memberMapping: Object.fromEntries(
+				Object.entries(mapping).map(([name, id]) => [name, id === SKIP_NAME ? null : id]),
+			),
 			skipDuplicates,
-			skipIndexes: Array.from(skipIndexes),
+			skipIndexes: Array.from(effectiveSkipIndexes),
 		};
 		const signature = JSON.stringify(commitBody);
 		if (commitAttemptRef.current?.signature !== signature) {
@@ -219,18 +228,17 @@ export function useImportWizard() {
 		setMapping((prev) => ({ ...prev, [name]: memberId }));
 	}
 
-	// A mapping only counts when it points at an active member (the commit rejects others).
-	const allMapped = namesNeedingMapping.every((name) =>
-		memberOptions.some((member) => member.id === mapping[name]),
-	);
+	// A mapping only counts when it points at an active member (the commit rejects others)
+	// or deliberately leaves the name's rows out.
+	const isMapped = (name: string) =>
+		mapping[name] === SKIP_NAME || memberOptions.some((member) => member.id === mapping[name]);
+	const allMapped = namesNeedingMapping.every(isMapped);
 
 	function continueFromMapping(): void {
 		if (!allMapped) {
 			setMappingValidated(true);
 			// After rendering, jump to the first open name (focus scrolls it into view).
-			const firstOpen = namesNeedingMapping.findIndex(
-				(name) => !memberOptions.some((member) => member.id === mapping[name]),
-			);
+			const firstOpen = namesNeedingMapping.findIndex((name) => !isMapped(name));
 			requestAnimationFrame(() => document.getElementById(`import-map-${firstOpen}`)?.focus());
 			return;
 		}
@@ -266,8 +274,8 @@ export function useImportWizard() {
 		mappingValidated,
 		memberOptions,
 		namesNeedingMapping,
-		skipIndexes,
-		selectedCount: (preview?.parsed.length ?? 0) - skipIndexes.size,
+		skipIndexes: effectiveSkipIndexes,
+		selectedCount: (preview?.parsed.length ?? 0) - effectiveSkipIndexes.size,
 		skipDuplicates,
 		setSkipDuplicates,
 		busy,

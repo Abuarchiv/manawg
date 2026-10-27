@@ -74,21 +74,29 @@ export function useCalendarPage(month: Date) {
 
 	// Events are no offline actions, so the collection has no offline queue. The URL follows the
 	// month; the shown events stay until the new range arrives.
+	const monthCachedRef = useRef(false);
 	const collection = useSyncedCollection<{ events: CalendarEvent[] }, CalendarEvent>({
 		url: calendarEventsUrl,
 		memberId: identity.memberId,
 		select: (data) => data.events,
 		assemble: (nextEvents, current) => ({ ...current, events: nextEvents }),
 		getId: (event) => event.id,
-		describeError: () => 'Termine konnten nicht geladen werden.',
-		// Offline with data on screen: keep showing it, no error state.
-		hideError: (error, { hasData }) => hasData && isNetworkError(error.error, error.status),
+		// Offline, the events on screen may belong to another month's window; say so instead of
+		// showing that month as empty.
+		describeError: (error): string =>
+			collection.hasData() && !monthCachedRef.current && isNetworkError(error.error, error.status)
+				? 'Termine dieses Monats sind offline nicht verfügbar.'
+				: 'Termine konnten nicht geladen werden.',
+		// Offline with this month on screen: keep showing it, no error state.
+		hideError: (error, { hasData }) =>
+			hasData && monthCachedRef.current && isNetworkError(error.error, error.status),
 		// The chores side read refreshes with every events load, including the poll.
 		reload: (reason) => {
 			void refreshChores();
 			void collection.load(reason === 'mount' ? {} : { silent: true });
 		},
 	});
+	monthCachedRef.current = collection.data !== undefined;
 	const { items: events, commit, pending, load: loadEvents } = collection;
 	const choresError =
 		choresReadError &&

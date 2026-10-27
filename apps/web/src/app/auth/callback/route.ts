@@ -17,7 +17,19 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 	const code = request.nextUrl.searchParams.get('code');
 	const flowId = request.nextUrl.searchParams.get('sb_flow_id');
 	const next = safeNextPath(request.nextUrl.searchParams.get('next'));
-	if (!code) return callbackError(request);
+	if (!code) {
+		// An e-mail change confirms two links; the first one returns only a `message` and no code.
+		// It worked, so go back to where the change was started instead of the error page.
+		const params = request.nextUrl.searchParams;
+		const partialConfirmation =
+			params.has('message') && !params.has('error') && !params.has('error_description');
+		if (!partialConfirmation || !next.startsWith('/') || next.startsWith('//')) {
+			return callbackError(request);
+		}
+		const redirect = NextResponse.redirect(new URL(next, request.url));
+		redirect.headers.set('Cache-Control', 'private, no-store');
+		return redirect;
+	}
 
 	// Defense in depth: safeNextPath should already reject absolute URLs,
 	// but verify at the redirect boundary so a future regression cannot

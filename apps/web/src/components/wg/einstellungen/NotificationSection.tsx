@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { Section } from '@/components/wg/einstellungen/Section';
-import { parseQuietHour } from '@/core/notifications/notification-preferences';
+import { QUIET_HOURS_HINT, parseQuietHour } from '@/core/notifications/notification-preferences';
 import { Bell, CheckCircle2 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { NOTIFICATION_PREFERENCES, useNotificationSettings } from './use-notification-settings';
@@ -191,9 +191,7 @@ export function NotificationSection({
 									</Button>
 								)}
 							</div>
-							<FieldDescription>
-								Zeiten in Berlin-Zeit. Fällige Aufgaben und Termine kommen trotzdem durch.
-							</FieldDescription>
+							<FieldDescription>{QUIET_HOURS_HINT}</FieldDescription>
 							<div className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] gap-2">
 								<HourSelect
 									label="Von"

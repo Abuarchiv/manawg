@@ -10,10 +10,16 @@ const PRIVATE_METADATA_KEYS: Readonly<Record<string, readonly string[]>> = {
 	'wg.created': ['shareCode'],
 };
 
-/** Events about one person's own notification choice; the feed leaves them out entirely. */
+/**
+ * Events the shared feeds leave out entirely: one person's own notification choice, and
+ * Pinnwand reactions, which the post itself already shows and which would flood the feed.
+ */
 export const HIDDEN_FROM_FEED_EVENT_TYPES: readonly string[] = [
 	'notification.push.subscribed',
 	'notification.push.unsubscribed',
+	'notification.settings.updated',
+	'announcement.reaction.added',
+	'announcement.reaction.removed',
 ];
 
 /** The metadata JSON of an audit event as the whole WG may see it. */

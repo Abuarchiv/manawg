@@ -1,10 +1,14 @@
 import 'server-only';
 import { db, expensePayments } from '@/core/db';
 import { type DbTransaction, lockExpensePayments, withTransaction } from '@/core/db/transaction';
+import { afterResponse } from '@/core/infra/after-response';
+import { isPayPalConfigured } from '@/core/infra/paypal';
 import type { ExpensePaymentInput } from '@/features/expenses/expense-payment-input';
 import { and, eq, gt, or } from 'drizzle-orm';
 
 export const PAYPAL_ORDER_TTL_MS = 3 * 60 * 60 * 1000;
+/** A `capturing` row older than this is stuck; the payer's own capture call would have ended. */
+export const STALE_CAPTURE_MS = 15 * 60 * 1000;
 
 export async function loadCompletedExpensePayments(
 	wgId: string,
@@ -12,6 +16,8 @@ export async function loadCompletedExpensePayments(
 ): Promise<ExpensePaymentInput[]> {
 	const rows = await client
 		.select({
+			id: expensePayments.id,
+			provider: expensePayments.provider,
 			fromMemberId: expensePayments.fromMemberId,
 			toMemberId: expensePayments.toMemberId,
 			amountCents: expensePayments.amountCents,
@@ -51,10 +57,19 @@ export async function hasCapturingExpensePayment(
 	wgId: string,
 ): Promise<boolean> {
 	const rows = await tx
-		.select({ id: expensePayments.id })
+		.select({ id: expensePayments.id, createdAt: expensePayments.createdAt })
 		.from(expensePayments)
 		.where(and(eq(expensePayments.wgId, wgId), eq(expensePayments.status, 'capturing')))
 		.limit(1);
+	const createdAt = rows[0]?.createdAt;
+	// A stuck capture blocks every money write of the WG; resolve it now instead of
+	// waiting for the nightly maintenance run. It needs this lock, so it runs afterwards.
+	if (createdAt && Date.now() - createdAt.getTime() > STALE_CAPTURE_MS && isPayPalConfigured()) {
+		afterResponse(async () => {
+			const { reconcileStaleCapturingPayments } = await import('./paypal-reconcile');
+			await reconcileStaleCapturingPayments(new Date(), wgId);
+		});
+	}
 	return rows.length > 0;
 }
 

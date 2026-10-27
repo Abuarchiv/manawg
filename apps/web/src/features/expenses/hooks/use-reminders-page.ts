@@ -162,11 +162,11 @@ export function useRemindersPage() {
 	const balances = useMemo(() => computeBalances(debtExpenses, payments), [debtExpenses, payments]);
 
 	const rows = useMemo(() => {
-		const oldestAges = computeOldestDebtAges(balances, debtExpenses);
+		const oldestAges = computeOldestDebtAges(balances, debtExpenses, new Date(), payments);
 		return balances
 			.map((pair, i) => ({ ...pair, oldestAge: oldestAges[i] ?? 0 }))
 			.sort((a, b) => b.amountCents - a.amountCents);
-	}, [balances, debtExpenses]);
+	}, [balances, debtExpenses, payments]);
 
 	function cooldownFor(debtorId: string, creditorId: string, currency: string) {
 		return canSendReminder(

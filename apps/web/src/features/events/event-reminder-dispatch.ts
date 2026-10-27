@@ -1,7 +1,6 @@
 import { berlinDayKey } from '@/core/utils/berlin-day';
 import { DEFAULT_DURATION_MS } from './event-recurrence';
 
-export const EVENT_REMINDER_BUDGET = 10_000;
 const DISPATCH_BATCH_SIZE = 10;
 
 export type EventReminderCopy = 'today' | 'tomorrow';
@@ -41,30 +40,18 @@ export function reminderCopyForOccurrence(
 		: null;
 }
 
-/** Complete occurrence preflight before the cron acquires any dispatch claims. */
-export function collectReminderOccurrences<TRow, TOccurrence>(
-	rows: readonly TRow[],
-	expand: (row: TRow) => readonly TOccurrence[],
-): TOccurrence[] | null {
-	const due: TOccurrence[] = [];
-	for (const row of rows) {
-		for (const occurrence of expand(row)) {
-			if (due.length === EVENT_REMINDER_BUDGET) return null;
-			due.push(occurrence);
-		}
-	}
-	return due;
-}
-
 export async function processReminderBatches<T>(
 	items: readonly T[],
 	claim: (item: T) => Promise<boolean>,
 	dispatch: (item: T) => Promise<{ sent: number; failures?: readonly unknown[] }>,
 	release: (item: T) => Promise<void>,
-): Promise<{ sent: number; failed: number }> {
+	shouldStop: () => boolean = () => false,
+): Promise<{ sent: number; failed: number; stopped?: true }> {
 	let sent = 0;
 	let failedCount = 0;
 	for (let index = 0; index < items.length; index += DISPATCH_BATCH_SIZE) {
+		// Checked before any claim, so a stop never leaves a claim half-taken.
+		if (shouldStop()) return { sent, failed: failedCount, stopped: true };
 		const pending: T[] = [];
 		try {
 			for (const item of items.slice(index, index + DISPATCH_BATCH_SIZE)) {

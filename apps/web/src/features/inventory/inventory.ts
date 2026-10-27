@@ -1,3 +1,5 @@
+import { formatDecimal } from '@/core/utils/amount';
+
 export const INVENTORY_LIST_LIMIT = 1000;
 
 export const INVENTORY_CATEGORIES = ['bad', 'kueche', 'putzmittel', 'sonstiges'] as const;
@@ -76,7 +78,7 @@ const UNIT_PLURALS: Partial<Record<string, string>> = { Rolle: 'Rollen', Packung
 
 /** "2 Rollen", "1 Rolle": Stück, L and kg stay as they are. */
 export function formatQuantity(quantity: number, unit: string): string {
-	return `${quantity} ${quantity === 1 ? unit : (UNIT_PLURALS[unit] ?? unit)}`;
+	return `${formatDecimal(quantity)} ${quantity === 1 ? unit : (UNIT_PLURALS[unit] ?? unit)}`;
 }
 
 export function buildShoppingPushPayload(
@@ -85,17 +87,16 @@ export function buildShoppingPushPayload(
 		unit: string;
 	},
 ): ShoppingPushPayload {
-	const missing = Math.max(0, item.threshold - item.quantity) + 1;
 	return {
 		name: item.name,
-		quantity: formatQuantity(missing, item.unit),
+		quantity: formatQuantity(restockAmount(item), item.unit),
 		note: 'Auto: Vorrat unter Schwelle',
 	};
 }
 
 /** Units that bring a scarce item back above its threshold (same amount the shopping push asks for). */
 export function restockAmount(item: InventoryItemForThresholdCheck): number {
-	return isBelowThreshold(item) ? item.threshold - item.quantity + 1 : 1;
+	return clampQuantity(isBelowThreshold(item) ? item.threshold - item.quantity + 1 : 1);
 }
 
 /** Scarce items whose name matches something just bought: the stock was not raised by the purchase. */
@@ -132,7 +133,12 @@ export function clampQuantity(value: number): number {
 	if (!Number.isFinite(value)) return 0;
 	if (value < INVENTORY_LIMITS.QUANTITY_MIN) return INVENTORY_LIMITS.QUANTITY_MIN;
 	if (value > INVENTORY_LIMITS.QUANTITY_MAX) return INVENTORY_LIMITS.QUANTITY_MAX;
-	return Math.trunc(value);
+	return roundQuantity(value);
+}
+
+/** Two decimals match the numeric(10,2) columns and absorb float noise such as 2.3 - 1. */
+export function roundQuantity(value: number): number {
+	return Math.round(value * 100) / 100;
 }
 
 function isValidCategory(value: string): value is InventoryCategory {
@@ -153,4 +159,22 @@ export function groupItemsByCategory<T extends { category: string }>(
 		groups[category].push(item);
 	}
 	return groups;
+}
+
+/** Typed quantity text as German decimal: "." becomes ",", digits only, at most two after the comma. */
+export function decimalQuantityText(raw: string): string {
+	const [whole = '', ...fraction] = raw.replace(/\./g, ',').split(',');
+	const digits = whole.replace(/\D/g, '');
+	if (fraction.length === 0) return digits;
+	return `${digits},${fraction.join('').replace(/\D/g, '').slice(0, 2)}`;
+}
+
+/** An empty field counts as 0; the value is clamped only on save so the field can stay empty while typing. */
+export function parseQuantityText(text: string): number {
+	return clampQuantity(Number(text.replace(',', '.') || 0));
+}
+
+/** Input field text for a stored quantity: 1.5 is "1,5". */
+export function quantityInputText(quantity: number): string {
+	return String(quantity).replace('.', ',');
 }

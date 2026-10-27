@@ -195,7 +195,7 @@ test.describe('wg cached fetch', () => {
 
 		await expect(
 			page.getByText(
-				'Du bist in dieser WG nicht (mehr) Mitglied, z. B. weil du ausgezogen bist oder entfernt wurdest.',
+				'Du bist in dieser WG nicht (mehr) Mitglied, z. B. weil du ausgezogen bist, entfernt wurdest oder die WG gelöscht wurde.',
 			),
 		).toBeVisible();
 		await expect(page.getByRole('link', { name: /Chat öffnen/ })).toHaveCount(0);

@@ -25,6 +25,7 @@ const SAVE_ERRORS: Record<string, string> = {
 		'Aufteilung enthält eine Person doppelt — jede Person darf nur einmal vorkommen.',
 	paid_by_must_include_caller: PAID_BY_MUST_INCLUDE_CALLER,
 	not_payer: 'Nur wer bezahlt hat, kann diese Ausgabe bearbeiten.',
+	expense_has_settled_shares: `${SAVE_SUBJECT}: Ein Anteil ist schon beglichen. Betrag und Aufteilung bleiben deshalb, wie sie sind; Beschreibung, Datum und Kategorie lassen sich ändern.`,
 	abo_paused: `${SAVE_SUBJECT}: Diese Fixkosten sind pausiert. Setze sie in den Fixkosten fort.`,
 	recurring_expense_already_advanced:
 		'Diese Fixkosten wurden für diese Fälligkeit schon übernommen. Lade die Ausgaben neu und prüfe die Liste.',

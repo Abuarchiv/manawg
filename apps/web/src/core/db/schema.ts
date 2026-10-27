@@ -290,7 +290,7 @@ export const expensePayments = pgTable(
 		),
 		statusCheck: check(
 			'expense_payments_status_check',
-			sql`${t.status} in ('created', 'capturing', 'completed', 'failed')`,
+			sql`${t.status} in ('created', 'capturing', 'completed', 'failed', 'voided')`,
 		),
 	}),
 );
@@ -592,52 +592,6 @@ export const calendarSubscriptions = pgTable(
 	}),
 );
 
-export const wgInventoryItems = pgTable(
-	'wg_inventory_items',
-	{
-		id: uuid('id').primaryKey().defaultRandom(),
-		wgId: uuid('wg_id')
-			.notNull()
-			.references(() => wgs.id, { onDelete: 'cascade' }),
-		name: text('name').notNull(),
-		quantity: integer('quantity').notNull().default(0),
-		unit: text('unit').notNull().default('Stück'),
-		threshold: integer('threshold').notNull().default(1),
-		category: text('category').notNull().default('sonstiges'),
-		lastDecrementedAt: timestamp('last_decremented_at', { withTimezone: true }),
-		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-	},
-	(t) => ({
-		wgIdx: index('wg_inventory_items_wg_idx').on(t.wgId),
-		recentDecrementIdx: index('wg_inventory_items_recent_decrement_idx').on(
-			t.wgId,
-			t.lastDecrementedAt,
-		),
-		nameKey: uniqueIndex('wg_inventory_items_unique_name').on(t.wgId, sql`lower(btrim(${t.name}))`),
-	}),
-);
-
-export const wgInventoryLog = pgTable(
-	'wg_inventory_log',
-	{
-		id: uuid('id').primaryKey().defaultRandom(),
-		itemId: uuid('item_id')
-			.notNull()
-			.references(() => wgInventoryItems.id, { onDelete: 'cascade' }),
-		memberId: uuid('member_id').references(() => wgMembers.id, { onDelete: 'set null' }),
-		delta: integer('delta').notNull(),
-		kind: text('kind').notNull(),
-		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-	},
-	(t) => ({
-		itemIdx: index('wg_inventory_log_item_idx').on(t.itemId, t.createdAt),
-		memberIdx: index('wg_inventory_log_member_idx')
-			.on(t.memberId)
-			.where(sql`${t.memberId} IS NOT NULL`),
-	}),
-);
-
 export const expenseReminders = pgTable(
 	'expense_reminders',
 	{
@@ -815,7 +769,6 @@ export const wgsRelations = relations(wgs, ({ many }) => ({
 	announcements: many(announcements),
 	chores: many(chores),
 	wgEvents: many(wgEvents),
-	inventoryItems: many(wgInventoryItems),
 	auditEvents: many(auditEvents),
 	expenseReminders: many(expenseReminders),
 	chatMessages: many(wgChatMessages),
@@ -852,22 +805,6 @@ export const wgEventsRelations = relations(wgEvents, ({ one }) => ({
 export const calendarSubscriptionsRelations = relations(calendarSubscriptions, ({ one }) => ({
 	wg: one(wgs, { fields: [calendarSubscriptions.wgId], references: [wgs.id] }),
 	member: one(wgMembers, { fields: [calendarSubscriptions.memberId], references: [wgMembers.id] }),
-}));
-
-export const wgInventoryItemsRelations = relations(wgInventoryItems, ({ one, many }) => ({
-	wg: one(wgs, { fields: [wgInventoryItems.wgId], references: [wgs.id] }),
-	logs: many(wgInventoryLog),
-}));
-
-export const wgInventoryLogRelations = relations(wgInventoryLog, ({ one }) => ({
-	item: one(wgInventoryItems, {
-		fields: [wgInventoryLog.itemId],
-		references: [wgInventoryItems.id],
-	}),
-	member: one(wgMembers, {
-		fields: [wgInventoryLog.memberId],
-		references: [wgMembers.id],
-	}),
 }));
 
 export const wgChatMessagesRelations = relations(wgChatMessages, ({ one, many }) => ({
@@ -1026,10 +963,6 @@ export type WgEvent = typeof wgEvents.$inferSelect;
 export type NewWgEvent = typeof wgEvents.$inferInsert;
 export type CalendarSubscription = typeof calendarSubscriptions.$inferSelect;
 export type NewCalendarSubscription = typeof calendarSubscriptions.$inferInsert;
-export type WgInventoryItem = typeof wgInventoryItems.$inferSelect;
-export type NewWgInventoryItem = typeof wgInventoryItems.$inferInsert;
-export type WgInventoryLogEntry = typeof wgInventoryLog.$inferSelect;
-export type NewWgInventoryLogEntry = typeof wgInventoryLog.$inferInsert;
 export type AuditEvent = typeof auditEvents.$inferSelect;
 export type ExpenseReminder = typeof expenseReminders.$inferSelect;
 export type NewExpenseReminder = typeof expenseReminders.$inferInsert;

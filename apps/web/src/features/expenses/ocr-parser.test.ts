@@ -158,8 +158,12 @@ test('a late worker is terminated if createWorker resolves after the init timeou
 		},
 	};
 	setTesseractMock(() => workerInit.promise);
+	// The module load resolves at once, so the timeout can only hit the pending createWorker.
 	await assertRejectsWithin(
-		runOcrOnImage(new Blob(), undefined, { initTimeoutMs: 10 }),
+		runOcrOnImage(new Blob(), undefined, {
+			initTimeoutMs: 10,
+			loadTesseract: async () => tesseractMock as never,
+		}),
 		250,
 		reloadRequired,
 	);

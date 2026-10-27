@@ -19,7 +19,8 @@ export interface SendMailInput {
 	unsubscribeUrl?: string;
 }
 
-export type SendMailResult = 'sent' | 'duplicate' | 'failed' | 'deferred';
+/** `unconfirmed`: the provider timed out, so the mail may have arrived; it is never retried. */
+export type SendMailResult = 'sent' | 'duplicate' | 'failed' | 'deferred' | 'unconfirmed';
 
 /**
  * Sends one transactional mail at most once. The ledger row is claimed first
@@ -92,6 +93,7 @@ export async function sendMail(
 						: 'no_outcome',
 		})
 		.where(eq(mailLog.id, claimed.id));
+	if (unconfirmed) return 'unconfirmed';
 	return outcome?.kind === 'deferred' ? 'deferred' : 'failed';
 }
 

@@ -20,6 +20,8 @@ interface Toast {
 // WCAG 2.2.1: a toast must give enough time to read it. The auto-dismiss timer
 // lives in ToastItem (not here) so it can pause while hovered or focused.
 const TOAST_DURATION_MS = 4000;
+// Errors are long sentences that say what to do next; touch users cannot hover to pause them.
+const ERROR_TOAST_DURATION_MS = 8000;
 const TOAST_EXIT_MS = 150;
 
 /** Module-level store: toasts survive route changes and any component may raise one. */
@@ -92,8 +94,11 @@ function ToastItem({ toast }: { toast: Toast }) {
 
 	const scheduleTimer = useCallback(() => {
 		clearTimer();
-		timerRef.current = setTimeout(() => removeToast(toast.id), TOAST_DURATION_MS);
-	}, [clearTimer, toast.id]);
+		timerRef.current = setTimeout(
+			() => removeToast(toast.id),
+			toast.variant === 'error' ? ERROR_TOAST_DURATION_MS : TOAST_DURATION_MS,
+		);
+	}, [clearTimer, toast.id, toast.variant]);
 
 	useEffect(() => {
 		if (toast.leaving) return;

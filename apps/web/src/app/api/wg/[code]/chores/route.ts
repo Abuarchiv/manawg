@@ -51,10 +51,10 @@ const createChoreSchema = z
 			data.recurrenceType === 'months' ? CHORE_INTERVAL_MAX_MONTHS : CHORE_INTERVAL_MAX_DAYS;
 		if (data.intervalDays > cap) {
 			ctx.addIssue({
-				code: z.ZodIssueCode.too_big,
+				code: 'too_big',
 				maximum: cap,
 				inclusive: true,
-				type: 'number',
+				origin: 'number',
 				path: ['intervalDays'],
 				message: `intervalDays must be <= ${cap} for recurrenceType=${data.recurrenceType}`,
 			});

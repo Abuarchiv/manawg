@@ -303,6 +303,8 @@ export function useNotificationSettings({ code, memberId }: NotificationSettings
 					notificationRequestKeysRef.current.delete(requestKeyId);
 				}
 				setError(notificationTestErrorMessage(res.status, res.error));
+				// The server drops dead subscriptions on send; the switch must show that.
+				if (res.error === 'no_push_subscription') void loadStatus();
 			}
 		} catch {
 			setError(notificationTestErrorMessage(0, 'Netzwerkfehler'));

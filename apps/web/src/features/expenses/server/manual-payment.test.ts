@@ -21,7 +21,7 @@ mock.module('@/core/db/transaction', {
 	},
 });
 mock.module('@/core/db/idempotent-write', { namedExports: { responseCodec: () => ({}) } });
-const { manualPaymentSchema, recordCashPayment } = await import(
+const { manualPaymentSchema, recordCashPayment, voidCashPayment } = await import(
 	'@/features/expenses/server/manual-payment'
 );
 
@@ -38,6 +38,7 @@ const members = [
 /** A transaction whose selects answer from a queue, in the order recordCashPayment asks. */
 function fakeTx(datasets: unknown[][]) {
 	const inserted: Array<Record<string, unknown>> = [];
+	const updated: Array<Record<string, unknown>> = [];
 	let call = 0;
 	const tx = {
 		select: () => {
@@ -54,8 +55,14 @@ function fakeTx(datasets: unknown[][]) {
 				return { returning: async () => [{ id: 'payment-1' }] };
 			},
 		}),
+		update: () => ({
+			set: (values: Record<string, unknown>) => {
+				updated.push(values);
+				return { where: async () => undefined };
+			},
+		}),
 	} as unknown as DbTransaction;
-	return { tx, inserted };
+	return { tx, inserted, updated };
 }
 
 // Anna paid for Cem's share of 1000; Cem paid for Ben's share of 1000: "Ben owes Anna 1000" nets.
@@ -157,4 +164,69 @@ test('the request body is strict and needs a positive whole amount', () => {
 	assert.equal(manualPaymentSchema.safeParse({ ...input, expectedNetCents: 10.5 }).success, false);
 	assert.equal(manualPaymentSchema.safeParse({ ...input, extra: true }).success, false);
 	assert.equal(manualPaymentSchema.safeParse({ ...input, fromMemberId: 'x' }).success, false);
+});
+
+const PAYMENT = '55555555-5555-4555-8555-555555555555';
+const manualRow = { fromMemberId: B, toMemberId: A, amountCents: 1000, currency: 'EUR' };
+
+/** Selects in the order voidCashPayment asks: caller, payment row, capturing check. */
+function voidDatasets(
+	row: Record<string, unknown> | null,
+	capturing: unknown[] = [],
+	caller = [{ id: A }],
+) {
+	return [caller, row ? [row] : [], capturing];
+}
+
+test('the receiving member voids a completed manual payment and the audit row names it', async () => {
+	const { tx, inserted, updated } = fakeTx(
+		voidDatasets({ ...manualRow, provider: 'manual', status: 'completed' }),
+	);
+	const result = await voidCashPayment(tx, WG, A, PAYMENT, 'Anna');
+	assert.equal(result.status, 200);
+	assert.deepEqual(updated, [{ status: 'voided' }]);
+	assert.equal(inserted.length, 1);
+	assert.equal(inserted[0]?.eventType, 'expense.debt.settled.manual.voided');
+	assert.equal(inserted[0]?.entityId, PAYMENT);
+	assert.match(String(inserted[0]?.summary), /^Anna hat eine Barzahlung über .* storniert\.$/);
+	// The route tells the payer, the other side of the pair, that the debt is open again.
+	assert.deepEqual(result.context, {
+		kind: 'voided',
+		otherMemberId: B,
+		amountCents: 1000,
+		currency: 'EUR',
+	});
+});
+
+test('voiding is refused for outsiders, PayPal payments, voided payments and running captures', async () => {
+	const cases = [
+		[
+			'not_party',
+			voidDatasets({ ...manualRow, provider: 'manual', status: 'completed' }, [], [{ id: C }]),
+			C,
+			403,
+		],
+		['not_found', voidDatasets({ ...manualRow, provider: 'paypal', status: 'completed' }), A, 404],
+		['not_found', voidDatasets(null), A, 404],
+		[
+			'already_voided',
+			voidDatasets({ ...manualRow, provider: 'manual', status: 'voided' }),
+			A,
+			409,
+		],
+		[
+			'blocked',
+			voidDatasets({ ...manualRow, provider: 'manual', status: 'completed' }, [{ id: 'c' }]),
+			A,
+			409,
+		],
+		['member_deactivated', voidDatasets(null, [], []), A, 401],
+	] as const;
+	for (const [kind, data, caller, status] of cases) {
+		const { tx, inserted, updated } = fakeTx(data.map((rows) => [...rows]));
+		const result = await voidCashPayment(tx, WG, caller, PAYMENT);
+		assert.equal(result.context?.kind, kind);
+		assert.equal(result.status, status);
+		assert.equal(inserted.length + updated.length, 0);
+	}
 });

@@ -17,6 +17,10 @@ const state = {
 	marked: [] as string[],
 	dequeued: [] as string[],
 	events: [] as string[],
+	heal: (async () => ({ healed: 0, failed: 0 })) as () => Promise<{
+		healed: number;
+		failed: number;
+	}>,
 };
 
 mock.module('@/core/auth/delete-user', { namedExports: { deleteAuthUser: async () => true } });
@@ -74,6 +78,9 @@ mock.module('@/core/infra/paypal', { namedExports: { isPayPalConfigured: () => f
 mock.module('@/features/expenses/server/paypal-reconcile', {
 	namedExports: { reconcileStaleCapturingPayments: async () => null },
 });
+mock.module('@/core/db/admin-succession', {
+	namedExports: { healAdminlessWgs: () => state.heal() },
+});
 mock.module('@/core/db/orphan-uploads', {
 	namedExports: { sweepOrphanUploads: async () => ({ wgsChecked: 0, queued: 0 }) },
 });
@@ -100,6 +107,7 @@ function harness() {
 		marked: [],
 		dequeued: [],
 		events: [],
+		heal: async () => ({ healed: 0, failed: 0 }),
 	});
 	return {
 		state,
@@ -163,5 +171,28 @@ test('maintenance reports reference violations and provider failures while keepi
 		assert.equal(rescuedBody.ok, true);
 		assert.equal(rescuedBody.privateImageCleanup.rescued, 1);
 		assert.deepEqual(state.dequeued, [keys[1]]);
+	});
+});
+
+test('maintenance reports the admin handover result and fails when the repair cannot run', async () => {
+	await withEnv({ CRON_SECRET: 'test' }, async () => {
+		const { state, get } = harness();
+		state.heal = async () => ({ healed: 2, failed: 0 });
+		const healthy = await get();
+		assert.equal(healthy.status, 200);
+		assert.deepEqual((await healthy.json()).adminHeal, { healed: 2, failed: 0 });
+
+		state.heal = async () => {
+			throw new Error('lock timeout');
+		};
+		const rejected = await get();
+		const body = await rejected.json();
+		assert.equal(rejected.status, 503);
+		assert.equal(body.ok, false);
+		assert.equal(body.adminHeal, null);
+		assert.ok(state.events.includes('log:[maintenance] admin handover heal failed'));
+
+		state.heal = async () => ({ healed: 0, failed: 1 });
+		assert.equal((await get()).status, 503, 'a WG that could not be repaired fails the run');
 	});
 });

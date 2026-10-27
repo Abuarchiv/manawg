@@ -39,6 +39,7 @@ function makeTemplate(): Template {
 		lastCreatedAt: null,
 		pausedAt: null,
 		createdAt: new Date('2026-01-01T00:00:00.000Z'),
+		updatedAt: new Date('2026-09-01T10:00:00.000Z'),
 		splitsJson: JSON.stringify([{ debtorMemberId: creatorId, amountCents: 500 }]),
 	};
 }
@@ -266,6 +267,34 @@ test('PATCH from an editor that loaded an older due date is refused, not written
 	const fresh = await patch({
 		description: 'Miete neu',
 		expectedNextDueAt: '2026-11-01T11:00:00.000Z',
+	});
+	assert.equal(fresh.status, 200);
+	assert.equal(state.template.description, 'Miete neu');
+});
+
+test('PATCH from an editor that loaded an older version is refused, not overwriting the other save', async (t) => {
+	t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-09-25T12:00:00.000Z') });
+	const { state, patch } = harness({ callerId: creatorId });
+	// Another member saved the template after this editor loaded it; the due date is unchanged.
+	state.template.updatedAt = new Date('2026-09-02T10:00:00.000Z');
+
+	const stale = await patch({
+		description: 'Miete neu',
+		expectedNextDueAt: currentDueAt.toISOString(),
+		expectedUpdatedAt: '2026-09-01T10:00:00.000Z',
+	});
+	assert.equal(stale.status, 409);
+	assert.deepEqual(await stale.json(), {
+		error: 'recurring_expense_changed',
+		code: 'recurring_expense_changed',
+	});
+	assert.equal(state.updates.length, 0);
+	assert.equal(state.template.description, 'Miete');
+
+	const fresh = await patch({
+		description: 'Miete neu',
+		expectedNextDueAt: currentDueAt.toISOString(),
+		expectedUpdatedAt: '2026-09-02T10:00:00.000Z',
 	});
 	assert.equal(fresh.status, 200);
 	assert.equal(state.template.description, 'Miete neu');

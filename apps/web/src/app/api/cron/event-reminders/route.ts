@@ -5,9 +5,7 @@ import { dispatchNotification } from '@/core/notifications/notification-dispatch
 import { startOfBerlinDay } from '@/core/utils/berlin-day';
 import { MS_PER_DAY } from '@/core/utils/time';
 import {
-	EVENT_REMINDER_BUDGET,
 	type EventReminderCopy,
-	collectReminderOccurrences,
 	processReminderBatches,
 	reminderCopyForOccurrence,
 } from '@/features/events/event-reminder-dispatch';
@@ -15,7 +13,7 @@ import { type EventInput, expandRecurrence } from '@/features/events/events';
 import {
 	buildEventsWindowFilter,
 	computeTomorrowUtcWindow,
-	withEventWindowCandidates,
+	forEachEventWindowPage,
 } from '@/features/events/server/event-reminder-window';
 import { and, asc, eq, gt, inArray, isNull, lte, or } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -23,6 +21,10 @@ import { type NextRequest, NextResponse } from 'next/server';
 const REMINDER_CLAIM_SCOPE = 'event-reminders';
 const REMINDER_CLAIM_TTL_MS = 32 * MS_PER_DAY;
 const REMINDER_CLAIM_LEASE_MS = 60 * 60 * 1000;
+// Stops starting new send batches after this; the rest waits for the next run.
+const REMINDER_TIME_BUDGET_MS = 45_000;
+
+export const maxDuration = 60;
 
 interface EventRow {
 	id: string;
@@ -127,7 +129,12 @@ export const GET = withCronLogging(
 		const todayStart = startOfBerlinDay(now);
 		const { start: tomorrowStart, end: tomorrowEnd } = computeTomorrowUtcWindow(now);
 
-		return withEventWindowCandidates(
+		const deadline = Date.now() + REMINDER_TIME_BUDGET_MS;
+		const timeUp = () => Date.now() >= deadline;
+		let sent = 0;
+		let failed = 0;
+
+		const complete = await forEachEventWindowPage(
 			todayStart,
 			async (cursor, pageLimit) => {
 				const cursorFilter = cursor
@@ -158,9 +165,8 @@ export const GET = withCronLogging(
 					.orderBy(asc(wgEvents.startsAt), asc(wgEvents.id))
 					.limit(pageLimit);
 			},
-			() => NextResponse.json({ error: 'events_window_too_large' }, { status: 503 }),
-			async (candidateRows) => {
-				const occurrences = collectReminderOccurrences(candidateRows, (row) =>
+			async (rows) => {
+				const occurrences = rows.flatMap((row) =>
 					expandRecurrence(toEventInput(row), todayStart, tomorrowEnd).flatMap((occ) => {
 						const reminderCopy = reminderCopyForOccurrence(
 							occ,
@@ -181,16 +187,9 @@ export const GET = withCronLogging(
 							: [];
 					}),
 				);
-				if (occurrences === null) {
-					return NextResponse.json({ error: 'events_window_too_large' }, { status: 503 });
-				}
+				if (occurrences.length === 0) return !timeUp();
 
-				if (occurrences.length === 0) return NextResponse.json({ ok: true, sent: 0 });
-
-				const eligibleOccurrences = occurrences;
-				if (eligibleOccurrences.length === 0) return NextResponse.json({ ok: true, sent: 0 });
-
-				const wgIds = [...new Set(eligibleOccurrences.map((occurrence) => occurrence.wgId))];
+				const wgIds = [...new Set(occurrences.map((occurrence) => occurrence.wgId))];
 				const members = await db
 					.select({ id: wgMembers.id, wgId: wgMembers.wgId })
 					.from(wgMembers)
@@ -202,19 +201,15 @@ export const GET = withCronLogging(
 					membersByWg.set(member.wgId, memberIds);
 				}
 
-				const deliveries = collectReminderOccurrences(eligibleOccurrences, (occurrence) =>
+				const deliveries = occurrences.flatMap((occurrence) =>
 					(membersByWg.get(occurrence.wgId) ?? []).map((memberId) => ({
 						...occurrence,
 						memberId,
 					})),
 				);
-				if (deliveries === null) {
-					return NextResponse.json({ error: 'events_window_too_large' }, { status: 503 });
-				}
-				if (deliveries.length === 0) return NextResponse.json({ ok: true, sent: 0 });
 
 				// Retries while the occurrence is current; recovering after it ends would need durable state.
-				const { sent, failed } = await processReminderBatches(
+				const result = await processReminderBatches(
 					deliveries,
 					(item) => claimReminderDispatch(item, now),
 					async (item) => {
@@ -246,14 +241,23 @@ export const GET = withCronLogging(
 						}
 					},
 					(item) => releaseReminderDispatchClaim(item),
+					timeUp,
 				);
-
-				return NextResponse.json(
-					{ ok: failed === 0, sent, failed },
-					{ status: failed > 0 ? 503 : 200 },
-				);
+				sent += result.sent;
+				failed += result.failed;
+				return !result.stopped && !timeUp();
 			},
-			EVENT_REMINDER_BUDGET,
+		);
+
+		// The cron runs once a day, so a cut-off run loses the rest of tomorrow's reminders;
+		// a 503 keeps that visible in the cron log instead of reporting success.
+		if (!complete) {
+			console.error('[event-reminders] time budget reached, remaining reminders were not sent');
+		}
+		const ok = failed === 0 && complete;
+		return NextResponse.json(
+			{ ok, sent, failed, ...(complete ? {} : { complete: false }) },
+			{ status: ok ? 200 : 503 },
 		);
 	},
 );

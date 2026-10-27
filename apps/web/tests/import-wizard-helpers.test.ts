@@ -1,9 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-const { decodeCsv, mergeMemberMapping, namesInPreview, payloadKey } = await import(
-	'../src/features/expenses/components/import/import-wizard-types.ts'
-);
+const {
+	SKIP_NAME,
+	decodeCsv,
+	mergeMemberMapping,
+	namesInPreview,
+	payloadKey,
+	rowsWithSkippedNames,
+} = await import('../src/features/expenses/components/import/import-wizard-types.ts');
 
 test('mergeMemberMapping keeps own choices for names that are still present', () => {
 	assert.deepEqual(
@@ -31,4 +36,19 @@ test('decodeCsv falls back to Windows-1252 for non-UTF-8 exports', () => {
 test('payloadKey sends screenshots as OCR text', () => {
 	assert.equal(payloadKey('splid_csv'), 'splid_csv');
 	assert.equal(payloadKey('ocr_screenshot'), 'ocr_text');
+});
+
+test('rowsWithSkippedNames skips every row naming a left-out person as payer or debtor', () => {
+	const preview = {
+		parsed: [
+			{ paidByName: 'Anna', splits: [{ memberName: 'Anna' }, { memberName: 'Ben' }] },
+			{ paidByName: 'Ben', splits: [{ memberName: 'Anna' }] },
+			{ paidByName: 'Anna', splits: [{ memberName: 'Cem' }] },
+		],
+	};
+	assert.deepEqual(
+		rowsWithSkippedNames(preview as never, { Anna: 'm1', Ben: SKIP_NAME, Cem: 'm3' }),
+		[0, 1],
+	);
+	assert.deepEqual(rowsWithSkippedNames(null, { Ben: SKIP_NAME }), []);
 });

@@ -1,3 +1,4 @@
+import { formatDecimal } from '@/core/utils/amount';
 import { berlinCalendarDayDistance } from '@/core/utils/berlin-day';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatShortDate } from '@/core/utils/time';
@@ -8,6 +9,7 @@ export type NotificationEvent =
 	| 'expense.recurring_charged'
 	| 'expense.reminder'
 	| 'expense.debt_settled'
+	| 'expense.payment_voided'
 	| 'import.completed'
 	| 'notification.test'
 	| 'announcement.posted'
@@ -17,6 +19,8 @@ export type NotificationEvent =
 	| 'chore.due'
 	| 'shopping.added'
 	| 'event.created'
+	| 'event.moved'
+	| 'event.cancelled'
 	| 'event.upcoming'
 	| 'event.today'
 	| 'inventory.low_stock'
@@ -206,6 +210,15 @@ export function formatNotificationMessage(
 				urlPath: '/ausgaben',
 			};
 		}
+		case 'expense.payment_voided': {
+			const actorName = text(payload.actorName, 'Jemand');
+			const amount = money(payload.amountCents, payload.currency);
+			return {
+				title: 'Barzahlung storniert',
+				body: `${actorName} hat die Barzahlung über ${amount} storniert. Der Betrag ist wieder offen.`,
+				urlPath: '/ausgaben',
+			};
+		}
 		case 'import.completed': {
 			const actorName = text(payload.actorName, 'Jemand');
 			const insertedRaw = payload.inserted;
@@ -262,6 +275,30 @@ export function formatNotificationMessage(
 				)}“ am ${formatEventTime(payload.startsAt, payload.allDay === true)} eingetragen.`,
 				urlPath: eventUrlPath(payload),
 			};
+		case 'event.moved': {
+			const title = text(payload.title, 'Termin');
+			const actor = text(payload.actorName, 'Jemand');
+			return {
+				title: 'Termin verschoben',
+				body:
+					payload.recurring === true
+						? `${actor} hat die Terminserie „${title}“ in ${wgName} verschoben.`
+						: `${actor} hat „${title}“ in ${wgName} auf den ${formatEventTime(payload.startsAt, payload.allDay === true)} verschoben.`,
+				urlPath: eventUrlPath(payload),
+			};
+		}
+		case 'event.cancelled': {
+			const title = text(payload.title, 'Termin');
+			const actor = text(payload.actorName, 'Jemand');
+			return {
+				title: 'Termin abgesagt',
+				body:
+					payload.recurring === true
+						? `${actor} hat die Terminserie „${title}“ in ${wgName} abgesagt.`
+						: `${actor} hat „${title}“ am ${formatEventTime(payload.startsAt, payload.allDay === true)} in ${wgName} abgesagt.`,
+				urlPath: eventUrlPath(payload),
+			};
+		}
 		case 'event.upcoming': {
 			const title = text(payload.title, 'Termin');
 			return {
@@ -292,7 +329,9 @@ export function formatNotificationMessage(
 			const quantity = quantityNumber(payload.quantity);
 			const threshold = quantityNumber(payload.threshold);
 			const detail =
-				quantity !== null && threshold !== null ? ` (${quantity} von ${threshold})` : '';
+				quantity !== null && threshold !== null
+					? ` (${formatDecimal(quantity)} von ${formatDecimal(threshold)})`
+					: '';
 			return {
 				title: 'Vorrat bald leer',
 				body: `Bald leer: ${itemName}${detail} in ${wgName}.`,

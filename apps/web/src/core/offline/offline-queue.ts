@@ -48,6 +48,28 @@ export function hasQueuedShoppingUpdate(
 	);
 }
 
+/**
+ * Chore occurrences with a completion still waiting to sync. Lost connections and server errors
+ * retry later; a completion the server rejected carries the "Server prüfen:" prefix and needs
+ * the user, so its chore shows again.
+ */
+export function pendingChoreCompletions(
+	actions: readonly OfflineAction[],
+	shareCode: string,
+): Array<{ id: string; nextDueAt: string }> {
+	return actions
+		.filter(
+			(action) =>
+				action.type === 'chore.complete' &&
+				action.shareCode === shareCode &&
+				!action.lastError?.startsWith('Server prüfen:'),
+		)
+		.map((action) => ({
+			id: String(action.payload.choreId),
+			nextDueAt: String(action.payload.expectedNextDueAt),
+		}));
+}
+
 const QUEUED_CREATE_ID_RE = /^(?:shopping|chore-create|absence):[^:]+:\d+:/;
 
 /**

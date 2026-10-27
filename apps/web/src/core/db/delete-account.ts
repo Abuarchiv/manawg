@@ -1,5 +1,6 @@
 import { and, asc, eq, inArray, isNotNull, isNull, ne, sql } from 'drizzle-orm';
 import { hasCapturingMemberPayment, lockAccount } from './account-deletion';
+import { ensureWgAdmin } from './admin-succession';
 import { deleteWgCascade } from './delete-wg';
 import { releaseMemberChores } from './member-departure';
 import {
@@ -11,14 +12,20 @@ import {
 } from './schema';
 import { type DbTransaction, TransactionAbort, lockExpensePayments } from './transaction';
 
-export type LeftWg = { wgId: string; memberId: string; name: string; newAdminId: string | null };
+export type LeftWg = {
+	wgId: string;
+	memberId: string;
+	name: string;
+	newAdminId: string | null;
+	newAdminName: string | null;
+};
 
 /**
  * Detaches an auth user from every WG before the account is deleted. The
  * member moves out like an "Auszug": history and balances stay with the WG,
- * the login link, push subscriptions and PayPal id are removed, and an admin
- * hands the role to the longest-standing active flatmate who can sign in. A WG with no
- * such member is deleted entirely.
+ * the login link, push subscriptions and PayPal id are removed, and the WG
+ * keeps an admin who can sign in: the role passes to the longest-standing
+ * active flatmate with an account. A WG with no such member is deleted entirely.
  */
 export async function removeAccountFromWgs(
 	tx: DbTransaction,
@@ -69,7 +76,7 @@ export async function removeAccountFromWgs(
 					eq(wgMembers.wgId, membership.wgId),
 					ne(wgMembers.id, membership.id),
 					isNull(wgMembers.deactivatedAt),
-					// The successor becomes admin; an unlinked row could never act as one.
+					// Decides between keeping and deleting the WG; an unlinked row could never act as admin.
 					isNotNull(wgMembers.authUserId),
 				),
 			)
@@ -93,15 +100,14 @@ export async function removeAccountFromWgs(
 			})
 			.where(eq(wgMembers.id, membership.id));
 		await releaseMemberChores(tx, membership.wgId, membership.id);
-		const newAdminId = membership.role === 'admin' ? successor.id : null;
-		if (newAdminId) {
-			await tx.update(wgMembers).set({ role: 'admin' }).where(eq(wgMembers.id, newAdminId));
-		}
+		// Runs after the unlink, so the leaving member is never the successor.
+		const newAdmin = await ensureWgAdmin(tx, membership.wgId);
 		left.push({
 			wgId: membership.wgId,
 			memberId: membership.id,
 			name: membership.name,
-			newAdminId,
+			newAdminId: newAdmin?.id ?? null,
+			newAdminName: newAdmin?.name ?? null,
 		});
 	}
 	return { left, deletedWgIds };

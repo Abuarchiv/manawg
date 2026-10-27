@@ -195,13 +195,32 @@ jobs:
             throw new Error('Production migration requires the direct ManaWG Production Supabase connection on port 5432.');
           }
           NODE
+      - name: Trust the pinned Supabase database certificate
+        run: |
+          node --experimental-strip-types --input-type=module <<'NODE'
+          import { appendFileSync, writeFileSync } from 'node:fs';
+          import path from 'node:path';
+          import { X509Certificate } from 'node:crypto';
+          import { SUPABASE_ROOT_CA } from './apps/web/src/core/db/supabase-ca.ts';
+
+          const certificate = new X509Certificate(SUPABASE_ROOT_CA);
+          if (certificate.fingerprint256 !== '80:70:25:AD:50:D4:ED:21:9D:2C:9C:7D:29:9C:00:4F:82:4E:B0:0C:F7:F6:5A:FE:F6:07:D0:7B:72:E6:CA:FA') {
+            throw new Error('Unexpected Supabase root certificate.');
+          }
+          const file = path.join(process.env.RUNNER_TEMP, 'supabase-root.crt');
+          writeFileSync(file, SUPABASE_ROOT_CA, { mode: 0o600 });
+          appendFileSync(process.env.GITHUB_ENV, 'NODE_EXTRA_CA_CERTS=' + file + '\n');
+          NODE
+      # The direct host is IPv6-only and runners have no IPv6; the pinned session pooler is IPv4.
       - name: Apply pending migrations
         env:
           DATABASE_MIGRATION_URL: ${{ secrets.DATABASE_MIGRATION_URL }}
+          MANAWG_PRODUCTION_CI_SESSION: 'true'
         run: pnpm --filter @manawg/web db:migrate
       - name: Verify production schema and migration ledger
         env:
           DATABASE_MIGRATION_URL: ${{ secrets.DATABASE_MIGRATION_URL }}
+          MANAWG_PRODUCTION_CI_SESSION: 'true'
         run: pnpm --filter @manawg/web db:check
       - name: Record production migration evidence
         if: always()

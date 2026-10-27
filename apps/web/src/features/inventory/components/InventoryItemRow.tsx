@@ -13,6 +13,7 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import { useConfirmDelete } from '@/core/hooks/use-confirm-delete';
 import { apiFetch } from '@/core/infra/api-client';
+import { formatDecimal } from '@/core/utils/amount';
 import { useInventoryQuantity } from '@/features/inventory/hooks/use-inventory-quantity';
 import {
 	type InventoryItemDto,
@@ -158,7 +159,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 						</ItemTitle>
 						<ItemDescription className="line-clamp-none tabular-nums">
 							{formatQuantity(quantity, item.unit)} · Nachkaufen{'\u00a0'}ab{'\u00a0'}
-							{item.threshold}
+							{formatDecimal(item.threshold)}
 						</ItemDescription>
 					</ItemContent>
 

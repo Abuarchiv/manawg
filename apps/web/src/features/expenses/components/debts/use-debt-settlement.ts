@@ -56,6 +56,7 @@ export function useDebtSettlement({
 	currentMemberId,
 	onSettled,
 }: DebtSettlementInput) {
+	// Settle errors stay visible inline (dialog or row, role=alert); only the review has no inline spot.
 	const toast = useToast();
 	const [reviewOpen, setReviewOpen] = useState(false);
 	const [settling, setSettling] = useState(false);
@@ -115,7 +116,6 @@ export function useDebtSettlement({
 		if (!idempotencyKey) {
 			const message = keyUnavailableMessage('Ausgleich', 'gespeichert');
 			setError(message);
-			toast.error(message);
 			settlingRef.current = false;
 			setSettling(false);
 			return;
@@ -131,7 +131,6 @@ export function useDebtSettlement({
 				if (shouldReleaseIdempotencyKey(res.status, res.error)) settlementRequestRef.current = null;
 				const message = settlementErrorMessage(res.error);
 				setError(message);
-				toast.error(message);
 				if (res.error === 'settlement_changed') {
 					setPreview(null);
 					setReviewOpen(false);
@@ -171,7 +170,6 @@ export function useDebtSettlement({
 		if (!idempotencyKey) {
 			const message = keyUnavailableMessage('Barzahlung', 'gespeichert');
 			setError(message);
-			toast.error(message);
 			settlingRef.current = false;
 			setSettling(false);
 			return;
@@ -187,7 +185,6 @@ export function useDebtSettlement({
 				if (shouldReleaseIdempotencyKey(res.status, res.error)) cashRequestRef.current = null;
 				const message = settlementErrorMessage(res.error);
 				setError(message);
-				toast.error(message);
 				if (res.error === 'settlement_changed') {
 					setPreview(null);
 					setReviewOpen(false);

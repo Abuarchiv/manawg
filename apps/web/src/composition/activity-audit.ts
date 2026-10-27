@@ -4,6 +4,7 @@ import {
 	formatShortDate,
 } from '@/core/utils/time';
 import { KIND_LABELS } from '@/features/pinnwand/components/constants';
+import { MEMBER_NAME_MAX_LENGTH } from '@/shared/lib/limits';
 
 /** Chat audits carry no content worth a feed row and would crowd out real events. */
 export const CHAT_AUDIT_EVENT_TYPES = [
@@ -168,13 +169,24 @@ export function getAuditHref(event: {
 	return undefined;
 }
 
+/**
+ * The feed puts the actor's current name in front, so the summary loses the name it was written
+ * with ("Anna hat …" → "hat …"). After a rename that stored name differs; summaries are written as
+ * "<Name> hat/ist …", so the part before the first " hat "/" ist " is the old name.
+ */
 export function formatAuditActivityText(summary: string, actorName: string): string {
 	const trimmed = summary.trim();
 	const prefix = `${actorName} `;
 	if (trimmed.toLocaleLowerCase('de-DE').startsWith(prefix.toLocaleLowerCase('de-DE'))) {
 		return trimmed.slice(prefix.length);
 	}
-	return trimmed;
+	// Passive summaries ("<Beschreibung> wurde …") never start with a name; a description may
+	// itself contain "hat"/"ist", so only an actor-style summary loses its first words.
+	if (actorName === 'System' || / wurde /u.test(trimmed)) return trimmed;
+	const verb = /^\S.*? (?=(?:hat|ist) )/u.exec(trimmed);
+	return verb && verb[0].length <= MEMBER_NAME_MAX_LENGTH + 1
+		? trimmed.slice(verb[0].length)
+		: trimmed;
 }
 
 function announcementHref(announcementId: string): string {

@@ -138,7 +138,12 @@ export function useExpenseForm({
 		const queuedEqual = queuedParticipants !== null;
 		if (draft.splitMode) setSplitMode(queuedEqual ? 'equal' : draft.splitMode);
 		if (draft.manualSplits && !queuedEqual) setManualSplits(draft.manualSplits);
-		extras.restore(draft);
+		// An untouched form opens on today, not on the day it was last open.
+		extras.restore(
+			isEmptyModuleDraft('expense', draft, identityMemberId)
+				? { ...draft, occurredOn: null }
+				: draft,
+		);
 		if (queuedParticipants) {
 			extras.setParticipantIds(participantsOrAll(queuedParticipants, membersRef.current));
 		}

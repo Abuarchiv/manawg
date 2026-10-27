@@ -88,6 +88,7 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 	const searchParams = useSearchParams();
 	const accountDeletionPending = searchParams.get('accountDeletion') === 'pending';
 	const leftWg = searchParams.get('left') === '1';
+	const deletedWg = searchParams.get('deleted') === '1';
 	const [memberships, setMemberships] = useState<AccountWg[]>([]);
 	const [membershipState, setMembershipState] = useState<
 		'loading' | 'signed-out' | 'authenticated-empty' | 'member-list' | 'error'
@@ -154,13 +155,21 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 		return () => controller.abort();
 	}, [retryNonce]);
 
+	// After leaving or deleting a WG the notice stays readable instead of jumping into the other WG.
+	const showsExitNotice = leftWg || deletedWg;
 	useEffect(() => {
-		if (module || inviteToken || membershipState !== 'member-list' || memberships.length !== 1)
+		if (
+			module ||
+			inviteToken ||
+			showsExitNotice ||
+			membershipState !== 'member-list' ||
+			memberships.length !== 1
+		)
 			return;
 		const membership = memberships[0];
 		if (!membership) return;
 		router.replace(`/wg/${encodeURIComponent(membership.code)}`);
-	}, [inviteToken, memberships, membershipState, module, router]);
+	}, [inviteToken, memberships, membershipState, module, router, showsExitNotice]);
 
 	const section = WG_SECTIONS.find(
 		(item) =>
@@ -232,6 +241,14 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 							<AlertDescription className="text-foreground">
 								ManaWG hat deine Zugänge zu allen WGs entfernt. Die Löschung beim Anmeldedienst
 								steht noch aus und wird automatisch erneut versucht.
+							</AlertDescription>
+						</Alert>
+					)}
+					{deletedWg && (
+						<Alert>
+							<AlertTitle>WG gelöscht</AlertTitle>
+							<AlertDescription className="text-foreground">
+								Die WG und ihre Einträge sind für alle Mitglieder entfernt.
 							</AlertDescription>
 						</Alert>
 					)}

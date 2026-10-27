@@ -164,7 +164,11 @@ export function useAbosPage() {
 			{
 				method: 'PATCH',
 				memberId: identity.memberId,
-				body: JSON.stringify({ ...values, expectedNextDueAt: previousAbo.nextDueAt }),
+				body: JSON.stringify({
+					...values,
+					expectedNextDueAt: previousAbo.nextDueAt,
+					...(previousAbo.updatedAt ? { expectedUpdatedAt: previousAbo.updatedAt } : {}),
+				}),
 			},
 		);
 		if (res.ok) {
@@ -207,6 +211,7 @@ export function useAbosPage() {
 			const message = aboActionErrorMessage(res.error);
 			setNoticeMessage('error', message);
 			toast.error(message);
+			if (res.status === 409 && res.error === 'recurring_expense_changed') void load(false);
 		}
 		setPendingId(null);
 	}

@@ -171,6 +171,10 @@ export function ExpenseFormSection({
 		if (formError) formErrorRef.current?.scrollIntoView({ block: 'nearest' });
 	}, [formError]);
 
+	// Saving while the receipt still uploads would book the expense without it.
+	const [imageUploading, setImageUploading] = useState(false);
+	const submitBlocked = formSaving || imageUploading;
+
 	function requestClose() {
 		if (formSaving) return;
 		if (isDirty) setConfirmClose(true);
@@ -181,12 +185,8 @@ export function ExpenseFormSection({
 		<>
 			<Dialog
 				open={open}
-				onOpenChange={(next) => {
-					if (!next) requestClose();
-				}}
-				onOpenChangeComplete={(next) => {
-					if (!next) onExited();
-				}}
+				onOpenChange={(next) => !next && requestClose()}
+				onOpenChangeComplete={(next) => !next && onExited()}
 			>
 				<DialogContent
 					showCloseButton={false}
@@ -213,7 +213,7 @@ export function ExpenseFormSection({
 						className="flex min-h-0 flex-1 flex-col"
 						onSubmit={(event) => {
 							event.preventDefault();
-							if (formSaving) return;
+							if (submitBlocked) return;
 							if (editingTemplate) onSaveRecurringTemplate();
 							else onSubmit();
 						}}
@@ -306,6 +306,7 @@ export function ExpenseFormSection({
 									onSaveRecurringTemplate={onSaveRecurringTemplate}
 									recurringTemplateCount={recurringTemplateCount}
 									formSaving={formSaving}
+									onImageUploadingChange={setImageUploading}
 								/>
 								{formError && (
 									<Alert ref={formErrorRef} variant="destructive">
@@ -336,7 +337,7 @@ export function ExpenseFormSection({
 								<Button
 									type="submit"
 									className="w-full"
-									disabled={formSaving}
+									disabled={submitBlocked}
 									aria-label={submitLabel.accessibleName}
 								>
 									{formSaving && <Spinner data-icon="inline-start" />}
@@ -358,7 +359,7 @@ export function ExpenseFormSection({
 									variant="ghost"
 									size="sm"
 									className="self-start"
-									disabled={formSaving}
+									disabled={submitBlocked}
 									onClick={onSubmit}
 								>
 									Als Ausgabe speichern

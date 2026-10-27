@@ -35,6 +35,8 @@ export interface RecurringExpense {
 	nextDueAt: string;
 	createdByMemberId?: string;
 	lastCreatedAt: string | null;
+	/** Row version for the optimistic edit check; absent on pending offline rows. */
+	updatedAt?: string;
 	/** Original cadence anchor; absent on legacy rows. */
 	anchorAt?: string | null;
 	/** Paused templates are neither booked by the cron nor captured manually (API: abo_paused). */

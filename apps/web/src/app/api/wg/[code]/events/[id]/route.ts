@@ -15,6 +15,10 @@ import {
 	eventTitleSchema,
 } from '@/features/events/event-schemas';
 import { canonicalRecurrenceRule, serializeWgEvent } from '@/features/events/events';
+import {
+	eventRelevantUntil,
+	notifyEventChange,
+} from '@/features/events/server/event-change-notification';
 import { and, eq, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -88,6 +92,7 @@ export const PATCH = withWgRoute<{ id: string }>('events PATCH', async (req, { c
 			createdByMemberId: wgEvents.createdByMemberId,
 			startsAt: wgEvents.startsAt,
 			endsAt: wgEvents.endsAt,
+			allDay: wgEvents.allDay,
 		})
 		.from(wgEvents)
 		.where(and(eq(wgEvents.id, id), eq(wgEvents.wgId, wgId)))
@@ -150,6 +155,28 @@ export const PATCH = withWgRoute<{ id: string }>('events PATCH', async (req, { c
 			allDay: row.allDay,
 		},
 	});
+
+	// Only a changed start or all-day flag counts as moved. Moves that end up in the past stay
+	// silent; a series always counts.
+	const moved =
+		row.startsAt.getTime() !== current.startsAt.getTime() || row.allDay !== current.allDay;
+	const stillRelevant =
+		row.recurrence !== null ||
+		eventRelevantUntil(row.startsAt.getTime(), row.endsAt?.getTime() ?? null, row.allDay) >=
+			Date.now();
+	if (moved && stillRelevant) {
+		notifyEventChange('event.moved', {
+			wg: { id: wgId, name: auth.wg.name, shareCode: code },
+			actor: auth.member,
+			eventId: row.id,
+			title: row.title,
+			startsAt: row.startsAt.toISOString(),
+			allDay: row.allDay,
+			recurring: row.recurrence !== null,
+			affectedStarts:
+				row.recurrence === null ? [current.startsAt.getTime(), row.startsAt.getTime()] : [],
+		});
+	}
 	return NextResponse.json({ event: serializeWgEvent(row) });
 });
 
@@ -165,7 +192,14 @@ export const DELETE = withWgRoute<{ id: string }>('events DELETE', async (req, {
 	if (limit) return limit;
 
 	const existing = await db
-		.select({ createdByMemberId: wgEvents.createdByMemberId, title: wgEvents.title })
+		.select({
+			createdByMemberId: wgEvents.createdByMemberId,
+			title: wgEvents.title,
+			startsAt: wgEvents.startsAt,
+			endsAt: wgEvents.endsAt,
+			allDay: wgEvents.allDay,
+			recurrence: wgEvents.recurrence,
+		})
 		.from(wgEvents)
 		.where(and(eq(wgEvents.id, id), eq(wgEvents.wgId, wgId)))
 		.limit(1);
@@ -189,5 +223,23 @@ export const DELETE = withWgRoute<{ id: string }>('events DELETE', async (req, {
 		summary: `${auth.member.name} hat den Termin „${row.title}“ entfernt.`,
 		metadata: { title: row.title },
 	});
+
+	// Deleting a finished single event changes nothing for anyone; a series always counts.
+	const until = eventRelevantUntil(
+		row.startsAt.getTime(),
+		row.endsAt?.getTime() ?? null,
+		row.allDay,
+	);
+	if (row.recurrence !== null || until >= Date.now()) {
+		notifyEventChange('event.cancelled', {
+			wg: { id: wgId, name: auth.wg.name, shareCode: code },
+			actor: auth.member,
+			title: row.title,
+			startsAt: row.startsAt.toISOString(),
+			allDay: row.allDay,
+			recurring: row.recurrence !== null,
+			affectedStarts: row.recurrence === null ? [row.startsAt.getTime()] : [],
+		});
+	}
 	return NextResponse.json({ deleted: true });
 });

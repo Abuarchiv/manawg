@@ -8,7 +8,6 @@ import { Spinner } from '@/components/ui/spinner';
 import type { WgSummary } from '@/components/wg/WgContextProvider';
 import type { SessionMember } from '@/core/auth/local-account';
 import { LogOut, MonitorOff } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 export function AccountSignOutSection({
@@ -18,7 +17,6 @@ export function AccountSignOutSection({
 	wg: WgSummary;
 	identity: SessionMember;
 }) {
-	const router = useRouter();
 	const { confirmDiscard, dialog } = useConfirmLogoutDiscard();
 	const [accountSignOutPending, setAccountSignOutPending] = useState<'here' | 'everywhere' | null>(
 		null,
@@ -48,7 +46,9 @@ export function AccountSignOutSection({
 					'Du bist abgemeldet, aber Push konnte auf diesem Browser nicht sicher beendet werden. Deaktiviere Website-Benachrichtigungen in den Browsereinstellungen.',
 				);
 			}
-			router.push('/');
+			// A full load, not router.push: the client router cache (staleTimes 300 s) and in-memory
+			// state still hold this account's WG pages for whoever uses the browser next.
+			window.location.assign('/');
 		} catch {
 			setAccountSignOutError('Konto konnte nicht abgemeldet werden. Bitte versuche es erneut.');
 		} finally {

@@ -1,8 +1,9 @@
 import 'server-only';
 import { wgInventoryItems, wgInventoryLog } from '@/core/db';
-import type { WgInventoryItem, WgMember } from '@/core/db/schema';
+import type { WgMember } from '@/core/db/schema';
+import type { WgInventoryItem } from '@/core/db/schema-inventory';
 import type { DbTransaction } from '@/core/db/transaction';
-import { clampQuantity, isBelowThreshold } from '@/features/inventory/inventory';
+import { clampQuantity, isBelowThreshold, roundQuantity } from '@/features/inventory/inventory';
 import { pushBelowThresholdItemToShopping } from '@/features/inventory/server/inventory-mutations';
 import { and, eq } from 'drizzle-orm';
 
@@ -29,9 +30,9 @@ export async function consumeInventoryMutation(
 	const existing = existingRows[0];
 	if (!existing) return { kind: 'not_found' as const };
 
-	const requestedQuantity = existing.quantity + input.delta;
+	const requestedQuantity = roundQuantity(existing.quantity + input.delta);
 	const nextQuantity = clampQuantity(requestedQuantity);
-	const appliedDelta = nextQuantity - existing.quantity;
+	const appliedDelta = roundQuantity(nextQuantity - existing.quantity);
 	const wasAlreadyBelowThreshold = isBelowThreshold(existing);
 	const now = new Date();
 	const [updated] = await tx

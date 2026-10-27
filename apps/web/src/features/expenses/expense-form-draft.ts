@@ -44,7 +44,7 @@ export type ExpenseDraft = {
 	paidByMemberId?: string;
 	splitMode?: SplitMode;
 	manualSplits?: Record<string, string>;
-	occurredOn?: string;
+	occurredOn?: string | null;
 	participantIds?: string[] | null;
 	queueEditId?: string;
 	queueEditType?: OfflineActionType;

@@ -237,7 +237,7 @@ export function WgContextProvider({
 		return (
 			<ShellAlert
 				title="Kein Zugriff"
-				description="Du bist in dieser WG nicht (mehr) Mitglied, z. B. weil du ausgezogen bist oder entfernt wurdest."
+				description="Du bist in dieser WG nicht (mehr) Mitglied, z. B. weil du ausgezogen bist, entfernt wurdest oder die WG gelöscht wurde."
 			>
 				{backToWgs}
 			</ShellAlert>

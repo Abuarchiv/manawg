@@ -16,6 +16,7 @@ const REJECTED_ROW_REASONS: Record<string, string> = {
 	amount_invalid: 'Betrag nicht lesbar',
 	no_participants: 'Keine beteiligte Person',
 	payer_missing: 'Zahlende Person fehlt',
+	multiple_payers: 'Mehrere zahlende Personen – bitte von Hand erfassen',
 	currency_unsupported: 'Fremdwährung – importiert wird nur EUR',
 };
 

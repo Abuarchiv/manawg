@@ -110,7 +110,7 @@ export async function navigateToFeature(page: Page, path: string): Promise<void>
  */
 export async function dismissOnboarding(page: Page): Promise<void> {
 	const accessDenied = page.getByRole('alert', {
-		name: 'Du bist in dieser WG nicht (mehr) Mitglied, z. B. weil du ausgezogen bist oder entfernt wurdest.',
+		name: 'Du bist in dieser WG nicht (mehr) Mitglied, z. B. weil du ausgezogen bist, entfernt wurdest oder die WG gelöscht wurde.',
 	});
 	await expect(accessDenied)
 		.toBeHidden({ timeout: 2_000 })

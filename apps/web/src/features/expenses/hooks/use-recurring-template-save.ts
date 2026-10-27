@@ -164,7 +164,12 @@ export function useRecurringTemplateSave(
 				intervalMonths: recurringIntervalMonths,
 				nextDueAt: nextDueAt.toISOString(),
 				...(editingRecurringExpense
-					? { expectedNextDueAt: editingRecurringExpense.nextDueAt }
+					? {
+							expectedNextDueAt: editingRecurringExpense.nextDueAt,
+							...(editingRecurringExpense.updatedAt
+								? { expectedUpdatedAt: editingRecurringExpense.updatedAt }
+								: {}),
+						}
 					: {}),
 				...(startsAt && !editingRecurringExpense ? { anchorAt: startsAt } : {}),
 				splits,

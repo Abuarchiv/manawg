@@ -1,8 +1,10 @@
 import 'server-only';
 
 import { db, wgChatMessages } from '@/core/db';
+import type { DbTransaction } from '@/core/db/transaction';
 import { type ChatSystemKind, SYSTEM_MESSAGE_KIND } from '@/core/feed-kinds';
 import { logApiError } from '@/core/infra/observability';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 
 export interface ChatSystemMessageInput {
 	wgId: string;
@@ -30,4 +32,23 @@ export async function postChatSystemMessage(input: ChatSystemMessageInput): Prom
 	} catch (err) {
 		logApiError('[activity-feed] chat system message failed', err);
 	}
+}
+
+/** Takes back the chat notice of a deleted expense; it leaves no "gelöscht" bubble. */
+export async function withdrawExpenseChatNotice(
+	tx: DbTransaction,
+	wgId: string,
+	expenseId: string,
+): Promise<void> {
+	await tx
+		.update(wgChatMessages)
+		.set({ deletedAt: new Date(), systemPayload: null })
+		.where(
+			and(
+				eq(wgChatMessages.wgId, wgId),
+				eq(wgChatMessages.systemKind, 'expense.created'),
+				sql`${wgChatMessages.systemPayload}->>'expenseId' = ${expenseId}`,
+				isNull(wgChatMessages.deletedAt),
+			),
+		);
 }

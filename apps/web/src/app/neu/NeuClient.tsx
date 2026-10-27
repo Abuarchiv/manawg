@@ -143,6 +143,8 @@ export function NeuClient() {
 				confirmDiscard,
 			});
 			if (cancelled) return;
+			// Drops the previous account's pages from the client router cache.
+			router.refresh();
 			resetDraft(getNeuIntentFromSearch(searchParams.toString()));
 			setCreatedWg(null);
 			clearError();

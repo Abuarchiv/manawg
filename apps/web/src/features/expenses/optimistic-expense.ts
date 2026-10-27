@@ -60,3 +60,15 @@ export function sortExpensesNewestFirst(expenses: Expense[]): Expense[] {
 	const time = (expense: Expense) => Date.parse(expense.occurredAt) || 0;
 	return [...expenses].sort((a, b) => time(b) - time(a));
 }
+
+/** Undoes an optimistic row: a new one goes, an edited one gets its previous version back. */
+export function rollbackExpense(
+	current: Expense[],
+	optimisticId: string,
+	previous: Expense | null,
+): Expense[] {
+	if (!previous) return current.filter((expense) => expense.id !== optimisticId);
+	return current.some((expense) => expense.id === previous.id)
+		? current.map((expense) => (expense.id === previous.id ? previous : expense))
+		: [previous, ...current];
+}

@@ -10,6 +10,7 @@ import { logApiError } from '@/core/infra/observability';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import type { NotificationWarning } from '@/core/notifications/notification-warning';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
+import { formatDecimal } from '@/core/utils/amount';
 import { INVENTORY_LIMITS } from '@/features/inventory/inventory';
 import { consumeInventoryMutation } from '@/features/inventory/server/consume-mutation';
 import { NextResponse } from 'next/server';
@@ -91,7 +92,7 @@ export const POST = withWgRoute<{ id: string }>('inventory consume', async (req,
 		eventType: 'inventory.consumed',
 		entityType: 'inventory_item',
 		entityId: updated.id,
-		summary: `${auth.member.name} hat ${Math.abs(appliedDelta)} ${updated.unit} ${updated.name} entnommen.`,
+		summary: `${auth.member.name} hat ${formatDecimal(Math.abs(appliedDelta))} ${updated.unit} ${updated.name} entnommen.`,
 		metadata: {
 			name: updated.name,
 			appliedDelta,

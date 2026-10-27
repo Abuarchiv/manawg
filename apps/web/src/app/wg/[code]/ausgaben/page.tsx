@@ -144,6 +144,8 @@ export default function AusgabenPage() {
 						summary={page.settlementSummary}
 						balances={page.memberBalances}
 						expenses={expenses}
+						payments={data.payments}
+						memberName={page.memberName}
 						shareCode={wg.shareCode}
 						currentMemberId={identity.memberId}
 						memberPayPalMerchantId={page.memberPayPalMerchantId}

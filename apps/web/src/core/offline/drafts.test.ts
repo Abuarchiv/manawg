@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildQueueEditDraft, buildQueueEditHref } from './drafts';
+import { buildQueueEditDraft, buildQueueEditHref, isEmptyModuleDraft } from './drafts';
 
 const action = (type: string, payload: Record<string, unknown>) =>
 	({ id: `queued-${type}`, type, payload }) as never;
@@ -64,4 +64,16 @@ test('a plain queued expense carries no template link', () => {
 	);
 	assert.equal(draft?.draft.recurringSourceId, undefined);
 	assert.equal(draft?.draft.recurringNextDueAt, undefined);
+});
+
+test('an expense draft that only kept an older date counts as empty', () => {
+	const untouched = {
+		description: '',
+		category: 'sonstiges',
+		amountStr: '',
+		occurredOn: '2000-01-01',
+		participantIds: null,
+	};
+	assert.equal(isEmptyModuleDraft('expense', untouched, 'me'), true);
+	assert.equal(isEmptyModuleDraft('expense', { ...untouched, amountStr: '12' }, 'me'), false);
 });

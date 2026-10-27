@@ -2,8 +2,6 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { startOfBerlinDay } from '../src/core/utils/berlin-day.ts';
 import {
-	EVENT_REMINDER_BUDGET,
-	collectReminderOccurrences,
 	processReminderBatches,
 	reminderCopyForOccurrence,
 } from '../src/features/events/event-reminder-dispatch.ts';
@@ -14,6 +12,7 @@ import {
 } from '../src/features/events/events.ts';
 import {
 	computeTomorrowUtcWindow,
+	forEachEventWindowPage,
 	withEventWindowCandidates,
 } from '../src/features/events/server/event-reminder-window.ts';
 
@@ -255,7 +254,7 @@ test('paged 1001 active candidates overflow before cron claim or send callbacks'
 	assert.equal(overScanPageSizes[20], 1);
 });
 
-test('calendar rejects 1001 candidates while cron accepts 1001 across WGs', async () => {
+test('calendar rejects 1001 candidates', async () => {
 	const from = new Date('2026-09-22T00:00:00.000Z');
 	const rows = Array.from({ length: EVENTS_LIST_LIMIT + 1 }, (_, index) => ({
 		...eventCandidate(
@@ -272,19 +271,12 @@ test('calendar rejects 1001 candidates while cron accepts 1001 across WGs', asyn
 		() => overflow,
 		(candidates) => candidates.length,
 	);
-	const cron = await withEventWindowCandidates(
-		from,
-		eventCandidatePages(rows),
-		() => overflow,
-		(candidates) => candidates.length,
-		EVENT_REMINDER_BUDGET,
-	);
 	assert.deepEqual(calendar, overflow);
-	assert.equal(cron, 1001);
 });
 
-test('cron sentinel overflow rejects 10001 roots before any claim or send', async () => {
-	const rows = Array.from({ length: EVENT_REMINDER_BUDGET + 1 }, (_, index) =>
+test('reminder paging walks past 10000 roots and stops when the page handler asks', async () => {
+	const from = new Date('2026-09-22T00:00:00.000Z');
+	const rows = Array.from({ length: 10_001 }, (_, index) =>
 		eventCandidate(
 			`event-${String(index).padStart(5, '0')}`,
 			'2020-01-01T12:00:00.000Z',
@@ -292,45 +284,55 @@ test('cron sentinel overflow rejects 10001 roots before any claim or send', asyn
 		),
 	);
 	const pageSizes: number[] = [];
-	const overflow = { status: 503 };
-	let claims = 0;
-	let sends = 0;
-	const result = await withEventWindowCandidates(
-		new Date('2026-09-22T00:00:00.000Z'),
+	let seen = 0;
+	const complete = await forEachEventWindowPage(
+		from,
 		eventCandidatePages(rows, pageSizes),
-		() => overflow,
-		() => {
-			claims += 1;
-			sends += 1;
-			return { status: 200 };
+		async (page) => {
+			seen += page.length;
+			return true;
 		},
-		EVENT_REMINDER_BUDGET,
 	);
-	assert.deepEqual(result, overflow);
-	assert.equal(claims, 0);
-	assert.equal(sends, 0);
+	assert.equal(complete, true);
+	assert.equal(seen, 10_001);
 	assert.equal(pageSizes.length, 21);
-	assert.equal(pageSizes[20], 1);
+
+	const stoppedSizes: number[] = [];
+	let handled = 0;
+	const stopped = await forEachEventWindowPage(
+		from,
+		eventCandidatePages(rows, stoppedSizes),
+		async () => {
+			handled += 1;
+			return handled < 2;
+		},
+	);
+	assert.equal(stopped, false);
+	assert.equal(stoppedSizes.length, 2);
 });
 
-test('cron occurrence preflight rejects 10001 before claims and accepts exactly 10000', () => {
-	const roots = Array.from({ length: 1000 }, (_, index) => index);
+test('reminder batches stop before claiming once the budget is spent', async () => {
 	let claims = 0;
-	let sends = 0;
-	const exact = collectReminderOccurrences(roots, (root) =>
-		Array.from({ length: 10 }, (_, index) => `${root}:${index}`),
+	let dispatched = 0;
+	const released: number[] = [];
+	const result = await processReminderBatches(
+		Array.from({ length: 23 }, (_, index) => index),
+		async () => {
+			claims += 1;
+			return true;
+		},
+		async () => {
+			dispatched += 1;
+			return { sent: 1, failures: [] };
+		},
+		async (index) => {
+			released.push(index);
+		},
+		() => dispatched >= 10,
 	);
-	const overflow = collectReminderOccurrences(roots, (root) =>
-		Array.from({ length: root === 999 ? 11 : 10 }, (_, index) => `${root}:${index}`),
-	);
-	if (overflow !== null) {
-		claims += overflow.length;
-		sends += overflow.length;
-	}
-	assert.equal(exact?.length, EVENT_REMINDER_BUDGET);
-	assert.equal(overflow, null);
-	assert.equal(claims, 0);
-	assert.equal(sends, 0);
+	assert.deepEqual(result, { sent: 10, failed: 0, stopped: true });
+	assert.equal(claims, 10);
+	assert.deepEqual(released, []);
 });
 
 test('reminder batches claim only the current batch, limit concurrency, and release failures', async () => {

@@ -232,9 +232,10 @@ test.describe('ManaWG launch smoke', () => {
 			expect(created.wg?.id).toMatch(UUID_PATTERN);
 			expect(created.creator?.id).toMatch(UUID_PATTERN);
 
-			await expect(page.getByRole('heading', { name: wgName, exact: true, level: 1 })).toBeVisible({
-				timeout: 30_000,
-			});
+			await expect(
+				page.getByRole('heading', { name: 'WG erstellt', exact: true, level: 1 }),
+			).toBeVisible({ timeout: 30_000 });
+			await expect(page.getByText(`Eure WG „${wgName}“ ist live.`, { exact: true })).toBeVisible();
 			// The invite step carries a personal link, never the share code.
 			const linkButton = page.getByRole('button', { name: 'Einladungslink kopieren' });
 			await expect(linkButton).toContainText('/einladung/', { timeout: 30_000 });
@@ -374,9 +375,13 @@ test.describe('ManaWG launch smoke', () => {
 
 			await gotoWithRetry(page, `/wg/${createdShareCode}/putzen`);
 			await expect(page.getByText(choreTitle, { exact: true })).toBeVisible({ timeout: 30_000 });
+			// Like the app, the completion names the occurrence it saw.
 			const completion = await page.request.post(
 				`/api/wg/${createdShareCode}/chores/${choreId}/complete`,
-				{ headers: memberHeaders },
+				{
+					headers: memberHeaders,
+					data: { expectedNextDueAt: firstDueAt, expectedAssignedMemberId: memberId },
+				},
 			);
 			expect(completion.status(), await completion.text()).toBe(200);
 			const choreList = await page.request.get(`/api/wg/${createdShareCode}/chores`, {
@@ -420,10 +425,12 @@ test.describe('ManaWG launch smoke', () => {
 			expect(listedChat.messages?.filter((message) => message.id === messageId)).toEqual([
 				expect.objectContaining({ body: editedMessage }),
 			]);
+			// The bubble also holds the "bearbeitet" time stamp, so match the body as a substring.
+			const chatBubble = page.getByText(editedMessage);
 			await gotoWithRetry(page, `/wg/${createdShareCode}/chat`);
-			await expect(page.getByText(editedMessage, { exact: true })).toBeVisible({ timeout: 30_000 });
+			await expect(chatBubble).toBeVisible({ timeout: 30_000 });
 			await page.reload();
-			await expect(page.getByText(editedMessage, { exact: true })).toBeVisible({ timeout: 30_000 });
+			await expect(chatBubble).toBeVisible({ timeout: 30_000 });
 
 			const eventTitle = `Smoke Event ${runNamespace}`;
 			const editedEventTitle = `${eventTitle} edited`;

@@ -121,3 +121,13 @@ test('a reported foreign-currency row is never imported as euros', () => {
 		{ line: 3, reason: 'currency_unsupported', description: 'Franken (CHF)' },
 	]);
 });
+
+test('a Splitwise row with several payers is reported, not booked on one of them', () => {
+	const csv = [
+		'Date,Description,Cost,Currency,A,B,C,D',
+		'2026-01-15,Dinner,100.00,EUR,25.00,25.00,-25.00,-25.00',
+	].join('\n');
+	const rejected: RejectedRow[] = [];
+	assert.equal(parseSplitwiseCsv(csv, rejected).length, 0);
+	assert.deepEqual(rejected, [{ line: 2, reason: 'multiple_payers', description: 'Dinner' }]);
+});

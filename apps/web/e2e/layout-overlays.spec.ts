@@ -460,9 +460,9 @@ test.describe('toast pause on hover', () => {
 
 	// WCAG 2.2.1 (Timing Adjustable): an auto-dismissing toast must pause while the
 	// user is hovering or focusing it, and only resume counting down afterwards.
-	// The toast's dismiss timer (Toast.tsx: TOAST_DURATION_MS = 4000) must be pausable;
-	// this test fails if it degrades to a single un-pausable setTimeout.
-	const TOAST_DURATION_MS = 4000;
+	// The error toast's dismiss timer (Toast.tsx: ERROR_TOAST_DURATION_MS = 8000) must be
+	// pausable; this test fails if it degrades to a single un-pausable setTimeout.
+	const TOAST_DURATION_MS = 8000;
 	const PAST_DURATION_MS = TOAST_DURATION_MS + 400;
 
 	test('a toast pauses its auto-dismiss timer while hovered or focused', async ({ page }) => {

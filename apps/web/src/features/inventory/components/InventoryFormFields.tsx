@@ -8,6 +8,7 @@ import {
 	INVENTORY_UNITS,
 	type InventoryCategory,
 	type InventoryUnit,
+	decimalQuantityText,
 	isBelowThreshold,
 } from '@/features/inventory/inventory';
 
@@ -75,11 +76,10 @@ export function InventoryFormFields({
 					<Input
 						id="inventory-qty"
 						type="text"
-						inputMode="numeric"
-						pattern="[0-9]*"
-						maxLength={String(INVENTORY_LIMITS.QUANTITY_MAX).length}
+						inputMode="decimal"
+						maxLength={String(INVENTORY_LIMITS.QUANTITY_MAX).length + 3}
 						value={quantityText}
-						onChange={(event) => onQuantityTextChange(event.target.value.replace(/\D/g, ''))}
+						onChange={(event) => onQuantityTextChange(decimalQuantityText(event.target.value))}
 						onFocus={(event) => event.currentTarget.select()}
 						disabled={disabled}
 						className="text-base"
@@ -90,11 +90,10 @@ export function InventoryFormFields({
 					<Input
 						id="inventory-threshold"
 						type="text"
-						inputMode="numeric"
-						pattern="[0-9]*"
-						maxLength={String(INVENTORY_LIMITS.THRESHOLD_MAX).length}
+						inputMode="decimal"
+						maxLength={String(INVENTORY_LIMITS.THRESHOLD_MAX).length + 3}
 						value={thresholdText}
-						onChange={(event) => onThresholdTextChange(event.target.value.replace(/\D/g, ''))}
+						onChange={(event) => onThresholdTextChange(decimalQuantityText(event.target.value))}
 						onFocus={(event) => event.currentTarget.select()}
 						disabled={disabled}
 						className="text-base"

@@ -60,14 +60,16 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
 				.limit(1);
 			if (!deletion) throw new Error('account_deletion_fence_missing');
 
-			for (const { wgId, memberId, name, newAdminId } of removed.left) {
+			for (const { wgId, memberId, name, newAdminId, newAdminName } of removed.left) {
 				await tx.insert(auditEvents).values({
 					wgId,
 					memberId,
 					eventType: 'member.account_deletion_requested',
 					entityType: 'member',
 					entityId: memberId,
-					summary: `${name} hat die Kontolöschung angefragt und ist ausgezogen.`,
+					summary: `${name} hat die Kontolöschung angefragt und ist ausgezogen.${
+						newAdminName ? ` ${newAdminName} ist jetzt Admin.` : ''
+					}`,
 					metadataJson: JSON.stringify({ name, newAdminId }),
 				});
 			}

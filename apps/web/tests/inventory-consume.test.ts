@@ -9,7 +9,7 @@ import {
 	wgInventoryItems,
 	wgInventoryLog,
 } from '../src/core/db';
-import type { WgInventoryItem } from '../src/core/db/schema';
+import type { WgInventoryItem } from '../src/core/db/schema-inventory';
 import type { DbTransaction } from '../src/core/db/transaction';
 import { type ReplaySlotDependencies, claimReplaySlot } from '../src/core/guards/replay-slot';
 import {

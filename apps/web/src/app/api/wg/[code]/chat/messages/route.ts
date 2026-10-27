@@ -179,6 +179,9 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 	if (!parsed.ok) return parsed.response;
 
 	const cleanBody = sanitizeMessageBody(parsed.data.body ?? null, CHAT_BODY_MAX);
+	if (parsed.data.body?.trim() && !cleanBody) {
+		return badRequest('body_invalid');
+	}
 	const replyToMessageId = parsed.data.replyToMessageId ?? null;
 	const requestedMentionIds = parsed.data.mentionMemberIds ?? [];
 	const auth = await requireWgMember(req, code);

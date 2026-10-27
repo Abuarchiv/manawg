@@ -59,11 +59,13 @@ export async function loadPrimaryRows(wgId: string, spendSince: Date) {
 				amountCents: expenses.amountCents,
 				currency: expenses.currency,
 				description: expenses.description,
-				occurredAt: expenses.occurredAt,
+				// The feed shows when an expense was entered: a backdated one is still news.
+				occurredAt: expenses.createdAt,
 			})
 			.from(expenses)
-			.where(eq(expenses.wgId, wgId))
-			.orderBy(desc(expenses.occurredAt))
+			// Imported rows are one "import.completed" entry, not hundreds of new ones.
+			.where(and(eq(expenses.wgId, wgId), isNull(expenses.importId)))
+			.orderBy(desc(expenses.createdAt))
 			.limit(ACTIVITY_LIMIT),
 		// Open debt per (payer, debtor, currency); the payer's own share stays in for gross "owed".
 		db

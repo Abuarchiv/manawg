@@ -36,9 +36,10 @@ import {
 	type InventoryItemDto,
 	type InventoryMutationItemDto,
 	type InventoryUnit,
-	clampQuantity,
 	formatQuantity,
 	normalizeForMatch,
+	parseQuantityText,
+	quantityInputText,
 } from '@/features/inventory/inventory';
 import { useEffect, useRef, useState } from 'react';
 import { InventoryFormFields } from './InventoryFormFields';
@@ -70,11 +71,6 @@ const SAVE_SUBJECT = 'Vorrat konnte nicht gespeichert werden';
 
 const DEFAULT_UNIT: InventoryUnit = 'Stück';
 const DEFAULT_CATEGORY: InventoryCategory = 'sonstiges';
-
-/** An empty field counts as 0; the value is clamped only on save so the field can stay empty while typing. */
-function parseCount(text: string): number {
-	return clampQuantity(Number(text || 0));
-}
 
 function coerceUnit(unit: string | undefined): InventoryUnit {
 	if (unit && (INVENTORY_UNITS as readonly string[]).includes(unit)) {
@@ -116,8 +112,8 @@ export function InventoryFormDrawer({
 	const [serverError, setServerError] = useState<string | null>(null);
 	const alertRef = useRef<HTMLDivElement>(null);
 	const createRequestRef = useRef<PendingIdempotentRequest | null>(null);
-	const quantity = parseCount(quantityText);
-	const threshold = parseCount(thresholdText);
+	const quantity = parseQuantityText(quantityText);
+	const threshold = parseQuantityText(thresholdText);
 	const initialRef = useRef(initial);
 
 	useEffect(() => {
@@ -129,9 +125,9 @@ export function InventoryFormDrawer({
 		const current = initialRef.current ?? null;
 		setBaseline(current);
 		setName(current?.name ?? '');
-		setQuantityText(String(current?.quantity ?? 0));
+		setQuantityText(quantityInputText(current?.quantity ?? 0));
 		setUnit(coerceUnit(current?.unit));
-		setThresholdText(String(current?.threshold ?? 1));
+		setThresholdText(quantityInputText(current?.threshold ?? 1));
 		setCategory(coerceCategory(current?.category));
 		setConflictNeedsReload(false);
 		setNameError(null);
@@ -253,9 +249,9 @@ export function InventoryFormDrawer({
 			setBaseline(latest);
 			// Keep what the user typed; only untouched fields follow the server state.
 			if (trimmedName === current.name) setName(latest.name);
-			setQuantityText(String(latest.quantity));
+			setQuantityText(quantityInputText(latest.quantity));
 			if (unit === coerceUnit(current.unit)) setUnit(coerceUnit(latest.unit));
-			if (threshold === current.threshold) setThresholdText(String(latest.threshold));
+			if (threshold === current.threshold) setThresholdText(quantityInputText(latest.threshold));
 			if (category === coerceCategory(current.category)) {
 				setCategory(coerceCategory(latest.category));
 			}

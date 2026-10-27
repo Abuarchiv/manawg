@@ -1,3 +1,10 @@
+// zod probes `new Function` to speed up parsing; the CSP forbids eval, so the probe would be
+// reported as a violation on every page. zod reads this shared object, so setting it here,
+// before any app code parses, needs no import.
+const zodGlobal = globalThis as { __zod_globalConfig?: { jitless?: boolean } };
+zodGlobal.__zod_globalConfig ??= {};
+zodGlobal.__zod_globalConfig.jitless = true;
+
 if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
 	import('@/core/infra/sentry')
 		.then(({ initializeSentry }) => initializeSentry())

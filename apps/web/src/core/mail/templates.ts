@@ -106,6 +106,15 @@ export function renderReminderMail(input: {
 				value: formatEuroCents(item.cents),
 			})),
 		});
+		// The list holds the newest unsettled shares; payments and shares the
+		// other way are already netted into the amount above.
+		const itemsCents = input.items.reduce((sum, item) => sum + item.cents, 0);
+		if (itemsCents !== input.amountCents) {
+			blocks.push({
+				kind: 'paragraph',
+				text: 'Die neuesten Posten. Zahlungen und Ausgaben in die andere Richtung sind im Betrag oben schon verrechnet.',
+			});
+		}
 	}
 	blocks.push({
 		kind: 'paragraph',

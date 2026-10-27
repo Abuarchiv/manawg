@@ -63,6 +63,8 @@ export function PinnwandComposer({
 }: PinnwandComposerProps): ReactElement {
 	const fieldInvalid = Boolean(error) && (content.trim() === '' || content.length > CONTENT_MAX);
 	const [attachmentOpen, setAttachmentOpen] = useState(Boolean(imageUrl));
+	// Posting while the image still uploads would publish the post without it.
+	const [imageUploading, setImageUploading] = useState(false);
 	return (
 		<Drawer
 			open={open}
@@ -142,6 +144,7 @@ export function PinnwandComposer({
 									onChange={onImageUrlChange}
 									disabled={submitting}
 									imageLabel="Beitragsbild"
+									onUploadingChange={setImageUploading}
 								/>
 							</div>
 						</CollapsiblePanel>
@@ -163,7 +166,7 @@ export function PinnwandComposer({
 						type="button"
 						className="w-full"
 						onClick={onSubmit}
-						disabled={submitting || content.trim().length === 0}
+						disabled={submitting || imageUploading || content.trim().length === 0}
 					>
 						{submitting ? (
 							<Spinner data-icon="inline-start" aria-hidden />

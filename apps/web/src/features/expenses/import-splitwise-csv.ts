@@ -102,16 +102,24 @@ export function parseSplitwiseCsv(csv: string, rejected?: RejectedRow[]): Parsed
 		let paidByName = '';
 		let paidByColIndex = -1;
 		let paidByValue = Number.NEGATIVE_INFINITY;
+		let positiveColumns = 0;
 		for (const col of memberColumns) {
 			const raw = (fields[col.index] ?? '').trim();
 			if (!raw) continue;
 			const signedCents = parseAmountToCents(raw);
 			if (signedCents === null) continue;
+			if (signedCents > 0) positiveColumns += 1;
 			if (signedCents > paidByValue) {
 				paidByValue = signedCents;
 				paidByName = col.name;
 				paidByColIndex = col.index;
 			}
+		}
+		// A positive net means that person paid more than their share. An expense here has one
+		// payer, so a row with several cannot be imported without moving money between them.
+		if (positiveColumns > 1) {
+			rejected?.push({ line, reason: 'multiple_payers', description: descRaw });
+			continue;
 		}
 		if (!paidByName && memberColumns[0]) {
 			paidByName = memberColumns[0].name;

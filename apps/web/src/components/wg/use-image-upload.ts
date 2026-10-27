@@ -59,6 +59,14 @@ export function useImageUpload({
 	// Callers pass a fresh onChange on every render (the chat composer); effects must not restart for that.
 	const onChangeRef = useRef(onChange);
 	onChangeRef.current = onChange;
+	// An upload that finishes after its form closed must not write into the next form.
+	const mountedRef = useRef(true);
+	useEffect(() => {
+		mountedRef.current = true;
+		return () => {
+			mountedRef.current = false;
+		};
+	}, []);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -100,6 +108,8 @@ export function useImageUpload({
 
 	useEffect(() => {
 		if (!isPendingImageToken(value)) return;
+		// A discarded form or a new image must not get this upload's result written back.
+		let stale = false;
 
 		async function syncPending(): Promise<void> {
 			if (!navigator.onLine || !value) return;
@@ -110,11 +120,13 @@ export function useImageUpload({
 			setNotice(null);
 			try {
 				const publicUrl = await uploadPendingImageToken(value, identity.memberId);
+				if (stale) return;
 				onChangeRef.current(publicUrl);
 				// Chat cannot send while the token is pending, so no queued action will ever
 				// replay it; the stored copy (up to the upload size cap) would stay on the device otherwise.
 				if (purpose === 'chat') void removePendingImage(value, identity.memberId).catch(() => {});
 			} catch (err) {
+				if (stale) return;
 				if (err instanceof PendingImageMissingError) {
 					setNotice(null);
 					setError(MISSING_PENDING_IMAGE_MESSAGE);
@@ -140,7 +152,11 @@ export function useImageUpload({
 		}
 
 		void syncPending();
-		return subscribeOnline(() => void syncPending());
+		const unsubscribe = subscribeOnline(() => void syncPending());
+		return () => {
+			stale = true;
+			unsubscribe();
+		};
 	}, [identity.memberId, purpose, value]);
 
 	async function handleFile(original: File): Promise<void> {
@@ -183,6 +199,10 @@ export function useImageUpload({
 					memberId: identity.memberId,
 					purpose,
 				});
+				if (!mountedRef.current) {
+					void removePendingImage(token, identity.memberId).catch(() => undefined);
+					return false;
+				}
 				onChange(token);
 				setError(null);
 				setNotice(message);
@@ -214,7 +234,7 @@ export function useImageUpload({
 			});
 			if (result.ok) {
 				setNotice(null);
-				onChange(result.publicUrl);
+				if (mountedRef.current) onChange(result.publicUrl);
 				return;
 			}
 			if (result.kind === 'sign') {

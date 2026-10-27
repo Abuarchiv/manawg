@@ -13,6 +13,7 @@ import { TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import {
+	conflict,
 	forbidden,
 	notFound,
 	rateLimitResponse,
@@ -23,7 +24,10 @@ import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey } from '@/core/idempotency-store';
 import { checkEnv } from '@/core/infra/env';
 import { logApiError } from '@/core/infra/observability';
-import { dispatchNotification } from '@/core/notifications/notification-dispatch';
+import {
+	NoPushSubscriptionError,
+	dispatchNotification,
+} from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, notifTestLimiter, wgWriteLimiter } from '@/core/rate-limit';
 import {
 	pushAuthKeySchema,
@@ -280,6 +284,9 @@ export const POST = withWgRoute('notifications POST', async (req, { code }) => {
 							bypassPreferences: true,
 						});
 					} catch (err) {
+						if (err instanceof NoPushSubscriptionError) {
+							return rejectWrite(conflict('no_push_subscription', 'no_push_subscription'));
+						}
 						logApiError('[notifications POST] test notification failed', err);
 						return rejectWrite(serverError(err, 'unexpected_error'));
 					}
