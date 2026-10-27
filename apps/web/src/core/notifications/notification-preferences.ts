@@ -1,3 +1,7 @@
+/** Settings copy for quiet hours; mirrors the urgent events and the reminder mail fallback in dispatch. */
+export const QUIET_HOURS_HINT =
+	'Zeiten in Berlin-Zeit. In der Ruhezeit kommen keine Push-Hinweise, sie werden auch nicht nachgeschickt. Fällige Aufgaben und Termine kommen trotzdem durch. Zahlungserinnerungen bekommst du in dieser Zeit per E-Mail.';
+
 export function parseQuietHour(value: string): number | null {
 	if (value === '') return null;
 	if (!/^\d{1,2}$/.test(value)) return null;
