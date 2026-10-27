@@ -56,6 +56,23 @@ export function namesInPreview(preview: PreviewResponse | null): string[] {
 	return Array.from(names);
 }
 
+/** Mapping choice for a name whose rows stay out of the import, e.g. a flatmate who moved out. */
+export const SKIP_NAME = 'skip';
+
+/** Indexes of preview rows that mention a name chosen as "Nicht übernehmen". */
+export function rowsWithSkippedNames(
+	preview: PreviewResponse | null,
+	mapping: Readonly<Record<string, string | null>>,
+): number[] {
+	if (!preview) return [];
+	const skipped = (name: string) => mapping[name] === SKIP_NAME;
+	return preview.parsed.flatMap((expense, index) =>
+		skipped(expense.paidByName) || expense.splits.some((split) => skipped(split.memberName))
+			? [index]
+			: [],
+	);
+}
+
 /**
  * Mapping for a fresh preview. After "Zurück", the member's own choices survive for names
  * that are still in the input; new names take the server's suggestion.
