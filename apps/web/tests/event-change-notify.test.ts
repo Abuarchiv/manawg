@@ -236,3 +236,12 @@ test('detaching an occurrence to all-day at the same start counts as moved', asy
 	assert.equal(dispatched.length, 1);
 	assert.equal(dispatched[0]?.event, 'event.moved');
 });
+
+test('postponing a past event to next week respects quiet hours', async () => {
+	reset();
+	selectRows = [eventRow(new Date(Date.now() - 3 * DAY))];
+	updateRows = [eventRow(movedStart)];
+	await call(itemRoute.PATCH, 'PATCH', { startsAt: movedStart.toISOString() });
+	assert.equal(dispatched.length, 1);
+	assert.equal(dispatched[0]?.urgent, false);
+});

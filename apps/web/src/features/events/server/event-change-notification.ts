@@ -29,7 +29,9 @@ interface EventChange {
 export function notifyEventChange(event: 'event.moved' | 'event.cancelled', change: EventChange) {
 	// Someone with quiet hours still has to hear tonight that tomorrow morning's event is off.
 	const now = Date.now();
-	const urgent = (change.affectedStarts ?? []).some((startsAt) => startsAt - now < DAY_MS);
+	const urgent = (change.affectedStarts ?? []).some(
+		(startsAt) => startsAt > now - DAY_MS && startsAt - now < DAY_MS,
+	);
 	afterResponse(() =>
 		dispatchNotificationSafely({
 			wg: change.wg,
