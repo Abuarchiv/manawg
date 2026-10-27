@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 
 export const metadata: Metadata = {
-	title: 'WG erstellen oder beitreten — ManaWG',
+	title: 'WG erstellen oder beitreten',
 	description: 'WG erstellen oder mit einer Einladung beitreten.',
 	robots: { index: false, follow: false },
 };

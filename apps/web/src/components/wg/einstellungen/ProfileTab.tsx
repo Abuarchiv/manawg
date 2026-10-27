@@ -12,6 +12,7 @@ import { Section } from '@/components/wg/einstellungen/Section';
 import { WgNameSection } from '@/components/wg/einstellungen/WgNameSection';
 import { isPayPalSdkEnabled } from '@/core/infra/security-headers';
 import { haptic } from '@/shared/lib/haptics';
+import { SUPPORT_MAILTO } from '@/shared/lib/support-mailto';
 import { Monitor, Moon, Sun } from 'lucide-react';
 
 // Without PayPal credentials, do not show a half-finished PayPal section.
@@ -85,10 +86,7 @@ export function ProfileTab({ memberName, wgName, shareCode, memberId }: ProfileT
 
 			<Section title="Hilfe">
 				<ul>
-					<LinkRow
-						href="mailto:info@manawg.com?subject=Fehler%20in%20ManaWG"
-						label="Fehler per E-Mail melden"
-					/>
+					<LinkRow href={SUPPORT_MAILTO} label="Fehler per E-Mail melden" />
 				</ul>
 			</Section>
 		</>

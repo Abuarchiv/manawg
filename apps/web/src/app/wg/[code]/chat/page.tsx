@@ -17,7 +17,7 @@ type MessageRow = typeof wgChatMessages.$inferSelect;
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-	title: 'Chat — ManaWG',
+	title: 'Chat',
 	robots: { index: false, follow: false },
 };
 
