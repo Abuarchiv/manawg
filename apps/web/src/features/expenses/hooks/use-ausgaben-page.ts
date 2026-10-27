@@ -57,7 +57,12 @@ export function useAusgabenPage() {
 
 	const [actionNotice, setActionNotice] = useState<ActionNotice | null>(null);
 	const notify: ActionNotifier = {
-		error: (message) => setActionNotice(message ? { message, tone: 'error' } : null),
+		error: (message) => {
+			setActionNotice(message ? { message, tone: 'error' } : null);
+			// The banner sits above the list, out of view for a row action further down. The open
+			// form shows its own errors, so only a closed form gets the toast.
+			if (message && !form.showForm) toast.error(message);
+		},
 		warning: (message) => setActionNotice({ message, tone: 'warning' }),
 		// Success as a floating toast: an in-flow banner would stay, reappear in the next form and push the page.
 		success: (message) => toast.success(message),

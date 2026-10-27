@@ -40,9 +40,22 @@ for (const file of walk(WG_DIR)) {
 	}
 }
 
+// The guard lives in the layout body, not in generateMetadata: it must load the shell for the
+// signed-in user and redirect when there is none or the user has no access to the WG.
 const layout = readFileSync(LAYOUT, 'utf8');
-if (!layout.includes('loadWgViewer(')) {
-	violations.push(`${relative(process.cwd(), LAYOUT)}: must resolve the signed-in user`);
+const layoutBody = layout.slice(layout.indexOf('export default async function'));
+const guard = [
+	/const shell = await loadWgShell\(code\);/,
+	/if \(!shell\) redirect\(/,
+	/if \(!access\) \{[^}]*redirect\(/,
+];
+if (
+	!layout.includes('export default async function') ||
+	!guard.every((re) => re.test(layoutBody))
+) {
+	violations.push(
+		`${relative(process.cwd(), LAYOUT)}: must load the WG shell and redirect without a session or access`,
+	);
 }
 
 if (violations.length > 0) {
