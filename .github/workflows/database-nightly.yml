@@ -1,0 +1,87 @@
+name: Database nightly
+
+on:
+  schedule:
+    - cron: '17 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: database-nightly
+  cancel-in-progress: false
+
+jobs:
+  backup-production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: Production
+      deployment: false
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: main
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - name: Dump, encrypt and verify
+        id: backup
+        env:
+          DATABASE_MIGRATION_URL: ${{ secrets.DATABASE_MIGRATION_URL }}
+          BACKUP_GPG_PRIVATE_KEY: ${{ secrets.BACKUP_GPG_PRIVATE_KEY }}
+          BACKUP_GPG_PASSPHRASE: ${{ secrets.BACKUP_GPG_PASSPHRASE }}
+        run: |
+          umask 077
+          export WORK_DIR="$RUNNER_TEMP/backup" KEY_DIR="$RUNNER_TEMP/backup-key"
+          mkdir -p "$WORK_DIR" "$KEY_DIR"
+          chmod 755 "$WORK_DIR"
+          node --experimental-strip-types .github/scripts/pg-env.mjs production "$WORK_DIR"
+          printf '%s\n' "$BACKUP_GPG_PRIVATE_KEY" > "$KEY_DIR/private.asc"
+          printf '%s' "$BACKUP_GPG_PASSPHRASE" > "$KEY_DIR/passphrase"
+          FILE="$(PG_ENV_FILE="$WORK_DIR/pg.env" PUBLIC_KEY_FILE=.github/backup-public-key.asc \
+            PRIVATE_KEY_FILE="$KEY_DIR/private.asc" PASSPHRASE_FILE="$KEY_DIR/passphrase" \
+            .github/scripts/db-backup.sh)"
+          rm -rf "$KEY_DIR" "$WORK_DIR/pg.env"
+          echo "file=$FILE" >> "$GITHUB_OUTPUT"
+          echo "Encrypted backup: $(basename "$FILE") ($(stat -c %s "$FILE") bytes)" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: production-database-${{ github.run_id }}
+          path: ${{ steps.backup.outputs.file }}
+          retention-days: 90
+          if-no-files-found: error
+          compression-level: 0
+
+  preview-keepalive:
+    # The free plan pauses a project after a week without database activity.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment:
+      name: Preview
+      deployment: false
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: main
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - name: Query the Preview database
+        env:
+          DATABASE_MIGRATION_URL: ${{ secrets.SUPABASE_PREVIEW_DATABASE_MIGRATION_URL }}
+        run: |
+          umask 077
+          WORK_DIR="$RUNNER_TEMP/keepalive"
+          mkdir -p "$WORK_DIR"
+          chmod 755 "$WORK_DIR"
+          node --experimental-strip-types .github/scripts/pg-env.mjs preview "$WORK_DIR"
+          docker run --rm --env-file "$WORK_DIR/pg.env" -v "$WORK_DIR:/work:ro" \
+            postgres:17@sha256:b8faeff7712663c2773a190181e1246e37e364b887611c04658c28b44e2408fe \
+            psql -tAc 'select 1'
+          rm -f "$WORK_DIR/pg.env"

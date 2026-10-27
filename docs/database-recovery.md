@@ -28,6 +28,45 @@ The recovery owner completes this record before approval; blanks and â€œunknownâ
 
 Supabase backup/PITR support depends on the actual project configuration. Database backups do **not** recover Storage object contents; AWS S3 needs separate object/version recovery evidence. Verify availability in the provider, not from a plan name or this document. See [Supabase backups](https://supabase.com/docs/guides/platform/backups).
 
+## Nightly encrypted backup
+
+[Database nightly](../.github/workflows/database-nightly.yml) runs daily at 02:17 UTC and on manual
+dispatch. It runs [db-backup.sh](../.github/scripts/db-backup.sh) against the Production session
+pooler: a `pg_dump --format=custom` of the `public`, `drizzle`, `auth` and `storage` schemas. The script
+checks that the archive lists `wgs`, `wg_members`, `auth.users` and the migration ledger, encrypts it
+for the OpenPGP key in [backup-public-key.asc](../.github/backup-public-key.asc) (fingerprint
+`326F1F1B3A8D3193C524DF875F55F8BE82C4D50F`), decrypts it again with the key from the `Production`
+environment, compares it byte for byte, and uploads only the encrypted file as a 90-day artifact.
+Storage object bytes (images) are not included. GitHub disables scheduled workflows after 60 days
+without repository activity; a failed or disabled run shows on the Actions page.
+
+The private key is in the operator's GPG keyring and in the `Production` secrets
+`BACKUP_GPG_PRIVATE_KEY`/`BACKUP_GPG_PASSPHRASE`. The passphrase is in the operator's macOS
+Keychain (service `ManaWG Backup GPG passphrase`). Restore into a disposable database first:
+
+```sh
+gh run download <run-id> --repo Abuarchiv/manawg-app --dir backup
+security find-generic-password -s 'ManaWG Backup GPG passphrase' -w |
+  gpg --batch --pinentry-mode loopback --passphrase-fd 0 --decrypt backup/*/manawg-*.dump.gpg > manawg.dump
+pg_restore --list manawg.dump | head
+pg_restore --no-owner --no-privileges --schema=public --schema=drizzle --dbname=<disposable-url> manawg.dump
+```
+
+The same job queries the Preview database, so the free plan does not pause it for inactivity.
+
+## Runtime database role
+
+The app connects as `manawg_app` (`LOGIN BYPASSRLS`, no DDL, no ownership, no access to `auth` or the
+migration ledger); migrations run as `postgres` (Production) or `manawg_preview_ci` (Preview).
+[0034_app_role_grants](../apps/web/drizzle/0034_app_role_grants.sql) grants row access and default
+privileges for future tables. A new project creates the role once as `postgres` before migrating, with
+a generated password that only goes into Vercel `POSTGRES_URL`
+(`postgresql://manawg_app.<ref>:<password>@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?sslmode=verify-full`):
+
+```sql
+create role manawg_app login bypassrls password '<generated>';
+```
+
 ## Free local recovery point
 
 The current Free-plan fallback is an **operator-owned local export**, not a hosted backup or a substitute for the approval gates above. On the operator's Mac, `~/Library/LaunchAgents/com.abu.manawg-local-backup.plist` runs `~/.local/bin/manawg-local-backup.py` daily at 03:15 local time and at login. The script requires the existing Supabase and Vercel CLI sessions. Check `launchctl print gui/$(id -u)/com.abu.manawg-local-backup` and `~/.local/share/manawg-recovery/backup-status.json`; only `status: success` with a fresh completed directory is a recovery point. Ordinary failures write `failed`, abrupt termination can leave `running`, and an early filesystem failure can leave an older status; always compare timestamps and the LaunchAgent exit. A failed status write after the final directory rename can leave a completed-looking directory that is **unverified** until its manifest and status are reconciled.

@@ -60,6 +60,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 			// Count only — variable names would enable config enumeration.
 			missingRequiredCount: env.missingRequired.length,
 			degradedFeatures: env.degraded.map((entry) => entry.feature),
+			// The repository is public; the release workflow waits for this commit to serve.
+			version: process.env.VERCEL_GIT_COMMIT_SHA ?? null,
 		},
 		{
 			status: healthy ? 200 : 503,

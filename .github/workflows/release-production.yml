@@ -1,0 +1,133 @@
+name: Release production
+
+# One dispatch for the documented release: main tip -> Preview gate -> production migration ->
+# production deployment. Each stage waits for the previous one and stops the release on failure.
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type RELEASE_PRODUCTION to release the current main tip.
+        required: true
+        type: string
+
+permissions:
+  actions: write
+  contents: write
+
+concurrency:
+  group: production-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    environment:
+      name: Production
+      deployment: false
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: main
+          fetch-depth: 1
+      - name: Verify dispatch
+        id: candidate
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+          DEPLOY_HOOK: ${{ secrets.VERCEL_PRODUCTION_DEPLOY_HOOK }}
+        run: |
+          [ "$GITHUB_REF" = refs/heads/main ] || { echo 'Release only from main.' >&2; exit 1; }
+          [ "$CONFIRMATION" = RELEASE_PRODUCTION ] || { echo 'Confirmation must be RELEASE_PRODUCTION.' >&2; exit 1; }
+          [ -n "$DEPLOY_HOOK" ] || { echo 'Production secret VERCEL_PRODUCTION_DEPLOY_HOOK is missing.' >&2; exit 1; }
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "Candidate: $(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Wait for main CI
+        env:
+          SHA: ${{ steps.candidate.outputs.sha }}
+        run: |
+          for _ in $(seq 60); do
+            run="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$SHA&branch=main&event=push&per_page=1" \
+              --jq '.workflow_runs[0] | "\(.status) \(.conclusion)"')"
+            case "$run" in
+              'completed success') exit 0 ;;
+              completed*) echo "Main CI for $SHA ended: $run" >&2; exit 1 ;;
+            esac
+            sleep 30
+          done
+          echo 'Main CI did not finish in time.' >&2
+          exit 1
+
+      - name: Pass the Preview gate
+        id: preview
+        env:
+          SHA: ${{ steps.candidate.outputs.sha }}
+        run: |
+          # Vercel builds preview-main and reports a deployment_status; that CI run is the gate.
+          gate() {
+            for id in $(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$SHA&event=deployment_status&per_page=50" \
+              --jq '.workflow_runs[].id'); do
+              gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id/jobs?per_page=100" \
+                --jq "[.jobs[] | select(.name == \"db-supabase-preview\" or .name == \"e2e-preview\") | .status + \"/\" + (.conclusion // \"\")] | sort | \"$id \" + join(\" \")"
+            done
+          }
+          if [ "$(git ls-remote origin refs/heads/preview-main | cut -f1)" != "$SHA" ]; then
+            git push --force origin "$SHA:refs/heads/preview-main"
+          fi
+          for _ in $(seq 120); do
+            runs="$(gate)"
+            passed="$(grep -m1 ' completed/success completed/success$' <<<"$runs" | cut -d' ' -f1 || true)"
+            if [ -n "$passed" ]; then
+              echo "run_id=$passed" >> "$GITHUB_OUTPUT"
+              echo "Preview gate run: $passed" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            if grep -qE 'completed/(failure|timed_out)' <<<"$runs"; then
+              echo "Preview gate failed for $SHA:" >&2
+              echo "$runs" >&2
+              exit 1
+            fi
+            sleep 30
+          done
+          echo "Preview gate did not pass in time for $SHA:" >&2
+          echo "$runs" >&2
+          exit 1
+
+      - name: Migrate the production database
+        env:
+          SHA: ${{ steps.candidate.outputs.sha }}
+          PREVIEW_RUN_ID: ${{ steps.preview.outputs.run_id }}
+        run: |
+          since="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          gh workflow run migrate-production.yml --ref main \
+            -f candidate_sha="$SHA" -f preview_run_id="$PREVIEW_RUN_ID" -f confirmation=MIGRATE_PRODUCTION
+          id=''
+          for _ in $(seq 20); do
+            id="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/migrate-production.yml/runs?event=workflow_dispatch&created=%3E%3D$since&per_page=1" \
+              --jq '.workflow_runs[0].id // empty')"
+            [ -n "$id" ] && break
+            sleep 6
+          done
+          [ -n "$id" ] || { echo 'Migration run did not start.' >&2; exit 1; }
+          echo "Migration run: $id" >> "$GITHUB_STEP_SUMMARY"
+          gh run watch "$id" --exit-status --interval 20 > /dev/null
+
+      - name: Deploy production
+        env:
+          SHA: ${{ steps.candidate.outputs.sha }}
+          DEPLOY_HOOK: ${{ secrets.VERCEL_PRODUCTION_DEPLOY_HOOK }}
+        run: |
+          # The hook builds the main tip; if main moved meanwhile, the version check below fails.
+          curl -fsS -X POST "$DEPLOY_HOOK" > /dev/null
+          for _ in $(seq 120); do
+            health="$(curl -sS https://app.manawg.com/api/health || true)"
+            if jq -e --arg sha "$SHA" '.version == $sha and .status == "ok" and .database == "ok"' <<<"$health" > /dev/null 2>&1; then
+              echo "Production serves $SHA: $health" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "Production does not serve $SHA healthily: $health" >&2
+          exit 1
