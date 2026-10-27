@@ -22,6 +22,15 @@ environment setup, Preview secrets and workflow inputs: see
       (`candidate_sha`, `preview_run_id`, `MIGRATE_PRODUCTION`). Never run `db:migrate` against
       Production from a laptop, and never use Production credentials in Preview.
 
+## One-dispatch release
+
+[Release production](../.github/workflows/release-production.yml) (Actions, `main`, confirmation
+`RELEASE_PRODUCTION`) runs the steps above in order and stops at the first failure: it waits for
+main CI, pushes the main tip to `preview-main` so Vercel builds the Preview and the Preview gate runs,
+dispatches the production migration with that gate run, triggers the Production deploy hook
+(`VERCEL_PRODUCTION_DEPLOY_HOOK`) and waits until `/api/health` reports the candidate SHA as `version`
+with `status` and `database` `ok`. The manual checks in this file still apply.
+
 ## Production environment (Vercel)
 
 Names only. `checkEnv` (`apps/web/src/core/infra/env.ts`) treats these as required when
