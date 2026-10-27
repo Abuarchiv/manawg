@@ -55,7 +55,7 @@ export function useHomeChoreCompletion({
 
 		const feedback = choreCompletionFeedback(outcome, chore, (id) => {
 			const name = members.find((member) => member.id === id)?.name;
-			// The start page names the member, even for themselves (it has always done so).
+			// The start page names the member, even when it is the viewer.
 			return name === undefined ? undefined : { name, isSelf: false };
 		});
 		// The start page has no message slot outside the dialog: what outlives it is a toast.

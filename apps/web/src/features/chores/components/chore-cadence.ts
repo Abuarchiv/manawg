@@ -4,7 +4,7 @@ import {
 } from '@/features/chores/components/constants';
 import type { RecurrenceType } from './chore-types';
 
-const NBSP = ' ';
+const NBSP = '\u00a0';
 
 /**
  * Short rhythm label of a chore for the narrow row: the preset label when one matches,
