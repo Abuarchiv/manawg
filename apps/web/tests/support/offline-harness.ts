@@ -2,6 +2,9 @@
 // offline-client module graph (`?instance=N`, see resolve-hooks.mjs) wired to its own mocks.
 import assert from 'node:assert/strict';
 import { mock } from 'node:test';
+import { deferred } from './deferred.ts';
+
+export { deferred };
 
 export const { OFFLINE_REPLAY_MAX_AGE_MS, RESPONSE_REPLAY_TTL_SECONDS } = await import(
 	'../../src/core/offline/replay-retention.ts'
@@ -88,14 +91,6 @@ export function makeLockManager() {
 	};
 }
 type FakeLockManager = ReturnType<typeof makeLockManager>;
-
-export function deferred<T = unknown>() {
-	let resolve: (value?: T) => void = () => {};
-	const promise = new Promise<T | undefined>((done) => {
-		resolve = done;
-	});
-	return { promise, resolve };
-}
 
 /** The persisted offline queue of a fake storage. */
 export function readStoredQueue(storage: FakeStorage): Action[] {
