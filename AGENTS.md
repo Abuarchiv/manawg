@@ -21,7 +21,7 @@ rationale are in [docs/architecture.md](docs/architecture.md). The baseline file
 - Source files stay under 400 lines, test files under 800. Split along responsibilities and
   keep the old file as the entry when importers should not change.
 - Comments are English and describe the code as it is; no history narration.
-- Hook files are kebab-case (`use-*.ts`); a `*.tsx` file is a component, a `.ts` file a module.
+- Hook files are kebab-case (`use-foo.ts`), never `useFoo.ts`.
 - Unit tests are `*.test.ts` (next to the module or in `apps/web/tests/`), import real modules
   through `tests/support/register.mjs` and mock with `node:test` `mock.module`; no `vm`,
   `transpileModule` or reading source text. E2E specs are `e2e/*.spec.ts` with helpers in

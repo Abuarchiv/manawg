@@ -156,8 +156,8 @@ CI (`.github/workflows/ci.yml`, job `validate`) runs, in this order:
 3. `pnpm lint`
 4. `pnpm knip` (unused files, exports and dependencies; config in `knip.json`)
 5. `pnpm --dir apps/web analytics:check`
-6. `node scripts/check-architecture.mjs`
-7. `node scripts/check-wg-auth-invariant.mjs`
+6. `pnpm --filter @manawg/web exec node scripts/check-architecture.mjs`
+7. `pnpm --filter @manawg/web exec node scripts/check-wg-auth-invariant.mjs`
 8. `pnpm typecheck` (app, plus `tsconfig.e2e.json` for `e2e/`, `tests/*.test.ts` and Playwright configs)
 9. `pnpm --filter @manawg/web test:unit`
 10. `pnpm build`

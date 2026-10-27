@@ -100,8 +100,9 @@ Rules:
   `sessionEnded`, so a transient failure keeps the server-verified member while a gone session or
   a lost membership is told apart. The layout hands in the server-verified member read by
   `loadWgShell` (`core/guards/load-wg-viewer.ts`: viewer, moved-out check, roster and admin flag in
-  one memoized call); an identity without `authUserId` is never enough to write offline, because
-  `KnownWg.authUserId` is required for queued writes.
+  one memoized call). That identity carries `authUserId`, so the provider starts ready; remembering
+  a WG for offline use (`rememberWg`) requires `authUserId`, because remembered WGs and queued
+  actions are bound to the account.
 - **Fixture mode** answers as `FIXTURE_AUTH_USER_ID` (`fixtures/data.ts`) through the same member
   lookup the app uses; product code has no fixture branch beyond the `app/` seams named in the README.
 - **Legacy-profile takeover** (`POST /api/wg/<code>/members/<id>/claim?invite=<token>`): links an

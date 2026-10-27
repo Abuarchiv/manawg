@@ -142,7 +142,7 @@ Risiko: Key-Umbenennung invalidiert bestehende Caches einmalig (harmlos, wird be
    ```sql
    select count(*) from wg_members where auth_user_id is null and deactivated_at is null;
    ```
-   Einziger Hinweis im Repo: „migrate the eight legacy memberships" (`openspec/changes/public-dashboard-entry/design.md:9`).
+   Einziger Hinweis im Repo: „migrate the eight legacy memberships" (`openspec/changes/archive/2026-10-27-public-dashboard-entry/design.md:9`).
 2. **Bei 0:** sofort Phase 3b. **Bei >0:** Frist 30 Tage, Hinweis in der Recovery-UI, Text-Fix M7, dann Admins bitten, Rest zu deaktivieren, oder einmalige Migration `update wg_members set deactivated_at = now() where auth_user_id is null and deactivated_at is null` plus `delete from push_subscriptions where member_id in (…)`.
 3. **Phase 3b löschen:** `LegacyAccountRecovery.tsx`, Collapsible in `ChooseStep.tsx:44-110` + Props in `NeuClient.tsx`, `claim/route.ts`, `core/guards/legacy-claim-proof.ts`, in `identity.ts` `getLegacyIdentityCandidates`/`legacyClaimHeaders`/`LegacyIdentityCandidate`/`memberToken`, `LEGACY_CLAIM_*` in `member-header.ts`, Testblöcke `security-guards-routes.test.ts:109-135`, Mock `auth-outage-routes.test.ts:136`, Fixture `e2e/accessibility.spec.ts:696`, Doku `architecture.md:92-95`, `database-recovery.md:131`, README-Satz, Kommentare `env.ts:82-92`, `signing-secrets.ts:15`. `MEMBER_SESSION_SECRET` bleibt (Kalender, Unsubscribe); Proposal-Satz korrigieren (M9). `authUserId` im Cache-Schema Pflicht, `!identity.authUserId`-Klausel weg.
 4. **Behalten:** `auth_user_id` nullable (Konto-Löschung setzt null), partielle Indizes, `assertAccountCanAcquireMembership`.
