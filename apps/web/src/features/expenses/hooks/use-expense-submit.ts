@@ -11,7 +11,6 @@ import {
 	OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
 	OFFLINE_SAVED_NOTICE,
 } from '@/core/offline/offline-copy';
-import { isPendingImageToken } from '@/core/offline/offline-images';
 import {
 	createOfflineIdempotencyKey,
 	createQueuedExpense,
@@ -39,6 +38,7 @@ import type { DebtorShare } from '@/features/expenses/split-math';
 import { useRef, useState } from 'react';
 import type { ExpenseFormState, ExpensePageContext } from './expense-page-context';
 import { validateExpenseFields } from './expense-submit-validation';
+import { RECEIPT_UPLOAD_FAILED, resolveSubmitImage } from './resolve-submit-image';
 import type { ExpenseFormSupport } from './use-expense-form-support';
 import type { AdvanceRecurringTemplate } from './use-recurring-booking';
 
@@ -87,7 +87,7 @@ export function useExpenseSubmit(
 			queueEditType,
 			splitMode,
 			paidByMemberId,
-			imageUrl,
+			imageUrl: formImageUrl,
 		} = form;
 		support.setFieldErrors({});
 		if (form.invalidEditDraft) {
@@ -112,11 +112,10 @@ export function useExpenseSubmit(
 			support.setValidationErrors(validationErrors);
 			return;
 		}
-		// Online the server needs the uploaded URL; offline the replay uploads the image first.
-		if (imageUrl && isPendingImageToken(imageUrl) && navigator.onLine) {
-			form.setFormError('Beleg wird noch hochgeladen. Bitte kurz warten und nochmal versuchen.');
-			return;
-		}
+		const image = await resolveSubmitImage(formImageUrl, identity.memberId, navigator.onLine);
+		if (!image) return form.setFormError(RECEIPT_UPLOAD_FAILED);
+		const imageUrl = image.url;
+		if (imageUrl !== formImageUrl) form.setImageUrl(imageUrl);
 		const amountCents = Math.round(amountEuros * CENTS_PER_EURO);
 		const isEdit = editingExpense !== null;
 		const fingerprint = JSON.stringify({

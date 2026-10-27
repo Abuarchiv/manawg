@@ -116,6 +116,8 @@ export function useImageUpload({
 
 	useEffect(() => {
 		if (!isPendingImageToken(value)) return;
+		// A discarded form or a new image must not get this upload's result written back.
+		let stale = false;
 
 		async function syncPending(): Promise<void> {
 			if (!navigator.onLine || !value) return;
@@ -126,11 +128,13 @@ export function useImageUpload({
 			setNotice(null);
 			try {
 				const publicUrl = await uploadPendingImageToken(value, identity.memberId);
+				if (stale) return;
 				onChangeRef.current(publicUrl);
 				// Chat cannot send while the token is pending, so no queued action will ever
 				// replay it; the stored copy (up to 8 MB) would stay on the device otherwise.
 				if (purpose === 'chat') void removePendingImage(value, identity.memberId).catch(() => {});
 			} catch (err) {
+				if (stale) return;
 				if (err instanceof Error && err.message === 'pending-image-missing') {
 					setNotice(null);
 					setError(MISSING_PENDING_IMAGE_MESSAGE);
@@ -156,7 +160,11 @@ export function useImageUpload({
 		}
 
 		void syncPending();
-		return subscribeOnline(() => void syncPending());
+		const unsubscribe = subscribeOnline(() => void syncPending());
+		return () => {
+			stale = true;
+			unsubscribe();
+		};
 	}, [identity.memberId, purpose, value]);
 
 	async function handleFile(original: File): Promise<void> {
