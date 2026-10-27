@@ -123,9 +123,6 @@ export function restoreGlobals(): void {
 }
 
 const defaultQueue = {
-	isOfflineIdempotencyKey: (value: unknown) =>
-		typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value),
-	createOfflineIdempotencyKey: () => VALID_KEY,
 	isQueuedCreateId: (value: unknown) =>
 		typeof value === 'string' && /^(?:shopping|chore-create|absence):/.test(value),
 	explainOfflineActionFailure: (status: number, error?: string) => ({
@@ -185,6 +182,11 @@ export async function makeQueueModule({
 		readApiErrorCode: async () => '',
 	});
 	mockInstance('@/core/utils/browser', { safeLocalStorage: () => storage });
+	mockInstance('@/core/http/idempotency-key', {
+		isIdempotencyKey: (value: unknown) =>
+			typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value),
+		createIdempotencyKey: () => VALID_KEY,
+	});
 	mockInstance('@/core/offline/offline-queue', defaultQueue);
 	if (images !== null) {
 		mockInstance('@/core/offline/offline-images', {

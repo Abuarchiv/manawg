@@ -12,8 +12,6 @@ export { explainOfflineActionFailure };
 export {
 	type OfflineAction,
 	type OfflineActionType,
-	createOfflineIdempotencyKey,
-	isOfflineIdempotencyKey,
 } from './offline-action';
 export {
 	createQueuedAbsence,

@@ -27,8 +27,3 @@ export interface OfflineAction {
 	lastAttemptAt?: string;
 	lastError?: string;
 }
-
-export {
-	createIdempotencyKey as createOfflineIdempotencyKey,
-	isIdempotencyKey as isOfflineIdempotencyKey,
-} from '@/core/http/idempotency-key';

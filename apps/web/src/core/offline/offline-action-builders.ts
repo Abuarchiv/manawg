@@ -1,7 +1,6 @@
+import { createIdempotencyKey, isIdempotencyKey } from '@/core/http/idempotency-key';
 import {
 	type OfflineAction,
-	createOfflineIdempotencyKey,
-	isOfflineIdempotencyKey,
 } from './offline-action';
 
 /**
@@ -118,9 +117,9 @@ function createQueuedAction(
 	now: number,
 	idempotencyKeyOverride?: string,
 ): OfflineAction {
-	const idempotencyKey = isOfflineIdempotencyKey(idempotencyKeyOverride)
+	const idempotencyKey = isIdempotencyKey(idempotencyKeyOverride)
 		? idempotencyKeyOverride
-		: createOfflineIdempotencyKey();
+		: createIdempotencyKey();
 	return {
 		id,
 		...(idempotencyKey ? { idempotencyKey } : {}),
@@ -178,7 +177,7 @@ export function createQueuedAnnouncement(input: QueuedAnnouncementInput): Offlin
 		{ content: input.content, kind: input.kind, imageUrl: input.imageUrl ?? null },
 		now,
 	);
-	return input.idempotencyKey && isOfflineIdempotencyKey(input.idempotencyKey)
+	return input.idempotencyKey && isIdempotencyKey(input.idempotencyKey)
 		? { ...action, idempotencyKey: input.idempotencyKey }
 		: action;
 }
@@ -262,7 +261,7 @@ export function createQueuedExpense(input: QueuedExpenseInput): OfflineAction {
 		},
 		now,
 	);
-	return input.idempotencyKey && isOfflineIdempotencyKey(input.idempotencyKey)
+	return input.idempotencyKey && isIdempotencyKey(input.idempotencyKey)
 		? { ...action, idempotencyKey: input.idempotencyKey }
 		: action;
 }

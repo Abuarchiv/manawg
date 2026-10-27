@@ -1,3 +1,4 @@
+import { createIdempotencyKey, isIdempotencyKey } from '@/core/http/idempotency-key';
 import {
 	IMAGE_MISSING_PREFIX,
 	IMAGE_REMOVED_ERROR,
@@ -6,9 +7,7 @@ import {
 } from './offline-failure-copy';
 import {
 	type OfflineAction,
-	createOfflineIdempotencyKey,
 	explainOfflineActionFailure,
-	isOfflineIdempotencyKey,
 	serializeOfflineAction,
 } from './offline-queue';
 import { replayWindowReviewError } from './offline-store';
@@ -71,7 +70,7 @@ export function createRecurringAdvanceRetry(
 ): OfflineAction | null {
 	const payload = getRecurringAdvancePayload(action);
 	if (!payload) return null;
-	const idempotencyKey = createOfflineIdempotencyKey();
+	const idempotencyKey = createIdempotencyKey();
 	return {
 		id: `recurring-advance:${action.shareCode}:${payload.id}`,
 		...(idempotencyKey ? { idempotencyKey } : {}),
@@ -93,8 +92,8 @@ export function createRecurringAdvanceRetry(
 }
 
 export function backfillIdempotencyKey(action: OfflineAction): OfflineAction {
-	if (isOfflineIdempotencyKey(action.idempotencyKey)) return action;
-	const idempotencyKey = createOfflineIdempotencyKey();
+	if (isIdempotencyKey(action.idempotencyKey)) return action;
+	const idempotencyKey = createIdempotencyKey();
 	return idempotencyKey ? { ...action, idempotencyKey } : action;
 }
 
