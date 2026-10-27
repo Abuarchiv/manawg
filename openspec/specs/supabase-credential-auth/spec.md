@@ -1,7 +1,7 @@
 # supabase-credential-auth Specification
 
 ## Purpose
-TBD - created by archiving change add-signup-page. Update Purpose after archive.
+Give email sign-up its own registration page, keep the visitor's intent across sign-in and registration, and offer a way out when the confirmation mail does not arrive.
 
 ## Requirements
 
