@@ -5,11 +5,10 @@ import { PgDialect } from 'drizzle-orm/pg-core';
 import { startsInReminderWindow } from '../src/features/events/event-reminder-dispatch.ts';
 import { eventOverlapsCalendarDay, expandRecurrence } from '../src/features/events/events.ts';
 import { buildEventsWindowFilter } from '../src/features/events/server/event-reminder-window.ts';
+import { withEnv } from './support/env.ts';
 
 test('timed event end is exclusive at midnight; all-day end date stays inclusive', () => {
-	const previousTimezone = process.env.TZ;
-	process.env.TZ = 'Europe/Berlin';
-	try {
+	withEnv({ TZ: 'Europe/Berlin' }, () => {
 		const nextDay = new Date(2026, 8, 23);
 		const allDay = {
 			startsAt: '2026-09-22T00:00:00.000Z',
@@ -30,10 +29,7 @@ test('timed event end is exclusive at midnight; all-day end date stays inclusive
 			false,
 			'timed event ending at local midnight does not occupy the following day',
 		);
-	} finally {
-		if (previousTimezone === undefined) Reflect.deleteProperty(process.env, 'TZ');
-		else process.env.TZ = previousTimezone;
-	}
+	});
 });
 
 test('API window keeps all-day end boundary but excludes timed end at from', () => {

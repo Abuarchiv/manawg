@@ -3,6 +3,7 @@ import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { formatEuroCents } from '@/core/utils/money';
 import type { MonthlyStatement } from '@/features/expenses/monthly-statement';
 import { cn } from '@/shared/lib/cn';
+import { pluralize } from '@/shared/lib/plural';
 
 const EYEBROW = 'font-mono text-[11px] tracking-[0.1em] uppercase text-muted-foreground';
 const H2 = 'font-heading text-[18px] font-semibold tracking-[-0.02em] print:text-[22px]';
@@ -120,7 +121,7 @@ export function MonthlyStatementDocument({
 						Salden
 					</h2>
 					<span className="text-[12px] text-muted-foreground">
-						Geteilt auf {members.length} Personen
+						Geteilt auf {pluralize(members.length, 'Person', 'Personen')}
 					</span>
 				</div>
 				{/* Four columns do not fit at 320 px: the table scrolls sideways instead of the page. */}
@@ -250,7 +251,7 @@ export function MonthlyStatementDocument({
 							Alle Ausgaben
 						</h2>
 						<span className="text-[12px] text-muted-foreground">
-							{items.length} Einträge, nach Datum
+							{pluralize(items.length, 'Eintrag', 'Einträge')}, nach Datum
 						</span>
 					</div>
 					<div className="overflow-x-auto">

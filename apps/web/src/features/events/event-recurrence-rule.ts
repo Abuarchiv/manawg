@@ -101,6 +101,15 @@ export function parseRecurrenceRule(value: string | null | undefined): Recurrenc
 	return rule;
 }
 
+/** Canonical form of a submitted rule (`null` when empty), or `ok: false` when it cannot be parsed. */
+export function canonicalRecurrenceRule(
+	value: string | null | undefined,
+): { ok: true; rule: string | null } | { ok: false } {
+	if (!value) return { ok: true, rule: null };
+	const parsed = parseRecurrenceRule(value);
+	return parsed ? { ok: true, rule: formatRecurrenceRule(parsed) } : { ok: false };
+}
+
 export function formatRecurrenceRule(rule: RecurrenceRule): string {
 	const parts: string[] = [`FREQ=${rule.freq}`];
 	if (rule.interval !== 1) parts.push(`INTERVAL=${rule.interval}`);

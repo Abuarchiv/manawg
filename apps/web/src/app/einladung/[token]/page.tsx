@@ -4,14 +4,16 @@ import { EinladungClient } from './EinladungClient';
 
 export const dynamic = 'force-dynamic';
 
-const title = 'Du bist in eine WG eingeladen — ManaWG';
+const pageTitle = 'Du bist in eine WG eingeladen';
+// openGraph/twitter titles do not go through the root title template.
+const title = `${pageTitle} — ManaWG`;
 const description =
 	'Tritt deiner WG auf ManaWG bei: Ausgaben, Putzplan, Einkauf und Pinnwand. Kostenlos, im Browser, in Deutschland gehostet.';
 
 // Invite links are mostly shared in chats; the preview card names the invitation,
 // never the WG or the token (the token is the secret of this URL).
 export const metadata: Metadata = {
-	title,
+	title: pageTitle,
 	description,
 	robots: { index: false, follow: false },
 	// Keep the token out of Referer headers.

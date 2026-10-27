@@ -14,20 +14,22 @@ import {
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import {
-	Item,
 	ItemActions,
 	ItemContent,
 	ItemDescription,
+	ItemEntry,
 	ItemGroup,
 	ItemTitle,
 } from '@/components/ui/item';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Spinner } from '@/components/ui/spinner';
-import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
+import { useConfirmDelete } from '@/core/hooks/use-confirm-delete';
 import { berlinDayKey } from '@/core/utils/berlin-day';
 import { formatShortDateRange } from '@/core/utils/time';
 import type { AbsenceInput } from '@/features/chores/absence';
+import { ABSENCE_REASON_MAX } from '@/features/chores/chore-limits';
 import type { ChoreMember } from '@/features/chores/components/chore-types';
+import { pendingKeys } from '@/features/chores/pending-keys';
 import { cn } from '@/shared/lib/cn';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -215,7 +217,7 @@ export function AbsencePanel({
 										id="absence-reason"
 										value={reason}
 										onChange={(event) => onReasonChange(event.target.value)}
-										maxLength={120}
+										maxLength={ABSENCE_REASON_MAX}
 										placeholder="z. B. Urlaub"
 										disabled={pending}
 										enterKeyHint="done"
@@ -247,13 +249,12 @@ export function AbsencePanel({
 				{totalCount > 0 && (
 					<ItemGroup className="gap-0 divide-y">
 						{visibleAbsences.map((absence) => {
-							const removing = isPending(`absence:${absence.id}:remove`);
+							const removing = isPending(pendingKeys.absenceRemove(absence.id));
 							const armed = confirmId === absence.id;
 							return (
-								<Item
+								<ItemEntry
 									key={absence.id}
 									id={`absence-${absence.id}`}
-									render={<li />}
 									className={cn(
 										// The tint extends 0.5 rem beyond the text so it does not touch the edge.
 										'scroll-mt-28 -mx-2 w-[calc(100%+1rem)] max-w-none rounded-none px-2 transition-colors duration-700',
@@ -280,7 +281,7 @@ export function AbsencePanel({
 											onClick={() => {
 												if (requestRemove(absence.id)) onRemove(absence.id);
 											}}
-											aria-label={`Abwesenheit von ${absence.memberName} (${formatShortDateRange(absence.startDate, absence.endDate)}) ${armed ? 'endgültig entfernen' : 'entfernen'}`}
+											aria-label={`${armed ? 'Wirklich entfernen? ' : ''}Abwesenheit von ${absence.memberName} (${formatShortDateRange(absence.startDate, absence.endDate)})${armed ? '' : ' entfernen'}`}
 										>
 											{removing && <Spinner data-icon="inline-start" aria-hidden />}
 											{armed ? 'Wirklich entfernen?' : 'Entfernen'}
@@ -296,7 +297,7 @@ export function AbsencePanel({
 											</Button>
 										)}
 									</ItemActions>
-								</Item>
+								</ItemEntry>
 							);
 						})}
 					</ItemGroup>

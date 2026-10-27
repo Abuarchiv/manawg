@@ -158,9 +158,7 @@ export function ImportWizard() {
 					<h1 className="font-heading text-base leading-8 font-semibold [overflow-wrap:normal] hyphens-auto">
 						Ausgaben importieren
 					</h1>
-					<p className="text-[12px] text-muted-foreground tabular-nums">
-						Schritt {stepNumber} von 5
-					</p>
+					<p className="text-meta text-muted-foreground tabular-nums">Schritt {stepNumber} von 5</p>
 				</div>
 			</header>
 			<Progress value={stepNumber} max={5} aria-label={`Import: Schritt ${stepNumber} von 5`} />

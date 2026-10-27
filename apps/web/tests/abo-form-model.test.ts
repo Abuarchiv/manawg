@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 const { buildAboSplits, buildEqualSplits, initialEqualParticipants } = await import(
-	'../src/features/expenses/components/abos/abo-form-model.ts'
+	'../src/features/expenses/abo-form-model.ts'
 );
 
 const anna = { id: 'a', name: 'Anna', color: null, active: true };

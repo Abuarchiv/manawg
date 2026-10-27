@@ -23,12 +23,15 @@ export function classifyAuthError(error: unknown): AuthFailure {
 	return 'other';
 }
 
+export const AUTH_RATE_LIMITED_MESSAGE =
+	'Zu viele Versuche. Warte einige Minuten und versuche es dann erneut.';
+
 export const AUTH_FAILURE_MESSAGES: Record<Exclude<AuthFailure, 'other'>, string> = {
 	credentials:
 		'E-Mail oder Passwort stimmt nicht. Prüfe deine Eingabe oder setze dein Passwort zurück.',
 	unconfirmed:
 		'Deine E-Mail-Adresse ist noch nicht bestätigt. Öffne den Link in der Bestätigungsmail und melde dich danach an.',
-	'rate-limit': 'Zu viele Versuche. Bitte warte einige Minuten und versuche es dann erneut.',
+	'rate-limit': AUTH_RATE_LIMITED_MESSAGE,
 	network: 'Keine Verbindung zum Anmeldedienst. Prüfe deine Verbindung und versuche es erneut.',
 };
 

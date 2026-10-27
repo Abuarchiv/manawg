@@ -9,20 +9,24 @@ import { SessionExpiredBanner } from '@/components/wg/SessionExpiredBanner';
 import { WgContextProvider } from '@/components/wg/WgContextProvider';
 import type { SessionMember } from '@/core/auth/local-account';
 import { REQUEST_PATH_HEADER, wgReturnPath } from '@/core/auth/next-path';
-import { getAuthenticatedUserFromCookies } from '@/core/auth/server';
-import { db, wgMembers, wgs } from '@/core/db';
+import { loadWgShell, loadWgViewer } from '@/core/guards/load-wg-viewer';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import { loadFixtureWgView } from '@/fixtures/pages';
-import { and, eq, isNotNull, isNull } from 'drizzle-orm';
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
-import { type ReactNode, cache } from 'react';
+import type { ReactNode } from 'react';
 import { TabWarmup } from './_components/TabWarmup';
 
 interface Props {
 	children: ReactNode;
 	params: Promise<{ code: string }>;
+}
+
+// A segment title resets the inherited template, so this layout restates it for the
+// feature layouts below. `default` still passes through the root template.
+function wgTitle(name: string): Metadata['title'] {
+	return { default: name, template: '%s — ManaWG' };
 }
 
 export async function generateMetadata({
@@ -36,44 +40,16 @@ export async function generateMetadata({
 	const fixture = loadFixtureWgView(code);
 	if (fixture) {
 		return {
-			title: fixture === 'not_found' ? 'WG — ManaWG' : `${fixture.wg.name} — ManaWG`,
+			title: wgTitle(fixture === 'not_found' ? 'WG' : fixture.wg.name),
 			robots: { index: false, follow: false },
 		};
 	}
-	const viewer = await getWgViewer(code);
+	const viewer = await loadWgViewer(code);
 	return {
-		title: viewer?.access ? `${viewer.access.name} — ManaWG` : 'WG — ManaWG',
+		title: wgTitle(viewer?.access ? viewer.access.name : 'WG'),
 		robots: { index: false, follow: false },
 	};
 }
-
-/**
- * Session and membership once per request: generateMetadata and the layout both
- * need them, and an expired token costs a refresh round trip to Supabase Auth.
- */
-const getWgViewer = cache(async (code: string) => {
-	const user = await getAuthenticatedUserFromCookies();
-	if (!user) return null;
-	const [access] = await db
-		.select({
-			id: wgs.id,
-			name: wgs.name,
-			shareCode: wgs.shareCode,
-			memberId: wgMembers.id,
-			memberName: wgMembers.name,
-		})
-		.from(wgMembers)
-		.innerJoin(wgs, eq(wgMembers.wgId, wgs.id))
-		.where(
-			and(
-				eq(wgs.shareCode, code),
-				eq(wgMembers.authUserId, user.id),
-				isNull(wgMembers.deactivatedAt),
-			),
-		)
-		.limit(1);
-	return { user, access };
-});
 
 async function requestedPath(): Promise<string | null> {
 	return (await headers()).get(REQUEST_PATH_HEADER);
@@ -93,7 +69,9 @@ export default async function WgLayout({ children, params }: Props) {
 	const fixture = loadFixtureWgView(code);
 	if (fixture === 'not_found') notFound();
 	if (fixture) {
-		// No session in this build: the first fixture member is the caller (as the fixture API assumes).
+		// The first fixture member is the caller, as the fixture API answers. Without authUserId the
+		// provider is not server-verified: the member lookup (answered by the fixture API as
+		// FIXTURE_AUTH_USER_ID) confirms the account, and the roster is fetched like in the app.
 		const [first] = fixture.members;
 		return (
 			<WgShell
@@ -101,60 +79,22 @@ export default async function WgLayout({ children, params }: Props) {
 				wg={fixture.wg}
 				members={fixture.members}
 				{...(first ? { initialIdentity: { memberId: first.id, name: first.name } } : {})}
-				sessionless
 			>
 				{children}
 			</WgShell>
 		);
 	}
 
-	const viewer = await getWgViewer(code);
-	if (!viewer) redirect(await signInPath(code));
-	const { user, access } = viewer;
+	const shell = await loadWgShell(code);
+	if (!shell) redirect(await signInPath(code));
+	const { user, access, movedOut, members, initialIsAdmin } = shell;
 	if (!access) {
 		const next = encodeURIComponent(wgReturnPath(code, await requestedPath()));
 		// Tell moved-out members why the WG is gone instead of suggesting to join again.
-		const [movedOut] = await db
-			.select({ id: wgMembers.id })
-			.from(wgMembers)
-			.innerJoin(wgs, eq(wgMembers.wgId, wgs.id))
-			.where(
-				and(
-					eq(wgs.shareCode, code),
-					eq(wgMembers.authUserId, user.id),
-					isNotNull(wgMembers.deactivatedAt),
-				),
-			)
-			.limit(1);
 		redirect(`/neu?next=${next}${movedOut ? '&reason=moved_out' : ''}`);
 	}
 	const { memberId, memberName, ...wg } = access;
 	const initialIdentity: SessionMember = { memberId, name: memberName, authUserId: user.id };
-
-	// Load the full roster including deactivated members: history and balances
-	// need every name. Choice UIs filter on `active` downstream (see
-	// WgContextProvider). NULL deactivated_at means active.
-	const memberRows = await db
-		.select({
-			id: wgMembers.id,
-			name: wgMembers.name,
-			color: wgMembers.color,
-			role: wgMembers.role,
-			paypalMerchantId: wgMembers.paypalMerchantId,
-			authUserId: wgMembers.authUserId,
-			deactivatedAt: wgMembers.deactivatedAt,
-		})
-		.from(wgMembers)
-		.where(eq(wgMembers.wgId, wg.id));
-	// Same rule as isWgAdmin: the first active admin row. Session is server-verified.
-	const initialIsAdmin =
-		memberRows.find((row) => row.role === 'admin' && row.deactivatedAt === null)?.id === memberId;
-	const members = memberRows.map(({ deactivatedAt, role, authUserId, ...member }) => ({
-		...member,
-		active: deactivatedAt === null,
-		isAdmin: role === 'admin' && deactivatedAt === null,
-		hasAccount: authUserId !== null,
-	}));
 
 	return (
 		<WgShell
@@ -175,7 +115,6 @@ function WgShell({
 	members,
 	initialIdentity,
 	initialIsAdmin,
-	sessionless,
 	children,
 }: {
 	code: string;
@@ -195,7 +134,6 @@ function WgShell({
 	}>;
 	initialIdentity?: SessionMember;
 	initialIsAdmin?: boolean;
-	sessionless?: boolean;
 	children: ReactNode;
 }) {
 	const wgBaseHref = `/wg/${encodeURIComponent(code)}`;
@@ -207,7 +145,6 @@ function WgShell({
 			members={members}
 			initialIdentity={initialIdentity}
 			initialIsAdmin={initialIsAdmin}
-			sessionless={sessionless}
 		>
 			<TabWarmup />
 			<div
@@ -246,10 +183,6 @@ function WgShell({
 						)}
 					/>
 				))}
-				{/* Four destinations: Start, Household (Einkauf/Vorräte/
-				    Putzen/Kalender), Finance (Ausgaben/Fixkosten/Mahnungen/Import),
-				    Exchange (Pinnwand/Chat). All deep links resolve;
-				    Activity/Settings stay reachable through header and Start links. */}
 			</AppBottomNav>
 			{/* Last in the DOM so Tab reaches a toast's dismiss button right after
 			    whatever the user just did, instead of jumping back to the page top. */}

@@ -13,34 +13,32 @@ import {
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Spinner } from '@/components/ui/spinner';
 import { useTodayInputValue } from '@/core/hooks/use-today-input-value';
-import { formatEuroInput, parseEuroAmount } from '@/core/utils/amount';
-import { inputDateOrToday, inputDateToIso } from '@/core/utils/local-date';
-import { CENTS_PER_EURO } from '@/core/utils/money';
-import type { MemberOption } from '@/features/expenses/components/abos/abos-types';
-import { ExpenseCategoryField } from '@/features/expenses/components/ausgaben/ExpenseCategoryField';
-import { amountErrorMessage } from '@/features/expenses/components/ausgaben/constants';
+import { eurosToCents, formatCentsInput, parseEuroAmount } from '@/core/utils/amount';
+import { inputDateOrToday, inputDateToIso, isoToInputDate } from '@/core/utils/local-date';
 import {
-	DEFAULT_EXPENSE_CATEGORY,
-	type ExpenseCategory,
-} from '@/features/expenses/expense-categories';
-import { splitInputErrorMessage } from '@/features/expenses/expense-errors';
-import { countMissedOccurrences } from '@/features/expenses/recurring-expenses';
-import { useEffect, useMemo, useState } from 'react';
-import { AboSplitFields } from './AboSplitFields';
-import {
-	AMOUNT_MAX_EUROS,
-	AMOUNT_MIN_EUROS,
 	type AboFormValues,
-	DESCRIPTION_MAX,
-	INTERVAL_OPTIONS,
 	type SplitMode,
 	buildAboSplits,
 	initialEqualParticipants,
 	initialManualMap,
-	isoDateToInput,
-} from './abo-form-model';
-
-export type { AboFormValues } from './abo-form-model';
+} from '@/features/expenses/abo-form-model';
+import { ExpenseCategoryField } from '@/features/expenses/components/ausgaben/ExpenseCategoryField';
+import {
+	DEFAULT_EXPENSE_CATEGORY,
+	type ExpenseCategory,
+} from '@/features/expenses/expense-categories';
+import {
+	AMOUNT_MAX_EUROS,
+	AMOUNT_MIN_EUROS,
+	DESCRIPTION_MAX_LENGTH,
+	RECURRING_INTERVAL_OPTIONS,
+	amountErrorMessage,
+} from '@/features/expenses/expense-constants';
+import { splitInputErrorMessage } from '@/features/expenses/expense-errors';
+import type { MemberOption } from '@/features/expenses/expense-types';
+import { countMissedOccurrences } from '@/features/expenses/recurring-expenses';
+import { useEffect, useMemo, useState } from 'react';
+import { AboSplitFields } from './AboSplitFields';
 
 interface AboFormProps {
 	mode: 'create' | 'edit';
@@ -72,16 +70,14 @@ export function AboForm({
 	const [category, setCategory] = useState<ExpenseCategory>(
 		initial?.category ?? DEFAULT_EXPENSE_CATEGORY,
 	);
-	const [amountStr, setAmountStr] = useState(
-		initial ? formatEuroInput(initial.amountCents / CENTS_PER_EURO) : '',
-	);
+	const [amountStr, setAmountStr] = useState(initial ? formatCentsInput(initial.amountCents) : '');
 	const [paidByMemberId, setPaidByMemberId] = useState(
 		initial?.paidByMemberId ?? defaultPaidByMemberId,
 	);
 	const [intervalMonths, setIntervalMonths] = useState(initial?.intervalMonths ?? 1);
 	// null until the resident picks a day, so a new subscription follows the current day.
 	const [pickedNextDueAt, setNextDueAt] = useState<string | null>(
-		initial ? isoDateToInput(initial.nextDueAt) : null,
+		initial ? isoToInputDate(initial.nextDueAt) : null,
 	);
 	const today = useTodayInputValue();
 	const nextDueAt = pickedNextDueAt ?? today;
@@ -102,10 +98,10 @@ export function AboForm({
 		if (!initial) return;
 		setDescription(initial.description);
 		setCategory(initial.category);
-		setAmountStr(formatEuroInput(initial.amountCents / CENTS_PER_EURO));
+		setAmountStr(formatCentsInput(initial.amountCents));
 		setPaidByMemberId(initial.paidByMemberId);
 		setIntervalMonths(initial.intervalMonths);
-		setNextDueAt(isoDateToInput(initial.nextDueAt));
+		setNextDueAt(isoToInputDate(initial.nextDueAt));
 		const participants = initialEqualParticipants(initial, activeMembers);
 		setSplitMode(participants === 'manual' ? 'manual' : 'equal');
 		setParticipantIds(participants === 'manual' ? null : participants);
@@ -116,10 +112,10 @@ export function AboForm({
 	const parsedAmountCents = useMemo(() => {
 		const euros = parseEuroAmount(amountStr);
 		if (euros === null || euros < AMOUNT_MIN_EUROS || euros > AMOUNT_MAX_EUROS) return null;
-		return Math.round(euros * CENTS_PER_EURO);
+		return eurosToCents(euros);
 	}, [amountStr]);
 	const descriptionError =
-		error && (description.trim().length === 0 || description.trim().length > DESCRIPTION_MAX)
+		error && (description.trim().length === 0 || description.trim().length > DESCRIPTION_MAX_LENGTH)
 			? 'Gib eine kurze Beschreibung ein.'
 			: null;
 	const amountError =
@@ -127,7 +123,7 @@ export function AboForm({
 			? amountErrorMessage(parseEuroAmount(amountStr), amountStr)
 			: null;
 	// A start in the past is booked retroactively by the daily run; say so before it happens.
-	const dueDateChanged = !initial || nextDueAt !== isoDateToInput(initial.nextDueAt);
+	const dueDateChanged = !initial || nextDueAt !== isoToInputDate(initial.nextDueAt);
 	const missedBookings =
 		dueDateChanged && nextDueAt.length > 0 && nextDueAt < today
 			? countMissedOccurrences(inputDateToIso(nextDueAt) ?? '', intervalMonths)
@@ -168,7 +164,7 @@ export function AboForm({
 		setSplitError(null);
 		const dueOn = inputDateOrToday(pickedNextDueAt);
 		const trimmedDescription = description.trim();
-		if (trimmedDescription.length === 0 || trimmedDescription.length > DESCRIPTION_MAX) {
+		if (trimmedDescription.length === 0 || trimmedDescription.length > DESCRIPTION_MAX_LENGTH) {
 			setError('Gib eine kurze Beschreibung ein.');
 			return;
 		}
@@ -183,7 +179,7 @@ export function AboForm({
 		// An unchanged date keeps the stored timestamp: otherwise every edit would move it to
 		// 12:00 local time, and the server would reject a long-overdue date as out of range.
 		const nextDueAtIso =
-			initial && dueOn === isoDateToInput(initial.nextDueAt)
+			initial && dueOn === isoToInputDate(initial.nextDueAt)
 				? initial.nextDueAt
 				: inputDateToIso(dueOn);
 		if (nextDueAtIso === null) {
@@ -223,7 +219,7 @@ export function AboForm({
 					<Input
 						id="abo-description"
 						value={description}
-						maxLength={DESCRIPTION_MAX}
+						maxLength={DESCRIPTION_MAX_LENGTH}
 						onChange={(event) => setDescription(event.target.value)}
 						placeholder="z. B. Netflix"
 						disabled={submitting}
@@ -272,7 +268,7 @@ export function AboForm({
 						value={paidByMemberId}
 						onChange={(event) => setPaidByMemberId(event.target.value)}
 						disabled={submitting}
-						className="w-full [&_select]:h-11 [&_select]:text-base"
+						className="w-full"
 					>
 						{payerOptions.map((member) => (
 							<NativeSelectOption key={member.id} value={member.id}>
@@ -288,14 +284,14 @@ export function AboForm({
 						value={intervalMonths}
 						onChange={(event) => setIntervalMonths(Number(event.target.value))}
 						disabled={submitting}
-						className="w-full [&_select]:h-11 [&_select]:text-base"
+						className="w-full"
 					>
-						{!INTERVAL_OPTIONS.some((option) => option.value === intervalMonths) && (
+						{!RECURRING_INTERVAL_OPTIONS.some((option) => option.value === intervalMonths) && (
 							<NativeSelectOption value={intervalMonths}>
 								{intervalMonths} Monate
 							</NativeSelectOption>
 						)}
-						{INTERVAL_OPTIONS.map((option) => (
+						{RECURRING_INTERVAL_OPTIONS.map((option) => (
 							<NativeSelectOption key={option.value} value={option.value}>
 								{option.label}
 							</NativeSelectOption>

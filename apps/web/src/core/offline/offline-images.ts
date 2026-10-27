@@ -1,15 +1,30 @@
 'use client';
 
-import { REQUEST_TIMEOUT_MS, anySignal, noteSessionExpiry } from '@/core/infra/api-client';
+import { createIdempotencyKey } from '@/core/http/idempotency-key';
+import {
+	REQUEST_TIMEOUT_MS,
+	anySignal,
+	noteSessionExpiry,
+	readApiErrorCode,
+} from '@/core/infra/api-client';
 import { EXPECTED_MEMBER_ID_HEADER } from '@/shared/lib/member-header';
-import { createOfflineIdempotencyKey } from './offline-queue';
 
 const DB_NAME = 'manawg-offline-images';
 const STORE_NAME = 'images';
 const DB_VERSION = 1;
 const TOKEN_PREFIX = 'manawg-pending-image:';
 // A stalled PUT on a bad mobile connection would otherwise block the uploader indefinitely.
-export const UPLOAD_TIMEOUT_MS = 60_000;
+const UPLOAD_TIMEOUT_MS = 60_000;
+
+export type ImageUploadPurpose = 'expense' | 'announcement' | 'chat';
+
+/** The IndexedDB blob behind a pending-image token is gone (cleared storage, other member). */
+export class PendingImageMissingError extends Error {
+	constructor() {
+		super('pending-image-missing');
+		this.name = 'PendingImageMissingError';
+	}
+}
 
 interface PendingImageRecord {
 	id: string;
@@ -19,7 +34,7 @@ interface PendingImageRecord {
 	size: number;
 	shareCode: string;
 	memberId: string;
-	purpose: 'expense' | 'announcement' | 'chat';
+	purpose: ImageUploadPurpose;
 	createdAt: string;
 	publicUrl?: string;
 }
@@ -29,21 +44,6 @@ interface SignResponse {
 	publicUrl: string;
 	maxFileSize: number;
 	uploadHeaders?: Record<string, string>;
-}
-
-interface ErrorResponse {
-	error?: string;
-	code?: string;
-}
-
-/** Error code of a failed /api/upload/sign response, or '' when the body is unreadable. */
-export async function readUploadSignError(response: Response): Promise<string> {
-	try {
-		const body = (await response.clone().json()) as ErrorResponse;
-		return body.error ?? body.code ?? '';
-	} catch {
-		return '';
-	}
 }
 
 function createPendingImageToken(id: string): string {
@@ -106,12 +106,12 @@ export async function storePendingImage(input: {
 	file: File;
 	shareCode: string;
 	memberId: string;
-	purpose: 'expense' | 'announcement' | 'chat';
+	purpose: ImageUploadPurpose;
 }): Promise<string> {
 	const now = Date.now();
 	// Local IndexedDB key only: prefer UUID, but keep browsers without Web Crypto usable.
 	const suffix =
-		createOfflineIdempotencyKey() ?? `${now.toString(36)}-${Math.random().toString(36).slice(2)}`;
+		createIdempotencyKey() ?? `${now.toString(36)}-${Math.random().toString(36).slice(2)}`;
 	const id = `${input.shareCode}:${input.purpose}:${now}:${suffix}`;
 	const record: PendingImageRecord = {
 		id,
@@ -143,48 +143,97 @@ export async function removePendingImage(token: string, memberId: string): Promi
 	await withStore('readwrite', (store) => store.delete(pendingImageIdFromToken(token)));
 }
 
+export type SignAndPutResult =
+	| { ok: true; publicUrl: string }
+	| { ok: false; kind: 'sign'; status: number; code: string }
+	| { ok: false; kind: 'put'; status: number };
+
+/**
+ * Asks /api/upload/sign for a presigned URL and PUTs the file to it. The one copy of this
+ * flow for the online upload hook and the offline sync; each maps the failure to its own
+ * behavior. Status 0 means the request never got an answer (network error, timeout, abort).
+ */
+export async function signAndPut(input: {
+	shareCode: string;
+	purpose: ImageUploadPurpose;
+	file: Blob;
+	contentType: string;
+	memberId?: string;
+	signal?: AbortSignal | undefined;
+}): Promise<SignAndPutResult> {
+	// A stalled request must not block the uploader forever.
+	const withTimeout = (ms: number) =>
+		input.signal ? anySignal([input.signal, AbortSignal.timeout(ms)]) : AbortSignal.timeout(ms);
+	let sigRes: Response;
+	try {
+		sigRes = await fetch('/api/upload/sign', {
+			method: 'POST',
+			headers: {
+				'content-type': 'application/json',
+				// The server checks it against the session so a switched member cannot sign for another.
+				...(input.memberId ? { [EXPECTED_MEMBER_ID_HEADER]: input.memberId } : {}),
+			},
+			signal: withTimeout(REQUEST_TIMEOUT_MS),
+			body: JSON.stringify({
+				shareCode: input.shareCode,
+				purpose: input.purpose,
+				mimeType: input.contentType,
+				fileSize: input.file.size,
+			}),
+		});
+	} catch {
+		return { ok: false, kind: 'sign', status: 0, code: '' };
+	}
+	noteSessionExpiry(sigRes);
+	if (!sigRes.ok) {
+		return { ok: false, kind: 'sign', status: sigRes.status, code: await readApiErrorCode(sigRes) };
+	}
+	let sig: SignResponse;
+	try {
+		sig = (await sigRes.json()) as SignResponse;
+	} catch {
+		return { ok: false, kind: 'sign', status: 0, code: '' };
+	}
+	try {
+		const uploadRes = await fetch(sig.presignedUrl, {
+			method: 'PUT',
+			body: input.file,
+			headers: { ...sig.uploadHeaders, 'Content-Type': input.contentType },
+			signal: withTimeout(UPLOAD_TIMEOUT_MS),
+		});
+		if (!uploadRes.ok) return { ok: false, kind: 'put', status: uploadRes.status };
+	} catch {
+		return { ok: false, kind: 'put', status: 0 };
+	}
+	return { ok: true, publicUrl: sig.publicUrl };
+}
+
 export async function uploadPendingImageToken(
 	token: string,
 	memberId: string,
 	signal?: AbortSignal,
 ): Promise<string> {
 	const record = await readPendingImage(token, memberId);
-	if (!record) throw new Error('pending-image-missing');
+	if (!record) throw new PendingImageMissingError();
 	if (record.publicUrl) return record.publicUrl;
-	// A stalled request must not block the offline sync forever.
-	const withTimeout = (ms: number) =>
-		signal ? anySignal([signal, AbortSignal.timeout(ms)]) : AbortSignal.timeout(ms);
-	const sigRes = await fetch('/api/upload/sign', {
-		method: 'POST',
-		headers: {
-			'content-type': 'application/json',
-			[EXPECTED_MEMBER_ID_HEADER]: memberId,
-		},
-		signal: withTimeout(REQUEST_TIMEOUT_MS),
-		body: JSON.stringify({
-			shareCode: record.shareCode,
-			purpose: record.purpose,
-			mimeType: record.type,
-			fileSize: record.size,
-		}),
+	const result = await signAndPut({
+		shareCode: record.shareCode,
+		purpose: record.purpose,
+		file: record.file,
+		contentType: record.type,
+		memberId,
+		signal,
 	});
-	noteSessionExpiry(sigRes);
-	if (!sigRes.ok) {
-		const error = await readUploadSignError(sigRes);
+	if (!result.ok) {
+		// The sync classifies these messages (offline-replay-rules, image-upload-errors).
+		if (result.status === 0) throw new Error(`${result.kind}-network-failed`);
+		if (result.kind === 'put') throw new Error(`upload-failed:${result.status}`);
 		throw new Error(
-			error ? `sign-failed:${sigRes.status}:${error}` : `sign-failed:${sigRes.status}`,
+			result.code ? `sign-failed:${result.status}:${result.code}` : `sign-failed:${result.status}`,
 		);
 	}
-	const sig = (await sigRes.json()) as SignResponse;
-	const uploadRes = await fetch(sig.presignedUrl, {
-		method: 'PUT',
-		body: record.file,
-		headers: { ...sig.uploadHeaders, 'Content-Type': record.type },
-		signal: withTimeout(UPLOAD_TIMEOUT_MS),
-	});
-	if (!uploadRes.ok) throw new Error(`upload-failed:${uploadRes.status}`);
 	await withStore('readwrite', (store) =>
-		store.put({ ...record, publicUrl: sig.publicUrl }, record.id),
+		store.put({ ...record, publicUrl: result.publicUrl }, record.id),
 	);
-	return sig.publicUrl;
+	return result.publicUrl;
 }

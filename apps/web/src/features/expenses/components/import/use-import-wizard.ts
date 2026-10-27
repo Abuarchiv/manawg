@@ -1,8 +1,8 @@
 'use client';
 
 import { useWg } from '@/components/wg/WgContextProvider';
+import { createIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
-import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import { MAX_CSV_BYTES } from '@/features/expenses/import-body';
 import {
 	type ImportOperation,
@@ -161,7 +161,7 @@ export function useImportWizard() {
 		};
 		const signature = JSON.stringify(commitBody);
 		if (commitAttemptRef.current?.signature !== signature) {
-			commitAttemptRef.current = { signature, key: createOfflineIdempotencyKey() };
+			commitAttemptRef.current = { signature, key: createIdempotencyKey() };
 		}
 		const idempotencyKey = commitAttemptRef.current.key;
 		setBusy(true);

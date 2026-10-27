@@ -10,6 +10,7 @@ import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey } from '@/core/idempotency-store';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { berlinDayKey, endOfBerlinDay, startOfBerlinDay } from '@/core/utils/berlin-day';
+import { ABSENCE_REASON_MAX } from '@/features/chores/chore-limits';
 import { and, asc, eq, gte, isNull, lte, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -34,7 +35,7 @@ const createAbsenceSchema = z.object({
 	memberId: z.string().uuid(),
 	startDate: z.string().datetime({ offset: true }),
 	endDate: z.string().datetime({ offset: true }),
-	reason: z.string().trim().max(120).optional().nullable(),
+	reason: z.string().trim().max(ABSENCE_REASON_MAX).optional().nullable(),
 });
 
 export const GET = withWgRoute('absences GET', async (req, { code }) => {

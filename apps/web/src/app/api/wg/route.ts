@@ -7,6 +7,7 @@ import {
 	responseCodec,
 	withIdempotentWrite,
 } from '@/core/db/idempotent-write';
+import { isUniqueViolation } from '@/core/db/pg-errors';
 import { LIMITS } from '@/core/db/schema';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { requireAccount } from '@/core/guards/require-account';
@@ -29,15 +30,6 @@ const createWgSchema = z.object({
 	name: z.string().trim().min(WG_NAME_MIN).max(WG_NAME_MAX_LENGTH),
 	creatorName: z.string().trim().min(WG_NAME_MIN).max(LIMITS.NAME_MAX),
 });
-
-function isUniqueShareCodeViolation(err: unknown): boolean {
-	return (
-		!!err &&
-		typeof err === 'object' &&
-		'code' in err &&
-		(err as { code?: unknown }).code === '23505'
-	);
-}
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
 	const parsed = await parseBody(req, createWgSchema, {
@@ -120,7 +112,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 						return work(tx);
 					}),
 				retryAfterRollback: (err, attempt) => {
-					if (!isUniqueShareCodeViolation(err) || attempt >= SHARE_CODE_RETRIES) return null;
+					if (!isUniqueViolation(err) || attempt >= SHARE_CODE_RETRIES) return null;
 					const candidate = generateShareCode();
 					if (isValidShareCode(candidate)) shareCode = candidate;
 					return createWg;
@@ -150,7 +142,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 			}
 			return serverError(err.code);
 		}
-		if (isUniqueShareCodeViolation(err)) {
+		if (isUniqueViolation(err)) {
 			logApiError('[api/wg POST] share code retries exhausted', err);
 			return serverError('share_code_exhausted');
 		}

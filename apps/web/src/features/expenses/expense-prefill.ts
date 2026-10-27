@@ -1,4 +1,6 @@
-const DESCRIPTION_MAX = 200;
+import { DESCRIPTION_MAX_LENGTH } from '@/features/expenses/expense-constants';
+
+/** Longest amount text kept from a deep link; the form parses and validates it afterwards. */
 const AMOUNT_MAX = 20;
 
 export interface ExpensePrefillDraft {
@@ -18,7 +20,7 @@ export function buildExpensePrefillDraft(input: {
 	if (!input.description && !input.amount) return null;
 
 	return {
-		description: (input.description ?? '').slice(0, DESCRIPTION_MAX),
+		description: (input.description ?? '').slice(0, DESCRIPTION_MAX_LENGTH),
 		amountStr: (input.amount ?? '').slice(0, AMOUNT_MAX),
 		imageUrl: null,
 		paidByMemberId: input.paidByMemberId,

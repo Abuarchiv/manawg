@@ -9,7 +9,6 @@ import {
 	applyCommentOverrides as applyOverrides,
 } from '@/features/pinnwand/comment-overrides';
 import type { Announcement } from '@/features/pinnwand/components/announcement-types';
-import { REFRESH_INTERVAL_MS } from '@/features/pinnwand/components/constants';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface AnnouncementsDataParams {
@@ -57,7 +56,6 @@ export function useAnnouncementsData({
 			return shown.length > 0 ? mergeBackgroundAnnouncements(shown, withOverrides) : withOverrides;
 		},
 		describeError: (error) => getWgLoadErrorMessage('Pinnwand', error.status, error.error),
-		pollIntervalMs: REFRESH_INTERVAL_MS,
 		reload: (reason) => void load(reason === 'poll' ? 'background' : 'replace'),
 		offline: { shareCode: wg.shareCode, page: 'pinnwand', onReplayed: onQueueSynced },
 	});

@@ -11,10 +11,11 @@ import {
 	mockUnreadCount,
 	navigateToFeature,
 	setupMember,
+	skipUnlessFixtures,
 } from './support/helpers';
 
 test.describe('daily overview home', () => {
-	const BASE = '/api/wg/MTE8PZAT';
+	const BASE = `/api/wg/${FIXTURE_WG.shareCode}`;
 
 	function dayKeyOffset(dayKey: string, offset: number): string {
 		const [year, month, day] = dayKey.split('-').map(Number);
@@ -95,7 +96,6 @@ test.describe('daily overview home', () => {
 					createdAt: new Date().toISOString(),
 				},
 			],
-			wgHealth: { score: 100, label: 'ruhig', items: [] },
 			dueRecurringExpenses: [
 				{
 					id: 'internet',
@@ -159,7 +159,7 @@ test.describe('daily overview home', () => {
 			},
 		];
 		await mockChoresDashboard(page, chores);
-		await page.route(/\/api\/wg\/MTE8PZAT\/events\?/, (route) =>
+		await page.route(new RegExp(`${BASE}/events\\?`), (route) =>
 			route.fulfill({
 				status: 200,
 				json: {
@@ -346,7 +346,7 @@ test.describe('daily overview home', () => {
 				assignedColor: null,
 			},
 		]);
-		await page.route(/\/api\/wg\/MTE8PZAT\/events\?/, (route) =>
+		await page.route(new RegExp(`${BASE}/events\\?`), (route) =>
 			route.fulfill({ status: 503, json: { error: 'temporarily_unavailable' } }),
 		);
 
@@ -380,12 +380,12 @@ test.describe('daily overview home', () => {
 			});
 		});
 		await mockUnreadCount(page, BASE);
-		await page.route(/\/api\/wg\/MTE8PZAT\/events\?/, (route) =>
+		await page.route(new RegExp(`${BASE}/events\\?`), (route) =>
 			route.fulfill({ status: 200, json: { events: [] } }),
 		);
 		const attempts: Array<number | 'offline'> = [503, 429, 'offline', 200];
 		const idempotencyKeys: string[] = [];
-		await page.route(/\/api\/wg\/MTE8PZAT\/chores\/mine\/complete$/, async (route) => {
+		await page.route(new RegExp(`${BASE}/chores/mine/complete$`), async (route) => {
 			const response = attempts[idempotencyKeys.length];
 			idempotencyKeys.push(route.request().headers()['idempotency-key'] ?? '');
 			if (response === 'offline') return route.abort('failed');
@@ -403,7 +403,7 @@ test.describe('daily overview home', () => {
 		};
 		const dialogError = page
 			.getByRole('alertdialog')
-			.getByText('Erledigt-Aktion konnte nicht gespeichert werden: Versuche es gleich erneut.');
+			.getByText('Die Erledigung konnte nicht gespeichert werden: Versuche es gleich erneut.');
 
 		await page.getByRole('button', { name: 'Als erledigt markieren: Bad putzen' }).click();
 		await confirmCompletion();
@@ -435,14 +435,14 @@ test.describe('daily overview home', () => {
 			assignedColor: null,
 		};
 		await mockChoresDashboard(page, [chore]);
-		await page.route(/\/api\/wg\/MTE8PZAT\/events\?/, (route) =>
+		await page.route(new RegExp(`${BASE}/events\\?`), (route) =>
 			route.fulfill({ status: 200, json: { events: [] } }),
 		);
 		let resolveComplete: (() => void) | undefined;
 		const held = new Promise<void>((resolve) => {
 			resolveComplete = resolve;
 		});
-		await page.route(/\/api\/wg\/MTE8PZAT\/chores\/mine\/complete$/, async (route) => {
+		await page.route(new RegExp(`${BASE}/chores/mine/complete$`), async (route) => {
 			await held;
 			return route.fulfill({ status: 200, json: { ok: true } });
 		});
@@ -457,7 +457,7 @@ test.describe('daily overview home', () => {
 		const confirm = page.getByRole('button', { name: 'Erledigt bestätigen: Bad putzen' });
 		await expect(confirm).toHaveAttribute('aria-disabled', 'true');
 		await expect(confirm).toBeFocused();
-		await expect(confirm).toContainText('Wird gespeichert…');
+		await expect(confirm).toContainText('Speichert…');
 
 		resolveComplete?.();
 		await expect(page.getByText('Bad putzen erledigt.')).toBeVisible();
@@ -469,7 +469,7 @@ test.describe('daily overview home', () => {
 			route.fulfill({ status: 503, json: { error: 'temporarily_unavailable' } }),
 		);
 		await mockUnreadCount(page, BASE);
-		await page.route(/\/api\/wg\/MTE8PZAT\/events\?/, (route) =>
+		await page.route(new RegExp(`${BASE}/events\\?`), (route) =>
 			route.fulfill({ status: 200, json: { events: [] } }),
 		);
 
@@ -490,7 +490,7 @@ test.describe('daily overview home', () => {
 		await mockChoresDashboard(page, []);
 		await mockUnreadCount(page, BASE);
 		const eventRangeStarts: string[] = [];
-		await page.route(/\/api\/wg\/MTE8PZAT\/events\?/, (route) => {
+		await page.route(new RegExp(`${BASE}/events\\?`), (route) => {
 			const url = new URL(route.request().url());
 			eventRangeStarts.push(url.searchParams.get('from') ?? '');
 			return route.fulfill({ status: 200, json: { events: [] } });
@@ -508,7 +508,7 @@ test.describe('daily overview home', () => {
 });
 
 test.describe('large data render limit', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	const TOTAL = 500;
 
@@ -567,7 +567,7 @@ test.describe('large data render limit', () => {
 });
 
 test.describe('member avatar color', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	// Colored avatars are an intentional brand exception (docs/brand/design-language.md).
 	test('member avatars get distinct, stable colors per person', async ({ page }) => {

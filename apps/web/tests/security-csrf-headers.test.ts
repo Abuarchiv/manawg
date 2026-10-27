@@ -4,6 +4,7 @@ import { NextRequest } from 'next/server';
 import { contentSecurityPolicy } from '../src/core/infra/security-headers.ts';
 import { isE2EDbDownMode } from '../src/fixtures/mode.ts';
 import { config, isShareCodeLookup, middleware, originAllowed } from '../src/middleware.ts';
+import { withEnv } from './support/env.ts';
 
 // Trust-boundary contracts of the edge middleware and the security headers: CSRF origin checks,
 // the password-recovery matcher, the share-code lookup bucket, CSP and the fixture guard.
@@ -106,34 +107,22 @@ describe('security headers', () => {
 	});
 
 	test('fixture guard allows Preview but rejects Production', () => {
-		const keys = [
-			'E2E_FIXTURE_MODE',
-			'VERCEL_ENV',
-			'NEXT_PUBLIC_DB_DOWN',
-			'CI',
-			'POSTGRES_URL',
-			'DATABASE_URL',
-		] as const;
-		const saved = new Map(keys.map((key) => [key, process.env[key]]));
+		withEnv(
+			{
+				E2E_FIXTURE_MODE: 'true',
+				VERCEL_ENV: 'preview',
+				NEXT_PUBLIC_DB_DOWN: 'true',
+				CI: 'true',
+				POSTGRES_URL: '',
+				DATABASE_URL: '',
+			},
+			() => {
+				assert.equal(isE2EDbDownMode(), true);
 
-		try {
-			process.env.E2E_FIXTURE_MODE = 'true';
-			process.env.VERCEL_ENV = 'preview';
-			process.env.NEXT_PUBLIC_DB_DOWN = 'true';
-			process.env.CI = 'true';
-			process.env.POSTGRES_URL = '';
-			process.env.DATABASE_URL = '';
-			assert.equal(isE2EDbDownMode(), true);
-
-			process.env.VERCEL_ENV = 'production';
-			assert.equal(isE2EDbDownMode(), false);
-		} finally {
-			for (const key of keys) {
-				const value = saved.get(key);
-				if (value === undefined) delete process.env[key];
-				else process.env[key] = value;
-			}
-		}
+				process.env.VERCEL_ENV = 'production';
+				assert.equal(isE2EDbDownMode(), false);
+			},
+		);
 	});
 });
 

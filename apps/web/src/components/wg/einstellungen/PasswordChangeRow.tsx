@@ -1,33 +1,16 @@
 'use client';
 
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
+import { RowNotice, type RowNoticeState } from '@/components/wg/einstellungen/RowNotice';
 import { AUTH_FAILURE_MESSAGES, classifyAuthError } from '@/core/auth/password-errors';
 import { KeyRound } from 'lucide-react';
-import { useEffect, useState } from 'react';
-
-type Notice = { kind: 'sent' | 'error'; text: string } | null;
+import { useState } from 'react';
 
 /** Password change for password accounts: shows the account e-mail and mails a reset link to it. */
-export function PasswordChangeRow() {
-	const [email, setEmail] = useState<string | null>(null);
+export function PasswordChangeRow({ email }: { email: string | null }) {
 	const [busy, setBusy] = useState(false);
-	const [notice, setNotice] = useState<Notice>(null);
-
-	useEffect(() => {
-		let active = true;
-		import('@/core/auth/client')
-			.then(({ getEmailAccount }) => getEmailAccount())
-			.then((account) => {
-				if (active && account?.hasPassword) setEmail(account.email);
-			})
-			// Without an answer the row stays hidden; sign-in and reset remain available.
-			.catch(() => {});
-		return () => {
-			active = false;
-		};
-	}, []);
+	const [notice, setNotice] = useState<RowNoticeState>(null);
 
 	if (!email) return null;
 
@@ -65,11 +48,7 @@ export function PasswordChangeRow() {
 				{busy ? <Spinner data-icon="inline-start" aria-hidden /> : <KeyRound aria-hidden />}
 				Passwort ändern
 			</Button>
-			{notice && (
-				<Alert variant={notice.kind === 'error' ? 'destructive' : 'default'}>
-					<AlertDescription>{notice.text}</AlertDescription>
-				</Alert>
-			)}
+			<RowNotice notice={notice} />
 		</div>
 	);
 }

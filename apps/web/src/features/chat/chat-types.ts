@@ -9,6 +9,8 @@ export interface BubbleMessage {
 	editedAt: string | null;
 	deletedAt: string | null;
 	replyToMessageId: string | null;
+	systemKind?: string | null;
+	systemPayload?: Record<string, unknown> | null;
 }
 
 /** One emoji under a message: how many reacted and whether the viewer did. */
@@ -22,8 +24,6 @@ export interface ReactionSummary {
 
 export interface ChatMessageDto extends BubbleMessage {
 	wgId: string;
-	systemKind?: string | null;
-	systemPayload?: Record<string, unknown> | null;
 }
 
 export interface ChatReactionRow {

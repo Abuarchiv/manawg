@@ -12,12 +12,14 @@ import {
 	pickInitialFocusIndex,
 	sameDay,
 } from '@/features/events/calendar-grid';
+import { CALENDAR_ROW_CLASS } from '@/features/events/components/calendar-row';
 import {
 	type EventOccurrence,
 	eventOverlapsCalendarDay,
 	formatEventTimeOfDay,
 } from '@/features/events/events';
 import { cn } from '@/shared/lib/cn';
+import { pluralize } from '@/shared/lib/plural';
 import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -304,9 +306,11 @@ export function CalendarMonth({
 							<h3 className="text-sm font-medium">{FULL_DATE_FORMATTER.format(selectedDay)}</h3>
 							{selectedOccurrences.length + selectedChores.length > 0 && (
 								<Badge variant="secondary">
-									{selectedOccurrences.length + selectedChores.length === 1
-										? '1 Eintrag'
-										: `${selectedOccurrences.length + selectedChores.length} Einträge`}
+									{pluralize(
+										selectedOccurrences.length + selectedChores.length,
+										'Eintrag',
+										'Einträge',
+									)}
 								</Badge>
 							)}
 						</div>
@@ -330,13 +334,13 @@ export function CalendarMonth({
 											type="button"
 											onClick={() => onSelectOccurrence(occurrence)}
 											aria-label={`Termin öffnen: ${occurrence.title}`}
-											className="flex min-h-11 w-full min-w-0 items-center gap-2 py-1.5 text-left outline-none transition-colors hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/50 active:bg-muted"
+											className={CALENDAR_ROW_CLASS}
 										>
 											<span className="flex min-w-0 flex-1 flex-col">
-												<span className="text-[14px] font-medium break-words">
+												<span className="text-body font-medium break-words">
 													{occurrence.title}
 												</span>
-												<span className="text-[12px] break-words text-muted-foreground">
+												<span className="text-meta break-words text-muted-foreground">
 													{formatEventTimeOfDay(occurrence)}
 													{occurrence.location && ` · ${occurrence.location}`}
 												</span>
@@ -350,11 +354,11 @@ export function CalendarMonth({
 										<Link
 											href={`${wgBaseHref}/putzen?highlight=${encodeURIComponent(chore.choreId)}`}
 											aria-label={`Putzaufgabe öffnen: ${chore.title}`}
-											className="flex min-h-11 w-full min-w-0 items-center gap-2 py-1.5 text-left outline-none transition-colors hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/50 active:bg-muted"
+											className={CALENDAR_ROW_CLASS}
 										>
 											<span className="flex min-w-0 flex-1 flex-col">
-												<span className="text-[14px] font-medium break-words">{chore.title}</span>
-												<span className="inline-flex items-center gap-1 text-[12px] text-muted-foreground">
+												<span className="text-body font-medium break-words">{chore.title}</span>
+												<span className="inline-flex items-center gap-1 text-meta text-muted-foreground">
 													<Sparkles className="size-4 shrink-0" aria-hidden />
 													Putzplan
 												</span>

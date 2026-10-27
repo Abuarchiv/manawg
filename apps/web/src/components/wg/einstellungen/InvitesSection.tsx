@@ -9,7 +9,7 @@ import type { WgSummary } from '@/components/wg/WgContextProvider';
 import { Section } from '@/components/wg/einstellungen/Section';
 import { createInvite, shareInvite } from '@/components/wg/invite-share';
 import type { SessionMember } from '@/core/auth/local-account';
-import { useCachedFetch } from '@/core/hooks/useCachedFetch';
+import { useCachedFetch } from '@/core/hooks/use-cached-fetch';
 import { apiFetch } from '@/core/infra/api-client';
 import { copyText } from '@/core/utils/clipboard';
 import { INVITE_VALID_DAYS } from '@/core/utils/invite-token';
@@ -177,7 +177,7 @@ export function InvitesSection({ wg, identity }: { wg: WgSummary; identity: Sess
 						{invites.map((invite) => (
 							<li
 								key={invite.id}
-								className="flex min-h-[44px] flex-wrap items-center justify-between gap-3 rounded-lg border border-border px-3 py-2"
+								className="flex min-h-11 flex-wrap items-center justify-between gap-3 rounded-lg border border-border px-3 py-2"
 							>
 								<div className="min-w-0">
 									<p className="text-foreground text-sm font-medium">

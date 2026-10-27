@@ -1,5 +1,6 @@
 'use client';
 
+import { resolveIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
 import { removeDraft } from '@/core/offline/drafts';
 import { enqueueOfflineAction, readOfflineQueue } from '@/core/offline/offline-client';
@@ -7,32 +8,25 @@ import {
 	DRAFT_CLEANUP_FAILED_MESSAGE,
 	OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE,
 	OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
+	keyUnavailableMessage,
 } from '@/core/offline/offline-copy';
-import { createOfflineIdempotencyKey, createQueuedRecurring } from '@/core/offline/offline-queue';
-import { parseEuroAmount } from '@/core/utils/amount';
+import { createQueuedRecurring } from '@/core/offline/offline-queue';
+import { eurosToCents, parseEuroAmount } from '@/core/utils/amount';
 import { todayAtLocalNoon } from '@/core/utils/local-date';
-import { CENTS_PER_EURO } from '@/core/utils/money';
 import { parseTimestamp } from '@/core/utils/time';
-import type { ExpenseFormFieldErrors } from '@/features/expenses/components/ausgaben/ExpenseFormSection';
 import {
-	AMOUNT_MAX_EUROS,
-	AMOUNT_MIN_EUROS,
-	DESCRIPTION_MAX,
-	amountErrorMessage,
-} from '@/features/expenses/components/ausgaben/constants';
-import type { RecurringExpense } from '@/features/expenses/components/ausgaben/expense-types';
-import {
-	isPermanentClientError,
 	recurringTemplateSaveErrorMessage,
 	splitInputErrorMessage,
 } from '@/features/expenses/expense-errors';
 import { manualSplitsFingerprint } from '@/features/expenses/expense-split-input';
+import type { RecurringExpense } from '@/features/expenses/expense-types';
 import { findQueuedRecurringTemplate } from '@/features/expenses/queued-recurring-template';
 import { formatIntervalLabel } from '@/features/expenses/recurring-expenses';
 import { planTemplateSchedule } from '@/features/expenses/recurring-template-plan';
 import type { DebtorShare } from '@/features/expenses/split-math';
 import { useRef, useState } from 'react';
 import type { ExpenseFormState, ExpensePageContext } from './expense-page-context';
+import { validateDescriptionAndAmount } from './expense-submit-validation';
 import type { ExpenseFormSupport } from './use-expense-form-support';
 
 /**
@@ -66,18 +60,16 @@ export function useRecurringTemplateSave(
 		if (support.discardSentQueueEdit('recurring.create')) return;
 		const desc = form.description.trim();
 		const amountEuros = parseEuroAmount(form.amountStr);
-		const validationErrors: ExpenseFormFieldErrors = {};
-		if (!desc || desc.length > DESCRIPTION_MAX) {
-			validationErrors.description = 'Gib eine kurze Beschreibung ein.';
-		}
-		if (amountEuros === null || amountEuros < AMOUNT_MIN_EUROS || amountEuros > AMOUNT_MAX_EUROS) {
-			validationErrors.amount = amountErrorMessage(amountEuros, form.amountStr);
-		}
+		const validationErrors = validateDescriptionAndAmount({
+			description: desc,
+			amountEuros,
+			amountText: form.amountStr,
+		});
 		if (Object.keys(validationErrors).length > 0 || amountEuros === null) {
 			support.setValidationErrors(validationErrors);
 			return;
 		}
-		const amountCents = Math.round(amountEuros * CENTS_PER_EURO);
+		const amountCents = eurosToCents(amountEuros);
 		const queuedNextDueAt =
 			wasEditingQueuedRecurring && form.recurringNextDueAt
 				? parseTimestamp(form.recurringNextDueAt)
@@ -139,11 +131,9 @@ export function useRecurringTemplateSave(
 		});
 		const idempotencyKey = editingRecurringExpense
 			? null
-			: reusePendingRequest && pendingRequest
-				? pendingRequest.key
-				: createOfflineIdempotencyKey();
+			: resolveIdempotencyKey(pendingRequest?.queued ? null : pendingRequest, fingerprint);
 		if (!editingRecurringExpense && !idempotencyKey) {
-			notify.error('Fixkosten-Vorlage konnte nicht sicher gespeichert werden. Versuche es erneut.');
+			notify.error(keyUnavailableMessage('Fixkosten-Vorlage', 'gespeichert'));
 			return;
 		}
 		if (idempotencyKey) {
@@ -186,7 +176,7 @@ export function useRecurringTemplateSave(
 			}),
 		});
 		if (!res.ok) {
-			if (!editingRecurringExpense && isPermanentClientError(res.status)) {
+			if (!editingRecurringExpense && shouldReleaseIdempotencyKey(res.status, res.error)) {
 				templateRequestRef.current = null;
 			}
 			if (res.status === 0 && !editingRecurringExpense) {
@@ -225,6 +215,7 @@ export function useRecurringTemplateSave(
 						intervalMonths: recurringIntervalMonths,
 						nextDueAt: nextDueAt.toISOString(),
 						lastCreatedAt: null,
+						pausedAt: null,
 						splits,
 					},
 				]);

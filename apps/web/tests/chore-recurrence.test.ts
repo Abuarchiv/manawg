@@ -113,15 +113,9 @@ test('interval 0 keeps the previous due date', () => {
 	assert.equal(computeNextDueAt(due, 0, new Date(), 'days').getTime(), due.getTime());
 });
 
-test('getChorePlanHealth counts gaps, due-today and escalations on Berlin days', () => {
+test('getChorePlanHealth counts gaps and due-today on Berlin days', () => {
 	const now = Date.parse('2026-09-23T10:00:00.000Z');
-	assert.deepEqual(getChorePlanHealth([], now), {
-		total: 0,
-		gaps: 0,
-		dueToday: 0,
-		escalated: 0,
-		nextLabel: 'keine',
-	});
+	assert.deepEqual(getChorePlanHealth([], now), { gaps: 0, dueToday: 0 });
 	const health = getChorePlanHealth(
 		[
 			{ nextDueAt: '2026-09-20T10:00:00.000Z' },
@@ -131,11 +125,5 @@ test('getChorePlanHealth counts gaps, due-today and escalations on Berlin days',
 		],
 		now,
 	);
-	assert.deepEqual(health, {
-		total: 4,
-		gaps: 2,
-		dueToday: 1,
-		escalated: 1,
-		nextLabel: 'seit 3 T. offen',
-	});
+	assert.deepEqual(health, { gaps: 2, dueToday: 1 });
 });

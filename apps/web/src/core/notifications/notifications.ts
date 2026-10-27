@@ -1,6 +1,8 @@
 import { formatDecimal } from '@/core/utils/amount';
-import { berlinDayKey } from '@/core/utils/berlin-day';
+import { berlinCalendarDayDistance } from '@/core/utils/berlin-day';
 import { formatEuroCents } from '@/core/utils/money';
+import { formatShortDate } from '@/core/utils/time';
+import { pluralize } from '@/shared/lib/plural';
 
 export type NotificationEvent =
 	| 'expense.created'
@@ -109,12 +111,7 @@ function formatEventTime(value: unknown, allDay = false): string {
 	if (Number.isNaN(date.getTime())) return 'demnächst';
 	// All-day events start at Berlin midnight; a clock time would be noise.
 	if (allDay) {
-		const day = new Intl.DateTimeFormat('de-DE', {
-			day: '2-digit',
-			month: '2-digit',
-			timeZone: 'Europe/Berlin',
-		}).format(date);
-		return `${day} (ganztägig)`;
+		return `${formatShortDate(value, 'Europe/Berlin')} (ganztägig)`;
 	}
 	return new Intl.DateTimeFormat('de-DE', {
 		day: '2-digit',
@@ -123,11 +120,6 @@ function formatEventTime(value: unknown, allDay = false): string {
 		minute: '2-digit',
 		timeZone: 'Europe/Berlin',
 	}).format(date);
-}
-
-function berlinDayNumber(date: Date): number {
-	const [year, month, day] = berlinDayKey(date).split('-').map(Number);
-	return Date.UTC(year ?? 0, (month ?? 1) - 1, day ?? 1) / 86_400_000;
 }
 
 // Reminders also fire for chores overdue up to a week and for new chores due
@@ -141,10 +133,10 @@ function choreDueSentence(payload: Record<string, unknown>, wgName: string): str
 	const title = text(payload.title, 'Eine Aufgabe');
 	const dueAt = typeof payload.nextDueAt === 'string' ? new Date(payload.nextDueAt) : null;
 	if (!dueAt || Number.isNaN(dueAt.getTime())) return `${title} ist heute in ${wgName} fällig.`;
-	const diffDays = berlinDayNumber(dueAt) - berlinDayNumber(new Date());
+	const diffDays = berlinCalendarDayDistance(new Date(), dueAt);
 	if (diffDays < 0) {
 		const overdueDays = -diffDays;
-		return `${title} ist in ${wgName} seit ${overdueDays} ${overdueDays === 1 ? 'Tag' : 'Tagen'} offen.`;
+		return `${title} ist in ${wgName} seit ${pluralize(overdueDays, 'Tag', 'Tagen')} offen.`;
 	}
 	if (diffDays === 0) return `${title} ist heute in ${wgName} fällig.`;
 	if (diffDays === 1) return `${title} ist morgen in ${wgName} fällig.`;
@@ -202,7 +194,7 @@ export function formatNotificationMessage(
 				rawDays >= 1 ? ` (ältester Posten ${rawDays} ${rawDays === 1 ? 'Tag' : 'Tage'} alt)` : '';
 			return {
 				title: 'Erinnerung',
-				body: `Du schuldest ${creditor} noch ${money(payload.amountCents, payload.currency)}${dayClause} — bitte zeitnah ausgleichen.`,
+				body: `Noch offen bei ${creditor}: ${money(payload.amountCents, payload.currency)}${dayClause}.`,
 				urlPath: '/mahnungen',
 			};
 		}

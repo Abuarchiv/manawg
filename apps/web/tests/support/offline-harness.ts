@@ -2,6 +2,10 @@
 // offline-client module graph (`?instance=N`, see resolve-hooks.mjs) wired to its own mocks.
 import assert from 'node:assert/strict';
 import { mock } from 'node:test';
+import { PendingImageMissingError } from '../../src/core/offline/offline-images.ts';
+import { deferred } from './deferred.ts';
+
+export { PendingImageMissingError, deferred };
 
 export const { OFFLINE_REPLAY_MAX_AGE_MS, RESPONSE_REPLAY_TTL_SECONDS } = await import(
 	'../../src/core/offline/replay-retention.ts'
@@ -17,6 +21,7 @@ export interface QueueModule {
 	enqueueOfflineAction(action: Action): Promise<number>;
 	updateOfflineQueue(update: (actions: Action[]) => Action[]): Promise<boolean>;
 	discardQueuedEntry(shareCode: string, id: string): Promise<string>;
+	removeQueuedAction(id: string, expectedTypes?: readonly string[]): Promise<boolean>;
 	syncOfflineActions(
 		shareCode: string,
 		options: { force?: boolean; memberId?: string; signal?: AbortSignal },
@@ -89,14 +94,6 @@ export function makeLockManager() {
 }
 type FakeLockManager = ReturnType<typeof makeLockManager>;
 
-export function deferred<T = unknown>() {
-	let resolve: (value?: T) => void = () => {};
-	const promise = new Promise<T | undefined>((done) => {
-		resolve = done;
-	});
-	return { promise, resolve };
-}
-
 /** The persisted offline queue of a fake storage. */
 export function readStoredQueue(storage: FakeStorage): Action[] {
 	return JSON.parse(storage.getItem('manawg:offline-actions') ?? 'null');
@@ -126,9 +123,6 @@ export function restoreGlobals(): void {
 }
 
 const defaultQueue = {
-	isOfflineIdempotencyKey: (value: unknown) =>
-		typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value),
-	createOfflineIdempotencyKey: () => VALID_KEY,
 	isQueuedCreateId: (value: unknown) =>
 		typeof value === 'string' && /^(?:shopping|chore-create|absence):/.test(value),
 	explainOfflineActionFailure: (status: number, error?: string) => ({
@@ -185,13 +179,20 @@ export async function makeQueueModule({
 		REQUEST_TIMEOUT_MS: 15_000,
 		anySignal: (signals: AbortSignal[]) => AbortSignal.any(signals),
 		noteSessionExpiry() {},
+		readApiErrorCode: async () => '',
 	});
 	mockInstance('@/core/utils/browser', { safeLocalStorage: () => storage });
+	mockInstance('@/core/http/idempotency-key', {
+		isIdempotencyKey: (value: unknown) =>
+			typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value),
+		createIdempotencyKey: () => VALID_KEY,
+	});
 	mockInstance('@/core/offline/offline-queue', defaultQueue);
 	if (images !== null) {
 		mockInstance('@/core/offline/offline-images', {
 			isPendingImageToken: (value: unknown) =>
 				typeof value === 'string' && value.startsWith('manawg-pending-image:'),
+			PendingImageMissingError,
 			uploadPendingImageToken: async () => 'https://app.invalid/image',
 			removePendingImage: async () => {},
 			...images,

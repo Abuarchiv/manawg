@@ -5,15 +5,10 @@ import { logApiError } from '@/core/infra/observability';
 import { sendMailSafely } from '@/core/mail/send-mail';
 import { renderReminderMail } from '@/core/mail/templates';
 import { unsubscribeUrl } from '@/core/mail/unsubscribe';
+import { formatShortDate } from '@/core/utils/time';
 import { and, desc, eq, isNull } from 'drizzle-orm';
 
 const ITEM_LIMIT = 5;
-
-const dateFormat = new Intl.DateTimeFormat('de-DE', {
-	day: '2-digit',
-	month: '2-digit',
-	timeZone: 'Europe/Berlin',
-});
 
 export interface ReminderMailInput {
 	reminderId: string;
@@ -25,8 +20,8 @@ export interface ReminderMailInput {
 }
 
 /**
- * E8: the reminder as a mail for a debtor without push. Lists the newest open
- * items the creditor paid for the debtor. Sent once per reminder row.
+ * Sends a reminder as a mail to a debtor without push. Lists the newest open
+ * items the creditor paid for the debtor; one mail per reminder row.
  */
 export async function sendReminderMail(input: ReminderMailInput): Promise<void> {
 	try {
@@ -66,7 +61,7 @@ export async function sendReminderMail(input: ReminderMailInput): Promise<void> 
 				oldestDebtAgeDays: input.oldestDebtAgeDays,
 				items: rows.map((row) => ({
 					description: row.description,
-					date: dateFormat.format(row.occurredAt),
+					date: formatShortDate(row.occurredAt.toISOString(), 'Europe/Berlin'),
 					cents: row.cents,
 				})),
 				unsubscribeUrl: unsubscribeUrl(input.debtor.id, 'reminders'),

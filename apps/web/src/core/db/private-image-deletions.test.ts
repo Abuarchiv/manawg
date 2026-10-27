@@ -6,11 +6,11 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { Client, Pool } from 'pg';
 import { z } from 'zod';
 
-// Runs against a throwaway schema of a loopback Postgres (PRIVATE_IMAGE_TEST_DATABASE_URL); the
+// Runs against a throwaway schema of a loopback Postgres (TEST_DATABASE_URL); the
 // test is skipped without one. The real helper, transaction, deletion and route modules run on
 // that database; the mocks below replace only auth, rate limits, audit and notifications.
 
-const connectionString = process.env.PRIVATE_IMAGE_TEST_DATABASE_URL;
+const connectionString = process.env.TEST_DATABASE_URL;
 const wgId = '11111111-1111-4111-8111-111111111111';
 const objectId = '22222222-2222-4222-8222-222222222222';
 
@@ -123,6 +123,7 @@ mock.module('@/features/expenses/server/expense-payments', {
 mock.module('@/features/expenses/split-math', {
 	namedExports: {
 		settledAtForOwnShare: () => null,
+		splitChangeViolation: () => null,
 		splitValidationErrorCode: (reason: string) => reason,
 		validateSplits: () => ({ ok: true }),
 	},
@@ -172,6 +173,7 @@ test(
 			image_url text,
 			recurring_expense_id uuid,
 			recurring_due_at timestamptz,
+			category text DEFAULT 'sonstiges',
 			import_id uuid,
 			import_duplicate_key text,
 			occurred_at timestamptz DEFAULT now(),
@@ -575,11 +577,7 @@ test(
 					).session.client.connectionParameters.query_timeout;
 				const poolDeadline = readDeadline();
 				assert.equal(await deleteWg.deleteWgCascade(tx, wgId), true);
-				assert.equal(
-					readDeadline(),
-					poolDeadline,
-					'the raised read deadline is undone for the pool',
-				);
+				assert.equal(readDeadline(), poolDeadline, 'raised read deadline is undone for the pool');
 				cascadeApplied();
 				await waitForCascadeRelease;
 			});
@@ -595,14 +593,18 @@ test(
 					'WG deletion transaction reaches its held-lock gate',
 				);
 
-				const route = (await import('@/app/api/wg/[code]/chat/messages/route')) as unknown as {
+				const route = (await import('@/app/api/wg/[code]/announcements/route')) as unknown as {
 					POST: RouteHandler;
 				};
 				lockProbe.onLock = routeLockStarted;
 				post = route.POST(
-					new Request('https://app.example/api/wg/MTE8PZAT/chat/messages', {
+					new Request('https://app.example/api/wg/MTE8PZAT/announcements', {
 						method: 'POST',
-						body: JSON.stringify({ body: 'Race attachment', imageUrl: cascadeImage.url }),
+						body: JSON.stringify({
+							content: 'Race attachment',
+							kind: 'info',
+							imageUrl: cascadeImage.url,
+						}),
 					}),
 					{ code: 'MTE8PZAT' },
 				);
@@ -615,7 +617,7 @@ test(
 				assert.equal(
 					blockedOnWgLock,
 					true,
-					'chat writer waits for whole-WG deletion under the same lock',
+					'announcement writer waits for whole-WG deletion under the same lock',
 				);
 				releaseCascade();
 				await deletingWg;
@@ -627,7 +629,7 @@ test(
 				});
 				assert.equal(await helper.isPrivateImageKeyRevoked(cascadeImage.key), true);
 				const remainingImages = await setup.query(
-					`SELECT count(*)::int AS count FROM ${schemaName}.wg_chat_messages WHERE wg_id = $1 AND image_url = $2`,
+					`SELECT count(*)::int AS count FROM ${schemaName}.announcements WHERE wg_id = $1 AND image_url = $2`,
 					[wgId, cascadeImage.url],
 				);
 				assert.equal(remainingImages.rows[0].count, 0);

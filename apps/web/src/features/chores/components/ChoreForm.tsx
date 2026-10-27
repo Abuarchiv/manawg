@@ -15,12 +15,13 @@ import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Spinner } from '@/components/ui/spinner';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { berlinDayKey } from '@/core/utils/berlin-day';
+import { CHORE_TITLE_MAX } from '@/features/chores/chore-limits';
 import type { ChoreMember, RecurrenceType } from '@/features/chores/components/chore-types';
 import {
 	INTERVAL_PRESETS_DAYS,
 	INTERVAL_PRESETS_MONTHS,
-	TITLE_MAX,
 } from '@/features/chores/components/constants';
+import { pluralize } from '@/shared/lib/plural';
 import type React from 'react';
 
 interface ChoreFormProps {
@@ -67,8 +68,8 @@ export function ChoreForm({
 	const presets = recurrenceType === 'months' ? INTERVAL_PRESETS_MONTHS : INTERVAL_PRESETS_DAYS;
 	const firstDue =
 		recurrenceType === 'months'
-			? `in ${interval} ${interval === 1 ? 'Monat' : 'Monaten'}`
-			: `in ${interval} ${interval === 1 ? 'Tag' : 'Tagen'}`;
+			? `in ${pluralize(interval, 'Monat', 'Monaten')}`
+			: `in ${pluralize(interval, 'Tag', 'Tagen')}`;
 	return (
 		<Drawer
 			open={open}
@@ -98,7 +99,7 @@ export function ChoreForm({
 									ref={titleInputRef}
 									value={title}
 									onChange={(event) => onTitleChange(event.target.value)}
-									maxLength={TITLE_MAX}
+									maxLength={CHORE_TITLE_MAX}
 									placeholder="z. B. Müll rausbringen"
 									disabled={pending}
 									enterKeyHint="done"

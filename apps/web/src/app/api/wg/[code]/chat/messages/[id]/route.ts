@@ -15,16 +15,14 @@ import {
 } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
-import { canEditMessage, sanitizeMessageBody } from '@/features/chat/chat-pure';
+import { CHAT_BODY_MAX, canEditMessage, sanitizeMessageBody } from '@/features/chat/chat-pure';
 import { replaceMessageMentions } from '@/features/chat/server/chat-mentions';
 import { and, eq, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-const BODY_MAX = 4000;
-
 const patchSchema = z.object({
-	body: z.string().min(1).max(BODY_MAX),
+	body: z.string().min(1).max(CHAT_BODY_MAX),
 });
 
 export const PATCH = withWgRoute<{ id: string }>(
@@ -36,7 +34,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 			invalid: 'body_invalid',
 		});
 		if (!parsed.ok) return parsed.response;
-		const cleanBody = sanitizeMessageBody(parsed.data.body, BODY_MAX);
+		const cleanBody = sanitizeMessageBody(parsed.data.body, CHAT_BODY_MAX);
 		if (!cleanBody) return badRequest('body_invalid');
 		const auth = await requireWgMember(req, code);
 		if (!auth.ok) return auth.response;

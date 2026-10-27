@@ -1,12 +1,13 @@
 'use client';
 
+import { useAccountNamePrefill } from '@/app/use-account-name-prefill';
 import { ErrorBox } from '@/components/app/ErrorBox';
 import { CredentialsAuth } from '@/components/auth/CredentialsAuth';
 import { SignUpPrompt } from '@/components/auth/SignUpPrompt';
 import { SocialLoginButtons } from '@/components/auth/SocialLoginButtons';
 import { EntryFrame } from '@/components/entry/EntryFrame';
 import { LegalLinks } from '@/components/entry/LegalLinks';
-import { useConfirmLogoutDiscard } from '@/components/entry/useConfirmLogoutDiscard';
+import { useConfirmLogoutDiscard } from '@/components/entry/use-confirm-logout-discard';
 import { Button } from '@/components/ui/button';
 import { FieldGroup, FieldSeparator } from '@/components/ui/field';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -31,7 +32,7 @@ import { useAccountWgs } from './use-account-wgs';
 import { useBusyLock } from './use-busy-lock';
 import { useClearCallbackError } from './use-clear-callback-error';
 import { useCreateWg } from './use-create-wg';
-import { useAccountNamePrefill, useSaveStartDraft, useStartDraft } from './use-start-draft';
+import { useSaveStartDraft, useStartDraft } from './use-start-draft';
 import { useStartError } from './use-start-error';
 import { useStepHistory } from './use-step-history';
 
@@ -224,7 +225,7 @@ export function NeuClient() {
 							}}
 						>
 							{retried && <Spinner data-icon="inline-start" aria-hidden />}
-							{retried ? 'Prüfe …' : 'Erneut prüfen'}
+							{retried ? 'Prüfe…' : 'Erneut prüfen'}
 						</Button>
 					</div>
 				)}

@@ -8,10 +8,11 @@ import {
 	inMinimalMatrix,
 	navigateToFeature,
 	setupMember,
+	skipUnlessFixtures,
 } from './support/helpers';
 
 test.describe('subscription summary responsive', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 	test.use({ hasTouch: true, isMobile: true });
 
 	const abo = {
@@ -92,7 +93,7 @@ test.describe('subscription summary responsive', () => {
 });
 
 test.describe('subscription error notice', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 	test.use({ hasTouch: true, isMobile: true });
 
 	const MINA_ID = '0ab8c8f2-5d03-4a84-aadc-4c5d7e8abf55';
@@ -152,7 +153,7 @@ test.describe('subscription error notice', () => {
 });
 
 test.describe('paused fixed cost in expenses', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 	test.use({ hasTouch: true, isMobile: true });
 
 	test('a paused overdue template offers no direct booking', async ({ page }) => {
@@ -184,12 +185,8 @@ test.describe('paused fixed cost in expenses', () => {
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/ausgaben?filter=recurring`);
 		await dismissOnboarding(page);
 
-		await expect(
-			page.getByRole('button', { name: 'Fixkosten-Ausgabe direkt erstellen: Strom' }),
-		).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Erfassen: Strom' })).toBeVisible();
 		await expect(page.getByText('pausiert', { exact: false }).first()).toBeVisible();
-		await expect(
-			page.getByRole('button', { name: 'Fixkosten-Ausgabe direkt erstellen: Netflix' }),
-		).toHaveCount(0);
+		await expect(page.getByRole('button', { name: 'Erfassen: Netflix' })).toHaveCount(0);
 	});
 });

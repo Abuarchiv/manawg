@@ -5,6 +5,7 @@ import {
 	hasCapturingExpensePayment,
 	withExpensePaymentLock,
 } from '@/features/expenses/server/expense-payments';
+import { pluralize } from '@/shared/lib/plural';
 import { and, eq, inArray } from 'drizzle-orm';
 import { findSettledImportIds } from './import-settled';
 
@@ -72,7 +73,7 @@ export async function undoImport(
 				eventType: 'import.undone',
 				entityType: 'expense_import',
 				entityId: importId,
-				summary: `${actor.name} hat einen Import rückgängig gemacht (${ids.length} ${ids.length === 1 ? 'Ausgabe' : 'Ausgaben'}).`,
+				summary: `${actor.name} hat einen Import rückgängig gemacht (${pluralize(ids.length, 'Ausgabe', 'Ausgaben')}).`,
 				metadataJson: JSON.stringify({ source: imp.source, removed: ids.length }),
 			});
 			return {

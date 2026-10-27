@@ -9,10 +9,11 @@ import {
 	mockUnreadCount,
 	navigateToFeature,
 	setupMember,
+	skipUnlessFixtures,
 } from './support/helpers';
 
 test.describe('contrast tokens', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	// Regression for WCAG 1.4.11 (Non-text Contrast, 3:1 minimum): the shadcn default
 	// theme shipped --input: oklch(0.922 0 0) and --ring: oklch(0.708 0 0) in light mode,
@@ -241,7 +242,7 @@ test.describe('contrast tokens', () => {
 });
 
 test.describe('forced colors focus', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	async function expectSystemFocusRing(page: Page, target: Locator): Promise<void> {
 		const styles = await target.evaluate((element) => {
@@ -380,7 +381,7 @@ test.describe('label in name audit', () => {
 	// focus (Next's AppRouterAnnouncer never fires across sibling `/wg/[code]/*`
 	// routes because `document.title` and the page's single <h1> never change).
 
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	const BASE = `/api/wg/${FIXTURE_WG.shareCode}`;
 	// Fixture WG name (src/fixtures/data.ts E2E_EXISTING_WG.name) — not
@@ -404,7 +405,6 @@ test.describe('label in name audit', () => {
 		latestAnnouncement: null,
 		myOpenAnnouncements: [],
 		absentMembers: [],
-		wgHealth: { score: 100, label: 'Alles im Griff', items: [] },
 		setup: {
 			choreCount: 0,
 			hasExpense: false,
@@ -563,16 +563,16 @@ test.describe('label in name audit', () => {
 		await dismissOnboarding(page);
 		await page.getByRole('button', { name: /Details öffnen/ }).click();
 
-		// WCAG 2.5.3 — "Als bezahlt eintragen"/"Wieder öffnen" must lead the
+		// WCAG 2.5.3 — "Als bezahlt markieren"/"Wieder als offen markieren" must lead the
 		// accessible name, disambiguated by the debtor's name.
 		await expect(
-			page.getByRole('button', { name: 'Als bezahlt eintragen: Mina', exact: true }),
+			page.getByRole('button', { name: 'Als bezahlt markieren: Mina', exact: true }),
 		).toBeVisible();
 	});
 });
 
 test.describe('enter key hint forms', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	// Regression: these free-text fields had no enterKeyHint, so the on-screen
 	// keyboard's action key showed the generic "return" glyph instead of a
@@ -686,7 +686,7 @@ test.describe('enter key hint forms', () => {
 });
 
 test.describe('enter key next field', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	// Regression: a field whose keyboard key reads "next" submitted the whole form
 	// and flagged the still-empty fields below it.

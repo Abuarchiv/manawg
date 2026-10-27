@@ -1,4 +1,5 @@
 import { formatEuroCents, normalizeCurrency } from '@/core/utils/money';
+import { pluralize } from '@/shared/lib/plural';
 
 export const REMINDER_COOLDOWN_HOURS = 48;
 const HOURS_TO_MS = 3_600_000;
@@ -85,10 +86,11 @@ interface ReminderMessageInput {
 }
 
 export function formatReminderMessage(input: ReminderMessageInput): string {
-	const amount = formatEuroCents(input.amountCents, input.currency).replace(/ /g, ' ');
+	// Intl puts a no-break space before the currency sign; the push text uses a normal space.
+	const amount = formatEuroCents(input.amountCents, input.currency).replace(/\u00a0/g, ' ');
 	const ageSuffix =
 		input.oldestDebtAgeDays >= 1
-			? ` seit ${input.oldestDebtAgeDays} ${input.oldestDebtAgeDays === 1 ? 'Tag' : 'Tagen'}`
+			? ` seit ${pluralize(input.oldestDebtAgeDays, 'Tag', 'Tagen')}`
 			: '';
 	return `Du schuldest ${input.creditorName} noch ${amount}${ageSuffix} — bitte zeitnah ausgleichen.`;
 }

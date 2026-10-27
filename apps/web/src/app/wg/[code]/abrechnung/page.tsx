@@ -5,10 +5,10 @@ import { BackLink } from '@/components/wg/BackLink';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
-import { useCachedFetch } from '@/core/hooks/useCachedFetch';
-import type { Expense } from '@/features/expenses/components/ausgaben/expense-types';
+import { useCachedFetch } from '@/core/hooks/use-cached-fetch';
 import { MonthlyStatementDocument } from '@/features/expenses/components/statement/MonthlyStatementDocument';
 import type { ExpensePaymentInput } from '@/features/expenses/expense-payment-input';
+import type { Expense } from '@/features/expenses/expense-types';
 import {
 	berlinMonthKey,
 	buildMonthlyStatement,
@@ -114,10 +114,14 @@ export default function AbrechnungPage() {
 				/>
 			) : (
 				!error && (
-					<div className="flex flex-col gap-4" aria-busy="true">
+					<output
+						className="flex flex-col gap-4"
+						aria-busy="true"
+						aria-label="Abrechnung wird geladen"
+					>
 						<Skeleton className="h-24 w-full" />
 						<Skeleton className="h-40 w-full" />
-					</div>
+					</output>
 				)
 			)}
 		</div>

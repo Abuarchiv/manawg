@@ -18,6 +18,7 @@ import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
 import { formatRelativeTime, formatTimeFull } from '@/core/utils/time';
 import { isRestorableDraft } from '@/features/pinnwand/announcement-edits';
+import { COMMENT_MAX } from '@/features/pinnwand/constants';
 import { Pencil, Trash2 } from 'lucide-react';
 import { type ReactElement, useEffect, useRef, useState } from 'react';
 import type { AnnouncementComment } from './announcement-types';
@@ -145,7 +146,7 @@ export function CommentRow({
 					</time>
 					{comment.id.startsWith('temp-') && (
 						<output className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-							<Spinner /> Wird gesendet…
+							<Spinner /> Sendet…
 						</output>
 					)}
 					{(canEdit || canDelete) && !editing && (
@@ -192,7 +193,7 @@ export function CommentRow({
 								onChange={(event) => draft.change(event.target.value)}
 								readOnly={pending}
 								aria-busy={pending}
-								maxLength={600}
+								maxLength={COMMENT_MAX}
 								rows={2}
 								aria-label="Antwort bearbeiten"
 								aria-invalid={error}
@@ -219,7 +220,7 @@ export function CommentRow({
 								aria-label={`Antwort speichern: ${actionSubject}`}
 							>
 								{pending && <Spinner data-icon="inline-start" />}{' '}
-								{pending ? 'Wird gespeichert…' : 'Speichern'}
+								{pending ? 'Speichert…' : 'Speichern'}
 							</Button>
 						</div>
 					</FieldGroup>
@@ -270,7 +271,7 @@ export function CommentRow({
 							onClick={() => void remove()}
 						>
 							{pending && <Spinner data-icon="inline-start" />}
-							{pending ? 'Wird entfernt…' : 'Entfernen'}
+							{pending ? 'Entfernt…' : 'Entfernen'}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>

@@ -23,10 +23,11 @@ import {
 } from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
 import { useWg } from '@/components/wg/WgContextProvider';
-import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
+import { useConfirmDelete } from '@/core/hooks/use-confirm-delete';
 import { ShoppingEditForm } from '@/features/shopping/components/ShoppingEditForm';
 import type { ShoppingItem } from '@/features/shopping/components/shopping-types';
 import type { EditShoppingItem } from '@/features/shopping/hooks/use-shopping-edit';
+import { expensePrefillHref } from '@/features/shopping/shopping-view';
 import { cn } from '@/shared/lib/cn';
 import type { MemberInfo } from '@/shared/lib/member-types';
 import { Check, MoreHorizontal, Pencil, Receipt, RotateCcw, Trash2 } from 'lucide-react';
@@ -35,6 +36,8 @@ import { memo, useEffect, useRef, useState } from 'react';
 
 // From this swipe distance to the right, the item counts as checked off (or open again).
 const SWIPE_TOGGLE_PX = 72;
+// The row follows the finger only this far.
+const SWIPE_MAX_PX = 120;
 
 interface ShoppingItemRowProps {
 	item: ShoppingItem;
@@ -145,7 +148,7 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 				}}
 				onPointerMove={(event) => {
 					if (swipeStartX.current === null) return;
-					setSwipeX(Math.min(Math.max(0, event.clientX - swipeStartX.current), 120));
+					setSwipeX(Math.min(Math.max(0, event.clientX - swipeStartX.current), SWIPE_MAX_PX));
 				}}
 				onPointerUp={endSwipe}
 				onPointerCancel={() => {
@@ -253,7 +256,11 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 											nativeButton={false}
 											render={
 												<Link
-													href={`/wg/${encodeURIComponent(shareCode)}/ausgaben?${new URLSearchParams({ desc: item.name, source: 'shopping', ...(item.boughtByMemberId ? { paidBy: item.boughtByMemberId } : {}) })}`}
+													href={expensePrefillHref(shareCode, {
+														desc: item.name,
+														source: 'shopping',
+														...(item.boughtByMemberId ? { paidBy: item.boughtByMemberId } : {}),
+													})}
 												/>
 											}
 										>

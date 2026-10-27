@@ -4,12 +4,11 @@ import {
 	isReadOnlyMode,
 	isSessionExpired,
 } from '@/core/http/error-codes';
+import { createIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
 import { enqueueOfflineAction } from '@/core/offline/offline-client';
-import {
-	createOfflineIdempotencyKey,
-	createQueuedChoreCompletion,
-} from '@/core/offline/offline-queue';
+import { keyUnavailableMessage } from '@/core/offline/offline-copy';
+import { createQueuedChoreCompletion } from '@/core/offline/offline-queue';
 import { formatShortDate, parseTimestamp } from '@/core/utils/time';
 
 /** The occurrence a member confirms as done: the server rejects it once date or assignee moved. */
@@ -58,14 +57,15 @@ export function completionRequestKey(chore: Pick<ChoreOccurrence, 'id' | 'nextDu
 /**
  * Completes one chore occurrence. Network failures queue the completion offline with the
  * same idempotency key, so the later replay deduplicates against an attempt that did reach
- * the server. The key survives 5xx and 429 answers for the same reason.
+ * the server. The key survives 5xx, 429 and in-flight (`idempotency_response_pending`) answers
+ * for the same reason.
  */
 export async function submitChoreCompletion(
 	ctx: ChoreCompletionContext,
 	chore: ChoreOccurrence,
 ): Promise<ChoreCompletionOutcome> {
 	const requestKey = completionRequestKey(chore);
-	const idempotencyKey = ctx.keys.get(requestKey) ?? createOfflineIdempotencyKey();
+	const idempotencyKey = ctx.keys.get(requestKey) ?? createIdempotencyKey();
 	if (!idempotencyKey) return { kind: 'key_unavailable' };
 	ctx.keys.set(requestKey, idempotencyKey);
 	// The tap time travels with the request and with the queued action, so a replay hours later
@@ -112,7 +112,7 @@ export async function submitChoreCompletion(
 		return { kind: 'queued' };
 	}
 
-	if (result.status < 500 && result.status !== 429) ctx.keys.delete(requestKey);
+	if (shouldReleaseIdempotencyKey(result.status, result.error)) ctx.keys.delete(requestKey);
 	if (result.status === 404 && result.error === 'chore_not_found') return { kind: 'not_found' };
 	if (
 		(result.status === 404 || result.status === 409) &&
@@ -142,7 +142,7 @@ export interface ChoreCompletionFeedback {
 }
 
 export const CHORE_COMPLETION_COPY = {
-	keyUnavailable: 'Erledigt-Aktion konnte nicht sicher gespeichert werden. Versuche es erneut.',
+	keyUnavailable: keyUnavailableMessage('Die Erledigung', 'gespeichert'),
 	queued:
 		'Erledigung offline vorgemerkt. Nächster Termin und Zuständigkeit werden nach der Synchronisierung bestätigt.',
 	queueBlocked:
@@ -152,34 +152,49 @@ export const CHORE_COMPLETION_COPY = {
 	alreadyCompleted: 'Diese Putzaufgabe wurde bereits erledigt. Der Plan wird aktualisiert.',
 	occurrenceChanged: 'Termin oder Zuständigkeit haben sich geändert. Der Plan wird aktualisiert.',
 	insertFailed:
-		'Erledigt-Aktion konnte nicht vollständig gespeichert werden: Lade den Plan neu und prüfe den Verlauf.',
-	readOnly: `Erledigt-Aktion konnte nicht gespeichert werden: ${READ_ONLY_MESSAGE}`,
-	sessionExpired: `Erledigt-Aktion konnte nicht gespeichert werden: ${SESSION_EXPIRED_MESSAGE}`,
-	failed: 'Erledigt-Aktion konnte nicht gespeichert werden: Versuche es gleich erneut.',
+		'Die Erledigung konnte nicht vollständig gespeichert werden: Lade den Plan neu und prüfe den Verlauf.',
+	readOnly: `Die Erledigung konnte nicht gespeichert werden: ${READ_ONLY_MESSAGE}`,
+	sessionExpired: `Die Erledigung konnte nicht gespeichert werden: ${SESSION_EXPIRED_MESSAGE}`,
+	failed: 'Die Erledigung konnte nicht gespeichert werden: Versuche es gleich erneut.',
 } as const;
+
+/** The member who is up next; `isSelf` marks the viewer, so views can say "du" instead of the name. */
+export interface NextAssignee {
+	name: string;
+	isSelf: boolean;
+}
+
+/** How the viewer is addressed: "du" for themselves, else the member name. */
+export function nextAssigneeLabel(assignee: NextAssignee): string {
+	return assignee.isSelf ? 'du' : assignee.name;
+}
+
+/** The verb that goes with `nextAssigneeLabel`: "du bist", "Anna ist". */
+export function nextAssigneeVerb(assignee: NextAssignee): 'bist' | 'ist' {
+	return assignee.isSelf ? 'bist' : 'ist';
+}
 
 function choreCompletedMessage(
 	title: string,
 	next: ConfirmedChore | null,
-	nextAssigneeName: string | undefined,
+	nextAssignee: NextAssignee | undefined,
 ): string {
 	if (!next) {
 		return `${title} erledigt. Der bestätigte nächste Termin und die Zuständigkeit werden geladen.`;
 	}
 	const date = formatShortDate(next.nextDueAt, 'Europe/Berlin');
-	if (!nextAssigneeName) {
+	if (!nextAssignee?.name) {
 		return `${title} erledigt. Nächster Termin: ${date}, noch niemand zugewiesen.`;
 	}
-	// "du" is the own member (callers map it), the dialog before says "Danach bist du dran".
-	const verb = nextAssigneeName === 'du' ? 'bist' : 'ist';
-	return `${title} erledigt. Als Nächstes ${verb} ${nextAssigneeName} am ${date} dran.`;
+	// The dialog before says "Danach bist du dran", so the own member is addressed the same way here.
+	return `${title} erledigt. Als Nächstes ${nextAssigneeVerb(nextAssignee)} ${nextAssigneeLabel(nextAssignee)} am ${date} dran.`;
 }
 
 /** What the member sees for an outcome; the start page and the cleaning plan share it. */
 export function choreCompletionFeedback(
 	outcome: ChoreCompletionOutcome,
 	chore: Pick<ChoreOccurrence, 'title'>,
-	memberName: (memberId: string | null) => string | undefined,
+	lookupAssignee: (memberId: string | null) => NextAssignee | undefined,
 ): ChoreCompletionFeedback {
 	const copy = CHORE_COMPLETION_COPY;
 	const error = (message: string, done: boolean, reload: boolean, toast: string | null = null) =>
@@ -191,7 +206,7 @@ export function choreCompletionFeedback(
 				message: choreCompletedMessage(
 					chore.title,
 					outcome.next,
-					outcome.next ? memberName(outcome.next.assignedMemberId) : undefined,
+					outcome.next ? lookupAssignee(outcome.next.assignedMemberId) : undefined,
 				),
 				toast: null,
 				done: true,

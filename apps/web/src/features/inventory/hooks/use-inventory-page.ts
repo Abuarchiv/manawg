@@ -1,6 +1,6 @@
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
-import { refreshCachedFetch } from '@/core/hooks/useCachedFetch';
-import { useStableCallback } from '@/core/hooks/useStableCallback';
+import { refreshCachedFetch } from '@/core/hooks/use-cached-fetch';
+import { useStableCallback } from '@/core/hooks/use-stable-callback';
 import { isNetworkError } from '@/core/http/error-codes';
 import { useSyncedCollection } from '@/core/sync/use-synced-collection';
 import {

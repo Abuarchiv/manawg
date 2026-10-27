@@ -8,10 +8,10 @@ import { Spinner } from '@/components/ui/spinner';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { isPayPalSdkEnabled } from '@/core/infra/security-headers';
 import { formatEuroCents } from '@/core/utils/money';
-import type { Expense } from '@/features/expenses/components/ausgaben/expense-types';
 import { PayPalPaymentButton } from '@/features/expenses/components/debts/PayPalPaymentButton';
 import { RemindButton } from '@/features/expenses/components/debts/RemindButton';
 import type { SimplifiedDebt } from '@/features/expenses/debt-reduction';
+import type { Expense } from '@/features/expenses/expense-types';
 import { cn } from '@/shared/lib/cn';
 import { ChevronDown } from 'lucide-react';
 import Link from 'next/link';
@@ -126,7 +126,7 @@ export function SettlementDebtRow({
 						onClick={() => void review()}
 					>
 						{reviewing && <Spinner data-icon="inline-start" />}
-						{reviewing ? 'Wird geprüft…' : 'Ausgleichen'}
+						{reviewing ? 'Prüft…' : 'Ausgleichen'}
 					</Button>
 					{owedToMe && backedByDirectDebt && (
 						<RemindButton

@@ -4,7 +4,14 @@
 import { writeFile } from 'node:fs/promises';
 import { type Page, type Route, expect, test } from '@playwright/test';
 import { isIosLikeDevice } from '../src/shared/lib/pwa-install';
-import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './support/helpers';
+import {
+	FIXTURE_WG,
+	dismissOnboarding,
+	navigateToFeature,
+	seedLocalAccount,
+	setupMember,
+	skipUnlessFixtures,
+} from './support/helpers';
 
 test.describe('pwa platform', () => {
 	test('iPadOS desktop Safari is treated as an iOS-like device', () => {
@@ -332,6 +339,7 @@ test.describe('offline page', () => {
 	};
 
 	async function seedOfflineState(page: Page): Promise<void> {
+		await seedLocalAccount(page);
 		await page.addInitScript(
 			({ storedWg, storedAction }) => {
 				localStorage.setItem('manawg_known_wgs', JSON.stringify([storedWg]));
@@ -347,7 +355,16 @@ test.describe('offline page', () => {
 			contentType: 'application/json',
 			body: JSON.stringify(
 				status === 200
-					? { wgs: [{ code: FIXTURE_WG.shareCode, memberId: FIXTURE_WG.memberId }] }
+					? {
+							wgs: [
+								{
+									id: FIXTURE_WG.id,
+									code: FIXTURE_WG.shareCode,
+									name: knownWg.name,
+									memberId: FIXTURE_WG.memberId,
+								},
+							],
+						}
 					: { error: 'auth_required', code: 'auth_required' },
 			),
 		});
@@ -402,6 +419,7 @@ test.describe('offline page', () => {
 		}) => {
 			await page.route('**/api/wg/mine', (route) => fulfillMembership(route));
 			await setupMember(page);
+			await seedLocalAccount(page);
 			await page.addInitScript((storedWg) => {
 				localStorage.setItem('manawg_known_wgs', JSON.stringify([storedWg]));
 			}, knownWg);
@@ -450,7 +468,7 @@ test.describe('offline page', () => {
 
 		test('confirms a successful synchronization and clears the action', async ({ page }) => {
 			await page.route('**/api/wg/mine', (route) => fulfillMembership(route));
-			await page.route('**/api/wg/MTE8PZAT/shopping', (route) =>
+			await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/shopping`, (route) =>
 				route.fulfill({ status: 200, contentType: 'application/json', body: '{}' }),
 			);
 			await seedOfflineState(page);
@@ -468,7 +486,7 @@ test.describe('offline page', () => {
 		}) => {
 			await page.route('**/api/wg/mine', (route) => fulfillMembership(route));
 			let posts = 0;
-			await page.route('**/api/wg/MTE8PZAT/shopping', (route) => {
+			await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/shopping`, (route) => {
 				posts += 1;
 				return route.fulfill({
 					status: 429,
@@ -476,6 +494,7 @@ test.describe('offline page', () => {
 					body: JSON.stringify({ error: 'rate_limited' }),
 				});
 			});
+			await seedLocalAccount(page);
 			await page.addInitScript(
 				({ storedWg, storedActions }) => {
 					localStorage.setItem('manawg_known_wgs', JSON.stringify([storedWg]));
@@ -507,7 +526,7 @@ test.describe('offline page', () => {
 });
 
 test.describe('offline banner focus', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	// WCAG 2.4.11: the sticky offline banner must not cover focused content or the
 	// sticky settings tabs.

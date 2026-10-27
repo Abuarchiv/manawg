@@ -3,18 +3,16 @@
 import { isAuthPagePath } from '@/core/auth/auth-intent';
 import { safeNextPath } from '@/core/auth/next-path';
 import { hasSessionCookie } from '@/core/auth/session-hint';
-import { REQUEST_TIMEOUT_MS } from '@/core/infra/api-client';
+import { subscribeVisibility } from '@/core/hooks/use-online-status';
+import { type AccountWg, fetchAccountWgs } from '@/core/infra/account-wgs';
 import { invitePath } from '@/core/utils/invite-token';
-import { normalizeShareCode } from '@/core/utils/share-code';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import {
-	type AccountWg,
 	type StartStep,
 	consumeJustSignedIn,
 	getNeuIntentFromSearch,
 	getWgCodeFromPath,
-	isAccountWg,
 	markJustSignedIn,
 } from './start-flow';
 
@@ -56,33 +54,15 @@ export function useAccountWgs({
 			setSessionHint(true);
 			setAuthState('loading');
 			try {
-				const res = await fetch('/api/wg/mine', {
-					cache: 'no-store',
-					signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-				});
+				const res = await fetchAccountWgs();
 				if (cancelled) return;
-				if (res.status === 401) {
-					setAccountWgs([]);
-					setAuthState('signed-out');
+				if (res.ok) {
+					setAccountWgs(res.wgs);
+					setAuthState('authenticated');
 					return;
 				}
-				if (!res.ok) {
-					setAuthState('error');
-					return;
-				}
-				const data: unknown = await res.json();
-				const wgs =
-					data && typeof data === 'object' && !Array.isArray(data)
-						? Reflect.get(data, 'wgs')
-						: null;
-				if (!Array.isArray(wgs) || !wgs.every(isAccountWg)) {
-					setAuthState('error');
-					return;
-				}
-				setAccountWgs(
-					wgs.map((wg) => ({ ...wg, code: normalizeShareCode(wg.code), name: wg.name.trim() })),
-				);
-				setAuthState('authenticated');
+				if (res.status === 401) setAccountWgs([]);
+				setAuthState(res.status === 401 ? 'signed-out' : 'error');
 			} catch {
 				if (!cancelled) setAuthState('error');
 			}
@@ -96,13 +76,11 @@ export function useAccountWgs({
 	// Another tab signed in or out of this browser's one account: re-check when this tab returns.
 	useEffect(() => {
 		if (!interactive) return;
-		const onVisible = () => {
-			if (document.visibilityState !== 'visible') return;
+		return subscribeVisibility((visible) => {
+			if (!visible) return;
 			if (authState === 'loading' || authState === 'error') return;
 			if (hasSessionCookie() !== (authState === 'authenticated')) setAuthRetryNonce((n) => n + 1);
-		};
-		document.addEventListener('visibilitychange', onVisible);
-		return () => document.removeEventListener('visibilitychange', onVisible);
+		});
 	}, [authState, interactive]);
 
 	useEffect(() => {

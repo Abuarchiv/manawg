@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 const { parseDraftEditTarget, recurringTemplateSuggestion, splitsToManualInput } = await import(
-	'../src/features/expenses/components/ausgaben/expense-form-draft.ts'
+	'../src/features/expenses/expense-form-draft.ts'
 );
 
 test('a draft without an edit target creates a new expense', () => {

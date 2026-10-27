@@ -20,13 +20,10 @@ import type { Member, WgSummary } from '@/components/wg/WgContextProvider';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { AccountDeleteSection } from '@/components/wg/einstellungen/AccountDeleteSection';
 import { Section } from '@/components/wg/einstellungen/Section';
-import {
-	deleteWgErrorMessage,
-	readResponseErrorCode,
-} from '@/components/wg/einstellungen/settings-errors';
+import { deleteWgErrorMessage } from '@/components/wg/einstellungen/settings-errors';
 import type { SessionMember } from '@/core/auth/local-account';
 import { forgetWg } from '@/core/auth/local-account';
-import { noteSessionExpiry } from '@/core/infra/api-client';
+import { noteSessionExpiry, readApiErrorCode } from '@/core/infra/api-client';
 import { memberContextHeader } from '@/shared/lib/member-header';
 import { LogOut, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -88,7 +85,7 @@ export function DangerZoneSection({ wg, members, identity }: DangerZoneSectionPr
 				return;
 			}
 			if (!res.ok) {
-				setDeleteError(deleteWgErrorMessage(res.status, await readResponseErrorCode(res)));
+				setDeleteError(deleteWgErrorMessage(res.status, (await readApiErrorCode(res)) || null));
 				setDeleteStage('confirm');
 				return;
 			}

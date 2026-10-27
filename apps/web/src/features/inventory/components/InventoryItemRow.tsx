@@ -11,6 +11,7 @@ import {
 	ItemTitle,
 } from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
+import { useConfirmDelete } from '@/core/hooks/use-confirm-delete';
 import { apiFetch } from '@/core/infra/api-client';
 import { formatDecimal } from '@/core/utils/amount';
 import { useInventoryQuantity } from '@/features/inventory/hooks/use-inventory-quantity';
@@ -20,7 +21,7 @@ import {
 	formatQuantity,
 } from '@/features/inventory/inventory';
 import { Minus, Pencil, Plus, Trash2 } from 'lucide-react';
-import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 
 interface InventoryItemRowProps {
 	item: InventoryItemDto;
@@ -28,20 +29,12 @@ interface InventoryItemRowProps {
 	memberId: string;
 	onChanged: (item?: InventoryMutationItemDto, deletedId?: string) => void;
 	onEdit: (item: InventoryItemDto) => void;
-	/** Delete confirmation; the list holds only one armed row so never two are open. */
-	deleteArmed: boolean;
-	onDeleteArmedChange: (id: string | null) => void;
 	/** Deep-link hit (?highlight=<id>): ring around the row. */
 	highlighted?: boolean;
 }
 
 // While a request runs, focus stays on the button (aria-disabled instead of disabled).
 const BUSY_CLASS = 'aria-disabled:pointer-events-none aria-disabled:opacity-50';
-
-/** How long "Entfernen/Abbrechen" stays before the row falls back. */
-const DELETE_CONFIRM_MS = 6000;
-
-type PendingAction = 'delete';
 
 export const InventoryItemRow = memo(function InventoryItemRow({
 	item,
@@ -50,36 +43,37 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 	memberId,
 	onChanged,
 	onEdit,
-	deleteArmed,
-	onDeleteArmedChange,
 }: InventoryItemRowProps) {
 	const toast = useToast();
+	// One armed row per page and the shared timed fallback live in the hook.
+	const confirmDelete = useConfirmDelete();
+	const deleteArmed = confirmDelete.confirmId === item.id;
 	const encodedShareCode = encodeURIComponent(shareCode);
-	const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+	const [deleting, setDeleting] = useState(false);
 	// Hide a deleted row right away; until the refetch lands it would stay tappable.
 	const [removed, setRemoved] = useState(false);
 	const rowRef = useRef<HTMLDivElement>(null);
 	const trashRef = useRef<HTMLButtonElement>(null);
-	const cancelRef = useRef<HTMLButtonElement>(null);
+	const cancelRef = useRef<HTMLButtonElement | null>(null);
 	const { quantity, action, tap } = useInventoryQuantity({
 		item,
 		shareCode,
 		memberId,
 		onChanged,
-		onGone: () => {
-			setRemoved(true);
-			onChanged(undefined, item.id);
-		},
+		onGone: markGone,
 	});
-	const isDeleteArmed = deleteArmed;
-	const pending = action !== null || pendingAction === 'delete';
-	const armed = isDeleteArmed || pendingAction === 'delete';
+	const pending = action !== null || deleting;
+	const armed = deleteArmed || deleting;
+
+	function markGone(): void {
+		setRemoved(true);
+		onChanged(undefined, item.id);
+	}
 
 	// Another member deleted the item meanwhile: drop the row instead of offering a retry that can never succeed.
 	function dropIfGone(res: { status: number; error?: string }): boolean {
 		if (res.status !== 404 || res.error !== 'item_not_found') return false;
-		setRemoved(true);
-		onChanged(undefined, item.id);
+		markGone();
 		return true;
 	}
 
@@ -94,7 +88,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 
 	async function remove(): Promise<void> {
 		if (pending) return;
-		setPendingAction('delete');
+		setDeleting(true);
 		try {
 			const res = await apiFetch(
 				`/api/wg/${encodedShareCode}/inventory/${encodeURIComponent(item.id)}`,
@@ -102,44 +96,43 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 			);
 			if (res.ok) {
 				focusNeighborRow();
-				setRemoved(true);
-				onChanged(undefined, item.id);
+				markGone();
 			} else if (!dropIfGone(res)) {
 				toast.error(`„${item.name}“ konnte nicht entfernt werden. Versuche es erneut.`);
 			}
 		} finally {
-			setPendingAction(null);
+			setDeleting(false);
 		}
 	}
 
 	function handleDelete(): void {
 		if (pending) return;
-		if (!isDeleteArmed) {
-			onDeleteArmedChange(item.id);
+		if (!confirmDelete.request(item.id)) {
 			// The trash button is swapped out: focus moves to the safe choice.
 			requestAnimationFrame(() => cancelRef.current?.focus());
 			return;
 		}
-		onDeleteArmedChange(null);
 		void remove();
 	}
 
 	function handleCancel(): void {
 		if (pending) return;
-		onDeleteArmedChange(null);
-		requestAnimationFrame(() => trashRef.current?.focus());
+		confirmDelete.cancel();
 	}
 
-	// The confirmation falls back after a few seconds; focus stays in the row meanwhile.
+	// Cancel, another row arming and the timed fallback all swap the cancel button out.
+	// The ref callback sees the focus before the node leaves the DOM; the effect then
+	// moves it to the trash button instead of letting it fall back to BODY.
+	const focusLost = useRef(false);
+	const setCancelRef = useCallback((node: HTMLButtonElement | null) => {
+		if (!node && document.activeElement === cancelRef.current) focusLost.current = true;
+		cancelRef.current = node;
+	}, []);
 	useEffect(() => {
-		if (!isDeleteArmed || pending) return;
-		const timer = window.setTimeout(() => {
-			const hadFocus = document.activeElement === cancelRef.current;
-			onDeleteArmedChange(null);
-			if (hadFocus) requestAnimationFrame(() => trashRef.current?.focus());
-		}, DELETE_CONFIRM_MS);
-		return () => window.clearTimeout(timer);
-	}, [isDeleteArmed, pending, onDeleteArmedChange]);
+		if (armed || !focusLost.current) return;
+		focusLost.current = false;
+		trashRef.current?.focus();
+	}, [armed]);
 
 	if (removed) return null;
 
@@ -223,23 +216,23 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 									onClick={handleDelete}
 									disabled={pending}
 									focusableWhenDisabled
-									aria-busy={pendingAction === 'delete'}
+									aria-busy={deleting}
 									aria-label={`Endgültig entfernen: ${item.name}`}
 									className={`px-3.5 ${BUSY_CLASS}`}
 								>
-									{pendingAction === 'delete' && <Spinner aria-hidden />}
+									{deleting && <Spinner aria-hidden />}
 									Entfernen
 								</Button>
 								<Button
 									type="button"
 									variant="outline"
 									size="sm"
-									ref={cancelRef}
+									ref={setCancelRef}
 									onClick={handleCancel}
 									disabled={pending}
 									focusableWhenDisabled
 									className={BUSY_CLASS}
-									aria-label={`Abbrechen: Löschen von ${item.name}`}
+									aria-label={`Abbrechen: ${item.name} entfernen`}
 								>
 									Abbrechen
 								</Button>

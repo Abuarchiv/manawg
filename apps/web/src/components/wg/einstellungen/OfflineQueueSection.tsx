@@ -25,6 +25,7 @@ import {
 	writeDraft,
 } from '@/core/offline/drafts';
 import {
+	OFFLINE_QUEUE_EVENT,
 	needsManualOfflineResolution,
 	readOfflineQueue,
 	syncOfflineActions,
@@ -75,8 +76,8 @@ export function OfflineQueueSection({
 
 	useEffect(() => {
 		refresh();
-		window.addEventListener('manawg:offline-queue', refresh);
-		return () => window.removeEventListener('manawg:offline-queue', refresh);
+		window.addEventListener(OFFLINE_QUEUE_EVENT, refresh);
+		return () => window.removeEventListener(OFFLINE_QUEUE_EVENT, refresh);
 	}, [refresh]);
 
 	async function remove(item: OfflineAction): Promise<void> {
@@ -229,7 +230,7 @@ export function OfflineQueueSection({
 				<div
 					className={cn(
 						'flex flex-wrap items-center justify-between gap-3',
-						hasRetryableItems && 'min-h-[44px]',
+						hasRetryableItems && 'min-h-11',
 					)}
 				>
 					<p className="text-muted-foreground text-xs">{formatOfflineQueueCount(items.length)}</p>

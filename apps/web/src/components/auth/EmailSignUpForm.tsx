@@ -20,6 +20,8 @@ import {
 	GenericAuthError,
 	NEW_PASSWORD_MIN_LENGTH,
 	isValidEmail,
+	normalizeEmail,
+	useResendCooldown,
 } from './auth-form-shared';
 
 /** Seconds before the confirmation mail can be requested again; the server limits stay authoritative. */
@@ -49,14 +51,8 @@ export function useEmailSignUp({
 	const [failure, setFailure] = useState<AuthFailure>('other');
 	// The address the confirmation mail went to; set means the inbox state is shown.
 	const [sentTo, setSentTo] = useState<string | null>(null);
-	const [cooldown, setCooldown] = useState(0);
+	const [cooldown, setCooldown] = useResendCooldown();
 	const [resendNotice, setResendNotice] = useState(false);
-
-	useEffect(() => {
-		if (cooldown <= 0) return;
-		const timer = setTimeout(() => setCooldown((value) => value - 1), 1000);
-		return () => clearTimeout(timer);
-	}, [cooldown]);
 
 	function clearFeedback(): void {
 		setError(null);
@@ -72,7 +68,7 @@ export function useEmailSignUp({
 			setError('name');
 			return;
 		}
-		const normalizedEmail = email.trim().toLowerCase();
+		const normalizedEmail = normalizeEmail(email);
 		if (!isValidEmail(normalizedEmail)) {
 			setError('invalid');
 			return;

@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/input-group';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
+import { COMMENT_MAX } from '@/features/pinnwand/constants';
 import { CheckCircle2, MessageCircle, Send } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { REACTION_ICONS, reactionLabel } from './AnnouncementActionsMenu';
@@ -104,7 +105,7 @@ export function AnnouncementFooter({
 							key={key}
 							variant={active ? 'secondary' : 'ghost'}
 							size="sm"
-							className="gap-1 pr-2 text-[12px] aria-disabled:pointer-events-none aria-disabled:opacity-50"
+							className="gap-1 pr-2 text-meta aria-disabled:pointer-events-none aria-disabled:opacity-50"
 							onClick={() => {
 								if (!reactionPending(key)) onReact(key);
 							}}
@@ -123,9 +124,7 @@ export function AnnouncementFooter({
 					);
 				})}
 				<CollapsibleTrigger
-					render={
-						<Button variant="ghost" size="sm" className="ml-auto min-w-9 gap-1 text-[12px]" />
-					}
+					render={<Button variant="ghost" size="sm" className="ml-auto min-w-9 gap-1 text-meta" />}
 					aria-label={`Antworten anzeigen: ${actionSubject}${commentCount > 0 ? ` (${commentCount})` : ''}`}
 					aria-controls={`announcement-comments-${announcement.id}`}
 				>
@@ -140,7 +139,7 @@ export function AnnouncementFooter({
 						<Button
 							variant="outline"
 							size="sm"
-							className="gap-1 pr-2 text-[12px]"
+							className="gap-1 pr-2 text-meta"
 							disabled={statusPending}
 							onClick={onToggleStatus}
 							aria-label={`Als geklärt markieren: ${actionSubject}`}
@@ -198,7 +197,7 @@ export function AnnouncementFooter({
 								aria-describedby={
 									commentError ? `announcement-comment-error-${announcement.id}` : undefined
 								}
-								maxLength={600}
+								maxLength={COMMENT_MAX}
 								rows={1}
 								aria-label={`Antwort verfassen: ${actionSubject}`}
 								placeholder="Antwort schreiben"

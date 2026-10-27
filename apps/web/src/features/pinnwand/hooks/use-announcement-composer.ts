@@ -1,11 +1,16 @@
 import { useToast } from '@/components/ui/Toast';
+import {
+	type PendingIdempotentRequest,
+	resolveIdempotencyKey,
+	shouldReleaseIdempotencyKey,
+} from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
 import { notificationWarningMessage } from '@/core/notifications/notification-warning';
 import { buildDraftKey, readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
 import {
 	enqueueOfflineAction,
 	isOfflineActionQueued,
-	updateOfflineQueue,
+	removeQueuedAction,
 } from '@/core/offline/offline-client';
 import {
 	DRAFT_CLEANUP_FAILED_MESSAGE,
@@ -13,15 +18,14 @@ import {
 	OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
 	OFFLINE_SAVED_NOTICE,
 	QUEUE_EDIT_ALREADY_SENT_MESSAGE,
+	keyUnavailableMessage,
 } from '@/core/offline/offline-copy';
 import { isPendingImageToken } from '@/core/offline/offline-images';
-import {
-	createOfflineIdempotencyKey,
-	createQueuedAnnouncement,
-} from '@/core/offline/offline-queue';
+import { createQueuedAnnouncement } from '@/core/offline/offline-queue';
 import { announcementCreateErrorMessage } from '@/features/pinnwand/announcement-errors';
+import { ANNOUNCEMENT_KINDS } from '@/features/pinnwand/announcement-workflow';
 import type { AnnouncementKind } from '@/features/pinnwand/components/announcement-types';
-import { CONTENT_MAX } from '@/features/pinnwand/components/constants';
+import { CONTENT_MAX } from '@/features/pinnwand/constants';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import type {
@@ -30,16 +34,7 @@ import type {
 } from './announcement-page-context';
 
 function kindFromParam(value: string | null): AnnouncementKind | null {
-	if (
-		value === 'info' ||
-		value === 'question' ||
-		value === 'problem' ||
-		value === 'request' ||
-		value === 'decision'
-	) {
-		return value;
-	}
-	return null;
+	return ANNOUNCEMENT_KINDS.find((kind) => kind === value) ?? null;
 }
 
 /** Compose a post: composer state, localStorage draft, prefill from the URL and creation (online/offline). */
@@ -58,7 +53,7 @@ export function useAnnouncementComposer(
 	const [imageUrl, setImageUrl] = useState<string | null>(null);
 	const [submitting, setSubmitting] = useState(false);
 	const submittingRef = useRef(false);
-	const announcementIdempotencyKeyRef = useRef<{ fingerprint: string; key: string } | null>(null);
+	const announcementIdempotencyKeyRef = useRef<PendingIdempotentRequest | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [composerOpen, setComposerOpen] = useState(false);
 	const [queueEditId, setQueueEditId] = useState<string | null>(null);
@@ -144,12 +139,7 @@ export function useAnnouncementComposer(
 
 	async function clearEditedQueueItem(): Promise<boolean> {
 		if (!queueEditId) return true;
-		const saved = await updateOfflineQueue((actions) =>
-			actions.some((item) => item.id === queueEditId)
-				? actions.filter((item) => item.id !== queueEditId)
-				: null,
-		);
-		if (!saved) return false;
+		if (!(await removeQueuedAction(queueEditId))) return false;
 		setQueueEditId(null);
 		return true;
 	}
@@ -157,7 +147,7 @@ export function useAnnouncementComposer(
 	async function submit(): Promise<void> {
 		const text = content.trim();
 		if (text.length === 0 || text.length > CONTENT_MAX) {
-			setError('Inhalt fehlt oder zu lang.');
+			setError(announcementCreateErrorMessage('content_invalid'));
 			return;
 		}
 		if (submittingRef.current) return;
@@ -180,7 +170,7 @@ export function useAnnouncementComposer(
 		// error, and the draft state stays — they'd be stuck retrying. Online
 		// path needs the public URL; offline path is fine (sync resolves later).
 		if (imageUrl && isPendingImageToken(imageUrl) && navigator.onLine) {
-			setError('Bild wird noch hochgeladen. Bitte kurz warten und nochmal versuchen.');
+			setError('Das Bild wird noch hochgeladen. Warte kurz und versuche es erneut.');
 			return;
 		}
 		if (submittingRef.current) return;
@@ -189,13 +179,12 @@ export function useAnnouncementComposer(
 		setError(null);
 		setNotice(null);
 		const fingerprint = JSON.stringify({ text, imageUrl, kind });
-		const pendingRequest = announcementIdempotencyKeyRef.current;
-		const idempotencyKey =
-			pendingRequest?.fingerprint === fingerprint
-				? pendingRequest.key
-				: createOfflineIdempotencyKey();
+		const idempotencyKey = resolveIdempotencyKey(
+			announcementIdempotencyKeyRef.current,
+			fingerprint,
+		);
 		if (!idempotencyKey) {
-			setError('Beitrag konnte nicht sicher gesendet werden. Versuche es erneut.');
+			setError(keyUnavailableMessage('Beitrag', 'gesendet'));
 			setSubmitting(false);
 			submittingRef.current = false;
 			return;
@@ -216,8 +205,9 @@ export function useAnnouncementComposer(
 				},
 			);
 			if (!res.ok) {
-				if (res.status > 0 && res.status < 500 && res.status !== 429)
+				if (shouldReleaseIdempotencyKey(res.status, res.error)) {
 					announcementIdempotencyKeyRef.current = null;
+				}
 				if (res.status === 0) {
 					const queued = createQueuedAnnouncement({
 						wgId: wg.id,

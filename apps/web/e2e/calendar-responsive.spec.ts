@@ -2,10 +2,16 @@
 // Why: Markers and previews must not overflow at 320px.
 
 import { type Page, expect, test } from '@playwright/test';
-import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './support/helpers';
+import {
+	FIXTURE_WG,
+	dismissOnboarding,
+	navigateToFeature,
+	setupMember,
+	skipUnlessFixtures,
+} from './support/helpers';
 
 test.describe('public calendar preview responsive', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	test('keeps the featured calendar preview readable at narrow widths and 200% text', async ({
 		page,
@@ -62,7 +68,7 @@ test.describe('public calendar preview responsive', () => {
 });
 
 test.describe('marker mobile overflow', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	async function setTextScale(page: Page) {
 		await page.evaluate(() => {

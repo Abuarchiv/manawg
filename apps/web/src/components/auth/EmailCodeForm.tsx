@@ -10,10 +10,17 @@ import { authPageHref } from '@/core/auth/auth-intent';
 import { AUTH_FAILURE_MESSAGES, classifyAuthError } from '@/core/auth/password-errors';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
-import { type AuthFormProps, type BusyAction, isValidEmail } from './auth-form-shared';
+import {
+	type AuthFormProps,
+	type BusyAction,
+	isValidEmail,
+	normalizeEmail,
+	useResendCooldown,
+} from './auth-form-shared';
 
 /** Length of the one-time code in the sign-in mail (Supabase project setting). */
 const EMAIL_CODE_LENGTH = 8;
+/** Seconds before the sign-in code can be requested again. */
 const RESEND_COOLDOWN_SECONDS = 30;
 
 type CodeError =
@@ -37,14 +44,8 @@ export function useEmailCode({
 	const [error, setError] = useState<CodeError>(null);
 	// The address the code went to; set means the code step is shown.
 	const [sentTo, setSentTo] = useState<string | null>(null);
-	const [cooldown, setCooldown] = useState(0);
+	const [cooldown, setCooldown] = useResendCooldown();
 	const [resendNotice, setResendNotice] = useState(false);
-
-	useEffect(() => {
-		if (cooldown <= 0) return;
-		const timer = setTimeout(() => setCooldown((value) => value - 1), 1000);
-		return () => clearTimeout(timer);
-	}, [cooldown]);
 
 	function failureOf(caught: unknown, fallback: 'generic' | 'wrong-code'): CodeError {
 		const failure = classifyAuthError(caught);
@@ -71,7 +72,7 @@ export function useEmailCode({
 	async function requestCode(): Promise<void> {
 		if (busy) return;
 		setError(null);
-		const address = email.trim().toLowerCase();
+		const address = normalizeEmail(email);
 		if (!isValidEmail(address)) {
 			setError('invalid-email');
 			return;

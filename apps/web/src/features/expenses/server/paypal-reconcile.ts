@@ -1,12 +1,11 @@
 import 'server-only';
-import { recordAuditEvent } from '@/core/audit';
 import { db, expensePayments, wgMembers } from '@/core/db';
 import { logApiError } from '@/core/infra/observability';
-import { getPayPalOrder } from '@/core/infra/paypal';
-import { formatEuroCents } from '@/core/utils/money';
+import { PayPalApiError, getPayPalOrder } from '@/core/infra/paypal';
 import { and, asc, eq, lt } from 'drizzle-orm';
 import { parsePayPalAmountCents, terminalPayPalCaptureOutcome } from '../paypal-settlement';
 import { STALE_CAPTURE_MS, withExpensePaymentLock } from './expense-payments';
+import { recordPayPalSettlementAudit } from './settle-notify';
 
 /** Grace after the order expired before an unapproved `capturing` row is given up. */
 const ABANDONED_BUFFER_MS = 60 * 60 * 1000;
@@ -57,7 +56,7 @@ export async function reconcileStaleCapturingPayments(
 			order = await getPayPalOrder(payment.providerOrderId, payment.payeeMerchantId);
 		} catch (err) {
 			logApiError('[paypal reconcile] order lookup failed', err);
-			if (abandoned && err instanceof Error && err.message.startsWith('paypal_api_404')) {
+			if (abandoned && err instanceof PayPalApiError && err.status === 404) {
 				if (await finish('failed')) result.failed += 1;
 			} else {
 				result.pending += 1;
@@ -120,20 +119,11 @@ export async function reconcileStaleCapturingPayments(
 				.from(wgMembers)
 				.where(eq(wgMembers.id, payment.fromMemberId))
 				.limit(1);
-			await recordAuditEvent({
-				wgId: payment.wgId,
-				memberId: payment.fromMemberId,
-				eventType: 'expense.debt.paid.paypal',
-				entityType: 'expense_payment',
-				entityId: payment.id,
-				summary: `${payer?.name ?? 'Jemand'} hat ${formatEuroCents(payment.amountCents, payment.currency)} per PayPal beglichen.`,
-				metadata: {
-					fromMemberId: payment.fromMemberId,
-					toMemberId: payment.toMemberId,
-					amountCents: payment.amountCents,
-					providerOrderId: payment.providerOrderId,
-				},
-			});
+			await recordPayPalSettlementAudit(
+				payment.wgId,
+				{ memberId: payment.fromMemberId, name: payer?.name ?? 'Jemand' },
+				payment,
+			);
 		} catch (auditError) {
 			logApiError('[paypal reconcile] audit failed', auditError);
 		}

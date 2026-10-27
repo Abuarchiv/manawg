@@ -3,6 +3,7 @@
 
 import { type Page, expect, test } from '@playwright/test';
 import { createServerClient } from '@supabase/ssr';
+import { FIXTURE_WG, skipUnlessFixtures } from './support/helpers';
 
 type CreatedWgResponse = {
 	wg?: { id?: unknown; shareCode?: unknown };
@@ -104,10 +105,7 @@ test.describe('ManaWG launch smoke', () => {
 		process.env.PREVIEW_E2E === 'true' || process.env.REAL_PRODUCT_E2E === 'true';
 
 	test('an expired invitation says so and offers no join form', async ({ page }) => {
-		test.skip(
-			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
-			'the expired fixture invitation needs the fixture build',
-		);
+		skipUnlessFixtures();
 		await page.addInitScript(() => window.localStorage.clear());
 		await gotoWithRetry(page, '/einladung/expired-invite-token-1');
 		await expect(
@@ -120,12 +118,9 @@ test.describe('ManaWG launch smoke', () => {
 	test('an invitation revoked while the name is typed shows the expired message', async ({
 		page,
 	}) => {
-		test.skip(
-			process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true',
-			'mocked join responses need the fixture build',
-		);
+		skipUnlessFixtures();
 		await page.addInitScript(() => window.localStorage.clear());
-		await page.route('**/api/wg/MTE8PZAT/members', (route) =>
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/members`, (route) =>
 			route.fulfill({
 				status: 410,
 				contentType: 'application/json',

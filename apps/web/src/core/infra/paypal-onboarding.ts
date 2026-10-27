@@ -1,5 +1,6 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
-import { isPayPalConfigured, requestPayPalApi } from './paypal';
+import { isRecord } from '@/core/utils/is-record';
+import { PayPalApiError, isPayPalConfigured, requestPayPalApi } from './paypal';
 
 export type PayPalEnvironment = 'sandbox' | 'live';
 
@@ -305,7 +306,7 @@ export async function isPayPalMerchantReady(
 			{ method: 'GET' },
 		);
 	} catch (err) {
-		if (err instanceof Error && err.message === 'paypal_api_404') return false;
+		if (err instanceof PayPalApiError && err.status === 404) return false;
 		throw err;
 	}
 	return (
@@ -323,9 +324,8 @@ export async function getPayPalMerchantIdByTracking(trackingId: string): Promise
 		`/v1/customer/partners/${encodeURIComponent(config.partnerMerchantId)}/merchant-integrations?tracking_id=${encodeURIComponent(trackingId)}`,
 		{ method: 'GET' },
 	);
-	if (!integration || typeof integration !== 'object' || Array.isArray(integration)) return null;
-	const merchant = integration as { merchant_id?: unknown; tracking_id?: unknown };
-	return merchant.tracking_id === trackingId && isPayPalMerchantId(merchant.merchant_id)
-		? merchant.merchant_id
+	if (!isRecord(integration)) return null;
+	return integration.tracking_id === trackingId && isPayPalMerchantId(integration.merchant_id)
+		? integration.merchant_id
 		: null;
 }

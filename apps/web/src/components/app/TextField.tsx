@@ -4,6 +4,9 @@ import { FieldLabel, Field as FieldPrimitive } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/shared/lib/cn';
 
+/** The character counter appears once the value is this close to maxLength. */
+const COUNTER_THRESHOLD = 8;
+
 interface TextFieldProps {
 	id: string;
 	label: string;
@@ -33,7 +36,7 @@ export function TextField({
 	describedBy,
 	enterKeyHint,
 }: TextFieldProps) {
-	const nearLimit = value.length >= maxLength - 8;
+	const nearLimit = value.length >= maxLength - COUNTER_THRESHOLD;
 	const describedByProps = describedBy === undefined ? {} : { 'aria-describedby': describedBy };
 	return (
 		<FieldPrimitive data-invalid={invalid}>
@@ -41,7 +44,6 @@ export function TextField({
 				<FieldLabel htmlFor={id}>{label}</FieldLabel>
 				{nearLimit && (
 					<span
-						aria-live="polite"
 						className={cn(
 							'text-xs tabular-nums',
 							value.length >= maxLength ? 'text-destructive' : 'text-muted-foreground',

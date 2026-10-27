@@ -83,7 +83,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 	}, [ready, resolvedTheme]);
 
 	useEffect(() => {
-		if (theme !== 'system' || typeof window === 'undefined') return;
+		if (theme !== 'system') return;
 		const mq = window.matchMedia('(prefers-color-scheme: dark)');
 		const onChange = (): void => {
 			const r: ResolvedTheme = mq.matches ? 'dark' : 'light';
@@ -95,7 +95,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 	}, [theme]);
 
 	useEffect(() => {
-		if (typeof window === 'undefined') return;
 		const onStorage = (event: StorageEvent): void => {
 			if (event.key !== null && event.key !== THEME_STORAGE_KEY) return;
 			const next = parseStoredTheme(event.newValue);

@@ -87,12 +87,12 @@ export function NotificationSection({
 	}, [message, error, status]);
 
 	return (
-		<Section id="benachrichtigungen" title="Hinweise">
+		<Section id="benachrichtigungen" title="Benachrichtigungen">
 			<div className="grid min-w-0 gap-3 p-3">
 				{loadingStatus && (
 					<div className="grid gap-2" aria-live="polite">
 						<Skeleton className="h-11 w-full" />
-						<p className="text-muted-foreground text-xs">Hinweise werden geladen…</p>
+						<p className="text-muted-foreground text-xs">Benachrichtigungen werden geladen…</p>
 					</div>
 				)}
 				{!status && error && (
@@ -160,7 +160,7 @@ export function NotificationSection({
 									{index > 0 && <Separator />}
 									<Field
 										orientation="horizontal"
-										className="min-h-[44px] py-1 has-[>[data-slot=field-content]]:items-center"
+										className="min-h-11 py-1 has-[>[data-slot=field-content]]:items-center"
 									>
 										<FieldContent>
 											<FieldTitle>{pref.label}</FieldTitle>
@@ -178,7 +178,7 @@ export function NotificationSection({
 						</div>
 
 						<div className="border-border grid min-w-0 max-w-full grid-cols-1 gap-1 border-t pt-2">
-							<div className="flex min-h-[44px] flex-wrap items-center justify-between gap-2">
+							<div className="flex min-h-11 flex-wrap items-center justify-between gap-2">
 								<div className="text-foreground min-w-0 text-sm font-medium">Ruhezeit</div>
 								{quietHoursSet && (
 									<Button

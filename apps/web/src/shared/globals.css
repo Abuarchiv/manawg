@@ -152,6 +152,7 @@ body:has(.group\/wg-shell) [data-slot="field-group"] {
 	--color-accent-foreground: var(--accent-foreground);
 	--color-settled: var(--settled);
 	--color-destructive: var(--destructive);
+	--color-destructive-text: var(--destructive-text);
 	--color-border: var(--border);
 	--color-input: var(--input);
 	--color-ring: var(--ring);
@@ -437,11 +438,10 @@ video {
 /* Preflight supplies inherited form fonts in @layer base, so font-mono
    utilities on amount inputs can override them. */
 
-/* 6. Fluid phone scale — the column is designed at 412px. Narrower phones
-      shrink their text proportionally instead of looking zoomed in.
-      Percent bounds keep the user's browser text size as base. */
+/* 6. Root scale — the column is designed at 412px. A fixed 90 % root size
+      (14.4 px at the default browser size) keeps text proportional to that
+      column and still follows the user's browser text size. */
 html {
-	/* 90 % (14.4 px) is the readability limit that pilot-mobile-layout checks. */
 	font-size: 90%;
 }
 body {
@@ -514,17 +514,10 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 		--border: oklch(0.922 0 0);
 
 		--text-1: var(--foreground);
-		--text-2: oklch(0.439 0 0);
-		--text-3: oklch(0.52 0 0);
-		--text-label: var(--foreground);
 
 		--accent: oklch(0.97 0 0);
 		--accent-bright: var(--foreground);
 
-		--success: var(--settled);
-		--warning: var(--muted-foreground);
-		--danger: var(--destructive);
-		--info: var(--muted-foreground);
 		/* State surfaces stay neutral; only settled and destructive carry meaning. */
 		--success-fg: var(--foreground);
 		--success-bg: color-mix(in oklab, var(--settled) 12%, var(--background));
@@ -537,8 +530,6 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 		--chart-3: oklch(0.556 0 0);
 		--chart-4: oklch(0.708 0 0);
 		--chart-5: oklch(0.87 0 0);
-		--ink: var(--foreground);
-		--bg: var(--background);
 		--background: oklch(1 0 0);
 		--foreground: oklch(0.145 0 0);
 		--card: oklch(1 0 0);
@@ -554,6 +545,8 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 		--muted-foreground: oklch(0.52 0 0);
 		--accent-foreground: oklch(0.205 0 0);
 		--destructive: oklch(0.577 0.245 27.325);
+		/* Text on the destructive tint: 5.9:1 on destructive/10 over white. */
+		--destructive-text: oklch(0.505 0.213 27.518);
 		/* Darkened from the stock oklch(0.922 0 0)/oklch(0.708 0 0): the shadcn defaults measured
 		   1.26:1 (input/switch-track border) and 2.59:1 (focus ring) against white, both below the
 		   WCAG 1.4.11 non-text-contrast minimum of 3:1. --ring keeps the 0.556 lightness (independent of
@@ -580,17 +573,10 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 		--border: oklch(1 0 0 / 10%);
 
 		--text-1: var(--foreground);
-		--text-2: var(--muted-foreground);
-		--text-3: var(--muted-foreground);
-		--text-label: var(--foreground);
 
 		--accent: oklch(0.269 0 0);
 		--accent-bright: var(--foreground);
 
-		--success: var(--settled);
-		--warning: var(--muted-foreground);
-		--danger: var(--destructive);
-		--info: var(--muted-foreground);
 		--success-fg: var(--foreground);
 		--success-bg: color-mix(in oklab, var(--settled) 12%, var(--background));
 		--success-border: color-mix(in oklab, var(--settled) 35%, var(--border));
@@ -603,9 +589,6 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 		--chart-4: oklch(0.556 0 0);
 		--chart-5: oklch(0.372 0 0);
 
-		/* Dark-mode compatibility aliases. */
-		--bg: var(--background);
-		--ink: var(--foreground);
 		--settled: oklch(0.7 0.14 155);
 		--background: oklch(0.145 0 0);
 		--foreground: oklch(0.985 0 0);
@@ -621,6 +604,8 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 		--muted-foreground: oklch(0.708 0 0);
 		--accent-foreground: oklch(0.985 0 0);
 		--destructive: oklch(0.704 0.191 22.216);
+		/* Text on the destructive tint: 4.8:1 on destructive/20 over the page background. */
+		--destructive-text: oklch(0.808 0.114 19.571);
 		/* Previously white at 15 % opacity (1.5:1 against the background). 0.55 gives about 4.1:1 on the page,
 		   3.7:1 on cards and 3.1:1 on muted surfaces (WCAG 1.4.11). Surfaces using --input use
 		   foreground/…-alpha so the fill does not lighten along with it. */
@@ -745,58 +730,14 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 	}
 }
 
-/* ─── NATIVE-APP POLISH ──────────────────────────────────────────────────
-   Skeleton loader.
-   ────────────────────────────────────────────────────────────────────── */
-
-/* Skeleton shimmer used by data-loading placeholders */
-.skeleton {
-	background: linear-gradient(
-		90deg,
-		var(--surface) 0%,
-		var(--bg-elevated, var(--surface)) 50%,
-		var(--surface) 100%
-	);
-	background-size: 200% 100%;
-	animation: skeleton-shimmer 1.4s ease-in-out infinite;
-	border-radius: 0.5rem;
-}
-@keyframes skeleton-shimmer {
-	0% {
-		background-position: 200% 0;
-	}
-	100% {
-		background-position: -200% 0;
-	}
-}
-@media (prefers-reduced-motion: reduce) {
-	.skeleton {
-		animation: none;
-		opacity: 0.7;
-	}
-}
-
-/* Hide native scrollbars on mobile chrome (visible but thin on desktop) */
-@media (max-width: 639px) {
-	.scroll-hide-mobile::-webkit-scrollbar {
-		display: none;
-	}
-	.scroll-hide-mobile {
-		scrollbar-width: none;
-		-ms-overflow-style: none;
-	}
-}
-
 @media (prefers-reduced-motion: no-preference) {
 	a[data-slot="item"],
-	a:has(> [data-slot="card"]),
-	[data-tap-feedback] {
+	a:has(> [data-slot="card"]) {
 		transition: color 80ms ease-out, background-color 80ms ease-out, border-color 80ms ease-out,
 			transform 80ms ease-out;
 	}
 	a[data-slot="item"]:active,
-	a:has(> [data-slot="card"]):active,
-	[data-tap-feedback]:active {
+	a:has(> [data-slot="card"]):active {
 		transform: scale(0.97);
 	}
 }

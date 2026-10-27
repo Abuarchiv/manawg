@@ -8,9 +8,16 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item';
+import {
+	ItemContent,
+	ItemDescription,
+	ItemEntry,
+	ItemGroup,
+	ItemTitle,
+} from '@/components/ui/item';
 import type { ChoreFairness } from '@/features/chores/chore-fairness';
 import type { MemberRef } from '@/shared/lib/member-types';
+import { pluralize } from '@/shared/lib/plural';
 import { ChevronDown } from 'lucide-react';
 
 const FAIRNESS_RULES = [
@@ -123,18 +130,18 @@ export function FairnessPanel({
 							</ul>
 							<ItemGroup className="gap-0 divide-y">
 								{fairness.rows.map((row) => (
-									<Item key={row.id} render={<li />} className="px-0">
+									<ItemEntry key={row.id} className="px-0">
 										<ItemContent className="min-w-0">
 											<ItemTitle className="line-clamp-none break-words">
 												{row.id === currentMemberId ? 'Du' : row.name}
 											</ItemTitle>
 											<ItemDescription className="line-clamp-none">
-												{row.assignedCount} Aufgabe{row.assignedCount === 1 ? '' : 'n'}
+												{pluralize(row.assignedCount, 'Aufgabe', 'Aufgaben')}
 												{row.openGapCount > 0 && ` · ${row.openGapCount} offen`}
 											</ItemDescription>
 										</ItemContent>
 										{!row.available && <Badge variant="secondary">Abwesend</Badge>}
-									</Item>
+									</ItemEntry>
 								))}
 							</ItemGroup>
 						</div>

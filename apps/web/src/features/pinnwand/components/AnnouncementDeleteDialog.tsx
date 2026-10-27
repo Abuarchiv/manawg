@@ -79,7 +79,7 @@ export function AnnouncementDeleteDialog({
 						}}
 					>
 						{deletePending && <Spinner data-icon="inline-start" />}
-						{deletePending ? 'Wird entfernt…' : 'Entfernen'}
+						{deletePending ? 'Entfernt…' : 'Entfernen'}
 					</AlertDialogAction>
 				</AlertDialogFooter>
 			</AlertDialogContent>

@@ -16,6 +16,12 @@ export function todayInputValue(now = new Date()): string {
 	return `${year}-${month}-${day}`;
 }
 
+/** A timestamp as the `<input type="date">` value of its local calendar day. */
+export function isoToInputDate(iso: string): string {
+	const date = new Date(iso);
+	return Number.isNaN(date.getTime()) ? todayInputValue() : todayInputValue(date);
+}
+
 /** An untouched date input (null) is the current day, also in a tab left open past midnight. */
 export function inputDateOrToday(picked: string | null, now = new Date()): string {
 	return picked ?? todayInputValue(now);

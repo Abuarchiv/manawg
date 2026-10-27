@@ -1,15 +1,18 @@
 'use client';
 
 import type { CachedFetchError, CachedFetchResult } from '@/core/hooks/cached-fetch-store';
-import { useCachedFetch } from '@/core/hooks/useCachedFetch';
+import { useCachedFetch } from '@/core/hooks/use-cached-fetch';
 import { captureException } from '@/core/infra/capture-client';
 import { syncOfflineActions } from '@/core/offline/offline-client';
-import { useOfflineQueueSync } from '@/core/offline/useOfflineQueueSync';
-import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
+import { useOfflineQueueSync } from '@/core/offline/use-offline-queue-sync';
+import {
+	LIST_REFRESH_INTERVAL_MS,
+	useVisibilityPausedInterval,
+} from '@/core/utils/use-visibility-paused-interval';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type HideLoadError, applyPendingOverlay, loadErrorMessage } from './collection-overlay';
 
-const DEFAULT_POLL_INTERVAL_MS = 30_000;
+const DEFAULT_POLL_INTERVAL_MS = LIST_REFRESH_INTERVAL_MS;
 
 /** Why the hook asks the feature to reload: first mount, a visible-tab poll, or a queue flush. */
 export type SyncedReloadReason = 'mount' | 'poll' | 'synced';

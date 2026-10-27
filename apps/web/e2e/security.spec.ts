@@ -2,11 +2,11 @@
 // Pure logic (CSRF origin, guards, rate limits, body reads, idempotency) lives in tests/security-*.test.ts.
 
 import { expect, test } from '@playwright/test';
-import { FIXTURE_WG, setupMember } from './support/helpers';
+import { FIXTURE_WG, setupMember, skipUnlessFixtures } from './support/helpers';
 
 test.describe('security headers', () => {
 	test('local fixture HTTP response keeps the rest of the strict CSP', async ({ page }) => {
-		test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+		skipUnlessFixtures();
 		await setupMember(page);
 
 		const response = await page.goto(`/wg/${FIXTURE_WG.shareCode}/putzen`, {
@@ -34,7 +34,9 @@ test.describe('require wg member regression', () => {
 			'chores',
 			'absences',
 		]) {
-			const response = await request.get(`/api/wg/MTE8PZAT/${path}`, { timeout: 120_000 });
+			const response = await request.get(`/api/wg/${FIXTURE_WG.shareCode}/${path}`, {
+				timeout: 120_000,
+			});
 
 			expect(response.status(), path).toBe(401);
 			expect(await response.json(), path).toEqual({

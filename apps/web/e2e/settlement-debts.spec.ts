@@ -14,6 +14,7 @@ import {
 	mockUnreadCount,
 	navigateToFeature,
 	setupMember,
+	skipUnlessFixtures,
 	tuple,
 } from './support/helpers';
 
@@ -70,7 +71,7 @@ test.describe('debt overview', () => {
 });
 
 test.describe('debt summary reminder link', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	test('keeps finance actions and expense summary keyboard-operable at phone sizes', async ({
 		page,
@@ -313,7 +314,7 @@ test.describe('debt summary reminder link', () => {
 });
 
 test.describe('debt settle error notice', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 	test.use({ hasTouch: true, isMobile: true });
 
 	const MINA_ID = '0ab8c8f2-5d03-4a84-aadc-4c5d7e8abf55';

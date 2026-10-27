@@ -14,11 +14,7 @@ import {
 	eventRecurrenceSchema,
 	eventTitleSchema,
 } from '@/features/events/event-schemas';
-import {
-	formatRecurrenceRule,
-	parseRecurrenceRule,
-	serializeWgEvent,
-} from '@/features/events/events';
+import { canonicalRecurrenceRule, serializeWgEvent } from '@/features/events/events';
 import {
 	eventRelevantUntil,
 	notifyEventChange,
@@ -39,13 +35,6 @@ const patchSchema = z.object({
 	// (an edit, or one date taken out of it).
 	expectedUpdatedAt: z.string().datetime({ offset: true }).optional(),
 });
-
-function normalizeRecurrence(value: string | null): string | null | 'invalid' {
-	if (value === null || value.length === 0) return null;
-	const parsed = parseRecurrenceRule(value);
-	if (!parsed) return 'invalid';
-	return formatRecurrenceRule(parsed);
-}
 
 export const GET = withWgRoute<{ id: string }>('events GET id', async (req, { code, id }) => {
 	if (!UUID_PATTERN.test(id)) return badRequest('id_invalid');
@@ -85,8 +74,10 @@ export const PATCH = withWgRoute<{ id: string }>('events PATCH', async (req, { c
 	if (!parsed.ok) return parsed.response;
 
 	const recurrence =
-		parsed.data.recurrence === undefined ? undefined : normalizeRecurrence(parsed.data.recurrence);
-	if (recurrence === 'invalid') return badRequest('recurrence_invalid');
+		parsed.data.recurrence === undefined
+			? undefined
+			: canonicalRecurrenceRule(parsed.data.recurrence);
+	if (recurrence && !recurrence.ok) return badRequest('recurrence_invalid');
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
 	const wgId = auth.wg.id;
@@ -121,7 +112,7 @@ export const PATCH = withWgRoute<{ id: string }>('events PATCH', async (req, { c
 		update.endsAt = parsed.data.endsAt ? new Date(parsed.data.endsAt) : null;
 	if (parsed.data.allDay !== undefined) update.allDay = parsed.data.allDay;
 	if (parsed.data.location !== undefined) update.location = parsed.data.location;
-	if (recurrence !== undefined) update.recurrence = recurrence;
+	if (recurrence?.ok) update.recurrence = recurrence.rule;
 
 	const effectiveStartsAt = update.startsAt ?? current.startsAt;
 	const effectiveEndsAt = update.endsAt === undefined ? current.endsAt : update.endsAt;

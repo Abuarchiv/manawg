@@ -30,6 +30,14 @@ function formatRemainingActions(count: number): string {
 	return `${count} Aktionen warten weiter.`;
 }
 
+/** Shown when no idempotency key can be made, so the write is not sent unprotected. */
+export function keyUnavailableMessage(
+	subject: string,
+	verb: 'gespeichert' | 'gesendet' | 'erstellt' | 'widerrufen',
+): string {
+	return `${subject} konnte nicht sicher ${verb} werden. Versuche es erneut.`;
+}
+
 /** Shown after a successful offline enqueue (du-form, the app addresses one person). */
 export const OFFLINE_SAVED_NOTICE =
 	'Offline gespeichert. Wird synchronisiert, sobald du wieder online bist.';

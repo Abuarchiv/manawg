@@ -1,45 +1,31 @@
 'use client';
 
-import { isValidEmail } from '@/components/auth/auth-form-shared';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { isValidEmail, normalizeEmail } from '@/components/auth/auth-form-shared';
 import { Button } from '@/components/ui/button';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
+import { RowNotice, type RowNoticeState } from '@/components/wg/einstellungen/RowNotice';
 import { AUTH_FAILURE_MESSAGES, classifyAuthError } from '@/core/auth/password-errors';
 import { Mail } from 'lucide-react';
-import { useEffect, useState } from 'react';
-
-type Notice = { kind: 'sent' | 'error'; text: string } | null;
+import { useState } from 'react';
 
 /** E-mail change for password accounts: the new address only takes over once its link is opened. */
-export function EmailChangeRow({ returnPath }: { returnPath: string }) {
-	const [current, setCurrent] = useState<string | null>(null);
+export function EmailChangeRow({
+	current,
+	returnPath,
+}: { current: string | null; returnPath: string }) {
 	const [open, setOpen] = useState(false);
 	const [email, setEmail] = useState('');
 	const [busy, setBusy] = useState(false);
-	const [notice, setNotice] = useState<Notice>(null);
-
-	useEffect(() => {
-		let active = true;
-		import('@/core/auth/client')
-			.then(({ getEmailAccount }) => getEmailAccount())
-			.then((account) => {
-				if (active && account?.hasPassword) setCurrent(account.email);
-			})
-			// Without an answer the row stays hidden; the rest of the settings keep working.
-			.catch(() => {});
-		return () => {
-			active = false;
-		};
-	}, []);
+	const [notice, setNotice] = useState<RowNoticeState>(null);
 
 	if (!current) return null;
 
 	async function submit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
 		event.preventDefault();
 		if (busy) return;
-		const next = email.trim().toLowerCase();
+		const next = normalizeEmail(email);
 		if (!isValidEmail(next)) {
 			setNotice({ kind: 'error', text: 'Bitte gib eine gültige E-Mail-Adresse ein.' });
 			return;
@@ -111,11 +97,7 @@ export function EmailChangeRow({ returnPath }: { returnPath: string }) {
 					E-Mail-Adresse ändern
 				</Button>
 			)}
-			{notice && (
-				<Alert variant={notice.kind === 'error' ? 'destructive' : 'default'}>
-					<AlertDescription>{notice.text}</AlertDescription>
-				</Alert>
-			)}
+			<RowNotice notice={notice} />
 		</div>
 	);
 }

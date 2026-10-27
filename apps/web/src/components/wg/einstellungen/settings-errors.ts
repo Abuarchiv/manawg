@@ -5,17 +5,6 @@ import {
 	classifyApiError,
 } from '@/core/http/error-codes';
 
-export async function readResponseErrorCode(response: Response): Promise<string | null> {
-	try {
-		const body = (await response.clone().json()) as { code?: unknown; error?: unknown };
-		if (typeof body.code === 'string') return body.code;
-		if (typeof body.error === 'string') return body.error;
-	} catch {
-		return null;
-	}
-	return null;
-}
-
 export const PAYPAL_PAYMENT_PENDING_MESSAGE =
 	'Eine Zahlung läuft noch. Versuche es in ein paar Minuten erneut.';
 

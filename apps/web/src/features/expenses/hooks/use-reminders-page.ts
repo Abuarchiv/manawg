@@ -1,14 +1,15 @@
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
-import { useCachedFetch } from '@/core/hooks/useCachedFetch';
-import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
-import type { ReminderHistoryItem } from '@/features/expenses/components/debts/ReminderHistory';
+import { useCachedFetch } from '@/core/hooks/use-cached-fetch';
+import { useSyncedCollection } from '@/core/sync/use-synced-collection';
+import { LIST_REFRESH_INTERVAL_MS } from '@/core/utils/use-visibility-paused-interval';
 import {
 	type DebtExpenseInput,
 	computeBalances,
 	computeOldestDebtAges,
 } from '@/features/expenses/debts';
 import type { ExpensePaymentInput } from '@/features/expenses/expense-payment-input';
+import type { ReminderHistoryItem } from '@/features/expenses/expense-types';
 import { canSendReminder } from '@/features/expenses/reminders';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -26,6 +27,9 @@ interface ExpenseDto {
 	occurredAt: string;
 	splits: ExpenseSplitDto[];
 }
+
+const NO_EXPENSES: ExpenseDto[] = [];
+const NO_PAYMENTS: ExpensePaymentInput[] = [];
 
 /** An open debt between two members, with the age of its oldest unsettled share. */
 export interface ReminderRow {
@@ -57,146 +61,79 @@ export function useRemindersPage() {
 		`/api/wg/${encodedShareCode}/expenses`,
 		{ memberId: identity.memberId },
 	);
-	const {
-		data: cachedReminders,
-		error: remindersReadError,
-		refresh: refreshReminders,
-		setData: setCachedReminders,
-	} = useCachedFetch<{ reminders: ReminderHistoryItem[] }>(
-		`/api/wg/${encodedShareCode}/reminders`,
-		{ memberId: identity.memberId },
-	);
+	// The expenses are one document the balances derive from; the history list below is the
+	// synced collection whose poll and mount load also refresh it.
+	const loadAllRef = useRef<(silent: boolean) => Promise<void>>(async () => undefined);
+	const history = useSyncedCollection<{ reminders: ReminderHistoryItem[] }, ReminderHistoryItem>({
+		url: `/api/wg/${encodedShareCode}/reminders`,
+		memberId: identity.memberId,
+		select: (data) => data.reminders,
+		assemble: (items, current) => ({ ...current, reminders: items }),
+		getId: (reminder) => reminder.id,
+		describeError: (error) =>
+			getWgLoadErrorMessage('Erinnerungen', error.status, error.error, { verb: 'konnten' }),
+		pollIntervalMs: LIST_REFRESH_INTERVAL_MS,
+		reload: (reason) => void loadAllRef.current(reason !== 'mount'),
+	});
+	const { items: reminders, commit: updateReminders } = history;
+	const expenses = cachedExpenses?.expenses ?? NO_EXPENSES;
+	const payments = cachedExpenses?.payments ?? NO_PAYMENTS;
 
-	const [expenses, setExpenses] = useState<ExpenseDto[]>(() => cachedExpenses?.expenses ?? []);
-	const [payments, setPayments] = useState<ExpensePaymentInput[]>(
-		() => cachedExpenses?.payments ?? [],
-	);
-	const [reminders, setReminders] = useState<ReminderHistoryItem[]>(
-		() => cachedReminders?.reminders ?? [],
-	);
-	const [loading, setLoading] = useState(!cachedExpenses && !cachedReminders);
-	const [refreshing, setRefreshing] = useState(false);
-	const [loadErrors, setLoadErrors] = useState<{
-		expenses: string | null;
-		reminders: string | null;
-	}>({ expenses: null, reminders: null });
-	const [expensesLoadFailed, setExpensesLoadFailed] = useState(false);
-	const [remindersLoadFailed, setRemindersLoadFailed] = useState(false);
+	const [expensesSettled, setExpensesSettled] = useState(cachedExpenses !== undefined);
+	const [expensesRefreshing, setExpensesRefreshing] = useState(false);
+	const [expensesError, setExpensesError] = useState<string | null>(null);
+	const hasExpensesRef = useRef(cachedExpenses !== undefined);
+	// The skeleton shows only when the page opened without any cached list, until both reads settled.
+	const [openedWithoutCache] = useState(cachedExpenses === undefined && history.data === undefined);
+	const loading = openedWithoutCache && (!expensesSettled || history.initialLoading);
+	const refreshing = expensesRefreshing || history.refreshing;
+	const loadErrors = { expenses: expensesError, reminders: history.loadError };
+	const expensesLoadFailed = expensesError !== null;
+	const remindersLoadFailed = history.loadError !== null;
 	const [primaryReminderKey, setPrimaryReminderKey] = useState<string | null>(null);
 	// Server said 403 debtor_opted_out; the page has no data source for it, so remember it locally.
 	const [optedOutIds, setOptedOutIds] = useState<ReadonlySet<string>>(() => new Set());
 	const markOptedOut = useCallback((debtorId: string) => {
 		setOptedOutIds((current) => new Set(current).add(debtorId));
 	}, []);
-	const hasPageCacheRef = useRef(Boolean(cachedExpenses || cachedReminders));
 
-	function updateReminders(
-		update: (current: ReminderHistoryItem[]) => ReminderHistoryItem[],
-	): void {
-		setReminders(update);
-		setCachedReminders((current) => {
-			const previous = current?.reminders ?? reminders;
-			const next = update(previous);
-			if (!current && next === previous) return current;
-			return { ...(current ?? { reminders: previous }), reminders: next };
-		});
-	}
-
+	const loadHistory = history.load;
 	const load = useCallback(
 		async (initial: boolean): Promise<void> => {
-			if (initial && !hasPageCacheRef.current) setLoading(true);
-			else setRefreshing(true);
-
-			const [expensesRes, remindersRes] = await Promise.all([
+			if (initial && !hasExpensesRef.current) setExpensesSettled(false);
+			else setExpensesRefreshing(true);
+			const [expensesRes] = await Promise.all([
 				refreshExpenses(),
-				refreshReminders(),
+				loadHistory({ silent: !initial }),
 			]);
-
-			const nextErrors: { expenses: string | null; reminders: string | null } = {
-				expenses: null,
-				reminders: null,
-			};
-			if (expensesRes.ok) {
-				setExpenses(expensesRes.data.expenses);
-				setPayments(expensesRes.data.payments ?? []);
-				setExpensesLoadFailed(false);
-			} else {
-				setExpensesLoadFailed(true);
-				nextErrors.expenses = getWgLoadErrorMessage(
-					'Ausgaben',
-					expensesRes.status,
-					expensesRes.error,
-					{
-						verb: 'konnten',
-					},
-				);
-			}
-			if (remindersRes.ok) {
-				setReminders(remindersRes.data.reminders);
-				setRemindersLoadFailed(false);
-			} else {
-				setRemindersLoadFailed(true);
-				nextErrors.reminders = getWgLoadErrorMessage(
-					'Erinnerungen',
-					remindersRes.status,
-					remindersRes.error,
-					{
-						verb: 'konnten',
-					},
-				);
-			}
-			setLoadErrors(nextErrors);
-			setLoading(false);
-			setRefreshing(false);
+			setExpensesError(
+				expensesRes.ok
+					? null
+					: getWgLoadErrorMessage('Ausgaben', expensesRes.status, expensesRes.error, {
+							verb: 'konnten',
+						}),
+			);
+			setExpensesSettled(true);
+			setExpensesRefreshing(false);
 		},
-		[refreshExpenses, refreshReminders],
+		[loadHistory, refreshExpenses],
 	);
+	loadAllRef.current = (silent) => load(!silent);
+
 	useEffect(() => {
 		if (cachedExpenses) {
-			hasPageCacheRef.current = true;
-			setExpenses(cachedExpenses.expenses);
-			setPayments(cachedExpenses.payments ?? []);
-			setExpensesLoadFailed(false);
-			setLoadErrors((current) => ({ ...current, expenses: null }));
+			hasExpensesRef.current = true;
+			setExpensesError(null);
+			setExpensesSettled(true);
 		}
-		if (cachedReminders) {
-			hasPageCacheRef.current = true;
-			setReminders(cachedReminders.reminders);
-			setRemindersLoadFailed(false);
-			setLoadErrors((current) => ({ ...current, reminders: null }));
-		}
-		if (cachedExpenses || cachedReminders) setLoading(false);
 		if (expensesReadError) {
-			setExpensesLoadFailed(true);
-			setLoadErrors((current) => ({
-				...current,
-				expenses: getWgLoadErrorMessage(
-					'Ausgaben',
-					expensesReadError.status,
-					expensesReadError.error,
-					{ verb: 'konnten' },
-				),
-			}));
+			setExpensesError(
+				getWgLoadErrorMessage('Ausgaben', expensesReadError.status, expensesReadError.error, {
+					verb: 'konnten',
+				}),
+			);
 		}
-		if (remindersReadError) {
-			setRemindersLoadFailed(true);
-			setLoadErrors((current) => ({
-				...current,
-				reminders: getWgLoadErrorMessage(
-					'Erinnerungen',
-					remindersReadError.status,
-					remindersReadError.error,
-					{ verb: 'konnten' },
-				),
-			}));
-		}
-	}, [cachedExpenses, cachedReminders, expensesReadError, remindersReadError]);
-
-	useEffect(() => {
-		void load(true);
-	}, [load]);
-	// Auto refresh like the dashboard instead of a manual reload button.
-	useVisibilityPausedInterval(() => void load(false), 30_000);
+	}, [cachedExpenses, expensesReadError]);
 
 	const memberName = useCallback(
 		(id: string) => members.find((m) => m.id === id)?.name ?? '?',
@@ -266,8 +203,6 @@ export function useRemindersPage() {
 		!loading &&
 		rows.length === 0 &&
 		reminders.length === 0 &&
-		!loadErrors.expenses &&
-		!loadErrors.reminders &&
 		!expensesLoadFailed &&
 		!remindersLoadFailed;
 

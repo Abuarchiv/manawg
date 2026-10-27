@@ -11,7 +11,7 @@ Further reading: [architecture](docs/architecture.md), [release checklist](docs/
 
 ## Layout
 
-```
+```text
 apps/web/
   src/app/        routes only: pages, layouts, API handlers (thin, call core/features)
   src/core/       domain-neutral building blocks: db, auth, guards, http, offline, notifications, infra
@@ -20,6 +20,7 @@ apps/web/
                   a feature may import core/, shared/ and itself, never another feature
                   features/<x>/server/ holds database and server-only code (import 'server-only')
   src/components/ reusable UI: ui/ (shadcn), animate-ui/ (motion variants), app/ (shell, PWA, theme), wg/ (WG-wide)
+  src/fixtures/   in-memory fixture build for e2e (see Fixture mode); only src/app/ imports it
   src/shared/     framework-light utilities (lib/, fonts, css): theme, brand, analytics
   drizzle/        SQL migrations (`pnpm --filter @manawg/web db:generate` / `db:migrate`)
   e2e/            Playwright specs (fixture mode needs no database)
@@ -90,14 +91,18 @@ this and builds an isolated server on port `3101` (`E2E_PORT`).
 Only `src/app/` (including `src/middleware.ts`) imports `src/fixtures/`, through one seam per
 entry: `resolveFixtureRequest` in the middleware answers fixture API reads and `POST /api/wg`
 before any route runs, `loadFixtureWgView` feeds the WG layout and chat page,
-and `fixtureClientProps` hands `sessionless` to the `/neu` and `/offline` clients. The API client
-needs no fixture switch: it always sends `x-manawg-expected-member-id`, which the fixture API
-reads as the caller. Core, components and features receive plain options (`requireWgSignIn`,
-`sessionless`) and never see fixture mode.
+and the WG layout hands the first fixture member to the provider as the initial identity, without
+`authUserId`: the provider is not server-verified there and confirms the account through the member
+lookup like in the app. The fixture API answers as the account `FIXTURE_AUTH_USER_ID`
+(`src/fixtures/data.ts`): `GET /api/wg/[code]` reports it as `authUserId` and `GET /api/wg/mine`
+lists the fixture WGs. The API client needs no fixture switch: it always sends
+`x-manawg-expected-member-id`, which the fixture API reads as the caller. Core, components and features receive plain options (`requireWgSignIn`)
+and never see fixture mode. Specs that seed the offline queue or open `/offline` before visiting a
+WG store that account as `manawg_account` first (`seedLocalAccount` in `e2e/support/helpers.ts`).
 
 ## Commands
 
-```
+```sh
 pnpm install
 pnpm dev                          # http://localhost:3000
 pnpm lint                         # biome (whole repo)
@@ -113,13 +118,34 @@ More scripts in `apps/web/package.json`:
 | Command | What it runs |
 | --- | --- |
 | `pnpm test` (root) | The unit tests (`test:unit`); Playwright is `pnpm e2e` (dev server with your `.env.local`) |
-| `pnpm --filter @manawg/web test:unit` | `node --test` over `src/**/*.test.mjs` and `tests/*` |
+| `pnpm --filter @manawg/web test:unit` | `node --test` over `src/**/*.test.mjs`, `src/**/*.test.ts` and `tests/*.test.ts` |
 | `pnpm --filter @manawg/web test:e2e:fixtures` | Playwright against a production build in fixture mode |
 | `pnpm --filter @manawg/web test:e2e:webkit` | WebKit fixture config (`playwright.webkit-fixtures.config.ts`) |
 | `pnpm --filter @manawg/web test:e2e:account-delete-db` | Account deletion against a disposable loopback Postgres in `ACCOUNT_DELETE_TEST_URL` |
+| `pnpm --filter @manawg/web test:db` | Database-backed unit tests against the loopback Postgres in `TEST_DATABASE_URL` (exits 2 when it is unset) |
+| `pnpm --filter @manawg/web test:db-timeouts` | Runtime pool timeouts against a throwaway local Postgres (`RUN_DB_TIMEOUT_INTEGRATION=1` is set by the script) |
 | `pnpm --filter @manawg/web bundle:check` | Bundle budget (`scripts/check-bundle-budget.mjs`, needs a build) |
 | `pnpm --filter @manawg/web analytics:check` | PostHog privacy contract (`scripts/check-analytics-privacy.mjs`) |
 | `pnpm --filter @manawg/web analyze` | Build with the Next bundle analyzer |
+
+### Opt-in test gates
+
+These tests skip themselves unless their variable is set. `pnpm test:unit` and `test:e2e:fixtures` (the CI lanes) never set them, because each needs something CI does not provide: a database, a public network, or real credentials. The auth UI specs (`e2e/auth-ui.spec.ts`) are not gated: `test:e2e:fixtures` starts a second fixture server on `E2E_PORT` + 1000 whose Supabase browser client points at a fake project (the specs answer its requests through page routes), so they run in CI.
+
+| Variable | Enables | How to run | Why not in CI |
+| --- | --- | --- | --- |
+| `TEST_DATABASE_URL` | `tests/statement-run-ledger.test.ts`, `tests/db-connection.test.ts` (live transaction check), `src/core/db/private-image-deletions.test.ts` and the real-PostgreSQL case of `e2e/shopping-conflict.spec.ts` | `TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55432/manawg_test pnpm --filter @manawg/web test:db`; the shopping case runs inside `test:e2e:fixtures e2e/shopping-conflict.spec.ts` with the same variable. The URL must be a disposable loopback Postgres with all migrations applied | No Postgres service in the CI jobs; the tests write to the database |
+| `RUN_DB_TIMEOUT_INTEGRATION` | The pool timeout case in `tests/runtime-pool.test.ts` | `pnpm --filter @manawg/web test:db-timeouts` (needs `initdb` and `pg_ctl` on the PATH and a non-root user) | Needs local PostgreSQL binaries and takes up to a minute |
+| `ACCOUNT_DELETE_TEST_URL` | `e2e/account-delete-db.spec.ts` (account deletion against real data) | `ACCOUNT_DELETE_TEST_URL=postgresql://postgres@127.0.0.1:55432/manawg_test pnpm --filter @manawg/web test:e2e:account-delete-db` (loopback host and explicit port required) | Needs a disposable Postgres; the script refuses to run without it |
+| `OCR_RUNTIME_E2E` | The real Tesseract worker proof in `e2e/expense-ui-form.spec.ts` | `OCR_RUNTIME_E2E=true pnpm --filter @manawg/web test:e2e:fixtures e2e/expense-ui-form.spec.ts` | Downloads the WASM core and the German and English models from `cdn.jsdelivr.net` |
+| `PREVIEW_E2E` | `e2e/preview-protection.spec.ts` and the Preview branches of `e2e/smoke-launch.spec.ts` | Set by the `e2e-preview` job in `.github/workflows/ci.yml` against a trusted Vercel Preview URL (`BASE_URL`) with `VERCEL_AUTOMATION_BYPASS_SECRET` | Needs a deployed, protected Preview and the bypass secret |
+| `REAL_PRODUCT_E2E` | The real-account path of `e2e/smoke-launch.spec.ts` | Same job as `PREVIEW_E2E`, or locally against a hosted `BASE_URL` with the `E2E_SUPABASE_*` credentials | Needs a hosted deployment and a real test account |
+| `PUBLIC_ENTRY_E2E` | `e2e/public-entry-live.spec.ts` (hosted public entry) | `BASE_URL=<hosted origin> PUBLIC_ENTRY_E2E=true pnpm --filter @manawg/web exec playwright test public-entry-live.spec.ts` | Needs a deployed app on real Supabase |
+| `AUTH_LIVE_E2E` | `e2e/social-login-live.spec.ts` (OAuth callback errors) | `BASE_URL=<hosted origin> AUTH_LIVE_E2E=true pnpm --filter @manawg/web exec playwright test social-login-live.spec.ts` | Needs a deployed app on real Supabase |
+| `SUPABASE_AUTH_LIVE_E2E` | `e2e/supabase-auth-live.spec.ts` (live sign-in and session checks; needs `SUPABASE_AUTH_TEST_EMAIL`, `SUPABASE_AUTH_TEST_PASSWORD` and the member WG variables) | `BASE_URL=<hosted origin> SUPABASE_AUTH_LIVE_E2E=true pnpm --filter @manawg/web exec playwright test supabase-auth-live.spec.ts` | Needs a deployed app and real test credentials |
+| `SUPABASE_AUTH_PASSWORD_RESET_SMOKE` | The no-session password reset page check in `e2e/supabase-auth-live.spec.ts` (sends no e-mail) | `BASE_URL=<hosted origin> SUPABASE_AUTH_PASSWORD_RESET_SMOKE=true pnpm --filter @manawg/web exec playwright test supabase-auth-live.spec.ts` | Needs a deployed app on real Supabase |
+
+`PREVIEW_E2E`, `REAL_PRODUCT_E2E`, `PUBLIC_ENTRY_E2E`, `AUTH_LIVE_E2E`, `SUPABASE_AUTH_LIVE_E2E` and `SUPABASE_AUTH_PASSWORD_RESET_SMOKE` are set to `true` by the `e2e-preview` job of the CI workflow; `test:e2e:fixtures` sets `PREVIEW_E2E`, `REAL_PRODUCT_E2E`, `PUBLIC_ENTRY_E2E`, `AUTH_LIVE_E2E` and `SUPABASE_AUTH_LIVE_E2E` to `false`.
 
 ## Quality gates
 
@@ -130,8 +156,8 @@ CI (`.github/workflows/ci.yml`, job `validate`) runs, in this order:
 3. `pnpm lint`
 4. `pnpm knip` (unused files, exports and dependencies; config in `knip.json`)
 5. `pnpm --dir apps/web analytics:check`
-6. `node scripts/check-architecture.mjs`
-7. `node scripts/check-wg-auth-invariant.mjs`
+6. `pnpm --filter @manawg/web exec node scripts/check-architecture.mjs`
+7. `pnpm --filter @manawg/web exec node scripts/check-wg-auth-invariant.mjs`
 8. `pnpm typecheck` (app, plus `tsconfig.e2e.json` for `e2e/`, `tests/*.test.ts` and Playwright configs)
 9. `pnpm --filter @manawg/web test:unit`
 10. `pnpm build`

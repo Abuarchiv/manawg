@@ -26,6 +26,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { useWg } from '@/components/wg/WgContextProvider';
 import type { RefObject } from 'react';
+import { CHAT_BODY_MAX } from '../chat-pure';
 import { reactorNames } from '../chat-reactions';
 import type { ReactionSummary } from '../chat-types';
 
@@ -70,7 +71,7 @@ export function MessageEditForm({
 					}}
 					rows={3}
 					disabled={pending}
-					maxLength={4000}
+					maxLength={CHAT_BODY_MAX}
 					aria-label="Nachricht bearbeiten"
 					aria-invalid={Boolean(error)}
 					aria-describedby={error ? `message-edit-error-${messageId}` : undefined}
@@ -83,7 +84,7 @@ export function MessageEditForm({
 				</Button>
 				<Button disabled={pending || !draft.trim()} onClick={onSave}>
 					{pending && <Spinner data-icon="inline-start" />}
-					{pending ? 'Wird gespeichert…' : 'Speichern'}
+					{pending ? 'Speichert…' : 'Speichern'}
 				</Button>
 			</div>
 		</FieldGroup>
@@ -198,11 +199,10 @@ export function MessageDeleteDialog({
 						disabled={pending}
 						variant="destructive"
 						className="min-h-11"
-						aria-label="Nachricht endgültig löschen"
 						onClick={onConfirm}
 					>
 						{pending && <Spinner data-icon="inline-start" />}
-						{pending ? 'Wird gelöscht…' : 'Jetzt löschen'}
+						{pending ? 'Löscht…' : 'Jetzt löschen'}
 					</AlertDialogAction>
 				</AlertDialogFooter>
 			</AlertDialogContent>

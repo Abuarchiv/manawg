@@ -89,6 +89,7 @@ function sanitizeUrl(value: string): string {
 }
 
 export function sanitizeSentryBreadcrumb<T>(breadcrumb: T): T | null {
+	// Generic on purpose so the hook needs no Sentry types; only the fields read below are described.
 	const crumb = breadcrumb as unknown as SentryBreadcrumbShape | null;
 	if (!crumb || crumb.category === 'console' || crumb.category === 'ui') return null;
 
@@ -104,10 +105,12 @@ export function sanitizeSentryBreadcrumb<T>(breadcrumb: T): T | null {
 		level: crumb.level,
 		timestamp: crumb.timestamp,
 		...(Object.keys(data).length > 0 ? { data } : {}),
-	} as unknown as T;
+	} as unknown as T; // The rebuilt crumb keeps only whitelisted fields, which any Sentry breadcrumb type allows.
 }
 
+/** Strips personal data from `event` in place and returns the same object. */
 export function sanitizeSentryEvent<T>(event: T): T {
+	// Same reason as above: only the fields written below are described.
 	const safe = event as unknown as SentryEventShape;
 	safe.user = undefined;
 	safe.message = undefined;

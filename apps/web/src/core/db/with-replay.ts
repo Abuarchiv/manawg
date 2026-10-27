@@ -1,7 +1,14 @@
 import 'server-only';
-import { type ReplayCodec, withIdempotentWrite } from '@/core/db/idempotent-write';
+import {
+	type ReplayCodec,
+	isStoredResponse,
+	withIdempotentWrite,
+} from '@/core/db/idempotent-write';
 import { type DbTransaction, lockExpensePayments, withTransaction } from '@/core/db/transaction';
 import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
+
+/** Rate-limit (429) and outage (503) answers are never stored: a retry must run again. */
+const TRANSIENT_STATUSES: ReadonlySet<number> = new Set([429, 503]);
 
 export interface IdempotentReplayResponse {
 	status: number;
@@ -14,18 +21,6 @@ export interface IdempotentReplayMutation<T> {
 	effect: T | null;
 }
 
-function isCompletedResponse(value: unknown): value is IdempotentReplayResponse {
-	return (
-		value !== null &&
-		typeof value === 'object' &&
-		!Array.isArray(value) &&
-		Number.isInteger((value as IdempotentReplayResponse).status) &&
-		(value as IdempotentReplayResponse).status >= 200 &&
-		(value as IdempotentReplayResponse).status < 600 &&
-		'body' in value
-	);
-}
-
 function replayCodec(
 	legacyResponse?: (value: unknown) => IdempotentReplayResponse | null,
 ): ReplayCodec<unknown> {
@@ -35,7 +30,11 @@ function replayCodec(
 			const { status, body, entityId } = response as IdempotentReplayResponse;
 			return entityId === undefined ? { status, body } : { status, body, entityId };
 		},
-		decode: (stored) => (isCompletedResponse(stored) ? stored : (legacyResponse?.(stored) ?? null)),
+		decode: (stored) =>
+			// Keeps `entityId` from the stored row, which `readStoredResponse` would drop.
+			isStoredResponse(stored)
+				? (stored as IdempotentReplayResponse)
+				: (legacyResponse?.(stored) ?? null),
 	};
 }
 
@@ -59,7 +58,7 @@ export async function withIdempotentReplay<T>(
 			scope,
 			key,
 			codec: replayCodec(legacyResponse),
-			storeStatus: (status) => status !== 429 && status !== 503,
+			storeStatus: (status) => !TRANSIENT_STATUSES.has(status),
 			inTransaction: (work) =>
 				withTransaction(async (tx) => {
 					if (wgId) await lockExpensePayments(tx, wgId);

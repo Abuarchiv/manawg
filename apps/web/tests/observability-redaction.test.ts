@@ -6,6 +6,8 @@ import { mock, test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { format } from 'node:util';
 import { contentSecurityPolicy } from '../src/core/infra/security-headers.ts';
+import { applyEnv } from './support/env.ts';
+import { withEnv } from './support/env.ts';
 
 // The envelope test drives the browser SDK; @sentry/browser is only reachable through
 // @sentry/nextjs, which pins the version the app ships.
@@ -53,18 +55,13 @@ const sentryWrapper = await import('../src/core/infra/sentry.ts');
 const { captureException } = await import('../src/core/infra/observability.ts');
 
 test('Sentry CSP allows only the configured HTTPS DSN origin', () => {
-	const originalDsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
-	process.env.NEXT_PUBLIC_SENTRY_DSN = 'https://public-key@o123.ingest.de.sentry.io/1';
-	try {
+	withEnv({ NEXT_PUBLIC_SENTRY_DSN: 'https://public-key@o123.ingest.de.sentry.io/1' }, () => {
 		const connectSource =
 			contentSecurityPolicy('sentry-csp-test').match(/connect-src [^;]+/)?.[0] ?? '';
 		assert.ok(connectSource.split(/\s+/).includes('https://o123.ingest.de.sentry.io'));
 		assert.doesNotMatch(connectSource, /https:\/\/\*\.ingest\.de\.sentry\.io/);
 		assert.doesNotMatch(connectSource, /public-key|\/1(?:\s|$)/);
-	} finally {
-		if (originalDsn === undefined) Reflect.deleteProperty(process.env, 'NEXT_PUBLIC_SENTRY_DSN');
-		else process.env.NEXT_PUBLIC_SENTRY_DSN = originalDsn;
-	}
+	});
 });
 
 test('Sentry strips personal data and WG codes from error events', async () => {
@@ -156,24 +153,6 @@ test('Sentry strips personal data and WG codes from error events', async () => {
 	);
 });
 
-function setEnv(env: Record<string, string | undefined>): void {
-	for (const [key, value] of Object.entries(env)) {
-		if (value === undefined) Reflect.deleteProperty(process.env, key);
-		else process.env[key] = value;
-	}
-}
-
-/** Runs `body` with the given environment variables set (undefined removes one), then restores them. */
-async function withEnv<T>(env: Record<string, string | undefined>, body: () => Promise<T>) {
-	const previous = new Map(Object.keys(env).map((key) => [key, process.env[key]]));
-	setEnv(env);
-	try {
-		return await body();
-	} finally {
-		setEnv(Object.fromEntries(previous));
-	}
-}
-
 // The entrypoint loads its optional modules through a dynamic import; give it time to settle.
 const flushOptionalImport = () => new Promise((resolve) => setTimeout(resolve, 30));
 
@@ -183,15 +162,13 @@ let clientEntryRuns = 0;
  * The env stays in place until `settled()` resolves, because the optional import reads it later.
  */
 async function runInstrumentationClient(env: Record<string, string | undefined>) {
-	const scoped = { NODE_ENV: 'production', NEXT_PUBLIC_SENTRY_DSN: undefined, ...env };
-	const previous = new Map(Object.keys(scoped).map((key) => [key, process.env[key]]));
-	setEnv(scoped);
+	const restore = applyEnv({ NODE_ENV: 'production', NEXT_PUBLIC_SENTRY_DSN: undefined, ...env });
 	clientEntryRuns += 1;
 	await import(`../src/instrumentation-client.ts?run=${clientEntryRuns}`);
 	return {
 		settled: async () => {
 			await flushOptionalImport();
-			setEnv(Object.fromEntries(previous));
+			restore();
 		},
 	};
 }
@@ -213,165 +190,154 @@ test('instrumentation loads the Sentry chunk only when a DSN is configured', asy
 	assert.deepEqual(calls, ['initializeSentry']);
 });
 
-test('pinned Sentry SDK envelopes omit inferred IPs and automatic sessions', async () => {
-	const envKeys = [
-		'NEXT_PUBLIC_SENTRY_DSN',
-		'NEXT_PUBLIC_SENTRY_ENVIRONMENT',
-		'NEXT_PUBLIC_SENTRY_RELEASE',
-	];
-	const oldEnv = new Map(envKeys.map((key) => [key, process.env[key]]));
-	for (const [key, value] of [
-		['NEXT_PUBLIC_SENTRY_DSN', 'https://public@o123.ingest.sentry.io/1'],
-		['NEXT_PUBLIC_SENTRY_ENVIRONMENT', 'test'],
-		['NEXT_PUBLIC_SENTRY_RELEASE', 'observability-envelope-test'],
-	] as const) {
-		process.env[key] = value;
-	}
+const ENVELOPE_TEST_ENV = {
+	NEXT_PUBLIC_SENTRY_DSN: 'https://public@o123.ingest.sentry.io/1',
+	NEXT_PUBLIC_SENTRY_ENVIRONMENT: 'test',
+	NEXT_PUBLIC_SENTRY_RELEASE: 'observability-envelope-test',
+};
 
-	const browserGlobals = [
-		'window',
-		'document',
-		'location',
-		'history',
-		'navigator',
-		'fetch',
-		'addEventListener',
-		'removeEventListener',
-	];
-	const oldGlobals = new Map(
-		browserGlobals.map((key) => [key, Object.getOwnPropertyDescriptor(globalThis, key)]),
-	);
-	const setGlobal = (key: string, value: unknown) =>
-		Object.defineProperty(globalThis, key, {
-			configurable: true,
-			enumerable: true,
-			writable: true,
-			value,
+test('pinned Sentry SDK envelopes omit inferred IPs and automatic sessions', () =>
+	withEnv(ENVELOPE_TEST_ENV, async () => {
+		const browserGlobals = [
+			'window',
+			'document',
+			'location',
+			'history',
+			'navigator',
+			'fetch',
+			'addEventListener',
+			'removeEventListener',
+		];
+		const oldGlobals = new Map(
+			browserGlobals.map((key) => [key, Object.getOwnPropertyDescriptor(globalThis, key)]),
+		);
+		const setGlobal = (key: string, value: unknown) =>
+			Object.defineProperty(globalThis, key, {
+				configurable: true,
+				enumerable: true,
+				writable: true,
+				value,
+			});
+		const document = {
+			visibilityState: 'hidden',
+			hidden: true,
+			referrer: '',
+			getElementById: () => null,
+			querySelector: () => null,
+			addEventListener() {},
+			removeEventListener() {},
+		};
+		Object.assign(globalThis, {
+			addEventListener() {},
+			removeEventListener() {},
+			location: {
+				href: 'https://manawg.com/',
+				origin: 'https://manawg.com',
+				hostname: 'manawg.com',
+				pathname: '/',
+			},
+			history: { pushState() {}, replaceState() {} },
 		});
-	const document = {
-		visibilityState: 'hidden',
-		hidden: true,
-		referrer: '',
-		getElementById: () => null,
-		querySelector: () => null,
-		addEventListener() {},
-		removeEventListener() {},
-	};
-	Object.assign(globalThis, {
-		addEventListener() {},
-		removeEventListener() {},
-		location: {
-			href: 'https://manawg.com/',
-			origin: 'https://manawg.com',
-			hostname: 'manawg.com',
-			pathname: '/',
-		},
-		history: { pushState() {}, replaceState() {} },
-	});
-	setGlobal('window', globalThis);
-	setGlobal('document', document);
-	setGlobal('navigator', { userAgent: 'Sentry test browser', language: 'de-DE' });
-	let networkCalls = 0;
-	setGlobal('fetch', () => {
-		networkCalls += 1;
-		throw new Error('network disabled in test');
-	});
+		setGlobal('window', globalThis);
+		setGlobal('document', document);
+		setGlobal('navigator', { userAgent: 'Sentry test browser', language: 'de-DE' });
+		let networkCalls = 0;
+		setGlobal('fetch', () => {
+			networkCalls += 1;
+			throw new Error('network disabled in test');
+		});
 
-	envelopes.length = 0;
-	sdk.onInit = null;
-	try {
-		sentryWrapper.initializeSentry();
-		browserSentry.captureEvent({
-			user: { id: 'private-member-id', email: 'alice@example.com' },
-			message: 'private event message',
-			exception: { values: [{ type: 'PrivateError', value: 'private exception body' }] },
-			request: {
+		envelopes.length = 0;
+		sdk.onInit = null;
+		try {
+			sentryWrapper.initializeSentry();
+			browserSentry.captureEvent({
+				user: { id: 'private-member-id', email: 'alice@example.com' },
+				message: 'private event message',
+				exception: { values: [{ type: 'PrivateError', value: 'private exception body' }] },
+				request: {
+					method: 'GET',
+					url: 'https://manawg.com/api/calendar/private-calendar-id/private-bearer-token?download=private-query',
+					headers: { authorization: 'Bearer private-bearer-token', cookie: 'private-cookie' },
+					data: { email: 'alice@example.com' },
+				},
+				contexts: {
+					trace: { trace_id: 'trace-id', span_id: 'span-id', data: 'private span attributes' },
+					user: { id: 'private-member-id' },
+				},
+				breadcrumbs: [
+					{
+						category: 'fetch',
+						data: {
+							url: 'https://bucket.s3.eu-central-1.amazonaws.com/manawg/private-wg-id/expense/private-object.jpg?X-Amz-Signature=private-signature',
+						},
+						message: 'private upload',
+					},
+					{
+						category: 'fetch',
+						data: {
+							url: 'https://project.supabase.co/storage/v1/object/upload/sign/private-bucket/manawg/private-supabase-wg/expense/private-supabase-object.jpg?token=private-supabase-token',
+						},
+					},
+				],
+			} as never);
+			await browserSentry.flush(1000);
+
+			assert.ok(envelopes.length > 0);
+			const items = envelopes.flatMap(([, envelopeItems]) => envelopeItems);
+			assert.equal(
+				items.some(([header]) => header.type === 'session'),
+				false,
+			);
+			const event = items.find(([header]) => header.type === 'event')?.[1] as
+				| SentryEventBody
+				| undefined;
+			assert.ok(event);
+			assert.equal(event.sdk?.settings?.infer_ip, 'never');
+			assert.deepEqual(event.request, {
 				method: 'GET',
-				url: 'https://manawg.com/api/calendar/private-calendar-id/private-bearer-token?download=private-query',
-				headers: { authorization: 'Bearer private-bearer-token', cookie: 'private-cookie' },
-				data: { email: 'alice@example.com' },
-			},
-			contexts: {
-				trace: { trace_id: 'trace-id', span_id: 'span-id', data: 'private span attributes' },
-				user: { id: 'private-member-id' },
-			},
-			breadcrumbs: [
-				{
-					category: 'fetch',
-					data: {
-						url: 'https://bucket.s3.eu-central-1.amazonaws.com/manawg/private-wg-id/expense/private-object.jpg?X-Amz-Signature=private-signature',
-					},
-					message: 'private upload',
-				},
-				{
-					category: 'fetch',
-					data: {
-						url: 'https://project.supabase.co/storage/v1/object/upload/sign/private-bucket/manawg/private-supabase-wg/expense/private-supabase-object.jpg?token=private-supabase-token',
-					},
-				},
-			],
-		} as never);
-		await browserSentry.flush(1000);
-
-		assert.ok(envelopes.length > 0);
-		const items = envelopes.flatMap(([, envelopeItems]) => envelopeItems);
-		assert.equal(
-			items.some(([header]) => header.type === 'session'),
-			false,
-		);
-		const event = items.find(([header]) => header.type === 'event')?.[1] as
-			| SentryEventBody
-			| undefined;
-		assert.ok(event);
-		assert.equal(event.sdk?.settings?.infer_ip, 'never');
-		assert.deepEqual(event.request, {
-			method: 'GET',
-			url: 'https://manawg.com/api/calendar/[redacted]/[redacted]',
-		});
-		assert.deepEqual(event.contexts, { trace: { trace_id: 'trace-id', span_id: 'span-id' } });
-		assert.equal(event.exception?.values?.[0]?.value, '[redacted]');
-		assert.equal(
-			event.breadcrumbs?.[0]?.data?.url,
-			'https://bucket.s3.eu-central-1.amazonaws.com/manawg/[redacted]/expense/[redacted]',
-		);
-		assert.equal(
-			event.breadcrumbs?.[1]?.data?.url,
-			'https://project.supabase.co/storage/v1/object/upload/sign/[redacted]',
-		);
-		const serialized = JSON.stringify(envelopes);
-		for (const secret of [
-			'private-member-id',
-			'alice@example.com',
-			'private event message',
-			'private exception body',
-			'private-calendar-id',
-			'private-bearer-token',
-			'private-query',
-			'private-cookie',
-			'private-wg-id',
-			'private-object.jpg',
-			'private-signature',
-			'private-bucket',
-			'private-supabase-wg',
-			'private-supabase-object.jpg',
-			'private-supabase-token',
-			'private span attributes',
-		]) {
-			assert.equal(serialized.includes(secret), false, `envelope retained ${secret}`);
+				url: 'https://manawg.com/api/calendar/[redacted]/[redacted]',
+			});
+			assert.deepEqual(event.contexts, { trace: { trace_id: 'trace-id', span_id: 'span-id' } });
+			assert.equal(event.exception?.values?.[0]?.value, '[redacted]');
+			assert.equal(
+				event.breadcrumbs?.[0]?.data?.url,
+				'https://bucket.s3.eu-central-1.amazonaws.com/manawg/[redacted]/expense/[redacted]',
+			);
+			assert.equal(
+				event.breadcrumbs?.[1]?.data?.url,
+				'https://project.supabase.co/storage/v1/object/upload/sign/[redacted]',
+			);
+			const serialized = JSON.stringify(envelopes);
+			for (const secret of [
+				'private-member-id',
+				'alice@example.com',
+				'private event message',
+				'private exception body',
+				'private-calendar-id',
+				'private-bearer-token',
+				'private-query',
+				'private-cookie',
+				'private-wg-id',
+				'private-object.jpg',
+				'private-signature',
+				'private-bucket',
+				'private-supabase-wg',
+				'private-supabase-object.jpg',
+				'private-supabase-token',
+				'private span attributes',
+			]) {
+				assert.equal(serialized.includes(secret), false, `envelope retained ${secret}`);
+			}
+			assert.equal(networkCalls, 0);
+		} finally {
+			if (browserSentry.isInitialized()) await browserSentry.close(1000);
+			for (const [key, descriptor] of oldGlobals) {
+				if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+				else Reflect.deleteProperty(globalThis, key);
+			}
 		}
-		assert.equal(networkCalls, 0);
-	} finally {
-		if (browserSentry.isInitialized()) await browserSentry.close(1000);
-		for (const [key, descriptor] of oldGlobals) {
-			if (descriptor) Object.defineProperty(globalThis, key, descriptor);
-			else Reflect.deleteProperty(globalThis, key);
-		}
-		for (const [key, value] of oldEnv) {
-			if (value === undefined) Reflect.deleteProperty(process.env, key);
-			else process.env[key] = value;
-		}
-	}
-});
+	}));
 
 test('custom Error.name values are reduced to a trusted error type', () => {
 	const calls: unknown[][] = [];

@@ -11,8 +11,9 @@ import {
 	ItemGroup,
 	ItemTitle,
 } from '@/components/ui/item';
+import { createIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
-import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
+import { keyUnavailableMessage } from '@/core/offline/offline-copy';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatRelativeTime, formatTimeFull } from '@/core/utils/time';
 import type { ExpensePaymentInput } from '@/features/expenses/expense-payment-input';
@@ -58,7 +59,7 @@ export function CashPaymentList({
 	if (listed.length === 0) return null;
 	return (
 		<section aria-labelledby="cash-payments-heading" className="flex flex-col gap-1">
-			<h3 id="cash-payments-heading" className="text-[12px] font-medium text-muted-foreground">
+			<h3 id="cash-payments-heading" className="text-meta font-medium text-muted-foreground">
 				Barzahlungen
 			</h3>
 			<ItemGroup aria-label="Deine Barzahlungen">
@@ -100,9 +101,9 @@ function CashPaymentRow({
 
 	async function voidPayment(): Promise<void> {
 		if (voidingRef.current) return;
-		keyRef.current ??= createOfflineIdempotencyKey();
+		keyRef.current ??= createIdempotencyKey();
 		if (!keyRef.current) {
-			toast.error('Die Stornierung konnte nicht sicher gespeichert werden. Versuche es erneut.');
+			toast.error(keyUnavailableMessage('Die Stornierung', 'gespeichert'));
 			return;
 		}
 		voidingRef.current = true;
@@ -117,7 +118,7 @@ function CashPaymentRow({
 				},
 			);
 			if (!res.ok) {
-				if (res.status > 0 && res.status < 500) keyRef.current = null;
+				if (shouldReleaseIdempotencyKey(res.status, res.error)) keyRef.current = null;
 				toast.error(cashVoidErrorMessage(res.error));
 				return;
 			}
@@ -151,7 +152,7 @@ function CashPaymentRow({
 			</ItemContent>
 			<Badge
 				variant="outline"
-				className="ml-auto h-auto min-h-5 shrink-0 text-[0.75rem] font-mono tabular-nums"
+				className="ml-auto h-auto min-h-5 shrink-0 text-meta font-mono tabular-nums"
 			>
 				{amount}
 			</Badge>

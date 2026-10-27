@@ -28,34 +28,45 @@ export function notifySettlement(input: {
 	});
 }
 
+interface PayPalPaymentSummary {
+	id: string;
+	fromMemberId: string;
+	toMemberId: string;
+	amountCents: number;
+	currency: string;
+	providerOrderId: string | null;
+}
+
+/** Audit entry for a captured PayPal payment; throws when the write fails, callers log it. */
+export async function recordPayPalSettlementAudit(
+	wgId: string,
+	payer: { memberId: string; name: string },
+	payment: PayPalPaymentSummary,
+): Promise<void> {
+	await recordAuditEvent({
+		wgId,
+		memberId: payer.memberId,
+		eventType: 'expense.debt.paid.paypal',
+		entityType: 'expense_payment',
+		entityId: payment.id,
+		summary: `${payer.name} hat ${formatEuroCents(payment.amountCents, payment.currency)} per PayPal beglichen.`,
+		metadata: {
+			fromMemberId: payment.fromMemberId,
+			toMemberId: payment.toMemberId,
+			amountCents: payment.amountCents,
+			providerOrderId: payment.providerOrderId,
+		},
+	});
+}
+
 /** Audit entry plus notification for a captured PayPal payment; audit failures are logged, not thrown. */
 export async function announcePayPalSettlement(
 	wg: { id: string; name: string; shareCode: string },
 	actor: { memberId: string; name: string },
-	payment: {
-		id: string;
-		fromMemberId: string;
-		toMemberId: string;
-		amountCents: number;
-		currency: string;
-		providerOrderId: string | null;
-	},
+	payment: PayPalPaymentSummary,
 ): Promise<void> {
 	try {
-		await recordAuditEvent({
-			wgId: wg.id,
-			memberId: actor.memberId,
-			eventType: 'expense.debt.paid.paypal',
-			entityType: 'expense_payment',
-			entityId: payment.id,
-			summary: `${actor.name} hat ${formatEuroCents(payment.amountCents, payment.currency)} per PayPal beglichen.`,
-			metadata: {
-				fromMemberId: payment.fromMemberId,
-				toMemberId: payment.toMemberId,
-				amountCents: payment.amountCents,
-				providerOrderId: payment.providerOrderId,
-			},
-		});
+		await recordPayPalSettlementAudit(wg.id, actor, payment);
 	} catch (auditError) {
 		logApiError('[paypal capture] audit failed', auditError);
 	}

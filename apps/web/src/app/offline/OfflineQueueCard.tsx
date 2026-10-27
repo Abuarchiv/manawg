@@ -44,7 +44,7 @@ export function OfflineQueueCard({
 					</h2>
 					<p className="mt-1 text-sm text-muted-foreground">
 						{status === 'checking'
-							? 'Wird geladen…'
+							? 'Lädt…'
 							: status === 'unauthenticated'
 								? 'Nach der Anmeldung siehst du deine wartenden Aktionen.'
 								: formatQueuedActionCount(queue.length)}

@@ -70,11 +70,11 @@ export function useHomeChoreCompletion({
 		setPendingChoreId(null);
 		if (outcome.kind === 'queued') setQueuedOccurrences(queuedChoreCompletions(wg.shareCode));
 
-		const feedback = choreCompletionFeedback(
-			outcome,
-			chore,
-			(id) => members.find((member) => member.id === id)?.name,
-		);
+		const feedback = choreCompletionFeedback(outcome, chore, (id) => {
+			const name = members.find((member) => member.id === id)?.name;
+			// The start page names the member, even when it is the viewer.
+			return name === undefined ? undefined : { name, isSelf: false };
+		});
 		// The start page has no message slot outside the dialog: what outlives it is a toast.
 		if (feedback.tone === 'success') toast.success(feedback.message);
 		else if (feedback.tone === 'notice') toast.info(feedback.message);

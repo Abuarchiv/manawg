@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { Client } from 'pg';
 import { resolveConnectionString } from '../src/core/db/connection.ts';
+import { applyEnv } from './support/env.ts';
 
 // Runtime connection settings and the live Preview transaction check.
 
@@ -17,13 +18,7 @@ const KEYS = [
 
 /** Snapshots `keys` and returns a function that restores them. */
 function snapshotEnv(keys: readonly string[]): () => void {
-	const previous = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
-	return () => {
-		for (const key of keys) {
-			if (previous[key] === undefined) delete process.env[key];
-			else process.env[key] = previous[key];
-		}
-	};
+	return applyEnv(Object.fromEntries(keys.map((key) => [key, process.env[key]])));
 }
 
 for (const migrationUrl of [
@@ -121,19 +116,18 @@ test('remote runtime connections enforce certificate-verified TLS', () => {
 	}
 });
 
-// Live check against an isolated Preview database; skipped without explicit credentials.
+// Live check against a disposable loopback database (`pnpm test:db`); skipped without TEST_DATABASE_URL.
 test(
 	'Preview transactions use runtime credentials and roll back writes',
 	{
-		skip: process.env.PREVIEW_TRANSACTION_TEST_URL
-			? false
-			: 'Requires explicit isolated Preview database credentials.',
+		skip: process.env.TEST_DATABASE_URL ? false : 'Requires TEST_DATABASE_URL (see pnpm test:db).',
 	},
 	async () => {
-		const runtimeUrl = process.env.PREVIEW_TRANSACTION_TEST_URL ?? '';
-		const project = process.env.PREVIEW_TRANSACTION_PROJECT_REF ?? '';
-		assert.match(project, /^[a-z]{20}$/);
-		assert.equal(new URL(runtimeUrl).hostname, `db.${project}.supabase.co`);
+		const runtimeUrl = process.env.TEST_DATABASE_URL ?? '';
+		assert.ok(
+			['localhost', '127.0.0.1', '[::1]'].includes(new URL(runtimeUrl).hostname),
+			'TEST_DATABASE_URL must be a loopback database',
+		);
 		const restore = snapshotEnv([
 			'POSTGRES_URL',
 			'DATABASE_MIGRATION_URL',

@@ -1,5 +1,5 @@
 import { useToast } from '@/components/ui/Toast';
-import type { usePendingSet } from '@/core/hooks/usePendingSet';
+import type { usePendingSet } from '@/core/hooks/use-pending-set';
 import { apiFetch } from '@/core/infra/api-client';
 import { discardQueuedEntry, updateOfflineQueue } from '@/core/offline/offline-client';
 import { isQueuedCreateId } from '@/core/offline/offline-queue';

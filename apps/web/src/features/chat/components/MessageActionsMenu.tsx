@@ -18,11 +18,12 @@ import { haptic } from '@/shared/lib/haptics';
 import { Copy, ExternalLink, Pencil, Plus, Reply, Trash2 } from 'lucide-react';
 import { type ReactNode, type RefObject, useLayoutEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { DELETED_MESSAGE_TEXT } from '../chat-errors';
 import { reactorNames } from '../chat-reactions';
 import { extractLinks, splitMentions } from '../chat-text';
 import type { BubbleMessage, ReactionSummary } from '../chat-types';
 
-export const BUBBLE_TEXT = 'rounded-lg px-2.5 py-1.5 text-[14px] leading-snug';
+export const BUBBLE_TEXT = 'rounded-lg px-2.5 py-1.5 text-body leading-snug';
 /** The reaction bar on top of the menu, as in WhatsApp. More emojis sit behind "+". */
 const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏'] as const;
 
@@ -141,7 +142,7 @@ export function MessageActionsMenu({
 					{showSenderName && (
 						<span
 							aria-hidden
-							className="block text-[13px] font-medium [overflow-wrap:anywhere]"
+							className="block text-xs font-medium [overflow-wrap:anywhere]"
 							style={{ color: memberTint(senderName).color }}
 						>
 							{senderName}
@@ -151,7 +152,7 @@ export function MessageActionsMenu({
 						<span className="mb-1.5 block rounded-md border-s-2 border-current/40 bg-current/5 px-2 py-1">
 							{/* replyTo is null when the quoted message is older than the loaded pages. */}
 							<span className="block text-xs font-medium [overflow-wrap:anywhere]">
-								↪{' '}
+								<Reply aria-hidden className="me-1 inline size-3" />
 								{replyTo
 									? (replyToSender?.name ?? 'Unbekannt')
 									: 'Antwort auf eine ältere Nachricht'}
@@ -159,7 +160,7 @@ export function MessageActionsMenu({
 							{replyTo && (
 								<span className="line-clamp-2 whitespace-pre-wrap text-xs opacity-80 [overflow-wrap:anywhere]">
 									{replyTo.deletedAt
-										? 'Diese Nachricht wurde gelöscht.'
+										? DELETED_MESSAGE_TEXT
 										: (replyTo.body ?? (replyTo.imageUrl ? 'Bild' : '…'))}
 								</span>
 							)}

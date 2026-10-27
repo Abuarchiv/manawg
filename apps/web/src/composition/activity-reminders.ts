@@ -98,7 +98,7 @@ export function getActivityReminders(
 				kind: 'shopping',
 				title: `${item.name} liegt seit ${days} Tagen offen`,
 				href: `/einkauf?highlight=${encodeURIComponent(item.id)}`,
-				detail: 'Prüft kurz, ob ihr das noch braucht.',
+				detail: 'Prüfe kurz, ob du das noch brauchst.',
 			},
 		});
 	}

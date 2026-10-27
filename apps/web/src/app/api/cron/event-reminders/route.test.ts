@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { mock, test } from 'node:test';
+import { withEnv } from '../../../../../tests/support/env';
 import { nextBerlinDayStart, startOfBerlinDay } from '../../../../core/utils/berlin-day';
 
 const wgEvents = {
@@ -242,13 +243,11 @@ async function withFrozenTime<T>(value: string, operation: () => Promise<T>): Pr
 }
 
 test('a partial delivery retries only the failed member with today copy', async () => {
-	const previousSecret = process.env.CRON_SECRET;
-	process.env.CRON_SECRET = 'cron-secret';
 	const { state, get } = makeHarness();
 	const request = new Request('https://example.test/api/cron/event-reminders', {
 		headers: { authorization: 'Bearer cron-secret' },
 	});
-	try {
+	await withEnv({ CRON_SECRET: 'cron-secret' }, async () => {
 		const tomorrow = await withFrozenTime('2026-10-25T09:00:00.000Z', () => get(request));
 		assert.equal(tomorrow.status, 503);
 		assert.deepEqual(await tomorrow.json(), { ok: false, sent: 1, failed: 1 });
@@ -260,10 +259,7 @@ test('a partial delivery retries only the failed member with today copy', async 
 		const afterToday = await withFrozenTime('2026-10-27T09:00:00.000Z', () => get(request));
 		assert.equal(afterToday.status, 200);
 		assert.equal((await afterToday.json()).sent, 0);
-	} finally {
-		if (previousSecret === undefined) Reflect.deleteProperty(process.env, 'CRON_SECRET');
-		else process.env.CRON_SECRET = previousSecret;
-	}
+	});
 
 	assert.deepEqual(
 		state.dispatches.map(({ memberId, event }) => `${memberId}:${event}`).sort(),
@@ -272,42 +268,30 @@ test('a partial delivery retries only the failed member with today copy', async 
 });
 
 test('all provider failures are reported with an unavailable response', async () => {
-	const previousSecret = process.env.CRON_SECRET;
-	process.env.CRON_SECRET = 'cron-secret';
 	const { get } = makeHarness({ failureMode: 'all' });
-	try {
+	await withEnv({ CRON_SECRET: 'cron-secret' }, async () => {
 		const response = await withFrozenTime('2026-10-25T09:00:00.000Z', () =>
 			get(new Request('https://example.test/api/cron/event-reminders')),
 		);
 		assert.equal(response.status, 503);
 		assert.deepEqual(await response.json(), { ok: false, sent: 0, failed: 2 });
-	} finally {
-		if (previousSecret === undefined) Reflect.deleteProperty(process.env, 'CRON_SECRET');
-		else process.env.CRON_SECRET = previousSecret;
-	}
+	});
 });
 
 test('no applicable push subscriptions are not reported as a provider failure', async () => {
-	const previousSecret = process.env.CRON_SECRET;
-	process.env.CRON_SECRET = 'cron-secret';
 	const { get } = makeHarness({ failureMode: 'none' });
-	try {
+	await withEnv({ CRON_SECRET: 'cron-secret' }, async () => {
 		const response = await withFrozenTime('2026-10-25T09:00:00.000Z', () =>
 			get(new Request('https://example.test/api/cron/event-reminders')),
 		);
 		assert.equal(response.status, 200);
 		assert.deepEqual(await response.json(), { ok: true, sent: 0, failed: 0 });
-	} finally {
-		if (previousSecret === undefined) Reflect.deleteProperty(process.env, 'CRON_SECRET');
-		else process.env.CRON_SECRET = previousSecret;
-	}
+	});
 });
 
 test('successful claims cover long occurrences while failed members remain retryable', async () => {
-	const previousSecret = process.env.CRON_SECRET;
-	process.env.CRON_SECRET = 'cron-secret';
 	const { state, get } = makeHarness({ eventEndsAt: '2026-12-01T10:00:00.000Z' });
-	try {
+	await withEnv({ CRON_SECRET: 'cron-secret' }, async () => {
 		const tomorrow = await withFrozenTime('2026-10-25T09:00:00.000Z', () =>
 			get(new Request('https://example.test/api/cron/event-reminders')),
 		);
@@ -319,10 +303,7 @@ test('successful claims cover long occurrences while failed members remain retry
 		);
 		assert.equal(ongoing.status, 200);
 		assert.deepEqual(await ongoing.json(), { ok: true, sent: 1, failed: 0 });
-	} finally {
-		if (previousSecret === undefined) Reflect.deleteProperty(process.env, 'CRON_SECRET');
-		else process.env.CRON_SECRET = previousSecret;
-	}
+	});
 
 	assert.deepEqual(
 		state.dispatches.map(({ memberId, event }) => `${memberId}:${event}`).sort(),
@@ -331,43 +312,42 @@ test('successful claims cover long occurrences while failed members remain retry
 });
 
 test('a run cut off by the time budget answers 503 with complete:false', async () => {
-	const previousSecret = process.env.CRON_SECRET;
-	process.env.CRON_SECRET = 'cron-secret';
-	const { state, get } = makeHarness({ failureMode: 'ok' });
-	state.members = Array.from({ length: 12 }, (_, index) => ({
-		id: `member-${index}`,
-		wgId: 'wg-1',
-		deactivatedAt: null,
-	}));
-	const RealDate = globalThis.Date;
-	let now = RealDate.parse('2026-10-25T09:00:00.000Z');
-	class SteppedDate extends RealDate {
-		constructor(...args: unknown[]) {
-			super(...((args.length === 0 ? [now] : args) as [number]));
+	await withEnv({ CRON_SECRET: 'cron-secret' }, async () => {
+		const { state, get } = makeHarness({ failureMode: 'ok' });
+		state.members = Array.from({ length: 12 }, (_, index) => ({
+			id: `member-${index}`,
+			wgId: 'wg-1',
+			deactivatedAt: null,
+		}));
+		const RealDate = globalThis.Date;
+		let now = RealDate.parse('2026-10-25T09:00:00.000Z');
+		class SteppedDate extends RealDate {
+			constructor(...args: unknown[]) {
+				super(...((args.length === 0 ? [now] : args) as [number]));
+			}
+			static override now() {
+				return now;
+			}
 		}
-		static override now() {
-			return now;
+		// The first batch of deliveries uses up the whole budget.
+		onDispatch = () => {
+			now += 60_000;
+		};
+		globalThis.Date = SteppedDate as unknown as DateConstructor;
+		try {
+			const response = await get(
+				new Request('https://example.test/api/cron/event-reminders', {
+					headers: { authorization: 'Bearer cron-secret' },
+				}),
+			);
+			assert.equal(response.status, 503);
+			const body = await response.json();
+			assert.equal(body.complete, false);
+			assert.equal(body.ok, false);
+			assert.ok(body.sent > 0 && body.sent < 12);
+		} finally {
+			globalThis.Date = RealDate;
+			onDispatch = () => {};
 		}
-	}
-	// The first batch of deliveries uses up the whole budget.
-	onDispatch = () => {
-		now += 60_000;
-	};
-	globalThis.Date = SteppedDate as unknown as DateConstructor;
-	try {
-		const response = await get(
-			new Request('https://example.test/api/cron/event-reminders', {
-				headers: { authorization: 'Bearer cron-secret' },
-			}),
-		);
-		assert.equal(response.status, 503);
-		const body = await response.json();
-		assert.equal(body.complete, false);
-		assert.equal(body.ok, false);
-		assert.ok(body.sent > 0 && body.sent < 12);
-	} finally {
-		globalThis.Date = RealDate;
-		onDispatch = () => {};
-		process.env.CRON_SECRET = previousSecret;
-	}
+	});
 });

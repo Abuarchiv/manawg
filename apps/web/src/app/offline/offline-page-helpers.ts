@@ -1,7 +1,9 @@
 import { type KnownWg, belongsToAccount, getKnownWgs } from '@/core/auth/local-account';
 import { hasSessionCookie } from '@/core/auth/session-hint';
+import { parseAccountWgs } from '@/core/infra/account-wgs';
 import { type OfflineAction, getOfflineActionSummary } from '@/core/offline/offline-queue';
 import { parseTimestamp } from '@/core/utils/time';
+import { pluralize } from '@/shared/lib/plural';
 
 export function moduleLabel(action: OfflineAction): string {
 	return getOfflineActionSummary(action).title;
@@ -18,7 +20,7 @@ export function formatOfflineAge(iso: string, now = Date.now()): string {
 	const hours = Math.floor(minutes / 60);
 	if (hours < 24) return `vor ${hours} Std.`;
 	const days = Math.floor(hours / 24);
-	return days === 1 ? 'vor 1 Tag' : `vor ${days} Tagen`;
+	return `vor ${pluralize(days, 'Tag', 'Tagen')}`;
 }
 
 export function countByShareCode(items: OfflineAction[]): Map<string, number> {
@@ -62,17 +64,9 @@ export async function getAccountMemberships(
 	});
 	if (res.status === 401) return null;
 	if (!res.ok) throw new Error('account_wgs_failed');
-	const data: unknown = await res.json();
-	if (!data || typeof data !== 'object' || !Array.isArray((data as { wgs?: unknown }).wgs)) {
-		throw new Error('account_wgs_invalid');
-	}
-	return (data as { wgs: unknown[] }).wgs.filter(
-		(wg): wg is AccountMembership =>
-			typeof wg === 'object' &&
-			wg !== null &&
-			typeof (wg as AccountMembership).code === 'string' &&
-			typeof (wg as AccountMembership).memberId === 'string',
-	);
+	const wgs = parseAccountWgs(await res.json());
+	if (!wgs) throw new Error('account_wgs_invalid');
+	return wgs.flatMap(({ code, memberId }) => (memberId ? [{ code, memberId }] : []));
 }
 
 /** The remembered WGs of the signed-in account. */
@@ -84,7 +78,7 @@ export function visibleKnownWgs(authUserId: string | null): KnownWg[] {
 export function offlineStatusCopy(status: OfflineStatus, online: boolean, hasWg = true) {
 	const label =
 		status === 'checking'
-			? 'Wird geprüft…'
+			? 'Prüft…'
 			: status === 'browser-offline'
 				? 'Offline-Modus'
 				: status === 'server-unreachable'

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { mock, test } from 'node:test';
+import { applyEnv } from '../../../../../../../tests/support/env';
 
 const wgId = '1bc67a5a-5c08-4c0d-8eaf-520def98021a';
 const fromMemberId = '2bc67a5a-5c08-4c0d-8eaf-520def98021a';
@@ -339,12 +340,12 @@ test('readiness and provider availability failures retry the same pending paymen
 	const harness = makeOrderHarness({
 		isPayPalMerchantReady: async () => {
 			readinessCalls += 1;
-			if (readinessCalls === 1) throw new Error('paypal_api_503');
+			if (readinessCalls === 1) throw new realPayPal.PayPalApiError(503, null);
 			return true;
 		},
 		createPayPalOrder: async () => {
 			createCalls += 1;
-			if (createCalls === 1) throw new Error('paypal_api_503');
+			if (createCalls === 1) throw new realPayPal.PayPalApiError(503, null);
 			return { id: 'paypal-order-recovered' };
 		},
 	});
@@ -380,20 +381,13 @@ test('readiness and provider availability failures retry the same pending paymen
 });
 
 test('PayPal API helper keeps onboarding status errors, PAYEE classification, and replay headers', async () => {
-	const environmentNames = [
-		'PAYPAL_ENV',
-		'PAYPAL_CLIENT_ID',
-		'PAYPAL_CLIENT_SECRET',
-		'PAYPAL_PARTNER_ATTRIBUTION_ID',
-	];
-	const previousEnvironment = Object.fromEntries(
-		environmentNames.map((name) => [name, process.env[name]]),
-	);
 	const previousFetch = globalThis.fetch;
-	process.env.PAYPAL_ENV = 'sandbox';
-	process.env.PAYPAL_CLIENT_ID = 'test-client';
-	process.env.PAYPAL_CLIENT_SECRET = 'test-secret';
-	process.env.PAYPAL_PARTNER_ATTRIBUTION_ID = 'BN-CODE';
+	const restoreEnv = applyEnv({
+		PAYPAL_ENV: 'sandbox',
+		PAYPAL_CLIENT_ID: 'test-client',
+		PAYPAL_CLIENT_SECRET: 'test-secret',
+		PAYPAL_PARTNER_ATTRIBUTION_ID: 'BN-CODE',
+	});
 
 	const calls: { url: string; headers: Headers; init: RequestInit }[] = [];
 	let responseMode = 'payee-error';
@@ -436,17 +430,20 @@ test('PayPal API helper keeps onboarding status errors, PAYEE classification, an
 		const paypal = realPayPal;
 		assert.equal(
 			paypal.isTerminalPayPalOrderCreationError(
-				new Error('paypal_api_403_PAYEE_ACCOUNT_RESTRICTED'),
+				new realPayPal.PayPalApiError(403, 'PAYEE_ACCOUNT_RESTRICTED'),
 			),
 			true,
 		);
 		assert.equal(
 			paypal.isTerminalPayPalOrderCreationError(
-				new Error('paypal_api_503_PAYEE_ACCOUNT_RESTRICTED'),
+				new realPayPal.PayPalApiError(503, 'PAYEE_ACCOUNT_RESTRICTED'),
 			),
 			false,
 		);
-		assert.equal(paypal.isTerminalPayPalOrderCreationError(new Error('paypal_api_403')), false);
+		assert.equal(
+			paypal.isTerminalPayPalOrderCreationError(new realPayPal.PayPalApiError(403, null)),
+			false,
+		);
 
 		await assert.rejects(
 			paypal.requestPayPalApi('/v2/checkout/orders', { method: 'POST' }, '2B23456789ABC'),
@@ -483,9 +480,6 @@ test('PayPal API helper keeps onboarding status errors, PAYEE classification, an
 		assert.equal(capture.purchase_units?.[0]?.payments?.captures?.[0]?.amount?.value, '12.34');
 	} finally {
 		globalThis.fetch = previousFetch;
-		for (const name of environmentNames) {
-			if (previousEnvironment[name] === undefined) delete process.env[name];
-			else process.env[name] = previousEnvironment[name] as string;
-		}
+		restoreEnv();
 	}
 });

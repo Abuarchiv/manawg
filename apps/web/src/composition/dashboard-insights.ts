@@ -10,4 +10,3 @@ export {
 	getBerlinWeekWindow,
 	getWeekAgenda,
 } from './dashboard-week-agenda';
-export { type WgHealth, getWgHealth } from './dashboard-health';

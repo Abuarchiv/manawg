@@ -8,137 +8,129 @@ import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { type ActionNotice, ActionNoticeBanner } from '@/components/wg/ActionNoticeBanner';
 import type { Member } from '@/components/wg/WgContextProvider';
-import type { ExpenseCategory } from '@/features/expenses/expense-categories';
+import { DESCRIPTION_MAX_LENGTH } from '@/features/expenses/expense-constants';
+import { expenseFormModeKey, expenseSubmitLabel } from '@/features/expenses/expense-form-mode';
 import type { ReopenedShare } from '@/features/expenses/expense-split-input';
+import type {
+	ExpenseFormField,
+	ExpenseFormFieldErrors,
+	ExpenseSplitShare,
+} from '@/features/expenses/expense-types';
+import type { ExpenseFormState } from '@/features/expenses/hooks/expense-page-context';
 import { cn } from '@/shared/lib/cn';
 import { useKeyboardOpen } from '@/shared/lib/use-keyboard-open';
 import { ArrowLeft } from 'lucide-react';
-import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ExpenseCategoryField } from './ExpenseCategoryField';
 import { CloseDraftDialog, ReplaceDraftDialog } from './ExpenseDraftDialogs';
 import { ExpenseExtras } from './ExpenseExtras';
 import { ExpenseFormNotices } from './ExpenseFormNotices';
 import { ExpensePayerDateFields } from './ExpensePayerDateFields';
 import { ExpenseSplitFieldset } from './ExpenseSplitFieldset';
-import { TextField } from './TextField';
-import { DESCRIPTION_MAX } from './constants';
-import type { SplitMode } from './expense-form-draft';
-import type { RecurringExpense } from './expense-types';
+import { ExpenseTextField } from './ExpenseTextField';
 import { useExpenseFormDirty } from './use-expense-form-dirty';
-import type { ExpenseFormExtras } from './use-expense-form-extras';
 
 const EXPENSE_DESCRIPTION_FIELD_ID = 'expense-description';
 
-export type ExpenseFormField = 'description' | 'amount' | 'date' | 'splits';
-export type ExpenseFormFieldErrors = Partial<Record<ExpenseFormField, string>>;
-
-interface ExpenseFormSectionProps {
-	description: string;
-	setDescription: Dispatch<SetStateAction<string>>;
-	category: ExpenseCategory;
-	setCategory: Dispatch<SetStateAction<ExpenseCategory>>;
-	amountStr: string;
-	setAmountStr: Dispatch<SetStateAction<string>>;
-	paidByMemberId: string;
-	setPaidByMemberId: Dispatch<SetStateAction<string>>;
+/** Who can pay and be charged in the form; the lists exclude members who moved out. */
+interface ExpenseFormPeople {
 	members: Member[];
 	payerOptions: Member[];
 	splitCandidates: Member[];
 	identityMemberId: string;
-	splitMode: SplitMode;
-	setSplitMode: Dispatch<SetStateAction<SplitMode>>;
-	recurringIntervalMonths: number;
-	setRecurringIntervalMonths: Dispatch<SetStateAction<number>>;
-	manualSplits: Record<string, string>;
-	setManualSplits: Dispatch<SetStateAction<Record<string, string>>>;
-	extras: ExpenseFormExtras;
-	reopenedShares: ReopenedShare[];
-	imageUrl: string | null;
-	setImageUrl: Dispatch<SetStateAction<string | null>>;
-	shareCode: string;
-	currency: string;
-	isEditingQueuedExpense: boolean;
-	isEditingQueuedRecurring: boolean;
-	formError: string | null;
+}
+
+interface ExpenseFormValidation {
 	fieldErrors: ExpenseFormFieldErrors;
-	validationAttempt: number;
-	onClearFieldError: (field: ExpenseFormField) => void;
-	conflictExpenseId: string | null;
-	onReloadServerVersion: () => void;
-	onKeepDraft: () => void;
-	savingRecurringTemplate: boolean;
-	editingRecurringExpense: RecurringExpense | null;
-	formSaving: boolean;
+	/** Counts failed submit attempts; each one moves focus to the first invalid field. */
+	attempt: number;
+	onClear: (field: ExpenseFormField) => void;
+}
+
+interface ExpenseFormHandlers {
+	onSubmit: () => void;
 	onSaveRecurringTemplate: () => void;
-	recurringTemplateCount: number;
 	onCancel: () => void;
 	onDiscard: () => void;
-	title: string;
-	previewSplits: Array<{ debtorMemberId: string; amountCents: number }> | null;
-	pendingPrefillDescription: string | null;
+	onReloadServerVersion: () => void;
+	onKeepDraft: () => void;
 	onReplacePrefill: () => void;
-	isEditingExpense: boolean;
-	editingExpenseId: string | null;
-	notice: ActionNotice | null;
-	onSubmit: () => void;
-	/** Controlled from outside so the sheet can fade out before unmounting. */
-	open: boolean;
 	/** Fires after the exit animation; the form can unmount. */
 	onExited: () => void;
 }
 
+interface ExpenseFormSectionProps {
+	form: ExpenseFormState;
+	people: ExpenseFormPeople;
+	validation: ExpenseFormValidation;
+	handlers: ExpenseFormHandlers;
+	title: string;
+	notice: ActionNotice | null;
+	shareCode: string;
+	currency: string;
+	reopenedShares: ReopenedShare[];
+	previewSplits: ExpenseSplitShare[] | null;
+	/** A submit or template save is running. */
+	saving: boolean;
+	recurringTemplateCount: number;
+	/** Controlled from outside so the sheet can fade out before unmounting. */
+	open: boolean;
+}
+
 export function ExpenseFormSection({
-	description,
-	setDescription,
-	category,
-	setCategory,
-	amountStr,
-	setAmountStr,
-	paidByMemberId,
-	setPaidByMemberId,
-	members,
-	payerOptions,
-	splitCandidates,
-	identityMemberId,
-	splitMode,
-	setSplitMode,
-	recurringIntervalMonths,
-	setRecurringIntervalMonths,
-	manualSplits,
-	setManualSplits,
-	extras,
-	reopenedShares,
-	imageUrl,
-	setImageUrl,
+	form,
+	people,
+	validation,
+	handlers,
+	title,
+	notice,
 	shareCode,
 	currency,
-	isEditingQueuedExpense,
-	isEditingQueuedRecurring,
-	formError,
-	fieldErrors,
-	validationAttempt,
-	onClearFieldError,
-	conflictExpenseId,
-	onReloadServerVersion,
-	onKeepDraft,
-	savingRecurringTemplate,
-	editingRecurringExpense,
-	formSaving,
-	onSaveRecurringTemplate,
-	recurringTemplateCount,
-	onCancel,
-	onDiscard,
-	onSubmit,
-	title,
+	reopenedShares,
 	previewSplits,
-	pendingPrefillDescription,
-	onReplacePrefill,
-	isEditingExpense,
-	editingExpenseId,
-	notice,
+	saving: formSaving,
+	recurringTemplateCount,
 	open,
-	onExited,
 }: ExpenseFormSectionProps): React.ReactElement {
+	const {
+		description,
+		setDescription,
+		category,
+		setCategory,
+		amountStr,
+		setAmountStr,
+		paidByMemberId,
+		setPaidByMemberId,
+		splitMode,
+		setSplitMode,
+		recurringIntervalMonths,
+		setRecurringIntervalMonths,
+		manualSplits,
+		setManualSplits,
+		extras,
+		imageUrl,
+		setImageUrl,
+		editingRecurringExpense,
+		formError,
+		conflictExpenseId,
+	} = form;
+	const { members, payerOptions, splitCandidates, identityMemberId } = people;
+	const { fieldErrors, attempt: validationAttempt, onClear: onClearFieldError } = validation;
+	const {
+		onSubmit,
+		onSaveRecurringTemplate,
+		onCancel,
+		onDiscard,
+		onReloadServerVersion,
+		onKeepDraft,
+		onReplacePrefill,
+		onExited,
+	} = handlers;
+	const isEditingQueuedExpense = form.queueEditType === 'expense.create';
+	const isEditingQueuedRecurring = form.queueEditType === 'recurring.create';
+	const isEditingExpense = form.editingExpense !== null || form.invalidEditDraft;
+	const editingExpenseId = form.editingExpense?.id ?? null;
+	const pendingPrefillDescription = form.pendingPrefill?.description ?? null;
 	const keyboardOpen = useKeyboardOpen();
 	const [confirmClose, setConfirmClose] = useState(false);
 	const [replaceOpen, setReplaceOpen] = useState(false);
@@ -148,11 +140,12 @@ export function ExpenseFormSection({
 		editingRecurringExpense && !isEditingQueuedExpense && !isEditingQueuedRecurring,
 	);
 	const savesTemplate = isEditingQueuedRecurring || editingTemplate;
-	const formModeKey = editingRecurringExpense
-		? `recurring:${editingRecurringExpense.id}`
-		: isEditingExpense
-			? `expense:${editingExpenseId ?? 'invalid'}`
-			: 'new';
+	const formModeKey = expenseFormModeKey({
+		editingRecurringExpense,
+		isEditingExpense,
+		editingExpenseId,
+	});
+	const submitLabel = expenseSubmitLabel({ savesTemplate, editingRecurringExpense });
 	const isDirty = useExpenseFormDirty({
 		description,
 		category,
@@ -180,10 +173,10 @@ export function ExpenseFormSection({
 
 	// Saving while the receipt still uploads would book the expense without it.
 	const [imageUploading, setImageUploading] = useState(false);
-	const submitBlocked = formSaving || savingRecurringTemplate || imageUploading;
+	const submitBlocked = formSaving || imageUploading;
 
 	function requestClose() {
-		if (formSaving || savingRecurringTemplate) return;
+		if (formSaving) return;
 		if (isDirty) setConfirmClose(true);
 		else onCancel();
 	}
@@ -234,7 +227,7 @@ export function ExpenseFormSection({
 									formSaving={formSaving}
 									onAskReplace={() => setReplaceOpen(true)}
 								/>
-								<TextField
+								<ExpenseTextField
 									id={EXPENSE_DESCRIPTION_FIELD_ID}
 									label="Beschreibung"
 									value={description}
@@ -242,7 +235,7 @@ export function ExpenseFormSection({
 										setDescription(value);
 										onClearFieldError('description');
 									}}
-									maxLength={DESCRIPTION_MAX}
+									maxLength={DESCRIPTION_MAX_LENGTH}
 									placeholder="z. B. Wocheneinkauf"
 									disabled={formSaving}
 									error={fieldErrors.description}
@@ -254,7 +247,7 @@ export function ExpenseFormSection({
 									onChange={setCategory}
 									disabled={formSaving}
 								/>
-								<TextField
+								<ExpenseTextField
 									label="Betrag"
 									value={amountStr}
 									onChange={(value) => {
@@ -310,7 +303,6 @@ export function ExpenseFormSection({
 									editingRecurringExpense={editingRecurringExpense}
 									isEditingQueuedExpense={isEditingQueuedExpense}
 									isEditingQueuedRecurring={isEditingQueuedRecurring}
-									savingRecurringTemplate={savingRecurringTemplate}
 									onSaveRecurringTemplate={onSaveRecurringTemplate}
 									recurringTemplateCount={recurringTemplateCount}
 									formSaving={formSaving}
@@ -346,21 +338,17 @@ export function ExpenseFormSection({
 									type="submit"
 									className="w-full"
 									disabled={submitBlocked}
-									aria-label={savesTemplate ? 'Fixkosten-Vorlage speichern' : 'Ausgabe speichern'}
+									aria-label={submitLabel.accessibleName}
 								>
-									{(formSaving || savingRecurringTemplate) && <Spinner data-icon="inline-start" />}
-									{savesTemplate
-										? 'Vorlage speichern'
-										: editingRecurringExpense
-											? 'Als Ausgabe speichern'
-											: 'Speichern'}
+									{formSaving && <Spinner data-icon="inline-start" />}
+									{submitLabel.text}
 								</Button>
 								<Button
 									type="button"
 									variant="ghost"
 									className={cn('w-full', keyboardOpen && 'hidden')}
 									onClick={requestClose}
-									disabled={formSaving || savingRecurringTemplate}
+									disabled={formSaving}
 								>
 									Abbrechen
 								</Button>

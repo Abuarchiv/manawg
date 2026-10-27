@@ -12,7 +12,7 @@ import {
 } from './support/helpers';
 
 test.describe('daily overview navigation', () => {
-	const BASE = '/api/wg/MTE8PZAT';
+	const BASE = `/api/wg/${FIXTURE_WG.shareCode}`;
 
 	test('keeps Kalender in Austausch and shows confirmed unread count', async ({ page }) => {
 		await setupMember(page);
@@ -30,7 +30,7 @@ test.describe('daily overview navigation', () => {
 			return route.fulfill({ status: 200, json: { count: 7, overflow: false } });
 		});
 
-		await navigateToFeature(page, '/wg/MTE8PZAT/kalender');
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/kalender`);
 		await dismissOnboarding(page);
 
 		const exchange = page.getByRole('navigation', { name: 'Austausch' });
@@ -58,7 +58,7 @@ test.describe('daily overview navigation', () => {
 			route.fulfill({ status: 503, json: { error: 'temporarily_unavailable' } }),
 		);
 
-		await navigateToFeature(page, '/wg/MTE8PZAT/kalender');
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/kalender`);
 		await dismissOnboarding(page);
 
 		const exchange = page.getByRole('navigation', { name: 'Austausch' });
@@ -76,7 +76,7 @@ test.describe('daily overview navigation', () => {
 		});
 		await mockUnreadCount(page, BASE);
 
-		await navigateToFeature(page, '/wg/MTE8PZAT/kalender');
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/kalender`);
 		await dismissOnboarding(page);
 
 		const chat = page.getByRole('navigation', { name: 'Austausch' }).getByRole('link', {
@@ -95,13 +95,13 @@ test.describe('daily overview navigation', () => {
 			dueChores: [
 				{
 					id: 'mine-due',
-					assignedMemberId: '7d898f9e-5ad7-4f5d-abed-8c3e99a76973',
+					assignedMemberId: FIXTURE_WG.memberId,
 					nextDueAt: yesterday,
 				},
 				{ id: 'theirs-due', assignedMemberId: 'other-member', nextDueAt: yesterday },
 				{
 					id: 'mine-later',
-					assignedMemberId: '7d898f9e-5ad7-4f5d-abed-8c3e99a76973',
+					assignedMemberId: FIXTURE_WG.memberId,
 					nextDueAt: nextQuarter,
 				},
 			],
@@ -109,7 +109,7 @@ test.describe('daily overview navigation', () => {
 		});
 		await mockUnreadCount(page, BASE);
 
-		await navigateToFeature(page, '/wg/MTE8PZAT/vorraete');
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/vorraete`);
 		await dismissOnboarding(page);
 
 		const household = page.getByRole('navigation', { name: 'Haushalt' });
@@ -217,7 +217,7 @@ test.describe('daily overview navigation', () => {
 			return route.fulfill({ status: 503, json: { error: 'temporarily_unavailable' } });
 		});
 
-		await navigateToFeature(page, '/wg/MTE8PZAT/chat');
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/chat`);
 		await dismissOnboarding(page);
 
 		const chat = page.getByRole('navigation', { name: 'Austausch' }).getByRole('link', {
@@ -394,7 +394,7 @@ test.describe('daily overview navigation', () => {
 			);
 		});
 
-		await navigateToFeature(page, '/wg/MTE8PZAT/kalender');
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/kalender`);
 		await dismissOnboarding(page);
 
 		const chat = page.getByRole('navigation', { name: 'Austausch' }).getByRole('link', {
@@ -440,7 +440,7 @@ test.describe('daily overview navigation', () => {
 			for (const width of [320, 390]) {
 				await page.setViewportSize({ width, height: 844 });
 				await page.emulateMedia({ colorScheme: theme });
-				await navigateToFeature(page, '/wg/MTE8PZAT/kalender');
+				await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/kalender`);
 				await dismissOnboarding(page);
 
 				const exchange = page.getByRole('navigation', { name: 'Austausch' });

@@ -1,3 +1,5 @@
+import { CENTS_PER_EURO } from '@/core/utils/money';
+
 export function parseEuroAmount(value: string): number | null {
 	// Pasted amounts carry "€" / "EUR" and space-grouped thousands: "12,50 €", "1 234,50".
 	const trimmed = value
@@ -18,6 +20,16 @@ export function parseEuroAmount(value: string): number | null {
 
 export function formatEuroInput(value: number): string {
 	return value.toFixed(2).replace('.', ',');
+}
+
+/** Euro amount to whole cents; rounds, so 0.1 + 0.2 euros is 30 cents. */
+export function eurosToCents(euros: number): number {
+	return Math.round(euros * CENTS_PER_EURO);
+}
+
+/** Cent amount as the German euro text of an amount input ("12,50"). */
+export function formatCentsInput(cents: number): string {
+	return formatEuroInput(cents / CENTS_PER_EURO);
 }
 
 const DECIMAL_FORMAT = new Intl.NumberFormat('de-DE', { maximumFractionDigits: 2 });

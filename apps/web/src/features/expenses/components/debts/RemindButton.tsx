@@ -5,8 +5,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { mutationErrorMessage } from '@/core/http/error-codes';
+import { createIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
-import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
+import { keyUnavailableMessage } from '@/core/offline/offline-copy';
 import { REMINDER_COOLDOWN_HOURS } from '@/features/expenses/reminders';
 import { Bell, Check } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -115,10 +116,10 @@ export function RemindButton({
 		setStatus('sending');
 		setFeedback(null);
 		const rollbackOptimistic = onOptimistic?.();
-		const idempotencyKey = requestKeyRef.current ?? createOfflineIdempotencyKey();
+		const idempotencyKey = requestKeyRef.current ?? createIdempotencyKey();
 		if (!idempotencyKey) {
 			rollbackOptimistic?.();
-			const message = errorMessage('Netzwerkfehler');
+			const message = keyUnavailableMessage('Erinnerung', 'gesendet');
 			setStatus('error');
 			setFeedback(message);
 			toast.error(message);
@@ -149,7 +150,7 @@ export function RemindButton({
 				return;
 			}
 			rollbackOptimistic?.();
-			if (res.status > 0 && res.status < 500) requestKeyRef.current = null;
+			if (shouldReleaseIdempotencyKey(res.status, res.error)) requestKeyRef.current = null;
 			if (res.status === 429 && res.error === 'reminder_cooldown') {
 				setStatus('cooldown');
 				onRejected?.('cooldown');

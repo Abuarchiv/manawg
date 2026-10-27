@@ -7,14 +7,18 @@ import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { type AuthFailure, classifyAuthError } from '@/core/auth/password-errors';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
 	type AuthFormProps,
 	type BusyAction,
 	GenericAuthError,
+	SIGN_IN_PASSWORD_MIN_LENGTH,
 	isValidEmail,
+	normalizeEmail,
+	useResendCooldown,
 } from './auth-form-shared';
 
+/** Seconds before the confirmation mail can be requested again; the server limits stay authoritative. */
 const RESEND_COOLDOWN_SECONDS = 60;
 
 /** E-mail and password: sign in, resend a confirmation mail, or request a reset link. */
@@ -34,13 +38,7 @@ export function useEmailAuth({
 	const [unconfirmedEmail, setUnconfirmedEmail] = useState<string | null>(null);
 	const [emailMessage, setEmailMessage] = useState<string | null>(null);
 	// Kept across sign-in attempts, so repeating the failed sign-in cannot mail again at once.
-	const [resendCooldown, setResendCooldown] = useState(0);
-
-	useEffect(() => {
-		if (resendCooldown <= 0) return;
-		const timer = setTimeout(() => setResendCooldown((value) => value - 1), 1000);
-		return () => clearTimeout(timer);
-	}, [resendCooldown]);
+	const [resendCooldown, setResendCooldown] = useResendCooldown();
 
 	function resetEmailFeedback(): void {
 		setFailure('other');
@@ -51,10 +49,8 @@ export function useEmailAuth({
 	async function submitEmail(): Promise<void> {
 		if (busy) return;
 		resetEmailFeedback();
-		const normalizedEmail = email.trim().toLowerCase();
-		// Existing accounts may still use 6-character passwords, so sign-in only
-		// requires the old minimum.
-		if (!isValidEmail(normalizedEmail) || password.length < 6) {
+		const normalizedEmail = normalizeEmail(email);
+		if (!isValidEmail(normalizedEmail) || password.length < SIGN_IN_PASSWORD_MIN_LENGTH) {
 			setEmailError('invalid');
 			return;
 		}
@@ -81,7 +77,7 @@ export function useEmailAuth({
 
 	async function resendConfirmation(): Promise<void> {
 		if (busy || resendCooldown > 0) return;
-		const normalizedEmail = email.trim().toLowerCase();
+		const normalizedEmail = normalizeEmail(email);
 		resetEmailFeedback();
 		if (!isValidEmail(normalizedEmail)) {
 			setEmailError('reset-invalid');
@@ -106,7 +102,7 @@ export function useEmailAuth({
 	async function requestPasswordReset(): Promise<void> {
 		if (busy) return;
 		resetEmailFeedback();
-		const normalizedEmail = email.trim().toLowerCase();
+		const normalizedEmail = normalizeEmail(email);
 		if (!isValidEmail(normalizedEmail)) {
 			setEmailError('reset-invalid');
 			return;
@@ -127,11 +123,12 @@ export function useEmailAuth({
 	}
 
 	const canResendConfirmation =
-		unconfirmedEmail !== null && unconfirmedEmail === email.trim().toLowerCase();
+		unconfirmedEmail !== null && unconfirmedEmail === normalizeEmail(email);
 	const emailFieldInvalid =
 		emailError === 'reset-invalid' ||
-		(emailError === 'invalid' && !isValidEmail(email.trim().toLowerCase()));
-	const passwordFieldInvalid = emailError === 'invalid' && password.length < 6;
+		(emailError === 'invalid' && !isValidEmail(normalizeEmail(email)));
+	const passwordFieldInvalid =
+		emailError === 'invalid' && password.length < SIGN_IN_PASSWORD_MIN_LENGTH;
 
 	return {
 		email,
@@ -210,7 +207,7 @@ export function EmailAuthForm({
 						readOnly={busy !== null}
 						autoComplete="current-password"
 						enterKeyHint="go"
-						minLength={6}
+						minLength={SIGN_IN_PASSWORD_MIN_LENGTH}
 						required
 						aria-describedby={passwordFieldInvalid ? 'auth-email-error' : undefined}
 						aria-invalid={passwordFieldInvalid || undefined}

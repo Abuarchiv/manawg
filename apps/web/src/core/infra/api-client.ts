@@ -1,3 +1,4 @@
+import { INVALID_RESPONSE_CODE, NETWORK_ERROR_CODE } from '@/core/http/error-codes';
 import { EXPECTED_MEMBER_ID_HEADER } from '@/shared/lib/member-header';
 
 /** A request the server has not answered by then counts as a network failure. */
@@ -59,6 +60,21 @@ export function noteSessionExpiry(response: Response): void {
  */
 export function mutationGeneration(): number {
 	return mutationCount;
+}
+
+/**
+ * The error code of a failed raw `fetch` response (`error` first, then `code`), or '' when the
+ * body has none. Reads a clone, so the caller can still consume the response; never throws.
+ */
+export async function readApiErrorCode(response: Response): Promise<string> {
+	try {
+		const body = (await response.clone().json()) as { code?: unknown; error?: unknown } | null;
+		if (typeof body?.error === 'string' && body.error.length > 0) return body.error;
+		if (typeof body?.code === 'string' && body.code.length > 0) return body.code;
+	} catch {
+		// No JSON body.
+	}
+	return '';
 }
 
 export async function apiFetch<T>(
@@ -128,7 +144,7 @@ export async function apiFetch<T>(
 			return {
 				ok: false,
 				status: 0,
-				error: 'Unerwartete Serverantwort',
+				error: INVALID_RESPONSE_CODE,
 			};
 		}
 		try {
@@ -138,11 +154,11 @@ export async function apiFetch<T>(
 			return {
 				ok: false,
 				status: 0,
-				error: 'Unerwartete Serverantwort',
+				error: INVALID_RESPONSE_CODE,
 			};
 		}
 	} catch {
-		return { ok: false, status: 0, error: 'Netzwerkfehler' };
+		return { ok: false, status: 0, error: NETWORK_ERROR_CODE };
 	} finally {
 		if (isMutation) mutationCount += 1;
 	}

@@ -1,4 +1,5 @@
 import { mutationErrorMessage } from '@/core/http/error-codes';
+import { SPLIT_SUM_MISMATCH } from '@/features/expenses/expense-errors';
 
 // The server lets only the creator or a WG admin change recurring expenses; everyone sees the buttons.
 const NOT_OWNER_HINT = 'Nur wer die Fixkosten angelegt hat oder Admin der WG ist, darf das.';
@@ -25,15 +26,13 @@ export function aboSaveErrorMessage(error: string, action: 'angelegt' | 'aktuali
 		{
 			...commonTexts(prefix),
 			member_not_in_wg: `${prefix}: Mindestens ein Mitglied ist nicht mehr in dieser WG.`,
-			recurring_expense_changed: `${prefix}: Sie wurden inzwischen gebucht oder geändert. Die Liste ist neu geladen, bearbeite sie bitte noch einmal.`,
+			recurring_expense_changed: `${prefix}: Diese Fixkosten wurden inzwischen gebucht oder geändert. Die Liste ist neu geladen, bearbeite sie noch einmal.`,
 			amount_invalid: `${prefix}: Prüfe den Betrag.`,
 			description_invalid: `${prefix}: Gib eine Beschreibung ein.`,
 			interval_invalid: `${prefix}: Wähle ein gültiges Intervall.`,
 			due_date_invalid: `${prefix}: Prüfe das nächste Fälligkeitsdatum.`,
-			splits_invalid:
-				'Beträge stimmen nicht überein — Summe muss exakt dem Gesamtbetrag entsprechen.',
-			splits_sum_mismatch:
-				'Beträge stimmen nicht überein — Summe muss exakt dem Gesamtbetrag entsprechen.',
+			splits_invalid: SPLIT_SUM_MISMATCH,
+			splits_sum_mismatch: SPLIT_SUM_MISMATCH,
 		},
 		`${prefix}.`,
 	);

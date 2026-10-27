@@ -8,10 +8,11 @@ import {
 	mockUnreadCount,
 	navigateToFeature,
 	setupMember,
+	skipUnlessFixtures,
 } from './support/helpers';
 
 test.describe('chat edit focus', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	const MESSAGE_ID = '8c1bb4a9-4722-42fe-bb86-aebf2e2d5b11';
 
@@ -130,7 +131,7 @@ test.describe('chat edit focus', () => {
 
 		await second.actions.click();
 		await page.getByRole('menuitem', { name: 'Löschen' }).click();
-		await page.getByRole('button', { name: 'Nachricht endgültig löschen' }).click();
+		await page.getByRole('button', { name: 'Jetzt löschen' }).click();
 		await expect(second.message).toContainText('gelöscht');
 		await expect(second.message).not.toContainText('bearbeitet');
 	});
@@ -163,7 +164,7 @@ test.describe('chat edit focus', () => {
 });
 
 test.describe('chat ios keyboard', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	test('chat composer sits on the iOS keyboard after Safari pans the page', async ({ page }) => {
 		await page.setViewportSize({ width: 393, height: 659 });
@@ -256,7 +257,7 @@ test.describe('chat ios keyboard', () => {
 });
 
 test.describe('chat read retry', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	for (const colorScheme of ['light'] as const) {
 		test(`chat read failures remain visible and retryable (${colorScheme}, 320px)`, async ({
@@ -266,13 +267,13 @@ test.describe('chat read retry', () => {
 			await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
 			await setupMember(page);
 			const member = { id: '0ab8c8f2-5d03-4a84-aadc-4c5d7e8abf55', name: 'Test', active: true };
-			await page.route('**/api/wg/MTE8PZAT', (route) =>
+			await page.route(`**/api/wg/${FIXTURE_WG.shareCode}`, (route) =>
 				route.fulfill({ json: { currentMember: { memberId: member.id, name: member.name } } }),
 			);
-			await page.route('**/api/wg/MTE8PZAT/members', (route) =>
+			await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/members`, (route) =>
 				route.fulfill({ json: { members: [member] } }),
 			);
-			await page.route('**/api/wg/MTE8PZAT/chat/unread-count', (route) =>
+			await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/chat/unread-count`, (route) =>
 				route.fulfill({ json: { count: 2 } }),
 			);
 			const receipts: string[] = [];
@@ -280,7 +281,7 @@ test.describe('chat read retry', () => {
 			const successGate = new Promise<void>((resolve) => {
 				releaseSuccess = resolve;
 			});
-			await page.route('**/api/wg/MTE8PZAT/chat/read', async (route) => {
+			await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/chat/read`, async (route) => {
 				receipts.push(route.request().postDataJSON().lastReadMessageId);
 				if (receipts.length === 1) return route.abort('failed');
 				if (receipts.length === 2)
@@ -288,7 +289,7 @@ test.describe('chat read retry', () => {
 				await successGate;
 				await route.fulfill({ json: { ok: true } });
 			});
-			await page.goto('/wg/MTE8PZAT/chat');
+			await page.goto(`/wg/${FIXTURE_WG.shareCode}/chat`);
 			await expect.poll(() => receipts.length).toBe(1);
 			const error = page
 				.getByRole('alert')
@@ -320,11 +321,11 @@ test.describe('chat read retry', () => {
 });
 
 test.describe('chat compose', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
-	const SHARE_CODE = 'MTE8PZAT';
+	const SHARE_CODE = FIXTURE_WG.shareCode;
 	const MEMBER = {
-		id: '7d898f9e-5ad7-4f5d-abed-8c3e99a76973',
+		id: FIXTURE_WG.memberId,
 		name: 'dsaf',
 		active: true,
 	};
@@ -347,7 +348,7 @@ test.describe('chat compose', () => {
 				sentBodies.push(payload.body);
 				sentMessage = {
 					id: `sent-${sentBodies.length}`,
-					wgId: '989ac820-58b7-431f-9c65-28721264f333',
+					wgId: FIXTURE_WG.id,
 					senderMemberId: MEMBER.id,
 					kind: 'user',
 					body: payload.body,
@@ -431,7 +432,7 @@ test.describe('chat compose', () => {
 });
 
 test.describe('chat pinnwand reflow 200', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	// WCAG 1.4.10 Reflow + 1.4.4 Resize Text: existing specs cover Chat's edit-focus
 	// behaviour and Pinnwand's individual comment layout at 320px/32px root font-size, but

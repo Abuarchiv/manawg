@@ -1,4 +1,10 @@
-import { READ_ONLY_MESSAGE, isRateLimited, isRetryableServerError } from '@/core/http/error-codes';
+import {
+	type ApiErrorKind,
+	READ_ONLY_MESSAGE,
+	classifyApiError,
+	isRateLimited,
+	isRetryableServerError,
+} from '@/core/http/error-codes';
 
 /**
  * German copy and the next step to offer for each error the import routes
@@ -14,20 +20,22 @@ export type RecoveryAction =
 	| { kind: 'mapping'; label: string }
 	| { kind: 'preview'; label: string };
 
+const RETRY_LATER_MESSAGE =
+	'Der Import konnte gerade nicht verarbeitet werden. Versuche es gleich erneut.';
+
+/** Copy for the shared error buckets, in the wording of the import. */
+const BUCKET_MESSAGES: Readonly<Record<ApiErrorKind, string>> = {
+	network: 'Prüfe deine Verbindung und versuche es erneut.',
+	readOnly: READ_ONLY_MESSAGE,
+	sessionExpired: 'Öffne die WG erneut, damit deine Mitgliedschaft geladen wird.',
+	wgUnavailable: 'Die WG wurde nicht gefunden. Öffne den aktuellen WG-Link erneut.',
+	invalidShareCode: 'Der WG-Link ist ungültig. Öffne die WG erneut.',
+	authInvalidated: 'Deine WG-Zuordnung fehlt. Tritt der WG erneut bei.',
+	retryable: RETRY_LATER_MESSAGE,
+};
+
+/** Codes only the import routes return. */
 const IMPORT_ERROR_MESSAGES: Readonly<Record<string, string>> = {
-	Netzwerkfehler: 'Prüfe deine Verbindung und versuche es erneut.',
-	'Failed to fetch': 'Prüfe deine Verbindung und versuche es erneut.',
-	too_many_requests: 'Zu viele Importversuche. Warte kurz und versuche es erneut.',
-	unexpected_error: 'Der Import konnte gerade nicht verarbeitet werden. Versuche es gleich erneut.',
-	server_error: 'Der Import konnte gerade nicht verarbeitet werden. Versuche es gleich erneut.',
-	db_error: 'Der Import konnte gerade nicht verarbeitet werden. Versuche es gleich erneut.',
-	service_unavailable:
-		'Der Import konnte gerade nicht verarbeitet werden. Versuche es gleich erneut.',
-	migration_read_only: READ_ONLY_MESSAGE,
-	wg_not_found: 'Die WG wurde nicht gefunden. Öffne den aktuellen WG-Link erneut.',
-	invalid_share_code: 'Der WG-Link ist ungültig. Öffne die WG erneut.',
-	auth_required: 'Öffne die WG erneut, damit deine Mitgliedschaft geladen wird.',
-	not_a_member: 'Deine WG-Zuordnung fehlt. Tritt der WG erneut bei.',
 	member_deactivated: 'Deine Mitgliedschaft ist nicht mehr aktiv. Tritt der WG erneut bei.',
 	member_not_in_wg:
 		'Mindestens eine Zuordnung gehört nicht mehr zu dieser WG. Prüfe die Zuordnung.',
@@ -59,9 +67,12 @@ const IMPORT_ERROR_MESSAGES: Readonly<Record<string, string>> = {
 };
 
 export function importActionErrorMessage(error: string): string {
+	// The middleware answers 429 with `rate_limited`, the routes with `too_many_requests`.
+	if (isRateLimited(error)) return 'Zu viele Importversuche. Warte kurz und versuche es erneut.';
+	const kind = classifyApiError(error);
+	if (kind) return BUCKET_MESSAGES[kind];
 	return (
-		// The middleware answers 429 with `rate_limited`, the routes with `too_many_requests`.
-		IMPORT_ERROR_MESSAGES[isRateLimited(error) ? 'too_many_requests' : error] ??
+		IMPORT_ERROR_MESSAGES[error] ??
 		'Der Import konnte nicht abgeschlossen werden. Versuche es erneut.'
 	);
 }

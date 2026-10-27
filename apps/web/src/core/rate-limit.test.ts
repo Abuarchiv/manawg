@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { mock, test } from 'node:test';
 import { Ratelimit as SdkRatelimit } from '@upstash/ratelimit';
+import { withEnv } from '../../tests/support/env';
 
 // The module builds its limiters at import time from the Upstash settings, so the settings are
 // in place before the import. The SDK's `Ratelimit` is subclassed so every limiter takes its
@@ -66,32 +67,19 @@ class TestRedis {
 	}
 }
 
-function withEnv(values: Record<string, string | undefined>): () => void {
-	const previous = Object.fromEntries(Object.keys(values).map((name) => [name, process.env[name]]));
-	for (const [name, value] of Object.entries(values)) {
-		if (value === undefined) Reflect.deleteProperty(process.env, name);
-		else process.env[name] = value;
-	}
-	return () => {
-		for (const [name, value] of Object.entries(previous)) {
-			if (value === undefined) Reflect.deleteProperty(process.env, name);
-			else process.env[name] = value;
-		}
-	};
-}
-
 mock.module('@upstash/ratelimit', { namedExports: { Ratelimit: TestRatelimit } });
 mock.module('@upstash/redis/cloudflare', { namedExports: { Redis: TestRedis } });
 mock.module('@/core/infra/observability', {
 	namedExports: { captureException: (...args: unknown[]) => state.exceptions.push(args) },
 });
 
-const restoreImportEnv = withEnv({
-	UPSTASH_REDIS_REST_URL: 'https://rate-limit.test',
-	UPSTASH_REDIS_REST_TOKEN: 'fake-token',
-});
-const rateLimit = await import('./rate-limit');
-restoreImportEnv();
+const rateLimit = await withEnv(
+	{
+		UPSTASH_REDIS_REST_URL: 'https://rate-limit.test',
+		UPSTASH_REDIS_REST_TOKEN: 'fake-token',
+	},
+	() => import('./rate-limit'),
+);
 
 test('built limiters preserve SDK allow/deny results without writing analytics', async () => {
 	const now = Date.now();
@@ -117,10 +105,9 @@ test('built limiters preserve SDK allow/deny results without writing analytics',
 });
 
 test('SDK timeout results use the existing open and closed failure policies', async (t) => {
-	const restoreEnv = withEnv({ NODE_ENV: 'production', VERCEL_ENV: 'production' });
 	const consoleError = t.mock.method(console, 'error', () => {});
 	state.exceptions = [];
-	try {
+	await withEnv({ NODE_ENV: 'production', VERCEL_ENV: 'production' }, async () => {
 		const sdkLimiter = new SdkRatelimit({
 			redis: redis as never,
 			analytics: false,
@@ -150,9 +137,7 @@ test('SDK timeout results use the existing open and closed failure policies', as
 		);
 		assert.equal(logs.length, 2);
 		assert.equal(state.exceptions.length, 2);
-	} finally {
-		restoreEnv();
-	}
+	});
 });
 
 test('a configured limiter that fails does not pass traffic on Preview', async (t) => {
@@ -162,35 +147,23 @@ test('a configured limiter that fails does not pass traffic on Preview', async (
 			throw new Error('upstash down');
 		},
 	};
-	const restorePreview = withEnv({ NODE_ENV: 'production', VERCEL_ENV: 'preview' });
-	try {
+	await withEnv({ NODE_ENV: 'production', VERCEL_ENV: 'preview' }, async () => {
 		const denied = await rateLimit.checkRateLimit(failing, '198.51.100.50');
 		assert.equal(denied.success, false);
 		assert.equal(denied.limiterUnavailable, true);
-	} finally {
-		restorePreview();
-	}
+	});
 
-	const restoreDevelopment = withEnv({ NODE_ENV: 'development', VERCEL_ENV: undefined });
-	try {
+	await withEnv({ NODE_ENV: 'development', VERCEL_ENV: undefined }, async () => {
 		const allowed = await rateLimit.checkRateLimit(failing, '198.51.100.50');
 		assert.equal(allowed.success, true);
-	} finally {
-		restoreDevelopment();
-	}
+	});
 });
 
 test('Preview answers a half-configured limiter closed, an unconfigured one open', async (t) => {
 	t.mock.method(console, 'warn', () => {});
 	t.mock.method(console, 'error', () => {});
-	const loadWith = async (tag: string, env: Record<string, string | undefined>) => {
-		const restore = withEnv(env);
-		try {
-			return await import(`./rate-limit?${tag}`);
-		} finally {
-			restore();
-		}
-	};
+	const loadWith = (tag: string, env: Record<string, string | undefined>) =>
+		withEnv(env, () => import(`./rate-limit?${tag}`));
 	const base = { UPSTASH_REDIS_REST_URL: undefined, UPSTASH_REDIS_REST_TOKEN: undefined };
 	const half = await loadWith('half', {
 		...base,
@@ -203,14 +176,11 @@ test('Preview answers a half-configured limiter closed, an unconfigured one open
 	});
 	const none = await loadWith('none', base);
 
-	const restorePreview = withEnv({ NODE_ENV: 'production', VERCEL_ENV: 'preview' });
-	try {
+	await withEnv({ NODE_ENV: 'production', VERCEL_ENV: 'preview' }, async () => {
 		const denied = await half.checkRateLimit(null, '198.51.100.51', 'open');
 		assert.equal(denied.success, false);
 		assert.equal(denied.limiterUnavailable, true);
 		assert.equal((await blankToken.checkRateLimit(null, '198.51.100.52', 'open')).success, false);
 		assert.equal((await none.checkRateLimit(null, '198.51.100.53', 'open')).success, true);
-	} finally {
-		restorePreview();
-	}
+	});
 });

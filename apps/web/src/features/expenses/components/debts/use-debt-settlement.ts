@@ -1,11 +1,12 @@
 'use client';
 
 import { useToast } from '@/components/ui/Toast';
+import { resolveIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
-import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
-import { formatEuroCents } from '@/core/utils/money';
+import { keyUnavailableMessage } from '@/core/offline/offline-copy';
+import { formatEuroCents, normalizeCurrency } from '@/core/utils/money';
 import type { SimplifiedDebt } from '@/features/expenses/debt-reduction';
-import { useRef, useState } from 'react';
+import { type MutableRefObject, useRef, useState } from 'react';
 import { settlementErrorMessage } from './settlement-errors';
 
 /** What the server can settle for a debt right now; the confirmation must match it. */
@@ -23,6 +24,19 @@ interface SettleBatchResponse {
 	settledCents?: number;
 	remainingCents?: number;
 	reason?: string;
+}
+
+type PendingRequest = { fingerprint: string; key: string };
+
+/**
+ * The idempotency key for a request body: a retry of the same body reuses its key, anything else
+ * gets a fresh one. Null when no key can be created.
+ */
+function idempotencyKeyFor(ref: MutableRefObject<PendingRequest | null>, body: unknown) {
+	const fingerprint = JSON.stringify(body);
+	const key = resolveIdempotencyKey(ref.current, fingerprint);
+	if (key) ref.current = { fingerprint, key };
+	return key;
 }
 
 interface DebtSettlementInput {
@@ -50,8 +64,8 @@ export function useDebtSettlement({
 	const [preview, setPreview] = useState<SettlementPreview | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const settlingRef = useRef(false);
-	const settlementRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
-	const cashRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
+	const settlementRequestRef = useRef<PendingRequest | null>(null);
+	const cashRequestRef = useRef<PendingRequest | null>(null);
 	const endpoint = `/api/wg/${encodeURIComponent(shareCode)}/expenses/settle-batch`;
 	const cashEndpoint = `/api/wg/${encodeURIComponent(shareCode)}/payments/manual`;
 
@@ -61,8 +75,9 @@ export function useDebtSettlement({
 		setReviewing(true);
 		setError(null);
 		try {
+			// apiFetch reports failures in its result and never throws.
 			const res = await apiFetch<SettlementPreview>(
-				`${endpoint}?${new URLSearchParams({ fromMemberId: debt.fromId, toMemberId: debt.toId, currency: debt.currency ?? 'EUR' })}`,
+				`${endpoint}?${new URLSearchParams({ fromMemberId: debt.fromId, toMemberId: debt.toId, currency: normalizeCurrency(debt.currency) })}`,
 				{ memberId: currentMemberId },
 			);
 			if (res.ok) {
@@ -71,8 +86,6 @@ export function useDebtSettlement({
 			} else {
 				toast.error('Prüfung fehlgeschlagen. Versuche es gleich erneut.');
 			}
-		} catch {
-			toast.error('Prüfung fehlgeschlagen. Prüfe deine Verbindung.');
 		} finally {
 			settlingRef.current = false;
 			setReviewing(false);
@@ -87,7 +100,7 @@ export function useDebtSettlement({
 		const body = {
 			fromMemberId: debt.fromId,
 			toMemberId: debt.toId,
-			currency: debt.currency ?? 'EUR',
+			currency: normalizeCurrency(debt.currency),
 			expected: {
 				currency: preview.currency,
 				netCents: preview.netCents,
@@ -99,20 +112,14 @@ export function useDebtSettlement({
 				})),
 			},
 		};
-		const fingerprint = JSON.stringify(body);
-		const pendingRequest = settlementRequestRef.current;
-		const idempotencyKey =
-			pendingRequest?.fingerprint === fingerprint
-				? pendingRequest.key
-				: createOfflineIdempotencyKey();
+		const idempotencyKey = idempotencyKeyFor(settlementRequestRef, body);
 		if (!idempotencyKey) {
-			const message = 'Ausgleich konnte nicht sicher gespeichert werden. Versuche es erneut.';
+			const message = keyUnavailableMessage('Ausgleich', 'gespeichert');
 			setError(message);
 			settlingRef.current = false;
 			setSettling(false);
 			return;
 		}
-		settlementRequestRef.current = { fingerprint, key: idempotencyKey };
 		try {
 			const res = await apiFetch<SettleBatchResponse>(endpoint, {
 				method: 'POST',
@@ -121,7 +128,7 @@ export function useDebtSettlement({
 				body: JSON.stringify(body),
 			});
 			if (!res.ok) {
-				if (res.status > 0 && res.status < 500) settlementRequestRef.current = null;
+				if (shouldReleaseIdempotencyKey(res.status, res.error)) settlementRequestRef.current = null;
 				const message = settlementErrorMessage(res.error);
 				setError(message);
 				if (res.error === 'settlement_changed') {
@@ -141,9 +148,6 @@ export function useDebtSettlement({
 						? `Zahlung eingetragen: ${formatEuroCents(settledCents ?? 0, debt.currency)} von ${debt.fromName} an ${debt.toName}.${remainingCents ? ` ${formatEuroCents(remainingCents, debt.currency)} bleiben in der Verrechnung offen.` : ''}`
 						: 'Keine Zahlung eingetragen. Die offenen Ausgaben werden neu geladen.';
 			onSettled(message);
-		} catch {
-			const message = settlementErrorMessage('Netzwerkfehler');
-			setError(message);
 		} finally {
 			settlingRef.current = false;
 			setSettling(false);
@@ -159,23 +163,17 @@ export function useDebtSettlement({
 		const body = {
 			fromMemberId: debt.fromId,
 			toMemberId: debt.toId,
-			currency: debt.currency ?? 'EUR',
+			currency: normalizeCurrency(debt.currency),
 			expectedNetCents: preview.netCents,
 		};
-		const fingerprint = JSON.stringify(body);
-		const pendingRequest = cashRequestRef.current;
-		const idempotencyKey =
-			pendingRequest?.fingerprint === fingerprint
-				? pendingRequest.key
-				: createOfflineIdempotencyKey();
+		const idempotencyKey = idempotencyKeyFor(cashRequestRef, body);
 		if (!idempotencyKey) {
-			const message = 'Barzahlung konnte nicht sicher gespeichert werden. Versuche es erneut.';
+			const message = keyUnavailableMessage('Barzahlung', 'gespeichert');
 			setError(message);
 			settlingRef.current = false;
 			setSettling(false);
 			return;
 		}
-		cashRequestRef.current = { fingerprint, key: idempotencyKey };
 		try {
 			const res = await apiFetch<{ amountCents: number }>(cashEndpoint, {
 				method: 'POST',
@@ -184,7 +182,7 @@ export function useDebtSettlement({
 				body: JSON.stringify(body),
 			});
 			if (!res.ok) {
-				if (res.status > 0 && res.status < 500) cashRequestRef.current = null;
+				if (shouldReleaseIdempotencyKey(res.status, res.error)) cashRequestRef.current = null;
 				const message = settlementErrorMessage(res.error);
 				setError(message);
 				if (res.error === 'settlement_changed') {
@@ -199,9 +197,6 @@ export function useDebtSettlement({
 			onSettled(
 				`Barzahlung eingetragen: ${formatEuroCents(res.data.amountCents, debt.currency)} von ${debt.fromName} an ${debt.toName}.`,
 			);
-		} catch {
-			const message = settlementErrorMessage('Netzwerkfehler');
-			setError(message);
 		} finally {
 			settlingRef.current = false;
 			setSettling(false);

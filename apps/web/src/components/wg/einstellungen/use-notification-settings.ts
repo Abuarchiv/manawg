@@ -5,6 +5,7 @@ import {
 	notificationTestErrorMessage,
 } from '@/components/wg/einstellungen/settings-errors';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
+import { createIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
 import { isPushOptedOut } from '@/core/notifications/push-priming';
 import {
@@ -18,7 +19,7 @@ import {
 	formatPushActivationError,
 	formatPushDeactivationError,
 } from '@/core/notifications/web-push-errors';
-import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
+import { keyUnavailableMessage } from '@/core/offline/offline-copy';
 import { haptic } from '@/shared/lib/haptics';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -137,7 +138,6 @@ export function useNotificationSettings({ code, memberId }: NotificationSettings
 			const resyncKey = `${code}:${memberId}`;
 			if (pushResyncAttemptedKeyRef.current === resyncKey) return;
 			pushResyncAttemptedKeyRef.current = resyncKey;
-			if (typeof window === 'undefined') return;
 			if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
 			let subscription: PushSubscription | null = null;
 			try {
@@ -210,7 +210,7 @@ export function useNotificationSettings({ code, memberId }: NotificationSettings
 	async function patchPreferences(
 		body: Partial<NotificationStatus>,
 		previous: NotificationStatus,
-		keyUnavailableMessage: string,
+		keyUnavailableError: string,
 	): Promise<void> {
 		pendingRef.current = true;
 		setPending('save');
@@ -218,11 +218,11 @@ export function useNotificationSettings({ code, memberId }: NotificationSettings
 		setMessage(null);
 		const requestKeyId = `patch:${JSON.stringify(body)}`;
 		const idempotencyKey =
-			notificationRequestKeysRef.current.get(requestKeyId) ?? createOfflineIdempotencyKey();
+			notificationRequestKeysRef.current.get(requestKeyId) ?? createIdempotencyKey();
 		if (!idempotencyKey) {
 			pendingRef.current = false;
 			setPending(null);
-			setError(keyUnavailableMessage);
+			setError(keyUnavailableError);
 			return;
 		}
 		notificationRequestKeysRef.current.set(requestKeyId, idempotencyKey);
@@ -235,7 +235,7 @@ export function useNotificationSettings({ code, memberId }: NotificationSettings
 				body: JSON.stringify(body),
 			});
 			if (!res.ok) {
-				if (res.status > 0 && res.status < 500) {
+				if (shouldReleaseIdempotencyKey(res.status, res.error)) {
 					notificationRequestKeysRef.current.delete(requestKeyId);
 				}
 				setStatus(previous);
@@ -255,7 +255,7 @@ export function useNotificationSettings({ code, memberId }: NotificationSettings
 		await patchPreferences(
 			{ [key]: !status[key] },
 			status,
-			'Einstellung konnte nicht sicher gespeichert werden. Versuche es erneut.',
+			keyUnavailableMessage('Einstellung', 'gespeichert'),
 		);
 	}
 
@@ -268,7 +268,7 @@ export function useNotificationSettings({ code, memberId }: NotificationSettings
 		await patchPreferences(
 			{ quietStartHour: startHour, quietEndHour: endHour },
 			status,
-			'Ruhezeit konnte nicht sicher gespeichert werden. Versuche es erneut.',
+			keyUnavailableMessage('Ruhezeit', 'gespeichert'),
 		);
 	}
 
@@ -280,11 +280,11 @@ export function useNotificationSettings({ code, memberId }: NotificationSettings
 		setMessage(null);
 		const requestKeyId = 'test_notification';
 		const idempotencyKey =
-			notificationRequestKeysRef.current.get(requestKeyId) ?? createOfflineIdempotencyKey();
+			notificationRequestKeysRef.current.get(requestKeyId) ?? createIdempotencyKey();
 		if (!idempotencyKey) {
 			pendingRef.current = false;
 			setPending(null);
-			setError('Test konnte nicht sicher gesendet werden. Versuche es erneut.');
+			setError(keyUnavailableMessage('Test', 'gesendet'));
 			return;
 		}
 		notificationRequestKeysRef.current.set(requestKeyId, idempotencyKey);
@@ -299,7 +299,7 @@ export function useNotificationSettings({ code, memberId }: NotificationSettings
 				notificationRequestKeysRef.current.delete(requestKeyId);
 				setMessage('Test wurde ausgelöst. Prüfe, ob die Push-Nachricht ankommt.');
 			} else {
-				if (res.status > 0 && res.status < 500) {
+				if (shouldReleaseIdempotencyKey(res.status, res.error)) {
 					notificationRequestKeysRef.current.delete(requestKeyId);
 				}
 				setError(notificationTestErrorMessage(res.status, res.error));

@@ -8,10 +8,11 @@ import {
 	mockUnreadCount,
 	navigateToFeature,
 	setupMember,
+	skipUnlessFixtures,
 } from './support/helpers';
 
 test.describe('drawer mobile zoom', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	const { id: wgId, memberId, memberName, shareCode } = FIXTURE_WG;
 
@@ -135,7 +136,7 @@ test.describe('drawer mobile zoom', () => {
 });
 
 test.describe('alert dialog responsive', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	async function expectAlertDialogLayout(page: Page, dialog: Locator) {
 		for (const fontSize of ['16px', '32px']) {
@@ -324,7 +325,7 @@ test.describe('alert dialog responsive', () => {
 });
 
 test.describe('overlay back dismiss', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	const { shareCode } = FIXTURE_WG;
 
@@ -454,7 +455,7 @@ test.describe('overlay back dismiss', () => {
 });
 
 test.describe('toast pause on hover', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 	test.use({ hasTouch: true, isMobile: true });
 
 	// WCAG 2.2.1 (Timing Adjustable): an auto-dismissing toast must pause while the

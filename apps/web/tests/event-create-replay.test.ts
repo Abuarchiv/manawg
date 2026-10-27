@@ -254,8 +254,7 @@ mock.module('@/features/events/server/event-reminder-window', {
 });
 mock.module('@/features/events/events', {
 	namedExports: {
-		formatRecurrenceRule: () => '',
-		parseRecurrenceRule: () => null,
+		canonicalRecurrenceRule: () => ({ ok: true, rule: null }),
 		serializeWgEvent: (row: Row) => ({
 			id: row.id,
 			title: row.title,

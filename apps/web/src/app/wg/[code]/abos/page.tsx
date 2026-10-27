@@ -14,7 +14,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ItemContent, ItemEntry, ItemGroup } from '@/components/ui/item';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Spinner } from '@/components/ui/spinner';
 import { ActionNoticeBanner } from '@/components/wg/ActionNoticeBanner';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { SubNav } from '@/components/wg/SubNav';
@@ -24,9 +23,8 @@ import { AboCreateModal } from '@/features/expenses/components/abos/AboCreateMod
 import { AboEditModal } from '@/features/expenses/components/abos/AboEditModal';
 import { AboModalOpenContext } from '@/features/expenses/components/abos/AboModalShell';
 import { AbosList } from '@/features/expenses/components/abos/AbosList';
-import type { Abo } from '@/features/expenses/components/abos/abos-types';
+import type { Abo } from '@/features/expenses/expense-types';
 import { useAbosPage } from '@/features/expenses/hooks/use-abos-page';
-import { cn } from '@/shared/lib/cn';
 import { Plus } from 'lucide-react';
 import { useRef } from 'react';
 
@@ -72,25 +70,11 @@ export default function AbosPage() {
 			<SubNav liveCount={!loading && !loadError ? dueCount : undefined} />
 			{/* The active tab already names the page; title and counter stay for screen readers. */}
 			<header className="sr-only">
-				<div className="min-w-0 flex-1">
-					<h1 className="font-heading font-semibold tracking-tight break-words [overflow-wrap:anywhere]">
-						Fixkosten
-					</h1>
-					<p className="text-sm text-muted-foreground" aria-live="polite">
-						{loading ? '' : `${activeCount} aktiv · ${abos.length} insgesamt`}
-					</p>
-					<output
-						aria-live="polite"
-						aria-hidden={!refreshing}
-						className={cn(
-							'flex min-h-5 items-center gap-2 text-sm text-muted-foreground',
-							!refreshing && 'invisible',
-						)}
-					>
-						<Spinner />
-						Wird aktualisiert…
-					</output>
-				</div>
+				<h1>Fixkosten</h1>
+				<p aria-live="polite">{loading ? '' : `${activeCount} aktiv · ${abos.length} insgesamt`}</p>
+				<output aria-live="polite" aria-hidden={!refreshing}>
+					Lädt…
+				</output>
 			</header>
 			{loadError && (
 				<LoadErrorBanner
@@ -194,7 +178,7 @@ export default function AbosPage() {
 					<AlertDialogHeader>
 						<AlertDialogTitle>Fixkosten löschen?</AlertDialogTitle>
 						<AlertDialogDescription>
-							Fixkosten „{deleteCandidate?.description}“ werden entfernt. Bereits erfasste Ausgaben
+							Fixkosten „{deleteCandidate?.description}“ werden gelöscht. Bereits erfasste Ausgaben
 							bleiben erhalten.
 						</AlertDialogDescription>
 					</AlertDialogHeader>

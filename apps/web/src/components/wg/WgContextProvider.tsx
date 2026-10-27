@@ -17,6 +17,7 @@ import {
 	useContext,
 	useEffect,
 	useMemo,
+	useReducer,
 	useRef,
 	useState,
 } from 'react';
@@ -25,6 +26,7 @@ import { useMembersPolling, useMembersRefresh } from './use-members-refresh';
 import { useMembershipLost } from './use-membership-lost';
 import { useOfflineAutoSync, useSyncOnFocusAndOnline } from './use-offline-auto-sync';
 import { useSessionMember } from './use-session-member';
+import { type WgAuthRef, initWgSessionState, wgSessionReducer } from './wg-session-state';
 
 export interface WgSummary {
 	id: string;
@@ -68,11 +70,6 @@ interface Props {
 	initialIdentity?: SessionMember | undefined;
 	/** Server-verified admin flag; only meaningful together with initialIdentity.authUserId. */
 	initialIsAdmin?: boolean | undefined;
-	/**
-	 * The WG is served without any Supabase session; the identity comes from
-	 * the locally stored member (database-free test builds only).
-	 */
-	sessionless?: boolean | undefined;
 	children: ReactNode;
 }
 
@@ -81,52 +78,42 @@ export function WgContextProvider({
 	members: initialMembers,
 	initialIdentity,
 	initialIsAdmin,
-	sessionless = false,
 	children,
 }: Props) {
 	// The WG layout resolved the Supabase session and membership on the server
 	// (authUserId is only set there). Start ready instead of waiting for
-	// getSession -> /api/wg/[code]; the auth listener still revalidates in the
-	// background and clears everything on sign-out.
+	// the /api/wg/[code] lookup; it still revalidates in the background and
+	// clears everything once the session ends.
 	const serverVerified = Boolean(initialIdentity?.authUserId);
 	const [members, setMembers] = useState<Member[]>(initialMembers);
-	const [isAdmin, setIsAdmin] = useState(serverVerified && initialIsAdmin === true);
-	const [identity, setStateIdentity] = useState<SessionMember | null>(initialIdentity ?? null);
-	const [accountReady, setAccountReady] = useState(serverVerified);
-	const [memberLoaded, setMemberLoaded] = useState(serverVerified);
-	const syncAbortRef = useRef<AbortController | null>(null);
-	const authUserIdRef = useRef<string | null>(initialIdentity?.authUserId ?? null);
-	const authGenerationRef = useRef(0);
+	const [session, dispatch] = useReducer(wgSessionReducer, undefined, () =>
+		initWgSessionState(initialIdentity, initialIsAdmin),
+	);
+	const { identity, isAdmin, accountReady, memberLoaded, memberLoadError, sessionEnded } = session;
+	const auth = useRef<WgAuthRef>({
+		userId: initialIdentity?.authUserId ?? null,
+		generation: 0,
+		syncAbort: null,
+	});
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
-	const identitySetters = { setStateIdentity, setIsAdmin, setAccountReady, setMemberLoaded };
 
-	const { hydrated, memberLoadError, sessionEnded, loadSessionMember } = useSessionMember({
+	const { hydrated, loadSessionMember } = useSessionMember({
 		wg,
 		initialIdentity,
-		sessionless,
-		encodedShareCode,
-		authGenerationRef,
-		authUserIdRef,
-		syncAbortRef,
-		...identitySetters,
+		auth,
+		dispatch,
 	});
 
-	useMembershipLost({
-		wgId: wg.id,
-		encodedShareCode,
-		authGenerationRef,
-		syncAbortRef,
-		...identitySetters,
-	});
+	useMembershipLost({ wgId: wg.id, encodedShareCode, auth, dispatch });
 
 	const refreshMembers = useMembersRefresh({
 		encodedShareCode,
 		identity,
 		accountReady,
 		serverVerified,
-		authGenerationRef,
+		auth,
 		setMembers,
-		setIsAdmin,
+		dispatch,
 	});
 
 	const value = useMemo<WgContextValue | null>(() => {
@@ -144,7 +131,7 @@ export function WgContextProvider({
 		shareCode: wg.shareCode,
 		identity,
 		accountReady,
-		syncAbortRef,
+		auth,
 	});
 	useMembersPolling(refreshMembers, Boolean(identity && accountReady));
 	useSyncOnFocusAndOnline(sync, identity, accountReady);
@@ -154,7 +141,7 @@ export function WgContextProvider({
 	const [retrying, setRetrying] = useState(false);
 	const retryingRef = useRef(false);
 	const retryMemberLoad = useCallback(async () => {
-		const userId = authUserIdRef.current;
+		const userId = auth.current.userId;
 		if (!userId) {
 			window.location.reload();
 			return;
@@ -163,7 +150,7 @@ export function WgContextProvider({
 		retryingRef.current = true;
 		setRetrying(true);
 		try {
-			await loadSessionMember(userId, authGenerationRef.current, true);
+			await loadSessionMember(userId, auth.current.generation, true);
 		} finally {
 			retryingRef.current = false;
 			setRetrying(false);
@@ -209,82 +196,87 @@ export function WgContextProvider({
 		);
 	}
 
-	const backToWgs = (
-		<a
-			href="/neu"
-			className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'mt-3 w-full')}
-		>
-			Zurück zu deinen WGs
-		</a>
-	);
-
-	// No WG header or bottom nav around these two screens, so the status bar inset is theirs.
-	const standaloneMain =
-		'mx-auto max-w-md px-6 pb-6 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] focus:outline-none';
+	const backToWgs = <ShellLink href="/neu">Zurück zu deinen WGs</ShellLink>;
 
 	if (memberLoadError || retrying) {
 		return (
-			<main id="main" tabIndex={-1} className={standaloneMain}>
-				<Alert variant="destructive">
-					<AlertTitle>WG nicht geladen</AlertTitle>
-					<AlertDescription className="text-current">
-						{online
-							? 'Deine WG konnte nicht geladen werden. Bitte versuche es erneut.'
-							: 'Du bist offline. Sobald die Verbindung zurück ist, lädt deine WG von selbst.'}
-					</AlertDescription>
-					<Button
-						type="button"
-						variant="outline"
-						size="lg"
-						className="mt-3 w-full aria-disabled:opacity-50"
-						aria-disabled={retrying}
-						onClick={() => void retryMemberLoad()}
-					>
-						{retrying && <Spinner data-icon="inline-start" aria-hidden />}
-						{retrying ? 'Lädt…' : 'Erneut versuchen'}
-					</Button>
-					{backToWgs}
-				</Alert>
-			</main>
+			<ShellAlert
+				title="WG nicht geladen"
+				description={
+					online
+						? 'Deine WG konnte nicht geladen werden. Bitte versuche es erneut.'
+						: 'Du bist offline. Sobald die Verbindung zurück ist, lädt deine WG von selbst.'
+				}
+			>
+				<Button
+					type="button"
+					variant="outline"
+					size="lg"
+					className="mt-3 w-full aria-disabled:opacity-50"
+					aria-disabled={retrying}
+					onClick={() => void retryMemberLoad()}
+				>
+					{retrying && <Spinner data-icon="inline-start" aria-hidden />}
+					{retrying ? 'Lädt…' : 'Erneut versuchen'}
+				</Button>
+				{backToWgs}
+			</ShellAlert>
 		);
 	}
 
 	if (sessionEnded && !identity) {
 		const next = encodeURIComponent(`${window.location.pathname}${window.location.search}`);
 		return (
-			<main id="main" tabIndex={-1} className={standaloneMain}>
-				<Alert variant="destructive">
-					<AlertTitle>Sitzung beendet</AlertTitle>
-					<AlertDescription className="text-current">
-						Melde dich erneut an, um weiterzumachen.
-					</AlertDescription>
-					<a
-						href={`/neu?next=${next}`}
-						className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'mt-3 w-full')}
-					>
-						Neu anmelden
-					</a>
-				</Alert>
-			</main>
+			<ShellAlert title="Sitzung beendet" description="Melde dich erneut an, um weiterzumachen.">
+				<ShellLink href={`/neu?next=${next}`}>Neu anmelden</ShellLink>
+			</ShellAlert>
 		);
 	}
 
 	if (!identity) {
 		return (
-			<main id="main" tabIndex={-1} className={standaloneMain}>
-				<Alert variant="destructive">
-					<AlertTitle>Kein Zugriff</AlertTitle>
-					<AlertDescription className="text-current">
-						Du bist in dieser WG nicht (mehr) Mitglied, z. B. weil du ausgezogen bist, entfernt
-						wurdest oder die WG gelöscht wurde.
-					</AlertDescription>
-					{backToWgs}
-				</Alert>
-			</main>
+			<ShellAlert
+				title="Kein Zugriff"
+				description="Du bist in dieser WG nicht (mehr) Mitglied, z. B. weil du ausgezogen bist, entfernt wurdest oder die WG gelöscht wurde."
+			>
+				{backToWgs}
+			</ShellAlert>
 		);
 	}
 
 	return <WgContext.Provider value={value}>{children}</WgContext.Provider>;
+}
+
+// No WG header or bottom nav around the shell alerts, so the status bar inset is theirs.
+const STANDALONE_MAIN =
+	'mx-auto max-w-md px-6 pb-6 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] focus:outline-none';
+
+/** Full-page alert shown instead of the app when the WG shell cannot render its content. */
+function ShellAlert({
+	title,
+	description,
+	children,
+}: { title: string; description: string; children: ReactNode }) {
+	return (
+		<main id="main" tabIndex={-1} className={STANDALONE_MAIN}>
+			<Alert variant="destructive">
+				<AlertTitle>{title}</AlertTitle>
+				<AlertDescription className="text-current">{description}</AlertDescription>
+				{children}
+			</Alert>
+		</main>
+	);
+}
+
+function ShellLink({ href, children }: { href: string; children: ReactNode }) {
+	return (
+		<a
+			href={href}
+			className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'mt-3 w-full')}
+		>
+			{children}
+		</a>
+	);
 }
 
 export function useWg(): WgContextValue {

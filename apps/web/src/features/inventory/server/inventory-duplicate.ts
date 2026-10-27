@@ -1,5 +1,6 @@
 import 'server-only';
 import { wgInventoryItems } from '@/core/db';
+import { isUniqueViolation } from '@/core/db/pg-errors';
 import type { DbTransaction } from '@/core/db/transaction';
 import { normalizeForMatch } from '@/features/inventory/inventory';
 import { and, eq, sql } from 'drizzle-orm';
@@ -40,17 +41,5 @@ const INVENTORY_UNIQUE_NAME = 'wg_inventory_items_unique_name';
 
 /** True when the error (or a wrapped cause) is a hit on the unique inventory name index. */
 export function isInventoryNameViolation(err: unknown): boolean {
-	const seen = new Set<object>();
-	let current: unknown = err;
-	while (current && typeof current === 'object' && !seen.has(current)) {
-		seen.add(current);
-		if (
-			(current as { code?: unknown }).code === '23505' &&
-			(current as { constraint?: unknown }).constraint === INVENTORY_UNIQUE_NAME
-		) {
-			return true;
-		}
-		current = (current as { cause?: unknown }).cause;
-	}
-	return false;
+	return isUniqueViolation(err, INVENTORY_UNIQUE_NAME);
 }

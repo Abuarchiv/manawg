@@ -12,10 +12,10 @@ import {
 import { ItemGroup } from '@/components/ui/item';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { formatEuroCents } from '@/core/utils/money';
-import type { Expense } from '@/features/expenses/components/ausgaben/expense-types';
 import { getDebtOverview, listedMemberBalances } from '@/features/expenses/debt-overview';
 import type { SettlementSummary, SimplifiedDebt } from '@/features/expenses/debt-reduction';
 import type { ExpensePaymentInput } from '@/features/expenses/expense-payment-input';
+import type { Expense } from '@/features/expenses/expense-types';
 import { cn } from '@/shared/lib/cn';
 import { Bell, FileText } from 'lucide-react';
 import Link from 'next/link';
@@ -180,7 +180,7 @@ export function DebtSummary({
 				{/* Balances always open: who is ahead and who is behind is the core of this page. */}
 				{showBalances && (
 					<section aria-labelledby="balances-heading" className="flex flex-col gap-2">
-						<h3 id="balances-heading" className="text-[12px] font-medium text-muted-foreground">
+						<h3 id="balances-heading" className="text-meta font-medium text-muted-foreground">
 							Salden
 						</h3>
 						<ul aria-label="Saldo pro Mitglied" className="flex flex-col gap-1.5">
@@ -221,7 +221,7 @@ export function DebtSummary({
 				)}
 				{(personal.length > 0 || others.length > 0) && (
 					<section aria-labelledby="settle-heading" className="flex flex-col gap-1">
-						<h3 id="settle-heading" className="text-[12px] font-medium text-muted-foreground">
+						<h3 id="settle-heading" className="text-meta font-medium text-muted-foreground">
 							So wird ausgeglichen
 						</h3>
 						{personal.length > 0 && (

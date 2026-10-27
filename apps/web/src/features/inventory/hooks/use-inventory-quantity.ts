@@ -2,12 +2,13 @@
 
 import { useToast } from '@/components/ui/Toast';
 import { mutationErrorMessage } from '@/core/http/error-codes';
+import { createIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
 import {
 	type NotificationWarning,
 	notificationWarningMessage,
 } from '@/core/notifications/notification-warning';
-import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
+import { keyUnavailableMessage } from '@/core/offline/offline-copy';
 import {
 	type InventoryItemDto,
 	type InventoryMutationItemDto,
@@ -59,9 +60,9 @@ export function useInventoryQuantity(options: UseInventoryQuantityOptions) {
 		const { item, shareCode, memberId, onChanged, onGone } = latest.current;
 		const consume = delta < 0;
 		const mapKey = `${consume ? 'consume' : 'restock'}:${delta}`;
-		const key = keysRef.current.get(mapKey) ?? createOfflineIdempotencyKey();
+		const key = keysRef.current.get(mapKey) ?? createIdempotencyKey();
 		if (!key) {
-			toast.error('Aktualisierung konnte nicht sicher gesendet werden. Versuche es erneut.');
+			toast.error(keyUnavailableMessage('Aktualisierung', 'gesendet'));
 			return false;
 		}
 		keysRef.current.set(mapKey, key);
@@ -90,8 +91,8 @@ export function useInventoryQuantity(options: UseInventoryQuantityOptions) {
 		if (res.status === 404 && res.error === 'item_not_found') {
 			onGone();
 		} else {
-			if (res.status > 0 && res.status < 500 && res.status !== 429) keysRef.current.delete(mapKey);
-			const subject = `„${item.name}“ ließ sich nicht ${consume ? 'verringern' : 'erhöhen'}`;
+			if (shouldReleaseIdempotencyKey(res.status, res.error)) keysRef.current.delete(mapKey);
+			const subject = `„${item.name}“ konnte nicht ${consume ? 'verringert' : 'erhöht'} werden`;
 			toast.error(
 				mutationErrorMessage(subject, res.error, {}, `Aktualisierung fehlgeschlagen. ${subject}.`),
 			);

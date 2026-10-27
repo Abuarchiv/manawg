@@ -2,17 +2,13 @@ import { berlinCalendarDayDistance } from '@/core/utils/berlin-day';
 import { parseTimestamp } from '@/core/utils/time';
 
 type ChoreStatusState = 'planned' | 'due' | 'overdue' | 'unknown';
-type ChoreStatusTone = 'ok' | 'soon' | 'overdue';
 
 interface ChoreStatus {
 	state: ChoreStatusState;
-	tone: ChoreStatusTone;
 	label: string;
-	detail: string;
 	actionLabel: 'Erledigt' | 'Nachholen';
 	overdueDays: number;
 	escalated: boolean;
-	escalationLabel: 'Klärung offen' | null;
 }
 
 interface ChoreHealthInput {
@@ -26,18 +22,9 @@ interface ChoreRepairInput {
 	assigneeAbsent?: boolean;
 }
 
-interface ChoreRepairHint {
-	tone: 'danger' | 'neutral';
-	title: string;
-	action: string;
-}
-
 interface ChorePlanHealth {
-	total: number;
 	gaps: number;
 	dueToday: number;
-	escalated: number;
-	nextLabel: string;
 }
 
 function calendarDayDistance(iso: string, now: number): number | null {
@@ -50,13 +37,10 @@ export function getChoreStatus(iso: string, now = Date.now()): ChoreStatus {
 	if (diffDays === null) {
 		return {
 			state: 'unknown',
-			tone: 'soon',
 			label: 'Datum prüfen',
-			detail: 'Fälligkeit ist unklar',
 			actionLabel: 'Erledigt',
 			overdueDays: 0,
 			escalated: false,
-			escalationLabel: null,
 		};
 	}
 
@@ -65,91 +49,44 @@ export function getChoreStatus(iso: string, now = Date.now()): ChoreStatus {
 		const escalated = overdueDays >= 2;
 		return {
 			state: 'overdue',
-			tone: 'overdue',
 			label: `seit ${overdueDays} T. offen`,
-			detail: `Seit ${overdueDays} ${overdueDays === 1 ? 'Tag' : 'Tagen'} offen`,
 			actionLabel: 'Nachholen',
 			overdueDays,
 			escalated,
-			escalationLabel: escalated ? 'Klärung offen' : null,
 		};
 	}
 
 	if (diffDays === 0) {
 		return {
 			state: 'due',
-			tone: 'soon',
 			label: 'heute fällig',
-			detail: 'Heute offen',
 			actionLabel: 'Erledigt',
 			overdueDays: 0,
 			escalated: false,
-			escalationLabel: null,
 		};
 	}
 
 	return {
 		state: 'planned',
-		tone: diffDays <= 3 ? 'soon' : 'ok',
 		label: diffDays === 1 ? 'morgen' : `in ${diffDays} T.`,
-		detail: 'Geplant',
 		actionLabel: 'Erledigt',
 		overdueDays: 0,
 		escalated: false,
-		escalationLabel: null,
 	};
 }
 
 export function getChorePlanHealth(items: ChoreHealthInput[], now = Date.now()): ChorePlanHealth {
-	if (items.length === 0) {
-		return {
-			total: 0,
-			gaps: 0,
-			dueToday: 0,
-			escalated: 0,
-			nextLabel: 'keine',
-		};
-	}
-
 	const statuses = items.map((item) => getChoreStatus(item.nextDueAt, now));
-	const gaps = statuses.filter((status) => status.state === 'overdue').length;
-	const dueToday = statuses.filter((status) => status.state === 'due').length;
-	const escalated = statuses.filter((status) => status.escalated).length;
-	const nextLabel = statuses[0]?.label ?? 'keine';
-
 	return {
-		total: items.length,
-		gaps,
-		dueToday,
-		escalated,
-		nextLabel,
+		gaps: statuses.filter((status) => status.state === 'overdue').length,
+		dueToday: statuses.filter((status) => status.state === 'due').length,
 	};
 }
 
-export function getChoreRepairHint(
-	item: ChoreRepairInput,
-	now = Date.now(),
-): ChoreRepairHint | null {
-	if (!item.assignedMemberId) {
-		return {
-			tone: 'danger',
-			title: 'Niemand zuständig',
-			action: 'Person zuweisen',
-		};
-	}
-
-	if (item.assigneeAbsent) {
-		return { tone: 'danger', title: 'Zuständig ist abwesend', action: 'Ich übernehme' };
-	}
-
-	const status = getChoreStatus(item.nextDueAt, now);
-	if (!status.escalated) return null;
-
-	return {
-		tone: 'danger',
-		title: `Offen seit ${status.overdueDays} Tagen`,
-		action: 'Neu zuweisen oder erledigen',
-	};
+/** True when the chore needs someone to step in: no assignee, an absent assignee, or escalated overdue. */
+export function choreNeedsRepair(item: ChoreRepairInput, now = Date.now()): boolean {
+	if (!item.assignedMemberId || item.assigneeAbsent) return true;
+	return getChoreStatus(item.nextDueAt, now).escalated;
 }
 
 export type ChoreGroupKey = 'mine' | 'overdue' | 'week' | 'later';
@@ -180,7 +117,7 @@ export function groupChoresForPlan<T extends ChoreRepairInput>(
 	currentMemberId: string,
 	now = Date.now(),
 ): { key: ChoreGroupKey; label: string; chores: T[] }[] {
-	const needsRepair = (chore: T) => (getChoreRepairHint(chore, now) !== null ? 0 : 1);
+	const needsRepair = (chore: T) => (choreNeedsRepair(chore, now) ? 0 : 1);
 	const sorted = [...chores].sort((a, b) => needsRepair(a) - needsRepair(b));
 	return CHORE_GROUPS.map((group) => ({
 		...group,

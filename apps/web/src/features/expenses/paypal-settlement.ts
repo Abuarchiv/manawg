@@ -1,3 +1,5 @@
+import { CENTS_PER_EURO } from '@/core/utils/money';
+
 export function isPayPalCaptureDebtChanged(
 	debtCents: number | undefined,
 	captureAmountCents: number,
@@ -15,7 +17,7 @@ export type PayPalCaptureResult =
 export function parsePayPalAmountCents(value: string | undefined): number | null {
 	const match = value?.match(/^(\d+)(?:\.(\d{1,2}))?$/);
 	if (!match) return null;
-	const cents = Number(match[1]) * 100 + Number((match[2] ?? '').padEnd(2, '0'));
+	const cents = Number(match[1]) * CENTS_PER_EURO + Number((match[2] ?? '').padEnd(2, '0'));
 	return Number.isSafeInteger(cents) ? cents : null;
 }
 

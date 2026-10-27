@@ -3,33 +3,31 @@
 import { useToast } from '@/components/ui/Toast';
 import type { ActionNotice } from '@/components/wg/ActionNoticeBanner';
 import { useWg } from '@/components/wg/WgContextProvider';
-import { usePendingSet } from '@/core/hooks/usePendingSet';
-import { useStableCallback } from '@/core/hooks/useStableCallback';
-import { parseEuroAmount } from '@/core/utils/amount';
-import { CENTS_PER_EURO } from '@/core/utils/money';
+import { usePendingSet } from '@/core/hooks/use-pending-set';
+import { useStableCallback } from '@/core/hooks/use-stable-callback';
+import { eurosToCents, parseEuroAmount } from '@/core/utils/amount';
 import { formatWeekLabel, parseValidDate, startOfWeek } from '@/core/utils/time';
-import {
-	AMOUNT_MAX_EUROS,
-	AMOUNT_MIN_EUROS,
-} from '@/features/expenses/components/ausgaben/constants';
-import { useExpenseForm } from '@/features/expenses/components/ausgaben/useExpenseForm';
 import {
 	buildSettlementSummary,
 	computeDirectDebts,
 	computeNetBalances,
 } from '@/features/expenses/debt-reduction';
+import { AMOUNT_MAX_EUROS, AMOUNT_MIN_EUROS } from '@/features/expenses/expense-constants';
+import { EDITED_EXPENSE_DELETED_MESSAGE } from '@/features/expenses/expense-errors';
 import {
 	type ExpenseScope,
 	filterExpenses,
 	matchesExpenseQuery,
 } from '@/features/expenses/expense-filter';
+import { expenseFormTitle } from '@/features/expenses/expense-form-mode';
 import {
 	payerOptions,
 	settledSharesAffectedByEdit,
 	splitCandidates,
 } from '@/features/expenses/expense-split-input';
+import { useExpenseForm } from '@/features/expenses/hooks/use-expense-form';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ActionNotifier, ExpensePageContext } from './expense-page-context';
 import { useExpenseFormSupport } from './use-expense-form-support';
 import { useExpenseRowActions } from './use-expense-row-actions';
@@ -41,6 +39,9 @@ import { useRecurringExpenseActions } from './use-recurring-expense-actions';
 const EXPENSE_RENDER_PAGE = 60;
 /** The recurring-expense preview shows at most this many templates unless the filter is active. */
 const RECURRING_PREVIEW_LIMIT = 4;
+
+/** Delay before scrolling to a deep-linked row, so the list has laid out first. */
+const SCROLL_SETTLE_MS = 80;
 
 /** Expenses page: loads data, keeps form and mutations together and provides the display derivations. */
 export function useAusgabenPage() {
@@ -61,7 +62,7 @@ export function useAusgabenPage() {
 		// Success as a floating toast: an in-flow banner would stay, reappear in the next form and push the page.
 		success: (message) => toast.success(message),
 	};
-	const pending = usePendingSet();
+	const rowPending = usePendingSet();
 
 	const data = useExpensesData({
 		shareCode: wg.shareCode,
@@ -69,6 +70,17 @@ export function useAusgabenPage() {
 		setActionNotice,
 	});
 	const { expenses, recurringExpenses } = data;
+	// Ending a request also drops its optimistic row from the sync overlay.
+	const { end: endRowPending } = rowPending;
+	const overlay = data.optimisticExpenses;
+	const endPending = useCallback(
+		(id: string) => {
+			endRowPending(id);
+			overlay.delete(id);
+		},
+		[endRowPending, overlay],
+	);
+	const pending = { ...rowPending, end: endPending };
 
 	// Everything the form itself edits, plus its localStorage draft.
 	const form = useExpenseForm({
@@ -92,10 +104,11 @@ export function useAusgabenPage() {
 		pending,
 		expenses,
 		recurringExpenses,
+		optimisticExpenses: data.optimisticExpenses,
 		updateExpenses: data.updateExpenses,
 		updateRecurringExpenses: data.updateRecurringExpenses,
 		reload: async () => {
-			await data.load(false);
+			await data.load(false, true);
 		},
 		refreshQueuedCount: data.refreshQueuedCount,
 	};
@@ -135,7 +148,7 @@ export function useAusgabenPage() {
 			document.getElementById(`expense-${highlightedId}`)?.scrollIntoView({
 				block: 'center',
 			});
-		}, 80);
+		}, SCROLL_SETTLE_MS);
 		return () => window.clearTimeout(timerId);
 	}, [highlightedId, expenseCount]);
 
@@ -145,7 +158,7 @@ export function useAusgabenPage() {
 			document.getElementById('recurring-expenses')?.scrollIntoView({
 				block: 'start',
 			});
-		}, 80);
+		}, SCROLL_SETTLE_MS);
 		return () => window.clearTimeout(timerId);
 	}, [recurringFilterActive, recurringId]);
 
@@ -245,7 +258,7 @@ export function useAusgabenPage() {
 	const previewAmount = parseEuroAmount(form.amountStr);
 	const splitPreview =
 		previewAmount !== null && previewAmount >= AMOUNT_MIN_EUROS && previewAmount <= AMOUNT_MAX_EUROS
-			? support.buildSplits(Math.round(previewAmount * CENTS_PER_EURO))
+			? support.buildSplits(eurosToCents(previewAmount))
 			: null;
 	const editedExpense = form.editingExpense
 		? expenses.find((expense) => expense.id === form.editingExpense?.id)
@@ -263,6 +276,41 @@ export function useAusgabenPage() {
 			form.editingExpense.currency ??
 			'EUR')
 		: (form.editingRecurringExpense?.currency ?? 'EUR');
+
+	const isEditingQueuedRecurring = form.queueEditType === 'recurring.create';
+	const isEditingQueuedExpense = form.queueEditType === 'expense.create';
+	const formTitle = expenseFormTitle({
+		editingRecurringExpense: form.editingRecurringExpense,
+		isEditingQueuedRecurring,
+		isEditingQueuedExpense,
+		isEditingExpense: form.editingExpense !== null,
+	});
+	const saving = expenseSubmit.submitting || recurring.savingRecurringTemplate;
+
+	/** After an edit conflict, decide against the fresh server version. */
+	async function resolveConflict(choice: 'server' | 'draft'): Promise<void> {
+		const editedId = form.editingExpense?.id;
+		const fresh = await data.load(false, true);
+		if (!fresh || !editedId) {
+			form.setFormError(
+				'Die Liste konnte nicht neu geladen werden. Versuche es gleich noch einmal.',
+			);
+			return;
+		}
+		const serverExpense = fresh.find((expense) => expense.id === editedId);
+		if (!serverExpense) {
+			form.setConflictExpenseId(null);
+			form.setFormError(EDITED_EXPENSE_DELETED_MESSAGE);
+			return;
+		}
+		if (choice === 'server') {
+			form.startEdit(serverExpense);
+			return;
+		}
+		form.rebaseEdit(serverExpense.updatedAt);
+		form.setConflictExpenseId(null);
+		form.setFormError(null);
+	}
 
 	function clearPendingCreateRequests(): void {
 		expenseSubmit.forgetPendingRequest();
@@ -311,6 +359,10 @@ export function useAusgabenPage() {
 		splitPreview,
 		reopenedShares,
 		formCurrency,
+		formTitle,
+		saving,
+		isEditingQueuedRecurring,
+		resolveConflict,
 		clearPendingCreateRequests,
 		memberName,
 		memberPayPalMerchantId,

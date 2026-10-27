@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { mock, test } from 'node:test';
+import { deferred } from '../../../tests/support/deferred';
 
 type WorkerOptions = { errorHandler?: (message: string) => void };
 type CreateWorker = (langs?: unknown, oem?: unknown, options?: WorkerOptions) => Promise<unknown>;
@@ -18,14 +19,6 @@ const reloadRequired = (error: unknown) =>
 
 function setTesseractMock(createWorker: CreateWorker) {
 	tesseractMock = { createWorker };
-}
-
-function deferred() {
-	let resolve: (value?: unknown) => void = () => {};
-	const promise = new Promise<unknown>((res) => {
-		resolve = res;
-	});
-	return { promise, resolve };
 }
 
 async function assertRejectsWithin(

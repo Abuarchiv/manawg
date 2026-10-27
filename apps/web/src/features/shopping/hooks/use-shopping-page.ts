@@ -1,5 +1,5 @@
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
-import { usePendingSet } from '@/core/hooks/usePendingSet';
+import { usePendingSet } from '@/core/hooks/use-pending-set';
 import { readOfflineQueue } from '@/core/offline/offline-client';
 import { useSyncedCollection } from '@/core/sync/use-synced-collection';
 import type { ShoppingItem } from '@/features/shopping/components/shopping-types';
@@ -11,6 +11,11 @@ import type { ShoppingActionContext } from './shopping-action-context';
 import { useShoppingEdit } from './use-shopping-edit';
 import { useShoppingRemoval } from './use-shopping-removal';
 import { useShoppingToggle } from './use-shopping-toggle';
+
+/** Delay before a deep-linked item is scrolled into view, so the list has laid out. */
+const SCROLL_DELAY_MS = 80;
+/** How long a row stays flashed after a duplicate add points to it. */
+const FLASH_MS = 2500;
 
 interface ShoppingResponse {
 	items: ShoppingItem[];
@@ -135,7 +140,7 @@ export function useShoppingPage({
 			document.getElementById(`shopping-${highlightedId}`)?.scrollIntoView({
 				block: 'center',
 			});
-		}, 80);
+		}, SCROLL_DELAY_MS);
 	}, [highlightedId, itemCount, items]);
 
 	useEffect(() => {
@@ -154,7 +159,7 @@ export function useShoppingPage({
 	}, [duplicateName, items]);
 	useEffect(() => {
 		if (!flashId) return;
-		const timer = window.setTimeout(() => setFlashId(null), 2500);
+		const timer = window.setTimeout(() => setFlashId(null), FLASH_MS);
 		return () => window.clearTimeout(timer);
 	}, [flashId]);
 

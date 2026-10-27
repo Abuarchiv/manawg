@@ -61,7 +61,7 @@ export function ExpensePayerDateFields({
 					value={paidByMemberId}
 					onChange={(event) => setPaidByMemberId(event.target.value)}
 					disabled={formSaving || isEditingExpense}
-					className="w-full [&_select]:h-auto [&_select]:py-[0.5625rem] [&_select]:text-base"
+					className="w-full"
 				>
 					{payerOptions.map((member) => (
 						<NativeSelectOption key={member.id} value={member.id}>

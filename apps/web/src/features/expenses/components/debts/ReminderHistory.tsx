@@ -17,18 +17,8 @@ import {
 } from '@/components/ui/item';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatRelativeTime, formatTimeFull } from '@/core/utils/time';
+import type { ReminderHistoryItem } from '@/features/expenses/expense-types';
 import { Bell } from 'lucide-react';
-
-export interface ReminderHistoryItem {
-	id: string;
-	debtorMemberId: string;
-	creditorMemberId: string;
-	amountCents: number;
-	currency: string;
-	channel: string;
-	sentAt: string;
-	oldestDebtAgeDays: number;
-}
 
 interface ReminderHistoryProps {
 	items: ReadonlyArray<ReminderHistoryItem>;
@@ -36,15 +26,16 @@ interface ReminderHistoryProps {
 	currentMemberId?: string;
 }
 
-// The API stores internal channel codes ('push' | 'inapp'); an unmapped
-// optimistic label like "Wird gesendet" passes through unchanged.
+// The API stores internal channel codes ('push' | 'inapp'); 'pending' marks a row shown before
+// the send has been confirmed.
 const CHANNEL_LABELS: Readonly<Record<string, string>> = {
 	push: 'Push-Benachrichtigung',
 	inapp: 'In der App',
+	pending: 'Wird gesendet',
 };
 
 function channelLabel(channel: string): string {
-	return CHANNEL_LABELS[channel] ?? channel;
+	return CHANNEL_LABELS[channel] ?? 'Unbekannt';
 }
 
 export function ReminderHistory({ items, memberName, currentMemberId }: ReminderHistoryProps) {
@@ -82,7 +73,7 @@ export function ReminderHistory({ items, memberName, currentMemberId }: Reminder
 					</ItemContent>
 					<Badge
 						variant="outline"
-						className="ml-auto h-auto min-h-5 shrink-0 text-[0.75rem] font-mono tabular-nums"
+						className="ml-auto h-auto min-h-5 shrink-0 text-meta font-mono tabular-nums"
 					>
 						{formatEuroCents(item.amountCents, item.currency)}
 					</Badge>

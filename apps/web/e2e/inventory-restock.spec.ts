@@ -424,10 +424,11 @@ test.describe('inventory restock retry', () => {
 		await dismissOnboarding(page);
 		await page.getByRole('button', { name: 'Reis entfernen', exact: true }).click();
 		await expect(page.getByRole('button', { name: 'Endgültig entfernen: Reis' })).toBeVisible();
-		await page.getByRole('button', { name: 'Abbrechen: Löschen von Reis' }).click();
+		await page.getByRole('button', { name: 'Abbrechen: Reis entfernen' }).click();
 
 		await expect(page.getByRole('button', { name: 'Endgültig entfernen: Reis' })).toHaveCount(0);
 		await expect(page.getByRole('button', { name: 'Reis entfernen', exact: true })).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Reis entfernen', exact: true })).toBeFocused();
 		expect(deleteCalls).toBe(0);
 	});
 });

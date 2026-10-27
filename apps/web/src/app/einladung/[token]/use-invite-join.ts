@@ -1,9 +1,14 @@
 'use client';
 
 import { hasSessionCookie } from '@/core/auth/session-hint';
-import { REQUEST_TIMEOUT_MS, anySignal } from '@/core/infra/api-client';
+import {
+	type PendingIdempotentRequest,
+	resolveIdempotencyKey,
+	shouldReleaseIdempotencyKey,
+} from '@/core/http/idempotency-key';
+import { REQUEST_TIMEOUT_MS, anySignal, readApiErrorCode } from '@/core/infra/api-client';
 import { INVITE_EXPIRED_MESSAGE, joinErrorMessage } from '@/core/infra/join-flow';
-import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
+import { keyUnavailableMessage } from '@/core/offline/offline-copy';
 import { isInviteToken } from '@/core/utils/invite-token';
 import posthog from '@/shared/lib/analytics';
 import { useRouter } from 'next/navigation';
@@ -18,15 +23,13 @@ export type InvitePhase =
 	| { kind: 'dead'; reason: 'invalid' | 'expired' }
 	| { kind: 'error' };
 
-async function readError(res: Response): Promise<{ error: string; shareCode: string }> {
+/** The WG a 409 lookup answer points at (the account is already a member), or ''. */
+async function readShareCode(res: Response): Promise<string> {
 	try {
-		const body = (await res.json()) as { error?: unknown; code?: unknown; shareCode?: unknown };
-		return {
-			error: typeof body.error === 'string' ? body.error : '',
-			shareCode: typeof body.shareCode === 'string' ? body.shareCode : '',
-		};
+		const body = (await res.json()) as { shareCode?: unknown };
+		return typeof body.shareCode === 'string' ? body.shareCode : '';
 	} catch {
-		return { error: '', shareCode: '' };
+		return '';
 	}
 }
 
@@ -40,7 +43,7 @@ export function useInviteJoin(token: string) {
 	const [nameInvalid, setNameInvalid] = useState(false);
 	const [busy, setBusy] = useState(false);
 	const busyRef = useRef(false);
-	const requestRef = useRef<{ fingerprint: string; key: string } | null>(null);
+	const requestRef = useRef<PendingIdempotentRequest | null>(null);
 
 	// The prefilled account name can arrive after an early submit; the "fehlt" error must not outlive it.
 	useEffect(() => {
@@ -69,7 +72,7 @@ export function useInviteJoin(token: string) {
 			.then(async (res) => {
 				if (res.status === 401) return setPhase({ kind: 'signed-out' });
 				if (res.status === 409) {
-					const { shareCode } = await readError(res);
+					const shareCode = await readShareCode(res);
 					if (shareCode) return router.replace(`/wg/${encodeURIComponent(shareCode)}`);
 				}
 				if (res.status === 404) return setPhase({ kind: 'dead', reason: 'invalid' });
@@ -108,10 +111,9 @@ export function useInviteJoin(token: string) {
 		setNameInvalid(false);
 		// A retry of the same request keeps its key, so a lost response cannot join twice.
 		const fingerprint = JSON.stringify({ token, name: trimmed });
-		const pending = requestRef.current;
-		const key = pending?.fingerprint === fingerprint ? pending.key : createOfflineIdempotencyKey();
+		const key = resolveIdempotencyKey(requestRef.current, fingerprint);
 		if (!key) {
-			setError('WG-Beitritt konnte nicht sicher gesendet werden. Versuche es erneut.');
+			setError(keyUnavailableMessage('WG-Beitritt', 'gesendet'));
 			busyRef.current = false;
 			setBusy(false);
 			return;
@@ -127,8 +129,8 @@ export function useInviteJoin(token: string) {
 			});
 			if (res.status === 401) return setPhase({ kind: 'signed-out' });
 			if (!res.ok) {
-				if (res.status < 500) requestRef.current = null;
-				const { error: apiError } = await readError(res);
+				const apiError = await readApiErrorCode(res);
+				if (shouldReleaseIdempotencyKey(res.status, apiError)) requestRef.current = null;
 				if (res.status === 409 && apiError === 'already_joined') return router.push(target);
 				if (apiError === 'invite_expired' || apiError === 'invite_required') {
 					return setPhase({ kind: 'dead', reason: 'expired' });
@@ -164,7 +166,7 @@ export function useInviteJoin(token: string) {
 			);
 			if (res.status === 401) return setPhase({ kind: 'signed-out' });
 			if (!res.ok) {
-				const { error: apiError } = await readError(res);
+				const apiError = await readApiErrorCode(res);
 				if (apiError === 'invite_expired' || apiError === 'invite_required') {
 					return setPhase({ kind: 'dead', reason: 'expired' });
 				}

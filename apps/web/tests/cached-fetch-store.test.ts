@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { mock, test } from 'node:test';
+import { deferred } from './support/deferred.ts';
 
 type FetchResult = { ok: true; data: unknown } | { ok: false; status: number; error: string };
 
@@ -29,16 +30,6 @@ let keyCounter = 0;
 function freshKey(): string {
 	keyCounter += 1;
 	return `key-${keyCounter}`;
-}
-
-function deferred<T>() {
-	let resolve!: (value: T) => void;
-	let reject!: (error: unknown) => void;
-	const promise = new Promise<T>((done, fail) => {
-		resolve = done;
-		reject = fail;
-	});
-	return { promise, resolve, reject };
 }
 
 function nth<T>(items: readonly T[], index: number): T {

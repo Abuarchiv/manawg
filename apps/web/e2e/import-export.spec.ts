@@ -8,10 +8,11 @@ import {
 	inMinimalMatrix,
 	navigateToFeature,
 	setupMember,
+	skipUnlessFixtures,
 } from './support/helpers';
 
 test.describe('import wizard responsive', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	async function setLargeText(page: Page): Promise<void> {
 		await page.evaluate(() => {
@@ -184,7 +185,7 @@ test.describe('import wizard responsive', () => {
 });
 
 test.describe('import undo', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	test('the result step takes the whole import back after a second tap', async ({ page }) => {
 		await page.setViewportSize({ width: 360, height: 844 });
@@ -242,7 +243,7 @@ test.describe('import undo', () => {
 });
 
 test.describe('import error notice', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 	test.use({ hasTouch: true, isMobile: true });
 
 	test('browser back moves one wizard step back and asks before leaving with input', async ({

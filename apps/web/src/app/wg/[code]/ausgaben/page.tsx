@@ -47,42 +47,13 @@ export default function AusgabenPage() {
 	const page = useAusgabenPage();
 	const { wg, members, identity, isAdmin, data, form, support, recurring, submit, notify } = page;
 	const { expenses, recurringExpenses, initialLoading, refreshing, loadError } = data;
-	const { showForm, setShowForm, editingExpense, editingRecurringExpense } = form;
-	const isEditingQueuedRecurring = form.queueEditType === 'recurring.create';
-	const formSaving = submit.submitting || recurring.savingRecurringTemplate;
+	const { showForm, setShowForm } = form;
 	// The form stays mounted after closing until the exit animation finishes; every open starts fresh.
 	const [formSession, setFormSession] = useState({ mounted: showForm, key: 0 });
 	const [previousShowForm, setPreviousShowForm] = useState(showForm);
 	if (showForm !== previousShowForm) {
 		setPreviousShowForm(showForm);
 		if (showForm) setFormSession((session) => ({ mounted: true, key: session.key + 1 }));
-	}
-
-	/** After an edit conflict, decide against the fresh server version. */
-	async function resolveConflict(choice: 'server' | 'draft'): Promise<void> {
-		const editedId = form.editingExpense?.id;
-		const fresh = await data.load(false);
-		const serverExpense = fresh?.find((expense) => expense.id === editedId);
-		if (!fresh || !editedId) {
-			form.setFormError(
-				'Die Liste konnte nicht neu geladen werden. Versuche es gleich noch einmal.',
-			);
-			return;
-		}
-		if (!serverExpense) {
-			form.setConflictExpenseId(null);
-			form.setFormError(
-				'Die ursprüngliche Ausgabe wurde gelöscht. Deine ungespeicherten Änderungen bleiben im Entwurf; du kannst sie kopieren oder den Entwurf verwerfen.',
-			);
-			return;
-		}
-		if (choice === 'server') {
-			form.startEdit(serverExpense);
-			return;
-		}
-		form.rebaseEdit(serverExpense.updatedAt);
-		form.setConflictExpenseId(null);
-		form.setFormError(null);
 	}
 
 	return (
@@ -96,83 +67,54 @@ export default function AusgabenPage() {
 				<ExpenseFormSection
 					key={formSession.key}
 					open={showForm}
-					onExited={() => setFormSession((session) => ({ ...session, mounted: false }))}
-					title={
-						editingRecurringExpense
-							? 'Fixkosten-Vorlage bearbeiten'
-							: isEditingQueuedRecurring
-								? 'Wartende Fixkosten-Vorlage bearbeiten'
-								: form.queueEditType === 'expense.create'
-									? 'Wartende Ausgabe bearbeiten'
-									: editingExpense
-										? 'Ausgabe bearbeiten'
-										: 'Ausgabe hinzufügen'
-					}
-					previewSplits={page.splitPreview?.ok ? page.splitPreview.splits : null}
-					pendingPrefillDescription={form.pendingPrefill?.description ?? null}
-					onReplacePrefill={() => {
-						page.clearPendingCreateRequests();
-						form.acceptPendingPrefill();
-					}}
-					isEditingExpense={editingExpense !== null || form.invalidEditDraft}
-					editingExpenseId={editingExpense?.id ?? null}
-					currency={page.formCurrency}
+					form={form}
+					title={page.formTitle}
 					notice={page.actionNotice}
-					description={form.description}
-					setDescription={form.setDescription}
-					category={form.category}
-					setCategory={form.setCategory}
-					amountStr={form.amountStr}
-					setAmountStr={form.setAmountStr}
-					paidByMemberId={form.paidByMemberId}
-					setPaidByMemberId={form.setPaidByMemberId}
-					members={members}
-					payerOptions={page.selectablePayers}
-					splitCandidates={page.selectableSplitMembers}
-					identityMemberId={identity.memberId}
-					splitMode={form.splitMode}
-					setSplitMode={form.setSplitMode}
-					recurringIntervalMonths={form.recurringIntervalMonths}
-					setRecurringIntervalMonths={form.setRecurringIntervalMonths}
-					manualSplits={form.manualSplits}
-					setManualSplits={form.setManualSplits}
-					extras={form.extras}
-					reopenedShares={page.reopenedShares}
-					imageUrl={form.imageUrl}
-					setImageUrl={form.setImageUrl}
 					shareCode={wg.shareCode}
-					isEditingQueuedExpense={form.queueEditType === 'expense.create'}
-					isEditingQueuedRecurring={isEditingQueuedRecurring}
-					formError={form.formError}
-					fieldErrors={support.fieldErrors}
-					validationAttempt={support.validationAttempt}
-					onClearFieldError={support.clearFieldError}
-					conflictExpenseId={form.conflictExpenseId}
-					onReloadServerVersion={() => void resolveConflict('server')}
-					onKeepDraft={() => void resolveConflict('draft')}
-					savingRecurringTemplate={recurring.savingRecurringTemplate}
-					editingRecurringExpense={editingRecurringExpense}
-					formSaving={formSaving}
-					onSaveRecurringTemplate={() => void recurring.saveRecurringTemplate()}
+					currency={page.formCurrency}
+					reopenedShares={page.reopenedShares}
+					previewSplits={page.splitPreview?.ok ? page.splitPreview.splits : null}
+					saving={page.saving}
 					recurringTemplateCount={recurringExpenses.length}
-					onCancel={() => setShowForm(false)}
-					onDiscard={() => {
-						page.clearPendingCreateRequests();
-						form.resetForm();
-						setShowForm(false);
-						removeDraft(form.draftKey);
+					people={{
+						members,
+						payerOptions: page.selectablePayers,
+						splitCandidates: page.selectableSplitMembers,
+						identityMemberId: identity.memberId,
 					}}
-					onSubmit={() => {
-						haptic('medium');
-						if (isEditingQueuedRecurring) void recurring.saveRecurringTemplate();
-						else void submit.submit();
+					validation={{
+						fieldErrors: support.fieldErrors,
+						attempt: support.validationAttempt,
+						onClear: support.clearFieldError,
+					}}
+					handlers={{
+						onExited: () => setFormSession((session) => ({ ...session, mounted: false })),
+						onReplacePrefill: () => {
+							page.clearPendingCreateRequests();
+							form.acceptPendingPrefill();
+						},
+						onReloadServerVersion: () => void page.resolveConflict('server'),
+						onKeepDraft: () => void page.resolveConflict('draft'),
+						onSaveRecurringTemplate: () => void recurring.saveRecurringTemplate(),
+						onCancel: () => setShowForm(false),
+						onDiscard: () => {
+							page.clearPendingCreateRequests();
+							form.resetForm();
+							setShowForm(false);
+							removeDraft(form.draftKey);
+						},
+						onSubmit: () => {
+							haptic('medium');
+							if (page.isEditingQueuedRecurring) void recurring.saveRecurringTemplate();
+							else void submit.submit();
+						},
 					}}
 				/>
 			)}
 			{page.actionNotice && !showForm && <ActionNoticeBanner notice={page.actionNotice} />}
 			{/* Screen readers only: a visible notice would cover the header and flash on every poll. */}
 			<output aria-live="polite" aria-hidden={!refreshing} className="sr-only">
-				{refreshing ? 'Wird aktualisiert…' : ''}
+				{refreshing ? 'Lädt…' : ''}
 			</output>
 			<OfflineQueueNotice queuedCount={data.queuedCount} />
 			{loadError && (

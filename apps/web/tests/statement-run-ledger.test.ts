@@ -2,13 +2,18 @@ import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 
 // Ledger behaviour of the monthly statement run against a real PostgreSQL.
-// Opt-in: STATEMENT_TEST_DB_URL must name a disposable local database with all
-// migrations applied.
-const url = process.env.STATEMENT_TEST_DB_URL;
-const skip = url ? false : 'STATEMENT_TEST_DB_URL is not set';
+// Opt-in: TEST_DATABASE_URL must name a disposable loopback database with all migrations
+// applied (`pnpm test:db`).
+const url = process.env.TEST_DATABASE_URL;
+const skip = url ? false : 'TEST_DATABASE_URL is not set';
 
 process.env.MEMBER_SESSION_SECRET = 'test-secret';
 if (url) {
+	// The ledger tests delete the WGs they create; never point them at a non-local database.
+	assert.ok(
+		['localhost', '127.0.0.1', '[::1]'].includes(new URL(url).hostname),
+		'TEST_DATABASE_URL must be a loopback database',
+	);
 	process.env.POSTGRES_URL = url;
 	process.env.DATABASE_URL = url;
 }

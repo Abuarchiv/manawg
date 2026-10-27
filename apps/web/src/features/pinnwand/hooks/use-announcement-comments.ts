@@ -1,6 +1,6 @@
+import { createIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
 import { notificationWarningMessage } from '@/core/notifications/notification-warning';
-import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import type { CommentOverrides } from '@/features/pinnwand/comment-overrides';
 import type {
 	Announcement,
@@ -42,6 +42,11 @@ export function useAnnouncementComments(
 	async function addComment(announcement: Announcement, content: string): Promise<boolean> {
 		const pendingKey = `${announcement.id}:comment`;
 		if (isPending(pendingKey)) return false;
+		const commentRequestKey = `${announcement.id}:${content}`;
+		const idempotencyKey =
+			commentIdempotencyKeysRef.current.get(commentRequestKey) ?? createIdempotencyKey();
+		if (!idempotencyKey) return false;
+		commentIdempotencyKeysRef.current.set(commentRequestKey, idempotencyKey);
 		const optimisticComment: AnnouncementComment = {
 			id: `temp-${Date.now()}`,
 			announcementId: announcement.id,
@@ -57,14 +62,6 @@ export function useAnnouncementComments(
 			comments: [...item.comments, optimisticComment],
 		}));
 		start(pendingKey);
-		const commentRequestKey = `${announcement.id}:${content}`;
-		const idempotencyKey =
-			commentIdempotencyKeysRef.current.get(commentRequestKey) ?? createOfflineIdempotencyKey();
-		if (!idempotencyKey) {
-			end(pendingKey);
-			return false;
-		}
-		commentIdempotencyKeysRef.current.set(commentRequestKey, idempotencyKey);
 		const res = await apiFetch<AnnouncementCommentResponse>(commentUrl(announcement.id), {
 			method: 'POST',
 			memberId: identity.memberId,
@@ -73,7 +70,7 @@ export function useAnnouncementComments(
 		});
 		end(pendingKey);
 		if (!res.ok) {
-			if (res.status > 0 && res.status < 500 && res.status !== 429) {
+			if (shouldReleaseIdempotencyKey(res.status, res.error)) {
 				commentIdempotencyKeysRef.current.delete(commentRequestKey);
 			}
 			if (res.status === 404 && res.error === 'announcement_not_found') {

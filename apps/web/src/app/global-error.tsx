@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/empty';
 import { captureException } from '@/core/infra/capture-client';
 import { isChunkLoadError, reloadOnStaleChunk } from '@/core/infra/stale-chunk';
+import { SUPPORT_MAILTO } from '@/shared/lib/support-mailto';
 import { THEME_BOOTSTRAP_SCRIPT, applyStoredTheme } from '@/shared/lib/theme';
 import '@/shared/globals.css';
 import { TriangleAlert } from 'lucide-react';
@@ -61,7 +62,7 @@ export default function GlobalError({
 								Zur Startseite
 							</a>
 							<a
-								href="mailto:info@manawg.com?subject=Fehler%20in%20ManaWG"
+								href={SUPPORT_MAILTO}
 								className={buttonVariants({ variant: 'outline', size: 'lg' })}
 							>
 								Fehler per E-Mail melden

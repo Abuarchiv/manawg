@@ -21,7 +21,7 @@ const REJECTED_ROW_REASONS: Record<string, string> = {
 };
 
 export function describeRejectedRowReason(reason: string): string {
-	return REJECTED_ROW_REASONS[reason] ?? reason;
+	return REJECTED_ROW_REASONS[reason] ?? 'Zeile nicht importierbar';
 }
 
 /**
@@ -44,7 +44,7 @@ export function describeParsedExpenseWarning(code: string): string {
 	if (code === 'ocr_heuristic') {
 		return 'Aus dem Bild erkannt: Prüfe Datum, Betrag und zahlende Person. Die Ausgabe wird nur der zahlenden Person zugeordnet, es entsteht keine Schuld.';
 	}
-	return code;
+	return 'Bitte prüfe diese Zeile.';
 }
 
 function levenshtein(a: string, b: string): number {

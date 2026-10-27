@@ -7,7 +7,7 @@ import { cookies } from 'next/headers';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-	title: 'Passwort zurücksetzen — ManaWG',
+	title: 'Passwort zurücksetzen',
 	robots: { index: false, follow: false },
 };
 

@@ -1,6 +1,7 @@
 import 'server-only';
 import { expenseSplits, expenses, recurringExpenses } from '@/core/db';
 import { bodyCodec } from '@/core/db/idempotent-write';
+import { isUniqueViolation } from '@/core/db/pg-errors';
 import { assertPrivateImageCanBeAttached } from '@/core/db/private-image-deletions';
 import { type DbTransaction, TransactionAbort } from '@/core/db/transaction';
 import { badRequest, conflict, notFound } from '@/core/http/api-errors';
@@ -126,9 +127,14 @@ async function findRecurringExpense(
 	return { ...expense, splits };
 }
 
-function existingOutcome(expense: unknown) {
-	const body: ExpenseCreateResponseBody = { expense, warning: null };
-	return { status: 200, body, context: { existing: true } as ExpenseCreateContext };
+interface ExpenseCreateOutcome {
+	status: number;
+	body: ExpenseCreateResponseBody;
+	context: ExpenseCreateContext;
+}
+
+function existingOutcome(expense: unknown): ExpenseCreateOutcome {
+	return { status: 200, body: { expense, warning: null }, context: { existing: true } };
 }
 
 /**
@@ -138,7 +144,10 @@ function existingOutcome(expense: unknown) {
  * date in the same transaction, so a lost follow-up request cannot leave the charge due.
  * Aborts while a PayPal capture is in flight.
  */
-export async function writeExpense(tx: DbTransaction, input: ExpenseCreateInput) {
+export async function writeExpense(
+	tx: DbTransaction,
+	input: ExpenseCreateInput,
+): Promise<ExpenseCreateOutcome> {
 	await assertPrivateImageCanBeAttached(tx, input.wgId, input.imageUrl);
 
 	let template: RecurringTemplate | null = null;
@@ -187,7 +196,7 @@ export async function writeExpense(tx: DbTransaction, input: ExpenseCreateInput)
 	return {
 		status: 200,
 		body,
-		context: { created: created.expense, advanced } as ExpenseCreateContext,
+		context: { created: created.expense, advanced },
 	};
 }
 
@@ -206,14 +215,7 @@ export function replayRecurringBooking(error: unknown) {
 }
 
 export function isRecurringDueUniqueViolation(error: unknown): boolean {
-	const cause = error instanceof Error && error.cause !== undefined ? error.cause : error;
-	if (!cause || typeof cause !== 'object') return false;
-	const pgError = cause as { code?: unknown; constraint?: unknown; constraint_name?: unknown };
-	return (
-		pgError.code === '23505' &&
-		(pgError.constraint === 'expenses_recurring_due_unique_idx' ||
-			pgError.constraint_name === 'expenses_recurring_due_unique_idx')
-	);
+	return isUniqueViolation(error, 'expenses_recurring_due_unique_idx');
 }
 
 export function expenseCreateAbortResponse(error: unknown): NextResponse | null {

@@ -3,7 +3,6 @@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useWg } from '@/components/wg/WgContextProvider';
-import { readResponseErrorCode } from '@/components/wg/einstellungen/settings-errors';
 import {
 	type ExportSectionCounts,
 	buildEmptyExportSummary,
@@ -12,19 +11,10 @@ import {
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { SETTINGS_TABS, getSettingsTabFromHash } from '@/core/guards/settings-tabs';
 import type { SettingsTab } from '@/core/guards/settings-tabs';
-import { noteSessionExpiry } from '@/core/infra/api-client';
-import { memberContextHeader } from '@/shared/lib/member-header';
+import { apiFetch } from '@/core/infra/api-client';
 import dynamic from 'next/dynamic';
 import { useEffect, useRef, useState } from 'react';
 
-/**
- * Only one tab is ever mounted, so each tab loads on demand: importing all four
- * statically would put every one of them in this route's first-load bundle.
- * A visitor pays only for the tab they opened.
- *
- * ssr:false because this page is already a client component behind a resolved
- * local identity; there is no server render of these panels to preserve.
- */
 // Mimics title row plus card so the tab content barely jumps.
 const tabFallback = () => (
 	<div className="grid gap-2.5" aria-hidden>
@@ -37,23 +27,34 @@ const tabFallback = () => (
 	</div>
 );
 
-const ProfileTab = dynamic(
-	() => import('@/components/wg/einstellungen/ProfileTab').then((m) => m.ProfileTab),
-	{ ssr: false, loading: tabFallback },
-);
+// Each tab is its own chunk: importing all four statically would put every one in this route's
+// first-load bundle. ssr:false because the page is a client component behind a resolved local
+// identity; there is no server render of these panels to preserve. All chunks are prefetched
+// after mount (see below) so tab switches keep working offline.
+const loadProfileTab = () => import('@/components/wg/einstellungen/ProfileTab');
+const loadNotificationSection = () => import('@/components/wg/einstellungen/NotificationSection');
+const loadAccessTab = () => import('@/components/wg/einstellungen/AccessTab');
+const loadDataTab = () => import('@/components/wg/einstellungen/DataTab');
+
+const ProfileTab = dynamic(() => loadProfileTab().then((m) => m.ProfileTab), {
+	ssr: false,
+	loading: tabFallback,
+});
 const NotificationSection = dynamic(
-	() =>
-		import('@/components/wg/einstellungen/NotificationSection').then((m) => m.NotificationSection),
-	{ ssr: false, loading: tabFallback },
+	() => loadNotificationSection().then((m) => m.NotificationSection),
+	{
+		ssr: false,
+		loading: tabFallback,
+	},
 );
-const AccessTab = dynamic(
-	() => import('@/components/wg/einstellungen/AccessTab').then((m) => m.AccessTab),
-	{ ssr: false, loading: tabFallback },
-);
-const DataTab = dynamic(
-	() => import('@/components/wg/einstellungen/DataTab').then((m) => m.DataTab),
-	{ ssr: false, loading: tabFallback },
-);
+const AccessTab = dynamic(() => loadAccessTab().then((m) => m.AccessTab), {
+	ssr: false,
+	loading: tabFallback,
+});
+const DataTab = dynamic(() => loadDataTab().then((m) => m.DataTab), {
+	ssr: false,
+	loading: tabFallback,
+});
 
 export default function EinstellungenPage() {
 	const { wg, members, identity } = useWg();
@@ -66,10 +67,10 @@ export default function EinstellungenPage() {
 
 	// Preload tab chunks: offline, every tab switch would otherwise fail, and the import stays cached.
 	useEffect(() => {
-		void import('@/components/wg/einstellungen/ProfileTab');
-		void import('@/components/wg/einstellungen/NotificationSection');
-		void import('@/components/wg/einstellungen/AccessTab');
-		void import('@/components/wg/einstellungen/DataTab');
+		void loadProfileTab();
+		void loadNotificationSection();
+		void loadAccessTab();
+		void loadDataTab();
 	}, []);
 
 	// Load the export summary only once the data tab opens; afterwards it stays in state.
@@ -77,36 +78,22 @@ export default function EinstellungenPage() {
 	useEffect(() => {
 		if (activeTab !== 'data' || exportSummaryLoaded.current) return;
 		let cancelled = false;
-		async function loadExportSummary(): Promise<void> {
-			try {
-				const response = await fetch(`/api/wg/${encodedShareCode}/export?summary=counts`, {
-					headers: memberContextHeader(identity.memberId),
-				});
-				if (cancelled) return;
-				noteSessionExpiry(response);
-				if (!response.ok) {
-					setExportSummaryError(
-						getWgLoadErrorMessage(
-							'Export-Zusammenfassung',
-							response.status,
-							await readResponseErrorCode(response),
-						),
-					);
-					return;
-				}
-				const { counts } = (await response.json()) as { counts: ExportSectionCounts };
-				setExportSummary(buildExportSummaryFromCounts(counts));
-				setExportSummaryError(null);
-				exportSummaryLoaded.current = true;
-			} catch {
-				if (!cancelled) {
-					setExportSummaryError(
-						getWgLoadErrorMessage('Export-Zusammenfassung', 0, 'Netzwerkfehler'),
-					);
-				}
+		void (async () => {
+			const result = await apiFetch<{ counts: ExportSectionCounts }>(
+				`/api/wg/${encodedShareCode}/export?summary=counts`,
+				{ memberId: identity.memberId },
+			);
+			if (cancelled) return;
+			if (!result.ok) {
+				setExportSummaryError(
+					getWgLoadErrorMessage('Export-Zusammenfassung', result.status, result.error),
+				);
+				return;
 			}
-		}
-		void loadExportSummary();
+			setExportSummary(buildExportSummaryFromCounts(result.data.counts));
+			setExportSummaryError(null);
+			exportSummaryLoaded.current = true;
+		})();
 		return () => {
 			cancelled = true;
 		};

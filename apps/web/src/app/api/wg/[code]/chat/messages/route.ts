@@ -20,6 +20,7 @@ import { logApiError } from '@/core/infra/observability';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { chatMessageLimiter, checkRateLimit } from '@/core/rate-limit';
 import {
+	CHAT_BODY_MAX,
 	CHAT_REFRESH_BATCH_SIZE,
 	chatMessagesReadPayload,
 	filterPersistedMentionIds,
@@ -32,13 +33,10 @@ import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-// Operator-tunable via CHAT_MESSAGES_* (see .env.example). Every value runs
-// through readListLimit, so an empty, unparsable or out-of-range setting falls
-// back to / clamps to a working limit instead of disabling the bound.
-// The body ceiling stays well under the route's 64 KiB raw-body cap, and the
-// page ceiling matches the members listing, so neither knob can degenerate
-// into an unbounded read or a whole-request payload.
-const BODY_MAX = readListLimit(process.env, 'CHAT_MESSAGES_BODY_MAX', 4000, 10_000);
+// Operator-tunable via CHAT_MESSAGES_*. Every value runs through readListLimit,
+// so an empty, unparsable or out-of-range setting falls back to / clamps to a
+// working limit instead of disabling the bound. The page ceiling matches the
+// members listing, so neither knob can degenerate into an unbounded read.
 const PAGE_MAX = readListLimit(process.env, 'CHAT_MESSAGES_PAGE_MAX', 100, 500);
 const PAGE_DEFAULT = readListLimit(process.env, 'CHAT_MESSAGES_PAGE_DEFAULT', 50, PAGE_MAX);
 const PREVIEW_LENGTH = 120;
@@ -52,7 +50,7 @@ const storeChatStatus = (status: number) =>
 // Text only: storage is limited, so new messages carry no pictures.
 const createMessageSchema = z
 	.object({
-		body: z.string().max(BODY_MAX).optional(),
+		body: z.string().max(CHAT_BODY_MAX).optional(),
 		replyToMessageId: z.string().uuid().optional().nullable(),
 		mentionMemberIds: z.array(z.string().uuid()).max(MENTIONS_MAX).optional(),
 	})
@@ -180,7 +178,7 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 	});
 	if (!parsed.ok) return parsed.response;
 
-	const cleanBody = sanitizeMessageBody(parsed.data.body ?? null, BODY_MAX);
+	const cleanBody = sanitizeMessageBody(parsed.data.body ?? null, CHAT_BODY_MAX);
 	if (parsed.data.body?.trim() && !cleanBody) {
 		return badRequest('body_invalid');
 	}
@@ -202,6 +200,7 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 				storeStatus: storeChatStatus,
 				inTransaction: (work) =>
 					withTransaction(async (tx) => {
+						// The per-WG write lock is shared with payments and WG deletion, so deletion waits for sends.
 						await lockExpensePayments(tx, wg.id);
 						return work(tx);
 					}),

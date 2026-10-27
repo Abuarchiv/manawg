@@ -32,6 +32,8 @@ interface ShoppingListProps {
 	isAdmin: boolean;
 	clearingBought: boolean;
 	onClearRequest: () => void;
+	/** Length of the offline queue; changes whenever queued updates do. */
+	queuedCount: number;
 }
 
 export function ShoppingList({
@@ -52,6 +54,7 @@ export function ShoppingList({
 	isAdmin,
 	clearingBought,
 	onClearRequest,
+	queuedCount,
 }: ShoppingListProps) {
 	const [rowLimit, setRowLimit] = useState(ROW_RENDER_PAGE);
 
@@ -71,15 +74,22 @@ export function ShoppingList({
 		[memberInfoById],
 	);
 
-	const queuedShoppingUpdateIds = new Set(
-		readOfflineQueue()
-			.filter(
-				(action) =>
-					action.type === 'shopping.update' &&
-					action.shareCode === shareCode &&
-					action.memberId === memberId,
-			)
-			.map((action) => String(action.payload.itemId)),
+	// The queue is read from localStorage, so it is recomputed only when the list or the queue
+	// length changes.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: queuedCount and the item lists signal queue changes
+	const queuedShoppingUpdateIds = useMemo(
+		() =>
+			new Set(
+				readOfflineQueue()
+					.filter(
+						(action) =>
+							action.type === 'shopping.update' &&
+							action.shareCode === shareCode &&
+							action.memberId === memberId,
+					)
+					.map((action) => String(action.payload.itemId)),
+			),
+		[shareCode, memberId, queuedCount, openItems, doneItems],
 	);
 
 	// Render long lists truncated at first; the highlighted element always stays in the DOM.
@@ -121,7 +131,7 @@ export function ShoppingList({
 					{openItems.slice(0, visibleOpenCount).map(renderRow)}
 				</ul>
 			) : (
-				<p className="text-[12px] text-muted-foreground">Alles eingekauft.</p>
+				<p className="text-meta text-muted-foreground">Alles eingekauft.</p>
 			)}
 			{visibleOpenCount < openItems.length && moreButton(openItems.length - visibleOpenCount)}
 			{doneItems.length > 0 && (
@@ -130,7 +140,7 @@ export function ShoppingList({
 					onToggle={(event) => onDoneOpenChange(event.currentTarget.open)}
 					className="group -mt-2"
 				>
-					<summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-[12px] font-medium text-muted-foreground [&::-webkit-details-marker]:hidden">
+					<summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-meta font-medium text-muted-foreground [&::-webkit-details-marker]:hidden">
 						<ChevronRight
 							aria-hidden
 							className="size-4 transition-transform group-open:rotate-90"

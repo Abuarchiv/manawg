@@ -31,7 +31,7 @@ function rememberDismissed(): void {
 
 /**
  * A one-time, non-blocking inline offer to turn on push notifications. Mounted
- * for every member with a resolved identity (see WgContextProvider), so it
+ * for every member with a resolved identity (see app/wg/[code]/page.tsx), so it
  * naturally appears right after the moment a WG is created or joined for a
  * fresh device — without needing every join/create flow to know about it.
  *
@@ -60,7 +60,6 @@ export function PushPrimingPrompt({
 	}, [activationError]);
 
 	useEffect(() => {
-		if (typeof window === 'undefined') return;
 		const supported = isPushSupported();
 		const dismissed = isPushPrimingDismissed(
 			safeLocalStorage()?.getItem(PUSH_PRIMING_DISMISS_KEY) ?? null,
@@ -96,7 +95,6 @@ export function PushPrimingPrompt({
 	// through the tap above or Einstellungen. Runs independently of the
 	// priming-card visibility/dismissal state above.
 	useEffect(() => {
-		if (typeof window === 'undefined') return;
 		let cancelled = false;
 		async function autoResubscribe(): Promise<void> {
 			const supported = isPushSupported();
@@ -180,7 +178,7 @@ export function PushPrimingPrompt({
 
 	return (
 		<div
-			// biome-ignore lint/a11y/useSemanticElements: native <output> can't host a nested interactive button+dismiss layout cleanly (see install-prompt.tsx for the same tradeoff)
+			// biome-ignore lint/a11y/useSemanticElements: native <output> can't host a nested interactive button+dismiss layout cleanly (see InstallPrompt.tsx for the same tradeoff)
 			role="status"
 			aria-live="polite"
 			aria-label="Benachrichtigungen aktivieren"

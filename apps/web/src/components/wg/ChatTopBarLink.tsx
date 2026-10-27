@@ -2,8 +2,11 @@
 
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
-import { useChatUnreadCount } from '@/components/wg/useWgCounts';
-import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
+import { useChatUnreadCount } from '@/components/wg/use-wg-counts';
+import {
+	LIST_REFRESH_INTERVAL_MS,
+	useVisibilityPausedInterval,
+} from '@/core/utils/use-visibility-paused-interval';
 import { cn } from '@/shared/lib/cn';
 import { haptic } from '@/shared/lib/haptics';
 import { MessageCircle } from 'lucide-react';
@@ -15,13 +18,12 @@ interface ChatTopBarLinkProps {
 	className?: string;
 }
 
-const REFRESH_MS = 30_000;
 const BADGE_MAX = 99;
 
 export function ChatTopBarLink({ href, className }: ChatTopBarLinkProps) {
 	const pathname = usePathname() ?? '';
 	const unread = useChatUnreadCount();
-	useVisibilityPausedInterval(() => void unread.refresh(), REFRESH_MS);
+	useVisibilityPausedInterval(() => void unread.refresh(), LIST_REFRESH_INTERVAL_MS);
 
 	const isActive = pathname.endsWith('/chat');
 	const count = unread.data?.count;

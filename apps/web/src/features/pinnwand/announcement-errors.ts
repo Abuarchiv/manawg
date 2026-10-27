@@ -1,8 +1,9 @@
 import { mutationErrorMessage } from '@/core/http/error-codes';
+import { CONTENT_MAX } from './constants';
 
 const CREATE_SUBJECT = 'Beitrag konnte nicht gespeichert werden';
 const CREATE_ERRORS: Record<string, string> = {
-	content_invalid: `${CREATE_SUBJECT}: Der Text muss 1 bis 2000 Zeichen haben.`,
+	content_invalid: `${CREATE_SUBJECT}: Der Text muss 1 bis ${CONTENT_MAX} Zeichen haben.`,
 	kind_invalid: `${CREATE_SUBJECT}: Die Beitragsart ist ungültig.`,
 	image_invalid: `${CREATE_SUBJECT}: Der Anhang ist ungültig.`,
 	image_removed: `${CREATE_SUBJECT}: Der Anhang wurde entfernt. Lade das Bild erneut hoch.`,
@@ -27,7 +28,7 @@ const ACTION_ERRORS: Record<string, string> = {
 	status_invalid: 'Pinnwand-Status konnte nicht gespeichert werden: Der Status ist ungültig.',
 	pinned_invalid: 'Fixierung konnte nicht gespeichert werden: Der Wert ist ungültig.',
 	kind_invalid: `${ACTION_SUBJECT}: Die Beitragsart ist ungültig.`,
-	content_invalid: `${ACTION_SUBJECT}: Der Text muss 1 bis 2000 Zeichen haben.`,
+	content_invalid: `${ACTION_SUBJECT}: Der Text muss 1 bis ${CONTENT_MAX} Zeichen haben.`,
 	expected_state_invalid: `${ACTION_SUBJECT}: Der Stand des Beitrags ist ungültig.`,
 	announcement_changed:
 		'Der Beitrag wurde inzwischen geändert. Die Ansicht wird aktualisiert, dann kannst du erneut bearbeiten.',

@@ -19,7 +19,7 @@ const MAX_KNOWN_WGS = 20;
 export interface SessionMember {
 	memberId: string;
 	name: string;
-	/** Absent only in the sessionless Playwright build. */
+	/** Set by the server-verified WG layout and the member lookup. */
 	authUserId?: string;
 }
 
@@ -29,7 +29,7 @@ const knownWgSchema = z.object({
 	code: z.string(),
 	name: z.string().min(1).max(WG_NAME_MAX_LENGTH),
 	lastVisitedAt: z.number().finite(),
-	// Missing on entries written before account binding.
+	// Optional on read: legacy entries predate account binding (belongsToAccount handles them).
 	authUserId: z.string().min(1).optional(),
 });
 
@@ -104,7 +104,8 @@ function writeKnownWgs(list: KnownWg[]): void {
 	}
 }
 
-export function rememberWg(entry: KnownWg): void {
+/** New entries are always bound to the server-verified account. */
+export function rememberWg(entry: KnownWg & { authUserId: string }): void {
 	const code = normalizeShareCode(entry.code);
 	if (!isValidShareCode(code) || entry.name.trim().length === 0) return;
 	const existing = getKnownWgs().filter((w) => w.code !== code);

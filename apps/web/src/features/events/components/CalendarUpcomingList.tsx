@@ -8,6 +8,8 @@ import {
 	EmptyTitle,
 } from '@/components/ui/empty';
 import { MS_PER_DAY } from '@/core/utils/time';
+import { CALENDAR_ROW_CLASS } from '@/features/events/components/calendar-row';
+import { isSameDay } from '@/features/events/event-display';
 import {
 	type EventOccurrence,
 	RECURRENCE_OPTIONS,
@@ -37,8 +39,7 @@ interface CalendarUpcomingListProps {
 	highlightEventId?: string | null;
 }
 
-const ROW_CLASS =
-	'flex min-h-11 w-full min-w-0 items-center gap-2 py-1.5 pr-3 pl-1 text-left outline-none transition-colors hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/50 active:bg-muted';
+const ROW_CLASS = cn(CALENDAR_ROW_CLASS, 'pr-3 pl-1');
 
 const DAY_FORMATTER = new Intl.DateTimeFormat('de-DE', {
 	weekday: 'long',
@@ -77,7 +78,7 @@ export function downloadOccurrenceIcs(occ: EventOccurrence): void {
 	const href = window.URL.createObjectURL(blob);
 	const a = document.createElement('a');
 	a.href = href;
-	a.download = `${occ.title.replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '') || 'termin'}.ics`;
+	a.download = `${occ.title.replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '') || 'termin'}.ics`;
 	a.style.display = 'none';
 	document.body.appendChild(a);
 	a.click();
@@ -153,7 +154,7 @@ export function CalendarUpcomingList({
 			{[...days.entries()].map(([key, day], index, all) => {
 				const prevDate = index > 0 ? all[index - 1]?.[1].date : undefined;
 				const showMonth = !prevDate || prevDate.getMonth() !== day.date.getMonth();
-				const isToday = day.label.startsWith('Heute');
+				const isToday = isSameDay(day.date, now);
 				return (
 					<li key={key} className="grid grid-cols-[3.25rem_minmax(0,1fr)]">
 						<h3
@@ -163,13 +164,13 @@ export function CalendarUpcomingList({
 							)}
 						>
 							<span className="sr-only">{day.label}</span>
-							<span aria-hidden className="text-[12px]">
+							<span aria-hidden className="text-meta">
 								{isToday ? 'Heute' : WEEKDAY_FORMATTER.format(day.date).replace('.', '')}
 							</span>
 							<span aria-hidden className="flex items-baseline gap-0.5">
 								<span className="text-base font-semibold tabular-nums">{day.date.getDate()}</span>
 								{showMonth && (
-									<span className="text-[12px] font-normal">
+									<span className="text-meta font-normal">
 										{MONTH_SHORT_FORMATTER.format(day.date).replace('.', '')}
 									</span>
 								)}
@@ -185,10 +186,10 @@ export function CalendarUpcomingList({
 											className={ROW_CLASS}
 										>
 											<span className="flex min-w-0 flex-1 flex-col">
-												<span className="text-[14px] font-medium break-words">
+												<span className="text-body font-medium break-words">
 													{entry.chore.title}
 												</span>
-												<span className="inline-flex items-center gap-1 text-[12px] text-muted-foreground">
+												<span className="inline-flex items-center gap-1 text-meta text-muted-foreground">
 													<Sparkles className="size-4 shrink-0" aria-hidden />
 													Putzplan
 												</span>
@@ -210,14 +211,14 @@ export function CalendarUpcomingList({
 										<button
 											type="button"
 											onClick={() => onSelect(entry.occurrence)}
-											aria-label={`Termin bearbeiten: ${entry.occurrence.title}`}
+											aria-label={`Termin öffnen: ${entry.occurrence.title}`}
 											className={ROW_CLASS}
 										>
 											<span className="flex min-w-0 flex-1 flex-col">
-												<span className="text-[14px] font-medium break-words">
+												<span className="text-body font-medium break-words">
 													{entry.occurrence.title}
 												</span>
-												<span className="text-[12px] break-words text-muted-foreground">
+												<span className="text-meta break-words text-muted-foreground">
 													<CalendarClock className="mr-1 inline size-4 align-[-2px]" aria-hidden />
 													{timeLabel(entry.occurrence, todayStart)}
 													{entry.occurrence.location && ` · ${entry.occurrence.location}`}

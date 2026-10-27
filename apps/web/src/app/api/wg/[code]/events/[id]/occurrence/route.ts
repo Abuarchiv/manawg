@@ -5,7 +5,14 @@ import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, conflict, notFound, tooMany, unauthorized } from '@/core/http/api-errors';
+import {
+	badRequest,
+	conflict,
+	notFound,
+	serverError,
+	tooMany,
+	unauthorized,
+} from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey } from '@/core/idempotency-store';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
@@ -199,7 +206,7 @@ export const POST = withWgRoute<{ id: string }>('events occurrence', async (req,
 		});
 		return NextResponse.json(result.body, { status: result.status });
 	} catch (err) {
-		if (err instanceof TransactionAbort) return badRequest(err.code);
+		if (err instanceof TransactionAbort) return serverError(err.code);
 		throw err;
 	}
 });

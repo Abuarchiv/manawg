@@ -2,13 +2,17 @@
 
 import { useWg } from '@/components/wg/WgContextProvider';
 import { subscribeOnline } from '@/core/hooks/use-online-status';
-import { REQUEST_TIMEOUT_MS, noteSessionExpiry } from '@/core/infra/api-client';
 import {
-	UPLOAD_TIMEOUT_MS,
+	PRIVATE_IMAGE_MAX_BYTES,
+	isAllowedPrivateImageMimeType,
+} from '@/core/infra/private-image-policy';
+import {
+	type ImageUploadPurpose,
+	PendingImageMissingError,
 	isPendingImageToken,
 	readPendingImage,
-	readUploadSignError,
 	removePendingImage,
+	signAndPut,
 	storePendingImage,
 	uploadPendingImageToken,
 } from '@/core/offline/offline-images';
@@ -21,25 +25,13 @@ import {
 } from './image-upload-errors';
 import { prepareUploadImage } from './prepare-upload-image';
 
-interface SignResponse {
-	presignedUrl: string;
-	publicUrl: string;
-	maxFileSize: number;
-	uploadHeaders?: Record<string, string>;
-}
-
-const MAX_FILE_BYTES = 8 * 1024 * 1024;
-const ALLOWED_IMAGE_TYPES = new Set([
-	'image/jpeg',
-	'image/png',
-	'image/webp',
-	'image/heic',
-	'image/heif',
-]);
+export const MAX_UPLOAD_MB = PRIVATE_IMAGE_MAX_BYTES / 1024 / 1024;
+const NETWORK_UNSTABLE_NOTICE =
+	'Bild vorbereitet. Der Upload startet automatisch, sobald das Netz wieder stabil ist.';
 
 interface ImageUploadInput {
 	shareCode: string;
-	purpose: 'expense' | 'announcement' | 'chat';
+	purpose: ImageUploadPurpose;
 	value: string | null;
 	onChange: (url: string | null) => void;
 	disabled: boolean;
@@ -131,11 +123,11 @@ export function useImageUpload({
 				if (stale) return;
 				onChangeRef.current(publicUrl);
 				// Chat cannot send while the token is pending, so no queued action will ever
-				// replay it; the stored copy (up to 8 MB) would stay on the device otherwise.
+				// replay it; the stored copy (up to the upload size cap) would stay on the device otherwise.
 				if (purpose === 'chat') void removePendingImage(value, identity.memberId).catch(() => {});
 			} catch (err) {
 				if (stale) return;
-				if (err instanceof Error && err.message === 'pending-image-missing') {
+				if (err instanceof PendingImageMissingError) {
 					setNotice(null);
 					setError(MISSING_PENDING_IMAGE_MESSAGE);
 					onChangeRef.current(null);
@@ -175,7 +167,7 @@ export function useImageUpload({
 			setError('Bitte ein Bild auswählen.');
 			return;
 		}
-		if (!ALLOWED_IMAGE_TYPES.has(original.type)) {
+		if (!isAllowedPrivateImageMimeType(original.type)) {
 			setNotice(null);
 			setError('Bitte JPG, PNG, WebP oder HEIC wählen.');
 			return;
@@ -193,8 +185,8 @@ export function useImageUpload({
 			setUploading(false);
 			return;
 		}
-		if (file.size > MAX_FILE_BYTES) {
-			setError('Bild zu groß (max. 8 MB). Wähle ein kleineres Bild.');
+		if (file.size > PRIVATE_IMAGE_MAX_BYTES) {
+			setError(`Bild zu groß (max. ${MAX_UPLOAD_MB} MB). Wähle ein kleineres Bild.`);
 			uploadPendingRef.current = false;
 			setUploading(false);
 			return;
@@ -221,7 +213,7 @@ export function useImageUpload({
 				return false;
 			}
 		}
-		if (typeof navigator !== 'undefined' && !navigator.onLine) {
+		if (!navigator.onLine) {
 			try {
 				await keepPending(
 					'Bild vorbereitet. Der Upload startet automatisch, sobald du wieder online bist.',
@@ -233,57 +225,41 @@ export function useImageUpload({
 			return;
 		}
 		try {
-			const sigRes = await fetch('/api/upload/sign', {
-				method: 'POST',
-				headers: {
-					'content-type': 'application/json',
-				},
-				body: JSON.stringify({ shareCode, purpose, mimeType: file.type, fileSize: file.size }),
-				signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+			const result = await signAndPut({
+				shareCode,
+				purpose,
+				file,
+				contentType: file.type,
+				memberId: identity.memberId,
 			});
-			noteSessionExpiry(sigRes);
-			const signError = sigRes.ok ? '' : await readUploadSignError(sigRes);
-			if (
-				sigRes.status === 503 &&
-				(signError === '' ||
-					signError === 'feature_disabled' ||
-					signError === 'image_uploads_unavailable')
-			) {
+			if (result.ok) {
 				setNotice(null);
-				setFeatureDisabled(true);
+				if (mountedRef.current) onChange(result.publicUrl);
 				return;
 			}
-			if (sigRes.status >= 500) {
-				await keepPending(
-					'Bild vorbereitet. Der Upload startet automatisch, sobald das Netz wieder stabil ist.',
-				);
-				return;
-			}
-			if (!sigRes.ok) {
+			if (result.kind === 'sign') {
+				if (
+					result.status === 503 &&
+					(result.code === '' ||
+						result.code === 'feature_disabled' ||
+						result.code === 'image_uploads_unavailable')
+				) {
+					setNotice(null);
+					setFeatureDisabled(true);
+					return;
+				}
+				// No answer or a server fault: keep the file and retry once the network is stable.
+				if (result.status === 0 || result.status >= 500) {
+					await keepPending(NETWORK_UNSTABLE_NOTICE);
+					return;
+				}
 				setNotice(null);
-				setError(uploadSignErrorMessage(sigRes.status, signError));
+				setError(uploadSignErrorMessage(result.status, result.code));
 				return;
 			}
-			const sig = (await sigRes.json()) as SignResponse;
-
-			const uploadRes = await fetch(sig.presignedUrl, {
-				method: 'PUT',
-				body: file,
-				headers: { ...sig.uploadHeaders, 'Content-Type': file.type },
-				signal: AbortSignal.timeout(UPLOAD_TIMEOUT_MS),
-			});
-			if (!uploadRes.ok) {
-				await keepPending(
-					'Bild vorbereitet. Der Upload startet automatisch, sobald das Netz wieder stabil ist.',
-				);
-				return;
-			}
-			setNotice(null);
-			if (mountedRef.current) onChange(sig.publicUrl);
+			await keepPending(NETWORK_UNSTABLE_NOTICE);
 		} catch {
-			await keepPending(
-				'Bild vorbereitet. Der Upload startet automatisch, sobald das Netz wieder stabil ist.',
-			);
+			await keepPending(NETWORK_UNSTABLE_NOTICE);
 		} finally {
 			uploadPendingRef.current = false;
 			setUploading(false);

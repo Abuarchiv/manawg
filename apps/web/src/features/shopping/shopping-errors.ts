@@ -3,11 +3,12 @@ import {
 	isRetryableServerError,
 	mutationErrorMessage,
 } from '@/core/http/error-codes';
+import { NAME_MAX, QUANTITY_MAX } from '@/features/shopping/components/constants';
 
 const ADD_SUBJECT = 'Artikel konnte nicht gespeichert werden';
 const ADD_ERRORS: Record<string, string> = {
-	name_invalid: `${ADD_SUBJECT}: Der Name muss 1 bis 120 Zeichen haben.`,
-	quantity_invalid: `${ADD_SUBJECT}: Die Menge darf höchstens 40 Zeichen haben.`,
+	name_invalid: `${ADD_SUBJECT}: Der Name muss 1 bis ${NAME_MAX} Zeichen haben.`,
+	quantity_invalid: `${ADD_SUBJECT}: Die Menge darf höchstens ${QUANTITY_MAX} Zeichen haben.`,
 	bought_invalid: `${ADD_SUBJECT}: Der Status ist ungültig.`,
 	invalid_json: `${ADD_SUBJECT}: Die Anfrage war ungültig.`,
 	invalid_body: `${ADD_SUBJECT}: Die Anfrage war ungültig.`,
@@ -44,8 +45,8 @@ export function shoppingActionErrorMessage(
 			invalid_body: `${subject}: Die Anfrage war ungültig.`,
 			invalid_json: `${subject}: Die Anfrage war ungültig.`,
 			bought_invalid: `${subject}: Der Status ist ungültig.`,
-			name_invalid: `${subject}: Der Name muss 1 bis 120 Zeichen haben.`,
-			quantity_invalid: `${subject}: Die Menge darf höchstens 40 Zeichen haben.`,
+			name_invalid: `${subject}: Der Name muss 1 bis ${NAME_MAX} Zeichen haben.`,
+			quantity_invalid: `${subject}: Die Menge darf höchstens ${QUANTITY_MAX} Zeichen haben.`,
 			id_invalid: 'Dieser Einkaufsartikel kann nicht mehr eindeutig zugeordnet werden.',
 		},
 		`${subject}. Versuche es gleich erneut.`,

@@ -20,12 +20,13 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import type { Member } from '@/components/wg/WgContextProvider';
 import { formatEuroInput, parseEuroAmount } from '@/core/utils/amount';
 import { formatEuroCents } from '@/core/utils/money';
+import type { SplitMode } from '@/features/expenses/expense-form-draft';
 import { type ReopenedShare, remainderCandidates } from '@/features/expenses/expense-split-input';
+import type { ExpenseSplitShare } from '@/features/expenses/expense-types';
 import type { Dispatch, SetStateAction } from 'react';
 import { EqualParticipantsPicker } from './EqualParticipantsPicker';
 import { ManualSplitSummary } from './ManualSplitSummary';
 import { SplitReview } from './SplitReview';
-import type { SplitMode } from './expense-form-draft';
 
 interface ExpenseSplitFieldsetProps {
 	members: Member[];
@@ -44,7 +45,7 @@ interface ExpenseSplitFieldsetProps {
 	amountStr: string;
 	currency: string;
 	paidByMemberId: string;
-	previewSplits: Array<{ debtorMemberId: string; amountCents: number }> | null;
+	previewSplits: ExpenseSplitShare[] | null;
 	isEditingExpense: boolean;
 	formSaving: boolean;
 }
@@ -78,7 +79,8 @@ export function ExpenseSplitFieldset({
 	const historicalShareHintId = `${splitErrorId}-inactive-share`;
 	const remainderMembers = remainderCandidates(members);
 	const firstSplitMemberId = splitCandidates[0]?.id;
-	const memberName = (id: string) => members.find((member) => member.id === id)?.name ?? '?';
+	const memberName = (id: string) =>
+		members.find((member) => member.id === id)?.name ?? 'Unbekannt';
 	const splitErrorTargetsMode =
 		Boolean(splitsError) && (splitMode !== 'manual' || firstSplitMemberId === undefined);
 	return (

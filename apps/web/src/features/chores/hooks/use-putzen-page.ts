@@ -1,11 +1,12 @@
 import { useToast } from '@/components/ui/Toast';
 import { useWg } from '@/components/wg/WgContextProvider';
-import { usePendingSet } from '@/core/hooks/usePendingSet';
+import { usePendingSet } from '@/core/hooks/use-pending-set';
 import {
 	getAbsentAssigneeChoreIds,
 	getAbsentMemberIds,
 	pickVisibleAbsences,
 } from '@/features/chores/absence';
+import type { NextAssignee } from '@/features/chores/chore-completion';
 import { buildChoreFairness, predictNextAssigneeId } from '@/features/chores/chore-fairness';
 import {
 	filterOverdueGroups,
@@ -13,6 +14,7 @@ import {
 	getChoreStatus,
 	groupChoresForPlan,
 } from '@/features/chores/chore-status';
+import { pendingKeys } from '@/features/chores/pending-keys';
 import type { MemberInfo } from '@/shared/lib/member-types';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
@@ -22,17 +24,22 @@ import { useChoreActions } from './use-chore-actions';
 import { useChoreCreate } from './use-chore-create';
 import { useChoresData } from './use-chores-data';
 
+/** Delay before a deep-linked row is scrolled into view, so the list has laid out. */
+const SCROLL_DELAY_MS = 80;
+/** How long a deep-linked row stays highlighted. */
+const FLASH_MS = 2500;
+
 /** The chore plan page: ties loading, creating, actions and absences together and derives the view. */
 export function usePutzenPage() {
 	const { wg, members, identity } = useWg();
 	const toast = useToast();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const searchParams = useSearchParams();
-	const highlightedId = searchParams.get('highlight');
+	const highlightParam = searchParams.get('highlight');
 	const prefillTitle = searchParams.get('title');
 	const overdueFilterActive = searchParams.get('filter') === 'overdue';
 	const absencesPanelActive = searchParams.get('panel') === 'absences';
-	const absenceId = searchParams.get('absence');
+	const absenceParam = searchParams.get('absence');
 	const [actionError, setActionError] = useState<string | null>(null);
 	const [actionNotice, setActionNotice] = useState<string | null>(null);
 	const { isPending, start: startPending, end: endPending } = usePendingSet();
@@ -76,48 +83,56 @@ export function usePutzenPage() {
 	const absenceActions = useAbsences(ctx, absenceForm, create.queueEdit);
 	const choreActions = useChoreActions(ctx);
 
-	// The highlight is a brief hint, not a selection state: it fades after 2.5 s.
+	// The highlight is a brief hint, not a selection state: it fades after FLASH_MS.
 	const [flashId, setFlashId] = useState<string | null>(null);
 	const hasItems = items.length > 0;
 	useEffect(() => {
-		if (!highlightedId || !hasItems) return;
-		setFlashId(highlightedId);
+		if (!highlightParam || !hasItems) return;
+		setFlashId(highlightParam);
 		const scrollTimer = window.setTimeout(() => {
-			document.getElementById(`chore-${highlightedId}`)?.scrollIntoView({
+			document.getElementById(`chore-${highlightParam}`)?.scrollIntoView({
 				block: 'center',
 			});
-		}, 80);
-		const clearTimer = window.setTimeout(() => setFlashId(null), 2500);
+		}, SCROLL_DELAY_MS);
+		const clearTimer = window.setTimeout(() => setFlashId(null), FLASH_MS);
 		return () => {
 			window.clearTimeout(scrollTimer);
 			window.clearTimeout(clearTimer);
 		};
-	}, [highlightedId, hasItems]);
+	}, [highlightParam, hasItems]);
 
 	// `?filter=overdue` shows only overdue chores until "Alle anzeigen" is tapped.
 	const [showAllChores, setShowAllChores] = useState(false);
 
 	// The row exists only after loading; without it in the dependencies the scroll would target nothing.
-	const absenceRowExists = absenceId ? absences.some((absence) => absence.id === absenceId) : false;
+	const absenceRowExists = absenceParam
+		? absences.some((absence) => absence.id === absenceParam)
+		: false;
 	const [flashAbsenceId, setFlashAbsenceId] = useState<string | null>(null);
 	useEffect(() => {
-		if ((!absencesPanelActive && !absenceId) || initialLoading) return;
-		if (absenceRowExists) setFlashAbsenceId(absenceId);
+		if ((!absencesPanelActive && !absenceParam) || initialLoading) return;
+		if (absenceRowExists) setFlashAbsenceId(absenceParam);
 		const scrollTimer = window.setTimeout(() => {
 			if (absenceRowExists) {
-				document.getElementById(`absence-${absenceId}`)?.scrollIntoView({ block: 'center' });
+				document.getElementById(`absence-${absenceParam}`)?.scrollIntoView({ block: 'center' });
 				return;
 			}
 			document.getElementById('absences-panel')?.scrollIntoView({
 				block: 'start',
 			});
-		}, 80);
-		const clearTimer = window.setTimeout(() => setFlashAbsenceId(null), 2500);
+		}, SCROLL_DELAY_MS);
+		const clearTimer = window.setTimeout(() => setFlashAbsenceId(null), FLASH_MS);
 		return () => {
 			window.clearTimeout(scrollTimer);
 			window.clearTimeout(clearTimer);
 		};
-	}, [absenceId, absenceRowExists, absencesPanelActive, initialLoading]);
+	}, [absenceParam, absenceRowExists, absencesPanelActive, initialLoading]);
+
+	// Editing the absence form dismisses the previous save error.
+	const withClearedError = (setField: (value: string) => void) => (value: string) => {
+		absenceActions.clearAbsenceError();
+		setField(value);
+	};
 
 	function memberLookup(id: string | null): MemberInfo {
 		if (!id) return { name: 'Niemand', color: null };
@@ -149,27 +164,28 @@ export function usePutzenPage() {
 	};
 	const choreGroups = overdueFilter.active ? overdueGroups : allChoreGroups;
 	const visibleAbsences = useMemo(
-		() => pickVisibleAbsences(absences, absencesPanelActive, absenceId),
-		[absenceId, absences, absencesPanelActive],
+		() => pickVisibleAbsences(absences, absencesPanelActive, absenceParam),
+		[absenceParam, absences, absencesPanelActive],
 	);
-	const nextAssigneeNameByChoreId = new Map<string, string | null>(
-		items.map((chore): [string, string | null] => {
+	const nextAssigneeByChoreId = new Map<string, NextAssignee | null>(
+		items.map((chore): [string, NextAssignee | null] => {
 			const nextAssigneeId = predictNextAssigneeId(chore, items, activeMembers, absences);
 			if (!nextAssigneeId) return [chore.id, null];
+			const isSelf = nextAssigneeId === identity.memberId;
 			return [
 				chore.id,
-				nextAssigneeId === identity.memberId ? 'du' : memberLookup(nextAssigneeId).name,
+				{ name: isSelf ? identity.name : memberLookup(nextAssigneeId).name, isSelf },
 			];
 		}),
 	);
 
 	return {
 		activeMembers,
-		absenceAddPending: isPending('absence:add'),
+		absenceAddPending: isPending(pendingKeys.ABSENCE_ADD),
 		absenceEnd: absenceForm.absenceEnd,
 		absenceError: absenceActions.absenceError,
 		absenceListError: absenceActions.absenceListError,
-		absenceId,
+		absenceParam,
 		absenceMemberId: absenceForm.absenceMemberId,
 		absenceReason: absenceForm.absenceReason,
 		absenceStart: absenceForm.absenceStart,
@@ -180,7 +196,7 @@ export function usePutzenPage() {
 		actionNotice,
 		applyChoreSuggestion: create.applyChoreSuggestion,
 		applyQuickChore: create.applyQuickChore,
-		choreAddPending: isPending('chore:add'),
+		choreAddPending: isPending(pendingKeys.CHORE_ADD),
 		choreGroups,
 		overdueFilter,
 		completeConfirmId: choreActions.completeConfirmId,
@@ -210,7 +226,7 @@ export function usePutzenPage() {
 		newInterval: create.newInterval,
 		newRecurrenceType: create.newRecurrenceType,
 		newTitle: create.newTitle,
-		nextAssigneeNameByChoreId,
+		nextAssigneeByChoreId,
 		ownDueCount,
 		pendingSuggestion: create.pendingSuggestion,
 		queuedCount: data.queuedCount,
@@ -218,22 +234,10 @@ export function usePutzenPage() {
 		removeAbsence: absenceActions.removeAbsence,
 		addAbsence: absenceActions.addAbsence,
 		add: create.add,
-		setAbsenceEnd: (value: string) => {
-			absenceActions.clearAbsenceError();
-			absenceForm.setAbsenceEnd(value);
-		},
-		setAbsenceMemberId: (value: string) => {
-			absenceActions.clearAbsenceError();
-			absenceForm.setAbsenceMemberId(value);
-		},
-		setAbsenceReason: (value: string) => {
-			absenceActions.clearAbsenceError();
-			absenceForm.setAbsenceReason(value);
-		},
-		setAbsenceStart: (value: string) => {
-			absenceActions.clearAbsenceError();
-			absenceForm.setAbsenceStart(value);
-		},
+		setAbsenceEnd: withClearedError(absenceForm.setAbsenceEnd),
+		setAbsenceMemberId: withClearedError(absenceForm.setAbsenceMemberId),
+		setAbsenceReason: withClearedError(absenceForm.setAbsenceReason),
+		setAbsenceStart: withClearedError(absenceForm.setAbsenceStart),
 		cancelComplete: choreActions.cancelComplete,
 		setConfirmSuggestion: create.setConfirmSuggestion,
 		setNewFirstDue: create.setNewFirstDue,

@@ -140,7 +140,7 @@ export function MembersSection({ wg, members, identity }: MembersSectionProps) {
 			<Section title="Mitglieder">
 				<ItemGroup className="gap-0 px-2 py-1">
 					{activeMembers.map((member) => (
-						<ItemEntry key={member.id} size="sm" className="min-h-[44px]">
+						<ItemEntry key={member.id} size="sm" className="min-h-11">
 							<ItemMedia>
 								<MemberAvatar name={member.name} size={26} />
 							</ItemMedia>
@@ -189,7 +189,7 @@ export function MembersSection({ wg, members, identity }: MembersSectionProps) {
 						<p className="text-muted-foreground px-0.5 pb-1 text-xs font-medium">Ausgezogen</p>
 						<ItemGroup className="gap-0">
 							{inactiveMembers.map((member) => (
-								<ItemEntry key={member.id} size="sm" className="min-h-[44px] opacity-70">
+								<ItemEntry key={member.id} size="sm" className="min-h-11 opacity-70">
 									<ItemMedia>
 										<MemberAvatar name={member.name} size={26} />
 									</ItemMedia>

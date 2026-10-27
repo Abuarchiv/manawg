@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { mock, test } from 'node:test';
+import { withEnv } from '../../../../../tests/support/env';
 
 const keys = [
 	'manawg/11111111-1111-4111-8111-111111111111/expense/22222222-2222-4222-8222-222222222222.jpg',
@@ -120,9 +121,7 @@ function harness() {
 }
 
 test('maintenance reports reference violations and provider failures while keeping grace-period backlog healthy', async () => {
-	const previousSecret = process.env.CRON_SECRET;
-	process.env.CRON_SECRET = 'test';
-	try {
+	await withEnv({ CRON_SECRET: 'test' }, async () => {
 		const { state, get } = harness();
 		state.pending = 7;
 		const idle = await get();
@@ -172,16 +171,11 @@ test('maintenance reports reference violations and provider failures while keepi
 		assert.equal(rescuedBody.ok, true);
 		assert.equal(rescuedBody.privateImageCleanup.rescued, 1);
 		assert.deepEqual(state.dequeued, [keys[1]]);
-	} finally {
-		if (previousSecret === undefined) Reflect.deleteProperty(process.env, 'CRON_SECRET');
-		else process.env.CRON_SECRET = previousSecret;
-	}
+	});
 });
 
 test('maintenance reports the admin handover result and fails when the repair cannot run', async () => {
-	const previousSecret = process.env.CRON_SECRET;
-	process.env.CRON_SECRET = 'test';
-	try {
+	await withEnv({ CRON_SECRET: 'test' }, async () => {
 		const { state, get } = harness();
 		state.heal = async () => ({ healed: 2, failed: 0 });
 		const healthy = await get();
@@ -200,8 +194,5 @@ test('maintenance reports the admin handover result and fails when the repair ca
 
 		state.heal = async () => ({ healed: 0, failed: 1 });
 		assert.equal((await get()).status, 503, 'a WG that could not be repaired fails the run');
-	} finally {
-		if (previousSecret === undefined) Reflect.deleteProperty(process.env, 'CRON_SECRET');
-		else process.env.CRON_SECRET = previousSecret;
-	}
+	});
 });

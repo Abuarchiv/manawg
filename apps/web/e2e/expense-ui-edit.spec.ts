@@ -6,17 +6,18 @@ import {
 	createQueuedExpenseUpdate,
 	getOfflineActionRequest,
 } from '../src/core/offline/offline-queue';
-import type { Expense } from '../src/features/expenses/components/ausgaben/expense-types';
+import type { Expense } from '../src/features/expenses/expense-types';
 import {
 	FIXTURE_WG,
 	dismissOnboarding,
 	mockUnreadCount,
 	navigateToFeature,
 	setupMember,
+	skipUnlessFixtures,
 } from './support/helpers';
 
 test.describe('expense row reflow', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 	test.use({ hasTouch: true });
 
 	const EXPENSE_ID = '9af0f27a-3d2b-4983-b5cb-3920f6d6e51f';
@@ -132,7 +133,7 @@ test.describe('expense row reflow', () => {
 			}
 		}
 
-		// Removing confirms with a success message, like recurring costs.
+		// Deleting confirms with a success message, like recurring costs.
 		await page.route(`**/api/wg/${shareCode}/expenses/${EXPENSE_ID}`, (route) =>
 			route.fulfill({ json: { deleted: true } }),
 		);
@@ -140,17 +141,17 @@ test.describe('expense row reflow', () => {
 			document.documentElement.style.fontSize = '';
 		});
 		await action.tap();
-		await page.getByRole('menuitem', { name: 'Entfernen', exact: true }).click();
+		await page.getByRole('menuitem', { name: 'Löschen', exact: true }).click();
 		await page
 			.getByRole('alertdialog')
-			.getByRole('button', { name: 'Entfernen', exact: true })
+			.getByRole('button', { name: 'Löschen', exact: true })
 			.click();
-		await expect(page.getByText('Ausgabe entfernt.')).toBeVisible();
+		await expect(page.getByText('Ausgabe gelöscht.')).toBeVisible();
 	});
 });
 
 test.describe('expense currency edit', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	const currencies = ['CHF', 'USD', 'GBP'] as const;
 	const splitCurrencyLabels: Record<(typeof currencies)[number], string> = {
@@ -289,7 +290,7 @@ test.describe('expense currency edit', () => {
 });
 
 test.describe('expense edit payer', () => {
-	test.skip(process.env.NEXT_PUBLIC_E2E_FIXTURE_MODE !== 'true', 'requires local fixture server');
+	skipUnlessFixtures();
 
 	const SHARE_CODE = FIXTURE_WG.shareCode;
 	const MEMBER = {
@@ -482,7 +483,7 @@ test.describe('offline expense edit', () => {
 		const action = createQueuedExpenseUpdate({
 			expenseId: 'expense-1',
 			expectedUpdatedAt: '2026-09-19T10:00:00.000Z',
-			shareCode: 'MTE8PZAT',
+			shareCode: FIXTURE_WG.shareCode,
 			memberId: 'member-1',
 			description: 'Wocheneinkauf',
 			amountCents: 1250,
@@ -495,7 +496,7 @@ test.describe('offline expense edit', () => {
 		const request = getOfflineActionRequest(action);
 		expect(action.type).toBe('expense.update');
 		expect(request.method).toBe('PATCH');
-		expect(request.path).toBe('/api/wg/MTE8PZAT/expenses/expense-1');
+		expect(request.path).toBe(`/api/wg/${FIXTURE_WG.shareCode}/expenses/expense-1`);
 		expect(request.body).toMatchObject({
 			expectedUpdatedAt: '2026-09-19T10:00:00.000Z',
 			description: 'Wocheneinkauf',

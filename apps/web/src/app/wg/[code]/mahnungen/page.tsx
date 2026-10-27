@@ -1,7 +1,6 @@
 'use client';
 import { Empty, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Spinner } from '@/components/ui/spinner';
 import { BackLink } from '@/components/wg/BackLink';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { ThumbAction } from '@/components/wg/ThumbAction';
@@ -9,17 +8,15 @@ import { formatEuroCents } from '@/core/utils/money';
 import { formatRelativeTime } from '@/core/utils/time';
 import { DebtRow } from '@/features/expenses/components/debts/DebtRow';
 import { RemindButton } from '@/features/expenses/components/debts/RemindButton';
-import {
-	ReminderHistory,
-	type ReminderHistoryItem,
-} from '@/features/expenses/components/debts/ReminderHistory';
+import { ReminderHistory } from '@/features/expenses/components/debts/ReminderHistory';
+import type { ReminderHistoryItem } from '@/features/expenses/expense-types';
 import {
 	type ReminderRow,
 	reminderKey,
 	useRemindersPage,
 } from '@/features/expenses/hooks/use-reminders-page';
 
-export default function ErinnerungenPage() {
+export default function MahnungenPage() {
 	const {
 		wg,
 		identity,
@@ -96,7 +93,7 @@ export default function ErinnerungenPage() {
 									creditorMemberId: row.creditorId,
 									amountCents: row.amountCents,
 									currency: row.currency,
-									channel: 'Wird gesendet',
+									channel: 'pending',
 									sentAt: new Date().toISOString(),
 									oldestDebtAgeDays: row.oldestAge,
 								};
@@ -128,8 +125,7 @@ export default function ErinnerungenPage() {
 					Erinnerungen
 				</h1>
 				<output aria-live="polite" aria-hidden={!refreshing} className="sr-only">
-					<Spinner />
-					Wird aktualisiert…
+					Lädt…
 				</output>
 			</header>
 			{allClear ? (
@@ -141,7 +137,7 @@ export default function ErinnerungenPage() {
 			) : (
 				<>
 					<section className="flex flex-col gap-2">
-						<h2 className="text-[12px] font-medium text-muted-foreground">Offene Schulden</h2>
+						<h2 className="text-meta font-medium text-muted-foreground">Offene Schulden</h2>
 						{loadErrors.expenses && (
 							<LoadErrorBanner
 								message={loadErrors.expenses}
@@ -172,37 +168,35 @@ export default function ErinnerungenPage() {
 							</Empty>
 						) : (
 							<ul className="divide-y overflow-hidden rounded-xl border">
-								{rows.map((row) => {
-									return (
-										<DebtRow
-											key={`${row.currency}:${row.debtorId}:${row.creditorId}`}
-											debtor={{
-												id: row.debtorId,
-												name: memberName(row.debtorId),
-												color: memberColor(row.debtorId),
-											}}
-											creditor={{
-												id: row.creditorId,
-												name: memberName(row.creditorId),
-												color: memberColor(row.creditorId),
-											}}
-											amountCents={row.amountCents}
-											currency={row.currency}
-											oldestDebtAgeDays={row.oldestAge}
-											currentMemberId={identity.memberId}
-											action={
-												row === primaryReminder || !canRemind(row) || remindersLoadFailed
-													? null
-													: reminderButton(row)
-											}
-										/>
-									);
-								})}
+								{rows.map((row) => (
+									<DebtRow
+										key={`${row.currency}:${row.debtorId}:${row.creditorId}`}
+										debtor={{
+											id: row.debtorId,
+											name: memberName(row.debtorId),
+											color: memberColor(row.debtorId),
+										}}
+										creditor={{
+											id: row.creditorId,
+											name: memberName(row.creditorId),
+											color: memberColor(row.creditorId),
+										}}
+										amountCents={row.amountCents}
+										currency={row.currency}
+										oldestDebtAgeDays={row.oldestAge}
+										currentMemberId={identity.memberId}
+										action={
+											row === primaryReminder || !canRemind(row) || remindersLoadFailed
+												? null
+												: reminderButton(row)
+										}
+									/>
+								))}
 							</ul>
 						)}
 					</section>
 					<section className="flex flex-col gap-2">
-						<h2 className="text-[12px] font-medium text-muted-foreground">
+						<h2 className="text-meta font-medium text-muted-foreground">
 							Letzte Erinnerungen (30 Tage)
 						</h2>
 						{loadErrors.reminders && (

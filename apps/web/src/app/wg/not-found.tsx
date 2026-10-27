@@ -14,7 +14,7 @@ import Link from 'next/link';
 // Lives in app/wg (not app/wg/[code]): a not-found file does not catch notFound()
 // thrown by the layout of its own segment, the parent segment's boundary does.
 export const metadata: Metadata = {
-	title: 'WG nicht gefunden — ManaWG',
+	title: 'WG nicht gefunden',
 	robots: { index: false, follow: false },
 };
 

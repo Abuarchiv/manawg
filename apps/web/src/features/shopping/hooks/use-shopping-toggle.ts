@@ -1,14 +1,12 @@
+import { createIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
 import {
 	enqueueOfflineAction,
 	readOfflineQueue,
 	updateOfflineQueue,
 } from '@/core/offline/offline-client';
-import {
-	createOfflineIdempotencyKey,
-	createQueuedShoppingUpdate,
-	hasQueuedShoppingUpdate,
-} from '@/core/offline/offline-queue';
+import { keyUnavailableMessage } from '@/core/offline/offline-copy';
+import { createQueuedShoppingUpdate, hasQueuedShoppingUpdate } from '@/core/offline/offline-queue';
 import type { ShoppingItem } from '@/features/shopping/components/shopping-types';
 import {
 	shoppingActionErrorMessage,
@@ -120,7 +118,7 @@ export function useShoppingToggle(ctx: ShoppingActionContext) {
 				return;
 			}
 			// A definite rejection ends this attempt; an unknown outcome keeps the key for a retry.
-			if (res.status > 0 && res.status < 500 && res.status !== 429) {
+			if (shouldReleaseIdempotencyKey(res.status, res.error)) {
 				forgetPatchKey(item.id, request.fingerprint);
 			}
 			if (res.status === 403) {
@@ -206,7 +204,7 @@ export function useShoppingToggle(ctx: ShoppingActionContext) {
 					item,
 					bought,
 					patchKeysRef.current.get(item.id),
-					createOfflineIdempotencyKey,
+					createIdempotencyKey,
 				);
 				if (!plan.ok) {
 					if (plan.reason === 'version_missing') {
@@ -215,9 +213,7 @@ export function useShoppingToggle(ctx: ShoppingActionContext) {
 						);
 						void load(true);
 					} else {
-						setToggleError(
-							'Einkaufsstatus konnte nicht sicher gespeichert werden. Versuche es erneut.',
-						);
+						setToggleError(keyUnavailableMessage('Einkaufsstatus', 'gespeichert'));
 					}
 					return;
 				}

@@ -7,6 +7,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { type KnownWg, getKnownWgs, getLocalAccount } from '@/core/auth/local-account';
 import { subscribeConnectivity } from '@/core/hooks/use-online-status';
 import {
+	OFFLINE_QUEUE_EVENT,
 	filterOfflineActionsForAuthUser,
 	needsManualOfflineResolution,
 	readOfflineQueue,
@@ -34,12 +35,7 @@ import {
 
 // The session cookies are HttpOnly, so offline the account is the one this browser last loaded a
 // member for; online, /api/wg/mine decides.
-function getLocalAuthUserId(sessionless: boolean): string | null {
-	return sessionless ? null : getLocalAccount();
-}
-
-/** `sessionless`: database-free test build without a Supabase session; the whole local queue is the user's. */
-export function OfflineClient({ sessionless = false }: { sessionless?: boolean }) {
+export function OfflineClient() {
 	const [online, setOnline] = useState(true);
 	const [knownWgs, setKnownWgs] = useState<KnownWg[]>([]);
 	const [inWg, setInWg] = useState(false);
@@ -53,35 +49,32 @@ export function OfflineClient({ sessionless = false }: { sessionless?: boolean }
 	const refreshGenerationRef = useRef(0);
 
 	// Offline and server-unreachable: only what belongs to the signed-in account is shown.
-	const showLocalData = useCallback(
-		(authUserId: string | null): OfflineAction[] => {
-			const all = readOfflineQueue();
-			const mine = sessionless ? all : filterOfflineActionsForAuthUser(all, authUserId);
-			setInWg(sessionless || Boolean(authUserId));
-			setKnownWgs(sessionless ? getKnownWgs() : visibleKnownWgs(authUserId));
-			setQueue(mine);
-			// Queued by a different account (after an account switch): not shown, not sent.
-			setMessage(
-				authUserId && mine.length < all.length
-					? 'Aktionen eines anderen Kontos auf diesem Gerät werden hier nicht angezeigt.'
-					: null,
-			);
-			return mine;
-		},
-		[sessionless],
-	);
+	const showLocalData = useCallback((authUserId: string | null): OfflineAction[] => {
+		const all = readOfflineQueue();
+		const mine = filterOfflineActionsForAuthUser(all, authUserId);
+		setInWg(Boolean(authUserId));
+		setKnownWgs(visibleKnownWgs(authUserId));
+		setQueue(mine);
+		// Queued by a different account (after an account switch): not shown, not sent.
+		setMessage(
+			authUserId && mine.length < all.length
+				? 'Aktionen eines anderen Kontos auf diesem Gerät werden hier nicht angezeigt.'
+				: null,
+		);
+		return mine;
+	}, []);
 
 	const refresh = useCallback(async (): Promise<OfflineAction[]> => {
 		const generation = ++refreshGenerationRef.current;
 		const current = () => generation === refreshGenerationRef.current;
 		const browserOffline = typeof navigator !== 'undefined' && !navigator.onLine;
-		const localAuthUserId = getLocalAuthUserId(sessionless);
+		const localAuthUserId = getLocalAccount();
 		if (!current()) return [];
 		setOnline(!browserOffline);
 		setMessage(null);
 		if (browserOffline) {
 			const localQueue = showLocalData(localAuthUserId);
-			setStatus(sessionless || localAuthUserId ? 'browser-offline' : 'unauthenticated');
+			setStatus(localAuthUserId ? 'browser-offline' : 'unauthenticated');
 			return localQueue;
 		}
 		try {
@@ -106,21 +99,21 @@ export function OfflineClient({ sessionless = false }: { sessionless?: boolean }
 		} catch {
 			if (!current()) return [];
 			const localQueue = showLocalData(localAuthUserId);
-			setStatus(sessionless || localAuthUserId ? 'server-unreachable' : 'unauthenticated');
+			setStatus(localAuthUserId ? 'server-unreachable' : 'unauthenticated');
 			return localQueue;
 		}
-	}, [sessionless, showLocalData]);
+	}, [showLocalData]);
 
 	useEffect(() => {
 		void refresh();
 		const refreshOnEvent = () => void refresh();
 		const unsubscribeConnectivity = subscribeConnectivity(refreshOnEvent);
-		window.addEventListener('manawg:offline-queue', refreshOnEvent);
+		window.addEventListener(OFFLINE_QUEUE_EVENT, refreshOnEvent);
 		window.addEventListener('storage', refreshOnEvent);
 		return () => {
 			syncAbortRef.current?.abort();
 			unsubscribeConnectivity();
-			window.removeEventListener('manawg:offline-queue', refreshOnEvent);
+			window.removeEventListener(OFFLINE_QUEUE_EVENT, refreshOnEvent);
 			window.removeEventListener('storage', refreshOnEvent);
 		};
 	}, [refresh]);

@@ -32,10 +32,11 @@ export async function generateMetadata({
 	const { module } = await params;
 	const entry = publicModule(module);
 	if (!entry) notFound();
+	// openGraph/twitter titles do not go through the root title template.
 	const title = `${entry.title} — ManaWG`;
 	const description = `${entry.description} Die WG-App für Ausgaben, Putzplan, Einkauf und Pinnwand.`;
 	return {
-		title,
+		title: entry.title,
 		description,
 		// Shared links (chat previews) show the module, not the generic app card from the layout.
 		openGraph: { ...OG_BASE, title, description, url: `/entdecken/${module}` },

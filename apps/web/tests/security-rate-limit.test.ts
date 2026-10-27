@@ -3,6 +3,7 @@ import path from 'node:path';
 import { describe, mock, test } from 'node:test';
 import { pathToFileURL } from 'node:url';
 import { inspect } from 'node:util';
+import { applyEnv } from './support/env.ts';
 
 // Rate-limit fail mode (open or closed) is decided from the environment, and the production
 // alerts are logged per event while the monitoring capture stays throttled. The module reads
@@ -54,17 +55,7 @@ function spyConsoleError(): { calls: unknown[][]; restore: () => void } {
 }
 
 function pinEnv(values: Partial<Record<(typeof ENV_KEYS)[number], string>>): () => void {
-	const saved = ENV_KEYS.map((key) => [key, process.env[key]] as const);
-	for (const key of ENV_KEYS) delete process.env[key];
-	for (const [key, value] of Object.entries(values)) {
-		if (value !== undefined) Reflect.set(process.env, key, value);
-	}
-	return () => {
-		for (const [key, value] of saved) {
-			if (value === undefined) delete process.env[key];
-			else Reflect.set(process.env, key, value);
-		}
-	};
+	return applyEnv({ ...Object.fromEntries(ENV_KEYS.map((key) => [key, undefined])), ...values });
 }
 
 describe('rate limit fail open env', () => {

@@ -1,5 +1,6 @@
-import { formatEuroInput } from '@/core/utils/amount';
+import { formatCentsInput } from '@/core/utils/amount';
 import { safeLocalStorage } from '@/core/utils/browser';
+import { isRecord } from '@/core/utils/is-record';
 import { todayInputValue } from '@/core/utils/local-date';
 import type { OfflineAction, OfflineActionType } from './offline-queue';
 
@@ -33,8 +34,7 @@ function parseDraft<T extends Record<string, unknown>>(raw: string | null): T | 
 	if (!raw) return null;
 	try {
 		const parsed = JSON.parse(raw) as unknown;
-		if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
-		return parsed as T;
+		return isRecord(parsed) ? (parsed as T) : null;
 	} catch {
 		return null;
 	}
@@ -133,7 +133,7 @@ export function buildQueueEditDraft(action: OfflineAction): QueueEditDraft | nul
 						const debtorMemberId = Reflect.get(split, 'debtorMemberId');
 						const amountCents = Reflect.get(split, 'amountCents');
 						if (typeof debtorMemberId !== 'string' || typeof amountCents !== 'number') return null;
-						return [debtorMemberId, formatEuroInput(amountCents / 100)];
+						return [debtorMemberId, formatCentsInput(amountCents)];
 					})
 					.filter((split): split is [string, string] => Boolean(split)),
 			)
@@ -214,7 +214,7 @@ export function buildQueueEditDraft(action: OfflineAction): QueueEditDraft | nul
 						: {}),
 					amountStr:
 						typeof action.payload.amountCents === 'number'
-							? formatEuroInput(action.payload.amountCents / 100)
+							? formatCentsInput(action.payload.amountCents)
 							: '',
 					imageUrl: typeof action.payload.imageUrl === 'string' ? action.payload.imageUrl : null,
 					paidByMemberId:

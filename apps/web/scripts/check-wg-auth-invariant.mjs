@@ -41,7 +41,7 @@ for (const file of walk(WG_DIR)) {
 }
 
 const layout = readFileSync(LAYOUT, 'utf8');
-if (!layout.includes('getAuthenticatedUserFromCookies()')) {
+if (!layout.includes('loadWgViewer(')) {
 	violations.push(`${relative(process.cwd(), LAYOUT)}: must resolve the signed-in user`);
 }
 

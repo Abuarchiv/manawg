@@ -1,16 +1,20 @@
+import { createIdempotencyKey, isIdempotencyKey } from '@/core/http/idempotency-key';
+import {
+	IMAGE_MISSING_PREFIX,
+	IMAGE_REMOVED_ERROR,
+	IMAGE_REMOVED_PREFIX,
+	SERVER_CHECK_PREFIX,
+} from './offline-failure-copy';
 import {
 	type OfflineAction,
-	createOfflineIdempotencyKey,
 	explainOfflineActionFailure,
-	isOfflineIdempotencyKey,
 	serializeOfflineAction,
 } from './offline-queue';
 import { replayWindowReviewError } from './offline-store';
 
 /** How a replay attempt is judged: which outcomes count as synced, retried or held for review. */
 
-export const MISSING_PENDING_IMAGE_ERROR =
-	'Bild fehlt: Der lokale Anhang ist nicht mehr verfügbar. Entferne den Anhang in der Offline-Warteschlange oder wähle das Bild erneut aus.';
+export const MISSING_PENDING_IMAGE_ERROR = `${IMAGE_MISSING_PREFIX} Der lokale Anhang ist nicht mehr verfügbar. Entferne den Anhang in der Offline-Warteschlange oder wähle das Bild erneut aus.`;
 const RECURRING_ADVANCE_ERROR =
 	'Fixkosten-Vorlage nicht weitergeschoben: Die Ausgabe wurde erstellt. Die Vorlage bleibt zur Nachholung in der Warteschlange.';
 export const REAUTH_REQUIRED_ERROR =
@@ -66,7 +70,7 @@ export function createRecurringAdvanceRetry(
 ): OfflineAction | null {
 	const payload = getRecurringAdvancePayload(action);
 	if (!payload) return null;
-	const idempotencyKey = createOfflineIdempotencyKey();
+	const idempotencyKey = createIdempotencyKey();
 	return {
 		id: `recurring-advance:${action.shareCode}:${payload.id}`,
 		...(idempotencyKey ? { idempotencyKey } : {}),
@@ -88,8 +92,8 @@ export function createRecurringAdvanceRetry(
 }
 
 export function backfillIdempotencyKey(action: OfflineAction): OfflineAction {
-	if (isOfflineIdempotencyKey(action.idempotencyKey)) return action;
-	const idempotencyKey = createOfflineIdempotencyKey();
+	if (isIdempotencyKey(action.idempotencyKey)) return action;
+	const idempotencyKey = createIdempotencyKey();
 	return idempotencyKey ? { ...action, idempotencyKey } : action;
 }
 
@@ -132,12 +136,12 @@ export function isTerminalReplayStatus(status: number): boolean {
 
 export function needsManualOfflineResolution(action: OfflineAction): boolean {
 	if (replayWindowReviewError(action)) return true;
-	if (action.lastError?.startsWith('Server prüfen:')) return true;
+	if (action.lastError?.startsWith(SERVER_CHECK_PREFIX)) return true;
 	return (
 		typeof action.payload.imageUrl === 'string' &&
 		Boolean(
-			action.lastError?.startsWith('Bild fehlt:') ||
-				action.lastError?.startsWith('Bild wurde entfernt:'),
+			action.lastError?.startsWith(IMAGE_MISSING_PREFIX) ||
+				action.lastError?.startsWith(IMAGE_REMOVED_PREFIX),
 		)
 	);
 }
@@ -147,7 +151,7 @@ export function explainPendingImageUploadError(err: unknown): string | null {
 	const match = /^(?:sign|upload)-failed:(\d+)(?::(.+))?$/.exec(err.message);
 	if (!match) return null;
 	if (match[2] === 'image_removed') {
-		return 'Bild wurde entfernt: Entferne den Anhang in der Offline-Warteschlange oder wähle das Bild erneut aus.';
+		return IMAGE_REMOVED_ERROR;
 	}
 	const status = Number(match[1]);
 	const failure = explainOfflineActionFailure(status, match[2]);

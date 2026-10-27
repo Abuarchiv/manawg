@@ -5,7 +5,10 @@ import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { OfflineQueueNotice } from '@/components/wg/OfflineQueueNotice';
 import { SubNav } from '@/components/wg/SubNav';
 import { ThumbAction } from '@/components/wg/ThumbAction';
-import { getAnnouncementHash } from '@/features/pinnwand/announcement-workflow';
+import {
+	ANNOUNCEMENT_REACTIONS,
+	getAnnouncementHash,
+} from '@/features/pinnwand/announcement-workflow';
 import { AnnouncementCard } from '@/features/pinnwand/components/AnnouncementCard';
 import { AnnouncementSkeleton } from '@/features/pinnwand/components/AnnouncementSkeleton';
 import { EmptyState } from '@/features/pinnwand/components/EmptyState';
@@ -13,10 +16,11 @@ import { MyOpenAnnouncements } from '@/features/pinnwand/components/MyOpenAnnoun
 import { PinnwandComposer } from '@/features/pinnwand/components/PinnwandComposer';
 import type { Announcement } from '@/features/pinnwand/components/announcement-types';
 import { usePinnwandPage } from '@/features/pinnwand/hooks/use-pinnwand-page';
+import { pluralize } from '@/shared/lib/plural';
 import { Megaphone, Plus } from 'lucide-react';
 import type React from 'react';
 
-const UNKNOWN_AUTHOR = { name: '?', color: null };
+const UNKNOWN_AUTHOR = { name: 'Unbekannt', color: null };
 
 export default function PinnwandPage(): React.ReactElement {
 	const {
@@ -61,9 +65,9 @@ export default function PinnwandPage(): React.ReactElement {
 				deletePending={isPending(a.id)}
 				pinPending={isPending(`${a.id}:pin`)}
 				statusPending={isPending(`${a.id}:status`)}
-				pendingReactions={(['seen', 'take', 'ok'] as const)
-					.filter((reaction) => isPending(`${a.id}:reaction:${reaction}`))
-					.join()}
+				pendingReactions={ANNOUNCEMENT_REACTIONS.filter((reaction) =>
+					isPending(`${a.id}:reaction:${reaction}`),
+				).join()}
 				onDelete={stableDelete}
 				onTogglePinned={stableTogglePinned}
 				onToggleStatus={stableToggleStatus}
@@ -93,7 +97,7 @@ export default function PinnwandPage(): React.ReactElement {
 					className="w-full"
 					aria-live="polite"
 				>
-					{newCount} neue Beitr{newCount === 1 ? 'ag' : 'äge'}
+					{pluralize(newCount, 'neuer Beitrag', 'neue Beiträge')}
 				</Button>
 			)}
 			<OfflineQueueNotice queuedCount={queuedCount} />

@@ -1,16 +1,13 @@
 'use client';
 
-import { isOfflineActionQueued, updateOfflineQueue } from '@/core/offline/offline-client';
+import { isOfflineActionQueued, removeQueuedAction } from '@/core/offline/offline-client';
 import { QUEUE_EDIT_ALREADY_SENT_MESSAGE } from '@/core/offline/offline-copy';
 import type { OfflineActionType } from '@/core/offline/offline-queue';
-import type {
-	ExpenseFormField,
-	ExpenseFormFieldErrors,
-} from '@/features/expenses/components/ausgaben/ExpenseFormSection';
 import {
 	type SplitInputResult,
 	buildSplitsFromForm,
 } from '@/features/expenses/expense-split-input';
+import type { ExpenseFormField, ExpenseFormFieldErrors } from '@/features/expenses/expense-types';
 import { useEffect, useState } from 'react';
 import type { ExpenseFormState, ExpensePageContext } from './expense-page-context';
 
@@ -58,15 +55,12 @@ export function useExpenseFormSupport(
 		});
 	}
 
-	async function clearEditedQueueItem(expectedTypes?: OfflineActionType[]): Promise<boolean> {
+	async function clearEditedQueueItem(
+		expectedTypes?: readonly OfflineActionType[],
+	): Promise<boolean> {
 		const { queueEditId } = form;
 		if (!queueEditId) return true;
-		const saved = await updateOfflineQueue((actions) => {
-			const queued = actions.find((item) => item.id === queueEditId);
-			if (!queued || (expectedTypes && !expectedTypes.includes(queued.type))) return null;
-			return actions.filter((item) => item.id !== queueEditId);
-		});
-		if (!saved) return false;
+		if (!(await removeQueuedAction(queueEditId, expectedTypes))) return false;
 		form.setQueueEditId(null);
 		form.setQueueEditType(null);
 		form.setRecurringNextDueAt(null);

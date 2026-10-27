@@ -1,15 +1,16 @@
 'use client';
 
+import { resolveIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
 import { notificationWarningMessage } from '@/core/notifications/notification-warning';
 import { enqueueOfflineAction, readOfflineQueue } from '@/core/offline/offline-client';
-import { createOfflineIdempotencyKey, createQueuedExpense } from '@/core/offline/offline-queue';
-import type { RecurringExpense } from '@/features/expenses/components/ausgaben/expense-types';
+import { keyUnavailableMessage } from '@/core/offline/offline-copy';
+import { createQueuedExpense } from '@/core/offline/offline-queue';
 import {
 	expenseSaveErrorMessage,
-	isPermanentClientError,
 	recurringAdvanceWarningMessage,
 } from '@/features/expenses/expense-errors';
+import type { RecurringExpense } from '@/features/expenses/expense-types';
 import { buildOptimisticExpense } from '@/features/expenses/optimistic-expense';
 import { withQueuedOccurredAt } from '@/features/expenses/queued-occurred-at';
 import { rotateRemainderCents } from '@/features/expenses/recurring-split-rotation';
@@ -39,9 +40,9 @@ export function useRecurringBooking(ctx: ExpensePageContext) {
 	const {
 		wg,
 		identity,
-		toast,
 		notify,
 		pending,
+		optimisticExpenses,
 		updateExpenses,
 		updateRecurringExpenses,
 		reload,
@@ -132,10 +133,9 @@ export function useRecurringBooking(ctx: ExpensePageContext) {
 			reusePendingRequest && pendingRequest
 				? pendingRequest.expectedRecurringNextDueAt
 				: template.nextDueAt;
-		const idempotencyKey =
-			reusePendingRequest && pendingRequest ? pendingRequest.key : createOfflineIdempotencyKey();
+		const idempotencyKey = resolveIdempotencyKey(pendingRequest, fingerprint);
 		if (!idempotencyKey) {
-			notify.error('Fixkosten-Ausgabe konnte nicht sicher gesendet werden. Versuche es erneut.');
+			notify.error(keyUnavailableMessage('Fixkosten-Ausgabe', 'gesendet'));
 			finishCreating();
 			return;
 		}
@@ -157,6 +157,7 @@ export function useRecurringBooking(ctx: ExpensePageContext) {
 			splits: bookedSplits,
 		});
 		pending.start(optimisticId);
+		optimisticExpenses.set(optimisticExpense);
 		updateExpenses((current) => [optimisticExpense, ...current]);
 		const createRes = await apiFetch<ExpenseCreateResponse>(
 			`/api/wg/${encodedShareCode}/expenses`,
@@ -172,7 +173,8 @@ export function useRecurringBooking(ctx: ExpensePageContext) {
 			},
 		);
 		if (!createRes.ok) {
-			if (isPermanentClientError(createRes.status)) expenseRequestsRef.current.delete(template.id);
+			const releaseKey = shouldReleaseIdempotencyKey(createRes.status, createRes.error);
+			if (releaseKey) expenseRequestsRef.current.delete(template.id);
 			if (createRes.status === 0) {
 				const queuedCount = await enqueueOfflineAction(
 					withQueuedOccurredAt(
@@ -195,9 +197,8 @@ export function useRecurringBooking(ctx: ExpensePageContext) {
 					rollbackOptimisticExpense();
 					pending.end(optimisticId);
 					notify.error(
-						'Offline-Speicher ist blockiert. Die Fixkosten-Ausgabe konnte nicht vorgemerkt werden.',
+						'Offline-Speicher ist blockiert. Die Fixkosten-Ausgabe konnte nicht vorgemerkt werden und wurde zurückgesetzt.',
 					);
-					toast.error('Die Fixkosten-Ausgabe wurde zurückgesetzt.');
 					finishCreating();
 					return;
 				}
@@ -212,10 +213,9 @@ export function useRecurringBooking(ctx: ExpensePageContext) {
 			pending.end(optimisticId);
 			const message = expenseSaveErrorMessage(createRes.error);
 			notify.error(message);
-			toast.error(message);
 			finishCreating();
 			// The template changed under us (already booked, paused or deleted): show its current state.
-			if (isPermanentClientError(createRes.status)) void reload();
+			if (releaseKey) void reload();
 			return;
 		}
 		updateExpenses((current) => {

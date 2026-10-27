@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { mock, test } from 'node:test';
 import { TransactionAbort } from '@/core/db/transaction-abort';
+import { withEnv } from '../../../../../tests/support/env';
 
 const templateId = '11111111-1111-4111-8111-111111111111';
 const wgId = '22222222-2222-4222-8222-222222222222';
@@ -388,14 +389,7 @@ function harness(overrides: Partial<Options> = {}) {
 }
 
 async function withCronSecret(run: () => Promise<void>) {
-	const previousSecret = process.env.CRON_SECRET;
-	process.env.CRON_SECRET = 'test-cron-secret';
-	try {
-		return await run();
-	} finally {
-		if (previousSecret === undefined) Reflect.deleteProperty(process.env, 'CRON_SECRET');
-		else process.env.CRON_SECRET = previousSecret;
-	}
+	return withEnv({ CRON_SECRET: 'test-cron-secret' }, run);
 }
 
 test('recurring charge waits for PayPal capture and advances on retry', async (t) => {

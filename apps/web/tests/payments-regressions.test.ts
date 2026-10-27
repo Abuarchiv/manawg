@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { isTerminalPayPalOrderCreationError } from '../src/core/infra/paypal.ts';
+import { PayPalApiError, isTerminalPayPalOrderCreationError } from '../src/core/infra/paypal.ts';
 import { filterPersistedMentionIds } from '../src/features/chat/chat-pure.ts';
 import {
 	isPayPalCaptureDebtChanged,
@@ -92,12 +92,21 @@ test('unknown capture results and failed lookups keep recovery attached to the s
 
 test('only definitive Payee account errors release an order-creation reservation', () => {
 	assert.equal(
-		isTerminalPayPalOrderCreationError(new Error('paypal_api_422_PAYEE_ACCOUNT_INVALID')),
+		isTerminalPayPalOrderCreationError(new PayPalApiError(422, 'PAYEE_ACCOUNT_INVALID')),
 		true,
 	);
 	assert.equal(
-		isTerminalPayPalOrderCreationError(new Error('paypal_api_422_DUPLICATE_REQUEST_ID')),
+		isTerminalPayPalOrderCreationError(new PayPalApiError(422, 'DUPLICATE_REQUEST_ID')),
 		false,
 	);
-	assert.equal(isTerminalPayPalOrderCreationError(new Error('paypal_api_503')), false);
+	assert.equal(isTerminalPayPalOrderCreationError(new PayPalApiError(503, null)), false);
+	assert.equal(
+		isTerminalPayPalOrderCreationError(new PayPalApiError(503, 'PAYEE_ACCOUNT_INVALID')),
+		false,
+	);
+	// The message alone does not make an error terminal.
+	assert.equal(
+		isTerminalPayPalOrderCreationError(new Error('paypal_api_422_PAYEE_ACCOUNT_INVALID')),
+		false,
+	);
 });

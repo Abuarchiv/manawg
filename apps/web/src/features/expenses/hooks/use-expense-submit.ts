@@ -1,8 +1,11 @@
 'use client';
 
+import { resolveIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
-import type { NotificationWarning } from '@/core/notifications/notification-warning';
-import { notificationWarningMessage } from '@/core/notifications/notification-warning';
+import {
+	type NotificationWarning,
+	notificationWarningMessage,
+} from '@/core/notifications/notification-warning';
 import { removeDraft } from '@/core/offline/drafts';
 import { enqueueOfflineAction } from '@/core/offline/offline-client';
 import {
@@ -10,30 +13,28 @@ import {
 	OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE,
 	OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
 	OFFLINE_SAVED_NOTICE,
+	keyUnavailableMessage,
 } from '@/core/offline/offline-copy';
+import { eurosToCents, parseEuroAmount } from '@/core/utils/amount';
 import {
-	createOfflineIdempotencyKey,
-	createQueuedExpense,
-	createQueuedExpenseUpdate,
-} from '@/core/offline/offline-queue';
-import { parseEuroAmount } from '@/core/utils/amount';
-import { inputDateOrToday, inputDateToIso, todayInputValue } from '@/core/utils/local-date';
-import { CENTS_PER_EURO } from '@/core/utils/money';
-import type { Expense } from '@/features/expenses/components/ausgaben/expense-types';
-import type { RecurringExpense } from '@/features/expenses/components/ausgaben/expense-types';
-import { isoToInputDate } from '@/features/expenses/components/ausgaben/use-expense-form-extras';
+	inputDateOrToday,
+	inputDateToIso,
+	isoToInputDate,
+	todayInputValue,
+} from '@/core/utils/local-date';
 import {
+	EDITED_EXPENSE_DELETED_MESSAGE,
 	expenseSaveErrorMessage,
-	isPermanentClientError,
 	splitInputErrorMessage,
 } from '@/features/expenses/expense-errors';
 import { manualSplitsFingerprint } from '@/features/expenses/expense-split-input';
+import type { Expense, RecurringExpense } from '@/features/expenses/expense-types';
 import {
 	buildOptimisticExpense,
 	rollbackExpense,
 	sortExpensesNewestFirst,
 } from '@/features/expenses/optimistic-expense';
-import { withQueuedOccurredAt } from '@/features/expenses/queued-occurred-at';
+import { buildQueuedExpenseAction } from '@/features/expenses/queued-expense-action';
 import type { DebtorShare } from '@/features/expenses/split-math';
 import { useRef, useState } from 'react';
 import type { ExpenseFormState, ExpensePageContext } from './expense-page-context';
@@ -61,11 +62,11 @@ export function useExpenseSubmit(
 	const {
 		wg,
 		identity,
-		toast,
 		notify,
 		pending,
 		expenses,
 		recurringExpenses,
+		optimisticExpenses,
 		updateExpenses,
 		reload,
 		refreshQueuedCount,
@@ -116,7 +117,7 @@ export function useExpenseSubmit(
 		if (!image) return form.setFormError(RECEIPT_UPLOAD_FAILED);
 		const imageUrl = image.url;
 		if (imageUrl !== formImageUrl) form.setImageUrl(imageUrl);
-		const amountCents = Math.round(amountEuros * CENTS_PER_EURO);
+		const amountCents = eurosToCents(amountEuros);
 		const isEdit = editingExpense !== null;
 		const fingerprint = JSON.stringify({
 			recurringSourceId,
@@ -170,6 +171,8 @@ export function useExpenseSubmit(
 			submittingRef.current = false;
 			setSubmitting(false);
 		};
+		// Page banner for failures the form itself cannot show.
+		const reportError = (message: string) => notify.error(message);
 		setSubmitting(true);
 
 		const recurringSource =
@@ -195,13 +198,9 @@ export function useExpenseSubmit(
 			expectedUpdatedAt: editingExpense?.updatedAt,
 			...recurringSource,
 		};
-		const idempotencyKey = isEdit
-			? null
-			: reusePendingRequest && pendingRequest
-				? pendingRequest.key
-				: createOfflineIdempotencyKey();
+		const idempotencyKey = isEdit ? null : resolveIdempotencyKey(pendingRequest, fingerprint);
 		if (!isEdit && !idempotencyKey) {
-			notify.error('Ausgabe konnte nicht sicher gesendet werden. Versuche es erneut.');
+			notify.error(keyUnavailableMessage('Ausgabe', 'gesendet'));
 			finishSubmitting();
 			return;
 		}
@@ -231,6 +230,7 @@ export function useExpenseSubmit(
 			...(previousExpense ? { previous: previousExpense } : {}),
 		});
 		pending.start(optimisticId);
+		optimisticExpenses.set(optimisticExpense);
 		updateExpenses((current) =>
 			sortExpensesNewestFirst(
 				isEdit
@@ -249,46 +249,31 @@ export function useExpenseSubmit(
 
 		if (!res.ok) {
 			if (res.status === 0) {
-				const queuedAction = isEdit
-					? withQueuedOccurredAt(
-							createQueuedExpenseUpdate({
-								expenseId: editingExpense.id,
-								expectedUpdatedAt: editingExpense.updatedAt,
-								wgId: wg.id,
-								shareCode: wg.shareCode,
-								memberId: identity.memberId,
-								description: desc,
-								category: form.category,
-								amountCents,
-								paidByMemberId,
-								splits,
-								imageUrl,
-							}),
-							occurredAt,
-						)
-					: withQueuedOccurredAt(
-							createQueuedExpense({
-								wgId: wg.id,
-								shareCode: wg.shareCode,
-								memberId: identity.memberId,
-								...(idempotencyKey ? { idempotencyKey } : {}),
-								description: desc,
-								category: form.category,
-								amountCents,
-								paidByMemberId,
-								splits,
-								imageUrl,
-								...recurringSource,
-							}),
-							occurredAt ?? new Date().toISOString(),
-						);
+				const queuedAction = buildQueuedExpenseAction({
+					fields: {
+						wgId: wg.id,
+						shareCode: wg.shareCode,
+						memberId: identity.memberId,
+						description: desc,
+						category: form.category,
+						amountCents,
+						paidByMemberId,
+						splits,
+						imageUrl,
+					},
+					occurredAt,
+					edit: isEdit
+						? { expenseId: editingExpense.id, expectedUpdatedAt: editingExpense.updatedAt }
+						: null,
+					idempotencyKey,
+					recurring: recurringSource,
+				});
 				const queuedCount = await enqueueOfflineAction(queuedAction);
 				if (queuedCount === 0) {
 					rollbackOptimisticExpense();
 					pending.end(optimisticId);
 					finishSubmitting();
-					notify.error(OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE);
-					toast.error('Offline-Speicher ist blockiert. Die Ausgabe wurde zurückgesetzt.');
+					reportError(OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE);
 					return;
 				}
 				if (!isEdit) pendingRequestRef.current = null;
@@ -296,8 +281,7 @@ export function useExpenseSubmit(
 				if (!(await support.clearEditedQueueItem(['expense.create', 'expense.update']))) {
 					pending.end(optimisticId);
 					finishSubmitting();
-					notify.error(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
-					toast.error(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
+					reportError(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
 					return;
 				}
 				form.resetForm();
@@ -308,17 +292,14 @@ export function useExpenseSubmit(
 				notify.warning(OFFLINE_SAVED_NOTICE);
 				return;
 			}
-			if (!isEdit && isPermanentClientError(res.status)) {
+			if (!isEdit && shouldReleaseIdempotencyKey(res.status, res.error)) {
 				pendingRequestRef.current = null;
 			}
 			if (isEdit && res.status === 404 && res.error === 'expense_not_found') {
-				form.setFormError(
-					'Die ursprüngliche Ausgabe wurde gelöscht. Deine ungespeicherten Änderungen bleiben im Entwurf; du kannst sie kopieren oder den Entwurf verwerfen.',
-				);
+				form.setFormError(EDITED_EXPENSE_DELETED_MESSAGE);
 				updateExpenses((current) => current.filter((expense) => expense.id !== editingExpense.id));
 				pending.end(optimisticId);
-				notify.error('Diese Ausgabe existiert nicht mehr und wurde aus der Liste entfernt.');
-				toast.error('Diese Ausgabe existiert nicht mehr.');
+				reportError('Diese Ausgabe existiert nicht mehr und wurde aus der Liste entfernt.');
 				void reload();
 				finishSubmitting();
 				return;
@@ -333,7 +314,6 @@ export function useExpenseSubmit(
 			rollbackOptimisticExpense();
 			pending.end(optimisticId);
 			form.setFormError(msg);
-			toast.error(msg);
 			finishSubmitting();
 			return;
 		}
@@ -356,8 +336,7 @@ export function useExpenseSubmit(
 		pending.end(optimisticId);
 		if (!(await support.clearEditedQueueItem(['expense.create', 'expense.update']))) {
 			finishSubmitting();
-			notify.error(DRAFT_CLEANUP_FAILED_MESSAGE);
-			toast.error(DRAFT_CLEANUP_FAILED_MESSAGE);
+			reportError(DRAFT_CLEANUP_FAILED_MESSAGE);
 			return;
 		}
 		form.resetForm();

@@ -7,7 +7,7 @@ import { RegistrierenClient } from './RegistrierenClient';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-	title: 'Konto erstellen — ManaWG',
+	title: 'Konto erstellen',
 	description: 'Lege dein ManaWG-Konto an, um eine WG zu erstellen oder einer WG beizutreten.',
 	robots: { index: false, follow: false },
 };
