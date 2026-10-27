@@ -15,7 +15,6 @@ import { readJsonLimited } from '@/core/http/read-json';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { computeNetBalances } from '@/features/expenses/debt-reduction';
 import {
-	hasCapturingExpensePayment,
 	loadCompletedExpensePayments,
 	withExpensePaymentLock,
 } from '@/features/expenses/server/expense-payments';
@@ -116,10 +115,6 @@ export const POST = withWgRoute<{ id: string; splitId: string }>(
 			if ((settled && current.settledAt !== null) || (!settled && current.settledAt === null)) {
 				return { kind: 'unchanged' as const, split: currentSplit };
 			}
-			// Only money in flight blocks; an unpaid 'created' PayPal order must not freeze the whole
-			// group for its 3 h TTL (capture re-validates the debt itself).
-			if (await hasCapturingExpensePayment(tx, expense.wgId)) return { kind: 'blocked' as const };
-
 			if (settled) {
 				// Scans all WG splits under the lock; indexed stored balances would help if this becomes slow.
 				// Sequential instead of Promise.all: a transaction has a single connection, and pg
@@ -188,7 +183,6 @@ export const POST = withWgRoute<{ id: string; splitId: string }>(
 			if (!updated) return { kind: 'unchanged' as const, split: currentSplit };
 			return { kind: 'updated' as const, updated, current };
 		});
-		if (change.kind === 'blocked') return conflict('paypal_payment_pending');
 		if (change.kind === 'offset') return conflict('split_already_offset');
 		if (change.kind === 'missing') return notFound('split_not_found');
 		if (change.kind === 'not_party') return forbidden('not_split_party', 'not_split_party');

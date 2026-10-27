@@ -38,9 +38,6 @@ mock.module('@/core/audit', { namedExports: { recordAuditEvent: async () => unde
 mock.module('@/core/infra/observability', {
 	namedExports: { captureException: () => undefined, logApiError: () => undefined },
 });
-mock.module('@/features/expenses/server/expense-payments', {
-	namedExports: { hasCapturingExpensePayment: async () => false },
-});
 mock.module('@/features/expenses/server/expenses', {
 	namedExports: {
 		insertExpenseWithSplits: async (_tx: unknown, input: Record<string, unknown>) => ({

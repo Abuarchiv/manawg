@@ -253,6 +253,13 @@
       "when": 1793120063735,
       "tag": "0035_foreign_key_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1793132829003,
+      "tag": "0036_remove_paypal",
+      "breakpoints": true
     }
   ]
 }

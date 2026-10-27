@@ -13,7 +13,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import { PAYPAL_PAYMENT_PENDING_MESSAGE } from '@/components/wg/einstellungen/settings-errors';
 import { RATE_LIMITED_MESSAGE, isRateLimited } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
 import { formatEuroCents } from '@/core/utils/money';
@@ -128,11 +127,9 @@ export function MemberDeactivateDialog({
 		setSubmitError(
 			isRateLimited(res.error, res.status)
 				? RATE_LIMITED_MESSAGE
-				: res.error === 'paypal_payment_pending'
-					? PAYPAL_PAYMENT_PENDING_MESSAGE
-					: selfLeave
-						? 'WG konnte nicht verlassen werden. Deine Mitgliedschaft bleibt bestehen. Bitte versuche es erneut.'
-						: 'Auszug konnte nicht gespeichert werden. Bitte versuche es erneut.',
+				: selfLeave
+					? 'WG konnte nicht verlassen werden. Deine Mitgliedschaft bleibt bestehen. Bitte versuche es erneut.'
+					: 'Auszug konnte nicht gespeichert werden. Bitte versuche es erneut.',
 		);
 		submittingRef.current = false;
 		setSubmitting(false);

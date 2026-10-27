@@ -13,10 +13,7 @@ import {
 	recurringSplitsMatchAmount,
 } from '@/features/expenses/recurring-expenses';
 import { rotateRemainderCents } from '@/features/expenses/recurring-split-rotation';
-import {
-	hasCapturingExpensePayment,
-	withExpensePaymentLock,
-} from '@/features/expenses/server/expense-payments';
+import { withExpensePaymentLock } from '@/features/expenses/server/expense-payments';
 import { settledAtForOwnShare } from '@/features/expenses/split-math';
 import { and, asc, eq, inArray, isNull, lte } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -96,7 +93,6 @@ async function createExpenseForDueAt(
 			) {
 				return null;
 			}
-			if (await hasCapturingExpensePayment(tx, template.wgId)) return null;
 			// A payer or debtor who moved out must not be charged new shares.
 			// Pause instead of skipping silently: an unpaused due template would
 			// stay at the front of the oldest-first run window and starve the

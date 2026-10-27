@@ -59,7 +59,7 @@ Account deletion SHALL decide whether a WG has remaining active members using me
 
 ### Requirement: Personal access credentials are revoked without erasing shared history
 
-For retained WGs, deletion SHALL remove the account-to-member link, deactivate the member, remove their PayPal recipient identifier and push subscriptions, and invalidate their calendar subscriptions. Existing shared financial entries, settlements, and balances SHALL remain unchanged. Cleanup SHALL be scoped to the departing account's memberships and credentials.
+For retained WGs, deletion SHALL remove the account-to-member link, deactivate the member, remove their push subscriptions, and invalidate their calendar subscriptions. Existing shared financial entries, settlements, and balances SHALL remain unchanged. Cleanup SHALL be scoped to the departing account's memberships and credentials.
 
 #### Scenario: A deleted account uses its old calendar URL
 - **WHEN** the old calendar bearer URL is requested after local deletion commits

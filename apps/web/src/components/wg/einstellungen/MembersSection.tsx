@@ -28,7 +28,6 @@ import { MemberDeactivateDialog } from '@/components/wg/MemberDeactivateDialog';
 import type { Member, WgSummary } from '@/components/wg/WgContextProvider';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { Section } from '@/components/wg/einstellungen/Section';
-import { PAYPAL_PAYMENT_PENDING_MESSAGE } from '@/components/wg/einstellungen/settings-errors';
 import type { SessionMember } from '@/core/auth/local-account';
 import { RATE_LIMITED_MESSAGE, isRateLimited } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
@@ -127,9 +126,7 @@ export function MembersSection({ wg, members, identity }: MembersSectionProps) {
 					? RATE_LIMITED_MESSAGE
 					: res.error === 'member_limit_reached'
 						? `Die WG hat schon ${MAX_MEMBERS_PER_WG} aktive Mitglieder. Lass zuerst jemanden ausziehen.`
-						: res.error === 'paypal_payment_pending'
-							? PAYPAL_PAYMENT_PENDING_MESSAGE
-							: 'Aktivierung konnte nicht gespeichert werden. Bitte versuche es erneut.',
+						: 'Aktivierung konnte nicht gespeichert werden. Bitte versuche es erneut.',
 			);
 		}
 		setReactivatingId(null);

@@ -65,7 +65,6 @@ export const GET = withWgRoute('members GET', async (req, { code }) => {
 				id: wgMembers.id,
 				name: wgMembers.name,
 				color: wgMembers.color,
-				paypalMerchantId: wgMembers.paypalMerchantId,
 				deactivatedAt: wgMembers.deactivatedAt,
 				role: wgMembers.role,
 				authUserId: wgMembers.authUserId,

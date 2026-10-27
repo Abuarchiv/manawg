@@ -25,14 +25,11 @@ const { POST: settle } = await import(
 );
 const { expenseSplits, expenses, wgChatMessages } = tables;
 
-test('expense DELETE rechecks authorization and blocks an active capture under the payment lock', async () => {
+test('expense DELETE rechecks authorization under the payment lock', async () => {
 	let locked = false;
 	let callerIsDebtor = true;
-	let removeDebtorAtLock = true;
-	let capturing = false;
 	let deleted = 0;
 	let lockedReads = 0;
-	let captureChecks = 0;
 	const expenseRow = { paidByMemberId: PAYER_ID, description: 'Einkauf', amountCents: 1200 };
 
 	const makeSelect = (insideTransaction: boolean) => {
@@ -80,16 +77,12 @@ test('expense DELETE rechecks authorization and blocks an active capture under t
 			operation: (value: typeof tx) => Promise<unknown>,
 		) => {
 			locked = true;
-			if (removeDebtorAtLock) callerIsDebtor = false;
+			callerIsDebtor = false;
 			try {
 				return await operation(tx);
 			} finally {
 				locked = false;
 			}
-		},
-		hasCapturingExpensePayment: async () => {
-			captureChecks += 1;
-			return capturing;
 		},
 	} as never;
 
@@ -98,15 +91,6 @@ test('expense DELETE rechecks authorization and blocks an active capture under t
 	assert.equal(response.status, 403);
 	assert.equal(await errorOf(response), 'not_owner');
 	assert.equal(lockedReads, 2);
-	assert.equal(deleted, 0);
-
-	removeDebtorAtLock = false;
-	callerIsDebtor = true;
-	capturing = true;
-	const captureResponse = await DELETE(jsonRequest('DELETE'), routeContext({ id: EXPENSE_ID }));
-	assert.equal(captureResponse.status, 409);
-	assert.equal(await errorOf(captureResponse), 'paypal_payment_pending');
-	assert.equal(captureChecks, 1);
 	assert.equal(deleted, 0);
 });
 
@@ -137,7 +121,6 @@ test('expense DELETE refuses an expense with a settled share of someone else', a
 			_wgId: string,
 			operation: (value: typeof tx) => Promise<unknown>,
 		) => operation(tx),
-		hasCapturingExpensePayment: async () => false,
 	} as never;
 
 	const response = await DELETE(jsonRequest('DELETE'), routeContext({ id: EXPENSE_ID }));
@@ -173,7 +156,6 @@ test('expense DELETE withdraws its chat notice in the same transaction', async (
 			_wgId: string,
 			operation: (value: typeof tx) => Promise<unknown>,
 		) => operation(tx),
-		hasCapturingExpensePayment: async () => false,
 	} as never;
 
 	const response = await DELETE(jsonRequest('DELETE'), routeContext({ id: EXPENSE_ID }));
@@ -234,7 +216,6 @@ test('expense PATCH preserves split integrity with fractional timestamps and con
 	const initialUpdatedAt = new Date('2026-09-20T00:00:00.123Z');
 	const concurrentUpdatedAt = new Date('2026-09-20T00:00:00.123Z');
 	let mutateAtLock = true;
-	let capturing = false;
 	let currentExpense = {
 		id: EXPENSE_ID,
 		wgId: WG_ID,
@@ -322,7 +303,6 @@ test('expense PATCH preserves split integrity with fractional timestamps and con
 	};
 	env.db = { select: makeSelect } as never;
 	env.payments = {
-		hasCapturingExpensePayment: async () => capturing,
 		withExpensePaymentLock: async (
 			_wgId: string,
 			operation: (value: typeof tx) => Promise<unknown>,
@@ -458,11 +438,6 @@ test('expense PATCH preserves split integrity with fractional timestamps and con
 		settledSplits[1]?.settledAt,
 	);
 
-	capturing = true;
-	const blockedFinancialEdit = await patch({ currency: 'USD' });
-	assert.equal(blockedFinancialEdit.status, 409);
-	assert.equal(await errorOf(blockedFinancialEdit), 'paypal_payment_pending');
-	assert.equal(currentExpense.currency, 'EUR');
 	const cosmeticEdit = await patch({ description: 'Nur Text' });
 	assert.equal(cosmeticEdit.status, 200);
 	assert.equal(currentExpense.description, 'Nur Text');

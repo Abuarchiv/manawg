@@ -14,11 +14,9 @@ import {
 import { purgeExpiredIdempotencyResponses } from '@/core/idempotency-store';
 import { requireCronSecret } from '@/core/infra/cron-auth';
 import { logApiError, withCronLogging } from '@/core/infra/observability';
-import { isPayPalConfigured } from '@/core/infra/paypal';
 import { getImageStorageProvider, removeSupabaseImages } from '@/core/infra/supabase-storage';
 import { confirmedEmailOf, sendAccountDeletedMail } from '@/core/mail/account-deleted';
 import { purgeOldDigestMailLog } from '@/core/mail/mail-retention';
-import { reconcileStaleCapturingPayments } from '@/features/expenses/server/paypal-reconcile';
 import { type NextRequest, NextResponse } from 'next/server';
 
 async function cleanupPrivateImages(): Promise<{
@@ -123,20 +121,17 @@ export const GET = withCronLogging(
 						return confirmed;
 					}
 				: null;
-		const [purge, deletions, privateImages, paypal, orphans, adminHeal] = await Promise.allSettled([
+		const [purge, deletions, privateImages, orphans, adminHeal] = await Promise.allSettled([
 			purgeExpiredIdempotencyResponses(),
 
 			retryPendingAccountDeletions(deleteAuth),
 			cleanupPrivateImages(),
-			isPayPalConfigured() ? reconcileStaleCapturingPayments() : Promise.resolve(null),
 			sweepOrphans(),
 			healAdminlessWgs(),
 		]);
 		await purgeRetention();
 		if (orphans.status === 'rejected')
 			logApiError('[maintenance] orphan upload sweep failed', orphans.reason);
-		if (paypal.status === 'rejected')
-			logApiError('[maintenance] PayPal capture reconcile failed', paypal.reason);
 		if (adminHeal.status === 'rejected')
 			logApiError('[maintenance] admin handover heal failed', adminHeal.reason);
 		if (purge.status === 'rejected')
@@ -158,7 +153,6 @@ export const GET = withCronLogging(
 		const ok =
 			purge.status === 'fulfilled' &&
 			deletions.status === 'fulfilled' &&
-			paypal.status === 'fulfilled' &&
 			orphans.status === 'fulfilled' &&
 			adminHeal.status === 'fulfilled' &&
 			adminHeal.value.failed === 0 &&
@@ -168,7 +162,6 @@ export const GET = withCronLogging(
 			{
 				ok,
 				purgedIdempotencyRows: purge.status === 'fulfilled' ? purge.value : null,
-				paypalReconcile: paypal.status === 'fulfilled' ? paypal.value : null,
 				orphanUploads: orphans.status === 'fulfilled' ? orphans.value : null,
 				adminHeal: adminHeal.status === 'fulfilled' ? adminHeal.value : null,
 				accountDeletions:

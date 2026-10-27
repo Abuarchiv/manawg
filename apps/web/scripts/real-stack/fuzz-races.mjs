@@ -149,7 +149,6 @@ for (const v of qValues) {
 			`/api/wg/${code}/expenses/settle-batch?fromMemberId=${v}&toMemberId=${v}&currency=${v}`,
 		],
 		['GET', `/api/wg/${code}/activity?limit=${v}`],
-		['GET', `/api/wg/${code}/paypal/order?toMemberId=${v}`],
 		['GET', `/api/wg/${code}/inventory?lowStock=${v}`],
 		['POST', `/api/wg/${code}/members/${benId}/claim?invite=${v}`],
 		['GET', `/api/wg/${code}/export?format=${v}&sections=${v}&section=${v}&summary=${v}`],

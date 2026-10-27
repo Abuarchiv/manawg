@@ -29,7 +29,6 @@ function createState(initialSlot: unknown) {
 		imports: 0,
 		audits: 0,
 		dispatches: 0,
-		capturing: false,
 		failReplayWrite: false,
 	};
 }
@@ -128,10 +127,7 @@ mock.module('@/core/notifications/notification-dispatch', {
 });
 mock.module('@/core/utils/money', { namedExports: { formatEuroCents: () => '0,00 €' } });
 mock.module('@/features/expenses/server/expense-payments', {
-	namedExports: {
-		hasCapturingExpensePayment: async () => state.capturing,
-		withExpensePaymentLock,
-	},
+	namedExports: { withExpensePaymentLock },
 });
 mock.module('@/features/expenses/split-math', {
 	namedExports: { settledAtForOwnShare: () => null },
@@ -189,14 +185,6 @@ function harness(initialSlot: unknown) {
 	};
 	return { state, commitImport };
 }
-
-test('import waits for PayPal capture without writing an expense', async () => {
-	const { state, commitImport } = harness({ _claimed: true });
-	state.capturing = true;
-	await assert.rejects(commitImport(input()), /paypal_payment_pending/);
-	assert.equal(state.imports, 0);
-	assert.deepEqual(state.slot, { _claimed: true });
-});
 
 test('lost response and notification failure replay the one committed import', async () => {
 	const { state, commitImport } = harness({ _claimed: true });

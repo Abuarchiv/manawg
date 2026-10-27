@@ -74,10 +74,6 @@ mock.module('@/core/infra/observability', {
 		withCronLogging: (_name: string, handler: unknown) => handler,
 	},
 });
-mock.module('@/core/infra/paypal', { namedExports: { isPayPalConfigured: () => false } });
-mock.module('@/features/expenses/server/paypal-reconcile', {
-	namedExports: { reconcileStaleCapturingPayments: async () => null },
-});
 mock.module('@/core/db/admin-succession', {
 	namedExports: { healAdminlessWgs: () => state.heal() },
 });

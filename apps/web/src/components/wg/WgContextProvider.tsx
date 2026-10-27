@@ -38,7 +38,6 @@ export interface Member {
 	id: string;
 	name: string;
 	color?: string | null;
-	paypalMerchantId?: string | null;
 	// false when the member has moved out ("Auszug"). The context always holds
 	// the full roster so history and balances keep resolving names; choice UIs
 	// (identity picker, dropdowns, chore rotation) filter to active members.
