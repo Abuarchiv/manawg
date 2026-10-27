@@ -21,6 +21,7 @@ import {
 	eventTitleSchema,
 } from '@/features/events/event-schemas';
 import { expandRecurrence, serializeWgEvent } from '@/features/events/events';
+import { notifyOccurrenceChange } from '@/features/events/server/event-change-notification';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -189,6 +190,13 @@ export const POST = withWgRoute<{ id: string }>('events occurrence', async (req,
 			return NextResponse.json(result.body, { status: result.status });
 		}
 		if (result.context && 'rejected' in result.context) return result.context.rejected;
+		notifyOccurrenceChange({
+			body,
+			result: result.body,
+			eventId: id,
+			wg: { id: wgId, name: auth.wg.name, shareCode: code },
+			actor: auth.member,
+		});
 		return NextResponse.json(result.body, { status: result.status });
 	} catch (err) {
 		if (err instanceof TransactionAbort) return badRequest(err.code);

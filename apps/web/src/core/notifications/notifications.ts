@@ -15,6 +15,8 @@ export type NotificationEvent =
 	| 'chore.due'
 	| 'shopping.added'
 	| 'event.created'
+	| 'event.moved'
+	| 'event.cancelled'
 	| 'event.upcoming'
 	| 'event.today'
 	| 'inventory.low_stock'
@@ -270,6 +272,30 @@ export function formatNotificationMessage(
 				)}“ am ${formatEventTime(payload.startsAt, payload.allDay === true)} eingetragen.`,
 				urlPath: eventUrlPath(payload),
 			};
+		case 'event.moved': {
+			const title = text(payload.title, 'Termin');
+			const actor = text(payload.actorName, 'Jemand');
+			return {
+				title: 'Termin verschoben',
+				body:
+					payload.recurring === true
+						? `${actor} hat die Terminserie „${title}“ in ${wgName} verschoben.`
+						: `${actor} hat „${title}“ in ${wgName} auf den ${formatEventTime(payload.startsAt, payload.allDay === true)} verschoben.`,
+				urlPath: eventUrlPath(payload),
+			};
+		}
+		case 'event.cancelled': {
+			const title = text(payload.title, 'Termin');
+			const actor = text(payload.actorName, 'Jemand');
+			return {
+				title: 'Termin abgesagt',
+				body:
+					payload.recurring === true
+						? `${actor} hat die Terminserie „${title}“ in ${wgName} abgesagt.`
+						: `${actor} hat „${title}“ am ${formatEventTime(payload.startsAt, payload.allDay === true)} in ${wgName} abgesagt.`,
+				urlPath: eventUrlPath(payload),
+			};
+		}
 		case 'event.upcoming': {
 			const title = text(payload.title, 'Termin');
 			return {
