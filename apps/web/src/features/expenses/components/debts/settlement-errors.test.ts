@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { cashVoidErrorMessage } from './settlement-errors.ts';
+import { cashVoidErrorMessage } from './settlement-errors';
 
 test('a failed void names the void, not saving a settlement', () => {
 	assert.equal(
