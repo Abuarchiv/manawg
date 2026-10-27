@@ -1,7 +1,7 @@
 # monthly-statement-email Specification
 
 ## Purpose
-TBD - created by archiving change monthly-statement-email. Update Purpose after archive.
+Mail each active member one monthly statement per WG that matches the in-app statement, only when it is relevant and the member can and wants to receive it.
 
 ## Requirements
 
