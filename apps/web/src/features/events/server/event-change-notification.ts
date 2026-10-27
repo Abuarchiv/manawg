@@ -2,6 +2,13 @@ import 'server-only';
 import { afterResponse } from '@/core/infra/after-response';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** When an event stops mattering: its end, or for an all-day event the end of its day. */
+export function eventRelevantUntil(startsAt: number, endsAt: number | null, allDay: boolean) {
+	return endsAt ?? (allDay ? startsAt + DAY_MS : startsAt);
+}
+
 interface EventChange {
 	wg: { id: string; name: string; shareCode: string };
 	actor: { memberId: string; name: string };
@@ -11,6 +18,8 @@ interface EventChange {
 	startsAt: string;
 	allDay: boolean;
 	recurring?: boolean;
+	/** Old and new start of a single event; a start within a day makes the push urgent. */
+	affectedStarts?: readonly number[];
 }
 
 /**
@@ -18,6 +27,9 @@ interface EventChange {
  * the response, so saving never waits on delivery; the actor is left out.
  */
 export function notifyEventChange(event: 'event.moved' | 'event.cancelled', change: EventChange) {
+	// Someone with quiet hours still has to hear tonight that tomorrow morning's event is off.
+	const now = Date.now();
+	const urgent = (change.affectedStarts ?? []).some((startsAt) => startsAt - now < DAY_MS);
 	afterResponse(() =>
 		dispatchNotificationSafely({
 			wg: change.wg,
@@ -31,6 +43,7 @@ export function notifyEventChange(event: 'event.moved' | 'event.cancelled', chan
 				actorName: change.actor.name,
 			},
 			excludeMemberId: change.actor.memberId,
+			urgent,
 		}),
 	);
 }
@@ -47,7 +60,8 @@ type OccurrenceBody =
 
 /**
  * Notifies about a freshly written occurrence change: a cancelled occurrence, or a detached
- * one that moved to another date or time. Past occurrences and title-only edits stay silent.
+ * one that moved to another date, time or to/from all-day. Occurrences that are over, moves
+ * into the past and title-only edits stay silent.
  */
 export function notifyOccurrenceChange(input: {
 	body: OccurrenceBody;
@@ -60,7 +74,8 @@ export function notifyOccurrenceChange(input: {
 	if (!result) return;
 	const now = Date.now();
 	if (body.action === 'cancel') {
-		if (Date.parse(body.occurrenceStartsAt) < now) return;
+		const startsAt = Date.parse(body.occurrenceStartsAt);
+		if (eventRelevantUntil(startsAt, null, result.event.allDay) < now) return;
 		notifyEventChange('event.cancelled', {
 			wg,
 			actor,
@@ -68,12 +83,14 @@ export function notifyOccurrenceChange(input: {
 			title: result.event.title,
 			startsAt: body.occurrenceStartsAt,
 			allDay: result.event.allDay,
+			affectedStarts: [startsAt],
 		});
 		return;
 	}
 	const from = Date.parse(body.occurrenceStartsAt);
 	const to = Date.parse(body.startsAt);
-	if (from === to || Math.max(from, to) < now) return;
+	if (from === to && body.allDay === result.event.allDay) return;
+	if (eventRelevantUntil(to, null, body.allDay) < now) return;
 	notifyEventChange('event.moved', {
 		wg,
 		actor,
@@ -81,5 +98,6 @@ export function notifyOccurrenceChange(input: {
 		title: body.title,
 		startsAt: body.startsAt,
 		allDay: body.allDay,
+		affectedStarts: [from, to],
 	});
 }

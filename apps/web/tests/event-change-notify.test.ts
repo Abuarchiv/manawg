@@ -204,3 +204,35 @@ test('detaching an occurrence to a new time notifies, a title-only detach stays 
 	});
 	assert.equal(dispatched.length, 0);
 });
+
+test('deleting today’s all-day event after midnight still notifies, urgently', async () => {
+	reset();
+	const todayMidnight = new Date(Date.now() - 6 * 60 * 60 * 1000);
+	selectRows = [eventRow(todayMidnight, { allDay: true })];
+	await call(itemRoute.DELETE, 'DELETE');
+	assert.equal(dispatched.length, 1);
+	assert.equal(dispatched[0]?.event, 'event.cancelled');
+	assert.equal(dispatched[0]?.urgent, true);
+});
+
+test('a change to an event more than a day away respects quiet hours', async () => {
+	reset();
+	selectRows = [eventRow(futureStart)];
+	await call(itemRoute.DELETE, 'DELETE');
+	assert.equal(dispatched[0]?.urgent, false);
+});
+
+test('detaching an occurrence to all-day at the same start counts as moved', async () => {
+	reset();
+	const occurrenceStartsAt = futureStart.toISOString();
+	writeBody = { event: { title: 'Plenum', allDay: false }, created: { id: 'new-event' } };
+	await call(occurrenceRoute.POST, 'POST', {
+		action: 'detach',
+		occurrenceStartsAt,
+		title: 'Plenum',
+		startsAt: occurrenceStartsAt,
+		allDay: true,
+	});
+	assert.equal(dispatched.length, 1);
+	assert.equal(dispatched[0]?.event, 'event.moved');
+});

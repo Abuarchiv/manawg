@@ -23,6 +23,8 @@ export interface DispatchInput {
 	/** More members to skip, e.g. those already notified directly about the same event. */
 	excludeMemberIds?: readonly string[];
 	bypassPreferences?: boolean;
+	/** Delivers through quiet hours, e.g. a change to an event that starts within a day. */
+	urgent?: boolean;
 }
 
 export type NotificationDispatchWarning =
@@ -250,7 +252,7 @@ export async function dispatchNotification(
 	});
 	const url = buildNotificationUrl(input.wg.shareCode, message.urlPath);
 	const category = notificationCategoryForEvent(input.event);
-	const priority = notificationPriorityForEvent(input.event);
+	const priority = input.urgent ? 'urgent' : notificationPriorityForEvent(input.event);
 	if (priority === 'silent') return { sent: 0, failures: [] };
 	const currentHour = berlinCurrentHour();
 

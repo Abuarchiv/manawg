@@ -19,7 +19,10 @@ import {
 	parseRecurrenceRule,
 	serializeWgEvent,
 } from '@/features/events/events';
-import { notifyEventChange } from '@/features/events/server/event-change-notification';
+import {
+	eventRelevantUntil,
+	notifyEventChange,
+} from '@/features/events/server/event-change-notification';
 import { and, eq, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -162,13 +165,14 @@ export const PATCH = withWgRoute<{ id: string }>('events PATCH', async (req, { c
 		},
 	});
 
-	// Only a changed start or all-day flag counts as moved. Corrections to events that lie
-	// entirely in the past stay silent; a series always counts.
+	// Only a changed start or all-day flag counts as moved. Moves that end up in the past stay
+	// silent; a series always counts.
 	const moved =
 		row.startsAt.getTime() !== current.startsAt.getTime() || row.allDay !== current.allDay;
 	const stillRelevant =
 		row.recurrence !== null ||
-		Math.max(row.startsAt.getTime(), current.startsAt.getTime()) >= Date.now();
+		eventRelevantUntil(row.startsAt.getTime(), row.endsAt?.getTime() ?? null, row.allDay) >=
+			Date.now();
 	if (moved && stillRelevant) {
 		notifyEventChange('event.moved', {
 			wg: { id: wgId, name: auth.wg.name, shareCode: code },
@@ -178,6 +182,8 @@ export const PATCH = withWgRoute<{ id: string }>('events PATCH', async (req, { c
 			startsAt: row.startsAt.toISOString(),
 			allDay: row.allDay,
 			recurring: row.recurrence !== null,
+			affectedStarts:
+				row.recurrence === null ? [current.startsAt.getTime(), row.startsAt.getTime()] : [],
 		});
 	}
 	return NextResponse.json({ event: serializeWgEvent(row) });
@@ -228,7 +234,12 @@ export const DELETE = withWgRoute<{ id: string }>('events DELETE', async (req, {
 	});
 
 	// Deleting a finished single event changes nothing for anyone; a series always counts.
-	if (row.recurrence !== null || (row.endsAt ?? row.startsAt).getTime() >= Date.now()) {
+	const until = eventRelevantUntil(
+		row.startsAt.getTime(),
+		row.endsAt?.getTime() ?? null,
+		row.allDay,
+	);
+	if (row.recurrence !== null || until >= Date.now()) {
 		notifyEventChange('event.cancelled', {
 			wg: { id: wgId, name: auth.wg.name, shareCode: code },
 			actor: auth.member,
@@ -236,6 +247,7 @@ export const DELETE = withWgRoute<{ id: string }>('events DELETE', async (req, {
 			startsAt: row.startsAt.toISOString(),
 			allDay: row.allDay,
 			recurring: row.recurrence !== null,
+			affectedStarts: row.recurrence === null ? [row.startsAt.getTime()] : [],
 		});
 	}
 	return NextResponse.json({ deleted: true });
