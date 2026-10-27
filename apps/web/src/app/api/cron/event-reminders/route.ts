@@ -249,14 +249,15 @@ export const GET = withCronLogging(
 			},
 		);
 
+		// The cron runs once a day, so a cut-off run loses the rest of tomorrow's reminders;
+		// a 503 keeps that visible in the cron log instead of reporting success.
 		if (!complete) {
-			console.warn(
-				'[event-reminders] time budget reached, remaining reminders wait for the next run',
-			);
+			console.error('[event-reminders] time budget reached, remaining reminders were not sent');
 		}
+		const ok = failed === 0 && complete;
 		return NextResponse.json(
-			{ ok: failed === 0, sent, failed, ...(complete ? {} : { complete: false }) },
-			{ status: failed > 0 ? 503 : 200 },
+			{ ok, sent, failed, ...(complete ? {} : { complete: false }) },
+			{ status: ok ? 200 : 503 },
 		);
 	},
 );

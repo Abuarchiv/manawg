@@ -44,6 +44,7 @@ function findCondition(filter: unknown, op: string, column: unknown): Condition 
 }
 
 let failureMode = 'partial';
+let onDispatch = () => {};
 const state = {
 	events: [] as Row[],
 	members: [] as Row[],
@@ -152,6 +153,7 @@ mock.module('@/core/notifications/notification-dispatch', {
 	namedExports: {
 		dispatchNotification: async (input: Dispatch) => {
 			const memberId = input.targetMemberIds[0];
+			onDispatch();
 			state.dispatches.push({ memberId, event: input.event, allDay: input.payload.allDay });
 			if (failureMode === 'all') return { sent: 0, failures: ['provider failed'] };
 			if (failureMode === 'none') return { sent: 0, failures: [] };
@@ -326,4 +328,46 @@ test('successful claims cover long occurrences while failed members remain retry
 		state.dispatches.map(({ memberId, event }) => `${memberId}:${event}`).sort(),
 		['member-A:event.upcoming', 'member-B:event.today', 'member-B:event.upcoming'].sort(),
 	);
+});
+
+test('a run cut off by the time budget answers 503 with complete:false', async () => {
+	const previousSecret = process.env.CRON_SECRET;
+	process.env.CRON_SECRET = 'cron-secret';
+	const { state, get } = makeHarness({ failureMode: 'ok' });
+	state.members = Array.from({ length: 12 }, (_, index) => ({
+		id: `member-${index}`,
+		wgId: 'wg-1',
+		deactivatedAt: null,
+	}));
+	const RealDate = globalThis.Date;
+	let now = RealDate.parse('2026-10-25T09:00:00.000Z');
+	class SteppedDate extends RealDate {
+		constructor(...args: unknown[]) {
+			super(...((args.length === 0 ? [now] : args) as [number]));
+		}
+		static override now() {
+			return now;
+		}
+	}
+	// The first batch of deliveries uses up the whole budget.
+	onDispatch = () => {
+		now += 60_000;
+	};
+	globalThis.Date = SteppedDate as unknown as DateConstructor;
+	try {
+		const response = await get(
+			new Request('https://example.test/api/cron/event-reminders', {
+				headers: { authorization: 'Bearer cron-secret' },
+			}),
+		);
+		assert.equal(response.status, 503);
+		const body = await response.json();
+		assert.equal(body.complete, false);
+		assert.equal(body.ok, false);
+		assert.ok(body.sent > 0 && body.sent < 12);
+	} finally {
+		globalThis.Date = RealDate;
+		onDispatch = () => {};
+		process.env.CRON_SECRET = previousSecret;
+	}
 });
