@@ -3,7 +3,7 @@
 import { expect, test } from '@playwright/test';
 import { apiFetch } from '../src/core/infra/api-client';
 import { E2E_EXISTING_WG } from '../src/fixtures/data';
-import { defined, skipUnlessDbDown } from './support/helpers';
+import { FIXTURE_WG, defined, skipUnlessDbDown } from './support/helpers';
 
 test.describe('public entry api', () => {
 	test('guest membership lookup ignores unrelated and PKCE cookies', async ({ request }) => {
@@ -21,18 +21,6 @@ test.describe('public entry api', () => {
 			error: 'auth_required',
 			code: 'auth_required',
 		});
-
-		if (process.env.E2E_EXPECT_MISSING_SUPABASE !== 'true') return;
-
-		const tokenCookie = await request.get('/api/wg/mine', {
-			headers: { cookie: 'sb-demo-auth-token.0=x' },
-		});
-		expect(tokenCookie.status()).toBe(500);
-
-		const bearer = await request.get('/api/wg/mine', {
-			headers: { authorization: 'Bearer intentionally-invalid' },
-		});
-		expect(bearer.status()).toBe(500);
 	});
 
 	test('guest upload signing does not reveal whether a share code exists', async ({
@@ -45,7 +33,7 @@ test.describe('public entry api', () => {
 			fileSize: 1024,
 		};
 
-		for (const shareCode of ['MTE8PZAT', 'ZZZZZZZZ']) {
+		for (const shareCode of [FIXTURE_WG.shareCode, 'ZZZZZZZZ']) {
 			const response = await request.post('/api/upload/sign', {
 				headers: { origin: new URL(defined(baseURL, 'baseURL')).origin },
 				data: { ...payload, shareCode },

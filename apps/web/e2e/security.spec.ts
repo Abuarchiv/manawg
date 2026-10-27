@@ -34,7 +34,9 @@ test.describe('require wg member regression', () => {
 			'chores',
 			'absences',
 		]) {
-			const response = await request.get(`/api/wg/MTE8PZAT/${path}`, { timeout: 120_000 });
+			const response = await request.get(`/api/wg/${FIXTURE_WG.shareCode}/${path}`, {
+				timeout: 120_000,
+			});
 
 			expect(response.status(), path).toBe(401);
 			expect(await response.json(), path).toEqual({

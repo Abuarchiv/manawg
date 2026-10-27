@@ -16,7 +16,7 @@ test.describe('haushalt shopping checkbox hitarea', () => {
 	// applies while a swipe is in progress.
 	test('shopping item checkbox keeps its full hit area when not swiping', async ({ page }) => {
 		skipUnlessFixtures();
-		await page.route('**/api/wg/MTE8PZAT/shopping', async (route) => {
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/shopping`, async (route) => {
 			if (route.request().method() !== 'GET') {
 				await route.continue();
 				return;
@@ -40,7 +40,7 @@ test.describe('haushalt shopping checkbox hitarea', () => {
 			});
 		});
 		await setupMember(page);
-		await navigateToFeature(page, '/wg/MTE8PZAT/einkauf');
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einkauf`);
 		await dismissOnboarding(page);
 
 		const checkbox = page.getByRole('checkbox', { name: 'Milch erledigen' });
@@ -74,7 +74,7 @@ test.describe('haushalt shopping swipe pointer capture', () => {
 	// pointerdown keeps move/up on the row for the whole gesture, like touch events.
 	test('shopping row captures the pointer when a touch swipe starts', async ({ page }) => {
 		skipUnlessFixtures();
-		await page.route('**/api/wg/MTE8PZAT/shopping', async (route) => {
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/shopping`, async (route) => {
 			if (route.request().method() !== 'GET') {
 				await route.continue();
 				return;
@@ -98,7 +98,7 @@ test.describe('haushalt shopping swipe pointer capture', () => {
 			});
 		});
 		await setupMember(page);
-		await navigateToFeature(page, '/wg/MTE8PZAT/einkauf');
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einkauf`);
 		await dismissOnboarding(page);
 
 		const row = page.locator('[data-shopping-row]').first();

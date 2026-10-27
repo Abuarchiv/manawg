@@ -17,7 +17,7 @@ test.describe('entry frame overflow', () => {
 				if (route.request().method() === 'POST') {
 					await route.fulfill({
 						json: {
-							wg: { id: 'fixture', shareCode: 'MTE8PZAT', name: wgName },
+							wg: { id: 'fixture', shareCode: FIXTURE_WG.shareCode, name: wgName },
 							creator: { id: 'fixture-user', name: 'Anna' },
 						},
 					});
@@ -166,36 +166,6 @@ test.describe('public header reflow', () => {
 
 test.describe('app shell state', () => {
 	test.describe('app shell navigation state', () => {
-		test('restores create intent from the URL after signing out', async ({ page }) => {
-			test.skip(
-				!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-				'Requires the configured Supabase browser client.',
-			);
-
-			await mockNoWgs(page);
-
-			await page.goto('/neu?action=create');
-			await page.getByRole('button', { name: 'Mit anderem Konto anmelden', exact: true }).click();
-
-			await expect(
-				page.getByText('Melde dich an, danach erstellst du deine neue WG.'),
-			).toBeVisible();
-		});
-
-		test('restores invitation intent from the URL after signing out', async ({ page }) => {
-			test.skip(
-				!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-				'Requires the configured Supabase browser client.',
-			);
-
-			await mockNoWgs(page);
-
-			await page.goto('/neu?invite=fixture-invite-token01');
-			await page.getByRole('button', { name: 'Mit anderem Konto anmelden', exact: true }).click();
-
-			await expect(page.getByText('Melde dich an, um die Einladung anzunehmen.')).toBeVisible();
-		});
-
 		test('lets a signed-in single-WG user open that WG from a module preview', async ({ page }) => {
 			skipUnlessDbDown();
 

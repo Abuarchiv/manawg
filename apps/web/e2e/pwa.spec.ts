@@ -456,7 +456,7 @@ test.describe('offline page', () => {
 
 		test('confirms a successful synchronization and clears the action', async ({ page }) => {
 			await page.route('**/api/wg/mine', (route) => fulfillMembership(route));
-			await page.route('**/api/wg/MTE8PZAT/shopping', (route) =>
+			await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/shopping`, (route) =>
 				route.fulfill({ status: 200, contentType: 'application/json', body: '{}' }),
 			);
 			await seedOfflineState(page);
@@ -474,7 +474,7 @@ test.describe('offline page', () => {
 		}) => {
 			await page.route('**/api/wg/mine', (route) => fulfillMembership(route));
 			let posts = 0;
-			await page.route('**/api/wg/MTE8PZAT/shopping', (route) => {
+			await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/shopping`, (route) => {
 				posts += 1;
 				return route.fulfill({
 					status: 429,
