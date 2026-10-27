@@ -25,6 +25,12 @@ interface Props {
 	params: Promise<{ code: string }>;
 }
 
+// A segment title resets the inherited template, so this layout restates it for the
+// feature layouts below. `default` still passes through the root template.
+function wgTitle(name: string): Metadata['title'] {
+	return { default: name, template: '%s — ManaWG' };
+}
+
 export async function generateMetadata({
 	params,
 }: { params: Promise<{ code: string }> }): Promise<Metadata> {
@@ -36,13 +42,13 @@ export async function generateMetadata({
 	const fixture = loadFixtureWgView(code);
 	if (fixture) {
 		return {
-			title: fixture === 'not_found' ? 'WG — ManaWG' : `${fixture.wg.name} — ManaWG`,
+			title: wgTitle(fixture === 'not_found' ? 'WG' : fixture.wg.name),
 			robots: { index: false, follow: false },
 		};
 	}
 	const viewer = await loadWgViewer(code);
 	return {
-		title: viewer?.access ? `${viewer.access.name} — ManaWG` : 'WG — ManaWG',
+		title: wgTitle(viewer?.access ? viewer.access.name : 'WG'),
 		robots: { index: false, follow: false },
 	};
 }

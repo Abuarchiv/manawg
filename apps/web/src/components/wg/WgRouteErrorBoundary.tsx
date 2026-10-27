@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/empty';
 import { captureException } from '@/core/infra/capture-client';
 import { isChunkLoadError, reloadOnStaleChunk } from '@/core/infra/stale-chunk';
+import { SUPPORT_MAILTO } from '@/shared/lib/support-mailto';
 import { TriangleAlert } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -25,6 +26,10 @@ interface WgRouteErrorBoundaryProps {
 	title: string;
 	/** Supporting copy under the heading. */
 	body: string;
+	/** Target of the secondary button; defaults to the WG home of the current route. */
+	homeHref?: string;
+	/** Label of the secondary button. */
+	homeLabel?: string;
 }
 
 /**
@@ -40,6 +45,8 @@ export function WgRouteErrorBoundary({
 	boundary,
 	title,
 	body,
+	homeHref,
+	homeLabel = 'Zur Übersicht',
 }: WgRouteErrorBoundaryProps) {
 	const params = useParams<{ code: string }>();
 	const code = params?.code ?? '';
@@ -101,14 +108,14 @@ export function WgRouteErrorBoundary({
 								<Button
 									variant="outline"
 									size="lg"
-									render={<Link href={`/wg/${code}`} />}
+									render={<Link href={homeHref ?? `/wg/${code}`} />}
 									nativeButton={false}
 									className="w-full"
 								>
-									Zur Übersicht
+									{homeLabel}
 								</Button>
 								<a
-									href="mailto:info@manawg.com?subject=Fehler%20in%20ManaWG"
+									href={SUPPORT_MAILTO}
 									className={buttonVariants({
 										variant: 'outline',
 										size: 'lg',

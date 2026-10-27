@@ -65,7 +65,7 @@ const softwareApplicationSchema = {
 
 export const metadata: Metadata = {
 	metadataBase: new URL(appUrl),
-	title: brandTitle,
+	title: { default: brandTitle, template: '%s — ManaWG' },
 	description: metaDescription,
 	keywords: ['WG', 'Wohngemeinschaft', 'Ausgaben teilen', 'Putzplan', 'WG App', 'DSGVO'],
 	authors: [{ name: 'ManaWG' }],
