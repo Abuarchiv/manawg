@@ -51,12 +51,12 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 	const { identity, isAdmin } = useWg();
 	const canManage = canManageRecurringTemplate(abo, identity.memberId, isAdmin);
 	const payerName = payer?.name ?? 'unbekannt';
-	// The cron skips (never advances) a template whose payer or debtor moved out.
-	const blockedByMovedOut =
-		!isPaused &&
-		[abo.paidByMemberId, ...abo.splits.map((split) => split.debtorMemberId)].some(
-			(id) => members.find((member) => member.id === id)?.active === false,
-		);
+	// The cron pauses a template whose payer or debtor moved out; resuming needs new shares first.
+	const involvesMovedOut = [
+		abo.paidByMemberId,
+		...abo.splits.map((split) => split.debtorMemberId),
+	].some((id) => members.find((member) => member.id === id)?.active === false);
+	const blockedByMovedOut = !isPaused && involvesMovedOut;
 	return (
 		<li className={isPaused ? 'text-muted-foreground' : undefined}>
 			<Collapsible>
@@ -84,7 +84,11 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 						</span>
 						<span className="text-[12px] leading-normal font-normal text-muted-foreground">
 							{isPaused ? (
-								'pausiert'
+								involvesMovedOut ? (
+									'pausiert, jemand ist ausgezogen'
+								) : (
+									'pausiert'
+								)
 							) : blockedByMovedOut ? (
 								<span className="font-medium text-foreground">wird nicht gebucht</span>
 							) : isOverdue ? (
@@ -129,10 +133,11 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 								);
 							})}
 						</ul>
-						{blockedByMovedOut && (
+						{involvesMovedOut && (
 							<p className="text-sm font-medium text-foreground">
-								Wird nicht gebucht, weil ein beteiligtes Mitglied ausgezogen ist. Passe die Anteile
-								an oder pausiere die Fixkosten.
+								{isPaused
+									? 'Pausiert, weil ein beteiligtes Mitglied ausgezogen ist. Passe die Anteile an und setze die Fixkosten dann fort.'
+									: 'Wird nicht gebucht, weil ein beteiligtes Mitglied ausgezogen ist. Passe die Anteile an oder pausiere die Fixkosten.'}
 							</p>
 						)}
 						{preview.length > 0 && !isPaused && !blockedByMovedOut && (
