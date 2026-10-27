@@ -1,5 +1,6 @@
 'use client';
 
+import { resolveIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
 import {
 	type NotificationWarning,
@@ -12,14 +13,13 @@ import {
 	OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE,
 	OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
 	OFFLINE_SAVED_NOTICE,
+	keyUnavailableMessage,
 } from '@/core/offline/offline-copy';
-import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
 import { eurosToCents, parseEuroAmount } from '@/core/utils/amount';
 import { inputDateToIso, isoToInputDate, todayInputValue } from '@/core/utils/local-date';
 import {
 	EDITED_EXPENSE_DELETED_MESSAGE,
 	expenseSaveErrorMessage,
-	isPermanentClientError,
 	splitInputErrorMessage,
 } from '@/features/expenses/expense-errors';
 import { manualSplitsFingerprint } from '@/features/expenses/expense-split-input';
@@ -59,6 +59,7 @@ export function useExpenseSubmit(
 		pending,
 		expenses,
 		recurringExpenses,
+		optimisticExpenses,
 		updateExpenses,
 		reload,
 		refreshQueuedCount,
@@ -186,13 +187,9 @@ export function useExpenseSubmit(
 			expectedUpdatedAt: editingExpense?.updatedAt,
 			...recurringSource,
 		};
-		const idempotencyKey = isEdit
-			? null
-			: reusePendingRequest && pendingRequest
-				? pendingRequest.key
-				: createOfflineIdempotencyKey();
+		const idempotencyKey = isEdit ? null : resolveIdempotencyKey(pendingRequest, fingerprint);
 		if (!isEdit && !idempotencyKey) {
-			notify.error('Ausgabe konnte nicht sicher gesendet werden. Versuche es erneut.');
+			notify.error(keyUnavailableMessage('Ausgabe', 'gesendet'));
 			finishSubmitting();
 			return;
 		}
@@ -232,6 +229,7 @@ export function useExpenseSubmit(
 			...(previousExpense ? { previous: previousExpense } : {}),
 		});
 		pending.start(optimisticId);
+		optimisticExpenses.set(optimisticExpense);
 		updateExpenses((current) =>
 			sortExpensesNewestFirst(
 				isEdit
@@ -293,7 +291,7 @@ export function useExpenseSubmit(
 				notify.warning(OFFLINE_SAVED_NOTICE);
 				return;
 			}
-			if (!isEdit && isPermanentClientError(res.status)) {
+			if (!isEdit && shouldReleaseIdempotencyKey(res.status, res.error)) {
 				pendingRequestRef.current = null;
 			}
 			if (isEdit && res.status === 404 && res.error === 'expense_not_found') {

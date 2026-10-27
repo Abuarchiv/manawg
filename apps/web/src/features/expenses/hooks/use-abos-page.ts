@@ -2,23 +2,24 @@ import { useToast } from '@/components/ui/Toast';
 import type { ActionNotice, ActionNoticeTone } from '@/components/wg/ActionNoticeBanner';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
-import { useCachedFetch } from '@/core/hooks/useCachedFetch';
+import {
+	type PendingIdempotentRequest,
+	resolveIdempotencyKey,
+	shouldReleaseIdempotencyKey,
+} from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
-import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
-import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
+import { useSyncedCollection } from '@/core/sync/use-synced-collection';
+import { LIST_REFRESH_INTERVAL_MS } from '@/core/utils/use-visibility-paused-interval';
 import {
 	aboActionErrorMessage,
 	aboDeleteErrorMessage,
 	aboSaveErrorMessage,
 } from '@/features/expenses/abo-errors';
 import type { AboFormValues } from '@/features/expenses/abo-form-model';
-import { PAGE_REFRESH_MS } from '@/features/expenses/expense-constants';
-import { isPermanentClientError } from '@/features/expenses/expense-errors';
 import type { Abo, AboFilter } from '@/features/expenses/expense-types';
 import { getDueRecurringExpenses } from '@/features/expenses/recurring-expenses';
 import { haptic } from '@/shared/lib/haptics';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { updateCachedList } from './cached-list';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
 interface RecurringExpensesResponse {
 	recurringExpenses: Abo[];
@@ -44,80 +45,44 @@ export function useAbosPage() {
 	const { wg, members, identity } = useWg();
 	const toast = useToast();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
-	const {
-		data: cachedAbos,
-		error: abosReadError,
-		isLoading: abosReadLoading,
-		refresh: refreshAbos,
-		setData: setCachedAbos,
-	} = useCachedFetch<RecurringExpensesResponse>(`/api/wg/${encodedShareCode}/recurring-expenses`, {
+	const collection = useSyncedCollection<RecurringExpensesResponse, Abo>({
+		url: `/api/wg/${encodedShareCode}/recurring-expenses`,
 		memberId: identity.memberId,
+		select: (data) => sortByNextDue(data.recurringExpenses),
+		assemble: (items, current) => ({ ...current, recurringExpenses: items }),
+		getId: (abo) => abo.id,
+		describeError: (error) =>
+			getWgLoadErrorMessage('Fixkosten', error.status, error.error, { verb: 'konnten' }),
+		pollIntervalMs: LIST_REFRESH_INTERVAL_MS,
 	});
+	const {
+		items: abos,
+		initialLoading: loading,
+		refreshing,
+		loadError,
+		commit: updateAbos,
+	} = collection;
 	const memberOptions = useMemo(
 		() => members.map((member) => ({ ...member, color: member.color ?? null })),
 		[members],
 	);
 
-	const [abos, setAbos] = useState<Abo[]>(() =>
-		cachedAbos ? sortByNextDue(cachedAbos.recurringExpenses) : [],
-	);
 	const [filter, setFilter] = useState<AboFilter>('active');
-	const [loading, setLoading] = useState(abosReadLoading);
-	const [refreshing, setRefreshing] = useState(false);
-	const [loadError, setLoadError] = useState<string | null>(null);
 	const [notice, setNotice] = useState<ActionNotice | null>(null);
 	const [showCreate, setShowCreate] = useState(false);
 	const [editing, setEditing] = useState<Abo | null>(null);
 	const [submitting, setSubmitting] = useState(false);
 	const [pendingId, setPendingId] = useState<string | null>(null);
 	const [deleteCandidate, setDeleteCandidate] = useState<Abo | null>(null);
-	const createRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
-	const hasAbosDataRef = useRef(cachedAbos !== undefined);
+	const createRequestRef = useRef<PendingIdempotentRequest | null>(null);
 
-	function updateAbos(update: (current: Abo[]) => Abo[]): void {
-		setAbos(update);
-		setCachedAbos((current) => updateCachedList(current, 'recurringExpenses', abos, update));
-	}
-
+	const loadCollection = collection.load;
 	const load = useCallback(
 		async (initial: boolean): Promise<void> => {
-			if (initial && !hasAbosDataRef.current) setLoading(true);
-			else setRefreshing(true);
-			const res = await refreshAbos();
-			if (res.ok) {
-				setAbos(sortByNextDue(res.data.recurringExpenses));
-				setLoadError(null);
-			} else {
-				setLoadError(
-					getWgLoadErrorMessage('Fixkosten', res.status, res.error, { verb: 'konnten' }),
-				);
-			}
-			setLoading(false);
-			setRefreshing(false);
+			await loadCollection({ silent: !initial });
 		},
-		[refreshAbos],
+		[loadCollection],
 	);
-
-	useEffect(() => {
-		if (cachedAbos) {
-			hasAbosDataRef.current = true;
-			setAbos(sortByNextDue(cachedAbos.recurringExpenses));
-			setLoadError(null);
-		} else if (abosReadError) {
-			setLoadError(
-				getWgLoadErrorMessage('Fixkosten', abosReadError.status, abosReadError.error, {
-					verb: 'konnten',
-				}),
-			);
-			setLoading(false);
-		}
-	}, [abosReadError, cachedAbos]);
-
-	useEffect(() => {
-		void load(true);
-	}, [load]);
-	// Auto refresh like the dashboard instead of a manual reload button.
-	useVisibilityPausedInterval(() => void load(false), PAGE_REFRESH_MS);
 
 	function setNoticeMessage(tone: ActionNoticeTone, message: string): void {
 		// Success as a toast: it dismisses itself, shifts nothing and is visible even far down the list.
@@ -132,11 +97,7 @@ export function useAbosPage() {
 	async function handleCreate(values: AboFormValues): Promise<void> {
 		setSubmitting(true);
 		const fingerprint = JSON.stringify(values);
-		const pendingRequest = createRequestRef.current;
-		const idempotencyKey =
-			pendingRequest?.fingerprint === fingerprint
-				? pendingRequest.key
-				: createOfflineIdempotencyKey();
+		const idempotencyKey = resolveIdempotencyKey(createRequestRef.current, fingerprint);
 		if (!idempotencyKey) {
 			setNoticeMessage(
 				'error',
@@ -183,7 +144,7 @@ export function useAbosPage() {
 			setNoticeMessage('success', 'Fixkosten angelegt.');
 		} else {
 			updateAbos((current) => current.filter((abo) => abo.id !== optimisticId));
-			if (isPermanentClientError(res.status)) createRequestRef.current = null;
+			if (shouldReleaseIdempotencyKey(res.status, res.error)) createRequestRef.current = null;
 			const message = aboSaveErrorMessage(res.error, 'angelegt');
 			setNoticeMessage('error', message);
 		}

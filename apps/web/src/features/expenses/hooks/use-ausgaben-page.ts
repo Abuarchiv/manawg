@@ -62,7 +62,7 @@ export function useAusgabenPage() {
 		// Success as a floating toast: an in-flow banner would stay, reappear in the next form and push the page.
 		success: (message) => toast.success(message),
 	};
-	const pending = usePendingSet();
+	const rowPending = usePendingSet();
 
 	const data = useExpensesData({
 		shareCode: wg.shareCode,
@@ -70,6 +70,14 @@ export function useAusgabenPage() {
 		setActionNotice,
 	});
 	const { expenses, recurringExpenses } = data;
+	// Ending a request also drops its optimistic row from the sync overlay.
+	const pending = {
+		...rowPending,
+		end: (id: string) => {
+			rowPending.end(id);
+			data.optimisticExpenses.delete(id);
+		},
+	};
 
 	// Everything the form itself edits, plus its localStorage draft.
 	const form = useExpenseForm({
@@ -93,10 +101,11 @@ export function useAusgabenPage() {
 		pending,
 		expenses,
 		recurringExpenses,
+		optimisticExpenses: data.optimisticExpenses,
 		updateExpenses: data.updateExpenses,
 		updateRecurringExpenses: data.updateRecurringExpenses,
 		reload: async () => {
-			await data.load(false);
+			await data.load(false, true);
 		},
 		refreshQueuedCount: data.refreshQueuedCount,
 	};
@@ -278,7 +287,7 @@ export function useAusgabenPage() {
 	/** After an edit conflict, decide against the fresh server version. */
 	async function resolveConflict(choice: 'server' | 'draft'): Promise<void> {
 		const editedId = form.editingExpense?.id;
-		const fresh = await data.load(false);
+		const fresh = await data.load(false, true);
 		if (!fresh || !editedId) {
 			form.setFormError(
 				'Die Liste konnte nicht neu geladen werden. Versuche es gleich noch einmal.',

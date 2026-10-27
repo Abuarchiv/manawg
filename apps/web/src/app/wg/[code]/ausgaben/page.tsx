@@ -114,7 +114,7 @@ export default function AusgabenPage() {
 			{page.actionNotice && !showForm && <ActionNoticeBanner notice={page.actionNotice} />}
 			{/* Screen readers only: a visible notice would cover the header and flash on every poll. */}
 			<output aria-live="polite" aria-hidden={!refreshing} className="sr-only">
-				{refreshing ? 'Wird aktualisiert…' : ''}
+				{refreshing ? 'Lädt…' : ''}
 			</output>
 			<OfflineQueueNotice queuedCount={data.queuedCount} />
 			{loadError && (

@@ -1,5 +1,6 @@
 'use client';
 
+import { resolveIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
 import { removeDraft } from '@/core/offline/drafts';
 import { enqueueOfflineAction, readOfflineQueue } from '@/core/offline/offline-client';
@@ -7,13 +8,13 @@ import {
 	DRAFT_CLEANUP_FAILED_MESSAGE,
 	OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE,
 	OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
+	keyUnavailableMessage,
 } from '@/core/offline/offline-copy';
-import { createOfflineIdempotencyKey, createQueuedRecurring } from '@/core/offline/offline-queue';
+import { createQueuedRecurring } from '@/core/offline/offline-queue';
 import { eurosToCents, parseEuroAmount } from '@/core/utils/amount';
 import { todayAtLocalNoon } from '@/core/utils/local-date';
 import { parseTimestamp } from '@/core/utils/time';
 import {
-	isPermanentClientError,
 	recurringTemplateSaveErrorMessage,
 	splitInputErrorMessage,
 } from '@/features/expenses/expense-errors';
@@ -130,11 +131,9 @@ export function useRecurringTemplateSave(
 		});
 		const idempotencyKey = editingRecurringExpense
 			? null
-			: reusePendingRequest && pendingRequest
-				? pendingRequest.key
-				: createOfflineIdempotencyKey();
+			: resolveIdempotencyKey(pendingRequest?.queued ? null : pendingRequest, fingerprint);
 		if (!editingRecurringExpense && !idempotencyKey) {
-			notify.error('Fixkosten-Vorlage konnte nicht sicher gespeichert werden. Versuche es erneut.');
+			notify.error(keyUnavailableMessage('Fixkosten-Vorlage', 'gespeichert'));
 			return;
 		}
 		if (idempotencyKey) {
@@ -172,7 +171,7 @@ export function useRecurringTemplateSave(
 			}),
 		});
 		if (!res.ok) {
-			if (!editingRecurringExpense && isPermanentClientError(res.status)) {
+			if (!editingRecurringExpense && shouldReleaseIdempotencyKey(res.status, res.error)) {
 				templateRequestRef.current = null;
 			}
 			if (res.status === 0 && !editingRecurringExpense) {

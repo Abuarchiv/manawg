@@ -1,6 +1,7 @@
 import type { useToast } from '@/components/ui/Toast';
 import type { Member, WgSummary } from '@/components/wg/WgContextProvider';
 import type { SessionMember } from '@/core/auth/local-account';
+import type { PendingOverlay } from '@/core/sync/use-synced-collection';
 import type { Expense, RecurringExpense } from '@/features/expenses/expense-types';
 import type { useExpenseForm } from '@/features/expenses/hooks/use-expense-form';
 
@@ -26,6 +27,8 @@ export interface ExpensePageContext {
 	pending: PendingIds;
 	expenses: Expense[];
 	recurringExpenses: RecurringExpense[];
+	/** Rows shown while their request runs; a poll must not replace them. */
+	optimisticExpenses: PendingOverlay<Expense>;
 	updateExpenses: (update: (current: Expense[]) => Expense[]) => void;
 	updateRecurringExpenses: (update: (current: RecurringExpense[]) => RecurringExpense[]) => void;
 	reload: () => Promise<void>;

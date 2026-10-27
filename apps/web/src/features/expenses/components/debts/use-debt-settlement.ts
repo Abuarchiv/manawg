@@ -1,8 +1,9 @@
 'use client';
 
 import { useToast } from '@/components/ui/Toast';
+import { resolveIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
-import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
+import { keyUnavailableMessage } from '@/core/offline/offline-copy';
 import { formatEuroCents, normalizeCurrency } from '@/core/utils/money';
 import type { SimplifiedDebt } from '@/features/expenses/debt-reduction';
 import { type MutableRefObject, useRef, useState } from 'react';
@@ -33,15 +34,9 @@ type PendingRequest = { fingerprint: string; key: string };
  */
 function idempotencyKeyFor(ref: MutableRefObject<PendingRequest | null>, body: unknown) {
 	const fingerprint = JSON.stringify(body);
-	const key =
-		ref.current?.fingerprint === fingerprint ? ref.current.key : createOfflineIdempotencyKey();
+	const key = resolveIdempotencyKey(ref.current, fingerprint);
 	if (key) ref.current = { fingerprint, key };
 	return key;
-}
-
-/** A 4xx answer is final, so the next attempt must not replay its idempotency key. */
-function isDefinitiveFailure(status: number): boolean {
-	return status > 0 && status < 500;
 }
 
 interface DebtSettlementInput {
@@ -118,7 +113,7 @@ export function useDebtSettlement({
 		};
 		const idempotencyKey = idempotencyKeyFor(settlementRequestRef, body);
 		if (!idempotencyKey) {
-			const message = 'Ausgleich konnte nicht sicher gespeichert werden. Versuche es erneut.';
+			const message = keyUnavailableMessage('Ausgleich', 'gespeichert');
 			setError(message);
 			toast.error(message);
 			settlingRef.current = false;
@@ -133,7 +128,7 @@ export function useDebtSettlement({
 				body: JSON.stringify(body),
 			});
 			if (!res.ok) {
-				if (isDefinitiveFailure(res.status)) settlementRequestRef.current = null;
+				if (shouldReleaseIdempotencyKey(res.status, res.error)) settlementRequestRef.current = null;
 				const message = settlementErrorMessage(res.error);
 				setError(message);
 				toast.error(message);
@@ -174,7 +169,7 @@ export function useDebtSettlement({
 		};
 		const idempotencyKey = idempotencyKeyFor(cashRequestRef, body);
 		if (!idempotencyKey) {
-			const message = 'Barzahlung konnte nicht sicher gespeichert werden. Versuche es erneut.';
+			const message = keyUnavailableMessage('Barzahlung', 'gespeichert');
 			setError(message);
 			toast.error(message);
 			settlingRef.current = false;
@@ -189,7 +184,7 @@ export function useDebtSettlement({
 				body: JSON.stringify(body),
 			});
 			if (!res.ok) {
-				if (isDefinitiveFailure(res.status)) cashRequestRef.current = null;
+				if (shouldReleaseIdempotencyKey(res.status, res.error)) cashRequestRef.current = null;
 				const message = settlementErrorMessage(res.error);
 				setError(message);
 				toast.error(message);

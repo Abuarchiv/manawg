@@ -1,7 +1,6 @@
 'use client';
 import { Empty, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Spinner } from '@/components/ui/spinner';
 import { BackLink } from '@/components/wg/BackLink';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { ThumbAction } from '@/components/wg/ThumbAction';
@@ -126,8 +125,7 @@ export default function MahnungenPage() {
 					Erinnerungen
 				</h1>
 				<output aria-live="polite" aria-hidden={!refreshing} className="sr-only">
-					<Spinner />
-					Wird aktualisiert…
+					Lädt…
 				</output>
 			</header>
 			{allClear ? (

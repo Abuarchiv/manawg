@@ -1,3 +1,5 @@
+import { RATE_LIMITED_MESSAGE, isRateLimited } from '@/core/http/error-codes';
+
 /** Codes after which the debt on screen is outdated and the balances must be reloaded. */
 export const PAYPAL_STALE_CODES = new Set([
 	'debt_changed',
@@ -11,6 +13,8 @@ export const PAYPAL_STALE_CODES = new Set([
  * may leave an unclear payment state, so the caller keeps the "check PayPal first" warning.
  */
 export function paypalErrorMessage(code: string): string | null {
+	// A rejected request never started a payment.
+	if (isRateLimited(code)) return RATE_LIMITED_MESSAGE;
 	switch (code) {
 		case 'no_open_debt':
 			return 'Diese Schuld ist bereits beglichen oder hat sich geändert.';
@@ -23,9 +27,6 @@ export function paypalErrorMessage(code: string): string | null {
 			return 'Es läuft bereits eine PayPal-Zahlung.';
 		case 'paypal_currency_unsupported':
 			return 'PayPal ist nur für Euro verfügbar.';
-		case 'too_many_requests':
-		case 'rate_limited':
-			return 'Zu viele Versuche. Warte kurz und versuche es erneut.';
 		case 'debt_changed':
 			return 'Der Betrag hat sich geändert. Die Salden werden neu geladen.';
 		case 'paypal_order_expired':

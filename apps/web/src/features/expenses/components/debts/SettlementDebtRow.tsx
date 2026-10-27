@@ -122,7 +122,7 @@ export function SettlementDebtRow({
 						onClick={() => void review()}
 					>
 						{reviewing && <Spinner data-icon="inline-start" />}
-						{reviewing ? 'Wird geprüft…' : 'Ausgleichen'}
+						{reviewing ? 'Prüft…' : 'Ausgleichen'}
 					</Button>
 					{owedToMe && (
 						<RemindButton
