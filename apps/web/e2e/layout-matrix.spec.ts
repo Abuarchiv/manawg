@@ -145,15 +145,6 @@ test.describe('mobile layout matrix', () => {
 		],
 		latestAnnouncement: null,
 		myOpenAnnouncements: [],
-		wgHealth: {
-			shareCode: SHARE_CODE,
-			openShoppingCount: 1,
-			overdueChoreCount: 0,
-			openDebtCents: 0,
-			openAnnouncementCount: 0,
-			absentMemberCount: 0,
-			dueRecurringCount: 0,
-		},
 		dueRecurringExpenses: [],
 		absentMembers: [],
 		setup: {

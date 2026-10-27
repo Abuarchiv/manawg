@@ -405,7 +405,6 @@ test.describe('label in name audit', () => {
 		latestAnnouncement: null,
 		myOpenAnnouncements: [],
 		absentMembers: [],
-		wgHealth: { score: 100, label: 'Alles im Griff', items: [] },
 		setup: {
 			choreCount: 0,
 			hasExpense: false,

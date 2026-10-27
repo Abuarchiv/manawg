@@ -14,7 +14,7 @@ import {
 } from '@/core/db';
 import { feedAuditCondition } from '@/core/db/feed-audit-filter';
 import { captureException } from '@/core/infra/observability';
-import { and, count, desc, eq, gte, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, isNull, sql } from 'drizzle-orm';
 
 import { CHAT_AUDIT_EVENT_TYPES } from './activity-audit';
 
@@ -35,8 +35,19 @@ function withFallback<T>(label: string, query: Promise<T>, fallback: () => T): P
  * balances come from SQL totals, the spend widgets from the last `spendSince` days and the
  * activity preview from the newest rows.
  */
-export function loadPrimaryRows(wgId: string, spendSince: Date) {
-	return Promise.all([
+export async function loadPrimaryRows(wgId: string, spendSince: Date) {
+	const [
+		memberRows,
+		recentExpenses,
+		openDebts,
+		paymentRows,
+		openShopping,
+		recentShopping,
+		choreRows,
+		announcementRows,
+		payerTotals,
+		spendRows,
+	] = await Promise.all([
 		db
 			.select({ id: wgMembers.id, name: wgMembers.name, color: wgMembers.color })
 			.from(wgMembers)
@@ -120,20 +131,6 @@ export function loadPrimaryRows(wgId: string, spendSince: Date) {
 				.limit(ACTIVITY_LIMIT),
 			() => [],
 		),
-		withFallback(
-			'openAnnouncementCount',
-			db
-				.select({ value: count() })
-				.from(announcements)
-				.where(
-					and(
-						eq(announcements.wgId, wgId),
-						eq(announcements.source, 'manual'),
-						eq(announcements.status, 'open'),
-					),
-				),
-			() => [],
-		),
 		// Everything ever paid, per payer and currency: gross "paid" and the all-time total.
 		db
 			.select({
@@ -153,96 +150,116 @@ export function loadPrimaryRows(wgId: string, spendSince: Date) {
 			.from(expenses)
 			.where(and(eq(expenses.wgId, wgId), gte(expenses.occurredAt, spendSince))),
 	]);
+	return {
+		memberRows,
+		recentExpenses,
+		openDebts,
+		paymentRows,
+		openShopping,
+		recentShopping,
+		choreRows,
+		announcementRows,
+		payerTotals,
+		spendRows,
+	};
 }
 
 export type PrimaryRows = Awaited<ReturnType<typeof loadPrimaryRows>>;
 
-export function loadSecondaryRows(wgId: string, currentMemberId: string | null | undefined) {
-	return Promise.all([
-		withFallback(
-			'myOpenAnnouncements',
-			currentMemberId
-				? db
-						.select({
-							id: announcements.id,
-							kind: announcements.kind,
-							content: announcements.content,
-							createdAt: announcements.createdAt,
-						})
-						.from(announcements)
-						.innerJoin(
-							announcementReactions,
-							eq(announcementReactions.announcementId, announcements.id),
-						)
-						.where(
-							and(
-								eq(announcements.wgId, wgId),
-								eq(announcements.status, 'open'),
-								eq(announcementReactions.memberId, currentMemberId),
-								eq(announcementReactions.reaction, 'take'),
-							),
-						)
-						.orderBy(desc(announcements.createdAt))
-				: Promise.resolve([]),
-			() => [],
-		),
-		withFallback(
-			'memberAbsences',
-			db
-				.select({
-					id: memberAbsences.id,
-					memberId: memberAbsences.memberId,
-					startDate: memberAbsences.startDate,
-					endDate: memberAbsences.endDate,
-					createdAt: memberAbsences.createdAt,
-				})
-				.from(memberAbsences)
-				.where(eq(memberAbsences.wgId, wgId)),
-			() => [],
-		),
-		db
-			.select({
-				id: recurringExpenses.id,
-				description: recurringExpenses.description,
-				amountCents: recurringExpenses.amountCents,
-				nextDueAt: recurringExpenses.nextDueAt,
-				lastCreatedAt: recurringExpenses.lastCreatedAt,
-				createdAt: recurringExpenses.createdAt,
-				pausedAt: recurringExpenses.pausedAt,
-			})
-			.from(recurringExpenses)
-			.where(eq(recurringExpenses.wgId, wgId)),
-		withFallback(
-			'auditEvents',
-			db
-				.select({
-					id: auditEvents.id,
-					memberId: auditEvents.memberId,
-					eventType: auditEvents.eventType,
-					entityType: auditEvents.entityType,
-					entityId: auditEvents.entityId,
-					metadataJson: auditEvents.metadataJson,
-					summary: auditEvents.summary,
-					createdAt: auditEvents.createdAt,
-				})
-				.from(auditEvents)
-				// Chat audits carry no content worth a feed row and would crowd out real events.
-				.where(feedAuditCondition(wgId, CHAT_AUDIT_EVENT_TYPES))
-				.orderBy(desc(auditEvents.createdAt))
-				.limit(ACTIVITY_LIMIT),
-			() => [],
-		),
-		withFallback(
-			'currentMemberPushOptIn',
-			currentMemberId
-				? db.query.wgMembers.findFirst({
-						where: and(eq(wgMembers.id, currentMemberId), eq(wgMembers.wgId, wgId)),
-						columns: { pushOptIn: true },
+export async function loadSecondaryRows(wgId: string, currentMemberId: string | null | undefined) {
+	const [myOpenAnnouncements, absenceRows, recurringRows, auditRows, currentMemberNotification] =
+		await Promise.all([
+			withFallback(
+				'myOpenAnnouncements',
+				currentMemberId
+					? db
+							.select({
+								id: announcements.id,
+								kind: announcements.kind,
+								content: announcements.content,
+								createdAt: announcements.createdAt,
+							})
+							.from(announcements)
+							.innerJoin(
+								announcementReactions,
+								eq(announcementReactions.announcementId, announcements.id),
+							)
+							.where(
+								and(
+									eq(announcements.wgId, wgId),
+									eq(announcements.status, 'open'),
+									eq(announcementReactions.memberId, currentMemberId),
+									eq(announcementReactions.reaction, 'take'),
+								),
+							)
+							.orderBy(desc(announcements.createdAt))
+					: Promise.resolve([]),
+				() => [],
+			),
+			withFallback(
+				'memberAbsences',
+				db
+					.select({
+						id: memberAbsences.id,
+						memberId: memberAbsences.memberId,
+						startDate: memberAbsences.startDate,
+						endDate: memberAbsences.endDate,
+						createdAt: memberAbsences.createdAt,
 					})
-				: Promise.resolve(null),
-			() => null,
-		),
-	]);
+					.from(memberAbsences)
+					.where(eq(memberAbsences.wgId, wgId)),
+				() => [],
+			),
+			db
+				.select({
+					id: recurringExpenses.id,
+					description: recurringExpenses.description,
+					amountCents: recurringExpenses.amountCents,
+					nextDueAt: recurringExpenses.nextDueAt,
+					lastCreatedAt: recurringExpenses.lastCreatedAt,
+					createdAt: recurringExpenses.createdAt,
+					pausedAt: recurringExpenses.pausedAt,
+				})
+				.from(recurringExpenses)
+				.where(eq(recurringExpenses.wgId, wgId)),
+			withFallback(
+				'auditEvents',
+				db
+					.select({
+						id: auditEvents.id,
+						memberId: auditEvents.memberId,
+						eventType: auditEvents.eventType,
+						entityType: auditEvents.entityType,
+						entityId: auditEvents.entityId,
+						metadataJson: auditEvents.metadataJson,
+						summary: auditEvents.summary,
+						createdAt: auditEvents.createdAt,
+					})
+					.from(auditEvents)
+					// Chat audits carry no content worth a feed row and would crowd out real events.
+					.where(feedAuditCondition(wgId, CHAT_AUDIT_EVENT_TYPES))
+					.orderBy(desc(auditEvents.createdAt))
+					.limit(ACTIVITY_LIMIT),
+				() => [],
+			),
+			withFallback(
+				'currentMemberPushOptIn',
+				currentMemberId
+					? db.query.wgMembers.findFirst({
+							where: and(eq(wgMembers.id, currentMemberId), eq(wgMembers.wgId, wgId)),
+							columns: { pushOptIn: true },
+						})
+					: Promise.resolve(null),
+				() => null,
+			),
+		]);
+	return {
+		myOpenAnnouncements,
+		absenceRows,
+		recurringRows,
+		auditRows,
+		currentMemberNotification,
+	};
 }
 
 export type SecondaryRows = Awaited<ReturnType<typeof loadSecondaryRows>>;

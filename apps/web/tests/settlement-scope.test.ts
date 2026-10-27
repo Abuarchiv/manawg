@@ -9,7 +9,7 @@ import {
 	computeMemberBalances,
 	summarizeDashboardSpend,
 } from '../src/composition/dashboard-data';
-import { getTodayImportantItems, getWgHealth } from '../src/composition/dashboard-insights';
+import { getTodayImportantItems } from '../src/composition/dashboard-insights';
 import { formatNotificationMessage } from '../src/core/notifications/notifications';
 import { computeNetBalances } from '../src/features/expenses/debt-reduction';
 import { computeBalances, computeOldestDebtAges } from '../src/features/expenses/debts';
@@ -585,20 +585,6 @@ describe('currency-scoped accounting', () => {
 			});
 			assert.match(settled.body, /CHF/);
 			assert.equal(settled.urlPath, '/ausgaben');
-
-			const health = getWgHealth({
-				shareCode: 'WGCODE01',
-				openShoppingCount: 0,
-				overdueChoreCount: 0,
-				openDebtByCurrency: { EUR: 1000, CHF: 2500 },
-				openAnnouncementCount: 0,
-				absentMemberCount: 0,
-				dueRecurringCount: 0,
-			});
-			assert.match(
-				health.items.find((item) => item.label === 'Offene Schulden')?.value ?? '',
-				/CHF/,
-			);
 		});
 
 		test('preserves currency on recurring due items and today cards', () => {

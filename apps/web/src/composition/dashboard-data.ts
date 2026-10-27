@@ -4,14 +4,11 @@ import { getDueRecurringExpenses } from '@/features/expenses/recurring-expenses'
 import { balanceTotalsFromRows, computeMemberBalances } from './dashboard-balances';
 import type { MemberBalance } from './dashboard-balances';
 import { type ActivityItem, appendSecondaryActivity, buildPrimaryActivity } from './dashboard-feed';
-import { type WgHealth, getWgHealth } from './dashboard-insights';
 import { ACTIVITY_LIMIT, loadPrimaryRows, loadSecondaryRows } from './dashboard-queries';
 import {
 	type CurrencyTotals,
 	type DaySpend,
-	addCurrencyTotal,
 	dashboardSpendSince,
-	singleCurrencyTotal,
 	summarizeDashboardSpend,
 } from './dashboard-spend';
 
@@ -56,7 +53,6 @@ export interface DashboardData {
 		createdAt: string;
 	} | null;
 	myOpenAnnouncements: Array<{ id: string; kind: string; content: string; createdAt: string }>;
-	wgHealth: WgHealth;
 	dueRecurringExpenses: Array<{
 		id: string;
 		description: string;
@@ -142,7 +138,7 @@ export async function loadDashboardData(
 ): Promise<DashboardData> {
 	const now = new Date();
 
-	const [
+	const {
 		memberRows,
 		recentExpenses,
 		openDebts,
@@ -151,10 +147,9 @@ export async function loadDashboardData(
 		recentShopping,
 		choreRows,
 		announcementRows,
-		openAnnouncementCountRows,
 		payerTotals,
 		spendRows,
-	] = await loadPrimaryRows(wgId, dashboardSpendSince(now));
+	} = await loadPrimaryRows(wgId, dashboardSpendSince(now));
 
 	const memberById = new Map(memberRows.map((m) => [m.id, m]));
 
@@ -178,7 +173,7 @@ export async function loadDashboardData(
 	);
 
 	const latestAnnouncement = getLatestManualAnnouncement(announcementRows, memberById);
-	const [myOpenAnnouncements, absenceRows, recurringRows, auditRows, currentMemberNotification] =
+	const { myOpenAnnouncements, absenceRows, recurringRows, auditRows, currentMemberNotification } =
 		await loadSecondaryRows(wgId, currentMemberId);
 	const filteredMyOpenAnnouncements = myOpenAnnouncements;
 	const dueRecurringExpenses = getDueRecurringExpenses(
@@ -225,16 +220,7 @@ export async function loadDashboardData(
 			};
 		})
 		.filter((item): item is NonNullable<typeof item> => item !== null);
-	const openDebtByCurrency: CurrencyTotals = {};
-	for (const balance of balances) {
-		if (balance.balanceCents < 0) {
-			addCurrencyTotal(openDebtByCurrency, balance.currency, -balance.balanceCents);
-		}
-	}
-	const openDebtCents = singleCurrencyTotal(openDebtByCurrency);
-	const openAnnouncementCount = openAnnouncementCountRows[0]?.value ?? 0;
 	const hasAnnouncement = announcementRows.length > 0;
-	const overdueChoreCount = allDueChores.filter((item) => item.overdue).length;
 	const currentMember = currentMemberId ? (memberById.get(currentMemberId) ?? null) : null;
 
 	return {
@@ -249,16 +235,6 @@ export async function loadDashboardData(
 			...item,
 			createdAt: item.createdAt.toISOString(),
 		})),
-		wgHealth: getWgHealth({
-			shareCode,
-			openShoppingCount: openShopping.length,
-			overdueChoreCount,
-			openDebtCents: openDebtCents ?? 0,
-			openDebtByCurrency,
-			openAnnouncementCount,
-			absentMemberCount: absentMemberIds.length,
-			dueRecurringCount: dueRecurringExpenses.length,
-		}),
 		dueRecurringExpenses,
 		absentMembers,
 		setup: {

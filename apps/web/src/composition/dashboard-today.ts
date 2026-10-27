@@ -67,7 +67,7 @@ export interface TodayImportantInput {
 	now?: number;
 }
 
-export function formatEuro(cents: number, currency = 'EUR'): string {
+function formatEuro(cents: number, currency = 'EUR'): string {
 	return formatEuroCents(cents, currency);
 }
 
