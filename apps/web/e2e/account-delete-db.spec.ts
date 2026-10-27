@@ -145,7 +145,7 @@ test('account deletion hands over admin, moves out, and deletes solo WGs', async
 	const result = await withTransaction((tx) => removeAccountFromWgs(tx, user));
 	expect(result.deletedWgIds).toEqual([ids.solo]);
 	expect(result.left).toEqual([
-		{ wgId: ids.shared, memberId: ids.me, name: 'Me', newAdminId: ids.mate },
+		{ wgId: ids.shared, memberId: ids.me, name: 'Me', newAdminId: ids.mate, newAdminName: 'Mate' },
 	]);
 
 	await withTransaction(async (tx) => {
@@ -794,7 +794,7 @@ test('a calendar writer waiting behind account cleanup cannot restore its creden
 					{ wgId: wg.id, name: 'Staying', role: 'member', authUserId: otherUser },
 				])
 				.returning({ id: wgMembers.id }),
-			1,
+			2,
 		);
 		await tx.insert(calendarSubscriptions).values({
 			wgId: wg.id,
