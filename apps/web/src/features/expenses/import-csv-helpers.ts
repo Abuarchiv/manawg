@@ -1,4 +1,4 @@
-import { CENTS_PER_EURO } from '@/core/utils/money';
+import { eurosToCents } from '@/core/utils/amount';
 import { AMOUNT_MAX_CENTS } from '@/features/expenses/expense-constants';
 import type { RejectedRow } from './import-types';
 const MIN_PLAUSIBLE_YEAR = 2000;
@@ -123,46 +123,53 @@ export function parseAmountToCents(raw: string): number | null {
 	if (!/^-?\d+(?:\.\d{1,2})?$/.test(normalized)) return null;
 	const num = Number(normalized);
 	if (!Number.isFinite(num)) return null;
-	const cents = Math.round(num * CENTS_PER_EURO);
+	const cents = eurosToCents(num);
 	if (!Number.isInteger(cents) || Math.abs(cents) > AMOUNT_MAX_CENTS) return null;
 	return cents;
 }
 
+/**
+ * UTC-midnight ISO timestamp of an exact calendar date, or null. A two-digit year means 20yy; years
+ * outside the plausible range and dates like 31.02. are rejected.
+ */
+export function parseDayMonthYear(day: string, month: string, year: string): string | null {
+	const y = Number(year.length === 2 ? `20${year}` : year);
+	if (!(y >= MIN_PLAUSIBLE_YEAR && y <= MAX_PLAUSIBLE_YEAR)) return null;
+	const m = Number(month);
+	const d = Number(day);
+	const date = new Date(Date.UTC(y, m - 1, d));
+	if (
+		Number.isNaN(date.getTime()) ||
+		date.getUTCFullYear() !== y ||
+		date.getUTCMonth() !== m - 1 ||
+		date.getUTCDate() !== d
+	) {
+		return null;
+	}
+	return date.toISOString();
+}
+
+const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})/;
+const GERMAN_DATE = /^(\d{1,2})\.(\d{1,2})\.(\d{2,4})/;
+// Slash dates are US order: month first.
+const SLASH_DATE = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/;
+
 export function parseDateIso(raw: string): string | null {
 	const value = raw.trim();
-	if (!value) return null;
-	const fromParts = (year: string, month: string, day: string): string | null => {
-		const y = Number(year);
-		if (y < MIN_PLAUSIBLE_YEAR || y > MAX_PLAUSIBLE_YEAR) return null;
-		const m = Number(month);
-		const d = Number(day);
-		const date = new Date(Date.UTC(y, m - 1, d));
-		if (
-			Number.isNaN(date.getTime()) ||
-			date.getUTCFullYear() !== y ||
-			date.getUTCMonth() !== m - 1 ||
-			date.getUTCDate() !== d
-		) {
-			return null;
-		}
-		return date.toISOString();
-	};
-	const isoMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
-	if (isoMatch) {
-		const [, y, m, d] = isoMatch;
-		return fromParts(y ?? '', m ?? '', d ?? '');
+	const iso = value.match(ISO_DATE);
+	if (iso) {
+		const [, year = '', month = '', day = ''] = iso;
+		return parseDayMonthYear(day, month, year);
 	}
-	const deMatch = value.match(/^(\d{1,2})\.(\d{1,2})\.(\d{2,4})/);
-	if (deMatch) {
-		const [, d, m, y] = deMatch;
-		const year = (y ?? '').length === 2 ? `20${y}` : y;
-		return fromParts(year ?? '', m ?? '', d ?? '');
+	const german = value.match(GERMAN_DATE);
+	if (german) {
+		const [, day = '', month = '', year = ''] = german;
+		return parseDayMonthYear(day, month, year);
 	}
-	const slash = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+	const slash = value.match(SLASH_DATE);
 	if (slash) {
-		const [, m, d, y] = slash;
-		const year = (y ?? '').length === 2 ? `20${y}` : y;
-		return fromParts(year ?? '', m ?? '', d ?? '');
+		const [, month = '', day = '', year = ''] = slash;
+		return parseDayMonthYear(day, month, year);
 	}
 	return null;
 }

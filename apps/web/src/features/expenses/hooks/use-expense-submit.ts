@@ -1,8 +1,10 @@
 'use client';
 
 import { apiFetch } from '@/core/infra/api-client';
-import type { NotificationWarning } from '@/core/notifications/notification-warning';
-import { notificationWarningMessage } from '@/core/notifications/notification-warning';
+import {
+	type NotificationWarning,
+	notificationWarningMessage,
+} from '@/core/notifications/notification-warning';
 import { removeDraft } from '@/core/offline/drafts';
 import { enqueueOfflineAction } from '@/core/offline/offline-client';
 import {
@@ -12,20 +14,16 @@ import {
 	OFFLINE_SAVED_NOTICE,
 } from '@/core/offline/offline-copy';
 import { createOfflineIdempotencyKey } from '@/core/offline/offline-queue';
-import { parseEuroAmount } from '@/core/utils/amount';
-import { inputDateToIso, todayInputValue } from '@/core/utils/local-date';
-import { CENTS_PER_EURO } from '@/core/utils/money';
-import type {
-	Expense,
-	RecurringExpense,
-} from '@/features/expenses/components/ausgaben/expense-types';
-import { isoToInputDate } from '@/features/expenses/components/ausgaben/use-expense-form-extras';
+import { eurosToCents, parseEuroAmount } from '@/core/utils/amount';
+import { inputDateToIso, isoToInputDate, todayInputValue } from '@/core/utils/local-date';
 import {
+	EDITED_EXPENSE_DELETED_MESSAGE,
 	expenseSaveErrorMessage,
 	isPermanentClientError,
 	splitInputErrorMessage,
 } from '@/features/expenses/expense-errors';
 import { manualSplitsFingerprint } from '@/features/expenses/expense-split-input';
+import type { Expense, RecurringExpense } from '@/features/expenses/expense-types';
 import {
 	buildOptimisticExpense,
 	sortExpensesNewestFirst,
@@ -57,7 +55,6 @@ export function useExpenseSubmit(
 	const {
 		wg,
 		identity,
-		toast,
 		notify,
 		pending,
 		expenses,
@@ -109,7 +106,7 @@ export function useExpenseSubmit(
 			return;
 		}
 		if (amountEuros === null) return;
-		const amountCents = Math.round(amountEuros * CENTS_PER_EURO);
+		const amountCents = eurosToCents(amountEuros);
 		const isEdit = editingExpense !== null;
 		const fingerprint = JSON.stringify({
 			recurringSourceId,
@@ -163,11 +160,8 @@ export function useExpenseSubmit(
 			submittingRef.current = false;
 			setSubmitting(false);
 		};
-		// Banner on the page plus a toast, for failures the form itself cannot show.
-		const reportError = (message: string, toastMessage = message) => {
-			notify.error(message);
-			toast.error(toastMessage);
-		};
+		// Page banner for failures the form itself cannot show.
+		const reportError = (message: string) => notify.error(message);
 		setSubmitting(true);
 
 		const recurringSource =
@@ -280,10 +274,7 @@ export function useExpenseSubmit(
 					rollbackOptimisticExpense();
 					pending.end(optimisticId);
 					finishSubmitting();
-					reportError(
-						OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
-						'Offline-Speicher ist blockiert. Die Ausgabe wurde zurückgesetzt.',
-					);
+					reportError(OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE);
 					return;
 				}
 				if (!isEdit) pendingRequestRef.current = null;
@@ -306,15 +297,10 @@ export function useExpenseSubmit(
 				pendingRequestRef.current = null;
 			}
 			if (isEdit && res.status === 404 && res.error === 'expense_not_found') {
-				form.setFormError(
-					'Die ursprüngliche Ausgabe wurde gelöscht. Deine ungespeicherten Änderungen bleiben im Entwurf; du kannst sie kopieren oder den Entwurf verwerfen.',
-				);
+				form.setFormError(EDITED_EXPENSE_DELETED_MESSAGE);
 				updateExpenses((current) => current.filter((expense) => expense.id !== editingExpense.id));
 				pending.end(optimisticId);
-				reportError(
-					'Diese Ausgabe existiert nicht mehr und wurde aus der Liste entfernt.',
-					'Diese Ausgabe existiert nicht mehr.',
-				);
+				reportError('Diese Ausgabe existiert nicht mehr und wurde aus der Liste entfernt.');
 				void reload();
 				finishSubmitting();
 				return;
@@ -329,7 +315,6 @@ export function useExpenseSubmit(
 			rollbackOptimisticExpense();
 			pending.end(optimisticId);
 			form.setFormError(msg);
-			toast.error(msg);
 			finishSubmitting();
 			return;
 		}

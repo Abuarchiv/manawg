@@ -3,6 +3,9 @@
 import { subscribeOnline, subscribeVisibility } from '@/core/hooks/use-online-status';
 import { useEffect, useRef } from 'react';
 
+/** Shared refresh period of the list pages while their tab is visible. */
+export const LIST_REFRESH_INTERVAL_MS = 30_000;
+
 /** Spreads the catch-up ticks of all pollers over this window after the tab returns. */
 const RESUME_JITTER_MS = 1500;
 

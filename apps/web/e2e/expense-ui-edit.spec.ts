@@ -6,7 +6,7 @@ import {
 	createQueuedExpenseUpdate,
 	getOfflineActionRequest,
 } from '../src/core/offline/offline-queue';
-import type { Expense } from '../src/features/expenses/components/ausgaben/expense-types';
+import type { Expense } from '../src/features/expenses/expense-types';
 import {
 	FIXTURE_WG,
 	dismissOnboarding,
@@ -496,7 +496,7 @@ test.describe('offline expense edit', () => {
 		const request = getOfflineActionRequest(action);
 		expect(action.type).toBe('expense.update');
 		expect(request.method).toBe('PATCH');
-		expect(request.path).toBe('/api/wg/MTE8PZAT/expenses/expense-1');
+		expect(request.path).toBe(`/api/wg/${FIXTURE_WG.shareCode}/expenses/expense-1`);
 		expect(request.body).toMatchObject({
 			expectedUpdatedAt: '2026-09-19T10:00:00.000Z',
 			description: 'Wocheneinkauf',

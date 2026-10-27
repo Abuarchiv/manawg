@@ -33,10 +33,10 @@ import { formatEuroCents } from '@/core/utils/money';
 import { formatTimeFull } from '@/core/utils/time';
 import { EXPENSE_CATEGORY_LABELS } from '@/features/expenses/expense-categories';
 import { type ExpenseImpact, getExpenseImpact } from '@/features/expenses/expense-impact';
+import type { Expense, ExpenseSplit } from '@/features/expenses/expense-types';
 import { cn } from '@/shared/lib/cn';
 import { Check, MoreHorizontal, Pencil, Receipt, Trash2 } from 'lucide-react';
 import { memo, useState } from 'react';
-import type { Expense, ExpenseSplit } from './expense-types';
 
 const IMPACT_LABEL: Record<ExpenseImpact['kind'], string> = {
 	lent: 'bekommst du',

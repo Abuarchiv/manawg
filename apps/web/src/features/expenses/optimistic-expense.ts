@@ -1,5 +1,5 @@
-import type { Expense } from '@/features/expenses/components/ausgaben/expense-types';
 import type { ExpenseCategory } from '@/features/expenses/expense-categories';
+import type { Expense } from '@/features/expenses/expense-types';
 import type { DebtorShare } from '@/features/expenses/split-math';
 
 /**

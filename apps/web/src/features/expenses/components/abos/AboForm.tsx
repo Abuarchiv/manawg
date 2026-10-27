@@ -12,36 +12,32 @@ import {
 } from '@/components/ui/input-group';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Spinner } from '@/components/ui/spinner';
-import { formatEuroInput, parseEuroAmount } from '@/core/utils/amount';
-import { inputDateToIso, todayInputValue } from '@/core/utils/local-date';
-import { CENTS_PER_EURO } from '@/core/utils/money';
-import type { MemberOption } from '@/features/expenses/components/abos/abos-types';
-import { ExpenseCategoryField } from '@/features/expenses/components/ausgaben/ExpenseCategoryField';
-import {
-	AMOUNT_MAX_EUROS,
-	AMOUNT_MIN_EUROS,
-	DESCRIPTION_MAX,
-	RECURRING_INTERVAL_OPTIONS,
-	amountErrorMessage,
-} from '@/features/expenses/components/ausgaben/constants';
-import { isoToInputDate } from '@/features/expenses/components/ausgaben/use-expense-form-extras';
-import {
-	DEFAULT_EXPENSE_CATEGORY,
-	type ExpenseCategory,
-} from '@/features/expenses/expense-categories';
-import { splitInputErrorMessage } from '@/features/expenses/expense-errors';
-import { countMissedOccurrences } from '@/features/expenses/recurring-expenses';
-import { useEffect, useMemo, useState } from 'react';
-import { AboSplitFields } from './AboSplitFields';
+import { eurosToCents, formatCentsInput, parseEuroAmount } from '@/core/utils/amount';
+import { inputDateToIso, isoToInputDate, todayInputValue } from '@/core/utils/local-date';
 import {
 	type AboFormValues,
 	type SplitMode,
 	buildAboSplits,
 	initialEqualParticipants,
 	initialManualMap,
-} from './abo-form-model';
-
-export type { AboFormValues } from './abo-form-model';
+} from '@/features/expenses/abo-form-model';
+import { ExpenseCategoryField } from '@/features/expenses/components/ausgaben/ExpenseCategoryField';
+import {
+	DEFAULT_EXPENSE_CATEGORY,
+	type ExpenseCategory,
+} from '@/features/expenses/expense-categories';
+import {
+	AMOUNT_MAX_EUROS,
+	AMOUNT_MIN_EUROS,
+	DESCRIPTION_MAX_LENGTH,
+	RECURRING_INTERVAL_OPTIONS,
+	amountErrorMessage,
+} from '@/features/expenses/expense-constants';
+import { splitInputErrorMessage } from '@/features/expenses/expense-errors';
+import type { MemberOption } from '@/features/expenses/expense-types';
+import { countMissedOccurrences } from '@/features/expenses/recurring-expenses';
+import { useEffect, useMemo, useState } from 'react';
+import { AboSplitFields } from './AboSplitFields';
 
 interface AboFormProps {
 	mode: 'create' | 'edit';
@@ -73,9 +69,7 @@ export function AboForm({
 	const [category, setCategory] = useState<ExpenseCategory>(
 		initial?.category ?? DEFAULT_EXPENSE_CATEGORY,
 	);
-	const [amountStr, setAmountStr] = useState(
-		initial ? formatEuroInput(initial.amountCents / CENTS_PER_EURO) : '',
-	);
+	const [amountStr, setAmountStr] = useState(initial ? formatCentsInput(initial.amountCents) : '');
 	const [paidByMemberId, setPaidByMemberId] = useState(
 		initial?.paidByMemberId ?? defaultPaidByMemberId,
 	);
@@ -100,7 +94,7 @@ export function AboForm({
 		if (!initial) return;
 		setDescription(initial.description);
 		setCategory(initial.category);
-		setAmountStr(formatEuroInput(initial.amountCents / CENTS_PER_EURO));
+		setAmountStr(formatCentsInput(initial.amountCents));
 		setPaidByMemberId(initial.paidByMemberId);
 		setIntervalMonths(initial.intervalMonths);
 		setNextDueAt(isoToInputDate(initial.nextDueAt));
@@ -114,10 +108,10 @@ export function AboForm({
 	const parsedAmountCents = useMemo(() => {
 		const euros = parseEuroAmount(amountStr);
 		if (euros === null || euros < AMOUNT_MIN_EUROS || euros > AMOUNT_MAX_EUROS) return null;
-		return Math.round(euros * CENTS_PER_EURO);
+		return eurosToCents(euros);
 	}, [amountStr]);
 	const descriptionError =
-		error && (description.trim().length === 0 || description.trim().length > DESCRIPTION_MAX)
+		error && (description.trim().length === 0 || description.trim().length > DESCRIPTION_MAX_LENGTH)
 			? 'Gib eine kurze Beschreibung ein.'
 			: null;
 	const amountError =
@@ -165,7 +159,7 @@ export function AboForm({
 		setError(null);
 		setSplitError(null);
 		const trimmedDescription = description.trim();
-		if (trimmedDescription.length === 0 || trimmedDescription.length > DESCRIPTION_MAX) {
+		if (trimmedDescription.length === 0 || trimmedDescription.length > DESCRIPTION_MAX_LENGTH) {
 			setError('Gib eine kurze Beschreibung ein.');
 			return;
 		}
@@ -220,7 +214,7 @@ export function AboForm({
 					<Input
 						id="abo-description"
 						value={description}
-						maxLength={DESCRIPTION_MAX}
+						maxLength={DESCRIPTION_MAX_LENGTH}
 						onChange={(event) => setDescription(event.target.value)}
 						placeholder="z. B. Netflix"
 						disabled={submitting}

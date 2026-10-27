@@ -159,3 +159,7 @@ export function splitInputErrorMessage(
 export function isPermanentClientError(status: number): boolean {
 	return status >= 400 && status < 500 && status !== 429;
 }
+
+/** Shown when the edited expense is gone on the server. */
+export const EDITED_EXPENSE_DELETED_MESSAGE =
+	'Die ursprüngliche Ausgabe wurde gelöscht. Deine ungespeicherten Änderungen bleiben im Entwurf; du kannst sie kopieren oder den Entwurf verwerfen.';

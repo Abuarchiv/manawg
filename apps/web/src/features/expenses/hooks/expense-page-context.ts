@@ -1,11 +1,8 @@
 import type { useToast } from '@/components/ui/Toast';
 import type { Member, WgSummary } from '@/components/wg/WgContextProvider';
 import type { SessionMember } from '@/core/auth/local-account';
-import type {
-	Expense,
-	RecurringExpense,
-} from '@/features/expenses/components/ausgaben/expense-types';
-import type { useExpenseForm } from '@/features/expenses/components/ausgaben/useExpenseForm';
+import type { Expense, RecurringExpense } from '@/features/expenses/expense-types';
+import type { useExpenseForm } from '@/features/expenses/hooks/use-expense-form';
 
 export interface ActionNotifier {
 	error: (message: string | null) => void;

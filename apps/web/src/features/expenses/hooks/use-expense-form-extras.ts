@@ -1,16 +1,10 @@
 'use client';
 
 import { todayInputValue } from '@/core/utils/local-date';
+import type { ExpenseDraft } from '@/features/expenses/expense-form-draft';
 import { useCallback, useMemo, useState } from 'react';
-import type { ExpenseDraft } from './expense-form-draft';
 
 const INPUT_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-
-/** A timestamp as the `<input type="date">` value of its local calendar day. */
-export function isoToInputDate(iso: string): string {
-	const date = new Date(iso);
-	return Number.isNaN(date.getTime()) ? todayInputValue() : todayInputValue(date);
-}
 
 /**
  * The expense date and the members an equal split is shared between. Kept apart from the rest of
@@ -52,5 +46,3 @@ export function useExpenseFormExtras() {
 		restore,
 	};
 }
-
-export type ExpenseFormExtras = ReturnType<typeof useExpenseFormExtras>;

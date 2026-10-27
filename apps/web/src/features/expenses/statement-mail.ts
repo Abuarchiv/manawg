@@ -2,6 +2,7 @@ import { formatEuroCents } from '@/core/utils/money';
 import type { MonthlyStatement } from './monthly-statement';
 
 import { APP_ORIGIN, escapeHtml } from '@/core/mail/brand-mail';
+import { pluralize } from '@/shared/lib/plural';
 
 export interface StatementMailInput {
 	wgName: string;
@@ -95,8 +96,8 @@ function statusAmount(view: StatementView): string {
 }
 
 function preheader(view: StatementView): string {
-	const people = view.participants === 1 ? '1 Person' : `${view.participants} Personen`;
-	const expenses = view.expenseCount === 1 ? '1 Ausgabe' : `${view.expenseCount} Ausgaben`;
+	const people = pluralize(view.participants, 'Person', 'Personen');
+	const expenses = pluralize(view.expenseCount, 'Ausgabe', 'Ausgaben');
 	const status =
 		view.kind === 'settled'
 			? 'alles ausgeglichen'

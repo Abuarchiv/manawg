@@ -1,9 +1,12 @@
 'use client';
 
+import {
+	type ExpenseSuggestion,
+	recurringTemplateSuggestion,
+} from '@/features/expenses/expense-form-draft';
 import { buildExpensePrefillDraft } from '@/features/expenses/expense-prefill';
+import type { RecurringExpense } from '@/features/expenses/expense-types';
 import { useEffect, useRef } from 'react';
-import { type ExpenseSuggestion, recurringTemplateSuggestion } from './expense-form-draft';
-import type { RecurringExpense } from './expense-types';
 
 interface PrefillHandoffOptions {
 	suggestPrefill: (prefill: ExpenseSuggestion) => void;

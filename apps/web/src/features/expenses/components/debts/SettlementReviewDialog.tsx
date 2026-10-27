@@ -22,8 +22,8 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatShortDate } from '@/core/utils/time';
-import type { Expense } from '@/features/expenses/components/ausgaben/expense-types';
 import type { SimplifiedDebt } from '@/features/expenses/debt-reduction';
+import type { Expense } from '@/features/expenses/expense-types';
 import Link from 'next/link';
 import type { RefObject } from 'react';
 import type { DebtSettlement } from './use-debt-settlement';

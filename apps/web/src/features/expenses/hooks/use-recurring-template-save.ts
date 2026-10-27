@@ -9,17 +9,16 @@ import {
 	OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
 } from '@/core/offline/offline-copy';
 import { createOfflineIdempotencyKey, createQueuedRecurring } from '@/core/offline/offline-queue';
-import { parseEuroAmount } from '@/core/utils/amount';
+import { eurosToCents, parseEuroAmount } from '@/core/utils/amount';
 import { todayAtLocalNoon } from '@/core/utils/local-date';
-import { CENTS_PER_EURO } from '@/core/utils/money';
 import { parseTimestamp } from '@/core/utils/time';
-import type { RecurringExpense } from '@/features/expenses/components/ausgaben/expense-types';
 import {
 	isPermanentClientError,
 	recurringTemplateSaveErrorMessage,
 	splitInputErrorMessage,
 } from '@/features/expenses/expense-errors';
 import { manualSplitsFingerprint } from '@/features/expenses/expense-split-input';
+import type { RecurringExpense } from '@/features/expenses/expense-types';
 import { findQueuedRecurringTemplate } from '@/features/expenses/queued-recurring-template';
 import { formatIntervalLabel } from '@/features/expenses/recurring-expenses';
 import { planTemplateSchedule } from '@/features/expenses/recurring-template-plan';
@@ -69,7 +68,7 @@ export function useRecurringTemplateSave(
 			support.setValidationErrors(validationErrors);
 			return;
 		}
-		const amountCents = Math.round(amountEuros * CENTS_PER_EURO);
+		const amountCents = eurosToCents(amountEuros);
 		const queuedNextDueAt =
 			wasEditingQueuedRecurring && form.recurringNextDueAt
 				? parseTimestamp(form.recurringNextDueAt)
@@ -212,6 +211,7 @@ export function useRecurringTemplateSave(
 						intervalMonths: recurringIntervalMonths,
 						nextDueAt: nextDueAt.toISOString(),
 						lastCreatedAt: null,
+						pausedAt: null,
 						splits,
 					},
 				]);

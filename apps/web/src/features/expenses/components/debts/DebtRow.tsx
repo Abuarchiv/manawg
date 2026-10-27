@@ -4,6 +4,7 @@ import { Item, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/i
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { formatEuroCents } from '@/core/utils/money';
 import { cn } from '@/shared/lib/cn';
+import { pluralize } from '@/shared/lib/plural';
 import type { ReactNode } from 'react';
 
 interface DebtRowMember {
@@ -36,7 +37,7 @@ export function DebtRow({
 	const iOwe = debtor.id === currentMemberId;
 	const ageLabel =
 		oldestDebtAgeDays >= 1
-			? `seit ${oldestDebtAgeDays} ${oldestDebtAgeDays === 1 ? 'Tag' : 'Tagen'}`
+			? `seit ${pluralize(oldestDebtAgeDays, 'Tag', 'Tagen')}`
 			: 'heute fällig';
 
 	return (

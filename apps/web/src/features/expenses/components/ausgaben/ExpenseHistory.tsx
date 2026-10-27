@@ -12,8 +12,8 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/in
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ExpenseRow } from '@/features/expenses/components/ausgaben/ExpenseRow';
 import { ExpensesSkeleton } from '@/features/expenses/components/ausgaben/ExpensesSkeleton';
-import type { Expense, ExpenseSplit } from '@/features/expenses/components/ausgaben/expense-types';
 import type { ExpenseScope } from '@/features/expenses/expense-filter';
+import type { Expense, ExpenseSplit } from '@/features/expenses/expense-types';
 import { cn } from '@/shared/lib/cn';
 import { FileInput, Receipt, Search } from 'lucide-react';
 import Link from 'next/link';

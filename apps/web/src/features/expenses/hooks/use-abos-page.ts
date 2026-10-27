@@ -11,10 +11,10 @@ import {
 	aboDeleteErrorMessage,
 	aboSaveErrorMessage,
 } from '@/features/expenses/abo-errors';
-import type { AboFormValues } from '@/features/expenses/components/abos/AboForm';
-import type { Abo, AboFilter } from '@/features/expenses/components/abos/abos-types';
+import type { AboFormValues } from '@/features/expenses/abo-form-model';
 import { PAGE_REFRESH_MS } from '@/features/expenses/expense-constants';
 import { isPermanentClientError } from '@/features/expenses/expense-errors';
+import type { Abo, AboFilter } from '@/features/expenses/expense-types';
 import { getDueRecurringExpenses } from '@/features/expenses/recurring-expenses';
 import { haptic } from '@/shared/lib/haptics';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';

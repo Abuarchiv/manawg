@@ -2,8 +2,8 @@
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { parseEuroAmount } from '@/core/utils/amount';
-import { CENTS_PER_EURO, formatEuroCents } from '@/core/utils/money';
+import { eurosToCents, parseEuroAmount } from '@/core/utils/amount';
+import { formatEuroCents } from '@/core/utils/money';
 import type { MemberRef } from '@/shared/lib/member-types';
 import type { Dispatch, SetStateAction } from 'react';
 import { distributeRemainderCents } from './manual-split-distribute';
@@ -26,10 +26,10 @@ export function ManualSplitSummary({
 	disabled = false,
 }: ManualSplitSummaryProps) {
 	const totalEuros = parseEuroAmount(amountStr) ?? 0;
-	const totalCents = Math.round(totalEuros * CENTS_PER_EURO);
+	const totalCents = eurosToCents(totalEuros);
 	const splitCents = Object.values(manualSplits).reduce((sum, raw) => {
 		const v = parseEuroAmount(raw);
-		return v === null ? sum : sum + Math.round(v * CENTS_PER_EURO);
+		return v === null ? sum : sum + eurosToCents(v);
 	}, 0);
 	const remainderCents = totalCents - splitCents;
 	const balanced = totalCents > 0 && remainderCents === 0;

@@ -4,12 +4,12 @@ import { apiFetch } from '@/core/infra/api-client';
 import { notificationWarningMessage } from '@/core/notifications/notification-warning';
 import { enqueueOfflineAction, readOfflineQueue } from '@/core/offline/offline-client';
 import { createOfflineIdempotencyKey, createQueuedExpense } from '@/core/offline/offline-queue';
-import type { RecurringExpense } from '@/features/expenses/components/ausgaben/expense-types';
 import {
 	expenseSaveErrorMessage,
 	isPermanentClientError,
 	recurringAdvanceWarningMessage,
 } from '@/features/expenses/expense-errors';
+import type { RecurringExpense } from '@/features/expenses/expense-types';
 import { buildOptimisticExpense } from '@/features/expenses/optimistic-expense';
 import { withQueuedOccurredAt } from '@/features/expenses/queued-occurred-at';
 import { rotateRemainderCents } from '@/features/expenses/recurring-split-rotation';
@@ -39,7 +39,6 @@ export function useRecurringBooking(ctx: ExpensePageContext) {
 	const {
 		wg,
 		identity,
-		toast,
 		notify,
 		pending,
 		updateExpenses,
@@ -195,9 +194,8 @@ export function useRecurringBooking(ctx: ExpensePageContext) {
 					rollbackOptimisticExpense();
 					pending.end(optimisticId);
 					notify.error(
-						'Offline-Speicher ist blockiert. Die Fixkosten-Ausgabe konnte nicht vorgemerkt werden.',
+						'Offline-Speicher ist blockiert. Die Fixkosten-Ausgabe konnte nicht vorgemerkt werden und wurde zurückgesetzt.',
 					);
-					toast.error('Die Fixkosten-Ausgabe wurde zurückgesetzt.');
 					finishCreating();
 					return;
 				}
@@ -212,7 +210,6 @@ export function useRecurringBooking(ctx: ExpensePageContext) {
 			pending.end(optimisticId);
 			const message = expenseSaveErrorMessage(createRes.error);
 			notify.error(message);
-			toast.error(message);
 			finishCreating();
 			// The template changed under us (already booked, paused or deleted): show its current state.
 			if (isPermanentClientError(createRes.status)) void reload();

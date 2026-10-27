@@ -1,5 +1,4 @@
-import { parseEuroAmount } from '@/core/utils/amount';
-import { CENTS_PER_EURO } from '@/core/utils/money';
+import { eurosToCents, parseEuroAmount } from '@/core/utils/amount';
 import {
 	type DebtorShare,
 	buildEqualSplits,
@@ -148,7 +147,7 @@ export function buildSplitsFromForm(input: BuildSplitsInput): SplitInputResult {
 		if (raw.trim().length === 0) continue;
 		const value = parseEuroAmount(raw);
 		if (value === null || value < 0) return { ok: false, reason: 'invalid_share' };
-		const cents = Math.round(value * CENTS_PER_EURO);
+		const cents = eurosToCents(value);
 		splits.push({ debtorMemberId: member.id, amountCents: cents });
 		sum += cents;
 	}

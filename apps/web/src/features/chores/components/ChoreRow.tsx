@@ -21,7 +21,7 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { useConfirmDelete } from '@/core/hooks/useConfirmDelete';
-import { formatRelativeTime, parseValidDate } from '@/core/utils/time';
+import { formatDayMonthYear, formatRelativeTime, parseValidDate } from '@/core/utils/time';
 import type { ChoreEditChanges } from '@/features/chores/chore-edit';
 import { choreNeedsRepair, getChoreStatus } from '@/features/chores/chore-status';
 import {
@@ -66,14 +66,6 @@ interface ChoreRowProps {
 	onRemove: (id: string) => void;
 	highlighted: boolean;
 }
-
-/** Two-digit like in the form ("06.10.2026"), not "6.10.2026". */
-const DUE_DATE_FORMAT = new Intl.DateTimeFormat('de-DE', {
-	day: '2-digit',
-	month: '2-digit',
-	year: 'numeric',
-	timeZone: 'Europe/Berlin',
-});
 
 // The non-breaking space keeps the unit abbreviation with its number in the narrow row.
 function formatChoreCadence(interval: number, type: RecurrenceType): string {
@@ -204,7 +196,7 @@ export const ChoreRow = memo(function ChoreRow({
 								<dd>{isMine ? 'du' : assignee.name}</dd>
 								<dt className="text-muted-foreground">Fällig</dt>
 								<dd>
-									{dueDate ? DUE_DATE_FORMAT.format(dueDate) : 'unbekannt'} ({status.label})
+									{dueDate ? formatDayMonthYear(chore.nextDueAt) : 'unbekannt'} ({status.label})
 								</dd>
 								<dt className="text-muted-foreground">Rhythmus</dt>
 								<dd>{cadence}</dd>

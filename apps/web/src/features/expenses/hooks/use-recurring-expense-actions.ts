@@ -1,8 +1,8 @@
 'use client';
 
 import { apiFetch } from '@/core/infra/api-client';
-import type { RecurringExpense } from '@/features/expenses/components/ausgaben/expense-types';
 import { recurringTemplateDeleteErrorMessage } from '@/features/expenses/expense-errors';
+import type { RecurringExpense } from '@/features/expenses/expense-types';
 import type { ExpenseFormState, ExpensePageContext } from './expense-page-context';
 import type { ExpenseFormSupport } from './use-expense-form-support';
 import { useRecurringBooking } from './use-recurring-booking';
@@ -17,8 +17,7 @@ export function useRecurringExpenseActions(
 	form: ExpenseFormState,
 	support: ExpenseFormSupport,
 ) {
-	const { identity, toast, notify, pending, recurringExpenses, updateRecurringExpenses, reload } =
-		ctx;
+	const { identity, notify, pending, recurringExpenses, updateRecurringExpenses, reload } = ctx;
 	const recurringApiUrl = `/api/wg/${encodeURIComponent(ctx.wg.shareCode)}/recurring-expenses`;
 	const templateSave = useRecurringTemplateSave(ctx, form, support);
 	const booking = useRecurringBooking(ctx);
@@ -47,7 +46,6 @@ export function useRecurringExpenseActions(
 			});
 			const message = recurringTemplateDeleteErrorMessage(res.error);
 			notify.error(message);
-			toast.error(message);
 			pending.end(template.id);
 			return;
 		}

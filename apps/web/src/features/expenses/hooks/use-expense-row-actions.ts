@@ -1,8 +1,8 @@
 'use client';
 
 import { apiFetch } from '@/core/infra/api-client';
-import type { ExpenseSplit } from '@/features/expenses/components/ausgaben/expense-types';
 import { expenseActionErrorMessage } from '@/features/expenses/expense-errors';
+import type { ExpenseSplit } from '@/features/expenses/expense-types';
 import type { ExpensePageContext } from './expense-page-context';
 
 /** Delete an expense and toggle a share's settled state, both optimistic with rollback. */
@@ -49,7 +49,6 @@ export function useExpenseRowActions({
 					? 'Nur wer bezahlt hat oder beteiligt ist, kann diese Ausgabe löschen.'
 					: expenseActionErrorMessage(res.error);
 			notify.error(message);
-			toast.error(message);
 			pending.end(id);
 			return;
 		}
@@ -100,12 +99,10 @@ export function useExpenseRowActions({
 				(res.error === 'split_not_found' || res.error === 'expense_not_found')
 			) {
 				notify.error('Diese Zahlung existiert nicht mehr. Die Ausgabenliste wird aktualisiert.');
-				toast.error('Diese Zahlung existiert nicht mehr.');
 				void reload();
 			} else {
 				const message = expenseActionErrorMessage(res.error);
 				notify.error(message);
-				toast.error(message);
 				if (res.error === 'split_already_offset') void reload();
 			}
 		} else {

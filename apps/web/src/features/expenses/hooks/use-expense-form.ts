@@ -8,15 +8,13 @@ import {
 	writeDraft,
 } from '@/core/offline/drafts';
 import type { OfflineActionType } from '@/core/offline/offline-queue';
-import { formatEuroInput } from '@/core/utils/amount';
-import { CENTS_PER_EURO } from '@/core/utils/money';
+import { formatCentsInput } from '@/core/utils/amount';
+import { isoToInputDate } from '@/core/utils/local-date';
 import {
 	DEFAULT_EXPENSE_CATEGORY,
 	EXPENSE_CATEGORIES,
 	type ExpenseCategory,
 } from '@/features/expenses/expense-categories';
-import { equalSplitParticipants } from '@/features/expenses/expense-split-input';
-import { useCallback, useEffect, useRef, useState } from 'react';
 import {
 	type ExpenseDraft,
 	type ExpenseEditReference,
@@ -26,10 +24,12 @@ import {
 	participantsOrAll,
 	queuedEqualParticipants,
 	splitsToManualInput,
-} from './expense-form-draft';
-import type { Expense, RecurringExpense } from './expense-types';
-import { isoToInputDate, useExpenseFormExtras } from './use-expense-form-extras';
-import { useExpensePrefillHandoff } from './use-expense-prefill-handoff';
+} from '@/features/expenses/expense-form-draft';
+import { equalSplitParticipants } from '@/features/expenses/expense-split-input';
+import type { Expense, RecurringExpense } from '@/features/expenses/expense-types';
+import { useExpenseFormExtras } from '@/features/expenses/hooks/use-expense-form-extras';
+import { useExpensePrefillHandoff } from '@/features/expenses/hooks/use-expense-prefill-handoff';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 /** The member fields this hook reads; structural so it needs no WG context provider. */
 interface FormMember {
@@ -277,7 +277,7 @@ export function useExpenseForm({
 		setPendingPrefill(null);
 		setDescription(expense.description);
 		setCategory(expense.category);
-		setAmountStr(formatEuroInput(expense.amountCents / CENTS_PER_EURO));
+		setAmountStr(formatCentsInput(expense.amountCents));
 		setImageUrl(expense.imageUrl);
 		setPaidByMemberId(expense.paidByMemberId);
 		// "Equal" only if every share is an equal part among active members (all or a subset), as
@@ -317,7 +317,7 @@ export function useExpenseForm({
 		setPendingPrefill(null);
 		setDescription(template.description);
 		setCategory(template.category);
-		setAmountStr(formatEuroInput(template.amountCents / CENTS_PER_EURO));
+		setAmountStr(formatCentsInput(template.amountCents));
 		setImageUrl(null);
 		setPaidByMemberId(template.paidByMemberId);
 		// A template stores explicit per-member shares, so editing it always

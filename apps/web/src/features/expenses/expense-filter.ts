@@ -1,5 +1,5 @@
-import type { Expense } from '@/features/expenses/components/ausgaben/expense-types';
 import { EXPENSE_CATEGORY_LABELS } from '@/features/expenses/expense-categories';
+import type { Expense } from '@/features/expenses/expense-types';
 
 export type ExpenseScope = 'all' | 'paid' | 'involved';
 

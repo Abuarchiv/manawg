@@ -11,11 +11,11 @@ import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Spinner } from '@/components/ui/spinner';
 import { ImageUploader } from '@/components/wg/ImageUploader';
+import { RECURRING_INTERVAL_OPTIONS } from '@/features/expenses/expense-constants';
+import type { RecurringExpense } from '@/features/expenses/expense-types';
 import { cn } from '@/shared/lib/cn';
 import { Check, ChevronDown, Receipt, Repeat2 } from 'lucide-react';
 import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from 'react';
-import { RECURRING_INTERVAL_OPTIONS } from './constants';
-import type { RecurringExpense } from './expense-types';
 
 interface ExpenseExtrasProps {
 	shareCode: string;
@@ -26,7 +26,6 @@ interface ExpenseExtrasProps {
 	editingRecurringExpense: RecurringExpense | null;
 	isEditingQueuedExpense: boolean;
 	isEditingQueuedRecurring: boolean;
-	savingRecurringTemplate: boolean;
 	onSaveRecurringTemplate: () => void;
 	/** Number of known templates: if it grows while saving, the save succeeded. */
 	recurringTemplateCount: number;
@@ -43,7 +42,6 @@ export function ExpenseExtras({
 	editingRecurringExpense,
 	isEditingQueuedExpense,
 	isEditingQueuedRecurring,
-	savingRecurringTemplate,
 	onSaveRecurringTemplate,
 	recurringTemplateCount,
 	formSaving,
@@ -53,9 +51,12 @@ export function ExpenseExtras({
 	const [templateSaved, setTemplateSaved] = useState(false);
 	const templateCountAtStart = useRef(recurringTemplateCount);
 	const wasSavingTemplate = useRef(false);
+	// Only a click on "Als Vorlage merken" makes a save a template save; the main submit shares `formSaving`.
+	const templateRequested = useRef(false);
+	const [templateSaving, setTemplateSaving] = useState(false);
 	// The form scrolls and a toast would sit beneath the fullscreen sheet, so a line right at the button confirms instead.
 	useEffect(() => {
-		if (savingRecurringTemplate) {
+		if (formSaving) {
 			if (!wasSavingTemplate.current) templateCountAtStart.current = recurringTemplateCount;
 			wasSavingTemplate.current = true;
 			setTemplateSaved(false);
@@ -63,8 +64,19 @@ export function ExpenseExtras({
 		}
 		if (!wasSavingTemplate.current) return;
 		wasSavingTemplate.current = false;
-		if (recurringTemplateCount > templateCountAtStart.current) setTemplateSaved(true);
-	}, [savingRecurringTemplate, recurringTemplateCount]);
+		const wasTemplateSave = templateRequested.current;
+		templateRequested.current = false;
+		setTemplateSaving(false);
+		if (wasTemplateSave && recurringTemplateCount > templateCountAtStart.current) {
+			setTemplateSaved(true);
+		}
+	}, [formSaving, recurringTemplateCount]);
+	// A click that fails validation never starts a save; drop the request so it cannot mark a later submit.
+	useEffect(() => {
+		if (!templateSaving || formSaving) return;
+		templateRequested.current = false;
+		setTemplateSaving(false);
+	}, [templateSaving, formSaving]);
 	useEffect(() => {
 		if (!templateSaved) return;
 		const timer = window.setTimeout(() => setTemplateSaved(false), 6000);
@@ -141,10 +153,14 @@ export function ExpenseExtras({
 							<Button
 								type="button"
 								variant="outline"
-								onClick={onSaveRecurringTemplate}
+								onClick={() => {
+									templateRequested.current = true;
+									setTemplateSaving(true);
+									onSaveRecurringTemplate();
+								}}
 								disabled={formSaving}
 							>
-								{savingRecurringTemplate && <Spinner data-icon="inline-start" />}Als Vorlage merken
+								{templateSaving && <Spinner data-icon="inline-start" />}Als Vorlage merken
 							</Button>
 						)}
 						<output

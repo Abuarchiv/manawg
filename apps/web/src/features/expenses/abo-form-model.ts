@@ -1,9 +1,8 @@
-import { formatEuroInput, parseEuroAmount } from '@/core/utils/amount';
-import { CENTS_PER_EURO } from '@/core/utils/money';
-import type { AboSplit, MemberOption } from '@/features/expenses/components/abos/abos-types';
-import { participantsOrAll } from '@/features/expenses/components/ausgaben/expense-form-draft';
+import { eurosToCents, formatCentsInput, parseEuroAmount } from '@/core/utils/amount';
 import type { ExpenseCategory } from '@/features/expenses/expense-categories';
+import { participantsOrAll } from '@/features/expenses/expense-form-draft';
 import { type SplitMode, equalSplitParticipants } from '@/features/expenses/expense-split-input';
+import type { AboSplit, MemberOption } from '@/features/expenses/expense-types';
 import { distributeCentsEqually } from '@/features/expenses/split-math';
 
 export type { SplitMode };
@@ -62,10 +61,7 @@ export function initialEqualParticipants(
 export function initialManualMap(initial: AboFormValues | undefined): Record<string, string> {
 	if (!initial) return {};
 	return Object.fromEntries(
-		initial.splits.map((split) => [
-			split.debtorMemberId,
-			formatEuroInput(split.amountCents / CENTS_PER_EURO),
-		]),
+		initial.splits.map((split) => [split.debtorMemberId, formatCentsInput(split.amountCents)]),
 	);
 }
 
@@ -100,7 +96,7 @@ export function buildAboSplits(input: {
 		const value = parseEuroAmount(raw);
 		if (value === null || value < 0) return 'invalid_share';
 		if (value === 0) continue;
-		const cents = Math.round(value * CENTS_PER_EURO);
+		const cents = eurosToCents(value);
 		splits.push({ debtorMemberId: member.id, amountCents: cents });
 		sum += cents;
 	}

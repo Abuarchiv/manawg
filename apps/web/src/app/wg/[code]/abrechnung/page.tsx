@@ -6,9 +6,9 @@ import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
-import type { Expense } from '@/features/expenses/components/ausgaben/expense-types';
 import { MonthlyStatementDocument } from '@/features/expenses/components/statement/MonthlyStatementDocument';
 import type { ExpensePaymentInput } from '@/features/expenses/expense-payment-input';
+import type { Expense } from '@/features/expenses/expense-types';
 import {
 	berlinMonthKey,
 	buildMonthlyStatement,
