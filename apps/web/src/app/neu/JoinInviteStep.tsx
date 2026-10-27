@@ -8,6 +8,10 @@ import { Input } from '@/components/ui/input';
 import { ArrowRight } from 'lucide-react';
 import type { StartField } from './start-flow';
 
+// Inlined at build time, so server and client render the same placeholder.
+const INVITE_ORIGIN =
+	process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || 'https://app.manawg.com';
+
 interface JoinInviteStepProps {
 	inviteLink: string;
 	onInviteLinkChange: (value: string) => void;
@@ -56,7 +60,7 @@ export function JoinInviteStep({
 						spellCheck={false}
 						inputMode="url"
 						enterKeyHint="go"
-						placeholder="https://app.manawg.com/einladung/…"
+						placeholder={`${INVITE_ORIGIN}/einladung/…`}
 						aria-describedby={invalid ? 'invite-link-hint invite-link-error' : 'invite-link-hint'}
 						aria-invalid={invalid}
 						className="text-base"

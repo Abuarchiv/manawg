@@ -14,6 +14,8 @@ concurrency:
 
 jobs:
   backup-production:
+    # Operates the official instance; forks keep this workflow inert.
+    if: github.repository == 'Abuarchiv/manawg-app'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment:
@@ -60,6 +62,8 @@ jobs:
           compression-level: 0
 
   preview-keepalive:
+    # Operates the official instance; forks keep this workflow inert.
+    if: github.repository == 'Abuarchiv/manawg-app'
     # The free plan pauses a project after a week without database activity.
     runs-on: ubuntu-latest
     timeout-minutes: 5

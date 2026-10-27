@@ -1,17 +1,48 @@
-# Echt-Test gegen lokalen Supabase-Stack
+# Real-stack checks against a local Supabase
 
-Prüft Anmeldung, Mails, Einladungen, Ausgaben, Putzplan, Chat, Übernahme, Konto löschen und Sitzungs-Erneuerung gegen echtes Supabase und echtes Postgres statt Fixtures.
+Checks sign-in, mails, invitations, expenses, chores, chat, member takeover, account deletion and
+session refresh against real Supabase and real PostgreSQL instead of fixtures.
 
-1. `supabase init` in einem Wegwerf-Ordner, dort `supabase-config.toml` als `supabase/config.toml` einsetzen und die Vorlagen aus `supabase/templates/` nach `tpl/` kopieren.
+1. Run `supabase init` in a throwaway folder, copy `supabase-config.toml` there as
+   `supabase/config.toml` and the templates from `supabase/templates/` to `tpl/`.
 2. `supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor`
-3. Migrationen in Journal-Reihenfolge per `psql -f` einspielen (`db:migrate` verlangt Port 5432).
-4. App im Produktionsmodus bauen und auf Port 3140 starten. Alle Variablen aus `.env.local` leeren oder auf lokale Werte setzen, sonst trifft der Lauf Prod-Dienste.
-5. `SUPABASE_SERVICE_ROLE_KEY` aus `supabase status -o env` setzen, dann `node scripts/real-stack/api.mjs`, `journey.mjs` (mit `SHOTS_DIR`) und `session.mjs`.
-6. `modules.mjs` (braucht zusätzlich `CRON_SECRET`, läuft `modules-admin.mjs` mit) prüft jedes Modul über die API; `ui.mjs` (mit `SHOTS_DIR`) klickt alle Seiten im Handy-Viewport durch und legt Screenshots ab. Der Server braucht `VERCEL_ENV=development`, sonst sperrt der Rate-Limiter ohne Upstash.
-7. `fuzz.mjs` (zieht `fuzz-access.mjs` und `fuzz-races.mjs` nach) schickt kaputte Bodies, fremde IDs, IDOR- und Race-Versuche gegen jede Schreibroute; `ui-edit.mjs` (mit `SHOTS_DIR`) klickt Action-Sheets, Bearbeiten, Löschen, Einstellungen und Dark Mode durch; `discover.mjs` listet die Bedienelemente je Seite. `ui.mjs` und `ui-edit.mjs` laufen mit `BROWSER=webkit` und `DEVICE='iPhone SE'` (oder `'Pixel 7'`) auch in Safari-Engine und anderen Gerätegrößen; die WebKit-Konsolenmeldungen zu `interactive-widget` und zum CSP-abgelehnten `<style>` stammen aus der Engine bzw. vom Playwright-Screenshot, nicht aus der App.
-8. `data.mjs` (zieht `data-load.mjs` nach) prüft Splitwise-Import (Vorschau, Commit, kein Doppelimport), JSON/CSV-Export, die Berliner Monatsgrenze der Abrechnung und danach Last: 400 Ausgaben, 150 Chat-Nachrichten, 60 Einkäufe mit API-Zeiten, Seitenladezeiten und „Mehr anzeigen“ bis zur vollen Liste.
-9. `session-expiry.mjs` prüft den Sitzungs-Refresh nach Token-Ablauf (API, fünf parallele Anfragen mit altem Token, Schreiben, Browser-Tabwechsel und Reload). Dafür im Scratch-`supabase/config.toml` `jwt_expiry = 120` setzen und `JWT_EXPIRY=120` übergeben; kleiner als die 90-s-Marge von auth-js geht nicht, sonst refresht jede Anfrage doppelt und das Ergebnis täuscht einen Rauswurf vor. `stale-chunk.mjs` beantwortet den Seiten-Chunk von Einkauf mit 404 wie nach einem Deploy und erwartet genau einen Reload aus der Fehlergrenze.
-10. `auth-flows.mjs`: E-Mail-Code-Login im Browser (Code aus Mailpit :54324, falscher Code zuerst), Einladung per Mail (Ledger `mail_log`, ungültige Adresse 400) und Beleg-Upload über Supabase Storage (Signatur, PUT, Lesen als Mitglied/Mitbewohner, Fremder 401 `not_a_member`, ohne Login 401, kaputter Schlüssel 400, fremdes Bild an Ausgabe 400, Widerruf nach Löschen 404).
-11. Rate-Limits wie in Prod: lokal ist der Limiter offen (`VERCEL_ENV=development`). Für einen Lauf mit echten Limits einen Upstash-kompatiblen Redis starten (`docker run -d --name srh-redis redis:7-alpine` und `docker run -d --name srh -p 8079:80 --link srh-redis:redis -e SRH_MODE=env -e SRH_TOKEN=local-token -e SRH_CONNECTION_STRING=redis://redis:6379 hiett/serverless-redis-http`), davor einen kleinen TLS-Proxy mit selbstsigniertem Zertifikat (der Env-Check verlangt https), dann `UPSTASH_REDIS_REST_URL=https://localhost:8443 UPSTASH_REDIS_REST_TOKEN=local-token VERCEL_ENV=preview NODE_TLS_REJECT_UNAUTHORIZED=0` bauen und starten. `burst.mjs` tippt 36 Einkäufe in einer Minute und erwartet kein 429; `ui.mjs`, `ui-edit.mjs` und `journey.mjs` müssen in diesem Modus ebenfalls ohne 429 durchlaufen.
+3. Apply the migrations in journal order with `psql -f` (`db:migrate` only accepts Supabase hosts).
+4. Build the app in production mode and start it on port 3140. Clear every variable from
+   `.env.local` or point it at the local stack, otherwise the run reaches hosted services.
+5. Set `SUPABASE_SERVICE_ROLE_KEY` from `supabase status -o env`, then run
+   `node scripts/real-stack/api.mjs`, `journey.mjs` (with `SHOTS_DIR`) and `session.mjs`.
+6. `modules.mjs` (also needs `CRON_SECRET`, runs `modules-admin.mjs` too) checks every module
+   through the API; `ui.mjs` (with `SHOTS_DIR`) clicks through every page in a phone viewport and
+   saves screenshots. The server needs `VERCEL_ENV=development`, otherwise the rate limiter blocks
+   without Upstash.
+7. `fuzz.mjs` (runs `fuzz-access.mjs` and `fuzz-races.mjs` too) sends broken bodies, foreign ids,
+   IDOR and race attempts against every write route; `ui-edit.mjs` (with `SHOTS_DIR`) exercises
+   action sheets, editing, deleting, settings and dark mode; `discover.mjs` lists the controls per
+   page. `ui.mjs` and `ui-edit.mjs` also run with `BROWSER=webkit` and `DEVICE='iPhone SE'` (or
+   `'Pixel 7'`); the WebKit console messages about `interactive-widget` and the CSP-rejected
+   `<style>` come from the engine and the Playwright screenshot, not from the app.
+8. `data.mjs` (runs `data-load.mjs` too) checks the Splitwise import (preview, commit, no double
+   import), JSON/CSV export and the Berlin month boundary of the statement, then load: 400
+   expenses, 150 chat messages, 60 shopping items with API timings, page load times and
+   "Mehr anzeigen" up to the full list.
+9. `session-expiry.mjs` checks the session refresh after token expiry (API, five parallel requests
+   with the old token, writes, browser tab switch and reload). Set `jwt_expiry = 120` in the
+   throwaway `supabase/config.toml` and pass `JWT_EXPIRY=120`; anything below the 90 s margin of
+   auth-js refreshes on every request and fakes a sign-out. `stale-chunk.mjs` answers the shopping
+   page chunk with 404 as after a deploy and expects exactly one reload from the error boundary.
+10. `auth-flows.mjs`: e-mail code sign-in in the browser (code from Mailpit on port 54324, a wrong
+    code first), invitation by mail (`mail_log` ledger, invalid address 400) and receipt upload
+    through Supabase Storage (signature, PUT, read as member and flatmate, stranger 401
+    `not_a_member`, signed out 401, broken key 400, foreign image on an expense 400, revocation
+    after deletion 404).
+11. Production rate limits: locally the limiter is open (`VERCEL_ENV=development`). For a run with
+    real limits start an Upstash-compatible Redis
+    (`docker run -d --name srh-redis redis:7-alpine` and
+    `docker run -d --name srh -p 8079:80 --link srh-redis:redis -e SRH_MODE=env -e SRH_TOKEN=local-token -e SRH_CONNECTION_STRING=redis://redis:6379 hiett/serverless-redis-http`),
+    put a small TLS proxy with a self-signed certificate in front (the env check requires https),
+    then build and start with `UPSTASH_REDIS_REST_URL=https://localhost:8443
+    UPSTASH_REDIS_REST_TOKEN=local-token VERCEL_ENV=preview NODE_TLS_REJECT_UNAUTHORIZED=0`.
+    `burst.mjs` adds 36 shopping items in one minute and expects no 429; `ui.mjs`, `ui-edit.mjs`
+    and `journey.mjs` must also pass in this mode without 429.
 
-Die Skripte erwarten die lokalen Standardschlüssel von `supabase start`.
+The scripts expect the default local keys of `supabase start`.

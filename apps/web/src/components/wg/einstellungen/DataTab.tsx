@@ -12,6 +12,7 @@ import { exportErrorMessage } from '@/components/wg/einstellungen/settings-error
 import type { SessionMember } from '@/core/auth/local-account';
 import { noteSessionExpiry, readApiErrorCode } from '@/core/infra/api-client';
 import { cn } from '@/shared/lib/cn';
+import { legalUrl } from '@/shared/lib/landing-url';
 import { memberContextHeader } from '@/shared/lib/member-header';
 import { Download, Upload } from 'lucide-react';
 import Link from 'next/link';
@@ -190,9 +191,9 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 
 			<Section title="Rechtliches">
 				<ul className="divide-border divide-y">
-					<LinkRow href="https://manawg.com/impressum" label="Impressum" external />
-					<LinkRow href="https://manawg.com/datenschutz" label="Datenschutz" external />
-					<LinkRow href="https://manawg.com/agb" label="AGB" external />
+					<LinkRow href={legalUrl('/impressum')} label="Impressum" external />
+					<LinkRow href={legalUrl('/datenschutz')} label="Datenschutz" external />
+					<LinkRow href={legalUrl('/agb')} label="AGB" external />
 				</ul>
 			</Section>
 		</>
