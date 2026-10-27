@@ -222,7 +222,7 @@ Without one plan, parallel sessions would collide in the same few files and the 
 ### Tests and tooling
 
 - **Playwright:** pins `locale: 'de-DE'` and `timezoneId: 'Europe/Berlin'` (`playwright.config.ts:108–109`). `testDir: './e2e'`. The WebKit config inherits `base.use`.
-- `e2e/pwa.spec.ts:288` creates a context by hand. [verify in Phase 1] that it inherits the config `locale`.
+- `e2e/pwa.spec.ts:288` creates a context by hand. **Verified in Phase 1:** `browser.newContext()` inherits the config `locale` (`navigator.language` is `de-DE`) and `baseURL`, so the spec needs no change.
 - **Unit tests:**
   - plain Node `--experimental-strip-types` plus `tests/support/register.mjs`;
   - `server-only` resolves to an empty module;
@@ -294,7 +294,7 @@ Without one plan, parallel sessions would collide in the same few files and the 
 - `pnpm install --frozen-lockfile` and `pnpm audit --prod --audit-level high` pass with next-intl's transitive dependencies (`@swc/core`, `@parcel/watcher`, `@eloqnt/*`). Record the result.
 - If audit fails, stop and report. Pinning or overriding versions follows the existing `pnpm.overrides` pattern.
 - `use-intl/core` imports under `test:unit`.
-- The client runtime delta fits `bundle:check`. If it does not, enable precompiled messages: next-intl/icu-minify with the `use-intl/format-message/format-only` runtime. [verify the config flag name in the installed version] Only then reconsider D1.
+- The client runtime delta fits `bundle:check`. If it does not, enable precompiled messages: next-intl/icu-minify with the `use-intl/format-message/format-only` runtime. The flag is `createNextIntlPlugin({ experimental: { messages: { path, locales, precompile: true } } })`. It belongs to the extractor catalog pipeline (`messages.path`), so it does not apply to the TypeScript catalogs without further work. Phase 1 measured the shared first-load JS at 102.6 kB gzip against the 120 kB budget (`bundle:check` passes), so it is not needed. Only then reconsider D1.
 
 ### D2. Locale model
 
@@ -423,7 +423,7 @@ Without one plan, parallel sessions would collide in the same few files and the 
 - There is no JSON import-attribute risk under strip-types.
 - `satisfies` and `as const` are erasable syntax.
 - Cost: the 400-line budget applies, so namespaces stay split by area.
-- [verify in Phase 1] `tsc` time and "type instantiation excessively deep" with strict ICU argument inference on roughly 300 messages. Fallback: keep typed keys and drop argument inference for the affected namespace.
+- **Verified in Phase 1:** a synthetic namespace of 400 messages (plural, select and plain arguments) typechecks without "type instantiation excessively deep", `tsc --noEmit` takes about 5 s more, and a missing or wrongly typed argument fails with TS2345 and TS2322. No fallback is needed.
 
 **All namespace files are created in Phase 1.** Each starts as `{}`, except `common` and `meta`. The two `index.ts` registries and `AppConfig` never change again, and packages only edit their own two files.
 
@@ -453,7 +453,7 @@ Without one plan, parallel sessions would collide in the same few files and the 
 - The root layout passes the full catalog of the active locale to `NextIntlClientProvider`, with `timeZone: 'Europe/Berlin'`. In next-intl v4 the provider inherits it from the request config.
 - It sits in the RSC payload, not in a JS chunk.
 - Root layout props are sent once per document load. Soft navigations do not re-render the root layout, and `router.refresh()` does.
-- Phase 1 measures the gzip HTML delta for `/` and `/wg/[code]`. If it exceeds about 30 KB gzip, the fallback is a nested provider in `src/app/wg/[code]/layout.tsx` with the WG namespaces only. [verify nested provider merge semantics, only if needed]
+- Phase 1 measures the gzip HTML delta for `/` and `/wg/[code]`. If it exceeds about 30 KB gzip, the fallback is a nested provider in `src/app/wg/[code]/layout.tsx` with the WG namespaces only. Phase 1 measured the delta (section 11 item 2): it is far below 30 KB today, so the fallback is not applied yet. The full German copy is about 2,600 strings, 100 KB raw and 24 KB gzip as values alone, so the final catalog comes close to the threshold. Re-measure when Phase 3 has filled the catalogs. [verify nested provider merge semantics, only if the fallback is needed]
 
 **`global-error.tsx`** cannot use the provider.
 
@@ -1035,9 +1035,10 @@ The defaults in this document apply until they are answered. None of them blocks
    - `use-intl/core` under `tests/support/register.mjs`.
 
    The peer compatibility with Next 15.5 and React 19 is already confirmed.
-2. Phase 1: the bundle and RSC payload deltas, and the config flag for precompiled messages in the installed version. The runtime support (`use-intl/format-message/format-only`, `icu-minify`) is confirmed to exist.
-3. Phase 1: `tsc` behaviour with strict ICU argument inference at scale (D6).
-4. Phase 1: whether `e2e/pwa.spec.ts:288` inherits `locale: 'de-DE'`.
+   Resolved in Phase 1: next-intl and use-intl 4.14.9 install with a frozen lockfile, `pnpm audit --prod --audit-level high` reports no known vulnerabilities, and `use-intl/core` runs under `test:unit`. The only warning is the unmet optional peer `@swc/helpers@>=0.5.17` (found 0.5.15) under next-intl > @swc/core.
+2. Phase 1 (measured, production build with the fixture environment): shared first-load JS is 102.6 kB gzip (budget 120 kB), the heaviest route 34.3 kB (budget 55 kB), `bundle:check` passes. The HTML of `/` is 11,108 B gzip with the `de` cookie and 11,036 B with `en`. `/wg/MTE8PZAT` is 10,079 B (`de`) and 10,008 B (`en`). Before the provider, `/` was 10,102 B, so the catalog adds about 1.0 KB gzip (3.4 KB raw) today, and the same constant applies to every page. The nested provider fallback is not needed yet; the projection for the full catalog is in D6. The precompile flag is described in D1.
+3. Phase 1: `tsc` behaviour with strict ICU argument inference at scale (D6). Resolved, no problem at 400 messages.
+4. Phase 1: whether `e2e/pwa.spec.ts:288` inherits `locale: 'de-DE'`. Resolved, it does.
 5. Phase 1, only if the D6 fallback is needed: nested `NextIntlClientProvider` semantics.
 6. Phase 4 N, hosted Supabase templates: whether `.Data` exposes `user_metadata` and whether `{{ if }}` works in subjects. Variable templating in subjects is confirmed by `subjects.json`.
 7. Phase 0: the Brandbook chapter numbers for the number-format and "Ein Substantiv" rules. `brandbook.html` is one bundled line and could not be checked.
