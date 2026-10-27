@@ -215,6 +215,19 @@ test('consuming one unit from 0,5 empties the item and logs -0.5', async () => {
 	assert.equal(result.kind === 'ok' && result.clamped, true);
 });
 
+test('consuming one unit from 2,3 is not reported as clamped and logs exactly -1', async () => {
+	const { tx } = itemTx({ name: 'Milch', quantity: 2.3, threshold: 0 });
+	const result = await consumeInventoryMutation(tx as never, {
+		itemId: 'item-1',
+		wgId: 'wg-1',
+		memberId: 'member-1',
+		delta: -1,
+	});
+	assert.equal(result.kind === 'ok' && result.updated.quantity, 1.3);
+	assert.equal(result.kind === 'ok' && result.appliedDelta, -1);
+	assert.equal(result.kind === 'ok' && result.clamped, false);
+});
+
 test('a name-only update ignores a changed updatedAt and does not conflict', async () => {
 	const { tx } = itemTx({ name: 'Spüli', quantity: 5, threshold: 1 });
 	const result = await updateInventoryItemMutation(tx as never, {

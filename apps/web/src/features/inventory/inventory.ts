@@ -133,7 +133,11 @@ export function clampQuantity(value: number): number {
 	if (!Number.isFinite(value)) return 0;
 	if (value < INVENTORY_LIMITS.QUANTITY_MIN) return INVENTORY_LIMITS.QUANTITY_MIN;
 	if (value > INVENTORY_LIMITS.QUANTITY_MAX) return INVENTORY_LIMITS.QUANTITY_MAX;
-	// Two decimals match the numeric(10,2) columns and absorb float noise such as 2.3 - 1.
+	return roundQuantity(value);
+}
+
+/** Two decimals match the numeric(10,2) columns and absorb float noise such as 2.3 - 1. */
+export function roundQuantity(value: number): number {
 	return Math.round(value * 100) / 100;
 }
 
