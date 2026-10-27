@@ -12,9 +12,9 @@ import {
 import { ItemGroup } from '@/components/ui/item';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { formatEuroCents } from '@/core/utils/money';
-import type { Expense } from '@/features/expenses/components/ausgaben/expense-types';
 import { getDebtOverview, listedMemberBalances } from '@/features/expenses/debt-overview';
 import type { SettlementSummary, SimplifiedDebt } from '@/features/expenses/debt-reduction';
+import type { Expense } from '@/features/expenses/expense-types';
 import { cn } from '@/shared/lib/cn';
 import { Bell, FileText } from 'lucide-react';
 import Link from 'next/link';

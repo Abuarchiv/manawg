@@ -3,14 +3,11 @@
 import { isOfflineActionQueued, updateOfflineQueue } from '@/core/offline/offline-client';
 import { QUEUE_EDIT_ALREADY_SENT_MESSAGE } from '@/core/offline/offline-copy';
 import type { OfflineActionType } from '@/core/offline/offline-queue';
-import type {
-	ExpenseFormField,
-	ExpenseFormFieldErrors,
-} from '@/features/expenses/components/ausgaben/ExpenseFormSection';
 import {
 	type SplitInputResult,
 	buildSplitsFromForm,
 } from '@/features/expenses/expense-split-input';
+import type { ExpenseFormField, ExpenseFormFieldErrors } from '@/features/expenses/expense-types';
 import { useEffect, useState } from 'react';
 import type { ExpenseFormState, ExpensePageContext } from './expense-page-context';
 

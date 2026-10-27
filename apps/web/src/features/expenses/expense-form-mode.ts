@@ -1,4 +1,4 @@
-import type { RecurringExpense } from './expense-types';
+import type { RecurringExpense } from '@/features/expenses/expense-types';
 
 /** Sheet title for the form, by what it currently edits. */
 export function expenseFormTitle(input: {

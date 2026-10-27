@@ -9,11 +9,12 @@ import {
 	ItemTitle,
 } from '@/components/ui/item';
 import { formatEuroCents } from '@/core/utils/money';
+import type { ExpenseSplitShare } from '@/features/expenses/expense-types';
 import type { MemberRef } from '@/shared/lib/member-types';
 
 interface SplitReviewProps {
 	members: ReadonlyArray<MemberRef>;
-	splits: ReadonlyArray<{ debtorMemberId: string; amountCents: number }> | null;
+	splits: ReadonlyArray<ExpenseSplitShare> | null;
 	paidByMemberId: string;
 	currency?: string;
 }

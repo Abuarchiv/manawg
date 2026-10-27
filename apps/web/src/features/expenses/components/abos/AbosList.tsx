@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/empty';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { AboRow } from '@/features/expenses/components/abos/AboRow';
-import type { Abo, AboFilter, MemberOption } from '@/features/expenses/components/abos/abos-types';
+import type { Abo, AboFilter, MemberOption } from '@/features/expenses/expense-types';
 import { Repeat2 } from 'lucide-react';
 import type { Ref } from 'react';
 

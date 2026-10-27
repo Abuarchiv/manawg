@@ -24,7 +24,7 @@ import { AboCreateModal } from '@/features/expenses/components/abos/AboCreateMod
 import { AboEditModal } from '@/features/expenses/components/abos/AboEditModal';
 import { AboModalOpenContext } from '@/features/expenses/components/abos/AboModalShell';
 import { AbosList } from '@/features/expenses/components/abos/AbosList';
-import type { Abo } from '@/features/expenses/components/abos/abos-types';
+import type { Abo } from '@/features/expenses/expense-types';
 import { useAbosPage } from '@/features/expenses/hooks/use-abos-page';
 import { cn } from '@/shared/lib/cn';
 import { Plus } from 'lucide-react';

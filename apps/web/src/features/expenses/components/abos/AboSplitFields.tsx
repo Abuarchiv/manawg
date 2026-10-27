@@ -18,10 +18,10 @@ import {
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { parseEuroAmount } from '@/core/utils/amount';
 import { CENTS_PER_EURO, formatEuroCents } from '@/core/utils/money';
-import type { AboSplit, MemberOption } from '@/features/expenses/components/abos/abos-types';
+import type { AboSplitBuildError, SplitMode } from '@/features/expenses/abo-form-model';
 import { EqualParticipantsPicker } from '@/features/expenses/components/ausgaben/EqualParticipantsPicker';
 import { SplitReview } from '@/features/expenses/components/ausgaben/SplitReview';
-import type { AboSplitBuildError, SplitMode } from './abo-form-model';
+import type { AboSplit, MemberOption } from '@/features/expenses/expense-types';
 
 interface AboSplitFieldsProps {
 	submitting: boolean;

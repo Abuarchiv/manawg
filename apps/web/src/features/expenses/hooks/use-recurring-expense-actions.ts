@@ -1,8 +1,8 @@
 'use client';
 
 import { apiFetch } from '@/core/infra/api-client';
-import type { RecurringExpense } from '@/features/expenses/components/ausgaben/expense-types';
 import { recurringTemplateDeleteErrorMessage } from '@/features/expenses/expense-errors';
+import type { RecurringExpense } from '@/features/expenses/expense-types';
 import type { ExpenseFormState, ExpensePageContext } from './expense-page-context';
 import type { ExpenseFormSupport } from './use-expense-form-support';
 import { useRecurringBooking } from './use-recurring-booking';

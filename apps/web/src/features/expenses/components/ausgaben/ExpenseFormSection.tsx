@@ -8,7 +8,17 @@ import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { type ActionNotice, ActionNoticeBanner } from '@/components/wg/ActionNoticeBanner';
 import type { Member } from '@/components/wg/WgContextProvider';
+import { DESCRIPTION_MAX } from '@/features/expenses/expense-constants';
+import type { SplitMode } from '@/features/expenses/expense-form-draft';
+import { expenseFormModeKey, expenseSubmitLabel } from '@/features/expenses/expense-form-mode';
 import type { ReopenedShare } from '@/features/expenses/expense-split-input';
+import type {
+	ExpenseFormField,
+	ExpenseFormFieldErrors,
+	ExpenseSplitShare,
+	RecurringExpense,
+} from '@/features/expenses/expense-types';
+import type { ExpenseFormExtras } from '@/features/expenses/hooks/use-expense-form-extras';
 import { cn } from '@/shared/lib/cn';
 import { useKeyboardOpen } from '@/shared/lib/use-keyboard-open';
 import { ArrowLeft } from 'lucide-react';
@@ -20,19 +30,11 @@ import { ExpenseFormNotices } from './ExpenseFormNotices';
 import { ExpensePayerDateFields } from './ExpensePayerDateFields';
 import { ExpenseSplitFieldset } from './ExpenseSplitFieldset';
 import { TextField } from './TextField';
-import { DESCRIPTION_MAX } from './constants';
-import type { SplitMode } from './expense-form-draft';
-import { expenseFormModeKey, expenseSubmitLabel } from './expense-form-mode';
-import type { RecurringExpense } from './expense-types';
 import { useExpenseFormDirty } from './use-expense-form-dirty';
-import type { ExpenseFormExtras } from './use-expense-form-extras';
 
 import type { ExpenseCategory } from '@/features/expenses/expense-categories';
 
 const EXPENSE_DESCRIPTION_FIELD_ID = 'expense-description';
-
-export type ExpenseFormField = 'description' | 'amount' | 'date' | 'splits';
-export type ExpenseFormFieldErrors = Partial<Record<ExpenseFormField, string>>;
 
 interface ExpenseFormSectionProps {
 	description: string;
@@ -76,7 +78,7 @@ interface ExpenseFormSectionProps {
 	onCancel: () => void;
 	onDiscard: () => void;
 	title: string;
-	previewSplits: Array<{ debtorMemberId: string; amountCents: number }> | null;
+	previewSplits: ExpenseSplitShare[] | null;
 	pendingPrefillDescription: string | null;
 	onReplacePrefill: () => void;
 	isEditingExpense: boolean;

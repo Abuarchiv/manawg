@@ -2,7 +2,6 @@ import { useWg } from '@/components/wg/WgContextProvider';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { useCachedFetch } from '@/core/hooks/useCachedFetch';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
-import type { ReminderHistoryItem } from '@/features/expenses/components/debts/ReminderHistory';
 import {
 	type DebtExpenseInput,
 	computeBalances,
@@ -10,6 +9,7 @@ import {
 } from '@/features/expenses/debts';
 import { PAGE_REFRESH_MS } from '@/features/expenses/expense-constants';
 import type { ExpensePaymentInput } from '@/features/expenses/expense-payment-input';
+import type { ReminderHistoryItem } from '@/features/expenses/expense-types';
 import { canSendReminder } from '@/features/expenses/reminders';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { updateCachedList } from './cached-list';

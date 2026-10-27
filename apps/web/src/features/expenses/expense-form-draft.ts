@@ -10,7 +10,11 @@ import {
 	type SplitMode,
 	equalSplitParticipants,
 } from '@/features/expenses/expense-split-input';
-import type { Expense, RecurringExpense } from './expense-types';
+import type {
+	Expense,
+	ExpenseSplitShare,
+	RecurringExpense,
+} from '@/features/expenses/expense-types';
 
 export type { SplitMode };
 
@@ -89,7 +93,7 @@ export function parseDraftEditTarget(target: unknown): DraftEditTarget {
 
 /** Turns stored cent shares into the euro strings the manual inputs display. */
 export function splitsToManualInput(
-	splits: ReadonlyArray<{ debtorMemberId: string; amountCents: number }>,
+	splits: ReadonlyArray<ExpenseSplitShare>,
 ): Record<string, string> {
 	return Object.fromEntries(
 		splits.map((split) => [

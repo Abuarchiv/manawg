@@ -43,6 +43,7 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatRelativeTime, formatShortDate, parseTimestamp } from '@/core/utils/time';
+import type { RecurringExpense } from '@/features/expenses/expense-types';
 import {
 	canBookRecurringTemplate,
 	canManageRecurringTemplate,
@@ -53,7 +54,6 @@ import { cn } from '@/shared/lib/cn';
 import { ChevronDown, MoreHorizontal, Pencil, Repeat2, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
-import type { RecurringExpense } from './expense-types';
 
 interface RecurringExpensesSectionProps {
 	recurringExpenses: RecurringExpense[];

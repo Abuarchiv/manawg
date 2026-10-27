@@ -9,15 +9,11 @@ import { parseEuroAmount } from '@/core/utils/amount';
 import { CENTS_PER_EURO } from '@/core/utils/money';
 import { formatWeekLabel, parseValidDate, startOfWeek } from '@/core/utils/time';
 import {
-	AMOUNT_MAX_EUROS,
-	AMOUNT_MIN_EUROS,
-} from '@/features/expenses/components/ausgaben/constants';
-import { useExpenseForm } from '@/features/expenses/components/ausgaben/useExpenseForm';
-import {
 	buildSettlementSummary,
 	computeDirectDebts,
 	computeNetBalances,
 } from '@/features/expenses/debt-reduction';
+import { AMOUNT_MAX_EUROS, AMOUNT_MIN_EUROS } from '@/features/expenses/expense-constants';
 import {
 	type ExpenseScope,
 	filterExpenses,
@@ -28,6 +24,7 @@ import {
 	settledSharesAffectedByEdit,
 	splitCandidates,
 } from '@/features/expenses/expense-split-input';
+import { useExpenseForm } from '@/features/expenses/hooks/use-expense-form';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ActionNotifier, ExpensePageContext } from './expense-page-context';

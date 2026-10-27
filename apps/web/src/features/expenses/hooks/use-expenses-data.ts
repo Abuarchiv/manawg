@@ -7,12 +7,9 @@ import { captureException } from '@/core/infra/capture-client';
 import { syncOfflineActions } from '@/core/offline/offline-client';
 import { useOfflineQueueSync } from '@/core/offline/useOfflineQueueSync';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
-import type {
-	Expense,
-	RecurringExpense,
-} from '@/features/expenses/components/ausgaben/expense-types';
 import { PAGE_REFRESH_MS } from '@/features/expenses/expense-constants';
 import type { ExpensePaymentInput } from '@/features/expenses/expense-payment-input';
+import type { Expense, RecurringExpense } from '@/features/expenses/expense-types';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { updateCachedList } from './cached-list';
 

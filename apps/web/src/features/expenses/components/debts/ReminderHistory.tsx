@@ -17,18 +17,8 @@ import {
 } from '@/components/ui/item';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatRelativeTime, formatTimeFull } from '@/core/utils/time';
+import type { ReminderHistoryItem } from '@/features/expenses/expense-types';
 import { Bell } from 'lucide-react';
-
-export interface ReminderHistoryItem {
-	id: string;
-	debtorMemberId: string;
-	creditorMemberId: string;
-	amountCents: number;
-	currency: string;
-	channel: string;
-	sentAt: string;
-	oldestDebtAgeDays: number;
-}
 
 interface ReminderHistoryProps {
 	items: ReadonlyArray<ReminderHistoryItem>;

@@ -9,10 +9,8 @@ import { formatEuroCents } from '@/core/utils/money';
 import { formatRelativeTime } from '@/core/utils/time';
 import { DebtRow } from '@/features/expenses/components/debts/DebtRow';
 import { RemindButton } from '@/features/expenses/components/debts/RemindButton';
-import {
-	ReminderHistory,
-	type ReminderHistoryItem,
-} from '@/features/expenses/components/debts/ReminderHistory';
+import { ReminderHistory } from '@/features/expenses/components/debts/ReminderHistory';
+import type { ReminderHistoryItem } from '@/features/expenses/expense-types';
 import {
 	type ReminderRow,
 	reminderKey,

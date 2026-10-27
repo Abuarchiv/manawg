@@ -4,12 +4,12 @@ import { apiFetch } from '@/core/infra/api-client';
 import { notificationWarningMessage } from '@/core/notifications/notification-warning';
 import { enqueueOfflineAction, readOfflineQueue } from '@/core/offline/offline-client';
 import { createOfflineIdempotencyKey, createQueuedExpense } from '@/core/offline/offline-queue';
-import type { RecurringExpense } from '@/features/expenses/components/ausgaben/expense-types';
 import {
 	expenseSaveErrorMessage,
 	isPermanentClientError,
 	recurringAdvanceWarningMessage,
 } from '@/features/expenses/expense-errors';
+import type { RecurringExpense } from '@/features/expenses/expense-types';
 import { buildOptimisticExpense } from '@/features/expenses/optimistic-expense';
 import { withQueuedOccurredAt } from '@/features/expenses/queued-occurred-at';
 import { rotateRemainderCents } from '@/features/expenses/recurring-split-rotation';

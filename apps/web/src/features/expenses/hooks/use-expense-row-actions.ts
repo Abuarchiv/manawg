@@ -1,8 +1,8 @@
 'use client';
 
 import { apiFetch } from '@/core/infra/api-client';
-import type { ExpenseSplit } from '@/features/expenses/components/ausgaben/expense-types';
 import { expenseActionErrorMessage } from '@/features/expenses/expense-errors';
+import type { ExpenseSplit } from '@/features/expenses/expense-types';
 import type { ExpensePageContext } from './expense-page-context';
 
 /** Delete an expense and toggle a share's settled state, both optimistic with rollback. */

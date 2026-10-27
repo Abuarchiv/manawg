@@ -1,9 +1,9 @@
 import { formatEuroInput, parseEuroAmount } from '@/core/utils/amount';
 import { CENTS_PER_EURO } from '@/core/utils/money';
-import type { AboSplit, MemberOption } from '@/features/expenses/components/abos/abos-types';
-import { participantsOrAll } from '@/features/expenses/components/ausgaben/expense-form-draft';
 import type { ExpenseCategory } from '@/features/expenses/expense-categories';
+import { participantsOrAll } from '@/features/expenses/expense-form-draft';
 import { type SplitMode, equalSplitParticipants } from '@/features/expenses/expense-split-input';
+import type { AboSplit, MemberOption } from '@/features/expenses/expense-types';
 import { distributeCentsEqually } from '@/features/expenses/split-math';
 
 export type { SplitMode };

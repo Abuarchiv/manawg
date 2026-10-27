@@ -11,7 +11,7 @@ import { useWg } from '@/components/wg/WgContextProvider';
 import { berlinDayKey } from '@/core/utils/berlin-day';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatShortDate, parseValidDate } from '@/core/utils/time';
-import type { Abo, MemberOption } from '@/features/expenses/components/abos/abos-types';
+import type { Abo, MemberOption } from '@/features/expenses/expense-types';
 import {
 	canManageRecurringTemplate,
 	formatIntervalLabel,

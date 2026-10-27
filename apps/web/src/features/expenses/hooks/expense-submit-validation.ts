@@ -1,11 +1,11 @@
 import { todayInputValue } from '@/core/utils/local-date';
-import type { ExpenseFormFieldErrors } from '@/features/expenses/components/ausgaben/ExpenseFormSection';
 import {
 	AMOUNT_MAX_EUROS,
 	AMOUNT_MIN_EUROS,
 	DESCRIPTION_MAX,
 	amountErrorMessage,
-} from '@/features/expenses/components/ausgaben/constants';
+} from '@/features/expenses/expense-constants';
+import type { ExpenseFormFieldErrors } from '@/features/expenses/expense-types';
 
 /** Field errors of description and amount, shared by the expense form and the fixed-cost template form. */
 export function validateDescriptionAndAmount(input: {

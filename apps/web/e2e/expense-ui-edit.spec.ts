@@ -6,7 +6,7 @@ import {
 	createQueuedExpenseUpdate,
 	getOfflineActionRequest,
 } from '../src/core/offline/offline-queue';
-import type { Expense } from '../src/features/expenses/components/ausgaben/expense-types';
+import type { Expense } from '../src/features/expenses/expense-types';
 import {
 	FIXTURE_WG,
 	dismissOnboarding,
