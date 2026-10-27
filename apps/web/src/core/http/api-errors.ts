@@ -48,6 +48,20 @@ function idempotencyRetryableResponse(): NextResponse<ApiErrorBody> {
 }
 
 /**
+ * Postgres gave up waiting for a lock (lock_timeout, SQLSTATE 55P03): another write of the
+ * same WG holds it. That is busy, not broken, so the caller gets a retryable 503. Drizzle
+ * may wrap the driver error, hence the short walk along `cause`.
+ */
+function isLockTimeout(value: unknown): boolean {
+	let current = value;
+	for (let depth = 0; depth < 3 && current && typeof current === 'object'; depth += 1) {
+		if ((current as { code?: unknown }).code === '55P03') return true;
+		current = (current as { cause?: unknown }).cause;
+	}
+	return false;
+}
+
+/**
  * The write committed but its response cannot be replayed (it was too large to keep). Retrying
  * can never succeed, so this is a final 409 rather than a retryable 503.
  */
@@ -167,6 +181,12 @@ export function serverError(
 	if (isIdempotencyRetryable(errOrMessage)) {
 		captureException(typeof errOrMessage === 'string' ? new Error(errOrMessage) : errOrMessage);
 		return idempotencyRetryableResponse();
+	}
+	if (isLockTimeout(errOrMessage)) {
+		return NextResponse.json<ApiErrorBody>(
+			{ error: 'service_unavailable', code: 'busy_retry' },
+			{ status: HTTP.SERVICE_UNAVAILABLE, headers: { 'Retry-After': '2' } },
+		);
 	}
 	if (isIdempotencyUnavailable(errOrMessage)) {
 		captureException(typeof errOrMessage === 'string' ? new Error(errOrMessage) : errOrMessage);
