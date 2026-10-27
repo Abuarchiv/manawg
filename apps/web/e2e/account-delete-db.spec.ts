@@ -781,7 +781,7 @@ test('a calendar writer waiting behind account cleanup cannot restore its creden
 					{ wgId: wg.id, name: 'Staying', role: 'member', authUserId: otherUser },
 				])
 				.returning({ id: wgMembers.id }),
-			1,
+			2,
 		);
 		await tx.insert(calendarSubscriptions).values({
 			wgId: wg.id,
