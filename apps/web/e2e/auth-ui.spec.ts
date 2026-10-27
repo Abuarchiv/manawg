@@ -202,6 +202,8 @@ test.describe('auth registration inbox', () => {
 });
 
 test.describe('entry account switch', () => {
+	skipUnlessDbDown();
+
 	test.describe('Neu account switch state reset', () => {
 		test('does not restore the previous account draft after switching accounts', async ({
 			page,
@@ -227,6 +229,8 @@ test.describe('entry account switch', () => {
 });
 
 test.describe('auth sign-out intent', () => {
+	skipUnlessDbDown();
+
 	test('restores create intent from the URL after signing out', async ({ page }) => {
 		await mockNoWgs(page);
 

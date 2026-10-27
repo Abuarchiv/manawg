@@ -140,7 +140,7 @@ These tests skip themselves unless their variable is set. `pnpm test:unit` and `
 | `SUPABASE_AUTH_LIVE_E2E` | `e2e/supabase-auth-live.spec.ts` (live sign-in and session checks; needs `SUPABASE_AUTH_TEST_EMAIL`, `SUPABASE_AUTH_TEST_PASSWORD` and the member WG variables) | `BASE_URL=<hosted origin> SUPABASE_AUTH_LIVE_E2E=true pnpm --filter @manawg/web exec playwright test supabase-auth-live.spec.ts` | Needs a deployed app and real test credentials |
 | `SUPABASE_AUTH_PASSWORD_RESET_SMOKE` | The no-session password reset page check in `e2e/supabase-auth-live.spec.ts` (sends no e-mail) | `BASE_URL=<hosted origin> SUPABASE_AUTH_PASSWORD_RESET_SMOKE=true pnpm --filter @manawg/web exec playwright test supabase-auth-live.spec.ts` | Needs a deployed app on real Supabase |
 
-`PREVIEW_E2E`, `REAL_PRODUCT_E2E`, `PUBLIC_ENTRY_E2E`, `AUTH_LIVE_E2E`, `SUPABASE_AUTH_LIVE_E2E` and `SUPABASE_AUTH_PASSWORD_RESET_SMOKE` are set to `true` by the `e2e-preview` job of the CI workflow; `test:e2e:fixtures` sets all of them except the password reset smoke to `false`.
+`PREVIEW_E2E`, `REAL_PRODUCT_E2E`, `PUBLIC_ENTRY_E2E`, `AUTH_LIVE_E2E`, `SUPABASE_AUTH_LIVE_E2E` and `SUPABASE_AUTH_PASSWORD_RESET_SMOKE` are set to `true` by the `e2e-preview` job of the CI workflow; `test:e2e:fixtures` sets `PREVIEW_E2E`, `REAL_PRODUCT_E2E`, `PUBLIC_ENTRY_E2E`, `AUTH_LIVE_E2E` and `SUPABASE_AUTH_LIVE_E2E` to `false`.
 
 ## Quality gates
 
