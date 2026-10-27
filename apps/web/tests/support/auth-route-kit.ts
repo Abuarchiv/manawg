@@ -1,6 +1,7 @@
 // Fakes for the /api/auth/* route tests: the Supabase server client (its `auth` methods are set per
-// test), the rate limiter and the env check. Call `installAuthRouteMocks()` before importing a route.
+// test), the rate limiter, the env check and the breached-password lookup. Call `installAuthRouteMocks()` before importing a route.
 import { mock } from 'node:test';
+import { AuthWeakPasswordError } from '@supabase/supabase-js';
 import { NextRequest, type NextResponse } from 'next/server';
 
 // biome-ignore lint/suspicious/noExplicitAny: test fakes receive whatever the route passes
@@ -16,6 +17,8 @@ export const kit = {
 	forwardedIp: undefined as string | undefined,
 	/** The response the Supabase client writes its cookies to; tests can set cookies on it. */
 	cookieResponse: undefined as NextResponse | undefined,
+	/** Passwords the breach lookup reports as known. */
+	pwnedPasswords: new Set<string>(),
 };
 
 export function installAuthRouteMocks(): void {
@@ -23,6 +26,16 @@ export function installAuthRouteMocks(): void {
 	kit.envConfigured = true;
 	kit.limit = { success: true };
 	kit.forwardedIp = undefined;
+	kit.pwnedPasswords = new Set();
+	mock.module('@/core/auth/pwned-password', {
+		namedExports: {
+			assertPasswordNotPwned: async (password: string) => {
+				if (kit.pwnedPasswords.has(password)) {
+					throw new AuthWeakPasswordError('Password is known from a data breach', 422, ['pwned']);
+				}
+			},
+		},
+	});
 	mock.module('@/core/auth/server', {
 		namedExports: {
 			createSupabaseServerClient: (_request: unknown, response: NextResponse, ip?: string) => {

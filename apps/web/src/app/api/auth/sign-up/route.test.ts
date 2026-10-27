@@ -63,3 +63,15 @@ test('passes weak_password through and requires a name', async () => {
 	const nameless = await call(POST, '/api/auth/sign-up', { email: 'a@b.test', password: 'x' });
 	assert.equal(nameless.status, 400);
 });
+
+test('rejects a breached password as weak_password without creating the account', async () => {
+	kit.auth.signUp = async () => assert.fail('must not run');
+	kit.pwnedPasswords.add('passwort123');
+	const res = await call(POST, '/api/auth/sign-up', {
+		email: 'neu@example.test',
+		password: 'passwort123',
+		name: 'Mina',
+	});
+	assert.equal(res.status, 422);
+	assert.equal(res.json.code, 'weak_password');
+});

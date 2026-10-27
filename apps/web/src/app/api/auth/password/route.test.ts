@@ -36,3 +36,12 @@ test('passes same_password and weak_password through', async () => {
 	assert.equal(res.status, 422);
 	assert.equal(res.json.code, 'same_password');
 });
+
+test('rejects a breached password as weak_password before Supabase sees it', async () => {
+	kit.auth.getUser = async () => ({ data: { user: { id: 'u1' } }, error: null });
+	kit.auth.updateUser = async () => assert.fail('must not run');
+	kit.pwnedPasswords.add('passwort123');
+	const res = await call(POST, '/api/auth/password', { password: 'passwort123' });
+	assert.equal(res.status, 422);
+	assert.equal(res.json.code, 'weak_password');
+});
