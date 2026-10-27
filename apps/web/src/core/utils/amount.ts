@@ -19,3 +19,10 @@ export function parseEuroAmount(value: string): number | null {
 export function formatEuroInput(value: number): string {
 	return value.toFixed(2).replace('.', ',');
 }
+
+const DECIMAL_FORMAT = new Intl.NumberFormat('de-DE', { maximumFractionDigits: 2 });
+
+/** German decimal text with at most two places: 1.5 is "1,5", 2 is "2". */
+export function formatDecimal(value: number): string {
+	return DECIMAL_FORMAT.format(value);
+}

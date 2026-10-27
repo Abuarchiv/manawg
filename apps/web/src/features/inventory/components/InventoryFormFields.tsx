@@ -8,10 +8,9 @@ import {
 	INVENTORY_UNITS,
 	type InventoryCategory,
 	type InventoryUnit,
+	decimalQuantityText,
 	isBelowThreshold,
-	wholeNumberText,
 } from '@/features/inventory/inventory';
-import { useState } from 'react';
 
 interface InventoryFormFieldsProps {
 	mode: 'create' | 'edit';
@@ -48,12 +47,6 @@ export function InventoryFormFields({
 	onUnitChange,
 	onCategoryChange,
 }: InventoryFormFieldsProps) {
-	const [decimalTyped, setDecimalTyped] = useState(false);
-	// Amounts are whole numbers: "1,5" keeps "1" instead of silently becoming "15".
-	function integerText(raw: string): string {
-		if (/[.,]/.test(raw)) setDecimalTyped(true);
-		return wholeNumberText(raw);
-	}
 	return (
 		<FieldGroup>
 			<Field data-invalid={Boolean(nameError)}>
@@ -83,11 +76,10 @@ export function InventoryFormFields({
 					<Input
 						id="inventory-qty"
 						type="text"
-						inputMode="numeric"
-						pattern="[0-9]*"
-						maxLength={String(INVENTORY_LIMITS.QUANTITY_MAX).length}
+						inputMode="decimal"
+						maxLength={String(INVENTORY_LIMITS.QUANTITY_MAX).length + 3}
 						value={quantityText}
-						onChange={(event) => onQuantityTextChange(integerText(event.target.value))}
+						onChange={(event) => onQuantityTextChange(decimalQuantityText(event.target.value))}
 						onFocus={(event) => event.currentTarget.select()}
 						disabled={disabled}
 						className="text-base"
@@ -98,11 +90,10 @@ export function InventoryFormFields({
 					<Input
 						id="inventory-threshold"
 						type="text"
-						inputMode="numeric"
-						pattern="[0-9]*"
-						maxLength={String(INVENTORY_LIMITS.THRESHOLD_MAX).length}
+						inputMode="decimal"
+						maxLength={String(INVENTORY_LIMITS.THRESHOLD_MAX).length + 3}
 						value={thresholdText}
-						onChange={(event) => onThresholdTextChange(integerText(event.target.value))}
+						onChange={(event) => onThresholdTextChange(decimalQuantityText(event.target.value))}
 						onFocus={(event) => event.currentTarget.select()}
 						disabled={disabled}
 						className="text-base"
@@ -144,11 +135,9 @@ export function InventoryFormFields({
 				</Field>
 			</div>
 			<FieldDescription aria-live="polite">
-				{decimalTyped
-					? 'Nur ganze Zahlen – Kommastellen werden nicht übernommen.'
-					: mode === 'create' && isBelowThreshold({ quantity, threshold })
-						? 'Kommt beim Speichern direkt auf die Einkaufsliste.'
-						: 'Ab diesem Bestand kommt der Vorrat auf die Einkaufsliste.'}
+				{mode === 'create' && isBelowThreshold({ quantity, threshold })
+					? 'Kommt beim Speichern direkt auf die Einkaufsliste.'
+					: 'Ab diesem Bestand kommt der Vorrat auf die Einkaufsliste.'}
 			</FieldDescription>
 		</FieldGroup>
 	);

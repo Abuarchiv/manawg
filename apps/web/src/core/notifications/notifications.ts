@@ -1,3 +1,4 @@
+import { formatDecimal } from '@/core/utils/amount';
 import { berlinDayKey } from '@/core/utils/berlin-day';
 import { formatEuroCents } from '@/core/utils/money';
 
@@ -326,7 +327,9 @@ export function formatNotificationMessage(
 			const quantity = quantityNumber(payload.quantity);
 			const threshold = quantityNumber(payload.threshold);
 			const detail =
-				quantity !== null && threshold !== null ? ` (${quantity} von ${threshold})` : '';
+				quantity !== null && threshold !== null
+					? ` (${formatDecimal(quantity)} von ${formatDecimal(threshold)})`
+					: '';
 			return {
 				title: 'Vorrat bald leer',
 				body: `Bald leer: ${itemName}${detail} in ${wgName}.`,

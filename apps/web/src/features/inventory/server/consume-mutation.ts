@@ -1,6 +1,7 @@
 import 'server-only';
 import { wgInventoryItems, wgInventoryLog } from '@/core/db';
-import type { WgInventoryItem, WgMember } from '@/core/db/schema';
+import type { WgMember } from '@/core/db/schema';
+import type { WgInventoryItem } from '@/core/db/schema-inventory';
 import type { DbTransaction } from '@/core/db/transaction';
 import { clampQuantity, isBelowThreshold } from '@/features/inventory/inventory';
 import { pushBelowThresholdItemToShopping } from '@/features/inventory/server/inventory-mutations';

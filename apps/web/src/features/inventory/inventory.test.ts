@@ -3,9 +3,13 @@ import test from 'node:test';
 import {
 	boughtRestockMatches,
 	buildShoppingPushPayload,
+	clampQuantity,
+	decimalQuantityText,
+	formatQuantity,
+	parseQuantityText,
+	quantityInputText,
 	quickRestockCandidates,
 	restockAmount,
-	wholeNumberText,
 } from './inventory';
 
 test('shopping payload asks for enough to get back above the threshold', () => {
@@ -53,9 +57,30 @@ test('bought names match scarce items case-insensitively', () => {
 	assert.deepEqual(boughtRestockMatches(items, [' klopapier ', 'Salz']), [items[0]]);
 });
 
-test('wholeNumberText drops decimals instead of joining their digits', () => {
-	assert.equal(wholeNumberText('1,5'), '1');
-	assert.equal(wholeNumberText('0.5'), '0');
-	assert.equal(wholeNumberText('12 Stk'), '12');
-	assert.equal(wholeNumberText(''), '');
+test('decimalQuantityText keeps German decimals up to two places', () => {
+	assert.equal(decimalQuantityText('1,5'), '1,5');
+	assert.equal(decimalQuantityText('1.5'), '1,5');
+	assert.equal(decimalQuantityText('1,555'), '1,55');
+	assert.equal(decimalQuantityText('1,5,5'), '1,55');
+	assert.equal(decimalQuantityText('12 Stk'), '12');
+	assert.equal(decimalQuantityText('1,'), '1,');
+	assert.equal(decimalQuantityText(''), '');
+});
+
+test('parseQuantityText and formatQuantity round-trip German decimals', () => {
+	assert.equal(parseQuantityText('1,5'), 1.5);
+	assert.equal(parseQuantityText(''), 0);
+	assert.equal(parseQuantityText('1,'), 1);
+	assert.equal(quantityInputText(1.5), '1,5');
+	assert.equal(formatQuantity(1.5, 'Rolle'), '1,5 Rollen');
+	assert.equal(formatQuantity(1, 'Rolle'), '1 Rolle');
+	assert.equal(clampQuantity(2.3 - 1), 1.3);
+});
+
+test('restock and shopping payload stay exact for decimal stock', () => {
+	assert.equal(restockAmount({ quantity: 0.7, threshold: 2 }), 2.3);
+	assert.equal(
+		buildShoppingPushPayload({ name: 'Milch', unit: 'L', quantity: 0.5, threshold: 1 }).quantity,
+		'1,5 L',
+	);
 });

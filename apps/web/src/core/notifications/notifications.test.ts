@@ -145,3 +145,13 @@ test('moved and cancelled event pushes name the actor and follow the calendar pr
 		else process.env.TZ = previousTimezone;
 	}
 });
+
+test('low-stock push shows German decimals', () => {
+	const message = formatNotificationMessage('inventory.low_stock', {
+		title: 'Milch',
+		quantity: 0.5,
+		threshold: 1,
+		wgName: 'WG',
+	});
+	assert.ok(message.body.includes('(0,5 von 1)'));
+});

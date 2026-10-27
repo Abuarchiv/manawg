@@ -9,10 +9,9 @@ import {
 	recurringExpenses,
 	shoppingItems,
 	wgChatMessages,
-	wgInventoryItems,
-	wgInventoryLog,
 	wgs,
 } from './schema';
+import { wgInventoryItems, wgInventoryLog } from './schema-inventory';
 import { type DbTransaction, TransactionAbort, lockExpensePayments } from './transaction';
 
 /**

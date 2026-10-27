@@ -6,7 +6,10 @@ import { fileURLToPath } from 'node:url';
 import { is } from 'drizzle-orm';
 import { PgTable, getTableConfig } from 'drizzle-orm/pg-core';
 
-const schema = await import('../src/core/db/schema.ts');
+const schema = {
+	...(await import('../src/core/db/schema.ts')),
+	...(await import('../src/core/db/schema-inventory.ts')),
+};
 const {
 	ALLOWED_SECURITY_DEFINER_FUNCTIONS,
 	MEMBER_WG_INVARIANT_FUNCTIONS,

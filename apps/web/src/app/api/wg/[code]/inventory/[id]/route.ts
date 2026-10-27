@@ -1,7 +1,7 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, wgInventoryItems } from '@/core/db';
 import { bodyCodec, rejectWrite, withIdempotentWrite } from '@/core/db/idempotent-write';
-import type { WgInventoryItem } from '@/core/db/schema';
+import type { WgInventoryItem } from '@/core/db/schema-inventory';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
@@ -33,25 +33,25 @@ const patchInventorySchema = z
 			.optional(),
 		quantityDelta: z
 			.number()
-			.int()
+			.multipleOf(0.01)
 			.min(-INVENTORY_LIMITS.QUANTITY_MAX)
 			.max(INVENTORY_LIMITS.QUANTITY_MAX)
 			.optional(),
 		quantity: z
 			.number()
-			.int()
+			.multipleOf(0.01)
 			.min(INVENTORY_LIMITS.QUANTITY_MIN)
 			.max(INVENTORY_LIMITS.QUANTITY_MAX)
 			.optional(),
 		expectedQuantity: z
 			.number()
-			.int()
+			.multipleOf(0.01)
 			.min(INVENTORY_LIMITS.QUANTITY_MIN)
 			.max(INVENTORY_LIMITS.QUANTITY_MAX)
 			.optional(),
 		threshold: z
 			.number()
-			.int()
+			.multipleOf(0.01)
 			.min(INVENTORY_LIMITS.THRESHOLD_MIN)
 			.max(INVENTORY_LIMITS.THRESHOLD_MAX)
 			.optional(),
