@@ -27,7 +27,7 @@ import {
 } from '@/features/expenses/expense-split-input';
 import { useExpenseForm } from '@/features/expenses/hooks/use-expense-form';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ActionNotifier, ExpensePageContext } from './expense-page-context';
 import { useExpenseFormSupport } from './use-expense-form-support';
 import { useExpenseRowActions } from './use-expense-row-actions';
@@ -71,13 +71,16 @@ export function useAusgabenPage() {
 	});
 	const { expenses, recurringExpenses } = data;
 	// Ending a request also drops its optimistic row from the sync overlay.
-	const pending = {
-		...rowPending,
-		end: (id: string) => {
-			rowPending.end(id);
-			data.optimisticExpenses.delete(id);
+	const { end: endRowPending } = rowPending;
+	const overlay = data.optimisticExpenses;
+	const endPending = useCallback(
+		(id: string) => {
+			endRowPending(id);
+			overlay.delete(id);
 		},
-	};
+		[endRowPending, overlay],
+	);
+	const pending = { ...rowPending, end: endPending };
 
 	// Everything the form itself edits, plus its localStorage draft.
 	const form = useExpenseForm({

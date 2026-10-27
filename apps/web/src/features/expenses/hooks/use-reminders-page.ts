@@ -83,8 +83,9 @@ export function useRemindersPage() {
 	const [expensesRefreshing, setExpensesRefreshing] = useState(false);
 	const [expensesError, setExpensesError] = useState<string | null>(null);
 	const hasExpensesRef = useRef(cachedExpenses !== undefined);
-	const noCache = cachedExpenses === undefined && history.data === undefined;
-	const loading = noCache && (!expensesSettled || history.initialLoading);
+	// The skeleton shows only when the page opened without any cached list, until both reads settled.
+	const [openedWithoutCache] = useState(cachedExpenses === undefined && history.data === undefined);
+	const loading = openedWithoutCache && (!expensesSettled || history.initialLoading);
 	const refreshing = expensesRefreshing || history.refreshing;
 	const loadErrors = { expenses: expensesError, reminders: history.loadError };
 	const expensesLoadFailed = expensesError !== null;
