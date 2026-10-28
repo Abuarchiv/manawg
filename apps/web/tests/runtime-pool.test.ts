@@ -142,7 +142,7 @@ test('runtime database pools time out stalled, locked, and slow queries and reco
 			'-l',
 			join(dataDir, 'postgres.log'),
 			'-o',
-			`-h 127.0.0.1 -p ${pgPort} -F`,
+			`-h 127.0.0.1 -p ${pgPort} -k ${dataDir} -F`,
 			'-w',
 			'start',
 		]);

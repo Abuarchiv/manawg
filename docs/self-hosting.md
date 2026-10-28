@@ -88,6 +88,13 @@ and `TRUSTED_PROXIES` to the proxy's address (`private_ranges` covers proxies on
 network), and let the proxy pass on `Host` and `X-Forwarded-Proto`. `APP_URL` is always the
 address people open.
 
+- `TRUSTED_PROXIES` must list the proxy. Otherwise the gateway ignores the client address the
+  proxy sends and the app's rate limits, such as the sign-in limit, are shared by all visitors.
+- Caddy does not listen on 443 with `SITE_ADDRESS=:80`, but the host port is still reserved. If
+  another service owns 443, set `HTTPS_PORT` to a free port.
+- With `HTTP_BIND=127.0.0.1:` (keep the trailing colon) the gateway is reachable from this host
+  only, so nobody can bypass the proxy. Leave it at the default when the proxy runs in another container or on another host.
+
 ### Configuration
 
 Every setting is in `.env`, described in [`.env.example`](../.env.example). After a change, run
@@ -127,7 +134,21 @@ docker compose up -d --build
 
 With a published image (`MANAWG_VERSION`), `docker compose pull && docker compose up -d` instead.
 The `setup` service applies new migrations before the new app version starts. A change that needs
-a manual step on self-hosted instances says so in its pull request.
+a manual step on self-hosted instances says so in its pull request; read the list of changes
+before you update (`git fetch && git log --oneline HEAD..origin/main` in the checkout, or the
+commit history on GitHub for a published image).
+
+Migrations only move forward and are never reversed. To go back, check out the old commit or tag
+(or set `MANAWG_VERSION` to the old tag for a published image). When you build from source, run
+`docker compose build` next, because the local image is still the new build. Then restore the
+backup you took before updating with `./docker/restore.sh`. Starting an older version against an
+already migrated database is not supported.
+
+To rotate `MEMBER_SESSION_SECRET`, copy the old value to `MEMBER_SESSION_SECRET_PREVIOUS`, put a
+new one in `MEMBER_SESSION_SECRET` and run `docker compose up -d`. Calendar feed URLs and
+unsubscribe links signed with the old secret keep working; remove the old value later.
+
+Container logs are rotated (three files of 10 MB per container), so they do not fill the disk.
 
 ### Backup and restore
 
@@ -276,6 +297,7 @@ Required:
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase secret key. Server-only; needed for account deletion and Supabase Storage |
 | `POSTGRES_URL` | Runtime URL with the `manawg_app` role on port `6543` |
 | `MEMBER_SESSION_SECRET` | `openssl rand -hex 32`; signs calendar feeds and unsubscribe links |
+| `MEMBER_SESSION_SECRET_PREVIOUS` | Optional. The old value while you rotate `MEMBER_SESSION_SECRET`; links signed with it stay valid. Remove it afterwards |
 | `CRON_SECRET` | `openssl rand -hex 32`; Vercel sends it to the cron routes |
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | From your Upstash Redis database |
 | `SUPABASE_STORAGE_BUCKET` | See [Image storage](#5-image-storage) |

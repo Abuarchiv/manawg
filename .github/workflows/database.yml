@@ -1,22 +1,11 @@
 # Database tests against a disposable PostgreSQL: the statement-run ledger, connection handling,
-# private image deletions (pnpm test:db) and the account-deletion suite (test:e2e:account-delete-db).
-# Pull requests that touch the schema, the migrations or the code these tests import, and every
-# push to main.
+# private image deletions, the shopping unique index (pnpm test:db), the runtime pool timeouts
+# against their own server (pnpm test:db-timeouts) and the account-deletion suite
+# (test:e2e:account-delete-db). Every pull request and every push to main, so the check can be
+# required without blocking unrelated pull requests.
 name: Database
 on:
   pull_request:
-    paths:
-      - pnpm-lock.yaml
-      - apps/web/package.json
-      - apps/web/drizzle/**
-      - apps/web/src/core/**
-      - apps/web/src/composition/**
-      - apps/web/src/features/**
-      - apps/web/e2e/account-delete-db*
-      - apps/web/e2e/support/account-delete-db*
-      - apps/web/tests/**
-      - apps/web/scripts/test-db-setup.mjs
-      - .github/workflows/database.yml
   push:
     branches: [main]
 permissions:
@@ -59,5 +48,16 @@ jobs:
         run: node apps/web/scripts/test-db-setup.mjs "$DB_URL"
       - name: Database unit tests
         run: TEST_DATABASE_URL="$DB_URL" pnpm --filter @manawg/web test:db
+      - name: Put the PostgreSQL server binaries on PATH
+        run: |
+          bins=(/usr/lib/postgresql/*/bin)
+          if [ ! -d "${bins[0]}" ]; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends postgresql
+            bins=(/usr/lib/postgresql/*/bin)
+          fi
+          printf '%s\n' "${bins[@]}" | sort -V | tail -n 1 >> "$GITHUB_PATH"
+      - name: Database timeout tests
+        run: pnpm --filter @manawg/web test:db-timeouts
       - name: Account deletion suite
         run: ACCOUNT_DELETE_TEST_URL="$DB_URL" pnpm --filter @manawg/web test:e2e:account-delete-db

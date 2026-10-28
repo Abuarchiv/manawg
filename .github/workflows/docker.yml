@@ -1,7 +1,8 @@
 # Self-hosting image. Pull requests that touch the image or the paths the stack depends on, and
 # every push to main, build it for linux/amd64, scan it with Trivy and run the whole stack through
-# docker/smoke.sh. A tag vX.Y.Z builds linux/amd64 and linux/arm64 and pushes them to
-# ghcr.io/abuarchiv/manawg-app as X.Y.Z, X.Y, X and latest.
+# docker/smoke.sh. A tag vX.Y.Z builds linux/amd64, scans it with Trivy and only then builds
+# linux/amd64 and linux/arm64 and pushes them to ghcr.io/abuarchiv/manawg-app as X.Y.Z, X.Y, X and
+# latest.
 name: Docker
 on:
   pull_request:
@@ -96,7 +97,23 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
-      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+      - name: Build linux/amd64 for the scan
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          load: true
+          tags: manawg-app:release
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Scan the image before it is pushed
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: manawg-app:release
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+      - name: Build and push the multi-arch image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           platforms: linux/amd64,linux/arm64
@@ -107,8 +124,3 @@ jobs:
           cache-to: type=gha,mode=max
           provenance: true
           sbom: true
-      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          image-ref: ${{ env.IMAGE }}:${{ steps.meta.outputs.version }}
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true

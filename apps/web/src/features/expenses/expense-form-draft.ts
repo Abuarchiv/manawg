@@ -1,7 +1,7 @@
 import type { OfflineActionType } from '@/core/offline/offline-queue';
 import { eurosToCents, formatCentsInput, parseEuroAmount } from '@/core/utils/amount';
 import { parseTimestamp } from '@/core/utils/time';
-import { currencySchema } from '@/core/validators/currency';
+import { isSupportedCurrency } from '@/core/validators/currencies';
 import type { ExpenseCategory } from '@/features/expenses/expense-categories';
 import type { buildExpensePrefillDraft } from '@/features/expenses/expense-prefill';
 import {
@@ -78,13 +78,13 @@ export function parseDraftEditTarget(target: unknown): DraftEditTarget {
 		typeof target.updatedAt === 'string' &&
 		parseTimestamp(target.updatedAt) !== null
 	) {
-		const currency = 'currency' in target ? currencySchema.safeParse(target.currency) : null;
+		const currency = 'currency' in target ? target.currency : null;
 		return {
 			kind: 'valid',
 			reference: {
 				id: target.id,
 				updatedAt: target.updatedAt,
-				...(currency?.success ? { currency: currency.data } : {}),
+				...(isSupportedCurrency(currency) ? { currency } : {}),
 			},
 		};
 	}

@@ -6,6 +6,18 @@ import { UNKNOWN_NAME } from './import-types';
 
 const OCR_LANGS = 'deu+eng';
 
+// The worker, core and models are served from public/tesseract (scripts/copy-tesseract-assets.mjs).
+// tesseract.js starts the worker from a blob URL, where a relative path would not resolve, so the
+// paths must be absolute. Outside a browser (unit tests) there is no origin to prepend.
+function assetPaths() {
+	const base = `${globalThis.location?.origin ?? ''}/tesseract`;
+	return {
+		workerPath: `${base}/worker.min.js`,
+		corePath: base,
+		langPath: `${base}/lang`,
+	};
+}
+
 export interface OcrRunner {
 	recognize(input: Blob | File): Promise<string>;
 }
@@ -16,6 +28,9 @@ interface TesseractWorkerLike {
 }
 
 interface TesseractWorkerOptions {
+	workerPath: string;
+	corePath: string;
+	langPath: string;
 	errorHandler: (error: unknown) => void;
 }
 
@@ -46,7 +61,7 @@ export class OcrInitializationError extends Error {
 const OCR_INIT_TIMEOUT_MS = 30_000;
 const OCR_RECOGNITION_TIMEOUT_MS = 20_000;
 
-// Tesseract 5 exposes no handle before init settles; keep one pending initializer and terminate late handles, with reload as recovery if it never settles.
+// Tesseract.js exposes no handle before init settles; keep one pending initializer and terminate late handles, with reload as recovery if it never settles.
 let pendingWorkerInitialization: Promise<TesseractWorkerLike> | null = null;
 
 async function loadTesseract(): Promise<TesseractModuleLike> {
@@ -109,6 +124,7 @@ export async function runOcrOnImage(
 	const workerPromise = (runtime.loadTesseract ?? loadTesseract)().then((tesseract) => {
 		if (initializationAbandoned) throw new Error('OCR initialization was abandoned.');
 		return tesseract.createWorker(OCR_LANGS, undefined, {
+			...assetPaths(),
 			errorHandler: (reason) => {
 				initializationAbandoned = true;
 				rejectWorkerError(toOcrError(reason));

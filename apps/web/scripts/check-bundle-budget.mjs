@@ -151,7 +151,9 @@ function main() {
 		const status = tesseractKb > TESSERACT_INFO_BUDGET_KB ? 'WARN' : 'INFO';
 		info(`[${status}] Tesseract OCR chunk: ${tesseractKb.toFixed(1)} kB raw (informational only)`);
 	} else {
-		info('Tesseract OCR chunk not emitted as static asset (runtime CDN load)');
+		info(
+			'Tesseract OCR chunk not emitted as static asset (loaded from public/tesseract at runtime)',
+		);
 	}
 
 	const sortedRoutes = [...perRouteResults].sort((a, b) => b.sizeKb - a.sizeKb).slice(0, 5);

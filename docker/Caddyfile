@@ -7,9 +7,12 @@
 
 {
 	# TRUSTED_PROXIES: addresses of your own reverse proxy in front of the gateway, so its
-	# X-Forwarded-* headers (client address, https) reach the app.
+	# X-Forwarded-* headers (client address, https) reach the app. Strict mode picks the client
+	# address as the rightmost entry of X-Forwarded-For that is not a trusted proxy, so a visitor
+	# cannot choose it by sending the header.
 	servers {
 		trusted_proxies static {$TRUSTED_PROXIES:127.0.0.1/32}
+		trusted_proxies_strict
 	}
 	servers :8000 {
 		trusted_proxies static private_ranges
@@ -21,7 +24,10 @@
 	@auth path /auth/v1/verify /auth/v1/callback /auth/v1/authorize
 	handle @auth {
 		uri strip_prefix /auth/v1
-		reverse_proxy auth:9999
+		# GoTrue keys its rate limit on the whole X-Forwarded-For value: send only the client.
+		reverse_proxy auth:9999 {
+			header_up X-Forwarded-For {client_ip}
+		}
 	}
 	# Signed image uploads straight from the browser.
 	@upload path /storage/v1/object/upload/sign/*
@@ -30,7 +36,10 @@
 		reverse_proxy storage:5000
 	}
 	handle {
-		reverse_proxy app:3000
+		# The app keys its rate limits on the last X-Forwarded-For entry: send only the client.
+		reverse_proxy app:3000 {
+			header_up X-Forwarded-For {client_ip}
+		}
 	}
 }
 

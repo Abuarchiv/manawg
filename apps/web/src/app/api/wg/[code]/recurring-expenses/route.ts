@@ -23,10 +23,6 @@ import {
 	isRecurringAnchorAllowed,
 	recurringDueAtSchema,
 } from '@/core/validators/recurring-due-date';
-import {
-	expenseCategorySchema,
-	expenseCategoryValueSchema,
-} from '@/features/expenses/expense-categories';
 import { MAX_SPLITS, RECURRING_INTERVAL_MAX_MONTHS } from '@/features/expenses/expense-constants';
 import {
 	expenseAmountSchema,
@@ -35,6 +31,10 @@ import {
 } from '@/features/expenses/expense-schemas';
 import { checkPaidByGuard } from '@/features/expenses/paid-by-guard';
 import { serializeRecurringExpense } from '@/features/expenses/recurring-expenses';
+import {
+	expenseCategorySchema,
+	expenseCategoryValueSchema,
+} from '@/features/expenses/server/expense-category-schema';
 import { withExpensePaymentLock } from '@/features/expenses/server/expense-payments';
 import {
 	advanceRecurringTemplate,

@@ -487,7 +487,12 @@ test.describe('invite link copy', () => {
 
 		test('announces a copied link without reporting that the invitation was shared', async ({
 			page,
+			browserName,
 		}) => {
+			test.skip(
+				browserName === 'webkit',
+				'WebKit rejects the clipboard-read and clipboard-write permission grants.',
+			);
 			const code = FIXTURE_WG.shareCode;
 			const inviteUrl = 'http://localhost/invite/fixture-invite-token01';
 			await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);

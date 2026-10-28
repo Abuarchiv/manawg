@@ -22,7 +22,8 @@
 				"tests/**/*.{mjs,cjs,ts}"
 			],
 			"drizzle": false,
-			"ignoreBinaries": ["psql"]
+			"ignoreBinaries": ["psql"],
+			"ignoreDependencies": ["@tesseract.js-data/deu", "@tesseract.js-data/eng"]
 		}
 	}
 }

@@ -248,7 +248,12 @@ test.describe('import error notice', () => {
 
 	test('browser back moves one wizard step back and asks before leaving with input', async ({
 		page,
+		browserName,
 	}) => {
+		test.skip(
+			browserName !== 'chromium',
+			'Throttles the CPU through a CDP session, which only Chromium offers.',
+		);
 		const preview = {
 			parsed: [
 				{

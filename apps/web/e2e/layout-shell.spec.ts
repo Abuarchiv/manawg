@@ -77,7 +77,7 @@ test.describe('entry frame overflow', () => {
 });
 
 test.describe('public header reflow', () => {
-	test('public brand and account links reflow on narrow pages', async ({ page }) => {
+	test('public brand and account links reflow on narrow pages', async ({ page, browserName }) => {
 		await page.route('**/api/wg/mine', (route) =>
 			route.fulfill({
 				status: 401,
@@ -157,6 +157,10 @@ test.describe('public header reflow', () => {
 			});
 			await brand.focus();
 			await page.keyboard.press('Tab');
+			if (browserName === 'webkit') {
+				// WebKit's native Tab traversal skips links without Full Keyboard Access.
+				await account.focus();
+			}
 			await expect(account).toBeFocused();
 		}
 

@@ -4,7 +4,14 @@
 
 name: manawg
 
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "3"
+
 x-app: &app
+  logging: *logging
   image: ${MANAWG_IMAGE:-ghcr.io/abuarchiv/manawg-app}:${MANAWG_VERSION:-latest}
   build:
     context: .
@@ -15,6 +22,7 @@ services:
   db:
     image: supabase/postgres:17.11.0.007
     restart: unless-stopped
+    logging: *logging
     command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf", "-c", "log_min_messages=fatal"]
     environment:
       POSTGRES_HOST: /var/run/postgresql
@@ -37,6 +45,7 @@ services:
   auth:
     image: supabase/gotrue:v2.197.0
     restart: unless-stopped
+    logging: *logging
     depends_on:
       db:
         condition: service_healthy
@@ -103,6 +112,7 @@ services:
   storage:
     image: supabase/storage-api:v1.84.23
     restart: unless-stopped
+    logging: *logging
     depends_on:
       db:
         condition: service_healthy
@@ -131,13 +141,14 @@ services:
   gateway:
     image: caddy:2.11.7-alpine
     restart: unless-stopped
+    logging: *logging
     depends_on:
       - auth
       - storage
     ports:
-      - ${HTTP_PORT:-80}:80
-      - ${HTTPS_PORT:-443}:443
-      - ${HTTPS_PORT:-443}:443/udp
+      - ${HTTP_BIND:-}${HTTP_PORT:-80}:80
+      - ${HTTP_BIND:-}${HTTPS_PORT:-443}:443
+      - ${HTTP_BIND:-}${HTTPS_PORT:-443}:443/udp
     environment:
       SITE_ADDRESS: ${SITE_ADDRESS:-:80}
       TRUSTED_PROXIES: ${TRUSTED_PROXIES:-127.0.0.1/32}
@@ -192,6 +203,7 @@ services:
       SUPABASE_STORAGE_BUCKET: ${STORAGE_BUCKET:-private-images}
       POSTGRES_URL: postgres://manawg_app:${MANAWG_APP_DB_PASSWORD}@db:5432/postgres
       MEMBER_SESSION_SECRET: ${MEMBER_SESSION_SECRET}
+      MEMBER_SESSION_SECRET_PREVIOUS: ${MEMBER_SESSION_SECRET_PREVIOUS:-}
       CRON_SECRET: ${CRON_SECRET}
       SMTP_HOST: ${SMTP_HOST}
       SMTP_PORT: ${SMTP_PORT:-587}
@@ -224,6 +236,7 @@ services:
     image: axllent/mailpit:v1.32.0
     restart: unless-stopped
     profiles: ["mailpit"]
+    logging: *logging
     ports:
       - 127.0.0.1:8025:8025
 

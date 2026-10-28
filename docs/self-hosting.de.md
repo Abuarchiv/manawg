@@ -92,6 +92,15 @@ Wenn du stattdessen hinter einem eigenen Reverse Proxy läufst, lass `SITE_ADDRE
 (`private_ranges` deckt Proxys auf demselben Host oder im selben Netzwerk ab) und lass den Proxy
 `Host` und `X-Forwarded-Proto` weitergeben. `APP_URL` ist immer die Adresse, die die Leute öffnen.
 
+- `TRUSTED_PROXIES` muss den Proxy enthalten. Sonst ignoriert das Gateway die Client-Adresse, die
+  der Proxy schickt, und die Ratenbegrenzungen der App, etwa für die Anmeldung, gelten für alle
+  Besucher gemeinsam.
+- Caddy lauscht mit `SITE_ADDRESS=:80` nicht auf 443, der Host-Port bleibt aber belegt. Gehört 443
+  schon einem anderen Dienst, setze `HTTPS_PORT` auf einen freien Port.
+- Mit `HTTP_BIND=127.0.0.1:` (den Doppelpunkt am Ende behalten) ist das Gateway nur von diesem
+  Host aus erreichbar, niemand kann den Proxy umgehen. Läuft der Proxy in einem anderen Container
+  oder auf einem anderen Host, lass den Standardwert.
+
 ### Konfiguration
 
 Jede Einstellung steht in `.env` und ist in [`.env.example`](../.env.example) beschrieben. Führe
@@ -135,7 +144,23 @@ docker compose up -d --build
 Bei einem veröffentlichten Image (`MANAWG_VERSION`) nimmst du stattdessen
 `docker compose pull && docker compose up -d`. Der Dienst `setup` wendet neue Migrationen an, bevor
 die neue App-Version startet. Eine Änderung, die bei selbst gehosteten Instanzen einen manuellen
-Schritt braucht, sagt das in ihrem Pull Request.
+Schritt braucht, sagt das in ihrem Pull Request; lies vor dem Update die Liste der Änderungen
+(`git fetch && git log --oneline HEAD..origin/main` im Checkout, bei einem veröffentlichten Image
+die Commit-Historie auf GitHub).
+
+Migrationen laufen nur vorwärts und werden nie zurückgenommen. Willst du zurück, checke den alten
+Commit oder Tag aus (bei einem veröffentlichten Image setzt du `MANAWG_VERSION` auf den alten Tag).
+Baust du aus dem Quellcode, führe danach `docker compose build` aus, denn das lokale Image ist noch
+der neue Build. Stelle dann das Backup, das du vor dem Update gemacht hast, mit
+`./docker/restore.sh` wieder her.
+Eine ältere Version auf einer schon migrierten Datenbank zu starten, wird nicht unterstützt.
+
+Um `MEMBER_SESSION_SECRET` zu wechseln, kopiere den alten Wert nach `MEMBER_SESSION_SECRET_PREVIOUS`,
+trage in `MEMBER_SESSION_SECRET` einen neuen ein und führe `docker compose up -d` aus. Mit dem
+alten Secret signierte Kalender-Feed-URLs und Abmeldelinks funktionieren weiter; entferne den alten
+Wert später wieder.
+
+Container-Logs werden rotiert (drei Dateien mit je 10 MB pro Container) und füllen die Platte nicht.
 
 ### Backup und Wiederherstellung
 
@@ -290,6 +315,7 @@ Pflicht:
 | `SUPABASE_SERVICE_ROLE_KEY` | Secret Key von Supabase. Nur serverseitig; nötig für das Löschen von Konten und für Supabase Storage |
 | `POSTGRES_URL` | Laufzeit-URL mit der Rolle `manawg_app` auf Port `6543` |
 | `MEMBER_SESSION_SECRET` | `openssl rand -hex 32`; signiert Kalender-Feeds und Abmeldelinks |
+| `MEMBER_SESSION_SECRET_PREVIOUS` | Optional. Der alte Wert, während du `MEMBER_SESSION_SECRET` wechselst; damit signierte Links bleiben gültig. Danach entfernen |
 | `CRON_SECRET` | `openssl rand -hex 32`; Vercel schickt es an die Cron-Routen |
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Aus deiner Upstash-Redis-Datenbank |
 | `SUPABASE_STORAGE_BUCKET` | Siehe [Bildspeicher](#5-bildspeicher) |
@@ -356,8 +382,6 @@ Das gilt für beide Wege. Bei Docker heißen die Einstellungen `LEGAL_URL` und `
   ein leeres `SUPPORT_EMAIL` auf `SMTP_ADMIN_EMAIL` zurück. Auf Vercel gehen die Meldungen bei einem
   nicht gesetzten Wert an die ManaWG-Maintainer, die deine Instanz nicht sehen können, setze ihn
   dort also.
-- Name und Logo "ManaWG" sind nicht von der Code-Lizenz abgedeckt. Lies
-  [TRADEMARK.md](../TRADEMARK.md), bevor du eine öffentliche Instanz betreibst.
 
 ## Hilfe bekommen
 

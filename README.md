@@ -104,7 +104,7 @@ alternative setup on Vercel and Supabase.
 
 | Layer | Used |
 | --- | --- |
-| App | Next.js 15, React 19, TypeScript, Tailwind CSS 4, installable PWA |
+| App | Next.js 16, React 19, TypeScript, Tailwind CSS 4, installable PWA |
 | Data | PostgreSQL with Drizzle ORM |
 | Accounts and files | Supabase Auth and Storage |
 | Self-hosting | Docker Compose with Caddy |
@@ -141,8 +141,6 @@ Contributions are welcome: code, bug reports, documentation, translations and id
 ## Roadmap
 
 - English interface (in progress)
-- [#644](https://github.com/Abuarchiv/manawg-app/issues/644): split the database schema into one file per feature
-- [#645](https://github.com/Abuarchiv/manawg-app/issues/645): split the account-deletion e2e spec into smaller files
 
 ## Community and support
 

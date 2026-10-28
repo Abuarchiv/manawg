@@ -1,6 +1,7 @@
 'use client';
 
-import { X } from 'lucide-react';
+import { Download, X } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
@@ -15,7 +16,22 @@ import {
 	subscribeInstall,
 	triggerInstall,
 } from '@/shared/lib/pwa-install';
-import { InstallButton } from './InstallButton';
+
+// The manual-steps dialog pulls in the whole dialog stack, so it loads only when the prompt shows
+// it. The fallback is a disabled button of the same size, so the prompt does not jump.
+const InstallButton = dynamic(() => import('./InstallButton').then((m) => m.InstallButton), {
+	loading: InstallButtonPlaceholder,
+});
+
+function InstallButtonPlaceholder() {
+	const t = useTranslations('shell.installPrompt');
+	return (
+		<Button type="button" disabled className="h-auto w-full whitespace-normal py-2">
+			<Download data-icon="inline-start" aria-hidden />
+			{t('howTo')}
+		</Button>
+	);
+}
 
 // Not under `manawg:`/`manawg_`: signing out wipes those, and a dismissal is a device choice.
 const DISMISSED_KEY = 'manawg-install-dismissed-at';
