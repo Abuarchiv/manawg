@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-const { DEFAULT_LOCALE, htmlLang, localeCookie, resolveLocale } = await import('./locale');
+const { DEFAULT_LOCALE, clearLocaleCookie, deviceLocale, htmlLang, localeCookie, resolveLocale } =
+	await import('./locale');
 
 test('a valid cookie wins over Accept-Language', () => {
 	assert.equal(resolveLocale({ cookie: 'en', acceptLanguage: 'de-DE,de;q=0.9' }), 'en');
@@ -26,10 +27,15 @@ test('equal q keeps header order', () => {
 	assert.equal(resolveLocale({ acceptLanguage: 'de, en' }), 'de');
 });
 
-test('wildcard, unknown tags, q=0 and malformed q are ignored', () => {
-	assert.equal(resolveLocale({ acceptLanguage: '*' }), DEFAULT_LOCALE);
-	assert.equal(resolveLocale({ acceptLanguage: 'fr, ja;q=0.8' }), DEFAULT_LOCALE);
+test('only unsupported languages fall back to English, unless English is refused', () => {
+	assert.equal(resolveLocale({ acceptLanguage: 'fr, ja;q=0.8' }), 'en');
+	assert.equal(resolveLocale({ acceptLanguage: 'tr-TR' }), 'en');
+	assert.equal(resolveLocale({ acceptLanguage: 'tr-TR, de;q=0.5' }), 'de');
 	assert.equal(resolveLocale({ acceptLanguage: 'en;q=0, fr' }), DEFAULT_LOCALE);
+});
+
+test('wildcard, q=0 and malformed q are ignored', () => {
+	assert.equal(resolveLocale({ acceptLanguage: '*' }), DEFAULT_LOCALE);
 	assert.equal(resolveLocale({ acceptLanguage: 'en;q=abc' }), DEFAULT_LOCALE);
 	assert.equal(resolveLocale({ acceptLanguage: ';;,,' }), DEFAULT_LOCALE);
 	assert.equal(resolveLocale({ acceptLanguage: '*, en;q=0.1' }), 'en');
@@ -64,4 +70,27 @@ test('the cookie drops Secure on a plain http page', () => {
 test('the html lang keeps German bare and marks English as en-GB', () => {
 	assert.equal(htmlLang('de'), 'de');
 	assert.equal(htmlLang('en'), 'en-GB');
+});
+
+test('clearing the cookie expires it at once', () => {
+	assert.equal(clearLocaleCookie(), 'manawg_locale=; path=/; max-age=0; SameSite=Lax');
+});
+
+test('the device locale reads navigator.languages in order', () => {
+	const original = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+	const as = (languages: string[]) =>
+		Object.defineProperty(globalThis, 'navigator', {
+			value: { languages, language: languages[0] },
+			configurable: true,
+		});
+	try {
+		as(['en-US', 'de']);
+		assert.equal(deviceLocale(), 'en');
+		as(['es-ES', 'de-DE']);
+		assert.equal(deviceLocale(), 'de');
+		as(['es-ES']);
+		assert.equal(deviceLocale(), 'en');
+	} finally {
+		if (original) Object.defineProperty(globalThis, 'navigator', original);
+	}
 });
