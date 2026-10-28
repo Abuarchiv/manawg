@@ -5,6 +5,7 @@
 // be sent). --apply needs SUPABASE_ACCESS_TOKEN.
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { renderTemplate } from '../supabase/templates/render.mjs';
 
 const log = (line) => process.stdout.write(`${line}\n`);
 
@@ -26,10 +27,7 @@ const apply = args.includes('--apply');
 
 const subjects = JSON.parse(await readFile(resolve(dir, 'subjects.json'), 'utf8'));
 const html = async (name) =>
-	(await readFile(resolve(dir, `${name}.html`), 'utf8'))
-		.replaceAll('>app.manawg.com<', `>${new URL(appUrl).host}<`)
-		.replaceAll('https://app.manawg.com', appUrl)
-		.replaceAll('https://manawg.com', legalUrl);
+	renderTemplate(await readFile(resolve(dir, `${name}.html`), 'utf8'), appUrl, legalUrl);
 
 const body = {};
 for (const name of ['confirmation', 'recovery', 'magic_link', 'email_change']) {

@@ -8,6 +8,7 @@ import {
 } from './cookie-options';
 import { applySessionHint, isAuthTokenCookie } from './session-hint-cookie';
 import { getSupabaseEnv, hasSupabaseEnv } from './supabase-env';
+import { supabaseFetch } from './supabase-fetch';
 import { readVerifiedUser } from './verified-user';
 
 function signInRedirect(request: NextRequest, response: NextResponse): NextResponse {
@@ -78,6 +79,7 @@ export async function refreshSupabaseSession(
 	let refreshedResponse = response;
 	const supabase = createServerClient(url, publishableKey, {
 		cookieOptions: authCookieOptions(https),
+		global: { fetch: supabaseFetch },
 		cookies: {
 			getAll: () => request.cookies.getAll(),
 			setAll: (cookiesToSet, headers = {}) => {

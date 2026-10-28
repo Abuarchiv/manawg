@@ -2,8 +2,9 @@
  * Startup environment validation.
  *
  * The app degrades silently when optional infrastructure is unconfigured:
- * without Upstash the rate limiter fails open (in production it fails closed
- * and is therefore required, see below), without VAPID keys push notifications
+ * without Upstash the rate limiter fails open (on Vercel production it fails
+ * closed and is therefore required, see below; a standalone server counts in
+ * memory), without VAPID keys push notifications
  * never send, without the Supabase service-role key account deletion answers
  * 503, without the storage bucket image uploads answer 503. In production those are invisible until a user hits them.
  * `checkEnv` turns that into one explicit report at boot.
@@ -49,7 +50,8 @@ const OPTIONAL_FEATURES: readonly FeatureSpec[] = [
 	{
 		feature: 'rate-limiting',
 		vars: ['UPSTASH_REDIS_REST_URL', 'UPSTASH_REDIS_REST_TOKEN'],
-		impact: 'Rate limiter fails open — every endpoint is unthrottled.',
+		impact:
+			'Rate limiter fails open on Vercel previews and in development; a standalone server counts in memory per process.',
 	},
 	{
 		feature: 'push-notifications',
@@ -118,9 +120,20 @@ function isValidHttpsUrl(value: string | undefined): boolean {
 	}
 }
 
+/** HTTPS, or plain HTTP on this machine (a local Docker stack at http://localhost). */
+function isValidSupabaseUrl(value: string | undefined): boolean {
+	if (isValidHttpsUrl(value)) return true;
+	try {
+		const url = new URL(value ?? '');
+		return url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname);
+	} catch {
+		return false;
+	}
+}
+
 function privateImageStorageMissing(env: EnvSource): { missing: string[]; impact: string } {
 	const missing: string[] = [];
-	if (!isValidHttpsUrl(env.NEXT_PUBLIC_SUPABASE_URL)) missing.push('NEXT_PUBLIC_SUPABASE_URL');
+	if (!isValidSupabaseUrl(env.NEXT_PUBLIC_SUPABASE_URL)) missing.push('NEXT_PUBLIC_SUPABASE_URL');
 	if (!isSet(env, 'SUPABASE_SERVICE_ROLE_KEY')) missing.push('SUPABASE_SERVICE_ROLE_KEY');
 	if (!isSet(env, 'SUPABASE_STORAGE_BUCKET')) missing.push('SUPABASE_STORAGE_BUCKET');
 	return {

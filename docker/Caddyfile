@@ -1,0 +1,43 @@
+# Gateway of the self-hosted stack (compose.yaml).
+#
+# Public site (SITE_ADDRESS): the app, plus only those Supabase routes a browser has to reach
+# itself. A domain as SITE_ADDRESS gets a Let's Encrypt certificate automatically.
+# Internal listener :8000 (container network only): the full Auth and Storage APIs for the app's
+# server, and the rendered mail templates for Auth.
+
+{
+	servers :8000 {
+		trusted_proxies static private_ranges
+	}
+}
+
+{$SITE_ADDRESS} {
+	# Mail confirmation links and OAuth redirects.
+	@auth path /auth/v1/verify /auth/v1/callback /auth/v1/authorize
+	handle @auth {
+		uri strip_prefix /auth/v1
+		reverse_proxy auth:9999
+	}
+	# Signed image uploads straight from the browser.
+	@upload path /storage/v1/object/upload/sign/*
+	handle @upload {
+		uri strip_prefix /storage/v1
+		reverse_proxy storage:5000
+	}
+	handle {
+		reverse_proxy app:3000
+	}
+}
+
+:8000 {
+	handle_path /auth/v1/* {
+		reverse_proxy auth:9999
+	}
+	handle_path /storage/v1/* {
+		reverse_proxy storage:5000
+	}
+	handle_path /mail-templates/* {
+		root * /srv/mail-templates
+		file_server
+	}
+}

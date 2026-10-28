@@ -1,3 +1,4 @@
+import path from 'node:path';
 import bundleAnalyzer from '@next/bundle-analyzer';
 import { withSentryConfig } from '@sentry/nextjs/config';
 import type { NextConfig } from 'next';
@@ -26,6 +27,10 @@ const nextConfig: NextConfig = {
 			process.env.SENTRY_RELEASE ?? process.env.VERCEL_GIT_COMMIT_SHA ?? 'local',
 	},
 	distDir: process.env.NEXT_DIST_DIR ?? '.next',
+	// The Docker image (Dockerfile) runs the self-contained server; Vercel builds without it.
+	...(process.env.NEXT_OUTPUT_STANDALONE === 'true'
+		? { output: 'standalone' as const, outputFileTracingRoot: path.join(process.cwd(), '..', '..') }
+		: {}),
 	typescript: {
 		ignoreBuildErrors: false,
 		tsconfigPath: process.env.NEXT_TSCONFIG_PATH ?? 'tsconfig.json',

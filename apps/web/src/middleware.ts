@@ -1,5 +1,6 @@
 import { refreshSupabaseSession } from '@/core/auth/middleware';
 import { REQUEST_PATH_HEADER } from '@/core/auth/next-path';
+import { requestOrigin } from '@/core/http/request-origin';
 import { contentSecurityPolicy } from '@/core/infra/security-headers';
 import {
 	checkRateLimit,
@@ -42,9 +43,9 @@ async function withPageSecurityHeaders(
 	const nonce = crypto.randomUUID().replaceAll('-', '');
 	// Plain http on localhost (fixtures, real-stack runs): WebKit would otherwise upgrade every
 	// asset request to https and fail; production is always served over https.
+	const origin = new URL(requestOrigin(req));
 	const localFixtureHttp =
-		fixture?.localHttp === true ||
-		(req.nextUrl.protocol === 'http:' && req.nextUrl.hostname === 'localhost');
+		fixture?.localHttp === true || (origin.protocol === 'http:' && origin.hostname === 'localhost');
 	const csp = contentSecurityPolicy(nonce, !localFixtureHttp);
 	const requestHeaders = new Headers(req.headers);
 	requestHeaders.set('x-nonce', nonce);

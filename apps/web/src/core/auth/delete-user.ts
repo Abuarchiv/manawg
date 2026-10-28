@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { supabaseFetch } from './supabase-fetch';
 
 const AUTH_DELETE_TIMEOUT_MS = 4_000;
 
@@ -13,7 +14,7 @@ export async function deleteAuthUser(
 	authUserId: string,
 	options: AuthDeleteOptions = {},
 ): Promise<boolean> {
-	const fetchImpl = options.fetch ?? globalThis.fetch;
+	const fetchImpl = options.fetch ?? supabaseFetch;
 	const timeoutMs = options.timeoutMs ?? AUTH_DELETE_TIMEOUT_MS;
 	let explicitlyMissing = false;
 	const boundedFetch: typeof fetch = async (input, init) => {

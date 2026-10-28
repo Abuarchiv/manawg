@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { supabaseFetch } from '@/core/auth/supabase-fetch';
 import { createClient } from '@supabase/supabase-js';
 import {
 	PRIVATE_IMAGE_MAX_BYTES,
@@ -39,6 +40,7 @@ function getSupabaseServiceClient(timeoutMs?: number) {
 			autoRefreshToken: false,
 			detectSessionInUrl: false,
 		},
+		global: { fetch: supabaseFetch },
 		...(timeoutMs
 			? {
 					global: {
@@ -48,7 +50,7 @@ function getSupabaseServiceClient(timeoutMs?: number) {
 							const signal = init?.signal
 								? AbortSignal.any([init.signal, timeoutSignal])
 								: timeoutSignal;
-							return fetch(input, { ...init, signal });
+							return supabaseFetch(input, { ...init, signal });
 						},
 					},
 				}

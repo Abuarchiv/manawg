@@ -106,6 +106,9 @@ test('remote runtime connections enforce certificate-verified TLS', () => {
 		assert.equal(resolveConnectionString(), process.env.POSTGRES_URL);
 		process.env.POSTGRES_URL = 'postgresql://app:example@[::1]/app';
 		assert.equal(resolveConnectionString(), process.env.POSTGRES_URL);
+		// A Docker Compose service name stays on the private container network.
+		process.env.POSTGRES_URL = 'postgresql://app:example@db:5432/postgres';
+		assert.equal(resolveConnectionString(), process.env.POSTGRES_URL);
 		process.env.POSTGRES_URL = 'https://db.example.test:5432/app';
 		assert.throws(() => resolveConnectionString(), /must be a PostgreSQL URL/);
 		process.env.POSTGRES_URL =

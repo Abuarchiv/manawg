@@ -170,8 +170,9 @@ CI (`.github/workflows/ci.yml`, job `validate`) runs, in this order:
 `e2e-fixtures` (`test:e2e:fixtures`, Chromium) runs on every non-draft PR and every push to
 `main`. While the repo variable `PREVIEW_GATE` is `on`, the Preview jobs (`preview-source`,
 `db-supabase-preview`, `e2e-preview`) migrate and test the Preview deployment of the current
-`main` tip. Renovate (`.github/renovate.json`) opens one grouped minor/patch PR per week and a
-separate PR per major update; third-party actions are pinned by commit SHA.
+`main` tip. Dependabot (`.github/dependabot.yml`) opens one grouped minor/patch PR per week and
+ecosystem (npm, GitHub Actions, Docker) and a separate PR per major update; third-party actions
+are pinned by commit SHA.
 
 Run the same gates locally before you open a pull request.
 
