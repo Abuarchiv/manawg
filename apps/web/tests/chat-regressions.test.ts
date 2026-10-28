@@ -318,6 +318,6 @@ test('chat errors render English', () => {
 	);
 	assert.equal(
 		renderMessage(en, explainChatError('edit', 'edit_not_allowed')),
-		'Messages can only be edited for 15 minutes after sending.',
+		'Messages can only be edited within 15 minutes of sending.',
 	);
 });

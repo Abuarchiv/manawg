@@ -486,3 +486,115 @@ test.describe('English chat', () => {
 		}
 	}
 });
+
+const DAY_MS = 24 * 60 * MINUTE_MS;
+const WEEKDAY_PILL = /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)$/;
+
+test.describe('English noticeboard extras', () => {
+	skipUnlessFixtures();
+
+	test('loading skeleton, new posts banner and conversion links', async ({
+		page,
+		context,
+		baseURL,
+	}) => {
+		test.setTimeout(90_000);
+		await prepare(page, context, baseURL, 390, 'light');
+		const first = post('first', 'Internet bill €1,234.50 this month');
+		const second = post('second', 'Freshly added post');
+		let calls = 0;
+		await page.route(`**${BASE}/announcements*`, async (route) => {
+			if (route.request().method() !== 'GET') return route.fallback();
+			calls += 1;
+			if (calls === 1) await new Promise((resolve) => setTimeout(resolve, 1500));
+			return route.fulfill({ json: { announcements: calls === 1 ? [first] : [second, first] } });
+		});
+		await navigateToFeature(page, PINNWAND);
+		await expect(page.getByRole('status', { name: 'Loading noticeboard' })).toBeVisible();
+		await dismissOnboarding(page);
+		await expect(page.getByText('Internet bill')).toBeVisible();
+		await expectNoGermanChrome(page);
+
+		await expect(page.getByRole('button', { name: '1 new post' })).toBeVisible({
+			timeout: POLL_WAIT_MS * 3,
+		});
+		await expectNoGermanChrome(page);
+		await page.getByRole('button', { name: '1 new post' }).click();
+		await expect(page.getByText('Freshly added post')).toBeVisible();
+
+		const actions = page.getByRole('button', { name: /^Post actions: Internet bill/ });
+		await actions.click();
+		await page.getByRole('menuitem', { name: /^Add as expense/ }).click();
+		await page.waitForURL(/\/ausgaben\?.*amount=1234\.50/);
+	});
+});
+
+test.describe('English chat extras', () => {
+	skipUnlessFixtures();
+
+	for (const [width, scheme] of [
+		[320, 'dark'],
+		[390, 'light'],
+	] as const) {
+		test(`day pills, unread divider, reactions and mentions ${width}px ${scheme}`, async ({
+			page,
+			context,
+			baseURL,
+		}) => {
+			await prepare(page, context, baseURL, width, scheme);
+			await page.route(`**${BASE}/chat/read`, (route) => route.fulfill({ json: { ok: true } }));
+			const ago = (ms: number): string => new Date(Date.now() - ms).toISOString();
+			await page.route(`**${BASE}/chat/messages*`, (route) =>
+				route.request().method() === 'GET'
+					? route.fulfill({
+							json: {
+								messages: [
+									chatMessage({
+										id: 'weekday',
+										senderMemberId: MINA_ID,
+										body: 'Earlier this week',
+										createdAt: ago(3 * DAY_MS),
+									}),
+									chatMessage({
+										id: 'yesterday',
+										senderMemberId: MINA_ID,
+										body: 'Yesterday evening',
+										createdAt: ago(DAY_MS),
+									}),
+									chatMessage({
+										id: 'today',
+										senderMemberId: MINA_ID,
+										body: 'Fresh message',
+										imageUrl: '/icon.png',
+									}),
+								],
+								refreshedMessages: [],
+								reactions: [{ messageId: 'today', memberId: MINA_ID, emoji: '👍' }],
+								reads: [{ memberId: MINA_ID, lastReadAt: new Date().toISOString() }],
+								readMarker: { messageId: 'weekday', createdAt: ago(3 * DAY_MS) },
+							},
+						})
+					: route.fallback(),
+			);
+			await navigateToFeature(page, CHAT);
+			await dismissOnboarding(page);
+
+			const log = page.getByRole('log', { name: 'Chat messages' });
+			await expect(log.getByText('Yesterday', { exact: true })).toBeVisible({
+				timeout: POLL_WAIT_MS,
+			});
+			await expect(log.getByText(WEEKDAY_PILL)).toBeVisible();
+			await expect(log.getByText('New messages')).toBeVisible();
+			await expect(
+				log.getByRole('button', { name: /^Reaction 👍 \(1\) from Mina: add — message from / }),
+			).toBeVisible();
+			await expect(log.getByRole('img', { name: /^Image from / })).toBeAttached();
+			await expectNoGermanChrome(page);
+
+			await page.getByRole('textbox', { name: 'Chat message' }).fill('@Mi');
+			await expect(page.getByRole('listbox', { name: 'Mention a flatmate' })).toBeVisible();
+			await expectNoGermanChrome(page);
+			await expectNoSidewaysScroll(page, width);
+		});
+	}
+});

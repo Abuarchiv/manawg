@@ -110,7 +110,7 @@ export default {
 		sentence: '{subject}.',
 		imageRemoved: 'This image was removed. Upload it again before you send the message.',
 		replyGone: 'The message you are replying to no longer exists. Remove the reply and send again.',
-		editNotAllowed: 'Messages can only be edited for {minutes} minutes after sending.',
+		editNotAllowed: 'Messages can only be edited within {minutes} minutes of sending.',
 		keyUnavailable: 'The message could not be sent safely. Try again.',
 		textKept: '{error} Your text is still there.',
 	},

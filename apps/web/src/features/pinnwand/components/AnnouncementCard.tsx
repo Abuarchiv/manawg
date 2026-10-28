@@ -151,7 +151,9 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 							actionSubject={actionSubject}
 							shareCode={shareCode}
 							sourceHref={sourceHref}
-							prefill={announcement.source === 'manual' ? buildPinnwandPrefill(bodyText) : null}
+							prefill={
+								announcement.source === 'manual' ? buildPinnwandPrefill(bodyText, locale) : null
+							}
 							hiddenReactions={reactions.hidden}
 							reactionPending={reactionPending}
 							isPinned={isPinned}
