@@ -243,7 +243,9 @@ test.describe('entry accessibility', () => {
 			await expect(page.getByLabel('Dein Anzeigename')).toBeFocused();
 			await expect(page.getByLabel('Dein Anzeigename')).toHaveAttribute('required', '');
 			// The invitation names the WG before joining; the share code never appears.
-			await expect(page.getByRole('heading', { name: 'Tritt der WG „sadf“ bei' })).toBeVisible();
+			await expect(
+				page.getByRole('heading', { name: 'Tritt der WG „Kastanienallee 12“ bei' }),
+			).toBeVisible();
 			await expect(page.getByText(FIXTURE_WG.shareCode)).toHaveCount(0);
 		});
 	});

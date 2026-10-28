@@ -335,7 +335,7 @@ test.describe('chat compose', () => {
 	const SHARE_CODE = FIXTURE_WG.shareCode;
 	const MEMBER = {
 		id: FIXTURE_WG.memberId,
-		name: 'dsaf',
+		name: 'Jonas',
 		active: true,
 	};
 

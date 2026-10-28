@@ -413,7 +413,7 @@ test.describe('label in name audit', () => {
 	const BASE = `/api/wg/${FIXTURE_WG.shareCode}`;
 	// Fixture WG name (src/fixtures/data.ts E2E_EXISTING_WG.name) — not
 	// exported via FIXTURE_WG, so it is duplicated here like the other specs do.
-	const WG_NAME = 'sadf';
+	const WG_NAME = 'Kastanienallee 12';
 
 	const emptyDashboard = {
 		balances: [],

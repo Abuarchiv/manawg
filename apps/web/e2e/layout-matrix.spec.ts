@@ -106,7 +106,7 @@ test.describe('mobile layout matrix', () => {
 		balances: [
 			{
 				memberId: MEMBER_ID,
-				memberName: 'dsaf',
+				memberName: 'Jonas',
 				color: '#6d5efc',
 				currency: 'EUR',
 				paidCents: 3290,
@@ -125,7 +125,7 @@ test.describe('mobile layout matrix', () => {
 				id: 'chore-bath',
 				title: 'Bad putzen',
 				assignedMemberId: MEMBER_ID,
-				assignedMemberName: 'dsaf',
+				assignedMemberName: 'Jonas',
 				assignedColor: '#6d5efc',
 				nextDueAt: FIXTURE_DUE_AT,
 				overdue: false,
@@ -135,7 +135,7 @@ test.describe('mobile layout matrix', () => {
 			{
 				kind: 'expense',
 				timestamp: '2026-09-21T08:00:00.000Z',
-				memberName: 'dsaf',
+				memberName: 'Jonas',
 				text: 'Internet',
 				amountCents: 3290,
 			},
@@ -561,7 +561,7 @@ test.describe('mobile layout matrix', () => {
 						await page.route(`**/api/wg/${SHARE_CODE}/members*`, (request) =>
 							request.fulfill({
 								json: {
-									members: [{ id: MEMBER_ID, name: 'dsaf', active: true }],
+									members: [{ id: MEMBER_ID, name: 'Jonas', active: true }],
 									viewerIsAdmin: true,
 								},
 							}),

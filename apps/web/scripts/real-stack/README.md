@@ -17,8 +17,7 @@ session refresh against real Supabase and real PostgreSQL instead of fixtures.
    without Upstash.
 7. `fuzz.mjs` (runs `fuzz-access.mjs` and `fuzz-races.mjs` too) sends broken bodies, foreign ids,
    IDOR and race attempts against every write route; `ui-edit.mjs` (with `SHOTS_DIR`) exercises
-   action sheets, editing, deleting, settings and dark mode; `discover.mjs` lists the controls per
-   page. `ui.mjs` and `ui-edit.mjs` also run with `BROWSER=webkit` and `DEVICE='iPhone SE'` (or
+   action sheets, editing, deleting, settings and dark mode. `ui.mjs` and `ui-edit.mjs` also run with `BROWSER=webkit` and `DEVICE='iPhone SE'` (or
    `'Pixel 7'`); the WebKit console messages about `interactive-widget` and the CSP-rejected
    `<style>` come from the engine and the Playwright screenshot, not from the app.
 8. `data.mjs` (runs `data-load.mjs` too) checks the Splitwise import (preview, commit, no double

@@ -583,7 +583,7 @@ test.describe('member avatar color', () => {
 		});
 
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings#access`);
-		const own = page.locator('span[aria-hidden]', { hasText: /^DS$/ }).first();
+		const own = page.locator('span[aria-hidden]', { hasText: /^JO$/ }).first();
 		const other = page.locator('span[aria-hidden]', { hasText: /^MI$/ }).first();
 		await expect(other).toBeVisible();
 
@@ -602,7 +602,7 @@ test.describe('member avatar color', () => {
 		expect(ownBg).not.toBe(muted);
 		expect(otherBg).not.toBe(muted);
 		// Same person, same color: every avatar of the viewer on the page matches.
-		for (const avatar of await page.locator('span[aria-hidden]', { hasText: /^DS$/ }).all()) {
+		for (const avatar of await page.locator('span[aria-hidden]', { hasText: /^JO$/ }).all()) {
 			expect(await bg(avatar)).toBe(ownBg);
 		}
 	});

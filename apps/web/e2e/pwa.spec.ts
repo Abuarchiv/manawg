@@ -276,8 +276,8 @@ test.describe('pwa platform', () => {
 
 		await bottomNav.getByRole('link', { name: 'Start' }).click();
 		await expect(page).toHaveURL(new RegExp(`/wg/${FIXTURE_WG.shareCode}$`));
-		// Fixture WG name (E2E_EXISTING_WG.name in src/fixtures/data.ts) is "sadf".
-		await expect.poll(() => page.title()).toBe('sadf — ManaWG');
+		// Fixture WG name (E2E_EXISTING_WG.name in src/fixtures/data.ts) is "Kastanienallee 12".
+		await expect.poll(() => page.title()).toBe('Kastanienallee 12 — ManaWG');
 	});
 });
 
