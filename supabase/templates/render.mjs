@@ -1,10 +1,16 @@
+const LEGAL_LINK =
+	/ &middot; <a href="https:\/\/manawg\.com\/(?:impressum|datenschutz)"[^>]*>[\s\S]*?<\/a>/g;
+
 // Points the official origins in the mail templates at another instance: `appUrl` for the app,
 // `legalUrl` for the imprint and privacy policy (scripts/supabase-auth-templates.mjs, Docker setup).
+// Without a `legalUrl` the footer links to the imprint and privacy policy are left out.
 export function renderTemplate(html, appUrl, legalUrl) {
-	return html
+	const withLegal = legalUrl
+		? html.replaceAll('https://manawg.com', legalUrl)
+		: html.replace(LEGAL_LINK, '');
+	return withLegal
 		.replaceAll('>app.manawg.com<', `>${new URL(appUrl).host}<`)
-		.replaceAll('https://app.manawg.com', appUrl)
-		.replaceAll('https://manawg.com', legalUrl);
+		.replaceAll('https://app.manawg.com', appUrl);
 }
 
 // Resolves the `{{ if eq .Data.locale "en" }}en{{ else }}de{{ end }}` blocks the way Supabase Auth
