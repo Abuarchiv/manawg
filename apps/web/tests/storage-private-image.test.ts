@@ -14,7 +14,7 @@ import {
 } from '../src/core/validators/image-url.ts';
 import { applyEnv } from './support/env.ts';
 
-// Private image URL grammar, origin selection, storage provider env requirements and the upload
+// Private image URL grammar, origin selection, storage env requirements and the upload
 // size / MIME allowlist. Protects against path traversal and leaking private object URLs.
 
 const WG_A = '11111111-1111-4111-8111-111111111111';
@@ -26,10 +26,6 @@ const ENV_KEYS = [
 	'VERCEL_URL',
 	'VERCEL_ENV',
 	'NEXT_PUBLIC_APP_URL',
-	'S3_PUBLIC_URL',
-	'S3_BUCKET',
-	'AWS_REGION',
-	'IMAGE_STORAGE_PROVIDER',
 	'SUPABASE_SERVICE_ROLE_KEY',
 	'SUPABASE_STORAGE_BUCKET',
 ] as const;
@@ -52,10 +48,6 @@ function baseEnv(): Record<string, string> {
 		NEXT_PUBLIC_SUPABASE_URL: 'https://project.supabase.co',
 		NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'publishable-key',
 		VERCEL_ENV: 'preview',
-		AWS_ACCESS_KEY_ID: 'aws-key',
-		AWS_SECRET_ACCESS_KEY: 'aws-secret',
-		AWS_REGION: 'eu-central-1',
-		S3_BUCKET: 'legacy-bucket',
 	};
 }
 
@@ -65,10 +57,6 @@ describe('private image URL contract', () => {
 			VERCEL_URL: 'preview.manawg.example',
 			VERCEL_ENV: 'preview',
 			NEXT_PUBLIC_APP_URL: 'https://manawg.com',
-			S3_PUBLIC_URL: 'https://legacy-bucket.s3.eu-central-1.amazonaws.com',
-			S3_BUCKET: 'legacy-bucket',
-			AWS_REGION: 'eu-central-1',
-			IMAGE_STORAGE_PROVIDER: undefined,
 		});
 	});
 
@@ -169,33 +157,25 @@ describe('private image URL contract', () => {
 		}
 	});
 
-	test('preserves the legacy AWS allowlist behavior', () => {
-		assert.equal(
-			imageUrlSchema.safeParse(
-				'https://legacy-bucket.s3.eu-central-1.amazonaws.com/anything.jpg?cache=1',
-			).success,
-			true,
-		);
-		assert.equal(
-			imageUrlSchema.safeParse('https://legacy-bucket.s3.amazonaws.com/anything.jpg').success,
-			true,
-		);
-		assert.equal(
-			imageUrlSchema.safeParse('https://other-bucket.s3.eu-central-1.amazonaws.com/x.jpg').success,
-			false,
-		);
+	test('rejects images on foreign hosts, including former S3 buckets', () => {
+		for (const url of [
+			'https://legacy-bucket.s3.eu-central-1.amazonaws.com/anything.jpg',
+			'https://cdn.example.com/manawg/x.jpg',
+		]) {
+			assert.equal(imageUrlSchema.safeParse(url).success, false);
+			assert.equal(isAllowedImageUrlForWg(url, WG_A), false);
+		}
 	});
 
-	test('reports explicit provider requirements without changing the AWS default', () => {
-		const aws = checkEnv(baseEnv());
-		assert.equal(
-			aws.degraded.some((entry) => entry.feature === 'image-uploads'),
-			false,
+	test('reports the Supabase storage requirements', () => {
+		const unconfigured = checkEnv(baseEnv());
+		const unconfiguredImage = unconfigured.degraded.find(
+			(entry) => entry.feature === 'image-uploads',
 		);
+		assert.ok(unconfiguredImage?.missing.includes('SUPABASE_STORAGE_BUCKET'));
 
 		const supabase = checkEnv({
 			...baseEnv(),
-			IMAGE_STORAGE_PROVIDER: 'supabase',
 			SUPABASE_SERVICE_ROLE_KEY: 'server-key',
 			SUPABASE_STORAGE_BUCKET: 'private-images',
 		});
@@ -206,7 +186,6 @@ describe('private image URL contract', () => {
 
 		const maskedValues = checkEnv({
 			...baseEnv(),
-			IMAGE_STORAGE_PROVIDER: 'supabase',
 			SUPABASE_SERVICE_ROLE_KEY: '********',
 			SUPABASE_STORAGE_BUCKET: 'private-images',
 		});
@@ -215,13 +194,8 @@ describe('private image URL contract', () => {
 			false,
 		);
 
-		const unknown = checkEnv({ ...baseEnv(), IMAGE_STORAGE_PROVIDER: 'unknown' });
-		const unknownImage = unknown.degraded.find((entry) => entry.feature === 'image-uploads');
-		assert.ok(unknownImage?.missing.includes('IMAGE_STORAGE_PROVIDER'));
-
 		const invalidSupabase = checkEnv({
 			...baseEnv(),
-			IMAGE_STORAGE_PROVIDER: 'supabase',
 			NEXT_PUBLIC_SUPABASE_URL: 'not-a-url',
 			SUPABASE_STORAGE_BUCKET: '',
 			SUPABASE_SERVICE_ROLE_KEY: '',
@@ -238,37 +212,22 @@ describe('private image URL contract', () => {
 		}
 	});
 
-	test('makes the configured provider storage variables fatal in production', () => {
-		const productionEnv = (): Record<string, string> => ({
+	test('production requires the Supabase storage settings', () => {
+		const productionEnv = () => ({
 			...baseEnv(),
 			VERCEL_ENV: 'production',
 			CRON_SECRET: 'cron-secret',
 			UPSTASH_REDIS_REST_URL: 'https://redis.example',
 			UPSTASH_REDIS_REST_TOKEN: 'upstash-token',
 			SUPABASE_SERVICE_ROLE_KEY: 'server-key',
+			SUPABASE_STORAGE_BUCKET: 'private-images',
 		});
-
 		const complete = checkEnv(productionEnv());
-		assert.equal(complete.ok, true);
+		assert.equal(complete.ok, true, complete.missingRequired.join(','));
 
-		const missingRegion = checkEnv((({ AWS_REGION: _dropped, ...rest }) => rest)(productionEnv()));
-		assert.equal(missingRegion.ok, false);
-		assert.ok(missingRegion.missingRequired.includes('AWS_REGION'));
-		// Production reports the missing variable as required instead of
-		// downgrading it to a degraded feature.
-		assert.equal(
-			missingRegion.degraded.some((entry) => entry.feature === 'image-uploads'),
-			false,
-		);
-
-		const supabase = checkEnv({
-			...productionEnv(),
-			IMAGE_STORAGE_PROVIDER: 'supabase',
-			SUPABASE_SERVICE_ROLE_KEY: 'server-key',
-			SUPABASE_STORAGE_BUCKET: '',
-		});
-		assert.equal(supabase.ok, false);
-		assert.ok(supabase.missingRequired.includes('SUPABASE_STORAGE_BUCKET'));
+		const withoutBucket = checkEnv({ ...productionEnv(), SUPABASE_STORAGE_BUCKET: '' });
+		assert.equal(withoutBucket.ok, false);
+		assert.ok(withoutBucket.missingRequired.includes('SUPABASE_STORAGE_BUCKET'));
 
 		const withoutServiceRole = checkEnv(
 			(({ SUPABASE_SERVICE_ROLE_KEY: _dropped, ...rest }) => rest)(productionEnv()),

@@ -1,5 +1,6 @@
 import 'server-only';
 import { createHash } from 'node:crypto';
+import nodemailer from 'nodemailer';
 
 const RESEND_BATCH_URL = 'https://api.resend.com/emails/batch';
 const DEFAULT_FROM = 'ManaWG <noreply@manawg.com>';
@@ -27,7 +28,7 @@ export type MailOutcome =
 	| { kind: 'deferred' };
 
 export interface MailTransport {
-	readonly name: 'resend' | 'dry-run';
+	readonly name: 'resend' | 'smtp' | 'dry-run';
 	/** One outcome per mail, in order. */
 	sendBatch(mails: readonly OutgoingMail[]): Promise<MailOutcome[]>;
 }
@@ -140,6 +141,53 @@ function createResendTransport(apiKey: string, from: string, prefix: string): Ma
 	return { name: 'resend', sendBatch: post };
 }
 
+/** Plain SMTP for self-hosted instances; mails go out one by one, failures stay per mail. */
+function createSmtpTransport(
+	env: Readonly<Record<string, string | undefined>>,
+	from: string,
+): MailTransport {
+	const port = Number(env.SMTP_PORT?.trim() || 587);
+	const user = env.SMTP_USER?.trim();
+	const transporter = nodemailer.createTransport({
+		host: env.SMTP_HOST?.trim(),
+		port,
+		secure: port === 465,
+		auth: user ? { user, pass: env.SMTP_PASS ?? '' } : undefined,
+		connectionTimeout: REQUEST_TIMEOUT_MS,
+		socketTimeout: REQUEST_TIMEOUT_MS,
+	});
+	return {
+		name: 'smtp',
+		async sendBatch(mails) {
+			const outcomes: MailOutcome[] = [];
+			for (const mail of mails) {
+				try {
+					const info = await transporter.sendMail({
+						from,
+						to: mail.to,
+						subject: mail.subject,
+						html: mail.html,
+						text: mail.text,
+						...(mail.unsubscribeUrl
+							? {
+									headers: {
+										'List-Unsubscribe': `<${mail.unsubscribeUrl}>`,
+										'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+									},
+								}
+							: {}),
+					});
+					outcomes.push({ kind: 'sent', providerId: info.messageId });
+				} catch (error) {
+					const code = error instanceof Error && 'code' in error ? String(error.code) : 'error';
+					outcomes.push({ kind: 'failed', error: `smtp_${code}`.slice(0, 200) });
+				}
+			}
+			return outcomes;
+		},
+	};
+}
+
 /** Logs what would be sent; nothing leaves the process and the run writes no ledger rows. */
 function createDryRunTransport(): MailTransport {
 	return {
@@ -157,7 +205,7 @@ function createDryRunTransport(): MailTransport {
 }
 
 /**
- * Resend in production (a missing key throws instead of degrading to a dry
+ * SMTP whenever `SMTP_HOST` is set (self-hosted instances). Otherwise Resend in production (a missing key throws instead of degrading to a dry
  * run); elsewhere only when an allow-list limits the recipients and a key is
  * set (Preview testing). Otherwise the dry-run transport. `prefix` namespaces
  * the provider idempotency keys per sender (statements, transactional mails).
@@ -166,11 +214,13 @@ export function createMailTransport(
 	env: Readonly<Record<string, string | undefined>> = process.env,
 	prefix = 'mail',
 ): MailTransport {
+	const from = env.STATEMENT_EMAIL_FROM?.trim() || DEFAULT_FROM;
+	if (env.SMTP_HOST?.trim()) return createSmtpTransport(env, from);
 	const apiKey = env.RESEND_API_KEY?.trim();
 	const mayReallySend = env.VERCEL_ENV === 'production' || readAllowlist(env) !== null;
 	if (env.VERCEL_ENV === 'production' && !apiKey) {
 		throw new Error('RESEND_API_KEY is not set in production');
 	}
 	if (!mayReallySend || !apiKey) return createDryRunTransport();
-	return createResendTransport(apiKey, env.STATEMENT_EMAIL_FROM?.trim() || DEFAULT_FROM, prefix);
+	return createResendTransport(apiKey, from, prefix);
 }

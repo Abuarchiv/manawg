@@ -100,15 +100,6 @@ mock.module('@/core/infra/supabase-storage', {
 		ImageStorageObjectNotFoundError: UnusedError,
 		createSupabaseSignedUpload: unreachable('createSupabaseSignedUpload'),
 		downloadSupabaseImage: unreachable('downloadSupabaseImage'),
-		getImageStorageProvider: unreachable('getImageStorageProvider'),
-	},
-});
-mock.module('@/core/infra/s3', {
-	namedExports: {
-		S3ConfigurationError: UnusedError,
-		S3_MAX_UPLOAD_BYTES: 10_000_000,
-		createPresignedUpload: unreachable('createPresignedUpload'),
-		isAllowedMimeType: () => true,
 	},
 });
 mock.module('@/core/validators/image-url', {

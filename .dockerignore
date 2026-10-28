@@ -1,0 +1,19 @@
+# Only what the image build needs; never local secrets or build output.
+**/node_modules
+**/.next
+**/.next-*
+**/.env*
+!apps/web/.env.example
+.git
+.github
+.claude
+.codex
+.agents
+.vercel
+docs
+openspec
+backups
+apps/web/e2e
+apps/web/test-results
+apps/web/playwright-report
+*.log

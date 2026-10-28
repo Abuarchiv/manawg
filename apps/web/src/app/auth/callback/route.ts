@@ -1,10 +1,11 @@
 import { safeNextPath } from '@/core/auth/next-path';
 import { createSupabaseServerClient } from '@/core/auth/server';
 import { queueWelcomeMail } from '@/core/auth/welcome-mail';
+import { requestOrigin } from '@/core/http/request-origin';
 import { type NextRequest, NextResponse } from 'next/server';
 
 function callbackError(request: NextRequest, response?: NextResponse): NextResponse {
-	const url = new URL('/neu', request.url);
+	const url = new URL('/neu', requestOrigin(request));
 	url.searchParams.set('error', 'auth_callback');
 	url.searchParams.set('next', safeNextPath(request.nextUrl.searchParams.get('next')));
 	const redirect = response ?? NextResponse.redirect(url);
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 		if (!partialConfirmation || !next.startsWith('/') || next.startsWith('//')) {
 			return callbackError(request);
 		}
-		const redirect = NextResponse.redirect(new URL(next, request.url));
+		const redirect = NextResponse.redirect(new URL(next, requestOrigin(request)));
 		redirect.headers.set('Cache-Control', 'private, no-store');
 		return redirect;
 	}
@@ -38,7 +39,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 		return callbackError(request);
 	}
 
-	const response = NextResponse.redirect(new URL(next, request.url));
+	const response = NextResponse.redirect(new URL(next, requestOrigin(request)));
 	try {
 		const supabase = createSupabaseServerClient(request, response);
 		const { data, error } = await supabase.auth.exchangeCodeForSession(

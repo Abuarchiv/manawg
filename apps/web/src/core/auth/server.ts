@@ -7,6 +7,7 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { authCookieOptions } from './cookie-options';
 import { applySessionHint } from './session-hint-cookie';
 import { getSupabaseEnv, hasSupabaseEnv } from './supabase-env';
+import { supabaseFetch } from './supabase-fetch';
 import { readVerifiedUser } from './verified-user';
 
 const SUPABASE_AUTH_TOKEN_COOKIE = /^sb-[A-Za-z0-9-]+-auth-token(?:\.\d+)?$/;
@@ -32,7 +33,10 @@ export function createSupabaseServerClient(
 
 	return createServerClient(url, publishableKey, {
 		cookieOptions: authCookieOptions(https),
-		...(clientIp ? { global: { headers: { 'x-forwarded-for': clientIp } } } : {}),
+		global: {
+			fetch: supabaseFetch,
+			...(clientIp ? { headers: { 'x-forwarded-for': clientIp } } : {}),
+		},
 		cookies: {
 			getAll: () => request.cookies.getAll(),
 			setAll: (cookiesToSet, headers) => {
@@ -60,6 +64,7 @@ export async function getAuthenticatedUserFromCookies(): Promise<Pick<User, 'id'
 	const cookieStore = await cookies();
 	const { url, publishableKey } = getSupabaseEnv();
 	const supabase = createServerClient(url, publishableKey, {
+		global: { fetch: supabaseFetch },
 		cookies: {
 			getAll: () => cookieStore.getAll(),
 			setAll: () => undefined,

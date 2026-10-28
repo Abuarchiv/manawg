@@ -34,11 +34,13 @@ const SENTINEL_TABLE = 'wgs';
 export async function main(progress) {
 	progress.stage = 'connection-config';
 	const sourceConnection = resolveConnectionString();
-	validateSupabaseSessionUrl(sourceConnection, 'Database migration connection');
+	// A self-hosted stack (scripts/selfhost/setup.mjs) migrates its own PostgreSQL container.
+	const selfHosted = process.env.MANAWG_SELF_HOSTED === 'true';
+	if (!selfHosted) validateSupabaseSessionUrl(sourceConnection, 'Database migration connection');
 	const previewSession = process.env.MANAWG_PREVIEW_CI_SESSION === 'true';
 	const productionSession = process.env.MANAWG_PRODUCTION_CI_SESSION === 'true';
-	if (previewSession && productionSession) {
-		throw new Error('Preview and Production CI sessions are mutually exclusive.');
+	if ([selfHosted, previewSession, productionSession].filter(Boolean).length > 1) {
+		throw new Error('Self-hosted, Preview and Production CI sessions are mutually exclusive.');
 	}
 	const connectionString = previewSession
 		? previewSessionDatabaseUrl(sourceConnection)

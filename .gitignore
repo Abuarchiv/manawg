@@ -64,3 +64,6 @@ supabase/.temp
 .env*
 !.env.example
 
+
+# Docker self-hosting backups (docker/backup.sh)
+backups/

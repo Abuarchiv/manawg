@@ -5,6 +5,11 @@
 
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '::1', 'host.docker.internal']);
 
+/** Loopback, `.local`, or a single-label name such as a Docker Compose service (`db`). */
+function isLocalHost(host) {
+	return LOCAL_HOSTS.has(host) || host.endsWith('.local') || /^[a-z0-9][a-z0-9_-]*$/.test(host);
+}
+
 export function validateDatabaseUrl(url, label) {
 	let parsed;
 	try {
@@ -24,7 +29,7 @@ export function validateDatabaseUrl(url, label) {
 		throw new Error(`${label} must specify sslmode at most once.`);
 	}
 	const host = parsed.hostname.toLowerCase();
-	const isLocal = LOCAL_HOSTS.has(host) || host.endsWith('.local');
+	const isLocal = isLocalHost(host);
 	if (!isLocal && !parsed.port) {
 		throw new Error(`${label} must specify a port for remote connections.`);
 	}

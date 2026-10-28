@@ -143,7 +143,6 @@ mock.module('@/core/infra/sentry', {
 mock.module('@/core/db/orphan-uploads', { namedExports: { sweepOrphanUploads: async () => null } });
 mock.module('@/core/infra/supabase-storage', {
 	namedExports: {
-		getImageStorageProvider: () => 'aws',
 		removeSupabaseImages: async () => undefined,
 	},
 });

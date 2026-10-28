@@ -4,49 +4,64 @@ Thanks for helping. Bug reports, fixes and improvements are welcome, in English 
 
 ## Before you start
 
+- **Questions** and ideas you want to talk through first: [Discussions](https://github.com/Abuarchiv/manawg-app/discussions).
+- **First contribution:** issues labelled
+  [good first issue](https://github.com/Abuarchiv/manawg-app/labels/good%20first%20issue) are
+  small and well described; [help wanted](https://github.com/Abuarchiv/manawg-app/labels/help%20wanted)
+  marks larger ones. Comment on the issue before you start, so nobody works on it twice.
 - **Bugs:** open an [issue](https://github.com/Abuarchiv/manawg-app/issues/new/choose) with steps
   to reproduce. For security problems use [SECURITY.md](SECURITY.md) instead.
 - **Small fixes** (typos, obvious bugs): open a pull request directly.
 - **Features and larger changes:** open an issue first and wait for a maintainer's answer. ManaWG
-  is deliberately small and phone-first, so not every good idea fits. Larger accepted changes
-  start as an [OpenSpec](https://github.com/Fission-AI/OpenSpec) proposal under
-  `openspec/changes/`.
+  is deliberately small and phone-first, so not every good idea fits. For larger changes, agree
+  on the approach in the issue before you write the code.
 
 By participating you agree to the [Code of Conduct](CODE_OF_CONDUCT.md).
 
-## Setup
+## Run it locally in five minutes
 
-You need Node 22 and pnpm 9 (`corepack enable`). The full Playwright suite runs against in-memory
-fixtures, so you need no database for most work:
+You need Node 22 and pnpm 9. No database and no accounts: fixture mode serves sample WGs from
+memory.
 
 ```sh
+git clone https://github.com/<you>/manawg-app.git   # your fork
+cd manawg-app
+corepack enable                                     # provides pnpm 9
 pnpm install
-pnpm --filter @manawg/web test:e2e:fixtures
+pnpm --filter @manawg/web dev:fixtures
 ```
 
-For a running app with real sign-in, use your own Supabase project, never a production one. Setup,
-all commands and the test gates are in [docs/development.md](docs/development.md).
+Open [localhost:3000/wg/MTE8PZAT](http://localhost:3000/wg/MTE8PZAT): a sample WG with
+expenses, chores and a shopping list. Code changes reload in the browser. Sign-in and saving
+need a real backend; for that, start the Docker stack from the
+[self-hosting guide](docs/self-hosting.md) (`docker compose up -d --build` builds your checkout).
+All commands and tests are in [docs/development.md](docs/development.md).
 
-## Pull requests
+## Your first pull request
 
-1. Fork the repository, branch from `main` and keep the change focused on one thing.
-2. Run the gates locally; CI runs the same on every pull request:
+1. Pick an issue, for example a
+   [good first issue](https://github.com/Abuarchiv/manawg-app/labels/good%20first%20issue), and
+   comment that you are on it.
+2. Create a branch in your fork: `git switch -c fix-shopping-list-sort`. Keep the change focused
+   on one thing.
+3. Make the change. A bug fix comes with a test that fails without it (see
+   [Code conventions](#code-conventions)).
+4. Run the quick checks:
 
    ```sh
-   pnpm lint && pnpm --filter @manawg/web lint
-   pnpm knip
-   pnpm typecheck
-   pnpm --filter @manawg/web test:unit
-   pnpm build
-   pnpm --filter @manawg/web test:e2e:fixtures
+   pnpm lint && pnpm typecheck && pnpm --filter @manawg/web test:unit
    ```
 
-3. Describe what changed and why, and how you tested it. Add screenshots for UI changes at a
-   320 px and a 390 px wide viewport, light and dark.
-4. Sign off every commit (`git commit -s`), see [Developer Certificate of Origin](#developer-certificate-of-origin).
+   CI runs the full set on your pull request (also `pnpm knip`, `pnpm build` and the Playwright
+   suite `pnpm --filter @manawg/web test:e2e:fixtures`); run those too if you touched the area.
+5. Commit with a sign-off (`git commit -s`, see
+   [Developer Certificate of Origin](#developer-certificate-of-origin)) and push.
+6. Open the pull request against `main`. Its title is one sentence that says what the change
+   does; the template asks what changed, why, and how you tested it. Add screenshots for UI
+   changes at a 320 px and a 390 px wide viewport, light and dark.
 
-A maintainer reviews and merges. Write the pull request title as one sentence that says what the
-change does.
+A maintainer reviews, may ask for changes, and merges. Stuck at any step? Ask in the pull request
+or in [Discussions](https://github.com/Abuarchiv/manawg-app/discussions).
 
 ## Code conventions
 

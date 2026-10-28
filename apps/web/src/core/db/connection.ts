@@ -72,6 +72,14 @@ export function resolveConnectionString(): string {
 
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '[::1]', 'host.docker.internal']);
 
+/**
+ * Loopback, `.local`, or a single-label name such as a Docker Compose service (`db`): hosts that
+ * never leave the machine or its private container network, so TLS is not required.
+ */
+function isLocalHost(host: string): boolean {
+	return LOCAL_HOSTS.has(host) || host.endsWith('.local') || /^[a-z0-9][a-z0-9_-]*$/.test(host);
+}
+
 function secureRuntimeConnectionString(url: string, label: string): string {
 	let parsed: URL;
 	try {
@@ -80,7 +88,7 @@ function secureRuntimeConnectionString(url: string, label: string): string {
 		throw new Error(`${label} is not a valid URL.`);
 	}
 	const host = parsed.hostname.toLowerCase();
-	if (!LOCAL_HOSTS.has(host) && !host.endsWith('.local')) {
+	if (!isLocalHost(host)) {
 		parsed.searchParams.set('sslmode', 'verify-full');
 	}
 	validateDatabaseUrl(parsed.href, label);
@@ -120,7 +128,7 @@ export function validateDatabaseUrl(url: string, label: string): void {
 	// Supavisor transaction pooling. Migration/session locks use the separate
 	// direct-connection validator in scripts/db-migrate.mjs.
 	const host = parsed.hostname.toLowerCase();
-	const isLocal = LOCAL_HOSTS.has(host) || host.endsWith('.local');
+	const isLocal = isLocalHost(host);
 	if (!isLocal && !parsed.port) {
 		throw new Error(`${label} must specify a port for remote connections.`);
 	}

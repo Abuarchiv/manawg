@@ -11,7 +11,7 @@ const BASE64URL_PATTERN = /^[A-Za-z0-9_-]+$/;
  * whatever is stored here on every WG event — so an unrestricted URL would let
  * any member point the server at an internal address (cloud metadata, an
  * internal service) and trigger the request at will. Same reasoning as
- * `image-url.ts`, which allowlists the S3 host for the same class of problem.
+ * `image-url.ts`, which only accepts this app's own image route for the same class of problem.
  *
  * Exact hosts where the service uses one, suffixes where it shards across
  * subdomains (Edge's `wns2-*.notify.windows.com`, Apple's regional hosts).

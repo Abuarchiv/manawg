@@ -1,5 +1,6 @@
 import 'server-only';
 import { createClient } from '@supabase/supabase-js';
+import { supabaseFetch } from './supabase-fetch';
 
 const LOOKUP_TIMEOUT_MS = 5_000;
 const LOOKUP_CONCURRENCY = 10;
@@ -33,7 +34,7 @@ export async function loadConfirmedEmails(
 		auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
 		global: {
 			fetch: (input, init) =>
-				fetch(input, { ...init, signal: AbortSignal.timeout(LOOKUP_TIMEOUT_MS) }),
+				supabaseFetch(input, { ...init, signal: AbortSignal.timeout(LOOKUP_TIMEOUT_MS) }),
 		},
 	}).auth.admin;
 
