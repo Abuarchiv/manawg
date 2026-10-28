@@ -5,7 +5,7 @@
 		"lib": ["dom", "dom.iterable", "esnext"],
 		"module": "esnext",
 		"moduleResolution": "bundler",
-		"jsx": "preserve",
+		"jsx": "react-jsx",
 		"allowJs": true,
 		"noEmit": true,
 		"incremental": true,
@@ -21,6 +21,12 @@
 		"plugins": [{ "name": "next" }],
 		"paths": { "@/*": ["./src/*"] }
 	},
-	"include": [".next/types/**/*.ts", "next-env.d.ts", "src/**/*.ts", "src/**/*.tsx"],
+	"include": [
+		".next/types/**/*.ts",
+		".next/dev/types/**/*.ts",
+		"next-env.d.ts",
+		"src/**/*.ts",
+		"src/**/*.tsx"
+	],
 	"exclude": ["node_modules", ".next", "e2e", "playwright.config.ts"]
 }

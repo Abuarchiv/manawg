@@ -1,14 +1,14 @@
 'use client';
 
-import { LogoMark } from '@/components/ui/LogoMark';
-import { buttonVariants } from '@/components/ui/button';
-import { ChatTopBarLink } from '@/components/wg/ChatTopBarLink';
-import { useWg } from '@/components/wg/WgContextProvider';
-import { cn } from '@/shared/lib/cn';
 import { UserRound } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useLayoutEffect, useRef } from 'react';
+import { buttonVariants } from '@/components/ui/button';
+import { LogoMark } from '@/components/ui/LogoMark';
+import { ChatTopBarLink } from '@/components/wg/ChatTopBarLink';
+import { useWg } from '@/components/wg/WgContextProvider';
+import { cn } from '@/shared/lib/cn';
 
 export function WgAppHeader() {
 	const { wg } = useWg();

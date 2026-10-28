@@ -2,15 +2,15 @@
 // Why: Two roommates edit the same list concurrently; duplicates must resolve deterministically.
 
 import { randomUUID } from 'node:crypto';
-import { type Page, expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 import { DrizzleQueryError } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import * as schema from '../src/core/db/schema';
 import { isOpenShoppingItemDuplicate } from '../src/features/shopping/shopping-duplicate';
 import {
-	FIXTURE_WG,
 	dismissOnboarding,
+	FIXTURE_WG,
 	navigateToFeature,
 	setupMember,
 	skipUnlessFixtures,

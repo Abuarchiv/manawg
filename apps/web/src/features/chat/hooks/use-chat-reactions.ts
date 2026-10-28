@@ -1,6 +1,6 @@
+import { type Dispatch, type SetStateAction, useRef } from 'react';
 import { createIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
-import { type Dispatch, type SetStateAction, useRef } from 'react';
 import { explainChatError } from '../chat-errors';
 import { withOwnReaction } from '../chat-reactions';
 import type { ReactionMutationTracker } from '../chat-refresh';

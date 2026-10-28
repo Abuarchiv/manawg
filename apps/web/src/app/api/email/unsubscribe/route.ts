@@ -1,11 +1,11 @@
+import { type NextRequest, NextResponse } from 'next/server';
 import { rateLimitResponse } from '@/core/http/api-errors';
 import {
-	type UnsubscribeKind,
 	disableMailKind,
+	type UnsubscribeKind,
 	verifyUnsubscribeToken,
 } from '@/core/mail/unsubscribe';
 import { checkRateLimit, clientIpKey, unsubscribeLimiter } from '@/core/rate-limit';
-import { type NextRequest, NextResponse } from 'next/server';
 
 const PAGE_HEADERS = {
 	'Content-Type': 'text/html; charset=utf-8',

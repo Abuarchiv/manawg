@@ -1,5 +1,16 @@
 'use client';
 
+import type { ReactNode } from 'react';
+import {
+	createContext,
+	useCallback,
+	useContext,
+	useEffect,
+	useMemo,
+	useReducer,
+	useRef,
+	useState,
+} from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -11,22 +22,11 @@ import {
 	useOnlineStatus,
 } from '@/core/hooks/use-online-status';
 import { cn } from '@/shared/lib/cn';
-import {
-	createContext,
-	useCallback,
-	useContext,
-	useEffect,
-	useMemo,
-	useReducer,
-	useRef,
-	useState,
-} from 'react';
-import type { ReactNode } from 'react';
 import { useMembersPolling, useMembersRefresh } from './use-members-refresh';
 import { useMembershipLost } from './use-membership-lost';
 import { useOfflineAutoSync, useSyncOnFocusAndOnline } from './use-offline-auto-sync';
 import { useSessionMember } from './use-session-member';
-import { type WgAuthRef, initWgSessionState, wgSessionReducer } from './wg-session-state';
+import { initWgSessionState, type WgAuthRef, wgSessionReducer } from './wg-session-state';
 
 export interface WgSummary {
 	id: string;
@@ -183,7 +183,6 @@ export function WgContextProvider({
 					<div
 						className="mx-auto w-full max-w-[var(--app-frame-width)] px-4 pt-6"
 						aria-label="Wird geladen"
-						// biome-ignore lint/a11y/useSemanticElements: role="status" names the loading region without swapping the wrapper element to <output>.
 						role="status"
 					>
 						<Skeleton className="h-7 w-40 max-w-full" />
@@ -255,7 +254,11 @@ function ShellAlert({
 	title,
 	description,
 	children,
-}: { title: string; description: string; children: ReactNode }) {
+}: {
+	title: string;
+	description: string;
+	children: ReactNode;
+}) {
 	return (
 		<main id="main" tabIndex={-1} className={STANDALONE_MAIN}>
 			<Alert variant="destructive">

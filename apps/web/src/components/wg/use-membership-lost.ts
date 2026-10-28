@@ -1,8 +1,8 @@
 'use client';
 
+import { type Dispatch, type RefObject, useEffect } from 'react';
 import { fetchAccountWgs } from '@/core/infra/account-wgs';
 import { MEMBERSHIP_LOST_EVENT } from '@/core/infra/api-client';
-import { type Dispatch, type RefObject, useEffect } from 'react';
 import type { WgAuthRef, WgSessionAction } from './wg-session-state';
 
 /**

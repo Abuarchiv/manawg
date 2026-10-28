@@ -1,10 +1,10 @@
 // Settings access/admin, data summary, legal links, pending switches and tab focus.
 // Why: Every tab must stay reachable and readable at 320px / 200% text, and pending switches must not double-submit.
 
-import { type Page, expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 import {
-	FIXTURE_WG,
 	dismissOnboarding,
+	FIXTURE_WG,
 	inMinimalMatrix,
 	navigateToFeature,
 	setupMember,

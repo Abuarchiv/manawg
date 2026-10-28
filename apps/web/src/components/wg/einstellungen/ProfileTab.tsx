@@ -1,17 +1,17 @@
 'use client';
 
+import { Monitor, Moon, Sun } from 'lucide-react';
 import { InstallButton } from '@/components/app/InstallButton';
 import { useTheme } from '@/components/app/ThemeProvider';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { MemberAvatar } from '@/components/wg/MemberAvatar';
-import { useWg } from '@/components/wg/WgContextProvider';
 import { LinkRow } from '@/components/wg/einstellungen/LinkRow';
 import { MemberNameForm } from '@/components/wg/einstellungen/MemberNameForm';
 import { Section } from '@/components/wg/einstellungen/Section';
 import { WgNameSection } from '@/components/wg/einstellungen/WgNameSection';
+import { MemberAvatar } from '@/components/wg/MemberAvatar';
+import { useWg } from '@/components/wg/WgContextProvider';
 import { haptic } from '@/shared/lib/haptics';
 import { SUPPORT_MAILTO } from '@/shared/lib/support-mailto';
-import { Monitor, Moon, Sun } from 'lucide-react';
 
 const THEMES = [
 	{ value: 'light', label: 'Hell', icon: Sun },

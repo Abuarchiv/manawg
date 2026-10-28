@@ -1,13 +1,12 @@
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { mock, test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { format } from 'node:util';
 import { contentSecurityPolicy } from '../src/core/infra/security-headers.ts';
-import { applyEnv } from './support/env.ts';
-import { withEnv } from './support/env.ts';
+import { applyEnv, withEnv } from './support/env.ts';
 
 // The envelope test drives the browser SDK; @sentry/browser is only reachable through
 // @sentry/nextjs, which pins the version the app ships.

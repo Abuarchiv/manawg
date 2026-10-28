@@ -1,9 +1,12 @@
 'use client';
 
-import { LogoMark } from '@/components/ui/LogoMark';
-import { useHasToasts } from '@/components/ui/Toast';
+import { X } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
+import { LogoMark } from '@/components/ui/LogoMark';
+import { useHasToasts } from '@/components/ui/Toast';
 import { isEditingTarget, safeLocalStorage } from '@/core/utils/browser';
 import {
 	type BeforeInstallEvent,
@@ -11,9 +14,6 @@ import {
 	subscribeInstall,
 	triggerInstall,
 } from '@/shared/lib/pwa-install';
-import { X } from 'lucide-react';
-import { usePathname } from 'next/navigation';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { InstallButton } from './InstallButton';
 
 // Not under `manawg:`/`manawg_`: signing out wipes those, and a dismissal is a device choice.

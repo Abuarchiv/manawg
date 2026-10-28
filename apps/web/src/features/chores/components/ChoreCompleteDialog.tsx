@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactElement } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
 	AlertDialog,
@@ -17,7 +18,6 @@ import {
 	nextAssigneeLabel,
 	nextAssigneeVerb,
 } from '@/features/chores/chore-completion';
-import type { ReactElement } from 'react';
 
 /** Trigger wording: Start and cleaning plan use the same labels. */
 export function completeTriggerLabel(title: string, actionLabel: string): string {

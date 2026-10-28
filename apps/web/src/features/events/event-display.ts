@@ -1,8 +1,8 @@
 import {
 	DEFAULT_DURATION_MS,
+	durationMsFor,
 	type EventInput,
 	type EventOccurrence,
-	durationMsFor,
 	expandRecurrence,
 } from './event-recurrence';
 

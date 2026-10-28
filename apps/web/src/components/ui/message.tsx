@@ -1,5 +1,5 @@
-import { cn } from '@/shared/lib/cn';
 import type * as React from 'react';
+import { cn } from '@/shared/lib/cn';
 
 function MessageGroup({ className, ...props }: React.ComponentProps<'div'>) {
 	return (
@@ -55,4 +55,4 @@ function MessageContent({ className, ...props }: React.ComponentProps<'div'>) {
 	);
 }
 
-export { MessageGroup, Message, MessageAvatar, MessageContent };
+export { Message, MessageAvatar, MessageContent, MessageGroup };

@@ -1,5 +1,7 @@
 'use client';
 
+import { ChevronRight } from 'lucide-react';
+import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
 	Item,
@@ -10,8 +12,6 @@ import {
 	ItemTitle,
 } from '@/components/ui/item';
 import type { AccountWg } from '@/core/infra/account-wgs';
-import { ChevronRight } from 'lucide-react';
-import Link from 'next/link';
 
 export type { AccountWg };
 

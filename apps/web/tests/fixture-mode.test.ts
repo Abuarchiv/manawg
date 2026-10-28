@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import { registerHooks } from 'node:module';
 import test from 'node:test';
+import { NextRequest } from 'next/server.js';
 import { E2E_CREATED_WG, E2E_EXISTING_WG, FIXTURE_AUTH_USER_ID } from '@/fixtures/data';
 import { resolveFixtureRequest } from '@/fixtures/middleware';
 import { isE2EDbDownMode } from '@/fixtures/mode';
 import { loadFixtureWgView } from '@/fixtures/pages';
-import { NextRequest } from 'next/server.js';
 import { withEnv } from './support/env.ts';
 
 // `next` has no package exports map, so Node's ESM resolver needs the file
@@ -127,7 +127,8 @@ test('fixture API leaves validation and writes to the real route', async () => {
 
 	const bootstrap = await fixtureApi(`/api/wg/${E2E_EXISTING_WG.shareCode}`);
 	assert.equal(bootstrap?.status, 200);
-	const { currentMember } = (await bootstrap?.json()) as {
+	assert.ok(bootstrap);
+	const { currentMember } = (await bootstrap.json()) as {
 		currentMember: { memberId: string; authUserId: string };
 	};
 	assert.equal(currentMember.memberId, E2E_EXISTING_WG.member.id);
@@ -138,7 +139,8 @@ test('fixture API lists the fixture WGs for the account with their member ids', 
 	assert.equal(await fixtureApi('/api/wg/mine'), null, 'guests reach the real route');
 	const res = await fixtureApi('/api/wg/mine', { headers: { cookie: 'manawg_signed_in=1' } });
 	assert.equal(res?.status, 200);
-	const { wgs } = (await res?.json()) as { wgs: Array<{ code: string; memberId: string }> };
+	assert.ok(res);
+	const { wgs } = (await res.json()) as { wgs: Array<{ code: string; memberId: string }> };
 	assert.deepEqual(
 		wgs.map(({ code, memberId }) => ({ code, memberId })),
 		[

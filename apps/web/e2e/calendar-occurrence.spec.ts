@@ -1,9 +1,9 @@
 // Calendar: changing or removing one date of a repeating event leaves the rest of the series alone.
 
-import { type Route, expect, test } from '@playwright/test';
+import { expect, type Route, test } from '@playwright/test';
 import {
-	FIXTURE_WG,
 	dismissOnboarding,
+	FIXTURE_WG,
 	navigateToFeature,
 	setupMember,
 	skipUnlessFixtures,

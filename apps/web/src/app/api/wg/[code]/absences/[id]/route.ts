@@ -1,3 +1,5 @@
+import { and, eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 import { recordAuditEvent } from '@/core/audit';
 import { db, memberAbsences } from '@/core/db';
 import { requireOwnerOrAdmin } from '@/core/guards/admin';
@@ -6,8 +8,6 @@ import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { badRequest, notFound, rateLimitResponse } from '@/core/http/api-errors';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
-import { and, eq } from 'drizzle-orm';
-import { NextResponse } from 'next/server';
 
 export const DELETE = withWgRoute<{ id: string }>('absences DELETE', async (req, { code, id }) => {
 	if (!UUID_PATTERN.test(id)) return badRequest('id_invalid');

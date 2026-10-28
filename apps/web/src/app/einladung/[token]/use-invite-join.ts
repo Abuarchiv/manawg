@@ -1,18 +1,18 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 import { hasSessionCookie } from '@/core/auth/session-hint';
 import {
 	type PendingIdempotentRequest,
 	resolveIdempotencyKey,
 	shouldReleaseIdempotencyKey,
 } from '@/core/http/idempotency-key';
-import { REQUEST_TIMEOUT_MS, anySignal, readApiErrorCode } from '@/core/infra/api-client';
+import { anySignal, REQUEST_TIMEOUT_MS, readApiErrorCode } from '@/core/infra/api-client';
 import { INVITE_EXPIRED_MESSAGE, joinErrorMessage } from '@/core/infra/join-flow';
 import { keyUnavailableMessage } from '@/core/offline/offline-copy';
 import { isInviteToken } from '@/core/utils/invite-token';
 import posthog from '@/shared/lib/analytics';
-import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
 
 type UnclaimedMember = { id: string; name: string };
 

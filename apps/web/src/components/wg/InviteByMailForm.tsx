@@ -1,11 +1,11 @@
 'use client';
 
+import { Mail } from 'lucide-react';
+import { type FormEvent, useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { apiFetch } from '@/core/infra/api-client';
-import { Mail } from 'lucide-react';
-import { type FormEvent, useId, useState } from 'react';
 
 interface Props {
 	shareCode: string;

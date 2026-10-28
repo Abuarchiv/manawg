@@ -1,31 +1,31 @@
 'use client';
 
-import { useToast } from '@/components/ui/Toast';
+import { AlertCircle, WifiOff } from 'lucide-react';
+import Link from 'next/link';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
+import { useToast } from '@/components/ui/Toast';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { subscribeConnectivity, useOnlineStatus } from '@/core/hooks/use-online-status';
 import {
-	OFFLINE_QUEUE_EVENT,
-	OFFLINE_SYNCED_EVENT,
 	countOfflineActions,
 	getSyncedCountForWg,
 	needsManualOfflineResolution,
+	OFFLINE_QUEUE_EVENT,
+	OFFLINE_SYNCED_EVENT,
 	offlineQueueReplaySupported,
 	readOfflineQueue,
 	syncOfflineActions,
 } from '@/core/offline/offline-client';
 import {
-	OFFLINE_REPLAY_UNSUPPORTED_NOTICE,
 	formatManualOfflineSyncResult,
 	formatOfflineQueueCount,
 	formatOfflineReviewNeeded,
 	formatQueuedOfflineActions,
 	getOfflineSyncFailureMessage,
+	OFFLINE_REPLAY_UNSUPPORTED_NOTICE,
 } from '@/core/offline/offline-copy';
-import { AlertCircle, WifiOff } from 'lucide-react';
-import Link from 'next/link';
-import { useCallback, useEffect, useRef, useState } from 'react';
 
 function isScopedSyncEventForOtherWg(event: Event, shareCode: string): boolean {
 	if (!(event instanceof CustomEvent)) return false;

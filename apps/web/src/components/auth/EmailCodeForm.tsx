@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+import { useEffect, useRef, useState } from 'react';
 import { ErrorBox } from '@/components/app/ErrorBox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -8,8 +10,6 @@ import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { authPageHref } from '@/core/auth/auth-intent';
 import { AUTH_FAILURE_MESSAGES, classifyAuthError } from '@/core/auth/password-errors';
-import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
 import {
 	type AuthFormProps,
 	type BusyAction,
@@ -157,7 +157,11 @@ export function EmailCodeForm({
 	auth,
 	busy,
 	intentQuery,
-}: { auth: ReturnType<typeof useEmailCode>; busy: BusyAction; intentQuery: string }) {
+}: {
+	auth: ReturnType<typeof useEmailCode>;
+	busy: BusyAction;
+	intentQuery: string;
+}) {
 	const { email, setEmail, code, setCode, error, sentTo, cooldown, resendNotice } = auth;
 	const codeRef = useRef<HTMLInputElement>(null);
 	const emailRef = useRef<HTMLInputElement>(null);

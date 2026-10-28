@@ -1,8 +1,8 @@
 import 'server-only';
+import { eq } from 'drizzle-orm';
 import { db, expenseSplits, expenses } from '@/core/db';
 import type { DbTransaction } from '@/core/db/transaction';
 import type { DebtExpenseInput } from '@/features/expenses/debts';
-import { eq } from 'drizzle-orm';
 
 /**
  * Load every expense of a WG together with its splits, shaped for the pure

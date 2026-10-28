@@ -1,5 +1,7 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
+import { type FormEvent, useEffect, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Field, FieldLabel } from '@/components/ui/field';
@@ -8,8 +10,6 @@ import { Spinner } from '@/components/ui/spinner';
 import { Section } from '@/components/wg/einstellungen/Section';
 import { apiFetch } from '@/core/infra/api-client';
 import { WG_NAME_MAX_LENGTH } from '@/shared/lib/limits';
-import { useRouter } from 'next/navigation';
-import { type FormEvent, useEffect, useState } from 'react';
 
 interface WgNameSectionProps {
 	wgName: string;

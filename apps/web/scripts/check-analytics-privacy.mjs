@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
-import { readFile, readdir } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
-import ts from 'typescript';
+import { transformSync } from 'esbuild';
 
 const root = new URL('../src/', import.meta.url);
 const [instrumentation, createFlow, joinFlow, pwa] = await Promise.all([
@@ -14,9 +14,13 @@ const [instrumentation, createFlow, joinFlow, pwa] = await Promise.all([
 ]);
 const onboarding = createFlow + joinFlow;
 
-const compiled = ts.transpileModule(instrumentation, {
-	compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
-}).outputText;
+// CommonJS with import() turned into require(), so the vm context below can stub each module.
+const compiled = transformSync(instrumentation, {
+	loader: 'ts',
+	format: 'cjs',
+	target: 'es2022',
+	supported: { 'dynamic-import': false },
+}).code;
 
 async function initialize(env, failImport = false, failInit = false) {
 	const calls = [];
@@ -31,11 +35,12 @@ async function initialize(env, failImport = false, failInit = false) {
 			process: { env },
 			console: { warn() {}, error() {} },
 			require(name) {
-				if (name === '@/core/infra/sentry') return { initializeSentry() {} };
+				if (name === '@/core/infra/sentry') return { __esModule: true, initializeSentry() {} };
 				assert.equal(name, 'posthog-js');
 				imports++;
 				if (failImport) throw new Error('provider blocked');
 				return {
+					__esModule: true,
 					default: {
 						init(key, config) {
 							if (failInit) throw new Error('initialization failed');

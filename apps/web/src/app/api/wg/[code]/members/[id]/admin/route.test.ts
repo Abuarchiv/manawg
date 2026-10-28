@@ -121,7 +121,10 @@ const { POST } = await import('./route');
 function harness({
 	actorRole = 'admin',
 	target = { id: targetId, name: 'Mira', deactivatedAt: null, authUserId: 'auth-2' },
-}: { actorRole?: string; target?: Target | null } = {}) {
+}: {
+	actorRole?: string;
+	target?: Target | null;
+} = {}) {
 	state.actorRole = actorRole;
 	state.target = target;
 	state.updates = [];

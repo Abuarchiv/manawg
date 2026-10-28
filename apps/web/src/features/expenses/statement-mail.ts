@@ -1,8 +1,7 @@
-import { formatEuroCents } from '@/core/utils/money';
-import type { MonthlyStatement } from './monthly-statement';
-
 import { APP_ORIGIN, escapeHtml } from '@/core/mail/brand-mail';
+import { formatEuroCents } from '@/core/utils/money';
 import { pluralize } from '@/shared/lib/plural';
+import type { MonthlyStatement } from './monthly-statement';
 
 export interface StatementMailInput {
 	wgName: string;

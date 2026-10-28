@@ -1,12 +1,11 @@
 'use client';
 
+import { Dialog as DialogPrimitive } from '@base-ui/react/dialog';
+import { XIcon } from 'lucide-react';
+import * as React from 'react';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/shared/lib/cn';
 import { useDismissOnBack } from '@/shared/lib/use-dismiss-on-back';
-import { Dialog as DialogPrimitive } from '@base-ui/react/dialog';
-import * as React from 'react';
-
-import { Button } from '@/components/ui/button';
-import { XIcon } from 'lucide-react';
 
 function Dialog({
 	open: openProp,

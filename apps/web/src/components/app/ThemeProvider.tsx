@@ -1,23 +1,23 @@
 'use client';
 
-import { safeLocalStorage } from '@/core/utils/browser';
-import {
-	type ResolvedTheme,
-	THEME_STORAGE_KEY,
-	type Theme,
-	parseStoredTheme,
-	resolveTheme,
-} from '@/shared/lib/theme';
 import { MotionConfig } from 'motion/react';
 import {
-	type ReactNode,
 	createContext,
+	type ReactNode,
 	useCallback,
 	useContext,
 	useEffect,
 	useMemo,
 	useState,
 } from 'react';
+import { safeLocalStorage } from '@/core/utils/browser';
+import {
+	parseStoredTheme,
+	type ResolvedTheme,
+	resolveTheme,
+	THEME_STORAGE_KEY,
+	type Theme,
+} from '@/shared/lib/theme';
 
 interface ThemeContextValue {
 	theme: Theme;

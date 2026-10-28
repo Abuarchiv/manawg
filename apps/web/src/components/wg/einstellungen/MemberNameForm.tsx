@@ -1,5 +1,6 @@
 'use client';
 
+import { type FormEvent, useEffect, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Field, FieldLabel } from '@/components/ui/field';
@@ -10,7 +11,6 @@ import { mutationErrorMessage } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
 import { joinErrorMessage } from '@/core/infra/join-flow';
 import { MEMBER_NAME_MAX_LENGTH } from '@/shared/lib/limits';
-import { type FormEvent, useEffect, useState } from 'react';
 
 function renameErrorMessage(status: number, error: string): string {
 	if (error === 'name_taken') return joinErrorMessage(status, error);

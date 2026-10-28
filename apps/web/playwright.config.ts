@@ -29,7 +29,7 @@ const parsedBaseUrl = new URL(BASE_URL);
 const isLocalBase = ['localhost', '127.0.0.1', '::1'].includes(parsedBaseUrl.hostname);
 const isRemoteBase = /^https?:\/\//i.test(BASE_URL) && !isLocalBase;
 const serverPort = parsedBaseUrl.port || (parsedBaseUrl.protocol === 'https:' ? '443' : '80');
-const APP_DIR = __dirname;
+const APP_DIR = import.meta.dirname;
 const useBuiltServer = process.env.PLAYWRIGHT_USE_BUILD === 'true';
 const isFixtureServer =
 	!isRemoteBase && (useBuiltServer || process.env.NEXT_PUBLIC_DB_DOWN === 'true');

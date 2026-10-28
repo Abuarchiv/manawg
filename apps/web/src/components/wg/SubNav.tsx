@@ -1,12 +1,12 @@
 'use client';
 
-import { getWgSection } from '@/components/app/navigation';
-import { useChatUnreadCount, useDashboardCounts } from '@/components/wg/use-wg-counts';
-import type { SegmentCountState } from '@/components/wg/use-wg-counts';
-import { cn } from '@/shared/lib/cn';
 import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { getWgSection } from '@/components/app/navigation';
+import type { SegmentCountState } from '@/components/wg/use-wg-counts';
+import { useChatUnreadCount, useDashboardCounts } from '@/components/wg/use-wg-counts';
+import { cn } from '@/shared/lib/cn';
 
 interface SubNavItem {
 	href: string;

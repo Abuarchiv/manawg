@@ -5,7 +5,7 @@
 // the WG layout renders without a real Postgres instance. Individual feature
 // API endpoints are mocked per-test via `page.route()`.
 
-import { type Page, expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 import { E2E_EXISTING_WG, FIXTURE_AUTH_USER_ID } from '../../src/fixtures/data';
 
 declare global {

@@ -1,7 +1,7 @@
-import { Marker, MarkerContent, MarkerIcon } from '@/components/ui/marker';
 import { CheckCircle2, Info, LogIn, LogOut, Receipt } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { Marker, MarkerContent, MarkerIcon } from '@/components/ui/marker';
 
 interface SystemMessageProps {
 	shareCode: string;
@@ -64,13 +64,7 @@ export function SystemMessage({ shareCode, systemKind, payload }: SystemMessageP
 	}
 }
 
-function SystemRow({
-	icon: Icon,
-	text,
-}: {
-	icon: typeof CheckCircle2;
-	text: ReactNode;
-}) {
+function SystemRow({ icon: Icon, text }: { icon: typeof CheckCircle2; text: ReactNode }) {
 	return (
 		<Marker
 			variant="separator"

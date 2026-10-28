@@ -174,12 +174,12 @@ export async function assertExpectedSchema(
 		}
 		for (const constraint of Object.values(table.compositePrimaryKeys)) {
 			const actual = findConstraint('p', table.table, constraint.name);
-			if (!actual || actual.is_valid !== true || !sameColumns(actual.columns, constraint.columns))
+			if (actual?.is_valid !== true || !sameColumns(actual.columns, constraint.columns))
 				mismatches.push(`primary key public.${table.table}.${constraint.name}`);
 		}
 		for (const constraint of Object.values(table.uniqueConstraints)) {
 			const actual = findConstraint('u', table.table, constraint.name);
-			if (!actual || actual.is_valid !== true || !sameColumns(actual.columns, constraint.columns))
+			if (actual?.is_valid !== true || !sameColumns(actual.columns, constraint.columns))
 				mismatches.push(`unique constraint public.${table.table}.${constraint.name}`);
 		}
 		for (const constraint of Object.values(table.checkConstraints)) {
@@ -195,8 +195,7 @@ export async function assertExpectedSchema(
 		for (const foreignKey of Object.values(table.foreignKeys)) {
 			const actual = findConstraint('f', table.table, foreignKey.name);
 			if (
-				!actual ||
-				actual.is_valid !== true ||
+				actual?.is_valid !== true ||
 				!sameColumns(actual.columns, foreignKey.columnsFrom) ||
 				actual.foreign_table_name !== foreignKey.tableTo ||
 				actual.foreign_schema !== 'public' ||
@@ -214,8 +213,7 @@ export async function assertExpectedSchema(
 		for (const index of Object.values(table.indexes)) {
 			const actual = indexes.get(`${table.table}.${index.name}`);
 			if (
-				!actual ||
-				actual.is_valid !== true ||
+				actual?.is_valid !== true ||
 				actual.is_ready !== true ||
 				actual.is_unique !== index.isUnique ||
 				actual.method !== index.method ||

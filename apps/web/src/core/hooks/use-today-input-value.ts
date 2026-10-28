@@ -1,8 +1,8 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { subscribeVisibility } from '@/core/hooks/use-online-status';
 import { msUntilNextLocalDay, todayInputValue } from '@/core/utils/local-date';
-import { useEffect, useState } from 'react';
 
 /**
  * Today's date as an `<input type="date">` value. Rolls over at midnight, also in a tab that

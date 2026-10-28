@@ -2,8 +2,8 @@
 // Why: Stock changes must be exact and replay-safe.
 
 import { expect, test } from '@playwright/test';
-import { type InventoryItemDto, groupItemsByCategory } from '../src/features/inventory/inventory';
-import { FIXTURE_WG, dismissOnboarding, navigateToFeature, setupMember } from './support/helpers';
+import { groupItemsByCategory, type InventoryItemDto } from '../src/features/inventory/inventory';
+import { dismissOnboarding, FIXTURE_WG, navigateToFeature, setupMember } from './support/helpers';
 
 test.describe('inventory restock retry', () => {
 	test('quick restock retry keeps its idempotency key per inventory item', async ({ page }) => {

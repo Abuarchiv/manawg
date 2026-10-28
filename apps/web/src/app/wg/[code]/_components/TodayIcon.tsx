@@ -1,4 +1,3 @@
-import type { TodayImportantKind } from '@/composition/dashboard-insights';
 import {
 	AlertTriangle,
 	ListChecks,
@@ -8,6 +7,7 @@ import {
 	Sparkles,
 	Wallet,
 } from 'lucide-react';
+import type { TodayImportantKind } from '@/composition/dashboard-insights';
 
 const ICONS: Record<TodayImportantKind, LucideIcon> = {
 	chore: Sparkles,

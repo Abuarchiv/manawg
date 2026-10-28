@@ -6,8 +6,8 @@ import {
 	SERVER_CHECK_PREFIX,
 } from './offline-failure-copy';
 import {
-	type OfflineAction,
 	explainOfflineActionFailure,
+	type OfflineAction,
 	serializeOfflineAction,
 } from './offline-queue';
 import { replayWindowReviewError } from './offline-store';

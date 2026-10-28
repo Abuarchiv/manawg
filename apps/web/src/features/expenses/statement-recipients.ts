@@ -1,8 +1,8 @@
 import type { ExpensePaymentInput } from './expense-payment-input';
 import {
+	buildMonthlyStatement,
 	type MonthlyStatement,
 	type StatementExpense,
-	buildMonthlyStatement,
 } from './monthly-statement';
 
 type StatementSkipReason =

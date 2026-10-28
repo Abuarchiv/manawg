@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { mock, test } from 'node:test';
-import { PgDialect, jsonb, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import { jsonb, PgDialect, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 import { TransactionAbort } from '../src/core/db/transaction-abort.ts';
 
 const idempotencyResponses = pgTable('idempotency_responses', {

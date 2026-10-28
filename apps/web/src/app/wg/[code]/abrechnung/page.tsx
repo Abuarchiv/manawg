@@ -1,4 +1,7 @@
 'use client';
+import { ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BackLink } from '@/components/wg/BackLink';
@@ -14,9 +17,6 @@ import {
 	buildMonthlyStatement,
 	shiftMonthKey,
 } from '@/features/expenses/monthly-statement';
-import { ChevronLeft, ChevronRight, Download } from 'lucide-react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useMemo } from 'react';
 
 const MONTH_PARAM = /^\d{4}-(0[1-9]|1[0-2])$/;
 

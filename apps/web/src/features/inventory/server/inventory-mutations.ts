@@ -1,4 +1,5 @@
 import 'server-only';
+import { and, eq, sql } from 'drizzle-orm';
 import { shoppingItems, wgInventoryItems, wgInventoryLog } from '@/core/db';
 import { rowHoldsPatch } from '@/core/db/row-holds-patch';
 import type { WgInventoryItem } from '@/core/db/schema-inventory';
@@ -9,7 +10,6 @@ import {
 	isBelowThreshold,
 	roundQuantity,
 } from '@/features/inventory/inventory';
-import { and, eq, sql } from 'drizzle-orm';
 
 type InventoryItemInput = Pick<
 	WgInventoryItem,

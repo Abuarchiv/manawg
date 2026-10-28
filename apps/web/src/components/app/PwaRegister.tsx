@@ -1,7 +1,7 @@
 'use client';
 
-import { captureException } from '@/core/infra/capture-client';
 import { useEffect } from 'react';
+import { captureException } from '@/core/infra/capture-client';
 
 export function PwaRegister() {
 	useEffect(() => {

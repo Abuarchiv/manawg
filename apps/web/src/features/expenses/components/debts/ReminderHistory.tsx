@@ -1,5 +1,6 @@
 'use client';
 
+import { Bell } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
 	Empty,
@@ -18,7 +19,6 @@ import {
 import { formatEuroCents } from '@/core/utils/money';
 import { formatRelativeTime, formatTimeFull } from '@/core/utils/time';
 import type { ReminderHistoryItem } from '@/features/expenses/expense-types';
-import { Bell } from 'lucide-react';
 
 interface ReminderHistoryProps {
 	items: ReadonlyArray<ReminderHistoryItem>;

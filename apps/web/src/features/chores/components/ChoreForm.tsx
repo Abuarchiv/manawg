@@ -1,5 +1,6 @@
 'use client';
 
+import type React from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,7 +23,6 @@ import {
 	INTERVAL_PRESETS_MONTHS,
 } from '@/features/chores/components/constants';
 import { pluralize } from '@/shared/lib/plural';
-import type React from 'react';
 
 interface ChoreFormProps {
 	open: boolean;

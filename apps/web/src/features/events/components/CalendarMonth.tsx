@@ -1,12 +1,15 @@
 'use client';
 
+import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import Link from 'next/link';
+import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { subscribeVisibility } from '@/core/hooks/use-online-status';
 import {
-	type ChoreOccurrence,
 	buildDays,
+	type ChoreOccurrence,
 	dayKey,
 	groupChoresByDay,
 	pickInitialFocusIndex,
@@ -20,9 +23,6 @@ import {
 } from '@/features/events/events';
 import { cn } from '@/shared/lib/cn';
 import { pluralize } from '@/shared/lib/plural';
-import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
-import Link from 'next/link';
-import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 interface CalendarMonthProps {
 	month: Date;
@@ -213,7 +213,7 @@ export function CalendarMonth({
 				<table
 					ref={gridRef}
 					aria-busy={status === 'loading' || undefined}
-					// biome-ignore lint/a11y/useSemanticElements: Calendar uses the existing roving-tabindex grid controller.
+					// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: Calendar uses the existing roving-tabindex grid controller.
 					role="grid"
 					aria-label={`Kalender ${monthLabel}`}
 					className="w-full table-fixed border-separate border-spacing-0"
@@ -242,7 +242,6 @@ export function CalendarMonth({
 									return (
 										<td
 											key={day.date.toISOString()}
-											// biome-ignore lint/a11y/useSemanticElements: A table cell is required to carry selected-date state inside the calendar grid.
 											// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: Grid cells are required for selection semantics; the child button handles keyboard interaction.
 											role="gridcell"
 											aria-selected={isSelected}

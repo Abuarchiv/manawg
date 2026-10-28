@@ -1,13 +1,13 @@
 // Adversarial API checks, part 2: cross-WG access with real ids (IDOR) must be refused.
 import {
-	B,
-	C,
 	absenceId,
 	annaId,
 	announcementId,
+	B,
 	benId,
-	cId,
+	C,
 	choreId,
+	cId,
 	code,
 	codeC,
 	commentId,
@@ -21,7 +21,7 @@ import {
 	shoppingId,
 	splitId,
 } from './fuzz-lib.mjs';
-import { DAY, call, expect, iso } from './modules-lib.mjs';
+import { call, DAY, expect, iso } from './modules-lib.mjs';
 
 // ---- 3. IDOR: C (other WG) against WG 1 resources, and WG-1 ids used inside WG C
 const idor = [];

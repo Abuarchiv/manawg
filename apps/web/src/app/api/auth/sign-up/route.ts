@@ -1,7 +1,7 @@
+import { z } from 'zod';
 import { assertPasswordNotPwned } from '@/core/auth/pwned-password';
 import { authPost } from '@/core/auth/route-helpers';
 import { emailField, nameField, nextField, passwordField } from '@/core/auth/route-schemas';
-import { z } from 'zod';
 
 const schema = z.object({
 	email: emailField,

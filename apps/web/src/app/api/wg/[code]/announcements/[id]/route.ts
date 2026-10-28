@@ -1,3 +1,5 @@
+import { and, eq, sql } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 import { recordAuditEvent } from '@/core/audit';
 import { announcementReactions, announcements, db, wgMembers } from '@/core/db';
 import { revokePrivateImageIfUnreferenced } from '@/core/db/private-image-deletions';
@@ -17,13 +19,11 @@ import {
 } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import {
-	type NotificationDispatchWarning,
 	dispatchNotificationSafely,
+	type NotificationDispatchWarning,
 } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { patchAnnouncementSchema } from '@/features/pinnwand/server/announcement-patch-schema';
-import { and, eq, sql } from 'drizzle-orm';
-import { NextResponse } from 'next/server';
 
 export const PATCH = withWgRoute<{ id: string }>(
 	'announcement PATCH',

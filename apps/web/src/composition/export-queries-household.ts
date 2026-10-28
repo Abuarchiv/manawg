@@ -1,3 +1,4 @@
+import { asc, desc, eq } from 'drizzle-orm';
 import {
 	choreCompletions,
 	chores,
@@ -7,7 +8,6 @@ import {
 	wgInventoryItems,
 	wgMembers,
 } from '@/core/db';
-import { asc, desc, eq } from 'drizzle-orm';
 import type { ExportPage } from './export-queries-types';
 
 export async function fetchMemberRows(wgId: string) {

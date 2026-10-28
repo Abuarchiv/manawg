@@ -1,12 +1,12 @@
 'use client';
 
+import { LogOut } from 'lucide-react';
+import { useState } from 'react';
 import { ErrorBox } from '@/components/app/ErrorBox';
 import { useConfirmLogoutDiscard } from '@/components/entry/use-confirm-logout-discard';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { AccountDeleteSection } from '@/components/wg/einstellungen/AccountDeleteSection';
-import { LogOut } from 'lucide-react';
-import { useState } from 'react';
 
 // Signed-in users without a WG never reach WG settings, so offer sign-out and deletion here.
 export function SignOutActions({ onSignedOut }: { onSignedOut: () => void }) {

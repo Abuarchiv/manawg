@@ -1,8 +1,8 @@
 import 'server-only';
+import { and, eq } from 'drizzle-orm';
 import { db, expensePayments } from '@/core/db';
 import { type DbTransaction, lockExpensePayments, withTransaction } from '@/core/db/transaction';
 import type { ExpensePaymentInput } from '@/features/expenses/expense-payment-input';
-import { and, eq } from 'drizzle-orm';
 
 export async function loadCompletedExpensePayments(
 	wgId: string,

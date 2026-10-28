@@ -4,7 +4,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { is } from 'drizzle-orm';
-import { PgTable, getTableConfig } from 'drizzle-orm/pg-core';
+import { getTableConfig, PgTable } from 'drizzle-orm/pg-core';
 
 const schema = {
 	...(await import('../src/core/db/schema.ts')),

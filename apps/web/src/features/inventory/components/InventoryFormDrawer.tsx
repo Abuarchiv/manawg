@@ -1,6 +1,6 @@
 'use client';
 
-import { useToast } from '@/components/ui/Toast';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
 	AlertDialog,
@@ -21,6 +21,7 @@ import {
 	DrawerTitle,
 } from '@/components/ui/drawer';
 import { Spinner } from '@/components/ui/spinner';
+import { useToast } from '@/components/ui/Toast';
 import { mutationErrorMessage } from '@/core/http/error-codes';
 import {
 	type PendingIdempotentRequest,
@@ -30,18 +31,17 @@ import {
 import { apiFetch } from '@/core/infra/api-client';
 import { keyUnavailableMessage } from '@/core/offline/offline-copy';
 import {
+	formatQuantity,
 	INVENTORY_CATEGORIES,
 	INVENTORY_UNITS,
 	type InventoryCategory,
 	type InventoryItemDto,
 	type InventoryMutationItemDto,
 	type InventoryUnit,
-	formatQuantity,
 	normalizeForMatch,
 	parseQuantityText,
 	quantityInputText,
 } from '@/features/inventory/inventory';
-import { useEffect, useRef, useState } from 'react';
 import { InventoryFormFields } from './InventoryFormFields';
 
 interface InventoryFormDrawerProps {

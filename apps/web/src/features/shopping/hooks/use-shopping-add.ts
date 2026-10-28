@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { useToast } from '@/components/ui/Toast';
 import { isReadOnlyMode } from '@/core/http/error-codes';
 import {
@@ -18,11 +19,11 @@ import {
 } from '@/core/offline/offline-client';
 import {
 	DRAFT_CLEANUP_FAILED_MESSAGE,
+	keyUnavailableMessage,
 	OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE,
 	OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
 	OFFLINE_SAVED_NOTICE,
 	QUEUE_EDIT_ALREADY_SENT_MESSAGE,
-	keyUnavailableMessage,
 } from '@/core/offline/offline-copy';
 import { createQueuedShoppingItem } from '@/core/offline/offline-queue';
 import type { PendingOverlay } from '@/core/sync/use-synced-collection';
@@ -34,7 +35,6 @@ import {
 	shoppingDuplicateMessage,
 } from '@/features/shopping/shopping-errors';
 import { TEMP_ITEM_ID_PREFIX } from '@/features/shopping/shopping-view';
-import { useEffect, useRef, useState } from 'react';
 
 type ShoppingCreateResponse = { item: ShoppingItem; warning: NotificationWarning };
 

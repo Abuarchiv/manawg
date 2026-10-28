@@ -1,16 +1,16 @@
+import { useCallback, useState } from 'react';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { refreshCachedFetch } from '@/core/hooks/use-cached-fetch';
 import { useStableCallback } from '@/core/hooks/use-stable-callback';
 import { isNetworkError } from '@/core/http/error-codes';
 import { useSyncedCollection } from '@/core/sync/use-synced-collection';
 import {
+	groupItemsByCategory,
 	type InventoryCategory,
 	type InventoryItemDto,
 	type InventoryMutationItemDto,
-	groupItemsByCategory,
 	isBelowThreshold,
 } from '@/features/inventory/inventory';
-import { useCallback, useState } from 'react';
 
 interface InventoryResponse {
 	items: InventoryItemDto[];

@@ -1,5 +1,7 @@
 'use client';
 
+import { Plus } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -22,15 +24,13 @@ import {
 } from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
 import {
+	formatQuantity,
 	type InventoryItemDto,
 	type InventoryMutationItemDto,
-	formatQuantity,
 	quickRestockCandidates,
 	restockAmount,
 } from '@/features/inventory/inventory';
 import { restockItem } from '@/features/inventory/restock-request';
-import { Plus } from 'lucide-react';
-import { useRef, useState } from 'react';
 
 interface QuickRestockSheetProps {
 	open: boolean;

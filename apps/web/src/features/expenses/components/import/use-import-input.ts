@@ -1,9 +1,9 @@
 'use client';
 
+import { useRef, useState } from 'react';
 import { MAX_CSV_BYTES } from '@/features/expenses/import-body';
 import { OcrInitializationError, runOcrOnImage } from '@/features/expenses/ocr';
-import { useRef, useState } from 'react';
-import { type ImportInputStatus, MAX_IMAGE_BYTES, decodeCsv } from './import-wizard-types';
+import { decodeCsv, type ImportInputStatus, MAX_IMAGE_BYTES } from './import-wizard-types';
 
 interface ImportInputCallbacks {
 	/** The input is gone: drop everything derived from it and reset the import options. */

@@ -1,5 +1,6 @@
 'use client';
 
+import type { Dispatch, SetStateAction } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
 	Field,
@@ -23,7 +24,6 @@ import { formatEuroCents } from '@/core/utils/money';
 import type { SplitMode } from '@/features/expenses/expense-form-draft';
 import { type ReopenedShare, remainderCandidates } from '@/features/expenses/expense-split-input';
 import type { ExpenseSplitShare } from '@/features/expenses/expense-types';
-import type { Dispatch, SetStateAction } from 'react';
 import { EqualParticipantsPicker } from './EqualParticipantsPicker';
 import { ManualSplitSummary } from './ManualSplitSummary';
 import { SplitReview } from './SplitReview';
@@ -157,13 +157,9 @@ export function ExpenseSplitFieldset({
 									disabled={formSaving || (isEditingExpense && !member.active)}
 									enterKeyHint={index === splitCandidates.length - 1 ? 'done' : 'next'}
 									aria-label={`Anteil ${member.name} in ${currency === 'EUR' ? 'Euro' : currency}${isEditingExpense && !member.active ? ', ausgezogen. Anteil bleibt unverändert.' : ''}`}
-									aria-invalid={
-										Boolean(splitsError) && member.id === firstSplitMemberId ? true : undefined
-									}
+									aria-invalid={splitsError && member.id === firstSplitMemberId ? true : undefined}
 									aria-describedby={
-										Boolean(splitsError) && member.id === firstSplitMemberId
-											? splitErrorId
-											: undefined
+										splitsError && member.id === firstSplitMemberId ? splitErrorId : undefined
 									}
 									className="min-h-11 font-mono tabular-nums text-base"
 								/>

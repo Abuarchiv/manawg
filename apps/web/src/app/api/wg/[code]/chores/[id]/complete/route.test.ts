@@ -254,8 +254,10 @@ mock.module('@/features/chores/chore-fairness', {
 		chooseNextAvailableMember: ({
 			members,
 			currentMemberId,
-		}: { members: { id: string }[]; currentMemberId: string | null }) =>
-			members.find((member) => member.id !== currentMemberId)?.id ?? currentMemberId,
+		}: {
+			members: { id: string }[];
+			currentMemberId: string | null;
+		}) => members.find((member) => member.id !== currentMemberId)?.id ?? currentMemberId,
 	},
 });
 mock.module('@/features/chores/chore-recurrence', {

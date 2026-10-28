@@ -1,4 +1,7 @@
 'use client';
+import { Plus } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
@@ -14,9 +17,6 @@ import { RecurringExpensesSection } from '@/features/expenses/components/ausgabe
 import { DebtSummary } from '@/features/expenses/components/debts/DebtSummary';
 import { useAusgabenPage } from '@/features/expenses/hooks/use-ausgaben-page';
 import { haptic } from '@/shared/lib/haptics';
-import { Plus } from 'lucide-react';
-import dynamic from 'next/dynamic';
-import { useEffect, useState } from 'react';
 
 const ExpenseFormSection = dynamic(
 	() =>

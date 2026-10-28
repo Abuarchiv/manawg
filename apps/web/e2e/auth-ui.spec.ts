@@ -1,7 +1,7 @@
 // E-mail code login, password tab and registration inbox state against the configured Supabase
 // browser client. Live Supabase auth is covered by supabase-auth-live and social-login-live.
 
-import { type Route, expect, test } from '@playwright/test';
+import { expect, type Route, test } from '@playwright/test';
 
 import { mockNoWgs, skipUnlessDbDown } from './support/helpers';
 

@@ -1,13 +1,5 @@
 'use client';
 
-import type { SessionMember } from '@/core/auth/local-account';
-import { subscribeOnline } from '@/core/hooks/use-online-status';
-import { apiFetch } from '@/core/infra/api-client';
-import { captureException } from '@/core/infra/capture-client';
-import {
-	LIST_REFRESH_INTERVAL_MS,
-	useVisibilityPausedInterval,
-} from '@/core/utils/use-visibility-paused-interval';
 import {
 	type Dispatch,
 	type RefObject,
@@ -17,6 +9,14 @@ import {
 	useRef,
 	useState,
 } from 'react';
+import type { SessionMember } from '@/core/auth/local-account';
+import { subscribeOnline } from '@/core/hooks/use-online-status';
+import { apiFetch } from '@/core/infra/api-client';
+import { captureException } from '@/core/infra/capture-client';
+import {
+	LIST_REFRESH_INTERVAL_MS,
+	useVisibilityPausedInterval,
+} from '@/core/utils/use-visibility-paused-interval';
 import type { Member } from './WgContextProvider';
 import type { WgAuthRef, WgSessionAction } from './wg-session-state';
 

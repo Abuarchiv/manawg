@@ -1,9 +1,9 @@
 'use client';
 
-import { cn } from '@/shared/lib/cn';
-import { useDismissOnBack } from '@/shared/lib/use-dismiss-on-back';
 import { Drawer as DrawerPrimitive } from '@base-ui/react/drawer';
 import * as React from 'react';
+import { cn } from '@/shared/lib/cn';
+import { useDismissOnBack } from '@/shared/lib/use-dismiss-on-back';
 
 type DrawerContextProps = {
 	hasSnapPoints: boolean;
@@ -217,11 +217,11 @@ function DrawerDescription({ className, ...props }: DrawerPrimitive.Description.
 
 export {
 	Drawer,
-	DrawerTrigger,
 	DrawerClose,
 	DrawerContent,
-	DrawerHeader,
-	DrawerFooter,
-	DrawerTitle,
 	DrawerDescription,
+	DrawerFooter,
+	DrawerHeader,
+	DrawerTitle,
+	DrawerTrigger,
 };

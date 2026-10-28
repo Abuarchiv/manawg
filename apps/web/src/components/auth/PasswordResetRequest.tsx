@@ -1,13 +1,13 @@
 'use client';
 
+import { useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
-import { classifyAuthError } from '@/core/auth/password-errors';
 import type { AuthFailure } from '@/core/auth/password-errors';
-import { useState } from 'react';
+import { classifyAuthError } from '@/core/auth/password-errors';
 import { GenericAuthError, isValidEmail, normalizeEmail } from './auth-form-shared';
 
 /** Requests a fresh reset link without leaving the reset page; the answer never reveals an account. */

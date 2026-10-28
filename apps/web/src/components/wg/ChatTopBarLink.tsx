@@ -1,5 +1,8 @@
 'use client';
 
+import { MessageCircle } from 'lucide-react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { useChatUnreadCount } from '@/components/wg/use-wg-counts';
@@ -9,9 +12,6 @@ import {
 } from '@/core/utils/use-visibility-paused-interval';
 import { cn } from '@/shared/lib/cn';
 import { haptic } from '@/shared/lib/haptics';
-import { MessageCircle } from 'lucide-react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 
 interface ChatTopBarLinkProps {
 	href: string;

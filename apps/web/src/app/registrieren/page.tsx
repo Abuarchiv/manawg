@@ -1,7 +1,7 @@
-import { authIntentQuery, authPageHref } from '@/core/auth/auth-intent';
-import { getAuthenticatedUserFromCookies } from '@/core/auth/server';
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
+import { authIntentQuery, authPageHref } from '@/core/auth/auth-intent';
+import { getAuthenticatedUserFromCookies } from '@/core/auth/server';
 import { RegistrierenClient } from './RegistrierenClient';
 
 export const dynamic = 'force-dynamic';
@@ -25,7 +25,9 @@ function toSearch(params: SearchParams): string {
 
 export default async function RegistrierenPage({
 	searchParams,
-}: { searchParams: Promise<SearchParams> }) {
+}: {
+	searchParams: Promise<SearchParams>;
+}) {
 	const search = toSearch(await searchParams);
 	// A transient Auth failure must not lock a visitor out of the form.
 	const user = await getAuthenticatedUserFromCookies().catch(() => null);

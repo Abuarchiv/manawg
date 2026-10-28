@@ -1,5 +1,7 @@
 'use client';
 
+import { ChevronRight, Circle, Loader2 } from 'lucide-react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import type { TodayImportantItem } from '@/composition/dashboard-insights';
 import { formatEuroCents } from '@/core/utils/money';
@@ -9,8 +11,6 @@ import {
 	completeTriggerLabel,
 } from '@/features/chores/components/ChoreCompleteDialog';
 import { cn } from '@/shared/lib/cn';
-import { ChevronRight, Circle, Loader2 } from 'lucide-react';
-import Link from 'next/link';
 import { TodayIcon } from './TodayIcon';
 
 export function TodayRow({

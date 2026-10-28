@@ -1,3 +1,5 @@
+import { desc, eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 import { recordAuditEvent } from '@/core/audit';
 import { db, wgInvites, wgMembers } from '@/core/db';
 import { activeInvitesOf, createWgInvite } from '@/core/db/wg-invites';
@@ -7,8 +9,6 @@ import { conflict, rateLimitResponse } from '@/core/http/api-errors';
 import { requestOrigin } from '@/core/http/request-origin';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { invitePath } from '@/core/utils/invite-token';
-import { desc, eq } from 'drizzle-orm';
-import { NextResponse } from 'next/server';
 /** Active invitations of the WG, newest first. The token itself is never listed. */
 export const GET = withWgRoute('invites GET', async (req, { code }) => {
 	const auth = await requireWgMember(req, code);

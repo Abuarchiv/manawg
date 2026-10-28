@@ -1,10 +1,10 @@
 // FAB summary overlay and date integrity in the expense UI.
 // Why: Overlays and dates must hold at 320px / 200% text.
 
-import { type Page, expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 import {
-	FIXTURE_WG,
 	dismissOnboarding,
+	FIXTURE_WG,
 	navigateToFeature,
 	setupMember,
 	skipUnlessFixtures,
@@ -15,7 +15,7 @@ test.describe('fab summary overlay', () => {
 
 	const SHARE_CODE = FIXTURE_WG.shareCode;
 
-	async function useLargeText(page: Page): Promise<void> {
+	async function enableLargeText(page: Page): Promise<void> {
 		await page.evaluate(() => {
 			document.documentElement.style.setProperty('font-size', '32px', 'important');
 		});
@@ -34,7 +34,7 @@ test.describe('fab summary overlay', () => {
 				await page.emulateMedia({ colorScheme });
 				await setupMember(page);
 				await navigateToFeature(page, `/wg/${SHARE_CODE}/abos`);
-				await useLargeText(page);
+				await enableLargeText(page);
 				await dismissOnboarding(page);
 				await expect(page.getByRole('heading', { name: 'Fixkosten', exact: true })).toBeVisible();
 				await expect(page.getByText('Dein Anteil', { exact: true })).toBeVisible();
@@ -221,7 +221,7 @@ test.describe('fab summary overlay', () => {
 			['ausgaben', 'Ausgabe hinzufügen'],
 		] as const) {
 			await navigateToFeature(page, `/wg/${SHARE_CODE}/${feature}`);
-			await useLargeText(page);
+			await enableLargeText(page);
 			await dismissOnboarding(page);
 			const action = page.getByRole('button', { name: label, exact: true });
 			await expect(action).toBeVisible();
@@ -231,7 +231,7 @@ test.describe('fab summary overlay', () => {
 		}
 
 		await navigateToFeature(page, `/wg/${SHARE_CODE}/einkauf`);
-		await useLargeText(page);
+		await enableLargeText(page);
 		await dismissOnboarding(page);
 		await expect(page.locator('[data-page-primary-action] > button')).toHaveCount(0);
 		const addItem = page.getByRole('button', { name: 'Artikel hinzufügen', exact: true });
@@ -276,7 +276,7 @@ test.describe('fab summary overlay', () => {
 			route.fulfill({ json: { reminders: [] } }),
 		);
 		await navigateToFeature(page, `/wg/${SHARE_CODE}/mahnungen`);
-		await useLargeText(page);
+		await enableLargeText(page);
 		await dismissOnboarding(page);
 		// RemindButton wraps the button; the FAB CSS only applies to direct children.
 		const textAction = page.locator('[data-page-primary-action] button');

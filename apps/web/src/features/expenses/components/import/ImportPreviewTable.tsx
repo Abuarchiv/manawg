@@ -14,8 +14,8 @@ import {
 } from '@/components/ui/item';
 import { formatEuroCents } from '@/core/utils/money';
 import {
-	type ParsedExpense,
 	describeParsedExpenseWarning,
+	type ParsedExpense,
 } from '@/features/expenses/import-parsers';
 import { cn } from '@/shared/lib/cn';
 
@@ -76,6 +76,7 @@ export function ImportPreviewTable({
 				const skipped = skipIndexes.has(index);
 				return (
 					<Item
+						// biome-ignore lint/suspicious/noArrayIndexKey: parsed rows have no id; the list is static and index is the skip key
 						key={`${parsed.date}-${index}`}
 						variant="outline"
 						className={cn('items-start', skipped && '[&>:not([data-slot=checkbox])]:opacity-60')}
@@ -111,6 +112,7 @@ export function ImportPreviewTable({
 							<ul className="flex w-full flex-col gap-1 text-sm" aria-label="Aufteilung">
 								{parsed.splits.map((split, splitIndex) => (
 									<li
+										// biome-ignore lint/suspicious/noArrayIndexKey: splits have no id; the list is static and a member can repeat
 										key={`${split.memberName}-${splitIndex}`}
 										className="flex justify-between gap-3"
 									>

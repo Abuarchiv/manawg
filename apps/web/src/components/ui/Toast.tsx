@@ -1,10 +1,10 @@
 'use client';
 
+import { CheckCircle, Info, X, XCircle } from 'lucide-react';
+import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { haptic } from '@/shared/lib/haptics';
-import { CheckCircle, Info, X, XCircle } from 'lucide-react';
-import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 import { pushToast } from './toast-queue';
 
 type ToastVariant = 'success' | 'error' | 'info';
@@ -145,13 +145,13 @@ export function ToastContainer() {
 	);
 
 	return (
+		// biome-ignore lint/a11y/useSemanticElements: role="region" names the fixed toast stack; <section> would add another landmark.
 		<div
 			data-toast-stack
 			className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--app-nav-height,5rem)+0.5rem+var(--thumb-action-space,0px))] z-50 mx-auto flex max-h-[60svh] w-full max-w-[var(--app-frame-width)] flex-col-reverse gap-2 overflow-y-auto overscroll-contain px-4"
 			aria-label="Benachrichtigungen"
 			// Mounted while empty: a live region that appears together with its content is often not announced.
 			aria-live="polite"
-			// biome-ignore lint/a11y/useSemanticElements: role="region" names the fixed toast stack; <section> would add another landmark.
 			role="region"
 		>
 			{/* Newest first in the DOM = lowest on screen, so a stack taller than the cap scrolls away from the newest. */}

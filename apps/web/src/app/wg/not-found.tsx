@@ -1,3 +1,6 @@
+import { SearchX } from 'lucide-react';
+import type { Metadata } from 'next';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -7,9 +10,6 @@ import {
 	EmptyHeader,
 	EmptyMedia,
 } from '@/components/ui/empty';
-import { SearchX } from 'lucide-react';
-import type { Metadata } from 'next';
-import Link from 'next/link';
 
 // Lives in app/wg (not app/wg/[code]): a not-found file does not catch notFound()
 // thrown by the layout of its own segment, the parent segment's boundary does.

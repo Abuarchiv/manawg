@@ -1,11 +1,11 @@
 'use client';
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useEffect, useState } from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import type { BusyAction } from './auth-form-shared';
 import { EmailAuthForm, useEmailAuth } from './EmailAuthForm';
 import { EmailCodeForm, useEmailCode } from './EmailCodeForm';
 import { EmailSignUpForm, useEmailSignUp } from './EmailSignUpForm';
-import type { BusyAction } from './auth-form-shared';
 
 type CredentialsAuthProps = {
 	/** Sign-in offers a mailed code or a password; registration is the password form only. */

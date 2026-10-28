@@ -1,5 +1,7 @@
 'use client';
 
+import { Check, Hand, MessageSquareMore, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { memo, type ReactElement, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -34,9 +36,6 @@ import { formatChoreCadence } from '@/features/chores/components/chore-cadence';
 import type { ChoreMember, PlanChore } from '@/features/chores/components/chore-types';
 import { cn } from '@/shared/lib/cn';
 import type { MemberInfo } from '@/shared/lib/member-types';
-
-import { Check, Hand, MessageSquareMore, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
-import { type ReactElement, memo, useState } from 'react';
 
 interface ChoreRowProps {
 	chore: PlanChore;

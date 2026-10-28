@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,7 +7,6 @@ import { Spinner } from '@/components/ui/spinner';
 import { NAME_MAX, QUANTITY_MAX } from '@/features/shopping/components/constants';
 import type { ShoppingItem } from '@/features/shopping/components/shopping-types';
 import type { ShoppingEditResult } from '@/features/shopping/hooks/use-shopping-edit';
-import { useEffect, useRef, useState } from 'react';
 
 interface ShoppingEditFormProps {
 	item: ShoppingItem;

@@ -1,11 +1,11 @@
+import { Receipt } from 'lucide-react';
+import Link from 'next/link';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
 import type { ShoppingItem } from '@/features/shopping/components/shopping-types';
 import { expensePrefillHref } from '@/features/shopping/shopping-view';
 import { cn } from '@/shared/lib/cn';
-import { Receipt } from 'lucide-react';
-import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
 
 const RECEIPT_PROMPT_WINDOW_MS = 12 * 60 * 60 * 1000;
 // Only whoever just checked off themselves gets the notice brought into view, not on load.

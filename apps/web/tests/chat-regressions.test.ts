@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { PgDialect, jsonb, pgTable, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { jsonb, PgDialect, pgTable, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { explainChatError } from '../src/features/chat/chat-errors.ts';
 import * as chat from '../src/features/chat/chat-pure.ts';
 import * as unreadCount from '../src/features/chat/chat-unread-count.ts';

@@ -2,13 +2,13 @@ import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/c
 import { Input } from '@/components/ui/input';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import {
+	decimalQuantityText,
 	INVENTORY_CATEGORIES,
 	INVENTORY_CATEGORY_LABELS,
 	INVENTORY_LIMITS,
 	INVENTORY_UNITS,
 	type InventoryCategory,
 	type InventoryUnit,
-	decimalQuantityText,
 	isBelowThreshold,
 } from '@/features/inventory/inventory';
 

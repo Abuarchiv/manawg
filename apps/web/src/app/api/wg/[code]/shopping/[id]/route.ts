@@ -1,3 +1,6 @@
+import { and, eq, isNull, sql } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { recordAuditEvent } from '@/core/audit';
 import { db, shoppingItems } from '@/core/db';
 import { withIdempotentReplay } from '@/core/db/with-replay';
@@ -11,9 +14,6 @@ import { readIdempotencyKey } from '@/core/idempotency-store';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { NAME_MAX, QUANTITY_MAX } from '@/features/shopping/components/constants';
 import { isOpenShoppingItemDuplicate } from '@/features/shopping/shopping-duplicate';
-import { and, eq, isNull, sql } from 'drizzle-orm';
-import { NextResponse } from 'next/server';
-import { z } from 'zod';
 
 // `bought` toggles the item, `name`/`quantity` edit it; one request may carry any of them.
 const patchShoppingItemSchema = z

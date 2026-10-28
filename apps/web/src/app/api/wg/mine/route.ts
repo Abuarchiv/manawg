@@ -1,9 +1,9 @@
+import { and, desc, eq, isNull } from 'drizzle-orm';
+import { type NextRequest, NextResponse } from 'next/server';
 import { db, wgMembers, wgs } from '@/core/db';
 import { requireAccount } from '@/core/guards/require-account';
 import { serverError } from '@/core/http/api-errors';
 import { logApiError } from '@/core/infra/observability';
-import { and, desc, eq, isNull } from 'drizzle-orm';
-import { type NextRequest, NextResponse } from 'next/server';
 
 /** Return WGs that belong to the signed-in account, so recovery needs no local data or code. */
 export async function GET(req: NextRequest): Promise<NextResponse> {

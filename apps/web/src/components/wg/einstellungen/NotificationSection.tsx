@@ -1,5 +1,7 @@
 'use client';
 
+import { Bell, CheckCircle2 } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 import { Switch } from '@/components/animate-ui/components/base/switch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -8,11 +10,9 @@ import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
-import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { Section } from '@/components/wg/einstellungen/Section';
+import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { QUIET_HOURS_HINT } from '@/core/notifications/notification-preferences';
-import { Bell, CheckCircle2 } from 'lucide-react';
-import { useEffect, useRef } from 'react';
 import { NOTIFICATION_PREFERENCES, useNotificationSettings } from './use-notification-settings';
 
 const PUSH_HINT_ID = 'notification-push-hint';
@@ -57,13 +57,7 @@ function HourSelect({
 	);
 }
 
-export function NotificationSection({
-	code,
-	memberId,
-}: {
-	code: string;
-	memberId: string;
-}) {
+export function NotificationSection({ code, memberId }: { code: string; memberId: string }) {
 	const {
 		status,
 		pushActive,

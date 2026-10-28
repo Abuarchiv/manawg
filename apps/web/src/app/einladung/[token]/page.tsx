@@ -1,5 +1,5 @@
-import { OG_BASE, TWITTER_BASE } from '@/shared/lib/og';
 import type { Metadata } from 'next';
+import { OG_BASE, TWITTER_BASE } from '@/shared/lib/og';
 import { EinladungClient } from './EinladungClient';
 
 export const dynamic = 'force-dynamic';

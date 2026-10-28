@@ -1,10 +1,10 @@
 // Chat: compose/Enter semantics, edit focus, iOS keyboard, read-marker retry and 200% reflow.
 // Why: the composer must never lose a draft and must stay usable above the iOS keyboard.
 
-import { type Page, expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 import {
-	FIXTURE_WG,
 	dismissOnboarding,
+	FIXTURE_WG,
 	mockUnreadCount,
 	navigateToFeature,
 	setupMember,

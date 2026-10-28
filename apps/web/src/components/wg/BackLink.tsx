@@ -1,7 +1,7 @@
-import { buttonVariants } from '@/components/ui/button';
-import { cn } from '@/shared/lib/cn';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { buttonVariants } from '@/components/ui/button';
+import { cn } from '@/shared/lib/cn';
 
 interface BackLinkProps {
 	href: string;

@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
@@ -17,10 +18,10 @@ import { eurosToCents, formatCentsInput, parseEuroAmount } from '@/core/utils/am
 import { inputDateOrToday, inputDateToIso, isoToInputDate } from '@/core/utils/local-date';
 import {
 	type AboFormValues,
-	type SplitMode,
 	buildAboSplits,
 	initialEqualParticipants,
 	initialManualMap,
+	type SplitMode,
 } from '@/features/expenses/abo-form-model';
 import { ExpenseCategoryField } from '@/features/expenses/components/ausgaben/ExpenseCategoryField';
 import {
@@ -30,14 +31,13 @@ import {
 import {
 	AMOUNT_MAX_EUROS,
 	AMOUNT_MIN_EUROS,
+	amountErrorMessage,
 	DESCRIPTION_MAX_LENGTH,
 	RECURRING_INTERVAL_OPTIONS,
-	amountErrorMessage,
 } from '@/features/expenses/expense-constants';
 import { splitInputErrorMessage } from '@/features/expenses/expense-errors';
 import type { MemberOption } from '@/features/expenses/expense-types';
 import { countMissedOccurrences } from '@/features/expenses/recurring-expenses';
-import { useEffect, useMemo, useState } from 'react';
 import { AboSplitFields } from './AboSplitFields';
 
 interface AboFormProps {

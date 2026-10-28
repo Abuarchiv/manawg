@@ -1,5 +1,6 @@
 'use client';
 
+import type { RefObject } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
 	AlertDialog,
@@ -25,7 +26,6 @@ import { Field, FieldGroup } from '@/components/ui/field';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { useWg } from '@/components/wg/WgContextProvider';
-import type { RefObject } from 'react';
 import { CHAT_BODY_MAX } from '../chat-pure';
 import { reactorNames } from '../chat-reactions';
 import type { ReactionSummary } from '../chat-types';
@@ -141,6 +141,7 @@ export function MessageImage({ imageUrl, senderName }: { imageUrl: string; sende
 	return (
 		<Attachment state="done" className="min-w-0 max-w-full">
 			<AttachmentMedia variant="image" className="size-20">
+				{/* biome-ignore lint/performance/noImgElement: user-uploaded storage URL, next/image is not used for these */}
 				<img src={imageUrl} alt={`Bild von ${senderName}`} loading="lazy" />
 			</AttachmentMedia>
 			<AttachmentContent>

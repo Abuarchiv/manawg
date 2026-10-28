@@ -1,5 +1,8 @@
 'use client';
 
+import { History, Search } from 'lucide-react';
+import Link from 'next/link';
+import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -33,9 +36,6 @@ import {
 	groupActivityItemsByDay,
 } from '@/composition/activity';
 import { cn } from '@/shared/lib/cn';
-import { History, Search } from 'lucide-react';
-import Link from 'next/link';
-import { useMemo, useState } from 'react';
 import { ActivityFeed } from '../_components/ActivityFeed';
 import { useActivityFeed } from './use-activity-feed';
 
@@ -287,7 +287,6 @@ export default function AktivitaetPage() {
 							)}
 						</div>
 					) : loading ? (
-						// biome-ignore lint/a11y/useSemanticElements: role="status" names the loading region without swapping the wrapper element to <output>.
 						<div className="space-y-2" aria-label="Aktivität lädt" role="status">
 							<div className="flex justify-center py-2">
 								<Spinner className="motion-reduce:animate-none" aria-hidden />

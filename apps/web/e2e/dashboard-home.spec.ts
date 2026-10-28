@@ -1,12 +1,12 @@
 // Start overview home cards, large-data render limit and member avatar colors.
 // Why: The first screen aggregates every feature; cards must stay correct with large data.
 
-import { type Page, expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 import { getBerlinWeekWindow } from '../src/composition/dashboard-insights';
 import { instantAtBerlinWallTime } from '../src/core/utils/berlin-day';
 import {
-	FIXTURE_WG,
 	dismissOnboarding,
+	FIXTURE_WG,
 	mockDashboard,
 	mockUnreadCount,
 	navigateToFeature,

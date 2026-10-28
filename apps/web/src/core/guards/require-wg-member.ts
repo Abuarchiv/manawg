@@ -1,9 +1,9 @@
+import type { NextRequest, NextResponse } from 'next/server';
 import { type AuthenticatedMember, memberFromRow } from '@/core/guards/member-row';
 import { requireAccount } from '@/core/guards/require-account';
 import { type ResolvedWg, resolveWg } from '@/core/guards/resolve';
 import { shareCodeMissResponse } from '@/core/guards/share-code-miss';
 import { notFound } from '@/core/http/api-errors';
-import type { NextRequest, NextResponse } from 'next/server';
 
 interface WgMembershipOk<W> {
 	ok: true;

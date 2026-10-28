@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { QUIET_HOURS_HINT, isQuietHoursActive } from './notification-preferences';
+import { isQuietHoursActive, QUIET_HOURS_HINT } from './notification-preferences';
 import { notificationPriorityForEvent } from './notifications';
 
 test('Ruhezeit-Hinweis passt zur Zustellung', () => {

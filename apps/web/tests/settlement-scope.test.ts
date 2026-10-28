@@ -16,9 +16,9 @@ import { computeBalances, computeOldestDebtAges } from '../src/features/expenses
 import { getDueRecurringExpenses } from '../src/features/expenses/recurring-expenses';
 import { canSendReminder, formatReminderMessage } from '../src/features/expenses/reminders';
 import {
+	parseSettlementConfirmation,
 	type SettlementExpenseInput,
 	type SettlementMemberInput,
-	parseSettlementConfirmation,
 	selectSettlementScope,
 	settlementScopeMatches,
 } from '../src/features/expenses/settlement-scope';

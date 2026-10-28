@@ -1,10 +1,10 @@
 import {
-	READ_ONLY_MESSAGE,
-	SESSION_EXPIRED_MESSAGE,
 	isNetworkError,
 	isReadOnlyMode,
 	isSessionExpired,
 	mutationErrorMessage,
+	READ_ONLY_MESSAGE,
+	SESSION_EXPIRED_MESSAGE,
 } from '@/core/http/error-codes';
 import {
 	ABSENCE_REASON_MAX,

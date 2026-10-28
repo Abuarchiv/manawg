@@ -2,7 +2,7 @@
 /**
  * Bundle budget enforcement (gzip sizes, aligned with Next.js build report).
  *
- * Reads `.next/app-build-manifest.json` (App Router) and computes:
+ * Reads the Turbopack build stats `.next/diagnostics/route-bundle-stats.json` and computes:
  *  - Shared first-load JS = gzip(chunks present in EVERY renderable app page)
  *  - Shared cohorts       = gzip(chunks reused by 2+ renderable app pages)
  *  - Per-route JS         = gzip(chunks used by only that page - lazy chunks)
@@ -17,12 +17,13 @@
  * Usage: pnpm --filter @manawg/web bundle:check
  */
 
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { gzipSync } from 'node:zlib';
 
 const KILOBYTE = 1024;
-const SHARED_JS_BUDGET_KB = 120;
+// Shared counts the Next.js runtime, React and the root layout; turbopack ships them on every page.
+const SHARED_JS_BUDGET_KB = 220;
 const PER_ROUTE_BUDGET_KB = 55;
 const ROUTE_BUDGET_OVERRIDES_KB = {};
 const TESSERACT_INFO_BUDGET_KB = 2500;
@@ -31,7 +32,7 @@ const TESSERACT_CHUNK_HINT = 'tesseract';
 
 const PROJECT_ROOT = resolve(process.cwd());
 const NEXT_DIR = resolve(PROJECT_ROOT, process.env.NEXT_DIST_DIR ?? '.next');
-const APP_MANIFEST = join(NEXT_DIR, 'app-build-manifest.json');
+const ROUTE_STATS = join(NEXT_DIR, 'diagnostics/route-bundle-stats.json');
 
 function fail(message) {
 	console.error(`\n[bundle-budget] FAIL: ${message}`);
@@ -91,11 +92,13 @@ function scanTesseractRawKb() {
 }
 
 function main() {
-	const appManifest = readJson(APP_MANIFEST);
-	const pages = appManifest.pages ?? {};
-	const manifestEntries = Object.entries(pages);
+	// Chunk paths in the stats start with the dist dir; sizes are read relative to it.
+	const manifestEntries = readJson(ROUTE_STATS).map(({ route, firstLoadChunkPaths }) => [
+		`${route === '/' ? '' : route}/page`,
+		firstLoadChunkPaths.map((chunk) => chunk.slice(chunk.indexOf('static/'))),
+	]);
 	const pageEntries = manifestEntries.filter(([page]) => isRenderablePageEntry(page));
-	if (pageEntries.length === 0) fail('No pages in app-build-manifest.json');
+	if (pageEntries.length === 0) fail('No pages in route-bundle-stats.json');
 
 	info(`Renderable page entries: ${pageEntries.length}/${manifestEntries.length}`);
 

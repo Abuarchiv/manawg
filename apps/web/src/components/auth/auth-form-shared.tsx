@@ -1,6 +1,6 @@
+import { type ReactElement, useEffect, useState } from 'react';
 import { ErrorBox } from '@/components/app/ErrorBox';
 import { AUTH_FAILURE_MESSAGES, type AuthFailure } from '@/core/auth/password-errors';
-import { type ReactElement, useEffect, useState } from 'react';
 
 /** Minimum for passwords chosen now (sign-up, reset); Supabase enforces the same value. */
 export const NEW_PASSWORD_MIN_LENGTH = 8;
@@ -50,6 +50,9 @@ export function useResendCooldown(): [number, (seconds: number) => void] {
 export function GenericAuthError({
 	failure = 'other',
 	fallback = 'Die Anmeldung konnte gerade nicht abgeschlossen werden. Bitte versuche es erneut.',
-}: { failure?: AuthFailure; fallback?: string }): ReactElement {
+}: {
+	failure?: AuthFailure;
+	fallback?: string;
+}): ReactElement {
 	return <ErrorBox>{failure === 'other' ? fallback : AUTH_FAILURE_MESSAGES[failure]}</ErrorBox>;
 }

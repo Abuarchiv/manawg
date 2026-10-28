@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef, useState } from 'react';
 import { useToast } from '@/components/ui/Toast';
 import { mutationErrorMessage } from '@/core/http/error-codes';
 import { createIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
@@ -10,11 +11,10 @@ import {
 } from '@/core/notifications/notification-warning';
 import { keyUnavailableMessage } from '@/core/offline/offline-copy';
 import {
+	clampQuantity,
 	type InventoryItemDto,
 	type InventoryMutationItemDto,
-	clampQuantity,
 } from '@/features/inventory/inventory';
-import { useRef, useState } from 'react';
 
 type QuantityAction = 'decrement' | 'increment';
 type ConsumeResponse = {

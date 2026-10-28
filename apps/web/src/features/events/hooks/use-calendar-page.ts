@@ -1,3 +1,4 @@
+import { useMemo, useRef, useState } from 'react';
 import { useToast } from '@/components/ui/Toast';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { useCachedFetch } from '@/core/hooks/use-cached-fetch';
@@ -12,9 +13,9 @@ import { keyUnavailableMessage } from '@/core/offline/offline-copy';
 import { useSyncedCollection } from '@/core/sync/use-synced-collection';
 import { MS_PER_DAY } from '@/core/utils/time';
 import {
+	buildChoreOccurrences,
 	type CalendarEvent,
 	type ChoreSummary,
-	buildChoreOccurrences,
 	eventToInput,
 } from '@/features/events/calendar-page-model';
 import type { CreateEventPayload } from '@/features/events/components/EventCreateModal';
@@ -32,7 +33,6 @@ import {
 } from '@/features/events/events';
 import { postOccurrenceChange } from '@/features/events/occurrence-api';
 import { haptic } from '@/shared/lib/haptics';
-import { useMemo, useRef, useState } from 'react';
 
 type CalendarCreateResponse = {
 	event: CalendarEvent;

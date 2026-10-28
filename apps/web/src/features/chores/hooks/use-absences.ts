@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react';
 import { isNetworkError } from '@/core/http/error-codes';
 import {
 	type PendingIdempotentRequest,
@@ -8,17 +9,16 @@ import { apiFetch } from '@/core/infra/api-client';
 import { discardQueuedEntry, enqueueOfflineAction } from '@/core/offline/offline-client';
 import {
 	DRAFT_CLEANUP_FAILED_MESSAGE,
+	keyUnavailableMessage,
 	OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE,
 	OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
 	QUEUE_EDIT_ALREADY_SENT_MESSAGE,
-	keyUnavailableMessage,
 } from '@/core/offline/offline-copy';
 import { createQueuedAbsence, isQueuedCreateId } from '@/core/offline/offline-queue';
 import { endOfBerlinDay, instantAtBerlinWallTime } from '@/core/utils/berlin-day';
 import type { AbsenceInput } from '@/features/chores/absence';
 import { absenceSaveErrorMessage } from '@/features/chores/chore-errors';
 import { pendingKeys } from '@/features/chores/pending-keys';
-import { useRef, useState } from 'react';
 import type { ChorePageContext } from './chore-page-context';
 import type { QueueEdit } from './use-chore-create';
 

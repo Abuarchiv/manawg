@@ -1,6 +1,6 @@
+import { NextResponse } from 'next/server';
 import { captureException } from '@/core/infra/observability';
 import type { RateLimitResult } from '@/core/rate-limit';
-import { NextResponse } from 'next/server';
 
 export const HTTP = {
 	BAD_REQUEST: 400,

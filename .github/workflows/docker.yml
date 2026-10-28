@@ -17,7 +17,7 @@ on:
       - apps/web/scripts/db-migrate/**
       - apps/web/drizzle/**
       - apps/web/vercel.json
-      - apps/web/src/middleware.ts
+      - apps/web/src/proxy.ts
       - apps/web/src/core/auth/**
       - apps/web/src/core/infra/**
       - apps/web/src/core/mail/**

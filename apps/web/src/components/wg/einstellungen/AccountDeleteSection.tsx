@@ -1,5 +1,8 @@
 'use client';
 
+import { UserX } from 'lucide-react';
+import Link from 'next/link';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
 	AlertDialog,
@@ -18,9 +21,6 @@ import { Spinner } from '@/components/ui/spinner';
 import { Section } from '@/components/wg/einstellungen/Section';
 import { RATE_LIMITED_MESSAGE } from '@/core/http/error-codes';
 import { noteSessionExpiry } from '@/core/infra/api-client';
-import { UserX } from 'lucide-react';
-import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
 
 const CONFIRM_WORD = 'LÖSCHEN';
 const SIGN_IN_AGAIN_MESSAGE = 'Melde dich erneut an, um dein Konto zu löschen.';

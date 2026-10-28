@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { mock, test } from 'node:test';
 import * as eventDisplay from '../src/features/events/event-display.ts';
-import * as eventRecurrenceRule from '../src/features/events/event-recurrence-rule.ts';
 import * as eventRecurrence from '../src/features/events/event-recurrence.ts';
+import * as eventRecurrenceRule from '../src/features/events/event-recurrence-rule.ts';
 
 // biome-ignore lint/suspicious/noExplicitAny: fake rows carry arbitrary shapes
 type Row = Record<string, any>;

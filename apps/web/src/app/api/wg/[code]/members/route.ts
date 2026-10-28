@@ -1,7 +1,10 @@
+import { and, asc, count, eq, sql } from 'drizzle-orm';
+import { type NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { recordAuditEvent } from '@/core/audit';
 import { db, wgInvites, wgMembers, wgs } from '@/core/db';
 import { assertAccountCanAcquireMembership } from '@/core/db/account-deletion';
-import { type WriteOutcome, responseCodec, withIdempotentWrite } from '@/core/db/idempotent-write';
+import { responseCodec, type WriteOutcome, withIdempotentWrite } from '@/core/db/idempotent-write';
 import { releaseMemberName } from '@/core/db/member-names';
 import { LIMITS } from '@/core/db/schema';
 import { type DbTransaction, TransactionAbort, withTransaction } from '@/core/db/transaction';
@@ -12,10 +15,10 @@ import { requireWgMember } from '@/core/guards/require-wg-member';
 import { shareCodeMissResponse } from '@/core/guards/share-code-miss';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import {
-	HTTP,
 	apiError,
 	conflict,
 	forbidden,
+	HTTP,
 	notFound,
 	rateLimitResponse,
 } from '@/core/http/api-errors';
@@ -24,9 +27,6 @@ import { readIdempotencyKey } from '@/core/idempotency-store';
 import { checkRateLimit, clientIpKey, wgWriteLimiter } from '@/core/rate-limit';
 import { isInviteToken } from '@/core/utils/invite-token';
 import { MAX_MEMBERS_PER_WG } from '@/shared/lib/limits';
-import { and, asc, count, eq, sql } from 'drizzle-orm';
-import { type NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
 import { isUniqueMemberNameViolation } from './unique-name-violation';
 
 // GET pagination: the listing must never degenerate into an unbounded SELECT.

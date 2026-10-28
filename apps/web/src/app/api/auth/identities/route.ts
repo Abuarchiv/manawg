@@ -1,6 +1,6 @@
+import { AuthSessionMissingError } from '@supabase/supabase-js';
 import { authGet } from '@/core/auth/route-helpers';
 import { MEMBER_NAME_MAX_LENGTH } from '@/shared/lib/limits';
-import { AuthSessionMissingError } from '@supabase/supabase-js';
 
 /** What the account settings and the start flow need to know about the signed-in account. */
 export const GET = authGet(async ({ supabase }) => {

@@ -1,5 +1,7 @@
 'use client';
 
+import { ArrowRight } from 'lucide-react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import {
 	Item,
@@ -10,9 +12,7 @@ import {
 	ItemTitle,
 } from '@/components/ui/item';
 import type { KnownWg } from '@/core/auth/local-account';
-import { ArrowRight } from 'lucide-react';
-import Link from 'next/link';
-import { type OfflineStatus, formatWgQueuedActionCount, wgHref } from './offline-page-helpers';
+import { formatWgQueuedActionCount, type OfflineStatus, wgHref } from './offline-page-helpers';
 
 interface KnownWgsCardProps {
 	status: OfflineStatus;

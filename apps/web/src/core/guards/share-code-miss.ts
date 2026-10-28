@@ -1,6 +1,6 @@
+import type { NextResponse } from 'next/server';
 import { tooMany } from '@/core/http/api-errors';
 import { checkRateLimit, wgShareCodeMissLimiter } from '@/core/rate-limit';
-import type { NextResponse } from 'next/server';
 
 /**
  * Count a share-code miss (unknown code or a WG the caller does not belong

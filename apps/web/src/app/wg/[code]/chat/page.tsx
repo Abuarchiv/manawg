@@ -1,3 +1,5 @@
+import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import { SubNav } from '@/components/wg/SubNav';
 import type { wgChatMessages } from '@/core/db';
 import { loadWgViewer } from '@/core/guards/load-wg-viewer';
@@ -5,8 +7,6 @@ import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import { CHAT_FRAME_STYLE } from '@/features/chat/chat-frame';
 import { ChatView } from '@/features/chat/components/ChatView';
 import { loadFixtureWgView } from '@/fixtures/pages';
-import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
 
 interface PageProps {
 	params: Promise<{ code: string }>;

@@ -1,5 +1,7 @@
 'use client';
 
+import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
@@ -28,8 +30,6 @@ import {
 	wasRecurringExpenseAlreadyCreated,
 } from '@/features/expenses/recurring-expenses';
 import { cn } from '@/shared/lib/cn';
-import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
-import Link from 'next/link';
 
 interface RecurringTemplateItemProps {
 	item: RecurringExpense;

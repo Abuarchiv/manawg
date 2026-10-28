@@ -1,10 +1,10 @@
 // Public calendar preview and marker overflow on phones.
 // Why: Markers and previews must not overflow at 320px.
 
-import { type Page, expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 import {
-	FIXTURE_WG,
 	dismissOnboarding,
+	FIXTURE_WG,
 	navigateToFeature,
 	setupMember,
 	skipUnlessFixtures,

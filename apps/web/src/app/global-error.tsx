@@ -11,7 +11,7 @@ import {
 import { captureException } from '@/core/infra/capture-client';
 import { isChunkLoadError, reloadOnStaleChunk } from '@/core/infra/stale-chunk';
 import { SUPPORT_MAILTO } from '@/shared/lib/support-mailto';
-import { THEME_BOOTSTRAP_SCRIPT, applyStoredTheme } from '@/shared/lib/theme';
+import { applyStoredTheme, THEME_BOOTSTRAP_SCRIPT } from '@/shared/lib/theme';
 import '@/shared/globals.css';
 import { TriangleAlert } from 'lucide-react';
 import { useEffect, useLayoutEffect } from 'react';
@@ -19,7 +19,10 @@ import { useEffect, useLayoutEffect } from 'react';
 export default function GlobalError({
 	error,
 	reset,
-}: { error: Error & { digest?: string }; reset: () => void }) {
+}: {
+	error: Error & { digest?: string };
+	reset: () => void;
+}) {
 	// The head script only runs on a server render; a client-rendered error page needs this
 	// before paint so dark devices do not flash white.
 	useLayoutEffect(applyStoredTheme, []);

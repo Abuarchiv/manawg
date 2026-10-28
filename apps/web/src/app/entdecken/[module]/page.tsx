@@ -1,7 +1,7 @@
-import { PublicApp } from '@/components/entry/PublicApp';
-import { OG_BASE, TWITTER_BASE } from '@/shared/lib/og';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { PublicApp } from '@/components/entry/PublicApp';
+import { OG_BASE, TWITTER_BASE } from '@/shared/lib/og';
 
 // Titles/descriptions mirror the module copy in PublicApp — kept here too so
 // this Server Component can export per-route metadata (WCAG 2.4.2: every
@@ -28,7 +28,9 @@ const publicModule = (slug: string) =>
 // signal, and a self-canonical on a noindex page is pointless.
 export async function generateMetadata({
 	params,
-}: { params: Promise<{ module: string }> }): Promise<Metadata> {
+}: {
+	params: Promise<{ module: string }>;
+}): Promise<Metadata> {
 	const { module } = await params;
 	const entry = publicModule(module);
 	if (!entry) notFound();

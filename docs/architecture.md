@@ -7,7 +7,7 @@ otherwise. Setup, commands and deployment are in [development](development.md).
 
 ```text
 browser
-  -> middleware.ts                    CSP nonce, Origin check, rate limit, Supabase session refresh
+  -> proxy.ts                         CSP nonce, Origin check, rate limit, Supabase session refresh
   -> app/api/wg/[code]/**/route.ts    thin handler
        withWgRoute / readShareCode    normalize + validate share code, catch -> server_error
        (body validation)              before auth, so invalid_body cannot leak membership
@@ -17,7 +17,7 @@ browser
        core/db (Drizzle, pg Pool)     Postgres
 ```
 
-**Middleware** (`middleware.ts`):
+**Proxy** (`proxy.ts`, the Next.js middleware):
 
 - Pages (non-`/api`): fresh CSP nonce per request (`core/infra/security-headers.ts`), COOP
   header, Supabase session refresh. `/wg/*` without a session redirects to `/neu?next=...`

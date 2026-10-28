@@ -1,5 +1,7 @@
 'use client';
 
+import { Crown, UserPlus } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
 	AlertDialog,
@@ -23,17 +25,15 @@ import {
 	ItemTitle,
 } from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
+import { Section } from '@/components/wg/einstellungen/Section';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { MemberDeactivateDialog } from '@/components/wg/MemberDeactivateDialog';
 import type { Member, WgSummary } from '@/components/wg/WgContextProvider';
 import { useWg } from '@/components/wg/WgContextProvider';
-import { Section } from '@/components/wg/einstellungen/Section';
 import type { SessionMember } from '@/core/auth/local-account';
-import { RATE_LIMITED_MESSAGE, isRateLimited } from '@/core/http/error-codes';
+import { isRateLimited, RATE_LIMITED_MESSAGE } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
 import { MAX_MEMBERS_PER_WG } from '@/shared/lib/limits';
-import { Crown, UserPlus } from 'lucide-react';
-import { useEffect, useState } from 'react';
 
 interface MembersSectionProps {
 	wg: WgSummary;

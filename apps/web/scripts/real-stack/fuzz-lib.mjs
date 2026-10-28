@@ -2,7 +2,7 @@
 // Importing this module creates the data; fuzz.mjs runs the parts in order.
 // Needs the same env as modules.mjs.
 import { randomUUID } from 'node:crypto';
-import { DAY, call, expect, iso, setup } from './modules-lib.mjs';
+import { call, DAY, expect, iso, setup } from './modules-lib.mjs';
 
 export const { A, B, code, annaId, benId } = await setup();
 // A second household with its own member: ids from here must never work inside the first one.

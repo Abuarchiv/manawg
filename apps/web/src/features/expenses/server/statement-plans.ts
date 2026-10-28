@@ -1,14 +1,14 @@
 import 'server-only';
+import { and, asc, eq, gte, inArray, lt } from 'drizzle-orm';
 import { loadConfirmedEmails } from '@/core/auth/auth-user-emails';
 import { db, expensePayments, expenseSplits, expenses, wgMembers, wgs } from '@/core/db';
 import { MS_PER_DAY } from '@/core/utils/time';
-import { and, asc, eq, gte, inArray, lt } from 'drizzle-orm';
 import type { ExpensePaymentInput } from '../expense-payment-input';
 import type { StatementExpense } from '../monthly-statement';
 import {
+	planStatementMails,
 	type StatementPlan,
 	type StatementWgMember,
-	planStatementMails,
 } from '../statement-recipients';
 
 const WG_CHUNK = 25;

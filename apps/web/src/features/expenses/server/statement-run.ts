@@ -4,13 +4,13 @@ import type { StatementRecipient } from '../statement-recipients';
 import {
 	CLAIM_BATCH_SIZE,
 	type ClaimedRow,
-	type RowUpdate,
 	claimBatch,
 	closeInterruptedRows,
 	queueRows,
+	type RowUpdate,
 	recordOutcomes,
 } from './statement-ledger';
-import { type WgStatementPlan, loadStatementPlans } from './statement-plans';
+import { loadStatementPlans, type WgStatementPlan } from './statement-plans';
 import { type MailTransport, type OutgoingMail, readAllowlist } from './statement-transport';
 import { unsubscribeUrl } from './statement-unsubscribe';
 

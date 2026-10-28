@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { type StatementWgMember, planStatementMails } from './statement-recipients';
+import { planStatementMails, type StatementWgMember } from './statement-recipients';
 
 const member = (id: string, overrides: Partial<StatementWgMember> = {}): StatementWgMember => ({
 	id,

@@ -1,5 +1,7 @@
 'use client';
 
+import { Check, ChevronDown, Receipt, Repeat2 } from 'lucide-react';
+import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from 'react';
 import {
 	Collapsible,
 	CollapsiblePanel,
@@ -14,8 +16,6 @@ import { ImageUploader } from '@/components/wg/ImageUploader';
 import { RECURRING_INTERVAL_OPTIONS } from '@/features/expenses/expense-constants';
 import type { RecurringExpense } from '@/features/expenses/expense-types';
 import { cn } from '@/shared/lib/cn';
-import { Check, ChevronDown, Receipt, Repeat2 } from 'lucide-react';
-import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from 'react';
 
 interface ExpenseExtrasProps {
 	shareCode: string;

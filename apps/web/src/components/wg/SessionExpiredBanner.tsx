@@ -1,11 +1,11 @@
 'use client';
 
-import { buttonVariants } from '@/components/ui/button';
-import { SESSION_EXPIRED_EVENT } from '@/core/infra/api-client';
-import { cn } from '@/shared/lib/cn';
 import { AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { buttonVariants } from '@/components/ui/button';
+import { SESSION_EXPIRED_EVENT } from '@/core/infra/api-client';
+import { cn } from '@/shared/lib/cn';
 
 /**
  * Any request answered with "session expired" lands here, so every screen shows the same

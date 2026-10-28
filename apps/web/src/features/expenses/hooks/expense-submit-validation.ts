@@ -2,8 +2,8 @@ import { todayInputValue } from '@/core/utils/local-date';
 import {
 	AMOUNT_MAX_EUROS,
 	AMOUNT_MIN_EUROS,
-	DESCRIPTION_MAX_LENGTH,
 	amountErrorMessage,
+	DESCRIPTION_MAX_LENGTH,
 } from '@/features/expenses/expense-constants';
 import type { ExpenseFormFieldErrors } from '@/features/expenses/expense-types';
 

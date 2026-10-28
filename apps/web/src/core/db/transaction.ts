@@ -1,6 +1,6 @@
 import { type ExtractTablesWithRelations, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
 import type { NodePgQueryResultHKT } from 'drizzle-orm/node-postgres';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PgTransaction } from 'drizzle-orm/pg-core';
 import { Client } from 'pg';
 import { closeClientOnQueryTimeout, resolveConnectionString } from './connection';

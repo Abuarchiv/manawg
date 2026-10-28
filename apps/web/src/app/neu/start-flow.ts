@@ -6,8 +6,8 @@ import type { SocialProvider } from '@/components/auth/SocialLoginButtons';
 import { safeNextPath } from '@/core/auth/next-path';
 import {
 	DELETION_PENDING_MESSAGE,
-	LEGACY_CODE_MESSAGE,
 	extractInviteCode,
+	LEGACY_CODE_MESSAGE,
 } from '@/core/infra/join-flow';
 import { extractInviteToken, isInviteToken } from '@/core/utils/invite-token';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';

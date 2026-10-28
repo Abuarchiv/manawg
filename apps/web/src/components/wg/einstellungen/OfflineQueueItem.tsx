@@ -5,13 +5,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Item, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
-import { type QueueEditDraft, buildQueueEditDraft } from '@/core/offline/drafts';
+import { buildQueueEditDraft, type QueueEditDraft } from '@/core/offline/drafts';
 import { needsManualOfflineResolution } from '@/core/offline/offline-client';
 import {
-	type OfflineAction,
 	explainOfflineActionFailure,
 	getOfflineActionRisk,
 	getOfflineActionSummary,
+	type OfflineAction,
 } from '@/core/offline/offline-queue';
 import { cn } from '@/shared/lib/cn';
 

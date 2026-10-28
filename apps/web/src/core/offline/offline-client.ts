@@ -7,14 +7,14 @@
 
 export { createRecurringAdvanceRetry, needsManualOfflineResolution } from './offline-replay-rules';
 export {
-	OFFLINE_QUEUE_EVENT,
-	OFFLINE_SYNCED_EVENT,
 	adoptLocalAccount,
 	countOfflineActions,
 	discardQueuedEntry,
 	enqueueOfflineAction,
 	filterOfflineActionsForAuthUser,
 	isOfflineActionQueued,
+	OFFLINE_QUEUE_EVENT,
+	OFFLINE_SYNCED_EVENT,
 	offlineQueueReplaySupported,
 	readOfflineQueue,
 	removeQueuedAction,

@@ -1,10 +1,10 @@
+import { Plus } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { ThumbAction } from '@/components/wg/ThumbAction';
 import { NAME_MAX } from '@/features/shopping/components/constants';
-import { Plus } from 'lucide-react';
 
 export function ShoppingAddBar({
 	value,

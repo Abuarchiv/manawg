@@ -1,7 +1,7 @@
 'use client';
 
-import { subscribeOnline, subscribeVisibility } from '@/core/hooks/use-online-status';
 import { useEffect, useRef } from 'react';
+import { subscribeOnline, subscribeVisibility } from '@/core/hooks/use-online-status';
 
 /** Shared refresh period of the list pages while their tab is visible. */
 export const LIST_REFRESH_INTERVAL_MS = 30_000;

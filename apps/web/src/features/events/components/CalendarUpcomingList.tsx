@@ -1,5 +1,8 @@
 'use client';
 
+import { CalendarClock, ChevronRight, Repeat, Sparkles } from 'lucide-react';
+import Link from 'next/link';
+import { useEffect } from 'react';
 import {
 	Empty,
 	EmptyDescription,
@@ -12,17 +15,14 @@ import { CALENDAR_ROW_CLASS } from '@/features/events/components/calendar-row';
 import { isSameDay } from '@/features/events/event-display';
 import {
 	type EventOccurrence,
-	RECURRENCE_OPTIONS,
 	eventDateForDisplay,
 	formatEventTimeOfDay,
 	formatEventTimeRange,
 	parseRecurrenceRule,
+	RECURRENCE_OPTIONS,
 } from '@/features/events/events';
 import { occurrenceToIcs } from '@/features/events/ics';
 import { cn } from '@/shared/lib/cn';
-import { CalendarClock, ChevronRight, Repeat, Sparkles } from 'lucide-react';
-import Link from 'next/link';
-import { useEffect } from 'react';
 
 interface CalendarUpcomingListProps {
 	occurrences: EventOccurrence[];

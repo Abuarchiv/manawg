@@ -5,9 +5,9 @@
 
 import { isAllowedLegacyLedgerRow } from './legacy-adoption.mjs';
 import {
+	hashMigration,
 	MIGRATIONS_SCHEMA,
 	MIGRATIONS_TABLE,
-	hashMigration,
 	readMigrationJournal,
 	tableExists,
 } from './migrations.mjs';

@@ -1,3 +1,4 @@
+import { useCallback, useRef } from 'react';
 import { createIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
 import {
@@ -13,15 +14,14 @@ import {
 	shoppingDuplicateMessage,
 } from '@/features/shopping/shopping-errors';
 import {
-	type ShoppingPatchRequest,
 	dropShoppingItems,
 	planShoppingPatch,
 	replaceShoppingItem,
+	type ShoppingPatchRequest,
 	toggledShoppingItem,
 	withQueuedCreateBought,
 } from '@/features/shopping/shopping-toggle';
 import { isTempItemId } from '@/features/shopping/shopping-view';
-import { useCallback, useRef } from 'react';
 import type { ShoppingActionContext } from './shopping-action-context';
 
 const ITEM_GONE_MESSAGE =
