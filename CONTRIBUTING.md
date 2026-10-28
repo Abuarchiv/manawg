@@ -78,4 +78,4 @@ that you wrote the change or have the right to submit it under the project's lic
 ## License
 
 By contributing you agree that your contribution is licensed under the
-[GNU Affero General Public License v3.0](LICENSE).
+[Apache License 2.0](LICENSE).
