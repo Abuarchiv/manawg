@@ -327,7 +327,7 @@ test.describe('ocr runtime', () => {
 		'https://cdn.jsdelivr.net/npm/@tesseract.js-data/deu/4.0.0_best_int/deu.traineddata.gz',
 		'https://cdn.jsdelivr.net/npm/@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz',
 	] as const;
-	// Tesseract.js-core 5.1.1 tries an optional fetch of its embedded WASM data URI.
+	// Tesseract.js-core tries an optional fetch of its embedded WASM data URI.
 	// WebKit blocks it via connect-src, then successfully falls back to decoding
 	// the same bytes. Match only that exact message and WASM magic prefix; do not
 	// permit data: URLs in CSP.
@@ -481,8 +481,8 @@ test.describe('ocr runtime', () => {
 	function expectTesseractAssets(cdnResponses: Map<string, number>): void {
 		const urls = [...cdnResponses.keys()];
 		const paths = urls.map((url) => new URL(url).pathname);
-		const workerPath = '/npm/tesseract.js@v5.1.1/dist/worker.min.js';
-		const corePath = /^\/npm\/tesseract\.js-core@v5\.1\.1\/tesseract-core(?:-[^/]+)?\.wasm\.js$/;
+		const workerPath = '/npm/tesseract.js@v7.0.0/dist/worker.min.js';
+		const corePath = /^\/npm\/tesseract\.js-core@v7\.0\.0\/tesseract-core(?:-[^/]+)?\.wasm\.js$/;
 		const deuPath = new URL(OCR_LANGUAGE_DATA_URLS[0]).pathname;
 		const engPath = new URL(OCR_LANGUAGE_DATA_URLS[1]).pathname;
 

@@ -2,7 +2,7 @@
  * Content-Security-Policy and related header values applied by `proxy.ts`.
  * Kept out of the middleware so the policy can be unit-tested without Next.
  */
-// Tesseract.js 5.1.1's default German and English model URLs. Keep CDN access
+// Tesseract.js's default German and English model URLs. Keep CDN access
 // pinned to these files rather than allowing all of cdn.jsdelivr.net.
 const TESSERACT_LANGUAGE_DATA_URLS = [
 	'https://cdn.jsdelivr.net/npm/@tesseract.js-data/deu/4.0.0_best_int/deu.traineddata.gz',

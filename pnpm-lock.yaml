@@ -92,8 +92,8 @@ importers:
         specifier: ^3.7.0
         version: 3.7.0
       tesseract.js:
-        specifier: ^5.1.1
-        version: 5.1.1
+        specifier: ^7.0.0
+        version: 7.0.0
       tw-animate-css:
         specifier: ^1.4.0
         version: 1.4.0
@@ -119,6 +119,12 @@ importers:
       '@tailwindcss/postcss':
         specifier: ^4.1.0
         version: 4.3.3
+      '@tesseract.js-data/deu':
+        specifier: 1.0.0
+        version: 1.0.0
+      '@tesseract.js-data/eng':
+        specifier: 1.0.0
+        version: 1.0.0
       '@types/node':
         specifier: ^22
         version: 22.20.5
@@ -1764,6 +1770,12 @@ packages:
   '@tailwindcss/postcss@4.3.3':
     resolution: {integrity: sha512-JTSZZGQi1AyKirbLN3azmjVzef92tcX7h+iSqPdaeStyFpGpDlKvvpxeOE8njhbUanbRwr3z8DyzhICWnMtQeg==}
 
+  '@tesseract.js-data/deu@1.0.0':
+    resolution: {integrity: sha512-3ter1p2gFAiCd5CMC+PodZ9YY2UDomkKj+ytlKeeZqOUmhLx1SDnYPf5zog0g5MBbxYveW+8omI3PUflqHfZ4Q==}
+
+  '@tesseract.js-data/eng@1.0.0':
+    resolution: {integrity: sha512-mbTumm6KQPUHyzTPQaF3ObXYnx0SqqfV2nabqFVQBwD6Kl7PhGSLSzOlfFTWy0P3BjghaSKA2W9GB19Jk+ZcTg==}
+
   '@tybys/wasm-util@0.10.4':
     resolution: {integrity: sha512-W3c4gRigFS0T/Ma4qIYF3GDAc5AQdHb1yL5znJT1Zv1YaD9Kitx656wBjvr19qbiosmZT8lWDM5BEMynUqX65A==}
 
@@ -2242,9 +2254,6 @@ packages:
 
   intl-messageformat@11.2.15:
     resolution: {integrity: sha512-W4VNytsXyWgW5lvVchmsb9xgA5rSKqoflu3/IQ9UCtB0z4R+Bx9MoEkwFT/+30RCl/KzUoH0QGGe9lppF5SuvQ==}
-
-  is-electron@2.2.2:
-    resolution: {integrity: sha512-FO/Rhvz5tuw4MCWkpMzHFKWD2LsfHzIb7i6MdPYZ/KW7AlxawyLkqdy+jPZP1WubqEADE3O4FUENlJHDfQASRg==}
 
   is-extglob@2.1.1:
     resolution: {integrity: sha512-SbKbANkN603Vi4jEZv49LeVJMn4yGwsbzZworEoyEiutsN3nJYdbO36zfhGJ6QEDpOZIFkDtnq5JRxmvl3jsoQ==}
@@ -2730,11 +2739,11 @@ packages:
     resolution: {integrity: sha512-uxc/zpqFg6x7C8vOE7lh6Lbda8eEL9zmVm/PLeTPBRhh1xCgdWaQ+J1CUieGpIfm2HdtsUpRv+HshiasBMcc6A==}
     engines: {node: '>=6'}
 
-  tesseract.js-core@5.1.1:
-    resolution: {integrity: sha512-KX3bYSU5iGcO1XJa+QGPbi+Zjo2qq6eBhNjSGR5E5q0JtzkoipJKOUQD7ph8kFyteCEfEQ0maWLu8MCXtvX5uQ==}
+  tesseract.js-core@7.0.0:
+    resolution: {integrity: sha512-WnNH518NzmbSq9zgTPeoF8c+xmilS8rFIl1YKbk/ptuuc7p6cLNELNuPAzcmsYw450ca6bLa8j3t0VAtq435Vw==}
 
-  tesseract.js@5.1.1:
-    resolution: {integrity: sha512-lzVl/Ar3P3zhpUT31NjqeCo1f+D5+YfpZ5J62eo2S14QNVOmHBTtbchHm/YAbOOOzCegFnKf4B3Qih9LuldcYQ==}
+  tesseract.js@7.0.0:
+    resolution: {integrity: sha512-exPBkd+z+wM1BuMkx/Bjv43OeLBxhL5kKWsz/9JY+DXcXdiBjiAch0V49QR3oAJqCaL5qURE0vx9Eo+G5YE7mA==}
 
   tinyglobby@0.2.17:
     resolution: {integrity: sha512-wXR/dYpcqKmfWpEdZjiKJOwCNFndD0DMnrW/cYjVGttEkBfVgcLFHoNrlj47mjOVic9yyNu65alsgF4NQyTa2g==}
@@ -3987,6 +3996,10 @@ snapshots:
       postcss: 8.5.31
       tailwindcss: 4.3.3
 
+  '@tesseract.js-data/deu@1.0.0': {}
+
+  '@tesseract.js-data/eng@1.0.0': {}
+
   '@tybys/wasm-util@0.10.4':
     dependencies:
       tslib: 2.8.1
@@ -4330,8 +4343,6 @@ snapshots:
     dependencies:
       '@formatjs/fast-memoize': 3.1.7
       '@formatjs/icu-messageformat-parser': 3.5.18
-
-  is-electron@2.2.2: {}
 
   is-extglob@2.1.1: {}
 
@@ -4860,18 +4871,17 @@ snapshots:
 
   tapable@2.3.3: {}
 
-  tesseract.js-core@5.1.1: {}
+  tesseract.js-core@7.0.0: {}
 
-  tesseract.js@5.1.1:
+  tesseract.js@7.0.0:
     dependencies:
       bmp-js: 0.1.0
       idb-keyval: 6.3.0
-      is-electron: 2.2.2
       is-url: 1.2.4
       node-fetch: 2.7.0
       opencollective-postinstall: 2.0.3
       regenerator-runtime: 0.13.11
-      tesseract.js-core: 5.1.1
+      tesseract.js-core: 7.0.0
       wasm-feature-detect: 1.9.0
       zlibjs: 0.3.1
     transitivePeerDependencies:
