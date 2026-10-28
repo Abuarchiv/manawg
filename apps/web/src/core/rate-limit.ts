@@ -55,7 +55,7 @@ function createConfiguredRedis(): Redis | null {
 			configuredButInvalid = true;
 			return null;
 		}
-		return new Redis({ url, token });
+		return new Redis({ url, token, enableTelemetry: false });
 	} catch {
 		if (rateLimitFailMode() === 'closed') {
 			throw new Error('UPSTASH_REDIS_REST_URL must be a valid https URL');
@@ -92,6 +92,7 @@ function build(limit: number, windowSec: number, prefix: string): RateLimiter | 
 		limiter: Ratelimit.slidingWindow(limit, `${windowSec} s`),
 		prefix: `manawg:${prefix}`,
 		analytics: false,
+		enableTelemetry: false,
 	});
 }
 
