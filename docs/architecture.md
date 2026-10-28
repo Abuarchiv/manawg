@@ -17,7 +17,7 @@ browser
        core/db (Drizzle, pg Pool)     Postgres
 ```
 
-**Proxy** (`proxy.ts`, the Next.js middleware):
+**Proxy** (`proxy.ts`, runs before every matched request):
 
 - Pages (non-`/api`): fresh CSP nonce per request (`core/infra/security-headers.ts`), COOP
   header, Supabase session refresh. `/wg/*` without a session redirects to `/neu?next=...`
@@ -45,7 +45,7 @@ Unknown or foreign share codes count against `wgShareCodeMissLimiter` (20/hour/a
 WG-settings writes use `requireWgAdmin` (`core/guards/require-wg-admin.ts`).
 
 **Pages under `app/wg/[code]/`** are authenticated only by `app/wg/[code]/layout.tsx`
-(`loadWgViewer`, which calls `getAuthenticatedUserFromCookies()`). The middleware is not an independent barrier there: on a
+(`loadWgViewer`, which calls `getAuthenticatedUserFromCookies()`). The proxy is not an independent barrier there: on a
 transient Supabase Auth failure it serves the page instead of redirecting.
 `scripts/check-wg-auth-invariant.mjs` therefore fails on any `route.ts` or `'use server'` file
 under `app/wg/**`; WG APIs belong under `app/api/wg/**`.
@@ -81,7 +81,7 @@ Rules:
 
 - **Auth user**: Supabase Auth (Google, e-mail code, e-mail/password). All auth calls go through
   the route handlers `app/api/auth/*` (`core/auth/route-helpers.ts`); there is no Supabase client
-  in the browser. The session cookies are HttpOnly (`core/auth/cookie-options.ts`), the middleware
+  in the browser. The session cookies are HttpOnly (`core/auth/cookie-options.ts`), the proxy
   refreshes them and keeps the readable hint cookie `manawg_signed_in` in step. Callback
   `app/auth/callback/route.ts`, password reset `app/auth/reset`. The account name entered at
   registration is `user_metadata.full_name` and prefills the member name.
@@ -92,7 +92,7 @@ Rules:
   members lose API access and push, history stays.
 - **Membership check** (`core/guards/api-auth.ts` `requireMember`): the server-verified
   Supabase user is looked up in `wg_members`. That lookup is the only identity proof; CSRF is
-  covered by the middleware's same-origin check. Failures carry a typed `reason`
+  covered by the proxy's same-origin check. Failures carry a typed `reason`
   (`auth_required`, `not_a_member`, `member_deactivated`, `member_context_changed`,
   `db_error`). `x-manawg-expected-member-id` mismatch yields `409 member_context_changed`, so a
   stale tab cannot act as a different member. `requireWgMember` and `requireWgAdmin`
@@ -285,7 +285,7 @@ Mutation error copy goes through `mutationError` (`core/http/error-codes.ts`); f
 
 ## Database
 
-- Schema: `core/db/schema.ts` (Drizzle). Migrations: `apps/web/drizzle/` with
+- Schema: `core/db/schema/` (Drizzle, one file per area; `core/db/schema.ts` re-exports them). Migrations: `apps/web/drizzle/` with
   `meta/_journal.json`; `0000_baseline.sql` replaced an earlier non-replayable chain.
   `scripts/db-migrate.mjs` applies them under an advisory lock, checks the ledger against the
   journal (fail-closed, with an explicit legacy-hash allowlist) and verifies the result

@@ -3,7 +3,7 @@
 Reference for working on the code. Start with [CONTRIBUTING.md](../CONTRIBUTING.md) for the
 workflow and conventions, and [architecture](architecture.md) for how the app is built.
 
-The stack: Next.js 15 App Router, React 19, Supabase Auth, PostgreSQL via Drizzle, Tailwind 4
+The stack: Next.js 16 App Router, React 19, Supabase Auth, PostgreSQL via Drizzle, Tailwind 4
 with shadcn/Base UI, Playwright and `node:test`.
 
 ## Layout
@@ -87,7 +87,7 @@ transaction pooler port `6543` is rejected.
 The Docker stack migrates itself on every start (`scripts/selfhost/setup.mjs` with
 `MANAWG_SELF_HOSTED=true`, which accepts any PostgreSQL URL).
 
-New migrations: edit `src/core/db/schema.ts`, then `pnpm --filter @manawg/web db:generate`
+New migrations: edit the feature file in `src/core/db/schema/` (`schema.ts` re-exports them all), then `pnpm --filter @manawg/web db:generate`
 (drizzle-kit; `drizzle.config.ts` loads `.env` via `dotenv/config`).
 
 ### Fixture mode (no database)
@@ -104,7 +104,7 @@ dev:fixtures` sets the same for `next dev` on port `3000`: open
 Sign-in and saving to a database are not available there.
 
 Only `src/app/` (including `src/proxy.ts`) imports `src/fixtures/`, through one seam per
-entry: `resolveFixtureRequest` in the middleware answers fixture API reads and `POST /api/wg`
+entry: `resolveFixtureRequest` in the proxy (`src/proxy.ts`) answers fixture API reads and `POST /api/wg`
 before any route runs, `loadFixtureWgView` feeds the WG layout and chat page,
 and the WG layout hands the first fixture member to the provider as the initial identity, without
 `authUserId`: the provider is not server-verified there and confirms the account through the member
@@ -161,7 +161,7 @@ These tests skip themselves unless their variable is set. `pnpm test:unit` and `
 
 | Variable | Enables | How to run | Why not in CI |
 | --- | --- | --- | --- |
-| `TEST_DATABASE_URL` | `tests/statement-run-ledger.test.ts`, `tests/db-connection.test.ts` (live transaction check), `src/core/db/private-image-deletions.test.ts` and `tests/shopping-unique-index.test.ts` | `TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55432/manawg_test pnpm --filter @manawg/web test:db`; the shopping case runs inside `test:e2e:fixtures e2e/shopping-conflict.spec.ts` with the same variable. The URL must be a disposable loopback Postgres prepared with `scripts/test-db-setup.mjs` | Runs in `database.yml` |
+| `TEST_DATABASE_URL` | `tests/statement-run-ledger.test.ts`, `tests/db-connection.test.ts` (live transaction check), `src/core/db/private-image-deletions.test.ts` and `tests/shopping-unique-index.test.ts` | `TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55432/manawg_test pnpm --filter @manawg/web test:db`. The URL must be a disposable loopback Postgres prepared with `scripts/test-db-setup.mjs` | Runs in `database.yml` |
 | `RUN_DB_TIMEOUT_INTEGRATION` | The pool timeout case in `tests/runtime-pool.test.ts` | `pnpm --filter @manawg/web test:db-timeouts` (needs `initdb` and `pg_ctl` on the PATH and a non-root user) | Runs in `database.yml` |
 | `ACCOUNT_DELETE_TEST_URL` | `e2e/account-delete-db-*.spec.ts` (account deletion against real data) | `ACCOUNT_DELETE_TEST_URL=postgresql://postgres@127.0.0.1:55432/manawg_test pnpm --filter @manawg/web test:e2e:account-delete-db` (loopback host and explicit port required) | Runs in `database.yml` |
 | `OCR_RUNTIME_E2E` | The real Tesseract worker proof in `e2e/expense-ui-form.spec.ts` | `OCR_RUNTIME_E2E=true pnpm --filter @manawg/web test:e2e:fixtures e2e/expense-ui-form.spec.ts` | Needs no network: the worker, WASM core and models come from the app's `public/tesseract` (copied from `node_modules` by `next.config.ts`) |
@@ -185,10 +185,11 @@ CI (`.github/workflows/ci.yml`, job `validate`) runs, in this order:
 5. `pnpm --dir apps/web analytics:check`
 6. `pnpm --filter @manawg/web exec node scripts/check-architecture.mjs`
 7. `pnpm --filter @manawg/web exec node scripts/check-wg-auth-invariant.mjs`
-8. `pnpm typecheck` (app, plus `tsconfig.e2e.json` for `e2e/`, `tests/*.test.ts` and Playwright configs)
-9. `pnpm --filter @manawg/web test:unit`
-10. `pnpm build`
-11. `pnpm --filter @manawg/web bundle:check`
+8. Schema drift check: `db:generate` must not produce a new migration from the committed schema
+9. `pnpm typecheck` (app, plus `tsconfig.e2e.json` for `e2e/`, `tests/*.test.ts` and Playwright configs)
+10. `pnpm --filter @manawg/web test:unit`
+11. `pnpm build`
+12. `pnpm --filter @manawg/web bundle:check`
 
 `validate` runs on every PR (drafts and docs-only PRs included) and every push to `main`. Job
 `e2e-fixtures` (`test:e2e:fixtures`, Chromium) runs on every non-draft PR and every push to
@@ -196,7 +197,9 @@ CI (`.github/workflows/ci.yml`, job `validate`) runs, in this order:
 `db-supabase-preview`, `e2e-preview`) migrate and test the Preview deployment of the current
 `main` tip. Dependabot (`.github/dependabot.yml`) opens one grouped minor/patch PR per week and
 ecosystem (npm, GitHub Actions, Docker) and a separate PR per major update; third-party actions
-are pinned by commit SHA.
+are pinned by commit SHA. Workflow `database.yml` runs the database suites from the table above
+against a PostgreSQL service on PRs that touch the schema, migrations or server code, and on every
+push to `main`. Workflow `webkit.yml` runs `test:e2e:webkit` weekly and on demand.
 
 Workflow `security.yml` runs Trivy over the lockfile, the Dockerfile and the tree (known
 vulnerabilities, misconfigurations, secrets) on every PR, on `main` and weekly. Workflow
