@@ -81,7 +81,7 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 								{abo.description}
 							</span>
 							<span className="whitespace-nowrap font-mono tabular-nums @[14rem]:shrink-0">
-								{formatEuroCents(abo.amountCents, abo.currency)}
+								{formatEuroCents(abo.amountCents, abo.currency, { locale })}
 							</span>
 						</span>
 						<span className="text-meta leading-normal font-normal text-muted-foreground">
@@ -137,7 +137,7 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 												: name}
 										</span>
 										<span className="ml-auto font-mono tabular-nums">
-											{formatEuroCents(split.amountCents, abo.currency)}
+											{formatEuroCents(split.amountCents, abo.currency, { locale })}
 										</span>
 									</li>
 								);

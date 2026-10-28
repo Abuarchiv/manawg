@@ -26,7 +26,7 @@ import { AbosList } from '@/features/expenses/components/abos/AbosList';
 import type { Abo } from '@/features/expenses/expense-types';
 import { useAbosPage } from '@/features/expenses/hooks/use-abos-page';
 import { Plus } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useRef } from 'react';
 
 export default function AbosPage() {
@@ -60,6 +60,7 @@ export default function AbosPage() {
 	} = useAbosPage();
 	const t = useTranslations('expenses-abos');
 	const tCommon = useTranslations('common');
+	const locale = useLocale();
 	const listRef = useRef<HTMLElement>(null);
 	const deletedRef = useRef(false);
 	const lastEditingRef = useRef<Abo | null>(null);
@@ -100,7 +101,7 @@ export default function AbosPage() {
 									key={currency}
 									className="break-words font-mono text-lg font-semibold tabular-nums"
 								>
-									{formatEuroCents(Math.round(totalCents), currency)}
+									{formatEuroCents(Math.round(totalCents), currency, { locale })}
 								</p>
 							))}
 						</div>
@@ -111,7 +112,7 @@ export default function AbosPage() {
 									key={currency}
 									className="break-words font-mono text-lg font-semibold tabular-nums"
 								>
-									{formatEuroCents(Math.round(mineCents), currency)}
+									{formatEuroCents(Math.round(mineCents), currency, { locale })}
 								</p>
 							))}
 						</div>

@@ -20,7 +20,8 @@ export default {
 	},
 	deleteDialog: {
 		title: 'Delete fixed costs?',
-		description: 'The fixed costs “{description}” will be deleted. Expenses already recorded stay.',
+		description:
+			'The fixed costs “{description}” will be deleted. Expenses already recorded will remain.',
 		cancel: 'Cancel',
 		confirm: 'Delete',
 	},
@@ -59,9 +60,9 @@ export default {
 		youShare: 'You',
 		ownShare: '{name} · own share',
 		movedOutPaused:
-			'Paused because a member involved has moved out. Adjust the shares, then resume the fixed costs.',
+			'Paused because a member who shares these costs has moved out. Adjust the shares, then resume the fixed costs.',
 		movedOutBlocked:
-			'Not being booked because a member involved has moved out. Adjust the shares or pause the fixed costs.',
+			'Not being booked because a member who shares these costs has moved out. Adjust the shares or pause the fixed costs.',
 		nextBookings: '{count, plural, one {Next booking: {dates}} other {Next # bookings: {dates}}}',
 		resume: 'Resume',
 		pause: 'Pause',
@@ -137,7 +138,7 @@ export default {
 	errors: {
 		saveCreated: 'Fixed costs could not be added',
 		saveUpdated: 'Fixed costs could not be updated',
-		action: 'Fixed costs action failed',
+		action: 'Could not update the fixed costs',
 		delete: 'Fixed costs could not be deleted',
 		withPeriod: '{subject}.',
 		actionFallback: '{subject}. Try again in a moment.',
