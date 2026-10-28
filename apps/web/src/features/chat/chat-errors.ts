@@ -1,33 +1,40 @@
-import { mutationErrorMessage } from '@/core/http/error-codes';
+import { mutationError } from '@/core/http/error-codes';
+import type { Message } from '@/shared/i18n/message';
 
 import { EDIT_WINDOW_MS } from './chat-pure';
 
-export const DELETED_MESSAGE_TEXT = 'Diese Nachricht wurde gelöscht.';
+const DELETED_MESSAGE: Message = { key: 'chat.deleted' };
 
 export type ChatAction = 'send' | 'react' | 'unreact' | 'edit' | 'delete';
 
 /** The shared error buckets prefix their copy with this subject; the fallback is "<subject>.". */
-const SUBJECTS: Record<ChatAction, string> = {
-	send: 'Nachricht konnte nicht gesendet werden',
-	react: 'Reaktion konnte nicht gespeichert werden',
-	unreact: 'Reaktion konnte nicht gespeichert werden',
-	edit: 'Nachricht konnte nicht gespeichert werden',
-	delete: 'Nachricht konnte nicht gelöscht werden',
+const SUBJECTS: Record<ChatAction, Message> = {
+	send: { key: 'chat.errors.sendSubject' },
+	react: { key: 'chat.errors.reactSubject' },
+	unreact: { key: 'chat.errors.reactSubject' },
+	edit: { key: 'chat.errors.editSubject' },
+	delete: { key: 'chat.errors.deleteSubject' },
 };
 
-const CHAT_SPECIFIC_ERRORS: Readonly<Record<string, string>> = {
-	image_removed: 'Dieses Bild wurde entfernt. Lade es erneut hoch, bevor du die Nachricht sendest.',
+const REPLY_GONE: Message = { key: 'chat.errors.replyGone' };
+
+const CHAT_SPECIFIC_ERRORS: Readonly<Record<string, Message>> = {
+	image_removed: { key: 'chat.errors.imageRemoved' },
 	// Without these texts the reply preview would stay and every send would fail the same way, silently.
-	reply_to_not_found:
-		'Die Nachricht, auf die du antwortest, gibt es nicht mehr. Entferne die Antwort und sende erneut.',
-	reply_to_invalid:
-		'Die Nachricht, auf die du antwortest, gibt es nicht mehr. Entferne die Antwort und sende erneut.',
-	message_deleted: DELETED_MESSAGE_TEXT,
-	edit_not_allowed: `Nachrichten lassen sich nur ${Math.round(EDIT_WINDOW_MS / 60_000)} Minuten nach dem Senden bearbeiten.`,
+	reply_to_not_found: REPLY_GONE,
+	reply_to_invalid: REPLY_GONE,
+	message_deleted: DELETED_MESSAGE,
+	edit_not_allowed: {
+		key: 'chat.errors.editNotAllowed',
+		values: { minutes: Math.round(EDIT_WINDOW_MS / 60_000) },
+	},
 };
 
 /** The resident-facing message for a failed chat request. */
-export function explainChatError(action: ChatAction, error: string): string {
+export function explainChatError(action: ChatAction, error: string): Message {
 	const subject = SUBJECTS[action];
-	return mutationErrorMessage(subject, error, CHAT_SPECIFIC_ERRORS, `${subject}.`);
+	return mutationError(subject, error, CHAT_SPECIFIC_ERRORS, {
+		key: 'chat.errors.sentence',
+		values: { subject },
+	});
 }

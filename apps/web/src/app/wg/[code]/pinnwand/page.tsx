@@ -2,7 +2,6 @@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
-import { OfflineQueueNotice } from '@/components/wg/OfflineQueueNotice';
 import { SubNav } from '@/components/wg/SubNav';
 import { ThumbAction } from '@/components/wg/ThumbAction';
 import {
@@ -16,13 +15,15 @@ import { MyOpenAnnouncements } from '@/features/pinnwand/components/MyOpenAnnoun
 import { PinnwandComposer } from '@/features/pinnwand/components/PinnwandComposer';
 import type { Announcement } from '@/features/pinnwand/components/announcement-types';
 import { usePinnwandPage } from '@/features/pinnwand/hooks/use-pinnwand-page';
-import { pluralize } from '@/shared/lib/plural';
+import { useMessage } from '@/shared/i18n/message';
 import { Megaphone, Plus } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import type React from 'react';
 
-const UNKNOWN_AUTHOR = { name: 'Unbekannt', color: null };
-
 export default function PinnwandPage(): React.ReactElement {
+	const t = useTranslations('pinnwand.page');
+	const tCommon = useTranslations('common');
+	const render = useMessage();
 	const {
 		wg,
 		identity,
@@ -56,12 +57,14 @@ export default function PinnwandPage(): React.ReactElement {
 		composer,
 	} = usePinnwandPage();
 
+	const unknownAuthor = { name: tCommon('unknownPerson'), color: null };
+
 	function renderCard(a: Announcement): React.ReactElement {
 		return (
 			<AnnouncementCard
 				key={`${identity.memberId}:${a.id}`}
 				announcement={a}
-				author={authorByMemberId.get(a.authorMemberId) ?? UNKNOWN_AUTHOR}
+				author={authorByMemberId.get(a.authorMemberId) ?? unknownAuthor}
 				deletePending={isPending(a.id)}
 				pinPending={isPending(`${a.id}:pin`)}
 				statusPending={isPending(`${a.id}:status`)}
@@ -87,7 +90,7 @@ export default function PinnwandPage(): React.ReactElement {
 	return (
 		<div data-exchange-content className="mx-auto flex w-full max-w-4xl flex-col gap-3 px-4 py-3">
 			<SubNav />
-			<h1 className="sr-only">Pinnwand</h1>
+			<h1 className="sr-only">{t('title')}</h1>
 
 			{newCount > 0 && (
 				<Button
@@ -97,16 +100,20 @@ export default function PinnwandPage(): React.ReactElement {
 					className="w-full"
 					aria-live="polite"
 				>
-					{pluralize(newCount, 'neuer Beitrag', 'neue Beiträge')}
+					{t('newPosts', { count: newCount })}
 				</Button>
 			)}
-			<OfflineQueueNotice queuedCount={queuedCount} />
+			{queuedCount > 0 && (
+				<Alert>
+					<AlertDescription>{t('queued', { count: queuedCount })}</AlertDescription>
+				</Alert>
+			)}
 			{loadError && (
 				<LoadErrorBanner
 					message={loadError}
 					onRetry={() => void load()}
 					busy={refreshing}
-					retryLabel="Pinnwand erneut laden"
+					retryLabel={t('reload')}
 				/>
 			)}
 			{myOpenItems.length > 0 && (
@@ -139,43 +146,37 @@ export default function PinnwandPage(): React.ReactElement {
 
 			{notice && (
 				<Alert aria-live="polite">
-					<AlertDescription>{notice}</AlertDescription>
+					<AlertDescription>{render(notice)}</AlertDescription>
 				</Alert>
 			)}
 
 			{showSkeleton ? (
 				<AnnouncementSkeleton />
 			) : loadError && items.length === 0 ? (
-				<EmptyState
-					icon={Megaphone}
-					hint="Versuche es erneut, sobald die Verbindung wieder da ist."
-				>
-					Noch keine Beiträge geladen.
+				<EmptyState icon={Megaphone} hint={t('notLoadedHint')}>
+					{t('notLoadedTitle')}
 				</EmptyState>
 			) : items.length === 0 ? (
-				<EmptyState icon={Megaphone} hint="Teile eine Info oder eine Frage mit deiner WG.">
-					Noch keine Beiträge
+				<EmptyState icon={Megaphone} hint={t('emptyHint')}>
+					{t('emptyTitle')}
 				</EmptyState>
 			) : (
 				<>
 					{openItems.length === 0 ? (
-						<EmptyState
-							icon={Megaphone}
-							hint="Geklärtes und Abgehaktes verschwindet von der Pinnwand."
-						>
-							Nichts Offenes
+						<EmptyState icon={Megaphone} hint={t('nothingOpenHint')}>
+							{t('nothingOpenTitle')}
 						</EmptyState>
 					) : (
 						<ul
 							className="flex flex-col divide-y overflow-hidden rounded-xl border"
-							aria-label="Pinnwand-Beiträge"
+							aria-label={t('listAria')}
 						>
 							{openItems.slice(0, visibleOpenCount).map(renderCard)}
 						</ul>
 					)}
 					{visibleOpenCount < openItems.length && (
 						<Button variant="outline" onClick={showMoreOpen}>
-							Mehr anzeigen ({openItems.length - visibleOpenCount})
+							{t('showMore', { count: String(openItems.length - visibleOpenCount) })}
 						</Button>
 					)}
 				</>
@@ -192,7 +193,7 @@ export default function PinnwandPage(): React.ReactElement {
 					}}
 				>
 					<Plus data-icon="inline-start" aria-hidden />
-					{composer.hasDraft ? 'Entwurf fortsetzen' : 'Beitrag hinzufügen'}
+					{composer.hasDraft ? t('continueDraft') : t('addPost')}
 					{composer.hasDraft && (
 						<span
 							aria-hidden

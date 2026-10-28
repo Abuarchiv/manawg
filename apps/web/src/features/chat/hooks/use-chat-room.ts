@@ -1,9 +1,9 @@
 import { useToast } from '@/components/ui/Toast';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { apiFetch } from '@/core/infra/api-client';
-import { notificationWarningMessage } from '@/core/notifications/notification-warning';
-import { keyUnavailableMessage } from '@/core/offline/offline-copy';
+import type { NotificationWarning } from '@/core/notifications/notification-warning';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
+import { type Message, useMessage } from '@/shared/i18n/message';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { explainChatError } from '../chat-errors';
 import {
@@ -23,6 +23,12 @@ export type { ChatMessageDto, ChatReactionRow } from '../chat-types';
 
 const CHAT_POLL_INTERVAL_MS = 8000;
 
+function deliveryWarning(warning: NotificationWarning): Message | null {
+	if (warning === 'notification_delivery_failed') return { key: 'chat.warning.deliveryFailed' };
+	if (warning === 'notification_delivery_unknown') return { key: 'chat.warning.deliveryUnknown' };
+	return null;
+}
+
 /**
  * Messages, reactions and read state of a WG chat: bootstrap, polling refresh, cursor
  * pagination and all mutations. Paged history does not fit a synced collection, so the refresh
@@ -41,6 +47,7 @@ export function useChatRoom({
 }) {
 	const { identity } = useWg();
 	const toast = useToast();
+	const render = useMessage();
 	const encodedShareCode = encodeURIComponent(shareCode);
 	const messagesUrl = `/api/wg/${encodedShareCode}/chat/messages`;
 
@@ -55,7 +62,7 @@ export function useChatRoom({
 	const [refreshError, setRefreshError] = useState(false);
 	// Where the "Neue Nachrichten" divider goes; set once at the first load and kept until the chat closes.
 	const [firstUnreadId, setFirstUnreadId] = useState<string | null>(null);
-	const [sendError, setSendError] = useState<string | null>(null);
+	const [sendError, setSendError] = useState<Message | null>(null);
 	const loadingOlderRef = useRef(false);
 	const pendingSendRef = useRef<PendingChatSend['current']>(null);
 	const messagesRef = useRef(messages);
@@ -157,7 +164,7 @@ export function useChatRoom({
 		if (!result.ok) {
 			setSendError(
 				result.reason === 'key_unavailable'
-					? keyUnavailableMessage('Nachricht', 'gesendet')
+					? { key: 'chat.errors.keyUnavailable' }
 					: explainChatError('send', result.error),
 			);
 			return false;
@@ -170,12 +177,12 @@ export function useChatRoom({
 				: [...prev, sent],
 		);
 		void refresh();
-		const warningMessage = notificationWarningMessage(result.warning, 'Gesendet');
-		if (warningMessage) toast.info(warningMessage);
+		const warning = deliveryWarning(result.warning);
+		if (warning) toast.info(render(warning));
 		return true;
 	}
 
-	async function editMessage(messageId: string, next: string): Promise<string | null> {
+	async function editMessage(messageId: string, next: string): Promise<Message | null> {
 		const res = await apiFetch<{ message: ChatMessageDto }>(`${messagesUrl}/${messageId}`, {
 			method: 'PATCH',
 			memberId: identity.memberId,
@@ -195,7 +202,7 @@ export function useChatRoom({
 		return null;
 	}
 
-	async function deleteMessage(messageId: string): Promise<string | null> {
+	async function deleteMessage(messageId: string): Promise<Message | null> {
 		const res = await apiFetch(`${messagesUrl}/${messageId}`, {
 			method: 'DELETE',
 			memberId: identity.memberId,

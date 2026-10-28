@@ -10,16 +10,15 @@ import {
 } from '@/components/ui/card';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { buildDraftKey } from '@/core/offline/drafts';
-import { formatRelativeTime, formatTimeFull } from '@/core/utils/time';
-import {
-	REACTION_OPTIONS,
-	SOURCE_LABELS,
-	pickReactionOptions,
-} from '@/features/pinnwand/announcement-card-model';
+import { formatTimeFull, relativeTimeMessage } from '@/core/utils/time';
+import { REACTION_OPTIONS, pickReactionOptions } from '@/features/pinnwand/announcement-card-model';
 import { buildPinnwandPrefill } from '@/features/pinnwand/pinnwand-prefill';
+import type { Locale } from '@/shared/i18n/locale';
+import { type Message, useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
 import type { MemberInfo } from '@/shared/lib/member-types';
 import { Pin } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 import { type ReactElement, memo, useState } from 'react';
 import { AnnouncementActionsMenu } from './AnnouncementActionsMenu';
 import { AnnouncementBody } from './AnnouncementBody';
@@ -28,7 +27,6 @@ import { AnnouncementEditDrawer } from './AnnouncementEditDrawer';
 import { AnnouncementFooter } from './AnnouncementFooter';
 import { actionLabelSubject } from './CommentRow';
 import type { Announcement, AnnouncementKind, ReactionKey } from './announcement-types';
-import { KIND_LABELS } from './constants';
 
 interface AnnouncementCardProps {
 	announcement: Announcement;
@@ -38,7 +36,7 @@ interface AnnouncementCardProps {
 	statusPending: boolean;
 	/** Comma-separated reactions with a request in flight (a string, not a function, so memo holds). */
 	pendingReactions: string;
-	onDelete: (announcement: Announcement) => Promise<string | null>;
+	onDelete: (announcement: Announcement) => Promise<Message | null>;
 	onTogglePinned: (announcement: Announcement) => void;
 	onToggleStatus: (announcement: Announcement) => void;
 	onEdit: (
@@ -79,6 +77,9 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 	shareCode,
 	highlighted,
 }: AnnouncementCardProps): ReactElement {
+	const t = useTranslations('pinnwand');
+	const render = useMessage();
+	const locale = useLocale() as Locale;
 	const reactionPending = (key: ReactionKey): boolean => pendingReactions.includes(key);
 	const bodyText = announcement.content.trim();
 	const [deleteOpen, setDeleteOpen] = useState(false);
@@ -93,11 +94,11 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 	// Author or admin rewrite a post, but only one typed by hand (not system posts).
 	const canEdit = canModerate && announcement.source === 'manual';
 	const canResolve = isAuthor || isAdmin || announcement.myReactions.includes('take');
-	const sourceLabel = SOURCE_LABELS[announcement.source];
+	const sourceLabel = announcement.source === 'manual' ? null : t(`source.${announcement.source}`);
 	const sourceHref = announcement.sourcePath
 		? `/wg/${encodeURIComponent(shareCode)}${announcement.sourcePath}`
 		: null;
-	const actionSubject = actionLabelSubject(bodyText, 'leerer Beitrag');
+	const actionSubject = actionLabelSubject(bodyText, t('subject.emptyPost'));
 	const reactions = pickReactionOptions(announcement, touchedReactions);
 	const busy =
 		deletePending ||
@@ -131,15 +132,18 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 							<span className="font-medium text-foreground">{author.name}</span> ·{' '}
 							<time
 								dateTime={announcement.createdAt}
-								title={formatTimeFull(announcement.createdAt)}
+								title={formatTimeFull(announcement.createdAt, locale)}
 							>
-								{formatRelativeTime(announcement.createdAt)}
+								{render(relativeTimeMessage(announcement.createdAt, Date.now(), locale))}
 							</time>{' '}
-							· {KIND_LABELS[announcement.kind]}
+							· {t(`kind.${announcement.kind}`)}
 							{sourceLabel && ` · ${sourceLabel}`}
 						</span>
 						{isPinned && (
-							<Pin aria-label="Fixiert" className="size-3.5 shrink-0 text-muted-foreground" />
+							<Pin
+								aria-label={t('card.pinned')}
+								className="size-3.5 shrink-0 text-muted-foreground"
+							/>
 						)}
 					</CardTitle>
 					<CardAction>
@@ -147,7 +151,9 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 							actionSubject={actionSubject}
 							shareCode={shareCode}
 							sourceHref={sourceHref}
-							prefill={announcement.source === 'manual' ? buildPinnwandPrefill(bodyText) : null}
+							prefill={
+								announcement.source === 'manual' ? buildPinnwandPrefill(bodyText, locale) : null
+							}
 							hiddenReactions={reactions.hidden}
 							reactionPending={reactionPending}
 							isPinned={isPinned}

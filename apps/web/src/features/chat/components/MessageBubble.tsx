@@ -6,11 +6,14 @@ import { Bubble, BubbleContent, BubbleGroup, BubbleTail } from '@/components/ui/
 import { Message, MessageAvatar, MessageContent } from '@/components/ui/message';
 import { initials, memberTint } from '@/components/wg/MemberAvatar';
 import { formatTimeFull } from '@/core/utils/time';
+import { dateTimeFormat } from '@/shared/i18n/intl';
+import type { Locale } from '@/shared/i18n/locale';
+import { type Message as I18nMessage, useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
 import type { MemberInfo } from '@/shared/lib/member-types';
 import { Check, CheckCheck, Reply } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 import { memo, useEffect, useRef, useState } from 'react';
-import { DELETED_MESSAGE_TEXT } from '../chat-errors';
 import { canDeleteMessage, canEditMessage } from '../chat-pure';
 import type { BubbleMessage, ReactionSummary } from '../chat-types';
 import { useBubbleGestures } from '../hooks/use-bubble-gestures';
@@ -26,8 +29,6 @@ import { ReactionPicker } from './ReactionPicker';
 
 export type { BubbleMessage, ReactionSummary } from '../chat-types';
 
-const TIME_FORMAT = new Intl.DateTimeFormat('de-DE', { hour: '2-digit', minute: '2-digit' });
-
 interface MessageBubbleProps {
 	message: BubbleMessage;
 	sender: MemberInfo | null;
@@ -42,10 +43,10 @@ interface MessageBubbleProps {
 	reactions: ReactionSummary[];
 	replyTo: BubbleMessage | null;
 	replyToSender: { name: string } | null;
-	onReact: (messageId: string, emoji: string) => Promise<string | null>;
-	onUnreact: (messageId: string, emoji: string) => Promise<string | null>;
-	onEdit: (messageId: string, next: string) => Promise<string | null>;
-	onDelete: (messageId: string) => Promise<string | null>;
+	onReact: (messageId: string, emoji: string) => Promise<I18nMessage | null>;
+	onUnreact: (messageId: string, emoji: string) => Promise<I18nMessage | null>;
+	onEdit: (messageId: string, next: string) => Promise<I18nMessage | null>;
+	onDelete: (messageId: string) => Promise<I18nMessage | null>;
 	onReply: (messageId: string) => void;
 }
 
@@ -68,6 +69,10 @@ export const MessageBubble = memo(function MessageBubble({
 	onDelete,
 	onReply,
 }: MessageBubbleProps) {
+	const t = useTranslations('chat');
+	const tCommon = useTranslations('common');
+	const render = useMessage();
+	const locale = useLocale() as Locale;
 	const actions = useMessageBubbleActions({
 		message,
 		draftKey,
@@ -97,16 +102,18 @@ export const MessageBubble = memo(function MessageBubble({
 		id: currentMemberId,
 		role: isAdmin ? 'admin' : null,
 	});
-	const senderName = sender?.name ?? 'Unbekannt';
+	const senderName = sender?.name ?? tCommon('unknownPerson');
 	const align = isOwn ? 'end' : 'start';
 	const readByAll = readTotal > 0 && readCount >= readTotal;
 	// Time and read ticks sit small at the bottom right of the bubble; the date is in the day pill.
 	const timeStamp = (
 		<span className="float-end ms-2 mt-1.5 inline-flex items-center gap-0.5 text-meta leading-none tabular-nums">
 			<span className="opacity-80">
-				{message.editedAt && !isDeleted && 'bearbeitet · '}
-				<time dateTime={message.createdAt} title={formatTimeFull(message.createdAt)}>
-					{TIME_FORMAT.format(new Date(message.createdAt))}
+				{message.editedAt && !isDeleted && `${t('bubble.edited')} · `}
+				<time dateTime={message.createdAt} title={formatTimeFull(message.createdAt, locale)}>
+					{dateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }).format(
+						new Date(message.createdAt),
+					)}
 				</time>
 			</span>
 			{isOwn && !isDeleted && (
@@ -114,10 +121,10 @@ export const MessageBubble = memo(function MessageBubble({
 					role="img"
 					aria-label={
 						readByAll
-							? 'Von allen gelesen'
+							? t('bubble.readAll')
 							: readCount > 0
-								? `Von ${readCount} von ${readTotal} gelesen`
-								: 'Gesendet'
+								? t('bubble.readSome', { count: String(readCount), total: String(readTotal) })
+								: t('bubble.sent')
 					}
 					className={cn('inline-flex', readByAll ? 'font-semibold' : 'opacity-60')}
 				>
@@ -206,7 +213,7 @@ export const MessageBubble = memo(function MessageBubble({
 								{isDeleted ? (
 									<BubbleContent className={BUBBLE_TEXT}>
 										<p ref={deletedRef} tabIndex={-1} className="outline-none">
-											{DELETED_MESSAGE_TEXT}
+											{t('deleted')}
 											{timeStamp}
 										</p>
 									</BubbleContent>
@@ -261,7 +268,7 @@ export const MessageBubble = memo(function MessageBubble({
 					)}
 					{error && !deleteOpen && (
 						<Alert id={`message-edit-error-${message.id}`} variant="destructive">
-							<AlertDescription>{error}</AlertDescription>
+							<AlertDescription>{render(error)}</AlertDescription>
 						</Alert>
 					)}
 					<ReactionPicker

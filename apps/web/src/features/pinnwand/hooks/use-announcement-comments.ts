@@ -1,11 +1,12 @@
 import { createIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
-import { notificationWarningMessage } from '@/core/notifications/notification-warning';
+import { deliveryWarning } from '@/features/pinnwand/announcement-warning';
 import type { CommentOverrides } from '@/features/pinnwand/comment-overrides';
 import type {
 	Announcement,
 	AnnouncementComment,
 } from '@/features/pinnwand/components/announcement-types';
+import { useMessage } from '@/shared/i18n/message';
 import { type MutableRefObject, useRef } from 'react';
 import { announcementListEdits } from './announcement-list-edits';
 import type {
@@ -32,6 +33,7 @@ export function useAnnouncementComments(
 		setActionError,
 		load,
 	} = ctx;
+	const render = useMessage();
 	const commentIdempotencyKeysRef = useRef(new Map<string, string>());
 	const edits = announcementListEdits(ctx, commentOverridesRef);
 	const commentUrl = (announcementId: string, commentId?: string) =>
@@ -92,8 +94,8 @@ export function useAnnouncementComments(
 				comment.id === optimisticComment.id ? confirmedComment : comment,
 			),
 		}));
-		const warningMessage = notificationWarningMessage(res.data.warning);
-		if (warningMessage) toast.info(warningMessage);
+		const warning = deliveryWarning(res.data.warning);
+		if (warning) toast.info(render(warning));
 		void load('background');
 		return true;
 	}
@@ -132,7 +134,7 @@ export function useAnnouncementComments(
 					...item,
 					comments: item.comments.filter((comment) => comment.id !== commentId),
 				}));
-				setActionError('Diese Antwort existiert nicht mehr und wurde entfernt.');
+				setActionError({ key: 'pinnwand.errors.replyVanished' });
 				return true;
 			}
 			if (previousComment) edits.replaceComment(announcement.id, commentId, previousComment);
@@ -170,7 +172,7 @@ export function useAnnouncementComments(
 			...item,
 			comments: item.comments.filter((comment) => comment.id !== commentId),
 		}));
-		if (!res.ok) setActionError('Diese Antwort existiert nicht mehr und wurde entfernt.');
+		if (!res.ok) setActionError({ key: 'pinnwand.errors.replyVanished' });
 		void load('background');
 		return true;
 	}

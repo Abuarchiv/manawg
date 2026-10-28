@@ -1,6 +1,7 @@
 'use client';
 
 import { WgRouteErrorBoundary } from '@/components/wg/WgRouteErrorBoundary';
+import { useTranslations } from 'next-intl';
 
 interface PinnwandErrorProps {
 	error: Error & { digest?: string };
@@ -8,13 +9,14 @@ interface PinnwandErrorProps {
 }
 
 export default function PinnwandError({ error, reset }: PinnwandErrorProps) {
+	const t = useTranslations('pinnwand.errorPage');
 	return (
 		<WgRouteErrorBoundary
 			error={error}
 			reset={reset}
 			boundary="wg-pinnwand"
-			title="Pinnwand konnte gerade nicht geladen werden"
-			body="Auf der Pinnwand ist ein Fehler aufgetreten. Bitte versuche es erneut oder kehre zur WG-Übersicht zurück."
+			title={t('title')}
+			body={t('body')}
 		/>
 	);
 }

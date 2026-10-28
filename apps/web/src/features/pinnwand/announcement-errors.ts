@@ -1,51 +1,61 @@
-import { mutationErrorMessage } from '@/core/http/error-codes';
+import { mutationError } from '@/core/http/error-codes';
+import type { Message } from '@/shared/i18n/message';
 import { CONTENT_MAX } from './constants';
 
-const CREATE_SUBJECT = 'Beitrag konnte nicht gespeichert werden';
-const CREATE_ERRORS: Record<string, string> = {
-	content_invalid: `${CREATE_SUBJECT}: Der Text muss 1 bis ${CONTENT_MAX} Zeichen haben.`,
-	kind_invalid: `${CREATE_SUBJECT}: Die Beitragsart ist ungültig.`,
-	image_invalid: `${CREATE_SUBJECT}: Der Anhang ist ungültig.`,
-	image_removed: `${CREATE_SUBJECT}: Der Anhang wurde entfernt. Lade das Bild erneut hoch.`,
-	source_path_invalid: `${CREATE_SUBJECT}: Der Quelllink ist ungültig.`,
-	insert_failed: `${CREATE_SUBJECT}: Prüfe die Pinnwand und versuche es erneut.`,
-	invalid_json: `${CREATE_SUBJECT}: Die Anfrage war ungültig.`,
-};
-
-export function announcementCreateErrorMessage(error: string): string {
-	return mutationErrorMessage(CREATE_SUBJECT, error, CREATE_ERRORS, `${CREATE_SUBJECT}.`);
+function withSubject(subject: Message, detail: Message): Message {
+	return { key: 'common.errors.withSubject', values: { subject, detail } };
 }
 
-const ACTION_SUBJECT = 'Aktion konnte nicht gespeichert werden';
-const ACTION_ERRORS: Record<string, string> = {
-	reaction_invalid: 'Reaktion konnte nicht gespeichert werden: Die Reaktion ist ungültig.',
-	insert_failed:
-		'Reaktion konnte nicht gespeichert werden: Lade den Beitrag neu und versuche es erneut.',
-	delete_failed:
-		'Reaktion konnte nicht entfernt werden: Lade den Beitrag neu und prüfe den aktuellen Stand.',
-	reaction_not_found:
-		'Reaktion existiert nicht mehr. Lade den Beitrag neu, um den aktuellen Stand zu sehen.',
-	status_invalid: 'Pinnwand-Status konnte nicht gespeichert werden: Der Status ist ungültig.',
-	pinned_invalid: 'Fixierung konnte nicht gespeichert werden: Der Wert ist ungültig.',
-	kind_invalid: `${ACTION_SUBJECT}: Die Beitragsart ist ungültig.`,
-	content_invalid: `${ACTION_SUBJECT}: Der Text muss 1 bis ${CONTENT_MAX} Zeichen haben.`,
-	expected_state_invalid: `${ACTION_SUBJECT}: Der Stand des Beitrags ist ungültig.`,
-	announcement_changed:
-		'Der Beitrag wurde inzwischen geändert. Die Ansicht wird aktualisiert, dann kannst du erneut bearbeiten.',
-	content_locked: 'Dieser Beitrag wurde automatisch erstellt und lässt sich nicht bearbeiten.',
-	not_owner: `${ACTION_SUBJECT}: Nur wer den Beitrag geschrieben hat oder WG-Admins können ihn bearbeiten.`,
-	announcement_resolved: 'Dieser Beitrag wurde inzwischen geklärt.',
-	status_change_not_allowed:
-		'Nur wer den Beitrag geschrieben oder übernommen hat und WG-Admins können diesen Beitrag als geklärt markieren.',
-	invalid_body: `${ACTION_SUBJECT}: Die Anfrage war ungültig.`,
-	invalid_json: `${ACTION_SUBJECT}: Die Anfrage war ungültig.`,
+const REQUEST_INVALID: Message = { key: 'pinnwand.errors.requestInvalid' };
+const KIND_INVALID: Message = { key: 'pinnwand.errors.kindInvalid' };
+const CONTENT_INVALID: Message = {
+	key: 'pinnwand.errors.contentInvalid',
+	values: { max: CONTENT_MAX },
 };
 
-export function announcementActionErrorMessage(error: string): string {
-	return mutationErrorMessage(
-		ACTION_SUBJECT,
-		error,
-		ACTION_ERRORS,
-		`${ACTION_SUBJECT}. Versuche es erneut.`,
-	);
+const CREATE_SUBJECT: Message = { key: 'pinnwand.errors.createSubject' };
+const CREATE_ERRORS: Record<string, Message> = {
+	content_invalid: withSubject(CREATE_SUBJECT, CONTENT_INVALID),
+	kind_invalid: withSubject(CREATE_SUBJECT, KIND_INVALID),
+	image_invalid: withSubject(CREATE_SUBJECT, { key: 'pinnwand.errors.imageInvalid' }),
+	image_removed: withSubject(CREATE_SUBJECT, { key: 'pinnwand.errors.imageRemoved' }),
+	source_path_invalid: withSubject(CREATE_SUBJECT, { key: 'pinnwand.errors.sourcePathInvalid' }),
+	insert_failed: withSubject(CREATE_SUBJECT, { key: 'pinnwand.errors.insertFailed' }),
+	invalid_json: withSubject(CREATE_SUBJECT, REQUEST_INVALID),
+};
+
+export function announcementCreateError(error: string): Message {
+	return mutationError(CREATE_SUBJECT, error, CREATE_ERRORS, {
+		key: 'pinnwand.errors.sentence',
+		values: { subject: CREATE_SUBJECT },
+	});
+}
+
+const ACTION_SUBJECT: Message = { key: 'pinnwand.errors.actionSubject' };
+const ACTION_ERRORS: Record<string, Message> = {
+	reaction_invalid: { key: 'pinnwand.errors.reactionInvalid' },
+	insert_failed: { key: 'pinnwand.errors.reactionInsertFailed' },
+	delete_failed: { key: 'pinnwand.errors.reactionDeleteFailed' },
+	reaction_not_found: { key: 'pinnwand.errors.reactionNotFound' },
+	status_invalid: { key: 'pinnwand.errors.statusInvalid' },
+	pinned_invalid: { key: 'pinnwand.errors.pinnedInvalid' },
+	kind_invalid: withSubject(ACTION_SUBJECT, KIND_INVALID),
+	content_invalid: withSubject(ACTION_SUBJECT, CONTENT_INVALID),
+	expected_state_invalid: withSubject(ACTION_SUBJECT, {
+		key: 'pinnwand.errors.expectedStateInvalid',
+	}),
+	announcement_changed: { key: 'pinnwand.errors.announcementChanged' },
+	content_locked: { key: 'pinnwand.errors.contentLocked' },
+	not_owner: withSubject(ACTION_SUBJECT, { key: 'pinnwand.errors.notOwner' }),
+	announcement_resolved: { key: 'pinnwand.errors.announcementResolved' },
+	status_change_not_allowed: { key: 'pinnwand.errors.statusChangeNotAllowed' },
+	invalid_body: withSubject(ACTION_SUBJECT, REQUEST_INVALID),
+	invalid_json: withSubject(ACTION_SUBJECT, REQUEST_INVALID),
+};
+
+export function announcementActionError(error: string): Message {
+	return mutationError(ACTION_SUBJECT, error, ACTION_ERRORS, {
+		key: 'pinnwand.errors.actionFallback',
+		values: { subject: ACTION_SUBJECT },
+	});
 }

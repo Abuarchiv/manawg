@@ -1,4 +1,5 @@
 import { readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
+import type { Message } from '@/shared/i18n/message';
 import { haptic } from '@/shared/lib/haptics';
 import { useEffect, useRef, useState } from 'react';
 import type { BubbleMessage } from '../chat-types';
@@ -6,10 +7,10 @@ import type { BubbleMessage } from '../chat-types';
 interface BubbleActionsOptions {
 	message: BubbleMessage;
 	draftKey: string;
-	onReact: (messageId: string, emoji: string) => Promise<string | null>;
-	onUnreact: (messageId: string, emoji: string) => Promise<string | null>;
-	onEdit: (messageId: string, next: string) => Promise<string | null>;
-	onDelete: (messageId: string) => Promise<string | null>;
+	onReact: (messageId: string, emoji: string) => Promise<Message | null>;
+	onUnreact: (messageId: string, emoji: string) => Promise<Message | null>;
+	onEdit: (messageId: string, next: string) => Promise<Message | null>;
+	onDelete: (messageId: string) => Promise<Message | null>;
 }
 
 /**
@@ -29,7 +30,7 @@ export function useMessageBubbleActions({
 	const [hasDraft, setHasDraft] = useState(false);
 	const [pending, setPending] = useState(false);
 	const [reactionPending, setReactionPending] = useState<string | null>(null);
-	const [error, setError] = useState<string | null>(null);
+	const [error, setError] = useState<Message | null>(null);
 	const [deleteOpen, setDeleteOpen] = useState(false);
 	const [reactOpen, setReactOpen] = useState(false);
 	const pendingRef = useRef(false);
@@ -89,7 +90,7 @@ export function useMessageBubbleActions({
 				setEditing(false);
 				setHasDraft(false);
 				removeDraft(draftKey);
-			} else setError(`${failure} Dein Text ist noch da.`);
+			} else setError({ key: 'chat.errors.textKept', values: { error: failure } });
 		});
 	}
 

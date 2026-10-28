@@ -16,9 +16,9 @@ import { copyText } from '@/core/utils/clipboard';
 import { cn } from '@/shared/lib/cn';
 import { haptic } from '@/shared/lib/haptics';
 import { Copy, ExternalLink, Pencil, Plus, Reply, Trash2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { type ReactNode, type RefObject, useLayoutEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { DELETED_MESSAGE_TEXT } from '../chat-errors';
 import { reactorNames } from '../chat-reactions';
 import { extractLinks, splitMentions } from '../chat-text';
 import type { BubbleMessage, ReactionSummary } from '../chat-types';
@@ -101,6 +101,8 @@ export function MessageActionsMenu({
 	onEdit,
 	onDelete,
 }: MessageActionsMenuProps) {
+	const t = useTranslations('chat');
+	const tCommon = useTranslations('common');
 	const { members, identity } = useWg();
 	const ownName = members.find((m) => m.id === identity.memberId)?.name;
 	const bodySegments = useMemo(
@@ -138,7 +140,7 @@ export function MessageActionsMenu({
 						/>
 					}
 				>
-					<span className="sr-only">Aktionen für Nachricht von {senderName}: </span>
+					<span className="sr-only">{t('menu.actionsFor', { name: senderName })}</span>
 					{showSenderName && (
 						<span
 							aria-hidden
@@ -154,14 +156,14 @@ export function MessageActionsMenu({
 							<span className="block text-xs font-medium [overflow-wrap:anywhere]">
 								<Reply aria-hidden className="me-1 inline size-3" />
 								{replyTo
-									? (replyToSender?.name ?? 'Unbekannt')
-									: 'Antwort auf eine ältere Nachricht'}
+									? (replyToSender?.name ?? tCommon('unknownPerson'))
+									: t('menu.replyToOlder')}
 							</span>
 							{replyTo && (
 								<span className="line-clamp-2 whitespace-pre-wrap text-xs opacity-80 [overflow-wrap:anywhere]">
 									{replyTo.deletedAt
-										? DELETED_MESSAGE_TEXT
-										: (replyTo.body ?? (replyTo.imageUrl ? 'Bild' : '…'))}
+										? t('deleted')
+										: (replyTo.body ?? (replyTo.imageUrl ? t('view.imagePreview') : '…'))}
 								</span>
 							)}
 						</span>
@@ -189,7 +191,7 @@ export function MessageActionsMenu({
 				</DropdownMenuTrigger>
 				<DropdownMenuContent backdrop align={isOwn ? 'end' : 'start'} className="w-auto min-w-48">
 					<DropdownMenuGroup
-						aria-label="Reagieren"
+						aria-label={t('menu.reactGroup')}
 						className="grid max-w-[calc(100vw-2rem)] grid-cols-7 items-center gap-0.5"
 					>
 						{QUICK_REACTIONS.map((emoji) => {
@@ -197,7 +199,7 @@ export function MessageActionsMenu({
 							return (
 								<DropdownMenuItem
 									key={emoji}
-									aria-label={mine ? `Reaktion ${emoji} entfernen` : `Mit ${emoji} reagieren`}
+									aria-label={t(mine ? 'menu.reactionRemove' : 'menu.reactWith', { emoji })}
 									disabled={reactionPending}
 									className={cn(
 										'h-11 w-auto min-w-0 justify-center rounded-full p-0 text-[22px] leading-none',
@@ -210,7 +212,7 @@ export function MessageActionsMenu({
 							);
 						})}
 						<DropdownMenuItem
-							aria-label="Weitere Reaktionen"
+							aria-label={t('menu.moreReactions')}
 							disabled={reactionPending}
 							className="h-11 w-auto min-w-0 justify-center rounded-full bg-muted p-0"
 							onClick={onReactOpen}
@@ -226,7 +228,11 @@ export function MessageActionsMenu({
 						>
 							{reactions.map((reaction) => (
 								<div key={reaction.emoji}>
-									{reaction.emoji} {reactorNames(reaction.memberIds, members, identity.memberId)}
+									{reaction.emoji}{' '}
+									{reactorNames(reaction.memberIds, members, identity.memberId, {
+										you: t('bubble.you'),
+										former: t('bubble.formerMember'),
+									})}
 								</div>
 							))}
 						</div>
@@ -240,7 +246,7 @@ export function MessageActionsMenu({
 								onReply(message.id);
 							}}
 						>
-							<Reply aria-hidden /> Antworten
+							<Reply aria-hidden /> {t('menu.reply')}
 						</DropdownMenuItem>
 						{message.body && (
 							<DropdownMenuItem
@@ -248,13 +254,11 @@ export function MessageActionsMenu({
 								// copyText catches a rejected async clipboard call (otherwise a pageerror without feedback).
 								onClick={() =>
 									void copyText(message.body ?? '').then((copied) =>
-										copied
-											? toast.success('Nachricht kopiert.')
-											: toast.error('Kopieren hat nicht geklappt. Versuche es erneut.'),
+										copied ? toast.success(t('menu.copied')) : toast.error(t('menu.copyFailed')),
 									)
 								}
 							>
-								<Copy aria-hidden /> Kopieren
+								<Copy aria-hidden /> {t('menu.copy')}
 							</DropdownMenuItem>
 						)}
 						{links.map((url) => (
@@ -265,17 +269,19 @@ export function MessageActionsMenu({
 								render={<a href={url} target="_blank" rel="noopener noreferrer" />}
 							>
 								<ExternalLink aria-hidden />
-								{links.length > 1 ? `Link öffnen: ${new URL(url).hostname}` : 'Link öffnen'}
+								{links.length > 1
+									? t('menu.openLinkHost', { host: new URL(url).hostname })
+									: t('menu.openLink')}
 							</DropdownMenuItem>
 						))}
 						{editable && (
 							<DropdownMenuItem className="min-h-11" onClick={onEdit}>
-								<Pencil aria-hidden /> {hasDraft ? 'Entwurf weiterbearbeiten' : 'Bearbeiten'}
+								<Pencil aria-hidden /> {hasDraft ? t('menu.editDraft') : t('menu.edit')}
 							</DropdownMenuItem>
 						)}
 						{deletable && (
 							<DropdownMenuItem className="min-h-11" variant="destructive" onClick={onDelete}>
-								<Trash2 aria-hidden /> Löschen
+								<Trash2 aria-hidden /> {t('menu.delete')}
 							</DropdownMenuItem>
 						)}
 					</DropdownMenuGroup>
