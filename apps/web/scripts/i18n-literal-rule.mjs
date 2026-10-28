@@ -22,8 +22,7 @@ const COPY_ATTRIBUTES = new Set([
 ]);
 /** Object keys whose capitalised string values are shown to people (labels, titles, toasts). */
 const COPY_KEYS = new Set([...COPY_ATTRIBUTES, 'ariaLabel', 'heading', 'message', 'text']);
-const ALLOWLIST_RE =
-	/\b(?:ManaWG|Deutsch|English|PayPal|Splitwise|Splid|CSV|iOS|Android|Web Push)\b/g;
+const ALLOWLIST_RE = /\b(?:ManaWG|Deutsch|English|Splitwise|Splid|CSV|iOS|Android|Web Push)\b/g;
 const ENTITY_RE = /&(?:#\d+|#x[\da-f]+|[a-z]+);/gi;
 const UMLAUT_RE = /[äöüÄÖÜß]/;
 const GERMAN_WORD_RE =
