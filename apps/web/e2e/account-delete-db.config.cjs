@@ -6,6 +6,7 @@ const fs = require('node:fs');
 const Module = require('node:module');
 const os = require('node:os');
 const path = require('node:path');
+const { pathToFileURL } = require('node:url');
 const { defineConfig } = require('@playwright/test');
 
 const appRoot = path.resolve(__dirname, '..');
@@ -28,11 +29,20 @@ if (!originalResolveFilename.__accountDeleteDbHarness) {
 		value: true,
 	});
 	Module._resolveFilename = resolveAccountDeleteTestModule;
+	// The app package is ESM, so the specs load server modules through the ESM loader too.
+	Module.registerHooks({
+		resolve(specifier, context, nextResolve) {
+			if (specifier === 'server-only') {
+				return { url: pathToFileURL(emptyServerOnlyMarker).href, shortCircuit: true };
+			}
+			return nextResolve(specifier, context);
+		},
+	});
 }
 
 module.exports = defineConfig({
 	testDir: __dirname,
-	testMatch: ['account-delete-db.spec.ts'],
+	testMatch: ['account-delete-db-*.spec.ts'],
 	outputDir: fs.mkdtempSync(path.join(os.tmpdir(), 'manawg-account-delete-db-')),
 	reporter: [['list']],
 	projects: [{ name: 'account-delete-db', use: {} }],
