@@ -1,9 +1,9 @@
 // Lists every interactive element (role + name) per WG page in the phone viewport, so UI drivers
 // can be written against real labels. Prints to stdout; same env as ui.mjs.
 import { chromium, devices } from '@playwright/test';
+import { BASE } from './env.mjs';
 import { call, setup } from './modules-lib.mjs';
 
-const BASE = 'http://localhost:3140';
 const { A, code, annaId, benId } = await setup();
 // Some data so lists, menus and edit controls render.
 await call(A, 'POST', `/api/wg/${code}/expenses`, {
