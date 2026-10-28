@@ -138,3 +138,23 @@ test('pause and resume compare the loaded due date like an edit', async () => {
 	assert.equal(state.updateWhere.length, 2);
 	for (const where of state.updateWhere) assert.match(where, /"next_due_at" = \$/);
 });
+
+test('a stale version is a conflict unless the template already holds the edit', async () => {
+	const updatedAt = new Date(anchorAt.getTime() + DAY_MS);
+	const stale = { id: 'template-1', expectedUpdatedAt: anchorAt.toISOString() };
+	state.sets = [];
+	const changed = await editRecurringTemplate(caller, template({ updatedAt }) as never, {
+		...stale,
+		description: 'Strom',
+	});
+	assert.equal(changed.status, 409);
+	// The retry of a save whose answer got lost finds its own values in place.
+	const held = await editRecurringTemplate(caller, template({ updatedAt }) as never, {
+		...stale,
+		description: 'Internet',
+		amountCents: 1000,
+		nextDueAt: dueAt.toISOString(),
+	});
+	assert.equal(held.status, 200);
+	assert.equal(state.sets.length, 0);
+});

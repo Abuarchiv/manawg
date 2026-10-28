@@ -1,6 +1,7 @@
 import 'server-only';
 import { recordAuditEvent } from '@/core/audit';
 import { db, expenses, recurringExpenses, wgMembers } from '@/core/db';
+import { rowHoldsPatch } from '@/core/db/row-holds-patch';
 import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { badRequest, conflict, forbidden, notFound } from '@/core/http/api-errors';
 import { isRecurringDueAtEditAllowed } from '@/core/validators/recurring-due-date';
@@ -74,6 +75,21 @@ function hasFinancialChange(
 		(edit.amountCents !== undefined && edit.amountCents !== template.amountCents) ||
 		(edit.paidByMemberId !== undefined && edit.paidByMemberId !== template.paidByMemberId) ||
 		hasSplitChange
+	);
+}
+
+/** Whether the template already holds every value of the edit: the retry of a lost answer. */
+function templateHoldsEdit(edit: RecurringTemplateEdit, template: RecurringTemplate): boolean {
+	const templateSplits = parseRecurringSplits(template.splitsJson);
+	return (
+		rowHoldsPatch(template, {
+			description: edit.description,
+			category: edit.category,
+			intervalMonths: edit.intervalMonths,
+		}) &&
+		!hasFinancialChange(edit, template, edit.splits ?? templateSplits, templateSplits) &&
+		movedDueAt(edit.nextDueAt, template) === null &&
+		(edit.paused === undefined || edit.paused === (template.pausedAt !== null))
 	);
 }
 
@@ -153,17 +169,15 @@ export async function editRecurringTemplate(
 	const { wgId, member } = caller;
 	const denied = await requireOwnerOrAdmin(wgId, member, template.createdByMemberId);
 	if (denied) return denied;
-	if (
-		edit.expectedNextDueAt !== undefined &&
-		!recurringDueDateMatchesExpected(template.nextDueAt.toISOString(), edit.expectedNextDueAt)
-	) {
-		return conflict('recurring_expense_changed', 'recurring_expense_changed');
-	}
-	if (
-		edit.expectedUpdatedAt !== undefined &&
-		new Date(edit.expectedUpdatedAt).getTime() !== template.updatedAt.getTime()
-	) {
-		return conflict('recurring_expense_changed', 'recurring_expense_changed');
+	const stale =
+		(edit.expectedNextDueAt !== undefined &&
+			!recurringDueDateMatchesExpected(template.nextDueAt.toISOString(), edit.expectedNextDueAt)) ||
+		(edit.expectedUpdatedAt !== undefined &&
+			new Date(edit.expectedUpdatedAt).getTime() !== template.updatedAt.getTime());
+	if (stale) {
+		return templateHoldsEdit(edit, template)
+			? NextResponse.json({ recurringExpense: serializeRecurringExpense(template) })
+			: conflict('recurring_expense_changed', 'recurring_expense_changed');
 	}
 	if (
 		edit.nextDueAt !== undefined &&
@@ -249,10 +263,11 @@ export async function editRecurringTemplate(
 	if (!updated) {
 		const [current] = await db.select().from(recurringExpenses).where(byId).limit(1);
 		if (!current) return notFound('recurring_expense_not_found');
-		// A concurrent request already paused or resumed it.
+		// A concurrent request already paused or resumed it, or saved these very values.
 		if (
 			(transition === 'pause' && current.pausedAt !== null) ||
-			(transition === 'resume' && current.pausedAt === null)
+			(transition === 'resume' && current.pausedAt === null) ||
+			templateHoldsEdit(edit, current)
 		) {
 			return NextResponse.json({ recurringExpense: serializeRecurringExpense(current) });
 		}
