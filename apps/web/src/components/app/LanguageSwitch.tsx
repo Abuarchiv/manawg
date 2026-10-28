@@ -51,6 +51,8 @@ async function saveAccountLocale(locale: Locale): Promise<void> {
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify({ locale }),
 	}).catch(() => null);
+	// An unread body keeps the request open in Chromium, so the page never settles.
+	await res?.text().catch(() => undefined);
 	if (res?.ok) safeLocalStorage()?.setItem(SYNCED_KEY, locale);
 }
 
