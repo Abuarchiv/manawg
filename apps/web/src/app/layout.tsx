@@ -6,6 +6,7 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { InputModality } from '@/components/app/InputModality';
 import { InstallPrompt } from '@/components/app/InstallPrompt';
+import { DeviceLocaleSync } from '@/components/app/LanguageSwitch';
 import { PwaRegister } from '@/components/app/PwaRegister';
 import { ThemeProvider } from '@/components/app/ThemeProvider';
 import { GoogleSignInProvider } from '@/components/auth/google-sign-in';
@@ -195,6 +196,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 					</a>
 					<SplashScreen />
 					<InputModality />
+					<DeviceLocaleSync />
 					<ThemeProvider>
 						<GoogleSignInProvider enabled={process.env.GOOGLE_SIGN_IN?.trim() !== 'false'}>
 							{/* Phone column on every screen; wider viewports show backdrop

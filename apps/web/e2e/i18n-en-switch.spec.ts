@@ -1,5 +1,6 @@
 // Language switch in the entry footer and the settings profile.
-// Why: The choice must persist across reloads, reach the account when signed in, and stay usable at 320px.
+// Why: The device language is the default; a choice must persist across reloads, reach the account
+// when signed in, go back to the device language via System, and stay usable at 320px.
 
 import { expect, type Page, test } from '@playwright/test';
 import {
@@ -17,6 +18,13 @@ const SKIP_LINK = 'a.skip-link';
 const switchGroup = (page: Page) => page.getByRole('group', { name: GROUP });
 const localeCookie = async (page: Page) =>
 	(await page.context().cookies()).find((c) => c.name === 'manawg_locale')?.value;
+const accountPatch = (page: Page, locale: string) =>
+	page.waitForRequest(
+		(req) =>
+			req.url().endsWith('/api/account') &&
+			req.method() === 'PATCH' &&
+			req.postDataJSON()?.locale === locale,
+	);
 
 test.describe('language switch in the entry footer', () => {
 	test('English persists across reloads and German switches back', async ({ page }) => {
@@ -98,6 +106,14 @@ test.describe('browser language without a cookie', () => {
 			await expect(page.locator(SKIP_LINK)).toHaveText('Skip to main content');
 		});
 	});
+
+	test.describe('es-ES, a language without a translation', () => {
+		test.use({ locale: 'es-ES' });
+		test('falls back to English', async ({ page }) => {
+			await page.goto('/login');
+			await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
+		});
+	});
 });
 
 test.describe('language switch in the settings profile', () => {
@@ -110,11 +126,9 @@ test.describe('language switch in the settings profile', () => {
 		await dismissOnboarding(page);
 		await expect(switchGroup(page)).toBeVisible({ timeout: 60_000 });
 
-		const request = page.waitForRequest(
-			(req) => req.url().endsWith('/api/account') && req.method() === 'PATCH',
-		);
+		const request = accountPatch(page, 'en');
 		await switchGroup(page).getByRole('button', { name: 'English' }).click();
-		expect((await request).postDataJSON()).toEqual({ locale: 'en' });
+		await request;
 		await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
 
 		await page.reload();
@@ -123,6 +137,47 @@ test.describe('language switch in the settings profile', () => {
 			'aria-pressed',
 			'true',
 		);
+	});
+
+	test('System drops the choice and follows the device language again', async ({
+		browser,
+		baseURL,
+	}) => {
+		test.setTimeout(120_000);
+		const context = await browser.newContext({ locale: 'de-DE', timezoneId: 'Europe/Berlin' });
+		await setEnglishLocale(context, baseURL ?? 'http://localhost:3101');
+		const page = await context.newPage();
+		await setupMember(page);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings`);
+		await dismissOnboarding(page);
+		await expect(switchGroup(page).getByRole('button', { name: 'English' })).toHaveAttribute(
+			'aria-pressed',
+			'true',
+			{ timeout: 60_000 },
+		);
+
+		const request = accountPatch(page, 'de');
+		await switchGroup(page).getByRole('button', { name: 'System' }).click();
+		await request;
+		await expect(page.locator('html')).toHaveAttribute('lang', 'de');
+		expect(await localeCookie(page)).toBeUndefined();
+		await expect(switchGroup(page).getByRole('button', { name: 'System' })).toHaveAttribute(
+			'aria-pressed',
+			'true',
+		);
+		await context.close();
+	});
+
+	test.describe('signed in without a choice', () => {
+		test.use({ locale: 'en-GB' });
+		test('the account takes the device language for push and mail', async ({ page }) => {
+			test.setTimeout(120_000);
+			await setupMember(page);
+			const request = accountPatch(page, 'en');
+			await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}`);
+			await request;
+			await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
+		});
 	});
 
 	for (const width of [320, 390]) {

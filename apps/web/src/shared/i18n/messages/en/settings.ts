@@ -21,6 +21,7 @@ export default {
 		title: 'Your profile',
 		appearance: 'Appearance',
 		themes: { light: 'Light', dark: 'Dark', system: 'System' },
+		languageSystem: 'System',
 		install: 'Install app',
 		help: 'Help',
 		reportProblem: 'Report a problem by email',
