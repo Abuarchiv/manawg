@@ -110,11 +110,13 @@ export function jsonRequest(
 	body?: unknown,
 	headers: Record<string, string> = {},
 ): never {
-	return new Request('http://localhost', {
+	const request = new Request('http://localhost', {
 		method,
 		headers: { 'content-type': 'application/json', ...headers },
 		...(body === undefined ? {} : { body: JSON.stringify(body) }),
-	}) as never;
+	});
+	// A NextRequest carries cookies; routes that read the locale expect them.
+	return Object.assign(request, { cookies: { get: () => undefined } }) as never;
 }
 
 type Fn = (...args: never[]) => unknown;

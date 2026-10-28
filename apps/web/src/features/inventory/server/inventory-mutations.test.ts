@@ -80,6 +80,7 @@ test('a concurrent +1 tap is applied on top of the committed quantity instead of
 		itemId: 'item-1',
 		wgId: 'wg-1',
 		memberId: 'member-1',
+		locale: 'de',
 		quantityDelta: 1,
 	});
 	assert.equal(result.kind, 'ok');
@@ -98,6 +99,7 @@ test('an absolute write keeps its optimistic conflict check', async () => {
 		itemId: 'item-1',
 		wgId: 'wg-1',
 		memberId: 'member-1',
+		locale: 'de',
 		quantity: 3,
 		expectedQuantity: 5,
 		expectedUpdatedAt: updatedAt.toISOString(),
@@ -113,6 +115,7 @@ test('a retried absolute write whose answer got lost finds its quantity in place
 		itemId: 'item-1',
 		wgId: 'wg-1',
 		memberId: 'member-1',
+		locale: 'de',
 		quantity: 5,
 		expectedQuantity: 4,
 		expectedUpdatedAt: updatedAt.toISOString(),
@@ -168,6 +171,7 @@ test('renaming an item that is already low does not re-add it to the shopping li
 		itemId: 'item-1',
 		wgId: 'wg-1',
 		memberId: 'member-1',
+		locale: 'de',
 		name: 'Spülmittel',
 	});
 	assert.equal(result.kind, 'ok');
@@ -181,6 +185,7 @@ test('dropping below the threshold puts the item on the shopping list once', asy
 		itemId: 'item-1',
 		wgId: 'wg-1',
 		memberId: 'member-1',
+		locale: 'de',
 		quantityDelta: -2,
 	});
 	assert.equal(result.kind, 'ok');
@@ -194,6 +199,7 @@ test('consuming an item that is already at the threshold does not re-add or re-n
 		itemId: 'item-1',
 		wgId: 'wg-1',
 		memberId: 'member-1',
+		locale: 'de',
 		delta: -1,
 	});
 	assert.equal(result.kind, 'ok');
@@ -208,6 +214,7 @@ test('consuming across the threshold pushes exactly one shopping item', async ()
 		itemId: 'item-1',
 		wgId: 'wg-1',
 		memberId: 'member-1',
+		locale: 'de',
 		delta: -1,
 	});
 	assert.equal(result.kind === 'ok' && result.autoPushedShoppingItemId, 'shopping-1');
@@ -221,6 +228,7 @@ test('consuming one unit from 0,5 empties the item and logs -0.5', async () => {
 		itemId: 'item-1',
 		wgId: 'wg-1',
 		memberId: 'member-1',
+		locale: 'de',
 		delta: -1,
 	});
 	assert.equal(result.kind === 'ok' && result.updated.quantity, 0);
@@ -234,6 +242,7 @@ test('consuming one unit from 2,3 is not reported as clamped and logs exactly -1
 		itemId: 'item-1',
 		wgId: 'wg-1',
 		memberId: 'member-1',
+		locale: 'de',
 		delta: -1,
 	});
 	assert.equal(result.kind === 'ok' && result.updated.quantity, 1.3);
@@ -247,7 +256,38 @@ test('a name-only update ignores a changed updatedAt and does not conflict', asy
 		itemId: 'item-1',
 		wgId: 'wg-1',
 		memberId: 'member-1',
+		locale: 'de',
 		name: 'Spülmittel',
 	});
 	assert.equal(result.kind, 'ok');
+});
+
+/** Quantity text of the shopping entry written when a consume takes three units off, leaving `left` at or below `threshold`. */
+async function autoRestockQuantity(
+	locale: 'de' | 'en',
+	unit: string,
+	left: number,
+	threshold: number,
+) {
+	const { tx, shopping } = itemTx({ name: 'Item', unit, quantity: left + 3, threshold });
+	await consumeInventoryMutation(tx as never, {
+		itemId: 'item-1',
+		wgId: 'wg-1',
+		memberId: 'member-1',
+		delta: -3,
+		locale,
+	});
+	return shopping[0]?.quantity;
+}
+
+test('the auto-restock quantity reads in the language of the person who triggered it', async () => {
+	assert.equal(await autoRestockQuantity('de', 'Rolle', 2, 3), '2 Rollen');
+	assert.equal(await autoRestockQuantity('de', 'Rolle', 3, 3), '1 Rolle');
+	assert.equal(await autoRestockQuantity('de', 'Stück', 2, 4), '3 Stück');
+	assert.equal(await autoRestockQuantity('de', 'Packung', 1.5, 2), '1,5 Packungen');
+	assert.equal(await autoRestockQuantity('de', 'Flasche', 2, 3), '2 Flasche');
+	assert.equal(await autoRestockQuantity('en', 'Rolle', 2, 3), '2 rolls');
+	assert.equal(await autoRestockQuantity('en', 'Rolle', 3, 3), '1 roll');
+	assert.equal(await autoRestockQuantity('en', 'Packung', 1.5, 2), '1.5 packs');
+	assert.equal(await autoRestockQuantity('en', 'Flasche', 2, 3), '2 Flasche');
 });

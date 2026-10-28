@@ -1,5 +1,11 @@
 import { asc, desc, eq } from 'drizzle-orm';
 import {
+	auditFeedMessage,
+	isPassiveAuditEvent,
+	parseAuditMetadata,
+	type RenderContext,
+} from '@/core/audit-messages';
+import {
 	announcementComments,
 	announcements,
 	auditEvents,
@@ -8,6 +14,8 @@ import {
 	wgEvents,
 } from '@/core/db';
 import { feedAuditCondition } from '@/core/db/feed-audit-filter';
+import { serverRenderContext } from '@/core/i18n/render-context';
+import type { Locale } from '@/shared/i18n/locale';
 import type { ExportPage } from './export-queries-types';
 
 export async function fetchAnnouncementRows(wgId: string, page: ExportPage) {
@@ -162,6 +170,7 @@ export async function fetchAuditRows(wgId: string, page: ExportPage) {
 			eventType: auditEvents.eventType,
 			entityType: auditEvents.entityType,
 			summary: auditEvents.summary,
+			metadataJson: auditEvents.metadataJson,
 			createdAt: auditEvents.createdAt,
 		})
 		.from(auditEvents)
@@ -173,13 +182,43 @@ export async function fetchAuditRows(wgId: string, page: ExportPage) {
 export function mapAuditRows(
 	auditRows: Awaited<ReturnType<typeof fetchAuditRows>>,
 	memberById: Map<string, string>,
+	locale: Locale,
 ) {
-	return auditRows.map((item) => ({
-		id: item.id,
-		eventType: item.eventType,
-		entityType: item.entityType,
-		memberName: item.memberId ? (memberById.get(item.memberId) ?? '') : 'System',
-		summary: item.summary,
-		createdAt: item.createdAt.toISOString(),
-	}));
+	const ctx = serverRenderContext(locale);
+	return auditRows.map((item) => {
+		const memberName = item.memberId ? (memberById.get(item.memberId) ?? '') : 'System';
+		return {
+			id: item.id,
+			eventType: item.eventType,
+			entityType: item.entityType,
+			memberName,
+			summary: auditSummaryText(item, memberName, locale, ctx),
+			createdAt: item.createdAt.toISOString(),
+		};
+	});
+}
+
+/**
+ * The stored sentence is the German text as written; other languages render it again from the
+ * event parameters and fall back to the stored text for rows that lack them.
+ */
+function auditSummaryText(
+	item: { eventType: string; summary: string; metadataJson: string | null },
+	actorName: string,
+	locale: Locale,
+	ctx: RenderContext,
+): string {
+	if (locale === 'de') return item.summary;
+	const feed = auditFeedMessage(
+		item.eventType,
+		parseAuditMetadata(item.metadataJson),
+		locale,
+		false,
+	);
+	if (!feed) return item.summary;
+	return ctx.render(
+		isPassiveAuditEvent(item.eventType)
+			? feed
+			: { key: 'audit.summary', values: { actorName, text: feed } },
+	);
 }

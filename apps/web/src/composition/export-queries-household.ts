@@ -8,6 +8,8 @@ import {
 	wgInventoryItems,
 	wgMembers,
 } from '@/core/db';
+import { serverT } from '@/core/i18n/server-t';
+import type { Locale } from '@/shared/i18n/locale';
 import type { ExportPage } from './export-queries-types';
 
 export async function fetchMemberRows(wgId: string) {
@@ -53,12 +55,14 @@ export async function fetchShoppingRows(wgId: string, page: ExportPage) {
 export function mapShoppingRows(
 	shoppingRows: Awaited<ReturnType<typeof fetchShoppingRows>>,
 	memberById: Map<string, string>,
+	locale: Locale,
 ) {
+	const t = serverT(locale, 'export');
 	return shoppingRows.map((item) => ({
 		id: item.id,
 		name: item.name,
 		quantity: item.quantity ?? '',
-		status: item.boughtAt ? 'erledigt' : 'offen',
+		status: t(item.boughtAt ? 'shoppingStatus.bought' : 'shoppingStatus.open'),
 		addedBy: memberById.get(item.addedByMemberId) ?? '',
 		boughtBy: item.boughtByMemberId ? (memberById.get(item.boughtByMemberId) ?? '') : '',
 		boughtAt: item.boughtAt?.toISOString() ?? '',

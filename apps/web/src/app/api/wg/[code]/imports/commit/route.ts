@@ -4,6 +4,7 @@ import { isWgAdmin } from '@/core/guards/admin';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { badRequest, rateLimitResponse } from '@/core/http/api-errors';
+import { requestLocale } from '@/core/i18n/request-locale';
 import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, importCommitLimiter } from '@/core/rate-limit';
@@ -23,6 +24,7 @@ import {
 import { parseOcrText } from '@/features/expenses/ocr';
 import { commitImport } from '@/features/expenses/server/import-commit';
 import { hashPayload } from '@/features/expenses/server/import-hash';
+import type { Locale } from '@/shared/i18n/locale';
 
 const commitSchema = z.object({
 	source: z.enum(['splitwise_csv', 'splid_csv', 'ocr_text']),
@@ -33,12 +35,12 @@ const commitSchema = z.object({
 	skipIndexes: z.array(z.number().int().min(0)).optional().default([]),
 });
 
-function parseFor(source: string, payload: string): ParsedExpense[] {
+function parseFor(source: string, payload: string, locale: Locale): ParsedExpense[] {
 	// Rejected rows are already listed in the preview, so the commit must skip
 	// them the same way instead of aborting on the first one.
 	const rejected: RejectedRow[] = [];
-	if (source === 'splitwise_csv') return parseSplitwiseCsv(payload, rejected);
-	if (source === 'splid_csv') return parseSplidCsv(payload, rejected);
+	if (source === 'splitwise_csv') return parseSplitwiseCsv(payload, rejected, locale);
+	if (source === 'splid_csv') return parseSplidCsv(payload, rejected, locale);
 	return parseOcrText(payload).expenses;
 }
 
@@ -78,7 +80,7 @@ export const POST = withWgRoute('imports/commit', async (req, { code }) => {
 			);
 			if (limited) return { stop: limited };
 
-			const parsedExpenses = parseFor(source, payload);
+			const parsedExpenses = parseFor(source, payload, requestLocale(req));
 			if (parsedExpenses.length === 0) return { stop: badRequest('empty_payload') };
 			if (parsedExpenses.length > MAX_IMPORT_ROWS) return { stop: badRequest('too_many_rows') };
 			if (skipIndexes.some((index) => index >= parsedExpenses.length)) {

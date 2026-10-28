@@ -44,6 +44,27 @@ test('parseSplitwiseCsv still handles an equal split correctly', () => {
 	assert.equal(bob?.amountCents, 1500);
 });
 
+test('parseSplitwiseCsv reads UK slash dates day first for an English importer', () => {
+	const csv = [
+		'Date,Description,Cost,Currency,Anna,Bob',
+		'25/12/2026,Gift,30.00,EUR,15.00,-15.00',
+		'03/01/2026,Rent,30.00,EUR,15.00,-15.00',
+	].join('\n');
+	const rejected: RejectedRow[] = [];
+
+	const parsed = parseSplitwiseCsv(csv, rejected, 'en');
+	assert.deepEqual(
+		parsed.map((expense) => expense.date),
+		['2026-12-25T00:00:00.000Z', '2026-01-03T00:00:00.000Z'],
+	);
+	assert.deepEqual(rejected, []);
+
+	const german: RejectedRow[] = [];
+	parseSplitwiseCsv(csv, german);
+	assert.equal(german.length, 1);
+	assert.equal(german[0]?.reason, 'date_invalid');
+});
+
 test('matchMembers does not guess between short names that differ by one letter', () => {
 	const members = [{ id: 'tim', name: 'Tim' }];
 	assert.equal(matchMembers(['Tom'], members).get('Tom'), null);

@@ -1,1 +1,3 @@
-export default {} as const;
+export default {
+	shoppingStatus: { bought: 'erledigt', open: 'offen' },
+} as const;

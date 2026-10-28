@@ -1,5 +1,6 @@
 import { eurosToCents } from '@/core/utils/amount';
 import { AMOUNT_MAX_CENTS } from '@/features/expenses/expense-constants';
+import { DEFAULT_LOCALE, type Locale } from '@/shared/i18n/locale';
 import { type RejectedRow, UNKNOWN_NAME } from './import-types';
 
 const MIN_PLAUSIBLE_YEAR = 2000;
@@ -152,10 +153,11 @@ export function parseDayMonthYear(day: string, month: string, year: string): str
 
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})/;
 const GERMAN_DATE = /^(\d{1,2})\.(\d{1,2})\.(\d{2,4})/;
-// Slash dates are US order: month first.
+// Slash dates are ambiguous: German-language imports read them month first (US export order),
+// English-language imports day first (en-GB export order).
 const SLASH_DATE = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/;
 
-export function parseDateIso(raw: string): string | null {
+export function parseDateIso(raw: string, locale: Locale = DEFAULT_LOCALE): string | null {
 	const value = raw.trim();
 	const iso = value.match(ISO_DATE);
 	if (iso) {
@@ -169,8 +171,10 @@ export function parseDateIso(raw: string): string | null {
 	}
 	const slash = value.match(SLASH_DATE);
 	if (slash) {
-		const [, month = '', day = '', year = ''] = slash;
-		return parseDayMonthYear(day, month, year);
+		const [, first = '', second = '', year = ''] = slash;
+		return locale === 'en'
+			? parseDayMonthYear(first, second, year)
+			: parseDayMonthYear(second, first, year);
 	}
 	return null;
 }

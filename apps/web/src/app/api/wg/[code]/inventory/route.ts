@@ -8,6 +8,7 @@ import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { conflict, serverError, tooMany } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
+import { requestLocale } from '@/core/i18n/request-locale';
 import { readIdempotencyKey } from '@/core/idempotency-store';
 import { readListLimit } from '@/core/infra/env';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
@@ -119,6 +120,7 @@ export const POST = withWgRoute('inventory POST', async (req, { code }) => {
 					...parsed.data,
 					wgId,
 					memberId: auth.member.memberId,
+					locale: requestLocale(req),
 				});
 				if (mutation.kind !== 'ok') return rejectWrite(serverError('insert_failed'));
 				return { status: 200, body: { item: mutation.item }, context: { item: mutation.item } };

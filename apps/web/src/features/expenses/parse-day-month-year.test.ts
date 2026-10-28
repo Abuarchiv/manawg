@@ -22,6 +22,14 @@ test('parseDateIso routes ISO, German and slash dates through it', () => {
 	assert.equal(parseDateIso('31.02.26'), null);
 });
 
+test('parseDateIso reads slash dates day first for English and month first for German', () => {
+	assert.equal(parseDateIso('03/01/2026', 'en'), '2026-01-03T00:00:00.000Z');
+	assert.equal(parseDateIso('25/12/2026', 'en'), '2026-12-25T00:00:00.000Z');
+	assert.equal(parseDateIso('03/01/2026', 'de'), '2026-03-01T00:00:00.000Z');
+	assert.equal(parseDateIso('25/12/2026', 'de'), null);
+	assert.equal(parseDateIso('2026-03-01', 'en'), '2026-03-01T00:00:00.000Z');
+});
+
 test('OCR dates use the same plausible-year bounds as the CSV import', () => {
 	const contextDate = '2026-09-27T00:00:00.000Z';
 	const parsed = parseOcrText('05.03.26 Pizza 12,50', contextDate);
