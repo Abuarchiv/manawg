@@ -22,6 +22,8 @@ import type { AboSplitBuildError, SplitMode } from '@/features/expenses/abo-form
 import { EqualParticipantsPicker } from '@/features/expenses/components/ausgaben/EqualParticipantsPicker';
 import { SplitReview } from '@/features/expenses/components/ausgaben/SplitReview';
 import type { AboSplit, MemberOption } from '@/features/expenses/expense-types';
+import type { Locale } from '@/shared/i18n/locale';
+import { useLocale, useTranslations } from 'next-intl';
 
 interface AboSplitFieldsProps {
 	submitting: boolean;
@@ -41,25 +43,21 @@ interface AboSplitFieldsProps {
 }
 
 /** Only an unreadable share is a problem in itself; a wrong sum concerns no single field. */
-function isUnreadableShare(raw: string | undefined): boolean {
+function isUnreadableShare(raw: string | undefined, locale: Locale): boolean {
 	const value = raw?.trim() ?? '';
 	if (value.length === 0) return false;
-	const parsed = parseEuroAmount(value);
+	const parsed = parseEuroAmount(value, locale);
 	return parsed === null || parsed < 0;
 }
 
-function splitSumHint(manualSplits: Record<string, string>, totalCents: number | null): string {
-	if (totalCents === null) return 'Die Anteile müssen zusammen den Gesamtbetrag ergeben.';
+/** Cents the manual shares add up to; unreadable and non-positive shares count as zero. */
+function sumManualShares(manualSplits: Record<string, string>, locale: Locale): number {
 	let sumCents = 0;
 	for (const raw of Object.values(manualSplits)) {
-		const parsed = parseEuroAmount(raw);
+		const parsed = parseEuroAmount(raw, locale);
 		if (parsed !== null && parsed > 0) sumCents += eurosToCents(parsed);
 	}
-	const base = `Verteilt ${formatEuroCents(sumCents)} von ${formatEuroCents(totalCents)}`;
-	if (sumCents === totalCents) return `${base} · passt`;
-	return sumCents < totalCents
-		? `${base} · noch ${formatEuroCents(totalCents - sumCents)} offen`
-		: `${base} · ${formatEuroCents(sumCents - totalCents)} zu viel`;
+	return sumCents;
 }
 
 /** "Beteiligte & Aufteilung": equal split preview or one amount field per member. */
@@ -77,13 +75,28 @@ export function AboSplitFields({
 	splitPreview,
 	paidByMemberId,
 }: AboSplitFieldsProps) {
+	const t = useTranslations('expenses-abos');
+	const locale = useLocale();
+	let sumHint = '';
+	if (splitMode === 'manual') {
+		if (totalCents === null) sumHint = t('split.sumHintNoTotal');
+		else {
+			const sumCents = sumManualShares(manualSplits, locale);
+			sumHint = t('split.sumHint', {
+				sum: formatEuroCents(sumCents, 'EUR', { locale }),
+				total: formatEuroCents(totalCents, 'EUR', { locale }),
+				state: sumCents === totalCents ? 'match' : sumCents < totalCents ? 'short' : 'over',
+				amount: formatEuroCents(Math.abs(totalCents - sumCents), 'EUR', { locale }),
+			});
+		}
+	}
 	return (
 		<FieldSet
 			disabled={submitting}
 			data-invalid={Boolean(splitError)}
 			aria-describedby={splitError ? 'abo-splits-error' : undefined}
 		>
-			<FieldLegend variant="label">Beteiligte & Aufteilung</FieldLegend>
+			<FieldLegend variant="label">{t('split.legend')}</FieldLegend>
 			<ToggleGroup
 				variant="segmented"
 				value={[splitMode]}
@@ -92,18 +105,16 @@ export function AboSplitFields({
 					if (value === 'equal' || value === 'manual') onSplitModeChange(value);
 				}}
 				className="w-full"
-				aria-label="Fixkosten-Aufteilung"
+				aria-label={t('split.modeLabel')}
 			>
 				<ToggleGroupItem value="equal" className="flex-1">
-					Gleichmäßig
+					{t('split.equal')}
 				</ToggleGroupItem>
 				<ToggleGroupItem value="manual" className="flex-1">
-					Manuell
+					{t('split.manual')}
 				</ToggleGroupItem>
 			</ToggleGroup>
-			{splitMode === 'manual' && (
-				<FieldDescription>{splitSumHint(manualSplits, totalCents)}</FieldDescription>
-			)}
+			{splitMode === 'manual' && <FieldDescription>{sumHint}</FieldDescription>}
 			{splitMode === 'manual' && (
 				<FieldGroup className={splitError ? 'block space-y-3' : 'gap-3'}>
 					{splitCandidates.map((member, index) => (
@@ -118,13 +129,15 @@ export function AboSplitFields({
 									inputMode="decimal"
 									value={manualSplits[member.id] ?? ''}
 									onChange={(event) => onManualSplitChange(member.id, event.target.value)}
-									placeholder="0,00"
+									placeholder={t('split.sharePlaceholder')}
 									enterKeyHint={index === splitCandidates.length - 1 ? 'done' : 'next'}
-									aria-label={`Anteil ${member.name} in Euro`}
+									aria-label={t('split.shareLabel', { name: member.name })}
 									disabled={submitting}
-									aria-invalid={Boolean(splitError) && isUnreadableShare(manualSplits[member.id])}
+									aria-invalid={
+										Boolean(splitError) && isUnreadableShare(manualSplits[member.id], locale)
+									}
 									aria-describedby={
-										splitError && isUnreadableShare(manualSplits[member.id])
+										splitError && isUnreadableShare(manualSplits[member.id], locale)
 											? 'abo-splits-error'
 											: undefined
 									}
@@ -154,7 +167,7 @@ export function AboSplitFields({
 			)}
 			{splitMode !== 'manual' &&
 				(typeof splitPreview === 'string' ? (
-					<FieldDescription>Betrag eingeben, dann wird gleichmäßig aufgeteilt.</FieldDescription>
+					<FieldDescription>{t('split.equalHint')}</FieldDescription>
 				) : (
 					<SplitReview
 						members={splitCandidates}

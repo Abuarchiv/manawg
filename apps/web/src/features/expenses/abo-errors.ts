@@ -1,66 +1,79 @@
-import { mutationErrorMessage } from '@/core/http/error-codes';
-import { SPLIT_SUM_MISMATCH } from '@/features/expenses/expense-errors';
+import { mutationError } from '@/core/http/error-codes';
+import type { Message, MessageKey } from '@/shared/i18n/message';
 
-// The server lets only the creator or a WG admin change recurring expenses; everyone sees the buttons.
-const NOT_OWNER_HINT = 'Nur wer die Fixkosten angelegt hat oder Admin der WG ist, darf das.';
-const GONE = 'Diese Fixkosten existieren nicht mehr. Lade die Liste neu.';
-const EURO_ONLY = 'Fixkosten werden derzeit nur in Euro unterstützt.';
-const INVALID_REQUEST = 'Die Anfrage war ungültig.';
+type ErrorDetailKey = Extract<MessageKey, `expenses-abos.errors.${string}`>;
 
-/** Codes every recurring-expense call can answer with; the shared buckets (offline, 429, 503, 401) come from `mutationErrorMessage`. */
-function commonTexts(prefix: string): Record<string, string> {
+function detail(subject: Message, key: ErrorDetailKey): Message {
+	return { key: 'common.errors.withSubject', values: { subject, detail: { key } } };
+}
+
+function withPeriod(subject: Message): Message {
+	return { key: 'expenses-abos.errors.withPeriod', values: { subject } };
+}
+
+/**
+ * Codes every recurring-expense call can answer with; the shared buckets (offline, 429, 503, 401)
+ * come from `mutationError`. The server lets only the creator or a WG admin change recurring
+ * expenses; everyone sees the buttons.
+ */
+function commonTexts(prefix: Message): Record<string, Message> {
 	return {
-		not_owner: `${prefix}: ${NOT_OWNER_HINT}`,
-		recurring_expense_not_found: GONE,
-		recurring_currency_unsupported: `${prefix}: ${EURO_ONLY}`,
-		invalid_body: `${prefix}: ${INVALID_REQUEST}`,
-		invalid_json: `${prefix}: ${INVALID_REQUEST}`,
+		not_owner: detail(prefix, 'expenses-abos.errors.notOwner'),
+		recurring_expense_not_found: { key: 'expenses-abos.errors.gone' },
+		recurring_currency_unsupported: detail(prefix, 'expenses-abos.errors.euroOnly'),
+		invalid_body: detail(prefix, 'expenses-abos.errors.invalidRequest'),
+		invalid_json: detail(prefix, 'expenses-abos.errors.invalidRequest'),
 	};
 }
 
-export function aboSaveErrorMessage(error: string, action: 'angelegt' | 'aktualisiert'): string {
-	const prefix = `Fixkosten konnten nicht ${action} werden`;
-	return mutationErrorMessage(
+export function aboSaveError(error: string, action: 'created' | 'updated'): Message {
+	const prefix: Message = {
+		key:
+			action === 'created'
+				? 'expenses-abos.errors.saveCreated'
+				: 'expenses-abos.errors.saveUpdated',
+	};
+	return mutationError(
 		prefix,
 		error,
 		{
 			...commonTexts(prefix),
-			member_not_in_wg: `${prefix}: Mindestens ein Mitglied ist nicht mehr in dieser WG.`,
-			recurring_expense_changed: `${prefix}: Diese Fixkosten wurden inzwischen gebucht oder geändert. Die Liste ist neu geladen, bearbeite sie noch einmal.`,
-			amount_invalid: `${prefix}: Prüfe den Betrag.`,
-			description_invalid: `${prefix}: Gib eine Beschreibung ein.`,
-			interval_invalid: `${prefix}: Wähle ein gültiges Intervall.`,
-			due_date_invalid: `${prefix}: Prüfe das nächste Fälligkeitsdatum.`,
-			splits_invalid: SPLIT_SUM_MISMATCH,
-			splits_sum_mismatch: SPLIT_SUM_MISMATCH,
+			member_not_in_wg: detail(prefix, 'expenses-abos.errors.memberNotInWg'),
+			recurring_expense_changed: detail(prefix, 'expenses-abos.errors.changedSave'),
+			amount_invalid: detail(prefix, 'expenses-abos.errors.amountInvalid'),
+			description_invalid: detail(prefix, 'expenses-abos.errors.descriptionInvalid'),
+			interval_invalid: detail(prefix, 'expenses-abos.errors.intervalInvalid'),
+			due_date_invalid: detail(prefix, 'expenses-abos.errors.dueDateInvalid'),
+			splits_invalid: { key: 'expenses-abos.errors.splitsMismatch' },
+			splits_sum_mismatch: { key: 'expenses-abos.errors.splitsMismatch' },
 		},
-		`${prefix}.`,
+		withPeriod(prefix),
 	);
 }
 
-export function aboActionErrorMessage(error: string): string {
-	const prefix = 'Fixkosten-Aktion fehlgeschlagen';
-	return mutationErrorMessage(
+export function aboActionError(error: string): Message {
+	const prefix: Message = { key: 'expenses-abos.errors.action' };
+	return mutationError(
 		prefix,
 		error,
 		{
 			...commonTexts(prefix),
-			recurring_expense_changed: `${prefix}: Die Fixkosten wurden gerade gebucht oder geändert. Die Liste ist neu geladen, versuche es noch einmal.`,
+			recurring_expense_changed: detail(prefix, 'expenses-abos.errors.changedAction'),
 		},
-		`${prefix}. Versuche es gleich erneut.`,
+		{ key: 'expenses-abos.errors.actionFallback', values: { subject: prefix } },
 	);
 }
 
-export function aboDeleteErrorMessage(error: string): string {
-	const prefix = 'Fixkosten konnten nicht gelöscht werden';
-	return mutationErrorMessage(
+export function aboDeleteError(error: string): Message {
+	const prefix: Message = { key: 'expenses-abos.errors.delete' };
+	return mutationError(
 		prefix,
 		error,
 		{
 			...commonTexts(prefix),
-			id_invalid: `${prefix}: Der Eintrag konnte nicht eindeutig zugeordnet werden.`,
-			delete_failed: `${prefix}: Lade die Liste neu und prüfe, ob der Eintrag noch existiert.`,
+			id_invalid: detail(prefix, 'expenses-abos.errors.idInvalid'),
+			delete_failed: detail(prefix, 'expenses-abos.errors.deleteFailed'),
 		},
-		`${prefix}.`,
+		withPeriod(prefix),
 	);
 }

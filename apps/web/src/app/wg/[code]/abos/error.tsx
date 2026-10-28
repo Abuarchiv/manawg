@@ -1,6 +1,7 @@
 'use client';
 
 import { WgRouteErrorBoundary } from '@/components/wg/WgRouteErrorBoundary';
+import { useTranslations } from 'next-intl';
 
 interface AbosErrorProps {
 	error: Error & { digest?: string };
@@ -8,13 +9,14 @@ interface AbosErrorProps {
 }
 
 export default function AbosError({ error, reset }: AbosErrorProps) {
+	const t = useTranslations('expenses-abos');
 	return (
 		<WgRouteErrorBoundary
 			error={error}
 			reset={reset}
 			boundary="wg-abos"
-			title="Fixkosten konnten gerade nicht geladen werden"
-			body="Auf der Fixkosten-Seite ist ein Fehler aufgetreten. Bitte versuche es erneut oder kehre zur WG-Übersicht zurück."
+			title={t('page.boundary.title')}
+			body={t('page.boundary.body')}
 		/>
 	);
 }

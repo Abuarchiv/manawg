@@ -1,4 +1,68 @@
 import type { Catalog } from '../catalog';
 import type de from '../de/statement';
 
-export default {} satisfies Catalog<typeof de>;
+export default {
+	page: {
+		title: 'Monthly statement',
+		backLabel: 'Expenses',
+		previousMonth: 'Previous month',
+		nextMonth: 'Next month',
+		asPdf: 'Save as PDF',
+		reload: 'Reload',
+		loading: 'Loading statement',
+		boundary: {
+			title: 'The statement could not be loaded right now',
+			body: 'Something went wrong on the statement page. Try again or go back to the flat overview.',
+		},
+	},
+	document: {
+		statementNumber: 'Statement',
+		period: 'Period',
+		preparedFor: 'Prepared for',
+		periodRange: '{start} – {end}',
+		eyebrow: 'Monthly statement · {wgName}',
+		total: 'Total',
+		expenses: 'Expenses',
+		yourShare: 'Your share',
+		status: 'Status',
+		statusEmpty: 'No expenses',
+		statusSettled: 'Settled',
+		statusOpen: 'Open',
+		balances: 'Balances',
+		splitBetween: 'Split between {count, plural, one {# person} other {# people}}',
+		person: 'Person',
+		paid: 'Paid',
+		share: 'Share',
+		balance: 'Balance',
+		you: 'you',
+		settlement: 'Settlement',
+		settlementHint:
+			'The shortest route: {count, plural, one {one transfer} other {# transfers}}, then everyone is settled.',
+		transferTo: 'to',
+		transferDone: 'done',
+		transferOpen: 'open',
+		categories: 'Categories',
+		categoryShare: '{share, number}%',
+		category: {
+			lebensmittel: 'Groceries',
+			haushalt: 'Household',
+			wohnen: 'Housing',
+			freizeit: 'Leisure',
+			mobilitaet: 'Transport',
+			sonstiges: 'Other',
+		},
+		allExpenses: 'All expenses',
+		entriesByDate: '{count, plural, one {# entry} other {# entries}}, by date',
+		date: 'Date',
+		description: 'Description',
+		from: 'Paid by',
+		amount: 'Amount',
+		sum: 'Total',
+		howWeCalculate: 'How we calculate',
+		howWeCalculateBody:
+			'Each expense is split the way it was entered. Balance = paid minus share. Positive means you get money back.',
+		note: 'Note',
+		noteBody:
+			'This overview is not an invoice in the tax sense. Receipts and photos are on each expense in the app. Export as CSV under Settings → Data.',
+	},
+} satisfies Catalog<typeof de>;

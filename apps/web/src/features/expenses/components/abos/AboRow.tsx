@@ -14,14 +14,19 @@ import { formatDayMonthYear, formatShortDate } from '@/core/utils/time';
 import type { Abo, MemberOption } from '@/features/expenses/expense-types';
 import {
 	canManageRecurringTemplate,
-	formatIntervalLabel,
+	intervalLabelMessage,
 	previewNextOccurrences,
 } from '@/features/expenses/recurring-expenses';
+import type { Locale } from '@/shared/i18n/locale';
+import { useMessage } from '@/shared/i18n/message';
 import { ChevronDown, Pause, Pencil, Play, Trash2 } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 
 /** Yearly recurring expenses: without the year all dates would look the same (03.02., 03.02., 03.02.). */
-function formatAboDate(iso: string, intervalMonths: number): string {
-	return intervalMonths >= 12 ? formatDayMonthYear(iso) : formatShortDate(iso, 'Europe/Berlin');
+function formatAboDate(iso: string, intervalMonths: number, locale: Locale): string {
+	return intervalMonths >= 12
+		? formatDayMonthYear(iso, locale)
+		: formatShortDate(iso, 'Europe/Berlin', locale);
 }
 
 interface AboRowProps {
@@ -34,6 +39,10 @@ interface AboRowProps {
 }
 
 export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete }: AboRowProps) {
+	const t = useTranslations('expenses-abos');
+	const message = useMessage();
+	const locale = useLocale();
+	const aboDate = (iso: string) => formatAboDate(iso, abo.intervalMonths, locale);
 	const payer = members.find((member) => member.id === abo.paidByMemberId);
 	const isPaused = abo.pausedAt !== null;
 	const isOverdue = !isPaused && berlinDayKey(new Date(abo.nextDueAt)) < berlinDayKey(new Date());
@@ -43,7 +52,7 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 	);
 	const { identity, isAdmin } = useWg();
 	const canManage = canManageRecurringTemplate(abo, identity.memberId, isAdmin);
-	const payerName = payer?.name ?? 'unbekannt';
+	const payerName = payer?.name ?? t('row.unknownPayer');
 	// The cron pauses a template whose payer or debtor moved out; resuming needs new shares first.
 	const involvesMovedOut = [
 		abo.paidByMemberId,
@@ -67,36 +76,36 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 					{/* Amount to the right of the title; only when the row gets too narrow (320 px, large text) it goes below. */}
 					<span className="@container flex min-w-0 flex-1 flex-col gap-0.5">
 						<span className="flex min-w-0 flex-col gap-0.5 @[14rem]:flex-row @[14rem]:items-baseline @[14rem]:gap-3">
-							<span className="sr-only">Details öffnen:</span>
+							<span className="sr-only">{t('row.openDetails')}</span>
 							<span className="min-w-0 flex-1 hyphens-auto text-body font-medium leading-snug [overflow-wrap:break-word]">
 								{abo.description}
 							</span>
 							<span className="whitespace-nowrap font-mono tabular-nums @[14rem]:shrink-0">
-								{formatEuroCents(abo.amountCents, abo.currency)}
+								{formatEuroCents(abo.amountCents, abo.currency, { locale })}
 							</span>
 						</span>
 						<span className="text-meta leading-normal font-normal text-muted-foreground">
 							{isPaused ? (
 								involvesMovedOut ? (
-									'pausiert, jemand ist ausgezogen'
+									t('row.status.pausedMovedOut')
 								) : (
-									'pausiert'
+									t('row.status.paused')
 								)
 							) : blockedByMovedOut ? (
-								<span className="font-medium text-foreground">wird nicht gebucht</span>
+								<span className="font-medium text-foreground">{t('row.status.notBooked')}</span>
 							) : isOverdue ? (
 								<span className="font-medium text-foreground">
-									seit {formatAboDate(abo.nextDueAt, abo.intervalMonths)} fällig
+									{t('row.status.overdue', { date: aboDate(abo.nextDueAt) })}
 								</span>
 							) : (
-								`nächste am ${formatAboDate(abo.nextDueAt, abo.intervalMonths)}`
+								t('row.status.next', { date: aboDate(abo.nextDueAt) })
 							)}
-							{` · ${formatIntervalLabel(abo.intervalMonths)} · `}
-							<span className="sr-only">bezahlt von </span>
+							{` · ${message(intervalLabelMessage(abo.intervalMonths))} · `}
+							<span className="sr-only">{t('row.paidBy')} </span>
 							{abo.paidByMemberId === identity.memberId ? (
 								<>
-									<span aria-hidden>du</span>
-									<span className="sr-only">dir</span>
+									<span aria-hidden>{t('row.you')}</span>
+									<span className="sr-only">{t('row.youSpoken')}</span>
 								</>
 							) : (
 								payerName
@@ -114,20 +123,21 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 							{abo.splits.map((split) => {
 								const name =
 									split.debtorMemberId === identity.memberId
-										? 'Du'
+										? t('row.youShare')
 										: (members.find((member) => member.id === split.debtorMemberId)?.name ??
-											'unbekannt');
+											t('row.unknownPayer'));
 								return (
 									<li
 										key={split.debtorMemberId}
 										className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-sm"
 									>
 										<span className="min-w-[10ch] flex-1 hyphens-auto [overflow-wrap:break-word]">
-											{name}
-											{split.debtorMemberId === abo.paidByMemberId ? ' · eigener Anteil' : ''}
+											{split.debtorMemberId === abo.paidByMemberId
+												? t('row.ownShare', { name })
+												: name}
 										</span>
 										<span className="ml-auto font-mono tabular-nums">
-											{formatEuroCents(split.amountCents, abo.currency)}
+											{formatEuroCents(split.amountCents, abo.currency, { locale })}
 										</span>
 									</li>
 								);
@@ -135,17 +145,15 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 						</ul>
 						{involvesMovedOut && (
 							<p className="text-sm font-medium text-foreground">
-								{isPaused
-									? 'Pausiert, weil ein beteiligtes Mitglied ausgezogen ist. Passe die Anteile an und setze die Fixkosten dann fort.'
-									: 'Wird nicht gebucht, weil ein beteiligtes Mitglied ausgezogen ist. Passe die Anteile an oder pausiere die Fixkosten.'}
+								{isPaused ? t('row.movedOutPaused') : t('row.movedOutBlocked')}
 							</p>
 						)}
 						{preview.length > 0 && !isPaused && !blockedByMovedOut && (
 							<p className="text-sm text-muted-foreground">
-								Nächste {preview.length} Buchungen:{' '}
-								{preview
-									.map((date) => formatAboDate(date.toISOString(), abo.intervalMonths))
-									.join(', ')}
+								{t('row.nextBookings', {
+									count: preview.length,
+									dates: preview.map((date) => aboDate(date.toISOString())).join(', '),
+								})}
 							</p>
 						)}
 						{canManage ? (
@@ -156,7 +164,9 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 									onClick={() => onTogglePause(abo)}
 									disabled={pending}
 									aria-label={
-										isPaused ? `Fortsetzen: ${abo.description}` : `Pausieren: ${abo.description}`
+										isPaused
+											? t('row.resumeLabel', { description: abo.description })
+											: t('row.pauseLabel', { description: abo.description })
 									}
 								>
 									{isPaused ? (
@@ -164,14 +174,14 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 									) : (
 										<Pause data-icon="inline-start" />
 									)}
-									{isPaused ? 'Fortsetzen' : 'Pausieren'}
+									{isPaused ? t('row.resume') : t('row.pause')}
 								</Button>
 								<Button
 									variant="outline"
 									size="icon"
 									onClick={() => onEdit(abo)}
 									disabled={pending}
-									aria-label={`${abo.description} bearbeiten`}
+									aria-label={t('row.editLabel', { description: abo.description })}
 								>
 									<Pencil />
 								</Button>
@@ -181,16 +191,13 @@ export function AboRow({ abo, members, pending, onEdit, onTogglePause, onDelete 
 									className="text-destructive"
 									onClick={() => onDelete(abo)}
 									disabled={pending}
-									aria-label={`${abo.description} löschen`}
+									aria-label={t('row.deleteLabel', { description: abo.description })}
 								>
 									<Trash2 />
 								</Button>
 							</div>
 						) : (
-							<p className="border-t pt-3 text-sm text-muted-foreground">
-								Nur wer die Fixkosten angelegt hat oder Admin der WG ist, kann sie ändern, pausieren
-								oder löschen.
-							</p>
+							<p className="border-t pt-3 text-sm text-muted-foreground">{t('row.notAllowed')}</p>
 						)}
 					</div>
 				</CollapsiblePanel>
