@@ -35,7 +35,7 @@ export default {
 		title: 'Erinnerung',
 		body: 'Noch offen bei {creditor}: {amount}.',
 		bodyAged:
-			'Noch offen bei {creditor}: {amount} (ältester Posten {days, plural, one {# Tag} other {# Tage}} alt).',
+			'Noch offen bei {creditor}: {amount} (ältester Posten {days, plural, one {{days, number, ::group-off} Tag} other {{days, number, ::group-off} Tage}} alt).',
 	},
 	debtSettled: {
 		title: 'Ausgleich eingetragen',
@@ -48,7 +48,7 @@ export default {
 	},
 	importCompleted: {
 		title: 'Import abgeschlossen',
-		body: '{actorName} hat {inserted, plural, one {# Ausgabe} other {# Ausgaben}} in {wgName} importiert.',
+		body: '{actorName} hat {inserted, plural, one {{inserted, number, ::group-off} Ausgabe} other {{inserted, number, ::group-off} Ausgaben}} in {wgName} importiert.',
 	},
 	announcementPosted: {
 		title: 'Neue Pinnwand-Nachricht',
@@ -71,7 +71,8 @@ export default {
 		today: '{title} ist heute in {wgName} fällig.',
 		tomorrow: '{title} ist morgen in {wgName} fällig.',
 		onDate: '{title} ist am {date} in {wgName} fällig.',
-		overdue: '{title} ist in {wgName} seit {days, plural, one {# Tag} other {# Tagen}} offen.',
+		overdue:
+			'{title} ist in {wgName} seit {days, plural, one {{days, number, ::group-off} Tag} other {{days, number, ::group-off} Tagen}} offen.',
 		unassigned: 'Niemand ist zuständig.',
 	},
 	shoppingAdded: {

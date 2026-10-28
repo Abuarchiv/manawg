@@ -222,3 +222,22 @@ test('every event has a complete message in both locales', () => {
 		}
 	}
 });
+
+test('counts of 1000 or more stay ungrouped', () => {
+	assert.match(
+		formatNotificationMessage('import.completed', { inserted: 1000 }, 'de').body,
+		/ 1000 Ausgaben /,
+	);
+	assert.match(
+		formatNotificationMessage(
+			'expense.reminder',
+			{ oldestDebtAgeDays: 1000, amountFormatted: '1 €' },
+			'de',
+		).body,
+		/1000 Tage alt/,
+	);
+	assert.doesNotMatch(
+		formatNotificationMessage('chore.due', { nextDueAt: '2020-01-01T10:00:00.000Z' }, 'de').body,
+		/\d\.\d{3}/,
+	);
+});

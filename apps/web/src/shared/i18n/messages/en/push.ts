@@ -38,7 +38,7 @@ export default {
 		title: 'Reminder',
 		body: 'Still open with {creditor}: {amount}.',
 		bodyAged:
-			'Still open with {creditor}: {amount} (oldest item {days, plural, one {# day} other {# days}} old).',
+			'Still open with {creditor}: {amount} (oldest item {days, plural, one {{days, number, ::group-off} day} other {{days, number, ::group-off} days}} old).',
 	},
 	debtSettled: {
 		title: 'Settlement recorded',
@@ -51,7 +51,7 @@ export default {
 	},
 	importCompleted: {
 		title: 'Import complete',
-		body: '{actorName} imported {inserted, plural, one {# expense} other {# expenses}} into {wgName}.',
+		body: '{actorName} imported {inserted, plural, one {{inserted, number, ::group-off} expense} other {{inserted, number, ::group-off} expenses}} into {wgName}.',
 	},
 	announcementPosted: {
 		title: 'New noticeboard post',
@@ -74,7 +74,8 @@ export default {
 		today: '{title} is due today in {wgName}.',
 		tomorrow: '{title} is due tomorrow in {wgName}.',
 		onDate: '{title} is due on {date} in {wgName}.',
-		overdue: '{title} has been open in {wgName} for {days, plural, one {# day} other {# days}}.',
+		overdue:
+			'{title} has been open in {wgName} for {days, plural, one {{days, number, ::group-off} day} other {{days, number, ::group-off} days}}.',
 		unassigned: 'Nobody is assigned.',
 	},
 	shoppingAdded: {
