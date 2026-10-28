@@ -53,7 +53,7 @@ English copy follows the same persona as German: it states, it does not demand, 
 - Amounts and dates use `en-GB`: `€24.80`, `+€42.30`, the Intl minus, 24-hour time, `3 Mar` and `3 March 2026`.
 - Reference sentence: "€24.80 to Lena, open since 3 March." Never "You owe Lina money!", "Great job, team", "Task overdue" or "Pay up".
 - "ManaWG" is never translated and never takes an article. "WG" in prose is "flat"; onboarding explains it once as "WG (shared flat)".
-- The rule of one German everyday noun per concept becomes one everyday English noun from `docs/brand/glossary-en.md`.
+- The rule of one German everyday noun per concept becomes one everyday English noun from the [English glossary](glossary-en.md).
 
 ## Sources in code
 
