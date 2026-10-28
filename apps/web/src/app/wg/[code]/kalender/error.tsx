@@ -1,6 +1,7 @@
 'use client';
 
 import { WgRouteErrorBoundary } from '@/components/wg/WgRouteErrorBoundary';
+import { useTranslations } from 'next-intl';
 
 interface KalenderErrorProps {
 	error: Error & { digest?: string };
@@ -8,13 +9,14 @@ interface KalenderErrorProps {
 }
 
 export default function KalenderError({ error, reset }: KalenderErrorProps) {
+	const t = useTranslations('events.errorPage');
 	return (
 		<WgRouteErrorBoundary
 			error={error}
 			reset={reset}
 			boundary="wg-kalender"
-			title="Kalender konnte gerade nicht geladen werden"
-			body="Beim Laden der Termine ist ein Fehler aufgetreten. Bitte versuche es erneut oder kehre zur WG-Übersicht zurück."
+			title={t('title')}
+			body={t('body')}
 		/>
 	);
 }

@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { useTranslations } from 'next-intl';
 
 export type EventScope = 'series' | 'occurrence';
 
@@ -14,9 +15,10 @@ export function EventScopeSwitch({
 	disabled: boolean;
 	onChange: (scope: EventScope) => void;
 }) {
+	const t = useTranslations('events.edit');
 	return (
 		<fieldset className="flex flex-col gap-2" disabled={disabled}>
-			<legend className="mb-1 text-sm font-medium">Änderung gilt für</legend>
+			<legend className="mb-1 text-sm font-medium">{t('scopeLegend')}</legend>
 			<div className="flex flex-wrap gap-2">
 				<Button
 					type="button"
@@ -25,7 +27,7 @@ export function EventScopeSwitch({
 					className="min-h-11 flex-1"
 					onClick={() => onChange('series')}
 				>
-					Ganze Serie
+					{t('scopeSeries')}
 				</Button>
 				<Button
 					type="button"
@@ -34,7 +36,7 @@ export function EventScopeSwitch({
 					className="min-h-11 flex-1"
 					onClick={() => onChange('occurrence')}
 				>
-					Nur {dateLabel}
+					{t('scopeOccurrence', { date: dateLabel })}
 				</Button>
 			</div>
 		</fieldset>

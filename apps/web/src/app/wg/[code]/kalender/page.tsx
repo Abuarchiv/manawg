@@ -20,14 +20,16 @@ import { EventEditModal } from '@/features/events/components/EventEditModal';
 import { TimeZoneNotice } from '@/features/events/components/TimeZoneNotice';
 import { useCalendarPage } from '@/features/events/hooks/use-calendar-page';
 import { haptic } from '@/shared/lib/haptics';
-import { pluralize } from '@/shared/lib/plural';
 import { CalendarDays, List, Plus } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
 type ViewMode = 'month' | 'list';
 
 export default function KalenderPage() {
+	const t = useTranslations('events.page');
+	const tCommon = useTranslations('common');
 	const { wg, identity, isAdmin } = useWg();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const wgBaseHref = `/wg/${encodedShareCode}`;
@@ -111,8 +113,8 @@ export default function KalenderPage() {
 			<SubNav />
 			{/* The tab above already names the page; title and count stay for screen readers. */}
 			<header className="sr-only">
-				<h1>Kalender</h1>
-				<p>{loading ? 'Lädt…' : pluralize(calendar.eventCount, 'WG-Termin', 'WG-Termine')}</p>
+				<h1>{t('title')}</h1>
+				<p>{loading ? tCommon('loading') : t('count', { count: calendar.eventCount })}</p>
 			</header>
 
 			{actionError && (
@@ -128,7 +130,7 @@ export default function KalenderPage() {
 					message={loadError}
 					onRetry={() => void calendar.reload()}
 					busy={loading}
-					retryLabel="Kalender erneut laden"
+					retryLabel={t('reload')}
 				/>
 			)}
 
@@ -143,36 +145,36 @@ export default function KalenderPage() {
 				<div className="flex flex-wrap items-center justify-end gap-2">
 					{view === 'month' && !isCurrentMonth && (
 						<Button variant="outline" size="sm" className="mr-auto" onClick={handleJumpToToday}>
-							Heute
+							{t('today')}
 						</Button>
 					)}
 					<TabsList className="w-fit shrink-0">
 						<TabsTrigger value="list" className="min-w-max whitespace-nowrap">
 							<List data-icon="inline-start" aria-hidden />
-							Agenda
+							{t('agenda')}
 						</TabsTrigger>
 						<TabsTrigger value="month" className="min-w-max whitespace-nowrap">
 							<CalendarDays data-icon="inline-start" aria-hidden />
-							Monat
+							{t('month')}
 						</TabsTrigger>
 					</TabsList>
 				</div>
 				<TabsContent value="list" className="flex flex-col gap-3">
 					<section aria-labelledby="calendar-upcoming-heading" className="flex flex-col gap-3">
 						<h2 id="calendar-upcoming-heading" className="sr-only">
-							Nächste 30 Tage
+							{t('next30Days')}
 						</h2>
 						{loading ? (
 							// biome-ignore lint/a11y/useSemanticElements: role="status" names the loading region without swapping the wrapper element to <output>.
 							<div
 								role="status"
-								aria-label="Agenda wird geladen"
+								aria-label={t('agendaLoading')}
 								className="flex flex-col divide-y overflow-hidden rounded-xl border"
 							>
 								{[0, 1, 2].map((index) => (
 									<Skeleton key={index} className="h-12 w-full rounded-none" />
 								))}
-								<span className="sr-only">Agenda wird geladen…</span>
+								<span className="sr-only">{t('agendaLoadingText')}</span>
 							</div>
 						) : loadError ? null : (
 							<CalendarUpcomingList
@@ -225,7 +227,7 @@ export default function KalenderPage() {
 			<ThumbAction>
 				<Button type="button" onClick={handleFabClick} className="min-h-11 w-full">
 					<Plus data-icon="inline-start" aria-hidden />
-					Termin hinzufügen
+					{t('add')}
 				</Button>
 			</ThumbAction>
 		</div>

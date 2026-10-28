@@ -18,9 +18,12 @@ import {
 	eventOverlapsCalendarDay,
 	formatEventTimeOfDay,
 } from '@/features/events/events';
+import { dateTimeFormat } from '@/shared/i18n/intl';
+import type { Locale } from '@/shared/i18n/locale';
+import { useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
-import { pluralize } from '@/shared/lib/plural';
 import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -39,14 +42,7 @@ interface CalendarMonthProps {
 	status?: 'loading' | 'error' | undefined;
 }
 
-const WEEKDAY_LABELS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'] as const;
-const MONTH_FORMATTER = new Intl.DateTimeFormat('de-DE', { month: 'long', year: 'numeric' });
-const FULL_DATE_FORMATTER = new Intl.DateTimeFormat('de-DE', {
-	weekday: 'long',
-	day: 'numeric',
-	month: 'long',
-	year: 'numeric',
-});
+const WEEKDAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 
 export function CalendarMonth({
 	month,
@@ -60,11 +56,21 @@ export function CalendarMonth({
 	wgBaseHref,
 	status,
 }: CalendarMonthProps) {
+	const t = useTranslations('events');
+	const render = useMessage();
+	const locale = useLocale() as Locale;
+	const monthFormat = dateTimeFormat(locale, { month: 'long', year: 'numeric' });
+	const fullDateFormat = dateTimeFormat(locale, {
+		weekday: 'long',
+		day: 'numeric',
+		month: 'long',
+		year: 'numeric',
+	});
 	const days = useMemo(
 		() => buildDays(month, occurrences, groupChoresByDay(choreOccurrences)),
 		[month, occurrences, choreOccurrences],
 	);
-	const monthLabel = MONTH_FORMATTER.format(month);
+	const monthLabel = monthFormat.format(month);
 	const [today, setToday] = useState(() => new Date());
 	useEffect(() => {
 		const refresh = () =>
@@ -193,7 +199,7 @@ export function CalendarMonth({
 						size="icon"
 						className="shrink-0"
 						onClick={onPrev}
-						aria-label="Vorheriger Monat"
+						aria-label={t('month.previous')}
 					>
 						<ChevronLeft aria-hidden />
 					</Button>
@@ -203,7 +209,7 @@ export function CalendarMonth({
 						size="icon"
 						className="shrink-0"
 						onClick={onNext}
-						aria-label="Nächster Monat"
+						aria-label={t('month.next')}
 					>
 						<ChevronRight aria-hidden />
 					</Button>
@@ -215,20 +221,20 @@ export function CalendarMonth({
 					aria-busy={status === 'loading' || undefined}
 					// biome-ignore lint/a11y/useSemanticElements: Calendar uses the existing roving-tabindex grid controller.
 					role="grid"
-					aria-label={`Kalender ${monthLabel}`}
+					aria-label={t('month.gridLabel', { month: monthLabel })}
 					className="w-full table-fixed border-separate border-spacing-0"
 					onKeyDown={handleKeyDown}
 					onClick={handleGridClick}
 				>
 					<thead>
 						<tr>
-							{WEEKDAY_LABELS.map((label) => (
+							{WEEKDAY_KEYS.map((key) => (
 								<th
-									key={label}
+									key={key}
 									scope="col"
 									className="py-2 text-center text-xs font-normal text-muted-foreground"
 								>
-									{label}
+									{t(`month.weekdays.${key}`)}
 								</th>
 							))}
 						</tr>
@@ -255,15 +261,11 @@ export function CalendarMonth({
 												data-day-cell
 												data-day-date={day.date.toISOString()}
 												tabIndex={weekIndex * 7 + dayIndex === focusedIndex ? 0 : -1}
-												aria-label={
-													FULL_DATE_FORMATTER.format(day.date) +
-													(day.occurrences.length === 1
-														? ', 1 Termin'
-														: day.occurrences.length
-															? `, ${day.occurrences.length} Termine`
-															: '') +
-													(day.chores.length ? ', Putzplan' : '')
-												}
+												aria-label={t('month.dayLabel', {
+													date: fullDateFormat.format(day.date),
+													events: day.occurrences.length,
+													hasChores: day.chores.length ? 'yes' : 'no',
+												})}
 												aria-current={isToday ? 'date' : undefined}
 												className={cn(
 													'relative min-h-11 w-full px-0 hover:bg-transparent active:bg-transparent dark:hover:bg-transparent',
@@ -299,32 +301,28 @@ export function CalendarMonth({
 				{selectedDay && (
 					<section
 						ref={sectionRef}
-						aria-label="Termine am ausgewählten Tag"
+						aria-label={t('month.dayListLabel')}
 						className="flex scroll-mb-[calc(var(--app-nav-height,5rem)+4.5rem)] flex-col gap-2 px-4"
 					>
 						<div className="flex flex-wrap items-center gap-2">
-							<h3 className="text-sm font-medium">{FULL_DATE_FORMATTER.format(selectedDay)}</h3>
+							<h3 className="text-sm font-medium">{fullDateFormat.format(selectedDay)}</h3>
 							{selectedOccurrences.length + selectedChores.length > 0 && (
 								<Badge variant="secondary">
-									{pluralize(
-										selectedOccurrences.length + selectedChores.length,
-										'Eintrag',
-										'Einträge',
-									)}
+									{t('month.entries', {
+										count: selectedOccurrences.length + selectedChores.length,
+									})}
 								</Badge>
 							)}
 						</div>
 						{selectedOccurrences.length === 0 && selectedChores.length === 0 ? (
 							status === 'loading' ? (
 								<output aria-live="polite" className="text-sm text-muted-foreground">
-									Termine werden geladen…
+									{t('month.loading')}
 								</output>
 							) : status === 'error' ? (
-								<p className="text-sm text-muted-foreground">
-									Termine konnten nicht geladen werden.
-								</p>
+								<p className="text-sm text-muted-foreground">{t('month.loadFailed')}</p>
 							) : (
-								<p className="text-sm text-muted-foreground">Keine Termine an diesem Tag.</p>
+								<p className="text-sm text-muted-foreground">{t('month.noEvents')}</p>
 							)
 						) : (
 							<ul className="flex flex-col divide-y divide-border/60">
@@ -333,7 +331,7 @@ export function CalendarMonth({
 										<button
 											type="button"
 											onClick={() => onSelectOccurrence(occurrence)}
-											aria-label={`Termin öffnen: ${occurrence.title}`}
+											aria-label={t('agenda.openEvent', { title: occurrence.title })}
 											className={CALENDAR_ROW_CLASS}
 										>
 											<span className="flex min-w-0 flex-1 flex-col">
@@ -341,7 +339,7 @@ export function CalendarMonth({
 													{occurrence.title}
 												</span>
 												<span className="text-meta break-words text-muted-foreground">
-													{formatEventTimeOfDay(occurrence)}
+													{render(formatEventTimeOfDay(occurrence, locale))}
 													{occurrence.location && ` · ${occurrence.location}`}
 												</span>
 											</span>
@@ -353,14 +351,14 @@ export function CalendarMonth({
 									<li key={`chore-${chore.choreId}-${chore.startsAt}`}>
 										<Link
 											href={`${wgBaseHref}/putzen?highlight=${encodeURIComponent(chore.choreId)}`}
-											aria-label={`Putzaufgabe öffnen: ${chore.title}`}
+											aria-label={t('agenda.openChore', { title: chore.title })}
 											className={CALENDAR_ROW_CLASS}
 										>
 											<span className="flex min-w-0 flex-1 flex-col">
 												<span className="text-body font-medium break-words">{chore.title}</span>
 												<span className="inline-flex items-center gap-1 text-meta text-muted-foreground">
 													<Sparkles className="size-4 shrink-0" aria-hidden />
-													Putzplan
+													{t('agenda.choreBadge')}
 												</span>
 											</span>
 											<ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />

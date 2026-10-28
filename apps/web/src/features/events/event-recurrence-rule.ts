@@ -1,4 +1,5 @@
 import { parseTimestamp } from '@/core/utils/time';
+import type { Message } from '@/shared/i18n/message';
 
 export type RecurrenceFreq = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY';
 export type RecurrenceByDay = 'MO' | 'TU' | 'WE' | 'TH' | 'FR' | 'SA' | 'SU';
@@ -14,12 +15,12 @@ export interface RecurrenceRule {
 }
 const FREQS: ReadonlySet<RecurrenceFreq> = new Set(['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY']);
 const BYDAYS: ReadonlySet<RecurrenceByDay> = new Set(['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU']);
-export const RECURRENCE_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
-	{ value: '', label: 'Einmalig' },
-	{ value: 'DAILY', label: 'Täglich' },
-	{ value: 'WEEKLY', label: 'Wöchentlich' },
-	{ value: 'MONTHLY', label: 'Monatlich' },
-	{ value: 'YEARLY', label: 'Jährlich' },
+export const RECURRENCE_OPTIONS: ReadonlyArray<{ value: string; label: Message }> = [
+	{ value: '', label: { key: 'events.recurrence.once' } },
+	{ value: 'DAILY', label: { key: 'events.recurrence.daily' } },
+	{ value: 'WEEKLY', label: { key: 'events.recurrence.weekly' } },
+	{ value: 'MONTHLY', label: { key: 'events.recurrence.monthly' } },
+	{ value: 'YEARLY', label: { key: 'events.recurrence.yearly' } },
 ];
 export const BYDAY_TO_INDEX: Record<RecurrenceByDay, number> = {
 	SU: 0,

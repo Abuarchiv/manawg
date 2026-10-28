@@ -2,8 +2,8 @@ import { useToast } from '@/components/ui/Toast';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { createIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
-import { keyUnavailableMessage } from '@/core/offline/offline-copy';
 import { copyText } from '@/core/utils/clipboard';
+import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 export interface CalendarSubscription {
@@ -27,6 +27,7 @@ export type SubscriptionConfirm = 'rotate' | 'revoke' | null;
 export function useCalendarSubscription(encodedShareCode: string) {
 	const { identity } = useWg();
 	const toast = useToast();
+	const t = useTranslations('events.subscription');
 	const endpoint = `/api/wg/${encodedShareCode}/calendar-subscription`;
 	const scope = `${encodedShareCode}\u0000${identity.memberId}`;
 	const scopeRef = useRef(scope);
@@ -75,10 +76,10 @@ export function useCalendarSubscription(encodedShareCode: string) {
 			setSubscriptionRecord({ scope: requestedScope, value: res.data.subscription ?? null });
 			setErrorState({ scope: requestedScope, value: null });
 		} else {
-			setErrorState({ scope: requestedScope, value: 'Kalender-Feed konnte nicht geladen werden.' });
+			setErrorState({ scope: requestedScope, value: t('loadFailed') });
 		}
 		setLoadingState({ scope: requestedScope, value: false });
-	}, [identity.memberId, endpoint, scope]);
+	}, [identity.memberId, endpoint, scope, t]);
 
 	useEffect(() => {
 		void load();
@@ -120,53 +121,45 @@ export function useCalendarSubscription(encodedShareCode: string) {
 
 	async function save(method: 'POST' | 'PATCH', message: string): Promise<void> {
 		const requestKeyId = `subscription:${method}`;
-		await runExclusive(
-			requestKeyId,
-			keyUnavailableMessage('Kalender-Feed', 'gespeichert'),
-			async (idempotencyKey) => {
-				const res = await apiFetch<CalendarSubscriptionResponse>(endpoint, {
-					method,
-					memberId: identity.memberId,
-					headers: { 'Idempotency-Key': idempotencyKey },
-				});
-				if (res.ok && res.data.subscription) {
-					requestKeysRef.current.delete(requestKeyId);
-					setSubscription(res.data.subscription);
-					setCopyState('idle');
-					setNotice(message);
-				} else {
-					if (!res.ok) releaseKeyUnlessRetryable(requestKeyId, res.status, res.error);
-					setError('Kalender-Feed konnte nicht gespeichert werden.');
-				}
-			},
-		);
+		await runExclusive(requestKeyId, t('keyUnavailableSave'), async (idempotencyKey) => {
+			const res = await apiFetch<CalendarSubscriptionResponse>(endpoint, {
+				method,
+				memberId: identity.memberId,
+				headers: { 'Idempotency-Key': idempotencyKey },
+			});
+			if (res.ok && res.data.subscription) {
+				requestKeysRef.current.delete(requestKeyId);
+				setSubscription(res.data.subscription);
+				setCopyState('idle');
+				setNotice(message);
+			} else {
+				if (!res.ok) releaseKeyUnlessRetryable(requestKeyId, res.status, res.error);
+				setError(t('saveFailed'));
+			}
+		});
 	}
 
 	async function revoke(): Promise<void> {
 		const requestKeyId = 'subscription:DELETE';
-		await runExclusive(
-			requestKeyId,
-			keyUnavailableMessage('Kalender-Feed', 'widerrufen'),
-			async (idempotencyKey) => {
-				const previousSubscription = subscription;
-				setSubscription(null);
-				const res = await apiFetch<unknown>(endpoint, {
-					method: 'DELETE',
-					memberId: identity.memberId,
-					headers: { 'Idempotency-Key': idempotencyKey },
-				});
-				if (res.ok) {
-					requestKeysRef.current.delete(requestKeyId);
-					setCopyState('idle');
-					setNotice('Kalender-Feed widerrufen.');
-				} else {
-					setSubscription(previousSubscription);
-					releaseKeyUnlessRetryable(requestKeyId, res.status, res.error);
-					setError('Kalender-Feed konnte nicht widerrufen werden.');
-					toast.error('Kalender-Feed konnte nicht widerrufen werden.');
-				}
-			},
-		);
+		await runExclusive(requestKeyId, t('keyUnavailableRevoke'), async (idempotencyKey) => {
+			const previousSubscription = subscription;
+			setSubscription(null);
+			const res = await apiFetch<unknown>(endpoint, {
+				method: 'DELETE',
+				memberId: identity.memberId,
+				headers: { 'Idempotency-Key': idempotencyKey },
+			});
+			if (res.ok) {
+				requestKeysRef.current.delete(requestKeyId);
+				setCopyState('idle');
+				setNotice(t('revoked'));
+			} else {
+				setSubscription(previousSubscription);
+				releaseKeyUnlessRetryable(requestKeyId, res.status, res.error);
+				setError(t('revokeFailed'));
+				toast.error(t('revokeFailed'));
+			}
+		});
 	}
 
 	async function copyUrl(): Promise<void> {
@@ -183,8 +176,8 @@ export function useCalendarSubscription(encodedShareCode: string) {
 		copyState,
 		confirm,
 		setConfirm,
-		create: () => save('POST', 'Kalender-Feed erstellt.'),
-		rotate: () => save('PATCH', 'Kalender-Feed erneuert.'),
+		create: () => save('POST', t('created')),
+		rotate: () => save('PATCH', t('rotated')),
 		revoke,
 		copyUrl,
 	};

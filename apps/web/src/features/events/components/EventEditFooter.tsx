@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { DrawerFooter } from '@/components/ui/drawer';
 import { Spinner } from '@/components/ui/spinner';
 import { CalendarPlus, Trash2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 /** Save, cancel, calendar export and delete for the event drawer; read-only viewers only close or export. */
 export function EventEditFooter({
@@ -10,7 +11,7 @@ export function EventEditFooter({
 	saving,
 	onCancel,
 	onDelete,
-	deleteLabel = 'Termin löschen',
+	deleteLabel,
 	onExportIcs,
 }: {
 	readOnly: boolean;
@@ -18,16 +19,17 @@ export function EventEditFooter({
 	saving: boolean;
 	onCancel: () => void;
 	onDelete: () => void;
-	deleteLabel?: string;
+	deleteLabel: string;
 	onExportIcs?: (() => void) | undefined;
 }) {
+	const t = useTranslations('events');
 	return (
 		<DrawerFooter className="border-t pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
 			<div className="flex flex-wrap gap-2">
 				{!readOnly && (
 					<Button type="submit" className="min-w-fit flex-1" disabled={busy}>
 						{saving && <Spinner data-icon="inline-start" aria-hidden />}
-						{saving ? 'Speichert…' : 'Speichern'}
+						{saving ? t('actions.saving') : t('actions.save')}
 					</Button>
 				)}
 				<Button
@@ -37,7 +39,7 @@ export function EventEditFooter({
 					onClick={onCancel}
 					disabled={busy}
 				>
-					{readOnly ? 'Schließen' : 'Abbrechen'}
+					{readOnly ? t('actions.close') : t('actions.cancel')}
 				</Button>
 			</div>
 			<div className="flex flex-wrap gap-2">
@@ -47,10 +49,10 @@ export function EventEditFooter({
 						variant="outline"
 						className="h-auto min-h-8 min-w-fit flex-1 py-1.5"
 						onClick={onExportIcs}
-						aria-label="In Kalender-App übernehmen"
+						aria-label={t('edit.addToCalendarLabel')}
 					>
 						<CalendarPlus data-icon="inline-start" aria-hidden />
-						In Kalender
+						{t('edit.addToCalendar')}
 					</Button>
 				)}
 				{!readOnly && (

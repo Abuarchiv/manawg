@@ -8,7 +8,6 @@ import {
 	shouldReleaseIdempotencyKey,
 } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
-import { keyUnavailableMessage } from '@/core/offline/offline-copy';
 import { useSyncedCollection } from '@/core/sync/use-synced-collection';
 import { MS_PER_DAY } from '@/core/utils/time';
 import {
@@ -31,7 +30,9 @@ import {
 	getMonthBounds,
 } from '@/features/events/events';
 import { postOccurrenceChange } from '@/features/events/occurrence-api';
+import { type Message, useMessage } from '@/shared/i18n/message';
 import { haptic } from '@/shared/lib/haptics';
+import { useTranslations } from 'next-intl';
 import { useMemo, useRef, useState } from 'react';
 
 type CalendarCreateResponse = {
@@ -41,10 +42,18 @@ type CalendarCreateResponse = {
 
 const UPCOMING_DAYS = 30;
 
+function subject(
+	key: 'saveSubject' | 'updateSubject' | 'deleteSubject' | 'changeSubject',
+): Message {
+	return { key: `events.errors.${key}` };
+}
+
 /** Loads events and cleaning-plan due dates; create/update/delete optimistically. */
 export function useCalendarPage(month: Date) {
 	const { wg, identity } = useWg();
 	const toast = useToast();
+	const t = useTranslations('events');
+	const render = useMessage();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const eventsBaseUrl = `/api/wg/${encodedShareCode}/events`;
 
@@ -85,8 +94,8 @@ export function useCalendarPage(month: Date) {
 		// showing that month as empty.
 		describeError: (error): string =>
 			collection.hasData() && !monthCachedRef.current && isNetworkError(error.error, error.status)
-				? 'Termine dieses Monats sind offline nicht verfügbar.'
-				: 'Termine konnten nicht geladen werden.',
+				? t('load.monthOffline')
+				: t('load.events'),
 		// Offline with this month on screen: keep showing it, no error state.
 		hideError: (error, { hasData }) =>
 			hasData && monthCachedRef.current && isNetworkError(error.error, error.status),
@@ -101,7 +110,7 @@ export function useCalendarPage(month: Date) {
 	const choresError =
 		choresReadError &&
 		!(cachedChores && isNetworkError(choresReadError.error, choresReadError.status))
-			? 'Putzplan-Aufgaben konnten nicht geladen werden.'
+			? t('load.chores')
 			: null;
 	const loadError = collection.loadError ?? choresError;
 	const loading = collection.initialLoading || (!cachedChores && !choresReadError);
@@ -173,7 +182,7 @@ export function useCalendarPage(month: Date) {
 	async function createEvent(payload: CreateEventPayload): Promise<void> {
 		const fingerprint = JSON.stringify(payload);
 		const idempotencyKey = resolveIdempotencyKey(createEventRequestRef.current, fingerprint);
-		if (!idempotencyKey) throw new Error(keyUnavailableMessage('Termin', 'gesendet'));
+		if (!idempotencyKey) throw new Error(t('errors.keyUnavailableSend'));
 		createEventRequestRef.current = { fingerprint, key: idempotencyKey };
 		const optimisticId = `pending:${idempotencyKey}`;
 		const optimisticEvent: CalendarEvent = {
@@ -194,7 +203,7 @@ export function useCalendarPage(month: Date) {
 		if (!res.ok) {
 			if (shouldReleaseIdempotencyKey(res.status, res.error)) createEventRequestRef.current = null;
 			commit((current) => current.filter((event) => event.id !== optimisticId));
-			const message = eventSaveError('Termin konnte nicht gespeichert werden', res);
+			const message = render(eventSaveError(subject('saveSubject'), res));
 			toast.error(message);
 			throw new Error(message);
 		}
@@ -208,9 +217,9 @@ export function useCalendarPage(month: Date) {
 		});
 		setCreateOpen(false);
 		if (res.data.warning) {
-			toast.info('Termin gespeichert. Push-Versand konnte nicht bestätigt werden.');
+			toast.info(t('toast.savedPushUnconfirmed'));
 		} else {
-			toast.success('Termin gespeichert.');
+			toast.success(t('toast.saved'));
 		}
 	}
 
@@ -238,7 +247,7 @@ export function useCalendarPage(month: Date) {
 			} else if (previous) {
 				commit((current) => current.map((event) => (event.id === id ? previous : event)));
 			}
-			const message = eventSaveError('Termin konnte nicht aktualisiert werden', res);
+			const message = render(eventSaveError(subject('updateSubject'), res));
 			if (res.error === 'event_changed') reloadAfterConflict();
 			toast.error(message);
 			throw new Error(message);
@@ -266,14 +275,14 @@ export function useCalendarPage(month: Date) {
 					return restored;
 				});
 			}
-			const message = eventSaveError('Termin konnte nicht gelöscht werden', res);
+			const message = render(eventSaveError(subject('deleteSubject'), res));
 			setActionError(message);
 			toast.error(message);
 			return;
 		}
 		commit((current) => current.filter((event) => event.id !== id));
 		setEditing(null);
-		if (res.ok) toast.success('Termin gelöscht.');
+		if (res.ok) toast.success(t('toast.deleted'));
 	}
 
 	/** One date of a series: cancel it, or replace it with a single event built from `payload`. */
@@ -295,7 +304,7 @@ export function useCalendarPage(month: Date) {
 				commit((current) => current.filter((event) => event.id !== id));
 			}
 			// Status 0 with `idempotency_key_unavailable` ends in eventSaveError's fallback text.
-			const message = eventSaveError('Termin konnte nicht geändert werden', res);
+			const message = render(eventSaveError(subject('changeSubject'), res));
 			if (res.status === 409 || res.status === 404) reloadAfterConflict();
 			toast.error(message);
 			throw new Error(message);
@@ -307,7 +316,7 @@ export function useCalendarPage(month: Date) {
 			...(created && !current.some((item) => item.id === created.id) ? [created] : []),
 		]);
 		setEditing(null);
-		toast.success(payload ? 'Termin geändert.' : 'Termin entfernt.');
+		toast.success(payload ? t('toast.changed') : t('toast.removed'));
 	}
 
 	return {

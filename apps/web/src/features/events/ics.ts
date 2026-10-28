@@ -125,6 +125,7 @@ function serializeCalendar(
 	const lines = [
 		'BEGIN:VCALENDAR',
 		'VERSION:2.0',
+		// i18n-ignore iCalendar product identifier, not displayed
 		'PRODID:-//ManaWG//Kalender//DE',
 		'CALSCALE:GREGORIAN',
 		'METHOD:PUBLISH',
