@@ -19,13 +19,25 @@ apps/web/
   src/components/ reusable UI: ui/ (shadcn), animate-ui/ (motion variants), app/ (shell, PWA, theme), wg/ (WG-wide)
   src/fixtures/   in-memory fixture build for e2e (see Fixture mode); only src/app/ imports it
   src/shared/     framework-light utilities (lib/, fonts, css): theme, brand, analytics
+  public/         static files: PWA manifest, service worker, icons, mail images
   drizzle/        SQL migrations (`pnpm --filter @manawg/web db:generate` / `db:migrate`)
   e2e/            Playwright specs (fixture mode needs no database)
   tests/          node:test suites that are not colocated with a module
-  scripts/        CI gates and the migrator
-docs/             architecture, brand contract, self-hosting
-docker/           self-hosting stack: setup, gateway, backup and restore (with compose.yaml)
+  scripts/        CI gates (architecture, bundle budget, analytics privacy, preview/release workflow checks), the migrator
+                  (`db-migrate*`), `selfhost/` (Docker setup and cron) and `real-stack/` (see below)
+  components.json shadcn registry configuration
+  vercel.json     cron schedule and settings for Vercel deployments
+  playwright*.ts  Playwright configs: default, and WebKit against the fixture build
+docs/             architecture, self-hosting, backup and recovery, brand/ (design language)
+docker/           self-hosting stack: setup, gateway, backup, restore and smoke test (with compose.yaml)
+supabase/templates/  Auth mail templates (HTML, subjects) used by the Docker stack and hosted Supabase
+scripts/          maintenance scripts: `generate-brand-assets.mjs` (icons from the brand mark),
+                  `supabase-auth-templates.mjs` (push the mail templates to a hosted Supabase project)
+.github/          CI workflows, issue and PR templates
 ```
+
+Root files: `compose.yaml` and `Dockerfile` (self-hosting image), `biome.json` (lint and format),
+`knip.json` (unused code check), `.vercelignore`.
 
 ## Prerequisites
 
@@ -131,11 +143,16 @@ More scripts in `apps/web/package.json`:
 | `pnpm --filter @manawg/web analytics:check` | PostHog privacy contract (`scripts/check-analytics-privacy.mjs`) |
 | `pnpm --filter @manawg/web analyze` | Build with the Next bundle analyzer |
 
-### Real-stack checks
+### Real-stack checks and previews
 
 Scripts that drive a production build against a local Supabase stack (sign-in, mails, every
 module, fuzzing, load) are described in
-[`apps/web/scripts/real-stack/README.md`](../apps/web/scripts/real-stack/README.md).
+[`apps/web/scripts/real-stack/README.md`](../apps/web/scripts/real-stack/README.md). They are
+not part of CI.
+
+To look at mails while you change them, `node supabase/templates/preview.mjs` renders the Auth mail
+templates and `apps/web/scripts/preview-statement-mail.mjs` the monthly statement mail (usage in
+the first lines of each file).
 
 ### Opt-in test gates
 
