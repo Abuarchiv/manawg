@@ -31,7 +31,7 @@ const nextConfig: NextConfig = {
 			process.env.SENTRY_RELEASE ?? process.env.VERCEL_GIT_COMMIT_SHA ?? 'local',
 	},
 	distDir: process.env.NEXT_DIST_DIR ?? '.next',
-	// next dev otherwise writes an AGENTS.md into the app when it detects a coding agent.
+	// Keep next dev from generating extra files in the app directory.
 	agentRules: false,
 	// The Docker image (Dockerfile) runs the self-contained server; Vercel builds without it.
 	...(process.env.NEXT_OUTPUT_STANDALONE === 'true'
@@ -45,7 +45,7 @@ const nextConfig: NextConfig = {
 	async rewrites() {
 		return [{ source: '/favicon.ico', destination: '/favicon-32.png' }];
 	},
-	// The pages had German paths until 2026-10; links in old mails, bookmarks and installed PWAs keep working.
+	// German route names redirect to their English equivalents so old mails, bookmarks and installed PWAs keep working.
 	async redirects() {
 		const top = {
 			neu: 'login',
