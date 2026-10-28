@@ -119,7 +119,7 @@ export function useEmailSignUp({
 		}
 	}
 
-	function useOtherAddress(): void {
+	function pickOtherAddress(): void {
 		clearFeedback();
 		setSentTo(null);
 		setCooldown(0);
@@ -141,7 +141,7 @@ export function useEmailSignUp({
 		resendNotice,
 		submit,
 		resend,
-		useOtherAddress,
+		pickOtherAddress,
 	};
 }
 
@@ -152,7 +152,7 @@ function InboxNotice({
 	auth: ReturnType<typeof useEmailSignUp>;
 	busy: BusyAction;
 }) {
-	const { sentTo, cooldown, resendNotice, error, failure, resend, useOtherAddress } = auth;
+	const { sentTo, cooldown, resendNotice, error, failure, resend, pickOtherAddress } = auth;
 	const titleRef = useRef<HTMLDivElement>(null);
 	// The form was replaced by this notice, so keyboard and screen reader users land on it.
 	useEffect(() => {
@@ -184,7 +184,7 @@ function InboxNotice({
 					{busy === 'email-resend' && <Spinner data-icon="inline-start" aria-hidden />}
 					{cooldown > 0 ? `Erneut senden in ${cooldown} s` : 'E-Mail erneut senden'}
 				</Button>
-				<Button type="button" variant="ghost" onClick={useOtherAddress} disabled={busy !== null}>
+				<Button type="button" variant="ghost" onClick={pickOtherAddress} disabled={busy !== null}>
 					Andere E-Mail-Adresse verwenden
 				</Button>
 			</div>

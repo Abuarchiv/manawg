@@ -53,6 +53,7 @@ export function ImagePreviewDialog({
 			>
 				<X aria-hidden />
 			</Button>
+			{/* biome-ignore lint/performance/noImgElement: user-uploaded storage URL, next/image is not used for these */}
 			<img
 				src={src}
 				alt={`${label} groß`}

@@ -113,6 +113,7 @@ test.describe('live public dashboard entry', () => {
 		// Only a browser marked as signed in asks for its WGs; the middleware clears the mark
 		// without a session, so set it again before the page scripts run.
 		await page.addInitScript(() => {
+			// biome-ignore lint/suspicious/noDocumentCookie: the page scripts read a plain cookie, so the fixture sets one
 			document.cookie = 'manawg_signed_in=1; path=/';
 		});
 		let attempts = 0;
@@ -136,6 +137,7 @@ test.describe('live public dashboard entry', () => {
 		await expect(page.getByText('Deine WGs konnten gerade nicht geladen werden.')).toBeVisible();
 		// Background requests can pass the middleware and clear the mark again.
 		await page.evaluate(() => {
+			// biome-ignore lint/suspicious/noDocumentCookie: the page scripts read a plain cookie, so the fixture sets one
 			document.cookie = 'manawg_signed_in=1; path=/';
 		});
 		await page.getByRole('button', { name: 'Erneut prüfen', exact: true }).click();

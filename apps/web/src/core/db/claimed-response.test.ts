@@ -186,7 +186,9 @@ test('completion stores the response for the replay window when the lease matche
 	const body = { chore: { id: 'chore-1' }, warning: null };
 	await helpers.completeClaimedResponse(tx, scope, key, body, lease);
 	assert.deepEqual(state.rows[0]?.responseBody, body);
-	assert.ok((state.rows[0]?.expiresAt as Date).getTime() > Date.now() + 6 * 24 * 60 * 60 * 1000);
+	const [row] = state.rows;
+	assert.ok(row);
+	assert.ok((row.expiresAt as Date).getTime() > Date.now() + 6 * 24 * 60 * 60 * 1000);
 });
 
 test('completion with a lease taken over by another request aborts and writes nothing', async () => {

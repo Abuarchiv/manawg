@@ -261,7 +261,6 @@ export function MessageActionsMenu({
 							<DropdownMenuItem
 								key={url}
 								className="min-h-11"
-								// biome-ignore lint/a11y/useAnchorContent: the menu item renders its children into this anchor
 								render={<a href={url} target="_blank" rel="noopener noreferrer" />}
 							>
 								<ExternalLink aria-hidden />

@@ -99,6 +99,7 @@ export function getWeekAgenda(input: {
 		const startKey = berlinDayKey(new Date(start));
 		const endKey = berlinDayKey(new Date(end));
 		if (endKey < window.todayKey || startKey > window.sundayKey) continue;
+		// biome-ignore lint/complexity/useMathMinMax: day keys are strings, Math.max would return NaN
 		const dayKey = startKey < window.todayKey ? window.todayKey : startKey;
 		const ongoing = start <= now && now < end;
 		const when = event.allDay

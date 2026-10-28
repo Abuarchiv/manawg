@@ -72,7 +72,6 @@ test.describe('pwa platform', () => {
 
 	test('browsers without a native prompt get the manual install steps', async ({ page }) => {
 		await page.addInitScript(() => {
-			// biome-ignore lint/performance/noDelete: simulate a browser without the API
 			delete (window as { onbeforeinstallprompt?: unknown }).onbeforeinstallprompt;
 		});
 		await page.goto('/');
@@ -85,7 +84,6 @@ test.describe('pwa platform', () => {
 	}, testInfo) => {
 		await setupMember(page);
 		await page.addInitScript(() => {
-			// biome-ignore lint/performance/noDelete: simulate a browser without the API
 			delete (window as { onbeforeinstallprompt?: unknown }).onbeforeinstallprompt;
 		});
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}`);

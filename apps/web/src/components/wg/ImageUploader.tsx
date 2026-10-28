@@ -68,6 +68,7 @@ export function ImageUploader({
 			<>
 				<div className="relative aspect-[16/9] w-full overflow-hidden rounded-lg border border-border bg-card">
 					{previewSrc ? (
+						// biome-ignore lint/performance/noImgElement: blob preview or storage URL, next/image cannot optimise it
 						<img
 							src={previewSrc}
 							alt={

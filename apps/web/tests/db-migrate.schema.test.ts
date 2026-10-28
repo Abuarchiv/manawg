@@ -240,7 +240,7 @@ test('normalizers treat catalog output and snapshot SQL as equal', () => {
 test('the journal on disk is contiguous and hashes match the raw SQL files', () => {
 	const entries: JournalEntry[] = readMigrationJournal().entries;
 	assert.equal(entries[0]?.tag, BASELINE_TAG);
-	entries.forEach((entry, index) => assert.equal(entry.idx, index));
+	for (const [index, entry] of entries.entries()) assert.equal(entry.idx, index);
 	const last = entries.at(-1);
 	assert.ok(last);
 	const sql = fs.readFileSync(path.join(migrationsFolder, `${last.tag}.sql`), 'utf8');

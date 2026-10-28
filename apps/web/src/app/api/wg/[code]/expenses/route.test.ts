@@ -277,7 +277,7 @@ const txFor = (local: Loose) => ({
 				returning: async () => {
 					assert.equal(table, idempotencyResponses);
 					const claim = local.idempotency.get(state.currentClaimId);
-					if (!claim || claim.body?._claimed !== true) return [];
+					if (claim?.body?._claimed !== true) return [];
 					claim.body = values.responseBody;
 					claim.expiresAt = values.expiresAt;
 					return [{ scope: claim.scope }];

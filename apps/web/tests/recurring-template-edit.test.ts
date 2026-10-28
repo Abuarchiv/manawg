@@ -86,8 +86,10 @@ test('a resent due date on the same day keeps the anchor and the due date', asyn
 	});
 	assert.equal(response.status, 200);
 	assert.equal(state.sets.length, 1);
-	assert.equal((state.sets[0]?.anchorAt as Date).getTime(), anchorAt.getTime());
-	assert.equal((state.sets[0]?.nextDueAt as Date).getTime(), dueAt.getTime());
+	const [set] = state.sets;
+	assert.ok(set);
+	assert.equal((set.anchorAt as Date).getTime(), anchorAt.getTime());
+	assert.equal((set.nextDueAt as Date).getTime(), dueAt.getTime());
 });
 
 test('a due date moved to another day re-anchors the cadence', async () => {
@@ -98,8 +100,10 @@ test('a due date moved to another day re-anchors the cadence', async () => {
 		nextDueAt: moved.toISOString(),
 	});
 	assert.equal(response.status, 200);
-	assert.equal((state.sets[0]?.anchorAt as Date).getTime(), moved.getTime());
-	assert.equal((state.sets[0]?.nextDueAt as Date).getTime(), moved.getTime());
+	const [set] = state.sets;
+	assert.ok(set);
+	assert.equal((set.anchorAt as Date).getTime(), moved.getTime());
+	assert.equal((set.nextDueAt as Date).getTime(), moved.getTime());
 });
 
 test('pausing alone accepts departed members; editing finances does not', async () => {

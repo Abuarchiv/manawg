@@ -18,6 +18,7 @@
 		"parser": { "unsafeParameterDecoratorsEnabled": true }
 	},
 	"json": { "formatter": { "enabled": true } },
+	"css": { "parser": { "tailwindDirectives": true } },
 	"files": {
 		"includes": [
 			"**/.github/**",
@@ -47,6 +48,10 @@
 		{
 			"includes": ["**/scripts/real-stack/**/*.mjs"],
 			"linter": { "rules": { "suspicious": { "noConsole": "off" } } }
+		},
+		{
+			"includes": ["**/e2e/**", "**/scripts/real-stack/**/*.mjs"],
+			"linter": { "rules": { "performance": { "useDomNodeTextContent": "off" } } }
 		}
 	]
 }

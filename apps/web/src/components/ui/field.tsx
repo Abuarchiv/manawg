@@ -74,6 +74,7 @@ function Field({
 	...props
 }: React.ComponentProps<'div'> & VariantProps<typeof fieldVariants>) {
 	return (
+		// biome-ignore lint/a11y/useSemanticElements: <fieldset> brings default border, padding and min-width that the Field layout must not inherit.
 		<div
 			role="group"
 			data-slot="field"

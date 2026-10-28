@@ -9,6 +9,7 @@ import { cn } from '@/shared/lib/cn';
 
 function InputGroup({ className, ...props }: React.ComponentProps<'div'>) {
 	return (
+		// biome-ignore lint/a11y/useSemanticElements: <fieldset> brings default border, padding and min-width that the group layout must not inherit.
 		<div
 			data-slot="input-group"
 			role="group"
@@ -46,6 +47,7 @@ function InputGroupAddon({
 	...props
 }: React.ComponentProps<'div'> & VariantProps<typeof inputGroupAddonVariants>) {
 	return (
+		// biome-ignore lint/a11y/useSemanticElements: <fieldset> brings default border, padding and min-width that the addon layout must not inherit.
 		<div
 			role="group"
 			data-slot="input-group-addon"

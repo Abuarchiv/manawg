@@ -80,7 +80,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 	// The row disappears: focus moves to the neighboring row instead of BODY.
 	function focusNeighborRow(): void {
 		const rows = [...document.querySelectorAll<HTMLElement>('[data-inventory-row]')];
-		const index = rows.findIndex((row) => row === rowRef.current);
+		const index = rows.indexOf(rowRef.current as HTMLElement);
 		const neighbor = rows[index + 1] ?? rows[index - 1];
 		const target = neighbor?.querySelector<HTMLElement>('button') ?? document.querySelector('h1');
 		requestAnimationFrame(() => target?.focus());

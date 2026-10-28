@@ -191,7 +191,7 @@ function createHarness(kind: Kind, warning: null | 'notification_delivery_failed
 							if (table !== idempotencyResponses) throw new Error('unexpected update');
 							state.baseWhere = dialect.sqlToQuery(condition).sql;
 							if (state.failBaseWrite) throw new Error('replay_write_failed');
-							if (!draft.slot || draft.slot.body._claimed !== true) return [];
+							if (draft.slot?.body._claimed !== true) return [];
 							draft.slot = {
 								body: JSON.parse(JSON.stringify(values.responseBody)) as Record<string, unknown>,
 								expiresAt: values.expiresAt,

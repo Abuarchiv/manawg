@@ -6,6 +6,7 @@ import { cn } from '@/shared/lib/cn';
 
 function ItemGroup({ className, ...props }: React.ComponentProps<'div'>) {
 	return (
+		// biome-ignore lint/a11y/useSemanticElements: ItemGroup is a div[role=list] on purpose; its entries are divs with role=listitem.
 		<div
 			role="list"
 			data-slot="item-group"
@@ -24,7 +25,10 @@ function ItemGroup({ className, ...props }: React.ComponentProps<'div'>) {
 // ItemGroup is a div[role=list], so its entries need role=listitem on a div (a bare <li>
 // would be invalid HTML). The role lives here once instead of at every call site.
 function ItemGroupEntry({ className, ...props }: React.ComponentProps<'div'>) {
-	return <div role="listitem" data-slot="item-group-entry" className={className} {...props} />;
+	return (
+		// biome-ignore lint/a11y/useSemanticElements: a bare <li> would be invalid HTML inside the div[role=list] ItemGroup.
+		<div role="listitem" data-slot="item-group-entry" className={className} {...props} />
+	);
 }
 
 const itemVariants = cva(

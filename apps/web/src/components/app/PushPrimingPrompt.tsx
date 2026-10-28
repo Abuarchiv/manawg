@@ -172,7 +172,6 @@ export function PushPrimingPrompt({ code, memberId }: { code: string; memberId: 
 
 	return (
 		<div
-			// biome-ignore lint/a11y/useSemanticElements: native <output> can't host a nested interactive button+dismiss layout cleanly (see InstallPrompt.tsx for the same tradeoff)
 			role="status"
 			aria-live="polite"
 			aria-label="Benachrichtigungen aktivieren"

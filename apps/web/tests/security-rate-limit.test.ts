@@ -234,7 +234,9 @@ describe('rate limit fail open stats', () => {
 				false,
 			);
 			assert.equal(captured.length, 1);
-			assert.equal((captured[0]?.[0] as Error).message, 'rate-limit failing closed');
+			const [firstCapture] = captured;
+			assert.ok(firstCapture);
+			assert.equal((firstCapture[0] as Error).message, 'rate-limit failing closed');
 			assert.ok(!inspect([...spy.calls, ...captured]).includes('secret-test-sentinel'));
 
 			await rateLimit.checkRateLimit(null, 'wg-3', 'closed');

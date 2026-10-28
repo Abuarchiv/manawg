@@ -197,7 +197,7 @@ export function OfflineClient() {
 			className="min-h-svh bg-background px-4 pt-[max(1.5rem,env(safe-area-inset-top,0px))] pb-6 text-foreground focus:outline-none"
 		>
 			<div className="mx-auto flex w-full max-w-md flex-col gap-5 pb-[env(safe-area-inset-bottom)]">
-				<header className="flex flex-col gap-3" aria-labelledby="offline-heading">
+				<header className="flex flex-col gap-3">
 					<div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
 						<div className="flex min-w-0 max-w-full items-center gap-2">
 							<span className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-muted">

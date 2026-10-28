@@ -122,8 +122,8 @@ body:has(.group\/wg-shell) [data-slot="field-group"] {
 
 @theme inline {
 	--font-sans: var(--font-inter, ui-sans-serif), ui-sans-serif, system-ui, sans-serif;
-	--font-heading: var(--font-inter-tight, var(--font-inter, ui-sans-serif)), ui-sans-serif,
-		system-ui, sans-serif;
+	--font-heading:
+		var(--font-inter-tight, var(--font-inter, ui-sans-serif)), ui-sans-serif, system-ui, sans-serif;
 	--font-mono: var(--font-jetbrains-mono);
 	/* Small text keeps a readable floor under the fluid root size (section 6);
 	   headings and spacing above still scale down on narrow phones. */
@@ -202,7 +202,10 @@ html:has([data-offline-banner]) {
 /* The sticky banners stack: the offline bar on top, the session-expired bar below it.
    --banner-stack-height is the room both take; every sticky offset below uses it. */
 :root {
-	--banner-stack-height: calc(var(--offline-banner-height, 0px) + var(--session-banner-height, 0px));
+	--banner-stack-height: calc(
+		var(--offline-banner-height, 0px) +
+		var(--session-banner-height, 0px)
+	);
 }
 html:has([data-session-banner]) {
 	scroll-padding-top: calc(var(--banner-stack-height) + 0.5rem);
@@ -327,9 +330,13 @@ textarea,
 	*,
 	*::before,
 	*::after {
+		/* biome-ignore lint/complexity/noImportantStyles: must beat component animation and transition utilities */
 		animation-duration: 0.01ms !important;
+		/* biome-ignore lint/complexity/noImportantStyles: must beat component animation and transition utilities */
 		animation-iteration-count: 1 !important;
+		/* biome-ignore lint/complexity/noImportantStyles: must beat component animation and transition utilities */
 		transition-duration: 0.01ms !important;
+		/* biome-ignore lint/complexity/noImportantStyles: must beat component animation and transition utilities */
 		scroll-behavior: auto !important;
 	}
 }
@@ -339,13 +346,16 @@ textarea,
    just without the shadow; forced-colors draws a border. */
 .glass-pill {
 	background: rgb(255 255 255 / 0.96);
-	box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.08), 0 1px 3px rgb(0 0 0 / 0.12);
+	box-shadow:
+		inset 0 0 0 1px rgb(0 0 0 / 0.08),
+		0 1px 3px rgb(0 0 0 / 0.12);
 }
 .dark .glass-pill {
 	background: rgb(255 255 255 / 0.12);
-	box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.14), 0 1px 3px rgb(0 0 0 / 0.4);
+	box-shadow:
+		inset 0 0 0 1px rgb(255 255 255 / 0.14),
+		0 1px 3px rgb(0 0 0 / 0.4);
 }
-/* biome-ignore lint/correctness/noUnknownMediaFeatureName: Media Queries 5, Chrome 118+ */
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
 	.glass-pill {
 		background: var(--accent);
@@ -463,6 +473,7 @@ body {
 /* 6a. Form fields stay at 16px or more — below that iOS zooms in on focus
        and the page stays zoomed. */
 input:not([type="checkbox"], [type="radio"]),
+/* biome-ignore lint/style/noDescendingSpecificity: the earlier [data-app-chrome] rule sets user-select only, so the two never compete */
 textarea,
 select {
 	font-size: max(16px, 1rem);
@@ -652,7 +663,10 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 		background-color: var(--app-backdrop);
 		color: var(--text-1);
 		font-family: var(--font-inter, ui-sans-serif), ui-sans-serif, system-ui, sans-serif;
-		font-feature-settings: "kern" on, "ss01" on, "cv11" on;
+		font-feature-settings:
+			"kern" on,
+			"ss01" on,
+			"cv11" on;
 		-webkit-font-smoothing: antialiased;
 		-moz-osx-font-smoothing: grayscale;
 		min-height: 100dvh;
@@ -666,7 +680,8 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 	h4,
 	h5,
 	h6 {
-		font-family: var(--font-inter-tight, var(--font-inter, ui-sans-serif)), ui-sans-serif, system-ui,
+		font-family:
+			var(--font-inter-tight, var(--font-inter, ui-sans-serif)), ui-sans-serif, system-ui,
 			sans-serif;
 		font-weight: 600;
 	}
@@ -743,7 +758,10 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 @media (prefers-reduced-motion: no-preference) {
 	a[data-slot="item"],
 	a:has(> [data-slot="card"]) {
-		transition: color 80ms ease-out, background-color 80ms ease-out, border-color 80ms ease-out,
+		transition:
+			color 80ms ease-out,
+			background-color 80ms ease-out,
+			border-color 80ms ease-out,
 			transform 80ms ease-out;
 	}
 	a[data-slot="item"]:active,
@@ -759,9 +777,11 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 		margin: 16mm 18mm;
 	}
 	[data-app-chrome] {
+		/* biome-ignore lint/complexity/noImportantStyles: print hides the chrome regardless of utility classes */
 		display: none !important;
 	}
 	.group\/wg-shell {
+		/* biome-ignore lint/complexity/noImportantStyles: print drops the shell padding regardless of utility classes */
 		padding: 0 !important;
 	}
 }

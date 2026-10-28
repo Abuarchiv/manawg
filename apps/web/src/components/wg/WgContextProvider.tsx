@@ -183,7 +183,6 @@ export function WgContextProvider({
 					<div
 						className="mx-auto w-full max-w-[var(--app-frame-width)] px-4 pt-6"
 						aria-label="Wird geladen"
-						// biome-ignore lint/a11y/useSemanticElements: role="status" names the loading region without swapping the wrapper element to <output>.
 						role="status"
 					>
 						<Skeleton className="h-7 w-40 max-w-full" />

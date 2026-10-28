@@ -459,9 +459,15 @@ test.describe('ocr runtime', () => {
 			context.fillRect(0, 0, canvas.width, canvas.height);
 			context.fillStyle = '#000';
 			context.font = '38px Arial';
-			['TEST RECEIPT', '27.09.2026', 'Milch 2,50 EUR', 'Brot 3,20 EUR', 'TOTAL 5,70 EUR'].forEach(
-				(line, index) => context.fillText(line, 60, 85 + index * 85),
-			);
+			for (const [index, line] of [
+				'TEST RECEIPT',
+				'27.09.2026',
+				'Milch 2,50 EUR',
+				'Brot 3,20 EUR',
+				'TOTAL 5,70 EUR',
+			].entries()) {
+				context.fillText(line, 60, 85 + index * 85);
+			}
 			return canvas.toDataURL('image/png').split(',')[1] ?? '';
 		});
 		if (!base64) throw new Error('Synthetic receipt PNG was not generated');

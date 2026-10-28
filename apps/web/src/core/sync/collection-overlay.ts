@@ -34,8 +34,8 @@ export type HideLoadError = (error: CachedFetchError, context: LoadErrorContext)
 export function loadErrorMessage(
 	error: CachedFetchError,
 	context: LoadErrorContext,
-	describe: (error: CachedFetchError) => string,
+	describeError: (error: CachedFetchError) => string,
 	hide: HideLoadError | undefined,
 ): string | null {
-	return hide?.(error, context) ? null : describe(error);
+	return hide?.(error, context) ? null : describeError(error);
 }

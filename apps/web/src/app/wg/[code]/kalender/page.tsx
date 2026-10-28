@@ -163,7 +163,6 @@ export default function KalenderPage() {
 							Nächste 30 Tage
 						</h2>
 						{loading ? (
-							// biome-ignore lint/a11y/useSemanticElements: role="status" names the loading region without swapping the wrapper element to <output>.
 							<div
 								role="status"
 								aria-label="Agenda wird geladen"

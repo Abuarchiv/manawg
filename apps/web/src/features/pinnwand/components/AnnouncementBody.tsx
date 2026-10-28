@@ -71,6 +71,7 @@ export function AnnouncementBody({
 							<ImageOff aria-hidden />
 						</span>
 					) : (
+						// biome-ignore lint/performance/noImgElement: user-uploaded storage URL, next/image is not used for these
 						<img
 							src={announcement.imageUrl}
 							alt=""

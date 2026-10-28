@@ -141,6 +141,7 @@ export function MessageImage({ imageUrl, senderName }: { imageUrl: string; sende
 	return (
 		<Attachment state="done" className="min-w-0 max-w-full">
 			<AttachmentMedia variant="image" className="size-20">
+				{/* biome-ignore lint/performance/noImgElement: user-uploaded storage URL, next/image is not used for these */}
 				<img src={imageUrl} alt={`Bild von ${senderName}`} loading="lazy" />
 			</AttachmentMedia>
 			<AttachmentContent>

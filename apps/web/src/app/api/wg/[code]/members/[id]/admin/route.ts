@@ -61,8 +61,7 @@ export const POST = withWgRoute<{ id: string }>(
 			},
 			async (tx) => {
 				const actor = await lockActiveAccountMember(tx, wg.id, member.memberId, auth.authUserId);
-				if (!actor || actor.role !== 'admin')
-					return rejectWrite(forbidden('not_admin', 'not_admin'));
+				if (actor?.role !== 'admin') return rejectWrite(forbidden('not_admin', 'not_admin'));
 				const [target] = await tx
 					.select({
 						id: wgMembers.id,

@@ -114,7 +114,6 @@ export function WeekSection({
 				<div
 					className="flex min-w-0 flex-col gap-2"
 					aria-label="Termine und Putzplan-Aufgaben werden geladen"
-					// biome-ignore lint/a11y/useSemanticElements: role="status" names the loading region without swapping the wrapper element to <output>.
 					role="status"
 				>
 					<Skeleton className="h-11 w-full bg-foreground/[0.07]" />

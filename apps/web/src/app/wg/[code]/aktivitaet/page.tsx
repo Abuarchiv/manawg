@@ -287,7 +287,6 @@ export default function AktivitaetPage() {
 							)}
 						</div>
 					) : loading ? (
-						// biome-ignore lint/a11y/useSemanticElements: role="status" names the loading region without swapping the wrapper element to <output>.
 						<div className="space-y-2" aria-label="Aktivität lädt" role="status">
 							<div className="flex justify-center py-2">
 								<Spinner className="motion-reduce:animate-none" aria-hidden />

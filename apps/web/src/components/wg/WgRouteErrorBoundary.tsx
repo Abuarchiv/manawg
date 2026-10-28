@@ -85,10 +85,10 @@ export function WgRouteErrorBoundary({
 						</EmptyHeader>
 						<EmptyContent>
 							{process.env.NODE_ENV === 'development' && (
+								// biome-ignore lint/a11y/useSemanticElements: <pre> must stay a preformatted block; role="region" names its scroll area.
 								<pre
 									// biome-ignore lint/a11y/noNoninteractiveTabindex: Scrollable error details must be focusable so keyboard users can scroll them.
 									tabIndex={0}
-									// biome-ignore lint/a11y/useSemanticElements: <pre> must stay a preformatted block; role="region" names its scroll area.
 									role="region"
 									aria-label="Fehlerdetails"
 									className="max-w-full overflow-auto rounded-lg border border-border bg-muted px-3 py-2 text-left text-xs text-foreground/75"
