@@ -18,6 +18,11 @@ environment setup, Preview secrets and workflow inputs: see
       and remove it afterwards.
 - [ ] Migrations `0018_member_fk_indexes` and `0019_push_subscription_per_member` (index changes only) build their indexes in one transaction each; writes to those
       tables wait until they commit. Run them in a quiet window (seconds at today's data size).
+- [ ] Migration `0036_remove_paypal` drops columns the previous deployment still reads
+      (`wg_members.paypal_merchant_id` on every WG page), so it runs after the deploy, not before:
+      dry-run it in `begin`/`rollback` (it aborts while a completed or capturing PayPal payment
+      exists), deploy the candidate, then apply 0036 right away. Until then only recording a cash
+      payment fails. The one-dispatch release below migrates first, so release this one by hand.
 - [ ] Production migration only via `.github/workflows/migrate-production.yml` on `main`
       (`candidate_sha`, `preview_run_id`, `MIGRATE_PRODUCTION`). Never run `db:migrate` against
       Production from a laptop, and never use Production credentials in Preview.
@@ -52,12 +57,10 @@ Not fatal, but expected in Production:
 
 - [ ] `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (push; `VAPID_SUBJECT`
       throws in production when push is used without it).
-- [ ] `NEXT_PUBLIC_APP_URL` (invite links, OG images, PayPal return origin).
+- [ ] `NEXT_PUBLIC_APP_URL` (invite links, OG images).
 - [ ] `NEXT_PUBLIC_SENTRY_DSN` set, so errors are reported at all.
 - [ ] `NEXT_PUBLIC_POSTHOG_KEY` and `NEXT_PUBLIC_POSTHOG_HOST=https://eu.i.posthog.com` if
       analytics should run (any other host disables it).
-- [ ] PayPal: all `PAYPAL_*`/`NEXT_PUBLIC_PAYPAL_*` empty (off) or a complete live set
-      ([paypal-setup.md](paypal-setup.md)). No sandbox values in Production.
 - [ ] `MIGRATION_READ_ONLY` unset or not `true` after the migration window.
 
 ## Configuration the code cannot check

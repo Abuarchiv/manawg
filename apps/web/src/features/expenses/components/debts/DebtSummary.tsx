@@ -45,7 +45,6 @@ interface DebtSummaryProps {
 	memberName?: (id: string) => string;
 	shareCode: string;
 	currentMemberId: string;
-	memberPayPalMerchantId?: (id: string) => string | null;
 	onSettled: (message?: string) => void;
 }
 
@@ -62,7 +61,6 @@ export function DebtSummary({
 	memberName = () => '',
 	shareCode,
 	currentMemberId,
-	memberPayPalMerchantId = () => null,
 	onSettled,
 }: DebtSummaryProps) {
 	const { personal, others } = getDebtOverview(debts, currentMemberId, summary);
@@ -76,16 +74,7 @@ export function DebtSummary({
 	)
 		return null;
 
-	const hinted = new Set<string>();
 	function renderDebt(debt: SimplifiedDebt) {
-		const hintKey =
-			debt.toId === currentMemberId
-				? 'me'
-				: debt.fromId === currentMemberId
-					? `to:${debt.toId}`
-					: null;
-		const showPayPalHint = hintKey !== null && !hinted.has(hintKey);
-		if (hintKey) hinted.add(hintKey);
 		return (
 			<SettlementDebtRow
 				key={`${debt.currency ?? 'EUR'}-${debt.fromId}-${debt.toId}`}
@@ -93,8 +82,6 @@ export function DebtSummary({
 				expenses={expenses}
 				shareCode={shareCode}
 				currentMemberId={currentMemberId}
-				memberPayPalMerchantId={memberPayPalMerchantId}
-				showPayPalHint={showPayPalHint}
 				backedByDirectDebt={
 					summary === undefined ||
 					debts.some(

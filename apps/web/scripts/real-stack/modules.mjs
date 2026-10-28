@@ -186,9 +186,9 @@ expect(
 );
 expect(
 	+sql(
-		`select count(*) from expense_payments where wg_id=(select id from wgs where share_code='${code}') and status='completed' and provider='manual' and amount_cents=2000`,
+		`select count(*) from expense_payments where wg_id=(select id from wgs where share_code='${code}') and status='completed' and amount_cents=2000`,
 	) === 1,
-	'Barzahlung in DB (completed, manual, 2000)',
+	'Barzahlung in DB (completed, 2000)',
 );
 const pmAgain = await call(B, 'POST', `/api/wg/${code}/payments/manual`, {
 	fromMemberId: benId,

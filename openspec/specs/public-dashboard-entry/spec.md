@@ -1,7 +1,7 @@
 # public-dashboard-entry Specification
 
 ## Purpose
-TBD - created by archiving change add-signup-page. Update Purpose after archive.
+Let signed-out visitors explore the app and start registration or sign-in on their own, without exposing any private WG data.
 
 ## Requirements
 

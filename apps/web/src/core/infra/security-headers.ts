@@ -24,7 +24,6 @@ function s3UploadOrigins(): string[] {
 	return ['https://*.s3.amazonaws.com'];
 }
 
-const PAYPAL_FRAME_CONNECT_ORIGINS = ['https://www.paypal.com', 'https://www.sandbox.paypal.com'];
 // Tesseract.js 5.1.1's default German and English model URLs. Keep CDN access
 // pinned to these files rather than allowing all of cdn.jsdelivr.net.
 const TESSERACT_LANGUAGE_DATA_URLS = [
@@ -43,27 +42,7 @@ function httpsOrigin(value: string | undefined): URL | null {
 	}
 }
 
-export function isPayPalSdkEnabled(
-	clientId: string | undefined,
-	partnerAttributionId: string | undefined,
-): boolean {
-	return Boolean(clientId?.trim() && partnerAttributionId?.trim());
-}
-
-export function crossOriginOpenerPolicy(
-	payPalSdkEnabled: boolean,
-): 'same-origin' | 'same-origin-allow-popups' {
-	return payPalSdkEnabled ? 'same-origin-allow-popups' : 'same-origin';
-}
-
-export function contentSecurityPolicy(
-	nonce: string,
-	upgradeInsecureRequests = true,
-	payPalSdkEnabled = isPayPalSdkEnabled(
-		process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID,
-		process.env.NEXT_PUBLIC_PAYPAL_PARTNER_ATTRIBUTION_ID,
-	),
-): string {
+export function contentSecurityPolicy(nonce: string, upgradeInsecureRequests = true): string {
 	const scriptSrc = [
 		"'self'",
 		`'nonce-${nonce}'`,
@@ -77,9 +56,6 @@ export function contentSecurityPolicy(
 	// the broader CDN origin to connect-src, which would permit unrelated fetches.
 	const connectSrc = ["'self'", ...s3UploadOrigins(), ...TESSERACT_LANGUAGE_DATA_URLS];
 	const workerSrc = ["'self'", 'blob:', 'https://cdn.jsdelivr.net'];
-	if (payPalSdkEnabled) {
-		connectSrc.push(...PAYPAL_FRAME_CONNECT_ORIGINS);
-	}
 	const posthogOrigin = httpsOrigin(process.env.NEXT_PUBLIC_POSTHOG_HOST);
 	if (posthogOrigin) {
 		connectSrc.push(posthogOrigin.origin);
@@ -102,7 +78,6 @@ export function contentSecurityPolicy(
 		`img-src ${imgSrc.join(' ')}`,
 		"font-src 'self' data:",
 		`connect-src ${connectSrc.join(' ')}`,
-		...(payPalSdkEnabled ? [`frame-src 'self' ${PAYPAL_FRAME_CONNECT_ORIGINS.join(' ')}`] : []),
 		"media-src 'self' blob: https://*.amazonaws.com",
 		`worker-src ${workerSrc.join(' ')}`,
 		"frame-ancestors 'none'",

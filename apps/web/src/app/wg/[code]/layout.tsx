@@ -127,7 +127,6 @@ function WgShell({
 		id: string;
 		name: string;
 		color?: string | null;
-		paypalMerchantId?: string | null;
 		active: boolean;
 		isAdmin?: boolean;
 		hasAccount?: boolean;
