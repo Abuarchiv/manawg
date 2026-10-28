@@ -3,7 +3,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Check the [self-hosting guide](https://github.com/Abuarchiv/manawg-app/blob/main/docs/self-hosting.md) first.
+        Check the [self-hosting guide](https://github.com/Abuarchiv/manawg/blob/main/docs/self-hosting.md) first.
         Never post keys, passwords or connection strings.
   - type: textarea
     id: question

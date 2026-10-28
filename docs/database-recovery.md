@@ -26,7 +26,7 @@ A nightly backup with cron, keeping 14 days, with the files encrypted to a key t
 on the server:
 
 ```text
-15 3 * * * cd /srv/manawg-app && ./docker/backup.sh && find backups -name 'manawg-*.tar.gz' -mtime +14 -delete
+15 3 * * * cd /srv/manawg && ./docker/backup.sh && find backups -name 'manawg-*.tar.gz' -mtime +14 -delete
 ```
 
 Copy `backups/` off the machine (for example with `rsync` or `restic`). An encrypted copy with
