@@ -28,12 +28,7 @@ type MutationResult = {
 	audit?: Parameters<typeof recordAuditEvent>[0];
 };
 
-// Rows written before responses were stored with their status hold the bare body.
-const storedCodec = responseCodec<unknown>((stored) =>
-	'subscription' in stored || (stored as { revoked?: unknown }).revoked === true
-		? { status: 200, body: stored }
-		: null,
-);
+const storedCodec = responseCodec<unknown>();
 
 function withoutFeedUrl(body: unknown): unknown {
 	if (!body || typeof body !== 'object' || !('subscription' in body)) return body;

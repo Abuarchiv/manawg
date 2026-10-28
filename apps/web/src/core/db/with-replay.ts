@@ -21,22 +21,16 @@ export interface IdempotentReplayMutation<T> {
 	effect: T | null;
 }
 
-function replayCodec(
-	legacyResponse?: (value: unknown) => IdempotentReplayResponse | null,
-): ReplayCodec<unknown> {
-	return {
-		// `entityId` stays in the stored row so a post-commit warning finds its response.
-		encode: (response) => {
-			const { status, body, entityId } = response as IdempotentReplayResponse;
-			return entityId === undefined ? { status, body } : { status, body, entityId };
-		},
-		decode: (stored) =>
-			// Keeps `entityId` from the stored row, which `readStoredResponse` would drop.
-			isStoredResponse(stored)
-				? (stored as IdempotentReplayResponse)
-				: (legacyResponse?.(stored) ?? null),
-	};
-}
+const replayCodec: ReplayCodec<unknown> = {
+	// `entityId` stays in the stored row so a post-commit warning finds its response.
+	encode: (response) => {
+		const { status, body, entityId } = response as IdempotentReplayResponse;
+		return entityId === undefined ? { status, body } : { status, body, entityId };
+	},
+	decode: (stored) =>
+		// Keeps `entityId` from the stored row, which `readStoredResponse` would drop.
+		isStoredResponse(stored) ? (stored as IdempotentReplayResponse) : null,
+};
 
 /**
  * A write whose outcome is stored as `{ status, body }` behind the shared claim (pinnwand posts,
@@ -49,7 +43,6 @@ export async function withIdempotentReplay<T>(
 	req: Request,
 	scope: string,
 	mutate: (tx: DbTransaction) => Promise<IdempotentReplayMutation<T>>,
-	legacyResponse?: (value: unknown) => IdempotentReplayResponse | null,
 	wgId?: string,
 ): Promise<IdempotentReplayMutation<T> & { key: string | null }> {
 	const key = readIdempotencyKey(req);
@@ -57,7 +50,7 @@ export async function withIdempotentReplay<T>(
 		{
 			scope,
 			key,
-			codec: replayCodec(legacyResponse),
+			codec: replayCodec,
 			storeStatus: (status) => !TRANSIENT_STATUSES.has(status),
 			inTransaction: (work) =>
 				withTransaction(async (tx) => {

@@ -335,25 +335,6 @@ test('revoke retry replays success after the subscription is already revoked', a
 	assert.equal(state.audits, 1);
 });
 
-test('older flat subscription response replays as HTTP 200 without rotating', async () => {
-	const { state, call } = harness({ subscription: activeSubscription() });
-	const body = {
-		subscription: { feedUrl: '/feed/old', createdAt: '2026-01-01', updatedAt: '2026-01-01' },
-	};
-	state.slot = { body, expiresAt: new Date(Date.now() + 60_000) };
-	const response = await call('POST');
-	assert.equal(response.status, 200);
-	assert.deepEqual(await response.json(), {
-		subscription: {
-			feedUrl: '/feed/subscription-1/seed-0-token',
-			createdAt: '2026-01-01T00:00:00.000Z',
-			updatedAt: '2026-01-01T00:00:00.000Z',
-		},
-	});
-	assert.equal(state.seeds, 0);
-	assert.equal(state.audits, 0);
-});
-
 test('cached calendar credentials are not replayed after member detachment', async () => {
 	const { state, call } = harness({ subscription: activeSubscription(), memberActive: false });
 	state.slot = {
