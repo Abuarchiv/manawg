@@ -1,0 +1,48 @@
+name: Self-hosting problem
+description: Setup, start, update or backup of your own instance fails.
+labels: [question, self-hosting]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please read the [self-hosting guide](https://github.com/Abuarchiv/manawg-app/blob/main/docs/self-hosting.md) first.
+        Remove secrets from everything you paste: `.env` values, keys, passwords, connection strings.
+  - type: dropdown
+    id: setup
+    attributes:
+      label: Setup
+      options:
+        - Docker Compose
+        - Vercel and Supabase
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What you did and what went wrong
+      description: The commands you ran and the step where it failed.
+    validations:
+      required: true
+  - type: textarea
+    id: ps
+    attributes:
+      label: Output of `docker compose ps`
+      description: Docker only.
+      render: text
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: For Docker, `docker compose logs app` and the failing service (for example `setup` or `auth`). The `[env]` lines at boot are the most useful.
+      render: text
+  - type: input
+    id: system
+    attributes:
+      label: System and versions
+      description: OS, `docker --version`, `docker compose version`.
+      placeholder: Ubuntu 24.04, Docker 27.3, Compose v2.29
+  - type: input
+    id: version
+    attributes:
+      label: ManaWG version
+      description: Commit hash or `MANAWG_VERSION`.

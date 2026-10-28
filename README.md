@@ -1,45 +1,57 @@
-# ManaWG
+# ManaWG: free, open-source WG app for shared flats
 
-**One app for your shared flat: split expenses, rotate the cleaning, share the shopping list.**
+**Split expenses, rotate the cleaning schedule and share the shopping list with your flatmates.**
+ManaWG is a free flatshare app (a *WG-App*, from German *Wohngemeinschaft*) for roommates and
+house shares. It runs in the browser, installs on your phone like an app, and you can host it
+yourself.
 
-**Try it:** [app.manawg.com](https://app.manawg.com) · **Host it yourself:** [Docker setup](#host-it-yourself) · **Help build it:** [contributing](#contributing)
+**[Try it](https://app.manawg.com)** · **[Self-host](#self-host)** · **[Contribute](#contributing)**
 
 [![CI](https://github.com/Abuarchiv/manawg-app/actions/workflows/ci.yml/badge.svg)](https://github.com/Abuarchiv/manawg-app/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![Self-host with Docker](https://img.shields.io/badge/self--host-docker%20compose-2496ED?logo=docker&logoColor=white)](#host-it-yourself)
+[![Self-host with Docker](https://img.shields.io/badge/self--host-docker%20compose-2496ED?logo=docker&logoColor=white)](#self-host)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Abuarchiv/manawg-app/badge)](https://scorecard.dev/viewer/?uri=github.com/Abuarchiv/manawg-app)
+[![GitHub stars](https://img.shields.io/github/stars/Abuarchiv/manawg-app?style=flat)](https://github.com/Abuarchiv/manawg-app/stargazers)
+[![GitHub Discussions](https://img.shields.io/github/discussions/Abuarchiv/manawg-app)](https://github.com/Abuarchiv/manawg-app/discussions)
 
 <p>
-  <img src="docs/screenshots/start.png" width="24%" alt="WG overview">
-  <img src="docs/screenshots/ausgaben.png" width="24%" alt="Expenses">
-  <img src="docs/screenshots/putzplan.png" width="24%" alt="Cleaning schedule">
-  <img src="docs/screenshots/einkauf.png" width="24%" alt="Shopping list">
+  <img src="docs/screenshots/start.png" width="24%" alt="ManaWG home screen with the shared flat overview">
+  <img src="docs/screenshots/ausgaben.png" width="24%" alt="ManaWG expenses: who paid what and who owes whom">
+  <img src="docs/screenshots/putzplan.png" width="24%" alt="ManaWG cleaning schedule with rotating chores">
+  <img src="docs/screenshots/einkauf.png" width="24%" alt="ManaWG shared shopping list">
 </p>
+
+The interface is in German for now, as shown above. Amounts are in euros.
 
 ## Why ManaWG
 
-- **Free, completely.** No paid plan and nothing locked behind one: every feature, any number of
-  flatmates, expenses and lists.
-- **No ads, no tracking.** No ad networks, no tracking cookies. The app stores what a WG needs and
-  nothing more, and you can export all of it as JSON or CSV or delete your account at any time.
-- **Made for the phone.** Runs in any browser and installs as an app (PWA), with offline support
-  for the shopping list.
-- **Yours to run.** Open source under Apache-2.0. Use app.manawg.com, hosted in Frankfurt, or run
-  your own with one `docker compose up`.
+Bill splitters like Splitwise cover the money, chore charts cover the cleaning. ManaWG puts what a
+shared flat needs in one place, as a free Splitwise alternative that also plans the cleaning.
+
+- **Free.** No paid plan and no locked features.
+- **No ads, no tracking cookies.** The app stores what a flat needs and nothing more. You can
+  export a WG's data as JSON or CSV and delete your account at any time.
+- **Phone first.** It works in any browser, installs as a PWA, and the shopping list keeps
+  working offline.
+- **Open source, self-hostable.** Apache-2.0. Use the hosted app or run your own instance with
+  Docker.
 
 ## Features
 
-- **Expenses:** split evenly or by custom amounts, see who owes whom, settle up with the fewest
-  transfers, recurring costs, monthly statement by mail, receipt scan (OCR in the browser),
-  import from Splitwise.
-- **Cleaning schedule:** rotating chores, absences, reminders.
-- **Shopping list and supplies:** shared by the whole WG, also usable offline.
-- **Calendar, chat and pinboard:** shared dates with an iCal feed, a WG chat and notes that
-  disappear once they are done.
+- **Expenses and bill splitting.** Split evenly or by custom amounts, see who owes whom, settle up
+  with as few transfers as possible, add recurring costs, get a monthly statement by mail.
+  Import from Splitwise or Splid (CSV) or from a screenshot (text recognition runs in your
+  browser).
+- **Cleaning schedule.** Chores rotate between flatmates, with absences taken into account and
+  reminders.
+- **Shopping list and supplies.** One list for the whole flat, usable offline, plus a list of
+  household supplies.
+- **Calendar.** Shared dates with recurrence, reminders and an iCal feed for your calendar app.
+- **Chat and pinboard.** A flat chat, and a pinboard for notes that disappear once they are done.
 
-The interface is German. Amounts are in euros.
+A flat can have up to 20 members.
 
-## Host it yourself
+## Self-host
 
 A whole instance (app, database, sign-in, image storage) runs on any machine with Docker:
 
@@ -52,21 +64,26 @@ docker compose up -d
 
 The first start builds the app image, which takes about ten minutes. Then open
 [http://localhost](http://localhost) and create an account; the sign-in code arrives in Mailpit at
-[http://localhost:8025](http://localhost:8025). The
-[self-hosting guide](docs/self-hosting.md) covers a public instance with your own domain and
-HTTPS, mail, updates, backups, and the alternative setup on Vercel and Supabase.
+[http://localhost:8025](http://localhost:8025). The [self-hosting guide](docs/self-hosting.md)
+covers a public instance with your own domain and HTTPS, mail, updates, backups, and the
+alternative setup on Vercel and Supabase.
+
+## Tech stack
+
+Next.js 15 and React 19 (PWA), TypeScript, Tailwind CSS 4, PostgreSQL with Drizzle ORM, Supabase
+Auth and Storage. [docs/architecture.md](docs/architecture.md) explains how the app is
+structured.
 
 ## Contributing
 
-New contributors are welcome, in English or German, with code, bug reports, translations or
-ideas.
+Contributions are welcome, in English or German: code, bug reports, translations, ideas.
 
-- **Start small:** issues labelled
+- **Start small.** Issues labelled
   [good first issue](https://github.com/Abuarchiv/manawg-app/labels/good%20first%20issue) are
   scoped and described for a first pull request.
-- **Ask and discuss:** questions and ideas go to
+- **Ask and discuss.** Questions and ideas go to
   [Discussions](https://github.com/Abuarchiv/manawg-app/discussions).
-- **Run it locally in five minutes,** without a database:
+- **Run it locally in five minutes,** without a database or accounts (Node 22, pnpm 9):
 
   ```sh
   corepack enable
@@ -76,10 +93,18 @@ ideas.
 
   Then open [localhost:3000/wg/MTE8PZAT](http://localhost:3000/wg/MTE8PZAT), a sample WG.
 
-[CONTRIBUTING.md](CONTRIBUTING.md) walks through your first pull request.
-[docs/development.md](docs/development.md) has all commands and tests,
-[docs/architecture.md](docs/architecture.md) explains how the app is structured. Built with
-Next.js 15, React 19, Supabase Auth, PostgreSQL with Drizzle and Tailwind 4.
+[CONTRIBUTING.md](CONTRIBUTING.md) walks through your first pull request, and
+[docs/development.md](docs/development.md) lists all commands and tests.
+
+### Roadmap and help wanted
+
+- [#637](https://github.com/Abuarchiv/manawg-app/issues/637): upgrade to Next.js 16
+- [#638](https://github.com/Abuarchiv/manawg-app/issues/638): upgrade Biome to 2.x
+- [#639](https://github.com/Abuarchiv/manawg-app/issues/639): upgrade to TypeScript 7
+- [#633](https://github.com/Abuarchiv/manawg-app/issues/633): translate the self-hosting guide
+  to German
+
+If ManaWG helps your flat, a star on GitHub is a kind way to say thanks and helps others find it.
 
 ## Security
 
@@ -87,20 +112,23 @@ Please report vulnerabilities privately, see [SECURITY.md](SECURITY.md).
 
 ## License
 
-The code is licensed under the [Apache License 2.0](LICENSE): use it, change it and build on it,
-also commercially. Keep the license and the [NOTICE](NOTICE) file with every copy.
-
-"ManaWG" and the ManaWG logo are not covered by this license, see [TRADEMARK.md](TRADEMARK.md).
+ManaWG is licensed under the [Apache License 2.0](LICENSE). You may use, change and distribute it,
+also commercially, under the terms of that license.
 
 ---
 
 ## Auf Deutsch
 
-ManaWG ist die WG-App für Ausgaben, Putzplan und Einkaufsliste: komplett kostenlos, ohne Werbung
-und ohne Tracking, im Browser und als App installierbar. Nutzen kannst du sie direkt auf
-[app.manawg.com](https://app.manawg.com). Wer die Daten lieber selbst hält, startet ManaWG mit
-Docker auf dem eigenen Rechner oder Server, siehe [oben](#host-it-yourself) und die
-[Anleitung zum Selbsthosten](docs/self-hosting.md) (auf Englisch). Mitmachen ist willkommen:
-Fragen und Ideen in den [Discussions](https://github.com/Abuarchiv/manawg-app/discussions),
-Fehler und Wünsche als [Issue](https://github.com/Abuarchiv/manawg-app/issues), auf Deutsch oder
-Englisch.
+ManaWG ist eine kostenlose WG-App für Wohngemeinschaften: WG-Kasse mit Ausgaben teilen und
+abrechnen, Putzplan mit wechselnden Aufgaben, gemeinsame Einkaufsliste, dazu Kalender, Chat und
+Pinnwand. Ohne Werbung und ohne Tracking, im Browser nutzbar und als App aufs Handy installierbar.
+
+Ausprobieren kannst du sie direkt auf [app.manawg.com](https://app.manawg.com). Wer die Daten
+lieber selbst hält, startet ManaWG mit Docker auf dem eigenen Rechner oder Server, siehe
+[Self-host](#self-host) und die [Anleitung zum Selbsthosten](docs/self-hosting.md) (auf
+Englisch).
+
+Mitmachen ist willkommen, auf Deutsch oder Englisch: Fragen und Ideen in den
+[Discussions](https://github.com/Abuarchiv/manawg-app/discussions), Fehler und Wünsche als
+[Issue](https://github.com/Abuarchiv/manawg-app/issues). Wenn dir ManaWG in deiner WG hilft,
+freuen wir uns über einen Stern.

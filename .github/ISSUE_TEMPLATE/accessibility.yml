@@ -1,0 +1,22 @@
+name: Accessibility barrier
+description: Something is hard or impossible to use with a screen reader, keyboard, zoom or other assistive technology.
+labels: [accessibility]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What is the barrier
+      description: Where in the app, and what happens instead of what you need.
+    validations:
+      required: true
+  - type: input
+    id: tech
+    attributes:
+      label: Assistive technology and browser
+      placeholder: VoiceOver, iOS 26, Safari
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce

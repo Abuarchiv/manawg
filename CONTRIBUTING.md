@@ -1,6 +1,7 @@
 # Contributing to ManaWG
 
-Thanks for helping. Bug reports, fixes and improvements are welcome, in English or German.
+Thanks for helping. Bug reports, fixes, documentation and improvements are welcome, in English or
+German. You do not need to be a developer to report a problem or fix a typo.
 
 ## Before you start
 
@@ -9,12 +10,14 @@ Thanks for helping. Bug reports, fixes and improvements are welcome, in English 
   [good first issue](https://github.com/Abuarchiv/manawg-app/labels/good%20first%20issue) are
   small and well described; [help wanted](https://github.com/Abuarchiv/manawg-app/labels/help%20wanted)
   marks larger ones. Comment on the issue before you start, so nobody works on it twice.
-- **Bugs:** open an [issue](https://github.com/Abuarchiv/manawg-app/issues/new/choose) with steps
-  to reproduce. For security problems use [SECURITY.md](SECURITY.md) instead.
+- **Bugs and self-hosting problems:** open an
+  [issue](https://github.com/Abuarchiv/manawg-app/issues/new/choose) with steps to reproduce. For
+  security problems use [SECURITY.md](SECURITY.md) instead.
 - **Small fixes** (typos, obvious bugs): open a pull request directly.
 - **Features and larger changes:** open an issue first and wait for a maintainer's answer. ManaWG
   is deliberately small and phone-first, so not every good idea fits. For larger changes, agree
-  on the approach in the issue before you write the code.
+  on the approach in the issue before you write the code; accepted ones may start as an
+  [OpenSpec](https://github.com/Fission-AI/OpenSpec) proposal in `openspec/changes/`.
 
 By participating you agree to the [Code of Conduct](CODE_OF_CONDUCT.md).
 
@@ -52,10 +55,9 @@ All commands and tests are in [docs/development.md](docs/development.md).
    pnpm lint && pnpm typecheck && pnpm --filter @manawg/web test:unit
    ```
 
-   CI runs the full set on your pull request (also `pnpm knip`, `pnpm build` and the Playwright
-   suite `pnpm --filter @manawg/web test:e2e:fixtures`); run those too if you touched the area.
-5. Commit with a sign-off (`git commit -s`, see
-   [Developer Certificate of Origin](#developer-certificate-of-origin)) and push.
+   CI also runs `pnpm knip`, `pnpm build` and the Playwright suite
+   (`pnpm --filter @manawg/web test:e2e:fixtures`); run those too if you touched the area.
+5. Commit and push to your fork.
 6. Open the pull request against `main`. Its title is one sentence that says what the change
    does; the template asks what changed, why, and how you tested it. Add screenshots for UI
    changes at a 320 px and a 390 px wide viewport, light and dark.
@@ -84,13 +86,7 @@ and their reasons are in [docs/architecture.md](docs/architecture.md).
 - **Dependencies:** reuse what is installed. A new dependency needs a reason in the pull request.
 - **Secrets:** never commit `.env` files, keys or connection strings, not even in tests.
 
-## Developer Certificate of Origin
-
-Every commit must be signed off. With `Signed-off-by: Your Name <you@example.com>` (added by
-`git commit -s`) you certify the [Developer Certificate of Origin 1.1](https://developercertificate.org/):
-that you wrote the change or have the right to submit it under the project's license.
-
 ## License
 
-By contributing you agree that your contribution is licensed under the
-[Apache License 2.0](LICENSE).
+Contributions are licensed under the [Apache License 2.0](LICENSE), as section 5 of the license
+provides. There is no CLA and no sign-off requirement.

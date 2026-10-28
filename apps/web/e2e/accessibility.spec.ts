@@ -376,7 +376,7 @@ test.describe('forced colors focus', () => {
 });
 
 test.describe('label in name audit', () => {
-	// Regression checks for the SEMANTICS/NAVIGATION/LOCALE audit: single <h1> per
+	// Regression checks for semantics, navigation and locale: single <h1> per
 	// page, WCAG 2.5.3 label-in-name on icon+text buttons, and SPA route-change
 	// focus (Next's AppRouterAnnouncer never fires across sibling `/wg/[code]/*`
 	// routes because `document.title` and the page's single <h1> never change).
