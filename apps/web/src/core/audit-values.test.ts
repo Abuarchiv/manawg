@@ -203,6 +203,22 @@ test('the feed renders the same sentence per locale and the reader own verb form
 	assert.equal(feed(en, true), 'marked Bad as done.');
 });
 
+test('German keeps the reader-own wording of the earlier client rewrite', () => {
+	const de = serverRenderContext('de');
+	const own = (eventType: string, metadata: Record<string, unknown>) => {
+		const message = auditFeedMessage(eventType, metadata, 'de', true);
+		return message ? de.render(message) : null;
+	};
+	assert.equal(
+		own('member.renamed', { before: 'Ben', after: 'Benno', byOther: false }),
+		'hast sich umbenannt (vorher Ben).',
+	);
+	assert.equal(
+		own('member.account_deletion_requested', { name: 'Anna', newAdminName: null }),
+		'hast die Kontolöschung angefragt und ist ausgezogen.',
+	);
+});
+
 test('English renders amounts, counts and units in the reader locale', () => {
 	const en = serverRenderContext('en');
 	const say = (eventType: string, metadata: Record<string, unknown>) => {

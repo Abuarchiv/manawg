@@ -127,13 +127,13 @@ export default {
 		feed: '{self, select, yes {hast} other {hat}} {name} als ausgezogen markiert.',
 	},
 	memberRenamed: {
-		feed: '{self, select, yes {hast} other {hat}} {byOther, select, yes {{before} in {after} umbenannt.} other {{self, select, yes {dich} other {sich}} umbenannt (vorher {before}).}}',
+		feed: '{self, select, yes {hast} other {hat}} {byOther, select, yes {{before} in {after} umbenannt.} other {sich umbenannt (vorher {before}).}}',
 	},
 	memberAdminTransferred: {
 		feed: '{self, select, yes {hast} other {hat}} die Admin-Rolle an {name} übergeben.',
 	},
 	memberAccountDeletionRequested: {
-		feed: '{self, select, yes {hast} other {hat}} die Kontolöschung angefragt und {self, select, yes {bist} other {ist}} ausgezogen.{hasNewAdmin, select, yes { {newAdminName} ist jetzt Admin.} other {}}',
+		feed: '{self, select, yes {hast} other {hat}} die Kontolöschung angefragt und ist ausgezogen.{hasNewAdmin, select, yes { {newAdminName} ist jetzt Admin.} other {}}',
 	},
 	notificationSettingsUpdated: {
 		feed: '{self, select, yes {hast} other {hat}} Benachrichtigungseinstellungen geändert.',
