@@ -18,6 +18,11 @@ environment setup, Preview secrets and workflow inputs: see
       and remove it afterwards.
 - [ ] Migrations `0018_member_fk_indexes` and `0019_push_subscription_per_member` (index changes only) build their indexes in one transaction each; writes to those
       tables wait until they commit. Run them in a quiet window (seconds at today's data size).
+- [ ] Migration `0036_remove_paypal` drops columns the previous deployment still reads
+      (`wg_members.paypal_merchant_id` on every WG page), so it runs after the deploy, not before:
+      dry-run it in `begin`/`rollback` (it aborts while a completed or capturing PayPal payment
+      exists), deploy the candidate, then apply 0036 right away. Until then only recording a cash
+      payment fails. The one-dispatch release below migrates first, so release this one by hand.
 - [ ] Production migration only via `.github/workflows/migrate-production.yml` on `main`
       (`candidate_sha`, `preview_run_id`, `MIGRATE_PRODUCTION`). Never run `db:migrate` against
       Production from a laptop, and never use Production credentials in Preview.

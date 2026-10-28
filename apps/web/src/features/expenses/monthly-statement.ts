@@ -105,8 +105,8 @@ function buildCategories(
  * share count settled shares too, so a paid-off month still shows who
  * carried what. Cash payments never set `settledAt`; each pays off the open
  * shares of its debtor/payer pair oldest first, whenever it was made, so a
- * later payment settles an earlier month
- * and never turns into a reverse debt. Pass all expenses and payments of the
+ * later payment settles an earlier month and never turns into a reverse
+ * debt. Pass all expenses and payments of the
  * WG, not only the month's. Only EUR expenses and payments are counted.
  */
 export function buildMonthlyStatement(

@@ -348,7 +348,7 @@ with claim rows/throttle timestamps so a re-run does not notify twice.
 - **Offline handlers in one core table.** Splitting them per feature would need a registration
   bootstrap; a `Record<OfflineActionType, ...>` lets `tsc` enforce a handler per type
   (`core/offline/offline-action-handlers.ts`).
-- **Redacted logging.** Raw errors copied stacks and provider payloads (Postgres) into
+- **Redacted logging.** Raw errors copied stacks and Postgres payloads into
   long-lived logs, so only label and error name are logged (`core/infra/observability.ts`).
 - **Shared input limits.** Forms and API validation read name limits from
   `shared/lib/limits.ts`, so browser and server reject the same values; a test keeps it equal to
