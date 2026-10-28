@@ -9,13 +9,13 @@ import { useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
 import { haptic } from '@/shared/lib/haptics';
 
-type NavIconKey = 'home' | 'haushalt' | 'finanzen' | 'austausch';
+type NavIconKey = 'home' | 'household' | 'finances' | 'community';
 
 const ICONS: Record<NavIconKey, LucideIcon> = {
 	home: Home,
-	haushalt: ListChecks,
-	finanzen: Receipt,
-	austausch: Megaphone,
+	household: ListChecks,
+	finances: Receipt,
+	community: Megaphone,
 };
 
 interface NavItemProps {
@@ -25,7 +25,7 @@ interface NavItemProps {
 	iconKey: NavIconKey;
 	/**
 	 * Additional hrefs that mark this item active (parent grouping). Compared
-	 * by exact path or `<prefix>/…` so `/wg/ABC/vorraete` keeps Haushalt
+	 * by exact path or `<prefix>/…` so `/wg/ABC/supplies` keeps Haushalt
 	 * active while all deep links keep resolving.
 	 */
 	activePrefixes?: string[];

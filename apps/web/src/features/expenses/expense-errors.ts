@@ -2,7 +2,7 @@ import { mutationError } from '@/core/http/error-codes';
 import { DESCRIPTION_MAX_LENGTH } from '@/features/expenses/expense-constants';
 import type { Message, MessageKey } from '@/shared/i18n/message';
 
-/** Plain German text shared with abo-errors.ts, which shows it as text. */
+/** Plain German text shared with recurring-errors.ts, which shows it as text. */
 export const SPLIT_SUM_MISMATCH =
 	// i18n-ignore plain German text for the fixed-cost form
 	'Beträge stimmen nicht überein — Summe muss exakt dem Gesamtbetrag entsprechen.';

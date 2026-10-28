@@ -12,17 +12,17 @@ test('accepts exactly 22 base64url characters', () => {
 });
 
 test('finds the token in a link, a query or a bare paste', () => {
-	assert.equal(extractInviteToken(`https://app.manawg.com/einladung/${TOKEN}`), TOKEN);
+	assert.equal(extractInviteToken(`https://app.manawg.com/invite/${TOKEN}`), TOKEN);
 	assert.equal(
-		extractInviteToken(`Komm in die WG: https://x.test/einladung/${TOKEN}\nBis bald`),
+		extractInviteToken(`Komm in die WG: https://x.test/invite/${TOKEN}\nBis bald`),
 		TOKEN,
 	);
-	assert.equal(extractInviteToken(`https://x.test/neu?invite=${TOKEN}`), TOKEN);
+	assert.equal(extractInviteToken(`https://x.test/login?invite=${TOKEN}`), TOKEN);
 	assert.equal(extractInviteToken(`  ${TOKEN}  `), TOKEN);
 });
 
 test('rejects share codes and over-long tokens', () => {
-	assert.equal(extractInviteToken('https://x.test/neu?code=MTE8PZAT'), '');
+	assert.equal(extractInviteToken('https://x.test/login?code=MTE8PZAT'), '');
 	assert.equal(extractInviteToken('MTE8PZAT'), '');
-	assert.equal(extractInviteToken(`https://x.test/einladung/${TOKEN}extra`), '');
+	assert.equal(extractInviteToken(`https://x.test/invite/${TOKEN}extra`), '');
 });

@@ -18,12 +18,7 @@ import { useTranslations } from 'next-intl';
 import { Suspense, useEffect, useState } from 'react';
 import { AppBottomNav } from '@/components/app/AppBottomNav';
 import { ErrorBox } from '@/components/app/ErrorBox';
-import {
-	HOME_NAV_LABEL,
-	isActivePage,
-	moduleSlugOf,
-	WG_SECTIONS,
-} from '@/components/app/navigation';
+import { HOME_NAV_LABEL, isActivePage, WG_SECTIONS } from '@/components/app/navigation';
 import { RouteFocusOnNavigate } from '@/components/app/RouteFocusOnNavigate';
 import { LegalLinks } from '@/components/entry/LegalLinks';
 import { type AccountWg, MembershipCard } from '@/components/entry/MembershipCard';
@@ -53,15 +48,15 @@ import { useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
 
 const MODULE_ICONS: Record<PublicModuleSlug, LucideIcon> = {
-	ausgaben: Receipt,
-	einkauf: ListChecks,
-	pinnwand: Megaphone,
-	putzen: Sparkles,
-	fixkosten: Repeat2,
-	mahnungen: Receipt,
-	vorraete: Package,
-	kalender: CalendarDays,
-	aktivitaet: Clock3,
+	expenses: Receipt,
+	shopping: ListChecks,
+	pinboard: Megaphone,
+	chores: Sparkles,
+	recurring: Repeat2,
+	reminders: Receipt,
+	supplies: Package,
+	calendar: CalendarDays,
+	activity: Clock3,
 	chat: MessageCircle,
 };
 
@@ -129,8 +124,8 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 			: membershipState === 'authenticated-empty'
 				? inviteToken
 					? { href: invitePath(inviteToken), label: t('welcome.acceptInvite') }
-					: { href: '/neu?action=create', label: t('welcome.createFlat') }
-				: { href: publicHref('/neu'), label: t('public.signIn') };
+					: { href: '/login?action=create', label: t('welcome.createFlat') }
+				: { href: publicHref('/login'), label: t('public.signIn') };
 
 	useEffect(() => {
 		if (membershipState !== 'loading') setRetried(false);
@@ -189,7 +184,7 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 	// On the home the list of WGs is already right below the header.
 	// The welcome block below already offers the same action for signed-in users without a WG.
 	const hideAccountLink = (multi && !module) || membershipState === 'authenticated-empty';
-	const discoveryHref = (slug: string) => publicHref(`/entdecken/${moduleSlugOf(slug)}`);
+	const discoveryHref = (slug: string) => publicHref(`/discover/${slug}`);
 
 	return (
 		<div
@@ -344,7 +339,7 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 					href={publicHref('/')}
 					label={HOME_NAV_LABEL}
 					iconKey="home"
-					activePrefixes={[discoveryHref('aktivitaet')]}
+					activePrefixes={[discoveryHref('activity')]}
 				/>
 				{WG_SECTIONS.map((item) => (
 					<NavItem

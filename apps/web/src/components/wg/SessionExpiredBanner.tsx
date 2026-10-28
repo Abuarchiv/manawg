@@ -57,7 +57,7 @@ export function SessionExpiredBanner() {
 					<span>{t('message')}</span>
 				</div>
 				<Link
-					href={`/neu?next=${encodeURIComponent(returnTo)}`}
+					href={`/login?next=${encodeURIComponent(returnTo)}`}
 					className={cn(buttonVariants({ size: 'sm' }), 'min-h-11')}
 				>
 					{t('signIn')}

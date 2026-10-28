@@ -58,7 +58,7 @@ test.describe('manual split validation', () => {
 			await route.fulfill({ json: { expenses: [], payments: [] } });
 		});
 
-		await navigateToFeature(page, `/wg/${shareCode}/ausgaben`);
+		await navigateToFeature(page, `/wg/${shareCode}/expenses`);
 		await dismissOnboarding(page);
 		await page.getByRole('button', { name: 'Ausgabe hinzufügen' }).first().click();
 		const dialog = page.getByRole('dialog');
@@ -106,7 +106,7 @@ test.describe('manual split validation', () => {
 			await route.fulfill({ json: { recurringExpenses: [] } });
 		});
 
-		await navigateToFeature(page, `/wg/${shareCode}/abos`);
+		await navigateToFeature(page, `/wg/${shareCode}/recurring`);
 		await dismissOnboarding(page);
 		await page.getByRole('button', { name: 'Fixkosten hinzufügen' }).click();
 		const dialog = page.getByRole('dialog');
@@ -120,7 +120,7 @@ test.describe('manual split validation', () => {
 		await dialog.getByRole('button', { name: 'Fixkosten anlegen', exact: true }).click();
 		await expect(dialog.getByText(INVALID_SPLIT_MESSAGE, { exact: true })).toBeVisible();
 		await expect(invalidShare).toHaveAttribute('aria-invalid', 'true');
-		await expect(invalidShare).toHaveAttribute('aria-describedby', 'abo-splits-error');
+		await expect(invalidShare).toHaveAttribute('aria-describedby', 'recurring-splits-error');
 		expect((await invalidShare.boundingBox())?.width).toBeGreaterThan(0);
 		expect(submitted).toBeNull();
 		expect(postCount).toBe(0);
@@ -152,7 +152,7 @@ test.describe('manual split validation', () => {
 			await route.fulfill({ json: { recurringExpenses: [] } });
 		});
 
-		await navigateToFeature(page, `/wg/${shareCode}/abos`);
+		await navigateToFeature(page, `/wg/${shareCode}/recurring`);
 		await dismissOnboarding(page);
 		await page.getByRole('button', { name: 'Fixkosten hinzufügen' }).click();
 		const dialog = page.getByRole('dialog');
@@ -184,7 +184,7 @@ test.describe('finance dialog mobile', () => {
 	async function expectManualSplitLayout(
 		page: Page,
 		dialog: Locator,
-		shareInputPrefix: 'share-' | 'abo-share-',
+		shareInputPrefix: 'share-' | 'recurring-share-',
 	): Promise<void> {
 		const rows = dialog.locator(`[data-slot="field"]:has(input[id^="${shareInputPrefix}"])`);
 		await expect(rows).toHaveCount(2);
@@ -299,7 +299,7 @@ test.describe('finance dialog mobile', () => {
 			route.fulfill({ json: { openShoppingCount: 0, dueChores: [], dueRecurringExpenses: [] } }),
 		);
 		await mockUnreadCount(page, `/api/wg/${shareCode}`);
-		await navigateToFeature(page, `/wg/${shareCode}/ausgaben`);
+		await navigateToFeature(page, `/wg/${shareCode}/expenses`);
 		await dismissOnboarding(page);
 		await page.getByRole('button', { name: 'Ausgabe hinzufügen' }).first().click();
 		const expenseDialog = page.getByRole('dialog');
@@ -310,15 +310,15 @@ test.describe('finance dialog mobile', () => {
 		await page.getByRole('alertdialog').getByRole('button', { name: 'Entwurf verwerfen' }).click();
 		await expect(expenseDialog).toBeHidden();
 		await nextHistoryPop(page);
-		await page.goto(`/wg/${shareCode}/abos`);
+		await page.goto(`/wg/${shareCode}/recurring`);
 		await dismissOnboarding(page);
 		await page.getByRole('button', { name: 'Fixkosten hinzufügen' }).click();
-		const aboDialog = page.getByRole('dialog');
-		await expect(aboDialog).toBeVisible();
-		await aboDialog.getByText('Manuell', { exact: true }).click();
-		await expectManualSplitLayout(page, aboDialog, 'abo-share-');
+		const recurringDialog = page.getByRole('dialog');
+		await expect(recurringDialog).toBeVisible();
+		await recurringDialog.getByText('Manuell', { exact: true }).click();
+		await expectManualSplitLayout(page, recurringDialog, 'recurring-share-');
 		await page.getByRole('button', { name: 'Abbrechen', exact: true }).click();
-		await expect(aboDialog).toBeHidden();
+		await expect(recurringDialog).toBeHidden();
 	});
 });
 

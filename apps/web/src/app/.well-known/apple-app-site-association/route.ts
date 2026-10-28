@@ -12,7 +12,7 @@ import { NextResponse } from 'next/server';
  *
  * Powers (when enabled):
  *   - `webcredentials` → native Passkey association for the configured bundle.
- *   - `applinks`       → Universal Links for /transfer/redeem and /join/*.
+ *   - `applinks`       → Universal Links for invite links (/invite/*).
  */
 
 export function GET(): NextResponse {
@@ -33,10 +33,7 @@ export function GET(): NextResponse {
 			details: [
 				{
 					appIDs: [appId],
-					components: [
-						{ '/': '/transfer/redeem', comment: 'transfer redeem deeplink' },
-						{ '/': '/join/*', comment: 'WG-Einladungs-Deeplink' },
-					],
+					components: [{ '/': '/invite/*', comment: 'WG invite link' }],
 				},
 			],
 		},

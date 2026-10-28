@@ -50,7 +50,7 @@ test.describe('hosted Supabase auth release coverage', () => {
 	test.describe.configure({ retries: 0 });
 
 	test('the guest auth screen exposes only the supported Supabase choices', async ({ page }) => {
-		await page.goto('/neu?action=create');
+		await page.goto('/login?action=create');
 		await expect(page.getByRole('heading', { name: 'Anmelden', exact: true })).toBeVisible();
 		await expect(
 			page.getByRole('button', { name: 'Mit Google anmelden', exact: true }),
@@ -70,10 +70,10 @@ test.describe('hosted Supabase auth release coverage', () => {
 		page,
 	}) => {
 		const privateCode = memberWgCode || 'ZZZZZZZZ';
-		await page.goto(`/wg/${encodeURIComponent(privateCode)}/ausgaben`);
-		await expect(page).toHaveURL(/\/neu\?next=/);
+		await page.goto(`/wg/${encodeURIComponent(privateCode)}/expenses`);
+		await expect(page).toHaveURL(/\/login\?next=/);
 		const next = new URL(page.url()).searchParams.get('next');
-		expect(next).toBe(`/wg/${privateCode}/ausgaben`);
+		expect(next).toBe(`/wg/${privateCode}/expenses`);
 
 		await expect(page.getByRole('heading', { name: 'Anmelden', exact: true })).toBeVisible();
 		await expect(page.getByText('WG-Einladung')).toHaveCount(0);
@@ -94,7 +94,7 @@ test.describe('hosted Supabase auth release coverage', () => {
 	}) => {
 		requireMemberTestConfig();
 
-		await page.goto('/neu?action=create');
+		await page.goto('/login?action=create');
 		await page.getByRole('tab', { name: 'Passwort', exact: true }).click();
 		await page.getByLabel('E-Mail-Adresse').fill(testEmail);
 		await page.getByRole('textbox', { name: 'Passwort', exact: true }).fill(testPassword);
@@ -111,7 +111,7 @@ test.describe('hosted Supabase auth release coverage', () => {
 	test('a normal account session cannot open the password reset form', async ({ page }) => {
 		requireMemberTestConfig();
 
-		await page.goto('/neu?action=create');
+		await page.goto('/login?action=create');
 		await page.getByRole('tab', { name: 'Passwort', exact: true }).click();
 		await page.getByLabel('E-Mail-Adresse').fill(testEmail);
 		await page.getByRole('textbox', { name: 'Passwort', exact: true }).fill(testPassword);
@@ -145,7 +145,7 @@ test.describe('hosted Supabase auth release coverage', () => {
 			}
 		});
 
-		await page.goto(`/einladung/${memberInviteToken}`);
+		await page.goto(`/invite/${memberInviteToken}`);
 		await page.getByRole('link', { name: 'Anmelden', exact: true }).click();
 		await page.getByRole('tab', { name: 'Passwort', exact: true }).click();
 		await page.getByLabel('E-Mail-Adresse').fill(testEmail);

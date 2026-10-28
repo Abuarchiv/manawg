@@ -24,10 +24,10 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/start.png" width="24%" alt="ManaWG home screen with the shared flat overview">
-  <img src="docs/screenshots/ausgaben.png" width="24%" alt="ManaWG expenses: who paid what and who owes whom">
-  <img src="docs/screenshots/putzplan.png" width="24%" alt="ManaWG cleaning schedule with rotating chores">
-  <img src="docs/screenshots/einkauf.png" width="24%" alt="ManaWG shared shopping list">
+  <img src="docs/screenshots/home.png" width="24%" alt="ManaWG home screen with the shared flat overview">
+  <img src="docs/screenshots/expenses.png" width="24%" alt="ManaWG expenses: who paid what and who owes whom">
+  <img src="docs/screenshots/chores.png" width="24%" alt="ManaWG cleaning schedule with rotating chores">
+  <img src="docs/screenshots/shopping.png" width="24%" alt="ManaWG shared shopping list">
 </p>
 
 ManaWG is a free, open-source flatshare app for roommates and house shares: expense splitting and a

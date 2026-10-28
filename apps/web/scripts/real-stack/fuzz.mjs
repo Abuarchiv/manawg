@@ -138,7 +138,7 @@ const writes = [
 	['POST', '/api/auth/password-reset', { email: 'x@example.test' }],
 	['POST', '/api/auth/resend', { email: 'x@example.test' }],
 	['POST', '/api/auth/identity-link', { provider: 'google' }],
-	['POST', '/api/auth/oauth-start', { provider: 'google', next: '/neu' }],
+	['POST', '/api/auth/oauth-start', { provider: 'google', next: '/login' }],
 	['POST', '/api/email/unsubscribe', { token: 'abc' }],
 ];
 // Auth routes swap the session cookie (sign-up, code-verify): fuzz them from a throwaway account.
@@ -174,11 +174,11 @@ for (const [method, path, base] of writes) {
 }
 expect(
 	fiveHundreds.size === 0,
-	`Fuzz: keine 5xx (${fuzzCalls} Aufrufe)`,
+	`Fuzz: no 5xx (${fuzzCalls} calls)`,
 	[...fiveHundreds].map(([k, v]) => `${k}: ${v}`).join(' | '),
 );
 
-await probe('nach Fuzz-Bodies');
+await probe('after fuzz bodies');
 // ---- 2. odd ids in paths
 let idCalls = 0;
 const idFails = [];
@@ -231,6 +231,6 @@ for (const id of ids) {
 		if (r.status >= 500) idFails.push(`${m} ${p.slice(0, 80)} -> ${r.status}`);
 	}
 }
-expect(idFails.length === 0, `Pfad-IDs: keine 5xx (${idCalls} Aufrufe)`, idFails.join(' | '));
+expect(idFails.length === 0, `Path IDs: no 5xx (${idCalls} calls)`, idFails.join(' | '));
 
 await import('./fuzz-access.mjs');

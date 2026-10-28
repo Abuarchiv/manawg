@@ -17,12 +17,12 @@ test('resends the confirmation mail for the signup flow', async () => {
 		received = args;
 		return { error: null };
 	};
-	const res = await call(POST, '/api/auth/resend', { email: 'a@b.test', next: '/neu' });
+	const res = await call(POST, '/api/auth/resend', { email: 'a@b.test', next: '/login' });
 	assert.deepEqual(res.json, { ok: true });
 	assert.equal(received.type, 'signup');
 	assert.equal(
 		received.options.emailRedirectTo,
-		'https://app.example.test/auth/callback?next=%2Fneu',
+		'https://app.example.test/auth/callback?next=%2Flogin',
 	);
 });
 

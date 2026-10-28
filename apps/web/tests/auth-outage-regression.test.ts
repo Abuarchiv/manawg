@@ -114,7 +114,7 @@ test('temporary Auth failures keep WG page headers and cookies for the retry bou
 		mockAuthResponse(status);
 		const response = middlewareResponse();
 		const result = await refreshSupabaseSession(
-			await authenticatedRequest('/wg/ABC123/ausgaben'),
+			await authenticatedRequest('/wg/ABC123/expenses'),
 			response,
 		);
 
@@ -159,11 +159,11 @@ test('an invalid signature still redirects to sign-in', async () => {
 	);
 	assert.ok(authFetchCalls > 0, 'the signing key must be fetched from Supabase Auth');
 	const response = await refreshSupabaseSession(
-		await authenticatedRequest('/wg/ABC123/ausgaben', foreignKey),
+		await authenticatedRequest('/wg/ABC123/expenses', foreignKey),
 		NextResponse.next(),
 	);
 	assert.equal(response.status, 307);
-	assert.equal(new URL(response.headers.get('location') ?? '').pathname, '/neu');
+	assert.equal(new URL(response.headers.get('location') ?? '').pathname, '/login');
 
 	const user = await getAuthenticatedUser(await authenticatedRequest());
 	assert.deepEqual(user, { id: 'user-1' });

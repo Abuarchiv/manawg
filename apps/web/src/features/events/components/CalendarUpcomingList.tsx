@@ -193,7 +193,7 @@ export function CalendarUpcomingList({
 								entry.kind === 'chore' ? (
 									<li key={`chore-${entry.chore.choreId}-${entry.chore.startsAt}`}>
 										<Link
-											href={`${wgBaseHref}/putzen?highlight=${encodeURIComponent(entry.chore.choreId)}`}
+											href={`${wgBaseHref}/chores?highlight=${encodeURIComponent(entry.chore.choreId)}`}
 											aria-label={t('agenda.openChore', { title: entry.chore.title })}
 											className={ROW_CLASS}
 										>

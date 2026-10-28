@@ -16,7 +16,7 @@ import { SettlementReviewDialog } from './SettlementReviewDialog';
 import { useDebtSettlement } from './use-debt-settlement';
 
 /** Focus target when the row disappears after settling (heading in DebtSummary). */
-export const SALDO_HEADING_ID = 'saldo-heading';
+export const BALANCE_HEADING_ID = 'balance-heading';
 
 interface DebtRowProps {
 	debt: SimplifiedDebt;
@@ -57,7 +57,7 @@ export function SettlementDebtRow({
 	useEffect(
 		() => () => {
 			if (settledRef.current && document.activeElement === document.body) {
-				document.getElementById(SALDO_HEADING_ID)?.focus();
+				document.getElementById(BALANCE_HEADING_ID)?.focus();
 			}
 		},
 		[],

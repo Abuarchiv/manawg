@@ -7,17 +7,17 @@ import common from './common';
 import entry from './entry';
 import events from './events';
 import expenses from './expenses';
-import expensesAbos from './expenses-abos';
 import expensesDebts from './expenses-debts';
 import expensesForm from './expenses-form';
 import expensesImport from './expenses-import';
+import expensesRecurring from './expenses-recurring';
 import exportMessages from './export';
 import home from './home';
 import inventory from './inventory';
 import mail from './mail';
 import meta from './meta';
 import offline from './offline';
-import pinnwand from './pinnwand';
+import pinboard from './pinboard';
 import push from './push';
 import serverPages from './server-pages';
 import settings from './settings';
@@ -35,13 +35,13 @@ export default {
 	'expenses-form': expensesForm,
 	'expenses-debts': expensesDebts,
 	'expenses-import': expensesImport,
-	'expenses-abos': expensesAbos,
+	'expenses-recurring': expensesRecurring,
 	statement,
 	chores,
 	events,
 	shopping,
 	inventory,
-	pinnwand,
+	pinboard,
 	chat,
 	settings,
 	entry,

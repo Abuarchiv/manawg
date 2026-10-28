@@ -35,17 +35,17 @@ export async function run({ A, B, code, annaId, benId, page, consoleErrors }) {
 			],
 		}),
 	);
-	expect(failed === 0, 'Last: 400 Ausgaben angelegt', `${failed} fehlgeschlagen`);
+	expect(failed === 0, 'Load: 400 expenses created', `${failed} failed`);
 	const failedChat = await batched(150, 10, (i) =>
 		call(i % 2 ? A : B, 'POST', `${api}/chat/messages`, {
 			body: `Nachricht ${i} ${'x'.repeat(i % 80)}`,
 		}),
 	);
-	expect(failedChat === 0, 'Last: 150 Chat-Nachrichten', `${failedChat} fehlgeschlagen`);
+	expect(failedChat === 0, 'Load: 150 chat messages', `${failedChat} failed`);
 	const failedShop = await batched(60, 20, (i) =>
 		call(A, 'POST', `${api}/shopping`, { name: `Artikel ${i}`, quantity: String(1 + (i % 5)) }),
 	);
-	expect(failedShop === 0, 'Last: 60 Einkaufsartikel', `${failedShop} fehlgeschlagen`);
+	expect(failedShop === 0, 'Load: 60 shopping items', `${failedShop} failed`);
 
 	for (const path of [
 		'/expenses',
@@ -59,7 +59,7 @@ export async function run({ A, B, code, annaId, benId, page, consoleErrors }) {
 		process.stdout.write(`GET ${path}: ${t.ms} ms, ${Math.round(t.bytes / 1024)} kB\n`);
 		expect(
 			t.status === 200 && t.ms < 2500,
-			`Last: GET ${path} ${t.ms} ms, ${Math.round(t.bytes / 1024)} kB`,
+			`Load: GET ${path} ${t.ms} ms, ${Math.round(t.bytes / 1024)} kB`,
 			`${t.status} ${t.ms} ms`,
 		);
 	}
@@ -67,7 +67,7 @@ export async function run({ A, B, code, annaId, benId, page, consoleErrors }) {
 	const exp = await call(A, 'GET', `${api}/expenses`);
 	expect(
 		exp.body.expenses?.length >= 400,
-		'Last: Liste liefert alle Ausgaben',
+		'Load: list returns all expenses',
 		String(exp.body.expenses?.length),
 	);
 	const anna = exp.body.expenses.reduce((sum, e) => {
@@ -79,39 +79,39 @@ export async function run({ A, B, code, annaId, benId, page, consoleErrors }) {
 		typeof dash.body?.balance?.netCents === 'number'
 			? dash.body.balance.netCents === anna
 			: JSON.stringify(dash.body).includes(String(anna)),
-		`Last: Dashboard-Saldo = Summe der Ausgaben (${anna})`,
+		`Load: dashboard balance = sum of expenses (${anna})`,
 		JSON.stringify(dash.body).slice(0, 300),
 	);
 
 	for (const path of [
 		'',
-		'/ausgaben',
+		'/expenses',
 		'/chat',
-		'/einkauf',
-		'/abrechnung?monat=2026-10',
-		'/aktivitaet',
+		'/shopping',
+		'/statement?monat=2026-10',
+		'/activity',
 	]) {
 		consoleErrors.length = 0;
 		const t0 = performance.now();
 		await page.goto(`/wg/${code}${path}`);
 		await page.waitForLoadState('networkidle');
 		const ms = Math.round(performance.now() - t0);
-		process.stdout.write(`Seite ${path || '/'}: ${ms} ms\n`);
+		process.stdout.write(`Page ${path || '/'}: ${ms} ms\n`);
 		const text = await page.locator('body').innerText();
 		const errorText = text.match(/[^\n]*(fehlgeschlagen|konnte nicht|nicht geladen)[^\n]*/i)?.[0];
 		expect(
 			ms < 8000 && consoleErrors.length === 0 && !errorText,
-			`Last: Seite ${path || '/'} in ${ms} ms`,
+			`Load: page ${path || '/'} in ${ms} ms`,
 			`${ms} ms ${consoleErrors.join(' | ')} ${errorText ?? ''}`,
 		);
 	}
-	await page.goto(`/wg/${code}/ausgaben`);
+	await page.goto(`/wg/${code}/expenses`);
 	await page.waitForLoadState('networkidle');
 	// The list renders in pages; "Mehr anzeigen" must reach the end without errors.
 	const more = page.getByRole('button', { name: /^Mehr anzeigen/ });
 	for (let i = 0; i < 20 && (await more.count()); i++) await more.click();
 	const rows = await page.getByRole('button', { name: /^Details öffnen:/ }).count();
-	expect(rows >= 400, `Last: Ausgabenseite zeigt ${rows} Zeilen`, String(rows));
+	expect(rows >= 400, `Load: expenses page shows ${rows} rows`, String(rows));
 	const chatRes = await call(B, 'GET', `${api}/chat/messages`);
 	const n = chatRes.body.messages?.length ?? 0;
 	const oldest = chatRes.body.messages?.[0];
@@ -124,7 +124,7 @@ export async function run({ A, B, code, annaId, benId, page, consoleErrors }) {
 		: null;
 	expect(
 		n > 0 && n < 150 && (older?.body.messages?.length ?? 0) > 0,
-		`Last: Chat seitenweise (${n} zuerst, ${older?.body.messages?.length ?? 0} ältere)`,
+		`Load: chat paginated (${n} first, ${older?.body.messages?.length ?? 0} older)`,
 		JSON.stringify(chatRes.body).slice(0, 200),
 	);
 }

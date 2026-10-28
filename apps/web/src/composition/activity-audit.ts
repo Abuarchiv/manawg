@@ -7,7 +7,7 @@ import {
 } from '@/core/audit-messages';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatShortDate, formatShortDateRange } from '@/core/utils/time';
-import { ANNOUNCEMENT_KINDS } from '@/features/pinnwand/announcement-workflow';
+import { ANNOUNCEMENT_KINDS } from '@/features/announcements/announcement-workflow';
 import type { Message, MessageKey } from '@/shared/i18n/message';
 import { MEMBER_NAME_MAX_LENGTH } from '@/shared/lib/limits';
 
@@ -74,7 +74,7 @@ export function auditDetail(
 		// Only known pinboard kinds: chat audits carry kind 'text'/'image', which is not user text.
 		const kind = ANNOUNCEMENT_KINDS.find((known) => known === metadata.kind);
 		if (kind) {
-			parts.push(say('audit.detail.kind', { kind: { key: `pinnwand.kind.${kind}` } }));
+			parts.push(say('audit.detail.kind', { kind: { key: `pinboard.kind.${kind}` } }));
 		}
 		if (metadata.hasImage === true) {
 			parts.push(say('audit.detail.withImage'));
@@ -165,16 +165,16 @@ export function getAuditHref(event: {
 
 	if (announcementId) return announcementHref(announcementId);
 	if (event.entityType === 'shopping_item' && event.entityId) {
-		return `/einkauf?highlight=${encodeURIComponent(event.entityId)}`;
+		return `/shopping?highlight=${encodeURIComponent(event.entityId)}`;
 	}
 	if (event.entityType === 'chore' && event.entityId) {
-		return `/putzen?highlight=${encodeURIComponent(event.entityId)}`;
+		return `/chores?highlight=${encodeURIComponent(event.entityId)}`;
 	}
 	if ((event.entityType === 'absence' || event.entityType === 'member_absence') && event.entityId) {
-		return `/putzen?panel=absences&absence=${encodeURIComponent(event.entityId)}`;
+		return `/chores?panel=absences&absence=${encodeURIComponent(event.entityId)}`;
 	}
 	if (event.entityType === 'recurring_expense' && event.eventType === 'recurring.deleted') {
-		return '/ausgaben?filter=recurring';
+		return '/expenses?filter=recurring';
 	}
 	if (event.entityType === 'recurring_expense' && event.entityId) {
 		return recurringExpenseHref(event.entityId);
@@ -185,13 +185,13 @@ export function getAuditHref(event: {
 		event.entityType === 'expense_debt'
 	) {
 		return event.entityType === 'expense' && event.entityId
-			? `/ausgaben?highlight=${encodeURIComponent(event.entityId)}`
-			: '/ausgaben';
+			? `/expenses?highlight=${encodeURIComponent(event.entityId)}`
+			: '/expenses';
 	}
 	if (event.entityType === 'member' && event.eventType.startsWith('notification.')) {
-		return '/einstellungen#benachrichtigungen';
+		return '/settings#notifications';
 	}
-	if (event.entityType === 'wg') return '/einstellungen#zugang';
+	if (event.entityType === 'wg') return '/settings#access';
 	return undefined;
 }
 
@@ -240,9 +240,9 @@ export function auditActivitySentence(
 }
 
 function announcementHref(announcementId: string): string {
-	return `/pinnwand#announcement-${encodeURIComponent(announcementId)}`;
+	return `/pinboard#announcement-${encodeURIComponent(announcementId)}`;
 }
 
 function recurringExpenseHref(recurringId: string): string {
-	return `/ausgaben?recurring=${encodeURIComponent(recurringId)}`;
+	return `/expenses?recurring=${encodeURIComponent(recurringId)}`;
 }

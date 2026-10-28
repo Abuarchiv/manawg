@@ -19,7 +19,7 @@ import { useEffect } from 'react';
  * otherwise it would steal focus back from a page that autofocused its own
  * element (e.g. a search field) on mount.
  *
- * Used by the WG shell and by the public pages (`/`, `/entdecken/*`). The public
+ * Used by the WG shell and by the public pages (`/`, `/discover/*`). The public
  * pages remount their whole tree on every route change, so a per-instance ref
  * would always start at the new pathname. The last pathname therefore lives at
  * module level and survives the remount; the first mount after the initial load

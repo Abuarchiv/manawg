@@ -21,7 +21,7 @@ import { SUPPORT_MAILTO } from '@/shared/lib/support-mailto';
 interface WgRouteErrorBoundaryProps {
 	error: Error & { digest?: string };
 	reset: () => void;
-	/** Identifies the failing route in the error log — e.g. `wg-chat`, `wg-vorraete`. */
+	/** Identifies the failing route in the error log — e.g. `wg-chat`, `wg-supplies`. */
 	boundary: string;
 	/** Heading shown to the user. */
 	title: string;

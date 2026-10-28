@@ -43,7 +43,7 @@ export function OfflineBanner() {
 	const renderRef = useRef(render);
 	renderRef.current = render;
 	const { wg, identity } = useWg();
-	const settingsDataHref = `/wg/${encodeURIComponent(wg.shareCode)}/einstellungen#daten`;
+	const settingsDataHref = `/wg/${encodeURIComponent(wg.shareCode)}/settings#data`;
 	const online = useOnlineStatus();
 	const [queueCount, setQueueCount] = useState(0);
 	// Actions sync will not retry; "Jetzt senden" cannot help with them.

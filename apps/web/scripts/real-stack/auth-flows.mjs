@@ -35,21 +35,21 @@ const bad = [];
 p.on('response', (r) => {
 	if (r.status() >= 500) bad.push(`${r.status()} ${r.url()}`);
 });
-await p.goto('/neu');
+await p.goto('/login');
 await p.waitForLoadState('networkidle');
 await p.locator('#auth-code-email').fill(email);
 await p.getByRole('button', { name: 'Code per E-Mail senden' }).click();
 await p.locator('#auth-code').waitFor({ timeout: 15_000 });
 const m = await mailFor(email);
 const code = m?.Text?.match(/\b(\d{8})\b/)?.[1] ?? m?.HTML?.match(/\b(\d{8})\b/)?.[1];
-expect(!!code, 'Code-Mail mit 8 Ziffern angekommen', m?.Subject ?? 'keine Mail');
+expect(!!code, 'code mail with 8 digits arrived', m?.Subject ?? 'no mail');
 await p.locator('#auth-code').fill('00000000');
 await p.getByRole('button', { name: 'Anmelden', exact: true }).click();
 await wait(1500);
 const wrong = await p.locator('main').innerText();
 expect(
 	/ungültig|falsch|abgelaufen|nicht/i.test(wrong),
-	'falscher Code zeigt Fehlertext',
+	'wrong code shows error text',
 	wrong.slice(0, 80),
 );
 await p.locator('#auth-code').fill(code ?? '');
@@ -61,8 +61,8 @@ await p
 const signedIn = (await ctx.cookies()).some(
 	(c) => c.name === 'manawg_signed_in' && c.value === '1',
 );
-expect(signedIn, 'nach Code-Login angemeldet (Hinweis-Cookie)');
-expect(bad.length === 0, 'keine 5xx beim Code-Login', bad.join(' | '));
+expect(signedIn, 'signed in after code login (hint cookie)');
+expect(bad.length === 0, 'no 5xx during code login', bad.join(' | '));
 await browser.close();
 
 // 2 Invitation by mail: ledger row, no duplicate for the same recipient
@@ -70,21 +70,21 @@ const { A, B, code: wg } = await setup();
 const inv = await call(A, 'POST', `/api/wg/${wg}/invitations`, { email: 'gast@example.test' });
 expect(
 	inv.status < 300,
-	'Einladung per Mail angenommen',
+	'invitation by mail accepted',
 	`${inv.status} ${JSON.stringify(inv.body)}`,
 );
 const row = sql(
 	`select status from mail_log where kind='invitation' order by created_at desc limit 1`,
 );
-expect(['sent', 'deferred', 'sending'].includes(row), 'Einladungs-Mail im Ledger', row);
+expect(['sent', 'deferred', 'sending'].includes(row), 'invitation mail in ledger', row);
 const inv2 = await call(A, 'POST', `/api/wg/${wg}/invitations`, { email: 'GAST@example.test' });
 expect(
 	inv2.status < 300 || inv2.status === 429,
-	'zweite Einladung an dieselbe Adresse ohne 5xx',
+	'second invitation to the same address without 5xx',
 	String(inv2.status),
 );
 const invBad = await call(A, 'POST', `/api/wg/${wg}/invitations`, { email: 'kein-mail' });
-expect(invBad.status === 400, 'ungültige Adresse 400', String(invBad.status));
+expect(invBad.status === 400, 'invalid address 400', String(invBad.status));
 
 // 3 Receipt upload through Supabase Storage
 const png = Buffer.from(
@@ -99,7 +99,7 @@ const sign = await call(A, 'POST', '/api/upload/sign', {
 });
 expect(
 	sign.status === 200 && !!sign.body.presignedUrl,
-	'Upload signiert',
+	'upload signed',
 	JSON.stringify(sign.body).slice(0, 120),
 );
 const badMime = await call(A, 'POST', '/api/upload/sign', {
@@ -108,45 +108,49 @@ const badMime = await call(A, 'POST', '/api/upload/sign', {
 	mimeType: 'text/html',
 	fileSize: 10,
 });
-expect(badMime.status === 400, 'text/html abgelehnt', String(badMime.status));
+expect(badMime.status === 400, 'text/html rejected', String(badMime.status));
 const tooBig = await call(A, 'POST', '/api/upload/sign', {
 	shareCode: wg,
 	purpose: 'expense',
 	mimeType: 'image/png',
 	fileSize: 9 * 1024 * 1024,
 });
-expect(tooBig.status === 400, '9 MB abgelehnt', String(tooBig.status));
+expect(tooBig.status === 400, '9 MB rejected', String(tooBig.status));
 const put = await fetch(sign.body.presignedUrl, {
 	method: 'PUT',
 	headers: { ...sign.body.uploadHeaders, 'content-type': 'image/png' },
 	body: png,
 });
-expect(put.status === 200, 'PUT in den Bucket', `${put.status} ${(await put.text()).slice(0, 80)}`);
+expect(
+	put.status === 200,
+	'PUT into the bucket',
+	`${put.status} ${(await put.text()).slice(0, 80)}`,
+);
 const url = sign.body.publicUrl;
 const readA = await A.ctx.fetch(url);
 expect(
 	readA.status() === 200 && readA.headers()['content-type'] === 'image/png',
-	'Mitglied liest Bild',
+	'member reads image',
 	`${readA.status()} ${readA.headers()['content-type']}`,
 );
-expect((readA.headers()['cache-control'] ?? '').includes('no-store'), 'Bild ohne Cache');
+expect((readA.headers()['cache-control'] ?? '').includes('no-store'), 'image without cache');
 const readB = await B.ctx.fetch(url);
-expect(readB.status() === 200, 'Mitbewohner liest Bild', String(readB.status()));
+expect(readB.status() === 200, 'flatmate reads image', String(readB.status()));
 const C = await user('Fremd');
 const readC = await C.ctx.fetch(url);
 const readCBody = await readC.json().catch(() => ({}));
 expect(
 	readC.status() === 401 && readCBody.code === 'not_a_member',
-	'Fremder bekommt kein Bild (401 not_a_member, kein Sitzungs-Banner)',
+	'stranger gets no image (401 not_a_member, no session banner)',
 	`${readC.status()} ${JSON.stringify(readCBody)}`,
 );
 const anon = await request.newContext({ baseURL: BASE });
 const readAnon = await anon.fetch(url);
-expect(readAnon.status() === 401, 'ohne Login 401', String(readAnon.status()));
+expect(readAnon.status() === 401, 'without login 401', String(readAnon.status()));
 const readBadKey = await A.ctx.fetch(
 	`/api/upload/read?key=${encodeURIComponent('../../etc/passwd')}`,
 );
-expect(readBadKey.status() === 400, 'kaputter Schlüssel 400', String(readBadKey.status()));
+expect(readBadKey.status() === 400, 'broken key 400', String(readBadKey.status()));
 const members = await call(A, 'GET', `/api/wg/${wg}/members`);
 const ids = members.body.members.map((x) => x.id);
 const ex = await call(A, 'POST', `/api/wg/${wg}/expenses`, {
@@ -159,7 +163,7 @@ const ex = await call(A, 'POST', `/api/wg/${wg}/expenses`, {
 });
 expect(
 	ex.status < 300,
-	'Ausgabe mit Beleg',
+	'expense with receipt',
 	`${ex.status} ${JSON.stringify(ex.body).slice(0, 100)}`,
 );
 const foreign = await call(A, 'POST', `/api/wg/${wg}/expenses`, {
@@ -170,14 +174,10 @@ const foreign = await call(A, 'POST', `/api/wg/${wg}/expenses`, {
 	splits: ids.map((id) => ({ debtorMemberId: id, amountCents: 500 })),
 	imageUrl: `/api/upload/read?key=${encodeURIComponent(`manawg/${randomUUID()}/expense/${randomUUID()}.png`)}`,
 });
-expect(
-	foreign.status === 400,
-	'Bild einer anderen WG an Ausgabe abgelehnt',
-	String(foreign.status),
-);
+expect(foreign.status === 400, 'image of another WG on expense rejected', String(foreign.status));
 const exId = ex.body.expense?.id ?? ex.body.id;
 const del = await call(A, 'DELETE', `/api/wg/${wg}/expenses/${exId}`, {});
-expect(del.status < 300, 'Ausgabe gelöscht', String(del.status));
+expect(del.status < 300, 'expense deleted', String(del.status));
 const readAfter = await A.ctx.fetch(url);
-expect(readAfter.status() === 404, 'Bild nach Löschen widerrufen', String(readAfter.status()));
+expect(readAfter.status() === 404, 'image revoked after delete', String(readAfter.status()));
 finish();

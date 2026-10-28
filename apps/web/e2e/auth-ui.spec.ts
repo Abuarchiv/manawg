@@ -59,7 +59,7 @@ test.describe('auth e-mail code flow', () => {
 					: route.fulfill({ status: 401, contentType: 'application/json', body: '{}' }),
 			);
 
-			await page.goto('/neu');
+			await page.goto('/login');
 			await expect(page.getByRole('tab', { name: 'Code per E-Mail' })).toHaveAttribute(
 				'aria-selected',
 				'true',
@@ -114,7 +114,7 @@ test.describe('auth tab responsive', () => {
 					}),
 				);
 
-				await page.goto('/neu');
+				await page.goto('/login');
 				await page.evaluate(
 					() =>
 						new Promise<void>((resolve, reject) => {
@@ -184,7 +184,7 @@ test.describe('auth registration inbox', () => {
 			resendRequests += 1;
 			await route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' });
 		});
-		await page.goto('/registrieren');
+		await page.goto('/signup');
 		await page.getByLabel('Dein Name').fill('Mina');
 		await page.getByLabel('E-Mail-Adresse').fill('Neu@Example.invalid');
 		await page.getByLabel('Passwort', { exact: true }).fill('langes-passwort');
@@ -213,7 +213,7 @@ test.describe('entry account switch', () => {
 				route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' }),
 			);
 
-			await page.goto('/neu');
+			await page.goto('/login');
 			await page.getByRole('button', { name: 'Neue WG erstellen', exact: true }).click();
 			await page.getByLabel('WG-Name').fill('Altes Konto');
 			await page.getByLabel('Dein Anzeigename').fill('Altes Profil');
@@ -234,7 +234,7 @@ test.describe('auth sign-out intent', () => {
 	test('restores create intent from the URL after signing out', async ({ page }) => {
 		await mockNoWgs(page);
 
-		await page.goto('/neu?action=create');
+		await page.goto('/login?action=create');
 		await page.getByRole('button', { name: 'Mit anderem Konto anmelden', exact: true }).click();
 
 		await expect(page.getByText('Melde dich an, danach erstellst du deine neue WG.')).toBeVisible();
@@ -243,8 +243,8 @@ test.describe('auth sign-out intent', () => {
 	test('forwards an invitation link on the start page to the invitation page', async ({ page }) => {
 		await mockNoWgs(page);
 
-		await page.goto('/neu?invite=fixture-invite-token01');
+		await page.goto('/login?invite=fixture-invite-token01');
 
-		await expect(page).toHaveURL('/einladung/fixture-invite-token01');
+		await expect(page).toHaveURL('/invite/fixture-invite-token01');
 	});
 });

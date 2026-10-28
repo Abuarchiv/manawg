@@ -82,13 +82,13 @@ export function useDashboardCounts(): Record<string, SegmentCount> {
 		? countOwnDueChores(dashboard.data.dueChores, identity.memberId)
 		: undefined;
 	return {
-		einkauf: {
+		shopping: {
 			count: dashboard.data?.openShoppingCount,
 			hint: 'open',
 			state: dashboardState,
 		},
-		putzen: { count: ownDueCount, hint: 'yourDue', state: dashboardState },
-		abos: {
+		chores: { count: ownDueCount, hint: 'yourDue', state: dashboardState },
+		recurring: {
 			count: dashboard.data?.dueRecurringExpenses.length,
 			hint: 'due',
 			state: dashboardState,

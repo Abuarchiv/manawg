@@ -42,6 +42,50 @@ const nextConfig: NextConfig = {
 	async rewrites() {
 		return [{ source: '/favicon.ico', destination: '/favicon-32.png' }];
 	},
+	// The pages had German paths until 2026-10; links in old mails, bookmarks and installed PWAs keep working.
+	async redirects() {
+		const top = {
+			neu: 'login',
+			registrieren: 'signup',
+			einladung: 'invite',
+			entdecken: 'discover',
+		};
+		const wg = {
+			abos: 'recurring',
+			abrechnung: 'statement',
+			aktivitaet: 'activity',
+			ausgaben: 'expenses',
+			einkauf: 'shopping',
+			einstellungen: 'settings',
+			kalender: 'calendar',
+			mahnungen: 'reminders',
+			pinnwand: 'pinboard',
+			putzen: 'chores',
+			vorraete: 'supplies',
+		};
+		// Public previews use the same slugs, except Fixkosten, which was `fixkosten` there.
+		const modules = { ...wg, fixkosten: 'recurring' };
+		return [
+			...Object.entries(modules).map(([from, to]) => ({
+				source: `/:prefix(entdecken|discover)/${from}`,
+				destination: `/discover/${to}`,
+				permanent: true,
+			})),
+			// Separate rules for the bare path: an empty :path* leaves a trailing slash on Vercel.
+			...Object.entries(top).flatMap(([from, to]) => [
+				{ source: `/${from}`, destination: `/${to}`, permanent: true },
+				{ source: `/${from}/:path+`, destination: `/${to}/:path+`, permanent: true },
+			]),
+			...Object.entries(wg).flatMap(([from, to]) => [
+				{ source: `/wg/:code/${from}`, destination: `/wg/:code/${to}`, permanent: true },
+				{
+					source: `/wg/:code/${from}/:path+`,
+					destination: `/wg/:code/${to}/:path+`,
+					permanent: true,
+				},
+			]),
+		];
+	},
 	// next/image is not used; without remote patterns /_next/image cannot be
 	// used as a free proxy for arbitrary remote images on this project's quota.
 	async headers() {

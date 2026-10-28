@@ -244,7 +244,7 @@ export function EmailCodeForm({
 							email: sentTo,
 							create: richArgument(
 								<Link
-									href={authPageHref('/registrieren', intentQuery)}
+									href={authPageHref('/signup', intentQuery)}
 									className="font-medium underline underline-offset-4"
 								>
 									{t('code.createLink')}

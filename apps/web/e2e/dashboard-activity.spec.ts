@@ -41,7 +41,7 @@ test.describe('activity feed', () => {
 			await route.fulfill({ json: { items: entries(limit > 80 ? 100 : 80), reminders: [] } });
 		});
 
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/aktivitaet`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/activity`);
 		await expect(page.getByText('Eintrag 0', { exact: true })).toBeVisible();
 
 		await page.getByRole('button', { name: 'Ältere Einträge laden' }).click();

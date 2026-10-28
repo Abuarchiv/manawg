@@ -1,0 +1,157 @@
+'use client';
+
+import { Check } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { type ReactElement, useRef, useState } from 'react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import {
+	Drawer,
+	DrawerContent,
+	DrawerDescription,
+	DrawerFooter,
+	DrawerHeader,
+	DrawerTitle,
+} from '@/components/ui/drawer';
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Spinner } from '@/components/ui/spinner';
+import { Textarea } from '@/components/ui/textarea';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { ANNOUNCEMENT_KINDS } from '@/features/announcements/announcement-workflow';
+import type {
+	Announcement,
+	AnnouncementKind,
+} from '@/features/announcements/components/announcement-types';
+import { CONTENT_MAX } from '@/features/announcements/constants';
+
+interface AnnouncementEditDrawerProps {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	announcement: Announcement;
+	/** Resolves true when saved; on false the drawer stays open and the page shows the error. */
+	onSave: (next: { content: string; kind: AnnouncementKind }) => Promise<boolean>;
+}
+
+/** Edit text and type of an own post. Mounted per open, so the fields always start from the current post. */
+export function AnnouncementEditDrawer({
+	open,
+	onOpenChange,
+	announcement,
+	onSave,
+}: AnnouncementEditDrawerProps): ReactElement {
+	const t = useTranslations('pinboard');
+	const [content, setContent] = useState(announcement.content);
+	const [kind, setKind] = useState<AnnouncementKind>(announcement.kind);
+	const [saving, setSaving] = useState(false);
+	const savingRef = useRef(false);
+	const textareaRef = useRef<HTMLTextAreaElement>(null);
+	const trimmed = content.trim();
+	const unchanged = trimmed === announcement.content.trim() && kind === announcement.kind;
+
+	async function save() {
+		if (savingRef.current || !trimmed) return;
+		if (unchanged) {
+			onOpenChange(false);
+			return;
+		}
+		savingRef.current = true;
+		setSaving(true);
+		try {
+			if (await onSave({ content: trimmed, kind })) onOpenChange(false);
+		} finally {
+			savingRef.current = false;
+			setSaving(false);
+		}
+	}
+
+	return (
+		<Drawer
+			open={open}
+			onOpenChange={(next) => {
+				if (!saving) onOpenChange(next);
+			}}
+		>
+			<DrawerContent
+				className="mx-auto w-full max-w-md"
+				initialFocus={textareaRef}
+				aria-busy={saving}
+			>
+				<DrawerHeader>
+					<DrawerTitle>{t('edit.title')}</DrawerTitle>
+					<DrawerDescription className="sr-only">{t('edit.description')}</DrawerDescription>
+				</DrawerHeader>
+				<div className="flex min-h-0 flex-col gap-3 overflow-y-auto p-4">
+					<FieldGroup>
+						<Field>
+							<FieldLabel id={`edit-kind-label-${announcement.id}`} className="sr-only">
+								{t('edit.kindLabel')}
+							</FieldLabel>
+							<ToggleGroup
+								value={[kind]}
+								onValueChange={(values) => {
+									const selected = ANNOUNCEMENT_KINDS.find((option) => option === values[0]);
+									if (selected) setKind(selected);
+								}}
+								disabled={saving}
+								spacing={1}
+								variant="outline"
+								className="flex-wrap"
+								aria-labelledby={`edit-kind-label-${announcement.id}`}
+							>
+								{ANNOUNCEMENT_KINDS.map((option) => (
+									<ToggleGroupItem key={option} value={option} className="px-2">
+										{t(`kind.${option}`)}
+									</ToggleGroupItem>
+								))}
+							</ToggleGroup>
+						</Field>
+						<Field>
+							<FieldLabel htmlFor={`edit-content-${announcement.id}`} className="sr-only">
+								{t('edit.textLabel')}
+							</FieldLabel>
+							<Textarea
+								ref={textareaRef}
+								id={`edit-content-${announcement.id}`}
+								value={content}
+								onChange={(event) => setContent(event.target.value)}
+								readOnly={saving}
+								aria-busy={saving}
+								maxLength={CONTENT_MAX}
+								rows={4}
+								className="min-h-24 text-base read-only:opacity-60"
+							/>
+						</Field>
+					</FieldGroup>
+					{announcement.imageUrl && (
+						<Alert>
+							<AlertDescription>{t('edit.imageKept')}</AlertDescription>
+						</Alert>
+					)}
+				</div>
+				<DrawerFooter className="border-t pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+					<Button
+						type="button"
+						className="w-full"
+						onClick={() => void save()}
+						disabled={saving || !trimmed}
+					>
+						{saving ? (
+							<Spinner data-icon="inline-start" aria-hidden />
+						) : (
+							<Check data-icon="inline-start" aria-hidden />
+						)}
+						{saving ? t('edit.saving') : t('edit.save')}
+					</Button>
+					<Button
+						type="button"
+						variant="outline"
+						onClick={() => onOpenChange(false)}
+						disabled={saving}
+					>
+						{t('edit.cancel')}
+					</Button>
+				</DrawerFooter>
+			</DrawerContent>
+		</Drawer>
+	);
+}

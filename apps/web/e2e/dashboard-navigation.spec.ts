@@ -30,7 +30,7 @@ test.describe('daily overview navigation', () => {
 			return route.fulfill({ status: 200, json: { count: 7, overflow: false } });
 		});
 
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/kalender`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/calendar`);
 		await dismissOnboarding(page);
 
 		const exchange = page.getByRole('navigation', { name: 'Austausch' });
@@ -58,7 +58,7 @@ test.describe('daily overview navigation', () => {
 			route.fulfill({ status: 503, json: { error: 'temporarily_unavailable' } }),
 		);
 
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/kalender`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/calendar`);
 		await dismissOnboarding(page);
 
 		const exchange = page.getByRole('navigation', { name: 'Austausch' });
@@ -76,7 +76,7 @@ test.describe('daily overview navigation', () => {
 		});
 		await mockUnreadCount(page, BASE);
 
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/kalender`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/calendar`);
 		await dismissOnboarding(page);
 
 		const chat = page.getByRole('navigation', { name: 'Austausch' }).getByRole('link', {
@@ -109,7 +109,7 @@ test.describe('daily overview navigation', () => {
 		});
 		await mockUnreadCount(page, BASE);
 
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/vorraete`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/supplies`);
 		await dismissOnboarding(page);
 
 		const household = page.getByRole('navigation', { name: 'Haushalt' });
@@ -179,7 +179,7 @@ test.describe('daily overview navigation', () => {
 			return route.abort('failed');
 		});
 
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einkauf`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/shopping`);
 		await dismissOnboarding(page);
 		const household = page.getByRole('navigation', { name: 'Haushalt' });
 		await expect(household.getByRole('link', { name: 'Einkäufe, 2 offen' })).toBeVisible();
@@ -304,7 +304,7 @@ test.describe('daily overview navigation', () => {
 			'147 ungelesene Nachrichten',
 		);
 
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/kalender`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/calendar`);
 		const exchange = page.getByRole('navigation', { name: 'Austausch' });
 		const chatSegment = exchange.getByRole('link', { name: 'Chat, 147 ungelesen' });
 		await expect(chatSegment).toBeVisible();
@@ -329,7 +329,7 @@ test.describe('daily overview navigation', () => {
 
 		await page.setViewportSize({ width: 390, height: 844 });
 		await page.emulateMedia({ contrast: 'more', reducedMotion: 'reduce' });
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/kalender`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/calendar`);
 		await dismissOnboarding(page);
 
 		const exchange = page.getByRole('navigation', { name: 'Austausch' });
@@ -394,7 +394,7 @@ test.describe('daily overview navigation', () => {
 			);
 		});
 
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/kalender`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/calendar`);
 		await dismissOnboarding(page);
 
 		const chat = page.getByRole('navigation', { name: 'Austausch' }).getByRole('link', {
@@ -416,7 +416,7 @@ test.describe('daily overview navigation', () => {
 	});
 
 	test('public Calendar link uses the Exchange segments', async ({ page }) => {
-		await page.goto('/entdecken/kalender', { waitUntil: 'domcontentloaded' });
+		await page.goto('/discover/calendar', { waitUntil: 'domcontentloaded' });
 
 		const exchange = page.getByRole('navigation', { name: 'Austausch – entdecken' });
 		await expect(exchange.getByRole('link', { name: 'Pinnwand' })).toBeVisible();
@@ -440,7 +440,7 @@ test.describe('daily overview navigation', () => {
 			for (const width of [320, 390]) {
 				await page.setViewportSize({ width, height: 844 });
 				await page.emulateMedia({ colorScheme: theme });
-				await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/kalender`);
+				await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/calendar`);
 				await dismissOnboarding(page);
 
 				const exchange = page.getByRole('navigation', { name: 'Austausch' });

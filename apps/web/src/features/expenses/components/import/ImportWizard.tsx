@@ -112,7 +112,7 @@ export function ImportWizard() {
 	const router = useRouter();
 	const [leaveOpen, setLeaveOpen] = useState(false);
 	const [sourceToChange, setSourceToChange] = useState<ImportSourceKind | null>(null);
-	const returnHref = `/wg/${wizard.encodedCode}/ausgaben`;
+	const returnHref = `/wg/${wizard.encodedCode}/expenses`;
 	const backGuardActive =
 		step !== 'commit' &&
 		wizard.commitState !== 'done' &&

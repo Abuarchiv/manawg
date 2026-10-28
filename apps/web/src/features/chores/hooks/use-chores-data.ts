@@ -49,7 +49,7 @@ export function useChoresData({
 		reload,
 		offline: {
 			shareCode: wg.shareCode,
-			page: 'putzen',
+			page: 'chores',
 			onReplayed: () => setActionNotice(null),
 		},
 	});

@@ -57,7 +57,7 @@ test.describe('chore next assignee', () => {
 		};
 	}
 
-	async function openPutzen(
+	async function openChores(
 		page: import('@playwright/test').Page,
 		members: FixtureMember[],
 		chores: ReturnType<typeof chore>[],
@@ -82,7 +82,7 @@ test.describe('chore next assignee', () => {
 			}),
 		);
 		await mockUnreadCount(page, `/api/wg/${SHARE_CODE}`);
-		await navigateToFeature(page, `/wg/${SHARE_CODE}/putzen`);
+		await navigateToFeature(page, `/wg/${SHARE_CODE}/chores`);
 		await dismissOnboarding(page);
 		await expect.poll(() => memberHeaders.length, { timeout: 15_000 }).toBeGreaterThanOrEqual(1);
 		expect(memberHeaders.every((memberId) => memberId === CURRENT_MEMBER)).toBe(true);
@@ -116,7 +116,7 @@ test.describe('chore next assignee', () => {
 		// Taking over is only offered on other members' chores.
 		const rows = [{ ...chore('actions-zoom', flatmate.id), title }];
 
-		await openPutzen(page, [viewer, flatmate], rows, []);
+		await openChores(page, [viewer, flatmate], rows, []);
 
 		const row = page.locator('#chore-actions-zoom');
 		const opener = row.getByRole('button', { name: `Aufgabenaktionen: ${title}` });
@@ -206,7 +206,7 @@ test.describe('chore next assignee', () => {
 		const title = 'Spülmaschinenreinigung mit Entkalkung und gründlicher Küchenhygiene';
 		const rows = [{ ...chore('actions-admin-zoom', viewer.id), title }];
 
-		await openPutzen(page, [viewer], rows, [], true);
+		await openChores(page, [viewer], rows, [], true);
 		await page.setViewportSize({ width: 320, height: 800 });
 		await page.emulateMedia({ colorScheme: 'dark' });
 		await page.evaluate(() => {
@@ -265,7 +265,7 @@ test.describe('chore next assignee', () => {
 			}
 			return route.fulfill({ json: {} });
 		});
-		await openPutzen(page, [viewer], [{ ...chore('removal-pending', viewer.id), title }], [], true);
+		await openChores(page, [viewer], [{ ...chore('removal-pending', viewer.id), title }], [], true);
 
 		const row = page.locator('#chore-removal-pending');
 		await row.getByRole('button', { name: `Aufgabenaktionen: ${title}` }).click();
@@ -287,7 +287,7 @@ test.describe('chore next assignee', () => {
 		const title = 'Aufgabe delete-permission';
 		const rows = [chore('delete-permission', viewer.id)];
 
-		await openPutzen(page, [viewer], rows, []);
+		await openChores(page, [viewer], rows, []);
 		await page.getByRole('button', { name: `Aufgabenaktionen: ${title}` }).click();
 		await expect(page.getByRole('button', { name: `Aufgabe entfernen: ${title}` })).toHaveCount(0);
 	});
@@ -296,7 +296,7 @@ test.describe('chore next assignee', () => {
 		const viewer: FixtureMember = { id: CURRENT_MEMBER, name: 'Abu', color: null, active: true };
 		const other: FixtureMember = { id: 'anna', name: 'Anna', color: null, active: true };
 
-		await openPutzen(page, [viewer, other], [chore('absence-select', viewer.id)], []);
+		await openChores(page, [viewer, other], [chore('absence-select', viewer.id)], []);
 		await page.getByRole('button', { name: 'Abwesenheit eintragen' }).click();
 		await expect(page.getByLabel('Abwesendes Mitglied').locator('option')).toHaveText(['Abu']);
 	});
@@ -305,7 +305,7 @@ test.describe('chore next assignee', () => {
 		const viewer: FixtureMember = { id: CURRENT_MEMBER, name: 'Abu', color: null, active: true };
 		const other: FixtureMember = { id: 'anna', name: 'Anna', color: null, active: true };
 
-		await openPutzen(page, [viewer, other], [chore('absence-admin', viewer.id)], [], true);
+		await openChores(page, [viewer, other], [chore('absence-admin', viewer.id)], [], true);
 		await page.getByRole('button', { name: 'Abwesenheit eintragen' }).click();
 		await expect(page.getByLabel('Abwesendes Mitglied').locator('option')).toHaveText([
 			'Abu',
@@ -316,7 +316,7 @@ test.describe('chore next assignee', () => {
 	test('explains an absence that overlaps an existing one', async ({ page }) => {
 		const viewer: FixtureMember = { id: CURRENT_MEMBER, name: 'Abu', color: null, active: true };
 
-		await openPutzen(page, [viewer], [chore('absence-overlap', viewer.id)], []);
+		await openChores(page, [viewer], [chore('absence-overlap', viewer.id)], []);
 		await page.route(`**/api/wg/${SHARE_CODE}/absences`, (route) =>
 			route.request().method() === 'POST'
 				? route.fulfill({
@@ -342,7 +342,7 @@ test.describe('chore next assignee', () => {
 		const viewer: FixtureMember = { id: CURRENT_MEMBER, name: 'Abu', color: null, active: true };
 		let posts = 0;
 
-		await openPutzen(page, [viewer], [chore('absence-past', viewer.id)], []);
+		await openChores(page, [viewer], [chore('absence-past', viewer.id)], []);
 		await page.route(`**/api/wg/${SHARE_CODE}/absences`, (route) => {
 			if (route.request().method() !== 'POST') return route.fallback();
 			posts += 1;
@@ -377,7 +377,7 @@ test.describe('chore next assignee', () => {
 		});
 		expect(nextMember).toBe(CURRENT_MEMBER);
 
-		await openPutzen(page, members, chores, absences);
+		await openChores(page, members, chores, absences);
 		const row = page.locator('#chore-viewer-next');
 		// The follow-up assignee is shown in the actions drawer, not in the row.
 		await expect(row).not.toContainText('danach');
@@ -408,7 +408,7 @@ test.describe('chore next assignee', () => {
 		});
 		expect(nextMember).toBeNull();
 
-		await openPutzen(page, members, chores, absences);
+		await openChores(page, members, chores, absences);
 		const row = page.locator('#chore-no-successor');
 		await expect(row.getByText('Dora', { exact: true })).toHaveCount(0);
 		await row.getByRole('button', { name: /^Aufgabenaktionen:/ }).click();
@@ -436,7 +436,7 @@ test.describe('chore next assignee', () => {
 		});
 		expect(predicted).toBe(longNext.id);
 
-		await openPutzen(page, members, chores, []);
+		await openChores(page, members, chores, []);
 		const row = page.locator('#chore-long-next');
 		await row.getByRole('button', { name: /^Aufgabenaktionen:/ }).click();
 		await expect(page.getByRole('dialog').getByText('Danach').locator('+ dd')).toHaveText(
@@ -465,7 +465,7 @@ test.describe('chore next assignee', () => {
 
 	test('restores the automatic assignee for a titled draft and posts it', async ({ page }) => {
 		const viewer: FixtureMember = { id: CURRENT_MEMBER, name: 'Abu', color: null, active: true };
-		await openPutzen(page, [viewer], [], []);
+		await openChores(page, [viewer], [], []);
 		await page.getByRole('button', { name: 'Putzaufgabe hinzufügen' }).click();
 
 		const title = page.getByPlaceholder('z. B. Müll rausbringen');
@@ -495,7 +495,7 @@ test.describe('chore next assignee', () => {
 
 	test('names a rate limit as retryable instead of a generic save failure', async ({ page }) => {
 		const viewer: FixtureMember = { id: CURRENT_MEMBER, name: 'Abu', color: null, active: true };
-		await openPutzen(page, [viewer], [], []);
+		await openChores(page, [viewer], [], []);
 		await page.getByRole('button', { name: 'Putzaufgabe hinzufügen' }).click();
 		await page.getByPlaceholder('z. B. Müll rausbringen').fill('Zu schnell');
 		// The middleware answers with `rate_limited`, not `too_many_requests`.
@@ -516,7 +516,7 @@ test.describe('chore next assignee', () => {
 
 	test('names an expired session and maintenance mode and keeps the draft', async ({ page }) => {
 		const viewer: FixtureMember = { id: CURRENT_MEMBER, name: 'Abu', color: null, active: true };
-		await openPutzen(page, [viewer], [], []);
+		await openChores(page, [viewer], [], []);
 		await page.getByRole('button', { name: 'Putzaufgabe hinzufügen' }).click();
 		const title = page.getByPlaceholder('z. B. Müll rausbringen');
 		await title.fill('Entwurf bleibt');
@@ -551,7 +551,7 @@ test.describe('chore next assignee', () => {
 
 	test('preserves explicit and legacy unassigned chore drafts', async ({ page }) => {
 		const viewer: FixtureMember = { id: CURRENT_MEMBER, name: 'Abu', color: null, active: true };
-		await openPutzen(page, [viewer], [], []);
+		await openChores(page, [viewer], [], []);
 		await page.getByRole('button', { name: 'Putzaufgabe hinzufügen' }).click();
 
 		const title = page.getByPlaceholder('z. B. Müll rausbringen');
@@ -599,7 +599,7 @@ test.describe('chore next assignee', () => {
 
 	test('does not reopen an untouched empty chore form after reload', async ({ page }) => {
 		const viewer: FixtureMember = { id: CURRENT_MEMBER, name: 'Abu', color: null, active: true };
-		await openPutzen(page, [viewer], [], []);
+		await openChores(page, [viewer], [], []);
 		await page.getByRole('button', { name: 'Putzaufgabe hinzufügen' }).click();
 		const title = page.getByPlaceholder('z. B. Müll rausbringen');
 		await expect(title).toBeVisible();
@@ -616,7 +616,7 @@ test.describe('chore next assignee', () => {
 			active: true,
 		};
 		const title = 'Edge-hit dishwasher';
-		await openPutzen(page, [viewer, flatmate], [{ ...chore('edge-hit', flatmate.id), title }], []);
+		await openChores(page, [viewer, flatmate], [{ ...chore('edge-hit', flatmate.id), title }], []);
 
 		const row = page.locator('#chore-edge-hit');
 		const complete = row.getByRole('button', { name: `Als erledigt markieren: ${title}` });

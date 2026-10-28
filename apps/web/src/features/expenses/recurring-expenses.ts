@@ -42,7 +42,7 @@ export function serializeRecurringExpense(row: typeof recurringExpenses.$inferSe
 }
 
 export function getRecurringExpenseHref(shareCode: string, id: string): string {
-	return `/wg/${encodeURIComponent(shareCode)}/ausgaben?recurring=${encodeURIComponent(id)}`;
+	return `/wg/${encodeURIComponent(shareCode)}/expenses?recurring=${encodeURIComponent(id)}`;
 }
 
 export function parseRecurringSplits(splitsJson: string): RecurringSplit[] {
@@ -161,11 +161,11 @@ export function previewNextOccurrences(input: RecurringPreviewInput, count: numb
 /** Interval wording as data. */
 export function intervalLabelMessage(intervalMonths: number): Message {
 	const months = Math.max(1, Math.floor(intervalMonths));
-	if (months === 1) return { key: 'expenses-abos.interval.monthly' };
-	if (months === 3) return { key: 'expenses-abos.interval.quarterly' };
-	if (months === 6) return { key: 'expenses-abos.interval.halfYearly' };
-	if (months === 12) return { key: 'expenses-abos.interval.yearly' };
-	return { key: 'expenses-abos.interval.everyMonths', values: { count: months } };
+	if (months === 1) return { key: 'expenses-recurring.interval.monthly' };
+	if (months === 3) return { key: 'expenses-recurring.interval.quarterly' };
+	if (months === 6) return { key: 'expenses-recurring.interval.halfYearly' };
+	if (months === 12) return { key: 'expenses-recurring.interval.yearly' };
+	return { key: 'expenses-recurring.interval.everyMonths', values: { count: months } };
 }
 
 /**

@@ -13,7 +13,7 @@ apps/web/
   src/app/        routes only: pages, layouts, API handlers (thin, call core/features)
   src/core/       domain-neutral building blocks: db, auth, guards, http, offline, notifications, infra
   src/composition/ cross-feature reads (dashboard, activity, export)
-  src/features/   vertical slices (chat, chores, events, expenses, inventory, pinnwand, shopping)
+  src/features/   vertical slices (chat, chores, events, expenses, inventory, announcements, shopping)
                   a feature may import core/, shared/ and itself, never another feature
                   features/<x>/server/ holds database and server-only code (import 'server-only')
   src/components/ reusable UI: ui/ (shadcn), animate-ui/ (motion variants), app/ (shell, PWA, theme), wg/ (WG-wide)
@@ -61,7 +61,7 @@ Minimum variables in `apps/web/.env.local` (`checkEnv` in `src/core/infra/env.ts
 | Variable | Why |
 | --- | --- |
 | `POSTGRES_URL` (or `DATABASE_URL`) | Runtime database. Remote URLs need an explicit port; TLS is enforced (`src/core/db/connection.ts`). |
-| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase Auth. Without them every `/wg/*` page redirects to `/neu`. |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase Auth. Without them every `/wg/*` page redirects to `/login`. |
 | `MEMBER_SESSION_SECRET` | Signs calendar feed URLs and verifies legacy-profile recovery proofs (`openssl rand -hex 32`). Not used for normal API access. Rotate by moving the old value to `MEMBER_SESSION_SECRET_PREVIOUS`, so existing feeds keep working. |
 
 In production `SUPABASE_SERVICE_ROLE_KEY` is also required (account deletion, Supabase image storage).

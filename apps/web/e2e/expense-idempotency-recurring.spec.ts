@@ -73,7 +73,7 @@ test('recurring template retries preserve key, due date, and splits after refres
 		});
 	});
 
-	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/ausgaben?new=1&filter=recurring`);
+	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/expenses?new=1&filter=recurring`);
 	await dismissOnboarding(page);
 	const form = page.getByRole('dialog');
 	await form.getByLabel('Beschreibung').fill('Internet');
@@ -156,7 +156,7 @@ test('malformed recurring-template success queues once across split rotation, dr
 		});
 	});
 
-	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/ausgaben?new=1&filter=recurring`);
+	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/expenses?new=1&filter=recurring`);
 	await dismissOnboarding(page);
 	const form = page.getByRole('dialog');
 	await form.getByLabel('Beschreibung').fill('Internet');
@@ -217,7 +217,7 @@ test('malformed recurring-template success queues once across split rotation, dr
 			},
 		});
 	});
-	await navigateToFeature(restoredPage, `/wg/${FIXTURE_WG.shareCode}/ausgaben?filter=recurring`);
+	await navigateToFeature(restoredPage, `/wg/${FIXTURE_WG.shareCode}/expenses?filter=recurring`);
 	await dismissOnboarding(restoredPage);
 	const restoredForm = restoredPage.getByRole('dialog');
 	// A draft does not open the form by itself; only „Ausgabe hinzufügen“ reveals it.
@@ -246,7 +246,7 @@ test('malformed recurring-template success queues once across split rotation, dr
 	).toBe(true);
 	expect(attempts).toHaveLength(1);
 
-	await navigateToFeature(restoredPage, `/wg/${FIXTURE_WG.shareCode}/einkauf`);
+	await navigateToFeature(restoredPage, `/wg/${FIXTURE_WG.shareCode}/shopping`);
 	await expect.poll(() => queuedActionCount(restoredPage, 'recurring.create')).toBe(1);
 	await expect(restoredPage.locator('[data-offline-banner]')).toContainText(
 		'Offline. 1 Aktion wartet.',
@@ -295,7 +295,7 @@ test('creating an expense from a recurring template reuses its key after a serve
 		});
 	});
 
-	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/ausgaben?filter=recurring`);
+	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/expenses?filter=recurring`);
 	await dismissOnboarding(page);
 	const create = page.getByRole('button', { name: 'Erfassen: Miete' });
 	await create.click();
@@ -352,7 +352,7 @@ test('a malformed recurring-expense success replays the queued request with its 
 		});
 	});
 
-	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/ausgaben?filter=recurring`);
+	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/expenses?filter=recurring`);
 	await dismissOnboarding(page);
 	const create = page.getByRole('button', { name: 'Erfassen: Miete' });
 
@@ -394,7 +394,7 @@ test('a malformed recurring-expense success replays the queued request with its 
 			},
 		});
 	});
-	await navigateToFeature(replayPage, `/wg/${FIXTURE_WG.shareCode}/ausgaben?filter=recurring`);
+	await navigateToFeature(replayPage, `/wg/${FIXTURE_WG.shareCode}/expenses?filter=recurring`);
 	await dismissOnboarding(replayPage);
 	await expect.poll(() => queuedRecurringExpenseCount(replayPage)).toBe(1);
 	await expectOfflineAutoSyncBackoff(
@@ -454,7 +454,7 @@ test('recurring-source form retries keep the original due date and POST body', a
 		});
 	});
 
-	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/ausgaben?recurring=recurring-rent`);
+	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/expenses?recurring=recurring-rent`);
 	await dismissOnboarding(page);
 	const form = page.getByRole('dialog');
 	const save = form.getByRole('button', { name: 'Ausgabe speichern' });
@@ -491,7 +491,7 @@ test('recurring template retries keep separate keys when requests are interleave
 		return route.fulfill({ status: 500, json: { error: 'temporarily_unavailable' } });
 	});
 
-	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/ausgaben?filter=recurring`);
+	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/expenses?filter=recurring`);
 	await dismissOnboarding(page);
 	const rent = page.getByRole('button', { name: 'Erfassen: Miete' });
 	const internet = page.getByRole('button', {
@@ -545,7 +545,7 @@ test('recurring expense retry keeps its key until template advance succeeds', as
 		return route.fulfill({ json: { expense: committedExpense, warning: null } });
 	});
 
-	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/ausgaben?filter=recurring`);
+	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/expenses?filter=recurring`);
 	await dismissOnboarding(page);
 	const create = page.getByRole('button', { name: 'Erfassen: Miete' });
 	await create.click();
@@ -606,7 +606,7 @@ test('an already-advanced period gets a new key and due date on the next create'
 		});
 	});
 
-	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/ausgaben?filter=recurring`);
+	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/expenses?filter=recurring`);
 	await dismissOnboarding(page);
 	const create = page.getByRole('button', { name: 'Erfassen: Miete' });
 	await create.click();
@@ -640,7 +640,7 @@ test('an accepted offline recurring expense is not queued again after reload', a
 		return route.abort();
 	});
 
-	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/ausgaben?filter=recurring`);
+	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/expenses?filter=recurring`);
 	await dismissOnboarding(page);
 	await page.getByRole('button', { name: 'Erfassen: Miete' }).click();
 	await expect(page.getByText(/Fixkosten-Ausgabe offline vorgemerkt/)).toBeVisible();
@@ -663,7 +663,7 @@ test('an accepted offline recurring expense is not queued again after reload', a
 			json: { expense: expense('synced-recurring-expense', 'Miete'), warning: null },
 		});
 	});
-	await reloadedPage.goto(`/wg/${FIXTURE_WG.shareCode}/ausgaben?filter=recurring`);
+	await reloadedPage.goto(`/wg/${FIXTURE_WG.shareCode}/expenses?filter=recurring`);
 	await dismissOnboarding(reloadedPage);
 	await expect.poll(() => queuedRecurringExpenseCount(reloadedPage)).toBe(1);
 	const create = reloadedPage.getByRole('button', {

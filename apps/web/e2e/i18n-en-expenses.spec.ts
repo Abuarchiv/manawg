@@ -83,7 +83,7 @@ test.describe('expenses in English', () => {
 				await setupMember(page);
 				await mockFinanceReads(page, [EXPENSE]);
 				await page.setViewportSize({ width, height: 800 });
-				await navigateToFeature(page, `/wg/${shareCode}/ausgaben`);
+				await navigateToFeature(page, `/wg/${shareCode}/expenses`);
 				await dismissOnboarding(page);
 
 				await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
@@ -110,7 +110,7 @@ test.describe('expenses in English', () => {
 		await setupMember(page);
 		await mockFinanceReads(page, []);
 		await page.setViewportSize({ width: 320, height: 800 });
-		await navigateToFeature(page, `/wg/${shareCode}/ausgaben`);
+		await navigateToFeature(page, `/wg/${shareCode}/expenses`);
 		await dismissOnboarding(page);
 		await expect(page.getByText('No expenses yet')).toBeVisible();
 		await expect(page.getByRole('link', { name: 'Import expenses' })).toBeVisible();
@@ -132,7 +132,7 @@ test.describe('expenses in English', () => {
 			await route.fulfill({ json: { expenses: [], payments: [] } });
 		});
 		await page.setViewportSize({ width: 390, height: 800 });
-		await navigateToFeature(page, `/wg/${shareCode}/ausgaben`);
+		await navigateToFeature(page, `/wg/${shareCode}/expenses`);
 		await dismissOnboarding(page);
 
 		await page.getByRole('button', { name: 'Add expense' }).click();
@@ -161,7 +161,7 @@ test.describe('expenses in English', () => {
 		await setupMember(page);
 		await mockFinanceReads(page, []);
 		await page.setViewportSize({ width: 320, height: 800 });
-		await navigateToFeature(page, `/wg/${shareCode}/ausgaben`);
+		await navigateToFeature(page, `/wg/${shareCode}/expenses`);
 		await dismissOnboarding(page);
 
 		await page.getByRole('button', { name: 'Add expense' }).click();

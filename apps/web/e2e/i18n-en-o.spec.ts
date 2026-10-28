@@ -43,7 +43,7 @@ test.describe('data export in English', () => {
 				await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
 				await page.setViewportSize({ width, height: 780 });
 				await setupMember(page);
-				await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen#daten`);
+				await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings#data`);
 				await dismissOnboarding(page);
 
 				await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');

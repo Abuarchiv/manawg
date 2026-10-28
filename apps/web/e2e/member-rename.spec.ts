@@ -34,7 +34,7 @@ test.describe('member rename', () => {
 						});
 			},
 		);
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings`);
 
 		const field = page.getByLabel('Dein Name', { exact: true });
 		const save = page

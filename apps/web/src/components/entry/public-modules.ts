@@ -1,12 +1,12 @@
 /** Public discovery modules: slugs in display order, titles and descriptions live in `entry.modules`. */
-export const PRIMARY_MODULE_SLUGS = ['ausgaben', 'einkauf', 'pinnwand', 'putzen'] as const;
+export const PRIMARY_MODULE_SLUGS = ['expenses', 'shopping', 'pinboard', 'chores'] as const;
 
 const OTHER_MODULE_SLUGS = [
-	'fixkosten',
-	'mahnungen',
-	'vorraete',
-	'kalender',
-	'aktivitaet',
+	'recurring',
+	'reminders',
+	'supplies',
+	'calendar',
+	'activity',
 	'chat',
 ] as const;
 

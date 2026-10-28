@@ -59,7 +59,7 @@ const EVENTS: Readonly<Record<string, AuditEventDef>> = {
 			const reaction = String(metadata.reaction);
 			return {
 				reaction: REACTIONS.includes(reaction)
-					? { key: `pinnwand.reaction.${reaction}` as MessageKey }
+					? { key: `pinboard.reaction.${reaction}` as MessageKey }
 					: reaction,
 			};
 		},

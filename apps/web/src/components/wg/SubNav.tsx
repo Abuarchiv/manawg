@@ -55,7 +55,7 @@ function WgSubNav(props: {
 	liveCount: number | undefined;
 }) {
 	const dashboardCounted = props.section.pages.some((page) =>
-		['einkauf', 'putzen', 'abos'].includes(page.slug),
+		['shopping', 'chores', 'recurring'].includes(page.slug),
 	);
 	return dashboardCounted ? <DashboardSubNav {...props} /> : <ChatSubNav {...props} />;
 }

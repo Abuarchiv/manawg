@@ -67,7 +67,7 @@ test.describe('English activity feed', () => {
 			}) => {
 				await setEnglishLocale(context, baseURL ?? 'http://localhost:3101');
 				await prepare(page, width, scheme);
-				await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/aktivitaet`);
+				await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/activity`);
 				await dismissOnboarding(page);
 
 				await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');

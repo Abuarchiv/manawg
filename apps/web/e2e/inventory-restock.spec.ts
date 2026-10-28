@@ -95,7 +95,7 @@ test.describe('inventory restock retry', () => {
 			});
 		});
 
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/vorraete`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/supplies`);
 		await dismissOnboarding(page);
 		await page.getByRole('button', { name: 'Schnell nachfüllen' }).click();
 		const drawer = page
@@ -212,7 +212,7 @@ test.describe('inventory restock retry', () => {
 			await route.continue();
 		});
 
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/vorraete`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/supplies`);
 		await dismissOnboarding(page);
 		await expect(page.getByRole('button', { name: 'Reis um eins erhöhen' })).toBeVisible();
 		delayNextGet = true;
@@ -301,7 +301,7 @@ test.describe('inventory restock retry', () => {
 			await route.fulfill({ json: { ok: true } });
 		});
 
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/vorraete`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/supplies`);
 		await dismissOnboarding(page);
 		await page.getByRole('button', { name: 'Reis entfernen', exact: true }).click();
 		await page.getByRole('button', { name: 'Endgültig entfernen: Reis' }).click();
@@ -371,7 +371,7 @@ test.describe('inventory restock retry', () => {
 			},
 		);
 
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/vorraete`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/supplies`);
 		await dismissOnboarding(page);
 		const minus = page.getByRole('button', { name: 'Reis um eins verringern' });
 		await expect(page.getByText('3 Packung')).toBeVisible();
@@ -420,7 +420,7 @@ test.describe('inventory restock retry', () => {
 			await route.fulfill({ json: { ok: true } });
 		});
 
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/vorraete`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/supplies`);
 		await dismissOnboarding(page);
 		await page.getByRole('button', { name: 'Reis entfernen', exact: true }).click();
 		await expect(page.getByRole('button', { name: 'Endgültig entfernen: Reis' })).toBeVisible();
@@ -465,7 +465,7 @@ test.describe('inventory restock retry', () => {
 			await route.fulfill({ json: { item: { ...item, name: body.name } } });
 		});
 
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/vorraete`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/supplies`);
 		await dismissOnboarding(page);
 		await page.getByRole('button', { name: 'Spülmittel bearbeiten' }).click();
 		await page.locator('#inventory-name').fill('Spüli');

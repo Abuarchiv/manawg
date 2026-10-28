@@ -86,27 +86,27 @@ function chatUrlPath(payload: Record<string, unknown>): string {
 
 function announcementUrlPath(payload: Record<string, unknown>): string {
 	const id = typeof payload.announcementId === 'string' ? payload.announcementId.trim() : '';
-	return id ? `/pinnwand#announcement-${encodeURIComponent(id)}` : '/pinnwand';
+	return id ? `/pinboard#announcement-${encodeURIComponent(id)}` : '/pinboard';
 }
 
 function expenseUrlPath(payload: Record<string, unknown>): string {
 	const id = typeof payload.expenseId === 'string' ? payload.expenseId.trim() : '';
-	return id ? `/ausgaben?highlight=${encodeURIComponent(id)}` : '/ausgaben';
+	return id ? `/expenses?highlight=${encodeURIComponent(id)}` : '/expenses';
 }
 
 function choreUrlPath(payload: Record<string, unknown>): string {
 	const id = typeof payload.choreId === 'string' ? payload.choreId.trim() : '';
-	return id ? `/putzen?highlight=${encodeURIComponent(id)}` : '/putzen';
+	return id ? `/chores?highlight=${encodeURIComponent(id)}` : '/chores';
 }
 
 function shoppingUrlPath(payload: Record<string, unknown>): string {
 	const id = typeof payload.shoppingItemId === 'string' ? payload.shoppingItemId.trim() : '';
-	return id ? `/einkauf?highlight=${encodeURIComponent(id)}` : '/einkauf';
+	return id ? `/shopping?highlight=${encodeURIComponent(id)}` : '/shopping';
 }
 
 function eventUrlPath(payload: Record<string, unknown>): string {
 	const id = typeof payload.eventId === 'string' ? payload.eventId.trim() : '';
-	return id ? `/kalender?highlight=${encodeURIComponent(id)}` : '/kalender';
+	return id ? `/calendar?highlight=${encodeURIComponent(id)}` : '/calendar';
 }
 
 function formatEventTime(t: PushT, locale: Locale, value: unknown, allDay = false): string {
@@ -156,7 +156,7 @@ function choreDueSentence(
 
 function inventoryUrlPath(payload: Record<string, unknown>): string {
 	const id = typeof payload.inventoryItemId === 'string' ? payload.inventoryItemId.trim() : '';
-	return id ? `/vorraete?highlight=${encodeURIComponent(id)}` : '/vorraete';
+	return id ? `/supplies?highlight=${encodeURIComponent(id)}` : '/supplies';
 }
 
 function quantityNumber(value: unknown): number | null {
@@ -179,7 +179,7 @@ export function formatNotificationMessage(
 			return {
 				title: t('test.title'),
 				body: t('test.body', { wgName }),
-				urlPath: '/einstellungen#benachrichtigungen',
+				urlPath: '/settings#notifications',
 			};
 		case 'expense.created':
 			return {
@@ -210,7 +210,7 @@ export function formatNotificationMessage(
 					days >= 1
 						? t('expenseReminder.bodyAged', { creditor, amount: amount(), days })
 						: t('expenseReminder.body', { creditor, amount: amount() }),
-				urlPath: '/mahnungen',
+				urlPath: '/reminders',
 			};
 		}
 		case 'expense.debt_settled':
@@ -220,13 +220,13 @@ export function formatNotificationMessage(
 					actorName,
 					amount: amount(),
 				}),
-				urlPath: '/ausgaben',
+				urlPath: '/expenses',
 			};
 		case 'expense.payment_voided':
 			return {
 				title: t('paymentVoided.title'),
 				body: t('paymentVoided.body', { actorName, amount: amount() }),
-				urlPath: '/ausgaben',
+				urlPath: '/expenses',
 			};
 		case 'import.completed': {
 			const inserted =
@@ -236,7 +236,7 @@ export function formatNotificationMessage(
 			return {
 				title: t('importCompleted.title'),
 				body: t('importCompleted.body', { actorName, inserted, wgName }),
-				urlPath: '/ausgaben',
+				urlPath: '/expenses',
 			};
 		}
 		case 'announcement.posted':

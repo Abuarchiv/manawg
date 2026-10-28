@@ -55,7 +55,7 @@ test.describe('single occurrence of a series', () => {
 		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/chores*`, (route) =>
 			route.fulfill({ json: { chores: [] } }),
 		);
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/kalender`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/calendar`);
 		await dismissOnboarding(page);
 		await page.getByRole('button', { name: 'Termin öffnen: Plenum', exact: true }).first().click();
 	}
@@ -112,7 +112,7 @@ const emptyCalendar = async (page: import('@playwright/test').Page) => {
 	await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/chores*`, (route) =>
 		route.fulfill({ json: { chores: [] } }),
 	);
-	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/kalender`);
+	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/calendar`);
 	await dismissOnboarding(page);
 	await expect(page.getByRole('tab', { name: 'Agenda' })).toBeVisible();
 };

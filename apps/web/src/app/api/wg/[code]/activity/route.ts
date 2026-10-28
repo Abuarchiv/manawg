@@ -24,7 +24,7 @@ import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { serverRenderContext } from '@/core/i18n/render-context';
 import { requestLocale } from '@/core/i18n/request-locale';
-import { MEMBER_ANNOUNCEMENT_SOURCES } from '@/features/pinnwand/announcement-workflow';
+import { MEMBER_ANNOUNCEMENT_SOURCES } from '@/features/announcements/announcement-workflow';
 
 const DEFAULT_LIMIT = 80;
 const MAX_LIMIT = 320;

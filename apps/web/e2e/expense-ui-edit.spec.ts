@@ -66,7 +66,7 @@ test.describe('expense row reflow', () => {
 		);
 		await mockUnreadCount(page, `/api/wg/${shareCode}`);
 
-		await navigateToFeature(page, `/wg/${shareCode}/ausgaben`);
+		await navigateToFeature(page, `/wg/${shareCode}/expenses`);
 		await dismissOnboarding(page);
 
 		const row = page.locator(`#expense-${EXPENSE_ID}`);
@@ -230,7 +230,7 @@ test.describe('expense currency edit', () => {
 		);
 		await mockUnreadCount(page, `/api/wg/${shareCode}`);
 
-		await navigateToFeature(page, `/wg/${shareCode}/ausgaben`);
+		await navigateToFeature(page, `/wg/${shareCode}/expenses`);
 		await dismissOnboarding(page);
 		await page.evaluate(() => {
 			document.documentElement.style.fontSize = '200%';
@@ -360,7 +360,7 @@ test.describe('expense edit payer', () => {
 		],
 	};
 
-	async function openAusgaben(page: import('@playwright/test').Page, expenses: Expense[]) {
+	async function openExpenses(page: import('@playwright/test').Page, expenses: Expense[]) {
 		await setupMember(page);
 		await page.route(`**/api/wg/${SHARE_CODE}/members`, (route) =>
 			route.fulfill({ json: { members: MEMBERS, viewerIsAdmin: false } }),
@@ -377,19 +377,19 @@ test.describe('expense edit payer', () => {
 			route.fulfill({ json: { openShoppingCount: 0, dueChores: [], dueRecurringExpenses: [] } }),
 		);
 		await mockUnreadCount(page, `/api/wg/${SHARE_CODE}`);
-		await navigateToFeature(page, `/wg/${SHARE_CODE}/ausgaben`);
+		await navigateToFeature(page, `/wg/${SHARE_CODE}/expenses`);
 		await dismissOnboarding(page);
 	}
 
 	test('keeps the payer selectable while creating an expense', async ({ page }) => {
-		await openAusgaben(page, []);
+		await openExpenses(page, []);
 		await page.getByRole('button', { name: 'Ausgabe hinzufügen' }).first().click();
 		await expect(page.getByLabel('Bezahlt von')).toBeEnabled();
 		await expect(page.getByLabel('Aufteilung: Gleichmäßig')).toBeEnabled();
 	});
 
 	test('preserves historical inactive shares on a description-only edit', async ({ page }) => {
-		await openAusgaben(page, [expense]);
+		await openExpenses(page, [expense]);
 		await page.getByRole('button', { name: `Aktionen für ${expense.description}` }).click();
 		await page.getByRole('menuitem', { name: 'Bearbeiten' }).click();
 
@@ -411,7 +411,7 @@ test.describe('expense edit payer', () => {
 	test('locks the payer and preserves departed shares while editing an expense', async ({
 		page,
 	}) => {
-		await openAusgaben(page, [expense]);
+		await openExpenses(page, [expense]);
 		await page.getByRole('button', { name: `Aktionen für ${expense.description}` }).click();
 		await page.getByRole('menuitem', { name: 'Bearbeiten' }).click();
 
@@ -454,7 +454,7 @@ test.describe('expense edit payer', () => {
 	test('remainder distribution skips inactive members on every persisted edit', async ({
 		page,
 	}) => {
-		await openAusgaben(page, [activeOnlyExpense]);
+		await openExpenses(page, [activeOnlyExpense]);
 		await page
 			.getByRole('button', { name: `Aktionen für ${activeOnlyExpense.description}` })
 			.click();

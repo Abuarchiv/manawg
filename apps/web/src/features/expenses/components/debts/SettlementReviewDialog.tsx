@@ -84,7 +84,7 @@ export function SettlementReviewDialog({
 										<ItemTitle className="line-clamp-none [overflow-wrap:break-word]">
 											{expense ? (
 												<Link
-													href={`/wg/${encodeURIComponent(shareCode)}/ausgaben?highlight=${encodeURIComponent(split.expenseId)}`}
+													href={`/wg/${encodeURIComponent(shareCode)}/expenses?highlight=${encodeURIComponent(split.expenseId)}`}
 													onClick={() => setReviewOpen(false)}
 													className="underline underline-offset-4 outline-none after:absolute after:inset-0 after:rounded-lg after:content-['']"
 												>

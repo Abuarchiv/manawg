@@ -33,7 +33,7 @@ test.describe('fab summary overlay', () => {
 				await page.setViewportSize({ width, height: 740 });
 				await page.emulateMedia({ colorScheme });
 				await setupMember(page);
-				await navigateToFeature(page, `/wg/${SHARE_CODE}/abos`);
+				await navigateToFeature(page, `/wg/${SHARE_CODE}/recurring`);
 				await enableLargeText(page);
 				await dismissOnboarding(page);
 				await expect(page.getByRole('heading', { name: 'Fixkosten', exact: true })).toBeVisible();
@@ -214,11 +214,11 @@ test.describe('fab summary overlay', () => {
 		await page.setViewportSize({ width: 320, height: 740 });
 		await setupMember(page);
 		for (const [feature, label] of [
-			['kalender', 'Termin hinzufügen'],
-			['vorraete', 'Vorrat hinzufügen'],
-			['pinnwand', 'Beitrag hinzufügen'],
-			['putzen', 'Putzaufgabe hinzufügen'],
-			['ausgaben', 'Ausgabe hinzufügen'],
+			['calendar', 'Termin hinzufügen'],
+			['supplies', 'Vorrat hinzufügen'],
+			['pinboard', 'Beitrag hinzufügen'],
+			['chores', 'Putzaufgabe hinzufügen'],
+			['expenses', 'Ausgabe hinzufügen'],
 		] as const) {
 			await navigateToFeature(page, `/wg/${SHARE_CODE}/${feature}`);
 			await enableLargeText(page);
@@ -230,7 +230,7 @@ test.describe('fab summary overlay', () => {
 			expect(box?.height).toBe(44);
 		}
 
-		await navigateToFeature(page, `/wg/${SHARE_CODE}/einkauf`);
+		await navigateToFeature(page, `/wg/${SHARE_CODE}/shopping`);
 		await enableLargeText(page);
 		await dismissOnboarding(page);
 		await expect(page.locator('[data-page-primary-action] > button')).toHaveCount(0);
@@ -275,7 +275,7 @@ test.describe('fab summary overlay', () => {
 		await page.route(`**/api/wg/${SHARE_CODE}/reminders`, (route) =>
 			route.fulfill({ json: { reminders: [] } }),
 		);
-		await navigateToFeature(page, `/wg/${SHARE_CODE}/mahnungen`);
+		await navigateToFeature(page, `/wg/${SHARE_CODE}/reminders`);
 		await enableLargeText(page);
 		await dismissOnboarding(page);
 		// RemindButton wraps the button; the FAB CSS only applies to direct children.
@@ -331,13 +331,13 @@ test.describe('date integrity ui', () => {
 		return captured;
 	}
 
-	async function openAboCreate(
+	async function openRecurringCreate(
 		page: Page,
 		viewport: { width: number; height: number },
 	): Promise<void> {
 		await page.setViewportSize(viewport);
 		await setupMember(page);
-		await navigateToFeature(page, `/wg/${SHARE_CODE}/abos`);
+		await navigateToFeature(page, `/wg/${SHARE_CODE}/recurring`);
 		await dismissOnboarding(page);
 		await expect(page.getByRole('heading', { name: 'Fixkosten', exact: true })).toBeVisible();
 		await page.getByRole('button', { name: 'Fixkosten hinzufügen', exact: true }).click();
@@ -350,7 +350,7 @@ test.describe('date integrity ui', () => {
 	): Promise<void> {
 		await page.setViewportSize(viewport);
 		await setupMember(page);
-		await navigateToFeature(page, `/wg/${SHARE_CODE}/kalender`);
+		await navigateToFeature(page, `/wg/${SHARE_CODE}/calendar`);
 		await dismissOnboarding(page);
 		await expect(page.getByRole('heading', { name: 'Kalender', exact: true })).toBeVisible();
 		await page.getByRole('button', { name: 'Termin hinzufügen', exact: true }).click();
@@ -359,7 +359,7 @@ test.describe('date integrity ui', () => {
 
 	test('Abo blocks a missing due date and preserves a valid calendar date', async ({ page }) => {
 		const post = await interceptValidationPost(page, 'recurring-expenses');
-		await openAboCreate(page, MOBILE_VIEWPORT);
+		await openRecurringCreate(page, MOBILE_VIEWPORT);
 
 		await page.getByLabel('Beschreibung').fill('Netflix');
 		await page.getByLabel('Betrag').fill('12,34');
@@ -425,7 +425,7 @@ test.describe('date integrity ui', () => {
 			// The form rejects past ranges, so the clock is set before the clock change.
 			await page.clock.setFixedTime(new Date('2026-03-20T10:00:00Z'));
 			await setupMember(page);
-			await navigateToFeature(page, `/wg/${SHARE_CODE}/putzen?panel=absences`);
+			await navigateToFeature(page, `/wg/${SHARE_CODE}/chores?panel=absences`);
 			await dismissOnboarding(page);
 
 			await page.getByLabel('Abwesenheit von').fill('2026-03-29');
@@ -452,7 +452,7 @@ test.describe('date integrity ui', () => {
 		await page.clock.setFixedTime(new Date('2026-09-22T08:20:00Z'));
 		await page.setViewportSize(MOBILE_VIEWPORT);
 		await setupMember(page);
-		await navigateToFeature(page, `/wg/${SHARE_CODE}/kalender`);
+		await navigateToFeature(page, `/wg/${SHARE_CODE}/calendar`);
 		await dismissOnboarding(page);
 		await page.getByRole('tab', { name: 'Monat', exact: true }).click();
 		await page
@@ -515,7 +515,7 @@ test.describe('date integrity ui', () => {
 			saved = route.request().postDataJSON();
 			return route.fulfill({ json: { event: { ...legacy, ...route.request().postDataJSON() } } });
 		});
-		await navigateToFeature(page, `/wg/${SHARE_CODE}/kalender`);
+		await navigateToFeature(page, `/wg/${SHARE_CODE}/calendar`);
 		await expect(
 			page
 				.getByRole('list', { name: /Dienstag, 22\. September$/ })
@@ -572,7 +572,7 @@ test.describe('date integrity ui', () => {
 					);
 					return route.fulfill({ json: { events } });
 				});
-				await navigateToFeature(page, `/wg/${SHARE_CODE}/kalender`);
+				await navigateToFeature(page, `/wg/${SHARE_CODE}/calendar`);
 				await expect(page.getByText(event.title, { exact: true })).toBeVisible();
 				await expect(page.getByText(finalDay.title, { exact: true })).toBeVisible();
 				await page.getByRole('tab', { name: 'Monat', exact: true }).click();

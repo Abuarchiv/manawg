@@ -583,7 +583,7 @@ describe('currency-scoped accounting', () => {
 				direction: 'paid',
 			});
 			assert.match(settled.body, /CHF/);
-			assert.equal(settled.urlPath, '/ausgaben');
+			assert.equal(settled.urlPath, '/expenses');
 		});
 
 		test('preserves currency on recurring due items and today cards', () => {

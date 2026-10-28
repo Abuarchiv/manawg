@@ -17,9 +17,9 @@ test.describe('drawer mobile zoom', () => {
 	const { id: wgId, memberId, memberName, shareCode } = FIXTURE_WG;
 
 	const drawers = [
-		{ feature: 'putzen', openButton: 'Putzaufgabe hinzufügen' },
-		{ feature: 'vorraete', openButton: 'Vorrat hinzufügen' },
-		{ feature: 'kalender', openButton: 'Termin hinzufügen' },
+		{ feature: 'chores', openButton: 'Putzaufgabe hinzufügen' },
+		{ feature: 'supplies', openButton: 'Vorrat hinzufügen' },
+		{ feature: 'calendar', openButton: 'Termin hinzufügen' },
 	] as const;
 
 	async function mockHouseholdData(page: Page): Promise<void> {
@@ -242,8 +242,8 @@ test.describe('alert dialog responsive', () => {
 			lastCompletedByName: null,
 			openGapCountForAssignee: 0,
 		};
-		const abo = {
-			id: 'alert-layout-abo',
+		const recurringExpense = {
+			id: 'alert-layout-recurring',
 			description: 'Musik-Abo',
 			amountCents: 123456,
 			currency: 'EUR',
@@ -274,11 +274,11 @@ test.describe('alert dialog responsive', () => {
 			route.fulfill({ json: { count: 0, overflow: false } }),
 		);
 		await page.route(`**/api/wg/${shareCode}/recurring-expenses*`, (route) =>
-			route.fulfill({ json: { recurringExpenses: [abo] } }),
+			route.fulfill({ json: { recurringExpenses: [recurringExpense] } }),
 		);
 
 		await page.setViewportSize({ width: 320, height: 740 });
-		await navigateToFeature(page, `/wg/${shareCode}/putzen`);
+		await navigateToFeature(page, `/wg/${shareCode}/chores`);
 		await dismissOnboarding(page);
 
 		const completeTrigger = page.getByRole('button', {
@@ -305,21 +305,21 @@ test.describe('alert dialog responsive', () => {
 
 		await page.evaluate(() => document.documentElement.style.removeProperty('font-size'));
 		await page.setViewportSize({ width: 320, height: 740 });
-		await page.goto(`/wg/${shareCode}/abos`);
+		await page.goto(`/wg/${shareCode}/recurring`);
 		await dismissOnboarding(page);
 		await page.getByRole('button', { name: /Details öffnen: Musik-Abo/ }).click();
 		const deleteTrigger = page.getByRole('button', { name: 'Musik-Abo löschen' });
 		await expect(deleteTrigger).toBeVisible();
 		await deleteTrigger.focus();
 		await page.keyboard.press('Enter');
-		const aboDialog = page.getByRole('alertdialog');
-		await expect(aboDialog).toBeVisible();
-		await expectAlertDialogLayout(page, aboDialog);
-		expect(await aboDialog.evaluate((element) => element.contains(document.activeElement))).toBe(
-			true,
-		);
+		const recurringDialog = page.getByRole('alertdialog');
+		await expect(recurringDialog).toBeVisible();
+		await expectAlertDialogLayout(page, recurringDialog);
+		expect(
+			await recurringDialog.evaluate((element) => element.contains(document.activeElement)),
+		).toBe(true);
 		await page.keyboard.press('Escape');
-		await expect(aboDialog).toBeHidden();
+		await expect(recurringDialog).toBeHidden();
 		await expect(deleteTrigger).toBeFocused();
 	});
 });
@@ -365,7 +365,7 @@ test.describe('overlay back dismiss', () => {
 			route.fulfill({ json: { chores: [] } }),
 		);
 		await page.setViewportSize({ width: 320, height: 640 });
-		await navigateToFeature(page, `/wg/${shareCode}/putzen`);
+		await navigateToFeature(page, `/wg/${shareCode}/chores`);
 		await dismissOnboarding(page);
 
 		const trigger = page.getByRole('button', { name: 'Putzaufgabe hinzufügen', exact: true });
@@ -375,7 +375,7 @@ test.describe('overlay back dismiss', () => {
 
 		await pressSystemBack(page);
 
-		expect(new URL(page.url()).pathname).toBe(`/wg/${shareCode}/putzen`);
+		expect(new URL(page.url()).pathname).toBe(`/wg/${shareCode}/chores`);
 		await expect(drawer).toBeHidden();
 		await expect(trigger).toBeFocused();
 	});
@@ -395,7 +395,7 @@ test.describe('overlay back dismiss', () => {
 			}),
 		);
 		await page.setViewportSize({ width: 320, height: 640 });
-		await navigateToFeature(page, `/wg/${shareCode}/einstellungen#zugang`);
+		await navigateToFeature(page, `/wg/${shareCode}/settings#access`);
 		await dismissOnboarding(page);
 
 		const trigger = page.getByRole('button', { name: 'Komplette WG für alle löschen' });
@@ -405,7 +405,7 @@ test.describe('overlay back dismiss', () => {
 
 		await pressSystemBack(page);
 
-		expect(new URL(page.url()).pathname).toBe(`/wg/${shareCode}/einstellungen`);
+		expect(new URL(page.url()).pathname).toBe(`/wg/${shareCode}/settings`);
 		await expect(alertDialog).toBeHidden();
 		await expect(trigger).toBeFocused();
 	});
@@ -448,9 +448,9 @@ test.describe('overlay back dismiss', () => {
 		await page.getByRole('link', { name: 'Ausgaben' }).first().click();
 		await page.getByRole('button', { name: 'Verwerfen' }).click();
 
-		await expect(page).toHaveURL(new RegExp(`/wg/${shareCode}/ausgaben$`));
+		await expect(page).toHaveURL(new RegExp(`/wg/${shareCode}/expenses$`));
 		await page.waitForTimeout(1000);
-		await expect(page).toHaveURL(new RegExp(`/wg/${shareCode}/ausgaben$`));
+		await expect(page).toHaveURL(new RegExp(`/wg/${shareCode}/expenses$`));
 	});
 });
 
@@ -466,8 +466,8 @@ test.describe('toast pause on hover', () => {
 	const PAST_DURATION_MS = TOAST_DURATION_MS + 400;
 
 	test('a toast pauses its auto-dismiss timer while hovered or focused', async ({ page }) => {
-		const abo = {
-			id: 'abo-netflix',
+		const recurringExpense = {
+			id: 'recurring-netflix',
 			description: 'Netflix',
 			amountCents: 1499,
 			currency: 'EUR',
@@ -484,7 +484,7 @@ test.describe('toast pause on hover', () => {
 		await setupMember(page);
 		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/recurring-expenses`, (route) => {
 			if (route.request().method() === 'GET') {
-				return route.fulfill({ json: { recurringExpenses: [abo] } });
+				return route.fulfill({ json: { recurringExpenses: [recurringExpense] } });
 			}
 			return route.continue();
 		});
@@ -495,7 +495,7 @@ test.describe('toast pause on hover', () => {
 			return route.continue();
 		});
 
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/abos`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/recurring`);
 		await dismissOnboarding(page);
 
 		await page.getByRole('button', { name: /^Details öffnen: Netflix/ }).click();

@@ -71,7 +71,7 @@ test('Sentry strips personal data and WG codes from error events', async () => {
 		user: { id: 'member-1', email: 'alice@example.com' },
 		request: {
 			method: 'GET',
-			url: 'https://manawg.com/wg/private-code/ausgaben?invite=secret',
+			url: 'https://manawg.com/wg/private-code/expenses?invite=secret',
 			headers: { cookie: 'secret' },
 			data: { amount: 200 },
 		},
@@ -83,13 +83,13 @@ test('Sentry strips personal data and WG codes from error events', async () => {
 			user: { id: 'member-1' },
 		},
 		tags: { boundary: 'root', memberId: 'private-code' },
-		transaction: 'GET /wg/private-code/ausgaben?tab=all',
+		transaction: 'GET /wg/private-code/expenses?tab=all',
 	});
 
 	assert.equal(event.user, undefined);
 	assert.deepEqual(event.request, {
 		method: 'GET',
-		url: 'https://manawg.com/wg/[redacted]/ausgaben',
+		url: 'https://manawg.com/wg/[redacted]/expenses',
 	});
 	assert.equal(event.message, undefined);
 	assert.equal(event.exception?.values?.[0]?.value, '[redacted]');
@@ -99,7 +99,7 @@ test('Sentry strips personal data and WG codes from error events', async () => {
 		trace: { trace_id: 'trace-id', span_id: 'span-id' },
 	});
 	assert.deepEqual(event.tags, { boundary: 'root' });
-	assert.equal(event.transaction, 'GET /wg/[redacted]/ausgaben');
+	assert.equal(event.transaction, 'GET /wg/[redacted]/expenses');
 	assert.equal(sanitizeSentryBreadcrumb({ category: 'ui', message: 'clicked Alice' }), null);
 	const navigationBreadcrumb = sanitizeSentryBreadcrumb({
 		category: 'navigation',
@@ -122,7 +122,7 @@ test('Sentry strips personal data and WG codes from error events', async () => {
 		'GET /api/calendar/[redacted]/[redacted]',
 	);
 
-	for (const path of ['/einladung/', '/api/wg/invites/']) {
+	for (const path of ['/invite/', '/api/wg/invites/']) {
 		assert.equal(
 			sanitizeSentryEvent({ request: { url: `https://manawg.com${path}aB3_-xYz09aB3_-xYz09kQ` } })
 				.request?.url,

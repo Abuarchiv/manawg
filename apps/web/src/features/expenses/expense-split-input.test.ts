@@ -8,7 +8,7 @@ const {
 	remainderCandidates,
 	settledSharesAffectedByEdit,
 } = await import('./expense-split-input');
-const { distributeRemainderCents } = await import('./components/ausgaben/manual-split-distribute');
+const { distributeRemainderCents } = await import('./components/ledger/manual-split-distribute');
 
 const members = [
 	{ id: 'a', active: true },

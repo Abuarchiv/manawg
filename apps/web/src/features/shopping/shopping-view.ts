@@ -31,7 +31,7 @@ export function splitShoppingItems(items: ShoppingItem[]): {
 
 /** Link into the expense form with the given fields prefilled (`desc`, `paidBy`, ...). */
 export function expensePrefillHref(shareCode: string, prefill: Record<string, string>): string {
-	return `/wg/${encodeURIComponent(shareCode)}/ausgaben?${new URLSearchParams(prefill)}`;
+	return `/wg/${encodeURIComponent(shareCode)}/expenses?${new URLSearchParams(prefill)}`;
 }
 
 /** Placeholder ID of an item that is just being sent to the server. */

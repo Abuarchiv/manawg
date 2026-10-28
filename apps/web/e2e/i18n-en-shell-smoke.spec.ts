@@ -14,20 +14,20 @@ import { expectNoGermanChrome, expectNoHorizontalOverflow, setEnglishLocale } fr
 test.describe('shell language', () => {
 	test('cookie en renders an English shell', async ({ context, page, baseURL }) => {
 		await setEnglishLocale(context, baseURL ?? 'http://localhost:3101');
-		await page.goto('/neu');
+		await page.goto('/login');
 		await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
 		await expect(page.locator('a.skip-link')).toHaveText('Skip to main content');
 		await expectNoHorizontalOverflow(page);
 	});
 
 	test('without a cookie the shell is German', async ({ page }) => {
-		await page.goto('/neu');
+		await page.goto('/login');
 		await expect(page.locator('html')).toHaveAttribute('lang', 'de');
 		await expect(page.locator('a.skip-link')).toHaveText('Zum Hauptinhalt springen');
 	});
 
 	test('the German chrome check finds German words', async ({ page }) => {
-		await page.goto('/neu');
+		await page.goto('/login');
 		await expect(expectNoGermanChrome(page)).rejects.toThrow();
 	});
 });
@@ -45,7 +45,7 @@ test.describe('client provider', () => {
 		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/expenses*`, (route) =>
 			route.fulfill({ status: 503, json: { error: 'service_unavailable' } }),
 		);
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/abrechnung`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/statement`);
 		await dismissOnboarding(page);
 		await expect(
 			page.getByText('Expenses could not be loaded: Try again in a moment.'),

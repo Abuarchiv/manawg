@@ -43,7 +43,7 @@ export function renderWelcomeMail(input: {
 				items: [t('welcome.stepCreate'), t('welcome.stepInvite'), t('welcome.stepFirstExpense')],
 			},
 		],
-		button: { label: t('welcome.button'), url: `${APP_ORIGIN}/neu` },
+		button: { label: t('welcome.button'), url: `${APP_ORIGIN}/login` },
 		footerNote: t('welcome.footer'),
 	});
 }
@@ -133,10 +133,10 @@ export function renderReminderMail(input: {
 		eyebrow: t('reminder.eyebrow'),
 		title: t('reminder.title', creditor),
 		blocks,
-		button: { label: t('reminder.button'), url: `${WG_PATH(input.shareCode)}/ausgaben` },
+		button: { label: t('reminder.button'), url: `${WG_PATH(input.shareCode)}/expenses` },
 		footerNote: t('reminder.footer'),
 		footerLinks: [
-			{ label: t('shell.changeSettings'), url: `${WG_PATH(input.shareCode)}/einstellungen` },
+			{ label: t('shell.changeSettings'), url: `${WG_PATH(input.shareCode)}/settings` },
 			{ label: t('shell.unsubscribe'), url: input.unsubscribeUrl },
 		],
 	});

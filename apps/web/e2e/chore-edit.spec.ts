@@ -45,7 +45,7 @@ test.describe('chore edit', () => {
 			return route.fulfill({ json: { chore: { ...row, title: 'Bad gründlich putzen' } } });
 		});
 		await mockUnreadCount(page, `/api/wg/${shareCode}`);
-		await navigateToFeature(page, `/wg/${shareCode}/putzen`);
+		await navigateToFeature(page, `/wg/${shareCode}/chores`);
 		await dismissOnboarding(page);
 
 		await page.getByRole('button', { name: 'Aufgabenaktionen: Aufgabe edit-me' }).click();

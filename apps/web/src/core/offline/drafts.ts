@@ -21,13 +21,13 @@ export function buildQueueEditHref(
 	options?: { openAbsencesPanel?: boolean },
 ): string {
 	const encodedShareCode = encodeURIComponent(shareCode);
-	if (module === 'shopping') return `/wg/${encodedShareCode}/einkauf`;
-	if (module === 'announcement') return `/wg/${encodedShareCode}/pinnwand`;
-	if (module === 'expense') return `/wg/${encodedShareCode}/ausgaben`;
+	if (module === 'shopping') return `/wg/${encodedShareCode}/shopping`;
+	if (module === 'announcement') return `/wg/${encodedShareCode}/pinboard`;
+	if (module === 'expense') return `/wg/${encodedShareCode}/expenses`;
 	if (module === 'absence' || (module === 'chore' && options?.openAbsencesPanel)) {
-		return `/wg/${encodedShareCode}/putzen?panel=absences`;
+		return `/wg/${encodedShareCode}/chores?panel=absences`;
 	}
-	return `/wg/${encodedShareCode}/putzen`;
+	return `/wg/${encodedShareCode}/chores`;
 }
 
 function parseDraft<T extends Record<string, unknown>>(raw: string | null): T | null {

@@ -197,7 +197,7 @@ test.describe('contrast tokens', () => {
 			await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/shopping`, (route) =>
 				route.fulfill({ json: { items: [] } }),
 			);
-			await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einkauf`);
+			await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/shopping`);
 			const input = page.getByRole('textbox', { name: 'Artikel-Name' });
 			await expect(input).toBeVisible();
 
@@ -221,7 +221,7 @@ test.describe('contrast tokens', () => {
 			await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/notifications`, (route) =>
 				route.fulfill({ json: notificationStatus }),
 			);
-			await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen#benachrichtigungen`);
+			await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings#notifications`);
 			const checked = page.getByRole('switch', { name: 'Putzplan', exact: true });
 			const unchecked = page.getByRole('switch', { name: 'Ausgaben', exact: true });
 			await expect(checked).toBeChecked();
@@ -318,7 +318,7 @@ test.describe('forced colors focus', () => {
 				},
 			}),
 		);
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/putzen`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/chores`);
 		await dismissOnboarding(page);
 		const doneChore = page.getByRole('button', { name: 'Als erledigt markieren: Bad putzen' });
 		await expect(doneChore).toBeVisible();
@@ -504,7 +504,7 @@ test.describe('label in name audit', () => {
 				json: {
 					recurringExpenses: [
 						{
-							id: 'abo-label-audit',
+							id: 'recurring-label-audit',
 							description: 'Musik-Abo',
 							amountCents: 999,
 							currency: 'EUR',
@@ -520,7 +520,7 @@ test.describe('label in name audit', () => {
 			}),
 		);
 
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/abos`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/recurring`);
 		await page.getByRole('button', { name: /Details öffnen: Musik-Abo/ }).click();
 
 		// WCAG 2.5.3 — "Pausieren"/"Fortsetzen" must lead the accessible name,
@@ -583,7 +583,7 @@ test.describe('label in name audit', () => {
 		);
 		await mockUnreadCount(page, `/api/wg/${shareCode}`);
 
-		await navigateToFeature(page, `/wg/${shareCode}/ausgaben`);
+		await navigateToFeature(page, `/wg/${shareCode}/expenses`);
 		await dismissOnboarding(page);
 		await page.getByRole('button', { name: /Details öffnen/ }).click();
 
@@ -611,14 +611,14 @@ test.describe('enter key hint forms', () => {
 				: route.continue(),
 		);
 
-		await navigateToFeature(page, `/wg/${shareCode}/vorraete`);
+		await navigateToFeature(page, `/wg/${shareCode}/supplies`);
 		await dismissOnboarding(page);
 		await page.getByRole('button', { name: 'Vorrat hinzufügen', exact: true }).first().click();
 
 		await expect(page.locator('#inventory-name')).toHaveAttribute('enterkeyhint', 'next');
 	});
 
-	test('abo description and amount fields hint "next"', async ({ page }) => {
+	test('recurringExpense description and amount fields hint "next"', async ({ page }) => {
 		await setupMember(page);
 		await page.route(`**/api/wg/${shareCode}/recurring-expenses*`, (route) =>
 			route.request().method() === 'GET'
@@ -626,13 +626,13 @@ test.describe('enter key hint forms', () => {
 				: route.continue(),
 		);
 
-		await navigateToFeature(page, `/wg/${shareCode}/abos`);
+		await navigateToFeature(page, `/wg/${shareCode}/recurring`);
 		await dismissOnboarding(page);
 		await page.getByRole('button', { name: 'Fixkosten hinzufügen' }).click();
 		await expect(page.getByRole('dialog', { name: 'Neue Fixkosten' })).toBeVisible();
 
-		await expect(page.locator('#abo-description')).toHaveAttribute('enterkeyhint', 'next');
-		await expect(page.locator('#abo-amount')).toHaveAttribute('enterkeyhint', 'next');
+		await expect(page.locator('#recurring-description')).toHaveAttribute('enterkeyhint', 'next');
+		await expect(page.locator('#recurring-amount')).toHaveAttribute('enterkeyhint', 'next');
 	});
 
 	test('chore title field hints "done"', async ({ page }) => {
@@ -648,7 +648,7 @@ test.describe('enter key hint forms', () => {
 				: route.continue(),
 		);
 
-		await navigateToFeature(page, `/wg/${shareCode}/putzen`);
+		await navigateToFeature(page, `/wg/${shareCode}/chores`);
 		await dismissOnboarding(page);
 		await page.getByRole('button', { name: 'Putzaufgabe hinzufügen', exact: true }).click();
 
@@ -668,7 +668,7 @@ test.describe('enter key hint forms', () => {
 				: route.continue(),
 		);
 
-		await navigateToFeature(page, `/wg/${shareCode}/putzen?panel=absences`);
+		await navigateToFeature(page, `/wg/${shareCode}/chores?panel=absences`);
 		await dismissOnboarding(page);
 		// `?panel=absences` already opens the form (button reads "...schließen").
 
@@ -696,7 +696,7 @@ test.describe('enter key hint forms', () => {
 			route.fulfill({ json: { openShoppingCount: 0, dueChores: [], dueRecurringExpenses: [] } }),
 		);
 
-		await navigateToFeature(page, `/wg/${shareCode}/ausgaben`);
+		await navigateToFeature(page, `/wg/${shareCode}/expenses`);
 		await dismissOnboarding(page);
 		// The bottom button opens the form.
 		await page
@@ -722,7 +722,7 @@ test.describe('enter key next field', () => {
 			return route.fulfill({ status: 500, json: { error: 'unexpected' } });
 		});
 
-		await page.goto('/neu');
+		await page.goto('/login');
 		await page.getByRole('button', { name: 'Neue WG erstellen', exact: true }).click();
 		const wgName = page.getByLabel('WG-Name');
 		await expect(wgName).toHaveAttribute('enterkeyhint', 'next');

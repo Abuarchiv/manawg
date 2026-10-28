@@ -44,7 +44,7 @@ export function useExpensesData({ shareCode, memberId, setActionNotice }: UseExp
 		reload,
 		offline: {
 			shareCode,
-			page: 'ausgaben',
+			page: 'expenses',
 			onReplayed: () =>
 				setActionNotice((current) => (current?.tone === 'warning' ? null : current)),
 		},

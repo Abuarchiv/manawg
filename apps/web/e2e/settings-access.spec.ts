@@ -35,7 +35,7 @@ test.describe('settings access responsive', () => {
 		await setupMember(page);
 		let viewerIsAdmin = false;
 		await mockMemberRole(page, () => viewerIsAdmin);
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen#zugang`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings#access`);
 
 		const newInvite = page.getByRole('button', { name: 'Neue Einladung', exact: true });
 		const deleteWg = page.getByRole('button', { name: 'Komplette WG für alle löschen' });
@@ -79,7 +79,7 @@ test.describe('settings access responsive', () => {
 				return route.continue();
 			},
 		);
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen#zugang`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings#access`);
 
 		await page.getByRole('button', { name: 'WG verlassen', exact: true }).click();
 		const confirmLeave = page.getByRole('button', {
@@ -107,7 +107,7 @@ test.describe('settings access responsive', () => {
 				return route.fulfill({ json: { member: { id: 'fixture-other-member', name: 'Mira' } } });
 			},
 		);
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen#zugang`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings#access`);
 
 		await page.getByRole('button', { name: 'Admin übergeben: Mira' }).click();
 		await expect(page.getByText('Mira wird Admin dieser WG.')).toBeVisible();
@@ -129,7 +129,7 @@ test.describe('settings data summary responsive', () => {
 				await page.setViewportSize({ width, height: 844 });
 				await page.emulateMedia({ colorScheme });
 				await setupMember(page);
-				await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen#daten`);
+				await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings#data`);
 				await expect(page.getByRole('heading', { name: 'Datenexport' })).toBeVisible({
 					timeout: 30_000,
 				});
@@ -181,7 +181,7 @@ test.describe('settings legal links responsive', () => {
 		await page.setViewportSize({ width: 320, height: 760 });
 		await page.emulateMedia({ colorScheme: 'light' });
 		await setupMember(page);
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings`);
 		await page.getByRole('tab', { name: 'Daten', exact: true }).click();
 
 		const privacyLink = page.getByRole('link', {
@@ -292,7 +292,7 @@ test.describe('settings pending switches', () => {
 			await saveGate;
 			return route.fulfill({ json: { ok: true } });
 		});
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen#benachrichtigungen`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings#notifications`);
 		const chores = page.getByRole('switch', { name: 'Putzplan', exact: true });
 		const expenses = page.getByRole('switch', { name: 'Ausgaben', exact: true });
 		const push = page.getByRole('switch', { name: 'Web Push', exact: true });
@@ -349,7 +349,7 @@ test.describe('settings tabs focus obscured', () => {
 		await page.setViewportSize({ width: 320, height: 640 });
 		await page.emulateMedia({ reducedMotion: 'reduce' });
 		await setupMember(page);
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen#zugang`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings#access`);
 		await dismissOnboarding(page);
 
 		const target = page.getByRole('button', { name: 'Neue Einladung', exact: true });

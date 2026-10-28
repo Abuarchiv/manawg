@@ -166,7 +166,7 @@ mock.module('@/core/db/with-replay', {
 		},
 	},
 });
-mock.module('@/features/pinnwand/announcement-workflow', {
+mock.module('@/features/announcements/announcement-workflow', {
 	namedExports: {
 		ANNOUNCEMENT_KINDS: ['info', 'question', 'problem', 'request', 'decision'],
 		ANNOUNCEMENT_SOURCES: ['manual', 'system', 'chore_swap', 'expense', 'shopping'],
@@ -258,9 +258,9 @@ const choreId = '44444444-4444-4444-8444-444444444444';
 
 test('client-chosen provenance is stored as a manual post', async () => {
 	for (const extra of [
-		{ source: 'chore_swap', sourcePath: '/putzen?highlight=forged' },
-		{ source: 'expense', sourcePath: '/ausgaben' },
-		{ source: 'shopping', sourcePath: '/einkauf' },
+		{ source: 'chore_swap', sourcePath: '/chores?highlight=forged' },
+		{ source: 'expense', sourcePath: '/expenses' },
+		{ source: 'shopping', sourcePath: '/shopping' },
 		{ source: 'chore_swap', choreId },
 	]) {
 		const { state, post } = harness();
@@ -273,13 +273,13 @@ test('client-chosen provenance is stored as a manual post', async () => {
 test('a swap request for a chore of this WG keeps a server-built source path', async () => {
 	for (const extra of [
 		{ source: 'chore_swap', choreId },
-		{ source: 'chore_swap', sourcePath: `/putzen?highlight=${choreId}` },
+		{ source: 'chore_swap', sourcePath: `/chores?highlight=${choreId}` },
 	]) {
 		const { state, post } = harness();
 		state.existingChoreId = choreId;
 		assert.equal((await post(null, extra)).status, 200);
 		assert.equal(state.created[0]?.source, 'chore_swap');
-		assert.equal(state.created[0]?.sourcePath, `/putzen?highlight=${choreId}`);
+		assert.equal(state.created[0]?.sourcePath, `/chores?highlight=${choreId}`);
 	}
 });
 
