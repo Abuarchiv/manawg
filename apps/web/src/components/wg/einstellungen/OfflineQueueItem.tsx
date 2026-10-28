@@ -7,18 +7,21 @@ import { Item, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/i
 import { Spinner } from '@/components/ui/spinner';
 import { type QueueEditDraft, buildQueueEditDraft } from '@/core/offline/drafts';
 import { needsManualOfflineResolution } from '@/core/offline/offline-client';
+import { holdsServerReview, titled } from '@/core/offline/offline-failure-copy';
 import {
 	type OfflineAction,
 	explainOfflineActionFailure,
 	getOfflineActionRisk,
 	getOfflineActionSummary,
 } from '@/core/offline/offline-queue';
+import { type Message, useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
+import { useTranslations } from 'next-intl';
 
 interface OfflineQueueItemProps {
 	item: OfflineAction;
 	inspectHref: string;
-	conflictNote: string | undefined;
+	conflictNote: Message | undefined;
 	syncing: boolean;
 	checkingServer: boolean;
 	onCheckServer: () => void;
@@ -39,42 +42,44 @@ export function OfflineQueueItem({
 	onRemoveAttachment,
 	onRemove,
 }: OfflineQueueItemProps) {
+	const t = useTranslations('offline.queue');
+	const message = useMessage();
 	const summary = getOfflineActionSummary(item);
 	const fallback = explainOfflineActionFailure(0);
 	const risk = getOfflineActionRisk(item);
 	const editDraft = buildQueueEditDraft(item);
-	const requiresManualReview = item.lastError?.startsWith('Server prüfen:') === true;
+	const requiresManualReview = holdsServerReview(item);
 	const requiresManualResolution = needsManualOfflineResolution(item);
-	const serverCheckLabel = `Server prüfen: ${summary.detail || summary.title}`;
-	const actionLabel = summary.detail || summary.title;
+	const actionLabel = message(summary.detail) || message(summary.title);
+	const lastError = item.lastErrorMessage ? message(item.lastErrorMessage) : item.lastError;
 	const rowBusy = syncing || checkingServer;
 	return (
 		<Item key={item.id} variant="outline" className="items-start">
 			<ItemContent className="min-w-0">
 				<ItemTitle>
-					<span className="min-w-0 flex-1 truncate">{summary.title}</span>
-					{item.attempts ? <Badge variant="destructive">{item.attempts}x</Badge> : null}
+					<span className="min-w-0 flex-1 truncate">{message(summary.title)}</span>
+					{item.attempts ? (
+						<Badge variant="destructive">{t('attempts', { count: String(item.attempts) })}</Badge>
+					) : null}
 				</ItemTitle>
-				<ItemDescription className="line-clamp-none">{summary.detail}</ItemDescription>
+				<ItemDescription className="line-clamp-none">{message(summary.detail)}</ItemDescription>
 				{requiresManualResolution ? (
 					<Alert className="mt-1" variant="destructive">
-						<AlertDescription>{item.lastError}</AlertDescription>
+						<AlertDescription>{lastError}</AlertDescription>
 					</Alert>
 				) : (
 					<p className="text-muted-foreground line-clamp-2 text-xs">
-						{item.lastError ?? fallback.detail}
+						{lastError ?? message(fallback.detail)}
 					</p>
 				)}
 				{risk && (
 					<Alert className="mt-1">
-						<AlertDescription>
-							{risk.title}: {risk.detail}
-						</AlertDescription>
+						<AlertDescription>{message(titled(risk))}</AlertDescription>
 					</Alert>
 				)}
 				{conflictNote && (
 					<Alert className="mt-1">
-						<AlertDescription>{conflictNote}</AlertDescription>
+						<AlertDescription>{message(conflictNote)}</AlertDescription>
 					</Alert>
 				)}
 				<div className="mt-2 flex flex-wrap gap-2">
@@ -82,9 +87,9 @@ export function OfflineQueueItem({
 						<a
 							href={inspectHref}
 							className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'min-h-11')}
-							aria-label={`WG-Eintrag prüfen: ${actionLabel}`}
+							aria-label={t('inspectLabel', { action: actionLabel })}
 						>
-							WG-Eintrag prüfen
+							{t('inspect')}
 						</a>
 					) : (
 						<>
@@ -92,23 +97,23 @@ export function OfflineQueueItem({
 								type="button"
 								variant="outline"
 								size="sm"
-								aria-label={serverCheckLabel}
+								aria-label={t('compareLabel', { action: actionLabel })}
 								onClick={onCheckServer}
 								disabled={rowBusy}
 							>
 								{checkingServer && <Spinner aria-hidden />}
-								{checkingServer ? 'Prüft…' : 'Server prüfen'}
+								{checkingServer ? t('comparing') : t('compare')}
 							</Button>
 							{editDraft ? (
 								<Button
 									type="button"
 									variant="ghost"
 									size="sm"
-									aria-label={`Offline-Aktion bearbeiten: ${actionLabel}`}
+									aria-label={t('editLabel', { action: actionLabel })}
 									onClick={() => onEdit(editDraft)}
 									disabled={rowBusy}
 								>
-									Bearbeiten
+									{t('edit')}
 								</Button>
 							) : null}
 							{item.payload.imageUrl ? (
@@ -116,11 +121,11 @@ export function OfflineQueueItem({
 									type="button"
 									variant="ghost"
 									size="sm"
-									aria-label={`Anhang entfernen: ${actionLabel}`}
+									aria-label={t('removeAttachmentLabel', { action: actionLabel })}
 									onClick={onRemoveAttachment}
 									disabled={rowBusy}
 								>
-									Anhang entfernen
+									{t('removeAttachment')}
 								</Button>
 							) : null}
 						</>
@@ -129,11 +134,11 @@ export function OfflineQueueItem({
 						type="button"
 						variant="destructive"
 						size="sm"
-						aria-label={`Offline-Aktion verwerfen: ${actionLabel}`}
+						aria-label={t('discardLabel', { action: actionLabel })}
 						onClick={onRemove}
 						disabled={rowBusy}
 					>
-						Verwerfen
+						{t('discard')}
 					</Button>
 				</div>
 			</ItemContent>

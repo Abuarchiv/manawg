@@ -1,3 +1,29 @@
+import type { Message } from '@/shared/i18n/message';
+
+/** Count of waiting actions in the settings queue. */
+export function offlineQueueCountMessage(count: number): Message {
+	return { key: 'offline.copy.queueCount', values: { count } };
+}
+
+/** Result of a manual sync: what was sent and what still waits. */
+export function manualSyncResultMessage(synced: number, remaining: number): Message {
+	const sent: Message = { key: 'offline.copy.synced', values: { count: synced } };
+	const waiting: Message = { key: 'offline.copy.remaining', values: { count: remaining } };
+	if (synced > 0 && remaining > 0) {
+		return { key: 'offline.copy.syncedAndRemaining', values: { synced: sent, remaining: waiting } };
+	}
+	if (synced > 0) return sent;
+	if (remaining === 0) return { key: 'offline.copy.nothingLeft' };
+	return { key: 'offline.copy.nothingSynced' };
+}
+
+export const SYNC_NOT_STARTED_MESSAGE: Message = { key: 'offline.copy.syncNotStarted' };
+
+/*
+ * German string helpers for callers outside the offline area. The baseline lists this file until
+ * every caller uses catalog keys of its own area.
+ */
+
 export function formatQueuedOfflineActions(count: number): string {
 	if (count === 1) return '1 Offline-Aktion wartet auf Synchronisierung.';
 	return `${count} Offline-Aktionen warten auf Synchronisierung.`;
