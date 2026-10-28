@@ -16,7 +16,8 @@ There are two ways:
 ### Quick start
 
 You need Docker with Compose v2 (Docker Desktop, OrbStack or Docker Engine on Linux), `git` and
-`openssl`, and about 2 GB of free memory.
+`openssl`. The running instance uses about 500 MB of memory; building the app image needs about
+3 GB once.
 
 ```sh
 git clone https://github.com/Abuarchiv/manawg-app.git
@@ -26,7 +27,8 @@ docker compose up -d
 ```
 
 `setup.sh` creates `.env` from [`.env.example`](../.env.example) with fresh secrets. The first
-start downloads the images and sets up the database, which takes a minute or two. Then open
+start downloads the database, sign-in and storage images, builds the app image from your checkout
+(about ten minutes, as no app image is published yet) and sets up the database. Then open
 [http://localhost](http://localhost) and create an account. Every mail, including the sign-in
 codes, lands in Mailpit at [http://localhost:8025](http://localhost:8025).
 
@@ -34,9 +36,13 @@ codes, lands in Mailpit at [http://localhost:8025](http://localhost:8025).
 running. If port 80 is taken, set `HTTP_PORT=8080` and `APP_URL=http://localhost:8080` in `.env`
 and run `docker compose up -d` again.
 
-If no image is published for `MANAWG_VERSION`, Compose reports that it cannot pull
-`ghcr.io/abuarchiv/manawg-app` and builds the image from your checkout instead, which takes about
-ten minutes.
+While it builds, Compose reports that it cannot pull `ghcr.io/abuarchiv/manawg-app`; that is
+expected. Once an image is published for `MANAWG_VERSION`, Compose pulls it instead and the first
+start takes a minute or two.
+
+To check the whole instance, run `./docker/smoke.sh`. It signs up a test account, creates a WG,
+uploads a picture, calls the scheduled jobs and backs up and restores the data. It leaves that
+test data behind, so run it on a local instance, not on one people use.
 
 ### What runs
 

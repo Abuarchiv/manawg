@@ -14,19 +14,21 @@ cd "$(dirname "$0")/.."
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 tar -xzf "$archive" -C "$work"
+# Compose reports progress on stderr; show it only when a step fails.
+quiet() { "$@" 2>"$work/stderr" || { cat "$work/stderr" >&2; return 1; }; }
 
 docker compose stop app cron gateway auth storage >/dev/null 2>&1 || true
-docker compose up -d --wait db
+quiet docker compose up -d --wait db
 
 # The dump grants rights to the runtime role; the setup service sets its password afterwards.
 docker compose exec -T db psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 -qc \
 	"do \$\$ begin if not exists (select 1 from pg_roles where rolname = 'manawg_app') then create role manawg_app; end if; end \$\$"
 docker compose exec -T db psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 -qc \
-	"drop schema if exists drizzle cascade; drop schema if exists public cascade; drop schema if exists storage cascade; drop schema if exists auth cascade;"
+	"set client_min_messages = warning; drop schema if exists drizzle cascade; drop schema if exists public cascade; drop schema if exists storage cascade; drop schema if exists auth cascade;"
 docker compose exec -T db pg_restore -U supabase_admin -d postgres --exit-on-error <"$work/database.dump"
 
-docker compose run --rm --no-deps -T --entrypoint sh storage \
+quiet docker compose run --rm --no-deps -T --entrypoint sh storage \
 	-c 'find /var/lib/storage -mindepth 1 -delete && tar -xf - -C /var/lib/storage' <"$work/storage.tar"
 
-docker compose up -d
+quiet docker compose up -d
 echo "Restored $archive"
