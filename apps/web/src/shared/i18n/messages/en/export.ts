@@ -1,4 +1,6 @@
 import type { Catalog } from '../catalog';
 import type de from '../de/export';
 
-export default {} satisfies Catalog<typeof de>;
+export default {
+	shoppingStatus: { bought: 'bought', open: 'open' },
+} satisfies Catalog<typeof de>;

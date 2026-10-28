@@ -1,3 +1,4 @@
+import { DEFAULT_LOCALE, type Locale } from '@/shared/i18n/locale';
 import {
 	detectDelimiter,
 	distributeRemainder,
@@ -41,7 +42,11 @@ const SPLITWISE_KNOWN_COLS = new Set([
 	'last modified by',
 ]);
 
-export function parseSplitwiseCsv(csv: string, rejected?: RejectedRow[]): ParsedExpense[] {
+export function parseSplitwiseCsv(
+	csv: string,
+	rejected?: RejectedRow[],
+	locale: Locale = DEFAULT_LOCALE,
+): ParsedExpense[] {
 	const firstNewline = csv.indexOf('\n');
 	const headerLine = firstNewline === -1 ? csv : csv.slice(0, firstNewline);
 	const delimiter = detectDelimiter(stripBom(headerLine));
@@ -82,7 +87,7 @@ export function parseSplitwiseCsv(csv: string, rejected?: RejectedRow[]): Parsed
 		}
 		const descRaw = (fields[idxDesc] ?? '').trim();
 		if (!descRaw || /^total/i.test(descRaw)) continue;
-		const date = parseDateIso(fields[idxDate] ?? '');
+		const date = parseDateIso(fields[idxDate] ?? '', locale);
 		if (!date) {
 			rejected?.push({ line, reason: 'date_invalid', description: descRaw });
 			continue;

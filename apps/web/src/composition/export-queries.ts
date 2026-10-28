@@ -18,6 +18,7 @@ import {
 	wgMembers,
 } from '@/core/db';
 import { feedAuditCondition } from '@/core/db/feed-audit-filter';
+import type { Locale } from '@/shared/i18n/locale';
 import type { ExportRow, ExportSectionCounts, ExportSectionKey } from './export';
 import {
 	fetchAnnouncementCommentRows,
@@ -96,6 +97,7 @@ export function buildSectionLoaders(
 	wgId: string,
 	page: ExportPage,
 	memberDirectory: MemberDirectory,
+	locale: Locale,
 ): Record<ExportSectionKey, () => Promise<ExportRow[]>> {
 	function withNames<R>(
 		fetchRows: () => Promise<R>,
@@ -115,11 +117,17 @@ export function buildSectionLoaders(
 				fetchExpenseRows(wgId, page),
 			]);
 			const splitsByExpense = await loadSplitsByExpense(expenseRows.map((expense) => expense.id));
-			return mapExpenseRows(expenseRows, memberById, splitsByExpense);
+			return mapExpenseRows(expenseRows, memberById, splitsByExpense, locale);
 		},
 		expensePayments: withNames(() => fetchExpensePaymentRows(wgId, page), mapExpensePaymentRows),
-		recurringExpenses: withNames(() => fetchRecurringRows(wgId, page), mapRecurringRows),
-		shoppingItems: withNames(() => fetchShoppingRows(wgId, page), mapShoppingRows),
+		recurringExpenses: withNames(
+			() => fetchRecurringRows(wgId, page),
+			(rows, names) => mapRecurringRows(rows, names, locale),
+		),
+		shoppingItems: withNames(
+			() => fetchShoppingRows(wgId, page),
+			(rows, names) => mapShoppingRows(rows, names, locale),
+		),
 		chores: withNames(() => fetchChoreRows(wgId, page), mapChoreRows),
 		choreCompletions: withNames(() => fetchChoreCompletionRows(wgId, page), mapChoreCompletionRows),
 		inventory: async () => mapInventoryRows(await fetchInventoryRows(wgId, page)),
@@ -131,7 +139,10 @@ export function buildSectionLoaders(
 		),
 		events: withNames(() => fetchEventRows(wgId, page), mapEventRows),
 		chatMessages: withNames(() => fetchChatMessageRows(wgId, page), mapChatMessageRows),
-		auditEvents: withNames(() => fetchAuditRows(wgId, page), mapAuditRows),
+		auditEvents: withNames(
+			() => fetchAuditRows(wgId, page),
+			(rows, names) => mapAuditRows(rows, names, locale),
+		),
 	};
 }
 

@@ -10,6 +10,7 @@ import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { badRequest, conflict, notFound, rateLimitResponse, tooMany } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
+import { requestLocale } from '@/core/i18n/request-locale';
 import { readIdempotencyKey } from '@/core/idempotency-store';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import {
@@ -132,6 +133,7 @@ export const PATCH = withWgRoute<{ id: string }>('inventory PATCH', async (req, 
 					itemId: id,
 					wgId,
 					memberId: auth.member.memberId,
+					locale: requestLocale(req),
 				});
 				if (mutation.kind === 'not_found') return rejectWrite(notFound('item_not_found'));
 				if (mutation.kind === 'conflict') return rejectWrite(conflict('version_conflict'));

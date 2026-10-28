@@ -1,4 +1,3 @@
-import { formatDecimal } from '@/core/utils/amount';
 import { intlTag } from '@/shared/i18n/intl';
 import type { Locale } from '@/shared/i18n/locale';
 
@@ -75,33 +74,6 @@ export function isBelowThreshold(item: InventoryItemForThresholdCheck): boolean 
 
 export function normalizeForMatch(name: string): string {
 	return name.trim().toLowerCase();
-}
-
-interface ShoppingPushPayload {
-	name: string;
-	quantity: string | null;
-	note: string;
-}
-
-// i18n-ignore German words of the shopping entry the server writes
-const UNIT_PLURALS: Partial<Record<string, string>> = { Rolle: 'Rollen', Packung: 'Packungen' };
-
-/** "2 Rollen", "1 Rolle" as the server writes it into the shopping entry; screens use `inventory.unit`. */
-export function formatQuantity(quantity: number, unit: string): string {
-	return `${formatDecimal(quantity)} ${quantity === 1 ? unit : (UNIT_PLURALS[unit] ?? unit)}`;
-}
-
-export function buildShoppingPushPayload(
-	item: Pick<InventoryItemForThresholdCheck, 'quantity' | 'threshold'> & {
-		name: string;
-		unit: string;
-	},
-): ShoppingPushPayload {
-	return {
-		name: item.name,
-		quantity: formatQuantity(restockAmount(item), item.unit),
-		note: 'Auto: Vorrat unter Schwelle', // i18n-ignore text stored with the shopping entry
-	};
 }
 
 /** Units that bring a scarce item back above its threshold (same amount the shopping push asks for). */

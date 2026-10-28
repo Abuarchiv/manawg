@@ -18,6 +18,7 @@ import {
 	notFound,
 	unauthorized,
 } from '@/core/http/api-errors';
+import { requestLocale } from '@/core/i18n/request-locale';
 import { INVITE_VALID_DAYS, invitePath } from '@/core/utils/invite-token';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import { MS_PER_DAY } from '@/core/utils/time';
@@ -156,7 +157,11 @@ function exportResponse(req: NextRequest, fixture: E2EWgFixture): NextResponse {
 		const requested = params.get('section') ?? 'expenses';
 		if (!isExportSectionKey(requested)) return badRequest('section_invalid');
 		return new NextResponse(
-			toCsv(getExportSectionRows(data, requested), getExportSectionHeaders(requested)),
+			toCsv(
+				getExportSectionRows(data, requested),
+				getExportSectionHeaders(requested),
+				requestLocale(req),
+			),
 			{
 				headers: {
 					'content-type': 'text/csv; charset=utf-8',

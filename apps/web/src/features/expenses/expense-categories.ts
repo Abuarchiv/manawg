@@ -30,10 +30,3 @@ export const DEFAULT_EXPENSE_CATEGORY: ExpenseCategory = 'sonstiges';
 export const expenseCategoryValueSchema = z.enum(EXPENSE_CATEGORIES);
 /** For creates: a missing category is the default. Edits use the value schema, so they keep theirs. */
 export const expenseCategorySchema = expenseCategoryValueSchema.default(DEFAULT_EXPENSE_CATEGORY);
-
-/** Label for a stored value; anything unknown reads as the default label. */
-export function expenseCategoryLabel(value: string | null | undefined): string {
-	return (
-		EXPENSE_CATEGORY_LABELS[(value ?? '') as ExpenseCategory] ?? EXPENSE_CATEGORY_LABELS.sonstiges
-	);
-}

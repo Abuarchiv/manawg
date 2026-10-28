@@ -126,11 +126,14 @@ const route = await import('../src/app/api/wg/[code]/imports/commit/route.ts');
 
 function post() {
 	return route.POST(
-		new Request('https://example.invalid', {
-			method: 'POST',
-			headers: { 'idempotency-key': KEY },
-			body: JSON.stringify({ source: 'splitwise_csv', payload: 'data', memberMapping: {} }),
-		}) as never,
+		Object.assign(
+			new Request('https://example.invalid', {
+				method: 'POST',
+				headers: { 'idempotency-key': KEY },
+				body: JSON.stringify({ source: 'splitwise_csv', payload: 'data', memberMapping: {} }),
+			}),
+			{ cookies: { get: () => undefined } },
+		) as never,
 		{ params: Promise.resolve({ code: 'MTE8PZAT' }) },
 	);
 }

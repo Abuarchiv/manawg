@@ -1,32 +1,51 @@
 {
-	"$schema": "https://json.schemastore.org/tsconfig",
-	"compilerOptions": {
-		"target": "ES2017",
-		"lib": ["dom", "dom.iterable", "esnext"],
-		"module": "esnext",
-		"moduleResolution": "bundler",
-		"jsx": "react-jsx",
-		"allowJs": true,
-		"noEmit": true,
-		"incremental": true,
-		"isolatedModules": true,
-		"resolveJsonModule": true,
-		"esModuleInterop": true,
-		"skipLibCheck": true,
-		"forceConsistentCasingInFileNames": true,
-		"strict": true,
-		"noUncheckedIndexedAccess": true,
-		"noImplicitOverride": true,
-		"exactOptionalPropertyTypes": true,
-		"plugins": [{ "name": "next" }],
-		"paths": { "@/*": ["./src/*"] }
-	},
-	"include": [
-		".next/types/**/*.ts",
-		".next/dev/types/**/*.ts",
-		"next-env.d.ts",
-		"src/**/*.ts",
-		"src/**/*.tsx"
-	],
-	"exclude": ["node_modules", ".next", "e2e", "playwright.config.ts"]
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "allowJs": true,
+    "noEmit": true,
+    "incremental": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "exactOptionalPropertyTypes": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ]
+    }
+  },
+  "include": [
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "next-env.d.ts",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    ".next-pkg-a/types/**/*.ts",
+    ".next-pkg-a/dev/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    ".next",
+    "e2e",
+    "playwright.config.ts"
+  ]
 }

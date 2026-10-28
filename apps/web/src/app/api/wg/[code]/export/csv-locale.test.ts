@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { mock, test } from 'node:test';
 
+const loaderLocales: unknown[] = [];
 const ROWS = [
 	{ id: 'e1', description: 'Reis', amountCents: 2480, currency: 'EUR', splits: [], paidBy: 'Anna' },
 ];
@@ -21,7 +22,10 @@ mock.module('@/composition/export-queries', {
 	namedExports: {
 		MEMBER_NAME_SECTIONS: [],
 		NO_EXPORT_LIMIT: Number.MAX_SAFE_INTEGER,
-		buildSectionLoaders: () => ({ expenses: async () => ROWS }),
+		buildSectionLoaders: (_wgId: string, _page: unknown, _members: unknown, locale: unknown) => {
+			loaderLocales.push(locale);
+			return { expenses: async () => ROWS };
+		},
 		countExportSections: async () => ({}),
 		fetchMemberRows: async () => [],
 		mapMemberRows: () => [],
@@ -49,6 +53,7 @@ test('an English downloader gets a comma-separated CSV with a decimal point', as
 	const text = await (await download('en')).text();
 	assert.ok(text.includes('\ne1,Reis,'), text);
 	assert.ok(text.includes(',24.80,'), text);
+	assert.equal(loaderLocales.at(-1), 'en');
 });
 
 test('a German or undecided downloader keeps the semicolon CSV', async () => {
@@ -56,5 +61,6 @@ test('a German or undecided downloader keeps the semicolon CSV', async () => {
 		const text = await response.text();
 		assert.ok(text.includes('\ne1;Reis;'), text);
 		assert.ok(text.includes(';24,80;'), text);
+		assert.equal(loaderLocales.at(-1), 'de');
 	}
 });
