@@ -174,6 +174,11 @@ CI (`.github/workflows/ci.yml`, job `validate`) runs, in this order:
 ecosystem (npm, GitHub Actions, Docker) and a separate PR per major update; third-party actions
 are pinned by commit SHA.
 
+Workflow `security.yml` runs Trivy over the lockfile, the Dockerfile and the tree (known
+vulnerabilities, misconfigurations, secrets) on every PR, on `main` and weekly. Workflow
+`docker.yml` builds the self-hosting image and scans it with Trivy when a PR touches the image
+inputs; `scorecard.yml` publishes the OpenSSF Scorecard.
+
 Run the same gates locally before you open a pull request.
 
 ## Cron jobs
@@ -204,6 +209,25 @@ Production. Git deployments of `main` are off; the maintainer releases explicitl
 
 These workflows only run in `Abuarchiv/manawg-app`. Self-hosted instances follow
 [self-hosting](self-hosting.md).
+
+## Versioned releases
+
+Self-hosters run tagged versions. To cut one:
+
+1. Move the entries under `[Unreleased]` in [CHANGELOG.md](../CHANGELOG.md) into a new
+   `## [X.Y.Z] - YYYY-MM-DD` section ([Semantic Versioning](https://semver.org/): a release that
+   needs a manual step for self-hosted instances is a major one) and merge that change.
+2. Tag the merge commit on `main` and push the tag:
+
+   ```sh
+   git tag -s vX.Y.Z -m "ManaWG X.Y.Z"
+   git push origin vX.Y.Z
+   ```
+
+3. `.github/workflows/docker.yml` builds `linux/amd64` and `linux/arm64` and pushes
+   `ghcr.io/abuarchiv/manawg-app` as `X.Y.Z`, `X.Y`, `X` and `latest`. Make the package public
+   once under the repository's **Packages** settings.
+4. Create the GitHub release from the tag with the changelog section as notes.
 
 ## Troubleshooting
 

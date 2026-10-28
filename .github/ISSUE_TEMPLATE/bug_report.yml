@@ -27,10 +27,17 @@ body:
       label: Where
       options:
         - app.manawg.com
-        - Self-hosted instance
+        - Self-hosted with Docker
+        - Self-hosted on Vercel and Supabase
         - Local development
     validations:
       required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Self-hosted only. Image tag (`MANAWG_VERSION`) or commit.
+      placeholder: 1.0.0
   - type: input
     id: device
     attributes:
@@ -40,4 +47,4 @@ body:
     id: logs
     attributes:
       label: Screenshots or logs
-      description: For self-hosted instances, the boot log lines starting with `[env]` help.
+      description: For self-hosted instances, the boot log lines starting with `[env]` help (`docker compose logs app`).

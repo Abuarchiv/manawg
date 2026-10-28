@@ -140,6 +140,7 @@ services:
       - ${HTTPS_PORT:-443}:443/udp
     environment:
       SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-127.0.0.1/32}
     volumes:
       - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
       - mail-templates:/srv/mail-templates:ro

@@ -4,6 +4,11 @@ Thanks for helping. Bug reports, fixes and improvements are welcome, in English 
 
 ## Before you start
 
+- **Questions** and ideas you want to talk through first: [Discussions](https://github.com/Abuarchiv/manawg-app/discussions).
+- **First contribution:** issues labelled
+  [good first issue](https://github.com/Abuarchiv/manawg-app/labels/good%20first%20issue) are
+  small and well described; [help wanted](https://github.com/Abuarchiv/manawg-app/labels/help%20wanted)
+  marks larger ones. Comment on the issue before you start, so nobody works on it twice.
 - **Bugs:** open an [issue](https://github.com/Abuarchiv/manawg-app/issues/new/choose) with steps
   to reproduce. For security problems use [SECURITY.md](SECURITY.md) instead.
 - **Small fixes** (typos, obvious bugs): open a pull request directly.
@@ -24,7 +29,9 @@ pnpm install
 pnpm --filter @manawg/web test:e2e:fixtures
 ```
 
-For a running app with real sign-in, use your own Supabase project, never a production one. Setup,
+For a running app with real sign-in, start the Docker stack from the
+[self-hosting guide](docs/self-hosting.md) (`docker compose up -d --build` builds your checkout)
+or use your own Supabase project, never a production one. Setup,
 all commands and the test gates are in [docs/development.md](docs/development.md).
 
 ## Pull requests

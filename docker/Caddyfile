@@ -6,6 +6,11 @@
 # server, and the rendered mail templates for Auth.
 
 {
+	# TRUSTED_PROXIES: addresses of your own reverse proxy in front of the gateway, so its
+	# X-Forwarded-* headers (client address, https) reach the app.
+	servers {
+		trusted_proxies static {$TRUSTED_PROXIES:127.0.0.1/32}
+	}
 	servers :8000 {
 		trusted_proxies static private_ranges
 	}

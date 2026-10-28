@@ -7,6 +7,7 @@ in the browser and installable as a PWA.
 
 [![CI](https://github.com/Abuarchiv/manawg-app/actions/workflows/ci.yml/badge.svg)](https://github.com/Abuarchiv/manawg-app/actions/workflows/ci.yml)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Abuarchiv/manawg-app/badge)](https://scorecard.dev/viewer/?uri=github.com/Abuarchiv/manawg-app)
 
 <p>
   <img src="docs/screenshots/start.png" width="24%" alt="WG overview">
@@ -31,8 +32,19 @@ The interface is German. Amounts are in euros.
 
 ## Self-hosting
 
-ManaWG runs on Vercel and Supabase; the free tiers are enough for a household. The
-[self-hosting guide](docs/self-hosting.md) walks through the setup step by step.
+With Docker, a whole instance (app, database, sign-in, image storage) runs on your own machine:
+
+```sh
+git clone https://github.com/Abuarchiv/manawg-app.git
+cd manawg-app
+./docker/setup.sh            # creates .env with fresh secrets
+docker compose up -d
+```
+
+Open [http://localhost](http://localhost) and create an account; the sign-in code arrives in
+Mailpit at [http://localhost:8025](http://localhost:8025). The
+[self-hosting guide](docs/self-hosting.md) covers a public instance with your own domain and
+HTTPS, mail, updates, backups, and the alternative setup on Vercel and Supabase.
 
 ## Development
 
@@ -47,6 +59,10 @@ Next.js 15, React 19, Supabase Auth, PostgreSQL with Drizzle, Tailwind 4 with sh
 - [CONTRIBUTING.md](CONTRIBUTING.md): how to propose changes and the code conventions
 - [docs/development.md](docs/development.md): local setup, commands, tests, CI
 - [docs/architecture.md](docs/architecture.md): how the app is structured
+
+Questions and ideas are welcome in [Discussions](https://github.com/Abuarchiv/manawg-app/discussions).
+Looking for a place to start? Try an issue labelled
+[good first issue](https://github.com/Abuarchiv/manawg-app/labels/good%20first%20issue).
 
 ## Security
 
@@ -65,6 +81,6 @@ modified version as a network service, you must offer its source code to its use
 
 ManaWG ist die WG-App für Ausgaben, Putzplan und Einkaufsliste: kostenlos, werbefrei, im Browser
 und als App installierbar. Nutzen kannst du sie direkt auf [app.manawg.com](https://app.manawg.com).
-Wer die Daten lieber in eigenen Konten hält, kann ManaWG selbst betreiben, siehe die
-[Anleitung zum Selbsthosten](docs/self-hosting.md) (auf Englisch). Fehler und Wünsche gerne als
+Wer die Daten lieber selbst hält, startet ManaWG mit Docker auf dem eigenen Rechner oder Server,
+siehe oben und die [Anleitung zum Selbsthosten](docs/self-hosting.md) (auf Englisch). Fehler und Wünsche gerne als
 [Issue](https://github.com/Abuarchiv/manawg-app/issues), auf Deutsch oder Englisch.

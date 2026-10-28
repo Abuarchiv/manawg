@@ -61,7 +61,10 @@ COPY --from=build /repo/apps/web/scripts/selfhost/cron.mjs /repo/apps/web/script
 COPY --from=build /out/setup.mjs ./apps/web/scripts/selfhost/setup.mjs
 COPY --from=build /repo/supabase/templates ./supabase/templates
 # The setup service renders the mail templates into this volume mount point.
-RUN mkdir -p /app/mail-templates && chown node:node /app/mail-templates
+# The runtime only needs node, so the bundled package managers go.
+RUN mkdir -p /app/mail-templates && chown node:node /app/mail-templates \
+	&& rm -rf /usr/local/lib/node_modules /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+		/opt/yarn-* /usr/local/bin/yarn /usr/local/bin/yarnpkg
 USER node
 WORKDIR /app/apps/web
 EXPOSE 3000
