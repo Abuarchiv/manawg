@@ -40,7 +40,7 @@ const dayMonth = new Intl.DateTimeFormat('de-DE', {
 	timeZone: 'Europe/Berlin',
 });
 
-/** Monthly statement laid out after Brandbook "Abrechnung"; phone column on screen, A4 in print. */
+/** Monthly statement laid out as a statement; phone column on screen, A4 in print. */
 export function MonthlyStatementDocument({
 	statement,
 	wgName,

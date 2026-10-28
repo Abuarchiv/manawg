@@ -4,10 +4,15 @@
 
 ## How it was tested
 
-<!-- Commands you ran, devices you checked. Add 320 px and 390 px screenshots, light and dark, for UI changes. -->
+<!-- Commands you ran, devices or browsers you checked. -->
+
+## Screenshots
+
+<!-- UI changes only: 320 px and 390 px wide, light and dark. -->
 
 ## Checklist
 
-- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm --filter @manawg/web test:unit` and `pnpm build` pass
-- [ ] Regression test for a bug fix, or a reason why there is none
-- [ ] Commits are signed off (`git commit -s`)
+- [ ] `pnpm lint`, `pnpm typecheck` and `pnpm --filter @manawg/web test:unit` pass
+- [ ] `pnpm knip` and `pnpm build` pass, and the e2e suite if the change touches the UI or a route
+- [ ] A bug fix has a regression test, or the description says why not
+- [ ] No secrets, `.env` files or connection strings in the diff

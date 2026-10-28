@@ -1,4 +1,4 @@
-/* Brandbook: start = bodies grow outward from the core (1400ms); loop = satellites gather into the core in a 1200ms loop, without rotation. */
+/* Start = bodies grow outward from the core (1400ms); loop = satellites gather into the core in a 1200ms loop, without rotation. */
 .loading .body {
 	transform-box: fill-box;
 	transform-origin: center;

@@ -2,6 +2,9 @@ name: Feature idea
 description: Suggest something new or a change to how ManaWG works.
 labels: [enhancement]
 body:
+  - type: markdown
+    attributes:
+      value: ManaWG is deliberately small and phone-first, so not every idea fits. A clear problem helps more than a finished solution.
   - type: textarea
     id: problem
     attributes:
@@ -13,11 +16,14 @@ body:
     id: idea
     attributes:
       label: Idea
-      description: How could ManaWG solve it? Mockups welcome.
-    validations:
-      required: true
+      description: How could ManaWG solve it? Sketches welcome.
   - type: textarea
     id: alternatives
     attributes:
-      label: Alternatives
-      description: What do you do today instead?
+      label: What you do today instead
+  - type: checkboxes
+    id: help
+    attributes:
+      label: Contribution
+      options:
+        - label: I would like to work on this myself.

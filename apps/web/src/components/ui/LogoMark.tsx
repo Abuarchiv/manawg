@@ -15,7 +15,7 @@ interface LogoMarkProps extends ComponentProps<'svg'> {
 	grow?: boolean;
 }
 
-/** The supplied eight-body organism. Unique mask IDs allow multiple marks per page. */
+/** The eight-body brand mark. Unique mask IDs allow multiple marks per page. */
 export function LogoMark({
 	size = 40,
 	tile = true,

@@ -143,7 +143,7 @@ function SwitchThumb({ pressedWidth = 59, children, ...props }: SwitchThumbProps
 					'0 2px 32px color-mix(in oklch, var(--primary) 20%, transparent)',
 				].join(', ')
 			: '0.5px 0.5px 2px rgba(0,0,0,0.03)',
-		// When pressed, the thumb turns to glass: opaque edge, the track shows through inset (brand book 11.3).
+		// When pressed, the thumb turns to glass: opaque edge, the track shows through inset.
 		...(isPressed
 			? {
 					backgroundColor: 'var(--background)',

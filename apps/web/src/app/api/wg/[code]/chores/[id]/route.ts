@@ -276,8 +276,7 @@ export const DELETE = withWgRoute<{ id: string }>('chores DELETE', async (req, {
 	// Admin-only gate: chores are shared infrastructure for the whole WG,
 	// so any member can edit/reassign (PATCH stays open for collaboration),
 	// but only the admin may permanently remove a chore from the plan.
-	// Without this check, any member could wipe the chore plan (P1 audit
-	// finding).
+	// Without this check, any member could wipe the chore plan.
 	if (!(await isWgAdmin(wgId, auth.member.memberId))) {
 		return forbidden('admin_required', 'admin_required');
 	}

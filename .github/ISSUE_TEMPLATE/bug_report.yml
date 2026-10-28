@@ -1,10 +1,12 @@
 name: Bug report
-description: Something does not work as it should.
+description: Something in the app does not work as it should.
 labels: [bug]
 body:
   - type: markdown
     attributes:
-      value: English or German is fine. Never post keys, passwords or connection strings.
+      value: |
+        English or German is fine. Never post keys, passwords or connection strings.
+        Running your own instance and it does not start? Use "Self-hosting problem" instead.
   - type: textarea
     id: what
     attributes:
@@ -17,8 +19,8 @@ body:
     attributes:
       label: Steps to reproduce
       placeholder: |
-        1. Open …
-        2. Tap …
+        1. Open ...
+        2. Tap ...
     validations:
       required: true
   - type: dropdown
@@ -33,18 +35,17 @@ body:
     validations:
       required: true
   - type: input
-    id: version
-    attributes:
-      label: Version
-      description: Self-hosted only. Image tag (`MANAWG_VERSION`) or commit.
-      placeholder: latest
-  - type: input
     id: device
     attributes:
       label: Device and browser
       placeholder: iPhone 15, iOS 26, Safari (installed as app)
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Self-hosted or local only. Commit hash or `MANAWG_VERSION`.
   - type: textarea
-    id: logs
+    id: extra
     attributes:
       label: Screenshots or logs
-      description: For self-hosted instances, the boot log lines starting with `[env]` help (`docker compose logs app`).
+      description: Drag images in here. Check them for personal data first.

@@ -530,7 +530,7 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 		--safe-area-bottom: min(env(safe-area-inset-bottom, 0px), 34px);
 		/* Backdrop shown in the margins outside the centered app frame. */
 		--app-backdrop: var(--secondary);
-		/* Chapter 10: exact shadcn Neutral light tokens. */
+		/* shadcn Neutral light tokens. */
 		--surface: var(--card);
 		--border: oklch(0.922 0 0);
 
@@ -588,7 +588,7 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 
 	.dark {
 		color-scheme: dark;
-		/* Chapter 10: exact shadcn Neutral dark tokens. */
+		/* shadcn Neutral dark tokens. */
 		--app-backdrop: var(--background);
 		--surface: var(--card);
 		--border: oklch(1 0 0 / 10%);
@@ -627,7 +627,7 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 		--destructive: oklch(0.704 0.191 22.216);
 		/* Text on the destructive tint: 4.8:1 on destructive/20 over the page background. */
 		--destructive-text: oklch(0.808 0.114 19.571);
-		/* Previously white at 15 % opacity (1.5:1 against the background). 0.55 gives about 4.1:1 on the page,
+		/* 0.55 gives about 4.1:1 on the page,
 		   3.7:1 on cards and 3.1:1 on muted surfaces (WCAG 1.4.11). Surfaces using --input use
 		   foreground/…-alpha so the fill does not lighten along with it. */
 		--input: oklch(0.55 0 0);
@@ -691,7 +691,7 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 		font-weight: 500;
 	}
 
-	/* Chapter 12's icon rule narrows the broader chapter 9 showcase value. */
+	/* Icons use a 1.5px stroke. */
 	svg.lucide {
 		stroke-width: 1.5;
 	}

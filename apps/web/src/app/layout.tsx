@@ -41,13 +41,13 @@ const jetbrainsMono = localFont({
 
 const appUrl = getAppUrl();
 
-// Brand title and description are word-for-word the landing's (manawg.com layout.tsx),
+// Brand title and description are word-for-word those of the marketing site (manawg.com),
 // so link previews and crawlers read one product definition across both origins.
 const brandTitle = 'ManaWG, die WG-App: Ausgaben, Einkauf, Putzplan für eure WG';
 const metaDescription =
 	'Mit ManaWG teilt ihr Ausgaben, organisiert Einkäufe und verteilt Aufgaben im Putzplan. Die App ist kostenlos und läuft im Browser.';
 
-// Same entity the landing declares on manawg.com (same @id, same publisher), so both
+// Same entity the marketing site declares (same @id, same publisher), so both
 // origins describe one app and one organisation instead of two competing ones.
 const softwareApplicationSchema = {
 	'@context': 'https://schema.org',
