@@ -1,9 +1,10 @@
 import 'server-only';
 import { createHash } from 'node:crypto';
 import nodemailer from 'nodemailer';
+import { isOfficialInstance } from '@/shared/lib/landing-url';
 
 const RESEND_BATCH_URL = 'https://api.resend.com/emails/batch';
-const DEFAULT_FROM = 'ManaWG <noreply@manawg.com>';
+const OFFICIAL_FROM = 'ManaWG <noreply@manawg.com>';
 const REQUEST_TIMEOUT_MS = 15_000;
 // Resend allows two requests per second; single retries after a rejected batch pace themselves.
 const SINGLE_SEND_GAP_MS = 550;
@@ -217,6 +218,15 @@ function createDryRunTransport(): MailTransport {
 	};
 }
 
+/** The configured sender; only the official instance may fall back to its own address. */
+function senderAddress(env: Readonly<Record<string, string | undefined>>): string {
+	const from =
+		env.STATEMENT_EMAIL_FROM?.trim() ||
+		(isOfficialInstance(env.NEXT_PUBLIC_APP_URL) ? OFFICIAL_FROM : '');
+	if (!from) throw new Error('STATEMENT_EMAIL_FROM is not set');
+	return from;
+}
+
 /**
  * SMTP whenever `SMTP_HOST` is set (self-hosted instances). Otherwise Resend in production (a
  * missing key throws instead of degrading to a dry run); elsewhere only when an allow-list limits
@@ -227,13 +237,12 @@ export function createMailTransport(
 	env: Readonly<Record<string, string | undefined>> = process.env,
 	prefix = 'mail',
 ): MailTransport {
-	const from = env.STATEMENT_EMAIL_FROM?.trim() || DEFAULT_FROM;
-	if (env.SMTP_HOST?.trim()) return createSmtpTransport(env, from);
+	if (env.SMTP_HOST?.trim()) return createSmtpTransport(env, senderAddress(env));
 	const apiKey = env.RESEND_API_KEY?.trim();
 	const mayReallySend = env.VERCEL_ENV === 'production' || readAllowlist(env) !== null;
 	if (env.VERCEL_ENV === 'production' && !apiKey) {
 		throw new Error('RESEND_API_KEY is not set in production');
 	}
 	if (!mayReallySend || !apiKey) return createDryRunTransport();
-	return createResendTransport(apiKey, from, prefix);
+	return createResendTransport(apiKey, senderAddress(env), prefix);
 }
