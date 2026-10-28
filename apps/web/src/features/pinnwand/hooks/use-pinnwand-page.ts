@@ -7,6 +7,7 @@ import {
 	isAnnouncementArchived,
 } from '@/features/pinnwand/announcement-workflow';
 import type { Announcement, ReactionKey } from '@/features/pinnwand/components/announcement-types';
+import { type Message, useMessage } from '@/shared/i18n/message';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { AnnouncementPageContext } from './announcement-page-context';
 import { useAnnouncementActions } from './use-announcement-actions';
@@ -15,15 +16,15 @@ import { useAnnouncementsData } from './use-announcements-data';
 
 const CARD_RENDER_PAGE = 30;
 
-/** Pinboard page: connects loading, composing and card actions and derives the display. */
-const ARCHIVED_LINK_NOTICE =
-	'Dieser Beitrag ist geklärt oder abgehakt und steht nicht mehr auf der Pinnwand.';
+const ARCHIVED_LINK_NOTICE: Message = { key: 'pinnwand.notices.archivedLink' };
 
+/** Pinboard page: connects loading, composing and card actions and derives the display. */
 export function usePinnwandPage() {
 	const { wg, members, identity, isAdmin } = useWg();
 	const toast = useToast();
+	const render = useMessage();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
-	const [notice, setNotice] = useState<string | null>(null);
+	const [notice, setNotice] = useState<Message | null>(null);
 	const [highlightedId, setHighlightedId] = useState<string | null>(null);
 	const { isPending, start, end } = usePendingSet();
 
@@ -47,7 +48,7 @@ export function usePinnwandPage() {
 		end,
 		// Errors as toast: a page alert above the list lies outside the field of view where one is typing.
 		setActionError: (message) => {
-			if (message) toast.error(message);
+			if (message) toast.error(render(message));
 		},
 		setNotice,
 		itemsRef,
@@ -139,7 +140,7 @@ export function usePinnwandPage() {
 			!isAnnouncementArchived(a, now) &&
 			isAnnouncementArchived(acknowledged, now)
 		) {
-			toast.info('Abgehakt. Der Beitrag verschwindet von der Pinnwand.');
+			toast.info(render({ key: 'pinnwand.notices.archived' }));
 		}
 		void actions.toggleReaction(a, reaction);
 	});

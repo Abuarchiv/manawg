@@ -1,10 +1,13 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { formatRelativeTime } from '@/core/utils/time';
+import { relativeTimeMessage } from '@/core/utils/time';
 import { isLongAnnouncementBody } from '@/features/pinnwand/announcement-card-model';
+import type { Locale } from '@/shared/i18n/locale';
+import { useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
 import { CheckCircle2, ChevronDown, ChevronUp, Hand, ImageOff } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 import { useState } from 'react';
 import type { Announcement } from './announcement-types';
 
@@ -22,6 +25,9 @@ export function AnnouncementBody({
 	actionSubject,
 	busy,
 }: AnnouncementBodyProps) {
+	const t = useTranslations('pinnwand.card');
+	const render = useMessage();
+	const locale = useLocale() as Locale;
 	const [imageFailed, setImageFailed] = useState(false);
 	const [expanded, setExpanded] = useState(false);
 	const isLong = isLongAnnouncementBody(bodyText);
@@ -46,14 +52,14 @@ export function AnnouncementBody({
 							onClick={() => setExpanded((value) => !value)}
 							aria-expanded={expanded}
 							aria-controls={`announcement-body-${announcement.id}`}
-							aria-label={(expanded ? 'Weniger anzeigen: ' : 'Mehr anzeigen: ') + actionSubject}
+							aria-label={t(expanded ? 'showLessAria' : 'showMoreAria', { subject: actionSubject })}
 						>
 							{expanded ? (
 								<ChevronUp data-icon="inline-start" />
 							) : (
 								<ChevronDown data-icon="inline-start" />
 							)}
-							{expanded ? 'Weniger' : 'Mehr anzeigen'}
+							{t(expanded ? 'showLess' : 'showMore')}
 						</Button>
 					)}
 				</div>
@@ -63,7 +69,7 @@ export function AnnouncementBody({
 					href={announcement.imageUrl}
 					target="_blank"
 					rel="noopener noreferrer"
-					aria-label={`Bildanhang öffnen: ${actionSubject}`}
+					aria-label={t('imageAria', { subject: actionSubject })}
 					className="block"
 				>
 					{imageFailed ? (
@@ -86,19 +92,21 @@ export function AnnouncementBody({
 					{takerNames.length > 0 && (
 						<span className="inline-flex items-center gap-1 text-foreground">
 							<Hand className="size-3.5 shrink-0" aria-hidden />
-							{takerNames.join(', ')} {takerNames.length === 1 ? 'übernimmt' : 'übernehmen'}
+							{t('takers', { count: takerNames.length, names: takerNames.join(', ') })}
 						</span>
 					)}
 					{announcement.resolvedAt && (
 						<span className="inline-flex items-center gap-1">
 							<CheckCircle2 className="size-3.5 shrink-0" aria-hidden />
-							Geklärt {formatRelativeTime(announcement.resolvedAt)}
+							{t('resolvedAt', {
+								time: render(relativeTimeMessage(announcement.resolvedAt, Date.now(), locale)),
+							})}
 						</span>
 					)}
 				</p>
 			)}
 			{/* Screen readers only: a visible line would shift the action bar while typing. */}
-			{busy && <output className="sr-only">Speichert…</output>}
+			{busy && <output className="sr-only">{t('saving')}</output>}
 		</>
 	);
 }

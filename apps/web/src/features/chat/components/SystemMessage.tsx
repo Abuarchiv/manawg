@@ -1,7 +1,10 @@
 import { Marker, MarkerContent, MarkerIcon } from '@/components/ui/marker';
+import type { Locale } from '@/shared/i18n/locale';
 import { CheckCircle2, Info, LogIn, LogOut, Receipt } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { systemAmountText } from '../chat-system';
 
 interface SystemMessageProps {
 	shareCode: string;
@@ -14,23 +17,24 @@ function asString(value: unknown, fallback: string): string {
 }
 
 export function SystemMessage({ shareCode, systemKind, payload }: SystemMessageProps) {
+	const t = useTranslations('chat.system');
+	const locale = useLocale() as Locale;
 	const data = payload ?? {};
+	const someone = t('someone');
 	switch (systemKind) {
 		case 'member.joined':
-			return (
-				<SystemRow icon={LogIn} text={`${asString(data.name, 'Jemand')} ist der WG beigetreten.`} />
-			);
+			return <SystemRow icon={LogIn} text={t('joined', { name: asString(data.name, someone) })} />;
 		case 'member.left':
-			return (
-				<SystemRow icon={LogOut} text={`${asString(data.name, 'Jemand')} hat die WG verlassen.`} />
-			);
+			return <SystemRow icon={LogOut} text={t('left', { name: asString(data.name, someone) })} />;
 		case 'expense.created': {
-			const text = (
-				<>
-					{asString(data.actorName, 'Jemand')} hat {asString(data.description, 'eine Ausgabe')} für{' '}
-					<span className="tabular-nums">{asString(data.amount, '0€')}</span> eingetragen.
-				</>
-			);
+			const text = t.rich('expenseCreated', {
+				actor: asString(data.actorName, someone),
+				description: asString(data.description, t('anExpense')),
+				// t.rich renders React elements for plain arguments; its types only name strings.
+				amount: (
+					<span className="tabular-nums">{systemAmountText(data, locale) ?? t('zeroAmount')}</span>
+				) as unknown as string,
+			});
 			// Older messages carry no expenseId and stay plain text.
 			const expenseId = asString(data.expenseId, '');
 			return (
@@ -56,11 +60,14 @@ export function SystemMessage({ shareCode, systemKind, payload }: SystemMessageP
 			return (
 				<SystemRow
 					icon={CheckCircle2}
-					text={`${asString(data.actorName, 'Jemand')} hat „${asString(data.title, 'eine Aufgabe')}“ erledigt.`}
+					text={t('choreCompleted', {
+						actor: asString(data.actorName, someone),
+						title: asString(data.title, t('aChore')),
+					})}
 				/>
 			);
 		default:
-			return <SystemRow icon={Info} text="Systemnachricht" />;
+			return <SystemRow icon={Info} text={t('unknown')} />;
 	}
 }
 

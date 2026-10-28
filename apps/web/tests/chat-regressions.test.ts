@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { PgDialect, jsonb, pgTable, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { renderMessage, serverRootT } from '../src/core/i18n/server-t.ts';
 import { explainChatError } from '../src/features/chat/chat-errors.ts';
 import * as chat from '../src/features/chat/chat-pure.ts';
 import * as unreadCount from '../src/features/chat/chat-unread-count.ts';
@@ -288,24 +289,35 @@ test('reconciliation preserves database order when timestamps lose microseconds'
 });
 
 test('chat errors keep their own codes and use the shared buckets with a per-action subject', () => {
-	assert.match(explainChatError('send', 'image_removed'), /Bild wurde entfernt/);
-	assert.match(explainChatError('send', 'reply_to_invalid'), /gibt es nicht mehr/);
-	assert.equal(explainChatError('edit', 'message_deleted'), 'Diese Nachricht wurde gelöscht.');
-	assert.match(explainChatError('edit', 'edit_not_allowed'), /Minuten nach dem Senden/);
+	const text = (action: Parameters<typeof explainChatError>[0], code: string) =>
+		renderMessage(serverRootT('de'), explainChatError(action, code));
+	assert.match(text('send', 'image_removed'), /Bild wurde entfernt/);
+	assert.match(text('send', 'reply_to_invalid'), /gibt es nicht mehr/);
+	assert.equal(text('edit', 'message_deleted'), 'Diese Nachricht wurde gelöscht.');
+	assert.match(text('edit', 'edit_not_allowed'), /15 Minuten nach dem Senden/);
 	assert.equal(
-		explainChatError('send', 'Netzwerkfehler'),
+		text('send', 'Netzwerkfehler'),
 		'Nachricht konnte nicht gesendet werden: Prüfe deine Verbindung und versuche es erneut.',
 	);
 	assert.match(
-		explainChatError('react', 'rate_limited'),
+		text('react', 'rate_limited'),
 		/^Reaktion konnte nicht gespeichert werden: Zu viele Anfragen/,
 	);
 	assert.equal(
-		explainChatError('delete', 'db_error'),
+		text('delete', 'db_error'),
 		'Nachricht konnte nicht gelöscht werden: Versuche es gleich erneut.',
 	);
+	assert.equal(text('unreact', 'whatever'), 'Reaktion konnte nicht gespeichert werden.');
+});
+
+test('chat errors render English', () => {
+	const en = serverRootT('en');
 	assert.equal(
-		explainChatError('unreact', 'whatever'),
-		'Reaktion konnte nicht gespeichert werden.',
+		renderMessage(en, explainChatError('send', 'Netzwerkfehler')),
+		'The message could not be sent: Check your connection and try again.',
+	);
+	assert.equal(
+		renderMessage(en, explainChatError('edit', 'edit_not_allowed')),
+		'Messages can only be edited for 15 minutes after sending.',
 	);
 });

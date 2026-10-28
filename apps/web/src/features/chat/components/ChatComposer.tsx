@@ -5,8 +5,10 @@ import { Button } from '@/components/ui/button';
 import { InputGroup, InputGroupTextarea } from '@/components/ui/input-group';
 import { Spinner } from '@/components/ui/spinner';
 import { removeDraft } from '@/core/offline/drafts';
+import { type Message, useMessage } from '@/shared/i18n/message';
 import { haptic } from '@/shared/lib/haptics';
 import { Send, X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import {
 	type ChangeEvent,
 	type KeyboardEvent,
@@ -28,7 +30,7 @@ import {
 
 interface ChatComposerProps {
 	draftKey: string;
-	error: string | null;
+	error: Message | null;
 	members: MentionMember[];
 	currentMemberId: string;
 	replyToMessageId: string | null;
@@ -57,6 +59,9 @@ export function ChatComposer({
 	onRestoreReply,
 	onSend,
 }: ChatComposerProps) {
+	const t = useTranslations('chat.composer');
+	const tCommon = useTranslations('common');
+	const render = useMessage();
 	const rootRef = useRef<HTMLDivElement | null>(null);
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 	const draftRef = useRef('');
@@ -252,7 +257,7 @@ export function ChatComposer({
 					<div className="mx-3 mt-2 flex items-start gap-2 rounded-lg border-s-4 border-primary bg-muted py-1.5 ps-2.5 pe-1 text-xs">
 						<div className="min-w-0 flex-1">
 							<div className="font-medium text-foreground">
-								Antwort an {replyToSenderName ?? 'Unbekannt'}
+								{t('replyTo', { name: replyToSenderName ?? tCommon('unknownPerson') })}
 							</div>
 							<div className="truncate text-muted-foreground">{replyToPreview ?? '…'}</div>
 						</div>
@@ -262,7 +267,7 @@ export function ChatComposer({
 							size="icon"
 							onClick={onClearReply}
 							disabled={pending}
-							aria-label="Antwort abbrechen"
+							aria-label={t('cancelReply')}
 						>
 							<X aria-hidden />
 						</Button>
@@ -270,15 +275,14 @@ export function ChatComposer({
 				)}
 				{error && (
 					<Alert variant="destructive">
-						<AlertDescription>{error} Dein Text ist noch da.</AlertDescription>
+						<AlertDescription>
+							{render({ key: 'chat.errors.textKept', values: { error } })}
+						</AlertDescription>
 					</Alert>
 				)}
 				{draftStorageFailed && (
 					<Alert>
-						<AlertDescription>
-							Der Entwurf kann auf diesem Gerät nicht gespeichert werden. Lass den Chat bis zum
-							Senden geöffnet.
-						</AlertDescription>
+						<AlertDescription>{t('draftFailed')}</AlertDescription>
 					</Alert>
 				)}
 			</div>
@@ -297,10 +301,10 @@ export function ChatComposer({
 						disabled={!draftHydrated}
 						onChange={handleChange}
 						onKeyDown={onKey}
-						placeholder="Nachricht schreiben"
+						placeholder={t('placeholder')}
 						maxLength={CHAT_BODY_MAX}
 						rows={1}
-						aria-label="Chat-Nachricht"
+						aria-label={t('inputAria')}
 						aria-autocomplete="list"
 						aria-controls={mentionOpen ? mentionListboxId : undefined}
 						aria-activedescendant={activeOptionId}
@@ -313,14 +317,14 @@ export function ChatComposer({
 					onMouseDown={(event) => event.preventDefault()}
 					onClick={() => void submit()}
 					disabled={pending || !draftHydrated || draft.trim().length === 0}
-					aria-label="Nachricht senden"
+					aria-label={t('sendAria')}
 					className="size-11 shrink-0 rounded-full"
 				>
 					{pending ? <Spinner aria-hidden /> : <Send aria-hidden />}
 				</Button>
 			</div>
 			{/* Screen readers only: a visible line would make the composer taller and shift the list. */}
-			{pending && <output className="sr-only">Nachricht wird gesendet…</output>}
+			{pending && <output className="sr-only">{t('sending')}</output>}
 		</div>
 	);
 }

@@ -13,7 +13,6 @@ import { Spinner } from '@/components/ui/spinner';
 import {
 	CONVERSION_TARGETS,
 	type ConversionTarget,
-	REACTION_OPTIONS,
 } from '@/features/pinnwand/announcement-card-model';
 import { getPinnwandPrefillHref } from '@/features/pinnwand/pinnwand-prefill';
 import {
@@ -32,6 +31,7 @@ import {
 	ThumbsUp,
 	Trash2,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import type { ReactionKey } from './announcement-types';
 
@@ -46,10 +46,6 @@ const CONVERSION_ICONS: Record<ConversionTarget, LucideIcon> = {
 	chore: Sparkles,
 	expense: Receipt,
 };
-
-export function reactionLabel(key: ReactionKey): string {
-	return REACTION_OPTIONS.find((option) => option.key === key)?.label ?? key;
-}
 
 interface AnnouncementActionsMenuProps {
 	actionSubject: string;
@@ -96,11 +92,12 @@ export function AnnouncementActionsMenu({
 	onEdit,
 	onDelete,
 }: AnnouncementActionsMenuProps) {
+	const t = useTranslations('pinnwand');
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger
 				render={<Button variant="ghost" size="icon" className="-my-1 size-8" />}
-				aria-label={`Beitragsaktionen: ${actionSubject}`}
+				aria-label={t('card.actionsAria', { subject: actionSubject })}
 				disabled={deletePending}
 			>
 				<MoreHorizontal aria-hidden />
@@ -111,35 +108,35 @@ export function AnnouncementActionsMenu({
 						<DropdownMenuItem
 							render={<Link href={sourceHref} />}
 							className="min-h-11"
-							aria-label={`Quelle öffnen: ${actionSubject}`}
+							aria-label={t('card.openSourceAria', { subject: actionSubject })}
 						>
-							<ExternalLink aria-hidden /> Quelle öffnen
+							<ExternalLink aria-hidden /> {t('card.openSource')}
 						</DropdownMenuItem>
 					)}
 					{prefill &&
-						CONVERSION_TARGETS.map(({ target, label }) => {
+						CONVERSION_TARGETS.map((target) => {
 							const Icon = CONVERSION_ICONS[target];
 							return (
 								<DropdownMenuItem
 									key={target}
 									render={<Link href={getPinnwandPrefillHref(shareCode, target, prefill)} />}
 									className="min-h-11"
-									aria-label={`${label} übernehmen: ${actionSubject}`}
+									aria-label={t(`convert.${target}Aria`, { subject: actionSubject })}
 								>
-									<Icon aria-hidden /> {label} übernehmen
+									<Icon aria-hidden /> {t(`convert.${target}`)}
 								</DropdownMenuItem>
 							);
 						})}
 					{hiddenReactions.map((key) => {
 						const Icon = REACTION_ICONS[key];
-						const label = reactionLabel(key);
+						const label = t(`reaction.${key}`);
 						return (
 							<DropdownMenuItem
 								key={key}
 								onClick={() => onReact(key)}
 								disabled={reactionPending(key)}
 								className="min-h-11"
-								aria-label={`${label}-Reaktion setzen: ${actionSubject}`}
+								aria-label={t('card.reactAria', { label, subject: actionSubject })}
 							>
 								<Icon aria-hidden /> {label}
 							</DropdownMenuItem>
@@ -152,9 +149,9 @@ export function AnnouncementActionsMenu({
 						<DropdownMenuItem
 							onClick={onEdit}
 							className="min-h-11"
-							aria-label={`Beitrag bearbeiten: ${actionSubject}`}
+							aria-label={t('card.editAria', { subject: actionSubject })}
 						>
-							<Pencil /> Bearbeiten
+							<Pencil /> {t('card.edit')}
 						</DropdownMenuItem>
 					)}
 					{canModerate && (
@@ -162,10 +159,12 @@ export function AnnouncementActionsMenu({
 							onClick={onTogglePinned}
 							disabled={pinPending}
 							className="min-h-11"
-							aria-label={(isPinned ? 'Fixierung lösen: ' : 'Beitrag fixieren: ') + actionSubject}
+							aria-label={t(isPinned ? 'card.unpinAria' : 'card.pinAria', {
+								subject: actionSubject,
+							})}
 						>
 							{pinPending ? <Spinner /> : isPinned ? <PinOff /> : <Pin />}
-							{isPinned ? 'Fixierung lösen' : 'Fixieren'}
+							{t(isPinned ? 'card.unpin' : 'card.pin')}
 						</DropdownMenuItem>
 					)}
 					{canResolve && (
@@ -173,12 +172,12 @@ export function AnnouncementActionsMenu({
 							onClick={onToggleStatus}
 							disabled={statusPending}
 							className="min-h-11"
-							aria-label={
-								(isResolved ? 'Beitrag wieder öffnen: ' : 'Als geklärt markieren: ') + actionSubject
-							}
+							aria-label={t(isResolved ? 'card.reopenAria' : 'card.resolveAria', {
+								subject: actionSubject,
+							})}
 						>
 							{statusPending ? <Spinner /> : <CheckCircle2 />}
-							{isResolved ? 'Wieder öffnen' : 'Als geklärt markieren'}
+							{t(isResolved ? 'card.reopen' : 'card.resolve')}
 						</DropdownMenuItem>
 					)}
 					{canModerate && (
@@ -186,9 +185,9 @@ export function AnnouncementActionsMenu({
 							variant="destructive"
 							onClick={onDelete}
 							className="min-h-11"
-							aria-label={`Beitrag entfernen: ${actionSubject}`}
+							aria-label={t('card.removeAria', { subject: actionSubject })}
 						>
-							<Trash2 /> Entfernen
+							<Trash2 /> {t('card.remove')}
 						</DropdownMenuItem>
 					)}
 				</DropdownMenuGroup>

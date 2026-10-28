@@ -3,19 +3,20 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ChevronRight, Hand } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import type { Announcement } from './announcement-types';
-import { KIND_LABELS } from './constants';
 
 export function MyOpenAnnouncements({
 	items,
 	onSelect,
 }: { items: Announcement[]; onSelect: (id: string) => void }) {
+	const t = useTranslations('pinnwand');
 	return (
 		<section className="flex flex-col gap-2" aria-labelledby="my-announcements">
 			<div className="flex items-center gap-2">
 				<Hand className="size-4" aria-hidden />
 				<h2 id="my-announcements" className="text-sm font-medium">
-					Meine offenen Sachen
+					{t('mine.title')}
 				</h2>
 				<Badge variant="secondary">{items.length}</Badge>
 			</div>
@@ -28,7 +29,7 @@ export function MyOpenAnnouncements({
 						className="h-auto min-h-16 w-56 max-w-full shrink-0 justify-between whitespace-normal py-3 text-left"
 					>
 						<span className="flex min-w-0 flex-col gap-1">
-							<span>{KIND_LABELS[item.kind]}</span>
+							<span>{t(`kind.${item.kind}`)}</span>
 							<span className="line-clamp-2 font-normal [overflow-wrap:anywhere]">
 								{item.content}
 							</span>
