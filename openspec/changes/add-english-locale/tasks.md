@@ -55,10 +55,10 @@
 
 ## 6. Polish and lock
 
-- [ ] 6.1 Delete `pluralize`, `mutationErrorMessage`, the `*_MESSAGE` constants, `formatRelativeTime` and `formatWeekLabel`; verify `pnpm knip` is clean
+- [x] 6.1 Delete `pluralize`, `mutationErrorMessage`, the `*_MESSAGE` constants, `formatRelativeTime` and `formatWeekLabel`; verify `pnpm knip` is clean
 - [x] 6.2 Review all English catalogs against the glossary and D16; consolidate duplicates into `common`
-- [ ] 6.3 Bump the SW `VERSION` and run the full English sweep at 320px in light and dark; verify every route passes `expectNoGermanChrome`
-- [ ] 6.4 Verify the `i18n-literal` baseline is empty and all gates pass
+- [x] 6.3 Bump the SW `VERSION` and run the full English sweep at 320px in light and dark; verify every route passes `expectNoGermanChrome`
+- [x] 6.4 Verify the `i18n-literal` baseline is empty and all gates pass
 
 ## 7. Owner requests
 
