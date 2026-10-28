@@ -144,6 +144,9 @@ export async function recordExpenseCreatedSideEffects(
 			actorMemberId: actor.memberId,
 			actorName: actor.name,
 			description: expense.description,
+			amountCents: expense.amountCents,
+			currency: expense.currency,
+			// Readers of older clients show this German text; current ones format the cents.
 			amount,
 		},
 	});

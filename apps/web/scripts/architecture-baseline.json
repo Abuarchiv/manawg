@@ -37,7 +37,6 @@
 		"i18n-literal src/composition/activity-audit.ts",
 		"i18n-literal src/composition/activity.ts",
 		"i18n-literal src/composition/dashboard-feed.ts",
-		"i18n-literal src/composition/export.ts",
 		"i18n-literal src/core/db/schema-inventory.ts",
 		"i18n-literal src/core/mail/brand-mail.ts",
 		"i18n-literal src/core/mail/templates.ts",
