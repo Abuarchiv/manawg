@@ -25,6 +25,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { useWg } from '@/components/wg/WgContextProvider';
+import { useText } from '@/components/wg/use-text';
 import {
 	type ActivityFilter,
 	type ActivityKind,
@@ -32,8 +33,12 @@ import {
 	filterActivityItems,
 	groupActivityItemsByDay,
 } from '@/composition/activity';
+import { berlinDayKey, prevBerlinDayStart, startOfBerlinDay } from '@/core/utils/berlin-day';
+import { dateTimeFormat } from '@/shared/i18n/intl';
+import type { Locale } from '@/shared/i18n/locale';
 import { cn } from '@/shared/lib/cn';
 import { History, Search } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { ActivityFeed } from '../_components/ActivityFeed';
@@ -42,13 +47,11 @@ import { useActivityFeed } from './use-activity-feed';
 const PAGE_SIZE = 80;
 const MAX_ITEMS = 320;
 
-function formatVisibleActivityCount(count: number): string {
-	if (count === 0) return 'Keine sichtbaren Einträge.';
-	if (count === 1) return '1 Eintrag sichtbar.';
-	return `${count} Einträge sichtbar.`;
-}
-
 export default function AktivitaetPage() {
+	const t = useTranslations('activity.page');
+	const tFeed = useTranslations('activity.feed');
+	const text = useText();
+	const locale = useLocale() as Locale;
 	const { wg, identity } = useWg();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const wgBaseHref = `/wg/${encodedShareCode}`;
@@ -82,6 +85,21 @@ export default function AktivitaetPage() {
 		[reminders],
 	);
 
+	// Groups are keyed by Berlin calendar day; the label follows the reader's language.
+	function dayLabel(date: string): string {
+		const now = Date.now();
+		if (date === berlinDayKey(new Date(now))) return t('today');
+		if (date === berlinDayKey(prevBerlinDayStart(startOfBerlinDay(new Date(now))))) {
+			return t('yesterday');
+		}
+		return dateTimeFormat(locale, {
+			weekday: 'short',
+			day: '2-digit',
+			month: '2-digit',
+			timeZone: 'Europe/Berlin',
+		}).format(new Date(`${date}T12:00:00.000Z`));
+	}
+
 	function setKind(kind: ActivityKind | 'all'): void {
 		setFilter((current) => ({ ...current, kind }));
 	}
@@ -102,7 +120,7 @@ export default function AktivitaetPage() {
 			className="mx-auto flex w-full min-w-0 max-w-4xl flex-col gap-3 px-4 py-3"
 		>
 			<h1 className="font-heading min-w-0 flex-1 text-base font-semibold tracking-tight break-words text-foreground">
-				Aktivität
+				{t('heading')}
 			</h1>
 
 			{error && (
@@ -110,7 +128,7 @@ export default function AktivitaetPage() {
 					message={error}
 					onRetry={() => reloadActivity()}
 					busy={loading}
-					retryLabel="Aktivität erneut laden"
+					retryLabel={t('reload')}
 				/>
 			)}
 
@@ -129,32 +147,34 @@ export default function AktivitaetPage() {
 									const query = event.currentTarget.value;
 									setFilter((current) => ({ ...current, query }));
 								}}
-								placeholder="Suchen"
-								aria-label="Aktivität durchsuchen"
+								placeholder={t('searchPlaceholder')}
+								aria-label={t('searchLabel')}
 								className="min-h-11 text-base"
 							/>
 						</InputGroup>
 						<div className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-2">
 							<label htmlFor="activity-kind" className="grid min-w-0 gap-1 text-xs font-medium">
-								Bereich
+								{t('scope')}
 								<NativeSelect
 									id="activity-kind"
 									value={filter.kind}
 									onChange={(event) => setKind(event.target.value as ActivityKind | 'all')}
 									className="w-full"
 								>
-									<NativeSelectOption value="all">Alle</NativeSelectOption>
-									<NativeSelectOption value="expense">Ausgaben</NativeSelectOption>
-									<NativeSelectOption value="shopping">Einkäufe</NativeSelectOption>
-									<NativeSelectOption value="announcement">Pinnwand</NativeSelectOption>
-									<NativeSelectOption value="chore">Putzplan</NativeSelectOption>
-									<NativeSelectOption value="recurring">Fixkosten</NativeSelectOption>
-									<NativeSelectOption value="absence">Abwesenheiten</NativeSelectOption>
-									<NativeSelectOption value="audit">WG-Änderungen</NativeSelectOption>
+									<NativeSelectOption value="all">{t('kinds.all')}</NativeSelectOption>
+									<NativeSelectOption value="expense">{t('kinds.expense')}</NativeSelectOption>
+									<NativeSelectOption value="shopping">{t('kinds.shopping')}</NativeSelectOption>
+									<NativeSelectOption value="announcement">
+										{t('kinds.announcement')}
+									</NativeSelectOption>
+									<NativeSelectOption value="chore">{t('kinds.chore')}</NativeSelectOption>
+									<NativeSelectOption value="recurring">{t('kinds.recurring')}</NativeSelectOption>
+									<NativeSelectOption value="absence">{t('kinds.absence')}</NativeSelectOption>
+									<NativeSelectOption value="audit">{t('kinds.audit')}</NativeSelectOption>
 								</NativeSelect>
 							</label>
 							<label htmlFor="activity-who" className="grid min-w-0 gap-1 text-xs font-medium">
-								Wer
+								{t('who')}
 								<NativeSelect
 									id="activity-who"
 									value={filter.mineOnly ? 'mine' : 'all'}
@@ -164,8 +184,8 @@ export default function AktivitaetPage() {
 									}}
 									className="w-full"
 								>
-									<NativeSelectOption value="all">Alle</NativeSelectOption>
-									<NativeSelectOption value="mine">Nur ich</NativeSelectOption>
+									<NativeSelectOption value="all">{t('kinds.all')}</NativeSelectOption>
+									<NativeSelectOption value="mine">{t('onlyMe')}</NativeSelectOption>
 								</NativeSelect>
 							</label>
 						</div>
@@ -177,12 +197,12 @@ export default function AktivitaetPage() {
 				<Card>
 					<CardHeader>
 						<div className="flex min-w-0 items-baseline justify-between gap-2">
-							<CardTitle className="min-w-0">Offen</CardTitle>
+							<CardTitle className="min-w-0">{t('open')}</CardTitle>
 							<span className="shrink-0 text-xs text-muted-foreground">{inboxItems.length}</span>
 						</div>
 					</CardHeader>
 					<CardContent>
-						<ItemGroup aria-label="Offene Klärungen">
+						<ItemGroup aria-label={t('openLabel')}>
 							{inboxItems.map((item) => (
 								<ItemGroupEntry
 									key={item.id}
@@ -200,10 +220,10 @@ export default function AktivitaetPage() {
 													item.priority === 'high' && 'font-semibold',
 												)}
 											>
-												{item.title}
+												{text(item.title)}
 											</ItemTitle>
 											<ItemDescription className="line-clamp-2 min-w-0 [overflow-wrap:break-word]">
-												{item.detail}
+												{text(item.detail)}
 											</ItemDescription>
 										</ItemContent>
 									</Item>
@@ -227,7 +247,7 @@ export default function AktivitaetPage() {
 										(!hasActiveFilter || chronicleGroups.length === 0) && 'sr-only',
 									)}
 								>
-									{formatVisibleActivityCount(filteredItems.length)}
+									{t('visibleCount', { count: filteredItems.length })}
 								</output>
 							)}
 							{chronicleGroups.length > 0 ? (
@@ -235,7 +255,7 @@ export default function AktivitaetPage() {
 									<div key={group.date} className="space-y-2">
 										<Marker variant="separator">
 											<MarkerContent>
-												<span className="font-medium">{group.label}</span>
+												<span className="font-medium">{dayLabel(group.date)}</span>
 											</MarkerContent>
 										</Marker>
 										<ActivityFeed items={group.items} />
@@ -247,11 +267,11 @@ export default function AktivitaetPage() {
 										<EmptyMedia variant="icon">
 											<Search aria-hidden />
 										</EmptyMedia>
-										<EmptyTitle>Keine Aktivität für diesen Filter</EmptyTitle>
+										<EmptyTitle>{t('noMatch')}</EmptyTitle>
 									</EmptyHeader>
 									<EmptyContent>
 										<Button type="button" variant="outline" size="sm" onClick={resetFilters}>
-											Filter zurücksetzen
+											{t('resetFilters')}
 										</Button>
 									</EmptyContent>
 								</Empty>
@@ -261,16 +281,14 @@ export default function AktivitaetPage() {
 										<EmptyMedia variant="icon">
 											<History aria-hidden />
 										</EmptyMedia>
-										<EmptyTitle>Noch keine Aktivität</EmptyTitle>
-										<EmptyDescription>
-											Hier erscheint, was in der WG passiert: Ausgaben, Einkäufe, Putzplan.
-										</EmptyDescription>
+										<EmptyTitle>{tFeed('emptyTitle')}</EmptyTitle>
+										<EmptyDescription>{tFeed('emptyDescription')}</EmptyDescription>
 									</EmptyHeader>
 								</Empty>
 							)}
 							{items.length > 0 && hasActiveFilter && canLoadMore && (
 								<p className="text-meta text-muted-foreground">
-									Gefiltert wird in den neuesten {items.length} Einträgen.
+									{t('filteredWithin', { count: String(items.length) })}
 								</p>
 							)}
 							{canLoadMore && (
@@ -282,13 +300,13 @@ export default function AktivitaetPage() {
 									disabled={loading}
 									onClick={() => setLimit((current) => current + PAGE_SIZE)}
 								>
-									Ältere Einträge laden
+									{t('loadOlder')}
 								</Button>
 							)}
 						</div>
 					) : loading ? (
 						// biome-ignore lint/a11y/useSemanticElements: role="status" names the loading region without swapping the wrapper element to <output>.
-						<div className="space-y-2" aria-label="Aktivität lädt" role="status">
+						<div className="space-y-2" aria-label={t('loadingLabel')} role="status">
 							<div className="flex justify-center py-2">
 								<Spinner className="motion-reduce:animate-none" aria-hidden />
 							</div>
@@ -304,7 +322,7 @@ export default function AktivitaetPage() {
 						</div>
 					) : error ? null : (
 						<p className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-meta text-muted-foreground">
-							Keine Aktivität geladen. Versuche es erneut.
+							{t('notLoaded')}
 						</p>
 					)}
 				</CardContent>

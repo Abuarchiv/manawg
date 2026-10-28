@@ -1,7 +1,7 @@
 import { AppBottomNav } from '@/components/app/AppBottomNav';
 import { RouteFocusOnNavigate } from '@/components/app/RouteFocusOnNavigate';
 import { WgAppHeader } from '@/components/app/WgAppHeader';
-import { WG_SECTIONS } from '@/components/app/navigation';
+import { HOME_NAV_LABEL, WG_SECTIONS } from '@/components/app/navigation';
 import { ToastContainer } from '@/components/ui/Toast';
 import { NavItem } from '@/components/wg/NavItem';
 import { OfflineBanner } from '@/components/wg/OfflineBanner';
@@ -13,6 +13,8 @@ import { loadWgShell, loadWgViewer } from '@/core/guards/load-wg-viewer';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import { loadFixtureWgView } from '@/fixtures/pages';
 import type { Metadata } from 'next';
+import { useTranslations } from 'next-intl';
+import { getTranslations } from 'next-intl/server';
 import { headers } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
@@ -33,6 +35,7 @@ export async function generateMetadata({
 	params,
 }: { params: Promise<{ code: string }> }): Promise<Metadata> {
 	const { code: rawCode } = await params;
+	const t = await getTranslations('meta.wg');
 	const code = normalizeShareCode(rawCode);
 	if (!isValidShareCode(code)) {
 		return { robots: { index: false, follow: false } };
@@ -40,13 +43,13 @@ export async function generateMetadata({
 	const fixture = loadFixtureWgView(code);
 	if (fixture) {
 		return {
-			title: wgTitle(fixture === 'not_found' ? 'WG' : fixture.wg.name),
+			title: wgTitle(fixture === 'not_found' ? t('fallbackName') : fixture.wg.name),
 			robots: { index: false, follow: false },
 		};
 	}
 	const viewer = await loadWgViewer(code);
 	return {
-		title: wgTitle(viewer?.access ? viewer.access.name : 'WG'),
+		title: wgTitle(viewer?.access ? viewer.access.name : t('fallbackName')),
 		robots: { index: false, follow: false },
 	};
 }
@@ -135,6 +138,7 @@ function WgShell({
 	initialIsAdmin?: boolean;
 	children: ReactNode;
 }) {
+	const t = useTranslations('shell.nav');
 	const wgBaseHref = `/wg/${encodeURIComponent(code)}`;
 
 	return (
@@ -163,10 +167,10 @@ function WgShell({
 					{children}
 				</main>
 			</div>
-			<AppBottomNav label="WG Hauptnavigation">
+			<AppBottomNav label={t('label')}>
 				<NavItem
 					href={wgBaseHref}
-					label="Start"
+					label={HOME_NAV_LABEL}
 					iconKey="home"
 					activePrefixes={[`${wgBaseHref}/aktivitaet`]}
 				/>

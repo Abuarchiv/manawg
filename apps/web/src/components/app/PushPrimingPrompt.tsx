@@ -18,6 +18,7 @@ import {
 } from '@/core/notifications/push-subscribe';
 import { isEditingTarget, safeLocalStorage } from '@/core/utils/browser';
 import { X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useEffect, useRef, useState } from 'react';
 
 function rememberDismissed(): void {
@@ -47,6 +48,7 @@ export function PushPrimingPrompt({
 	code: string;
 	memberId: string;
 }) {
+	const t = useTranslations('shell.pushPriming');
 	const [visible, setVisible] = useState(false);
 	const [busy, setBusy] = useState(false);
 	const [activationError, setActivationError] = useState<string | null>(null);
@@ -164,11 +166,9 @@ export function PushPrimingPrompt({
 		try {
 			await subscribeWebPush(code, memberId);
 			hideCard();
-			toast.success('Benachrichtigungen sind aktiv.');
+			toast.success(t('enabled'));
 		} catch {
-			setActivationError(
-				'Aktivierung fehlgeschlagen. Prüfe die Browser-Einstellungen und versuche es erneut.',
-			);
+			setActivationError(t('activationFailed'));
 		} finally {
 			setBusy(false);
 		}
@@ -181,13 +181,13 @@ export function PushPrimingPrompt({
 			// biome-ignore lint/a11y/useSemanticElements: native <output> can't host a nested interactive button+dismiss layout cleanly (see InstallPrompt.tsx for the same tradeoff)
 			role="status"
 			aria-live="polite"
-			aria-label="Benachrichtigungen aktivieren"
+			aria-label={t('label')}
 			ref={cardRef}
 			className="flex w-full scroll-mb-[calc(var(--app-nav-height,5rem)+0.5rem)] flex-wrap items-center gap-3 rounded-xl border p-3"
 		>
 			<div className="min-w-0 flex-1 basis-48">
-				<p className="text-sm font-medium">Benachrichtigungen</p>
-				<p className="text-meta text-muted-foreground">Push für fällige Aufgaben und Chat.</p>
+				<p className="text-sm font-medium">{t('title')}</p>
+				<p className="text-meta text-muted-foreground">{t('description')}</p>
 				{activationError && (
 					<p role="alert" className="text-sm text-destructive">
 						{activationError}
@@ -204,14 +204,14 @@ export function PushPrimingPrompt({
 					className="aria-disabled:opacity-50"
 				>
 					{busy && <Spinner data-icon="inline-start" aria-hidden />}
-					Aktivieren
+					{t('enable')}
 				</Button>
 				<Button
 					variant="ghost"
 					size="icon"
 					type="button"
 					onClick={hideCard}
-					aria-label="Hinweis schließen"
+					aria-label={t('dismiss')}
 					className="text-muted-foreground"
 				>
 					<X aria-hidden />

@@ -1,1 +1,52 @@
-export default {} as const;
+export default {
+	reminder: {
+		choreStuck: '{title} hängt seit {days} Tagen',
+		choreDetail: '{assignee} ist eingetragen. Nachholen, übernehmen oder kurz klären.',
+		nobody: 'Niemand',
+		announcementOpen: 'Pinnwand offen seit {days} Tagen',
+		shoppingOpen: '{name} liegt seit {days} Tagen offen',
+		shoppingDetail: 'Prüfe kurz, ob du das noch brauchst.',
+	},
+	loadError: { lead: 'Aktivität konnte nicht geladen werden' },
+	error: {
+		title: 'Aktivität konnte gerade nicht geladen werden',
+		body: 'Im Aktivitäts-Feed ist ein Fehler aufgetreten. Bitte versuche es erneut oder kehre zur WG-Übersicht zurück.',
+	},
+	feed: {
+		emptyTitle: 'Noch keine Aktivität',
+		emptyDescription: 'Hier erscheint, was in der WG passiert: Ausgaben, Einkäufe, Putzplan.',
+		history: 'Aktivitätsverlauf',
+		you: 'Du',
+	},
+	page: {
+		heading: 'Aktivität',
+		reload: 'Aktivität erneut laden',
+		searchPlaceholder: 'Suchen',
+		searchLabel: 'Aktivität durchsuchen',
+		scope: 'Bereich',
+		kinds: {
+			all: 'Alle',
+			expense: 'Ausgaben',
+			shopping: 'Einkäufe',
+			announcement: 'Pinnwand',
+			chore: 'Putzplan',
+			recurring: 'Fixkosten',
+			absence: 'Abwesenheiten',
+			audit: 'WG-Änderungen',
+		},
+		who: 'Wer',
+		onlyMe: 'Nur ich',
+		open: 'Offen',
+		openLabel: 'Offene Klärungen',
+		visibleCount:
+			'{count, plural, =0 {Keine sichtbaren Einträge.} one {# Eintrag sichtbar.} other {# Einträge sichtbar.}}',
+		today: 'Heute',
+		yesterday: 'Gestern',
+		noMatch: 'Keine Aktivität für diesen Filter',
+		resetFilters: 'Filter zurücksetzen',
+		filteredWithin: 'Gefiltert wird in den neuesten {count} Einträgen.',
+		loadOlder: 'Ältere Einträge laden',
+		loadingLabel: 'Aktivität lädt',
+		notLoaded: 'Keine Aktivität geladen. Versuche es erneut.',
+	},
+} as const;

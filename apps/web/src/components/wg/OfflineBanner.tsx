@@ -24,6 +24,7 @@ import {
 	getOfflineSyncFailureMessage,
 } from '@/core/offline/offline-copy';
 import { AlertCircle, WifiOff } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -36,6 +37,7 @@ function isScopedSyncEventForOtherWg(event: Event, shareCode: string): boolean {
 }
 
 export function OfflineBanner() {
+	const t = useTranslations('shell.offlineBanner');
 	const { wg, identity } = useWg();
 	const settingsDataHref = `/wg/${encodeURIComponent(wg.shareCode)}/einstellungen#daten`;
 	const online = useOnlineStatus();
@@ -116,7 +118,7 @@ export function OfflineBanner() {
 			if (synced > 0) {
 				toast.success(formatManualOfflineSyncResult(synced, after));
 			} else if (before > 0 && after > 0) {
-				setNotice('Noch nicht gesendet. Die Aktionen bleiben gespeichert.');
+				setNotice(t('notSent'));
 			}
 		} catch {
 			setQueueCount(countOfflineActions(wg.shareCode, { memberId: identity.memberId }));
@@ -139,18 +141,17 @@ export function OfflineBanner() {
 					<div className="flex min-w-0 flex-[1_1_8rem] items-center gap-2">
 						<WifiOff className="h-4 w-4 shrink-0" aria-hidden />
 						<span>
-							Offline.{' '}
-							{queueCount > 0
-								? formatOfflineQueueCount(queueCount)
-								: 'Änderungen werden vorgemerkt.'}
+							{t('offline', {
+								detail: queueCount > 0 ? formatOfflineQueueCount(queueCount) : t('pending'),
+							})}
 						</span>
 					</div>
 					<Link
 						href="/offline"
-						aria-label="Offline-Übersicht prüfen"
+						aria-label={t('reviewLabel')}
 						className="focus-visible:ring-ring inline-flex min-h-11 shrink-0 items-center rounded-md px-2 underline underline-offset-2 focus-visible:ring-2 focus-visible:outline-none"
 					>
-						Prüfen
+						{t('review')}
 					</Link>
 				</div>
 			</output>
@@ -186,13 +187,11 @@ export function OfflineBanner() {
 						variant="outline"
 						onClick={() => void retry()}
 						disabled={syncing}
-						aria-label={
-							syncing ? 'Offline-Aktionen werden gesendet' : 'Offline-Aktionen jetzt senden'
-						}
+						aria-label={syncing ? t('sendingLabel') : t('sendNowLabel')}
 						className="min-h-11 shrink-0 text-meta"
 					>
 						{syncing ? <Spinner aria-hidden /> : notice ? <AlertCircle aria-hidden /> : null}
-						Jetzt senden
+						{t('sendNow')}
 					</Button>
 				)}
 			</div>

@@ -28,7 +28,7 @@
 
 ## 3. UI packages (parallel, disjoint ownership per design section 9)
 
-- [ ] 3.1 Package A shell, navigation, dashboard, activity client, error pages; verify its English spec and empty baseline for owned files
+- [x] 3.1 Package A shell, navigation, dashboard, activity client, error pages; verify its English spec and empty baseline for owned files
 - [ ] 3.2 Package B expenses and expense form; verify English amount entry saves correct cents
 - [ ] 3.3 Package C debts, settlement, reminders page; verify English spec
 - [ ] 3.4 Package D import and OCR; verify English spec and OCR unknown payer is `null`

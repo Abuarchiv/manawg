@@ -16,18 +16,18 @@ import {
 	storePendingImage,
 	uploadPendingImageToken,
 } from '@/core/offline/offline-images';
+import type { Message } from '@/shared/i18n/message';
 import { useEffect, useRef, useState } from 'react';
 import {
-	MISSING_PENDING_IMAGE_MESSAGE,
+	MISSING_PENDING_IMAGE,
 	isRejectedPendingUpload,
 	pendingUploadErrorMessage,
 	uploadSignErrorMessage,
 } from './image-upload-errors';
-import { prepareUploadImage } from './prepare-upload-image';
+import { HEIC_UNSUPPORTED_ERROR, prepareUploadImage } from './prepare-upload-image';
 
 export const MAX_UPLOAD_MB = PRIVATE_IMAGE_MAX_BYTES / 1024 / 1024;
-const NETWORK_UNSTABLE_NOTICE =
-	'Bild vorbereitet. Der Upload startet automatisch, sobald das Netz wieder stabil ist.';
+const NETWORK_UNSTABLE_NOTICE: Message = { key: 'shell.upload.networkUnstable' };
 
 interface ImageUploadInput {
 	shareCode: string;
@@ -50,8 +50,8 @@ export function useImageUpload({
 }: ImageUploadInput) {
 	const { identity } = useWg();
 	const [uploading, setUploading] = useState(false);
-	const [error, setError] = useState<string | null>(null);
-	const [notice, setNotice] = useState<string | null>(null);
+	const [error, setError] = useState<Message | null>(null);
+	const [notice, setNotice] = useState<Message | null>(null);
 	const [featureDisabled, setFeatureDisabled] = useState(false);
 	const [localPreview, setLocalPreview] = useState<string | null>(null);
 	const uploadPendingRef = useRef(false);
@@ -83,7 +83,7 @@ export function useImageUpload({
 				if (!record) {
 					setLocalPreview(null);
 					setNotice(null);
-					setError(MISSING_PENDING_IMAGE_MESSAGE);
+					setError(MISSING_PENDING_IMAGE);
 					onChangeRef.current(null);
 					return;
 				}
@@ -93,7 +93,7 @@ export function useImageUpload({
 				if (!cancelled) {
 					setLocalPreview(null);
 					setNotice(null);
-					setError(MISSING_PENDING_IMAGE_MESSAGE);
+					setError(MISSING_PENDING_IMAGE);
 					onChangeRef.current(null);
 				}
 			}
@@ -129,7 +129,7 @@ export function useImageUpload({
 				if (stale) return;
 				if (err instanceof PendingImageMissingError) {
 					setNotice(null);
-					setError(MISSING_PENDING_IMAGE_MESSAGE);
+					setError(MISSING_PENDING_IMAGE);
 					onChangeRef.current(null);
 					return;
 				}
@@ -144,7 +144,7 @@ export function useImageUpload({
 					}
 					return;
 				}
-				setNotice('Bild ist vorbereitet und wird erneut hochgeladen, sobald das Netz stabil ist.');
+				setNotice({ key: 'shell.upload.retryWhenStable' });
 			} finally {
 				syncPendingRef.current = null;
 				setUploading(false);
@@ -164,12 +164,12 @@ export function useImageUpload({
 		if (uploadPendingRef.current) return;
 		if (!original.type.startsWith('image/')) {
 			setNotice(null);
-			setError('Bitte ein Bild auswählen.');
+			setError({ key: 'shell.upload.chooseImage' });
 			return;
 		}
 		if (!isAllowedPrivateImageMimeType(original.type)) {
 			setNotice(null);
-			setError('Bitte JPG, PNG, WebP oder HEIC wählen.');
+			setError({ key: 'shell.upload.chooseType' });
 			return;
 		}
 		uploadPendingRef.current = true;
@@ -180,18 +180,23 @@ export function useImageUpload({
 		try {
 			file = await prepareUploadImage(original);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Bild konnte nicht verarbeitet werden.');
+			setError({
+				key:
+					err instanceof Error && err.message === HEIC_UNSUPPORTED_ERROR
+						? 'shell.upload.heicUnsupported'
+						: 'shell.upload.processFailed',
+			});
 			uploadPendingRef.current = false;
 			setUploading(false);
 			return;
 		}
 		if (file.size > PRIVATE_IMAGE_MAX_BYTES) {
-			setError(`Bild zu groß (max. ${MAX_UPLOAD_MB} MB). Wähle ein kleineres Bild.`);
+			setError({ key: 'shell.upload.tooBig', values: { max: MAX_UPLOAD_MB } });
 			uploadPendingRef.current = false;
 			setUploading(false);
 			return;
 		}
-		async function keepPending(message: string): Promise<boolean> {
+		async function keepPending(message: Message): Promise<boolean> {
 			try {
 				const token = await storePendingImage({
 					file,
@@ -209,15 +214,13 @@ export function useImageUpload({
 				return true;
 			} catch {
 				setNotice(null);
-				setError('Bild konnte nicht zwischengespeichert werden. Versuche es später erneut.');
+				setError({ key: 'shell.upload.cacheFailed' });
 				return false;
 			}
 		}
 		if (!navigator.onLine) {
 			try {
-				await keepPending(
-					'Bild vorbereitet. Der Upload startet automatisch, sobald du wieder online bist.',
-				);
+				await keepPending({ key: 'shell.upload.offlineQueued' });
 			} finally {
 				uploadPendingRef.current = false;
 				setUploading(false);

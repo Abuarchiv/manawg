@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { useText } from '@/components/wg/use-text';
 import type { TodayImportantItem } from '@/composition/dashboard-insights';
 import { formatEuroCents } from '@/core/utils/money';
 import { getChoreStatus } from '@/features/chores/chore-status';
@@ -10,6 +11,7 @@ import {
 } from '@/features/chores/components/ChoreCompleteDialog';
 import { cn } from '@/shared/lib/cn';
 import { ChevronRight, Circle, Loader2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { TodayIcon } from './TodayIcon';
 
@@ -30,6 +32,9 @@ export function TodayRow({
 	onCancel: () => void;
 	onConfirm: () => void;
 }) {
+	const t = useTranslations('home.forYou');
+	const text = useText();
+	const title = text(item.title);
 	const checkable = item.kind === 'chore' && item.isPersonal && Boolean(item.entityId);
 	const actionLabel = getChoreStatus(item.expectedNextDueAt ?? '').actionLabel;
 	const debtAmount =
@@ -43,7 +48,7 @@ export function TodayRow({
 					variant="ghost"
 					size="icon"
 					className="shrink-0"
-					aria-label={completeTriggerLabel(item.title, actionLabel)}
+					aria-label={completeTriggerLabel(title, actionLabel)}
 					// aria-disabled instead of disabled: otherwise the button loses focus while saving.
 					aria-disabled={pending}
 					onClick={() => {
@@ -67,7 +72,7 @@ export function TodayRow({
 			>
 				<span className="flex min-w-16 flex-1 flex-col">
 					<span className="line-clamp-3 text-body font-medium leading-snug break-words">
-						{item.title}
+						{title}
 					</span>
 					<span
 						className={cn(
@@ -75,7 +80,7 @@ export function TodayRow({
 							item.kind === 'recurring' && 'tabular-nums',
 						)}
 					>
-						{pending ? 'Speichert…' : item.detail}
+						{pending ? t('saving') : text(item.detail)}
 					</span>
 				</span>
 				<span className="ml-auto flex shrink-0 items-center gap-2">
@@ -90,7 +95,7 @@ export function TodayRow({
 			{checkable && (
 				<ChoreCompleteDialog
 					open={confirming}
-					title={item.title}
+					title={title}
 					actionLabel={actionLabel}
 					busy={pending}
 					error={error}

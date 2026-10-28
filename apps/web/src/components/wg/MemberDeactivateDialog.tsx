@@ -13,10 +13,12 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import { RATE_LIMITED_MESSAGE, isRateLimited } from '@/core/http/error-codes';
+import { isRateLimited } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
 import { formatEuroCents } from '@/core/utils/money';
+import { useMessage } from '@/shared/i18n/message';
 import { TriangleAlert as AlertTriangle } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useEffect, useRef, useState } from 'react';
 
 /** One open debt of the member being moved out, from their own perspective. */
@@ -65,8 +67,17 @@ export function MemberDeactivateDialog({
 	onClose,
 	onDeactivated,
 }: MemberDeactivateDialogProps) {
+	const t = useTranslations('shell.deactivate');
+	const tCommon = useTranslations('common.errors');
+	const tUi = useTranslations('shell.ui');
+	const mode = selfLeave ? 'leave' : 'moveOut';
+	const message = useMessage();
+	// Copy that only varies by `mode` has no typed placeholders, so it goes through `Message`.
+	const byMode = (
+		key: 'adminRequired' | 'saveFailed' | 'loadFailed' | 'remain' | 'confirm',
+	): string => message({ key: `shell.deactivate.${key}`, values: { mode } });
 	const [loading, setLoading] = useState(true);
-	const [loadError, setLoadError] = useState<string | null>(null);
+	const [loadError, setLoadError] = useState(false);
 	const [openBalances, setOpenBalances] = useState<OpenBalanceDto[]>([]);
 	const [submitting, setSubmitting] = useState(false);
 	const [submitError, setSubmitError] = useState<string | null>(null);
@@ -76,7 +87,7 @@ export function MemberDeactivateDialog({
 	useEffect(() => {
 		let cancelled = false;
 		setLoading(true);
-		setLoadError(null);
+		setLoadError(false);
 		async function loadOpenBalances(): Promise<void> {
 			const res = await apiFetch<OpenBalancesResponse>(
 				`/api/wg/${encodedShareCode}/members/${member.id}`,
@@ -86,7 +97,7 @@ export function MemberDeactivateDialog({
 			if (res.ok) {
 				setOpenBalances(res.data.openBalances);
 			} else {
-				setLoadError('Offene Salden konnten nicht geladen werden.');
+				setLoadError(true);
 			}
 			setLoading(false);
 		}
@@ -115,21 +126,13 @@ export function MemberDeactivateDialog({
 			return;
 		}
 		if (res.error === 'admin_required') {
-			setSubmitError(
-				selfLeave
-					? 'Übergib zuerst die Admin-Rolle an ein aktives Mitglied, dann kannst du die WG verlassen. Wenn du nur dieses Gerät abmelden möchtest, nutze oben „Konto abmelden“.'
-					: 'Nur aktive Admin-Mitglieder können andere Mitglieder deaktivieren. Admin-Mitgliedschaften selbst können nicht deaktiviert werden. Bitte wende dich an ein aktives Admin-Mitglied.',
-			);
+			setSubmitError(byMode('adminRequired'));
 			submittingRef.current = false;
 			setSubmitting(false);
 			return;
 		}
 		setSubmitError(
-			isRateLimited(res.error, res.status)
-				? RATE_LIMITED_MESSAGE
-				: selfLeave
-					? 'WG konnte nicht verlassen werden. Deine Mitgliedschaft bleibt bestehen. Bitte versuche es erneut.'
-					: 'Auszug konnte nicht gespeichert werden. Bitte versuche es erneut.',
+			isRateLimited(res.error, res.status) ? tCommon('rateLimited') : byMode('saveFailed'),
 		);
 		submittingRef.current = false;
 		setSubmitting(false);
@@ -147,13 +150,9 @@ export function MemberDeactivateDialog({
 					<AlertDialogMedia>
 						<AlertTriangle aria-hidden />
 					</AlertDialogMedia>
-					<AlertDialogTitle>
-						{selfLeave ? 'Wirklich verlassen?' : `${member.name} ausziehen?`}
-					</AlertDialogTitle>
+					<AlertDialogTitle>{t('title', { mode, name: member.name })}</AlertDialogTitle>
 					<AlertDialogDescription>
-						{selfLeave
-							? 'Deine Mitgliedschaft in dieser WG wird deaktiviert. Deine Einträge und offenen Salden bleiben erhalten. Ein aktives Admin-Mitglied mit der nötigen Berechtigung kann dich später wieder aktivieren.'
-							: `${member.name} verliert den Zugriff auf diese WG. Historie und offene Salden bleiben erhalten. Ein aktives Admin-Mitglied kann den Zugang später wieder aktivieren.`}
+						{t('description', { mode, name: member.name })}
 					</AlertDialogDescription>
 				</AlertDialogHeader>
 
@@ -161,24 +160,17 @@ export function MemberDeactivateDialog({
 					{loading ? (
 						<p className="text-muted-foreground flex min-h-11 items-center gap-2 text-meta">
 							<Spinner aria-hidden />
-							Offene Salden werden geprüft…
+							{t('checking')}
 						</p>
 					) : loadError ? (
 						<Alert>
-							<AlertDescription>
-								{loadError}{' '}
-								{selfLeave
-									? 'Das Verlassen ist trotzdem möglich.'
-									: 'Der Auszug ist trotzdem möglich.'}
-							</AlertDescription>
+							<AlertDescription>{byMode('loadFailed')}</AlertDescription>
 						</Alert>
 					) : openBalances.length === 0 ? (
-						<p className="text-muted-foreground text-meta">Keine offenen Salden.</p>
+						<p className="text-muted-foreground text-meta">{t('none')}</p>
 					) : (
 						<Alert>
-							<AlertTitle>
-								Offene Salden bleiben nach {selfLeave ? 'dem Verlassen' : 'dem Auszug'} bestehen:
-							</AlertTitle>
+							<AlertTitle>{byMode('remain')}</AlertTitle>
 							<AlertDescription>
 								<ul className="mt-1.5 grid gap-1">
 									{openBalances.map((balance) => (
@@ -187,9 +179,7 @@ export function MemberDeactivateDialog({
 											className="flex items-center justify-between gap-2 text-meta"
 										>
 											<span className="text-muted-foreground truncate">
-												{balance.direction === 'owes'
-													? `Schuldet ${balance.name}`
-													: `${balance.name} schuldet`}
+												{t('balanceOwner', { direction: balance.direction, name: balance.name })}
 											</span>
 											<span className="text-foreground shrink-0 font-medium tabular-nums">
 												{formatEuroCents(balance.amount_cents, balance.currency)}
@@ -211,9 +201,9 @@ export function MemberDeactivateDialog({
 				<AlertDialogFooter>
 					<AlertDialogCancel
 						disabled={submitting}
-						aria-label={selfLeave ? 'Abbrechen: WG verlassen' : undefined}
+						aria-label={selfLeave ? t('cancelLeaveLabel') : undefined}
 					>
-						Abbrechen
+						{tUi('cancel')}
 					</AlertDialogCancel>
 					<Button
 						variant="destructive"
@@ -222,10 +212,10 @@ export function MemberDeactivateDialog({
 							void handleConfirm();
 						}}
 						disabled={submitting || loading}
-						aria-label={selfLeave ? 'Verlassen: WG verlassen' : undefined}
+						aria-label={selfLeave ? t('confirmLeaveLabel') : undefined}
 					>
 						{submitting && <Spinner aria-hidden />}
-						{selfLeave ? 'Verlassen' : 'Ausziehen'}
+						{byMode('confirm')}
 					</Button>
 				</AlertDialogFooter>
 			</AlertDialogContent>

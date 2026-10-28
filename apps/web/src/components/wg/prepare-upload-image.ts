@@ -2,7 +2,8 @@ const MAX_EDGE = 2048;
 const RESIZE_ABOVE_BYTES = 1.5 * 1024 * 1024;
 const HEIC_TYPES = new Set(['image/heic', 'image/heif']);
 
-const HEIC_UNSUPPORTED_MESSAGE = 'Dieses Gerät kann HEIC nicht umwandeln. Bitte wähle ein JPG.';
+/** Thrown for a HEIC the browser cannot decode; the caller shows its own copy. */
+export const HEIC_UNSUPPORTED_ERROR = 'heic-unsupported';
 
 /** Scales down so the longer edge is at most `maxEdge`; never scales up. */
 export function fitWithin(
@@ -53,7 +54,7 @@ export async function prepareUploadImage(file: File): Promise<File> {
 			type: 'image/jpeg',
 		});
 	} catch {
-		if (heic) throw new Error(HEIC_UNSUPPORTED_MESSAGE);
+		if (heic) throw new Error(HEIC_UNSUPPORTED_ERROR);
 		return file;
 	}
 }

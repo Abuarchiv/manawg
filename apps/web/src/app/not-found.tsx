@@ -8,14 +8,16 @@ import {
 } from '@/components/ui/empty';
 import { House } from 'lucide-react';
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import Link from 'next/link';
 
-export const metadata: Metadata = {
-	title: 'Seite nicht gefunden',
-	robots: { index: false, follow: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+	const t = await getTranslations('meta.notFound');
+	return { title: t('title'), robots: { index: false, follow: false } };
+}
 
-export default function NotFound() {
+export default async function NotFound() {
+	const t = await getTranslations('shell.notFound');
 	return (
 		<main
 			id="main"
@@ -32,13 +34,13 @@ export default function NotFound() {
 							data-slot="empty-title"
 							className="min-w-0 max-w-full text-lg font-semibold [overflow-wrap:break-word]"
 						>
-							Seite nicht gefunden
+							{t('title')}
 						</h1>
-						<EmptyDescription>Prüfe den Link oder geh zurück zur Startseite.</EmptyDescription>
+						<EmptyDescription>{t('description')}</EmptyDescription>
 					</EmptyHeader>
 					<EmptyContent>
 						<Button size="lg" render={<Link href="/" />} nativeButton={false}>
-							Zur Startseite
+							{t('toHome')}
 						</Button>
 					</EmptyContent>
 				</Empty>

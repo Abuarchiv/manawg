@@ -1,5 +1,6 @@
 import { MS_PER_DAY, parseTimestamp } from '@/core/utils/time';
 import { getChoreStatus } from '@/features/chores/chore-status';
+import type { Message } from '@/shared/i18n/message';
 import type { ActivityKind } from './activity-types';
 
 const STALE_SHOPPING_DAYS = 3;
@@ -7,8 +8,9 @@ const STALE_ANNOUNCEMENT_DAYS = 2;
 
 export interface ActivityReminder {
 	kind: 'shopping' | 'chore' | 'announcement';
-	title: string;
-	detail: string;
+	/** Generated copy as data, rendered in the reader's language; announcement text stays a string. */
+	title: Message;
+	detail: string | Message;
 	href: string;
 }
 
@@ -31,8 +33,8 @@ interface ActivityReminderInput {
 interface ActivityInboxItem {
 	id: string;
 	priority: 'high' | 'normal';
-	title: string;
-	detail: string;
+	title: Message;
+	detail: string | Message;
 	href: string;
 	kind: ActivityKind | ActivityReminder['kind'];
 }
@@ -61,9 +63,15 @@ export function getActivityReminders(
 			ageDays: status.overdueDays,
 			item: {
 				kind: 'chore',
-				title: `${chore.title} hängt seit ${status.overdueDays} Tagen`,
+				title: {
+					key: 'activity.reminder.choreStuck',
+					values: { title: chore.title, days: status.overdueDays },
+				},
 				href: `/putzen?highlight=${encodeURIComponent(chore.id)}`,
-				detail: `${chore.assignedName ?? 'Niemand'} ist eingetragen. Nachholen, übernehmen oder kurz klären.`,
+				detail: {
+					key: 'activity.reminder.choreDetail',
+					values: { assignee: chore.assignedName ?? { key: 'activity.reminder.nobody' } },
+				},
 			},
 		});
 	}
@@ -79,7 +87,7 @@ export function getActivityReminders(
 			ageDays: days,
 			item: {
 				kind: 'announcement',
-				title: `Pinnwand offen seit ${days} Tagen`,
+				title: { key: 'activity.reminder.announcementOpen', values: { days } },
 				href: `/pinnwand#announcement-${encodeURIComponent(item.id)}`,
 				detail: item.content,
 			},
@@ -96,9 +104,9 @@ export function getActivityReminders(
 			ageDays: days,
 			item: {
 				kind: 'shopping',
-				title: `${item.name} liegt seit ${days} Tagen offen`,
+				title: { key: 'activity.reminder.shoppingOpen', values: { name: item.name, days } },
 				href: `/einkauf?highlight=${encodeURIComponent(item.id)}`,
-				detail: 'Prüfe kurz, ob du das noch brauchst.',
+				detail: { key: 'activity.reminder.shoppingDetail' },
 			},
 		});
 	}
