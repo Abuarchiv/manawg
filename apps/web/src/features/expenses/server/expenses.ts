@@ -157,8 +157,9 @@ export async function recordExpenseCreatedSideEffects(
 		eventType: 'expense.created',
 		entityType: 'expense',
 		entityId: expense.id,
-		summary: `${actor.name} hat ${expense.description} eingetragen.`,
+		actorName: actor.name,
 		metadata: {
+			description: expense.description,
 			amountCents: expense.amountCents,
 			currency: expense.currency,
 			paidByMemberId: expense.paidByMemberId,

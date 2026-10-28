@@ -327,7 +327,7 @@ export const POST = withWgRoute('announcements POST', async (req, { code }) => {
 		eventType: 'announcement.created',
 		entityType: 'announcement',
 		entityId: item.id,
-		summary: `${auth.member.name} hat einen Pinnwand-Beitrag erstellt.`,
+		actorName: auth.member.name,
 		metadata: {
 			kind,
 			source: safeSource,

@@ -194,9 +194,7 @@ export const POST = withWgRoute<{ id: string; splitId: string }>(
 			eventType: settled ? 'expense.split.settled' : 'expense.split.reopened',
 			entityType: 'expense_split',
 			entityId: splitId,
-			summary: settled
-				? `${auth.member.name} hat einen Anteil für ${current.description} beglichen.`
-				: `${auth.member.name} hat einen Anteil für ${current.description} wieder geöffnet.`,
+			actorName: auth.member.name,
 			metadata: {
 				expenseId: current.expenseId,
 				description: current.description,

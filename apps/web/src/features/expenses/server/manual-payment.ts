@@ -1,9 +1,9 @@
 import 'server-only';
+import { auditValues } from '@/core/audit-values';
 import { auditEvents, expensePayments, wgMembers } from '@/core/db';
 import { type WriteOutcome, responseCodec } from '@/core/db/idempotent-write';
 import type { DbTransaction } from '@/core/db/transaction';
 import { HTTP } from '@/core/http/api-errors';
-import { formatEuroCents } from '@/core/utils/money';
 import { currencySchema } from '@/core/validators/currency';
 import { loadSettlementSnapshot, pairIsInWg } from '@/features/expenses/server/settle-debt';
 import { selectSettlementScope } from '@/features/expenses/settlement-scope';
@@ -75,7 +75,7 @@ export async function recordCashPayment(
 	wgId: string,
 	callerId: string,
 	input: ManualPaymentInput,
-	callerName = 'Ein Mitglied',
+	callerName = '',
 ): Promise<WriteOutcome<unknown, RecordOutcome>> {
 	if (!(await lockActiveCaller(tx, wgId, callerId))) return rejected('member_deactivated');
 
@@ -122,20 +122,22 @@ export async function recordCashPayment(
 		.returning({ id: expensePayments.id });
 	if (!payment) throw new Error('manual_payment_insert_failed');
 	// Written with the payment, so a replayed request never finds a payment without its author.
-	await tx.insert(auditEvents).values({
-		wgId,
-		memberId: callerId,
-		eventType: 'expense.debt.settled.manual',
-		entityType: 'expense_payment',
-		entityId: payment.id,
-		summary: `${callerName} hat eine Barzahlung über ${formatEuroCents(preview.netCents, preview.currency)} eingetragen.`,
-		metadataJson: JSON.stringify({
-			fromMemberId: input.fromMemberId,
-			toMemberId: input.toMemberId,
-			amountCents: preview.netCents,
-			currency: preview.currency,
+	await tx.insert(auditEvents).values(
+		auditValues({
+			wgId,
+			memberId: callerId,
+			eventType: 'expense.debt.settled.manual',
+			entityType: 'expense_payment',
+			entityId: payment.id,
+			actorName: callerName,
+			metadata: {
+				fromMemberId: input.fromMemberId,
+				toMemberId: input.toMemberId,
+				amountCents: preview.netCents,
+				currency: preview.currency,
+			},
 		}),
-	});
+	);
 	return {
 		status: 200,
 		body: {
@@ -159,7 +161,7 @@ export async function voidCashPayment(
 	wgId: string,
 	callerId: string,
 	paymentId: string,
-	callerName = 'Ein Mitglied',
+	callerName = '',
 ): Promise<WriteOutcome<unknown, VoidOutcome>> {
 	if (!(await lockActiveCaller(tx, wgId, callerId))) return rejected('member_deactivated');
 
@@ -186,20 +188,22 @@ export async function voidCashPayment(
 		.set({ status: 'voided' })
 		.where(and(eq(expensePayments.id, paymentId), eq(expensePayments.status, 'completed')));
 	// Written with the status change, so the feed shows who voided it and when.
-	await tx.insert(auditEvents).values({
-		wgId,
-		memberId: callerId,
-		eventType: 'expense.debt.settled.manual.voided',
-		entityType: 'expense_payment',
-		entityId: paymentId,
-		summary: `${callerName} hat eine Barzahlung über ${formatEuroCents(payment.amountCents, payment.currency)} storniert.`,
-		metadataJson: JSON.stringify({
-			fromMemberId: payment.fromMemberId,
-			toMemberId: payment.toMemberId,
-			amountCents: payment.amountCents,
-			currency: payment.currency,
+	await tx.insert(auditEvents).values(
+		auditValues({
+			wgId,
+			memberId: callerId,
+			eventType: 'expense.debt.settled.manual.voided',
+			entityType: 'expense_payment',
+			entityId: paymentId,
+			actorName: callerName,
+			metadata: {
+				fromMemberId: payment.fromMemberId,
+				toMemberId: payment.toMemberId,
+				amountCents: payment.amountCents,
+				currency: payment.currency,
+			},
 		}),
-	});
+	);
 	return {
 		status: 200,
 		body: { paymentId, voided: true, amountCents: payment.amountCents, currency: payment.currency },

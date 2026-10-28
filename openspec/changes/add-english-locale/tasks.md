@@ -49,9 +49,9 @@
 
 ## 5. Audit and activity
 
-- [ ] 5.1 Store sentence parameters on every audit write, never content keys; verify a byte-identity test per event type for the German summary
-- [ ] 5.2 Render feed `text` and `selfText` in the reader's locale with legacy fallback; verify English reader sees new rows in English and old rows in German
-- [ ] 5.3 Replace remaining API fallback names with `null`; verify no `i18n-literal` entries remain under `app/api/**`
+- [x] 5.1 Store sentence parameters on every audit write, never content keys; verify a byte-identity test per event type for the German summary
+- [x] 5.2 Render feed `text` and `selfText` in the reader's locale with legacy fallback; verify English reader sees new rows in English and old rows in German
+- [x] 5.3 Replace remaining API fallback names with `null`; verify no `i18n-literal` entries remain under `app/api/**`
 
 ## 6. Polish and lock
 

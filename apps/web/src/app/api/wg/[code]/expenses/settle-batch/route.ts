@@ -145,8 +145,9 @@ export const POST = withWgRoute('settle-batch POST', async (req, { code }) => {
 			eventType: 'expense.debt.settled',
 			entityType: 'expense_debt',
 			entityId: `${confirmation.fromMemberId}:${confirmation.toMemberId}`,
-			summary: `${auth.member.name} hat ${outcome.settledIds.length} offene Anteil${outcome.settledIds.length === 1 ? '' : 'e'} beglichen.`,
+			actorName: auth.member.name,
 			metadata: {
+				count: outcome.settledIds.length,
 				fromMemberId: confirmation.fromMemberId,
 				toMemberId: confirmation.toMemberId,
 				splitIds: outcome.settledIds,

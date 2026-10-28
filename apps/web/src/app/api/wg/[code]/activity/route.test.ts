@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { mock, test } from 'node:test';
+import { NextRequest } from 'next/server';
 
 type Entry = { table: string; where?: unknown; orderBy?: unknown; limit?: number };
 type Table = { name: string } & Record<string, string>;
@@ -118,7 +119,7 @@ const { GET } = await import('./route');
 
 function get(search = '') {
 	return GET(
-		new Request(`https://example.test/api/wg/MTE8PZAT/activity${search}`) as never,
+		new NextRequest(`https://example.test/api/wg/MTE8PZAT/activity${search}`) as never,
 		{ params: Promise.resolve({ code: 'MTE8PZAT' }) } as never,
 	);
 }

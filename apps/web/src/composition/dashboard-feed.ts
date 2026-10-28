@@ -1,4 +1,8 @@
-import { type ActivityKind, formatAuditActivityText } from './activity';
+import type { RenderContext } from '@/core/audit-messages';
+import { serverRenderContext } from '@/core/i18n/render-context';
+import type { MessageKey } from '@/shared/i18n/message';
+import type { ActivityKind } from './activity';
+import { auditActivitySentence } from './activity-audit';
 import {
 	getDashboardActivityHref,
 	getDashboardAuditHref,
@@ -21,6 +25,8 @@ export interface ActivityItem {
 	memberId?: string | null;
 	memberName: string;
 	text: string;
+	/** `text` for the reader's own rows; absent when it reads the same. */
+	selfText?: string;
 	/** True when `text` is a server-built sentence ("hat …"), not user content. */
 	sentence?: boolean;
 	amountCents?: number;
@@ -45,6 +51,7 @@ export function buildPrimaryActivity(
 	announcementRows: PrimaryRows['announcementRows'],
 	memberById: Map<string, { name: string }>,
 	shareCode: string,
+	ctx: RenderContext = serverRenderContext('de'),
 ): { activity: ActivityItem[]; rawActivityByKey: Map<string, number> } {
 	const activity: ActivityItem[] = [];
 	const rawActivityByKey = new Map<string, number>();
@@ -69,7 +76,9 @@ export function buildPrimaryActivity(
 			timestamp: (s.boughtAt ?? s.createdAt).toISOString(),
 			memberId: actorId,
 			memberName: memberById.get(actorId)?.name ?? '—',
-			text: s.boughtAt ? `${s.name} gekauft` : s.name,
+			text: s.boughtAt
+				? ctx.render({ key: 'audit.timeline.shoppingBought', values: { name: s.name } })
+				: s.name,
 			href: getDashboardActivityHref(shareCode, 'shopping', s.id),
 		});
 		rawActivityByKey.set(`shopping:${s.id}`, (s.boughtAt ?? s.createdAt).getTime());
@@ -97,7 +106,9 @@ export function appendSecondaryActivity(
 	auditRows: SecondaryRows['auditRows'],
 	memberById: Map<string, { name: string }>,
 	shareCode: string,
+	ctx: RenderContext = serverRenderContext('de'),
 ): void {
+	const say = (key: MessageKey) => ctx.render({ key });
 	// Rows are unordered (they also feed absentMembers), so pick the newest here.
 	// Entry time, not start date: a future absence must not stick to the top.
 	const newestAbsences = [...absenceRows]
@@ -109,7 +120,7 @@ export function appendSecondaryActivity(
 			timestamp: absence.createdAt.toISOString(),
 			memberId: absence.memberId,
 			memberName: memberById.get(absence.memberId)?.name ?? '—',
-			text: 'Abwesenheit eingetragen',
+			text: say('audit.timeline.absenceEntered'),
 			href: getDashboardActivityHref(shareCode, 'absence', absence.id),
 		});
 		rawActivityByKey.set(`absence:${absence.id}`, absence.createdAt.getTime());
@@ -124,10 +135,13 @@ export function appendSecondaryActivity(
 		activity.push({
 			kind: 'recurring',
 			timestamp: new Date(recurringTs).toISOString(),
-			memberName: 'System',
-			text: recurring.lastCreatedAt
-				? `${recurring.description} aus Vorlage erstellt`
-				: `${recurring.description} als Fixkosten-Vorlage angelegt`,
+			memberName: say('audit.timeline.system'),
+			text: ctx.render({
+				key: recurring.lastCreatedAt
+					? 'audit.timeline.recurringFromTemplate'
+					: 'audit.timeline.recurringCreated',
+				values: { description: recurring.description },
+			}),
 			amountCents: recurring.amountCents,
 			currency: 'EUR',
 			href: getDashboardActivityHref(shareCode, 'recurring', recurring.id),
@@ -138,14 +152,18 @@ export function appendSecondaryActivity(
 		const kind = getDashboardAuditKind(audit);
 		if (isDuplicateAuditActivity(rawActivityByKey, kind, audit.entityId, audit.createdAt.getTime()))
 			continue;
-		const actorName = audit.memberId ? (memberById.get(audit.memberId)?.name ?? '—') : 'System';
+		const actorName = audit.memberId
+			? (memberById.get(audit.memberId)?.name ?? '—')
+			: say('audit.timeline.system');
+		const { text, selfText } = auditActivitySentence(audit, actorName, ctx);
 		const href = getDashboardAuditHref(shareCode, audit);
 		activity.push({
 			kind,
 			timestamp: audit.createdAt.toISOString(),
 			memberId: audit.memberId ?? null,
 			memberName: actorName,
-			text: formatAuditActivityText(audit.summary, actorName),
+			text,
+			...(selfText ? { selfText } : {}),
 			sentence: true,
 			...(href ? { href } : {}),
 		});

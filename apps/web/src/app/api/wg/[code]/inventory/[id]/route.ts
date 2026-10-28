@@ -159,7 +159,7 @@ export const PATCH = withWgRoute<{ id: string }>('inventory PATCH', async (req, 
 			eventType: 'inventory.updated',
 			entityType: 'inventory_item',
 			entityId: updated.id,
-			summary: `${auth.member.name} hat ${updated.name} in den Vorräten aktualisiert.`,
+			actorName: auth.member.name,
 			metadata: {
 				name: updated.name,
 				delta,
@@ -197,7 +197,7 @@ export const DELETE = withWgRoute<{ id: string }>('inventory DELETE', async (req
 		eventType: 'inventory.deleted',
 		entityType: 'inventory_item',
 		entityId: id,
-		summary: `${auth.member.name} hat ${deleted[0]?.name ?? 'einen Vorrat'} aus den Vorräten entfernt.`,
+		actorName: auth.member.name,
 		metadata: { name: deleted[0]?.name ?? null },
 	});
 

@@ -299,7 +299,6 @@ export const GET = withCronLogging(
 				eventType: 'recurring.charged',
 				entityType: 'expense',
 				entityId: expenseId,
-				summary: `Fixkosten-Buchung ${template.description} wurde automatisch eingetragen.`,
 				metadata: {
 					recurringExpenseId: template.id,
 					amountCents: template.amountCents,

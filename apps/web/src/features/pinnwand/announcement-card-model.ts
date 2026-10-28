@@ -6,11 +6,11 @@ import type {
 
 /** What a Pinnwand card shows, derived from the post; the components only render it. */
 
-/** The reactions in display order; the German labels feed the stored activity text of the reaction route. */
-export const REACTION_OPTIONS: ReadonlyArray<{ key: ReactionKey; label: string }> = [
-	{ key: 'seen', label: 'Gesehen' }, // i18n-ignore stored activity text
-	{ key: 'take', label: 'Übernehme ich' }, // i18n-ignore stored activity text
-	{ key: 'ok', label: 'Passt' }, // i18n-ignore stored activity text
+/** The reactions in display order. */
+export const REACTION_OPTIONS: ReadonlyArray<{ key: ReactionKey }> = [
+	{ key: 'seen' },
+	{ key: 'take' },
+	{ key: 'ok' },
 ];
 
 /** The reaction each kind of post asks for; it is always shown on the card. */

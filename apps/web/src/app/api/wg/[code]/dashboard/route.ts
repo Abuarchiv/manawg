@@ -1,5 +1,6 @@
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { rateLimitResponse } from '@/core/http/api-errors';
+import { requestLocale } from '@/core/i18n/request-locale';
 import { checkRateLimit, dashboardLimiter } from '@/core/rate-limit';
 import { NextResponse } from 'next/server';
 
@@ -22,6 +23,6 @@ export const GET = withWgRoute('dashboard GET', async (req, { code }) => {
 	);
 	if (limit) return limit;
 
-	const data = await loadDashboardData(auth.wg.id, auth.member.memberId, code);
+	const data = await loadDashboardData(auth.wg.id, auth.member.memberId, code, requestLocale(req));
 	return NextResponse.json(data);
 });

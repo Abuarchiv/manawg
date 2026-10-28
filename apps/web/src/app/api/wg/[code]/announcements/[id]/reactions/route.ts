@@ -12,7 +12,6 @@ import {
 	dispatchNotificationSafely,
 } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
-import { REACTION_OPTIONS } from '@/features/pinnwand/announcement-card-model';
 import { ANNOUNCEMENT_REACTIONS } from '@/features/pinnwand/announcement-workflow';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
@@ -128,8 +127,6 @@ export const POST = withWgRoute<{ id: string }>(
 		}
 
 		const effect = outcome.effect;
-		const reactionLabel = (key: string) =>
-			REACTION_OPTIONS.find((option) => option.key === key)?.label ?? key;
 		if (effect.type === 'removed') {
 			await recordAuditEvent({
 				wgId: wg.id,
@@ -137,7 +134,7 @@ export const POST = withWgRoute<{ id: string }>(
 				eventType: 'announcement.reaction.removed',
 				entityType: 'announcement_reaction',
 				entityId: effect.reactionId,
-				summary: `${auth.member.name} hat eine Reaktion entfernt.`,
+				actorName: auth.member.name,
 				metadata: { announcementId: id, reaction: parsed.data.reaction },
 			});
 			return NextResponse.json(outcome.response.body, { status: outcome.response.status });
@@ -149,7 +146,7 @@ export const POST = withWgRoute<{ id: string }>(
 			eventType: 'announcement.reaction.added',
 			entityType: 'announcement_reaction',
 			entityId: effect.reactionId,
-			summary: `${auth.member.name} hat mit „${reactionLabel(parsed.data.reaction)}“ reagiert.`,
+			actorName: auth.member.name,
 			metadata: { announcementId: id, reaction: parsed.data.reaction },
 		});
 		let warning: NotificationDispatchWarning = null;

@@ -79,21 +79,6 @@ const postSchema = z.discriminatedUnion('action', [
 	}),
 ]);
 
-const NOTIFICATION_FIELD_LABELS: Record<string, string> = {
-	pushOptIn: 'Web Push',
-	notifyAnnouncements: 'Pinnwand',
-	notifyChores: 'Putzplan',
-	notifyExpenses: 'Ausgaben',
-	notifyShopping: 'Einkäufe',
-	notifyInventory: 'Vorräte',
-	notifyReminders: 'Erinnerungen',
-	notifyChat: 'Chat',
-	notifyEvents: 'Kalender',
-	notifyStatementEmail: 'Monatsabrechnung per E-Mail',
-	quietStartHour: 'Ruhezeit Start',
-	quietEndHour: 'Ruhezeit Ende',
-};
-
 export const GET = withWgRoute('notifications GET', async (req, { code }) => {
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
@@ -215,11 +200,9 @@ export const PATCH = withWgRoute('notifications PATCH', async (req, { code }) =>
 			eventType: 'notification.settings.updated',
 			entityType: 'member',
 			entityId: auth.member.memberId,
-			summary: `${result.context.memberName} hat Benachrichtigungseinstellungen geändert.`,
+			actorName: result.context.memberName,
 			metadata: {
-				notificationFields: result.context.changed.map(
-					(field) => NOTIFICATION_FIELD_LABELS[field] ?? field,
-				),
+				notificationFields: result.context.changed,
 				pushOptIn: typeof update.pushOptIn === 'boolean' ? update.pushOptIn : undefined,
 				quietStartHour: update.quietStartHour,
 				quietEndHour: update.quietEndHour,
@@ -339,8 +322,8 @@ export const POST = withWgRoute('notifications POST', async (req, { code }) => {
 			eventType: subscribed ? 'notification.push.subscribed' : 'notification.push.unsubscribed',
 			entityType: 'member',
 			entityId: auth.member.memberId,
-			summary: `${result.context.name} hat Web Push ${subscribed ? 'aktiviert' : 'deaktiviert'}.`,
-			metadata: { notificationFields: ['Web Push'], pushOptIn: result.context.pushOptIn },
+			actorName: result.context.name,
+			metadata: { notificationFields: ['pushOptIn'], pushOptIn: result.context.pushOptIn },
 		});
 	}
 	return NextResponse.json(result.body, { status: result.status });

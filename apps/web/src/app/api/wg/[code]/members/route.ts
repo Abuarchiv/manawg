@@ -287,7 +287,7 @@ export const POST = withWgRoute('members POST', async (req, { code }) => {
 			eventType: 'member.joined',
 			entityType: 'member',
 			entityId: member.id,
-			summary: `${member.name} ist der WG per Einladung beigetreten.`,
+			actorName: member.name,
 			metadata: { name: member.name, inviteId },
 		});
 		return NextResponse.json({ member });

@@ -166,7 +166,7 @@ export const POST = withWgRoute('shopping POST', async (req, { code }) => {
 				eventType: 'shopping.created',
 				entityType: 'shopping_item',
 				entityId: item.id,
-				summary: `${member.name} hat ${name} auf die Einkaufsliste gesetzt.`,
+				actorName: member.name,
 				metadata: { title: name, quantity: safeQuantity },
 			});
 			const { warning } = await dispatchNotificationSafely({
@@ -223,7 +223,7 @@ export const DELETE = withWgRoute('shopping DELETE', async (req, { code }) => {
 			eventType: 'shopping.cleared_bought',
 			entityType: 'shopping_item',
 			entityId: null,
-			summary: `${auth.member.name} hat ${deleted.length} erledigte Einkaufseinträge entfernt.`,
+			actorName: auth.member.name,
 			metadata: {
 				count: deleted.length,
 				items: deleted.slice(0, 20).map((item) => item.name),

@@ -25,6 +25,8 @@ interface ActivityItem {
 	memberId?: string | null;
 	memberName: string;
 	text: string;
+	/** `text` for the reader's own rows; absent when it reads the same. */
+	selfText?: string;
 	/** Server-built sentence starting with a verb; user content never sets this. */
 	sentence?: boolean;
 	detail?: string;
@@ -68,10 +70,7 @@ export function ActivityFeed({ items, inset }: { items: ActivityItem[]; inset?: 
 				const who = isMe ? t('you') : item.memberName;
 				// Sentences („hat … geändert“) need the person in front; keywords („Brot gekauft“) are the title.
 				const sentence = item.sentence === true;
-				// i18n-ignore German verb agreement for the reader's own rows
-				const legacySelf = (value: string) =>
-					value.replace(/^hat\b/, 'hast').replace(/^ist\b/, 'bist');
-				const text = sentence && isMe ? legacySelf(item.text) : item.text;
+				const text = isMe ? (item.selfText ?? item.text) : item.text;
 				const content = (
 					<>
 						{inset ? (
