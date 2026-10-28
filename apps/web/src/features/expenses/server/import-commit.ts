@@ -7,7 +7,6 @@ import {
 	type NotificationDispatchWarning,
 	dispatchNotificationSafely,
 } from '@/core/notifications/notification-dispatch';
-import { formatEuroCents } from '@/core/utils/money';
 import { checkPaidByGuard } from '@/features/expenses/paid-by-guard';
 import { withExpensePaymentLock } from '@/features/expenses/server/expense-payments';
 import {
@@ -341,7 +340,6 @@ async function announceImport(input: CommitInput, value: ImportWriteResult): Pro
 			actorName: input.importedByName,
 			inserted,
 			totalAmountCents,
-			amountFormatted: formatEuroCents(totalAmountCents, 'EUR'),
 		},
 		excludeMemberId: input.importedByMemberId,
 	});

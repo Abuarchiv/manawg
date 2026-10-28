@@ -41,7 +41,6 @@
 		"i18n-literal src/core/db/schema-inventory.ts",
 		"i18n-literal src/core/mail/brand-mail.ts",
 		"i18n-literal src/core/mail/templates.ts",
-		"i18n-literal src/core/notifications/notifications.ts",
 		"i18n-literal src/features/expenses/server/import-commit.ts",
 		"i18n-literal src/features/expenses/server/import-undo.ts",
 		"i18n-literal src/features/expenses/server/manual-payment.ts",

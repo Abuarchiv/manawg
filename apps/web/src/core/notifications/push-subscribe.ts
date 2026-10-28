@@ -78,7 +78,8 @@ async function saveServerPushOptIn(
 	});
 	if (!saved.ok) {
 		if (createdSubscription) await subscription.unsubscribe().catch(() => undefined);
-		if (saved.error === 'endpoint_owned') throw new EndpointOwnedError('settings.notifications.errors.pushEndpointOwned');
+		if (saved.error === 'endpoint_owned')
+			throw new EndpointOwnedError('settings.notifications.errors.pushEndpointOwned');
 		if (saved.error === 'push_subscription_invalid') {
 			throw new PushError('settings.notifications.errors.pushSaveReactivate');
 		}

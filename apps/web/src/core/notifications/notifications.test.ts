@@ -156,3 +156,69 @@ test('a voided cash payment tells the other side that the amount is open again',
 	);
 	assert.equal(notificationCategoryForEvent('expense.payment_voided'), 'expenses');
 });
+
+test('English pushes use the catalog, en-GB money and Berlin dates', (t) => {
+	t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-09-29T09:00:00.000Z') });
+	const en = (event: Parameters<typeof formatNotificationMessage>[0], payload = {}) =>
+		formatNotificationMessage(event, { wgName: 'Flat', actorName: 'Anna', ...payload }, 'en');
+
+	const created = en('expense.created', { title: 'Pizza', amountCents: 1250, currency: 'EUR' });
+	assert.equal(created.title, 'New expense');
+	assert.equal(created.body, 'Anna added Pizza for €12.50 in Flat.');
+	assert.equal(
+		en('chore.due', { title: 'Bathroom', nextDueAt: '2026-09-24T08:00:00.000Z' }).body,
+		'Bathroom has been open in Flat for 5 days.',
+	);
+	assert.equal(
+		en('chore.due', { title: 'Bathroom', nextDueAt: '2026-10-03T08:00:00.000Z', unassigned: true })
+			.body,
+		'Bathroom is due on 3 Oct in Flat. Nobody is assigned.',
+	);
+	assert.equal(
+		en('event.created', { title: 'Plenum', startsAt: '2026-01-01T18:00:00.000Z' }).body,
+		'Anna added “Plenum” in Flat on 1 Jan, 19:00.',
+	);
+	assert.equal(en('import.completed', { inserted: 1 }).body, 'Anna imported 1 expense into Flat.');
+	assert.equal(
+		en('inventory.low_stock', { title: 'Milk', quantity: 0.5, threshold: 1 }).body,
+		'Milk is running low (0.5 of 1) in Flat.',
+	);
+	assert.equal(en('chat.mention', { preview: 'Hi' }).title, 'Anna mentioned you');
+	assert.equal(
+		formatNotificationMessage('notification.test', {}, 'en').body,
+		'Notifications are working for your flat.',
+	);
+});
+
+test('every event has a complete message in both locales', () => {
+	const events = [
+		'expense.created',
+		'expense.recurring_charged',
+		'expense.reminder',
+		'expense.debt_settled',
+		'expense.payment_voided',
+		'import.completed',
+		'notification.test',
+		'announcement.posted',
+		'announcement.commented',
+		'announcement.reacted',
+		'announcement.resolved',
+		'chore.due',
+		'shopping.added',
+		'event.created',
+		'event.moved',
+		'event.cancelled',
+		'event.upcoming',
+		'event.today',
+		'inventory.low_stock',
+		'chat.message',
+		'chat.mention',
+	] as const;
+	for (const event of events) {
+		for (const locale of ['de', 'en'] as const) {
+			const message = formatNotificationMessage(event, {}, locale);
+			assert.ok(message.title.length > 0 && message.body.length > 0, `${event} ${locale}`);
+			assert.doesNotMatch(message.body, /\{|undefined|NaN/, `${event} ${locale}`);
+		}
+	}
+});
