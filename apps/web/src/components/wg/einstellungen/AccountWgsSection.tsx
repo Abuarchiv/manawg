@@ -5,11 +5,13 @@ import { Item, ItemContent, ItemGroup, ItemGroupEntry, ItemTitle } from '@/compo
 import { Section } from '@/components/wg/einstellungen/Section';
 import { type AccountWg, fetchAccountWgs } from '@/core/infra/account-wgs';
 import { ChevronRight, Plus } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 /** The account's other WGs, so switching never needs the browser's back button. */
 export function AccountWgsSection({ currentCode }: { currentCode: string }) {
+	const t = useTranslations('settings.accountWgs');
 	const [others, setOthers] = useState<AccountWg[]>([]);
 
 	useEffect(() => {
@@ -24,7 +26,7 @@ export function AccountWgsSection({ currentCode }: { currentCode: string }) {
 	}, [currentCode]);
 
 	return (
-		<Section title="Deine WGs">
+		<Section title={t('title')}>
 			<div className="flex flex-col gap-2 p-3">
 				{others.length > 0 && (
 					<ItemGroup>
@@ -45,7 +47,7 @@ export function AccountWgsSection({ currentCode }: { currentCode: string }) {
 				)}
 				<Button variant="outline" nativeButton={false} render={<Link href="/neu" />}>
 					<Plus aria-hidden />
-					Weitere WG erstellen oder beitreten
+					{t('addAnother')}
 				</Button>
 			</div>
 		</Section>

@@ -6,8 +6,11 @@ import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { RowNotice, type RowNoticeState } from '@/components/wg/einstellungen/RowNotice';
-import { AUTH_FAILURE_MESSAGES, classifyAuthError } from '@/core/auth/password-errors';
+import { authFailureMessage } from '@/components/wg/einstellungen/settings-errors';
+import { classifyAuthError } from '@/core/auth/password-errors';
+import { useMessage } from '@/shared/i18n/message';
 import { Mail } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 
 /** E-mail change for password accounts: the new address only takes over once its link is opened. */
@@ -15,23 +18,26 @@ export function EmailChangeRow({
 	current,
 	returnPath,
 }: { current: string | null; returnPath: string }) {
+	const t = useTranslations('settings');
+	const m = useMessage();
 	const [open, setOpen] = useState(false);
 	const [email, setEmail] = useState('');
 	const [busy, setBusy] = useState(false);
 	const [notice, setNotice] = useState<RowNoticeState>(null);
 
 	if (!current) return null;
+	const currentEmail = current;
 
 	async function submit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
 		event.preventDefault();
 		if (busy) return;
 		const next = normalizeEmail(email);
 		if (!isValidEmail(next)) {
-			setNotice({ kind: 'error', text: 'Bitte gib eine gültige E-Mail-Adresse ein.' });
+			setNotice({ kind: 'error', text: t('emailChange.invalid') });
 			return;
 		}
 		if (next === current) {
-			setNotice({ kind: 'error', text: 'Das ist bereits deine E-Mail-Adresse.' });
+			setNotice({ kind: 'error', text: t('emailChange.same') });
 			return;
 		}
 		setBusy(true);
@@ -41,7 +47,7 @@ export function EmailChangeRow({
 			await requestEmailChange(next, returnPath);
 			setNotice({
 				kind: 'sent',
-				text: `Wir haben Bestätigungslinks an ${next} und ${current} gesendet. Die Adresse ändert sich, sobald du beide Links geöffnet hast.`,
+				text: t('emailChange.sent', { next, current: currentEmail }),
 			});
 			setOpen(false);
 			setEmail('');
@@ -52,10 +58,8 @@ export function EmailChangeRow({
 				kind: 'error',
 				text:
 					code === 'email_exists'
-						? 'Diese E-Mail-Adresse wird bereits verwendet.'
-						: failure === 'other'
-							? 'Die Adresse konnte gerade nicht geändert werden. Bitte versuche es später erneut.'
-							: AUTH_FAILURE_MESSAGES[failure],
+						? t('emailChange.exists')
+						: m(authFailureMessage(failure, 'settings.emailChange.failed')),
 			});
 		} finally {
 			setBusy(false);
@@ -67,7 +71,7 @@ export function EmailChangeRow({
 			{open ? (
 				<form noValidate onSubmit={(event) => void submit(event)} className="flex flex-col gap-2">
 					<Field>
-						<FieldLabel htmlFor="email-change">Neue E-Mail-Adresse</FieldLabel>
+						<FieldLabel htmlFor="email-change">{t('emailChange.label')}</FieldLabel>
 						<Input
 							id="email-change"
 							name="email"
@@ -84,17 +88,17 @@ export function EmailChangeRow({
 					<div className="flex gap-2">
 						<Button type="submit" disabled={busy}>
 							{busy && <Spinner data-icon="inline-start" aria-hidden />}
-							Bestätigungslink senden
+							{t('emailChange.submit')}
 						</Button>
 						<Button type="button" variant="ghost" disabled={busy} onClick={() => setOpen(false)}>
-							Abbrechen
+							{t('actions.cancel')}
 						</Button>
 					</div>
 				</form>
 			) : (
 				<Button type="button" variant="outline" onClick={() => setOpen(true)}>
 					<Mail aria-hidden />
-					E-Mail-Adresse ändern
+					{t('emailChange.open')}
 				</Button>
 			)}
 			<RowNotice notice={notice} />

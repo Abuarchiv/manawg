@@ -20,12 +20,14 @@ import type { Member, WgSummary } from '@/components/wg/WgContextProvider';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { AccountDeleteSection } from '@/components/wg/einstellungen/AccountDeleteSection';
 import { Section } from '@/components/wg/einstellungen/Section';
-import { deleteWgErrorMessage } from '@/components/wg/einstellungen/settings-errors';
+import { deleteWgErrorMessage, subjectError } from '@/components/wg/einstellungen/settings-errors';
 import type { SessionMember } from '@/core/auth/local-account';
 import { forgetWg } from '@/core/auth/local-account';
 import { noteSessionExpiry, readApiErrorCode } from '@/core/infra/api-client';
+import { useMessage } from '@/shared/i18n/message';
 import { memberContextHeader } from '@/shared/lib/member-header';
 import { LogOut, Trash2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 
@@ -37,6 +39,9 @@ interface DangerZoneSectionProps {
 
 /** Leave WG and delete WG. */
 export function DangerZoneSection({ wg, members, identity }: DangerZoneSectionProps) {
+	const t = useTranslations('settings.dangerZone');
+	const actions = useTranslations('settings.actions');
+	const m = useMessage();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const router = useRouter();
 	const { isAdmin } = useWg();
@@ -80,19 +85,19 @@ export function DangerZoneSection({ wg, members, identity }: DangerZoneSectionPr
 			});
 			noteSessionExpiry(res);
 			if (res.status === 403) {
-				setDeleteError('Nur Admins können die WG löschen.');
+				setDeleteError(t('adminOnlyDelete'));
 				setDeleteStage('confirm');
 				return;
 			}
 			if (!res.ok) {
-				setDeleteError(deleteWgErrorMessage(res.status, (await readApiErrorCode(res)) || null));
+				setDeleteError(m(deleteWgErrorMessage(res.status, (await readApiErrorCode(res)) || null)));
 				setDeleteStage('confirm');
 				return;
 			}
 			leaveWg('deleted');
 		} catch {
 			setDeleteError(
-				'WG konnte nicht gelöscht werden: Prüfe deine Verbindung und versuche es erneut.',
+				m(subjectError('settings.dangerZone.errors.subject', 'common.errors.network')),
 			);
 			setDeleteStage('confirm');
 		}
@@ -101,26 +106,17 @@ export function DangerZoneSection({ wg, members, identity }: DangerZoneSectionPr
 	return (
 		<>
 			<div className="mt-3 grid gap-3 border-t pt-3">
-				<h2 className="text-destructive text-xs font-medium">Gefahrenzone</h2>
+				<h2 className="text-destructive text-xs font-medium">{t('title')}</h2>
 
 				{isAdmin ? (
 					<p className="text-muted-foreground text-xs">
-						{activeMemberCount <= 1
-							? 'Du bist Admin und das letzte aktive Mitglied. Aktiviere zuerst ein ausgezogenes Mitglied und übergib die Admin-Rolle, oder lösche die WG unten.'
-							: 'Übergib zuerst die Admin-Rolle an ein aktives Mitglied (Button „Admin übergeben“ bei den Mitgliedern), danach kannst du die WG verlassen.'}
+						{activeMemberCount <= 1 ? t('adminLastMember') : t('adminHandover')}
 					</p>
 				) : (
-					<Section
-						title="WG verlassen"
-						hint="Deaktiviert deine Mitgliedschaft. Einträge und offene Salden bleiben erhalten."
-					>
+					<Section title={t('leaveTitle')} hint={t('leaveHint')}>
 						<div className="grid gap-3 p-3">
 							{activeMemberCount <= 1 ? (
-								<p className="text-muted-foreground text-xs">
-									Du bist das letzte aktive Mitglied. Die WG kann erst verlassen werden, wenn ein
-									weiteres Mitglied aktiv ist. Wenn du nur dieses Gerät abmelden möchtest, nutze
-									oben „Konto abmelden“.
-								</p>
+								<p className="text-muted-foreground text-xs">{t('leaveLastMember')}</p>
 							) : (
 								<Button
 									type="button"
@@ -129,7 +125,7 @@ export function DangerZoneSection({ wg, members, identity }: DangerZoneSectionPr
 									className="w-full"
 								>
 									<LogOut aria-hidden />
-									WG verlassen
+									{t('leaveTitle')}
 								</Button>
 							)}
 						</div>
@@ -137,12 +133,8 @@ export function DangerZoneSection({ wg, members, identity }: DangerZoneSectionPr
 				)}
 
 				<Section
-					title="WG dauerhaft löschen"
-					hint={
-						isAdmin
-							? 'Entfernt die gesamte WG und alle Daten (Ausgaben, Listen, Pinnwand) unwiderruflich für alle Mitglieder.'
-							: 'Nur Admins können die WG löschen.'
-					}
+					title={t('deleteTitle')}
+					hint={isAdmin ? t('deleteHintAdmin') : t('adminOnlyDelete')}
 				>
 					<div className="p-3">
 						<Button
@@ -153,7 +145,7 @@ export function DangerZoneSection({ wg, members, identity }: DangerZoneSectionPr
 							className="w-full"
 						>
 							<Trash2 aria-hidden />
-							Komplette WG für alle löschen
+							{t('deleteTrigger')}
 						</Button>
 					</div>
 				</Section>
@@ -176,20 +168,19 @@ export function DangerZoneSection({ wg, members, identity }: DangerZoneSectionPr
 						<AlertDialogMedia>
 							<Trash2 aria-hidden />
 						</AlertDialogMedia>
-						<AlertDialogTitle>WG dauerhaft löschen?</AlertDialogTitle>
+						<AlertDialogTitle>{t('dialog.title')}</AlertDialogTitle>
 						<AlertDialogDescription>
-							Diese Aktion löscht die WG {wg.name} für alle Mitglieder unwiderruflich. Tippe zur
-							Bestätigung den WG-Code {wg.shareCode}.
+							{t('dialog.body', { name: wg.name, code: wg.shareCode })}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<Field>
-						<FieldLabel htmlFor="delete-wg-confirm">WG-Code</FieldLabel>
+						<FieldLabel htmlFor="delete-wg-confirm">{t('dialog.codeLabel')}</FieldLabel>
 						<Input
 							id="delete-wg-confirm"
 							type="text"
 							value={confirmText}
 							onChange={(e) => setConfirmText(e.target.value.toUpperCase())}
-							placeholder="Code eingeben"
+							placeholder={t('dialog.codePlaceholder')}
 							disabled={deleteStage === 'pending'}
 							className="text-center font-mono text-base tracking-[0.18em] placeholder:font-sans placeholder:tracking-normal"
 							autoComplete="off"
@@ -202,7 +193,7 @@ export function DangerZoneSection({ wg, members, identity }: DangerZoneSectionPr
 					)}
 					<AlertDialogFooter>
 						<AlertDialogCancel ref={cancelRef} disabled={deleteStage === 'pending'}>
-							Abbrechen
+							{actions('cancel')}
 						</AlertDialogCancel>
 						<Button
 							variant="destructive"
@@ -213,7 +204,7 @@ export function DangerZoneSection({ wg, members, identity }: DangerZoneSectionPr
 							disabled={deleteStage === 'pending' || confirmText !== wg.shareCode}
 						>
 							{deleteStage === 'pending' ? <Spinner aria-hidden /> : <Trash2 aria-hidden />}
-							WG löschen
+							{t('dialog.confirm')}
 						</Button>
 					</AlertDialogFooter>
 				</AlertDialogContent>

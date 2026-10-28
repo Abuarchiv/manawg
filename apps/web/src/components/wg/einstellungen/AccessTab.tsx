@@ -11,6 +11,7 @@ import { MembersSection } from '@/components/wg/einstellungen/MembersSection';
 import { PasswordChangeRow } from '@/components/wg/einstellungen/PasswordChangeRow';
 import { Section } from '@/components/wg/einstellungen/Section';
 import type { SessionMember } from '@/core/auth/local-account';
+import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 
 interface AccessTabProps {
@@ -62,6 +63,7 @@ function usePasswordAccountEmail(): string | null {
 }
 
 export function AccessTab({ wg, members, identity }: AccessTabProps) {
+	const t = useTranslations('settings.accessTab');
 	const googleLinked = useGoogleLinked();
 	const accountEmail = usePasswordAccountEmail();
 	const settingsReturnPath = `/wg/${encodeURIComponent(wg.shareCode)}/einstellungen#zugang`;
@@ -69,12 +71,12 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 	return (
 		<>
 			<InvitesSection wg={wg} identity={identity} />
-			<Section title="Anmeldemethoden">
+			<Section title={t('signInMethods')}>
 				<div className="flex flex-col gap-3 p-3">
 					<PasswordChangeRow email={accountEmail} />
 					<EmailChangeRow current={accountEmail} returnPath={settingsReturnPath} />
 					{googleLinked ? (
-						<p className="text-sm text-muted-foreground">Google ist mit deinem Konto verknüpft.</p>
+						<p className="text-sm text-muted-foreground">{t('googleLinked')}</p>
 					) : (
 						<SocialLoginButtons
 							variant="link"
@@ -87,7 +89,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 
 			<AccountWgsSection currentCode={wg.shareCode} />
 			<MembersSection wg={wg} members={members} identity={identity} />
-			<Section title="Konto">
+			<Section title={t('account')}>
 				<div className="p-3">
 					<AccountSignOutSection wg={wg} identity={identity} />
 				</div>

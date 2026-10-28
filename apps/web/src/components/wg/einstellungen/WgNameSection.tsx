@@ -6,8 +6,11 @@ import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { Section } from '@/components/wg/einstellungen/Section';
+import { subjectError } from '@/components/wg/einstellungen/settings-errors';
 import { apiFetch } from '@/core/infra/api-client';
+import { useMessage } from '@/shared/i18n/message';
 import { WG_NAME_MAX_LENGTH } from '@/shared/lib/limits';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useEffect, useState } from 'react';
 
@@ -19,6 +22,8 @@ interface WgNameSectionProps {
 
 /** Admin-only rename; the PATCH route has always accepted `name`, this is its UI. */
 export function WgNameSection({ wgName, shareCode, memberId }: WgNameSectionProps) {
+	const t = useTranslations('settings');
+	const m = useMessage();
 	const router = useRouter();
 	const [name, setName] = useState(wgName);
 	const [pending, setPending] = useState(false);
@@ -47,10 +52,13 @@ export function WgNameSection({ wgName, shareCode, memberId }: WgNameSectionProp
 			if (!res.ok) {
 				setError(
 					res.status === 403
-						? 'Nur Admins können die WG umbenennen.'
-						: res.status === 0
-							? 'WG konnte nicht umbenannt werden: Prüfe deine Verbindung und versuche es erneut.'
-							: 'WG konnte nicht umbenannt werden: Versuche es gleich erneut.',
+						? t('wgName.errors.adminOnly')
+						: m(
+								subjectError(
+									'settings.wgName.errors.subject',
+									res.status === 0 ? 'common.errors.network' : 'common.errors.retry',
+								),
+							),
 				);
 				return;
 			}
@@ -62,11 +70,11 @@ export function WgNameSection({ wgName, shareCode, memberId }: WgNameSectionProp
 	}
 
 	return (
-		<Section title="WG-Name">
+		<Section title={t('wgName.title')}>
 			<form onSubmit={(event) => void submit(event)} className="grid gap-2 p-3">
 				<Field orientation="horizontal" className="flex-wrap items-center gap-2">
 					<FieldLabel htmlFor="wg-name" className="sr-only">
-						Name eurer WG
+						{t('wgName.label')}
 					</FieldLabel>
 					<Input
 						id="wg-name"
@@ -87,7 +95,7 @@ export function WgNameSection({ wgName, shareCode, memberId }: WgNameSectionProp
 						className="h-11 shrink-0"
 					>
 						{pending && <Spinner data-icon="inline-start" aria-hidden />}
-						Speichern
+						{t('actions.save')}
 					</Button>
 				</Field>
 				{error && (
@@ -95,7 +103,7 @@ export function WgNameSection({ wgName, shareCode, memberId }: WgNameSectionProp
 						<AlertDescription>{error}</AlertDescription>
 					</Alert>
 				)}
-				{saved && <output className="text-xs text-muted-foreground">WG-Name gespeichert.</output>}
+				{saved && <output className="text-xs text-muted-foreground">{t('wgName.saved')}</output>}
 			</form>
 		</Section>
 	);
