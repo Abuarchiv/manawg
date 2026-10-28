@@ -2,8 +2,8 @@ import { and, eq, gt, or, type SQL, sql } from 'drizzle-orm';
 import { db, idempotencyResponses } from '@/core/db';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 
-// Response replay lives in Postgres, never in Redis: an empty UPSTASH_* configuration once let a
-// silently disabled Redis client wave duplicate expense inserts through.
+// Response replay is stored in Postgres, never Redis, so a missing or disabled Redis cannot
+// allow duplicate writes.
 
 // A claim is only a lease. If the worker dies after inserting the placeholder, another retry
 // must be able to reclaim it instead of being blocked for the whole offline replay window.

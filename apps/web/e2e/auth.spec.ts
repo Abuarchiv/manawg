@@ -169,14 +169,20 @@ test.describe('entry accessibility', () => {
 		});
 
 		test('public start page links the legal pages without an account', async ({ page }) => {
+			// playwright.config.ts sets it for locally started servers only.
+			const legalUrl = process.env.NEXT_PUBLIC_LEGAL_URL;
+			test.skip(!legalUrl, 'A remote deployment chooses its own legal pages.');
 			await page.goto('/');
 			const legal = page.getByRole('navigation', { name: 'Rechtliches' });
-			for (const [name, href] of [
-				['Impressum', 'https://manawg.com/impressum'],
-				['Datenschutz', 'https://manawg.com/datenschutz'],
-				['AGB', 'https://manawg.com/agb'],
+			for (const [name, path] of [
+				['Impressum', '/impressum'],
+				['Datenschutz', '/datenschutz'],
+				['AGB', '/agb'],
 			] as const) {
-				await expect(legal.getByRole('link', { name, exact: true })).toHaveAttribute('href', href);
+				await expect(legal.getByRole('link', { name, exact: true })).toHaveAttribute(
+					'href',
+					`${legalUrl}${path}`,
+				);
 			}
 		});
 

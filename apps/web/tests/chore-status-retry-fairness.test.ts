@@ -1,4 +1,4 @@
-// Chores: Berlin-day status, recurring-advance retry and fairness regressions.
+// Chores: Berlin-day status, recurring-advance retry and fairness.
 // Why: Cache and retry paths must not resurrect removed state.
 
 import assert from 'node:assert/strict';
@@ -7,7 +7,7 @@ import * as offlineClient from '../src/core/offline/offline-client';
 import { buildChoreFairness } from '../src/features/chores/chore-fairness';
 import { getChoreStatus } from '../src/features/chores/chore-status';
 
-describe('chores retry', () => {
+describe('chore status', () => {
 	test('uses Berlin calendar days instead of rounding elapsed hours', () => {
 		const now = Date.parse('2026-09-05T15:30:00+02:00');
 
@@ -23,7 +23,7 @@ describe('chores retry', () => {
 	});
 });
 
-describe('domain regressions (recurring retry, fairness)', () => {
+describe('chore recurring retry and fairness', () => {
 	const NOW = Date.parse('2026-09-19T12:00:00.000Z');
 
 	test('retries a recurring advance carried by an expense action', () => {

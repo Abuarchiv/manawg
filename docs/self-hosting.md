@@ -29,18 +29,17 @@ docker compose up -d
 ```
 
 `setup.sh` creates `.env` from [`.env.example`](../.env.example) with fresh secrets. The first
-start downloads the database, sign-in and storage images, builds the app image from your checkout
-(about ten minutes, as no app image is published yet) and sets up the database. Then open
-[http://localhost](http://localhost) and create an account. Every mail, including the sign-in
-codes, lands in Mailpit at [http://localhost:8025](http://localhost:8025).
+start downloads the database, sign-in and storage images, gets the app image and sets up the
+database. Then open [http://localhost](http://localhost) and create an account. Every mail,
+including the sign-in codes, lands in Mailpit at [http://localhost:8025](http://localhost:8025).
 
 `docker compose ps` lists the services; `setup` has exited with code 0 and the others are
 running. If port 80 is taken, set `HTTP_PORT=8080` and `APP_URL=http://localhost:8080` in `.env`
 and run `docker compose up -d` again.
 
-While it builds, Compose reports that it cannot pull `ghcr.io/abuarchiv/manawg`; that is
-expected. Once an image is published for `MANAWG_VERSION`, Compose pulls it instead and the first
-start takes a minute or two.
+Compose pulls `ghcr.io/abuarchiv/manawg:<MANAWG_VERSION>` when that tag exists. Otherwise it
+builds the image from your checkout, which takes about ten minutes; the message that it cannot
+pull the image is harmless then.
 
 To check the whole instance, run `./docker/smoke.sh`. It signs up a test account, creates a WG,
 uploads a picture, calls the scheduled jobs and backs up and restores the data. It leaves that
@@ -62,9 +61,16 @@ test data behind, so run it on a local instance, not on one people use.
 Data lives in the volumes `db-data` (database) and `storage-data` (images). `docker compose down`
 keeps them; `docker compose down -v` deletes them.
 
+`POSTGRES_PASSWORD` is fixed in the `db-data` volume when the database is first created. If `.env`
+is lost or regenerated, the services fail with `password authentication failed`. On a throwaway
+instance, `docker compose down -v` and a new start fix that. On an instance with data, restore the
+old `.env`, or set the new password on the roles `postgres`, `supabase_auth_admin` and
+`supabase_storage_admin` (see [Rotate secrets](#rotate-secrets)).
+
 ### Public instance with a domain
 
-1. A server with Docker, a DNS record for your domain pointing at it, and ports 80 and 443 open.
+1. A server with Docker, a DNS record for your domain pointing at it, and TCP ports 80 and 443
+   open (UDP 443 optional, for HTTP/3).
 2. Create the configuration for the domain:
 
    ```sh
@@ -72,16 +78,30 @@ keeps them; `docker compose down -v` deletes them.
    ```
 
    This sets `APP_URL=https://wg.example.com`, `SITE_ADDRESS=wg.example.com` and turns Mailpit
-   off. Caddy fetches a Let's Encrypt certificate on the first start.
+   off. Caddy fetches a Let's Encrypt certificate on the first start. If `.env` already exists,
+   `setup.sh` changes nothing and lists the keys to edit yourself: `APP_URL`, `SITE_ADDRESS`,
+   `COMPOSE_PROFILES`, `SMTP_HOST`, `SMTP_PORT` and `SMTP_ADMIN_EMAIL`.
 3. Fill in the SMTP account in `.env` (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`) and use
    a sender address in `SMTP_ADMIN_EMAIL` that your provider accepts. Any SMTP provider works,
-   many have a free tier that is enough for a household. Sign-in needs mail, so this is required.
+   many have a free tier that is enough for a household. Sign-in needs mail, so this is required:
+   `docker compose up` stops while `SMTP_HOST` is empty. Put values that contain `$` or `#` in
+   single quotes.
 4. Set `LEGAL_URL` and `SUPPORT_EMAIL` (see [Legal pages and support](#legal-pages-and-support)).
 5. Start it:
 
    ```sh
    docker compose up -d
    ```
+
+Every address except `localhost` needs HTTPS, either a domain with Let's Encrypt as above or a
+reverse proxy that terminates TLS. Password reset, the service worker and installing the app
+require a secure context. `SITE_ADDRESS=:80` is for `http://localhost` and for use behind such a
+proxy; it is not a way to serve a LAN address.
+
+Registration is open to anyone who can reach the URL. The rate limits and mail confirmation
+limit abuse; registration cannot be switched off, because invited members create their own
+accounts. For a household-only instance, restrict access at the proxy (VPN, IP allowlist, basic
+auth).
 
 Behind your own reverse proxy instead, keep `SITE_ADDRESS=:80`, set `HTTP_PORT` to a local port
 and `TRUSTED_PROXIES` to the proxy's address (`private_ranges` covers proxies on the same host or
@@ -103,10 +123,12 @@ Every setting is in `.env`, described in [`.env.example`](../.env.example). Afte
 | Setting | Required | Effect |
 | --- | --- | --- |
 | `APP_URL`, `SITE_ADDRESS` | yes | Address of the instance and what the gateway serves |
-| `SMTP_*` | yes | Outgoing mail for sign-in codes, invitations and statements |
+| `SMTP_*` | yes | Outgoing mail for sign-in codes, invitations and statements; `SMTP_ADMIN_EMAIL` is the sender address and `SMTP_SENDER_NAME` its display name |
 | Secrets (`POSTGRES_PASSWORD` … `CRON_SECRET`) | yes | Created by `setup.sh`. `ANON_KEY` and `SERVICE_ROLE_KEY` are signed with `JWT_SECRET`; change all three together |
-| `LEGAL_URL`, `SUPPORT_EMAIL` | for public instances | Your legal pages and the address for error reports |
-| `MANAWG_VERSION` | no | Image tag to run; `latest` is the newest published image |
+| `LEGAL_URL`, `SUPPORT_EMAIL` | for public instances | Your legal pages and the address for error reports, see [Legal pages and support](#legal-pages-and-support) |
+| `MANAWG_VERSION` | no | Image tag to run; Compose pulls it when it exists and builds from the checkout otherwise |
+| `MANAWG_IMAGE` | no | Image repository, default `ghcr.io/abuarchiv/manawg`; for a fork or a private registry |
+| `STORAGE_BUCKET` | no | Name of the image storage bucket, default `private-images`. Do not change it after the first start |
 | `GOOGLE_ENABLED`, `GOOGLE_CLIENT_ID`, `GOOGLE_SECRET` | no | Google sign-in with your own OAuth client; redirect URI `<APP_URL>/auth/v1/callback`. Off by default, and the app then shows no Google buttons |
 | `VAPID_*` | no | Push notifications, see below |
 
@@ -133,6 +155,9 @@ docker compose up -d --build
 ```
 
 With a published image (`MANAWG_VERSION`), `docker compose pull && docker compose up -d` instead.
+Once the new version works, run `docker image prune -f` to remove the old images, and optionally
+`docker builder prune` to clear the build cache. Neither touches volumes.
+
 The `setup` service applies new migrations before the new app version starts. A change that needs
 a manual step on self-hosted instances says so in its pull request; read the list of changes
 before you update (`git fetch && git log --oneline HEAD..origin/main` in the checkout, or the
@@ -144,11 +169,29 @@ Migrations only move forward and are never reversed. To go back, check out the o
 backup you took before updating with `./docker/restore.sh`. Starting an older version against an
 already migrated database is not supported.
 
-To rotate `MEMBER_SESSION_SECRET`, copy the old value to `MEMBER_SESSION_SECRET_PREVIOUS`, put a
-new one in `MEMBER_SESSION_SECRET` and run `docker compose up -d`. Calendar feed URLs and
-unsubscribe links signed with the old secret keep working; remove the old value later.
-
 Container logs are rotated (three files of 10 MB per container), so they do not fill the disk.
+
+### Rotate secrets
+
+- `MEMBER_SESSION_SECRET`: copy the old value to `MEMBER_SESSION_SECRET_PREVIOUS`, put a new one
+  in `MEMBER_SESSION_SECRET` and run `docker compose up -d`. Calendar feed URLs and unsubscribe
+  links signed with the old secret keep working; remove the old value later.
+- `JWT_SECRET`: empty `JWT_SECRET`, `ANON_KEY` and `SERVICE_ROLE_KEY` in `.env`, run
+  `./docker/setup.sh` to create new ones, then `docker compose up -d`. All sessions end and
+  members sign in again.
+- `MANAWG_APP_DB_PASSWORD`: put a new value in `.env` and run `docker compose up -d`; the `setup`
+  service sets it on the role.
+- `POSTGRES_PASSWORD`: change the password in the database first, then in `.env`, then run
+  `docker compose up -d`.
+
+  ```sh
+  docker compose exec db psql -U supabase_admin -d postgres \
+    -c "ALTER USER postgres WITH PASSWORD '<new password>'" \
+    -c "ALTER USER supabase_auth_admin WITH PASSWORD '<new password>'" \
+    -c "ALTER USER supabase_storage_admin WITH PASSWORD '<new password>'"
+  ```
+
+  Use letters and digits only (`openssl rand -hex 24`), so the quoting stays simple.
 
 ### Backup and restore
 
@@ -158,7 +201,8 @@ Container logs are rotated (three files of 10 MB per container), so they do not 
 ```
 
 The archive holds the database (app, accounts, storage metadata) and all images. Restore works on
-a fresh machine too, after `./docker/setup.sh`. Scheduling, encryption and checking a restore are
+a fresh machine too, after copying your old `.env` (a new `.env` invalidates existing calendar
+feed and unsubscribe links). Scheduling, encryption and checking a restore are
 in [backup and restore](database-recovery.md#docker).
 
 ## Vercel and Supabase
@@ -253,8 +297,9 @@ SUPABASE_ACCESS_TOKEN=<token> node scripts/supabase-auth-templates.mjs \
   --apply
 ```
 
-Run it once without `--apply` to see what would change. `--legal-url` is the site with your legal
-pages (see [Legal pages and support](#legal-pages-and-support)).
+Run it once without `--apply` to see what would change. `--app-url` and `--legal-url` are
+required; `--legal-url` is the site with your legal pages (see
+[Legal pages and support](#legal-pages-and-support)).
 
 The mail bodies and subjects pick German or English from the account's `locale` in the user
 metadata. Accounts without one get German.
@@ -310,7 +355,8 @@ Mail sent by the app itself (invitations, monthly statements, reminders):
 | Variable | Value |
 | --- | --- |
 | `RESEND_API_KEY` | Resend API key |
-| `STATEMENT_EMAIL_FROM` | Sender on a domain verified in your Resend account, e.g. `ManaWG <noreply@example.com>` |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` | An SMTP account instead of Resend; the same account as in Supabase Auth works. If `SMTP_HOST` is set, it wins over `RESEND_API_KEY`. `SMTP_PORT` defaults to `587` |
+| `STATEMENT_EMAIL_FROM` | Sender, e.g. `ManaWG <noreply@example.com>`. With Resend, a domain verified in your account; with SMTP, an address your provider accepts |
 
 Optional:
 
@@ -318,6 +364,7 @@ Optional:
 | --- | --- |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Push notifications (`npx web-push generate-vapid-keys`; subject `mailto:you@example.com`) |
 | `NEXT_PUBLIC_SENTRY_DSN` | Error reporting to your Sentry project |
+| `GOOGLE_SIGN_IN` | `false` hides the Google buttons. Set it when you did not enable the Google provider (see [step 4](#4-configure-supabase-auth)); unset, they are shown |
 | `NEXT_PUBLIC_LEGAL_URL`, `NEXT_PUBLIC_SUPPORT_EMAIL` | See [Legal pages and support](#legal-pages-and-support) |
 
 Leave `NEXT_PUBLIC_POSTHOG_*` empty: product analytics stays off.
@@ -351,23 +398,45 @@ says so in its pull request.
 The Supabase free plan has no automatic backups. Take your own, see
 [backup and restore](database-recovery.md#vercel-and-supabase).
 
+## Time zone
+
+Day and month boundaries, chore due dates, recurring entries, reminders and quiet hours follow
+Europe/Berlin wall time, whatever time zone the server runs in. This is not configurable. See the
+[architecture notes](architecture.md#decisions-on-trust-retention-and-exposure).
+
 ## Legal pages and support
 
 These apply to both ways. In Docker the settings are `LEGAL_URL` and `SUPPORT_EMAIL`.
 
-- `NEXT_PUBLIC_LEGAL_URL` is the site with your `/impressum`, `/datenschutz` and `/agb`. The app
-  and its mails link there. If it is unset, the links point to manawg.com, whose legal pages do
-  not cover your instance. If you offer your instance to people outside your own household, you
-  need your own imprint and privacy policy. Setting it also marks the instance as self-hosted:
-  it does not announce itself to search engines as the official app.
-- Links to "Über ManaWG", "Die WG-App" and "WG-Ratgeber" keep pointing to manawg.com, the
-  project's site.
-- `NEXT_PUBLIC_SUPPORT_EMAIL` receives the "Fehler per E-Mail melden" reports. In Docker an empty
-  `SUPPORT_EMAIL` falls back to `SMTP_ADMIN_EMAIL`. On Vercel an unset value sends reports to the
-  ManaWG maintainers, who cannot see your instance, so set it there.
+- `NEXT_PUBLIC_LEGAL_URL` is the site with your `/impressum`, `/datenschutz` and `/agb`. If it is
+  unset, the instance shows no legal links and no consent links, in the app and in mails. Set it
+  before anyone else uses the instance: if you offer it to people outside your own household, you
+  need your own imprint and privacy policy. Every instance other than the official one
+  (`app.manawg.com`) is treated as self-hosted and does not announce itself to search engines as
+  the official app; this does not depend on `LEGAL_URL`.
+- The "About ManaWG" ("Über ManaWG") link points to manawg.com, the project's site. The links to
+  its product and guide pages appear only on the official instance.
+- `NEXT_PUBLIC_SUPPORT_EMAIL` receives the "Report a problem by email" ("Fehler per E-Mail
+  melden") reports. In Docker an empty `SUPPORT_EMAIL` falls back to `SMTP_ADMIN_EMAIL`. On Vercel
+  an unset value hides the report links.
+
+## Troubleshooting
+
+For the Docker setup. On Vercel, start with [Check the deployment](#7-check-the-deployment).
+
+| Symptom | What to do |
+| --- | --- |
+| `setup` exited with an error | `docker compose logs setup` shows the step that failed |
+| The build stops with exit code 137 | The machine ran out of memory. Add swap, or build on a larger machine |
+| No certificate for the domain | Check that the DNS record points at the server and TCP ports 80 and 443 are reachable, then read `docker compose logs gateway` |
+| No sign-in code arrives | `docker compose logs auth` shows the SMTP error. Check the `SMTP_*` settings and the sender in `SMTP_ADMIN_EMAIL`; locally, look in Mailpit |
+| A port is already in use | Set `HTTP_PORT` (see [Quick start](#quick-start)) or `HTTPS_PORT` (see [Public instance with a domain](#public-instance-with-a-domain)) |
+| `password authentication failed` | `.env` does not match the database volume, see [What runs](#what-runs) |
 
 ## Getting help
 
 Questions go to [Discussions](https://github.com/Abuarchiv/manawg/discussions), bugs to an
 [issue](https://github.com/Abuarchiv/manawg/issues/new/choose) with the boot log lines
-starting with `[env]`. Never post secrets, connection strings or keys.
+starting with `[env]`. For a Docker instance, add the output of `docker compose ps` and the logs
+of the failing service (`docker compose logs <service>`). Remove secrets, connection strings and
+keys first, and never post them.

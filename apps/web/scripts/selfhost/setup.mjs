@@ -96,8 +96,8 @@ async function ensureBucket() {
 async function renderMailTemplates() {
 	const outDir = required('MAIL_TEMPLATES_DIR');
 	const appUrl = new URL(required('NEXT_PUBLIC_APP_URL')).origin;
-	const legalUrl = new URL(process.env.NEXT_PUBLIC_LEGAL_URL?.trim() || 'https://manawg.com')
-		.origin;
+	const legalValue = process.env.NEXT_PUBLIC_LEGAL_URL?.trim();
+	const legalUrl = legalValue ? new URL(legalValue).origin : null;
 	await mkdir(outDir, { recursive: true });
 	for (const name of MAIL_TEMPLATES) {
 		const html = await readFile(path.join(TEMPLATES_SOURCE, `${name}.html`), 'utf8');

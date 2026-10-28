@@ -21,7 +21,7 @@
 		"dev": "pnpm --filter @manawg/web dev",
 		"build": "pnpm --filter @manawg/web build",
 		"test": "pnpm --filter @manawg/web test:unit",
-		"lint": "biome check .",
+		"lint": "biome check . && pnpm --filter @manawg/web lint:rules",
 		"format": "biome format --write .",
 		"typecheck": "pnpm -r --if-present run typecheck",
 		"clean": "rm -rf apps/web/.next node_modules/.cache",

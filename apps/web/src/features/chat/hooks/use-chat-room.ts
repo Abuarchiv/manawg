@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useToast } from '@/components/ui/Toast';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { apiFetch } from '@/core/infra/api-client';
-import type { NotificationWarning } from '@/core/notifications/notification-warning';
+import { deliveryWarning } from '@/core/notifications/delivery-warning';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { type Message, useMessage } from '@/shared/i18n/message';
 import { explainChatError } from '../chat-errors';
@@ -22,12 +22,6 @@ import { useChatReadReceipt } from './use-chat-read-receipt';
 export type { ChatMessageDto, ChatReactionRow } from '../chat-types';
 
 const CHAT_POLL_INTERVAL_MS = 8000;
-
-function deliveryWarning(warning: NotificationWarning): Message | null {
-	if (warning === 'notification_delivery_failed') return { key: 'chat.warning.deliveryFailed' };
-	if (warning === 'notification_delivery_unknown') return { key: 'chat.warning.deliveryUnknown' };
-	return null;
-}
 
 /**
  * Messages, reactions and read state of a WG chat: bootstrap, polling refresh, cursor
@@ -177,7 +171,10 @@ export function useChatRoom({
 				: [...prev, sent],
 		);
 		void refresh();
-		const warning = deliveryWarning(result.warning);
+		const warning = deliveryWarning(result.warning, {
+			failed: 'chat.warning.deliveryFailed',
+			unknown: 'chat.warning.deliveryUnknown',
+		});
 		if (warning) toast.info(render(warning));
 		return true;
 	}

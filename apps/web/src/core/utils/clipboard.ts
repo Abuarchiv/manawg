@@ -3,8 +3,8 @@
  *
  * `navigator.clipboard` is unavailable on insecure origins and rejects when
  * the document is not focused, which happens often enough on mobile that the
- * hidden-textarea path is not optional. Three components carried their own
- * identical copy of it.
+ * hidden-textarea path is not optional. Shared by the invite, share-code and
+ * link buttons.
  */
 
 /** Deprecated `execCommand` path, for when the async clipboard is unavailable. */

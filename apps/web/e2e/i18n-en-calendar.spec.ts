@@ -17,9 +17,16 @@ const KALENDER = `/wg/${FIXTURE_WG.shareCode}/calendar`;
 const WIDTHS = [320, 390] as const;
 const SCHEMES = ['light', 'dark'] as const;
 const DAY_MS = 24 * 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
+
+// Noon UTC of a day from today, so a one-hour event never runs into the next Berlin day.
+function noonIn(offsetDays: number): number {
+	const today = new Date();
+	return Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() + offsetDays, 12);
+}
 
 function calendarEvent(overrides: Record<string, unknown>) {
-	const startsAt = new Date(Date.now() + DAY_MS).toISOString();
+	const startsAt = new Date(noonIn(1)).toISOString();
 	return {
 		id: 'event',
 		title: 'Event',
@@ -37,14 +44,6 @@ function calendarEvent(overrides: Record<string, unknown>) {
 	};
 }
 
-/** Tomorrow at midday in Berlin (11:00 UTC is 12:00 or 13:00 there), so the event never crosses midnight. */
-function tomorrowMidday(): Date {
-	const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin' }).format(
-		new Date(Date.now() + DAY_MS),
-	);
-	return new Date(`${day}T11:00:00Z`);
-}
-
 function allDayStart(offsetDays: number): string {
 	const date = new Date(Date.now() + offsetDays * DAY_MS);
 	return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())).toISOString();
@@ -60,8 +59,7 @@ async function prepare(
 		calendarEvent({
 			id: 'meeting',
 			title: 'Flat meeting',
-			startsAt: tomorrowMidday().toISOString(),
-			endsAt: new Date(tomorrowMidday().getTime() + 60 * 60 * 1000).toISOString(),
+			endsAt: new Date(noonIn(1) + HOUR_MS).toISOString(),
 			location: 'Kitchen',
 			recurrence: 'FREQ=WEEKLY',
 		}),
@@ -86,7 +84,7 @@ async function prepare(
 					{
 						id: 'bathroom',
 						title: 'Clean the bathroom',
-						nextDueAt: new Date(Date.now() + 2 * DAY_MS).toISOString(),
+						nextDueAt: new Date(noonIn(2)).toISOString(),
 					},
 				],
 			},
@@ -175,7 +173,7 @@ test.describe('English calendar', () => {
 				await expect(edit.getByLabel('Note (optional)')).toBeVisible();
 				await expect(edit.getByRole('button', { name: 'Save', exact: true })).toBeVisible();
 				await expect(edit.getByRole('button', { name: 'Delete event' })).toBeVisible();
-				await expect(edit.getByRole('button', { name: 'Add to calendar app' })).toBeVisible();
+				await expect(edit.getByRole('button', { name: 'Add to your calendar app' })).toBeVisible();
 				await expectNoGermanChrome(page);
 				await edit.getByLabel('Title', { exact: true }).fill('Flat meeting moved');
 				await edit.getByRole('button', { name: 'Cancel' }).click();

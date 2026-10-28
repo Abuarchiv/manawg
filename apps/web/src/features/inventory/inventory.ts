@@ -41,9 +41,8 @@ export const INVENTORY_LIMITS = {
 /**
  * An inventory item as the API returns it.
  *
- * Lives here rather than in `vorraete/page.tsx` because three components need
- * it, and importing a type out of a page turned the dependency arrow around:
- * the page imported the components, the components imported the page.
+ * Shared by the page and its components; kept outside the page so components
+ * do not import from it.
  */
 export interface InventoryItemDto {
 	id: string;

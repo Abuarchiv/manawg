@@ -2,18 +2,13 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { isPrivateImageKeyRevoked } from '@/core/db/private-image-deletions';
 import { requireMember } from '@/core/guards/api-auth';
 import { requireAccount } from '@/core/guards/require-account';
-import { badRequest, notFound, serverError } from '@/core/http/api-errors';
+import { badRequest, noStore, notFound, serverError } from '@/core/http/api-errors';
 import {
 	downloadSupabaseImage,
 	ImageStorageConfigurationError,
 	ImageStorageObjectNotFoundError,
 } from '@/core/infra/supabase-storage';
 import { parsePrivateImageKey } from '@/core/validators/image-url';
-
-function noStore<T extends NextResponse>(response: T): T {
-	response.headers.set('Cache-Control', 'no-store');
-	return response;
-}
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
 	const key = req.nextUrl.searchParams.get('key');

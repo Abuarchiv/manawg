@@ -34,7 +34,7 @@ test('placeholders become the values of this instance', () => {
 	);
 });
 
-test('empty optional values fall back to the defaults the code uses', () => {
+test('empty optional values fall back to the instance or stay empty', () => {
 	const out = replaceAll(
 		built,
 		replacements({
@@ -43,7 +43,9 @@ test('empty optional values fall back to the defaults the code uses', () => {
 			SMTP_ADMIN_EMAIL: 'noreply@wg.example.com',
 		}),
 	);
-	assert.match(out, /legal:"https:\/\/manawg\.com\/impressum"/);
+	// No legal pages configured: the value is empty, so the app renders no legal links.
+	assert.match(out, /legal:"\/impressum"/);
+	assert.doesNotMatch(out, /manawg/);
 	// Error reports stay on the instance: its sender address, never the ManaWG maintainers.
 	assert.match(out, /mail:"noreply@wg\.example\.com"/);
 	assert.match(out, /fetch\("http:\/\/localhost\/auth\/v1"\)/);

@@ -43,10 +43,17 @@ const authUiUrl = `http://localhost:${authUiPort}`;
 const FAKE_SUPABASE_KEY = 'auth-ui-fixture-key';
 // Fixture servers never reach a real storage bucket, whatever the local .env files hold.
 if (isFixtureServer) process.env.SUPABASE_STORAGE_BUCKET = '';
+// Locally started servers pin the operator's legal pages and support address, whatever .env.local
+// holds; without them an instance shows neither. The specs read the legal URL back from the
+// environment; a remote deployment chooses its own, so it stays unset there.
+const LOCAL_LEGAL_URL = 'https://legal.example.test';
+const LOCAL_OPERATOR_ENV = `NEXT_PUBLIC_LEGAL_URL=${LOCAL_LEGAL_URL} NEXT_PUBLIC_SUPPORT_EMAIL=support@example.test`;
+if (isRemoteBase) Reflect.deleteProperty(process.env, 'NEXT_PUBLIC_LEGAL_URL');
+else process.env.NEXT_PUBLIC_LEGAL_URL = LOCAL_LEGAL_URL;
 const prepareIsolatedNext = (port: string) =>
 	`cp "${path.join(APP_DIR, 'tsconfig.json')}" ".next-e2e-tsconfig-${port}.json"`;
 const fixtureEnv = (port: string, supabaseEnv: string) =>
-	`CI=true E2E_FIXTURE_MODE=true NEXT_PUBLIC_E2E_FIXTURE_MODE=true NEXT_PUBLIC_DB_DOWN=true POSTGRES_URL= DATABASE_URL= ${supabaseEnv} UPSTASH_REDIS_REST_URL= UPSTASH_REDIS_REST_TOKEN= VERCEL= VERCEL_ENV=preview NEXT_DIST_DIR=.next-e2e-${port} NEXT_TSCONFIG_PATH=.next-e2e-tsconfig-${port}.json`;
+	`CI=true E2E_FIXTURE_MODE=true NEXT_PUBLIC_E2E_FIXTURE_MODE=true NEXT_PUBLIC_DB_DOWN=true ${LOCAL_OPERATOR_ENV} POSTGRES_URL= DATABASE_URL= ${supabaseEnv} UPSTASH_REDIS_REST_URL= UPSTASH_REDIS_REST_TOKEN= VERCEL= VERCEL_ENV=preview NEXT_DIST_DIR=.next-e2e-${port} NEXT_TSCONFIG_PATH=.next-e2e-tsconfig-${port}.json`;
 function fixtureServerCommand(port: string, supabaseEnv: string): string {
 	const env = fixtureEnv(port, supabaseEnv);
 	return useBuiltServer
@@ -56,7 +63,7 @@ function fixtureServerCommand(port: string, supabaseEnv: string): string {
 const unconfiguredSupabase = 'NEXT_PUBLIC_SUPABASE_URL= NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=';
 const webServerCommand = isFixtureServer
 	? fixtureServerCommand(serverPort, unconfiguredSupabase)
-	: `${prepareIsolatedNext(serverPort)} && if [ "\${CI:-}" != "true" ] && [ -f .env.local ]; then set -a; . ./.env.local; set +a; fi; VERCEL_ENV=development NEXT_DIST_DIR=.next-e2e-${serverPort} NEXT_TSCONFIG_PATH=.next-e2e-tsconfig-${serverPort}.json pnpm exec next dev --port ${serverPort}`;
+	: `${prepareIsolatedNext(serverPort)} && if [ "\${CI:-}" != "true" ] && [ -f .env.local ]; then set -a; . ./.env.local; set +a; fi; VERCEL_ENV=development ${LOCAL_OPERATOR_ENV} NEXT_DIST_DIR=.next-e2e-${serverPort} NEXT_TSCONFIG_PATH=.next-e2e-tsconfig-${serverPort}.json pnpm exec next dev --port ${serverPort}`;
 const webServer = (command: string, url: string) => ({
 	command,
 	cwd: APP_DIR,

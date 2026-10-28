@@ -39,7 +39,7 @@ import { useSaveStartDraft, useStartDraft } from './use-start-draft';
 import { useStartError } from './use-start-error';
 import { useStepHistory } from './use-step-history';
 
-export function LoginClient() {
+export function LoginClient({ appOrigin }: { appOrigin: string }) {
 	const t = useTranslations('entry.start');
 	const te = useTranslations('entry');
 	const render = useMessage();
@@ -347,6 +347,7 @@ export function LoginClient() {
 			)}
 			{step === 'join' && (
 				<JoinInviteStep
+					appOrigin={appOrigin}
 					inviteLink={inviteLink}
 					onInviteLinkChange={setInviteLink}
 					error={error}

@@ -19,8 +19,6 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="License: Apache-2.0"></a>
   <a href="#self-hosting"><img src="https://img.shields.io/badge/self--host-docker%20compose-2496ED?logo=docker&amp;logoColor=white" alt="Self-host with Docker"></a>
   <a href="https://scorecard.dev/viewer/?uri=github.com/Abuarchiv/manawg"><img src="https://api.scorecard.dev/projects/github.com/Abuarchiv/manawg/badge" alt="OpenSSF Scorecard"></a>
-  <a href="https://github.com/Abuarchiv/manawg/stargazers"><img src="https://img.shields.io/github/stars/Abuarchiv/manawg?style=flat" alt="GitHub stars"></a>
-  <a href="https://github.com/Abuarchiv/manawg/discussions"><img src="https://img.shields.io/github/discussions/Abuarchiv/manawg" alt="GitHub Discussions"></a>
 </p>
 
 <p align="center">
@@ -30,14 +28,9 @@
   <img src="docs/screenshots/shopping.png" width="24%" alt="ManaWG shared shopping list">
 </p>
 
-ManaWG is a free, open-source flatshare app for roommates and house shares: expense splitting and a
-Splitwise alternative, a chore chart for the cleaning rota, and a shared shopping list in one place.
-A *WG* (short for *Wohngemeinschaft*) is the German word for a shared flat, so you may also know
-this kind of tool as a "WG app". It runs in the browser, installs on your phone as a PWA, and you
-can use it at [app.manawg.com](https://app.manawg.com) or self-host it.
-
-The interface is available in German and English. You can change the language on the sign-in page
-or in Settings.
+ManaWG keeps the expenses, chores, shopping list and calendar of a shared flat in one app. A *WG*
+(*Wohngemeinschaft*) is the German word for a shared flat. You can use it at
+[app.manawg.com](https://app.manawg.com) or [self-host it](#self-hosting).
 
 ## Features
 
@@ -66,19 +59,16 @@ or in Settings.
 - No ads and no tracking cookies; product analytics (PostHog) run cookieless.
 - Up to 20 members per WG.
 
+**Languages**
+
+- The interface is available in English and German, with a language switch in the profile settings.
+
 ## Why ManaWG
 
 A typical flat uses a bill splitter such as Splitwise for the money, a chore app for the cleaning
 rota and a group chat for everything else. That works, but the pieces do not know about each
 other: the person who is away still gets the bathroom, and the shopping list lives in a chat
 scroll. ManaWG keeps expenses, chores, shopping, calendar and chat in one app for one flat.
-
-- **Free, with nothing held back.** No ads, no paid plan, no locked feature.
-- **Phone first.** It works in any browser, installs as a PWA, and the shopping list works
-  offline.
-- **Yours to keep.** Export everything, or run your own instance and keep the data on your own
-  machine.
-- **Open source.** Apache-2.0, developed in the open.
 
 If you only need to split bills and your flat already likes Splitwise, you can import your history
 and try ManaWG next to it.
@@ -130,11 +120,10 @@ Contributions are welcome: code, bug reports, documentation, translations and id
 
 - **Start small.** Issues labelled
   [good first issue](https://github.com/Abuarchiv/manawg/labels/good%20first%20issue) are
-  scoped and described for a first pull request.
+  small and written up for a first pull request. When none are open, start a Discussion or open an
+  issue first.
 - **Pick something bigger.** Issues labelled
   [help wanted](https://github.com/Abuarchiv/manawg/labels/help%20wanted) are open to anyone.
-- **Ask first.** Questions and ideas go to
-  [Discussions](https://github.com/Abuarchiv/manawg/discussions).
 
 [CONTRIBUTING.md](CONTRIBUTING.md) walks through your first pull request.
 
@@ -144,8 +133,7 @@ Contributions are welcome: code, bug reports, documentation, translations and id
 - **Help and bug reports:** see [SUPPORT](.github/SUPPORT.md).
 - **Security:** report vulnerabilities privately, see [SECURITY.md](SECURITY.md).
 
-If ManaWG helps your flat, a star on GitHub is a kind way to say thanks and helps others find it.
-
 ## License
 
-ManaWG is licensed under the [Apache License 2.0](LICENSE).
+ManaWG is licensed under the [Apache License 2.0](LICENSE). Third-party components and their
+licences: [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

@@ -9,6 +9,7 @@ import {
 	badRequest,
 	conflict,
 	forbidden,
+	noStore,
 	rateLimitResponse,
 	unauthorized,
 	unreadableJsonBody,
@@ -30,11 +31,6 @@ import {
 	type SettlementConfirmation,
 	selectSettlementScope,
 } from '@/features/expenses/settlement-scope';
-
-function noStore<T extends NextResponse>(response: T): T {
-	response.headers.set('Cache-Control', 'no-store');
-	return response;
-}
 
 function noStoreJson<T>(body: T, status = 200): NextResponse<T> {
 	return NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } });

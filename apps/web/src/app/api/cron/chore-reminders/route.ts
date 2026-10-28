@@ -1,10 +1,10 @@
 import { and, asc, eq, gte, inArray, isNotNull, isNull, lte, or, sql } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
-import * as dbSchema from '@/core/db';
 import {
 	choreCompletions,
 	chores,
 	db,
+	idempotencyResponses,
 	memberAbsences,
 	pushSubscriptions,
 	wgMembers,
@@ -30,16 +30,6 @@ const REMINDER_CANDIDATE_LIMIT = 500;
 const UNASSIGNED_CANDIDATE_LIMIT = 100;
 // Same concurrency cap as the event-reminders cron.
 const DISPATCH_BATCH_SIZE = 10;
-const localReminderClaims = new Map<string, number>(); // claim key -> expiry (epoch ms)
-
-// Keys for every reminded chore would stay resident for the lifetime of the
-// process. Claims are only meaningful until the throttle window passes, so
-// entries carry an expiry and are pruned at the start of every run.
-function pruneLocalReminderClaims(now: number): void {
-	for (const [key, expiresAt] of localReminderClaims) {
-		if (expiresAt <= now) localReminderClaims.delete(key);
-	}
-}
 
 interface DueChore {
 	id: string;
@@ -55,10 +45,6 @@ interface DueChore {
 // An unassigned chore (its assignee moved out) goes to every member who wants chore pushes.
 type PendingChore = DueChore;
 
-function getReminderClaimTable(): typeof dbSchema.idempotencyResponses | null {
-	return 'idempotencyResponses' in dbSchema ? dbSchema.idempotencyResponses : null;
-}
-
 function reminderClaimKey(choreId: string, startOfDay: Date): string {
 	return `${choreId}:${startOfDay.toISOString()}`;
 }
@@ -69,14 +55,6 @@ async function claimReminderDispatch(
 	now: Date,
 ): Promise<string | null> {
 	const key = reminderClaimKey(choreId, startOfDay);
-	const idempotencyResponses = getReminderClaimTable();
-	if (!idempotencyResponses || typeof (db as { insert?: unknown }).insert !== 'function') {
-		const expiresAt = localReminderClaims.get(key);
-		if (expiresAt !== undefined && expiresAt > now.getTime()) return null;
-		localReminderClaims.set(key, now.getTime() + REMINDER_THROTTLE_MS);
-		return key;
-	}
-
 	const inserted = await db
 		.insert(idempotencyResponses)
 		.values({
@@ -92,12 +70,6 @@ async function claimReminderDispatch(
 }
 
 async function releaseReminderDispatchClaim(key: string): Promise<void> {
-	const idempotencyResponses = getReminderClaimTable();
-	if (!idempotencyResponses || typeof (db as { delete?: unknown }).delete !== 'function') {
-		localReminderClaims.delete(key);
-		return;
-	}
-
 	await db
 		.delete(idempotencyResponses)
 		.where(
@@ -112,7 +84,6 @@ export const GET = withCronLogging(
 		if (denied) return denied;
 
 		const now = new Date();
-		pruneLocalReminderClaims(now.getTime());
 		// "Today" by the Berlin wall clock, not the UTC day the server runs in —
 		// otherwise chores due "today" and completions since midnight are judged
 		// against a day that starts 1-2 hours late for every member.

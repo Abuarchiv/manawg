@@ -47,7 +47,11 @@ function member(id: string, locale: string | undefined) {
 
 test('each recipient gets the push text in their own locale', async () => {
 	await withEnv(
-		{ NEXT_PUBLIC_VAPID_PUBLIC_KEY: 'public', VAPID_PRIVATE_KEY: 'private' },
+		{
+			NEXT_PUBLIC_VAPID_PUBLIC_KEY: 'public',
+			VAPID_PRIVATE_KEY: 'private',
+			VAPID_SUBJECT: 'mailto:ops@example.test',
+		},
 		async () => {
 			const result = await dispatchNotification({
 				wg: { id: 'wg-1', name: 'Flat', shareCode: 'ABC' },

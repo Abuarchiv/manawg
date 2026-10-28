@@ -7,7 +7,7 @@ const { serverRenderContext } = await import('./i18n/render-context');
 
 type Case = [eventType: string, metadata: Record<string, unknown>, summary: string];
 
-/** The summary column as the write sites produced it before the sentences moved into the catalog. */
+/** German summaries as stored in the summary column. */
 const GERMAN_SUMMARIES: Case[] = [
 	['absence.created', {}, 'Anna hat eine Abwesenheit eingetragen.'],
 	['absence.deleted', {}, 'Anna hat eine Abwesenheit entfernt.'],

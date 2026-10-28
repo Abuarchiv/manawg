@@ -29,6 +29,5 @@ and do not run automated scans against app.manawg.com.
 
 ## Supported versions
 
-There are no numbered releases yet. Security fixes go into `main` and the deployment built from
-it. Self-hosted instances get them by updating (see the
-[self-hosting guide](docs/self-hosting.md#updating)).
+Only the latest commit on `main` and the deployment built from it are supported. Self-hosted
+instances get fixes by updating, see the [self-hosting guide](docs/self-hosting.md#updating).

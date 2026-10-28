@@ -1,8 +1,11 @@
-// Pushes supabase/templates/* to the hosted Supabase Auth config.
-// Usage: node scripts/supabase-auth-templates.mjs --ref <ref> [--app-url <url>] [--legal-url <url>] [--apply]
-// --app-url / --legal-url replace the official origins in the templates (defaults:
-// https://app.manawg.com and https://manawg.com). Without --apply: dry-run (prints what would
-// be sent). --apply needs SUPABASE_ACCESS_TOKEN and is run by the owner only.
+// Pushes the Auth mail templates in supabase/templates/ and the 8-digit sign-in code length to the
+// Supabase project given by --ref. The Docker stack renders the same templates itself in
+// apps/web/scripts/selfhost/setup.mjs.
+// Usage: node scripts/supabase-auth-templates.mjs --ref <ref> --app-url <url> --legal-url <url> [--apply]
+// --app-url and --legal-url replace the official origins in the templates: the origin of your app
+// and of the site with your imprint and privacy policy. Without --apply this is a dry run that
+// prints what would be sent. --apply needs SUPABASE_ACCESS_TOKEN (Supabase dashboard > Account >
+// Access Tokens).
 // The templates and subjects hold German and English text in `{{ if eq .Data.locale "en" }}` blocks;
 // Supabase Auth picks the branch from the user's `user_metadata.locale`, German by default.
 import { readFile } from 'node:fs/promises';
@@ -13,18 +16,28 @@ const log = (line) => process.stdout.write(`${line}\n`);
 
 const dir = resolve(import.meta.dirname, '../supabase/templates');
 const args = process.argv.slice(2);
-const option = (name, fallback) => {
+// A flag without a value, or followed by another flag, counts as missing.
+const option = (name) => {
 	const index = args.indexOf(name);
 	const value = index >= 0 ? args[index + 1] : undefined;
-	return value && !value.startsWith('--') ? value : fallback;
+	return value && !value.startsWith('--') ? value : undefined;
 };
 const ref = option('--ref');
-if (!ref) {
-	console.error('Missing --ref <project-ref> (Supabase dashboard: Project Settings > General).');
+const appUrlOption = option('--app-url');
+const legalUrlOption = option('--legal-url');
+if (!ref || !appUrlOption || !legalUrlOption) {
+	console.error(
+		[
+			'Usage: node scripts/supabase-auth-templates.mjs --ref <project-ref> --app-url <url> --legal-url <url> [--apply]',
+			'  --ref        Supabase dashboard: Project Settings > General',
+			'  --app-url    origin of your app, e.g. https://wg.example.com',
+			'  --legal-url  origin of the site with your imprint and privacy policy',
+		].join('\n'),
+	);
 	process.exit(1);
 }
-const appUrl = new URL(option('--app-url', 'https://app.manawg.com')).origin;
-const legalUrl = new URL(option('--legal-url', 'https://manawg.com')).origin;
+const appUrl = new URL(appUrlOption).origin;
+const legalUrl = new URL(legalUrlOption).origin;
 const apply = args.includes('--apply');
 
 const subjects = JSON.parse(await readFile(resolve(dir, 'subjects.json'), 'utf8'));
@@ -43,6 +56,8 @@ body.mailer_subjects_password_changed_notification = subjects.password_changed;
 body.mailer_templates_password_changed_notification_content = await html('password_changed');
 
 log(`${apply ? 'APPLY' : 'DRY-RUN'} -> PATCH /v1/projects/${ref}/config/auth`);
+log(`  app url: ${appUrl}`);
+log(`  legal url: ${legalUrl}`);
 for (const [k, v] of Object.entries(body)) {
 	log(`  ${k}: ${typeof v === 'string' ? `${v.length} chars` : v}`);
 }

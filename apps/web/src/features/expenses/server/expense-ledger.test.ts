@@ -25,9 +25,9 @@ mock.module('drizzle-orm', {
 	},
 });
 
-const { loadOpenExpenses } = await import('./open-expenses');
+const { loadExpensesWithSplits } = await import('./expense-ledger');
 
-test('loadOpenExpenses joins splits by WG instead of binding every expense id', async () => {
+test('loadExpensesWithSplits joins splits by WG instead of binding every expense id', async () => {
 	const splitQueries: unknown[] = [];
 	const client = {
 		select() {
@@ -71,7 +71,7 @@ test('loadOpenExpenses joins splits by WG instead of binding every expense id', 
 		},
 	};
 
-	const result = await loadOpenExpenses(wgId, client as never);
+	const result = await loadExpensesWithSplits(wgId, client as never);
 
 	assert.deepEqual(splitQueries, [
 		{

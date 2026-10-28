@@ -2,14 +2,13 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 import { formatEuroCents } from '@/core/utils/money';
-import { APP_ORIGIN } from './brand-mail';
 import { MAIL_DARK_STYLE } from './dark-mode';
-import {
-	renderAccountDeletedMail,
-	renderInvitationMail,
-	renderReminderMail,
-	renderWelcomeMail,
-} from './templates';
+
+// The mail footer links the operator's legal pages when the instance has them, read at load time.
+process.env.NEXT_PUBLIC_LEGAL_URL = 'https://legal.example.test';
+const { APP_ORIGIN } = await import('./brand-mail');
+const { renderAccountDeletedMail, renderInvitationMail, renderReminderMail, renderWelcomeMail } =
+	await import('./templates');
 
 // Touchpoints rules: one thought per mail, no exclamation mark, amounts in the text, button present.
 

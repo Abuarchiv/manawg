@@ -9,11 +9,9 @@ import { FieldDescription, FieldGroup, FieldLabel, Field as UiField } from '@/co
 import { Input } from '@/components/ui/input';
 import type { StartField } from './start-flow';
 
-// Inlined at build time, so server and client render the same placeholder.
-const INVITE_ORIGIN =
-	process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || 'https://app.manawg.com';
-
 interface JoinInviteStepProps {
+	/** Origin of this instance, resolved on the server, for the example link in the field. */
+	appOrigin: string;
 	inviteLink: string;
 	onInviteLinkChange: (value: string) => void;
 	error: string | null;
@@ -24,6 +22,7 @@ interface JoinInviteStepProps {
 }
 
 export function JoinInviteStep({
+	appOrigin,
 	inviteLink,
 	onInviteLinkChange,
 	error,
@@ -62,7 +61,7 @@ export function JoinInviteStep({
 						spellCheck={false}
 						inputMode="url"
 						enterKeyHint="go"
-						placeholder={t('inviteLinkPlaceholder', { origin: INVITE_ORIGIN })}
+						placeholder={t('inviteLinkPlaceholder', { origin: appOrigin })}
 						aria-describedby={invalid ? 'invite-link-hint invite-link-error' : 'invite-link-hint'}
 						aria-invalid={invalid}
 						className="text-base"

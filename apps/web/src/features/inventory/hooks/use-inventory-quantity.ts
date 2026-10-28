@@ -5,6 +5,7 @@ import { useToast } from '@/components/ui/Toast';
 import { mutationError } from '@/core/http/error-codes';
 import { createIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
+import { deliveryWarning } from '@/core/notifications/delivery-warning';
 import type { NotificationWarning } from '@/core/notifications/notification-warning';
 import {
 	clampQuantity,
@@ -19,14 +20,6 @@ type ConsumeResponse = {
 	clamped: boolean;
 	warning: NotificationWarning;
 };
-
-/** The saved-but-push-failed hint for a stock change, or null when the push went through. */
-function deliveryWarning(warning: NotificationWarning): Message | null {
-	if (warning === 'notification_delivery_failed') return { key: 'inventory.update.deliveryFailed' };
-	if (warning === 'notification_delivery_unknown')
-		return { key: 'inventory.update.deliveryUnknown' };
-	return null;
-}
 
 // Server limits per request (consume: -1..-100, PATCH quantityDelta: +-9999).
 const MAX_CONSUME = 100;
@@ -82,7 +75,10 @@ export function useInventoryQuantity(options: UseInventoryQuantityOptions) {
 		if (res.ok) {
 			keysRef.current.delete(mapKey);
 			if (consume) {
-				const warning = deliveryWarning(res.data.warning);
+				const warning = deliveryWarning(res.data.warning, {
+					failed: 'inventory.update.deliveryFailed',
+					unknown: 'inventory.update.deliveryUnknown',
+				});
 				if (res.data.clamped && warning) {
 					toast.info(render({ key: 'inventory.update.clampedWithWarning', values: { warning } }));
 				} else if (res.data.clamped) {
