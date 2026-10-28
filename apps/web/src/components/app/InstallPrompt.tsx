@@ -20,13 +20,18 @@ import {
 // The manual-steps dialog pulls in the whole dialog stack, so it loads only when the prompt shows
 // it. The fallback is a disabled button of the same size, so the prompt does not jump.
 const InstallButton = dynamic(() => import('./InstallButton').then((m) => m.InstallButton), {
-	loading: () => (
+	loading: InstallButtonPlaceholder,
+});
+
+function InstallButtonPlaceholder() {
+	const t = useTranslations('shell.installPrompt');
+	return (
 		<Button type="button" disabled className="h-auto w-full whitespace-normal py-2">
 			<Download data-icon="inline-start" aria-hidden />
-			So installierst du ManaWG
+			{t('howTo')}
 		</Button>
-	),
-});
+	);
+}
 
 // Not under `manawg:`/`manawg_`: signing out wipes those, and a dismissal is a device choice.
 const DISMISSED_KEY = 'manawg-install-dismissed-at';
