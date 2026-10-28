@@ -1,0 +1,8 @@
+body:
+  - type: textarea
+    id: show
+    attributes:
+      label: What did you build or set up?
+      description: A self-hosted instance, a script, a theme, a fork. Screenshots welcome.
+    validations:
+      required: true

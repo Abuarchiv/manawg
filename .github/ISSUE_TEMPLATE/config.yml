@@ -2,10 +2,10 @@ blank_issues_enabled: false
 contact_links:
   - name: Question or idea
     url: https://github.com/Abuarchiv/manawg-app/discussions
-    about: Ask about using or hosting ManaWG, or discuss an idea before opening an issue.
-  - name: Security vulnerability
-    url: https://github.com/Abuarchiv/manawg-app/security/advisories/new
-    about: Report security problems privately, never in a public issue.
+    about: Ask about using ManaWG or talk an idea through before opening an issue.
   - name: Self-hosting guide
     url: https://github.com/Abuarchiv/manawg-app/blob/main/docs/self-hosting.md
     about: Setup steps, environment variables and the usual errors.
+  - name: Security vulnerability
+    url: https://github.com/Abuarchiv/manawg-app/security/advisories/new
+    about: Report security problems privately, never in a public issue.
