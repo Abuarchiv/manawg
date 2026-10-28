@@ -155,6 +155,7 @@ test.describe('English shopping list', () => {
 				await dismissOnboarding(page);
 
 				await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
+				await expect(page).toHaveTitle(/Shopping/);
 				await expect(page.getByRole('heading', { name: 'Shopping', level: 1 })).toBeAttached();
 				await expect(page.getByText('2 open')).toBeAttached();
 				const list = page.getByRole('region', { name: 'Shopping items' });
@@ -337,6 +338,7 @@ test.describe('English supplies', () => {
 				await dismissOnboarding(page);
 
 				await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
+				await expect(page).toHaveTitle(/Supplies/);
 				await expect(page.getByRole('heading', { name: 'Supplies', level: 1 })).toBeAttached();
 				await expect(page.getByText('3 items in stock')).toBeAttached();
 				await expect(page.getByRole('heading', { name: 'Running low (1)' })).toBeVisible();
