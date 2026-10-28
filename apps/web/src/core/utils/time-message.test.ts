@@ -6,60 +6,30 @@ const {
 	MS_PER_DAY,
 	MS_PER_HOUR,
 	formatDayMonthYear,
-	formatRelativeTime,
 	formatShortDate,
 	formatShortDateRange,
 	formatTimeFull,
-	formatWeekLabel,
 	relativeTimeMessage,
 	startOfWeek,
 	weekLabelMessage,
 } = await import('./time');
 
 const NOW = new Date('2026-10-14T09:30:00.000Z').getTime();
-const OFFSETS_MS = [
-	0,
-	30_000,
-	-30_000,
-	-59_000,
-	-60_000,
-	60_000,
-	5 * 60_000,
-	59 * 60_000,
-	-5 * 60_000,
-	-59 * 60_000,
-	MS_PER_HOUR,
-	3 * MS_PER_HOUR,
-	23 * MS_PER_HOUR,
-	-MS_PER_HOUR,
-	-3 * MS_PER_HOUR,
-	-23 * MS_PER_HOUR,
-	MS_PER_DAY,
-	2 * MS_PER_DAY,
-	3 * MS_PER_DAY,
-	6 * MS_PER_DAY,
-	7 * MS_PER_DAY,
-	40 * MS_PER_DAY,
-	-MS_PER_DAY,
-	-2 * MS_PER_DAY,
-	-3 * MS_PER_DAY,
-	-6 * MS_PER_DAY,
-	-7 * MS_PER_DAY,
-	-47 * MS_PER_HOUR,
-	47 * MS_PER_HOUR,
-];
-
-test('relativeTimeMessage renders the same German as formatRelativeTime', () => {
+test('relativeTimeMessage renders German words', () => {
 	const t = serverRootT('de');
-	for (const offset of OFFSETS_MS) {
-		const iso = new Date(NOW - offset).toISOString();
-		assert.equal(
-			renderMessage(t, relativeTimeMessage(iso, NOW)),
-			formatRelativeTime(iso, NOW),
-			`offset ${offset}`,
-		);
-	}
-	assert.equal(renderMessage(t, relativeTimeMessage('nope', NOW)), formatRelativeTime('nope', NOW));
+	const at = (offset: number) =>
+		renderMessage(t, relativeTimeMessage(new Date(NOW - offset).toISOString(), NOW));
+	assert.equal(at(10_000), 'gerade eben');
+	assert.equal(at(5 * 60_000), 'vor 5 Min');
+	assert.equal(at(3 * MS_PER_HOUR), 'vor 3 Std');
+	assert.equal(at(MS_PER_DAY), 'gestern');
+	assert.equal(at(3 * MS_PER_DAY), 'vor 3 Tagen');
+	assert.equal(at(-5 * 60_000), 'in 5 Min');
+	assert.equal(at(-3 * MS_PER_HOUR), 'in 3 Std');
+	assert.equal(at(-MS_PER_DAY), 'morgen');
+	assert.equal(at(-3 * MS_PER_DAY), 'in 3 Tagen');
+	assert.match(at(40 * MS_PER_DAY), /^\d\d\.\d\d\., \d\d:\d\d$/);
+	assert.equal(renderMessage(t, relativeTimeMessage('nope', NOW)), 'Zeit unbekannt');
 });
 
 test('relativeTimeMessage renders English words', () => {
@@ -82,17 +52,18 @@ test('relativeTimeMessage keeps counts as numbers', () => {
 	});
 });
 
-test('weekLabelMessage renders the same German as formatWeekLabel', () => {
+test('weekLabelMessage renders German words and dates', () => {
 	const t = serverRootT('de');
 	const now = new Date(2026, 9, 14, 12);
-	for (const weeksAgo of [0, 1, 2, 5, 30, 52, 53, -1, -3]) {
-		const weekStart = startOfWeek(new Date(now.getTime() - weeksAgo * 7 * MS_PER_DAY));
-		assert.equal(
-			renderMessage(t, weekLabelMessage(weekStart, now)),
-			formatWeekLabel(weekStart, now),
-			`weeks ago ${weeksAgo}`,
+	const render = (weeksAgo: number) =>
+		renderMessage(
+			t,
+			weekLabelMessage(startOfWeek(new Date(now.getTime() - weeksAgo * 7 * MS_PER_DAY)), now),
 		);
-	}
+	assert.equal(render(0), 'Diese Woche');
+	assert.equal(render(1), 'Letzte Woche');
+	assert.equal(render(5), 'Woche ab 07.09.');
+	assert.equal(render(52), 'Woche ab 13.10.2025');
 });
 
 test('weekLabelMessage renders English words and dates', () => {

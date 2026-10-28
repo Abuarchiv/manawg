@@ -101,8 +101,9 @@ function withSubject(subject: Message, detailKey: Message['key']): Message {
 }
 
 /**
- * `mutationErrorMessage` as data: the same buckets in the same order, with the
- * feature's `specific` and `fallback` texts passed as messages.
+ * Maps an error code to a message: the shared buckets (network, rate limit,
+ * read-only, session, retry, unavailable) come first, then the feature's
+ * `specific` texts, then `fallback`.
  */
 export function mutationError(
 	subject: Message,

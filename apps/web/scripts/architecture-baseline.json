@@ -1,9 +1,5 @@
 {
-	"violations": [
-		"i18n-literal src/app/layout.tsx",
-		"i18n-literal src/core/db/schema-inventory.ts",
-		"i18n-literal src/shared/lib/support-mailto.ts"
-	],
+	"violations": [],
 	"fileSize": {
 		"src/core/db/schema.ts": 970,
 		"e2e/account-delete-db.spec.ts": 1156

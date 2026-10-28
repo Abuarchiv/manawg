@@ -11,7 +11,7 @@
 // served from cache, and the app has its own offline queue for writes.
 //
 // Bump VERSION to evict every cached shell asset on the next activate.
-const VERSION = 'manawg-app-v8-push-locale';
+const VERSION = 'manawg-app-v9-english-sweep';
 const SHELL_CACHE = `${VERSION}-shell`;
 // Hashed /_next/static chunks fetched while browsing. sw.js itself does not
 // change between deploys, so nothing would ever evict them; the cap keeps the

@@ -171,7 +171,7 @@ export function useNotificationSettings({ code, memberId }: NotificationSettings
 					prev && prev.pushOptIn === false ? { ...prev, pushOptIn: true } : prev,
 				);
 			} catch (err) {
-				if (!cancelled) setError(m(formatPushActivationError(err)));
+				if (!cancelled) setError(renderRef.current(formatPushActivationError(err)));
 			}
 		}
 		void syncPushSubscriptionState();

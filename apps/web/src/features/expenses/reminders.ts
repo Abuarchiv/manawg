@@ -1,5 +1,4 @@
 import { formatEuroCents, normalizeCurrency } from '@/core/utils/money';
-import { pluralize } from '@/shared/lib/plural';
 
 export const REMINDER_COOLDOWN_HOURS = 48;
 const HOURS_TO_MS = 3_600_000;
@@ -91,7 +90,7 @@ export function formatReminderMessage(input: ReminderMessageInput): string {
 	const amount = formatEuroCents(input.amountCents, input.currency).replace(/\u00a0/g, ' '); // i18n-ignore persisted German DB text
 	const ageSuffix =
 		input.oldestDebtAgeDays >= 1
-			? ` seit ${pluralize(input.oldestDebtAgeDays, 'Tag', 'Tagen')}` // i18n-ignore persisted German DB text
+			? ` seit ${input.oldestDebtAgeDays} ${input.oldestDebtAgeDays === 1 ? 'Tag' : 'Tagen'}` // i18n-ignore persisted German DB text
 			: '';
 	return `Du schuldest ${input.creditorName} noch ${amount}${ageSuffix} — bitte zeitnah ausgleichen.`; // i18n-ignore persisted German DB text
 }

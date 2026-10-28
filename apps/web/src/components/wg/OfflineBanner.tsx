@@ -122,9 +122,7 @@ export function OfflineBanner() {
 			const after = countOfflineActions(wg.shareCode, { memberId: identity.memberId });
 			setQueueCount(after);
 			if (synced > 0) {
-				toast.success(
-					render(manualSyncResultMessage(synced, after, { offlineLabel: true })),
-				);
+				toast.success(render(manualSyncResultMessage(synced, after, { offlineLabel: true })));
 			} else if (before > 0 && after > 0) {
 				setNotice({ key: 'shell.offlineBanner.notSent' });
 			}
@@ -150,7 +148,8 @@ export function OfflineBanner() {
 						<WifiOff className="h-4 w-4 shrink-0" aria-hidden />
 						<span>
 							{t('offline', {
-								detail: queueCount > 0 ? render(offlineQueueCountMessage(queueCount)) : t('pending'),
+								detail:
+									queueCount > 0 ? render(offlineQueueCountMessage(queueCount)) : t('pending'),
 							})}
 						</span>
 					</div>

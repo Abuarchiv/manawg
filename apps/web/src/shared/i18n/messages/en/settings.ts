@@ -251,11 +251,9 @@ export default {
 				'This device is no longer registered for push. Turn push notifications off and on again.',
 			testFallback: 'The test could not be sent.',
 			pushNotAllowed: 'Notifications were not allowed.',
-			pushServiceWorker:
-				'Web Push could not be turned on: reload the page and try again.',
+			pushServiceWorker: 'Web Push could not be turned on: reload the page and try again.',
 			pushActivateFailed: 'Web Push could not be turned on.',
-			pushIncomplete:
-				'Web Push could not be turned on: the browser returned incomplete data.',
+			pushIncomplete: 'Web Push could not be turned on: the browser returned incomplete data.',
 			pushDeactivateFailed: 'Web Push could not be turned off.',
 			pushDeactivateRejoin: 'Web Push could not be turned off: join the flat again.',
 			pushDeactivateRetry: 'Web Push could not be turned off: try again in a moment.',

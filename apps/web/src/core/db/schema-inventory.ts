@@ -11,7 +11,7 @@ export const wgInventoryItems = pgTable(
 			.references(() => wgs.id, { onDelete: 'cascade' }),
 		name: text('name').notNull(),
 		quantity: numeric('quantity', { precision: 10, scale: 2, mode: 'number' }).notNull().default(0),
-		unit: text('unit').notNull().default('Stück'),
+		unit: text('unit').notNull().default('Stück'), // i18n-ignore stored unit key
 		threshold: numeric('threshold', { precision: 10, scale: 2, mode: 'number' })
 			.notNull()
 			.default(1),
