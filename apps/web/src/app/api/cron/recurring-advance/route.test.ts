@@ -529,6 +529,87 @@ test('Cron locks the WG before the recurring row and skips when the WG disappear
 	});
 });
 
+test('month-end anchor survives separate January and February cron runs', async (t) => {
+	t.mock.timers.enable({ apis: ['Date'], now: new Date('2025-01-31T12:00:00.000Z') });
+	const runner = harness({
+		initialDueAt: new Date('2025-01-31T00:00:00.000Z'),
+		patchAfterInsert: null,
+	});
+
+	await withCronSecret(async () => {
+		await runner.get();
+		assert.equal(runner.state.template.nextDueAt.toISOString(), '2025-02-28T00:00:00.000Z');
+
+		t.mock.timers.setTime(Date.parse('2025-02-28T12:00:00.000Z'));
+		await runner.get();
+
+		assert.deepEqual(
+			runner.state.expenses.map((expense) => expense.recurringDueAt.toISOString()),
+			['2025-01-31T00:00:00.000Z', '2025-02-28T00:00:00.000Z'],
+		);
+		assert.equal(runner.state.template.nextDueAt.toISOString(), '2025-03-31T00:00:00.000Z');
+		assert.equal(runner.state.template.anchorAt.toISOString(), '2025-01-31T00:00:00.000Z');
+	});
+});
+
+test('month-end anchor keeps day 31 across separate monthly runs', async (t) => {
+	// Due dates are stored as local noon (inputDateToIso), so the UTC day is the Berlin day.
+	t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-01-31T12:00:00.000Z') });
+	const runner = harness({
+		initialDueAt: new Date('2026-01-31T11:00:00.000Z'),
+		patchAfterInsert: null,
+	});
+
+	await withCronSecret(async () => {
+		const runs: [string, string][] = [
+			['2026-01-31T12:00:00.000Z', '2026-02-28T11:00:00.000Z'],
+			['2026-02-28T12:00:00.000Z', '2026-03-31T11:00:00.000Z'],
+			['2026-03-31T12:00:00.000Z', '2026-04-30T11:00:00.000Z'],
+			['2026-04-30T12:00:00.000Z', '2026-05-31T11:00:00.000Z'],
+		];
+		for (const [runAt, expectedNext] of runs) {
+			t.mock.timers.setTime(Date.parse(runAt));
+			await runner.get();
+			assert.equal(runner.state.template.nextDueAt.toISOString(), expectedNext);
+			assert.equal(runner.state.template.anchorAt.toISOString(), '2026-01-31T11:00:00.000Z');
+			assert.equal(runner.state.template.anchorAt.getUTCDate(), 31);
+		}
+		assert.deepEqual(
+			runner.state.expenses.map((expense) => expense.recurringDueAt.toISOString()),
+			[
+				'2026-01-31T11:00:00.000Z',
+				'2026-02-28T11:00:00.000Z',
+				'2026-03-31T11:00:00.000Z',
+				'2026-04-30T11:00:00.000Z',
+			],
+		);
+	});
+});
+
+test('month-end catch-up keeps anchor day 31 within a single run', async (t) => {
+	t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-04-30T12:00:00.000Z') });
+	const runner = harness({
+		initialDueAt: new Date('2026-01-31T11:00:00.000Z'),
+		patchAfterInsert: null,
+	});
+
+	await withCronSecret(async () => {
+		const response = await runner.get();
+		assert.deepEqual(await response.json(), { ok: true, charged: 4, failedTemplates: 0 });
+		assert.deepEqual(
+			runner.state.expenses.map((expense) => expense.recurringDueAt.toISOString()),
+			[
+				'2026-01-31T11:00:00.000Z',
+				'2026-02-28T11:00:00.000Z',
+				'2026-03-31T11:00:00.000Z',
+				'2026-04-30T11:00:00.000Z',
+			],
+		);
+		assert.equal(runner.state.template.nextDueAt.toISOString(), '2026-05-31T11:00:00.000Z');
+		assert.equal(runner.state.template.anchorAt.toISOString(), '2026-01-31T11:00:00.000Z');
+	});
+});
+
 test('a template with a moved-out payer or debtor is skipped without advancing', async (t) => {
 	t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-09-25T12:00:00.000Z') });
 	const julyDueAt = new Date('2026-07-01T00:00:00.000Z');
