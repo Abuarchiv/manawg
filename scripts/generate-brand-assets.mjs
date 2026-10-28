@@ -48,5 +48,5 @@ for (const [name, size, hole, fraction] of [
 		throw new Error(`Invalid brand asset: ${name}`);
 }
 process.stdout.write(
-	'Generated SVG and seven opaque PNG brand assets from the supplied geometry.\n',
+	'Generated SVG and seven opaque PNG brand assets from the brand mark geometry.\n',
 );

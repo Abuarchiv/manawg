@@ -338,8 +338,6 @@ These apply to both ways. In Docker the settings are `LEGAL_URL` and `SUPPORT_EM
 - `NEXT_PUBLIC_SUPPORT_EMAIL` receives the "Fehler per E-Mail melden" reports. In Docker an empty
   `SUPPORT_EMAIL` falls back to `SMTP_ADMIN_EMAIL`. On Vercel an unset value sends reports to the
   ManaWG maintainers, who cannot see your instance, so set it there.
-- The name and logo "ManaWG" are not covered by the code license. Read
-  [TRADEMARK.md](../TRADEMARK.md) before you run a public instance.
 
 ## Getting help
 

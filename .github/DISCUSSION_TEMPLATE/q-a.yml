@@ -1,0 +1,19 @@
+title: "[Question] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Check the [self-hosting guide](https://github.com/Abuarchiv/manawg-app/blob/main/docs/self-hosting.md) first.
+        Never post keys, passwords or connection strings.
+  - type: textarea
+    id: question
+    attributes:
+      label: Your question
+      description: What are you trying to do, and what happens instead?
+    validations:
+      required: true
+  - type: input
+    id: setup
+    attributes:
+      label: Setup
+      description: app.manawg.com, Docker, or Vercel and Supabase. Add the version if you self-host.
