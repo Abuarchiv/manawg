@@ -1,11 +1,10 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { chromium, devices, webkit } from '@playwright/test';
+import { BASE, SB } from './env.mjs';
 
 // Drives the real UI (phone viewport) against the local real stack: every WG page, the main
 // create/edit flows, two members. Writes screenshots and an aria snapshot per step to SHOTS_DIR
 // and prints console errors, page errors, failed requests and visible error texts.
-const BASE = 'http://localhost:3140';
-const SB = 'http://127.0.0.1:54321';
 const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
 if (!SERVICE) throw new Error('SUPABASE_SERVICE_ROLE_KEY missing');
 const OUT = process.env.SHOTS_DIR ?? './ui-shots';

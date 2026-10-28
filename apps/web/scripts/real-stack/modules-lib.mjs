@@ -1,12 +1,12 @@
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { request } from '@playwright/test';
+import { DB } from './env.mjs';
 
 // Module-level API checks against the local real stack (see README): shopping, inventory, events,
 // payments and settlement, recurring expenses with the cron, pinnwand, absences, members, calendar
 // subscription, export, crons, WG rename and deletion, account deletion.
-export const BASE = 'http://localhost:3140';
-export const SB = 'http://127.0.0.1:54321';
+export { BASE, SB } from './env.mjs';
 export const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
 export const CRON = process.env.CRON_SECRET ?? '';
 if (!SERVICE) throw new Error('SUPABASE_SERVICE_ROLE_KEY missing (see supabase status -o env)');
@@ -14,9 +14,7 @@ if (!CRON) throw new Error('CRON_SECRET missing (same value the server runs with
 export const VERBOSE = process.env.VERBOSE === '1';
 export const sql = (q) =>
 	// No shell: the query reaches psql as one argument, whatever quotes it contains.
-	execFileSync('psql', ['postgresql://postgres:postgres@127.0.0.1:54322/postgres', '-Atc', q])
-		.toString()
-		.trim();
+	execFileSync('psql', [DB, '-Atc', q]).toString().trim();
 export const stamp = Date.now();
 export const bugs = [];
 export const oks = [];

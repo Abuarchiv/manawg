@@ -50,8 +50,5 @@
 		"i18n-literal src/features/expenses/statement-mail.ts",
 		"i18n-literal src/shared/lib/support-mailto.ts"
 	],
-	"fileSize": {
-		"src/core/db/schema.ts": 970,
-		"e2e/account-delete-db.spec.ts": 1156
-	}
+	"fileSize": {}
 }

@@ -2,10 +2,10 @@
 // dark mode, long texts and the empty states left behind. Same env and output as ui.mjs.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { chromium, devices, webkit } from '@playwright/test';
+import { BASE } from './env.mjs';
 import { DAY, iso, setup } from './modules-lib.mjs';
 import { seed } from './ui-edit-seed.mjs';
 
-const BASE = 'http://localhost:3140';
 const OUT = process.env.SHOTS_DIR ?? './ui-edit-shots';
 mkdirSync(OUT, { recursive: true });
 const bugs = [];
