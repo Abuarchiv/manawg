@@ -35,9 +35,6 @@ const nextConfig: NextConfig = {
 		ignoreBuildErrors: false,
 		tsconfigPath: process.env.NEXT_TSCONFIG_PATH ?? 'tsconfig.json',
 	},
-	eslint: {
-		ignoreDuringBuilds: false,
-	},
 	// Browsers and bookmark importers still ask for /favicon.ico; the metadata icons are PNG/SVG.
 	async rewrites() {
 		return [{ source: '/favicon.ico', destination: '/favicon-32.png' }];
@@ -53,6 +50,8 @@ const nextConfig: NextConfig = {
 		];
 	},
 	experimental: {
+		// TypeScript 7 ships no compiler API, so the build type-checks with its CLI.
+		useTypeScriptCli: true,
 		// Besuchte/vorab geladene Tabs bleiben 5 Min. im Router-Cache: ein Tab-Tipp ohne Netz bleibt in
 		// der App (letzte Daten) statt per Hard-Navigation auf die Offline-Seite zu fallen.
 		staleTimes: { dynamic: 300, static: 300 },

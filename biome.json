@@ -41,7 +41,8 @@
 			"!**/drizzle/meta",
 			"!**/*.yml",
 			"!**/*.yaml",
-			"!**/*.html"
+			"!**/*.html",
+			"!**/next-env.d.ts"
 		]
 	},
 	"overrides": [

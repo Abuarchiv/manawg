@@ -90,7 +90,7 @@ export function originAllowed(req: NextRequest): boolean {
 	}
 }
 
-export async function middleware(req: NextRequest): Promise<NextResponse> {
+export async function proxy(req: NextRequest): Promise<NextResponse> {
 	const isRead = READ_METHODS.has(req.method);
 	const path = req.nextUrl.pathname;
 	const fixture = resolveFixtureRequest(req);

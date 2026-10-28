@@ -3,7 +3,7 @@ import { describe, test } from 'node:test';
 import { NextRequest } from 'next/server';
 import { contentSecurityPolicy } from '../src/core/infra/security-headers.ts';
 import { isE2EDbDownMode } from '../src/fixtures/mode.ts';
-import { config, isShareCodeLookup, middleware, originAllowed } from '../src/middleware.ts';
+import { config, isShareCodeLookup, originAllowed, proxy } from '../src/proxy.ts';
 import { withEnv } from './support/env.ts';
 
 // Trust-boundary contracts of the edge middleware and the security headers: CSRF origin checks,
@@ -53,7 +53,7 @@ describe('csrf origin', () => {
 		for (const origin of rejected) {
 			const req = request({ host: 'app.example.com', origin });
 			assert.equal(originAllowed(req), false, origin);
-			assert.equal((await middleware(req)).status, 403, origin);
+			assert.equal((await proxy(req)).status, 403, origin);
 		}
 	});
 
@@ -85,7 +85,7 @@ describe('csrf origin', () => {
 			method: 'DELETE',
 			headers: { host: 'app.example.com', origin: 'https://evil.example.com' },
 		});
-		assert.equal((await middleware(req)).status, 403);
+		assert.equal((await proxy(req)).status, 403);
 	});
 });
 
