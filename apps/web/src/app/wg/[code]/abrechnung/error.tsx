@@ -1,6 +1,7 @@
 'use client';
 
 import { WgRouteErrorBoundary } from '@/components/wg/WgRouteErrorBoundary';
+import { useTranslations } from 'next-intl';
 
 interface AbrechnungErrorProps {
 	error: Error & { digest?: string };
@@ -8,13 +9,14 @@ interface AbrechnungErrorProps {
 }
 
 export default function AbrechnungError({ error, reset }: AbrechnungErrorProps) {
+	const t = useTranslations('statement');
 	return (
 		<WgRouteErrorBoundary
 			error={error}
 			reset={reset}
 			boundary="wg-abrechnung"
-			title="Die Abrechnung konnte gerade nicht geladen werden"
-			body="Auf der Abrechnungs-Seite ist ein Fehler aufgetreten. Bitte versuche es erneut oder kehre zur WG-Übersicht zurück."
+			title={t('page.boundary.title')}
+			body={t('page.boundary.body')}
 		/>
 	);
 }

@@ -2,8 +2,10 @@ import { LogoMark } from '@/components/ui/LogoMark';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { formatEuroCents } from '@/core/utils/money';
 import type { MonthlyStatement } from '@/features/expenses/monthly-statement';
+import { dateTimeFormat } from '@/shared/i18n/intl';
+import type { Locale } from '@/shared/i18n/locale';
 import { cn } from '@/shared/lib/cn';
-import { pluralize } from '@/shared/lib/plural';
+import { useLocale, useTranslations } from 'next-intl';
 
 const EYEBROW = 'font-mono text-[11px] tracking-[0.1em] uppercase text-muted-foreground';
 const H2 = 'font-heading text-[18px] font-semibold tracking-[-0.02em] print:text-[22px]';
@@ -18,27 +20,30 @@ interface MonthlyStatementDocumentProps {
 	viewerName: string;
 }
 
-function monthTitle(monthKey: string): string {
+function monthTitle(monthKey: string, locale: Locale): string {
 	const [year, month] = monthKey.split('-').map(Number);
-	return new Intl.DateTimeFormat('de-DE', {
-		month: 'long',
-		year: 'numeric',
-		timeZone: 'UTC',
-	}).format(new Date(Date.UTC(year ?? 0, (month ?? 1) - 1, 1)));
+	return dateTimeFormat(locale, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(
+		new Date(Date.UTC(year ?? 0, (month ?? 1) - 1, 1)),
+	);
 }
 
-function period(monthKey: string): string {
+/** First and last day of the month, formatted in `locale`. */
+function periodBounds(monthKey: string, locale: Locale): { start: string; end: string } {
 	const [year, month] = monthKey.split('-').map(Number);
-	const lastDay = new Date(Date.UTC(year ?? 0, month ?? 1, 0)).getUTCDate();
-	const mm = String(month).padStart(2, '0');
-	return `01.${mm}. – ${lastDay}.${mm}.${year}`;
+	const first = new Date(Date.UTC(year ?? 0, (month ?? 1) - 1, 1));
+	const last = new Date(Date.UTC(year ?? 0, month ?? 1, 0));
+	return {
+		start: dateTimeFormat(locale, { day: '2-digit', month: '2-digit', timeZone: 'UTC' }).format(
+			first,
+		),
+		end: dateTimeFormat(locale, {
+			day: '2-digit',
+			month: '2-digit',
+			year: 'numeric',
+			timeZone: 'UTC',
+		}).format(last),
+	};
 }
-
-const dayMonth = new Intl.DateTimeFormat('de-DE', {
-	day: '2-digit',
-	month: '2-digit',
-	timeZone: 'Europe/Berlin',
-});
 
 /** Monthly statement laid out after Brandbook "Abrechnung"; phone column on screen, A4 in print. */
 export function MonthlyStatementDocument({
@@ -48,12 +53,18 @@ export function MonthlyStatementDocument({
 	viewerId,
 	viewerName,
 }: MonthlyStatementDocumentProps) {
+	const t = useTranslations('statement');
+	const locale = useLocale();
 	const { monthKey, members, transfers, categories, items, totalCents, settled } = statement;
+	const money = (cents: number) => formatEuroCents(cents, 'EUR', { locale });
+	const dayMonth = dateTimeFormat(locale, {
+		day: '2-digit',
+		month: '2-digit',
+		timeZone: 'Europe/Berlin',
+	});
 	const number = `MWG-${monthKey.slice(2, 4)}${monthKey.slice(5, 7)}-${shareCode.slice(0, 3).toUpperCase()}`;
 	const viewerShare = members.find((member) => member.id === viewerId)?.shareCents ?? 0;
 	const empty = items.length === 0;
-	const transferCount =
-		transfers.length === 1 ? 'eine Überweisung' : `${transfers.length} Überweisungen`;
 
 	return (
 		<article className="flex flex-col gap-8 text-foreground print:gap-10">
@@ -66,27 +77,29 @@ export function MonthlyStatementDocument({
 						</span>
 					</span>
 					<dl className="grid grid-cols-[auto_auto] gap-x-3 gap-y-0.5 text-right text-[12px]">
-						<dt className="text-left text-muted-foreground">Abrechnung</dt>
+						<dt className="text-left text-muted-foreground">{t('document.statementNumber')}</dt>
 						<dd className="font-mono whitespace-nowrap">{number}</dd>
-						<dt className="text-left text-muted-foreground">Zeitraum</dt>
-						<dd className="font-mono whitespace-nowrap">{period(monthKey)}</dd>
-						<dt className="text-left text-muted-foreground">Erstellt für</dt>
+						<dt className="text-left text-muted-foreground">{t('document.period')}</dt>
+						<dd className="font-mono whitespace-nowrap">
+							{t('document.periodRange', periodBounds(monthKey, locale))}
+						</dd>
+						<dt className="text-left text-muted-foreground">{t('document.preparedFor')}</dt>
 						<dd>{viewerName}</dd>
 					</dl>
 				</div>
 				<div className="flex flex-col gap-2">
-					<p className={cn(EYEBROW, 'tracking-[0.14em]')}>Monatsabrechnung · {wgName}</p>
+					<p className={cn(EYEBROW, 'tracking-[0.14em]')}>{t('document.eyebrow', { wgName })}</p>
 					<h1 className="font-heading text-[32px] leading-none font-semibold tracking-[-0.035em] print:text-[52px]">
-						{monthTitle(monthKey)}
+						{monthTitle(monthKey, locale)}
 					</h1>
 				</div>
 			</header>
 
 			<dl className="grid grid-cols-2 border-t-2 border-b border-t-foreground border-b-border print:grid-cols-4">
 				{[
-					['Gesamt', formatEuroCents(totalCents)],
-					['Ausgaben', String(items.length)],
-					['Dein Anteil', formatEuroCents(viewerShare)],
+					[t('document.total'), money(totalCents)],
+					[t('document.expenses'), String(items.length)],
+					[t('document.yourShare'), money(viewerShare)],
 				].map(([label, value], index) => (
 					<div
 						key={label}
@@ -102,7 +115,7 @@ export function MonthlyStatementDocument({
 					</div>
 				))}
 				<div className="flex flex-col gap-1 border-l border-border py-3 pl-3">
-					<dt className="text-[12px] text-muted-foreground">Status</dt>
+					<dt className="text-[12px] text-muted-foreground">{t('document.status')}</dt>
 					<dd
 						className={cn(
 							'flex items-center gap-2 text-[15px] font-semibold',
@@ -110,7 +123,11 @@ export function MonthlyStatementDocument({
 						)}
 					>
 						<span aria-hidden className="size-2 rounded-full bg-current" />
-						{empty ? 'Keine Ausgaben' : settled ? 'Ausgeglichen' : 'Offen'}
+						{empty
+							? t('document.statusEmpty')
+							: settled
+								? t('document.statusSettled')
+								: t('document.statusOpen')}
 					</dd>
 				</div>
 			</dl>
@@ -118,10 +135,10 @@ export function MonthlyStatementDocument({
 			<section aria-labelledby="statement-balances" className="flex flex-col gap-3">
 				<div className="flex items-baseline justify-between gap-3">
 					<h2 id="statement-balances" className={H2}>
-						Salden
+						{t('document.balances')}
 					</h2>
 					<span className="text-[12px] text-muted-foreground">
-						Geteilt auf {pluralize(members.length, 'Person', 'Personen')}
+						{t('document.splitBetween', { count: members.length })}
 					</span>
 				</div>
 				{/* Four columns do not fit at 320 px: the table scrolls sideways instead of the page. */}
@@ -130,16 +147,16 @@ export function MonthlyStatementDocument({
 						<thead>
 							<tr className={cn(EYEBROW, 'border-b border-foreground')}>
 								<th scope="col" className={cn(TH, 'text-left')}>
-									Person
+									{t('document.person')}
 								</th>
 								<th scope="col" className={cn(TH, 'pl-3 text-right')}>
-									Bezahlt
+									{t('document.paid')}
 								</th>
 								<th scope="col" className={cn(TH, 'pl-3 text-right')}>
-									Anteil
+									{t('document.share')}
 								</th>
 								<th scope="col" className={cn(TH, 'pl-3 text-right')}>
-									Saldo
+									{t('document.balance')}
 								</th>
 							</tr>
 						</thead>
@@ -151,15 +168,17 @@ export function MonthlyStatementDocument({
 											<MemberAvatar name={member.name} size={24} />
 											<span className="truncate">{member.name}</span>
 											{member.id === viewerId && (
-												<span className="text-[12px] font-normal text-muted-foreground">du</span>
+												<span className="text-[12px] font-normal text-muted-foreground">
+													{t('document.you')}
+												</span>
 											)}
 										</span>
 									</th>
 									<td className={cn(MONEY, 'pl-3 text-right text-[13px]')}>
-										{formatEuroCents(member.paidCents)}
+										{money(member.paidCents)}
 									</td>
 									<td className={cn(MONEY, 'pl-3 text-right text-[13px] text-muted-foreground')}>
-										{formatEuroCents(member.shareCents)}
+										{money(member.shareCents)}
 									</td>
 									<td
 										className={cn(
@@ -172,7 +191,7 @@ export function MonthlyStatementDocument({
 													: 'text-destructive',
 										)}
 									>
-										{formatEuroCents(member.balanceCents, 'EUR', { signed: true }).replace(
+										{formatEuroCents(member.balanceCents, 'EUR', { signed: true, locale }).replace(
 											'-',
 											'−',
 										)}
@@ -187,10 +206,10 @@ export function MonthlyStatementDocument({
 			{transfers.length > 0 && (
 				<section aria-labelledby="statement-transfers" className="flex flex-col gap-3">
 					<h2 id="statement-transfers" className={H2}>
-						Ausgleich
+						{t('document.settlement')}
 					</h2>
 					<p className="text-[13px] leading-relaxed text-muted-foreground">
-						Die kürzeste Lösung: {transferCount}, dann sind alle quitt.
+						{t('document.settlementHint', { count: transfers.length })}
 					</p>
 					<ul className="flex flex-col border-t border-border">
 						{transfers.map((transfer) => (
@@ -200,11 +219,11 @@ export function MonthlyStatementDocument({
 							>
 								<span className="min-w-0 flex-1">
 									<span className="font-medium">{transfer.fromName}</span>
-									<span className="text-muted-foreground"> an </span>
+									<span className="text-muted-foreground"> {t('document.transferTo')} </span>
 									<span className="font-medium">{transfer.toName}</span>
 								</span>
 								<span className={cn(MONEY, 'text-[13px] font-medium')}>
-									{formatEuroCents(transfer.cents)}
+									{money(transfer.cents)}
 								</span>
 								<span
 									className={cn(
@@ -212,7 +231,7 @@ export function MonthlyStatementDocument({
 										settled ? 'text-settled' : 'text-destructive',
 									)}
 								>
-									{settled ? 'erledigt' : 'offen'}
+									{settled ? t('document.transferDone') : t('document.transferOpen')}
 								</span>
 							</li>
 						))}
@@ -223,7 +242,7 @@ export function MonthlyStatementDocument({
 			{!empty && (
 				<section aria-labelledby="statement-categories" className="flex flex-col gap-3">
 					<h2 id="statement-categories" className={H2}>
-						Kategorien
+						{t('document.categories')}
 					</h2>
 					<ul className="flex flex-col border-t border-border">
 						{categories.map((entry) => (
@@ -231,12 +250,12 @@ export function MonthlyStatementDocument({
 								key={entry.category}
 								className="flex items-center gap-3 border-b border-border py-2.5 text-[14px]"
 							>
-								<span className="min-w-0 flex-1 font-medium">{entry.label}</span>
-								<span className={cn(MONEY, 'text-[13px] font-medium')}>
-									{formatEuroCents(entry.cents)}
+								<span className="min-w-0 flex-1 font-medium">
+									{t(`document.category.${entry.category}`)}
 								</span>
+								<span className={cn(MONEY, 'text-[13px] font-medium')}>{money(entry.cents)}</span>
 								<span className={cn(MONEY, 'w-10 text-right text-[12px] text-muted-foreground')}>
-									{entry.share} %
+									{t('document.categoryShare', { share: entry.share })}
 								</span>
 							</li>
 						))}
@@ -248,10 +267,10 @@ export function MonthlyStatementDocument({
 				<section aria-labelledby="statement-items" className="flex flex-col gap-3">
 					<div className="flex items-baseline justify-between gap-3">
 						<h2 id="statement-items" className={H2}>
-							Alle Ausgaben
+							{t('document.allExpenses')}
 						</h2>
 						<span className="text-[12px] text-muted-foreground">
-							{pluralize(items.length, 'Eintrag', 'Einträge')}, nach Datum
+							{t('document.entriesByDate', { count: items.length })}
 						</span>
 					</div>
 					<div className="overflow-x-auto">
@@ -259,16 +278,16 @@ export function MonthlyStatementDocument({
 							<thead>
 								<tr className={cn(EYEBROW, 'border-b border-foreground')}>
 									<th scope="col" className={cn(TH, 'w-12 text-left print:w-16')}>
-										Datum
+										{t('document.date')}
 									</th>
 									<th scope="col" className={cn(TH, 'pl-3 text-left')}>
-										Beschreibung
+										{t('document.description')}
 									</th>
 									<th scope="col" className={cn(TH, 'hidden pl-3 text-left print:table-cell')}>
-										Von
+										{t('document.from')}
 									</th>
 									<th scope="col" className={cn(TH, 'pl-3 text-right')}>
-										Betrag
+										{t('document.amount')}
 									</th>
 								</tr>
 							</thead>
@@ -291,7 +310,7 @@ export function MonthlyStatementDocument({
 											{item.payerName}
 										</td>
 										<td className={cn(MONEY, 'py-2 pl-3 text-right text-[12px]')}>
-											{formatEuroCents(item.amountCents)}
+											{money(item.amountCents)}
 										</td>
 									</tr>
 								))}
@@ -299,13 +318,13 @@ export function MonthlyStatementDocument({
 							<tfoot>
 								<tr className="border-t border-foreground font-semibold">
 									<th scope="row" colSpan={2} className="py-3 text-left print:hidden">
-										Summe
+										{t('document.sum')}
 									</th>
 									<th scope="row" colSpan={3} className="hidden py-3 text-left print:table-cell">
-										Summe
+										{t('document.sum')}
 									</th>
 									<td className={cn(MONEY, 'py-3 pl-3 text-right text-[13px]')}>
-										{formatEuroCents(totalCents)}
+										{money(totalCents)}
 									</td>
 								</tr>
 							</tfoot>
@@ -316,18 +335,12 @@ export function MonthlyStatementDocument({
 
 			<footer className="grid gap-5 border-t border-border pt-5 text-[12px] leading-relaxed text-muted-foreground print:grid-cols-2 print:gap-10">
 				<div className="flex flex-col gap-1">
-					<p className={cn(EYEBROW, 'text-foreground')}>So rechnen wir</p>
-					<p>
-						Jede Ausgabe wird so verteilt, wie sie eingetragen ist. Saldo = bezahlt minus Anteil.
-						Positiv heißt: Du bekommst Geld zurück.
-					</p>
+					<p className={cn(EYEBROW, 'text-foreground')}>{t('document.howWeCalculate')}</p>
+					<p>{t('document.howWeCalculateBody')}</p>
 				</div>
 				<div className="flex flex-col gap-1">
-					<p className={cn(EYEBROW, 'text-foreground')}>Hinweis</p>
-					<p>
-						Diese Übersicht ist keine Rechnung im steuerlichen Sinn. Belege und Fotos findest du an
-						jeder Ausgabe in der App. Export als CSV unter Einstellungen → Daten.
-					</p>
+					<p className={cn(EYEBROW, 'text-foreground')}>{t('document.note')}</p>
+					<p>{t('document.noteBody')}</p>
 				</div>
 			</footer>
 		</article>

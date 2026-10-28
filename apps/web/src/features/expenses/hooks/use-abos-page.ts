@@ -1,24 +1,20 @@
 import { useToast } from '@/components/ui/Toast';
 import type { ActionNotice, ActionNoticeTone } from '@/components/wg/ActionNoticeBanner';
 import { useWg } from '@/components/wg/WgContextProvider';
-import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
+import { wgLoadError } from '@/core/guards/load-errors';
 import {
 	type PendingIdempotentRequest,
 	resolveIdempotencyKey,
 	shouldReleaseIdempotencyKey,
 } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
-import { keyUnavailableMessage } from '@/core/offline/offline-copy';
 import { useSyncedCollection } from '@/core/sync/use-synced-collection';
 import { LIST_REFRESH_INTERVAL_MS } from '@/core/utils/use-visibility-paused-interval';
-import {
-	aboActionErrorMessage,
-	aboDeleteErrorMessage,
-	aboSaveErrorMessage,
-} from '@/features/expenses/abo-errors';
+import { aboActionError, aboDeleteError, aboSaveError } from '@/features/expenses/abo-errors';
 import type { AboFormValues } from '@/features/expenses/abo-form-model';
 import type { Abo, AboFilter } from '@/features/expenses/expense-types';
 import { getDueRecurringExpenses } from '@/features/expenses/recurring-expenses';
+import { useMessage } from '@/shared/i18n/message';
 import { haptic } from '@/shared/lib/haptics';
 import { useCallback, useMemo, useRef, useState } from 'react';
 
@@ -45,6 +41,7 @@ function upsertAbo(current: Abo[], next: Abo): Abo[] {
 export function useAbosPage() {
 	const { wg, members, identity } = useWg();
 	const toast = useToast();
+	const t = useMessage();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const collection = useSyncedCollection<RecurringExpensesResponse, Abo>({
 		url: `/api/wg/${encodedShareCode}/recurring-expenses`,
@@ -53,7 +50,7 @@ export function useAbosPage() {
 		assemble: (items, current) => ({ ...current, recurringExpenses: items }),
 		getId: (abo) => abo.id,
 		describeError: (error) =>
-			getWgLoadErrorMessage('Fixkosten', error.status, error.error, { verb: 'konnten' }),
+			t(wgLoadError({ key: 'expenses-abos.page.loadError.lead' }, error.status, error.error)),
 		pollIntervalMs: LIST_REFRESH_INTERVAL_MS,
 	});
 	const {
@@ -100,7 +97,7 @@ export function useAbosPage() {
 		const fingerprint = JSON.stringify(values);
 		const idempotencyKey = resolveIdempotencyKey(createRequestRef.current, fingerprint);
 		if (!idempotencyKey) {
-			setNoticeMessage('error', keyUnavailableMessage('Die Fixkosten-Vorlage', 'gespeichert'));
+			setNoticeMessage('error', t({ key: 'expenses-abos.notice.keyUnavailable' }));
 			setSubmitting(false);
 			return;
 		}
@@ -139,11 +136,11 @@ export function useAbosPage() {
 				),
 			);
 			setShowCreate(false);
-			setNoticeMessage('success', 'Fixkosten angelegt.');
+			setNoticeMessage('success', t({ key: 'expenses-abos.notice.created' }));
 		} else {
 			updateAbos((current) => current.filter((abo) => abo.id !== optimisticId));
 			if (shouldReleaseIdempotencyKey(res.status, res.error)) createRequestRef.current = null;
-			const message = aboSaveErrorMessage(res.error, 'angelegt');
+			const message = t(aboSaveError(res.error, 'created'));
 			setNoticeMessage('error', message);
 		}
 		setSubmitting(false);
@@ -175,10 +172,10 @@ export function useAbosPage() {
 			haptic('medium');
 			updateAbos((current) => upsertAbo(current, res.data.recurringExpense));
 			setEditing(null);
-			setNoticeMessage('success', 'Fixkosten aktualisiert.');
+			setNoticeMessage('success', t({ key: 'expenses-abos.notice.updated' }));
 		} else {
 			updateAbos((current) => upsertAbo(current, previousAbo));
-			const message = aboSaveErrorMessage(res.error, 'aktualisiert');
+			const message = t(aboSaveError(res.error, 'updated'));
 			setNoticeMessage('error', message);
 			if (res.status === 409 && res.error === 'recurring_expense_changed') {
 				// The form holds the old due date; close it so the next edit starts from fresh data.
@@ -205,10 +202,13 @@ export function useAbosPage() {
 		);
 		if (res.ok) {
 			updateAbos((current) => upsertAbo(current, res.data.recurringExpense));
-			setNoticeMessage('success', isPaused ? 'Fixkosten fortgesetzt.' : 'Fixkosten pausiert.');
+			setNoticeMessage(
+				'success',
+				t({ key: isPaused ? 'expenses-abos.notice.resumed' : 'expenses-abos.notice.paused' }),
+			);
 		} else {
 			updateAbos((current) => upsertAbo(current, abo));
-			const message = aboActionErrorMessage(res.error);
+			const message = t(aboActionError(res.error));
 			setNoticeMessage('error', message);
 			toast.error(message);
 			if (res.status === 409 && res.error === 'recurring_expense_changed') void load(false);
@@ -225,13 +225,13 @@ export function useAbosPage() {
 			{ method: 'DELETE', memberId: identity.memberId },
 		);
 		if (res.ok) {
-			setNoticeMessage('success', 'Fixkosten gelöscht.');
+			setNoticeMessage('success', t({ key: 'expenses-abos.notice.deleted' }));
 		} else {
 			// Already deleted elsewhere: keep the row gone and show what the server has.
 			const alreadyGone = res.status === 404 && res.error === 'recurring_expense_not_found';
 			if (alreadyGone) void load(false);
 			else updateAbos((current) => upsertAbo(current, previousAbo));
-			const message = aboDeleteErrorMessage(res.error);
+			const message = t(aboDeleteError(res.error));
 			setNoticeMessage('error', message);
 			toast.error(message);
 		}

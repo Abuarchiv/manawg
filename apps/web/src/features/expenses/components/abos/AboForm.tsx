@@ -18,6 +18,8 @@ import { inputDateOrToday, inputDateToIso, isoToInputDate } from '@/core/utils/l
 import {
 	type AboFormValues,
 	type SplitMode,
+	aboAmountError,
+	aboSplitError,
 	buildAboSplits,
 	initialEqualParticipants,
 	initialManualMap,
@@ -32,13 +34,24 @@ import {
 	AMOUNT_MIN_EUROS,
 	DESCRIPTION_MAX_LENGTH,
 	RECURRING_INTERVAL_OPTIONS,
-	amountErrorMessage,
 } from '@/features/expenses/expense-constants';
-import { splitInputErrorMessage } from '@/features/expenses/expense-errors';
 import type { MemberOption } from '@/features/expenses/expense-types';
 import { countMissedOccurrences } from '@/features/expenses/recurring-expenses';
+import { type Message, useMessage } from '@/shared/i18n/message';
+import { useLocale, useTranslations } from 'next-intl';
 import { useEffect, useMemo, useState } from 'react';
 import { AboSplitFields } from './AboSplitFields';
+
+const INTERVAL_OPTION_KEYS = {
+	1: 'form.intervalOption.m1',
+	2: 'form.intervalOption.m2',
+	3: 'form.intervalOption.m3',
+	6: 'form.intervalOption.m6',
+	12: 'form.intervalOption.m12',
+} as const satisfies Record<(typeof RECURRING_INTERVAL_OPTIONS)[number]['value'], string>;
+
+const DESCRIPTION_ERROR: Message = { key: 'expenses-abos.form.error.description' };
+const DUE_MISSING_ERROR: Message = { key: 'expenses-abos.form.error.dueMissing' };
 
 interface AboFormProps {
 	mode: 'create' | 'edit';
@@ -61,6 +74,9 @@ export function AboForm({
 	onCancel,
 	onSubmit,
 }: AboFormProps) {
+	const t = useTranslations('expenses-abos');
+	const message = useMessage();
+	const locale = useLocale();
 	// Only active members are offered for new selections ("aus Listen raus").
 	// Moved-out members are re-added below where an existing abo still references
 	// them, so editing never silently drops or reassigns a participant.
@@ -70,7 +86,9 @@ export function AboForm({
 	const [category, setCategory] = useState<ExpenseCategory>(
 		initial?.category ?? DEFAULT_EXPENSE_CATEGORY,
 	);
-	const [amountStr, setAmountStr] = useState(initial ? formatCentsInput(initial.amountCents) : '');
+	const [amountStr, setAmountStr] = useState(
+		initial ? formatCentsInput(initial.amountCents, locale) : '',
+	);
 	const [paidByMemberId, setPaidByMemberId] = useState(
 		initial?.paidByMemberId ?? defaultPaidByMemberId,
 	);
@@ -89,38 +107,38 @@ export function AboForm({
 		initialParticipants === 'manual' ? null : initialParticipants,
 	);
 	const [manualSplits, setManualSplits] = useState<Record<string, string>>(
-		initialManualMap(initial),
+		initialManualMap(initial, locale),
 	);
-	const [error, setError] = useState<string | null>(null);
-	const [splitError, setSplitError] = useState<string | null>(null);
+	const [error, setError] = useState<Message | null>(null);
+	const [splitError, setSplitError] = useState<Message | null>(null);
 
 	useEffect(() => {
 		if (!initial) return;
 		setDescription(initial.description);
 		setCategory(initial.category);
-		setAmountStr(formatCentsInput(initial.amountCents));
+		setAmountStr(formatCentsInput(initial.amountCents, locale));
 		setPaidByMemberId(initial.paidByMemberId);
 		setIntervalMonths(initial.intervalMonths);
 		setNextDueAt(isoToInputDate(initial.nextDueAt));
 		const participants = initialEqualParticipants(initial, activeMembers);
 		setSplitMode(participants === 'manual' ? 'manual' : 'equal');
 		setParticipantIds(participants === 'manual' ? null : participants);
-		setManualSplits(initialManualMap(initial));
+		setManualSplits(initialManualMap(initial, locale));
 		setSplitError(null);
-	}, [initial, activeMembers]);
+	}, [initial, activeMembers, locale]);
 
 	const parsedAmountCents = useMemo(() => {
-		const euros = parseEuroAmount(amountStr);
+		const euros = parseEuroAmount(amountStr, locale);
 		if (euros === null || euros < AMOUNT_MIN_EUROS || euros > AMOUNT_MAX_EUROS) return null;
 		return eurosToCents(euros);
-	}, [amountStr]);
+	}, [amountStr, locale]);
 	const descriptionError =
 		error && (description.trim().length === 0 || description.trim().length > DESCRIPTION_MAX_LENGTH)
-			? 'Gib eine kurze Beschreibung ein.'
+			? message(DESCRIPTION_ERROR)
 			: null;
 	const amountError =
 		error && parsedAmountCents === null
-			? amountErrorMessage(parseEuroAmount(amountStr), amountStr)
+			? message(aboAmountError(parseEuroAmount(amountStr, locale), amountStr))
 			: null;
 	// A start in the past is booked retroactively by the daily run; say so before it happens.
 	const dueDateChanged = !initial || nextDueAt !== isoToInputDate(initial.nextDueAt);
@@ -128,8 +146,9 @@ export function AboForm({
 		dueDateChanged && nextDueAt.length > 0 && nextDueAt < today
 			? countMissedOccurrences(inputDateToIso(nextDueAt) ?? '', intervalMonths)
 			: 0;
-	const nextDueError = error && nextDueAt.trim().length === 0 ? 'Fälligkeit fehlt.' : null;
-	const formError = error && !descriptionError && !amountError && !nextDueError ? error : null;
+	const nextDueError = error && nextDueAt.trim().length === 0 ? message(DUE_MISSING_ERROR) : null;
+	const formError =
+		error && !descriptionError && !amountError && !nextDueError ? message(error) : null;
 
 	// Payer dropdown offers active members, but keeps the currently selected
 	// payer visible even if they moved out — otherwise saving would silently
@@ -155,6 +174,7 @@ export function AboForm({
 			splitCandidates,
 			manualSplits,
 			participantIds,
+			locale,
 		});
 	}
 
@@ -165,15 +185,15 @@ export function AboForm({
 		const dueOn = inputDateOrToday(pickedNextDueAt);
 		const trimmedDescription = description.trim();
 		if (trimmedDescription.length === 0 || trimmedDescription.length > DESCRIPTION_MAX_LENGTH) {
-			setError('Gib eine kurze Beschreibung ein.');
+			setError(DESCRIPTION_ERROR);
 			return;
 		}
 		if (parsedAmountCents === null) {
-			setError(amountErrorMessage(parseEuroAmount(amountStr), amountStr));
+			setError(aboAmountError(parseEuroAmount(amountStr, locale), amountStr));
 			return;
 		}
 		if (dueOn.trim().length === 0) {
-			setError('Fälligkeit fehlt.');
+			setError(DUE_MISSING_ERROR);
 			return;
 		}
 		// An unchanged date keeps the stored timestamp: otherwise every edit would move it to
@@ -183,15 +203,15 @@ export function AboForm({
 				? initial.nextDueAt
 				: inputDateToIso(dueOn);
 		if (nextDueAtIso === null) {
-			setError('Fälligkeit fehlt.');
+			setError(DUE_MISSING_ERROR);
 			return;
 		}
 		const splits = buildSplits();
 		if (typeof splits === 'string') {
-			if (splits === 'amount_invalid') setError('Gib einen Betrag über 0 € ein, z. B. 12,50.');
-			else if (splits === 'no_members') setError('Keine Mitglieder vorhanden.');
+			if (splits === 'amount_invalid') setError(aboAmountError(null, ''));
+			else if (splits === 'no_members') setError({ key: 'expenses-abos.form.error.noMembers' });
 			else {
-				setSplitError(splitInputErrorMessage(splits));
+				setSplitError(aboSplitError(splits));
 				// The message sits below the fields, often outside the visible area.
 				requestAnimationFrame(() =>
 					document.getElementById('abo-splits-error')?.scrollIntoView({ block: 'nearest' }),
@@ -215,13 +235,13 @@ export function AboForm({
 		<form onSubmit={handleSubmit} className="flex min-h-full flex-col gap-5">
 			<FieldGroup>
 				<Field data-disabled={submitting} data-invalid={Boolean(descriptionError)}>
-					<FieldLabel htmlFor="abo-description">Beschreibung</FieldLabel>
+					<FieldLabel htmlFor="abo-description">{t('form.description')}</FieldLabel>
 					<Input
 						id="abo-description"
 						value={description}
 						maxLength={DESCRIPTION_MAX_LENGTH}
 						onChange={(event) => setDescription(event.target.value)}
-						placeholder="z. B. Netflix"
+						placeholder={t('form.descriptionPlaceholder')}
 						disabled={submitting}
 						enterKeyHint="next"
 						className="text-base"
@@ -237,7 +257,7 @@ export function AboForm({
 					disabled={submitting}
 				/>
 				<Field data-disabled={submitting} data-invalid={Boolean(amountError)}>
-					<FieldLabel htmlFor="abo-amount">Betrag</FieldLabel>
+					<FieldLabel htmlFor="abo-amount">{t('form.amount')}</FieldLabel>
 					<InputGroup>
 						<InputGroupInput
 							id="abo-amount"
@@ -248,7 +268,7 @@ export function AboForm({
 								setAmountStr(event.target.value);
 								setSplitError(null);
 							}}
-							placeholder="0,00"
+							placeholder={t('form.amountPlaceholder')}
 							disabled={submitting}
 							enterKeyHint="next"
 							className="min-h-11 font-mono tabular-nums text-base"
@@ -262,7 +282,7 @@ export function AboForm({
 					<FieldError id="abo-amount-error">{amountError}</FieldError>
 				</Field>
 				<Field data-disabled={submitting}>
-					<FieldLabel htmlFor="abo-paid-by">Bezahlt von</FieldLabel>
+					<FieldLabel htmlFor="abo-paid-by">{t('form.paidBy')}</FieldLabel>
 					<NativeSelect
 						id="abo-paid-by"
 						value={paidByMemberId}
@@ -278,7 +298,7 @@ export function AboForm({
 					</NativeSelect>
 				</Field>
 				<Field data-disabled={submitting}>
-					<FieldLabel htmlFor="abo-interval">Intervall</FieldLabel>
+					<FieldLabel htmlFor="abo-interval">{t('form.interval')}</FieldLabel>
 					<NativeSelect
 						id="abo-interval"
 						value={intervalMonths}
@@ -288,19 +308,19 @@ export function AboForm({
 					>
 						{!RECURRING_INTERVAL_OPTIONS.some((option) => option.value === intervalMonths) && (
 							<NativeSelectOption value={intervalMonths}>
-								{intervalMonths} Monate
+								{t('form.intervalOption.custom', { count: intervalMonths })}
 							</NativeSelectOption>
 						)}
 						{RECURRING_INTERVAL_OPTIONS.map((option) => (
 							<NativeSelectOption key={option.value} value={option.value}>
-								{option.label}
+								{t(INTERVAL_OPTION_KEYS[option.value])}
 							</NativeSelectOption>
 						))}
 					</NativeSelect>
 				</Field>
 				<Field data-disabled={submitting} data-invalid={Boolean(nextDueError)}>
 					<FieldLabel htmlFor="abo-next-due">
-						{mode === 'create' ? 'Erste Fälligkeit' : 'Nächste Fälligkeit'}
+						{mode === 'create' ? t('form.firstDue') : t('form.nextDue')}
 					</FieldLabel>
 					<Input
 						id="abo-next-due"
@@ -315,9 +335,7 @@ export function AboForm({
 					/>
 					{missedBookings > 0 && (
 						<FieldDescription>
-							Liegt in der Vergangenheit: Beim nächsten täglichen Lauf{' '}
-							{missedBookings === 1 ? 'wird 1 Buchung' : `werden ${missedBookings} Buchungen`}{' '}
-							nachgetragen und die WG wird benachrichtigt.
+							{t('form.missedBookings', { count: missedBookings })}
 						</FieldDescription>
 					)}
 					<FieldError id="abo-next-due-error">{nextDueError}</FieldError>
@@ -341,7 +359,7 @@ export function AboForm({
 						setManualSplits((current) => ({ ...current, [memberId]: value }));
 						setSplitError(null);
 					}}
-					splitError={splitError}
+					splitError={splitError ? message(splitError) : null}
 					splitPreview={splitPreview}
 					paidByMemberId={paidByMemberId}
 				/>
@@ -354,7 +372,7 @@ export function AboForm({
 				)}
 				<Button type="submit" className="w-full whitespace-normal" disabled={submitting}>
 					{submitting && <Spinner data-icon="inline-start" />}
-					{mode === 'create' ? 'Fixkosten anlegen' : 'Speichern'}
+					{mode === 'create' ? t('form.create') : t('form.save')}
 				</Button>
 				<Button
 					type="button"
@@ -363,7 +381,7 @@ export function AboForm({
 					onClick={onCancel}
 					disabled={submitting}
 				>
-					Abbrechen
+					{t('form.cancel')}
 				</Button>
 			</div>
 		</form>

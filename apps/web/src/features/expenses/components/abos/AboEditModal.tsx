@@ -4,6 +4,7 @@ import type { AboFormValues } from '@/features/expenses/abo-form-model';
 import { AboForm } from '@/features/expenses/components/abos/AboForm';
 import { AboModalShell } from '@/features/expenses/components/abos/AboModalShell';
 import type { Abo, MemberOption } from '@/features/expenses/expense-types';
+import { useTranslations } from 'next-intl';
 import { useMemo } from 'react';
 
 interface AboEditModalProps {
@@ -23,6 +24,7 @@ export function AboEditModal({
 	onClose,
 	onSubmit,
 }: AboEditModalProps) {
+	const t = useTranslations('expenses-abos');
 	// AboForm resyncs its fields whenever `initial` changes identity (so
 	// switching to a different abo picks up fresh values). A fresh object
 	// literal here would give it a new identity on every re-render of this
@@ -43,7 +45,7 @@ export function AboEditModal({
 	);
 
 	return (
-		<AboModalShell title="Fixkosten bearbeiten" onClose={onClose} submitting={submitting}>
+		<AboModalShell title={t('modal.editTitle')} onClose={onClose} submitting={submitting}>
 			{(requestClose) => (
 				<AboForm
 					mode="edit"

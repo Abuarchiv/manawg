@@ -1,5 +1,6 @@
 import type { recurringExpenses } from '@/core/db';
 import { addMonthsFromAnchor, parseTimestamp } from '@/core/utils/time';
+import type { Message } from '@/shared/i18n/message';
 
 export { addMonthsFromAnchor };
 
@@ -157,13 +158,24 @@ export function previewNextOccurrences(input: RecurringPreviewInput, count: numb
 	return occurrences;
 }
 
+/** Interval wording as data. */
+export function intervalLabelMessage(intervalMonths: number): Message {
+	const months = Math.max(1, Math.floor(intervalMonths));
+	if (months === 1) return { key: 'expenses-abos.interval.monthly' };
+	if (months === 3) return { key: 'expenses-abos.interval.quarterly' };
+	if (months === 6) return { key: 'expenses-abos.interval.halfYearly' };
+	if (months === 12) return { key: 'expenses-abos.interval.yearly' };
+	return { key: 'expenses-abos.interval.everyMonths', values: { count: months } };
+}
+
+/** Plain-string twin of `intervalLabelMessage` for callers outside this package. */
 export function formatIntervalLabel(intervalMonths: number): string {
 	const months = Math.max(1, Math.floor(intervalMonths));
-	if (months === 1) return 'monatlich';
-	if (months === 3) return 'quartalsweise';
-	if (months === 6) return 'halbjährlich';
-	if (months === 12) return 'jährlich';
-	return `alle ${months} Monate`;
+	if (months === 1) return 'monatlich'; // i18n-ignore plain-string twin
+	if (months === 3) return 'quartalsweise'; // i18n-ignore plain-string twin
+	if (months === 6) return 'halbjährlich'; // i18n-ignore plain-string twin
+	if (months === 12) return 'jährlich'; // i18n-ignore plain-string twin
+	return `alle ${months} Monate`; // i18n-ignore plain-string twin
 }
 
 /**

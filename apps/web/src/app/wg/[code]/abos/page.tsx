@@ -26,6 +26,7 @@ import { AbosList } from '@/features/expenses/components/abos/AbosList';
 import type { Abo } from '@/features/expenses/expense-types';
 import { useAbosPage } from '@/features/expenses/hooks/use-abos-page';
 import { Plus } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useRef } from 'react';
 
 export default function AbosPage() {
@@ -57,6 +58,8 @@ export default function AbosPage() {
 		dueCount,
 		monthly,
 	} = useAbosPage();
+	const t = useTranslations('expenses-abos');
+	const tCommon = useTranslations('common');
 	const listRef = useRef<HTMLElement>(null);
 	const deletedRef = useRef(false);
 	const lastEditingRef = useRef<Abo | null>(null);
@@ -70,10 +73,12 @@ export default function AbosPage() {
 			<SubNav liveCount={!loading && !loadError ? dueCount : undefined} />
 			{/* The active tab already names the page; title and counter stay for screen readers. */}
 			<header className="sr-only">
-				<h1>Fixkosten</h1>
-				<p aria-live="polite">{loading ? '' : `${activeCount} aktiv · ${abos.length} insgesamt`}</p>
+				<h1>{t('page.title')}</h1>
+				<p aria-live="polite">
+					{loading ? '' : t('page.counter', { active: activeCount, total: abos.length })}
+				</p>
 				<output aria-live="polite" aria-hidden={!refreshing}>
-					Lädt…
+					{tCommon('loading')}
 				</output>
 			</header>
 			{loadError && (
@@ -81,7 +86,7 @@ export default function AbosPage() {
 					message={loadError}
 					onRetry={() => void load(true)}
 					busy={loading || refreshing}
-					retryLabel="Fixkosten erneut laden"
+					retryLabel={{ key: 'expenses-abos.page.loadError.retry' }}
 				/>
 			)}
 			{notice && <ActionNoticeBanner notice={notice} />}
@@ -89,7 +94,7 @@ export default function AbosPage() {
 				<Card size="sm">
 					<CardContent className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,7.5rem),1fr))] gap-3">
 						<div className="min-w-0">
-							<p className="text-sm text-muted-foreground">Pro Monat</p>
+							<p className="text-sm text-muted-foreground">{t('page.perMonth')}</p>
 							{[...monthly].map(([currency, { totalCents }]) => (
 								<p
 									key={currency}
@@ -100,7 +105,7 @@ export default function AbosPage() {
 							))}
 						</div>
 						<div className="min-w-0">
-							<p className="text-sm text-muted-foreground">Dein Anteil</p>
+							<p className="text-sm text-muted-foreground">{t('page.yourShare')}</p>
 							{[...monthly].map(([currency, { mineCents }]) => (
 								<p
 									key={currency}
@@ -176,14 +181,13 @@ export default function AbosPage() {
 					}}
 				>
 					<AlertDialogHeader>
-						<AlertDialogTitle>Fixkosten löschen?</AlertDialogTitle>
+						<AlertDialogTitle>{t('deleteDialog.title')}</AlertDialogTitle>
 						<AlertDialogDescription>
-							Fixkosten „{deleteCandidate?.description}“ werden gelöscht. Bereits erfasste Ausgaben
-							bleiben erhalten.
+							{t('deleteDialog.description', { description: deleteCandidate?.description ?? '' })}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogCancel className="min-h-11">Abbrechen</AlertDialogCancel>
+						<AlertDialogCancel className="min-h-11">{t('deleteDialog.cancel')}</AlertDialogCancel>
 						<AlertDialogAction
 							variant="destructive"
 							className="min-h-11"
@@ -196,7 +200,7 @@ export default function AbosPage() {
 								setDeleteCandidate(null);
 							}}
 						>
-							Löschen
+							{t('deleteDialog.confirm')}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
@@ -211,7 +215,7 @@ export default function AbosPage() {
 					}}
 				>
 					<Plus data-icon="inline-start" aria-hidden />
-					Fixkosten hinzufügen
+					{t('page.add')}
 				</Button>
 			</ThumbAction>
 		</div>
@@ -219,6 +223,7 @@ export default function AbosPage() {
 }
 
 function AbosSkeleton() {
+	const t = useTranslations('expenses-abos');
 	return (
 		<>
 			{/* Reserves the summary card so the list does not jump down while loading. */}
@@ -236,7 +241,7 @@ function AbosSkeleton() {
 					))}
 				</CardContent>
 			</Card>
-			<ItemGroup aria-busy="true" aria-label="Fixkosten werden geladen">
+			<ItemGroup aria-busy="true" aria-label={t('page.skeletonLabel')}>
 				{['s1', 's2', 's3', 's4'].map((key) => (
 					<ItemEntry key={key} variant="outline" aria-hidden="true">
 						<ItemContent>
