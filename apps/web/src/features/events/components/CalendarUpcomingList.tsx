@@ -19,8 +19,12 @@ import {
 	parseRecurrenceRule,
 } from '@/features/events/events';
 import { occurrenceToIcs } from '@/features/events/ics';
+import { dateTimeFormat } from '@/shared/i18n/intl';
+import type { Locale } from '@/shared/i18n/locale';
+import { type Message, useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
 import { CalendarClock, ChevronRight, Repeat, Sparkles } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useEffect } from 'react';
 
@@ -41,36 +45,39 @@ interface CalendarUpcomingListProps {
 
 const ROW_CLASS = cn(CALENDAR_ROW_CLASS, 'pr-3 pl-1');
 
-const DAY_FORMATTER = new Intl.DateTimeFormat('de-DE', {
-	weekday: 'long',
-	day: 'numeric',
-	month: 'long',
-});
-const MONTH_SHORT_FORMATTER = new Intl.DateTimeFormat('de-DE', { month: 'short' });
-const WEEKDAY_FORMATTER = new Intl.DateTimeFormat('de-DE', { weekday: 'short' });
+type Translate = ReturnType<typeof useTranslations<'events'>>;
 
 /** Short interval like "wöchentlich"; more complex rules are labeled generically as "wiederkehrend". */
-function recurrenceLabel(rule: string | null | undefined): string {
+function recurrenceLabel(
+	rule: string | null | undefined,
+	t: Translate,
+	render: (message: Message) => string,
+): string {
 	const parsed = parseRecurrenceRule(rule);
 	const simple = parsed && parsed.interval === 1 && parsed.byDay === undefined;
 	const option = simple ? RECURRENCE_OPTIONS.find((o) => o.value === parsed.freq) : undefined;
-	return option ? option.label.toLowerCase() : 'wiederkehrend';
+	return option ? render(option.label).toLowerCase() : t('agenda.recurring');
 }
 
-function formatDayLabel(date: Date, now = new Date()): string {
+function formatDayLabel(date: Date, t: Translate, locale: Locale, now = new Date()): string {
 	const dayMs = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
 	const todayMs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
 	const diff = Math.round((dayMs - todayMs) / MS_PER_DAY);
-	if (diff === 0) return `Heute · ${DAY_FORMATTER.format(date)}`;
-	if (diff === 1) return `Morgen · ${DAY_FORMATTER.format(date)}`;
-	return DAY_FORMATTER.format(date);
+	const day = dateTimeFormat(locale, {
+		weekday: 'long',
+		day: 'numeric',
+		month: 'long',
+	}).format(date);
+	if (diff === 0) return t('agenda.dayToday', { date: day });
+	if (diff === 1) return t('agenda.dayTomorrow', { date: day });
+	return day;
 }
 
 /** Time of day; a timed span that began before today names its start day too. */
-function timeLabel(occurrence: EventOccurrence, todayStart: Date): string {
+function timeLabel(occurrence: EventOccurrence, todayStart: Date, locale: Locale): Message {
 	return !occurrence.allDay && new Date(occurrence.startsAt) < todayStart
-		? formatEventTimeRange(occurrence)
-		: formatEventTimeOfDay(occurrence);
+		? formatEventTimeRange(occurrence, locale)
+		: formatEventTimeOfDay(occurrence, locale);
 }
 
 export function downloadOccurrenceIcs(occ: EventOccurrence): void {
@@ -94,6 +101,11 @@ export function CalendarUpcomingList({
 	recurrenceByEventId,
 	highlightEventId = null,
 }: CalendarUpcomingListProps) {
+	const t = useTranslations('events');
+	const render = useMessage();
+	const locale = useLocale() as Locale;
+	const weekdayFormat = dateTimeFormat(locale, { weekday: 'short' });
+	const monthFormat = dateTimeFormat(locale, { month: 'short' });
 	useEffect(() => {
 		if (!highlightEventId) return;
 		document.getElementById(`event-${highlightEventId}`)?.scrollIntoView({ block: 'center' });
@@ -119,8 +131,8 @@ export function CalendarUpcomingList({
 					<EmptyMedia variant="icon">
 						<CalendarClock aria-hidden />
 					</EmptyMedia>
-					<EmptyTitle>Keine Termine in den nächsten 30 Tagen</EmptyTitle>
-					<EmptyDescription>Tippe auf +, um einen Termin anzulegen.</EmptyDescription>
+					<EmptyTitle>{t('agenda.emptyTitle')}</EmptyTitle>
+					<EmptyDescription>{t('agenda.emptyBody')}</EmptyDescription>
 				</EmptyHeader>
 			</Empty>
 		);
@@ -143,7 +155,7 @@ export function CalendarUpcomingList({
 		// A span that began before today is still running: list it under today, not under a past day.
 		const date = startDate < todayStart ? todayStart : startDate;
 		const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-		const day = days.get(key) ?? { label: formatDayLabel(date), date, entries: [] };
+		const day = days.get(key) ?? { label: formatDayLabel(date, t, locale), date, entries: [] };
 		day.entries.push(entry);
 		days.set(key, day);
 	}
@@ -165,13 +177,13 @@ export function CalendarUpcomingList({
 						>
 							<span className="sr-only">{day.label}</span>
 							<span aria-hidden className="text-meta">
-								{isToday ? 'Heute' : WEEKDAY_FORMATTER.format(day.date).replace('.', '')}
+								{isToday ? t('agenda.todayShort') : weekdayFormat.format(day.date).replace('.', '')}
 							</span>
 							<span aria-hidden className="flex items-baseline gap-0.5">
 								<span className="text-base font-semibold tabular-nums">{day.date.getDate()}</span>
 								{showMonth && (
 									<span className="text-meta font-normal">
-										{MONTH_SHORT_FORMATTER.format(day.date).replace('.', '')}
+										{monthFormat.format(day.date).replace('.', '')}
 									</span>
 								)}
 							</span>
@@ -182,7 +194,7 @@ export function CalendarUpcomingList({
 									<li key={`chore-${entry.chore.choreId}-${entry.chore.startsAt}`}>
 										<Link
 											href={`${wgBaseHref}/putzen?highlight=${encodeURIComponent(entry.chore.choreId)}`}
-											aria-label={`Putzaufgabe öffnen: ${entry.chore.title}`}
+											aria-label={t('agenda.openChore', { title: entry.chore.title })}
 											className={ROW_CLASS}
 										>
 											<span className="flex min-w-0 flex-1 flex-col">
@@ -191,7 +203,7 @@ export function CalendarUpcomingList({
 												</span>
 												<span className="inline-flex items-center gap-1 text-meta text-muted-foreground">
 													<Sparkles className="size-4 shrink-0" aria-hidden />
-													Putzplan
+													{t('agenda.choreBadge')}
 												</span>
 											</span>
 											<ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
@@ -211,7 +223,7 @@ export function CalendarUpcomingList({
 										<button
 											type="button"
 											onClick={() => onSelect(entry.occurrence)}
-											aria-label={`Termin öffnen: ${entry.occurrence.title}`}
+											aria-label={t('agenda.openEvent', { title: entry.occurrence.title })}
 											className={ROW_CLASS}
 										>
 											<span className="flex min-w-0 flex-1 flex-col">
@@ -220,7 +232,7 @@ export function CalendarUpcomingList({
 												</span>
 												<span className="text-meta break-words text-muted-foreground">
 													<CalendarClock className="mr-1 inline size-4 align-[-2px]" aria-hidden />
-													{timeLabel(entry.occurrence, todayStart)}
+													{render(timeLabel(entry.occurrence, todayStart, locale))}
 													{entry.occurrence.location && ` · ${entry.occurrence.location}`}
 													{entry.occurrence.recurring && (
 														<>
@@ -229,6 +241,8 @@ export function CalendarUpcomingList({
 																<Repeat className="mr-0.5 inline size-3 align-[-1px]" aria-hidden />
 																{recurrenceLabel(
 																	recurrenceByEventId?.get(entry.occurrence.eventId),
+																	t,
+																	render,
 																)}
 															</span>
 														</>

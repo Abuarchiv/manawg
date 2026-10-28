@@ -1,6 +1,7 @@
 'use client';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 
 const WG_TIME_ZONE = 'Europe/Berlin';
@@ -10,6 +11,7 @@ const WG_TIME_ZONE = 'Europe/Berlin';
  * Berlin time. A device elsewhere sees the difference named instead of finding it in a time.
  */
 export function TimeZoneNotice() {
+	const t = useTranslations('events.page');
 	const [zone, setZone] = useState<string | null>(null);
 	useEffect(() => {
 		try {
@@ -22,10 +24,7 @@ export function TimeZoneNotice() {
 	if (!zone) return null;
 	return (
 		<Alert>
-			<AlertDescription>
-				Dieses Gerät nutzt die Zeitzone {zone}. Uhrzeiten erscheinen in dieser Zeit, Wiederholungen
-				und Erinnerungen folgen der Berliner Zeit.
-			</AlertDescription>
+			<AlertDescription>{t('timeZoneNotice', { zone })}</AlertDescription>
 		</Alert>
 	);
 }

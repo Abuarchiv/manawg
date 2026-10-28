@@ -1,5 +1,6 @@
 import type { wgEvents } from '@/core/db';
 import { isEventYearInRange } from '@/features/events/event-limits';
+import type { Message } from '@/shared/i18n/message';
 import { eventDateForDisplay, isSameDay } from './event-display';
 import type { EventInput } from './event-recurrence';
 
@@ -34,7 +35,7 @@ export function toDatetimeLocalValue(date: Date): string {
 
 type EventFormValidation =
 	| { ok: true; startsAt: Date; endsAt: Date | null }
-	| { ok: false; error: string; field: 'title' | 'startsAt' | 'endsAt' };
+	| { ok: false; error: Message; field: 'title' | 'startsAt' | 'endsAt' };
 
 export function normalizeEventDateTime(value: string, allDay: boolean): string {
 	if (!allDay || value.length < 10) return value;
@@ -53,10 +54,10 @@ export function validateEventForm(input: {
 	original?: Pick<EventInput, 'startsAt' | 'endsAt' | 'allDay'>;
 }): EventFormValidation {
 	if (input.title.trim().length === 0) {
-		return { ok: false, error: 'Titel fehlt.', field: 'title' };
+		return { ok: false, error: { key: 'events.form.errors.titleMissing' }, field: 'title' };
 	}
 	if (!input.startsAt) {
-		return { ok: false, error: 'Startzeitpunkt fehlt.', field: 'startsAt' };
+		return { ok: false, error: { key: 'events.form.errors.startMissing' }, field: 'startsAt' };
 	}
 
 	const allDay = input.allDay === true;
@@ -67,13 +68,13 @@ export function validateEventForm(input: {
 		? new Date(`${normalizeEventDateTime(input.endsAt, allDay)}${allDay ? 'Z' : ''}`)
 		: null;
 	if (!isEventYearInRange(startsAt)) {
-		return { ok: false, error: 'Startdatum ist ungültig.', field: 'startsAt' };
+		return { ok: false, error: { key: 'events.form.errors.startInvalid' }, field: 'startsAt' };
 	}
 	if (endsAt && !isEventYearInRange(endsAt)) {
-		return { ok: false, error: 'Enddatum ist ungültig.', field: 'endsAt' };
+		return { ok: false, error: { key: 'events.form.errors.endInvalid' }, field: 'endsAt' };
 	}
 	if (endsAt && endsAt.getTime() < startsAt.getTime()) {
-		return { ok: false, error: 'Endzeit liegt vor Startzeit.', field: 'endsAt' };
+		return { ok: false, error: { key: 'events.form.errors.endBeforeStart' }, field: 'endsAt' };
 	}
 	const original = input.original;
 	if (
