@@ -175,9 +175,8 @@ module, fuzzing, load) are described in
 [`apps/web/scripts/real-stack/README.md`](../apps/web/scripts/real-stack/README.md). They are
 not part of CI.
 
-To look at mails while you change them, `node supabase/templates/preview.mjs` renders the Auth mail
-templates and `apps/web/scripts/preview-statement-mail.mjs` the monthly statement mail (usage in
-the first lines of each file).
+To look at the Auth mail templates while you change them, run `node supabase/templates/preview.mjs`
+(usage in the first lines of the file).
 
 ### Opt-in test gates
 
