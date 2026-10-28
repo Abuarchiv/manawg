@@ -1,15 +1,6 @@
 import { AUTH_RATE_LIMITED_MESSAGE } from '@/core/auth/password-errors';
-import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import type { Message } from '@/shared/i18n/message';
 
-/** Spots an old-style share code in pasted text or a link; '' when none is found. */
-export function extractInviteCode(text: string): string {
-	const match = /[?&]code=([A-Za-z0-9]+)/.exec(text) ?? /\bCode\s+([A-Za-z0-9]{8})\b/.exec(text);
-	const code = normalizeShareCode(match?.[1] ?? '');
-	return isValidShareCode(code) ? code : '';
-}
-
-export const LEGACY_CODE_MESSAGE: Message = { key: 'entry.errors.legacyCode' };
 export const INVITE_EXPIRED_MESSAGE: Message = { key: 'entry.errors.inviteExpired' };
 export const DELETION_PENDING_MESSAGE: Message = { key: 'entry.errors.deletionPending' };
 

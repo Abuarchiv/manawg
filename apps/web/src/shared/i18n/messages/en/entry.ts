@@ -107,7 +107,6 @@ export default {
 	},
 	errors: {
 		badInvite: 'This invitation link is incomplete or invalid. Ask the flat for a new link.',
-		legacyCode: 'A flat code is no longer enough. Ask for an invitation link.',
 		inviteExpired: 'This invitation has expired. Please ask a member for a new one.',
 		deletionPending:
 			'Your account is being deleted. New flats and joining a flat are no longer possible.',

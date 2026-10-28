@@ -32,7 +32,6 @@ import { NavItem } from '@/components/wg/NavItem';
 import { SubNav } from '@/components/wg/SubNav';
 import { hasSessionCookie } from '@/core/auth/session-hint';
 import { fetchAccountWgs } from '@/core/infra/account-wgs';
-import { LEGACY_CODE_MESSAGE } from '@/core/infra/join-flow';
 import { invitePath, isInviteToken } from '@/core/utils/invite-token';
 import { useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
@@ -113,8 +112,6 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 	const rawInvite = (searchParams.get('invite') ?? '').trim();
 	const inviteToken = isInviteToken(rawInvite) ? rawInvite : '';
 	const badInvite = rawInvite !== '' && inviteToken === '';
-	// A `?code=` link is a dead end: the share code is only the WG's address.
-	const legacyCode = (searchParams.get('code') ?? '').trim() !== '' && inviteToken === '';
 	const publicHref = (path: string): string =>
 		inviteToken ? withInvitation(path, inviteToken) : path;
 	const singleWg =
@@ -298,7 +295,6 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 							) : (
 								!multi && <PublicModulePreviews modules={primaryModules} hrefFor={discoveryHref} />
 							)}
-							{legacyCode && <ErrorBox>{message(LEGACY_CODE_MESSAGE)}</ErrorBox>}
 							{badInvite && <ErrorBox>{t('errors.badInvite')}</ErrorBox>}
 							{inviteToken ? (
 								<WgWelcome variant="invitation" token={inviteToken} guest={guest} />

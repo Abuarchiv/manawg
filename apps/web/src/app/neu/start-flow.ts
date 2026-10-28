@@ -4,11 +4,7 @@
  */
 import type { SocialProvider } from '@/components/auth/SocialLoginButtons';
 import { safeNextPath } from '@/core/auth/next-path';
-import {
-	DELETION_PENDING_MESSAGE,
-	LEGACY_CODE_MESSAGE,
-	extractInviteCode,
-} from '@/core/infra/join-flow';
+import { DELETION_PENDING_MESSAGE } from '@/core/infra/join-flow';
 import { extractInviteToken, isInviteToken } from '@/core/utils/invite-token';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 
@@ -62,9 +58,6 @@ export function getNeuIntentFromSearch(search: string): { inviteToken: string; c
 export function resolveInviteInput(text: string): { token: string } | { error: Message } {
 	const token = extractInviteToken(text);
 	if (token) return { token };
-	if (extractInviteCode(text) || isValidShareCode(normalizeShareCode(text))) {
-		return { error: LEGACY_CODE_MESSAGE };
-	}
 	return { error: { key: 'entry.errors.notAnInviteLink' } };
 }
 

@@ -248,15 +248,14 @@ test.describe('entry and auth in English', () => {
 					await expectEnglishPage(page, width);
 				}
 
-				// Failed callback, malformed invitation and legacy code notices on the sign-in page.
-				await page.goto('/neu?error=auth_callback&invite=bad&code=ABCD2345');
+				// Failed callback and malformed invitation notices on the sign-in page.
+				await page.goto('/neu?error=auth_callback&invite=bad');
 				await expect(page.getByText(/^The link could not be used\. It has expired/)).toBeVisible({
 					timeout: 60_000,
 				});
 				await expect(
 					page.getByText(/^This invitation link is incomplete or invalid/),
 				).toBeVisible();
-				await expect(page.getByText('A flat code is no longer enough.')).toBeVisible();
 				await expectEnglishPage(page, width);
 				await page.goto('/?invite=bad');
 				await expect(page.getByText(/^This invitation link is incomplete or invalid/)).toBeVisible({
