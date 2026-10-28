@@ -71,16 +71,19 @@ const nextConfig: NextConfig = {
 				destination: `/discover/${to}`,
 				permanent: true,
 			})),
-			...Object.entries(top).map(([from, to]) => ({
-				source: `/${from}/:path*`,
-				destination: `/${to}/:path*`,
-				permanent: true,
-			})),
-			...Object.entries(wg).map(([from, to]) => ({
-				source: `/wg/:code/${from}/:path*`,
-				destination: `/wg/:code/${to}/:path*`,
-				permanent: true,
-			})),
+			// Separate rules for the bare path: an empty :path* leaves a trailing slash on Vercel.
+			...Object.entries(top).flatMap(([from, to]) => [
+				{ source: `/${from}`, destination: `/${to}`, permanent: true },
+				{ source: `/${from}/:path+`, destination: `/${to}/:path+`, permanent: true },
+			]),
+			...Object.entries(wg).flatMap(([from, to]) => [
+				{ source: `/wg/:code/${from}`, destination: `/wg/:code/${to}`, permanent: true },
+				{
+					source: `/wg/:code/${from}/:path+`,
+					destination: `/wg/:code/${to}/:path+`,
+					permanent: true,
+				},
+			]),
 		];
 	},
 	// next/image is not used; without remote patterns /_next/image cannot be
