@@ -11,18 +11,20 @@ import {
 } from '@/components/ui/item';
 import type { AccountWg } from '@/core/infra/account-wgs';
 import { ChevronRight } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 
 export type { AccountWg };
 
 export function MembershipCard({ memberships }: { memberships: AccountWg[] }) {
+	const t = useTranslations('entry.membership');
 	return (
 		<Card>
 			<CardHeader>
 				<CardTitle>
-					<h2>Deine WGs</h2>
+					<h2>{t('title')}</h2>
 				</CardTitle>
-				<CardDescription>Wo möchtest du weitermachen?</CardDescription>
+				<CardDescription>{t('question')}</CardDescription>
 			</CardHeader>
 			<CardContent>
 				<ItemGroup>
@@ -34,7 +36,7 @@ export function MembershipCard({ memberships }: { memberships: AccountWg[] }) {
 							>
 								<ItemContent className="min-w-0">
 									<ItemTitle className="line-clamp-none break-words">{membership.name}</ItemTitle>
-									<ItemDescription>WG öffnen</ItemDescription>
+									<ItemDescription>{t('open')}</ItemDescription>
 								</ItemContent>
 								<ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
 							</Item>

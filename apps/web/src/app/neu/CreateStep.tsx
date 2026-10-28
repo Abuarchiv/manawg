@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { FieldGroup } from '@/components/ui/field';
 import { Spinner } from '@/components/ui/spinner';
 import { ArrowRight } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { NAME_MAX, type StartField, WG_NAME_MAX } from './start-flow';
 
 interface CreateStepProps {
@@ -34,6 +35,7 @@ export function CreateStep({
 	onSubmit,
 	onBack,
 }: CreateStepProps) {
+	const t = useTranslations('entry.start');
 	return (
 		<form
 			noValidate
@@ -46,8 +48,8 @@ export function CreateStep({
 			<FieldGroup>
 				<TextField
 					id="wg-name"
-					label="WG-Name"
-					placeholder="z. B. WG Nord"
+					label={t('flatName')}
+					placeholder={t('flatNamePlaceholder')}
 					value={wgName}
 					onChange={(value) => {
 						if (error) clearError();
@@ -64,8 +66,8 @@ export function CreateStep({
 				{error && invalidField === 'wgName' && <ErrorBox id="create-wg-error">{error}</ErrorBox>}
 				<TextField
 					id="creator-name"
-					label="Dein Anzeigename"
-					placeholder="z. B. Anna"
+					label={t('displayName')}
+					placeholder={t('displayNamePlaceholder')}
 					value={creatorName}
 					onChange={(value) => {
 						if (error) clearError();
@@ -93,7 +95,7 @@ export function CreateStep({
 					) : (
 						<ArrowRight data-icon="inline-start" aria-hidden />
 					)}
-					{busy ? 'WG wird erstellt…' : 'WG erstellen'}
+					{busy ? t('creating') : t('create')}
 				</Button>
 			</div>
 		</form>

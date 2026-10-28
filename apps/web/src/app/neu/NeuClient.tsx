@@ -15,6 +15,8 @@ import { Spinner } from '@/components/ui/spinner';
 import { isAuthPagePath } from '@/core/auth/auth-intent';
 import { safeNextPath } from '@/core/auth/next-path';
 import { invitePath } from '@/core/utils/invite-token';
+import { useMessage } from '@/shared/i18n/message';
+import { useTranslations } from 'next-intl';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { ChooseStep } from './ChooseStep';
@@ -37,6 +39,9 @@ import { useStartError } from './use-start-error';
 import { useStepHistory } from './use-step-history';
 
 export function NeuClient() {
+	const t = useTranslations('entry.start');
+	const te = useTranslations('entry');
+	const render = useMessage();
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const {
@@ -122,7 +127,7 @@ export function NeuClient() {
 	function openInvite(): void {
 		const result = resolveInviteInput(inviteLink);
 		if ('error' in result) {
-			setFieldError('inviteLink', result.error);
+			setFieldError('inviteLink', render(result.error));
 			return;
 		}
 		router.push(invitePath(result.token));
@@ -151,12 +156,10 @@ export function NeuClient() {
 			setAccountWgs([]);
 			setAuthState('signed-out');
 			if (pushCleanup === 'failed') {
-				setAccountSwitchError(
-					'Du bist abgemeldet, aber Push konnte auf diesem Browser nicht sicher beendet werden. Deaktiviere Website-Benachrichtigungen in den Browsereinstellungen.',
-				);
+				setAccountSwitchError(t('pushFailed'));
 			}
 		} catch {
-			setAccountSwitchError('Konto konnte nicht abgemeldet werden. Bitte versuche es erneut.');
+			setAccountSwitchError(te('signOut.failed'));
 		} finally {
 			busyRef.current = false;
 			setBusy(false);
@@ -178,11 +181,11 @@ export function NeuClient() {
 	useEffect(() => {
 		if (!showsSignIn) return;
 		const previous = document.title;
-		document.title = 'Anmelden — ManaWG';
+		document.title = `${t('titleSignIn')} — ManaWG`;
 		return () => {
 			document.title = previous;
 		};
-	}, [showsSignIn]);
+	}, [showsSignIn, t]);
 
 	useClearCallbackError(signedInHere);
 
@@ -195,15 +198,15 @@ export function NeuClient() {
 	if (authState !== 'authenticated') {
 		return (
 			<EntryFrame
-				title={checkingSession ? 'Deine WG' : 'Anmelden'}
+				title={checkingSession ? t('titleChoose') : t('titleSignIn')}
 				headingId="auth-heading"
 				description={
 					checkingSession
 						? undefined
 						: step === 'create'
-							? 'Melde dich an, danach erstellst du deine neue WG.'
+							? t('signInCreate')
 							: getNeuIntentFromSearch(searchParams.toString()).inviteToken
-								? 'Melde dich an, um die Einladung anzunehmen.'
+								? t('signInInvite')
 								: undefined
 				}
 				backHref={explorationHref()}
@@ -212,7 +215,7 @@ export function NeuClient() {
 				<StartNotices search={searchParams.toString()} signedIn={false} />
 				{(authState === 'error' || (retried && authState === 'loading')) && (
 					<div className="flex flex-col gap-2">
-						<ErrorBox>Deine Anmeldung konnte gerade nicht geprüft werden.</ErrorBox>
+						<ErrorBox>{t('authCheckFailed')}</ErrorBox>
 						<Button
 							variant="outline"
 							focusableWhenDisabled
@@ -225,16 +228,12 @@ export function NeuClient() {
 							}}
 						>
 							{retried && <Spinner data-icon="inline-start" aria-hidden />}
-							{retried ? 'Prüfe…' : 'Erneut prüfen'}
+							{retried ? te('public.rechecking') : te('public.recheck')}
 						</Button>
 					</div>
 				)}
 				{authState === 'loading' ? (
-					<output
-						aria-live="polite"
-						aria-label="Anmeldung wird geprüft"
-						className="flex flex-col gap-4"
-					>
+					<output aria-live="polite" aria-label={t('authChecking')} className="flex flex-col gap-4">
 						{checkingSession ? (
 							// Shaped like the two choose buttons that replace it.
 							<div className="flex flex-col gap-2">
@@ -252,7 +251,7 @@ export function NeuClient() {
 								<Skeleton className="h-[4.5rem] w-full" />
 							</>
 						)}
-						<span className="sr-only">Anmeldung wird geprüft</span>
+						<span className="sr-only">{t('authChecking')}</span>
 					</output>
 				) : (
 					<FieldGroup>
@@ -261,7 +260,7 @@ export function NeuClient() {
 							onOAuthStart={startSocialLogin}
 							disabled={credentialsBusy}
 						/>
-						<FieldSeparator>oder</FieldSeparator>
+						<FieldSeparator>{t('or')}</FieldSeparator>
 						<CredentialsAuth
 							next={loginNextPath()}
 							onAuthenticated={handleAuthenticated}
@@ -280,23 +279,23 @@ export function NeuClient() {
 			headingId="neu-heading"
 			title={
 				step === 'choose'
-					? 'Deine WG'
+					? t('titleChoose')
 					: step === 'create'
-						? 'Neue WG erstellen'
+						? t('titleCreate')
 						: step === 'join'
-							? 'Mit Einladung beitreten'
-							: 'WG erstellt'
+							? t('titleJoin')
+							: t('titleCreated')
 			}
 			description={
 				step === 'invite'
-					? 'Deine WG ist erstellt. Jetzt kannst du die Einladung teilen.'
+					? t('descCreated')
 					: step === 'create'
-						? 'Gib eurer WG einen Namen. Danach lädst du deine Mitbewohner ein.'
+						? t('descCreate')
 						: step === 'join'
-							? 'Füge den Einladungslink deiner Mitbewohner ein.'
+							? t('descJoin')
 							: accountWgs.length > 0
-								? 'Öffne eine deiner WGs, erstelle eine neue oder tritt mit einer Einladung bei.'
-								: 'Du hast noch keine WG. Erstelle eine neue oder tritt mit einer Einladung bei.'
+								? t('descChooseSome')
+								: t('descChooseNone')
 			}
 			backHref={explorationHref()}
 		>
@@ -305,8 +304,8 @@ export function NeuClient() {
 			{deniedWgCode && step === 'choose' && (
 				<ErrorBox>
 					{movedOut
-						? `Du bist in der WG ${deniedWgCode} als ausgezogen markiert. Eine Admin-Person kann dich wieder aktivieren.`
-						: `Der Link zur WG ${deniedWgCode} ist veraltet, oder du bist mit diesem Konto nicht Mitglied. Wähle eine deiner WGs oder tritt mit einer Einladung bei.`}
+						? t('movedOut', { code: deniedWgCode })
+						: t('deniedLink', { code: deniedWgCode })}
 				</ErrorBox>
 			)}
 			{step === 'choose' && (
@@ -359,7 +358,7 @@ export function NeuClient() {
 					disabled={busy}
 					className="w-fit px-0 text-left text-muted-foreground underline underline-offset-4"
 				>
-					{switching ? 'Bitte warten…' : 'Mit anderem Konto anmelden'}
+					{switching ? t('wait') : te('signOut.switch')}
 				</Button>
 			)}
 			{logoutDiscardDialog}

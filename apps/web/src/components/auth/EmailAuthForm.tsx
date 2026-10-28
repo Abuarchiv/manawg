@@ -7,6 +7,7 @@ import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { type AuthFailure, classifyAuthError } from '@/core/auth/password-errors';
+import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import {
 	type AuthFormProps,
@@ -28,6 +29,7 @@ export function useEmailAuth({
 	setBusy,
 	onAuthenticated,
 }: AuthFormProps & { next: string }) {
+	const t = useTranslations('auth.signIn');
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
 	const [emailError, setEmailError] = useState<'generic' | 'invalid' | 'reset-invalid' | null>(
@@ -61,9 +63,7 @@ export function useEmailAuth({
 			if (result.sessionEstablished) {
 				onAuthenticated();
 			} else {
-				setEmailMessage(
-					'Die Anmeldung ist noch nicht abgeschlossen. Prüfe deine E-Mail und versuche es erneut.',
-				);
+				setEmailMessage(t('incomplete'));
 			}
 		} catch (error) {
 			const classified = classifyAuthError(error);
@@ -88,9 +88,7 @@ export function useEmailAuth({
 			const { resendSignupConfirmation } = await import('@/core/auth/client');
 			await resendSignupConfirmation(normalizedEmail, next);
 			setResendCooldown(RESEND_COOLDOWN_SECONDS);
-			setEmailMessage(
-				'Wir haben die Bestätigungs-Mail erneut gesendet, sofern diese Adresse auf eine Bestätigung wartet. Schau auch im Spam-Ordner nach.',
-			);
+			setEmailMessage(t('confirmationResent'));
 		} catch (error) {
 			setFailure(classifyAuthError(error));
 			setEmailError('generic');
@@ -111,9 +109,7 @@ export function useEmailAuth({
 		try {
 			const { requestPasswordReset: sendPasswordReset } = await import('@/core/auth/client');
 			await sendPasswordReset(normalizedEmail);
-			setEmailMessage(
-				'Wenn zu dieser E-Mail-Adresse ein Konto gehört, erhältst du gleich einen Link zum Zurücksetzen des Passworts.',
-			);
+			setEmailMessage(t('resetSent'));
 		} catch (error) {
 			setFailure(classifyAuthError(error));
 			setEmailError('generic');
@@ -152,6 +148,7 @@ export function EmailAuthForm({
 	auth,
 	busy,
 }: { auth: ReturnType<typeof useEmailAuth>; busy: BusyAction }) {
+	const t = useTranslations('auth');
 	const {
 		email,
 		setEmail,
@@ -179,7 +176,7 @@ export function EmailAuthForm({
 		>
 			<FieldGroup>
 				<Field data-invalid={emailFieldInvalid}>
-					<FieldLabel htmlFor="auth-email">E-Mail-Adresse</FieldLabel>
+					<FieldLabel htmlFor="auth-email">{t('fields.email')}</FieldLabel>
 					<Input
 						id="auth-email"
 						name="email"
@@ -197,7 +194,7 @@ export function EmailAuthForm({
 					/>
 				</Field>
 				<Field data-invalid={passwordFieldInvalid}>
-					<FieldLabel htmlFor="auth-password">Passwort</FieldLabel>
+					<FieldLabel htmlFor="auth-password">{t('fields.password')}</FieldLabel>
 					<Input
 						id="auth-password"
 						name="password"
@@ -221,12 +218,12 @@ export function EmailAuthForm({
 				)}
 				{emailError === 'invalid' && (
 					<div id="auth-email-error">
-						<ErrorBox>Bitte gib eine gültige E-Mail-Adresse und dein Passwort ein.</ErrorBox>
+						<ErrorBox>{t('signIn.invalid')}</ErrorBox>
 					</div>
 				)}
 				{emailError === 'reset-invalid' && (
 					<div id="auth-email-error">
-						<ErrorBox>Bitte gib eine gültige E-Mail-Adresse ein.</ErrorBox>
+						<ErrorBox>{t('validEmail')}</ErrorBox>
 					</div>
 				)}
 				<Button
@@ -236,7 +233,7 @@ export function EmailAuthForm({
 					disabled={busy !== null}
 					className="px-0"
 				>
-					{busy === 'password-reset' ? 'Link wird angefordert…' : 'Passwort vergessen?'}
+					{busy === 'password-reset' ? t('signIn.requestingLink') : t('signIn.forgot')}
 				</Button>
 				{emailMessage && (
 					<Alert>
@@ -253,14 +250,12 @@ export function EmailAuthForm({
 						disabled={busy !== null || resendCooldown > 0}
 					>
 						{busy === 'email-resend' && <Spinner data-icon="inline-start" aria-hidden />}
-						{resendCooldown > 0
-							? `Erneut senden in ${resendCooldown} s`
-							: 'Bestätigungs-Mail erneut senden'}
+						{resendCooldown > 0 ? t('resendIn', { seconds: resendCooldown }) : t('signIn.resend')}
 					</Button>
 				)}
 				<Button type="submit" variant="default" disabled={busy !== null}>
 					{busy === 'email-sign-in' && <Spinner data-icon="inline-start" aria-hidden />}
-					Anmelden
+					{t('signIn.submit')}
 				</Button>
 			</FieldGroup>
 		</form>

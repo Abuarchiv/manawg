@@ -10,5 +10,5 @@ test('only rejected weak passwords get actionable feedback', () => {
 	);
 	assert.equal(isWeakPasswordError({ code: 'invalid_credentials' }), false);
 	assert.equal(isWeakPasswordError({ weakPassword: { reasons: ['pwned'] } }), false);
-	assert.match(WEAK_PASSWORD_MESSAGE, /wähle.*anderes/i);
+	assert.equal(WEAK_PASSWORD_MESSAGE.key, 'auth.failure.weakPassword');
 });

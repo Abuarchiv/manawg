@@ -13,30 +13,12 @@ import {
 import { cn } from '@/shared/lib/cn';
 import type { LucideIcon } from 'lucide-react';
 import { Check, ChevronRight } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
-
-interface PreviewCopy {
-	title: string;
-	detail: string;
-}
-
-const PREVIEW_COPY = {
-	einkauf: { title: 'Hafermilch', detail: '2 Packungen · von Mika' },
-	ausgaben: { title: 'Pizzaabend', detail: 'Mika bezahlt · 4 Personen' },
-	putzen: { title: 'Bad putzen', detail: 'Lea · heute' },
-	pinnwand: { title: 'Übergabe am Freitag', detail: 'Jona · Schlüssel liegen im Flur bereit.' },
-	fixkosten: { title: 'Internet', detail: '29,99 € monatlich · nächste Zahlung am 3. des Monats' },
-	mahnungen: { title: 'Jona bekommt 12,50 €', detail: 'Geteilt aus dem Einkauf · seit 2 Tagen' },
-	vorraete: { title: 'Toilettenpapier', detail: '2 Packungen · Mindestbestand 1' },
-	kalender: { title: 'Putzplan-Check', detail: 'Freitag · 18:00 Uhr · für die ganze WG' },
-	aktivitaet: { title: 'Sami hat Einkauf ergänzt', detail: 'Hafermilch · vor 12 Minuten' },
-	chat: { title: 'In der WG', detail: '„Bin um acht wieder da.“ · Lea' },
-} satisfies Record<string, PreviewCopy>;
-
-type PreviewSlug = keyof typeof PREVIEW_COPY;
+import type { PublicModuleSlug } from './public-modules';
 
 export interface PublicPreviewModule {
-	slug: PreviewSlug;
+	slug: PublicModuleSlug;
 	title: string;
 	Icon: LucideIcon;
 }
@@ -44,19 +26,20 @@ export interface PublicPreviewModule {
 const ROW = 'min-h-11 rounded-none border-0 border-t border-border px-0 first:border-t-0';
 
 const SHOPPING_ROWS = [
-	['Hafermilch', '2 Packungen · von Mika', false],
-	['Bananen', '6 Stück · von Lea', false],
-	['Spülmittel', '1 Flasche · von Jona', true],
+	['milk', false],
+	['bananas', false],
+	['dish', true],
 ] as const;
 
 function PreviewRows({ module }: { module: PublicPreviewModule }) {
-	const copy = PREVIEW_COPY[module.slug];
+	const t = useTranslations('entry.preview');
+	const copy = { title: t(`${module.slug}.title`), detail: t(`${module.slug}.detail`) };
 
 	if (module.slug === 'einkauf') {
 		return (
 			<ItemGroup className="gap-0">
-				{SHOPPING_ROWS.map(([title, detail, done]) => (
-					<ItemEntry key={title} className={ROW}>
+				{SHOPPING_ROWS.map(([row, done]) => (
+					<ItemEntry key={row} className={ROW}>
 						<ItemMedia>
 							<span
 								aria-hidden
@@ -72,10 +55,12 @@ function PreviewRows({ module }: { module: PublicPreviewModule }) {
 									done && 'text-muted-foreground line-through',
 								)}
 							>
-								{title}
-								{done && <span className="sr-only">, erledigt</span>}
+								{t(`rows.${row}.title`)}
+								{done && <span className="sr-only">{t('done')}</span>}
 							</ItemTitle>
-							<ItemDescription className="line-clamp-none break-words">{detail}</ItemDescription>
+							<ItemDescription className="line-clamp-none break-words">
+								{t(`rows.${row}.detail`)}
+							</ItemDescription>
 						</ItemContent>
 					</ItemEntry>
 				))}
@@ -99,7 +84,7 @@ function PreviewRows({ module }: { module: PublicPreviewModule }) {
 						</ItemDescription>
 					</ItemContent>
 					<ItemActions className="ml-auto shrink-0 font-mono text-sm whitespace-nowrap tabular-nums">
-						28,40 €
+						{t('amount')}
 					</ItemActions>
 				</ItemEntry>
 			</ItemGroup>
@@ -112,7 +97,7 @@ function PreviewRows({ module }: { module: PublicPreviewModule }) {
 				<ItemEntry className={ROW}>
 					<ItemMedia>
 						<Avatar size="sm">
-							<AvatarFallback>LE</AvatarFallback>
+							<AvatarFallback>{t('initials')}</AvatarFallback>
 						</Avatar>
 					</ItemMedia>
 					<ItemContent className="min-w-0">
@@ -146,19 +131,17 @@ export function PublicModulePreviews({
 	modules: PublicPreviewModule[];
 	hrefFor: (slug: string) => string;
 }) {
+	const t = useTranslations('entry.preview');
 	return (
-		<section aria-label="So kann euer Alltag aussehen">
-			<p className="px-1 pb-1.5 text-xs text-muted-foreground">
-				Beispiel: So kann euer Alltag aussehen
-			</p>
+		<section aria-label={t('introLabel')}>
+			<p className="px-1 pb-1.5 text-xs text-muted-foreground">{t('intro')}</p>
 			<Card className="py-0">
 				<div className="flex flex-col">
 					{modules.map((module) => {
-						const copy = PREVIEW_COPY[module.slug];
 						return (
 							<article
 								key={module.slug}
-								aria-label={`${module.title}, Beispiel-WG`}
+								aria-label={t('article', { title: module.title })}
 								className="@container"
 							>
 								<Item
@@ -171,7 +154,7 @@ export function PublicModulePreviews({
 									<ItemContent className="min-w-0">
 										<ItemTitle className="line-clamp-none break-words">{module.title}</ItemTitle>
 										<ItemDescription className="line-clamp-none break-words">
-											{copy.title} · {copy.detail}
+											{t(`${module.slug}.title`)} · {t(`${module.slug}.detail`)}
 										</ItemDescription>
 									</ItemContent>
 									<ChevronRight
@@ -189,12 +172,15 @@ export function PublicModulePreviews({
 }
 
 export function PublicModulePreview({ module }: { module: PublicPreviewModule }) {
+	const t = useTranslations('entry.preview');
 	return (
-		<section aria-label={`Beispielansicht für ${module.title}`}>
-			<article aria-label={`${module.title}, Beispiel-WG`}>
+		<section aria-label={t('section', { title: module.title })}>
+			<article aria-label={t('article', { title: module.title })}>
 				<Card className="h-full">
 					<CardContent>
-						<span className="mb-1 block text-right text-xs text-muted-foreground">Beispiel</span>
+						<span className="mb-1 block text-right text-xs text-muted-foreground">
+							{t('example')}
+						</span>
 						<PreviewRows module={module} />
 					</CardContent>
 				</Card>

@@ -1,6 +1,7 @@
 'use client';
 
 import { ErrorBox } from '@/components/app/ErrorBox';
+import { richArgument } from '@/components/entry/rich-argument';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
@@ -8,6 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { authPageHref } from '@/core/auth/auth-intent';
 import { AUTH_FAILURE_MESSAGES, classifyAuthError } from '@/core/auth/password-errors';
+import { type Message, useMessage } from '@/shared/i18n/message';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -135,20 +138,21 @@ export function useEmailCode({
 	};
 }
 
-const ERROR_MESSAGES = {
-	'invalid-email': 'Bitte gib eine gültige E-Mail-Adresse ein.',
-	'invalid-code': `Bitte gib den ${EMAIL_CODE_LENGTH}-stelligen Code aus der E-Mail ein.`,
-	'wrong-code': 'Code falsch oder abgelaufen. Fordere einen neuen an.',
-	'rate-limit': 'Zu viele Versuche. Warte kurz.',
+const ERROR_MESSAGES: Record<NonNullable<CodeError>, Message> = {
+	'invalid-email': { key: 'auth.validEmail' },
+	'invalid-code': { key: 'auth.code.invalid', values: { length: EMAIL_CODE_LENGTH } },
+	'wrong-code': { key: 'auth.code.wrong' },
+	'rate-limit': { key: 'auth.code.rateLimit' },
 	network: AUTH_FAILURE_MESSAGES.network,
-	generic: 'Die Anmeldung konnte gerade nicht abgeschlossen werden. Bitte versuche es erneut.',
-} as const;
+	generic: { key: 'auth.failure.signIn' },
+};
 
 function CodeErrorBox({ error }: { error: CodeError }) {
+	const message = useMessage();
 	if (!error) return null;
 	return (
 		<div id="auth-code-error">
-			<ErrorBox>{ERROR_MESSAGES[error]}</ErrorBox>
+			<ErrorBox>{message(ERROR_MESSAGES[error])}</ErrorBox>
 		</div>
 	);
 }
@@ -158,6 +162,7 @@ export function EmailCodeForm({
 	busy,
 	intentQuery,
 }: { auth: ReturnType<typeof useEmailCode>; busy: BusyAction; intentQuery: string }) {
+	const t = useTranslations('auth');
 	const { email, setEmail, code, setCode, error, sentTo, cooldown, resendNotice } = auth;
 	const codeRef = useRef<HTMLInputElement>(null);
 	const emailRef = useRef<HTMLInputElement>(null);
@@ -190,7 +195,7 @@ export function EmailCodeForm({
 			>
 				<FieldGroup>
 					<Field data-invalid={invalid}>
-						<FieldLabel htmlFor="auth-code-email">E-Mail-Adresse</FieldLabel>
+						<FieldLabel htmlFor="auth-code-email">{t('fields.email')}</FieldLabel>
 						<Input
 							ref={emailRef}
 							id="auth-code-email"
@@ -211,7 +216,7 @@ export function EmailCodeForm({
 					<CodeErrorBox error={error} />
 					<Button type="submit" variant="default" disabled={busy !== null}>
 						{busy === 'code-request' && <Spinner data-icon="inline-start" aria-hidden />}
-						Code per E-Mail senden
+						{t('code.send')}
 					</Button>
 				</FieldGroup>
 			</form>
@@ -231,18 +236,23 @@ export function EmailCodeForm({
 			<FieldGroup>
 				<Alert>
 					<AlertDescription className="[overflow-wrap:anywhere]">
-						Wir haben einen Code an {sentTo} geschickt, sofern dort ein Konto besteht. Schau auch im
-						Spam-Ordner nach. Noch kein Konto?{' '}
-						<Link
-							href={authPageHref('/registrieren', intentQuery)}
-							className="font-medium underline underline-offset-4"
-						>
-							Jetzt erstellen.
-						</Link>
+						{t.rich('code.sent', {
+							email: sentTo,
+							create: richArgument(
+								<Link
+									href={authPageHref('/registrieren', intentQuery)}
+									className="font-medium underline underline-offset-4"
+								>
+									{t('code.createLink')}
+								</Link>,
+							),
+						})}
 					</AlertDescription>
 				</Alert>
 				<Field data-invalid={invalid}>
-					<FieldLabel htmlFor="auth-code">{EMAIL_CODE_LENGTH}-stelliger Code</FieldLabel>
+					<FieldLabel htmlFor="auth-code">
+						{t('fields.code', { length: EMAIL_CODE_LENGTH })}
+					</FieldLabel>
 					<Input
 						ref={codeRef}
 						id="auth-code"
@@ -263,16 +273,16 @@ export function EmailCodeForm({
 						className="text-base tracking-widest"
 					/>
 					<FieldDescription id="auth-code-hint" className="text-xs">
-						Der Code gilt nur kurz.
+						{t('code.hint')}
 					</FieldDescription>
 				</Field>
 				{resendNotice && (
-					<output className="text-sm text-muted-foreground">Der Code wurde erneut gesendet.</output>
+					<output className="text-sm text-muted-foreground">{t('code.resent')}</output>
 				)}
 				<CodeErrorBox error={error} />
 				<Button type="submit" variant="default" disabled={busy !== null}>
 					{busy === 'code-verify' && <Spinner data-icon="inline-start" aria-hidden />}
-					Anmelden
+					{t('code.submit')}
 				</Button>
 				<Button
 					type="button"
@@ -281,10 +291,10 @@ export function EmailCodeForm({
 					disabled={busy !== null || cooldown > 0}
 				>
 					{busy === 'code-request' && <Spinner data-icon="inline-start" aria-hidden />}
-					{cooldown > 0 ? `Code erneut senden in ${cooldown} s` : 'Code erneut senden'}
+					{cooldown > 0 ? t('code.resendIn', { seconds: cooldown }) : t('code.resend')}
 				</Button>
 				<Button type="button" variant="ghost" onClick={auth.changeAddress} disabled={busy !== null}>
-					Andere E-Mail-Adresse verwenden
+					{t('otherEmail')}
 				</Button>
 			</FieldGroup>
 		</form>
