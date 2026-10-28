@@ -161,8 +161,8 @@ These tests skip themselves unless their variable is set. `pnpm test:unit` and `
 
 | Variable | Enables | How to run | Why not in CI |
 | --- | --- | --- | --- |
-| `TEST_DATABASE_URL` | `tests/statement-run-ledger.test.ts`, `tests/db-connection.test.ts` (live transaction check), `src/core/db/private-image-deletions.test.ts` and the real-PostgreSQL case of `e2e/shopping-conflict.spec.ts` | `TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55432/manawg_test pnpm --filter @manawg/web test:db`; the shopping case runs inside `test:e2e:fixtures e2e/shopping-conflict.spec.ts` with the same variable. The URL must be a disposable loopback Postgres prepared with `scripts/test-db-setup.mjs` | Runs in `database.yml` |
-| `RUN_DB_TIMEOUT_INTEGRATION` | The pool timeout case in `tests/runtime-pool.test.ts` | `pnpm --filter @manawg/web test:db-timeouts` (needs `initdb` and `pg_ctl` on the PATH and a non-root user) | Needs local PostgreSQL binaries and takes up to a minute |
+| `TEST_DATABASE_URL` | `tests/statement-run-ledger.test.ts`, `tests/db-connection.test.ts` (live transaction check), `src/core/db/private-image-deletions.test.ts` and `tests/shopping-unique-index.test.ts` | `TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55432/manawg_test pnpm --filter @manawg/web test:db`; the shopping case runs inside `test:e2e:fixtures e2e/shopping-conflict.spec.ts` with the same variable. The URL must be a disposable loopback Postgres prepared with `scripts/test-db-setup.mjs` | Runs in `database.yml` |
+| `RUN_DB_TIMEOUT_INTEGRATION` | The pool timeout case in `tests/runtime-pool.test.ts` | `pnpm --filter @manawg/web test:db-timeouts` (needs `initdb` and `pg_ctl` on the PATH and a non-root user) | Runs in `database.yml` |
 | `ACCOUNT_DELETE_TEST_URL` | `e2e/account-delete-db-*.spec.ts` (account deletion against real data) | `ACCOUNT_DELETE_TEST_URL=postgresql://postgres@127.0.0.1:55432/manawg_test pnpm --filter @manawg/web test:e2e:account-delete-db` (loopback host and explicit port required) | Runs in `database.yml` |
 | `OCR_RUNTIME_E2E` | The real Tesseract worker proof in `e2e/expense-ui-form.spec.ts` | `OCR_RUNTIME_E2E=true pnpm --filter @manawg/web test:e2e:fixtures e2e/expense-ui-form.spec.ts` | Needs no network: the worker, WASM core and models come from the app's `public/tesseract` (copied from `node_modules` by `next.config.ts`) |
 | `PREVIEW_E2E` | `e2e/preview-protection.spec.ts` and the Preview branches of `e2e/smoke-launch.spec.ts` | Set by the `e2e-preview` job in `.github/workflows/ci.yml` against a trusted Vercel Preview URL (`BASE_URL`) with `VERCEL_AUTOMATION_BYPASS_SECRET` | Needs a deployed, protected Preview and the bypass secret |
@@ -201,7 +201,7 @@ are pinned by commit SHA.
 Workflow `security.yml` runs Trivy over the lockfile, the Dockerfile and the tree (known
 vulnerabilities, misconfigurations, secrets) on every PR, on `main` and weekly. Workflow
 `docker.yml` builds the self-hosting image and scans it with Trivy when a PR touches the image
-inputs; `scorecard.yml` publishes the OpenSSF Scorecard.
+inputs, and the release scan blocks the push of a vulnerable image; `scorecard.yml` publishes the OpenSSF Scorecard.
 
 Run the same gates locally before you open a pull request.
 
