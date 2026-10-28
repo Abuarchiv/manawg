@@ -1,6 +1,7 @@
 # Known vulnerabilities in the locked dependencies, misconfigurations in the Dockerfile and
 # committed secrets. Runs on every pull request and weekly, so new advisories show up without a
-# code change.
+# code change. Pull requests also get a dependency review: new or changed dependencies with a high
+# severity advisory or a licence outside the allow list fail it.
 name: Security
 on:
   pull_request:
@@ -29,3 +30,21 @@ jobs:
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: "1"
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+          # MIT-0 (nodemailer) and FSL-1.1-Apache-2.0 (the Sentry build CLI) are in use.
+          allow-licenses: >-
+            Apache-2.0, MIT, MIT-0, ISC, BSD-2-Clause, BSD-3-Clause, MPL-2.0,
+            LGPL-3.0-or-later, CC-BY-4.0, 0BSD, BlueOak-1.0.0, Python-2.0, Unlicense, CC0-1.0,
+            FSL-1.1-Apache-2.0
