@@ -248,7 +248,9 @@ test.describe('settings theme responsive', () => {
 	skipUnlessFixtures();
 	test.use({ viewport: { width: 320, height: 720 }, bypassCSP: true });
 
-	test('all theme and language choices stay reachable at 320px with 200% text', async ({ page }) => {
+	test('all theme and language choices stay reachable at 320px with 200% text', async ({
+		page,
+	}) => {
 		await setupMember(page);
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings`);
 		const themes = page.getByRole('group', { name: 'Darstellung' });
