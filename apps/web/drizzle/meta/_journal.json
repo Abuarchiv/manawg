@@ -260,6 +260,13 @@
       "when": 1793132829003,
       "tag": "0036_remove_paypal",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1793139241901,
+      "tag": "0037_member_locale",
+      "breakpoints": true
     }
   ]
 }

@@ -16,6 +16,8 @@ import { confirmedEmailOf, sendAccountDeletedMail } from '@/core/mail/account-de
 import { eq } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 
+export { PATCH } from './locale-patch';
+
 const SUPABASE_AUTH_COOKIE = /^sb-[A-Za-z0-9-]+-auth-token(?:\.\d+)?$/;
 
 function acceptedDeletionResponse(

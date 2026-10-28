@@ -21,10 +21,10 @@
 
 ## 2. Persistence and language switch (one PR)
 
-- [ ] 2.1 Add `wg_members.locale` with check constraint and migration `0037`; verify it applies on throwaway Postgres, `pnpm db:check` passes and a second `drizzle-kit generate` has no diff
-- [ ] 2.2 Store the request locale on WG creation, join and claim; verify with route unit tests
-- [ ] 2.3 Add `PATCH /api/account { locale }` (all memberships and account metadata) and `options.data.locale` on sign-up; verify 200, 400 and 401 cases
-- [ ] 2.4 Add `LanguageSwitch` to `ProfileTab.tsx` and `LegalLinks.tsx`, with fixture answer; verify `e2e/i18n-en-switch.spec.ts` (persistence, signed in and out, offline disabled, browser language)
+- [x] 2.1 Add `wg_members.locale` with check constraint and migration `0037`; verify it applies on throwaway Postgres, `pnpm db:check` passes and a second `drizzle-kit generate` has no diff
+- [x] 2.2 Store the request locale on WG creation, join and claim; verify with route unit tests
+- [x] 2.3 Add `PATCH /api/account { locale }` (all memberships and account metadata) and `options.data.locale` on sign-up; verify 200, 400 and 401 cases
+- [x] 2.4 Add `LanguageSwitch` to `ProfileTab.tsx` and `LegalLinks.tsx`, with fixture answer; verify `e2e/i18n-en-switch.spec.ts` (persistence, signed in and out, offline disabled, browser language)
 
 ## 3. UI packages (parallel, disjoint ownership per design section 9)
 

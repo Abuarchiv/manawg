@@ -1,3 +1,4 @@
+import { LanguageSwitch } from '@/components/app/LanguageSwitch';
 import { cn } from '@/shared/lib/cn';
 import { landingUrl } from '@/shared/lib/landing-url';
 
@@ -68,6 +69,7 @@ export function LegalLinks({
 					</a>
 				))}
 			</nav>
+			<LanguageSwitch variant="links" />
 		</footer>
 	);
 }

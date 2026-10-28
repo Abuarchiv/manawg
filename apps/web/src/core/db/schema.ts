@@ -93,12 +93,11 @@ export const wgMembers = pgTable(
 		notifyStatementEmail: boolean('notify_statement_email').notNull().default(true),
 		quietStartHour: integer('quiet_start_hour'),
 		quietEndHour: integer('quiet_end_hour'),
-		// Soft-delete for "Auszug" (move-out). A member who ever paid an expense, owes a
-		// split, added a shopping item, wrote an announcement, completed a chore, or
-		// created a recurring expense cannot be hard-deleted — six RESTRICT foreign keys
-		// reference wg_members. Instead this timestamp is set: the member drops out of every
-		// *active* roster (chore rotation, split candidates, identity picker, dropdowns)
-		// while all history and balances stay intact. NULL = active. Reversible.
+		locale: text('locale').notNull().default('de'),
+		// Soft-delete for "Auszug" (move-out): six RESTRICT foreign keys keep a member with
+		// history from being hard-deleted. The member drops out of every active roster
+		// (rotation, split candidates, pickers) while history and balances stay intact.
+		// NULL = active. Reversible.
 		deactivatedAt: timestamp('deactivated_at', { withTimezone: true }),
 		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 	},
@@ -117,6 +116,7 @@ export const wgMembers = pgTable(
 			.on(t.wgId)
 			.where(sql`${t.role} = 'admin'`),
 		roleCheck: check('wg_members_role_check', sql`${t.role} in ('admin', 'member')`),
+		localeCheck: check('wg_members_locale_check', sql`${t.locale} in ('de', 'en')`),
 	}),
 );
 

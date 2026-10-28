@@ -7,6 +7,7 @@ import { requireAccount } from '@/core/guards/require-account';
 import { shareCodeMissResponse } from '@/core/guards/share-code-miss';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { HTTP, apiError, badRequest, conflict, forbidden, notFound } from '@/core/http/api-errors';
+import { requestLocale } from '@/core/i18n/request-locale';
 import { isInviteToken } from '@/core/utils/invite-token';
 import { and, eq, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
@@ -72,7 +73,7 @@ export const POST = withWgRoute<{ id: string }>('members claim POST', async (req
 
 			const [updated] = await tx
 				.update(wgMembers)
-				.set({ authUserId: user.id })
+				.set({ authUserId: user.id, locale: requestLocale(req) })
 				.where(and(eq(wgMembers.id, id), eq(wgMembers.wgId, wg.id)))
 				.returning({ id: wgMembers.id, name: wgMembers.name });
 			if (!updated) throw new Error('member_claim_failed');
