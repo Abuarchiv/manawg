@@ -38,7 +38,7 @@ export function TodayRow({
 	const locale = useLocale() as Locale;
 	const title = text(item.title);
 	const checkable = item.kind === 'chore' && item.isPersonal && Boolean(item.entityId);
-	const actionLabel = getChoreStatus(item.expectedNextDueAt ?? '').actionLabel;
+	const action = getChoreStatus(item.expectedNextDueAt ?? '').action;
 	const debtAmount =
 		item.kind === 'debt' && item.amountCents !== undefined
 			? formatEuroCents(item.amountCents, item.currency, { signed: true, locale })
@@ -50,7 +50,7 @@ export function TodayRow({
 					variant="ghost"
 					size="icon"
 					className="shrink-0"
-					aria-label={completeTriggerLabel(title, actionLabel)}
+					aria-label={text(completeTriggerLabel(title, action))}
 					// aria-disabled instead of disabled: otherwise the button loses focus while saving.
 					aria-disabled={pending}
 					onClick={() => {
@@ -98,7 +98,7 @@ export function TodayRow({
 				<ChoreCompleteDialog
 					open={confirming}
 					title={title}
-					actionLabel={actionLabel}
+					action={action}
 					busy={pending}
 					error={error}
 					onCancel={onCancel}

@@ -33,7 +33,7 @@
 - [ ] 3.3 Package C debts, settlement, reminders page; verify English spec
 - [ ] 3.4 Package D import and OCR; verify English spec and OCR unknown payer is `null`
 - [ ] 3.5 Package E fixed costs and statement page; verify English spec
-- [ ] 3.6 Package F chores with `action` keys instead of German labels; verify English spec and no verb choice in code
+- [x] 3.6 Package F chores with `action` keys instead of German labels; verify English spec and no verb choice in code
 - [ ] 3.7 Package G calendar; verify English spec
 - [ ] 3.8 Package H shopping and supplies with unit labels; verify English spec and unchanged stored units
 - [ ] 3.9 Package I noticeboard and chat; verify English spec and localized chat amounts

@@ -30,7 +30,9 @@ import type { AbsenceInput } from '@/features/chores/absence';
 import { ABSENCE_REASON_MAX } from '@/features/chores/chore-limits';
 import type { ChoreMember } from '@/features/chores/components/chore-types';
 import { pendingKeys } from '@/features/chores/pending-keys';
+import type { Locale } from '@/shared/i18n/locale';
 import { cn } from '@/shared/lib/cn';
+import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
@@ -88,6 +90,8 @@ export function AbsencePanel({
 	error,
 	listError,
 }: AbsencePanelProps) {
+	const t = useTranslations('chores.absence');
+	const locale = useLocale() as Locale;
 	// With ?absence=<id> the user expects to see that row, not an empty form.
 	const openForm = active && !highlightedAbsenceId;
 	const [formOpen, setFormOpen] = useState(openForm || Boolean(start || end || reason));
@@ -116,10 +120,10 @@ export function AbsencePanel({
 		<Card id="absences-panel" className={cn('scroll-mt-28', openForm && 'ring-2 ring-ring')}>
 			<CardHeader className="flex flex-wrap items-center justify-between gap-2">
 				<div className="flex min-w-fit flex-1 flex-col gap-1">
-					<CardTitle className="break-normal">Abwesenheiten</CardTitle>
+					<CardTitle className="break-normal">{t('title')}</CardTitle>
 					{absentCount > 0 && (
 						<CardDescription className="break-normal">
-							{`${absentCount} aktuell abwesend`}
+							{t('currentlyAway', { count: String(absentCount) })}
 						</CardDescription>
 					)}
 				</div>
@@ -128,11 +132,11 @@ export function AbsencePanel({
 						variant="outline"
 						size="sm"
 						onClick={toggleForm}
-						aria-label={formOpen ? 'Abwesenheitsformular schließen' : 'Abwesenheit eintragen'}
+						aria-label={formOpen ? t('closeFormAria') : t('openFormAria')}
 						aria-expanded={formOpen}
 						aria-controls="absence-form"
 					>
-						{formOpen ? 'Schließen' : 'Eintragen'}
+						{formOpen ? t('close') : t('enter')}
 					</Button>
 				</CardAction>
 			</CardHeader>
@@ -159,7 +163,7 @@ export function AbsencePanel({
 						>
 							<FieldGroup>
 								<Field data-disabled={pending}>
-									<FieldLabel htmlFor="absence-member">Abwesendes Mitglied</FieldLabel>
+									<FieldLabel htmlFor="absence-member">{t('member')}</FieldLabel>
 									<NativeSelect
 										id="absence-member"
 										value={memberId}
@@ -176,7 +180,7 @@ export function AbsencePanel({
 								</Field>
 								<FieldGroup className="grid grid-cols-1 gap-2">
 									<Field data-disabled={pending} className="min-w-0">
-										<FieldLabel htmlFor="absence-start">Von</FieldLabel>
+										<FieldLabel htmlFor="absence-start">{t('from')}</FieldLabel>
 										<Input
 											id="absence-start"
 											type="date"
@@ -188,12 +192,12 @@ export function AbsencePanel({
 												if (value && (!end || end < value)) onEndChange(value);
 											}}
 											disabled={pending}
-											aria-label="Abwesenheit von"
+											aria-label={t('fromAria')}
 											className="min-w-0 text-base"
 										/>
 									</Field>
 									<Field data-disabled={pending} className="min-w-0">
-										<FieldLabel htmlFor="absence-end">Bis</FieldLabel>
+										<FieldLabel htmlFor="absence-end">{t('until')}</FieldLabel>
 										<Input
 											id="absence-end"
 											type="date"
@@ -201,24 +205,22 @@ export function AbsencePanel({
 											onChange={(event) => onEndChange(event.target.value)}
 											min={start || undefined}
 											disabled={pending}
-											aria-label="Abwesenheit bis"
+											aria-label={t('untilAria')}
 											className="min-w-0 text-base"
 										/>
 									</Field>
 									{(!start || !end) && (
-										<FieldDescription className="text-xs">
-											Wähle Von und Bis, dann kannst du speichern.
-										</FieldDescription>
+										<FieldDescription className="text-xs">{t('pickRange')}</FieldDescription>
 									)}
 								</FieldGroup>
 								<Field data-disabled={pending}>
-									<FieldLabel htmlFor="absence-reason">Grund (optional)</FieldLabel>
+									<FieldLabel htmlFor="absence-reason">{t('reason')}</FieldLabel>
 									<Input
 										id="absence-reason"
 										value={reason}
 										onChange={(event) => onReasonChange(event.target.value)}
 										maxLength={ABSENCE_REASON_MAX}
-										placeholder="z. B. Urlaub"
+										placeholder={t('reasonPlaceholder')}
 										disabled={pending}
 										enterKeyHint="done"
 										className="text-base"
@@ -230,13 +232,9 @@ export function AbsencePanel({
 									<AlertDescription>{error}</AlertDescription>
 								</Alert>
 							)}
-							<Button
-								type="submit"
-								disabled={!start || !end || pending}
-								aria-label="Abwesenheit speichern"
-							>
+							<Button type="submit" disabled={!start || !end || pending} aria-label={t('saveAria')}>
 								{pending && <Spinner data-icon="inline-start" aria-hidden />}
-								{pending ? 'Speichert…' : 'Abwesenheit speichern'}
+								{pending ? t('saving') : t('save')}
 							</Button>
 						</form>
 					</CollapsiblePanel>
@@ -266,7 +264,7 @@ export function AbsencePanel({
 											{absence.memberName}
 										</ItemTitle>
 										<ItemDescription className="line-clamp-none">
-											{formatShortDateRange(absence.startDate, absence.endDate)}
+											{formatShortDateRange(absence.startDate, absence.endDate, locale)}
 										</ItemDescription>
 										{absence.reason && (
 											<ItemDescription className="line-clamp-none break-words">
@@ -281,19 +279,22 @@ export function AbsencePanel({
 											onClick={() => {
 												if (requestRemove(absence.id)) onRemove(absence.id);
 											}}
-											aria-label={`${armed ? 'Wirklich entfernen? ' : ''}Abwesenheit von ${absence.memberName} (${formatShortDateRange(absence.startDate, absence.endDate)})${armed ? '' : ' entfernen'}`}
+											aria-label={t(armed ? 'removeConfirmAria' : 'removeAria', {
+												name: absence.memberName,
+												range: formatShortDateRange(absence.startDate, absence.endDate, locale),
+											})}
 										>
 											{removing && <Spinner data-icon="inline-start" aria-hidden />}
-											{armed ? 'Wirklich entfernen?' : 'Entfernen'}
+											{armed ? t('removeConfirm') : t('remove')}
 										</Button>
 										{armed && (
 											<Button
 												variant="outline"
 												disabled={removing}
 												onClick={() => cancelRemove()}
-												aria-label={`Entfernen von Abwesenheit ${absence.memberName} abbrechen`}
+												aria-label={t('cancelRemoveAria', { name: absence.memberName })}
 											>
-												Abbrechen
+												{t('cancel')}
 											</Button>
 										)}
 									</ItemActions>
@@ -307,7 +308,7 @@ export function AbsencePanel({
 						href={allAbsencesHref}
 						className={cn(buttonVariants({ variant: 'outline' }), 'mt-3 min-h-11')}
 					>
-						Alle {totalCount} Abwesenheiten anzeigen
+						{t('showAll', { count: String(totalCount) })}
 					</Link>
 				)}
 			</CardContent>

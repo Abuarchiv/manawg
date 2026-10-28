@@ -11,6 +11,9 @@ import {
 	completionRequestKey,
 } from '@/features/chores/chore-completion';
 import { useChoreCompletion } from '@/features/chores/hooks/use-chore-completion';
+import type { Locale } from '@/shared/i18n/locale';
+import { useMessage } from '@/shared/i18n/message';
+import { useLocale } from 'next-intl';
 import { useEffect, useState } from 'react';
 
 interface HomeChoreCompletionInput {
@@ -35,6 +38,8 @@ export function useHomeChoreCompletion({
 	reload,
 }: HomeChoreCompletionInput) {
 	const toast = useToast();
+	const render = useMessage();
+	const locale = useLocale() as Locale;
 	const complete = useChoreCompletion(wg, identity);
 	const [confirmItem, setConfirmItem] = useState<TodayImportantItem | null>(null);
 	const [pendingChoreId, setPendingChoreId] = useState<string | null>(null);
@@ -71,17 +76,24 @@ export function useHomeChoreCompletion({
 		setPendingChoreId(null);
 		if (outcome.kind === 'queued') setQueuedOccurrences(queuedChoreCompletions(wg.shareCode));
 
-		const feedback = choreCompletionFeedback(outcome, chore, (id) => {
-			const name = members.find((member) => member.id === id)?.name;
-			// The start page names the member, even when it is the viewer.
-			return name === undefined ? undefined : { name, isSelf: false };
-		});
+		const feedback = choreCompletionFeedback(
+			outcome,
+			chore,
+			(id) => {
+				const name = members.find((member) => member.id === id)?.name;
+				// The start page names the member, even when it is the viewer.
+				return name === undefined ? undefined : { name, isSelf: false };
+			},
+			locale,
+		);
+		const message = render(feedback.message);
+		const toastText = feedback.toast ? render(feedback.toast) : null;
 		// The start page has no message slot outside the dialog: what outlives it is a toast.
-		if (feedback.tone === 'success') toast.success(feedback.message);
-		else if (feedback.tone === 'notice') toast.info(feedback.message);
-		else if (feedback.done) toast.error(feedback.message);
-		else setCompleteError(feedback.message);
-		if (feedback.toast && feedback.toast !== feedback.message) toast.error(feedback.toast);
+		if (feedback.tone === 'success') toast.success(message);
+		else if (feedback.tone === 'notice') toast.info(message);
+		else if (feedback.done) toast.error(message);
+		else setCompleteError(message);
+		if (toastText && toastText !== message) toast.error(toastText);
 		if (feedback.done) {
 			setConfirmItem(null);
 			setDoneTick((tick) => tick + 1);
