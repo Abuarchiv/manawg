@@ -54,24 +54,24 @@ async function register(p, u, tag) {
 	await p.getByRole('button', { name: 'Konto erstellen', exact: true }).click();
 	await wait(1500);
 	note(
-		`${tag} nach Registrieren: ${p.url()} | ${(await p.locator('main').innerText()).replace(/\s+/g, ' ').slice(0, 200)}`,
+		`${tag} after sign-up: ${p.url()} | ${(await p.locator('main').innerText()).replace(/\s+/g, ' ').slice(0, 200)}`,
 	);
 	const ms = await mails(u.email);
 	const conf = ms.find((m) => /confirm|verify|signup/i.test(m.Text + m.HTML)) ?? ms[0];
 	if (!conf) {
-		bug(`${tag} keine Bestätigungsmail`);
+		bug(`${tag} no confirmation mail`);
 		return false;
 	}
-	note(`${tag} Mail-Betreff: ${conf.Subject}`);
+	note(`${tag} Mail subject: ${conf.Subject}`);
 	const link = (conf.HTML.match(/href="([^"]*auth[^"]*)"/) ??
 		conf.Text.match(/(http\S*verify\S*)/))?.[1]?.replace(/&amp;/g, '&');
 	if (!link) {
-		bug(`${tag} kein Bestätigungslink in Mail`);
+		bug(`${tag} no confirmation link in mail`);
 		return false;
 	}
 	await p.goto(link);
 	await wait(2000);
-	note(`${tag} nach Bestätigung: ${p.url()}`);
+	note(`${tag} after confirmation: ${p.url()}`);
 	return true;
 }
 // ---- account A
@@ -82,20 +82,20 @@ const cookies = await a.c.cookies();
 note(
 	`A Cookies: ${cookies.map((c) => `${c.name}${c.httpOnly ? '[httpOnly]' : '[JS]'}`).join(', ')}`,
 );
-if (cookies.some((c) => c.name.startsWith('sb-') && !c.httpOnly)) bug('A sb-Cookie nicht HttpOnly');
+if (cookies.some((c) => c.name.startsWith('sb-') && !c.httpOnly)) bug('A sb cookie not HttpOnly');
 await a.p.goto('/login');
 await wait(1500);
-note(`A /neu: ${(await a.p.locator('main').innerText()).replace(/\s+/g, ' ').slice(0, 200)}`);
-// WG erstellen
+note(`A /login: ${(await a.p.locator('main').innerText()).replace(/\s+/g, ' ').slice(0, 200)}`);
+// create WG
 await a.p.getByRole('button', { name: 'Neue WG erstellen', exact: true }).click();
 const nameVal = await a.p.getByLabel('Dein Anzeigename').inputValue();
-note(`A Anzeigename vorbelegt: ${JSON.stringify(nameVal)}`);
-if (nameVal !== 'Anna') bug(`Name aus Registrierung nicht vorbelegt: ${nameVal}`);
+note(`A display name prefilled: ${JSON.stringify(nameVal)}`);
+if (nameVal !== 'Anna') bug(`Name from sign-up not prefilled: ${nameVal}`);
 await a.p.getByLabel('WG-Name').fill('Testwohnung');
 await a.p.getByRole('button', { name: 'WG erstellen', exact: true }).click();
 await a.p
 	.waitForSelector('text=ist live', { timeout: 20000 })
-	.catch(() => bug('A WG-Erstellung: kein Erfolg-Screen'));
+	.catch(() => bug('A WG creation: no success screen'));
 const linkBtn = a.p.getByRole('button', { name: 'Einladungslink kopieren' });
 await a.p
 	.waitForFunction(() => /invite\/[\w-]{22}/.test(document.body.innerText), null, {
@@ -103,8 +103,8 @@ await a.p
 	})
 	.catch(() => {});
 const inviteUrl = ((await linkBtn.textContent().catch(() => '')) ?? '').trim();
-note(`A Einladungslink: ${inviteUrl}`);
-if (!/invite\/[\w-]{22}/.test(inviteUrl)) bug('Einladungslink fehlt/ungültig');
+note(`A invite link: ${inviteUrl}`);
+if (!/invite\/[\w-]{22}/.test(inviteUrl)) bug('Invite link missing/invalid');
 const token = inviteUrl.split('/').pop();
 await a.p.screenshot({ path: `${process.env.SHOTS_DIR}/real-created.png` });
 // ---- account B joins
@@ -113,7 +113,7 @@ watch(b.p, 'B');
 await b.p.goto(`/invite/${token}`);
 await wait(1200);
 note(
-	`B Einladung (ausgeloggt): ${(await b.p.locator('main').innerText()).replace(/\s+/g, ' ').slice(0, 160)}`,
+	`B invite (logged out): ${(await b.p.locator('main').innerText()).replace(/\s+/g, ' ').slice(0, 160)}`,
 );
 await b.p.getByRole('link', { name: 'Konto erstellen' }).click();
 await wait(500);
@@ -127,35 +127,35 @@ await wait(1500);
 const msB = await mails(B.email);
 const confB = msB[0];
 const lB = confB?.HTML.match(/href="([^"]*auth[^"]*)"/)?.[1]?.replace(/&amp;/g, '&');
-if (!lB) bug('B keine Bestätigungsmail');
+if (!lB) bug('B no confirmation mail');
 else {
 	await b.p.goto(lB);
 	await wait(2500);
 }
-note(`B nach Bestätigung: ${b.p.url()}`);
+note(`B after confirmation: ${b.p.url()}`);
 if (!/invite/.test(b.p.url()))
-	bug(`B landet nach Bestätigung nicht auf der Einladung: ${b.p.url()}`);
+	bug(`B does not land on the invite after confirmation: ${b.p.url()}`);
 else {
 	note(
-		`B Beitrittsseite: ${(await b.p.locator('main').innerText()).replace(/\s+/g, ' ').slice(0, 200)}`,
+		`B join page: ${(await b.p.locator('main').innerText()).replace(/\s+/g, ' ').slice(0, 200)}`,
 	);
 	await b.p.getByRole('button', { name: 'Beitreten', exact: true }).click();
 	await wait(2500);
-	note(`B nach Beitritt: ${b.p.url()}`);
-	if (!/\/wg\//.test(b.p.url())) bug(`B nach Beitritt nicht in der WG: ${b.p.url()}`);
+	note(`B after joining: ${b.p.url()}`);
+	if (!/\/wg\//.test(b.p.url())) bug(`B not in the WG after joining: ${b.p.url()}`);
 }
 const wgPath = new URL(b.p.url()).pathname.split('/').slice(0, 3).join('/');
-note(`WG-Pfad: ${wgPath}`);
-// ---- Daten anlegen via UI: Einkauf
+note(`WG path: ${wgPath}`);
+// ---- Create data via UI: shopping
 await a.p.goto(`${wgPath}/shopping`);
 await wait(1500);
 await a.p.getByPlaceholder(/Reis/).fill('Hafermilch');
 await a.p.keyboard.press('Enter');
 await wait(1500);
-note(`A Einkauf: ${(await a.p.locator('main').innerText()).replace(/\s+/g, ' ').slice(0, 160)}`);
+note(`A shopping: ${(await a.p.locator('main').innerText()).replace(/\s+/g, ' ').slice(0, 160)}`);
 await b.p.goto(`${wgPath}/shopping`);
 await wait(2000);
-if (!(await b.p.locator('text=Hafermilch').count())) bug('B sieht Hafermilch von A nicht');
+if (!(await b.p.locator('text=Hafermilch').count())) bug("B does not see Anna's Hafermilch");
 // Chores + expense via UI take long; load the dashboard instead
 for (const sub of [
 	'',
@@ -178,11 +178,11 @@ for (const sub of [
 		const t = (await pg.locator('body').innerText()).replace(/Fehler per E-Mail melden/g, '');
 		if (/Fehler|konnte nicht|nicht geladen/i.test(t))
 			bug(
-				`${who} ${sub || '/'} zeigt Fehlertext: ${t.match(/[^\n]*(Fehler|konnte nicht|nicht geladen)[^\n]*/i)?.[0] ?? ''}`,
+				`${who} ${sub || '/'} shows error text: ${t.match(/[^\n]*(Fehler|konnte nicht|nicht geladen)[^\n]*/i)?.[0] ?? ''}`,
 			);
 	}
 }
-// ---- Abmelden + Code-Login A
+// ---- Sign out + code login A
 await a.p.goto(`${wgPath}/settings`);
 await wait(1000);
 await a.p.screenshot({ path: `${process.env.SHOTS_DIR}/real-settings.png` });
@@ -200,7 +200,7 @@ note(`A sign-out status ${out}`);
 await a.p.goto('/login');
 await wait(1200);
 note(
-	`A nach Sign-out /neu: ${(await a.p.locator('main').innerText()).replace(/\s+/g, ' ').slice(0, 120)}`,
+	`A after sign-out /login: ${(await a.p.locator('main').innerText()).replace(/\s+/g, ' ').slice(0, 120)}`,
 );
 await a.p.getByLabel('E-Mail-Adresse').fill(A.email);
 await a.p.getByRole('button', { name: 'Code per E-Mail senden' }).click();
@@ -213,21 +213,21 @@ const codeMail = (await mails(A.email)).find((m) =>
 const code = `${codeMail?.Text} ${codeMail?.HTML.replace(/<[^>]+>/g, ' ')}`.match(
 	/\b(\d{8})\b/,
 )?.[1];
-note(`A Code-Mail: ${codeMail ? codeMail.Subject : 'KEINE'} code=${code}`);
-if (!code) bug('Code-Login: keine 8-stellige Code-Mail');
+note(`A code mail: ${codeMail ? codeMail.Subject : 'NONE'} code=${code}`);
+if (!code) bug('Code login: no 8-digit code mail');
 else {
 	await a.p.getByLabel(/stelliger Code/).fill(code);
 	await a.p.getByRole('button', { name: 'Anmelden', exact: true }).click();
 	await wait(2500);
-	note(`A nach Code-Login: ${a.p.url()}`);
+	note(`A after code login: ${a.p.url()}`);
 }
 if (/\/login$/.test(a.p.url()) || !/\/wg\//.test(a.p.url()))
-	note(`A landet nicht automatisch in WG (ok wenn Auswahl): ${a.p.url()}`);
-// Reload-Persistenz
+	note(`A does not land in a WG automatically (ok if selection): ${a.p.url()}`);
+// Reload persistence
 await a.p.reload();
 await wait(1500);
 note(
-	`A nach Reload: ${a.p.url()} signedIn-Cookie: ${(await a.c.cookies()).some((c) => c.name === 'manawg_signed_in')}`,
+	`A after reload: ${a.p.url()} signedIn-Cookie: ${(await a.c.cookies()).some((c) => c.name === 'manawg_signed_in')}`,
 );
 for (const entry of bugs) process.stdout.write(`- ${entry}\n`);
 await browser.close();

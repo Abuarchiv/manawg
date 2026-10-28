@@ -73,11 +73,9 @@ const pages = [
 	'/activity',
 	'/import',
 	'/settings',
-	'/settings?tab=hinweise',
-	'/settings?tab=zugang',
-	'/settings?tab=daten',
-	'/mitglieder',
-	'/einladungen',
+	'/settings#notifications',
+	'/settings#access',
+	'/settings#data',
 ];
 for (const sub of pages) {
 	await page.goto(`/wg/${code}${sub}`);

@@ -7,12 +7,12 @@ const { A, B, code, annaId, benId } = await setup();
 
 // ---- Shopping
 const s1 = await call(A, 'POST', `/api/wg/${code}/shopping`, { name: 'Hafermilch', quantity: '2' });
-expect(s1.status < 300, 'Einkauf: Artikel anlegen', JSON.stringify(s1.body));
+expect(s1.status < 300, 'Shopping: create item', JSON.stringify(s1.body));
 const sItem = s1.body.item ?? s1.body;
 const sList = await call(B, 'GET', `/api/wg/${code}/shopping`);
 expect(
 	JSON.stringify(sList.body).includes('Hafermilch'),
-	'Einkauf: B sieht Artikel',
+	'Shopping: B sees item',
 	JSON.stringify(sList.body).slice(0, 200),
 );
 const s2 = await call(B, 'PATCH', `/api/wg/${code}/shopping/${sItem.id}`, {
@@ -20,18 +20,18 @@ const s2 = await call(B, 'PATCH', `/api/wg/${code}/shopping/${sItem.id}`, {
 	expectedUpdatedAt: sItem.updatedAt,
 	expectedBoughtAt: null,
 });
-expect(s2.status < 300, 'Einkauf: abhaken', JSON.stringify(s2.body));
+expect(s2.status < 300, 'Shopping: tick off', JSON.stringify(s2.body));
 const s3 = await call(A, 'PATCH', `/api/wg/${code}/shopping/${sItem.id}`, {
 	name: 'Sojamilch',
 	expectedUpdatedAt: sItem.updatedAt,
 	expectedBoughtAt: null,
 });
-expect(s3.status === 409, 'Einkauf: veralteter Stand = 409', JSON.stringify(s3));
+expect(s3.status === 409, 'Shopping: stale state = 409', JSON.stringify(s3));
 const s4 = await call(A, 'DELETE', `/api/wg/${code}/shopping/${sItem.id}`);
-expect(s4.status < 300, 'Einkauf: löschen', JSON.stringify(s4.body));
+expect(s4.status < 300, 'Shopping: delete', JSON.stringify(s4.body));
 expect(
 	+sql(`select count(*) from shopping_items where id='${sItem.id}'`) === 0,
-	'Einkauf: in DB weg',
+	'Shopping: gone from DB',
 );
 
 // ---- Inventory
@@ -41,21 +41,21 @@ const i1 = await call(A, 'POST', `/api/wg/${code}/inventory`, {
 	threshold: 2,
 	category: 'putzmittel',
 });
-expect(i1.status < 300, 'Inventar: anlegen', JSON.stringify(i1.body));
+expect(i1.status < 300, 'Inventory: create', JSON.stringify(i1.body));
 const invItem = i1.body.item ?? i1.body;
 const iDup = await call(B, 'POST', `/api/wg/${code}/inventory`, { name: 'klopapier' });
-expect(iDup.status === 409, 'Inventar: Duplikat (case-insensitive) = 409', JSON.stringify(iDup));
+expect(iDup.status === 409, 'Inventory: duplicate (case-insensitive) = 409', JSON.stringify(iDup));
 const c1 = await call(B, 'POST', `/api/wg/${code}/inventory/${invItem.id}/consume`, { delta: -4 });
-expect(c1.status < 300, 'Inventar: verbrauchen', JSON.stringify(c1.body));
+expect(c1.status < 300, 'Inventory: consume', JSON.stringify(c1.body));
 expect(
 	c1.body.item?.quantity === 1 && c1.body.autoPushedShoppingItemId,
-	'Inventar: unter Schwelle → Einkaufsliste',
+	'Inventory: below threshold → shopping list',
 	JSON.stringify(c1.body),
 );
 const c2 = await call(B, 'POST', `/api/wg/${code}/inventory/${invItem.id}/consume`, { delta: -9 });
 expect(
 	c2.status < 300 && c2.body.item?.quantity === 0 && c2.body.clamped === true,
-	'Inventar: nie negativ (clamped)',
+	'Inventory: never negative (clamped)',
 	JSON.stringify(c2.body),
 );
 const i2 = await call(A, 'PATCH', `/api/wg/${code}/inventory/${invItem.id}`, {
@@ -63,9 +63,9 @@ const i2 = await call(A, 'PATCH', `/api/wg/${code}/inventory/${invItem.id}`, {
 	expectedQuantity: 0,
 	expectedUpdatedAt: c2.body.item?.updatedAt,
 });
-expect(i2.status < 300, 'Inventar: auffüllen', JSON.stringify(i2.body));
+expect(i2.status < 300, 'Inventory: restock', JSON.stringify(i2.body));
 const i3 = await call(A, 'DELETE', `/api/wg/${code}/inventory/${invItem.id}`);
-expect(i3.status < 300, 'Inventar: löschen', JSON.stringify(i3.body));
+expect(i3.status < 300, 'Inventory: delete', JSON.stringify(i3.body));
 
 // ---- Events
 const e1 = await call(A, 'POST', `/api/wg/${code}/events`, {
@@ -75,58 +75,68 @@ const e1 = await call(A, 'POST', `/api/wg/${code}/events`, {
 	location: 'Küche',
 	description: null,
 });
-expect(e1.status < 300, 'Kalender: Termin anlegen', JSON.stringify(e1.body));
+expect(e1.status < 300, 'Calendar: create event', JSON.stringify(e1.body));
 const ev = e1.body.event ?? e1.body;
 const eBad = await call(A, 'POST', `/api/wg/${code}/events`, {
 	title: 'Falsch',
 	startsAt: iso(2 * DAY),
 	endsAt: iso(DAY),
 });
-expect(eBad.status === 400, 'Kalender: Ende vor Anfang = 400', JSON.stringify(eBad));
+expect(eBad.status === 400, 'Calendar: end before start = 400', JSON.stringify(eBad));
 const e2x = await call(B, 'PATCH', `/api/wg/${code}/events/${ev.id}`, { title: 'Gehackt' });
-expect(e2x.status === 403, 'Kalender: Fremder ändert nicht', JSON.stringify(e2x));
+expect(e2x.status === 403, 'Calendar: others cannot edit', JSON.stringify(e2x));
 const e2 = await call(A, 'PATCH', `/api/wg/${code}/events/${ev.id}`, { title: 'WG-Versammlung' });
-expect(e2.status < 300, 'Kalender: umbenennen', JSON.stringify(e2.body));
+expect(e2.status < 300, 'Calendar: rename', JSON.stringify(e2.body));
 const er = await call(A, 'POST', `/api/wg/${code}/events`, {
 	title: 'Putztag',
 	startsAt: iso(DAY),
 	allDay: true,
 	recurrence: 'FREQ=WEEKLY',
 });
-expect(er.status < 300, 'Kalender: Serie anlegen', JSON.stringify(er.body));
-const serie = er.body.event ?? er.body;
+expect(er.status < 300, 'Calendar: create series', JSON.stringify(er.body));
+const series = er.body.event ?? er.body;
 const list = await call(B, 'GET', `/api/wg/${code}/events?from=${iso(0)}&to=${iso(30 * DAY)}`);
-expect(list.status === 200, 'Kalender: Liste', JSON.stringify(list.body).slice(0, 200));
-const occStart = serie.startsAt ?? iso(DAY);
-const oc = await call(A, 'POST', `/api/wg/${code}/events/${serie.id}/occurrence`, {
+expect(list.status === 200, 'Calendar: list', JSON.stringify(list.body).slice(0, 200));
+const occStart = series.startsAt ?? iso(DAY);
+const oc = await call(A, 'POST', `/api/wg/${code}/events/${series.id}/occurrence`, {
 	action: 'cancel',
 	occurrenceStartsAt: occStart,
 });
-expect(oc.status < 300, 'Kalender: Einzeltermin der Serie absagen', JSON.stringify(oc.body));
+expect(
+	oc.status < 300,
+	'Calendar: cancel single occurrence of the series',
+	JSON.stringify(oc.body),
+);
 const e3 = await call(A, 'DELETE', `/api/wg/${code}/events/${ev.id}`);
-expect(e3.status < 300, 'Kalender: löschen', JSON.stringify(e3.body));
+expect(e3.status < 300, 'Calendar: delete', JSON.stringify(e3.body));
 
 // ---- Calendar subscription
 const cs = await call(A, 'POST', `/api/wg/${code}/calendar-subscription`, {});
-expect(cs.status < 300, 'Kalender-Abo: anlegen', JSON.stringify(cs.body));
+expect(cs.status < 300, 'Calendar subscription: create', JSON.stringify(cs.body));
 const feed = cs.body.subscription?.feedUrl ?? cs.body.feedUrl ?? '';
 if (feed) {
 	const ics = await fetch(feed.startsWith('http') ? feed : `${BASE}${feed}`);
 	const text = await ics.text();
 	expect(
 		ics.status === 200 && text.includes('BEGIN:VCALENDAR'),
-		'Kalender-Abo: ICS lädt',
+		'Calendar subscription: ICS loads',
 		`${ics.status} ${text.slice(0, 120)}`,
 	);
-	expect(text.includes('Putztag'), 'Kalender-Abo: Serie im Feed', text.slice(0, 300));
+	expect(text.includes('Putztag'), 'Calendar subscription: series in feed', text.slice(0, 300));
 } else {
-	bugs.push(`Kalender-Abo: keine URL in Antwort :: ${JSON.stringify(cs.body).slice(0, 200)}`);
+	bugs.push(
+		`Calendar subscription: no URL in response :: ${JSON.stringify(cs.body).slice(0, 200)}`,
+	);
 }
 const csDel = await call(A, 'DELETE', `/api/wg/${code}/calendar-subscription`);
-expect(csDel.status < 300, 'Kalender-Abo: löschen', JSON.stringify(csDel.body));
+expect(csDel.status < 300, 'Calendar subscription: delete', JSON.stringify(csDel.body));
 if (feed) {
 	const gone = await fetch(feed.startsWith('http') ? feed : `${BASE}${feed}`);
-	expect(gone.status >= 400, 'Kalender-Abo: Feed nach Löschen gesperrt', String(gone.status));
+	expect(
+		gone.status >= 400,
+		'Calendar subscription: feed blocked after delete',
+		String(gone.status),
+	);
 }
 
 // ---- Expenses, settlement, manual payment
@@ -143,13 +153,13 @@ const ex = async (u, amt, payer, ids) =>
 	});
 const x1 = await ex(A, 6000, annaId, [annaId, benId]); // Ben owes Anna 30
 const x2 = await ex(B, 2000, benId, [annaId, benId]); // Anna owes Ben 10 → net Ben owes Anna 20
-expect(x1.status < 300 && x2.status < 300, 'Ausgaben anlegen', `${x1.status} ${x2.status}`);
+expect(x1.status < 300 && x2.status < 300, 'Create expenses', `${x1.status} ${x2.status}`);
 const dash = await call(B, 'GET', `/api/wg/${code}/dashboard`);
 expect(dash.status === 200, 'Dashboard', JSON.stringify(dash.body).slice(0, 200));
 const bal = await call(A, 'GET', `/api/wg/${code}/reminders/balances`);
 expect(
 	bal.body.balances?.some((b) => b.amount_cents === 2000),
-	'Saldo: Ben schuldet Anna 20 €',
+	'Balance: Ben owes Anna 20 €',
 	JSON.stringify(bal.body),
 );
 const settlement = await call(
@@ -159,7 +169,7 @@ const settlement = await call(
 );
 expect(
 	settlement.status === 200,
-	'Abrechnung: Übersicht',
+	'Settlement: overview',
 	JSON.stringify(settlement.body).slice(0, 300),
 );
 if (VERBOSE) process.stdout.write(`settlement ${JSON.stringify(settlement.body).slice(0, 1500)}\n`);
@@ -169,35 +179,35 @@ const pmBad = await call(B, 'POST', `/api/wg/${code}/payments/manual`, {
 	toMemberId: annaId,
 	expectedNetCents: 1500,
 });
-expect(pmBad.status === 409, 'Barzahlung: veralteter Saldo = 409', JSON.stringify(pmBad));
+expect(pmBad.status === 409, 'Cash payment: stale balance = 409', JSON.stringify(pmBad));
 const pm = await call(B, 'POST', `/api/wg/${code}/payments/manual`, {
 	fromMemberId: benId,
 	toMemberId: annaId,
 	expectedNetCents: 2000,
 });
-expect(pm.status < 300, 'Barzahlung: 20 € buchen', JSON.stringify(pm.body));
+expect(pm.status < 300, 'Cash payment: book 20 €', JSON.stringify(pm.body));
 const bal2 = await call(A, 'GET', `/api/wg/${code}/reminders/balances`);
 expect(
 	(bal2.body.balances ?? []).every((b) => b.amount_cents === 0) ||
 		(bal2.body.balances ?? []).length === 0,
-	'Saldo nach Barzahlung: 0',
+	'Balance after cash payment: 0',
 	JSON.stringify(bal2.body),
 );
 expect(
 	+sql(
 		`select count(*) from expense_payments where wg_id=(select id from wgs where share_code='${code}') and status='completed' and amount_cents=2000`,
 	) === 1,
-	'Barzahlung in DB (completed, 2000)',
+	'Cash payment in DB (completed, 2000)',
 );
 const pmAgain = await call(B, 'POST', `/api/wg/${code}/payments/manual`, {
 	fromMemberId: benId,
 	toMemberId: annaId,
 	expectedNetCents: 2000,
 });
-expect(pmAgain.status === 409, 'Barzahlung: doppelt = 409', JSON.stringify(pmAgain));
+expect(pmAgain.status === 409, 'Cash payment: duplicate = 409', JSON.stringify(pmAgain));
 // Fresh debt and settle-batch with the reviewed snapshot
 const x3 = await ex(A, 1000, annaId, [benId]); // Ben owes Anna 10
-expect(x3.status < 300, 'Ausgabe 10 € nur für Ben', JSON.stringify(x3.body));
+expect(x3.status < 300, '10 € expense for Ben only', JSON.stringify(x3.body));
 const st2 = await call(
 	B,
 	'GET',
@@ -207,7 +217,7 @@ const d2 =
 	st2.body.netCents !== undefined ? st2.body : (st2.body.settlement ?? st2.body.debt ?? null);
 expect(
 	d2 && d2.netCents === 1000,
-	'Abrechnung: offener Saldo 10 €',
+	'Settlement: open balance 10 €',
 	JSON.stringify(st2.body).slice(0, 400),
 );
 if (d2) {
@@ -224,7 +234,7 @@ if (d2) {
 			})),
 		},
 	});
-	expect(sb.status < 300, 'Abrechnung: Ausgleich bestätigen', JSON.stringify(sb.body));
+	expect(sb.status < 300, 'Settlement: confirm settle', JSON.stringify(sb.body));
 	const sbAgain = await call(B, 'POST', `/api/wg/${code}/expenses/settle-batch`, {
 		fromMemberId: benId,
 		toMemberId: annaId,
@@ -240,37 +250,37 @@ if (d2) {
 	});
 	expect(
 		sbAgain.status === 409 || sbAgain.status === 400,
-		'Abrechnung: zweiter Ausgleich abgelehnt',
+		'Settlement: second settle rejected',
 		JSON.stringify(sbAgain),
 	);
 	const bal3 = await call(A, 'GET', `/api/wg/${code}/reminders/balances`);
 	expect(
 		(bal3.body.balances ?? []).every((b) => b.amount_cents === 0) ||
 			(bal3.body.balances ?? []).length === 0,
-		'Saldo nach Ausgleich: 0',
+		'Balance after settle: 0',
 		JSON.stringify(bal3.body),
 	);
 }
 const delSettled = await call(A, 'DELETE', `/api/wg/${code}/expenses/${x1.body.expense?.id}`);
 expect(
 	delSettled.status < 300,
-	'Ausgabe nach Barzahlung löschbar (Zahlung bleibt als Guthaben)',
+	'Expense deletable after cash payment (payment stays as credit)',
 	JSON.stringify(delSettled.body),
 );
 const delSettledSplit = await call(A, 'DELETE', `/api/wg/${code}/expenses/${x3.body.expense?.id}`);
 expect(
 	delSettledSplit.status === 409,
-	'Ausgabe mit beglichenem Anteil nicht löschbar',
+	'Expense with settled share not deletable',
 	JSON.stringify(delSettledSplit),
 );
 const xe = await call(B, 'PATCH', `/api/wg/${code}/expenses/${x2.body.expense?.id}`, {
 	description: 'Getränke',
 });
-expect(xe.status < 300 || xe.status === 409, 'Ausgabe bearbeiten', JSON.stringify(xe.body));
+expect(xe.status < 300 || xe.status === 409, 'Edit expense', JSON.stringify(xe.body));
 const xStranger = await call(B, 'PATCH', `/api/wg/${code}/expenses/${x1.body.expense?.id}`, {
 	description: 'fremd',
 });
-expect(xStranger.status >= 400, 'fremde Ausgabe nicht bearbeitbar', JSON.stringify(xStranger));
+expect(xStranger.status >= 400, 'foreign expense not editable', JSON.stringify(xStranger));
 
 // ---- Recurring + cron
 const rc = await call(A, 'POST', `/api/wg/${code}/recurring-expenses`, {
@@ -285,33 +295,33 @@ const rc = await call(A, 'POST', `/api/wg/${code}/recurring-expenses`, {
 		{ debtorMemberId: benId, amountCents: 2000 },
 	],
 });
-expect(rc.status < 300, 'Fixkosten: Vorlage anlegen', JSON.stringify(rc.body));
+expect(rc.status < 300, 'Recurring: create template', JSON.stringify(rc.body));
 const rec = rc.body.recurringExpense ?? rc.body;
 const cronNoAuth = await fetch(`${BASE}/api/cron/recurring-advance`);
-expect(cronNoAuth.status === 401, 'Cron ohne Secret = 401', String(cronNoAuth.status));
+expect(cronNoAuth.status === 401, 'Cron without secret = 401', String(cronNoAuth.status));
 const cron = await fetch(`${BASE}/api/cron/recurring-advance`, {
 	headers: { authorization: `Bearer ${CRON}` },
 });
 expect(
 	cron.status === 200,
-	'Cron Fixkosten läuft',
+	'Recurring cron runs',
 	`${cron.status} ${(await cron.text()).slice(0, 200)}`,
 );
 expect(
 	+sql(
 		`select count(*) from expenses where description='Internet' and wg_id=(select id from wgs where share_code='${code}')`,
 	) === 1,
-	'Fixkosten: Cron hat genau eine Ausgabe gebucht',
+	'Recurring: cron booked exactly one expense',
 );
 const cron2 = await fetch(`${BASE}/api/cron/recurring-advance`, {
 	headers: { authorization: `Bearer ${CRON}` },
 });
-expect(cron2.status === 200, 'Cron zweiter Lauf ok');
+expect(cron2.status === 200, 'Cron second run ok');
 expect(
 	+sql(
 		`select count(*) from expenses where description='Internet' and wg_id=(select id from wgs where share_code='${code}')`,
 	) === 1,
-	'Fixkosten: zweiter Cron-Lauf bucht nicht doppelt',
+	'Recurring: second cron run does not book twice',
 );
 const recNow = await call(A, 'GET', `/api/wg/${code}/recurring-expenses`);
 const recRow =
@@ -320,17 +330,17 @@ const rp = await call(A, 'PATCH', `/api/wg/${code}/recurring-expenses/${rec.id}`
 	paused: true,
 	expectedNextDueAt: recRow.nextDueAt,
 });
-expect(rp.status < 300, 'Fixkosten: pausieren', JSON.stringify(rp.body));
+expect(rp.status < 300, 'Recurring: pause', JSON.stringify(rp.body));
 const rpB = await call(B, 'PATCH', `/api/wg/${code}/recurring-expenses/${rec.id}`, {
 	amountCents: 1,
 	expectedNextDueAt: recRow.nextDueAt,
 });
 expect(
 	rpB.status === 403 || rpB.status === 400,
-	'Fixkosten: Fremder darf nicht ändern',
+	'Recurring: others cannot edit',
 	JSON.stringify(rpB),
 );
 const rd = await call(A, 'DELETE', `/api/wg/${code}/recurring-expenses/${rec.id}`);
-expect(rd.status < 300, 'Fixkosten: löschen', JSON.stringify(rd.body));
+expect(rd.status < 300, 'Recurring: delete', JSON.stringify(rd.body));
 
 await import('./modules-admin.mjs');

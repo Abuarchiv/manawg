@@ -19,10 +19,10 @@ const pv = await call(A, 'POST', `${api}/imports/preview`, {
 	payload: csv,
 	memberMapping: mapping,
 });
-expect(pv.status === 200, 'Import: Vorschau', JSON.stringify(pv.body).slice(0, 300));
+expect(pv.status === 200, 'Import: preview', JSON.stringify(pv.body).slice(0, 300));
 expect(
 	pv.body.parsed?.length === 2 && pv.body.rejected?.length === 1,
-	'Import: 2 Zeilen gültig, USD-Zeile abgelehnt',
+	'Import: 2 rows valid, USD row rejected',
 	`parsed=${pv.body.parsed?.length} rejected=${JSON.stringify(pv.body.rejected).slice(0, 200)}`,
 );
 const cm = await call(A, 'POST', `${api}/imports/commit`, {
@@ -31,23 +31,23 @@ const cm = await call(A, 'POST', `${api}/imports/commit`, {
 	memberMapping: pv.body.memberMapping ?? mapping,
 	previewPayloadHash: pv.body.payloadHash,
 });
-expect(cm.status < 300, 'Import: Übernahme', JSON.stringify(cm.body).slice(0, 300));
+expect(cm.status < 300, 'Import: commit', JSON.stringify(cm.body).slice(0, 300));
 const afterImport = await call(A, 'GET', `${api}/expenses`);
 const pizza = afterImport.body.expenses?.find((e) => e.description === 'Pizza');
-const strom = afterImport.body.expenses?.find((e) => e.description === 'Strom');
+const electricity = afterImport.body.expenses?.find((e) => e.description === 'Strom');
 expect(
 	pizza?.amountCents === 2000 &&
 		pizza.paidByMemberId === annaId &&
 		pizza.splits?.some((s) => s.debtorMemberId === benId && s.amountCents === 1000),
-	'Import: Pizza 20 € von Anna, Ben schuldet 10 €',
+	'Import: Pizza 20 € paid by Anna, Ben owes 10 €',
 	JSON.stringify(pizza).slice(0, 300),
 );
 expect(
-	strom?.amountCents === 6000 &&
-		strom.paidByMemberId === benId &&
-		strom.splits?.some((s) => s.debtorMemberId === annaId && s.amountCents === 3000),
-	'Import: Strom 60 € von Ben, Anna schuldet 30 €',
-	JSON.stringify(strom).slice(0, 300),
+	electricity?.amountCents === 6000 &&
+		electricity.paidByMemberId === benId &&
+		electricity.splits?.some((s) => s.debtorMemberId === annaId && s.amountCents === 3000),
+	'Import: Strom 60 € paid by Ben, Anna owes 30 €',
+	JSON.stringify(electricity).slice(0, 300),
 );
 const cm2 = await call(A, 'POST', `${api}/imports/commit`, {
 	source: 'splitwise_csv',
@@ -58,15 +58,15 @@ const cm2 = await call(A, 'POST', `${api}/imports/commit`, {
 const afterDup = await call(A, 'GET', `${api}/expenses`);
 expect(
 	cm2.status < 300 && afterDup.body.expenses?.length === afterImport.body.expenses?.length,
-	'Import: zweite Übernahme legt keine Duplikate an',
-	`${cm2.status} ${JSON.stringify(cm2.body).slice(0, 200)} vorher=${afterImport.body.expenses?.length} nachher=${afterDup.body.expenses?.length}`,
+	'Import: second commit creates no duplicates',
+	`${cm2.status} ${JSON.stringify(cm2.body).slice(0, 200)} before=${afterImport.body.expenses?.length} after=${afterDup.body.expenses?.length}`,
 );
 
 // ---- 2. Export JSON and CSV contain the imported rows
 const exJson = await call(A, 'GET', `${api}/export`);
 expect(
 	exJson.status === 200 && JSON.stringify(exJson.body).includes('Pizza'),
-	'Export JSON enthält Pizza',
+	'Export JSON contains Pizza',
 	JSON.stringify(exJson.body).slice(0, 200),
 );
 const exCsvRes = await A.ctx.fetch(`${api}/export?format=csv&section=expenses`);
@@ -77,14 +77,14 @@ expect(
 		csvLines.length >= 3 &&
 		exCsv.includes('Pizza') &&
 		exCsv.includes('Strom'),
-	'Export CSV: Kopf + 2 Zeilen mit Pizza und Strom',
+	'Export CSV: header + 2 rows with Pizza and Strom',
 	`${exCsvRes.status()} ${exCsv.slice(0, 300)}`,
 );
 // Column count per line with quoted fields respected (splits carry ';' inside quotes).
 const columns = (line) => line.replace(/"[^"]*"/g, 'q').split(';').length;
 expect(
 	new Set(csvLines.map(columns)).size === 1,
-	'Export CSV: alle Zeilen gleiche Spaltenzahl',
+	'Export CSV: all rows have the same column count',
 	csvLines.map(columns).join(','),
 );
 
@@ -101,12 +101,12 @@ const mk = (d, desc) =>
 			{ debtorMemberId: benId, amountCents: 500 },
 		],
 	});
-const r1 = await mk('2026-08-31T22:30:00.000Z', 'GrenzeSeptAnfang'); // 1.9. 00:30 Berlin
-const r2 = await mk('2026-09-30T21:59:00.000Z', 'GrenzeSeptEnde'); // 30.9. 23:59 Berlin
-const r3 = await mk('2026-09-30T22:30:00.000Z', 'GrenzeOktAnfang'); // 1.10. 00:30 Berlin
+const r1 = await mk('2026-08-31T22:30:00.000Z', 'GrenzeSeptAnfang'); // Sep 1 00:30 Berlin
+const r2 = await mk('2026-09-30T21:59:00.000Z', 'GrenzeSeptEnde'); // Sep 30 23:59 Berlin
+const r3 = await mk('2026-09-30T22:30:00.000Z', 'GrenzeOktAnfang'); // Oct 1 00:30 Berlin
 expect(
 	r1.status < 300 && r2.status < 300 && r3.status < 300,
-	'Monatsgrenze: drei Ausgaben angelegt',
+	'Month boundary: three expenses created',
 	`${r1.status} ${r2.status} ${r3.status}`,
 );
 const browser = await chromium.launch();
@@ -129,26 +129,26 @@ const statementText = async (month) => {
 };
 const sept = await statementText('2026-09');
 const aug = await statementText('2026-08');
-const okt = await statementText('2026-10');
+const oct = await statementText('2026-10');
 expect(
 	sept.includes('GrenzeSeptAnfang') &&
 		sept.includes('GrenzeSeptEnde') &&
 		!sept.includes('GrenzeOktAnfang'),
-	'Abrechnung September: 1.9. 00:30 und 30.9. 23:59 Berlin drin, 1.10. 00:30 nicht',
+	'Statement September: Sep 1 00:30 and Sep 30 23:59 Berlin in, Oct 1 00:30 not',
 	sept.slice(0, 400),
 );
 expect(
 	!aug.includes('GrenzeSeptAnfang'),
-	'Abrechnung August: 1.9. 00:30 Berlin nicht drin',
+	'Statement August: Sep 1 00:30 Berlin not in',
 	aug.slice(0, 300),
 );
 expect(
-	okt.includes('GrenzeOktAnfang') && okt.includes('Pizza'),
-	'Abrechnung Oktober: 1.10. 00:30 Berlin und Import drin',
-	okt.slice(0, 300),
+	oct.includes('GrenzeOktAnfang') && oct.includes('Pizza'),
+	'Statement October: Oct 1 00:30 Berlin and import in',
+	oct.slice(0, 300),
 );
 const septSum = sept.match(/Gesamt\s+([\d.,]+)\s*€/)?.[1];
-expect(septSum === '20,00', 'Abrechnung September: Gesamt 20,00 €', septSum ?? sept.slice(0, 200));
+expect(septSum === '20,00', 'Statement September: total 20,00 €', septSum ?? sept.slice(0, 200));
 
 await import('./data-load.mjs').then((m) =>
 	m.run({ A, B, code, annaId, benId, page, consoleErrors }),

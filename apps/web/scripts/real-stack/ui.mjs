@@ -74,7 +74,7 @@ async function step(s, name, fn) {
 			'',
 		);
 		const m = text.match(/[^\n]*(fehlgeschlagen|konnte nicht|nicht geladen|Fehler)[^\n]*/i);
-		if (m) bug(`${id} zeigt Fehlertext: ${m[0].slice(0, 160)}`);
+		if (m) bug(`${id} shows error text: ${m[0].slice(0, 160)}`);
 		note(`${id} ok`);
 	} catch (e) {
 		await s.page.screenshot({ path: `${OUT}/${id}-FAIL.png`, fullPage: true }).catch(() => {});
@@ -111,7 +111,7 @@ let inviteUrl = '';
 await step(A, 'invite-link', async (p) => {
 	const text = await p.getByRole('button', { name: 'Einladungslink kopieren' }).innerText();
 	inviteUrl = text.match(/https?:\/\/\S+\/invite\/\S+/)?.[0] ?? '';
-	if (!inviteUrl) throw new Error(`kein Einladungslink: ${text}`);
+	if (!inviteUrl) throw new Error(`no invite link: ${text}`);
 	await p.getByRole('button', { name: 'Zur WG', exact: true }).click();
 	await p.waitForURL(/\/wg\//);
 	wgPath = new URL(p.url()).pathname.replace(/\/$/, '');
@@ -126,12 +126,12 @@ await step(B, 'join', async (p) => {
 			timeout: 5000,
 		})
 		.catch(() => {});
-	if (!(await nameField.inputValue())) bug('B Beitreten: Anzeigename nicht vorbelegt');
+	if (!(await nameField.inputValue())) bug('B join: display name not prefilled');
 	await p.getByRole('button', { name: 'Beitreten', exact: true }).click();
 	await p.waitForURL(/\/wg\//, { timeout: 15_000 });
 });
 
-// ---- Einkauf
+// ---- Shopping
 await step(A, 'shopping-add', async (p) => {
 	await p.goto(`${wgPath}/shopping`);
 	// WebKit hydrates later than Chromium; typing before hydration is lost.
@@ -151,7 +151,7 @@ await step(A, 'shopping-after', async (p) => {
 	await p.waitForLoadState('networkidle');
 });
 
-// ---- Vorräte
+// ---- Supplies
 await step(A, 'supply-add', async (p) => {
 	await p.goto(`${wgPath}/supplies`);
 	await p.getByRole('button', { name: 'Vorrat hinzufügen' }).click();
@@ -169,7 +169,7 @@ await step(B, 'supply-plus', async (p) => {
 	await wait(800);
 });
 
-// ---- Ausgaben
+// ---- Expenses
 await step(A, 'expense-add', async (p) => {
 	await p.goto(`${wgPath}/expenses`);
 	await p.getByRole('button', { name: 'Ausgabe hinzufügen' }).click();
@@ -201,7 +201,7 @@ await step(A, 'reminders', async (p) => {
 	await p.waitForLoadState('networkidle');
 });
 
-// ---- Putzen
+// ---- Chores
 await step(A, 'chores-add', async (p) => {
 	await p.goto(`${wgPath}/chores`);
 	await p.getByRole('button', { name: 'Putzaufgabe hinzufügen' }).click();
@@ -224,7 +224,7 @@ await step(A, 'chores-done', async (p) => {
 	await wait(800);
 });
 
-// ---- Kalender
+// ---- Calendar
 await step(A, 'calendar-add', async (p) => {
 	await p.goto(`${wgPath}/calendar`);
 	const add = p
@@ -241,7 +241,7 @@ await step(B, 'calendar-agenda', async (p) => {
 	await wait(500);
 });
 
-// ---- Pinnwand
+// ---- Pinboard
 await step(A, 'pinboard-add', async (p) => {
 	await p.goto(`${wgPath}/pinboard`);
 	await p.getByRole('button', { name: 'Beitrag hinzufügen' }).click();
@@ -283,7 +283,7 @@ await step(B, 'chat-read', async (p) => {
 	await p.getByText('Hallo zusammen').first().waitFor();
 });
 
-// ---- Dashboard, Aktivität, Import, Einstellungen
+// ---- Dashboard, activity, import, settings
 await step(B, 'dashboard', async (p) => {
 	await p.goto(wgPath);
 	await p.waitForLoadState('networkidle');

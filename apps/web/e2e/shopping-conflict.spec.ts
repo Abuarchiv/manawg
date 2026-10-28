@@ -503,6 +503,21 @@ test.describe('shopping conflict handling', () => {
 		await page.emulateMedia({ colorScheme: 'light' });
 		const suggestionButtons = suggestions.locator('button');
 		const pointerTarget = suggestionButtons.nth(1);
+		// The fixed action eases into place after a font or viewport change; measure it at rest.
+		const waitForActionToRest = async () => {
+			let lastTop = Number.NaN;
+			await expect
+				.poll(async () => {
+					const top = await page
+						.locator('[data-page-primary-action]')
+						.evaluate((action) => action.getBoundingClientRect().top);
+					const resting = top === lastTop;
+					lastTop = top;
+					return resting;
+				})
+				.toBe(true);
+		};
+		await waitForActionToRest();
 		// Arrange the same partial overlap from the rendered geometry.
 		const overlapViewportHeight = await pointerTarget.evaluate((button) => {
 			const action = document.querySelector('[data-page-primary-action]');
@@ -516,6 +531,7 @@ test.describe('shopping conflict handling', () => {
 			);
 		});
 		await page.setViewportSize({ width: 320, height: overlapViewportHeight });
+		await waitForActionToRest();
 		const pointerPoint = await pointerTarget.evaluate((button) => {
 			const action = document.querySelector('[data-page-primary-action]');
 			if (!action) throw new Error('Expected the fixed shopping action');

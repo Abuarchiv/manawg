@@ -569,9 +569,7 @@ test.describe('mobile layout matrix', () => {
 					await mockLayoutApis(page);
 					await navigateToFeature(
 						page,
-						route === 'home'
-							? `/wg/${SHARE_CODE}`
-							: `/wg/${SHARE_CODE}/${route === 'chores' ? 'chores' : route === 'shopping' ? 'shopping' : 'supplies'}`,
+						route === 'home' ? `/wg/${SHARE_CODE}` : `/wg/${SHARE_CODE}/${route}`,
 					);
 					await dismissOnboarding(page);
 					await expect(

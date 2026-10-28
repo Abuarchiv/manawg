@@ -27,14 +27,14 @@ const par = await Promise.all(
 );
 expect(
 	par.every((r) => r.status < 300 || r.status === 409),
-	'Parallel: gleiche Idempotenz = kein Fehler',
+	'Parallel: same idempotency key = no error',
 	`${par.map((r) => r.status).join(',')} ${JSON.stringify(par[0].body).slice(0, 120)}`,
 );
 expect(
 	+sql(
 		`select count(*) from expenses where wg_id=(select id from wgs where share_code='${code}') and amount_cents=1200`,
 	) === 1,
-	'Parallel: gleiche Idempotenz = genau eine Ausgabe',
+	'Parallel: same idempotency key = exactly one expense',
 );
 
 const cons = await Promise.all(
@@ -45,7 +45,7 @@ const cons = await Promise.all(
 const qty = +sql(`select quantity from wg_inventory_items where id='${inventoryId}'`);
 expect(
 	qty >= 0,
-	'Parallel: Vorrat nie negativ',
+	'Parallel: supply never negative',
 	`qty=${qty} status=${cons.map((r) => r.status).join(',')}`,
 );
 
@@ -57,7 +57,7 @@ const comp = await Promise.all(
 const compCount = +sql(`select count(*) from chore_completions where chore_id='${choreId}'`);
 expect(
 	compCount <= 1,
-	'Parallel: Aufgabe nur einmal erledigt',
+	'Parallel: chore completed only once',
 	`rows=${compCount} status=${comp.map((r) => r.status).join(',')}`,
 );
 
@@ -68,7 +68,7 @@ const settle = await Promise.all(
 );
 expect(
 	settle.every((r) => r.status < 500),
-	'Parallel: Split-Settle ohne 5xx',
+	'Parallel: split settle without 5xx',
 	settle.map((r) => r.status).join(','),
 );
 
@@ -88,7 +88,7 @@ const payCount = +sql(
 );
 expect(
 	payCount <= 1,
-	'Parallel: Barzahlung nur einmal gebucht',
+	'Parallel: cash payment booked only once',
 	`rows=${payCount} status=${pay.map((r) => r.status).join(',')} net=${String(JSON.stringify(net)).slice(0, 120)}`,
 );
 
@@ -105,7 +105,7 @@ const sameName = +sql(
 );
 expect(
 	sameName <= 1 && joins.every((r) => r.status < 500),
-	'Parallel: gleicher Name beitreten = ein Mitglied, keine 5xx',
+	'Parallel: joining with the same name = one member, no 5xx',
 	`rows=${sameName} status=${joins.map((r) => r.status).join(',')}`,
 );
 
@@ -118,14 +118,14 @@ const admins = +sql(
 );
 expect(
 	admins === 1 && adminRace.every((r) => r.status < 500),
-	'Parallel: genau ein Admin',
+	'Parallel: exactly one admin',
 	`admins=${admins} status=${adminRace.map((r) => r.status).join(',')}`,
 );
 
 const sumsOk = sql(
 	`select count(*) from expenses e where e.wg_id=(select id from wgs where share_code='${code}') and amount_cents<>(select coalesce(sum(amount_cents),0) from expense_splits s where s.expense_id=e.id)`,
 );
-expect(+sumsOk === 0, 'DB: Splits summieren zur Ausgabe');
+expect(+sumsOk === 0, 'DB: splits sum to the expense');
 
 // ---- 5. query and path parameters that reach the database
 const qFails = [];
@@ -168,7 +168,7 @@ for (const v of qValues) {
 			qFails.push(`${m} ${p.slice(0, 90)} -> ${r.status} ${JSON.stringify(r.body).slice(0, 80)}`);
 	}
 }
-expect(qFails.length === 0, `Query-Parameter: keine 5xx (${qCalls} Aufrufe)`, qFails.join(' | '));
+expect(qFails.length === 0, `Query parameters: no 5xx (${qCalls} calls)`, qFails.join(' | '));
 
 // ---- 6. CSRF: cookie-authenticated writes from a foreign origin
 const evil = await A.ctx.fetch(`/api/wg/${code}/shopping`, {
@@ -180,19 +180,16 @@ const evil = await A.ctx.fetch(`/api/wg/${code}/shopping`, {
 		'idempotency-key': randomUUID(),
 	},
 });
-expect(evil.status() >= 400, 'CSRF: fremde Origin wird abgewiesen', String(evil.status()));
+expect(evil.status() >= 400, 'CSRF: foreign origin is rejected', String(evil.status()));
 const evilDelete = await A.ctx.fetch(`/api/wg/${code}`, {
 	method: 'DELETE',
 	headers: { origin: 'https://evil.example' },
 });
 expect(
 	evilDelete.status() >= 400,
-	'CSRF: WG-Löschung von fremder Origin abgewiesen',
+	'CSRF: WG deletion from foreign origin rejected',
 	String(evilDelete.status()),
 );
-expect(
-	+sql(`select count(*) from wgs where share_code='${code}'`) === 1,
-	'CSRF: WG existiert noch',
-);
+expect(+sql(`select count(*) from wgs where share_code='${code}'`) === 1, 'CSRF: WG still exists');
 
 finish();

@@ -37,7 +37,7 @@ await p.locator('#auth-password').fill('falsch-falsch-1');
 await p.getByRole('button', { name: 'Anmelden', exact: true }).click();
 await wait(1500);
 if (!/E-Mail oder Passwort/.test(await p.locator('main').innerText()))
-	bug('falsches Passwort ohne Fehlertext');
+	bug('wrong password without error text');
 await p.locator('#auth-password').fill(pw);
 await p.getByRole('button', { name: 'Anmelden', exact: true }).click();
 await wait(2500);
@@ -63,7 +63,7 @@ const t2 = ck2.find((x) => /^sb-.*-auth-token$/.test(x.name));
 const s2 = JSON.parse(
 	Buffer.from(decodeURIComponent(t2.value).replace(/^base64-/, ''), 'base64').toString(),
 );
-if (s2.access_token === sess.access_token) bug('abgelaufenes Token wurde nicht erneuert');
+if (s2.access_token === sess.access_token) bug('expired token was not renewed');
 // 3 forgot password
 const p2 = await (await browser.newContext({ ...devices['iPhone 13'], baseURL: BASE })).newPage();
 await p2.goto('/login');
@@ -101,6 +101,6 @@ if (link) {
 		},
 		body: JSON.stringify({ email, password: 'Neues-Passwort-99' }),
 	});
-	if (login.status !== 200) bug('neues Passwort funktioniert nicht');
-} else bug('keine Reset-Mail/Link');
+	if (login.status !== 200) bug('new password does not work');
+} else bug('no reset mail/link');
 await browser.close();

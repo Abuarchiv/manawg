@@ -6,7 +6,7 @@ import { BASE, call, expect, finish, user } from './modules-lib.mjs';
 const A = await user('Chunk');
 const w = await call(A, 'POST', '/api/wg', { name: 'Chunkwohnung', creatorName: 'Chunk' });
 const code = w.body.wg?.shareCode;
-expect(!!code, 'WG erstellt');
+expect(!!code, 'WG created');
 
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ ...devices['iPhone 13'], baseURL: BASE });
@@ -41,13 +41,13 @@ await p.waitForLoadState('load');
 const marker = await p.evaluate(() => window.sessionStorage.getItem('manawg:stale-chunk-reload'));
 expect(
 	marker === p.url(),
-	'Reload kam aus der Fehlergrenze (sessionStorage-Marke)',
+	'reload came from the error boundary (sessionStorage marker)',
 	String(marker),
 );
-expect(blocked > 0, 'alter Chunk wurde mit 404 beantwortet', String(blocked));
-expect(loads === 1, 'genau ein Reload', String(loads));
-expect(/\/shopping/.test(p.url()), 'Einkauf nach Reload sichtbar', p.url());
+expect(blocked > 0, 'old chunk was answered with 404', String(blocked));
+expect(loads === 1, 'exactly one reload', String(loads));
+expect(/\/shopping/.test(p.url()), 'shopping visible after reload', p.url());
 const stuck = await p.getByText('Etwas ist schiefgelaufen').count();
-expect(stuck === 0, 'keine Fehlerseite stehen geblieben');
+expect(stuck === 0, 'no error page left standing');
 await browser.close();
 finish();

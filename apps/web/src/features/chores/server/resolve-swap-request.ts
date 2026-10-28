@@ -1,8 +1,14 @@
 import 'server-only';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { announcements, db } from '@/core/db';
 import type { DbTransaction } from '@/core/db/transaction';
 import { logApiError } from '@/core/infra/observability';
+
+/** Matches a chore's swap request; requests created before the route rename point at /putzen. */
+export function choreSwapSourcePath(choreId: string) {
+	const id = encodeURIComponent(choreId);
+	return inArray(announcements.sourcePath, [`/chores?highlight=${id}`, `/putzen?highlight=${id}`]);
+}
 
 /** Closes the open swap request inside the caller's transaction; a failure aborts it. */
 export async function closeChoreSwapRequest(
@@ -20,7 +26,7 @@ export async function closeChoreSwapRequest(
 				eq(announcements.wgId, wgId),
 				eq(announcements.status, 'open'),
 				eq(announcements.source, 'chore_swap'),
-				eq(announcements.sourcePath, `/chores?highlight=${encodeURIComponent(choreId)}`),
+				choreSwapSourcePath(choreId),
 			),
 		);
 }
