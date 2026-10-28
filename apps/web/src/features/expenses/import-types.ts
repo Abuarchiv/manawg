@@ -1,3 +1,10 @@
+/**
+ * Mapping key for a payer the source does not name (an OCR line without a payer); the UI shows
+ * `common.unknownPerson`. A control character, so no CSV or OCR name can equal it (`parseCsv`
+ * strips it, the OCR payer pattern allows letters only).
+ */
+export const UNKNOWN_NAME = '\u001F';
+
 export interface ParsedSplit {
 	memberName: string;
 	amountCents: number;
@@ -32,7 +39,7 @@ export type ImportSource = 'splitwise_csv' | 'splid_csv' | 'ocr_screenshot' | 'm
 export class UnsupportedCurrencyError extends Error {
 	readonly currency: string;
 	constructor(currency: string) {
-		super('Nur EUR-Importe unterstützt');
+		super('Only EUR imports are supported');
 		this.name = 'UnsupportedCurrencyError';
 		this.currency = currency;
 	}

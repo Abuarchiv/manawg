@@ -8,6 +8,8 @@ import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui
 import { Spinner } from '@/components/ui/spinner';
 import { describeRejectedRowReason } from '@/features/expenses/import-parsers';
 import type { RejectedRow } from '@/features/expenses/import-parsers';
+import { useMessage } from '@/shared/i18n/message';
+import { useTranslations } from 'next-intl';
 import type { Ref } from 'react';
 import { ImportMemberMapping } from './ImportMemberMapping';
 import { ImportPreviewTable } from './ImportPreviewTable';
@@ -21,6 +23,7 @@ interface StepProps {
 }
 
 export function ImportMappingStep({ headingRef, wizard }: StepProps) {
+	const t = useTranslations('expenses-import');
 	const suggested = wizard.preview?.memberMapping ?? {};
 	// A suggestion stops being one as soon as the member picks something else.
 	const fuzzyNames = (wizard.preview?.fuzzyNames ?? []).filter(
@@ -28,13 +31,13 @@ export function ImportMappingStep({ headingRef, wizard }: StepProps) {
 	);
 	return (
 		<section className="flex flex-col gap-4">
-			<ImportStepHeading headingRef={headingRef}>Namen WG-Mitgliedern zuordnen</ImportStepHeading>
+			<ImportStepHeading headingRef={headingRef}>{t('mapping.heading')}</ImportStepHeading>
 			<p className="text-sm text-muted-foreground">
 				{wizard.conflicts.length > 0
-					? 'Ordne die Namen zu, die noch offen sind.'
+					? t('mapping.open')
 					: fuzzyNames.length > 0
-						? 'Einige Namen wurden nur nach Ähnlichkeit zugeordnet. Bitte prüfen.'
-						: 'Alle Namen automatisch erkannt. Bitte prüfen.'}
+						? t('mapping.fuzzy')
+						: t('mapping.allRecognised')}
 			</p>
 			<ImportMemberMapping
 				names={wizard.namesNeedingMapping}
@@ -46,10 +49,10 @@ export function ImportMappingStep({ headingRef, wizard }: StepProps) {
 			/>
 			<div className="flex min-w-0 flex-wrap gap-2">
 				<Button className="flex-1" onClick={wizard.continueFromMapping}>
-					Weiter zur Vorschau
+					{t('actions.continueToPreview')}
 				</Button>
 				<Button variant="outline" onClick={() => wizard.goTo('input')}>
-					Zurück
+					{t('actions.back')}
 				</Button>
 			</div>
 		</section>
@@ -57,21 +60,23 @@ export function ImportMappingStep({ headingRef, wizard }: StepProps) {
 }
 
 function RejectedRowsAlert({ rejected }: { rejected: readonly RejectedRow[] }) {
+	const t = useTranslations('expenses-import.preview');
+	const renderMessage = useMessage();
 	if (rejected.length === 0) return null;
 	return (
 		<Alert>
-			<AlertTitle>
-				{rejected.length === 1
-					? '1 Zeile konnte nicht gelesen werden'
-					: `${rejected.length} Zeilen konnten nicht gelesen werden`}
-			</AlertTitle>
+			<AlertTitle>{t('rejectedTitle', { count: rejected.length })}</AlertTitle>
 			<AlertDescription>
 				<details>
-					<summary className="min-h-11 cursor-pointer py-2">Details anzeigen</summary>
+					<summary className="min-h-11 cursor-pointer py-2">{t('rejectedDetails')}</summary>
 					<ul className="flex flex-col gap-1">
 						{rejected.map((row) => (
 							<li key={row.line}>
-								Zeile {row.line}: {row.description} ({describeRejectedRowReason(row.reason)})
+								{t('rejectedRow', {
+									line: String(row.line),
+									description: row.description,
+									reason: renderMessage(describeRejectedRowReason(row.reason)),
+								})}
 							</li>
 						))}
 					</ul>
@@ -82,17 +87,16 @@ function RejectedRowsAlert({ rejected }: { rejected: readonly RejectedRow[] }) {
 }
 
 export function ImportPreviewStep({ headingRef, wizard }: StepProps) {
+	const t = useTranslations('expenses-import');
 	const { busy, selectedCount } = wizard;
 	if (!wizard.preview) return null;
 	return (
 		<section className="flex flex-col gap-4">
 			<div className="flex flex-wrap items-center justify-between gap-2">
-				<ImportStepHeading headingRef={headingRef}>Vorschau</ImportStepHeading>
-				<Badge variant="secondary">{selectedCount} ausgewählt</Badge>
+				<ImportStepHeading headingRef={headingRef}>{t('preview.heading')}</ImportStepHeading>
+				<Badge variant="secondary">{t('preview.selected', { count: String(selectedCount) })}</Badge>
 			</div>
-			<p className="text-sm text-muted-foreground">
-				Prüfe Beträge und Anteile. Nicht gewünschte Einträge abwählen.
-			</p>
+			<p className="text-sm text-muted-foreground">{t('preview.hint')}</p>
 			<RejectedRowsAlert rejected={wizard.preview.rejected ?? []} />
 			<ImportPreviewTable
 				expenses={wizard.preview.parsed}
@@ -109,10 +113,8 @@ export function ImportPreviewStep({ headingRef, wizard }: StepProps) {
 					data-disabled={busy}
 				>
 					<div className="flex flex-col gap-1">
-						<FieldLabel htmlFor="import-duplicates">Duplikate überspringen</FieldLabel>
-						<FieldDescription>
-							Gleiches Datum, Beschreibung, Betrag und zahlende Person.
-						</FieldDescription>
+						<FieldLabel htmlFor="import-duplicates">{t('preview.skipDuplicates')}</FieldLabel>
+						<FieldDescription>{t('preview.skipDuplicatesHint')}</FieldDescription>
 					</div>
 					<Switch
 						className="shrink-0"
@@ -130,10 +132,11 @@ export function ImportPreviewStep({ headingRef, wizard }: StepProps) {
 					disabled={busy || selectedCount === 0}
 					onClick={() => void wizard.submitCommit()}
 				>
-					{busy && <Spinner data-icon="inline-start" />}Importieren ({selectedCount})
+					{busy && <Spinner data-icon="inline-start" />}
+					{t('actions.import', { count: String(selectedCount) })}
 				</Button>
 				<Button variant="outline" disabled={busy} onClick={() => wizard.goTo('mapping')}>
-					Zurück
+					{t('actions.back')}
 				</Button>
 			</div>
 		</section>

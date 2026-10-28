@@ -6,12 +6,14 @@ import { formatEuroCents } from '@/core/utils/money';
 import { importActionErrorMessage } from '@/features/expenses/import-errors';
 import type { RecoveryAction } from '@/features/expenses/import-errors';
 import type { ParsedExpense } from '@/features/expenses/import-parsers';
+import { useMessage } from '@/shared/i18n/message';
+import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 import type { Ref } from 'react';
-import { formatDate } from './ImportPreviewTable';
 import { ImportProgress } from './ImportProgress';
 import { ImportStepHeading } from './ImportStepHeading';
 import { ImportUndo } from './ImportUndo';
+import { formatImportDate } from './import-date';
 import type { CommitResponse } from './import-wizard-types';
 
 interface ImportResultStepProps {
@@ -32,9 +34,12 @@ export function ImportResultStep({
 	expensesHref,
 	parsed = [],
 }: ImportResultStepProps) {
+	const t = useTranslations('expenses-import');
+	const renderMessage = useMessage();
+	const locale = useLocale();
 	return (
 		<section className="flex flex-col gap-4">
-			<ImportStepHeading headingRef={headingRef}>Import abgeschlossen</ImportStepHeading>
+			<ImportStepHeading headingRef={headingRef}>{t('result.heading')}</ImportStepHeading>
 			<ImportProgress
 				state="done"
 				inserted={result.inserted}
@@ -43,34 +48,41 @@ export function ImportResultStep({
 			/>
 			{result.warning && (
 				<Alert>
-					<AlertTitle>Hinweis zur Benachrichtigung</AlertTitle>
+					<AlertTitle>{t('result.warningTitle')}</AlertTitle>
 					<AlertDescription>
 						{result.warning === 'notification_delivery_failed'
-							? 'Der Import wurde gespeichert, aber die WG-Benachrichtigung konnte nicht an alle zugestellt werden.'
-							: 'Der Import wurde gespeichert, aber die Zustellung der WG-Benachrichtigung konnte nicht bestätigt werden.'}
+							? t('result.warningFailed')
+							: t('result.warningUnknown')}
 					</AlertDescription>
 				</Alert>
 			)}
 			{result.errors.length > 0 && (
 				<Alert variant="destructive">
-					<AlertTitle>Nicht übernommene Einträge</AlertTitle>
+					<AlertTitle>{t('result.rejectedTitle')}</AlertTitle>
 					<AlertDescription className="flex flex-col items-start gap-3">
 						<ul className="flex flex-col gap-2">
 							{result.errors.map((item) => {
 								const row = parsed[item.index];
+								const number = String(item.index + 1);
+								const reason = renderMessage(importActionErrorMessage(item.reason));
 								return (
 									<li key={item.index}>
-										Eintrag {item.index + 1}
-										{row &&
-											` (${row.description}, ${formatDate(row.date)}, ${formatEuroCents(row.amountCents, row.currency)})`}
-										: {importActionErrorMessage(item.reason)}
+										{row
+											? t('result.rejectedEntryWithRow', {
+													number,
+													description: row.description,
+													date: formatImportDate(row.date, locale),
+													amount: formatEuroCents(row.amountCents, row.currency, { locale }),
+													reason,
+												})
+											: t('result.rejectedEntry', { number, reason })}
 									</li>
 								);
 							})}
 						</ul>
 						{recoveryAction && (
 							<Button variant="outline" onClick={() => onRecover(recoveryAction)}>
-								{recoveryAction.label}
+								{renderMessage(recoveryAction.label)}
 							</Button>
 						)}
 					</AlertDescription>
@@ -78,7 +90,7 @@ export function ImportResultStep({
 			)}
 			{result.inserted > 0 && <ImportUndo importId={result.importId} />}
 			<Link href={expensesHref} className={buttonVariants({ className: 'min-h-11' })}>
-				Zu den Ausgaben
+				{t('actions.toExpenses')}
 			</Link>
 		</section>
 	);

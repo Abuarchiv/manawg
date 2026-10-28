@@ -3,6 +3,7 @@
 import { FieldLegend, FieldSet } from '@/components/ui/field';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { FileText, FileUp, Image as ImageIcon } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 export type ImportSourceKind = 'splitwise_csv' | 'splid_csv' | 'ocr_screenshot';
 
@@ -13,41 +14,26 @@ interface Props {
 
 const OPTIONS: ReadonlyArray<{
 	id: ImportSourceKind;
-	title: string;
-	hint: string;
+	text: 'splitwise' | 'splid' | 'screenshot';
 	icon: typeof FileText;
 }> = [
-	{
-		id: 'splitwise_csv',
-		title: 'Splitwise CSV',
-		hint: 'Datei aus Splitwise',
-		icon: FileText,
-	},
-	{
-		id: 'splid_csv',
-		title: 'Splid CSV',
-		hint: 'Datei aus Splid',
-		icon: FileUp,
-	},
-	{
-		id: 'ocr_screenshot',
-		title: 'Screenshot',
-		hint: 'Foto oder Bildschirmfoto',
-		icon: ImageIcon,
-	},
+	{ id: 'splitwise_csv', text: 'splitwise', icon: FileText },
+	{ id: 'splid_csv', text: 'splid', icon: FileUp },
+	{ id: 'ocr_screenshot', text: 'screenshot', icon: ImageIcon },
 ];
 
 export function ImportSourcePicker({ value, onChange }: Props) {
+	const t = useTranslations('expenses-import.source');
 	return (
 		<FieldSet>
-			<FieldLegend className="sr-only">Importquelle wählen</FieldLegend>
+			<FieldLegend className="sr-only">{t('heading')}</FieldLegend>
 			<ToggleGroup
 				value={value ? [value] : []}
 				orientation="vertical"
 				variant="outline"
 				className="w-full min-w-0"
 			>
-				{OPTIONS.map(({ id, title, hint, icon: Icon }) => (
+				{OPTIONS.map(({ id, text, icon: Icon }) => (
 					<ToggleGroupItem
 						key={id}
 						value={id}
@@ -57,8 +43,8 @@ export function ImportSourcePicker({ value, onChange }: Props) {
 					>
 						<Icon />
 						<span className="min-w-0 flex-1 break-words">
-							<span className="block">{title}</span>
-							<span className="block text-xs text-muted-foreground">{hint}</span>
+							<span className="block">{t(`${text}.title`)}</span>
+							<span className="block text-xs text-muted-foreground">{t(`${text}.hint`)}</span>
 						</span>
 					</ToggleGroupItem>
 				))}

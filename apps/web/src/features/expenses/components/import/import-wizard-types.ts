@@ -59,7 +59,7 @@ export function namesInPreview(preview: PreviewResponse | null): string[] {
 /** Mapping choice for a name whose rows stay out of the import, e.g. a flatmate who moved out. */
 export const SKIP_NAME = 'skip';
 
-/** Indexes of preview rows that mention a name chosen as "Nicht übernehmen". */
+/** Indexes of preview rows that mention a name chosen as skip. */
 export function rowsWithSkippedNames(
 	preview: PreviewResponse | null,
 	mapping: Readonly<Record<string, string | null>>,
@@ -74,7 +74,7 @@ export function rowsWithSkippedNames(
 }
 
 /**
- * Mapping for a fresh preview. After "Zurück", the member's own choices survive for names
+ * Mapping for a fresh preview. After going back, the member's own choices survive for names
  * that are still in the input; new names take the server's suggestion.
  */
 export function mergeMemberMapping(
