@@ -1,5 +1,5 @@
 // Private attachment draft recovery in the browser: a restored expense draft keeps its image preview.
-// Pure storage contracts (URL grammar, S3 config, upload routes) live in tests/storage-*.test.ts.
+// Pure storage contracts (URL grammar, storage config, upload routes) live in tests/storage-*.test.ts.
 
 import { expect, test } from '@playwright/test';
 import { buildDraftKey } from '../src/core/offline/drafts';

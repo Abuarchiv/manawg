@@ -270,7 +270,7 @@ Mutation error copy goes through `mutationErrorMessage` (`core/http/error-codes.
 - **Sentry** (`core/infra/sentry.ts`, only with `NEXT_PUBLIC_SENTRY_DSN`):
   `sanitizeSentryEvent` (`core/infra/sentry-privacy.ts`) drops user, message, extra and most
   contexts, replaces exception values with `[redacted]`, normalizes error names, strips query
-  strings, redacts share codes in `/wg/<code>`, calendar tokens and storage/S3 object paths, and
+  strings, redacts share codes in `/wg/<code>`, calendar tokens and storage object paths, and
   only keeps allowlisted tags. Console and UI breadcrumbs are dropped.
 - **Server logs**: `logApiError` (`core/infra/observability.ts`) logs the static label and the
   error name only, never message or stack.
@@ -305,18 +305,14 @@ Mutation error copy goes through `mutationErrorMessage` (`core/http/error-codes.
 
 ## Image storage
 
-`IMAGE_STORAGE_PROVIDER` selects the provider (`core/infra/supabase-storage.ts`):
-
-- `supabase` (private): uploads are signed via `/api/upload/sign`; reads go through
-  `/api/upload/read?key=...`, which re-checks membership of the WG encoded in the key and the
-  deletion tombstones, and streams with `no-store`. The bucket (`SUPABASE_STORAGE_BUCKET`) must be
-  private with an 8 MiB limit and exactly the MIME types in `core/infra/private-image-policy.ts`;
-  otherwise the provider reports itself unconfigured. Deletions are tombstoned in
-  `private_image_deletions` and removed by the maintenance cron. The same cron queues pictures no
-  row points at after 14 days (`core/db/orphan-uploads.ts`, a few WGs per run); a queued picture that
-  a row points at again is taken off the queue.
-- `aws` (default when unset, legacy): presigned S3 PUT (`core/infra/s3.ts`); images are stored
-  as public URLs under `S3_PUBLIC_URL`. There is no S3 delete path.
+Images live in a private Supabase Storage bucket (`core/infra/supabase-storage.ts`). Uploads are
+signed via `/api/upload/sign`; reads go through `/api/upload/read?key=...`, which re-checks
+membership of the WG encoded in the key and the deletion tombstones, and streams with `no-store`.
+The bucket (`SUPABASE_STORAGE_BUCKET`) must be private with an 8 MiB limit and exactly the MIME
+types in `core/infra/private-image-policy.ts`; otherwise uploads report themselves unconfigured.
+Deletions are tombstoned in `private_image_deletions` and removed by the maintenance cron. The same
+cron queues pictures no row points at after 14 days (`core/db/orphan-uploads.ts`, a few WGs per
+run); a queued picture that a row points at again is taken off the queue.
 
 ## Cron jobs
 

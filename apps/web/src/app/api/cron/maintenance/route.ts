@@ -14,7 +14,7 @@ import {
 import { purgeExpiredIdempotencyResponses } from '@/core/idempotency-store';
 import { requireCronSecret } from '@/core/infra/cron-auth';
 import { logApiError, withCronLogging } from '@/core/infra/observability';
-import { getImageStorageProvider, removeSupabaseImages } from '@/core/infra/supabase-storage';
+import { removeSupabaseImages } from '@/core/infra/supabase-storage';
 import { confirmedEmailOf, sendAccountDeletedMail } from '@/core/mail/account-deleted';
 import { purgeOldDigestMailLog } from '@/core/mail/mail-retention';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -82,9 +82,9 @@ async function cleanupPrivateImages(): Promise<{
 	};
 }
 
-/** Only the private Supabase bucket can be listed; other providers have nothing to sweep. */
+/** Without a configured bucket there is nothing to sweep. */
 async function sweepOrphans(): Promise<{ wgsChecked: number; queued: number } | null> {
-	return getImageStorageProvider() === 'supabase' ? sweepOrphanUploads() : null;
+	return process.env.SUPABASE_STORAGE_BUCKET?.trim() ? sweepOrphanUploads() : null;
 }
 
 /** Drops old ledger rows (finished image tombstones, digest mail log); failures only get logged. */

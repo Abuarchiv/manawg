@@ -10,7 +10,6 @@ import { serverError } from '../src/core/http/api-errors.ts';
 import { readJsonBody } from '../src/core/http/read-json.ts';
 import { apiFetch } from '../src/core/infra/api-client.ts';
 import { logApiError } from '../src/core/infra/observability.ts';
-import { createPresignedUpload } from '../src/core/infra/s3.ts';
 import { MAX_CSV_BYTES, readImportJsonBody } from '../src/features/expenses/import-body.ts';
 
 // Bounded body reads, idempotency replay and API client / export edge cases around the trust
@@ -265,12 +264,6 @@ describe('issue swarm routes', () => {
 			),
 			'\uFEFFoccurredAt;note;splits\n2026-03-30 00:00;2026-03-29T22:00:00.000Z;"Anna: 12,34; Ben: 5,00"',
 		);
-	});
-
-	test('presigned uploads reject path traversal keys before configuration lookup', async () => {
-		await assert.rejects(createPresignedUpload('../outside.png', 'image/png', 1), {
-			message: 'Invalid S3 key',
-		});
 	});
 
 	test('serverError reports a null value safely and retains sanitized route labels', () => {

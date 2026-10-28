@@ -39,5 +39,5 @@ The dumps contain personal data. Encrypt them at rest and delete old ones on a s
 4. Point `POSTGRES_URL` and the Supabase variables at the new project and redeploy.
 
 Accounts live in Supabase's `auth` schema. Check that your data dump contains `auth.users`;
-otherwise members cannot sign in after a restore. Image files in Storage or S3 need their own
+otherwise members cannot sign in after a restore. Image files in Storage need their own
 backup.

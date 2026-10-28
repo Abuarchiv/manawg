@@ -8,8 +8,6 @@ import {
 	isValidPrivateImageSize,
 } from './private-image-policy';
 
-export type ImageStorageProvider = 'aws' | 'supabase';
-
 export class ImageStorageConfigurationError extends Error {
 	constructor() {
 		super('private image storage is not configured');
@@ -28,13 +26,6 @@ export interface PrivateImageDownload {
 	stream: ReadableStream<Uint8Array>;
 	contentType: string;
 	contentLength: number;
-}
-
-export function getImageStorageProvider(): ImageStorageProvider {
-	const provider = process.env.IMAGE_STORAGE_PROVIDER?.trim().toLowerCase();
-	if (!provider || provider === 'aws') return 'aws';
-	if (provider === 'supabase') return 'supabase';
-	throw new ImageStorageConfigurationError();
 }
 
 function getSupabaseServiceClient(timeoutMs?: number) {

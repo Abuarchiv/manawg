@@ -56,19 +56,10 @@ mock.module('@/core/auth/server', {
 mock.module('@/core/guards/api-auth', {
 	namedExports: { requireMember: async () => ({ ok: false }) },
 });
-mock.module('@/core/infra/s3', {
-	namedExports: {
-		S3ConfigurationError: class extends Error {},
-		S3_MAX_UPLOAD_BYTES: 8 * 1024 * 1024,
-		createPresignedUpload: async () => ({}),
-		isAllowedMimeType: () => true,
-	},
-});
 mock.module('@/core/infra/supabase-storage', {
 	namedExports: {
 		ImageStorageConfigurationError: class extends Error {},
 		createSupabaseSignedUpload: async () => ({}),
-		getImageStorageProvider: () => 'aws',
 	},
 });
 mock.module('@/core/validators/image-url', {

@@ -44,18 +44,10 @@ test('Tesseract gets WASM compilation and only its pinned German and English dat
 	});
 });
 
-test('Supabase image storage drops S3 as an upload target but keeps reading legacy S3 pictures', () => {
-	withEnv(
-		{ S3_BUCKET: 'legacy-bucket', AWS_REGION: 'eu-central-1', IMAGE_STORAGE_PROVIDER: 'supabase' },
-		() => {
-			const supabasePolicy = directives(contentSecurityPolicy('nonce'));
-			assert.doesNotMatch(supabasePolicy.get('connect-src')?.join(' ') ?? '', /amazonaws/);
-			assert.ok(supabasePolicy.get('img-src')?.includes('https://*.amazonaws.com'));
-
-			process.env.IMAGE_STORAGE_PROVIDER = 'aws';
-			const awsPolicy = directives(contentSecurityPolicy('nonce'));
-			assert.match(awsPolicy.get('connect-src')?.join(' ') ?? '', /legacy-bucket/);
-			assert.ok(awsPolicy.get('media-src')?.includes('https://*.amazonaws.com'));
-		},
-	);
+test('the policy names no S3 or other third-party storage host', () => {
+	const policy = contentSecurityPolicy('nonce');
+	assert.doesNotMatch(policy, /amazonaws/);
+	const parsed = directives(policy);
+	assert.deepEqual(parsed.get('img-src'), ["'self'", 'data:', 'blob:']);
+	assert.deepEqual(parsed.get('media-src'), ["'self'", 'blob:']);
 });

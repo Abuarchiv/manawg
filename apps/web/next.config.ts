@@ -38,7 +38,7 @@ const nextConfig: NextConfig = {
 		return [{ source: '/favicon.ico', destination: '/favicon-32.png' }];
 	},
 	// next/image is not used; without remote patterns /_next/image cannot be
-	// used as a free proxy for arbitrary S3 buckets on this project's quota.
+	// used as a free proxy for arbitrary remote images on this project's quota.
 	async headers() {
 		return [
 			{ source: '/:path*', headers: securityHeaders },

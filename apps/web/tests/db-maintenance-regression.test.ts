@@ -146,7 +146,6 @@ mock.module('@/core/db/admin-succession', {
 });
 mock.module('@/core/infra/supabase-storage', {
 	namedExports: {
-		getImageStorageProvider: () => 'aws',
 		removeSupabaseImages: async () => undefined,
 	},
 });
