@@ -2,8 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 const { renderMessage, serverRootT } = await import('@/core/i18n/server-t');
-const { INVALID_RESPONSE_CODE, NETWORK_ERROR_CODE, mutationError } =
-	await import('./error-codes');
+const { INVALID_RESPONSE_CODE, NETWORK_ERROR_CODE, mutationError } = await import('./error-codes');
 
 const SUBJECT = { key: 'common.loadError.lead.expenses' } as const;
 const SUBJECT_TEXT = 'Ausgaben konnten nicht geladen werden';
@@ -48,8 +47,14 @@ test('mutationError renders every bucket in German', () => {
 		render('migration_read_only'),
 		`${SUBJECT_TEXT}: Die App ist gerade in Wartung und nur lesbar. Versuche es später erneut.`,
 	);
-	assert.equal(render('auth_required'), `${SUBJECT_TEXT}: Deine Sitzung ist abgelaufen. Melde dich neu an.`);
-	assert.equal(render('wg_not_found'), `${SUBJECT_TEXT}: Öffne die WG über den aktuellen Link erneut.`);
+	assert.equal(
+		render('auth_required'),
+		`${SUBJECT_TEXT}: Deine Sitzung ist abgelaufen. Melde dich neu an.`,
+	);
+	assert.equal(
+		render('wg_not_found'),
+		`${SUBJECT_TEXT}: Öffne die WG über den aktuellen Link erneut.`,
+	);
 	assert.equal(render('invalid_share_code'), `${SUBJECT_TEXT}: Der WG-Code ist ungültig.`);
 	assert.equal(render('not_a_member'), `${SUBJECT_TEXT}: Tritt der WG erneut bei.`);
 	assert.equal(render(SPECIFIC_CODE), 'Der Suchbegriff ist zu lang.');

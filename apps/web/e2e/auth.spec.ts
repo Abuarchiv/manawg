@@ -60,9 +60,7 @@ test.describe('start credentials auth validation', () => {
 			await expect(page).toHaveURL(/\/neu\?next=%2Feinladung%2Ffixture-invite-token01$/);
 		});
 
-		test('a malformed invitation is explained on the sign-in page', async ({
-			page,
-		}) => {
+		test('a malformed invitation is explained on the sign-in page', async ({ page }) => {
 			await page.route('**/api/wg/mine', (route) =>
 				route.fulfill({ status: 401, contentType: 'application/json', body: '{}' }),
 			);

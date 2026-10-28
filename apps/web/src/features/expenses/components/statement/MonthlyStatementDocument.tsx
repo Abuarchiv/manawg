@@ -35,9 +35,7 @@ function periodBounds(monthKey: string, locale: Locale): { start: string; end: s
 	const last = new Date(Date.UTC(year ?? 0, month ?? 1, 0));
 	return {
 		start: dateTimeFormat(locale, { ...dayMonthOptions(locale), timeZone: 'UTC' }).format(first),
-		end: dateTimeFormat(locale, { ...dayMonthOptions(locale, true), timeZone: 'UTC' }).format(
-			last,
-		),
+		end: dateTimeFormat(locale, { ...dayMonthOptions(locale, true), timeZone: 'UTC' }).format(last),
 	};
 }
 
@@ -53,7 +51,10 @@ export function MonthlyStatementDocument({
 	const locale = useLocale();
 	const { monthKey, members, transfers, categories, items, totalCents, settled } = statement;
 	const money = (cents: number) => formatEuroCents(cents, 'EUR', { locale });
-	const dayMonth = dateTimeFormat(locale, { ...dayMonthOptions(locale), timeZone: 'Europe/Berlin' });
+	const dayMonth = dateTimeFormat(locale, {
+		...dayMonthOptions(locale),
+		timeZone: 'Europe/Berlin',
+	});
 	const number = `MWG-${monthKey.slice(2, 4)}${monthKey.slice(5, 7)}-${shareCode.slice(0, 3).toUpperCase()}`;
 	const viewerShare = members.find((member) => member.id === viewerId)?.shareCents ?? 0;
 	const empty = items.length === 0;

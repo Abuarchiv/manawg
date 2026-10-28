@@ -37,4 +37,6 @@ export function offlineReviewNeededMessage(count: number): Message {
 }
 
 /** Shown when this browser can hold the queue but never replay it (no Web Locks). */
-export const OFFLINE_REPLAY_UNSUPPORTED_MESSAGE: Message = { key: 'offline.copy.replayUnsupported' };
+export const OFFLINE_REPLAY_UNSUPPORTED_MESSAGE: Message = {
+	key: 'offline.copy.replayUnsupported',
+};

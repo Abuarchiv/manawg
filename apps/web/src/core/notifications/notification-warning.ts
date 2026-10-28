@@ -12,7 +12,8 @@ export type NotificationWarning =
 	| null;
 
 export function notificationWarningMessage(warning: NotificationWarning): Message | null {
-	if (warning === 'notification_delivery_failed') return { key: 'common.notificationWarning.failed' };
+	if (warning === 'notification_delivery_failed')
+		return { key: 'common.notificationWarning.failed' };
 	if (warning === 'notification_delivery_unknown') {
 		return { key: 'common.notificationWarning.unknown' };
 	}

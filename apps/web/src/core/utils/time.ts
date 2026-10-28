@@ -162,9 +162,10 @@ export function formatShortDate(
 export function formatDayMonthYear(iso: string, locale: Locale = 'de'): string {
 	const date = parseValidDate(iso);
 	if (!date) return FALLBACK_WORDS[locale].unknownDate;
-	return dateTimeFormat(locale, { ...dayMonthOptions(locale, true), timeZone: 'Europe/Berlin' }).format(
-		date,
-	);
+	return dateTimeFormat(locale, {
+		...dayMonthOptions(locale, true),
+		timeZone: 'Europe/Berlin',
+	}).format(date);
 }
 
 /** Absence range: Berlin days, see `formatShortDate`. */
