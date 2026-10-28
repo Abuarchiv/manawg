@@ -1,0 +1,54 @@
+# Weekly dependency updates: one grouped PR per ecosystem for minor and patch releases, majors
+# one by one. Security updates arrive as soon as an advisory is published.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Berlin
+    open-pull-requests-limit: 5
+    groups:
+      # next and @next/bundle-analyzer move together.
+      next:
+        patterns: [next, "@next/bundle-analyzer"]
+      npm-minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      # Runtime is Node 22 (engines.node); keep its types on the same major.
+      - dependency-name: "@types/node"
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Berlin
+    groups:
+      actions-minor-and-patch:
+        update-types: [minor, patch]
+
+  # Base image of the Dockerfile and the service images in compose.yaml.
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Berlin
+    ignore:
+      # Node 22 is the supported runtime.
+      - dependency-name: node
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Berlin

@@ -165,7 +165,7 @@ export function useAnnouncementComposer(
 			return;
 		}
 		// Race guard: if the image is still a local pending-image-token (upload
-		// hasn't resolved to the S3 URL yet), do NOT post. Server's imageUrlSchema
+		// hasn't resolved to the stored URL yet), do NOT post. Server's imageUrlSchema
 		// would reject the token as image_invalid, the user would see a generic
 		// error, and the draft state stays — they'd be stuck retrying. Online
 		// path needs the public URL; offline path is fine (sync resolves later).

@@ -75,7 +75,6 @@ mock.module('@/core/db/orphan-uploads', {
 });
 mock.module('@/core/infra/supabase-storage', {
 	namedExports: {
-		getImageStorageProvider: () => 'aws',
 		removeSupabaseImages: async (objectKeys: string[]) => {
 			state.events.push('remove');
 			state.removed = objectKeys;
