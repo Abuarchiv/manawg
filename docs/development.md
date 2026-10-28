@@ -136,7 +136,7 @@ More scripts in `apps/web/package.json`:
 | `pnpm --filter @manawg/web test:unit` | `node --test` over `src/**/*.test.mjs`, `src/**/*.test.ts` and `tests/*.test.ts` |
 | `pnpm --filter @manawg/web dev:fixtures` | `next dev` in fixture mode, no database |
 | `pnpm --filter @manawg/web test:e2e:fixtures` | Playwright against a production build in fixture mode |
-| `pnpm --filter @manawg/web test:e2e:webkit` | WebKit fixture config (`playwright.webkit-fixtures.config.ts`) |
+| `pnpm --filter @manawg/web test:e2e:webkit` | The fixture suite on WebKit (`playwright.webkit-fixtures.config.ts`); run weekly by `webkit.yml`, needs `playwright install webkit` once |
 | `pnpm --filter @manawg/web test:e2e:account-delete-db` | Account deletion against a disposable loopback Postgres in `ACCOUNT_DELETE_TEST_URL` |
 | `pnpm --filter @manawg/web test:db` | Database-backed unit tests against the loopback Postgres in `TEST_DATABASE_URL` (exits 2 when it is unset) |
 | `pnpm --filter @manawg/web test:db-timeouts` | Runtime pool timeouts against a throwaway local Postgres (`RUN_DB_TIMEOUT_INTEGRATION=1` is set by the script) |
