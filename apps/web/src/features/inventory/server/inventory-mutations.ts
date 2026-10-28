@@ -1,5 +1,6 @@
 import 'server-only';
 import { shoppingItems, wgInventoryItems, wgInventoryLog } from '@/core/db';
+import { rowHoldsPatch } from '@/core/db/row-holds-patch';
 import type { WgInventoryItem } from '@/core/db/schema-inventory';
 import type { DbTransaction } from '@/core/db/transaction';
 import {
@@ -79,6 +80,21 @@ export type UpdateInventoryItemMutationInput = {
 	expectedUpdatedAt?: string | undefined;
 };
 
+/** The retry of a save whose answer got lost finds its own values in place: no conflict then. */
+function conflictUnlessHeld(stored: WgInventoryItem, input: UpdateInventoryItemMutationInput) {
+	// A relative +/- never shows in the row, so it cannot be told apart from a lost update.
+	const held =
+		input.quantityDelta === undefined &&
+		rowHoldsPatch(stored, {
+			quantity: input.quantity === undefined ? undefined : clampQuantity(input.quantity),
+			name: input.name,
+			threshold: input.threshold,
+			unit: input.unit,
+			category: input.category,
+		});
+	return held ? { kind: 'held' as const, item: stored } : { kind: 'conflict' as const };
+}
+
 export async function updateInventoryItemMutation(
 	tx: DbTransaction,
 	input: UpdateInventoryItemMutationInput,
@@ -104,7 +120,7 @@ export async function updateInventoryItemMutation(
 			existing.quantity !== input.expectedQuantity ||
 			existing.updatedAt.getTime() !== new Date(input.expectedUpdatedAt).getTime()
 		) {
-			return { kind: 'conflict' as const };
+			return conflictUnlessHeld(existing, input);
 		}
 	}
 
@@ -143,7 +159,8 @@ export async function updateInventoryItemMutation(
 			.from(wgInventoryItems)
 			.where(and(eq(wgInventoryItems.id, input.itemId), eq(wgInventoryItems.wgId, input.wgId)))
 			.limit(1);
-		return stillExistsRows[0] ? { kind: 'conflict' as const } : { kind: 'not_found' as const };
+		const stored = stillExistsRows[0];
+		return stored ? conflictUnlessHeld(stored, input) : { kind: 'not_found' as const };
 	}
 
 	const delta = roundQuantity(nextQuantity - existing.quantity);

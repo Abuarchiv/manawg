@@ -242,3 +242,15 @@ test('DELETE closes the swap request of the removed chore', async () => {
 	assert.equal(response.status, 200);
 	assert.deepEqual(calls.resolved, [[wgId, choreId, actorId]]);
 });
+
+test('a retried save whose answer got lost finds its values in place and succeeds', async () => {
+	setup(otherId, inHours(2));
+	updateMatches = false;
+	const response = await patch({
+		assignedMemberId: otherId,
+		expectedUpdatedAt: '2026-01-01T00:00:00.000Z',
+	});
+	assert.equal(response.status, 200);
+	assert.equal(calls.resolved.length, 0);
+	assert.equal(calls.dispatched.length, 0);
+});

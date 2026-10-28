@@ -30,6 +30,7 @@ import {
 	expenseSplitSchema,
 	occurredAtSchema,
 } from '@/features/expenses/expense-schemas';
+import { storedExpenseHoldingEdit } from '@/features/expenses/server/expense-held-edit';
 import { withExpensePaymentLock } from '@/features/expenses/server/expense-payments';
 import {
 	settledAtForOwnShare,
@@ -213,10 +214,6 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 	if (row.paidByMemberId !== auth.member.memberId) {
 		return forbidden('not_payer', 'not_payer');
 	}
-	const expectedVersion = expectedUpdatedAt ? new Date(expectedUpdatedAt) : undefined;
-	if (expectedVersion && row.updatedAt.getTime() !== expectedVersion.getTime()) {
-		return conflict('expense_changed', 'expense_conflict');
-	}
 	if (splits) {
 		const nextAmountCents = amountCents ?? row.amountCents;
 		const splitCheck = validateSplits(nextAmountCents, splits);
@@ -232,6 +229,13 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 	if (currency !== undefined) updates.currency = currency;
 	if (imageUrl !== undefined) updates.imageUrl = imageUrl ?? null;
 	if (occurredAt !== undefined) updates.occurredAt = new Date(occurredAt);
+
+	const expectedVersion = expectedUpdatedAt ? new Date(expectedUpdatedAt) : undefined;
+	if (expectedVersion && row.updatedAt.getTime() !== expectedVersion.getTime()) {
+		// The retry of a save whose answer got lost finds its own values in place.
+		const held = await storedExpenseHoldingEdit(id, updates, splits);
+		return held ? NextResponse.json(held) : conflict('expense_changed', 'expense_conflict');
+	}
 
 	// The amount change and the replaced splits are one edit, so they are written in one
 	// transaction: a failure leaves the old splits in place instead of an expense with none.

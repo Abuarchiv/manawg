@@ -46,9 +46,10 @@ live as `archive/*` tags.
 
 ## Test account (Production)
 
-- Login on https://app.manawg.com with "E-Mail und Passwort": `testuser@manawg.com` / `Mana-8743778e9c0e-Test`.
+- Login on https://app.manawg.com with "E-Mail und Passwort": `testuser@manawg.com`; the password is in the
+  operator's Keychain: `security find-generic-password -s "ManaWG Prod-Testkonto" -w`. Never write it into a file.
 - Supabase project `bwsvsvfgbrsonepffqff`, user id `21d891cd-1bda-428a-84ad-cf9e5392d64e`.
-- Test-only account without real data; this is the one deliberate exception to the local-only secrets rule. Do not use it in Preview.
+- Test-only account without real data. Do not use it in Preview.
 
 ## WG header design
 

@@ -107,6 +107,19 @@ test('an absolute write keeps its optimistic conflict check', async () => {
 	assert.equal(row.quantity, 6);
 });
 
+test('a retried absolute write whose answer got lost finds its quantity in place', async () => {
+	const { tx } = concurrentTapTx();
+	const result = await updateInventoryItemMutation(tx as never, {
+		itemId: 'item-1',
+		wgId: 'wg-1',
+		memberId: 'member-1',
+		quantity: 5,
+		expectedQuantity: 4,
+		expectedUpdatedAt: updatedAt.toISOString(),
+	});
+	assert.equal(result.kind, 'held');
+});
+
 /** A single item row plus a record of what landed on the shopping list. */
 function itemTx(initial: Row) {
 	const row = { id: 'item-1', wgId: 'wg-1', unit: 'Stück', updatedAt, ...initial };
