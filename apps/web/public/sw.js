@@ -11,7 +11,7 @@
 // served from cache, and the app has its own offline queue for writes.
 //
 // Bump VERSION to evict every cached shell asset on the next activate.
-const VERSION = 'manawg-app-v7-nav-timeout';
+const VERSION = 'manawg-app-v8-push-locale';
 const SHELL_CACHE = `${VERSION}-shell`;
 // Hashed /_next/static chunks fetched while browsing. sw.js itself does not
 // change between deploys, so nothing would ever evict them; the cap keeps the
@@ -115,11 +115,14 @@ const fetchWithTimeout = async (request) => {
 	}
 };
 
-const fallbackPushData = {
-	body: 'Benachrichtigung konnte nicht gelesen werden.',
+// The worker has no catalog, so the one fallback sentence follows the browser language.
+const fallbackPushData = () => ({
+	body: self.navigator.language.toLowerCase().startsWith('en')
+		? 'The notification could not be read.'
+		: 'Benachrichtigung konnte nicht gelesen werden.',
 	title: 'ManaWG',
 	url: '/',
-};
+});
 
 const isCompletePushData = (data) =>
 	data !== null &&
@@ -178,10 +181,10 @@ self.addEventListener('push', (event) => {
 	try {
 		data = event.data.json();
 	} catch {
-		data = fallbackPushData;
+		data = fallbackPushData();
 	}
 	if (!isCompletePushData(data)) {
-		data = fallbackPushData;
+		data = fallbackPushData();
 	}
 	const notificationOptions = {
 		body: data.body,

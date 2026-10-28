@@ -1,8 +1,10 @@
+import { serverT } from '@/core/i18n/server-t';
 import { formatDecimal } from '@/core/utils/amount';
 import { berlinCalendarDayDistance } from '@/core/utils/berlin-day';
 import { formatEuroCents } from '@/core/utils/money';
-import { formatShortDate } from '@/core/utils/time';
-import { pluralize } from '@/shared/lib/plural';
+import { dayMonthOptions, formatShortDate } from '@/core/utils/time';
+import { dateTimeFormat } from '@/shared/i18n/intl';
+import type { Locale } from '@/shared/i18n/locale';
 
 export type NotificationEvent =
 	| 'expense.created'
@@ -38,17 +40,19 @@ type NotificationCategory =
 	| 'chat';
 type NotificationPriority = 'urgent' | 'normal' | 'silent';
 
-interface NotificationMessage {
+export interface NotificationMessage {
 	title: string;
 	body: string;
 	urlPath: string;
 }
 
-function money(amountCents: unknown, currency: unknown): string {
+type PushT = ReturnType<typeof serverT<'push'>>;
+
+function money(amountCents: unknown, currency: unknown, locale: Locale): string {
 	const cents = typeof amountCents === 'number' && Number.isFinite(amountCents) ? amountCents : 0;
 	const code = typeof currency === 'string' && currency.trim().length > 0 ? currency : 'EUR';
 	// Replace non-breaking spaces (Intl uses U+00A0) with regular spaces for plain-text channels (push, SMS).
-	return formatEuroCents(cents, code).replace(/\u00a0/g, ' ');
+	return formatEuroCents(cents, code, { locale }).replace(/\u00a0/g, ' ');
 }
 
 function text(value: unknown, fallback: string): string {
@@ -105,17 +109,16 @@ function eventUrlPath(payload: Record<string, unknown>): string {
 	return id ? `/kalender?highlight=${encodeURIComponent(id)}` : '/kalender';
 }
 
-function formatEventTime(value: unknown, allDay = false): string {
-	if (typeof value !== 'string' || value.length === 0) return 'demnächst';
+function formatEventTime(t: PushT, locale: Locale, value: unknown, allDay = false): string {
+	if (typeof value !== 'string' || value.length === 0) return t('fallback.soon');
 	const date = new Date(value);
-	if (Number.isNaN(date.getTime())) return 'demnächst';
+	if (Number.isNaN(date.getTime())) return t('fallback.soon');
 	// All-day events start at Berlin midnight; a clock time would be noise.
 	if (allDay) {
-		return `${formatShortDate(value, 'Europe/Berlin')} (ganztägig)`;
+		return t('eventTime.allDay', { date: formatShortDate(value, 'Europe/Berlin', locale) });
 	}
-	return new Intl.DateTimeFormat('de-DE', {
-		day: '2-digit',
-		month: '2-digit',
+	return dateTimeFormat(locale, {
+		...dayMonthOptions(locale),
 		hour: '2-digit',
 		minute: '2-digit',
 		timeZone: 'Europe/Berlin',
@@ -124,28 +127,31 @@ function formatEventTime(value: unknown, allDay = false): string {
 
 // Reminders also fire for chores overdue up to a week and for new chores due
 // tomorrow, so the copy follows the Berlin calendar distance to nextDueAt.
-function choreDueBody(payload: Record<string, unknown>, wgName: string): string {
-	const body = choreDueSentence(payload, wgName);
-	return payload.unassigned === true ? `${body} Niemand ist zuständig.` : body;
+function choreDueBody(
+	t: PushT,
+	locale: Locale,
+	payload: Record<string, unknown>,
+	wgName: string,
+): string {
+	const body = choreDueSentence(t, locale, payload, wgName);
+	return payload.unassigned === true ? `${body} ${t('choreDue.unassigned')}` : body;
 }
 
-function choreDueSentence(payload: Record<string, unknown>, wgName: string): string {
-	const title = text(payload.title, 'Eine Aufgabe');
+function choreDueSentence(
+	t: PushT,
+	locale: Locale,
+	payload: Record<string, unknown>,
+	wgName: string,
+): string {
+	const title = text(payload.title, t('fallback.task'));
 	const dueAt = typeof payload.nextDueAt === 'string' ? new Date(payload.nextDueAt) : null;
-	if (!dueAt || Number.isNaN(dueAt.getTime())) return `${title} ist heute in ${wgName} fällig.`;
+	if (!dueAt || Number.isNaN(dueAt.getTime())) return t('choreDue.today', { title, wgName });
 	const diffDays = berlinCalendarDayDistance(new Date(), dueAt);
-	if (diffDays < 0) {
-		const overdueDays = -diffDays;
-		return `${title} ist in ${wgName} seit ${pluralize(overdueDays, 'Tag', 'Tagen')} offen.`;
-	}
-	if (diffDays === 0) return `${title} ist heute in ${wgName} fällig.`;
-	if (diffDays === 1) return `${title} ist morgen in ${wgName} fällig.`;
-	const day = new Intl.DateTimeFormat('de-DE', {
-		day: '2-digit',
-		month: '2-digit',
-		timeZone: 'Europe/Berlin',
-	}).format(dueAt);
-	return `${title} ist am ${day} in ${wgName} fällig.`;
+	if (diffDays < 0) return t('choreDue.overdue', { title, wgName, days: -diffDays });
+	if (diffDays === 0) return t('choreDue.today', { title, wgName });
+	if (diffDays === 1) return t('choreDue.tomorrow', { title, wgName });
+	const date = formatShortDate(dueAt.toISOString(), 'Europe/Berlin', locale);
+	return t('choreDue.onDate', { title, wgName, date });
 }
 
 function inventoryUrlPath(payload: Record<string, unknown>): string {
@@ -160,201 +166,227 @@ function quantityNumber(value: unknown): number | null {
 export function formatNotificationMessage(
 	event: NotificationEvent,
 	payload: Record<string, unknown>,
+	locale: Locale = 'de',
 ): NotificationMessage {
-	const wgName = text(payload.wgName, 'deiner WG');
+	const t = serverT(locale, 'push');
+	const wgName = text(payload.wgName, t('fallback.wgName'));
+	const actorName = text(payload.actorName, t('fallback.someone'));
+	const amount = () => money(payload.amountCents, payload.currency, locale);
+	const when = () => formatEventTime(t, locale, payload.startsAt, payload.allDay === true);
 
 	switch (event) {
 		case 'notification.test':
 			return {
-				title: 'ManaWG Test',
-				body: `Benachrichtigungen funktionieren für ${wgName}.`,
+				title: t('test.title'),
+				body: t('test.body', { wgName }),
 				urlPath: '/einstellungen#benachrichtigungen',
 			};
-		case 'expense.created': {
-			const actorName = text(payload.actorName, 'Jemand');
-			const title = text(payload.title, 'eine Ausgabe');
+		case 'expense.created':
 			return {
-				title: 'Neue Ausgabe',
-				body: `${actorName} hat in ${wgName} ${title} für ${money(payload.amountCents, payload.currency)} eingetragen.`,
+				title: t('expenseCreated.title'),
+				body: t('expenseCreated.body', {
+					actorName,
+					wgName,
+					title: text(payload.title, t('fallback.expense')),
+					amount: amount(),
+				}),
 				urlPath: expenseUrlPath(payload),
 			};
-		}
-		case 'expense.recurring_charged': {
-			const description = text(payload.description, 'Eine Fixkosten-Vorlage');
+		case 'expense.recurring_charged':
 			return {
-				title: 'Neue Fixkosten-Buchung',
-				body: `Neue Fixkosten-Buchung: ${description} ${money(payload.amountCents, payload.currency)}`,
+				title: t('recurringCharged.title'),
+				body: t('recurringCharged.body', {
+					description: text(payload.description, t('fallback.fixedCostTemplate')),
+					amount: amount(),
+				}),
 				urlPath: expenseUrlPath(payload),
 			};
-		}
 		case 'expense.reminder': {
-			const creditor = text(payload.creditorName, 'jemandem');
-			const rawDays = typeof payload.oldestDebtAgeDays === 'number' ? payload.oldestDebtAgeDays : 0;
-			const dayClause =
-				rawDays >= 1 ? ` (ältester Posten ${rawDays} ${rawDays === 1 ? 'Tag' : 'Tage'} alt)` : '';
+			const creditor = text(payload.creditorName, t('fallback.creditor'));
+			const days = typeof payload.oldestDebtAgeDays === 'number' ? payload.oldestDebtAgeDays : 0;
 			return {
-				title: 'Erinnerung',
-				body: `Noch offen bei ${creditor}: ${money(payload.amountCents, payload.currency)}${dayClause}.`,
+				title: t('expenseReminder.title'),
+				body:
+					days >= 1
+						? t('expenseReminder.bodyAged', { creditor, amount: amount(), days })
+						: t('expenseReminder.body', { creditor, amount: amount() }),
 				urlPath: '/mahnungen',
 			};
 		}
-		case 'expense.debt_settled': {
-			const actorName = text(payload.actorName, 'Jemand');
-			const amount = money(payload.amountCents, payload.currency);
+		case 'expense.debt_settled':
 			return {
-				title: 'Ausgleich eingetragen',
-				body:
-					payload.direction === 'received'
-						? `${actorName} hat den Eingang von ${amount} von dir bestätigt.`
-						: `${actorName} hat ${amount} an dich beglichen. Stimmt das nicht, öffne die Ausgaben und widersprich dort.`,
+				title: t('debtSettled.title'),
+				body: t(payload.direction === 'received' ? 'debtSettled.received' : 'debtSettled.paid', {
+					actorName,
+					amount: amount(),
+				}),
 				urlPath: '/ausgaben',
 			};
-		}
-		case 'expense.payment_voided': {
-			const actorName = text(payload.actorName, 'Jemand');
-			const amount = money(payload.amountCents, payload.currency);
+		case 'expense.payment_voided':
 			return {
-				title: 'Barzahlung storniert',
-				body: `${actorName} hat die Barzahlung über ${amount} storniert. Der Betrag ist wieder offen.`,
+				title: t('paymentVoided.title'),
+				body: t('paymentVoided.body', { actorName, amount: amount() }),
 				urlPath: '/ausgaben',
 			};
-		}
 		case 'import.completed': {
-			const actorName = text(payload.actorName, 'Jemand');
-			const insertedRaw = payload.inserted;
 			const inserted =
-				typeof insertedRaw === 'number' && Number.isFinite(insertedRaw) ? insertedRaw : 0;
+				typeof payload.inserted === 'number' && Number.isFinite(payload.inserted)
+					? payload.inserted
+					: 0;
 			return {
-				title: 'Import abgeschlossen',
-				body: `${actorName} hat ${inserted === 1 ? '1 Ausgabe' : `${inserted} Ausgaben`} in ${wgName} importiert.`,
+				title: t('importCompleted.title'),
+				body: t('importCompleted.body', { actorName, inserted, wgName }),
 				urlPath: '/ausgaben',
 			};
 		}
 		case 'announcement.posted':
 			return {
-				title: 'Neue Pinnwand-Nachricht',
-				body: `${text(payload.actorName, 'Jemand')} in ${wgName}: ${text(payload.title, 'Neue Nachricht')}`,
+				title: t('announcementPosted.title'),
+				body: t('announcementPosted.body', {
+					actorName,
+					wgName,
+					title: text(payload.title, t('fallback.newMessage')),
+				}),
 				urlPath: announcementUrlPath(payload),
 			};
 		case 'announcement.commented':
 			return {
-				title: 'Neue Antwort',
-				body: `${text(payload.actorName, 'Jemand')} hat auf der Pinnwand geantwortet: ${text(payload.title, 'Neue Antwort')}`,
+				title: t('announcementCommented.title'),
+				body: t('announcementCommented.body', {
+					actorName,
+					title: text(payload.title, t('fallback.newReply')),
+				}),
 				urlPath: announcementUrlPath(payload),
 			};
 		case 'announcement.reacted':
 			return {
-				title: 'Pinnwand-Reaktion',
-				body: `${text(payload.actorName, 'Jemand')} hat auf deinen Beitrag reagiert: ${text(payload.title, 'Neue Reaktion')}`,
+				title: t('announcementReacted.title'),
+				body: t('announcementReacted.body', {
+					actorName,
+					title: text(payload.title, t('fallback.newReaction')),
+				}),
 				urlPath: announcementUrlPath(payload),
 			};
 		case 'announcement.resolved':
 			return {
-				title: 'Pinnwand geklärt',
-				body: `${text(payload.actorName, 'Jemand')} hat einen Beitrag als geklärt markiert: ${text(payload.title, 'Beitrag')}`,
+				title: t('announcementResolved.title'),
+				body: t('announcementResolved.body', {
+					actorName,
+					title: text(payload.title, t('fallback.post')),
+				}),
 				urlPath: announcementUrlPath(payload),
 			};
 		case 'chore.due':
 			return {
-				title: 'Putzplan',
-				body: choreDueBody(payload, wgName),
+				title: t('choreDue.title'),
+				body: choreDueBody(t, locale, payload, wgName),
 				urlPath: choreUrlPath(payload),
 			};
 		case 'shopping.added':
 			return {
-				title: 'Einkaufsliste',
-				body: `${text(payload.actorName, 'Jemand')} hat ${text(payload.title, 'etwas')} in ${wgName} hinzugefügt.`,
+				title: t('shoppingAdded.title'),
+				body: t('shoppingAdded.body', {
+					actorName,
+					wgName,
+					title: text(payload.title, t('fallback.shoppingItem')),
+				}),
 				urlPath: shoppingUrlPath(payload),
 			};
 		case 'event.created':
 			return {
-				title: 'Neuer Termin',
-				body: `${text(payload.actorName, 'Jemand')} hat in ${wgName} „${text(
-					payload.title,
-					'Termin',
-				)}“ am ${formatEventTime(payload.startsAt, payload.allDay === true)} eingetragen.`,
+				title: t('eventCreated.title'),
+				body: t('eventCreated.body', {
+					actorName,
+					wgName,
+					title: text(payload.title, t('fallback.event')),
+					when: when(),
+				}),
 				urlPath: eventUrlPath(payload),
 			};
 		case 'event.moved': {
-			const title = text(payload.title, 'Termin');
-			const actor = text(payload.actorName, 'Jemand');
+			const title = text(payload.title, t('fallback.event'));
 			return {
-				title: 'Termin verschoben',
+				title: t('eventMoved.title'),
 				body:
 					payload.recurring === true
-						? `${actor} hat die Terminserie „${title}“ in ${wgName} verschoben.`
-						: `${actor} hat „${title}“ in ${wgName} auf den ${formatEventTime(payload.startsAt, payload.allDay === true)} verschoben.`,
+						? t('eventMoved.series', { actorName, title, wgName })
+						: t('eventMoved.single', { actorName, title, wgName, when: when() }),
 				urlPath: eventUrlPath(payload),
 			};
 		}
 		case 'event.cancelled': {
-			const title = text(payload.title, 'Termin');
-			const actor = text(payload.actorName, 'Jemand');
+			const title = text(payload.title, t('fallback.event'));
 			return {
-				title: 'Termin abgesagt',
+				title: t('eventCancelled.title'),
 				body:
 					payload.recurring === true
-						? `${actor} hat die Terminserie „${title}“ in ${wgName} abgesagt.`
-						: `${actor} hat „${title}“ am ${formatEventTime(payload.startsAt, payload.allDay === true)} in ${wgName} abgesagt.`,
+						? t('eventCancelled.series', { actorName, title, wgName })
+						: t('eventCancelled.single', { actorName, title, wgName, when: when() }),
 				urlPath: eventUrlPath(payload),
 			};
 		}
 		case 'event.upcoming': {
-			const title = text(payload.title, 'Termin');
+			const title = text(payload.title, t('fallback.event'));
+			const allDay = payload.allDay === true;
 			return {
-				title: 'Termin morgen',
-				body:
-					payload.allDay === true
-						? `Morgen in ${wgName}: „${title}“ am ${formatEventTime(payload.startsAt, true)}.`
-						: `Morgen in ${wgName}: „${title}“ um ${formatEventTime(payload.startsAt)}.`,
+				title: t('eventUpcoming.title'),
+				body: t(allDay ? 'eventUpcoming.allDay' : 'eventUpcoming.timed', {
+					wgName,
+					title,
+					when: formatEventTime(t, locale, payload.startsAt, allDay),
+				}),
 				urlPath: eventUrlPath(payload),
 			};
 		}
 		case 'event.today': {
-			const title = text(payload.title, 'Termin');
+			const title = text(payload.title, t('fallback.event'));
+			const values = { wgName, title };
 			const body =
 				payload.allDay === true
-					? `Heute in ${wgName}: „${title}“ ist ganztägig.`
+					? t('eventToday.allDay', values)
 					: payload.ongoing === true
-						? `Heute in ${wgName}: „${title}“ läuft noch.`
-						: `Heute in ${wgName}: „${title}“ um ${formatEventTime(payload.startsAt)}.`;
-			return {
-				title: 'Termin heute',
-				body,
-				urlPath: eventUrlPath(payload),
-			};
+						? t('eventToday.ongoing', values)
+						: t('eventToday.timed', {
+								...values,
+								when: formatEventTime(t, locale, payload.startsAt),
+							});
+			return { title: t('eventToday.title'), body, urlPath: eventUrlPath(payload) };
 		}
 		case 'inventory.low_stock': {
-			const itemName = text(payload.title, 'Vorrat');
+			const itemName = text(payload.title, t('fallback.supply'));
 			const quantity = quantityNumber(payload.quantity);
 			const threshold = quantityNumber(payload.threshold);
-			const detail =
-				quantity !== null && threshold !== null
-					? ` (${formatDecimal(quantity)} von ${formatDecimal(threshold)})`
-					: '';
 			return {
-				title: 'Vorrat bald leer',
-				body: `Bald leer: ${itemName}${detail} in ${wgName}.`,
+				title: t('lowStock.title'),
+				body:
+					quantity !== null && threshold !== null
+						? t('lowStock.bodyDetail', {
+								itemName,
+								wgName,
+								quantity: formatDecimal(quantity, locale),
+								threshold: formatDecimal(threshold, locale),
+							})
+						: t('lowStock.body', { itemName, wgName }),
 				urlPath: inventoryUrlPath(payload),
 			};
 		}
-		case 'chat.message': {
-			const sender = text(payload.actorName, 'Jemand');
-			const preview = text(payload.preview, 'Neue Nachricht');
+		case 'chat.message':
 			return {
-				title: `Chat — ${wgName}`,
-				body: `${sender}: ${preview}`,
+				title: t('chatMessage.title', { wgName }),
+				body: t('chatMessage.body', {
+					sender: actorName,
+					preview: text(payload.preview, t('fallback.newMessage')),
+				}),
 				urlPath: chatUrlPath(payload),
 			};
-		}
-		case 'chat.mention': {
-			const sender = text(payload.actorName, 'Jemand');
-			const preview = text(payload.preview, 'Neue Erwähnung');
+		case 'chat.mention':
 			return {
-				title: `${sender} hat dich erwähnt`,
-				body: `${sender} hat dich erwähnt: ${preview}`,
+				title: t('chatMention.title', { sender: actorName }),
+				body: t('chatMention.body', {
+					sender: actorName,
+					preview: text(payload.preview, t('fallback.newMention')),
+				}),
 				urlPath: chatUrlPath(payload),
 			};
-		}
 	}
 }
