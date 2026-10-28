@@ -58,7 +58,7 @@
 		"i18n-literal src/shared/lib/support-mailto.ts"
 	],
 	"fileSize": {
-		"src/core/db/schema.ts": 971,
+		"src/core/db/schema.ts": 970,
 		"e2e/account-delete-db.spec.ts": 1156
 	}
 }

@@ -1023,6 +1023,11 @@ Package-specific acceptance, on top of the shared criteria:
 P0 -> P1 -> { P2 || P3 (A..L, max 4 concurrent; F after A) } -> P4 (M || N || O) -> P5 -> P6
 ```
 
+### Owner requests merged into this change
+
+- Old invitation links with `?code=` are gone: `LEGACY_CODE_MESSAGE`, `extractInviteCode` and the `entry.errors.legacyCode` catalog key are removed from both locales. A `?code=` parameter is ignored; a pasted bare share code gets the generic "not an invitation link" message. The Supabase `/auth/callback?code=` flow is untouched.
+- Migration 0038 sets `recurring_expenses.anchor_at` and `chores.anchor_at` to NOT NULL (production has no NULL rows). The fallbacks for empty anchors in the recurring-advance cron, the chore completion route and the related types and tests are removed. It follows the locale migration 0037.
+
 ## 10. Open owner decisions
 
 The defaults in this document apply until they are answered. None of them blocks building.

@@ -22,7 +22,7 @@ export async function advanceRecurringDue(
 	const advance = buildRecurringAdvance({
 		nextDueAt: template.nextDueAt.toISOString(),
 		intervalMonths: template.intervalMonths,
-		anchorAt: template.anchorAt ? template.anchorAt.toISOString() : null,
+		anchorAt: template.anchorAt.toISOString(),
 	});
 	const [updated] = await client
 		.update(recurringExpenses)

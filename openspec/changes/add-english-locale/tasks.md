@@ -59,3 +59,8 @@
 - [ ] 6.2 Review all English catalogs against the glossary and D16; consolidate duplicates into `common`
 - [ ] 6.3 Bump the SW `VERSION` and run the full English sweep at 320px in light and dark; verify every route passes `expectNoGermanChrome`
 - [ ] 6.4 Verify the `i18n-literal` baseline is empty and all gates pass
+
+## 7. Owner requests
+
+- [x] 7.1 Remove old `?code=` invitation links with `LEGACY_CODE_MESSAGE`; verify a `?code=` URL shows no notice and `LEGACY_CODE`/`legacyCode` have no hits in `apps/web`
+- [x] 7.2 Migration 0038 makes `anchor_at` NOT NULL on chores and recurring expenses and the NULL-anchor fallbacks are removed; verify all migrations apply on a throwaway Postgres and an insert without `anchor_at` fails

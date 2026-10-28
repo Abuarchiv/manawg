@@ -83,16 +83,15 @@ export function getDueRecurringExpenses(
 interface RecurringAdvanceInput {
 	nextDueAt: string;
 	intervalMonths: number;
-	/** Original cadence anchor; null on legacy rows (adopted from nextDueAt). */
-	anchorAt?: string | null;
+	/** Original cadence anchor. */
+	anchorAt: string;
 }
 
 export function buildRecurringAdvance(
 	input: RecurringAdvanceInput,
 	now = new Date(),
 ): { nextDueAt: Date; lastCreatedAt: Date; anchorAt: Date } {
-	const previous = parseTimestamp(input.nextDueAt);
-	const anchorMs = (input.anchorAt ? parseTimestamp(input.anchorAt) : null) ?? previous;
+	const anchorMs = parseTimestamp(input.anchorAt);
 	const anchor = anchorMs !== null ? new Date(anchorMs) : new Date(input.nextDueAt);
 	return {
 		nextDueAt: addMonthsFromAnchor(
@@ -176,7 +175,7 @@ export function countMissedOccurrences(
 	nextDueAtIso: string,
 	intervalMonths: number,
 	now = new Date(),
-	anchorAt?: string | null,
+	anchorAt?: string,
 ): number {
 	const start = new Date(nextDueAtIso);
 	if (Number.isNaN(start.getTime())) return 0;
