@@ -38,6 +38,7 @@
 			"!**/test-results",
 			"!**/playwright-report",
 			"!**/*.min.js",
+			"!**/apps/web/public/tesseract",
 			"!**/drizzle/meta",
 			"!**/*.yml",
 			"!**/*.yaml",
