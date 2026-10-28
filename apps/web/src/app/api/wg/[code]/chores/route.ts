@@ -23,9 +23,9 @@ import {
 	CHORE_INTERVAL_MIN,
 	CHORE_TITLE_MAX,
 	CHORE_TITLE_MIN,
-	choreDueAtSchema,
 } from '@/features/chores/chore-limits';
 import { computeNextDueAt } from '@/features/chores/chore-recurrence';
+import { choreDueAtSchema } from '@/features/chores/server/chore-due-at-schema';
 
 type ChoreCreateResponseBody = { chore: unknown; warning: NotificationWarning };
 

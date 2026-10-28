@@ -164,8 +164,7 @@ const row = (eventType: string, metadata: Record<string, unknown>) =>
 
 test('the German summary stays byte-identical to the sentence written before the catalog', () => {
 	for (const [eventType, metadata, summary] of GERMAN_SUMMARIES) {
-		const expected = summary.replaceAll(' ', ' ');
-		assert.equal(row(eventType, metadata).summary, expected, eventType);
+		assert.equal(row(eventType, metadata).summary, summary, eventType);
 	}
 });
 

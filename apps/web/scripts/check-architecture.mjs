@@ -13,6 +13,7 @@
  *   status-literal  apiError(...) with a numeric status instead of an HTTP constant
  *   server-only     a features/<x>/server/ module without `import 'server-only'`
  *   client-server   a 'use client' module imports a server/ module
+ *   client-zod      a 'use client' module reaches zod through its runtime imports (it would ship in the bundle)
  *   comment-lang    a comment written in German (code comments are English)
  *   comment-history a comment that narrates history ("used to", "previously", ...)
  *   banned-import   an import of a removed dependency
@@ -71,6 +72,7 @@ const QUOTED_RE = /„[^“”]*[“”]|"[^"\n]*"|'[^'\n]*'|`[^`\n]*`|«[^»]*�
 const HISTORY_RE =
 	/\b(used to|previously|no longer|formerly|was changed|we now|now (?:fails|returns|uses|rejects|throws)|ponytail)\b/i;
 
+const MODULE_EXTENSIONS = ['.ts', '.tsx', '.mjs', '.js'];
 const CODE_RE = /\.(ts|tsx|mjs|cjs|js)$/;
 
 function walk(dir) {
@@ -119,6 +121,40 @@ function commentsOf(source) {
 		}
 	}
 	return comments;
+}
+
+/** Runtime import specifiers of a module; `import type` is erased at build time. */
+function runtimeSpecifiers(source) {
+	const runtime = source.replace(/\b(?:import|export)\s+type\b[^;]*?from\s*['"][^'"]+['"]/g, '');
+	return [...runtime.matchAll(SPECIFIER_RE)].map((match) => match[1]);
+}
+
+function resolveModule(target) {
+	const candidates = [
+		target,
+		...MODULE_EXTENSIONS.flatMap((ext) => [target + ext, join(target, `index${ext}`)]),
+	];
+	return candidates.find((file) => existsSync(file) && statSync(file).isFile()) ?? null;
+}
+
+/** The first module reachable from a client entry that imports zod, or null. */
+function zodImporterFrom(entry) {
+	const seen = new Set([entry]);
+	const queue = [entry];
+	while (queue.length > 0) {
+		const file = queue.pop();
+		const specifiers = runtimeSpecifiers(readFileSync(file, 'utf8'));
+		if (specifiers.some((name) => name === 'zod' || name.startsWith('zod/'))) return file;
+		for (const specifier of specifiers) {
+			const target = resolveSpecifier(specifier, file);
+			const next = target && resolveModule(target);
+			if (next && !seen.has(next)) {
+				seen.add(next);
+				queue.push(next);
+			}
+		}
+	}
+	return null;
 }
 
 function collect() {
@@ -170,6 +206,8 @@ function collect() {
 				if (!LAYER_RULES[from.layer].includes(to.layer)) add('layers', r, specifier);
 			}
 			if (/^\s*['"]use client['"]/.test(source)) {
+				const zodImporter = zodImporterFrom(file);
+				if (zodImporter) add('client-zod', r, `via ${rel(zodImporter)}`);
 				for (const match of source.matchAll(SPECIFIER_RE)) {
 					if (/(^|\/)server(\/|$)/.test(match[1]) && match[1].includes('features/')) {
 						add('client-server', r, match[1]);

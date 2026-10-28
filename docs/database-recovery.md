@@ -48,6 +48,10 @@ repository, run `./docker/setup.sh` (or copy your old `.env`), then run the rest
 different `JWT_SECRET` than the backed-up instance, existing sessions end and members sign in
 again; their accounts and data are there.
 
+The script checks that the archive holds a readable dump before it changes anything, and stops with
+an error otherwise. Restoring over a live instance replaces its current data, so run
+`./docker/backup.sh` first.
+
 Test a restore now and then: start a second copy on another machine or port and check that you can
 sign in and see your WG and its pictures.
 

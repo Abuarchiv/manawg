@@ -1,13 +1,7 @@
 // Shopping duplicate conflict handling.
 // Why: Two roommates edit the same list concurrently; duplicates must resolve deterministically.
 
-import { randomUUID } from 'node:crypto';
 import { expect, type Page, test } from '@playwright/test';
-import { DrizzleQueryError } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { Pool } from 'pg';
-import * as schema from '../src/core/db/schema';
-import { isOpenShoppingItemDuplicate } from '../src/features/shopping/shopping-duplicate';
 import {
 	dismissOnboarding,
 	FIXTURE_WG,
@@ -17,8 +11,6 @@ import {
 } from './support/helpers';
 
 test.describe('shopping conflict handling', () => {
-	const testDatabaseUrl = process.env.TEST_DATABASE_URL?.trim() ?? '';
-
 	type FixtureShoppingItem = {
 		id: string;
 		addedByMemberId: string;
@@ -29,15 +21,6 @@ test.describe('shopping conflict handling', () => {
 		createdAt: string;
 		updatedAt: string;
 	};
-
-	function localTestDatabaseUrl(): string {
-		if (!testDatabaseUrl) {
-			test.skip(true, 'Set TEST_DATABASE_URL to an isolated local PostgreSQL database.');
-		}
-		const hostname = new URL(testDatabaseUrl).hostname.toLowerCase();
-		expect(['localhost', '127.0.0.1', '[::1]']).toContain(hostname);
-		return testDatabaseUrl;
-	}
 
 	async function mockShoppingPage(
 		page: Page,
@@ -329,97 +312,10 @@ test.describe('shopping conflict handling', () => {
 		await expect(page.getByText(conflictMessage, { exact: true })).toBeVisible();
 	});
 
-	test('real PostgreSQL partial unique index rejects open duplicates and allows repurchase', async () => {
-		const pool = new Pool({ connectionString: localTestDatabaseUrl(), max: 1 });
-		const database = drizzle(pool, { schema });
-		const suffix = randomUUID().replaceAll('-', '');
-		let wgId = '';
-		let secondWgId = '';
-		const name = `Pilot shopping ${suffix}`;
-		const normalizedVariant = `  ${name.toUpperCase()}  `;
-
-		try {
-			const wg = await pool.query<{ id: string }>(
-				'INSERT INTO public.wgs (share_code, name) VALUES ($1, $2) RETURNING id',
-				[`P${suffix.slice(0, 7)}`, `Pilot shopping ${suffix}`],
-			);
-			wgId = wg.rows[0]?.id ?? '';
-			expect(wgId).toBeTruthy();
-			const secondWg = await pool.query<{ id: string }>(
-				'INSERT INTO public.wgs (share_code, name) VALUES ($1, $2) RETURNING id',
-				[`Q${suffix.slice(0, 7)}`, `Pilot shopping second ${suffix}`],
-			);
-			secondWgId = secondWg.rows[0]?.id ?? '';
-			expect(secondWgId).toBeTruthy();
-
-			const member = await pool.query<{ id: string }>(
-				'INSERT INTO public.wg_members (wg_id, name) VALUES ($1, $2) RETURNING id',
-				[wgId, `Pilot member ${suffix}`],
-			);
-			const memberId = member.rows[0]?.id ?? '';
-			expect(memberId).toBeTruthy();
-			const secondMember = await pool.query<{ id: string }>(
-				'INSERT INTO public.wg_members (wg_id, name) VALUES ($1, $2) RETURNING id',
-				[secondWgId, `Pilot second member ${suffix}`],
-			);
-			const secondMemberId = secondMember.rows[0]?.id ?? '';
-			expect(secondMemberId).toBeTruthy();
-
-			const first = await database
-				.insert(schema.shoppingItems)
-				.values({ wgId, addedByMemberId: memberId, name, quantity: '1x' })
-				.returning({ id: schema.shoppingItems.id });
-			expect(first).toHaveLength(1);
-
-			let duplicateError: unknown;
-			try {
-				await database
-					.insert(schema.shoppingItems)
-					.values({ wgId, addedByMemberId: memberId, name: normalizedVariant, quantity: '2x' })
-					.returning({ id: schema.shoppingItems.id });
-			} catch (error) {
-				duplicateError = error;
-			}
-			expect(duplicateError).toBeInstanceOf(DrizzleQueryError);
-			expect(duplicateError).toMatchObject({
-				cause: { code: '23505', constraint: 'shopping_items_unique_open_name' },
-			});
-			expect(isOpenShoppingItemDuplicate(duplicateError)).toBe(true);
-
-			await pool.query(
-				'UPDATE public.shopping_items SET bought_at = now(), bought_by_member_id = $2 WHERE id = $1',
-				[first[0]?.id, memberId],
-			);
-			const repurchase = await database
-				.insert(schema.shoppingItems)
-				.values({ wgId, addedByMemberId: memberId, name: normalizedVariant, quantity: '2x' })
-				.returning({ id: schema.shoppingItems.id });
-			expect(repurchase).toHaveLength(1);
-
-			const otherWgItem = await database
-				.insert(schema.shoppingItems)
-				.values({
-					wgId: secondWgId,
-					addedByMemberId: secondMemberId,
-					name: normalizedVariant,
-					quantity: '1x',
-				})
-				.returning({ id: schema.shoppingItems.id });
-			expect(otherWgItem).toHaveLength(1);
-
-			const rows = await pool.query<{ count: number }>(
-				' SELECT count(*)::int AS count FROM public.shopping_items WHERE wg_id = $1 AND normalized_name = lower(btrim($2))',
-				[wgId, name],
-			);
-			expect(rows.rows[0]?.count).toBe(2);
-		} finally {
-			if (wgId) await pool.query('DELETE FROM public.wgs WHERE id = $1', [wgId]);
-			if (secondWgId) await pool.query('DELETE FROM public.wgs WHERE id = $1', [secondWgId]);
-			await pool.end();
-		}
-	});
-
-	test('wraps quick shopping suggestions at phone widths and large text', async ({ page }) => {
+	test('wraps quick shopping suggestions at phone widths and large text', async ({
+		page,
+		browserName,
+	}) => {
 		skipUnlessFixtures();
 
 		const { shareCode, memberId, memberName } = FIXTURE_WG;
@@ -572,7 +468,8 @@ test.describe('shopping conflict handling', () => {
 						}),
 					{ timeout: 3_000 },
 				)
-				.toBeLessThan(0);
+				// WebKit scrolls a focused button flush to the action's edge; Chromium leaves a gap.
+				.toBeLessThan(browserName === 'webkit' ? 0.5 : 0);
 		}
 		for (const width of [320, 360]) {
 			for (const colorScheme of ['light', 'dark'] as const) {

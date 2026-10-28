@@ -248,10 +248,14 @@ test.describe('settings theme responsive', () => {
 	skipUnlessFixtures();
 	test.use({ viewport: { width: 320, height: 720 }, bypassCSP: true });
 
-	test('all theme choices stay reachable at 320px with 200% text', async ({ page }) => {
+	test('all theme and language choices stay reachable at 320px with 200% text', async ({
+		page,
+	}) => {
 		await setupMember(page);
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings`);
-		await expect(page.getByRole('button', { name: 'System', exact: true })).toBeVisible();
+		const themes = page.getByRole('group', { name: 'Darstellung' });
+		const languages = page.getByRole('group', { name: 'Sprache / Language' });
+		await expect(themes.getByRole('button', { name: 'System', exact: true })).toBeVisible();
 		await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
 		expect(
 			await page.locator('html').evaluate((element) => getComputedStyle(element).fontSize),
@@ -262,8 +266,11 @@ test.describe('settings theme responsive', () => {
 			expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(320);
 		}
 
-		for (const name of ['Hell', 'Dunkel', 'System']) {
-			const choice = page.getByRole('button', { name, exact: true });
+		for (const choice of [
+			...(await themes.getByRole('button').all()),
+			...(await languages.getByRole('button').all()),
+		]) {
+			const name = await choice.textContent();
 			await expect(choice).toBeVisible();
 			const box = await choice.boundingBox();
 			if (!box) throw new Error(`${name} has no layout box`);
@@ -271,7 +278,7 @@ test.describe('settings theme responsive', () => {
 			expect(box.x + box.width).toBeLessThanOrEqual(320);
 		}
 		for (const name of ['Hell', 'Dunkel', 'System']) {
-			const choice = page.getByRole('button', { name, exact: true });
+			const choice = themes.getByRole('button', { name, exact: true });
 			await choice.click();
 			await expect(choice).toHaveAttribute('aria-pressed', 'true');
 			if (name === 'Dunkel') await expect(page.locator('html')).toHaveClass(/dark/);
@@ -487,7 +494,12 @@ test.describe('invite link copy', () => {
 
 		test('announces a copied link without reporting that the invitation was shared', async ({
 			page,
+			browserName,
 		}) => {
+			test.skip(
+				browserName === 'webkit',
+				'WebKit rejects the clipboard-read and clipboard-write permission grants.',
+			);
 			const code = FIXTURE_WG.shareCode;
 			const inviteUrl = 'http://localhost/invite/fixture-invite-token01';
 			await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);

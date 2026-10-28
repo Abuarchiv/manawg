@@ -1,6 +1,5 @@
 'use client';
 
-import { z } from 'zod';
 import { safeLocalStorage } from '@/core/utils/browser';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import { WG_NAME_MAX_LENGTH } from '@/shared/lib/limits';
@@ -23,17 +22,29 @@ export interface SessionMember {
 	authUserId?: string;
 }
 
-// Same limit as POST/PATCH /api/wg: a shorter one would silently drop long
-// names on read and hide them from the offline page.
-const knownWgSchema = z.object({
-	code: z.string(),
-	name: z.string().min(1).max(WG_NAME_MAX_LENGTH),
-	lastVisitedAt: z.number().finite(),
-	// Optional on read: legacy entries predate account binding (belongsToAccount handles them).
-	authUserId: z.string().min(1).optional(),
-});
+export interface KnownWg {
+	code: string;
+	name: string;
+	lastVisitedAt: number;
+	/** Optional on read: legacy entries predate account binding (belongsToAccount handles them). */
+	authUserId?: string;
+}
 
-export type KnownWg = z.infer<typeof knownWgSchema>;
+// Same name limit as POST/PATCH /api/wg: a shorter one would silently drop long
+// names on read and hide them from the offline page.
+function isKnownWg(item: unknown): item is KnownWg {
+	if (typeof item !== 'object' || item === null) return false;
+	const { code, name, lastVisitedAt, authUserId } = item as Record<string, unknown>;
+	return (
+		typeof code === 'string' &&
+		typeof name === 'string' &&
+		name.length >= 1 &&
+		name.length <= WG_NAME_MAX_LENGTH &&
+		typeof lastVisitedAt === 'number' &&
+		Number.isFinite(lastVisitedAt) &&
+		(authUserId === undefined || (typeof authUserId === 'string' && authUserId.length >= 1))
+	);
+}
 
 /** The account this browser last loaded a member for, or null before the first member load. */
 export function getLocalAccount(): string | null {
@@ -82,12 +93,17 @@ export function getKnownWgs(): KnownWg[] {
 		const seen = new Set<string>();
 		const known: KnownWg[] = [];
 		for (const item of parsed) {
-			const result = knownWgSchema.safeParse(item);
-			if (!result.success) continue;
-			const code = normalizeShareCode(result.data.code);
+			if (!isKnownWg(item)) continue;
+			const code = normalizeShareCode(item.code);
 			if (!isValidShareCode(code) || seen.has(code)) continue;
 			seen.add(code);
-			known.push({ ...result.data, code });
+			// Copy the known fields only, as the stored JSON may carry others.
+			known.push({
+				code,
+				name: item.name,
+				lastVisitedAt: item.lastVisitedAt,
+				...(item.authUserId === undefined ? {} : { authUserId: item.authUserId }),
+			});
 			if (known.length >= MAX_KNOWN_WGS) break;
 		}
 		return known;

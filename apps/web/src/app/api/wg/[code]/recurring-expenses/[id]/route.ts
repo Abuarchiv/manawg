@@ -9,7 +9,6 @@ import { badRequest, notFound, rateLimitResponse } from '@/core/http/api-errors'
 import { parseBody } from '@/core/http/parse-body';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
-import { expenseCategoryValueSchema } from '@/features/expenses/expense-categories';
 import { MAX_SPLITS, RECURRING_INTERVAL_MAX_MONTHS } from '@/features/expenses/expense-constants';
 import {
 	expenseAmountSchema,
@@ -17,6 +16,7 @@ import {
 	expenseSplitSchema,
 } from '@/features/expenses/expense-schemas';
 import { serializeRecurringExpense } from '@/features/expenses/recurring-expenses';
+import { expenseCategoryValueSchema } from '@/features/expenses/server/expense-category-schema';
 import {
 	deleteRecurringTemplate,
 	editRecurringTemplate,

@@ -27,9 +27,9 @@ import {
 	CHORE_INTERVAL_MIN,
 	CHORE_TITLE_MAX,
 	CHORE_TITLE_MIN,
-	choreDueAtSchema,
 } from '@/features/chores/chore-limits';
 import { buildChorePatchUpdate } from '@/features/chores/chore-patch';
+import { choreDueAtSchema } from '@/features/chores/server/chore-due-at-schema';
 import {
 	closeChoreSwapRequest,
 	resolveChoreSwapRequest,

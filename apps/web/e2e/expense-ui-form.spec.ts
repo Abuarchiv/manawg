@@ -323,11 +323,12 @@ test.describe('finance dialog mobile', () => {
 });
 
 test.describe('ocr runtime', () => {
-	const OCR_LANGUAGE_DATA_URLS = [
-		'https://cdn.jsdelivr.net/npm/@tesseract.js-data/deu/4.0.0_best_int/deu.traineddata.gz',
-		'https://cdn.jsdelivr.net/npm/@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz',
+	const OCR_ASSET_DIR = '/tesseract/';
+	const OCR_LANGUAGE_DATA_PATHS = [
+		'/tesseract/lang/deu.traineddata.gz',
+		'/tesseract/lang/eng.traineddata.gz',
 	] as const;
-	// Tesseract.js-core 5.1.1 tries an optional fetch of its embedded WASM data URI.
+	// Tesseract.js-core tries an optional fetch of its embedded WASM data URI.
 	// WebKit blocks it via connect-src, then successfully falls back to decoding
 	// the same bytes. Match only that exact message and WASM magic prefix; do not
 	// permit data: URLs in CSP.
@@ -349,12 +350,13 @@ test.describe('ocr runtime', () => {
 
 	test.skip(
 		process.env.OCR_RUNTIME_E2E !== 'true' || !FIXTURE_ENV_ENABLED,
-		'OCR runtime proof is opt-in: set OCR_RUNTIME_E2E=true with the production fixture build. The real Tesseract worker, WASM core, and German/English models require public access to cdn.jsdelivr.net.',
+		'OCR runtime proof is opt-in: set OCR_RUNTIME_E2E=true with the production fixture build. The real Tesseract worker, WASM core, and German/English models are served by the app from /tesseract.',
 	);
 	test.use({ serviceWorkers: 'block' });
 
 	interface NetworkEvidence {
-		cdnResponses: Map<string, number>;
+		assetResponses: Map<string, number>;
+		thirdPartyRequests: string[];
 		cspViolations: string[];
 		pageErrors: string[];
 		apiWrites: string[];
@@ -362,16 +364,20 @@ test.describe('ocr runtime', () => {
 
 	function observeNetwork(page: Page): NetworkEvidence {
 		const evidence: NetworkEvidence = {
-			cdnResponses: new Map(),
+			assetResponses: new Map(),
+			thirdPartyRequests: [],
 			cspViolations: [],
 			pageErrors: [],
 			apiWrites: [],
 		};
 
 		page.context().on('response', (response) => {
-			if (response.url().startsWith('https://cdn.jsdelivr.net/')) {
-				evidence.cdnResponses.set(response.url(), response.status());
-			}
+			const { pathname } = new URL(response.url());
+			if (pathname.startsWith(OCR_ASSET_DIR))
+				evidence.assetResponses.set(pathname, response.status());
+		});
+		page.context().on('request', (request) => {
+			if (request.url().includes('jsdelivr')) evidence.thirdPartyRequests.push(request.url());
 		});
 		page.context().on('request', (request) => {
 			if (request.method() === 'GET') return;
@@ -415,9 +421,8 @@ test.describe('ocr runtime', () => {
 
 		expect(scriptSrc).toContain("'wasm-unsafe-eval'");
 		expect(scriptSrc).not.toContain("'unsafe-eval'");
-		expect(connectSrc).toContain(OCR_LANGUAGE_DATA_URLS[0]);
-		expect(connectSrc).toContain(OCR_LANGUAGE_DATA_URLS[1]);
-		expect(connectSrc).not.toContain('https://cdn.jsdelivr.net');
+		expect(csp).not.toContain('jsdelivr');
+		expect(connectSrc).toEqual(["'self'"]);
 	}
 
 	function expectOnlyExpectedCspViolations(
@@ -478,25 +483,19 @@ test.describe('ocr runtime', () => {
 		});
 	}
 
-	function expectTesseractAssets(cdnResponses: Map<string, number>): void {
-		const urls = [...cdnResponses.keys()];
-		const paths = urls.map((url) => new URL(url).pathname);
-		const workerPath = '/npm/tesseract.js@v5.1.1/dist/worker.min.js';
-		const corePath = /^\/npm\/tesseract\.js-core@v5\.1\.1\/tesseract-core(?:-[^/]+)?\.wasm\.js$/;
-		const deuPath = new URL(OCR_LANGUAGE_DATA_URLS[0]).pathname;
-		const engPath = new URL(OCR_LANGUAGE_DATA_URLS[1]).pathname;
+	function expectTesseractAssets(evidence: NetworkEvidence): void {
+		const paths = [...evidence.assetResponses.keys()];
+		const workerPath = '/tesseract/worker.min.js';
+		const corePath = /^\/tesseract\/tesseract-core(?:-[^/]+)?-lstm\.wasm\.js$/;
+		const corePaths = paths.filter((path) => corePath.test(path));
 
 		expect(paths).toContain(workerPath);
-		expect(paths.some((path) => corePath.test(path))).toBe(true);
-		expect(paths).toContain(deuPath);
-		expect(paths).toContain(engPath);
-		for (const path of [workerPath, deuPath, engPath]) {
-			const url = `https://cdn.jsdelivr.net${path}`;
-			expect(cdnResponses.get(url), `${url} returns HTTP 200`).toBe(200);
+		expect(corePaths).toHaveLength(1);
+		for (const path of [workerPath, ...corePaths, ...OCR_LANGUAGE_DATA_PATHS]) {
+			expect(paths).toContain(path);
+			expect(evidence.assetResponses.get(path), `${path} returns HTTP 200`).toBe(200);
 		}
-		const coreUrl = urls.find((url) => corePath.test(new URL(url).pathname));
-		expect(coreUrl).toBeTruthy();
-		expect(cdnResponses.get(coreUrl ?? '')).toBe(200);
+		expect(evidence.thirdPartyRequests).toEqual([]);
 	}
 
 	test('real Tesseract recognizes a local receipt under the strict CSP', async ({
@@ -517,7 +516,7 @@ test.describe('ocr runtime', () => {
 			page.getByText('Bild wird ausgewertet. Das kann 30 Sekunden dauern.', { exact: true }),
 		).toHaveCount(0);
 
-		expectTesseractAssets(evidence.cdnResponses);
+		expectTesseractAssets(evidence);
 		expectOnlyExpectedCspViolations(evidence.cspViolations, browserName);
 		expect(evidence.pageErrors).toEqual([]);
 		expect(evidence.apiWrites).toEqual([]);
@@ -529,8 +528,8 @@ test.describe('ocr runtime', () => {
 	}) => {
 		test.setTimeout(75_000);
 		const blockedModelRequests: string[] = [];
-		for (const url of OCR_LANGUAGE_DATA_URLS) {
-			await page.context().route(url, (route) => {
+		for (const path of OCR_LANGUAGE_DATA_PATHS) {
+			await page.context().route(`**${path}`, (route) => {
 				blockedModelRequests.push(route.request().url());
 				return route.abort();
 			});

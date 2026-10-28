@@ -17,6 +17,12 @@ tar -xzf "$archive" -C "$work"
 # Compose reports progress on stderr; show it only when a step fails.
 quiet() { "$@" 2>"$work/stderr" || { cat "$work/stderr" >&2; return 1; }; }
 
+# Reject a bad archive before anything is stopped or dropped.
+invalid() { echo "$archive is not a backup from docker/backup.sh ($1); nothing was changed" >&2; exit 1; }
+[ -s "$work/database.dump" ] && [ -f "$work/storage.tar" ] || invalid "database.dump or storage.tar missing"
+quiet docker compose run --rm --no-deps -T --entrypoint pg_restore db -l <"$work/database.dump" >/dev/null \
+	|| invalid "database.dump is unreadable"
+
 docker compose stop app cron gateway auth storage >/dev/null 2>&1 || true
 quiet docker compose up -d --wait db
 
