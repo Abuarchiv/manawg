@@ -145,7 +145,8 @@ Bei einem veröffentlichten Image (`MANAWG_VERSION`) nimmst du stattdessen
 `docker compose pull && docker compose up -d`. Der Dienst `setup` wendet neue Migrationen an, bevor
 die neue App-Version startet. Eine Änderung, die bei selbst gehosteten Instanzen einen manuellen
 Schritt braucht, sagt das in ihrem Pull Request; lies vor dem Update die Liste der Änderungen
-(`git log --oneline <alter Commit>..origin/main`).
+(`git fetch && git log --oneline HEAD..origin/main` im Checkout, bei einem veröffentlichten Image
+die Commit-Historie auf GitHub).
 
 Migrationen laufen nur vorwärts und werden nie zurückgenommen. Willst du zurück, checke den alten
 Commit oder Tag aus (bei einem veröffentlichten Image setzt du `MANAWG_VERSION` auf den alten Tag).

@@ -135,7 +135,8 @@ docker compose up -d --build
 With a published image (`MANAWG_VERSION`), `docker compose pull && docker compose up -d` instead.
 The `setup` service applies new migrations before the new app version starts. A change that needs
 a manual step on self-hosted instances says so in its pull request; read the list of changes
-before you update (`git log --oneline <old commit>..origin/main`).
+before you update (`git fetch && git log --oneline HEAD..origin/main` in the checkout, or the
+commit history on GitHub for a published image).
 
 Migrations only move forward and are never reversed. To go back, check out the old commit or tag
 (or set `MANAWG_VERSION` to the old tag for a published image). When you build from source, run
