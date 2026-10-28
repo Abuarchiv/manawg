@@ -33,7 +33,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: apps/web/.next/cache
           # Keyed by inputs, not the commit, so unchanged sources reuse one entry.
@@ -77,7 +77,7 @@ jobs:
       - id: playwright
         run: echo "version=$(pnpm --filter @manawg/web exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
       - id: playwright-cache
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-chromium
@@ -399,7 +399,7 @@ jobs:
       - id: playwright
         run: echo "version=$(pnpm --filter @manawg/web exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
       - id: playwright-cache
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-chromium
