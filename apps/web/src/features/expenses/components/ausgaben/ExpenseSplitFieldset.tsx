@@ -28,6 +28,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import { EqualParticipantsPicker } from './EqualParticipantsPicker';
 import { ManualSplitSummary } from './ManualSplitSummary';
 import { SplitReview } from './SplitReview';
+import { monoAmount } from './mono-amount';
 
 interface ExpenseSplitFieldsetProps {
 	members: Member[];
@@ -189,8 +190,8 @@ export function ExpenseSplitFieldset({
 					/>
 					{!splitsError && (
 						<FieldDescription>
-							{t('zeroHint', {
-								zero: formatEuroCents(0, currency, { locale }),
+							{t.rich('zeroHint', {
+								zero: monoAmount(formatEuroCents(0, currency, { locale })),
 							})}
 						</FieldDescription>
 					)}

@@ -1,7 +1,8 @@
 export default {
 	page: {
 		title: 'Ausgaben',
-		entryCount: '{count, plural, one {# Eintrag} other {# Einträge}}',
+		entryCount:
+			'{count, plural, one {{count, number, ::group-off} Eintrag} other {{count, number, ::group-off} Einträge}}',
 		loading: 'Ausgaben werden geladen',
 		formLoading: 'Ausgabenformular wird geladen…',
 		reload: 'Ausgaben erneut laden',

@@ -82,7 +82,7 @@ export default {
 		template: 'Fixed-cost template',
 		repeat: 'Repeat',
 		templateHint: 'The template remembers the amount, the payer and this split.',
-		saveAsTemplate: 'Remember as template',
+		saveAsTemplate: 'Save as template',
 		templateSaved: 'Saved as a template. You’ll find it under Fixed costs.',
 	},
 	intervals: {
@@ -122,7 +122,7 @@ export default {
 			'Fixed-cost expense queued offline. The template stays unchanged until it syncs.',
 		recurringQueueBlocked:
 			'Offline storage is blocked. The fixed-cost expense could not be queued and was rolled back.',
-		recurringBooked: 'Fixed-cost expense created.',
+		recurringBooked: 'Fixed-cost expense recorded.',
 		templateAlreadyQueued:
 			'The fixed-cost template is already queued offline. Sync or resolve the existing action first.',
 		templateSavedOffline: 'Fixed-cost template saved offline.',
@@ -172,7 +172,7 @@ export default {
 			descriptionInvalid: 'Enter a description.',
 			intervalInvalid: 'Choose a valid interval.',
 			dueDateInvalid: 'Check the next due date.',
-			changed: 'The template was just booked or changed. Reload the expenses and edit it again.',
+			changed: 'The template was just recorded or changed. Reload the expenses and edit it again.',
 		},
 		templateDelete: {
 			subject: 'The template could not be deleted',
@@ -181,11 +181,11 @@ export default {
 		},
 		advance: {
 			alreadyAdvanced:
-				'The expense was created, but the template had already moved on. Check whether these fixed costs were recorded twice.',
+				'The expense was recorded, but the template had already moved on. Check whether these fixed costs were recorded twice.',
 			updateFailed:
-				'The expense was created, but the fixed-cost template could not be moved on. Reload the expenses and check the next due date.',
+				'The expense was recorded, but the fixed-cost template could not be moved on. Reload the expenses and check the next due date.',
 			generic:
-				'The expense was created, but the fixed-cost template could not be moved on. Check it again later.',
+				'The expense was recorded, but the fixed-cost template could not be moved on. Check it again later.',
 		},
 		split: {
 			invalidShare: 'At least one share is invalid. Enter a valid amount or leave the field empty.',

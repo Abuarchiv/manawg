@@ -37,6 +37,7 @@ import { cn } from '@/shared/lib/cn';
 import { Check, MoreHorizontal, Pencil, Receipt, Trash2 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { memo, useState } from 'react';
+import { monoAmount } from './mono-amount';
 
 const IMPACT_KEY = {
 	lent: 'impactLent',
@@ -268,9 +269,9 @@ export const ExpenseRow = memo(function ExpenseRow({
 					<AlertDialogHeader>
 						<AlertDialogTitle>{t('deleteTitle')}</AlertDialogTitle>
 						<AlertDialogDescription>
-							{t('deleteBody', {
+							{t.rich('deleteBody', {
 								description: expense.description,
-								amount: money(expense.amountCents),
+								amount: monoAmount(money(expense.amountCents)),
 							})}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
@@ -303,9 +304,9 @@ export const ExpenseRow = memo(function ExpenseRow({
 						</AlertDialogTitle>
 						<AlertDialogDescription>
 							{settleCandidate &&
-								t(settleCandidate.settledAt ? 'markOpenBody' : 'markPaidBody', {
+								t.rich(settleCandidate.settledAt ? 'markOpenBody' : 'markPaidBody', {
 									who: who(settleCandidate.debtorMemberId),
-									amount: money(settleCandidate.amountCents),
+									amount: monoAmount(money(settleCandidate.amountCents)),
 									description: expense.description,
 									payer: isPayer ? 'you' : 'other',
 									payerName: memberName(expense.paidByMemberId),

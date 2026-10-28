@@ -32,6 +32,7 @@ import { cn } from '@/shared/lib/cn';
 import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
+import { monoAmount } from './mono-amount';
 
 interface RecurringTemplateItemProps {
 	item: RecurringExpense;
@@ -135,8 +136,8 @@ export function RecurringTemplateItem({
 			<ItemContent className="min-w-0">
 				<ItemTitle className="line-clamp-none break-words">{item.description}</ItemTitle>
 				<ItemDescription className="line-clamp-none">
-					{t('summary', {
-						amount: money(item.amountCents),
+					{t.rich('summary', {
+						amount: monoAmount(money(item.amountCents)),
 						payer: memberName(item.paidByMemberId),
 						paused: paused ? 'true' : 'other',
 						date: formatShortDate(item.nextDueAt, undefined, locale),
@@ -149,9 +150,9 @@ export function RecurringTemplateItem({
 				<div className="flex flex-wrap gap-1.5 pt-1">
 					{item.splits.map((split) => (
 						<Badge key={split.debtorMemberId} variant="secondary" className="whitespace-normal">
-							{t('share', {
+							{t.rich('share', {
 								name: memberName(split.debtorMemberId),
-								amount: money(split.amountCents),
+								amount: monoAmount(money(split.amountCents)),
 							})}
 						</Badge>
 					))}

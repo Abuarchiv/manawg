@@ -4,7 +4,8 @@ import type de from '../de/expenses';
 export default {
 	page: {
 		title: 'Expenses',
-		entryCount: '{count, plural, one {# entry} other {# entries}}',
+		entryCount:
+			'{count, plural, one {{count, number, ::group-off} entry} other {{count, number, ::group-off} entries}}',
 		loading: 'Loading expenses',
 		formLoading: 'Loading expense form…',
 		reload: 'Reload expenses',
@@ -84,19 +85,19 @@ export default {
 		manualAria: 'Record fixed-cost expense manually: {description}',
 		deleteAria: 'Delete fixed-cost template: {description}',
 		summary:
-			'{amount} · paid by {payer} · {paused, select, true {paused} other {due {date}}}{hasLast, select, true { · last booked {last}} other {}}',
+			'{amount} · paid by {payer} · {paused, select, true {paused} other {due {date}}}{hasLast, select, true { · last recorded {last}} other {}}',
 		share: '{name}: {amount}',
 		probablyBooked: 'Probably already recorded for this due date.',
 		onlyParticipants: 'Only people involved can record these fixed costs.',
 		book: 'Record',
 		bookAria: 'Record: {description}',
-		review: 'Check',
-		reviewAria: 'Check fixed-cost expense: {description}',
+		review: 'Review',
+		reviewAria: 'Review fixed-cost expense: {description}',
 	},
 	categories: {
 		lebensmittel: 'Groceries',
 		haushalt: 'Household',
-		wohnen: 'Housing and utilities',
+		wohnen: 'Housing',
 		freizeit: 'Leisure',
 		mobilitaet: 'Transport',
 		sonstiges: 'Other',
