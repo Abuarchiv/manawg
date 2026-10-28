@@ -53,11 +53,12 @@ const nextConfig: NextConfig = {
 		];
 	},
 	experimental: {
-		// Besuchte/vorab geladene Tabs bleiben 5 Min. im Router-Cache: ein Tab-Tipp ohne Netz bleibt in
-		// der App (letzte Daten) statt per Hard-Navigation auf die Offline-Seite zu fallen.
+		// Visited and prefetched tabs stay in the router cache for 5 minutes: a tab tap without a
+		// network stays in the app (last data) instead of falling back to the offline page.
 		staleTimes: { dynamic: 300, static: 300 },
-		// motion/react bindet über `const motion = fm.motion` die komplette Feature-Bundle-Variante ein;
-		// optimizePackageImports löst die Importe auf die Einzelmodule auf (LazyMotion lädt sonst nichts nach).
+		// motion/react pulls in the complete feature bundle via `const motion = fm.motion`;
+		// optimizePackageImports resolves the imports to the single modules (LazyMotion loads nothing
+		// extra otherwise).
 		optimizePackageImports: ['lucide-react', 'motion/react'],
 	},
 };
