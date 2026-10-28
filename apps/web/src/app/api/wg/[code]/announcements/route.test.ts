@@ -33,7 +33,6 @@ const withIdempotentReplay = async (
 	req: Request,
 	scope: string,
 	mutate: (tx: unknown) => Promise<{ response: Cached }>,
-	_legacyResponse: (value: unknown) => unknown,
 	wgIdForLock?: string,
 ) => {
 	state.replayWgId = wgIdForLock ?? null;
