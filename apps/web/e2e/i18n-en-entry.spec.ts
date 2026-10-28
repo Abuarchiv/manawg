@@ -92,7 +92,8 @@ test.describe('entry and auth in English', () => {
 					timeout: 60_000,
 				});
 				await expect(page.getByRole('link', { name: 'Create account' })).toBeVisible();
-				await expect(page.getByRole('navigation', { name: 'More about ManaWG' })).toBeVisible();
+				// The fixture server is not the official instance, so only the project link shows.
+				await expect(page.getByRole('link', { name: 'About ManaWG' })).toBeVisible();
 				await expect(page.getByRole('link', { name: 'Legal notice (German)' })).toBeVisible();
 				await expectEnglishPage(page, width);
 

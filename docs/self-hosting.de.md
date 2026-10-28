@@ -431,8 +431,8 @@ Das gilt für beide Wege. Bei Docker heißen die Einstellungen `LEGAL_URL` und `
   eigene Datenschutzerklärung. Jede Instanz außer der offiziellen (`app.manawg.com`) gilt als
   selbst gehostet und gibt sich gegenüber Suchmaschinen nicht als die offizielle App aus; das hängt
   nicht von `LEGAL_URL` ab.
-- Links zu "Über ManaWG", "Die WG-App" und "WG-Ratgeber" zeigen weiter auf manawg.com, die Seite
-  des Projekts.
+- Der Link "Über ManaWG" zeigt auf manawg.com, die Seite des Projekts. Die Links zu deren
+  Produkt- und Ratgeberseiten erscheinen nur in der offiziellen Instanz.
 - `NEXT_PUBLIC_SUPPORT_EMAIL` erhält die Meldungen aus "Fehler per E-Mail melden". Bei Docker fällt
   ein leeres `SUPPORT_EMAIL` auf `SMTP_ADMIN_EMAIL` zurück. Auf Vercel blendet ein nicht gesetzter
   Wert die Melde-Links aus.

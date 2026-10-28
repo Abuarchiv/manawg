@@ -2,7 +2,7 @@ import { useTranslations } from 'next-intl';
 import { LanguageSwitch } from '@/components/app/LanguageSwitch';
 import { richArgument } from '@/components/entry/rich-argument';
 import { cn } from '@/shared/lib/cn';
-import { landingUrl, legalUrl } from '@/shared/lib/landing-url';
+import { IS_OFFICIAL_INSTANCE, landingUrl, legalUrl } from '@/shared/lib/landing-url';
 
 type LegalLabel = 'about' | 'imprint' | 'privacy' | 'terms';
 interface LegalLink {
@@ -22,12 +22,14 @@ const LEGAL_LINKS: LegalLink[] = [
 	...legalLink(PRIVACY, 'privacy'),
 	...legalLink(AGB, 'terms'),
 ];
-// Product and guide pages live on the landing; shown only on the plain entry footer,
-// never in consent or registration flows (those keep the legal minimum).
-const INFO_LINKS = [
-	{ href: landingUrl('/wg-app'), label: 'flatApp' },
-	{ href: landingUrl('/ratgeber'), label: 'guide' },
-] as const;
+// Product and guide pages of the official landing; shown only there and on the plain entry
+// footer, never in consent or registration flows (those keep the legal minimum).
+const INFO_LINKS = IS_OFFICIAL_INSTANCE
+	? ([
+			{ href: landingUrl('/wg-app'), label: 'flatApp' },
+			{ href: landingUrl('/ratgeber'), label: 'guide' },
+		] as const)
+	: [];
 
 const CONSENT_LINK = '-my-3.5 inline-block py-3.5 underline underline-offset-4';
 
@@ -66,7 +68,7 @@ export function LegalLinks({
 					})}
 				</p>
 			)}
-			{!consent && !registration && (
+			{!consent && !registration && INFO_LINKS.length > 0 && (
 				<nav aria-label={t('moreNav')} className="flex flex-wrap justify-center">
 					{INFO_LINKS.map((link) => (
 						<a

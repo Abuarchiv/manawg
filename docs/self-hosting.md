@@ -411,8 +411,8 @@ These apply to both ways. In Docker the settings are `LEGAL_URL` and `SUPPORT_EM
   need your own imprint and privacy policy. Every instance other than the official one
   (`app.manawg.com`) is treated as self-hosted and does not announce itself to search engines as
   the official app; this does not depend on `LEGAL_URL`.
-- Links to "About ManaWG" ("Über ManaWG"), "The flat app" ("Die WG-App") and "Flat-share guide"
-  ("WG-Ratgeber") keep pointing to manawg.com, the project's site.
+- The "About ManaWG" ("Über ManaWG") link points to manawg.com, the project's site. The links to
+  its product and guide pages appear only on the official instance.
 - `NEXT_PUBLIC_SUPPORT_EMAIL` receives the "Report a problem by email" ("Fehler per E-Mail
   melden") reports. In Docker an empty `SUPPORT_EMAIL` falls back to `SMTP_ADMIN_EMAIL`. On Vercel
   an unset value hides the report links.
