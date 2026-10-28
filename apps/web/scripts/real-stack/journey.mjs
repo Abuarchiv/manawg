@@ -1,7 +1,6 @@
 import { chromium, devices } from '@playwright/test';
+import { BASE, MAIL } from './env.mjs';
 
-const BASE = 'http://localhost:3140';
-const MAIL = 'http://127.0.0.1:54324/api/v1';
 const log = [];
 const bugs = [];
 const note = (m) => {

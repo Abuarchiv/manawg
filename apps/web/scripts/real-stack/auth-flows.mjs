@@ -2,9 +2,9 @@
 // Supabase Storage with access checks and revocation after the expense is deleted.
 import { randomUUID } from 'node:crypto';
 import { chromium, devices, request } from '@playwright/test';
+import { MAIL } from './env.mjs';
 import { BASE, call, expect, finish, SB, SERVICE, setup, sql, user } from './modules-lib.mjs';
 
-const MAIL = 'http://127.0.0.1:54324/api/v1';
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const mailFor = async (email, tries = 20) => {
 	for (let i = 0; i < tries; i += 1) {
