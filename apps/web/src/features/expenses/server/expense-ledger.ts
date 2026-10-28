@@ -5,13 +5,10 @@ import type { DbTransaction } from '@/core/db/transaction';
 import type { DebtExpenseInput } from '@/features/expenses/debts';
 
 /**
- * Load every expense of a WG together with its splits, shaped for the pure
- * balance math in `debts.ts`. "Open" is a misnomer kept for history: we load
- * all splits (settled and unsettled) because `computeBalances` decides which
- * ones still count. Extracted here so the balances route and the member
- * move-out check share one query instead of drifting apart.
+ * Every expense of a WG with all its splits, settled and unsettled, shaped for
+ * `computeBalances` in `debts.ts`, which decides which splits still count.
  */
-export async function loadOpenExpenses(
+export async function loadExpensesWithSplits(
 	wgId: string,
 	client: typeof db | DbTransaction = db,
 ): Promise<DebtExpenseInput[]> {
@@ -81,10 +78,9 @@ interface RawSplitRow {
 /**
  * Group split rows by expense id, normalising `settledAt` to an ISO string.
  *
- * The normalisation is not cosmetic: different driver versions can return
- * different types for timestamp columns, so a caller comparing the raw value
- * behaved differently depending on the driver. Normalising to ISO string
- * makes the behaviour deterministic regardless of the underlying driver.
+ * The normalisation is not cosmetic: driver versions can return different
+ * types for timestamp columns, so comparing the raw value would depend on the
+ * driver. An ISO string is the same everywhere.
  */
 function groupSplitsByExpense(
 	rows: readonly RawSplitRow[],

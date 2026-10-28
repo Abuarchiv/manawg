@@ -43,7 +43,7 @@ mock.module('@/core/db/transaction', { namedExports: {} });
 mock.module('drizzle-orm', {
 	namedExports: { and: () => ({}), eq: () => ({}), gte: () => ({}), inArray: () => ({}) },
 });
-mock.module('./open-expenses.ts', {
+mock.module('./expense-ledger.ts', {
 	namedExports: {
 		loadLedger: async () => [
 			...state.otherExpenses.map((item) => ({

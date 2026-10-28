@@ -38,8 +38,8 @@ import {
 	formatReminderMessage,
 	REMINDER_COOLDOWN_HOURS,
 } from '@/features/expenses/reminders';
+import { loadExpensesWithSplits } from '@/features/expenses/server/expense-ledger';
 import { loadCompletedExpensePayments } from '@/features/expenses/server/expense-payments';
-import { loadOpenExpenses } from '@/features/expenses/server/open-expenses';
 import { sendReminderMail } from '@/features/expenses/server/reminder-mail';
 
 const REMINDER_HISTORY_WINDOW_DAYS = 30;
@@ -88,7 +88,7 @@ type ReminderContext =
 interface ReminderInput {
 	debtor: MemberRow;
 	creditor: MemberRow;
-	openExpenses: Awaited<ReturnType<typeof loadOpenExpenses>>;
+	openExpenses: Awaited<ReturnType<typeof loadExpensesWithSplits>>;
 	payments: Awaited<ReturnType<typeof loadCompletedExpensePayments>>;
 	pair: { amountCents: number };
 }
@@ -149,7 +149,7 @@ export const POST = withWgRoute('reminders POST', async (req, { code }) => {
 		if (rl) return { stop: rl };
 
 		const [openExpenses, payments] = await Promise.all([
-			loadOpenExpenses(wg.id),
+			loadExpensesWithSplits(wg.id),
 			loadCompletedExpensePayments(wg.id),
 		]);
 		const balances = computeBalances(openExpenses, payments);

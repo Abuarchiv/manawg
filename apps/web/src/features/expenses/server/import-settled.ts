@@ -8,7 +8,7 @@ import {
 	type DebtExpenseInput,
 	type PairBalance,
 } from '@/features/expenses/debts';
-import { type LedgerEntry, loadLedger } from './open-expenses';
+import { type LedgerEntry, loadLedger } from './expense-ledger';
 
 export interface ImportToCheck {
 	id: string;
