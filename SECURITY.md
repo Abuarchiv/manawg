@@ -21,4 +21,4 @@ people's data and do not run automated scans against app.manawg.com.
 
 ## Supported versions
 
-Only the latest release on `main` receives security fixes.
+Security fixes land on `main`. Self-hosted instances get them by updating (see the [self-hosting guide](docs/self-hosting.md#updating)).

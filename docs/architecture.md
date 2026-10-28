@@ -26,10 +26,12 @@ browser
   `/api/upload/*`, `/api/cron/*`):
   1. `MIGRATION_READ_ONLY=true`: writes and crons get `503 migration_read_only`.
   2. Mutating requests need an `Origin` matching host and protocol, else `403 cross_origin_blocked`.
-  3. Upstash sliding-window limit per client IP: share-code lookup, read or write bucket
-     (`core/rate-limit.ts`). Fail mode is `closed` when `VERCEL_ENV=production`,
-     `NODE_ENV=test`, or `NODE_ENV=production` without `VERCEL_ENV`; otherwise `open`. Closed
-     plus missing/failing Upstash means `503 rate_limiter_unavailable`.
+  3. Sliding-window limit per client IP: share-code lookup, read or write bucket
+     (`core/rate-limit.ts`). With Upstash configured it counts in Redis. A standalone server
+     (`NODE_ENV=production` without `VERCEL_ENV`, the Docker image) without Upstash counts in
+     memory per process (`core/memory-rate-limit.ts`). Otherwise the fail mode decides: `closed`
+     when `VERCEL_ENV=production` or `NODE_ENV=test`, else `open`; closed plus missing or failing
+     Upstash means `503 rate_limiter_unavailable`.
   4. Database-free fixture build only (`src/fixtures/`, development.md "Fixture mode"): fixture API
      reads and `POST /api/wg` are answered here; every other build gets `null` from
      `resolveFixtureRequest` and skips this step.
@@ -157,8 +159,7 @@ withIdempotentWrite(
 Side effects that must not undo the write (audit events, push, pinboard notices) run after the
 call, for `written` results only, so a replay never repeats them. A warning that only becomes
 known then (a failed push) is written into the stored response with `setReplayWarning`. Without a
-key the write runs in a plain transaction (`retryAfterRollback` still applies). The protocol is specified in
-[`openspec/specs/idempotent-mutations`](../openspec/specs/idempotent-mutations/spec.md).
+key the write runs in a plain transaction (`retryAfterRollback` still applies).
 
 **Client side.** One key lifecycle lives in `core/http/idempotency-key.ts`, client-safe.
 `createIdempotencyKey` makes the UUID, `resolveIdempotencyKey` reuses the pending key for an
@@ -316,7 +317,8 @@ run); a queued picture that a row points at again is taken off the queue.
 
 ## Cron jobs
 
-Five Vercel crons, see the table in [development](development.md#cron-jobs). All open with
+Five cron jobs, scheduled by `apps/web/vercel.json` on Vercel and by the `cron` container
+(`scripts/selfhost/cron.mjs`) in Docker; see the table in [development](development.md#cron-jobs). All open with
 `requireCronSecret` (constant-time bearer compare, `core/infra/cron-auth.ts`) and fail closed
 without `CRON_SECRET`, cap
 work per run (batches, limits) and leave the rest to the next run. Reminder crons deduplicate
@@ -324,15 +326,16 @@ with claim rows/throttle timestamps so a re-run does not notify twice.
 
 ## Key decisions
 
-- **Response replay in Postgres, not Redis.** Production once had empty `UPSTASH_*` values; the
-  Redis client silently no-opped and duplicate expenses were inserted
-  (`core/idempotency-store.ts`, `core/db/idempotent-write.ts`).
+- **Response replay in Postgres, not Redis.** A Redis client with empty `UPSTASH_*` values
+  no-ops silently, so a retried write would insert twice; Postgres is always there and commits the
+  response with the write (`core/idempotency-store.ts`, `core/db/idempotent-write.ts`).
 - **Supabase session as the only identity proof.** A second per-member token would prove
   nothing the session cookie does not; the client sends only the expected member id, which the
   server checks against the session (`core/guards/api-auth.ts`).
-- **Rate limiter fails closed in production.** A missing or failing Upstash answers 503 instead
-  of leaving share-code lookups (brute-force defense) and writes unthrottled; `checkEnv` therefore
-  treats `UPSTASH_*` as required in production (`core/rate-limit.ts`, `core/infra/env.ts`).
+- **Rate limiter never passes traffic unthrottled in production.** On Vercel a missing or failing
+  Upstash answers 503 instead of leaving share-code lookups (brute-force defense) and writes
+  unthrottled, because serverless instances cannot share memory. A standalone server counts in its
+  own memory instead (`core/rate-limit.ts`, `core/memory-rate-limit.ts`).
 - **Missing env does not crash boot.** A crash would take down every tenant; instead
   `instrumentation.ts` reports to Sentry and logs, and features degrade.
 - **Validation before auth in WG routes.** `withWgRoute` does not call `requireWgMember`, so
@@ -396,7 +399,7 @@ Route folders under `app/wg/[code]/`, with the code names behind them.
 
 ## Decisions on trust, retention and exposure
 
-These behaviors were reviewed in the October 2026 audit and are kept on purpose.
+These behaviors are deliberate.
 
 - **Expenses run on household trust.** A member may log an expense paid by someone else only while
   carrying a positive share themselves (`features/expenses/paid-by-guard.ts`); any debtor may remove

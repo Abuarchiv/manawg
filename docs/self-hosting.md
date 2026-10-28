@@ -8,8 +8,8 @@ There are two ways:
 - **[Docker](#docker)** (recommended): one `compose.yaml` runs the app, PostgreSQL, sign-in and
   image storage on any machine with Docker, from a laptop to a small server. No external accounts
   apart from an SMTP provider for a public instance.
-- **[Vercel and Supabase](#vercel-and-supabase)**: the setup of the official instance, on the free
-  tiers of both services.
+- **[Vercel and Supabase](#vercel-and-supabase)**: the app on Vercel with a Supabase project, on
+  the free tiers of both services.
 
 ## Docker
 
@@ -34,8 +34,9 @@ codes, lands in Mailpit at [http://localhost:8025](http://localhost:8025).
 running. If port 80 is taken, set `HTTP_PORT=8080` and `APP_URL=http://localhost:8080` in `.env`
 and run `docker compose up -d` again.
 
-Without a published image for `MANAWG_VERSION`, Compose builds it from the checkout instead,
-which takes about ten minutes.
+If no image is published for `MANAWG_VERSION`, Compose reports that it cannot pull
+`ghcr.io/abuarchiv/manawg-app` and builds the image from your checkout instead, which takes about
+ten minutes.
 
 ### What runs
 
@@ -90,7 +91,7 @@ Every setting is in `.env`, described in [`.env.example`](../.env.example). Afte
 | `SMTP_*` | yes | Outgoing mail for sign-in codes, invitations and statements |
 | Secrets (`POSTGRES_PASSWORD` … `CRON_SECRET`) | yes | Created by `setup.sh`. `ANON_KEY` and `SERVICE_ROLE_KEY` are signed with `JWT_SECRET`; change all three together |
 | `LEGAL_URL`, `SUPPORT_EMAIL` | for public instances | Your legal pages and the address for error reports |
-| `MANAWG_VERSION` | no | Image tag, e.g. `1.0.0`. `latest` follows every release |
+| `MANAWG_VERSION` | no | Image tag to run; `latest` is the newest published image |
 | `GOOGLE_ENABLED`, `GOOGLE_CLIENT_ID`, `GOOGLE_SECRET` | no | Google sign-in with your own OAuth client; redirect URI `<APP_URL>/auth/v1/callback` |
 | `VAPID_*` | no | Push notifications, see below |
 
@@ -100,8 +101,8 @@ Optional features stay off without their settings, and the app keeps working:
   image has push turned off. Generate keys with `npx web-push generate-vapid-keys`, set
   `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` and `VAPID_SUBJECT` (`mailto:you@example.com`), then
   build your own image with `docker compose up -d --build`.
-- **Rate limiting** runs in the app's memory. That is enough for one app container; the Upstash
-  Redis that the official instance uses is not needed.
+- **Rate limiting** runs in the app's memory. That is enough for one app container; Upstash Redis
+  is not needed.
 - **Error reporting and product analytics** (Sentry, PostHog) are off.
 
 `/api/health` reports what is off under `degradedFeatures`; `docker compose logs app` shows the
@@ -109,7 +110,8 @@ boot lines starting with `[env]`.
 
 ### Updating
 
-Read the [changelog](../CHANGELOG.md) first; releases that need a manual step say so there.
+Read the [release notes](https://github.com/Abuarchiv/manawg-app/releases) first; they name
+every manual step.
 
 ```sh
 docker compose pull
@@ -123,29 +125,17 @@ docker compose up -d
 ### Backup and restore
 
 ```sh
-./docker/backup.sh
+./docker/backup.sh                                         # backups/manawg-<UTC time>.tar.gz
+./docker/restore.sh backups/manawg-20261028-031500.tar.gz  # replaces this instance's data
 ```
 
-writes `backups/manawg-<UTC time>.tar.gz` with the database (app, accounts, storage metadata) and
-all images. The archive holds personal data: copy it to another machine and keep it like a
-password, together with your `.env`. A nightly backup with cron:
-
-```text
-15 3 * * * cd /srv/manawg-app && ./docker/backup.sh
-```
-
-```sh
-./docker/restore.sh backups/manawg-20261028-031500.tar.gz
-```
-
-replaces the data of this instance with the archive. It also works on a fresh machine after
-`./docker/setup.sh`. With a different `JWT_SECRET` than the backed-up instance, members simply
-sign in again.
+The archive holds the database (app, accounts, storage metadata) and all images. Restore works on
+a fresh machine too, after `./docker/setup.sh`. Scheduling, encryption and checking a restore are
+in [backup and restore](database-recovery.md#docker).
 
 ## Vercel and Supabase
 
-This is the setup of the official instance. Everything fits into the free tiers of the services
-involved. Vercel's Hobby plan is for non-commercial use, and Supabase pauses free projects after a
+Everything fits into the free tiers of the services involved. Vercel's Hobby plan is for non-commercial use, and Supabase pauses free projects after a
 period of inactivity (resume them in the dashboard). Budget about an hour for the first setup.
 
 ### What you need
@@ -250,8 +240,8 @@ checks this configuration and disables uploads if it differs. Put its name into
 
 ### 6. Deploy on Vercel
 
-`apps/web/vercel.json` is the configuration of the official instance, which releases manually.
-Adapt two settings in your fork first:
+`apps/web/vercel.json` turns off automatic deployments of `main`. Adapt two settings in your fork
+first:
 
 - Delete the `git` block (`"deploymentEnabled": { "main": false }`). Otherwise Vercel does not
   deploy pushes to `main`, and you would have to run `vercel deploy --prod` for every update.
@@ -321,13 +311,13 @@ git push
 
 Apply migrations before the new version goes live; the push to your fork deploys it. Keep your
 own `vercel.json` changes if the pull reports a conflict there. Read the
-[changelog](../CHANGELOG.md) first; releases that need manual steps say so there.
+[release notes](https://github.com/Abuarchiv/manawg-app/releases) first; they name every manual
+step.
 
 ### Backups on Supabase
 
-The Supabase free plan has no automatic backups. Export your database regularly, for example
-with `supabase db dump` from the [Supabase CLI](https://supabase.com/docs/guides/cli), and keep
-the dumps somewhere other than Supabase. See [database recovery](database-recovery.md).
+The Supabase free plan has no automatic backups. Take your own, see
+[backup and restore](database-recovery.md#vercel-and-supabase).
 
 ## Legal pages and support
 

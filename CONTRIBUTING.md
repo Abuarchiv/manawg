@@ -13,9 +13,8 @@ Thanks for helping. Bug reports, fixes and improvements are welcome, in English 
   to reproduce. For security problems use [SECURITY.md](SECURITY.md) instead.
 - **Small fixes** (typos, obvious bugs): open a pull request directly.
 - **Features and larger changes:** open an issue first and wait for a maintainer's answer. ManaWG
-  is deliberately small and phone-first, so not every good idea fits. Larger accepted changes
-  start as an [OpenSpec](https://github.com/Fission-AI/OpenSpec) proposal under
-  `openspec/changes/`.
+  is deliberately small and phone-first, so not every good idea fits. For larger changes, agree
+  on the approach in the issue before you write the code.
 
 By participating you agree to the [Code of Conduct](CODE_OF_CONDUCT.md).
 

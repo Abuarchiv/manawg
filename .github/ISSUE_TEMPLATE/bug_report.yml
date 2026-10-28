@@ -37,7 +37,7 @@ body:
     attributes:
       label: Version
       description: Self-hosted only. Image tag (`MANAWG_VERSION`) or commit.
-      placeholder: 1.0.0
+      placeholder: latest
   - type: input
     id: device
     attributes:

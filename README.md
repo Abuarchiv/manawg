@@ -6,8 +6,7 @@
 
 [![CI](https://github.com/Abuarchiv/manawg-app/actions/workflows/ci.yml/badge.svg)](https://github.com/Abuarchiv/manawg-app/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![Release](https://img.shields.io/github/v/release/Abuarchiv/manawg-app?sort=semver)](https://github.com/Abuarchiv/manawg-app/releases)
-[![Docker image](https://img.shields.io/badge/docker-ghcr.io%2Fabuarchiv%2Fmanawg--app-2496ED?logo=docker&logoColor=white)](https://github.com/Abuarchiv/manawg-app/pkgs/container/manawg-app)
+[![Self-host with Docker](https://img.shields.io/badge/self--host-docker%20compose-2496ED?logo=docker&logoColor=white)](#host-it-yourself)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Abuarchiv/manawg-app/badge)](https://scorecard.dev/viewer/?uri=github.com/Abuarchiv/manawg-app)
 
 <p>
@@ -25,7 +24,7 @@
   nothing more, and you can export all of it as JSON or CSV or delete your account at any time.
 - **Made for the phone.** Runs in any browser and installs as an app (PWA), with offline support
   for the shopping list.
-- **Yours to run.** Open source under Apache-2.0. Use the official instance in Frankfurt, or run
+- **Yours to run.** Open source under Apache-2.0. Use app.manawg.com, hosted in Frankfurt, or run
   your own with one `docker compose up`.
 
 ## Features
