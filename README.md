@@ -2,7 +2,7 @@
 
 **One app for your shared flat: split expenses, rotate the cleaning, share the shopping list.**
 
-**Try it:** [app.manawg.com](https://app.manawg.com) · **Host it yourself:** [five-minute Docker setup](#host-it-yourself) · **Help build it:** [contributing](#contributing)
+**Try it:** [app.manawg.com](https://app.manawg.com) · **Host it yourself:** [Docker setup](#host-it-yourself) · **Help build it:** [contributing](#contributing)
 
 [![CI](https://github.com/Abuarchiv/manawg-app/actions/workflows/ci.yml/badge.svg)](https://github.com/Abuarchiv/manawg-app/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
@@ -50,8 +50,9 @@ cd manawg-app
 docker compose up -d
 ```
 
-Open [http://localhost](http://localhost) and create an account; the sign-in code arrives in
-Mailpit at [http://localhost:8025](http://localhost:8025). The
+The first start builds the app image, which takes about ten minutes. Then open
+[http://localhost](http://localhost) and create an account; the sign-in code arrives in Mailpit at
+[http://localhost:8025](http://localhost:8025). The
 [self-hosting guide](docs/self-hosting.md) covers a public instance with your own domain and
 HTTPS, mail, updates, backups, and the alternative setup on Vercel and Supabase.
 
