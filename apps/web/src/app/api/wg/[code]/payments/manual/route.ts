@@ -71,7 +71,6 @@ export const POST = withWgRoute('manual payment POST', async (req, { code }) => 
 		return unauthorized('member_deactivated', 'member_deactivated');
 	}
 	if (outcome.kind === 'member_not_in_wg') return badRequest('member_not_in_wg');
-	if (outcome.kind === 'blocked') return conflict('paypal_payment_pending');
 	if (outcome.kind === 'changed') return conflict('settlement_changed');
 
 	const paid = caller === input.fromMemberId;

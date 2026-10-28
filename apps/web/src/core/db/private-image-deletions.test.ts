@@ -109,7 +109,6 @@ mock.module('@/core/rate-limit', {
 });
 mock.module('@/features/expenses/server/expense-payments', {
 	namedExports: {
-		hasCapturingExpensePayment: async () => false,
 		withExpensePaymentLock: async (
 			currentWgId: string,
 			operation: (tx: Parameters<typeof transaction.lockExpensePayments>[0]) => Promise<unknown>,
@@ -202,7 +201,6 @@ test(
 			role text,
 			deactivated_at timestamptz,
 			created_at timestamptz DEFAULT now(),
-			paypal_merchant_id text,
 			push_opt_in boolean DEFAULT false
 		)`);
 		await setup.query(

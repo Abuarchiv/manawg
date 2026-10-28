@@ -81,7 +81,6 @@ export const wgMembers = pgTable(
 		name: text('name').notNull(),
 		role: text('role').notNull().default('member'),
 		color: text('color'),
-		paypalMerchantId: text('paypal_merchant_id'),
 		pushOptIn: boolean('push_opt_in').notNull().default(false),
 		notifyAnnouncements: boolean('notify_announcements').notNull().default(true),
 		notifyChores: boolean('notify_chores').notNull().default(true),
@@ -265,32 +264,20 @@ export const expensePayments = pgTable(
 			.references(() => wgMembers.id, { onDelete: 'restrict' }),
 		amountCents: integer('amount_cents').notNull(),
 		currency: text('currency').notNull().default('EUR'),
-		provider: text('provider').notNull().default('paypal'),
-		providerOrderId: text('provider_order_id').notNull(),
-		payeeMerchantId: text('payee_merchant_id').notNull(),
-		status: text('status').notNull().default('created'),
-		expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+		status: text('status').notNull().default('completed'),
 		completedAt: timestamp('completed_at', { withTimezone: true }),
 		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 	},
 	(t) => ({
 		wgIdx: index('expense_payments_wg_idx').on(t.wgId, t.createdAt),
-		orderIdx: uniqueIndex('expense_payments_provider_order_idx').on(t.providerOrderId),
-		activePairIdx: uniqueIndex('expense_payments_active_pair_idx')
-			.on(t.wgId, t.fromMemberId, t.toMemberId)
-			.where(sql`${t.status} in ('created', 'capturing')`),
 		amountCheck: check('expense_payments_amount_cents_check', sql`${t.amountCents} > 0`),
 		membersCheck: check(
 			'expense_payments_members_check',
 			sql`${t.fromMemberId} <> ${t.toMemberId}`,
 		),
-		providerCheck: check(
-			'expense_payments_provider_check',
-			sql`${t.provider} in ('paypal', 'manual')`,
-		),
 		statusCheck: check(
 			'expense_payments_status_check',
-			sql`${t.status} in ('created', 'capturing', 'completed', 'failed', 'voided')`,
+			sql`${t.status} in ('completed', 'voided')`,
 		),
 	}),
 );

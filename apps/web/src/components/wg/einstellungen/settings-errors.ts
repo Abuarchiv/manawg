@@ -5,9 +5,6 @@ import {
 	classifyApiError,
 } from '@/core/http/error-codes';
 
-export const PAYPAL_PAYMENT_PENDING_MESSAGE =
-	'Eine Zahlung läuft noch. Versuche es in ein paar Minuten erneut.';
-
 type KindMessages = Partial<Record<ApiErrorKind, string>>;
 
 function messageFor(
@@ -34,7 +31,6 @@ const DELETE_WG_MESSAGES: KindMessages = {
 };
 
 export function deleteWgErrorMessage(status: number, code: string | null): string {
-	if (code === 'paypal_payment_pending') return PAYPAL_PAYMENT_PENDING_MESSAGE;
 	return messageFor(
 		DELETE_WG_MESSAGES,
 		'Löschen fehlgeschlagen. Bitte versuche es später erneut.',

@@ -58,7 +58,6 @@ mock.module('@/core/notifications/notification-dispatch', {
 mock.module('@/core/utils/money', { namedExports: { formatEuroCents: () => '12,00 €' } });
 mock.module('@/features/expenses/server/expense-payments', {
 	namedExports: {
-		hasCapturingExpensePayment: async () => false,
 		withExpensePaymentLock: async (_id: string, operation: (tx: unknown) => unknown) =>
 			operation(current.tx),
 	},

@@ -54,7 +54,6 @@ export const DELETE = withWgRoute<{ id: string }>(
 			if (kind === 'not_found') return notFound('payment_not_found');
 			if (kind === 'not_party') return forbidden('not_party_to_debt', 'not_party_to_debt');
 			if (kind === 'already_voided') return conflict('payment_voided');
-			if (kind === 'blocked') return conflict('paypal_payment_pending');
 			const voided = result.context;
 			if (voided?.kind === 'voided') {
 				afterResponse(() =>

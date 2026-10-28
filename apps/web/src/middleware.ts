@@ -1,10 +1,6 @@
 import { refreshSupabaseSession } from '@/core/auth/middleware';
 import { REQUEST_PATH_HEADER } from '@/core/auth/next-path';
-import {
-	contentSecurityPolicy,
-	crossOriginOpenerPolicy,
-	isPayPalSdkEnabled,
-} from '@/core/infra/security-headers';
+import { contentSecurityPolicy } from '@/core/infra/security-headers';
 import {
 	checkRateLimit,
 	clientIpKey,
@@ -49,11 +45,7 @@ async function withPageSecurityHeaders(
 	const localFixtureHttp =
 		fixture?.localHttp === true ||
 		(req.nextUrl.protocol === 'http:' && req.nextUrl.hostname === 'localhost');
-	const payPalSdkEnabled = isPayPalSdkEnabled(
-		process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID,
-		process.env.NEXT_PUBLIC_PAYPAL_PARTNER_ATTRIBUTION_ID,
-	);
-	const csp = contentSecurityPolicy(nonce, !localFixtureHttp, payPalSdkEnabled);
+	const csp = contentSecurityPolicy(nonce, !localFixtureHttp);
 	const requestHeaders = new Headers(req.headers);
 	requestHeaders.set('x-nonce', nonce);
 	requestHeaders.set('Content-Security-Policy', csp);
@@ -69,12 +61,8 @@ async function withPageSecurityHeaders(
 	const securedResponse = await refreshSupabaseSession(req, res, {
 		requireWgSignIn: fixture === null,
 	});
-	// COOP is a document policy. Keep it consistent on every app page so a
-	// PayPal popup remains connected after an SPA navigation from / or /neu.
-	securedResponse.headers.set(
-		'Cross-Origin-Opener-Policy',
-		crossOriginOpenerPolicy(payPalSdkEnabled),
-	);
+	// COOP is a document policy, so it is set on every app page.
+	securedResponse.headers.set('Cross-Origin-Opener-Policy', 'same-origin');
 	return securedResponse;
 }
 

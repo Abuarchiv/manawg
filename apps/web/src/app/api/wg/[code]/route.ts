@@ -2,11 +2,11 @@ import { recordAuditEvent } from '@/core/audit';
 import { db, wgMembers, wgs } from '@/core/db';
 import { lockActiveAccountMember } from '@/core/db/account-deletion';
 import { deleteWgCascade } from '@/core/db/delete-wg';
-import { TransactionAbort, withTransaction } from '@/core/db/transaction';
+import { withTransaction } from '@/core/db/transaction';
 import { requireWgAdmin } from '@/core/guards/require-wg-admin';
 import { requireWgMembership } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { conflict, forbidden, notFound } from '@/core/http/api-errors';
+import { forbidden, notFound } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { withExpensePaymentLock } from '@/features/expenses/server/expense-payments';
 import { WG_NAME_MAX_LENGTH } from '@/shared/lib/limits';
@@ -84,24 +84,17 @@ export const PATCH = withWgRoute('api/wg/[code] PATCH', async (req, { code }) =>
 });
 
 export const DELETE = withWgRoute('api/wg/[code] DELETE', async (req, { code }) => {
-	try {
-		const admin = await requireWgAdmin(req, code, 'wg-settings');
-		if (!admin.ok) return admin.response;
-		const { wg, member } = admin;
-		const result = await withExpensePaymentLock(wg.id, async (tx) => {
-			const actor = await lockActiveAccountMember(tx, wg.id, member.memberId, admin.authUserId);
-			if (!actor || actor.role !== 'admin') {
-				return { ok: false as const, reason: 'not_admin' as const };
-			}
-			return { ok: true as const, deleted: await deleteWgCascade(tx, wg.id) };
-		});
-		if (!result.ok) return forbidden('not_admin', 'not_admin');
-		if (!result.deleted) return notFound('wg_not_found');
-		return NextResponse.json({ deleted: true });
-	} catch (err) {
-		if (err instanceof TransactionAbort && err.code === 'paypal_payment_pending') {
-			return conflict('paypal_payment_pending');
+	const admin = await requireWgAdmin(req, code, 'wg-settings');
+	if (!admin.ok) return admin.response;
+	const { wg, member } = admin;
+	const result = await withExpensePaymentLock(wg.id, async (tx) => {
+		const actor = await lockActiveAccountMember(tx, wg.id, member.memberId, admin.authUserId);
+		if (!actor || actor.role !== 'admin') {
+			return { ok: false as const, reason: 'not_admin' as const };
 		}
-		throw err;
-	}
+		return { ok: true as const, deleted: await deleteWgCascade(tx, wg.id) };
+	});
+	if (!result.ok) return forbidden('not_admin', 'not_admin');
+	if (!result.deleted) return notFound('wg_not_found');
+	return NextResponse.json({ deleted: true });
 });

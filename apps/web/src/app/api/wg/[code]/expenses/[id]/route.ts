@@ -31,10 +31,7 @@ import {
 	occurredAtSchema,
 } from '@/features/expenses/expense-schemas';
 import { storedExpenseHoldingEdit } from '@/features/expenses/server/expense-held-edit';
-import {
-	hasCapturingExpensePayment,
-	withExpensePaymentLock,
-} from '@/features/expenses/server/expense-payments';
+import { withExpensePaymentLock } from '@/features/expenses/server/expense-payments';
 import {
 	settledAtForOwnShare,
 	splitChangeViolation,
@@ -95,9 +92,6 @@ export const DELETE = withWgRoute<{ id: string }>('expense DELETE', async (req, 
 			}
 		}
 
-		if (await hasCapturingExpensePayment(tx, wgId)) {
-			return { ok: false as const, response: conflict('paypal_payment_pending') };
-		}
 		// Same rule as the import undo: a share someone else already settled means money
 		// moved, and deleting the expense would silently undo it.
 		const settledShare = await tx
@@ -258,12 +252,6 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 				previousImageUrl = currentImage.imageUrl;
 				await assertPrivateImageCanBeAttached(tx, wgId, imageUrl ?? null, previousImageUrl);
 			}
-			if (
-				(amountCents !== undefined || currency !== undefined || splits !== undefined) &&
-				(await hasCapturingExpensePayment(tx, wgId))
-			) {
-				throw new TransactionAbort('paypal_payment_pending');
-			}
 			const previousSplits = splits
 				? await tx
 						.select({
@@ -359,7 +347,6 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 	} catch (writeErr) {
 		if (writeErr instanceof TransactionAbort) {
 			if (writeErr.code === 'image_removed') return conflict('image_removed', 'image_removed');
-			if (writeErr.code === 'paypal_payment_pending') return conflict('paypal_payment_pending');
 			if (writeErr.code === 'expense_not_found') return notFound('expense_not_found');
 			if (writeErr.code === 'expense_changed')
 				return conflict('expense_changed', 'expense_conflict');

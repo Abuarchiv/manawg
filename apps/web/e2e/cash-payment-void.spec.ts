@@ -48,7 +48,6 @@ test('a cash payment is voided after confirmation and the list reloads without i
 					: [
 							{
 								id: PAYMENT_ID,
-								provider: 'manual',
 								fromMemberId: MINA_ID,
 								toMemberId: memberId,
 								amountCents: 400,

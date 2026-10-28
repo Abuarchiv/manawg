@@ -140,10 +140,6 @@ mock.module('@/core/infra/cron-auth', { namedExports: { requireCronSecret: () =>
 mock.module('@/core/infra/sentry', {
 	namedExports: { captureSentryException() {}, logSentryApiError() {} },
 });
-mock.module('@/core/infra/paypal', { namedExports: { isPayPalConfigured: () => false } });
-mock.module('@/features/expenses/server/paypal-reconcile', {
-	namedExports: { reconcileStaleCapturingPayments: async () => null },
-});
 mock.module('@/core/db/orphan-uploads', { namedExports: { sweepOrphanUploads: async () => null } });
 mock.module('@/core/db/admin-succession', {
 	namedExports: { healAdminlessWgs: async () => ({ healed: 0, failed: 0 }) },
@@ -171,7 +167,6 @@ test('maintenance attempts deletion recovery when idempotency cleanup fails', as
 	assert.deepEqual(await failedCleanup.json(), {
 		ok: false,
 		purgedIdempotencyRows: null,
-		paypalReconcile: null,
 		orphanUploads: null,
 		adminHeal: { healed: 0, failed: 0 },
 		accountDeletions: { ...harness.recoveryResult, authAdminAvailable: false },
@@ -196,7 +191,6 @@ test('maintenance attempts deletion recovery when idempotency cleanup fails', as
 	assert.deepEqual(await response.json(), {
 		ok: true,
 		purgedIdempotencyRows: 1,
-		paypalReconcile: null,
 		orphanUploads: null,
 		adminHeal: { healed: 0, failed: 0 },
 		accountDeletions: { ...harness.recoveryResult, authAdminAvailable: false },

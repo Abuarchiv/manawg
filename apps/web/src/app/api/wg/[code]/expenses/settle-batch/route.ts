@@ -134,7 +134,6 @@ export const POST = withWgRoute('settle-batch POST', async (req, { code }) => {
 		return unauthorized('member_deactivated', 'member_deactivated');
 	}
 	if (outcome.kind === 'member_not_in_wg') return badRequest('member_not_in_wg');
-	if (outcome.kind === 'blocked') return conflict('paypal_payment_pending');
 	if (outcome.kind === 'changed') return conflict('settlement_changed');
 
 	// The claim makes a keyed settlement run once, and a keyless one can only settle splits that

@@ -148,7 +148,6 @@ export default function AusgabenPage() {
 						memberName={page.memberName}
 						shareCode={wg.shareCode}
 						currentMemberId={identity.memberId}
-						memberPayPalMerchantId={page.memberPayPalMerchantId}
 						onSettled={(message) => {
 							if (message) notify.success(message);
 							void data.load(false);

@@ -509,7 +509,7 @@ test.describe('dashboard balance consistency', () => {
 			]);
 		});
 
-		test('keeps own shares neutral and applies completed provider transfers', () => {
+		test('keeps own shares neutral and applies completed cash payments', () => {
 			const ownExpense = expense('expense-own', memberA);
 			const own = dashboardBalances([ownExpense], [split(ownExpense.id, memberA, 3_000)]);
 			expect(
