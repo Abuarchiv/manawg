@@ -1,5 +1,6 @@
 'use client';
 import { Pencil, Trash2 } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 import { type ReactElement, useEffect, useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
@@ -18,9 +19,11 @@ import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
-import { formatRelativeTime, formatTimeFull } from '@/core/utils/time';
+import { formatTimeFull, relativeTimeMessage } from '@/core/utils/time';
 import { isRestorableDraft } from '@/features/pinnwand/announcement-edits';
 import { COMMENT_MAX } from '@/features/pinnwand/constants';
+import type { Locale } from '@/shared/i18n/locale';
+import { useMessage } from '@/shared/i18n/message';
 import type { AnnouncementComment } from './announcement-types';
 
 export function actionLabelSubject(value: string, fallback: string): string {
@@ -72,6 +75,10 @@ export function CommentRow({
 	onUpdate: (content: string) => Promise<boolean>;
 	onDelete: () => Promise<boolean>;
 }): ReactElement {
+	const t = useTranslations('pinnwand');
+	const tCommon = useTranslations('common');
+	const render = useMessage();
+	const locale = useLocale() as Locale;
 	const [editing, setEditing] = useState(false);
 	const draft = useCommentDraft(draftKey, comment.content);
 	const editorRef = useRef<HTMLTextAreaElement>(null);
@@ -82,7 +89,7 @@ export function CommentRow({
 	const [error, setError] = useState(false);
 	const [confirmOpen, setConfirmOpen] = useState(false);
 	const pendingRef = useRef(false);
-	const actionSubject = actionLabelSubject(comment.content, 'leere Antwort');
+	const actionSubject = actionLabelSubject(comment.content, t('subject.emptyReply'));
 	useEffect(() => {
 		if (draft.restored && canEdit) setEditing(true);
 	}, [draft.restored, canEdit]);
@@ -135,18 +142,18 @@ export function CommentRow({
 			<div className="flex min-w-0 flex-1 flex-col gap-2">
 				<div className="flex flex-wrap items-center gap-2">
 					<span className="min-w-0 text-sm font-medium [overflow-wrap:anywhere]">
-						{comment.authorName || 'Unbekannt'}
+						{comment.authorName || tCommon('unknownPerson')}
 					</span>
 					<time
 						dateTime={comment.createdAt}
-						title={formatTimeFull(comment.createdAt)}
+						title={formatTimeFull(comment.createdAt, locale)}
 						className="text-xs text-muted-foreground"
 					>
-						{formatRelativeTime(comment.createdAt)}
+						{render(relativeTimeMessage(comment.createdAt, Date.now(), locale))}
 					</time>
 					{comment.id.startsWith('temp-') && (
 						<output className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-							<Spinner /> Sendet…
+							<Spinner /> {t('comment.sending')}
 						</output>
 					)}
 					{(canEdit || canDelete) && !editing && (
@@ -157,7 +164,7 @@ export function CommentRow({
 									variant="ghost"
 									size="icon-sm"
 									disabled={pending}
-									aria-label={`Antwort bearbeiten: ${actionSubject}`}
+									aria-label={t('comment.editAria', { subject: actionSubject })}
 									onClick={() => {
 										if (!draft.restored) draft.change(comment.content);
 										focusEditorOnEditRef.current = true;
@@ -172,7 +179,7 @@ export function CommentRow({
 									variant="ghost"
 									size="icon-sm"
 									disabled={pending}
-									aria-label={`Antwort entfernen: ${actionSubject}`}
+									aria-label={t('comment.removeAria', { subject: actionSubject })}
 									onClick={() => {
 										setError(false);
 										setConfirmOpen(true);
@@ -195,7 +202,7 @@ export function CommentRow({
 								aria-busy={pending}
 								maxLength={COMMENT_MAX}
 								rows={2}
-								aria-label="Antwort bearbeiten"
+								aria-label={t('comment.editorAria')}
 								aria-invalid={error}
 								aria-describedby={error ? `comment-edit-error-${comment.id}` : undefined}
 								className="text-base read-only:opacity-60"
@@ -212,15 +219,15 @@ export function CommentRow({
 									setEditing(false);
 								}}
 							>
-								Abbrechen
+								{t('comment.cancel')}
 							</Button>
 							<Button
 								disabled={pending || !draft.draft.trim()}
 								onClick={() => void save()}
-								aria-label={`Antwort speichern: ${actionSubject}`}
+								aria-label={t('comment.saveAria', { subject: actionSubject })}
 							>
 								{pending && <Spinner data-icon="inline-start" />}{' '}
-								{pending ? 'Speichert…' : 'Speichern'}
+								{pending ? t('comment.saving') : t('comment.save')}
 							</Button>
 						</div>
 					</FieldGroup>
@@ -229,9 +236,7 @@ export function CommentRow({
 				)}
 				{error && editing && (
 					<Alert id={`comment-edit-error-${comment.id}`} variant="destructive">
-						<AlertDescription>
-							Antwort konnte nicht gespeichert werden. Versuche es erneut.
-						</AlertDescription>
+						<AlertDescription>{t('comment.saveFailed')}</AlertDescription>
 					</Alert>
 				)}
 			</div>
@@ -246,32 +251,33 @@ export function CommentRow({
 			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>Antwort entfernen?</AlertDialogTitle>
+						<AlertDialogTitle>{t('comment.removeTitle')}</AlertDialogTitle>
 						<AlertDialogDescription>
-							{canEdit ? '' : `Antwort von ${comment.authorName || 'Unbekannt'}: `}„{actionSubject}“
-							wird entfernt.
+							{t('comment.removeBody', {
+								own: canEdit ? 'yes' : 'other',
+								author: comment.authorName || tCommon('unknownPerson'),
+								subject: actionSubject,
+							})}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					{error && (
 						<Alert variant="destructive">
-							<AlertDescription>
-								Antwort konnte nicht entfernt werden. Versuche es erneut.
-							</AlertDescription>
+							<AlertDescription>{t('comment.removeFailed')}</AlertDescription>
 						</Alert>
 					)}
 					<AlertDialogFooter>
 						<AlertDialogCancel disabled={pending} className="min-h-11">
-							Abbrechen
+							{t('comment.cancel')}
 						</AlertDialogCancel>
 						<AlertDialogAction
 							variant="destructive"
 							disabled={pending}
 							className="min-h-11"
-							aria-label={`Antwort entfernen bestätigen: ${actionSubject}`}
+							aria-label={t('comment.removeConfirmAria', { subject: actionSubject })}
 							onClick={() => void remove()}
 						>
 							{pending && <Spinner data-icon="inline-start" />}
-							{pending ? 'Entfernt…' : 'Entfernen'}
+							{pending ? t('comment.removing') : t('comment.remove')}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>

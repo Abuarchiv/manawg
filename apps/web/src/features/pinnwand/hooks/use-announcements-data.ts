@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
+import { wgLoadError } from '@/core/guards/load-errors';
 import { useSyncedCollection } from '@/core/sync/use-synced-collection';
 import {
 	mergeBackgroundAnnouncements,
@@ -10,6 +10,7 @@ import {
 	type CommentOverrides,
 } from '@/features/pinnwand/comment-overrides';
 import type { Announcement } from '@/features/pinnwand/components/announcement-types';
+import { useMessage } from '@/shared/i18n/message';
 
 interface AnnouncementsDataParams {
 	wg: { shareCode: string };
@@ -35,6 +36,7 @@ export function useAnnouncementsData({
 	encodedShareCode,
 	onQueueSynced,
 }: AnnouncementsDataParams) {
+	const render = useMessage();
 	const commentOverridesRef = useRef<CommentOverrides>(new Map());
 	const applyCommentOverrides = (item: Announcement): Announcement =>
 		applyOverrides(commentOverridesRef.current, item);
@@ -55,7 +57,8 @@ export function useAnnouncementsData({
 			const withOverrides = incoming.map(applyCommentOverrides);
 			return shown.length > 0 ? mergeBackgroundAnnouncements(shown, withOverrides) : withOverrides;
 		},
-		describeError: (error) => getWgLoadErrorMessage('Pinnwand', error.status, error.error),
+		describeError: (error) =>
+			render(wgLoadError({ key: 'pinnwand.load.board' }, error.status, error.error)),
 		reload: (reason) => void load(reason === 'poll' ? 'background' : 'replace'),
 		offline: { shareCode: wg.shareCode, page: 'pinnwand', onReplayed: onQueueSynced },
 	});

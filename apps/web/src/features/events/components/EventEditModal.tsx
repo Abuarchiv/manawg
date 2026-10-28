@@ -1,5 +1,6 @@
 'use client';
 
+import { useLocale, useTranslations } from 'next-intl';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
@@ -15,15 +16,18 @@ import { EventEditDialogs } from '@/features/events/components/EventEditDialogs'
 import { EventEditFooter } from '@/features/events/components/EventEditFooter';
 import { EventFormFields, focusEventField } from '@/features/events/components/EventFormFields';
 import { type EventScope, EventScopeSwitch } from '@/features/events/components/EventScopeSwitch';
+import { RecurrenceOptions } from '@/features/events/components/RecurrenceOptions';
 import {
 	type EventOccurrence,
 	eventDateForDisplay,
 	parseRecurrenceRule,
-	RECURRENCE_OPTIONS,
 	toDatetimeLocalValue,
 	validateEventForm,
 } from '@/features/events/events';
 import { shiftedSeriesRule } from '@/features/events/recurrence-shift';
+import { dateTimeFormat } from '@/shared/i18n/intl';
+import type { Locale } from '@/shared/i18n/locale';
+import { useMessage } from '@/shared/i18n/message';
 
 const KEEP_EXISTING_RECURRENCE = '__keep__';
 
@@ -78,6 +82,9 @@ export function EventEditModal({
 	onExportIcs,
 	readOnly = false,
 }: EventEditModalProps) {
+	const t = useTranslations('events');
+	const render = useMessage();
+	const locale = useLocale() as Locale;
 	const [scope, setScope] = useState<EventScope>('series');
 	const [title, setTitle] = useState('');
 	const [description, setDescription] = useState('');
@@ -184,7 +191,7 @@ export function EventEditModal({
 		if (!event) return;
 		const validation = validateEventForm({ title, startsAt, endsAt, allDay, original: baseline });
 		if (!validation.ok) {
-			setError(validation.error);
+			setError(render(validation.error));
 			setErrorField(validation.field);
 			focusEventField('event-edit', validation.field);
 			return;
@@ -212,9 +219,7 @@ export function EventEditModal({
 				await onUpdate(event.id, payload);
 			}
 		} catch (err) {
-			setError(
-				err instanceof Error ? err.message : 'Speichern fehlgeschlagen. Versuche es erneut.',
-			);
+			setError(err instanceof Error ? err.message : t('edit.saveFailed'));
 			setErrorField(null);
 		} finally {
 			setSaving(false);
@@ -234,7 +239,7 @@ export function EventEditModal({
 				await onDelete(event.id);
 			}
 		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Löschen fehlgeschlagen. Versuche es erneut.');
+			setError(err instanceof Error ? err.message : t('edit.deleteFailed'));
 		} finally {
 			deletingRef.current = false;
 			setDeleting(false);
@@ -256,14 +261,10 @@ export function EventEditModal({
 			>
 				<DrawerContent className="mx-auto w-full max-w-md">
 					<DrawerHeader className="border-b pb-3">
-						<DrawerTitle>{readOnly ? 'Termin' : 'Termin bearbeiten'}</DrawerTitle>
-						{readOnly && (
-							<DrawerDescription>
-								Nur wer den Termin angelegt hat und WG-Admins können ihn ändern.
-							</DrawerDescription>
-						)}
+						<DrawerTitle>{readOnly ? t('edit.titleEvent') : t('edit.titleEdit')}</DrawerTitle>
+						{readOnly && <DrawerDescription>{t('edit.readOnly')}</DrawerDescription>}
 						{!readOnly && event.recurrence && !canSwitchScope && (
-							<DrawerDescription>Änderungen gelten für die gesamte Terminserie.</DrawerDescription>
+							<DrawerDescription>{t('edit.wholeSeries')}</DrawerDescription>
 						)}
 					</DrawerHeader>
 					<form noValidate onSubmit={handleSave} className="flex min-h-0 flex-col">
@@ -271,10 +272,11 @@ export function EventEditModal({
 							{canSwitchScope && occurrence && (
 								<EventScopeSwitch
 									scope={scope}
-									dateLabel={new Intl.DateTimeFormat('de-DE', {
+									dateLabel={dateTimeFormat(locale, {
 										weekday: 'short',
-										day: '2-digit',
-										month: '2-digit',
+										...(locale === 'de'
+											? { day: '2-digit', month: '2-digit' }
+											: { day: 'numeric', month: 'short' }),
 										...(occurrence.allDay ? { timeZone: 'UTC' } : {}),
 									}).format(new Date(occurrence.startsAt))}
 									disabled={busy}
@@ -313,7 +315,9 @@ export function EventEditModal({
 								recurrenceField={
 									onlyThis ? null : (
 										<Field data-disabled={locked}>
-											<FieldLabel htmlFor="event-edit-recurrence">Wiederholung</FieldLabel>
+											<FieldLabel htmlFor="event-edit-recurrence">
+												{t('recurrence.label')}
+											</FieldLabel>
 											<NativeSelect
 												id="event-edit-recurrence"
 												value={recurrenceOption}
@@ -327,14 +331,10 @@ export function EventEditModal({
 											>
 												{recurrence && !isSimpleRecurrence && (
 													<NativeSelectOption value={KEEP_EXISTING_RECURRENCE}>
-														Bestehende Serie
+														{t('recurrence.existing')}
 													</NativeSelectOption>
 												)}
-												{RECURRENCE_OPTIONS.map((option) => (
-													<NativeSelectOption key={option.value} value={option.value}>
-														{option.label}
-													</NativeSelectOption>
-												))}
+												<RecurrenceOptions />
 											</NativeSelect>
 										</Field>
 									)
@@ -352,7 +352,7 @@ export function EventEditModal({
 							saving={saving}
 							onCancel={requestClose}
 							onDelete={() => setConfirmingDelete(true)}
-							deleteLabel={onlyThis ? 'Nur diesen Termin löschen' : 'Termin löschen'}
+							deleteLabel={onlyThis ? t('edit.deleteOccurrence') : t('edit.deleteEvent')}
 							onExportIcs={onExportIcs}
 						/>
 					</form>

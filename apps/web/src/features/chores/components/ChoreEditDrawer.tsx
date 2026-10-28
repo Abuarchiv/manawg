@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { type ReactElement, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,7 @@ import {
 	INTERVAL_PRESETS_DAYS,
 	INTERVAL_PRESETS_MONTHS,
 } from '@/features/chores/components/constants';
+import { useMessage } from '@/shared/i18n/message';
 
 interface ChoreEditDrawerProps {
 	open: boolean;
@@ -45,6 +47,8 @@ function EditFields({
 	onSave,
 	onClose,
 }: Omit<ChoreEditDrawerProps, 'open' | 'onOpenChange'> & { onClose: () => void }): ReactElement {
+	const t = useTranslations('chores.editDrawer');
+	const render = useMessage();
 	const [title, setTitle] = useState(chore.title);
 	const [assigned, setAssigned] = useState(chore.assignedMemberId ?? '');
 	const [dueDay, setDueDay] = useState(dueDayKey(chore.nextDueAt));
@@ -64,7 +68,7 @@ function EditFields({
 			<div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-4">
 				<FieldGroup>
 					<Field data-disabled={pending}>
-						<FieldLabel htmlFor={`chore-edit-title-${chore.id}`}>Aufgabe</FieldLabel>
+						<FieldLabel htmlFor={`chore-edit-title-${chore.id}`}>{t('task')}</FieldLabel>
 						<Input
 							id={`chore-edit-title-${chore.id}`}
 							value={title}
@@ -76,7 +80,7 @@ function EditFields({
 						/>
 					</Field>
 					<Field data-disabled={pending}>
-						<FieldLabel htmlFor={`chore-edit-assigned-${chore.id}`}>Zuständig</FieldLabel>
+						<FieldLabel htmlFor={`chore-edit-assigned-${chore.id}`}>{t('assigned')}</FieldLabel>
 						<NativeSelect
 							id={`chore-edit-assigned-${chore.id}`}
 							value={assigned}
@@ -84,7 +88,7 @@ function EditFields({
 							disabled={pending}
 							className="w-full [&_select]:min-h-11 [&_select]:text-base"
 						>
-							<NativeSelectOption value="">Niemand</NativeSelectOption>
+							<NativeSelectOption value="">{t('nobody')}</NativeSelectOption>
 							{members.map((member) => (
 								<NativeSelectOption key={member.id} value={member.id}>
 									{member.name}
@@ -93,7 +97,7 @@ function EditFields({
 						</NativeSelect>
 					</Field>
 					<Field data-disabled={pending}>
-						<FieldLabel htmlFor={`chore-edit-due-${chore.id}`}>Fällig am</FieldLabel>
+						<FieldLabel htmlFor={`chore-edit-due-${chore.id}`}>{t('dueOn')}</FieldLabel>
 						<Input
 							id={`chore-edit-due-${chore.id}`}
 							type="date"
@@ -104,7 +108,7 @@ function EditFields({
 						/>
 					</Field>
 					<Field data-disabled={pending}>
-						<FieldLabel id={`chore-edit-rhythm-${chore.id}`}>Rhythmus</FieldLabel>
+						<FieldLabel id={`chore-edit-rhythm-${chore.id}`}>{t('rhythm')}</FieldLabel>
 						<ToggleGroup
 							value={[presetValue(interval, recurrenceType)]}
 							onValueChange={(values) => {
@@ -125,7 +129,7 @@ function EditFields({
 									value={presetValue(preset.interval, preset.unit)}
 									disabled={pending}
 								>
-									{preset.label}
+									{render(preset.label)}
 								</ToggleGroupItem>
 							))}
 						</ToggleGroup>
@@ -142,7 +146,7 @@ function EditFields({
 			<DrawerFooter className="flex-row flex-wrap border-t pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
 				<Button type="submit" disabled={!canSave} className="min-h-11 flex-1">
 					{pending && <Spinner data-icon="inline-start" aria-hidden />}
-					{pending ? 'Speichert…' : 'Speichern'}
+					{pending ? t('saving') : t('save')}
 				</Button>
 				<Button
 					type="button"
@@ -151,7 +155,7 @@ function EditFields({
 					disabled={pending}
 					className="min-h-11 flex-1"
 				>
-					Abbrechen
+					{t('cancel')}
 				</Button>
 			</DrawerFooter>
 		</form>
@@ -164,6 +168,7 @@ export function ChoreEditDrawer({
 	onOpenChange,
 	...fields
 }: ChoreEditDrawerProps): ReactElement {
+	const t = useTranslations('chores.editDrawer');
 	return (
 		<Drawer
 			open={open}
@@ -174,7 +179,7 @@ export function ChoreEditDrawer({
 		>
 			<DrawerContent className="mx-auto w-full max-w-md">
 				<DrawerHeader>
-					<DrawerTitle>Aufgabe bearbeiten</DrawerTitle>
+					<DrawerTitle>{t('title')}</DrawerTitle>
 				</DrawerHeader>
 				{/* Mounted only while open so every opening starts from the stored chore. */}
 				{open && <EditFields {...fields} onClose={() => onOpenChange(false)} />}

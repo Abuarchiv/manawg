@@ -2,6 +2,7 @@
 
 import { X } from 'lucide-react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
@@ -17,6 +18,7 @@ import { cn } from '@/shared/lib/cn';
 import { InviteButton } from './InviteButton';
 
 export function StartWelcome({ dismissedFallback }: { dismissedFallback?: React.ReactNode }) {
+	const t = useTranslations('home.welcome');
 	const { wg, identity, members } = useWg();
 	// Stable WG/member IDs isolate the preference per WG and member.
 	const storageKey = `manawg:start-welcome-dismissed:${wg.id}:${identity.memberId}`;
@@ -50,12 +52,10 @@ export function StartWelcome({ dismissedFallback }: { dismissedFallback?: React.
 			<Card size="sm">
 				<CardHeader>
 					<CardTitle>
-						<h2 id="new-wg-heading">Eure WG ist bereit</h2>
+						<h2 id="new-wg-heading">{t('title')}</h2>
 					</CardTitle>
 					<CardDescription>
-						{!hasRoommates
-							? 'Lade deine Mitbewohner ein und starte gemeinsam mit ihnen.'
-							: 'Startet mit eurem ersten Eintrag.'}
+						{hasRoommates ? t('descriptionWithRoommates') : t('descriptionAlone')}
 					</CardDescription>
 					<CardAction>
 						<Button
@@ -63,7 +63,7 @@ export function StartWelcome({ dismissedFallback }: { dismissedFallback?: React.
 							size="icon"
 							className="size-8"
 							onClick={dismiss}
-							aria-label="Einstiegshinweis dauerhaft ausblenden"
+							aria-label={t('dismiss')}
 						>
 							<X aria-hidden />
 						</Button>
@@ -72,7 +72,7 @@ export function StartWelcome({ dismissedFallback }: { dismissedFallback?: React.
 				<CardContent className="flex flex-col gap-2">
 					{hasRoommates && (
 						<Link href={`${baseHref}/einkauf`} className={cn(buttonVariants(), 'w-full')}>
-							Einkauf öffnen
+							{t('openShopping')}
 						</Link>
 					)}
 					<InviteButton

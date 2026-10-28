@@ -23,9 +23,11 @@ import {
 	rateLimitResponse,
 } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
+import { requestLocale } from '@/core/i18n/request-locale';
 import { readIdempotencyKey } from '@/core/idempotency-store';
 import { checkRateLimit, clientIpKey, wgWriteLimiter } from '@/core/rate-limit';
 import { isInviteToken } from '@/core/utils/invite-token';
+import type { Locale } from '@/shared/i18n/locale';
 import { MAX_MEMBERS_PER_WG } from '@/shared/lib/limits';
 import { isUniqueMemberNameViolation } from './unique-name-violation';
 
@@ -138,6 +140,7 @@ async function insertJoiningMember(
 		name: string;
 		color: string | null;
 		inviteToken: string;
+		locale: Locale;
 	},
 ): Promise<
 	WriteOutcome<
@@ -203,6 +206,7 @@ async function insertJoiningMember(
 					color: input.color,
 					role: 'member',
 					authUserId: input.authUserId,
+					locale: input.locale,
 				})
 				.onConflictDoNothing({ target: [wgMembers.wgId, wgMembers.name] })
 				.returning(),
@@ -268,6 +272,7 @@ export const POST = withWgRoute('members POST', async (req, { code }) => {
 					name,
 					color,
 					inviteToken,
+					locale: requestLocale(req),
 				}),
 		);
 		if (result.kind === 'stopped') return result.response;

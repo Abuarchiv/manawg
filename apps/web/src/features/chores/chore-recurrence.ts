@@ -66,7 +66,7 @@ function fromBerlinWallTime(wall: BerlinWallTime): Date {
  * previous due time. Only a due time exactly one hour after a gap-hour anchor
  * is corrected, so a time the user moved deliberately stays as it is.
  */
-function restoreGapShiftedTime(wall: BerlinWallTime, anchorAt?: Date | null): BerlinWallTime {
+function restoreGapShiftedTime(wall: BerlinWallTime, anchorAt?: Date): BerlinWallTime {
 	if (!anchorAt) return wall;
 	const anchorMinutes = berlinWallMinutes(anchorAt);
 	const anchorInGapHour =
@@ -103,14 +103,15 @@ export function isLateCompletion(prevDueAt: Date, completedAt: Date): boolean {
  *                       `'months'` (Berlin calendar months)
  * @param anchorAt       original cadence anchor; keeps the month-end
  *                       day-of-month stable across clamps (31.01 → 28.02 →
- *                       31.03). Null on legacy rows — adopted from prevDueAt.
+ *                       31.03). Omitted for a chore
+ *                       that is not stored yet — prevDueAt is the anchor then.
  */
 export function computeNextDueAt(
 	prevDueAt: Date,
 	interval: number,
 	completedAt: Date,
 	recurrenceType: ChoreRecurrenceType = 'days',
-	anchorAt?: Date | null,
+	anchorAt?: Date,
 ): Date {
 	if (!Number.isFinite(interval) || interval <= 0) {
 		// One-shot / non-recurring chore: do not advance the cadence. The

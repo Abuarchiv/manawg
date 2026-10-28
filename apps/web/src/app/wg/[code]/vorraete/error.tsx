@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { WgRouteErrorBoundary } from '@/components/wg/WgRouteErrorBoundary';
 
 interface VorraeteErrorProps {
@@ -8,13 +9,14 @@ interface VorraeteErrorProps {
 }
 
 export default function VorraeteError({ error, reset }: VorraeteErrorProps) {
+	const t = useTranslations('inventory.errorPage');
 	return (
 		<WgRouteErrorBoundary
 			error={error}
 			reset={reset}
 			boundary="wg-vorraete"
-			title="Vorräte konnten gerade nicht geladen werden"
-			body="In den Vorräten ist ein Fehler aufgetreten. Bitte versuche es erneut oder kehre zur WG-Übersicht zurück."
+			title={t('title')}
+			body={t('body')}
 		/>
 	);
 }

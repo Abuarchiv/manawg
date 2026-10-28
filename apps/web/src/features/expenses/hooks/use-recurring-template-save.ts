@@ -1,30 +1,23 @@
 'use client';
 
+import { useLocale } from 'next-intl';
 import { useRef, useState } from 'react';
 import { resolveIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
 import { removeDraft } from '@/core/offline/drafts';
 import { enqueueOfflineAction, readOfflineQueue } from '@/core/offline/offline-client';
-import {
-	DRAFT_CLEANUP_FAILED_MESSAGE,
-	keyUnavailableMessage,
-	OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE,
-	OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
-} from '@/core/offline/offline-copy';
 import { createQueuedRecurring } from '@/core/offline/offline-queue';
 import { eurosToCents, parseEuroAmount } from '@/core/utils/amount';
 import { todayAtLocalNoon } from '@/core/utils/local-date';
 import { parseTimestamp } from '@/core/utils/time';
-import {
-	recurringTemplateSaveErrorMessage,
-	splitInputErrorMessage,
-} from '@/features/expenses/expense-errors';
+import { recurringIntervalLabel } from '@/features/expenses/expense-constants';
+import { recurringTemplateSaveError, splitInputError } from '@/features/expenses/expense-errors';
 import { manualSplitsFingerprint } from '@/features/expenses/expense-split-input';
 import type { RecurringExpense } from '@/features/expenses/expense-types';
 import { findQueuedRecurringTemplate } from '@/features/expenses/queued-recurring-template';
-import { formatIntervalLabel } from '@/features/expenses/recurring-expenses';
 import { planTemplateSchedule } from '@/features/expenses/recurring-template-plan';
 import type { DebtorShare } from '@/features/expenses/split-math';
+import { useMessage } from '@/shared/i18n/message';
 import type { ExpenseFormState, ExpensePageContext } from './expense-page-context';
 import { validateDescriptionAndAmount } from './expense-submit-validation';
 import type { ExpenseFormSupport } from './use-expense-form-support';
@@ -38,6 +31,8 @@ export function useRecurringTemplateSave(
 	form: ExpenseFormState,
 	support: ExpenseFormSupport,
 ) {
+	const t = useMessage();
+	const locale = useLocale();
 	const { wg, identity, notify, updateRecurringExpenses, reload, refreshQueuedCount } = ctx;
 	const recurringApiUrl = `/api/wg/${encodeURIComponent(wg.shareCode)}/recurring-expenses`;
 	const [savingRecurringTemplate, setSavingRecurringTemplate] = useState(false);
@@ -59,7 +54,7 @@ export function useRecurringTemplateSave(
 		const wasEditingQueuedRecurring = form.queueEditType === 'recurring.create';
 		if (support.discardSentQueueEdit('recurring.create')) return;
 		const desc = form.description.trim();
-		const amountEuros = parseEuroAmount(form.amountStr);
+		const amountEuros = parseEuroAmount(form.amountStr, locale);
 		const validationErrors = validateDescriptionAndAmount({
 			description: desc,
 			amountEuros,
@@ -95,7 +90,7 @@ export function useRecurringTemplateSave(
 		} else {
 			const splitResult = support.buildSplits(amountCents);
 			if (!splitResult.ok) {
-				support.setValidationErrors({ splits: splitInputErrorMessage(splitResult.reason) });
+				support.setValidationErrors({ splits: splitInputError(splitResult.reason) });
 				return;
 			}
 			splits = splitResult.splits;
@@ -117,9 +112,7 @@ export function useRecurringTemplateSave(
 			: undefined;
 		if (alreadyQueued) {
 			if (pendingRequest?.fingerprint === fingerprint) pendingRequest.queued = true;
-			notify.warning(
-				'Fixkosten-Vorlage ist bereits offline vorgemerkt. Synchronisiere oder löse die bestehende Aktion zuerst.',
-			);
+			notify.warning(t({ key: 'expenses-form.notices.templateAlreadyQueued' }));
 			return;
 		}
 		const { startsAt, nextDueAt } = planTemplateSchedule({
@@ -133,7 +126,7 @@ export function useRecurringTemplateSave(
 			? null
 			: resolveIdempotencyKey(pendingRequest?.queued ? null : pendingRequest, fingerprint);
 		if (!editingRecurringExpense && !idempotencyKey) {
-			notify.error(keyUnavailableMessage('Fixkosten-Vorlage', 'gespeichert'));
+			notify.error(t({ key: 'expenses-form.notices.keyUnavailableTemplate' }));
 			return;
 		}
 		if (idempotencyKey) {
@@ -195,7 +188,7 @@ export function useRecurringTemplateSave(
 					splits,
 				});
 				if ((await enqueueOfflineAction(queued)) === 0) {
-					notify.error(OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE);
+					notify.error(t({ key: 'expenses-form.notices.queueBlockedDraft' }));
 					finishSaving();
 					return;
 				}
@@ -220,7 +213,7 @@ export function useRecurringTemplateSave(
 					},
 				]);
 				if (!(await support.clearEditedQueueItem(['recurring.create']))) {
-					notify.error(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
+					notify.error(t({ key: 'expenses-form.notices.offlineDraftCleanupFailed' }));
 					finishSaving();
 					return;
 				}
@@ -229,7 +222,7 @@ export function useRecurringTemplateSave(
 					form.setShowForm(false);
 					removeDraft(form.draftKey);
 				}
-				notify.warning('Fixkosten-Vorlage offline gespeichert.');
+				notify.warning(t({ key: 'expenses-form.notices.templateSavedOffline' }));
 				finishSaving();
 				return;
 			}
@@ -242,14 +235,12 @@ export function useRecurringTemplateSave(
 				form.resetForm();
 				form.setShowForm(false);
 				updateRecurringExpenses((current) => current.filter((item) => item.id !== staleId));
-				notify.error(
-					'Diese Fixkosten-Vorlage existiert nicht mehr und wurde aus der Liste entfernt.',
-				);
+				notify.error(t({ key: 'expenses-form.notices.templateGoneRemoved' }));
 				void reload();
 				finishSaving();
 				return;
 			}
-			form.setFormError(recurringTemplateSaveErrorMessage(res.error));
+			form.setFormError(recurringTemplateSaveError(res.error));
 			if (res.status === 409 && res.error === 'recurring_expense_changed') void reload();
 			finishSaving();
 			return;
@@ -266,7 +257,7 @@ export function useRecurringTemplateSave(
 		);
 		form.setEditingRecurringExpense(null);
 		if (!(await support.clearEditedQueueItem(['recurring.create']))) {
-			notify.error(DRAFT_CLEANUP_FAILED_MESSAGE);
+			notify.error(t({ key: 'expenses-form.notices.draftCleanupFailed' }));
 			finishSaving();
 			return;
 		}
@@ -277,9 +268,14 @@ export function useRecurringTemplateSave(
 			removeDraft(form.draftKey);
 		}
 		notify.success(
-			editingRecurringExpense
-				? 'Fixkosten-Vorlage aktualisiert.'
-				: `Als Vorlage gespeichert (${formatIntervalLabel(recurringIntervalMonths)}).`,
+			t(
+				editingRecurringExpense
+					? { key: 'expenses-form.notices.templateUpdated' }
+					: {
+							key: 'expenses-form.notices.templateSaved',
+							values: { interval: recurringIntervalLabel(recurringIntervalMonths) },
+						},
+			),
 		);
 		finishSaving();
 	}

@@ -1,6 +1,7 @@
 'use client';
 
 import { ChevronDown } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
 	MessageScroller,
@@ -38,6 +39,7 @@ interface ChatViewProps {
 }
 
 export function ChatView({ wgId, shareCode, initialMessages, initialReactions }: ChatViewProps) {
+	const t = useTranslations('chat.view');
 	const { members, identity, isAdmin } = useWg();
 	const chat = useChatRoom({ wgId, shareCode, initialMessages, initialReactions });
 	const { messages } = chat;
@@ -128,15 +130,15 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 		<div ref={chatRootRef} className="relative flex min-h-0 flex-1 flex-col bg-background">
 			{chat.readError && (
 				<ChatBanner
-					message="Lesestatus konnte nicht gespeichert werden."
-					actionLabel="Lesestatus erneut speichern"
+					message={t('readError')}
+					actionLabel={t('readRetry')}
 					onAction={chat.markLatestRead}
 				/>
 			)}
 			{chat.refreshError && !chat.bootstrapError && !chat.bootstrapping && (
 				<ChatBanner
-					message="Chat gerade nicht aktuell."
-					actionLabel="Erneut versuchen"
+					message={t('stale')}
+					actionLabel={t('retry')}
 					onAction={() => void chat.refresh()}
 				/>
 			)}
@@ -151,7 +153,7 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 						ref={chat.scrollRef}
 						preserveScrollOnPrepend
 						role="log"
-						aria-label="Chat-Nachrichten"
+						aria-label={t('logAria')}
 						className="[scroll-behavior:auto]!"
 					>
 						<MessageScrollerContent className="mx-auto w-full max-w-3xl gap-2 px-3 py-2">
@@ -190,13 +192,13 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 					</MessageScrollerViewport>
 					<MessageScrollerButton
 						direction="end"
-						aria-label="Zum Ende scrollen"
+						aria-label={t('scrollEnd')}
 						behavior="smooth"
 						className="inset-s-auto end-3 translate-x-0 rounded-full shadow-md rtl:translate-x-0"
 						onClick={() => haptic('selection')}
 					>
 						<ChevronDown aria-hidden />
-						<span className="sr-only">Zum Ende scrollen</span>
+						<span className="sr-only">{t('scrollEnd')}</span>
 					</MessageScrollerButton>
 				</MessageScroller>
 			</MessageScrollerProvider>
@@ -209,7 +211,9 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 				replyToMessageId={replyToId}
 				replyFocusRequest={replyFocusRequest}
 				replyToPreview={
-					replyTo ? previewBody(replyTo.body ?? (replyTo.imageUrl ? 'Bild' : ''), 80) : null
+					replyTo
+						? previewBody(replyTo.body ?? (replyTo.imageUrl ? t('imagePreview') : ''), 80)
+						: null
 				}
 				replyToSenderName={replyToSender?.name ?? null}
 				onClearReply={() => setReplyToId(null)}

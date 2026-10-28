@@ -1,6 +1,7 @@
 'use client';
 
 import { ArrowRight } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { BackButton } from '@/components/app/BackButton';
 import { ErrorBox } from '@/components/app/ErrorBox';
 import { Button } from '@/components/ui/button';
@@ -31,6 +32,7 @@ export function JoinInviteStep({
 	onSubmit,
 	onBack,
 }: JoinInviteStepProps) {
+	const t = useTranslations('entry.start');
 	const invalid = invalidField === 'inviteLink';
 	return (
 		<form
@@ -43,7 +45,7 @@ export function JoinInviteStep({
 		>
 			<FieldGroup>
 				<UiField data-invalid={invalid}>
-					<FieldLabel htmlFor="invite-link">Einladungslink</FieldLabel>
+					<FieldLabel htmlFor="invite-link">{t('inviteLink')}</FieldLabel>
 					<Input
 						id="invite-link"
 						type="text"
@@ -60,22 +62,20 @@ export function JoinInviteStep({
 						spellCheck={false}
 						inputMode="url"
 						enterKeyHint="go"
-						placeholder={`${INVITE_ORIGIN}/einladung/…`}
+						placeholder={t('inviteLinkPlaceholder', { origin: INVITE_ORIGIN })}
 						aria-describedby={invalid ? 'invite-link-hint invite-link-error' : 'invite-link-hint'}
 						aria-invalid={invalid}
 						className="text-base"
 					/>
-					<FieldDescription id="invite-link-hint">
-						Füge den Link ein, den dir ein Mitglied der WG geschickt hat.
-					</FieldDescription>
+					<FieldDescription id="invite-link-hint">{t('inviteLinkHint')}</FieldDescription>
 				</UiField>
 				{error && invalid && <ErrorBox id="invite-link-error">{error}</ErrorBox>}
 			</FieldGroup>
 			<div className="flex flex-wrap items-center gap-2">
 				<BackButton onClick={onBack} />
-				<Button type="submit" aria-label="Einladung öffnen" className="flex-1">
+				<Button type="submit" aria-label={t('openInvite')} className="flex-1">
 					<ArrowRight data-icon="inline-start" aria-hidden />
-					Einladung öffnen
+					{t('openInvite')}
 				</Button>
 			</div>
 		</form>

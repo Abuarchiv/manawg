@@ -7,27 +7,20 @@ import {
 	shouldReleaseIdempotencyKey,
 } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
-import { notificationWarningMessage } from '@/core/notifications/notification-warning';
 import { buildDraftKey, readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
 import {
 	enqueueOfflineAction,
 	isOfflineActionQueued,
 	removeQueuedAction,
 } from '@/core/offline/offline-client';
-import {
-	DRAFT_CLEANUP_FAILED_MESSAGE,
-	keyUnavailableMessage,
-	OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE,
-	OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
-	OFFLINE_SAVED_NOTICE,
-	QUEUE_EDIT_ALREADY_SENT_MESSAGE,
-} from '@/core/offline/offline-copy';
 import { isPendingImageToken } from '@/core/offline/offline-images';
 import { createQueuedAnnouncement } from '@/core/offline/offline-queue';
-import { announcementCreateErrorMessage } from '@/features/pinnwand/announcement-errors';
+import { announcementCreateError } from '@/features/pinnwand/announcement-errors';
+import { deliveryWarning } from '@/features/pinnwand/announcement-warning';
 import { ANNOUNCEMENT_KINDS } from '@/features/pinnwand/announcement-workflow';
 import type { AnnouncementKind } from '@/features/pinnwand/components/announcement-types';
 import { CONTENT_MAX } from '@/features/pinnwand/constants';
+import { type Message, useMessage } from '@/shared/i18n/message';
 import type {
 	AnnouncementPageContext,
 	AnnouncementWriteResponse,
@@ -44,6 +37,7 @@ export function useAnnouncementComposer(
 ) {
 	const { wg, identity, encodedShareCode, setNotice, load, refreshCount } = ctx;
 	const toast = useToast();
+	const render = useMessage();
 	const searchParams = useSearchParams();
 	const prefillContent = searchParams.get('content');
 	const prefillKind = kindFromParam(searchParams.get('kind'));
@@ -54,7 +48,7 @@ export function useAnnouncementComposer(
 	const [submitting, setSubmitting] = useState(false);
 	const submittingRef = useRef(false);
 	const announcementIdempotencyKeyRef = useRef<PendingIdempotentRequest | null>(null);
-	const [error, setError] = useState<string | null>(null);
+	const [error, setError] = useState<Message | null>(null);
 	const [composerOpen, setComposerOpen] = useState(false);
 	const [queueEditId, setQueueEditId] = useState<string | null>(null);
 	const [draftHydrated, setDraftHydrated] = useState(false);
@@ -147,7 +141,7 @@ export function useAnnouncementComposer(
 	async function submit(): Promise<void> {
 		const text = content.trim();
 		if (text.length === 0 || text.length > CONTENT_MAX) {
-			setError(announcementCreateErrorMessage('content_invalid'));
+			setError(announcementCreateError('content_invalid'));
 			return;
 		}
 		if (submittingRef.current) return;
@@ -160,7 +154,7 @@ export function useAnnouncementComposer(
 			setComposerOpen(false);
 			removeDraft(draftKey);
 			setError(null);
-			setNotice(QUEUE_EDIT_ALREADY_SENT_MESSAGE);
+			setNotice({ key: 'pinnwand.errors.queueEditAlreadySent' });
 			void load();
 			return;
 		}
@@ -170,7 +164,7 @@ export function useAnnouncementComposer(
 		// error, and the draft state stays — they'd be stuck retrying. Online
 		// path needs the public URL; offline path is fine (sync resolves later).
 		if (imageUrl && isPendingImageToken(imageUrl) && navigator.onLine) {
-			setError('Das Bild wird noch hochgeladen. Warte kurz und versuche es erneut.');
+			setError({ key: 'pinnwand.errors.imageUploading' });
 			return;
 		}
 		if (submittingRef.current) return;
@@ -184,7 +178,7 @@ export function useAnnouncementComposer(
 			fingerprint,
 		);
 		if (!idempotencyKey) {
-			setError(keyUnavailableMessage('Beitrag', 'gesendet'));
+			setError({ key: 'pinnwand.errors.postKeyUnavailable' });
 			setSubmitting(false);
 			submittingRef.current = false;
 			return;
@@ -219,13 +213,13 @@ export function useAnnouncementComposer(
 						imageUrl,
 					});
 					if ((await enqueueOfflineAction(queued)) === 0) {
-						setError(OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE);
+						setError({ key: 'pinnwand.errors.queueBlocked' });
 						return;
 					}
 					announcementIdempotencyKeyRef.current = null;
 					refreshCount();
 					if (!(await clearEditedQueueItem())) {
-						setError(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
+						setError({ key: 'pinnwand.errors.draftCleanupFailedOffline' });
 						return;
 					}
 					setContent('');
@@ -233,10 +227,10 @@ export function useAnnouncementComposer(
 					setImageUrl(null);
 					setComposerOpen(false);
 					removeDraft(draftKey);
-					setNotice(OFFLINE_SAVED_NOTICE);
+					setNotice({ key: 'pinnwand.notices.savedOffline' });
 					return;
 				}
-				setError(announcementCreateErrorMessage(res.error));
+				setError(announcementCreateError(res.error));
 				return;
 			}
 			const createdAnnouncementId = res.data.announcement.id;
@@ -245,14 +239,14 @@ export function useAnnouncementComposer(
 			setKind('info');
 			setImageUrl(null);
 			if (!(await clearEditedQueueItem())) {
-				setError(DRAFT_CLEANUP_FAILED_MESSAGE);
+				setError({ key: 'pinnwand.errors.draftCleanupFailed' });
 				return;
 			}
 			removeDraft(draftKey);
 			setComposerOpen(false);
-			const warningMessage = notificationWarningMessage(res.data.warning);
-			if (warningMessage) toast.info(warningMessage);
-			else toast.success('Beitrag veröffentlicht.');
+			const warning = deliveryWarning(res.data.warning);
+			if (warning) toast.info(render(warning));
+			else toast.success(render({ key: 'pinnwand.notices.published' }));
 			void load().then(() => scrollToAnnouncement(createdAnnouncementId));
 		} finally {
 			submittingRef.current = false;

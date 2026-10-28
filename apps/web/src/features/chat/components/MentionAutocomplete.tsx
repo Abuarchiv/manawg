@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useEffect, useRef } from 'react';
 
 export interface MentionMember {
@@ -37,6 +38,7 @@ export function MentionAutocomplete({
 	onSelect,
 	onHoverIndex,
 }: MentionAutocompleteProps) {
+	const t = useTranslations('chat.composer');
 	const listRef = useRef<HTMLUListElement>(null);
 
 	useEffect(() => {
@@ -55,7 +57,7 @@ export function MentionAutocomplete({
 			ref={listRef}
 			// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: <ul role="listbox"> is the standard WAI-ARIA combobox popup markup.
 			role="listbox"
-			aria-label="WG-Mitglied erwähnen"
+			aria-label={t('mentionAria')}
 			className="absolute inset-x-3 bottom-[calc(100%+0.5rem)] z-10 mx-auto max-h-[min(12rem,calc(100dvh_-_7rem))] max-w-3xl overscroll-contain overflow-y-auto rounded-xl border border-border bg-popover py-1 text-popover-foreground shadow-md"
 		>
 			{items.map((member, index) => {

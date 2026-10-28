@@ -1,3 +1,6 @@
+import { numberFormat } from '@/shared/i18n/intl';
+import type { Locale } from '@/shared/i18n/locale';
+
 export const CENTS_PER_EURO = 100;
 
 /** Legacy rows without a currency are Euro. */
@@ -7,12 +10,13 @@ export function normalizeCurrency(currency: string | undefined): string {
 
 interface FormatEuroCentsOptions {
 	signed?: boolean;
+	locale?: Locale;
 }
 
 /**
- * Renders a cent amount as a localized de-DE currency string.
+ * Renders a cent amount as a localized currency string (German by default).
  *
- * - Uses `Intl.NumberFormat('de-DE', { style: 'currency', currency })`.
+ * - Uses `Intl.NumberFormat(tag, { style: 'currency', currency })`.
  * - Normalizes `-0` (and tiny sub-cent negatives) to `0` so we never render `-0,00 €`.
  * - With `{ signed: true }`, prefixes positive amounts with `+`.
  *
@@ -30,7 +34,7 @@ export function formatEuroCents(
 	// catches -0 but not sub-cent negatives like -0.4, which arise from split
 	// remainders and still render with a minus sign.
 	const normalized = Math.round(safeCents) === 0 ? 0 : safeCents;
-	const formatted = new Intl.NumberFormat('de-DE', {
+	const formatted = numberFormat(options?.locale ?? 'de', {
 		style: 'currency',
 		currency,
 	}).format(normalized / CENTS_PER_EURO);

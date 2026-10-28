@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 
@@ -17,11 +18,12 @@ export function ExpenseFormNotices({
 	formSaving,
 	onAskReplace,
 }: ExpenseFormNoticesProps) {
+	const t = useTranslations('expenses-form.draft');
 	return (
 		<>
 			{pendingPrefillDescription && (
 				<Alert>
-					<AlertDescription>Dein vorhandener Entwurf bleibt erhalten.</AlertDescription>
+					<AlertDescription>{t('existingKept')}</AlertDescription>
 					<Button
 						type="button"
 						variant="outline"
@@ -29,15 +31,13 @@ export function ExpenseFormNotices({
 						disabled={formSaving}
 						onClick={onAskReplace}
 					>
-						Entwurf verwerfen und „{pendingPrefillDescription}“ übernehmen
+						{t('replaceWith', { description: pendingPrefillDescription })}
 					</Button>
 				</Alert>
 			)}
 			{isEditingQueued && (
 				<Alert>
-					<AlertDescription className="text-foreground">
-						Noch nicht synchronisiert. Die Änderung wird gesendet, sobald du online bist.
-					</AlertDescription>
+					<AlertDescription className="text-foreground">{t('notSynced')}</AlertDescription>
 				</Alert>
 			)}
 		</>

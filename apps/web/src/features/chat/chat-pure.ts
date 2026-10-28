@@ -1,4 +1,7 @@
 import { SYSTEM_MESSAGE_KIND } from '@/core/feed-kinds';
+import { dateTimeFormat } from '@/shared/i18n/intl';
+import type { Locale } from '@/shared/i18n/locale';
+import type { Message } from '@/shared/i18n/message';
 export const EDIT_WINDOW_MS = 15 * 60 * 1000;
 export const CHAT_BODY_MAX = 4000;
 const TEXT_MESSAGE_KIND = 'text';
@@ -26,7 +29,7 @@ export interface OwnReadMarker {
 
 /**
  * The first message after the read marker that the viewer did not write themselves, i.e. where
- * the "Neue Nachrichten" divider goes. `null` when there is no marker (never opened) or nothing
+ * the unread divider goes. `null` when there is no marker (never opened) or nothing
  * foreign is unread. A marker older than the loaded page counts as "before the first message".
  */
 export function findFirstUnreadId(
@@ -314,26 +317,21 @@ export function mergePagedReactions<
 	return [...fresh, ...existing];
 }
 
-const WEEKDAY_FORMAT = new Intl.DateTimeFormat('de-DE', { weekday: 'long' });
-const DATE_FORMAT = new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'long' });
-const DATE_YEAR_FORMAT = new Intl.DateTimeFormat('de-DE', {
-	day: 'numeric',
-	month: 'long',
-	year: 'numeric',
-});
-
-/** Day pill label as in messengers: Heute, Gestern, a weekday within the last week, else the date. */
-export function chatDayLabel(day: Date, now: Date = new Date()): string {
+/** Day pill label as in messengers: today, yesterday, a weekday within the last week, else the date. */
+export function chatDayLabel(day: Date, now: Date = new Date(), locale: Locale = 'de'): Message {
 	const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 	const start = new Date(day.getFullYear(), day.getMonth(), day.getDate());
 	// Rounded: a day across a DST switch is 23 or 25 hours long.
 	const daysAgo = Math.round((today.getTime() - start.getTime()) / 86_400_000);
-	if (daysAgo === 0) return 'Heute';
-	if (daysAgo === 1) return 'Gestern';
-	if (daysAgo > 1 && daysAgo < 7) return WEEKDAY_FORMAT.format(start);
-	return (start.getFullYear() === today.getFullYear() ? DATE_FORMAT : DATE_YEAR_FORMAT).format(
-		start,
-	);
+	if (daysAgo === 0) return { key: 'chat.day.today' };
+	if (daysAgo === 1) return { key: 'chat.day.yesterday' };
+	const options: Intl.DateTimeFormatOptions =
+		daysAgo > 1 && daysAgo < 7
+			? { weekday: 'long' }
+			: start.getFullYear() === today.getFullYear()
+				? { day: 'numeric', month: 'long' }
+				: { day: 'numeric', month: 'long', year: 'numeric' };
+	return { key: 'chat.day.date', values: { date: dateTimeFormat(locale, options).format(start) } };
 }
 
 /** Last message a member has read, as its creation time. */

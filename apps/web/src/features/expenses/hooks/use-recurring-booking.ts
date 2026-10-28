@@ -5,17 +5,14 @@ import { resolveIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/
 import { apiFetch } from '@/core/infra/api-client';
 import { notificationWarningMessage } from '@/core/notifications/notification-warning';
 import { enqueueOfflineAction, readOfflineQueue } from '@/core/offline/offline-client';
-import { keyUnavailableMessage } from '@/core/offline/offline-copy';
 import { createQueuedExpense } from '@/core/offline/offline-queue';
-import {
-	expenseSaveErrorMessage,
-	recurringAdvanceWarningMessage,
-} from '@/features/expenses/expense-errors';
+import { expenseSaveError, recurringAdvanceWarning } from '@/features/expenses/expense-errors';
 import type { RecurringExpense } from '@/features/expenses/expense-types';
 import { buildOptimisticExpense } from '@/features/expenses/optimistic-expense';
 import { withQueuedOccurredAt } from '@/features/expenses/queued-occurred-at';
 import { rotateRemainderCents } from '@/features/expenses/recurring-split-rotation';
 import { isRecurringBookingQueued } from '@/features/expenses/recurring-template-plan';
+import { useMessage } from '@/shared/i18n/message';
 import type { ExpensePageContext } from './expense-page-context';
 import type { ExpenseCreateResponse } from './use-expense-submit';
 
@@ -29,14 +26,12 @@ export type AdvanceRecurringTemplate = (
 	served?: RecurringExpense,
 ) => Promise<boolean>;
 
-const OFFLINE_RECURRING_EXPENSE_MESSAGE =
-	'Fixkosten-Ausgabe offline vorgemerkt. Die Vorlage bleibt bis zur Synchronisierung unverändert.';
-
 /**
  * Booking a due fixed cost: create the expense from the template, then advance the template's
  * due date. Offline, the expense is queued with the due date it books, so it is booked once.
  */
 export function useRecurringBooking(ctx: ExpensePageContext) {
+	const t = useMessage();
 	const {
 		wg,
 		identity,
@@ -88,7 +83,7 @@ export function useRecurringBooking(ctx: ExpensePageContext) {
 			await reload();
 			return true;
 		}
-		notify.warning(recurringAdvanceWarningMessage(advanceRes.status, advanceRes.error));
+		notify.warning(t(recurringAdvanceWarning(advanceRes.status, advanceRes.error)));
 		return false;
 	};
 
@@ -101,7 +96,7 @@ export function useRecurringBooking(ctx: ExpensePageContext) {
 		);
 		if (alreadyQueued) {
 			notify.error(null);
-			notify.warning(OFFLINE_RECURRING_EXPENSE_MESSAGE);
+			notify.warning(t({ key: 'expenses-form.notices.recurringQueued' }));
 			return;
 		}
 		creatingRecurringRef.current = true;
@@ -135,7 +130,7 @@ export function useRecurringBooking(ctx: ExpensePageContext) {
 				: template.nextDueAt;
 		const idempotencyKey = resolveIdempotencyKey(pendingRequest, fingerprint);
 		if (!idempotencyKey) {
-			notify.error(keyUnavailableMessage('Fixkosten-Ausgabe', 'gesendet'));
+			notify.error(t({ key: 'expenses-form.notices.keyUnavailableRecurring' }));
 			finishCreating();
 			return;
 		}
@@ -196,23 +191,20 @@ export function useRecurringBooking(ctx: ExpensePageContext) {
 				if (queuedCount === 0) {
 					rollbackOptimisticExpense();
 					pending.end(optimisticId);
-					notify.error(
-						'Offline-Speicher ist blockiert. Die Fixkosten-Ausgabe konnte nicht vorgemerkt werden und wurde zurückgesetzt.',
-					);
+					notify.error(t({ key: 'expenses-form.notices.recurringQueueBlocked' }));
 					finishCreating();
 					return;
 				}
 				expenseRequestsRef.current.delete(template.id);
 				refreshQueuedCount();
-				notify.warning(OFFLINE_RECURRING_EXPENSE_MESSAGE);
+				notify.warning(t({ key: 'expenses-form.notices.recurringQueued' }));
 				pending.end(optimisticId);
 				finishCreating();
 				return;
 			}
 			rollbackOptimisticExpense();
 			pending.end(optimisticId);
-			const message = expenseSaveErrorMessage(createRes.error);
-			notify.error(message);
+			notify.error(t(expenseSaveError(createRes.error)));
 			finishCreating();
 			// The template changed under us (already booked, paused or deleted): show its current state.
 			if (releaseKey) void reload();
@@ -233,8 +225,8 @@ export function useRecurringBooking(ctx: ExpensePageContext) {
 		if (advanced) {
 			expenseRequestsRef.current.delete(template.id);
 			const pushWarning = notificationWarningMessage(createRes.data.warning);
-			if (pushWarning) notify.warning(pushWarning);
-			else notify.success('Fixkosten-Ausgabe wurde erstellt.');
+			if (pushWarning) notify.warning(t(pushWarning));
+			else notify.success(t({ key: 'expenses-form.notices.recurringBooked' }));
 		}
 		finishCreating();
 		void reload();

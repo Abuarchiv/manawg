@@ -10,8 +10,8 @@ import {
 } from '@/core/http/idempotency-key';
 import { anySignal, REQUEST_TIMEOUT_MS, readApiErrorCode } from '@/core/infra/api-client';
 import { INVITE_EXPIRED_MESSAGE, joinErrorMessage } from '@/core/infra/join-flow';
-import { keyUnavailableMessage } from '@/core/offline/offline-copy';
 import { isInviteToken } from '@/core/utils/invite-token';
+import { useMessage } from '@/shared/i18n/message';
 import posthog from '@/shared/lib/analytics';
 
 type UnclaimedMember = { id: string; name: string };
@@ -36,6 +36,7 @@ async function readShareCode(res: Response): Promise<string> {
 /** Looks the invitation up for the signed-in account, then joins the WG with the typed name. */
 export function useInviteJoin(token: string) {
 	const router = useRouter();
+	const render = useMessage();
 	const [phase, setPhase] = useState<InvitePhase>({ kind: 'loading' });
 	const [retryNonce, setRetryNonce] = useState(0);
 	const [name, setName] = useState('');
@@ -102,7 +103,7 @@ export function useInviteJoin(token: string) {
 		const trimmed = name.trim();
 		if (trimmed.length === 0) {
 			setNameInvalid(true);
-			setError('Dein Anzeigename fehlt.');
+			setError(render({ key: 'entry.errors.displayNameMissing' }));
 			return;
 		}
 		busyRef.current = true;
@@ -113,7 +114,7 @@ export function useInviteJoin(token: string) {
 		const fingerprint = JSON.stringify({ token, name: trimmed });
 		const key = resolveIdempotencyKey(requestRef.current, fingerprint);
 		if (!key) {
-			setError(keyUnavailableMessage('WG-Beitritt', 'gesendet'));
+			setError(render({ key: 'entry.errors.joinKeyUnavailable' }));
 			busyRef.current = false;
 			setBusy(false);
 			return;
@@ -138,14 +139,14 @@ export function useInviteJoin(token: string) {
 				const nameProblem =
 					apiError === 'name_invalid' || (res.status === 409 && apiError === 'name_taken');
 				setNameInvalid(nameProblem);
-				setError(joinErrorMessage(res.status, apiError));
+				setError(render(joinErrorMessage(res.status, apiError)));
 				return;
 			}
 			requestRef.current = null;
 			posthog.capture('wg_joined');
 			router.push(target);
 		} catch {
-			setError(joinErrorMessage(0, ''));
+			setError(render(joinErrorMessage(0, '')));
 		} finally {
 			busyRef.current = false;
 			setBusy(false);
@@ -171,17 +172,19 @@ export function useInviteJoin(token: string) {
 					return setPhase({ kind: 'dead', reason: 'expired' });
 				}
 				setError(
-					apiError === 'member_already_linked'
-						? 'Dieses Profil gehört schon zu einem Konto.'
-						: apiError === 'account_already_linked'
-							? 'Dein Konto ist in dieser WG schon Mitglied.'
-							: joinErrorMessage(res.status, apiError),
+					render(
+						apiError === 'member_already_linked'
+							? { key: 'entry.errors.profileLinked' }
+							: apiError === 'account_already_linked'
+								? { key: 'entry.errors.accountLinked' }
+								: joinErrorMessage(res.status, apiError),
+					),
 				);
 				return;
 			}
 			router.push(`/wg/${encodeURIComponent(phase.code)}`);
 		} catch {
-			setError(joinErrorMessage(0, ''));
+			setError(render(joinErrorMessage(0, '')));
 		} finally {
 			busyRef.current = false;
 			setBusy(false);
@@ -198,9 +201,10 @@ export function useInviteJoin(token: string) {
 		busy,
 		join,
 		retry: () => setRetryNonce((n) => n + 1),
-		deadMessage:
+		deadMessage: render(
 			phase.kind === 'dead' && phase.reason === 'invalid'
-				? 'Dieser Einladungslink stimmt nicht. Prüfe, ob er vollständig kopiert wurde, oder bitte ein Mitglied um einen neuen.'
+				? { key: 'entry.errors.inviteInvalid' }
 				: INVITE_EXPIRED_MESSAGE,
+		),
 	};
 }

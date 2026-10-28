@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
 import {
 	createContext,
@@ -79,6 +80,7 @@ export function WgContextProvider({
 	initialIsAdmin,
 	children,
 }: Props) {
+	const t = useTranslations('shell.wgProvider');
 	// The WG layout resolved the Supabase session and membership on the server
 	// (authUserId is only set there). Start ready instead of waiting for
 	// the /api/wg/[code] lookup; it still revalidates in the background and
@@ -182,7 +184,7 @@ export function WgContextProvider({
 				<main id="main" tabIndex={-1} className="focus:outline-none">
 					<div
 						className="mx-auto w-full max-w-[var(--app-frame-width)] px-4 pt-6"
-						aria-label="Wird geladen"
+						aria-label={t('loading')}
 						role="status"
 					>
 						<Skeleton className="h-7 w-40 max-w-full" />
@@ -194,17 +196,13 @@ export function WgContextProvider({
 		);
 	}
 
-	const backToWgs = <ShellLink href="/neu">Zurück zu deinen WGs</ShellLink>;
+	const backToWgs = <ShellLink href="/neu">{t('backToWgs')}</ShellLink>;
 
 	if (memberLoadError || retrying) {
 		return (
 			<ShellAlert
-				title="WG nicht geladen"
-				description={
-					online
-						? 'Deine WG konnte nicht geladen werden. Bitte versuche es erneut.'
-						: 'Du bist offline. Sobald die Verbindung zurück ist, lädt deine WG von selbst.'
-				}
+				title={t('notLoaded')}
+				description={online ? t('loadFailed') : t('offlineWaiting')}
 			>
 				<Button
 					type="button"
@@ -215,7 +213,7 @@ export function WgContextProvider({
 					onClick={() => void retryMemberLoad()}
 				>
 					{retrying && <Spinner data-icon="inline-start" aria-hidden />}
-					{retrying ? 'Lädt…' : 'Erneut versuchen'}
+					{retrying ? t('retrying') : t('retry')}
 				</Button>
 				{backToWgs}
 			</ShellAlert>
@@ -225,18 +223,15 @@ export function WgContextProvider({
 	if (sessionEnded && !identity) {
 		const next = encodeURIComponent(`${window.location.pathname}${window.location.search}`);
 		return (
-			<ShellAlert title="Sitzung beendet" description="Melde dich erneut an, um weiterzumachen.">
-				<ShellLink href={`/neu?next=${next}`}>Neu anmelden</ShellLink>
+			<ShellAlert title={t('sessionEnded')} description={t('sessionEndedBody')}>
+				<ShellLink href={`/neu?next=${next}`}>{t('signIn')}</ShellLink>
 			</ShellAlert>
 		);
 	}
 
 	if (!identity) {
 		return (
-			<ShellAlert
-				title="Kein Zugriff"
-				description="Du bist in dieser WG nicht (mehr) Mitglied, z. B. weil du ausgezogen bist, entfernt wurdest oder die WG gelöscht wurde."
-			>
+			<ShellAlert title={t('noAccess')} description={t('noAccessBody')}>
 				{backToWgs}
 			</ShellAlert>
 		);

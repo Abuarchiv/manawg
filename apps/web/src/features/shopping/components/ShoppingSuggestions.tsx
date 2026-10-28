@@ -1,8 +1,10 @@
 import { Plus } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
+import { type Message, useMessage } from '@/shared/i18n/message';
 
 export interface SuggestionGroup {
-	label: string;
+	label: Message;
 	names: string[];
 }
 
@@ -15,12 +17,17 @@ export function ShoppingSuggestions({
 	disabled: boolean;
 	onAdd: (name: string) => void;
 }) {
+	const t = useTranslations('shopping.suggestions');
+	const render = useMessage();
 	return (
 		<div className="flex flex-col gap-3">
 			{groups.map((group) => (
-				<div key={group.label} className="flex min-w-0 flex-col gap-2">
-					<p className="text-meta font-medium text-muted-foreground">{group.label}</p>
-					<ul aria-label={group.label} className="-mx-4 -my-1.5 flex flex-wrap gap-2 px-4 py-1.5">
+				<div key={group.label.key} className="flex min-w-0 flex-col gap-2">
+					<p className="text-meta font-medium text-muted-foreground">{render(group.label)}</p>
+					<ul
+						aria-label={render(group.label)}
+						className="-mx-4 -my-1.5 flex flex-wrap gap-2 px-4 py-1.5"
+					>
 						{group.names.map((name) => (
 							<li key={name} className="min-w-0 max-w-full">
 								<Button
@@ -42,7 +49,7 @@ export function ShoppingSuggestions({
 											event.currentTarget.scrollIntoView({ block: 'start', inline: 'nearest' });
 										}
 									}}
-									aria-label={`${name} hinzufügen`}
+									aria-label={t('addAria', { name })}
 									className="min-w-0 max-w-full"
 								>
 									<Plus data-icon="inline-start" aria-hidden />

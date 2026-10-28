@@ -2,6 +2,7 @@
 
 import { ChevronDown, Repeat2 } from 'lucide-react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { useEffect, useRef, useState } from 'react';
 import {
 	Collapsible,
@@ -71,6 +72,7 @@ export function RecurringExpensesSection({
 	currentMemberId,
 	isAdmin,
 }: RecurringExpensesSectionProps): React.ReactElement {
+	const t = useTranslations('expenses.recurring');
 	const [open, setOpen] = useState(recurringFilterActive || recurringId !== null);
 	const [deleteCandidate, setDeleteCandidate] = useState<RecurringExpense | null>(null);
 	// The dialog has no trigger; after deletion the row that focus would return to is gone.
@@ -87,13 +89,14 @@ export function RecurringExpensesSection({
 				onOpenChange={setOpen}
 				className="scroll-mt-24"
 			>
-				{recurringFilterActive && <h2 className="text-base font-semibold">Fixkosten-Fokus</h2>}
+				{recurringFilterActive && <h2 className="text-base font-semibold">{t('focusHeading')}</h2>}
 				<CollapsibleTrigger
 					ref={triggerRef}
 					render={<Button variant="outline" className="w-full justify-start" />}
 				>
 					<Repeat2 data-icon="inline-start" />
-					Fixkosten<Badge variant="secondary">{recurringExpenses.length}</Badge>
+					{t('toggle')}
+					<Badge variant="secondary">{recurringExpenses.length}</Badge>
 					<ChevronDown data-icon="inline-end" className={cn('ml-auto', open && 'rotate-180')} />
 				</CollapsibleTrigger>
 				<CollapsiblePanel>
@@ -103,17 +106,17 @@ export function RecurringExpensesSection({
 								href={`${wgBaseHref}/ausgaben?filter=recurring`}
 								className={cn(buttonVariants({ variant: 'outline' }), 'min-h-11')}
 							>
-								Alle {recurringExpenses.length} Fixkosten anzeigen
+								{t('showAll', { count: String(recurringExpenses.length) })}
 							</Link>
 						)}
 						{recurringExpenses.length === 0 ? (
 							<Empty>
 								<EmptyHeader>
-									<EmptyTitle>Noch keine Fixkosten-Vorlage</EmptyTitle>
-									<EmptyDescription>Betrag und Aufteilung einmal vorbereiten.</EmptyDescription>
+									<EmptyTitle>{t('emptyTitle')}</EmptyTitle>
+									<EmptyDescription>{t('emptyBody')}</EmptyDescription>
 								</EmptyHeader>
 								<EmptyContent>
-									<Button onClick={onPrepareNewExpense}>Neue Ausgabe vorbereiten</Button>
+									<Button onClick={onPrepareNewExpense}>{t('prepare')}</Button>
 								</EmptyContent>
 							</Empty>
 						) : (
@@ -153,14 +156,13 @@ export function RecurringExpensesSection({
 					}}
 				>
 					<AlertDialogHeader>
-						<AlertDialogTitle>Vorlage löschen?</AlertDialogTitle>
+						<AlertDialogTitle>{t('deleteTitle')}</AlertDialogTitle>
 						<AlertDialogDescription>
-							„{deleteCandidate?.description}“ wird gelöscht. Bereits erfasste Ausgaben bleiben
-							erhalten.
+							{t('deleteBody', { description: deleteCandidate?.description ?? '' })}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogCancel className="min-h-11">Abbrechen</AlertDialogCancel>
+						<AlertDialogCancel className="min-h-11">{t('cancel')}</AlertDialogCancel>
 						<AlertDialogAction
 							variant="destructive"
 							className="min-h-11"
@@ -173,7 +175,7 @@ export function RecurringExpensesSection({
 								setDeleteCandidate(null);
 							}}
 						>
-							Löschen
+							{t('delete')}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>

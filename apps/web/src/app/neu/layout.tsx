@@ -1,12 +1,16 @@
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import type { ReactNode } from 'react';
 import { ToastContainer } from '@/components/ui/Toast';
 
-export const metadata: Metadata = {
-	title: 'WG erstellen oder beitreten',
-	description: 'WG erstellen oder mit einer Einladung beitreten.',
-	robots: { index: false, follow: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+	const t = await getTranslations('meta.join');
+	return {
+		title: t('title'),
+		description: t('description'),
+		robots: { index: false, follow: false },
+	};
+}
 
 export default function NeuLayout({ children }: { children: ReactNode }) {
 	return (

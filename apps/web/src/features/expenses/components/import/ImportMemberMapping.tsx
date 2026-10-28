@@ -1,8 +1,10 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/badge';
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { UNKNOWN_NAME } from '@/features/expenses/import-parsers';
 import { SKIP_NAME } from './import-wizard-types';
 
 interface MemberOption {
@@ -28,8 +30,9 @@ export function ImportMemberMapping({
 	showErrors = false,
 	suggestedNames = [],
 }: Props) {
-	if (names.length === 0)
-		return <p className="text-sm text-muted-foreground">Keine Namen erkannt.</p>;
+	const t = useTranslations('expenses-import.mapping');
+	const tCommon = useTranslations('common');
+	if (names.length === 0) return <p className="text-sm text-muted-foreground">{t('noNames')}</p>;
 	return (
 		<FieldGroup>
 			{names.map((name, index) => {
@@ -40,41 +43,36 @@ export function ImportMemberMapping({
 						? mapped
 						: '';
 				const invalid = showErrors && !value;
+				const shownName = name === UNKNOWN_NAME ? tCommon('unknownPerson') : name;
 				return (
 					<Field key={name} data-invalid={invalid || undefined}>
 						<FieldLabel htmlFor={`import-map-${index}`}>
-							{name}
+							{shownName}
 							{value && value !== SKIP_NAME && suggestedNames.includes(name) && (
-								<Badge variant="secondary">Vorschlag, bitte prüfen</Badge>
+								<Badge variant="secondary">{t('suggestion')}</Badge>
 							)}
 						</FieldLabel>
 						<NativeSelect
 							id={`import-map-${index}`}
 							value={value}
 							onChange={(event) => onChange(name, event.target.value || null)}
-							aria-label={`Mitglied für ${name} wählen`}
+							aria-label={t('selectAria', { name: shownName })}
 							aria-invalid={invalid || undefined}
 							aria-describedby={invalid ? `import-map-error-${index}` : undefined}
 							className="w-full"
 						>
-							<NativeSelectOption value="">Noch zuordnen</NativeSelectOption>
+							<NativeSelectOption value="">{t('unassigned')}</NativeSelectOption>
 							{members.map((member) => (
 								<NativeSelectOption key={member.id} value={member.id}>
 									{member.name}
 								</NativeSelectOption>
 							))}
-							<NativeSelectOption value={SKIP_NAME}>
-								Nicht übernehmen (Zeilen überspringen)
-							</NativeSelectOption>
+							<NativeSelectOption value={SKIP_NAME}>{t('skip')}</NativeSelectOption>
 						</NativeSelect>
 						{value === SKIP_NAME && (
-							<FieldDescription>
-								Ausgaben mit {name} werden nicht importiert, z. B. weil die Person ausgezogen ist.
-							</FieldDescription>
+							<FieldDescription>{t('skipHint', { name: shownName })}</FieldDescription>
 						)}
-						{invalid && (
-							<FieldError id={`import-map-error-${index}`}>Bitte WG-Mitglied auswählen.</FieldError>
-						)}
+						{invalid && <FieldError id={`import-map-error-${index}`}>{t('required')}</FieldError>}
 					</Field>
 				);
 			})}

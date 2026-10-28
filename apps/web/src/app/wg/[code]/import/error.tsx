@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { WgRouteErrorBoundary } from '@/components/wg/WgRouteErrorBoundary';
 
 interface ImportErrorProps {
@@ -8,13 +9,14 @@ interface ImportErrorProps {
 }
 
 export default function ImportError({ error, reset }: ImportErrorProps) {
+	const t = useTranslations('expenses-import.boundary');
 	return (
 		<WgRouteErrorBoundary
 			error={error}
 			reset={reset}
 			boundary="wg-import"
-			title="Import-Assistent konnte nicht geladen werden"
-			body="Beim Laden des Import-Assistenten ist ein Fehler aufgetreten. Bitte versuche es erneut oder kehre zur WG-Übersicht zurück."
+			title={t('title')}
+			body={t('body')}
 		/>
 	);
 }

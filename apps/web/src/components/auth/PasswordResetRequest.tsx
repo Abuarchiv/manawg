@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -12,6 +13,7 @@ import { GenericAuthError, isValidEmail, normalizeEmail } from './auth-form-shar
 
 /** Requests a fresh reset link without leaving the reset page; the answer never reveals an account. */
 export function PasswordResetRequest() {
+	const t = useTranslations('auth');
 	const [email, setEmail] = useState('');
 	const [busy, setBusy] = useState(false);
 	const [state, setState] = useState<'idle' | 'invalid' | 'sent' | 'failed'>('idle');
@@ -43,7 +45,7 @@ export function PasswordResetRequest() {
 		<form noValidate onSubmit={(event) => void submit(event)} className="flex flex-col gap-4">
 			<FieldGroup>
 				<Field data-invalid={state === 'invalid'}>
-					<FieldLabel htmlFor="reset-request-email">E-Mail-Adresse</FieldLabel>
+					<FieldLabel htmlFor="reset-request-email">{t('fields.email')}</FieldLabel>
 					<Input
 						id="reset-request-email"
 						name="email"
@@ -62,21 +64,18 @@ export function PasswordResetRequest() {
 				</Field>
 				{state === 'invalid' && (
 					<p id="reset-request-error" role="alert" className="text-sm text-destructive">
-						Bitte gib eine gültige E-Mail-Adresse ein.
+						{t('validEmail')}
 					</p>
 				)}
 				{state === 'failed' && <GenericAuthError failure={failure} />}
 				{state === 'sent' && (
 					<Alert>
-						<AlertDescription>
-							Wenn zu dieser E-Mail-Adresse ein Konto gehört, erhältst du gleich einen Link zum
-							Zurücksetzen des Passworts.
-						</AlertDescription>
+						<AlertDescription>{t('signIn.resetSent')}</AlertDescription>
 					</Alert>
 				)}
 				<Button type="submit" disabled={busy}>
 					{busy && <Spinner data-icon="inline-start" aria-hidden />}
-					Link senden
+					{t('reset.sendLink')}
 				</Button>
 			</FieldGroup>
 		</form>

@@ -32,7 +32,7 @@ interface DueRecurring {
 	amountCents: number;
 	intervalMonths: number;
 	nextDueAt: Date;
-	anchorAt: Date | null;
+	anchorAt: Date;
 	splitsJson: string;
 	wgName: string;
 	shareCode: string;
@@ -87,7 +87,7 @@ async function createExpenseForDueAt(
 				current.amountCents !== template.amountCents ||
 				current.intervalMonths !== template.intervalMonths ||
 				current.nextDueAt.getTime() !== template.nextDueAt.getTime() ||
-				(current.anchorAt?.getTime() ?? null) !== (template.anchorAt?.getTime() ?? null) ||
+				current.anchorAt.getTime() !== template.anchorAt.getTime() ||
 				current.splitsJson !== template.splitsJson
 			) {
 				return null;
@@ -182,8 +182,7 @@ async function advanceTemplate(template: DueRecurring): Promise<CreatedAdvance[]
 	const now = new Date();
 	const intervalMonths = Math.max(1, Math.floor(template.intervalMonths));
 	// Anchor day keeps month-end due dates from drifting (31. → 28.02 → 31.03).
-	// Legacy rows adopt their current nextDueAt as anchor on first advance.
-	const anchorDay = (template.anchorAt ?? template.nextDueAt).getUTCDate();
+	const anchorDay = template.anchorAt.getUTCDate();
 	const created: CreatedAdvance[] = [];
 	let dueAt = template.nextDueAt;
 	let nextDueAt = dueAt;
@@ -209,7 +208,6 @@ async function advanceTemplate(template: DueRecurring): Promise<CreatedAdvance[]
 				nextDueAt,
 				lastCreatedAt: now,
 				updatedAt: now,
-				...(template.anchorAt ? {} : { anchorAt: template.nextDueAt }),
 			})
 			.where(
 				and(
@@ -222,9 +220,7 @@ async function advanceTemplate(template: DueRecurring): Promise<CreatedAdvance[]
 					eq(recurringExpenses.description, template.description),
 					eq(recurringExpenses.splitsJson, template.splitsJson),
 					isNull(recurringExpenses.pausedAt),
-					template.anchorAt
-						? eq(recurringExpenses.anchorAt, template.anchorAt)
-						: isNull(recurringExpenses.anchorAt),
+					eq(recurringExpenses.anchorAt, template.anchorAt),
 				),
 			)
 			.returning({ id: recurringExpenses.id });

@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { WgRouteErrorBoundary } from '@/components/wg/WgRouteErrorBoundary';
 
 interface AktivitaetErrorProps {
@@ -8,13 +9,14 @@ interface AktivitaetErrorProps {
 }
 
 export default function AktivitaetError({ error, reset }: AktivitaetErrorProps) {
+	const t = useTranslations('activity.error');
 	return (
 		<WgRouteErrorBoundary
 			error={error}
 			reset={reset}
 			boundary="wg-aktivitaet"
-			title="Aktivität konnte gerade nicht geladen werden"
-			body="Im Aktivitäts-Feed ist ein Fehler aufgetreten. Bitte versuche es erneut oder kehre zur WG-Übersicht zurück."
+			title={t('title')}
+			body={t('body')}
 		/>
 	);
 }

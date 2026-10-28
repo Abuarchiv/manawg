@@ -1,5 +1,6 @@
 import type { recurringExpenses } from '@/core/db';
 import { addMonthsFromAnchor, parseTimestamp } from '@/core/utils/time';
+import type { Message } from '@/shared/i18n/message';
 
 export { addMonthsFromAnchor };
 
@@ -83,16 +84,15 @@ export function getDueRecurringExpenses(
 interface RecurringAdvanceInput {
 	nextDueAt: string;
 	intervalMonths: number;
-	/** Original cadence anchor; null on legacy rows (adopted from nextDueAt). */
-	anchorAt?: string | null;
+	/** Original cadence anchor. */
+	anchorAt: string;
 }
 
 export function buildRecurringAdvance(
 	input: RecurringAdvanceInput,
 	now = new Date(),
 ): { nextDueAt: Date; lastCreatedAt: Date; anchorAt: Date } {
-	const previous = parseTimestamp(input.nextDueAt);
-	const anchorMs = (input.anchorAt ? parseTimestamp(input.anchorAt) : null) ?? previous;
+	const anchorMs = parseTimestamp(input.anchorAt);
 	const anchor = anchorMs !== null ? new Date(anchorMs) : new Date(input.nextDueAt);
 	return {
 		nextDueAt: addMonthsFromAnchor(
@@ -158,13 +158,14 @@ export function previewNextOccurrences(input: RecurringPreviewInput, count: numb
 	return occurrences;
 }
 
-export function formatIntervalLabel(intervalMonths: number): string {
+/** Interval wording as data. */
+export function intervalLabelMessage(intervalMonths: number): Message {
 	const months = Math.max(1, Math.floor(intervalMonths));
-	if (months === 1) return 'monatlich';
-	if (months === 3) return 'quartalsweise';
-	if (months === 6) return 'halbjährlich';
-	if (months === 12) return 'jährlich';
-	return `alle ${months} Monate`;
+	if (months === 1) return { key: 'expenses-abos.interval.monthly' };
+	if (months === 3) return { key: 'expenses-abos.interval.quarterly' };
+	if (months === 6) return { key: 'expenses-abos.interval.halfYearly' };
+	if (months === 12) return { key: 'expenses-abos.interval.yearly' };
+	return { key: 'expenses-abos.interval.everyMonths', values: { count: months } };
 }
 
 /**
@@ -175,7 +176,7 @@ export function countMissedOccurrences(
 	nextDueAtIso: string,
 	intervalMonths: number,
 	now = new Date(),
-	anchorAt?: string | null,
+	anchorAt?: string,
 ): number {
 	const start = new Date(nextDueAtIso);
 	if (Number.isNaN(start.getTime())) return 0;

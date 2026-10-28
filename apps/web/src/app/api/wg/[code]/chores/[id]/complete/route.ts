@@ -130,7 +130,7 @@ async function planCompletion(c: ChoreSnapshot, tapAt: Date | null): Promise<Com
 		c.anchorAt,
 	);
 	const late = isLateCompletion(c.nextDueAt, completedAt);
-	const effectiveAnchor = late ? completedAt : (c.anchorAt ?? c.nextDueAt);
+	const effectiveAnchor = late ? completedAt : c.anchorAt;
 	const [members, absenceRows, wgChoresSnapshot] = await Promise.all([
 		db
 			.select({ id: wgMembers.id, name: wgMembers.name })

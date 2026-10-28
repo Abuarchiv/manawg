@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Checkbox } from '@/components/animate-ui/components/base/checkbox';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 
@@ -21,6 +22,7 @@ export function EqualParticipantsPicker({
 	idPrefix,
 	disabled = false,
 }: EqualParticipantsPickerProps) {
+	const t = useTranslations('expenses-form.split');
 	if (candidates.length < 2) return null;
 	const chosen = new Set(participantIds ?? candidates.map((member) => member.id));
 	function toggle(memberId: string, checked: boolean): void {
@@ -30,7 +32,7 @@ export function EqualParticipantsPicker({
 		onChange(next.size === candidates.length ? null : [...next]);
 	}
 	return (
-		<FieldGroup className="gap-1" aria-label="Beteiligte Personen">
+		<FieldGroup className="gap-1" aria-label={t('participantsAria')}>
 			{candidates.map((member) => {
 				const checked = chosen.has(member.id);
 				return (

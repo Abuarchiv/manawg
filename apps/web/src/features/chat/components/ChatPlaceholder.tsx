@@ -1,4 +1,5 @@
 import { MessageCircle } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,22 +23,24 @@ export function ChatBubbleSkeletons() {
 }
 
 export function ChatLoadingPlaceholder() {
+	const t = useTranslations('chat.placeholder');
 	return (
 		<output className="block py-2">
 			<ChatBubbleSkeletons />
-			<span className="sr-only">Nachrichten werden geladen</span>
+			<span className="sr-only">{t('loading')}</span>
 		</output>
 	);
 }
 
 export function ChatLoadErrorPlaceholder({ onRetry }: { onRetry: () => void }) {
+	const t = useTranslations('chat.placeholder');
 	return (
 		<div className="flex min-h-40 w-full items-center justify-center">
 			<Alert variant="destructive" className="max-w-sm text-center">
-				<AlertTitle>Chat konnte nicht geladen werden.</AlertTitle>
+				<AlertTitle>{t('loadFailed')}</AlertTitle>
 				<AlertDescription>
 					<Button type="button" variant="outline" size="sm" onClick={onRetry} className="mt-3">
-						Erneut versuchen
+						{t('retry')}
 					</Button>
 				</AlertDescription>
 			</Alert>
@@ -46,6 +49,7 @@ export function ChatLoadErrorPlaceholder({ onRetry }: { onRetry: () => void }) {
 }
 
 export function ChatEmptyPlaceholder() {
+	const t = useTranslations('chat.placeholder');
 	return (
 		<div className="py-6">
 			<Empty className="border border-dashed">
@@ -53,8 +57,8 @@ export function ChatEmptyPlaceholder() {
 					<EmptyMedia>
 						<MessageCircle aria-hidden />
 					</EmptyMedia>
-					<EmptyTitle>Noch keine Nachrichten</EmptyTitle>
-					<EmptyDescription>Schreib die erste.</EmptyDescription>
+					<EmptyTitle>{t('emptyTitle')}</EmptyTitle>
+					<EmptyDescription>{t('emptyHint')}</EmptyDescription>
 				</EmptyHeader>
 			</Empty>
 		</div>

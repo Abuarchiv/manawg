@@ -2,6 +2,7 @@
 
 import { Home, KeyRound, Plus } from 'lucide-react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import {
 	Item,
@@ -23,12 +24,13 @@ interface ChooseStepProps {
 }
 
 export function ChooseStep({ accountWgs, interactive, busy, onCreate, onJoin }: ChooseStepProps) {
+	const t = useTranslations('entry.start');
 	return (
 		<div className="flex flex-col gap-4">
 			{accountWgs.length > 0 && (
 				<section aria-labelledby="your-wgs-heading" className="flex flex-col gap-3">
 					<h2 id="your-wgs-heading" className="sr-only">
-						Deine WGs
+						{t('yourFlats')}
 					</h2>
 					<ItemGroup>
 						{accountWgs.map((accountWg) => (
@@ -42,7 +44,7 @@ export function ChooseStep({ accountWgs, interactive, busy, onCreate, onJoin }: 
 									</ItemMedia>
 									<ItemContent className="min-w-0">
 										<ItemTitle className="line-clamp-none break-words">{accountWg.name}</ItemTitle>
-										<ItemDescription>WG öffnen</ItemDescription>
+										<ItemDescription>{t('openFlat')}</ItemDescription>
 									</ItemContent>
 								</Item>
 							</ItemGroupEntry>
@@ -52,7 +54,7 @@ export function ChooseStep({ accountWgs, interactive, busy, onCreate, onJoin }: 
 			)}
 			<div className="flex flex-col gap-2">
 				<Button size="lg" disabled={!interactive || busy} onClick={onCreate} className="w-full">
-					<Plus data-icon="inline-start" aria-hidden /> Neue WG erstellen
+					<Plus data-icon="inline-start" aria-hidden /> {t('createNew')}
 				</Button>
 				<Button
 					size="lg"
@@ -61,7 +63,7 @@ export function ChooseStep({ accountWgs, interactive, busy, onCreate, onJoin }: 
 					onClick={onJoin}
 					className="w-full"
 				>
-					<KeyRound data-icon="inline-start" aria-hidden /> Mit Einladung beitreten
+					<KeyRound data-icon="inline-start" aria-hidden /> {t('joinInvite')}
 				</Button>
 			</div>
 		</div>

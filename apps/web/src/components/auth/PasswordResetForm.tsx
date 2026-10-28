@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import { NEW_PASSWORD_MIN_LENGTH } from '@/components/auth/auth-form-shared';
 import { PasswordResetRequest } from '@/components/auth/PasswordResetRequest';
@@ -16,6 +17,7 @@ import {
 	isWeakPasswordError,
 	WEAK_PASSWORD_MESSAGE,
 } from '@/core/auth/password-errors';
+import { useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
 
 type ResetState = 'ready' | 'submitting' | 'unavailable';
@@ -25,6 +27,8 @@ interface PasswordResetFormProps {
 }
 
 export function PasswordResetForm({ recoveryRequested }: PasswordResetFormProps) {
+	const t = useTranslations('auth');
+	const message = useMessage();
 	const router = useRouter();
 	const [state, setState] = useState<ResetState>(recoveryRequested ? 'ready' : 'unavailable');
 	const [password, setPassword] = useState('');
@@ -54,8 +58,8 @@ export function PasswordResetForm({ recoveryRequested }: PasswordResetFormProps)
 		) {
 			setError(
 				password.length < NEW_PASSWORD_MIN_LENGTH
-					? `Das Passwort muss mindestens ${NEW_PASSWORD_MIN_LENGTH} Zeichen lang sein.`
-					: 'Die Passwörter stimmen nicht überein.',
+					? t('reset.tooShort', { min: NEW_PASSWORD_MIN_LENGTH })
+					: t('mismatch'),
 			);
 			return;
 		}
@@ -69,17 +73,15 @@ export function PasswordResetForm({ recoveryRequested }: PasswordResetFormProps)
 			} catch {
 				// The marker expires quickly; a successful password update must still finish.
 			}
-			toast.success('Passwort gespeichert.');
+			toast.success(t('reset.saved'));
 			router.replace('/neu');
 		} catch (error) {
-			if (isWeakPasswordError(error)) setError(WEAK_PASSWORD_MESSAGE);
+			if (isWeakPasswordError(error)) setError(message(WEAK_PASSWORD_MESSAGE));
 			// Supabase rejects reusing the current password; a new link would not change that.
 			else if (isSamePasswordError(error)) {
-				setError('Das neue Passwort muss sich vom bisherigen unterscheiden.');
+				setError(t('reset.same'));
 			} else {
-				setServerError(
-					'Das Passwort konnte gerade nicht geändert werden. Bitte fordere einen neuen Link an.',
-				);
+				setServerError(t('reset.failed'));
 			}
 			setState('ready');
 		}
@@ -89,13 +91,11 @@ export function PasswordResetForm({ recoveryRequested }: PasswordResetFormProps)
 		return (
 			<div className="flex flex-col gap-4">
 				<Alert variant="destructive">
-					<AlertDescription>
-						Dieser Link ist ungültig oder abgelaufen. Bitte fordere einen neuen Link an.
-					</AlertDescription>
+					<AlertDescription>{t('reset.invalidLink')}</AlertDescription>
 				</Alert>
 				<PasswordResetRequest />
 				<Link href="/neu" className={cn(buttonVariants({ variant: 'ghost' }))}>
-					Zurück
+					{t('reset.back')}
 				</Link>
 			</div>
 		);
@@ -114,7 +114,7 @@ export function PasswordResetForm({ recoveryRequested }: PasswordResetFormProps)
 			<form onSubmit={(event) => void submit(event)} noValidate>
 				<FieldGroup>
 					<Field data-invalid={Boolean(error)}>
-						<FieldLabel htmlFor="reset-password">Neues Passwort</FieldLabel>
+						<FieldLabel htmlFor="reset-password">{t('fields.newPassword')}</FieldLabel>
 						<Input
 							id="reset-password"
 							name="password"
@@ -135,10 +135,12 @@ export function PasswordResetForm({ recoveryRequested }: PasswordResetFormProps)
 							aria-invalid={error ? true : undefined}
 							className="text-base"
 						/>
-						<FieldDescription id="reset-password-hint">Mindestens acht Zeichen.</FieldDescription>
+						<FieldDescription id="reset-password-hint">{t('reset.hint')}</FieldDescription>
 					</Field>
 					<Field data-invalid={Boolean(error)}>
-						<FieldLabel htmlFor="reset-password-confirmation">Passwort bestätigen</FieldLabel>
+						<FieldLabel htmlFor="reset-password-confirmation">
+							{t('fields.confirmPassword')}
+						</FieldLabel>
 						<Input
 							id="reset-password-confirmation"
 							name="passwordConfirmation"
@@ -167,7 +169,7 @@ export function PasswordResetForm({ recoveryRequested }: PasswordResetFormProps)
 						className="w-full"
 					>
 						{state === 'submitting' && <Spinner data-icon="inline-start" aria-hidden />}
-						{state === 'submitting' ? 'Passwort wird gespeichert…' : 'Passwort speichern'}
+						{state === 'submitting' ? t('reset.saving') : t('reset.save')}
 					</Button>
 				</FieldGroup>
 			</form>

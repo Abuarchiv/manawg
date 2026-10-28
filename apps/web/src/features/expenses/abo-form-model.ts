@@ -1,9 +1,12 @@
 import { eurosToCents, formatCentsInput, parseEuroAmount } from '@/core/utils/amount';
 import type { ExpenseCategory } from '@/features/expenses/expense-categories';
+import { AMOUNT_MAX_EUROS } from '@/features/expenses/expense-constants';
 import { participantsOrAll } from '@/features/expenses/expense-form-draft';
 import { equalSplitParticipants, type SplitMode } from '@/features/expenses/expense-split-input';
 import type { AboSplit, MemberOption } from '@/features/expenses/expense-types';
 import { distributeCentsEqually } from '@/features/expenses/split-math';
+import type { Locale } from '@/shared/i18n/locale';
+import type { Message } from '@/shared/i18n/message';
 
 export type { SplitMode };
 
@@ -58,11 +61,38 @@ export function initialEqualParticipants(
 	return participants ? participantsOrAll(participants, members) : 'manual';
 }
 
-export function initialManualMap(initial: AboFormValues | undefined): Record<string, string> {
+export function initialManualMap(
+	initial: AboFormValues | undefined,
+	locale: Locale = 'de',
+): Record<string, string> {
 	if (!initial) return {};
 	return Object.fromEntries(
-		initial.splits.map((split) => [split.debtorMemberId, formatCentsInput(split.amountCents)]),
+		initial.splits.map((split) => [
+			split.debtorMemberId,
+			formatCentsInput(split.amountCents, locale),
+		]),
 	);
+}
+
+/** Why an amount field is rejected; above the maximum the amount is too large, not too small. */
+export function aboAmountError(euros: number | null, raw: string): Message {
+	if (euros === null && /[.,]\d{3,}\s*(€|EUR)?$/i.test(raw.trim())) {
+		return { key: 'expenses-abos.form.error.amountDecimals' };
+	}
+	return euros !== null && euros > AMOUNT_MAX_EUROS
+		? { key: 'expenses-abos.form.error.amountMax' }
+		: { key: 'expenses-abos.form.error.amountPositive' };
+}
+
+const SPLIT_ERROR_KEYS = {
+	invalid_share: 'expenses-abos.form.error.invalidShare',
+	splits_empty: 'expenses-abos.form.error.splitsEmpty',
+	splits_mismatch: 'expenses-abos.errors.splitsMismatch',
+} as const;
+
+/** The error shown under the split fields for a failed manual split. */
+export function aboSplitError(reason: keyof typeof SPLIT_ERROR_KEYS): Message {
+	return { key: SPLIT_ERROR_KEYS[reason] };
 }
 
 /** Splits for the form state: equal over active members, or the manual shares summing to the amount. */
@@ -73,6 +103,7 @@ export function buildAboSplits(input: {
 	splitCandidates: MemberOption[];
 	manualSplits: Record<string, string>;
 	participantIds?: readonly string[] | null;
+	locale?: Locale;
 }): AboSplit[] | AboSplitBuildError {
 	const {
 		amountCents: parsedAmountCents,
@@ -81,6 +112,7 @@ export function buildAboSplits(input: {
 		splitCandidates,
 		manualSplits,
 		participantIds,
+		locale = 'de',
 	} = input;
 	if (parsedAmountCents === null) return 'amount_invalid';
 	if (splitMode === 'equal') {
@@ -93,7 +125,7 @@ export function buildAboSplits(input: {
 	for (const member of splitCandidates) {
 		const raw = manualSplits[member.id] ?? '';
 		if (raw.trim().length === 0) continue;
-		const value = parseEuroAmount(raw);
+		const value = parseEuroAmount(raw, locale);
 		if (value === null || value < 0) return 'invalid_share';
 		if (value === 0) continue;
 		const cents = eurosToCents(value);

@@ -10,11 +10,42 @@ import {
 } from '@/components/ui/empty';
 import { captureException } from '@/core/infra/capture-client';
 import { isChunkLoadError, reloadOnStaleChunk } from '@/core/infra/stale-chunk';
+import { htmlLang, LOCALE_COOKIE, type Locale } from '@/shared/i18n/locale';
 import { SUPPORT_MAILTO } from '@/shared/lib/support-mailto';
 import { applyStoredTheme, THEME_BOOTSTRAP_SCRIPT } from '@/shared/lib/theme';
 import '@/shared/globals.css';
 import { TriangleAlert } from 'lucide-react';
-import { useEffect, useLayoutEffect } from 'react';
+import { useEffect, useLayoutEffect, useSyncExternalStore } from 'react';
+
+// This boundary sits above the root layout, so it has no message provider: two tiny inline copies.
+const COPY: Record<Locale, Record<'wrong' | 'reload' | 'retry' | 'home' | 'report', string>> = {
+	de: {
+		// i18n-ignore German copy of the provider-less boundary
+		wrong: 'Etwas ist schiefgelaufen',
+		// i18n-ignore German copy of the provider-less boundary
+		reload: 'Bitte lade die Seite neu.',
+		// i18n-ignore German copy of the provider-less boundary
+		retry: 'Erneut versuchen',
+		// i18n-ignore German copy of the provider-less boundary
+		home: 'Zur Startseite',
+		// i18n-ignore German copy of the provider-less boundary
+		report: 'Fehler per E-Mail melden',
+	},
+	en: {
+		wrong: 'Something went wrong',
+		reload: 'Please reload the page.',
+		retry: 'Try again',
+		home: 'Go to home page',
+		report: 'Report error by email',
+	},
+};
+
+function readLocale(): Locale {
+	if (document.documentElement.lang.startsWith('en')) return 'en';
+	return document.cookie.split('; ').includes(`${LOCALE_COOKIE}=en`) ? 'en' : 'de';
+}
+
+const subscribeNever = () => () => {};
 
 export default function GlobalError({
 	error,
@@ -23,6 +54,9 @@ export default function GlobalError({
 	error: Error & { digest?: string };
 	reset: () => void;
 }) {
+	// The server pass renders German; the client picks the reader's language right after hydration.
+	const locale = useSyncExternalStore(subscribeNever, readLocale, () => 'de' as const);
+	const copy = COPY[locale];
 	// The head script only runs on a server render; a client-rendered error page needs this
 	// before paint so dark devices do not flash white.
 	useLayoutEffect(applyStoredTheme, []);
@@ -32,7 +66,7 @@ export default function GlobalError({
 	}, [error]);
 
 	return (
-		<html lang="de" suppressHydrationWarning>
+		<html lang={htmlLang(locale)} suppressHydrationWarning>
 			<head>
 				{/* biome-ignore lint/security/noDangerouslySetInnerHtml: static constant, no dynamic data */}
 				<script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }} />
@@ -48,9 +82,9 @@ export default function GlobalError({
 								data-slot="empty-title"
 								className="min-w-0 max-w-full text-base font-semibold [overflow-wrap:anywhere]"
 							>
-								Etwas ist schiefgelaufen
+								{copy.wrong}
 							</h1>
-							<EmptyDescription>Bitte lade die Seite neu.</EmptyDescription>
+							<EmptyDescription>{copy.reload}</EmptyDescription>
 						</EmptyHeader>
 						<EmptyContent>
 							<Button
@@ -58,17 +92,17 @@ export default function GlobalError({
 								size="lg"
 								onClick={() => (isChunkLoadError(error) ? window.location.reload() : reset())}
 							>
-								Erneut versuchen
+								{copy.retry}
 							</Button>
 							{/* No next/link: this error sits above the root layout, so only a hard page load helps. */}
 							<a href="/" className={buttonVariants({ variant: 'outline', size: 'lg' })}>
-								Zur Startseite
+								{copy.home}
 							</a>
 							<a
 								href={SUPPORT_MAILTO}
 								className={buttonVariants({ variant: 'outline', size: 'lg' })}
 							>
-								Fehler per E-Mail melden
+								{copy.report}
 							</a>
 						</EmptyContent>
 					</Empty>

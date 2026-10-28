@@ -62,7 +62,7 @@ export const chores = pgTable(
 			.default('days'),
 		nextDueAt: timestamp('next_due_at', { withTimezone: true }).notNull().defaultNow(),
 		// Monthly-cadence anchor, see recurring_expenses.anchor_at.
-		anchorAt: timestamp('anchor_at', { withTimezone: true }),
+		anchorAt: timestamp('anchor_at', { withTimezone: true }).notNull(),
 		assignedMemberId: uuid('assigned_member_id').references(() => wgMembers.id, {
 			onDelete: 'set null',
 		}),

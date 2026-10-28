@@ -14,9 +14,11 @@ interface DashboardCountsRead {
 
 export type SegmentCountState = 'ready' | 'loading' | 'unavailable' | 'stale';
 
+export type CountHint = 'open' | 'due' | 'yourDue' | 'unread';
+
 export interface SegmentCount {
 	count: number | undefined;
-	hint: string;
+	hint: CountHint;
 	state: SegmentCountState;
 	overflow?: boolean | undefined;
 }
@@ -82,13 +84,13 @@ export function useDashboardCounts(): Record<string, SegmentCount> {
 	return {
 		einkauf: {
 			count: dashboard.data?.openShoppingCount,
-			hint: 'offen',
+			hint: 'open',
 			state: dashboardState,
 		},
-		putzen: { count: ownDueCount, hint: 'für dich fällig', state: dashboardState },
+		putzen: { count: ownDueCount, hint: 'yourDue', state: dashboardState },
 		abos: {
 			count: dashboard.data?.dueRecurringExpenses.length,
-			hint: 'fällig',
+			hint: 'due',
 			state: dashboardState,
 		},
 	};

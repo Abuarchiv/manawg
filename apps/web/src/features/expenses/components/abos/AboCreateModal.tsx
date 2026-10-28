@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import type { AboFormValues } from '@/features/expenses/abo-form-model';
 import { AboForm } from '@/features/expenses/components/abos/AboForm';
 import { AboModalShell } from '@/features/expenses/components/abos/AboModalShell';
@@ -22,8 +23,9 @@ export function AboCreateModal({
 	onClose,
 	onSubmit,
 }: AboCreateModalProps) {
+	const t = useTranslations('expenses-abos');
 	return (
-		<AboModalShell title="Neue Fixkosten" onClose={onClose} submitting={submitting}>
+		<AboModalShell title={t('modal.createTitle')} onClose={onClose} submitting={submitting}>
 			{(requestClose) => (
 				<AboForm
 					mode="create"

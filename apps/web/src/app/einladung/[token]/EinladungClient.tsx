@@ -3,6 +3,7 @@
 import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useAccountNamePrefill } from '@/app/use-account-name-prefill';
 import { BackButton } from '@/components/app/BackButton';
 import { ErrorBox } from '@/components/app/ErrorBox';
@@ -20,6 +21,8 @@ import { useInviteJoin } from './use-invite-join';
 
 /** The page behind an invitation link: sign in if needed, show the WG, ask for a name, join. */
 export function EinladungClient({ token }: { token: string }) {
+	const t = useTranslations('entry');
+	const ts = useTranslations('entry.start');
 	const router = useRouter();
 	const { phase, claim, name, setName, error, nameInvalid, busy, join, retry, deadMessage } =
 		useInviteJoin(token);
@@ -29,19 +32,19 @@ export function EinladungClient({ token }: { token: string }) {
 	if (phase.kind === 'signed-out') {
 		return (
 			<EntryFrame
-				title="Einladung annehmen"
+				title={t('invite.title')}
 				headingId="invite-heading"
-				description="Melde dich an, um der WG beizutreten."
+				description={t('invite.signInBody')}
 			>
 				<div className="flex flex-col gap-2">
 					<Link href={`/neu?next=${next}`} className={cn(buttonVariants(), 'w-full')}>
-						Anmelden
+						{t('invite.signIn')}
 					</Link>
 					<Link
 						href={`/registrieren?next=${next}`}
 						className={cn(buttonVariants({ variant: 'outline' }), 'w-full')}
 					>
-						Konto erstellen
+						{t('invite.createAccount')}
 					</Link>
 				</div>
 				<LegalLinks consent />
@@ -51,10 +54,10 @@ export function EinladungClient({ token }: { token: string }) {
 
 	if (phase.kind === 'dead') {
 		return (
-			<EntryFrame title="Einladung nicht gültig" headingId="invite-heading">
+			<EntryFrame title={t('invite.invalidTitle')} headingId="invite-heading">
 				<ErrorBox>{deadMessage}</ErrorBox>
 				<Link href="/neu" className={cn(buttonVariants({ variant: 'outline' }), 'w-full')}>
-					Zu deinen WGs
+					{t('invite.toFlats')}
 				</Link>
 			</EntryFrame>
 		);
@@ -62,10 +65,10 @@ export function EinladungClient({ token }: { token: string }) {
 
 	if (phase.kind === 'error') {
 		return (
-			<EntryFrame title="Einladung" headingId="invite-heading">
-				<ErrorBox>Die Einladung konnte gerade nicht geprüft werden.</ErrorBox>
+			<EntryFrame title={t('invite.heading')} headingId="invite-heading">
+				<ErrorBox>{t('invite.checkFailed')}</ErrorBox>
 				<Button type="button" variant="outline" onClick={retry}>
-					Erneut prüfen
+					{t('invite.recheck')}
 				</Button>
 			</EntryFrame>
 		);
@@ -73,15 +76,15 @@ export function EinladungClient({ token }: { token: string }) {
 
 	if (phase.kind === 'loading') {
 		return (
-			<EntryFrame title="Einladung" headingId="invite-heading">
+			<EntryFrame title={t('invite.heading')} headingId="invite-heading">
 				<output
 					aria-live="polite"
-					aria-label="Einladung wird geprüft"
+					aria-label={t('invite.checking')}
 					className="flex flex-col gap-3"
 				>
 					<Skeleton className="h-9 w-full" />
 					<Skeleton className="h-9 w-full" />
-					<span className="sr-only">Einladung wird geprüft</span>
+					<span className="sr-only">{t('invite.checking')}</span>
 				</output>
 			</EntryFrame>
 		);
@@ -89,9 +92,9 @@ export function EinladungClient({ token }: { token: string }) {
 
 	return (
 		<EntryFrame
-			title={`Tritt der WG „${phase.wgName}“ bei`}
+			title={t('invite.joinTitle', { wgName: phase.wgName })}
 			headingId="invite-heading"
-			description="Mit diesem Namen sehen dich deine Mitbewohner."
+			description={t('invite.joinBody')}
 		>
 			<form
 				noValidate
@@ -104,8 +107,8 @@ export function EinladungClient({ token }: { token: string }) {
 				<FieldGroup>
 					<TextField
 						id="join-name"
-						label="Dein Anzeigename"
-						placeholder="z. B. Anna"
+						label={ts('displayName')}
+						placeholder={ts('displayNamePlaceholder')}
 						value={name}
 						onChange={setName}
 						maxLength={MEMBER_NAME_MAX_LENGTH}
@@ -127,18 +130,16 @@ export function EinladungClient({ token }: { token: string }) {
 						) : (
 							<ArrowRight data-icon="inline-start" aria-hidden />
 						)}
-						{busy ? 'Tritt bei…' : 'Beitreten'}
+						{busy ? t('invite.joining') : t('invite.join')}
 					</Button>
 				</div>
 			</form>
 			{phase.unclaimed.length > 0 && (
 				<section aria-labelledby="claim-heading" className="flex flex-col gap-2 border-t pt-4">
 					<h2 id="claim-heading" className="text-sm font-medium">
-						Schon Mitglied?
+						{t('invite.claimTitle')}
 					</h2>
-					<p className="text-muted-foreground text-xs">
-						Wurde dein Profil angelegt, bevor es Konten gab? Übernimm es mit deinem Konto.
-					</p>
+					<p className="text-muted-foreground text-xs">{t('invite.claimBody')}</p>
 					<div className="flex flex-wrap gap-2">
 						{phase.unclaimed.map((member) => (
 							<Button
@@ -148,7 +149,7 @@ export function EinladungClient({ token }: { token: string }) {
 								disabled={busy}
 								onClick={() => void claim(member.id)}
 							>
-								Ich bin {member.name}
+								{t('invite.claimAs', { name: member.name })}
 							</Button>
 						))}
 					</div>

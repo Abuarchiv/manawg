@@ -5,7 +5,6 @@
 export type {
 	AnnouncementKind,
 	AnnouncementReactionKey as ReactionKey,
-	AnnouncementSource,
 	AnnouncementStatus,
 } from '@/features/pinnwand/announcement-workflow';
 

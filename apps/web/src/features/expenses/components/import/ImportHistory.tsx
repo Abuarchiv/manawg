@@ -1,11 +1,11 @@
 'use client';
 
+import { useLocale, useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { apiFetch } from '@/core/infra/api-client';
-import { formatDayMonthYear } from '@/core/utils/time';
-import { pluralize } from '@/shared/lib/plural';
 import { ImportUndo } from './ImportUndo';
+import { formatImportDate } from './import-date';
 
 interface PastImport {
 	id: string;
@@ -15,15 +15,17 @@ interface PastImport {
 	importedByMemberId: string | null;
 }
 
-const SOURCE_LABELS: Record<string, string> = {
-	splitwise_csv: 'Splitwise',
-	splid_csv: 'Splid',
-	ocr_screenshot: 'Screenshot',
-};
+const SOURCE_KEYS = {
+	splitwise_csv: 'splitwise',
+	splid_csv: 'splid',
+	ocr_screenshot: 'screenshot',
+} as const;
 
 /** Earlier imports with their undo, for whoever ran them and for admins. */
 export function ImportHistory() {
 	const { wg, identity, members, isAdmin } = useWg();
+	const t = useTranslations('expenses-import.history');
+	const locale = useLocale();
 	const [imports, setImports] = useState<PastImport[]>([]);
 	const [loadFailed, setLoadFailed] = useState(false);
 	const shareCode = wg.shareCode;
@@ -46,31 +48,31 @@ export function ImportHistory() {
 	}, [shareCode, memberId, isAdmin]);
 
 	if (loadFailed && imports.length === 0) {
-		return (
-			<p className="text-sm text-muted-foreground">Frühere Importe konnten nicht geladen werden.</p>
-		);
+		return <p className="text-sm text-muted-foreground">{t('loadFailed')}</p>;
 	}
 	if (imports.length === 0) return null;
 	return (
 		<section aria-labelledby="import-history-heading" className="flex flex-col gap-2">
 			<h2 id="import-history-heading" className="font-heading text-sm font-semibold">
-				Frühere Importe
+				{t('title')}
 			</h2>
 			<ul className="flex flex-col divide-y rounded-xl border">
 				{imports.map((item) => {
 					const author = members.find((member) => member.id === item.importedByMemberId)?.name;
-					const when = formatDayMonthYear(item.startedAt);
-					const description = `${SOURCE_LABELS[item.source] ?? 'Import'} vom ${when}`;
+					const sourceKey = SOURCE_KEYS[item.source as keyof typeof SOURCE_KEYS] ?? 'other';
+					const description = t('description', {
+						source: t(sourceKey),
+						date: formatImportDate(item.startedAt, locale, 'Europe/Berlin'),
+					});
 					const mayUndo = isAdmin || item.importedByMemberId === memberId;
 					return (
 						<li key={item.id} className="flex flex-col gap-2 p-3 text-sm">
 							<span>
-								{description}: {pluralize(item.inserted, 'Ausgabe', 'Ausgaben')}
-								{author ? `, von ${author}` : ''}
+								{author
+									? t('entryBy', { description, count: item.inserted, author })
+									: t('entry', { description, count: item.inserted })}
 							</span>
-							{mayUndo && (
-								<ImportUndo importId={item.id} label={`${description} rückgängig machen`} />
-							)}
+							{mayUndo && <ImportUndo importId={item.id} label={t('undoLabel', { description })} />}
 						</li>
 					);
 				})}

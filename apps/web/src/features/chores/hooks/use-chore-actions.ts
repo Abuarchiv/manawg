@@ -1,3 +1,4 @@
+import { useLocale, useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { apiFetch } from '@/core/infra/api-client';
 import { discardQueuedEntry } from '@/core/offline/offline-client';
@@ -12,6 +13,8 @@ import { computeNextDueAt } from '@/features/chores/chore-recurrence';
 import { getChoreStatus } from '@/features/chores/chore-status';
 import type { Chore } from '@/features/chores/components/chore-types';
 import { pendingKeys } from '@/features/chores/pending-keys';
+import type { Locale } from '@/shared/i18n/locale';
+import { type Message, useMessage } from '@/shared/i18n/message';
 import type { ChorePageContext } from './chore-page-context';
 import { useChoreCompletion } from './use-chore-completion';
 
@@ -35,6 +38,9 @@ export function useChoreActions(ctx: ChorePageContext) {
 		load,
 		refreshCount,
 	} = ctx;
+	const t = useTranslations('chores');
+	const render = useMessage();
+	const locale = useLocale() as Locale;
 	const completeChore = useChoreCompletion(wg, identity);
 	const [completeConfirmId, setCompleteConfirmId] = useState<string | null>(null);
 	// Chores whose swap request is already on the Pinnwand; a second tap would post a duplicate.
@@ -47,9 +53,7 @@ export function useChoreActions(ctx: ChorePageContext) {
 	function isStillQueued(chore: Chore): boolean {
 		if (!isQueuedCreateId(chore.id)) return false;
 		setActionError(null);
-		setActionNotice(
-			'Diese Aufgabe ist noch offline vorgemerkt und lässt sich erst nach der Synchronisierung bearbeiten.',
-		);
+		setActionNotice(t('actions.stillQueued'));
 		return true;
 	}
 
@@ -147,18 +151,23 @@ export function useChoreActions(ctx: ChorePageContext) {
 				restore(previousChore);
 		}
 
-		const feedback = choreCompletionFeedback(outcome, chore, (id) => {
-			if (id === identity.memberId) return { name: identity.name, isSelf: true };
-			const name = members.find((member) => member.id === id)?.name;
-			return name === undefined ? undefined : { name, isSelf: false };
-		});
-		if (feedback.tone === 'success') toast.success(feedback.message);
-		else if (feedback.tone === 'notice') setActionNotice(feedback.message);
-		else setActionError(feedback.message);
+		const feedback = choreCompletionFeedback(
+			outcome,
+			chore,
+			(id) => {
+				if (id === identity.memberId) return { name: identity.name, isSelf: true };
+				const name = members.find((member) => member.id === id)?.name;
+				return name === undefined ? undefined : { name, isSelf: false };
+			},
+			locale,
+		);
+		const message = render(feedback.message);
+		if (feedback.tone === 'success') toast.success(message);
+		else if (feedback.tone === 'notice') setActionNotice(message);
+		else setActionError(message);
 		// While the dialog stays open its alert already shows the error; a toast would duplicate it.
-		if (feedback.done && feedback.toast && feedback.toast !== feedback.message) {
-			toast.error(feedback.toast);
-		}
+		const toastText = feedback.toast ? render(feedback.toast) : null;
+		if (feedback.done && toastText && toastText !== message) toast.error(toastText);
 		if (feedback.done) setCompleteConfirmId(null);
 		if (feedback.reload) void load(false);
 		endPending(chore.id);
@@ -188,22 +197,24 @@ export function useChoreActions(ctx: ChorePageContext) {
 					kind: 'request',
 					source: 'chore_swap',
 					choreId: chore.id,
-					// Parentheses instead of „ist …“: labels like „in 7 T.“ or „Datum prüfen“ read wrong inside the sentence.
-					content: `${identity.name} bittet um Tausch: „${chore.title}“ (${status.label}). Übernehmen oder kurz absprechen?`,
+					// Parentheses instead of a linking verb: labels like "in 7 days" or "Check date" read wrong inside the sentence.
+					content: t('actions.swapPost', {
+						name: identity.name,
+						title: chore.title,
+						status: render(status.label),
+					}),
 				}),
 			},
 		);
 
 		if (!result.ok) {
-			setActionError(choreActionErrorMessage('Tauschanfrage konnte nicht gepostet werden', result));
+			setActionError(
+				render(choreActionErrorMessage({ key: 'chores.errors.swapPostSubject' }, result)),
+			);
 		} else {
 			setSwapRequestedIds((current) => new Set(current).add(chore.id));
 			// The server answers with the existing post instead of creating a second one.
-			toast.success(
-				result.data.duplicate
-					? 'Für diese Aufgabe gibt es schon eine offene Tauschanfrage auf der Pinnwand.'
-					: 'Tauschanfrage wurde auf der Pinnwand gepostet.',
-			);
+			toast.success(t(result.data.duplicate ? 'actions.swapDuplicate' : 'actions.swapPosted'));
 		}
 
 		endPending(pendingKey);
@@ -214,8 +225,8 @@ export function useChoreActions(ctx: ChorePageContext) {
 			chore,
 			{ assignedMemberId: identity.memberId },
 			pendingKeys.take(chore.id),
-			(result) => choreActionErrorMessage('Aufgabe konnte nicht übernommen werden', result),
-			'Du bist jetzt für die Aufgabe eingetragen.',
+			(result) => choreActionErrorMessage({ key: 'chores.errors.takeOverSubject' }, result),
+			t('actions.takenOver'),
 		);
 	}
 
@@ -225,9 +236,9 @@ export function useChoreActions(ctx: ChorePageContext) {
 			changes.assignedMemberId === undefined
 				? null
 				: changes.assignedMemberId === null
-					? 'Niemand'
+					? t('shared.nobody')
 					: changes.assignedMemberId === identity.memberId
-						? 'du'
+						? t('shared.you')
 						: (members.find((member) => member.id === changes.assignedMemberId)?.name ?? null);
 		return patchChore(
 			chore,
@@ -235,8 +246,8 @@ export function useChoreActions(ctx: ChorePageContext) {
 			pendingKeys.edit(chore.id),
 			(result) => choreEditErrorMessage(result.error),
 			assigneeName && Object.keys(changes).length === 1
-				? `Zuständig: ${assigneeName}.`
-				: 'Änderungen gespeichert.',
+				? t('actions.assignedNotice', { assignee: assigneeName })
+				: t('actions.changesSaved'),
 			chore.updatedAt,
 		);
 	}
@@ -245,7 +256,7 @@ export function useChoreActions(ctx: ChorePageContext) {
 		chore: Chore,
 		changes: ChoreEditChanges,
 		pendingKey: string,
-		errorMessage: (result: { error: string; status: number }) => string,
+		errorMessage: (result: { error: string; status: number }) => Message,
 		notice: string,
 		expectedUpdatedAt?: string,
 	): Promise<boolean> {
@@ -267,11 +278,11 @@ export function useChoreActions(ctx: ChorePageContext) {
 			if (!result.ok) {
 				if (result.status === 404 && result.error === 'chore_not_found') {
 					updateChores((current) => current.filter((item) => item.id !== chore.id));
-					setActionError('Diese Putzaufgabe existiert nicht mehr und wurde aus dem Plan entfernt.');
+					setActionError(t('completion.notFound'));
 					void load(false);
 					return true;
 				}
-				setActionError(errorMessage(result));
+				setActionError(render(errorMessage(result)));
 				if (result.status === 409 && result.error === 'chore_changed') void load(false);
 				return false;
 			}
@@ -308,15 +319,13 @@ export function useChoreActions(ctx: ChorePageContext) {
 			setActionNotice(null);
 			const queued = await discardQueuedEntry(wg.shareCode, id);
 			if (queued === 'storage_blocked') {
-				setActionError(
-					'Offline-Speicher ist blockiert. Die vorgemerkte Aufgabe konnte nicht entfernt werden.',
-				);
+				setActionError(t('actions.storageBlocked'));
 				return;
 			}
 			if (queued === 'removed' || isQueuedCreateId(id)) {
 				updateChores((current) => current.filter((item) => item.id !== id));
 				refreshCount();
-				setActionNotice('Offline vorgemerkte Aufgabe wurde entfernt.');
+				setActionNotice(t('actions.queuedRemoved'));
 				return;
 			}
 
@@ -331,10 +340,10 @@ export function useChoreActions(ctx: ChorePageContext) {
 			if (!result.ok) {
 				const msg =
 					result.status === 403 && result.error === 'admin_required'
-						? 'Nur WG-Admins können diese Aufgabe endgültig entfernen.'
+						? t('actions.adminRequired')
 						: result.status === 404 && result.error === 'chore_not_found'
-							? 'Diese Putzaufgabe existiert nicht mehr und wurde aus dem Plan entfernt.'
-							: choreActionErrorMessage('Entfernen fehlgeschlagen', result);
+							? t('completion.notFound')
+							: render(choreActionErrorMessage({ key: 'chores.errors.removeSubject' }, result));
 				setActionError(msg);
 				if (result.status === 404 && result.error === 'chore_not_found') {
 					updateChores((current) => current.filter((item) => item.id !== id));
@@ -343,7 +352,9 @@ export function useChoreActions(ctx: ChorePageContext) {
 			} else {
 				const removedTitle = items.find((item) => item.id === id)?.title;
 				updateChores((current) => current.filter((item) => item.id !== id));
-				toast.success(removedTitle ? `„${removedTitle}“ entfernt.` : 'Aufgabe entfernt.');
+				toast.success(
+					removedTitle ? t('actions.removedNamed', { title: removedTitle }) : t('actions.removed'),
+				);
 				void load(false);
 			}
 		} finally {

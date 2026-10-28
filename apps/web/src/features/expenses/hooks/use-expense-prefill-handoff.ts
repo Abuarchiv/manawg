@@ -7,6 +7,7 @@ import {
 } from '@/features/expenses/expense-form-draft';
 import { buildExpensePrefillDraft } from '@/features/expenses/expense-prefill';
 import type { RecurringExpense } from '@/features/expenses/expense-types';
+import type { Locale } from '@/shared/i18n/locale';
 
 interface PrefillHandoffOptions {
 	suggestPrefill: (prefill: ExpenseSuggestion) => void;
@@ -17,6 +18,7 @@ interface PrefillHandoffOptions {
 	prefillPaidBy: string | null;
 	recurringId: string | null;
 	recurringExpenses: readonly RecurringExpense[];
+	locale: Locale;
 }
 
 /**
@@ -32,6 +34,7 @@ export function useExpensePrefillHandoff({
 	prefillPaidBy,
 	recurringId,
 	recurringExpenses,
+	locale,
 }: PrefillHandoffOptions): void {
 	const appliedPrefillRef = useRef<string | null>(null);
 	const appliedRecurringRef = useRef<string | null>(null);
@@ -67,6 +70,6 @@ export function useExpensePrefillHandoff({
 		const template = recurringExpenses.find((item) => item.id === recurringId);
 		if (!template) return;
 		appliedRecurringRef.current = recurringId;
-		suggestPrefill(recurringTemplateSuggestion(template));
-	}, [suggestPrefill, recurringExpenses, recurringId]);
+		suggestPrefill(recurringTemplateSuggestion(template, locale));
+	}, [suggestPrefill, recurringExpenses, recurringId, locale]);
 }

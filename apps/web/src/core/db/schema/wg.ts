@@ -52,6 +52,7 @@ export const wgMembers = pgTable(
 		notifyStatementEmail: boolean('notify_statement_email').notNull().default(true),
 		quietStartHour: integer('quiet_start_hour'),
 		quietEndHour: integer('quiet_end_hour'),
+		locale: text('locale').notNull().default('de'),
 		// Soft-delete for "Auszug" (move-out). A member who ever paid an expense, owes a
 		// split, added a shopping item, wrote an announcement, completed a chore, or
 		// created a recurring expense cannot be hard-deleted — six RESTRICT foreign keys
@@ -76,6 +77,7 @@ export const wgMembers = pgTable(
 			.on(t.wgId)
 			.where(sql`${t.role} = 'admin'`),
 		roleCheck: check('wg_members_role_check', sql`${t.role} in ('admin', 'member')`),
+		localeCheck: check('wg_members_locale_check', sql`${t.locale} in ('de', 'en')`),
 	}),
 );
 

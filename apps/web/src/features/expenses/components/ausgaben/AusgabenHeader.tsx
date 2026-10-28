@@ -1,6 +1,6 @@
 'use client';
 
-import { pluralize } from '@/shared/lib/plural';
+import { useTranslations } from 'next-intl';
 
 interface AusgabenHeaderProps {
 	expenseCount: number;
@@ -11,12 +11,13 @@ export function AusgabenHeader({
 	expenseCount,
 	initialLoading,
 }: AusgabenHeaderProps): React.ReactElement {
+	const t = useTranslations('expenses.page');
 	return (
 		// The active tab already names the page; title and count stay for screen readers.
 		<header className="sr-only">
-			<h1>Ausgaben</h1>
+			<h1>{t('title')}</h1>
 			<p aria-live="polite" aria-atomic="true">
-				{initialLoading ? '' : pluralize(expenseCount, 'Eintrag', 'Einträge')}
+				{initialLoading ? '' : t('entryCount', { count: expenseCount })}
 			</p>
 		</header>
 	);

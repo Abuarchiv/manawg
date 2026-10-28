@@ -1,13 +1,14 @@
 'use client';
 import { ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BackLink } from '@/components/wg/BackLink';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { useWg } from '@/components/wg/WgContextProvider';
-import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
+import { wgLoadError } from '@/core/guards/load-errors';
 import { useCachedFetch } from '@/core/hooks/use-cached-fetch';
 import { MonthlyStatementDocument } from '@/features/expenses/components/statement/MonthlyStatementDocument';
 import type { ExpensePaymentInput } from '@/features/expenses/expense-payment-input';
@@ -22,6 +23,7 @@ const MONTH_PARAM = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 export default function AbrechnungPage() {
 	const { wg, members, identity } = useWg();
+	const t = useTranslations('statement');
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const wgBaseHref = `/wg/${encodeURIComponent(wg.shareCode)}`;
@@ -68,14 +70,19 @@ export default function AbrechnungPage() {
 	return (
 		<div className="mx-auto flex w-full max-w-[var(--app-frame-width)] flex-col gap-4 px-4 pt-2 pb-8 print:max-w-none print:p-0">
 			<div className="flex items-center gap-1 print:hidden">
-				<BackLink href={`${wgBaseHref}/ausgaben`} label="Ausgaben" />
-				<Button variant="ghost" size="icon" aria-label="Vorheriger Monat" onClick={() => goTo(-1)}>
+				<BackLink href={`${wgBaseHref}/ausgaben`} label={t('page.backLabel')} />
+				<Button
+					variant="ghost"
+					size="icon"
+					aria-label={t('page.previousMonth')}
+					onClick={() => goTo(-1)}
+				>
 					<ChevronLeft aria-hidden />
 				</Button>
 				<Button
 					variant="ghost"
 					size="icon"
-					aria-label="Nächster Monat"
+					aria-label={t('page.nextMonth')}
 					disabled={monthKey >= currentMonth}
 					onClick={() => goTo(1)}
 				>
@@ -89,19 +96,21 @@ export default function AbrechnungPage() {
 					onClick={() => window.print()}
 				>
 					<Download aria-hidden />
-					Als PDF
+					{t('page.asPdf')}
 				</Button>
 			</div>
 
-			{!statement && <h1 className="sr-only">Monatsabrechnung</h1>}
+			{!statement && <h1 className="sr-only">{t('page.title')}</h1>}
 			{error && !data && (
 				<LoadErrorBanner
-					message={getWgLoadErrorMessage('Ausgaben', error.status, error.error, {
-						verb: 'konnten',
-					})}
+					message={wgLoadError(
+						{ key: 'common.loadError.lead.expenses' },
+						error.status,
+						error.error,
+					)}
 					onRetry={() => void refresh()}
 					busy={isFetching}
-					retryLabel="Erneut laden"
+					retryLabel={{ key: 'statement.page.reload' }}
 				/>
 			)}
 			{statement ? (
@@ -114,11 +123,7 @@ export default function AbrechnungPage() {
 				/>
 			) : (
 				!error && (
-					<output
-						className="flex flex-col gap-4"
-						aria-busy="true"
-						aria-label="Abrechnung wird geladen"
-					>
+					<output className="flex flex-col gap-4" aria-busy="true" aria-label={t('page.loading')}>
 						<Skeleton className="h-24 w-full" />
 						<Skeleton className="h-40 w-full" />
 					</output>

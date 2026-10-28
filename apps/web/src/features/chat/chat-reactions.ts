@@ -40,14 +40,15 @@ export function withOwnReaction(
 	return rows.some(isOwnRow) ? rows : [...rows, own];
 }
 
-/** Names of the reacting members; viewers who left are shown as "Ehemaliges Mitglied". */
+/** Names of the reacting members; `you` stands for the viewer and `former` for members who left. */
 export function reactorNames(
 	memberIds: readonly string[],
 	members: ReadonlyArray<{ id: string; name: string }>,
 	currentMemberId: string,
+	words: { you: string; former: string },
 ): string {
 	const names = new Map(members.map((member) => [member.id, member.name]));
 	return memberIds
-		.map((id) => (id === currentMemberId ? 'Du' : (names.get(id) ?? 'Ehemaliges Mitglied')))
+		.map((id) => (id === currentMemberId ? words.you : (names.get(id) ?? words.former)))
 		.join(', ');
 }

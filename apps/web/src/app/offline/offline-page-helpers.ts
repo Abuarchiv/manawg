@@ -3,24 +3,23 @@ import { hasSessionCookie } from '@/core/auth/session-hint';
 import { parseAccountWgs } from '@/core/infra/account-wgs';
 import { getOfflineActionSummary, type OfflineAction } from '@/core/offline/offline-queue';
 import { parseTimestamp } from '@/core/utils/time';
-import { pluralize } from '@/shared/lib/plural';
+import type { Message, MessageKey } from '@/shared/i18n/message';
 
-export function moduleLabel(action: OfflineAction): string {
+export function moduleLabel(action: OfflineAction): Message {
 	return getOfflineActionSummary(action).title;
 }
 
-export function formatOfflineAge(iso: string, now = Date.now()): string {
+export function offlineAgeMessage(iso: string, now = Date.now()): Message {
 	const timestamp = parseTimestamp(iso);
-	if (timestamp === null) return 'Zeitpunkt unklar';
+	if (timestamp === null) return { key: 'offline.page.age.unclear' };
 	const ageMs = now - timestamp;
-	if (ageMs < 0) return 'Zeitpunkt in der Zukunft';
-	if (ageMs < 60_000) return 'gerade eben';
+	if (ageMs < 0) return { key: 'offline.page.age.future' };
+	if (ageMs < 60_000) return { key: 'offline.page.age.justNow' };
 	const minutes = Math.floor(ageMs / 60_000);
-	if (minutes < 60) return `vor ${minutes} Min.`;
+	if (minutes < 60) return { key: 'offline.page.age.minutes', values: { count: minutes } };
 	const hours = Math.floor(minutes / 60);
-	if (hours < 24) return `vor ${hours} Std.`;
-	const days = Math.floor(hours / 24);
-	return `vor ${pluralize(days, 'Tag', 'Tagen')}`;
+	if (hours < 24) return { key: 'offline.page.age.hours', values: { count: hours } };
+	return { key: 'offline.page.age.days', values: { count: Math.floor(hours / 24) } };
 }
 
 export function countByShareCode(items: OfflineAction[]): Map<string, number> {
@@ -29,16 +28,12 @@ export function countByShareCode(items: OfflineAction[]): Map<string, number> {
 	return counts;
 }
 
-export function formatQueuedActionCount(count: number): string {
-	if (count === 0) return 'Keine wartenden Aktionen.';
-	if (count === 1) return '1 Aktion wartet.';
-	return `${count} Aktionen warten.`;
+export function queuedActionCountMessage(count: number): Message {
+	return { key: 'offline.page.queued', values: { count } };
 }
 
-export function formatWgQueuedActionCount(count: number): string {
-	if (count === 0) return 'Keine wartenden Aktionen';
-	if (count === 1) return '1 Aktion wartet';
-	return `${count} Aktionen warten`;
+export function wgQueuedActionCountMessage(count: number): Message {
+	return { key: 'offline.page.wgQueued', values: { count } };
 }
 
 export function wgHref(code: string, suffix = ''): string {
@@ -74,41 +69,46 @@ export function visibleKnownWgs(authUserId: string | null): KnownWg[] {
 	return getKnownWgs().filter((wg) => belongsToAccount(wg.authUserId, authUserId));
 }
 
+const STATUS_LABEL = {
+	checking: 'offline.page.label.checking',
+	'browser-offline': 'offline.page.label.browserOffline',
+	'server-unreachable': 'offline.page.label.serverUnreachable',
+	unauthenticated: 'offline.page.label.unauthenticated',
+	ready: 'offline.page.label.ready',
+} as const satisfies Record<OfflineStatus, MessageKey>;
+
+const STATUS_DESCRIPTION = {
+	checking: 'offline.page.description.checking',
+	'browser-offline': 'offline.page.description.browserOffline',
+	'server-unreachable': 'offline.page.description.serverUnreachable',
+	unauthenticated: 'offline.page.description.unauthenticated',
+} as const satisfies Partial<Record<OfflineStatus, MessageKey>>;
+
 /** Badge, heading and description of the offline page for a connection status. */
-export function offlineStatusCopy(status: OfflineStatus, online: boolean, hasWg = true) {
-	const label =
+export function offlineStatusCopy(
+	status: OfflineStatus,
+	online: boolean,
+	hasWg = true,
+): { label: Message; heading: Message; description: Message } {
+	const heading: MessageKey =
 		status === 'checking'
-			? 'Prüft…'
-			: status === 'browser-offline'
-				? 'Offline-Modus'
-				: status === 'server-unreachable'
-					? 'Server nicht erreichbar'
-					: status === 'unauthenticated'
-						? 'Anmeldung nötig'
-						: 'Wieder online';
-	const heading =
-		status === 'checking'
-			? 'Verbindung wird geprüft…'
-			: status === 'browser-offline'
-				? 'Du bist gerade offline.'
-				: status === 'server-unreachable'
-					? 'Server gerade nicht erreichbar.'
-					: status === 'unauthenticated'
-						? 'Melde dich an, um Offline-Aktionen zu sehen.'
-						: online
-							? 'Du bist wieder verbunden.'
-							: 'Du bist gerade offline.';
-	const description =
-		status === 'checking'
-			? 'Einen Moment, wir prüfen deine Verbindung und dein Konto.'
-			: status === 'browser-offline'
-				? 'Deine lokal gespeicherten Aktionen bleiben sichtbar. Sobald du wieder online bist, kannst du sie synchronisieren.'
-				: status === 'server-unreachable'
-					? 'Der Server antwortet gerade nicht. Deine lokal gespeicherten Aktionen bleiben erhalten; versuche es später erneut.'
-					: status === 'unauthenticated'
-						? 'Offline-Aktionen und gemerkte WGs hängen an deinem Konto.'
-						: hasWg
-							? 'Deine Verbindung steht. Synchronisiere wartende Aktionen oder geh zurück in deine WG.'
-							: 'Deine Verbindung steht. Wartende Aktionen kannst du jetzt synchronisieren.';
-	return { label, heading, description };
+			? 'offline.page.title.checking'
+			: status === 'server-unreachable'
+				? 'offline.page.title.serverUnreachable'
+				: status === 'unauthenticated'
+					? 'offline.page.title.unauthenticated'
+					: status === 'ready' && online
+						? 'offline.page.title.online'
+						: 'offline.page.title.offline';
+	const description: MessageKey =
+		status === 'ready'
+			? hasWg
+				? 'offline.page.description.readyWithFlat'
+				: 'offline.page.description.readyWithoutFlat'
+			: STATUS_DESCRIPTION[status];
+	return {
+		label: { key: STATUS_LABEL[status] },
+		heading: { key: heading },
+		description: { key: description },
+	};
 }

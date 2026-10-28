@@ -51,7 +51,7 @@ export function parseSplitwiseCsv(csv: string, rejected?: RejectedRow[]): Parsed
 	const idxDate = findColumnIndex(header, ['date', 'datum']);
 	const idxDesc = findColumnIndex(header, ['description', 'beschreibung']);
 	const idxCost = findColumnIndex(header, ['cost', 'kosten', 'amount', 'betrag']);
-	const idxCurrency = findColumnIndex(header, ['currency', 'währung', 'wahrung']);
+	const idxCurrency = findColumnIndex(header, ['currency', 'währung', 'wahrung']); // i18n-ignore import parser column names
 	if (idxDate === -1 || idxDesc === -1 || idxCost === -1) return [];
 
 	const memberColumns: { index: number; name: string }[] = [];

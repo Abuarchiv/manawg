@@ -168,9 +168,8 @@ export const recurringExpenses = pgTable(
 		nextDueAt: timestamp('next_due_at', { withTimezone: true }).notNull(),
 		// Original due date the monthly cadence anchors to. Monthly advances
 		// keep this day-of-month (31. → 28.02 → 31.03) instead of chaining from
-		// the clamped result (31.01 → 28.02 → 28.03 …). Null on legacy rows;
-		// adopted from nextDueAt on the first advance after deploy.
-		anchorAt: timestamp('anchor_at', { withTimezone: true }),
+		// the clamped result (31.01 → 28.02 → 28.03 …).
+		anchorAt: timestamp('anchor_at', { withTimezone: true }).notNull(),
 		lastCreatedAt: timestamp('last_created_at', { withTimezone: true }),
 		pausedAt: timestamp('paused_at', { withTimezone: true }),
 		splitsJson: text('splits_json').notNull(),

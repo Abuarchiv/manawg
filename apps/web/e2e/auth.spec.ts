@@ -60,9 +60,7 @@ test.describe('start credentials auth validation', () => {
 			await expect(page).toHaveURL(/\/neu\?next=%2Feinladung%2Ffixture-invite-token01$/);
 		});
 
-		test('a malformed invitation and an old share-code link are explained on the sign-in page', async ({
-			page,
-		}) => {
+		test('a malformed invitation is explained on the sign-in page', async ({ page }) => {
 			await page.route('**/api/wg/mine', (route) =>
 				route.fulfill({ status: 401, contentType: 'application/json', body: '{}' }),
 			);
@@ -71,9 +69,7 @@ test.describe('start credentials auth validation', () => {
 				page.getByText('Dieser Einladungslink ist unvollständig oder ungültig.'),
 			).toBeVisible();
 			await page.goto('/neu?code=mte8pzat');
-			await expect(
-				page.getByText('Ein WG-Code reicht nicht mehr. Lass dir einen Einladungslink schicken.'),
-			).toBeVisible();
+			await expect(page.getByText('Ein WG-Code')).toHaveCount(0);
 		});
 
 		test('the reset page without a recovery link lets visitors request a new one', async ({
@@ -232,7 +228,7 @@ test.describe('entry accessibility', () => {
 			await expect(inviteLink).toBeFocused();
 			await expect(inviteLink).toHaveAttribute('aria-invalid', 'true');
 			await expect(
-				page.getByText('Ein WG-Code reicht nicht mehr. Lass dir einen Einladungslink schicken.'),
+				page.getByText('Das ist kein Einladungslink. Füge den ganzen Link ein.'),
 			).toBeVisible();
 
 			await inviteLink.fill(`http://localhost/einladung/${INVITE_TOKEN}`);

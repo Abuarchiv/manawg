@@ -307,10 +307,18 @@ function readShareCode(segment: string): string | null {
 	return isValidShareCode(code) ? code : null;
 }
 
+async function accountLocale(req: NextRequest): Promise<NextResponse> {
+	const body: unknown = await req.json().catch(() => null);
+	const locale = (body as { locale?: unknown } | null)?.locale;
+	if (locale !== 'de' && locale !== 'en') return badRequest('locale_invalid');
+	return NextResponse.json({ locale });
+}
+
 /** Answer a WG API request from the fixtures, or `null` to let the route handle it. */
 export async function answerFixtureApiRequest(req: NextRequest): Promise<NextResponse | null> {
 	const path = req.nextUrl.pathname;
 	if (path === '/api/wg') return req.method === 'POST' ? createWg(req) : null;
+	if (path === '/api/account') return req.method === 'PATCH' ? accountLocale(req) : null;
 	const [, api, wgSegment, codeSegment, ...rest] = path.split('/');
 	if (api !== 'api' || wgSegment !== 'wg' || !codeSegment) return null;
 	if (codeSegment === 'mine')

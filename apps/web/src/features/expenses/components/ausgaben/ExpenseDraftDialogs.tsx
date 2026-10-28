@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -23,20 +24,20 @@ export function ReplaceDraftDialog({
 	prefillDescription: string | null;
 	onReplace: () => void;
 }) {
+	const t = useTranslations('expenses-form.draft');
 	return (
 		<AlertDialog open={open} onOpenChange={onOpenChange}>
 			<AlertDialogContent>
 				<AlertDialogHeader>
-					<AlertDialogTitle>Entwurf verwerfen?</AlertDialogTitle>
+					<AlertDialogTitle>{t('replaceTitle')}</AlertDialogTitle>
 					<AlertDialogDescription>
-						Deine ungespeicherten Eingaben werden durch „{prefillDescription}“ ersetzt. Bereits
-						gespeicherte Ausgaben bleiben erhalten.
+						{t('replaceBody', { description: prefillDescription ?? '' })}
 					</AlertDialogDescription>
 				</AlertDialogHeader>
 				<AlertDialogFooter className="flex-col">
-					<AlertDialogCancel className="min-h-11">Entwurf behalten</AlertDialogCancel>
+					<AlertDialogCancel className="min-h-11">{t('replaceKeep')}</AlertDialogCancel>
 					<AlertDialogAction variant="destructive" className="min-h-11" onClick={onReplace}>
-						Entwurf verwerfen
+						{t('replaceDiscard')}
 					</AlertDialogAction>
 				</AlertDialogFooter>
 			</AlertDialogContent>
@@ -56,23 +57,21 @@ export function CloseDraftDialog({
 	onDiscard: () => void;
 	onKeep: () => void;
 }) {
+	const t = useTranslations('expenses-form.draft');
 	return (
 		<AlertDialog open={open} onOpenChange={onOpenChange}>
 			<AlertDialogContent>
 				<AlertDialogHeader>
-					<AlertDialogTitle>Entwurf behalten?</AlertDialogTitle>
-					<AlertDialogDescription>
-						Es wird keine Ausgabe gespeichert. Du kannst deinen Entwurf später weiterbearbeiten oder
-						ausdrücklich verwerfen.
-					</AlertDialogDescription>
+					<AlertDialogTitle>{t('closeTitle')}</AlertDialogTitle>
+					<AlertDialogDescription>{t('closeBody')}</AlertDialogDescription>
 				</AlertDialogHeader>
 				<AlertDialogFooter className="flex-col">
-					<AlertDialogCancel className="min-h-11">Weiterbearbeiten</AlertDialogCancel>
+					<AlertDialogCancel className="min-h-11">{t('closeContinue')}</AlertDialogCancel>
 					<AlertDialogAction variant="destructive" className="min-h-11" onClick={onDiscard}>
-						Entwurf verwerfen
+						{t('closeDiscard')}
 					</AlertDialogAction>
 					<AlertDialogAction className="min-h-11" onClick={onKeep}>
-						Entwurf behalten
+						{t('closeKeep')}
 					</AlertDialogAction>
 				</AlertDialogFooter>
 			</AlertDialogContent>

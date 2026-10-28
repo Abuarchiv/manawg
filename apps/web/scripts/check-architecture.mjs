@@ -20,6 +20,8 @@
  *   route-auth      a route calls getAuthenticatedUser instead of requireAccount/requireWgMember
  *   route-wrapper   a /api/wg/[code]/ route exports a handler outside withWgRoute
  *   hook-filename   a file under src/ named useFoo.ts instead of use-foo.ts
+ *   i18n-literal    German UI copy outside the message catalogs (see scripts/i18n-literal-rule.mjs)
+ *   i18n-catalog-import  a value import of the message catalogs outside the two server modules
  *
  * `scripts/architecture-baseline.json` lists known violations that are still being paid down.
  * The check fails on any violation that is not listed, on a file-size entry that grew, and on a
@@ -30,6 +32,7 @@
 
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
+import { catalogImportFindings, isLiteralChecked, literalFindings } from './i18n-literal-rule.mjs';
 
 const ROOT = process.cwd();
 const SRC = join(ROOT, 'src');
@@ -172,6 +175,11 @@ function collect() {
 						add('client-server', r, match[1]);
 					}
 				}
+			}
+
+			if (isLiteralChecked(r) && literalFindings(r, source).length > 0) add('i18n-literal', r);
+			for (const specifier of catalogImportFindings(file, r, source, SRC)) {
+				add('i18n-catalog-import', r, specifier);
 			}
 
 			if (FIXTURE_IDENTIFIERS.test(source) && !r.startsWith('src/fixtures/')) {

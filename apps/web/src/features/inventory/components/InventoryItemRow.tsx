@@ -1,6 +1,7 @@
 'use client';
 
 import { Minus, Pencil, Plus, Trash2 } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,11 +18,9 @@ import { useConfirmDelete } from '@/core/hooks/use-confirm-delete';
 import { apiFetch } from '@/core/infra/api-client';
 import { formatDecimal } from '@/core/utils/amount';
 import { useInventoryQuantity } from '@/features/inventory/hooks/use-inventory-quantity';
-import {
-	formatQuantity,
-	type InventoryItemDto,
-	type InventoryMutationItemDto,
-} from '@/features/inventory/inventory';
+import type { InventoryItemDto, InventoryMutationItemDto } from '@/features/inventory/inventory';
+import { useQuantityText } from '@/features/inventory/use-quantity-text';
+import type { Locale } from '@/shared/i18n/locale';
 
 interface InventoryItemRowProps {
 	item: InventoryItemDto;
@@ -44,6 +43,9 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 	onChanged,
 	onEdit,
 }: InventoryItemRowProps) {
+	const t = useTranslations('inventory.row');
+	const quantityText = useQuantityText();
+	const locale = useLocale() as Locale;
 	const toast = useToast();
 	// One armed row per page and the shared timed fallback live in the hook.
 	const confirmDelete = useConfirmDelete();
@@ -98,7 +100,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 				focusNeighborRow();
 				markGone();
 			} else if (!dropIfGone(res)) {
-				toast.error(`„${item.name}“ konnte nicht entfernt werden. Versuche es erneut.`);
+				toast.error(t('removeFailed', { name: item.name }));
 			}
 		} finally {
 			setDeleting(false);
@@ -149,7 +151,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 					data-inventory-row
 					className="flex w-full min-w-0 flex-wrap items-center gap-2"
 				>
-					{/* In confirm mode a smaller base width, so Entfernen/Abbrechen stay in the row
+					{/* In confirm mode a smaller base width, so Remove/Cancel stay in the row
 					    and the list below does not jump. */}
 					<ItemContent className={armed ? 'min-w-0 flex-[1_1_8rem]' : 'min-w-0 flex-[1_1_9rem]'}>
 						<ItemTitle className="w-full min-w-0 gap-2 line-clamp-none">
@@ -158,8 +160,10 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 							</span>
 						</ItemTitle>
 						<ItemDescription className="line-clamp-none tabular-nums">
-							{formatQuantity(quantity, item.unit)} · Nachkaufen{'\u00a0'}ab{'\u00a0'}
-							{formatDecimal(item.threshold)}
+							{t('meta', {
+								quantity: quantityText(quantity, item.unit),
+								threshold: formatDecimal(item.threshold, locale),
+							})}
 						</ItemDescription>
 					</ItemContent>
 
@@ -178,8 +182,8 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 									aria-busy={action === 'decrement'}
 									aria-label={
 										quantity === 0
-											? `${item.name} um eins verringern (Bestand 0)`
-											: `${item.name} um eins verringern`
+											? t('decreaseZeroAria', { name: item.name })
+											: t('decreaseAria', { name: item.name })
 									}
 								>
 									{action === 'decrement' ? <Spinner aria-hidden /> : <Minus aria-hidden />}
@@ -190,7 +194,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 									size="icon"
 									onClick={() => tap(1)}
 									aria-busy={action === 'increment'}
-									aria-label={`${item.name} um eins erhöhen`}
+									aria-label={t('increaseAria', { name: item.name })}
 								>
 									{action === 'increment' ? <Spinner aria-hidden /> : <Plus aria-hidden />}
 								</Button>
@@ -200,7 +204,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 									size="icon"
 									onClick={() => onEdit(item)}
 									disabled={pending}
-									aria-label={`${item.name} bearbeiten`}
+									aria-label={t('editAria', { name: item.name })}
 									className="text-muted-foreground"
 								>
 									<Pencil aria-hidden />
@@ -217,11 +221,11 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 									disabled={pending}
 									focusableWhenDisabled
 									aria-busy={deleting}
-									aria-label={`Endgültig entfernen: ${item.name}`}
+									aria-label={t('removeFinalAria', { name: item.name })}
 									className={`px-3.5 ${BUSY_CLASS}`}
 								>
 									{deleting && <Spinner aria-hidden />}
-									Entfernen
+									{t('remove')}
 								</Button>
 								<Button
 									type="button"
@@ -232,9 +236,9 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 									disabled={pending}
 									focusableWhenDisabled
 									className={BUSY_CLASS}
-									aria-label={`Abbrechen: ${item.name} entfernen`}
+									aria-label={t('cancelRemoveAria', { name: item.name })}
 								>
-									Abbrechen
+									{t('cancel')}
 								</Button>
 							</>
 						) : (
@@ -246,7 +250,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 								onClick={handleDelete}
 								disabled={pending}
 								focusableWhenDisabled
-								aria-label={`${item.name} entfernen`}
+								aria-label={t('removeAria', { name: item.name })}
 								className={`text-muted-foreground hover:text-destructive active:text-destructive ${BUSY_CLASS}`}
 							>
 								<Trash2 aria-hidden />

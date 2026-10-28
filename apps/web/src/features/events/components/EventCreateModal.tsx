@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -12,16 +13,17 @@ import {
 	DrawerTitle,
 } from '@/components/ui/drawer';
 import { Field, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field';
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { NativeSelect } from '@/components/ui/native-select';
 import { Spinner } from '@/components/ui/spinner';
 import { EventFormFields, focusEventField } from '@/features/events/components/EventFormFields';
+import { RecurrenceOptions } from '@/features/events/components/RecurrenceOptions';
 import {
 	formatRecurrenceRule,
-	RECURRENCE_OPTIONS,
 	type RecurrenceFreq,
 	toDatetimeLocalValue,
 	validateEventForm,
 } from '@/features/events/events';
+import { type Message, useMessage } from '@/shared/i18n/message';
 
 interface EventCreateModalProps {
 	open: boolean;
@@ -41,25 +43,53 @@ export interface CreateEventPayload {
 }
 
 const QUICK_TEMPLATES: ReadonlyArray<{
-	label: string;
-	title: string;
+	id: string;
+	label: Message;
+	title: Message;
 	freq: RecurrenceFreq | '';
 	allDay: boolean;
 }> = [
-	{ label: 'Geburtstag', title: 'Geburtstag', freq: 'YEARLY', allDay: true },
 	{
-		label: 'Heizungsablesung',
-		title: 'Heizungsablesung',
+		id: 'birthday',
+		label: { key: 'events.create.template.birthday.label' },
+		title: { key: 'events.create.template.birthday.title' },
 		freq: 'YEARLY',
 		allDay: true,
 	},
-	{ label: 'Stromableser', title: 'Stromableser kommt', freq: '', allDay: false },
+	{
+		id: 'heating',
+		label: { key: 'events.create.template.heating.label' },
+		title: { key: 'events.create.template.heating.title' },
+		freq: 'YEARLY',
+		allDay: true,
+	},
+	{
+		id: 'meter',
+		label: { key: 'events.create.template.meter.label' },
+		title: { key: 'events.create.template.meter.title' },
+		freq: '',
+		allDay: false,
+	},
 	// The form only knows the frequency; a BYDAY would have been silently dropped.
-	{ label: 'WG-Meeting', title: 'WG-Meeting', freq: 'WEEKLY', allDay: false },
-	{ label: 'Müll raus', title: 'Müll raus', freq: 'WEEKLY', allDay: false },
+	{
+		id: 'meeting',
+		label: { key: 'events.create.template.meeting.label' },
+		title: { key: 'events.create.template.meeting.title' },
+		freq: 'WEEKLY',
+		allDay: false,
+	},
+	{
+		id: 'rubbish',
+		label: { key: 'events.create.template.rubbish.label' },
+		title: { key: 'events.create.template.rubbish.title' },
+		freq: 'WEEKLY',
+		allDay: false,
+	},
 ];
 
 export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: EventCreateModalProps) {
+	const t = useTranslations('events');
+	const render = useMessage();
 	const [title, setTitle] = useState('');
 	const [description, setDescription] = useState('');
 	const [startsAt, setStartsAt] = useState('');
@@ -115,9 +145,9 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 
 	function applyTemplate(template: (typeof QUICK_TEMPLATES)[number]): void {
 		// A self-typed title is kept; only empty titles or ones from a template are replaced.
-		const previous = QUICK_TEMPLATES.find((t) => t.label === activeTemplate);
-		if (!title || title === previous?.title) setTitle(template.title);
-		setActiveTemplate(template.label);
+		const previous = QUICK_TEMPLATES.find((candidate) => candidate.id === activeTemplate);
+		if (!title || (previous && title === render(previous.title))) setTitle(render(template.title));
+		setActiveTemplate(template.id);
 		clearErrorFor('title');
 		setAllDay(template.allDay);
 		setRecurrenceFreq(template.freq);
@@ -130,7 +160,7 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 		setErrorField(null);
 		const validation = validateEventForm({ title, startsAt, endsAt, allDay });
 		if (!validation.ok) {
-			setError(validation.error);
+			setError(render(validation.error));
 			setErrorField(validation.field);
 			focusEventField('event-create', validation.field);
 			return;
@@ -163,7 +193,7 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 			setAllDay(false);
 			setRecurrenceFreq('');
 		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Termin konnte nicht gespeichert werden.');
+			setError(err instanceof Error ? err.message : t('create.saveFailed'));
 			setErrorField(null);
 		} finally {
 			setSubmitting(false);
@@ -179,27 +209,25 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 		>
 			<DrawerContent className="mx-auto w-full max-w-md">
 				<DrawerHeader className="border-b pb-3">
-					<DrawerTitle>Neuer Termin</DrawerTitle>
-					<DrawerDescription className="sr-only">
-						Für deine WG. Datum und Uhrzeit wie auf deinem Gerät.
-					</DrawerDescription>
+					<DrawerTitle>{t('create.title')}</DrawerTitle>
+					<DrawerDescription className="sr-only">{t('create.description')}</DrawerDescription>
 				</DrawerHeader>
 				<form noValidate onSubmit={handleSubmit} className="flex min-h-0 flex-col">
 					<div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-4">
 						<FieldSet disabled={submitting}>
-							<FieldLegend variant="label">Vorlagen</FieldLegend>
+							<FieldLegend variant="label">{t('create.templates')}</FieldLegend>
 							<div className="flex flex-wrap gap-2">
 								{QUICK_TEMPLATES.map((template) => (
 									<Button
-										key={template.label}
+										key={template.id}
 										type="button"
-										variant={activeTemplate === template.label ? 'secondary' : 'outline'}
-										aria-pressed={activeTemplate === template.label}
+										variant={activeTemplate === template.id ? 'secondary' : 'outline'}
+										aria-pressed={activeTemplate === template.id}
 										className="shrink-0"
 										onClick={() => applyTemplate(template)}
 										disabled={submitting}
 									>
-										{template.label}
+										{render(template.label)}
 									</Button>
 								))}
 							</div>
@@ -236,7 +264,7 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 							errorId="event-create-error"
 							recurrenceField={
 								<Field data-disabled={submitting}>
-									<FieldLabel htmlFor="event-recurrence">Wiederholung</FieldLabel>
+									<FieldLabel htmlFor="event-recurrence">{t('recurrence.label')}</FieldLabel>
 									<NativeSelect
 										id="event-recurrence"
 										value={recurrenceFreq}
@@ -244,11 +272,7 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 										disabled={submitting}
 										className="w-full [&_select]:min-h-11 [&_select]:text-base"
 									>
-										{RECURRENCE_OPTIONS.map((option) => (
-											<NativeSelectOption key={option.value} value={option.value}>
-												{option.label}
-											</NativeSelectOption>
-										))}
+										<RecurrenceOptions />
 									</NativeSelect>
 								</Field>
 							}
@@ -262,10 +286,10 @@ export function EventCreateModal({ open, onClose, onSubmit, defaultDate }: Event
 					<DrawerFooter className="border-t pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
 						<Button type="submit" disabled={submitting}>
 							{submitting && <Spinner data-icon="inline-start" aria-hidden />}
-							{submitting ? 'Speichert…' : 'Termin speichern'}
+							{submitting ? t('actions.saving') : t('create.submit')}
 						</Button>
 						<Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
-							Abbrechen
+							{t('actions.cancel')}
 						</Button>
 					</DrawerFooter>
 				</form>

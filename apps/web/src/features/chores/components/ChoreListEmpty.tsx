@@ -1,4 +1,5 @@
 import { Sparkles } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import {
 	Empty,
@@ -9,6 +10,8 @@ import {
 	EmptyTitle,
 } from '@/components/ui/empty';
 import { QUICK_CHORE_TEMPLATES } from '@/features/chores/components/constants';
+import type { ChoreSuggestion } from '@/features/chores/hooks/use-chore-create';
+import { useMessage } from '@/shared/i18n/message';
 
 /** Shown instead of the list: after a failed first load, or when there are no chores yet. */
 export function ChoreListEmpty({
@@ -16,16 +19,16 @@ export function ChoreListEmpty({
 	onQuickChore,
 }: {
 	loadFailed: boolean;
-	onQuickChore: (template: (typeof QUICK_CHORE_TEMPLATES)[number]) => void;
+	onQuickChore: (template: ChoreSuggestion) => void;
 }) {
+	const t = useTranslations('chores.empty');
+	const render = useMessage();
 	if (loadFailed) {
 		return (
 			<Empty>
 				<EmptyHeader>
-					<EmptyTitle>Noch keine Aufgaben geladen</EmptyTitle>
-					<EmptyDescription>
-						Versuche es erneut, sobald die Verbindung wieder da ist.
-					</EmptyDescription>
+					<EmptyTitle>{t('notLoadedTitle')}</EmptyTitle>
+					<EmptyDescription>{t('notLoadedBody')}</EmptyDescription>
 				</EmptyHeader>
 			</Empty>
 		);
@@ -36,15 +39,28 @@ export function ChoreListEmpty({
 				<EmptyMedia variant="icon">
 					<Sparkles aria-hidden />
 				</EmptyMedia>
-				<EmptyTitle>Noch keine Aufgaben</EmptyTitle>
-				<EmptyDescription>Starte mit einer typischen WG-Aufgabe:</EmptyDescription>
+				<EmptyTitle>{t('title')}</EmptyTitle>
+				<EmptyDescription>{t('body')}</EmptyDescription>
 			</EmptyHeader>
 			<EmptyContent className="flex-row flex-wrap justify-center">
-				{QUICK_CHORE_TEMPLATES.map((template) => (
-					<Button key={template.title} variant="outline" onClick={() => onQuickChore(template)}>
-						{template.title}
-					</Button>
-				))}
+				{QUICK_CHORE_TEMPLATES.map((template) => {
+					const title = render(template.title);
+					return (
+						<Button
+							key={template.title.key}
+							variant="outline"
+							onClick={() =>
+								onQuickChore({
+									title,
+									intervalDays: template.intervalDays,
+									recurrenceType: template.recurrenceType,
+								})
+							}
+						>
+							{title}
+						</Button>
+					);
+				})}
 			</EmptyContent>
 		</Empty>
 	);

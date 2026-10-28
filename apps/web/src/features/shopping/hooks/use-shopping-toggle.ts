@@ -6,13 +6,9 @@ import {
 	readOfflineQueue,
 	updateOfflineQueue,
 } from '@/core/offline/offline-client';
-import { keyUnavailableMessage } from '@/core/offline/offline-copy';
 import { createQueuedShoppingUpdate, hasQueuedShoppingUpdate } from '@/core/offline/offline-queue';
 import type { ShoppingItem } from '@/features/shopping/components/shopping-types';
-import {
-	shoppingActionErrorMessage,
-	shoppingDuplicateMessage,
-} from '@/features/shopping/shopping-errors';
+import { shoppingActionError, shoppingDuplicateError } from '@/features/shopping/shopping-errors';
 import {
 	dropShoppingItems,
 	planShoppingPatch,
@@ -22,12 +18,11 @@ import {
 	withQueuedCreateBought,
 } from '@/features/shopping/shopping-toggle';
 import { isTempItemId } from '@/features/shopping/shopping-view';
+import type { Message } from '@/shared/i18n/message';
 import type { ShoppingActionContext } from './shopping-action-context';
 
-const ITEM_GONE_MESSAGE =
-	'Dieser Einkaufsartikel existiert nicht mehr und wurde aus deiner Liste entfernt.';
-const QUEUE_BLOCKED_MESSAGE =
-	'Offline-Speicher ist blockiert. Der Einkaufsstatus konnte nicht vorgemerkt werden.';
+const ITEM_GONE_MESSAGE: Message = { key: 'shopping.toggle.itemGone' };
+const QUEUE_BLOCKED_MESSAGE: Message = { key: 'shopping.toggle.queueBlocked' };
 
 /**
  * Checking an item off or reopening it. The row flips immediately; offline the change is queued
@@ -80,11 +75,9 @@ export function useShoppingToggle(ctx: ShoppingActionContext) {
 				return;
 			}
 			refreshCount();
-			setToggleNotice(
-				bought
-					? 'Offline vorgemerkt. Der neue Artikel wird direkt als erledigt synchronisiert.'
-					: 'Offline vorgemerkt. Der neue Artikel wird wieder offen synchronisiert.',
-			);
+			setToggleNotice({
+				key: bought ? 'shopping.toggle.queuedCreateBought' : 'shopping.toggle.queuedCreateOpen',
+			});
 		},
 		[load, memberId, refreshCount, setToggleError, setToggleNotice, wg.shareCode],
 	);
@@ -123,18 +116,18 @@ export function useShoppingToggle(ctx: ShoppingActionContext) {
 			}
 			if (res.status === 403) {
 				rollback();
-				setToggleError('Nur wer den Artikel hinzugefügt hat, kann ihn abhaken.');
+				setToggleError({ key: 'shopping.toggle.notAdder' });
 			} else if (res.status === 404 && res.error === 'item_not_found') {
 				commit((prev) => dropShoppingItems(prev, (current) => current.id === item.id));
 				setToggleError(ITEM_GONE_MESSAGE);
 			} else if (res.status === 409 && res.error === 'shopping_item_duplicate') {
 				rollback();
 				await load(true);
-				setToggleError(shoppingDuplicateMessage(item.name));
+				setToggleError(shoppingDuplicateError(item.name));
 			} else if (res.status === 409 && res.error === 'shopping_item_changed') {
 				rollback();
 				await load(true);
-				setToggleError('Der Einkaufsstatus hat sich geändert. Prüfe den aktualisierten Stand.');
+				setToggleError({ key: 'shopping.toggle.statusChanged' });
 			} else if (res.status === 0) {
 				const queued = createQueuedShoppingUpdate({
 					wgId: wg.id,
@@ -154,16 +147,12 @@ export function useShoppingToggle(ctx: ShoppingActionContext) {
 				}
 				patchKeysRef.current.delete(item.id);
 				refreshCount();
-				setToggleNotice(
-					bought
-						? 'Offline vorgemerkt. Der Artikel wird später als erledigt synchronisiert.'
-						: 'Offline vorgemerkt. Der Artikel wird später wieder geöffnet.',
-				);
+				setToggleNotice({
+					key: bought ? 'shopping.toggle.queuedBought' : 'shopping.toggle.queuedReopen',
+				});
 			} else {
 				rollback();
-				setToggleError(
-					shoppingActionErrorMessage(res.error, item.name, bought ? 'abgehakt' : 'wieder geöffnet'),
-				);
+				setToggleError(shoppingActionError(res.error, item.name, bought ? 'checked' : 'reopened'));
 			}
 		},
 		[
@@ -186,9 +175,7 @@ export function useShoppingToggle(ctx: ShoppingActionContext) {
 			if (isPending(item.id) || togglingRef.current.has(item.id) || isTempItemId(item.id)) return;
 			const queue = readOfflineQueue();
 			if (hasQueuedShoppingUpdate(queue, wg.shareCode, memberId, item.id)) {
-				setToggleError(
-					`„${item.name}“ hat noch eine nicht gesendete Änderung. Sie steht unter Einstellungen → Daten → Offline-Warteschlange.`,
-				);
+				setToggleError({ key: 'shopping.toggle.pendingChange', values: { name: item.name } });
 				return;
 			}
 			const bought = item.boughtAt === null;
@@ -208,12 +195,10 @@ export function useShoppingToggle(ctx: ShoppingActionContext) {
 				);
 				if (!plan.ok) {
 					if (plan.reason === 'version_missing') {
-						setToggleError(
-							'Der Artikelstand wird aktualisiert. Prüfe die Liste und versuche es erneut.',
-						);
+						setToggleError({ key: 'shopping.toggle.versionMissing' });
 						void load(true);
 					} else {
-						setToggleError(keyUnavailableMessage('Einkaufsstatus', 'gespeichert'));
+						setToggleError({ key: 'shopping.toggle.keyUnavailable' });
 					}
 					return;
 				}

@@ -1,6 +1,7 @@
 'use client';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useLocale, useTranslations } from 'next-intl';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useToast } from '@/components/ui/Toast';
 import type { ActionNotice } from '@/components/wg/ActionNoticeBanner';
@@ -8,14 +9,14 @@ import { useWg } from '@/components/wg/WgContextProvider';
 import { usePendingSet } from '@/core/hooks/use-pending-set';
 import { useStableCallback } from '@/core/hooks/use-stable-callback';
 import { eurosToCents, parseEuroAmount } from '@/core/utils/amount';
-import { formatWeekLabel, parseValidDate, startOfWeek } from '@/core/utils/time';
+import { parseValidDate, startOfWeek, weekLabelMessage } from '@/core/utils/time';
 import {
 	buildSettlementSummary,
 	computeDirectDebts,
 	computeNetBalances,
 } from '@/features/expenses/debt-reduction';
 import { AMOUNT_MAX_EUROS, AMOUNT_MIN_EUROS } from '@/features/expenses/expense-constants';
-import { EDITED_EXPENSE_DELETED_MESSAGE } from '@/features/expenses/expense-errors';
+import { EDITED_EXPENSE_DELETED } from '@/features/expenses/expense-errors';
 import {
 	type ExpenseScope,
 	filterExpenses,
@@ -28,6 +29,7 @@ import {
 	splitCandidates,
 } from '@/features/expenses/expense-split-input';
 import { useExpenseForm } from '@/features/expenses/hooks/use-expense-form';
+import type { Message } from '@/shared/i18n/message';
 import type { ActionNotifier, ExpensePageContext } from './expense-page-context';
 import { useExpenseFormSupport } from './use-expense-form-support';
 import { useExpenseRowActions } from './use-expense-row-actions';
@@ -46,6 +48,8 @@ const SCROLL_SETTLE_MS = 80;
 /** Expenses page: loads data, keeps form and mutations together and provides the display derivations. */
 export function useAusgabenPage() {
 	const { wg, members, identity, isAdmin } = useWg();
+	const locale = useLocale();
+	const tCategories = useTranslations('expenses.categories');
 	const toast = useToast();
 	const searchParams = useSearchParams();
 	const router = useRouter();
@@ -195,26 +199,31 @@ export function useAusgabenPage() {
 	const shownExpenses = useMemo(
 		() =>
 			filterExpenses(expenses, scope, identity.memberId).filter((expense) =>
-				matchesExpenseQuery(expense, query, stableMemberName),
+				matchesExpenseQuery(expense, query, stableMemberName, tCategories),
 			),
-		[expenses, scope, identity.memberId, query, stableMemberName],
+		[expenses, scope, identity.memberId, query, stableMemberName, tCategories],
 	);
 	const highlightIndex = highlightedId
 		? shownExpenses.findIndex((e) => e.id === highlightedId)
 		: -1;
 	const renderLimit = Math.max(visibleLimit, highlightIndex + 1);
 	const expenseWeeks = useMemo(() => {
-		const weeks: Array<{ label: string; items: typeof expenses }> = [];
+		const weeks: Array<{ label: Message; items: typeof expenses }> = [];
 		const now = new Date();
 		for (const expense of shownExpenses.slice(0, renderLimit)) {
 			const date = parseValidDate(expense.occurredAt);
-			const label = date ? formatWeekLabel(startOfWeek(date), now) : 'Datum unbekannt';
+			const label: Message = date
+				? weekLabelMessage(startOfWeek(date), now, locale)
+				: { key: 'expenses.history.unknownDate' };
 			const current = weeks.at(-1);
-			if (current?.label === label) current.items.push(expense);
-			else weeks.push({ label, items: [expense] });
+			if (current && JSON.stringify(current.label) === JSON.stringify(label)) {
+				current.items.push(expense);
+			} else {
+				weeks.push({ label, items: [expense] });
+			}
 		}
 		return weeks;
-	}, [shownExpenses, renderLimit]);
+	}, [shownExpenses, renderLimit, locale]);
 
 	const { payments } = data;
 	const balanceMembers = useMemo(
@@ -256,7 +265,7 @@ export function useAusgabenPage() {
 		return [selectedRecurringExpense, ...firstItems].slice(0, RECURRING_PREVIEW_LIMIT);
 	}, [recurringExpenses, recurringFilterActive, selectedRecurringExpense]);
 
-	const previewAmount = parseEuroAmount(form.amountStr);
+	const previewAmount = parseEuroAmount(form.amountStr, locale);
 	const splitPreview =
 		previewAmount !== null && previewAmount >= AMOUNT_MIN_EUROS && previewAmount <= AMOUNT_MAX_EUROS
 			? support.buildSplits(eurosToCents(previewAmount))
@@ -293,15 +302,13 @@ export function useAusgabenPage() {
 		const editedId = form.editingExpense?.id;
 		const fresh = await data.load(false, true);
 		if (!fresh || !editedId) {
-			form.setFormError(
-				'Die Liste konnte nicht neu geladen werden. Versuche es gleich noch einmal.',
-			);
+			form.setFormError({ key: 'expenses-form.notices.reloadFailed' });
 			return;
 		}
 		const serverExpense = fresh.find((expense) => expense.id === editedId);
 		if (!serverExpense) {
 			form.setConflictExpenseId(null);
-			form.setFormError(EDITED_EXPENSE_DELETED_MESSAGE);
+			form.setFormError(EDITED_EXPENSE_DELETED);
 			return;
 		}
 		if (choice === 'server') {

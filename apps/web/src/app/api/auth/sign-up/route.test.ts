@@ -25,7 +25,7 @@ test('creates the account with the name as metadata and the callback on this ori
 	});
 	assert.deepEqual(res.json, { sessionEstablished: false });
 	assert.equal(received.email, 'neu@example.test');
-	assert.deepEqual(received.options.data, { full_name: 'Mina' });
+	assert.deepEqual(received.options.data, { full_name: 'Mina', locale: 'de' });
 	assert.equal(
 		received.options.emailRedirectTo,
 		'https://app.example.test/auth/callback?next=%2Fwg%2FABCD2345',

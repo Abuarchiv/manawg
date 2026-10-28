@@ -3,9 +3,13 @@
 import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { navText } from '@/components/app/nav-text';
 import { getWgSection } from '@/components/app/navigation';
-import type { SegmentCountState } from '@/components/wg/use-wg-counts';
+import { segmentCountStatus } from '@/components/wg/segment-count-status';
+import type { CountHint, SegmentCountState } from '@/components/wg/use-wg-counts';
 import { useChatUnreadCount, useDashboardCounts } from '@/components/wg/use-wg-counts';
+import { useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
 
 interface SubNavItem {
@@ -13,7 +17,7 @@ interface SubNavItem {
 	label: string;
 	icon: LucideIcon;
 	count?: number | undefined;
-	countHint?: string | undefined;
+	countHint?: CountHint | undefined;
 	countState?: SegmentCountState | undefined;
 	countOverflow?: boolean | undefined;
 	countExact?: number | undefined;
@@ -123,7 +127,7 @@ function ChatSubNav({
 		...(page.slug === 'chat'
 			? {
 					count: chat.data?.count,
-					countHint: 'ungelesen',
+					countHint: 'unread' as const,
 					countState: state,
 					countOverflow: chat.data?.overflow,
 					countExact: chat.data?.exactCount,
@@ -140,24 +144,6 @@ function ChatSubNav({
 	);
 }
 
-function countSuffix(
-	count: number | undefined,
-	hint: string | undefined,
-	state: SegmentCountState | undefined,
-	overflow: boolean | undefined,
-	exactCount: number | undefined,
-): string | null {
-	if (count === undefined) {
-		if (state === 'loading') return 'Zähler wird geladen';
-		if (state === 'unavailable') return 'Zähler nicht verfügbar';
-		return null;
-	}
-	const value =
-		exactCount !== undefined ? String(exactCount) : overflow ? 'mehr als 99' : String(count);
-	const freshness = state === 'stale' ? ', Stand möglicherweise veraltet' : '';
-	return `${value} ${hint ?? 'offen'}${freshness}`;
-}
-
 function SegmentList({
 	links,
 	pathname,
@@ -169,16 +155,27 @@ function SegmentList({
 	label?: string | undefined;
 	className?: string | undefined;
 }) {
+	const t = useTranslations('shell.subNav');
+	const message = useMessage();
 	if (links.length < 2) return null;
 	return (
-		<nav aria-label={label ?? 'Unterbereiche'} className={cn('min-w-0', className)}>
+		<nav
+			aria-label={navText(label ?? t('fallbackLabel'), message)}
+			className={cn('min-w-0', className)}
+		>
 			<ul className="grid auto-cols-[minmax(max-content,1fr)] grid-flow-col gap-0.5 overflow-x-auto rounded-lg bg-muted p-0.5 [scrollbar-width:none]">
 				{links.map(
 					({ href, label: itemLabel, count, countHint, countState, countOverflow, countExact }) => {
 						const target = new URL(href, 'https://manawg.invalid').pathname.replace(/\/+$/, '');
 						const current = pathname === target;
 						const active = current || pathname.startsWith(`${target}/`);
-						const suffix = countSuffix(count, countHint, countState, countOverflow, countExact);
+						const status = segmentCountStatus({
+							count,
+							hint: countHint,
+							state: countState,
+							overflow: countOverflow,
+							exactCount: countExact,
+						});
 						const marker =
 							countState === 'loading'
 								? '…'
@@ -194,7 +191,14 @@ function SegmentList({
 									href={href}
 									prefetch
 									aria-current={active ? (current ? 'page' : 'location') : undefined}
-									aria-label={suffix ? `${itemLabel}, ${suffix}` : undefined}
+									aria-label={
+										status
+											? message({
+													key: 'shell.counter.labelled',
+													values: { label: navText(itemLabel, message), status },
+												})
+											: undefined
+									}
 									className={cn(
 										"relative flex min-h-8 min-w-0 items-center justify-center gap-1.5 rounded-md px-1 text-meta font-medium after:absolute after:inset-x-0 after:top-1/2 after:h-11 after:-translate-y-1/2 after:content-[''] outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50",
 										active
@@ -202,7 +206,7 @@ function SegmentList({
 											: 'text-foreground/75 hover:text-foreground active:bg-foreground/5',
 									)}
 								>
-									<span className="truncate">{itemLabel}</span>
+									<span className="truncate">{navText(itemLabel, message)}</span>
 									{showCount && (
 										<span
 											aria-hidden

@@ -2,6 +2,7 @@
 
 import { Check, MoreHorizontal, Pencil, Receipt, RotateCcw, Trash2 } from 'lucide-react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { memo, useEffect, useRef, useState } from 'react';
 import { Checkbox } from '@/components/animate-ui/components/base/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -31,6 +32,7 @@ import { ShoppingEditForm } from '@/features/shopping/components/ShoppingEditFor
 import type { ShoppingItem } from '@/features/shopping/components/shopping-types';
 import type { EditShoppingItem } from '@/features/shopping/hooks/use-shopping-edit';
 import { expensePrefillHref } from '@/features/shopping/shopping-view';
+import { type Message, useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
 import type { MemberInfo } from '@/shared/lib/member-types';
 
@@ -48,7 +50,7 @@ interface ShoppingItemRowProps {
 	onToggle: (item: ShoppingItem) => void;
 	onRemove: (id: string, itemName: string) => void;
 	onEdit: EditShoppingItem;
-	removeError?: string | null;
+	removeError?: Message | null;
 	highlighted: boolean;
 	shareCode: string;
 	canRemove: boolean;
@@ -68,17 +70,23 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 	shareCode,
 	canRemove,
 }: ShoppingItemRowProps) {
+	const t = useTranslations('shopping.row');
+	const render = useMessage();
 	const isBought = item.boughtAt !== null;
 	const deleteConfirm = useConfirmDelete();
 	const isDeleteArmed = deleteConfirm.confirmId === item.id;
 	const { identity } = useWg();
-	// The own person is called "dir"/"dich", not by their own name.
-	const buyerName = item.boughtByMemberId
-		? item.boughtByMemberId === identity.memberId
-			? 'dir'
-			: buyer?.name
-		: null;
-	const adderName = item.addedByMemberId === identity.memberId ? 'dir' : adder.name;
+	// The own person is addressed as "you", not by their own name.
+	const boughtBySelf = item.boughtByMemberId === identity.memberId;
+	const buyerKnown = Boolean(item.boughtByMemberId) && (boughtBySelf || Boolean(buyer?.name));
+	const boughtByText = t('boughtBy', {
+		who: boughtBySelf ? 'self' : 'other',
+		name: buyer?.name ?? '',
+	});
+	const addedBy = {
+		who: item.addedByMemberId === identity.memberId ? 'self' : 'other',
+		name: adder.name,
+	};
 	const swipeStartX = useRef<number | null>(null);
 	const confirmAlertRef = useRef<HTMLDivElement>(null);
 	const editButtonRef = useRef<HTMLButtonElement>(null);
@@ -125,7 +133,7 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 				)}
 			>
 				{isBought ? <RotateCcw className="size-4" /> : <Check className="size-4" />}
-				{isBought ? 'Wieder offen' : 'Gekauft'}
+				{isBought ? t('swipeReopen') : t('swipeBought')}
 			</div>
 			<Item
 				data-shopping-row
@@ -163,7 +171,11 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 						disabled={pending || queued}
 						size="lg"
 						className="relative size-6 rounded-md border-foreground/50 after:absolute after:-inset-2.5 [&_svg]:size-3.5"
-						aria-label={isBought ? `${item.name} wieder öffnen` : `${item.name} erledigen`}
+						aria-label={
+							isBought
+								? t('checkReopenAria', { name: item.name })
+								: t('checkCompleteAria', { name: item.name })
+						}
 					/>
 				</ItemMedia>
 				{/* basis-0 + min-w instead of basis-32: with large text check mark, text and ⋯ stay in one row;
@@ -181,18 +193,14 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 						{pending ? (
 							<output aria-live="polite" className="flex items-center gap-1">
 								<Spinner aria-hidden className="size-3" />
-								Speichert…
+								{t('saving')}
 							</output>
 						) : queued ? (
-							<output aria-live="polite">Wartet auf Synchronisierung…</output>
+							<output aria-live="polite">{t('waitingToSync')}</output>
 						) : (
 							[
 								item.quantity,
-								isBought
-									? buyerName
-										? `Gekauft von ${buyerName}`
-										: 'Gekauft'
-									: `von ${adderName}`,
+								isBought ? (buyerKnown ? boughtByText : t('bought')) : t('addedByShort', addedBy),
 							]
 								.filter(Boolean)
 								.join(' · ')
@@ -210,7 +218,11 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 					>
 						<DrawerTrigger
 							render={
-								<Button variant="ghost" size="icon" aria-label={`Artikelaktionen: ${item.name}`} />
+								<Button
+									variant="ghost"
+									size="icon"
+									aria-label={t('actionsAria', { name: item.name })}
+								/>
 							}
 						>
 							<MoreHorizontal aria-hidden />
@@ -219,12 +231,13 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 							<DrawerHeader>
 								<DrawerTitle className="break-words">{item.name}</DrawerTitle>
 								<DrawerDescription>
-									{item.quantity ? `${item.quantity} · ` : ''}Hinzugefügt von {adderName}
-									{isBought
-										? buyerName
-											? ` · Gekauft von ${buyerName}`
-											: ' · Gekauft · Person nicht angegeben'
-										: ''}
+									{[
+										item.quantity,
+										t('addedBy', addedBy),
+										isBought ? (buyerKnown ? boughtByText : t('boughtUnknown')) : null,
+									]
+										.filter(Boolean)
+										.join(' · ')}
 								</DrawerDescription>
 							</DrawerHeader>
 							<div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-4">
@@ -247,7 +260,7 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 										onClick={() => setEditing(true)}
 									>
 										<Pencil data-icon="inline-start" aria-hidden />
-										Bearbeiten
+										{t('edit')}
 									</Button>
 								)}
 								{isBought && (
@@ -265,23 +278,19 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 											}
 										>
 											<Receipt data-icon="inline-start" aria-hidden />
-											Als Ausgabe übernehmen
+											{t('addAsExpense')}
 										</Button>
-										<p className="text-sm text-muted-foreground">
-											Betrag und Aufteilung prüfst du vor dem Speichern.
-										</p>
+										<p className="text-sm text-muted-foreground">{t('expenseHint')}</p>
 									</>
 								)}
 								{canRemove && isDeleteArmed && (
 									<Alert ref={confirmAlertRef}>
-										<AlertDescription>
-											„{item.name}“ endgültig entfernen? Das lässt sich nicht rückgängig machen.
-										</AlertDescription>
+										<AlertDescription>{t('removeConfirm', { name: item.name })}</AlertDescription>
 									</Alert>
 								)}
 								{removeError && (
 									<Alert variant="destructive">
-										<AlertDescription>{removeError}</AlertDescription>
+										<AlertDescription>{render(removeError)}</AlertDescription>
 									</Alert>
 								)}
 							</div>
@@ -294,21 +303,16 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 										disabled={pending}
 										aria-label={
 											isDeleteArmed
-												? `Endgültig entfernen: ${item.name}`
-												: `Artikel entfernen: ${item.name}`
+												? t('removeFinalAria', { name: item.name })
+												: t('removeAria', { name: item.name })
 										}
 									>
 										<Trash2 data-icon="inline-start" aria-hidden />
-										{isDeleteArmed ? 'Endgültig entfernen' : 'Artikel entfernen'}
+										{isDeleteArmed ? t('removeFinal') : t('remove')}
 									</Button>
 								)}
-								{!canRemove && (
-									<p className="text-sm text-muted-foreground">
-										Nur die Person, die den Artikel hinzugefügt hat, oder ein WG-Admin kann ihn
-										entfernen.
-									</p>
-								)}
-								<DrawerClose render={<Button variant="outline" />}>Schließen</DrawerClose>
+								{!canRemove && <p className="text-sm text-muted-foreground">{t('cannotRemove')}</p>}
+								<DrawerClose render={<Button variant="outline" />}>{t('close')}</DrawerClose>
 							</DrawerFooter>
 						</DrawerContent>
 					</Drawer>

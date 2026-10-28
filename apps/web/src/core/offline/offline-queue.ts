@@ -6,7 +6,11 @@ import {
 	type OfflineActionSummary,
 	offlineActionHandlers,
 } from './offline-action-handlers';
-import { explainOfflineActionFailure, OFFLINE_NO_CONNECTION_TITLE } from './offline-failure-copy';
+import {
+	explainOfflineActionFailure,
+	failedWithoutConnection,
+	holdsServerReview,
+} from './offline-failure-copy';
 
 export type {
 	OfflineAction,
@@ -50,8 +54,8 @@ export function hasQueuedShoppingUpdate(
 
 /**
  * Chore occurrences with a completion still waiting to sync. Lost connections and server errors
- * retry later; a completion the server rejected carries the "Server prüfen:" prefix and needs
- * the user, so its chore shows again.
+ * retry later; a completion the server rejected is held for review and needs the user, so its
+ * chore shows again.
  */
 export function pendingChoreCompletions(
 	actions: readonly OfflineAction[],
@@ -62,7 +66,7 @@ export function pendingChoreCompletions(
 			(action) =>
 				action.type === 'chore.complete' &&
 				action.shareCode === shareCode &&
-				!action.lastError?.startsWith('Server prüfen:'),
+				!holdsServerReview(action),
 		)
 		.map((action) => ({
 			id: String(action.payload.choreId),
@@ -134,20 +138,20 @@ export function getOfflineActionRisk(
 	const createdAt = parseTimestamp(action.createdAt);
 	if (createdAt === null) {
 		return {
-			title: 'Zeitpunkt prüfen',
-			detail: 'Der gespeicherte Zeitpunkt ist unklar. Prüfe den Eintrag vor dem erneuten Senden.',
+			title: { key: 'offline.risk.timeUnclear.title' },
+			detail: { key: 'offline.risk.timeUnclear.detail' },
 		};
 	}
 	if (createdAt > now) {
 		return {
-			title: 'Zeitpunkt prüfen',
-			detail: 'Der gespeicherte Zeitpunkt liegt in der Zukunft. Prüfe den Eintrag vor dem Senden.',
+			title: { key: 'offline.risk.timeFuture.title' },
+			detail: { key: 'offline.risk.timeFuture.detail' },
 		};
 	}
 	const ageHours = Math.floor((now - createdAt) / MS_PER_HOUR);
-	if (ageHours < REVIEW_AFTER_HOURS && !action.lastError) return null;
+	const hasError = Boolean(action.lastError || action.lastErrorMessage);
+	if (ageHours < REVIEW_AFTER_HOURS && !hasError) return null;
 	// A fresh no-connection failure says nothing about the server state.
-	if (ageHours < REVIEW_AFTER_HOURS && action.lastError?.startsWith(OFFLINE_NO_CONNECTION_TITLE))
-		return null;
+	if (ageHours < REVIEW_AFTER_HOURS && failedWithoutConnection(action)) return null;
 	return offlineActionHandlers[action.type].risk(action);
 }

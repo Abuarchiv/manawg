@@ -1,12 +1,9 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
-import {
-	EXPENSE_CATEGORIES,
-	EXPENSE_CATEGORY_LABELS,
-	type ExpenseCategory,
-} from '@/features/expenses/expense-categories';
+import { EXPENSE_CATEGORIES, type ExpenseCategory } from '@/features/expenses/expense-categories';
 
 interface ExpenseCategoryFieldProps {
 	id: string;
@@ -15,11 +12,13 @@ interface ExpenseCategoryFieldProps {
 	disabled: boolean;
 }
 
-/** "Kategorie" select shared by the expense and the fixed-cost forms. */
+/** Category select shared by the expense and the fixed-cost forms. */
 export function ExpenseCategoryField({ id, value, onChange, disabled }: ExpenseCategoryFieldProps) {
+	const t = useTranslations('expenses-form.fields');
+	const tCategories = useTranslations('expenses.categories');
 	return (
 		<Field data-disabled={disabled}>
-			<FieldLabel htmlFor={id}>Kategorie</FieldLabel>
+			<FieldLabel htmlFor={id}>{t('category')}</FieldLabel>
 			<NativeSelect
 				id={id}
 				value={value}
@@ -32,7 +31,7 @@ export function ExpenseCategoryField({ id, value, onChange, disabled }: ExpenseC
 			>
 				{EXPENSE_CATEGORIES.map((code) => (
 					<NativeSelectOption key={code} value={code}>
-						{EXPENSE_CATEGORY_LABELS[code]}
+						{tCategories(code)}
 					</NativeSelectOption>
 				))}
 			</NativeSelect>

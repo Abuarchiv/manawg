@@ -2,6 +2,7 @@
 
 import { FileInput, Receipt, Search } from 'lucide-react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
 	Empty,
@@ -16,6 +17,7 @@ import { ExpenseRow } from '@/features/expenses/components/ausgaben/ExpenseRow';
 import { ExpensesSkeleton } from '@/features/expenses/components/ausgaben/ExpensesSkeleton';
 import type { ExpenseScope } from '@/features/expenses/expense-filter';
 import type { Expense, ExpenseSplit } from '@/features/expenses/expense-types';
+import { type Message, useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
 
 /** Below this many expenses the list is short enough to scan without a filter. */
@@ -28,7 +30,7 @@ interface ExpenseHistoryProps {
 	onScopeChange: (scope: ExpenseScope) => void;
 	query: string;
 	onQueryChange: (query: string) => void;
-	weeks: Array<{ label: string; items: Expense[] }>;
+	weeks: Array<{ label: Message; items: Expense[] }>;
 	showSkeleton: boolean;
 	initialLoading: boolean;
 	loadFailed: boolean;
@@ -70,9 +72,11 @@ export function ExpenseHistory({
 	onEdit,
 	onToggleSettle,
 }: ExpenseHistoryProps): React.ReactElement {
+	const t = useTranslations('expenses.history');
+	const message = useMessage();
 	return (
-		<section className="flex flex-col gap-3" aria-label="Eingetragene Ausgaben">
-			{expenseCount > 0 && <h2 className="sr-only">Verlauf</h2>}
+		<section className="flex flex-col gap-3" aria-label={t('regionAria')}>
+			{expenseCount > 0 && <h2 className="sr-only">{t('heading')}</h2>}
 			{showSkeleton ? (
 				<ExpensesSkeleton />
 			) : loadFailed && expenseCount === 0 ? null : expenseCount === 0 && !initialLoading ? (
@@ -81,8 +85,8 @@ export function ExpenseHistory({
 						<EmptyMedia variant="icon">
 							<Receipt aria-hidden />
 						</EmptyMedia>
-						<EmptyTitle>Noch keine Ausgaben</EmptyTitle>
-						<EmptyDescription>Trag die erste ein, dann rechnet ManaWG mit.</EmptyDescription>
+						<EmptyTitle>{t('emptyTitle')}</EmptyTitle>
+						<EmptyDescription>{t('emptyBody')}</EmptyDescription>
 					</EmptyHeader>
 				</Empty>
 			) : (
@@ -98,8 +102,8 @@ export function ExpenseHistory({
 									type="search"
 									value={query}
 									onChange={(event) => onQueryChange(event.currentTarget.value)}
-									placeholder="Suchen"
-									aria-label="Ausgaben durchsuchen"
+									placeholder={t('searchPlaceholder')}
+									aria-label={t('searchAria')}
 									enterKeyHint="search"
 									autoCapitalize="none"
 									className="min-h-11 text-base"
@@ -115,28 +119,34 @@ export function ExpenseHistory({
 									}
 								}}
 								className="w-full"
-								aria-label="Ausgaben filtern"
+								aria-label={t('filterAria')}
 							>
 								<ToggleGroupItem value="all" className="flex-1">
-									Alle
+									{t('scopeAll')}
 								</ToggleGroupItem>
 								<ToggleGroupItem value="paid" className="flex-1">
-									Von mir bezahlt
+									{t('scopePaid')}
 								</ToggleGroupItem>
 								<ToggleGroupItem value="involved" className="flex-1">
-									Ich bin beteiligt
+									{t('scopeInvolved')}
 								</ToggleGroupItem>
 							</ToggleGroup>
 						</div>
 					)}
 					{shownCount === 0 && (
 						<output className="block py-6 text-center text-sm text-muted-foreground">
-							Keine passenden Ausgaben gefunden.
+							{t('noMatches')}
 						</output>
 					)}
 					{weeks.map((week) => (
-						<section key={week.label} aria-label={week.label} className="flex flex-col gap-1.5">
-							<h3 className="px-0 text-meta font-medium text-muted-foreground">{week.label}</h3>
+						<section
+							key={JSON.stringify(week.label)}
+							aria-label={message(week.label)}
+							className="flex flex-col gap-1.5"
+						>
+							<h3 className="px-0 text-meta font-medium text-muted-foreground">
+								{message(week.label)}
+							</h3>
 							<ul
 								className={cn(
 									'divide-y divide-border/60 overflow-hidden rounded-xl border',
@@ -164,7 +174,7 @@ export function ExpenseHistory({
 					))}
 					{hiddenCount > 0 && (
 						<Button variant="outline" onClick={onShowMore}>
-							Mehr anzeigen ({hiddenCount})
+							{t('showMore', { count: String(hiddenCount) })}
 						</Button>
 					)}
 				</div>
@@ -179,7 +189,7 @@ export function ExpenseHistory({
 					)}
 				>
 					<FileInput data-icon="inline-start" aria-hidden />
-					Ausgaben importieren
+					{t('import')}
 				</Link>
 			)}
 		</section>

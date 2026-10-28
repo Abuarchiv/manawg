@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react';
 import { MAX_CSV_BYTES } from '@/features/expenses/import-body';
 import { OcrInitializationError, runOcrOnImage } from '@/features/expenses/ocr';
+import type { Message } from '@/shared/i18n/message';
 import { decodeCsv, type ImportInputStatus, MAX_IMAGE_BYTES } from './import-wizard-types';
 
 interface ImportInputCallbacks {
@@ -10,7 +11,7 @@ interface ImportInputCallbacks {
 	onInputDiscarded: () => void;
 	/** The input was edited by hand: drop everything derived from it. */
 	onInputEdited: () => void;
-	setError: (message: string) => void;
+	setError: (message: Message) => void;
 	clearError: () => void;
 }
 
@@ -70,7 +71,7 @@ export function useImportInput({
 		if (file.size > MAX_IMAGE_BYTES) {
 			setPickedFileName(null);
 			setInputStatus('error');
-			setError('Das Bild ist zu groß (max. 10 MB).');
+			setError({ key: 'expenses-import.input.errors.imageTooLarge' });
 			setOcrRunning(false);
 			return;
 		}
@@ -87,13 +88,14 @@ export function useImportInput({
 			console.error('[ImportWizard] OCR failed', err);
 			setPickedFileName(null);
 			setInputStatus('error');
-			setError(
-				err instanceof OcrInitializationError
-					? err.requiresReload
-						? 'Texterkennung konnte nicht geladen werden. Prüfe die Internetverbindung und lade die Seite neu, bevor du es erneut versuchst.'
-						: 'Texterkennung konnte nicht initialisiert werden. Prüfe die Internetverbindung und versuche es erneut.'
-					: 'Texterkennung fehlgeschlagen. Versuche es mit einem klareren Bild.',
-			);
+			setError({
+				key:
+					err instanceof OcrInitializationError
+						? err.requiresReload
+							? 'expenses-import.input.errors.ocrNeedsReload'
+							: 'expenses-import.input.errors.ocrInit'
+						: 'expenses-import.input.errors.ocrFailed',
+			});
 		} finally {
 			if (inputRunIdRef.current === runId) {
 				setOcrRunning(false);
@@ -106,7 +108,7 @@ export function useImportInput({
 		if (file.size > MAX_CSV_BYTES) {
 			setPickedFileName(null);
 			setInputStatus('error');
-			setError('Die CSV-Datei ist zu groß (max. 5 MB).');
+			setError({ key: 'expenses-import.input.errors.csvTooLarge' });
 			return;
 		}
 		setPickedFileName(file.name);
@@ -122,7 +124,7 @@ export function useImportInput({
 				if (inputRunIdRef.current !== runId) return;
 				setPickedFileName(null);
 				setInputStatus('error');
-				setError('Die Datei konnte nicht gelesen werden. Wähle sie erneut aus.');
+				setError({ key: 'expenses-import.input.errors.fileUnreadable' });
 			});
 	}
 

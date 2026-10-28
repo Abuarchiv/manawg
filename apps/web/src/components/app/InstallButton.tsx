@@ -1,6 +1,7 @@
 'use client';
 
 import { Download, X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useEffect, useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,10 @@ import {
 
 type Platform = 'desktop' | 'android' | 'ios' | 'unknown';
 
+// A plain ICU argument takes an element at runtime; the typed `rich` signature lists only tags.
+const bold = (text: string) =>
+	(<span className="font-medium text-foreground">{text}</span>) as unknown as string;
+
 type Props = {
 	variant?: 'primary' | 'outline';
 	className?: string;
@@ -31,6 +36,7 @@ type Props = {
 };
 
 export function InstallButton({ variant = 'outline', className, label }: Props) {
+	const t = useTranslations('shell.install');
 	const [event, setEvent] = useState<BeforeInstallEvent | null>(null);
 	const [platform, setPlatform] = useState<Platform>('unknown');
 	const [installed, setInstalled] = useState(false);
@@ -98,13 +104,8 @@ export function InstallButton({ variant = 'outline', className, label }: Props) 
 				showCloseButton={false}
 			>
 				<DialogHeader className="pr-12">
-					<DialogTitle>ManaWG als App installieren</DialogTitle>
-					<DialogDescription>
-						{platform === 'ios' && 'iOS / Safari'}
-						{platform === 'android' && 'Android'}
-						{platform === 'desktop' && 'Desktop-Browser'}
-						{platform === 'unknown' && 'Anleitung'}
-					</DialogDescription>
+					<DialogTitle>{t('title')}</DialogTitle>
+					<DialogDescription>{t(`platform.${platform}`)}</DialogDescription>
 				</DialogHeader>
 				<Button
 					ref={closeButtonRef}
@@ -112,7 +113,7 @@ export function InstallButton({ variant = 'outline', className, label }: Props) 
 					onClick={() => setShowFallback(false)}
 					variant="ghost"
 					size="icon"
-					aria-label="Installationsdialog schließen"
+					aria-label={t('close')}
 					className="absolute top-2 right-2 size-9"
 				>
 					<X aria-hidden="true" />
@@ -121,9 +122,7 @@ export function InstallButton({ variant = 'outline', className, label }: Props) 
 				{platform === 'android' && <AndroidSteps />}
 				{(platform === 'desktop' || platform === 'unknown') && <DesktopSteps />}
 				<DialogFooter>
-					<p className="text-sm text-muted-foreground">
-						Danach startet ManaWG ohne Browser-Leiste, direkt vom Startbildschirm.
-					</p>
+					<p className="text-sm text-muted-foreground">{t('footer')}</p>
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>
@@ -144,53 +143,35 @@ function Step({ num, children }: { num: number; children: React.ReactNode }) {
 }
 
 function IosSteps() {
+	const t = useTranslations('shell.install.ios');
 	return (
-		<ItemGroup aria-label="Installationsschritte für iOS">
-			<Step num={1}>
-				Tippe in Safari auf <span className="font-medium text-foreground">Teilen</span>.
-			</Step>
-			<Step num={2}>
-				Scrolle nach unten und wähle{' '}
-				<span className="font-medium text-foreground">„Zum Home-Bildschirm“</span>.
-			</Step>
-			<Step num={3}>
-				Tippe oben rechts auf <span className="font-medium text-foreground">Hinzufügen</span>.
-			</Step>
-			<Step num={4}>
-				Öffne ManaWG vom Home-Bildschirm und melde dich einmal an. Das iPhone trennt App und Safari,
-				danach bleibst du angemeldet.
-			</Step>
+		<ItemGroup aria-label={t('label')}>
+			<Step num={1}>{t.rich('step1', { share: bold(t('share')) })}</Step>
+			<Step num={2}>{t.rich('step2', { addToHome: bold(t('addToHome')) })}</Step>
+			<Step num={3}>{t.rich('step3', { add: bold(t('add')) })}</Step>
+			<Step num={4}>{t('step4')}</Step>
 		</ItemGroup>
 	);
 }
 
 function AndroidSteps() {
+	const t = useTranslations('shell.install.android');
 	return (
-		<ItemGroup aria-label="Installationsschritte für Android">
-			<Step num={1}>
-				Tippe in Chrome oben rechts auf <span className="font-medium text-foreground">⋮ Menü</span>.
-			</Step>
-			<Step num={2}>
-				Wähle <span className="font-medium text-foreground">„App installieren“</span> oder „Zum
-				Startbildschirm“.
-			</Step>
-			<Step num={3}>Bestätige. ManaWG liegt dann auf dem Startbildschirm.</Step>
+		<ItemGroup aria-label={t('label')}>
+			<Step num={1}>{t.rich('step1', { menu: bold(t('menu')) })}</Step>
+			<Step num={2}>{t.rich('step2', { install: bold(t('install')) })}</Step>
+			<Step num={3}>{t('step3')}</Step>
 		</ItemGroup>
 	);
 }
 
 function DesktopSteps() {
+	const t = useTranslations('shell.install.desktop');
 	return (
-		<ItemGroup aria-label="Installationsschritte im Browser">
-			<Step num={1}>
-				Klicke in der Adressleiste auf{' '}
-				<span className="font-medium text-foreground">Installieren</span>.
-			</Step>
-			<Step num={2}>
-				Alternativ öffnest du das <span className="font-medium text-foreground">⋮ Menü</span> und
-				wählst „ManaWG installieren“.
-			</Step>
-			<Step num={3}>Bestätige. ManaWG startet dann wie eine App.</Step>
+		<ItemGroup aria-label={t('label')}>
+			<Step num={1}>{t.rich('step1', { install: bold(t('install')) })}</Step>
+			<Step num={2}>{t.rich('step2', { menu: bold(t('menu')) })}</Step>
+			<Step num={3}>{t('step3')}</Step>
 		</ItemGroup>
 	);
 }

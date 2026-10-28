@@ -1,6 +1,8 @@
 import { type Dispatch, type SetStateAction, useRef } from 'react';
+import { NETWORK_ERROR_CODE } from '@/core/http/error-codes';
 import { createIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
+import type { Message } from '@/shared/i18n/message';
 import { explainChatError } from '../chat-errors';
 import { withOwnReaction } from '../chat-reactions';
 import type { ReactionMutationTracker } from '../chat-refresh';
@@ -28,12 +30,12 @@ export function useChatReactions({
 		kind: 'add' | 'remove',
 		messageId: string,
 		emoji: string,
-	): Promise<string | null> {
+	): Promise<Message | null> {
 		const action = kind === 'add' ? 'react' : 'unreact';
 		const requestKeyId = `${kind}:${messageId}:${emoji}`;
 		const idempotencyKey = requestKeysRef.current.get(requestKeyId) ?? createIdempotencyKey();
 		if (!idempotencyKey) {
-			return explainChatError(action, 'Netzwerkfehler');
+			return explainChatError(action, NETWORK_ERROR_CODE);
 		}
 		requestKeysRef.current.set(requestKeyId, idempotencyKey);
 

@@ -1,24 +1,16 @@
 import type {
 	Announcement,
 	AnnouncementKind,
-	AnnouncementSource,
 	ReactionKey,
 } from '@/features/pinnwand/components/announcement-types';
 
 /** What a Pinnwand card shows, derived from the post; the components only render it. */
 
-export const SOURCE_LABELS: Record<AnnouncementSource, string | null> = {
-	manual: null,
-	system: 'System',
-	chore_swap: 'Putzplan',
-	expense: 'Ausgaben',
-	shopping: 'Einkauf',
-};
-
+/** The reactions in display order; the German labels feed the stored activity text of the reaction route. */
 export const REACTION_OPTIONS: ReadonlyArray<{ key: ReactionKey; label: string }> = [
-	{ key: 'seen', label: 'Gesehen' },
-	{ key: 'take', label: 'Übernehme ich' },
-	{ key: 'ok', label: 'Passt' },
+	{ key: 'seen', label: 'Gesehen' }, // i18n-ignore stored activity text
+	{ key: 'take', label: 'Übernehme ich' }, // i18n-ignore stored activity text
+	{ key: 'ok', label: 'Passt' }, // i18n-ignore stored activity text
 ];
 
 /** The reaction each kind of post asks for; it is always shown on the card. */
@@ -32,11 +24,7 @@ const PRIMARY_REACTION: Record<AnnouncementKind, ReactionKey> = {
 
 export type ConversionTarget = 'shopping' | 'chore' | 'expense';
 
-export const CONVERSION_TARGETS: ReadonlyArray<{ target: ConversionTarget; label: string }> = [
-	{ target: 'shopping', label: 'Als Einkauf' },
-	{ target: 'chore', label: 'Als Aufgabe' },
-	{ target: 'expense', label: 'Als Ausgabe' },
-];
+export const CONVERSION_TARGETS: readonly ConversionTarget[] = ['shopping', 'chore', 'expense'];
 
 /** Long posts start collapsed to four lines. */
 export function isLongAnnouncementBody(text: string): boolean {

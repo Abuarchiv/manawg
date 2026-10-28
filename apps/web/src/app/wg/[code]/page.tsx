@@ -1,6 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import { useTranslations } from 'next-intl';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { ForYouSection } from './_components/ForYouSection';
@@ -17,6 +18,7 @@ const PushPrimingPrompt = dynamic(
 );
 
 export default function WgHomePage() {
+	const t = useTranslations('home.page');
 	const { wg, identity, members } = useWg();
 	const wgBaseHref = `/wg/${encodeURIComponent(wg.shareCode)}`;
 	const home = useHomeData(wg.shareCode, identity);
@@ -61,10 +63,10 @@ export default function WgHomePage() {
 			{error && !(data && !home.online) && (
 				<div>
 					<LoadErrorBanner
-						message={data ? `${error} Die angezeigten Daten können veraltet sein.` : error}
+						message={data ? t('staleData', { error }) : error}
 						onRetry={() => void home.load()}
 						busy={home.loading}
-						retryLabel="Startseite erneut laden"
+						retryLabel={t('reload')}
 					/>
 				</div>
 			)}

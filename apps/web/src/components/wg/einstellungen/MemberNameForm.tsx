@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { type FormEvent, useEffect, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -7,21 +8,24 @@ import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { useWg } from '@/components/wg/WgContextProvider';
-import { mutationErrorMessage } from '@/core/http/error-codes';
+import { mutationError, NETWORK_ERROR_CODE } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
-import { joinErrorMessage } from '@/core/infra/join-flow';
+import type { Message } from '@/shared/i18n/message';
+import { useMessage } from '@/shared/i18n/message';
 import { MEMBER_NAME_MAX_LENGTH } from '@/shared/lib/limits';
 
-function renameErrorMessage(status: number, error: string): string {
-	if (error === 'name_taken') return joinErrorMessage(status, error);
-	if (error === 'name_changed') {
-		return 'Dein Name wurde inzwischen geändert. Lade die Seite neu und versuche es erneut.';
-	}
-	return mutationErrorMessage(
-		'Name konnte nicht geändert werden',
-		status === 0 ? 'Netzwerkfehler' : error,
+function renameErrorMessage(status: number, error: string): Message {
+	if (status === 409 && error === 'name_taken') return { key: 'settings.memberName.errors.taken' };
+	if (error === 'name_changed') return { key: 'settings.memberName.errors.changed' };
+	const subject: Message = { key: 'settings.memberName.errors.subject' };
+	return mutationError(
+		subject,
+		status === 0 ? NETWORK_ERROR_CODE : error,
 		{},
-		'Name konnte nicht geändert werden: Versuche es gleich erneut.',
+		{
+			key: 'common.errors.withSubject',
+			values: { subject, detail: { key: 'common.errors.retry' } },
+		},
 	);
 }
 
@@ -35,6 +39,8 @@ export function MemberNameForm({
 	shareCode: string;
 	memberId: string;
 }) {
+	const t = useTranslations('settings');
+	const m = useMessage();
 	const { refreshMembers } = useWg();
 	const [name, setName] = useState(memberName);
 	const [pending, setPending] = useState(false);
@@ -64,7 +70,7 @@ export function MemberNameForm({
 				},
 			);
 			if (!res.ok) {
-				setError(renameErrorMessage(res.status, res.error));
+				setError(m(renameErrorMessage(res.status, res.error)));
 				return;
 			}
 			setSaved(true);
@@ -78,7 +84,7 @@ export function MemberNameForm({
 		<form onSubmit={(event) => void submit(event)} className="grid gap-2 px-3 pb-3">
 			<Field orientation="horizontal" className="flex-wrap items-center gap-2">
 				<FieldLabel htmlFor="member-name" className="sr-only">
-					Dein Name
+					{t('memberName.label')}
 				</FieldLabel>
 				<Input
 					id="member-name"
@@ -95,18 +101,16 @@ export function MemberNameForm({
 				/>
 				<Button type="submit" disabled={pending || unchanged || !trimmed} className="h-11 shrink-0">
 					{pending && <Spinner data-icon="inline-start" aria-hidden />}
-					Speichern
+					{t('actions.save')}
 				</Button>
 			</Field>
-			<p className="text-muted-foreground text-xs">
-				Alte @Erwähnungen im Chat bleiben mit dem alten Namen stehen.
-			</p>
+			<p className="text-muted-foreground text-xs">{t('memberName.mentionsHint')}</p>
 			{error && (
 				<Alert variant="destructive">
 					<AlertDescription>{error}</AlertDescription>
 				</Alert>
 			)}
-			{saved && <output className="text-xs text-muted-foreground">Name gespeichert.</output>}
+			{saved && <output className="text-xs text-muted-foreground">{t('memberName.saved')}</output>}
 		</form>
 	);
 }

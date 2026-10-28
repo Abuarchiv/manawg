@@ -1,5 +1,6 @@
 'use client';
 
+import { useLocale, useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/badge';
 import {
 	ItemContent,
@@ -26,9 +27,11 @@ export function SplitReview({
 	paidByMemberId,
 	currency = 'EUR',
 }: SplitReviewProps) {
+	const locale = useLocale();
+	const t = useTranslations('expenses-form.split');
 	if (!splits) return null;
 	return (
-		<ItemGroup aria-label="Anteile vor dem Speichern" aria-live="polite" className="gap-1">
+		<ItemGroup aria-label={t('reviewAria')} aria-live="polite" className="gap-1">
 			{members.map((member) => {
 				const share = splits.find((split) => split.debtorMemberId === member.id);
 				return (
@@ -36,16 +39,14 @@ export function SplitReview({
 						<ItemContent className="min-w-0">
 							<ItemTitle className="line-clamp-none break-words">{member.name}</ItemTitle>
 							{(!share || share.amountCents === 0) && (
-								<ItemDescription className="line-clamp-none">Kein Anteil</ItemDescription>
+								<ItemDescription className="line-clamp-none">{t('noShare')}</ItemDescription>
 							)}
 							{share && share.amountCents !== 0 && member.id === paidByMemberId && (
-								<ItemDescription className="line-clamp-none">
-									Eigener Anteil · bereits bezahlt
-								</ItemDescription>
+								<ItemDescription className="line-clamp-none">{t('ownShare')}</ItemDescription>
 							)}
 						</ItemContent>
 						<Badge variant="outline" className="font-mono tabular-nums">
-							{formatEuroCents(share?.amountCents ?? 0, currency)}
+							{formatEuroCents(share?.amountCents ?? 0, currency, { locale })}
 						</Badge>
 					</ItemEntry>
 				);

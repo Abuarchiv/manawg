@@ -8,11 +8,14 @@ import {
 	Sparkles,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useLocale, useTranslations } from 'next-intl';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { activityItemKey } from '@/composition/activity';
 import { formatEuroCents } from '@/core/utils/money';
-import { formatRelativeTime } from '@/core/utils/time';
+import { relativeTimeMessage } from '@/core/utils/time';
+import type { Locale } from '@/shared/i18n/locale';
+import { useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
 
 interface ActivityItem {
@@ -41,15 +44,16 @@ const kindIcon: Record<ActivityItem['kind'], typeof Receipt> = {
 };
 
 export function ActivityFeed({ items, inset }: { items: ActivityItem[]; inset?: boolean }) {
+	const t = useTranslations('activity.feed');
+	const message = useMessage();
+	const locale = useLocale() as Locale;
 	const { identity } = useWg();
 	if (items.length === 0) {
 		return (
 			<Empty>
 				<EmptyHeader>
-					<EmptyTitle>Noch keine Aktivität</EmptyTitle>
-					<EmptyDescription>
-						Hier erscheint, was in der WG passiert: Ausgaben, Einkäufe, Putzplan.
-					</EmptyDescription>
+					<EmptyTitle>{t('emptyTitle')}</EmptyTitle>
+					<EmptyDescription>{t('emptyDescription')}</EmptyDescription>
 				</EmptyHeader>
 			</Empty>
 		);
@@ -57,17 +61,17 @@ export function ActivityFeed({ items, inset }: { items: ActivityItem[]; inset?: 
 
 	const now = Date.now();
 	return (
-		<ul aria-label="Aktivitätsverlauf" className="divide-y divide-border/60">
+		<ul aria-label={t('history')} className="divide-y divide-border/60">
 			{items.map((item, index) => {
 				const Icon = kindIcon[item.kind];
 				const isMe = Boolean(item.memberId) && item.memberId === identity.memberId;
-				const who = isMe ? 'Du' : item.memberName;
+				const who = isMe ? t('you') : item.memberName;
 				// Sentences („hat … geändert“) need the person in front; keywords („Brot gekauft“) are the title.
 				const sentence = item.sentence === true;
-				const text =
-					sentence && isMe
-						? item.text.replace(/^hat\b/, 'hast').replace(/^ist\b/, 'bist')
-						: item.text;
+				// i18n-ignore German verb agreement for the reader's own rows
+				const legacySelf = (value: string) =>
+					value.replace(/^hat\b/, 'hast').replace(/^ist\b/, 'bist');
+				const text = sentence && isMe ? legacySelf(item.text) : item.text;
 				const content = (
 					<>
 						{inset ? (
@@ -95,13 +99,15 @@ export function ActivityFeed({ items, inset }: { items: ActivityItem[]; inset?: 
 								</p>
 								<p className="line-clamp-2 text-meta text-muted-foreground">
 									{!sentence && `${who} · `}
-									<time dateTime={item.timestamp}>{formatRelativeTime(item.timestamp, now)}</time>
+									<time dateTime={item.timestamp}>
+										{message(relativeTimeMessage(item.timestamp, now, locale))}
+									</time>
 									{item.detail && ` · ${item.detail}`}
 								</p>
 							</div>
 							{item.amountCents !== undefined && (
 								<span className="ml-auto shrink-0 font-mono text-meta tabular-nums">
-									{formatEuroCents(item.amountCents, item.currency ?? 'EUR')}
+									{formatEuroCents(item.amountCents, item.currency ?? 'EUR', { locale })}
 								</span>
 							)}
 						</div>

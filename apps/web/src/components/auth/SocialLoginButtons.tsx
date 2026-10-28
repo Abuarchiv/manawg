@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { type ComponentProps, useEffect, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -41,6 +42,8 @@ function GoogleG(props: ComponentProps<'svg'>) {
 	);
 }
 
+const VARIANT_LABEL = { link: 'link', 'sign-up': 'signUp', 'sign-in': 'signIn' } as const;
+
 const providers = [{ provider: 'google' as const, name: 'Google', Icon: GoogleG }];
 
 export function SocialLoginButtons({
@@ -49,6 +52,7 @@ export function SocialLoginButtons({
 	variant = 'sign-in',
 	disabled = false,
 }: SocialLoginButtonsProps) {
+	const t = useTranslations('auth.social');
 	const [pendingProvider, setPendingProvider] = useState<SocialProvider | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const pendingLabel = providers.find(({ provider }) => provider === pendingProvider)?.name;
@@ -77,11 +81,9 @@ export function SocialLoginButtons({
 			) {
 				// When linking, Supabase answers with an error code (e.g. already linked);
 				// that is not a connection problem.
-				setError('Das Konto konnte nicht verknüpft werden. Bitte versuche es später erneut.');
+				setError(t('linkFailed'));
 			} else {
-				setError(
-					'Die Anmeldung ist gerade nicht erreichbar. Bitte prüfe deine Verbindung und versuche es erneut.',
-				);
+				setError(t('unreachable'));
 			}
 			// On success the browser is already navigating away: keep the spinner until it does.
 			setPendingProvider(null);
@@ -90,13 +92,7 @@ export function SocialLoginButtons({
 
 	return (
 		<FieldSet
-			aria-label={
-				variant === 'link'
-					? 'Google verknüpfen'
-					: variant === 'sign-up'
-						? 'Mit Google registrieren'
-						: 'Mit Google anmelden'
-			}
+			aria-label={t(VARIANT_LABEL[variant], { provider: 'Google' })}
 			aria-busy={pendingProvider !== null}
 			className="m-0 w-full gap-3 border-0 p-0"
 		>
@@ -108,18 +104,15 @@ export function SocialLoginButtons({
 
 			{pendingProvider && (
 				<output aria-live="polite" className="sr-only">
-					{`${variant === 'link' ? 'Verknüpfung mit' : 'Anmeldung bei'} ${pendingLabel} wird gestartet…`}
+					{t(variant === 'link' ? 'pendingLink' : 'pendingSignIn', {
+						provider: pendingLabel ?? '',
+					})}
 				</output>
 			)}
 
 			{providers.map(({ provider, name, Icon }) => {
 				const loading = pendingProvider === provider;
-				const label =
-					variant === 'link'
-						? `${name} verknüpfen`
-						: variant === 'sign-up'
-							? `Mit ${name} registrieren`
-							: `Mit ${name} anmelden`;
+				const label = t(VARIANT_LABEL[variant], { provider: name });
 				return (
 					<Button
 						key={provider}

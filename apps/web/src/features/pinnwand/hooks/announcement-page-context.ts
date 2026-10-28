@@ -8,6 +8,7 @@ import type {
 	AnnouncementComment,
 	ReactionKey,
 } from '@/features/pinnwand/components/announcement-types';
+import type { Message } from '@/shared/i18n/message';
 
 /** What the Pinnwand mutation hooks share: who acts, where results go, and the loaded board. */
 export interface AnnouncementPageContext {
@@ -19,8 +20,8 @@ export interface AnnouncementPageContext {
 	isPending: (id: string) => boolean;
 	start: (id: string) => void;
 	end: (id: string) => void;
-	setActionError: (message: string | null) => void;
-	setNotice: (message: string | null) => void;
+	setActionError: (message: Message | null) => void;
+	setNotice: (message: Message | null) => void;
 	itemsRef: MutableRefObject<Announcement[]>;
 	commitItems: (nextItems: Announcement[]) => void;
 	load: (mode?: 'replace' | 'background') => Promise<void>;

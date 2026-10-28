@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { WgRouteErrorBoundary } from '@/components/wg/WgRouteErrorBoundary';
 
 interface AusgabenErrorProps {
@@ -8,13 +9,14 @@ interface AusgabenErrorProps {
 }
 
 export default function AusgabenError({ error, reset }: AusgabenErrorProps) {
+	const t = useTranslations('expenses.page');
 	return (
 		<WgRouteErrorBoundary
 			error={error}
 			reset={reset}
 			boundary="wg-ausgaben"
-			title="Ausgaben konnten gerade nicht geladen werden"
-			body="In der Ausgaben-Übersicht ist ein Fehler aufgetreten. Bitte versuche es erneut oder kehre zur WG-Übersicht zurück."
+			title={t('errorTitle')}
+			body={t('errorBody')}
 		/>
 	);
 }

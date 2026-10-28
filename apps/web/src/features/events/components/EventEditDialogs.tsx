@@ -1,3 +1,4 @@
+import { useTranslations } from 'next-intl';
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -35,25 +36,23 @@ export function EventEditDialogs({
 	onConfirmingDiscardChange: (open: boolean) => void;
 	onDiscard: () => void;
 }) {
+	const t = useTranslations('events');
+	const kind = onlyThis ? 'occurrence' : recurring ? 'series' : 'single';
 	return (
 		<>
 			<AlertDialog open={confirmingDelete} onOpenChange={onConfirmingDeleteChange}>
 				<AlertDialogContent className="w-[calc(100%-2rem)]">
 					<AlertDialogHeader>
 						<AlertDialogTitle>
-							{onlyThis ? 'Diesen Termin löschen?' : 'Termin löschen?'}
+							{onlyThis ? t('deleteDialog.titleOccurrence') : t('deleteDialog.titleEvent')}
 						</AlertDialogTitle>
 						<AlertDialogDescription>
-							{onlyThis
-								? `Nur dieser Termin von „${title}“ wird gelöscht, die übrigen Termine der Serie bleiben.`
-								: recurring
-									? `„${title}“ wird unwiderruflich gelöscht, mit allen zukünftigen Terminen der Serie.`
-									: `„${title}“ wird unwiderruflich gelöscht.`}
+							{t('deleteDialog.description', { kind, title })}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
 						<AlertDialogCancel disabled={deleting} className="min-h-11">
-							Abbrechen
+							{t('actions.cancel')}
 						</AlertDialogCancel>
 						<AlertDialogAction
 							variant="destructive"
@@ -62,7 +61,7 @@ export function EventEditDialogs({
 							className="min-h-11"
 						>
 							{deleting && <Spinner data-icon="inline-start" aria-hidden />}
-							{deleting ? 'Löscht…' : 'Löschen'}
+							{deleting ? t('actions.deleting') : t('actions.delete')}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { CredentialsAuth } from '@/components/auth/CredentialsAuth';
 import { useGoogleSignIn } from '@/components/auth/google-sign-in';
@@ -11,16 +12,15 @@ import { LegalLinks } from '@/components/entry/LegalLinks';
 import { FieldGroup, FieldSeparator } from '@/components/ui/field';
 import { authPageHref } from '@/core/auth/auth-intent';
 
-function describeIntent(intent: URLSearchParams): string {
-	if (intent.get('next')?.startsWith('/einladung/'))
-		return 'Erstelle dein Konto, um der Einladung zu folgen.';
-	if (intent.get('action') === 'create')
-		return 'Erstelle dein Konto, danach legst du deine neue WG an.';
-	return 'Mit deinem Konto erstellst du eine WG oder trittst per Einladung bei.';
+function intentKey(intent: URLSearchParams): 'inviteIntent' | 'createIntent' | 'defaultIntent' {
+	if (intent.get('next')?.startsWith('/einladung/')) return 'inviteIntent';
+	if (intent.get('action') === 'create') return 'createIntent';
+	return 'defaultIntent';
 }
 
 /** Registration page: Google or e-mail/password, then back into the `/neu` start flow. */
 export function RegistrierenClient({ intentQuery }: { intentQuery: string }) {
+	const t = useTranslations('entry');
 	const router = useRouter();
 	const [credentialsBusy, setCredentialsBusy] = useState(false);
 	const googleSignIn = useGoogleSignIn();
@@ -29,9 +29,9 @@ export function RegistrierenClient({ intentQuery }: { intentQuery: string }) {
 
 	return (
 		<EntryFrame
-			title="Konto erstellen"
+			title={t('register.title')}
 			headingId="signup-heading"
-			description={describeIntent(intent)}
+			description={t(`register.${intentKey(intent)}`)}
 			backHref="/"
 		>
 			<FieldGroup>
@@ -46,7 +46,7 @@ export function RegistrierenClient({ intentQuery }: { intentQuery: string }) {
 							}}
 							disabled={credentialsBusy}
 						/>
-						<FieldSeparator>oder</FieldSeparator>
+						<FieldSeparator>{t('start.or')}</FieldSeparator>
 					</>
 				)}
 				<CredentialsAuth
@@ -57,12 +57,12 @@ export function RegistrierenClient({ intentQuery }: { intentQuery: string }) {
 				/>
 			</FieldGroup>
 			<p className="text-sm text-muted-foreground">
-				Du hast schon ein Konto?{' '}
+				{t('register.hasAccount')}{' '}
 				<Link
 					href={authPageHref('/neu', intentQuery)}
 					className="-my-3 inline-block py-3 font-medium text-foreground underline underline-offset-4"
 				>
-					Anmelden
+					{t('register.signIn')}
 				</Link>
 			</p>
 			<LegalLinks registration />

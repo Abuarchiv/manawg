@@ -1,3 +1,4 @@
+import { useTranslations } from 'next-intl';
 import { Item, ItemContent, ItemGroup, ItemMedia } from '@/components/ui/item';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -24,10 +25,11 @@ export function SuggestionsSkeleton() {
 
 // Mirrors ShoppingItemRow: a flat stacked list, not a bordered card.
 export function ListSkeleton({ withSuggestions = false }: { withSuggestions?: boolean }) {
+	const t = useTranslations('shopping.skeleton');
 	return (
 		<>
 			{withSuggestions && <SuggestionsSkeleton />}
-			<ItemGroup aria-busy="true" aria-label="Einkaufsliste wird geladen" className="gap-0">
+			<ItemGroup aria-busy="true" aria-label={t('loadingAria')} className="gap-0">
 				{SKELETON_KEYS.map((k) => (
 					<Item key={k} className="px-0 py-2.5">
 						<ItemMedia variant="icon" className="self-center">

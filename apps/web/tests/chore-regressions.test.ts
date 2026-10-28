@@ -13,12 +13,12 @@ describe('chores retry', () => {
 
 		assert.partialDeepStrictEqual(getChoreStatus('2026-09-06T00:10:00+02:00', now), {
 			state: 'planned',
-			label: 'morgen',
+			label: { key: 'chores.status.tomorrow' },
 		});
 		assert.partialDeepStrictEqual(getChoreStatus('2026-09-04T00:10:00+02:00', now), {
 			state: 'overdue',
 			overdueDays: 1,
-			label: 'seit 1 T. offen',
+			label: { key: 'chores.status.overdue', values: { days: 1 } },
 		});
 	});
 });

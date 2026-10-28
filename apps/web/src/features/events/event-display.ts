@@ -1,3 +1,6 @@
+import { dateTimeFormat } from '@/shared/i18n/intl';
+import type { Locale } from '@/shared/i18n/locale';
+import type { Message } from '@/shared/i18n/message';
 import {
 	DEFAULT_DURATION_MS,
 	durationMsFor,
@@ -23,19 +26,26 @@ export function expandAgendaRecurrence(event: EventInput, from: Date, to: Date):
 	});
 }
 
-const WEEKDAY_FORMATTER = new Intl.DateTimeFormat('de-DE', { weekday: 'short' });
-const ALL_DAY_WEEKDAY_FORMATTER = new Intl.DateTimeFormat('de-DE', {
-	weekday: 'short',
-	timeZone: 'UTC',
-});
-const DATE_FORMATTER = new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit' });
-const DATE_FULL_FORMATTER = new Intl.DateTimeFormat('de-DE', {
-	day: '2-digit',
-	month: '2-digit',
-	year: 'numeric',
-	timeZone: 'UTC',
-});
-const TIME_FORMATTER = new Intl.DateTimeFormat('de-DE', { hour: '2-digit', minute: '2-digit' });
+/** Weekday, date and time formatters of one locale; German keeps the numeric day and month. */
+function formatters(locale: Locale) {
+	const dateOptions: Intl.DateTimeFormatOptions =
+		locale === 'de' ? { day: '2-digit', month: '2-digit' } : { day: 'numeric', month: 'short' };
+	const fullDateOptions: Intl.DateTimeFormatOptions =
+		locale === 'de'
+			? { day: '2-digit', month: '2-digit', year: 'numeric' }
+			: { day: 'numeric', month: 'short', year: 'numeric' };
+	return {
+		weekday: dateTimeFormat(locale, { weekday: 'short' }),
+		allDayWeekday: dateTimeFormat(locale, { weekday: 'short', timeZone: 'UTC' }),
+		date: dateTimeFormat(locale, dateOptions),
+		dateFull: dateTimeFormat(locale, { ...fullDateOptions, timeZone: 'UTC' }),
+		time: dateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }),
+	};
+}
+
+function plain(text: string): Message {
+	return { key: 'events.time.plain', values: { text } };
+}
 
 export function isSameDay(a: Date, b: Date): boolean {
 	return (
@@ -45,26 +55,31 @@ export function isSameDay(a: Date, b: Date): boolean {
 	);
 }
 
-export function formatEventTimeRange(occurrence: EventOccurrence): string {
+export function formatEventTimeRange(occurrence: EventOccurrence, locale: Locale = 'de'): Message {
+	const f = formatters(locale);
 	const start = new Date(occurrence.startsAt);
 	if (occurrence.allDay) {
 		const display = eventDateForDisplay(occurrence.startsAt, true);
 		const date = new Date(Date.UTC(display.getFullYear(), display.getMonth(), display.getDate()));
-		return `${ALL_DAY_WEEKDAY_FORMATTER.format(date)} ${DATE_FULL_FORMATTER.format(date)} · ganztägig`;
+		return {
+			key: 'events.time.allDayDate',
+			values: { weekday: f.allDayWeekday.format(date), date: f.dateFull.format(date) },
+		};
 	}
 	const end = occurrence.endsAt ? new Date(occurrence.endsAt) : null;
-	const startLabel = `${WEEKDAY_FORMATTER.format(start)} ${DATE_FORMATTER.format(start)} ${TIME_FORMATTER.format(
-		start,
-	)}`;
-	if (!end) return startLabel;
+	const startLabel = `${f.weekday.format(start)} ${f.date.format(start)} ${f.time.format(start)}`;
+	if (!end) return plain(startLabel);
 	if (isSameDay(start, end)) {
-		return `${startLabel}–${TIME_FORMATTER.format(end)}`;
+		return plain(`${startLabel}–${f.time.format(end)}`);
 	}
-	return `${startLabel} – ${WEEKDAY_FORMATTER.format(end)} ${DATE_FORMATTER.format(end)} ${TIME_FORMATTER.format(end)}`;
+	return plain(
+		`${startLabel} – ${f.weekday.format(end)} ${f.date.format(end)} ${f.time.format(end)}`,
+	);
 }
 
 /** Time only, for lists that already show the day alongside. */
-export function formatEventTimeOfDay(occurrence: EventOccurrence): string {
+export function formatEventTimeOfDay(occurrence: EventOccurrence, locale: Locale = 'de'): Message {
+	const f = formatters(locale);
 	if (occurrence.allDay) {
 		// A multi-day all-day span would otherwise show only its first day.
 		const first = eventDateForDisplay(occurrence.startsAt, true);
@@ -72,15 +87,20 @@ export function formatEventTimeOfDay(occurrence: EventOccurrence): string {
 		first.setHours(0, 0, 0, 0);
 		last.setHours(0, 0, 0, 0);
 		return last.getTime() > first.getTime()
-			? `ganztägig · bis ${WEEKDAY_FORMATTER.format(last)} ${DATE_FORMATTER.format(last)}`
-			: 'ganztägig';
+			? {
+					key: 'events.time.allDayUntil',
+					values: { weekday: f.weekday.format(last), date: f.date.format(last) },
+				}
+			: { key: 'events.time.allDay' };
 	}
 	const start = new Date(occurrence.startsAt);
 	const end = occurrence.endsAt ? new Date(occurrence.endsAt) : null;
-	const startLabel = TIME_FORMATTER.format(start);
-	if (!end) return startLabel;
-	if (isSameDay(start, end)) return `${startLabel}–${TIME_FORMATTER.format(end)}`;
-	return `${startLabel} – ${WEEKDAY_FORMATTER.format(end)} ${DATE_FORMATTER.format(end)} ${TIME_FORMATTER.format(end)}`;
+	const startLabel = f.time.format(start);
+	if (!end) return plain(startLabel);
+	if (isSameDay(start, end)) return plain(`${startLabel}–${f.time.format(end)}`);
+	return plain(
+		`${startLabel} – ${f.weekday.format(end)} ${f.date.format(end)} ${f.time.format(end)}`,
+	);
 }
 
 /**

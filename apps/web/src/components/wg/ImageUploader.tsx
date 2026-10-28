@@ -1,6 +1,7 @@
 'use client';
 
 import { AlertTriangle, ImagePlus, Maximize2, X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { PRIVATE_IMAGE_MIME_TYPES } from '@/core/infra/private-image-policy';
 import { isPendingImageToken } from '@/core/offline/offline-images';
+import { type Message, useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
 import { ImagePreviewDialog } from './ImagePreviewDialog';
 import { MAX_UPLOAD_MB, useImageUpload } from './use-image-upload';
@@ -23,17 +25,18 @@ interface Props {
 	onUploadingChange?: (uploading: boolean) => void;
 }
 
-function UploadFeedback({ error, notice }: { error: string | null; notice: string | null }) {
+function UploadFeedback({ error, notice }: { error: Message | null; notice: Message | null }) {
+	const message = useMessage();
 	return (
 		<>
 			{error && (
 				<Alert variant="destructive" className="mt-2">
-					<AlertDescription className="text-current">{error}</AlertDescription>
+					<AlertDescription className="text-current">{message(error)}</AlertDescription>
 				</Alert>
 			)}
 			{notice && (
 				<output className="mt-2 block text-meta text-muted-foreground" aria-live="polite">
-					{notice}
+					{message(notice)}
 				</output>
 			)}
 		</>
@@ -49,6 +52,7 @@ export function ImageUploader({
 	imageLabel,
 	onUploadingChange,
 }: Props) {
+	const t = useTranslations('shell.upload');
 	const { uploading, error, notice, featureDisabled, localPreview, handleFile, remove } =
 		useImageUpload({ shareCode, purpose, value, onChange, disabled });
 	const onUploadingChangeRef = useRef(onUploadingChange);
@@ -59,7 +63,8 @@ export function ImageUploader({
 	// A closed form must not stay blocked by an upload it does not show.
 	useEffect(() => () => onUploadingChangeRef.current?.(false), []);
 	const [previewOpen, setPreviewOpen] = useState(false);
-	const accessibleImageLabel = imageLabel ?? (purpose === 'expense' ? 'Belegbild' : 'Beitragsbild');
+	const accessibleImageLabel =
+		imageLabel ?? (purpose === 'expense' ? t('receiptImage') : t('postImage'));
 
 	if (value) {
 		const pending = isPendingImageToken(value);
@@ -73,15 +78,15 @@ export function ImageUploader({
 							src={previewSrc}
 							alt={
 								pending
-									? `${accessibleImageLabel} vorbereitet`
-									: `${accessibleImageLabel} hochgeladen`
+									? t('altPrepared', { label: accessibleImageLabel })
+									: t('altUploaded', { label: accessibleImageLabel })
 							}
 							className="h-full w-full object-cover"
 							loading="lazy"
 						/>
 					) : (
 						<div className="flex h-full items-center justify-center text-meta text-muted-foreground">
-							Bild wird vorbereitet…
+							{t('preparing')}
 						</div>
 					)}
 					{pending && (
@@ -89,7 +94,7 @@ export function ImageUploader({
 							variant="secondary"
 							className="absolute left-2 top-2 bg-background/90 text-foreground"
 						>
-							Offline bereit
+							{t('offlineReady')}
 						</Badge>
 					)}
 					<div className="absolute right-2 top-2 flex gap-1.5">
@@ -98,7 +103,7 @@ export function ImageUploader({
 							size="icon-lg"
 							type="button"
 							onClick={() => setPreviewOpen(true)}
-							aria-label={`${accessibleImageLabel} groß anzeigen`}
+							aria-label={t('enlarge', { label: accessibleImageLabel })}
 							disabled={!previewSrc}
 						>
 							<Maximize2 aria-hidden />
@@ -108,7 +113,7 @@ export function ImageUploader({
 							size="icon-lg"
 							type="button"
 							onClick={remove}
-							aria-label={`${accessibleImageLabel} entfernen`}
+							aria-label={t('removeImage', { label: accessibleImageLabel })}
 							disabled={disabled || uploading}
 						>
 							<X aria-hidden />
@@ -131,7 +136,7 @@ export function ImageUploader({
 		return (
 			<Alert>
 				<AlertTriangle aria-hidden />
-				<AlertDescription>Bild-Upload ist noch nicht konfiguriert.</AlertDescription>
+				<AlertDescription>{t('notConfigured')}</AlertDescription>
 			</Alert>
 		);
 	}
@@ -149,15 +154,15 @@ export function ImageUploader({
 				) : (
 					<ImagePlus className="size-6" aria-hidden="true" />
 				)}
-				<span aria-live="polite">{uploading ? 'Lädt hoch…' : 'Bild hinzufügen'}</span>
+				<span aria-live="polite">{uploading ? t('uploading') : t('addImage')}</span>
 				<span className="text-center text-xs text-muted-foreground">
-					JPG, PNG, WebP, HEIC · max. {MAX_UPLOAD_MB} MB
+					{t('formats', { max: String(MAX_UPLOAD_MB) })}
 				</span>
 				<input
 					type="file"
 					accept={PRIVATE_IMAGE_MIME_TYPES.join(',')}
 					className="sr-only"
-					aria-label="Bild auswählen"
+					aria-label={t('chooseLabel')}
 					disabled={disabled || uploading}
 					onChange={(e) => {
 						const file = e.target.files?.[0];

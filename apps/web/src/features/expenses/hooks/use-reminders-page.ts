@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useWg } from '@/components/wg/WgContextProvider';
-import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
+import { wgLoadError } from '@/core/guards/load-errors';
 import { useCachedFetch } from '@/core/hooks/use-cached-fetch';
 import { useSyncedCollection } from '@/core/sync/use-synced-collection';
 import { LIST_REFRESH_INTERVAL_MS } from '@/core/utils/use-visibility-paused-interval';
@@ -12,6 +12,7 @@ import {
 import type { ExpensePaymentInput } from '@/features/expenses/expense-payment-input';
 import type { ReminderHistoryItem } from '@/features/expenses/expense-types';
 import { canSendReminder } from '@/features/expenses/reminders';
+import { type Message, useMessage } from '@/shared/i18n/message';
 
 interface ExpenseSplitDto {
 	id: string;
@@ -28,6 +29,7 @@ interface ExpenseDto {
 	splits: ExpenseSplitDto[];
 }
 
+const EXPENSES_LEAD: Message = { key: 'common.loadError.lead.expenses' };
 const NO_EXPENSES: ExpenseDto[] = [];
 const NO_PAYMENTS: ExpensePaymentInput[] = [];
 
@@ -47,11 +49,12 @@ export function reminderKey(
 }
 
 /**
- * Erinnerungen page: open debts derived from the expense list, the reminder history,
+ * Reminders page: open debts derived from the expense list, the reminder history,
  * who may be reminded, and which reminder is offered as the primary action.
  */
 export function useRemindersPage() {
 	const { wg, members, identity, isAdmin } = useWg();
+	const t = useMessage();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const {
 		data: cachedExpenses,
@@ -71,7 +74,7 @@ export function useRemindersPage() {
 		assemble: (items, current) => ({ ...current, reminders: items }),
 		getId: (reminder) => reminder.id,
 		describeError: (error) =>
-			getWgLoadErrorMessage('Erinnerungen', error.status, error.error, { verb: 'konnten' }),
+			t(wgLoadError({ key: 'expenses-debts.page.loadError.reminders' }, error.status, error.error)),
 		pollIntervalMs: LIST_REFRESH_INTERVAL_MS,
 		reload: (reason) => void loadAllRef.current(reason !== 'mount'),
 	});
@@ -81,7 +84,7 @@ export function useRemindersPage() {
 
 	const [expensesSettled, setExpensesSettled] = useState(cachedExpenses !== undefined);
 	const [expensesRefreshing, setExpensesRefreshing] = useState(false);
-	const [expensesError, setExpensesError] = useState<string | null>(null);
+	const [expensesError, setExpensesError] = useState<Message | null>(null);
 	const hasExpensesRef = useRef(cachedExpenses !== undefined);
 	// The skeleton shows only when the page opened without any cached list, until both reads settled.
 	const [openedWithoutCache] = useState(cachedExpenses === undefined && history.data === undefined);
@@ -107,11 +110,7 @@ export function useRemindersPage() {
 				loadHistory({ silent: !initial }),
 			]);
 			setExpensesError(
-				expensesRes.ok
-					? null
-					: getWgLoadErrorMessage('Ausgaben', expensesRes.status, expensesRes.error, {
-							verb: 'konnten',
-						}),
+				expensesRes.ok ? null : wgLoadError(EXPENSES_LEAD, expensesRes.status, expensesRes.error),
 			);
 			setExpensesSettled(true);
 			setExpensesRefreshing(false);
@@ -128,9 +127,7 @@ export function useRemindersPage() {
 		}
 		if (expensesReadError) {
 			setExpensesError(
-				getWgLoadErrorMessage('Ausgaben', expensesReadError.status, expensesReadError.error, {
-					verb: 'konnten',
-				}),
+				wgLoadError(EXPENSES_LEAD, expensesReadError.status, expensesReadError.error),
 			);
 		}
 	}, [cachedExpenses, expensesReadError]);

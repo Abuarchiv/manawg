@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useEffect, useRef, useState } from 'react';
 import { ErrorBox } from '@/components/app/ErrorBox';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -13,6 +14,7 @@ import {
 	isWeakPasswordError,
 	WEAK_PASSWORD_MESSAGE,
 } from '@/core/auth/password-errors';
+import { type Message, useMessage } from '@/shared/i18n/message';
 import { MEMBER_NAME_MAX_LENGTH } from '@/shared/lib/limits';
 import {
 	type AuthFormProps,
@@ -153,6 +155,7 @@ function InboxNotice({
 	busy: BusyAction;
 }) {
 	const { sentTo, cooldown, resendNotice, error, failure, resend, pickOtherAddress } = auth;
+	const t = useTranslations('auth');
 	const titleRef = useRef<HTMLDivElement>(null);
 	// The form was replaced by this notice, so keyboard and screen reader users land on it.
 	useEffect(() => {
@@ -162,16 +165,14 @@ function InboxNotice({
 		<div className="flex flex-col gap-4">
 			<Alert>
 				<AlertTitle ref={titleRef} tabIndex={-1} className="focus:outline-none">
-					Prüfe dein Postfach
+					{t('signUp.inboxTitle')}
 				</AlertTitle>
 				<AlertDescription className="[overflow-wrap:anywhere]">
-					Wir haben einen Bestätigungslink an {sentTo} geschickt, sofern für diese Adresse noch kein
-					Konto besteht. Öffne den Link, danach geht es hier weiter. Schau auch im Spam-Ordner nach.
-					Hast du schon ein Konto, melde dich stattdessen an.
+					{t('signUp.inboxBody', { email: sentTo ?? '' })}
 				</AlertDescription>
 			</Alert>
 			{resendNotice && (
-				<output className="text-sm text-muted-foreground">Die E-Mail wurde erneut gesendet.</output>
+				<output className="text-sm text-muted-foreground">{t('signUp.resent')}</output>
 			)}
 			{error === 'generic' && <GenericAuthError failure={failure} fallback={SIGN_UP_FAILED} />}
 			<div className="flex flex-col gap-2">
@@ -182,26 +183,25 @@ function InboxNotice({
 					disabled={busy !== null || cooldown > 0}
 				>
 					{busy === 'email-resend' && <Spinner data-icon="inline-start" aria-hidden />}
-					{cooldown > 0 ? `Erneut senden in ${cooldown} s` : 'E-Mail erneut senden'}
+					{cooldown > 0 ? t('resendIn', { seconds: cooldown }) : t('signUp.resend')}
 				</Button>
 				<Button type="button" variant="ghost" onClick={pickOtherAddress} disabled={busy !== null}>
-					Andere E-Mail-Adresse verwenden
+					{t('otherEmail')}
 				</Button>
 			</div>
 		</div>
 	);
 }
 
-const SIGN_UP_FAILED =
-	'Die Registrierung konnte gerade nicht abgeschlossen werden. Bitte versuche es erneut.';
+const SIGN_UP_FAILED: Message = { key: 'auth.failure.signUp' };
 
-const ERROR_MESSAGES = {
-	name: 'Bitte gib deinen Namen ein.',
-	invalid: 'Bitte gib eine gültige E-Mail-Adresse ein.',
-	'too-short': `Dein Passwort braucht mindestens ${NEW_PASSWORD_MIN_LENGTH} Zeichen.`,
-	mismatch: 'Die Passwörter stimmen nicht überein.',
+const ERROR_MESSAGES: Record<Exclude<SignUpError, 'generic' | null>, Message> = {
+	name: { key: 'auth.signUp.name' },
+	invalid: { key: 'auth.validEmail' },
+	'too-short': { key: 'auth.signUp.tooShort', values: { min: NEW_PASSWORD_MIN_LENGTH } },
+	mismatch: { key: 'auth.mismatch' },
 	'weak-password': WEAK_PASSWORD_MESSAGE,
-} as const;
+};
 
 export function EmailSignUpForm({
 	auth,
@@ -210,6 +210,8 @@ export function EmailSignUpForm({
 	auth: ReturnType<typeof useEmailSignUp>;
 	busy: BusyAction;
 }) {
+	const t = useTranslations('auth');
+	const message = useMessage();
 	const {
 		name,
 		setName,
@@ -242,7 +244,7 @@ export function EmailSignUpForm({
 		>
 			<FieldGroup>
 				<Field data-invalid={nameInvalid}>
-					<FieldLabel htmlFor="signup-name">Dein Name</FieldLabel>
+					<FieldLabel htmlFor="signup-name">{t('fields.name')}</FieldLabel>
 					<Input
 						id="signup-name"
 						name="name"
@@ -260,7 +262,7 @@ export function EmailSignUpForm({
 					/>
 				</Field>
 				<Field data-invalid={emailInvalid}>
-					<FieldLabel htmlFor="signup-email">E-Mail-Adresse</FieldLabel>
+					<FieldLabel htmlFor="signup-email">{t('fields.email')}</FieldLabel>
 					<Input
 						id="signup-email"
 						name="email"
@@ -278,7 +280,7 @@ export function EmailSignUpForm({
 					/>
 				</Field>
 				<Field data-invalid={passwordInvalid}>
-					<FieldLabel htmlFor="signup-password">Passwort</FieldLabel>
+					<FieldLabel htmlFor="signup-password">{t('fields.password')}</FieldLabel>
 					<Input
 						id="signup-password"
 						name="new-password"
@@ -295,11 +297,13 @@ export function EmailSignUpForm({
 						className="text-base"
 					/>
 					<FieldDescription id="signup-password-hint" className="text-xs">
-						Mindestens {NEW_PASSWORD_MIN_LENGTH} Zeichen.
+						{t('signUp.hint', { min: NEW_PASSWORD_MIN_LENGTH })}
 					</FieldDescription>
 				</Field>
 				<Field data-invalid={confirmationInvalid}>
-					<FieldLabel htmlFor="signup-password-confirmation">Passwort wiederholen</FieldLabel>
+					<FieldLabel htmlFor="signup-password-confirmation">
+						{t('fields.passwordRepeat')}
+					</FieldLabel>
 					<Input
 						id="signup-password-confirmation"
 						name="new-password-confirmation"
@@ -322,12 +326,12 @@ export function EmailSignUpForm({
 				)}
 				{error && error !== 'generic' && (
 					<div id="signup-error">
-						<ErrorBox>{ERROR_MESSAGES[error]}</ErrorBox>
+						<ErrorBox>{message(ERROR_MESSAGES[error])}</ErrorBox>
 					</div>
 				)}
 				<Button type="submit" variant="default" disabled={busy !== null}>
 					{busy === 'email-sign-up' && <Spinner data-icon="inline-start" aria-hidden />}
-					Konto erstellen
+					{t('signUp.submit')}
 				</Button>
 			</FieldGroup>
 		</form>

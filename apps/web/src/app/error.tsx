@@ -2,6 +2,7 @@
 
 import { TriangleAlert } from 'lucide-react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { useEffect, useRef } from 'react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
@@ -22,6 +23,7 @@ export default function ErrorBoundary({
 	error: Error & { digest?: string };
 	reset: () => void;
 }) {
+	const t = useTranslations('shell.errorPage');
 	const mainRef = useRef<HTMLElement>(null);
 
 	useEffect(() => {
@@ -50,9 +52,9 @@ export default function ErrorBoundary({
 						data-slot="empty-title"
 						className="min-w-0 max-w-full text-base font-semibold [overflow-wrap:anywhere]"
 					>
-						Etwas ist schiefgelaufen
+						{t('somethingWrong')}
 					</h1>
-					<EmptyDescription>Bitte versuche es erneut.</EmptyDescription>
+					<EmptyDescription>{t('tryAgainBody')}</EmptyDescription>
 				</EmptyHeader>
 				<EmptyContent>
 					{process.env.NODE_ENV === 'development' && (
@@ -61,7 +63,7 @@ export default function ErrorBoundary({
 							// biome-ignore lint/a11y/noNoninteractiveTabindex: Scrollable error details must be focusable so keyboard users can scroll them.
 							tabIndex={0}
 							role="region"
-							aria-label="Fehlerdetails"
+							aria-label={t('details')}
 							className="max-w-full overflow-auto rounded-lg border border-border bg-muted px-3 py-2 text-left text-xs text-foreground/75"
 						>
 							{error.message}
@@ -72,13 +74,13 @@ export default function ErrorBoundary({
 						size="lg"
 						onClick={() => (isChunkLoadError(error) ? window.location.reload() : reset())}
 					>
-						Erneut versuchen
+						{t('tryAgain')}
 					</Button>
 					<Button variant="outline" size="lg" render={<Link href="/" />} nativeButton={false}>
-						Zur Startseite
+						{t('toHome')}
 					</Button>
 					<a href={SUPPORT_MAILTO} className={buttonVariants({ variant: 'outline', size: 'lg' })}>
-						Fehler per E-Mail melden
+						{t('report')}
 					</a>
 				</EmptyContent>
 			</Empty>

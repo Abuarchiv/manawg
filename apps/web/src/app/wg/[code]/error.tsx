@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { WgRouteErrorBoundary } from '@/components/wg/WgRouteErrorBoundary';
 
 interface WgErrorProps {
@@ -9,15 +10,16 @@ interface WgErrorProps {
 
 /** Boundary for failures of the WG layout itself, so the way out leads to the site root. */
 export default function WgError({ error, reset }: WgErrorProps) {
+	const t = useTranslations('shell.errorPage');
 	return (
 		<WgRouteErrorBoundary
 			error={error}
 			reset={reset}
 			boundary="wg-code"
-			title="Etwas ist schiefgelaufen"
-			body="Ein Fehler ist aufgetreten. Bitte versuche es erneut oder gehe zur Startseite."
+			title={t('somethingWrong')}
+			body={t('wgBody')}
 			homeHref="/"
-			homeLabel="Zur Startseite"
+			homeLabel={t('toHome')}
 		/>
 	);
 }

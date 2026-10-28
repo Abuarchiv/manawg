@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
 import { Switch } from '@/components/animate-ui/components/base/switch';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
@@ -53,16 +54,17 @@ export function EventFormFields({
 	errorField = null,
 	errorId,
 }: EventFormFieldsProps) {
+	const t = useTranslations('events.form');
 	return (
 		<FieldGroup className="gap-3">
 			<Field data-disabled={disabled}>
-				<FieldLabel htmlFor={`${idPrefix}-title`}>Titel</FieldLabel>
+				<FieldLabel htmlFor={`${idPrefix}-title`}>{t('title')}</FieldLabel>
 				<Input
 					id={`${idPrefix}-title`}
 					value={title}
 					onChange={(event) => onTitleChange(event.target.value)}
 					maxLength={EVENT_TITLE_MAX}
-					placeholder="z. B. WG-Meeting"
+					placeholder={t('titlePlaceholder')}
 					required
 					disabled={disabled}
 					enterKeyHint="next"
@@ -76,7 +78,7 @@ export function EventFormFields({
 				data-disabled={disabled}
 				className="min-h-11 items-center justify-between"
 			>
-				<FieldLabel htmlFor={`${idPrefix}-all-day`}>Ganztägig</FieldLabel>
+				<FieldLabel htmlFor={`${idPrefix}-all-day`}>{t('allDay')}</FieldLabel>
 				<Switch
 					id={`${idPrefix}-all-day`}
 					checked={allDay}
@@ -92,7 +94,7 @@ export function EventFormFields({
 				/>
 			</Field>
 			<Field data-disabled={disabled} className="min-w-0">
-				<FieldLabel htmlFor={`${idPrefix}-start`}>Beginn</FieldLabel>
+				<FieldLabel htmlFor={`${idPrefix}-start`}>{t('starts')}</FieldLabel>
 				<Input
 					id={`${idPrefix}-start`}
 					type={allDay ? 'date' : 'datetime-local'}
@@ -110,7 +112,7 @@ export function EventFormFields({
 				/>
 			</Field>
 			<Field data-disabled={disabled} className="min-w-0">
-				<FieldLabel htmlFor={`${idPrefix}-end`}>Ende (optional)</FieldLabel>
+				<FieldLabel htmlFor={`${idPrefix}-end`}>{t('ends')}</FieldLabel>
 				<Input
 					id={`${idPrefix}-end`}
 					type={allDay ? 'date' : 'datetime-local'}
@@ -129,13 +131,13 @@ export function EventFormFields({
 				/>
 			</Field>
 			<Field data-disabled={disabled}>
-				<FieldLabel htmlFor={`${idPrefix}-location`}>Ort (optional)</FieldLabel>
+				<FieldLabel htmlFor={`${idPrefix}-location`}>{t('location')}</FieldLabel>
 				<Input
 					id={`${idPrefix}-location`}
 					value={location}
 					onChange={(event) => onLocationChange(event.target.value)}
 					maxLength={EVENT_LOCATION_MAX}
-					placeholder="z. B. Küche"
+					placeholder={t('locationPlaceholder')}
 					disabled={disabled}
 					enterKeyHint="next"
 					className="text-base"
@@ -143,7 +145,7 @@ export function EventFormFields({
 			</Field>
 			{recurrenceField}
 			<Field data-disabled={disabled}>
-				<FieldLabel htmlFor={`${idPrefix}-description`}>Notiz (optional)</FieldLabel>
+				<FieldLabel htmlFor={`${idPrefix}-description`}>{t('note')}</FieldLabel>
 				<Textarea
 					id={`${idPrefix}-description`}
 					value={description}

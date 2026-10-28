@@ -2,6 +2,7 @@
 
 import { Check, ChevronDown } from 'lucide-react';
 import { useReducedMotion } from 'motion/react';
+import { useTranslations } from 'next-intl';
 import { useEffect, useRef, useState } from 'react';
 import {
 	Collapsible,
@@ -25,6 +26,7 @@ interface ForYouSectionProps {
 }
 
 export function ForYouSection({ items, loaded, failed, completion }: ForYouSectionProps) {
+	const t = useTranslations('home.forYou');
 	const [moreOpen, setMoreOpen] = useState(false);
 	const reducedMotion = useReducedMotion();
 	const visible = items.slice(0, TODAY_VISIBLE);
@@ -70,7 +72,7 @@ export function ForYouSection({ items, loaded, failed, completion }: ForYouSecti
 				tabIndex={-1}
 				className="font-heading text-xl font-semibold outline-none"
 			>
-				Für dich
+				{t('heading')}
 			</h2>
 			{loaded ? (
 				items.length > 0 ? (
@@ -88,7 +90,9 @@ export function ForYouSection({ items, loaded, failed, completion }: ForYouSecti
 										/>
 									}
 								>
-									<span>{moreOpen ? 'Weniger anzeigen' : `Weitere anzeigen (${more.length})`}</span>
+									<span>
+										{moreOpen ? t('showLess') : t('showMore', { count: String(more.length) })}
+									</span>
 									<ChevronDown data-icon="inline-end" aria-hidden />
 								</CollapsibleTrigger>
 								<CollapsiblePanel {...(reducedMotion ? { transition: { duration: 0 } } : {})}>
@@ -102,15 +106,13 @@ export function ForYouSection({ items, loaded, failed, completion }: ForYouSecti
 				) : (
 					<p className="flex items-center gap-2 rounded-xl border p-3 text-sm text-muted-foreground">
 						<Check className="size-4 shrink-0" aria-hidden />
-						Alles erledigt. Gerade gibt es nichts für dich zu tun.
+						{t('allDone')}
 					</p>
 				)
 			) : failed ? (
-				<p className="text-sm text-muted-foreground">
-					Deine persönlichen Aufgaben konnten nicht geladen werden.
-				</p>
+				<p className="text-sm text-muted-foreground">{t('failed')}</p>
 			) : (
-				<output aria-label="Für dich wird geladen" className="flex flex-col gap-2">
+				<output aria-label={t('loading')} className="flex flex-col gap-2">
 					<Skeleton className="h-14 w-full bg-foreground/[0.07]" />
 					<Skeleton className="h-14 w-full bg-foreground/[0.07]" />
 				</output>

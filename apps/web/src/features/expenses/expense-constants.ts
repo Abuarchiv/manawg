@@ -1,4 +1,5 @@
 import { CENTS_PER_EURO } from '@/core/utils/money';
+import type { Message } from '@/shared/i18n/message';
 
 /**
  * Money bounds for expense amounts, in cents.
@@ -21,19 +22,40 @@ export const AMOUNT_MIN_EUROS = AMOUNT_MIN_CENTS / CENTS_PER_EURO;
 export const AMOUNT_MAX_EUROS = AMOUNT_MAX_CENTS / CENTS_PER_EURO;
 
 // Above the maximum, "over 0 €" would be misleading: the amount is too large, not too small.
-export function amountErrorMessage(euros: number | null, raw = ''): string {
+export function amountError(euros: number | null, raw = ''): Message {
 	if (euros === null && /[.,]\d{3,}\s*(€|EUR)?$/i.test(raw.trim())) {
-		return 'Maximal zwei Nachkommastellen.';
+		return { key: 'expenses-form.validation.amountDecimals' };
 	}
-	return euros !== null && euros > AMOUNT_MAX_EUROS
-		? 'Der Betrag darf höchstens 1.000.000 € betragen.'
-		: 'Gib einen Betrag über 0 € ein, z. B. 12,50.';
+	return {
+		key:
+			euros !== null && euros > AMOUNT_MAX_EUROS
+				? 'expenses-form.validation.amountTooLarge'
+				: 'expenses-form.validation.amountInvalid',
+	};
 }
 
+/** Picker values in order; the labels come from `recurringIntervalOption`. */
 export const RECURRING_INTERVAL_OPTIONS = [
-	{ value: 1, label: '1 Monat' },
-	{ value: 2, label: '2 Monate' },
-	{ value: 3, label: 'Quartal' },
-	{ value: 6, label: '6 Monate' },
-	{ value: 12, label: 'Jahr' },
+	{ value: 1 },
+	{ value: 2 },
+	{ value: 3 },
+	{ value: 6 },
+	{ value: 12 },
 ] as const;
+
+/** How often a template books ("monatlich", "alle 4 Monate"), as data. */
+export function recurringIntervalLabel(intervalMonths: number): Message {
+	const months = Math.max(1, Math.floor(intervalMonths));
+	if (months === 1) return { key: 'expenses-form.intervals.monthly' };
+	if (months === 3) return { key: 'expenses-form.intervals.quarterly' };
+	if (months === 6) return { key: 'expenses-form.intervals.halfYearly' };
+	if (months === 12) return { key: 'expenses-form.intervals.yearly' };
+	return { key: 'expenses-form.intervals.everyMonths', values: { count: months } };
+}
+
+/** Picker text of one interval option, as data. */
+export function recurringIntervalOption(intervalMonths: number): Message {
+	if (intervalMonths === 3) return { key: 'expenses-form.intervals.optionQuarter' };
+	if (intervalMonths === 12) return { key: 'expenses-form.intervals.optionYear' };
+	return { key: 'expenses-form.intervals.optionMonths', values: { count: intervalMonths } };
+}

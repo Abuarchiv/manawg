@@ -1,6 +1,7 @@
 'use client';
 import { Plus } from 'lucide-react';
 import dynamic from 'next/dynamic';
+import { useTranslations } from 'next-intl';
 import { useEffect } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -20,12 +21,15 @@ import { ListSkeleton } from '@/features/chores/components/ListSkeleton';
 import { PutzenHeader } from '@/features/chores/components/PutzenHeader';
 import { usePutzenPage } from '@/features/chores/hooks/use-putzen-page';
 import { pendingKeys } from '@/features/chores/pending-keys';
+import { useMessage } from '@/shared/i18n/message';
 
 const ConfirmDialog = dynamic(() =>
 	import('@/components/ui/ConfirmDialog').then((module) => module.ConfirmDialog),
 );
 
 export default function PutzenPage() {
+	const t = useTranslations('chores.page');
+	const render = useMessage();
 	const { wg, members, identity, isAdmin } = useWg();
 	const {
 		absenceAddPending,
@@ -136,7 +140,7 @@ export default function PutzenPage() {
 				{pendingSuggestion && (
 					<Alert>
 						<AlertDescription>
-							<p>Dein vorhandener Entwurf bleibt erhalten.</p>
+							<p>{t('draftKept')}</p>
 							<Button
 								type="button"
 								variant="outline"
@@ -144,7 +148,7 @@ export default function PutzenPage() {
 								disabled={choreAddPending}
 								className="h-auto whitespace-normal text-foreground"
 							>
-								Entwurf verwerfen und „{pendingSuggestion.title}“ übernehmen
+								{t('discardDraftAndTake', { title: pendingSuggestion.title })}
 							</Button>
 						</AlertDescription>
 					</Alert>
@@ -156,10 +160,10 @@ export default function PutzenPage() {
 						onConfirm={() => {
 							if (pendingSuggestion) applyChoreSuggestion(pendingSuggestion);
 						}}
-						title="Entwurf verwerfen?"
-						description="Der bisherige Aufgabenentwurf wird durch den Vorschlag ersetzt. Bereits gespeicherte Aufgaben bleiben erhalten."
-						confirmLabel="Entwurf verwerfen"
-						cancelLabel="Entwurf behalten"
+						title={t('discardTitle')}
+						description={t('discardBody')}
+						confirmLabel={t('discardConfirm')}
+						cancelLabel={t('discardKeep')}
 					/>
 				)}
 			</ChoreForm>
@@ -179,7 +183,7 @@ export default function PutzenPage() {
 					message={loadError}
 					onRetry={() => void load(true)}
 					busy={initialLoading || refreshing}
-					retryLabel="Putzplan erneut laden"
+					retryLabel={t('reload')}
 				/>
 			)}
 
@@ -194,9 +198,9 @@ export default function PutzenPage() {
 				<div id="chore-list" className="flex flex-col gap-4">
 					{overdueFilter.active && (
 						<div className="flex flex-wrap items-center justify-between gap-2">
-							<p className="text-xs text-muted-foreground">Nur überfällige Aufgaben</p>
+							<p className="text-xs text-muted-foreground">{t('overdueOnly')}</p>
 							<Button variant="outline" size="sm" onClick={overdueFilter.showAll}>
-								Alle anzeigen
+								{t('showAll')}
 							</Button>
 						</div>
 					)}
@@ -210,10 +214,10 @@ export default function PutzenPage() {
 								id={`chore-group-${group.key}`}
 								className="text-meta font-medium text-muted-foreground"
 							>
-								{group.label}
+								{render(group.label)}
 							</h2>
 							<ItemGroup
-								aria-label={group.label}
+								aria-label={render(group.label)}
 								className="gap-0 divide-y overflow-hidden rounded-xl border"
 							>
 								{group.chores.map((chore) => (
@@ -287,7 +291,7 @@ export default function PutzenPage() {
 			<ThumbAction>
 				<Button type="button" className="min-h-11 w-full" onClick={() => setShowForm(true)}>
 					<Plus data-icon="inline-start" aria-hidden />
-					Putzaufgabe hinzufügen
+					{t('add')}
 				</Button>
 			</ThumbAction>
 		</div>

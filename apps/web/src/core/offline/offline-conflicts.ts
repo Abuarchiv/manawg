@@ -1,4 +1,7 @@
 import { parseTimestamp } from '@/core/utils/time';
+import { dateTimeFormat } from '@/shared/i18n/intl';
+import type { Locale } from '@/shared/i18n/locale';
+import type { Message } from '@/shared/i18n/message';
 
 type RecurringTemplateConflict = {
 	description: string;
@@ -10,31 +13,39 @@ type RecurringAdvanceConflict = {
 	nextDueAt: string;
 };
 
-function formatDueDate(value: string): string {
+const DUE_DATE_FORMAT: Record<Locale, Intl.DateTimeFormatOptions> = {
+	de: { day: 'numeric', month: 'numeric', year: 'numeric' },
+	en: { day: 'numeric', month: 'long', year: 'numeric' },
+};
+
+function formatDueDate(value: string, locale: Locale): string | Message {
 	const timestamp = parseTimestamp(value);
 	return timestamp === null
-		? 'Datum unbekannt'
-		: new Intl.DateTimeFormat('de-DE', {
-				day: 'numeric',
-				month: 'numeric',
-				year: 'numeric',
-			}).format(new Date(timestamp));
+		? { key: 'offline.conflict.unknownDate' }
+		: dateTimeFormat(locale, DUE_DATE_FORMAT[locale]).format(new Date(timestamp));
 }
 
-export function formatRecurringTemplateConflictNote(template: RecurringTemplateConflict): string {
-	const dueLabel = formatDueDate(template.nextDueAt);
-	const dueSentence = dueLabel.endsWith('.') ? dueLabel : `${dueLabel}.`;
-	return `Gleiche Fixkosten-Vorlage existiert schon. Nächste Fälligkeit dort: ${dueSentence} Prüfe vor dem Senden, ob es ein Duplikat wäre.`;
+export function recurringTemplateConflictNote(
+	template: RecurringTemplateConflict,
+	locale: Locale,
+): Message {
+	return {
+		key: 'offline.conflict.templateExists',
+		values: { date: formatDueDate(template.nextDueAt, locale) },
+	};
 }
 
-export function formatRecurringAdvanceConflictNote(
+export function recurringAdvanceConflictNote(
 	template: RecurringAdvanceConflict,
 	expectedNextDueAt: string,
-): string {
-	const serverDue = formatDueDate(template.nextDueAt);
-	const expectedDue = formatDueDate(expectedNextDueAt);
+	locale: Locale,
+): Message {
+	const expected = formatDueDate(expectedNextDueAt, locale);
 	if (template.nextDueAt === expectedNextDueAt) {
-		return `Server-Vorlage ist noch auf der erwarteten Fälligkeit ${expectedDue}. Du kannst die Offline-Aktion senden.`;
+		return { key: 'offline.conflict.advanceSame', values: { expected } };
 	}
-	return `Server-Vorlage steht inzwischen auf ${serverDue} statt ${expectedDue}. Prüfe vor dem Senden, ob die Fälligkeit schon nachgeholt wurde.`;
+	return {
+		key: 'offline.conflict.advanceMoved',
+		values: { server: formatDueDate(template.nextDueAt, locale), expected },
+	};
 }

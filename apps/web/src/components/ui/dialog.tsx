@@ -2,7 +2,9 @@
 
 import { Dialog as DialogPrimitive } from '@base-ui/react/dialog';
 import { XIcon } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import * as React from 'react';
+
 import { Button } from '@/components/ui/button';
 import { cn } from '@/shared/lib/cn';
 import { useDismissOnBack } from '@/shared/lib/use-dismiss-on-back';
@@ -62,6 +64,7 @@ function DialogContent({
 }: DialogPrimitive.Popup.Props & {
 	showCloseButton?: boolean;
 }) {
+	const t = useTranslations('shell.ui');
 	return (
 		<DialogPortal>
 			{/* forceRender: a confirm dialog nested in a drawer or dialog still dims what is behind it. */}
@@ -83,7 +86,7 @@ function DialogContent({
 						render={<Button variant="ghost" className="absolute top-3.5 right-3.5" size="icon" />}
 					>
 						<XIcon />
-						<span className="sr-only">Schließen</span>
+						<span className="sr-only">{t('close')}</span>
 					</DialogPrimitive.Close>
 				)}
 			</DialogPrimitive.Popup>
@@ -105,6 +108,7 @@ function DialogFooter({
 }: React.ComponentProps<'div'> & {
 	showCloseButton?: boolean;
 }) {
+	const t = useTranslations('shell.ui');
 	return (
 		<div
 			data-slot="dialog-footer"
@@ -117,7 +121,7 @@ function DialogFooter({
 			{children}
 			{showCloseButton && (
 				<DialogPrimitive.Close render={<Button variant="outline" />}>
-					Schließen
+					{t('close')}
 				</DialogPrimitive.Close>
 			)}
 		</div>

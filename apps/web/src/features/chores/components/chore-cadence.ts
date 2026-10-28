@@ -1,20 +1,27 @@
-import {
-	INTERVAL_PRESETS_DAYS,
-	INTERVAL_PRESETS_MONTHS,
-} from '@/features/chores/components/constants';
+import type { Message } from '@/shared/i18n/message';
 import type { RecurrenceType } from './chore-types';
 
-const NBSP = '\u00a0';
+const NAMED_CADENCE: Record<RecurrenceType, Partial<Record<number, Message['key']>>> = {
+	days: { 1: 'chores.cadence.daily', 7: 'chores.cadence.weekly' },
+	months: {
+		1: 'chores.cadence.monthly',
+		3: 'chores.cadence.quarterly',
+		6: 'chores.cadence.halfYearly',
+		12: 'chores.cadence.yearly',
+	},
+};
 
 /**
- * Short rhythm label of a chore for the narrow row: the preset label when one matches,
- * else "alle N T." / "alle N Mon.". The non-breaking space keeps the unit abbreviation with
- * its number.
+ * Short rhythm label of a chore for the narrow row: a named rhythm when one matches,
+ * else "every N days" / "every N months". The catalog texts keep a non-breaking space
+ * between the number and its unit.
  */
-export function formatChoreCadence(interval: number, type: RecurrenceType): string {
-	if (interval <= 0) return 'einmalig';
-	const presets = type === 'months' ? INTERVAL_PRESETS_MONTHS : INTERVAL_PRESETS_DAYS;
-	const preset = presets.find((candidate) => candidate.interval === interval);
-	if (preset) return preset.label.replace(' T.', `${NBSP}T.`);
-	return `alle ${interval}${NBSP}${type === 'months' ? 'Mon.' : 'T.'}`;
+export function formatChoreCadence(interval: number, type: RecurrenceType): Message {
+	if (interval <= 0) return { key: 'chores.cadence.oneOff' };
+	const named = NAMED_CADENCE[type][interval];
+	if (named) return { key: named };
+	return {
+		key: type === 'months' ? 'chores.cadence.everyMonths' : 'chores.cadence.everyDays',
+		values: { count: interval },
+	};
 }

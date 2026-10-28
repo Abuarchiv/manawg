@@ -1,6 +1,6 @@
 import { eurosToCents } from '@/core/utils/amount';
 import { AMOUNT_MAX_CENTS } from '@/features/expenses/expense-constants';
-import type { RejectedRow } from './import-types';
+import { type RejectedRow, UNKNOWN_NAME } from './import-types';
 
 const MIN_PLAUSIBLE_YEAR = 2000;
 const MAX_PLAUSIBLE_YEAR = 2100;
@@ -38,7 +38,7 @@ export function parseCsv(input: string, delimiter: string): CsvRow[] {
 	let lineNumber = 1;
 	let rowStartLine = 1;
 	let i = 0;
-	const text = stripBom(input);
+	const text = stripBom(input).replaceAll(UNKNOWN_NAME, '');
 	while (i < text.length) {
 		const ch = text[i];
 		const next = text[i + 1];

@@ -3,16 +3,14 @@ import { createIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
 import { readOfflineQueue } from '@/core/offline/offline-client';
 import type { ShoppingItem } from '@/features/shopping/components/shopping-types';
-import {
-	shoppingActionErrorMessage,
-	shoppingDuplicateMessage,
-} from '@/features/shopping/shopping-errors';
+import { shoppingActionError, shoppingDuplicateError } from '@/features/shopping/shopping-errors';
 import { dropShoppingItems, replaceShoppingItem } from '@/features/shopping/shopping-toggle';
 import { isTempItemId } from '@/features/shopping/shopping-view';
+import type { Message } from '@/shared/i18n/message';
 import type { ShoppingActionContext } from './shopping-action-context';
 
 /** An error message for the edit form, or null when the change was saved. */
-export type ShoppingEditResult = string | null;
+export type ShoppingEditResult = Message | null;
 
 export type EditShoppingItem = (
 	item: ShoppingItem,
@@ -30,7 +28,7 @@ export function useShoppingEdit(ctx: ShoppingActionContext): EditShoppingItem {
 		async (item, fields) => {
 			const name = fields.name.trim();
 			const quantity = fields.quantity?.trim() || null;
-			if (name.length === 0) return 'Der Name darf nicht leer sein.';
+			if (name.length === 0) return { key: 'shopping.edit.nameEmpty' };
 			if (name === item.name && quantity === item.quantity) return null;
 			const queue = readOfflineQueue();
 			const waitingForSync =
@@ -41,12 +39,12 @@ export function useShoppingEdit(ctx: ShoppingActionContext): EditShoppingItem {
 						(action.type === 'shopping.update' && action.payload.itemId === item.id),
 				);
 			if (waitingForSync || isPending(item.id) || togglingRef.current.has(item.id)) {
-				return 'Dieser Artikel wartet noch auf Synchronisierung. Bearbeiten geht danach.';
+				return { key: 'shopping.edit.waitingForSync' };
 			}
 			const idempotencyKey = createIdempotencyKey();
 			if (!item.updatedAt || !idempotencyKey) {
 				void load(true);
-				return 'Der Artikelstand wird aktualisiert. Versuche es gleich erneut.';
+				return { key: 'shopping.edit.versionMissing' };
 			}
 
 			togglingRef.current.add(item.id);
@@ -81,18 +79,18 @@ export function useShoppingEdit(ctx: ShoppingActionContext): EditShoppingItem {
 				if (res.status === 404 && res.error === 'item_not_found') {
 					pending.delete(item.id);
 					commit((prev) => dropShoppingItems(prev, (current) => current.id === item.id));
-					return 'Dieser Einkaufsartikel existiert nicht mehr und wurde aus deiner Liste entfernt.';
+					return { key: 'shopping.toggle.itemGone' };
 				}
 				rollback();
 				if (res.status === 409 && res.error === 'shopping_item_duplicate') {
-					return shoppingDuplicateMessage(name);
+					return shoppingDuplicateError(name);
 				}
 				if (res.status === 409 && res.error === 'shopping_item_changed') {
 					await load(true);
-					return 'Der Artikel hat sich geändert. Prüfe den aktualisierten Stand und versuche es erneut.';
+					return { key: 'shopping.edit.changed' };
 				}
-				if (res.status === 0) return 'Bearbeiten braucht eine Verbindung.';
-				return shoppingActionErrorMessage(res.error, item.name, 'geändert');
+				if (res.status === 0) return { key: 'shopping.edit.needsConnection' };
+				return shoppingActionError(res.error, item.name, 'changed');
 			} finally {
 				pending.delete(item.id);
 				togglingRef.current.delete(item.id);

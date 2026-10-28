@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { getTranslations } from 'next-intl/server';
 import { SubNav } from '@/components/wg/SubNav';
 import type { wgChatMessages } from '@/core/db';
 import { loadWgViewer } from '@/core/guards/load-wg-viewer';
@@ -16,10 +18,10 @@ type MessageRow = typeof wgChatMessages.$inferSelect;
 
 export const dynamic = 'force-dynamic';
 
-export const metadata: Metadata = {
-	title: 'Chat',
-	robots: { index: false, follow: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+	const t = await getTranslations('meta.pages');
+	return { title: t('chat'), robots: { index: false, follow: false } };
+}
 
 export default async function ChatPage({ params }: PageProps) {
 	const { code: rawCode } = await params;
@@ -47,13 +49,14 @@ function ChatPageContent({
 	wgRow: { id: string; shareCode: string };
 	messages: MessageRow[];
 }) {
+	const t = useTranslations('chat.page');
 	return (
 		<div data-chat-frame className="flex min-h-0 flex-col" style={CHAT_FRAME_STYLE}>
 			<header className="flex shrink-0 flex-col gap-2 border-b border-border bg-background px-4 pt-3 pb-2">
 				<div className="mx-auto flex w-full max-w-4xl items-center gap-2">
 					{/* The segment replaces the visible title so the chat does not lose
 					    extra height. */}
-					<h1 className="sr-only">Chat</h1>
+					<h1 className="sr-only">{t('title')}</h1>
 					<SubNav className="flex-1" />
 				</div>
 			</header>

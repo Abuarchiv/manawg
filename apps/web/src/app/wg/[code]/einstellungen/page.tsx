@@ -1,6 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import { useTranslations } from 'next-intl';
 import { useEffect, useRef, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -10,10 +11,12 @@ import {
 	buildExportSummaryFromCounts,
 	type ExportSectionCounts,
 } from '@/composition/export';
-import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
+import { wgLoadError } from '@/core/guards/load-errors';
 import type { SettingsTab } from '@/core/guards/settings-tabs';
 import { getSettingsTabFromHash, SETTINGS_TABS } from '@/core/guards/settings-tabs';
 import { apiFetch } from '@/core/infra/api-client';
+import type { Message } from '@/shared/i18n/message';
+import { useMessage } from '@/shared/i18n/message';
 
 // Mimics title row plus card so the tab content barely jumps.
 const tabFallback = () => (
@@ -58,10 +61,12 @@ const DataTab = dynamic(() => loadDataTab().then((m) => m.DataTab), {
 
 export default function EinstellungenPage() {
 	const { wg, members, identity } = useWg();
+	const t = useTranslations('settings');
+	const m = useMessage();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const [exportSummary, setExportSummary] =
 		useState<ReturnType<typeof buildExportSummaryFromCounts>>(buildEmptyExportSummary);
-	const [exportSummaryError, setExportSummaryError] = useState<string | null>(null);
+	const [exportSummaryError, setExportSummaryError] = useState<Message | null>(null);
 	// The hash is read in the mount effect below: reading it here would differ from the server render.
 	const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
 
@@ -86,7 +91,7 @@ export default function EinstellungenPage() {
 			if (cancelled) return;
 			if (!result.ok) {
 				setExportSummaryError(
-					getWgLoadErrorMessage('Export-Zusammenfassung', result.status, result.error),
+					wgLoadError({ key: 'settings.data.summaryLead' }, result.status, result.error),
 				);
 				return;
 			}
@@ -145,7 +150,7 @@ export default function EinstellungenPage() {
 			className="mx-auto flex w-full min-w-0 max-w-4xl flex-col gap-3 px-4 py-3"
 		>
 			<h1 className="font-heading min-w-0 flex-1 text-base font-semibold tracking-tight break-words text-foreground">
-				Einstellungen
+				{t('title')}
 			</h1>
 			<div className="min-w-0">
 				<Tabs
@@ -172,7 +177,7 @@ export default function EinstellungenPage() {
 								id={`tab-${tab.id}`}
 								className="min-w-fit flex-[1_1_auto] px-1 text-center text-xs [overflow-wrap:normal]"
 							>
-								{tab.label}
+								{m({ key: tab.label })}
 							</TabsTrigger>
 						))}
 					</TabsList>

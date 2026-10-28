@@ -14,6 +14,7 @@ import type {
 	ExpenseSplitShare,
 	RecurringExpense,
 } from '@/features/expenses/expense-types';
+import type { Locale } from '@/shared/i18n/locale';
 
 export type { SplitMode };
 
@@ -93,22 +94,26 @@ export function parseDraftEditTarget(target: unknown): DraftEditTarget {
 /** Turns stored cent shares into the euro strings the manual inputs display. */
 export function splitsToManualInput(
 	splits: ReadonlyArray<ExpenseSplitShare>,
+	locale: Locale = 'de',
 ): Record<string, string> {
 	return Object.fromEntries(
-		splits.map((split) => [split.debtorMemberId, formatCentsInput(split.amountCents)]),
+		splits.map((split) => [split.debtorMemberId, formatCentsInput(split.amountCents, locale)]),
 	);
 }
 
 /** A one-off expense prefilled from a due fixed-cost template. */
-export function recurringTemplateSuggestion(template: RecurringExpense): ExpenseSuggestion {
+export function recurringTemplateSuggestion(
+	template: RecurringExpense,
+	locale: Locale = 'de',
+): ExpenseSuggestion {
 	return {
 		description: template.description,
 		category: template.category,
-		amountStr: formatCentsInput(template.amountCents),
+		amountStr: formatCentsInput(template.amountCents, locale),
 		imageUrl: null,
 		paidByMemberId: template.paidByMemberId,
 		splitMode: 'manual',
-		manualSplits: splitsToManualInput(template.splits),
+		manualSplits: splitsToManualInput(template.splits, locale),
 		recurringSourceId: template.id,
 	};
 }
@@ -117,11 +122,12 @@ export function recurringTemplateSuggestion(template: RecurringExpense): Expense
 export function queuedEqualParticipants(
 	draft: ExpenseDraft,
 	members: readonly SplitMemberLike[],
+	locale: Locale = 'de',
 ): string[] | null {
-	const amount = parseEuroAmount(draft.amountStr ?? '');
+	const amount = parseEuroAmount(draft.amountStr ?? '', locale);
 	if (amount === null || !draft.manualSplits) return null;
 	const splits = Object.entries(draft.manualSplits).flatMap(([debtorMemberId, value]) => {
-		const share = parseEuroAmount(value);
+		const share = parseEuroAmount(value, locale);
 		return share === null ? [] : [{ debtorMemberId, amountCents: eurosToCents(share) }];
 	});
 	return equalSplitParticipants(eurosToCents(amount), splits, members);

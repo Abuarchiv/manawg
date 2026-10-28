@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
+import { wgLoadError } from '@/core/guards/load-errors';
 import { usePendingSet } from '@/core/hooks/use-pending-set';
 import { readOfflineQueue } from '@/core/offline/offline-client';
 import { useSyncedCollection } from '@/core/sync/use-synced-collection';
@@ -7,6 +7,7 @@ import type { ShoppingItem } from '@/features/shopping/components/shopping-types
 import { useShoppingAdd } from '@/features/shopping/hooks/use-shopping-add';
 import { overlayQueuedShopping } from '@/features/shopping/shopping-toggle';
 import { isTempItemId } from '@/features/shopping/shopping-view';
+import { type Message, useMessage } from '@/shared/i18n/message';
 import type { ShoppingActionContext } from './shopping-action-context';
 import { useShoppingEdit } from './use-shopping-edit';
 import { useShoppingRemoval } from './use-shopping-removal';
@@ -39,10 +40,11 @@ export function useShoppingPage({
 	refreshInventory,
 }: UseShoppingPageOptions) {
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
+	const render = useMessage();
 	const [doneOpen, setDoneOpen] = useState(false);
-	const [addNotice, setAddNotice] = useState<string | null>(null);
-	const [toggleError, setToggleError] = useState<string | null>(null);
-	const [toggleNotice, setToggleNotice] = useState<string | null>(null);
+	const [addNotice, setAddNotice] = useState<Message | null>(null);
+	const [toggleError, setToggleError] = useState<Message | null>(null);
+	const [toggleNotice, setToggleNotice] = useState<Message | null>(null);
 	const { isPending, start, end } = usePendingSet();
 	// Checking off shows no "saving" state; this only guards against double taps.
 	const togglingRef = useRef(new Set<string>());
@@ -62,7 +64,8 @@ export function useShoppingPage({
 				shareCode: wg.shareCode,
 				memberId: identity.memberId,
 			}),
-		describeError: (error) => getWgLoadErrorMessage('Einkaufsliste', error.status, error.error),
+		describeError: (error) =>
+			render(wgLoadError({ key: 'shopping.load.list' }, error.status, error.error)),
 		// A failed background refresh keeps the list on screen without a banner.
 		hideError: (_error, { silent, hasData }) => silent && hasData,
 		reload: (reason) => void load(reason !== 'mount'),

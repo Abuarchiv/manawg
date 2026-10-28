@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import type { RefObject } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
@@ -26,6 +27,7 @@ import { Field, FieldGroup } from '@/components/ui/field';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { useWg } from '@/components/wg/WgContextProvider';
+import { type Message, useMessage } from '@/shared/i18n/message';
 import { CHAT_BODY_MAX } from '../chat-pure';
 import { reactorNames } from '../chat-reactions';
 import type { ReactionSummary } from '../chat-types';
@@ -33,7 +35,7 @@ import type { ReactionSummary } from '../chat-types';
 interface MessageEditFormProps {
 	messageId: string;
 	draft: string;
-	error: string | null;
+	error: Message | null;
 	pending: boolean;
 	textareaRef: RefObject<HTMLTextAreaElement | null>;
 	onChange: (value: string) => void;
@@ -54,6 +56,7 @@ export function MessageEditForm({
 	onCancel,
 	canCancel,
 }: MessageEditFormProps) {
+	const t = useTranslations('chat.bubble');
 	return (
 		<FieldGroup className="gap-2">
 			<Field data-invalid={Boolean(error)} className="data-[invalid=true]:text-foreground">
@@ -72,7 +75,7 @@ export function MessageEditForm({
 					rows={3}
 					disabled={pending}
 					maxLength={CHAT_BODY_MAX}
-					aria-label="Nachricht bearbeiten"
+					aria-label={t('editAria')}
 					aria-invalid={Boolean(error)}
 					aria-describedby={error ? `message-edit-error-${messageId}` : undefined}
 					className="min-h-24 text-base"
@@ -80,11 +83,11 @@ export function MessageEditForm({
 			</Field>
 			<div className="flex flex-wrap justify-end gap-2">
 				<Button variant="outline" disabled={pending} onClick={onCancel}>
-					Abbrechen
+					{t('cancel')}
 				</Button>
 				<Button disabled={pending || !draft.trim()} onClick={onSave}>
 					{pending && <Spinner data-icon="inline-start" />}
-					{pending ? 'Speichert…' : 'Speichern'}
+					{pending ? t('saving') : t('save')}
 				</Button>
 			</div>
 		</FieldGroup>
@@ -108,14 +111,16 @@ export function MessageReactions({
 	pendingEmoji,
 	onToggle,
 }: MessageReactionsProps) {
+	const t = useTranslations('chat.bubble');
 	const { members, identity } = useWg();
+	const words = { you: t('you'), former: t('formerMember') };
 	return (
 		<BubbleReactions
 			align={align}
 			className="static max-w-full flex-wrap translate-y-0 gap-1 bg-transparent p-0 ring-0 group-data-[align=end]/bubble:self-end has-[button]:p-0"
 		>
 			{reactions.map((reaction) => {
-				const who = reactorNames(reaction.memberIds, members, identity.memberId);
+				const who = reactorNames(reaction.memberIds, members, identity.memberId, words);
 				return (
 					<Button
 						key={reaction.emoji}
@@ -126,7 +131,12 @@ export function MessageReactions({
 						disabled={disabled}
 						aria-pressed={reaction.mine}
 						title={who}
-						aria-label={`Reaktion ${reaction.emoji} (${reaction.count}) von ${who}: ${reaction.mine ? 'entfernen' : 'hinzufügen'} — Nachricht von ${senderName}`}
+						aria-label={t(reaction.mine ? 'reactionRemoveAria' : 'reactionAddAria', {
+							emoji: reaction.emoji,
+							count: String(reaction.count),
+							who,
+							sender: senderName,
+						})}
 					>
 						{pendingEmoji === reaction.emoji ? <Spinner /> : <span>{reaction.emoji}</span>}
 						<span className="tabular-nums">{reaction.count}</span>
@@ -138,21 +148,22 @@ export function MessageReactions({
 }
 
 export function MessageImage({ imageUrl, senderName }: { imageUrl: string; senderName: string }) {
+	const t = useTranslations('chat.bubble');
 	return (
 		<Attachment state="done" className="min-w-0 max-w-full">
 			<AttachmentMedia variant="image" className="size-20">
 				{/* biome-ignore lint/performance/noImgElement: user-uploaded storage URL, next/image is not used for these */}
-				<img src={imageUrl} alt={`Bild von ${senderName}`} loading="lazy" />
+				<img src={imageUrl} alt={t('imageAlt', { name: senderName })} loading="lazy" />
 			</AttachmentMedia>
 			<AttachmentContent>
-				<AttachmentTitle>Bild</AttachmentTitle>
-				<AttachmentDescription>Öffnen</AttachmentDescription>
+				<AttachmentTitle>{t('imageTitle')}</AttachmentTitle>
+				<AttachmentDescription>{t('imageOpen')}</AttachmentDescription>
 			</AttachmentContent>
 			<AttachmentTrigger
-				aria-label="Bild in voller Größe öffnen"
+				aria-label={t('imageFullAria')}
 				render={
 					<a href={imageUrl} target="_blank" rel="noopener noreferrer">
-						<span className="sr-only">Bild in voller Größe öffnen</span>
+						<span className="sr-only">{t('imageFullAria')}</span>
 					</a>
 				}
 			/>
@@ -163,7 +174,7 @@ export function MessageImage({ imageUrl, senderName }: { imageUrl: string; sende
 interface MessageDeleteDialogProps {
 	open: boolean;
 	pending: boolean;
-	error: string | null;
+	error: Message | null;
 	onOpenChange: (open: boolean) => void;
 	onConfirm: () => void;
 	/** Where focus goes after closing; true = default (the trigger). */
@@ -178,23 +189,23 @@ export function MessageDeleteDialog({
 	onConfirm,
 	finalFocus,
 }: MessageDeleteDialogProps) {
+	const t = useTranslations('chat.bubble');
+	const render = useMessage();
 	return (
 		<AlertDialog open={open} onOpenChange={onOpenChange}>
 			<AlertDialogContent finalFocus={finalFocus}>
 				<AlertDialogHeader>
-					<AlertDialogTitle>Nachricht löschen?</AlertDialogTitle>
-					<AlertDialogDescription>
-						Der Inhalt wird für alle entfernt. Die Nachricht bleibt als gelöscht markiert.
-					</AlertDialogDescription>
+					<AlertDialogTitle>{t('deleteTitle')}</AlertDialogTitle>
+					<AlertDialogDescription>{t('deleteBody')}</AlertDialogDescription>
 				</AlertDialogHeader>
 				{error && (
 					<Alert variant="destructive">
-						<AlertDescription>{error}</AlertDescription>
+						<AlertDescription>{render(error)}</AlertDescription>
 					</Alert>
 				)}
 				<AlertDialogFooter>
 					<AlertDialogCancel disabled={pending} className="min-h-11">
-						Abbrechen
+						{t('cancel')}
 					</AlertDialogCancel>
 					<AlertDialogAction
 						disabled={pending}
@@ -203,7 +214,7 @@ export function MessageDeleteDialog({
 						onClick={onConfirm}
 					>
 						{pending && <Spinner data-icon="inline-start" />}
-						{pending ? 'Löscht…' : 'Jetzt löschen'}
+						{pending ? t('deleting') : t('deleteConfirm')}
 					</AlertDialogAction>
 				</AlertDialogFooter>
 			</AlertDialogContent>

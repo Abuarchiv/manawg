@@ -3,6 +3,7 @@
 import { ChevronDown, ChevronRight, Megaphone } from 'lucide-react';
 import { useReducedMotion } from 'motion/react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import {
 	Collapsible,
 	CollapsiblePanel,
@@ -36,6 +37,7 @@ export function WgNewsSection({
 	latestIsPending,
 	activityItems,
 }: WgNewsSectionProps) {
+	const t = useTranslations('home.news');
 	const reducedMotion = useReducedMotion();
 	return (
 		<section aria-labelledby="wg-now-heading" className="flex min-w-0 flex-col gap-3">
@@ -50,7 +52,7 @@ export function WgNewsSection({
 							/>
 						}
 					>
-						Neu in deiner WG
+						{t('heading')}
 						<ChevronDown aria-hidden className="size-4 group-aria-expanded:rotate-180" />
 					</CollapsibleTrigger>
 				</h2>
@@ -77,7 +79,7 @@ export function WgNewsSection({
 										</span>
 										<ItemContent className="min-w-0">
 											<ItemTitle className="[overflow-wrap:break-word]">
-												Neu an der Pinnwand
+												{t('newOnNoticeboard')}
 											</ItemTitle>
 											<ItemDescription className="[overflow-wrap:break-word]">
 												{latestAnnouncement.authorName}: {latestAnnouncement.content}
@@ -90,19 +92,13 @@ export function WgNewsSection({
 										<ActivityFeed items={activityItems} inset />
 									</div>
 								) : !latestAnnouncement || latestIsPending ? (
-									<p className="text-sm text-muted-foreground">Noch keine neuen Einträge.</p>
+									<p className="text-sm text-muted-foreground">{t('noNewEntries')}</p>
 								) : null}
 							</div>
 						) : failed ? (
-							<p className="text-sm text-muted-foreground">
-								Neuigkeiten konnten noch nicht geladen werden.
-							</p>
+							<p className="text-sm text-muted-foreground">{t('failed')}</p>
 						) : (
-							<div
-								className="flex flex-col gap-2"
-								aria-label="Neuigkeiten werden geladen"
-								role="status"
-							>
+							<div className="flex flex-col gap-2" aria-label={t('loading')} role="status">
 								<Skeleton className="h-16 w-full bg-foreground/[0.07]" />
 								<Skeleton className="h-11 w-full bg-foreground/[0.07]" />
 								<Skeleton className="h-11 w-full bg-foreground/[0.07]" />
@@ -115,7 +111,7 @@ export function WgNewsSection({
 								'min-w-0 max-w-full self-end whitespace-normal px-0 text-meta text-muted-foreground leading-snug',
 							)}
 						>
-							Gesamte Aktivität <ChevronRight data-icon="inline-end" aria-hidden />
+							{t('allActivity')} <ChevronRight data-icon="inline-end" aria-hidden />
 						</Link>
 					</div>
 				</CollapsiblePanel>

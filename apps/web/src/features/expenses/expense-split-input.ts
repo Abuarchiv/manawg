@@ -4,6 +4,7 @@ import {
 	type DebtorShare,
 	distributeCentsEqually,
 } from '@/features/expenses/split-math';
+import type { Locale } from '@/shared/i18n/locale';
 
 /**
  * Turns the expense form's state into the splits array the API expects.
@@ -44,6 +45,8 @@ interface BuildSplitsInput {
 	 * member. Ids of moved-out members are ignored.
 	 */
 	participantIds?: readonly string[] | null | undefined;
+	/** Language of the typed amounts; German when omitted. */
+	locale?: Locale | undefined;
 	/**
 	 * The saved splits of the expense being edited. When the amount and the
 	 * set of debtors are unchanged, an equal split resends these per-member
@@ -145,7 +148,7 @@ export function buildSplitsFromForm(input: BuildSplitsInput): SplitInputResult {
 	for (const member of members) {
 		const raw = manualSplits[member.id] ?? '';
 		if (raw.trim().length === 0) continue;
-		const value = parseEuroAmount(raw);
+		const value = parseEuroAmount(raw, input.locale);
 		if (value === null || value < 0) return { ok: false, reason: 'invalid_share' };
 		const cents = eurosToCents(value);
 		splits.push({ debtorMemberId: member.id, amountCents: cents });

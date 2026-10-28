@@ -1,3 +1,4 @@
+import { useTranslations } from 'next-intl';
 import { Card, CardContent } from '@/components/ui/card';
 import { ItemContent, ItemEntry, ItemGroup } from '@/components/ui/item';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -6,6 +7,7 @@ const SKELETON_KEYS = ['s0', 's1', 's2'];
 
 // Mirrors InventoryList: a group heading above one bordered card of rows.
 export function ListSkeleton() {
+	const t = useTranslations('inventory.skeleton');
 	return (
 		<div className="flex flex-col gap-2">
 			<div className="flex h-5 items-center">
@@ -13,7 +15,7 @@ export function ListSkeleton() {
 			</div>
 			<Card className="py-0">
 				<CardContent className="p-0">
-					<ItemGroup className="gap-0" aria-busy="true" aria-label="Vorräte werden geladen">
+					<ItemGroup className="gap-0" aria-busy="true" aria-label={t('loadingAria')}>
 						{SKELETON_KEYS.map((k) => (
 							<ItemEntry key={k} className="px-3 py-3">
 								<ItemContent className="flex-1 gap-2">

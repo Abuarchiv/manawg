@@ -1,6 +1,7 @@
 'use client';
 
 import { Bell, CheckCircle2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useEffect, useRef } from 'react';
 import { Switch } from '@/components/animate-ui/components/base/switch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -12,7 +13,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { Section } from '@/components/wg/einstellungen/Section';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
-import { QUIET_HOURS_HINT } from '@/core/notifications/notification-preferences';
 import { NOTIFICATION_PREFERENCES, useNotificationSettings } from './use-notification-settings';
 
 const PUSH_HINT_ID = 'notification-push-hint';
@@ -58,6 +58,7 @@ function HourSelect({
 }
 
 export function NotificationSection({ code, memberId }: { code: string; memberId: string }) {
+	const t = useTranslations('settings.notifications');
 	const {
 		status,
 		pushActive,
@@ -86,12 +87,12 @@ export function NotificationSection({ code, memberId }: { code: string; memberId
 	}, [message, error, status]);
 
 	return (
-		<Section id="benachrichtigungen" title="Benachrichtigungen">
+		<Section id="benachrichtigungen" title={t('title')}>
 			<div className="grid min-w-0 gap-3 p-3">
 				{loadingStatus && (
 					<div className="grid gap-2" aria-live="polite">
 						<Skeleton className="h-11 w-full" />
-						<p className="text-muted-foreground text-xs">Benachrichtigungen werden geladen…</p>
+						<p className="text-muted-foreground text-xs">{t('loading')}</p>
 					</div>
 				)}
 				{!status && error && (
@@ -99,7 +100,7 @@ export function NotificationSection({ code, memberId }: { code: string; memberId
 						message={error}
 						onRetry={() => void loadStatus()}
 						busy={loadingStatus}
-						retryLabel="Erneut laden"
+						retryLabel={t('reload')}
 					/>
 				)}
 				{status && (
@@ -110,22 +111,17 @@ export function NotificationSection({ code, memberId }: { code: string; memberId
 						>
 							<FieldContent>
 								<FieldTitle>
-									Web Push
+									{t('webPush')}
 									{pushActive && <Bell className="text-muted-foreground h-3.5 w-3.5" aria-hidden />}
 								</FieldTitle>
 								{!pushConfigured && (
-									<FieldDescription id={PUSH_HINT_ID}>Nicht konfiguriert</FieldDescription>
+									<FieldDescription id={PUSH_HINT_ID}>{t('notConfigured')}</FieldDescription>
 								)}
 								{pushConfigured && !pushActive && pushBlocked && (
-									<FieldDescription id={PUSH_HINT_ID}>
-										Benachrichtigungen sind im Browser blockiert. Erlaube sie in den
-										Website-Einstellungen.
-									</FieldDescription>
+									<FieldDescription id={PUSH_HINT_ID}>{t('blocked')}</FieldDescription>
 								)}
 								{pushConfigured && !pushActive && !pushBlocked && status.pushOptIn && (
-									<FieldDescription id={PUSH_HINT_ID}>
-										Auf diesem Gerät noch nicht aktiv
-									</FieldDescription>
+									<FieldDescription id={PUSH_HINT_ID}>{t('inactiveHere')}</FieldDescription>
 								)}
 								{pushActive && (
 									<Button
@@ -134,15 +130,11 @@ export function NotificationSection({ code, memberId }: { code: string; memberId
 										size="sm"
 										onClick={() => void sendTestNotification()}
 										disabled={notificationControlsDisabled}
-										aria-label={
-											pending === 'test'
-												? 'Testbenachrichtigung wird gesendet'
-												: 'Testbenachrichtigung senden'
-										}
+										aria-label={pending === 'test' ? t('sendingTestAria') : t('sendTestAria')}
 										className="-ml-2.5 self-start"
 									>
 										{pending === 'test' && <Spinner aria-hidden />}
-										Test senden
+										{t('sendTest')}
 									</Button>
 								)}
 							</FieldContent>
@@ -152,7 +144,7 @@ export function NotificationSection({ code, memberId }: { code: string; memberId
 									notificationControlsDisabled || !pushConfigured || (pushBlocked && !pushActive)
 								}
 								aria-busy={pending === 'push'}
-								aria-label="Web Push"
+								aria-label={t('webPush')}
 								{...(pushHint ? { 'aria-describedby': PUSH_HINT_ID } : {})}
 								onCheckedChange={setPushEnabled}
 							/>
@@ -167,18 +159,18 @@ export function NotificationSection({ code, memberId }: { code: string; memberId
 										className="min-h-11 py-1 has-[>[data-slot=field-content]]:items-center"
 									>
 										<FieldContent>
-											<FieldTitle>{pref.label}</FieldTitle>
-											{pref.description && (
+											<FieldTitle>{t(`prefs.${pref.name}`)}</FieldTitle>
+											{pref.hint && (
 												<FieldDescription id={`notification-pref-${pref.key}-hint`}>
-													{pref.description}
+													{t(`prefHints.${pref.hint}`)}
 												</FieldDescription>
 											)}
 										</FieldContent>
 										<Switch
 											checked={status?.[pref.key] ?? true}
 											disabled={notificationControlsDisabled}
-											aria-label={pref.label}
-											{...(pref.description
+											aria-label={t(`prefs.${pref.name}`)}
+											{...(pref.hint
 												? { 'aria-describedby': `notification-pref-${pref.key}-hint` }
 												: {})}
 											onCheckedChange={() => void togglePreference(pref.key)}
@@ -194,15 +186,15 @@ export function NotificationSection({ code, memberId }: { code: string; memberId
 								className="min-h-11 py-1 has-[>[data-slot=field-content]]:items-center"
 							>
 								<FieldContent>
-									<FieldTitle>Ruhezeit</FieldTitle>
+									<FieldTitle>{t('quiet.title')}</FieldTitle>
 									<FieldDescription id="notification-quiet-hint">
-										{QUIET_HOURS_HINT}
+										{t('quiet.hint')}
 									</FieldDescription>
 								</FieldContent>
 								<Switch
 									checked={quietHoursSet}
 									disabled={notificationControlsDisabled}
-									aria-label="Ruhezeit"
+									aria-label={t('quiet.title')}
 									aria-describedby="notification-quiet-hint"
 									onCheckedChange={(next) =>
 										void (next
@@ -214,8 +206,8 @@ export function NotificationSection({ code, memberId }: { code: string; memberId
 							{quietHoursSet && (
 								<div className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] gap-2">
 									<HourSelect
-										label="Von"
-										ariaLabel="Ruhezeit von"
+										label={t('quiet.from')}
+										ariaLabel={t('quiet.fromAria')}
 										value={status.quietStartHour ?? DEFAULT_QUIET_START}
 										disabled={notificationControlsDisabled}
 										onChange={(value) =>
@@ -223,8 +215,8 @@ export function NotificationSection({ code, memberId }: { code: string; memberId
 										}
 									/>
 									<HourSelect
-										label="Bis"
-										ariaLabel="Ruhezeit bis"
+										label={t('quiet.to')}
+										ariaLabel={t('quiet.toAria')}
 										value={status.quietEndHour ?? DEFAULT_QUIET_END}
 										disabled={notificationControlsDisabled}
 										onChange={(value) =>

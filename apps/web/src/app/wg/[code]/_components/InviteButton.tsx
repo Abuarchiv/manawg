@@ -1,11 +1,13 @@
 'use client';
 
 import { AlertTriangle, Check, Share2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/components/ui/Toast';
-import { createInvite, shareInvite } from '@/components/wg/invite-share';
+import { createInvite, inviteShareMessage, shareInvite } from '@/components/wg/invite-share';
+import { useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
 
 const RESET_MS = 1500;
@@ -29,11 +31,13 @@ export function InviteButton({
 	variant = 'ghost',
 	className,
 }: InviteButtonProps) {
+	const t = useTranslations('home.invite');
 	const [state, setState] = useState<ShareState>('idle');
 	const [sharing, setSharing] = useState(false);
 	const timerRef = useRef<number | null>(null);
 	const sharingRef = useRef(false);
 	const toast = useToast();
+	const render = useMessage();
 
 	useEffect(() => {
 		return () => {
@@ -60,13 +64,16 @@ export function InviteButton({
 		try {
 			const created = await createInvite(code, memberId);
 			if (!created.ok) {
-				toast.error(created.message);
+				toast.error(render(created.message));
 				flash('failed');
 				return;
 			}
-			const outcome = await shareInvite(wgName, created.invite.url);
+			const outcome = await shareInvite(
+				render(inviteShareMessage(wgName, created.invite.url)),
+				created.invite.url,
+			);
 			if (outcome === 'cancelled') return;
-			if (outcome === 'failed') toast.error('Einladung konnte nicht geteilt werden.');
+			if (outcome === 'failed') toast.error(t('shareFailed'));
 			flash(outcome);
 		} finally {
 			sharingRef.current = false;
@@ -76,11 +83,11 @@ export function InviteButton({
 
 	const statusMessage =
 		state === 'shared'
-			? 'WG geteilt'
+			? t('shared')
 			: state === 'copied'
-				? 'Einladung kopiert'
+				? t('copied')
 				: state === 'failed'
-					? 'Teilen fehlgeschlagen'
+					? t('failedStatus')
 					: '';
 
 	return (
@@ -105,14 +112,14 @@ export function InviteButton({
 					<Share2 data-icon="inline-start" aria-hidden />
 				)}
 				{sharing
-					? 'Einladung wird geteilt…'
+					? t('sharing')
 					: state === 'copied'
-						? 'Einladung kopiert'
+						? t('copied')
 						: state === 'shared'
-							? 'WG geteilt'
+							? t('shared')
 							: state === 'failed'
-								? 'Erneut teilen'
-								: 'Mitbewohner einladen'}
+								? t('shareAgain')
+								: t('invite')}
 			</Button>
 		</>
 	);

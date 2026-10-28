@@ -1,6 +1,7 @@
 'use client';
 
 import { Check, MoreHorizontal, Pencil, Receipt, Trash2 } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 import { memo, useState } from 'react';
 import {
 	AlertDialog,
@@ -33,18 +34,18 @@ import { Spinner } from '@/components/ui/spinner';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatTimeFull } from '@/core/utils/time';
-import { EXPENSE_CATEGORY_LABELS } from '@/features/expenses/expense-categories';
 import { type ExpenseImpact, getExpenseImpact } from '@/features/expenses/expense-impact';
 import type { Expense, ExpenseSplit } from '@/features/expenses/expense-types';
 import { cn } from '@/shared/lib/cn';
+import { monoAmount } from './mono-amount';
 
-const IMPACT_LABEL: Record<ExpenseImpact['kind'], string> = {
-	lent: 'bekommst du',
-	owe: 'schuldest du',
-	settled: 'beglichen',
-	own: 'nur für dich',
-	none: 'nicht beteiligt',
-};
+const IMPACT_KEY = {
+	lent: 'impactLent',
+	owe: 'impactOwe',
+	settled: 'impactSettled',
+	own: 'impactOwn',
+	none: 'impactNone',
+} as const satisfies Record<ExpenseImpact['kind'], string>;
 
 interface ExpenseRowProps {
 	expense: Expense;
@@ -71,6 +72,10 @@ export const ExpenseRow = memo(function ExpenseRow({
 	currentMemberId,
 	highlighted,
 }: ExpenseRowProps) {
+	const locale = useLocale();
+	const t = useTranslations('expenses.row');
+	const tCategories = useTranslations('expenses.categories');
+	const money = (cents: number) => formatEuroCents(cents, expense.currency, { locale });
 	// An offline-queued expense has only a placeholder id until it syncs; the
 	// server knows nothing to edit, delete or settle yet.
 	const locked = pendingIds.has(expense.id) || expense.id.startsWith('pending:');
@@ -79,12 +84,14 @@ export const ExpenseRow = memo(function ExpenseRow({
 	const canDelete =
 		isPayer || expense.splits.some((split) => split.debtorMemberId === currentMemberId);
 	const impact = getExpenseImpact(expense, currentMemberId);
-	const who = (id: string) => (id === currentMemberId ? 'Du' : memberName(id));
+	const who = (id: string) => (id === currentMemberId ? t('you') : memberName(id));
 	const shareStatusLabel = (split: ExpenseSplit, ownShare: boolean): string => {
-		if (ownShare) return 'Eigener Anteil der zahlenden Person';
-		if (split.amountCents === 0) return 'Kein Anteil';
-		if (split.settledAt !== null) return 'Bezahlt';
-		return isPayer ? 'Offen an dich' : `Offen an ${memberName(expense.paidByMemberId)}`;
+		if (ownShare) return t('statusOwn');
+		if (split.amountCents === 0) return t('statusNone');
+		if (split.settledAt !== null) return t('statusPaid');
+		return isPayer
+			? t('statusOpenToYou')
+			: t('statusOpenTo', { name: memberName(expense.paidByMemberId) });
 	};
 	const [deleteOpen, setDeleteOpen] = useState(false);
 	const [settleCandidate, setSettleCandidate] = useState<ExpenseSplit | null>(null);
@@ -112,32 +119,32 @@ export const ExpenseRow = memo(function ExpenseRow({
 							<span className="@container flex min-w-0 flex-1">
 								<span className="flex min-w-0 flex-1 flex-col gap-1 @[15rem]:flex-row @[15rem]:gap-3">
 									<span className="flex min-w-0 flex-1 flex-col gap-0.5">
-										<span className="sr-only">Details öffnen:</span>
+										<span className="sr-only">{t('openDetails')}</span>
 										<span className="line-clamp-2 min-w-0 hyphens-auto text-body font-medium leading-snug [overflow-wrap:break-word]">
 											{expense.description}
 										</span>
 										<span className="text-meta leading-normal font-normal text-muted-foreground">
 											{/* The same amount already appears on the right; on the left only when the share differs. */}
 											<span className="whitespace-nowrap">
-												{isPayer ? 'Du zahltest' : `${memberName(expense.paidByMemberId)} zahlte`}
+												{t('paidBy', {
+													who: isPayer ? 'self' : 'other',
+													name: memberName(expense.paidByMemberId),
+												})}
 												{Math.abs(impact.cents) !== expense.amountCents && (
-													<span className="tabular-nums">
-														{' '}
-														{formatEuroCents(expense.amountCents, expense.currency)}
-													</span>
+													<span className="tabular-nums"> {money(expense.amountCents)}</span>
 												)}
 											</span>
 											{expense.category !== 'sonstiges' && (
 												<>
 													{' · '}
-													{EXPENSE_CATEGORY_LABELS[expense.category]}
+													{tCategories(expense.category)}
 												</>
 											)}
 											{expense.imageUrl && (
 												<>
 													{' · '}
 													<Receipt aria-hidden className="inline size-3.5 align-[-2px]" />
-													<span className="sr-only">Beleg</span>
+													<span className="sr-only">{t('receipt')}</span>
 												</>
 											)}
 										</span>
@@ -154,10 +161,10 @@ export const ExpenseRow = memo(function ExpenseRow({
 														: 'text-muted-foreground',
 											)}
 										>
-											{formatEuroCents(impact.cents, expense.currency)}
+											{money(impact.cents)}
 										</span>
 										<span className="whitespace-nowrap text-meta font-normal text-muted-foreground">
-											{IMPACT_LABEL[impact.kind]}
+											{t(IMPACT_KEY[impact.kind])}
 										</span>
 									</span>
 								</span>
@@ -169,7 +176,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 							<DropdownMenu>
 								<DropdownMenuTrigger
 									render={<Button variant="ghost" size="icon" />}
-									aria-label={`Aktionen für ${expense.description}`}
+									aria-label={t('actionsFor', { description: expense.description })}
 								>
 									<MoreHorizontal />
 								</DropdownMenuTrigger>
@@ -178,7 +185,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 										{isPayer && (
 											<DropdownMenuItem onClick={() => onEdit(expense)} disabled={locked}>
 												<Pencil />
-												Bearbeiten
+												{t('edit')}
 											</DropdownMenuItem>
 										)}
 										<DropdownMenuItem
@@ -187,7 +194,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 											disabled={locked}
 										>
 											<Trash2 />
-											Löschen
+											{t('delete')}
 										</DropdownMenuItem>
 									</DropdownMenuGroup>
 								</DropdownMenuContent>
@@ -197,8 +204,10 @@ export const ExpenseRow = memo(function ExpenseRow({
 					<CollapsibleContent className="w-full pr-1.5 pb-2">
 						{/* The week is already a heading; the exact time only appears in the details. */}
 						<p className="mb-2 text-xs text-muted-foreground">
-							<time dateTime={expense.occurredAt}>{formatTimeFull(expense.occurredAt)}</time>
-							{expense.id.startsWith('pending:') && ' · Wartet auf Verbindung, danach bearbeitbar'}
+							<time dateTime={expense.occurredAt}>
+								{formatTimeFull(expense.occurredAt, locale)}
+							</time>
+							{expense.id.startsWith('pending:') && ` · ${t('pendingNote')}`}
 						</p>
 						{expense.imageUrl && (
 							<Button
@@ -206,14 +215,14 @@ export const ExpenseRow = memo(function ExpenseRow({
 								render={
 									<a href={expense.imageUrl} target="_blank" rel="noopener noreferrer">
 										<Receipt data-icon="inline-start" />
-										Beleg öffnen
+										{t('openReceipt')}
 									</a>
 								}
 								nativeButton={false}
 								className="mb-3"
 							/>
 						)}
-						<ItemGroup aria-label="Ausgabenanteile" className="gap-1">
+						<ItemGroup aria-label={t('sharesAria')} className="gap-1">
 							{expense.splits.map((split) => {
 								const settled = split.settledAt !== null;
 								const ownShare = split.debtorMemberId === expense.paidByMemberId;
@@ -222,9 +231,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 										<ItemContent className="min-w-0 flex-[1_1_8rem]">
 											<ItemTitle className="line-clamp-none break-words">
 												{who(split.debtorMemberId)} ·{' '}
-												<span className="font-mono tabular-nums">
-													{formatEuroCents(split.amountCents, expense.currency)}
-												</span>
+												<span className="font-mono tabular-nums">{money(split.amountCents)}</span>
 											</ItemTitle>
 											<ItemDescription>{shareStatusLabel(split, ownShare)}</ItemDescription>
 										</ItemContent>
@@ -235,14 +242,16 @@ export const ExpenseRow = memo(function ExpenseRow({
 												className="ml-auto"
 												onClick={() => setSettleCandidate(split)}
 												disabled={pendingIds.has(split.id) || locked}
-												aria-label={`${settled ? 'Wieder als offen markieren' : 'Als bezahlt markieren'}: ${who(split.debtorMemberId)}`}
+												aria-label={t(settled ? 'markOpenAria' : 'markPaidAria', {
+													name: who(split.debtorMemberId),
+												})}
 											>
 												{pendingIds.has(split.id) ? (
 													<Spinner data-icon="inline-start" />
 												) : (
 													<Check data-icon="inline-start" />
 												)}
-												{settled ? 'Wieder als offen markieren' : 'Als bezahlt markieren'}
+												{settled ? t('markOpen') : t('markPaid')}
 											</Button>
 										)}
 									</Item>
@@ -250,7 +259,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 							})}
 						</ItemGroup>
 						{expense.splits.length === 0 && (
-							<p className="text-sm text-muted-foreground">Keine Anteile eingetragen.</p>
+							<p className="text-sm text-muted-foreground">{t('noShares')}</p>
 						)}
 					</CollapsibleContent>
 				</Item>
@@ -258,17 +267,16 @@ export const ExpenseRow = memo(function ExpenseRow({
 			<AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>Ausgabe löschen?</AlertDialogTitle>
+						<AlertDialogTitle>{t('deleteTitle')}</AlertDialogTitle>
 						<AlertDialogDescription>
-							„{expense.description}“ mit{' '}
-							<span className="font-mono tabular-nums">
-								{formatEuroCents(expense.amountCents, expense.currency)}
-							</span>{' '}
-							und den zugehörigen Anteilen wird gelöscht.
+							{t.rich('deleteBody', {
+								description: expense.description,
+								amount: monoAmount(money(expense.amountCents)),
+							})}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogCancel className="min-h-11">Abbrechen</AlertDialogCancel>
+						<AlertDialogCancel className="min-h-11">{t('cancel')}</AlertDialogCancel>
 						<AlertDialogAction
 							variant="destructive"
 							className="min-h-11"
@@ -278,7 +286,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 								onDelete(expense.id);
 							}}
 						>
-							Löschen
+							{t('delete')}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
@@ -292,29 +300,21 @@ export const ExpenseRow = memo(function ExpenseRow({
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>
-							{settleCandidate?.settledAt
-								? 'Wieder als offen markieren?'
-								: 'Als bezahlt markieren?'}
+							{settleCandidate?.settledAt ? t('markOpenTitle') : t('markPaidTitle')}
 						</AlertDialogTitle>
 						<AlertDialogDescription>
-							{settleCandidate && (
-								<>
-									{who(settleCandidate.debtorMemberId)} ·{' '}
-									<span className="font-mono tabular-nums">
-										{formatEuroCents(settleCandidate.amountCents, expense.currency)}
-									</span>{' '}
-									für „{expense.description}“, bezahlt von{' '}
-									{isPayer ? 'dir' : memberName(expense.paidByMemberId)}.{' '}
-									{settleCandidate.settledAt
-										? 'Dieser Anteil wird wieder als offen markiert.'
-										: 'Dieser Anteil wird als bezahlt markiert.'}{' '}
-									Es wird kein Geld überwiesen.
-								</>
-							)}
+							{settleCandidate &&
+								t.rich(settleCandidate.settledAt ? 'markOpenBody' : 'markPaidBody', {
+									who: who(settleCandidate.debtorMemberId),
+									amount: monoAmount(money(settleCandidate.amountCents)),
+									description: expense.description,
+									payer: isPayer ? 'you' : 'other',
+									payerName: memberName(expense.paidByMemberId),
+								})}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogCancel className="min-h-11">Abbrechen</AlertDialogCancel>
+						<AlertDialogCancel className="min-h-11">{t('cancel')}</AlertDialogCancel>
 						<AlertDialogAction
 							className="min-h-11"
 							disabled={!settleCandidate || pendingIds.has(settleCandidate.id) || locked}
@@ -323,7 +323,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 								setSettleCandidate(null);
 							}}
 						>
-							{settleCandidate?.settledAt ? 'Wieder als offen markieren' : 'Als bezahlt markieren'}
+							{settleCandidate?.settledAt ? t('markOpen') : t('markPaid')}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>

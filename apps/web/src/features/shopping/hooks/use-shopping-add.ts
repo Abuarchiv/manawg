@@ -7,34 +7,21 @@ import {
 	shouldReleaseIdempotencyKey,
 } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
-import {
-	type NotificationWarning,
-	notificationWarningMessage,
-} from '@/core/notifications/notification-warning';
+import type { NotificationWarning } from '@/core/notifications/notification-warning';
 import { buildDraftKey, readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
 import {
 	enqueueOfflineAction,
 	isOfflineActionQueued,
 	removeQueuedAction,
 } from '@/core/offline/offline-client';
-import {
-	DRAFT_CLEANUP_FAILED_MESSAGE,
-	keyUnavailableMessage,
-	OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE,
-	OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
-	OFFLINE_SAVED_NOTICE,
-	QUEUE_EDIT_ALREADY_SENT_MESSAGE,
-} from '@/core/offline/offline-copy';
 import { createQueuedShoppingItem } from '@/core/offline/offline-queue';
 import type { PendingOverlay } from '@/core/sync/use-synced-collection';
 import { NAME_MAX } from '@/features/shopping/components/constants';
 import type { ShoppingItem } from '@/features/shopping/components/shopping-types';
 import { parseShoppingInput } from '@/features/shopping/parse-shopping-input';
-import {
-	shoppingAddErrorMessage,
-	shoppingDuplicateMessage,
-} from '@/features/shopping/shopping-errors';
+import { shoppingAddError, shoppingDuplicateError } from '@/features/shopping/shopping-errors';
 import { TEMP_ITEM_ID_PREFIX } from '@/features/shopping/shopping-view';
+import { type Message, useMessage } from '@/shared/i18n/message';
 
 type ShoppingCreateResponse = { item: ShoppingItem; warning: NotificationWarning };
 
@@ -47,7 +34,7 @@ interface UseShoppingAddOptions {
 	pending: PendingOverlay<ShoppingItem>;
 	load: (silent?: boolean, afterMutation?: boolean) => Promise<void>;
 	refreshCount: () => void;
-	setAddNotice: (notice: string | null) => void;
+	setAddNotice: (notice: Message | null) => void;
 	/** 409: name of the item that is already open on the list. */
 	onDuplicate: (name: string) => void;
 	/** An item typed into the field was saved (or queued); lets the page show where it landed. */
@@ -68,9 +55,10 @@ export function useShoppingAdd({
 	onAdded,
 }: UseShoppingAddOptions) {
 	const toast = useToast();
+	const render = useMessage();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const [newName, setNewName] = useState('');
-	const [addError, setAddError] = useState<string | null>(null);
+	const [addError, setAddError] = useState<Message | null>(null);
 	const [adding, setAdding] = useState(false);
 	const [queueEditId, setQueueEditId] = useState<string | null>(null);
 	const [draftHydrated, setDraftHydrated] = useState(false);
@@ -139,7 +127,7 @@ export function useShoppingAdd({
 			setNewName('');
 			removeDraft(draftKey);
 			setAddError(null);
-			setAddNotice(QUEUE_EDIT_ALREADY_SENT_MESSAGE);
+			setAddNotice({ key: 'shopping.add.queueEditAlreadySent' });
 			void load(true);
 			return;
 		}
@@ -155,7 +143,7 @@ export function useShoppingAdd({
 		const fingerprint = JSON.stringify({ name, quantity });
 		const idempotencyKey = resolveIdempotencyKey(addIdempotencyKeyRef.current, fingerprint);
 		if (!idempotencyKey) {
-			setAddError(keyUnavailableMessage('Artikel', 'gespeichert'));
+			setAddError({ key: 'shopping.add.keyUnavailable' });
 			addingRef.current = false;
 			inFlightRef.current = null;
 			inFlightTextRef.current = null;
@@ -221,20 +209,20 @@ export function useShoppingAdd({
 					});
 					if ((await enqueueOfflineAction(queued)) === 0) {
 						settleTemp(null);
-						setAddError(OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE);
+						setAddError({ key: 'shopping.add.queueBlocked' });
 						return;
 					}
 					addIdempotencyKeyRef.current = null;
 					refreshCount();
 					if (fromInput && !(await clearEditedQueueItem())) {
-						setAddError(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
+						setAddError({ key: 'shopping.add.draftCleanupFailedOffline' });
 						return;
 					}
 					settleTemp({ ...tempItem, id: queued.id, createdAt: queued.createdAt });
 					saved = true;
 					if (fromInput) onAdded?.(queued.id);
 					if (fromInput && nameValueRef.current === '') removeDraft(draftKey);
-					setAddNotice(OFFLINE_SAVED_NOTICE);
+					setAddNotice({ key: 'shopping.add.savedOffline' });
 					return;
 				}
 				settleTemp(null);
@@ -245,27 +233,36 @@ export function useShoppingAdd({
 				if (retryableResponse) await load(true);
 				setAddError(
 					res.status === 409 && res.error === 'shopping_item_duplicate'
-						? `${shoppingDuplicateMessage(name)}${quantity ? ' Die Menge änderst du über „Artikelaktionen“ → „Bearbeiten“.' : ''}`
+						? shoppingDuplicateError(name, Boolean(quantity))
 						: // The middleware rejects 429 and read-only mode before any processing: nothing was saved.
 							retryableResponse && res.status !== 429 && !isReadOnlyMode(res.error)
-							? 'Konnte nicht hinzugefügt werden. Prüfe kurz die Liste, ob der Artikel schon drin ist, und versuche es noch einmal.'
-							: shoppingAddErrorMessage(res.error),
+							? { key: 'shopping.add.retryHint' }
+							: shoppingAddError(res.error),
 				);
 				return;
 			}
 			addIdempotencyKeyRef.current = null;
 			settleTemp(res.data.item ?? null);
 			if (fromInput && !(await clearEditedQueueItem())) {
-				setAddError(DRAFT_CLEANUP_FAILED_MESSAGE);
+				setAddError({ key: 'shopping.add.draftCleanupFailed' });
 				return;
 			}
 			saved = true;
 			if (fromInput && res.data.item) onAdded?.(res.data.item.id);
 			if (fromInput && nameValueRef.current === '') removeDraft(draftKey);
-			const warningMessage = notificationWarningMessage(res.data.warning);
-			if (warningMessage) toast.info(warningMessage);
-			// Chips: the suggestion disappears, and the new row may lie outside the viewport.
-			else if (!fromInput) toast.success(`${name} hinzugefügt.`);
+			const warning = res.data.warning;
+			if (warning) {
+				toast.info(
+					render({
+						key:
+							warning === 'notification_delivery_failed'
+								? 'shopping.add.deliveryFailed'
+								: 'shopping.add.deliveryUnknown',
+					}),
+				);
+				// Chips: the suggestion disappears, and the new row may lie outside the viewport.
+			} else if (!fromInput)
+				toast.success(render({ key: 'shopping.suggestions.added', values: { name } }));
 			void load(true, true);
 		} finally {
 			// No placeholder row may stay behind, not even after an exception.

@@ -162,29 +162,47 @@ test('a rate-limited replay is explained as retried automatically, not as a fail
 		[429, 'rate_limited'],
 		[429, 'too_many_requests'],
 	] as const) {
-		assert.equal(explainOfflineActionFailure(status, error).title, 'Zu viele Anfragen');
+		assert.equal(
+			explainOfflineActionFailure(status, error).title.key,
+			'offline.failure.rateLimited.title',
+		);
 	}
 });
 
 test('a feature-specific rate-limit code is explained as an automatic retry too', () => {
-	assert.equal(explainOfflineActionFailure(503, 'import_rate_limited').title, 'Zu viele Anfragen');
+	assert.equal(
+		explainOfflineActionFailure(503, 'import_rate_limited').title.key,
+		'offline.failure.rateLimited.title',
+	);
 });
 
 test('known codes win over the status bucket; unknown codes fall back to it', () => {
-	assert.equal(explainOfflineActionFailure(404, 'chore_not_found').title, 'Putzplan-Aufgabe fehlt');
-	assert.equal(explainOfflineActionFailure(400, 'title_invalid').title, 'Eintrag prüfen');
-	assert.equal(explainOfflineActionFailure(404, 'something_new').title, 'Ziel nicht mehr gefunden');
 	assert.equal(
-		explainOfflineActionFailure(400, 'constructor').title,
-		'Synchronisierung fehlgeschlagen',
+		explainOfflineActionFailure(404, 'chore_not_found').title.key,
+		'offline.failure.choreMissing.title',
 	);
-	assert.equal(explainOfflineActionFailure(500).title, 'Server gerade nicht bereit');
+	assert.equal(
+		explainOfflineActionFailure(400, 'title_invalid').title.key,
+		'offline.failure.entryInvalid.title',
+	);
+	assert.equal(
+		explainOfflineActionFailure(404, 'something_new').title.key,
+		'offline.failure.targetGone.title',
+	);
+	assert.equal(
+		explainOfflineActionFailure(400, 'constructor').title.key,
+		'offline.failure.syncFailed.title',
+	);
+	assert.equal(explainOfflineActionFailure(500).title.key, 'offline.failure.serverNotReady.title');
 });
 
 test('401 reads as an expired session, 403 as missing access, a deactivated member as moved out', () => {
-	assert.equal(explainOfflineActionFailure(401).title, 'Sitzung abgelaufen');
-	assert.equal(explainOfflineActionFailure(403).title, 'Zugriff fehlt');
-	assert.equal(explainOfflineActionFailure(401, 'member_deactivated').title, 'Du bist ausgezogen');
+	assert.equal(explainOfflineActionFailure(401).title.key, 'offline.failure.sessionExpired.title');
+	assert.equal(explainOfflineActionFailure(403).title.key, 'offline.failure.accessMissing.title');
+	assert.equal(
+		explainOfflineActionFailure(401, 'member_deactivated').title.key,
+		'offline.failure.movedOut.title',
+	);
 });
 
 test('a rejected chore completion is not pending; one waiting on the connection is', () => {

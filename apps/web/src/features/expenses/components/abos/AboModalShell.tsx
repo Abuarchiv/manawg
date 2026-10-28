@@ -1,6 +1,7 @@
 'use client';
 
 import { ArrowLeft } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import {
 	createContext,
 	type ReactNode,
@@ -38,6 +39,7 @@ interface AboModalShellProps {
 }
 
 export function AboModalShell({ title, onClose, submitting, children }: AboModalShellProps) {
+	const t = useTranslations('expenses-abos');
 	const open = useContext(AboModalOpenContext);
 	const [confirmClose, setConfirmClose] = useState(false);
 	const dirtyRef = useRef(false);
@@ -86,7 +88,7 @@ export function AboModalShell({ title, onClose, submitting, children }: AboModal
 								size="icon"
 								onClick={requestClose}
 								disabled={submitting}
-								aria-label="Fixkosten-Editor schließen"
+								aria-label={t('modal.closeLabel')}
 							>
 								<ArrowLeft />
 							</Button>
@@ -107,16 +109,13 @@ export function AboModalShell({ title, onClose, submitting, children }: AboModal
 			<AlertDialog open={confirmClose} onOpenChange={setConfirmClose}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>Eingaben verwerfen?</AlertDialogTitle>
-						<AlertDialogDescription>
-							Ungespeicherte Änderungen an diesen Fixkosten gehen beim Schließen verloren. Es wird
-							nichts gespeichert.
-						</AlertDialogDescription>
+						<AlertDialogTitle>{t('modal.discardTitle')}</AlertDialogTitle>
+						<AlertDialogDescription>{t('modal.discardBody')}</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogCancel className="min-h-11">Weiterbearbeiten</AlertDialogCancel>
+						<AlertDialogCancel className="min-h-11">{t('modal.keepEditing')}</AlertDialogCancel>
 						<AlertDialogAction variant="destructive" className="min-h-11" onClick={onClose}>
-							Verwerfen
+							{t('modal.discard')}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>

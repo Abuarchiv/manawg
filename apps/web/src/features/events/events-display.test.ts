@@ -26,7 +26,7 @@ test('month bounds of a month that starts on Monday and ends on Sunday add no ex
 
 test('a multi-day all-day event names its last day', () => {
 	const base = { eventId: 'e', title: 't', description: null, location: null, recurring: false };
-	assert.equal(
+	assert.deepEqual(
 		formatEventTimeOfDay({
 			...base,
 			allDay: true,
@@ -34,17 +34,29 @@ test('a multi-day all-day event names its last day', () => {
 			endsAt: '2026-10-05T00:00:00.000Z',
 			occurrenceIndex: 0,
 		}),
-		'ganztägig',
+		{ key: 'events.time.allDay' },
 	);
-	assert.match(
-		formatEventTimeOfDay({
-			...base,
-			allDay: true,
-			startsAt: '2026-10-05T00:00:00.000Z',
-			endsAt: '2026-10-09T00:00:00.000Z',
-			occurrenceIndex: 0,
-		}),
-		/^ganztägig · bis \S+ 09\.10\.$/,
+	const multiDay = formatEventTimeOfDay({
+		...base,
+		allDay: true,
+		startsAt: '2026-10-05T00:00:00.000Z',
+		endsAt: '2026-10-09T00:00:00.000Z',
+		occurrenceIndex: 0,
+	});
+	assert.equal(multiDay.key, 'events.time.allDayUntil');
+	assert.equal(multiDay.values?.date, '09.10.');
+	assert.equal(
+		formatEventTimeOfDay(
+			{
+				...base,
+				allDay: true,
+				startsAt: '2026-10-05T00:00:00.000Z',
+				endsAt: '2026-10-09T00:00:00.000Z',
+				occurrenceIndex: 0,
+			},
+			'en',
+		).values?.date,
+		'9 Oct',
 	);
 });
 

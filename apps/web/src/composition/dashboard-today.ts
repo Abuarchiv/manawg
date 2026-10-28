@@ -2,7 +2,8 @@ import { berlinCalendarDayDistance } from '@/core/utils/berlin-day';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatShortDate, parseTimestamp } from '@/core/utils/time';
 import { simplifyDebts } from '@/features/expenses/debt-reduction';
-import { pluralize } from '@/shared/lib/plural';
+import type { Locale } from '@/shared/i18n/locale';
+import type { Message } from '@/shared/i18n/message';
 
 export type TodayImportantKind =
 	| 'chore'
@@ -14,8 +15,9 @@ export type TodayImportantKind =
 
 export interface TodayImportantItem {
 	kind: TodayImportantKind;
-	title: string;
-	detail: string;
+	/** User content (a chore or post title) stays a string; generated copy is a message. */
+	title: string | Message;
+	detail: string | Message;
 	href: string;
 	tone: 'danger' | 'accent' | 'neutral';
 	isPersonal: boolean;
@@ -66,10 +68,8 @@ export interface TodayImportantInput {
 		isCurrentMember: boolean;
 	}>;
 	now?: number;
-}
-
-function formatEuro(cents: number, currency = 'EUR'): string {
-	return formatEuroCents(cents, currency);
+	/** Language of the amounts and dates inside the messages. */
+	locale?: Locale;
 }
 
 function calendarDayDistance(iso: string, now: number): number | null {
@@ -77,16 +77,13 @@ function calendarDayDistance(iso: string, now: number): number | null {
 	return dueAt === null ? null : berlinCalendarDayDistance(new Date(now), new Date(dueAt));
 }
 
-export function dueLabel(iso: string, now: number): string {
+export function dueLabel(iso: string, now: number): Message {
 	const days = calendarDayDistance(iso, now);
-	if (days === null) return 'Datum prüfen';
-	if (days < 0) {
-		const n = Math.abs(days);
-		return `seit ${pluralize(n, 'Tag', 'Tagen')} offen`;
-	}
-	if (days === 0) return 'heute fällig';
-	if (days === 1) return 'morgen fällig';
-	return `in ${days} Tagen`;
+	if (days === null) return { key: 'home.due.checkDate' };
+	if (days < 0) return { key: 'home.due.overdue', values: { count: Math.abs(days) } };
+	if (days === 0) return { key: 'home.due.today' };
+	if (days === 1) return { key: 'home.due.tomorrow' };
+	return { key: 'home.due.inDays', values: { count: days } };
 }
 
 export function choreUrgency(iso: string, now: number): number {
@@ -98,8 +95,16 @@ export function choreUrgency(iso: string, now: number): number {
 	return 3;
 }
 
+function recurringAmount(
+	recurring: { amountCents: number; currency?: string },
+	locale: Locale,
+): string {
+	return formatEuroCents(recurring.amountCents, recurring.currency, { locale });
+}
+
 export function getTodayImportantItems(input: TodayImportantInput): TodayImportantItem[] {
 	const now = input.now ?? Date.now();
+	const locale = input.locale ?? 'de';
 	const base = `/wg/${encodeURIComponent(input.shareCode)}`;
 	const ranked: Array<{
 		item: TodayImportantItem;
@@ -115,16 +120,15 @@ export function getTodayImportantItems(input: TodayImportantInput): TodayImporta
 			const urgency = choreUrgency(chore.nextDueAt, now);
 			const isPersonal = chore.assignedMemberId === input.currentMemberId;
 			const due = dueLabel(chore.nextDueAt, now);
-			const ownership = isPersonal
-				? ''
-				: chore.assignedMemberName
-					? chore.assignedMemberName
-					: 'Noch nicht zugewiesen';
+			const owner: string | Message = chore.assignedMemberName ?? { key: 'home.today.unassigned' };
+			const detail: Message = isPersonal
+				? due
+				: { key: 'home.today.choreDetail', values: { owner, due } };
 			return {
 				item: {
 					kind: 'chore' as const,
 					title: chore.title,
-					detail: ownership ? `${ownership} · ${due}` : due,
+					detail,
 					href: `${base}/putzen?highlight=${encodeURIComponent(chore.id)}`,
 					tone: urgency === 0 ? ('danger' as const) : ('accent' as const),
 					isPersonal,
@@ -154,9 +158,9 @@ export function getTodayImportantItems(input: TodayImportantInput): TodayImporta
 			item: {
 				kind: 'shopping',
 				title: input.openShoppingTop[0]
-					? `${input.openShoppingTop[0]} fehlt noch`
-					: 'Einkauf offen',
-				detail: `WG · ${pluralize(input.openShoppingCount, 'offener Artikel', 'offene Artikel')}`,
+					? { key: 'home.today.itemMissing', values: { name: input.openShoppingTop[0] } }
+					: { key: 'home.today.shoppingOpen' },
+				detail: { key: 'home.today.shoppingDetail', values: { count: input.openShoppingCount } },
 				href: `${base}/einkauf`,
 				tone: 'neutral',
 				isPersonal: false,
@@ -174,7 +178,12 @@ export function getTodayImportantItems(input: TodayImportantInput): TodayImporta
 			item: {
 				kind: 'announcement',
 				title: announcement.content,
-				detail: announcement.kind === 'request' ? 'Übernahme offen' : 'Pinnwand offen',
+				detail: {
+					key:
+						announcement.kind === 'request'
+							? 'home.today.takeoverOpen'
+							: 'home.today.noticeboardOpen',
+				},
 				href: `${base}/pinnwand#announcement-${encodeURIComponent(announcement.id)}`,
 				tone: 'accent',
 				isPersonal: true,
@@ -195,8 +204,14 @@ export function getTodayImportantItems(input: TodayImportantInput): TodayImporta
 				kind: 'recurring',
 				title: recurring.description,
 				detail: recurring.nextDueAt
-					? `Fixkosten · ${formatEuro(recurring.amountCents, recurring.currency)} · ${dueLabel(recurring.nextDueAt, now)}`
-					: `Fixkosten · ${formatEuro(recurring.amountCents, recurring.currency)}`,
+					? {
+							key: 'home.today.recurringDue',
+							values: {
+								amount: recurringAmount(recurring, locale),
+								due: dueLabel(recurring.nextDueAt, now),
+							},
+						}
+					: { key: 'home.today.recurring', values: { amount: recurringAmount(recurring, locale) } },
 				href: `${base}/ausgaben?recurring=${encodeURIComponent(recurring.id)}`,
 				tone: urgency === 0 ? 'danger' : 'accent',
 				isPersonal: false,
@@ -222,8 +237,14 @@ export function getTodayImportantItems(input: TodayImportantInput): TodayImporta
 		ranked.push({
 			item: {
 				kind: 'debt',
-				title: outgoing ? `An ${debt.toName}` : `Von ${debt.fromName}`,
-				detail: outgoing ? 'Du zahlst' : 'Du bekommst',
+				title: {
+					key: 'home.today.debtTitle',
+					values: {
+						direction: outgoing ? 'outgoing' : 'incoming',
+						name: outgoing ? debt.toName : debt.fromName,
+					},
+				},
+				detail: { key: outgoing ? 'home.today.youPay' : 'home.today.youReceive' },
 				href: `${base}/ausgaben`,
 				tone: outgoing ? 'danger' : 'neutral',
 				isPersonal: true,
@@ -243,10 +264,14 @@ export function getTodayImportantItems(input: TodayImportantInput): TodayImporta
 		ranked.push({
 			item: {
 				kind: 'absence',
-				title: absence.isCurrentMember
-					? 'Du bist als abwesend markiert'
-					: `${absence.name} ist abwesend`,
-				detail: `bis ${formatShortDate(absence.endDate, 'Europe/Berlin')}`,
+				title: {
+					key: 'home.today.absent',
+					values: { self: absence.isCurrentMember ? 'yes' : 'no', name: absence.name },
+				},
+				detail: {
+					key: 'home.today.until',
+					values: { date: formatShortDate(absence.endDate, 'Europe/Berlin', locale) },
+				},
 				href: absence.id
 					? `${base}/putzen?panel=absences&absence=${encodeURIComponent(absence.id)}`
 					: `${base}/putzen?panel=absences`,

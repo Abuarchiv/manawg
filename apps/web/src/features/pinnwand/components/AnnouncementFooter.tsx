@@ -1,6 +1,7 @@
 'use client';
 
 import { CheckCircle2, MessageCircle, Send } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useEffect, useRef, useState } from 'react';
 import {
 	Collapsible,
@@ -19,7 +20,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { COMMENT_MAX } from '@/features/pinnwand/constants';
-import { REACTION_ICONS, reactionLabel } from './AnnouncementActionsMenu';
+import { REACTION_ICONS } from './AnnouncementActionsMenu';
 import type { Announcement, ReactionKey } from './announcement-types';
 import { CommentRow, useCommentDraft } from './CommentRow';
 
@@ -57,6 +58,7 @@ export function AnnouncementFooter({
 	onUpdateComment,
 	onDeleteComment,
 }: AnnouncementFooterProps) {
+	const t = useTranslations('pinnwand');
 	const [commentsOpen, setCommentsOpen] = useState(false);
 	const [commentPending, setCommentPending] = useState(false);
 	const [commentError, setCommentError] = useState(false);
@@ -97,7 +99,7 @@ export function AnnouncementFooter({
 			<div className="flex flex-wrap items-center gap-1">
 				{visibleReactions.map((key) => {
 					const Icon = REACTION_ICONS[key];
-					const label = reactionLabel(key);
+					const label = t(`reaction.${key}`);
 					const active = announcement.myReactions.includes(key);
 					const count = announcement.reactionCounts[key] ?? 0;
 					return (
@@ -111,7 +113,7 @@ export function AnnouncementFooter({
 							}}
 							aria-disabled={reactionPending(key) || undefined}
 							aria-pressed={active}
-							aria-label={`${label}-Reaktion: ${actionSubject}`}
+							aria-label={t('footer.reactionAria', { label, subject: actionSubject })}
 						>
 							{reactionPending(key) ? (
 								<Spinner data-icon="inline-start" />
@@ -125,7 +127,10 @@ export function AnnouncementFooter({
 				})}
 				<CollapsibleTrigger
 					render={<Button variant="ghost" size="sm" className="ml-auto min-w-9 gap-1 text-meta" />}
-					aria-label={`Antworten anzeigen: ${actionSubject}${commentCount > 0 ? ` (${commentCount})` : ''}`}
+					aria-label={t(commentCount > 0 ? 'footer.repliesAriaCount' : 'footer.repliesAria', {
+						subject: actionSubject,
+						count: String(commentCount),
+					})}
 					aria-controls={`announcement-comments-${announcement.id}`}
 				>
 					<MessageCircle aria-hidden />
@@ -142,14 +147,14 @@ export function AnnouncementFooter({
 							className="gap-1 pr-2 text-meta"
 							disabled={statusPending}
 							onClick={onToggleStatus}
-							aria-label={`Als geklärt markieren: ${actionSubject}`}
+							aria-label={t('footer.resolveAria', { subject: actionSubject })}
 						>
 							{statusPending ? (
 								<Spinner data-icon="inline-start" />
 							) : (
 								<CheckCircle2 data-icon="inline-start" />
 							)}
-							Geklärt
+							{t('footer.resolve')}
 						</Button>
 					)}
 			</div>
@@ -180,9 +185,7 @@ export function AnnouncementFooter({
 					)}
 					{commentError && (
 						<Alert id={`announcement-comment-error-${announcement.id}`} variant="destructive">
-							<AlertDescription>
-								Antwort nicht gespeichert. Dein Text bleibt zum erneuten Senden erhalten.
-							</AlertDescription>
+							<AlertDescription>{t('footer.replyFailed')}</AlertDescription>
 						</Alert>
 					)}
 					<Field data-invalid={commentError} className="data-[invalid=true]:text-foreground">
@@ -199,8 +202,8 @@ export function AnnouncementFooter({
 								}
 								maxLength={COMMENT_MAX}
 								rows={1}
-								aria-label={`Antwort verfassen: ${actionSubject}`}
-								placeholder="Antwort schreiben"
+								aria-label={t('footer.replyAria', { subject: actionSubject })}
+								placeholder={t('footer.replyPlaceholder')}
 								className="max-h-40 text-base read-only:opacity-60"
 							/>
 							<InputGroupAddon align="inline-end">
@@ -209,7 +212,7 @@ export function AnnouncementFooter({
 									size="icon-sm"
 									disabled={commentPending || !commentDraft.draft.trim()}
 									onClick={() => void submitComment()}
-									aria-label={`Antworten: ${actionSubject}`}
+									aria-label={t('footer.sendAria', { subject: actionSubject })}
 								>
 									{commentPending ? <Spinner /> : <Send />}
 								</InputGroupButton>

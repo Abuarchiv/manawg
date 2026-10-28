@@ -2,6 +2,7 @@
 
 import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import {
 	Item,
@@ -12,7 +13,8 @@ import {
 	ItemTitle,
 } from '@/components/ui/item';
 import type { KnownWg } from '@/core/auth/local-account';
-import { formatWgQueuedActionCount, type OfflineStatus, wgHref } from './offline-page-helpers';
+import { useMessage } from '@/shared/i18n/message';
+import { type OfflineStatus, wgHref, wgQueuedActionCountMessage } from './offline-page-helpers';
 
 interface KnownWgsCardProps {
 	status: OfflineStatus;
@@ -30,6 +32,8 @@ export function KnownWgsCard({
 	queueCounts,
 	primaryWg,
 }: KnownWgsCardProps) {
+	const t = useTranslations('offline.page.flats');
+	const message = useMessage();
 	// WG pages are never cached, so offline a link would only reload the offline page.
 	const offline = status === 'browser-offline';
 	return (
@@ -39,38 +43,36 @@ export function KnownWgsCard({
 		>
 			<div>
 				<h2 id="known-wgs-heading" className="font-heading text-base leading-5 font-semibold">
-					{knownWgs.length === 0 ? 'Deine WGs' : 'Zurück in deine WG'}
+					{knownWgs.length === 0 ? t('titleNone') : t('titleSome')}
 				</h2>
 			</div>
 			<div className="space-y-2">
 				{offline && knownWgs.length > 0 && (
 					<p className="text-xs text-muted-foreground">
-						{knownWgs.length === 1
-							? 'Deine WG öffnet sich erst, sobald du wieder online bist.'
-							: 'Deine WGs öffnen sich erst, sobald du wieder online bist.'}
+						{t('openLater', { count: knownWgs.length })}
 					</p>
 				)}
 				{knownWgs.length === 0 ? (
 					<p className="text-sm leading-relaxed text-muted-foreground">
 						{status === 'checking'
-							? 'Gemerkte WGs werden gesucht…'
+							? t('looking')
 							: inWg
 								? status === 'ready'
-									? 'Auf diesem Gerät bist du angemeldet, aber der Code deiner WG ist hier nicht gespeichert. Gib den Code ein, um sie zu öffnen.'
-									: 'Auf diesem Gerät bist du in einer WG angemeldet, aber ihr Code ist hier nicht gespeichert. Sobald du wieder online bist, lade die Seite neu, dann kannst du deine WG wieder öffnen.'
+									? t('codeMissing')
+									: t('codeMissingOffline')
 								: status === 'ready'
-									? 'Noch keine WG auf diesem Gerät gemerkt. Gib deinen Code ein, um beizutreten.'
-									: 'Noch keine WG auf diesem Gerät gemerkt. Sobald du wieder online bist, kannst du mit deinem Code erneut beitreten.'}
+									? t('noneRemembered')
+									: t('noneRememberedOffline')}
 					</p>
 				) : (
-					<ItemGroup aria-label="Bekannte WGs">
+					<ItemGroup aria-label={t('listLabel')}>
 						{knownWgs.slice(0, 3).map((wg) => (
 							<ItemGroupEntry key={wg.code} className="w-full min-w-0">
 								<Item
 									variant="outline"
 									render={
 										offline ? undefined : (
-											<Link href={wgHref(wg.code)} aria-label={`${wg.name} öffnen`} />
+											<Link href={wgHref(wg.code)} aria-label={t('open', { name: wg.name })} />
 										)
 									}
 								>
@@ -79,7 +81,7 @@ export function KnownWgsCard({
 											{wg.name}
 										</ItemTitle>
 										<ItemDescription>
-											{formatWgQueuedActionCount(queueCounts.get(wg.code) ?? 0)}
+											{message(wgQueuedActionCountMessage(queueCounts.get(wg.code) ?? 0))}
 										</ItemDescription>
 									</ItemContent>
 									{!offline && (
@@ -100,7 +102,7 @@ export function KnownWgsCard({
 							nativeButton={false}
 							className="w-full"
 						>
-							Aktionen prüfen
+							{t('checkActions')}
 						</Button>
 					)}
 					<Button
@@ -110,7 +112,7 @@ export function KnownWgsCard({
 						nativeButton={false}
 						className="w-full"
 					>
-						Code eingeben
+						{t('enterCode')}
 					</Button>
 				</div>
 			</div>

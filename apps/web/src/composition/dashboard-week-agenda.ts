@@ -1,6 +1,9 @@
 import { berlinDayKey, endOfBerlinDay, startOfBerlinDay } from '@/core/utils/berlin-day';
 import { parseTimestamp } from '@/core/utils/time';
 import type { EventOccurrence } from '@/features/events/events';
+import { dateTimeFormat } from '@/shared/i18n/intl';
+import type { Locale } from '@/shared/i18n/locale';
+import type { Message } from '@/shared/i18n/message';
 import { choreUrgency, dueLabel, type TodayImportantInput } from './dashboard-today';
 
 export interface BerlinWeekWindow {
@@ -37,8 +40,9 @@ export function getBerlinWeekWindow(now = Date.now()): BerlinWeekWindow {
 export interface WeekAgendaItem {
 	key: string;
 	kind: 'event' | 'chore';
+	/** User content (a chore or event title) stays a string. */
 	title: string;
-	detail: string;
+	detail: string | Message;
 	href: string;
 	dayKey: string;
 	at: number;
@@ -52,20 +56,21 @@ export interface WeekAgenda {
 	upcoming: WeekAgendaItem[];
 }
 
-const AGENDA_TIME_FORMATTER = new Intl.DateTimeFormat('de-DE', {
-	hour: '2-digit',
-	minute: '2-digit',
-	timeZone: 'Europe/Berlin',
-});
-
 export function getWeekAgenda(input: {
 	shareCode: string;
 	currentMemberId: string;
 	dueChores: TodayImportantInput['dueChores'];
 	events: EventOccurrence[];
 	now?: number;
+	locale?: Locale;
 }): WeekAgenda {
 	const now = input.now ?? Date.now();
+	const formatTime = (at: number) =>
+		dateTimeFormat(input.locale ?? 'de', {
+			hour: '2-digit',
+			minute: '2-digit',
+			timeZone: 'Europe/Berlin',
+		}).format(new Date(at));
 	const window = getBerlinWeekWindow(now);
 	const base = `/wg/${encodeURIComponent(input.shareCode)}`;
 	const overdue: WeekAgendaItem[] = [];
@@ -79,12 +84,20 @@ export function getWeekAgenda(input: {
 		if (at === null) continue;
 		const dayKey = berlinDayKey(new Date(at));
 		if (dayKey > window.sundayKey) continue;
-		const who = isOwn ? 'Du' : (chore.assignedMemberName ?? 'Noch nicht zugewiesen');
+		const who: string | Message = isOwn
+			? { key: 'home.agenda.you' }
+			: (chore.assignedMemberName ?? { key: 'home.today.unassigned' });
 		const item: WeekAgendaItem = {
 			key: `chore:${chore.id}`,
 			kind: 'chore',
 			title: chore.title,
-			detail: dayKey < window.todayKey ? `${who} · ${dueLabel(chore.nextDueAt, now)}` : who,
+			detail:
+				dayKey < window.todayKey
+					? {
+							key: 'home.today.choreDetail',
+							values: { owner: who, due: dueLabel(chore.nextDueAt, now) },
+						}
+					: who,
 			href: `${base}/putzen?highlight=${encodeURIComponent(chore.id)}`,
 			dayKey,
 			at,
@@ -102,18 +115,20 @@ export function getWeekAgenda(input: {
 		// biome-ignore lint/complexity/useMathMinMax: day keys are strings, Math.max would return NaN
 		const dayKey = startKey < window.todayKey ? window.todayKey : startKey;
 		const ongoing = start <= now && now < end;
-		const when = event.allDay
-			? 'ganztägig'
+		const when: string | Message = event.allDay
+			? { key: 'home.agenda.allDay' }
 			: ongoing
-				? 'läuft'
+				? { key: 'home.agenda.ongoing' }
 				: startKey < window.todayKey
-					? `Endete heute um ${AGENDA_TIME_FORMATTER.format(new Date(end))}`
-					: AGENDA_TIME_FORMATTER.format(new Date(start));
+					? { key: 'home.agenda.endedAt', values: { time: formatTime(end) } }
+					: formatTime(start);
 		upcoming.push({
 			key: `event:${event.eventId}:${event.occurrenceIndex}`,
 			kind: 'event',
 			title: event.title,
-			detail: event.location ? `${when} · ${event.location}` : when,
+			detail: event.location
+				? { key: 'home.agenda.withLocation', values: { when, location: event.location } }
+				: when,
 			href: `${base}/kalender?highlight=${encodeURIComponent(event.eventId)}`,
 			dayKey,
 			at: event.allDay

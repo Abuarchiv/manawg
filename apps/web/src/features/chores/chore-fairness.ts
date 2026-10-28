@@ -3,7 +3,6 @@ import { getAbsentMemberIds } from '@/features/chores/absence';
 import { computeNextDueAt } from '@/features/chores/chore-recurrence';
 import { getChoreStatus } from '@/features/chores/chore-status';
 import type { RecurrenceType } from '@/features/chores/components/chore-types';
-import { pluralize } from '@/shared/lib/plural';
 
 interface MemberInput {
 	id: string;
@@ -59,7 +58,6 @@ interface ChoreFairnessRow {
 export interface ChoreFairness {
 	rows: ChoreFairnessRow[];
 	suggestedAssignee: ChoreFairnessRow | null;
-	insights: string[];
 }
 
 export function buildChoreFairness(input: {
@@ -96,21 +94,7 @@ export function buildChoreFairness(input: {
 			.filter((row) => row.available)
 			.slice()
 			.sort((a, b) => a.score - b.score || a.name.localeCompare(b.name))[0] ?? null;
-	const busiest = rows.slice().sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))[0];
-	const absentCount = rows.filter((row) => !row.available).length;
-	const insights =
-		busiest && busiest.assignedCount + busiest.openGapCount > 0
-			? [
-					`${busiest.name} hat aktuell ${pluralize(busiest.assignedCount, 'Aufgabe', 'Aufgaben')} und ${pluralize(busiest.openGapCount, 'offenen Termin', 'offene Termine')}.`,
-				]
-			: ['Die Aufgaben sind noch nicht verteilt.'];
-	if (absentCount > 0) {
-		insights.push(
-			`${pluralize(absentCount, 'Person wird', 'Personen werden')} wegen Abwesenheit übersprungen.`,
-		);
-	}
-
-	return { rows, suggestedAssignee, insights };
+	return { rows, suggestedAssignee };
 }
 
 export function chooseNextAvailableMember(input: {

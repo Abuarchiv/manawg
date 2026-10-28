@@ -1,6 +1,7 @@
 'use client';
 
 import { LogOut, MonitorOff } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { rememberLogoutNotice } from '@/components/entry/LogoutNotice';
 import { useConfirmLogoutDiscard } from '@/components/entry/use-confirm-logout-discard';
@@ -17,6 +18,7 @@ export function AccountSignOutSection({
 	wg: WgSummary;
 	identity: SessionMember;
 }) {
+	const t = useTranslations('settings.signOut');
 	const { confirmDiscard, dialog } = useConfirmLogoutDiscard();
 	const [accountSignOutPending, setAccountSignOutPending] = useState<'here' | 'everywhere' | null>(
 		null,
@@ -42,15 +44,13 @@ export function AccountSignOutSection({
 			// Local data is gone, so the visitor leaves the household screen either way; a failed
 			// push cleanup is told on the page they land on.
 			if (pushCleanup === 'failed') {
-				rememberLogoutNotice(
-					'Du bist abgemeldet, aber Push konnte auf diesem Browser nicht sicher beendet werden. Deaktiviere Website-Benachrichtigungen in den Browsereinstellungen.',
-				);
+				rememberLogoutNotice(t('pushNotice'));
 			}
 			// A full load, not router.push: the client router cache (staleTimes 300 s) and in-memory
 			// state still hold this account's WG pages for whoever uses the browser next.
 			window.location.assign('/');
 		} catch {
-			setAccountSignOutError('Konto konnte nicht abgemeldet werden. Bitte versuche es erneut.');
+			setAccountSignOutError(t('failed'));
 		} finally {
 			setAccountSignOutPending(null);
 		}
@@ -63,11 +63,11 @@ export function AccountSignOutSection({
 				variant="outline"
 				onClick={() => void handleAccountSignOut(false)}
 				disabled={accountSignOutPending !== null}
-				aria-label="Konto abmelden"
+				aria-label={t('account')}
 				className="w-full"
 			>
 				{accountSignOutPending === 'here' ? <Spinner aria-hidden /> : <LogOut aria-hidden />}
-				{accountSignOutPending === 'here' ? 'Meldet ab…' : 'Konto abmelden'}
+				{accountSignOutPending === 'here' ? t('pending') : t('account')}
 			</Button>
 			<Button
 				type="button"
@@ -81,7 +81,7 @@ export function AccountSignOutSection({
 				) : (
 					<MonitorOff aria-hidden />
 				)}
-				{accountSignOutPending === 'everywhere' ? 'Meldet ab…' : 'Auf allen Geräten abmelden'}
+				{accountSignOutPending === 'everywhere' ? t('pending') : t('everywhere')}
 			</Button>
 			{accountSignOutError && (
 				<Alert variant="destructive">

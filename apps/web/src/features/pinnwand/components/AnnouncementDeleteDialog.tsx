@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
@@ -13,6 +14,7 @@ import {
 	AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Spinner } from '@/components/ui/spinner';
+import { type Message, useMessage } from '@/shared/i18n/message';
 
 interface AnnouncementDeleteDialogProps {
 	open: boolean;
@@ -20,7 +22,7 @@ interface AnnouncementDeleteDialogProps {
 	actionSubject: string;
 	deletePending: boolean;
 	/** null = removed, otherwise the error message for the dialog. */
-	onDelete: () => Promise<string | null>;
+	onDelete: () => Promise<Message | null>;
 }
 
 /** Confirmation before a post and its replies are removed; stays open with an error on failure. */
@@ -31,8 +33,10 @@ export function AnnouncementDeleteDialog({
 	deletePending,
 	onDelete,
 }: AnnouncementDeleteDialogProps) {
+	const t = useTranslations('pinnwand.delete');
+	const render = useMessage();
 	const deletingRef = useRef(false);
-	const [deleteError, setDeleteError] = useState<string | null>(null);
+	const [deleteError, setDeleteError] = useState<Message | null>(null);
 	// Every opening starts without the previous attempt's error.
 	useEffect(() => {
 		if (open) setDeleteError(null);
@@ -46,25 +50,23 @@ export function AnnouncementDeleteDialog({
 		>
 			<AlertDialogContent>
 				<AlertDialogHeader>
-					<AlertDialogTitle>Beitrag entfernen?</AlertDialogTitle>
-					<AlertDialogDescription>
-						„{actionSubject}“ und die zugehörigen Antworten werden entfernt.
-					</AlertDialogDescription>
+					<AlertDialogTitle>{t('title')}</AlertDialogTitle>
+					<AlertDialogDescription>{t('body', { subject: actionSubject })}</AlertDialogDescription>
 				</AlertDialogHeader>
 				{deleteError && (
 					<Alert variant="destructive">
-						<AlertDescription>{deleteError}</AlertDescription>
+						<AlertDescription>{render(deleteError)}</AlertDescription>
 					</Alert>
 				)}
 				<AlertDialogFooter>
 					<AlertDialogCancel disabled={deletePending} className="min-h-11">
-						Abbrechen
+						{t('cancel')}
 					</AlertDialogCancel>
 					<AlertDialogAction
 						variant="destructive"
 						disabled={deletePending}
 						className="min-h-11"
-						aria-label={`Beitrag entfernen bestätigen: ${actionSubject}`}
+						aria-label={t('confirmAria', { subject: actionSubject })}
 						onClick={async () => {
 							// Lock synchronously: the built-in close runs before the next render.
 							deletingRef.current = true;
@@ -79,7 +81,7 @@ export function AnnouncementDeleteDialog({
 						}}
 					>
 						{deletePending && <Spinner data-icon="inline-start" />}
-						{deletePending ? 'Entfernt…' : 'Entfernen'}
+						{deletePending ? t('removing') : t('remove')}
 					</AlertDialogAction>
 				</AlertDialogFooter>
 			</AlertDialogContent>

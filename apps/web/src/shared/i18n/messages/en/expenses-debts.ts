@@ -1,0 +1,137 @@
+import type { Catalog } from '../catalog';
+import type de from '../de/expenses-debts';
+
+export default {
+	page: {
+		title: 'Reminders',
+		back: 'Expenses',
+		loading: 'Loading…',
+		allClear: 'All settled. Nothing open.',
+		openDebts: 'Open debts',
+		openDebtsLoading: 'Loading open debts',
+		recent: 'Recent reminders (30 days)',
+		reload: 'Reload',
+		loadError: { reminders: 'Reminders could not be loaded' },
+		boundary: {
+			title: 'Reminders could not be loaded right now',
+			body: 'Something went wrong on the reminders page. Try again or go back to the flat overview.',
+		},
+	},
+	debtLine:
+		'{debtorSelf, select, yes {You owe} other {{debtor} owes}} {creditorSelf, select, yes {you} other {{creditor}}}',
+	age: {
+		days: 'open for {count, plural, one {# day} other {# days}}',
+		dueToday: 'due today',
+	},
+	remind: {
+		idle: 'Remind',
+		sending: 'Sending…',
+		sent: 'Sent',
+		cooldown: 'Available again later',
+		cooldownSr: 'Available again',
+		optedOut: 'Prefers no reminders',
+		primaryOwn: 'Remind {debtor}',
+		primaryOther: 'Remind {debtor} to pay {creditor} · {amount}',
+		sentTo: 'Reminder sent to {name}.',
+		sentPlain: 'Reminder sent.',
+		deliveryFailed: 'Reminder saved. The push notification could not be sent.',
+		deliveryUnknown: 'Reminder saved. Push delivery could not be confirmed.',
+		keyUnavailable: 'The reminder could not be sent safely. Try again.',
+		errors: {
+			subject: 'The reminder could not be sent',
+			cooldown: 'Please wait a little ({hours} h per person).',
+			rateLimited: 'Too many reminders. Try again later.',
+			optedOut: 'This person does not receive reminders.',
+			noOpenDebt: 'There is no open debt between you.',
+			notAMember: 'Please join the flat again.',
+		},
+	},
+	history: {
+		emptyTitle: 'No reminders yet',
+		emptyBody: 'Reminders you send appear here.',
+		channel: {
+			push: 'Push notification',
+			inapp: 'In the app',
+			pending: 'Sending',
+			unknown: 'Unknown',
+		},
+	},
+	summary: {
+		title: 'Your balance',
+		openBalances: 'Open balances',
+		owed: 'You are owed',
+		owe: 'You owe',
+		settled: 'You are settled',
+		statementLink: 'Monthly statement',
+		remindersLink: 'All reminders',
+		balances: 'Balances',
+		balancesLabel: 'Balance per member',
+		you: 'You',
+		balanceSettled: 'settled',
+		howToSettle: 'How to settle up',
+		yourPayments: 'Your open payments',
+		otherPayments: 'Other payments in the flat',
+	},
+	settle: {
+		button: 'Settle up',
+		checking: 'Checking…',
+		checkFailed: 'The check failed. Try again in a moment.',
+		keyUnavailable: 'The settlement could not be saved safely. Try again.',
+		cashKeyUnavailable: 'The cash payment could not be saved safely. Try again.',
+		noDirectSplits:
+			'This combined balance has no shares that can be assigned directly. Check the original expenses one by one.',
+		recorded: 'Payment recorded: {amount} from {from} to {to}.',
+		recordedWithRemaining:
+			'Payment recorded: {amount} from {from} to {to}. {remaining} remains open in the combined balance.',
+		nothingRecorded: 'No payment recorded. The open expenses are being reloaded.',
+		cashRecorded: 'Cash payment recorded: {amount} from {from} to {to}.',
+	},
+	review: {
+		title: 'Confirm a payment already made',
+		body: 'Only confirm if {payerSelf, select, yes {you have} other {{payer} has}} already paid {amount} to {payeeSelf, select, yes {you} other {{payee}}}. No money is transferred.',
+		cashNote:
+			'“Record the full balance as cash” confirms the whole combined balance of {amount} instead.',
+		sharesLabel: 'Expense shares covered',
+		expense: 'Expense',
+		offset: 'Offset against what they owe you',
+		currentShare: 'Current open share',
+		remaining:
+			'{amount} of the combined balance cannot be booked against these shares and stays open.',
+		checkedNote:
+			'These shares were checked just now. If they change in the meantime, you will need to check the payment again.',
+		noShares:
+			'This balance combines several debts and cannot be assigned to a single share. You can record it as a cash payment.',
+		cancel: 'Cancel',
+		saving: 'Saving…',
+		recordCash: 'Record the full balance as cash ({amount})',
+		recordPaid: 'Record {amount} as paid',
+	},
+	cash: {
+		title: 'Cash payments',
+		listLabel: 'Your cash payments',
+		line: '{fromSelf, select, yes {You} other {{from}}} to {toSelf, select, yes {you} other {{to}}}',
+		paidInCash: 'Paid in cash',
+		void: 'Reverse',
+		voidTitle: 'Reverse cash payment?',
+		voidBody:
+			'The cash payment of {amount} from {from} to {to} will be reversed, and the debt is open again. If only the amount is wrong, enter the payment again afterwards.',
+		voidKeyUnavailable: 'The reversal could not be saved safely. Try again.',
+		voided: 'Cash payment reversed: {amount} from {from} to {to}.',
+	},
+	errors: {
+		sentence: '{subject}.',
+		settleSubject: 'The settlement could not be saved',
+		cashSubject: 'The cash payment could not be saved',
+		voidSubject: 'The cash payment could not be reversed',
+		settlementChanged:
+			'The open amounts have changed. Check the payment again before you record it.',
+		reviewRequired: 'Check the affected expenses and the amount first.',
+		memberNotInWg: 'At least one member is no longer in this flat.',
+		notPartyToDebt: 'You are not involved in this debt.',
+		notPartyToPayment: 'You are not involved in this payment.',
+		invalidRequest: 'The request was not valid.',
+		amountInvalid: 'The amount is not valid.',
+		paymentNotFound: 'This cash payment no longer exists.',
+		paymentVoided: 'This cash payment has already been reversed.',
+	},
+} satisfies Catalog<typeof de>;

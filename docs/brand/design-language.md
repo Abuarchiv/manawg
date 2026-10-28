@@ -43,6 +43,18 @@ The stock light `--muted-foreground` (`oklch(0.556 0 0)`) reaches 4.74:1 on whit
 
 Lucide icons with a 1.5px stroke. The 44px interaction region is separate from the smaller visual icon. The favicon keeps all eight bodies of the mark.
 
+## English copy
+
+English copy follows the same persona as German: it states, it does not demand, and it never blames. No exclamation marks, emojis, slang or office jargon. The app reminds, it does not chase.
+
+- Address the reader as "you", descriptively rather than as a command. Sentence case everywhere, including buttons.
+- British spelling with -ise (organise, cancelled, colour). Curly quotes.
+- Pending labels use the present tense with an ellipsis: "Saving…", "Loading…".
+- Amounts and dates use `en-GB`: `€24.80`, `+€42.30`, the Intl minus, 24-hour time, `3 Mar` and `3 March 2026`.
+- Reference sentence: "€24.80 to Lena, open since 3 March." Never "You owe Lina money!", "Great job, team", "Task overdue" or "Pay up".
+- "ManaWG" is never translated and never takes an article. "WG" in prose is "flat"; onboarding explains it once as "WG (shared flat)".
+- The rule of one German everyday noun per concept becomes one everyday English noun from `docs/brand/glossary-en.md`.
+
 ## Sources in code
 
 `apps/web/src/shared/globals.css` owns colors, type roles, radius and basic motion. `apps/web/components.json` owns the shadcn registry configuration. `src/shared/lib/brand-mark.json` holds the mark geometry; `src/components/ui/LogoMark.tsx` renders it. `scripts/generate-brand-assets.mjs` derives the browser and PWA icons from it (`node scripts/generate-brand-assets.mjs`).

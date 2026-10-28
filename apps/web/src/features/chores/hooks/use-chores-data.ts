@@ -1,5 +1,5 @@
 import { useCallback, useRef } from 'react';
-import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
+import { wgLoadError } from '@/core/guards/load-errors';
 import { isNetworkError } from '@/core/http/error-codes';
 import { type SyncedReloadReason, useSyncedCollection } from '@/core/sync/use-synced-collection';
 import type { AbsenceInput } from '@/features/chores/absence';
@@ -8,6 +8,7 @@ import type {
 	Chore,
 	ChoreListResponse,
 } from '@/features/chores/components/chore-types';
+import { useMessage } from '@/shared/i18n/message';
 
 interface ChoresDataParams {
 	wg: { shareCode: string };
@@ -28,6 +29,7 @@ export function useChoresData({
 	encodedShareCode,
 	setActionNotice,
 }: ChoresDataParams) {
+	const render = useMessage();
 	const loadAllRef = useRef<(silent: boolean) => Promise<void>>(async () => undefined);
 	const reload = (reason: SyncedReloadReason) => void loadAllRef.current(reason !== 'mount');
 	// Offline with either list cached: keep showing the plan instead of an error state.
@@ -41,7 +43,8 @@ export function useChoresData({
 		select: (data) => data.chores,
 		assemble: (items, current) => ({ ...current, chores: items }),
 		getId: (chore) => chore.id,
-		describeError: (error) => getWgLoadErrorMessage('Putzplan', error.status, error.error),
+		describeError: (error) =>
+			render(wgLoadError({ key: 'chores.load.plan' }, error.status, error.error)),
 		hideError: hideOfflineError,
 		reload,
 		offline: {
@@ -57,7 +60,7 @@ export function useChoresData({
 		assemble: (items, current) => ({ ...current, absences: items }),
 		getId: (absence) => absence.id,
 		describeError: (error) =>
-			getWgLoadErrorMessage('Abwesenheiten', error.status, error.error, { verb: 'konnten' }),
+			render(wgLoadError({ key: 'chores.load.absences' }, error.status, error.error)),
 		hideError: hideOfflineError,
 		// The plan's mount load, poll and replay reload both lists.
 		pollIntervalMs: null,

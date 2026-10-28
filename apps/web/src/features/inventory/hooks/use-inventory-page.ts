@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
+import { wgLoadError } from '@/core/guards/load-errors';
 import { refreshCachedFetch } from '@/core/hooks/use-cached-fetch';
 import { useStableCallback } from '@/core/hooks/use-stable-callback';
 import { isNetworkError } from '@/core/http/error-codes';
@@ -11,6 +11,7 @@ import {
 	type InventoryMutationItemDto,
 	isBelowThreshold,
 } from '@/features/inventory/inventory';
+import { useMessage } from '@/shared/i18n/message';
 
 interface InventoryResponse {
 	items: InventoryItemDto[];
@@ -38,6 +39,7 @@ function applyInventoryMutation(
 /** The pantry list: synced items and `onChanged`, which applies a mutation to the list at once. */
 export function useInventoryPage(shareCode: string, memberId: string) {
 	const encodedShareCode = encodeURIComponent(shareCode);
+	const render = useMessage();
 	const [addOpen, setAddOpen] = useState(false);
 	const inventory = useSyncedCollection<InventoryResponse, InventoryItemDto>({
 		url: `/api/wg/${encodedShareCode}/inventory`,
@@ -46,7 +48,7 @@ export function useInventoryPage(shareCode: string, memberId: string) {
 		assemble: (items) => ({ items, grouped: groupItemsByCategory(items) }),
 		getId: (item) => item.id,
 		describeError: (error) =>
-			getWgLoadErrorMessage('Vorräte', error.status, error.error, { verb: 'konnten' }),
+			render(wgLoadError({ key: 'inventory.load.list' }, error.status, error.error)),
 		// A background refresh, or a network failure with a list on screen, adds no banner.
 		hideError: (error, { silent, hasData }) =>
 			hasData && (silent || isNetworkError(error.error, error.status)),

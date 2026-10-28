@@ -26,8 +26,8 @@ export function parseSplidCsv(csv: string, rejected?: RejectedRow[]): ParsedExpe
 	const idxDesc = findColumnIndex(header, ['beschreibung', 'titel', 'description']);
 	const idxAmount = findColumnIndex(header, ['betrag', 'kosten', 'amount']);
 	const idxPaidBy = findColumnIndex(header, ['bezahlt von', 'zahler', 'payer', 'paid by']);
-	const idxParticipants = findColumnIndex(header, ['teilnehmer', 'participants', 'für']);
-	const idxCurrency = findColumnIndex(header, ['währung', 'wahrung', 'currency']);
+	const idxParticipants = findColumnIndex(header, ['teilnehmer', 'participants', 'für']); // i18n-ignore import parser column names
+	const idxCurrency = findColumnIndex(header, ['währung', 'wahrung', 'currency']); // i18n-ignore import parser column names
 	if (idxDate === -1 || idxDesc === -1 || idxAmount === -1 || idxPaidBy === -1) return [];
 
 	const out: ParsedExpense[] = [];

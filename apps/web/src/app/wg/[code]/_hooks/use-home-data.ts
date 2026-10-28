@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { DashboardData } from '@/composition/dashboard-data';
 import { getBerlinWeekWindow } from '@/composition/dashboard-insights';
-import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
+import { wgLoadError } from '@/core/guards/load-errors';
 import { useCachedFetch } from '@/core/hooks/use-cached-fetch';
 import { subscribeVisibility, useOnlineStatus } from '@/core/hooks/use-online-status';
 import { getSyncedCountForWg, OFFLINE_SYNCED_EVENT } from '@/core/offline/offline-client';
@@ -13,6 +13,7 @@ import {
 	useVisibilityPausedInterval,
 } from '@/core/utils/use-visibility-paused-interval';
 import { expandRecurrence, type SerializedWgEvent } from '@/features/events/events';
+import { useMessage } from '@/shared/i18n/message';
 
 interface HomeDataIdentity {
 	memberId: string;
@@ -24,6 +25,7 @@ interface HomeDataIdentity {
  */
 export function useHomeData(shareCode: string, identity: HomeDataIdentity) {
 	const online = useOnlineStatus();
+	const message = useMessage();
 	const [berlinTodayKey, setBerlinTodayKey] = useState(() => berlinDayKey(new Date()));
 	const [agendaNow, setAgendaNow] = useState(() => Date.now());
 	const encodedShareCode = encodeURIComponent(shareCode);
@@ -39,7 +41,13 @@ export function useHomeData(shareCode: string, identity: HomeDataIdentity) {
 	const eventUrl = `/api/wg/${encodedShareCode}/events?from=${encodeURIComponent(weekWindow.from.toISOString())}&to=${encodeURIComponent(weekWindow.to.toISOString())}`;
 	const eventRead = useCachedFetch<{ events: SerializedWgEvent[] }>(eventUrl, auth);
 	const error = dashboardRead.error
-		? getWgLoadErrorMessage('Die Startseite', dashboardRead.error.status, dashboardRead.error.error)
+		? message(
+				wgLoadError(
+					{ key: 'home.loadError.lead' },
+					dashboardRead.error.status,
+					dashboardRead.error.error,
+				),
+			)
 		: null;
 	const eventOccurrences = useMemo(
 		() =>

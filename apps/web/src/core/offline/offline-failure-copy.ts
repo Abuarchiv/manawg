@@ -1,235 +1,89 @@
 import { isRateLimited } from '@/core/http/error-codes';
+import type { Message } from '@/shared/i18n/message';
+import type deMessages from '@/shared/i18n/messages/de';
+import type { OfflineAction } from './offline-action';
 
 /**
- * German copy for why a queued offline action could not be sent, shown in the
- * offline banner and the settings queue. Specific server error codes win over
- * the generic status buckets; the order of the checks in
- * {@link explainOfflineActionFailure} is part of the contract.
+ * Why a queued offline action could not be sent. Specific server error codes win over the
+ * generic status buckets; the order of the checks in {@link explainOfflineActionFailure} is
+ * part of the contract.
  */
 
 export interface OfflineFailureExplanation {
-	title: string;
-	detail: string;
+	title: Message;
+	detail: Message;
 }
 
-/** Also tells a fresh connection failure apart from a server answer. */
-export const OFFLINE_NO_CONNECTION_TITLE = 'Noch keine Verbindung';
+type FailureName = keyof (typeof deMessages)['offline']['failure'];
 
 /**
- * Prefixes of `lastError` texts that mark an action as held for manual review.
- * Persisted queue entries carry them, so the replay rules match on them.
+ * Texts that older builds match on in `lastError`. New failures also carry flags and a message,
+ * so these stay as persisted markers and are never shown for new rows.
  */
+// i18n-ignore persisted marker matched by older builds
+const OFFLINE_NO_CONNECTION_TITLE = 'Noch keine Verbindung';
+// i18n-ignore persisted marker matched by older builds
 export const SERVER_CHECK_PREFIX = 'Server prüfen:';
-export const IMAGE_MISSING_PREFIX = 'Bild fehlt:';
-export const IMAGE_REMOVED_PREFIX = 'Bild wurde entfernt:';
+// i18n-ignore persisted marker matched by older builds
+const IMAGE_MISSING_PREFIX = 'Bild fehlt:';
+// i18n-ignore persisted marker matched by older builds
+const IMAGE_REMOVED_PREFIX = 'Bild wurde entfernt:';
 
-export const IMAGE_REMOVED_ERROR = `${IMAGE_REMOVED_PREFIX} Entferne den Anhang in der Offline-Warteschlange oder wähle das Bild erneut aus.`;
-
-const NO_CONNECTION: OfflineFailureExplanation = {
-	title: OFFLINE_NO_CONNECTION_TITLE,
-	detail: 'Die Aktion bleibt gespeichert und wird erneut versucht, sobald das Netz zurück ist.',
-};
-
-const RATE_LIMITED: OfflineFailureExplanation = {
-	title: 'Zu viele Anfragen',
-	detail: 'Die Aktion bleibt in der Warteschlange und wird gleich automatisch erneut gesendet.',
-};
-
-const TOO_LARGE: OfflineFailureExplanation = {
-	title: 'Bild oder Eintrag ist zu groß',
-	detail: 'Entferne den Anhang oder wähle ein kleineres Bild und versuche es erneut.',
-};
-
-const ACCESS_MISSING: OfflineFailureExplanation = {
-	title: 'Zugriff fehlt',
-	detail: 'Öffne die WG erneut oder prüfe, ob dein Mitglied noch Zugriff hat.',
-};
-
-const SESSION_EXPIRED: OfflineFailureExplanation = {
-	title: 'Sitzung abgelaufen',
-	detail: 'Melde dich neu an und versuche die Aktion danach erneut.',
-};
-
-const TARGET_GONE: OfflineFailureExplanation = {
-	title: 'Ziel nicht mehr gefunden',
-	detail:
-		'Der Eintrag oder die WG wurde inzwischen geändert. Prüfe die Aktion vor dem erneuten Versuch.',
-};
-
-const SERVER_NOT_READY: OfflineFailureExplanation = {
-	title: 'Server gerade nicht bereit',
-	detail: 'Die Aktion bleibt in der Warteschlange. Versuche es gleich erneut.',
-};
-
-const SYNC_FAILED: OfflineFailureExplanation = {
-	title: 'Synchronisierung fehlgeschlagen',
-	detail: 'Die Aktion bleibt in der Warteschlange. Versuche es später noch einmal.',
-};
+const NO_CONNECTION_ERROR = `${OFFLINE_NO_CONNECTION_TITLE}: Die Aktion bleibt gespeichert und wird erneut versucht, sobald das Netz zurück ist.`; // i18n-ignore persisted text
+const IMAGE_REMOVED_ERROR = `${IMAGE_REMOVED_PREFIX} Entferne den Anhang in der Offline-Warteschlange oder wähle das Bild erneut aus.`; // i18n-ignore persisted text
+const IMAGE_MISSING_ERROR = `${IMAGE_MISSING_PREFIX} Der lokale Anhang ist nicht mehr verfügbar. Entferne den Anhang in der Offline-Warteschlange oder wähle das Bild erneut aus.`; // i18n-ignore persisted text
 
 /** Server error codes with their own explanation; several codes share one. */
-const FAILURE_BY_CODE: Readonly<Record<string, OfflineFailureExplanation>> = {
-	migration_read_only: {
-		title: 'App in Wartung',
-		detail:
-			'Die Aktion bleibt in der Warteschlange und wird gesendet, sobald die Wartung vorbei ist.',
-	},
-	...withCodes(['not_a_member'], {
-		title: 'Mitglied nicht mehr gültig',
-		detail:
-			'Öffne die WG erneut oder tritt mit einem aktuellen Einladungslink bei, bevor du diese Aktion sendest.',
-	}),
-	member_deactivated: {
-		title: 'Du bist ausgezogen',
-		detail:
-			'Dein Mitglied ist in dieser WG als ausgezogen markiert. Neu anmelden hilft nicht. Frag die WG, ob sie dich wieder aufnimmt, bevor du diese Aktion sendest.',
-	},
-	member_not_in_wg: {
-		title: 'Mitglied in Aktion prüfen',
-		detail:
-			'Ein beteiligtes Mitglied ist nicht mehr in der WG. Bearbeite Zuweisung oder Aufteilung vor dem erneuten Senden.',
-	},
-	...withCodes(['wg_not_found', 'invalid_share_code'], {
-		title: 'WG-Link nicht mehr gültig',
-		detail:
-			'Prüfe den Einladungslink oder lass dir einen neuen Einladungslink geben, bevor du diese Aktion sendest.',
-	}),
-	recurring_expense_not_found: {
-		title: 'Fixkosten-Vorlage fehlt',
-		detail:
-			'Die Vorlage existiert nicht mehr. Entferne diese Offline-Aktion oder erstelle die Fixkosten neu.',
-	},
-	abo_paused: {
-		title: 'Fixkosten pausiert',
-		detail:
-			'Die Fixkosten sind inzwischen pausiert. Entferne diese Offline-Aktion oder setze die Fixkosten fort.',
-	},
-	item_not_found: {
-		title: 'Einkauf fehlt',
-		detail:
-			'Der Artikel existiert nicht mehr. Entferne diese Offline-Aktion oder lege den Einkauf neu an.',
-	},
-	shopping_item_changed: {
-		title: 'Einkaufsstatus geändert',
-		detail:
-			'Jemand hat den Artikel inzwischen geändert. Prüfe den aktuellen Stand, bevor du die Aktion neu anlegst.',
-	},
-	chore_occurrence_changed: {
-		title: 'Putztermin geändert',
-		detail:
-			'Der Termin wurde inzwischen erledigt oder neu zugewiesen. Prüfe den aktuellen Plan, bevor du die Aktion neu anlegst.',
-	},
-	chore_not_found: {
-		title: 'Putzplan-Aufgabe fehlt',
-		detail:
-			'Die Aufgabe existiert nicht mehr. Entferne diese Offline-Aktion oder lege die Aufgabe neu an.',
-	},
-	expense_not_found: {
-		title: 'Ausgabe fehlt',
-		detail:
-			'Die Ausgabe existiert nicht mehr. Entferne diese Offline-Aktion oder erfasse die Ausgabe neu.',
-	},
-	split_not_found: {
-		title: 'Ausgabenanteil fehlt',
-		detail:
-			'Der Anteil existiert nicht mehr. Entferne diese Offline-Aktion oder prüfe die Ausgabe erneut.',
-	},
-	image_invalid: {
-		title: 'Anhang prüfen',
-		detail: 'Entferne den Anhang oder wähle ein gültiges Bild, bevor du erneut sendest.',
-	},
-	amount_invalid: {
-		title: 'Betrag prüfen',
-		detail: 'Bearbeite Betrag und Aufteilung, bevor du diese Aktion erneut sendest.',
-	},
-	currency_invalid: {
-		title: 'Währung prüfen',
-		detail: 'Erfasse die Ausgabe neu mit der aktuellen Euro-Währung.',
-	},
-	...withCodes(['splits_sum_mismatch', 'splits_invalid'], {
-		title: 'Aufteilung prüfen',
-		detail: 'Bearbeite Betrag und Aufteilung, bevor du diese Aktion erneut sendest.',
-	}),
-	...withCodes(['name_invalid', 'content_invalid', 'title_invalid', 'description_invalid'], {
-		title: 'Eintrag prüfen',
-		detail: 'Bearbeite die markierten Felder, bevor du diese Aktion erneut sendest.',
-	}),
-	kind_invalid: {
-		title: 'Kategorie prüfen',
-		detail: 'Wähle eine aktuelle Pinnwand-Kategorie, bevor du den Beitrag erneut sendest.',
-	},
-	source_path_invalid: {
-		title: 'Quelllink prüfen',
-		detail: 'Entferne den alten Quelllink oder erfasse den Pinnwand-Beitrag neu.',
-	},
-	quantity_invalid: {
-		title: 'Menge prüfen',
-		detail: 'Kürze oder entferne die Mengenangabe, bevor du diesen Einkauf erneut sendest.',
-	},
-	...withCodes(['due_date_invalid', 'occurred_at_invalid', 'date_range_invalid'], {
-		title: 'Datum prüfen',
-		detail: 'Bearbeite Datum oder Zeitraum, bevor du diese Aktion erneut sendest.',
-	}),
-	absence_overlaps_existing: {
-		title: 'Abwesenheit überschneidet sich',
-		detail:
-			'Für diese Person gibt es im Zeitraum schon eine Abwesenheit. Entferne diese Offline-Aktion oder passe den Zeitraum an.',
-	},
-	invalid_body: {
-		title: 'Offline-Aktion prüfen',
-		detail:
-			'Die gespeicherte Aktion passt nicht mehr zur aktuellen App. Entferne sie und erfasse den Eintrag neu.',
-	},
-	id_invalid: {
-		title: 'Ziel prüfen',
-		detail:
-			'Die gespeicherte Ziel-ID ist ungültig. Entferne diese Offline-Aktion und öffne den Eintrag neu.',
-	},
-	bought_invalid: {
-		title: 'Status prüfen',
-		detail: 'Prüfe den Einkaufsstatus, bevor du diese Aktion erneut sendest.',
-	},
-	interval_invalid: {
-		title: 'Intervall prüfen',
-		detail: 'Bearbeite das Intervall, bevor du diese Aktion erneut sendest.',
-	},
-	reason_invalid: {
-		title: 'Grund prüfen',
-		detail: 'Kürze oder entferne den Abwesenheitsgrund, bevor du diese Aktion erneut sendest.',
-	},
-	completion_insert_failed: {
-		title: 'Putzplan unvollständig gespeichert',
-		detail:
-			'Die Aufgabe wurde möglicherweise rotiert, aber nicht im Verlauf protokolliert. Lade den Putzplan neu und prüfe den Verlauf vor dem erneuten Senden.',
-	},
-	split_insert_failed: {
-		title: 'Ausgabe unvollständig gespeichert',
-		detail:
-			'Die Ausgabe oder ihre Aufteilung wurde nicht vollständig gespeichert. Lade die Ausgaben neu und prüfe den Eintrag vor dem erneuten Senden.',
-	},
-	insert_failed: {
-		title: 'Speichern nicht bestätigt',
-		detail:
-			'Der Server hat den Eintrag nicht bestätigt. Lade die WG neu und prüfe, ob die Aktion bereits angekommen ist.',
-	},
-	delete_failed: {
-		title: 'Entfernen nicht bestätigt',
-		detail:
-			'Der Server hat das Entfernen nicht bestätigt. Lade die WG neu und prüfe den Eintrag vor dem erneuten Senden.',
-	},
-	update_failed: {
-		title: 'Aktualisierung nicht bestätigt',
-		detail:
-			'Der Server hat die Änderung nicht bestätigt. Lade die WG neu und prüfe den aktuellen Stand vor dem erneuten Senden.',
-	},
+const FAILURE_BY_CODE: Readonly<Record<string, FailureName>> = {
+	migration_read_only: 'maintenance',
+	not_a_member: 'memberInvalid',
+	member_deactivated: 'movedOut',
+	member_not_in_wg: 'memberInAction',
+	wg_not_found: 'flatLinkInvalid',
+	invalid_share_code: 'flatLinkInvalid',
+	recurring_expense_not_found: 'templateMissing',
+	abo_paused: 'aboPaused',
+	item_not_found: 'shoppingMissing',
+	shopping_item_changed: 'shoppingChanged',
+	chore_occurrence_changed: 'choreChanged',
+	chore_not_found: 'choreMissing',
+	expense_not_found: 'expenseMissing',
+	split_not_found: 'splitMissing',
+	image_invalid: 'imageInvalid',
+	amount_invalid: 'amountInvalid',
+	currency_invalid: 'currencyInvalid',
+	splits_sum_mismatch: 'splitsInvalid',
+	splits_invalid: 'splitsInvalid',
+	name_invalid: 'entryInvalid',
+	content_invalid: 'entryInvalid',
+	title_invalid: 'entryInvalid',
+	description_invalid: 'entryInvalid',
+	kind_invalid: 'kindInvalid',
+	source_path_invalid: 'sourceInvalid',
+	quantity_invalid: 'quantityInvalid',
+	due_date_invalid: 'dateInvalid',
+	occurred_at_invalid: 'dateInvalid',
+	date_range_invalid: 'dateInvalid',
+	absence_overlaps_existing: 'absenceOverlaps',
+	invalid_body: 'actionInvalid',
+	id_invalid: 'targetInvalid',
+	bought_invalid: 'statusInvalid',
+	interval_invalid: 'intervalInvalid',
+	reason_invalid: 'reasonInvalid',
+	completion_insert_failed: 'choreIncomplete',
+	split_insert_failed: 'expenseIncomplete',
+	insert_failed: 'saveUnconfirmed',
+	delete_failed: 'removeUnconfirmed',
+	update_failed: 'updateUnconfirmed',
 };
 
 const SERVER_ERROR_CODES = new Set(['server_error', 'db_error', 'unexpected_error']);
 
-function withCodes(
-	codes: readonly string[],
-	explanation: OfflineFailureExplanation,
-): Record<string, OfflineFailureExplanation> {
-	return Object.fromEntries(codes.map((code) => [code, explanation]));
+function failure(name: FailureName): OfflineFailureExplanation {
+	return {
+		title: { key: `offline.failure.${name}.title` },
+		detail: { key: `offline.failure.${name}.detail` },
+	};
 }
 
 export function explainOfflineActionFailure(
@@ -237,18 +91,111 @@ export function explainOfflineActionFailure(
 	error?: string,
 ): OfflineFailureExplanation {
 	const code = error ?? null;
-	if (status === 0) return { ...NO_CONNECTION };
+	if (status === 0) return failure('noConnection');
 	// Covers 429 and every `*_rate_limited` code: the queue retries these by itself.
-	if (isRateLimited(code, status)) return { ...RATE_LIMITED };
+	if (isRateLimited(code, status)) return failure('rateLimited');
 	const known =
 		code !== null && Object.hasOwn(FAILURE_BY_CODE, code) ? FAILURE_BY_CODE[code] : null;
-	if (known) return { ...known };
-	if (status === 413) return { ...TOO_LARGE };
-	if (status === 401) return { ...SESSION_EXPIRED };
-	if (status === 403) return { ...ACCESS_MISSING };
-	if (status === 404) return { ...TARGET_GONE };
+	if (known) return failure(known);
+	if (status === 413) return failure('tooLarge');
+	if (status === 401) return failure('sessionExpired');
+	if (status === 403) return failure('accessMissing');
+	if (status === 404) return failure('targetGone');
 	if (status >= 500 || (code !== null && SERVER_ERROR_CODES.has(code))) {
-		return { ...SERVER_NOT_READY };
+		return failure('serverNotReady');
 	}
-	return { ...SYNC_FAILED };
+	return failure('syncFailed');
+}
+
+/** "{title}: {detail}" of an explanation as one message. */
+export function titled(explanation: OfflineFailureExplanation): Message {
+	return {
+		key: 'common.errors.withSubject',
+		values: { subject: explanation.title, detail: explanation.detail },
+	};
+}
+
+/** What a failed attempt records on the queued action. */
+export type FailureState = Pick<
+	OfflineAction,
+	'lastError' | 'lastErrorMessage' | 'needsReview' | 'noConnection'
+>;
+
+function diagnostic(status: number, error?: string): string {
+	return error ? `${status}:${error}` : String(status);
+}
+
+/**
+ * The state for a rejected or failed request. `holdForReview` marks answers that repeat on every
+ * replay, so the action waits for a person instead of being resent.
+ */
+export function requestFailureState(
+	status: number,
+	error: string | undefined,
+	holdForReview: boolean,
+): FailureState {
+	const explanation = explainOfflineActionFailure(status, error);
+	if (status === 0) {
+		return {
+			lastError: NO_CONNECTION_ERROR,
+			lastErrorMessage: titled(explanation),
+			noConnection: true,
+		};
+	}
+	if (holdForReview) {
+		return {
+			lastError: `${SERVER_CHECK_PREFIX} ${diagnostic(status, error)}`,
+			lastErrorMessage: { key: 'offline.state.serverCheck', values: { ...explanation } },
+			needsReview: 'server',
+		};
+	}
+	return { lastError: diagnostic(status, error), lastErrorMessage: titled(explanation) };
+}
+
+export const IMAGE_REMOVED_STATE: FailureState = {
+	lastError: IMAGE_REMOVED_ERROR,
+	lastErrorMessage: { key: 'offline.state.imageRemoved' },
+	needsReview: 'imageRemoved',
+};
+
+export const IMAGE_MISSING_STATE: FailureState = {
+	lastError: IMAGE_MISSING_ERROR,
+	lastErrorMessage: { key: 'offline.state.imageMissing' },
+	needsReview: 'imageMissing',
+};
+
+/** A note without a legacy text for older builds; the message is what people read. */
+export function noteState(key: 'reauth' | 'idempotency' | 'recurringAdvance'): FailureState {
+	return { lastError: key, lastErrorMessage: { key: `offline.state.${key}` } };
+}
+
+/** The action with `state` as its last failure; flags of an earlier failure do not carry over. */
+export function withFailureState(action: OfflineAction, state: FailureState): OfflineAction {
+	const { lastError, lastErrorMessage, needsReview, noConnection, ...rest } = action;
+	return { ...rest, ...state };
+}
+
+/** True when the last failure holds the action for a look at the server state. */
+export function holdsServerReview(action: OfflineAction): boolean {
+	return (
+		action.needsReview === 'server' || action.lastError?.startsWith(SERVER_CHECK_PREFIX) === true
+	);
+}
+
+/** True when the last attempt never reached the server. */
+export function failedWithoutConnection(action: OfflineAction): boolean {
+	return (
+		action.noConnection === true ||
+		action.lastError?.startsWith(OFFLINE_NO_CONNECTION_TITLE) === true
+	);
+}
+
+/** True when a pending image blocks the action. */
+export function holdsImageReview(action: OfflineAction): boolean {
+	return (
+		action.needsReview === 'imageMissing' ||
+		action.needsReview === 'imageRemoved' ||
+		action.lastError?.startsWith(IMAGE_MISSING_PREFIX) === true ||
+		action.lastError?.startsWith(IMAGE_REMOVED_PREFIX) === true
+	);
 }

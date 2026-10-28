@@ -16,6 +16,8 @@ import { afterResponse } from '@/core/infra/after-response';
 import { logApiError } from '@/core/infra/observability';
 import { confirmedEmailOf, sendAccountDeletedMail } from '@/core/mail/account-deleted';
 
+export { PATCH } from './locale-patch';
+
 const SUPABASE_AUTH_COOKIE = /^sb-[A-Za-z0-9-]+-auth-token(?:\.\d+)?$/;
 
 function acceptedDeletionResponse(

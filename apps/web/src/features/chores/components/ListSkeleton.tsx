@@ -1,3 +1,4 @@
+import { useTranslations } from 'next-intl';
 import { Item, ItemContent, ItemGroup, ItemMedia } from '@/components/ui/item';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -5,12 +6,13 @@ const SKELETON_KEYS = ['s0', 's1', 's2'];
 
 // Mirrors the plan: a group heading above one divided, bordered ItemGroup of ChoreRow rows.
 export function ListSkeleton() {
+	const t = useTranslations('chores.skeleton');
 	return (
 		<div className="flex flex-col gap-2">
 			<Skeleton className="h-3 w-24" />
 			<ItemGroup
 				aria-busy="true"
-				aria-label="Putzplan wird geladen"
+				aria-label={t('loading')}
 				className="gap-0 divide-y overflow-hidden rounded-xl border"
 			>
 				{SKELETON_KEYS.map((k) => (

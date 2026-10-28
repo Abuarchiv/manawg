@@ -60,9 +60,14 @@ mock.module('@/core/auth/supabase-env', {
 	},
 });
 mock.module('@/core/auth/server', {
-	namedExports: { getAuthenticatedUser: async () => ({ id: userId }) },
+	namedExports: {
+		createSupabaseServerClient: () => undefined,
+		getAuthenticatedUser: async () => ({ id: userId }),
+	},
 });
-mock.module('@/core/db', { namedExports: { accountDeletions, auditEvents } });
+mock.module('@/core/db', {
+	namedExports: { accountDeletions, auditEvents, db: {}, wgMembers: {} },
+});
 mock.module('@/core/mail/account-deleted', {
 	namedExports: {
 		confirmedEmailOf: async () => null,

@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { ActivityItem, ActivityReminder } from '@/composition/activity';
-import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
+import { wgLoadError } from '@/core/guards/load-errors';
 import { useSyncedCollection } from '@/core/sync/use-synced-collection';
+import { useMessage } from '@/shared/i18n/message';
 
 interface ActivityResponse {
 	items: ActivityItem[];
@@ -24,6 +25,7 @@ export function useActivityFeed({
 	memberId: string;
 	limit: number;
 }) {
+	const message = useMessage();
 	const url = `/api/wg/${encodeURIComponent(shareCode)}/activity?limit=${limit}`;
 	const { data, items, initialLoading, refreshing, loadError, load } = useSyncedCollection<
 		ActivityResponse,
@@ -34,7 +36,8 @@ export function useActivityFeed({
 		select: (response) => response.items,
 		assemble: (nextItems, current) => ({ reminders: current?.reminders ?? [], items: nextItems }),
 		getId: (item) => item.id,
-		describeError: (error) => getWgLoadErrorMessage('Aktivität', error.status, error.error),
+		describeError: (error) =>
+			message(wgLoadError({ key: 'activity.loadError.lead' }, error.status, error.error)),
 	});
 
 	// The reminders belong to the response, which is empty under a fresh cache key; hold the last ones.

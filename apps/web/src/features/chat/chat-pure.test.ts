@@ -13,6 +13,11 @@ import {
 } from './chat-pure';
 import { extractLinks, findMentions, splitMentions } from './chat-text';
 
+const { renderMessage, serverRootT } = await import('@/core/i18n/server-t');
+
+const de = serverRootT('de');
+const en = serverRootT('en');
+
 const createdAt = '2026-09-23T10:00:00.000Z';
 const own = { id: 'm1', senderMemberId: 'me', kind: 'text', createdAt };
 
@@ -106,15 +111,27 @@ test('findFirstUnreadId points at the first foreign message after the read marke
 	assert.equal(findFirstUnreadId([...list.slice(0, 3), system, deleted], marker, 'me'), null);
 });
 
-test('day pills say Heute, Gestern, a weekday within the week, else the date', () => {
+test('day pills say today, yesterday, a weekday within the week, else the date', () => {
 	const now = new Date(2026, 9, 9, 0, 30);
-	assert.equal(chatDayLabel(new Date(2026, 9, 9), now), 'Heute');
-	assert.equal(chatDayLabel(new Date(2026, 9, 8), now), 'Gestern');
-	assert.equal(chatDayLabel(new Date(2026, 9, 5), now), 'Montag');
-	assert.equal(chatDayLabel(new Date(2026, 9, 2), now), '2. Oktober');
-	assert.equal(chatDayLabel(new Date(2025, 9, 2), now), '2. Oktober 2025');
+	const label = (day: Date, at = now, locale: 'de' | 'en' = 'de') =>
+		renderMessage(locale === 'de' ? de : en, chatDayLabel(day, at, locale));
+	assert.equal(label(new Date(2026, 9, 9)), 'Heute');
+	assert.equal(label(new Date(2026, 9, 8)), 'Gestern');
+	assert.equal(label(new Date(2026, 9, 5)), 'Montag');
+	assert.equal(label(new Date(2026, 9, 2)), '2. Oktober');
+	assert.equal(label(new Date(2025, 9, 2)), '2. Oktober 2025');
 	// Across the DST switch (25 October 2026 in Germany) a day is still a day.
-	assert.equal(chatDayLabel(new Date(2026, 9, 25), new Date(2026, 9, 26, 12)), 'Gestern');
+	assert.equal(label(new Date(2026, 9, 25), new Date(2026, 9, 26, 12)), 'Gestern');
+});
+
+test('day pills render English with the English date order', () => {
+	const now = new Date(2026, 9, 9, 0, 30);
+	const label = (day: Date) => renderMessage(en, chatDayLabel(day, now, 'en'));
+	assert.equal(label(new Date(2026, 9, 9)), 'Today');
+	assert.equal(label(new Date(2026, 9, 8)), 'Yesterday');
+	assert.equal(label(new Date(2026, 9, 5)), 'Monday');
+	assert.equal(label(new Date(2026, 9, 2)), '2 October');
+	assert.equal(label(new Date(2025, 9, 2)), '2 October 2025');
 });
 
 test('read ticks count only the given readers who read up to the message', () => {

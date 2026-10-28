@@ -24,6 +24,7 @@ class UnusedError extends Error {}
 
 mock.module('@/core/auth/server', {
 	namedExports: {
+		createSupabaseServerClient: unreachable('createSupabaseServerClient'),
 		getAuthenticatedUser: async () => {
 			state.authCalls += 1;
 			throw Object.assign(new Error('Auth service unavailable'), { status: 503 });

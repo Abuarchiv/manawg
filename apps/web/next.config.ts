@@ -2,6 +2,7 @@ import path from 'node:path';
 import bundleAnalyzer from '@next/bundle-analyzer';
 import { withSentryConfig } from '@sentry/nextjs/config';
 import type { NextConfig } from 'next';
+import createNextIntlPlugin from 'next-intl/plugin';
 
 const withBundleAnalyzer = bundleAnalyzer({
 	enabled: process.env.ANALYZE === 'true',
@@ -64,7 +65,8 @@ const nextConfig: NextConfig = {
 	},
 };
 
-const analyzedConfig = withBundleAnalyzer(nextConfig);
+const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
+const analyzedConfig = withBundleAnalyzer(withNextIntl(nextConfig));
 const sentryUploadOptions =
 	process.env.SENTRY_ORG && process.env.SENTRY_PROJECT && process.env.SENTRY_AUTH_TOKEN
 		? {

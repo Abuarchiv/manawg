@@ -1,3 +1,4 @@
+import { useTranslations } from 'next-intl';
 import { useRef, useState } from 'react';
 import { isNetworkError } from '@/core/http/error-codes';
 import {
@@ -7,18 +8,12 @@ import {
 } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
 import { discardQueuedEntry, enqueueOfflineAction } from '@/core/offline/offline-client';
-import {
-	DRAFT_CLEANUP_FAILED_MESSAGE,
-	keyUnavailableMessage,
-	OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE,
-	OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
-	QUEUE_EDIT_ALREADY_SENT_MESSAGE,
-} from '@/core/offline/offline-copy';
 import { createQueuedAbsence, isQueuedCreateId } from '@/core/offline/offline-queue';
 import { endOfBerlinDay, instantAtBerlinWallTime } from '@/core/utils/berlin-day';
 import type { AbsenceInput } from '@/features/chores/absence';
 import { absenceSaveErrorMessage } from '@/features/chores/chore-errors';
 import { pendingKeys } from '@/features/chores/pending-keys';
+import { useMessage } from '@/shared/i18n/message';
 import type { ChorePageContext } from './chore-page-context';
 import type { QueueEdit } from './use-chore-create';
 
@@ -60,6 +55,8 @@ export function useAbsences(ctx: ChorePageContext, form: AbsenceFormState, queue
 	const { absenceMemberId, absenceStart, absenceEnd, absenceReason } = form;
 	const { setAbsenceStart, setAbsenceEnd, setAbsenceReason } = form;
 	const { setQueueEditId, clearEditedQueueItem, editedQueueItemWasSent } = queueEdit;
+	const t = useTranslations('chores');
+	const render = useMessage();
 	const [absenceError, setAbsenceError] = useState<string | null>(null);
 	const [absenceListError, setAbsenceListError] = useState<string | null>(null);
 	const absenceCreateRequestRef = useRef<PendingIdempotentRequest | null>(null);
@@ -73,13 +70,13 @@ export function useAbsences(ctx: ChorePageContext, form: AbsenceFormState, queue
 			? instantAtBerlinWallTime(absenceEnd, 0)
 			: null;
 		if (!startDay || !endDay || startDay > endDay) {
-			setAbsenceError('Bitte wähle einen gültigen Zeitraum für die Abwesenheit.');
+			setAbsenceError(t('absence.invalidRange'));
 			return;
 		}
 		// The list shows only current and future absences; a past one would seem
 		// saved and immediately vanish from view.
 		if (endOfBerlinDay(endDay) < new Date()) {
-			setAbsenceError('Das Ende der Abwesenheit liegt in der Vergangenheit.');
+			setAbsenceError(t('absence.endInPast'));
 			return;
 		}
 		const pendingKey = pendingKeys.ABSENCE_ADD;
@@ -90,7 +87,7 @@ export function useAbsences(ctx: ChorePageContext, form: AbsenceFormState, queue
 			setAbsenceEnd('');
 			setAbsenceReason('');
 			setAbsenceError(null);
-			setActionNotice(QUEUE_EDIT_ALREADY_SENT_MESSAGE);
+			setActionNotice(t('offline.alreadySent'));
 			void load(false);
 			return;
 		}
@@ -107,7 +104,7 @@ export function useAbsences(ctx: ChorePageContext, form: AbsenceFormState, queue
 		});
 		const idempotencyKey = resolveIdempotencyKey(absenceCreateRequestRef.current, fingerprint);
 		if (!idempotencyKey) {
-			setAbsenceError(keyUnavailableMessage('Abwesenheit', 'gespeichert'));
+			setAbsenceError(t('absence.keyUnavailable'));
 			endPending(pendingKey);
 			return;
 		}
@@ -143,12 +140,12 @@ export function useAbsences(ctx: ChorePageContext, form: AbsenceFormState, queue
 						reason: absenceReason.trim() || null,
 					});
 					if ((await enqueueOfflineAction(queued)) === 0) {
-						setAbsenceError(OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE);
+						setAbsenceError(t('offline.queueBlocked'));
 						return;
 					}
 					absenceCreateRequestRef.current = null;
 					if (!(await clearEditedQueueItem(['absence.create']))) {
-						setAbsenceError(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
+						setAbsenceError(t('offline.draftCleanupFailed'));
 						return;
 					}
 					refreshCount();
@@ -167,10 +164,10 @@ export function useAbsences(ctx: ChorePageContext, form: AbsenceFormState, queue
 					setAbsenceEnd('');
 					setAbsenceReason('');
 					setQueueEditId(null);
-					toast.success('Offline gespeichert. Der Putzplan berücksichtigt die Abwesenheit sofort.');
+					toast.success(t('absence.savedOffline'));
 					return;
 				}
-				setAbsenceError(absenceSaveErrorMessage(result.error));
+				setAbsenceError(render(absenceSaveErrorMessage(result.error)));
 				return;
 			}
 			absenceCreateRequestRef.current = null;
@@ -178,13 +175,11 @@ export function useAbsences(ctx: ChorePageContext, form: AbsenceFormState, queue
 			setAbsenceEnd('');
 			setAbsenceReason('');
 			if (!(await clearEditedQueueItem(['absence.create']))) {
-				setAbsenceError(DRAFT_CLEANUP_FAILED_MESSAGE);
+				setAbsenceError(t('offline.onlineDraftCleanupFailed'));
 				return;
 			}
 			setQueueEditId(null);
-			toast.success(
-				'Abwesenheit gespeichert. Neue Zuständigkeiten überspringen diese Person, schon zugewiesene Aufgaben können Mitbewohner übernehmen.',
-			);
+			toast.success(t('absence.saved'));
 			void load(false);
 		} finally {
 			endPending(pendingKey);
@@ -199,16 +194,14 @@ export function useAbsences(ctx: ChorePageContext, form: AbsenceFormState, queue
 		try {
 			const queued = await discardQueuedEntry(wg.shareCode, id);
 			if (queued === 'storage_blocked') {
-				setAbsenceListError(
-					'Offline-Speicher ist blockiert. Die vorgemerkte Abwesenheit konnte nicht entfernt werden.',
-				);
+				setAbsenceListError(t('absence.storageBlocked'));
 				return;
 			}
 			if (queued === 'removed' || isQueuedCreateId(id)) {
 				updateAbsences((current) => current.filter((absence) => absence.id !== id));
 				refreshCount();
 				setAbsenceListError(null);
-				setActionNotice('Offline vorgemerkte Abwesenheit wurde entfernt.');
+				setActionNotice(t('absence.queuedRemoved'));
 				return;
 			}
 			const result = await apiFetch<Record<string, never>>(
@@ -221,23 +214,23 @@ export function useAbsences(ctx: ChorePageContext, form: AbsenceFormState, queue
 			if (!result.ok) {
 				if (result.status === 404 && result.error === 'absence_not_found') {
 					updateAbsences((current) => current.filter((absence) => absence.id !== id));
-					setAbsenceListError(
-						'Diese Abwesenheit existiert nicht mehr und wurde aus dem Plan entfernt.',
-					);
+					setAbsenceListError(t('absence.gone'));
 					void load(false);
 					return;
 				}
 				setAbsenceListError(
-					isNetworkError(result.error, result.status)
-						? 'Abwesenheit konnte nicht entfernt werden: Prüfe deine Verbindung und versuche es erneut.'
-						: 'Abwesenheit konnte nicht entfernt werden.',
+					t(
+						isNetworkError(result.error, result.status)
+							? 'absence.removeNetwork'
+							: 'absence.removeFailed',
+					),
 				);
 				return;
 			}
 			const removed = absences.find((absence) => absence.id === id);
 			updateAbsences((current) => current.filter((absence) => absence.id !== id));
 			toast.success(
-				removed ? `Abwesenheit von ${removed.memberName} entfernt.` : 'Abwesenheit entfernt.',
+				removed ? t('absence.removedNamed', { name: removed.memberName }) : t('absence.removed'),
 			);
 		} finally {
 			endPending(pendingKey);

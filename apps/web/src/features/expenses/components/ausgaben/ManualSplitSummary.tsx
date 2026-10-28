@@ -1,5 +1,6 @@
 'use client';
 
+import { useLocale, useTranslations } from 'next-intl';
 import type { Dispatch, SetStateAction } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -25,22 +26,24 @@ export function ManualSplitSummary({
 	setManualSplits,
 	disabled = false,
 }: ManualSplitSummaryProps) {
-	const totalEuros = parseEuroAmount(amountStr) ?? 0;
+	const locale = useLocale();
+	const t = useTranslations('expenses-form.split');
+	const totalEuros = parseEuroAmount(amountStr, locale) ?? 0;
 	const totalCents = eurosToCents(totalEuros);
 	const splitCents = Object.values(manualSplits).reduce((sum, raw) => {
-		const v = parseEuroAmount(raw);
+		const v = parseEuroAmount(raw, locale);
 		return v === null ? sum : sum + eurosToCents(v);
 	}, 0);
 	const remainderCents = totalCents - splitCents;
 	const balanced = totalCents > 0 && remainderCents === 0;
-	const label = balanced ? 'Ausgeglichen' : remainderCents < 0 ? 'Zu viel' : 'Offen';
+	const label = balanced ? t('balanced') : remainderCents < 0 ? t('tooMuch') : t('open');
 
 	function distributeRemainder(): void {
 		if (totalCents <= 0 || remainderCents === 0) return;
 		// Compute the next state from the same snapshot remainderCents came
 		// from, outside any updater, so StrictMode's double-invoked updaters
 		// cannot apply the remainder against a different base.
-		setManualSplits(distributeRemainderCents(manualSplits, members, remainderCents));
+		setManualSplits(distributeRemainderCents(manualSplits, members, remainderCents, locale));
 	}
 
 	return (
@@ -48,8 +51,10 @@ export function ManualSplitSummary({
 			<Alert aria-live="polite" variant={remainderCents < 0 ? 'destructive' : undefined}>
 				<AlertDescription className="flex items-center justify-between gap-2">
 					<span>
-						Summe:{' '}
-						<span className="font-mono tabular-nums">{formatEuroCents(splitCents, currency)}</span>
+						{t('sum')}{' '}
+						<span className="font-mono tabular-nums">
+							{formatEuroCents(splitCents, currency, { locale })}
+						</span>
 					</span>
 					<span>
 						{label}
@@ -57,7 +62,7 @@ export function ManualSplitSummary({
 							<>
 								:{' '}
 								<span className="font-mono tabular-nums">
-									{formatEuroCents(Math.abs(remainderCents), currency)}
+									{formatEuroCents(Math.abs(remainderCents), currency, { locale })}
 								</span>
 							</>
 						)}
@@ -72,7 +77,7 @@ export function ManualSplitSummary({
 					onClick={distributeRemainder}
 					disabled={disabled}
 				>
-					Rest aufteilen
+					{t('distribute')}
 				</Button>
 			)}
 		</div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { Check, ChevronDown, Receipt, Repeat2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from 'react';
 import {
 	Collapsible,
@@ -13,8 +14,12 @@ import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Spinner } from '@/components/ui/spinner';
 import { ImageUploader } from '@/components/wg/ImageUploader';
-import { RECURRING_INTERVAL_OPTIONS } from '@/features/expenses/expense-constants';
+import {
+	RECURRING_INTERVAL_OPTIONS,
+	recurringIntervalOption,
+} from '@/features/expenses/expense-constants';
 import type { RecurringExpense } from '@/features/expenses/expense-types';
+import { useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
 
 interface ExpenseExtrasProps {
@@ -48,12 +53,14 @@ export function ExpenseExtras({
 	formSaving,
 	onImageUploadingChange,
 }: ExpenseExtrasProps) {
+	const t = useTranslations('expenses-form.extras');
+	const message = useMessage();
 	const [showRecurring, setShowRecurring] = useState(false);
 	const [showReceipt, setShowReceipt] = useState(Boolean(imageUrl));
 	const [templateSaved, setTemplateSaved] = useState(false);
 	const templateCountAtStart = useRef(recurringTemplateCount);
 	const wasSavingTemplate = useRef(false);
-	// Only a click on "Als Vorlage merken" makes a save a template save; the main submit shares `formSaving`.
+	// Only a click on the template button makes a save a template save; the main submit shares `formSaving`.
 	const templateRequested = useRef(false);
 	const [templateSaving, setTemplateSaving] = useState(false);
 	// The form scrolls and a toast would sit beneath the fullscreen sheet, so a line right at the button confirms instead.
@@ -94,10 +101,10 @@ export function ExpenseExtras({
 					disabled={formSaving}
 				>
 					<Receipt data-icon="inline-start" />
-					<span className="min-w-0 flex-1 text-left">Beleg hinzufügen</span>
+					<span className="min-w-0 flex-1 text-left">{t('addReceipt')}</span>
 					{imageUrl && (
 						<Badge variant="secondary" className="shrink-0">
-							Angehängt
+							{t('attached')}
 						</Badge>
 					)}
 					<ChevronDown
@@ -113,7 +120,7 @@ export function ExpenseExtras({
 							value={imageUrl}
 							onChange={setImageUrl}
 							disabled={formSaving}
-							imageLabel="Beleg"
+							imageLabel={t('receipt')}
 							onUploadingChange={onImageUploadingChange}
 						/>
 					</div>
@@ -125,7 +132,7 @@ export function ExpenseExtras({
 					disabled={formSaving || editingRecurringExpense !== null || isEditingQueuedRecurring}
 				>
 					<Repeat2 data-icon="inline-start" />
-					<span className="min-w-0 flex-1 text-left">Fixkosten-Vorlage</span>
+					<span className="min-w-0 flex-1 text-left">{t('template')}</span>
 					<ChevronDown
 						data-icon="inline-end"
 						className="shrink-0 transition-transform group-aria-expanded/button:rotate-180"
@@ -134,7 +141,7 @@ export function ExpenseExtras({
 				<CollapsiblePanel>
 					<FieldGroup className="pt-3">
 						<Field>
-							<FieldLabel htmlFor="expense-interval">Wiederholung</FieldLabel>
+							<FieldLabel htmlFor="expense-interval">{t('repeat')}</FieldLabel>
 							<NativeSelect
 								id="expense-interval"
 								value={recurringIntervalMonths}
@@ -142,15 +149,13 @@ export function ExpenseExtras({
 								disabled={formSaving}
 								className="w-full"
 							>
-								{RECURRING_INTERVAL_OPTIONS.map(({ value, label }) => (
+								{RECURRING_INTERVAL_OPTIONS.map(({ value }) => (
 									<NativeSelectOption key={value} value={value}>
-										{label}
+										{message(recurringIntervalOption(value))}
 									</NativeSelectOption>
 								))}
 							</NativeSelect>
-							<FieldDescription>
-								Die Vorlage merkt Betrag, zahlende Person und diese Aufteilung.
-							</FieldDescription>
+							<FieldDescription>{t('templateHint')}</FieldDescription>
 						</Field>
 						{!isEditingQueuedExpense && !isEditingQueuedRecurring && !editingRecurringExpense && (
 							<Button
@@ -163,7 +168,8 @@ export function ExpenseExtras({
 								}}
 								disabled={formSaving}
 							>
-								{templateSaving && <Spinner data-icon="inline-start" />}Als Vorlage merken
+								{templateSaving && <Spinner data-icon="inline-start" />}
+								{t('saveAsTemplate')}
 							</Button>
 						)}
 						<output
@@ -175,7 +181,7 @@ export function ExpenseExtras({
 							{templateSaved && (
 								<>
 									<Check className="size-4 shrink-0" aria-hidden />
-									Als Vorlage gespeichert. Sie steht unter Fixkosten.
+									{t('templateSaved')}
 								</>
 							)}
 						</output>

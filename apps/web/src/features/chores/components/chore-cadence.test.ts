@@ -3,17 +3,22 @@ import test from 'node:test';
 
 const { formatChoreCadence } = await import('./chore-cadence');
 
-test('a matching preset supplies the label, with a non-breaking space before the unit', () => {
-	assert.equal(formatChoreCadence(7, 'days'), 'wöchentlich');
-	assert.equal(formatChoreCadence(14, 'days'), 'alle 14\u00a0T.');
-	assert.equal(formatChoreCadence(3, 'months'), 'quartalsweise');
+test('a named rhythm supplies its own message', () => {
+	assert.deepEqual(formatChoreCadence(7, 'days'), { key: 'chores.cadence.weekly' });
+	assert.deepEqual(formatChoreCadence(3, 'months'), { key: 'chores.cadence.quarterly' });
 });
 
-test('an interval without a preset falls back to the abbreviated unit', () => {
-	assert.equal(formatChoreCadence(10, 'days'), 'alle 10\u00a0T.');
-	assert.equal(formatChoreCadence(2, 'months'), 'alle 2\u00a0Mon.');
+test('any other interval falls back to a count with its unit', () => {
+	assert.deepEqual(formatChoreCadence(14, 'days'), {
+		key: 'chores.cadence.everyDays',
+		values: { count: 14 },
+	});
+	assert.deepEqual(formatChoreCadence(2, 'months'), {
+		key: 'chores.cadence.everyMonths',
+		values: { count: 2 },
+	});
 });
 
 test('a zero interval is a one-off chore', () => {
-	assert.equal(formatChoreCadence(0, 'days'), 'einmalig');
+	assert.deepEqual(formatChoreCadence(0, 'days'), { key: 'chores.cadence.oneOff' });
 });

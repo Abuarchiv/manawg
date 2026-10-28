@@ -95,8 +95,12 @@ describe('daily overview model', () => {
 			items.some((item) => item.entityId === 'theirs'),
 			false,
 		);
-		assert.ok(items.find((item) => item.kind === 'shopping')?.detail.includes('WG'));
-		assert.ok(items.find((item) => item.kind === 'recurring')?.detail.includes('Fixkosten'));
+		assert.partialDeepStrictEqual(items.find((item) => item.kind === 'shopping')?.detail, {
+			key: 'home.today.shoppingDetail',
+		});
+		assert.partialDeepStrictEqual(items.find((item) => item.kind === 'recurring')?.detail, {
+			key: 'home.today.recurring',
+		});
 	});
 
 	test('keeps personal settlements distinct by counterparty and currency', () => {
@@ -135,7 +139,9 @@ describe('daily overview model', () => {
 		const expectedByIdentity = expected
 			.map((debt) => [
 				`settlement:${debt.fromId}:${debt.toId}:${debt.currency ?? 'EUR'}`,
-				debt.fromId === 'member-me' ? `An ${debt.toName}` : `Von ${debt.fromName}`,
+				debt.fromId === 'member-me'
+					? { key: 'home.today.debtTitle', values: { direction: 'outgoing', name: debt.toName } }
+					: { key: 'home.today.debtTitle', values: { direction: 'incoming', name: debt.fromName } },
 				debt.fromId === 'member-me' ? -debt.cents : debt.cents,
 				debt.currency,
 			])
@@ -206,7 +212,14 @@ describe('daily overview model', () => {
 				currency,
 			}));
 		const summary = (roster: typeof members) => buildSettlementSummary(expenses, roster).simplified;
-		const expectedHomeRows = [['settlement:debtor-a:creditor-a:EUR', 'An Clara', -500, 'EUR']];
+		const expectedHomeRows = [
+			[
+				'settlement:debtor-a:creditor-a:EUR',
+				{ key: 'home.today.debtTitle', values: { direction: 'outgoing', name: 'Clara' } },
+				-500,
+				'EUR',
+			],
+		];
 		const homeRows = (rows: typeof balances) =>
 			getForYouItems(
 				overview({
@@ -317,8 +330,11 @@ describe('daily overview model', () => {
 			agenda.upcoming.every((item) => item.dayKey === '2026-09-06'),
 			true,
 		);
-		assert.ok(
-			agenda.upcoming.find((item) => item.key === 'event:ongoing:0')?.detail.includes('läuft'),
+		assert.partialDeepStrictEqual(
+			agenda.upcoming.find((item) => item.key === 'event:ongoing:0')?.detail,
+			{
+				key: 'home.agenda.ongoing',
+			},
 		);
 	});
 
@@ -342,7 +358,7 @@ describe('daily overview model', () => {
 			{
 				key: 'event:ended-overnight:0',
 				dayKey: '2026-09-06',
-				detail: 'Endete heute um 08:00',
+				detail: { key: 'home.agenda.endedAt', values: { time: '08:00' } },
 			},
 		]);
 	});
@@ -524,16 +540,19 @@ describe('start overview model', () => {
 				isPersonal: true,
 				href: '/wg/WG%2F1/putzen?highlight=own-overdue',
 			});
-			assert.match(items[0]?.detail ?? '', /offen/);
+			assert.partialDeepStrictEqual(items[0]?.detail, { key: 'home.due.overdue' });
 			assert.partialDeepStrictEqual(items[1], {
 				isPersonal: false,
 				href: '/wg/WG%2F1/putzen?highlight=shared-overdue',
 			});
-			assert.match(items[1]?.detail ?? '', /Mina/);
+			assert.partialDeepStrictEqual(items[1]?.detail, {
+				key: 'home.today.choreDetail',
+				values: { owner: 'Mina' },
+			});
 
 			const shopping = items.find((item) => item.kind === 'shopping');
 			assert.partialDeepStrictEqual(shopping, {
-				detail: 'WG · 7 offene Artikel',
+				detail: { key: 'home.today.shoppingDetail', values: { count: 7 } },
 				href: '/wg/WG%2F1/einkauf',
 			});
 			assert.equal(
@@ -595,7 +614,7 @@ describe('start overview model', () => {
 				entityId: 'same-berlin-day',
 				tone: 'accent',
 			});
-			assert.match(items[1]?.detail ?? '', /heute fällig/);
+			assert.partialDeepStrictEqual(items[1]?.detail, { key: 'home.due.today' });
 		});
 	});
 });

@@ -1,6 +1,7 @@
 'use client';
 
 import { Plus } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -24,13 +25,15 @@ import {
 } from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
 import {
-	formatQuantity,
 	type InventoryItemDto,
 	type InventoryMutationItemDto,
 	quickRestockCandidates,
 	restockAmount,
 } from '@/features/inventory/inventory';
 import { restockItem } from '@/features/inventory/restock-request';
+import { useQuantityText } from '@/features/inventory/use-quantity-text';
+import type { Locale } from '@/shared/i18n/locale';
+import { type Message, useMessage } from '@/shared/i18n/message';
 
 interface QuickRestockSheetProps {
 	open: boolean;
@@ -49,13 +52,19 @@ export function QuickRestockSheet({
 	onClose,
 	onChanged,
 }: QuickRestockSheetProps) {
+	const t = useTranslations('inventory.quick');
+	const tRow = useTranslations('inventory.row');
+	const render = useMessage();
+	const quantityText = useQuantityText();
+	const locale = useLocale() as Locale;
 	const [pendingId, setPendingId] = useState<string | null>(null);
-	const [error, setError] = useState<string | null>(null);
+	const [error, setError] = useState<Message | null>(null);
 	const restockRequestKeysRef = useRef(new Map<string, string>());
 
 	// The row order is frozen while the sheet is open (quantities stay live), so rows do not jump after a tap.
 	const [order, setOrder] = useState<string[] | null>(null);
-	if (open && order === null) setOrder(quickRestockCandidates(items).map((item) => item.id));
+	if (open && order === null)
+		setOrder(quickRestockCandidates(items, locale).map((item) => item.id));
 	else if (!open && order !== null) setOrder(null);
 	const sorted = (order ?? []).flatMap((id) => items.find((item) => item.id === id) ?? []);
 
@@ -74,7 +83,7 @@ export function QuickRestockSheet({
 			onChanged(outcome.item);
 		} else if (outcome.kind === 'gone') {
 			onChanged(undefined, item.id);
-			setError(`${item.name} existiert nicht mehr und wurde aus der Liste entfernt.`);
+			setError({ key: 'inventory.quick.gone', values: { name: item.name } });
 		} else {
 			setError(outcome.message);
 		}
@@ -92,10 +101,8 @@ export function QuickRestockSheet({
 		>
 			<DrawerContent className="mx-auto w-full max-w-md">
 				<DrawerHeader>
-					<DrawerTitle>Schnell nachfüllen</DrawerTitle>
-					<DrawerDescription>
-						Fast leere Vorräte zuerst, dann die am häufigsten verbrauchten der letzten 30 Tage.
-					</DrawerDescription>
+					<DrawerTitle>{t('title')}</DrawerTitle>
+					<DrawerDescription>{t('description')}</DrawerDescription>
 				</DrawerHeader>
 				<div
 					className="flex min-h-0 flex-col gap-3 overflow-y-auto p-4"
@@ -103,16 +110,14 @@ export function QuickRestockSheet({
 				>
 					{error && (
 						<p role="alert" className="text-xs text-destructive">
-							{error}
+							{render(error)}
 						</p>
 					)}
 					{sorted.length === 0 ? (
 						<Empty className="border border-dashed">
 							<EmptyHeader>
-								<EmptyTitle>Noch keine Verbrauchsdaten</EmptyTitle>
-								<EmptyDescription>
-									Sobald Vorräte verbraucht werden, erscheinen hier Vorschläge.
-								</EmptyDescription>
+								<EmptyTitle>{t('emptyTitle')}</EmptyTitle>
+								<EmptyDescription>{t('emptyDescription')}</EmptyDescription>
 							</EmptyHeader>
 						</Empty>
 					) : (
@@ -132,8 +137,10 @@ export function QuickRestockSheet({
 														</span>
 													</ItemTitle>
 													<ItemDescription className="line-clamp-none text-xs tabular-nums [overflow-wrap:break-word]">
-														{formatQuantity(item.quantity, item.unit)} · {item.decrementCount30d}×
-														in 30 Tagen
+														{t('usage', {
+															quantity: quantityText(item.quantity, item.unit),
+															count: item.decrementCount30d,
+														})}
 													</ItemDescription>
 												</ItemContent>
 												<ItemActions className="shrink-0">
@@ -148,14 +155,17 @@ export function QuickRestockSheet({
 														aria-busy={pendingId === item.id}
 														aria-label={
 															amount === 1
-																? `${item.name} um eins erhöhen`
-																: `${item.name} um ${formatQuantity(amount, item.unit)} erhöhen`
+																? tRow('increaseAria', { name: item.name })
+																: t('increaseByAria', {
+																		name: item.name,
+																		amount: quantityText(amount, item.unit),
+																	})
 														}
 													>
 														{pendingId === item.id ? <Spinner aria-hidden /> : <Plus aria-hidden />}
 														{pendingId !== item.id && amount > 1 && (
 															<span className="tabular-nums">
-																{formatQuantity(amount, item.unit)}
+																{quantityText(amount, item.unit)}
 															</span>
 														)}
 													</Button>
@@ -169,7 +179,7 @@ export function QuickRestockSheet({
 					)}
 				</div>
 				<DrawerFooter className="pb-[max(1rem,env(safe-area-inset-bottom))]">
-					<DrawerClose render={<Button variant="outline" />}>Schließen</DrawerClose>
+					<DrawerClose render={<Button variant="outline" />}>{t('close')}</DrawerClose>
 				</DrawerFooter>
 			</DrawerContent>
 		</Drawer>

@@ -1,11 +1,14 @@
 'use client';
 
+import { useLocale, useTranslations } from 'next-intl';
 import { type RefObject, useEffect, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { MessageGroup } from '@/components/ui/message';
 import { MessageScrollerItem } from '@/components/ui/message-scroller';
 import { Spinner } from '@/components/ui/spinner';
 import { SYSTEM_MESSAGE_KIND } from '@/core/feed-kinds';
+import type { Locale } from '@/shared/i18n/locale';
+import { type Message, useMessage } from '@/shared/i18n/message';
 import { chatEditDraftKey } from '../chat-draft';
 import {
 	type ChatReadMarker,
@@ -21,7 +24,7 @@ interface MessageListProps {
 	members: { id: string; name: string; color: string | null }[];
 	currentMemberId: string;
 	shareCode: string;
-	/** The divider "Neue Nachrichten" goes before this message. */
+	/** The unread divider goes before this message. */
 	firstUnreadId?: string | null;
 	isAdmin: boolean;
 	reactionsByMessage: Map<string, ReactionSummary[]>;
@@ -33,10 +36,10 @@ interface MessageListProps {
 	olderError: boolean;
 	scrollRef: RefObject<HTMLDivElement | null>;
 	onLoadOlder: () => void;
-	onReact: (messageId: string, emoji: string) => Promise<string | null>;
-	onUnreact: (messageId: string, emoji: string) => Promise<string | null>;
-	onEdit: (messageId: string, next: string) => Promise<string | null>;
-	onDelete: (messageId: string) => Promise<string | null>;
+	onReact: (messageId: string, emoji: string) => Promise<Message | null>;
+	onUnreact: (messageId: string, emoji: string) => Promise<Message | null>;
+	onEdit: (messageId: string, next: string) => Promise<Message | null>;
+	onDelete: (messageId: string) => Promise<Message | null>;
 	onReply: (messageId: string) => void;
 }
 const NO_REACTIONS: ReactionSummary[] = [];
@@ -82,6 +85,9 @@ export function MessageList({
 	onDelete,
 	onReply,
 }: MessageListProps) {
+	const t = useTranslations('chat.list');
+	const render = useMessage();
+	const locale = useLocale() as Locale;
 	const topSentinelRef = useRef<HTMLDivElement | null>(null);
 	useEffect(() => {
 		const sentinel = topSentinelRef.current;
@@ -114,7 +120,7 @@ export function MessageList({
 		[members],
 	);
 	// A withdrawn system notice (e.g. its expense was deleted) leaves no trace,
-	// unlike a deleted member message, which keeps its "gelöscht" bubble.
+	// unlike a deleted member message, which keeps its deleted bubble.
 	const visibleMessages = useMemo(
 		() => messages.filter((message) => !(message.kind === 'system' && message.deletedAt)),
 		[messages],
@@ -149,16 +155,12 @@ export function MessageList({
 							<div ref={topSentinelRef} className="h-1" aria-hidden />
 							{olderError && (
 								<p role="alert" className="text-sm text-destructive">
-									Ältere Nachrichten konnten nicht geladen werden.
+									{t('olderError')}
 								</p>
 							)}
 							<Button variant="ghost" disabled={loadingOlder} onClick={onLoadOlder}>
 								{loadingOlder && <Spinner data-icon="inline-start" />}
-								{loadingOlder
-									? 'Ältere Nachrichten werden geladen…'
-									: olderError
-										? 'Erneut versuchen'
-										: 'Ältere Nachrichten laden'}
+								{loadingOlder ? t('olderLoading') : olderError ? t('retry') : t('loadOlder')}
 							</Button>
 						</div>
 					)}
@@ -168,7 +170,7 @@ export function MessageList({
 								data-slot="chat-day"
 								className="max-w-full rounded-full bg-muted text-center [overflow-wrap:anywhere] px-3 py-1 text-xs font-medium text-muted-foreground"
 							>
-								{chatDayLabel(group.day, now)}
+								{render(chatDayLabel(group.day, now, locale))}
 							</span>
 						</div>
 					)}
@@ -178,7 +180,7 @@ export function MessageList({
 								data-slot="chat-unread"
 								className="max-w-full rounded-full bg-muted text-center [overflow-wrap:anywhere] px-3 py-1 text-xs font-medium text-muted-foreground"
 							>
-								Neue Nachrichten
+								{t('unread')}
 							</span>
 						</div>
 					)}

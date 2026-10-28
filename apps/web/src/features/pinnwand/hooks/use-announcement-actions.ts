@@ -1,11 +1,10 @@
 import { type MutableRefObject, useRef } from 'react';
-import { mutationErrorMessage } from '@/core/http/error-codes';
+import { mutationError } from '@/core/http/error-codes';
 import { createIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
-import { notificationWarningMessage } from '@/core/notifications/notification-warning';
-import { keyUnavailableMessage } from '@/core/offline/offline-copy';
 import { withToggledReaction } from '@/features/pinnwand/announcement-edits';
-import { announcementActionErrorMessage } from '@/features/pinnwand/announcement-errors';
+import { announcementActionError } from '@/features/pinnwand/announcement-errors';
+import { deliveryWarning } from '@/features/pinnwand/announcement-warning';
 import type { CommentOverrides } from '@/features/pinnwand/comment-overrides';
 import type {
 	Announcement,
@@ -13,6 +12,7 @@ import type {
 	AnnouncementStatus,
 	ReactionKey,
 } from '@/features/pinnwand/components/announcement-types';
+import { type Message, useMessage } from '@/shared/i18n/message';
 import { announcementListEdits } from './announcement-list-edits';
 import type {
 	AnnouncementPageContext,
@@ -39,6 +39,7 @@ export function useAnnouncementActions(
 		commitItems,
 		load,
 	} = ctx;
+	const render = useMessage();
 	const reactionIdempotencyKeysRef = useRef(new Map<string, { active: boolean; key: string }>());
 	const { updateItem, dropVanishedAnnouncement, captureFields } = announcementListEdits(
 		ctx,
@@ -76,13 +77,13 @@ export function useAnnouncementActions(
 				dropVanishedAnnouncement(id);
 			} else {
 				rollback();
-				setActionError(announcementActionErrorMessage(res.error));
+				setActionError(announcementActionError(res.error));
 				onError?.(res.error);
 			}
 			return false;
 		}
-		const warningMessage = notificationWarningMessage(res.data.warning);
-		if (warningMessage) toast.info(warningMessage);
+		const warning = deliveryWarning(res.data.warning);
+		if (warning) toast.info(render(warning));
 		onSuccess?.();
 		// Background merge: a tap must not shove new posts of others into the list under the reader.
 		void load('background');
@@ -122,7 +123,9 @@ export function useAnnouncementActions(
 			{ status: nextStatus },
 			pendingKey,
 			rollback,
-			nextStatus === 'resolved' ? () => toast.success('Als geklärt markiert.') : undefined,
+			nextStatus === 'resolved'
+				? () => toast.success(render({ key: 'pinnwand.notices.resolved' }))
+				: undefined,
 		);
 	}
 
@@ -166,7 +169,7 @@ export function useAnnouncementActions(
 		if (!idempotencyKey) {
 			rollback();
 			end(pendingKey);
-			setActionError(keyUnavailableMessage('Reaktion', 'gesendet'));
+			setActionError({ key: 'pinnwand.errors.reactionKeyUnavailable' });
 			return;
 		}
 		reactionIdempotencyKeysRef.current.set(reactionRequestKey, {
@@ -190,24 +193,24 @@ export function useAnnouncementActions(
 			if (res.status === 404 && res.error === 'announcement_not_found') {
 				dropVanishedAnnouncement(announcement.id);
 			} else if (res.status === 404 && res.error === 'reaction_not_found' && active) {
-				setActionError('Diese Reaktion war schon entfernt. Die Pinnwand bleibt aktuell.');
+				setActionError({ key: 'pinnwand.errors.reactionAlreadyRemoved' });
 			} else {
 				rollback();
-				setActionError(announcementActionErrorMessage(res.error));
+				setActionError(announcementActionError(res.error));
 				// Someone else resolved the post meanwhile: show the real state right away.
 				if (res.error === 'announcement_resolved') void load('background');
 			}
 			return;
 		}
 		reactionIdempotencyKeysRef.current.delete(reactionRequestKey);
-		const warningMessage = notificationWarningMessage(res.data.warning);
-		if (warningMessage) toast.info(warningMessage);
+		const warning = deliveryWarning(res.data.warning);
+		if (warning) toast.info(render(warning));
 		void load('background');
 	}
 
 	/** The dialog shows the error itself: null = removed (or already gone), otherwise the message. */
-	async function remove(id: string): Promise<string | null> {
-		const failed = 'Beitrag konnte nicht entfernt werden. Versuche es erneut.';
+	async function remove(id: string): Promise<Message | null> {
+		const failed: Message = { key: 'pinnwand.errors.removeFailed' };
 		if (isPending(id)) return failed;
 		start(id);
 		const res = await apiFetch<Record<string, never>>(
@@ -224,9 +227,9 @@ export function useAnnouncementActions(
 				return null;
 			}
 			if (res.status === 403) {
-				return 'Nur wer den Beitrag geschrieben hat oder WG-Admins können ihn entfernen.';
+				return { key: 'pinnwand.errors.removeForbidden' };
 			}
-			return mutationErrorMessage('Beitrag konnte nicht entfernt werden', res.error, {}, failed);
+			return mutationError({ key: 'pinnwand.errors.removeSubject' }, res.error, {}, failed);
 		}
 		commitItems(itemsRef.current.filter((item) => item.id !== id));
 		void load('background');

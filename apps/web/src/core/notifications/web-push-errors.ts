@@ -1,19 +1,31 @@
-/** A push (de)activation failure whose message is German copy meant for the user. */
-export class PushError extends Error {}
+import type { Message } from '@/shared/i18n/message';
 
-export function formatPushActivationError(error: unknown): string {
-	if (error instanceof PushError) return error.message;
-	if (error instanceof Error && error.name === 'NotAllowedError') {
-		return 'Benachrichtigungen wurden nicht erlaubt.';
+type PushErrorKey = Extract<Message['key'], `settings.notifications.errors.push${string}`>;
+
+/** A push (de)activation failure that carries the message to show the person. */
+export class PushError extends Error {
+	readonly copy: Message;
+	constructor(key: PushErrorKey) {
+		super(key);
+		this.copy = { key };
 	}
-	if (error instanceof Error && error.message.includes('Failed to register a ServiceWorker')) {
-		return 'Web Push konnte nicht aktiviert werden: Lade die Seite neu und versuche es erneut.';
-	}
-	return 'Web Push konnte nicht aktiviert werden.';
 }
 
-export function formatPushDeactivationError(error: unknown): string {
-	return error instanceof PushError ? error.message : 'Web Push konnte nicht deaktiviert werden.';
+export function formatPushActivationError(error: unknown): Message {
+	if (error instanceof PushError) return error.copy;
+	if (error instanceof Error && error.name === 'NotAllowedError') {
+		return { key: 'settings.notifications.errors.pushNotAllowed' };
+	}
+	if (error instanceof Error && error.message.includes('Failed to register a ServiceWorker')) {
+		return { key: 'settings.notifications.errors.pushServiceWorker' };
+	}
+	return { key: 'settings.notifications.errors.pushActivateFailed' };
+}
+
+export function formatPushDeactivationError(error: unknown): Message {
+	return error instanceof PushError
+		? error.copy
+		: { key: 'settings.notifications.errors.pushDeactivateFailed' };
 }
 
 export function parseWebPushStatusCode(err: unknown): number {

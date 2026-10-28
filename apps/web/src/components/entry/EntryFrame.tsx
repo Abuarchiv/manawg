@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
 import { LogoMark } from '@/components/ui/LogoMark';
 
@@ -6,7 +7,7 @@ export function EntryFrame({
 	title,
 	description,
 	backHref = '/',
-	backLabel = 'ManaWG Startseite',
+	backLabel,
 	headingId,
 	actions,
 	children,
@@ -19,6 +20,7 @@ export function EntryFrame({
 	actions?: ReactNode;
 	children: ReactNode;
 }) {
+	const t = useTranslations('entry.frame');
 	return (
 		<main
 			id="main"
@@ -32,7 +34,7 @@ export function EntryFrame({
 			<Link
 				href={backHref}
 				className="relative flex min-h-9 items-center gap-2 self-start after:absolute after:inset-x-0 after:-inset-y-1 after:content-['']"
-				aria-label={backLabel}
+				aria-label={backLabel ?? t('home')}
 			>
 				<LogoMark size={24} tile={false} aria-hidden />
 				<span className="font-heading text-xl font-semibold tracking-[-0.03em]">ManaWG</span>

@@ -1,11 +1,13 @@
 'use client';
 
+import { useLocale } from 'next-intl';
 import { useMemo } from 'react';
 import type { DashboardData } from '@/composition/dashboard-data';
 import { getForYouItems, getWeekAgenda } from '@/composition/dashboard-insights';
 import { getDashboardAnnouncementHref } from '@/composition/dashboard-links';
 import { completionRequestKey } from '@/features/chores/chore-completion';
 import type { EventOccurrence } from '@/features/events/events';
+import type { Locale } from '@/shared/i18n/locale';
 
 type PendingAnnouncement = DashboardData['myOpenAnnouncements'][number];
 type LatestAnnouncement = NonNullable<DashboardData['latestAnnouncement']>;
@@ -61,6 +63,7 @@ export function useHomeView({
 	memberName,
 	queuedOccurrences,
 }: HomeViewInput) {
+	const locale = useLocale() as Locale;
 	const dueChores = useMemo(
 		() =>
 			(data?.dueChores ?? []).filter(
@@ -81,9 +84,10 @@ export function useHomeView({
 						dueRecurringExpenses: data.dueRecurringExpenses,
 						absentMembers: data.absentMembers,
 						balances: data.balances,
+						locale,
 					})
 				: [],
-		[data, dueChores, memberId, shareCode],
+		[data, dueChores, locale, memberId, shareCode],
 	);
 	const weekAgenda = useMemo(
 		() =>
@@ -93,8 +97,9 @@ export function useHomeView({
 				dueChores,
 				events: eventOccurrences,
 				now: agendaNow,
+				locale,
 			}),
-		[dueChores, eventOccurrences, agendaNow, memberId, shareCode],
+		[dueChores, eventOccurrences, agendaNow, locale, memberId, shareCode],
 	);
 	const latestAnnouncement = data?.latestAnnouncement;
 	const latestIsPending = Boolean(

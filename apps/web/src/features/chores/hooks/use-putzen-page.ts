@@ -1,4 +1,5 @@
 import { useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useEffect, useMemo, useState } from 'react';
 import { useToast } from '@/components/ui/Toast';
 import { useWg } from '@/components/wg/WgContextProvider';
@@ -33,6 +34,7 @@ const FLASH_MS = 2500;
 export function usePutzenPage() {
 	const { wg, members, identity } = useWg();
 	const toast = useToast();
+	const t = useTranslations('chores.shared');
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const searchParams = useSearchParams();
 	const highlightParam = searchParams.get('highlight');
@@ -135,7 +137,7 @@ export function usePutzenPage() {
 	};
 
 	function memberLookup(id: string | null): MemberInfo {
-		if (!id) return { name: 'Niemand', color: null };
+		if (!id) return { name: t('nobody'), color: null };
 		const m = members.find((x) => x.id === id);
 		return { name: m?.name ?? '?', color: m?.color ?? null };
 	}

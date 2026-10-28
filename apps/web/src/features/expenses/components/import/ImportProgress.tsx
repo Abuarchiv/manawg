@@ -1,9 +1,11 @@
 'use client';
 
 import { CheckCircle2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { Spinner } from '@/components/ui/spinner';
+import { type Message, useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
 
 /** Indeterminate bar with a stronger track; the indicator fills the track and pulses. */
@@ -14,10 +16,11 @@ export function ImportRunningBar({
 	className?: string;
 	decorative?: boolean;
 }) {
+	const t = useTranslations('expenses-import.progress');
 	return (
 		<Progress
 			value={null}
-			aria-label="Import läuft"
+			aria-label={t('aria')}
 			aria-hidden={decorative || undefined}
 			className={cn(
 				'[&_[data-slot=progress-track]]:bg-primary/20 [&_[data-slot=progress-indicator]]:w-full motion-safe:[&_[data-slot=progress-indicator]]:animate-pulse',
@@ -32,10 +35,12 @@ interface Props {
 	inserted?: number;
 	skipped?: number;
 	errors?: number;
-	message?: string | null;
+	message?: Message | null;
 }
 
 export function ImportProgress({ state, inserted = 0, skipped = 0, errors = 0, message }: Props) {
+	const t = useTranslations('expenses-import.progress');
+	const renderMessage = useMessage();
 	if (state === 'idle') return null;
 	return (
 		<Alert
@@ -50,20 +55,24 @@ export function ImportProgress({ state, inserted = 0, skipped = 0, errors = 0, m
 			) : null}
 			<AlertTitle>
 				{state === 'pending'
-					? 'Import läuft…'
+					? t('pending')
 					: state === 'error'
-						? 'Import fehlgeschlagen'
+						? t('failed')
 						: errors > 0
-							? 'Mit Fehlern'
-							: 'Ohne Fehler'}
+							? t('withErrors')
+							: t('withoutErrors')}
 			</AlertTitle>
 			<AlertDescription>
 				{state === 'pending' ? (
 					<ImportRunningBar className="mt-3" />
 				) : state === 'error' ? (
-					(message ?? 'Bitte erneut versuchen.')
+					message ? (
+						renderMessage(message)
+					) : (
+						t('retry')
+					)
 				) : (
-					`${inserted} importiert · ${skipped} übersprungen · ${errors} Fehler`
+					t('summary', { inserted: String(inserted), skipped: String(skipped), errors })
 				)}
 			</AlertDescription>
 		</Alert>

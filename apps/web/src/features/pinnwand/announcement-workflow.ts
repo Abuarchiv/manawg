@@ -131,7 +131,7 @@ export function reconcilePendingAnnouncements<T extends { id: string }>(
 
 /**
  * Refresh already-visible announcements in place from a background poll, without inserting or
- * reordering rows (new posts stay gated behind the "neue Beiträge" button via
+ * reordering rows (new posts stay gated behind the "new posts" button via
  * `getNewAnnouncementCount`). Posts missing from the server response are removed.
  */
 export function mergeBackgroundAnnouncements<T extends { id: string }>(

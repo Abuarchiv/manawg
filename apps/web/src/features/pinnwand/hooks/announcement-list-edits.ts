@@ -27,7 +27,7 @@ export function announcementListEdits(
 		updateItem,
 		dropVanishedAnnouncement(id: string): void {
 			commitItems(itemsRef.current.filter((item) => item.id !== id));
-			setActionError('Dieser Pinnwand-Beitrag existiert nicht mehr und wurde entfernt.');
+			setActionError({ key: 'pinnwand.errors.vanished' });
 		},
 		/**
 		 * Captures the given fields of one card now and returns a function that puts only those

@@ -52,7 +52,10 @@ test.describe('date compatibility', () => {
 					expect(inputDate(legacy.startsAt)).toBe('2026-09-22T00:00');
 					const [occurrence] = expandRecurrence(legacy, '2026-09-01', '2026-10-01');
 					if (!occurrence) throw new Error('expected legacy occurrence');
-					expect(formatEventTimeRange(occurrence)).toContain('22.09.2026 · ganztägig');
+					expect(formatEventTimeRange(occurrence)).toMatchObject({
+						key: 'events.time.allDayDate',
+						values: { date: '22.09.2026' },
+					});
 					const edited = validateEventForm({
 						title: 'Nur Titel geändert',
 						startsAt: inputDate(legacy.startsAt),
@@ -60,7 +63,7 @@ test.describe('date compatibility', () => {
 						allDay: true,
 						original: legacy,
 					});
-					if (!edited.ok) throw new Error(edited.error);
+					if (!edited.ok) throw new Error(edited.error.key);
 					expect(edited.startsAt.toISOString()).toBe(legacy.startsAt);
 					expect(edited.endsAt?.toISOString()).toBe(legacy.endsAt);
 					const changed = validateEventForm({
@@ -70,7 +73,7 @@ test.describe('date compatibility', () => {
 						allDay: true,
 						original: legacy,
 					});
-					if (!changed.ok) throw new Error(changed.error);
+					if (!changed.ok) throw new Error(changed.error.key);
 					expect(changed.startsAt.toISOString()).toBe('2026-09-23T00:00:00.000Z');
 					expect(changed.endsAt?.toISOString()).toBe('2026-09-23T00:00:00.000Z');
 				}
@@ -192,7 +195,7 @@ test.describe('calendar date and recurrence regressions', () => {
 						endsAt: `${day}T00:00`,
 						allDay: true,
 					});
-					if (!validation.ok) throw new Error(validation.error);
+					if (!validation.ok) throw new Error(validation.error.key);
 					expect(validation.startsAt.toISOString()).toBe(`${day}T00:00:00.000Z`);
 					expect(validation.endsAt?.toISOString()).toBe(`${day}T00:00:00.000Z`);
 					const display = eventDateForDisplay(`${day}T00:00:00.000Z`, true);
@@ -205,7 +208,7 @@ test.describe('calendar date and recurrence regressions', () => {
 						endsAt: '',
 						allDay: true,
 					});
-					if (!edited.ok) throw new Error(edited.error);
+					if (!edited.ok) throw new Error(edited.error.key);
 					expect(edited.startsAt.toISOString()).toBe(`${day}T00:00:00.000Z`);
 					const event: EventInput = {
 						id: 'all-day',
@@ -222,16 +225,17 @@ test.describe('calendar date and recurrence regressions', () => {
 					expect(occurrenceToIcs(occurrence)).toContain(
 						`DTSTART;VALUE=DATE:${day.replaceAll('-', '')}\r\n`,
 					);
-					expect(formatEventTimeRange(occurrence)).toContain(
-						`${day.slice(8)}.${day.slice(5, 7)}.${day.slice(0, 4)} · ganztägig`,
-					);
+					expect(formatEventTimeRange(occurrence)).toMatchObject({
+						key: 'events.time.allDayDate',
+						values: { date: `${day.slice(8)}.${day.slice(5, 7)}.${day.slice(0, 4)}` },
+					});
 					const timed = validateEventForm({
 						title: 'Mit Uhrzeit',
 						startsAt: `${day}T14:00`,
 						endsAt: '',
 						allDay: false,
 					});
-					if (!timed.ok) throw new Error(timed.error);
+					if (!timed.ok) throw new Error(timed.error.key);
 					expect(timed.startsAt.toISOString()).toBe(new Date(`${day}T14:00`).toISOString());
 					expect(eventDateForDisplay(timed.startsAt.toISOString(), false).getTime()).toBe(
 						timed.startsAt.getTime(),
@@ -262,7 +266,7 @@ test.describe('calendar date and recurrence regressions', () => {
 						endsAt: '',
 						allDay: true,
 					});
-					if (!validation.ok) throw new Error(validation.error);
+					if (!validation.ok) throw new Error(validation.error.key);
 					const occurrences = expandRecurrence(
 						{
 							id: 'daily',

@@ -1,21 +1,29 @@
-import { mutationErrorMessage } from '@/core/http/error-codes';
+import { mutationError } from '@/core/http/error-codes';
+import type { Message } from '@/shared/i18n/message';
+
+function withSubject(subject: Message, detail: Message): Message {
+	return { key: 'common.errors.withSubject', values: { subject, detail } };
+}
 
 /** Offline, 429, maintenance, expired session and missing permission each need a concrete next step. */
-export function eventSaveError(base: string, res: { status: number; error: string }): string {
+export function eventSaveError(subject: Message, res: { status: number; error: string }): Message {
 	// The API lets only the creator and WG admins change or delete an event.
-	if (res.status === 403) {
-		return `${base}: Das dürfen nur WG-Admins und wer den Termin angelegt hat.`;
-	}
+	if (res.status === 403) return withSubject(subject, { key: 'events.errors.notAllowed' });
 	if (res.error === 'event_changed') {
-		return `${base}: Der Termin wurde inzwischen geändert. Öffne ihn erneut.`;
+		return withSubject(subject, { key: 'events.errors.eventChanged' });
 	}
 	if (res.error === 'occurrence_changed' || res.error === 'occurrence_not_found') {
-		return 'Dieser Termin wurde inzwischen geändert. Die Ansicht wird aktualisiert.';
+		return { key: 'events.errors.occurrenceChanged' };
 	}
 	if (res.status === 404 && res.error !== 'wg_not_found') {
-		return `${base}: Der Termin existiert nicht mehr.`;
+		return withSubject(subject, { key: 'events.errors.gone' });
 	}
-	return mutationErrorMessage(base, res.error, {}, `${base}.`);
+	return mutationError(
+		subject,
+		res.error,
+		{},
+		{ key: 'events.errors.sentence', values: { subject } },
+	);
 }
 
 /** Someone else deleted the event meanwhile; restoring it locally would be wrong. */

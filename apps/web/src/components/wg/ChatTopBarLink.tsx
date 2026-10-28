@@ -3,13 +3,16 @@
 import { MessageCircle } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
+import { segmentCountStatus } from '@/components/wg/segment-count-status';
 import { useChatUnreadCount } from '@/components/wg/use-wg-counts';
 import {
 	LIST_REFRESH_INTERVAL_MS,
 	useVisibilityPausedInterval,
 } from '@/core/utils/use-visibility-paused-interval';
+import { useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
 import { haptic } from '@/shared/lib/haptics';
 
@@ -21,6 +24,8 @@ interface ChatTopBarLinkProps {
 const BADGE_MAX = 99;
 
 export function ChatTopBarLink({ href, className }: ChatTopBarLinkProps) {
+	const t = useTranslations('shell.chatLink');
+	const message = useMessage();
 	const pathname = usePathname() ?? '';
 	const unread = useChatUnreadCount();
 	useVisibilityPausedInterval(() => void unread.refresh(), LIST_REFRESH_INTERVAL_MS);
@@ -29,15 +34,22 @@ export function ChatTopBarLink({ href, className }: ChatTopBarLinkProps) {
 	const count = unread.data?.count;
 	const exactCount = unread.data?.exactCount;
 	const accessibleCount = exactCount ?? (unread.data?.overflow ? undefined : count);
-	const countLabel =
+	const state =
 		count === undefined
 			? unread.error
-				? 'Zähler nicht verfügbar'
-				: 'Zähler wird geladen'
-			: accessibleCount === undefined
-				? 'mehr als 99 ungelesen'
-				: `${accessibleCount} ungelesen`;
-	const freshness = count !== undefined && unread.error ? ', Stand möglicherweise veraltet' : '';
+				? 'unavailable'
+				: 'loading'
+			: unread.error
+				? 'stale'
+				: 'ready';
+	const status = segmentCountStatus({
+		count,
+		hint: 'unread',
+		state,
+		overflow: unread.data?.overflow,
+		exactCount,
+	});
+	const statusText = status ? message(status) : '';
 	const badge =
 		count === undefined
 			? '!'
@@ -56,7 +68,7 @@ export function ChatTopBarLink({ href, className }: ChatTopBarLinkProps) {
 	return (
 		<Link
 			href={href}
-			aria-label={`Chat öffnen, ${countLabel}${freshness}`}
+			aria-label={t('label', { status: statusText })}
 			aria-current={isActive ? 'page' : undefined}
 			onClick={handleClick}
 			className={
@@ -85,11 +97,12 @@ export function ChatTopBarLink({ href, className }: ChatTopBarLinkProps) {
 			)}
 			<span className="sr-only" aria-live="polite" aria-atomic="true">
 				{count === undefined
-					? countLabel
+					? statusText
 					: count > 0
-						? accessibleCount === undefined
-							? 'Mehr als 99 ungelesene Nachrichten'
-							: `${accessibleCount} ungelesene Nachricht${accessibleCount === 1 ? '' : 'en'}`
+						? t('unreadMessages', {
+								overflow: accessibleCount === undefined ? 'yes' : 'no',
+								count: accessibleCount ?? 0,
+							})
 						: ''}
 			</span>
 		</Link>

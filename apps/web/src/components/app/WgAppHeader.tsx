@@ -3,6 +3,7 @@
 import { UserRound } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useLayoutEffect, useRef } from 'react';
 import { buttonVariants } from '@/components/ui/button';
 import { LogoMark } from '@/components/ui/LogoMark';
@@ -11,6 +12,7 @@ import { useWg } from '@/components/wg/WgContextProvider';
 import { cn } from '@/shared/lib/cn';
 
 export function WgAppHeader() {
+	const t = useTranslations('shell.header');
 	const { wg } = useWg();
 	const pathname = usePathname() ?? '';
 	const baseHref = `/wg/${encodeURIComponent(wg.shareCode)}`;
@@ -51,7 +53,7 @@ export function WgAppHeader() {
 				/>
 				{isStart ? (
 					<h1
-						aria-label={`${wg.name} – Start`}
+						aria-label={t('startLabel', { name: wg.name })}
 						title={wg.name}
 						className="min-w-[8rem] flex-1 basis-0 line-clamp-2 break-words font-heading text-xl font-semibold tracking-[-0.03em]"
 					>
@@ -72,7 +74,7 @@ export function WgAppHeader() {
 					/>
 					<Link
 						href={`${baseHref}/einstellungen`}
-						aria-label="Konto und WG-Einstellungen öffnen"
+						aria-label={t('settingsLabel')}
 						className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'shrink-0')}
 					>
 						<UserRound aria-hidden />

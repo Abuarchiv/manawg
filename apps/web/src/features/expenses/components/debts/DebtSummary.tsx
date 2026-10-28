@@ -2,6 +2,7 @@
 
 import { Bell, FileText } from 'lucide-react';
 import Link from 'next/link';
+import { useLocale, useTranslations } from 'next-intl';
 import { buttonVariants } from '@/components/ui/button';
 import {
 	Card,
@@ -63,6 +64,8 @@ export function DebtSummary({
 	currentMemberId,
 	onSettled,
 }: DebtSummaryProps) {
+	const locale = useLocale();
+	const t = useTranslations('expenses-debts.summary');
 	const { personal, others } = getDebtOverview(debts, currentMemberId, summary);
 	const hasCashPayments = ownCashPayments(payments, currentMemberId).length > 0;
 	if (
@@ -111,52 +114,57 @@ export function DebtSummary({
 	return (
 		<Card size="sm">
 			<CardHeader>
-				<CardDescription>Dein Saldo</CardDescription>
+				<CardDescription>{t('title')}</CardDescription>
 				<CardTitle>
 					<h2 id={SALDO_HEADING_ID} tabIndex={-1} className="outline-none">
 						{ownBalances.length > 1 ? (
 							<>
-								Offene Salden{' '}
+								{t('openBalances')}{' '}
 								<span className={HERO_AMOUNT}>
 									{ownBalances
 										.map((balance) =>
-											formatEuroCents(balance.balanceCents, balance.currency, { signed: true }),
+											formatEuroCents(balance.balanceCents, balance.currency, {
+												signed: true,
+												locale,
+											}),
 										)
 										.join(' · ')}
 								</span>
 							</>
 						) : ownBalance && ownBalance.balanceCents > 0 ? (
 							<>
-								Du bekommst{' '}
+								{t('owed')}{' '}
 								<span className={cn(HERO_AMOUNT, 'text-settled')}>
-									{formatEuroCents(ownBalance.balanceCents, ownBalance.currency)}
+									{formatEuroCents(ownBalance.balanceCents, ownBalance.currency, { locale })}
 								</span>
 							</>
 						) : ownBalance ? (
 							<>
-								Du schuldest{' '}
+								{t('owe')}{' '}
 								<span className={cn(HERO_AMOUNT, 'text-destructive')}>
-									{formatEuroCents(Math.abs(ownBalance.balanceCents), ownBalance.currency)}
+									{formatEuroCents(Math.abs(ownBalance.balanceCents), ownBalance.currency, {
+										locale,
+									})}
 								</span>
 							</>
 						) : (
-							'Du bist ausgeglichen'
+							t('settled')
 						)}
 					</h2>
 				</CardTitle>
 				<CardAction className="flex">
 					<Link
 						href={`/wg/${encodeURIComponent(shareCode)}/abrechnung`}
-						aria-label="Monatsabrechnung"
-						title="Monatsabrechnung"
+						aria-label={t('statementLink')}
+						title={t('statementLink')}
 						className={cn(buttonVariants({ variant: 'ghost', size: 'icon-sm' }))}
 					>
 						<FileText aria-hidden />
 					</Link>
 					<Link
 						href={`/wg/${encodeURIComponent(shareCode)}/mahnungen`}
-						aria-label="Alle Erinnerungen"
-						title="Alle Erinnerungen"
+						aria-label={t('remindersLink')}
+						title={t('remindersLink')}
 						className={cn(buttonVariants({ variant: 'ghost', size: 'icon-sm' }))}
 					>
 						<Bell aria-hidden />
@@ -168,9 +176,9 @@ export function DebtSummary({
 				{showBalances && (
 					<section aria-labelledby="balances-heading" className="flex flex-col gap-2">
 						<h3 id="balances-heading" className="text-meta font-medium text-muted-foreground">
-							Salden
+							{t('balances')}
 						</h3>
-						<ul aria-label="Saldo pro Mitglied" className="flex flex-col gap-1.5">
+						<ul aria-label={t('balancesLabel')} className="flex flex-col gap-1.5">
 							{listedBalances.map((member) => {
 								const isMe = member.memberId === currentMemberId;
 								return (
@@ -181,7 +189,7 @@ export function DebtSummary({
 										<span className="flex min-w-0 flex-1 basis-32 items-center gap-2">
 											<MemberAvatar name={member.memberName} size={24} />
 											<span className="min-w-0 whitespace-normal break-words">
-												{isMe ? 'Du' : member.memberName}
+												{isMe ? t('you') : member.memberName}
 											</span>
 										</span>
 										<span
@@ -197,8 +205,11 @@ export function DebtSummary({
 											)}
 										>
 											{member.balanceCents === 0
-												? 'ausgeglichen'
-												: formatEuroCents(member.balanceCents, member.currency, { signed: true })}
+												? t('balanceSettled')
+												: formatEuroCents(member.balanceCents, member.currency, {
+														signed: true,
+														locale,
+													})}
 										</span>
 									</li>
 								);
@@ -209,11 +220,11 @@ export function DebtSummary({
 				{(personal.length > 0 || others.length > 0) && (
 					<section aria-labelledby="settle-heading" className="flex flex-col gap-1">
 						<h3 id="settle-heading" className="text-meta font-medium text-muted-foreground">
-							So wird ausgeglichen
+							{t('howToSettle')}
 						</h3>
 						{personal.length > 0 && (
 							<ItemGroup
-								aria-label="Deine offenen Zahlungen"
+								aria-label={t('yourPayments')}
 								className="gap-0 divide-y [&>[data-slot=item]:not(:last-child)]:border-b-border"
 							>
 								{personal.map((debt) => renderDebt(debt))}
@@ -221,7 +232,7 @@ export function DebtSummary({
 						)}
 						{others.length > 0 && (
 							<ItemGroup
-								aria-label="Weitere Zahlungen in der WG"
+								aria-label={t('otherPayments')}
 								className="gap-0 divide-y [&>[data-slot=item]:not(:last-child)]:border-b-border"
 							>
 								{others.map((debt) => renderDebt(debt))}

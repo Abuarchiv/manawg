@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { type RefObject, useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -36,6 +37,7 @@ export function ReactionPicker({
 	onSelect,
 	returnFocusRef,
 }: ReactionPickerProps) {
+	const t = useTranslations('chat.picker');
 	const [custom, setCustom] = useState('');
 	const [pending, setPending] = useState(false);
 	const [error, setError] = useState(false);
@@ -71,8 +73,8 @@ export function ReactionPicker({
 		>
 			<DrawerContent finalFocus={returnFocusRef}>
 				<DrawerHeader>
-					<DrawerTitle>Reaktion wählen</DrawerTitle>
-					<DrawerDescription>Ein Emoji für diese Nachricht.</DrawerDescription>
+					<DrawerTitle>{t('title')}</DrawerTitle>
+					<DrawerDescription>{t('description')}</DrawerDescription>
 				</DrawerHeader>
 				<div className="flex flex-col gap-4 overflow-y-auto px-4 pb-4">
 					<div className="grid grid-cols-4 gap-2">
@@ -81,7 +83,7 @@ export function ReactionPicker({
 								key={emoji}
 								variant="outline"
 								disabled={pending}
-								aria-label={`Reaktion ${emoji}`}
+								aria-label={t('emojiAria', { emoji })}
 								onClick={() => void select(emoji)}
 							>
 								{emoji}
@@ -89,7 +91,7 @@ export function ReactionPicker({
 						))}
 					</div>
 					<Field>
-						<FieldLabel>Eigene Emoji-Reaktion</FieldLabel>
+						<FieldLabel>{t('customLabel')}</FieldLabel>
 						<InputGroup>
 							<InputGroupInput
 								value={custom}
@@ -101,8 +103,8 @@ export function ReactionPicker({
 										void select(custom);
 									}
 								}}
-								aria-label="Eigene Emoji-Reaktion"
-								placeholder="Emoji"
+								aria-label={t('customLabel')}
+								placeholder={t('placeholder')}
 								className="text-base"
 							/>
 							<InputGroupAddon align="inline-end">
@@ -113,18 +115,18 @@ export function ReactionPicker({
 									disabled={pending || !custom.trim()}
 									onClick={() => void select(custom)}
 								>
-									{pending ? <Spinner /> : 'OK'}
+									{pending ? <Spinner /> : t('ok')}
 								</InputGroupButton>
 							</InputGroupAddon>
 						</InputGroup>
 					</Field>
 					{error && (
 						<Alert variant="destructive">
-							<AlertDescription>Reaktion nicht gespeichert. Versuche es erneut.</AlertDescription>
+							<AlertDescription>{t('failed')}</AlertDescription>
 						</Alert>
 					)}
 					<Button variant="ghost" disabled={pending} onClick={() => setOpen(false)}>
-						Schließen
+						{t('close')}
 					</Button>
 				</div>
 			</DrawerContent>

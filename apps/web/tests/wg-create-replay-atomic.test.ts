@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { mock, test } from 'node:test';
+import { NextRequest } from 'next/server';
 import { TransactionAbort } from '../src/core/db/transaction-abort.ts';
 
 const key = '11111111-1111-4111-8111-111111111111';
@@ -227,7 +228,7 @@ function harness({
 	};
 	state = own;
 	const request = () =>
-		new Request('http://localhost/api/wg', {
+		new NextRequest('http://localhost/api/wg', {
 			method: 'POST',
 			headers: { 'idempotency-key': key },
 			body: JSON.stringify({ name: 'WG', creatorName: 'Mina' }),

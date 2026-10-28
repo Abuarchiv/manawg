@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { WgRouteErrorBoundary } from '@/components/wg/WgRouteErrorBoundary';
 
 interface PutzenErrorProps {
@@ -8,13 +9,14 @@ interface PutzenErrorProps {
 }
 
 export default function PutzenError({ error, reset }: PutzenErrorProps) {
+	const t = useTranslations('chores.errorPage');
 	return (
 		<WgRouteErrorBoundary
 			error={error}
 			reset={reset}
 			boundary="wg-putzen"
-			title="Putzplan konnte gerade nicht geladen werden"
-			body="Im Putzplan ist ein Fehler aufgetreten. Bitte versuche es erneut oder kehre zur WG-Übersicht zurück."
+			title={t('title')}
+			body={t('body')}
 		/>
 	);
 }

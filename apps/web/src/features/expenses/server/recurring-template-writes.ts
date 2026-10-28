@@ -109,7 +109,7 @@ function pauseTransition(
  * today on (due today stays due); otherwise the cron would book every paused month.
  */
 function resumedDueAt(dueAt: Date, template: RecurringTemplate, intervalMonths: number): Date {
-	const anchorDay = (template.anchorAt ?? template.nextDueAt).getUTCDate();
+	const anchorDay = template.anchorAt.getUTCDate();
 	const today = new Date();
 	today.setUTCHours(0, 0, 0, 0);
 	let next = dueAt;
@@ -239,7 +239,7 @@ export async function editRecurringTemplate(
 				transition === 'resume' && edit.nextDueAt === undefined
 					? resumedDueAt(dueAt, template, intervalMonths)
 					: dueAt,
-			anchorAt: moved ?? template.anchorAt ?? template.nextDueAt,
+			anchorAt: moved ?? template.anchorAt,
 			splitsJson: JSON.stringify(splits),
 			updatedAt: new Date(),
 			...(transition === 'pause' ? { pausedAt: new Date() } : {}),

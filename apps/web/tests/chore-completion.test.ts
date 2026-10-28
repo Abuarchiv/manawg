@@ -5,8 +5,6 @@ const {
 	CHORE_COMPLETION_COPY,
 	choreCompletionFeedback,
 	completionRequestKey,
-	nextAssigneeLabel,
-	nextAssigneeVerb,
 	submitChoreCompletion,
 } = await import('../src/features/chores/chore-completion.ts');
 
@@ -37,40 +35,56 @@ test('a confirmed completion names the next date and assignee', () => {
 		names,
 	);
 	assert.equal(feedback.tone, 'success');
-	assert.match(feedback.message, /^Bad putzen erledigt\. Als Nächstes ist Anna am .+ dran\.$/);
+	assert.deepEqual(feedback.message, {
+		key: 'chores.completion.doneNext',
+		values: { title: 'Bad putzen', date: '13.10.', assignee: 'other', name: 'Anna' },
+	});
 	assert.equal(feedback.done, true);
 	assert.equal(feedback.reload, true);
 });
 
-test('a completion addresses the own member as du and others by name', () => {
+test('a completion marks the own member as self and others by name', () => {
 	const next = (assignedMemberId: string) => ({
 		kind: 'completed' as const,
 		next: { id: 'c1', nextDueAt: '2026-10-13T10:00:00.000Z', assignedMemberId },
 	});
-	assert.match(
-		choreCompletionFeedback(next('me'), chore, names).message,
-		/^Bad putzen erledigt\. Als Nächstes bist du am .+ dran\.$/,
+	assert.deepEqual(choreCompletionFeedback(next('me'), chore, names).message, {
+		key: 'chores.completion.doneNext',
+		values: { title: 'Bad putzen', date: '13.10.', assignee: 'self', name: 'Mia' },
+	});
+	assert.equal(
+		choreCompletionFeedback(next('anna'), chore, names).message.values?.assignee,
+		'other',
 	);
-	assert.match(
-		choreCompletionFeedback(next('anna'), chore, names).message,
-		/^Bad putzen erledigt\. Als Nächstes ist Anna am .+ dran\.$/,
+	assert.equal(
+		choreCompletionFeedback(next('nobody'), chore, names).message.key,
+		'chores.completion.doneUnassigned',
 	);
-	assert.match(
-		choreCompletionFeedback(next('nobody'), chore, names).message,
-		/noch niemand zugewiesen\.$/,
+});
+
+test('the date follows the requested locale', () => {
+	const completed = {
+		kind: 'completed' as const,
+		next: { id: 'c1', nextDueAt: '2026-10-13T10:00:00.000Z', assignedMemberId: 'anna' },
+	};
+	assert.equal(
+		choreCompletionFeedback(completed, chore, names, 'en').message.values?.date,
+		'13 Oct',
 	);
 });
 
 test('the flag, not the name, decides how the next assignee is addressed', () => {
-	assert.equal(nextAssigneeVerb({ name: 'du', isSelf: false }), 'ist');
-	assert.equal(nextAssigneeLabel({ name: 'du', isSelf: false }), 'du');
-	assert.equal(nextAssigneeLabel({ name: 'Mia', isSelf: true }), 'du');
-	assert.equal(nextAssigneeVerb({ name: 'Mia', isSelf: true }), 'bist');
+	const next = { id: 'c1', nextDueAt: '2026-10-13T10:00:00.000Z', assignedMemberId: 'x' };
+	const assignee = (isSelf: boolean) =>
+		choreCompletionFeedback({ kind: 'completed', next }, chore, () => ({ name: 'du', isSelf }))
+			.message.values?.assignee;
+	assert.equal(assignee(false), 'other');
+	assert.equal(assignee(true), 'self');
 });
 
 test('an unconfirmed completion still says it is done', () => {
 	const feedback = choreCompletionFeedback({ kind: 'completed', next: null }, chore, names);
-	assert.match(feedback.message, /^Bad putzen erledigt\./);
+	assert.equal(feedback.message.key, 'chores.completion.doneUnconfirmed');
 });
 
 test('retryable failures keep the confirm step open', () => {

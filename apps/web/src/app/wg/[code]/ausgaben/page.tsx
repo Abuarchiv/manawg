@@ -1,6 +1,7 @@
 'use client';
 import { Plus } from 'lucide-react';
 import dynamic from 'next/dynamic';
+import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -18,20 +19,23 @@ import { DebtSummary } from '@/features/expenses/components/debts/DebtSummary';
 import { useAusgabenPage } from '@/features/expenses/hooks/use-ausgaben-page';
 import { haptic } from '@/shared/lib/haptics';
 
+function ExpenseFormLoading() {
+	const t = useTranslations('expenses');
+	return (
+		// Out of flow so the background does not jump; the real sheet replaces it in place.
+		<output className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-popover text-sm text-popover-foreground">
+			<Spinner aria-hidden className="size-6" />
+			{t('page.formLoading')}
+		</output>
+	);
+}
+
 const ExpenseFormSection = dynamic(
 	() =>
 		import('@/features/expenses/components/ausgaben/ExpenseFormSection').then(
 			(module) => module.ExpenseFormSection,
 		),
-	{
-		loading: () => (
-			// Out of flow so the background does not jump; the real sheet replaces it in place.
-			<output className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-popover text-sm text-popover-foreground">
-				<Spinner aria-hidden className="size-6" />
-				Ausgabenformular wird geladen…
-			</output>
-		),
-	},
+	{ loading: ExpenseFormLoading },
 );
 
 /** Request the form chunk once while online so the service worker has it for offline use. */
@@ -44,6 +48,8 @@ function usePreloadExpenseForm(): void {
 
 export default function AusgabenPage() {
 	usePreloadExpenseForm();
+	const t = useTranslations('expenses');
+	const tCommon = useTranslations('common');
 	const page = useAusgabenPage();
 	const { wg, members, identity, isAdmin, data, form, support, recurring, submit, notify } = page;
 	const { expenses, recurringExpenses, initialLoading, refreshing, loadError } = data;
@@ -114,7 +120,7 @@ export default function AusgabenPage() {
 			{page.actionNotice && !showForm && <ActionNoticeBanner notice={page.actionNotice} />}
 			{/* Screen readers only: a visible notice would cover the header and flash on every poll. */}
 			<output aria-live="polite" aria-hidden={!refreshing} className="sr-only">
-				{refreshing ? 'Lädt…' : ''}
+				{refreshing ? tCommon('loading') : ''}
 			</output>
 			<OfflineQueueNotice queuedCount={data.queuedCount} />
 			{loadError && (
@@ -122,7 +128,7 @@ export default function AusgabenPage() {
 					message={loadError}
 					onRetry={() => void data.load(true)}
 					busy={initialLoading || refreshing}
-					retryLabel="Ausgaben erneut laden"
+					retryLabel={t('page.reload')}
 				/>
 			)}
 			{page.showSkeleton && (
@@ -212,7 +218,7 @@ export default function AusgabenPage() {
 					}}
 				>
 					<Plus data-icon="inline-start" aria-hidden />
-					Ausgabe hinzufügen
+					{t('page.add')}
 				</Button>
 			</ThumbAction>
 		</div>

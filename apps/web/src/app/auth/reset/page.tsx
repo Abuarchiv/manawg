@@ -1,33 +1,34 @@
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
+import { getTranslations } from 'next-intl/server';
 import { PasswordResetForm } from '@/components/auth/PasswordResetForm';
 import { EntryFrame } from '@/components/entry/EntryFrame';
 import { getAuthenticatedUserFromCookies } from '@/core/auth/server';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata: Metadata = {
-	title: 'Passwort zurücksetzen',
-	robots: { index: false, follow: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+	const t = await getTranslations('meta.authReset');
+	return { title: t('title'), robots: { index: false, follow: false } };
+}
 
 export default async function PasswordResetPage() {
-	const [cookieStore, user] = await Promise.all([cookies(), getAuthenticatedUserFromCookies()]);
+	const [cookieStore, user, t] = await Promise.all([
+		cookies(),
+		getAuthenticatedUserFromCookies(),
+		getTranslations('entry'),
+	]);
 	const recoveryRequested = Boolean(
 		user && cookieStore.get('manawg_password_recovery')?.value === user.id,
 	);
 
 	return (
 		<EntryFrame
-			title="Passwort zurücksetzen"
-			description={
-				recoveryRequested
-					? 'Lege ein neues Passwort für dein Konto fest.'
-					: 'Fordere unten einen neuen Link an.'
-			}
+			title={t('reset.title')}
+			description={recoveryRequested ? t('reset.recovery') : t('reset.request')}
 			headingId="password-reset-heading"
 			backHref="/neu"
-			backLabel="ManaWG, zurück zur Anmeldung"
+			backLabel={t('frame.backToSignIn')}
 		>
 			<PasswordResetForm recoveryRequested={recoveryRequested} />
 		</EntryFrame>

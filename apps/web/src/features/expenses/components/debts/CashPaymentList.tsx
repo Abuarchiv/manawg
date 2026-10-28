@@ -1,5 +1,6 @@
 'use client';
 
+import { useLocale, useTranslations } from 'next-intl';
 import { useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,13 +13,14 @@ import {
 	ItemTitle,
 } from '@/components/ui/item';
 import { useToast } from '@/components/ui/Toast';
+import { NETWORK_ERROR_CODE } from '@/core/http/error-codes';
 import { createIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
-import { keyUnavailableMessage } from '@/core/offline/offline-copy';
 import { formatEuroCents } from '@/core/utils/money';
-import { formatRelativeTime, formatTimeFull } from '@/core/utils/time';
+import { formatTimeFull, relativeTimeMessage } from '@/core/utils/time';
 import type { ExpensePaymentInput } from '@/features/expenses/expense-payment-input';
-import { cashVoidErrorMessage } from './settlement-errors';
+import { useMessage } from '@/shared/i18n/message';
+import { cashVoidError } from './settlement-errors';
 
 const MAX_LISTED = 5;
 
@@ -54,14 +56,15 @@ export function CashPaymentList({
 	memberName,
 	onSettled,
 }: CashPaymentListProps) {
+	const t = useTranslations('expenses-debts.cash');
 	const listed = ownCashPayments(payments, currentMemberId);
 	if (listed.length === 0) return null;
 	return (
 		<section aria-labelledby="cash-payments-heading" className="flex flex-col gap-1">
 			<h3 id="cash-payments-heading" className="text-meta font-medium text-muted-foreground">
-				Barzahlungen
+				{t('title')}
 			</h3>
-			<ItemGroup aria-label="Deine Barzahlungen">
+			<ItemGroup aria-label={t('listLabel')}>
 				{listed.map((payment) => (
 					<CashPaymentRow
 						key={payment.id}
@@ -89,20 +92,23 @@ function CashPaymentRow({
 	onSettled,
 }: CashPaymentRowProps) {
 	const toast = useToast();
+	const locale = useLocale();
+	const t = useTranslations('expenses-debts.cash');
+	const message = useMessage();
 	const [confirmOpen, setConfirmOpen] = useState(false);
 	const [voiding, setVoiding] = useState(false);
 	const voidingRef = useRef(false);
 	// A retry after a network error or a server failure reuses the key, so it cannot void twice.
 	const keyRef = useRef<string | null>(null);
-	const from = payment.fromMemberId === currentMemberId ? 'Du' : memberName(payment.fromMemberId);
-	const to = payment.toMemberId === currentMemberId ? 'dich' : memberName(payment.toMemberId);
-	const amount = formatEuroCents(payment.amountCents, payment.currency);
+	const fromName = memberName(payment.fromMemberId);
+	const toName = memberName(payment.toMemberId);
+	const amount = formatEuroCents(payment.amountCents, payment.currency, { locale });
 
 	async function voidPayment(): Promise<void> {
 		if (voidingRef.current) return;
 		keyRef.current ??= createIdempotencyKey();
 		if (!keyRef.current) {
-			toast.error(keyUnavailableMessage('Die Stornierung', 'gespeichert'));
+			toast.error(t('voidKeyUnavailable'));
 			return;
 		}
 		voidingRef.current = true;
@@ -118,15 +124,13 @@ function CashPaymentRow({
 			);
 			if (!res.ok) {
 				if (shouldReleaseIdempotencyKey(res.status, res.error)) keyRef.current = null;
-				toast.error(cashVoidErrorMessage(res.error));
+				toast.error(message(cashVoidError(res.error)));
 				return;
 			}
 			keyRef.current = null;
-			onSettled(
-				`Barzahlung storniert: ${amount} von ${memberName(payment.fromMemberId)} an ${memberName(payment.toMemberId)}.`,
-			);
+			onSettled(t('voided', { amount, from: fromName, to: toName }));
 		} catch {
-			toast.error(cashVoidErrorMessage('Netzwerkfehler'));
+			toast.error(message(cashVoidError(NETWORK_ERROR_CODE)));
 		} finally {
 			voidingRef.current = false;
 			setVoiding(false);
@@ -137,15 +141,23 @@ function CashPaymentRow({
 		<ItemEntry variant="outline" size="sm">
 			<ItemContent className="min-w-[min(100%,12rem)]">
 				<ItemTitle className="line-clamp-none break-words">
-					{from} an {to}
+					{t('line', {
+						fromSelf: payment.fromMemberId === currentMemberId ? 'yes' : 'no',
+						from: fromName,
+						toSelf: payment.toMemberId === currentMemberId ? 'yes' : 'no',
+						to: toName,
+					})}
 				</ItemTitle>
 				<ItemDescription className="line-clamp-none break-words">
 					{payment.completedAt ? (
-						<time dateTime={payment.completedAt} title={formatTimeFull(payment.completedAt)}>
-							{formatRelativeTime(payment.completedAt)}
+						<time
+							dateTime={payment.completedAt}
+							title={formatTimeFull(payment.completedAt, locale)}
+						>
+							{message(relativeTimeMessage(payment.completedAt, Date.now(), locale))}
 						</time>
 					) : (
-						'Bar bezahlt'
+						t('paidInCash')
 					)}
 				</ItemDescription>
 			</ItemContent>
@@ -162,16 +174,16 @@ function CashPaymentRow({
 				disabled={voiding}
 				onClick={() => setConfirmOpen(true)}
 			>
-				Stornieren
+				{t('void')}
 			</Button>
 			<ConfirmDialog
 				open={confirmOpen}
 				onClose={() => setConfirmOpen(false)}
 				onConfirm={() => void voidPayment()}
 				variant="danger"
-				title="Barzahlung stornieren?"
-				description={`Die Barzahlung über ${amount} von ${memberName(payment.fromMemberId)} an ${memberName(payment.toMemberId)} wird storniert, die Schuld ist danach wieder offen. Stimmt nur der Betrag nicht, trage die Zahlung danach neu ein.`}
-				confirmLabel="Stornieren"
+				title={t('voidTitle')}
+				description={t('voidBody', { amount, from: fromName, to: toName })}
+				confirmLabel={t('void')}
 			/>
 		</ItemEntry>
 	);

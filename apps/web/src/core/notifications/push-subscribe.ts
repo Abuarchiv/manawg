@@ -28,12 +28,12 @@ async function saveServerPushOptOut(
 	);
 	if (!saved.ok) {
 		if (isStaleMembershipError(saved.error)) {
-			throw new PushError('Web Push konnte nicht deaktiviert werden: Tritt der WG erneut bei.');
+			throw new PushError('settings.notifications.errors.pushDeactivateRejoin');
 		}
 		if (isRetryableServerError(saved.error, saved.status)) {
-			throw new PushError('Web Push konnte nicht deaktiviert werden: Versuche es gleich erneut.');
+			throw new PushError('settings.notifications.errors.pushDeactivateRetry');
 		}
-		throw new PushError('Web Push konnte nicht deaktiviert werden.');
+		throw new PushError('settings.notifications.errors.pushDeactivateFailed');
 	}
 	return saved.data?.endpointInUse === true;
 }
@@ -50,9 +50,6 @@ export async function retireWebPushEndpoint(
 /** The browser endpoint is registered for a member of another account. */
 class EndpointOwnedError extends PushError {}
 
-const ENDPOINT_OWNED_MESSAGE =
-	'Web Push konnte nicht gespeichert werden: Dieser Browser ist mit einem anderen Konto verbunden. Versuche es erneut.';
-
 async function saveServerPushOptIn(
 	code: string,
 	memberId: string,
@@ -65,9 +62,7 @@ async function saveServerPushOptIn(
 	const json = subscription.toJSON();
 	if (!json.endpoint || !json.keys?.p256dh || !json.keys.auth) {
 		if (createdSubscription) await subscription.unsubscribe().catch(() => undefined);
-		throw new PushError(
-			'Web Push konnte nicht aktiviert werden: Der Browser lieferte unvollständige Daten.',
-		);
+		throw new PushError('settings.notifications.errors.pushIncomplete');
 	}
 
 	const encodedCode = encodeURIComponent(code);
@@ -83,17 +78,18 @@ async function saveServerPushOptIn(
 	});
 	if (!saved.ok) {
 		if (createdSubscription) await subscription.unsubscribe().catch(() => undefined);
-		if (saved.error === 'endpoint_owned') throw new EndpointOwnedError(ENDPOINT_OWNED_MESSAGE);
+		if (saved.error === 'endpoint_owned')
+			throw new EndpointOwnedError('settings.notifications.errors.pushEndpointOwned');
 		if (saved.error === 'push_subscription_invalid') {
-			throw new PushError('Web Push konnte nicht gespeichert werden: Aktiviere es neu.');
+			throw new PushError('settings.notifications.errors.pushSaveReactivate');
 		}
 		if (isStaleMembershipError(saved.error)) {
-			throw new PushError('Web Push konnte nicht gespeichert werden: Tritt der WG erneut bei.');
+			throw new PushError('settings.notifications.errors.pushSaveRejoin');
 		}
 		if (isRetryableServerError(saved.error, saved.status)) {
-			throw new PushError('Web Push konnte nicht gespeichert werden: Versuche es gleich erneut.');
+			throw new PushError('settings.notifications.errors.pushSaveRetry');
 		}
-		throw new PushError('Web Push konnte nicht gespeichert werden.');
+		throw new PushError('settings.notifications.errors.pushSaveFailed');
 	}
 }
 
@@ -146,15 +142,15 @@ export async function persistExistingWebPushSubscription(
 
 export async function subscribeWebPush(code: string, memberId: string): Promise<void> {
 	if (!isPushSupported()) {
-		throw new PushError('Push wird von diesem Browser nicht unterstützt.');
+		throw new PushError('settings.notifications.errors.pushUnsupported');
 	}
 	const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 	if (!vapidKey) {
-		throw new PushError('Push ist noch nicht konfiguriert.');
+		throw new PushError('settings.notifications.errors.pushNotConfigured');
 	}
 	const permission = await Notification.requestPermission();
 	if (permission !== 'granted') {
-		throw new PushError('Benachrichtigungen wurden nicht erlaubt.');
+		throw new PushError('settings.notifications.errors.pushNotAllowed');
 	}
 
 	const registration = await navigator.serviceWorker.ready;

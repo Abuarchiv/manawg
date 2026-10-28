@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { WgRouteErrorBoundary } from '@/components/wg/WgRouteErrorBoundary';
 
 interface ChatErrorProps {
@@ -8,13 +9,14 @@ interface ChatErrorProps {
 }
 
 export default function ChatError({ error, reset }: ChatErrorProps) {
+	const t = useTranslations('chat.errorPage');
 	return (
 		<WgRouteErrorBoundary
 			error={error}
 			reset={reset}
 			boundary="wg-chat"
-			title="Chat konnte gerade nicht geladen werden"
-			body="Im Chat ist ein Fehler aufgetreten. Bitte versuche es erneut oder kehre zur WG-Übersicht zurück."
+			title={t('title')}
+			body={t('body')}
 		/>
 	);
 }

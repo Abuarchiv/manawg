@@ -1,8 +1,9 @@
 'use client';
 
 import { apiFetch } from '@/core/infra/api-client';
-import { recurringTemplateDeleteErrorMessage } from '@/features/expenses/expense-errors';
+import { recurringTemplateDeleteError } from '@/features/expenses/expense-errors';
 import type { RecurringExpense } from '@/features/expenses/expense-types';
+import { useMessage } from '@/shared/i18n/message';
 import type { ExpenseFormState, ExpensePageContext } from './expense-page-context';
 import type { ExpenseFormSupport } from './use-expense-form-support';
 import { useRecurringBooking } from './use-recurring-booking';
@@ -17,6 +18,7 @@ export function useRecurringExpenseActions(
 	form: ExpenseFormState,
 	support: ExpenseFormSupport,
 ) {
+	const t = useMessage();
 	const { identity, notify, pending, recurringExpenses, updateRecurringExpenses, reload } = ctx;
 	const recurringApiUrl = `/api/wg/${encodeURIComponent(ctx.wg.shareCode)}/recurring-expenses`;
 	const templateSave = useRecurringTemplateSave(ctx, form, support);
@@ -44,8 +46,7 @@ export function useRecurringExpenseActions(
 				restored.splice(Math.min(previousTemplateIndex, restored.length), 0, template);
 				return restored;
 			});
-			const message = recurringTemplateDeleteErrorMessage(res.error);
-			notify.error(message);
+			notify.error(t(recurringTemplateDeleteError(res.error)));
 			pending.end(template.id);
 			return;
 		}
@@ -55,9 +56,9 @@ export function useRecurringExpenseActions(
 			form.setShowForm(false);
 		}
 		if (alreadyGone) {
-			notify.error('Diese Fixkosten-Vorlage existiert nicht mehr und wurde entfernt.');
+			notify.error(t({ key: 'expenses.notices.templateGone' }));
 		} else {
-			notify.success('Fixkosten-Vorlage gelöscht.');
+			notify.success(t({ key: 'expenses.notices.templateDeleted' }));
 		}
 		pending.end(template.id);
 		void reload();

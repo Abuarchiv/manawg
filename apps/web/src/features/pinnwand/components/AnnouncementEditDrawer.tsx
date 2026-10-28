@@ -1,6 +1,7 @@
 'use client';
 
 import { Check } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { type ReactElement, useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -16,11 +17,11 @@ import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { ANNOUNCEMENT_KINDS } from '@/features/pinnwand/announcement-workflow';
 import type {
 	Announcement,
 	AnnouncementKind,
 } from '@/features/pinnwand/components/announcement-types';
-import { KIND_OPTIONS } from '@/features/pinnwand/components/constants';
 import { CONTENT_MAX } from '@/features/pinnwand/constants';
 
 interface AnnouncementEditDrawerProps {
@@ -38,6 +39,7 @@ export function AnnouncementEditDrawer({
 	announcement,
 	onSave,
 }: AnnouncementEditDrawerProps): ReactElement {
+	const t = useTranslations('pinnwand');
 	const [content, setContent] = useState(announcement.content);
 	const [kind, setKind] = useState<AnnouncementKind>(announcement.kind);
 	const [saving, setSaving] = useState(false);
@@ -75,22 +77,20 @@ export function AnnouncementEditDrawer({
 				aria-busy={saving}
 			>
 				<DrawerHeader>
-					<DrawerTitle>Beitrag bearbeiten</DrawerTitle>
-					<DrawerDescription className="sr-only">
-						Text und Art deines Beitrags ändern.
-					</DrawerDescription>
+					<DrawerTitle>{t('edit.title')}</DrawerTitle>
+					<DrawerDescription className="sr-only">{t('edit.description')}</DrawerDescription>
 				</DrawerHeader>
 				<div className="flex min-h-0 flex-col gap-3 overflow-y-auto p-4">
 					<FieldGroup>
 						<Field>
 							<FieldLabel id={`edit-kind-label-${announcement.id}`} className="sr-only">
-								Beitragstyp
+								{t('edit.kindLabel')}
 							</FieldLabel>
 							<ToggleGroup
 								value={[kind]}
 								onValueChange={(values) => {
-									const selected = KIND_OPTIONS.find((option) => option.value === values[0]);
-									if (selected) setKind(selected.value);
+									const selected = ANNOUNCEMENT_KINDS.find((option) => option === values[0]);
+									if (selected) setKind(selected);
 								}}
 								disabled={saving}
 								spacing={1}
@@ -98,16 +98,16 @@ export function AnnouncementEditDrawer({
 								className="flex-wrap"
 								aria-labelledby={`edit-kind-label-${announcement.id}`}
 							>
-								{KIND_OPTIONS.map((option) => (
-									<ToggleGroupItem key={option.value} value={option.value} className="px-2">
-										{option.label}
+								{ANNOUNCEMENT_KINDS.map((option) => (
+									<ToggleGroupItem key={option} value={option} className="px-2">
+										{t(`kind.${option}`)}
 									</ToggleGroupItem>
 								))}
 							</ToggleGroup>
 						</Field>
 						<Field>
 							<FieldLabel htmlFor={`edit-content-${announcement.id}`} className="sr-only">
-								Beitragstext
+								{t('edit.textLabel')}
 							</FieldLabel>
 							<Textarea
 								ref={textareaRef}
@@ -124,7 +124,7 @@ export function AnnouncementEditDrawer({
 					</FieldGroup>
 					{announcement.imageUrl && (
 						<Alert>
-							<AlertDescription>Das angehängte Bild bleibt unverändert.</AlertDescription>
+							<AlertDescription>{t('edit.imageKept')}</AlertDescription>
 						</Alert>
 					)}
 				</div>
@@ -140,7 +140,7 @@ export function AnnouncementEditDrawer({
 						) : (
 							<Check data-icon="inline-start" aria-hidden />
 						)}
-						{saving ? 'Speichert…' : 'Speichern'}
+						{saving ? t('edit.saving') : t('edit.save')}
 					</Button>
 					<Button
 						type="button"
@@ -148,7 +148,7 @@ export function AnnouncementEditDrawer({
 						onClick={() => onOpenChange(false)}
 						disabled={saving}
 					>
-						Abbrechen
+						{t('edit.cancel')}
 					</Button>
 				</DrawerFooter>
 			</DrawerContent>

@@ -1,9 +1,11 @@
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { getTranslations } from 'next-intl/server';
 import type { ReactNode } from 'react';
 import { AppBottomNav } from '@/components/app/AppBottomNav';
-import { WG_SECTIONS } from '@/components/app/navigation';
+import { HOME_NAV_LABEL, WG_SECTIONS } from '@/components/app/navigation';
 import { RouteFocusOnNavigate } from '@/components/app/RouteFocusOnNavigate';
 import { WgAppHeader } from '@/components/app/WgAppHeader';
 import { ToastContainer } from '@/components/ui/Toast';
@@ -35,6 +37,7 @@ export async function generateMetadata({
 	params: Promise<{ code: string }>;
 }): Promise<Metadata> {
 	const { code: rawCode } = await params;
+	const t = await getTranslations('meta.wg');
 	const code = normalizeShareCode(rawCode);
 	if (!isValidShareCode(code)) {
 		return { robots: { index: false, follow: false } };
@@ -42,13 +45,13 @@ export async function generateMetadata({
 	const fixture = loadFixtureWgView(code);
 	if (fixture) {
 		return {
-			title: wgTitle(fixture === 'not_found' ? 'WG' : fixture.wg.name),
+			title: wgTitle(fixture === 'not_found' ? t('fallbackName') : fixture.wg.name),
 			robots: { index: false, follow: false },
 		};
 	}
 	const viewer = await loadWgViewer(code);
 	return {
-		title: wgTitle(viewer?.access ? viewer.access.name : 'WG'),
+		title: wgTitle(viewer?.access ? viewer.access.name : t('fallbackName')),
 		robots: { index: false, follow: false },
 	};
 }
@@ -137,6 +140,7 @@ function WgShell({
 	initialIsAdmin?: boolean;
 	children: ReactNode;
 }) {
+	const t = useTranslations('shell.nav');
 	const wgBaseHref = `/wg/${encodeURIComponent(code)}`;
 
 	return (
@@ -165,10 +169,10 @@ function WgShell({
 					{children}
 				</main>
 			</div>
-			<AppBottomNav label="WG Hauptnavigation">
+			<AppBottomNav label={t('label')}>
 				<NavItem
 					href={wgBaseHref}
-					label="Start"
+					label={HOME_NAV_LABEL}
 					iconKey="home"
 					activePrefixes={[`${wgBaseHref}/aktivitaet`]}
 				/>

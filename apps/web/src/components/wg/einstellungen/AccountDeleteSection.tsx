@@ -2,6 +2,7 @@
 
 import { UserX } from 'lucide-react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
@@ -19,15 +20,14 @@ import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { Section } from '@/components/wg/einstellungen/Section';
-import { RATE_LIMITED_MESSAGE } from '@/core/http/error-codes';
 import { noteSessionExpiry } from '@/core/infra/api-client';
 
-const CONFIRM_WORD = 'LÖSCHEN';
-const SIGN_IN_AGAIN_MESSAGE = 'Melde dich erneut an, um dein Konto zu löschen.';
-const UNKNOWN_DELETE_OUTCOME_MESSAGE =
-	'Der Server kann den Status nicht bestätigen. Warte kurz und versuche es erneut; ein bereits angenommener Auftrag wird serverseitig fortgesetzt.';
-
 export function AccountDeleteSection() {
+	const t = useTranslations('settings.accountDelete');
+	const common = useTranslations('common');
+	const actions = useTranslations('settings.actions');
+	const confirmWord = t('confirmWord');
+	const signInAgain = t('signInAgain');
 	const [stage, setStage] = useState<'idle' | 'confirm' | 'pending'>('idle');
 	const [confirmText, setConfirmText] = useState('');
 	const [error, setError] = useState<string | null>(null);
@@ -52,28 +52,28 @@ export function AccountDeleteSection() {
 					result?.status === 'unknown' &&
 					result?.error === 'account_deletion_outcome_unconfirmed'
 				) {
-					setError(UNKNOWN_DELETE_OUTCOME_MESSAGE);
+					setError(t('unknownOutcome'));
 					setStage('confirm');
 					return;
 				}
 				if (result?.error === 'account_deletion_unavailable') {
-					setError('Das Löschen ist gerade nicht verfügbar. Bitte versuche es später erneut.');
+					setError(t('unavailable'));
 					setStage('confirm');
 					return;
 				}
 			}
 			if (res.status === 401) {
-				setError(SIGN_IN_AGAIN_MESSAGE);
+				setError(signInAgain);
 				setStage('confirm');
 				return;
 			}
 			if (res.status === 429) {
-				setError(RATE_LIMITED_MESSAGE);
+				setError(common('errors.rateLimited'));
 				setStage('confirm');
 				return;
 			}
 			if (res.status !== 200 && res.status !== 202) {
-				setError('Konto konnte nicht gelöscht werden. Bitte versuche es später erneut.');
+				setError(t('failed'));
 				setStage('confirm');
 				return;
 			}
@@ -89,12 +89,12 @@ export function AccountDeleteSection() {
 			}
 			window.location.assign(pending ? '/?accountDeletion=pending' : '/');
 		} catch {
-			setError(UNKNOWN_DELETE_OUTCOME_MESSAGE);
+			setError(t('unknownOutcome'));
 			setStage('confirm');
 		}
 	}
 
-	const armed = confirmText === CONFIRM_WORD;
+	const armed = confirmText === confirmWord;
 
 	const trigger = (
 		<Button
@@ -108,16 +108,13 @@ export function AccountDeleteSection() {
 			className="w-full"
 		>
 			<UserX aria-hidden />
-			Konto dauerhaft löschen
+			{t('trigger')}
 		</Button>
 	);
 
 	return (
 		<>
-			<Section
-				title="Konto löschen"
-				hint="Löscht dein Konto und deine Anmeldedaten. In jeder WG ziehst du aus; Einträge und offene Salden bleiben für die anderen erhalten."
-			>
+			<Section title={t('title')} hint={t('hint')}>
 				<div className="p-3">{trigger}</div>
 			</Section>
 
@@ -132,35 +129,31 @@ export function AccountDeleteSection() {
 						<AlertDialogMedia>
 							<UserX aria-hidden />
 						</AlertDialogMedia>
-						<AlertDialogTitle>Konto dauerhaft löschen?</AlertDialogTitle>
-						<AlertDialogDescription>
-							Du wirst aus allen WGs ausgetragen. Bist du Admin, übernimmt das am längsten aktive
-							Mitglied. WGs, in denen du allein bist, werden komplett gelöscht. Das lässt sich nicht
-							rückgängig machen.
-						</AlertDialogDescription>
+						<AlertDialogTitle>{t('dialogTitle')}</AlertDialogTitle>
+						<AlertDialogDescription>{t('dialogBody')}</AlertDialogDescription>
 					</AlertDialogHeader>
 					<Field>
-						<FieldLabel htmlFor="delete-account-confirm">Tippe {CONFIRM_WORD}</FieldLabel>
+						<FieldLabel htmlFor="delete-account-confirm">
+							{t('typeWord', { word: confirmWord })}
+						</FieldLabel>
 						<Input
 							id="delete-account-confirm"
 							type="text"
 							value={confirmText}
 							onChange={(e) => setConfirmText(e.target.value.toUpperCase())}
-							placeholder={CONFIRM_WORD}
+							placeholder={confirmWord}
 							aria-describedby="delete-account-confirm-hint"
 							disabled={stage === 'pending'}
 							className="text-center font-mono text-base tracking-[0.18em]"
 							autoComplete="off"
 						/>
-						<FieldDescription id="delete-account-confirm-hint">
-							Exportiere vorher bei Bedarf deine WG-Daten unter „Daten“.
-						</FieldDescription>
+						<FieldDescription id="delete-account-confirm-hint">{t('exportHint')}</FieldDescription>
 					</Field>
 					{error && (
 						<Alert variant="destructive" id="delete-account-error">
 							<AlertDescription>
 								<div>{error}</div>
-								{error === SIGN_IN_AGAIN_MESSAGE && (
+								{error === signInAgain && (
 									<Button
 										variant="outline"
 										size="sm"
@@ -168,7 +161,7 @@ export function AccountDeleteSection() {
 										render={<Link href="/neu" />}
 										nativeButton={false}
 									>
-										Erneut anmelden
+										{t('signInAgainBtn')}
 									</Button>
 								)}
 							</AlertDescription>
@@ -176,7 +169,7 @@ export function AccountDeleteSection() {
 					)}
 					<AlertDialogFooter>
 						<AlertDialogCancel ref={cancelRef} disabled={stage === 'pending'}>
-							Abbrechen
+							{actions('cancel')}
 						</AlertDialogCancel>
 						<Button
 							variant={armed ? 'destructive-solid' : 'destructive'}
@@ -187,7 +180,7 @@ export function AccountDeleteSection() {
 							disabled={stage === 'pending' || !armed}
 						>
 							{stage === 'pending' ? <Spinner aria-hidden /> : <UserX aria-hidden />}
-							Konto löschen
+							{t('confirm')}
 						</Button>
 					</AlertDialogFooter>
 				</AlertDialogContent>

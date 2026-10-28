@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import type React from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -22,7 +23,7 @@ import {
 	INTERVAL_PRESETS_DAYS,
 	INTERVAL_PRESETS_MONTHS,
 } from '@/features/chores/components/constants';
-import { pluralize } from '@/shared/lib/plural';
+import { useMessage } from '@/shared/i18n/message';
 
 interface ChoreFormProps {
 	open: boolean;
@@ -65,11 +66,9 @@ export function ChoreForm({
 	onSubmit,
 	children,
 }: ChoreFormProps): React.ReactElement {
+	const t = useTranslations('chores.form');
+	const render = useMessage();
 	const presets = recurrenceType === 'months' ? INTERVAL_PRESETS_MONTHS : INTERVAL_PRESETS_DAYS;
-	const firstDue =
-		recurrenceType === 'months'
-			? `in ${pluralize(interval, 'Monat', 'Monaten')}`
-			: `in ${pluralize(interval, 'Tag', 'Tagen')}`;
 	return (
 		<Drawer
 			open={open}
@@ -79,7 +78,7 @@ export function ChoreForm({
 		>
 			<DrawerContent className="mx-auto w-full max-w-md">
 				<DrawerHeader>
-					<DrawerTitle>Neue Putzaufgabe</DrawerTitle>
+					<DrawerTitle>{t('title')}</DrawerTitle>
 				</DrawerHeader>
 				<form
 					id="add-chore-form"
@@ -93,21 +92,21 @@ export function ChoreForm({
 						{children}
 						<FieldGroup>
 							<Field data-disabled={pending}>
-								<FieldLabel htmlFor="chore-title">Aufgabe</FieldLabel>
+								<FieldLabel htmlFor="chore-title">{t('task')}</FieldLabel>
 								<Input
 									id="chore-title"
 									ref={titleInputRef}
 									value={title}
 									onChange={(event) => onTitleChange(event.target.value)}
 									maxLength={CHORE_TITLE_MAX}
-									placeholder="z. B. Müll rausbringen"
+									placeholder={t('taskPlaceholder')}
 									disabled={pending}
 									enterKeyHint="done"
 									className="text-base"
 								/>
 							</Field>
 							<Field data-disabled={pending}>
-								<FieldLabel id="chore-rhythm-label">Rhythmus</FieldLabel>
+								<FieldLabel id="chore-rhythm-label">{t('rhythm')}</FieldLabel>
 								<ToggleGroup
 									variant="segmented"
 									value={[recurrenceType]}
@@ -119,10 +118,10 @@ export function ChoreForm({
 									className="w-full"
 								>
 									<ToggleGroupItem value="days" disabled={pending} className="flex-1">
-										Tage
+										{t('days')}
 									</ToggleGroupItem>
 									<ToggleGroupItem value="months" disabled={pending} className="flex-1">
-										Monate
+										{t('months')}
 									</ToggleGroupItem>
 								</ToggleGroup>
 								<ToggleGroup
@@ -132,7 +131,7 @@ export function ChoreForm({
 										if (preset) onIntervalPresetSelect(preset.interval, preset.unit);
 									}}
 									variant="outline"
-									aria-label="Intervall wählen"
+									aria-label={t('intervalAria')}
 									className="w-full flex-wrap"
 								>
 									{presets.map((preset) => (
@@ -141,13 +140,13 @@ export function ChoreForm({
 											value={String(preset.interval)}
 											disabled={pending}
 										>
-											{preset.label}
+											{render(preset.label)}
 										</ToggleGroupItem>
 									))}
 								</ToggleGroup>
 							</Field>
 							<Field data-disabled={pending}>
-								<FieldLabel htmlFor="chore-first-due">Erste Fälligkeit (optional)</FieldLabel>
+								<FieldLabel htmlFor="chore-first-due">{t('firstDue')}</FieldLabel>
 								<Input
 									id="chore-first-due"
 									type="date"
@@ -159,12 +158,14 @@ export function ChoreForm({
 								/>
 								<FieldDescription>
 									{firstDueDate
-										? 'Die Aufgabe ist an diesem Tag fällig.'
-										: `Ohne Datum wird sie ${firstDue} fällig. Für heute wähle das heutige Datum.`}
+										? t('firstDueSet')
+										: t(recurrenceType === 'months' ? 'firstDueInMonths' : 'firstDueInDays', {
+												count: interval,
+											})}
 								</FieldDescription>
 							</Field>
 							<Field data-disabled={pending}>
-								<FieldLabel htmlFor="chore-assigned">Zuständig</FieldLabel>
+								<FieldLabel htmlFor="chore-assigned">{t('assigned')}</FieldLabel>
 								<NativeSelect
 									id="chore-assigned"
 									value={assignedMemberId}
@@ -172,7 +173,7 @@ export function ChoreForm({
 									disabled={pending}
 									className="w-full [&_select]:min-h-11 [&_select]:text-base"
 								>
-									<NativeSelectOption value="">Niemand</NativeSelectOption>
+									<NativeSelectOption value="">{t('nobody')}</NativeSelectOption>
 									{members.map((member) => (
 										<NativeSelectOption key={member.id} value={member.id}>
 											{member.name}
@@ -194,11 +195,11 @@ export function ChoreForm({
 						<Button
 							type="submit"
 							disabled={!title.trim() || pending}
-							aria-label="Aufgabe speichern"
+							aria-label={t('saveAria')}
 							className="flex-1"
 						>
 							{pending && <Spinner data-icon="inline-start" aria-hidden />}
-							{pending ? 'Speichert…' : 'Speichern'}
+							{pending ? t('saving') : t('save')}
 						</Button>
 						<Button
 							type="button"
@@ -207,7 +208,7 @@ export function ChoreForm({
 							disabled={pending}
 							className="flex-1"
 						>
-							Abbrechen
+							{t('cancel')}
 						</Button>
 					</DrawerFooter>
 				</form>

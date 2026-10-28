@@ -25,7 +25,7 @@ interface Template {
 	amountCents: number;
 	intervalMonths: number;
 	nextDueAt: Date;
-	anchorAt: Date | null;
+	anchorAt: Date;
 	splitsJson: string;
 	pausedAt: Date | null;
 	wgName: string;
@@ -46,7 +46,7 @@ interface Options {
 	initialIntervalMonths: number;
 	errorConstraint: string | null;
 	duplicateErrorShape: 'cause' | 'direct';
-	initialAnchorAt: Date | null;
+	initialAnchorAt: Date;
 	activeMemberIds: string[];
 }
 
@@ -71,7 +71,7 @@ const wgMembers = {
 	deactivatedAt: 'wgMembers.deactivatedAt',
 };
 
-function freshState(initialDueAt: Date, intervalMonths: number, anchorAt: Date | null) {
+function freshState(initialDueAt: Date, intervalMonths: number, anchorAt: Date) {
 	return {
 		template: {
 			id: templateId,
@@ -370,10 +370,7 @@ function harness(overrides: Partial<Options> = {}) {
 		duplicateErrorShape: 'cause',
 		activeMemberIds: [memberId],
 		...overrides,
-		initialAnchorAt:
-			'initialAnchorAt' in overrides
-				? (overrides.initialAnchorAt ?? null)
-				: (overrides.initialDueAt ?? originalDueAt),
+		initialAnchorAt: overrides.initialAnchorAt ?? overrides.initialDueAt ?? originalDueAt,
 	};
 	const ownState = freshState(own.initialDueAt, own.initialIntervalMonths, own.initialAnchorAt);
 	return {
@@ -402,7 +399,7 @@ test('a concurrent schedule edit wins while the inserted charge is still notifie
 		assert.equal(state.notifications.length, 1);
 		assert.equal(state.events.length, 1);
 		assert.equal(state.template.nextDueAt.toISOString(), editedDueAt.toISOString());
-		assert.equal(state.template.anchorAt?.toISOString(), editedDueAt.toISOString());
+		assert.equal(state.template.anchorAt.toISOString(), editedDueAt.toISOString());
 		assert.deepEqual(state.updateResults, [[]]);
 
 		const retry = await get();
@@ -420,7 +417,7 @@ test('a concurrent interval edit is preserved and the idempotent retry uses it',
 		assert.deepEqual(await response.json(), { ok: true, charged: 1, failedTemplates: 0 });
 		assert.equal(state.template.intervalMonths, 3);
 		assert.equal(state.template.nextDueAt.toISOString(), originalDueAt.toISOString());
-		assert.equal(state.template.anchorAt?.toISOString(), originalDueAt.toISOString());
+		assert.equal(state.template.anchorAt.toISOString(), originalDueAt.toISOString());
 		assert.deepEqual(state.updateResults, [[]]);
 		assert.equal(state.expenses.length, 1);
 		assert.equal(state.notifications.length, 1);
@@ -532,36 +529,34 @@ test('Cron locks the WG before the recurring row and skips when the WG disappear
 	});
 });
 
-test('legacy month-end anchor survives separate January and February cron runs', async (t) => {
+test('month-end anchor survives separate January and February cron runs', async (t) => {
 	t.mock.timers.enable({ apis: ['Date'], now: new Date('2025-01-31T12:00:00.000Z') });
-	const legacy = harness({
+	const runner = harness({
 		initialDueAt: new Date('2025-01-31T00:00:00.000Z'),
-		initialAnchorAt: null,
 		patchAfterInsert: null,
 	});
 
 	await withCronSecret(async () => {
-		await legacy.get();
-		assert.equal(legacy.state.template.nextDueAt.toISOString(), '2025-02-28T00:00:00.000Z');
+		await runner.get();
+		assert.equal(runner.state.template.nextDueAt.toISOString(), '2025-02-28T00:00:00.000Z');
 
 		t.mock.timers.setTime(Date.parse('2025-02-28T12:00:00.000Z'));
-		await legacy.get();
+		await runner.get();
 
 		assert.deepEqual(
-			legacy.state.expenses.map((expense) => expense.recurringDueAt.toISOString()),
+			runner.state.expenses.map((expense) => expense.recurringDueAt.toISOString()),
 			['2025-01-31T00:00:00.000Z', '2025-02-28T00:00:00.000Z'],
 		);
-		assert.equal(legacy.state.template.nextDueAt.toISOString(), '2025-03-31T00:00:00.000Z');
-		assert.equal(legacy.state.template.anchorAt?.toISOString(), '2025-01-31T00:00:00.000Z');
+		assert.equal(runner.state.template.nextDueAt.toISOString(), '2025-03-31T00:00:00.000Z');
+		assert.equal(runner.state.template.anchorAt.toISOString(), '2025-01-31T00:00:00.000Z');
 	});
 });
 
-test('legacy month-end anchor adopts the pre-advance due date across three months', async (t) => {
+test('month-end anchor keeps day 31 across separate monthly runs', async (t) => {
 	// Due dates are stored as local noon (inputDateToIso), so the UTC day is the Berlin day.
 	t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-01-31T12:00:00.000Z') });
-	const legacy = harness({
+	const runner = harness({
 		initialDueAt: new Date('2026-01-31T11:00:00.000Z'),
-		initialAnchorAt: null,
 		patchAfterInsert: null,
 	});
 
@@ -574,13 +569,13 @@ test('legacy month-end anchor adopts the pre-advance due date across three month
 		];
 		for (const [runAt, expectedNext] of runs) {
 			t.mock.timers.setTime(Date.parse(runAt));
-			await legacy.get();
-			assert.equal(legacy.state.template.nextDueAt.toISOString(), expectedNext);
-			assert.equal(legacy.state.template.anchorAt?.toISOString(), '2026-01-31T11:00:00.000Z');
-			assert.equal(legacy.state.template.anchorAt?.getUTCDate(), 31);
+			await runner.get();
+			assert.equal(runner.state.template.nextDueAt.toISOString(), expectedNext);
+			assert.equal(runner.state.template.anchorAt.toISOString(), '2026-01-31T11:00:00.000Z');
+			assert.equal(runner.state.template.anchorAt.getUTCDate(), 31);
 		}
 		assert.deepEqual(
-			legacy.state.expenses.map((expense) => expense.recurringDueAt.toISOString()),
+			runner.state.expenses.map((expense) => expense.recurringDueAt.toISOString()),
 			[
 				'2026-01-31T11:00:00.000Z',
 				'2026-02-28T11:00:00.000Z',
@@ -591,19 +586,18 @@ test('legacy month-end anchor adopts the pre-advance due date across three month
 	});
 });
 
-test('legacy month-end catch-up keeps anchor day 31 within a single run', async (t) => {
+test('month-end catch-up keeps anchor day 31 within a single run', async (t) => {
 	t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-04-30T12:00:00.000Z') });
-	const legacy = harness({
+	const runner = harness({
 		initialDueAt: new Date('2026-01-31T11:00:00.000Z'),
-		initialAnchorAt: null,
 		patchAfterInsert: null,
 	});
 
 	await withCronSecret(async () => {
-		const response = await legacy.get();
+		const response = await runner.get();
 		assert.deepEqual(await response.json(), { ok: true, charged: 4, failedTemplates: 0 });
 		assert.deepEqual(
-			legacy.state.expenses.map((expense) => expense.recurringDueAt.toISOString()),
+			runner.state.expenses.map((expense) => expense.recurringDueAt.toISOString()),
 			[
 				'2026-01-31T11:00:00.000Z',
 				'2026-02-28T11:00:00.000Z',
@@ -611,8 +605,8 @@ test('legacy month-end catch-up keeps anchor day 31 within a single run', async 
 				'2026-04-30T11:00:00.000Z',
 			],
 		);
-		assert.equal(legacy.state.template.nextDueAt.toISOString(), '2026-05-31T11:00:00.000Z');
-		assert.equal(legacy.state.template.anchorAt?.toISOString(), '2026-01-31T11:00:00.000Z');
+		assert.equal(runner.state.template.nextDueAt.toISOString(), '2026-05-31T11:00:00.000Z');
+		assert.equal(runner.state.template.anchorAt.toISOString(), '2026-01-31T11:00:00.000Z');
 	});
 });
 

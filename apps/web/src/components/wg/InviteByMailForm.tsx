@@ -1,6 +1,7 @@
 'use client';
 
 import { Mail } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { type FormEvent, useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,16 +13,16 @@ interface Props {
 	memberId: string;
 }
 
-const ERRORS: Record<string, string> = {
-	email_invalid: 'Das sieht nicht wie eine E-Mail-Adresse aus.',
-	invite_limit_reached:
-		'Es gibt schon 20 aktive Einladungen. Widerrufe eine, bevor du eine neue verschickst.',
-	invite_rate_limited: 'Zu viele Einladungen auf einmal. Versuch es in einer Stunde noch mal.',
-	mail_unavailable: 'Die Mail konnte nicht verschickt werden. Teile stattdessen den Link.',
-};
+const ERROR_KEYS = {
+	email_invalid: 'emailInvalid',
+	invite_limit_reached: 'limitReached',
+	invite_rate_limited: 'rateLimited',
+	mail_unavailable: 'mailUnavailable',
+} as const;
 
 /** Sends the invitation mail (E6); the address is only used for this one mail. */
 export function InviteByMailForm({ shareCode, memberId }: Props) {
+	const t = useTranslations('shell.inviteMail');
 	const id = useId();
 	const [email, setEmail] = useState('');
 	const [pending, setPending] = useState(false);
@@ -40,7 +41,11 @@ export function InviteByMailForm({ shareCode, memberId }: Props) {
 		if (!res.ok) {
 			setMessage({
 				tone: 'error',
-				text: ERRORS[res.error] ?? 'Das hat nicht geklappt. Versuch es noch mal.',
+				text: t(
+					Object.hasOwn(ERROR_KEYS, res.error)
+						? ERROR_KEYS[res.error as keyof typeof ERROR_KEYS]
+						: 'failed',
+				),
 			});
 			return;
 		}
@@ -49,10 +54,10 @@ export function InviteByMailForm({ shareCode, memberId }: Props) {
 			tone: 'ok',
 			text:
 				res.data.status === 'duplicate'
-					? 'Diese Adresse hat heute schon eine Einladung bekommen.'
+					? t('duplicate')
 					: res.data.status === 'unconfirmed'
-						? 'Die Einladung ist wahrscheinlich unterwegs, der Versand wurde aber nicht bestätigt. Kommt sie nicht an, teile den Einladungslink.'
-						: 'Einladung ist unterwegs.',
+						? t('unconfirmed')
+						: t('sent'),
 		});
 	}
 
@@ -62,7 +67,7 @@ export function InviteByMailForm({ shareCode, memberId }: Props) {
 				htmlFor={id}
 				className="text-muted-foreground block text-xs font-medium tracking-wider uppercase"
 			>
-				Per E-Mail einladen
+				{t('label')}
 			</label>
 			<div className="mt-1 flex flex-wrap gap-2">
 				<Input
@@ -70,7 +75,7 @@ export function InviteByMailForm({ shareCode, memberId }: Props) {
 					type="email"
 					inputMode="email"
 					autoComplete="off"
-					placeholder="name@beispiel.de"
+					placeholder={t('placeholder')}
 					value={email}
 					onChange={(event) => setEmail(event.target.value)}
 					disabled={pending}
@@ -83,10 +88,10 @@ export function InviteByMailForm({ shareCode, memberId }: Props) {
 					type="submit"
 					variant="outline"
 					disabled={pending || email.trim().length === 0}
-					aria-label={pending ? 'Einladung wird gesendet…' : 'Einladung senden'}
+					aria-label={pending ? t('sending') : t('send')}
 				>
 					{pending ? <Spinner aria-hidden /> : <Mail aria-hidden />}
-					Senden
+					{t('submit')}
 				</Button>
 			</div>
 			<p
@@ -98,7 +103,7 @@ export function InviteByMailForm({ shareCode, memberId }: Props) {
 						: 'text-muted-foreground mt-2 min-h-4 text-xs leading-4'
 				}
 			>
-				{message?.text ?? 'Die Adresse wird nur für diese eine Mail verwendet.'}
+				{message?.text ?? t('privacy')}
 			</p>
 		</form>
 	);

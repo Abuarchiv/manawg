@@ -1,3 +1,4 @@
+import { useTranslations } from 'next-intl';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -7,6 +8,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { NAME_MAX, QUANTITY_MAX } from '@/features/shopping/components/constants';
 import type { ShoppingItem } from '@/features/shopping/components/shopping-types';
 import type { ShoppingEditResult } from '@/features/shopping/hooks/use-shopping-edit';
+import { type Message, useMessage } from '@/shared/i18n/message';
 
 interface ShoppingEditFormProps {
 	item: ShoppingItem;
@@ -16,10 +18,12 @@ interface ShoppingEditFormProps {
 
 /** Name and amount of one item, shown inside the item's action drawer. */
 export function ShoppingEditForm({ item, onSave, onDone }: ShoppingEditFormProps) {
+	const t = useTranslations('shopping.editForm');
+	const render = useMessage();
 	const [name, setName] = useState(item.name);
 	const [quantity, setQuantity] = useState(item.quantity ?? '');
 	const [saving, setSaving] = useState(false);
-	const [error, setError] = useState<string | null>(null);
+	const [error, setError] = useState<Message | null>(null);
 	const nameRef = useRef<HTMLInputElement>(null);
 	const idBase = `shopping-edit-${item.id}`;
 
@@ -46,7 +50,7 @@ export function ShoppingEditForm({ item, onSave, onDone }: ShoppingEditFormProps
 			}}
 		>
 			<div className="flex flex-col gap-1.5">
-				<Label htmlFor={`${idBase}-name`}>Name</Label>
+				<Label htmlFor={`${idBase}-name`}>{t('name')}</Label>
 				<Input
 					ref={nameRef}
 					id={`${idBase}-name`}
@@ -58,7 +62,7 @@ export function ShoppingEditForm({ item, onSave, onDone }: ShoppingEditFormProps
 				/>
 			</div>
 			<div className="flex flex-col gap-1.5">
-				<Label htmlFor={`${idBase}-quantity`}>Menge (optional)</Label>
+				<Label htmlFor={`${idBase}-quantity`}>{t('quantity')}</Label>
 				<Input
 					id={`${idBase}-quantity`}
 					value={quantity}
@@ -69,16 +73,16 @@ export function ShoppingEditForm({ item, onSave, onDone }: ShoppingEditFormProps
 			</div>
 			{error && (
 				<Alert variant="destructive">
-					<AlertDescription>{error}</AlertDescription>
+					<AlertDescription>{render(error)}</AlertDescription>
 				</Alert>
 			)}
 			<div className="flex gap-2">
 				<Button type="submit" disabled={saving || name.trim().length === 0}>
 					{saving && <Spinner data-icon="inline-start" aria-hidden />}
-					Speichern
+					{t('save')}
 				</Button>
 				<Button type="button" variant="outline" onClick={onDone} disabled={saving}>
-					Abbrechen
+					{t('cancel')}
 				</Button>
 			</div>
 		</form>

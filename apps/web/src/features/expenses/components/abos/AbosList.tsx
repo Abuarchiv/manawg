@@ -1,6 +1,7 @@
 'use client';
 
 import { Repeat2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import type { Ref } from 'react';
 import {
 	Empty,
@@ -27,11 +28,7 @@ interface AbosListProps {
 	onDelete: (abo: Abo) => void;
 }
 
-const FILTER_OPTIONS: ReadonlyArray<{ value: AboFilter; label: string }> = [
-	{ value: 'active', label: 'Aktiv' },
-	{ value: 'paused', label: 'Pausiert' },
-	{ value: 'all', label: 'Alle' },
-];
+const FILTER_OPTIONS: readonly AboFilter[] = ['active', 'paused', 'all'];
 
 function applyFilter(abos: Abo[], filter: AboFilter): Abo[] {
 	if (filter === 'all') return abos;
@@ -51,6 +48,7 @@ export function AbosList({
 	onTogglePause,
 	onDelete,
 }: AbosListProps) {
+	const t = useTranslations('expenses-abos');
 	// The filter is only worthwhile when there are paused recurring expenses.
 	const showFilter = abos.some((abo) => abo.pausedAt !== null);
 	const filtered = applyFilter(abos, showFilter ? filter : 'all');
@@ -66,17 +64,17 @@ export function AbosList({
 						if (value === 'active' || value === 'paused' || value === 'all') onFilterChange(value);
 					}}
 					className="w-full"
-					aria-label="Fixkosten filtern"
+					aria-label={t('list.filterLabel')}
 				>
 					{FILTER_OPTIONS.map((option) => (
-						<ToggleGroupItem key={option.value} value={option.value} className="flex-1">
-							{option.label}
+						<ToggleGroupItem key={option} value={option} className="flex-1">
+							{t(`list.filter.${option}`)}
 						</ToggleGroupItem>
 					))}
 				</ToggleGroup>
 			)}
 			<output aria-live="polite" className="sr-only">
-				{filtered.length} Fixkosten sichtbar
+				{t('list.visibleCount', { count: filtered.length })}
 			</output>
 			{filtered.length === 0 ? (
 				loadError && abos.length === 0 ? null : (
@@ -87,15 +85,17 @@ export function AbosList({
 							</EmptyMedia>
 							<EmptyTitle>
 								{abos.length === 0
-									? 'Noch keine Fixkosten'
-									: `Keine ${filter === 'paused' ? 'pausierten' : 'aktiven'} Fixkosten`}
+									? t('list.emptyTitle')
+									: filter === 'paused'
+										? t('list.emptyPausedTitle')
+										: t('list.emptyActiveTitle')}
 							</EmptyTitle>
 							<EmptyDescription>
 								{abos.length === 0
-									? 'Lege Miete, Strom oder Netflix an, ManaWG bucht sie automatisch.'
+									? t('list.emptyHint')
 									: filter === 'paused'
-										? 'Keine Fixkosten sind pausiert.'
-										: 'Alle Fixkosten sind pausiert. Zeige sie unter „Pausiert“.'}
+										? t('list.nonePaused')
+										: t('list.allPaused')}
 							</EmptyDescription>
 						</EmptyHeader>
 					</Empty>

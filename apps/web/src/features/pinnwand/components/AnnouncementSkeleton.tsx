@@ -1,9 +1,11 @@
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export function AnnouncementSkeleton() {
+	const t = useTranslations('pinnwand.page');
 	return (
-		<output className="flex flex-col gap-4" aria-label="Pinnwand wird geladen" aria-busy="true">
+		<output className="flex flex-col gap-4" aria-label={t('loadingAria')} aria-busy="true">
 			{['first', 'second', 'third'].map((key) => (
 				<Card key={key}>
 					<CardHeader>

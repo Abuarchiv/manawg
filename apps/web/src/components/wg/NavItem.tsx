@@ -4,6 +4,8 @@ import { Home, ListChecks, type LucideIcon, Megaphone, Receipt } from 'lucide-re
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { navText } from '@/components/app/nav-text';
+import { useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
 import { haptic } from '@/shared/lib/haptics';
 
@@ -18,6 +20,7 @@ const ICONS: Record<NavIconKey, LucideIcon> = {
 
 interface NavItemProps {
 	href: string;
+	/** A `shell.nav.*` catalog key, or text that is already rendered. */
 	label: string;
 	iconKey: NavIconKey;
 	/**
@@ -40,6 +43,8 @@ function readLastSlug(key: string, slugs: string[]): string | null {
 }
 
 export function NavItem({ href, label, iconKey, activePrefixes, slugs }: NavItemProps) {
+	const message = useMessage();
+	const labelText = navText(label, message);
 	const pathname = usePathname();
 	// SSR and the first render use the default href (stable hydration); afterwards it switches
 	// to the remembered sub-page.
@@ -94,7 +99,7 @@ export function NavItem({ href, label, iconKey, activePrefixes, slugs }: NavItem
 			>
 				<Icon aria-hidden className="size-[18px]" strokeWidth={1.5} />
 				<span className="max-w-full whitespace-nowrap text-center text-[length:clamp(12px,0.75rem,16px)] font-medium leading-4">
-					{label}
+					{labelText}
 				</span>
 			</Link>
 		</li>

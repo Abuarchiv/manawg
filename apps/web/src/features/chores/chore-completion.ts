@@ -1,15 +1,11 @@
-import {
-	isReadOnlyMode,
-	isSessionExpired,
-	READ_ONLY_MESSAGE,
-	SESSION_EXPIRED_MESSAGE,
-} from '@/core/http/error-codes';
+import { isReadOnlyMode, isSessionExpired } from '@/core/http/error-codes';
 import { createIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
 import { enqueueOfflineAction } from '@/core/offline/offline-client';
-import { keyUnavailableMessage } from '@/core/offline/offline-copy';
 import { createQueuedChoreCompletion } from '@/core/offline/offline-queue';
 import { formatShortDate, parseTimestamp } from '@/core/utils/time';
+import type { Locale } from '@/shared/i18n/locale';
+import type { Message } from '@/shared/i18n/message';
 
 /** The occurrence a member confirms as done: the server rejects it once date or assignee moved. */
 export interface ChoreOccurrence {
@@ -132,62 +128,64 @@ export async function submitChoreCompletion(
 export interface ChoreCompletionFeedback {
 	/** `success` goes to a toast, `notice` and `error` to the page's message slot. */
 	tone: 'success' | 'notice' | 'error';
-	message: string;
+	message: Message;
 	/** An additional error toast, for failures that must not go unnoticed. */
-	toast: string | null;
+	toast: Message | null;
 	/** The confirm step is over; a failure that keeps it open lets the member retry. */
 	done: boolean;
 	/** The plan has to be read again to show the server's state. */
 	reload: boolean;
 }
 
-export const CHORE_COMPLETION_COPY = {
-	keyUnavailable: keyUnavailableMessage('Die Erledigung', 'gespeichert'),
-	queued:
-		'Erledigung offline vorgemerkt. Nächster Termin und Zuständigkeit werden nach der Synchronisierung bestätigt.',
-	queueBlocked:
-		'Offline-Speicher ist blockiert. Versuche es später erneut, sobald dein Browser wieder speichern kann.',
-	queueBlockedToast: 'Die Erledigung konnte nicht offline vorgemerkt werden.',
-	notFound: 'Diese Putzaufgabe existiert nicht mehr und wurde aus dem Plan entfernt.',
-	alreadyCompleted: 'Diese Putzaufgabe wurde bereits erledigt. Der Plan wird aktualisiert.',
-	occurrenceChanged: 'Termin oder Zuständigkeit haben sich geändert. Der Plan wird aktualisiert.',
-	insertFailed:
-		'Die Erledigung konnte nicht vollständig gespeichert werden: Lade den Plan neu und prüfe den Verlauf.',
-	readOnly: `Die Erledigung konnte nicht gespeichert werden: ${READ_ONLY_MESSAGE}`,
-	sessionExpired: `Die Erledigung konnte nicht gespeichert werden: ${SESSION_EXPIRED_MESSAGE}`,
-	failed: 'Die Erledigung konnte nicht gespeichert werden: Versuche es gleich erneut.',
-} as const;
+const SAVE_FAILED: Message = { key: 'chores.completion.saveFailed' };
 
-/** The member who is up next; `isSelf` marks the viewer, so views can say "du" instead of the name. */
+function saveFailed(detail: Message['key']): Message {
+	return {
+		key: 'common.errors.withSubject',
+		values: { subject: SAVE_FAILED, detail: { key: detail } },
+	};
+}
+
+export const CHORE_COMPLETION_COPY = {
+	keyUnavailable: { key: 'chores.completion.keyUnavailable' },
+	queued: { key: 'chores.completion.queued' },
+	queueBlocked: { key: 'chores.completion.queueBlocked' },
+	queueBlockedToast: { key: 'chores.completion.queueBlockedToast' },
+	notFound: { key: 'chores.completion.notFound' },
+	alreadyCompleted: { key: 'chores.completion.alreadyCompleted' },
+	occurrenceChanged: { key: 'chores.completion.occurrenceChanged' },
+	insertFailed: { key: 'chores.completion.insertFailed' },
+	readOnly: saveFailed('common.errors.readOnly'),
+	sessionExpired: saveFailed('common.errors.sessionExpired'),
+	failed: saveFailed('common.errors.retry'),
+} as const satisfies Record<string, Message>;
+
+/** The member who is up next; `isSelf` marks the viewer, so views can say "you" instead of the name. */
 export interface NextAssignee {
 	name: string;
 	isSelf: boolean;
-}
-
-/** How the viewer is addressed: "du" for themselves, else the member name. */
-export function nextAssigneeLabel(assignee: NextAssignee): string {
-	return assignee.isSelf ? 'du' : assignee.name;
-}
-
-/** The verb that goes with `nextAssigneeLabel`: "du bist", "Anna ist". */
-export function nextAssigneeVerb(assignee: NextAssignee): 'bist' | 'ist' {
-	return assignee.isSelf ? 'bist' : 'ist';
 }
 
 function choreCompletedMessage(
 	title: string,
 	next: ConfirmedChore | null,
 	nextAssignee: NextAssignee | undefined,
-): string {
-	if (!next) {
-		return `${title} erledigt. Der bestätigte nächste Termin und die Zuständigkeit werden geladen.`;
-	}
-	const date = formatShortDate(next.nextDueAt, 'Europe/Berlin');
+	locale: Locale,
+): Message {
+	if (!next) return { key: 'chores.completion.doneUnconfirmed', values: { title } };
+	const date = formatShortDate(next.nextDueAt, 'Europe/Berlin', locale);
 	if (!nextAssignee?.name) {
-		return `${title} erledigt. Nächster Termin: ${date}, noch niemand zugewiesen.`;
+		return { key: 'chores.completion.doneUnassigned', values: { title, date } };
 	}
-	// The dialog before says "Danach bist du dran", so the own member is addressed the same way here.
-	return `${title} erledigt. Als Nächstes ${nextAssigneeVerb(nextAssignee)} ${nextAssigneeLabel(nextAssignee)} am ${date} dran.`;
+	return {
+		key: 'chores.completion.doneNext',
+		values: {
+			title,
+			date,
+			assignee: nextAssignee.isSelf ? 'self' : 'other',
+			name: nextAssignee.name,
+		},
+	};
 }
 
 /** What the member sees for an outcome; the start page and the cleaning plan share it. */
@@ -195,9 +193,10 @@ export function choreCompletionFeedback(
 	outcome: ChoreCompletionOutcome,
 	chore: Pick<ChoreOccurrence, 'title'>,
 	lookupAssignee: (memberId: string | null) => NextAssignee | undefined,
+	locale: Locale = 'de',
 ): ChoreCompletionFeedback {
 	const copy = CHORE_COMPLETION_COPY;
-	const error = (message: string, done: boolean, reload: boolean, toast: string | null = null) =>
+	const error = (message: Message, done: boolean, reload: boolean, toast: Message | null = null) =>
 		({ tone: 'error', message, toast, done, reload }) as const;
 	switch (outcome.kind) {
 		case 'completed':
@@ -207,6 +206,7 @@ export function choreCompletionFeedback(
 					chore.title,
 					outcome.next,
 					outcome.next ? lookupAssignee(outcome.next.assignedMemberId) : undefined,
+					locale,
 				),
 				toast: null,
 				done: true,

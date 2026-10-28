@@ -1,17 +1,14 @@
 /**
  * Pure helpers for the start flow (`/neu`): draft shape, URL intent parsing,
- * and mapping API errors to German copy and the field to focus.
+ * and mapping API errors to messages and the field to focus.
  */
 import type { SocialProvider } from '@/components/auth/SocialLoginButtons';
 import { safeNextPath } from '@/core/auth/next-path';
-import {
-	DELETION_PENDING_MESSAGE,
-	extractInviteCode,
-	LEGACY_CODE_MESSAGE,
-} from '@/core/infra/join-flow';
+import { DELETION_PENDING_MESSAGE } from '@/core/infra/join-flow';
 import { extractInviteToken, isInviteToken } from '@/core/utils/invite-token';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 
+import type { Message } from '@/shared/i18n/message';
 import { MEMBER_NAME_MAX_LENGTH, WG_NAME_MAX_LENGTH } from '@/shared/lib/limits';
 
 export const WG_NAME_MAX = WG_NAME_MAX_LENGTH;
@@ -58,13 +55,10 @@ export function getNeuIntentFromSearch(search: string): { inviteToken: string; c
 }
 
 /** What a pasted invitation (link or bare token) leads to: the token, or the reason it fails. */
-export function resolveInviteInput(text: string): { token: string } | { error: string } {
+export function resolveInviteInput(text: string): { token: string } | { error: Message } {
 	const token = extractInviteToken(text);
 	if (token) return { token };
-	if (extractInviteCode(text) || isValidShareCode(normalizeShareCode(text))) {
-		return { error: LEGACY_CODE_MESSAGE };
-	}
-	return { error: 'Das ist kein Einladungslink. Füge den ganzen Link ein.' };
+	return { error: { key: 'entry.errors.notAnInviteLink' } };
 }
 
 // Only a fresh sign-in skips the WG picker; a deliberate visit to /neu (second WG) keeps it.
@@ -100,28 +94,24 @@ export interface StartDraft extends Record<string, unknown> {
 	creatorName?: string;
 }
 
-export function createWgErrorMessage(status: number, error: string): string {
-	if (status === 429) {
-		return 'Du hast gerade mehrere WGs erstellt. Bitte versuche es in etwa einer Stunde erneut.';
-	}
+export function createWgErrorMessage(status: number, error: string): Message {
+	if (status === 429) return { key: 'entry.errors.createRateLimited' };
 	if (error === 'account_deletion_pending') return DELETION_PENDING_MESSAGE;
-	if (status === 401 && error === 'auth_required') {
-		return 'Melde dich zuerst mit deinem Konto an.';
-	}
+	if (status === 401 && error === 'auth_required') return { key: 'entry.errors.signInFirst' };
 	if (status === 400 && error === 'name_invalid') {
-		return `WG konnte nicht erstellt werden: Der WG-Name muss 1 bis ${WG_NAME_MAX} Zeichen haben.`;
+		return { key: 'entry.errors.wgNameInvalid', values: { max: WG_NAME_MAX } };
 	}
 	if (status === 400 && error === 'creator_name_invalid') {
-		return `WG konnte nicht erstellt werden: Dein Anzeigename muss 1 bis ${NAME_MAX} Zeichen haben.`;
+		return { key: 'entry.errors.creatorNameInvalid', values: { max: NAME_MAX } };
 	}
 	if (status === 400 && (error === 'invalid_body' || error === 'invalid_json')) {
-		return 'WG-Name und dein Anzeigename müssen ausgefüllt und kurz genug sein.';
+		return { key: 'entry.errors.invalidBody' };
 	}
 	if (error === 'share_code_exhausted') {
-		return 'Gerade konnte kein WG-Code erstellt werden. Bitte versuche es gleich noch einmal.';
+		return { key: 'entry.errors.codeExhausted' };
 	}
 	if (error === 'insert_failed' || error === 'member_insert_failed') {
-		return 'WG konnte nicht vollständig erstellt werden. Bitte versuche es erneut.';
+		return { key: 'entry.errors.createInsertFailed' };
 	}
 	if (
 		status >= 500 ||
@@ -129,9 +119,9 @@ export function createWgErrorMessage(status: number, error: string): string {
 		error === 'unexpected_error' ||
 		error === 'db_error'
 	) {
-		return 'WG konnte nicht erstellt werden: Versuche es gleich erneut.';
+		return { key: 'entry.errors.createRetry' };
 	}
-	return 'WG konnte nicht erstellt werden. Bitte versuche es erneut.';
+	return { key: 'entry.errors.createFailed' };
 }
 
 export function createWgErrorField(status: number, error: string): StartField | null {

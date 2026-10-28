@@ -1,5 +1,6 @@
 'use client';
 import { ChevronDown, ImagePlus, Send } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { type ReactElement, type RefObject, useState } from 'react';
 import {
 	Collapsible,
@@ -21,9 +22,10 @@ import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ImageUploader } from '@/components/wg/ImageUploader';
+import { ANNOUNCEMENT_KINDS } from '@/features/pinnwand/announcement-workflow';
 import type { AnnouncementKind } from '@/features/pinnwand/components/announcement-types';
-import { KIND_OPTIONS } from '@/features/pinnwand/components/constants';
 import { CONTENT_MAX } from '@/features/pinnwand/constants';
+import { type Message, useMessage } from '@/shared/i18n/message';
 
 interface PinnwandComposerProps {
 	open: boolean;
@@ -39,7 +41,7 @@ interface PinnwandComposerProps {
 	imageUrl: string | null;
 	onImageUrlChange: (value: string | null) => void;
 	shareCode: string;
-	error: string | null;
+	error: Message | null;
 	onClose: () => void;
 	onSubmit: () => void;
 }
@@ -61,6 +63,8 @@ export function PinnwandComposer({
 	onClose,
 	onSubmit,
 }: PinnwandComposerProps): ReactElement {
+	const t = useTranslations('pinnwand');
+	const render = useMessage();
 	const fieldInvalid = Boolean(error) && (content.trim() === '' || content.length > CONTENT_MAX);
 	const [attachmentOpen, setAttachmentOpen] = useState(Boolean(imageUrl));
 	// Posting while the image still uploads would publish the post without it.
@@ -79,22 +83,20 @@ export function PinnwandComposer({
 				aria-busy={submitting}
 			>
 				<DrawerHeader>
-					<DrawerTitle>Neuer Beitrag</DrawerTitle>
-					<DrawerDescription className="sr-only">
-						Frage, Info oder Problem für eure WG teilen.
-					</DrawerDescription>
+					<DrawerTitle>{t('composer.title')}</DrawerTitle>
+					<DrawerDescription className="sr-only">{t('composer.description')}</DrawerDescription>
 				</DrawerHeader>
 				<div className="flex min-h-0 flex-col gap-3 overflow-y-auto p-4">
 					<FieldGroup>
 						<Field>
 							<FieldLabel id="announcement-kind-label" className="sr-only">
-								Beitragstyp
+								{t('composer.kindLabel')}
 							</FieldLabel>
 							<ToggleGroup
 								value={[kind]}
 								onValueChange={(values) => {
-									const selected = KIND_OPTIONS.find((option) => option.value === values[0]);
-									if (selected) onKindChange(selected.value);
+									const selected = ANNOUNCEMENT_KINDS.find((option) => option === values[0]);
+									if (selected) onKindChange(selected);
 								}}
 								disabled={submitting}
 								spacing={1}
@@ -102,16 +104,16 @@ export function PinnwandComposer({
 								className="flex-wrap"
 								aria-labelledby="announcement-kind-label"
 							>
-								{KIND_OPTIONS.map((option) => (
-									<ToggleGroupItem key={option.value} value={option.value} className="px-2">
-										{option.label}
+								{ANNOUNCEMENT_KINDS.map((option) => (
+									<ToggleGroupItem key={option} value={option} className="px-2">
+										{t(`kind.${option}`)}
 									</ToggleGroupItem>
 								))}
 							</ToggleGroup>
 						</Field>
 						<Field data-invalid={fieldInvalid} className="data-[invalid=true]:text-foreground">
 							<FieldLabel htmlFor="announcement-content" className="sr-only">
-								Beitragstext
+								{t('composer.textLabel')}
 							</FieldLabel>
 							<Textarea
 								ref={textareaRef}
@@ -124,7 +126,7 @@ export function PinnwandComposer({
 								rows={3}
 								aria-invalid={fieldInvalid}
 								aria-describedby={error ? 'announcement-error' : 'announcement-count'}
-								placeholder={`Was gibt es Neues, ${authorName}?`}
+								placeholder={t('composer.placeholder', { name: authorName })}
 								className="min-h-20 text-base read-only:opacity-60"
 							/>
 						</Field>
@@ -132,7 +134,7 @@ export function PinnwandComposer({
 					<Collapsible open={attachmentOpen || Boolean(imageUrl)} onOpenChange={setAttachmentOpen}>
 						<CollapsibleTrigger render={<Button variant="outline" />} disabled={submitting}>
 							<ImagePlus data-icon="inline-start" aria-hidden />
-							{imageUrl ? 'Bild angehängt' : 'Bild anhängen'}
+							{imageUrl ? t('composer.attached') : t('composer.attach')}
 							<ChevronDown data-icon="inline-end" aria-hidden />
 						</CollapsibleTrigger>
 						<CollapsiblePanel keepRendered inert={!attachmentOpen && !imageUrl}>
@@ -143,7 +145,7 @@ export function PinnwandComposer({
 									value={imageUrl}
 									onChange={onImageUrlChange}
 									disabled={submitting}
-									imageLabel="Beitragsbild"
+									imageLabel={t('composer.imageLabel')}
 									onUploadingChange={setImageUploading}
 								/>
 							</div>
@@ -151,7 +153,7 @@ export function PinnwandComposer({
 					</Collapsible>
 					{error && (
 						<Alert id="announcement-error" variant="destructive">
-							<AlertDescription>{error}</AlertDescription>
+							<AlertDescription>{render(error)}</AlertDescription>
 						</Alert>
 					)}
 				</div>
@@ -173,10 +175,10 @@ export function PinnwandComposer({
 						) : (
 							<Send data-icon="inline-start" aria-hidden />
 						)}
-						{submitting ? 'Postet…' : 'Posten'}
+						{submitting ? t('composer.posting') : t('composer.post')}
 					</Button>
 					<Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
-						Abbrechen
+						{t('composer.cancel')}
 					</Button>
 				</DrawerFooter>
 			</DrawerContent>

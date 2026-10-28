@@ -1,3 +1,4 @@
+import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
 	type PendingIdempotentRequest,
@@ -5,10 +6,7 @@ import {
 	shouldReleaseIdempotencyKey,
 } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
-import {
-	type NotificationWarning,
-	notificationWarningMessage,
-} from '@/core/notifications/notification-warning';
+import type { NotificationWarning } from '@/core/notifications/notification-warning';
 import {
 	buildDraftKey,
 	isEmptyModuleDraft,
@@ -21,14 +19,6 @@ import {
 	isOfflineActionQueued,
 	removeQueuedAction,
 } from '@/core/offline/offline-client';
-import {
-	DRAFT_CLEANUP_FAILED_MESSAGE,
-	keyUnavailableMessage,
-	OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE,
-	OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
-	OFFLINE_SAVED_NOTICE,
-	QUEUE_EDIT_ALREADY_SENT_MESSAGE,
-} from '@/core/offline/offline-copy';
 import { createQueuedChore, type OfflineActionType } from '@/core/offline/offline-queue';
 import { berlinDayKey } from '@/core/utils/berlin-day';
 import { dueAtForDay } from '@/features/chores/chore-due-date';
@@ -37,8 +27,8 @@ import type { ChoreFairness } from '@/features/chores/chore-fairness';
 import { CHORE_TITLE_MAX } from '@/features/chores/chore-limits';
 import { computeNextDueAt } from '@/features/chores/chore-recurrence';
 import type { RecurrenceType } from '@/features/chores/components/chore-types';
-import type { QUICK_CHORE_TEMPLATES } from '@/features/chores/components/constants';
 import { pendingKeys } from '@/features/chores/pending-keys';
+import { useMessage } from '@/shared/i18n/message';
 import type { ChorePageContext } from './chore-page-context';
 import type { AbsenceFormState } from './use-absences';
 import { useChoreDraftSync, useChoreFormFields } from './use-chore-draft';
@@ -78,6 +68,8 @@ export function useChoreCreate(
 		load,
 		refreshCount,
 	} = ctx;
+	const t = useTranslations('chores');
+	const render = useMessage();
 	const fields = useChoreFormFields();
 	const {
 		newTitle,
@@ -206,7 +198,7 @@ export function useChoreCreate(
 			resetFields();
 			closeSavedForm();
 			setActionError(null);
-			setActionNotice(QUEUE_EDIT_ALREADY_SENT_MESSAGE);
+			setActionNotice(t('offline.alreadySent'));
 			void load(false);
 			return;
 		}
@@ -214,9 +206,7 @@ export function useChoreCreate(
 		if (newFirstDue) {
 			const picked = dueAtForDay(newFirstDue);
 			if (!picked || newFirstDue < berlinDayKey(new Date())) {
-				setActionError(
-					'Putzaufgabe konnte nicht gespeichert werden: Die erste Fälligkeit darf nicht in der Vergangenheit liegen.',
-				);
+				setActionError(t('create.firstDueInPast'));
 				return;
 			}
 			firstDueAt = picked;
@@ -233,7 +223,7 @@ export function useChoreCreate(
 		});
 		const idempotencyKey = resolveIdempotencyKey(choreCreateRequestRef.current, fingerprint);
 		if (!idempotencyKey) {
-			setActionError(keyUnavailableMessage('Aufgabe', 'gespeichert'));
+			setActionError(t('create.keyUnavailable'));
 			endPending(pendingKey);
 			return;
 		}
@@ -273,7 +263,7 @@ export function useChoreCreate(
 						? { ...base, payload: { ...base.payload, nextDueAt: firstDueAt } }
 						: base;
 					if ((await enqueueOfflineAction(queued)) === 0) {
-						setActionError(OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE);
+						setActionError(t('offline.queueBlocked'));
 						return;
 					}
 					choreCreateRequestRef.current = null;
@@ -298,14 +288,14 @@ export function useChoreCreate(
 					resetFields();
 					setNewFirstDue('');
 					if (!(await clearEditedQueueItem(['chore.create']))) {
-						setActionError(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
+						setActionError(t('offline.draftCleanupFailed'));
 						return;
 					}
 					closeSavedForm();
-					setActionNotice(OFFLINE_SAVED_NOTICE);
+					setActionNotice(t('offline.saved'));
 					return;
 				}
-				setActionError(choreCreateErrorMessage(result.error));
+				setActionError(render(choreCreateErrorMessage(result.error)));
 				return;
 			}
 
@@ -313,14 +303,21 @@ export function useChoreCreate(
 			resetFields();
 			setNewFirstDue('');
 			if (!(await clearEditedQueueItem(['chore.create']))) {
-				setActionError(DRAFT_CLEANUP_FAILED_MESSAGE);
+				setActionError(t('offline.onlineDraftCleanupFailed'));
 				return;
 			}
 			closeSavedForm();
 			void load(false);
-			const warningMessage = notificationWarningMessage(result.data.warning);
-			if (warningMessage) setActionNotice(warningMessage);
-			else toast.success('Aufgabe gespeichert.');
+			const warning = result.data.warning;
+			if (warning) {
+				setActionNotice(
+					t(
+						warning === 'notification_delivery_failed'
+							? 'create.deliveryFailed'
+							: 'create.deliveryUnknown',
+					),
+				);
+			} else toast.success(t('create.saved'));
 		} finally {
 			endPending(pendingKey);
 		}
@@ -335,7 +332,7 @@ export function useChoreCreate(
 		setNewAssigned(suggestedAssignee.id);
 	}, [draftHydrated, suggestedAssignee, newAssigned, pendingSuggestion, showForm]);
 
-	function applyQuickChore(template: (typeof QUICK_CHORE_TEMPLATES)[number]): void {
+	function applyQuickChore(template: ChoreSuggestion): void {
 		suggestChore(template);
 		window.setTimeout(() => titleInputRef.current?.focus(), 0);
 	}
