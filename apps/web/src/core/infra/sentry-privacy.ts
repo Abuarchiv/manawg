@@ -70,7 +70,7 @@ export function safeErrorName(name: unknown): string {
 function sanitizeUrl(value: string): string {
 	const [withoutQuery = ''] = value.split(/[?#]/, 1);
 	const withoutPrivateRoutes = withoutQuery
-		.replace(/(\/api\/wg\/invites\/|\/invite\/)[^/]+/gi, '$1[redacted]')
+		.replace(/(\/api\/wg\/invites\/|\/invite\/|\/einladung\/)[^/]+/gi, '$1[redacted]')
 		.replace(/(\/wg\/)(?!invites\/)[^/]+/gi, '$1[redacted]')
 		.replace(/(\/api\/calendar\/)[^/]+\/[^/]+/gi, '$1[redacted]/[redacted]')
 		.replace(

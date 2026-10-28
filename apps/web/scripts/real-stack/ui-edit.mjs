@@ -55,7 +55,7 @@ async function step(s, name, fn) {
 			'',
 		);
 		const m = text.match(/[^\n]*(fehlgeschlagen|konnte nicht|nicht geladen|Fehler)[^\n]*/i);
-		if (m) bugs.push(`${id} zeigt Fehlertext: ${m[0].slice(0, 160)}`);
+		if (m) bugs.push(`${id} shows error text: ${m[0].slice(0, 160)}`);
 		notes.push(`${id} ok`);
 	} catch (e) {
 		await s.page.screenshot({ path: `${OUT}/${id}-FAIL.png`, fullPage: true }).catch(() => {});
@@ -109,7 +109,7 @@ const gone = (p, text) =>
 const a = await session(A, 'A');
 const b = await session(B, 'B');
 
-// ---- Einkauf: action sheet, rename to a long name, delete
+// ---- Shopping: action sheet, rename to a long name, delete
 await step(a, 'shopping-sheet', async (p) => {
 	await open(p, '/shopping');
 	await actions(p, /^Artikelaktionen: Hafermilch/);
@@ -132,7 +132,7 @@ await step(a, 'shopping-delete-empty', async (p) => {
 	await gone(p, SHORT);
 });
 
-// ---- Vorräte: edit dialog, long name, remove, empty state
+// ---- Supplies: edit dialog, long name, remove, empty state
 await step(a, 'supply-edit', async (p) => {
 	await open(p, '/supplies');
 	await p.getByRole('button', { name: 'Klopapier bearbeiten' }).click();
@@ -157,7 +157,7 @@ await step(a, 'supply-remove-empty', async (p) => {
 	await gone(p, SHORT);
 });
 
-// ---- Putzplan: action sheet, edit, distribution panel, absence dialog, delete, empty
+// ---- Chore plan: action sheet, edit, distribution panel, absence dialog, delete, empty
 await step(a, 'chores-sheet', async (p) => {
 	await open(p, '/chores');
 	await actions(p, /^Aufgabenaktionen: Bad putzen/);
@@ -193,7 +193,7 @@ await step(a, 'chores-delete-empty', async (p) => {
 	await gone(p, SHORT);
 });
 
-// ---- Ausgaben: details, action sheet, edit, settle, delete
+// ---- Expenses: details, action sheet, edit, settle, delete
 await step(a, 'expense-details', async (p) => {
 	await open(p, '/expenses');
 	await p.getByRole('button', { name: /^Details öffnen: Wocheneinkauf/ }).click();
@@ -236,7 +236,7 @@ await step(a, 'expense-delete-empty', async (p) => {
 	await wait(800);
 });
 
-// ---- Fixkosten: details, pause, delete
+// ---- Recurring expenses: details, pause, delete
 await step(a, 'recurring-details', async (p) => {
 	await open(p, '/recurring');
 	await p.getByRole('button', { name: /^Details öffnen: Internet/ }).click();
@@ -254,7 +254,7 @@ await step(a, 'recurring-delete-empty', async (p) => {
 	await p.getByRole('status').filter({ hasText: '0 Fixkosten sichtbar' }).waitFor();
 });
 
-// ---- Abrechnung: month navigation
+// ---- Statement: month navigation
 await step(a, 'statement-prev', async (p) => {
 	await open(p, '/statement');
 	await p.getByRole('button', { name: 'Vorheriger Monat' }).click();
@@ -266,7 +266,7 @@ await step(a, 'statement-next', async (p) => {
 	await wait(600);
 });
 
-// ---- Kalender: edit dialog, month view, delete
+// ---- Calendar: edit dialog, month view, delete
 await step(a, 'calendar-edit', async (p) => {
 	await open(p, '/calendar');
 	await p.getByRole('button', { name: /^Termin bearbeiten: Hausversammlung/ }).click();
@@ -289,7 +289,7 @@ await step(a, 'calendar-delete-empty', async (p) => {
 	await p.getByRole('button', { name: /^Termin bearbeiten:/ }).waitFor({ state: 'detached' });
 });
 
-// ---- Pinnwand: menu, edit, resolve, empty
+// ---- Pinboard: menu, edit, resolve, empty
 await step(a, 'pinboard-menu', async (p) => {
 	await open(p, '/pinboard');
 	await actions(p, /^Beitragsaktionen:/);
@@ -330,7 +330,7 @@ await step(a, 'chat-delete', async (p) => {
 	await wait(800);
 });
 
-// ---- Einstellungen tabs + dark mode
+// ---- Settings tabs + dark mode
 await step(a, 'settings-notifications', async (p) => {
 	await open(p, '/settings');
 	await p.getByRole('tab', { name: 'Hinweise' }).click();

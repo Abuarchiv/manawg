@@ -13,7 +13,7 @@ apps/web/
   src/app/        routes only: pages, layouts, API handlers (thin, call core/features)
   src/core/       domain-neutral building blocks: db, auth, guards, http, offline, notifications, infra
   src/composition/ cross-feature reads (dashboard, activity, export)
-  src/features/   vertical slices (chat, chores, events, expenses, inventory, pinnwand, shopping)
+  src/features/   vertical slices (chat, chores, events, expenses, inventory, announcements, shopping)
                   a feature may import core/, shared/ and itself, never another feature
                   features/<x>/server/ holds database and server-only code (import 'server-only')
   src/components/ reusable UI: ui/ (shadcn), animate-ui/ (motion variants), app/ (shell, PWA, theme), wg/ (WG-wide)

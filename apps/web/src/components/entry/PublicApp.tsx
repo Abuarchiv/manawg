@@ -18,12 +18,7 @@ import { useTranslations } from 'next-intl';
 import { Suspense, useEffect, useState } from 'react';
 import { AppBottomNav } from '@/components/app/AppBottomNav';
 import { ErrorBox } from '@/components/app/ErrorBox';
-import {
-	HOME_NAV_LABEL,
-	isActivePage,
-	moduleSlugOf,
-	WG_SECTIONS,
-} from '@/components/app/navigation';
+import { HOME_NAV_LABEL, isActivePage, WG_SECTIONS } from '@/components/app/navigation';
 import { RouteFocusOnNavigate } from '@/components/app/RouteFocusOnNavigate';
 import { LegalLinks } from '@/components/entry/LegalLinks';
 import { type AccountWg, MembershipCard } from '@/components/entry/MembershipCard';
@@ -189,7 +184,7 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 	// On the home the list of WGs is already right below the header.
 	// The welcome block below already offers the same action for signed-in users without a WG.
 	const hideAccountLink = (multi && !module) || membershipState === 'authenticated-empty';
-	const discoveryHref = (slug: string) => publicHref(`/discover/${moduleSlugOf(slug)}`);
+	const discoveryHref = (slug: string) => publicHref(`/discover/${slug}`);
 
 	return (
 		<div

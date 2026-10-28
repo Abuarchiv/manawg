@@ -1,4 +1,4 @@
-# pinnwand-announcements Specification
+# announcements Specification
 
 ## Purpose
 Let members correct their bulletin posts and let admins moderate without surprises.

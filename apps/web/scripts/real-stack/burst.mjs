@@ -7,7 +7,7 @@ const N = Number(process.env.ITEMS ?? 36);
 const A = await user('Burst');
 const w = await call(A, 'POST', '/api/wg', { name: 'Burstwohnung', creatorName: 'Burst' });
 const code = w.body.wg?.shareCode;
-expect(!!code, 'WG erstellt');
+expect(!!code, 'WG created');
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ ...devices['iPhone 13'], baseURL: BASE });
 await ctx.addCookies((await A.ctx.storageState()).cookies);
@@ -28,15 +28,15 @@ await p.waitForLoadState('networkidle');
 const added = await p.getByRole('checkbox', { name: /Artikel \d+ erledigen/ }).count();
 const limited = statuses.filter((s) => s.endsWith(' 429')).length;
 const perKind = [...new Set(statuses)].map((k) => `${k}×${statuses.filter((s) => s === k).length}`);
-process.stdout.write(`Anfragen: ${perKind.join(', ')}\n`);
+process.stdout.write(`Requests: ${perKind.join(', ')}\n`);
 process.stdout.write(
-	`${N} Einträge in ${Math.round((Date.now() - t0) / 1000)} s, sichtbar ${added}, 429: ${limited}\n`,
+	`${N} entries in ${Math.round((Date.now() - t0) / 1000)} s, visible ${added}, 429: ${limited}\n`,
 );
-expect(limited === 0, `${N} Einträge in einer Minute ohne 429`, `429=${limited}`);
-expect(added === N, 'alle Einträge sichtbar', `${added}/${N}`);
+expect(limited === 0, `${N} entries in one minute without 429`, `429=${limited}`);
+expect(added === N, 'all entries visible', `${added}/${N}`);
 const text = await p.locator('main').innerText();
 process.stdout.write(
-	`Hinweis: ${(text.match(/[^\n]*(viele|später|Limit|Warte)[^\n]*/i) ?? [''])[0]}\n`,
+	`Hint: ${(text.match(/[^\n]*(viele|später|Limit|Warte)[^\n]*/i) ?? [''])[0]}\n`,
 );
 await p.screenshot({ path: `${process.env.SHOTS_DIR ?? '.'}/burst.png`, fullPage: true });
 await browser.close();

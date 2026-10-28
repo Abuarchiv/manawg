@@ -28,6 +28,7 @@ import {
 	computeOpenGapsByMember,
 } from '@/features/chores/chore-fairness';
 import { computeNextDueAt, isLateCompletion } from '@/features/chores/chore-recurrence';
+import { choreSwapSourcePath } from '@/features/chores/server/resolve-swap-request';
 
 type ChoreCompleteResponseBody = { chore: unknown };
 
@@ -248,7 +249,7 @@ async function writeCompletion(
 				eq(announcements.wgId, c.wgId),
 				eq(announcements.status, 'open'),
 				eq(announcements.source, 'chore_swap'),
-				eq(announcements.sourcePath, `/chores?highlight=${encodeURIComponent(c.id)}`),
+				choreSwapSourcePath(c.id),
 			),
 		);
 	const body: ChoreCompleteResponseBody = { chore: updated };

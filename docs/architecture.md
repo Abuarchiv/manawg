@@ -56,7 +56,7 @@ under `app/wg/**`; WG APIs belong under `app/api/wg/**`.
 | --- | --- | --- |
 | `app/` | Pages, layouts, route handlers. Thin. | everything below |
 | `fixtures/` | Database-free fixture build: mode detection, fixture API and page data (development.md "Fixture mode") | `composition/` and everything below |
-| `features/<x>/` | Vertical slices: `chat`, `chores`, `events`, `expenses`, `inventory`, `pinnwand`, `shopping` (logic, hooks, components, and a `server/` folder) | `components/`, `core/`, `shared/`, own files |
+| `features/<x>/` | Vertical slices: `chat`, `chores`, `events`, `expenses`, `inventory`, `announcements`, `shopping` (logic, hooks, components, and a `server/` folder) | `components/`, `core/`, `shared/`, own files |
 | `composition/` | Cross-feature reads: dashboard data and insights, activity, export | `features/`, `components/`, `core/`, `shared/` |
 | `core/` | Domain-neutral blocks: `db`, `auth`, `guards`, `http`, `hooks`, `offline`, `sync`, `notifications`, `infra`, `utils`, `validators` | `core/`, `shared/` |
 | `components/` | Shared UI: `ui/` shadcn primitives (plus `LogoMark`, `Toast`, `ConfirmDialog`), `animate-ui/`, `app/` app-wide composites (shell, PWA install/push prompts, theme), `wg/` WG-wide composites | `components/`, `core/`, `shared/` |
@@ -74,7 +74,7 @@ Rules:
   `'use client'` module importing from a `server/` folder. Unit tests resolve `server-only` to an
   empty module (`tests/support/resolve-hooks.mjs`).
 - Cross-feature side effects go through `core/` (e.g. `core/activity-feed.ts` posts system
-  notices to the pinnwand feed; `core/audit.ts` records audit events).
+  notices to the chat timeline; `core/audit.ts` records audit events).
 - Cross-feature reads go through `composition/`.
 
 ## Identity model
@@ -156,7 +156,7 @@ withIdempotentWrite(
    results); a retry of such a write answers a final 409 `idempotency_response_unavailable`. Rows live 7 days (`RESPONSE_REPLAY_TTL_SECONDS`) and are purged by the maintenance
    cron.
 
-Side effects that must not undo the write (audit events, push, pinboard notices) run after the
+Side effects that must not undo the write (audit events, push, chat notices) run after the
 call, for `written` results only, so a replay never repeats them. A warning that only becomes
 known then (a failed push) is written into the stored response with `setReplayWarning`. Without a
 key the write runs in a plain transaction (`retryAfterRollback` still applies).
@@ -179,14 +179,14 @@ Keeping the key on 429 is safe because no route stores a 429 as a replayable res
   `debt-reduction.ts` computes net balances (including completed cash payments) and
   `simplifyDebts` for settlement suggestions.
 - Paid-by rule (`features/expenses/paid-by-guard.ts`): whoever records an expense paid by
-  someone else must bear a positive share. It applies to manual entry, Abos and CSV/OCR imports;
+  someone else must bear a positive share. It applies to manual entry, recurring expenses and CSV/OCR imports;
   only the WG admin may import a shared history with rows they are not part of.
 - Manual settlement sets `expense_splits.settled_at`
   (`/api/wg/<code>/expenses/[id]/splits/[splitId]/settle`, `/expenses/settle-batch`).
 - Cash payments (`/api/wg/<code>/payments/manual`, `features/expenses/server/manual-payment.ts`)
   record the whole net debt of a pair as one `expense_payments` row with status `completed`;
   voiding sets it to `voided`. Payment work takes a per-WG advisory lock (`lockExpensePayments`).
-- Recurring expenses ("Abos") are templates in `recurring_expenses`, materialized by the
+- Recurring expenses (UI label "Fixkosten") are templates in `recurring_expenses`, materialized by the
   `recurring-advance` cron. `anchor_at` keeps the day-of-month (31.01 → 28.02 → 31.03); edits are
   a compare-and-set on `next_due_at` so a concurrent booking is never written back
   (`409 recurring_expense_changed`).
@@ -216,7 +216,7 @@ the cached fetch (`core/hooks/use-cached-fetch.ts`, store in `cached-fetch-store
 of unconfirmed rows (`pending`), offline replay after a successful load, polling paused while the
 tab is hidden, the refresh on reconnect, and the single place where server responses and local
 changes (`commit`) are reconciled into the rows on screen. Feature hooks for shopping, chores and
-absences, inventory, Pinnwand, expenses, Abos, Mahnungen, Kalender and Aktivität only describe the
+absences, inventory, announcements, expenses, recurring expenses, reminders, calendar and activity only describe the
 resource (URL, `select`/`assemble`, id, an optional `reconcile` merge, error policy, offline page)
 and keep their domain actions. A direct `useCachedFetch` is only for single documents and side
 reads (a detail view, a lookup next to a list), never for a second copy of a collection. Chat
@@ -341,8 +341,8 @@ with claim rows/throttle timestamps so a re-run does not notify twice.
   `invalid_share_code`/`invalid_body` precedence is stable and cannot reveal membership.
 - **Integer cents with largest-remainder rounding.** Summing rounded floats does not reproduce
   the total; splits must sum exactly (`features/expenses/split-math.ts`).
-- **Cross-feature effects via `core/`.** Posting a pinnwand notice is infrastructure, not
-  pinnwand logic, so features do not import each other (`core/activity-feed.ts`).
+- **Cross-feature effects via `core/`.** Posting a chat notice is infrastructure, not
+  chat logic, so features do not import each other (`core/activity-feed.ts`).
 - **Offline handlers in one core table.** Splitting them per feature would need a registration
   bootstrap; a `Record<OfflineActionType, ...>` lets `tsc` enforce a handler per type
   (`core/offline/offline-action-handlers.ts`).
@@ -373,25 +373,26 @@ with claim rows/throttle timestamps so a re-run does not notify twice.
 
 ## Glossary
 
-Route folders under `app/wg/[code]/`, with the code names behind them.
+Route folders under `app/wg/[code]/`, with the code names behind them. The first column gives the German UI label and the route slug. Old German URLs redirect permanently to the English routes (`redirects()` in `next.config.ts`).
 
-| UI / route (German) | Code | API (`/api/wg/<code>/...`) | Tables |
+| UI label / route | Code | API (`/api/wg/<code>/...`) | Tables |
 | --- | --- | --- | --- |
 | WG (`/wg/[code]`, share code) | `wgs` | `/api/wg/<code>` | `wgs` |
 | Mitglied, Auszug | members, `deactivatedAt` | `members` | `wg_members` |
-| Ausgaben (`ausgaben`) | `features/expenses` | `expenses` | `expenses`, `expense_splits`, `expense_payments` |
-| Abos (`abos`), UI label "Fixkosten" | recurring expense, one entity: `type Abo = RecurringExpense` in `features/expenses/expense-types.ts` (`features/expenses/recurring-expenses.ts`) | `recurring-expenses` | `recurring_expenses` |
+| Ausgaben (`expenses`) | `features/expenses` | `expenses` | `expenses`, `expense_splits`, `expense_payments` |
+| Fixkosten (`recurring`) | recurring expense (`features/expenses/recurring-expenses.ts`, type `RecurringExpense` in `features/expenses/expense-types.ts`) | `recurring-expenses` | `recurring_expenses` |
 | Import (`import`) | expense import (`features/expenses/import-*.ts`, commit in `features/expenses/server/import-commit.ts`) | `imports` | `expense_imports` |
-| Mahnungen / Erinnerungen (`mahnungen`) | payment reminders (`features/expenses/reminders.ts`) | `reminders` | `expense_reminders` |
-| Putzen / Putzplan (`putzen`) | `features/chores` | `chores` | `chores`, `chore_completions` |
-| Abwesenheiten (panel on `putzen`) | absences (`features/chores/absence.ts`) | `absences` | `member_absences` |
-| Pinnwand (`pinnwand`) | announcements (`features/pinboard`) | `announcements` | `announcements`, `announcement_comments`, `announcement_reactions` |
-| Einkauf (`einkauf`) | `features/shopping` | `shopping` | `shopping_items` |
-| Vorräte / Inventar (`vorraete`) | `features/inventory` | `inventory` | `wg_inventory_items`, `wg_inventory_log` |
-| Kalender (`kalender`) | events (`features/events`) | `events`, `calendar-subscription` | `wg_events`, `calendar_subscriptions` |
+| Mahnungen / Erinnerungen (`reminders`) | payment reminders (`features/expenses/reminders.ts`) | `reminders` | `expense_reminders` |
+| Abrechnung (`statement`) | monthly statement (`features/expenses/monthly-statement.ts`) | `expenses` | |
+| Putzen / Putzplan (`chores`) | `features/chores` | `chores` | `chores`, `chore_completions` |
+| Abwesenheiten (panel on `chores`) | absences (`features/chores/absence.ts`) | `absences` | `member_absences` |
+| Pinnwand (`pinboard`) | announcements (`features/announcements`) | `announcements` | `announcements`, `announcement_comments`, `announcement_reactions` |
+| Einkauf (`shopping`) | `features/shopping` | `shopping` | `shopping_items` |
+| Vorräte / Inventar (`supplies`) | `features/inventory` | `inventory` | `wg_inventory_items`, `wg_inventory_log` |
+| Kalender (`calendar`) | events (`features/events`) | `events`, `calendar-subscription` | `wg_events`, `calendar_subscriptions` |
 | Chat (`chat`) | `features/chat` | `chat` | `wg_chat_messages`, `wg_chat_reactions`, `wg_chat_reads`, `wg_chat_mentions` |
-| Aktivität (`aktivitaet`) | activity (`composition/activity.ts`) | `activity` | `audit_events` |
-| Einstellungen (`einstellungen`) | settings | `notifications`, `export`, ... | |
+| Aktivität (`activity`) | activity (`composition/activity.ts`) | `activity` | `audit_events` |
+| Einstellungen (`settings`) | settings | `notifications`, `export`, ... | |
 
 "Erinnerungen" for chores and events are push notifications sent by the `chore-reminders` and
 `event-reminders` crons, not the `reminders` API.

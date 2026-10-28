@@ -79,13 +79,13 @@ export async function setup() {
 	const B = await user('Ben');
 
 	const w = await call(A, 'POST', '/api/wg', { name: 'Modulwohnung', creatorName: 'Anna' });
-	expect(w.status < 300, 'WG erstellen', JSON.stringify(w.body));
+	expect(w.status < 300, 'create WG', JSON.stringify(w.body));
 	const code = w.body.wg?.shareCode;
 	const annaId = w.body.creator?.id;
 	const inv = await call(A, 'POST', `/api/wg/${code}/invites`, {});
 	const tok = inv.body.url?.split('/').pop();
 	const jb = await call(B, 'POST', `/api/wg/${code}/members`, { name: 'Ben', inviteToken: tok });
-	expect(jb.status < 300, 'B tritt bei', JSON.stringify(jb.body));
+	expect(jb.status < 300, 'B joins', JSON.stringify(jb.body));
 	const benId = jb.body.member?.id;
 	return { A, B, code, annaId, benId };
 }

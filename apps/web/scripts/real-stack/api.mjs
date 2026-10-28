@@ -73,7 +73,7 @@ const w1 = await call(
 	{ name: 'Testwohnung', creatorName: 'Anna' },
 	{ 'idempotency-key': key },
 );
-expect(w1.status === 200 || w1.status === 201, 'S1 WG erstellen', JSON.stringify(w1));
+expect(w1.status === 200 || w1.status === 201, 'S1 create WG', JSON.stringify(w1));
 const code = w1.body.wg?.shareCode;
 const annaMember = w1.body.creator?.id;
 const w1b = await call(
@@ -85,26 +85,23 @@ const w1b = await call(
 );
 expect(
 	w1b.body.wg?.shareCode === code,
-	'S1 Idempotenz: gleicher Key = gleiche WG',
+	'S1 idempotency: same key = same WG',
 	JSON.stringify(w1b).slice(0, 200),
 );
 expect(
 	+sql(
 		`select count(*) from wgs where name='Testwohnung' and id in (select wg_id from wg_members where auth_user_id='${A.id}')`,
 	) === 1,
-	'S1 genau eine WG in DB',
+	'S1 exactly one WG in DB',
 );
 // S2 invites + join
 const inv = await call(A, 'POST', `/api/wg/${code}/invites`, {});
-expect(inv.status < 300 && inv.body.url, 'S2 Einladung erstellen', JSON.stringify(inv));
+expect(inv.status < 300 && inv.body.url, 'S2 create invite', JSON.stringify(inv));
 const tok = inv.body.url?.split('/').pop();
-expect(
-	(await call(C, 'GET', `/api/wg/${code}`)).status >= 400,
-	'S6 Nicht-Mitglied C sieht WG nicht',
-);
+expect((await call(C, 'GET', `/api/wg/${code}`)).status >= 400, 'S6 non-member C cannot see WG');
 expect(
 	(await call(C, 'POST', `/api/wg/${code}/members`, { name: 'Cleo' })).status === 403,
-	'S2 Beitritt ohne Einladung = 403',
+	'S2 join without invite = 403',
 );
 const jb = await call(
 	B,
@@ -113,7 +110,7 @@ const jb = await call(
 	{ name: 'Ben', inviteToken: tok },
 	{ 'idempotency-key': randomUUID() },
 );
-expect(jb.status === 200 || jb.status === 201, 'S2 B tritt bei', JSON.stringify(jb));
+expect(jb.status === 200 || jb.status === 201, 'S2 B joins', JSON.stringify(jb));
 const benMember = jb.body.member?.id;
 const jb2 = await call(
 	B,
@@ -122,7 +119,7 @@ const jb2 = await call(
 	{ name: 'Ben2', inviteToken: tok },
 	{ 'idempotency-key': randomUUID() },
 );
-expect(jb2.status === 409, 'S2 doppelter Beitritt = 409', JSON.stringify(jb2));
+expect(jb2.status === 409, 'S2 duplicate join = 409', JSON.stringify(jb2));
 const nameDup = await call(
 	C,
 	'POST',
@@ -130,7 +127,7 @@ const nameDup = await call(
 	{ name: 'ANNA', inviteToken: tok },
 	{ 'idempotency-key': randomUUID() },
 );
-expect(nameDup.status === 409, 'S2 Name gleich (case-insensitive) = 409', JSON.stringify(nameDup));
+expect(nameDup.status === 409, 'S2 same name (case-insensitive) = 409', JSON.stringify(nameDup));
 // S10 concurrent join at max_uses
 const inv2 = await call(A, 'POST', `/api/wg/${code}/invites`, {});
 const tok2 = inv2.body.url.split('/').pop();
@@ -149,16 +146,16 @@ const rs = await Promise.all(
 );
 expect(
 	rs.filter((r) => r.status < 300).length === 1,
-	'S10 Parallelbeitritt max_uses=1: genau einer',
+	'S10 parallel join with max_uses=1: exactly one',
 	JSON.stringify(rs.map((r) => r.status)),
 );
 expect(+sql(`select use_count from wg_invites where token='${tok2}'`) === 1, 'S10 use_count = 1');
 const joined = racers.filter((_u, i) => rs[i].status < 300);
 const notJoined = racers.filter((_u, i) => rs[i].status >= 300);
-// widerrufen
+// revoke
 const inv3 = await call(A, 'POST', `/api/wg/${code}/invites`, {});
 const del = await call(A, 'DELETE', `/api/wg/${code}/invites/${inv3.body.id}`);
-expect(del.status < 300, 'S2 Einladung widerrufen', JSON.stringify(del));
+expect(del.status < 300, 'S2 revoke invite', JSON.stringify(del));
 const rv = await call(
 	notJoined[0],
 	'POST',
@@ -166,12 +163,8 @@ const rv = await call(
 	{ name: 'Zed', inviteToken: inv3.body.url.split('/').pop() },
 	{ 'idempotency-key': randomUUID() },
 );
-expect(
-	rv.status === 410 || rv.status === 403,
-	'S2 widerrufene Einladung abgelehnt',
-	JSON.stringify(rv),
-);
-// S3 Ausgaben
+expect(rv.status === 410 || rv.status === 403, 'S2 revoked invite rejected', JSON.stringify(rv));
+// S3 Expenses
 const members = (await call(A, 'GET', `/api/wg/${code}`)).body;
 const _mem = members.members ?? members.wg?.members ?? [];
 const ex = async (u, amt, ids, extra = {}) =>
@@ -192,13 +185,17 @@ const ex = async (u, amt, ids, extra = {}) =>
 		{ 'idempotency-key': randomUUID() },
 	);
 const e1 = await ex(A, 10000, [annaMember, benMember]);
-expect(e1.status < 300, 'S3 Ausgabe 100 € erstellen', JSON.stringify(e1));
+expect(e1.status < 300, 'S3 create 100 € expense', JSON.stringify(e1));
 const e2 = await ex(B, 1000, [
 	annaMember,
 	benMember,
 	joined[0] ? sql(`select id from wg_members where auth_user_id='${joined[0].id}'`) : benMember,
 ]);
-expect(e2.status < 300, 'S3 Ausgabe 10 € auf 3 Personen (3,34/3,33/3,33)', JSON.stringify(e2));
+expect(
+	e2.status < 300,
+	'S3 10 € expense split across 3 people (3.34/3.33/3.33)',
+	JSON.stringify(e2),
+);
 const bad = await call(
 	A,
 	'POST',
@@ -211,7 +208,7 @@ const bad = await call(
 	},
 	{ 'idempotency-key': randomUUID() },
 );
-expect(bad.status === 400, 'S3 Summe falsch = 400', JSON.stringify(bad));
+expect(bad.status === 400, 'S3 wrong sum = 400', JSON.stringify(bad));
 const neg = await call(
 	A,
 	'POST',
@@ -224,8 +221,8 @@ const neg = await call(
 	},
 	{ 'idempotency-key': randomUUID() },
 );
-expect(neg.status === 400, 'S3 negativer Betrag = 400', JSON.stringify(neg));
-const frem = await call(
+expect(neg.status === 400, 'S3 negative amount = 400', JSON.stringify(neg));
+const foreignPayer = await call(
 	A,
 	'POST',
 	`/api/wg/${code}/expenses`,
@@ -238,18 +235,18 @@ const frem = await call(
 	},
 	{ 'idempotency-key': randomUUID() },
 );
-expect(frem.status >= 400, 'S3 fremder Zahler abgelehnt', JSON.stringify(frem));
+expect(foreignPayer.status >= 400, 'S3 foreign payer rejected', JSON.stringify(foreignPayer));
 const dash = await call(A, 'GET', `/api/wg/${code}/dashboard`);
-expect(dash.status === 200, 'S3 Dashboard lädt', JSON.stringify(dash).slice(0, 150));
+expect(dash.status === 200, 'S3 dashboard loads', JSON.stringify(dash).slice(0, 150));
 const sum = sql(
 	`select (select coalesce(sum(es.amount_cents),0) from expense_splits es join expenses e on e.id=es.expense_id where e.wg_id=w.id)-(select coalesce(sum(amount_cents),0) from expenses where wg_id=w.id) from wgs w where share_code='${code}'`,
 );
-expect(+sum === 0, 'S3 Summe aller Splits = Summe aller Ausgaben (DB)', sum);
+expect(+sum === 0, 'S3 sum of all splits = sum of all expenses (DB)', sum);
 // Delete a foreign expense as a non-member
 const eid = e1.body.expense?.id;
 expect(
 	(await call(notJoined[0], 'DELETE', `/api/wg/${code}/expenses/${eid}`)).status >= 400,
-	'S6 Nicht-Mitglied kann Ausgabe nicht löschen',
+	'S6 non-member cannot delete expense',
 );
 // Cross-WG: B creates an own WG and tries to touch A's expense via its own WG address
 const wB = await call(
@@ -263,14 +260,14 @@ const codeB = wB.body.wg?.shareCode;
 expect(
 	(await call(B, 'PATCH', `/api/wg/${codeB}/expenses/${eid}`, { description: 'gehackt' })).status >=
 		400 && sql(`select description from expenses where id='${eid}'`) === 'Test',
-	'S6 Cross-WG: Ausgabe-ID aus fremder WG nicht änderbar',
+	'S6 cross-WG: expense ID from another WG cannot be changed',
 );
 expect(
 	(await call(B, 'DELETE', `/api/wg/${codeB}/expenses/${eid}`)).status >= 400 &&
 		+sql(`select count(*) from expenses where id='${eid}'`) === 1,
-	'S6 Cross-WG: Ausgabe nicht löschbar',
+	'S6 cross-WG: expense cannot be deleted',
 );
-// S4 Putzplan
+// S4 Chore plan
 const ch = await call(
 	A,
 	'POST',
@@ -278,7 +275,7 @@ const ch = await call(
 	{ title: 'Bad', intervalDays: 7, assignedMemberId: annaMember },
 	{ 'idempotency-key': randomUUID() },
 );
-expect(ch.status < 300, 'S4 Putzaufgabe erstellen', JSON.stringify(ch));
+expect(ch.status < 300, 'S4 create chore', JSON.stringify(ch));
 const cid = ch.body.chore?.id;
 const occ = () => ({
 	expectedNextDueAt: new Date(
@@ -289,7 +286,7 @@ const occ = () => ({
 const done = await call(A, 'POST', `/api/wg/${code}/chores/${cid}/complete`, occ(), {
 	'idempotency-key': randomUUID(),
 });
-expect(done.status < 300, 'S4 erledigt', JSON.stringify(done));
+expect(done.status < 300, 'S4 completed', JSON.stringify(done));
 const _notMine = await call(B, 'POST', `/api/wg/${code}/chores/${cid}/complete`, occ(), {
 	'idempotency-key': randomUUID(),
 });
@@ -309,15 +306,15 @@ const m1 = await call(
 	{ body: 'Hallo <b>Welt</b> & "Quotes"' },
 	{ 'idempotency-key': randomUUID() },
 );
-expect(m1.status < 300, 'S5 Chat senden', JSON.stringify(m1));
+expect(m1.status < 300, 'S5 send chat message', JSON.stringify(m1));
 expect(
 	(await call(B, 'GET', `/api/wg/${code}/chat/unread-count`)).body.count >= 1,
-	'S5 B hat ungelesene',
+	'S5 B has unread',
 );
 expect(
 	(await call(C === notJoined[0] ? C : notJoined[0], 'GET', `/api/wg/${code}/chat/messages`))
 		.status >= 400,
-	'S6 Nicht-Mitglied liest Chat nicht',
+	'S6 non-member cannot read chat',
 );
 const empty = await call(
 	A,
@@ -326,37 +323,33 @@ const empty = await call(
 	{ body: '   ' },
 	{ 'idempotency-key': randomUUID() },
 );
-expect(empty.status === 400, 'S5 leere Nachricht = 400', JSON.stringify(empty));
+expect(empty.status === 400, 'S5 empty message = 400', JSON.stringify(empty));
 // S7 profile takeover
-const unl = sql(
+const unlinked = sql(
 	`insert into wg_members (wg_id,name,color,role) select id,'AltMitglied','#ff0000','member' from wgs where share_code='${code}' returning id`,
 ).split('\n')[0];
 const inv4 = await call(A, 'POST', `/api/wg/${code}/invites`, {});
 const _lastFree = notJoined.find((u) => u !== notJoined[0]) ?? notJoined[0];
-const noInv = await call(notJoined[0], 'POST', `/api/wg/${code}/members/${unl}/claim`, {});
-expect(noInv.status === 403, 'S7 Übernahme ohne Einladung = 403', JSON.stringify(noInv));
+const noInv = await call(notJoined[0], 'POST', `/api/wg/${code}/members/${unlinked}/claim`, {});
+expect(noInv.status === 403, 'S7 claim without invite = 403', JSON.stringify(noInv));
 const withInv = await call(
 	notJoined[0],
 	'POST',
-	`/api/wg/${code}/members/${unl}/claim?invite=${inv4.body.url.split('/').pop()}`,
+	`/api/wg/${code}/members/${unlinked}/claim?invite=${inv4.body.url.split('/').pop()}`,
 	{},
 );
-expect(withInv.status < 300, 'S7 Übernahme mit Einladung', JSON.stringify(withInv));
+expect(withInv.status < 300, 'S7 claim with invite', JSON.stringify(withInv));
 expect(
-	sql(`select auth_user_id from wg_members where id='${unl}'`) === notJoined[0].id,
-	'S7 Mitglied nun mit Konto verknüpft',
+	sql(`select auth_user_id from wg_members where id='${unlinked}'`) === notJoined[0].id,
+	'S7 member now linked to account',
 );
 const again = await call(
 	joined[0],
 	'POST',
-	`/api/wg/${code}/members/${unl}/claim?invite=${inv4.body.url.split('/').pop()}`,
+	`/api/wg/${code}/members/${unlinked}/claim?invite=${inv4.body.url.split('/').pop()}`,
 	{},
 );
-expect(
-	again.status === 409,
-	'S7 bereits verknüpftes Mitglied nicht übernehmbar',
-	JSON.stringify(again),
-);
+expect(again.status === 409, 'S7 already linked member cannot be claimed', JSON.stringify(again));
 // S8 delete account
 const _delA = await call(B, 'DELETE', '/api/account', {});
 const _stillB = await call(B, 'GET', '/api/wg/mine');

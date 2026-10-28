@@ -45,16 +45,9 @@ export const WG_SECTIONS = [
 	},
 ] as const;
 
-/** The Fixkosten page lives under the route slug `abos` in the app but `fixkosten` on public pages. */
-const ROUTE_TO_MODULE_SLUG: Record<string, string> = { abos: 'recurring' };
-
-export function moduleSlugOf(pageSlug: string): string {
-	return ROUTE_TO_MODULE_SLUG[pageSlug] ?? pageSlug;
-}
-
 /** Whether the module named in the URL belongs to the section page with this slug. */
 export function isActivePage(pageSlug: string, activeModule: string | undefined): boolean {
-	return activeModule !== undefined && moduleSlugOf(pageSlug) === moduleSlugOf(activeModule);
+	return pageSlug === activeModule;
 }
 
 export function getWgSection(pathname: string) {
