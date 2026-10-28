@@ -17,13 +17,10 @@ import {
 } from '@/components/ui/item';
 import type { ChoreFairness } from '@/features/chores/chore-fairness';
 import type { MemberRef } from '@/shared/lib/member-types';
-import { pluralize } from '@/shared/lib/plural';
 import { ChevronDown } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
-const FAIRNESS_RULES = [
-	'Wenigste Last zuerst, niemand direkt doppelt',
-	'Nach Erledigung neu berechnet, Abwesende übersprungen',
-];
+const FAIRNESS_RULES = ['leastLoad', 'recalculated'] as const;
 
 /** Bar segment and legend dot share the shading so they can be matched. */
 function segmentTint(index: number): string {
@@ -39,9 +36,10 @@ export function FairnessPanel({
 	fairness: ChoreFairness;
 	monthCompletions: Record<string, number>;
 	members: MemberRef[];
-	/** The own person is called "du" everywhere, not by their own name. */
+	/** The own person is called "you" everywhere, not by their own name. */
 	currentMemberId: string;
 }) {
+	const t = useTranslations('chores.fairness');
 	const shares = members
 		.map((member) => ({ ...member, count: monthCompletions[member.id] ?? 0 }))
 		.filter((member) => member.count > 0)
@@ -51,13 +49,13 @@ export function FairnessPanel({
 		<Card>
 			<CardHeader>
 				<CardTitle>
-					Diesen Monat
+					{t('thisMonth')}
 					{fairness.suggestedAssignee && (
 						<span className="font-normal text-muted-foreground">
-							{' · Neue Aufgabe am besten für: '}
+							{` · ${t('bestFor')} `}
 							<span className="font-medium text-foreground">
 								{fairness.suggestedAssignee.id === currentMemberId
-									? 'du'
+									? t('you')
 									: fairness.suggestedAssignee.name}
 							</span>
 						</span>
@@ -68,7 +66,7 @@ export function FairnessPanel({
 				<div className="flex flex-col gap-2 empty:hidden">
 					{total === 0 ? (
 						!fairness.suggestedAssignee && (
-							<p className="text-sm text-muted-foreground">Noch nichts erledigt.</p>
+							<p className="text-sm text-muted-foreground">{t('nothingDone')}</p>
 						)
 					) : (
 						<>
@@ -93,8 +91,11 @@ export function FairnessPanel({
 											style={{ backgroundColor: segmentTint(index) }}
 										/>
 										<span>
-											{member.id === currentMemberId ? 'Du' : member.name}:{' '}
-											{Math.round((member.count / total) * 100)} % ({member.count})
+											{t('share', {
+												name: member.id === currentMemberId ? t('youCapital') : member.name,
+												percent: String(Math.round((member.count / total) * 100)),
+												count: String(member.count),
+											})}
 										</span>
 									</li>
 								))}
@@ -113,7 +114,7 @@ export function FairnessPanel({
 						}
 					>
 						<span className="min-w-0 flex-1 text-left break-normal whitespace-normal">
-							So wird verteilt
+							{t('howTitle')}
 						</span>
 						<ChevronDown
 							data-icon="inline-end"
@@ -125,7 +126,7 @@ export function FairnessPanel({
 						<div className="flex flex-col gap-3 pt-3">
 							<ul className="flex list-disc flex-col gap-1 pl-4 text-sm text-muted-foreground">
 								{FAIRNESS_RULES.map((rule) => (
-									<li key={rule}>{rule}</li>
+									<li key={rule}>{t(`rules.${rule}`)}</li>
 								))}
 							</ul>
 							<ItemGroup className="gap-0 divide-y">
@@ -133,14 +134,15 @@ export function FairnessPanel({
 									<ItemEntry key={row.id} className="px-0">
 										<ItemContent className="min-w-0">
 											<ItemTitle className="line-clamp-none break-words">
-												{row.id === currentMemberId ? 'Du' : row.name}
+												{row.id === currentMemberId ? t('youCapital') : row.name}
 											</ItemTitle>
 											<ItemDescription className="line-clamp-none">
-												{pluralize(row.assignedCount, 'Aufgabe', 'Aufgaben')}
-												{row.openGapCount > 0 && ` · ${row.openGapCount} offen`}
+												{t('taskCount', { count: row.assignedCount })}
+												{row.openGapCount > 0 &&
+													` · ${t('openCount', { count: String(row.openGapCount) })}`}
 											</ItemDescription>
 										</ItemContent>
-										{!row.available && <Badge variant="secondary">Abwesend</Badge>}
+										{!row.available && <Badge variant="secondary">{t('away')}</Badge>}
 									</ItemEntry>
 								))}
 							</ItemGroup>

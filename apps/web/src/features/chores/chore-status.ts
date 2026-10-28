@@ -1,12 +1,16 @@
 import { berlinCalendarDayDistance } from '@/core/utils/berlin-day';
 import { parseTimestamp } from '@/core/utils/time';
+import type { Message } from '@/shared/i18n/message';
+
+/** What the confirm step of a chore asks for: a plain completion or a late one. */
+export type ChoreAction = 'complete' | 'catchUp';
 
 type ChoreStatusState = 'planned' | 'due' | 'overdue' | 'unknown';
 
 interface ChoreStatus {
 	state: ChoreStatusState;
-	label: string;
-	actionLabel: 'Erledigt' | 'Nachholen';
+	label: Message;
+	action: ChoreAction;
 	overdueDays: number;
 	escalated: boolean;
 }
@@ -37,8 +41,8 @@ export function getChoreStatus(iso: string, now = Date.now()): ChoreStatus {
 	if (diffDays === null) {
 		return {
 			state: 'unknown',
-			label: 'Datum prüfen',
-			actionLabel: 'Erledigt',
+			label: { key: 'chores.status.unknown' },
+			action: 'complete',
 			overdueDays: 0,
 			escalated: false,
 		};
@@ -49,8 +53,8 @@ export function getChoreStatus(iso: string, now = Date.now()): ChoreStatus {
 		const escalated = overdueDays >= 2;
 		return {
 			state: 'overdue',
-			label: `seit ${overdueDays} T. offen`,
-			actionLabel: 'Nachholen',
+			label: { key: 'chores.status.overdue', values: { days: overdueDays } },
+			action: 'catchUp',
 			overdueDays,
 			escalated,
 		};
@@ -59,8 +63,8 @@ export function getChoreStatus(iso: string, now = Date.now()): ChoreStatus {
 	if (diffDays === 0) {
 		return {
 			state: 'due',
-			label: 'heute fällig',
-			actionLabel: 'Erledigt',
+			label: { key: 'chores.status.dueToday' },
+			action: 'complete',
 			overdueDays: 0,
 			escalated: false,
 		};
@@ -68,8 +72,11 @@ export function getChoreStatus(iso: string, now = Date.now()): ChoreStatus {
 
 	return {
 		state: 'planned',
-		label: diffDays === 1 ? 'morgen' : `in ${diffDays} T.`,
-		actionLabel: 'Erledigt',
+		label:
+			diffDays === 1
+				? { key: 'chores.status.tomorrow' }
+				: { key: 'chores.status.inDays', values: { days: diffDays } },
+		action: 'complete',
 		overdueDays: 0,
 		escalated: false,
 	};
@@ -91,11 +98,11 @@ export function choreNeedsRepair(item: ChoreRepairInput, now = Date.now()): bool
 
 export type ChoreGroupKey = 'mine' | 'overdue' | 'week' | 'later';
 
-const CHORE_GROUPS: { key: ChoreGroupKey; label: string }[] = [
-	{ key: 'mine', label: 'Für dich' },
-	{ key: 'overdue', label: 'Noch offen' },
-	{ key: 'week', label: 'Diese Woche' },
-	{ key: 'later', label: 'Später' },
+const CHORE_GROUPS: { key: ChoreGroupKey; label: Message }[] = [
+	{ key: 'mine', label: { key: 'chores.groups.mine' } },
+	{ key: 'overdue', label: { key: 'chores.groups.overdue' } },
+	{ key: 'week', label: { key: 'chores.groups.week' } },
+	{ key: 'later', label: { key: 'chores.groups.later' } },
 ];
 
 /** Own chores due by tomorrow come first, others follow by urgency. */
@@ -116,7 +123,7 @@ export function groupChoresForPlan<T extends ChoreRepairInput>(
 	chores: T[],
 	currentMemberId: string,
 	now = Date.now(),
-): { key: ChoreGroupKey; label: string; chores: T[] }[] {
+): { key: ChoreGroupKey; label: Message; chores: T[] }[] {
 	const needsRepair = (chore: T) => (choreNeedsRepair(chore, now) ? 0 : 1);
 	const sorted = [...chores].sort((a, b) => needsRepair(a) - needsRepair(b));
 	return CHORE_GROUPS.map((group) => ({
@@ -127,9 +134,9 @@ export function groupChoresForPlan<T extends ChoreRepairInput>(
 
 /** Keeps only overdue chores (for `?filter=overdue`); groups left empty are dropped. */
 export function filterOverdueGroups<T extends { nextDueAt: string }>(
-	groups: { key: ChoreGroupKey; label: string; chores: T[] }[],
+	groups: { key: ChoreGroupKey; label: Message; chores: T[] }[],
 	now = Date.now(),
-): { key: ChoreGroupKey; label: string; chores: T[] }[] {
+): { key: ChoreGroupKey; label: Message; chores: T[] }[] {
 	return groups
 		.map((group) => ({
 			...group,
