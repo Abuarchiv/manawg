@@ -5,9 +5,11 @@
  * only for owed and settled amounts. Every mail is rendered as HTML and text, in light and dark.
  */
 
+import { getAppUrl } from '@/shared/lib/app-url';
+import { legalUrl } from '@/shared/lib/landing-url';
 import { MAIL_COLOR_SCHEME_META, MAIL_DARK_STYLE, markImages } from './dark-mode';
 
-export const APP_ORIGIN = 'https://app.manawg.com';
+export const APP_ORIGIN = getAppUrl();
 
 const SANS = "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
 const HEADLINE = `'Inter Tight', ${SANS}`;
@@ -165,12 +167,12 @@ function footer(spec: BrandMailSpec): string {
 	const link = `style="color:${MUTED};text-decoration:underline;"`;
 	const links = [
 		...(spec.footerLinks ?? []),
-		{ label: 'Impressum', url: 'https://manawg.com/impressum' },
-		{ label: 'Datenschutz', url: 'https://manawg.com/datenschutz' },
+		{ label: 'Impressum', url: legalUrl('/impressum') },
+		{ label: 'Datenschutz', url: legalUrl('/datenschutz') },
 	]
 		.map((entry) => `<a href="${escapeHtml(entry.url)}" ${link}>${escapeHtml(entry.label)}</a>`)
 		.join(' &middot; ');
-	return `<tr><td bgcolor="#FAFAFA" style="background-color:#FAFAFA;border-top:1px solid ${LINE};padding:22px 40px;"><div style="font-family:${SANS};font-size:12px;line-height:1.55;color:${MUTED};">${escapeHtml(spec.footerNote)}</div><div style="padding-top:6px;font-family:${MONO};font-size:11px;line-height:1.55;letter-spacing:0.06em;color:${MUTED};">app.manawg.com &middot; ${links}</div></td></tr>`;
+	return `<tr><td bgcolor="#FAFAFA" style="background-color:#FAFAFA;border-top:1px solid ${LINE};padding:22px 40px;"><div style="font-family:${SANS};font-size:12px;line-height:1.55;color:${MUTED};">${escapeHtml(spec.footerNote)}</div><div style="padding-top:6px;font-family:${MONO};font-size:11px;line-height:1.55;letter-spacing:0.06em;color:${MUTED};">${escapeHtml(APP_ORIGIN.replace(/^https?:\/\//, ''))} &middot; ${links}</div></td></tr>`;
 }
 
 function button(spec: BrandMailSpec): string {

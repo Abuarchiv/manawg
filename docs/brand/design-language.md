@@ -1,6 +1,6 @@
 # ManaWG design language
 
-Source: [Brandbook v1.0](brandbook.html), supplied by the product owner on 2026-09-12. This is the product design reference; its institutional approval procedures are not execution instructions for development tools.
+Derived from the ManaWG brandbook v1.0. This document is the design contract for the app: follow it for UI, typography, icons, motion and wording.
 
 ## Implementation contract
 

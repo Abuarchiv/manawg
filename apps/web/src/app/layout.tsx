@@ -4,7 +4,7 @@ import { PwaRegister } from '@/components/app/PwaRegister';
 import { ThemeProvider } from '@/components/app/ThemeProvider';
 import { SplashScreen } from '@/components/brand/SplashScreen';
 import { getAppUrl } from '@/shared/lib/app-url';
-import { APP_SCHEMA_ID, LANDING_SCHEMA_IDS } from '@/shared/lib/landing-url';
+import { APP_SCHEMA_ID, IS_OFFICIAL_INSTANCE, LANDING_SCHEMA_IDS } from '@/shared/lib/landing-url';
 import { SPLASH_BOOTSTRAP_SCRIPT } from '@/shared/lib/splash';
 import { THEME_BOOTSTRAP_SCRIPT } from '@/shared/lib/theme';
 import type { Metadata, Viewport } from 'next';
@@ -174,13 +174,15 @@ export default async function RootLayout({
 				/>
 				{/* Plain <script>, not next/script: next/script injects after hydration, so the JSON-LD
 				    never appeared in the server HTML crawlers read. Static JSON.stringify of constants, no XSS surface. */}
-				<script
-					type="application/ld+json"
-					nonce={nonce}
-					suppressHydrationWarning
-					// biome-ignore lint/security/noDangerouslySetInnerHtml: static constant, no dynamic data
-					dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareApplicationSchema) }}
-				/>
+				{IS_OFFICIAL_INSTANCE && (
+					<script
+						type="application/ld+json"
+						nonce={nonce}
+						suppressHydrationWarning
+						// biome-ignore lint/security/noDangerouslySetInnerHtml: static constant, no dynamic data
+						dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareApplicationSchema) }}
+					/>
+				)}
 			</head>
 			<body suppressHydrationWarning>
 				{/* WCAG 2.4.1 Bypass Blocks — keyboard-only skip link.

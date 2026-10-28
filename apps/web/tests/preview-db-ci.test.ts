@@ -97,19 +97,19 @@ test('Preview wrapper fails closed without exposing child credentials or error s
 	assert.ok(!child.stderr.includes(secret));
 });
 
-test('the ordinary migration entrypoint still rejects session endpoints before connecting', () => {
+test('the ordinary migration entrypoint still rejects the transaction pooler before connecting', () => {
 	const child = spawnSync(process.execPath, [MIGRATE, '--check'], {
 		encoding: 'utf8',
 		env: {
 			...process.env,
-			DATABASE_MIGRATION_URL: previewSessionDatabaseUrl(SOURCE),
+			DATABASE_MIGRATION_URL: previewSessionDatabaseUrl(SOURCE).replace(':5432/', ':6543/'),
 			MANAWG_PREVIEW_CI_SESSION: '',
 		},
 		timeout: 10_000,
 	});
 	assert.equal(child.error, undefined);
 	assert.equal(child.status, 1);
-	assert.match(child.stderr, /must be a direct Supabase PostgreSQL connection on port 5432/);
+	assert.match(child.stderr, /stage=connection-config/);
 });
 
 test('wrapper never forwards secret-bearing child output, including success and process errors', async (t) => {

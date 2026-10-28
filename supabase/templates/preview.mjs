@@ -1,6 +1,7 @@
 // Renders the templates with sample data and screenshots them.
 // Usage: node supabase/templates/preview.mjs [email] [token] [outDir]
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -14,7 +15,7 @@ const [
 ] = process.argv.slice(2);
 const urls = {
 	'.ConfirmationURL':
-		'https://bwsvsvfgbrsonepffqff.supabase.co/auth/v1/verify?token=8f3a1c9e4b7d&type=signup&redirect_to=https://app.manawg.com/auth/callback',
+		'https://your-project-ref.supabase.co/auth/v1/verify?token=8f3a1c9e4b7d&type=signup&redirect_to=https://app.manawg.com/auth/callback',
 	'.SiteURL': 'https://app.manawg.com',
 	'.NewEmail': 'lina.neu@posteo.de',
 	'.Email': email,
@@ -32,10 +33,8 @@ const dir = import.meta.dirname;
 const subjects = JSON.parse(await readFile(resolve(dir, 'subjects.json'), 'utf8'));
 await mkdir(out, { recursive: true });
 
-const { chromium } = await import(
-	process.env.PLAYWRIGHT_INDEX ??
-		'/Users/abu/Company/manawg-app/node_modules/.pnpm/playwright@1.62.1/node_modules/playwright/index.mjs'
-);
+// Playwright is a dependency of apps/web; resolve it from there.
+const { chromium } = createRequire(resolve(dir, '../../apps/web/package.json'))('@playwright/test');
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 680, height: 800 }, deviceScaleFactor: 2 });
 for (const name of Object.keys(subjects)) {

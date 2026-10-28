@@ -11,7 +11,7 @@ import {
 	previewSessionDatabaseUrl,
 	productionSessionDatabaseUrl,
 	resolveConnectionString,
-	validateSupabaseDirectUrl,
+	validateSupabaseSessionUrl,
 } from './connection.mjs';
 import { assertMigrationLedgerPrefix } from './ledger.mjs';
 import { adoptBaseline, assertBaselineSchema, ledgerHasBaseline } from './legacy-adoption.mjs';
@@ -34,7 +34,7 @@ const SENTINEL_TABLE = 'wgs';
 export async function main(progress) {
 	progress.stage = 'connection-config';
 	const sourceConnection = resolveConnectionString();
-	validateSupabaseDirectUrl(sourceConnection, 'Database migration connection');
+	validateSupabaseSessionUrl(sourceConnection, 'Database migration connection');
 	const previewSession = process.env.MANAWG_PREVIEW_CI_SESSION === 'true';
 	const productionSession = process.env.MANAWG_PRODUCTION_CI_SESSION === 'true';
 	if (previewSession && productionSession) {

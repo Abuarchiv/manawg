@@ -1,7 +1,7 @@
 # Architecture
 
 Overview of `apps/web` for contributors. Paths are relative to `apps/web/src` unless stated
-otherwise. Setup, commands and deployment are in the [README](../README.md).
+otherwise. Setup, commands and deployment are in [development](development.md).
 
 ## Request flow
 
@@ -30,7 +30,7 @@ browser
      (`core/rate-limit.ts`). Fail mode is `closed` when `VERCEL_ENV=production`,
      `NODE_ENV=test`, or `NODE_ENV=production` without `VERCEL_ENV`; otherwise `open`. Closed
      plus missing/failing Upstash means `503 rate_limiter_unavailable`.
-  4. Database-free fixture build only (`src/fixtures/`, README "Fixture mode"): fixture API
+  4. Database-free fixture build only (`src/fixtures/`, development.md "Fixture mode"): fixture API
      reads and `POST /api/wg` are answered here; every other build gets `null` from
      `resolveFixtureRequest` and skips this step.
   5. Supabase session refresh.
@@ -53,7 +53,7 @@ under `app/wg/**`; WG APIs belong under `app/api/wg/**`.
 | Layer | Contains | May import |
 | --- | --- | --- |
 | `app/` | Pages, layouts, route handlers. Thin. | everything below |
-| `fixtures/` | Database-free fixture build: mode detection, fixture API and page data (README "Fixture mode") | `composition/` and everything below |
+| `fixtures/` | Database-free fixture build: mode detection, fixture API and page data (development.md "Fixture mode") | `composition/` and everything below |
 | `features/<x>/` | Vertical slices: `chat`, `chores`, `events`, `expenses`, `inventory`, `pinnwand`, `shopping` (logic, hooks, components, and a `server/` folder) | `components/`, `core/`, `shared/`, own files |
 | `composition/` | Cross-feature reads: dashboard data and insights, activity, export | `features/`, `components/`, `core/`, `shared/` |
 | `core/` | Domain-neutral blocks: `db`, `auth`, `guards`, `http`, `hooks`, `offline`, `sync`, `notifications`, `infra`, `utils`, `validators` | `core/`, `shared/` |
@@ -104,7 +104,7 @@ Rules:
   a WG for offline use (`rememberWg`) requires `authUserId`, because remembered WGs and queued
   actions are bound to the account.
 - **Fixture mode** answers as `FIXTURE_AUTH_USER_ID` (`fixtures/data.ts`) through the same member
-  lookup the app uses; product code has no fixture branch beyond the `app/` seams named in the README.
+  lookup the app uses; product code has no fixture branch beyond the `app/` seams named in development.md.
 - **Legacy-profile takeover** (`POST /api/wg/<code>/members/<id>/claim?invite=<token>`): links an
   unlinked member row (no account yet) to the signed-in account. The proof is a valid invitation
   to that WG; the invitation page lists the unlinked members. Normal API access never uses it.
@@ -158,7 +158,7 @@ Side effects that must not undo the write (audit events, push, pinboard notices)
 call, for `written` results only, so a replay never repeats them. A warning that only becomes
 known then (a failed push) is written into the stored response with `setReplayWarning`. Without a
 key the write runs in a plain transaction (`retryAfterRollback` still applies). The protocol is specified in
-[`openspec/changes/archive/2026-10-08-unify-idempotency-claims`](../openspec/changes/archive/2026-10-08-unify-idempotency-claims/proposal.md).
+[`openspec/specs/idempotent-mutations`](../openspec/specs/idempotent-mutations/spec.md).
 
 **Client side.** One key lifecycle lives in `core/http/idempotency-key.ts`, client-safe.
 `createIdempotencyKey` makes the UUID, `resolveIdempotencyKey` reuses the pending key for an
@@ -320,7 +320,7 @@ Mutation error copy goes through `mutationErrorMessage` (`core/http/error-codes.
 
 ## Cron jobs
 
-Four Vercel crons, see the table in the [README](../README.md#cron-jobs). All open with
+Five Vercel crons, see the table in [development](development.md#cron-jobs). All open with
 `requireCronSecret` (constant-time bearer compare, `core/infra/cron-auth.ts`) and fail closed
 without `CRON_SECRET`, cap
 work per run (batches, limits) and leave the rest to the next run. Reminder crons deduplicate

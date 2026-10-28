@@ -6,7 +6,7 @@
  *   node scripts/db-migrate.mjs           apply pending Drizzle migrations from drizzle/
  *   node scripts/db-migrate.mjs --check   verify schema, catalog security, ledger and data only
  *
- * It accepts only a direct Supabase connection (db-migrate/connection.mjs), holds an advisory
+ * It accepts only a Supabase session connection (db-migrate/connection.mjs), holds an advisory
  * lock for the whole run, refuses a ledger that is not an exact prefix of the journal, and fails
  * closed on any schema or catalog drift. A database that already has the schema but no baseline
  * row in its ledger is adopted instead of re-created (db-migrate/legacy-adoption.mjs). Failures

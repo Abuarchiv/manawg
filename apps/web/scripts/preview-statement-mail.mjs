@@ -52,10 +52,7 @@ const variants = {
 
 await mkdir(out, { recursive: true });
 const markDir = pathToFileURL(resolve(import.meta.dirname, '../public/email/')).href;
-const { chromium } = await import(
-	process.env.PLAYWRIGHT_INDEX ??
-		'/Users/abu/Company/manawg-app/node_modules/.pnpm/playwright@1.62.1/node_modules/playwright/index.mjs'
-);
+const { chromium } = await import('@playwright/test');
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 680, height: 800 }, deviceScaleFactor: 2 });
 for (const [name, variant] of Object.entries(variants)) {

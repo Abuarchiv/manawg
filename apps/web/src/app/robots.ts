@@ -1,4 +1,4 @@
-import { landingUrl } from '@/shared/lib/landing-url';
+import { IS_OFFICIAL_INSTANCE, landingUrl } from '@/shared/lib/landing-url';
 import type { MetadataRoute } from 'next';
 
 // Search engines may crawl everything so they can read the noindex from layout.tsx;
@@ -26,6 +26,7 @@ export default function robots(): MetadataRoute.Robots {
 			},
 			{ userAgent: '*', allow: ['/'], disallow: ['/api/'] },
 		],
-		sitemap: landingUrl('/sitemap.xml'),
+		// The sitemap lists the landing's pages, which only belong to the official instance.
+		...(IS_OFFICIAL_INSTANCE ? { sitemap: landingUrl('/sitemap.xml') } : {}),
 	};
 }

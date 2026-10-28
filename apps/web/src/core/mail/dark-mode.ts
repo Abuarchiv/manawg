@@ -4,6 +4,9 @@
  * `prefers-color-scheme` show it unchanged; this block recolours them by attribute selector.
  * `supabase/templates/*.html` carry the same block (checked in templates.test.ts).
  */
+
+import { getAppUrl } from '@/shared/lib/app-url';
+
 export const MAIL_COLOR_SCHEME_META =
 	'<meta name="color-scheme" content="light dark">\n<meta name="supported-color-schemes" content="light dark">';
 
@@ -31,7 +34,7 @@ a[style*="color:#FAFAFA"]{color:#0A0A0A!important;}
 }
 </style>`;
 
-const MARK_URL = 'https://app.manawg.com/email/manawg-mark-96.png';
+const MARK_URL = `${getAppUrl()}/email/manawg-mark-96.png`;
 const MARK_STYLE = 'width:24px;height:20px;border:0;';
 
 /** The mark in both colours; the light one is hidden in dark mode, the dark one only shown there. */

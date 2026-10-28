@@ -38,15 +38,22 @@ export function validateDatabaseUrl(url, label) {
 	}
 }
 
-export function validateSupabaseDirectUrl(url, label) {
+/**
+ * Migrations need a session (advisory lock, DDL), so only port 5432 is accepted: the direct host
+ * (IPv6 only on Supabase's free plan) or the session pooler (IPv4), never the transaction pooler.
+ */
+export function validateSupabaseSessionUrl(url, label) {
 	validateDatabaseUrl(url, label);
 	const parsed = new URL(url);
+	const host = parsed.hostname.toLowerCase();
 	if (
 		!['postgres:', 'postgresql:'].includes(parsed.protocol) ||
-		!parsed.hostname.toLowerCase().endsWith('.supabase.co') ||
+		!(host.endsWith('.supabase.co') || host.endsWith('.pooler.supabase.com')) ||
 		parsed.port !== '5432'
 	) {
-		throw new Error(`${label} must be a direct Supabase PostgreSQL connection on port 5432.`);
+		throw new Error(
+			`${label} must be a Supabase PostgreSQL session connection (direct or session pooler) on port 5432.`,
+		);
 	}
 }
 

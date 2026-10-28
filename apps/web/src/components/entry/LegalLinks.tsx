@@ -1,11 +1,11 @@
 import { cn } from '@/shared/lib/cn';
-import { landingUrl } from '@/shared/lib/landing-url';
+import { landingUrl, legalUrl } from '@/shared/lib/landing-url';
 
 const LEGAL_LINKS = [
 	{ href: landingUrl('/ueber-manawg'), label: 'Über ManaWG' },
-	{ href: landingUrl('/impressum'), label: 'Impressum' },
-	{ href: landingUrl('/datenschutz'), label: 'Datenschutz' },
-	{ href: landingUrl('/agb'), label: 'AGB' },
+	{ href: legalUrl('/impressum'), label: 'Impressum' },
+	{ href: legalUrl('/datenschutz'), label: 'Datenschutz' },
+	{ href: legalUrl('/agb'), label: 'AGB' },
 ] as const;
 const [, IMPRESSUM, DATENSCHUTZ, AGB] = LEGAL_LINKS;
 // Product and guide pages live on the landing; shown only on the plain entry footer,
