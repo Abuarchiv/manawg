@@ -26,7 +26,7 @@ export default {
 		},
 		android: {
 			label: 'Installation steps for Android',
-			menu: '⋮ Menu',
+			menu: '⋮ menu',
 			install: '“Install app”',
 			step1: 'In Chrome, tap {menu} at the top right.',
 			step2: 'Choose {install} or “Add to Home screen”.',
@@ -35,8 +35,8 @@ export default {
 		desktop: {
 			label: 'Installation steps in the browser',
 			install: 'Install',
-			menu: '⋮ Menu',
-			step1: 'Click {install} in the address bar.',
+			menu: '⋮ menu',
+			step1: 'Click the {install} icon in the address bar.',
 			step2: 'Alternatively, open the {menu} and choose “Install ManaWG”.',
 			step3: 'Confirm. ManaWG then opens like an app.',
 		},

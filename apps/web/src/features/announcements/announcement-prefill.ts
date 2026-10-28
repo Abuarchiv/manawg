@@ -10,7 +10,7 @@ const AMOUNT_NUMBER: Record<Locale, string> = {
 function amountPattern(locale: Locale): RegExp {
 	const number = AMOUNT_NUMBER[locale];
 	return new RegExp(
-		String.raw`(?:^|\s)(?:€\s*(${number})|(${number})\s*(?:€|eur(?:o)?))(?=[\s.,;:!?)]|$)`,
+		String.raw`(?:^|\s)(?:€\s*(${number})|(${number})\s*(?:€|euros?|eur))(?=[\s.,;:!?)]|$)`,
 		'i',
 	);
 }

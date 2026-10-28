@@ -96,11 +96,11 @@ export default {
 		left: '{name} left the flat.',
 		expenseCreated: '{actor} added {description} for {amount}.',
 		choreCompleted: '{actor} completed “{title}”.',
+		choreCompletedNoTitle: '{actor} completed a task.',
 		unknown: 'System message',
 		someone: 'Someone',
 		anExpense: 'an expense',
-		aChore: 'a task',
-		zeroAmount: '€0',
+		zeroAmount: '€0.00',
 	},
 	errors: {
 		sendSubject: 'The message could not be sent',

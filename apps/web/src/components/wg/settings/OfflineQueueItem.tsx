@@ -1,6 +1,6 @@
 'use client';
 
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -43,11 +43,12 @@ export function OfflineQueueItem({
 	onRemove,
 }: OfflineQueueItemProps) {
 	const t = useTranslations('offline.queue');
+	const locale = useLocale();
 	const message = useMessage();
 	const summary = getOfflineActionSummary(item);
 	const fallback = explainOfflineActionFailure(0);
 	const risk = getOfflineActionRisk(item);
-	const editDraft = buildQueueEditDraft(item);
+	const editDraft = buildQueueEditDraft(item, locale);
 	const requiresManualReview = holdsServerReview(item);
 	const requiresManualResolution = needsManualOfflineResolution(item);
 	const actionLabel = message(summary.detail) || message(summary.title);

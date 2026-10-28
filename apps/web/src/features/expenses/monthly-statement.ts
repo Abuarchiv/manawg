@@ -37,7 +37,8 @@ interface StatementItem {
 	id: string;
 	occurredAt: string;
 	description: string;
-	payerName: string;
+	/** Null when the payer is not in the members list; the renderer shows a localized label. */
+	payerName: string | null;
 	amountCents: number;
 }
 
@@ -166,8 +167,7 @@ export function buildMonthlyStatement(
 	}
 	const settled = [...openByPair.values()].every((cents) => cents <= 0);
 
-	const nameOf = (id: string) =>
-		members.find((member) => member.id === id)?.name ?? 'Ehemaliges Mitglied';
+	const nameOf = (id: string) => members.find((member) => member.id === id)?.name ?? null;
 	// Active members always appear; former members only when they took part this month.
 	const rows = members
 		.filter((member) => member.active || paid.has(member.id) || share.has(member.id))

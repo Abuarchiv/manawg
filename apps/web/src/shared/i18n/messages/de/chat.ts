@@ -94,10 +94,10 @@ export default {
 		left: '{name} hat die WG verlassen.',
 		expenseCreated: '{actor} hat {description} für {amount} eingetragen.',
 		choreCompleted: '{actor} hat „{title}“ erledigt.',
+		choreCompletedNoTitle: '{actor} hat „eine Aufgabe“ erledigt.',
 		unknown: 'Systemnachricht',
 		someone: 'Jemand',
 		anExpense: 'eine Ausgabe',
-		aChore: 'eine Aufgabe',
 		zeroAmount: '0€',
 	},
 	errors: {

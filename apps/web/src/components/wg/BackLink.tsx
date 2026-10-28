@@ -6,7 +6,7 @@ import { cn } from '@/shared/lib/cn';
 
 interface BackLinkProps {
 	href: string;
-	/** Target in plain words, e.g. "Expenses"; becomes "Back to Expenses". */
+	/** Target in plain words, e.g. "expenses"; becomes "Back to expenses". */
 	label: string;
 }
 

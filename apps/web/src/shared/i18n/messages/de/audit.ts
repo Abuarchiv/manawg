@@ -112,7 +112,7 @@ export default {
 		feed: '{self, select, yes {hast} other {hat}} {hasName, select, yes {{name}} other {einen Vorrat}} aus den Vorräten entfernt.',
 	},
 	inventoryConsumed: {
-		feed: '{self, select, yes {hast} other {hat}} {quantity} {unitKey, select, piece {Stück} litre {L} kilogram {kg} roll {Rolle} pack {Packung} other {{unit}}} {name} entnommen.',
+		feed: '{self, select, yes {hast} other {hat}} {quantity} {unitKey, select, piece {Stück} litre {L} kilogram {kg} roll {{count, plural, other {Rolle}}} pack {{count, plural, other {Packung}}} other {{unit}}} {name} entnommen.',
 	},
 	memberInvited: {
 		feed: '{self, select, yes {hast} other {hat}} eine Einladung per E-Mail verschickt.',

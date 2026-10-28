@@ -8,6 +8,8 @@ test('recognises the amount with € / EUR / Euro after or € before the number
 		['Putzmittel 5 euro', '5', 'Putzmittel'],
 		['Strom € 35,50', '35,50', 'Strom'],
 		['Pizza 35 EUR.', '35', 'Pizza'],
+		['Pay 35 euros', '35', 'Pay'],
+		['Pay 35 Euros.', '35', 'Pay'],
 		['Miete 1.234,50 €', '1234,50', 'Miete'],
 		['Nebenkosten 1.200 Euro', '1200', 'Nebenkosten'],
 		['Pizza 12,5 EUR', '12,5', 'Pizza'],

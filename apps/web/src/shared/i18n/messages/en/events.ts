@@ -123,7 +123,7 @@ export default {
 		scopeOccurrence: 'Only {date}',
 		deleteEvent: 'Delete event',
 		deleteOccurrence: 'Delete this date only',
-		addToCalendarLabel: 'Add to your calendar app',
+		addToCalendarLabel: 'Add to calendar app',
 		addToCalendar: 'Add to calendar',
 	},
 	deleteDialog: {
