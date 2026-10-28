@@ -12,10 +12,17 @@ concurrency:
   group: database-nightly
   cancel-in-progress: false
 
+env:
+  # Repository variables of the instance this repository deploys. Forks without them
+  # skip the Preview gates, migrations, backups and releases.
+  SUPABASE_PRODUCTION_PROJECT_HOST: ${{ vars.SUPABASE_PRODUCTION_PROJECT_HOST }}
+  SUPABASE_PREVIEW_PROJECT_HOST: ${{ vars.SUPABASE_PREVIEW_PROJECT_HOST }}
+  VERCEL_PROJECT_NAME: ${{ vars.VERCEL_PROJECT_NAME }}
+  VERCEL_TEAM_SLUG: ${{ vars.VERCEL_TEAM_SLUG }}
+
 jobs:
   backup-production:
-    # Operates the official instance; forks keep this workflow inert.
-    if: github.repository == 'Abuarchiv/manawg-app'
+    if: vars.SUPABASE_PRODUCTION_PROJECT_HOST != ''
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment:
@@ -37,17 +44,18 @@ jobs:
           BACKUP_GPG_PRIVATE_KEY: ${{ secrets.BACKUP_GPG_PRIVATE_KEY }}
           BACKUP_GPG_PASSPHRASE: ${{ secrets.BACKUP_GPG_PASSPHRASE }}
           SUPABASE_BACKUP_SECRET_KEY: ${{ secrets.SUPABASE_BACKUP_SECRET_KEY }}
-          SUPABASE_URL: https://bwsvsvfgbrsonepffqff.supabase.co
+          BACKUP_GPG_PUBLIC_KEY: ${{ vars.BACKUP_GPG_PUBLIC_KEY }}
         run: |
           umask 077
           export WORK_DIR="$RUNNER_TEMP/backup" KEY_DIR="$RUNNER_TEMP/backup-key"
           mkdir -p "$WORK_DIR" "$KEY_DIR"
           chmod 755 "$WORK_DIR"
           node --experimental-strip-types .github/scripts/pg-env.mjs production "$WORK_DIR"
+          printf '%s\n' "$BACKUP_GPG_PUBLIC_KEY" > "$KEY_DIR/public.asc"
           printf '%s\n' "$BACKUP_GPG_PRIVATE_KEY" > "$KEY_DIR/private.asc"
           printf '%s' "$BACKUP_GPG_PASSPHRASE" > "$KEY_DIR/passphrase"
           printf '%s' "$SUPABASE_BACKUP_SECRET_KEY" > "$KEY_DIR/storage-key"
-          FILE="$(PG_ENV_FILE="$WORK_DIR/pg.env" PUBLIC_KEY_FILE=.github/backup-public-key.asc \
+          FILE="$(SUPABASE_URL="https://$SUPABASE_PRODUCTION_PROJECT_HOST" PG_ENV_FILE="$WORK_DIR/pg.env" PUBLIC_KEY_FILE="$KEY_DIR/public.asc" \
             PRIVATE_KEY_FILE="$KEY_DIR/private.asc" PASSPHRASE_FILE="$KEY_DIR/passphrase" \
             STORAGE_KEY_FILE="$KEY_DIR/storage-key" .github/scripts/db-backup.sh)"
           rm -rf "$KEY_DIR" "$WORK_DIR/pg.env"
@@ -62,8 +70,7 @@ jobs:
           compression-level: 0
 
   preview-keepalive:
-    # Operates the official instance; forks keep this workflow inert.
-    if: github.repository == 'Abuarchiv/manawg-app'
+    if: vars.SUPABASE_PREVIEW_PROJECT_HOST != ''
     # The free plan pauses a project after a week without database activity.
     runs-on: ubuntu-latest
     timeout-minutes: 5

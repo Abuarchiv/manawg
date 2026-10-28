@@ -36,7 +36,7 @@ test.describe('live social-login entry', () => {
 
 	test('a failed OAuth flow clears its PKCE cookies', async ({ page }) => {
 		const projectRef = new URL(
-			process.env.E2E_SUPABASE_URL ?? 'https://bwsvsvfgbrsonepffqff.supabase.co',
+			defined(process.env.E2E_SUPABASE_URL, 'E2E_SUPABASE_URL'),
 		).hostname.split('.')[0];
 		const storageKey = `sb-${projectRef}-auth-token`;
 		const flowId = 'release-regression-flow';

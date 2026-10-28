@@ -6,8 +6,11 @@ import { previewSessionDatabaseUrl, productionSessionDatabaseUrl } from '../scri
 
 // Preview CI database transport and the credential-hiding wrapper around db-migrate.
 
+process.env.SUPABASE_PREVIEW_PROJECT_HOST = 'previewproject.supabase.co';
+process.env.SUPABASE_PRODUCTION_PROJECT_HOST = 'productionproject.supabase.co';
+
 const SOURCE =
-	'postgresql://manawg_preview_ci:synthetic%40pass%3A%25@db.sthiwjebcwwiphashgla.supabase.co:5432/postgres?sslmode=verify-full';
+	'postgresql://manawg_preview_ci:synthetic%40pass%3A%25@db.previewproject.supabase.co:5432/postgres?sslmode=verify-full';
 const WRAPPER = fileURLToPath(new URL('../scripts/preview-db-check.mjs', import.meta.url));
 const MIGRATE = fileURLToPath(new URL('../scripts/db-migrate.mjs', import.meta.url));
 
@@ -27,7 +30,7 @@ test('Preview CI changes only its transport and preserves encoded credentials an
 	const result = new URL(previewSessionDatabaseUrl(SOURCE));
 	assert.equal(result.hostname, 'aws-0-eu-central-1.pooler.supabase.com');
 	assert.equal(result.port, '5432');
-	assert.equal(result.username, 'manawg_preview_ci.sthiwjebcwwiphashgla');
+	assert.equal(result.username, 'manawg_preview_ci.previewproject');
 	assert.equal(result.password, source.password);
 	assert.equal(result.pathname, '/postgres');
 	assert.equal(result.search, '?sslmode=verify-full');
@@ -37,7 +40,7 @@ test('Preview CI rejects other projects, roles, transports and driver URL overri
 	const invalid = [
 		'not-a-url',
 		SOURCE.replace('postgresql:', 'https:'),
-		SOURCE.replace('sthiwjebcwwiphashgla', 'bwsvsvfgbrsonepffqff'),
+		SOURCE.replace('previewproject', 'productionproject'),
 		SOURCE.replace('manawg_preview_ci:', 'postgres:'),
 		SOURCE.replace('synthetic%40pass%3A%25', ''),
 		SOURCE.replace(':5432/', ':6543/'),
@@ -49,16 +52,23 @@ test('Preview CI rejects other projects, roles, transports and driver URL overri
 		),
 	];
 	for (const value of invalid) assert.throws(() => previewSessionDatabaseUrl(value));
+	assert.throws(() => previewSessionDatabaseUrl(SOURCE, {}));
+	assert.throws(() =>
+		previewSessionDatabaseUrl(SOURCE, {
+			SUPABASE_PREVIEW_PROJECT_HOST: 'previewproject.supabase.co',
+			SUPABASE_PRODUCTION_PROJECT_HOST: 'previewproject.supabase.co',
+		}),
+	);
 });
 
 const PRODUCTION_SOURCE =
-	'postgresql://postgres:synthetic%40pass%3A%25@db.bwsvsvfgbrsonepffqff.supabase.co:5432/postgres?sslmode=verify-full';
+	'postgresql://postgres:synthetic%40pass%3A%25@db.productionproject.supabase.co:5432/postgres?sslmode=verify-full';
 
 test('Production CI reaches its pinned project through the IPv4 session pooler', () => {
 	const result = new URL(productionSessionDatabaseUrl(PRODUCTION_SOURCE));
 	assert.equal(result.hostname, 'aws-0-eu-central-1.pooler.supabase.com');
 	assert.equal(result.port, '5432');
-	assert.equal(result.username, 'postgres.bwsvsvfgbrsonepffqff');
+	assert.equal(result.username, 'postgres.productionproject');
 	assert.equal(result.password, new URL(PRODUCTION_SOURCE).password);
 	assert.equal(result.search, '?sslmode=verify-full');
 });
@@ -67,7 +77,7 @@ test('Production CI rejects the Preview project, other roles, transports and ove
 	const invalid = [
 		'not-a-url',
 		SOURCE,
-		PRODUCTION_SOURCE.replace('bwsvsvfgbrsonepffqff', 'sthiwjebcwwiphashgla'),
+		PRODUCTION_SOURCE.replace('productionproject', 'previewproject'),
 		PRODUCTION_SOURCE.replace('postgres:synthetic', 'manawg_preview_ci:synthetic'),
 		PRODUCTION_SOURCE.replace(':5432/', ':6543/'),
 		PRODUCTION_SOURCE.replace('verify-full', 'require'),
@@ -83,7 +93,7 @@ test('Preview wrapper fails closed without exposing child credentials or error s
 		encoding: 'utf8',
 		env: {
 			...process.env,
-			DATABASE_MIGRATION_URL: `postgresql://postgres:${secret}@db.bwsvsvfgbrsonepffqff.supabase.co:5432/postgres?sslmode=verify-full`,
+			DATABASE_MIGRATION_URL: `postgresql://postgres:${secret}@db.productionproject.supabase.co:5432/postgres?sslmode=verify-full`,
 		},
 		timeout: 10_000,
 	});

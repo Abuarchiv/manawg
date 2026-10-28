@@ -8,12 +8,10 @@
 #   gpg --decrypt manawg-<time>.tar.gpg | tar -x    # database.dump, storage/<bucket>/<object>
 #   psql <url> -c 'create schema drizzle'
 #   pg_restore --no-owner --no-privileges --schema=public --schema=drizzle --dbname=<url> database.dump
-# The passphrase is in the operator's Keychain (service "ManaWG Backup GPG passphrase").
 set -euo pipefail
 
 : "${PG_ENV_FILE:?}" "${WORK_DIR:?}" "${PUBLIC_KEY_FILE:?}"
 IMAGE='postgres:17@sha256:b8faeff7712663c2773a190181e1246e37e364b887611c04658c28b44e2408fe'
-RECIPIENT='326F1F1B3A8D3193C524DF875F55F8BE82C4D50F'
 
 name="manawg-$(date -u +%Y-%m-%dT%H%M%SZ)"
 stage="$WORK_DIR/$name"
@@ -67,8 +65,7 @@ if [ -n "${STORAGE_KEY_FILE:-}" ]; then
 fi
 
 tar -cf "$stage.tar" -C "$stage" database.dump storage
-gpg --batch --quiet --import "$PUBLIC_KEY_FILE"
-gpg --batch --quiet --trust-model always --encrypt --recipient "$RECIPIENT" \
+gpg --batch --quiet --trust-model always --encrypt --recipient-file "$PUBLIC_KEY_FILE" \
 	--output "$stage.tar.gpg" "$stage.tar"
 
 if [ -n "${PRIVATE_KEY_FILE:-}" ]; then

@@ -18,10 +18,13 @@ concurrency:
   group: production-release
   cancel-in-progress: false
 
+env:
+  # Repository variable of the deployed instance; forks without it skip releases.
+  PRODUCTION_APP_URL: ${{ vars.PRODUCTION_APP_URL }}
+
 jobs:
   release:
-    # Operates the official instance; forks keep this workflow inert.
-    if: github.repository == 'Abuarchiv/manawg-app'
+    if: vars.PRODUCTION_APP_URL != ''
     runs-on: ubuntu-latest
     timeout-minutes: 150
     environment:
@@ -129,7 +132,7 @@ jobs:
           # The hook builds the main tip; if main moved meanwhile, the version check below fails.
           curl -fsS -X POST "$DEPLOY_HOOK" > /dev/null
           for _ in $(seq 120); do
-            health="$(curl -sS https://app.manawg.com/api/health || true)"
+            health="$(curl -sS "$PRODUCTION_APP_URL/api/health" || true)"
             if jq -e --arg sha "$SHA" '.version == $sha and .status == "ok" and .database == "ok"' <<<"$health" > /dev/null 2>&1; then
               echo "Production serves $SHA: $health" >> "$GITHUB_STEP_SUMMARY"
               exit 0

@@ -44,24 +44,20 @@
 		}
 	},
 	"files": {
+		"include": [".github/**", "apps/**", "scripts/**", "supabase/**", "*.json"],
 		"ignore": [
 			"node_modules",
-			"graphify-out",
 			"supabase/.temp",
 			"dist",
 			".next",
 			".next-*",
 			".vercel",
 			".turbo",
-			".claude",
-			".claude-flow",
-			"**/.claude-flow",
 			"coverage",
 			"test-results",
 			"playwright-report",
 			"*.min.js",
-			"drizzle/meta",
-			"skills-lock.json"
+			"drizzle/meta"
 		]
 	},
 	"overrides": [

@@ -2,16 +2,13 @@ import { existsSync, lstatSync, rmdirSync, unlinkSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { type APIRequestContext, type FullConfig, request } from '@playwright/test';
+import { assertPreviewOrigin } from '../../scripts/release-workflow-gates.mjs';
 
 export default async function setupPreview(config: FullConfig) {
-	const origin = process.env.BASE_URL ?? '';
+	const origin = assertPreviewOrigin(process.env.BASE_URL ?? '');
 	const secret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET?.trim();
 	const statePath = config.projects[0]?.use.storageState;
-	if (!/^https:\/\/manawg-[a-z0-9-]+-abditubes-projects\.vercel\.app$/i.test(origin) || !secret) {
-		throw new Error(
-			'Preview bootstrap requires the trusted deployment origin and bypass credential.',
-		);
-	}
+	if (!secret) throw new Error('Preview bootstrap requires the bypass credential.');
 	if (typeof statePath !== 'string') throw new Error('Missing private Preview storage path.');
 	const directory = path.dirname(path.resolve(statePath));
 	if (
