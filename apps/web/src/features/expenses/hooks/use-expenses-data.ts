@@ -1,7 +1,7 @@
 'use client';
 
 import type { ActionNotice } from '@/components/wg/ActionNoticeBanner';
-import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
+import { wgLoadError } from '@/core/guards/load-errors';
 import { type SyncedReloadReason, useSyncedCollection } from '@/core/sync/use-synced-collection';
 import { LIST_REFRESH_INTERVAL_MS } from '@/core/utils/use-visibility-paused-interval';
 import {
@@ -10,6 +10,7 @@ import {
 } from '@/features/expenses/expense-list-response';
 import type { ExpensePaymentInput } from '@/features/expenses/expense-payment-input';
 import type { Expense, RecurringExpense } from '@/features/expenses/expense-types';
+import { useMessage } from '@/shared/i18n/message';
 import { useCallback, useRef } from 'react';
 
 interface UseExpensesDataOptions {
@@ -26,6 +27,7 @@ const NO_PAYMENTS: ExpensePaymentInput[] = [];
  * Optimistic updaters write through to the shared fetch cache.
  */
 export function useExpensesData({ shareCode, memberId, setActionNotice }: UseExpensesDataOptions) {
+	const t = useMessage();
 	const encodedShareCode = encodeURIComponent(shareCode);
 	const loadAllRef = useRef<(silent: boolean) => Promise<unknown>>(async () => undefined);
 	const reload = (reason: SyncedReloadReason) => void loadAllRef.current(reason !== 'mount');
@@ -37,7 +39,7 @@ export function useExpensesData({ shareCode, memberId, setActionNotice }: UseExp
 		assemble: assembleExpensesResponse,
 		getId: (expense) => expense.id,
 		describeError: (error) =>
-			getWgLoadErrorMessage('Ausgaben', error.status, error.error, { verb: 'konnten' }),
+			t(wgLoadError({ key: 'common.loadError.lead.expenses' }, error.status, error.error)),
 		pollIntervalMs: LIST_REFRESH_INTERVAL_MS,
 		reload,
 		offline: {
@@ -57,7 +59,7 @@ export function useExpensesData({ shareCode, memberId, setActionNotice }: UseExp
 		assemble: (items, current) => ({ ...current, recurringExpenses: items }),
 		getId: (template) => template.id,
 		describeError: (error) =>
-			getWgLoadErrorMessage('Fixkosten', error.status, error.error, { verb: 'konnten' }),
+			t(wgLoadError({ key: 'expenses.page.loadRecurringLead' }, error.status, error.error)),
 		// The expenses collection's mount load, poll and replay reload both lists.
 		pollIntervalMs: null,
 		reload: () => undefined,

@@ -1,12 +1,14 @@
 import { Skeleton } from '@/components/ui/skeleton';
+import { useTranslations } from 'next-intl';
 
 const WEEKS = ['w0', 'w1'] as const;
 const ROWS = ['r0', 'r1', 'r2'] as const;
 
 /** Mirrors the real list: week heading followed by a rounded list of rows. */
 export function ExpensesSkeleton() {
+	const t = useTranslations('expenses.page');
 	return (
-		<div aria-busy="true" aria-label="Ausgaben werden geladen" className="flex flex-col gap-4">
+		<div aria-busy="true" aria-label={t('loading')} className="flex flex-col gap-4">
 			{WEEKS.map((week) => (
 				<div key={week} aria-hidden="true" className="flex flex-col gap-1.5">
 					<Skeleton className="h-3 w-16" />

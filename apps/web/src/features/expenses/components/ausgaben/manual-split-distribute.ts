@@ -1,4 +1,5 @@
 import { eurosToCents, formatCentsInput, parseEuroAmount } from '@/core/utils/amount';
+import type { Locale } from '@/shared/i18n/locale';
 
 /**
  * Pure remainder-distribution step behind "Rest aufteilen", kept out of the
@@ -14,12 +15,13 @@ export function distributeRemainderCents(
 	manualSplits: Readonly<Record<string, string>>,
 	members: ReadonlyArray<{ id: string }>,
 	remainderCents: number,
+	locale: Locale = 'de',
 ): Record<string, string> {
 	if (remainderCents === 0) return { ...manualSplits };
 	const isEmpty = (m: { id: string }) => {
 		const v = manualSplits[m.id];
 		if (!v) return true;
-		const n = parseEuroAmount(v);
+		const n = parseEuroAmount(v, locale);
 		return n === null || n === 0;
 	};
 	const emptyMembers = members.filter(isEmpty);
@@ -43,7 +45,7 @@ export function distributeRemainderCents(
 		let unappliedCents = 0;
 		const nextTargets: { id: string }[] = [];
 		for (const t of remainingTargets) {
-			const curEuros = parseEuroAmount(next[t.id] ?? '') ?? 0;
+			const curEuros = parseEuroAmount(next[t.id] ?? '', locale) ?? 0;
 			const curCents = eurosToCents(curEuros);
 			const addCents = perCent + (leftover > 0 ? 1 : leftover < 0 ? -1 : 0);
 			if (leftover > 0) leftover--;
@@ -52,7 +54,7 @@ export function distributeRemainderCents(
 			const nextCents = Math.max(0, curCents + addCents);
 			unappliedCents += curCents + addCents - nextCents;
 			if (nextCents > 0) nextTargets.push(t);
-			next[t.id] = formatCentsInput(nextCents);
+			next[t.id] = formatCentsInput(nextCents, locale);
 		}
 		remainingCents = unappliedCents;
 		remainingTargets = nextTargets;

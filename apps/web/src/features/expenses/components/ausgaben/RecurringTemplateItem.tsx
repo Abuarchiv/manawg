@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
 import { formatEuroCents } from '@/core/utils/money';
-import { formatRelativeTime, formatShortDate, parseTimestamp } from '@/core/utils/time';
+import { formatShortDate, parseTimestamp, relativeTimeMessage } from '@/core/utils/time';
 import type { RecurringExpense } from '@/features/expenses/expense-types';
 import {
 	canBookRecurringTemplate,
@@ -27,9 +27,12 @@ import {
 	getRecurringExpenseHref,
 	wasRecurringExpenseAlreadyCreated,
 } from '@/features/expenses/recurring-expenses';
+import { useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
 import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
+import { monoAmount } from './mono-amount';
 
 interface RecurringTemplateItemProps {
 	item: RecurringExpense;
@@ -61,6 +64,10 @@ export function RecurringTemplateItem({
 	onEdit,
 	onRequestDelete,
 }: RecurringTemplateItemProps): React.ReactElement {
+	const locale = useLocale();
+	const t = useTranslations('expenses.recurring');
+	const message = useMessage();
+	const money = (cents: number) => formatEuroCents(cents, item.currency, { locale });
 	const paused = Boolean(item.pausedAt);
 	const alreadyCreated = !paused && wasRecurringExpenseAlreadyCreated(item);
 	const nextDueAt = parseTimestamp(item.nextDueAt);
@@ -76,7 +83,7 @@ export function RecurringTemplateItem({
 					<DropdownMenuTrigger
 						render={<Button variant="ghost" size="icon" />}
 						disabled={pending}
-						aria-label={`Fixkosten-Aktionen: ${item.description}`}
+						aria-label={t('actionsAria', { description: item.description })}
 					>
 						<MoreHorizontal aria-hidden />
 					</DropdownMenuTrigger>
@@ -87,10 +94,10 @@ export function RecurringTemplateItem({
 									onClick={() => onEdit(item)}
 									disabled={pending}
 									className="min-h-11"
-									aria-label={`Fixkosten-Vorlage bearbeiten: ${item.description}`}
+									aria-label={t('editAria', { description: item.description })}
 								>
 									<Pencil aria-hidden />
-									Vorlage bearbeiten
+									{t('edit')}
 								</DropdownMenuItem>
 							)}
 							{canBook && (
@@ -98,9 +105,9 @@ export function RecurringTemplateItem({
 									render={<Link href={getRecurringExpenseHref(shareCode, item.id)} />}
 									disabled={pending || paused}
 									className="min-h-11"
-									aria-label={`Fixkosten-Ausgabe manuell erfassen: ${item.description}`}
+									aria-label={t('manualAria', { description: item.description })}
 								>
-									Manuell erfassen
+									{t('manual')}
 								</DropdownMenuItem>
 							)}
 							{canManage && (
@@ -109,10 +116,10 @@ export function RecurringTemplateItem({
 									onClick={() => onRequestDelete(item)}
 									disabled={pending}
 									className="min-h-11"
-									aria-label={`Fixkosten-Vorlage löschen: ${item.description}`}
+									aria-label={t('deleteAria', { description: item.description })}
 								>
 									<Trash2 aria-hidden />
-									Löschen
+									{t('delete')}
 								</DropdownMenuItem>
 							)}
 						</DropdownMenuGroup>
@@ -129,32 +136,32 @@ export function RecurringTemplateItem({
 			<ItemContent className="min-w-0">
 				<ItemTitle className="line-clamp-none break-words">{item.description}</ItemTitle>
 				<ItemDescription className="line-clamp-none">
-					<span className="font-mono tabular-nums">
-						{formatEuroCents(item.amountCents, item.currency)}
-					</span>{' '}
-					· bezahlt von {memberName(item.paidByMemberId)} ·{' '}
-					{paused ? 'pausiert' : `fällig ${formatShortDate(item.nextDueAt)}`}
-					{item.lastCreatedAt ? ` · zuletzt ${formatRelativeTime(item.lastCreatedAt)}` : ''}
+					{t.rich('summary', {
+						amount: monoAmount(money(item.amountCents)),
+						payer: memberName(item.paidByMemberId),
+						paused: paused ? 'true' : 'other',
+						date: formatShortDate(item.nextDueAt, undefined, locale),
+						hasLast: item.lastCreatedAt ? 'true' : 'other',
+						last: item.lastCreatedAt
+							? message(relativeTimeMessage(item.lastCreatedAt, Date.now(), locale))
+							: '',
+					})}
 				</ItemDescription>
 				<div className="flex flex-wrap gap-1.5 pt-1">
 					{item.splits.map((split) => (
 						<Badge key={split.debtorMemberId} variant="secondary" className="whitespace-normal">
-							{memberName(split.debtorMemberId)}:{' '}
-							<span className="font-mono tabular-nums">
-								{formatEuroCents(split.amountCents, item.currency)}
-							</span>
+							{t.rich('share', {
+								name: memberName(split.debtorMemberId),
+								amount: monoAmount(money(split.amountCents)),
+							})}
 						</Badge>
 					))}
 				</div>
 				{alreadyCreated && (
-					<ItemDescription className="line-clamp-none">
-						Für diese Fälligkeit vermutlich schon übernommen.
-					</ItemDescription>
+					<ItemDescription className="line-clamp-none">{t('probablyBooked')}</ItemDescription>
 				)}
 				{due && !alreadyCreated && !canBook && (
-					<ItemDescription className="line-clamp-none">
-						Nur beteiligte Personen können diese Fixkosten erfassen.
-					</ItemDescription>
+					<ItemDescription className="line-clamp-none">{t('onlyParticipants')}</ItemDescription>
 				)}
 			</ItemContent>
 			{!primary && menu}
@@ -165,10 +172,10 @@ export function RecurringTemplateItem({
 							className="flex-1"
 							onClick={() => onCreate(item)}
 							disabled={pending}
-							aria-label={`Erfassen: ${item.description}`}
+							aria-label={t('bookAria', { description: item.description })}
 						>
 							{creating && <Spinner data-icon="inline-start" />}
-							Erfassen
+							{t('book')}
 						</Button>
 					) : alreadyCreated ? (
 						<Link
@@ -179,12 +186,12 @@ export function RecurringTemplateItem({
 							)}
 							aria-disabled={pending || undefined}
 							tabIndex={pending ? -1 : undefined}
-							aria-label={`Fixkosten-Ausgabe prüfen: ${item.description}`}
+							aria-label={t('reviewAria', { description: item.description })}
 							onClick={(event) => {
 								if (pending) event.preventDefault();
 							}}
 						>
-							Prüfen
+							{t('review')}
 						</Link>
 					) : null}
 					{menu}
