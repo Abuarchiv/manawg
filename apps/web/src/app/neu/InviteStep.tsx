@@ -8,11 +8,12 @@ import { Spinner } from '@/components/ui/spinner';
 import {
 	type CreatedInvite,
 	createInvite,
-	inviteShareText,
+	inviteShareMessage,
 	shareInvite,
 } from '@/components/wg/invite-share';
 import { copyText } from '@/core/utils/clipboard';
 import { INVITE_VALID_DAYS } from '@/core/utils/invite-token';
+import { useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
 import { AlertTriangle, ArrowRight, Check, Copy, MessageCircle, Share2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -29,6 +30,7 @@ interface InviteStepProps {
 }
 
 export function InviteStep({ code, wgName, memberId, onSkip }: InviteStepProps) {
+	const render = useMessage();
 	const [invite, setInvite] = useState<CreatedInvite | null>(null);
 	const [loadError, setLoadError] = useState<string | null>(null);
 	const [attempt, setAttempt] = useState(0);
@@ -47,7 +49,7 @@ export function InviteStep({ code, wgName, memberId, onSkip }: InviteStepProps) 
 		void createInvite(code, memberId).then((result) => {
 			if (!active) return;
 			if (result.ok) setInvite(result.invite);
-			else setLoadError(result.message);
+			else setLoadError(render(result.message));
 		});
 		return () => {
 			active = false;
@@ -85,7 +87,7 @@ export function InviteStep({ code, wgName, memberId, onSkip }: InviteStepProps) 
 	const onShare = () =>
 		run(async () => {
 			if (!invite) return;
-			const outcome = await shareInvite(wgName, invite.url);
+			const outcome = await shareInvite(render(inviteShareMessage(wgName, invite.url)), invite.url);
 			if (outcome === 'cancelled') setState('idle');
 			else flash(outcome);
 		});
@@ -97,7 +99,7 @@ export function InviteStep({ code, wgName, memberId, onSkip }: InviteStepProps) 
 		});
 
 	const whatsappHref = invite
-		? `https://wa.me/?text=${encodeURIComponent(inviteShareText(wgName, invite.url))}`
+		? `https://wa.me/?text=${encodeURIComponent(render(inviteShareMessage(wgName, invite.url)))}`
 		: undefined;
 	const ready = invite !== null && !sharing;
 

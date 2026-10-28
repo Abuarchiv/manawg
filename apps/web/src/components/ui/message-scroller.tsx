@@ -6,6 +6,7 @@ import type * as React from 'react';
 
 import { Button } from '@/components/ui/button';
 import { ArrowDownIcon } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 function MessageScrollerProvider(
 	props: React.ComponentProps<typeof MessageScrollerPrimitive.Provider>,
@@ -86,6 +87,7 @@ function MessageScrollerButton({
 	...props
 }: React.ComponentProps<typeof MessageScrollerPrimitive.Button> &
 	Pick<React.ComponentProps<typeof Button>, 'variant' | 'size'>) {
+	const t = useTranslations('shell.ui');
 	return (
 		<MessageScrollerPrimitive.Button
 			data-slot="message-scroller-button"
@@ -104,7 +106,7 @@ function MessageScrollerButton({
 				<>
 					<ArrowDownIcon />
 					<span className="sr-only">
-						{direction === 'end' ? 'Zum Ende scrollen' : 'Zum Anfang scrollen'}
+						{direction === 'end' ? t('scrollToEnd') : t('scrollToStart')}
 					</span>
 				</>
 			)}

@@ -10,6 +10,7 @@ import {
 	DialogTitle,
 } from '@/components/ui/dialog';
 import type { LucideIcon } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useRef } from 'react';
 
 type ConfirmDialogVariant = 'default' | 'danger';
@@ -32,11 +33,12 @@ export function ConfirmDialog({
 	onConfirm,
 	title,
 	description,
-	confirmLabel = 'Bestätigen',
-	cancelLabel = 'Abbrechen',
+	confirmLabel,
+	cancelLabel,
 	variant = 'default',
 	icon: Icon,
 }: ConfirmDialogProps) {
+	const t = useTranslations('shell.ui');
 	const cancelBtnRef = useRef<HTMLButtonElement>(null);
 
 	const handleConfirm = () => {
@@ -67,7 +69,7 @@ export function ConfirmDialog({
 						variant="outline"
 						className="h-auto min-h-11 w-full whitespace-normal py-2"
 					>
-						{cancelLabel}
+						{cancelLabel ?? t('cancel')}
 					</Button>
 					<Button
 						type="button"
@@ -75,7 +77,7 @@ export function ConfirmDialog({
 						variant={variant === 'danger' ? 'destructive' : 'default'}
 						className="h-auto min-h-11 w-full whitespace-normal py-2"
 					>
-						{confirmLabel}
+						{confirmLabel ?? t('confirm')}
 					</Button>
 				</DialogFooter>
 			</DialogContent>

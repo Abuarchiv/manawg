@@ -3,30 +3,34 @@
 import { buttonVariants } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
+import { useText } from '@/components/wg/use-text';
 import type { WeekAgenda, WeekAgendaItem } from '@/composition/dashboard-insights';
 import { berlinDayKey } from '@/core/utils/berlin-day';
 import { MS_PER_DAY } from '@/core/utils/time';
+import { dateTimeFormat } from '@/shared/i18n/intl';
+import type { Locale } from '@/shared/i18n/locale';
 import { cn } from '@/shared/lib/cn';
 import { CalendarDays, ChevronRight, Sparkles } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 
 const AGENDA_VISIBLE = 4;
 
-const AGENDA_DAY_FORMATTER = new Intl.DateTimeFormat('de-DE', {
-	weekday: 'short',
-	day: 'numeric',
-	month: 'short',
-	timeZone: 'Europe/Berlin',
-});
-
-function formatAgendaDay(dayKey: string, todayKey: string): string {
-	if (dayKey === todayKey) return 'Heute';
-	const tomorrowKey = berlinDayKey(new Date(Date.parse(`${todayKey}T12:00:00Z`) + MS_PER_DAY));
-	if (dayKey === tomorrowKey) return 'Morgen';
-	return AGENDA_DAY_FORMATTER.format(new Date(`${dayKey}T12:00:00.000Z`));
-}
-
 function AgendaRow({ item, todayKey }: { item: WeekAgendaItem; todayKey: string }) {
+	const t = useTranslations('home.week');
+	const text = useText();
+	const locale = useLocale() as Locale;
+	const formatAgendaDay = (dayKey: string) => {
+		if (dayKey === todayKey) return t('today');
+		const tomorrowKey = berlinDayKey(new Date(Date.parse(`${todayKey}T12:00:00Z`) + MS_PER_DAY));
+		if (dayKey === tomorrowKey) return t('tomorrow');
+		return dateTimeFormat(locale, {
+			weekday: 'short',
+			day: 'numeric',
+			month: 'short',
+			timeZone: 'Europe/Berlin',
+		}).format(new Date(`${dayKey}T12:00:00.000Z`));
+	};
 	return (
 		<li className="flex min-w-0 items-center gap-2 pl-2 pr-2">
 			<span className="flex size-8 shrink-0 items-center justify-center text-muted-foreground">
@@ -43,7 +47,7 @@ function AgendaRow({ item, todayKey }: { item: WeekAgendaItem; todayKey: string 
 				<span className="flex min-w-0 flex-1 flex-col">
 					<span className="text-body font-medium leading-snug break-words">{item.title}</span>
 					<span className="text-meta text-muted-foreground">
-						{formatAgendaDay(item.dayKey, todayKey)} · {item.detail}
+						{formatAgendaDay(item.dayKey)} · {text(item.detail)}
 					</span>
 				</span>
 				<ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
@@ -87,6 +91,7 @@ export function WeekSection({
 	choresLoaded,
 	choresFailed,
 }: WeekSectionProps) {
+	const t = useTranslations('home.week');
 	const overdueVisible = agenda.overdue.slice(0, AGENDA_VISIBLE);
 	const upcomingVisible = agenda.upcoming.slice(0, AGENDA_VISIBLE);
 	return (
@@ -97,7 +102,7 @@ export function WeekSection({
 					tabIndex={-1}
 					className="font-heading min-w-0 text-xl font-semibold outline-none"
 				>
-					Diese Woche
+					{t('heading')}
 				</h2>
 				<Link
 					href={`${wgBaseHref}/kalender`}
@@ -106,14 +111,14 @@ export function WeekSection({
 						'ml-auto shrink-0 px-2 text-sm text-muted-foreground after:h-[44px] after:min-w-[44px]',
 					)}
 				>
-					Kalender <ChevronRight data-icon="inline-end" aria-hidden />
+					{t('calendar')} <ChevronRight data-icon="inline-end" aria-hidden />
 				</Link>
 			</div>
 
 			{((events.loading && !events.loaded) || (!choresLoaded && !choresFailed)) && (
 				<div
 					className="flex min-w-0 flex-col gap-2"
-					aria-label="Termine und Putzplan-Aufgaben werden geladen"
+					aria-label={t('loading')}
 					// biome-ignore lint/a11y/useSemanticElements: role="status" names the loading region without swapping the wrapper element to <output>.
 					role="status"
 				>
@@ -126,26 +131,24 @@ export function WeekSection({
 				<LoadErrorBanner
 					message={
 						events.loaded
-							? 'Termine konnten nicht aktualisiert werden. Angezeigte Einträge können veraltet sein.'
+							? t('eventsStale')
 							: choresLoaded
-								? 'Termine konnten nicht geladen werden. Putzplan-Aufgaben bleiben sichtbar.'
-								: 'Termine konnten nicht geladen werden.'
+								? t('eventsFailedChoresShown')
+								: t('eventsFailed')
 					}
 					onRetry={events.retry}
 					busy={events.loading}
-					retryLabel="Termine erneut laden"
+					retryLabel={t('retryEvents')}
 				/>
 			)}
 
 			{!choresLoaded && choresFailed && (
-				<p className="text-sm text-muted-foreground">
-					Putzplan-Aufgaben konnten nicht geladen werden.
-				</p>
+				<p className="text-sm text-muted-foreground">{t('choresFailed')}</p>
 			)}
 
 			{agenda.overdue.length > 0 && (
 				<div className="flex min-w-0 flex-col gap-2">
-					<h3 className="text-sm font-medium text-foreground">Überfällig</h3>
+					<h3 className="text-sm font-medium text-foreground">{t('overdue')}</h3>
 					<ul className="flex min-w-0 flex-col divide-y divide-border/60 rounded-xl border">
 						{overdueVisible.map((item) => (
 							<AgendaRow key={item.key} item={item} todayKey={todayKey} />
@@ -153,7 +156,7 @@ export function WeekSection({
 					</ul>
 					{agenda.overdue.length > overdueVisible.length && (
 						<MoreLink href={`${wgBaseHref}/putzen?filter=overdue`}>
-							Alle {agenda.overdue.length} überfälligen Aufgaben
+							{t('allOverdue', { count: String(agenda.overdue.length) })}
 						</MoreLink>
 					)}
 				</div>
@@ -162,7 +165,7 @@ export function WeekSection({
 			{upcomingVisible.length > 0 && (
 				<div className="flex min-w-0 flex-col gap-2">
 					{agenda.overdue.length > 0 && (
-						<h3 className="text-sm font-medium text-muted-foreground">Anstehend</h3>
+						<h3 className="text-sm font-medium text-muted-foreground">{t('upcoming')}</h3>
 					)}
 					<ul className="flex min-w-0 flex-col divide-y divide-border/60 rounded-xl border">
 						{upcomingVisible.map((item) => (
@@ -171,9 +174,7 @@ export function WeekSection({
 					</ul>
 					{agenda.upcoming.length > upcomingVisible.length && (
 						<MoreLink href={`${wgBaseHref}/kalender`}>
-							{agenda.upcoming.length - upcomingVisible.length === 1
-								? 'Ein weiterer Termin oder eine Aufgabe'
-								: `${agenda.upcoming.length - upcomingVisible.length} weitere Termine und Aufgaben`}
+							{t('moreUpcoming', { count: agenda.upcoming.length - upcomingVisible.length })}
 						</MoreLink>
 					)}
 				</div>
@@ -187,7 +188,7 @@ export function WeekSection({
 				agenda.upcoming.length === 0 && (
 					<p className="flex items-center gap-2 rounded-xl border p-3 text-sm text-muted-foreground">
 						<CalendarDays className="size-4 shrink-0" aria-hidden />
-						Bis Sonntag nichts geplant.
+						{t('nothingPlanned')}
 					</p>
 				)}
 		</section>

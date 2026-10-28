@@ -1,11 +1,12 @@
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/shared/lib/cn';
 import { ArrowLeft } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 
 interface BackLinkProps {
 	href: string;
-	/** Target in plain words, e.g. "Ausgaben"; becomes "Zurück zu Ausgaben". */
+	/** Target in plain words, e.g. "Expenses"; becomes "Back to Expenses". */
 	label: string;
 }
 
@@ -14,14 +15,15 @@ interface BackLinkProps {
  * navigation, so this is the only way back and must appear on every one of them.
  */
 export function BackLink({ href, label }: BackLinkProps) {
+	const t = useTranslations('shell.backLink');
 	return (
 		<Link
 			href={href}
-			aria-label={`Zurück zu ${label}`}
+			aria-label={t('label', { label })}
 			className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), '-ml-2')}
 		>
 			<ArrowLeft aria-hidden />
-			<span className="sr-only">Zurück zu {label}</span>
+			<span className="sr-only">{t('label', { label })}</span>
 		</Link>
 	);
 }

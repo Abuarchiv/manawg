@@ -60,7 +60,8 @@ export function useHomeChoreCompletion({
 		if (!choreId || !item.expectedNextDueAt || pendingChoreId) return;
 		const chore: ChoreOccurrence = {
 			id: choreId,
-			title: item.title,
+			// Chore rows carry the chore's own title as text.
+			title: typeof item.title === 'string' ? item.title : '',
 			nextDueAt: item.expectedNextDueAt,
 			assignedMemberId: item.expectedAssignedMemberId ?? null,
 		};

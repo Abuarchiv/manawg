@@ -9,34 +9,37 @@ import {
 	Sparkles,
 } from 'lucide-react';
 
+/** Labels are `shell.nav.*` catalog keys; `NavItem` and `SubNav` render them. */
+export const HOME_NAV_LABEL = 'shell.nav.home';
+
 export const WG_SECTIONS = [
 	{
-		label: 'Haushalt',
+		label: 'shell.nav.household',
 		iconKey: 'haushalt',
 		pages: [
-			{ slug: 'putzen', label: 'Putzplan', icon: Sparkles },
-			{ slug: 'einkauf', label: 'Einkäufe', icon: ListChecks },
-			{ slug: 'vorraete', label: 'Vorräte', icon: Package },
+			{ slug: 'putzen', label: 'shell.nav.cleaning', icon: Sparkles },
+			{ slug: 'einkauf', label: 'shell.nav.shopping', icon: ListChecks },
+			{ slug: 'vorraete', label: 'shell.nav.supplies', icon: Package },
 		],
 		related: [],
 	},
 	{
-		label: 'Finanzen',
+		label: 'shell.nav.finance',
 		iconKey: 'finanzen',
 		pages: [
-			{ slug: 'ausgaben', label: 'Ausgaben', icon: Receipt },
-			{ slug: 'abos', label: 'Fixkosten', icon: Repeat2 },
+			{ slug: 'ausgaben', label: 'shell.nav.expenses', icon: Receipt },
+			{ slug: 'abos', label: 'shell.nav.fixedCosts', icon: Repeat2 },
 		],
 		// Finance actions with their own page: no segment, but the tab stays active.
 		related: ['mahnungen', 'import', 'abrechnung'],
 	},
 	{
-		label: 'Austausch',
+		label: 'shell.nav.exchange',
 		iconKey: 'austausch',
 		pages: [
-			{ slug: 'pinnwand', label: 'Pinnwand', icon: Megaphone },
-			{ slug: 'chat', label: 'Chat', icon: MessageCircle },
-			{ slug: 'kalender', label: 'Kalender', icon: CalendarDays },
+			{ slug: 'pinnwand', label: 'shell.nav.noticeboard', icon: Megaphone },
+			{ slug: 'chat', label: 'shell.nav.chat', icon: MessageCircle },
+			{ slug: 'kalender', label: 'shell.nav.calendar', icon: CalendarDays },
 		],
 		related: [],
 	},

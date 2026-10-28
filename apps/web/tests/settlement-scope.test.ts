@@ -613,7 +613,8 @@ describe('currency-scoped accounting', () => {
 				absentMembers: [],
 				now: new Date('2026-01-15T12:00:00.000Z').getTime(),
 			});
-			assert.ok(today[0]?.detail.includes('CHF'));
+			const detail = today[0]?.detail;
+			assert.ok(typeof detail === 'object' && String(detail.values?.amount).includes('CHF'));
 		});
 	});
 });

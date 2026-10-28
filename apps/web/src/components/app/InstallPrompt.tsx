@@ -12,6 +12,7 @@ import {
 	triggerInstall,
 } from '@/shared/lib/pwa-install';
 import { X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { usePathname } from 'next/navigation';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { InstallButton } from './InstallButton';
@@ -44,6 +45,7 @@ function dismissedRecently(): boolean {
  * iOS safe-area-bottom so it doesn't sit under the home-indicator bar.
  */
 export function InstallPrompt() {
+	const t = useTranslations('shell.installPrompt');
 	const [event, setEvent] = useState<BeforeInstallEvent | null>(null);
 	const [manual, setManual] = useState(false);
 	const [hidden, setHidden] = useState(true);
@@ -130,7 +132,7 @@ export function InstallPrompt() {
 			// Use the measured BottomNav height so wrapped labels and zoomed text leave room.
 			style={{ bottom: 'calc(var(--app-nav-height, 5rem) + 0.5rem)' }}
 		>
-			<section aria-live="polite" aria-label="App installieren">
+			<section aria-live="polite" aria-label={t('label')}>
 				{/* Compact instead of a tall card: covers as little content above the navigation as possible. */}
 				<Card size="sm" className="gap-2 px-3 py-2.5">
 					<div className="flex min-w-0 items-center gap-2.5">
@@ -142,17 +144,15 @@ export function InstallPrompt() {
 							className="shrink-0"
 						/>
 						<div className="min-w-0 flex-1">
-							<CardTitle className="text-sm">ManaWG als App installieren</CardTitle>
-							<CardDescription className="text-meta">
-								Schneller starten, offline-fähig.
-							</CardDescription>
+							<CardTitle className="text-sm">{t('title')}</CardTitle>
+							<CardDescription className="text-meta">{t('description')}</CardDescription>
 						</div>
 						<Button
 							type="button"
 							onClick={dismiss}
 							variant="ghost"
 							size="icon-sm"
-							aria-label="Installationshinweis ausblenden"
+							aria-label={t('dismiss')}
 							className="shrink-0"
 						>
 							<X aria-hidden="true" />
@@ -160,10 +160,10 @@ export function InstallPrompt() {
 					</div>
 					{event ? (
 						<Button type="button" size="sm" onClick={install} className="w-full">
-							Jetzt installieren
+							{t('install')}
 						</Button>
 					) : (
-						<InstallButton variant="primary" label="So installierst du ManaWG" className="w-full" />
+						<InstallButton variant="primary" label={t('howTo')} className="w-full" />
 					)}
 				</Card>
 			</section>

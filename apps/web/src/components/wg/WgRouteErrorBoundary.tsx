@@ -13,6 +13,7 @@ import { captureException } from '@/core/infra/capture-client';
 import { isChunkLoadError, reloadOnStaleChunk } from '@/core/infra/stale-chunk';
 import { SUPPORT_MAILTO } from '@/shared/lib/support-mailto';
 import { TriangleAlert } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useRef } from 'react';
@@ -46,8 +47,9 @@ export function WgRouteErrorBoundary({
 	title,
 	body,
 	homeHref,
-	homeLabel = 'Zur Übersicht',
+	homeLabel,
 }: WgRouteErrorBoundaryProps) {
+	const t = useTranslations('shell.errorPage');
 	const params = useParams<{ code: string }>();
 	const code = params?.code ?? '';
 	const rootRef = useRef<HTMLDivElement>(null);
@@ -90,7 +92,7 @@ export function WgRouteErrorBoundary({
 									tabIndex={0}
 									// biome-ignore lint/a11y/useSemanticElements: <pre> must stay a preformatted block; role="region" names its scroll area.
 									role="region"
-									aria-label="Fehlerdetails"
+									aria-label={t('details')}
 									className="max-w-full overflow-auto rounded-lg border border-border bg-muted px-3 py-2 text-left text-xs text-foreground/75"
 								>
 									{error.message}
@@ -103,7 +105,7 @@ export function WgRouteErrorBoundary({
 									onClick={() => (isChunkLoadError(error) ? window.location.reload() : reset())}
 									className="w-full"
 								>
-									Erneut versuchen
+									{t('tryAgain')}
 								</Button>
 								<Button
 									variant="outline"
@@ -112,7 +114,7 @@ export function WgRouteErrorBoundary({
 									nativeButton={false}
 									className="w-full"
 								>
-									{homeLabel}
+									{homeLabel ?? t('overview')}
 								</Button>
 								<a
 									href={SUPPORT_MAILTO}
@@ -122,7 +124,7 @@ export function WgRouteErrorBoundary({
 										className: 'w-full',
 									})}
 								>
-									Fehler per E-Mail melden
+									{t('report')}
 								</a>
 							</div>
 						</EmptyContent>

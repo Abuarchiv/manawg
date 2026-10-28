@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useEffect, useRef } from 'react';
 
 /** Full-size image in a native modal dialog; Escape and a backdrop click close it. */
@@ -10,6 +11,7 @@ export function ImagePreviewDialog({
 	label,
 	onClose,
 }: { src: string; label: string; onClose: () => void }) {
+	const t = useTranslations('shell.imagePreview');
 	const previewDialogRef = useRef<HTMLDialogElement>(null);
 	const previewCloseButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -28,7 +30,7 @@ export function ImagePreviewDialog({
 	return (
 		<dialog
 			ref={previewDialogRef}
-			aria-label={`${label}-Vorschau`}
+			aria-label={t('dialog', { label })}
 			onCancel={(event) => {
 				event.preventDefault();
 				onClose();
@@ -44,14 +46,14 @@ export function ImagePreviewDialog({
 				ref={previewCloseButtonRef}
 				type="button"
 				onClick={onClose}
-				aria-label={`${label}-Vorschau schließen`}
+				aria-label={t('close', { label })}
 				className="absolute right-4 top-4"
 			>
 				<X aria-hidden />
 			</Button>
 			<img
 				src={src}
-				alt={`${label} groß`}
+				alt={t('alt', { label })}
 				className="max-h-full max-w-full rounded-lg object-contain"
 			/>
 		</dialog>

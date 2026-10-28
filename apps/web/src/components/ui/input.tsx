@@ -1,6 +1,7 @@
 import { cn } from '@/shared/lib/cn';
 import { Input as InputPrimitive } from '@base-ui/react/input';
 import { Eye, EyeOff } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import * as React from 'react';
 
 // A keyboard labelled "next" must move on, not submit a half-filled form
@@ -41,6 +42,7 @@ function InputField({ className, type, onKeyDown, ...props }: React.ComponentPro
 
 // Every password field offers the usual show/hide toggle; the field keeps its own id, name and autofill hints.
 function PasswordInput({ className, ...props }: React.ComponentProps<'input'>) {
+	const t = useTranslations('shell.ui');
 	const [visible, setVisible] = React.useState(false);
 	return (
 		<div className="relative w-full">
@@ -53,7 +55,7 @@ function PasswordInput({ className, ...props }: React.ComponentProps<'input'>) {
 				type="button"
 				data-password-toggle
 				aria-pressed={visible}
-				aria-label={visible ? 'Passwort verbergen' : 'Passwort anzeigen'}
+				aria-label={visible ? t('hidePassword') : t('showPassword')}
 				onClick={() => setVisible((value) => !value)}
 				className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-lg text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
 			>

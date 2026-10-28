@@ -5,7 +5,13 @@ import { isRejectedPendingUpload, pendingUploadErrorMessage } from './image-uplo
 test('a 4xx answer to the upload PUT is final and explained', () => {
 	const err = new Error('upload-failed:403');
 	assert.equal(isRejectedPendingUpload(err), true);
-	assert.match(pendingUploadErrorMessage(err) ?? '', /abgelehnt/);
+	assert.deepEqual(pendingUploadErrorMessage(err), {
+		key: 'common.errors.withSubject',
+		values: {
+			subject: { key: 'shell.upload.failed' },
+			detail: { key: 'shell.upload.rejected' },
+		},
+	});
 });
 
 test('timeouts, rate limits and 5xx answers stay silently retryable', () => {

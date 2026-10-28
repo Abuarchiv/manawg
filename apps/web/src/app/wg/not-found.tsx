@@ -9,16 +9,18 @@ import {
 } from '@/components/ui/empty';
 import { SearchX } from 'lucide-react';
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import Link from 'next/link';
 
 // Lives in app/wg (not app/wg/[code]): a not-found file does not catch notFound()
 // thrown by the layout of its own segment, the parent segment's boundary does.
-export const metadata: Metadata = {
-	title: 'WG nicht gefunden',
-	robots: { index: false, follow: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+	const t = await getTranslations('meta.wg');
+	return { title: t('notFound'), robots: { index: false, follow: false } };
+}
 
-export default function WgNotFound() {
+export default async function WgNotFound() {
+	const t = await getTranslations('shell.wgNotFound');
 	return (
 		<main
 			id="main"
@@ -36,11 +38,9 @@ export default function WgNotFound() {
 								data-slot="empty-title"
 								className="min-w-0 max-w-full text-base font-semibold [overflow-wrap:break-word]"
 							>
-								WG nicht gefunden
+								{t('title')}
 							</h1>
-							<EmptyDescription>
-								Der 8-stellige Code ist falsch oder die WG wurde gelöscht.
-							</EmptyDescription>
+							<EmptyDescription>{t('description')}</EmptyDescription>
 						</EmptyHeader>
 						<EmptyContent>
 							<Button
@@ -49,7 +49,7 @@ export default function WgNotFound() {
 								render={<Link href="/neu" />}
 								nativeButton={false}
 							>
-								Neue WG erstellen oder beitreten
+								{t('create')}
 							</Button>
 						</EmptyContent>
 					</Empty>
