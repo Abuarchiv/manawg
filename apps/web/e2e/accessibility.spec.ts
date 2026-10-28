@@ -66,6 +66,33 @@ test.describe('contrast tokens', () => {
 				const b = -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s;
 				return { r, g, b, a };
 			}
+			// The CSS pipeline also emits CIE lab() (D50), which Chromium keeps in computed styles.
+			const labM = str.match(/(?<!ok)lab\(([^)]+)\)/);
+			if (labM) {
+				const [main = '', alphaPart] = (labM[1] ?? '').split('/').map((s) => s.trim());
+				const [L = Number.NaN, A = Number.NaN, B = Number.NaN] = main
+					.split(/\s+/)
+					.map((s) => Number.parseFloat(s));
+				const a = alphaPart ? Number.parseFloat(alphaPart) : 1;
+				const eps = 216 / 24389;
+				const kappa = 24389 / 27;
+				const fy = (L + 16) / 116;
+				const fx = fy + A / 500;
+				const fz = fy - B / 200;
+				const x = 0.96422 * (fx ** 3 > eps ? fx ** 3 : (116 * fx - 16) / kappa);
+				const y = L > kappa * eps ? fy ** 3 : L / kappa;
+				const z = 0.82521 * (fz ** 3 > eps ? fz ** 3 : (116 * fz - 16) / kappa);
+				// Bradford D50 -> D65, then XYZ -> linear sRGB (CSS Color 4 matrices).
+				const X = 0.9554734215 * x - 0.0230984549 * y + 0.0632592432 * z;
+				const Y = -0.0283697093 * x + 1.009995398 * y + 0.0210414412 * z;
+				const Z = 0.0123140149 * x - 0.0205076493 * y + 1.3303659262 * z;
+				return {
+					r: 3.2409699419 * X - 1.5373831776 * Y - 0.4986107603 * Z,
+					g: -0.9692436363 * X + 1.8759675015 * Y + 0.0415550574 * Z,
+					b: 0.0556300797 * X - 0.2039769589 * Y + 1.0569715142 * Z,
+					a,
+				};
+			}
 			if (rgbM) {
 				const [red = Number.NaN, green = Number.NaN, blue = Number.NaN, alpha = 1] = (rgbM[1] ?? '')
 					.split(',')

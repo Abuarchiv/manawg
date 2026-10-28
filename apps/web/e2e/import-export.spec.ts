@@ -296,6 +296,8 @@ test.describe('import error notice', () => {
 		);
 
 		await page.goBack();
+		// The guard re-pushes its entry in the popstate handler; wait for it before the next back.
+		await expect(page.getByRole('heading', { name: 'Importquelle wählen' })).toBeVisible();
 		await page.goBack();
 		await expect(page.getByRole('alertdialog')).toContainText('Import-Eingaben verwerfen?');
 		// A slow device commits the navigation after the overlay markers are cleaned
