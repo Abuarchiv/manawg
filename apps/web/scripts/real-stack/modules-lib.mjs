@@ -1,4 +1,4 @@
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { request } from '@playwright/test';
 
@@ -13,9 +13,8 @@ if (!SERVICE) throw new Error('SUPABASE_SERVICE_ROLE_KEY missing (see supabase s
 if (!CRON) throw new Error('CRON_SECRET missing (same value the server runs with)');
 export const VERBOSE = process.env.VERBOSE === '1';
 export const sql = (q) =>
-	execSync(
-		`psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -Atc "${q.replace(/"/g, '\\"')}"`,
-	)
+	// No shell: the query reaches psql as one argument, whatever quotes it contains.
+	execFileSync('psql', ['postgresql://postgres:postgres@127.0.0.1:54322/postgres', '-Atc', q])
 		.toString()
 		.trim();
 export const stamp = Date.now();
