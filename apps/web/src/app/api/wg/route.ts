@@ -13,6 +13,7 @@ import { TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { requireAccount } from '@/core/guards/require-account';
 import { conflict, rateLimitResponse, serverError } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
+import { requestLocale } from '@/core/i18n/request-locale';
 import { readIdempotencyKey } from '@/core/idempotency-store';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, clientIpKey, rateLimitFailMode, registerLimiter } from '@/core/rate-limit';
@@ -41,6 +42,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 	const account = await requireAccount(req, 'api/wg POST');
 	if (!account.ok) return account.response;
 	const authUserId = account.user.id;
+	const locale = requestLocale(req);
 
 	// Defense in depth: middleware already covers /api/wg with wgWriteLimiter
 	// (30/min/IP). WG creation is rarer than other writes, so apply the
@@ -77,7 +79,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 		if (!createdWg) throw new TransactionAbort('insert_failed');
 		const [createdMember] = await tx
 			.insert(wgMembers)
-			.values({ wgId: createdWg.id, name: creatorName, role: 'admin', authUserId })
+			.values({ wgId: createdWg.id, name: creatorName, role: 'admin', authUserId, locale })
 			.returning();
 		if (!createdMember) throw new TransactionAbort('member_insert_failed');
 		return {

@@ -1,6 +1,7 @@
 'use client';
 
 import { InstallButton } from '@/components/app/InstallButton';
+import { LanguageSwitch } from '@/components/app/LanguageSwitch';
 import { useTheme } from '@/components/app/ThemeProvider';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
@@ -62,6 +63,7 @@ export function ProfileTab({ memberName, wgName, shareCode, memberId }: ProfileT
 							</ToggleGroupItem>
 						))}
 					</ToggleGroup>
+					<LanguageSwitch variant="segmented" />
 					<div className="grid [&>*]:w-full">
 						<InstallButton label="App installieren" />
 					</div>

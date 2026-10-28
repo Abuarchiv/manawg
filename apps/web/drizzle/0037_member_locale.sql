@@ -1,0 +1,2 @@
+ALTER TABLE "wg_members" ADD COLUMN "locale" text DEFAULT 'de' NOT NULL;--> statement-breakpoint
+ALTER TABLE "wg_members" ADD CONSTRAINT "wg_members_locale_check" CHECK ("wg_members"."locale" in ('de', 'en'));
