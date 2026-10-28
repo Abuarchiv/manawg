@@ -23,8 +23,8 @@ und `openssl`. Die laufende Instanz braucht etwa 500 MB Arbeitsspeicher; das Bau
 braucht einmalig etwa 3 GB.
 
 ```sh
-git clone https://github.com/Abuarchiv/manawg-app.git
-cd manawg-app
+git clone https://github.com/Abuarchiv/manawg.git
+cd manawg
 ./docker/setup.sh
 docker compose up -d
 ```
@@ -38,7 +38,7 @@ Jede Mail, auch die Anmeldecodes, landet in Mailpit unter [http://localhost:8025
 Wenn Port 80 belegt ist, setze in `.env` `HTTP_PORT=8080` und `APP_URL=http://localhost:8080` und
 starte noch einmal mit `docker compose up -d`.
 
-Compose lädt `ghcr.io/abuarchiv/manawg-app:<MANAWG_VERSION>` herunter, wenn es diesen Tag gibt.
+Compose lädt `ghcr.io/abuarchiv/manawg:<MANAWG_VERSION>` herunter, wenn es diesen Tag gibt.
 Sonst baut es das Image aus deinem Checkout, was etwa zehn Minuten dauert; die Meldung, dass es das
 Image nicht laden kann, ist dann harmlos.
 
@@ -51,7 +51,7 @@ einer, die Leute verwenden.
 
 | Dienst | Image | Aufgabe |
 | --- | --- | --- |
-| `app` | `ghcr.io/abuarchiv/manawg-app` | Die Next.js-App |
+| `app` | `ghcr.io/abuarchiv/manawg` | Die Next.js-App |
 | `db` | `supabase/postgres` | PostgreSQL mit den Rollen, die Auth und Storage erwarten |
 | `auth` | `supabase/gotrue` | Konten, Anmeldecodes, Mailbestätigung, Google-Anmeldung |
 | `storage` | `supabase/storage-api` | Private Bilder von Belegen und Ankündigungen, auf einem Volume gespeichert |
@@ -134,7 +134,7 @@ ein.
 | Geheimnisse (`POSTGRES_PASSWORD` … `CRON_SECRET`) | ja | Von `setup.sh` erzeugt. `ANON_KEY` und `SERVICE_ROLE_KEY` sind mit `JWT_SECRET` signiert; ändere alle drei zusammen |
 | `LEGAL_URL`, `SUPPORT_EMAIL` | für öffentliche Instanzen | Deine rechtlichen Seiten und die Adresse für Fehlermeldungen, siehe [Rechtliche Seiten und Support](#rechtliche-seiten-und-support) |
 | `MANAWG_VERSION` | nein | Image-Tag, der läuft; Compose lädt ihn herunter, wenn es ihn gibt, und baut sonst aus dem Checkout |
-| `MANAWG_IMAGE` | nein | Image-Repository, Standard `ghcr.io/abuarchiv/manawg-app`; für einen Fork oder eine private Registry |
+| `MANAWG_IMAGE` | nein | Image-Repository, Standard `ghcr.io/abuarchiv/manawg`; für einen Fork oder eine private Registry |
 | `STORAGE_BUCKET` | nein | Name des Bildspeicher-Buckets, Standard `private-images`. Ändere ihn nach dem ersten Start nicht |
 | `GOOGLE_ENABLED`, `GOOGLE_CLIENT_ID`, `GOOGLE_SECRET` | nein | Google-Anmeldung mit deinem eigenen OAuth-Client; Redirect-URI `<APP_URL>/auth/v1/callback`. Standardmäßig aus, die App zeigt dann keine Google-Buttons |
 | `VAPID_*` | nein | Push-Benachrichtigungen, siehe unten |
@@ -242,8 +242,8 @@ Forke das Repository auf GitHub (damit Vercel es deployen kann und du Updates ü
 klone dann deinen Fork und installiere:
 
 ```sh
-git clone https://github.com/<dein-name>/manawg-app.git
-cd manawg-app
+git clone https://github.com/<dein-name>/manawg.git
+cd manawg
 pnpm install
 ```
 
@@ -397,7 +397,7 @@ Jede Variable ist in [`apps/web/.env.example`](../apps/web/.env.example) beschri
 ### Auf Vercel aktualisieren
 
 ```sh
-git remote add upstream https://github.com/Abuarchiv/manawg-app.git   # einmalig
+git remote add upstream https://github.com/Abuarchiv/manawg.git   # einmalig
 git pull upstream main
 pnpm install
 pnpm --filter @manawg/web db:migrate   # mit exportiertem DATABASE_MIGRATION_URL
@@ -452,8 +452,8 @@ Für das Docker-Setup. Auf Vercel beginne mit [Deployment prüfen](#7-deployment
 
 ## Hilfe bekommen
 
-Fragen gehören in die [Discussions](https://github.com/Abuarchiv/manawg-app/discussions), Fehler in
-ein [Issue](https://github.com/Abuarchiv/manawg-app/issues/new/choose) mit den Startzeilen, die mit
+Fragen gehören in die [Discussions](https://github.com/Abuarchiv/manawg/discussions), Fehler in
+ein [Issue](https://github.com/Abuarchiv/manawg/issues/new/choose) mit den Startzeilen, die mit
 `[env]` beginnen. Bei einer Docker-Instanz füge die Ausgabe von `docker compose ps` und die Logs
 des fehlerhaften Dienstes (`docker compose logs <Dienst>`) bei. Entferne vorher Geheimnisse,
 Verbindungs-Strings und Schlüssel und poste sie nie.

@@ -22,8 +22,8 @@ You need Docker with Compose v2 (Docker Desktop, OrbStack or Docker Engine on Li
 3 GB once.
 
 ```sh
-git clone https://github.com/Abuarchiv/manawg-app.git
-cd manawg-app
+git clone https://github.com/Abuarchiv/manawg.git
+cd manawg
 ./docker/setup.sh
 docker compose up -d
 ```
@@ -37,7 +37,7 @@ including the sign-in codes, lands in Mailpit at [http://localhost:8025](http://
 running. If port 80 is taken, set `HTTP_PORT=8080` and `APP_URL=http://localhost:8080` in `.env`
 and run `docker compose up -d` again.
 
-Compose pulls `ghcr.io/abuarchiv/manawg-app:<MANAWG_VERSION>` when that tag exists. Otherwise it
+Compose pulls `ghcr.io/abuarchiv/manawg:<MANAWG_VERSION>` when that tag exists. Otherwise it
 builds the image from your checkout, which takes about ten minutes; the message that it cannot
 pull the image is harmless then.
 
@@ -49,7 +49,7 @@ test data behind, so run it on a local instance, not on one people use.
 
 | Service | Image | Does |
 | --- | --- | --- |
-| `app` | `ghcr.io/abuarchiv/manawg-app` | The Next.js app |
+| `app` | `ghcr.io/abuarchiv/manawg` | The Next.js app |
 | `db` | `supabase/postgres` | PostgreSQL with the roles that Auth and Storage expect |
 | `auth` | `supabase/gotrue` | Accounts, sign-in codes, mail confirmation, Google sign-in |
 | `storage` | `supabase/storage-api` | Private receipt and announcement images, kept on a volume |
@@ -127,7 +127,7 @@ Every setting is in `.env`, described in [`.env.example`](../.env.example). Afte
 | Secrets (`POSTGRES_PASSWORD` … `CRON_SECRET`) | yes | Created by `setup.sh`. `ANON_KEY` and `SERVICE_ROLE_KEY` are signed with `JWT_SECRET`; change all three together |
 | `LEGAL_URL`, `SUPPORT_EMAIL` | for public instances | Your legal pages and the address for error reports, see [Legal pages and support](#legal-pages-and-support) |
 | `MANAWG_VERSION` | no | Image tag to run; Compose pulls it when it exists and builds from the checkout otherwise |
-| `MANAWG_IMAGE` | no | Image repository, default `ghcr.io/abuarchiv/manawg-app`; for a fork or a private registry |
+| `MANAWG_IMAGE` | no | Image repository, default `ghcr.io/abuarchiv/manawg`; for a fork or a private registry |
 | `STORAGE_BUCKET` | no | Name of the image storage bucket, default `private-images`. Do not change it after the first start |
 | `GOOGLE_ENABLED`, `GOOGLE_CLIENT_ID`, `GOOGLE_SECRET` | no | Google sign-in with your own OAuth client; redirect URI `<APP_URL>/auth/v1/callback`. Off by default, and the app then shows no Google buttons |
 | `VAPID_*` | no | Push notifications, see below |
@@ -228,8 +228,8 @@ Fork the repository on GitHub (so Vercel can deploy it and you can pull updates)
 fork and install:
 
 ```sh
-git clone https://github.com/<you>/manawg-app.git
-cd manawg-app
+git clone https://github.com/<you>/manawg.git
+cd manawg
 pnpm install
 ```
 
@@ -379,7 +379,7 @@ Every variable is described in [`apps/web/.env.example`](../apps/web/.env.exampl
 ### Updating on Vercel
 
 ```sh
-git remote add upstream https://github.com/Abuarchiv/manawg-app.git   # once
+git remote add upstream https://github.com/Abuarchiv/manawg.git   # once
 git pull upstream main
 pnpm install
 pnpm --filter @manawg/web db:migrate   # with DATABASE_MIGRATION_URL exported
@@ -432,8 +432,8 @@ For the Docker setup. On Vercel, start with [Check the deployment](#7-check-the-
 
 ## Getting help
 
-Questions go to [Discussions](https://github.com/Abuarchiv/manawg-app/discussions), bugs to an
-[issue](https://github.com/Abuarchiv/manawg-app/issues/new/choose) with the boot log lines
+Questions go to [Discussions](https://github.com/Abuarchiv/manawg/discussions), bugs to an
+[issue](https://github.com/Abuarchiv/manawg/issues/new/choose) with the boot log lines
 starting with `[env]`. For a Docker instance, add the output of `docker compose ps` and the logs
 of the failing service (`docker compose logs <service>`). Remove secrets, connection strings and
 keys first, and never post them.
