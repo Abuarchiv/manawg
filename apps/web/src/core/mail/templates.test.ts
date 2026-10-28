@@ -180,6 +180,25 @@ test('English invitation and reminder use the English wording and formats', () =
 	assert.ok(reminder?.text.includes('−€23.40'));
 });
 
+test('the invitation caption lists three names and counts the rest once', () => {
+	const input = {
+		inviterName: 'Lina',
+		wgName: 'Kastanienallee',
+		inviteToken: 'tok',
+		memberNames: ['Lina', 'Jonas', 'Mira', 'Sam', 'Alex'],
+	};
+	assert.ok(
+		renderInvitationMail({ ...input, locale: 'en' }).text.includes(
+			'Lina, Jonas, Mira and 2 more are already members.',
+		),
+	);
+	assert.ok(
+		renderInvitationMail({ ...input, locale: 'de' }).text.includes(
+			'Lina, Jonas und Mira und 2 weitere sind schon dabei.',
+		),
+	);
+});
+
 test('German stays the default and an explicit de renders the same mail', () => {
 	assert.deepEqual(renderWelcomeMail({ firstName: 'Lina', locale: 'de' }), ALL[0]);
 	assert.deepEqual(renderAccountDeletedMail('de'), ALL[3]);
@@ -214,4 +233,18 @@ test('the Supabase auth templates render in both locales and balance every block
 			assert.ok(!/Impressum|Datenschutz/.test(en), name);
 		}
 	}
+});
+
+test('compose.yaml carries the same auth mail subjects as subjects.json', () => {
+	const subjects = JSON.parse(
+		readFileSync(new URL('subjects.json', SUPABASE_DIR), 'utf8'),
+	) as Record<string, string>;
+	const compose = readFileSync(new URL('../../../../../compose.yaml', import.meta.url), 'utf8');
+	const fromCompose = Object.fromEntries(
+		[...compose.matchAll(/GOTRUE_MAILER_SUBJECTS_(\w+): '(.*)'/g)].map(([, name, value]) => [
+			(name ?? '').toLowerCase().replace('_notification', ''),
+			value,
+		]),
+	);
+	assert.deepEqual(fromCompose, subjects);
 });

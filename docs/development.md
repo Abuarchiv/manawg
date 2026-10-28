@@ -18,7 +18,7 @@ apps/web/
                   features/<x>/server/ holds database and server-only code (import 'server-only')
   src/components/ reusable UI: ui/ (shadcn), animate-ui/ (motion variants), app/ (shell, PWA, theme), wg/ (WG-wide)
   src/fixtures/   in-memory fixture build for e2e (see Fixture mode); only src/app/ imports it
-  src/shared/     framework-light utilities (lib/, fonts, css): theme, brand, analytics
+  src/shared/     framework-light utilities (lib/, i18n/, fonts, css): theme, brand, analytics
   public/         static files: PWA manifest, service worker, icons, mail images
   drizzle/        SQL migrations (`pnpm --filter @manawg/web db:generate` / `db:migrate`)
   e2e/            Playwright specs (fixture mode needs no database)
@@ -114,6 +114,18 @@ lists the fixture WGs. The API client needs no fixture switch: it always sends
 `x-manawg-expected-member-id`, which the fixture API reads as the caller. Core, components and features receive plain options (`requireWgSignIn`)
 and never see fixture mode. Specs that seed the offline queue or open `/offline` before visiting a
 WG store that account as `manawg_account` first (`seedLocalAccount` in `e2e/support/helpers.ts`).
+
+## Languages
+
+The interface is available in German and English.
+
+- The text catalogs live in `apps/web/src/shared/i18n/messages/{de,en}/` and are registered in
+  `index.ts`. Every key goes into both.
+- German text is the source. It must not change when you change English.
+- `tests/i18n-catalog.test.ts` enforces equal keys and equal ICU argument names. Run it with
+  `pnpm test:unit`.
+- English copy follows [`docs/brand/glossary-en.md`](brand/glossary-en.md) and
+  [`docs/brand/design-language.md`](brand/design-language.md).
 
 ## Commands
 

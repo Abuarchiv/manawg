@@ -99,18 +99,18 @@ export default {
 	eventUpcoming: {
 		title: 'Event tomorrow',
 		allDay: 'Tomorrow in {wgName}: “{title}” on {when}.',
-		timed: 'Tomorrow in {wgName}: “{title}” at {when}.',
+		timed: 'Tomorrow in {wgName}: “{title}”, {when}.',
 	},
 	eventToday: {
 		title: 'Event today',
 		allDay: 'Today in {wgName}: “{title}” is all day.',
 		ongoing: 'Today in {wgName}: “{title}” is still on.',
-		timed: 'Today in {wgName}: “{title}” at {when}.',
+		timed: 'Today in {wgName}: “{title}”, {when}.',
 	},
 	lowStock: {
 		title: 'Supply running low',
-		body: '{itemName} is running low in {wgName}.',
-		bodyDetail: '{itemName} is running low ({quantity} of {threshold}) in {wgName}.',
+		body: 'Running low in {wgName}: {itemName}.',
+		bodyDetail: 'Running low in {wgName}: {itemName} ({quantity} of {threshold}).',
 	},
 	chatMessage: {
 		title: 'Chat – {wgName}',
