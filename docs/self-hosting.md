@@ -22,8 +22,8 @@ You need Docker with Compose v2 (Docker Desktop, OrbStack or Docker Engine on Li
 3 GB once.
 
 ```sh
-git clone https://github.com/Abuarchiv/manawg-app.git
-cd manawg-app
+git clone https://github.com/Abuarchiv/manawg.git
+cd manawg
 ./docker/setup.sh
 docker compose up -d
 ```
@@ -38,7 +38,7 @@ codes, lands in Mailpit at [http://localhost:8025](http://localhost:8025).
 running. If port 80 is taken, set `HTTP_PORT=8080` and `APP_URL=http://localhost:8080` in `.env`
 and run `docker compose up -d` again.
 
-While it builds, Compose reports that it cannot pull `ghcr.io/abuarchiv/manawg-app`; that is
+While it builds, Compose reports that it cannot pull `ghcr.io/abuarchiv/manawg`; that is
 expected. Once an image is published for `MANAWG_VERSION`, Compose pulls it instead and the first
 start takes a minute or two.
 
@@ -50,7 +50,7 @@ test data behind, so run it on a local instance, not on one people use.
 
 | Service | Image | Does |
 | --- | --- | --- |
-| `app` | `ghcr.io/abuarchiv/manawg-app` | The Next.js app |
+| `app` | `ghcr.io/abuarchiv/manawg` | The Next.js app |
 | `db` | `supabase/postgres` | PostgreSQL with the roles that Auth and Storage expect |
 | `auth` | `supabase/gotrue` | Accounts, sign-in codes, mail confirmation, Google sign-in |
 | `storage` | `supabase/storage-api` | Private receipt and announcement images, kept on a volume |
@@ -184,8 +184,8 @@ Fork the repository on GitHub (so Vercel can deploy it and you can pull updates)
 fork and install:
 
 ```sh
-git clone https://github.com/<you>/manawg-app.git
-cd manawg-app
+git clone https://github.com/<you>/manawg.git
+cd manawg
 pnpm install
 ```
 
@@ -335,7 +335,7 @@ Every variable is described in [`apps/web/.env.example`](../apps/web/.env.exampl
 ### Updating on Vercel
 
 ```sh
-git remote add upstream https://github.com/Abuarchiv/manawg-app.git   # once
+git remote add upstream https://github.com/Abuarchiv/manawg.git   # once
 git pull upstream main
 pnpm install
 pnpm --filter @manawg/web db:migrate   # with DATABASE_MIGRATION_URL exported
@@ -368,6 +368,6 @@ These apply to both ways. In Docker the settings are `LEGAL_URL` and `SUPPORT_EM
 
 ## Getting help
 
-Questions go to [Discussions](https://github.com/Abuarchiv/manawg-app/discussions), bugs to an
-[issue](https://github.com/Abuarchiv/manawg-app/issues/new/choose) with the boot log lines
+Questions go to [Discussions](https://github.com/Abuarchiv/manawg/discussions), bugs to an
+[issue](https://github.com/Abuarchiv/manawg/issues/new/choose) with the boot log lines
 starting with `[env]`. Never post secrets, connection strings or keys.

@@ -23,8 +23,8 @@ und `openssl`. Die laufende Instanz braucht etwa 500 MB Arbeitsspeicher; das Bau
 braucht einmalig etwa 3 GB.
 
 ```sh
-git clone https://github.com/Abuarchiv/manawg-app.git
-cd manawg-app
+git clone https://github.com/Abuarchiv/manawg.git
+cd manawg
 ./docker/setup.sh
 docker compose up -d
 ```
@@ -39,7 +39,7 @@ Jede Mail, auch die Anmeldecodes, landet in Mailpit unter [http://localhost:8025
 Wenn Port 80 belegt ist, setze in `.env` `HTTP_PORT=8080` und `APP_URL=http://localhost:8080` und
 starte noch einmal mit `docker compose up -d`.
 
-Während des Bauens meldet Compose, dass es `ghcr.io/abuarchiv/manawg-app` nicht laden kann; das ist
+Während des Bauens meldet Compose, dass es `ghcr.io/abuarchiv/manawg` nicht laden kann; das ist
 erwartet. Sobald ein Image für `MANAWG_VERSION` veröffentlicht ist, lädt Compose es stattdessen
 herunter, und der erste Start dauert nur ein bis zwei Minuten.
 
@@ -52,7 +52,7 @@ einer, die Leute verwenden.
 
 | Dienst | Image | Aufgabe |
 | --- | --- | --- |
-| `app` | `ghcr.io/abuarchiv/manawg-app` | Die Next.js-App |
+| `app` | `ghcr.io/abuarchiv/manawg` | Die Next.js-App |
 | `db` | `supabase/postgres` | PostgreSQL mit den Rollen, die Auth und Storage erwarten |
 | `auth` | `supabase/gotrue` | Konten, Anmeldecodes, Mailbestätigung, Google-Anmeldung |
 | `storage` | `supabase/storage-api` | Private Bilder von Belegen und Ankündigungen, auf einem Volume gespeichert |
@@ -198,8 +198,8 @@ Forke das Repository auf GitHub (damit Vercel es deployen kann und du Updates ü
 klone dann deinen Fork und installiere:
 
 ```sh
-git clone https://github.com/<you>/manawg-app.git
-cd manawg-app
+git clone https://github.com/<you>/manawg.git
+cd manawg
 pnpm install
 ```
 
@@ -353,7 +353,7 @@ Jede Variable ist in [`apps/web/.env.example`](../apps/web/.env.example) beschri
 ### Auf Vercel aktualisieren
 
 ```sh
-git remote add upstream https://github.com/Abuarchiv/manawg-app.git   # once
+git remote add upstream https://github.com/Abuarchiv/manawg.git   # once
 git pull upstream main
 pnpm install
 pnpm --filter @manawg/web db:migrate   # with DATABASE_MIGRATION_URL exported
@@ -388,6 +388,6 @@ Das gilt für beide Wege. Bei Docker heißen die Einstellungen `LEGAL_URL` und `
 
 ## Hilfe bekommen
 
-Fragen gehören in die [Discussions](https://github.com/Abuarchiv/manawg-app/discussions), Fehler in
-ein [Issue](https://github.com/Abuarchiv/manawg-app/issues/new/choose) mit den Startzeilen, die mit
+Fragen gehören in die [Discussions](https://github.com/Abuarchiv/manawg/discussions), Fehler in
+ein [Issue](https://github.com/Abuarchiv/manawg/issues/new/choose) mit den Startzeilen, die mit
 `[env]` beginnen. Poste nie Geheimnisse, Verbindungs-Strings oder Schlüssel.

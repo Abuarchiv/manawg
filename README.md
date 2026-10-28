@@ -11,16 +11,16 @@
   <a href="https://app.manawg.com">Try it</a> ·
   <a href="#self-hosting">Self-host</a> ·
   <a href="#contributing">Contribute</a> ·
-  <a href="https://github.com/Abuarchiv/manawg-app/discussions">Discussions</a>
+  <a href="https://github.com/Abuarchiv/manawg/discussions">Discussions</a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/Abuarchiv/manawg-app/actions/workflows/ci.yml"><img src="https://github.com/Abuarchiv/manawg-app/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/Abuarchiv/manawg/actions/workflows/ci.yml"><img src="https://github.com/Abuarchiv/manawg/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="License: Apache-2.0"></a>
   <a href="#self-hosting"><img src="https://img.shields.io/badge/self--host-docker%20compose-2496ED?logo=docker&amp;logoColor=white" alt="Self-host with Docker"></a>
-  <a href="https://scorecard.dev/viewer/?uri=github.com/Abuarchiv/manawg-app"><img src="https://api.scorecard.dev/projects/github.com/Abuarchiv/manawg-app/badge" alt="OpenSSF Scorecard"></a>
-  <a href="https://github.com/Abuarchiv/manawg-app/stargazers"><img src="https://img.shields.io/github/stars/Abuarchiv/manawg-app?style=flat" alt="GitHub stars"></a>
-  <a href="https://github.com/Abuarchiv/manawg-app/discussions"><img src="https://img.shields.io/github/discussions/Abuarchiv/manawg-app" alt="GitHub Discussions"></a>
+  <a href="https://scorecard.dev/viewer/?uri=github.com/Abuarchiv/manawg"><img src="https://api.scorecard.dev/projects/github.com/Abuarchiv/manawg/badge" alt="OpenSSF Scorecard"></a>
+  <a href="https://github.com/Abuarchiv/manawg/stargazers"><img src="https://img.shields.io/github/stars/Abuarchiv/manawg?style=flat" alt="GitHub stars"></a>
+  <a href="https://github.com/Abuarchiv/manawg/discussions"><img src="https://img.shields.io/github/discussions/Abuarchiv/manawg" alt="GitHub Discussions"></a>
 </p>
 
 <p align="center">
@@ -88,8 +88,8 @@ and try ManaWG next to it.
 A whole instance (app, database, sign-in, image storage) runs on any machine with Docker:
 
 ```sh
-git clone https://github.com/Abuarchiv/manawg-app.git
-cd manawg-app
+git clone https://github.com/Abuarchiv/manawg.git
+cd manawg
 ./docker/setup.sh            # creates .env with fresh secrets
 docker compose up -d
 ```
@@ -129,18 +129,18 @@ fixture data. [docs/development.md](docs/development.md) lists all commands and 
 Contributions are welcome: code, bug reports, documentation, translations and ideas.
 
 - **Start small.** Issues labelled
-  [good first issue](https://github.com/Abuarchiv/manawg-app/labels/good%20first%20issue) are
+  [good first issue](https://github.com/Abuarchiv/manawg/labels/good%20first%20issue) are
   scoped and described for a first pull request.
 - **Pick something bigger.** Issues labelled
-  [help wanted](https://github.com/Abuarchiv/manawg-app/labels/help%20wanted) are open to anyone.
+  [help wanted](https://github.com/Abuarchiv/manawg/labels/help%20wanted) are open to anyone.
 - **Ask first.** Questions and ideas go to
-  [Discussions](https://github.com/Abuarchiv/manawg-app/discussions).
+  [Discussions](https://github.com/Abuarchiv/manawg/discussions).
 
 [CONTRIBUTING.md](CONTRIBUTING.md) walks through your first pull request.
 
 ## Community and support
 
-- **Questions and ideas:** [Discussions](https://github.com/Abuarchiv/manawg-app/discussions).
+- **Questions and ideas:** [Discussions](https://github.com/Abuarchiv/manawg/discussions).
 - **Help and bug reports:** see [SUPPORT](.github/SUPPORT.md).
 - **Security:** report vulnerabilities privately, see [SECURITY.md](SECURITY.md).
 

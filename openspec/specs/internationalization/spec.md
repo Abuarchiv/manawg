@@ -1,12 +1,13 @@
-## Purpose
+# internationalization Specification
 
+## Purpose
 Let every person use ManaWG in German or English, with their own choice applied to the interface, server-generated messages and formatting, while German output stays unchanged.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Locale is resolved per request
 
-The app SHALL render in the locale from the `manawg_locale` cookie when it holds `de` or `en`. Without a valid cookie it SHALL use the first `Accept-Language` tag (by q value) whose primary subtag is `de` or `en`, and otherwise German. URLs SHALL NOT carry a locale. The document SHALL declare `lang="de"` for German and `lang="en-GB"` for English.
+The app SHALL render in the locale from the `manawg_locale` cookie when it holds `de` or `en`. Without a valid cookie it SHALL use the first `Accept-Language` tag (by q value) whose primary subtag is `de` or `en`. When the header names only other languages it SHALL use English, unless English is refused with `q=0`; without any language it SHALL use German. URLs SHALL NOT carry a locale. The document SHALL declare `lang="de"` for German and `lang="en-GB"` for English.
 
 #### Scenario: Cookie wins over the browser
 - **WHEN** a browser that prefers `de-DE` sends `manawg_locale=en`
@@ -16,8 +17,12 @@ The app SHALL render in the locale from the `manawg_locale` cookie when it holds
 - **WHEN** a browser without the cookie sends `Accept-Language: en-GB,en;q=0.9`
 - **THEN** the page SHALL render in English
 
-#### Scenario: Unknown language
+#### Scenario: Language without a translation
 - **WHEN** a request carries an invalid cookie and `Accept-Language: fr-FR`
+- **THEN** the page SHALL render in English
+
+#### Scenario: No language at all
+- **WHEN** a request carries neither a valid cookie nor an `Accept-Language` header
 - **THEN** the page SHALL render in German
 
 ### Requirement: German output does not change

@@ -3,7 +3,7 @@
 ## Reporting a vulnerability
 
 Please do not open a public issue. Report privately through
-[GitHub's private vulnerability reporting](https://github.com/Abuarchiv/manawg-app/security/advisories/new).
+[GitHub's private vulnerability reporting](https://github.com/Abuarchiv/manawg/security/advisories/new).
 If you cannot use GitHub, write to info@manawg.com.
 
 Include what is affected, how to reproduce it and what an attacker could do with it.

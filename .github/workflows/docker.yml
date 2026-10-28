@@ -1,7 +1,7 @@
 # Self-hosting image. Pull requests that touch the image or the paths the stack depends on, and
 # every push to main, build it for linux/amd64, scan it with Trivy and run the whole stack through
 # docker/smoke.sh. A tag vX.Y.Z builds linux/amd64, scans it with Trivy and only then builds
-# linux/amd64 and linux/arm64 and pushes them to ghcr.io/abuarchiv/manawg-app as X.Y.Z, X.Y, X and
+# linux/amd64 and linux/arm64 and pushes them to ghcr.io/abuarchiv/manawg as X.Y.Z, X.Y, X and
 # latest.
 name: Docker
 on:
@@ -33,7 +33,7 @@ concurrency:
   group: docker-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 env:
-  IMAGE: ghcr.io/abuarchiv/manawg-app
+  IMAGE: ghcr.io/abuarchiv/manawg
 jobs:
   check:
     if: ${{ !startsWith(github.ref, 'refs/tags/') }}

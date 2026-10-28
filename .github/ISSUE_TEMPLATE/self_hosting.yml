@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Please read the [self-hosting guide](https://github.com/Abuarchiv/manawg-app/blob/main/docs/self-hosting.md) first.
+        Please read the [self-hosting guide](https://github.com/Abuarchiv/manawg/blob/main/docs/self-hosting.md) first.
         Remove secrets from everything you paste: `.env` values, keys, passwords, connection strings.
   - type: dropdown
     id: setup

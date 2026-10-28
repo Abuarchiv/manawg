@@ -36,3 +36,19 @@ HEIC/HEIF and large photos SHALL be converted to JPEG (at most 2048 px) before u
 #### Scenario: Discard
 - **WHEN** a member discards the queue
 - **THEN** a confirmation with a summary SHALL appear first
+
+### Requirement: Members choose their language
+
+The profile settings SHALL offer a language choice between "Deutsch", "English" and "System", the languages shown in their own language. "System" SHALL clear the stored choice so the device language decides again, and it SHALL be selected while no choice is stored. While the device language decides, the account language for push and mail SHALL follow it. The choice SHALL be disabled while offline. Changing it SHALL apply to the whole app after a reload.
+
+#### Scenario: Switch to English in settings
+- **WHEN** a member selects "English" in the profile settings
+- **THEN** the app SHALL reload in English and the settings SHALL show "English" as selected
+
+#### Scenario: Offline
+- **WHEN** the device is offline
+- **THEN** the language choice SHALL be disabled with the offline hint
+
+#### Scenario: Back to the device language
+- **WHEN** a member who chose "English" on a German device selects "System"
+- **THEN** the stored choice SHALL be cleared and the app SHALL reload in German

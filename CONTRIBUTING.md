@@ -5,13 +5,13 @@ German. You do not need to be a developer to report a problem or fix a typo.
 
 ## Before you start
 
-- **Questions** and ideas you want to talk through first: [Discussions](https://github.com/Abuarchiv/manawg-app/discussions).
+- **Questions** and ideas you want to talk through first: [Discussions](https://github.com/Abuarchiv/manawg/discussions).
 - **First contribution:** issues labelled
-  [good first issue](https://github.com/Abuarchiv/manawg-app/labels/good%20first%20issue) are
-  small and well described; [help wanted](https://github.com/Abuarchiv/manawg-app/labels/help%20wanted)
+  [good first issue](https://github.com/Abuarchiv/manawg/labels/good%20first%20issue) are
+  small and well described; [help wanted](https://github.com/Abuarchiv/manawg/labels/help%20wanted)
   marks larger ones. Comment on the issue before you start, so nobody works on it twice.
 - **Bugs and self-hosting problems:** open an
-  [issue](https://github.com/Abuarchiv/manawg-app/issues/new/choose) with steps to reproduce. For
+  [issue](https://github.com/Abuarchiv/manawg/issues/new/choose) with steps to reproduce. For
   security problems use [SECURITY.md](SECURITY.md) instead.
 - **Small fixes** (typos, obvious bugs): open a pull request directly.
 - **Features and larger changes:** open an issue first and wait for a maintainer's answer. ManaWG
@@ -27,8 +27,8 @@ You need Node 22 and pnpm 9. No database and no accounts: fixture mode serves sa
 memory.
 
 ```sh
-git clone https://github.com/<you>/manawg-app.git   # your fork
-cd manawg-app
+git clone https://github.com/<you>/manawg.git   # your fork
+cd manawg
 corepack enable                                     # provides pnpm 9
 pnpm install
 pnpm --filter @manawg/web dev:fixtures
@@ -43,7 +43,7 @@ All commands and tests are in [docs/development.md](docs/development.md).
 ## Your first pull request
 
 1. Pick an issue, for example a
-   [good first issue](https://github.com/Abuarchiv/manawg-app/labels/good%20first%20issue), and
+   [good first issue](https://github.com/Abuarchiv/manawg/labels/good%20first%20issue), and
    comment that you are on it.
 2. Create a branch in your fork: `git switch -c fix-shopping-list-sort`. Keep the change focused
    on one thing.
@@ -63,7 +63,7 @@ All commands and tests are in [docs/development.md](docs/development.md).
    changes at a 320 px and a 390 px wide viewport, light and dark.
 
 A maintainer reviews, may ask for changes, and merges. Stuck at any step? Ask in the pull request
-or in [Discussions](https://github.com/Abuarchiv/manawg-app/discussions).
+or in [Discussions](https://github.com/Abuarchiv/manawg/discussions).
 
 ## Code conventions
 
