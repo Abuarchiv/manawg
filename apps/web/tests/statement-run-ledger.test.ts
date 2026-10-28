@@ -18,7 +18,6 @@ if (url) {
 	process.env.DATABASE_URL = url;
 }
 
-type Unsubscribe = typeof import('../src/features/expenses/server/statement-unsubscribe.ts');
 type Deps = {
 	db: typeof import('../src/core/db/index.ts').db;
 	statementEmails: typeof import('../src/core/db/index.ts').statementEmails;
@@ -26,7 +25,7 @@ type Deps = {
 	wgs: typeof import('../src/core/db/index.ts').wgs;
 	run: typeof import('../src/features/expenses/server/statement-run.ts').runStatementPlans;
 	eq: typeof import('drizzle-orm').eq;
-	disable: Unsubscribe['disableStatementEmail'];
+	disable: (memberId: string) => Promise<void>;
 };
 let d: Deps;
 const wgIds: string[] = [];
@@ -35,7 +34,7 @@ before(async () => {
 	if (!url) return;
 	const core = await import('../src/core/db/index.ts');
 	const orm = await import('drizzle-orm');
-	const unsubscribe = await import('../src/features/expenses/server/statement-unsubscribe.ts');
+	const unsubscribe = await import('../src/core/mail/unsubscribe.ts');
 	const runModule = await import('../src/features/expenses/server/statement-run.ts');
 	d = {
 		db: core.db,
@@ -44,7 +43,7 @@ before(async () => {
 		wgs: core.wgs,
 		run: runModule.runStatementPlans,
 		eq: orm.eq,
-		disable: unsubscribe.disableStatementEmail,
+		disable: (id) => unsubscribe.disableMailKind(id, 'statement'),
 	};
 });
 

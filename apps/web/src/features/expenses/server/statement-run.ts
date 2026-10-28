@@ -1,4 +1,5 @@
 import 'server-only';
+import { unsubscribeUrl } from '@/core/mail/unsubscribe';
 import { renderStatementMail } from '../statement-mail';
 import type { StatementRecipient } from '../statement-recipients';
 import {
@@ -12,7 +13,6 @@ import {
 } from './statement-ledger';
 import { loadStatementPlans, type WgStatementPlan } from './statement-plans';
 import { type MailTransport, type OutgoingMail, readAllowlist } from './statement-transport';
-import { unsubscribeUrl } from './statement-unsubscribe';
 
 export interface StatementRunSummary {
 	monthKey: string;
