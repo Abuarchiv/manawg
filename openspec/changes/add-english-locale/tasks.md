@@ -39,7 +39,7 @@
 - [ ] 3.9 Package I noticeboard and chat; verify English spec and localized chat amounts
 - [x] 3.10 Package J settings; verify English spec
 - [x] 3.11 Package K entry and auth; verify English spec and flag the consent sentence for owner review
-- [ ] 3.12 Package L offline with review flags and legacy prefixes; verify unit tests for each legacy prefix and English spec
+- [x] 3.12 Package L offline with review flags and legacy prefixes; verify unit tests for each legacy prefix and English spec
 
 ## 4. Server senders (parallel)
 

@@ -13,12 +13,11 @@ import {
 	readOfflineQueue,
 	syncOfflineActions,
 } from '@/core/offline/offline-client';
-import {
-	formatManualOfflineSyncResult,
-	getOfflineSyncFailureMessage,
-} from '@/core/offline/offline-copy';
+import { SYNC_NOT_STARTED_MESSAGE, manualSyncResultMessage } from '@/core/offline/offline-copy';
 import type { OfflineAction } from '@/core/offline/offline-queue';
+import { type Message, useMessage } from '@/shared/i18n/message';
 import { CloudOff, RefreshCw, RotateCw, Wifi } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { KnownWgsCard } from './KnownWgsCard';
@@ -36,13 +35,15 @@ import {
 // The session cookies are HttpOnly, so offline the account is the one this browser last loaded a
 // member for; online, /api/wg/mine decides.
 export function OfflineClient() {
+	const t = useTranslations('offline.page');
+	const message = useMessage();
 	const [online, setOnline] = useState(true);
 	const [knownWgs, setKnownWgs] = useState<KnownWg[]>([]);
 	const [inWg, setInWg] = useState(false);
 	const [queue, setQueue] = useState<OfflineAction[]>([]);
 	const [syncing, setSyncing] = useState(false);
 	const [rechecking, setRechecking] = useState(false);
-	const [message, setMessage] = useState<string | null>(null);
+	const [notice, setNotice] = useState<Message | null>(null);
 	const [status, setStatus] = useState<OfflineStatus>('checking');
 	const syncingRef = useRef(false);
 	const syncAbortRef = useRef<AbortController | null>(null);
@@ -56,11 +57,7 @@ export function OfflineClient() {
 		setKnownWgs(visibleKnownWgs(authUserId));
 		setQueue(mine);
 		// Queued by a different account (after an account switch): not shown, not sent.
-		setMessage(
-			authUserId && mine.length < all.length
-				? 'Aktionen eines anderen Kontos auf diesem Gerät werden hier nicht angezeigt.'
-				: null,
-		);
+		setNotice(authUserId && mine.length < all.length ? { key: 'offline.page.otherAccount' } : null);
 		return mine;
 	}, []);
 
@@ -71,7 +68,7 @@ export function OfflineClient() {
 		const localAuthUserId = getLocalAccount();
 		if (!current()) return [];
 		setOnline(!browserOffline);
-		setMessage(null);
+		setNotice(null);
 		if (browserOffline) {
 			const localQueue = showLocalData(localAuthUserId);
 			setStatus(localAuthUserId ? 'browser-offline' : 'unauthenticated');
@@ -149,7 +146,7 @@ export function OfflineClient() {
 		syncAbortRef.current = controller;
 		syncingRef.current = true;
 		setSyncing(true);
-		setMessage(null);
+		setNotice(null);
 		try {
 			const memberships = await getAccountMemberships(controller.signal);
 			if (controller.signal.aborted) return;
@@ -157,14 +154,14 @@ export function OfflineClient() {
 				setKnownWgs([]);
 				setQueue([]);
 				setStatus('unauthenticated');
-				setMessage('Melde dich an, bevor du Offline-Aktionen synchronisierst.');
+				setNotice({ key: 'offline.page.signInFirst' });
 				return;
 			}
 			const queuedMemberships = memberships.filter(({ code, memberId }) =>
 				queue.some((action) => action.shareCode === code && action.memberId === memberId),
 			);
 			if (queuedMemberships.length === 0) {
-				setMessage('Für diese Aktionen fehlt die passende Konto-WG. Sie bleiben gespeichert.');
+				setNotice({ key: 'offline.page.noMatchingFlat' });
 				return;
 			}
 			let synced = 0;
@@ -178,11 +175,11 @@ export function OfflineClient() {
 			}
 			if (controller.signal.aborted) return;
 			const nextQueue = await refresh();
-			setMessage(formatManualOfflineSyncResult(synced, nextQueue.length, { offlineLabel: false }));
+			setNotice(manualSyncResultMessage(synced, nextQueue.length));
 		} catch {
 			if (controller.signal.aborted) return;
 			await refresh();
-			setMessage(getOfflineSyncFailureMessage());
+			setNotice(SYNC_NOT_STARTED_MESSAGE);
 		} finally {
 			if (syncAbortRef.current === controller) syncAbortRef.current = null;
 			syncingRef.current = false;
@@ -212,7 +209,7 @@ export function OfflineClient() {
 								// At 200 % text size the label may wrap instead of being cut off.
 								className="h-auto min-w-0 shrink whitespace-normal text-center"
 							>
-								{statusLabel}
+								{message(statusLabel)}
 							</Badge>
 						</div>
 						<Button
@@ -222,7 +219,7 @@ export function OfflineClient() {
 							onClick={() => void recheck()}
 							disabled={rechecking}
 							aria-busy={rechecking}
-							aria-label="Offline-Status erneut prüfen"
+							aria-label={t('recheckLabel')}
 							className="shrink-0"
 						>
 							{rechecking ? (
@@ -234,7 +231,7 @@ export function OfflineClient() {
 							) : (
 								<RotateCw data-icon="inline-start" aria-hidden />
 							)}
-							Prüfen
+							{t('recheck')}
 						</Button>
 					</div>
 					<h1
@@ -242,9 +239,9 @@ export function OfflineClient() {
 						className="font-heading text-lg leading-6 font-semibold tracking-tight"
 						aria-live="polite"
 					>
-						{statusHeading}
+						{message(statusHeading)}
 					</h1>
-					<p className="text-sm text-muted-foreground">{statusDescription}</p>
+					<p className="text-sm text-muted-foreground">{message(statusDescription)}</p>
 					{lastWg && status !== 'unauthenticated' && (
 						<Button
 							size="lg"
@@ -254,12 +251,12 @@ export function OfflineClient() {
 								: { render: <Link href={wgHref(lastWg.code)} />, nativeButton: false })}
 							className="w-full"
 						>
-							Zurück zu {lastWg.name}
+							{t('backTo', { name: lastWg.name })}
 						</Button>
 					)}
 					{status === 'unauthenticated' && (
 						<Button size="lg" render={<Link href="/neu" />} nativeButton={false} className="w-full">
-							Anmelden
+							{t('signIn')}
 						</Button>
 					)}
 					{queue.length > 0 && hasRetryableQueue && (
@@ -267,11 +264,7 @@ export function OfflineClient() {
 							type="button"
 							onClick={syncNow}
 							disabled={syncing}
-							aria-label={
-								syncing
-									? 'Offline-Aktionen werden synchronisiert'
-									: 'Offline-Aktionen jetzt synchronisieren'
-							}
+							aria-label={syncing ? t('syncingLabel') : t('syncNowLabel')}
 							size="lg"
 							className="w-full"
 						>
@@ -280,14 +273,14 @@ export function OfflineClient() {
 							) : (
 								<RefreshCw data-icon="inline-start" aria-hidden />
 							)}
-							Jetzt synchronisieren
+							{t('syncNow')}
 						</Button>
 					)}
-					{message && (
+					{notice && (
 						<Alert>
-							<AlertTitle>Synchronisation</AlertTitle>
+							<AlertTitle>{t('syncTitle')}</AlertTitle>
 							<AlertDescription>
-								<output aria-live="polite">{message}</output>
+								<output aria-live="polite">{message(notice)}</output>
 							</AlertDescription>
 						</Alert>
 					)}
@@ -308,8 +301,12 @@ export function OfflineClient() {
 				{(status === 'browser-offline' || status === 'server-unreachable') && (
 					<p className="text-center text-xs leading-relaxed text-muted-foreground">
 						{queue.length > 0
-							? `${Array.from(new Set(queue.map(moduleLabel))).join(', ')} bleibt lokal gespeichert.`
-							: 'Lade die Seite neu, sobald du online bist.'}
+							? t('stays', {
+									modules: Array.from(
+										new Set(queue.map((action) => message(moduleLabel(action)))),
+									).join(', '),
+								})
+							: t('reloadOnline')}
 					</p>
 				)}
 			</div>

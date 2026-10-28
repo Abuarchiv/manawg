@@ -1,3 +1,4 @@
+import type { Message } from '@/shared/i18n/message';
 import type { OfflineAction, OfflineActionType } from './offline-action';
 
 export interface OfflineActionRequest {
@@ -7,13 +8,13 @@ export interface OfflineActionRequest {
 }
 
 export interface OfflineActionSummary {
-	title: string;
-	detail: string;
+	title: Message;
+	detail: Message;
 }
 
 export interface OfflineActionRisk {
-	title: string;
-	detail: string;
+	title: Message;
+	detail: Message;
 }
 
 /**
@@ -40,10 +41,33 @@ function pathSegment(value: unknown): string {
 	return encodeURIComponent(String(value));
 }
 
-const STALE_ACTION_RISK: OfflineActionRisk = {
-	title: 'Vor dem Senden prüfen',
-	detail: 'Prüfe den Eintrag, bevor du ihn erneut sendest.',
-};
+/** A user-written value as a message, or `fallback` when the payload has none. */
+function written(value: unknown, fallback: Message): Message {
+	return value == null
+		? fallback
+		: { key: 'offline.summary.verbatim', values: { text: String(value) } };
+}
+
+function risk(
+	name:
+		| 'stale'
+		| 'shoppingUpdate'
+		| 'announcement'
+		| 'absence'
+		| 'chore'
+		| 'choreComplete'
+		| 'expense'
+		| 'expenseUpdate'
+		| 'recurring'
+		| 'recurringAdvance',
+): OfflineActionRisk {
+	return {
+		title: { key: `offline.risk.${name}.title` },
+		detail: { key: `offline.risk.${name}.detail` },
+	};
+}
+
+const STALE_ACTION_RISK = risk('stale');
 
 export const offlineActionHandlers: Record<OfflineActionType, OfflineActionHandler> = {
 	'shopping.create': {
@@ -53,8 +77,8 @@ export const offlineActionHandlers: Record<OfflineActionType, OfflineActionHandl
 			body: { ...action.payload, addedByMemberId: action.memberId },
 		}),
 		summary: (action) => ({
-			title: 'Einkauf',
-			detail: String(action.payload.name ?? 'Neuer Artikel'),
+			title: { key: 'offline.summary.shopping.title' },
+			detail: written(action.payload.name, { key: 'offline.summary.shopping.fallback' }),
 		}),
 		// No type-specific risk hint for this action; falls back to the generic staleness warning.
 		risk: () => STALE_ACTION_RISK,
@@ -71,15 +95,16 @@ export const offlineActionHandlers: Record<OfflineActionType, OfflineActionHandl
 			},
 		}),
 		summary: (action) => ({
-			title: 'Einkauf',
-			detail: `${String(action.payload.name ?? 'Artikel')} ${
-				action.payload.bought === true ? 'abhaken' : 'wieder öffnen'
-			}`,
+			title: { key: 'offline.summary.shopping.title' },
+			detail: {
+				key: 'offline.summary.shoppingUpdate',
+				values: {
+					name: written(action.payload.name, { key: 'offline.summary.shopping.itemFallback' }),
+					bought: action.payload.bought === true ? 'yes' : 'no',
+				},
+			},
 		}),
-		risk: () => ({
-			title: 'Status prüfen',
-			detail: 'Prüfe kurz, ob der Einkauf inzwischen von jemand anderem geändert wurde.',
-		}),
+		risk: () => risk('shoppingUpdate'),
 	},
 
 	'announcement.create': {
@@ -91,13 +116,10 @@ export const offlineActionHandlers: Record<OfflineActionType, OfflineActionHandl
 			),
 		}),
 		summary: (action) => ({
-			title: 'Pinnwand-Beitrag',
-			detail: String(action.payload.content ?? 'Neuer Beitrag'),
+			title: { key: 'offline.summary.announcement.title' },
+			detail: written(action.payload.content, { key: 'offline.summary.announcement.fallback' }),
 		}),
-		risk: () => ({
-			title: 'Pinnwand prüfen',
-			detail: 'Prüfe kurz, ob Inhalt, Kategorie oder Status inzwischen überholt sind.',
-		}),
+		risk: () => risk('announcement'),
 	},
 
 	'absence.create': {
@@ -109,13 +131,10 @@ export const offlineActionHandlers: Record<OfflineActionType, OfflineActionHandl
 			),
 		}),
 		summary: () => ({
-			title: 'Abwesenheit',
-			detail: 'Rotation überspringt diese Person',
+			title: { key: 'offline.summary.absence.title' },
+			detail: { key: 'offline.summary.absence.detail' },
 		}),
-		risk: () => ({
-			title: 'Abwesenheit prüfen',
-			detail: 'Prüfe kurz, ob Zeitraum oder Putzplan inzwischen geändert wurden.',
-		}),
+		risk: () => risk('absence'),
 	},
 
 	'chore.create': {
@@ -125,13 +144,10 @@ export const offlineActionHandlers: Record<OfflineActionType, OfflineActionHandl
 			body: action.payload,
 		}),
 		summary: (action) => ({
-			title: 'Putzplan-Aufgabe',
-			detail: String(action.payload.title ?? 'Neue Aufgabe'),
+			title: { key: 'offline.summary.chore.title' },
+			detail: written(action.payload.title, { key: 'offline.summary.chore.fallback' }),
 		}),
-		risk: () => ({
-			title: 'Putzplan prüfen',
-			detail: 'Prüfe kurz, ob Aufgabe, Intervall oder Zuweisung inzwischen geändert wurden.',
-		}),
+		risk: () => risk('chore'),
 	},
 
 	'chore.complete': {
@@ -145,13 +161,10 @@ export const offlineActionHandlers: Record<OfflineActionType, OfflineActionHandl
 			},
 		}),
 		summary: () => ({
-			title: 'Putzplan',
-			detail: 'Aufgabe als erledigt markieren',
+			title: { key: 'offline.summary.choreComplete.title' },
+			detail: { key: 'offline.summary.choreComplete.detail' },
 		}),
-		risk: () => ({
-			title: 'Möglicher Konflikt',
-			detail: 'Prüfe kurz, ob die Aufgabe inzwischen schon erledigt oder neu zugewiesen wurde.',
-		}),
+		risk: () => risk('choreComplete'),
 	},
 
 	'expense.create': {
@@ -166,14 +179,10 @@ export const offlineActionHandlers: Record<OfflineActionType, OfflineActionHandl
 		},
 
 		summary: (action) => ({
-			title: 'Ausgabe',
-			detail: String(action.payload.description ?? 'Neue Ausgabe'),
+			title: { key: 'offline.summary.expense.title' },
+			detail: written(action.payload.description, { key: 'offline.summary.expense.fallback' }),
 		}),
-		risk: () => ({
-			title: 'Aufteilung prüfen',
-			detail:
-				'Wenn sich Mitglieder oder Beträge geändert haben, bearbeite die Ausgabe vor dem Senden.',
-		}),
+		risk: () => risk('expense'),
 	},
 
 	'expense.update': {
@@ -186,13 +195,12 @@ export const offlineActionHandlers: Record<OfflineActionType, OfflineActionHandl
 			};
 		},
 		summary: (action) => ({
-			title: 'Ausgabe aktualisieren',
-			detail: String(action.payload.description ?? 'Ausgabe'),
+			title: { key: 'offline.summary.expenseUpdate.title' },
+			detail: written(action.payload.description, {
+				key: 'offline.summary.expenseUpdate.fallback',
+			}),
 		}),
-		risk: () => ({
-			title: 'Version prüfen',
-			detail: 'Die Ausgabe wird nur aktualisiert, wenn sie seit dem Bearbeiten unverändert blieb.',
-		}),
+		risk: () => risk('expenseUpdate'),
 	},
 
 	'recurring.create': {
@@ -202,13 +210,10 @@ export const offlineActionHandlers: Record<OfflineActionType, OfflineActionHandl
 			body: action.payload,
 		}),
 		summary: (action) => ({
-			title: 'Fixkosten-Vorlage',
-			detail: String(action.payload.description ?? 'Neue Vorlage'),
+			title: { key: 'offline.summary.recurring.title' },
+			detail: written(action.payload.description, { key: 'offline.summary.recurring.fallback' }),
 		}),
-		risk: () => ({
-			title: 'Fixkosten prüfen',
-			detail: 'Prüfe Fälligkeit und Aufteilung, bevor die Vorlage gesendet wird.',
-		}),
+		risk: () => risk('recurring'),
 	},
 
 	'recurring.advance': {
@@ -223,12 +228,9 @@ export const offlineActionHandlers: Record<OfflineActionType, OfflineActionHandl
 			},
 		}),
 		summary: () => ({
-			title: 'Fixkosten-Vorlage',
-			detail: 'Fälligkeit nachholen',
+			title: { key: 'offline.summary.recurringAdvance.title' },
+			detail: { key: 'offline.summary.recurringAdvance.detail' },
 		}),
-		risk: () => ({
-			title: 'Fixkosten prüfen',
-			detail: 'Prüfe kurz, ob die Vorlage inzwischen schon weitergeschoben wurde.',
-		}),
+		risk: () => risk('recurringAdvance'),
 	},
 };

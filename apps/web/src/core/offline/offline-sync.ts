@@ -1,7 +1,13 @@
 import { isSessionExpired } from '@/core/http/error-codes';
 import { isIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
-import { IMAGE_REMOVED_ERROR, SERVER_CHECK_PREFIX } from './offline-failure-copy';
+import {
+	IMAGE_MISSING_STATE,
+	IMAGE_REMOVED_STATE,
+	noteState,
+	requestFailureState,
+	withFailureState,
+} from './offline-failure-copy';
 import {
 	PendingImageMissingError,
 	isPendingImageToken,
@@ -10,17 +16,12 @@ import {
 } from './offline-images';
 import {
 	type OfflineAction,
-	explainOfflineActionFailure,
 	getOfflineActionRequest,
 	shouldRetryOfflineAction,
 } from './offline-queue';
 import {
-	IDEMPOTENCY_KEY_ERROR,
-	MISSING_PENDING_IMAGE_ERROR,
-	REAUTH_REQUIRED_ERROR,
 	backfillIdempotencyKey,
 	createRecurringAdvanceRetry,
-	explainPendingImageUploadError,
 	getRecurringAdvancePayload,
 	isChoreAlreadyCompleted,
 	isRecurringAlreadyAdvanced,
@@ -29,12 +30,13 @@ import {
 	mergeSyncOutcomes,
 	needsManualOfflineResolution,
 	needsReviewAfterRequest,
+	pendingImageUploadFailure,
 	sameOfflineAction,
 } from './offline-replay-rules';
 import {
 	OFFLINE_QUEUE_EVENT,
 	OFFLINE_SYNCED_EVENT,
-	REVIEW_REQUIRED_ERROR,
+	REVIEW_REQUIRED_STATE,
 	persistOfflineQueue,
 	persistOfflineReviewIds,
 	persistSyncedIds,
@@ -179,12 +181,14 @@ async function runOfflineSync(
 		if (!isIdempotencyKey(idempotencyKey)) {
 			outcomes.set(action.id, {
 				snapshot: action,
-				retry: {
-					...action,
-					attempts: (action.attempts ?? 0) + 1,
-					lastAttemptAt: new Date(now).toISOString(),
-					lastError: IDEMPOTENCY_KEY_ERROR,
-				},
+				retry: withFailureState(
+					{
+						...action,
+						attempts: (action.attempts ?? 0) + 1,
+						lastAttemptAt: new Date(now).toISOString(),
+					},
+					noteState('idempotency'),
+				),
 			});
 			continue;
 		}
@@ -260,29 +264,32 @@ async function runOfflineSync(
 				recordSynced(readyAction);
 				outcomes.set(action.id, { snapshot: requestSnapshot, reviewOnEdit: true });
 			} else {
-				const failure = explainOfflineActionFailure(res.status, res.error);
-				// A rejected request gets the same answer on every replay; the "Server
-				// prüfen" prefix hands it to the settings queue instead of resending it
-				// every 15 minutes forever. The two explicit messages already tell the
-				// person what to do, so they stay unprefixed.
-				const message =
+				// A rejected request gets the same answer on every replay; holding it for review hands
+				// it to the settings queue instead of resending it every 15 minutes forever. The two
+				// explicit messages already tell the person what to do, so they are not held as a
+				// server answer.
+				const failureState =
 					res.error === 'member_context_changed'
-						? REAUTH_REQUIRED_ERROR
+						? noteState('reauth')
 						: res.error === 'image_removed'
-							? IMAGE_REMOVED_ERROR
-							: isTerminalReplayStatus(res.status) && !isSessionExpired(res.error)
-								? `${SERVER_CHECK_PREFIX} ${failure.title}: ${failure.detail}`
-								: `${failure.title}: ${failure.detail}`;
+							? IMAGE_REMOVED_STATE
+							: requestFailureState(
+									res.status,
+									res.error,
+									isTerminalReplayStatus(res.status) && !isSessionExpired(res.error),
+								);
 				outcomes.set(action.id, {
 					snapshot: requestSnapshot,
 					reviewOnEdit: res.status === 0 || res.status >= 500,
-					retry: {
-						...readyAction,
-						// An expired session is not the action's fault: no attempt, no review prefix.
-						attempts: (readyAction.attempts ?? 0) + (isSessionExpired(res.error) ? 0 : 1),
-						lastAttemptAt: new Date(now).toISOString(),
-						lastError: message,
-					},
+					// An expired session is not the action's fault: no attempt is counted.
+					retry: withFailureState(
+						{
+							...readyAction,
+							attempts: (readyAction.attempts ?? 0) + (isSessionExpired(res.error) ? 0 : 1),
+							lastAttemptAt: new Date(now).toISOString(),
+						},
+						failureState,
+					),
 				});
 				// The rate limit applies to the whole session: the remaining actions would
 				// also get 429 and only push out their own retry delay. The next sync sends them.
@@ -292,23 +299,20 @@ async function runOfflineSync(
 			}
 		} catch (err) {
 			if (options.signal?.aborted) break;
-			const missingPendingImage = err instanceof PendingImageMissingError;
-			const pendingImageUploadError = explainPendingImageUploadError(err);
-			const lastError = missingPendingImage
-				? MISSING_PENDING_IMAGE_ERROR
-				: (pendingImageUploadError ??
-					(() => {
-						const failure = explainOfflineActionFailure(0);
-						return `${failure.title}: ${failure.detail}`;
-					})());
+			const failureState =
+				err instanceof PendingImageMissingError
+					? IMAGE_MISSING_STATE
+					: (pendingImageUploadFailure(err) ?? requestFailureState(0, undefined, false));
 			outcomes.set(action.id, {
 				snapshot: requestSnapshot,
-				retry: {
-					...requestSnapshot,
-					attempts: (requestSnapshot.attempts ?? 0) + 1,
-					lastAttemptAt: new Date(now).toISOString(),
-					lastError,
-				},
+				retry: withFailureState(
+					{
+						...requestSnapshot,
+						attempts: (requestSnapshot.attempts ?? 0) + 1,
+						lastAttemptAt: new Date(now).toISOString(),
+					},
+					failureState,
+				),
 			});
 		}
 	}
@@ -334,7 +338,7 @@ async function runOfflineSync(
 		}
 		if (reviewIds.size > 0) persistOfflineReviewIds(storage, [...reviewIds]);
 		const queueToWrite = merged.map((action) =>
-			reviewIds.has(action.id) ? { ...action, lastError: REVIEW_REQUIRED_ERROR } : action,
+			reviewIds.has(action.id) ? withFailureState(action, REVIEW_REQUIRED_STATE) : action,
 		);
 		const flushedActionIds = syncedActionIds.filter(
 			(actionId) => !queueToWrite.some((action) => action.id === actionId),

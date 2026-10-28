@@ -31,23 +31,23 @@ import {
 	syncOfflineActions,
 	updateOfflineQueue,
 } from '@/core/offline/offline-client';
-import { formatOfflineQueueCount } from '@/core/offline/offline-copy';
+import { offlineQueueCountMessage } from '@/core/offline/offline-copy';
+import { titled } from '@/core/offline/offline-failure-copy';
 import { isPendingImageToken, removePendingImage } from '@/core/offline/offline-images';
 import {
 	type OfflineAction,
 	explainOfflineActionFailure,
 	getOfflineActionSummary,
 } from '@/core/offline/offline-queue';
+import type { Locale } from '@/shared/i18n/locale';
+import { type Message, useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
 import { Trash2 } from 'lucide-react';
+import { useLocale } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { OfflineQueueItem } from './OfflineQueueItem';
 import { SERVER_CHECKS, offlineActionInspectHref } from './offline-queue-server-checks';
-
-function discardSummary(item: OfflineAction): string {
-	const summary = getOfflineActionSummary(item);
-	return summary.detail || summary.title;
-}
 
 export function OfflineQueueSection({
 	shareCode,
@@ -56,9 +56,12 @@ export function OfflineQueueSection({
 	shareCode: string;
 	memberId: string;
 }) {
+	const t = useTranslations('offline.queue');
+	const message = useMessage();
+	const locale = useLocale() as Locale;
 	const [items, setItems] = useState<OfflineAction[]>([]);
 	const [syncing, setSyncing] = useState(false);
-	const [conflictNotes, setConflictNotes] = useState<Record<string, string>>({});
+	const [conflictNotes, setConflictNotes] = useState<Record<string, Message>>({});
 	const [checkingServerIds, setCheckingServerIds] = useState<Set<string>>(new Set());
 	const [itemToDiscard, setItemToDiscard] = useState<OfflineAction | null>(null);
 	const syncingRef = useRef(false);
@@ -80,6 +83,11 @@ export function OfflineQueueSection({
 		return () => window.removeEventListener(OFFLINE_QUEUE_EVENT, refresh);
 	}, [refresh]);
 
+	function discardSummary(item: OfflineAction): string {
+		const summary = getOfflineActionSummary(item);
+		return message(summary.detail) || message(summary.title);
+	}
+
 	async function remove(item: OfflineAction): Promise<void> {
 		const id = item.id;
 		const saved = await updateOfflineQueue((actions) =>
@@ -88,7 +96,7 @@ export function OfflineQueueSection({
 		if (!saved) {
 			setConflictNotes((current) => ({
 				...current,
-				[id]: 'Offline-Speicher ist blockiert. Die Aktion konnte nicht verworfen werden.',
+				[id]: { key: 'offline.queue.storageBlockedDiscard' },
 			}));
 			return;
 		}
@@ -115,14 +123,14 @@ export function OfflineQueueSection({
 		if (!saved) {
 			setConflictNotes((current) => ({
 				...current,
-				[id]: 'Offline-Speicher ist blockiert. Der Anhang konnte nicht entfernt werden.',
+				[id]: { key: 'offline.queue.storageBlockedAttachment' },
 			}));
 			return;
 		}
 		dropPendingImage(imageUrl);
 		setConflictNotes((current) => ({
 			...current,
-			[id]: 'Anhang entfernt. Die Offline-Aktion kann wieder synchronisiert werden.',
+			[id]: { key: 'offline.queue.attachmentRemoved' },
 		}));
 		refresh();
 	}
@@ -147,8 +155,7 @@ export function OfflineQueueSection({
 		) {
 			setConflictNotes((current) => ({
 				...current,
-				[item.id]:
-					'Es existiert bereits ein anderer ungespeicherter Formular-Entwurf für dieses Modul. Öffne das Formular, speichere oder verwerfe ihn, und bearbeite dann den Eintrag in der Warteschlange.',
+				[item.id]: { key: 'offline.queue.draftExists' },
 			}));
 			return;
 		}
@@ -156,28 +163,23 @@ export function OfflineQueueSection({
 		if (!saved) {
 			setConflictNotes((current) => ({
 				...current,
-				[item.id]:
-					'Offline-Speicher ist blockiert. Der Entwurf konnte nicht zum Bearbeiten geöffnet werden.',
+				[item.id]: { key: 'offline.queue.storageBlockedDraft' },
 			}));
 			return;
 		}
 		window.location.assign(editHref(item, draft));
 	}
 
-	function setConflictNote(id: string, note: string): void {
+	function setConflictNote(id: string, note: Message): void {
 		setConflictNotes((current) => ({ ...current, [id]: note }));
 	}
 
 	function setServerCheckError(id: string, status: number, error: string): void {
 		if (error === 'not_a_member' || error === 'wg_not_found' || error === 'invalid_share_code') {
-			const failure = explainOfflineActionFailure(status, error);
-			setConflictNote(id, `${failure.title}: ${failure.detail}`);
+			setConflictNote(id, titled(explainOfflineActionFailure(status, error)));
 			return;
 		}
-		setConflictNote(
-			id,
-			'Server-Vergleich konnte nicht geladen werden. Versuche es erneut, bevor du diese Aktion sendest.',
-		);
+		setConflictNote(id, { key: 'offline.queue.compareFailed' });
 	}
 
 	async function checkServer(item: OfflineAction): Promise<void> {
@@ -197,10 +199,7 @@ export function OfflineQueueSection({
 	async function checkServerInner(item: OfflineAction): Promise<void> {
 		const check = SERVER_CHECKS[item.type];
 		if (!check) {
-			setConflictNote(
-				item.id,
-				'Server-Vergleich bereit: bearbeite den Entwurf, wenn sich Inhalt oder Aufteilung geändert haben.',
-			);
+			setConflictNote(item.id, { key: 'offline.queue.compareReady' });
 			return;
 		}
 		const res = await apiFetch<unknown>(`/api/wg/${encodedShareCode}/${check.path}`, { memberId });
@@ -208,7 +207,7 @@ export function OfflineQueueSection({
 			setServerCheckError(item.id, res.status, res.error);
 			return;
 		}
-		setConflictNote(item.id, check.note(item.payload, res.data as never));
+		setConflictNote(item.id, check.note(item.payload, res.data as never, locale));
 	}
 
 	async function retry(): Promise<void> {
@@ -225,7 +224,7 @@ export function OfflineQueueSection({
 	}
 
 	return (
-		<Section title="Offline-Warteschlange">
+		<Section title={t('title')}>
 			<div className="grid gap-2 p-3">
 				<div
 					className={cn(
@@ -233,21 +232,19 @@ export function OfflineQueueSection({
 						hasRetryableItems && 'min-h-11',
 					)}
 				>
-					<p className="text-muted-foreground text-xs">{formatOfflineQueueCount(items.length)}</p>
+					<p className="text-muted-foreground text-xs">
+						{message(offlineQueueCountMessage(items.length))}
+					</p>
 					{hasRetryableItems && (
 						<Button
 							type="button"
 							variant="outline"
 							onClick={() => void retry()}
 							disabled={syncing}
-							aria-label={
-								syncing
-									? 'Offline-Warteschlange wird synchronisiert'
-									: 'Offline-Warteschlange erneut synchronisieren'
-							}
+							aria-label={syncing ? t('syncingLabel') : t('retryLabel')}
 						>
 							{syncing && <Spinner aria-hidden />}
-							Erneut versuchen
+							{t('retry')}
 						</Button>
 					)}
 				</div>
@@ -281,14 +278,13 @@ export function OfflineQueueSection({
 						<AlertDialogMedia>
 							<Trash2 aria-hidden />
 						</AlertDialogMedia>
-						<AlertDialogTitle>Offline-Aktion verwerfen?</AlertDialogTitle>
+						<AlertDialogTitle>{t('discardTitle')}</AlertDialogTitle>
 						<AlertDialogDescription>
-							{itemToDiscard &&
-								`„${discardSummary(itemToDiscard)}“ wurde noch nicht gesendet und lässt sich nach dem Verwerfen nicht wiederherstellen.`}
+							{itemToDiscard && t('discardBody', { summary: discardSummary(itemToDiscard) })}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogCancel autoFocus>Behalten</AlertDialogCancel>
+						<AlertDialogCancel autoFocus>{t('keep')}</AlertDialogCancel>
 						<AlertDialogAction
 							variant="destructive"
 							onClick={() => {
@@ -296,7 +292,7 @@ export function OfflineQueueSection({
 								setItemToDiscard(null);
 							}}
 						>
-							Verwerfen
+							{t('discard')}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>

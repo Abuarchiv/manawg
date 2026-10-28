@@ -2,7 +2,7 @@ import { belongsToAccount, getLocalAccount, setLocalAccount } from '@/core/auth/
 import { safeLocalStorage } from '@/core/utils/browser';
 import { isRecord } from '@/core/utils/is-record';
 import { isOfflineAction } from './offline-action-guard';
-import { SERVER_CHECK_PREFIX } from './offline-failure-copy';
+import { type FailureState, SERVER_CHECK_PREFIX, withFailureState } from './offline-failure-copy';
 import {
 	type OfflineAction,
 	type OfflineActionType,
@@ -37,9 +37,25 @@ export const syncedAfterFailedQueueSave = new Set<string>();
 export const reviewAfterFailedQueueSave = new Set<string>();
 // This fallback lasts for the current page only; recovery across reloads would need IndexedDB.
 let cachedOfflineQueue: OfflineAction[] | null = null;
-export const REVIEW_REQUIRED_ERROR = `${SERVER_CHECK_PREFIX} Die erste Version kann bereits gespeichert sein. Die Bearbeitung wurde nicht gesendet. Vergleiche den WG-Eintrag und verwirf diese Aktion erst danach; lege benötigte Änderungen neu an.`;
-const REPLAY_EXPIRED_ERROR = `${SERVER_CHECK_PREFIX} Die sichere Wiederholungsfrist ist abgelaufen. Diese Aktion kann bereits gespeichert sein und wird nicht erneut gesendet. Vergleiche den WG-Eintrag und verwirf diese Aktion erst danach; lege nur fehlende Änderungen neu an.`;
-const INVALID_ACTION_TIME_ERROR = `${SERVER_CHECK_PREFIX} Der Zeitpunkt dieser Aktion ist unklar. Sie kann bereits gespeichert sein und wird nicht erneut gesendet. Vergleiche den WG-Eintrag und verwirf diese Aktion erst danach; lege nur fehlende Änderungen neu an.`;
+const REVIEW_REQUIRED_ERROR = `${SERVER_CHECK_PREFIX} Die erste Version kann bereits gespeichert sein. Die Bearbeitung wurde nicht gesendet. Vergleiche den WG-Eintrag und verwirf diese Aktion erst danach; lege benötigte Änderungen neu an.`; // i18n-ignore persisted text
+const REPLAY_EXPIRED_ERROR = `${SERVER_CHECK_PREFIX} Die sichere Wiederholungsfrist ist abgelaufen. Diese Aktion kann bereits gespeichert sein und wird nicht erneut gesendet. Vergleiche den WG-Eintrag und verwirf diese Aktion erst danach; lege nur fehlende Änderungen neu an.`; // i18n-ignore persisted text
+const INVALID_ACTION_TIME_ERROR = `${SERVER_CHECK_PREFIX} Der Zeitpunkt dieser Aktion ist unklar. Sie kann bereits gespeichert sein und wird nicht erneut gesendet. Vergleiche den WG-Eintrag und verwirf diese Aktion erst danach; lege nur fehlende Änderungen neu an.`; // i18n-ignore persisted text
+
+export const REVIEW_REQUIRED_STATE: FailureState = {
+	lastError: REVIEW_REQUIRED_ERROR,
+	lastErrorMessage: { key: 'offline.state.reviewRequired' },
+	needsReview: 'server',
+};
+const REPLAY_EXPIRED_STATE: FailureState = {
+	lastError: REPLAY_EXPIRED_ERROR,
+	lastErrorMessage: { key: 'offline.state.replayExpired' },
+	needsReview: 'server',
+};
+const INVALID_ACTION_TIME_STATE: FailureState = {
+	lastError: INVALID_ACTION_TIME_ERROR,
+	lastErrorMessage: { key: 'offline.state.invalidActionTime' },
+	needsReview: 'server',
+};
 
 type OfflineQueueLockResult<T> = { acquired: true; value: T } | { acquired: false };
 
@@ -153,14 +169,14 @@ function clearReviewIdsForMissingActions(actions: OfflineAction[], storage: Stor
 	}
 }
 
-export function replayWindowReviewError(action: OfflineAction): string | null {
+export function replayWindowReviewError(action: OfflineAction): FailureState | null {
 	const createdAt = Date.parse(action.createdAt);
 	const now = Date.now();
 	if (!Number.isFinite(createdAt) || createdAt > now + OFFLINE_REPLAY_CLOCK_SKEW_MS) {
-		return INVALID_ACTION_TIME_ERROR;
+		return INVALID_ACTION_TIME_STATE;
 	}
 	// Creation is conservative: a crashed first attempt may never have saved attempt metadata.
-	return now - createdAt >= OFFLINE_REPLAY_MAX_AGE_MS ? REPLAY_EXPIRED_ERROR : null;
+	return now - createdAt >= OFFLINE_REPLAY_MAX_AGE_MS ? REPLAY_EXPIRED_STATE : null;
 }
 
 function filterOfflineQueue(actions: OfflineAction[]): OfflineAction[] {
@@ -170,10 +186,10 @@ function filterOfflineQueue(actions: OfflineAction[]): OfflineAction[] {
 		.filter((action) => !syncedAfterFailedQueueSave.has(action.id))
 		.filter((action) => !persistedSynced.has(action.id))
 		.map((action) => {
-			const lastError =
+			const state =
 				replayWindowReviewError(action) ??
-				(reviewIds.has(action.id) ? REVIEW_REQUIRED_ERROR : null);
-			return lastError ? { ...action, lastError } : action;
+				(reviewIds.has(action.id) ? REVIEW_REQUIRED_STATE : null);
+			return state ? withFailureState(action, state) : action;
 		});
 }
 

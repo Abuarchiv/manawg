@@ -1,26 +1,16 @@
 import { createIdempotencyKey, isIdempotencyKey } from '@/core/http/idempotency-key';
 import {
-	IMAGE_MISSING_PREFIX,
-	IMAGE_REMOVED_ERROR,
-	IMAGE_REMOVED_PREFIX,
-	SERVER_CHECK_PREFIX,
+	type FailureState,
+	IMAGE_REMOVED_STATE,
+	holdsImageReview,
+	holdsServerReview,
+	noteState,
+	requestFailureState,
 } from './offline-failure-copy';
-import {
-	type OfflineAction,
-	explainOfflineActionFailure,
-	serializeOfflineAction,
-} from './offline-queue';
+import { type OfflineAction, serializeOfflineAction } from './offline-queue';
 import { replayWindowReviewError } from './offline-store';
 
 /** How a replay attempt is judged: which outcomes count as synced, retried or held for review. */
-
-export const MISSING_PENDING_IMAGE_ERROR = `${IMAGE_MISSING_PREFIX} Der lokale Anhang ist nicht mehr verfügbar. Entferne den Anhang in der Offline-Warteschlange oder wähle das Bild erneut aus.`;
-const RECURRING_ADVANCE_ERROR =
-	'Fixkosten-Vorlage nicht weitergeschoben: Die Ausgabe wurde erstellt. Die Vorlage bleibt zur Nachholung in der Warteschlange.';
-export const REAUTH_REQUIRED_ERROR =
-	'Erneute Anmeldung erforderlich: Öffne die WG erneut oder tritt mit einem aktuellen Einladungslink bei.';
-export const IDEMPOTENCY_KEY_ERROR =
-	'Die Aktion konnte nicht für das sichere Senden vorbereitet werden. Sie bleibt gespeichert und wird nicht gesendet; versuche es später erneut.';
 
 export function sameOfflineAction(left: OfflineAction, right: OfflineAction): boolean {
 	return serializeOfflineAction(left) === serializeOfflineAction(right);
@@ -87,7 +77,7 @@ export function createRecurringAdvanceRetry(
 		},
 		attempts: 1,
 		lastAttemptAt: new Date(now).toISOString(),
-		lastError: RECURRING_ADVANCE_ERROR,
+		...noteState('recurringAdvance'),
 	};
 }
 
@@ -136,24 +126,15 @@ export function isTerminalReplayStatus(status: number): boolean {
 
 export function needsManualOfflineResolution(action: OfflineAction): boolean {
 	if (replayWindowReviewError(action)) return true;
-	if (action.lastError?.startsWith(SERVER_CHECK_PREFIX)) return true;
-	return (
-		typeof action.payload.imageUrl === 'string' &&
-		Boolean(
-			action.lastError?.startsWith(IMAGE_MISSING_PREFIX) ||
-				action.lastError?.startsWith(IMAGE_REMOVED_PREFIX),
-		)
-	);
+	if (holdsServerReview(action)) return true;
+	return typeof action.payload.imageUrl === 'string' && holdsImageReview(action);
 }
 
-export function explainPendingImageUploadError(err: unknown): string | null {
+/** The state a failed pending-image upload records, or null for errors of another kind. */
+export function pendingImageUploadFailure(err: unknown): FailureState | null {
 	if (!(err instanceof Error)) return null;
 	const match = /^(?:sign|upload)-failed:(\d+)(?::(.+))?$/.exec(err.message);
 	if (!match) return null;
-	if (match[2] === 'image_removed') {
-		return IMAGE_REMOVED_ERROR;
-	}
-	const status = Number(match[1]);
-	const failure = explainOfflineActionFailure(status, match[2]);
-	return `${failure.title}: ${failure.detail}`;
+	if (match[2] === 'image_removed') return IMAGE_REMOVED_STATE;
+	return requestFailureState(Number(match[1]), match[2], false);
 }

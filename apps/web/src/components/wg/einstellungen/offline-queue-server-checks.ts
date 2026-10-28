@@ -1,21 +1,25 @@
 import {
-	formatRecurringAdvanceConflictNote,
-	formatRecurringTemplateConflictNote,
+	recurringAdvanceConflictNote,
+	recurringTemplateConflictNote,
 } from '@/core/offline/offline-conflicts';
 import type { OfflineAction } from '@/core/offline/offline-queue';
+import type { Locale } from '@/shared/i18n/locale';
+import type { Message } from '@/shared/i18n/message';
 
 /** How to compare a queued action with the server: which list to read and what to say about it. */
 export interface ServerCheck {
 	path: string;
-	note: (payload: Record<string, unknown>, data: never) => string;
+	note: (payload: Record<string, unknown>, data: never, locale: Locale) => Message;
 }
 
 function serverCheck<Data>(
 	path: string,
-	note: (payload: Record<string, unknown>, data: Data) => string,
+	note: (payload: Record<string, unknown>, data: Data, locale: Locale) => Message,
 ): ServerCheck {
 	return { path, note: note as ServerCheck['note'] };
 }
+
+const NOT_FOUND: Message = { key: 'offline.serverCheck.notFound' };
 
 export const SERVER_CHECKS: Record<string, ServerCheck> = {
 	'shopping.create': serverCheck<{
@@ -24,10 +28,11 @@ export const SERVER_CHECKS: Record<string, ServerCheck> = {
 		const name = String(payload.name ?? '').trim();
 		const serverItem = data.items.find((shoppingItem) => shoppingItem.name.trim() === name);
 		return serverItem
-			? `Ähnlicher Einkaufsartikel existiert schon. Status dort: ${
-					serverItem.boughtAt ? 'erledigt' : 'offen'
-				}. Prüfe vor dem Senden, ob es ein Duplikat wäre.`
-			: 'Auf dem Server nicht gefunden.';
+			? {
+					key: 'offline.serverCheck.shoppingDuplicate',
+					values: { done: serverItem.boughtAt ? 'yes' : 'no' },
+				}
+			: NOT_FOUND;
 	}),
 	'shopping.update': serverCheck<{ items: Array<{ id: string; boughtAt: string | null }> }>(
 		'shopping',
@@ -35,10 +40,11 @@ export const SERVER_CHECKS: Record<string, ServerCheck> = {
 			const itemId = String(payload.itemId ?? '');
 			const serverItem = data.items.find((shoppingItem) => shoppingItem.id === itemId);
 			return serverItem
-				? `Server-Version gefunden. Status dort: ${
-						serverItem.boughtAt ? 'erledigt' : 'offen'
-					}. Prüfe vor dem erneuten Senden, ob das noch stimmt.`
-				: 'Der Einkaufsartikel existiert serverseitig nicht mehr.';
+				? {
+						key: 'offline.serverCheck.shoppingFound',
+						values: { done: serverItem.boughtAt ? 'yes' : 'no' },
+					}
+				: { key: 'offline.serverCheck.shoppingGone' };
 		},
 	),
 	'announcement.create': serverCheck<{
@@ -49,16 +55,17 @@ export const SERVER_CHECKS: Record<string, ServerCheck> = {
 			(announcement) => announcement.content.trim() === content,
 		);
 		return serverPost
-			? `Gleicher Pinnwand-Beitrag existiert schon. Status dort: ${
-					serverPost.resolvedAt ? 'geklärt' : 'offen'
-				}. Prüfe vor dem Senden, ob es ein Duplikat wäre.`
-			: 'Auf dem Server nicht gefunden.';
+			? {
+					key: 'offline.serverCheck.announcementDuplicate',
+					values: { resolved: serverPost.resolvedAt ? 'yes' : 'no' },
+				}
+			: NOT_FOUND;
 	}),
 	'chore.complete': serverCheck<{ chores: Array<{ id: string }> }>('chores', (payload, data) => {
 		const choreId = String(payload.choreId ?? '');
 		return data.chores.some((chore) => chore.id === choreId)
-			? 'Server-Version gefunden. Prüfe Zuständigkeit und Fälligkeit vor dem Senden.'
-			: 'Die Aufgabe existiert serverseitig nicht mehr.';
+			? { key: 'offline.serverCheck.choreFound' }
+			: { key: 'offline.serverCheck.choreGone' };
 	}),
 	'chore.create': serverCheck<{ chores: Array<{ title: string; intervalDays: number }> }>(
 		'chores',
@@ -66,8 +73,11 @@ export const SERVER_CHECKS: Record<string, ServerCheck> = {
 			const title = String(payload.title ?? '').trim();
 			const serverChore = data.chores.find((chore) => chore.title.trim() === title);
 			return serverChore
-				? `Gleiche Putzaufgabe existiert schon. Intervall dort: alle ${serverChore.intervalDays} Tage. Prüfe vor dem Senden, ob es ein Duplikat wäre.`
-				: 'Auf dem Server nicht gefunden.';
+				? {
+						key: 'offline.serverCheck.choreDuplicate',
+						values: { days: serverChore.intervalDays },
+					}
+				: NOT_FOUND;
 		},
 	),
 	'absence.create': serverCheck<{
@@ -82,9 +92,7 @@ export const SERVER_CHECKS: Record<string, ServerCheck> = {
 				absence.startDate === startDate &&
 				absence.endDate === endDate,
 		);
-		return serverAbsence
-			? 'Gleiche Abwesenheit existiert schon auf dem Server.'
-			: 'Auf dem Server nicht gefunden.';
+		return serverAbsence ? { key: 'offline.serverCheck.absenceDuplicate' } : NOT_FOUND;
 	}),
 	'expense.create': serverCheck<{ expenses: Array<{ description: string; amountCents: number }> }>(
 		'expenses',
@@ -95,35 +103,31 @@ export const SERVER_CHECKS: Record<string, ServerCheck> = {
 				(expense) =>
 					expense.description.trim() === description && expense.amountCents === amountCents,
 			);
-			return serverExpense
-				? 'Gleiche Ausgabe mit gleichem Betrag existiert schon. Prüfe vor dem Senden, ob es ein Duplikat wäre.'
-				: 'Auf dem Server nicht gefunden.';
+			return serverExpense ? { key: 'offline.serverCheck.expenseDuplicate' } : NOT_FOUND;
 		},
 	),
 	'recurring.create': serverCheck<{
 		recurringExpenses: Array<{ description: string; amountCents: number; nextDueAt: string }>;
-	}>('recurring-expenses', (payload, data) => {
+	}>('recurring-expenses', (payload, data, locale) => {
 		const description = String(payload.description ?? '').trim();
 		const amountCents = Number(payload.amountCents ?? 0);
 		const serverTemplate = data.recurringExpenses.find(
 			(template) =>
 				template.description.trim() === description && template.amountCents === amountCents,
 		);
-		return serverTemplate
-			? formatRecurringTemplateConflictNote(serverTemplate)
-			: 'Auf dem Server nicht gefunden.';
+		return serverTemplate ? recurringTemplateConflictNote(serverTemplate, locale) : NOT_FOUND;
 	}),
 	'recurring.advance': serverCheck<{
 		recurringExpenses: Array<{ id: string; nextDueAt: string }>;
-	}>('recurring-expenses', (payload, data) => {
+	}>('recurring-expenses', (payload, data, locale) => {
 		const recurringExpenseId = String(payload.recurringExpenseId ?? '');
 		const expectedNextDueAt = String(payload.expectedRecurringNextDueAt ?? '');
 		const serverTemplate = data.recurringExpenses.find(
 			(template) => template.id === recurringExpenseId,
 		);
 		return serverTemplate
-			? formatRecurringAdvanceConflictNote(serverTemplate, expectedNextDueAt)
-			: 'Diese Fixkosten-Vorlage existiert serverseitig nicht mehr.';
+			? recurringAdvanceConflictNote(serverTemplate, expectedNextDueAt, locale)
+			: { key: 'offline.serverCheck.templateGone' };
 	}),
 };
 
