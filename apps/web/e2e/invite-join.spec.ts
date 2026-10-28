@@ -26,7 +26,9 @@ test.describe('invitation link', () => {
 		expect(link).toMatch(/\/invite\/[A-Za-z0-9_-]{22}$/);
 
 		await page.goto(link);
-		await expect(page.getByRole('heading', { name: 'Tritt der WG „sadf“ bei' })).toBeVisible();
+		await expect(
+			page.getByRole('heading', { name: 'Tritt der WG „Kastanienallee 12“ bei' }),
+		).toBeVisible();
 		await page.getByLabel('Dein Anzeigename').fill('Mira Neu');
 		await page.getByRole('button', { name: 'Beitreten', exact: true }).click();
 

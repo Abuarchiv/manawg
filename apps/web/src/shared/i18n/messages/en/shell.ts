@@ -226,7 +226,6 @@ export default {
 		somethingWrong: 'Something went wrong',
 		tryAgainBody: 'Try again.',
 		wgBody: 'Something went wrong. Try again or go to the home page.',
-		reloadBody: 'Reload the page.',
 	},
 	notFound: {
 		title: 'Page not found',

@@ -132,7 +132,7 @@ test.describe('English noticeboard', () => {
 				await expect(board.getByText('Problem').first()).toBeVisible();
 				await expect(board.getByText('Cleaning rota')).toBeVisible();
 				await expect(board.getByText('5 min ago').first()).toBeVisible();
-				await expect(board.getByText('dsaf is taking this')).toBeVisible();
+				await expect(board.getByText('Jonas is taking this')).toBeVisible();
 				await expect(board.getByLabel('Pinned')).toBeVisible();
 				await expect(page.getByRole('heading', { name: 'My open items' })).toBeVisible();
 				await expect(
@@ -225,12 +225,12 @@ test.describe('English noticeboard', () => {
 				for (const kind of ['Info', 'Question', 'Problem', 'Request', 'Decision']) {
 					await expect(composer.getByRole('button', { name: kind })).toBeVisible();
 				}
-				await expect(composer.getByPlaceholder('What’s new, dsaf?')).toBeVisible();
+				await expect(composer.getByPlaceholder('What’s new, Jonas?')).toBeVisible();
 				await expect(composer.getByRole('button', { name: 'Attach image' })).toBeVisible();
 				await expect(composer.getByRole('button', { name: 'Post', exact: true })).toBeDisabled();
 				await expectNoGermanChrome(page);
 
-				await composer.getByPlaceholder('What’s new, dsaf?').fill('Is anyone home tonight?');
+				await composer.getByPlaceholder('What’s new, Jonas?').fill('Is anyone home tonight?');
 				await composer.getByRole('button', { name: 'Post', exact: true }).click();
 				await expect(
 					composer.getByText('The post could not be saved: Check the noticeboard and try again.'),
@@ -467,7 +467,7 @@ test.describe('English chat', () => {
 				const own = page.locator(`#message-${FIXTURE_MESSAGE_ID}`);
 				await own.getByRole('button', { name: /^Actions for message from / }).click();
 				await page.getByRole('menuitem', { name: 'Reply' }).click();
-				await expect(page.getByText('Reply to dsaf')).toBeVisible();
+				await expect(page.getByText('Reply to Jonas')).toBeVisible();
 				await expect(page.getByRole('button', { name: 'Cancel reply' })).toBeVisible();
 				const composer = page.getByRole('textbox', { name: 'Chat message' });
 				await composer.fill('Hello back');

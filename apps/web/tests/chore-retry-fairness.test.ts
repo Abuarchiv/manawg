@@ -23,7 +23,7 @@ describe('chores retry', () => {
 	});
 });
 
-describe('domain regressions (recurring retry, fairness)', () => {
+describe('recurring retry and fairness', () => {
 	const NOW = Date.parse('2026-09-19T12:00:00.000Z');
 
 	test('retries a recurring advance carried by an expense action', () => {

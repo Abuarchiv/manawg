@@ -5,10 +5,10 @@ import type { wgChatMessages } from '@/core/db';
 export const E2E_EXISTING_WG = {
 	id: '989ac820-58b7-431f-9c65-28721264f333',
 	shareCode: 'MTE8PZAT',
-	name: 'sadf',
+	name: 'Kastanienallee 12',
 	member: {
 		id: '7d898f9e-5ad7-4f5d-abed-8c3e99a76973',
-		name: 'dsaf',
+		name: 'Jonas',
 		color: '#6d5efc',
 	},
 } as const;

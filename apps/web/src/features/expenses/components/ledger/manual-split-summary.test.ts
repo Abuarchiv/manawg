@@ -57,7 +57,7 @@ test('no-op when the remainder is already zero', () => {
 });
 
 test('never writes a negative amount, even when the excess sits outside the targets', () => {
-	// Regression (#492): the only over-allocated share belongs to someone who is not a target
+	// The only over-allocated share belongs to someone who is not a target
 	// (a moved-out member). The targets cannot absorb it, but they must stay at zero rather
 	// than turn into unparsable "-x,xx" strings.
 	const next = distributeRemainderCents({ inactive: '30,00' }, members, -1000);
@@ -68,7 +68,7 @@ test('never writes a negative amount, even when the excess sits outside the targ
 });
 
 test('is pure: same input, same output, input left untouched', () => {
-	// Regression (#493): the leftover counter must not live in a closure mutated by the state
+	// The leftover counter must not live in a closure mutated by the state
 	// updater, because a second (StrictMode) invocation would lose cents.
 	const current = Object.freeze({ a: '10,00' });
 	const first = distributeRemainderCents(current, members, 2001);

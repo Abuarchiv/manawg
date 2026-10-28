@@ -10,7 +10,7 @@ import {
 	skipUnlessFixtures,
 } from './support/helpers';
 
-test.describe('calendar fixes', () => {
+test.describe('calendar month grid', () => {
 	test('shows a fetched multi-day event on every overlapping month-grid day', async ({ page }) => {
 		skipUnlessFixtures();
 

@@ -403,7 +403,7 @@ test.describe('invitations', () => {
 		await expect(
 			page.getByRole('heading', { name: `${otherMember.name} ausziehen?` }),
 		).toBeVisible();
-		// direction "owed" from Mina's perspective: the viewer (dsaf) owes her.
+		// direction "owed" from Mina's perspective: the viewer (Jonas) owes her.
 		await expect(page.getByText(`${FIXTURE_WG.memberName} schuldet`)).toBeVisible();
 
 		const confirmButton = page.getByRole('button', { name: 'Ausziehen', exact: true });

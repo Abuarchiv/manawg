@@ -229,7 +229,6 @@ export default {
 		somethingWrong: 'Etwas ist schiefgelaufen',
 		tryAgainBody: 'Bitte versuche es erneut.',
 		wgBody: 'Ein Fehler ist aufgetreten. Bitte versuche es erneut oder gehe zur Startseite.',
-		reloadBody: 'Bitte lade die Seite neu.',
 	},
 	notFound: {
 		title: 'Seite nicht gefunden',

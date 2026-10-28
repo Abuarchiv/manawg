@@ -629,7 +629,7 @@ test.describe('pinnwand refresh', () => {
 				memberId: MEMBER_ID,
 				content: 'Testkommentar',
 				createdAt: new Date().toISOString(),
-				authorName: 'dsaf',
+				authorName: 'Jonas',
 				authorColor: null,
 			},
 		]);
