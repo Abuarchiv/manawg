@@ -1,3 +1,5 @@
+import type { Locale } from '@/shared/i18n/locale';
+
 export type ExportRow = Record<string, unknown>;
 
 interface WgExportInput {
@@ -41,28 +43,11 @@ export interface WgExport {
 
 export type ExportSectionKey = keyof WgExport['sections'];
 
+/** Labels live in the catalog (`settings.data.sections.<key>`), so the reader's locale picks them. */
 export interface ExportSectionSummary {
 	key: ExportSectionKey;
-	label: string;
 	count: number;
 }
-
-const SECTION_LABELS: Record<ExportSectionKey, string> = {
-	members: 'Mitglieder',
-	expenses: 'Ausgaben',
-	expensePayments: 'Erledigte Zahlungen',
-	recurringExpenses: 'Fixkosten',
-	shoppingItems: 'Einkauf',
-	chores: 'Putzplan',
-	choreCompletions: 'Putz-Erledigungen',
-	inventory: 'Vorräte',
-	absences: 'Abwesenheiten',
-	announcements: 'Pinnwand',
-	announcementComments: 'Pinnwand-Kommentare',
-	events: 'Termine',
-	chatMessages: 'Chat',
-	auditEvents: 'WG-Änderungen',
-};
 
 const SECTION_HEADERS: Record<ExportSectionKey, string[]> = {
 	members: ['id', 'name', 'createdAt'],
@@ -154,7 +139,7 @@ const SECTION_HEADERS: Record<ExportSectionKey, string[]> = {
 	auditEvents: ['id', 'eventType', 'entityType', 'memberName', 'summary', 'createdAt'],
 };
 
-export const EXPORT_SECTION_KEYS = Object.keys(SECTION_LABELS) as readonly ExportSectionKey[];
+export const EXPORT_SECTION_KEYS = Object.keys(SECTION_HEADERS) as readonly ExportSectionKey[];
 
 export function isExportSectionKey(value: string | null): value is ExportSectionKey {
 	return EXPORT_SECTION_KEYS.includes(value as ExportSectionKey);
@@ -200,10 +185,21 @@ function neutralizeCsvFormula(text: string): string {
 	return /^[\s]*[=+\-@\t\r]/.test(text) ? `'${text}` : text;
 }
 
-function escapeCsv(value: unknown): string {
+/** German Excel reads `;` and `,`; English Excel reads `,` and `.`. */
+interface CsvFormat {
+	separator: string;
+	decimalMark: string;
+}
+
+const CSV_FORMATS: Record<Locale, CsvFormat> = {
+	de: { separator: ';', decimalMark: ',' },
+	en: { separator: ',', decimalMark: '.' },
+};
+
+function escapeCsv(value: unknown, { separator }: CsvFormat): string {
 	const raw = formatCsvValue(value);
 	const text = neutralizeCsvFormula(raw);
-	if (raw === text && !/[";\n\r]/.test(text)) return text;
+	if (raw === text && !/["\n\r]/.test(text) && !text.includes(separator)) return text;
 	return `"${text.replace(/"/g, '""')}"`;
 }
 
@@ -229,45 +225,54 @@ function formatBerlinMinutes(iso: string): string {
 	return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`;
 }
 
-/** Cents become a decimal-comma amount ("12,34"), the form German Excel reads as a number. */
-function formatCentsAmount(value: unknown): string {
-	if (typeof value !== 'number' || !Number.isFinite(value)) return escapeCsv(value);
+/** Cents become a plain decimal amount ("12,34" or "12.34"), the form Excel reads as a number. */
+function formatCentsAmount(value: unknown, format: CsvFormat): string {
+	if (typeof value !== 'number' || !Number.isFinite(value)) return escapeCsv(value, format);
 	const abs = Math.abs(Math.round(value));
-	return `${value < 0 ? '-' : ''}${Math.floor(abs / 100)},${String(abs % 100).padStart(2, '0')}`;
+	return `${value < 0 ? '-' : ''}${Math.floor(abs / 100)}${format.decimalMark}${String(abs % 100).padStart(2, '0')}`;
 }
 
 /** Splits as "Name: 12,34; Name2: 5,00" instead of a JSON blob. */
-function formatSplitsCell(splits: unknown[]): string {
+function formatSplitsCell(splits: unknown[], format: CsvFormat): string {
 	return splits
 		.map((split) => {
 			const { debtor, amountCents } = (split ?? {}) as Record<string, unknown>;
-			return `${String(debtor ?? '')}: ${formatCentsAmount(amountCents)}`;
+			return `${String(debtor ?? '')}: ${formatCentsAmount(amountCents, format)}`;
 		})
 		.join('; ');
 }
 
-function csvCell(header: string, value: unknown, row: ExportRow): string {
-	if (CENTS_SUFFIX.test(header)) return formatCentsAmount(value);
-	if (header === 'splits' && Array.isArray(value)) return escapeCsv(formatSplitsCell(value));
+function csvCell(header: string, value: unknown, row: ExportRow, format: CsvFormat): string {
+	if (CENTS_SUFFIX.test(header)) return formatCentsAmount(value, format);
+	if (header === 'splits' && Array.isArray(value)) {
+		return escapeCsv(formatSplitsCell(value, format), format);
+	}
 	if (TIMESTAMP_HEADER.test(header) && typeof value === 'string' && ISO_INSTANT.test(value)) {
 		// All-day events are stored as UTC midnight: show the date only, not a Berlin clock time.
 		const allDayDate = row.allDay === true && (header === 'startsAt' || header === 'endsAt');
 		return allDayDate ? value.slice(0, 10) : formatBerlinMinutes(value);
 	}
-	return escapeCsv(value);
+	return escapeCsv(value, format);
 }
 
 /**
- * German Excel needs a UTF-8 BOM for umlauts and a semicolon separator
- * (the comma is its decimal mark); `*Cents` columns are written as `*` amounts,
- * timestamps as Berlin local time and splits as readable text.
+ * The CSV follows the reader's spreadsheet conventions: German uses `;` and a decimal comma,
+ * English `,` and a decimal point. Both start with a UTF-8 BOM so umlauts survive; `*Cents`
+ * columns are written as `*` amounts, timestamps as Berlin local time and splits as readable text.
  */
-export function toCsv(rows: ExportRow[], fallbackHeaders: string[] = []): string {
+export function toCsv(
+	rows: ExportRow[],
+	fallbackHeaders: string[] = [],
+	locale: Locale = 'de',
+): string {
 	const headers = fallbackHeaders.length > 0 ? fallbackHeaders : Object.keys(rows[0] ?? {});
 	if (headers.length === 0) return '';
-	const lines = [headers.map((header) => header.replace(CENTS_SUFFIX, '')).join(';')];
+	const format = CSV_FORMATS[locale];
+	const lines = [headers.map((header) => header.replace(CENTS_SUFFIX, '')).join(format.separator)];
 	for (const row of rows) {
-		lines.push(headers.map((header) => csvCell(header, row[header], row)).join(';'));
+		lines.push(
+			headers.map((header) => csvCell(header, row[header], row, format)).join(format.separator),
+		);
 	}
 	return `\uFEFF${lines.join('\n')}`;
 }
@@ -280,19 +285,11 @@ export type ExportSectionCounts = Record<ExportSectionKey, number>;
 
 /** Summary from `GET /export?summary=counts`, without downloading every row. */
 export function buildExportSummaryFromCounts(counts: ExportSectionCounts): ExportSectionSummary[] {
-	return EXPORT_SECTION_KEYS.map((key) => ({
-		key,
-		label: SECTION_LABELS[key],
-		count: counts[key] ?? 0,
-	}));
+	return EXPORT_SECTION_KEYS.map((key) => ({ key, count: counts[key] ?? 0 }));
 }
 
 export function buildEmptyExportSummary(): ExportSectionSummary[] {
-	return EXPORT_SECTION_KEYS.map((key) => ({
-		key,
-		label: SECTION_LABELS[key],
-		count: 0,
-	}));
+	return EXPORT_SECTION_KEYS.map((key) => ({ key, count: 0 }));
 }
 
 export function getExportSectionRows(data: WgExport, section: ExportSectionKey): ExportRow[] {
