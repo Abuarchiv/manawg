@@ -58,6 +58,7 @@ export async function dispatchStatementBatch(
 			statement: entry.recipient.statement,
 			memberId: row.memberId,
 			unsubscribeUrl: url,
+			locale: entry.recipient.locale,
 		});
 		mails.push({
 			ledgerId: row.id,

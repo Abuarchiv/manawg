@@ -1,6 +1,7 @@
 import 'server-only';
 import { loadConfirmedEmails } from '@/core/auth/auth-user-emails';
 import { logApiError } from '@/core/infra/observability';
+import type { Locale } from '@/shared/i18n/locale';
 import { sendMailSafely } from './send-mail';
 import { renderAccountDeletedMail } from './templates';
 
@@ -17,12 +18,13 @@ export async function confirmedEmailOf(authUserId: string): Promise<string | nul
 export async function sendAccountDeletedMail(
 	authUserId: string,
 	email: string | null,
+	locale: Locale,
 ): Promise<void> {
 	if (!email) return;
 	await sendMailSafely({
 		kind: 'account_deleted',
 		dedupeKey: `account-deleted:${authUserId}`,
 		to: email,
-		mail: renderAccountDeletedMail(),
+		mail: renderAccountDeletedMail(locale),
 	});
 }

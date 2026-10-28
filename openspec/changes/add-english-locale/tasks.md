@@ -44,7 +44,7 @@
 ## 4. Server senders (parallel)
 
 - [ ] 4.1 Package M push with per-recipient locale and SW fallback; verify a dispatch test with one de and one en recipient
-- [ ] 4.2 Package N mails, unsubscribe page and Supabase templates; verify both locales render and German template tests are unchanged
+- [x] 4.2 Package N mails, unsubscribe page and Supabase templates; verify both locales render and German template tests are unchanged
 - [ ] 4.3 Package O export and chat payload `amountCents`; verify English CSV uses `,` and `.` and German CSV is unchanged
 
 ## 5. Audit and activity
