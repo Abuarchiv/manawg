@@ -21,14 +21,13 @@ import {
 	DrawerTitle,
 } from '@/components/ui/drawer';
 import { Spinner } from '@/components/ui/spinner';
-import { mutationErrorMessage } from '@/core/http/error-codes';
+import { mutationError } from '@/core/http/error-codes';
 import {
 	type PendingIdempotentRequest,
 	resolveIdempotencyKey,
 	shouldReleaseIdempotencyKey,
 } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
-import { keyUnavailableMessage } from '@/core/offline/offline-copy';
 import {
 	INVENTORY_CATEGORIES,
 	INVENTORY_UNITS,
@@ -36,11 +35,14 @@ import {
 	type InventoryItemDto,
 	type InventoryMutationItemDto,
 	type InventoryUnit,
-	formatQuantity,
 	normalizeForMatch,
 	parseQuantityText,
 	quantityInputText,
 } from '@/features/inventory/inventory';
+import { useQuantityText } from '@/features/inventory/use-quantity-text';
+import type { Locale } from '@/shared/i18n/locale';
+import { type Message, useMessage } from '@/shared/i18n/message';
+import { useLocale, useTranslations } from 'next-intl';
 import { useEffect, useRef, useState } from 'react';
 import { InventoryFormFields } from './InventoryFormFields';
 
@@ -67,9 +69,10 @@ interface InventoryFormDrawerProps {
 
 type InventoryEditorItem = NonNullable<InventoryFormDrawerProps['initial']>;
 
-const SAVE_SUBJECT = 'Vorrat konnte nicht gespeichert werden';
+const SAVE_SUBJECT: Message = { key: 'inventory.save.subject' };
+const SAVE_FALLBACK: Message = { key: 'inventory.save.fallback' };
 
-const DEFAULT_UNIT: InventoryUnit = 'Stück';
+const DEFAULT_UNIT: InventoryUnit = 'Stück'; // i18n-ignore stored unit key
 const DEFAULT_CATEGORY: InventoryCategory = 'sonstiges';
 
 function coerceUnit(unit: string | undefined): InventoryUnit {
@@ -97,6 +100,10 @@ export function InventoryFormDrawer({
 	onSaved,
 	onItemRefreshed,
 }: InventoryFormDrawerProps) {
+	const t = useTranslations('inventory.form');
+	const render = useMessage();
+	const quantityLabel = useQuantityText();
+	const locale = useLocale() as Locale;
 	const toast = useToast();
 	const encodedShareCode = encodeURIComponent(shareCode);
 	const [name, setName] = useState('');
@@ -108,8 +115,8 @@ export function InventoryFormDrawer({
 	const [saving, setSaving] = useState(false);
 	const [conflictNeedsReload, setConflictNeedsReload] = useState(false);
 	const [discardOpen, setDiscardOpen] = useState(false);
-	const [nameError, setNameError] = useState<string | null>(null);
-	const [serverError, setServerError] = useState<string | null>(null);
+	const [nameError, setNameError] = useState<Message | null>(null);
+	const [serverError, setServerError] = useState<Message | null>(null);
 	const alertRef = useRef<HTMLDivElement>(null);
 	const createRequestRef = useRef<PendingIdempotentRequest | null>(null);
 	const quantity = parseQuantityText(quantityText);
@@ -125,14 +132,14 @@ export function InventoryFormDrawer({
 		const current = initialRef.current ?? null;
 		setBaseline(current);
 		setName(current?.name ?? '');
-		setQuantityText(quantityInputText(current?.quantity ?? 0));
+		setQuantityText(quantityInputText(current?.quantity ?? 0, locale));
 		setUnit(coerceUnit(current?.unit));
-		setThresholdText(quantityInputText(current?.threshold ?? 1));
+		setThresholdText(quantityInputText(current?.threshold ?? 1, locale));
 		setCategory(coerceCategory(current?.category));
 		setConflictNeedsReload(false);
 		setNameError(null);
 		setServerError(null);
-	}, [open]);
+	}, [open, locale]);
 
 	// The error sits outside the scrolling area; focus it so keyboard and screen-reader users find it.
 	useEffect(() => {
@@ -156,7 +163,7 @@ export function InventoryFormDrawer({
 		if (saving) return;
 		const trimmedName = name.trim();
 		if (trimmedName.length === 0) {
-			setNameError('Bitte gib einen Namen ein.');
+			setNameError({ key: 'inventory.save.nameRequired' });
 			setServerError(null);
 			return;
 		}
@@ -167,9 +174,13 @@ export function InventoryFormDrawer({
 			(mode === 'create' || key !== normalizeForMatch(current?.name ?? '')) &&
 			items.find((other) => other.id !== current?.id && normalizeForMatch(other.name) === key);
 		if (duplicate) {
-			setNameError(
-				`Gibt es schon: ${duplicate.name} (${formatQuantity(duplicate.quantity, duplicate.unit)})`,
-			);
+			setNameError({
+				key: 'inventory.save.exists',
+				values: {
+					name: duplicate.name,
+					quantity: quantityLabel(duplicate.quantity, duplicate.unit),
+				},
+			});
 			setServerError(null);
 			return;
 		}
@@ -200,7 +211,7 @@ export function InventoryFormDrawer({
 			mode === 'create' ? resolveIdempotencyKey(createRequestRef.current, fingerprint) : null;
 		if (mode === 'create' && !idempotencyKey) {
 			setSaving(false);
-			setServerError(keyUnavailableMessage('Vorrat', 'gespeichert'));
+			setServerError({ key: 'inventory.save.keyUnavailable' });
 			return;
 		}
 		if (idempotencyKey) createRequestRef.current = { fingerprint, key: idempotencyKey };
@@ -223,17 +234,19 @@ export function InventoryFormDrawer({
 			setSaving(false);
 			if (mode === 'create') createRequestRef.current = null;
 			onSaved(res.data.item);
-			toast.success(mode === 'edit' ? 'Vorrat aktualisiert.' : 'Vorrat gespeichert.');
+			toast.success(
+				render({ key: mode === 'edit' ? 'inventory.save.updated' : 'inventory.save.saved' }),
+			);
 			onClose();
 		} else if (mode === 'edit' && current && res.status === 404 && res.error === 'item_not_found') {
 			setSaving(false);
 			onSaved(undefined, current.id);
 			setConflictNeedsReload(true);
-			setServerError('Dieser Vorrat wurde inzwischen entfernt. Schließe das Formular.');
+			setServerError({ key: 'inventory.save.removedMeanwhile' });
 		} else if (res.error === 'inventory_item_duplicate') {
 			setSaving(false);
 			if (mode === 'create') createRequestRef.current = null;
-			setNameError('Diesen Vorrat gibt es schon.');
+			setNameError({ key: 'inventory.save.existsServer' });
 		} else if (mode === 'edit' && current && res.error === 'version_conflict') {
 			const refreshed = await apiFetch<{ items: InventoryItemDto[] }>(
 				`/api/wg/${encodedShareCode}/inventory`,
@@ -246,26 +259,23 @@ export function InventoryFormDrawer({
 			if (!latest) {
 				onSaved(undefined, refreshed.ok ? current.id : undefined);
 				setConflictNeedsReload(true);
-				setServerError(
-					'Dieser Vorrat wurde geändert, konnte aber nicht neu geladen werden. Schließe das Formular und öffne ihn erneut.',
-				);
+				setServerError({ key: 'inventory.save.reloadFailed' });
 				return;
 			}
 			onSaved(latest);
 			setBaseline(latest);
 			// Keep what the user typed; only untouched fields follow the server state.
 			if (trimmedName === current.name) setName(latest.name);
-			setQuantityText(quantityInputText(latest.quantity));
+			setQuantityText(quantityInputText(latest.quantity, locale));
 			if (unit === coerceUnit(current.unit)) setUnit(coerceUnit(latest.unit));
-			if (threshold === current.threshold) setThresholdText(quantityInputText(latest.threshold));
+			if (threshold === current.threshold)
+				setThresholdText(quantityInputText(latest.threshold, locale));
 			if (category === coerceCategory(current.category)) {
 				setCategory(coerceCategory(latest.category));
 			}
 			setConflictNeedsReload(false);
 			onItemRefreshed(latest);
-			setServerError(
-				'Dieser Vorrat wurde inzwischen geändert. Der aktuelle Stand ist geladen; prüfe ihn und speichere erneut.',
-			);
+			setServerError({ key: 'inventory.save.changedMeanwhile' });
 		} else if (
 			mode === 'create' &&
 			res.status > 0 &&
@@ -274,28 +284,14 @@ export function InventoryFormDrawer({
 		) {
 			setSaving(false);
 			if (shouldReleaseIdempotencyKey(res.status, res.error)) createRequestRef.current = null;
-			setServerError(
-				mutationErrorMessage(
-					SAVE_SUBJECT,
-					res.error,
-					{},
-					'Speichern fehlgeschlagen. Bitte versuche es erneut.',
-				),
-			);
+			setServerError(mutationError(SAVE_SUBJECT, res.error, {}, SAVE_FALLBACK));
 		} else if (res.error === 'name_invalid') {
 			setSaving(false);
 			if (mode === 'create') createRequestRef.current = null;
-			setNameError('Bitte gib einen gültigen Namen ein.');
+			setNameError({ key: 'inventory.save.nameInvalid' });
 		} else {
 			setSaving(false);
-			setServerError(
-				mutationErrorMessage(
-					SAVE_SUBJECT,
-					res.error,
-					{},
-					'Speichern fehlgeschlagen. Bitte versuche es erneut.',
-				),
-			);
+			setServerError(mutationError(SAVE_SUBJECT, res.error, {}, SAVE_FALLBACK));
 		}
 	}
 
@@ -309,7 +305,7 @@ export function InventoryFormDrawer({
 			>
 				<DrawerContent className="mx-auto w-full max-w-md">
 					<DrawerHeader>
-						<DrawerTitle>{mode === 'edit' ? 'Vorrat bearbeiten' : 'Neuer Vorrat'}</DrawerTitle>
+						<DrawerTitle>{mode === 'edit' ? t('titleEdit') : t('titleNew')}</DrawerTitle>
 					</DrawerHeader>
 
 					<form
@@ -350,17 +346,17 @@ export function InventoryFormDrawer({
 									tabIndex={-1}
 									className="outline-none"
 								>
-									<AlertDescription>{serverError}</AlertDescription>
+									<AlertDescription>{render(serverError)}</AlertDescription>
 								</Alert>
 							</div>
 						)}
 						<DrawerFooter className="border-t pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
 							<Button type="submit" disabled={saving || conflictNeedsReload} aria-busy={saving}>
 								{saving && <Spinner aria-hidden />}
-								{saving ? 'Speichert…' : 'Speichern'}
+								{saving ? t('saving') : t('save')}
 							</Button>
 							<Button type="button" variant="outline" onClick={requestClose}>
-								Abbrechen
+								{t('cancel')}
 							</Button>
 						</DrawerFooter>
 					</form>
@@ -369,13 +365,11 @@ export function InventoryFormDrawer({
 			<AlertDialog open={discardOpen} onOpenChange={setDiscardOpen}>
 				<AlertDialogContent className="w-[calc(100%-2rem)]">
 					<AlertDialogHeader>
-						<AlertDialogTitle>Änderungen verwerfen?</AlertDialogTitle>
-						<AlertDialogDescription>
-							Deine Eingaben wurden noch nicht gespeichert.
-						</AlertDialogDescription>
+						<AlertDialogTitle>{t('discardTitle')}</AlertDialogTitle>
+						<AlertDialogDescription>{t('discardDescription')}</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogCancel className="min-h-11">Weiter bearbeiten</AlertDialogCancel>
+						<AlertDialogCancel className="min-h-11">{t('keepEditing')}</AlertDialogCancel>
 						<AlertDialogAction
 							variant="destructive"
 							className="min-h-11"
@@ -384,7 +378,7 @@ export function InventoryFormDrawer({
 								onClose();
 							}}
 						>
-							Verwerfen
+							{t('discard')}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>

@@ -3,14 +3,17 @@ import { Input } from '@/components/ui/input';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import {
 	INVENTORY_CATEGORIES,
-	INVENTORY_CATEGORY_LABELS,
 	INVENTORY_LIMITS,
 	INVENTORY_UNITS,
 	type InventoryCategory,
 	type InventoryUnit,
 	decimalQuantityText,
 	isBelowThreshold,
+	unitLabelKey,
 } from '@/features/inventory/inventory';
+import type { Locale } from '@/shared/i18n/locale';
+import { type Message, useMessage } from '@/shared/i18n/message';
+import { useLocale, useTranslations } from 'next-intl';
 
 interface InventoryFormFieldsProps {
 	mode: 'create' | 'edit';
@@ -21,7 +24,7 @@ interface InventoryFormFieldsProps {
 	category: InventoryCategory;
 	quantity: number;
 	threshold: number;
-	nameError: string | null;
+	nameError: Message | null;
 	disabled: boolean;
 	onNameChange: (value: string) => void;
 	onQuantityTextChange: (value: string) => void;
@@ -47,10 +50,13 @@ export function InventoryFormFields({
 	onUnitChange,
 	onCategoryChange,
 }: InventoryFormFieldsProps) {
+	const t = useTranslations('inventory');
+	const render = useMessage();
+	const locale = useLocale() as Locale;
 	return (
 		<FieldGroup>
 			<Field data-invalid={Boolean(nameError)}>
-				<FieldLabel htmlFor="inventory-name">Name</FieldLabel>
+				<FieldLabel htmlFor="inventory-name">{t('form.name')}</FieldLabel>
 				<Input
 					id="inventory-name"
 					type="text"
@@ -63,37 +69,41 @@ export function InventoryFormFields({
 					aria-required="true"
 					aria-invalid={Boolean(nameError)}
 					aria-describedby={nameError ? 'inventory-name-error' : undefined}
-					placeholder="z. B. Nudeln"
+					placeholder={t('form.namePlaceholder')}
 					disabled={disabled}
 					enterKeyHint="next"
 					className="text-base"
 				/>
-				{nameError && <FieldError id="inventory-name-error">{nameError}</FieldError>}
+				{nameError && <FieldError id="inventory-name-error">{render(nameError)}</FieldError>}
 			</Field>
 			<div className="grid grid-cols-1 gap-2">
 				<Field className="min-w-0">
-					<FieldLabel htmlFor="inventory-qty">Menge</FieldLabel>
+					<FieldLabel htmlFor="inventory-qty">{t('form.quantity')}</FieldLabel>
 					<Input
 						id="inventory-qty"
 						type="text"
 						inputMode="decimal"
 						maxLength={String(INVENTORY_LIMITS.QUANTITY_MAX).length + 3}
 						value={quantityText}
-						onChange={(event) => onQuantityTextChange(decimalQuantityText(event.target.value))}
+						onChange={(event) =>
+							onQuantityTextChange(decimalQuantityText(event.target.value, locale))
+						}
 						onFocus={(event) => event.currentTarget.select()}
 						disabled={disabled}
 						className="text-base"
 					/>
 				</Field>
 				<Field className="min-w-0">
-					<FieldLabel htmlFor="inventory-threshold">Nachkaufen ab</FieldLabel>
+					<FieldLabel htmlFor="inventory-threshold">{t('form.threshold')}</FieldLabel>
 					<Input
 						id="inventory-threshold"
 						type="text"
 						inputMode="decimal"
 						maxLength={String(INVENTORY_LIMITS.THRESHOLD_MAX).length + 3}
 						value={thresholdText}
-						onChange={(event) => onThresholdTextChange(decimalQuantityText(event.target.value))}
+						onChange={(event) =>
+							onThresholdTextChange(decimalQuantityText(event.target.value, locale))
+						}
 						onFocus={(event) => event.currentTarget.select()}
 						disabled={disabled}
 						className="text-base"
@@ -102,7 +112,7 @@ export function InventoryFormFields({
 			</div>
 			<div className="grid grid-cols-1 gap-2">
 				<Field className="min-w-0">
-					<FieldLabel htmlFor="inventory-unit">Einheit</FieldLabel>
+					<FieldLabel htmlFor="inventory-unit">{t('form.unit')}</FieldLabel>
 					<NativeSelect
 						id="inventory-unit"
 						value={unit}
@@ -112,13 +122,13 @@ export function InventoryFormFields({
 					>
 						{INVENTORY_UNITS.map((u) => (
 							<NativeSelectOption key={u} value={u}>
-								{u}
+								{t('unit', { unit: unitLabelKey(u), count: 1 })}
 							</NativeSelectOption>
 						))}
 					</NativeSelect>
 				</Field>
 				<Field className="min-w-0">
-					<FieldLabel htmlFor="inventory-category">Kategorie</FieldLabel>
+					<FieldLabel htmlFor="inventory-category">{t('form.category')}</FieldLabel>
 					<NativeSelect
 						id="inventory-category"
 						value={category}
@@ -128,7 +138,7 @@ export function InventoryFormFields({
 					>
 						{INVENTORY_CATEGORIES.map((cat) => (
 							<NativeSelectOption key={cat} value={cat}>
-								{INVENTORY_CATEGORY_LABELS[cat]}
+								{t(`categories.${cat}`)}
 							</NativeSelectOption>
 						))}
 					</NativeSelect>
@@ -136,8 +146,8 @@ export function InventoryFormFields({
 			</div>
 			<FieldDescription aria-live="polite">
 				{mode === 'create' && isBelowThreshold({ quantity, threshold })
-					? 'Kommt beim Speichern direkt auf die Einkaufsliste.'
-					: 'Ab diesem Bestand kommt der Vorrat auf die Einkaufsliste.'}
+					? t('form.hintCreateLow')
+					: t('form.hint')}
 			</FieldDescription>
 		</FieldGroup>
 	);

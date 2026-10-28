@@ -9,6 +9,7 @@ import { InventoryList } from '@/features/inventory/components/InventoryList';
 import { ListSkeleton } from '@/features/inventory/components/ListSkeleton';
 import { useInventoryPage } from '@/features/inventory/hooks/use-inventory-page';
 import { Plus } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
@@ -18,6 +19,8 @@ const SCROLL_DELAY_MS = 80;
 const HIGHLIGHT_MS = 3000;
 
 export default function VorraetePage() {
+	const t = useTranslations('inventory.page');
+	const tCommon = useTranslations('common');
 	const { wg, identity } = useWg();
 	const { items, initialLoading, loadError, addOpen, setAddOpen, load, onChanged } =
 		useInventoryPage(wg.shareCode, identity.memberId);
@@ -44,15 +47,15 @@ export default function VorraetePage() {
 			<SubNav />
 			{/* The active tab already names the page; title and count stay for screen readers. */}
 			<header className="sr-only">
-				<h1 tabIndex={-1}>Vorräte</h1>
+				<h1 tabIndex={-1}>{t('title')}</h1>
 				<p aria-live="polite" aria-atomic="true">
 					{initialLoading && items.length === 0
-						? 'Lädt…'
+						? tCommon('loading')
 						: loadError && items.length === 0
-							? 'Derzeit nicht verfügbar'
+							? t('unavailable')
 							: items.length === 0
 								? null
-								: `${items.length} Artikel im Bestand`}
+								: t('count', { count: items.length })}
 				</p>
 			</header>
 
@@ -61,7 +64,7 @@ export default function VorraetePage() {
 					message={loadError}
 					onRetry={() => void load(false)}
 					busy={initialLoading}
-					retryLabel="Vorräte erneut laden"
+					retryLabel={t('reload')}
 				/>
 			)}
 
@@ -82,7 +85,7 @@ export default function VorraetePage() {
 				<ThumbAction>
 					<Button type="button" className="min-h-11 w-full" onClick={() => setAddOpen(true)}>
 						<Plus data-icon="inline-start" aria-hidden />
-						Vorrat hinzufügen
+						{t('add')}
 					</Button>
 				</ThumbAction>
 			)}

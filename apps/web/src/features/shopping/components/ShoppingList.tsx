@@ -6,10 +6,12 @@ import type { ShoppingItem } from '@/features/shopping/components/shopping-types
 import type { EditShoppingItem } from '@/features/shopping/hooks/use-shopping-edit';
 import type { MemberInfo } from '@/shared/lib/member-types';
 
+import type { Message } from '@/shared/i18n/message';
 import { ChevronRight, Trash2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useCallback, useMemo, useState } from 'react';
 
-/** Rows per list rendered initially; "Mehr anzeigen" loads more. */
+/** Rows per list rendered initially; "Show more" loads more. */
 const ROW_RENDER_PAGE = 100;
 
 const UNKNOWN_MEMBER: MemberInfo = { name: '?', color: null };
@@ -27,7 +29,7 @@ interface ShoppingListProps {
 	onToggle: (item: ShoppingItem) => Promise<void>;
 	onRemove: (id: string, itemName: string) => Promise<unknown>;
 	onEdit: EditShoppingItem;
-	removeError: string | null;
+	removeError: Message | null;
 	removeErrorId: string | null;
 	isAdmin: boolean;
 	clearingBought: boolean;
@@ -56,6 +58,7 @@ export function ShoppingList({
 	onClearRequest,
 	queuedCount,
 }: ShoppingListProps) {
+	const t = useTranslations('shopping.list');
 	const [rowLimit, setRowLimit] = useState(ROW_RENDER_PAGE);
 
 	const memberInfoById = useMemo(() => {
@@ -99,7 +102,7 @@ export function ShoppingList({
 	const visibleDoneCount = visibleCount(doneItems);
 	const moreButton = (hidden: number) => (
 		<Button variant="outline" onClick={() => setRowLimit((limit) => limit + ROW_RENDER_PAGE)}>
-			Mehr anzeigen ({hidden})
+			{t('showMore', { count: hidden })}
 		</Button>
 	);
 
@@ -125,13 +128,13 @@ export function ShoppingList({
 	}
 
 	return (
-		<section aria-label="Einkaufsartikel" className="flex flex-col gap-4">
+		<section aria-label={t('sectionLabel')} className="flex flex-col gap-4">
 			{openItems.length > 0 ? (
 				<ul className="flex flex-col divide-y overflow-hidden rounded-xl border">
 					{openItems.slice(0, visibleOpenCount).map(renderRow)}
 				</ul>
 			) : (
-				<p className="text-meta text-muted-foreground">Alles eingekauft.</p>
+				<p className="text-meta text-muted-foreground">{t('allBought')}</p>
 			)}
 			{visibleOpenCount < openItems.length && moreButton(openItems.length - visibleOpenCount)}
 			{doneItems.length > 0 && (
@@ -145,7 +148,7 @@ export function ShoppingList({
 							aria-hidden
 							className="size-4 transition-transform group-open:rotate-90"
 						/>
-						Erledigt ({doneItems.length})
+						{t('done', { count: doneItems.length })}
 					</summary>
 					<ul className="flex flex-col divide-y overflow-hidden rounded-xl border">
 						{/* Render done items only while the block is open (highlight opens it). */}
@@ -159,7 +162,7 @@ export function ShoppingList({
 							variant="ghost"
 							onClick={onClearRequest}
 							disabled={clearingBought}
-							aria-label={`Erledigte Artikel entfernen (${doneItems.length})`}
+							aria-label={t('clearBoughtAria', { count: doneItems.length })}
 							className="mt-1 justify-start text-left text-muted-foreground"
 						>
 							{clearingBought ? (
@@ -167,7 +170,7 @@ export function ShoppingList({
 							) : (
 								<Trash2 data-icon="inline-start" aria-hidden />
 							)}
-							Erledigte entfernen
+							{t('clearBought')}
 						</Button>
 					)}
 				</details>

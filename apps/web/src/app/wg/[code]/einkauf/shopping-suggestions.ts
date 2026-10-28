@@ -4,30 +4,32 @@ import {
 	isBelowThreshold,
 	normalizeForMatch,
 } from '@/features/inventory/inventory';
-import { QUICK_SHOPPING_ITEMS } from '@/features/shopping/components/constants';
 import type { ShoppingItem } from '@/features/shopping/components/shopping-types';
+import type { Message } from '@/shared/i18n/message';
 
 /** Items bought within this window are not suggested again. */
 const RECENTLY_BOUGHT_MS = MS_PER_DAY;
 const MAX_SUGGESTIONS_PER_GROUP = 4;
 
 export interface SuggestionGroup {
-	label: string;
+	label: Message;
 	names: string[];
 }
 
 /**
  * Chips offered above the list: nearly empty pantry items, then the most consumed ones, or a
- * few staples while the list is empty. Nothing already open or just bought is offered, and a
+ * few `staples` while the list is empty. Nothing already open or just bought is offered, and a
  * name appears in at most one group.
  */
 export function buildSuggestionGroups({
 	items,
 	inventory,
+	staples,
 	now,
 }: {
 	items: ShoppingItem[];
 	inventory: InventoryItemDto[];
+	staples: readonly string[];
 	now: number;
 }): SuggestionGroup[] {
 	const taken = new Set<string>();
@@ -51,16 +53,18 @@ export function buildSuggestionGroups({
 	}
 	const second: SuggestionGroup =
 		frequent.length > 0
-			? { label: 'Oft gekauft', names: frequent.slice(0, MAX_SUGGESTIONS_PER_GROUP) }
+			? {
+					label: { key: 'shopping.suggestions.frequent' },
+					names: frequent.slice(0, MAX_SUGGESTIONS_PER_GROUP),
+				}
 			: {
-					label: 'Vorschläge',
+					label: { key: 'shopping.suggestions.staples' },
 					names:
-						items.length === 0
-							? QUICK_SHOPPING_ITEMS.filter((name) => !taken.has(normalizeForMatch(name)))
-							: [],
+						items.length === 0 ? staples.filter((name) => !taken.has(normalizeForMatch(name))) : [],
 				};
-	return [
-		{ label: 'Bald leer', names: lowStock.slice(0, MAX_SUGGESTIONS_PER_GROUP) },
-		second,
-	].filter((group) => group.names.length > 0);
+	const first: SuggestionGroup = {
+		label: { key: 'shopping.suggestions.lowStock' },
+		names: lowStock.slice(0, MAX_SUGGESTIONS_PER_GROUP),
+	};
+	return [first, second].filter((group) => group.names.length > 0);
 }

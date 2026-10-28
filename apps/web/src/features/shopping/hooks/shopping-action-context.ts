@@ -1,5 +1,6 @@
 import type { PendingOverlay } from '@/core/sync/use-synced-collection';
 import type { ShoppingItem } from '@/features/shopping/components/shopping-types';
+import type { Message } from '@/shared/i18n/message';
 import type { MutableRefObject } from 'react';
 
 /** What the shopping list's action hooks share: who acts, the synced list and its feedback. */
@@ -15,6 +16,6 @@ export interface ShoppingActionContext {
 	isPending: (id: string) => boolean;
 	/** Items whose bought state is being saved; blocks a second tap and a delete meanwhile. */
 	togglingRef: MutableRefObject<Set<string>>;
-	setToggleError: (message: string | null) => void;
-	setToggleNotice: (message: string | null) => void;
+	setToggleError: (message: Message | null) => void;
+	setToggleNotice: (message: Message | null) => void;
 }

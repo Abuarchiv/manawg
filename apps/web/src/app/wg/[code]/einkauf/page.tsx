@@ -11,7 +11,6 @@ import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { SubNav } from '@/components/wg/SubNav';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { useCachedFetch } from '@/core/hooks/use-cached-fetch';
-import { formatQueuedOfflineEntries } from '@/core/offline/offline-copy';
 import { MS_PER_DAY } from '@/core/utils/time';
 import { InventoryRestockPrompt } from '@/features/inventory/components/InventoryRestockPrompt';
 import type { InventoryItemDto } from '@/features/inventory/inventory';
@@ -21,9 +20,11 @@ import { ShoppingAddBar } from '@/features/shopping/components/ShoppingAddBar';
 import { ShoppingList } from '@/features/shopping/components/ShoppingList';
 import { ShoppingReceiptPrompt } from '@/features/shopping/components/ShoppingReceiptPrompt';
 import { ShoppingSuggestions } from '@/features/shopping/components/ShoppingSuggestions';
+import { QUICK_SHOPPING_ITEMS } from '@/features/shopping/components/constants';
 import { useShoppingPage } from '@/features/shopping/hooks/use-shopping-page';
 import { splitShoppingItems } from '@/features/shopping/shopping-view';
 import { ListChecks } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useSearchParams } from 'next/navigation';
 import { useRef, useState } from 'react';
 import { buildSuggestionGroups } from './shopping-suggestions';
@@ -33,6 +34,9 @@ const NO_INVENTORY: InventoryItemDto[] = [];
 const RESTOCK_WINDOW_MS = MS_PER_DAY / 2;
 
 export default function EinkaufPage() {
+	const t = useTranslations('shopping.page');
+	const tQuick = useTranslations('shopping.suggestions.quick');
+	const tCommon = useTranslations('common');
 	const { wg, members, identity, isAdmin } = useWg();
 	const searchParams = useSearchParams();
 	const highlightedId = searchParams.get('highlight');
@@ -74,7 +78,12 @@ export default function EinkaufPage() {
 	const now = Date.now();
 	const suggestionGroups = suggestionsPending
 		? []
-		: buildSuggestionGroups({ items, inventory, now });
+		: buildSuggestionGroups({
+				items,
+				inventory,
+				staples: QUICK_SHOPPING_ITEMS.map((key) => tQuick(key)),
+				now,
+			});
 
 	return (
 		<div data-household-content className="mx-auto flex w-full max-w-4xl flex-col gap-3 px-4 py-3">
@@ -82,10 +91,12 @@ export default function EinkaufPage() {
 			{/* The active tab already names the page; title and count stay for screen readers. */}
 			<header className="sr-only">
 				<h1 ref={headingRef} tabIndex={-1}>
-					Einkäufe
+					{t('title')}
 				</h1>
 				<p aria-live="polite" aria-atomic="true">
-					{initialLoading && items.length === 0 ? 'Lädt…' : `${open.length} offen`}
+					{initialLoading && items.length === 0
+						? tCommon('loading')
+						: t('openCount', { count: open.length })}
 				</p>
 			</header>
 
@@ -100,7 +111,7 @@ export default function EinkaufPage() {
 
 			{shopping.queuedCount > 0 && (
 				<Alert>
-					<AlertDescription>{formatQueuedOfflineEntries(shopping.queuedCount)}</AlertDescription>
+					<AlertDescription>{t('queued', { count: shopping.queuedCount })}</AlertDescription>
 				</Alert>
 			)}
 			{loadError && (
@@ -108,7 +119,7 @@ export default function EinkaufPage() {
 					message={loadError}
 					onRetry={() => void shopping.load(false)}
 					busy={initialLoading}
-					retryLabel="Liste erneut laden"
+					retryLabel={t('reload')}
 				/>
 			)}
 			{initialLoading && items.length === 0 ? (
@@ -119,11 +130,9 @@ export default function EinkaufPage() {
 						<EmptyMedia variant="icon">
 							<ListChecks aria-hidden />
 						</EmptyMedia>
-						<EmptyTitle>Noch nichts auf der Liste</EmptyTitle>
+						<EmptyTitle>{t('emptyTitle')}</EmptyTitle>
 						<EmptyDescription>
-							{suggestionGroups.length > 0
-								? 'Schreib unten einen Artikel auf oder tippe einen Vorschlag.'
-								: 'Schreib unten einen Artikel auf.'}
+							{suggestionGroups.length > 0 ? t('emptyWithSuggestions') : t('empty')}
 						</EmptyDescription>
 					</EmptyHeader>
 				</Empty>

@@ -1,19 +1,16 @@
 'use client';
 
 import { useToast } from '@/components/ui/Toast';
-import { mutationErrorMessage } from '@/core/http/error-codes';
+import { mutationError } from '@/core/http/error-codes';
 import { createIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
-import {
-	type NotificationWarning,
-	notificationWarningMessage,
-} from '@/core/notifications/notification-warning';
-import { keyUnavailableMessage } from '@/core/offline/offline-copy';
+import type { NotificationWarning } from '@/core/notifications/notification-warning';
 import {
 	type InventoryItemDto,
 	type InventoryMutationItemDto,
 	clampQuantity,
 } from '@/features/inventory/inventory';
+import { type Message, useMessage } from '@/shared/i18n/message';
 import { useRef, useState } from 'react';
 
 type QuantityAction = 'decrement' | 'increment';
@@ -22,6 +19,14 @@ type ConsumeResponse = {
 	clamped: boolean;
 	warning: NotificationWarning;
 };
+
+/** The saved-but-push-failed hint for a stock change, or null when the push went through. */
+function deliveryWarning(warning: NotificationWarning): Message | null {
+	if (warning === 'notification_delivery_failed') return { key: 'inventory.update.deliveryFailed' };
+	if (warning === 'notification_delivery_unknown')
+		return { key: 'inventory.update.deliveryUnknown' };
+	return null;
+}
 
 // Server limits per request (consume: -1..-100, PATCH quantityDelta: +-9999).
 const MAX_CONSUME = 100;
@@ -43,6 +48,7 @@ interface UseInventoryQuantityOptions {
  */
 export function useInventoryQuantity(options: UseInventoryQuantityOptions) {
 	const toast = useToast();
+	const render = useMessage();
 	const latest = useRef(options);
 	latest.current = options;
 	// null = show the server value.
@@ -62,7 +68,7 @@ export function useInventoryQuantity(options: UseInventoryQuantityOptions) {
 		const mapKey = `${consume ? 'consume' : 'restock'}:${delta}`;
 		const key = keysRef.current.get(mapKey) ?? createIdempotencyKey();
 		if (!key) {
-			toast.error(keyUnavailableMessage('Aktualisierung', 'gesendet'));
+			toast.error(render({ key: 'inventory.update.keyUnavailable' }));
 			return false;
 		}
 		keysRef.current.set(mapKey, key);
@@ -76,13 +82,13 @@ export function useInventoryQuantity(options: UseInventoryQuantityOptions) {
 		if (res.ok) {
 			keysRef.current.delete(mapKey);
 			if (consume) {
-				const warningMessage = notificationWarningMessage(res.data.warning, 'Bestand aktualisiert');
-				if (res.data.clamped && warningMessage) {
-					toast.info(`Bestand kann nicht unter 0 fallen. ${warningMessage}`);
+				const warning = deliveryWarning(res.data.warning);
+				if (res.data.clamped && warning) {
+					toast.info(render({ key: 'inventory.update.clampedWithWarning', values: { warning } }));
 				} else if (res.data.clamped) {
-					toast.info('Bestand kann nicht unter 0 fallen.');
-				} else if (warningMessage) {
-					toast.info(warningMessage);
+					toast.info(render({ key: 'inventory.update.clamped' }));
+				} else if (warning) {
+					toast.info(render(warning));
 				}
 			}
 			onChanged(res.data.item);
@@ -92,9 +98,22 @@ export function useInventoryQuantity(options: UseInventoryQuantityOptions) {
 			onGone();
 		} else {
 			if (shouldReleaseIdempotencyKey(res.status, res.error)) keysRef.current.delete(mapKey);
-			const subject = `„${item.name}“ konnte nicht ${consume ? 'verringert' : 'erhöht'} werden`;
+			const subject: Message = {
+				key: consume ? 'inventory.update.subjectDecrease' : 'inventory.update.subjectIncrease',
+				values: { name: item.name },
+			};
 			toast.error(
-				mutationErrorMessage(subject, res.error, {}, `Aktualisierung fehlgeschlagen. ${subject}.`),
+				render(
+					mutationError(
+						subject,
+						res.error,
+						{},
+						{
+							key: 'inventory.update.fallbackWithSubject',
+							values: { subject },
+						},
+					),
+				),
 			);
 		}
 		return false;
