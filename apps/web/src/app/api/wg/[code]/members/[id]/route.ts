@@ -32,7 +32,8 @@ import { isUniqueMemberNameViolation } from '../unique-name-violation';
 /** One open debt of the member being viewed, from their own perspective. */
 interface OpenBalanceDto {
 	member_id: string;
-	name: string;
+	/** Null when the member left the flat; clients show the shared unknown-person label. */
+	name: string | null;
 	amount_cents: number;
 	currency: string;
 	// 'owes'  → this member still owes the counterparty
@@ -80,14 +81,14 @@ export const GET = withWgRoute<{ id: string }>('members/[id] GET', async (req, {
 			pair.debtorId === id
 				? {
 						member_id: pair.creditorId,
-						name: nameById.get(pair.creditorId) ?? 'Unbekannt',
+						name: nameById.get(pair.creditorId) ?? null,
 						amount_cents: pair.amountCents,
 						currency: pair.currency,
 						direction: 'owes' as const,
 					}
 				: {
 						member_id: pair.debtorId,
-						name: nameById.get(pair.debtorId) ?? 'Unbekannt',
+						name: nameById.get(pair.debtorId) ?? null,
 						amount_cents: pair.amountCents,
 						currency: pair.currency,
 						direction: 'owed' as const,
@@ -266,9 +267,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 				eventType: active ? 'member.reactivated' : 'member.deactivated',
 				entityType: 'member',
 				entityId: result.member.id,
-				summary: active
-					? `${auth.member.name} hat ${result.member.name} wieder aktiviert.`
-					: `${auth.member.name} hat ${result.member.name} als ausgezogen markiert.`,
+				actorName: auth.member.name,
 				metadata: { name: result.member.name },
 			});
 		}
@@ -281,10 +280,12 @@ export const PATCH = withWgRoute<{ id: string }>(
 				entityId: result.member.id,
 				// A self-rename starts with the current name: the feed resolves the actor to it and
 				// strips that prefix.
-				summary: result.renamedByOther
-					? `${auth.member.name} hat ${result.renamedFrom} in ${result.member.name} umbenannt.`
-					: `${result.member.name} hat sich umbenannt (vorher ${result.renamedFrom}).`,
-				metadata: { before: result.renamedFrom, after: result.member.name },
+				actorName: result.renamedByOther ? auth.member.name : result.member.name,
+				metadata: {
+					before: result.renamedFrom,
+					after: result.member.name,
+					byOther: result.renamedByOther,
+				},
 			});
 		}
 		return NextResponse.json({

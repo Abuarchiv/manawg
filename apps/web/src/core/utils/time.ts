@@ -43,61 +43,11 @@ export function dayMonthOptions(locale: Locale, withYear = false): Intl.DateTime
 		: { day: 'numeric', month: 'short', ...year };
 }
 
-export function formatRelativeTime(iso: string, now = Date.now()): string {
-	const date = parseValidDate(iso);
-	if (!date) return 'Zeit unbekannt';
-	const diff = now - date.getTime();
-
-	// From one minute in the future on, show "in …"; smaller negative diffs
-	// (client clock skew against a just-created timestamp) count as "gerade eben".
-	if (diff <= -MS_PER_MINUTE) {
-		const until = -diff;
-		if (until < MS_PER_HOUR) {
-			const m = Math.floor(until / MS_PER_MINUTE);
-			return `in ${m} Min`;
-		}
-		if (until < MS_PER_DAY) {
-			const h = Math.floor(until / MS_PER_HOUR);
-			return `in ${h} Std`;
-		}
-		if (until < 7 * MS_PER_DAY) {
-			const d = calendarDaysBetween(new Date(now), date);
-			return d === 1 ? 'morgen' : `in ${d} Tagen`;
-		}
-		return new Intl.DateTimeFormat('de-DE', {
-			day: '2-digit',
-			month: '2-digit',
-			hour: '2-digit',
-			minute: '2-digit',
-		}).format(date);
-	}
-
-	if (diff < MS_PER_MINUTE) return 'gerade eben';
-	if (diff < MS_PER_HOUR) {
-		const m = Math.floor(diff / MS_PER_MINUTE);
-		return `vor ${m} Min`;
-	}
-	if (diff < MS_PER_DAY) {
-		const h = Math.floor(diff / MS_PER_HOUR);
-		return `vor ${h} Std`;
-	}
-	if (diff < 7 * MS_PER_DAY) {
-		const d = calendarDaysBetween(date, new Date(now));
-		return d === 1 ? 'gestern' : `vor ${d} Tagen`;
-	}
-	return new Intl.DateTimeFormat('de-DE', {
-		day: '2-digit',
-		month: '2-digit',
-		hour: '2-digit',
-		minute: '2-digit',
-	}).format(date);
-}
-
 function shortDateTime(locale: Locale): Intl.DateTimeFormatOptions {
 	return { ...dayMonthOptions(locale), hour: '2-digit', minute: '2-digit' };
 }
 
-/** Same buckets as `formatRelativeTime`, as data; the date fallback is formatted in `locale`. */
+/** Relative time as data: buckets for the past and future; the date fallback is formatted in `locale`. */
 export function relativeTimeMessage(iso: string, now = Date.now(), locale: Locale = 'de'): Message {
 	const date = parseValidDate(iso);
 	if (!date) return { key: 'common.time.unknown' };
@@ -194,19 +144,7 @@ export function startOfWeek(date: Date): Date {
 	return start;
 }
 
-/** "Diese Woche", "Letzte Woche" or "Woche ab 08.09." for list section headers. */
-export function formatWeekLabel(weekStart: Date, now = new Date()): string {
-	const weeksAgo = Math.round(
-		(startOfWeek(now).getTime() - weekStart.getTime()) / (7 * MS_PER_DAY),
-	);
-	if (weeksAgo === 0) return 'Diese Woche';
-	if (weeksAgo === 1) return 'Letzte Woche';
-	// Without a year, weeks exactly 52 weeks apart share a label and key.
-	const year = weekStart.getFullYear() === now.getFullYear() ? '' : `${weekStart.getFullYear()}`;
-	return `Woche ab ${formatShortDate(weekStart.toISOString())}${year}`;
-}
-
-/** `formatWeekLabel` as data; the date is formatted in `locale`. */
+/** Week header for list sections (this week, last week, week of a date); the date is formatted in `locale`. */
 export function weekLabelMessage(
 	weekStart: Date,
 	now = new Date(),

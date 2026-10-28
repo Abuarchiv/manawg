@@ -92,7 +92,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 			eventType: 'chat.message.edited',
 			entityType: 'chat_message',
 			entityId: id,
-			summary: `${auth.member.name} hat eine Chat-Nachricht bearbeitet.`,
+			actorName: auth.member.name,
 		});
 
 		return NextResponse.json({ message: updated });
@@ -158,7 +158,7 @@ export const DELETE = withWgRoute<{ id: string }>(
 			eventType: 'chat.message.deleted',
 			entityType: 'chat_message',
 			entityId: id,
-			summary: `${auth.member.name} hat eine Chat-Nachricht gelöscht.`,
+			actorName: auth.member.name,
 			metadata: {
 				kind: row.kind,
 				adminOverride: !isAuthor,

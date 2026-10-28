@@ -2,16 +2,17 @@ import { z } from 'zod';
 import { authPost } from '@/core/auth/route-helpers';
 import { emailField } from '@/core/auth/route-schemas';
 import { queueWelcomeMail } from '@/core/auth/welcome-mail';
+import { requestLocale } from '@/core/i18n/request-locale';
 
 const schema = z.object({ email: emailField, token: z.string().regex(/^\d{4,12}$/) });
 
 /** Exchanges the mailed code for a session; the cookies are set by the server. */
 export const POST = authPost(
 	schema,
-	async ({ supabase, data }) => {
+	async ({ supabase, data, request }) => {
 		const { data: result, error } = await supabase.auth.verifyOtp({ ...data, type: 'email' });
 		if (error) throw error;
-		if (result.session?.user) queueWelcomeMail(result.session.user);
+		if (result.session?.user) queueWelcomeMail(result.session.user, requestLocale(request));
 		return { sessionEstablished: result.session !== null };
 	},
 	{ limited: true },

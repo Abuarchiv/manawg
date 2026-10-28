@@ -81,7 +81,7 @@ test.describe('English debts and reminders', () => {
 
 				await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
 				await expect(page.getByRole('heading', { level: 1, name: 'Reminders' })).toBeAttached();
-				await expect(page.getByRole('heading', { name: 'Open debts' })).toBeVisible();
+				await expect(page.getByRole('heading', { name: 'Open amounts' })).toBeVisible();
 				await expect(page.getByText('Mina owes you').first()).toBeVisible();
 				await expect(page.getByText('€10.00').first()).toBeVisible();
 				await expect(page.getByRole('button', { name: 'Remind Mina' })).toBeVisible();
@@ -127,7 +127,7 @@ test.describe('English debts and reminders', () => {
 				await dismissOnboarding(page);
 
 				await expect(page.getByText('Your balance', { exact: true })).toBeVisible();
-				await expect(page.getByText('You are owed')).toBeVisible();
+				await expect(page.getByText('You are owed').first()).toBeVisible();
 				await expect(page.getByRole('list', { name: 'Balance per member' })).toBeVisible();
 				await expect(page.getByRole('list', { name: 'Your open payments' })).toBeVisible();
 				await expect(page.getByRole('button', { name: 'Settle up' })).toBeVisible();
@@ -209,7 +209,7 @@ test.describe('English debts and reminders', () => {
 		const reverse = page.getByRole('dialog', { name: 'Reverse cash payment?' });
 		await expect(reverse).toBeVisible();
 		await expect(reverse).toContainText('The cash payment of €4.00 from Mina to');
-		await expect(reverse).toContainText('the debt is open again');
+		await expect(reverse).toContainText('the amount is open again');
 		await expect(reverse.getByRole('button', { name: 'Reverse' })).toBeVisible();
 	});
 

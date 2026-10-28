@@ -126,10 +126,10 @@ function movedDueAt(requested: string | undefined, template: RecurringTemplate):
 		: null;
 }
 
-const AUDIT = {
-	pause: { eventType: 'recurring.paused', action: 'hat die Fixkosten {d} pausiert.' },
-	resume: { eventType: 'recurring.resumed', action: 'hat die Fixkosten {d} reaktiviert.' },
-	edit: { eventType: 'recurring.updated', action: 'hat die Fixkosten-Vorlage {d} aktualisiert.' },
+const AUDIT_EVENT = {
+	pause: 'recurring.paused',
+	resume: 'recurring.resumed',
+	edit: 'recurring.updated',
 } as const;
 
 /**
@@ -273,14 +273,13 @@ export async function editRecurringTemplate(
 		}
 		return conflict('recurring_expense_changed', 'recurring_expense_changed');
 	}
-	const audit = AUDIT[transition ?? 'edit'];
 	await recordAuditEvent({
 		wgId,
 		memberId: member.memberId,
-		eventType: audit.eventType,
+		eventType: AUDIT_EVENT[transition ?? 'edit'],
 		entityType: 'recurring_expense',
 		entityId: updated.id,
-		summary: `${member.name} ${audit.action.replace('{d}', updated.description)}`,
+		actorName: member.name,
 		metadata: {
 			...auditMetadata(updated, splits.length),
 			pausedAt: updated.pausedAt?.toISOString() ?? null,
@@ -310,7 +309,7 @@ export async function deleteRecurringTemplate(caller: Caller, id: string): Promi
 		eventType: 'recurring.deleted',
 		entityType: 'recurring_expense',
 		entityId: template.id,
-		summary: `${member.name} hat die Fixkosten-Vorlage ${template.description} gelöscht.`,
+		actorName: member.name,
 		metadata: {
 			description: template.description,
 			amountCents: template.amountCents,

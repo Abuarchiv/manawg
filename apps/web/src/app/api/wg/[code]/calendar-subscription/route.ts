@@ -210,7 +210,7 @@ export const POST = withWgRoute('calendar subscription POST', async (req, { code
 								eventType: existing ? 'calendar.feed_rotated' : 'calendar.feed_created',
 								entityType: 'calendar_subscription',
 								entityId: row.id,
-								summary: `${member.name} hat den Kalender-Feed ${existing ? 'erneuert' : 'angelegt'}.`,
+								actorName: member.name,
 								metadata: { subscriptionId: row.id },
 							} as Parameters<typeof recordAuditEvent>[0],
 						}
@@ -259,7 +259,7 @@ export const PATCH = withWgRoute('calendar subscription PATCH', async (req, { co
 					eventType: 'calendar.feed_rotated',
 					entityType: 'calendar_subscription',
 					entityId: row.id,
-					summary: `${member.name} hat den Kalender-Feed erneuert.`,
+					actorName: member.name,
 					metadata: { subscriptionId: row.id },
 				},
 			};
@@ -306,7 +306,7 @@ export const DELETE = withWgRoute('calendar subscription DELETE', async (req, { 
 					eventType: 'calendar.feed_revoked',
 					entityType: 'calendar_subscription',
 					entityId: row.id,
-					summary: `${member.name} hat den Kalender-Feed widerrufen.`,
+					actorName: member.name,
 					metadata: { subscriptionId: row.id },
 				},
 			};

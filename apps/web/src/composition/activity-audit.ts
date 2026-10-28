@@ -1,9 +1,14 @@
-import { formatEuroCents } from '@/core/utils/money';
 import {
-	formatShortDateRange as formatSharedShortDateRange,
-	formatShortDate,
-} from '@/core/utils/time';
-import { KIND_LABELS } from '@/features/pinnwand/components/constants';
+	auditFeedMessage,
+	isPassiveAuditEvent,
+	KEY_RENDER_CONTEXT,
+	parseAuditMetadata,
+	type RenderContext,
+} from '@/core/audit-messages';
+import { formatEuroCents } from '@/core/utils/money';
+import { formatShortDate, formatShortDateRange } from '@/core/utils/time';
+import { ANNOUNCEMENT_KINDS } from '@/features/pinnwand/announcement-workflow';
+import type { Message, MessageKey } from '@/shared/i18n/message';
 import { MEMBER_NAME_MAX_LENGTH } from '@/shared/lib/limits';
 
 /** Chat audits carry no content worth a feed row and would crowd out real events. */
@@ -30,20 +35,31 @@ export const ACTIVITY_HIDDEN_AUDIT_EVENT_TYPES = [
 	'absence.created',
 ] as const;
 
-function parseAuditMetadata(metadataJson?: string | null): Record<string, unknown> | null {
-	if (!metadataJson) return null;
-	try {
-		const metadata = JSON.parse(metadataJson) as unknown;
-		if (typeof metadata !== 'object' || metadata === null || Array.isArray(metadata)) return null;
-		return metadata as Record<string, unknown>;
-	} catch {
-		return null;
-	}
-}
+const NOTIFICATION_FIELD_KEYS: readonly string[] = [
+	'pushOptIn',
+	'notifyAnnouncements',
+	'notifyChores',
+	'notifyExpenses',
+	'notifyShopping',
+	'notifyInventory',
+	'notifyReminders',
+	'notifyChat',
+	'notifyEvents',
+	'notifyStatementEmail',
+	'quietStartHour',
+	'quietEndHour',
+];
 
-export function auditDetail(metadataJson?: string | null): string | undefined {
+/** Short facts of an event ("Typ: Info · mit Bild"), rendered from its metadata in the reader's locale. */
+export function auditDetail(
+	metadataJson?: string | null,
+	ctx: RenderContext = KEY_RENDER_CONTEXT,
+): string | undefined {
 	const metadata = parseAuditMetadata(metadataJson);
 	if (!metadata) return undefined;
+	const say = (key: MessageKey, values?: Message['values']) =>
+		ctx.render(values ? { key, values } : { key });
+	const { locale } = ctx;
 	try {
 		const parts: string[] = [];
 		if (typeof metadata.description === 'string' && metadata.description.length > 0) {
@@ -56,30 +72,34 @@ export function auditDetail(metadataJson?: string | null): string | undefined {
 			parts.push(metadata.quantity);
 		}
 		// Only known pinboard kinds: chat audits carry kind 'text'/'image', which is not user text.
-		const kindLabel =
-			typeof metadata.kind === 'string'
-				? (KIND_LABELS as Record<string, string | undefined>)[metadata.kind]
-				: undefined;
-		if (kindLabel) parts.push(`Typ: ${kindLabel}`);
+		const kind = ANNOUNCEMENT_KINDS.find((known) => known === metadata.kind);
+		if (kind) {
+			parts.push(say('audit.detail.kind', { kind: { key: `pinnwand.kind.${kind}` } }));
+		}
 		if (metadata.hasImage === true) {
-			parts.push('mit Bild');
+			parts.push(say('audit.detail.withImage'));
 		}
 		if (Array.isArray(metadata.notificationFields)) {
-			const fields = metadata.notificationFields.filter(
-				(field): field is string => typeof field === 'string' && field.length > 0,
-			);
+			const fields = metadata.notificationFields
+				.filter((field): field is string => typeof field === 'string' && field.length > 0)
+				.map((field) =>
+					// New rows store field keys; rows written earlier hold the finished label.
+					NOTIFICATION_FIELD_KEYS.includes(field)
+						? say(`audit.detail.fields.${field}` as MessageKey)
+						: field,
+				);
 			if (fields.length > 0) parts.push(fields.join(', '));
 		}
 		if (typeof metadata.pushOptIn === 'boolean') {
-			parts.push(metadata.pushOptIn ? 'Web Push aktiv' : 'Web Push aus');
+			parts.push(say(metadata.pushOptIn ? 'audit.detail.pushOn' : 'audit.detail.pushOff'));
 		}
 		if ('quietStartHour' in metadata || 'quietEndHour' in metadata) {
 			const start = typeof metadata.quietStartHour === 'number' ? metadata.quietStartHour : null;
 			const end = typeof metadata.quietEndHour === 'number' ? metadata.quietEndHour : null;
 			if (start !== null || end !== null) {
-				parts.push(`Ruhezeit ${start ?? '?'}-${end ?? '?'} Uhr`);
+				parts.push(say('audit.detail.quietHours', { start: start ?? '?', end: end ?? '?' }));
 			} else {
-				parts.push('Ruhezeit aus');
+				parts.push(say('audit.detail.quietHoursOff'));
 			}
 		}
 		if (typeof metadata.reason === 'string' && metadata.reason.length > 0) {
@@ -87,13 +107,13 @@ export function auditDetail(metadataJson?: string | null): string | undefined {
 		}
 		if (typeof metadata.amountCents === 'number') {
 			const currency = typeof metadata.currency === 'string' ? metadata.currency : 'EUR';
-			parts.push(formatEuroCents(metadata.amountCents, currency));
+			parts.push(formatEuroCents(metadata.amountCents, currency, { locale }));
 		}
 		if (typeof metadata.splitCount === 'number') {
-			parts.push(`${metadata.splitCount} Aufteilungen`);
+			parts.push(say('audit.detail.splitCount', { count: metadata.splitCount }));
 		}
 		if (typeof metadata.reaction === 'string') {
-			parts.push(`Reaktion: ${metadata.reaction}`);
+			parts.push(say('audit.detail.reaction', { reaction: metadata.reaction }));
 		}
 		if (typeof metadata.nameBefore === 'string' && typeof metadata.nameAfter === 'string') {
 			if (metadata.nameBefore !== metadata.nameAfter) {
@@ -101,21 +121,27 @@ export function auditDetail(metadataJson?: string | null): string | undefined {
 			}
 		}
 		if (typeof metadata.intervalDays === 'number') {
-			parts.push(metadata.intervalDays === 1 ? 'täglich' : `alle ${metadata.intervalDays} Tage`);
+			parts.push(say('audit.detail.everyDays', { days: metadata.intervalDays }));
 		}
 		if (typeof metadata.intervalMonths === 'number') {
-			parts.push(
-				metadata.intervalMonths === 1 ? 'monatlich' : `alle ${metadata.intervalMonths} Monate`,
-			);
+			parts.push(say('audit.detail.everyMonths', { months: metadata.intervalMonths }));
 		}
 		if (typeof metadata.startDate === 'string' && typeof metadata.endDate === 'string') {
-			parts.push(`abwesend ${formatSharedShortDateRange(metadata.startDate, metadata.endDate)}`);
+			parts.push(
+				say('audit.detail.away', {
+					range: formatShortDateRange(metadata.startDate, metadata.endDate, locale),
+				}),
+			);
 		}
 		if (typeof metadata.nextDueAt === 'string') {
-			parts.push(`nächste Fälligkeit ${formatShortDate(metadata.nextDueAt, 'Europe/Berlin')}`);
+			parts.push(
+				say('audit.detail.nextDue', {
+					date: formatShortDate(metadata.nextDueAt, 'Europe/Berlin', locale),
+				}),
+			);
 		}
 		if (Array.isArray(metadata.splitIds)) {
-			parts.push(`${metadata.splitIds.length} Anteil${metadata.splitIds.length === 1 ? '' : 'e'}`);
+			parts.push(say('audit.detail.shares', { count: metadata.splitIds.length }));
 		}
 		return parts.length > 0 ? parts.join(' · ') : undefined;
 	} catch {
@@ -187,6 +213,30 @@ export function formatAuditActivityText(summary: string, actorName: string): str
 	return verb && verb[0].length <= MEMBER_NAME_MAX_LENGTH + 1
 		? trimmed.slice(verb[0].length)
 		: trimmed;
+}
+
+/**
+ * The sentence of an audit row for the reader. Rows that carry their sentence parameters render
+ * from the catalog in the reader's locale, with `selfText` for the reader's own rows. Older rows
+ * (and calls without a translator) show the stored German summary.
+ */
+export function auditActivitySentence(
+	event: { eventType: string; summary: string; metadataJson?: string | null },
+	actorName: string,
+	ctx?: RenderContext,
+): { text: string; selfText?: string } {
+	const metadata = parseAuditMetadata(event.metadataJson);
+	const feed = ctx && auditFeedMessage(event.eventType, metadata, ctx.locale, false);
+	if (ctx && feed) {
+		const text = ctx.render(feed);
+		const own = auditFeedMessage(event.eventType, metadata, ctx.locale, true);
+		const selfText = own && !isPassiveAuditEvent(event.eventType) ? ctx.render(own) : text;
+		return selfText === text ? { text } : { text, selfText };
+	}
+	const text = formatAuditActivityText(event.summary, actorName);
+	// i18n-ignore German verb agreement for stored rows
+	const selfText = text.replace(/^hat\b/u, 'hast').replace(/^ist\b/u, 'bist');
+	return selfText === text ? { text } : { text, selfText };
 }
 
 function announcementHref(announcementId: string): string {

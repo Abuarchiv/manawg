@@ -33,7 +33,7 @@ export const DELETE = withWgRoute<{ id: string }>('invites DELETE', async (req, 
 		eventType: 'wg.invite_revoked',
 		entityType: 'wg',
 		entityId: wgId,
-		summary: `${auth.member.name} hat eine Einladung widerrufen.`,
+		actorName: auth.member.name,
 		metadata: { inviteId: id },
 	});
 	return NextResponse.json({ revoked: true });

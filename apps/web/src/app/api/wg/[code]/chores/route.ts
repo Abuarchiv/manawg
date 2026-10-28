@@ -243,7 +243,7 @@ export const POST = withWgRoute('chores POST', async (req, { code }) => {
 		eventType: 'chore.created',
 		entityType: 'chore',
 		entityId: chore.id,
-		summary: `${member.name} hat ${chore.title} im Putzplan angelegt.`,
+		actorName: member.name,
 		metadata: {
 			title: chore.title,
 			intervalDays: chore.intervalDays,

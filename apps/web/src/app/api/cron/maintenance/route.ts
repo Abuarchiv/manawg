@@ -116,7 +116,7 @@ export const GET = withCronLogging(
 						// Read the address first; after the Auth delete it is gone. The mail (E10) follows a confirmed delete.
 						const email = await confirmedEmailOf(authUserId);
 						const confirmed = await deleteAuthUser(auth.url, serviceRoleKey, authUserId);
-						if (confirmed) await sendAccountDeletedMail(authUserId, email);
+						if (confirmed) await sendAccountDeletedMail(authUserId, email, 'de');
 						return confirmed;
 					}
 				: null;

@@ -1,5 +1,8 @@
+import { serverT } from '@/core/i18n/server-t';
 import { INVITE_VALID_DAYS, invitePath } from '@/core/utils/invite-token';
 import { formatEuroCents } from '@/core/utils/money';
+import { intlTag } from '@/shared/i18n/intl';
+import { DEFAULT_LOCALE, type Locale } from '@/shared/i18n/locale';
 import { APP_ORIGIN, type MailBlock, type RenderedMail, renderBrandMail } from './brand-mail';
 
 /*
@@ -10,38 +13,38 @@ import { APP_ORIGIN, type MailBlock, type RenderedMail, renderBrandMail } from '
 
 const WG_PATH = (shareCode: string) => `${APP_ORIGIN}/wg/${encodeURIComponent(shareCode)}`;
 
-function joinNames(names: readonly string[]): string {
-	if (names.length === 0) return '';
-	if (names.length === 1) return names[0] ?? '';
-	return `${names.slice(0, -1).join(', ')} und ${names[names.length - 1]}`;
+function joinNames(names: readonly string[], locale: Locale): string {
+	return new Intl.ListFormat(intlTag(locale), { type: 'conjunction' }).format(names);
 }
 
 /** E1 · after the address is confirmed or the first social sign-in. */
-export function renderWelcomeMail(input: { firstName: string | null }): RenderedMail {
-	const greeting = input.firstName
-		? `Hallo ${input.firstName}, dein Konto ist bereit.`
-		: 'Dein Konto ist bereit.';
+export function renderWelcomeMail(input: {
+	firstName: string | null;
+	locale?: Locale;
+}): RenderedMail {
+	const locale = input.locale ?? DEFAULT_LOCALE;
+	const t = serverT(locale, 'mail');
 	return renderBrandMail({
-		subject: 'Willkommen bei ManaWG',
-		preheader: 'Drei Schritte, dann läuft eure WG.',
+		locale,
+		subject: t('welcome.subject'),
+		preheader: t('welcome.preheader'),
 		eyebrow: 'ManaWG',
-		title: 'Verschiedene Menschen teilen einen Alltag.',
+		title: t('welcome.title'),
 		blocks: [
 			{
 				kind: 'paragraph',
-				text: `${greeting} ManaWG hält Ausgaben, Putzplan, Einkauf und Termine für alle in der WG an einem Ort.`,
+				text: t('welcome.intro', {
+					named: input.firstName ? 'yes' : 'other',
+					firstName: input.firstName ?? '',
+				}),
 			},
 			{
 				kind: 'steps',
-				items: [
-					'WG anlegen oder per Einladung beitreten',
-					'Mitbewohner einladen',
-					'Erste Ausgabe eintragen',
-				],
+				items: [t('welcome.stepCreate'), t('welcome.stepInvite'), t('welcome.stepFirstExpense')],
 			},
 		],
-		button: { label: 'WG einrichten', url: `${APP_ORIGIN}/neu` },
-		footerNote: 'Du erhältst diese E-Mail, weil du ein Konto bei ManaWG erstellt hast.',
+		button: { label: t('welcome.button'), url: `${APP_ORIGIN}/neu` },
+		footerNote: t('welcome.footer'),
 	});
 }
 
@@ -51,24 +54,34 @@ export function renderInvitationMail(input: {
 	wgName: string;
 	inviteToken: string;
 	memberNames: readonly string[];
+	locale?: Locale;
 }): RenderedMail {
+	const locale = input.locale ?? DEFAULT_LOCALE;
+	const t = serverT(locale, 'mail');
 	const others = input.memberNames.filter((name) => name !== input.inviterName);
 	const names = [input.inviterName, ...others];
+	const listed = joinNames(names.slice(0, 3), locale);
 	const caption =
 		names.length === 1
-			? `${input.inviterName} ist schon dabei.`
-			: `${joinNames(names.slice(0, 3))}${names.length > 3 ? ` und ${names.length - 3} weitere` : ''} sind schon dabei.`;
+			? t('invitation.captionOne', { name: input.inviterName })
+			: names.length > 3
+				? t('invitation.captionMore', { names: listed, count: String(names.length - 3) })
+				: t('invitation.captionMany', { names: listed });
 	const joinUrl = `${APP_ORIGIN}${invitePath(input.inviteToken)}`;
-	const count = names.length;
+	const title = { inviter: input.inviterName, wgName: input.wgName };
 	return renderBrandMail({
-		subject: `${input.inviterName} lädt dich in die WG ${input.wgName} ein`,
-		preheader: count === 1 ? 'Eine Person ist schon dabei.' : `${count} Leute sind schon dabei.`,
-		eyebrow: 'Einladung',
-		title: `${input.inviterName} lädt dich in die WG ${input.wgName} ein.`,
+		locale,
+		subject: t('invitation.subject', title),
+		preheader: t('invitation.preheader', { count: names.length }),
+		eyebrow: t('invitation.eyebrow'),
+		title: t('invitation.title', title),
 		blocks: [{ kind: 'people', names, caption }],
-		button: { label: 'Einladung annehmen', url: joinUrl },
+		button: { label: t('invitation.button'), url: joinUrl },
 		linkFallback: joinUrl,
-		footerNote: `Der Link gilt ${INVITE_VALID_DAYS} Tage. ${input.inviterName} hat deine Adresse eingegeben, wir speichern sie nicht weiter.`,
+		footerNote: t('invitation.footer', {
+			days: String(INVITE_VALID_DAYS),
+			inviter: input.inviterName,
+		}),
 	});
 }
 
@@ -81,18 +94,17 @@ export function renderReminderMail(input: {
 	oldestDebtAgeDays: number;
 	items: ReadonlyArray<{ description: string; date: string; cents: number }>;
 	unsubscribeUrl: string;
+	locale?: Locale;
 }): RenderedMail {
-	const amount = formatEuroCents(input.amountCents);
-	const age =
-		input.oldestDebtAgeDays <= 0
-			? 'Ältester Posten von heute.'
-			: input.oldestDebtAgeDays === 1
-				? 'Ältester Posten 1 Tag alt.'
-				: `Ältester Posten ${input.oldestDebtAgeDays} Tage alt.`;
+	const locale = input.locale ?? DEFAULT_LOCALE;
+	const t = serverT(locale, 'mail');
+	const money = (cents: number) => formatEuroCents(cents, 'EUR', { locale });
+	const amount = money(input.amountCents);
+	const creditor = { creditor: input.creditorName };
 	const blocks: MailBlock[] = [
 		{
 			kind: 'amount',
-			label: `Noch offen bei ${input.creditorName}`,
+			label: t('reminder.amountLabel', creditor),
 			value: `−${amount}`,
 			tone: 'owes',
 		},
@@ -103,56 +115,46 @@ export function renderReminderMail(input: {
 			rows: input.items.map((item) => ({
 				label: item.description,
 				detail: item.date,
-				value: formatEuroCents(item.cents),
+				value: money(item.cents),
 			})),
 		});
 		// The list holds the newest unsettled shares; payments and shares the
 		// other way are already netted into the amount above.
 		const itemsCents = input.items.reduce((sum, item) => sum + item.cents, 0);
 		if (itemsCents !== input.amountCents) {
-			blocks.push({
-				kind: 'paragraph',
-				text: 'Die neuesten Posten. Zahlungen und Ausgaben in die andere Richtung sind im Betrag oben schon verrechnet.',
-			});
+			blocks.push({ kind: 'paragraph', text: t('reminder.netted') });
 		}
 	}
-	blocks.push({
-		kind: 'paragraph',
-		text: `Ein Klick, und ihr seid quitt. ${input.creditorName} sieht es sofort in der App.`,
-	});
+	blocks.push({ kind: 'paragraph', text: t('reminder.oneClick', creditor) });
 	return renderBrandMail({
-		subject: `Noch offen bei ${input.creditorName}: ${amount}`,
-		preheader: age,
-		eyebrow: 'Erinnerung',
-		title: `Noch offen bei ${input.creditorName}.`,
+		locale,
+		subject: t('reminder.subject', { ...creditor, amount }),
+		preheader: t('reminder.age', { days: Math.max(0, input.oldestDebtAgeDays) }),
+		eyebrow: t('reminder.eyebrow'),
+		title: t('reminder.title', creditor),
 		blocks,
-		button: { label: 'Jetzt ausgleichen', url: `${WG_PATH(input.shareCode)}/ausgaben` },
-		footerNote:
-			'Erinnerungen kommen höchstens einmal pro Woche und nur, wenn du sie eingeschaltet hast.',
+		button: { label: t('reminder.button'), url: `${WG_PATH(input.shareCode)}/ausgaben` },
+		footerNote: t('reminder.footer'),
 		footerLinks: [
-			{ label: 'Einstellungen ändern', url: `${WG_PATH(input.shareCode)}/einstellungen` },
-			{ label: 'Abbestellen', url: input.unsubscribeUrl },
+			{ label: t('shell.changeSettings'), url: `${WG_PATH(input.shareCode)}/einstellungen` },
+			{ label: t('shell.unsubscribe'), url: input.unsubscribeUrl },
 		],
 	});
 }
 
 /** E10 · the last mail an account receives. */
-export function renderAccountDeletedMail(): RenderedMail {
+export function renderAccountDeletedMail(locale: Locale = DEFAULT_LOCALE): RenderedMail {
+	const t = serverT(locale, 'mail');
 	return renderBrandMail({
-		subject: 'Dein Konto ist gelöscht',
-		preheader: 'Dein Login ist entfernt.',
+		locale,
+		subject: t('accountDeleted.subject'),
+		preheader: t('accountDeleted.preheader'),
 		eyebrow: 'ManaWG',
-		title: 'Dein Konto ist gelöscht.',
+		title: t('accountDeleted.title'),
 		blocks: [
-			{
-				kind: 'paragraph',
-				text: 'Dein Login sowie deine Push- und Kalender-Abos sind entfernt. Dein Name bleibt in den bisherigen Einträgen eurer WG stehen, damit die Beträge für die anderen stimmen.',
-			},
-			{
-				kind: 'paragraph',
-				text: 'Danke für die gemeinsame Zeit. Du kannst jederzeit ein neues Konto erstellen.',
-			},
+			{ kind: 'paragraph', text: t('accountDeleted.removed') },
+			{ kind: 'paragraph', text: t('accountDeleted.thanks') },
 		],
-		footerNote: 'Das ist die letzte E-Mail, die du von uns bekommst.',
+		footerNote: t('accountDeleted.footer'),
 	});
 }

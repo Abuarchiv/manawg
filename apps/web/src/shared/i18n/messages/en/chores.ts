@@ -53,16 +53,16 @@ export default {
 		notOwner: 'Only the person themselves or a flat admin can add this.',
 		reasonInvalid: 'The reason can be at most {max} characters long.',
 		createSubject: 'The cleaning task could not be saved',
-		createFallback: 'Adding failed. Try again in a moment.',
+		createFallback: 'The task could not be added. Try again in a moment.',
 		editSubject: 'The task could not be edited',
 		choreChanged:
-			'The task has changed in the meantime. The rota is reloading, so please try again.',
+			'The task has changed in the meantime. The rota is reloading. Try again once it has loaded.',
 		swapPostSubject: 'The swap request could not be posted',
 		takeOverSubject: 'The task could not be taken over',
-		removeSubject: 'Removing failed',
+		removeSubject: 'The task could not be removed',
 	},
 	offline: {
-		alreadySent: 'The entry has already been sent in the meantime – please check the list.',
+		alreadySent: 'The entry has already been sent. Check the list.',
 		queueBlocked: 'Offline storage is blocked. Keep the draft open and try again later.',
 		draftCleanupFailed:
 			'Saved offline, but the old draft could not be removed. Check the offline queue.',
@@ -70,16 +70,15 @@ export default {
 		onlineDraftCleanupFailed: 'Saved, but the old offline draft could not be removed.',
 	},
 	completion: {
-		saveFailed: 'Marking the task as done could not be saved',
-		keyUnavailable: 'Marking the task as done could not be saved safely. Try again.',
+		saveFailed: 'The task could not be marked as done',
+		keyUnavailable: 'The task could not be reliably marked as done. Try again.',
 		queued: 'Marked as done offline. The next date and assignee are confirmed after syncing.',
 		queueBlocked: 'Offline storage is blocked. Try again later, once your browser can save again.',
-		queueBlockedToast: 'Marking the task as done could not be queued offline.',
+		queueBlockedToast: 'The task could not be marked as done offline.',
 		notFound: 'This cleaning task no longer exists and has been removed from the rota.',
 		alreadyCompleted: 'This cleaning task is already done. The rota is updating.',
 		occurrenceChanged: 'The date or assignee has changed. The rota is updating.',
-		insertFailed:
-			'Marking the task as done was not saved completely. Reload the rota and check the history.',
+		insertFailed: 'The task was only partly marked as done. Reload the rota and check the history.',
 		doneUnconfirmed: '{title} is done. The confirmed next date and assignee are loading.',
 		doneUnassigned: '{title} is done. Next due {date}, nobody assigned yet.',
 		doneNext:
@@ -88,17 +87,17 @@ export default {
 	completeDialog: {
 		trigger: {
 			complete: 'Mark as done: {title}',
-			catchUp: 'Catch up on task: {title}',
+			catchUp: 'Catch up: {title}',
 		},
 		title: 'Mark “{title}” as done?',
 		description:
 			'{upNext, select, self {You are up next. } named {{name} is up next. } nobody {Nobody is available for the next round. } other {}}This cannot be undone.',
 		cancel: 'Cancel',
 		saving: 'Saving…',
-		confirm: { complete: 'Confirm done', catchUp: 'Confirm catch up' },
+		confirm: { complete: 'Confirm done', catchUp: 'Confirm catch-up' },
 		confirmAria: {
 			complete: 'Confirm done: {title}',
-			catchUp: 'Confirm catch up: {title}',
+			catchUp: 'Confirm catch-up: {title}',
 		},
 	},
 	row: {
@@ -164,7 +163,7 @@ export default {
 	},
 	fairness: {
 		thisMonth: 'This month',
-		bestFor: 'Best for a new task:',
+		bestFor: 'Next new task goes best to:',
 		you: 'you',
 		youCapital: 'You',
 		nothingDone: 'Nothing done yet.',
@@ -190,7 +189,7 @@ export default {
 		fromAria: 'Away from',
 		until: 'Until',
 		untilAria: 'Away until',
-		pickRange: 'Pick From and Until, then you can save.',
+		pickRange: 'Choose a start and end date to save.',
 		reason: 'Reason (optional)',
 		reasonPlaceholder: 'e.g. Holiday',
 		saveAria: 'Save time away',
@@ -198,14 +197,14 @@ export default {
 		saving: 'Saving…',
 		remove: 'Remove',
 		removeAria: 'Remove time away for {name} ({range})',
-		removeConfirm: 'Really remove?',
-		removeConfirmAria: 'Really remove? Time away for {name} ({range})',
+		removeConfirm: 'Remove this time away?',
+		removeConfirmAria: 'Remove this time away for {name} ({range})?',
 		cancel: 'Cancel',
 		cancelRemoveAria: 'Cancel removing time away for {name}',
-		showAll: 'Show all {count} periods away',
+		showAll: 'Show all ({count})',
 		invalidRange: 'Choose a valid period for the time away.',
 		endInPast: 'The time away ends in the past.',
-		keyUnavailable: 'The time away could not be saved safely. Try again.',
+		keyUnavailable: 'The time away could not be saved reliably. Try again.',
 		savedOffline:
 			'Saved offline. The cleaning rota takes the time away into account straight away.',
 		saved:
@@ -232,8 +231,8 @@ export default {
 		dueToday: '{count} today',
 	},
 	errorPage: {
-		title: 'The cleaning rota could not be loaded just now',
-		body: 'Something went wrong in the cleaning rota. Try again or go back to your flat overview.',
+		title: 'The cleaning rota could not be loaded right now',
+		body: 'Something went wrong in the cleaning rota. Try again or go back to the flat overview.',
 	},
 	page: {
 		draftKept: 'Your existing draft is kept.',
@@ -251,7 +250,7 @@ export default {
 	actions: {
 		stillQueued: 'This task is still queued offline and can only be edited after syncing.',
 		swapPost:
-			'{name} would like to swap: “{title}” ({status}). Take it over, or agree it between you?',
+			'{name} would like to swap: “{title}” ({status}). Can someone take it over, or shall we have a quick word?',
 		swapDuplicate: 'There is already an open swap request for this task on the noticeboard.',
 		swapPosted: 'The swap request was posted on the noticeboard.',
 		takenOver: 'You are now assigned to the task.',
@@ -266,7 +265,7 @@ export default {
 	create: {
 		firstDueInPast:
 			'The cleaning task could not be saved. The first due date cannot be in the past.',
-		keyUnavailable: 'The task could not be saved safely. Try again.',
+		keyUnavailable: 'The task could not be saved reliably. Try again.',
 		deliveryFailed: 'Saved. Not all push notifications could be sent.',
 		deliveryUnknown: 'Saved. Push delivery could not be confirmed.',
 		saved: 'Task saved.',

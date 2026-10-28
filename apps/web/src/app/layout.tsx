@@ -46,8 +46,9 @@ const appUrl = getAppUrl();
 
 // Brand title and description are word-for-word those of the marketing site (manawg.com),
 // so link previews and crawlers read one product definition across both origins.
-const brandTitle = 'ManaWG, die WG-App: Ausgaben, Einkauf, Putzplan für eure WG';
+const brandTitle = 'ManaWG, die WG-App: Ausgaben, Einkauf, Putzplan für eure WG'; // i18n-ignore German brand head, identical to the landing; page routes localise through meta.brand
 const metaDescription =
+	// i18n-ignore German brand head, identical to the landing
 	'Mit ManaWG teilt ihr Ausgaben, organisiert Einkäufe und verteilt Aufgaben im Putzplan. Die App ist kostenlos und läuft im Browser.';
 
 // Same entity the marketing site declares (same @id, same publisher), so both
@@ -71,7 +72,7 @@ export const metadata: Metadata = {
 	metadataBase: new URL(appUrl),
 	title: { default: brandTitle, template: '%s — ManaWG' },
 	description: metaDescription,
-	keywords: ['WG', 'Wohngemeinschaft', 'Ausgaben teilen', 'Putzplan', 'WG App', 'DSGVO'],
+	keywords: ['WG', 'Wohngemeinschaft', 'Ausgaben teilen', 'Putzplan', 'WG App', 'DSGVO'], // i18n-ignore German brand head, identical to the landing
 	authors: [{ name: 'ManaWG' }],
 	applicationName: 'ManaWG',
 	// Search should surface manawg.com; app pages stay out of the index

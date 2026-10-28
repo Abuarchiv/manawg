@@ -6,3 +6,13 @@ export function renderTemplate(html, appUrl, legalUrl) {
 		.replaceAll('https://app.manawg.com', appUrl)
 		.replaceAll('https://manawg.com', legalUrl);
 }
+
+// Resolves the `{{ if eq .Data.locale "en" }}en{{ else }}de{{ end }}` blocks the way Supabase Auth
+// does when it renders a mail, so previews and tests can look at one language at a time. The
+// hosted and Docker Auth services evaluate the blocks themselves; the pushed templates keep them.
+export function selectLocale(text, locale) {
+	return text.replace(
+		/\{\{\s*if eq \.Data\.locale "en"\s*\}\}([\s\S]*?)\{\{\s*else\s*\}\}([\s\S]*?)\{\{\s*end\s*\}\}/g,
+		(_, en, de) => (locale === 'en' ? en : de),
+	);
+}

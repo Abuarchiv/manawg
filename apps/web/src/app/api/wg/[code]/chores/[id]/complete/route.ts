@@ -337,8 +337,8 @@ export const POST = withWgRoute<{ id: string }>(
 			eventType: 'chore.completed',
 			entityType: 'chore',
 			entityId: c.id,
-			summary: `${auth.member.name} hat ${c.title} erledigt.`,
-			metadata: { nextAssignedMemberId: result.context.nextAssigned },
+			actorName: auth.member.name,
+			metadata: { title: c.title, nextAssignedMemberId: result.context.nextAssigned },
 		});
 		return NextResponse.json(result.body, { status: result.status });
 	},

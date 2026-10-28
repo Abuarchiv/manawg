@@ -300,7 +300,7 @@ test.describe('English calendar', () => {
 		await expectNoGermanChrome(page);
 		await renew.getByRole('button', { name: 'Cancel' }).click();
 
-		await page.getByRole('button', { name: 'Revoke subscription' }).click();
+		await page.getByRole('button', { name: 'Revoke calendar feed' }).click();
 		const revoke = page.getByRole('dialog');
 		await expect(revoke.getByText('Revoke calendar feed?')).toBeVisible();
 		await expectNoGermanChrome(page);
@@ -340,7 +340,7 @@ test.describe('English calendar', () => {
 			await dismissOnboarding(page);
 			await expect(
 				page.getByText(
-					'This device uses the time zone America/New_York. Times appear in that zone, while repeats and reminders follow Berlin time.',
+					'This device uses the time zone America/New_York. Times appear in that zone, while repeating events and reminders follow Berlin time.',
 				),
 			).toBeVisible();
 			await expectNoGermanChrome(page);

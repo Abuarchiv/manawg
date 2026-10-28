@@ -25,7 +25,7 @@ import { useMessage } from '@/shared/i18n/message';
 /** One open debt of the member being moved out, from their own perspective. */
 interface OpenBalanceDto {
 	member_id: string;
-	name: string;
+	name: string | null;
 	amount_cents: number;
 	currency: string;
 	direction: 'owes' | 'owed';
@@ -70,6 +70,7 @@ export function MemberDeactivateDialog({
 }: MemberDeactivateDialogProps) {
 	const t = useTranslations('shell.deactivate');
 	const tCommon = useTranslations('common.errors');
+	const tPerson = useTranslations('common');
 	const tUi = useTranslations('shell.ui');
 	const mode = selfLeave ? 'leave' : 'moveOut';
 	const message = useMessage();
@@ -181,7 +182,10 @@ export function MemberDeactivateDialog({
 											className="flex items-center justify-between gap-2 text-meta"
 										>
 											<span className="text-muted-foreground truncate">
-												{t('balanceOwner', { direction: balance.direction, name: balance.name })}
+												{t('balanceOwner', {
+													direction: balance.direction,
+													name: balance.name ?? tPerson('unknownPerson'),
+												})}
 											</span>
 											<span className="text-foreground shrink-0 font-medium tabular-nums">
 												{formatEuroCents(balance.amount_cents, balance.currency, { locale })}

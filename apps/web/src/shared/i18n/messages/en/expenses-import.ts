@@ -57,15 +57,15 @@ export default {
 	mapping: {
 		heading: 'Match names to flatmates',
 		open: 'Match the names that are still open.',
-		fuzzy: 'Some names were matched by similarity only. Please check them.',
-		allRecognised: 'All names were recognised automatically. Please check them.',
+		fuzzy: 'Some names were matched by similarity only. Check them.',
+		allRecognised: 'All names were recognised automatically. Check them.',
 		noNames: 'No names found.',
-		suggestion: 'Suggested, please check',
+		suggestion: 'Suggested, check it',
 		selectAria: 'Choose flatmate for {name}',
 		unassigned: 'Not matched yet',
 		skip: 'Leave out (skip rows)',
 		skipHint: 'Expenses with {name} are not imported, for example because they have moved out.',
-		required: 'Please choose a flatmate.',
+		required: 'Choose a flatmate.',
 	},
 	preview: {
 		heading: 'Preview',
@@ -102,7 +102,7 @@ export default {
 		failed: 'Import failed',
 		withErrors: 'Finished with errors',
 		withoutErrors: 'Finished without errors',
-		retry: 'Please try again.',
+		retry: 'Try again.',
 		summary:
 			'{inserted} imported · {skipped} skipped · {errors, plural, one {# error} other {# errors}}',
 	},
@@ -150,7 +150,7 @@ export default {
 		authInvalidated: 'Your flat membership is missing. Join the flat again.',
 		memberDeactivated: 'Your membership is no longer active. Join the flat again.',
 		memberNotInWg: 'At least one match no longer belongs to this flat. Check the matches.',
-		mappingIncomplete: 'Please match every name to a flatmate.',
+		mappingIncomplete: 'Match every name to a flatmate.',
 		payloadChanged: 'The input changed after the preview. Create the preview again.',
 		payloadTooLarge:
 			'The file is too large. Choose a smaller file (CSV up to 5 MB, image up to 10 MB).',
@@ -182,7 +182,7 @@ export default {
 		amountInvalid: 'Amount not readable',
 		noParticipants: 'No person involved',
 		payerMissing: 'Payer missing',
-		multiplePayers: 'Several payers – please enter it by hand',
+		multiplePayers: 'Several payers – enter it by hand',
 		currencyUnsupported: 'Foreign currency – only EUR is imported',
 		fallback: 'Row cannot be imported',
 	},
@@ -194,7 +194,7 @@ export default {
 		splitsDrift: 'The split differed slightly from the total and was adjusted automatically.',
 		splitsDiscarded:
 			'The custom split differed too much from the total and was discarded. The amount is split equally instead.',
-		ocr: 'Read from the image: check the date, amount and payer. The expense is assigned to the payer only, so no debt is created.',
-		fallback: 'Please check this row.',
+		ocr: 'Read from the image: check the date, amount and payer. The expense is assigned to the payer only, so no open amount is created.',
+		fallback: 'Check this row.',
 	},
 } satisfies Catalog<typeof de>;

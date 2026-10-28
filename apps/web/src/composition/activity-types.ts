@@ -14,6 +14,8 @@ export interface ActivityItem {
 	memberId?: string | null;
 	memberName: string;
 	text: string;
+	/** `text` for the reader's own rows ("hast … gekauft"); absent when it reads the same. */
+	selfText?: string;
 	/** True when `text` is a server-built sentence ("hat …"), not user content. */
 	sentence?: boolean;
 	completed: boolean;

@@ -5,6 +5,8 @@
  * only for owed and settled amounts. Every mail is rendered as HTML and text, in light and dark.
  */
 
+import { serverT } from '@/core/i18n/server-t';
+import { DEFAULT_LOCALE, htmlLang, type Locale } from '@/shared/i18n/locale';
 import { getAppUrl } from '@/shared/lib/app-url';
 import { legalUrl } from '@/shared/lib/landing-url';
 import { MAIL_COLOR_SCHEME_META, MAIL_DARK_STYLE, markImages } from './dark-mode';
@@ -36,9 +38,11 @@ export type MailBlock =
 	| { kind: 'tiles'; tiles: Array<{ label: string; value: string }> };
 
 export interface BrandMailSpec {
+	/** Language of the shell (`lang`, footer and fallback text); the caller supplies the copy. */
+	locale?: Locale;
 	subject: string;
 	preheader: string;
-	/** Mono eyebrow above the title, e.g. the WG name or "Einladung". */
+	/** Mono eyebrow above the title, e.g. the WG name or "Invitation". */
 	eyebrow: string;
 	/** Right-aligned mono label in the head, e.g. a date; omitted when empty. */
 	headLabel?: string;
@@ -163,31 +167,35 @@ function head(label: string | undefined): string {
 	return `<tr><td style="padding:22px 40px;border-bottom:1px solid ${LINE};"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td valign="middle" width="1" style="padding-right:10px;">${mark}</td><td valign="middle" style="font-family:${HEADLINE};font-weight:600;font-size:15px;line-height:1;letter-spacing:-0.02em;color:${INK};">ManaWG</td>${right}</tr></table></td></tr>`;
 }
 
-function footer(spec: BrandMailSpec): string {
+type ShellT = ReturnType<typeof serverT<'mail'>>;
+
+function footer(spec: BrandMailSpec, t: ShellT): string {
 	const link = `style="color:${MUTED};text-decoration:underline;"`;
 	const links = [
 		...(spec.footerLinks ?? []),
-		{ label: 'Impressum', url: legalUrl('/impressum') },
-		{ label: 'Datenschutz', url: legalUrl('/datenschutz') },
+		{ label: t('shell.legalNotice'), url: legalUrl('/impressum') },
+		{ label: t('shell.privacy'), url: legalUrl('/datenschutz') },
 	]
 		.map((entry) => `<a href="${escapeHtml(entry.url)}" ${link}>${escapeHtml(entry.label)}</a>`)
 		.join(' &middot; ');
 	return `<tr><td bgcolor="#FAFAFA" style="background-color:#FAFAFA;border-top:1px solid ${LINE};padding:22px 40px;"><div style="font-family:${SANS};font-size:12px;line-height:1.55;color:${MUTED};">${escapeHtml(spec.footerNote)}</div><div style="padding-top:6px;font-family:${MONO};font-size:11px;line-height:1.55;letter-spacing:0.06em;color:${MUTED};">${escapeHtml(APP_ORIGIN.replace(/^https?:\/\//, ''))} &middot; ${links}</div></td></tr>`;
 }
 
-function button(spec: BrandMailSpec): string {
+function button(spec: BrandMailSpec, t: ShellT): string {
 	if (!spec.button) return '';
 	const fallback = spec.linkFallback
-		? `<tr><td style="padding:14px 0 0 0;font-family:${MONO};font-size:11px;line-height:1.6;color:${MUTED};word-break:break-all;">Falls der Button nicht geht: ${escapeHtml(spec.linkFallback)}</td></tr>`
+		? `<tr><td style="padding:14px 0 0 0;font-family:${MONO};font-size:11px;line-height:1.6;color:${MUTED};word-break:break-all;">${escapeHtml(t('shell.linkFallback', { url: spec.linkFallback }))}</td></tr>`
 		: '';
 	return `<tr><td style="padding:4px 0 0 0;"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="#171717" style="background-color:#171717;border-radius:10px;"><a href="${escapeHtml(spec.button.url)}" style="display:inline-block;padding:13px 20px;font-family:${SANS};font-size:15px;line-height:1.3;font-weight:500;color:#FAFAFA;text-decoration:none;border-radius:10px;">${escapeHtml(spec.button.label)}</a></td></tr></table></td></tr>${fallback}`;
 }
 
 export function renderBrandMail(spec: BrandMailSpec): RenderedMail {
+	const locale = spec.locale ?? DEFAULT_LOCALE;
+	const t = serverT(locale, 'mail');
 	const eyebrow = `<tr><td style="padding:0 0 14px 0;font-family:${MONO};font-size:11px;line-height:1.4;letter-spacing:0.14em;text-transform:uppercase;color:${MUTED};">${escapeHtml(spec.eyebrow)}</td></tr>`;
 	const title = `<tr><td style="padding:0 0 24px 0;font-family:${HEADLINE};font-weight:600;font-size:28px;line-height:1.15;letter-spacing:-0.03em;color:${INK};">${escapeHtml(spec.title)}</td></tr>`;
 	const html = `<!DOCTYPE html>
-<html lang="de" xmlns="http://www.w3.org/1999/xhtml">
+<html lang="${htmlLang(locale)}" xmlns="http://www.w3.org/1999/xhtml">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -205,9 +213,9 @@ ${head(spec.headLabel)}
 ${eyebrow}
 ${title}
 ${spec.blocks.map(renderBlock).join('\n')}
-${button(spec)}
+${button(spec, t)}
 </table></td></tr>
-${footer(spec)}
+${footer(spec, t)}
 </table>
 </td></tr>
 </table>

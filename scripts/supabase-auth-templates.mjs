@@ -2,7 +2,9 @@
 // Usage: node scripts/supabase-auth-templates.mjs --ref <ref> [--app-url <url>] [--legal-url <url>] [--apply]
 // --app-url / --legal-url replace the official origins in the templates (defaults:
 // https://app.manawg.com and https://manawg.com). Without --apply: dry-run (prints what would
-// be sent). --apply needs SUPABASE_ACCESS_TOKEN.
+// be sent). --apply needs SUPABASE_ACCESS_TOKEN and is run by the owner only.
+// The templates and subjects hold German and English text in `{{ if eq .Data.locale "en" }}` blocks;
+// Supabase Auth picks the branch from the user's `user_metadata.locale`, German by default.
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { renderTemplate } from '../supabase/templates/render.mjs';

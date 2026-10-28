@@ -33,7 +33,7 @@ export default {
 		errors: {
 			taken: 'That name is already taken in this flat.',
 			changed: 'Your name has changed in the meantime. Reload the page and try again.',
-			subject: 'Name could not be changed',
+			subject: 'Your name could not be changed',
 		},
 	},
 	wgName: {
@@ -42,11 +42,12 @@ export default {
 		saved: 'Flat name saved.',
 		errors: {
 			adminOnly: 'Only admins can rename the flat.',
-			subject: 'Flat could not be renamed',
+			subject: 'The flat could not be renamed',
 		},
 	},
 	authFailure: {
-		credentials: 'Email or password is incorrect. Check what you entered or reset your password.',
+		credentials:
+			'The email address or password is incorrect. Check what you entered or reset your password.',
 		unconfirmed:
 			'Your email address is not confirmed yet. Open the link in the confirmation email, then sign in.',
 		rateLimit: 'Too many attempts. Wait a few minutes and try again.',
@@ -61,7 +62,7 @@ export default {
 		signedInWith: 'Signed in with email and password: {email}',
 		action: 'Change password',
 		sent: 'We have sent a link to change your password to {email}.',
-		failed: 'The link could not be sent right now. Please try again later.',
+		failed: 'The link could not be sent right now. Try again later.',
 	},
 	emailChange: {
 		open: 'Change email address',
@@ -71,15 +72,15 @@ export default {
 		same: 'That is already your email address.',
 		sent: 'We have sent confirmation links to {next} and {current}. The address changes once you have opened both links.',
 		exists: 'This email address is already in use.',
-		failed: 'The address could not be changed right now. Please try again later.',
+		failed: 'The address could not be changed right now. Try again later.',
 	},
 	signOut: {
 		account: 'Sign out of account',
 		everywhere: 'Sign out on all devices',
 		pending: 'Signing out…',
-		failed: 'Your account could not be signed out. Please try again.',
+		failed: 'Your account could not be signed out. Try again.',
 		pushNotice:
-			'You are signed out, but push could not be switched off safely in this browser. Turn off site notifications in your browser settings.',
+			'You are signed out, but push could not be reliably turned off in this browser. Turn off website notifications in the browser settings.',
 	},
 	accountWgs: {
 		title: 'Your flats',
@@ -89,17 +90,17 @@ export default {
 		title: 'Invitations',
 		hint: 'Anyone with a link can join. Each link is valid for {days, plural, one {# day} other {# days}}.',
 		create: 'New invitation',
-		newLink: 'New invitation link',
-		qrAlt: 'QR code of the invitation link',
+		newLink: 'New invite link',
+		qrAlt: 'QR code of the invite link',
 		share: 'Share',
 		copy: 'Copy',
-		copyAria: 'Copy invitation link',
+		copyAria: 'Copy invite link',
 		shared: 'Invitation copied.',
 		shareFailed: 'Sharing failed. Copy the link instead.',
 		copied: 'Link copied.',
 		copyFailed: 'Copying failed. Select the link and copy it manually.',
 		revoked: 'Invitation revoked.',
-		revokeFailed: 'The invitation could not be revoked. Please try again.',
+		revokeFailed: 'The invitation could not be revoked. Try again.',
 		loadFailed: 'The invitations could not be loaded.',
 		listLabel: 'Active invitations',
 		empty: 'No active invitations.',
@@ -108,9 +109,9 @@ export default {
 			'{creator, select, former {Revoke invitation from a former member} other {Revoke invitation from {name}}}',
 		createdBy: '{creator, select, former {From a former member} other {From {name}}}',
 		usage: 'expires {date} · {used} of {max} used',
-		addressTitle: 'Flat address',
+		addressTitle: 'Flat code',
 		addressHint:
-			'The code is only the address of the flat in the app. Joining needs an invitation.',
+			'The flat code only identifies the flat in the app. To join, you need an invitation.',
 	},
 	members: {
 		title: 'Members',
@@ -118,8 +119,8 @@ export default {
 		you: 'You',
 		transferAdmin: 'Hand over admin',
 		transferAdminAria: 'Hand over admin: {name}',
-		moveOut: 'Move out',
-		moveOutAria: 'Move out: {name}',
+		moveOut: 'Mark as moved out',
+		moveOutAria: 'Mark as moved out: {name}',
 		movedOut: 'Moved out',
 		movedOutNoAccount: 'Moved out, no account linked',
 		movedOutKept: 'Moved out, history is kept',
@@ -131,9 +132,9 @@ export default {
 		errors: {
 			inactive: 'This member has moved out. Reactivate them first.',
 			notLinked: 'This member has no linked account yet and cannot become admin.',
-			promoteFailed: 'The admin role could not be handed over. Please try again.',
-			limit: 'The flat already has {max} active members. Ask someone to move out first.',
-			reactivateFailed: 'The reactivation could not be saved. Please try again.',
+			promoteFailed: 'The admin role could not be handed over. Try again.',
+			limit: 'The flat already has {max} active members. Mark someone as moved out first.',
+			reactivateFailed: 'The reactivation could not be saved. Try again.',
 		},
 		promoteDialog: {
 			title: 'Hand over the admin role?',
@@ -155,7 +156,7 @@ export default {
 		leaveTitle: 'Leave flat',
 		leaveHint: 'Deactivates your membership. Entries and open balances are kept.',
 		leaveLastMember:
-			'You are the last active member. The flat can only be left once another member is active. To sign out on this device only, use “Sign out of account” above.',
+			'You are the last active member. You can only leave once another member is active. To sign out on this device only, use “Sign out of account” above.',
 		deleteTitle: 'Delete flat permanently',
 		deleteHintAdmin:
 			'Removes the whole flat and all data (expenses, lists, noticeboard) for all members, permanently.',
@@ -169,14 +170,14 @@ export default {
 			confirm: 'Delete flat',
 		},
 		errors: {
-			subject: 'Flat could not be deleted',
+			subject: 'The flat could not be deleted',
 			network:
 				'No connection. It is unclear whether the flat was deleted. Reload the page and check.',
 			notFound:
 				'This flat was not found. It may already have been deleted, or the link is out of date.',
 			invalidCode: 'The flat code is not valid. Open the flat through a valid link.',
 			membershipInvalid: 'Your local membership is no longer valid. Join the flat again.',
-			fallback: 'Deletion failed. Please try again later.',
+			fallback: 'The flat could not be deleted. Try again later.',
 		},
 	},
 	accountDelete: {
@@ -186,7 +187,7 @@ export default {
 		confirmWord: 'DELETE',
 		dialogTitle: 'Delete account permanently?',
 		dialogBody:
-			'You are removed from all flats. If you are admin, the longest-active member takes over. Flats where you are the only member are deleted entirely. This cannot be undone.',
+			'You are removed from all flats. If you are admin, the member who has been active longest takes over. Flats where you are the only member are deleted entirely. This cannot be undone.',
 		typeWord: 'Type {word}',
 		exportHint: 'If you need your flat data, export it first under “Data”.',
 		signInAgainBtn: 'Sign in again',
@@ -194,8 +195,8 @@ export default {
 		signInAgain: 'Sign in again to delete your account.',
 		unknownOutcome:
 			'The server cannot confirm the status. Wait a moment and try again; a request that was already accepted continues on the server.',
-		unavailable: 'Deletion is not available right now. Please try again later.',
-		failed: 'Your account could not be deleted. Please try again later.',
+		unavailable: 'Deletion is not available right now. Try again later.',
+		failed: 'Your account could not be deleted. Try again later.',
 	},
 	notifications: {
 		title: 'Notifications',
@@ -212,7 +213,7 @@ export default {
 		pushOn: 'Web Push is on.',
 		pushOff: 'Web Push is off.',
 		testSent: 'Test sent. Check whether the push notification arrives.',
-		quietEqual: 'The start and end of quiet hours must not be the same.',
+		quietEqual: 'The start and end of quiet hours cannot be the same.',
 		prefs: {
 			announcements: 'Noticeboard',
 			chores: 'Cleaning rota',
@@ -238,15 +239,15 @@ export default {
 			toAria: 'Quiet hours to',
 		},
 		errors: {
-			keyPreference: 'Setting could not be saved safely. Try again.',
-			keyQuiet: 'Quiet hours could not be saved safely. Try again.',
-			keyTest: 'Test could not be sent safely. Try again.',
-			saveSubject: 'Notifications could not be saved',
+			keyPreference: 'The setting could not be saved reliably. Try again.',
+			keyQuiet: 'Quiet hours could not be saved reliably. Try again.',
+			keyTest: 'The test could not be sent reliably. Try again.',
+			saveSubject: 'Your notifications could not be saved',
 			quietSubject: 'Quiet hours could not be saved',
 			quietInvalid: 'Choose hours between 0 and 23.',
 			invalidRequest: 'The request was not valid.',
 			saveFallback: 'The notification setting could not be saved.',
-			testSubject: 'Test notification could not be sent',
+			testSubject: 'The test notification could not be sent',
 			noSubscription:
 				'This device is no longer registered for push. Turn push notifications off and on again.',
 			testFallback: 'The test could not be sent.',
@@ -297,18 +298,18 @@ export default {
 			recurringExpenses: 'Fixed costs',
 			shoppingItems: 'Shopping',
 			chores: 'Cleaning rota',
-			choreCompletions: 'Cleaning completions',
+			choreCompletions: 'Completed cleaning tasks',
 			inventory: 'Supplies',
-			absences: 'Away periods',
+			absences: 'Time away',
 			announcements: 'Noticeboard',
-			announcementComments: 'Noticeboard comments',
+			announcementComments: 'Noticeboard replies',
 			events: 'Events',
 			chatMessages: 'Chat',
 			auditEvents: 'Flat changes',
 		},
 		errors: {
-			subject: 'Export could not be created',
-			fallback: 'Export could not be created.',
+			subject: 'The export could not be created',
+			fallback: 'The export could not be created.',
 			invalidSection: 'Choose a valid CSV section.',
 		},
 	},

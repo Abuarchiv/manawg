@@ -3,17 +3,17 @@ import type de from '../de/activity';
 
 export default {
 	reminder: {
-		choreStuck: '{title} has been stuck for {days} days',
-		choreDetail: '{assignee} is assigned. Catch up, take over or sort it out quickly.',
+		choreStuck: '{title} has been stuck for {days, plural, one {# day} other {# days}}',
+		choreDetail: '{assignee} is assigned. Catch up, take over or have a quick word about it.',
 		nobody: 'Nobody',
-		announcementOpen: 'Noticeboard post open for {days} days',
-		shoppingOpen: '{name} has been on the list for {days} days',
+		announcementOpen: 'Noticeboard post open for {days, plural, one {# day} other {# days}}',
+		shoppingOpen: '{name} has been on the list for {days, plural, one {# day} other {# days}}',
 		shoppingDetail: 'Check whether you still need it.',
 	},
 	loadError: { lead: 'Activity could not be loaded' },
 	error: {
-		title: 'Activity could not be loaded just now',
-		body: 'An error occurred in the activity feed. Please try again or go back to the flat overview.',
+		title: 'Activity could not be loaded right now',
+		body: 'Something went wrong in the activity feed. Try again or go back to the flat overview.',
 	},
 	feed: {
 		emptyTitle: 'No activity yet',
@@ -40,7 +40,7 @@ export default {
 		who: 'Who',
 		onlyMe: 'Only me',
 		open: 'Open',
-		openLabel: 'Open matters',
+		openLabel: 'To sort out',
 		visibleCount:
 			'{count, plural, =0 {No visible entries.} one {# entry visible.} other {# entries visible.}}',
 		today: 'Today',

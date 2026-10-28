@@ -4,7 +4,7 @@ import type de from '../de/offline-failure';
 export default {
 	noConnection: {
 		title: 'No connection yet',
-		detail: 'The action stays saved and is tried again when the network is back.',
+		detail: 'The action stays saved and is tried again once you are back online.',
 	},
 	rateLimited: {
 		title: 'Too many requests',
@@ -23,7 +23,7 @@ export default {
 		detail: 'Sign in again, then retry the action.',
 	},
 	targetGone: {
-		title: 'Target not found',
+		title: 'Entry not found',
 		detail:
 			'The entry or the flat has changed in the meantime. Check the action before trying again.',
 	},
@@ -46,10 +46,10 @@ export default {
 	movedOut: {
 		title: 'You have moved out',
 		detail:
-			'Your membership is marked as moved out in this flat. Signing in again does not help. Ask the flat whether they will take you back before you send this action.',
+			'Your membership is marked as moved out in this flat. Signing in again does not help. Ask an admin to reactivate you before you send this action.',
 	},
 	memberInAction: {
-		title: 'Check member in action',
+		title: 'Check people involved',
 		detail:
 			'A member involved is no longer in the flat. Edit the assignment or split before sending again.',
 	},
@@ -58,7 +58,7 @@ export default {
 		detail: 'Check the invite link or ask for a new one before you send this action.',
 	},
 	templateMissing: {
-		title: 'Fixed cost template missing',
+		title: 'Fixed-cost template missing',
 		detail:
 			'The template no longer exists. Remove this offline action or create the fixed cost again.',
 	},
@@ -103,7 +103,7 @@ export default {
 	},
 	currencyInvalid: {
 		title: 'Check currency',
-		detail: 'Record the expense again using the current euro currency.',
+		detail: 'Record the expense again in euros.',
 	},
 	splitsInvalid: {
 		title: 'Check split',
@@ -130,19 +130,19 @@ export default {
 		detail: 'Edit the date or period before you send this action again.',
 	},
 	absenceOverlaps: {
-		title: 'Away period overlaps',
+		title: 'Time away overlaps',
 		detail:
 			'This person is already away in that period. Remove this offline action or adjust the period.',
 	},
 	actionInvalid: {
 		title: 'Check offline action',
 		detail:
-			'The saved action no longer fits the current app. Remove it and record the entry again.',
+			'The saved action no longer matches the current version of the app. Remove it and record the entry again.',
 	},
 	targetInvalid: {
-		title: 'Check target',
+		title: 'Check entry',
 		detail:
-			'The saved target ID is not valid. Remove this offline action and open the entry again.',
+			'The saved entry reference is not valid. Remove this offline action and open the entry again.',
 	},
 	statusInvalid: {
 		title: 'Check status',
@@ -154,7 +154,7 @@ export default {
 	},
 	reasonInvalid: {
 		title: 'Check reason',
-		detail: 'Shorten or remove the reason for the away period before you send this action again.',
+		detail: 'Shorten or remove the reason for the time away before you send this action again.',
 	},
 	choreIncomplete: {
 		title: 'Cleaning rota only partly saved',

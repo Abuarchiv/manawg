@@ -22,6 +22,8 @@ import {
 import { feedAuditCondition } from '@/core/db/feed-audit-filter';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
+import { serverRenderContext } from '@/core/i18n/render-context';
+import { requestLocale } from '@/core/i18n/request-locale';
 import { MEMBER_ANNOUNCEMENT_SOURCES } from '@/features/pinnwand/announcement-workflow';
 
 const DEFAULT_LIMIT = 80;
@@ -205,44 +207,47 @@ export const GET = withWgRoute('activity GET', async (req, { code }) => {
 	const memberById = new Map(members.map((member) => [member.id, member]));
 
 	return NextResponse.json({
-		items: buildActivityTimeline({
-			members,
-			expenses: expenseRows.map((item) => ({
-				...item,
-				occurredAt: item.occurredAt.toISOString(),
-			})),
-			shoppingItems: shoppingRows.map((item) => ({
-				...item,
-				createdAt: item.createdAt.toISOString(),
-				boughtAt: item.boughtAt?.toISOString() ?? null,
-			})),
-			announcements: announcementRows.map((item) => ({
-				...item,
-				createdAt: item.createdAt.toISOString(),
-			})),
-			choreCompletions: completionRows.map((item) => ({
-				...item,
-				completedAt: item.completedAt.toISOString(),
-			})),
-			recurringExpenses: recurringRows.map((item) => ({
-				...item,
-				currency: 'EUR',
-				createdAt: item.createdAt.toISOString(),
-				lastCreatedAt: item.lastCreatedAt?.toISOString() ?? null,
-			})),
-			absences: absenceRows.map((item) => ({
-				...item,
-				startDate: item.startDate.toISOString(),
-				endDate: item.endDate.toISOString(),
-				createdAt: item.createdAt.toISOString(),
-			})),
-			auditEvents: auditRows.map((item) => ({
-				...item,
-				metadataJson: publicAuditMetadata(item.eventType, item.metadataJson),
-				createdAt: item.createdAt.toISOString(),
-			})),
-			limit,
-		}),
+		items: buildActivityTimeline(
+			{
+				members,
+				expenses: expenseRows.map((item) => ({
+					...item,
+					occurredAt: item.occurredAt.toISOString(),
+				})),
+				shoppingItems: shoppingRows.map((item) => ({
+					...item,
+					createdAt: item.createdAt.toISOString(),
+					boughtAt: item.boughtAt?.toISOString() ?? null,
+				})),
+				announcements: announcementRows.map((item) => ({
+					...item,
+					createdAt: item.createdAt.toISOString(),
+				})),
+				choreCompletions: completionRows.map((item) => ({
+					...item,
+					completedAt: item.completedAt.toISOString(),
+				})),
+				recurringExpenses: recurringRows.map((item) => ({
+					...item,
+					currency: 'EUR',
+					createdAt: item.createdAt.toISOString(),
+					lastCreatedAt: item.lastCreatedAt?.toISOString() ?? null,
+				})),
+				absences: absenceRows.map((item) => ({
+					...item,
+					startDate: item.startDate.toISOString(),
+					endDate: item.endDate.toISOString(),
+					createdAt: item.createdAt.toISOString(),
+				})),
+				auditEvents: auditRows.map((item) => ({
+					...item,
+					metadataJson: publicAuditMetadata(item.eventType, item.metadataJson),
+					createdAt: item.createdAt.toISOString(),
+				})),
+				limit,
+			},
+			serverRenderContext(requestLocale(req)),
+		),
 		reminders: getActivityReminders({
 			openShoppingItems: openShoppingRows.map((item) => ({
 				id: item.id,

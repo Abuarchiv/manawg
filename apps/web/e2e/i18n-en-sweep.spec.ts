@@ -7,6 +7,7 @@ import { E2E_INVITE_TOKEN } from '../src/fixtures/data';
 import {
 	dismissOnboarding,
 	FIXTURE_WG,
+	mockUnreadCount,
 	navigateToFeature,
 	seedLocalAccount,
 	setupMember,
@@ -125,7 +126,7 @@ test.describe('English sweep', () => {
 
 					if (path === '/einkauf') {
 						// The shopping list adds inline: a typed item enables the button, and the unmocked write fails.
-						await page.getByPlaceholder('e.g. 2 rice').fill('2 oat milk');
+						await page.getByPlaceholder('e.g. 2 avocados').fill('2 oat milk');
 						await page.getByRole('button', { name: 'Add item', exact: true }).click();
 						await page.waitForTimeout(1_000);
 						await expectEnglishPage(page);
@@ -165,5 +166,138 @@ test.describe('English sweep', () => {
 				await expect(page.locator('h1').first()).toHaveText(heading);
 			});
 		}
+	});
+
+	test.describe('label in name (English)', () => {
+		const { memberId, memberName, shareCode } = FIXTURE_WG;
+		const BASE = `/api/wg/${shareCode}`;
+		const OTHER_MEMBER_ID = '0ab8c8f2-5d03-4a84-aadc-4c5d7e8abf55';
+
+		test.beforeEach(async ({ context, page, baseURL }) => {
+			await setEnglishLocale(context, baseURL ?? 'http://localhost:3101');
+			await setupMember(page);
+			await mockUnreadCount(page, BASE);
+		});
+
+		test('new-WG invite card names the visible action', async ({ page }) => {
+			await page.route(`**${BASE}/dashboard`, (route) =>
+				route.fulfill({
+					json: {
+						balances: [],
+						spendByDay: [],
+						totalSpendByCurrency: {},
+						weekSpendByCurrency: {},
+						monthSpendByCurrency: {},
+						openShoppingCount: 0,
+						openShoppingTop: [],
+						dueChores: [],
+						dueRecurringExpenses: [],
+						activity: [],
+						latestAnnouncement: null,
+						myOpenAnnouncements: [],
+						absentMembers: [],
+						setup: {
+							choreCount: 0,
+							hasExpense: false,
+							hasShoppingItem: false,
+							hasAnnouncement: false,
+							notificationsEnabled: false,
+						},
+					},
+				}),
+			);
+			await navigateToFeature(page, WG);
+			await dismissOnboarding(page);
+			await expect(
+				page.getByRole('button', { name: 'Invite flatmates', exact: true }),
+			).toBeVisible();
+		});
+
+		test('subscription pause button leads with the visible action', async ({ page }) => {
+			await page.route(`**${BASE}/members*`, (route) =>
+				route.fulfill({
+					json: { members: [{ id: memberId, name: memberName, color: null, active: true }] },
+				}),
+			);
+			await page.route(`**${BASE}/recurring-expenses*`, (route) =>
+				route.fulfill({
+					json: {
+						recurringExpenses: [
+							{
+								id: 'abo-label-audit',
+								description: 'Music plan',
+								amountCents: 999,
+								currency: 'EUR',
+								paidByMemberId: memberId,
+								intervalMonths: 1,
+								nextDueAt: '2026-10-01T12:00:00.000Z',
+								lastCreatedAt: null,
+								pausedAt: null,
+								splits: [{ debtorMemberId: memberId, amountCents: 999 }],
+							},
+						],
+					},
+				}),
+			);
+			await navigateToFeature(page, `${WG}/abos`);
+			await page.getByRole('button', { name: /Open details: Music plan/ }).click();
+			await expect(
+				page.getByRole('button', { name: 'Pause: Music plan', exact: true }),
+			).toBeVisible();
+		});
+
+		test('expense settle button leads with the visible action', async ({ page }) => {
+			await page.route(`**${BASE}/members`, (route) =>
+				route.fulfill({
+					json: {
+						members: [
+							{ id: memberId, name: memberName, color: null, active: true },
+							{ id: OTHER_MEMBER_ID, name: 'Mina', color: null, active: true },
+						],
+						viewerIsAdmin: false,
+					},
+				}),
+			);
+			await page.route(`**${BASE}/expenses`, (route) =>
+				route.fulfill({
+					json: {
+						expenses: [
+							{
+								id: 'expense-label-audit',
+								paidByMemberId: memberId,
+								amountCents: 2000,
+								currency: 'EUR',
+								description: 'Weekly shop',
+								imageUrl: null,
+								occurredAt: '2026-09-24T17:00:00.000Z',
+								createdAt: '2026-09-24T17:00:00.000Z',
+								updatedAt: '2026-09-24T17:00:00.000Z',
+								splits: [
+									{
+										id: 'split-label-audit',
+										debtorMemberId: OTHER_MEMBER_ID,
+										amountCents: 1000,
+										settledAt: null,
+									},
+								],
+							},
+						],
+						payments: [],
+					},
+				}),
+			);
+			await page.route(`**${BASE}/recurring-expenses`, (route) =>
+				route.fulfill({ json: { recurringExpenses: [] } }),
+			);
+			await page.route(`**${BASE}/dashboard`, (route) =>
+				route.fulfill({ json: { openShoppingCount: 0, dueChores: [], dueRecurringExpenses: [] } }),
+			);
+			await navigateToFeature(page, `${WG}/ausgaben`);
+			await dismissOnboarding(page);
+			await page.getByRole('button', { name: /Open details/ }).click();
+			await expect(
+				page.getByRole('button', { name: 'Mark as paid: Mina', exact: true }),
+			).toBeVisible();
+		});
 	});
 });

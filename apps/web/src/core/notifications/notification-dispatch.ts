@@ -5,6 +5,7 @@ import { isQuietHoursActive } from '@/core/notifications/notification-preference
 import {
 	formatNotificationMessage,
 	type NotificationEvent,
+	type NotificationMessage,
 	notificationCategoryForEvent,
 	notificationPriorityForEvent,
 } from '@/core/notifications/notifications';
@@ -13,6 +14,7 @@ import {
 	isTransientWebPushStatus,
 	parseWebPushStatusCode,
 } from '@/core/notifications/web-push-errors';
+import type { Locale } from '@/shared/i18n/locale';
 
 export interface DispatchInput {
 	wg: { id: string; name: string; shareCode: string };
@@ -234,6 +236,7 @@ export async function dispatchNotification(
 			notifyEvents: wgMembers.notifyEvents,
 			quietStartHour: wgMembers.quietStartHour,
 			quietEndHour: wgMembers.quietEndHour,
+			locale: wgMembers.locale,
 		})
 		.from(wgMembers)
 		.where(
@@ -246,11 +249,20 @@ export async function dispatchNotification(
 				: and(eq(wgMembers.wgId, input.wg.id), isNull(wgMembers.deactivatedAt)),
 		);
 
-	const message = formatNotificationMessage(input.event, {
-		...input.payload,
-		wgName: input.wg.name,
-	});
-	const url = buildNotificationUrl(input.wg.shareCode, message.urlPath);
+	// One message per distinct recipient locale (at most two), formatted on first use.
+	const messages = new Map<Locale, NotificationMessage>();
+	const messageFor = (locale: Locale): NotificationMessage => {
+		let message = messages.get(locale);
+		if (!message) {
+			message = formatNotificationMessage(
+				input.event,
+				{ ...input.payload, wgName: input.wg.name },
+				locale,
+			);
+			messages.set(locale, message);
+		}
+		return message;
+	};
 	const category = notificationCategoryForEvent(input.event);
 	const priority = input.urgent ? 'urgent' : notificationPriorityForEvent(input.event);
 	if (priority === 'silent') return { sent: 0, failures: [] };
@@ -281,6 +293,8 @@ export async function dispatchNotification(
 
 	const pushResults = await mapInBatches(targetMembers, PUSH_BATCH_SIZE, async (member) => {
 		if (!member.pushOptIn) return { sent: 0, failures: [] };
+		const message = messageFor(member.locale === 'en' ? 'en' : 'de');
+		const url = buildNotificationUrl(input.wg.shareCode, message.urlPath);
 		return sendWebPush(member.id, { title: message.title, body: message.body, url }, priority);
 	});
 

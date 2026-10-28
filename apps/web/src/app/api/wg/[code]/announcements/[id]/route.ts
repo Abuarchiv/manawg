@@ -184,7 +184,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 			eventType: 'announcement.updated',
 			entityType: 'announcement',
 			entityId: updated.id,
-			summary: `${auth.member.name} hat einen Pinnwand-Beitrag aktualisiert.`,
+			actorName: auth.member.name,
 			metadata: {
 				status: updated.status,
 				kind: updated.kind,
@@ -269,7 +269,7 @@ export const DELETE = withWgRoute<{ id: string }>(
 			eventType: 'announcement.deleted',
 			entityType: 'announcement',
 			entityId: id,
-			summary: `${auth.member.name} hat einen Pinnwand-Beitrag entfernt.`,
+			actorName: auth.member.name,
 		});
 		return NextResponse.json({ deleted: true });
 	},

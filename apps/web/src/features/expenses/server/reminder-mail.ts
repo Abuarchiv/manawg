@@ -5,8 +5,9 @@ import { db, expenseSplits, expenses } from '@/core/db';
 import { logApiError } from '@/core/infra/observability';
 import { sendMailSafely } from '@/core/mail/send-mail';
 import { renderReminderMail } from '@/core/mail/templates';
-import { unsubscribeUrl } from '@/core/mail/unsubscribe';
+import { memberLocale, unsubscribeUrl } from '@/core/mail/unsubscribe';
 import { formatShortDate } from '@/core/utils/time';
+import { DEFAULT_LOCALE } from '@/shared/i18n/locale';
 
 const ITEM_LIMIT = 5;
 
@@ -28,6 +29,7 @@ export async function sendReminderMail(input: ReminderMailInput): Promise<void> 
 		const { emails } = await loadConfirmedEmails([input.debtor.authUserId]);
 		const to = emails.get(input.debtor.authUserId);
 		if (!to) return;
+		const locale = (await memberLocale(input.debtor.id)) ?? DEFAULT_LOCALE;
 		const rows = await db
 			.select({
 				description: expenses.description,
@@ -61,10 +63,11 @@ export async function sendReminderMail(input: ReminderMailInput): Promise<void> 
 				oldestDebtAgeDays: input.oldestDebtAgeDays,
 				items: rows.map((row) => ({
 					description: row.description,
-					date: formatShortDate(row.occurredAt.toISOString(), 'Europe/Berlin'),
+					date: formatShortDate(row.occurredAt.toISOString(), 'Europe/Berlin', locale),
 					cents: row.cents,
 				})),
 				unsubscribeUrl: unsubscribeUrl(input.debtor.id, 'reminders'),
+				locale,
 			}),
 		});
 	} catch (err) {

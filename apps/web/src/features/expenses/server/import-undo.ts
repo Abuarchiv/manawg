@@ -1,8 +1,8 @@
 import 'server-only';
 import { and, eq, inArray } from 'drizzle-orm';
+import { auditValues } from '@/core/audit-values';
 import { auditEvents, expenseImports, expenses, wgMembers } from '@/core/db';
 import { withExpensePaymentLock } from '@/features/expenses/server/expense-payments';
-import { pluralize } from '@/shared/lib/plural';
 import { findSettledImportIds } from './import-settled';
 
 export type UndoImportResult =
@@ -59,15 +59,17 @@ export async function undoImport(
 			await tx.delete(expenses).where(inArray(expenses.id, ids));
 		}
 		await tx.delete(expenseImports).where(eq(expenseImports.id, importId));
-		await tx.insert(auditEvents).values({
-			wgId,
-			memberId: actor.memberId,
-			eventType: 'import.undone',
-			entityType: 'expense_import',
-			entityId: importId,
-			summary: `${actor.name} hat einen Import rückgängig gemacht (${pluralize(ids.length, 'Ausgabe', 'Ausgaben')}).`,
-			metadataJson: JSON.stringify({ source: imp.source, removed: ids.length }),
-		});
+		await tx.insert(auditEvents).values(
+			auditValues({
+				wgId,
+				memberId: actor.memberId,
+				eventType: 'import.undone',
+				entityType: 'expense_import',
+				entityId: importId,
+				actorName: actor.name,
+				metadata: { source: imp.source, removed: ids.length },
+			}),
+		);
 		return {
 			ok: true as const,
 			removed: ids.length,

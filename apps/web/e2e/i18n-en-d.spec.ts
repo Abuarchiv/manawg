@@ -115,7 +115,7 @@ test.describe('English expense import', () => {
 				await expect(unknown.getByRole('option', { name: 'Not matched yet' })).toBeAttached();
 				await expect(unknown.getByRole('option', { name: 'Leave out (skip rows)' })).toBeAttached();
 				await page.getByRole('button', { name: 'Continue to preview', exact: true }).click();
-				await expect(page.getByText('Please choose a flatmate.')).toBeVisible();
+				await expect(page.getByText('Choose a flatmate.')).toBeVisible();
 				await unknown.selectOption(FIXTURE_WG.memberId);
 				await expectNoGermanChrome(page);
 				await expectNoHorizontalOverflow(page);

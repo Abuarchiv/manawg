@@ -22,8 +22,10 @@ import {
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { badRequest, rateLimitResponse, serverError } from '@/core/http/api-errors';
+import { requestLocale } from '@/core/i18n/request-locale';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, wgExportLimiter } from '@/core/rate-limit';
+import { DEFAULT_LOCALE, type Locale } from '@/shared/i18n/locale';
 
 function getExportFormat(req: NextRequest): 'json' | 'csv' | null {
 	const format = req.nextUrl.searchParams.get('format');
@@ -114,12 +116,18 @@ function sectionRecord(
 	) as Record<ExportSectionKey, ExportRow[]>;
 }
 
+/** The CSV follows the downloader's locale; a bare request without cookies reads as German. */
+function csvLocale(req: NextRequest): Locale {
+	return req.cookies && req.headers ? requestLocale(req) : DEFAULT_LOCALE;
+}
+
 function csvExportResponse(
 	shareCode: string,
 	section: ExportSectionKey,
 	rows: Array<Record<string, unknown>>,
+	locale: Locale,
 ): NextResponse {
-	return new NextResponse(toCsv(rows, getExportSectionHeaders(section)), {
+	return new NextResponse(toCsv(rows, getExportSectionHeaders(section), locale), {
 		headers: {
 			'content-type': 'text/csv; charset=utf-8',
 			'content-disposition': `attachment; filename="${shareCode}-${section}.csv"`,
@@ -163,7 +171,7 @@ export const GET = withWgRoute('export GET', async (req, { code }) => {
 			);
 			const settled = await settleSection(section, loaders[section]);
 			if (!settled.ok) return serverError(null, `export_section_failed:${section}`);
-			return csvExportResponse(wg.shareCode, section, settled.value);
+			return csvExportResponse(wg.shareCode, section, settled.value, csvLocale(req));
 		}
 
 		const parsedSections = parseRequestedSections(req);

@@ -135,7 +135,7 @@ export const POST = withWgRoute<{ id: string }>(
 			eventType: 'announcement.comment.created',
 			entityType: 'announcement_comment',
 			entityId: comment.id,
-			summary: `${auth.member.name} hat einen Kommentar geschrieben.`,
+			actorName: auth.member.name,
 			metadata: { announcementId: id },
 		});
 

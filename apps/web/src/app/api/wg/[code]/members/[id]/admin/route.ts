@@ -98,7 +98,7 @@ export const POST = withWgRoute<{ id: string }>(
 			eventType: 'member.admin_transferred',
 			entityType: 'member',
 			entityId: written.target.id,
-			summary: `${member.name} hat die Admin-Rolle an ${written.target.name} übergeben.`,
+			actorName: member.name,
 			metadata: { name: written.target.name },
 		});
 		return NextResponse.json(result.body, { status: result.status });

@@ -20,13 +20,13 @@ const DISCOVERY_PAGES = [
 	['ausgaben', 'Expenses', 'Shared costs at a glance.'],
 	['einkauf', 'Shopping', 'What needs to be bought.'],
 	['pinnwand', 'Noticeboard', 'Information for everyone.'],
-	['putzen', 'Cleaning rota', 'Sharing tasks fairly.'],
+	['putzen', 'Cleaning rota', 'Tasks shared fairly.'],
 	['fixkosten', 'Fixed costs', 'Recurring costs.'],
-	['mahnungen', 'Reminders', 'Who still needs to pay.'],
+	['mahnungen', 'Reminders', 'Amounts still open.'],
 	['vorraete', 'Supplies', 'What is still in stock.'],
 	['kalender', 'Calendar', 'Shared events.'],
-	['aktivitaet', 'Activity', 'What happened most recently.'],
-	['chat', 'Chat', 'Sort something out quickly.'],
+	['aktivitaet', 'Activity', 'What happened recently.'],
+	['chat', 'Chat', 'For a quick word.'],
 ] as const;
 const DISCOVER_SUFFIX = 'The flat app for expenses, cleaning rota, shopping and noticeboard.';
 
@@ -87,7 +87,7 @@ test.describe('entry and auth in English', () => {
 
 				await page.goto('/');
 				await expect(
-					page.getByText('Example: what your everyday life could look like'),
+					page.getByText('Example: what everyday life in your flat could look like'),
 				).toBeVisible({
 					timeout: 60_000,
 				});
@@ -101,7 +101,7 @@ test.describe('entry and auth in English', () => {
 					timeout: 60_000,
 				});
 				await expect(page.getByText('Example', { exact: true })).toBeVisible();
-				await expect(page.getByRole('navigation', { name: 'Money – discover' })).toBeVisible();
+				await expect(page.getByRole('navigation', { name: 'Discover Money' })).toBeVisible();
 				await expectEnglishPage(page, width);
 
 				await page.goto('/neu');
@@ -190,7 +190,7 @@ test.describe('entry and auth in English', () => {
 				).toBeVisible();
 				await expectEnglishPage(page, width);
 				await page.getByRole('button', { name: 'Join with an invitation' }).click();
-				await expect(page.getByLabel('Invitation link')).toBeVisible();
+				await expect(page.getByLabel('Invite link')).toBeVisible();
 				await expect(page.getByRole('button', { name: 'Open invitation' })).toBeVisible();
 				await expectEnglishPage(page, width);
 
@@ -220,7 +220,7 @@ test.describe('entry and auth in English', () => {
 				).toBeVisible({
 					timeout: 60_000,
 				});
-				await expect(page.getByRole('link', { name: 'To your flats' })).toBeVisible();
+				await expect(page.getByRole('link', { name: 'Go to your flats' })).toBeVisible();
 				await expectEnglishPage(page, width);
 			});
 
@@ -253,12 +253,10 @@ test.describe('entry and auth in English', () => {
 				await expect(page.getByText(/^The link could not be used\. It has expired/)).toBeVisible({
 					timeout: 60_000,
 				});
-				await expect(
-					page.getByText(/^This invitation link is incomplete or invalid/),
-				).toBeVisible();
+				await expect(page.getByText(/^This invite link is incomplete or not valid/)).toBeVisible();
 				await expectEnglishPage(page, width);
 				await page.goto('/?invite=bad');
-				await expect(page.getByText(/^This invitation link is incomplete or invalid/)).toBeVisible({
+				await expect(page.getByText(/^This invite link is incomplete or not valid/)).toBeVisible({
 					timeout: 60_000,
 				});
 				await expectEnglishPage(page, width);
@@ -275,17 +273,17 @@ test.describe('entry and auth in English', () => {
 				await page.getByLabel('Your name').fill('Mina');
 				await page.getByLabel('Email address').fill('mina@example.invalid');
 				await page.getByLabel('Password', { exact: true }).fill('short');
-				await page.getByLabel('Repeat password').fill('short');
+				await page.getByLabel('Confirm password').fill('short');
 				await expect(page.getByText('At least 8 characters.')).toBeVisible();
 				const submitSignUp = page.getByRole('button', { name: 'Create account', exact: true });
 				await submitSignUp.click();
 				await expect(page.getByText('Your password needs at least 8 characters.')).toBeVisible();
 				await expectEnglishPage(page, width);
 				await page.getByLabel('Password', { exact: true }).fill('long-enough-pass');
-				await page.getByLabel('Repeat password').fill('different-pass');
+				await page.getByLabel('Confirm password').fill('different-pass');
 				await submitSignUp.click();
 				await expect(page.getByText('The passwords do not match.')).toBeVisible();
-				await page.getByLabel('Repeat password').fill('long-enough-pass');
+				await page.getByLabel('Confirm password').fill('long-enough-pass');
 				await submitSignUp.click();
 				await expect(
 					page.getByText('Too many attempts. Wait a few minutes and try again.'),
@@ -294,7 +292,9 @@ test.describe('entry and auth in English', () => {
 				await submitSignUp.click();
 				await expect(page.getByText('Check your inbox')).toBeVisible();
 				await expect(
-					page.getByText(/^We have sent a confirmation link to mina@example\.invalid/),
+					page.getByText(
+						/^If no account exists for mina@example\.invalid yet, we have sent a confirmation link/,
+					),
 				).toBeVisible();
 				await expect(page.getByRole('button', { name: /^Resend in \d+ s$/ })).toBeDisabled();
 				await expectEnglishPage(page, width);
@@ -315,7 +315,7 @@ test.describe('entry and auth in English', () => {
 				await expect(code).toBeVisible({ timeout: 60_000 });
 				await expect(
 					page.getByText(
-						/^We have sent a code to mina@example\.invalid, if an account exists there/,
+						/^If an account exists for mina@example\.invalid, we have sent a code there/,
 					),
 				).toBeVisible();
 				await expect(page.getByRole('link', { name: 'Create one now.' })).toBeVisible();
@@ -323,7 +323,7 @@ test.describe('entry and auth in English', () => {
 				await expect(page.getByRole('button', { name: /^Resend code in \d+ s$/ })).toBeDisabled();
 				await code.fill('123');
 				await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-				await expect(page.getByText('Please enter the 8-digit code from the email.')).toBeVisible();
+				await expect(page.getByText('Enter the 8-digit code from the email.')).toBeVisible();
 				await code.fill('12345678');
 				await page.getByRole('button', { name: 'Sign in', exact: true }).click();
 				await expect(
@@ -347,7 +347,7 @@ test.describe('entry and auth in English', () => {
 				const passwordPanel = page.getByRole('tabpanel', { name: 'Password' });
 				await passwordPanel.getByRole('button', { name: 'Sign in', exact: true }).click();
 				await expect(
-					page.getByText('Please enter a valid email address and your password.'),
+					page.getByText('Enter a valid email address and your password.'),
 				).toBeVisible();
 				await passwordPanel.getByLabel('Email address').fill('mina@example.invalid');
 				await passwordPanel.getByLabel('Password', { exact: true }).fill('wrong-password');
@@ -357,7 +357,11 @@ test.describe('entry and auth in English', () => {
 				await passwordPanel.getByRole('button', { name: 'Sign in', exact: true }).click();
 				await expect(page.getByText(/^Your email address is not confirmed yet/)).toBeVisible();
 				await page.getByRole('button', { name: 'Resend confirmation email' }).click();
-				await expect(page.getByText(/^We have sent the confirmation email again/)).toBeVisible();
+				await expect(
+					page.getByText(
+						/^If this address is waiting for confirmation, we have sent the email again/,
+					),
+				).toBeVisible();
 				await expectEnglishPage(page, width);
 				await page.getByRole('button', { name: 'Forgot your password?' }).click();
 				await expect(page.getByText(/^If an account exists for this email address/)).toBeVisible();
@@ -366,7 +370,7 @@ test.describe('entry and auth in English', () => {
 				// Reset page without a recovery session: invalid link notice and the request form.
 				await page.goto('/auth/reset');
 				await expect(
-					page.getByText('This link is invalid or has expired. Please request a new link.'),
+					page.getByText('This link is not valid or has expired. Request a new link.'),
 				).toBeVisible({ timeout: 60_000 });
 				await page.getByLabel('Email address').fill('mina@example.invalid');
 				await page.getByRole('button', { name: 'Send link' }).click();
@@ -393,7 +397,7 @@ test.describe('entry and auth in English', () => {
 				await guestSession(page);
 				await page.goto('/neu');
 				await expect(
-					page.getByText(/^On the iPhone, the installed app is separate from Safari/),
+					page.getByText(/^On iPhone, the installed app is separate from Safari/),
 				).toBeVisible({ timeout: 60_000 });
 				await expectEnglishPage(page, width);
 			});
@@ -516,19 +520,19 @@ test.describe('entry and auth in English', () => {
 				).toBeVisible();
 				await expect(page.getByText('Your flat “Altbau” is live.')).toBeVisible();
 				await expect(
-					page.getByText('Send your flatmates the invitation link. It is valid for 7 days.'),
+					page.getByText('Send your flatmates the invite link. It is valid for 7 days.'),
 				).toBeVisible();
 				await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
 				await expectEnglishPage(page, width);
 				await page.getByRole('button', { name: 'Try again' }).click();
-				await expect(page.getByRole('button', { name: 'Copy invitation link' })).toBeEnabled();
+				await expect(page.getByRole('button', { name: 'Copy invite link' })).toBeEnabled();
 				await expect(page.getByText('Send invitation')).toBeVisible();
 				await expect(
 					page.getByText('Use your phone’s share function or copy the link.'),
 				).toBeVisible();
 				await expect(page.getByRole('link', { name: 'Share via WhatsApp' })).toBeVisible();
 				await expect(page.getByRole('button', { name: 'Invite flatmates' })).toBeVisible();
-				await expect(page.getByRole('button', { name: 'Go to flat' })).toBeVisible();
+				await expect(page.getByRole('button', { name: 'Go to your flat' })).toBeVisible();
 				await expectEnglishPage(page, width);
 			});
 		}

@@ -131,3 +131,87 @@ test('reminder mail explains items that do not add up to the netted amount', () 
 	assert.ok(!renderReminderMail({ ...input, amountCents: 2340 }).text.includes('verrechnet'));
 	assert.ok(renderReminderMail({ ...input, amountCents: 1000 }).text.includes('verrechnet'));
 });
+
+const GERMAN_WORDS =
+	/\b(Einladung|Erinnerung|Konto|Dein|Deine|Abbestellen|Einstellungen|ausgleichen)\b/;
+
+const ALL_EN = [
+	renderWelcomeMail({ firstName: 'Lina', locale: 'en' }),
+	renderInvitationMail({
+		inviterName: 'Lina',
+		wgName: 'Kastanienallee',
+		inviteToken: 'aB3_-xYz09aB3_-xYz09kQ',
+		memberNames: ['Lina', 'Jonas', 'Mira'],
+		locale: 'en',
+	}),
+	renderReminderMail({
+		wgName: 'Kastanienallee',
+		shareCode: 'KST48210',
+		creditorName: 'Jonas',
+		amountCents: 2340,
+		oldestDebtAgeDays: 9,
+		items: [{ description: 'Einkauf Edeka', date: '25 Sept', cents: 1420 }],
+		unsubscribeUrl: `${APP_ORIGIN}/api/email/unsubscribe?t=y`,
+		locale: 'en',
+	}),
+	renderAccountDeletedMail('en'),
+];
+
+test('English mails set lang en-GB and carry no German chrome', () => {
+	for (const mail of ALL_EN) {
+		assert.match(mail.html, /<html lang="en-GB"/);
+		assert.ok(!GERMAN_WORDS.test(mail.text), mail.subject);
+		assert.ok(!mail.subject.includes('!'), mail.subject);
+	}
+	assert.ok(
+		ALL_EN.every((mail) => /Legal notice \(German\)|last email/.test(mail.html + mail.text)),
+	);
+});
+
+test('English invitation and reminder use the English wording and formats', () => {
+	const [, invitation, reminder] = ALL_EN;
+	assert.equal(invitation?.subject, 'Lina has invited you to join Kastanienallee');
+	assert.ok(invitation?.text.includes('Lina, Jonas and Mira are already members.'));
+	assert.equal(
+		reminder?.subject,
+		`${formatEuroCents(2340, 'EUR', { locale: 'en' })} to Jonas, still open`,
+	);
+	assert.equal(reminder?.preheader, 'The oldest item is 9 days old.');
+	assert.ok(reminder?.text.includes('−€23.40'));
+});
+
+test('German stays the default and an explicit de renders the same mail', () => {
+	assert.deepEqual(renderWelcomeMail({ firstName: 'Lina', locale: 'de' }), ALL[0]);
+	assert.deepEqual(renderAccountDeletedMail('de'), ALL[3]);
+});
+
+const SUPABASE_DIR = new URL('../../../../../supabase/templates/', import.meta.url);
+const { selectLocale } = (await import(new URL('render.mjs', SUPABASE_DIR).href)) as {
+	selectLocale: (text: string, locale: 'de' | 'en') => string;
+};
+
+test('the Supabase auth templates render in both locales and balance every block', () => {
+	const subjects = JSON.parse(
+		readFileSync(new URL('subjects.json', SUPABASE_DIR), 'utf8'),
+	) as Record<string, string>;
+	const files = [
+		...readdirSync(SUPABASE_DIR)
+			.filter((file) => file.endsWith('.html'))
+			.map((file) => ({ name: file, text: readFileSync(new URL(file, SUPABASE_DIR), 'utf8') })),
+		...Object.entries(subjects).map(([name, text]) => ({ name, text })),
+	];
+	for (const { name, text } of files) {
+		const opens = text.match(/\{\{\s*if\b/g)?.length ?? 0;
+		assert.equal(text.match(/\{\{\s*end\s*\}\}/g)?.length ?? 0, opens, name);
+		assert.equal(text.match(/\{\{\s*else\s*\}\}/g)?.length ?? 0, opens, name);
+		const de = selectLocale(text, 'de');
+		const en = selectLocale(text, 'en');
+		assert.ok(!/\{\{\s*(if|else|end)\b/.test(de + en), name);
+		assert.notEqual(de, en, name);
+		if (name.endsWith('.html')) {
+			assert.ok(de.includes('<html lang="de"'), name);
+			assert.ok(en.includes('<html lang="en-GB"'), name);
+			assert.ok(!/Impressum|Datenschutz/.test(en), name);
+		}
+	}
+});

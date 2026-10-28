@@ -144,12 +144,7 @@ export const PATCH = withWgRoute<{ id: string }>('shopping PATCH', async (req, {
 						: 'shopping.reopened',
 			entityType: 'shopping_item',
 			entityId: item.id,
-			summary:
-				isBought === undefined
-					? `${auth.member.name} hat ${item.name} geändert.`
-					: isBought
-						? `${auth.member.name} hat ${item.name} gekauft.`
-						: `${auth.member.name} hat ${item.name} wieder geöffnet.`,
+			actorName: auth.member.name,
 			metadata: { name: item.name },
 		});
 	}
@@ -189,7 +184,7 @@ export const DELETE = withWgRoute<{ id: string }>('shopping DELETE', async (req,
 		eventType: 'shopping.deleted',
 		entityType: 'shopping_item',
 		entityId: id,
-		summary: `${auth.member.name} hat ${row.name} aus der Einkaufsliste entfernt.`,
+		actorName: auth.member.name,
 		metadata: { name: row.name },
 	});
 	return NextResponse.json({ deleted: true });

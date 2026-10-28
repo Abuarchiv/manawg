@@ -47,7 +47,6 @@ export function recordRecurringAdvanced(memberId: string, updated: RecurringTemp
 		eventType: 'recurring.advanced',
 		entityType: 'recurring_expense',
 		entityId: updated.id,
-		summary: `${updated.description} wurde aus einer Fixkosten-Vorlage übernommen.`,
 		metadata: {
 			description: updated.description,
 			amountCents: updated.amountCents,

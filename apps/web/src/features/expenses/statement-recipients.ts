@@ -1,3 +1,4 @@
+import type { Locale } from '@/shared/i18n/locale';
 import type { ExpensePaymentInput } from './expense-payment-input';
 import {
 	buildMonthlyStatement,
@@ -22,6 +23,8 @@ export interface StatementWgMember {
 	email: string | null;
 	/** The Auth lookup failed: the address is unknown, so the member is neither mailed nor skipped. */
 	lookupFailed?: boolean;
+	/** The member's stored language; German when absent. */
+	locale?: Locale;
 }
 
 export interface StatementRecipient {
@@ -29,6 +32,7 @@ export interface StatementRecipient {
 	name: string;
 	email: string;
 	statement: MonthlyStatement;
+	locale?: Locale;
 }
 
 export interface StatementPlan {
@@ -78,6 +82,7 @@ export function planStatementMails(
 				name: member.name,
 				email: member.email,
 				statement,
+				...(member.locale ? { locale: member.locale } : {}),
 			});
 		}
 	}

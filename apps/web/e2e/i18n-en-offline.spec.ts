@@ -167,7 +167,7 @@ test.describe('offline page in English', () => {
 				await expect(page.getByText('Tick off Bread')).toBeVisible();
 				await expect(
 					page.getByText(
-						'No connection yet: The action stays saved and is tried again when the network is back.',
+						'No connection yet: The action stays saved and is tried again once you are back online.',
 					),
 				).toBeVisible();
 				await expect(
@@ -251,7 +251,7 @@ test.describe('offline page in English', () => {
 			page.getByRole('heading', { name: 'The server is unreachable right now.' }),
 		).toBeVisible({ timeout: 60_000 });
 		await expect(page.getByText('Server unreachable', { exact: true })).toBeVisible();
-		await expect(page.getByText('Shopping stays saved on this device.')).toBeVisible();
+		await expect(page.getByText('Saved on this device: Shopping.')).toBeVisible();
 		await expectEnglishPage(page, 320);
 	});
 
@@ -349,7 +349,7 @@ test.describe('offline queue in the data settings in English', () => {
 				await expect(
 					section.getByRole('button', { name: 'Sync offline queue again' }),
 				).toBeVisible();
-				await expect(section.getByText('1x').first()).toBeVisible();
+				await expect(section.getByText('1×').first()).toBeVisible();
 				await expect(
 					section.getByText(
 						'Needs a check. Cleaning rota task missing: The task no longer exists. Remove this offline action or add the task again.',
@@ -371,11 +371,11 @@ test.describe('offline queue in the data settings in English', () => {
 					),
 				).toBeVisible();
 				await section
-					.getByRole('button', { name: 'Compare with server: Catch up the due date' })
+					.getByRole('button', { name: 'Compare with server: Catch up on the missed due date' })
 					.click();
 				await expect(
 					section.getByText(
-						'The server template is now on 5 December 2026 instead of 5 November 2026. Check before sending whether the due date has already been caught up.',
+						'The server template is now on 5 December 2026 instead of 5 November 2026. Check before sending whether the due date has already been recorded.',
 					),
 				).toBeVisible();
 				await expect(

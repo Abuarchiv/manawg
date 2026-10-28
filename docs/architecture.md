@@ -240,14 +240,13 @@ Small helpers that several features use, with the layer they live in:
 | --- | --- | --- |
 | `core/utils/amount.ts` | core | Euro text to cents and back: `parseEuroAmount`, `formatEuroInput`, `eurosToCents`, `formatCentsInput` |
 | `core/utils/time.ts` `formatDayMonthYear` | core | Berlin day with year (`06.10.2026`) from an ISO timestamp; the parse counterpart is `parseDayMonthYear` in `features/expenses/import-csv-helpers.ts` |
-| `shared/lib/plural.ts` `pluralize` | shared | German singular/plural by count |
 | `shared/lib/support-mailto.ts` `SUPPORT_MAILTO` | shared | The support `mailto:` link used by error screens |
 | `core/db/pg-errors.ts` | core | Pure Postgres error inspection (`isUniqueViolation`, `findUniqueViolation`); no server imports, so client-safe feature files may use it |
 | `core/infra/api-client.ts` `readApiErrorCode` | core | Reads the `error` code of a failed API response |
 | `core/offline/offline-copy.ts` `keyUnavailableMessage` | core | User copy for a write that cannot get an idempotency key |
 | `core/utils/use-visibility-paused-interval.ts` `LIST_REFRESH_INTERVAL_MS` | core | The one list polling interval |
 
-Mutation error copy goes through `mutationErrorMessage` (`core/http/error-codes.ts`); feature
+Mutation error copy goes through `mutationError` (`core/http/error-codes.ts`); feature
 `*-errors.ts` files only add their own codes.
 
 ## Notifications

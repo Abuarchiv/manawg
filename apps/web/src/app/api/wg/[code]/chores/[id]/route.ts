@@ -236,8 +236,9 @@ export const PATCH = withWgRoute<{ id: string }>('chores PATCH', async (req, { c
 		eventType: 'chore.updated',
 		entityType: 'chore',
 		entityId: updated.id,
-		summary: `${auth.member.name} hat ${updated.title} aktualisiert.`,
+		actorName: auth.member.name,
 		metadata: {
+			title: updated.title,
 			nextDueAt: updated.nextDueAt.toISOString(),
 			assignedMemberId: updated.assignedMemberId,
 			intervalDays: updated.intervalDays,
@@ -307,7 +308,7 @@ export const DELETE = withWgRoute<{ id: string }>('chores DELETE', async (req, {
 		eventType: 'chore.deleted',
 		entityType: 'chore',
 		entityId: id,
-		summary: `${auth.member.name} hat ${row.title} aus dem Putzplan entfernt.`,
+		actorName: auth.member.name,
 		metadata: { title: row.title },
 	});
 	return NextResponse.json({ deleted: result[0]?.id });

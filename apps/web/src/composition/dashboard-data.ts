@@ -1,6 +1,8 @@
+import { serverRenderContext } from '@/core/i18n/render-context';
 import { getAbsentMemberIds } from '@/features/chores/absence';
 import { getChoreStatus } from '@/features/chores/chore-status';
 import { getDueRecurringExpenses } from '@/features/expenses/recurring-expenses';
+import type { Locale } from '@/shared/i18n/locale';
 import type { MemberBalance } from './dashboard-balances';
 import { balanceTotalsFromRows, computeMemberBalances } from './dashboard-balances';
 import { type ActivityItem, appendSecondaryActivity, buildPrimaryActivity } from './dashboard-feed';
@@ -131,8 +133,10 @@ export async function loadDashboardData(
 	wgId: string,
 	currentMemberId?: string | null,
 	shareCode = '',
+	locale: Locale = 'de',
 ): Promise<DashboardData> {
 	const now = new Date();
+	const ctx = serverRenderContext(locale);
 
 	const {
 		memberRows,
@@ -166,6 +170,7 @@ export async function loadDashboardData(
 		announcementRows,
 		memberById,
 		shareCode,
+		ctx,
 	);
 
 	const latestAnnouncement = getLatestManualAnnouncement(announcementRows, memberById);
@@ -192,6 +197,7 @@ export async function loadDashboardData(
 		auditRows,
 		memberById,
 		shareCode,
+		ctx,
 	);
 	const absentMemberIds = getAbsentMemberIds(
 		absenceRows.map((item) => ({

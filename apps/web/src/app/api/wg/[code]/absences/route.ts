@@ -176,7 +176,7 @@ export const POST = withWgRoute('absences POST', async (req, { code }) => {
 		eventType: 'absence.created',
 		entityType: 'absence',
 		entityId: absence.id,
-		summary: `${auth.member.name} hat eine Abwesenheit eingetragen.`,
+		actorName: auth.member.name,
 		metadata: {
 			memberId: absentMemberId,
 			startDate: absence.startDate.toISOString(),

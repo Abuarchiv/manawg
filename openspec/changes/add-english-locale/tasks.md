@@ -43,22 +43,22 @@
 
 ## 4. Server senders (parallel)
 
-- [ ] 4.1 Package M push with per-recipient locale and SW fallback; verify a dispatch test with one de and one en recipient
-- [ ] 4.2 Package N mails, unsubscribe page and Supabase templates; verify both locales render and German template tests are unchanged
-- [ ] 4.3 Package O export and chat payload `amountCents`; verify English CSV uses `,` and `.` and German CSV is unchanged
+- [x] 4.1 Package M push with per-recipient locale and SW fallback; verify a dispatch test with one de and one en recipient
+- [x] 4.2 Package N mails, unsubscribe page and Supabase templates; verify both locales render and German template tests are unchanged
+- [x] 4.3 Package O export and chat payload `amountCents`; verify English CSV uses `,` and `.` and German CSV is unchanged
 
 ## 5. Audit and activity
 
-- [ ] 5.1 Store sentence parameters on every audit write, never content keys; verify a byte-identity test per event type for the German summary
-- [ ] 5.2 Render feed `text` and `selfText` in the reader's locale with legacy fallback; verify English reader sees new rows in English and old rows in German
-- [ ] 5.3 Replace remaining API fallback names with `null`; verify no `i18n-literal` entries remain under `app/api/**`
+- [x] 5.1 Store sentence parameters on every audit write, never content keys; verify a byte-identity test per event type for the German summary
+- [x] 5.2 Render feed `text` and `selfText` in the reader's locale with legacy fallback; verify English reader sees new rows in English and old rows in German
+- [x] 5.3 Replace remaining API fallback names with `null`; verify no `i18n-literal` entries remain under `app/api/**`
 
 ## 6. Polish and lock
 
-- [ ] 6.1 Delete `pluralize`, `mutationErrorMessage`, the `*_MESSAGE` constants, `formatRelativeTime` and `formatWeekLabel`; verify `pnpm knip` is clean
-- [ ] 6.2 Review all English catalogs against the glossary and D16; consolidate duplicates into `common`
-- [ ] 6.3 Bump the SW `VERSION` and run the full English sweep at 320px in light and dark; verify every route passes `expectNoGermanChrome`
-- [ ] 6.4 Verify the `i18n-literal` baseline is empty and all gates pass
+- [x] 6.1 Delete `pluralize`, `mutationErrorMessage`, the `*_MESSAGE` constants, `formatRelativeTime` and `formatWeekLabel`; verify `pnpm knip` is clean
+- [x] 6.2 Review all English catalogs against the glossary and D16; consolidate duplicates into `common`
+- [x] 6.3 Bump the SW `VERSION` and run the full English sweep at 320px in light and dark; verify every route passes `expectNoGermanChrome`
+- [x] 6.4 Verify the `i18n-literal` baseline is empty and all gates pass
 
 ## 7. Owner requests
 

@@ -11,14 +11,14 @@ export default {
 	},
 	submit: {
 		saveTemplate: 'Save template',
-		saveTemplateAria: 'Save template for fixed costs',
+		saveTemplateAria: 'Save fixed-cost template',
 		saveAsExpense: 'Save as expense',
 		save: 'Save',
 		saveAria: 'Save expense',
 	},
 	fields: {
 		description: 'Description',
-		descriptionPlaceholder: 'e.g. weekly shop',
+		descriptionPlaceholder: 'e.g. Weekly shop',
 		amount: 'Amount',
 		amountPlaceholder: '0.00',
 		category: 'Category',
@@ -40,14 +40,13 @@ export default {
 		replaceKeep: 'Keep draft',
 		replaceDiscard: 'Discard draft',
 		closeTitle: 'Keep draft?',
-		closeBody:
-			'No expense is saved. You can carry on with your draft later or discard it explicitly.',
+		closeBody: 'No expense is saved. You can carry on with your draft later or discard it.',
 		closeContinue: 'Keep editing',
 		closeDiscard: 'Discard draft',
 		closeKeep: 'Keep draft',
-		existingKept: 'Your existing draft stays.',
+		existingKept: 'Your existing draft is kept.',
 		replaceWith: 'Discard draft and use “{description}”',
-		notSynced: 'Not synced yet. The change is sent once you’re online.',
+		notSynced: 'Not synced yet. The change is sent once you are online.',
 	},
 	split: {
 		legend: 'People involved and split',
@@ -83,7 +82,7 @@ export default {
 		repeat: 'Repeat',
 		templateHint: 'The template remembers the amount, the payer and this split.',
 		saveAsTemplate: 'Save as template',
-		templateSaved: 'Saved as a template. You’ll find it under Fixed costs.',
+		templateSaved: 'Saved as a template. You can find it under Fixed costs.',
 	},
 	intervals: {
 		optionMonths: '{count, plural, one {# month} other {# months}}',
@@ -91,7 +90,7 @@ export default {
 		optionYear: 'Year',
 		monthly: 'monthly',
 		quarterly: 'quarterly',
-		halfYearly: 'half-yearly',
+		halfYearly: 'every six months',
 		yearly: 'yearly',
 		everyMonths: 'every {count} months',
 	},
@@ -105,9 +104,9 @@ export default {
 	notices: {
 		receiptUploadFailed: 'The receipt could not be uploaded. Try again or remove it.',
 		draftBroken:
-			'The link to this draft is damaged. Open the original expense again or discard the draft.',
+			'This draft can no longer be matched to its expense. Open the original expense again or discard the draft.',
 		draftBrokenKept:
-			'The link to this draft is damaged. Your entries are kept; open the original expense again or discard the draft.',
+			'This draft can no longer be matched to its expense. Your entries are kept; open the original expense again or discard the draft.',
 		reloadFailed: 'The list could not be reloaded. Try again in a moment.',
 		conflict:
 			'This expense has been changed in the meantime. Reload the list, then decide which version is right.',
@@ -115,9 +114,9 @@ export default {
 			'The fixed-cost template is not available. Refresh the page and try again.',
 		saved: 'Expense saved. No money is transferred here.',
 		updated: 'Expense updated. No money is transferred here.',
-		keyUnavailableExpense: 'The expense could not be sent safely. Try again.',
-		keyUnavailableRecurring: 'The fixed-cost expense could not be sent safely. Try again.',
-		keyUnavailableTemplate: 'The fixed-cost template could not be saved safely. Try again.',
+		keyUnavailableExpense: 'The expense could not be sent reliably. Try again.',
+		keyUnavailableRecurring: 'The fixed-cost expense could not be sent reliably. Try again.',
+		keyUnavailableTemplate: 'The fixed-cost template could not be saved reliably. Try again.',
 		recurringQueued:
 			'Fixed-cost expense queued offline. The template stays unchanged until it syncs.',
 		recurringQueueBlocked:
@@ -129,39 +128,40 @@ export default {
 		templateGoneRemoved: 'This fixed-cost template no longer exists and was removed from the list.',
 		templateUpdated: 'Fixed-cost template updated.',
 		templateSaved: 'Saved as a template ({interval}).',
-		offlineSaved: 'Saved offline. It syncs as soon as you are back online.',
+		offlineSaved: 'Saved offline. It will sync once you are back online.',
 		queueBlockedDraft: 'Offline storage is blocked. Keep the draft open and try again later.',
 		offlineDraftCleanupFailed:
 			'Saved offline, but the old draft could not be removed. Check the offline queue.',
 		draftCleanupFailed: 'Saved, but the old offline draft could not be removed.',
-		queueEditAlreadySent: 'The entry has already been sent in the meantime. Check the list.',
+		queueEditAlreadySent: 'The entry has already been sent. Check the list.',
 	},
 	errors: {
 		withPeriod: '{subject}.',
-		invalidRequest: 'The request was invalid.',
-		splitSumMismatch: 'The amounts do not add up — the total must match the full amount exactly.',
-		paidByMustIncludeCaller: 'If you book for someone else, your own share must be more than 0.',
+		invalidRequest: 'The request was not valid.',
+		splitSumMismatch: 'The amounts do not add up. The shares must match the total exactly.',
+		paidByMustIncludeCaller:
+			'If you add an expense for someone else, your own share must be more than €0.',
 		notTemplateOwner:
-			'Only the person who created the fixed costs or a flat admin can change or delete them.',
+			'Only the person who created this fixed cost or a flat admin can change or delete it.',
 		recurringNotFound: 'This fixed-cost template no longer exists. Reload the expenses.',
 		editedExpenseDeleted:
 			'The original expense was deleted. Your unsaved changes stay in the draft; you can copy them or discard the draft.',
 		save: {
 			subject: 'The expense could not be saved',
-			amountInvalid: 'The amount is invalid.',
+			amountInvalid: 'The amount is not valid.',
 			descriptionInvalid: 'The description must be 1 to {max} characters.',
-			currencyInvalid: 'The currency is invalid.',
-			imageInvalid: 'The attachment is invalid.',
+			currencyInvalid: 'The currency is not valid.',
+			imageInvalid: 'The attachment is not valid.',
 			imageRemoved: 'The attachment was removed. Upload it again.',
 			expectedUpdatedAtInvalid: 'Reload the list and try again.',
 			occurredAtInvalid: 'Check the expense date.',
-			splitsDuplicateDebtor: 'The split lists a person twice — each person can appear only once.',
+			splitsDuplicateDebtor: 'The split lists a person twice. Each person can appear only once.',
 			notPayer: 'Only the payer can edit this expense.',
 			hasSettledShares:
 				'A share is already settled, so the amount and split stay as they are; you can still change the description, date and category.',
-			aboPaused: 'These fixed costs are paused. Resume them under Fixed costs.',
+			aboPaused: 'This fixed cost is paused. Resume it under Fixed costs.',
 			recurringAdvanced:
-				'These fixed costs were already recorded for this due date. Reload the expenses and check the list.',
+				'This fixed cost was already recorded for this due date. Reload the expenses and check the list.',
 			memberNotInWg: 'At least one member is no longer in this flat.',
 			insertFailed: 'Check the expense list and try again.',
 			splitInsertFailed:
@@ -178,24 +178,25 @@ export default {
 			descriptionInvalid: 'Enter a description.',
 			intervalInvalid: 'Choose a valid interval.',
 			dueDateInvalid: 'Check the next due date.',
-			changed: 'The template was just recorded or changed. Reload the expenses and edit it again.',
+			changed: 'The template has just been used or changed. Reload the expenses and edit it again.',
 		},
 		templateDelete: {
 			subject: 'The template could not be deleted',
-			idInvalid: 'This template could not be matched clearly.',
+			idInvalid: 'This template could not be identified.',
 			deleteFailed: 'Reload the expenses and check whether it still exists.',
 		},
 		advance: {
 			alreadyAdvanced:
-				'The expense was recorded, but the template had already moved on. Check whether these fixed costs were recorded twice.',
+				'The expense was recorded, but the template had already moved to the next due date. Check whether this fixed cost was recorded twice.',
 			updateFailed:
-				'The expense was recorded, but the fixed-cost template could not be moved on. Reload the expenses and check the next due date.',
+				'The expense was recorded, but the fixed-cost template could not be moved to the next due date. Reload the expenses and check the next due date.',
 			generic:
-				'The expense was recorded, but the fixed-cost template could not be moved on. Check it again later.',
+				'The expense was recorded, but the fixed-cost template could not be moved to the next due date. Check it again later.',
 		},
 		split: {
-			invalidShare: 'At least one share is invalid. Enter a valid amount or leave the field empty.',
-			empty: 'The split is empty — enter at least one amount.',
+			invalidShare:
+				'At least one share is not valid. Enter a valid amount or leave the field empty.',
+			empty: 'The split is empty. Enter at least one amount.',
 			noMembers: 'Choose at least one person involved.',
 		},
 	},

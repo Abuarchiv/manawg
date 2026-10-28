@@ -254,7 +254,7 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 		eventType: 'chat.message.created',
 		entityType: 'chat_message',
 		entityId: created.id,
-		summary: `${member.name} hat im Chat eine Nachricht gesendet.`,
+		actorName: member.name,
 		// No text preview: audit rows outlive message deletion, chat text must not.
 		metadata: { kind: 'text', mentions: mentionIds.length },
 	});

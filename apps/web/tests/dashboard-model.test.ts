@@ -10,13 +10,16 @@ import {
 	getTodayImportantItems,
 	getWeekAgenda,
 } from '../src/composition/dashboard-insights';
-import { formatRelativeTime, formatShortDate, formatWeekLabel } from '../src/core/utils/time';
+import { formatShortDate, relativeTimeMessage, weekLabelMessage } from '../src/core/utils/time';
 import { previewBody } from '../src/features/chat/chat-pure';
 import type { EventInput, EventOccurrence } from '../src/features/events/events';
 import { expandRecurrence } from '../src/features/events/events';
 import { buildSettlementSummary, simplifyDebts } from '../src/features/expenses/debt-reduction';
 import { parseShoppingInput } from '../src/features/shopping/parse-shopping-input';
 import { withEnv } from './support/env.ts';
+
+const { renderMessage, serverRootT } = await import('../src/core/i18n/server-t');
+const deT = serverRootT('de');
 
 type Tuple<T, N extends number, R extends T[] = []> = R['length'] extends N
 	? R
@@ -662,14 +665,14 @@ describe('edge data helpers', () => {
 		const now = new Date(2026, 9, 1, 8, 0).getTime();
 		const in47h = new Date(now + 47 * 3_600_000).toISOString();
 		const ago47h = new Date(now - 47 * 3_600_000).toISOString();
-		assert.equal(formatRelativeTime(in47h, now), 'in 2 Tagen');
-		assert.equal(formatRelativeTime(ago47h, now), 'vor 2 Tagen');
+		assert.equal(renderMessage(deT, relativeTimeMessage(in47h, now)), 'in 2 Tagen');
+		assert.equal(renderMessage(deT, relativeTimeMessage(ago47h, now)), 'vor 2 Tagen');
 	});
 
 	test('week labels one year apart stay unique', () => {
 		const now = new Date(2026, 9, 1);
-		const a = formatWeekLabel(new Date(2025, 9, 6), now);
-		const b = formatWeekLabel(new Date(2024, 9, 7), now);
+		const a = renderMessage(deT, weekLabelMessage(new Date(2025, 9, 6), now));
+		const b = renderMessage(deT, weekLabelMessage(new Date(2024, 9, 7), now));
 		assert.equal(a, 'Woche ab 06.10.2025');
 		assert.notEqual(a, b);
 	});

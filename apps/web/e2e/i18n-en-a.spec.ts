@@ -169,7 +169,7 @@ test.describe('English app shell', () => {
 				await expect(page.getByText('due today', { exact: false }).first()).toBeVisible();
 				await expect(page.getByText('To Anna', { exact: true })).toBeVisible();
 				await expect(page.getByText('€12.50').first()).toBeVisible();
-				await expect(page.getByText('Takeover open', { exact: true })).toBeVisible();
+				await expect(page.getByText('Can be taken over', { exact: true })).toBeVisible();
 
 				const nav = page.getByRole('navigation', { name: 'Flat main navigation' });
 				for (const label of ['Home', 'Household', 'Money', 'Together']) {
@@ -215,7 +215,7 @@ test.describe('English app shell', () => {
 
 		await navigateToFeature(page, '/wg/ZZZZZZZZ');
 		await expect(page.getByRole('heading', { name: 'Flat not found', level: 1 })).toBeVisible();
-		await expect(page.getByRole('link', { name: 'Create or join a new flat' })).toBeVisible();
+		await expect(page.getByRole('link', { name: 'Create or join a flat' })).toBeVisible();
 		await expectNoGermanChrome(page);
 		await expectNoHorizontalOverflow(page);
 	});
@@ -229,10 +229,10 @@ test.describe('English app shell', () => {
 			route.fulfill({ json: { items: 'broken', reminders: 'broken' } }),
 		);
 		await navigateToFeature(page, `${WG_HREF}/aktivitaet`);
-		const heading = page.getByRole('heading', { name: 'Activity could not be loaded just now' });
+		const heading = page.getByRole('heading', { name: 'Activity could not be loaded right now' });
 		await expect(heading).toBeVisible();
 		await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
-		await expect(page.getByRole('link', { name: 'Report error by email' })).toBeVisible();
+		await expect(page.getByRole('link', { name: 'Report a problem by email' })).toBeVisible();
 		await expectNoGermanChrome(page);
 	});
 });

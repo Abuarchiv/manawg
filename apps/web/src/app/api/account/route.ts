@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
+import { auditValues } from '@/core/audit-values';
 import { SESSION_HINT_COOKIE } from '@/core/auth/cookie-options';
 import { deleteAuthUser } from '@/core/auth/delete-user';
 import { getSupabaseEnv, hasSupabaseEnv } from '@/core/auth/supabase-env';
@@ -12,6 +13,7 @@ import { removeAccountFromWgs } from '@/core/db/delete-account';
 import { withTransaction } from '@/core/db/transaction';
 import { requireAccount } from '@/core/guards/require-account';
 import { serverError, serviceUnavailable } from '@/core/http/api-errors';
+import { requestLocale } from '@/core/i18n/request-locale';
 import { afterResponse } from '@/core/infra/after-response';
 import { logApiError } from '@/core/infra/observability';
 import { confirmedEmailOf, sendAccountDeletedMail } from '@/core/mail/account-deleted';
@@ -63,17 +65,17 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
 			if (!deletion) throw new Error('account_deletion_fence_missing');
 
 			for (const { wgId, memberId, name, newAdminId, newAdminName } of removed.left) {
-				await tx.insert(auditEvents).values({
-					wgId,
-					memberId,
-					eventType: 'member.account_deletion_requested',
-					entityType: 'member',
-					entityId: memberId,
-					summary: `${name} hat die Kontolöschung angefragt und ist ausgezogen.${
-						newAdminName ? ` ${newAdminName} ist jetzt Admin.` : ''
-					}`,
-					metadataJson: JSON.stringify({ name, newAdminId }),
-				});
+				await tx.insert(auditEvents).values(
+					auditValues({
+						wgId,
+						memberId,
+						eventType: 'member.account_deletion_requested',
+						entityType: 'member',
+						entityId: memberId,
+						actorName: name,
+						metadata: { name, newAdminId, newAdminName },
+					}),
+				);
 			}
 			return { deletedWgs: removed.deletedWgIds.length, completedAt: deletion.completedAt };
 		});
@@ -84,8 +86,10 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
 			(await tryCompleteAccountDeletion(user.id, (authUserId) =>
 				deleteAuthUser(url, serviceRoleKey, authUserId),
 			));
-		if (completed && !local.completedAt)
-			afterResponse(() => sendAccountDeletedMail(user.id, email));
+		if (completed && !local.completedAt) {
+			const locale = requestLocale(req);
+			afterResponse(() => sendAccountDeletedMail(user.id, email, locale));
+		}
 		return acceptedDeletionResponse(req, completed, local.deletedWgs);
 	} catch (err) {
 		logApiError('[api/account DELETE] failed', err);

@@ -3,8 +3,8 @@ import type de from '../de/pinnwand';
 
 export default {
 	errorPage: {
-		title: 'The noticeboard could not load right now',
-		body: 'Something went wrong on the noticeboard. Try again or go back to the flat overview.',
+		title: 'The noticeboard could not be loaded right now',
+		body: 'Something went wrong in the noticeboard. Try again or go back to the flat overview.',
 	},
 	page: {
 		title: 'Noticeboard',
@@ -45,10 +45,10 @@ export default {
 	},
 	convert: {
 		shopping: 'Add to shopping list',
-		chore: 'Add as task',
+		chore: 'Add to cleaning rota',
 		expense: 'Add as expense',
 		shoppingAria: 'Add to shopping list: {subject}',
-		choreAria: 'Add as task: {subject}',
+		choreAria: 'Add to cleaning rota: {subject}',
 		expenseAria: 'Add as expense: {subject}',
 	},
 	mine: { title: 'My open items' },
@@ -162,26 +162,26 @@ export default {
 		pinnedInvalid: 'The pin could not be saved: the value is not valid.',
 		expectedStateInvalid: 'The state of the post is not valid.',
 		announcementChanged:
-			'The post has changed in the meantime. The view is updating, then you can edit again.',
+			'The post has changed in the meantime. The view is updating. You can then edit it again.',
 		contentLocked: 'This post was created automatically and cannot be edited.',
 		notOwner: 'Only the author of the post or flat admins can edit it.',
 		announcementResolved: 'This post has been resolved in the meantime.',
 		statusChangeNotAllowed:
-			'Only the author, whoever took the post, and flat admins can mark it as resolved.',
+			'Only the author, the person who took it on, or a flat admin can mark this post as resolved.',
 		removeFailed: 'The post could not be removed. Try again.',
 		removeForbidden: 'Only the author of the post or flat admins can remove it.',
 		vanished: 'This noticeboard post no longer exists and has been removed.',
 		reactionAlreadyRemoved:
 			'This reaction had already been removed. The noticeboard is up to date.',
 		replyVanished: 'This reply no longer exists and has been removed.',
-		reactionKeyUnavailable: 'The reaction could not be sent safely. Try again.',
-		postKeyUnavailable: 'The post could not be sent safely. Try again.',
+		reactionKeyUnavailable: 'The reaction could not be sent reliably. Try again.',
+		postKeyUnavailable: 'The post could not be sent reliably. Try again.',
 		imageUploading: 'The image is still uploading. Wait a moment and try again.',
 		queueBlocked: 'Offline storage is blocked. Keep the draft open and try again later.',
 		draftCleanupFailedOffline:
 			'Saved offline, but the old draft could not be removed. Check the offline queue.',
 		draftCleanupFailed: 'Saved, but the old offline draft could not be removed.',
-		queueEditAlreadySent: 'The entry has already been sent. Please check the list.',
+		queueEditAlreadySent: 'The entry has already been sent. Check the list.',
 	},
 	notices: {
 		savedOffline: 'Saved offline. It will sync once you are back online.',

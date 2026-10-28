@@ -176,8 +176,9 @@ export const POST = withWgRoute('events POST', async (req, { code }) => {
 		eventType: 'event.created',
 		entityType: 'wg_event',
 		entityId: row.id,
-		summary: `${auth.member.name} hat den Termin „${row.title}“ angelegt.`,
+		actorName: auth.member.name,
 		metadata: {
+			title: row.title,
 			startsAt: row.startsAt.toISOString(),
 			allDay: row.allDay,
 			recurring: row.recurrence !== null,

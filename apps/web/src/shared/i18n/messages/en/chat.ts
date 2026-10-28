@@ -3,7 +3,7 @@ import type de from '../de/chat';
 
 export default {
 	errorPage: {
-		title: 'Chat could not load right now',
+		title: 'Chat could not be loaded right now',
 		body: 'Something went wrong in the chat. Try again or go back to the flat overview.',
 	},
 	page: { title: 'Chat', loadingAria: 'Loading chat' },
@@ -38,7 +38,7 @@ export default {
 		title: 'Choose a reaction',
 		description: 'One emoji for this message.',
 		emojiAria: 'Reaction {emoji}',
-		customLabel: 'Your own emoji reaction',
+		customLabel: 'Custom emoji',
 		placeholder: 'Emoji',
 		ok: 'OK',
 		failed: 'Reaction not saved. Try again.',
@@ -78,8 +78,8 @@ export default {
 		cancel: 'Cancel',
 		saving: 'Saving…',
 		save: 'Save',
-		reactionRemoveAria: 'Reaction {emoji} ({count}) from {who}: remove — message from {sender}',
-		reactionAddAria: 'Reaction {emoji} ({count}) from {who}: add — message from {sender}',
+		reactionRemoveAria: 'Remove reaction {emoji} ({count}, from {who}) on message from {sender}',
+		reactionAddAria: 'Add reaction {emoji} ({count}, from {who}) on message from {sender}',
 		you: 'You',
 		formerMember: 'Former member',
 		imageAlt: 'Image from {name}',
@@ -109,9 +109,9 @@ export default {
 		deleteSubject: 'The message could not be deleted',
 		sentence: '{subject}.',
 		imageRemoved: 'This image was removed. Upload it again before you send the message.',
-		replyGone: 'The message you are replying to no longer exists. Remove the reply and send again.',
+		replyGone: 'The message you are replying to no longer exists. Cancel the reply and send again.',
 		editNotAllowed: 'Messages can only be edited within {minutes} minutes of sending.',
-		keyUnavailable: 'The message could not be sent safely. Try again.',
+		keyUnavailable: 'The message could not be sent reliably. Try again.',
 		textKept: '{error} Your text is still there.',
 	},
 	warning: {

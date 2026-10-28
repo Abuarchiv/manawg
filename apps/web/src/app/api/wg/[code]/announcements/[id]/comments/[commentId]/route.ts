@@ -81,7 +81,7 @@ export const PATCH = withWgRoute<{ id: string; commentId: string }>(
 			eventType: 'announcement.comment.updated',
 			entityType: 'announcement_comment',
 			entityId: comment.id,
-			summary: `${auth.member.name} hat einen Kommentar aktualisiert.`,
+			actorName: auth.member.name,
 			metadata: { announcementId: id },
 		});
 		return NextResponse.json({ comment });
@@ -118,9 +118,7 @@ export const DELETE = withWgRoute<{ id: string; commentId: string }>(
 			eventType: 'announcement.comment.deleted',
 			entityType: 'announcement_comment',
 			entityId: commentId,
-			summary: owner.moderated
-				? `${auth.member.name} hat als Admin einen Kommentar entfernt.`
-				: `${auth.member.name} hat einen Kommentar entfernt.`,
+			actorName: auth.member.name,
 			metadata: {
 				announcementId: id,
 				moderated: owner.moderated,

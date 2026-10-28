@@ -2,7 +2,10 @@
 // Why: Dashboard, debt list and settlement must agree to the cent.
 
 import { expect, test } from '@playwright/test';
-import { balanceTotalsFromRows, computeMemberBalances } from '../src/composition/dashboard-data';
+import {
+	balanceTotalsFromRows,
+	computeMemberBalances,
+} from '../src/composition/dashboard-balances';
 import { getDebtOverview } from '../src/features/expenses/debt-overview';
 import {
 	buildSettlementSummary,

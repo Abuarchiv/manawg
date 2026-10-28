@@ -1,7 +1,7 @@
 {
-	"confirmation": "Bestätige deine E-Mail-Adresse",
-	"recovery": "Neues Passwort festlegen",
-	"magic_link": "{{ .Token }} ist dein Anmeldecode",
-	"email_change": "Bestätige deine neue E-Mail-Adresse",
-	"password_changed": "Dein Passwort wurde geändert"
+	"confirmation": "{{ if eq .Data.locale \"en\" }}Confirm your email address{{ else }}Bestätige deine E-Mail-Adresse{{ end }}",
+	"recovery": "{{ if eq .Data.locale \"en\" }}Set a new password{{ else }}Neues Passwort festlegen{{ end }}",
+	"magic_link": "{{ if eq .Data.locale \"en\" }}{{ .Token }} is your sign-in code{{ else }}{{ .Token }} ist dein Anmeldecode{{ end }}",
+	"email_change": "{{ if eq .Data.locale \"en\" }}Confirm your new email address{{ else }}Bestätige deine neue E-Mail-Adresse{{ end }}",
+	"password_changed": "{{ if eq .Data.locale \"en\" }}Your password was changed{{ else }}Dein Passwort wurde geändert{{ end }}"
 }

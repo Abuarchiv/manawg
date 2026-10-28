@@ -131,7 +131,7 @@ test.describe('English cleaning rota', () => {
 				).toBeVisible();
 
 				await expect(page.getByText('This month', { exact: false })).toBeVisible();
-				await expect(page.getByText('Best for a new task:', { exact: false })).toBeVisible();
+				await expect(page.getByText('Next new task goes best to:', { exact: false })).toBeVisible();
 				await expect(page).toHaveTitle(/Cleaning rota/);
 				await expect(page.locator('[data-slot="card-title"]', { hasText: /^Away$/ })).toBeVisible();
 				await expect(page.getByText('1 away now')).toBeVisible();
@@ -156,11 +156,11 @@ test.describe('English cleaning rota', () => {
 				await page.keyboard.press('Escape');
 
 				// Catch-up dialog for the overdue chore
-				await page.getByRole('button', { name: 'Catch up on task: Take out the rubbish' }).click();
+				await page.getByRole('button', { name: 'Catch up: Take out the rubbish' }).click();
 				await expect(page.getByText('Mark “Take out the rubbish” as done?')).toBeVisible();
 				await expect(page.getByText('This cannot be undone.', { exact: false })).toBeVisible();
 				await expect(
-					page.getByRole('button', { name: 'Confirm catch up: Take out the rubbish' }),
+					page.getByRole('button', { name: 'Confirm catch-up: Take out the rubbish' }),
 				).toBeVisible();
 				await expectNoGermanChrome(page);
 				await page.getByRole('button', { name: 'Cancel' }).click();
@@ -185,7 +185,7 @@ test.describe('English cleaning rota', () => {
 		);
 		await navigateToFeature(page, PUTZEN);
 		await expect(
-			page.getByRole('heading', { name: 'The cleaning rota could not be loaded just now' }),
+			page.getByRole('heading', { name: 'The cleaning rota could not be loaded right now' }),
 		).toBeVisible();
 		await expect(page.getByText('Something went wrong in the cleaning rota.')).toBeVisible();
 		await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
@@ -220,7 +220,7 @@ test.describe('English cleaning rota', () => {
 		}
 		await expect(page.getByPlaceholder('e.g. Holiday')).toBeVisible();
 		await page.getByLabel('Away from').fill('');
-		await expect(page.getByText('Pick From and Until, then you can save.')).toBeVisible();
+		await expect(page.getByText('Choose a start and end date to save.')).toBeVisible();
 		await page
 			.getByLabel('Away from')
 			.fill(new Date(Date.now() + 2 * DAY_MS).toISOString().slice(0, 10));
@@ -233,11 +233,11 @@ test.describe('English cleaning rota', () => {
 		await expectNoGermanChrome(page);
 		await expectNoSidewaysScroll(page, 320);
 
-		await expect(page.getByRole('link', { name: 'Show all 5 periods away' })).toBeVisible();
+		await expect(page.getByRole('link', { name: 'Show all (5)' })).toBeVisible();
 		const remove = page.getByRole('button', { name: /^Remove time away for Anna/ }).first();
 		await remove.click();
 		await expect(
-			page.getByRole('button', { name: /^Really remove\? Time away for Anna/ }),
+			page.getByRole('button', { name: /^Remove this time away for Anna/ }),
 		).toBeVisible();
 		await expect(
 			page.getByRole('button', { name: 'Cancel removing time away for Anna' }),
@@ -245,7 +245,7 @@ test.describe('English cleaning rota', () => {
 		await expectNoGermanChrome(page);
 		await page.getByRole('button', { name: 'Cancel removing time away for Anna' }).click();
 		await remove.click();
-		await page.getByRole('button', { name: /^Really remove\? Time away for Anna/ }).click();
+		await page.getByRole('button', { name: /^Remove this time away for Anna/ }).click();
 		await expect(page.getByText('Time away for Anna removed.').first()).toBeVisible();
 	});
 
@@ -319,9 +319,9 @@ test.describe('English cleaning rota', () => {
 		await page.getByRole('button', { name: 'Confirm done: Clean the bathroom' }).click();
 		await expect(page.getByText(/Clean the bathroom is done\. Anna is up next on /)).toBeVisible();
 
-		await page.getByRole('button', { name: 'Catch up on task: Take out the rubbish' }).click();
+		await page.getByRole('button', { name: 'Catch up: Take out the rubbish' }).click();
 		await expect(page.getByText('You are up next.', { exact: false })).toBeVisible();
-		await page.getByRole('button', { name: 'Confirm catch up: Take out the rubbish' }).click();
+		await page.getByRole('button', { name: 'Confirm catch-up: Take out the rubbish' }).click();
 		await expect(
 			page.getByText(/Take out the rubbish is done\. You are up next on /),
 		).toBeVisible();

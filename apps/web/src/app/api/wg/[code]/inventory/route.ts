@@ -36,7 +36,7 @@ const createInventorySchema = z.object({
 		.min(INVENTORY_LIMITS.QUANTITY_MIN)
 		.max(INVENTORY_LIMITS.QUANTITY_MAX)
 		.default(0),
-	unit: z.enum(INVENTORY_UNITS).default('Stück'),
+	unit: z.enum(INVENTORY_UNITS).default('Stück'), // i18n-ignore stored unit key
 	threshold: z
 		.number()
 		.multipleOf(0.01)
@@ -144,7 +144,7 @@ export const POST = withWgRoute('inventory POST', async (req, { code }) => {
 			eventType: 'inventory.created',
 			entityType: 'inventory_item',
 			entityId: item.id,
-			summary: `${auth.member.name} hat ${item.name} zu den Vorräten hinzugefügt.`,
+			actorName: auth.member.name,
 			metadata: {
 				name: item.name,
 				quantity: item.quantity,

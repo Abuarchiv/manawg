@@ -9,6 +9,7 @@ import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { conflict, rateLimitResponse, serviceUnavailable } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
+import { requestLocale } from '@/core/i18n/request-locale';
 import { sendMail } from '@/core/mail/send-mail';
 import { renderInvitationMail } from '@/core/mail/templates';
 import {
@@ -78,6 +79,7 @@ export const POST = withWgRoute('invitations POST', async (req, { code }) => {
 				wgName: wg.name,
 				inviteToken: invite.token,
 				memberNames: members.map((member) => member.name),
+				locale: requestLocale(req),
 			}),
 		});
 	} catch {
@@ -95,7 +97,7 @@ export const POST = withWgRoute('invitations POST', async (req, { code }) => {
 			eventType: 'member.invited',
 			entityType: 'member',
 			entityId: auth.member.memberId,
-			summary: `${auth.member.name} hat eine Einladung per E-Mail verschickt.`,
+			actorName: auth.member.name,
 		});
 	}
 	return NextResponse.json({ status: result });

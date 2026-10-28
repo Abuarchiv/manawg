@@ -3,7 +3,7 @@ import type de from '../de/inventory';
 
 export default {
 	errorPage: {
-		title: 'Supplies could not load right now',
+		title: 'Supplies could not be loaded right now',
 		body: 'Something went wrong in supplies. Try again or go back to the flat overview.',
 	},
 	page: {
@@ -26,7 +26,7 @@ export default {
 		quick: 'Quick restock',
 		emptyTitle: 'No supplies recorded yet',
 		emptyDescription:
-			'When an item drops below its limit, it is added to the shopping list automatically.',
+			'When an item reaches its restock level, it is added to the shopping list automatically.',
 		low: 'Running low ({count, number})',
 		openShopping: 'Open shopping list',
 		group: '{category} ({count, number})',
@@ -37,8 +37,8 @@ export default {
 		decreaseZeroAria: 'Decrease {name} by one (stock 0)',
 		increaseAria: 'Increase {name} by one',
 		editAria: 'Edit {name}',
-		removeFinalAria: 'Remove permanently: {name}',
-		cancelRemoveAria: 'Cancel: remove {name}',
+		removeFinalAria: 'Remove for good: {name}',
+		cancelRemoveAria: 'Cancel removing {name}',
 		removeAria: 'Remove {name}',
 		remove: 'Remove',
 		cancel: 'Cancel',
@@ -92,17 +92,17 @@ export default {
 		changedMeanwhile:
 			'This item was changed in the meantime. The latest version has been loaded; check it and save again.',
 		nameInvalid: 'Enter a valid name.',
-		subject: 'Item could not be saved',
-		fallback: 'Saving failed. Please try again.',
-		keyUnavailable: 'The item could not be saved safely. Try again.',
+		subject: 'The item could not be saved',
+		fallback: 'The item could not be saved. Try again.',
+		keyUnavailable: 'The item could not be saved reliably. Try again.',
 	},
 	update: {
-		keyUnavailable: 'The update could not be sent safely. Try again.',
-		failed: 'Update failed',
-		failedRetry: 'Update failed. Try again.',
+		keyUnavailable: 'The update could not be sent reliably. Try again.',
+		failed: 'The stock could not be updated',
+		failedRetry: 'The stock could not be updated. Try again.',
 		subjectDecrease: '“{name}” could not be decreased',
 		subjectIncrease: '“{name}” could not be increased',
-		fallbackWithSubject: 'Update failed. {subject}.',
+		fallbackWithSubject: '{subject}. Try again.',
 		clamped: 'Stock cannot go below 0.',
 		clampedWithWarning: 'Stock cannot go below 0. {warning}',
 		deliveryFailed: 'Stock updated. Not all push notifications could be sent.',
