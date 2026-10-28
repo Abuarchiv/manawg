@@ -19,8 +19,9 @@ writes `backups/manawg-<UTC time>.tar.gz` while the stack runs. It contains
   metadata) and `drizzle` (migration ledger),
 - `storage.tar`: the image files from the `storage-data` volume.
 
-Keep your `.env` next to the backups: without `POSTGRES_PASSWORD` and the other secrets you can
-still restore, but members have to sign in again.
+Keep your `.env` next to the backups: without it you can still restore, but a new `JWT_SECRET`
+ends all sessions, so members sign in again, and a new `MEMBER_SESSION_SECRET` breaks the calendar
+feed URLs and unsubscribe links that were already handed out.
 
 A nightly backup with cron, keeping 14 days, with the files encrypted to a key that does not live
 on the server:
@@ -44,9 +45,9 @@ age -r <your public key> -o manawg.tar.gz.age backups/manawg-20261028-031500.tar
 
 stops the app, replaces the four schemas and the image files with the archive and starts the stack
 again; the `setup` service then applies any newer migrations. On a new machine, clone the
-repository, run `./docker/setup.sh` (or copy your old `.env`), then run the restore. With a
-different `JWT_SECRET` than the backed-up instance, existing sessions end and members sign in
-again; their accounts and data are there.
+repository, copy your old `.env` into it, then run the restore. Without the old `.env`, run
+`./docker/setup.sh` first: existing sessions end, members sign in again, and calendar feed URLs and
+unsubscribe links stop working, but their accounts and data are there.
 
 The script checks that the archive holds a readable dump before it changes anything, and stops with
 an error otherwise. Restoring over a live instance replaces its current data, so run

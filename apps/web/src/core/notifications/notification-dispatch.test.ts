@@ -44,7 +44,8 @@ function member(pushOptIn: boolean) {
 	};
 }
 
-const VAPID_ENV = { NEXT_PUBLIC_VAPID_PUBLIC_KEY: 'public', VAPID_PRIVATE_KEY: 'private' };
+const VAPID_KEYS = { NEXT_PUBLIC_VAPID_PUBLIC_KEY: 'public', VAPID_PRIVATE_KEY: 'private' };
+const VAPID_ENV = { ...VAPID_KEYS, VAPID_SUBJECT: 'mailto:ops@example.test' };
 
 test('test push without a live subscription is a typed error, not a server failure', async () => {
 	await withEnv(VAPID_ENV, async () => {
@@ -92,6 +93,29 @@ test('an urgent push reaches a member in quiet hours, a normal one does not', as
 		await withEnv(VAPID_ENV, async () => {
 			assert.equal((await dispatchNotification(change)).sent, 0);
 			assert.equal((await dispatchNotification({ ...change, urgent: true })).sent, 1);
+		});
+	} finally {
+		subscriptionRows = [];
+	}
+});
+
+test('without VAPID_SUBJECT push is skipped outside production and refused in production', async () => {
+	memberRows = [{ ...member(true), notifyEvents: true }];
+	subscriptionRows = [{ id: 'sub-1', endpoint: 'https://push.test', p256dh: 'p', authKey: 'a' }];
+	const change = {
+		wg: input.wg,
+		event: 'event.cancelled' as const,
+		payload: { title: 'Plenum', startsAt: new Date().toISOString(), allDay: false },
+		urgent: true,
+	};
+	try {
+		await withEnv({ ...VAPID_KEYS, VAPID_SUBJECT: undefined, NODE_ENV: 'test' }, async () => {
+			assert.equal((await dispatchNotification(change)).sent, 0);
+		});
+		await withEnv({ ...VAPID_KEYS, VAPID_SUBJECT: ' ', NODE_ENV: 'production' }, async () => {
+			const { sent, failures } = await dispatchNotification(change);
+			assert.equal(sent, 0);
+			assert.match(String(failures[0]), /VAPID_SUBJECT must be configured/);
 		});
 	} finally {
 		subscriptionRows = [];

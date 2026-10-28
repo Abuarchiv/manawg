@@ -20,6 +20,12 @@ interface ApiErrorBody {
 	code?: string;
 }
 
+/** Marks a response as not cacheable by browsers or shared caches. */
+export function noStore<T extends NextResponse>(response: T): T {
+	response.headers.set('Cache-Control', 'no-store');
+	return response;
+}
+
 export function apiError(
 	message: string,
 	status: number,

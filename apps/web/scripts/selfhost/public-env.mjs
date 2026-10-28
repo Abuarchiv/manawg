@@ -13,7 +13,10 @@ import { fileURLToPath } from 'node:url';
 
 const MARKER = 'manawg-selfhost';
 
-/** The placeholder each variable is built with, and its value when the instance leaves it empty. */
+/**
+ * The placeholder each variable is built with, and what an empty value means: `fallback` names a
+ * variable to use instead, `optional` leaves the value empty (the app then omits the feature).
+ */
 export const PUBLIC_ENV_PLACEHOLDERS = {
 	NEXT_PUBLIC_APP_URL: { placeholder: `https://app.${MARKER}.invalid`, url: true },
 	NEXT_PUBLIC_SUPABASE_URL: {
@@ -25,7 +28,7 @@ export const PUBLIC_ENV_PLACEHOLDERS = {
 	NEXT_PUBLIC_LEGAL_URL: {
 		placeholder: `https://legal.${MARKER}.invalid`,
 		url: true,
-		default: 'https://manawg.com',
+		optional: true,
 	},
 	// Error reports stay on the instance: without a support address they go to its sender address.
 	NEXT_PUBLIC_SUPPORT_EMAIL: {
@@ -48,12 +51,12 @@ export function replacements(env) {
 	const pairs = [];
 	const hosts = [];
 	for (const [name, spec] of Object.entries(PUBLIC_ENV_PLACEHOLDERS)) {
-		let value = env[name]?.trim() || (spec.fallback && env[spec.fallback]?.trim()) || spec.default;
-		if (!value) throw new Error(`${name} is not set.`);
+		let value = env[name]?.trim() || (spec.fallback && env[spec.fallback]?.trim()) || '';
+		if (!value && !spec.optional) throw new Error(`${name} is not set.`);
 		if (spec.url) {
-			const url = new URL(value);
-			value = url.origin;
-			hosts.push([new URL(spec.placeholder).host, url.host]);
+			const url = value ? new URL(value) : null;
+			value = url?.origin ?? '';
+			hosts.push([new URL(spec.placeholder).host, url?.host ?? '']);
 		}
 		pairs.push([spec.placeholder, value]);
 	}

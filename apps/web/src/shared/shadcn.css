@@ -1,6 +1,7 @@
 /* shadcn/ui base: keyframes and data-state variants for the ui/ primitives.
    From shadcn 4.23.0 (dist/tailwind.css), MIT License, Copyright (c) 2023 shadcn.
-   Kept in the repo so the shadcn CLI is not a dependency; run it with pnpm dlx. */
+   Kept in the repo so the shadcn CLI is not a dependency; run it with pnpm dlx.
+   Licence and notice: THIRD-PARTY-NOTICES.md at the repository root. */
 
 @theme inline {
 	@keyframes accordion-down {

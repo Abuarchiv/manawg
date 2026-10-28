@@ -14,6 +14,10 @@ command -v openssl >/dev/null || { echo "openssl is required." >&2; exit 1; }
 
 domain="${1:-}"
 if [ ! -f .env ]; then
+	# POSTGRES_PASSWORD is fixed in the database volume when it is first created.
+	if command -v docker >/dev/null && docker volume inspect manawg_db-data >/dev/null 2>&1; then
+		echo "Warning: the volume manawg_db-data exists, but .env does not. New secrets will not match its database; restore the old .env, or run 'docker compose down -v' to delete the data (docs/self-hosting.md)." >&2
+	fi
 	cp .env.example .env
 	if [ -n "$domain" ]; then
 		sed -i.bak \
@@ -28,7 +32,9 @@ if [ ! -f .env ]; then
 	fi
 	echo "Created .env"
 elif [ -n "$domain" ]; then
-	echo ".env exists; edit APP_URL and SITE_ADDRESS there yourself." >&2
+	echo ".env exists and is left as it is. For $domain, edit these keys there yourself:" >&2
+	echo "  APP_URL=https://$domain  SITE_ADDRESS=$domain  COMPOSE_PROFILES=(empty)" >&2
+	echo "  SMTP_HOST  SMTP_PORT  SMTP_ADMIN_EMAIL=noreply@$domain" >&2
 fi
 
 get() { sed -n "s/^$1=//p" .env | tail -n 1; }
@@ -62,4 +68,7 @@ chmod 600 .env
 echo "Secrets are in .env. Next: docker compose up -d, then open $(get APP_URL)"
 if [ -z "$(get SMTP_HOST)" ]; then
 	echo "Set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS and SMTP_ADMIN_EMAIL in .env first: sign-in needs mail."
+fi
+if [ -z "$(get LEGAL_URL)" ]; then
+	echo "LEGAL_URL not set: no legal links are shown. Set it before others use this instance." >&2
 fi

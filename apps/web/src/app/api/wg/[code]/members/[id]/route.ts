@@ -21,11 +21,11 @@ import {
 import { parseBody } from '@/core/http/parse-body';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { computeBalances } from '@/features/expenses/debts';
+import { loadExpensesWithSplits } from '@/features/expenses/server/expense-ledger';
 import {
 	loadCompletedExpensePayments,
 	withExpensePaymentLock,
 } from '@/features/expenses/server/expense-payments';
-import { loadOpenExpenses } from '@/features/expenses/server/open-expenses';
 import { MAX_MEMBERS_PER_WG } from '@/shared/lib/limits';
 import { isUniqueMemberNameViolation } from '../unique-name-violation';
 
@@ -64,7 +64,7 @@ export const GET = withWgRoute<{ id: string }>('members/[id] GET', async (req, {
 	if (!target) return notFound('member_not_found');
 
 	const [openExpenses, payments] = await Promise.all([
-		loadOpenExpenses(wgId),
+		loadExpensesWithSplits(wgId),
 		loadCompletedExpensePayments(wgId),
 	]);
 	const balances = computeBalances(openExpenses, payments);

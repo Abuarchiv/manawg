@@ -11,9 +11,8 @@ if (migrationUrl) {
 	validateDatabaseUrl(migrationUrl, 'DATABASE_MIGRATION_URL');
 	url = migrationUrl;
 } else if (pooledUrl) {
-	const direct = pooledUrl.replace(/-pooler\./, '.');
-	validateDatabaseUrl(direct, 'POSTGRES_URL/DATABASE_URL');
-	url = direct;
+	validateDatabaseUrl(pooledUrl, 'POSTGRES_URL/DATABASE_URL');
+	url = pooledUrl;
 } else if (unpooledUrl) {
 	validateDatabaseUrl(unpooledUrl, 'POSTGRES_URL_NON_POOLING/DATABASE_URL_UNPOOLED');
 	url = unpooledUrl;

@@ -1,6 +1,6 @@
 # English glossary (de to en-GB)
 
-Binding for all packages. Owner decisions are marked (O); until answered, the defaults below apply.
+Terms used in the English interface (British English). Keep new strings consistent with this list.
 
 | German | English | Note |
 |---|---|---|
@@ -10,10 +10,10 @@ Binding for all packages. Owner decisions are marked (O); until answered, the de
 | Mitbewohner(in) | flatmate | |
 | WG-Code | flat code | The identifier `shareCode` is not shown |
 | Einladung, Einladungslink | invitation, invite link | |
-| Tab: Start | Home | `app/wg/[code]/layout.tsx:170` |
-| Nav section: Haushalt | Household (O) | Not "Home", which is taken by the Start tab. Matches the expense category. |
-| Nav section: Finanzen | Money (O) | |
-| Nav section: Austausch | Together (O) | Needs approval |
+| Tab: Start | Home | |
+| Nav section: Haushalt | Household | Not "Home", which is taken by the Start tab. Matches the expense category. |
+| Nav section: Finanzen | Money | |
+| Nav section: Austausch | Together | |
 | Putzplan | Cleaning rota | |
 | Aufgabe | task | |
 | erledigt / Erledigt | done / Done | |
@@ -29,14 +29,14 @@ Binding for all packages. Owner decisions are marked (O); until answered, the de
 | ganztägig | all day | |
 | Ausgaben, Ausgabe | Expenses, expense | |
 | ausgelegt / bezahlt von | paid / paid by | "Lina paid €18.90." |
-| Fixkosten | Fixed costs | Route `abos`, but never "subscriptions" |
-| Abrechnung (route page) | Statement | |
+| Fixkosten | Fixed costs | Never "subscriptions" |
+| Abrechnung | Statement | |
 | Monatsabrechnung | Monthly statement | Never "bill" or "invoice" |
 | ausgleichen, Ausgleich | settle up, settlement | |
 | offen (Betrag) | open | "open since 3 March" |
 | ausgeglichen | settled | |
 | Barzahlung | Cash payment | |
-| Mahnungen (route) | Reminders | Never "dunning" |
+| Mahnungen | Reminders | Never "dunning" |
 | Erinnerung | reminder | |
 | Import | Import | |
 | Aktivität | Activity | |

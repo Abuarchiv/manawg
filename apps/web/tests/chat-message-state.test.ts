@@ -1,3 +1,6 @@
+// Chat message state: tombstones, refresh merging, unread counts, read markers and error text.
+// Why: A refresh or a late response must never restore deleted content or drop a pending local change.
+
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { jsonb, PgDialect, pgTable, timestamp, uuid } from 'drizzle-orm/pg-core';

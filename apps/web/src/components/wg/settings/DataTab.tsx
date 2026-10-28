@@ -23,6 +23,15 @@ import { cn } from '@/shared/lib/cn';
 import { legalUrl } from '@/shared/lib/landing-url';
 import { memberContextHeader } from '@/shared/lib/member-header';
 
+// Empty when the instance has no legal pages configured.
+const LEGAL_ROWS = (
+	[
+		[legalUrl('/impressum'), 'legal.imprint'],
+		[legalUrl('/datenschutz'), 'legal.privacy'],
+		[legalUrl('/agb'), 'legal.terms'],
+	] as const
+).flatMap(([href, label]) => (href ? [{ href, label }] : []));
+
 type ExportSectionKey = keyof (typeof de)['settings']['data']['sections'];
 
 /** One exportable section as the export summary lists it; `key` is the CSV `section` parameter. */
@@ -193,13 +202,15 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 
 			<OfflineQueueSection shareCode={wg.shareCode} memberId={identity.memberId} />
 
-			<Section title={t('legalTitle')}>
-				<ul className="divide-border divide-y">
-					<LinkRow href={legalUrl('/impressum')} label={t('legal.imprint')} external />
-					<LinkRow href={legalUrl('/datenschutz')} label={t('legal.privacy')} external />
-					<LinkRow href={legalUrl('/agb')} label={t('legal.terms')} external />
-				</ul>
-			</Section>
+			{LEGAL_ROWS.length > 0 && (
+				<Section title={t('legalTitle')}>
+					<ul className="divide-border divide-y">
+						{LEGAL_ROWS.map(({ href, label }) => (
+							<LinkRow key={href} href={href} label={t(label)} external />
+						))}
+					</ul>
+				</Section>
+			)}
 		</>
 	);
 }

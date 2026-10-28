@@ -25,18 +25,6 @@ test('resolveConnectionString prefers DATABASE_MIGRATION_URL over every runtime 
 	);
 });
 
-test('resolveConnectionString strips a Neon -pooler label from the runtime URL', () => {
-	assert.equal(
-		resolveConnectionString(
-			env({
-				DATABASE_URL:
-					'postgresql://u:p@ep-cool-name-pooler.eu-central-1.aws.neon.tech:5432/db?sslmode=require',
-			}),
-		),
-		'postgresql://u:p@ep-cool-name.eu-central-1.aws.neon.tech:5432/db?sslmode=require',
-	);
-});
-
 test('resolveConnectionString falls back to the non-pooling pair and validates it', () => {
 	assert.equal(resolveConnectionString(env({ DATABASE_URL_UNPOOLED: DIRECT })), DIRECT);
 	assert.throws(
