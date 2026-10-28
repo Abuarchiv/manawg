@@ -7,7 +7,7 @@ import {
 } from '@/core/http/idempotency-key';
 import { REQUEST_TIMEOUT_MS, readApiErrorCode } from '@/core/infra/api-client';
 import { removeDraft } from '@/core/offline/drafts';
-import { keyUnavailableMessage } from '@/core/offline/offline-copy';
+import { useMessage } from '@/shared/i18n/message';
 import posthog from '@/shared/lib/analytics';
 import { useRef, useState } from 'react';
 import {
@@ -42,6 +42,7 @@ export function useCreateWg({
 		setStep: (step: StartStep) => void;
 		returnToSignIn: () => void;
 	}) {
+	const render = useMessage();
 	const [createdWg, setCreatedWg] = useState<CreatedWg | null>(null);
 	const createRequestRef = useRef<PendingIdempotentRequest | null>(null);
 
@@ -49,8 +50,12 @@ export function useCreateWg({
 		if (busyRef.current) return;
 		const trimmedWg = wgName.trim();
 		const trimmedMe = creatorName.trim();
-		if (trimmedWg.length === 0) return setFieldError('wgName', 'WG-Name fehlt.');
-		if (trimmedMe.length === 0) return setFieldError('creatorName', 'Dein Anzeigename fehlt.');
+		if (trimmedWg.length === 0) {
+			return setFieldError('wgName', render({ key: 'entry.errors.wgNameMissing' }));
+		}
+		if (trimmedMe.length === 0) {
+			return setFieldError('creatorName', render({ key: 'entry.errors.displayNameMissing' }));
+		}
 		busyRef.current = true;
 		setBusy(true);
 		clearError();
@@ -58,7 +63,7 @@ export function useCreateWg({
 		const fingerprint = JSON.stringify(body);
 		const idempotencyKey = resolveIdempotencyKey(createRequestRef.current, fingerprint);
 		if (!idempotencyKey) {
-			setFormError(keyUnavailableMessage('WG', 'erstellt'));
+			setFormError(render({ key: 'entry.errors.createKeyUnavailable' }));
 			busyRef.current = false;
 			setBusy(false);
 			return;
@@ -78,7 +83,7 @@ export function useCreateWg({
 			if (!res.ok) {
 				const apiError = await readApiErrorCode(res);
 				if (shouldReleaseIdempotencyKey(res.status, apiError)) createRequestRef.current = null;
-				const message = createWgErrorMessage(res.status, apiError);
+				const message = render(createWgErrorMessage(res.status, apiError));
 				const field = createWgErrorField(res.status, apiError);
 				if (field) setFieldError(field, message);
 				else setFormError(message);
@@ -93,9 +98,7 @@ export function useCreateWg({
 			setCreatedWg({ code: data.wg.shareCode, name: data.wg.name, memberId: data.creator.id });
 			setStep('invite');
 		} catch {
-			setFormError(
-				'WG konnte nicht erstellt werden: Prüfe deine Verbindung und versuche es erneut.',
-			);
+			setFormError(render({ key: 'entry.errors.createOffline' }));
 		} finally {
 			busyRef.current = false;
 			setBusy(false);

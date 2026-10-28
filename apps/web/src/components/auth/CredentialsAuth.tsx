@@ -1,6 +1,7 @@
 'use client';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import { EmailAuthForm, useEmailAuth } from './EmailAuthForm';
 import { EmailCodeForm, useEmailCode } from './EmailCodeForm';
@@ -22,6 +23,7 @@ export function CredentialsAuth({
 	onAuthenticated,
 	onBusyChange,
 }: CredentialsAuthProps) {
+	const t = useTranslations('auth');
 	const [method, setMethod] = useState<'code' | 'password'>('code');
 	const [busy, setBusy] = useState<BusyAction>(null);
 	// The forms keep their input while the other tab is shown; the address is shared.
@@ -43,7 +45,7 @@ export function CredentialsAuth({
 
 	if (mode === 'sign-up') {
 		return (
-			<section aria-label="Mit E-Mail registrieren" aria-busy={isBusy}>
+			<section aria-label={t('sections.signUp')} aria-busy={isBusy}>
 				<EmailSignUpForm auth={emailSignUp} busy={busy} />
 			</section>
 		);
@@ -58,16 +60,16 @@ export function CredentialsAuth({
 		>
 			<TabsList className="min-h-12 w-full">
 				<TabsTrigger value="code" disabled={isBusy} className="min-h-11 flex-auto">
-					Code per E-Mail
+					{t('tabs.code')}
 				</TabsTrigger>
 				<TabsTrigger value="password" disabled={isBusy} className="min-h-11 flex-auto">
-					Passwort
+					{t('tabs.password')}
 				</TabsTrigger>
 			</TabsList>
-			<TabsContent value="code" aria-label="Mit E-Mail-Code anmelden" tabIndex={-1}>
+			<TabsContent value="code" aria-label={t('sections.code')} tabIndex={-1}>
 				<EmailCodeForm auth={emailCode} busy={busy} intentQuery={next.split('?')[1] ?? ''} />
 			</TabsContent>
-			<TabsContent value="password" aria-label="Mit Passwort anmelden" tabIndex={-1}>
+			<TabsContent value="password" aria-label={t('sections.password')} tabIndex={-1}>
 				<EmailAuthForm auth={emailAuth} busy={busy} />
 			</TabsContent>
 		</Tabs>

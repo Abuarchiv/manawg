@@ -1,16 +1,20 @@
 import { authIntentQuery, authPageHref } from '@/core/auth/auth-intent';
 import { getAuthenticatedUserFromCookies } from '@/core/auth/server';
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 import { RegistrierenClient } from './RegistrierenClient';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata: Metadata = {
-	title: 'Konto erstellen',
-	description: 'Lege dein ManaWG-Konto an, um eine WG zu erstellen oder einer WG beizutreten.',
-	robots: { index: false, follow: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+	const t = await getTranslations('meta.register');
+	return {
+		title: t('title'),
+		description: t('description'),
+		robots: { index: false, follow: false },
+	};
+}
 
 type SearchParams = Record<string, string | string[] | undefined>;
 

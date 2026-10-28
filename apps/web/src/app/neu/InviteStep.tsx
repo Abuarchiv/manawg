@@ -16,6 +16,7 @@ import { INVITE_VALID_DAYS } from '@/core/utils/invite-token';
 import { useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
 import { AlertTriangle, ArrowRight, Check, Copy, MessageCircle, Share2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useEffect, useRef, useState } from 'react';
 
 const SHARE_RESET_MS = 1500;
@@ -31,6 +32,7 @@ interface InviteStepProps {
 
 export function InviteStep({ code, wgName, memberId, onSkip }: InviteStepProps) {
 	const render = useMessage();
+	const t = useTranslations('entry.share');
 	const [invite, setInvite] = useState<CreatedInvite | null>(null);
 	const [loadError, setLoadError] = useState<string | null>(null);
 	const [attempt, setAttempt] = useState(0);
@@ -104,27 +106,27 @@ export function InviteStep({ code, wgName, memberId, onSkip }: InviteStepProps) 
 	const ready = invite !== null && !sharing;
 
 	const shareLabel = sharing
-		? 'Einladung wird geteilt…'
+		? t('sharing')
 		: state === 'shared'
-			? 'Einladung geteilt'
+			? t('shared')
 			: state === 'copied'
-				? 'Einladung kopiert'
+				? t('copied')
 				: state === 'failed'
-					? 'Teilen erneut versuchen'
-					: 'Mitbewohner einladen';
+					? t('retry')
+					: t('inviteFlatmates');
 
 	return (
 		<div className="flex flex-col gap-5">
 			{/* Visually hidden live region for share status announcements */}
 			<span id={liveId} aria-live="polite" aria-atomic="true" className="sr-only">
 				{state === 'shared'
-					? 'Einladungslink wurde geteilt.'
+					? t('liveShared')
 					: state === 'copied'
-						? 'Einladung wurde kopiert.'
+						? t('liveCopied')
 						: state === 'linkCopied'
-							? 'Einladungslink wurde kopiert.'
+							? t('liveLinkCopied')
 							: state === 'failed'
-								? 'Teilen fehlgeschlagen. Kopiere den Link stattdessen.'
+								? t('liveFailed')
 								: ''}
 			</span>
 
@@ -133,17 +135,15 @@ export function InviteStep({ code, wgName, memberId, onSkip }: InviteStepProps) 
 					<div className="mx-auto flex size-10 items-center justify-center rounded-lg bg-muted text-foreground">
 						<Check aria-hidden />
 					</div>
-					<CardTitle className="max-w-full break-words">Eure WG „{wgName}“ ist live.</CardTitle>
-					<CardDescription>
-						Schick deiner WG den Einladungslink. Er gilt {INVITE_VALID_DAYS} Tage.
-					</CardDescription>
+					<CardTitle className="max-w-full break-words">{t('live', { wgName })}</CardTitle>
+					<CardDescription>{t('validity', { days: INVITE_VALID_DAYS })}</CardDescription>
 				</CardHeader>
 				<CardContent className="flex flex-col items-center gap-3 text-center">
 					{loadError ? (
 						<div className="flex w-full flex-col gap-2">
 							<ErrorBox>{loadError}</ErrorBox>
 							<Button type="button" variant="outline" onClick={() => setAttempt((n) => n + 1)}>
-								Erneut versuchen
+								{t('tryAgain')}
 							</Button>
 						</div>
 					) : (
@@ -152,12 +152,10 @@ export function InviteStep({ code, wgName, memberId, onSkip }: InviteStepProps) 
 							variant="outline"
 							onClick={() => void onCopyLink()}
 							disabled={!ready}
-							aria-label="Einladungslink kopieren"
+							aria-label={t('copyLink')}
 							className="h-auto min-h-12 w-full justify-between gap-3 text-left"
 						>
-							<span className="min-w-0 truncate text-sm">
-								{invite?.url ?? 'Link wird erstellt…'}
-							</span>
+							<span className="min-w-0 truncate text-sm">{invite?.url ?? t('creatingLink')}</span>
 							{invite ? (
 								state === 'linkCopied' ? (
 									<Check aria-hidden />
@@ -170,17 +168,15 @@ export function InviteStep({ code, wgName, memberId, onSkip }: InviteStepProps) 
 						</Button>
 					)}
 					<div className="flex min-h-6 items-center justify-center">
-						{state === 'linkCopied' && <Badge variant="secondary">Link kopiert</Badge>}
+						{state === 'linkCopied' && <Badge variant="secondary">{t('linkCopied')}</Badge>}
 					</div>
 				</CardContent>
 			</Card>
 
 			<Card>
 				<CardHeader>
-					<CardTitle>Einladung verschicken</CardTitle>
-					<CardDescription>
-						Nutze die Teilen-Funktion deines Telefons oder kopiere den Link.
-					</CardDescription>
+					<CardTitle>{t('sendTitle')}</CardTitle>
+					<CardDescription>{t('sendBody')}</CardDescription>
 				</CardHeader>
 				<CardContent className="flex flex-col gap-2">
 					<Button
@@ -206,7 +202,7 @@ export function InviteStep({ code, wgName, memberId, onSkip }: InviteStepProps) 
 						href={whatsappHref}
 						target="_blank"
 						rel="noopener noreferrer"
-						aria-label="Per WhatsApp teilen"
+						aria-label={t('whatsapp')}
 						aria-disabled={!ready}
 						tabIndex={ready ? undefined : -1}
 						onClick={(event) => {
@@ -219,12 +215,12 @@ export function InviteStep({ code, wgName, memberId, onSkip }: InviteStepProps) 
 						)}
 					>
 						<MessageCircle data-icon="inline-start" aria-hidden />
-						Per WhatsApp teilen
+						{t('whatsapp')}
 					</a>
 					<div className="flex min-h-6 items-center justify-center">
 						{state === 'failed' && (
 							<Badge variant="destructive" className="h-auto whitespace-normal text-center">
-								Teilen fehlgeschlagen. Kopiere stattdessen den Link oben.
+								{t('failedBadge')}
 							</Badge>
 						)}
 					</div>
@@ -239,7 +235,7 @@ export function InviteStep({ code, wgName, memberId, onSkip }: InviteStepProps) 
 				className="w-full"
 			>
 				<ArrowRight data-icon="inline-start" aria-hidden />
-				Zur WG
+				{t('toFlat')}
 			</Button>
 		</div>
 	);

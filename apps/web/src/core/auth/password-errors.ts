@@ -1,5 +1,6 @@
-export const WEAK_PASSWORD_MESSAGE =
-	'Wähle ein längeres oder anderes sicheres Passwort, das du nicht schon an anderer Stelle verwendest.';
+import type { Message } from '@/shared/i18n/message';
+
+export const WEAK_PASSWORD_MESSAGE: Message = { key: 'auth.failure.weakPassword' };
 
 export type AuthFailure = 'credentials' | 'unconfirmed' | 'rate-limit' | 'network' | 'other';
 
@@ -9,7 +10,7 @@ const RATE_LIMIT_CODES = new Set([
 	'over_sms_send_rate_limit',
 ]);
 
-/** Map a Supabase Auth error to the cases that need their own German message. */
+/** Map a Supabase Auth error to the cases that need their own message. */
 export function classifyAuthError(error: unknown): AuthFailure {
 	if (error === null || typeof error !== 'object') return 'other';
 	const code = Reflect.get(error, 'code');
@@ -23,16 +24,13 @@ export function classifyAuthError(error: unknown): AuthFailure {
 	return 'other';
 }
 
-export const AUTH_RATE_LIMITED_MESSAGE =
-	'Zu viele Versuche. Warte einige Minuten und versuche es dann erneut.';
+export const AUTH_RATE_LIMITED_MESSAGE: Message = { key: 'auth.failure.rateLimit' };
 
-export const AUTH_FAILURE_MESSAGES: Record<Exclude<AuthFailure, 'other'>, string> = {
-	credentials:
-		'E-Mail oder Passwort stimmt nicht. Prüfe deine Eingabe oder setze dein Passwort zurück.',
-	unconfirmed:
-		'Deine E-Mail-Adresse ist noch nicht bestätigt. Öffne den Link in der Bestätigungsmail und melde dich danach an.',
+export const AUTH_FAILURE_MESSAGES: Record<Exclude<AuthFailure, 'other'>, Message> = {
+	credentials: { key: 'auth.failure.credentials' },
+	unconfirmed: { key: 'auth.failure.unconfirmed' },
 	'rate-limit': AUTH_RATE_LIMITED_MESSAGE,
-	network: 'Keine Verbindung zum Anmeldedienst. Prüfe deine Verbindung und versuche es erneut.',
+	network: { key: 'auth.failure.network' },
 };
 
 export function isWeakPasswordError(error: unknown): boolean {

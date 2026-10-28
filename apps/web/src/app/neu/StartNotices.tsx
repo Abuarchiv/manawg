@@ -3,21 +3,20 @@
 import { ErrorBox } from '@/components/app/ErrorBox';
 import { LEGACY_CODE_MESSAGE } from '@/core/infra/join-flow';
 import { isInviteToken } from '@/core/utils/invite-token';
+import { useMessage } from '@/shared/i18n/message';
 import { isAppInstalled, isIosLikeDevice } from '@/shared/lib/pwa-install';
+import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 
-// Most failed callbacks are an expired or reused link, or a link opened in a
-// different browser than the one that requested it (no PKCE verifier there).
-const AUTH_CALLBACK_ERROR =
-	'Der Link konnte nicht verwendet werden. Er ist abgelaufen oder bereits benutzt, oder du hast ihn in einem anderen Browser geöffnet. Hast du gerade deine E-Mail-Adresse bestätigt, kannst du dich jetzt anmelden. Sonst fordere einen neuen Link an.';
-
-// iOS keeps the storage of a Home Screen web app apart from Safari, so a session signed in
-// there never reaches the installed app. Android and desktop share the browser profile.
-const IOS_STANDALONE_NOTICE =
-	'Auf dem iPhone ist die installierte App von Safari getrennt. Melde dich hier einmal an, danach bleibst du angemeldet.';
-
-/** Messages from a failed auth callback, an old `?code=` link or a malformed `?invite=`, shown above the flow. */
+/**
+ * Messages from a failed auth callback (an expired or reused link, or a link opened in another
+ * browser than the one that requested it), an old `?code=` link or a malformed `?invite=`.
+ * On iOS the installed app keeps its storage apart from Safari, so the sign-in notice is
+ * shown there only.
+ */
 export function StartNotices({ search, signedIn }: { search: string; signedIn: boolean }) {
+	const t = useTranslations('entry');
+	const message = useMessage();
 	const params = new URLSearchParams(search);
 	const legacyCode = (params.get('code') ?? '').trim() !== '';
 	const rawInvite = (params.get('invite') ?? '').trim();
@@ -29,15 +28,11 @@ export function StartNotices({ search, signedIn }: { search: string; signedIn: b
 	return (
 		<>
 			{!signedIn && iosStandalone && (
-				<p className="text-sm text-muted-foreground">{IOS_STANDALONE_NOTICE}</p>
+				<p className="text-sm text-muted-foreground">{t('start.iosStandalone')}</p>
 			)}
-			{params.get('error') === 'auth_callback' && <ErrorBox>{AUTH_CALLBACK_ERROR}</ErrorBox>}
-			{legacyCode && <ErrorBox>{LEGACY_CODE_MESSAGE}</ErrorBox>}
-			{badInvite && (
-				<ErrorBox>
-					Dieser Einladungslink ist unvollständig oder ungültig. Frag die WG nach einem neuen Link.
-				</ErrorBox>
-			)}
+			{params.get('error') === 'auth_callback' && <ErrorBox>{t('start.authCallback')}</ErrorBox>}
+			{legacyCode && <ErrorBox>{message(LEGACY_CODE_MESSAGE)}</ErrorBox>}
+			{badInvite && <ErrorBox>{t('errors.badInvite')}</ErrorBox>}
 		</>
 	);
 }

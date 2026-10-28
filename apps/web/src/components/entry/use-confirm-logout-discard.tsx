@@ -1,8 +1,10 @@
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { useTranslations } from 'next-intl';
 import { useCallback, useRef, useState } from 'react';
 
 /** `confirmDiscard` for `signOutSocialAccount`, resolved by the returned dialog. */
 export function useConfirmLogoutDiscard() {
+	const t = useTranslations('entry.discard');
 	const [state, setState] = useState({ open: false, count: 0 });
 	const resolver = useRef<((discard: boolean) => void) | null>(null);
 	const confirmDiscard = useCallback(
@@ -23,13 +25,9 @@ export function useConfirmLogoutDiscard() {
 			open={state.open}
 			onClose={() => settle(false)}
 			onConfirm={() => settle(true)}
-			title="Ungesendete Aktionen"
-			description={
-				state.count === 1
-					? '1 ungesendete Aktion geht beim Abmelden verloren.'
-					: `${state.count} ungesendete Aktionen gehen beim Abmelden verloren.`
-			}
-			confirmLabel="Trotzdem abmelden"
+			title={t('title')}
+			description={t('description', { count: state.count })}
+			confirmLabel={t('confirm')}
 			variant="danger"
 		/>
 	);

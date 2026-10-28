@@ -6,10 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { AccountDeleteSection } from '@/components/wg/einstellungen/AccountDeleteSection';
 import { LogOut } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 
 // Signed-in users without a WG never reach WG settings, so offer sign-out and deletion here.
 export function SignOutActions({ onSignedOut }: { onSignedOut: () => void }) {
+	const t = useTranslations('entry.signOut');
 	const { confirmDiscard, dialog } = useConfirmLogoutDiscard();
 	const [signingOut, setSigningOut] = useState(false);
 	const [signOutError, setSignOutError] = useState(false);
@@ -41,11 +43,9 @@ export function SignOutActions({ onSignedOut }: { onSignedOut: () => void }) {
 					className="w-full"
 				>
 					{signingOut ? <Spinner data-icon="inline-start" aria-hidden /> : <LogOut aria-hidden />}
-					{signingOut ? 'Meldet ab…' : 'Mit anderem Konto anmelden'}
+					{signingOut ? t('signingOut') : t('switch')}
 				</Button>
-				{signOutError && (
-					<ErrorBox>Konto konnte nicht abgemeldet werden. Bitte versuche es erneut.</ErrorBox>
-				)}
+				{signOutError && <ErrorBox>{t('failed')}</ErrorBox>}
 			</div>
 			<AccountDeleteSection />
 			{dialog}

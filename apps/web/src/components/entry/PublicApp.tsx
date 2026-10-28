@@ -3,7 +3,12 @@
 import { AppBottomNav } from '@/components/app/AppBottomNav';
 import { ErrorBox } from '@/components/app/ErrorBox';
 import { RouteFocusOnNavigate } from '@/components/app/RouteFocusOnNavigate';
-import { WG_SECTIONS, isActivePage, moduleSlugOf } from '@/components/app/navigation';
+import {
+	HOME_NAV_LABEL,
+	WG_SECTIONS,
+	isActivePage,
+	moduleSlugOf,
+} from '@/components/app/navigation';
 import { LegalLinks } from '@/components/entry/LegalLinks';
 import { type AccountWg, MembershipCard } from '@/components/entry/MembershipCard';
 import {
@@ -13,6 +18,11 @@ import {
 } from '@/components/entry/PublicModulePreview';
 import { SignOutActions } from '@/components/entry/SignOutActions';
 import { InvitationNotice, WgWelcome } from '@/components/entry/WgWelcome';
+import {
+	PRIMARY_MODULE_SLUGS,
+	type PublicModuleSlug,
+	isPublicModuleSlug,
+} from '@/components/entry/public-modules';
 import { LogoMark } from '@/components/ui/LogoMark';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -24,11 +34,13 @@ import { hasSessionCookie } from '@/core/auth/session-hint';
 import { fetchAccountWgs } from '@/core/infra/account-wgs';
 import { LEGACY_CODE_MESSAGE } from '@/core/infra/join-flow';
 import { invitePath, isInviteToken } from '@/core/utils/invite-token';
+import { useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
 import {
 	CalendarDays,
 	Clock3,
 	ListChecks,
+	type LucideIcon,
 	Megaphone,
 	MessageCircle,
 	Package,
@@ -36,33 +48,23 @@ import {
 	Repeat2,
 	Sparkles,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
 
-type PublicModule = PublicPreviewModule;
-
-const PRIMARY_MODULES: PublicModule[] = [
-	{ slug: 'ausgaben', title: 'Ausgaben', Icon: Receipt },
-	{ slug: 'einkauf', title: 'Einkäufe', Icon: ListChecks },
-	{ slug: 'pinnwand', title: 'Pinnwand', Icon: Megaphone },
-	{ slug: 'putzen', title: 'Putzplan', Icon: Sparkles },
-];
-
-const OTHER_MODULES: PublicModule[] = [
-	{ slug: 'fixkosten', title: 'Fixkosten', Icon: Repeat2 },
-	{ slug: 'mahnungen', title: 'Erinnerungen', Icon: Receipt },
-	{ slug: 'vorraete', title: 'Vorräte', Icon: Package },
-	{ slug: 'kalender', title: 'Kalender', Icon: CalendarDays },
-	{ slug: 'aktivitaet', title: 'Aktivität', Icon: Clock3 },
-	{ slug: 'chat', title: 'Chat', Icon: MessageCircle },
-];
-
-const PUBLIC_MODULES = [...PRIMARY_MODULES, ...OTHER_MODULES];
-
-function moduleFor(slug: string | undefined): PublicModule | null {
-	return PUBLIC_MODULES.find((item) => item.slug === slug) ?? null;
-}
+const MODULE_ICONS: Record<PublicModuleSlug, LucideIcon> = {
+	ausgaben: Receipt,
+	einkauf: ListChecks,
+	pinnwand: Megaphone,
+	putzen: Sparkles,
+	fixkosten: Repeat2,
+	mahnungen: Receipt,
+	vorraete: Package,
+	kalender: CalendarDays,
+	aktivitaet: Clock3,
+	chat: MessageCircle,
+};
 
 function withInvitation(path: string, token: string): string {
 	return `${path}?invite=${encodeURIComponent(token)}`;
@@ -84,6 +86,9 @@ export function PublicApp(props: { activeModule?: string }) {
 }
 
 function PublicAppContent({ activeModule }: { activeModule?: string }) {
+	const t = useTranslations('entry');
+	const tm = useTranslations('entry.modules');
+	const message = useMessage();
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const accountDeletionPending = searchParams.get('accountDeletion') === 'pending';
@@ -98,7 +103,13 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 	const [retried, setRetried] = useState(false);
 	// Client-only: set once a session cookie exists, so guests never see a skeleton flash.
 	const [sessionPending, setSessionPending] = useState(false);
-	const module = moduleFor(activeModule);
+	const toModule = (slug: PublicModuleSlug): PublicPreviewModule => ({
+		slug,
+		title: tm(`${slug}.title`),
+		Icon: MODULE_ICONS[slug],
+	});
+	const primaryModules = PRIMARY_MODULE_SLUGS.map(toModule);
+	const module = activeModule && isPublicModuleSlug(activeModule) ? toModule(activeModule) : null;
 	const rawInvite = (searchParams.get('invite') ?? '').trim();
 	const inviteToken = isInviteToken(rawInvite) ? rawInvite : '';
 	const badInvite = rawInvite !== '' && inviteToken === '';
@@ -116,13 +127,13 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 		membershipState === 'member-list'
 			? {
 					href: singleWg ? `/wg/${encodeURIComponent(singleWg.code)}` : '/',
-					label: singleWg ? 'WG öffnen' : 'Deine WGs',
+					label: singleWg ? t('membership.open') : t('membership.title'),
 				}
 			: membershipState === 'authenticated-empty'
 				? inviteToken
-					? { href: invitePath(inviteToken), label: 'Einladung annehmen' }
-					: { href: '/neu?action=create', label: 'WG erstellen' }
-				: { href: publicHref('/neu'), label: 'Anmelden' };
+					? { href: invitePath(inviteToken), label: t('welcome.acceptInvite') }
+					: { href: '/neu?action=create', label: t('welcome.createFlat') }
+				: { href: publicHref('/neu'), label: t('public.signIn') };
 
 	useEffect(() => {
 		if (membershipState !== 'loading') setRetried(false);
@@ -203,7 +214,7 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 							<Link
 								href={publicHref('/')}
 								className="flex min-h-9 items-center gap-2"
-								aria-label="ManaWG Startseite"
+								aria-label={t('frame.home')}
 							>
 								<LogoMark size={24} tile={false} aria-hidden />
 								<span className="font-heading text-xl font-semibold tracking-[-0.03em]">
@@ -237,33 +248,31 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 					</header>
 					{accountDeletionPending && (
 						<Alert>
-							<AlertTitle>Konto wird gelöscht</AlertTitle>
+							<AlertTitle>{t('public.accountDeletion.title')}</AlertTitle>
 							<AlertDescription className="text-foreground">
-								ManaWG hat deine Zugänge zu allen WGs entfernt. Die Löschung beim Anmeldedienst
-								steht noch aus und wird automatisch erneut versucht.
+								{t('public.accountDeletion.body')}
 							</AlertDescription>
 						</Alert>
 					)}
 					{deletedWg && (
 						<Alert>
-							<AlertTitle>WG gelöscht</AlertTitle>
+							<AlertTitle>{t('public.flatDeleted.title')}</AlertTitle>
 							<AlertDescription className="text-foreground">
-								Die WG und ihre Einträge sind für alle Mitglieder entfernt.
+								{t('public.flatDeleted.body')}
 							</AlertDescription>
 						</Alert>
 					)}
 					{leftWg && (
 						<Alert>
-							<AlertTitle>Du hast die WG verlassen</AlertTitle>
+							<AlertTitle>{t('public.leftFlat.title')}</AlertTitle>
 							<AlertDescription className="text-foreground">
-								Deine Mitgliedschaft wurde beendet. Mit einer Einladung kannst du jederzeit einer WG
-								beitreten.
+								{t('public.leftFlat.body')}
 							</AlertDescription>
 						</Alert>
 					)}
 					{section && (
 						<SubNav
-							label={`${section.label} – entdecken`}
+							label={t('public.discover', { section: message({ key: section.label }) })}
 							items={section.pages.map((page) => ({
 								href: discoveryHref(page.slug),
 								label: page.label,
@@ -274,7 +283,7 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 					{checkingSession && !module ? (
 						<output
 							aria-live="polite"
-							aria-label="Deine WGs werden geprüft"
+							aria-label={t('public.checking')}
 							className="flex flex-col gap-4"
 						>
 							<Skeleton className="h-12 w-full" />
@@ -287,15 +296,10 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 							{module ? (
 								<PublicModulePreview module={module} />
 							) : (
-								!multi && <PublicModulePreviews modules={PRIMARY_MODULES} hrefFor={discoveryHref} />
+								!multi && <PublicModulePreviews modules={primaryModules} hrefFor={discoveryHref} />
 							)}
-							{legacyCode && <ErrorBox>{LEGACY_CODE_MESSAGE}</ErrorBox>}
-							{badInvite && (
-								<ErrorBox>
-									Dieser Einladungslink ist unvollständig oder ungültig. Frag die WG nach einem
-									neuen Link.
-								</ErrorBox>
-							)}
+							{legacyCode && <ErrorBox>{message(LEGACY_CODE_MESSAGE)}</ErrorBox>}
+							{badInvite && <ErrorBox>{t('errors.badInvite')}</ErrorBox>}
 							{inviteToken ? (
 								<WgWelcome variant="invitation" token={inviteToken} guest={guest} />
 							) : (
@@ -304,13 +308,13 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 						</>
 					)}
 					{checkingSession && module && (
-						<output aria-live="polite" aria-label="Deine WGs werden geprüft" className="block">
+						<output aria-live="polite" aria-label={t('public.checking')} className="block">
 							<Skeleton className="h-11 w-full" />
 						</output>
 					)}
 					{(membershipState === 'error' || (retried && membershipState === 'loading')) && (
 						<div className="flex flex-col gap-2">
-							<ErrorBox>Deine WGs konnten gerade nicht geladen werden.</ErrorBox>
+							<ErrorBox>{t('public.loadFailed')}</ErrorBox>
 							<Button
 								type="button"
 								variant="outline"
@@ -324,7 +328,7 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 								}}
 							>
 								{retried && <Spinner data-icon="inline-start" aria-hidden />}
-								{retried ? 'Prüfe…' : 'Erneut prüfen'}
+								{retried ? t('public.rechecking') : t('public.recheck')}
 							</Button>
 						</div>
 					)}
@@ -339,10 +343,10 @@ function PublicAppContent({ activeModule }: { activeModule?: string }) {
 				</div>
 				<LegalLinks className="mt-auto" />
 			</main>
-			<AppBottomNav label="Öffentliche Hauptnavigation">
+			<AppBottomNav label={t('public.nav')}>
 				<NavItem
 					href={publicHref('/')}
-					label="Start"
+					label={HOME_NAV_LABEL}
 					iconKey="home"
 					activePrefixes={[discoveryHref('aktivitaet')]}
 				/>
