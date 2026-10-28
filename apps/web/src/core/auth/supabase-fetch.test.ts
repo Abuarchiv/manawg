@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
+import { readFileSync, readdirSync } from 'node:fs';
+import path from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 import { withEnv } from '../../../tests/support/env';
 import { supabaseFetch } from './supabase-fetch';
 
@@ -45,4 +48,18 @@ test('without an internal URL requests stay untouched', async () => {
 		}),
 		'https://project.supabase.co/auth/v1/user',
 	);
+});
+
+test('every Supabase client in the app routes its requests through supabaseFetch', () => {
+	const src = fileURLToPath(new URL('../../', import.meta.url));
+	const creating = readdirSync(src, { recursive: true, encoding: 'utf8' })
+		.filter((file) => /\.tsx?$/.test(file) && !file.includes('.test.'))
+		.filter((file) =>
+			/\bcreate(?:Server|Browser)?Client\(/.test(readFileSync(path.join(src, file), 'utf8')),
+		);
+
+	assert.ok(creating.length > 0);
+	for (const file of creating) {
+		assert.match(readFileSync(path.join(src, file), 'utf8'), /\bsupabaseFetch\b/, file);
+	}
 });
