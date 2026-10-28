@@ -168,16 +168,6 @@ export function intervalLabelMessage(intervalMonths: number): Message {
 	return { key: 'expenses-abos.interval.everyMonths', values: { count: months } };
 }
 
-/** Plain-string twin of `intervalLabelMessage` for callers outside this package. */
-export function formatIntervalLabel(intervalMonths: number): string {
-	const months = Math.max(1, Math.floor(intervalMonths));
-	if (months === 1) return 'monatlich'; // i18n-ignore plain-string twin
-	if (months === 3) return 'quartalsweise'; // i18n-ignore plain-string twin
-	if (months === 6) return 'halbjährlich'; // i18n-ignore plain-string twin
-	if (months === 12) return 'jährlich'; // i18n-ignore plain-string twin
-	return `alle ${months} Monate`; // i18n-ignore plain-string twin
-}
-
 /**
  * How many bookings the next daily run catches up for a template whose due date lies in the
  * past; 0 when the date is today or later.

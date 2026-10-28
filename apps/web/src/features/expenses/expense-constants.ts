@@ -34,16 +34,6 @@ export function amountError(euros: number | null, raw = ''): Message {
 	};
 }
 
-/** Plain German amount error for the fixed-cost form, which shows it as text. */
-export function amountErrorMessage(euros: number | null, raw = ''): string {
-	if (euros === null && /[.,]\d{3,}\s*(€|EUR)?$/i.test(raw.trim())) {
-		return 'Maximal zwei Nachkommastellen.'; // i18n-ignore plain German text for the fixed-cost form
-	}
-	return euros !== null && euros > AMOUNT_MAX_EUROS
-		? 'Der Betrag darf höchstens 1.000.000 € betragen.' // i18n-ignore plain German text for the fixed-cost form
-		: 'Gib einen Betrag über 0 € ein, z. B. 12,50.'; // i18n-ignore plain German text for the fixed-cost form
-}
-
 /** Picker values in order; the German `label` is plain text for the fixed-cost form. */
 export const RECURRING_INTERVAL_OPTIONS = [
 	{ value: 1, label: '1 Monat' }, // i18n-ignore plain German text for the fixed-cost form

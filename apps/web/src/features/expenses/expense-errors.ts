@@ -156,22 +156,5 @@ export function splitInputError(reason: SplitInputReason): Message {
 	}
 }
 
-/** Plain German split error for the fixed-cost form, which shows it as text. */
-export function splitInputErrorMessage(reason: SplitInputReason): string {
-	switch (reason) {
-		case 'invalid_share':
-			// i18n-ignore plain German text for the fixed-cost form
-			return 'Mindestens ein Anteil ist ungültig. Gib einen gültigen Betrag ein oder lasse das Feld leer.';
-		case 'splits_empty':
-			// i18n-ignore plain German text for the fixed-cost form
-			return 'Aufteilung leer — gib mindestens einen Betrag ein.';
-		case 'splits_mismatch':
-			return SPLIT_SUM_MISMATCH;
-		case 'no_members':
-			// i18n-ignore plain German text for the fixed-cost form
-			return 'Wähle mindestens eine beteiligte Person aus.';
-	}
-}
-
 /** Shown when the edited expense is gone on the server. */
 export const EDITED_EXPENSE_DELETED = msg('expenses-form.errors.editedExpenseDeleted');

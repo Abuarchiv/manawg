@@ -22,10 +22,10 @@ export const NETWORK_ERROR_CODE = 'Netzwerkfehler';
 // i18n-ignore internal error code, never displayed
 export const INVALID_RESPONSE_CODE = 'Unerwartete Serverantwort';
 
-export const RATE_LIMITED_MESSAGE = 'Zu viele Anfragen. Warte kurz und versuche es dann erneut.';
-export const READ_ONLY_MESSAGE =
+const RATE_LIMITED_MESSAGE = 'Zu viele Anfragen. Warte kurz und versuche es dann erneut.';
+const READ_ONLY_MESSAGE =
 	'Die App ist gerade in Wartung und nur lesbar. Versuche es später erneut.';
-export const SESSION_EXPIRED_MESSAGE = 'Deine Sitzung ist abgelaufen. Melde dich neu an.';
+const SESSION_EXPIRED_MESSAGE = 'Deine Sitzung ist abgelaufen. Melde dich neu an.';
 
 export function isNetworkError(code: string | null, status?: number): boolean {
 	return status === 0 || code === NETWORK_ERROR_CODE || code === 'Failed to fetch';
