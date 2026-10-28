@@ -1,6 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "shadcn/tailwind.css";
+@import "./shadcn.css";
 
 /* The app theme is the .dark class on <html>, not the OS setting. */
 @custom-variant dark (&:is(.dark, .dark *));

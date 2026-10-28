@@ -11,8 +11,7 @@ on:
         type: string
 
 permissions:
-  actions: write
-  contents: write
+  contents: read
 
 concurrency:
   group: production-release
@@ -26,6 +25,9 @@ jobs:
   release:
     if: vars.PRODUCTION_APP_URL != ''
     runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: write
     timeout-minutes: 150
     environment:
       name: Production
