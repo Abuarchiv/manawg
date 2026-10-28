@@ -55,7 +55,7 @@ In production `SUPABASE_SERVICE_ROLE_KEY` is also required (account deletion, Su
 Optional features degrade when unset and are reported as `[env] DEGRADED ...`: Upstash rate
 limiting (`UPSTASH_REDIS_REST_*`, fails open outside production), Web Push (`VAPID_*`,
 `NEXT_PUBLIC_VAPID_PUBLIC_KEY`), image uploads
-(`IMAGE_STORAGE_PROVIDER` plus its provider variables). Every variable is described in `apps/web/.env.example`. Never commit or print
+(`SUPABASE_STORAGE_BUCKET` with `SUPABASE_SERVICE_ROLE_KEY`). Every variable is described in `apps/web/.env.example`. Never commit or print
 env values.
 
 ### Database migrations
@@ -83,7 +83,10 @@ of these hold: `E2E_FIXTURE_MODE=true` (or `NODE_ENV=test`), `NEXT_PUBLIC_DB_DOW
 `CI=true`, `VERCEL` not `1`, `VERCEL_ENV` not `production`, and neither `POSTGRES_URL` nor
 `DATABASE_URL` set. It trusts the plain `x-manawg-expected-member-id` header without real
 authentication, so it can never activate on a Vercel deployment. `test:e2e:fixtures` sets all of
-this and builds an isolated server on port `3101` (`E2E_PORT`).
+this and builds an isolated server on port `3101` (`E2E_PORT`). `pnpm --filter @manawg/web
+dev:fixtures` sets the same for `next dev` on port `3000`: open
+[localhost:3000/wg/MTE8PZAT](http://localhost:3000/wg/MTE8PZAT) to click through a sample WG.
+Sign-in and saving to a database are not available there.
 
 Only `src/app/` (including `src/middleware.ts`) imports `src/fixtures/`, through one seam per
 entry: `resolveFixtureRequest` in the middleware answers fixture API reads and `POST /api/wg`

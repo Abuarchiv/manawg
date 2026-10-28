@@ -1,12 +1,13 @@
 # ManaWG
 
-The app for shared flats: split expenses, plan cleaning, keep a shopping list. Free, without ads,
-in the browser and installable as a PWA.
+**One app for your shared flat: split expenses, rotate the cleaning, share the shopping list.**
 
-**Use it:** [app.manawg.com](https://app.manawg.com) · **Host it yourself:** [self-hosting guide](docs/self-hosting.md)
+**Try it:** [app.manawg.com](https://app.manawg.com) · **Host it yourself:** [five-minute Docker setup](#host-it-yourself) · **Help build it:** [contributing](#contributing)
 
 [![CI](https://github.com/Abuarchiv/manawg-app/actions/workflows/ci.yml/badge.svg)](https://github.com/Abuarchiv/manawg-app/actions/workflows/ci.yml)
-[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/Abuarchiv/manawg-app?sort=semver)](https://github.com/Abuarchiv/manawg-app/releases)
+[![Docker image](https://img.shields.io/badge/docker-ghcr.io%2Fabuarchiv%2Fmanawg--app-2496ED?logo=docker&logoColor=white)](https://github.com/Abuarchiv/manawg-app/pkgs/container/manawg-app)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Abuarchiv/manawg-app/badge)](https://scorecard.dev/viewer/?uri=github.com/Abuarchiv/manawg-app)
 
 <p>
@@ -15,6 +16,17 @@ in the browser and installable as a PWA.
   <img src="docs/screenshots/putzplan.png" width="24%" alt="Cleaning schedule">
   <img src="docs/screenshots/einkauf.png" width="24%" alt="Shopping list">
 </p>
+
+## Why ManaWG
+
+- **Free, completely.** No paid plan and nothing locked behind one: every feature, any number of
+  flatmates, expenses and lists.
+- **No ads, no tracking.** No ad networks, no tracking cookies. The app stores what a WG needs and
+  nothing more, and you can export all of it as JSON or CSV or delete your account at any time.
+- **Made for the phone.** Runs in any browser and installs as an app (PWA), with offline support
+  for the shopping list.
+- **Yours to run.** Open source under Apache-2.0. Use the official instance in Frankfurt, or run
+  your own with one `docker compose up`.
 
 ## Features
 
@@ -25,14 +37,12 @@ in the browser and installable as a PWA.
 - **Shopping list and supplies:** shared by the whole WG, also usable offline.
 - **Calendar, chat and pinboard:** shared dates with an iCal feed, a WG chat and notes that
   disappear once they are done.
-- **Privacy:** no ads, no tracking cookies, export of all WG data as JSON or CSV, account
-  deletion. The official instance runs in Frankfurt.
 
 The interface is German. Amounts are in euros.
 
-## Self-hosting
+## Host it yourself
 
-With Docker, a whole instance (app, database, sign-in, image storage) runs on your own machine:
+A whole instance (app, database, sign-in, image storage) runs on any machine with Docker:
 
 ```sh
 git clone https://github.com/Abuarchiv/manawg-app.git
@@ -46,23 +56,30 @@ Mailpit at [http://localhost:8025](http://localhost:8025). The
 [self-hosting guide](docs/self-hosting.md) covers a public instance with your own domain and
 HTTPS, mail, updates, backups, and the alternative setup on Vercel and Supabase.
 
-## Development
+## Contributing
 
-```sh
-corepack enable
-pnpm install
-pnpm --filter @manawg/web test:e2e:fixtures   # full Playwright suite, no database needed
-```
+New contributors are welcome, in English or German, with code, bug reports, translations or
+ideas.
 
-Next.js 15, React 19, Supabase Auth, PostgreSQL with Drizzle, Tailwind 4 with shadcn/Base UI.
+- **Start small:** issues labelled
+  [good first issue](https://github.com/Abuarchiv/manawg-app/labels/good%20first%20issue) are
+  scoped and described for a first pull request.
+- **Ask and discuss:** questions and ideas go to
+  [Discussions](https://github.com/Abuarchiv/manawg-app/discussions).
+- **Run it locally in five minutes,** without a database:
 
-- [CONTRIBUTING.md](CONTRIBUTING.md): how to propose changes and the code conventions
-- [docs/development.md](docs/development.md): local setup, commands, tests, CI
-- [docs/architecture.md](docs/architecture.md): how the app is structured
+  ```sh
+  corepack enable
+  pnpm install
+  pnpm --filter @manawg/web dev:fixtures
+  ```
 
-Questions and ideas are welcome in [Discussions](https://github.com/Abuarchiv/manawg-app/discussions).
-Looking for a place to start? Try an issue labelled
-[good first issue](https://github.com/Abuarchiv/manawg-app/labels/good%20first%20issue).
+  Then open [localhost:3000/wg/MTE8PZAT](http://localhost:3000/wg/MTE8PZAT), a sample WG.
+
+[CONTRIBUTING.md](CONTRIBUTING.md) walks through your first pull request.
+[docs/development.md](docs/development.md) has all commands and tests,
+[docs/architecture.md](docs/architecture.md) explains how the app is structured. Built with
+Next.js 15, React 19, Supabase Auth, PostgreSQL with Drizzle and Tailwind 4.
 
 ## Security
 
@@ -70,8 +87,8 @@ Please report vulnerabilities privately, see [SECURITY.md](SECURITY.md).
 
 ## License
 
-The code is licensed under the [GNU Affero General Public License v3.0](LICENSE). If you run a
-modified version as a network service, you must offer its source code to its users.
+The code is licensed under the [Apache License 2.0](LICENSE): use it, change it and build on it,
+also commercially. Keep the license and the [NOTICE](NOTICE) file with every copy.
 
 "ManaWG" and the ManaWG logo are not covered by this license, see [TRADEMARK.md](TRADEMARK.md).
 
@@ -79,8 +96,11 @@ modified version as a network service, you must offer its source code to its use
 
 ## Auf Deutsch
 
-ManaWG ist die WG-App für Ausgaben, Putzplan und Einkaufsliste: kostenlos, werbefrei, im Browser
-und als App installierbar. Nutzen kannst du sie direkt auf [app.manawg.com](https://app.manawg.com).
-Wer die Daten lieber selbst hält, startet ManaWG mit Docker auf dem eigenen Rechner oder Server,
-siehe oben und die [Anleitung zum Selbsthosten](docs/self-hosting.md) (auf Englisch). Fehler und Wünsche gerne als
-[Issue](https://github.com/Abuarchiv/manawg-app/issues), auf Deutsch oder Englisch.
+ManaWG ist die WG-App für Ausgaben, Putzplan und Einkaufsliste: komplett kostenlos, ohne Werbung
+und ohne Tracking, im Browser und als App installierbar. Nutzen kannst du sie direkt auf
+[app.manawg.com](https://app.manawg.com). Wer die Daten lieber selbst hält, startet ManaWG mit
+Docker auf dem eigenen Rechner oder Server, siehe [oben](#host-it-yourself) und die
+[Anleitung zum Selbsthosten](docs/self-hosting.md) (auf Englisch). Mitmachen ist willkommen:
+Fragen und Ideen in den [Discussions](https://github.com/Abuarchiv/manawg-app/discussions),
+Fehler und Wünsche als [Issue](https://github.com/Abuarchiv/manawg-app/issues), auf Deutsch oder
+Englisch.

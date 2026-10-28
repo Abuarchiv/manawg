@@ -17,6 +17,7 @@ First public release under the AGPL-3.0.
   `linux/arm64` to `ghcr.io/abuarchiv/manawg-app`.
 - Outgoing mail over SMTP (`SMTP_HOST` and friends) as an alternative to Resend.
 - In-memory rate limiting for self-hosted instances without Upstash Redis.
+- `pnpm --filter @manawg/web dev:fixtures` runs the app with sample data and without a database.
 - Self-hosting guide (`docs/self-hosting.md`) and contributor documentation.
 - `NEXT_PUBLIC_LEGAL_URL` and `NEXT_PUBLIC_SUPPORT_EMAIL` to point legal links and error reports
   at your own instance.

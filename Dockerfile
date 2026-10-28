@@ -45,7 +45,7 @@ FROM ${NODE_IMAGE} AS runner
 LABEL org.opencontainers.image.title="ManaWG" \
 	org.opencontainers.image.description="The app for shared flats: expenses, cleaning schedule, shopping list" \
 	org.opencontainers.image.source="https://github.com/Abuarchiv/manawg-app" \
-	org.opencontainers.image.licenses="AGPL-3.0-only"
+	org.opencontainers.image.licenses="Apache-2.0"
 ENV NODE_ENV=production \
 	NEXT_TELEMETRY_DISABLED=1 \
 	PORT=3000 \
