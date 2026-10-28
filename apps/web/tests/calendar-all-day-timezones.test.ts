@@ -16,7 +16,7 @@ import {
 } from '../src/features/events/server/event-reminder-window.ts';
 import { withEnv } from './support/env.ts';
 
-describe('calendar fixes', () => {
+describe('calendar all-day events and recurrence', () => {
 	const ALL_DAY_EVENT: EventInput = {
 		id: 'all-day-pilot',
 		title: 'Pilottag',
