@@ -9,9 +9,10 @@ import {
 	ChoreCompleteDialog,
 	completeTriggerLabel,
 } from '@/features/chores/components/ChoreCompleteDialog';
+import type { Locale } from '@/shared/i18n/locale';
 import { cn } from '@/shared/lib/cn';
 import { ChevronRight, Circle, Loader2 } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { TodayIcon } from './TodayIcon';
 
@@ -34,12 +35,13 @@ export function TodayRow({
 }) {
 	const t = useTranslations('home.forYou');
 	const text = useText();
+	const locale = useLocale() as Locale;
 	const title = text(item.title);
 	const checkable = item.kind === 'chore' && item.isPersonal && Boolean(item.entityId);
 	const actionLabel = getChoreStatus(item.expectedNextDueAt ?? '').actionLabel;
 	const debtAmount =
 		item.kind === 'debt' && item.amountCents !== undefined
-			? formatEuroCents(item.amountCents, item.currency, { signed: true })
+			? formatEuroCents(item.amountCents, item.currency, { signed: true, locale })
 			: undefined;
 	return (
 		<li className="flex min-w-0 items-center gap-2 pl-2 pr-2">

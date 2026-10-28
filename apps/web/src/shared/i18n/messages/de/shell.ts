@@ -146,6 +146,14 @@ export default {
 		formats: 'JPG, PNG, WebP, HEIC · max. {max} MB',
 		chooseLabel: 'Bild auswählen',
 	},
+	inviteShare: {
+		limitReached:
+			'Es gibt schon 20 aktive Einladungen. Widerrufe eine, bevor du eine neue erstellst.',
+		rateLimited: 'Zu viele Einladungen auf einmal. Versuch es gleich noch mal.',
+		createFailed: 'Die Einladung konnte nicht erstellt werden',
+		createFailedRetry: 'Die Einladung konnte nicht erstellt werden. Versuch es noch mal.',
+		text: 'Komm in unsere WG „{wgName}“ auf ManaWG: {url}\n(Der Link gilt {days, plural, one {# Tag} other {# Tage}}.)',
+	},
 	inviteMail: {
 		emailInvalid: 'Das sieht nicht wie eine E-Mail-Adresse aus.',
 		limitReached:

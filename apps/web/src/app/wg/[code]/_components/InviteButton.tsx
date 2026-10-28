@@ -3,7 +3,8 @@
 import { useToast } from '@/components/ui/Toast';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import { createInvite, shareInvite } from '@/components/wg/invite-share';
+import { createInvite, inviteShareMessage, shareInvite } from '@/components/wg/invite-share';
+import { useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
 import { AlertTriangle, Check, Share2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -36,6 +37,7 @@ export function InviteButton({
 	const timerRef = useRef<number | null>(null);
 	const sharingRef = useRef(false);
 	const toast = useToast();
+	const render = useMessage();
 
 	useEffect(() => {
 		return () => {
@@ -62,11 +64,14 @@ export function InviteButton({
 		try {
 			const created = await createInvite(code, memberId);
 			if (!created.ok) {
-				toast.error(created.message);
+				toast.error(render(created.message));
 				flash('failed');
 				return;
 			}
-			const outcome = await shareInvite(wgName, created.invite.url);
+			const outcome = await shareInvite(
+				render(inviteShareMessage(wgName, created.invite.url)),
+				created.invite.url,
+			);
 			if (outcome === 'cancelled') return;
 			if (outcome === 'failed') toast.error(t('shareFailed'));
 			flash(outcome);

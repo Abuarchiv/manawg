@@ -129,7 +129,6 @@
 		"i18n-literal src/components/wg/einstellungen/offline-queue-server-checks.ts",
 		"i18n-literal src/components/wg/einstellungen/settings-errors.ts",
 		"i18n-literal src/components/wg/einstellungen/use-notification-settings.ts",
-		"i18n-literal src/components/wg/invite-share.ts",
 		"i18n-literal src/composition/activity-audit.ts",
 		"i18n-literal src/composition/activity.ts",
 		"i18n-literal src/composition/dashboard-feed.ts",

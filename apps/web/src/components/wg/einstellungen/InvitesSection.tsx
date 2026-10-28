@@ -7,12 +7,13 @@ import { Spinner } from '@/components/ui/spinner';
 import { InviteByMailForm } from '@/components/wg/InviteByMailForm';
 import type { WgSummary } from '@/components/wg/WgContextProvider';
 import { Section } from '@/components/wg/einstellungen/Section';
-import { createInvite, shareInvite } from '@/components/wg/invite-share';
+import { createInvite, inviteShareMessage, shareInvite } from '@/components/wg/invite-share';
 import type { SessionMember } from '@/core/auth/local-account';
 import { useCachedFetch } from '@/core/hooks/use-cached-fetch';
 import { apiFetch } from '@/core/infra/api-client';
 import { copyText } from '@/core/utils/clipboard';
 import { INVITE_VALID_DAYS } from '@/core/utils/invite-token';
+import { useMessage } from '@/shared/i18n/message';
 import { Copy, Plus, Share2 } from 'lucide-react';
 import { useRef, useState } from 'react';
 import QRCode from 'react-qr-code';
@@ -37,6 +38,7 @@ function expiryLabel(expiresAt: string): string {
 /** Invitation links of the WG: create and share one, see the active ones, revoke them. */
 export function InvitesSection({ wg, identity }: { wg: WgSummary; identity: SessionMember }) {
 	const toast = useToast();
+	const render = useMessage();
 	const encodedCode = encodeURIComponent(wg.shareCode);
 	const listUrl = `/api/wg/${encodedCode}/invites`;
 	const {
@@ -60,7 +62,7 @@ export function InvitesSection({ wg, identity }: { wg: WgSummary; identity: Sess
 		try {
 			const result = await createInvite(wg.shareCode, identity.memberId);
 			if (!result.ok) {
-				setError(result.message);
+				setError(render(result.message));
 				return;
 			}
 			setFresh(result.invite.url);
@@ -72,7 +74,7 @@ export function InvitesSection({ wg, identity }: { wg: WgSummary; identity: Sess
 	}
 
 	async function share(url: string): Promise<void> {
-		const outcome = await shareInvite(wg.name, url);
+		const outcome = await shareInvite(render(inviteShareMessage(wg.name, url)), url);
 		if (outcome === 'copied') toast.success('Einladung kopiert.');
 		if (outcome === 'failed') toast.error('Teilen fehlgeschlagen. Kopiere den Link stattdessen.');
 	}

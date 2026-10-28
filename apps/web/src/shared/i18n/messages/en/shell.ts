@@ -146,6 +146,13 @@ export default {
 		formats: 'JPG, PNG, WebP, HEIC · max. {max} MB',
 		chooseLabel: 'Choose image',
 	},
+	inviteShare: {
+		limitReached: 'There are already 20 active invitations. Revoke one before creating a new one.',
+		rateLimited: 'Too many invitations at once. Try again in a moment.',
+		createFailed: 'Could not create the invitation',
+		createFailedRetry: 'Could not create the invitation. Please try again.',
+		text: 'Join our flat “{wgName}” on ManaWG: {url}\n(The link is valid for {days, plural, one {# day} other {# days}}.)',
+	},
 	inviteMail: {
 		emailInvalid: 'That does not look like an email address.',
 		limitReached: 'There are already 20 active invitations. Revoke one before you send a new one.',

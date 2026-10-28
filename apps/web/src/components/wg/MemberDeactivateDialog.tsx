@@ -16,9 +16,10 @@ import { Spinner } from '@/components/ui/spinner';
 import { isRateLimited } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
 import { formatEuroCents } from '@/core/utils/money';
+import type { Locale } from '@/shared/i18n/locale';
 import { useMessage } from '@/shared/i18n/message';
 import { TriangleAlert as AlertTriangle } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useEffect, useRef, useState } from 'react';
 
 /** One open debt of the member being moved out, from their own perspective. */
@@ -72,6 +73,7 @@ export function MemberDeactivateDialog({
 	const tUi = useTranslations('shell.ui');
 	const mode = selfLeave ? 'leave' : 'moveOut';
 	const message = useMessage();
+	const locale = useLocale() as Locale;
 	// Copy that only varies by `mode` has no typed placeholders, so it goes through `Message`.
 	const byMode = (
 		key: 'adminRequired' | 'saveFailed' | 'loadFailed' | 'remain' | 'confirm',
@@ -182,7 +184,7 @@ export function MemberDeactivateDialog({
 												{t('balanceOwner', { direction: balance.direction, name: balance.name })}
 											</span>
 											<span className="text-foreground shrink-0 font-medium tabular-nums">
-												{formatEuroCents(balance.amount_cents, balance.currency)}
+												{formatEuroCents(balance.amount_cents, balance.currency, { locale })}
 											</span>
 										</li>
 									))}

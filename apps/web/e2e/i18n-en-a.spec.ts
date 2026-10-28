@@ -168,6 +168,7 @@ test.describe('English app shell', () => {
 				await expect(page.getByRole('button', { name: 'New in your flat' })).toBeVisible();
 				await expect(page.getByText('due today', { exact: false }).first()).toBeVisible();
 				await expect(page.getByText('To Anna', { exact: true })).toBeVisible();
+				await expect(page.getByText('€12.50').first()).toBeVisible();
 				await expect(page.getByText('Takeover open', { exact: true })).toBeVisible();
 
 				const nav = page.getByRole('navigation', { name: 'Flat main navigation' });
