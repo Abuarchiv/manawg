@@ -92,7 +92,7 @@ Every setting is in `.env`, described in [`.env.example`](../.env.example). Afte
 | Secrets (`POSTGRES_PASSWORD` … `CRON_SECRET`) | yes | Created by `setup.sh`. `ANON_KEY` and `SERVICE_ROLE_KEY` are signed with `JWT_SECRET`; change all three together |
 | `LEGAL_URL`, `SUPPORT_EMAIL` | for public instances | Your legal pages and the address for error reports |
 | `MANAWG_VERSION` | no | Image tag to run; `latest` is the newest published image |
-| `GOOGLE_ENABLED`, `GOOGLE_CLIENT_ID`, `GOOGLE_SECRET` | no | Google sign-in with your own OAuth client; redirect URI `<APP_URL>/auth/v1/callback` |
+| `GOOGLE_ENABLED`, `GOOGLE_CLIENT_ID`, `GOOGLE_SECRET` | no | Google sign-in with your own OAuth client; redirect URI `<APP_URL>/auth/v1/callback`. Off by default, and the app then shows no Google buttons |
 | `VAPID_*` | no | Push notifications, see below |
 
 Optional features stay off without their settings, and the app keeps working:
@@ -229,7 +229,8 @@ Run it once without `--apply` to see what would change. `--legal-url` is the sit
 pages (see [Legal pages and support](#legal-pages-and-support)).
 
 **Google sign-in (optional):** enable the Google provider under **Authentication → Providers**
-with your own OAuth client. The redirect URI to register at Google is shown there.
+with your own OAuth client. The redirect URI to register at Google is shown there. Without it, set
+`GOOGLE_SIGN_IN=false` so the app hides its Google buttons.
 
 ### 5. Image storage
 
@@ -330,8 +331,9 @@ These apply to both ways. In Docker the settings are `LEGAL_URL` and `SUPPORT_EM
   it does not announce itself to search engines as the official app.
 - Links to "Über ManaWG", "Die WG-App" and "WG-Ratgeber" keep pointing to manawg.com, the
   project's site.
-- `NEXT_PUBLIC_SUPPORT_EMAIL` receives the "Fehler per E-Mail melden" reports. Unset, reports go
-  to the ManaWG maintainers, who cannot see your instance.
+- `NEXT_PUBLIC_SUPPORT_EMAIL` receives the "Fehler per E-Mail melden" reports. In Docker an empty
+  `SUPPORT_EMAIL` falls back to `SMTP_ADMIN_EMAIL`. On Vercel an unset value sends reports to the
+  ManaWG maintainers, who cannot see your instance, so set it there.
 - The name and logo "ManaWG" are not covered by the code license. Read
   [TRADEMARK.md](../TRADEMARK.md) before you run a public instance.
 

@@ -26,9 +26,10 @@ export const PUBLIC_ENV_PLACEHOLDERS = {
 		url: true,
 		default: 'https://manawg.com',
 	},
+	// Error reports stay on the instance: without a support address they go to its sender address.
 	NEXT_PUBLIC_SUPPORT_EMAIL: {
 		placeholder: `support@${MARKER}.invalid`,
-		default: 'info@manawg.com',
+		fallback: 'SMTP_ADMIN_EMAIL',
 	},
 };
 
