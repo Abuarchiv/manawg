@@ -3,12 +3,17 @@
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { RowNotice, type RowNoticeState } from '@/components/wg/einstellungen/RowNotice';
-import { AUTH_FAILURE_MESSAGES, classifyAuthError } from '@/core/auth/password-errors';
+import { authFailureMessage } from '@/components/wg/einstellungen/settings-errors';
+import { classifyAuthError } from '@/core/auth/password-errors';
+import { useMessage } from '@/shared/i18n/message';
 import { KeyRound } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 
 /** Password change for password accounts: shows the account e-mail and mails a reset link to it. */
 export function PasswordChangeRow({ email }: { email: string | null }) {
+	const t = useTranslations('settings');
+	const m = useMessage();
 	const [busy, setBusy] = useState(false);
 	const [notice, setNotice] = useState<RowNoticeState>(null);
 
@@ -23,16 +28,13 @@ export function PasswordChangeRow({ email }: { email: string | null }) {
 			await requestPasswordReset(email);
 			setNotice({
 				kind: 'sent',
-				text: `Wir haben dir einen Link zum Ändern des Passworts an ${email} gesendet.`,
+				text: t('passwordChange.sent', { email }),
 			});
 		} catch (error) {
 			const failure = classifyAuthError(error);
 			setNotice({
 				kind: 'error',
-				text:
-					failure === 'other'
-						? 'Der Link konnte gerade nicht gesendet werden. Bitte versuche es später erneut.'
-						: AUTH_FAILURE_MESSAGES[failure],
+				text: m(authFailureMessage(failure, 'settings.passwordChange.failed')),
 			});
 		} finally {
 			setBusy(false);
@@ -42,11 +44,11 @@ export function PasswordChangeRow({ email }: { email: string | null }) {
 	return (
 		<div className="flex flex-col gap-2">
 			<p className="text-sm text-muted-foreground [overflow-wrap:anywhere]">
-				Angemeldet mit E-Mail und Passwort: {email}
+				{t('passwordChange.signedInWith', { email })}
 			</p>
 			<Button type="button" variant="outline" onClick={() => void send()} disabled={busy}>
 				{busy ? <Spinner data-icon="inline-start" aria-hidden /> : <KeyRound aria-hidden />}
-				Passwort ändern
+				{t('passwordChange.action')}
 			</Button>
 			<RowNotice notice={notice} />
 		</div>

@@ -12,16 +12,21 @@ import { exportErrorMessage } from '@/components/wg/einstellungen/settings-error
 import type { SessionMember } from '@/core/auth/local-account';
 import { NETWORK_ERROR_CODE } from '@/core/http/error-codes';
 import { noteSessionExpiry, readApiErrorCode } from '@/core/infra/api-client';
+import { useMessage } from '@/shared/i18n/message';
+import type { Message } from '@/shared/i18n/message';
+import type de from '@/shared/i18n/messages/de';
 import { cn } from '@/shared/lib/cn';
 import { memberContextHeader } from '@/shared/lib/member-header';
 import { Download, Upload } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useRef, useState } from 'react';
 
+type ExportSectionKey = keyof (typeof de)['settings']['data']['sections'];
+
 /** One exportable section as the export summary lists it; `key` is the CSV `section` parameter. */
-export interface ExportSectionOption {
-	key: string;
-	label: string;
+interface ExportSectionOption {
+	key: ExportSectionKey;
 	count: number;
 }
 
@@ -29,10 +34,12 @@ interface DataTabProps {
 	wg: WgSummary;
 	identity: SessionMember;
 	exportSummary: ExportSectionOption[];
-	exportSummaryError: string | null;
+	exportSummaryError: Message | null;
 }
 
 export function DataTab({ wg, identity, exportSummary, exportSummaryError }: DataTabProps) {
+	const t = useTranslations('settings.data');
+	const m = useMessage();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const wgBaseHref = `/wg/${encodedShareCode}`;
 	const [exportError, setExportError] = useState<string | null>(null);
@@ -40,8 +47,11 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 	const [exportPending, setExportPending] = useState<'json' | 'csv' | null>(null);
 	const [csvExportSection, setCsvExportSection] = useState('expenses');
 	const exportPendingRef = useRef(false);
-	const csvExportLabel =
-		exportSummary.find((item) => item.key === csvExportSection)?.label ?? 'CSV';
+	const sectionLabel = (key: string) =>
+		exportSummary.some((item) => item.key === key)
+			? t(`sections.${key as ExportSectionKey}`)
+			: 'CSV';
+	const csvExportLabel = sectionLabel(csvExportSection);
 
 	async function downloadExport(format: 'json' | 'csv', section?: string): Promise<void> {
 		if (exportPendingRef.current) return;
@@ -58,7 +68,7 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 			const res = await fetch(url, { headers: memberContextHeader(identity.memberId) });
 			noteSessionExpiry(res);
 			if (!res.ok) {
-				setExportError(exportErrorMessage(res.status, (await readApiErrorCode(res)) || null));
+				setExportError(m(exportErrorMessage(res.status, (await readApiErrorCode(res)) || null)));
 				return;
 			}
 			const blob = await res.blob();
@@ -72,12 +82,10 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 			a.remove();
 			window.setTimeout(() => window.URL.revokeObjectURL(href), 0);
 			setExportMessage(
-				format === 'csv'
-					? `${exportSummary.find((item) => item.key === csvSection)?.label ?? 'CSV'}-Export gestartet. Die CSV-Datei wird im Browser-Download gespeichert.`
-					: 'JSON-Export gestartet. Die Datei wird im Browser-Download gespeichert.',
+				format === 'csv' ? t('csvStarted', { label: sectionLabel(csvSection) }) : t('jsonStarted'),
 			);
 		} catch {
-			setExportError(exportErrorMessage(0, NETWORK_ERROR_CODE));
+			setExportError(m(exportErrorMessage(0, NETWORK_ERROR_CODE)));
 		} finally {
 			exportPendingRef.current = false;
 			setExportPending(null);
@@ -86,10 +94,7 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 
 	return (
 		<>
-			<Section
-				title="Datenexport"
-				hint="Alle WG-Daten inklusive erledigter Zahlungen, ohne Dateianhänge."
-			>
+			<Section title={t('exportTitle')} hint={t('exportHint')}>
 				{exportSummary.length > 0 && !exportSummaryError && (
 					<div className="border-border grid grid-cols-[repeat(auto-fit,minmax(7rem,1fr))] gap-x-4 gap-y-1.5 border-b p-3 text-xs">
 						{exportSummary.map((section) => (
@@ -97,7 +102,9 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 								<span className="text-foreground font-mono font-medium tabular-nums">
 									{section.count}
 								</span>
-								<span className="text-muted-foreground min-w-0 break-words">{section.label}</span>
+								<span className="text-muted-foreground min-w-0 break-words">
+									{t(`sections.${section.key}`)}
+								</span>
 							</div>
 						))}
 					</div>
@@ -107,7 +114,7 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 						className="text-muted-foreground border-border block border-b p-3 text-xs"
 						aria-live="polite"
 					>
-						{exportSummaryError} Downloads sind trotzdem möglich.
+						{t('summaryError', { error: m(exportSummaryError) })}
 					</p>
 				)}
 				<div className="grid gap-2 p-3">
@@ -116,20 +123,16 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 						variant="outline"
 						onClick={() => void downloadExport('json')}
 						disabled={exportPending !== null}
-						aria-label={
-							exportPending === 'json'
-								? 'WG-Daten werden als JSON exportiert'
-								: 'WG-Daten als JSON exportieren'
-						}
+						aria-label={exportPending === 'json' ? t('jsonPendingAria') : t('jsonAria')}
 						className="h-11 w-full"
 					>
 						{exportPending === 'json' ? <Spinner aria-hidden /> : <Download aria-hidden />}
-						JSON exportieren
+						{t('json')}
 					</Button>
 					<div className="flex flex-wrap gap-2">
 						<NativeSelect
 							id="csv-export-section"
-							aria-label="CSV-Bereich"
+							aria-label={t('csvSectionAria')}
 							value={csvExportSection}
 							disabled={exportPending !== null}
 							onChange={(event) => setCsvExportSection(event.target.value)}
@@ -137,7 +140,7 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 						>
 							{exportSummary.map((section) => (
 								<NativeSelectOption key={section.key} value={section.key}>
-									{section.label}
+									{t(`sections.${section.key}`)}
 								</NativeSelectOption>
 							))}
 						</NativeSelect>
@@ -148,13 +151,13 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 							disabled={exportPending !== null}
 							aria-label={
 								exportPending === 'csv'
-									? `${csvExportLabel} wird als CSV exportiert`
-									: `${csvExportLabel} als CSV exportieren`
+									? t('csvPendingAria', { label: csvExportLabel })
+									: t('csvAria', { label: csvExportLabel })
 							}
 							className="h-11 min-w-fit flex-1"
 						>
 							{exportPending === 'csv' ? <Spinner aria-hidden /> : <Download aria-hidden />}
-							CSV exportieren
+							{t('csv')}
 						</Button>
 					</div>
 				</div>
@@ -168,32 +171,32 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 				{exportError && (
 					<div className="p-3 pt-0">
 						<Alert variant="destructive">
-							<AlertTitle>Export fehlgeschlagen</AlertTitle>
+							<AlertTitle>{t('failedTitle')}</AlertTitle>
 							<AlertDescription>{exportError}</AlertDescription>
 						</Alert>
 					</div>
 				)}
 			</Section>
 
-			<Section title="Import">
+			<Section title={t('importTitle')}>
 				<div className="p-3">
 					<Link
 						href={`${wgBaseHref}/import`}
 						className={cn(buttonVariants({ variant: 'outline' }), 'h-11 w-full')}
 					>
 						<Upload aria-hidden />
-						Ausgaben importieren
+						{t('importExpenses')}
 					</Link>
 				</div>
 			</Section>
 
 			<OfflineQueueSection shareCode={wg.shareCode} memberId={identity.memberId} />
 
-			<Section title="Rechtliches">
+			<Section title={t('legalTitle')}>
 				<ul className="divide-border divide-y">
-					<LinkRow href="https://manawg.com/impressum" label="Impressum" external />
-					<LinkRow href="https://manawg.com/datenschutz" label="Datenschutz" external />
-					<LinkRow href="https://manawg.com/agb" label="AGB" external />
+					<LinkRow href="https://manawg.com/impressum" label={t('legal.imprint')} external />
+					<LinkRow href="https://manawg.com/datenschutz" label={t('legal.privacy')} external />
+					<LinkRow href="https://manawg.com/agb" label={t('legal.terms')} external />
 				</ul>
 			</Section>
 		</>

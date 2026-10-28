@@ -29,10 +29,11 @@ import type { Member, WgSummary } from '@/components/wg/WgContextProvider';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { Section } from '@/components/wg/einstellungen/Section';
 import type { SessionMember } from '@/core/auth/local-account';
-import { RATE_LIMITED_MESSAGE, isRateLimited } from '@/core/http/error-codes';
+import { isRateLimited } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
 import { MAX_MEMBERS_PER_WG } from '@/shared/lib/limits';
 import { Crown, UserPlus } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 
 interface MembersSectionProps {
@@ -43,6 +44,9 @@ interface MembersSectionProps {
 
 /** Member list with admin handover, move-out and reactivation (admins only). */
 export function MembersSection({ wg, members, identity }: MembersSectionProps) {
+	const t = useTranslations('settings.members');
+	const common = useTranslations('common');
+	const actions = useTranslations('settings.actions');
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const { refreshMembers, isAdmin } = useWg();
 	const [memberToDeactivate, setMemberToDeactivate] = useState<{ id: string; name: string } | null>(
@@ -67,7 +71,7 @@ export function MembersSection({ wg, members, identity }: MembersSectionProps) {
 
 	function handleMemberDeactivated(name: string): void {
 		setMemberActionError(null);
-		setMemberActionMessage(`${name} ist jetzt als ausgezogen markiert.`);
+		setMemberActionMessage(t('movedOutDone', { name }));
 		void refreshMembers(identity.memberId);
 	}
 
@@ -87,19 +91,17 @@ export function MembersSection({ wg, members, identity }: MembersSectionProps) {
 		if (!res.ok) {
 			setPromoteError(
 				isRateLimited(res.error, res.status)
-					? RATE_LIMITED_MESSAGE
+					? common('errors.rateLimited')
 					: res.error === 'member_inactive'
-						? 'Dieses Mitglied ist ausgezogen. Aktiviere es zuerst wieder.'
+						? t('errors.inactive')
 						: res.error === 'member_not_linked'
-							? 'Dieses Mitglied hat noch kein Konto verknüpft und kann nicht Admin werden.'
-							: 'Admin-Rolle konnte nicht übergeben werden. Bitte versuche es erneut.',
+							? t('errors.notLinked')
+							: t('errors.promoteFailed'),
 			);
 			return;
 		}
 		setMemberActionError(null);
-		setMemberActionMessage(
-			`${memberToPromote.name} ist jetzt Admin. Du kannst die WG jetzt normal verlassen.`,
-		);
+		setMemberActionMessage(t('promoted', { name: memberToPromote.name }));
 		setMemberToPromote(null);
 		void refreshMembers(identity.memberId);
 	}
@@ -118,15 +120,15 @@ export function MembersSection({ wg, members, identity }: MembersSectionProps) {
 			},
 		);
 		if (res.ok) {
-			setMemberActionMessage(`${member.name} ist wieder aktiv.`);
+			setMemberActionMessage(t('reactivated', { name: member.name }));
 			void refreshMembers(identity.memberId);
 		} else {
 			setMemberActionError(
 				isRateLimited(res.error, res.status)
-					? RATE_LIMITED_MESSAGE
+					? common('errors.rateLimited')
 					: res.error === 'member_limit_reached'
-						? `Die WG hat schon ${MAX_MEMBERS_PER_WG} aktive Mitglieder. Lass zuerst jemanden ausziehen.`
-						: 'Aktivierung konnte nicht gespeichert werden. Bitte versuche es erneut.',
+						? t('errors.limit', { max: String(MAX_MEMBERS_PER_WG) })
+						: t('errors.reactivateFailed'),
 			);
 		}
 		setReactivatingId(null);
@@ -134,7 +136,7 @@ export function MembersSection({ wg, members, identity }: MembersSectionProps) {
 
 	return (
 		<>
-			<Section title="Mitglieder">
+			<Section title={t('title')}>
 				<ItemGroup className="gap-0 px-2 py-1">
 					{activeMembers.map((member) => (
 						<ItemEntry key={member.id} size="sm" className="min-h-11">
@@ -144,12 +146,12 @@ export function MembersSection({ wg, members, identity }: MembersSectionProps) {
 							<ItemContent className="min-w-[8ch] basis-[8ch]">
 								<ItemTitle className="line-clamp-none [overflow-wrap:break-word]">
 									{member.name}
-									{member.isAdmin && <Badge variant="outline">Admin</Badge>}
+									{member.isAdmin && <Badge variant="outline">{t('admin')}</Badge>}
 								</ItemTitle>
 							</ItemContent>
 							<ItemActions>
 								{member.id === identity.memberId ? (
-									<Badge variant="secondary">Du</Badge>
+									<Badge variant="secondary">{t('you')}</Badge>
 								) : (
 									isAdmin && (
 										<>
@@ -161,18 +163,18 @@ export function MembersSection({ wg, members, identity }: MembersSectionProps) {
 													setPromoteError(null);
 													setMemberToPromote({ id: member.id, name: member.name });
 												}}
-												aria-label={`Admin übergeben: ${member.name}`}
+												aria-label={t('transferAdminAria', { name: member.name })}
 											>
-												Admin übergeben
+												{t('transferAdmin')}
 											</Button>
 											<Button
 												type="button"
 												variant="outline"
 												size="sm"
 												onClick={() => setMemberToDeactivate({ id: member.id, name: member.name })}
-												aria-label={`Ausziehen: ${member.name}`}
+												aria-label={t('moveOutAria', { name: member.name })}
 											>
-												Ausziehen
+												{t('moveOut')}
 											</Button>
 										</>
 									)
@@ -183,7 +185,7 @@ export function MembersSection({ wg, members, identity }: MembersSectionProps) {
 				</ItemGroup>
 				{inactiveMembers.length > 0 && (
 					<div className="px-2 pt-2 pb-1">
-						<p className="text-muted-foreground px-0.5 pb-1 text-xs font-medium">Ausgezogen</p>
+						<p className="text-muted-foreground px-0.5 pb-1 text-xs font-medium">{t('movedOut')}</p>
 						<ItemGroup className="gap-0">
 							{inactiveMembers.map((member) => (
 								<ItemEntry key={member.id} size="sm" className="min-h-11 opacity-70">
@@ -195,9 +197,7 @@ export function MembersSection({ wg, members, identity }: MembersSectionProps) {
 											{member.name}
 										</ItemTitle>
 										<ItemDescription className="line-clamp-none [overflow-wrap:break-word]">
-											{member.hasAccount === false
-												? 'Ausgezogen, kein Konto verknüpft'
-												: 'Ausgezogen, Verlauf bleibt erhalten'}
+											{member.hasAccount === false ? t('movedOutNoAccount') : t('movedOutKept')}
 										</ItemDescription>
 									</ItemContent>
 									<ItemActions>
@@ -212,14 +212,14 @@ export function MembersSection({ wg, members, identity }: MembersSectionProps) {
 													else void handleReactivate(target);
 												}}
 												disabled={reactivatingId === member.id}
-												aria-label={`Aktivieren: ${member.name}`}
+												aria-label={t('reactivateAria', { name: member.name })}
 											>
 												{reactivatingId === member.id ? (
 													<Spinner aria-hidden />
 												) : (
 													<UserPlus aria-hidden />
 												)}
-												Aktivieren
+												{t('reactivate')}
 											</Button>
 										)}
 									</ItemActions>
@@ -255,10 +255,9 @@ export function MembersSection({ wg, members, identity }: MembersSectionProps) {
 						<AlertDialogMedia>
 							<Crown aria-hidden />
 						</AlertDialogMedia>
-						<AlertDialogTitle>Admin-Rolle übergeben?</AlertDialogTitle>
+						<AlertDialogTitle>{t('promoteDialog.title')}</AlertDialogTitle>
 						<AlertDialogDescription>
-							{memberToPromote?.name} wird Admin dieser WG. Du wirst normales Mitglied und kannst
-							die Rolle nur zurückbekommen, wenn {memberToPromote?.name} sie dir übergibt.
+							{t('promoteDialog.body', { name: memberToPromote?.name ?? '' })}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					{promoteError && (
@@ -267,7 +266,7 @@ export function MembersSection({ wg, members, identity }: MembersSectionProps) {
 						</Alert>
 					)}
 					<AlertDialogFooter>
-						<AlertDialogCancel disabled={promoting}>Abbrechen</AlertDialogCancel>
+						<AlertDialogCancel disabled={promoting}>{actions('cancel')}</AlertDialogCancel>
 						<Button
 							onClick={(event) => {
 								event.preventDefault();
@@ -276,7 +275,7 @@ export function MembersSection({ wg, members, identity }: MembersSectionProps) {
 							disabled={promoting}
 						>
 							{promoting && <Spinner aria-hidden />}
-							Übergeben
+							{t('promoteDialog.confirm')}
 						</Button>
 					</AlertDialogFooter>
 				</AlertDialogContent>
@@ -293,15 +292,15 @@ export function MembersSection({ wg, members, identity }: MembersSectionProps) {
 						<AlertDialogMedia>
 							<UserPlus aria-hidden />
 						</AlertDialogMedia>
-						<AlertDialogTitle>{memberToReactivate?.name} trotzdem aktivieren?</AlertDialogTitle>
+						<AlertDialogTitle>
+							{t('reactivateDialog.title', { name: memberToReactivate?.name ?? '' })}
+						</AlertDialogTitle>
 						<AlertDialogDescription>
-							{memberToReactivate?.name} hat kein verknüpftes Konto (zum Beispiel weil das Konto
-							gelöscht wurde) und kann sich nicht anmelden. Die Person erscheint dann wieder in
-							Aufteilungen und im Putzplan.
+							{t('reactivateDialog.body', { name: memberToReactivate?.name ?? '' })}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogCancel>Abbrechen</AlertDialogCancel>
+						<AlertDialogCancel>{actions('cancel')}</AlertDialogCancel>
 						<Button
 							onClick={() => {
 								const target = memberToReactivate;
@@ -309,7 +308,7 @@ export function MembersSection({ wg, members, identity }: MembersSectionProps) {
 								if (target) void handleReactivate(target);
 							}}
 						>
-							Aktivieren
+							{t('reactivateDialog.confirm')}
 						</Button>
 					</AlertDialogFooter>
 				</AlertDialogContent>

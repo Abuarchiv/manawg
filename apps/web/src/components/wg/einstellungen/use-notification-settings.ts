@@ -4,7 +4,7 @@ import {
 	notificationSaveErrorMessage,
 	notificationTestErrorMessage,
 } from '@/components/wg/einstellungen/settings-errors';
-import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
+import { wgLoadError } from '@/core/guards/load-errors';
 import { NETWORK_ERROR_CODE } from '@/core/http/error-codes';
 import { createIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
@@ -20,8 +20,9 @@ import {
 	formatPushActivationError,
 	formatPushDeactivationError,
 } from '@/core/notifications/web-push-errors';
-import { keyUnavailableMessage } from '@/core/offline/offline-copy';
+import { useMessage } from '@/shared/i18n/message';
 import { haptic } from '@/shared/lib/haptics';
+import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 export interface NotificationStatus {
@@ -51,24 +52,30 @@ export type NotificationPreferenceKey =
 	| 'notifyEvents'
 	| 'notifyStatementEmail';
 
+/** `name` picks the label in `settings.notifications.prefs`, `hint` the line in `prefHints`. */
 export const NOTIFICATION_PREFERENCES: ReadonlyArray<{
 	key: NotificationPreferenceKey;
-	label: string;
-	description?: string;
+	name:
+		| 'announcements'
+		| 'chores'
+		| 'expenses'
+		| 'reminders'
+		| 'shopping'
+		| 'inventory'
+		| 'chat'
+		| 'events'
+		| 'statementEmail';
+	hint?: 'reminders' | 'inventory' | 'statementEmail';
 }> = [
-	{ key: 'notifyAnnouncements', label: 'Pinnwand' },
-	{ key: 'notifyChores', label: 'Putzplan' },
-	{ key: 'notifyExpenses', label: 'Ausgaben' },
-	{ key: 'notifyReminders', label: 'Erinnerungen', description: 'Erinnerung an offene Beträge' },
-	{ key: 'notifyShopping', label: 'Einkäufe' },
-	{ key: 'notifyInventory', label: 'Vorräte', description: 'Wenn etwas bald leer ist' },
-	{ key: 'notifyChat', label: 'Chat' },
-	{ key: 'notifyEvents', label: 'Kalender' },
-	{
-		key: 'notifyStatementEmail',
-		label: 'Monatsabrechnung per E-Mail',
-		description: 'Einmal im Monat, am Ersten',
-	},
+	{ key: 'notifyAnnouncements', name: 'announcements' },
+	{ key: 'notifyChores', name: 'chores' },
+	{ key: 'notifyExpenses', name: 'expenses' },
+	{ key: 'notifyReminders', name: 'reminders', hint: 'reminders' },
+	{ key: 'notifyShopping', name: 'shopping' },
+	{ key: 'notifyInventory', name: 'inventory', hint: 'inventory' },
+	{ key: 'notifyChat', name: 'chat' },
+	{ key: 'notifyEvents', name: 'events' },
+	{ key: 'notifyStatementEmail', name: 'statementEmail', hint: 'statementEmail' },
 ];
 
 interface NotificationSettingsInput {
@@ -81,6 +88,11 @@ interface NotificationSettingsInput {
  * One request at a time; each change carries an idempotency key that survives a retry.
  */
 export function useNotificationSettings({ code, memberId }: NotificationSettingsInput) {
+	const t = useTranslations('settings.notifications');
+	const m = useMessage();
+	// `loadStatus` must keep its identity across renders, so it reads the renderer from a ref.
+	const renderRef = useRef(m);
+	renderRef.current = m;
 	const [status, setStatus] = useState<NotificationStatus | null>(null);
 	const [pending, setPending] = useState<'push' | 'save' | 'test' | null>(null);
 	const [pushTarget, setPushTarget] = useState<boolean | null>(null);
@@ -109,9 +121,9 @@ export function useNotificationSettings({ code, memberId }: NotificationSettings
 		} else {
 			setStatus(null);
 			setError(
-				getWgLoadErrorMessage('Benachrichtigungen', res.status, res.error, {
-					verb: 'konnten',
-				}),
+				renderRef.current(
+					wgLoadError({ key: 'settings.notifications.loadLead' }, res.status, res.error),
+				),
 			);
 		}
 		setLoadingStatus(false);
@@ -177,7 +189,7 @@ export function useNotificationSettings({ code, memberId }: NotificationSettings
 		try {
 			await subscribeWebPush(code, memberId);
 			setStatus((prev) => (prev ? { ...prev, pushOptIn: true } : prev));
-			setMessage('Web Push ist aktiv.');
+			setMessage(t('pushOn'));
 		} catch (err) {
 			setError(formatPushActivationError(err));
 		} finally {
@@ -197,7 +209,7 @@ export function useNotificationSettings({ code, memberId }: NotificationSettings
 			await unsubscribeWebPush(code, memberId);
 			pushResyncAttemptedKeyRef.current = `${code}:${memberId}`;
 			setStatus((prev) => (prev ? { ...prev, pushOptIn: false } : prev));
-			setMessage('Web Push ist deaktiviert.');
+			setMessage(t('pushOff'));
 		} catch (err) {
 			setError(formatPushDeactivationError(err));
 		} finally {
@@ -240,7 +252,7 @@ export function useNotificationSettings({ code, memberId }: NotificationSettings
 					notificationRequestKeysRef.current.delete(requestKeyId);
 				}
 				setStatus(previous);
-				setError(notificationSaveErrorMessage(res.status, res.error));
+				setError(m(notificationSaveErrorMessage(res.status, res.error)));
 			} else {
 				notificationRequestKeysRef.current.delete(requestKeyId);
 			}
@@ -253,23 +265,19 @@ export function useNotificationSettings({ code, memberId }: NotificationSettings
 	async function togglePreference(key: NotificationPreferenceKey): Promise<void> {
 		if (!status || pendingRef.current) return;
 		haptic('selection');
-		await patchPreferences(
-			{ [key]: !status[key] },
-			status,
-			keyUnavailableMessage('Einstellung', 'gespeichert'),
-		);
+		await patchPreferences({ [key]: !status[key] }, status, t('errors.keyPreference'));
 	}
 
 	async function saveQuietHours(startHour: number | null, endHour: number | null): Promise<void> {
 		if (!status || pendingRef.current) return;
 		if (startHour !== null && startHour === endHour) {
-			setError('Start und Ende der Ruhezeit dürfen nicht gleich sein.');
+			setError(t('quietEqual'));
 			return;
 		}
 		await patchPreferences(
 			{ quietStartHour: startHour, quietEndHour: endHour },
 			status,
-			keyUnavailableMessage('Ruhezeit', 'gespeichert'),
+			t('errors.keyQuiet'),
 		);
 	}
 
@@ -285,7 +293,7 @@ export function useNotificationSettings({ code, memberId }: NotificationSettings
 		if (!idempotencyKey) {
 			pendingRef.current = false;
 			setPending(null);
-			setError(keyUnavailableMessage('Test', 'gesendet'));
+			setError(t('errors.keyTest'));
 			return;
 		}
 		notificationRequestKeysRef.current.set(requestKeyId, idempotencyKey);
@@ -298,17 +306,17 @@ export function useNotificationSettings({ code, memberId }: NotificationSettings
 			});
 			if (res.ok) {
 				notificationRequestKeysRef.current.delete(requestKeyId);
-				setMessage('Test wurde ausgelöst. Prüfe, ob die Push-Nachricht ankommt.');
+				setMessage(t('testSent'));
 			} else {
 				if (shouldReleaseIdempotencyKey(res.status, res.error)) {
 					notificationRequestKeysRef.current.delete(requestKeyId);
 				}
-				setError(notificationTestErrorMessage(res.status, res.error));
+				setError(m(notificationTestErrorMessage(res.status, res.error)));
 				// The server drops dead subscriptions on send; the switch must show that.
 				if (res.error === 'no_push_subscription') void loadStatus();
 			}
 		} catch {
-			setError(notificationTestErrorMessage(0, NETWORK_ERROR_CODE));
+			setError(m(notificationTestErrorMessage(0, NETWORK_ERROR_CODE)));
 		} finally {
 			pendingRef.current = false;
 			setPending(null);
