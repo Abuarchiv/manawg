@@ -188,28 +188,37 @@ test.describe('chat ios keyboard', () => {
 		const composer = page.getByRole('textbox', { name: 'Chat-Nachricht' });
 		await expect(composer).toBeVisible();
 
-		const result = await page.evaluate(async () => {
-			const { state, viewport } = (
-				window as unknown as {
-					__iosKeyboard: { state: { height: number; offsetTop: number }; viewport: EventTarget };
-				}
-			).__iosKeyboard;
-			const field = document.querySelector<HTMLTextAreaElement>(
-				'textarea[aria-label="Chat-Nachricht"]',
-			);
-			if (!field) throw new Error('composer missing');
-			field.focus();
-			state.height = window.innerHeight - 336;
-			state.offsetTop = field.getBoundingClientRect().bottom + 8 - state.height;
-			viewport.dispatchEvent(new Event('resize'));
-			viewport.dispatchEvent(new Event('scroll'));
-			await new Promise((resolve) => requestAnimationFrame(resolve));
-			return {
-				keyboardTop: state.offsetTop + state.height,
-				composerBottom: field.closest('[data-chat-composer]')?.getBoundingClientRect().bottom ?? 0,
-			};
-		});
-		expect(Math.abs(result.keyboardTop - result.composerBottom)).toBeLessThan(1);
+		// The composer renders before React hydrates, so the keyboard events are replayed until the
+		// page reacts to them.
+		await expect
+			.poll(() =>
+				page.evaluate(async () => {
+					const { state, viewport } = (
+						window as unknown as {
+							__iosKeyboard: {
+								state: { height: number; offsetTop: number };
+								viewport: EventTarget;
+							};
+						}
+					).__iosKeyboard;
+					const field = document.querySelector<HTMLTextAreaElement>(
+						'textarea[aria-label="Chat-Nachricht"]',
+					);
+					if (!field) throw new Error('composer missing');
+					field.blur();
+					field.focus();
+					state.height = window.innerHeight - 336;
+					state.offsetTop = field.getBoundingClientRect().bottom + 8 - state.height;
+					viewport.dispatchEvent(new Event('resize'));
+					viewport.dispatchEvent(new Event('scroll'));
+					await new Promise((resolve) => requestAnimationFrame(resolve));
+					const composer = field.closest('[data-chat-composer]');
+					return Math.abs(
+						state.offsetTop + state.height - (composer?.getBoundingClientRect().bottom ?? 0),
+					);
+				}),
+			)
+			.toBeLessThan(1);
 	});
 
 	test('chat document does not overshoot the viewport at rest', async ({ page }) => {

@@ -312,7 +312,10 @@ test.describe('shopping conflict handling', () => {
 		await expect(page.getByText(conflictMessage, { exact: true })).toBeVisible();
 	});
 
-	test('wraps quick shopping suggestions at phone widths and large text', async ({ page }) => {
+	test('wraps quick shopping suggestions at phone widths and large text', async ({
+		page,
+		browserName,
+	}) => {
 		skipUnlessFixtures();
 
 		const { shareCode, memberId, memberName } = FIXTURE_WG;
@@ -449,7 +452,8 @@ test.describe('shopping conflict handling', () => {
 						}),
 					{ timeout: 3_000 },
 				)
-				.toBeLessThan(0);
+				// WebKit scrolls a focused button flush to the action's edge; Chromium leaves a gap.
+				.toBeLessThan(browserName === 'webkit' ? 0.5 : 0);
 		}
 		for (const width of [320, 360]) {
 			for (const colorScheme of ['light', 'dark'] as const) {

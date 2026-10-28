@@ -177,7 +177,10 @@ test.describe('settings data summary responsive', () => {
 test.describe('settings legal links responsive', () => {
 	skipUnlessFixtures();
 
-	test('legal links fit at 320px with normal and 200% text sizes', async ({ page }) => {
+	test('legal links fit at 320px with normal and 200% text sizes', async ({
+		page,
+		browserName,
+	}) => {
 		await page.setViewportSize({ width: 320, height: 760 });
 		await page.emulateMedia({ colorScheme: 'light' });
 		await setupMember(page);
@@ -238,7 +241,13 @@ test.describe('settings legal links responsive', () => {
 						if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
 					});
 					let reachedByKeyboard = false;
-					for (let tab = 0; tab < 40; tab += 1) {
+					if (browserName === 'webkit') {
+						// WebKit's native Tab traversal skips links without Full Keyboard Access.
+						await page.keyboard.press('Tab');
+						await privacyLink.focus();
+						reachedByKeyboard = true;
+					}
+					for (let tab = 0; tab < 40 && !reachedByKeyboard; tab += 1) {
 						await page.keyboard.press('Tab');
 						if (await privacyLink.evaluate((link) => document.activeElement === link)) {
 							reachedByKeyboard = true;

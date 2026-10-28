@@ -550,6 +550,7 @@ test.describe('mobile layout matrix', () => {
 			for (const textScale of ['normal', '200%'] as const) {
 				test(`${route} remains readable at 320px (${colorScheme}, ${textScale} text)`, async ({
 					page,
+					browserName,
 				}) => {
 					await page.setViewportSize({ width: 320, height: 740 });
 					await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
@@ -586,7 +587,10 @@ test.describe('mobile layout matrix', () => {
 											: 'Vorräte',
 						}),
 					).toBeVisible({ timeout: 30_000 });
-					expect(await page.evaluate(() => navigator.maxTouchPoints)).toBeGreaterThan(0);
+					// WebKit reports no touch points even with touch emulation on.
+					if (browserName !== 'webkit') {
+						expect(await page.evaluate(() => navigator.maxTouchPoints)).toBeGreaterThan(0);
+					}
 					if (textScale === '200%') {
 						await page.evaluate(() => {
 							document.documentElement.style.fontSize = '200%';

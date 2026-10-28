@@ -313,7 +313,12 @@ test.describe('daily overview navigation', () => {
 
 	test('respects motion and contrast preferences and fits tablet widths', async ({
 		page,
+		browserName,
 	}, testInfo) => {
+		test.skip(
+			browserName !== 'chromium',
+			'Drives prefers-reduced-transparency through a CDP session, which only Chromium offers.',
+		);
 		await setupMember(page);
 		await mockDashboard(page, BASE, {
 			openShoppingCount: 0,
