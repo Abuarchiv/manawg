@@ -67,3 +67,6 @@ supabase/.temp
 
 # Docker self-hosting backups (docker/backup.sh)
 backups/
+
+# Copied from the installed tesseract packages by apps/web/scripts/copy-tesseract-assets.mjs
+apps/web/public/tesseract/

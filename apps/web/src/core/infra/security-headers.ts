@@ -2,12 +2,6 @@
  * Content-Security-Policy and related header values applied by `proxy.ts`.
  * Kept out of the middleware so the policy can be unit-tested without Next.
  */
-// Tesseract.js's default German and English model URLs. Keep CDN access
-// pinned to these files rather than allowing all of cdn.jsdelivr.net.
-const TESSERACT_LANGUAGE_DATA_URLS = [
-	'https://cdn.jsdelivr.net/npm/@tesseract.js-data/deu/4.0.0_best_int/deu.traineddata.gz',
-	'https://cdn.jsdelivr.net/npm/@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz',
-];
 
 /** An invalid or non-HTTPS provider URL must not widen the policy. */
 function httpsOrigin(value: string | undefined): URL | null {
@@ -21,19 +15,11 @@ function httpsOrigin(value: string | undefined): URL | null {
 }
 
 export function contentSecurityPolicy(nonce: string, upgradeInsecureRequests = true): string {
-	const scriptSrc = [
-		"'self'",
-		`'nonce-${nonce}'`,
-		"'strict-dynamic'",
-		"'wasm-unsafe-eval'",
-		'https://cdn.jsdelivr.net',
-	];
+	const scriptSrc = ["'self'", `'nonce-${nonce}'`, "'strict-dynamic'", "'wasm-unsafe-eval'"];
 	const styleSrc = ["'self'", `'nonce-${nonce}'`];
 	const imgSrc = ["'self'", 'data:', 'blob:'];
-	// Only the pinned Tesseract language files are CDN fetch targets. Do not add
-	// the broader CDN origin to connect-src, which would permit unrelated fetches.
-	const connectSrc = ["'self'", ...TESSERACT_LANGUAGE_DATA_URLS];
-	const workerSrc = ["'self'", 'blob:', 'https://cdn.jsdelivr.net'];
+	const connectSrc = ["'self'"];
+	const workerSrc = ["'self'", 'blob:'];
 	const posthogOrigin = httpsOrigin(process.env.NEXT_PUBLIC_POSTHOG_HOST);
 	if (posthogOrigin) {
 		connectSrc.push(posthogOrigin.origin);
