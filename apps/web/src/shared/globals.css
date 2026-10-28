@@ -322,12 +322,6 @@ textarea,
 	-webkit-user-select: text;
 }
 
-/* 2c. Smooth momentum scrolling on iOS for any explicit overflow container */
-[data-scroll-y],
-.scroll-y {
-	-webkit-overflow-scrolling: touch;
-}
-
 /* 3. Respect reduced-motion OS preference — squash all animations/transitions */
 @media (prefers-reduced-motion: reduce) {
 	*,

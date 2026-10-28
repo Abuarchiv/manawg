@@ -141,9 +141,6 @@ mock.module('@/core/infra/sentry', {
 	namedExports: { captureSentryException() {}, logSentryApiError() {} },
 });
 mock.module('@/core/db/orphan-uploads', { namedExports: { sweepOrphanUploads: async () => null } });
-mock.module('@/core/db/admin-succession', {
-	namedExports: { healAdminlessWgs: async () => ({ healed: 0, failed: 0 }) },
-});
 mock.module('@/core/infra/supabase-storage', {
 	namedExports: {
 		getImageStorageProvider: () => 'aws',
@@ -168,7 +165,6 @@ test('maintenance attempts deletion recovery when idempotency cleanup fails', as
 		ok: false,
 		purgedIdempotencyRows: null,
 		orphanUploads: null,
-		adminHeal: { healed: 0, failed: 0 },
 		accountDeletions: { ...harness.recoveryResult, authAdminAvailable: false },
 		privateImageCleanup: {
 			attempted: 0,
@@ -192,7 +188,6 @@ test('maintenance attempts deletion recovery when idempotency cleanup fails', as
 		ok: true,
 		purgedIdempotencyRows: 1,
 		orphanUploads: null,
-		adminHeal: { healed: 0, failed: 0 },
 		accountDeletions: { ...harness.recoveryResult, authAdminAvailable: false },
 		privateImageCleanup: {
 			attempted: 0,

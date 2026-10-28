@@ -29,16 +29,11 @@ function tile(hole = 22, fraction = 0.62) {
 }
 await writeFile(resolve(publicDir, 'icon.svg'), tile());
 await writeFile(resolve(publicDir, 'favicon.svg'), tile(26));
-await writeFile(
-	resolve(publicDir, 'manawg-mark.svg'),
-	`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 416 346">${mark().replace('fill="white" mask=', 'fill="#0a0a0a" mask=')}</svg>`,
-);
 for (const [name, size, hole, fraction] of [
 	['icon-192.png', 192, 22, 0.62],
 	['icon-512.png', 512, 22, 0.62],
 	['icon-512-maskable.png', 512, 22, 0.62],
 	['apple-touch-icon.png', 180, 22, 0.58],
-	['manawg-icon-1024.png', 1024, 22, 0.62],
 	['favicon-32.png', 32, 26, 0.78],
 	['favicon-16.png', 16, 34, 0.78],
 ]) {
