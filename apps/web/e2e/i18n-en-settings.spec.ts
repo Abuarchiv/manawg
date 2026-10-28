@@ -1,7 +1,7 @@
 // English settings: every tab renders English chrome at phone widths.
 // Why: The settings screens are the only place a member sees account, access and data actions.
 
-import { type Page, expect, test } from '@playwright/test';
+import { type Locator, type Page, expect, test } from '@playwright/test';
 import {
 	FIXTURE_WG,
 	dismissOnboarding,
@@ -27,6 +27,54 @@ async function dropForeignChrome(page: Page): Promise<void> {
 	await page.evaluate((selector) => {
 		for (const element of document.querySelectorAll(selector)) element.remove();
 	}, FOREIGN_CHROME.join(', '));
+}
+
+// German settings vocabulary; the shared list of expectNoGermanChrome has none of it. A word only
+// matches when no letter touches it, so the plural 'Einladungen' needs its own entry.
+const GERMAN_SETTINGS_WORDS = [
+	'Abbrechen',
+	'Benachrichtigungen',
+	'Datenexport',
+	'Einladung',
+	'Einladungen',
+	'Gefahrenzone',
+	'Konto',
+	'Löschen',
+	'Rechtliches',
+];
+const GERMAN_SETTINGS_PATTERN = new RegExp(
+	GERMAN_SETTINGS_WORDS.map((word) => `(?<![\\p{L}])${word}(?![\\p{L}])`).join('|'),
+	'u',
+);
+
+async function expectNoGermanSettingsText(scope: Locator): Promise<void> {
+	const text = (await scope.evaluate((element) => element.textContent)) ?? '';
+	expect(GERMAN_SETTINGS_PATTERN.exec(text)?.[0], 'German settings word in English text').toBe(
+		undefined,
+	);
+}
+
+/** Opens a destructive dialog from the Access tab, checks its English copy and closes it again. */
+async function checkDialog(page: Page, trigger: string, title: string): Promise<void> {
+	await page.getByRole('button', { name: trigger }).click();
+	const dialog = page.getByRole('alertdialog', { name: title });
+	await expect(dialog).toBeVisible();
+	const cancel = dialog.getByRole('button', { name: 'Cancel' });
+	await expect(cancel).toBeVisible();
+	await expectNoGermanSettingsText(dialog);
+	await cancel.click();
+	await expect(dialog).toBeHidden();
+}
+
+const MEMBER_ME = { id: FIXTURE_WG.memberId, name: FIXTURE_WG.memberName, active: true };
+
+/** Serves a members list in which the viewer is admin, one member can take over and one has moved out. */
+async function mockAdminMembers(page: Page, members: unknown[]): Promise<void> {
+	await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/members`, (route) =>
+		route.request().method() === 'GET'
+			? route.fulfill({ json: { members, viewerIsAdmin: true } })
+			: route.fallback(),
+	);
 }
 
 const NOTIFICATION_STATUS = {
@@ -79,6 +127,7 @@ test.describe('settings in English', () => {
 						timeout: 30_000,
 					});
 					await dropForeignChrome(page);
+					await expectNoGermanSettingsText(page.locator('main'));
 					await expectNoGermanChrome(page);
 					if (width === 320) await expectNoHorizontalOverflow(page);
 					await page.goto('about:blank');
@@ -86,4 +135,41 @@ test.describe('settings in English', () => {
 			});
 		}
 	}
+
+	test('admin dialogs and the danger zone render English', async ({ context, page, baseURL }) => {
+		test.setTimeout(180_000);
+		await setEnglishLocale(context, baseURL ?? 'http://localhost:3101');
+		await page.setViewportSize({ width: 320, height: 780 });
+		await setupMember(page);
+		await mockAdminMembers(page, [
+			MEMBER_ME,
+			{ id: 'fixture-other-member', name: 'Mira', active: true },
+			{ id: 'fixture-moved-out', name: 'Jonas', active: false, hasAccount: false },
+		]);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen#zugang`);
+		await dismissOnboarding(page);
+		await expect(page.getByRole('heading', { name: 'Danger zone', level: 2 })).toBeVisible({
+			timeout: 60_000,
+		});
+		await checkDialog(page, 'Hand over admin: Mira', 'Hand over the admin role?');
+		await checkDialog(page, 'Reactivate: Jonas', 'Reactivate Jonas anyway?');
+		await checkDialog(page, 'Delete the whole flat for everyone', 'Delete flat permanently?');
+		await checkDialog(page, 'Delete account permanently', 'Delete account permanently?');
+		await expectNoGermanSettingsText(page.locator('main'));
+	});
+
+	test('the error boundary renders English', async ({ context, page, baseURL }) => {
+		test.setTimeout(180_000);
+		await setEnglishLocale(context, baseURL ?? 'http://localhost:3101');
+		await setupMember(page);
+		// An object as member name fails the render, which lands in the route's error.tsx.
+		await mockAdminMembers(page, [{ ...MEMBER_ME, name: {} }]);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen#zugang`);
+		await expect(page.getByText('Settings could not be loaded right now')).toBeVisible({
+			timeout: 60_000,
+		});
+		await expect(
+			page.getByText('Something went wrong in settings.', { exact: false }),
+		).toBeVisible();
+	});
 });
