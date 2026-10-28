@@ -53,7 +53,7 @@ export default {
 		},
 		shoppingUpdate: {
 			title: 'Check status',
-			detail: 'Check whether someone else has changed the purchase in the meantime.',
+			detail: 'Check whether someone else has changed the shopping item in the meantime.',
 		},
 		announcement: {
 			title: 'Check noticeboard',
@@ -118,7 +118,7 @@ export default {
 		choreGone: 'The task no longer exists on the server.',
 		choreDuplicate:
 			'The same cleaning task already exists. Its interval there is every {days, plural, one {day} other {# days}}. Check before sending whether this would be a duplicate.',
-		absenceDuplicate: 'The same absence already exists on the server.',
+		absenceDuplicate: 'The same away period already exists on the server.',
 		expenseDuplicate:
 			'The same expense with the same amount already exists. Check before sending whether this would be a duplicate.',
 		templateGone: 'This fixed cost template no longer exists on the server.',

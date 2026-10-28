@@ -398,4 +398,67 @@ test.describe('offline queue in the data settings in English', () => {
 			});
 		}
 	}
+
+	test('review states for attachments and expired actions render English', async ({
+		context,
+		page,
+		baseURL,
+	}) => {
+		test.setTimeout(180_000);
+		await setEnglishLocale(context, baseURL ?? 'http://localhost:3101');
+		await page.setViewportSize({ width: 320, height: 780 });
+		await mockMembership(page);
+		await seedState(page, [
+			queued(
+				'announcement.create',
+				{ content: 'Missing photo', kind: 'info', imageUrl: 'https://example.test/a.jpg' },
+				{
+					lastError: 'Bild fehlt: Der lokale Anhang ist nicht mehr verfügbar.',
+					lastErrorMessage: { key: 'offline.state.imageMissing' },
+					needsReview: 'imageMissing',
+				},
+			),
+			queued(
+				'announcement.create',
+				{ content: 'Removed photo', kind: 'info', imageUrl: 'https://example.test/b.jpg' },
+				{
+					lastError: 'Bild wurde entfernt: Entferne den Anhang.',
+					lastErrorMessage: { key: 'offline.state.imageRemoved' },
+					needsReview: 'imageRemoved',
+				},
+			),
+			queued(
+				'shopping.create',
+				{ name: 'Old milk', quantity: null },
+				{ createdAt: new Date(Date.now() - 8 * 24 * HOUR_MS).toISOString() },
+			),
+		]);
+
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen#daten`);
+		await dismissOnboarding(page);
+		const section = page.getByRole('region', { name: 'Offline queue' });
+		await expect(section).toBeVisible({ timeout: 60_000 });
+		await expect(section.getByText('3 actions waiting.')).toBeVisible();
+		await expect(
+			section.getByText(
+				'Image missing. The local attachment is no longer available. Remove the attachment in the offline queue or choose the image again.',
+			),
+		).toBeVisible();
+		await expect(
+			section.getByText(
+				'Image removed. Remove the attachment in the offline queue or choose the image again.',
+			),
+		).toBeVisible();
+		await expect(
+			section.getByText(
+				'Needs a check. The safe retry window has passed. This action may already be saved and will not be sent again.',
+			),
+		).toBeVisible();
+
+		await section.getByRole('button', { name: /^Remove attachment: .*Missing photo/ }).click();
+		await expect(
+			section.getByText('Attachment removed. The offline action can sync again.'),
+		).toBeVisible();
+		await expectEnglishPage(page, 320);
+	});
 });

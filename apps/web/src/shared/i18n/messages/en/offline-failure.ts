@@ -123,7 +123,7 @@ export default {
 	},
 	quantityInvalid: {
 		title: 'Check quantity',
-		detail: 'Shorten or remove the quantity before you send this purchase again.',
+		detail: 'Shorten or remove the quantity before you send this shopping item again.',
 	},
 	dateInvalid: {
 		title: 'Check date',
@@ -154,7 +154,7 @@ export default {
 	},
 	reasonInvalid: {
 		title: 'Check reason',
-		detail: 'Shorten or remove the reason for the absence before you send this action again.',
+		detail: 'Shorten or remove the reason for the away period before you send this action again.',
 	},
 	choreIncomplete: {
 		title: 'Cleaning rota only partly saved',

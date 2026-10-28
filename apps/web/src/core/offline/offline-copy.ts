@@ -20,40 +20,40 @@ export function manualSyncResultMessage(synced: number, remaining: number): Mess
 export const SYNC_NOT_STARTED_MESSAGE: Message = { key: 'offline.copy.syncNotStarted' };
 
 /*
- * German string copy for callers outside the offline area. Each caller moves to catalog keys of
- * its own area, and its entry is removed here.
+ * German string helpers for callers outside the offline area. The baseline lists this file until
+ * every caller uses catalog keys of its own area.
  */
 
 export function formatQueuedOfflineActions(count: number): string {
-	if (count === 1) return '1 Offline-Aktion wartet auf Synchronisierung.'; // i18n-ignore German-only copy
-	return `${count} Offline-Aktionen warten auf Synchronisierung.`; // i18n-ignore German-only copy
+	if (count === 1) return '1 Offline-Aktion wartet auf Synchronisierung.';
+	return `${count} Offline-Aktionen warten auf Synchronisierung.`;
 }
 
 export function formatOfflineQueueCount(count: number): string {
-	if (count === 0) return 'Keine wartenden Offline-Aktionen.'; // i18n-ignore German-only copy
-	if (count === 1) return '1 Aktion wartet.'; // i18n-ignore German-only copy
-	return `${count} Aktionen warten.`; // i18n-ignore German-only copy
+	if (count === 0) return 'Keine wartenden Offline-Aktionen.';
+	if (count === 1) return '1 Aktion wartet.';
+	return `${count} Aktionen warten.`;
 }
 
 export function formatQueuedOfflineEntries(count: number): string {
-	if (count === 1) return '1 Aktion wartet auf Synchronisierung.'; // i18n-ignore German-only copy
-	return `${count} Aktionen warten auf Synchronisierung.`; // i18n-ignore German-only copy
+	if (count === 1) return '1 Aktion wartet auf Synchronisierung.';
+	return `${count} Aktionen warten auf Synchronisierung.`;
 }
 
 function formatSyncedOfflineActions(count: number): string {
-	if (count === 1) return '1 Offline-Aktion synchronisiert.'; // i18n-ignore German-only copy
-	return `${count} Offline-Aktionen synchronisiert.`; // i18n-ignore German-only copy
+	if (count === 1) return '1 Offline-Aktion synchronisiert.';
+	return `${count} Offline-Aktionen synchronisiert.`;
 }
 
 function formatSyncedActions(count: number, offlineLabel: boolean): string {
 	if (offlineLabel) return formatSyncedOfflineActions(count);
-	if (count === 1) return '1 Aktion synchronisiert.'; // i18n-ignore German-only copy
-	return `${count} Aktionen synchronisiert.`; // i18n-ignore German-only copy
+	if (count === 1) return '1 Aktion synchronisiert.';
+	return `${count} Aktionen synchronisiert.`;
 }
 
 function formatRemainingActions(count: number): string {
-	if (count === 1) return '1 Aktion wartet weiter.'; // i18n-ignore German-only copy
-	return `${count} Aktionen warten weiter.`; // i18n-ignore German-only copy
+	if (count === 1) return '1 Aktion wartet weiter.';
+	return `${count} Aktionen warten weiter.`;
 }
 
 /** Shown when no idempotency key can be made, so the write is not sent unprotected. */
@@ -61,12 +61,11 @@ export function keyUnavailableMessage(
 	subject: string,
 	verb: 'gespeichert' | 'gesendet' | 'erstellt' | 'widerrufen',
 ): string {
-	return `${subject} konnte nicht sicher ${verb} werden. Versuche es erneut.`; // i18n-ignore German-only copy
+	return `${subject} konnte nicht sicher ${verb} werden. Versuche es erneut.`;
 }
 
 /** Shown after a successful offline enqueue (du-form, the app addresses one person). */
 export const OFFLINE_SAVED_NOTICE =
-	// i18n-ignore German-only copy
 	'Offline gespeichert. Wird synchronisiert, sobald du wieder online bist.';
 
 export function formatManualOfflineSyncResult(
@@ -80,42 +79,36 @@ export function formatManualOfflineSyncResult(
 		)}`;
 	}
 	if (synced > 0) return formatSyncedActions(synced, options?.offlineLabel ?? true);
-	if (remaining === 0) return 'Keine wartenden Aktionen mehr.'; // i18n-ignore German-only copy
-	return 'Noch nichts synchronisiert. Die Aktionen bleiben sicher gespeichert.'; // i18n-ignore German-only copy
+	if (remaining === 0) return 'Keine wartenden Aktionen mehr.';
+	return 'Noch nichts synchronisiert. Die Aktionen bleiben sicher gespeichert.';
 }
 
 export function getOfflineSyncFailureMessage(): string {
-	// i18n-ignore German-only copy
 	return 'Synchronisierung konnte nicht gestartet werden. Prüfe deine Verbindung; die Aktionen bleiben gespeichert.';
 }
 
 /** Shown when enqueueing a new offline action fails because storage is blocked (private mode, quota, ...). */
 export const OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE =
-	// i18n-ignore German-only copy
 	'Offline-Speicher ist blockiert. Lass den Entwurf offen und versuche es später erneut.';
 
 /** Shown after a successful offline enqueue when clearing the now-stale local draft fails. */
 export const OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE =
-	// i18n-ignore German-only copy
 	'Offline gespeichert, aber der alte Entwurf konnte nicht entfernt werden. Prüfe die Offline-Warteschlange.';
 
 /** Shown when a queued entry that is being edited was synced (or discarded) in the meantime. */
 export const QUEUE_EDIT_ALREADY_SENT_MESSAGE =
-	// i18n-ignore German-only copy
 	'Der Eintrag wurde inzwischen schon gesendet – bitte prüfe die Liste.';
 
 /** Shown after a successful online save when clearing the now-stale local draft fails. */
 export const DRAFT_CLEANUP_FAILED_MESSAGE =
-	// i18n-ignore German-only copy
 	'Gespeichert, aber der alte Offline-Entwurf konnte nicht entfernt werden.';
 
 /** Actions that sync will not retry on its own: the person has to look at them first. */
 export function formatOfflineReviewNeeded(count: number): string {
-	if (count === 1) return '1 Aktion braucht deine Prüfung.'; // i18n-ignore German-only copy
-	return `${count} Aktionen brauchen deine Prüfung.`; // i18n-ignore German-only copy
+	if (count === 1) return '1 Aktion braucht deine Prüfung.';
+	return `${count} Aktionen brauchen deine Prüfung.`;
 }
 
 /** Shown when this browser can hold the queue but never replay it (no Web Locks). */
 export const OFFLINE_REPLAY_UNSUPPORTED_NOTICE =
-	// i18n-ignore German-only copy
 	'Dieser Browser kann die Warteschlange hier nicht senden. Öffne die App über https in einer aktuellen Browser-Version, damit die Aktionen übertragen werden.';

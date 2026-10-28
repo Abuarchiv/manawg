@@ -71,6 +71,7 @@
 		"i18n-literal src/core/notifications/notifications.ts",
 		"i18n-literal src/core/notifications/push-subscribe.ts",
 		"i18n-literal src/core/notifications/web-push-errors.ts",
+		"i18n-literal src/core/offline/offline-copy.ts",
 		"i18n-literal src/features/chat/chat-errors.ts",
 		"i18n-literal src/features/chat/chat-pure.ts",
 		"i18n-literal src/features/chat/components/ChatComposer.tsx",
