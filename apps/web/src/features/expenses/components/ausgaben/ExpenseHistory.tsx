@@ -1,5 +1,7 @@
 'use client';
 
+import { FileInput, Receipt, Search } from 'lucide-react';
+import Link from 'next/link';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
 	Empty,
@@ -15,8 +17,6 @@ import { ExpensesSkeleton } from '@/features/expenses/components/ausgaben/Expens
 import type { ExpenseScope } from '@/features/expenses/expense-filter';
 import type { Expense, ExpenseSplit } from '@/features/expenses/expense-types';
 import { cn } from '@/shared/lib/cn';
-import { FileInput, Receipt, Search } from 'lucide-react';
-import Link from 'next/link';
 
 /** Below this many expenses the list is short enough to scan without a filter. */
 const FILTER_MIN_EXPENSES = 6;

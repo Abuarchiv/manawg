@@ -28,7 +28,7 @@
  * Usage: node scripts/check-architecture.mjs [--write-baseline]
  */
 
-import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 
 const ROOT = process.cwd();

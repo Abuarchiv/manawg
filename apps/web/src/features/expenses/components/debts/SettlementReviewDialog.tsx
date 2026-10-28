@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+import type { RefObject } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
 	AlertDialog,
@@ -24,8 +26,6 @@ import { formatEuroCents } from '@/core/utils/money';
 import { formatShortDate } from '@/core/utils/time';
 import type { SimplifiedDebt } from '@/features/expenses/debt-reduction';
 import type { Expense } from '@/features/expenses/expense-types';
-import Link from 'next/link';
-import type { RefObject } from 'react';
 import type { DebtSettlement } from './use-debt-settlement';
 
 /** Confirms a payment that already happened, listing the expense shares it settles. */

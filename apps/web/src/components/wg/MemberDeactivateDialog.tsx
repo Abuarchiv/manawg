@@ -1,5 +1,7 @@
 'use client';
 
+import { TriangleAlert as AlertTriangle } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
 	AlertDialog,
@@ -13,11 +15,9 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import { RATE_LIMITED_MESSAGE, isRateLimited } from '@/core/http/error-codes';
+import { isRateLimited, RATE_LIMITED_MESSAGE } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
 import { formatEuroCents } from '@/core/utils/money';
-import { TriangleAlert as AlertTriangle } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
 
 /** One open debt of the member being moved out, from their own perspective. */
 interface OpenBalanceDto {

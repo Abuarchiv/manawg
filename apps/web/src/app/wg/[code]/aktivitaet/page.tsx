@@ -1,5 +1,8 @@
 'use client';
 
+import { History, Search } from 'lucide-react';
+import Link from 'next/link';
+import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -33,9 +36,6 @@ import {
 	groupActivityItemsByDay,
 } from '@/composition/activity';
 import { cn } from '@/shared/lib/cn';
-import { History, Search } from 'lucide-react';
-import Link from 'next/link';
-import { useMemo, useState } from 'react';
 import { ActivityFeed } from '../_components/ActivityFeed';
 import { useActivityFeed } from './use-activity-feed';
 

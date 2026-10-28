@@ -1,13 +1,15 @@
 'use client';
 
-import { useToast } from '@/components/ui/Toast';
+import { X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
+import { useToast } from '@/components/ui/Toast';
 import { apiFetch } from '@/core/infra/api-client';
 import {
-	PUSH_PRIMING_DISMISS_KEY,
 	isPushOptedOut,
 	isPushPrimingDismissed,
+	PUSH_PRIMING_DISMISS_KEY,
 	shouldAutoResubscribePush,
 	shouldShowPushPriming,
 } from '@/core/notifications/push-priming';
@@ -17,8 +19,6 @@ import {
 	subscribeWebPush,
 } from '@/core/notifications/push-subscribe';
 import { isEditingTarget, safeLocalStorage } from '@/core/utils/browser';
-import { X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
 
 function rememberDismissed(): void {
 	try {
@@ -40,13 +40,7 @@ function rememberDismissed(): void {
  * browsers ignore/block an unsolicited call anyway, and a silent grant would
  * be the exact dark pattern app stores reject.
  */
-export function PushPrimingPrompt({
-	code,
-	memberId,
-}: {
-	code: string;
-	memberId: string;
-}) {
+export function PushPrimingPrompt({ code, memberId }: { code: string; memberId: string }) {
 	const [visible, setVisible] = useState(false);
 	const [busy, setBusy] = useState(false);
 	const [activationError, setActivationError] = useState<string | null>(null);

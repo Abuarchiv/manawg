@@ -1,3 +1,6 @@
+import { eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { recordAuditEvent } from '@/core/audit';
 import { db, wgMembers, wgs } from '@/core/db';
 import { lockActiveAccountMember } from '@/core/db/account-deletion';
@@ -10,9 +13,6 @@ import { forbidden, notFound } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { withExpensePaymentLock } from '@/features/expenses/server/expense-payments';
 import { WG_NAME_MAX_LENGTH } from '@/shared/lib/limits';
-import { eq } from 'drizzle-orm';
-import { NextResponse } from 'next/server';
-import { z } from 'zod';
 
 const WG_NAME_MIN = 1;
 

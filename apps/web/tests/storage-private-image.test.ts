@@ -2,9 +2,9 @@ import assert from 'node:assert/strict';
 import { after, beforeEach, describe, test } from 'node:test';
 import { checkEnv } from '../src/core/infra/env.ts';
 import {
-	PRIVATE_IMAGE_MAX_BYTES,
 	isAllowedPrivateImageMimeType,
 	isValidPrivateImageSize,
+	PRIVATE_IMAGE_MAX_BYTES,
 } from '../src/core/infra/private-image-policy.ts';
 import {
 	getPrivateImageUrl,

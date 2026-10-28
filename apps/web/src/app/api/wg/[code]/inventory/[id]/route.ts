@@ -1,3 +1,6 @@
+import { and, eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { recordAuditEvent } from '@/core/audit';
 import { db, wgInventoryItems } from '@/core/db';
 import { bodyCodec, rejectWrite, withIdempotentWrite } from '@/core/db/idempotent-write';
@@ -19,9 +22,6 @@ import {
 	isInventoryNameViolation,
 } from '@/features/inventory/server/inventory-duplicate';
 import { updateInventoryItemMutation } from '@/features/inventory/server/inventory-mutations';
-import { and, eq } from 'drizzle-orm';
-import { NextResponse } from 'next/server';
-import { z } from 'zod';
 
 const patchInventorySchema = z
 	.object({

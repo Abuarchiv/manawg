@@ -1,10 +1,10 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { ErrorBox } from '@/components/app/ErrorBox';
 import { LEGACY_CODE_MESSAGE } from '@/core/infra/join-flow';
 import { isInviteToken } from '@/core/utils/invite-token';
 import { isAppInstalled, isIosLikeDevice } from '@/shared/lib/pwa-install';
-import { useEffect, useState } from 'react';
 
 // Most failed callbacks are an expired or reused link, or a link opened in a
 // different browser than the one that requested it (no PKCE verifier there).

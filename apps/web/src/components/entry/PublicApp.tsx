@@ -1,30 +1,5 @@
 'use client';
 
-import { AppBottomNav } from '@/components/app/AppBottomNav';
-import { ErrorBox } from '@/components/app/ErrorBox';
-import { RouteFocusOnNavigate } from '@/components/app/RouteFocusOnNavigate';
-import { WG_SECTIONS, isActivePage, moduleSlugOf } from '@/components/app/navigation';
-import { LegalLinks } from '@/components/entry/LegalLinks';
-import { type AccountWg, MembershipCard } from '@/components/entry/MembershipCard';
-import {
-	PublicModulePreview,
-	PublicModulePreviews,
-	type PublicPreviewModule,
-} from '@/components/entry/PublicModulePreview';
-import { SignOutActions } from '@/components/entry/SignOutActions';
-import { InvitationNotice, WgWelcome } from '@/components/entry/WgWelcome';
-import { LogoMark } from '@/components/ui/LogoMark';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Button, buttonVariants } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Spinner } from '@/components/ui/spinner';
-import { NavItem } from '@/components/wg/NavItem';
-import { SubNav } from '@/components/wg/SubNav';
-import { hasSessionCookie } from '@/core/auth/session-hint';
-import { fetchAccountWgs } from '@/core/infra/account-wgs';
-import { LEGACY_CODE_MESSAGE } from '@/core/infra/join-flow';
-import { invitePath, isInviteToken } from '@/core/utils/invite-token';
-import { cn } from '@/shared/lib/cn';
 import {
 	CalendarDays,
 	Clock3,
@@ -39,6 +14,31 @@ import {
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
+import { AppBottomNav } from '@/components/app/AppBottomNav';
+import { ErrorBox } from '@/components/app/ErrorBox';
+import { isActivePage, moduleSlugOf, WG_SECTIONS } from '@/components/app/navigation';
+import { RouteFocusOnNavigate } from '@/components/app/RouteFocusOnNavigate';
+import { LegalLinks } from '@/components/entry/LegalLinks';
+import { type AccountWg, MembershipCard } from '@/components/entry/MembershipCard';
+import {
+	PublicModulePreview,
+	PublicModulePreviews,
+	type PublicPreviewModule,
+} from '@/components/entry/PublicModulePreview';
+import { SignOutActions } from '@/components/entry/SignOutActions';
+import { InvitationNotice, WgWelcome } from '@/components/entry/WgWelcome';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { LogoMark } from '@/components/ui/LogoMark';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
+import { NavItem } from '@/components/wg/NavItem';
+import { SubNav } from '@/components/wg/SubNav';
+import { hasSessionCookie } from '@/core/auth/session-hint';
+import { fetchAccountWgs } from '@/core/infra/account-wgs';
+import { LEGACY_CODE_MESSAGE } from '@/core/infra/join-flow';
+import { invitePath, isInviteToken } from '@/core/utils/invite-token';
+import { cn } from '@/shared/lib/cn';
 
 type PublicModule = PublicPreviewModule;
 

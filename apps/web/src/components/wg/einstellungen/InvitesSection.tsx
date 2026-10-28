@@ -1,21 +1,21 @@
 'use client';
 
-import { useToast } from '@/components/ui/Toast';
+import { Copy, Plus, Share2 } from 'lucide-react';
+import { useRef, useState } from 'react';
+import QRCode from 'react-qr-code';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import { InviteByMailForm } from '@/components/wg/InviteByMailForm';
-import type { WgSummary } from '@/components/wg/WgContextProvider';
+import { useToast } from '@/components/ui/Toast';
 import { Section } from '@/components/wg/einstellungen/Section';
+import { InviteByMailForm } from '@/components/wg/InviteByMailForm';
 import { createInvite, shareInvite } from '@/components/wg/invite-share';
+import type { WgSummary } from '@/components/wg/WgContextProvider';
 import type { SessionMember } from '@/core/auth/local-account';
 import { useCachedFetch } from '@/core/hooks/use-cached-fetch';
 import { apiFetch } from '@/core/infra/api-client';
 import { copyText } from '@/core/utils/clipboard';
 import { INVITE_VALID_DAYS } from '@/core/utils/invite-token';
-import { Copy, Plus, Share2 } from 'lucide-react';
-import { useRef, useState } from 'react';
-import QRCode from 'react-qr-code';
 
 interface InviteListItem {
 	id: string;

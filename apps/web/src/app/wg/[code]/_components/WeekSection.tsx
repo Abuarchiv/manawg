@@ -1,5 +1,7 @@
 'use client';
 
+import { CalendarDays, ChevronRight, Sparkles } from 'lucide-react';
+import Link from 'next/link';
 import { buttonVariants } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
@@ -7,8 +9,6 @@ import type { WeekAgenda, WeekAgendaItem } from '@/composition/dashboard-insight
 import { berlinDayKey } from '@/core/utils/berlin-day';
 import { MS_PER_DAY } from '@/core/utils/time';
 import { cn } from '@/shared/lib/cn';
-import { CalendarDays, ChevronRight, Sparkles } from 'lucide-react';
-import Link from 'next/link';
 
 const AGENDA_VISIBLE = 4;
 

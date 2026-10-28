@@ -1,3 +1,6 @@
+import { and, asc, eq, lte } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { recordAuditEvent } from '@/core/audit';
 import { db, wgInventoryItems } from '@/core/db';
 import { rejectWrite, responseCodec, withIdempotentWrite } from '@/core/db/idempotent-write';
@@ -9,11 +12,11 @@ import { readIdempotencyKey } from '@/core/idempotency-store';
 import { readListLimit } from '@/core/infra/env';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import {
+	groupItemsByCategory,
 	INVENTORY_CATEGORIES,
 	INVENTORY_LIMITS,
 	INVENTORY_LIST_LIMIT,
 	INVENTORY_UNITS,
-	groupItemsByCategory,
 } from '@/features/inventory/inventory';
 import { getRecentDecrementCounts } from '@/features/inventory/server/inventory-decrements';
 import {
@@ -21,9 +24,6 @@ import {
 	isInventoryNameViolation,
 } from '@/features/inventory/server/inventory-duplicate';
 import { createInventoryItemMutation } from '@/features/inventory/server/inventory-mutations';
-import { and, asc, eq, lte } from 'drizzle-orm';
-import { NextResponse } from 'next/server';
-import { z } from 'zod';
 
 /** Hard ceiling for `INVENTORY_LIST_LIMIT` — env can lower or raise, never unbound. */
 const INVENTORY_LIST_LIMIT_MAX = 5000;

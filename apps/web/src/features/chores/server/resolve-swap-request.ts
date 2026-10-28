@@ -1,8 +1,8 @@
 import 'server-only';
+import { and, eq } from 'drizzle-orm';
 import { announcements, db } from '@/core/db';
 import type { DbTransaction } from '@/core/db/transaction';
 import { logApiError } from '@/core/infra/observability';
-import { and, eq } from 'drizzle-orm';
 
 /** Closes the open swap request inside the caller's transaction; a failure aborts it. */
 export async function closeChoreSwapRequest(

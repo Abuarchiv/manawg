@@ -1,8 +1,8 @@
+import { type NextRequest, NextResponse } from 'next/server';
 import { safeNextPath } from '@/core/auth/next-path';
 import { createSupabaseServerClient } from '@/core/auth/server';
 import { queueWelcomeMail } from '@/core/auth/welcome-mail';
 import { requestOrigin } from '@/core/http/request-origin';
-import { type NextRequest, NextResponse } from 'next/server';
 
 function callbackError(request: NextRequest, response?: NextResponse): NextResponse {
 	const url = new URL('/neu', requestOrigin(request));

@@ -1,9 +1,9 @@
 import {
 	type ApiErrorKind,
-	READ_ONLY_MESSAGE,
 	classifyApiError,
 	isRateLimited,
 	isRetryableServerError,
+	READ_ONLY_MESSAGE,
 } from '@/core/http/error-codes';
 
 /**

@@ -63,7 +63,7 @@ function safeContext(context?: Record<string, unknown>): Record<string, string> 
 
 function sanitizeLabel(label: string): string {
 	return label
-		.replace(/[^A-Za-z0-9 _./:\[\]-]/g, '?')
+		.replace(/[^A-Za-z0-9 _./:[\]-]/g, '?')
 		.replace(/\s+/g, ' ')
 		.trim()
 		.slice(0, 160);

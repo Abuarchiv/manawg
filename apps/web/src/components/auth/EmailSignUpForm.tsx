@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import { ErrorBox } from '@/components/app/ErrorBox';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -8,18 +9,17 @@ import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import {
 	type AuthFailure,
-	WEAK_PASSWORD_MESSAGE,
 	classifyAuthError,
 	isWeakPasswordError,
+	WEAK_PASSWORD_MESSAGE,
 } from '@/core/auth/password-errors';
 import { MEMBER_NAME_MAX_LENGTH } from '@/shared/lib/limits';
-import { useEffect, useRef, useState } from 'react';
 import {
 	type AuthFormProps,
 	type BusyAction,
 	GenericAuthError,
-	NEW_PASSWORD_MIN_LENGTH,
 	isValidEmail,
+	NEW_PASSWORD_MIN_LENGTH,
 	normalizeEmail,
 	useResendCooldown,
 } from './auth-form-shared';
@@ -148,7 +148,10 @@ export function useEmailSignUp({
 function InboxNotice({
 	auth,
 	busy,
-}: { auth: ReturnType<typeof useEmailSignUp>; busy: BusyAction }) {
+}: {
+	auth: ReturnType<typeof useEmailSignUp>;
+	busy: BusyAction;
+}) {
 	const { sentTo, cooldown, resendNotice, error, failure, resend, useOtherAddress } = auth;
 	const titleRef = useRef<HTMLDivElement>(null);
 	// The form was replaced by this notice, so keyboard and screen reader users land on it.
@@ -203,7 +206,10 @@ const ERROR_MESSAGES = {
 export function EmailSignUpForm({
 	auth,
 	busy,
-}: { auth: ReturnType<typeof useEmailSignUp>; busy: BusyAction }) {
+}: {
+	auth: ReturnType<typeof useEmailSignUp>;
+	busy: BusyAction;
+}) {
 	const {
 		name,
 		setName,

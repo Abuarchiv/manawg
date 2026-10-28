@@ -1,5 +1,8 @@
 'use client';
 
+import { Check, ChevronDown } from 'lucide-react';
+import { useReducedMotion } from 'motion/react';
+import { useEffect, useRef, useState } from 'react';
 import {
 	Collapsible,
 	CollapsiblePanel,
@@ -8,9 +11,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { TodayImportantItem } from '@/composition/dashboard-insights';
-import { Check, ChevronDown } from 'lucide-react';
-import { useReducedMotion } from 'motion/react';
-import { useEffect, useRef, useState } from 'react';
 import type { HomeChoreCompletion } from '../_hooks/use-home-chore-completion';
 import { TodayRow } from './TodayRow';
 

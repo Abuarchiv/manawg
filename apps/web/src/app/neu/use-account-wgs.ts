@@ -1,19 +1,19 @@
 'use client';
 
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { isAuthPagePath } from '@/core/auth/auth-intent';
 import { safeNextPath } from '@/core/auth/next-path';
 import { hasSessionCookie } from '@/core/auth/session-hint';
 import { subscribeVisibility } from '@/core/hooks/use-online-status';
 import { type AccountWg, fetchAccountWgs } from '@/core/infra/account-wgs';
 import { invitePath } from '@/core/utils/invite-token';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
 import {
-	type StartStep,
 	consumeJustSignedIn,
 	getNeuIntentFromSearch,
 	getWgCodeFromPath,
 	markJustSignedIn,
+	type StartStep,
 } from './start-flow';
 
 export type AuthState = 'loading' | 'signed-out' | 'authenticated' | 'error';

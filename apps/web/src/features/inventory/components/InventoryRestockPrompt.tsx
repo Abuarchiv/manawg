@@ -1,17 +1,17 @@
 'use client';
 
+import { PackagePlus } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import {
-	type InventoryItemDto,
 	boughtRestockMatches,
 	formatQuantity,
+	type InventoryItemDto,
 	restockAmount,
 } from '@/features/inventory/inventory';
 import { restockItem } from '@/features/inventory/restock-request';
-import { PackagePlus } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
 
 const MAX_ROWS = 3;
 // "Nicht jetzt" covers this shopping trip; the next purchase of the item asks again.

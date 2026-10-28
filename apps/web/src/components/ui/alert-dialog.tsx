@@ -1,11 +1,10 @@
 'use client';
 
-import { cn } from '@/shared/lib/cn';
-import { useDismissOnBack } from '@/shared/lib/use-dismiss-on-back';
 import { AlertDialog as AlertDialogPrimitive } from '@base-ui/react/alert-dialog';
 import * as React from 'react';
-
 import { Button } from '@/components/ui/button';
+import { cn } from '@/shared/lib/cn';
+import { useDismissOnBack } from '@/shared/lib/use-dismiss-on-back';
 
 function AlertDialog({
 	open: openProp,

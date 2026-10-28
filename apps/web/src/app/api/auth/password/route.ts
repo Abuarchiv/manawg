@@ -1,8 +1,8 @@
+import { AuthSessionMissingError } from '@supabase/supabase-js';
+import { z } from 'zod';
 import { assertPasswordNotPwned } from '@/core/auth/pwned-password';
 import { authPost } from '@/core/auth/route-helpers';
 import { passwordField } from '@/core/auth/route-schemas';
-import { AuthSessionMissingError } from '@supabase/supabase-js';
-import { z } from 'zod';
 
 const schema = z.object({ password: passwordField });
 

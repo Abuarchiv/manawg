@@ -1,13 +1,13 @@
 // Chores: next assignee and fairness rotation.
 // Why: Fair rotation and Berlin calendar-day maths regress silently without explicit cases.
 
-import { type Locator, expect, test } from '@playwright/test';
+import { expect, type Locator, test } from '@playwright/test';
 import { buildDraftKey } from '../src/core/offline/drafts';
 import { chooseNextAvailableMember } from '../src/features/chores/chore-fairness';
 import { EXPECTED_MEMBER_ID_HEADER } from '../src/shared/lib/member-header';
 import {
-	FIXTURE_WG,
 	dismissOnboarding,
+	FIXTURE_WG,
 	mockUnreadCount,
 	navigateToFeature,
 	setupMember,

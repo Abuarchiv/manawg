@@ -1,5 +1,5 @@
 // Seed for ui-edit.mjs: one row per module so lists, sheets and edit controls render.
-import { DAY, call, iso } from './modules-lib.mjs';
+import { call, DAY, iso } from './modules-lib.mjs';
 
 export async function seed({ A, B, code, annaId, benId, LONG }) {
 	const api = `/api/wg/${code}`;

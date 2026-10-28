@@ -1,6 +1,6 @@
-import { LogoMark } from '@/components/ui/LogoMark';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { LogoMark } from '@/components/ui/LogoMark';
 
 export function EntryFrame({
 	title,

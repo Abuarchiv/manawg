@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
 	type PendingIdempotentRequest,
 	resolveIdempotencyKey,
@@ -22,13 +23,13 @@ import {
 } from '@/core/offline/offline-client';
 import {
 	DRAFT_CLEANUP_FAILED_MESSAGE,
+	keyUnavailableMessage,
 	OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE,
 	OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
 	OFFLINE_SAVED_NOTICE,
 	QUEUE_EDIT_ALREADY_SENT_MESSAGE,
-	keyUnavailableMessage,
 } from '@/core/offline/offline-copy';
-import { type OfflineActionType, createQueuedChore } from '@/core/offline/offline-queue';
+import { createQueuedChore, type OfflineActionType } from '@/core/offline/offline-queue';
 import { berlinDayKey } from '@/core/utils/berlin-day';
 import { dueAtForDay } from '@/features/chores/chore-due-date';
 import { choreCreateErrorMessage } from '@/features/chores/chore-errors';
@@ -38,7 +39,6 @@ import { computeNextDueAt } from '@/features/chores/chore-recurrence';
 import type { RecurrenceType } from '@/features/chores/components/chore-types';
 import type { QUICK_CHORE_TEMPLATES } from '@/features/chores/components/constants';
 import { pendingKeys } from '@/features/chores/pending-keys';
-import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChorePageContext } from './chore-page-context';
 import type { AbsenceFormState } from './use-absences';
 import { useChoreDraftSync, useChoreFormFields } from './use-chore-draft';

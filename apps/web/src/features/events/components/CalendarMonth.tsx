@@ -1,12 +1,15 @@
 'use client';
 
+import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import Link from 'next/link';
+import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { subscribeVisibility } from '@/core/hooks/use-online-status';
 import {
-	type ChoreOccurrence,
 	buildDays,
+	type ChoreOccurrence,
 	dayKey,
 	groupChoresByDay,
 	pickInitialFocusIndex,
@@ -20,9 +23,6 @@ import {
 } from '@/features/events/events';
 import { cn } from '@/shared/lib/cn';
 import { pluralize } from '@/shared/lib/plural';
-import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
-import Link from 'next/link';
-import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 interface CalendarMonthProps {
 	month: Date;

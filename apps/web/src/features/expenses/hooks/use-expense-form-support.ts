@@ -1,14 +1,14 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { isOfflineActionQueued, removeQueuedAction } from '@/core/offline/offline-client';
 import { QUEUE_EDIT_ALREADY_SENT_MESSAGE } from '@/core/offline/offline-copy';
 import type { OfflineActionType } from '@/core/offline/offline-queue';
 import {
-	type SplitInputResult,
 	buildSplitsFromForm,
+	type SplitInputResult,
 } from '@/features/expenses/expense-split-input';
 import type { ExpenseFormField, ExpenseFormFieldErrors } from '@/features/expenses/expense-types';
-import { useEffect, useState } from 'react';
 import type { ExpenseFormState, ExpensePageContext } from './expense-page-context';
 
 /** Field validation state and the queue/split helpers the expense and template save paths share. */

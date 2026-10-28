@@ -1,11 +1,11 @@
 'use client';
 
-import { cn } from '@/shared/lib/cn';
-import { haptic } from '@/shared/lib/haptics';
 import { Home, ListChecks, type LucideIcon, Megaphone, Receipt } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { cn } from '@/shared/lib/cn';
+import { haptic } from '@/shared/lib/haptics';
 
 type NavIconKey = 'home' | 'haushalt' | 'finanzen' | 'austausch';
 

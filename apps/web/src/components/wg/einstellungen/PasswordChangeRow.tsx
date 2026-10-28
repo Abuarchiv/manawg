@@ -1,11 +1,11 @@
 'use client';
 
+import { KeyRound } from 'lucide-react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { RowNotice, type RowNoticeState } from '@/components/wg/einstellungen/RowNotice';
 import { AUTH_FAILURE_MESSAGES, classifyAuthError } from '@/core/auth/password-errors';
-import { KeyRound } from 'lucide-react';
-import { useState } from 'react';
 
 /** Password change for password accounts: shows the account e-mail and mails a reset link to it. */
 export function PasswordChangeRow({ email }: { email: string | null }) {

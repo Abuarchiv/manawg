@@ -1,6 +1,6 @@
-import { ToastContainer } from '@/components/ui/Toast';
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+import { ToastContainer } from '@/components/ui/Toast';
 
 export const metadata: Metadata = {
 	title: 'WG erstellen oder beitreten',

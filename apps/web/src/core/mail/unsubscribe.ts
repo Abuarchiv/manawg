@@ -1,8 +1,8 @@
 import 'server-only';
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { eq } from 'drizzle-orm';
 import { db, wgMembers } from '@/core/db';
 import { acceptedSigningSecrets, currentSigningSecret } from '@/core/infra/signing-secrets';
-import { eq } from 'drizzle-orm';
 import { APP_ORIGIN } from './brand-mail';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

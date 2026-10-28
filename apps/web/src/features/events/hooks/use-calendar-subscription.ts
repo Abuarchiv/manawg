@@ -1,10 +1,10 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useToast } from '@/components/ui/Toast';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { createIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
 import { keyUnavailableMessage } from '@/core/offline/offline-copy';
 import { copyText } from '@/core/utils/clipboard';
-import { useCallback, useEffect, useRef, useState } from 'react';
 
 export interface CalendarSubscription {
 	feedUrl: string;

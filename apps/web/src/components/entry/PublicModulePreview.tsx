@@ -1,3 +1,6 @@
+import type { LucideIcon } from 'lucide-react';
+import { Check, ChevronRight } from 'lucide-react';
+import Link from 'next/link';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -11,9 +14,6 @@ import {
 	ItemTitle,
 } from '@/components/ui/item';
 import { cn } from '@/shared/lib/cn';
-import type { LucideIcon } from 'lucide-react';
-import { Check, ChevronRight } from 'lucide-react';
-import Link from 'next/link';
 
 interface PreviewCopy {
 	title: string;

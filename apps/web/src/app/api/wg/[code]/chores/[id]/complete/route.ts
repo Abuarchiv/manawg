@@ -1,3 +1,5 @@
+import { and, eq, gte, isNull, sql } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 import { recordAuditEvent } from '@/core/audit';
 import { announcements, choreCompletions, chores, db, memberAbsences, wgMembers } from '@/core/db';
 import { bodyCodec, withIdempotentWrite } from '@/core/db/idempotent-write';
@@ -6,9 +8,9 @@ import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import {
-	HTTP,
 	badRequest,
 	conflict,
+	HTTP,
 	notFound,
 	rateLimitResponse,
 	serverError,
@@ -26,8 +28,6 @@ import {
 	computeOpenGapsByMember,
 } from '@/features/chores/chore-fairness';
 import { computeNextDueAt, isLateCompletion } from '@/features/chores/chore-recurrence';
-import { and, eq, gte, isNull, sql } from 'drizzle-orm';
-import { NextResponse } from 'next/server';
 
 type ChoreCompleteResponseBody = { chore: unknown };
 

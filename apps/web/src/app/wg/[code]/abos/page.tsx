@@ -1,5 +1,7 @@
 'use client';
 
+import { Plus } from 'lucide-react';
+import { useRef } from 'react';
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -25,8 +27,6 @@ import { AboModalOpenContext } from '@/features/expenses/components/abos/AboModa
 import { AbosList } from '@/features/expenses/components/abos/AbosList';
 import type { Abo } from '@/features/expenses/expense-types';
 import { useAbosPage } from '@/features/expenses/hooks/use-abos-page';
-import { Plus } from 'lucide-react';
-import { useRef } from 'react';
 
 export default function AbosPage() {
 	const {

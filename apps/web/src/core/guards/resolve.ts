@@ -1,5 +1,5 @@
-import { db, wgMembers, wgs } from '@/core/db';
 import { and, eq } from 'drizzle-orm';
+import { db, wgMembers, wgs } from '@/core/db';
 
 /** A WG row, narrowed to the columns the API routes consume. */
 export interface ResolvedWg {

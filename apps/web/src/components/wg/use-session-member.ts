@@ -1,11 +1,11 @@
 'use client';
 
-import { type SessionMember, rememberWg } from '@/core/auth/local-account';
+import { type Dispatch, type RefObject, useCallback, useEffect, useState } from 'react';
+import { rememberWg, type SessionMember } from '@/core/auth/local-account';
 import { subscribeVisibility } from '@/core/hooks/use-online-status';
 import { isSessionExpired } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
 import { adoptLocalAccount } from '@/core/offline/offline-client';
-import { type Dispatch, type RefObject, useCallback, useEffect, useState } from 'react';
 import type { WgSummary } from './WgContextProvider';
 import type { WgAuthRef, WgSessionAction } from './wg-session-state';
 

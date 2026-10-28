@@ -1,5 +1,9 @@
 'use client';
 
+import { TriangleAlert } from 'lucide-react';
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
+import { useEffect, useRef } from 'react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -12,10 +16,6 @@ import {
 import { captureException } from '@/core/infra/capture-client';
 import { isChunkLoadError, reloadOnStaleChunk } from '@/core/infra/stale-chunk';
 import { SUPPORT_MAILTO } from '@/shared/lib/support-mailto';
-import { TriangleAlert } from 'lucide-react';
-import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import { useEffect, useRef } from 'react';
 
 interface WgRouteErrorBoundaryProps {
 	error: Error & { digest?: string };

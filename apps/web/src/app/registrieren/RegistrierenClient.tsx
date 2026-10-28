@@ -1,15 +1,15 @@
 'use client';
 
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { CredentialsAuth } from '@/components/auth/CredentialsAuth';
-import { SocialLoginButtons } from '@/components/auth/SocialLoginButtons';
 import { useGoogleSignIn } from '@/components/auth/google-sign-in';
+import { SocialLoginButtons } from '@/components/auth/SocialLoginButtons';
 import { EntryFrame } from '@/components/entry/EntryFrame';
 import { LegalLinks } from '@/components/entry/LegalLinks';
 import { FieldGroup, FieldSeparator } from '@/components/ui/field';
 import { authPageHref } from '@/core/auth/auth-intent';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
 
 function describeIntent(intent: URLSearchParams): string {
 	if (intent.get('next')?.startsWith('/einladung/'))

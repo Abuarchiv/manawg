@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { ItemContent, ItemEntry, ItemFooter, ItemTitle } from '@/components/ui/item';
@@ -10,7 +11,6 @@ import { RemindButton } from '@/features/expenses/components/debts/RemindButton'
 import type { SimplifiedDebt } from '@/features/expenses/debt-reduction';
 import type { Expense } from '@/features/expenses/expense-types';
 import { cn } from '@/shared/lib/cn';
-import { useEffect, useRef } from 'react';
 import { SettlementReviewDialog } from './SettlementReviewDialog';
 import { useDebtSettlement } from './use-debt-settlement';
 

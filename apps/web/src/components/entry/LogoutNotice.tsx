@@ -1,7 +1,7 @@
 'use client';
 
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useEffect, useState } from 'react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const LOGOUT_NOTICE_KEY = 'manawg-logout-notice';
 

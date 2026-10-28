@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { mock, test } from 'node:test';
-import { TransactionAbort } from '@/core/db/transaction-abort';
-import { PgDialect, integer, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { integer, jsonb, PgDialect, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { z } from 'zod';
+import { TransactionAbort } from '@/core/db/transaction-abort';
 
 // biome-ignore lint/suspicious/noExplicitAny: loose row shapes for the in-memory database fakes
 type Loose = any;
@@ -676,7 +676,10 @@ test('revoked private image attachment returns 409 without creating an expense',
 function getHarness({
 	expenseCount,
 	readLimited = false,
-}: { expenseCount: number; readLimited?: boolean }) {
+}: {
+	expenseCount: number;
+	readLimited?: boolean;
+}) {
 	state = freshState(wgId, dueAt, null);
 	const rows = Array.from({ length: expenseCount }, (_, index) => ({
 		id: `expense-${index}`,

@@ -1,15 +1,18 @@
 'use client';
 
+import { ChevronRight, Hand } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ChevronRight, Hand } from 'lucide-react';
 import type { Announcement } from './announcement-types';
 import { KIND_LABELS } from './constants';
 
 export function MyOpenAnnouncements({
 	items,
 	onSelect,
-}: { items: Announcement[]; onSelect: (id: string) => void }) {
+}: {
+	items: Announcement[];
+	onSelect: (id: string) => void;
+}) {
 	return (
 		<section className="flex flex-col gap-2" aria-labelledby="my-announcements">
 			<div className="flex items-center gap-2">

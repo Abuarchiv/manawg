@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import {
 	ItemContent,
 	ItemDescription,
@@ -10,15 +11,14 @@ import {
 import { Separator } from '@/components/ui/separator';
 import type { KnownWg } from '@/core/auth/local-account';
 import {
-	type OfflineAction,
 	getOfflineActionRisk,
 	getOfflineActionSummary,
+	type OfflineAction,
 } from '@/core/offline/offline-queue';
-import Link from 'next/link';
 import {
-	type OfflineStatus,
 	formatOfflineAge,
 	formatQueuedActionCount,
+	type OfflineStatus,
 	wgHref,
 } from './offline-page-helpers';
 
@@ -29,7 +29,11 @@ export function OfflineQueueCard({
 	queue,
 	primaryWg,
 	status,
-}: { queue: OfflineAction[]; primaryWg: KnownWg | null; status: OfflineStatus }) {
+}: {
+	queue: OfflineAction[];
+	primaryWg: KnownWg | null;
+	status: OfflineStatus;
+}) {
 	const recentQueue = queue.slice(-RECENT_VISIBLE).reverse();
 	const hiddenQueueCount = Math.max(0, queue.length - recentQueue.length);
 	return (

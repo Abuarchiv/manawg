@@ -1,5 +1,8 @@
 'use client';
 
+import { LogOut, Trash2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
 	AlertDialog,
@@ -15,19 +18,16 @@ import { Button } from '@/components/ui/button';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
-import { MemberDeactivateDialog } from '@/components/wg/MemberDeactivateDialog';
-import type { Member, WgSummary } from '@/components/wg/WgContextProvider';
-import { useWg } from '@/components/wg/WgContextProvider';
 import { AccountDeleteSection } from '@/components/wg/einstellungen/AccountDeleteSection';
 import { Section } from '@/components/wg/einstellungen/Section';
 import { deleteWgErrorMessage } from '@/components/wg/einstellungen/settings-errors';
+import { MemberDeactivateDialog } from '@/components/wg/MemberDeactivateDialog';
+import type { Member, WgSummary } from '@/components/wg/WgContextProvider';
+import { useWg } from '@/components/wg/WgContextProvider';
 import type { SessionMember } from '@/core/auth/local-account';
 import { forgetWg } from '@/core/auth/local-account';
 import { noteSessionExpiry, readApiErrorCode } from '@/core/infra/api-client';
 import { memberContextHeader } from '@/shared/lib/member-header';
-import { LogOut, Trash2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useRef, useState } from 'react';
 
 interface DangerZoneSectionProps {
 	wg: WgSummary;

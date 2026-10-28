@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import {
 	EVENT_DESCRIPTION_MAX,
 	EVENT_LOCATION_MAX,
@@ -5,7 +6,6 @@ import {
 	EVENT_TITLE_MAX,
 	isEventYearInRange,
 } from '@/features/events/event-limits';
-import { z } from 'zod';
 
 /** Field schemas shared by event create (POST) and edit (PATCH). */
 export const eventTitleSchema = z.string().trim().min(1).max(EVENT_TITLE_MAX);

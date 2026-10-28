@@ -6,9 +6,8 @@ import {
 	type OfflineActionSummary,
 	offlineActionHandlers,
 } from './offline-action-handlers';
-import { OFFLINE_NO_CONNECTION_TITLE, explainOfflineActionFailure } from './offline-failure-copy';
+import { explainOfflineActionFailure, OFFLINE_NO_CONNECTION_TITLE } from './offline-failure-copy';
 
-export { explainOfflineActionFailure };
 export type {
 	OfflineAction,
 	OfflineActionType,
@@ -24,6 +23,7 @@ export {
 	createQueuedShoppingItem,
 	createQueuedShoppingUpdate,
 } from './offline-action-builders';
+export { explainOfflineActionFailure };
 
 export function serializeOfflineAction(action: OfflineAction): string {
 	return JSON.stringify(action);

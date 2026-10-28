@@ -1,14 +1,15 @@
 'use client';
 
+import { useRef, useState } from 'react';
 import { resolveIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
 import { removeDraft } from '@/core/offline/drafts';
 import { enqueueOfflineAction, readOfflineQueue } from '@/core/offline/offline-client';
 import {
 	DRAFT_CLEANUP_FAILED_MESSAGE,
+	keyUnavailableMessage,
 	OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE,
 	OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
-	keyUnavailableMessage,
 } from '@/core/offline/offline-copy';
 import { createQueuedRecurring } from '@/core/offline/offline-queue';
 import { eurosToCents, parseEuroAmount } from '@/core/utils/amount';
@@ -24,7 +25,6 @@ import { findQueuedRecurringTemplate } from '@/features/expenses/queued-recurrin
 import { formatIntervalLabel } from '@/features/expenses/recurring-expenses';
 import { planTemplateSchedule } from '@/features/expenses/recurring-template-plan';
 import type { DebtorShare } from '@/features/expenses/split-math';
-import { useRef, useState } from 'react';
 import type { ExpenseFormState, ExpensePageContext } from './expense-page-context';
 import { validateDescriptionAndAmount } from './expense-submit-validation';
 import type { ExpenseFormSupport } from './use-expense-form-support';

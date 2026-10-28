@@ -1,10 +1,10 @@
 // Accessibility: contrast tokens, forced-colors focus, label-in-name, Enter-key hints/next field.
 // Why: WCAG 2.2 targets (contrast, focus, label-in-name) are legal/UX requirements and regress via styling changes.
 
-import { type Locator, type Page, expect, test } from '@playwright/test';
+import { expect, type Locator, type Page, test } from '@playwright/test';
 import {
-	FIXTURE_WG,
 	dismissOnboarding,
+	FIXTURE_WG,
 	mockNoWgs,
 	mockUnreadCount,
 	navigateToFeature,

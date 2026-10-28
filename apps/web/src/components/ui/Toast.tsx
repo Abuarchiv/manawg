@@ -1,10 +1,10 @@
 'use client';
 
+import { CheckCircle, Info, X, XCircle } from 'lucide-react';
+import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { haptic } from '@/shared/lib/haptics';
-import { CheckCircle, Info, X, XCircle } from 'lucide-react';
-import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 import { pushToast } from './toast-queue';
 
 type ToastVariant = 'success' | 'error' | 'info';

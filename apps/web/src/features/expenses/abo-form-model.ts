@@ -1,7 +1,7 @@
 import { eurosToCents, formatCentsInput, parseEuroAmount } from '@/core/utils/amount';
 import type { ExpenseCategory } from '@/features/expenses/expense-categories';
 import { participantsOrAll } from '@/features/expenses/expense-form-draft';
-import { type SplitMode, equalSplitParticipants } from '@/features/expenses/expense-split-input';
+import { equalSplitParticipants, type SplitMode } from '@/features/expenses/expense-split-input';
 import type { AboSplit, MemberOption } from '@/features/expenses/expense-types';
 import { distributeCentsEqually } from '@/features/expenses/split-math';
 

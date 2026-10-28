@@ -4,8 +4,8 @@
 import { expect, test } from '@playwright/test';
 import { buildDraftKey } from '../src/core/offline/drafts';
 import {
-	FIXTURE_WG,
 	dismissOnboarding,
+	FIXTURE_WG,
 	navigateToFeature,
 	setupMember,
 	skipUnlessFixtures,

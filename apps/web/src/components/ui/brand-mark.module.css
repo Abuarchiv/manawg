@@ -18,7 +18,7 @@
 :is(.loading, .grow) .body:nth-child(2) {
 	--gather-x: 98.4px;
 	--gather-y: 74.4px;
-	animation-delay: 0.00ms;
+	animation-delay: 0ms;
 }
 :is(.loading, .grow) .body:nth-child(3) {
 	--gather-x: 46.4px;
@@ -41,7 +41,7 @@
 	animation-delay: -685.71ms;
 }
 :is(.loading, .grow) .body:nth-child(7) {
-	--gather-x: -128.0px;
+	--gather-x: -128px;
 	--gather-y: 16.8px;
 	animation-delay: -857.14ms;
 }

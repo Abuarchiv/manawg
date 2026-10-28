@@ -1,8 +1,8 @@
 import {
 	type ApiErrorKind,
+	classifyApiError,
 	READ_ONLY_MESSAGE,
 	SESSION_EXPIRED_MESSAGE,
-	classifyApiError,
 } from '@/core/http/error-codes';
 
 type KindMessages = Partial<Record<ApiErrorKind, string>>;

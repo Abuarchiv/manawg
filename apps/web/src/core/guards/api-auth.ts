@@ -1,10 +1,10 @@
-import { getAuthenticatedUser } from '@/core/auth/server';
-import { db, wgMembers } from '@/core/db';
-import { type RequireMemberResult, memberFailure, memberFromRow } from '@/core/guards/member-row';
-import { HTTP, apiError } from '@/core/http/api-errors';
-import { logApiError } from '@/core/infra/observability';
 import { and, eq } from 'drizzle-orm';
 import type { NextRequest } from 'next/server';
+import { getAuthenticatedUser } from '@/core/auth/server';
+import { db, wgMembers } from '@/core/db';
+import { memberFailure, memberFromRow, type RequireMemberResult } from '@/core/guards/member-row';
+import { apiError, HTTP } from '@/core/http/api-errors';
+import { logApiError } from '@/core/infra/observability';
 
 /**
  * Strict UUID v4 shape check: version nibble `4` plus the RFC 4122 variant

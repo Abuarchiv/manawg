@@ -9,8 +9,8 @@ import {
 	computeDirectDebts,
 } from '../src/features/expenses/debt-reduction';
 import {
-	FIXTURE_WG,
 	dismissOnboarding,
+	FIXTURE_WG,
 	mockUnreadCount,
 	navigateToFeature,
 	setupMember,

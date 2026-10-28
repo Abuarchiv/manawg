@@ -1,21 +1,5 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuGroup,
-	DropdownMenuItem,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Spinner } from '@/components/ui/spinner';
-import {
-	CONVERSION_TARGETS,
-	type ConversionTarget,
-	REACTION_OPTIONS,
-} from '@/features/pinnwand/announcement-card-model';
-import { getPinnwandPrefillHref } from '@/features/pinnwand/pinnwand-prefill';
 import {
 	CheckCircle2,
 	ExternalLink,
@@ -33,6 +17,22 @@ import {
 	Trash2,
 } from 'lucide-react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuGroup,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Spinner } from '@/components/ui/spinner';
+import {
+	CONVERSION_TARGETS,
+	type ConversionTarget,
+	REACTION_OPTIONS,
+} from '@/features/pinnwand/announcement-card-model';
+import { getPinnwandPrefillHref } from '@/features/pinnwand/pinnwand-prefill';
 import type { ReactionKey } from './announcement-types';
 
 export const REACTION_ICONS: Record<ReactionKey, LucideIcon> = {

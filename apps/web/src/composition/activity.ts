@@ -8,14 +8,14 @@ import {
 } from './activity-audit';
 import type { ActivityFilter, ActivityItem, ActivityKind } from './activity-types';
 
-export type { ActivityFilter, ActivityItem, ActivityKind };
-export { ACTIVITY_HIDDEN_AUDIT_EVENT_TYPES, formatAuditActivityText };
 export {
 	type ActivityReminder,
-	REMINDER_ANNOUNCEMENT_KINDS,
 	buildActivityInbox,
 	getActivityReminders,
+	REMINDER_ANNOUNCEMENT_KINDS,
 } from './activity-reminders';
+export type { ActivityFilter, ActivityItem, ActivityKind };
+export { ACTIVITY_HIDDEN_AUDIT_EVENT_TYPES, formatAuditActivityText };
 
 export function activityItemKey(
 	item: Pick<ActivityItem, 'kind' | 'timestamp' | 'memberName' | 'text' | 'href'> & {

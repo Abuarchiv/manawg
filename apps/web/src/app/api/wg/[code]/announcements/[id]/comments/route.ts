@@ -1,3 +1,6 @@
+import { and, asc, eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { recordAuditEvent } from '@/core/audit';
 import {
 	announcementComments,
@@ -14,14 +17,11 @@ import { badRequest, notFound, rateLimitedReplayResponse } from '@/core/http/api
 import { parseBody } from '@/core/http/parse-body';
 import { logApiError } from '@/core/infra/observability';
 import {
-	type NotificationDispatchWarning,
 	dispatchNotificationSafely,
+	type NotificationDispatchWarning,
 } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { COMMENT_MAX } from '@/features/pinnwand/constants';
-import { and, asc, eq } from 'drizzle-orm';
-import { NextResponse } from 'next/server';
-import { z } from 'zod';
 
 const COMMENTS_LIST_LIMIT = 500;
 

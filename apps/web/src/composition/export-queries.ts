@@ -1,3 +1,5 @@
+import { count, eq, type SQL } from 'drizzle-orm';
+import type { PgTable } from 'drizzle-orm/pg-core';
 import {
 	announcementComments,
 	announcements,
@@ -16,8 +18,6 @@ import {
 	wgMembers,
 } from '@/core/db';
 import { feedAuditCondition } from '@/core/db/feed-audit-filter';
-import { type SQL, count, eq } from 'drizzle-orm';
-import type { PgTable } from 'drizzle-orm/pg-core';
 import type { ExportRow, ExportSectionCounts, ExportSectionKey } from './export';
 import {
 	fetchAnnouncementCommentRows,
@@ -57,13 +57,13 @@ import {
 } from './export-queries-household';
 import type { ExportPage } from './export-queries-types';
 
-export { type ExportPage, NO_EXPORT_LIMIT } from './export-queries-types';
 export {
-	type MemberRows,
 	fetchMemberRows,
+	type MemberRows,
 	mapMemberRows,
 	toMemberById,
 } from './export-queries-household';
+export { type ExportPage, NO_EXPORT_LIMIT } from './export-queries-types';
 
 /** Resolves member id -> name; rejects when the roster could not be read. */
 export type MemberDirectory = () => Promise<Map<string, string>>;

@@ -1,8 +1,8 @@
-import { cn } from '@/shared/lib/cn';
 import { mergeProps } from '@base-ui/react/merge-props';
 import { useRender } from '@base-ui/react/use-render';
-import { type VariantProps, cva } from 'class-variance-authority';
+import { cva, type VariantProps } from 'class-variance-authority';
 import type * as React from 'react';
+import { cn } from '@/shared/lib/cn';
 
 function ItemGroup({ className, ...props }: React.ComponentProps<'div'>) {
 	return (
@@ -174,13 +174,13 @@ function ItemFooter({ className, ...props }: React.ComponentProps<'div'>) {
 
 export {
 	Item,
-	ItemMedia,
-	ItemContent,
 	ItemActions,
+	ItemContent,
+	ItemDescription,
+	ItemEntry,
+	ItemFooter,
 	ItemGroup,
 	ItemGroupEntry,
-	ItemEntry,
+	ItemMedia,
 	ItemTitle,
-	ItemDescription,
-	ItemFooter,
 };

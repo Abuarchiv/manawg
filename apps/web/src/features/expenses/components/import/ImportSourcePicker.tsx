@@ -1,8 +1,8 @@
 'use client';
 
+import { FileText, FileUp, Image as ImageIcon } from 'lucide-react';
 import { FieldLegend, FieldSet } from '@/components/ui/field';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { FileText, FileUp, Image as ImageIcon } from 'lucide-react';
 
 export type ImportSourceKind = 'splitwise_csv' | 'splid_csv' | 'ocr_screenshot';
 

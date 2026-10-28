@@ -1,3 +1,4 @@
+import { type NextRequest, NextResponse } from 'next/server';
 import { refreshSupabaseSession } from '@/core/auth/middleware';
 import { REQUEST_PATH_HEADER } from '@/core/auth/next-path';
 import { requestOrigin } from '@/core/http/request-origin';
@@ -14,7 +15,6 @@ import {
 	wgWriteLimiter,
 } from '@/core/rate-limit';
 import { type FixtureRequest, resolveFixtureRequest } from '@/fixtures/middleware';
-import { type NextRequest, NextResponse } from 'next/server';
 
 /** Seconds, as a string: it is both the `Retry-After` header and the body field. */
 const MIGRATION_RETRY_AFTER_SECONDS = '300';

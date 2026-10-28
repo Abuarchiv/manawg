@@ -1,8 +1,8 @@
+import type { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/core/auth/server';
 import type { AuthenticatedUser } from '@/core/guards/api-auth';
 import { serviceUnavailable, unauthorized } from '@/core/http/api-errors';
 import { logApiError } from '@/core/infra/observability';
-import type { NextRequest, NextResponse } from 'next/server';
 
 export type AccountResult =
 	| { ok: true; user: AuthenticatedUser }

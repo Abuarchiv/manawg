@@ -5,8 +5,8 @@ import { expect, test } from '@playwright/test';
 import { isEmptyModuleDraft } from '../src/core/offline/drafts';
 import { E2E_EXISTING_WG } from '../src/fixtures/data';
 import {
-	FIXTURE_WG,
 	dismissOnboarding,
+	FIXTURE_WG,
 	navigateToFeature,
 	setupMember,
 	skipUnlessFixtures,

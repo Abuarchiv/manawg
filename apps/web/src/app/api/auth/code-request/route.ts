@@ -1,6 +1,6 @@
+import { z } from 'zod';
 import { authPost } from '@/core/auth/route-helpers';
 import { emailField } from '@/core/auth/route-schemas';
-import { z } from 'zod';
 
 /** Supabase's answer when no account exists for the address (signups are off for codes). */
 const NO_ACCOUNT_CODES = new Set(['otp_disabled', 'signup_disabled', 'user_not_found']);

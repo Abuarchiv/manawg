@@ -11,7 +11,7 @@ import {
 } from '../src/core/db';
 import type { WgInventoryItem } from '../src/core/db/schema-inventory';
 import type { DbTransaction } from '../src/core/db/transaction';
-import { type ReplaySlotDependencies, claimReplaySlot } from '../src/core/guards/replay-slot';
+import { claimReplaySlot, type ReplaySlotDependencies } from '../src/core/guards/replay-slot';
 import {
 	type ConsumeInventoryMutationInput,
 	consumeInventoryMutation,

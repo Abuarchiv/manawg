@@ -1,9 +1,9 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import type { ActivityItem, ActivityReminder } from '@/composition/activity';
 import { getWgLoadErrorMessage } from '@/core/guards/load-errors';
 import { useSyncedCollection } from '@/core/sync/use-synced-collection';
-import { useEffect, useRef, useState } from 'react';
 
 interface ActivityResponse {
 	items: ActivityItem[];
@@ -19,7 +19,11 @@ export function useActivityFeed({
 	shareCode,
 	memberId,
 	limit,
-}: { shareCode: string; memberId: string; limit: number }) {
+}: {
+	shareCode: string;
+	memberId: string;
+	limit: number;
+}) {
 	const url = `/api/wg/${encodeURIComponent(shareCode)}/activity?limit=${limit}`;
 	const { data, items, initialLoading, refreshing, loadError, load } = useSyncedCollection<
 		ActivityResponse,

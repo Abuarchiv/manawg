@@ -1,22 +1,21 @@
+import { and, asc, eq, inArray, isNull, lte } from 'drizzle-orm';
+import { type NextRequest, NextResponse } from 'next/server';
 import { recordAuditEvent } from '@/core/audit';
 import { db, expenseSplits, expenses, recurringExpenses, wgMembers, wgs } from '@/core/db';
 import { isUniqueViolation } from '@/core/db/pg-errors';
 import { TransactionAbort } from '@/core/db/transaction';
 import { requireCronSecret } from '@/core/infra/cron-auth';
-import { logApiError } from '@/core/infra/observability';
-import { withCronLogging } from '@/core/infra/observability';
+import { logApiError, withCronLogging } from '@/core/infra/observability';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import {
-	type RecurringSplit,
 	addMonthsFromAnchor,
 	parseRecurringSplits,
+	type RecurringSplit,
 	recurringSplitsMatchAmount,
 } from '@/features/expenses/recurring-expenses';
 import { rotateRemainderCents } from '@/features/expenses/recurring-split-rotation';
 import { withExpensePaymentLock } from '@/features/expenses/server/expense-payments';
 import { settledAtForOwnShare } from '@/features/expenses/split-math';
-import { and, asc, eq, inArray, isNull, lte } from 'drizzle-orm';
-import { type NextRequest, NextResponse } from 'next/server';
 
 // Per-run cap and concurrency: an unbounded Promise.all over every due template
 // opens one transaction each and exhausts the connection pool. Overdue templates

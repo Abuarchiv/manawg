@@ -1,3 +1,6 @@
+import { House } from 'lucide-react';
+import type { Metadata } from 'next';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import {
 	Empty,
@@ -6,9 +9,6 @@ import {
 	EmptyHeader,
 	EmptyMedia,
 } from '@/components/ui/empty';
-import { House } from 'lucide-react';
-import type { Metadata } from 'next';
-import Link from 'next/link';
 
 export const metadata: Metadata = {
 	title: 'Seite nicht gefunden',

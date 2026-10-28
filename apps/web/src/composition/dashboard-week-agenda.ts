@@ -1,7 +1,7 @@
 import { berlinDayKey, endOfBerlinDay, startOfBerlinDay } from '@/core/utils/berlin-day';
 import { parseTimestamp } from '@/core/utils/time';
 import type { EventOccurrence } from '@/features/events/events';
-import { type TodayImportantInput, choreUrgency, dueLabel } from './dashboard-today';
+import { choreUrgency, dueLabel, type TodayImportantInput } from './dashboard-today';
 
 export interface BerlinWeekWindow {
 	todayKey: string;

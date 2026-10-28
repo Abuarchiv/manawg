@@ -1,8 +1,8 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { useWg } from '@/components/wg/WgContextProvider';
-import dynamic from 'next/dynamic';
 import { ForYouSection } from './_components/ForYouSection';
 import { StartWelcome } from './_components/StartWelcome';
 import { WeekSection } from './_components/WeekSection';

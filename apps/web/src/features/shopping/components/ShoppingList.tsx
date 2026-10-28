@@ -1,3 +1,5 @@
+import { ChevronRight, Trash2 } from 'lucide-react';
+import { useCallback, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { readOfflineQueue } from '@/core/offline/offline-client';
@@ -5,9 +7,6 @@ import { ShoppingItemRow } from '@/features/shopping/components/ShoppingItemRow'
 import type { ShoppingItem } from '@/features/shopping/components/shopping-types';
 import type { EditShoppingItem } from '@/features/shopping/hooks/use-shopping-edit';
 import type { MemberInfo } from '@/shared/lib/member-types';
-
-import { ChevronRight, Trash2 } from 'lucide-react';
-import { useCallback, useMemo, useState } from 'react';
 
 /** Rows per list rendered initially; "Mehr anzeigen" loads more. */
 const ROW_RENDER_PAGE = 100;

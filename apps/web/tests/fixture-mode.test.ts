@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import { registerHooks } from 'node:module';
 import test from 'node:test';
+import { NextRequest } from 'next/server.js';
 import { E2E_CREATED_WG, E2E_EXISTING_WG, FIXTURE_AUTH_USER_ID } from '@/fixtures/data';
 import { resolveFixtureRequest } from '@/fixtures/middleware';
 import { isE2EDbDownMode } from '@/fixtures/mode';
 import { loadFixtureWgView } from '@/fixtures/pages';
-import { NextRequest } from 'next/server.js';
 import { withEnv } from './support/env.ts';
 
 // `next` has no package exports map, so Node's ESM resolver needs the file

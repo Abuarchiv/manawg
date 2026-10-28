@@ -1,10 +1,10 @@
 // Expense form: manual split validation, finance dialogs, OCR runtime.
 // Why: Split and rounding input is the most error-prone user path.
 
-import { type Locator, type Page, type Response, expect, test } from '@playwright/test';
+import { expect, type Locator, type Page, type Response, test } from '@playwright/test';
 import {
-	FIXTURE_WG,
 	dismissOnboarding,
+	FIXTURE_WG,
 	mockUnreadCount,
 	navigateToFeature,
 	nextHistoryPop,

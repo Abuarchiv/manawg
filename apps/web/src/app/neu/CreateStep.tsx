@@ -1,12 +1,12 @@
 'use client';
 
+import { ArrowRight } from 'lucide-react';
 import { BackButton } from '@/components/app/BackButton';
 import { ErrorBox } from '@/components/app/ErrorBox';
 import { TextField } from '@/components/app/TextField';
 import { Button } from '@/components/ui/button';
 import { FieldGroup } from '@/components/ui/field';
 import { Spinner } from '@/components/ui/spinner';
-import { ArrowRight } from 'lucide-react';
 import { NAME_MAX, type StartField, WG_NAME_MAX } from './start-flow';
 
 interface CreateStepProps {

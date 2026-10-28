@@ -1,10 +1,10 @@
 // CSV import wizard in the browser: responsive layout and error notices.
 // Why: the wizard actions must stay reachable at narrow widths and large text, and back navigation must not keep stale errors.
 
-import { type Locator, type Page, expect, test } from '@playwright/test';
+import { expect, type Locator, type Page, test } from '@playwright/test';
 import {
-	FIXTURE_WG,
 	dismissOnboarding,
+	FIXTURE_WG,
 	inMinimalMatrix,
 	navigateToFeature,
 	setupMember,

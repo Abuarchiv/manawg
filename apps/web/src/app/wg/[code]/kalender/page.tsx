@@ -1,5 +1,8 @@
 'use client';
 
+import { CalendarDays, List, Plus } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -21,9 +24,6 @@ import { TimeZoneNotice } from '@/features/events/components/TimeZoneNotice';
 import { useCalendarPage } from '@/features/events/hooks/use-calendar-page';
 import { haptic } from '@/shared/lib/haptics';
 import { pluralize } from '@/shared/lib/plural';
-import { CalendarDays, List, Plus } from 'lucide-react';
-import { useSearchParams } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
 
 type ViewMode = 'month' | 'list';
 

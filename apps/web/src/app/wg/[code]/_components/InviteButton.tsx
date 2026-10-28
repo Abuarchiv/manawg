@@ -1,12 +1,12 @@
 'use client';
 
-import { useToast } from '@/components/ui/Toast';
-import { Button } from '@/components/ui/button';
-import { Spinner } from '@/components/ui/spinner';
-import { createInvite, shareInvite } from '@/components/wg/invite-share';
-import { cn } from '@/shared/lib/cn';
 import { AlertTriangle, Check, Share2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
+import { useToast } from '@/components/ui/Toast';
+import { createInvite, shareInvite } from '@/components/wg/invite-share';
+import { cn } from '@/shared/lib/cn';
 
 const RESET_MS = 1500;
 const FAILED_RESET_MS = 4000;

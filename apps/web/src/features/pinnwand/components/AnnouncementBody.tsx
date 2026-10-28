@@ -1,11 +1,11 @@
 'use client';
 
+import { CheckCircle2, ChevronDown, ChevronUp, Hand, ImageOff } from 'lucide-react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { formatRelativeTime } from '@/core/utils/time';
 import { isLongAnnouncementBody } from '@/features/pinnwand/announcement-card-model';
 import { cn } from '@/shared/lib/cn';
-import { CheckCircle2, ChevronDown, ChevronUp, Hand, ImageOff } from 'lucide-react';
-import { useState } from 'react';
 import type { Announcement } from './announcement-types';
 
 interface AnnouncementBodyProps {

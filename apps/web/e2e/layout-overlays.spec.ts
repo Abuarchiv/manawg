@@ -1,10 +1,10 @@
 // Drawers, alert dialogs, back-button dismissal and toasts.
 // Why: Overlays must not trap the user or break on zoom.
 
-import { type Locator, type Page, expect, test } from '@playwright/test';
+import { expect, type Locator, type Page, test } from '@playwright/test';
 import {
-	FIXTURE_WG,
 	dismissOnboarding,
+	FIXTURE_WG,
 	mockUnreadCount,
 	navigateToFeature,
 	setupMember,

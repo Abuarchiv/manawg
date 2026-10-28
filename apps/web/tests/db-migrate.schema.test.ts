@@ -6,9 +6,9 @@ import test from 'node:test';
 import { assertMigrationLedgerPrefix } from '../scripts/db-migrate/ledger.mjs';
 import {
 	ADOPTION_KNOWN_DRIFT,
-	LEGACY_LEDGER_ALLOWLIST,
 	assertBaselineSchema,
 	isAllowedLegacyLedgerRow,
+	LEGACY_LEDGER_ALLOWLIST,
 } from '../scripts/db-migrate/legacy-adoption.mjs';
 import {
 	BASELINE_TAG,

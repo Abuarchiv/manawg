@@ -1,5 +1,6 @@
 'use client';
 
+import { ChevronDown } from 'lucide-react';
 import {
 	Collapsible,
 	CollapsiblePanel,
@@ -18,7 +19,6 @@ import {
 import type { ChoreFairness } from '@/features/chores/chore-fairness';
 import type { MemberRef } from '@/shared/lib/member-types';
 import { pluralize } from '@/shared/lib/plural';
-import { ChevronDown } from 'lucide-react';
 
 const FAIRNESS_RULES = [
 	'Wenigste Last zuerst, niemand direkt doppelt',

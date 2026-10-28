@@ -3,8 +3,8 @@ import test from 'node:test';
 import { EVENT_RECURRENCE_MAX } from '@/features/events/event-limits';
 import { expandRecurrence } from './event-recurrence';
 import {
-	MAX_EXDATES,
 	formatRecurrenceRule,
+	MAX_EXDATES,
 	parseRecurrenceRule,
 	withExcludedOccurrence,
 } from './event-recurrence-rule';

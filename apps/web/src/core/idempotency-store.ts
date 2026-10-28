@@ -1,6 +1,6 @@
+import { and, eq, gt, or, type SQL, sql } from 'drizzle-orm';
 import { db, idempotencyResponses } from '@/core/db';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
-import { type SQL, and, eq, gt, or, sql } from 'drizzle-orm';
 
 // Response replay lives in Postgres, never in Redis: an empty UPSTASH_* configuration once let a
 // silently disabled Redis client wave duplicate expense inserts through.

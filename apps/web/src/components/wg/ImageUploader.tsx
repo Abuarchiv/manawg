@@ -1,5 +1,7 @@
 'use client';
 
+import { AlertTriangle, ImagePlus, Maximize2, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -7,8 +9,6 @@ import { Spinner } from '@/components/ui/spinner';
 import { PRIVATE_IMAGE_MIME_TYPES } from '@/core/infra/private-image-policy';
 import { isPendingImageToken } from '@/core/offline/offline-images';
 import { cn } from '@/shared/lib/cn';
-import { AlertTriangle, ImagePlus, Maximize2, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
 import { ImagePreviewDialog } from './ImagePreviewDialog';
 import { MAX_UPLOAD_MB, useImageUpload } from './use-image-upload';
 

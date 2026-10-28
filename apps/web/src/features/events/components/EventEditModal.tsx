@@ -1,5 +1,6 @@
 'use client';
 
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
 	Drawer,
@@ -16,14 +17,13 @@ import { EventFormFields, focusEventField } from '@/features/events/components/E
 import { type EventScope, EventScopeSwitch } from '@/features/events/components/EventScopeSwitch';
 import {
 	type EventOccurrence,
-	RECURRENCE_OPTIONS,
 	eventDateForDisplay,
 	parseRecurrenceRule,
+	RECURRENCE_OPTIONS,
 	toDatetimeLocalValue,
 	validateEventForm,
 } from '@/features/events/events';
 import { shiftedSeriesRule } from '@/features/events/recurrence-shift';
-import { useCallback, useEffect, useRef, useState } from 'react';
 
 const KEEP_EXISTING_RECURRENCE = '__keep__';
 

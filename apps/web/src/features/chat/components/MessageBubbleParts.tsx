@@ -1,5 +1,6 @@
 'use client';
 
+import type { RefObject } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
 	AlertDialog,
@@ -25,7 +26,6 @@ import { Field, FieldGroup } from '@/components/ui/field';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { useWg } from '@/components/wg/WgContextProvider';
-import type { RefObject } from 'react';
 import { CHAT_BODY_MAX } from '../chat-pure';
 import { reactorNames } from '../chat-reactions';
 import type { ReactionSummary } from '../chat-types';

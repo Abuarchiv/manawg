@@ -1,5 +1,6 @@
 'use client';
 
+import { ChevronDown, Pause, Pencil, Play, Trash2 } from 'lucide-react';
 import {
 	Collapsible,
 	CollapsiblePanel,
@@ -17,7 +18,6 @@ import {
 	formatIntervalLabel,
 	previewNextOccurrences,
 } from '@/features/expenses/recurring-expenses';
-import { ChevronDown, Pause, Pencil, Play, Trash2 } from 'lucide-react';
 
 /** Yearly recurring expenses: without the year all dates would look the same (03.02., 03.02., 03.02.). */
 function formatAboDate(iso: string, intervalMonths: number): string {

@@ -1,6 +1,8 @@
 'use client';
 
-import { useToast } from '@/components/ui/Toast';
+import { Copy, ExternalLink, Pencil, Plus, Reply, Trash2 } from 'lucide-react';
+import { type ReactNode, type RefObject, useLayoutEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { BubbleContent } from '@/components/ui/bubble';
 import {
 	DropdownMenu,
@@ -10,14 +12,12 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useToast } from '@/components/ui/Toast';
 import { memberTint } from '@/components/wg/MemberAvatar';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { copyText } from '@/core/utils/clipboard';
 import { cn } from '@/shared/lib/cn';
 import { haptic } from '@/shared/lib/haptics';
-import { Copy, ExternalLink, Pencil, Plus, Reply, Trash2 } from 'lucide-react';
-import { type ReactNode, type RefObject, useLayoutEffect, useMemo, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { DELETED_MESSAGE_TEXT } from '../chat-errors';
 import { reactorNames } from '../chat-reactions';
 import { extractLinks, splitMentions } from '../chat-text';

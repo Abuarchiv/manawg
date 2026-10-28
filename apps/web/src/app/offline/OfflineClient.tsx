@@ -1,15 +1,18 @@
 'use client';
 
+import { CloudOff, RefreshCw, RotateCw, Wifi } from 'lucide-react';
+import Link from 'next/link';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import { type KnownWg, getKnownWgs, getLocalAccount } from '@/core/auth/local-account';
+import { getKnownWgs, getLocalAccount, type KnownWg } from '@/core/auth/local-account';
 import { subscribeConnectivity } from '@/core/hooks/use-online-status';
 import {
-	OFFLINE_QUEUE_EVENT,
 	filterOfflineActionsForAuthUser,
 	needsManualOfflineResolution,
+	OFFLINE_QUEUE_EVENT,
 	readOfflineQueue,
 	syncOfflineActions,
 } from '@/core/offline/offline-client';
@@ -18,16 +21,13 @@ import {
 	getOfflineSyncFailureMessage,
 } from '@/core/offline/offline-copy';
 import type { OfflineAction } from '@/core/offline/offline-queue';
-import { CloudOff, RefreshCw, RotateCw, Wifi } from 'lucide-react';
-import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { KnownWgsCard } from './KnownWgsCard';
 import { OfflineQueueCard } from './OfflineQueueCard';
 import {
-	type OfflineStatus,
 	countByShareCode,
 	getAccountMemberships,
 	moduleLabel,
+	type OfflineStatus,
 	offlineStatusCopy,
 	visibleKnownWgs,
 	wgHref,

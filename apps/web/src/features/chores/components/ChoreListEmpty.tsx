@@ -1,3 +1,4 @@
+import { Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
 	Empty,
@@ -8,7 +9,6 @@ import {
 	EmptyTitle,
 } from '@/components/ui/empty';
 import { QUICK_CHORE_TEMPLATES } from '@/features/chores/components/constants';
-import { Sparkles } from 'lucide-react';
 
 /** Shown instead of the list: after a failed first load, or when there are no chores yet. */
 export function ChoreListEmpty({

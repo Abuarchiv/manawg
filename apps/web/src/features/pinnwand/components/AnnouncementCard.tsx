@@ -1,5 +1,7 @@
 'use client';
 
+import { Pin } from 'lucide-react';
+import { memo, type ReactElement, useState } from 'react';
 import {
 	Card,
 	CardAction,
@@ -12,22 +14,20 @@ import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { buildDraftKey } from '@/core/offline/drafts';
 import { formatRelativeTime, formatTimeFull } from '@/core/utils/time';
 import {
+	pickReactionOptions,
 	REACTION_OPTIONS,
 	SOURCE_LABELS,
-	pickReactionOptions,
 } from '@/features/pinnwand/announcement-card-model';
 import { buildPinnwandPrefill } from '@/features/pinnwand/pinnwand-prefill';
 import { cn } from '@/shared/lib/cn';
 import type { MemberInfo } from '@/shared/lib/member-types';
-import { Pin } from 'lucide-react';
-import { type ReactElement, memo, useState } from 'react';
 import { AnnouncementActionsMenu } from './AnnouncementActionsMenu';
 import { AnnouncementBody } from './AnnouncementBody';
 import { AnnouncementDeleteDialog } from './AnnouncementDeleteDialog';
 import { AnnouncementEditDrawer } from './AnnouncementEditDrawer';
 import { AnnouncementFooter } from './AnnouncementFooter';
-import { actionLabelSubject } from './CommentRow';
 import type { Announcement, AnnouncementKind, ReactionKey } from './announcement-types';
+import { actionLabelSubject } from './CommentRow';
 import { KIND_LABELS } from './constants';
 
 interface AnnouncementCardProps {

@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { Collapsible, CollapsiblePanel } from '@/components/animate-ui/primitives/base/collapsible';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -31,8 +33,6 @@ import { ABSENCE_REASON_MAX } from '@/features/chores/chore-limits';
 import type { ChoreMember } from '@/features/chores/components/chore-types';
 import { pendingKeys } from '@/features/chores/pending-keys';
 import { cn } from '@/shared/lib/cn';
-import Link from 'next/link';
-import { useEffect, useState } from 'react';
 
 interface AbsencePanelProps {
 	active: boolean;

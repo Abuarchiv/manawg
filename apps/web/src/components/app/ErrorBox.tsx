@@ -1,5 +1,5 @@
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import type { ReactNode } from 'react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export function ErrorBox({ children, id }: { children: ReactNode; id?: string }) {
 	return (

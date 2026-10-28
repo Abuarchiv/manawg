@@ -1,5 +1,7 @@
 'use client';
 
+import { Download, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,8 +21,6 @@ import {
 	subscribeInstall,
 	triggerInstall,
 } from '@/shared/lib/pwa-install';
-import { Download, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
 
 type Platform = 'desktop' | 'android' | 'ios' | 'unknown';
 
@@ -130,13 +130,7 @@ export function InstallButton({ variant = 'outline', className, label }: Props) 
 	);
 }
 
-function Step({
-	num,
-	children,
-}: {
-	num: number;
-	children: React.ReactNode;
-}) {
+function Step({ num, children }: { num: number; children: React.ReactNode }) {
 	return (
 		<Item render={<li />} variant="muted" size="sm" className="flex-nowrap items-start">
 			<ItemMedia>

@@ -130,4 +130,4 @@ function CollapsiblePanel({
 	);
 }
 
-export { Collapsible, CollapsibleTrigger, CollapsiblePanel };
+export { Collapsible, CollapsiblePanel, CollapsibleTrigger };

@@ -1,5 +1,8 @@
 'use client';
 
+import { TriangleAlert } from 'lucide-react';
+import Link from 'next/link';
+import { useEffect, useRef } from 'react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
 	Empty,
@@ -11,14 +14,14 @@ import {
 import { captureException } from '@/core/infra/capture-client';
 import { isChunkLoadError, reloadOnStaleChunk } from '@/core/infra/stale-chunk';
 import { SUPPORT_MAILTO } from '@/shared/lib/support-mailto';
-import { TriangleAlert } from 'lucide-react';
-import Link from 'next/link';
-import { useEffect, useRef } from 'react';
 
 export default function ErrorBoundary({
 	error,
 	reset,
-}: { error: Error & { digest?: string }; reset: () => void }) {
+}: {
+	error: Error & { digest?: string };
+	reset: () => void;
+}) {
 	const mainRef = useRef<HTMLElement>(null);
 
 	useEffect(() => {

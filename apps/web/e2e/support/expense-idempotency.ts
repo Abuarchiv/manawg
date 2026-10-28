@@ -1,6 +1,6 @@
 // Shared fixtures and queue helpers for the expense idempotency retry specs.
 
-import { type Page, type Route, expect } from '@playwright/test';
+import { expect, type Page, type Route } from '@playwright/test';
 import { FIXTURE_WG } from './helpers';
 
 export const API = `/api/wg/${FIXTURE_WG.shareCode}`;

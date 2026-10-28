@@ -1,5 +1,5 @@
-import { authPageHref } from '@/core/auth/auth-intent';
 import Link from 'next/link';
+import { authPageHref } from '@/core/auth/auth-intent';
 
 /** Points signed-out visitors to the registration page, keeping their create/join intent. */
 export function SignUpPrompt({ intentQuery }: { intentQuery: string }) {

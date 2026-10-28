@@ -1,6 +1,7 @@
 'use client';
 
-import { useToast } from '@/components/ui/Toast';
+import { Minus, Pencil, Plus, Trash2 } from 'lucide-react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
 	Item,
@@ -11,17 +12,16 @@ import {
 	ItemTitle,
 } from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
+import { useToast } from '@/components/ui/Toast';
 import { useConfirmDelete } from '@/core/hooks/use-confirm-delete';
 import { apiFetch } from '@/core/infra/api-client';
 import { formatDecimal } from '@/core/utils/amount';
 import { useInventoryQuantity } from '@/features/inventory/hooks/use-inventory-quantity';
 import {
+	formatQuantity,
 	type InventoryItemDto,
 	type InventoryMutationItemDto,
-	formatQuantity,
 } from '@/features/inventory/inventory';
-import { Minus, Pencil, Plus, Trash2 } from 'lucide-react';
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
 
 interface InventoryItemRowProps {
 	item: InventoryItemDto;

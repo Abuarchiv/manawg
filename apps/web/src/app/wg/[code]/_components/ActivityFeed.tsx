@@ -1,9 +1,3 @@
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
-import { useWg } from '@/components/wg/WgContextProvider';
-import { activityItemKey } from '@/composition/activity';
-import { formatEuroCents } from '@/core/utils/money';
-import { formatRelativeTime } from '@/core/utils/time';
-import { cn } from '@/shared/lib/cn';
 import {
 	CalendarOff,
 	History,
@@ -14,6 +8,12 @@ import {
 	Sparkles,
 } from 'lucide-react';
 import Link from 'next/link';
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
+import { useWg } from '@/components/wg/WgContextProvider';
+import { activityItemKey } from '@/composition/activity';
+import { formatEuroCents } from '@/core/utils/money';
+import { formatRelativeTime } from '@/core/utils/time';
+import { cn } from '@/shared/lib/cn';
 
 interface ActivityItem {
 	id?: string;

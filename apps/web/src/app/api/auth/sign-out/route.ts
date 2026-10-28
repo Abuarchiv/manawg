@@ -1,6 +1,6 @@
+import { z } from 'zod';
 import { SESSION_HINT_COOKIE, sessionHintCookieOptions } from '@/core/auth/cookie-options';
 import { authPost } from '@/core/auth/route-helpers';
-import { z } from 'zod';
 
 /** Ends this browser's session (every device with `everywhere`) and removes every Supabase cookie. */
 export const POST = authPost(

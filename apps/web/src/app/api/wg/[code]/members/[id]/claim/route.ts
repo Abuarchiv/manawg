@@ -1,3 +1,5 @@
+import { and, eq, sql } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 import { db, wgInvites, wgMembers } from '@/core/db';
 import { assertAccountCanAcquireMembership } from '@/core/db/account-deletion';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
@@ -6,10 +8,8 @@ import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireAccount } from '@/core/guards/require-account';
 import { shareCodeMissResponse } from '@/core/guards/share-code-miss';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { HTTP, apiError, badRequest, conflict, forbidden, notFound } from '@/core/http/api-errors';
+import { apiError, badRequest, conflict, forbidden, HTTP, notFound } from '@/core/http/api-errors';
 import { isInviteToken } from '@/core/utils/invite-token';
-import { and, eq, sql } from 'drizzle-orm';
-import { NextResponse } from 'next/server';
 
 type ClaimResult =
 	| { ok: true; member: { id: string; name: string } }

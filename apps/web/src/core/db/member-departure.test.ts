@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { PgDialect } from 'drizzle-orm/pg-core';
 import { releaseMemberChores } from '@/core/db/member-departure';
 import { memberAbsences } from '@/core/db/schema';
 import type { DbTransaction } from '@/core/db/transaction';
-import { PgDialect } from 'drizzle-orm/pg-core';
 
 test('releaseMemberChores drops the leaving member’s ongoing and future absences only', async () => {
 	const deletes: Array<{ table: unknown; sql: string; params: unknown[] }> = [];

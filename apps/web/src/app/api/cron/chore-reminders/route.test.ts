@@ -159,7 +159,10 @@ function chore(index: number) {
 function harness({
 	choreCount,
 	unassignedCount = 0,
-}: { choreCount: number; unassignedCount?: number }) {
+}: {
+	choreCount: number;
+	unassignedCount?: number;
+}) {
 	harnessRuns += 1;
 	Object.assign(state, {
 		candidateWhere: null,

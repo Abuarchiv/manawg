@@ -1,5 +1,7 @@
 'use client';
 
+import { AlertTriangle, ArrowRight, Check, Copy, MessageCircle, Share2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { ErrorBox } from '@/components/app/ErrorBox';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -14,8 +16,6 @@ import {
 import { copyText } from '@/core/utils/clipboard';
 import { INVITE_VALID_DAYS } from '@/core/utils/invite-token';
 import { cn } from '@/shared/lib/cn';
-import { AlertTriangle, ArrowRight, Check, Copy, MessageCircle, Share2 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
 
 const SHARE_RESET_MS = 1500;
 

@@ -1,4 +1,6 @@
 'use client';
+import { ChevronDown, ImagePlus, Send } from 'lucide-react';
+import { type ReactElement, type RefObject, useState } from 'react';
 import {
 	Collapsible,
 	CollapsiblePanel,
@@ -22,8 +24,6 @@ import { ImageUploader } from '@/components/wg/ImageUploader';
 import type { AnnouncementKind } from '@/features/pinnwand/components/announcement-types';
 import { KIND_OPTIONS } from '@/features/pinnwand/components/constants';
 import { CONTENT_MAX } from '@/features/pinnwand/constants';
-import { ChevronDown, ImagePlus, Send } from 'lucide-react';
-import { type ReactElement, type RefObject, useState } from 'react';
 
 interface PinnwandComposerProps {
 	open: boolean;

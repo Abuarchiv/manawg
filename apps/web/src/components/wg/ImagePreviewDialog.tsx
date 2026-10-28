@@ -1,15 +1,19 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 import { useEffect, useRef } from 'react';
+import { Button } from '@/components/ui/button';
 
 /** Full-size image in a native modal dialog; Escape and a backdrop click close it. */
 export function ImagePreviewDialog({
 	src,
 	label,
 	onClose,
-}: { src: string; label: string; onClose: () => void }) {
+}: {
+	src: string;
+	label: string;
+	onClose: () => void;
+}) {
 	const previewDialogRef = useRef<HTMLDialogElement>(null);
 	const previewCloseButtonRef = useRef<HTMLButtonElement>(null);
 

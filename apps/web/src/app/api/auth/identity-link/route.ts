@@ -1,6 +1,6 @@
+import { z } from 'zod';
 import { authPost } from '@/core/auth/route-helpers';
 import { nextField, providerField } from '@/core/auth/route-schemas';
-import { z } from 'zod';
 
 const schema = z.object({ provider: providerField, next: nextField });
 

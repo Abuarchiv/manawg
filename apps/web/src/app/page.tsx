@@ -1,5 +1,5 @@
-import { OG_BASE, TWITTER_BASE } from '@/shared/lib/og';
 import type { Metadata } from 'next';
+import { OG_BASE, TWITTER_BASE } from '@/shared/lib/og';
 import { EntryClient } from './EntryClient';
 
 const title = 'ManaWG, die WG-App: Ausgaben, Einkauf, Putzplan für eure WG';

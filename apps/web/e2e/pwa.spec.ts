@@ -2,11 +2,11 @@
 // Why: the installed app must open and degrade gracefully with no network.
 
 import { writeFile } from 'node:fs/promises';
-import { type Page, type Route, expect, test } from '@playwright/test';
+import { expect, type Page, type Route, test } from '@playwright/test';
 import { isIosLikeDevice } from '../src/shared/lib/pwa-install';
 import {
-	FIXTURE_WG,
 	dismissOnboarding,
+	FIXTURE_WG,
 	navigateToFeature,
 	seedLocalAccount,
 	setupMember,

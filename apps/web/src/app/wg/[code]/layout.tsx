@@ -1,7 +1,11 @@
+import type { Metadata } from 'next';
+import { headers } from 'next/headers';
+import { notFound, redirect } from 'next/navigation';
+import type { ReactNode } from 'react';
 import { AppBottomNav } from '@/components/app/AppBottomNav';
+import { WG_SECTIONS } from '@/components/app/navigation';
 import { RouteFocusOnNavigate } from '@/components/app/RouteFocusOnNavigate';
 import { WgAppHeader } from '@/components/app/WgAppHeader';
-import { WG_SECTIONS } from '@/components/app/navigation';
 import { ToastContainer } from '@/components/ui/Toast';
 import { NavItem } from '@/components/wg/NavItem';
 import { OfflineBanner } from '@/components/wg/OfflineBanner';
@@ -12,10 +16,6 @@ import { REQUEST_PATH_HEADER, wgReturnPath } from '@/core/auth/next-path';
 import { loadWgShell, loadWgViewer } from '@/core/guards/load-wg-viewer';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import { loadFixtureWgView } from '@/fixtures/pages';
-import type { Metadata } from 'next';
-import { headers } from 'next/headers';
-import { notFound, redirect } from 'next/navigation';
-import type { ReactNode } from 'react';
 import { TabWarmup } from './_components/TabWarmup';
 
 interface Props {
@@ -31,7 +31,9 @@ function wgTitle(name: string): Metadata['title'] {
 
 export async function generateMetadata({
 	params,
-}: { params: Promise<{ code: string }> }): Promise<Metadata> {
+}: {
+	params: Promise<{ code: string }>;
+}): Promise<Metadata> {
 	const { code: rawCode } = await params;
 	const code = normalizeShareCode(rawCode);
 	if (!isValidShareCode(code)) {

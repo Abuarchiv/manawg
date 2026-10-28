@@ -1,12 +1,12 @@
 'use client';
 
+import { ChevronRight, Plus } from 'lucide-react';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Item, ItemContent, ItemGroup, ItemGroupEntry, ItemTitle } from '@/components/ui/item';
 import { Section } from '@/components/wg/einstellungen/Section';
 import { type AccountWg, fetchAccountWgs } from '@/core/infra/account-wgs';
-import { ChevronRight, Plus } from 'lucide-react';
-import Link from 'next/link';
-import { useEffect, useState } from 'react';
 
 /** The account's other WGs, so switching never needs the browser's back button. */
 export function AccountWgsSection({ currentCode }: { currentCode: string }) {

@@ -5,9 +5,9 @@ import { currencySchema } from '@/core/validators/currency';
 import type { ExpenseCategory } from '@/features/expenses/expense-categories';
 import type { buildExpensePrefillDraft } from '@/features/expenses/expense-prefill';
 import {
+	equalSplitParticipants,
 	type SplitMemberLike,
 	type SplitMode,
-	equalSplitParticipants,
 } from '@/features/expenses/expense-split-input';
 import type {
 	Expense,

@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { createIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
 import { readOfflineQueue } from '@/core/offline/offline-client';
@@ -8,7 +9,6 @@ import {
 } from '@/features/shopping/shopping-errors';
 import { dropShoppingItems, replaceShoppingItem } from '@/features/shopping/shopping-toggle';
 import { isTempItemId } from '@/features/shopping/shopping-view';
-import { useCallback } from 'react';
 import type { ShoppingActionContext } from './shopping-action-context';
 
 /** An error message for the edit form, or null when the change was saved. */

@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,13 +16,12 @@ import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Spinner } from '@/components/ui/spinner';
 import { EventFormFields, focusEventField } from '@/features/events/components/EventFormFields';
 import {
+	formatRecurrenceRule,
 	RECURRENCE_OPTIONS,
 	type RecurrenceFreq,
-	formatRecurrenceRule,
 	toDatetimeLocalValue,
 	validateEventForm,
 } from '@/features/events/events';
-import { useEffect, useRef, useState } from 'react';
 
 interface EventCreateModalProps {
 	open: boolean;

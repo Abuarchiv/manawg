@@ -1,6 +1,6 @@
 import 'server-only';
-import { db, wgChatMessages, wgChatReads } from '@/core/db';
 import { and, eq } from 'drizzle-orm';
+import { db, wgChatMessages, wgChatReads } from '@/core/db';
 
 /** The member's last read message, or null when they never opened the chat. */
 export async function loadOwnReadMarker(

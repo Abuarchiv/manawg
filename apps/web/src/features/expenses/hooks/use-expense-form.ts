@@ -1,5 +1,6 @@
 'use client';
 
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
 	buildDraftKey,
 	isEmptyModuleDraft,
@@ -19,17 +20,16 @@ import {
 	type ExpenseDraft,
 	type ExpenseEditReference,
 	type ExpenseSuggestion,
-	type SplitMode,
 	parseDraftEditTarget,
 	participantsOrAll,
 	queuedEqualParticipants,
+	type SplitMode,
 	splitsToManualInput,
 } from '@/features/expenses/expense-form-draft';
 import { equalSplitParticipants } from '@/features/expenses/expense-split-input';
 import type { Expense, RecurringExpense } from '@/features/expenses/expense-types';
 import { useExpenseFormExtras } from '@/features/expenses/hooks/use-expense-form-extras';
 import { useExpensePrefillHandoff } from '@/features/expenses/hooks/use-expense-prefill-handoff';
-import { useCallback, useEffect, useRef, useState } from 'react';
 
 /** The member fields this hook reads; structural so it needs no WG context provider. */
 interface FormMember {

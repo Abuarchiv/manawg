@@ -1,12 +1,15 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export function BackButton({
 	onClick,
 	disabled = false,
-}: { onClick: () => void; disabled?: boolean }) {
+}: {
+	onClick: () => void;
+	disabled?: boolean;
+}) {
 	return (
 		<Button
 			type="button"

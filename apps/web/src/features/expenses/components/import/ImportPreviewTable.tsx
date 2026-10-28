@@ -14,8 +14,8 @@ import {
 } from '@/components/ui/item';
 import { formatEuroCents } from '@/core/utils/money';
 import {
-	type ParsedExpense,
 	describeParsedExpenseWarning,
+	type ParsedExpense,
 } from '@/features/expenses/import-parsers';
 import { cn } from '@/shared/lib/cn';
 

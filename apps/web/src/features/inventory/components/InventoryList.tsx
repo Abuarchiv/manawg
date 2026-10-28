@@ -1,5 +1,8 @@
 'use client';
 
+import { Package, ShoppingBasket, Zap } from 'lucide-react';
+import Link from 'next/link';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -14,18 +17,15 @@ import { InventoryFormDrawer } from '@/features/inventory/components/InventoryFo
 import { InventoryItemRow } from '@/features/inventory/components/InventoryItemRow';
 import { QuickRestockSheet } from '@/features/inventory/components/QuickRestockSheet';
 import {
+	groupItemsByCategory,
 	INVENTORY_CATEGORIES,
 	INVENTORY_CATEGORY_LABELS,
 	type InventoryCategory,
 	type InventoryItemDto,
 	type InventoryMutationItemDto,
-	groupItemsByCategory,
 	isBelowThreshold,
 } from '@/features/inventory/inventory';
 import { cn } from '@/shared/lib/cn';
-import { Package, ShoppingBasket, Zap } from 'lucide-react';
-import Link from 'next/link';
-import { useCallback, useEffect, useRef, useState } from 'react';
 
 /** How long a row stays in its group after +/- so it does not jump away under the thumb. */
 const REGROUP_DELAY_MS = 1500;

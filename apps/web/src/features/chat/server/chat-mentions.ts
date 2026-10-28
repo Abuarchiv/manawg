@@ -1,8 +1,8 @@
 import 'server-only';
+import { eq } from 'drizzle-orm';
 import { wgChatMentions, wgMembers } from '@/core/db';
 import type { DbTransaction } from '@/core/db/transaction';
 import { findMentions } from '@/features/chat/chat-text';
-import { eq } from 'drizzle-orm';
 
 /**
  * Replaces the mention rows of an edited message with the "@Name" mentions in its new text,

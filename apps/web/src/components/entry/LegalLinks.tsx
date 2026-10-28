@@ -20,7 +20,11 @@ export function LegalLinks({
 	consent = false,
 	registration = false,
 	className,
-}: { consent?: boolean; registration?: boolean; className?: string }) {
+}: {
+	consent?: boolean;
+	registration?: boolean;
+	className?: string;
+}) {
 	return (
 		<footer
 			className={cn(

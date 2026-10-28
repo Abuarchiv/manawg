@@ -120,57 +120,51 @@ test('remote runtime connections enforce certificate-verified TLS', () => {
 });
 
 // Live check against a disposable loopback database (`pnpm test:db`); skipped without TEST_DATABASE_URL.
-test(
-	'Preview transactions use runtime credentials and roll back writes',
-	{
-		skip: process.env.TEST_DATABASE_URL ? false : 'Requires TEST_DATABASE_URL (see pnpm test:db).',
-	},
-	async () => {
-		const runtimeUrl = process.env.TEST_DATABASE_URL ?? '';
-		assert.ok(
-			['localhost', '127.0.0.1', '[::1]'].includes(new URL(runtimeUrl).hostname),
-			'TEST_DATABASE_URL must be a loopback database',
+test('Preview transactions use runtime credentials and roll back writes', {
+	skip: process.env.TEST_DATABASE_URL ? false : 'Requires TEST_DATABASE_URL (see pnpm test:db).',
+}, async () => {
+	const runtimeUrl = process.env.TEST_DATABASE_URL ?? '';
+	assert.ok(
+		['localhost', '127.0.0.1', '[::1]'].includes(new URL(runtimeUrl).hostname),
+		'TEST_DATABASE_URL must be a loopback database',
+	);
+	const restore = snapshotEnv([
+		'POSTGRES_URL',
+		'DATABASE_MIGRATION_URL',
+		'POSTGRES_URL_NON_POOLING',
+		'DATABASE_URL_UNPOOLED',
+	]);
+	try {
+		process.env.POSTGRES_URL = runtimeUrl;
+		process.env.DATABASE_MIGRATION_URL = 'placeholder';
+		Reflect.deleteProperty(process.env, 'POSTGRES_URL_NON_POOLING');
+		Reflect.deleteProperty(process.env, 'DATABASE_URL_UNPOOLED');
+		const { withTransaction } = await import('../src/core/db/transaction.ts');
+		const { sql } = await import('drizzle-orm');
+		const rollback = new Error('intentional release-check rollback');
+		let backendPid: unknown;
+		await assert.rejects(
+			withTransaction(async (tx) => {
+				await tx.execute(sql`create temporary table manawg_release_transaction_probe (id integer)`);
+				await tx.execute(sql`insert into manawg_release_transaction_probe values (1)`);
+				const result = await tx.execute(
+					sql`select count(*)::integer as count from manawg_release_transaction_probe`,
+				);
+				assert.equal(result.rows[0]?.count, 1);
+				backendPid = (await tx.execute(sql`select pg_backend_pid() as pid`)).rows[0]?.pid;
+				throw rollback;
+			}),
+			(error) => error === rollback,
 		);
-		const restore = snapshotEnv([
-			'POSTGRES_URL',
-			'DATABASE_MIGRATION_URL',
-			'POSTGRES_URL_NON_POOLING',
-			'DATABASE_URL_UNPOOLED',
-		]);
-		try {
-			process.env.POSTGRES_URL = runtimeUrl;
-			process.env.DATABASE_MIGRATION_URL = 'placeholder';
-			Reflect.deleteProperty(process.env, 'POSTGRES_URL_NON_POOLING');
-			Reflect.deleteProperty(process.env, 'DATABASE_URL_UNPOOLED');
-			const { withTransaction } = await import('../src/core/db/transaction.ts');
-			const { sql } = await import('drizzle-orm');
-			const rollback = new Error('intentional release-check rollback');
-			let backendPid: unknown;
-			await assert.rejects(
-				withTransaction(async (tx) => {
-					await tx.execute(
-						sql`create temporary table manawg_release_transaction_probe (id integer)`,
-					);
-					await tx.execute(sql`insert into manawg_release_transaction_probe values (1)`);
-					const result = await tx.execute(
-						sql`select count(*)::integer as count from manawg_release_transaction_probe`,
-					);
-					assert.equal(result.rows[0]?.count, 1);
-					backendPid = (await tx.execute(sql`select pg_backend_pid() as pid`)).rows[0]?.pid;
-					throw rollback;
-				}),
-				(error) => error === rollback,
-			);
-			const result = await withTransaction((tx) =>
-				tx.execute(
-					sql`select pg_backend_pid() as pid, to_regclass('pg_temp.manawg_release_transaction_probe') is null as rolled_back`,
-				),
-			);
-			assert.equal(result.rows[0]?.rolled_back, true);
-			assert.equal(typeof backendPid, 'number');
-			assert.equal(result.rows[0]?.pid, backendPid);
-		} finally {
-			restore();
-		}
-	},
-);
+		const result = await withTransaction((tx) =>
+			tx.execute(
+				sql`select pg_backend_pid() as pid, to_regclass('pg_temp.manawg_release_transaction_probe') is null as rolled_back`,
+			),
+		);
+		assert.equal(result.rows[0]?.rolled_back, true);
+		assert.equal(typeof backendPid, 'number');
+		assert.equal(result.rows[0]?.pid, backendPid);
+	} finally {
+		restore();
+	}
+});

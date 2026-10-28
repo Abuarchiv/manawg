@@ -1,11 +1,11 @@
 'use client';
 
+import type { Dispatch, SetStateAction } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { eurosToCents, parseEuroAmount } from '@/core/utils/amount';
 import { formatEuroCents } from '@/core/utils/money';
 import type { MemberRef } from '@/shared/lib/member-types';
-import type { Dispatch, SetStateAction } from 'react';
 import { distributeRemainderCents } from './manual-split-distribute';
 
 interface ManualSplitSummaryProps {
