@@ -116,16 +116,18 @@ export function WgRouteErrorBoundary({
 								>
 									{homeLabel ?? t('overview')}
 								</Button>
-								<a
-									href={SUPPORT_MAILTO}
-									className={buttonVariants({
-										variant: 'outline',
-										size: 'lg',
-										className: 'w-full',
-									})}
-								>
-									{t('report')}
-								</a>
+								{SUPPORT_MAILTO && (
+									<a
+										href={SUPPORT_MAILTO}
+										className={buttonVariants({
+											variant: 'outline',
+											size: 'lg',
+											className: 'w-full',
+										})}
+									>
+										{t('report')}
+									</a>
+								)}
 							</div>
 						</EmptyContent>
 					</Empty>

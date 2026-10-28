@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next';
-import { IS_OFFICIAL_INSTANCE, landingUrl } from '@/shared/lib/landing-url';
+import { isOfficialInstance, landingUrl } from '@/shared/lib/landing-url';
 
 // Search engines may crawl everything so they can read the noindex from layout.tsx;
 // the only sitemap of the brand lives on the landing. AI crawlers get the brand from
@@ -27,6 +27,8 @@ export default function robots(): MetadataRoute.Robots {
 			{ userAgent: '*', allow: ['/'], disallow: ['/api/'] },
 		],
 		// The sitemap lists the landing's pages, which only belong to the official instance.
-		...(IS_OFFICIAL_INSTANCE ? { sitemap: landingUrl('/sitemap.xml') } : {}),
+		...(isOfficialInstance(process.env.NEXT_PUBLIC_APP_URL)
+			? { sitemap: landingUrl('/sitemap.xml') }
+			: {}),
 	};
 }

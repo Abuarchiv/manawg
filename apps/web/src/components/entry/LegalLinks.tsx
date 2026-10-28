@@ -4,13 +4,24 @@ import { richArgument } from '@/components/entry/rich-argument';
 import { cn } from '@/shared/lib/cn';
 import { landingUrl, legalUrl } from '@/shared/lib/landing-url';
 
-const LEGAL_LINKS = [
+type LegalLabel = 'about' | 'imprint' | 'privacy' | 'terms';
+interface LegalLink {
+	href: string;
+	label: LegalLabel;
+}
+
+// The operator's legal pages are absent when the instance has none configured.
+const PRIVACY = legalUrl('/datenschutz');
+const AGB = legalUrl('/agb');
+const legalLink = (href: string | null, label: LegalLabel): LegalLink[] =>
+	href ? [{ href, label }] : [];
+const IMPRINT_ONLY = legalLink(legalUrl('/impressum'), 'imprint');
+const LEGAL_LINKS: LegalLink[] = [
 	{ href: landingUrl('/ueber-manawg'), label: 'about' },
-	{ href: legalUrl('/impressum'), label: 'imprint' },
-	{ href: legalUrl('/datenschutz'), label: 'privacy' },
-	{ href: legalUrl('/agb'), label: 'terms' },
-] as const;
-const [, IMPRINT, PRIVACY, AGB] = LEGAL_LINKS;
+	...IMPRINT_ONLY,
+	...legalLink(PRIVACY, 'privacy'),
+	...legalLink(AGB, 'terms'),
+];
 // Product and guide pages live on the landing; shown only on the plain entry footer,
 // never in consent or registration flows (those keep the legal minimum).
 const INFO_LINKS = [
@@ -31,6 +42,7 @@ export function LegalLinks({
 	className?: string;
 }) {
 	const t = useTranslations('entry.legal');
+	const legalLinks = consent || registration ? IMPRINT_ONLY : LEGAL_LINKS;
 	return (
 		<footer
 			className={cn(
@@ -38,16 +50,16 @@ export function LegalLinks({
 				className,
 			)}
 		>
-			{(consent || registration) && (
+			{(consent || registration) && AGB && PRIVACY && (
 				<p>
 					{t.rich(registration ? 'consentRegister' : 'consentSignIn', {
 						terms: richArgument(
-							<a href={AGB.href} className={CONSENT_LINK}>
+							<a href={AGB} className={CONSENT_LINK}>
 								{t('consentTerms')}
 							</a>,
 						),
 						privacy: richArgument(
-							<a href={PRIVACY.href} className={CONSENT_LINK}>
+							<a href={PRIVACY} className={CONSENT_LINK}>
 								{t('consentPrivacy')}
 							</a>,
 						),
@@ -67,17 +79,19 @@ export function LegalLinks({
 					))}
 				</nav>
 			)}
-			<nav aria-label={t('legalNav')} className="flex flex-wrap justify-center">
-				{(consent || registration ? [IMPRINT] : LEGAL_LINKS).map((link) => (
-					<a
-						key={link.href}
-						href={link.href}
-						className="inline-flex min-h-11 items-center px-2 underline-offset-4 hover:underline"
-					>
-						{t(link.label)}
-					</a>
-				))}
-			</nav>
+			{legalLinks.length > 0 && (
+				<nav aria-label={t('legalNav')} className="flex flex-wrap justify-center">
+					{legalLinks.map((link) => (
+						<a
+							key={link.href}
+							href={link.href}
+							className="inline-flex min-h-11 items-center px-2 underline-offset-4 hover:underline"
+						>
+							{t(link.label)}
+						</a>
+					))}
+				</nav>
+			)}
 			<LanguageSwitch variant="links" />
 		</footer>
 	);

@@ -79,9 +79,11 @@ export default function ErrorBoundary({
 					<Button variant="outline" size="lg" render={<Link href="/" />} nativeButton={false}>
 						{t('toHome')}
 					</Button>
-					<a href={SUPPORT_MAILTO} className={buttonVariants({ variant: 'outline', size: 'lg' })}>
-						{t('report')}
-					</a>
+					{SUPPORT_MAILTO && (
+						<a href={SUPPORT_MAILTO} className={buttonVariants({ variant: 'outline', size: 'lg' })}>
+							{t('report')}
+						</a>
+					)}
 				</EmptyContent>
 			</Empty>
 		</main>

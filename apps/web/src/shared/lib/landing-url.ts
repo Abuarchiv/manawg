@@ -6,22 +6,42 @@
  */
 const LANDING_ORIGIN = 'https://manawg.com';
 
-/**
- * Origin with the operator's legal pages. The official instance's live on the landing;
- * a self-hosted instance points `NEXT_PUBLIC_LEGAL_URL` at its own.
- */
-const LEGAL_ORIGIN = (process.env.NEXT_PUBLIC_LEGAL_URL?.trim() || LANDING_ORIGIN).replace(
-	/\/$/,
-	'',
-);
+// Fixed on purpose: the landing references exactly this @id (schema-ids.ts there),
+// so it must not follow NEXT_PUBLIC_APP_URL or a preview host.
+export const APP_SCHEMA_ID = 'https://app.manawg.com/#app';
 
-/** Imprint, privacy policy or terms of whoever operates this instance. */
-export function legalUrl(path: '/impressum' | '/datenschutz' | '/agb'): string {
-	return `${LEGAL_ORIGIN}${path}`;
+function originOf(value: string | undefined): string | null {
+	try {
+		return value?.trim() ? new URL(value.trim()).origin : null;
+	} catch {
+		return null;
+	}
 }
 
-/** Only the official instance presents itself to search engines as the landing's app. */
-export const IS_OFFICIAL_INSTANCE = LEGAL_ORIGIN === LANDING_ORIGIN;
+/** True when `appUrl` has the origin of the official app (APP_SCHEMA_ID). */
+export function isOfficialInstance(appUrl: string | undefined): boolean {
+	return originOf(appUrl) !== null && originOf(appUrl) === originOf(APP_SCHEMA_ID);
+}
+
+/**
+ * Only the instance served from the app origin of the schema id presents itself to search engines
+ * as the landing's app and uses the landing's legal pages, support address and mail sender. Read
+ * straight from the NEXT_PUBLIC variable so the value is inlined into client code.
+ */
+export const IS_OFFICIAL_INSTANCE = isOfficialInstance(process.env.NEXT_PUBLIC_APP_URL);
+
+/**
+ * Origin with the operator's legal pages: `NEXT_PUBLIC_LEGAL_URL` of a self-hosted instance, the
+ * landing for the official one. Without either there is nothing to link.
+ */
+const LEGAL_ORIGIN =
+	process.env.NEXT_PUBLIC_LEGAL_URL?.trim().replace(/\/$/, '') ||
+	(IS_OFFICIAL_INSTANCE ? LANDING_ORIGIN : null);
+
+/** Imprint, privacy policy or terms of whoever operates this instance; null when none is configured. */
+export function legalUrl(path: '/impressum' | '/datenschutz' | '/agb'): string | null {
+	return LEGAL_ORIGIN ? `${LEGAL_ORIGIN}${path}` : null;
+}
 
 /** Absolute URL on the landing origin, e.g. `landingUrl('/putzplan')`. */
 export function landingUrl(path = '/'): string {
@@ -33,7 +53,3 @@ export const LANDING_SCHEMA_IDS = {
 	organisation: `${LANDING_ORIGIN}/#organisation`,
 	webseite: `${LANDING_ORIGIN}/#webseite`,
 } as const;
-
-// Fixed on purpose: the landing references exactly this @id (schema-ids.ts there),
-// so it must not follow NEXT_PUBLIC_APP_URL or a preview host.
-export const APP_SCHEMA_ID = 'https://app.manawg.com/#app';
