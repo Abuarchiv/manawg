@@ -10,6 +10,7 @@ import {
 	importActionErrorMessage,
 	recoveryActionFor,
 } from '@/features/expenses/import-errors';
+import type { Message } from '@/shared/i18n/message';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ImportSourceKind } from './ImportSourcePicker';
 import {
@@ -26,6 +27,9 @@ import {
 } from './import-wizard-types';
 import { useImportInput } from './use-import-input';
 
+const PREVIEW_FAILED: Message = { key: 'expenses-import.errors.failedPreview' };
+const IMPORT_FAILED: Message = { key: 'expenses-import.errors.failedImport' };
+
 /** State and actions of the five-step expense import: source, input, mapping, preview, result. */
 export function useImportWizard() {
 	const { wg, members, identity } = useWg();
@@ -38,7 +42,7 @@ export function useImportWizard() {
 	const [mappingValidated, setMappingValidated] = useState(false);
 	const [skipIndexes, setSkipIndexes] = useState<Set<number>>(new Set());
 	const [busy, setBusy] = useState(false);
-	const [error, setError] = useState<string | null>(null);
+	const [error, setError] = useState<Message | null>(null);
 	const [commitState, setCommitState] = useState<'idle' | 'pending' | 'done' | 'error'>('idle');
 	const [commitResult, setCommitResult] = useState<CommitResponse | null>(null);
 	const [skipDuplicates, setSkipDuplicates] = useState(true);
@@ -96,8 +100,11 @@ export function useImportWizard() {
 		return null;
 	}, [commitResult]);
 
-	function showImportError(operation: ImportOperation, reason: string, prefix?: string): void {
-		setError(`${prefix ? `${prefix}: ` : ''}${importActionErrorMessage(reason)}`);
+	function showImportError(operation: ImportOperation, reason: string, prefix?: Message): void {
+		const detail = importActionErrorMessage(reason);
+		setError(
+			prefix ? { key: 'common.errors.withSubject', values: { subject: prefix, detail } } : detail,
+		);
 		setRecoveryAction(recoveryActionFor(reason, operation));
 	}
 
@@ -123,18 +130,14 @@ export function useImportWizard() {
 		setBusy(false);
 		if (!res.ok) {
 			if (res.error === 'payload_too_large') input.setInputStatus('error');
-			showImportError('preview', res.error, 'Vorschau fehlgeschlagen');
+			showImportError('preview', res.error, PREVIEW_FAILED);
 			return;
 		}
 		// Without a recognised expense the mapping step would be empty and claim both
 		// "all names recognised" and "no names recognised".
 		if (res.data.parsed.length === 0) {
 			const unreadable = (res.data.rejected?.length ?? 0) > 0;
-			showImportError(
-				'preview',
-				unreadable ? 'rows_unreadable' : 'empty_payload',
-				'Vorschau fehlgeschlagen',
-			);
+			showImportError('preview', unreadable ? 'rows_unreadable' : 'empty_payload', PREVIEW_FAILED);
 			return;
 		}
 		setPreview(res.data);
@@ -177,7 +180,7 @@ export function useImportWizard() {
 		if (!res.ok) {
 			if (res.error === 'payload_too_large') input.setInputStatus('error');
 			setCommitState('error');
-			showImportError('commit', res.error, 'Import fehlgeschlagen');
+			showImportError('commit', res.error, IMPORT_FAILED);
 			return;
 		}
 		commitAttemptRef.current = null;

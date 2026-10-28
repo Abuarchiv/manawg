@@ -8,6 +8,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/shared/lib/cn';
 import { ChevronDown } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { type ReactNode, type Ref, useEffect, useRef } from 'react';
 import type { ImportSourceKind } from './ImportSourcePicker';
 import { ImportStepHeading } from './ImportStepHeading';
@@ -142,12 +143,13 @@ export function ImportInputStep({
 	onPreview,
 	onBack,
 }: ImportInputStepProps) {
+	const t = useTranslations('expenses-import');
 	const { ocrRunning, inputStatus } = input;
 	const invalid = inputStatus === 'error';
 	return (
 		<section className="flex flex-col gap-4">
 			<ImportStepHeading headingRef={headingRef}>
-				{source === 'ocr_screenshot' ? 'Bild hinzufügen' : 'Export-Datei auswählen'}
+				{source === 'ocr_screenshot' ? t('input.headingImage') : t('input.headingFile')}
 			</ImportStepHeading>
 			<FieldGroup>
 				{source === 'ocr_screenshot' ? (
@@ -155,27 +157,25 @@ export function ImportInputStep({
 						<FilePick
 							id="import-screenshot"
 							accept="image/*"
-							ariaLabel="Screenshot auswählen"
-							fallback="Bild auswählen"
+							ariaLabel={t('input.screenshot.ariaLabel')}
+							fallback={t('input.screenshot.fallback')}
 							name={input.pickedFileName}
 							disabled={busy || ocrRunning}
 							onFile={(file) => void input.handleOcrFile(file)}
 						>
-							Foto oder Bildschirmfoto bis 10 MB. Nur Eurobeträge (EUR) werden erkannt.
+							{t('input.screenshot.hint')}
 						</FilePick>
 						{ocrRunning && (
 							<Alert>
 								<Spinner />
-								<AlertDescription>
-									Bild wird ausgewertet. Das kann 30 Sekunden dauern.
-								</AlertDescription>
+								<AlertDescription>{t('input.screenshot.running')}</AlertDescription>
 							</Alert>
 						)}
 						<ManualInput
-							summary="Ergebnis prüfen oder korrigieren"
+							summary={t('input.screenshot.summary')}
 							id="import-ocr"
-							label="Erkannte Daten"
-							placeholder="Ergebnis hier prüfen und korrigieren"
+							label={t('input.screenshot.label')}
+							placeholder={t('input.screenshot.placeholder')}
 							value={input.ocrText}
 							invalid={invalid && input.ocrText.length > 0}
 							disabled={busy || ocrRunning}
@@ -188,19 +188,19 @@ export function ImportInputStep({
 						<FilePick
 							id="import-csv-file"
 							accept=".csv,text/csv"
-							ariaLabel="CSV-Datei auswählen"
-							fallback="Datei auswählen"
+							ariaLabel={t('input.csv.ariaLabel')}
+							fallback={t('input.csv.fallback')}
 							name={input.pickedFileName}
 							disabled={busy || inputStatus === 'reading'}
 							onFile={input.handleCsvFile}
 						>
-							Export-Datei bis 5 MB.
+							{t('input.csv.hint')}
 						</FilePick>
 						<ManualInput
-							summary="Oder Inhalt einfügen"
+							summary={t('input.csv.summary')}
 							id="import-csv-textarea"
-							label="Inhalt des Exports"
-							placeholder="Füge den Inhalt deines Exports hier ein"
+							label={t('input.csv.label')}
+							placeholder={t('input.csv.placeholder')}
 							value={input.rawPayload}
 							invalid={invalid && input.rawPayload.length > 0}
 							disabled={busy || inputStatus === 'reading'}
@@ -217,10 +217,11 @@ export function ImportInputStep({
 					}
 					onClick={onPreview}
 				>
-					{busy && <Spinner data-icon="inline-start" />}Vorschau erstellen
+					{busy && <Spinner data-icon="inline-start" />}
+					{t('actions.createPreview')}
 				</Button>
 				<Button variant="outline" disabled={busy || ocrRunning} onClick={onBack}>
-					Zurück
+					{t('actions.back')}
 				</Button>
 			</div>
 		</section>

@@ -1,81 +1,70 @@
 import {
 	type ApiErrorKind,
 	NETWORK_ERROR_CODE,
-	READ_ONLY_MESSAGE,
 	classifyApiError,
 	isRateLimited,
 	isRetryableServerError,
 } from '@/core/http/error-codes';
+import type { Message } from '@/shared/i18n/message';
 
 /**
- * German copy and the next step to offer for each error the import routes
+ * Copy and the next step to offer for each error the import routes
  * (`imports/preview`, `imports/commit`) can return. Kept apart from the wizard
  * so the mapping stays reviewable and testable without rendering it.
  */
 
 export type ImportOperation = 'preview' | 'commit';
 export type RecoveryAction =
-	| { kind: 'retry_preview'; label: string }
-	| { kind: 'retry_commit'; label: string }
-	| { kind: 'input'; label: string }
-	| { kind: 'mapping'; label: string }
-	| { kind: 'preview'; label: string };
+	| { kind: 'retry_preview'; label: Message }
+	| { kind: 'retry_commit'; label: Message }
+	| { kind: 'input'; label: Message }
+	| { kind: 'mapping'; label: Message }
+	| { kind: 'preview'; label: Message };
 
-const RETRY_LATER_MESSAGE =
-	'Der Import konnte gerade nicht verarbeitet werden. Versuche es gleich erneut.';
+const RETRY_LATER: Message = { key: 'expenses-import.errors.retryLater' };
 
 /** Copy for the shared error buckets, in the wording of the import. */
-const BUCKET_MESSAGES: Readonly<Record<ApiErrorKind, string>> = {
-	network: 'Prüfe deine Verbindung und versuche es erneut.',
-	readOnly: READ_ONLY_MESSAGE,
-	sessionExpired: 'Öffne die WG erneut, damit deine Mitgliedschaft geladen wird.',
-	wgUnavailable: 'Die WG wurde nicht gefunden. Öffne den aktuellen WG-Link erneut.',
-	invalidShareCode: 'Der WG-Link ist ungültig. Öffne die WG erneut.',
-	authInvalidated: 'Deine WG-Zuordnung fehlt. Tritt der WG erneut bei.',
-	retryable: RETRY_LATER_MESSAGE,
+const BUCKET_MESSAGES: Readonly<Record<ApiErrorKind, Message>> = {
+	network: { key: 'common.errors.network' },
+	readOnly: { key: 'common.errors.readOnly' },
+	sessionExpired: { key: 'expenses-import.errors.sessionExpired' },
+	wgUnavailable: { key: 'expenses-import.errors.wgUnavailable' },
+	invalidShareCode: { key: 'expenses-import.errors.invalidShareCode' },
+	authInvalidated: { key: 'expenses-import.errors.authInvalidated' },
+	retryable: RETRY_LATER,
 };
+
+const INVALID_BODY: Message = { key: 'expenses-import.errors.invalidBody' };
 
 /** Codes only the import routes return. */
-const IMPORT_ERROR_MESSAGES: Readonly<Record<string, string>> = {
-	member_deactivated: 'Deine Mitgliedschaft ist nicht mehr aktiv. Tritt der WG erneut bei.',
-	member_not_in_wg:
-		'Mindestens eine Zuordnung gehört nicht mehr zu dieser WG. Prüfe die Zuordnung.',
-	mapping_incomplete: 'Bitte ordne alle Namen einem WG-Mitglied zu.',
-	payload_changed: 'Die Eingabe wurde nach der Vorschau geändert. Erstelle die Vorschau neu.',
-	payload_too_large:
-		'Die Datei ist zu groß. Wähle eine kleinere Datei (CSV bis 5 MB, Bild bis 10 MB).',
-	too_many_rows:
-		'Die Datei hat zu viele Zeilen (max. 2.000). Teile den Export in mehrere Dateien auf.',
-	unsupported_currency:
-		'Diese Datei enthält keine unterstützte Währung. Verwende einen Export in Euro (EUR).',
-	empty_payload: 'Keine Ausgaben gefunden. Prüfe die Datei und versuche es erneut.',
-	rows_unreadable:
-		'Keine Zeile der Datei konnte gelesen werden. Prüfe Datum, Betrag und zahlende Person in der Datei.',
-	invalid_skip_indexes: 'Die Auswahl ist veraltet. Öffne die Vorschau erneut.',
-	preview_hash_required: 'Die Vorschau fehlt. Erstelle sie erneut.',
-	invalid_body:
-		'Die Importdaten konnten nicht gelesen werden. Prüfe den Export und versuche es erneut.',
-	invalid_json:
-		'Die Importdaten konnten nicht gelesen werden. Prüfe den Export und versuche es erneut.',
-	payer_unmapped: 'Die zahlende Person konnte nicht zugeordnet werden. Prüfe die Zuordnung.',
-	no_valid_splits: 'Keine gültige Aufteilung gefunden. Prüfe die Anteile.',
-	split_sum_mismatch: 'Die Anteile ergeben nicht den Gesamtbetrag. Prüfe die Datei.',
-	paid_by_must_include_caller:
-		'Du kannst nur Ausgaben importieren, die du bezahlt hast oder an denen du beteiligt bist. Komplette WG-Historien importiert der Admin.',
-	insert_failed: 'Dieser Eintrag konnte nicht gespeichert werden. Versuche es erneut.',
-	import_insert_failed:
-		'Der Import konnte gerade nicht gespeichert werden. Versuche es gleich erneut.',
+const IMPORT_ERROR_MESSAGES: Readonly<Record<string, Message>> = {
+	member_deactivated: { key: 'expenses-import.errors.memberDeactivated' },
+	member_not_in_wg: { key: 'expenses-import.errors.memberNotInWg' },
+	mapping_incomplete: { key: 'expenses-import.errors.mappingIncomplete' },
+	payload_changed: { key: 'expenses-import.errors.payloadChanged' },
+	payload_too_large: { key: 'expenses-import.errors.payloadTooLarge' },
+	too_many_rows: { key: 'expenses-import.errors.tooManyRows' },
+	unsupported_currency: { key: 'expenses-import.errors.unsupportedCurrency' },
+	empty_payload: { key: 'expenses-import.errors.emptyPayload' },
+	rows_unreadable: { key: 'expenses-import.errors.rowsUnreadable' },
+	invalid_skip_indexes: { key: 'expenses-import.errors.invalidSkipIndexes' },
+	preview_hash_required: { key: 'expenses-import.errors.previewHashRequired' },
+	invalid_body: INVALID_BODY,
+	invalid_json: INVALID_BODY,
+	payer_unmapped: { key: 'expenses-import.errors.payerUnmapped' },
+	no_valid_splits: { key: 'expenses-import.errors.noValidSplits' },
+	split_sum_mismatch: { key: 'expenses-import.errors.splitSumMismatch' },
+	paid_by_must_include_caller: { key: 'expenses-import.errors.paidByMustIncludeCaller' },
+	insert_failed: { key: 'expenses-import.errors.insertFailed' },
+	import_insert_failed: { key: 'expenses-import.errors.importInsertFailed' },
 };
 
-export function importActionErrorMessage(error: string): string {
+export function importActionErrorMessage(error: string): Message {
 	// The middleware answers 429 with `rate_limited`, the routes with `too_many_requests`.
-	if (isRateLimited(error)) return 'Zu viele Importversuche. Warte kurz und versuche es erneut.';
+	if (isRateLimited(error)) return { key: 'expenses-import.errors.rateLimited' };
 	const kind = classifyApiError(error);
 	if (kind) return BUCKET_MESSAGES[kind];
-	return (
-		IMPORT_ERROR_MESSAGES[error] ??
-		'Der Import konnte nicht abgeschlossen werden. Versuche es erneut.'
-	);
+	return IMPORT_ERROR_MESSAGES[error] ?? { key: 'expenses-import.errors.fallback' };
 }
 
 export function recoveryActionFor(
@@ -87,10 +76,10 @@ export function recoveryActionFor(
 		error === 'member_not_in_wg' ||
 		error === 'payer_unmapped'
 	) {
-		return { kind: 'mapping', label: 'Zuordnung prüfen' };
+		return { kind: 'mapping', label: { key: 'expenses-import.recovery.mapping' } };
 	}
 	if (error === 'invalid_skip_indexes' || error === 'preview_hash_required') {
-		return { kind: 'preview', label: 'Vorschau öffnen' };
+		return { kind: 'preview', label: { key: 'expenses-import.recovery.preview' } };
 	}
 	if (
 		error === 'payload_changed' ||
@@ -105,7 +94,7 @@ export function recoveryActionFor(
 		error === 'split_sum_mismatch' ||
 		error === 'paid_by_must_include_caller'
 	) {
-		return { kind: 'input', label: 'Eingabe korrigieren' };
+		return { kind: 'input', label: { key: 'expenses-import.recovery.input' } };
 	}
 	if (
 		error === NETWORK_ERROR_CODE ||
@@ -115,7 +104,7 @@ export function recoveryActionFor(
 	) {
 		return {
 			kind: operation === 'preview' ? 'retry_preview' : 'retry_commit',
-			label: 'Erneut versuchen',
+			label: { key: 'expenses-import.recovery.retry' },
 		};
 	}
 	return null;

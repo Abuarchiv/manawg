@@ -13,9 +13,11 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
 import { markOverlayNavigation, overlayNavigationPending } from '@/shared/lib/use-dismiss-on-back';
 import { ArrowLeft } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -101,6 +103,8 @@ function useImportBackGuard(active: boolean, onBack: () => void) {
 }
 
 export function ImportWizard() {
+	const t = useTranslations('expenses-import');
+	const renderMessage = useMessage();
 	const wizard = useImportWizard();
 	const { step, source, input, busy, error, recoveryAction, stepNumber } = wizard;
 	const { rawPayload, ocrRunning } = input;
@@ -134,7 +138,7 @@ export function ImportWizard() {
 			<header className="flex min-w-0 items-start gap-2">
 				<Link
 					href={returnHref}
-					aria-label="Zurück zu Ausgaben"
+					aria-label={t('back')}
 					className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), '-ml-2')}
 					aria-disabled={busy || ocrRunning || undefined}
 					tabIndex={busy || ocrRunning ? -1 : undefined}
@@ -156,15 +160,21 @@ export function ImportWizard() {
 				</Link>
 				<div className="min-w-0 flex-1">
 					<h1 className="font-heading text-base leading-8 font-semibold [overflow-wrap:normal] hyphens-auto">
-						Ausgaben importieren
+						{t('title')}
 					</h1>
-					<p className="text-meta text-muted-foreground tabular-nums">Schritt {stepNumber} von 5</p>
+					<p className="text-meta text-muted-foreground tabular-nums">
+						{t('stepOf', { step: String(stepNumber) })}
+					</p>
 				</div>
 			</header>
-			<Progress value={stepNumber} max={5} aria-label={`Import: Schritt ${stepNumber} von 5`} />
+			<Progress
+				value={stepNumber}
+				max={5}
+				aria-label={t('progressAria', { step: String(stepNumber) })}
+			/>
 			{step === 'source' && (
 				<section className="flex flex-col gap-3">
-					<ImportStepHeading headingRef={stepHeadingRef}>Importquelle wählen</ImportStepHeading>
+					<ImportStepHeading headingRef={stepHeadingRef}>{t('source.heading')}</ImportStepHeading>
 					<ImportSourcePicker
 						value={source}
 						onChange={(value) => {
@@ -205,14 +215,14 @@ export function ImportWizard() {
 			{error && (
 				<Alert id="import-error" variant="destructive">
 					<AlertDescription className="flex flex-col items-start gap-2">
-						<span>{error}</span>
+						<span>{renderMessage(error)}</span>
 						{recoveryAction && (
 							<Button
 								variant="outline"
 								disabled={busy || ocrRunning}
 								onClick={() => wizard.applyRecoveryAction(recoveryAction)}
 							>
-								{recoveryAction.label}
+								{renderMessage(recoveryAction.label)}
 							</Button>
 						)}
 					</AlertDescription>
@@ -229,14 +239,11 @@ export function ImportWizard() {
 			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>Import-Eingaben verwerfen?</AlertDialogTitle>
-						<AlertDialogDescription>
-							Die bisher eingegebenen Daten und Zuordnungen gehen verloren. Es werden keine neuen
-							Ausgaben importiert.
-						</AlertDialogDescription>
+						<AlertDialogTitle>{t('leave.title')}</AlertDialogTitle>
+						<AlertDialogDescription>{t('leave.description')}</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogCancel className="min-h-11">Weiterbearbeiten</AlertDialogCancel>
+						<AlertDialogCancel className="min-h-11">{t('leave.keep')}</AlertDialogCancel>
 						<AlertDialogAction
 							variant="destructive"
 							className="min-h-11"
@@ -247,7 +254,7 @@ export function ImportWizard() {
 								} else leave();
 							}}
 						>
-							Verwerfen
+							{t('leave.discard')}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>

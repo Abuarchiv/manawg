@@ -1,8 +1,10 @@
+import type { Message } from '@/shared/i18n/message';
 import { normalizeMemberName } from './import-csv-helpers';
 import type { ParsedExpense } from './import-types';
 
 export { parseSplidCsv } from './import-splid-csv';
 export { parseSplitwiseCsv } from './import-splitwise-csv';
+export { UNKNOWN_NAME } from './import-types';
 export type { ImportSource, ParsedExpense, RejectedRow } from './import-types';
 
 /** Short names differ by one letter all the time (Tom/Tim); only longer ones may be fuzzy. */
@@ -11,40 +13,53 @@ function maxFuzzyDistance(length: number): number {
 	return length < 9 ? 1 : 2;
 }
 
-const REJECTED_ROW_REASONS: Record<string, string> = {
-	date_invalid: 'Datum nicht lesbar',
-	amount_invalid: 'Betrag nicht lesbar',
-	no_participants: 'Keine beteiligte Person',
-	payer_missing: 'Zahlende Person fehlt',
-	multiple_payers: 'Mehrere zahlende Personen – bitte von Hand erfassen',
-	currency_unsupported: 'Fremdwährung – importiert wird nur EUR',
+const REJECTED_ROW_REASONS: Record<string, Message> = {
+	date_invalid: { key: 'expenses-import.rejected.dateInvalid' },
+	amount_invalid: { key: 'expenses-import.rejected.amountInvalid' },
+	no_participants: { key: 'expenses-import.rejected.noParticipants' },
+	payer_missing: { key: 'expenses-import.rejected.payerMissing' },
+	multiple_payers: { key: 'expenses-import.rejected.multiplePayers' },
+	currency_unsupported: { key: 'expenses-import.rejected.currencyUnsupported' },
 };
 
-export function describeRejectedRowReason(reason: string): string {
-	return REJECTED_ROW_REASONS[reason] ?? 'Zeile nicht importierbar';
+export function describeRejectedRowReason(reason: string): Message {
+	return REJECTED_ROW_REASONS[reason] ?? { key: 'expenses-import.rejected.fallback' };
 }
 
 /**
  * A parsed row's `warnings` are internal codes (see `parseSplitwiseCsv`), not
- * UI text. This is the one place that turns them into German sentences for
+ * UI text. This is the one place that turns them into messages for
  * `ImportPreviewTable`, so a new code can't accidentally leak to the screen
  * unmapped.
  */
-export function describeParsedExpenseWarning(code: string): string {
+export function describeParsedExpenseWarning(code: string): Message {
 	if (code.startsWith('unknown_columns_ignored:')) {
 		const columns = code.slice('unknown_columns_ignored:'.length).split('|').filter(Boolean);
-		return `Spalte${columns.length === 1 ? '' : 'n'} ${columns.map((name) => `„${name}“`).join(', ')} wurde${columns.length === 1 ? '' : 'n'} nicht erkannt und ignoriert.`;
+		const quoted = columns.map(
+			(name): Message => ({
+				key: 'expenses-import.warnings.quoted',
+				values: { name },
+			}),
+		);
+		const list: Message | string =
+			quoted.length === 0
+				? ''
+				: quoted.reduceRight((tail, head) => ({
+						key: 'expenses-import.warnings.list',
+						values: { head, tail },
+					}));
+		return {
+			key: 'expenses-import.warnings.unknownColumns',
+			values: { count: columns.length, columns: list },
+		};
 	}
-	if (code === 'custom_splits_drift_adjusted') {
-		return 'Die Aufteilung wich minimal vom Gesamtbetrag ab und wurde automatisch angeglichen.';
-	}
+	if (code === 'custom_splits_drift_adjusted')
+		return { key: 'expenses-import.warnings.splitsDrift' };
 	if (code === 'custom_splits_discarded') {
-		return 'Die eigene Aufteilung wich zu stark vom Gesamtbetrag ab und wurde verworfen — stattdessen gleichmäßig aufgeteilt.';
+		return { key: 'expenses-import.warnings.splitsDiscarded' };
 	}
-	if (code === 'ocr_heuristic') {
-		return 'Aus dem Bild erkannt: Prüfe Datum, Betrag und zahlende Person. Die Ausgabe wird nur der zahlenden Person zugeordnet, es entsteht keine Schuld.';
-	}
-	return 'Bitte prüfe diese Zeile.';
+	if (code === 'ocr_heuristic') return { key: 'expenses-import.warnings.ocr' };
+	return { key: 'expenses-import.warnings.fallback' };
 }
 
 function levenshtein(a: string, b: string): number {

@@ -2,6 +2,7 @@ import { eurosToCents, parseEuroAmount } from '@/core/utils/amount';
 import { AMOUNT_MAX_CENTS } from '@/features/expenses/expense-constants';
 import { parseDayMonthYear } from './import-csv-helpers';
 import type { ParsedExpense } from './import-parsers';
+import { UNKNOWN_NAME } from './import-types';
 
 const OCR_LANGS = 'deu+eng';
 
@@ -246,7 +247,7 @@ export function parseOcrText(rawText: string, contextDateIso?: string): OcrParse
 
 		const description = cleanDescription(line);
 		if (!description) continue;
-		const payer = currentPayer || 'Unbekannt';
+		const payer = currentPayer || UNKNOWN_NAME;
 
 		expenses.push({
 			date: currentDate,
