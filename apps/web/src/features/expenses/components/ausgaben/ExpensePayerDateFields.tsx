@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import type { Member } from '@/components/wg/WgContextProvider';
 import { todayInputValue } from '@/core/utils/local-date';
+import { useTranslations } from 'next-intl';
 import type { Dispatch, SetStateAction } from 'react';
 
 interface ExpensePayerDateFieldsProps {
@@ -20,7 +21,7 @@ interface ExpensePayerDateFieldsProps {
 	formSaving: boolean;
 }
 
-/** "Datum" and "Bezahlt von": who paid and on which day. */
+/** Date and payer fields: who paid and on which day. */
 export function ExpensePayerDateFields({
 	paidByMemberId,
 	setPaidByMemberId,
@@ -33,10 +34,11 @@ export function ExpensePayerDateFields({
 	onClearDateError,
 	formSaving,
 }: ExpensePayerDateFieldsProps) {
+	const t = useTranslations('expenses-form.fields');
 	return (
 		<>
 			<Field data-disabled={formSaving} data-invalid={Boolean(dateError)}>
-				<FieldLabel htmlFor="expense-date">Datum</FieldLabel>
+				<FieldLabel htmlFor="expense-date">{t('date')}</FieldLabel>
 				<Input
 					id="expense-date"
 					type="date"
@@ -55,7 +57,7 @@ export function ExpensePayerDateFields({
 				<FieldError id="expense-date-error">{dateError}</FieldError>
 			</Field>
 			<Field data-disabled={formSaving}>
-				<FieldLabel htmlFor="paid-by">Bezahlt von</FieldLabel>
+				<FieldLabel htmlFor="paid-by">{t('paidBy')}</FieldLabel>
 				<NativeSelect
 					id="paid-by"
 					value={paidByMemberId}
@@ -65,16 +67,11 @@ export function ExpensePayerDateFields({
 				>
 					{payerOptions.map((member) => (
 						<NativeSelectOption key={member.id} value={member.id}>
-							{member.name}
-							{member.id === identityMemberId ? ' (du)' : ''}
+							{member.id === identityMemberId ? t('payerYou', { name: member.name }) : member.name}
 						</NativeSelectOption>
 					))}
 				</NativeSelect>
-				{isEditingExpense && (
-					<FieldDescription>
-						Die zahlende Person kann bei einer bestehenden Ausgabe nicht geändert werden.
-					</FieldDescription>
-				)}
+				{isEditingExpense && <FieldDescription>{t('payerLocked')}</FieldDescription>}
 			</Field>
 		</>
 	);

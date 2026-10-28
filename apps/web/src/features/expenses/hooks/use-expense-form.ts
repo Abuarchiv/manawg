@@ -29,6 +29,8 @@ import { equalSplitParticipants } from '@/features/expenses/expense-split-input'
 import type { Expense, RecurringExpense } from '@/features/expenses/expense-types';
 import { useExpenseFormExtras } from '@/features/expenses/hooks/use-expense-form-extras';
 import { useExpensePrefillHandoff } from '@/features/expenses/hooks/use-expense-prefill-handoff';
+import type { Message } from '@/shared/i18n/message';
+import { useLocale } from 'next-intl';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 /** The member fields this hook reads; structural so it needs no WG context provider. */
@@ -73,6 +75,7 @@ export function useExpenseForm({
 	recurringId,
 	recurringExpenses,
 }: UseExpenseFormOptions) {
+	const locale = useLocale();
 	const [showForm, setShowForm] = useState(false);
 	const [description, setDescription] = useState('');
 	const [category, setCategory] = useState<ExpenseCategory>(DEFAULT_EXPENSE_CATEGORY);
@@ -81,7 +84,7 @@ export function useExpenseForm({
 	const [paidByMemberId, setPaidByMemberId] = useState<string>(identityMemberId);
 	const [splitMode, setSplitMode] = useState<SplitMode>('equal');
 	const [manualSplits, setManualSplits] = useState<Record<string, string>>({});
-	const [formError, setFormError] = useState<string | null>(null);
+	const [formError, setFormError] = useState<Message | null>(null);
 	const [conflictExpenseId, setConflictExpenseId] = useState<string | null>(null);
 	const [editingExpense, setEditingExpense] = useState<ExpenseEditReference | null>(null);
 	const [editingRecurringExpense, setEditingRecurringExpense] = useState<RecurringExpense | null>(
@@ -119,9 +122,7 @@ export function useExpenseForm({
 		} else if (target.kind === 'invalid') {
 			setInvalidEditDraft(true);
 			setShowForm(true);
-			setFormError(
-				'Die Zuordnung dieses Entwurfs ist beschädigt. Deine Eingaben bleiben erhalten; öffne die ursprüngliche Ausgabe erneut oder verwirf den Entwurf.',
-			);
+			setFormError({ key: 'expenses-form.notices.draftBrokenKept' });
 		}
 		if (draft.description) setDescription(draft.description);
 		// A draft is untrusted storage; only known category codes are restored.
@@ -133,7 +134,7 @@ export function useExpenseForm({
 		// Queued expenses always carry per-person amounts; an equal split stays "Gleichmäßig".
 		const queuedParticipants =
 			draft.queueEditId !== undefined && draft.splitMode === 'manual'
-				? queuedEqualParticipants(draft, membersRef.current)
+				? queuedEqualParticipants(draft, membersRef.current, locale)
 				: null;
 		const queuedEqual = queuedParticipants !== null;
 		if (draft.splitMode) setSplitMode(queuedEqual ? 'equal' : draft.splitMode);
@@ -153,7 +154,7 @@ export function useExpenseForm({
 		if (draft.recurringIntervalMonths) setRecurringIntervalMonths(draft.recurringIntervalMonths);
 		if (draft.recurringNextDueAt) setRecurringNextDueAt(draft.recurringNextDueAt);
 		setDraftHydrated(true);
-	}, [draftKey, identityMemberId, extras.restore, extras.setParticipantIds]);
+	}, [draftKey, identityMemberId, extras.restore, extras.setParticipantIds, locale]);
 
 	useEffect(() => {
 		if (!draftHydrated) return;
@@ -252,6 +253,7 @@ export function useExpenseForm({
 		prefillPaidBy,
 		recurringId,
 		recurringExpenses,
+		locale,
 	});
 
 	function resetForm(): void {
@@ -282,7 +284,7 @@ export function useExpenseForm({
 		setPendingPrefill(null);
 		setDescription(expense.description);
 		setCategory(expense.category);
-		setAmountStr(formatCentsInput(expense.amountCents));
+		setAmountStr(formatCentsInput(expense.amountCents, locale));
 		setImageUrl(expense.imageUrl);
 		setPaidByMemberId(expense.paidByMemberId);
 		// "Equal" only if every share is an equal part among active members (all or a subset), as
@@ -298,7 +300,7 @@ export function useExpenseForm({
 			setManualSplits({});
 		} else {
 			setSplitMode('manual');
-			setManualSplits(splitsToManualInput(expense.splits));
+			setManualSplits(splitsToManualInput(expense.splits, locale));
 		}
 		setFormError(null);
 		setConflictExpenseId(null);
@@ -322,13 +324,13 @@ export function useExpenseForm({
 		setPendingPrefill(null);
 		setDescription(template.description);
 		setCategory(template.category);
-		setAmountStr(formatCentsInput(template.amountCents));
+		setAmountStr(formatCentsInput(template.amountCents, locale));
 		setImageUrl(null);
 		setPaidByMemberId(template.paidByMemberId);
 		// A template stores explicit per-member shares, so editing it always
 		// starts in manual mode even when the shares happen to be equal.
 		setSplitMode('manual');
-		setManualSplits(splitsToManualInput(template.splits));
+		setManualSplits(splitsToManualInput(template.splits, locale));
 		extras.reset();
 		setRecurringIntervalMonths(template.intervalMonths);
 		setRecurringNextDueAt(null);

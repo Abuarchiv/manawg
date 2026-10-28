@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-	expenseSaveErrorMessage,
-	recurringTemplateSaveErrorMessage,
+	expenseSaveError,
+	recurringTemplateSaveError,
 } from '../src/features/expenses/expense-errors.ts';
 import {
 	buildSplitsFromForm,
@@ -105,6 +105,7 @@ test('recurring splits require a valid distribution, including zero-cent shares'
 });
 
 test('payer guard failures explain how to correct an expense and recurring template', () => {
-	assert.match(expenseSaveErrorMessage('paid_by_must_include_caller'), /Anteil/);
-	assert.match(recurringTemplateSaveErrorMessage('paid_by_must_include_caller'), /Anteil/);
+	const expected = { key: 'expenses-form.errors.paidByMustIncludeCaller' };
+	assert.deepEqual(expenseSaveError('paid_by_must_include_caller'), expected);
+	assert.deepEqual(recurringTemplateSaveError('paid_by_must_include_caller'), expected);
 });

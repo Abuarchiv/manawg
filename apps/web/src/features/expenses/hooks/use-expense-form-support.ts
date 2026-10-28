@@ -8,6 +8,7 @@ import {
 	buildSplitsFromForm,
 } from '@/features/expenses/expense-split-input';
 import type { ExpenseFormField, ExpenseFormFieldErrors } from '@/features/expenses/expense-types';
+import { useLocale } from 'next-intl';
 import { useEffect, useState } from 'react';
 import type { ExpenseFormState, ExpensePageContext } from './expense-page-context';
 
@@ -16,6 +17,7 @@ export function useExpenseFormSupport(
 	{ members, expenses, notify, reload }: ExpensePageContext,
 	form: ExpenseFormState,
 ) {
+	const locale = useLocale();
 	const [fieldErrors, setFieldErrors] = useState<ExpenseFormFieldErrors>({});
 	const [validationAttempt, setValidationAttempt] = useState(0);
 
@@ -44,6 +46,7 @@ export function useExpenseFormSupport(
 			manualSplits: form.manualSplits,
 			participantIds: form.extras.participantIds,
 			amountCents,
+			locale,
 			// Cycles the "+1 cent" recipient across expenses so the same person
 			// doesn't always eat the leftover cent on uneven splits.
 			rotationOffset: expenses.length,

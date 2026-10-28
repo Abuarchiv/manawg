@@ -1,4 +1,5 @@
 import type { RecurringExpense } from '@/features/expenses/expense-types';
+import type { Message } from '@/shared/i18n/message';
 
 /** Sheet title for the form, by what it currently edits. */
 export function expenseFormTitle(input: {
@@ -6,11 +7,11 @@ export function expenseFormTitle(input: {
 	isEditingQueuedRecurring: boolean;
 	isEditingQueuedExpense: boolean;
 	isEditingExpense: boolean;
-}): string {
-	if (input.editingRecurringExpense) return 'Fixkosten-Vorlage bearbeiten';
-	if (input.isEditingQueuedRecurring) return 'Wartende Fixkosten-Vorlage bearbeiten';
-	if (input.isEditingQueuedExpense) return 'Wartende Ausgabe bearbeiten';
-	return input.isEditingExpense ? 'Ausgabe bearbeiten' : 'Ausgabe hinzufügen';
+}): Message {
+	if (input.editingRecurringExpense) return { key: 'expenses-form.title.editTemplate' };
+	if (input.isEditingQueuedRecurring) return { key: 'expenses-form.title.editQueuedTemplate' };
+	if (input.isEditingQueuedExpense) return { key: 'expenses-form.title.editQueuedExpense' };
+	return { key: input.isEditingExpense ? 'expenses-form.title.edit' : 'expenses-form.title.add' };
 }
 
 /** Identity of what the form edits; a change means the form starts a different draft. */
@@ -28,12 +29,19 @@ export function expenseFormModeKey(input: {
 export function expenseSubmitLabel(input: {
 	savesTemplate: boolean;
 	editingRecurringExpense: RecurringExpense | null;
-}): { text: string; accessibleName: string } {
+}): { text: Message; accessibleName: Message } {
 	if (input.savesTemplate) {
-		return { text: 'Vorlage speichern', accessibleName: 'Fixkosten-Vorlage speichern' };
+		return {
+			text: { key: 'expenses-form.submit.saveTemplate' },
+			accessibleName: { key: 'expenses-form.submit.saveTemplateAria' },
+		};
 	}
 	if (input.editingRecurringExpense) {
-		return { text: 'Als Ausgabe speichern', accessibleName: 'Als Ausgabe speichern' };
+		const saveAsExpense: Message = { key: 'expenses-form.submit.saveAsExpense' };
+		return { text: saveAsExpense, accessibleName: saveAsExpense };
 	}
-	return { text: 'Speichern', accessibleName: 'Ausgabe speichern' };
+	return {
+		text: { key: 'expenses-form.submit.save' },
+		accessibleName: { key: 'expenses-form.submit.saveAria' },
+	};
 }

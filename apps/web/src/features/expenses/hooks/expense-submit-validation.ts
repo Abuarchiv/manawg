@@ -3,7 +3,7 @@ import {
 	AMOUNT_MAX_EUROS,
 	AMOUNT_MIN_EUROS,
 	DESCRIPTION_MAX_LENGTH,
-	amountErrorMessage,
+	amountError,
 } from '@/features/expenses/expense-constants';
 import type { ExpenseFormFieldErrors } from '@/features/expenses/expense-types';
 
@@ -16,10 +16,10 @@ export function validateDescriptionAndAmount(input: {
 	const { description, amountEuros, amountText } = input;
 	const errors: ExpenseFormFieldErrors = {};
 	if (description.length === 0 || description.length > DESCRIPTION_MAX_LENGTH) {
-		errors.description = 'Gib eine kurze Beschreibung ein.';
+		errors.description = { key: 'expenses-form.validation.description' };
 	}
 	if (amountEuros === null || amountEuros < AMOUNT_MIN_EUROS || amountEuros > AMOUNT_MAX_EUROS) {
-		errors.amount = amountErrorMessage(amountEuros, amountText);
+		errors.amount = amountError(amountEuros, amountText);
 	}
 	return errors;
 }
@@ -33,7 +33,7 @@ export function validateExpenseFields(input: {
 }): ExpenseFormFieldErrors {
 	const errors = validateDescriptionAndAmount(input);
 	if (input.occurredOn.length === 0 || input.occurredOn > todayInputValue()) {
-		errors.date = 'Wähle ein Datum, das nicht in der Zukunft liegt.';
+		errors.date = { key: 'expenses-form.validation.date' };
 	}
 	return errors;
 }

@@ -17,9 +17,11 @@ import type {
 	ExpenseSplitShare,
 } from '@/features/expenses/expense-types';
 import type { ExpenseFormState } from '@/features/expenses/hooks/expense-page-context';
+import { type Message, useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
 import { useKeyboardOpen } from '@/shared/lib/use-keyboard-open';
 import { ArrowLeft } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useEffect, useRef, useState } from 'react';
 import { ExpenseCategoryField } from './ExpenseCategoryField';
 import { CloseDraftDialog, ReplaceDraftDialog } from './ExpenseDraftDialogs';
@@ -64,7 +66,7 @@ interface ExpenseFormSectionProps {
 	people: ExpenseFormPeople;
 	validation: ExpenseFormValidation;
 	handlers: ExpenseFormHandlers;
-	title: string;
+	title: Message;
 	notice: ActionNotice | null;
 	shareCode: string;
 	currency: string;
@@ -92,6 +94,8 @@ export function ExpenseFormSection({
 	recurringTemplateCount,
 	open,
 }: ExpenseFormSectionProps): React.ReactElement {
+	const t = useTranslations('expenses-form');
+	const message = useMessage();
 	const {
 		description,
 		setDescription,
@@ -146,6 +150,7 @@ export function ExpenseFormSection({
 		editingExpenseId,
 	});
 	const submitLabel = expenseSubmitLabel({ savesTemplate, editingRecurringExpense });
+	const textError = (error: Message | undefined) => (error ? message(error) : undefined);
 	const isDirty = useExpenseFormDirty({
 		description,
 		category,
@@ -200,11 +205,11 @@ export function ExpenseFormSection({
 								size="icon"
 								onClick={requestClose}
 								disabled={formSaving}
-								aria-label="Ausgabe abbrechen"
+								aria-label={t('actions.cancelAria')}
 							>
 								<ArrowLeft />
 							</Button>
-							<DialogTitle>{title}</DialogTitle>
+							<DialogTitle>{message(title)}</DialogTitle>
 						</div>
 					</DialogHeader>
 					<Separator />
@@ -229,16 +234,16 @@ export function ExpenseFormSection({
 								/>
 								<ExpenseTextField
 									id={EXPENSE_DESCRIPTION_FIELD_ID}
-									label="Beschreibung"
+									label={t('fields.description')}
 									value={description}
 									onChange={(value) => {
 										setDescription(value);
 										onClearFieldError('description');
 									}}
 									maxLength={DESCRIPTION_MAX_LENGTH}
-									placeholder="z. B. Wocheneinkauf"
+									placeholder={t('fields.descriptionPlaceholder')}
 									disabled={formSaving}
-									error={fieldErrors.description}
+									error={textError(fieldErrors.description)}
 									enterKeyHint="next"
 								/>
 								<ExpenseCategoryField
@@ -248,7 +253,7 @@ export function ExpenseFormSection({
 									disabled={formSaving}
 								/>
 								<ExpenseTextField
-									label="Betrag"
+									label={t('fields.amount')}
 									value={amountStr}
 									onChange={(value) => {
 										setAmountStr(value);
@@ -256,10 +261,10 @@ export function ExpenseFormSection({
 										onClearFieldError('splits');
 									}}
 									inputMode="decimal"
-									placeholder="0,00"
+									placeholder={t('fields.amountPlaceholder')}
 									suffix={currency === 'EUR' ? '€' : currency}
 									disabled={formSaving}
-									error={fieldErrors.amount}
+									error={textError(fieldErrors.amount)}
 									enterKeyHint="next"
 								/>
 								<ExpensePayerDateFields
@@ -270,7 +275,7 @@ export function ExpenseFormSection({
 									isEditingExpense={isEditingExpense}
 									occurredOn={extras.occurredOn}
 									setOccurredOn={extras.setOccurredOn}
-									dateError={fieldErrors.date}
+									dateError={textError(fieldErrors.date)}
 									onClearDateError={() => onClearFieldError('date')}
 									formSaving={formSaving}
 								/>
@@ -284,7 +289,7 @@ export function ExpenseFormSection({
 									participantIds={extras.participantIds}
 									setParticipantIds={extras.setParticipantIds}
 									reopenedShares={reopenedShares}
-									splitsError={fieldErrors.splits}
+									splitsError={textError(fieldErrors.splits)}
 									onClearSplitsError={() => onClearFieldError('splits')}
 									amountStr={amountStr}
 									currency={currency}
@@ -310,14 +315,14 @@ export function ExpenseFormSection({
 								/>
 								{formError && (
 									<Alert ref={formErrorRef} variant="destructive">
-										<AlertDescription>{formError}</AlertDescription>
+										<AlertDescription>{message(formError)}</AlertDescription>
 										{conflictExpenseId && (
 											<div className="flex flex-col gap-2 pt-3">
 												<Button type="button" variant="outline" onClick={onReloadServerVersion}>
-													Server-Version laden
+													{t('actions.loadServer')}
 												</Button>
 												<Button type="button" variant="outline" onClick={onKeepDraft}>
-													Meinen Entwurf behalten
+													{t('actions.keepDraft')}
 												</Button>
 											</div>
 										)}
@@ -338,10 +343,10 @@ export function ExpenseFormSection({
 									type="submit"
 									className="w-full"
 									disabled={submitBlocked}
-									aria-label={submitLabel.accessibleName}
+									aria-label={message(submitLabel.accessibleName)}
 								>
 									{formSaving && <Spinner data-icon="inline-start" />}
-									{submitLabel.text}
+									{message(submitLabel.text)}
 								</Button>
 								<Button
 									type="button"
@@ -350,7 +355,7 @@ export function ExpenseFormSection({
 									onClick={requestClose}
 									disabled={formSaving}
 								>
-									Abbrechen
+									{t('actions.cancel')}
 								</Button>
 							</div>
 							{editingTemplate && (
@@ -362,7 +367,7 @@ export function ExpenseFormSection({
 									disabled={submitBlocked}
 									onClick={onSubmit}
 								>
-									Als Ausgabe speichern
+									{t('submit.saveAsExpense')}
 								</Button>
 							)}
 						</div>

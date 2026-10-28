@@ -1,8 +1,9 @@
 'use client';
 
 import { apiFetch } from '@/core/infra/api-client';
-import { expenseActionErrorMessage } from '@/features/expenses/expense-errors';
+import { expenseActionError } from '@/features/expenses/expense-errors';
 import type { ExpenseSplit } from '@/features/expenses/expense-types';
+import { useMessage } from '@/shared/i18n/message';
 import type { ExpensePageContext } from './expense-page-context';
 
 /** Delete an expense and toggle a share's settled state, both optimistic with rollback. */
@@ -16,6 +17,7 @@ export function useExpenseRowActions({
 	updateExpenses,
 	reload,
 }: ExpensePageContext) {
+	const t = useMessage();
 	const expenseApiUrl = (expenseId: string) =>
 		`/api/wg/${encodeURIComponent(wg.shareCode)}/expenses/${encodeURIComponent(expenseId)}`;
 
@@ -44,19 +46,21 @@ export function useExpenseRowActions({
 					return restored;
 				});
 			}
-			const message =
-				res.status === 403
-					? 'Nur wer bezahlt hat oder beteiligt ist, kann diese Ausgabe löschen.'
-					: expenseActionErrorMessage(res.error);
-			notify.error(message);
+			notify.error(
+				t(
+					res.status === 403
+						? { key: 'expenses.notices.deleteForbidden' }
+						: expenseActionError(res.error),
+				),
+			);
 			pending.end(id);
 			return;
 		}
 
 		if (alreadyGone) {
-			notify.error('Diese Ausgabe existiert nicht mehr und wurde aus der Liste entfernt.');
+			notify.error(t({ key: 'expenses.notices.expenseGone' }));
 		} else {
-			toast.success('Ausgabe gelöscht.');
+			toast.success(t({ key: 'expenses.notices.deleted' }));
 		}
 		pending.end(id);
 		void reload();
@@ -98,15 +102,14 @@ export function useExpenseRowActions({
 				res.status === 404 &&
 				(res.error === 'split_not_found' || res.error === 'expense_not_found')
 			) {
-				notify.error('Diese Zahlung existiert nicht mehr. Die Ausgabenliste wird aktualisiert.');
+				notify.error(t({ key: 'expenses.notices.paymentGone' }));
 				void reload();
 			} else {
-				const message = expenseActionErrorMessage(res.error);
-				notify.error(message);
+				notify.error(t(expenseActionError(res.error)));
 				if (res.error === 'split_already_offset') void reload();
 			}
 		} else {
-			toast.success(settled ? 'Zahlung verbucht.' : 'Zahlung wieder geöffnet.');
+			toast.success(t({ key: settled ? 'expenses.notices.settled' : 'expenses.notices.reopened' }));
 			void reload();
 		}
 

@@ -23,6 +23,7 @@ import { formatEuroCents } from '@/core/utils/money';
 import type { SplitMode } from '@/features/expenses/expense-form-draft';
 import { type ReopenedShare, remainderCandidates } from '@/features/expenses/expense-split-input';
 import type { ExpenseSplitShare } from '@/features/expenses/expense-types';
+import { useLocale, useTranslations } from 'next-intl';
 import type { Dispatch, SetStateAction } from 'react';
 import { EqualParticipantsPicker } from './EqualParticipantsPicker';
 import { ManualSplitSummary } from './ManualSplitSummary';
@@ -51,7 +52,7 @@ interface ExpenseSplitFieldsetProps {
 }
 
 /**
- * "Beteiligte & Aufteilung": equal split preview or one share field per member. When an
+ * Participants and split: equal split preview or one share field per member. When an
  * existing expense has a moved-out member's share, that share stays locked.
  */
 export function ExpenseSplitFieldset({
@@ -73,6 +74,10 @@ export function ExpenseSplitFieldset({
 	isEditingExpense,
 	formSaving,
 }: ExpenseSplitFieldsetProps) {
+	const locale = useLocale();
+	const t = useTranslations('expenses-form.split');
+	const tForm = useTranslations('expenses-form.fields');
+	const tCommon = useTranslations('common');
 	const splitErrorId = 'expense-splits-error';
 	const hasLockedHistoricalShare =
 		isEditingExpense && splitCandidates.some((member) => !member.active);
@@ -80,12 +85,12 @@ export function ExpenseSplitFieldset({
 	const remainderMembers = remainderCandidates(members);
 	const firstSplitMemberId = splitCandidates[0]?.id;
 	const memberName = (id: string) =>
-		members.find((member) => member.id === id)?.name ?? 'Unbekannt';
+		members.find((member) => member.id === id)?.name ?? tCommon('unknownPerson');
 	const splitErrorTargetsMode =
 		Boolean(splitsError) && (splitMode !== 'manual' || firstSplitMemberId === undefined);
 	return (
 		<FieldSet disabled={formSaving} data-invalid={Boolean(splitsError)}>
-			<FieldLegend variant="label">Beteiligte & Aufteilung</FieldLegend>
+			<FieldLegend variant="label">{t('legend')}</FieldLegend>
 			<ToggleGroup
 				variant="segmented"
 				value={[splitMode]}
@@ -95,7 +100,7 @@ export function ExpenseSplitFieldset({
 					if (value === 'equal' || value === 'manual') setSplitMode(value);
 				}}
 				className="w-full"
-				aria-label="Aufteilung"
+				aria-label={t('toggleAria')}
 				aria-invalid={splitErrorTargetsMode ? true : undefined}
 				aria-describedby={splitErrorTargetsMode ? splitErrorId : undefined}
 			>
@@ -103,19 +108,17 @@ export function ExpenseSplitFieldset({
 					value="equal"
 					className="flex-1"
 					disabled={hasLockedHistoricalShare}
-					aria-label="Aufteilung: Gleichmäßig"
+					aria-label={t('equalAria')}
 					aria-describedby={hasLockedHistoricalShare ? historicalShareHintId : undefined}
 				>
-					Gleichmäßig
+					{t('equal')}
 				</ToggleGroupItem>
-				<ToggleGroupItem value="manual" className="flex-1" aria-label="Aufteilung: Manuell">
-					Manuell
+				<ToggleGroupItem value="manual" className="flex-1" aria-label={t('manualAria')}>
+					{t('manual')}
 				</ToggleGroupItem>
 			</ToggleGroup>
 			{hasLockedHistoricalShare && (
-				<FieldDescription id={historicalShareHintId}>
-					Ausgezogene Anteile bleiben unverändert; nur aktive Personen übernehmen den Rest.
-				</FieldDescription>
+				<FieldDescription id={historicalShareHintId}>{t('lockedHint')}</FieldDescription>
 			)}
 			{splitsError && <FieldError id={splitErrorId}>{splitsError}</FieldError>}
 			{splitMode === 'manual' && (
@@ -130,7 +133,7 @@ export function ExpenseSplitFieldset({
 								{member.name}
 								{isEditingExpense && !member.active && (
 									<span className="ml-1 text-xs font-normal text-muted-foreground">
-										(ausgezogen)
+										{t('movedOut')}
 									</span>
 								)}
 							</FieldLabel>
@@ -148,15 +151,18 @@ export function ExpenseSplitFieldset({
 										onClearSplitsError();
 									}}
 									onBlur={(event) => {
-										const euros = parseEuroAmount(event.target.value);
+										const euros = parseEuroAmount(event.target.value, locale);
 										if (euros === null || euros < 0) return;
-										const formatted = formatEuroInput(euros);
+										const formatted = formatEuroInput(euros, locale);
 										setManualSplits((previous) => ({ ...previous, [member.id]: formatted }));
 									}}
-									placeholder="0,00"
+									placeholder={tForm('amountPlaceholder')}
 									disabled={formSaving || (isEditingExpense && !member.active)}
 									enterKeyHint={index === splitCandidates.length - 1 ? 'done' : 'next'}
-									aria-label={`Anteil ${member.name} in ${currency === 'EUR' ? 'Euro' : currency}${isEditingExpense && !member.active ? ', ausgezogen. Anteil bleibt unverändert.' : ''}`}
+									aria-label={t(
+										isEditingExpense && !member.active ? 'shareAriaMovedOut' : 'shareAria',
+										{ name: member.name, currency },
+									)}
 									aria-invalid={
 										Boolean(splitsError) && member.id === firstSplitMemberId ? true : undefined
 									}
@@ -183,9 +189,9 @@ export function ExpenseSplitFieldset({
 					/>
 					{!splitsError && (
 						<FieldDescription>
-							Leer lassen oder{' '}
-							<span className="font-mono tabular-nums">{formatEuroCents(0, currency)}</span> für
-							keinen Anteil.
+							{t('zeroHint', {
+								zero: formatEuroCents(0, currency, { locale }),
+							})}
 						</FieldDescription>
 					)}
 				</FieldGroup>
@@ -215,12 +221,15 @@ export function ExpenseSplitFieldset({
 					<AlertDescription className="flex flex-col gap-1">
 						{reopenedShares.map((share) => (
 							<span key={share.debtorMemberId}>
-								Der Anteil von {memberName(share.debtorMemberId)} (
-								{formatEuroCents(share.previousCents, currency)}) ist schon als bezahlt vermerkt und
-								wird wegen der Änderung wieder geöffnet
-								{share.nextCents === null
-									? ' (entfällt).'
-									: ` (neu ${formatEuroCents(share.nextCents, currency)}).`}
+								{t('reopened', {
+									name: memberName(share.debtorMemberId),
+									previous: formatEuroCents(share.previousCents, currency, { locale }),
+									removed: share.nextCents === null ? 'yes' : 'other',
+									next:
+										share.nextCents === null
+											? ''
+											: formatEuroCents(share.nextCents, currency, { locale }),
+								})}
 							</span>
 						))}
 					</AlertDescription>

@@ -13,7 +13,6 @@ import {
 	OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE,
 	OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
 	OFFLINE_SAVED_NOTICE,
-	keyUnavailableMessage,
 } from '@/core/offline/offline-copy';
 import { eurosToCents, parseEuroAmount } from '@/core/utils/amount';
 import {
@@ -23,9 +22,9 @@ import {
 	todayInputValue,
 } from '@/core/utils/local-date';
 import {
-	EDITED_EXPENSE_DELETED_MESSAGE,
-	expenseSaveErrorMessage,
-	splitInputErrorMessage,
+	EDITED_EXPENSE_DELETED,
+	expenseSaveError,
+	splitInputError,
 } from '@/features/expenses/expense-errors';
 import { manualSplitsFingerprint } from '@/features/expenses/expense-split-input';
 import type { Expense, RecurringExpense } from '@/features/expenses/expense-types';
@@ -36,6 +35,8 @@ import {
 } from '@/features/expenses/optimistic-expense';
 import { buildQueuedExpenseAction } from '@/features/expenses/queued-expense-action';
 import type { DebtorShare } from '@/features/expenses/split-math';
+import { type Message, useMessage } from '@/shared/i18n/message';
+import { useLocale } from 'next-intl';
 import { useRef, useState } from 'react';
 import type { ExpenseFormState, ExpensePageContext } from './expense-page-context';
 import { validateExpenseFields } from './expense-submit-validation';
@@ -71,6 +72,8 @@ export function useExpenseSubmit(
 		reload,
 		refreshQueuedCount,
 	} = ctx;
+	const t = useMessage();
+	const locale = useLocale();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const [submitting, setSubmitting] = useState(false);
 	const submittingRef = useRef(false);
@@ -92,16 +95,14 @@ export function useExpenseSubmit(
 		} = form;
 		support.setFieldErrors({});
 		if (form.invalidEditDraft) {
-			form.setFormError(
-				'Die Zuordnung dieses Entwurfs ist beschädigt. Öffne die ursprüngliche Ausgabe erneut oder verwirf den Entwurf.',
-			);
+			form.setFormError({ key: 'expenses-form.notices.draftBroken' });
 			return;
 		}
 		if (!submittingRef.current && support.discardSentQueueEdit('expense.create')) return;
 		form.setFormError(null);
 		form.setConflictExpenseId(null);
 		const desc = form.description.trim();
-		const amountEuros = parseEuroAmount(form.amountStr);
+		const amountEuros = parseEuroAmount(form.amountStr, locale);
 		const occurredOn = inputDateOrToday(form.extras.pickedOccurredOn);
 		const validationErrors = validateExpenseFields({
 			description: desc,
@@ -148,9 +149,7 @@ export function useExpenseSubmit(
 				: (queuedRecurringNextDueAt ?? recurringTemplateForCreate?.nextDueAt)
 			: undefined;
 		if (!isEdit && recurringSourceId && !expectedRecurringNextDueAt) {
-			notify.error(
-				'Fixkosten-Vorlage ist nicht verfügbar. Aktualisiere die Seite und versuche es erneut.',
-			);
+			notify.error(t({ key: 'expenses-form.notices.templateUnavailable' }));
 			return;
 		}
 		let splits: DebtorShare[];
@@ -159,7 +158,7 @@ export function useExpenseSubmit(
 		} else {
 			const splitResult = support.buildSplits(amountCents);
 			if (!splitResult.ok) {
-				support.setValidationErrors({ splits: splitInputErrorMessage(splitResult.reason) });
+				support.setValidationErrors({ splits: splitInputError(splitResult.reason) });
 				return;
 			}
 			splits = splitResult.splits;
@@ -200,7 +199,7 @@ export function useExpenseSubmit(
 		};
 		const idempotencyKey = isEdit ? null : resolveIdempotencyKey(pendingRequest, fingerprint);
 		if (!isEdit && !idempotencyKey) {
-			notify.error(keyUnavailableMessage('Ausgabe', 'gesendet'));
+			notify.error(t({ key: 'expenses-form.notices.keyUnavailableExpense' }));
 			finishSubmitting();
 			return;
 		}
@@ -296,10 +295,10 @@ export function useExpenseSubmit(
 				pendingRequestRef.current = null;
 			}
 			if (isEdit && res.status === 404 && res.error === 'expense_not_found') {
-				form.setFormError(EDITED_EXPENSE_DELETED_MESSAGE);
+				form.setFormError(EDITED_EXPENSE_DELETED);
 				updateExpenses((current) => current.filter((expense) => expense.id !== editingExpense.id));
 				pending.end(optimisticId);
-				reportError('Diese Ausgabe existiert nicht mehr und wurde aus der Liste entfernt.');
+				reportError(t({ key: 'expenses.notices.expenseGone' }));
 				void reload();
 				finishSubmitting();
 				return;
@@ -307,9 +306,9 @@ export function useExpenseSubmit(
 			// Only the version check on edit is an edit conflict; other 409s
 			// (e.g. recurring expense already taken over) have their own texts.
 			const isConflict = res.status === 409 && res.error === 'expense_changed';
-			const msg = isConflict
-				? 'Diese Ausgabe wurde inzwischen geändert. Lade die Liste neu und entscheide dann, welche Version stimmt.'
-				: expenseSaveErrorMessage(res.error);
+			const msg: Message = isConflict
+				? { key: 'expenses-form.notices.conflict' }
+				: expenseSaveError(res.error);
 			if (isConflict) form.setConflictExpenseId(editingExpense?.id ?? null);
 			rollbackOptimisticExpense();
 			pending.end(optimisticId);
@@ -344,9 +343,7 @@ export function useExpenseSubmit(
 			notify.warning(pushWarning);
 		} else {
 			notify.success(
-				isEdit
-					? 'Ausgabe aktualisiert. Hier wird kein Geld überwiesen.'
-					: 'Ausgabe gespeichert. Hier wird kein Geld überwiesen.',
+				t({ key: isEdit ? 'expenses-form.notices.updated' : 'expenses-form.notices.saved' }),
 			);
 		}
 		if (recurringSourceId) {

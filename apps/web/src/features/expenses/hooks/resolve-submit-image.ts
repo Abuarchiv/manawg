@@ -1,7 +1,7 @@
 import { isPendingImageToken, uploadPendingImageToken } from '@/core/offline/offline-images';
+import type { Message } from '@/shared/i18n/message';
 
-export const RECEIPT_UPLOAD_FAILED =
-	'Beleg konnte nicht hochgeladen werden. Versuche es erneut oder entferne ihn.';
+export const RECEIPT_UPLOAD_FAILED: Message = { key: 'expenses-form.notices.receiptUploadFailed' };
 
 /**
  * The image to send with a save. Submit is disabled while an upload runs, so a pending token
