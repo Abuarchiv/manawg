@@ -120,23 +120,6 @@ export function productionSessionDatabaseUrl(value, env = process.env) {
 	return pinnedSessionPoolerUrl(value, host, 'postgres', 'Production CI');
 }
 
-/**
- * Turn a Neon pooled host into its direct one. Neon's pooled endpoint is the
- * direct endpoint with a `-pooler` label inserted:
- *   ep-xxx-pooler.region.aws.neon.tech  ->  ep-xxx.region.aws.neon.tech
- * A URL that has no such label (a non-Neon or already-direct host) is returned
- * untouched.
- */
-function toDirectEndpoint(url) {
-	try {
-		const parsed = new URL(url);
-		parsed.hostname = parsed.hostname.replace(/-pooler\./, '.');
-		return parsed.toString();
-	} catch {
-		return url;
-	}
-}
-
 export function resolveConnectionString(env = process.env) {
 	const migrationUrl = env.DATABASE_MIGRATION_URL;
 	if (migrationUrl) {
@@ -146,9 +129,8 @@ export function resolveConnectionString(env = process.env) {
 
 	const pooled = env.POSTGRES_URL ?? env.DATABASE_URL;
 	if (pooled) {
-		const direct = toDirectEndpoint(pooled);
-		validateDatabaseUrl(direct, 'POSTGRES_URL/DATABASE_URL');
-		return direct;
+		validateDatabaseUrl(pooled, 'POSTGRES_URL/DATABASE_URL');
+		return pooled;
 	}
 
 	const direct = env.POSTGRES_URL_NON_POOLING ?? env.DATABASE_URL_UNPOOLED;
