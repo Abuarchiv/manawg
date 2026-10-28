@@ -13,7 +13,7 @@ import { expectNoGermanChrome, expectNoHorizontalOverflow, setEnglishLocale } fr
 
 const BASE = `/wg/${FIXTURE_WG.shareCode}`;
 const API = `**/api/wg/${FIXTURE_WG.shareCode}`;
-const UNKNOWN = '?';
+const UNKNOWN = '\u001F';
 
 const previewBody = {
 	parsed: [
@@ -89,6 +89,7 @@ test.describe('English expense import', () => {
 				await openWizard(page);
 
 				await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
+				await expect(page).toHaveTitle(/Import expenses/);
 				await expect(
 					page.getByRole('heading', { level: 1, name: 'Import expenses' }),
 				).toBeVisible();
@@ -186,6 +187,46 @@ test.describe('English expense import', () => {
 			page.getByText('Photo or screenshot up to 10 MB. Only euro amounts (EUR) are recognised.'),
 		).toBeVisible();
 		await expect(page.getByText('Check or correct the result')).toBeVisible();
+		await expectNoGermanChrome(page);
+		await expectNoHorizontalOverflow(page);
+	});
+
+	test('the Splid source and its input step read English', async ({ context, page, baseURL }) => {
+		await setEnglishLocale(context, baseURL ?? 'http://localhost:3111');
+		await page.setViewportSize({ width: 390, height: 844 });
+		await setupMember(page);
+		await mockHistory(page);
+		await openWizard(page);
+
+		await page.getByRole('button', { name: /Splid CSV/ }).click();
+		await expect(page.getByRole('heading', { name: 'Choose the export file' })).toBeVisible();
+		await expect(page.getByText('Export file up to 5 MB.')).toBeVisible();
+		await expectNoGermanChrome(page);
+		await expectNoHorizontalOverflow(page);
+	});
+
+	test('the route error boundary reads English', async ({ context, page, baseURL }) => {
+		await setEnglishLocale(context, baseURL ?? 'http://localhost:3111');
+		await page.setViewportSize({ width: 390, height: 844 });
+		await setupMember(page);
+		await mockHistory(page);
+		// A preview without `splits` makes the preview table throw while rendering.
+		const broken = {
+			...previewBody,
+			conflicts: [],
+			parsed: [{ ...previewBody.parsed[0], splits: undefined }],
+		};
+		await page.route(`${API}/imports/preview`, (route) => route.fulfill({ json: broken }));
+		await openWizard(page);
+		await pasteExport(page);
+		await page.getByRole('button', { name: 'Create preview', exact: true }).click();
+
+		await expect(
+			page.getByRole('heading', { name: 'The import assistant could not be loaded' }),
+		).toBeVisible();
+		await expect(
+			page.getByText('Something went wrong while loading the import assistant.'),
+		).toBeVisible();
 		await expectNoGermanChrome(page);
 		await expectNoHorizontalOverflow(page);
 	});

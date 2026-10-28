@@ -31,7 +31,7 @@
 - [x] 3.1 Package A shell, navigation, dashboard, activity client, error pages; verify its English spec and empty baseline for owned files
 - [x] 3.2 Package B expenses and expense form; verify English amount entry saves correct cents
 - [x] 3.3 Package C debts, settlement, reminders page; verify English spec
-- [x] 3.4 Package D import and OCR; verify English spec and OCR unknown payer is `null`
+- [x] 3.4 Package D import and OCR; verify English spec; OCR unknown payer is a control-character mapping key (not `null`, the member mapping is keyed by name) that the UI renders as `common.unknownPerson`
 - [x] 3.5 Package E fixed costs and statement page; verify English spec
 - [x] 3.6 Package F chores with `action` keys instead of German labels; verify English spec and no verb choice in code
 - [x] 3.7 Package G calendar; verify English spec

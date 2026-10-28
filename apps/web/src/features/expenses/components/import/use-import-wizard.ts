@@ -86,7 +86,7 @@ export function useImportWizard() {
 		[members],
 	);
 	const namesNeedingMapping = useMemo(() => namesInPreview(preview), [preview]);
-	// Rows naming someone chosen as "Nicht übernehmen" stay skipped whatever the toggles say.
+	// Rows naming someone chosen as skip stay skipped whatever the toggles say.
 	const effectiveSkipIndexes = useMemo(
 		() => new Set([...skipIndexes, ...rowsWithSkippedNames(preview, mapping)]),
 		[skipIndexes, preview, mapping],
@@ -259,7 +259,7 @@ export function useImportWizard() {
 		clearImportError();
 	}
 
-	/** Step navigation by the "Zurück" buttons. */
+	/** Step navigation by the Back buttons. */
 	function goTo(next: ImportStep): void {
 		clearImportError();
 		setStep(next);

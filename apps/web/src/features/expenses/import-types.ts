@@ -1,5 +1,9 @@
-/** Name key for a payer the source does not name (an OCR line without a payer); the UI shows `common.unknownPerson`. */
-export const UNKNOWN_NAME = '?';
+/**
+ * Mapping key for a payer the source does not name (an OCR line without a payer); the UI shows
+ * `common.unknownPerson`. A control character, so no CSV or OCR name can equal it (`parseCsv`
+ * strips it, the OCR payer pattern allows letters only).
+ */
+export const UNKNOWN_NAME = '\u001F';
 
 export interface ParsedSplit {
 	memberName: string;

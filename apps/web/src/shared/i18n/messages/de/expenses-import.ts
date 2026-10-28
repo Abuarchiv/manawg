@@ -78,7 +78,7 @@ export default {
 		unmatched: '{name} (nicht zugeordnet)',
 		splitAria: 'Aufteilung',
 		rejectedTitle:
-			'{count, plural, one {# Zeile konnte nicht gelesen werden} other {# Zeilen konnten nicht gelesen werden}}',
+			'{count, plural, one {{count, number, ::group-off} Zeile konnte nicht gelesen werden} other {{count, number, ::group-off} Zeilen konnten nicht gelesen werden}}',
 		rejectedDetails: 'Details anzeigen',
 		rejectedRow: 'Zeile {line}: {description} ({reason})',
 	},
@@ -101,7 +101,7 @@ export default {
 		withoutErrors: 'Ohne Fehler',
 		retry: 'Bitte erneut versuchen.',
 		summary:
-			'{inserted} importiert · {skipped} übersprungen · {errors, plural, one {# Fehler} other {# Fehler}}',
+			'{inserted} importiert · {skipped} übersprungen · {errors, plural, one {{errors, number, ::group-off} Fehler} other {{errors, number, ::group-off} Fehler}}',
 	},
 	leave: {
 		title: 'Import-Eingaben verwerfen?',
@@ -118,8 +118,10 @@ export default {
 		screenshot: 'Screenshot',
 		other: 'Import',
 		description: '{source} vom {date}',
-		entry: '{description}: {count, plural, one {# Ausgabe} other {# Ausgaben}}',
-		entryBy: '{description}: {count, plural, one {# Ausgabe} other {# Ausgaben}}, von {author}',
+		entry:
+			'{description}: {count, plural, one {{count, number, ::group-off} Ausgabe} other {{count, number, ::group-off} Ausgaben}}',
+		entryBy:
+			'{description}: {count, plural, one {{count, number, ::group-off} Ausgabe} other {{count, number, ::group-off} Ausgaben}}, von {author}',
 		undoLabel: '{description} rückgängig machen',
 	},
 	undo: {
@@ -128,7 +130,7 @@ export default {
 		confirmAria: '{label}: wirklich entfernen',
 		cancel: 'Abbrechen',
 		doneUnknown: 'Import rückgängig gemacht.',
-		done: 'Import rückgängig gemacht: {count, plural, one {# Ausgabe} other {# Ausgaben}} entfernt.',
+		done: 'Import rückgängig gemacht: {count, plural, one {{count, number, ::group-off} Ausgabe} other {{count, number, ::group-off} Ausgaben}} entfernt.',
 		errors: {
 			settled:
 				'Einige Anteile dieses Imports sind schon bezahlt. Entferne die Ausgaben einzeln, wenn sie falsch sind.',

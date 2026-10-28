@@ -24,3 +24,8 @@ test('ignored CSV columns are quoted and joined into one message', () => {
 		},
 	});
 });
+
+test('CSV fields cannot carry the unknown name', async () => {
+	const { parseCsv } = await import('./import-csv-helpers');
+	assert.deepEqual(parseCsv(`a,${UNKNOWN_NAME}b\n`, ',')[0]?.fields, ['a', 'b']);
+});
