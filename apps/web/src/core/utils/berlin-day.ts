@@ -1,10 +1,9 @@
 /**
- * Day-boundary helpers for Europe/Berlin.
+ * Day-boundary helpers for Europe/Berlin, the app's fixed wall-clock zone.
  *
- * Vercel functions run in UTC, so `setHours(0, 0, 0, 0)` yields UTC midnight —
- * one or two hours after the Berlin day already started. These helpers resolve
- * "today" the way WG members experience it: by the Berlin wall clock,
- * including both DST transitions (23h spring-forward and 25h fall-back days).
+ * Server processes run in UTC, so `setHours(0, 0, 0, 0)` would give UTC
+ * midnight. These helpers resolve "today" by the Berlin wall clock across both
+ * DST transitions (23h spring-forward and 25h fall-back days).
  */
 
 import { MS_PER_HOUR } from './time';

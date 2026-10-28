@@ -100,8 +100,13 @@ export function CalendarMonth({
 		});
 	}, [selectedDay]);
 
-	// Reset roving focus with the new month and restore it after keyboard navigation.
+	// Reset roving focus with the new month and restore it after keyboard navigation. Events that
+	// load for the month change `days` but not the dates, so they keep the focus where it is.
+	const focusResetKeyRef = useRef('');
 	useEffect(() => {
+		const resetKey = [month, selectedDay, today].map((d) => (d ? dayKey(d) : '')).join('|');
+		if (resetKey === focusResetKeyRef.current) return;
+		focusResetKeyRef.current = resetKey;
 		const nextFocusedIndex = pickInitialFocusIndex(days, selectedDay, today, month);
 		setFocusedIndex(nextFocusedIndex);
 		if (!shouldFocusRef.current) return;

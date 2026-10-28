@@ -98,12 +98,14 @@ export default function GlobalError({
 							<a href="/" className={buttonVariants({ variant: 'outline', size: 'lg' })}>
 								{copy.home}
 							</a>
-							<a
-								href={SUPPORT_MAILTO}
-								className={buttonVariants({ variant: 'outline', size: 'lg' })}
-							>
-								{copy.report}
-							</a>
+							{SUPPORT_MAILTO && (
+								<a
+									href={SUPPORT_MAILTO}
+									className={buttonVariants({ variant: 'outline', size: 'lg' })}
+								>
+									{copy.report}
+								</a>
+							)}
 						</EmptyContent>
 					</Empty>
 				</main>

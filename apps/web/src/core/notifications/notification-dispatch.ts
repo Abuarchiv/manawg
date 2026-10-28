@@ -103,21 +103,24 @@ function berlinCurrentHour(now = new Date()): number {
 	return hour ? Number(hour) : 0;
 }
 
-function resolveVapidSubject(): string {
-	const subject = process.env.VAPID_SUBJECT;
-	if (subject && subject.length > 0) return subject;
-	if (process.env.VERCEL_ENV === 'production') {
+/** The contact the push services reach for abuse; null in development and tests, where push is skipped. */
+function resolveVapidSubject(): string | null {
+	const subject = process.env.VAPID_SUBJECT?.trim();
+	if (subject) return subject;
+	if (process.env.NODE_ENV === 'production') {
 		throw new Error('VAPID_SUBJECT must be configured in production');
 	}
-	return 'mailto:info@manawg.com';
+	return null;
 }
 
 async function configureWebPush(): Promise<typeof import('web-push') | null> {
 	const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 	const privateKey = process.env.VAPID_PRIVATE_KEY;
 	if (!publicKey || !privateKey) return null;
+	const subject = resolveVapidSubject();
+	if (!subject) return null;
 	const webPush = await import('web-push');
-	webPush.setVapidDetails(resolveVapidSubject(), publicKey, privateKey);
+	webPush.setVapidDetails(subject, publicKey, privateKey);
 	return webPush;
 }
 
@@ -311,7 +314,11 @@ export async function dispatchNotification(
 		if (failures[0]) throw failures[0];
 		// Push is configured, but the member has no live subscription left
 		// (opted out, or the push service answered 404/410 and it was removed).
-		if (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+		if (
+			process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY &&
+			process.env.VAPID_PRIVATE_KEY &&
+			process.env.VAPID_SUBJECT?.trim()
+		) {
 			throw new NoPushSubscriptionError();
 		}
 		throw new Error('notification_delivery_failed');

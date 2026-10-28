@@ -12,9 +12,6 @@ import type { Locale } from '@/shared/i18n/locale';
  * The counterpart to `split-math.ts`: that module owns the arithmetic, this
  * one owns the step before it — reading euro strings out of the form, deciding
  * who takes part, and reporting why an input cannot become a valid split.
- *
- * Extracted from `ausgaben/page.tsx`, where it could only be exercised by
- * rendering the whole page and driving the form.
  */
 
 export interface SplitMemberLike {

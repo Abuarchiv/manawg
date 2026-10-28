@@ -32,7 +32,12 @@ function withFetch(
 	});
 }
 
-const production = { VERCEL_ENV: 'production', RESEND_API_KEY: 're_test' };
+const SENDER = 'ManaWG <noreply@wg.example.com>';
+const production = {
+	VERCEL_ENV: 'production',
+	RESEND_API_KEY: 're_test',
+	STATEMENT_EMAIL_FROM: SENDER,
+};
 
 test('outside production or without a key nothing is sent', async () => {
 	await withFetch(
@@ -64,6 +69,7 @@ test('an allow-list lets a preview deployment really send', () => {
 	const env = {
 		VERCEL_ENV: 'preview',
 		RESEND_API_KEY: 're_test',
+		STATEMENT_EMAIL_FROM: SENDER,
 		STATEMENT_EMAIL_ALLOWLIST: 'A@x.de',
 	};
 	assert.equal(createStatementTransport(env).name, 'resend');

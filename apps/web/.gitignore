@@ -3,4 +3,4 @@
 .next-e2e-*
 .next-e2e-tsconfig-*.json
 supabase/.temp
-.env*
+next-env.d.ts

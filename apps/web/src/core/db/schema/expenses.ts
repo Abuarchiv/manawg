@@ -79,10 +79,8 @@ export const expenses = pgTable(
 			.where(sql`${t.importDuplicateKey} IS NOT NULL`),
 		importIdx: index('expenses_import_idx').on(t.importId),
 		// Every write path (POST/PATCH validators, import parsers, the recurring
-		// cron) already rejects amountCents <= 0 in JS. Added NOT VALID in the
-		// migration — this table predates that validation, so an old row from
-		// before it existed could still be 0 or negative — new writes are
-		// checked immediately either way.
+		// cron) already rejects amountCents <= 0 in JS. NOT VALID: existing rows
+		// are not re-checked; new writes are.
 		amountCheck: check('expenses_amount_cents_check', sql`${t.amountCents} > 0`),
 		// Keep in sync with EXPENSE_CATEGORIES in features/expenses/expense-categories.ts.
 		categoryCheck: check(

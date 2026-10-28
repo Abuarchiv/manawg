@@ -28,6 +28,12 @@ const memberAbsences = {
 };
 const pushSubscriptions = { memberId: 'pushSubscriptions.memberId' };
 const wgs = { id: 'wgs.id', name: 'wgs.name', shareCode: 'wgs.shareCode' };
+const idempotencyResponses = {
+	scope: 'idempotency.scope',
+	key: 'idempotency.key',
+	expiresAt: 'idempotency.expiresAt',
+	responseBody: 'idempotency.responseBody',
+};
 
 const state = {
 	candidateWhere: null as Op | null,
@@ -41,6 +47,7 @@ const state = {
 	stamped: null as unknown[] | null,
 	rows: [] as Record<string, unknown>[],
 	unassignedRows: [] as Record<string, unknown>[],
+	claims: new Set<string>(),
 };
 
 const op =
@@ -77,6 +84,29 @@ const db = {
 		};
 		return query;
 	},
+	insert(table: unknown) {
+		assert.equal(table, idempotencyResponses);
+		return {
+			values: (row: { key: string }) => ({
+				onConflictDoNothing: () => ({
+					returning: async () => {
+						if (state.claims.has(row.key)) return [];
+						state.claims.add(row.key);
+						return [{ key: row.key }];
+					},
+				}),
+			}),
+		};
+	},
+	delete(table: unknown) {
+		assert.equal(table, idempotencyResponses);
+		return {
+			where: async (predicate: Op) => {
+				const keyCondition = predicate.args[1] as Op;
+				state.claims.delete(keyCondition.args[1] as string);
+			},
+		};
+	},
 	update(table: unknown) {
 		assert.equal(table, chores);
 		return {
@@ -90,7 +120,16 @@ const db = {
 };
 
 mock.module('@/core/db', {
-	namedExports: { choreCompletions, chores, db, memberAbsences, pushSubscriptions, wgMembers, wgs },
+	namedExports: {
+		choreCompletions,
+		chores,
+		db,
+		idempotencyResponses,
+		memberAbsences,
+		pushSubscriptions,
+		wgMembers,
+		wgs,
+	},
 });
 mock.module('@/core/infra/cron-auth', { namedExports: { requireCronSecret: () => null } });
 mock.module('@/core/infra/observability', {
@@ -140,7 +179,6 @@ mock.module('drizzle-orm', {
 
 const { GET } = await import('./route');
 
-// The route remembers claimed chore ids per process, so every harness uses fresh ids.
 let harnessRuns = 0;
 
 function chore(index: number) {
@@ -174,6 +212,7 @@ function harness({
 		payloads: [],
 		targets: [],
 		stamped: null,
+		claims: new Set<string>(),
 		rows: Array.from({ length: choreCount }, (_, index) => chore(index)),
 		unassignedRows: Array.from({ length: unassignedCount }, (_, index) => ({
 			...chore(index),

@@ -70,7 +70,7 @@ const GERMAN_RE =
 /** Quoted UI copy inside an English comment ("gelöscht", „Nächste:r“) is not a German comment. */
 const QUOTED_RE = /„[^“”]*[“”]|"[^"\n]*"|'[^'\n]*'|`[^`\n]*`|«[^»]*»/g;
 const HISTORY_RE =
-	/\b(used to|previously|no longer|formerly|was changed|we now|now (?:fails|returns|uses|rejects|throws)|ponytail)\b/i;
+	/\b(used to|previously|no longer|formerly|was changed|we now|now (?:fails|returns|uses|rejects|throws)|extracted (?:from|here)|carried their|kept for history|moved into the|once (?:let|caused|made)|ponytail)\b/i;
 
 const MODULE_EXTENSIONS = ['.ts', '.tsx', '.mjs', '.js'];
 const CODE_RE = /\.(ts|tsx|mjs|cjs|js)$/;

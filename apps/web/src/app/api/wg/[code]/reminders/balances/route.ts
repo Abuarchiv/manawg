@@ -4,8 +4,8 @@ import { db, wgMembers } from '@/core/db';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { computeBalances, computeOldestDebtAges } from '@/features/expenses/debts';
+import { loadExpensesWithSplits } from '@/features/expenses/server/expense-ledger';
 import { loadCompletedExpensePayments } from '@/features/expenses/server/expense-payments';
-import { loadOpenExpenses } from '@/features/expenses/server/open-expenses';
 
 interface BalanceDto {
 	debtor_id: string;
@@ -22,7 +22,7 @@ export const GET = withWgRoute('reminders/balances GET', async (req, { code }) =
 	const wgId = auth.wg.id;
 
 	const [openExpenses, payments] = await Promise.all([
-		loadOpenExpenses(wgId),
+		loadExpensesWithSplits(wgId),
 		loadCompletedExpensePayments(wgId),
 	]);
 	const allBalances = computeBalances(openExpenses, payments);

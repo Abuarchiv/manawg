@@ -263,7 +263,8 @@ Mutation error copy goes through `mutationError` (`core/http/error-codes.ts`); f
   active member of another account is refused (`endpoint_owned`).
 - Payloads carry a relative `/wg/<code>/…` link, a TTL (12 h urgent, 24 h otherwise) and a
   10 s request timeout, so stale reminders are not delivered days later.
-- Without VAPID variables push is disabled; in production `VAPID_SUBJECT` is required.
+- Without VAPID keys push is disabled. `VAPID_SUBJECT` (the contact for the push services) is
+  required when `NODE_ENV` is `production`; in development and tests, push is skipped without it.
 
 ## Privacy and observability
 
@@ -286,10 +287,11 @@ Mutation error copy goes through `mutationError` (`core/http/error-codes.ts`); f
 ## Database
 
 - Schema: `core/db/schema/` (Drizzle, one file per area; `core/db/schema.ts` re-exports them). Migrations: `apps/web/drizzle/` with
-  `meta/_journal.json`; `0000_baseline.sql` replaced an earlier non-replayable chain.
-  `scripts/db-migrate.mjs` applies them under an advisory lock, checks the ledger against the
-  journal (fail-closed, with an explicit legacy-hash allowlist) and verifies the result
-  (`--check`).
+  `meta/_journal.json`; `0000_baseline.sql` creates the full schema and later files are
+  incremental. `scripts/db-migrate.mjs` applies them under an advisory lock, checks the ledger
+  against the journal (fail-closed) and verifies the result (`--check`). A short fixed allowlist
+  of old ledger hashes (`scripts/db-migrate/legacy-adoption.mjs`) only matters for databases
+  created before the baseline.
 - Security: RLS is enabled on the application tables (`0010_enable_public_rls.sql`; later tables
   in `0015`, `0017`) without policies, as defense in depth. Privileges for `anon`,
   `authenticated` and `PUBLIC` are revoked (`0007`, `0016`). The app reads and writes tables

@@ -35,7 +35,7 @@ function signInRedirect(request: NextRequest, response: NextResponse): NextRespo
 /**
  * Keep `manawg_signed_in` in step with the session cookies the browser sent. A session that
  * predates the hint (cookies written by the old browser client, readable by scripts) is
- * migrated once: the same values are written again, now HttpOnly, next to the hint.
+ * migrated once: the same values are written again as HttpOnly cookies, next to the hint.
  */
 function syncSessionHint(request: NextRequest, response: NextResponse, signedIn: boolean): void {
 	const https = request.nextUrl.protocol === 'https:';

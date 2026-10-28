@@ -2,22 +2,61 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createMailTransport, smtpOptions } from './transport';
 
+const FROM = 'ManaWG <noreply@wg.example.com>';
+const OFFICIAL = 'https://app.manawg.com';
+
 test('a configured SMTP host sends over SMTP, also without Vercel production', () => {
-	assert.equal(createMailTransport({ SMTP_HOST: 'mailpit', SMTP_PORT: '1025' }).name, 'smtp');
 	assert.equal(
-		createMailTransport({ SMTP_HOST: 'smtp.example.com', VERCEL_ENV: 'production' }).name,
+		createMailTransport({ SMTP_HOST: 'mailpit', SMTP_PORT: '1025', STATEMENT_EMAIL_FROM: FROM })
+			.name,
+		'smtp',
+	);
+	assert.equal(
+		createMailTransport({
+			SMTP_HOST: 'smtp.example.com',
+			VERCEL_ENV: 'production',
+			STATEMENT_EMAIL_FROM: FROM,
+		}).name,
 		'smtp',
 	);
 });
 
-test('without SMTP the Resend rules stay as they were', () => {
+test('without SMTP, Resend is used in production or with an allow-list and a key', () => {
 	assert.equal(createMailTransport({}).name, 'dry-run');
 	assert.equal(createMailTransport({ RESEND_API_KEY: 're_test' }).name, 'dry-run');
 	assert.equal(
-		createMailTransport({ RESEND_API_KEY: 're_test', VERCEL_ENV: 'production' }).name,
+		createMailTransport({
+			RESEND_API_KEY: 're_test',
+			VERCEL_ENV: 'production',
+			STATEMENT_EMAIL_FROM: FROM,
+		}).name,
 		'resend',
 	);
 	assert.throws(() => createMailTransport({ VERCEL_ENV: 'production' }), /RESEND_API_KEY/);
+});
+
+test('only the official instance may send from the default sender', () => {
+	const resend = { RESEND_API_KEY: 're_test', VERCEL_ENV: 'production' };
+	assert.equal(createMailTransport({ ...resend, NEXT_PUBLIC_APP_URL: OFFICIAL }).name, 'resend');
+	assert.equal(
+		createMailTransport({ SMTP_HOST: 'mailpit', NEXT_PUBLIC_APP_URL: OFFICIAL }).name,
+		'smtp',
+	);
+	for (const NEXT_PUBLIC_APP_URL of [undefined, '', 'https://wg.example.com']) {
+		assert.throws(
+			() => createMailTransport({ ...resend, NEXT_PUBLIC_APP_URL }),
+			/STATEMENT_EMAIL_FROM is not set/,
+		);
+		assert.throws(
+			() => createMailTransport({ SMTP_HOST: 'mailpit', NEXT_PUBLIC_APP_URL }),
+			/STATEMENT_EMAIL_FROM is not set/,
+		);
+	}
+	// A dry run sends nothing, so it needs no sender.
+	assert.equal(
+		createMailTransport({ NEXT_PUBLIC_APP_URL: 'https://wg.example.com' }).name,
+		'dry-run',
+	);
 });
 
 test('SMTP requires TLS except for a mail catcher on the local network', () => {

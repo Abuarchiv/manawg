@@ -169,16 +169,23 @@ function head(label: string | undefined): string {
 
 type ShellT = ReturnType<typeof serverT<'mail'>>;
 
+/** Imprint and privacy links of the operator; none when the instance has no legal pages configured. */
+function legalFooterLinks(t: ShellT): { label: string; url: string }[] {
+	const imprint = legalUrl('/impressum');
+	const privacy = legalUrl('/datenschutz');
+	return [
+		...(imprint ? [{ label: t('shell.legalNotice'), url: imprint }] : []),
+		...(privacy ? [{ label: t('shell.privacy'), url: privacy }] : []),
+	];
+}
+
 function footer(spec: BrandMailSpec, t: ShellT): string {
 	const link = `style="color:${MUTED};text-decoration:underline;"`;
-	const links = [
-		...(spec.footerLinks ?? []),
-		{ label: t('shell.legalNotice'), url: legalUrl('/impressum') },
-		{ label: t('shell.privacy'), url: legalUrl('/datenschutz') },
-	]
-		.map((entry) => `<a href="${escapeHtml(entry.url)}" ${link}>${escapeHtml(entry.label)}</a>`)
-		.join(' &middot; ');
-	return `<tr><td bgcolor="#FAFAFA" style="background-color:#FAFAFA;border-top:1px solid ${LINE};padding:22px 40px;"><div style="font-family:${SANS};font-size:12px;line-height:1.55;color:${MUTED};">${escapeHtml(spec.footerNote)}</div><div style="padding-top:6px;font-family:${MONO};font-size:11px;line-height:1.55;letter-spacing:0.06em;color:${MUTED};">${escapeHtml(APP_ORIGIN.replace(/^https?:\/\//, ''))} &middot; ${links}</div></td></tr>`;
+	const anchors = [...(spec.footerLinks ?? []), ...legalFooterLinks(t)].map(
+		(entry) => `<a href="${escapeHtml(entry.url)}" ${link}>${escapeHtml(entry.label)}</a>`,
+	);
+	const line = [escapeHtml(APP_ORIGIN.replace(/^https?:\/\//, '')), ...anchors].join(' &middot; ');
+	return `<tr><td bgcolor="#FAFAFA" style="background-color:#FAFAFA;border-top:1px solid ${LINE};padding:22px 40px;"><div style="font-family:${SANS};font-size:12px;line-height:1.55;color:${MUTED};">${escapeHtml(spec.footerNote)}</div><div style="padding-top:6px;font-family:${MONO};font-size:11px;line-height:1.55;letter-spacing:0.06em;color:${MUTED};">${line}</div></td></tr>`;
 }
 
 function button(spec: BrandMailSpec, t: ShellT): string {

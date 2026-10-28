@@ -26,7 +26,7 @@ export interface SegmentCount {
 interface ChatUnreadCount {
 	count: number;
 	overflow: boolean;
-	/** Missing only for cached responses created before exact totals were added. */
+	/** Absent in cached responses that carry no exact total. */
 	exactCount?: number | undefined;
 }
 
