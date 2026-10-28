@@ -61,7 +61,7 @@ export default {
 	},
 	inventoryConsumed: {
 		feed: same(
-			'took {quantity} {unitKey, select, piece {pcs} litre {L} kilogram {kg} roll {roll(s)} pack {pack(s)} other {{unit}}} of {name}.',
+			'took {quantity} {unitKey, select, piece {pcs} litre {L} kilogram {kg} roll {{count, plural, =1 {roll} other {rolls}}} pack {{count, plural, =1 {pack} other {packs}}} other {{unit}}} of {name}.',
 		),
 	},
 	memberInvited: { feed: same('sent an invitation by email.') },
@@ -119,7 +119,7 @@ export default {
 		withImage: 'with image',
 		pushOn: 'Web Push on',
 		pushOff: 'Web Push off',
-		quietHours: 'Quiet hours {start}-{end}',
+		quietHours: 'Quiet hours {start}:00 to {end}:00',
 		quietHoursOff: 'Quiet hours off',
 		splitCount: '{count, plural, one {# split} other {# splits}}',
 		reaction: 'Reaction: {reaction}',

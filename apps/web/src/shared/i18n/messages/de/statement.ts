@@ -13,6 +13,7 @@ export default {
 		},
 	},
 	document: {
+		formerMember: 'Ehemaliges Mitglied',
 		statementNumber: 'Abrechnung',
 		period: 'Zeitraum',
 		preparedFor: 'Erstellt für',

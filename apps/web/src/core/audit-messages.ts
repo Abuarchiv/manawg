@@ -111,6 +111,7 @@ const EVENTS: Readonly<Record<string, AuditEventDef>> = {
 			typeof metadata.appliedDelta === 'number'
 				? {
 						quantity: formatDecimal(Math.abs(metadata.appliedDelta), locale),
+						count: Math.abs(metadata.appliedDelta),
 						unitKey: UNIT_KEYS[String(metadata.unit)] ?? 'other',
 					}
 				: null,

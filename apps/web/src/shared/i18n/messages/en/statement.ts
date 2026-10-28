@@ -4,7 +4,7 @@ import type de from '../de/statement';
 export default {
 	page: {
 		title: 'Monthly statement',
-		backLabel: 'Expenses',
+		backLabel: 'expenses',
 		previousMonth: 'Previous month',
 		nextMonth: 'Next month',
 		asPdf: 'Save as PDF',
@@ -16,6 +16,7 @@ export default {
 		},
 	},
 	document: {
+		formerMember: 'Former member',
 		statementNumber: 'Statement',
 		period: 'Period',
 		preparedFor: 'Prepared for',

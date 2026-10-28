@@ -28,7 +28,7 @@ export default {
 		payerLocked: 'The payer of an existing expense cannot be changed.',
 	},
 	actions: {
-		cancelAria: 'Cancel expense',
+		cancelAria: 'Close expense form',
 		cancel: 'Cancel',
 		loadServer: 'Load server version',
 		keepDraft: 'Keep my draft',
@@ -86,8 +86,8 @@ export default {
 	},
 	intervals: {
 		optionMonths: '{count, plural, one {# month} other {# months}}',
-		optionQuarter: 'Quarter',
-		optionYear: 'Year',
+		optionQuarter: '3 months',
+		optionYear: '12 months',
 		monthly: 'monthly',
 		quarterly: 'quarterly',
 		halfYearly: 'every six months',

@@ -166,7 +166,7 @@ test.describe('English calendar', () => {
 				await expect(edit.getByLabel('Note (optional)')).toBeVisible();
 				await expect(edit.getByRole('button', { name: 'Save', exact: true })).toBeVisible();
 				await expect(edit.getByRole('button', { name: 'Delete event' })).toBeVisible();
-				await expect(edit.getByRole('button', { name: 'Add to your calendar app' })).toBeVisible();
+				await expect(edit.getByRole('button', { name: 'Add to calendar app' })).toBeVisible();
 				await expectNoGermanChrome(page);
 				await edit.getByLabel('Title', { exact: true }).fill('Flat meeting moved');
 				await edit.getByRole('button', { name: 'Cancel' }).click();

@@ -98,9 +98,9 @@ export default {
 		intervalOption: {
 			m1: '1 month',
 			m2: '2 months',
-			m3: 'Quarter',
+			m3: '3 months',
 			m6: '6 months',
-			m12: 'Year',
+			m12: '12 months',
 			custom: '{count, number} months',
 		},
 		error: {

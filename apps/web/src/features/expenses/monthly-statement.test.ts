@@ -98,6 +98,15 @@ test('categories are summed per month, largest first, "sonstiges" last', () => {
 	assert.equal(statement.categories[0]?.label, 'Lebensmittel');
 });
 
+test('a payer missing from the members list has no name', () => {
+	const statement = buildMonthlyStatement(
+		[expense('a', 'X', '2026-09-02T10:00:00Z', { L: 1000 })],
+		members,
+		'2026-09',
+	);
+	assert.equal(statement.items[0]?.payerName, null);
+});
+
 test('month key arithmetic crosses years', () => {
 	assert.equal(shiftMonthKey('2026-01', -1), '2025-12');
 	assert.equal(shiftMonthKey('2026-12', 1), '2027-01');

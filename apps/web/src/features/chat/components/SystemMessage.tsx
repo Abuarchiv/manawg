@@ -56,16 +56,18 @@ export function SystemMessage({ shareCode, systemKind, payload }: SystemMessageP
 				/>
 			);
 		}
-		case 'chore.completed':
+		case 'chore.completed': {
+			const actor = asString(data.actorName, someone);
+			const title = asString(data.title, '');
 			return (
 				<SystemRow
 					icon={CheckCircle2}
-					text={t('choreCompleted', {
-						actor: asString(data.actorName, someone),
-						title: asString(data.title, t('aChore')),
-					})}
+					text={
+						title ? t('choreCompleted', { actor, title }) : t('choreCompletedNoTitle', { actor })
+					}
 				/>
 			);
+		}
 		default:
 			return <SystemRow icon={Info} text={t('unknown')} />;
 	}

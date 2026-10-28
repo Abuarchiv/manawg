@@ -234,6 +234,13 @@ test('English renders amounts, counts and units in the reader locale', () => {
 		say('inventory.consumed', { name: 'Soap', unit: 'Stück', appliedDelta: -1.5 }),
 		'took 1.5 pcs of Soap.',
 	);
+	for (const [unit, appliedDelta, expected] of [
+		['Rolle', -1, 'took 1 roll of Paper.'],
+		['Rolle', -2, 'took 2 rolls of Paper.'],
+		['Packung', -1.5, 'took 1.5 packs of Paper.'],
+	] as const) {
+		assert.equal(say('inventory.consumed', { name: 'Paper', unit, appliedDelta }), expected);
+	}
 	assert.equal(
 		say('member.renamed', { before: 'Ben', after: 'Benno', byOther: false }),
 		'changed their name (was Ben).',
