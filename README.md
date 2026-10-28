@@ -36,8 +36,8 @@ A *WG* (short for *Wohngemeinschaft*) is the German word for a shared flat, so y
 this kind of tool as a "WG app". It runs in the browser, installs on your phone as a PWA, and you
 can use it at [app.manawg.com](https://app.manawg.com) or self-host it.
 
-> The interface is currently in German. An English interface is in progress, see the
-> [roadmap](#roadmap).
+The interface is available in German and English. You can change the language on the sign-in page
+or in Settings.
 
 ## Features
 
@@ -140,7 +140,6 @@ Contributions are welcome: code, bug reports, documentation, translations and id
 
 ## Roadmap
 
-- English interface (in progress)
 - [#644](https://github.com/Abuarchiv/manawg-app/issues/644): split the database schema into one file per feature
 - [#645](https://github.com/Abuarchiv/manawg-app/issues/645): split the account-deletion e2e spec into smaller files
 

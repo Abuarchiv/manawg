@@ -247,6 +247,9 @@ SUPABASE_ACCESS_TOKEN=<token> node scripts/supabase-auth-templates.mjs \
 Führe es einmal ohne `--apply` aus, um zu sehen, was sich ändern würde. `--legal-url` ist die
 Seite mit deinen rechtlichen Seiten (siehe [Rechtliche Seiten und Support](#rechtliche-seiten-und-support)).
 
+Inhalt und Betreff der Mails wählen Deutsch oder Englisch anhand von `locale` in den
+Benutzer-Metadaten des Kontos. Konten ohne `locale` bekommen Deutsch.
+
 **Google-Anmeldung (optional):** Aktiviere den Google-Provider unter **Authentication → Providers**
 mit deinem eigenen OAuth-Client. Die Redirect-URI, die du bei Google eintragen musst, wird dort
 angezeigt. Ohne Google-Anmeldung setze `GOOGLE_SIGN_IN=false`, damit die App ihre Google-Buttons

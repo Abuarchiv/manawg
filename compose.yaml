@@ -83,11 +83,11 @@ services:
       GOTRUE_MAILER_TEMPLATES_EMAIL_CHANGE: http://gateway:8000/mail-templates/email_change.html
       GOTRUE_MAILER_TEMPLATES_PASSWORD_CHANGED_NOTIFICATION: http://gateway:8000/mail-templates/password_changed.html
       # Same subjects as supabase/templates/subjects.json.
-      GOTRUE_MAILER_SUBJECTS_CONFIRMATION: Bestätige deine E-Mail-Adresse
-      GOTRUE_MAILER_SUBJECTS_RECOVERY: Neues Passwort festlegen
-      GOTRUE_MAILER_SUBJECTS_MAGIC_LINK: "{{ .Token }} ist dein Anmeldecode"
-      GOTRUE_MAILER_SUBJECTS_EMAIL_CHANGE: Bestätige deine neue E-Mail-Adresse
-      GOTRUE_MAILER_SUBJECTS_PASSWORD_CHANGED_NOTIFICATION: Dein Passwort wurde geändert
+      GOTRUE_MAILER_SUBJECTS_CONFIRMATION: '{{ if eq .Data.locale "en" }}Confirm your email address{{ else }}Bestätige deine E-Mail-Adresse{{ end }}'
+      GOTRUE_MAILER_SUBJECTS_RECOVERY: '{{ if eq .Data.locale "en" }}Set a new password{{ else }}Neues Passwort festlegen{{ end }}'
+      GOTRUE_MAILER_SUBJECTS_MAGIC_LINK: '{{ if eq .Data.locale "en" }}{{ .Token }} is your sign-in code{{ else }}{{ .Token }} ist dein Anmeldecode{{ end }}'
+      GOTRUE_MAILER_SUBJECTS_EMAIL_CHANGE: '{{ if eq .Data.locale "en" }}Confirm your new email address{{ else }}Bestätige deine neue E-Mail-Adresse{{ end }}'
+      GOTRUE_MAILER_SUBJECTS_PASSWORD_CHANGED_NOTIFICATION: '{{ if eq .Data.locale "en" }}Your password was changed{{ else }}Dein Passwort wurde geändert{{ end }}'
       GOTRUE_MAILER_NOTIFICATIONS_PASSWORD_CHANGED_ENABLED: "true"
       # Optional Google sign-in; register ${APP_URL}/auth/v1/callback as redirect URI at Google.
       GOTRUE_EXTERNAL_GOOGLE_ENABLED: ${GOOGLE_ENABLED:-false}

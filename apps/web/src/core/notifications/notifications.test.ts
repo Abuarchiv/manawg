@@ -181,7 +181,11 @@ test('English pushes use the catalog, en-GB money and Berlin dates', (t) => {
 	assert.equal(en('import.completed', { inserted: 1 }).body, 'Anna imported 1 expense into Flat.');
 	assert.equal(
 		en('inventory.low_stock', { title: 'Milk', quantity: 0.5, threshold: 1 }).body,
-		'Milk is running low (0.5 of 1) in Flat.',
+		'Running low in Flat: Milk (0.5 of 1).',
+	);
+	assert.equal(
+		en('event.today', { title: 'Plenum', startsAt: '2026-01-01T18:00:00.000Z' }).body,
+		'Today in Flat: “Plenum”, 1 Jan, 19:00.',
 	);
 	assert.equal(en('chat.mention', { preview: 'Hi' }).title, 'Anna mentioned you');
 	assert.equal(
