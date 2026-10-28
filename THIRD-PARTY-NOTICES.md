@@ -53,7 +53,8 @@ SOFTWARE.
 The expense import reads screenshots in the browser. The worker, the WebAssembly core and the
 German and English models are served by the app from `/tesseract/`. They are copied from the
 installed packages at build time and are not committed. All three are licensed under the Apache
-License 2.0, whose text is in [Apache-2.0.txt](apps/web/public/licenses/Apache-2.0.txt).
+License 2.0, whose text is in [Apache-2.0.txt](apps/web/public/licenses/Apache-2.0.txt). The
+worker also bundles small MIT and BSD libraries, listed in `/tesseract/worker.min.js.LICENSE.txt`.
 
 - [tesseract.js](https://github.com/naptha/tesseract.js), the worker.
 - [tesseract.js-core](https://github.com/naptha/tesseract.js-core), the WebAssembly build of

@@ -9,15 +9,15 @@ German. You do not need to be a developer to report a problem or fix a typo.
 - **First contribution:** issues labelled
   [good first issue](https://github.com/Abuarchiv/manawg-app/labels/good%20first%20issue) are
   small and well described; [help wanted](https://github.com/Abuarchiv/manawg-app/labels/help%20wanted)
-  marks larger ones. Comment on the issue before you start, so nobody works on it twice. When the
-  list is empty, ask in Discussions or open an issue before you start.
+  marks larger ones. Comment on the issue before you start, so nobody works on it twice. If none
+  are open, ask in Discussions or open an issue.
 - **Bugs and self-hosting problems:** open an
   [issue](https://github.com/Abuarchiv/manawg-app/issues/new/choose) with steps to reproduce. For
   security problems use [SECURITY.md](SECURITY.md) instead.
 - **Small fixes** (typos, obvious bugs): open a pull request directly.
-- **Features and larger changes:** open an issue first and wait for a maintainer's answer. ManaWG
-  is deliberately small and phone-first, so not every good idea fits. For larger changes, agree
-  on the approach in the issue before you write the code; the maintainer decides what goes in.
+- **Features and larger changes:** open an issue first and agree on the approach with a
+  maintainer before you write the code. ManaWG is deliberately small and phone-first, so not every
+  good idea fits.
 
 By participating you agree to the [Code of Conduct](CODE_OF_CONDUCT.md).
 

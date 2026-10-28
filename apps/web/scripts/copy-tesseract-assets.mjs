@@ -31,7 +31,8 @@ const CORE_FILES = [
 ];
 const LANGUAGES = ['deu', 'eng'];
 const README = `These files are served unmodified from the following open-source projects. Each is
-licensed under the Apache License 2.0.
+licensed under the Apache License 2.0. worker.min.js also bundles small MIT and BSD libraries,
+listed in worker.min.js.LICENSE.txt.
 
 worker.min.js, worker.min.js.LICENSE.txt, LICENSE.tesseract.js.txt
   tesseract.js, https://github.com/naptha/tesseract.js

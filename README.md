@@ -19,8 +19,6 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="License: Apache-2.0"></a>
   <a href="#self-hosting"><img src="https://img.shields.io/badge/self--host-docker%20compose-2496ED?logo=docker&amp;logoColor=white" alt="Self-host with Docker"></a>
   <a href="https://scorecard.dev/viewer/?uri=github.com/Abuarchiv/manawg-app"><img src="https://api.scorecard.dev/projects/github.com/Abuarchiv/manawg-app/badge" alt="OpenSSF Scorecard"></a>
-  <a href="https://github.com/Abuarchiv/manawg-app/stargazers"><img src="https://img.shields.io/github/stars/Abuarchiv/manawg-app?style=flat" alt="GitHub stars"></a>
-  <a href="https://github.com/Abuarchiv/manawg-app/discussions"><img src="https://img.shields.io/github/discussions/Abuarchiv/manawg-app" alt="GitHub Discussions"></a>
 </p>
 
 <p align="center">
