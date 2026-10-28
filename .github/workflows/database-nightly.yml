@@ -12,20 +12,29 @@ concurrency:
   group: database-nightly
   cancel-in-progress: false
 
+env:
+  # Repository variables of the instance this repository deploys. Forks without them
+  # skip the Preview gates, migrations, backups and releases.
+  SUPABASE_PRODUCTION_PROJECT_HOST: ${{ vars.SUPABASE_PRODUCTION_PROJECT_HOST }}
+  SUPABASE_PREVIEW_PROJECT_HOST: ${{ vars.SUPABASE_PREVIEW_PROJECT_HOST }}
+  VERCEL_PROJECT_NAME: ${{ vars.VERCEL_PROJECT_NAME }}
+  VERCEL_TEAM_SLUG: ${{ vars.VERCEL_TEAM_SLUG }}
+
 jobs:
   backup-production:
+    if: vars.SUPABASE_PRODUCTION_PROJECT_HOST != ''
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment:
       name: Production
       deployment: false
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: main
           fetch-depth: 1
           persist-credentials: false
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
       - name: Dump, encrypt and verify
@@ -35,17 +44,18 @@ jobs:
           BACKUP_GPG_PRIVATE_KEY: ${{ secrets.BACKUP_GPG_PRIVATE_KEY }}
           BACKUP_GPG_PASSPHRASE: ${{ secrets.BACKUP_GPG_PASSPHRASE }}
           SUPABASE_BACKUP_SECRET_KEY: ${{ secrets.SUPABASE_BACKUP_SECRET_KEY }}
-          SUPABASE_URL: https://bwsvsvfgbrsonepffqff.supabase.co
+          BACKUP_GPG_PUBLIC_KEY: ${{ vars.BACKUP_GPG_PUBLIC_KEY }}
         run: |
           umask 077
           export WORK_DIR="$RUNNER_TEMP/backup" KEY_DIR="$RUNNER_TEMP/backup-key"
           mkdir -p "$WORK_DIR" "$KEY_DIR"
           chmod 755 "$WORK_DIR"
           node --experimental-strip-types .github/scripts/pg-env.mjs production "$WORK_DIR"
+          printf '%s\n' "$BACKUP_GPG_PUBLIC_KEY" > "$KEY_DIR/public.asc"
           printf '%s\n' "$BACKUP_GPG_PRIVATE_KEY" > "$KEY_DIR/private.asc"
           printf '%s' "$BACKUP_GPG_PASSPHRASE" > "$KEY_DIR/passphrase"
           printf '%s' "$SUPABASE_BACKUP_SECRET_KEY" > "$KEY_DIR/storage-key"
-          FILE="$(PG_ENV_FILE="$WORK_DIR/pg.env" PUBLIC_KEY_FILE=.github/backup-public-key.asc \
+          FILE="$(SUPABASE_URL="https://$SUPABASE_PRODUCTION_PROJECT_HOST" PG_ENV_FILE="$WORK_DIR/pg.env" PUBLIC_KEY_FILE="$KEY_DIR/public.asc" \
             PRIVATE_KEY_FILE="$KEY_DIR/private.asc" PASSPHRASE_FILE="$KEY_DIR/passphrase" \
             STORAGE_KEY_FILE="$KEY_DIR/storage-key" .github/scripts/db-backup.sh)"
           rm -rf "$KEY_DIR" "$WORK_DIR/pg.env"
@@ -60,6 +70,7 @@ jobs:
           compression-level: 0
 
   preview-keepalive:
+    if: vars.SUPABASE_PREVIEW_PROJECT_HOST != ''
     # The free plan pauses a project after a week without database activity.
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -67,12 +78,12 @@ jobs:
       name: Preview
       deployment: false
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: main
           fetch-depth: 1
           persist-credentials: false
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
       - name: Query the Preview database

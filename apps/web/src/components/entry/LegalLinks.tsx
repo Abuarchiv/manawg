@@ -1,14 +1,14 @@
 import { LanguageSwitch } from '@/components/app/LanguageSwitch';
 import { richArgument } from '@/components/entry/rich-argument';
 import { cn } from '@/shared/lib/cn';
-import { landingUrl } from '@/shared/lib/landing-url';
+import { landingUrl, legalUrl } from '@/shared/lib/landing-url';
 import { useTranslations } from 'next-intl';
 
 const LEGAL_LINKS = [
 	{ href: landingUrl('/ueber-manawg'), label: 'about' },
-	{ href: landingUrl('/impressum'), label: 'imprint' },
-	{ href: landingUrl('/datenschutz'), label: 'privacy' },
-	{ href: landingUrl('/agb'), label: 'terms' },
+	{ href: legalUrl('/impressum'), label: 'imprint' },
+	{ href: legalUrl('/datenschutz'), label: 'privacy' },
+	{ href: legalUrl('/agb'), label: 'terms' },
 ] as const;
 const [, IMPRESSUM, DATENSCHUTZ, AGB] = LEGAL_LINKS;
 // Product and guide pages live on the landing; shown only on the plain entry footer,

@@ -1,5 +1,6 @@
 import { recordAuditEvent } from '@/core/audit';
 import { db, wgEvents } from '@/core/db';
+import { rowHoldsPatch } from '@/core/db/row-holds-patch';
 import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
@@ -134,13 +135,18 @@ export const PATCH = withWgRoute<{ id: string }>('events PATCH', async (req, { c
 		)
 		.returning();
 	if (!row) {
-		// Still there means the version differed: someone saved or changed a date meanwhile.
-		const [stillThere] = await db
-			.select({ id: wgEvents.id })
+		const [stored] = await db
+			.select()
 			.from(wgEvents)
 			.where(and(eq(wgEvents.id, id), eq(wgEvents.wgId, wgId)))
 			.limit(1);
-		return stillThere ? conflict('event_changed') : notFound('event_not_found');
+		if (!stored) return notFound('event_not_found');
+		// The retry of a save whose answer got lost finds its own values in place.
+		if (rowHoldsPatch(stored, { ...update, updatedAt: undefined })) {
+			return NextResponse.json({ event: serializeWgEvent(stored) });
+		}
+		// Otherwise the version differed: someone saved or changed a date meanwhile.
+		return conflict('event_changed');
 	}
 
 	await recordAuditEvent({

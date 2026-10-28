@@ -157,12 +157,12 @@ function harness() {
 	prior = Promise.resolve();
 	return {
 		state,
-		post: (key: string, active?: boolean) =>
+		post: (key: string, active = true) =>
 			POST(
 				new Request('https://example.invalid', {
 					method: 'POST',
 					headers: { 'Idempotency-Key': key },
-					body: JSON.stringify({ reaction: 'seen', ...(active === undefined ? {} : { active }) }),
+					body: JSON.stringify({ reaction: 'seen', active }),
 				}) as never,
 				{ params: Promise.resolve({ code: 'MTE8PZAT', id: announcementId }) } as never,
 			),
@@ -181,9 +181,9 @@ test('same key replays an added reaction without toggling it off', async () => {
 	assert.equal(state.locks, 1);
 });
 
-test('two distinct legacy toggle keys serialize add then remove', async () => {
+test('distinct keys for add then remove serialize on the announcement lock', async () => {
 	const { state, post } = harness();
-	const [added, removed] = await Promise.all([post(keyA), post(keyB)]);
+	const [added, removed] = await Promise.all([post(keyA, true), post(keyB, false)]);
 	assert.equal(((await added.json()) as { active: boolean }).active, true);
 	assert.equal(((await removed.json()) as { active: boolean }).active, false);
 	assert.equal(state.reaction, null);
@@ -191,7 +191,6 @@ test('two distinct legacy toggle keys serialize add then remove', async () => {
 	assert.equal(state.notifications, 1);
 	assert.equal(state.locks, 2);
 });
-
 test('explicit active true with a new key is a no-op when already active', async () => {
 	const { state, post } = harness();
 	await post(keyA, true);

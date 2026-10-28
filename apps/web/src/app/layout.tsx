@@ -2,10 +2,11 @@ import { InputModality } from '@/components/app/InputModality';
 import { InstallPrompt } from '@/components/app/InstallPrompt';
 import { PwaRegister } from '@/components/app/PwaRegister';
 import { ThemeProvider } from '@/components/app/ThemeProvider';
+import { GoogleSignInProvider } from '@/components/auth/google-sign-in';
 import { SplashScreen } from '@/components/brand/SplashScreen';
 import { htmlLang } from '@/shared/i18n/locale';
 import { getAppUrl } from '@/shared/lib/app-url';
-import { APP_SCHEMA_ID, LANDING_SCHEMA_IDS } from '@/shared/lib/landing-url';
+import { APP_SCHEMA_ID, IS_OFFICIAL_INSTANCE, LANDING_SCHEMA_IDS } from '@/shared/lib/landing-url';
 import { SPLASH_BOOTSTRAP_SCRIPT } from '@/shared/lib/splash';
 import { THEME_BOOTSTRAP_SCRIPT } from '@/shared/lib/theme';
 import type { Metadata, Viewport } from 'next';
@@ -178,13 +179,15 @@ export default async function RootLayout({
 				/>
 				{/* Plain <script>, not next/script: next/script injects after hydration, so the JSON-LD
 				    never appeared in the server HTML crawlers read. Static JSON.stringify of constants, no XSS surface. */}
-				<script
-					type="application/ld+json"
-					nonce={nonce}
-					suppressHydrationWarning
-					// biome-ignore lint/security/noDangerouslySetInnerHtml: static constant, no dynamic data
-					dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareApplicationSchema) }}
-				/>
+				{IS_OFFICIAL_INSTANCE && (
+					<script
+						type="application/ld+json"
+						nonce={nonce}
+						suppressHydrationWarning
+						// biome-ignore lint/security/noDangerouslySetInnerHtml: static constant, no dynamic data
+						dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareApplicationSchema) }}
+					/>
+				)}
 			</head>
 			<body suppressHydrationWarning>
 				<NextIntlClientProvider>
@@ -196,17 +199,19 @@ export default async function RootLayout({
 					<SplashScreen />
 					<InputModality />
 					<ThemeProvider>
-						{/* Phone column on every screen; wider viewports show backdrop
-						    and a hairline edge around it. */}
-						<div
-							data-app-frame
-							className="relative mx-auto min-h-svh w-full max-w-[var(--app-frame-width)] overflow-x-clip bg-background min-[30rem]:border-x print:max-w-none print:border-x-0"
-							style={{ paddingBottom: 'var(--install-prompt-space, 0px)' }}
-						>
-							{children}
-							<PwaRegister />
-							<InstallPrompt />
-						</div>
+						<GoogleSignInProvider enabled={process.env.GOOGLE_SIGN_IN?.trim() !== 'false'}>
+							{/* Phone column on every screen; wider viewports show backdrop
+							    and a hairline edge around it. */}
+							<div
+								data-app-frame
+								className="relative mx-auto min-h-svh w-full max-w-[var(--app-frame-width)] overflow-x-clip bg-background min-[30rem]:border-x print:max-w-none print:border-x-0"
+								style={{ paddingBottom: 'var(--install-prompt-space, 0px)' }}
+							>
+								{children}
+								<PwaRegister />
+								<InstallPrompt />
+							</div>
+						</GoogleSignInProvider>
 					</ThemeProvider>
 				</NextIntlClientProvider>
 			</body>

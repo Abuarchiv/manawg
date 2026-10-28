@@ -1,7 +1,7 @@
 # Architecture
 
 Overview of `apps/web` for contributors. Paths are relative to `apps/web/src` unless stated
-otherwise. Setup, commands and deployment are in the [README](../README.md).
+otherwise. Setup, commands and deployment are in [development](development.md).
 
 ## Request flow
 
@@ -26,11 +26,13 @@ browser
   `/api/upload/*`, `/api/cron/*`):
   1. `MIGRATION_READ_ONLY=true`: writes and crons get `503 migration_read_only`.
   2. Mutating requests need an `Origin` matching host and protocol, else `403 cross_origin_blocked`.
-  3. Upstash sliding-window limit per client IP: share-code lookup, read or write bucket
-     (`core/rate-limit.ts`). Fail mode is `closed` when `VERCEL_ENV=production`,
-     `NODE_ENV=test`, or `NODE_ENV=production` without `VERCEL_ENV`; otherwise `open`. Closed
-     plus missing/failing Upstash means `503 rate_limiter_unavailable`.
-  4. Database-free fixture build only (`src/fixtures/`, README "Fixture mode"): fixture API
+  3. Sliding-window limit per client IP: share-code lookup, read or write bucket
+     (`core/rate-limit.ts`). With Upstash configured it counts in Redis. A standalone server
+     (`NODE_ENV=production` without `VERCEL_ENV`, the Docker image) without Upstash counts in
+     memory per process (`core/memory-rate-limit.ts`). Otherwise the fail mode decides: `closed`
+     when `VERCEL_ENV=production` or `NODE_ENV=test`, else `open`; closed plus missing or failing
+     Upstash means `503 rate_limiter_unavailable`.
+  4. Database-free fixture build only (`src/fixtures/`, development.md "Fixture mode"): fixture API
      reads and `POST /api/wg` are answered here; every other build gets `null` from
      `resolveFixtureRequest` and skips this step.
   5. Supabase session refresh.
@@ -53,7 +55,7 @@ under `app/wg/**`; WG APIs belong under `app/api/wg/**`.
 | Layer | Contains | May import |
 | --- | --- | --- |
 | `app/` | Pages, layouts, route handlers. Thin. | everything below |
-| `fixtures/` | Database-free fixture build: mode detection, fixture API and page data (README "Fixture mode") | `composition/` and everything below |
+| `fixtures/` | Database-free fixture build: mode detection, fixture API and page data (development.md "Fixture mode") | `composition/` and everything below |
 | `features/<x>/` | Vertical slices: `chat`, `chores`, `events`, `expenses`, `inventory`, `pinnwand`, `shopping` (logic, hooks, components, and a `server/` folder) | `components/`, `core/`, `shared/`, own files |
 | `composition/` | Cross-feature reads: dashboard data and insights, activity, export | `features/`, `components/`, `core/`, `shared/` |
 | `core/` | Domain-neutral blocks: `db`, `auth`, `guards`, `http`, `hooks`, `offline`, `sync`, `notifications`, `infra`, `utils`, `validators` | `core/`, `shared/` |
@@ -104,7 +106,7 @@ Rules:
   a WG for offline use (`rememberWg`) requires `authUserId`, because remembered WGs and queued
   actions are bound to the account.
 - **Fixture mode** answers as `FIXTURE_AUTH_USER_ID` (`fixtures/data.ts`) through the same member
-  lookup the app uses; product code has no fixture branch beyond the `app/` seams named in the README.
+  lookup the app uses; product code has no fixture branch beyond the `app/` seams named in development.md.
 - **Legacy-profile takeover** (`POST /api/wg/<code>/members/<id>/claim?invite=<token>`): links an
   unlinked member row (no account yet) to the signed-in account. The proof is a valid invitation
   to that WG; the invitation page lists the unlinked members. Normal API access never uses it.
@@ -157,8 +159,7 @@ withIdempotentWrite(
 Side effects that must not undo the write (audit events, push, pinboard notices) run after the
 call, for `written` results only, so a replay never repeats them. A warning that only becomes
 known then (a failed push) is written into the stored response with `setReplayWarning`. Without a
-key the write runs in a plain transaction (`retryAfterRollback` still applies). The protocol is specified in
-[`openspec/changes/archive/2026-10-08-unify-idempotency-claims`](../openspec/changes/archive/2026-10-08-unify-idempotency-claims/proposal.md).
+key the write runs in a plain transaction (`retryAfterRollback` still applies).
 
 **Client side.** One key lifecycle lives in `core/http/idempotency-key.ts`, client-safe.
 `createIdempotencyKey` makes the UUID, `resolveIdempotencyKey` reuses the pending key for an
@@ -270,7 +271,7 @@ Mutation error copy goes through `mutationErrorMessage` (`core/http/error-codes.
 - **Sentry** (`core/infra/sentry.ts`, only with `NEXT_PUBLIC_SENTRY_DSN`):
   `sanitizeSentryEvent` (`core/infra/sentry-privacy.ts`) drops user, message, extra and most
   contexts, replaces exception values with `[redacted]`, normalizes error names, strips query
-  strings, redacts share codes in `/wg/<code>`, calendar tokens and storage/S3 object paths, and
+  strings, redacts share codes in `/wg/<code>`, calendar tokens and storage object paths, and
   only keeps allowlisted tags. Console and UI breadcrumbs are dropped.
 - **Server logs**: `logApiError` (`core/infra/observability.ts`) logs the static label and the
   error name only, never message or stack.
@@ -305,22 +306,19 @@ Mutation error copy goes through `mutationErrorMessage` (`core/http/error-codes.
 
 ## Image storage
 
-`IMAGE_STORAGE_PROVIDER` selects the provider (`core/infra/supabase-storage.ts`):
-
-- `supabase` (private): uploads are signed via `/api/upload/sign`; reads go through
-  `/api/upload/read?key=...`, which re-checks membership of the WG encoded in the key and the
-  deletion tombstones, and streams with `no-store`. The bucket (`SUPABASE_STORAGE_BUCKET`) must be
-  private with an 8 MiB limit and exactly the MIME types in `core/infra/private-image-policy.ts`;
-  otherwise the provider reports itself unconfigured. Deletions are tombstoned in
-  `private_image_deletions` and removed by the maintenance cron. The same cron queues pictures no
-  row points at after 14 days (`core/db/orphan-uploads.ts`, a few WGs per run); a queued picture that
-  a row points at again is taken off the queue.
-- `aws` (default when unset, legacy): presigned S3 PUT (`core/infra/s3.ts`); images are stored
-  as public URLs under `S3_PUBLIC_URL`. There is no S3 delete path.
+Images live in a private Supabase Storage bucket (`core/infra/supabase-storage.ts`). Uploads are
+signed via `/api/upload/sign`; reads go through `/api/upload/read?key=...`, which re-checks
+membership of the WG encoded in the key and the deletion tombstones, and streams with `no-store`.
+The bucket (`SUPABASE_STORAGE_BUCKET`) must be private with an 8 MiB limit and exactly the MIME
+types in `core/infra/private-image-policy.ts`; otherwise uploads report themselves unconfigured.
+Deletions are tombstoned in `private_image_deletions` and removed by the maintenance cron. The same
+cron queues pictures no row points at after 14 days (`core/db/orphan-uploads.ts`, a few WGs per
+run); a queued picture that a row points at again is taken off the queue.
 
 ## Cron jobs
 
-Four Vercel crons, see the table in the [README](../README.md#cron-jobs). All open with
+Five cron jobs, scheduled by `apps/web/vercel.json` on Vercel and by the `cron` container
+(`scripts/selfhost/cron.mjs`) in Docker; see the table in [development](development.md#cron-jobs). All open with
 `requireCronSecret` (constant-time bearer compare, `core/infra/cron-auth.ts`) and fail closed
 without `CRON_SECRET`, cap
 work per run (batches, limits) and leave the rest to the next run. Reminder crons deduplicate
@@ -328,15 +326,16 @@ with claim rows/throttle timestamps so a re-run does not notify twice.
 
 ## Key decisions
 
-- **Response replay in Postgres, not Redis.** Production once had empty `UPSTASH_*` values; the
-  Redis client silently no-opped and duplicate expenses were inserted
-  (`core/idempotency-store.ts`, `core/db/idempotent-write.ts`).
+- **Response replay in Postgres, not Redis.** A Redis client with empty `UPSTASH_*` values
+  no-ops silently, so a retried write would insert twice; Postgres is always there and commits the
+  response with the write (`core/idempotency-store.ts`, `core/db/idempotent-write.ts`).
 - **Supabase session as the only identity proof.** A second per-member token would prove
   nothing the session cookie does not; the client sends only the expected member id, which the
   server checks against the session (`core/guards/api-auth.ts`).
-- **Rate limiter fails closed in production.** A missing or failing Upstash answers 503 instead
-  of leaving share-code lookups (brute-force defense) and writes unthrottled; `checkEnv` therefore
-  treats `UPSTASH_*` as required in production (`core/rate-limit.ts`, `core/infra/env.ts`).
+- **Rate limiter never passes traffic unthrottled in production.** On Vercel a missing or failing
+  Upstash answers 503 instead of leaving share-code lookups (brute-force defense) and writes
+  unthrottled, because serverless instances cannot share memory. A standalone server counts in its
+  own memory instead (`core/rate-limit.ts`, `core/memory-rate-limit.ts`).
 - **Missing env does not crash boot.** A crash would take down every tenant; instead
   `instrumentation.ts` reports to Sentry and logs, and features degrade.
 - **Validation before auth in WG routes.** `withWgRoute` does not call `requireWgMember`, so
@@ -348,7 +347,7 @@ with claim rows/throttle timestamps so a re-run does not notify twice.
 - **Offline handlers in one core table.** Splitting them per feature would need a registration
   bootstrap; a `Record<OfflineActionType, ...>` lets `tsc` enforce a handler per type
   (`core/offline/offline-action-handlers.ts`).
-- **Redacted logging.** Raw errors copied stacks and provider payloads (Postgres) into
+- **Redacted logging.** Raw errors copied stacks and Postgres payloads into
   long-lived logs, so only label and error name are logged (`core/infra/observability.ts`).
 - **Shared input limits.** Forms and API validation read name limits from
   `shared/lib/limits.ts`, so browser and server reject the same values; a test keeps it equal to
@@ -400,7 +399,7 @@ Route folders under `app/wg/[code]/`, with the code names behind them.
 
 ## Decisions on trust, retention and exposure
 
-These behaviors were reviewed in the October 2026 audit and are kept on purpose.
+These behaviors are deliberate.
 
 - **Expenses run on household trust.** A member may log an expense paid by someone else only while
   carrying a positive share themselves (`features/expenses/paid-by-guard.ts`); any debtor may remove

@@ -152,7 +152,6 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 					<MessageScrollerViewport
 						ref={chat.scrollRef}
 						preserveScrollOnPrepend
-						data-scroll-y
 						role="log"
 						aria-label={t('logAria')}
 						className="[scroll-behavior:auto]!"

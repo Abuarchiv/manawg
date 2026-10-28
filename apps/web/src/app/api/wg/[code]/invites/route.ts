@@ -4,6 +4,7 @@ import { activeInvitesOf, createWgInvite } from '@/core/db/wg-invites';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { conflict, rateLimitResponse } from '@/core/http/api-errors';
+import { requestOrigin } from '@/core/http/request-origin';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { invitePath } from '@/core/utils/invite-token';
 import { desc, eq } from 'drizzle-orm';
@@ -53,7 +54,7 @@ export const POST = withWgRoute('invites POST', async (req, { code }) => {
 	});
 	return NextResponse.json({
 		id: invite.id,
-		url: `${req.nextUrl.origin}${invitePath(invite.token)}`,
+		url: `${requestOrigin(req)}${invitePath(invite.token)}`,
 		expiresAt: invite.expiresAt,
 	});
 });

@@ -9,6 +9,10 @@ import { ArrowRight } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import type { StartField } from './start-flow';
 
+// Inlined at build time, so server and client render the same placeholder.
+const INVITE_ORIGIN =
+	process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || 'https://app.manawg.com';
+
 interface JoinInviteStepProps {
 	inviteLink: string;
 	onInviteLinkChange: (value: string) => void;
@@ -58,7 +62,7 @@ export function JoinInviteStep({
 						spellCheck={false}
 						inputMode="url"
 						enterKeyHint="go"
-						placeholder={t('inviteLinkPlaceholder')}
+						placeholder={t('inviteLinkPlaceholder', { origin: INVITE_ORIGIN })}
 						aria-describedby={invalid ? 'invite-link-hint invite-link-error' : 'invite-link-hint'}
 						aria-invalid={invalid}
 						className="text-base"

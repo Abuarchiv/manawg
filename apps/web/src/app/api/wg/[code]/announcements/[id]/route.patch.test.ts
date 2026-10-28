@@ -25,7 +25,7 @@ const announcements = {
 const wgMembers = { id: 'wg_members.id', wgId: 'wg_members.wg_id' };
 
 const db = {
-	select: (fields: Record<string, unknown>) => ({
+	select: (fields?: Record<string, unknown>) => ({
 		from: (table: unknown) => ({
 			// Unlimited reads (the takers of a resolved post) find none.
 			where: () =>
@@ -36,7 +36,7 @@ const db = {
 								? caller
 									? [caller]
 									: []
-								: 'status' in fields
+								: !fields || 'status' in fields
 									? [
 											{
 												id: announcementId,
@@ -212,4 +212,11 @@ test('resolving an already resolved post keeps the first resolver and does not p
 	assert.equal(sets[0]?.resolvedAt, undefined);
 	assert.equal(sets[0]?.resolvedByMemberId, undefined);
 	assert.equal(dispatched, 0);
+});
+
+test('a retried save whose answer got lost finds its text in place and succeeds', async () => {
+	setup();
+	updateMatches = false;
+	const response = await patch({ content: 'Alt', expectedUpdatedAt: '2026-01-01T10:00:00.000Z' });
+	assert.equal(response.status, 200);
 });

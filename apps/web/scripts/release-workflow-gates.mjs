@@ -1,4 +1,4 @@
-const PREVIEW_HOST = /^manawg-[a-z0-9-]+-abditubes-projects\.vercel\.app$/i;
+const SLUG = /^[a-z0-9-]+$/;
 const FULL_SHA = /^[0-9a-f]{40}$/i;
 const CI_WORKFLOW_PATH = /^\.github\/workflows\/ci\.yml(?:@main)?$/;
 
@@ -9,7 +9,22 @@ export const PREVIEW_AUTH_ENV_NAMES = Object.freeze([
 	'SUPABASE_AUTH_TEST_MEMBER_NAME',
 ]);
 
-export function assertPreviewOrigin(value) {
+/** Vercel Preview hosts look like <project>-<hash>-<team>.vercel.app. */
+function previewHost(env) {
+	const project = env.VERCEL_PROJECT_NAME ?? '';
+	const team = env.VERCEL_TEAM_SLUG ?? '';
+	if (!SLUG.test(project) || !SLUG.test(team)) {
+		throw new Error('Set VERCEL_PROJECT_NAME and VERCEL_TEAM_SLUG to check Preview origins.');
+	}
+	return new RegExp(`^${project}-[a-z0-9-]+-${team}\\.vercel\\.app$`, 'i');
+}
+
+/**
+ * @param {string} value
+ * @param {Record<string, string | undefined>} [env]
+ */
+export function assertPreviewOrigin(value, env = process.env) {
+	const host = previewHost(env);
 	let url;
 	try {
 		url = new URL(value);
@@ -19,7 +34,7 @@ export function assertPreviewOrigin(value) {
 
 	if (
 		url.protocol !== 'https:' ||
-		!PREVIEW_HOST.test(url.hostname) ||
+		!host.test(url.hostname) ||
 		url.username ||
 		url.password ||
 		url.port ||

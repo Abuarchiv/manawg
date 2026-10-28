@@ -1,20 +1,17 @@
-import { mkdtempSync, readFileSync, readdirSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
-import { parse } from 'dotenv';
+import { assertPreviewOrigin } from './scripts/release-workflow-gates.mjs';
 
 const DEFAULT_E2E_PORT = process.env.E2E_PORT ?? '3101';
 const BASE_URL = process.env.BASE_URL ?? `http://localhost:${DEFAULT_E2E_PORT}`;
 const previewE2E = process.env.PREVIEW_E2E === 'true';
 const automationBypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET?.trim();
-const isTrustedPreviewDeployment =
-	/^https:\/\/manawg-[a-z0-9-]+-abditubes-projects\.vercel\.app$/i.test(BASE_URL);
-
-if (previewE2E && (!automationBypassSecret || !isTrustedPreviewDeployment)) {
-	throw new Error(
-		"PREVIEW_E2E requires VERCEL_AUTOMATION_BYPASS_SECRET and this project's trusted Vercel Preview URL.",
-	);
+if (previewE2E) {
+	if (!automationBypassSecret)
+		throw new Error('PREVIEW_E2E requires VERCEL_AUTOMATION_BYPASS_SECRET.');
+	assertPreviewOrigin(BASE_URL);
 }
 
 let previewStorageState: string | undefined;
@@ -44,26 +41,8 @@ const AUTH_UI_SPEC = /auth-ui\.spec\.ts$/;
 const authUiPort = String(Number(serverPort) + 1000);
 const authUiUrl = `http://localhost:${authUiPort}`;
 const FAKE_SUPABASE_KEY = 'auth-ui-fixture-key';
-if (isFixtureServer) {
-	const storageKeys = new Set([
-		'AWS_ACCESS_KEY_ID',
-		'AWS_SECRET_ACCESS_KEY',
-		'AWS_SESSION_TOKEN',
-		'AWS_REGION',
-		'S3_BUCKET',
-		'S3_PUBLIC_URL',
-	]);
-	for (const key of Object.keys(process.env)) {
-		if (key.startsWith('S3_')) storageKeys.add(key);
-	}
-	for (const file of readdirSync(APP_DIR)) {
-		if (!/^\.env(?:\..+)?$/.test(file)) continue;
-		for (const key of Object.keys(parse(readFileSync(path.join(APP_DIR, file))))) {
-			if (key.startsWith('S3_')) storageKeys.add(key);
-		}
-	}
-	for (const key of storageKeys) process.env[key] = '';
-}
+// Fixture servers never reach a real storage bucket, whatever the local .env files hold.
+if (isFixtureServer) process.env.SUPABASE_STORAGE_BUCKET = '';
 const prepareIsolatedNext = (port: string) =>
 	`cp "${path.join(APP_DIR, 'tsconfig.json')}" ".next-e2e-tsconfig-${port}.json"`;
 const fixtureEnv = (port: string, supabaseEnv: string) =>

@@ -24,16 +24,25 @@ concurrency:
   group: production-database-migration
   cancel-in-progress: false
 
+env:
+  # Repository variables of the instance this repository deploys. Forks without them
+  # skip the Preview gates, migrations, backups and releases.
+  SUPABASE_PRODUCTION_PROJECT_HOST: ${{ vars.SUPABASE_PRODUCTION_PROJECT_HOST }}
+  SUPABASE_PREVIEW_PROJECT_HOST: ${{ vars.SUPABASE_PREVIEW_PROJECT_HOST }}
+  VERCEL_PROJECT_NAME: ${{ vars.VERCEL_PROJECT_NAME }}
+  VERCEL_TEAM_SLUG: ${{ vars.VERCEL_TEAM_SLUG }}
+
 jobs:
   verify-candidate-ci:
+    if: vars.SUPABASE_PRODUCTION_PROJECT_HOST != ''
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: main
           fetch-depth: 1
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
       - name: Verify the approved current main candidate
@@ -106,14 +115,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: main
           fetch-depth: 1
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
         with:
           version: 9.0.0
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: pnpm
@@ -189,7 +198,7 @@ jobs:
           const url = new URL(process.env.DATABASE_MIGRATION_URL);
           if (
             !['postgres:', 'postgresql:'].includes(url.protocol) ||
-            url.hostname.toLowerCase() !== 'db.bwsvsvfgbrsonepffqff.supabase.co' ||
+            url.hostname.toLowerCase() !== `db.${process.env.SUPABASE_PRODUCTION_PROJECT_HOST.toLowerCase()}` ||
             url.port !== '5432'
           ) {
             throw new Error('Production migration requires the direct ManaWG Production Supabase connection on port 5432.');

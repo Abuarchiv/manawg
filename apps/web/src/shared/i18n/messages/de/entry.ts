@@ -184,7 +184,7 @@ export default {
 		creating: 'WG wird erstellt…',
 		create: 'WG erstellen',
 		inviteLink: 'Einladungslink',
-		inviteLinkPlaceholder: 'https://app.manawg.com/einladung/…',
+		inviteLinkPlaceholder: '{origin}/einladung/…',
 		inviteLinkHint: 'Füge den Link ein, den dir ein Mitglied der WG geschickt hat.',
 		openInvite: 'Einladung öffnen',
 	},

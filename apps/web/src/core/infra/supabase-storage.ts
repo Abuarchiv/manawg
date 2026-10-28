@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { supabaseFetch } from '@/core/auth/supabase-fetch';
 import { createClient } from '@supabase/supabase-js';
 import {
 	PRIVATE_IMAGE_MAX_BYTES,
@@ -7,8 +8,6 @@ import {
 	isAllowedPrivateImageMimeType,
 	isValidPrivateImageSize,
 } from './private-image-policy';
-
-export type ImageStorageProvider = 'aws' | 'supabase';
 
 export class ImageStorageConfigurationError extends Error {
 	constructor() {
@@ -30,13 +29,6 @@ export interface PrivateImageDownload {
 	contentLength: number;
 }
 
-export function getImageStorageProvider(): ImageStorageProvider {
-	const provider = process.env.IMAGE_STORAGE_PROVIDER?.trim().toLowerCase();
-	if (!provider || provider === 'aws') return 'aws';
-	if (provider === 'supabase') return 'supabase';
-	throw new ImageStorageConfigurationError();
-}
-
 function getSupabaseServiceClient(timeoutMs?: number) {
 	const publicSupabaseURL = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
 	const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
@@ -48,20 +40,18 @@ function getSupabaseServiceClient(timeoutMs?: number) {
 			autoRefreshToken: false,
 			detectSessionInUrl: false,
 		},
-		...(timeoutMs
-			? {
-					global: {
-						// Every request gets its own deadline, so a long paginated listing is not cut off.
-						fetch: (input, init) => {
-							const timeoutSignal = AbortSignal.timeout(timeoutMs);
-							const signal = init?.signal
-								? AbortSignal.any([init.signal, timeoutSignal])
-								: timeoutSignal;
-							return fetch(input, { ...init, signal });
-						},
-					},
-				}
-			: {}),
+		global: {
+			fetch: timeoutMs
+				? // Every request gets its own deadline, so a long paginated listing is not cut off.
+					(input, init) => {
+						const timeoutSignal = AbortSignal.timeout(timeoutMs);
+						const signal = init?.signal
+							? AbortSignal.any([init.signal, timeoutSignal])
+							: timeoutSignal;
+						return supabaseFetch(input, { ...init, signal });
+					}
+				: supabaseFetch,
+		},
 	});
 }
 

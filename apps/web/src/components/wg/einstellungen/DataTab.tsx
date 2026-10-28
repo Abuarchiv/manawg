@@ -16,6 +16,7 @@ import { useMessage } from '@/shared/i18n/message';
 import type { Message } from '@/shared/i18n/message';
 import type de from '@/shared/i18n/messages/de';
 import { cn } from '@/shared/lib/cn';
+import { legalUrl } from '@/shared/lib/landing-url';
 import { memberContextHeader } from '@/shared/lib/member-header';
 import { Download, Upload } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -194,9 +195,9 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 
 			<Section title={t('legalTitle')}>
 				<ul className="divide-border divide-y">
-					<LinkRow href="https://manawg.com/impressum" label={t('legal.imprint')} external />
-					<LinkRow href="https://manawg.com/datenschutz" label={t('legal.privacy')} external />
-					<LinkRow href="https://manawg.com/agb" label={t('legal.terms')} external />
+					<LinkRow href={legalUrl('/impressum')} label={t('legal.imprint')} external />
+					<LinkRow href={legalUrl('/datenschutz')} label={t('legal.privacy')} external />
+					<LinkRow href={legalUrl('/agb')} label={t('legal.terms')} external />
 				</ul>
 			</Section>
 		</>

@@ -1,11 +1,13 @@
 -- PayPal is gone: payments are cash entries only ('completed' or 'voided').
--- A completed PayPal payment still counts in balances, so stop instead of deleting it.
+-- A completed PayPal payment still counts in balances, and a capturing one may have moved
+-- money already, so stop instead of deleting either.
 DO $$
 BEGIN
 	IF EXISTS (
-		SELECT 1 FROM "expense_payments" WHERE "provider" <> 'manual' AND "status" = 'completed'
+		SELECT 1 FROM "expense_payments"
+		WHERE "provider" <> 'manual' AND "status" IN ('completed', 'capturing')
 	) THEN
-		RAISE EXCEPTION '0036 found completed PayPal payments; settle them by hand before removing PayPal';
+		RAISE EXCEPTION '0036 found completed or capturing PayPal payments; settle them by hand before removing PayPal';
 	END IF;
 END $$;
 --> statement-breakpoint

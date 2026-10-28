@@ -1,0 +1,50 @@
+name: Bug report
+description: Something does not work as it should.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: English or German is fine. Never post keys, passwords or connection strings.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What did you do, what did you expect, what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open …
+        2. Tap …
+    validations:
+      required: true
+  - type: dropdown
+    id: instance
+    attributes:
+      label: Where
+      options:
+        - app.manawg.com
+        - Self-hosted with Docker
+        - Self-hosted on Vercel and Supabase
+        - Local development
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Self-hosted only. Image tag (`MANAWG_VERSION`) or commit.
+      placeholder: latest
+  - type: input
+    id: device
+    attributes:
+      label: Device and browser
+      placeholder: iPhone 15, iOS 26, Safari (installed as app)
+  - type: textarea
+    id: logs
+    attributes:
+      label: Screenshots or logs
+      description: For self-hosted instances, the boot log lines starting with `[env]` help (`docker compose logs app`).

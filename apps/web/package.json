@@ -2,8 +2,10 @@
 	"name": "@manawg/web",
 	"version": "0.1.0",
 	"private": true,
+	"license": "Apache-2.0",
 	"scripts": {
 		"dev": "next dev --port 3000",
+		"dev:fixtures": "CI=true E2E_FIXTURE_MODE=true NEXT_PUBLIC_E2E_FIXTURE_MODE=true NEXT_PUBLIC_DB_DOWN=true POSTGRES_URL= DATABASE_URL= NEXT_PUBLIC_SUPABASE_URL= NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY= UPSTASH_REDIS_REST_URL= UPSTASH_REDIS_REST_TOKEN= VERCEL= VERCEL_ENV=preview next dev --port 3000",
 		"build": "next build",
 		"vercel-build": "next build",
 		"start": "next start",
@@ -26,8 +28,6 @@
 		"db:check": "node scripts/db-migrate.mjs --check"
 	},
 	"dependencies": {
-		"@aws-sdk/client-s3": "^3.1048.0",
-		"@aws-sdk/s3-request-presigner": "^3.1048.0",
 		"@base-ui/react": "^1.8.0",
 		"@sentry/nextjs": "11.0.0",
 		"@shadcn/react": "^0.3.1",
@@ -42,6 +42,7 @@
 		"motion": "^13.2.0",
 		"next": "^15.5.28",
 		"next-intl": "^4.14.9",
+		"nodemailer": "^10.2.1",
 		"pg": "^8.20.0",
 		"posthog-js": "1.425.1",
 		"react": "^19.1.0",
@@ -61,14 +62,15 @@
 		"@playwright/test": "^1.52.0",
 		"@tailwindcss/postcss": "^4.1.0",
 		"@types/node": "^22",
+		"@types/nodemailer": "^8.0.2",
 		"@types/pg": "^8.20.0",
 		"@types/react": "^19.2.18",
 		"@types/react-dom": "^19.2.7",
 		"@types/web-push": "^3.6.4",
-		"dotenv": "^17.4.2",
-		"drizzle-kit": "^0.31.10",
+		"dotenv": "^18.0.9",
+		"drizzle-kit": "^0.31.11",
 		"postcss": "^8.5.3",
-		"shadcn": "^4.21.0",
+		"shadcn": "^4.23.0",
 		"tailwindcss": "^4.3.3",
 		"typescript": "^5.7.0"
 	}

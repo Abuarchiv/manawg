@@ -10,6 +10,7 @@ import {
 	unauthorized,
 } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
+import { requestOrigin } from '@/core/http/request-origin';
 import {
 	authAttemptLimiter,
 	checkRateLimit,
@@ -99,7 +100,7 @@ async function run<T>(
 			cookies: cookieHolder.cookies,
 			request,
 			callbackUrl: (next) => {
-				const url = new URL('/auth/callback', request.nextUrl.origin);
+				const url = new URL('/auth/callback', requestOrigin(request));
 				url.searchParams.set('next', safeNextPath(next));
 				return url.toString();
 			},

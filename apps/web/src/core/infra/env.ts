@@ -2,20 +2,19 @@
  * Startup environment validation.
  *
  * The app degrades silently when optional infrastructure is unconfigured:
- * without Upstash the rate limiter fails open (in production it fails closed
- * and is therefore required, see below), without VAPID keys push notifications
+ * without Upstash the rate limiter fails open (on Vercel production it fails
+ * closed and is therefore required, see below; a standalone server counts in
+ * memory), without VAPID keys push notifications
  * never send, without the Supabase service-role key account deletion answers
- * 503, without AWS credentials image uploads 500 on the first signature
- * request. In production those are invisible until a user hits them.
+ * 503, without the storage bucket image uploads answer 503. In production those are invisible until a user hits them.
  * `checkEnv` turns that into one explicit report at boot.
  *
  * Split into two severities:
  *   - `missingRequired` — the app cannot serve correctly at all (no database,
  *     no signing secret for calendar feeds, unprotected cron routes). The
  *     database and `MEMBER_SESSION_SECRET` are checked in every
- *     environment; unprotected cron routes and the image-storage variables of
- *     the configured provider (e.g. `AWS_REGION` for the AWS default) are only
- *     fatal in production, where a silently broken upload path is invisible
+ *     environment; unprotected cron routes and the image-storage variables
+ *     are only fatal in production, where a silently broken upload path is invisible
  *     until a user hits it.
  *   - `degraded` — a named non-critical feature is off. Logged loud, never
  *     fatal; production rate limiting is required because API routes fail closed.
@@ -47,13 +46,12 @@ interface FeatureSpec {
 	impact: string;
 }
 
-const AWS_IMAGE_VARS = ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_REGION', 'S3_BUCKET'];
-
 const OPTIONAL_FEATURES: readonly FeatureSpec[] = [
 	{
 		feature: 'rate-limiting',
 		vars: ['UPSTASH_REDIS_REST_URL', 'UPSTASH_REDIS_REST_TOKEN'],
-		impact: 'Rate limiter fails open — every endpoint is unthrottled.',
+		impact:
+			'Rate limiter fails open on Vercel previews and in development; a standalone server counts in memory per process.',
 	},
 	{
 		feature: 'push-notifications',
@@ -122,32 +120,25 @@ function isValidHttpsUrl(value: string | undefined): boolean {
 	}
 }
 
+/** HTTPS, or plain HTTP on this machine (a local Docker stack at http://localhost). */
+function isValidSupabaseUrl(value: string | undefined): boolean {
+	if (isValidHttpsUrl(value)) return true;
+	try {
+		const url = new URL(value ?? '');
+		return url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname);
+	} catch {
+		return false;
+	}
+}
+
 function privateImageStorageMissing(env: EnvSource): { missing: string[]; impact: string } {
-	const provider = env.IMAGE_STORAGE_PROVIDER?.trim().toLowerCase() || 'aws';
-	if (provider === 'aws') {
-		return {
-			missing: [
-				...AWS_IMAGE_VARS.filter((name) => !isSet(env, name)),
-				...(isSet(env, 'S3_PUBLIC_URL') && !isValidHttpsUrl(env.S3_PUBLIC_URL)
-					? ['S3_PUBLIC_URL']
-					: []),
-			],
-			impact: 'S3 signing fails — receipt and announcement images cannot be uploaded.',
-		};
-	}
-	if (provider === 'supabase') {
-		const missing: string[] = [];
-		if (!isValidHttpsUrl(env.NEXT_PUBLIC_SUPABASE_URL)) missing.push('NEXT_PUBLIC_SUPABASE_URL');
-		if (!isSet(env, 'SUPABASE_SERVICE_ROLE_KEY')) missing.push('SUPABASE_SERVICE_ROLE_KEY');
-		if (!isSet(env, 'SUPABASE_STORAGE_BUCKET')) missing.push('SUPABASE_STORAGE_BUCKET');
-		return {
-			missing,
-			impact: 'Private Supabase image storage is unavailable — configure its server-only settings.',
-		};
-	}
+	const missing: string[] = [];
+	if (!isValidSupabaseUrl(env.NEXT_PUBLIC_SUPABASE_URL)) missing.push('NEXT_PUBLIC_SUPABASE_URL');
+	if (!isSet(env, 'SUPABASE_SERVICE_ROLE_KEY')) missing.push('SUPABASE_SERVICE_ROLE_KEY');
+	if (!isSet(env, 'SUPABASE_STORAGE_BUCKET')) missing.push('SUPABASE_STORAGE_BUCKET');
 	return {
-		missing: ['IMAGE_STORAGE_PROVIDER'],
-		impact: 'Image uploads are disabled — IMAGE_STORAGE_PROVIDER must be aws or supabase.',
+		missing,
+		impact: 'Private Supabase image storage is unavailable — configure its server-only settings.',
 	};
 }
 
@@ -170,10 +161,7 @@ export function checkEnv(env: EnvSource): EnvCheckResult {
 			if (!isSet(env, name)) missingRequired.push(name);
 		}
 	}
-	// Production-only requirements. Image storage is checked through
-	// `privateImageStorageMissing` below instead of a hardcoded name list, so
-	// `AWS_REGION` (and its siblings) are caught at boot for the AWS provider
-	// while a Supabase-storage deployment is judged by its own variables.
+	// Production-only requirements, including the image-storage variables.
 	const imageStorage = privateImageStorageMissing(env);
 	if (isProduction) {
 		for (const name of PRODUCTION_REQUIRED) {

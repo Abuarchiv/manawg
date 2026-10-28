@@ -13,11 +13,6 @@ function addCurrencyTotal(totals: CurrencyTotals, currency: string, cents: numbe
 	totals[currency] = (totals[currency] ?? 0) + cents;
 }
 
-function singleCurrencyTotal(totals: Readonly<CurrencyTotals>): number | null {
-	const currencies = Object.keys(totals).filter((currency) => totals[currency] !== 0);
-	return currencies.length <= 1 ? (currencies[0] ? (totals[currencies[0]] ?? 0) : 0) : null;
-}
-
 export interface DaySpend {
 	date: string;
 	currency: string;
@@ -31,9 +26,6 @@ export interface DashboardSpendSummary {
 	totalSpendByCurrency: CurrencyTotals;
 	weekSpendByCurrency: CurrencyTotals;
 	monthSpendByCurrency: CurrencyTotals;
-	totalSpendCents: number | null;
-	weekSpendCents: number | null;
-	monthSpendCents: number | null;
 }
 
 function berlinDaysAgoStart(todayStart: Date, daysAgo: number): Date {
@@ -99,8 +91,5 @@ export function summarizeDashboardSpend(
 		totalSpendByCurrency,
 		weekSpendByCurrency,
 		monthSpendByCurrency,
-		totalSpendCents: singleCurrencyTotal(totalSpendByCurrency),
-		weekSpendCents: singleCurrencyTotal(weekSpendByCurrency),
-		monthSpendCents: singleCurrencyTotal(monthSpendByCurrency),
 	};
 }

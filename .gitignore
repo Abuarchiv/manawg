@@ -60,32 +60,10 @@ yarn-error.log*
 supabase/.branches
 supabase/.temp
 
-# Local agent/vector databases
-**/agentdb.rvf
-**/agentdb.rvf.lock
-**/ruvector.db
-.gstack/
-.claude/
-.claude-flow/
-.swarm/
-
-# Local agent working state (not part of repo)
-.hermes/
-plans/active/
-AGENT_COMPANY_PLAN.md
-
-# Bug-Hunt-Loop Log
-BUGS.md
-
-# Standalone landing-page design prototypes (not part of the app build)
-landing-designs/
-
-# graphify knowledge graph (generated, rebuild with `graphify update .`)
-graphify-out/
-
 # Vercel CLI writes these on `vercel link` (OIDC tokens) — but keep the templates
 .env*
 !.env.example
 
-# Graphy index data
-.graphy/
+
+# Docker self-hosting backups (docker/backup.sh)
+backups/

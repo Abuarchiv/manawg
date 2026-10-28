@@ -125,43 +125,8 @@ export function getPrivateImageKeyFromStoredUrl(
 	return privateImage;
 }
 
-function getAllowedHosts(): string[] {
-	const hosts = new Set<string>();
-	const publicUrl = process.env.S3_PUBLIC_URL;
-	if (publicUrl) {
-		try {
-			hosts.add(new URL(publicUrl).host);
-		} catch {
-			// ignore malformed env
-		}
-	}
-	const bucket = process.env.S3_BUCKET;
-	const region = process.env.AWS_REGION;
-	if (bucket && region) {
-		hosts.add(`${bucket}.s3.${region}.amazonaws.com`);
-		hosts.add(`${bucket}.s3.amazonaws.com`);
-	}
-	return [...hosts];
-}
-
-function isAllowedImageHost(url: string): boolean {
-	let parsed: URL;
-	try {
-		parsed = new URL(url);
-	} catch {
-		return false;
-	}
-	if (parsed.protocol !== 'https:') return false;
-	const allowed = getAllowedHosts();
-	if (allowed.length === 0) {
-		return false;
-	}
-	return allowed.includes(parsed.host);
-}
-
 export function isAllowedImageUrlForWg(url: string | null | undefined, wgId: string): boolean {
 	if (!url) return true;
-	if (isAllowedImageHost(url)) return true;
 	const privateImage = parsePrivateImageUrl(url);
 	return privateImage !== null && privateImage.wgId.toLowerCase() === wgId.toLowerCase();
 }
@@ -170,14 +135,14 @@ export function isAllowedImageUrlForWg(url: string | null | undefined, wgId: str
  * Zod schema for user-supplied image URLs stored in expenses, announcements and chat messages.
  *
  * Empty string is treated as "no image" (legacy clients send '' instead of null).
- * Non-empty strings must be https:// and point at our S3 bucket — blocks
+ * Non-empty strings must be this app's private image URL (`/api/upload/read`) — blocks
  * `javascript:`, `data:`, and attacker-controlled hosts that the CSP `img-src`
  * already restricts but which we never want to persist.
  */
 export const imageUrlSchema = z
 	.string()
 	.max(URL_MAX)
-	.refine((v) => v.length === 0 || isAllowedImageHost(v) || parsePrivateImageUrl(v) !== null, {
+	.refine((v) => v.length === 0 || parsePrivateImageUrl(v) !== null, {
 		message: 'image_url_not_allowed',
 	})
 	.optional()

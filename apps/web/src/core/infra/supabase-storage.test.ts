@@ -42,7 +42,7 @@ function harness() {
 	return { state, ImageStorageConfigurationError, removeSupabaseImages };
 }
 
-test('cleanup removes through Supabase with a bounded request even when uploads use AWS', async () => {
+test('cleanup removes through Supabase with a bounded request', async () => {
 	const previous = {
 		fetch: globalThis.fetch,
 	};
@@ -61,7 +61,6 @@ test('cleanup removes through Supabase with a bounded request even when uploads 
 		NEXT_PUBLIC_SUPABASE_URL: 'https://supabase.example',
 		SUPABASE_SERVICE_ROLE_KEY: 'test-service-role-key',
 		SUPABASE_STORAGE_BUCKET: 'private-images',
-		IMAGE_STORAGE_PROVIDER: 'aws',
 	});
 	try {
 		const keys = [

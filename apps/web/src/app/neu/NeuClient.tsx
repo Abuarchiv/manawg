@@ -5,6 +5,7 @@ import { ErrorBox } from '@/components/app/ErrorBox';
 import { CredentialsAuth } from '@/components/auth/CredentialsAuth';
 import { SignUpPrompt } from '@/components/auth/SignUpPrompt';
 import { SocialLoginButtons } from '@/components/auth/SocialLoginButtons';
+import { useGoogleSignIn } from '@/components/auth/google-sign-in';
 import { EntryFrame } from '@/components/entry/EntryFrame';
 import { LegalLinks } from '@/components/entry/LegalLinks';
 import { useConfirmLogoutDiscard } from '@/components/entry/use-confirm-logout-discard';
@@ -61,6 +62,7 @@ export function NeuClient() {
 	const [accountSwitchError, setAccountSwitchError] = useState<string | null>(null);
 	const [switching, setSwitching] = useState(false);
 	const [credentialsBusy, setCredentialsBusy] = useState(false);
+	const googleSignIn = useGoogleSignIn();
 	// Keeps the retry button mounted (and focused) while the check reruns.
 	const [retried, setRetried] = useState(false);
 	const {
@@ -255,12 +257,16 @@ export function NeuClient() {
 					</output>
 				) : (
 					<FieldGroup>
-						<SocialLoginButtons
-							next={loginNextPath()}
-							onOAuthStart={startSocialLogin}
-							disabled={credentialsBusy}
-						/>
-						<FieldSeparator>{t('or')}</FieldSeparator>
+						{googleSignIn && (
+							<>
+								<SocialLoginButtons
+									next={loginNextPath()}
+									onOAuthStart={startSocialLogin}
+									disabled={credentialsBusy}
+								/>
+								<FieldSeparator>{t('or')}</FieldSeparator>
+							</>
+						)}
 						<CredentialsAuth
 							next={loginNextPath()}
 							onAuthenticated={handleAuthenticated}

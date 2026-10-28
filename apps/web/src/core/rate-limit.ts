@@ -1,6 +1,7 @@
 import { captureException } from '@/core/infra/observability';
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis/cloudflare';
+import { createMemoryLimiter } from './memory-rate-limit';
 
 /**
  * An empty or whitespace-only variable is *configured but unusable* — a typo
@@ -66,8 +67,26 @@ function createConfiguredRedis(): Redis | null {
 
 const redis = createConfiguredRedis();
 
-function build(limit: number, windowSec: number, prefix: string): Ratelimit | null {
-	if (!redis) return null;
+/**
+ * A standalone server (Docker, `next start` outside Vercel) without Upstash counts in memory: it
+ * is one long-lived process, so a per-process limit is real. Vercel's many short-lived instances
+ * cannot share memory and keep the fail-open/fail-closed handling instead.
+ */
+const useMemoryLimiter =
+	!redis &&
+	!configuredButInvalid &&
+	process.env.NODE_ENV === 'production' &&
+	!process.env.VERCEL_ENV;
+
+/** What `checkRateLimit` needs from a limiter: Upstash's `Ratelimit` or the memory one. */
+interface RateLimiter {
+	limit(
+		key: string,
+	): Promise<{ success: boolean; remaining: number; reset: number; reason?: string }>;
+}
+
+function build(limit: number, windowSec: number, prefix: string): RateLimiter | null {
+	if (!redis) return useMemoryLimiter ? createMemoryLimiter(limit, windowSec) : null;
 	return new Ratelimit({
 		redis,
 		limiter: Ratelimit.slidingWindow(limit, `${windowSec} s`),
@@ -283,7 +302,7 @@ function unavailableResult(): RateLimitResult {
 }
 
 export async function checkRateLimit(
-	limiter: Pick<Ratelimit, 'limit'> | null,
+	limiter: RateLimiter | null,
 	key: string,
 	failMode: 'open' | 'closed' = rateLimitFailMode(),
 ): Promise<RateLimitResult> {

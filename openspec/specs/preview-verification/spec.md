@@ -7,7 +7,7 @@ Provide a protected, repeatable way to verify an approved Preview deployment wit
 
 ### Requirement: Preview targets are trusted before secrets are used
 
-The protected Preview lane SHALL validate the deployment-status payload before injecting any QA credential or automation-bypass secret. The accepted target SHALL be the canonical HTTPS origin matching `^https://manawg-[a-z0-9-]+-abditubes-projects\.vercel\.app$`, with the URL taken from the Vercel-created Preview deployment status; the lane SHALL reject any other actor, environment, URL shape, or source.
+The protected Preview lane SHALL validate the deployment-status payload before injecting any QA credential or automation-bypass secret. The accepted target SHALL be the canonical HTTPS origin `https://<VERCEL_PROJECT_NAME>-<hash>-<VERCEL_TEAM_SLUG>.vercel.app` built from the repository variables, with the URL taken from the Vercel-created Preview deployment status; the lane SHALL reject any other actor, environment, URL shape, or source.
 
 #### Scenario: Approved target passes validation
 

@@ -176,8 +176,7 @@ function harness() {
 	};
 	return {
 		state,
-		run: (legacyResponse?: Parameters<typeof withIdempotentReplay>[3]) =>
-			withIdempotentReplay(request, scope, mutate as never, legacyResponse),
+		run: () => withIdempotentReplay(request, scope, mutate as never),
 		persistWarning: () =>
 			persistReplayWarning(scope, claimKey, 'comment-1', 'notification_delivery_failed'),
 	};

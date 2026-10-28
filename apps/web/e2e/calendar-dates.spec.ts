@@ -3,7 +3,7 @@
 
 import { expect, test } from '@playwright/test';
 import { inputDateToIso } from '../src/core/utils/local-date';
-import { detectMention } from '../src/features/chat/chat-pure';
+import { detectMention } from '../src/features/chat/chat-text';
 import {
 	type EventInput,
 	eventDateForDisplay,

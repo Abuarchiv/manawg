@@ -180,7 +180,7 @@ export default {
 		creating: 'Creating flat…',
 		create: 'Create flat',
 		inviteLink: 'Invitation link',
-		inviteLinkPlaceholder: 'https://app.manawg.com/einladung/…',
+		inviteLinkPlaceholder: '{origin}/einladung/…',
 		inviteLinkHint: 'Paste the link a member of the flat sent you.',
 		openInvite: 'Open invitation',
 	},

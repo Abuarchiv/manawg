@@ -18,8 +18,13 @@ concurrency:
   group: production-release
   cancel-in-progress: false
 
+env:
+  # Repository variable of the deployed instance; forks without it skip releases.
+  PRODUCTION_APP_URL: ${{ vars.PRODUCTION_APP_URL }}
+
 jobs:
   release:
+    if: vars.PRODUCTION_APP_URL != ''
     runs-on: ubuntu-latest
     timeout-minutes: 150
     environment:
@@ -28,7 +33,7 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: main
           fetch-depth: 1
@@ -127,7 +132,7 @@ jobs:
           # The hook builds the main tip; if main moved meanwhile, the version check below fails.
           curl -fsS -X POST "$DEPLOY_HOOK" > /dev/null
           for _ in $(seq 120); do
-            health="$(curl -sS https://app.manawg.com/api/health || true)"
+            health="$(curl -sS "$PRODUCTION_APP_URL/api/health" || true)"
             if jq -e --arg sha "$SHA" '.version == $sha and .status == "ok" and .database == "ok"' <<<"$health" > /dev/null 2>&1; then
               echo "Production serves $SHA: $health" >> "$GITHUB_STEP_SUMMARY"
               exit 0

@@ -1,6 +1,7 @@
 'use client';
 
 import { SocialLoginButtons, type SocialProvider } from '@/components/auth/SocialLoginButtons';
+import { useGoogleSignIn } from '@/components/auth/google-sign-in';
 import type { Member, WgSummary } from '@/components/wg/WgContextProvider';
 import { AccountSignOutSection } from '@/components/wg/einstellungen/AccountSignOutSection';
 import { AccountWgsSection } from '@/components/wg/einstellungen/AccountWgsSection';
@@ -64,6 +65,7 @@ function usePasswordAccountEmail(): string | null {
 
 export function AccessTab({ wg, members, identity }: AccessTabProps) {
 	const t = useTranslations('settings.accessTab');
+	const googleSignIn = useGoogleSignIn();
 	const googleLinked = useGoogleLinked();
 	const accountEmail = usePasswordAccountEmail();
 	const settingsReturnPath = `/wg/${encodeURIComponent(wg.shareCode)}/einstellungen#zugang`;
@@ -78,11 +80,13 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 					{googleLinked ? (
 						<p className="text-sm text-muted-foreground">{t('googleLinked')}</p>
 					) : (
-						<SocialLoginButtons
-							variant="link"
-							next={settingsReturnPath}
-							onOAuthStart={linkSocialIdentity}
-						/>
+						googleSignIn && (
+							<SocialLoginButtons
+								variant="link"
+								next={settingsReturnPath}
+								onOAuthStart={linkSocialIdentity}
+							/>
+						)
 					)}
 				</div>
 			</Section>

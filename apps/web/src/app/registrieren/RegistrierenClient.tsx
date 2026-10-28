@@ -2,6 +2,7 @@
 
 import { CredentialsAuth } from '@/components/auth/CredentialsAuth';
 import { SocialLoginButtons } from '@/components/auth/SocialLoginButtons';
+import { useGoogleSignIn } from '@/components/auth/google-sign-in';
 import { EntryFrame } from '@/components/entry/EntryFrame';
 import { LegalLinks } from '@/components/entry/LegalLinks';
 import { FieldGroup, FieldSeparator } from '@/components/ui/field';
@@ -22,6 +23,7 @@ export function RegistrierenClient({ intentQuery }: { intentQuery: string }) {
 	const t = useTranslations('entry');
 	const router = useRouter();
 	const [credentialsBusy, setCredentialsBusy] = useState(false);
+	const googleSignIn = useGoogleSignIn();
 	const intent = new URLSearchParams(intentQuery);
 	const afterAuthPath = authPageHref('/neu', intentQuery);
 
@@ -33,16 +35,20 @@ export function RegistrierenClient({ intentQuery }: { intentQuery: string }) {
 			backHref="/"
 		>
 			<FieldGroup>
-				<SocialLoginButtons
-					variant="sign-up"
-					next={afterAuthPath}
-					onOAuthStart={async (provider, next) => {
-						const { startSocialLogin } = await import('@/core/auth/client');
-						await startSocialLogin(provider, next);
-					}}
-					disabled={credentialsBusy}
-				/>
-				<FieldSeparator>{t('start.or')}</FieldSeparator>
+				{googleSignIn && (
+					<>
+						<SocialLoginButtons
+							variant="sign-up"
+							next={afterAuthPath}
+							onOAuthStart={async (provider, next) => {
+								const { startSocialLogin } = await import('@/core/auth/client');
+								await startSocialLogin(provider, next);
+							}}
+							disabled={credentialsBusy}
+						/>
+						<FieldSeparator>{t('start.or')}</FieldSeparator>
+					</>
+				)}
 				<CredentialsAuth
 					mode="sign-up"
 					next={afterAuthPath}

@@ -80,12 +80,6 @@ describe('rate limit fail open env', () => {
 			productionAlert: true,
 		},
 		{
-			env: { NODE_ENV: 'production' },
-			failMode: 'closed',
-			success: false,
-			productionAlert: false,
-		},
-		{
 			env: { NODE_ENV: 'test', VERCEL_ENV: 'preview' },
 			failMode: 'closed',
 			success: false,
@@ -133,6 +127,22 @@ describe('rate limit fail open env', () => {
 			}
 		});
 	}
+
+	test('a standalone production server without Upstash counts in memory', async () => {
+		const restore = pinEnv({ NODE_ENV: 'production' });
+		try {
+			const rateLimit = await loadRateLimit();
+			assert.notEqual(rateLimit.uploadSignLimiter, null);
+			const results = [];
+			for (let i = 0; i < 11; i += 1) {
+				results.push(await rateLimit.checkRateLimit(rateLimit.uploadSignLimiter, 'member-1'));
+			}
+			assert.equal(results.filter((result) => result.success).length, 10);
+			assert.equal(results.at(-1)?.limiterUnavailable, undefined);
+		} finally {
+			restore();
+		}
+	});
 
 	test('the fail-open decision reads NODE_ENV and VERCEL_ENV at call time', async () => {
 		const restoreProduction = pinEnv({ NODE_ENV: 'production', VERCEL_ENV: 'production' });

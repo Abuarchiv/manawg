@@ -8,6 +8,7 @@
 				"sentry.*.config.ts",
 				"scripts/*.mjs",
 				"scripts/real-stack/*.mjs",
+				"scripts/selfhost/*.mjs",
 				"tests/**/*.test.{mjs,cjs,ts}",
 				"tests/support/*.{mjs,cjs}",
 				"src/**/*.test.{mjs,ts}",

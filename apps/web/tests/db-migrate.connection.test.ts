@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
 	resolveConnectionString,
-	validateSupabaseDirectUrl,
+	validateSupabaseSessionUrl,
 } from '../scripts/db-migrate/connection.mjs';
 import { errorCodeSuffix, safeFailureReason } from '../scripts/db-migrate/failure.mjs';
 
@@ -54,18 +54,33 @@ test('resolveConnectionString names the variables to set when none is present', 
 	});
 });
 
-test('validateSupabaseDirectUrl accepts only direct Supabase hosts on port 5432', () => {
-	assert.doesNotThrow(() => validateSupabaseDirectUrl(DIRECT, 'migration'));
+test('validateSupabaseSessionUrl accepts only Supabase session connections on port 5432', () => {
+	assert.doesNotThrow(() => validateSupabaseSessionUrl(DIRECT, 'migration'));
+	assert.doesNotThrow(() =>
+		validateSupabaseSessionUrl(
+			'postgresql://postgres.project:p@aws-0-eu-central-1.pooler.supabase.com:5432/postgres?sslmode=require',
+			'migration',
+		),
+	);
 	for (const url of [
 		'postgresql://u:p@localhost:5432/postgres',
 		'postgresql://u:p@db.example.test:5432/postgres?sslmode=require',
-		'postgresql://u:p@aws-0-eu-central-1.pooler.supabase.com:5432/postgres?sslmode=require',
+		'postgresql://u:p@pooler.supabase.com.example.test:5432/postgres?sslmode=require',
 		'mysql://u:p@db.project.supabase.co:5432/postgres?sslmode=require',
 	]) {
-		assert.throws(() => validateSupabaseDirectUrl(url, 'migration'), {
-			message: 'migration must be a direct Supabase PostgreSQL connection on port 5432.',
+		assert.throws(() => validateSupabaseSessionUrl(url, 'migration'), {
+			message:
+				'migration must be a Supabase PostgreSQL session connection (direct or session pooler) on port 5432.',
 		});
 	}
+	assert.throws(
+		() =>
+			validateSupabaseSessionUrl(
+				'postgresql://u:p@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?sslmode=require',
+				'migration',
+			),
+		/port 6543/,
+	);
 });
 
 test('safeFailureReason maps errors to fixed slugs without echoing their text', () => {

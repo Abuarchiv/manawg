@@ -4,17 +4,13 @@ import { requireMember } from '@/core/guards/api-auth';
 import { requireAccount } from '@/core/guards/require-account';
 import { badRequest, notFound, rateLimitResponse, serverError } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
-import { PRIVATE_IMAGE_MIME_TYPES } from '@/core/infra/private-image-policy';
 import {
-	S3ConfigurationError,
-	S3_MAX_UPLOAD_BYTES,
-	createPresignedUpload,
-	isAllowedMimeType,
-} from '@/core/infra/s3';
+	PRIVATE_IMAGE_MAX_BYTES,
+	PRIVATE_IMAGE_MIME_TYPES,
+} from '@/core/infra/private-image-policy';
 import {
 	ImageStorageConfigurationError,
 	createSupabaseSignedUpload,
-	getImageStorageProvider,
 } from '@/core/infra/supabase-storage';
 import { checkRateLimit, uploadSignDayLimiter, uploadSignLimiter } from '@/core/rate-limit';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
@@ -29,7 +25,7 @@ const signSchema = z.object({
 	shareCode: z.string().transform((v) => normalizeShareCode(v)),
 	purpose: z.enum(ALLOWED_PURPOSES),
 	mimeType: z.enum(PRIVATE_IMAGE_MIME_TYPES),
-	fileSize: z.number().int().positive().max(S3_MAX_UPLOAD_BYTES),
+	fileSize: z.number().int().positive().max(PRIVATE_IMAGE_MAX_BYTES),
 });
 
 function noStore<T extends NextResponse>(response: T): T {
@@ -60,9 +56,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 	});
 	if (!parsed.ok) return noStore(parsed.response);
 
-	const { shareCode: code, purpose, mimeType, fileSize } = parsed.data;
+	const { shareCode: code, purpose, mimeType } = parsed.data;
 	if (!isValidShareCode(code)) return noStore(badRequest('invalid_share_code'));
-	if (!isAllowedMimeType(mimeType)) return noStore(badRequest('invalid_mime_type'));
 
 	const account = await requireAccount(req, 'upload sign');
 	if (!account.ok) return noStore(account.response);
@@ -95,17 +90,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 	try {
 		const ext = extFromMime(mimeType);
 		const key = `manawg/${wg.id}/${purpose}/${randomUUID()}.${ext}`;
-		const provider = getImageStorageProvider();
-		const signature =
-			provider === 'supabase'
-				? {
-						...(await createSupabaseSignedUpload(key, mimeType)),
-						publicUrl: getPrivateImageUrl(key),
-					}
-				: await createPresignedUpload(key, mimeType, fileSize);
+		const signature = {
+			...(await createSupabaseSignedUpload(key, mimeType)),
+			publicUrl: getPrivateImageUrl(key),
+		};
 		return noStore(NextResponse.json(signature));
 	} catch (err) {
-		if (err instanceof ImageStorageConfigurationError || err instanceof S3ConfigurationError) {
+		if (err instanceof ImageStorageConfigurationError) {
 			return noStore(
 				NextResponse.json(
 					{ error: 'feature_disabled', code: 'image_uploads_unavailable' },

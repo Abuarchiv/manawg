@@ -1,7 +1,6 @@
 import { deleteAuthUser } from '@/core/auth/delete-user';
 import { getSupabaseEnv, hasSupabaseEnv } from '@/core/auth/supabase-env';
 import { retryPendingAccountDeletions } from '@/core/db/account-deletion';
-import { healAdminlessWgs } from '@/core/db/admin-succession';
 import { sweepOrphanUploads } from '@/core/db/orphan-uploads';
 import {
 	claimPrivateImageCleanupBatch,
@@ -14,7 +13,7 @@ import {
 import { purgeExpiredIdempotencyResponses } from '@/core/idempotency-store';
 import { requireCronSecret } from '@/core/infra/cron-auth';
 import { logApiError, withCronLogging } from '@/core/infra/observability';
-import { getImageStorageProvider, removeSupabaseImages } from '@/core/infra/supabase-storage';
+import { removeSupabaseImages } from '@/core/infra/supabase-storage';
 import { confirmedEmailOf, sendAccountDeletedMail } from '@/core/mail/account-deleted';
 import { purgeOldDigestMailLog } from '@/core/mail/mail-retention';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -82,9 +81,9 @@ async function cleanupPrivateImages(): Promise<{
 	};
 }
 
-/** Only the private Supabase bucket can be listed; other providers have nothing to sweep. */
+/** Without a configured bucket there is nothing to sweep. */
 async function sweepOrphans(): Promise<{ wgsChecked: number; queued: number } | null> {
-	return getImageStorageProvider() === 'supabase' ? sweepOrphanUploads() : null;
+	return process.env.SUPABASE_STORAGE_BUCKET?.trim() ? sweepOrphanUploads() : null;
 }
 
 /** Drops old ledger rows (finished image tombstones, digest mail log); failures only get logged. */
@@ -121,19 +120,16 @@ export const GET = withCronLogging(
 						return confirmed;
 					}
 				: null;
-		const [purge, deletions, privateImages, orphans, adminHeal] = await Promise.allSettled([
+		const [purge, deletions, privateImages, orphans] = await Promise.allSettled([
 			purgeExpiredIdempotencyResponses(),
 
 			retryPendingAccountDeletions(deleteAuth),
 			cleanupPrivateImages(),
 			sweepOrphans(),
-			healAdminlessWgs(),
 		]);
 		await purgeRetention();
 		if (orphans.status === 'rejected')
 			logApiError('[maintenance] orphan upload sweep failed', orphans.reason);
-		if (adminHeal.status === 'rejected')
-			logApiError('[maintenance] admin handover heal failed', adminHeal.reason);
 		if (purge.status === 'rejected')
 			logApiError('[maintenance] idempotency cleanup failed', purge.reason);
 		if (deletions.status === 'rejected') {
@@ -154,8 +150,6 @@ export const GET = withCronLogging(
 			purge.status === 'fulfilled' &&
 			deletions.status === 'fulfilled' &&
 			orphans.status === 'fulfilled' &&
-			adminHeal.status === 'fulfilled' &&
-			adminHeal.value.failed === 0 &&
 			!recoveryPending &&
 			!imageCleanupProblem;
 		return NextResponse.json(
@@ -163,7 +157,6 @@ export const GET = withCronLogging(
 				ok,
 				purgedIdempotencyRows: purge.status === 'fulfilled' ? purge.value : null,
 				orphanUploads: orphans.status === 'fulfilled' ? orphans.value : null,
-				adminHeal: adminHeal.status === 'fulfilled' ? adminHeal.value : null,
 				accountDeletions:
 					deletions.status === 'fulfilled'
 						? { ...deletions.value, authAdminAvailable: Boolean(deleteAuth) }
