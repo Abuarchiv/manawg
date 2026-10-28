@@ -9,7 +9,7 @@ export function SignUpPrompt({ intentQuery }: { intentQuery: string }) {
 		<p className="text-sm text-muted-foreground">
 			{t('noAccount')}{' '}
 			<Link
-				href={authPageHref('/registrieren', intentQuery)}
+				href={authPageHref('/signup', intentQuery)}
 				className="-my-3 inline-block py-3 font-medium text-foreground underline underline-offset-4"
 			>
 				{t('create')}

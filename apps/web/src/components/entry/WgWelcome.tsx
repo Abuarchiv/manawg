@@ -28,8 +28,8 @@ export function WgWelcome(props: WgWelcomeProps) {
 	const actionHref = invitation
 		? invitePath(props.token)
 		: guestCreate
-			? '/registrieren'
-			: '/neu?action=create';
+			? '/signup'
+			: '/login?action=create';
 
 	return (
 		<div className="flex flex-col gap-2">

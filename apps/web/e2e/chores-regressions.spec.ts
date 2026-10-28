@@ -60,7 +60,7 @@ test.describe('chore absence cache', () => {
 			route.fulfill({ status: 503, json: { error: 'server_error' } }),
 		);
 
-		await navigateToFeature(page, `/wg/${shareCode}/putzen`);
+		await navigateToFeature(page, `/wg/${shareCode}/chores`);
 		await dismissOnboarding(page);
 		const absenceRow = page.locator(`#absence-${absence.id}`);
 		await absenceRow.getByRole('button', { name: /entfernen$/ }).click();
@@ -99,7 +99,7 @@ test.describe('chore absence cache', () => {
 			return route.fulfill({ json: {} });
 		});
 
-		await navigateToFeature(page, `/wg/${shareCode}/putzen`);
+		await navigateToFeature(page, `/wg/${shareCode}/chores`);
 		await dismissOnboarding(page);
 		const absenceRow = page.locator(`#absence-${absence.id}`);
 		await absenceRow.getByRole('button', { name: /entfernen$/ }).click();
@@ -144,7 +144,7 @@ test.describe('chore absence cache', () => {
 			return route.fulfill({ json: {} });
 		});
 
-		await navigateToFeature(page, `/wg/${shareCode}/putzen`);
+		await navigateToFeature(page, `/wg/${shareCode}/chores`);
 		await dismissOnboarding(page);
 		const absenceRow = page.locator(`#absence-${absence.id}`);
 		const remove = absenceRow.getByRole('button', { name: /entfernen/ });

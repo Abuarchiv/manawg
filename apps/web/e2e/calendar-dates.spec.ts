@@ -350,7 +350,7 @@ test.describe('calendar date and recurrence regressions', () => {
 		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/chores*`, (route) =>
 			route.fulfill({ json: { chores: [] } }),
 		);
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/kalender`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/calendar`);
 		const open = page.getByRole('button', { name: 'Termin hinzufügen', exact: true }).first();
 		await open.click();
 		await page.locator('#event-create-title').fill('Entwurf bleibt');
@@ -385,7 +385,7 @@ test.describe('calendar date and recurrence regressions', () => {
 		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/chores*`, (route) =>
 			route.fulfill({ json: { chores: [] } }),
 		);
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/kalender`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/calendar`);
 		const url = page.url();
 		const open = page.getByRole('button', { name: 'Termin hinzufügen', exact: true }).first();
 		await open.click();

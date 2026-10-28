@@ -119,12 +119,12 @@ test('moved and cancelled event pushes name the actor and follow the calendar pr
 
 		assert.equal(moved.title, 'Termin verschoben');
 		assert.equal(moved.body, 'Alex hat „Plenum“ in WG auf den 01.01., 19:00 verschoben.');
-		assert.equal(moved.urlPath, '/kalender?highlight=e1');
+		assert.equal(moved.urlPath, '/calendar?highlight=e1');
 		assert.equal(cancelled.title, 'Termin abgesagt');
 		assert.equal(cancelled.body, 'Alex hat „Plenum“ am 01.01., 19:00 in WG abgesagt.');
 		assert.equal(series.body, 'Alex hat die Terminserie „Plenum“ in WG verschoben.');
 		assert.equal(seriesCancelled.body, 'Alex hat die Terminserie „Plenum“ in WG abgesagt.');
-		assert.equal(gone.urlPath, '/kalender');
+		assert.equal(gone.urlPath, '/calendar');
 		for (const event of ['event.moved', 'event.cancelled'] as const) {
 			assert.equal(notificationCategoryForEvent(event), 'events');
 			assert.equal(notificationPriorityForEvent(event), 'normal');

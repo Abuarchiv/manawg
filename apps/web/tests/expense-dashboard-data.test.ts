@@ -94,24 +94,24 @@ test('dashboard due recurring count matches active Abos and retains paused activ
 		query: { wgMembers: { findFirst: async () => null } },
 	};
 	const dashboard = await loadDashboardData('wg');
-	const abosDue = getDueRecurringExpenses(
+	const recurringDue = getDueRecurringExpenses(
 		recurringRows
-			.filter((abo) => abo.pausedAt === null)
-			.map((abo) => ({
-				id: abo.id,
-				description: abo.description,
-				amountCents: abo.amountCents,
+			.filter((recurringExpense) => recurringExpense.pausedAt === null)
+			.map((recurringExpense) => ({
+				id: recurringExpense.id,
+				description: recurringExpense.description,
+				amountCents: recurringExpense.amountCents,
 				currency: 'EUR',
-				nextDueAt: abo.nextDueAt.toISOString(),
+				nextDueAt: recurringExpense.nextDueAt.toISOString(),
 			})),
 		Date.now(),
 	);
 
 	assert.deepEqual(
-		dashboard.dueRecurringExpenses.map((abo) => abo.id),
-		abosDue.map((abo) => abo.id),
+		dashboard.dueRecurringExpenses.map((recurringExpense) => recurringExpense.id),
+		recurringDue.map((recurringExpense) => recurringExpense.id),
 	);
-	assert.equal(dashboard.dueRecurringExpenses.length, abosDue.length);
+	assert.equal(dashboard.dueRecurringExpenses.length, recurringDue.length);
 	assert.deepEqual(
 		dashboard.activity
 			.filter((item) => item.kind === 'recurring')

@@ -28,19 +28,19 @@ export const SAFE_TAG_VALUES: Record<string, ReadonlySet<string>> = {
 		'global',
 		'root',
 		'wg-code',
-		'wg-abos',
-		'wg-aktivitaet',
-		'wg-ausgaben',
+		'wg-recurring',
+		'wg-activity',
+		'wg-expenses',
 		'wg-chat',
-		'wg-einkauf',
-		'wg-einstellungen',
+		'wg-shopping',
+		'wg-settings',
 		'wg-import',
-		'wg-kalender',
-		'wg-mahnungen',
-		'wg-abrechnung',
-		'wg-pinnwand',
-		'wg-putzen',
-		'wg-vorraete',
+		'wg-calendar',
+		'wg-reminders',
+		'wg-statement',
+		'wg-pinboard',
+		'wg-chores',
+		'wg-supplies',
 	]),
 	cronJob: new Set([
 		'event-reminders',
@@ -70,7 +70,7 @@ export function safeErrorName(name: unknown): string {
 function sanitizeUrl(value: string): string {
 	const [withoutQuery = ''] = value.split(/[?#]/, 1);
 	const withoutPrivateRoutes = withoutQuery
-		.replace(/(\/api\/wg\/invites\/|\/einladung\/)[^/]+/gi, '$1[redacted]')
+		.replace(/(\/api\/wg\/invites\/|\/invite\/)[^/]+/gi, '$1[redacted]')
 		.replace(/(\/wg\/)(?!invites\/)[^/]+/gi, '$1[redacted]')
 		.replace(/(\/api\/calendar\/)[^/]+\/[^/]+/gi, '$1[redacted]/[redacted]')
 		.replace(

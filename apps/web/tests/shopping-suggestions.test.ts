@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 const { buildSuggestionGroups } = await import(
-	'../src/app/wg/[code]/einkauf/shopping-suggestions.ts'
+	'../src/app/wg/[code]/shopping/shopping-suggestions.ts'
 );
 
 const NOW = Date.parse('2026-10-26T12:00:00Z');

@@ -52,7 +52,7 @@ test('expense retries keep the key for the same payload and change it when the p
 		});
 	});
 
-	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/ausgaben?new=1`);
+	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/expenses?new=1`);
 	await dismissOnboarding(page);
 	const form = page.getByRole('dialog');
 	await form.getByLabel('Beschreibung').fill('Wocheneinkauf');
@@ -104,7 +104,7 @@ test('an ambiguously acknowledged expense replays its queued request with the or
 		return route.fulfill({ json: { expense: committedExpense, warning: null } });
 	});
 
-	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/ausgaben?new=1`);
+	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/expenses?new=1`);
 	await dismissOnboarding(page);
 	const form = page.getByRole('dialog');
 	await form.getByLabel('Beschreibung').fill('Wocheneinkauf');
@@ -135,7 +135,7 @@ test('an ambiguously acknowledged expense replays its queued request with the or
 			},
 		});
 	});
-	await replayPage.goto(`/wg/${FIXTURE_WG.shareCode}/ausgaben`);
+	await replayPage.goto(`/wg/${FIXTURE_WG.shareCode}/expenses`);
 	await dismissOnboarding(replayPage);
 	await expect.poll(() => queuedActionCount(replayPage, 'expense.create')).toBe(1);
 	await expectOfflineAutoSyncBackoff(
@@ -177,7 +177,7 @@ test('discarding an ambiguous expense starts a new request key for identical for
 		});
 	});
 
-	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/ausgaben?new=1`);
+	await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/expenses?new=1`);
 	await dismissOnboarding(page);
 	const form = page.getByRole('dialog');
 	await form.getByLabel('Beschreibung').fill('Wocheneinkauf');

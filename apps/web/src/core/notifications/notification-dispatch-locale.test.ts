@@ -68,5 +68,5 @@ test('each recipient gets the push text in their own locale', async () => {
 		english?.payload.body,
 		'Anna reversed the cash payment of €12.50. The amount is open again.',
 	);
-	assert.equal(english?.payload.url, '/wg/ABC/ausgaben');
+	assert.equal(english?.payload.url, '/wg/ABC/expenses');
 });

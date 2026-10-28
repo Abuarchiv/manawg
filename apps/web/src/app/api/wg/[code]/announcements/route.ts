@@ -45,8 +45,8 @@ import {
 	type AnnouncementSource,
 	MEMBER_ANNOUNCEMENT_SOURCES,
 	summarizeAnnouncementReactions,
-} from '@/features/pinnwand/announcement-workflow';
-import { CONTENT_MAX } from '@/features/pinnwand/constants';
+} from '@/features/announcements/announcement-workflow';
+import { CONTENT_MAX } from '@/features/announcements/constants';
 
 const CONTENT_MIN = 1;
 const ANNOUNCEMENTS_LIST_LIMIT = 300;
@@ -82,7 +82,7 @@ const createAnnouncementSchema = z.object({
 });
 
 const CHORE_SWAP_PATH_RE =
-	/^\/putzen\?highlight=([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
+	/^\/chores\?highlight=([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
 
 function requestedSwapChoreId(
 	source: AnnouncementSource,
@@ -94,7 +94,7 @@ function requestedSwapChoreId(
 }
 
 function choreSwapSourcePath(choreId: string): string {
-	return `/putzen?highlight=${encodeURIComponent(choreId)}`;
+	return `/chores?highlight=${encodeURIComponent(choreId)}`;
 }
 
 export const GET = withWgRoute('announcements GET', async (req, { code }) => {

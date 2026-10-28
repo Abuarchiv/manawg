@@ -135,7 +135,7 @@ mock.module('@/core/rate-limit', {
 mock.module('@/core/db/with-replay', {
 	namedExports: { withIdempotentReplay, persistReplayWarning: async () => true },
 });
-mock.module('@/features/pinnwand/announcement-workflow', {
+mock.module('@/features/announcements/announcement-workflow', {
 	namedExports: { ANNOUNCEMENT_REACTIONS: ['seen', 'take', 'ok'] },
 });
 mock.module('drizzle-orm', {

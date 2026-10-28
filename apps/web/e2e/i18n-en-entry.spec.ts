@@ -17,15 +17,15 @@ const WIDTHS = [320, 390] as const;
 
 // Slug, English title and description of the ten public discovery pages.
 const DISCOVERY_PAGES = [
-	['ausgaben', 'Expenses', 'Shared costs at a glance.'],
-	['einkauf', 'Shopping', 'What needs to be bought.'],
-	['pinnwand', 'Noticeboard', 'Information for everyone.'],
-	['putzen', 'Cleaning rota', 'Tasks shared fairly.'],
-	['fixkosten', 'Fixed costs', 'Recurring costs.'],
-	['mahnungen', 'Reminders', 'Amounts still open.'],
-	['vorraete', 'Supplies', 'What is still in stock.'],
-	['kalender', 'Calendar', 'Shared events.'],
-	['aktivitaet', 'Activity', 'What happened recently.'],
+	['expenses', 'Expenses', 'Shared costs at a glance.'],
+	['shopping', 'Shopping', 'What needs to be bought.'],
+	['pinboard', 'Noticeboard', 'Information for everyone.'],
+	['chores', 'Cleaning rota', 'Tasks shared fairly.'],
+	['recurring', 'Fixed costs', 'Recurring costs.'],
+	['reminders', 'Reminders', 'Amounts still open.'],
+	['supplies', 'Supplies', 'What is still in stock.'],
+	['calendar', 'Calendar', 'Shared events.'],
+	['activity', 'Activity', 'What happened recently.'],
 	['chat', 'Chat', 'For a quick word.'],
 ] as const;
 const DISCOVER_SUFFIX = 'The flat app for expenses, cleaning rota, shopping and noticeboard.';
@@ -96,7 +96,7 @@ test.describe('entry and auth in English', () => {
 				await expect(page.getByRole('link', { name: 'Legal notice (German)' })).toBeVisible();
 				await expectEnglishPage(page, width);
 
-				await page.goto('/entdecken/ausgaben');
+				await page.goto('/discover/expenses');
 				await expect(page.getByRole('heading', { name: 'Expenses', level: 1 })).toBeAttached({
 					timeout: 60_000,
 				});
@@ -104,7 +104,7 @@ test.describe('entry and auth in English', () => {
 				await expect(page.getByRole('navigation', { name: 'Discover Money' })).toBeVisible();
 				await expectEnglishPage(page, width);
 
-				await page.goto('/neu');
+				await page.goto('/login');
 				await expect(page.getByRole('heading', { name: 'Sign in', level: 1 })).toBeVisible({
 					timeout: 60_000,
 				});
@@ -119,7 +119,7 @@ test.describe('entry and auth in English', () => {
 				await expect(page.getByRole('button', { name: 'Forgot your password?' })).toBeVisible();
 				await expectEnglishPage(page, width);
 
-				await page.goto('/registrieren');
+				await page.goto('/signup');
 				await expect(page.getByRole('heading', { name: 'Create account', level: 1 })).toBeVisible({
 					timeout: 60_000,
 				});
@@ -132,7 +132,7 @@ test.describe('entry and auth in English', () => {
 				await expect(page.getByText('Already have an account?')).toBeVisible();
 				await expectEnglishPage(page, width);
 
-				await page.goto(`/einladung/${TOKEN}`);
+				await page.goto(`/invite/${TOKEN}`);
 				await expect(
 					page.getByRole('heading', { name: 'Accept invitation', level: 1 }),
 				).toBeVisible({
@@ -179,7 +179,7 @@ test.describe('entry and auth in English', () => {
 				await expect(page.getByRole('link', { name: 'Create flat' }).first()).toBeVisible();
 				await expectEnglishPage(page, width);
 
-				await page.goto('/neu');
+				await page.goto('/login');
 				await expect(page.getByRole('heading', { name: 'Your flat', level: 1 })).toBeVisible({
 					timeout: 60_000,
 				});
@@ -194,7 +194,7 @@ test.describe('entry and auth in English', () => {
 				await expect(page.getByRole('button', { name: 'Open invitation' })).toBeVisible();
 				await expectEnglishPage(page, width);
 
-				await page.goto('/neu?action=create');
+				await page.goto('/login?action=create');
 				await expect(
 					page.getByRole('heading', { name: 'Create a new flat', level: 1 }),
 				).toBeVisible({
@@ -206,7 +206,7 @@ test.describe('entry and auth in English', () => {
 				await expect(page.getByText('The flat name is missing.')).toBeVisible();
 				await expectEnglishPage(page, width);
 
-				await page.goto(`/einladung/${TOKEN}`);
+				await page.goto(`/invite/${TOKEN}`);
 				await expect(
 					page.getByRole('heading', { name: 'Join the flat “Altbau”', level: 1 }),
 				).toBeVisible({ timeout: 60_000 });
@@ -214,7 +214,7 @@ test.describe('entry and auth in English', () => {
 				await expect(page.getByRole('button', { name: 'I am Anna' })).toBeVisible();
 				await expectEnglishPage(page, width);
 
-				await page.goto('/einladung/not-a-valid-token');
+				await page.goto('/invite/not-a-valid-token');
 				await expect(
 					page.getByRole('heading', { name: 'Invitation not valid', level: 1 }),
 				).toBeVisible({
@@ -236,7 +236,7 @@ test.describe('entry and auth in English', () => {
 				await guestSession(page);
 
 				for (const [slug, title, description] of DISCOVERY_PAGES) {
-					await page.goto(`/entdecken/${slug}`);
+					await page.goto(`/discover/${slug}`);
 					await expect(page.getByRole('heading', { name: title, level: 1 })).toBeAttached({
 						timeout: 60_000,
 					});
@@ -249,7 +249,7 @@ test.describe('entry and auth in English', () => {
 				}
 
 				// Failed callback and malformed invitation notices on the sign-in page.
-				await page.goto('/neu?error=auth_callback&invite=bad');
+				await page.goto('/login?error=auth_callback&invite=bad');
 				await expect(page.getByText(/^The link could not be used\. It has expired/)).toBeVisible({
 					timeout: 60_000,
 				});
@@ -269,7 +269,7 @@ test.describe('entry and auth in English', () => {
 						? route.fulfill({ status: 429, json: { error: 'rate_limited', code: 'rate_limited' } })
 						: route.fulfill({ status: 200, json: { sessionEstablished: false } });
 				});
-				await page.goto('/registrieren');
+				await page.goto('/signup');
 				await page.getByLabel('Your name').fill('Mina');
 				await page.getByLabel('Email address').fill('mina@example.invalid');
 				await page.getByLabel('Password', { exact: true }).fill('short');
@@ -308,7 +308,7 @@ test.describe('entry and auth in English', () => {
 				await page.route('**/api/auth/code-verify', (route) =>
 					route.fulfill({ status: 403, json: { error: 'otp_expired', code: 'otp_expired' } }),
 				);
-				await page.goto('/neu');
+				await page.goto('/login');
 				await page.getByLabel('Email address').fill('mina@example.invalid');
 				await page.getByRole('button', { name: 'Send code by email' }).click();
 				const code = page.getByLabel('8-digit code');
@@ -342,7 +342,7 @@ test.describe('entry and auth in English', () => {
 				await page.route('**/api/auth/password-reset', (route) =>
 					route.fulfill({ status: 200, json: { ok: true } }),
 				);
-				await page.goto('/neu');
+				await page.goto('/login');
 				await page.getByRole('tab', { name: 'Password' }).click();
 				const passwordPanel = page.getByRole('tabpanel', { name: 'Password' });
 				await passwordPanel.getByRole('button', { name: 'Sign in', exact: true }).click();
@@ -395,7 +395,7 @@ test.describe('entry and auth in English', () => {
 					});
 				});
 				await guestSession(page);
-				await page.goto('/neu');
+				await page.goto('/login');
 				await expect(
 					page.getByText(/^On iPhone, the installed app is separate from Safari/),
 				).toBeVisible({ timeout: 60_000 });
@@ -445,7 +445,7 @@ test.describe('entry and auth in English', () => {
 				await expect(page.getByText('You have left the flat')).toBeVisible();
 				await expectEnglishPage(page, width);
 
-				await page.goto('/neu?reason=moved_out&next=/wg/ABCD2345');
+				await page.goto('/login?reason=moved_out&next=/wg/ABCD2345');
 				await expect(
 					page.getByText(
 						'You are marked as moved out of flat ABCD2345. An admin can reactivate you.',
@@ -455,7 +455,7 @@ test.describe('entry and auth in English', () => {
 					page.getByText('Open one of your flats, create a new one or join with an invitation.'),
 				).toBeVisible();
 				await expectEnglishPage(page, width);
-				await page.goto('/neu?next=/wg/ABCD2345');
+				await page.goto('/login?next=/wg/ABCD2345');
 				await expect(page.getByText(/^The link to flat ABCD2345 is out of date/)).toBeVisible({
 					timeout: 60_000,
 				});
@@ -502,13 +502,13 @@ test.describe('entry and auth in English', () => {
 								status: 201,
 								json: {
 									id: 'invite-1',
-									url: `https://app.manawg.com/einladung/${TOKEN}`,
+									url: `https://app.manawg.com/invite/${TOKEN}`,
 									expiresAt: new Date(Date.now() + 7 * 86_400_000).toISOString(),
 								},
 							});
 				});
 
-				await page.goto('/neu?action=create');
+				await page.goto('/login?action=create');
 				await page.getByLabel('Flat name').fill('Altbau');
 				await page.getByLabel('Your display name').fill('Mina');
 				await page.getByRole('button', { name: 'Create flat', exact: true }).click();

@@ -104,25 +104,25 @@ test.describe('wg cached fetch', () => {
 			route.fulfill({ json: { items: [], grouped: {} } }),
 		);
 
-		await navigateToFeature(page, `/wg/${SHARE_CODE}/vorraete`);
+		await navigateToFeature(page, `/wg/${SHARE_CODE}/supplies`);
 		await expect(page.getByRole('heading', { name: 'Vorräte' })).toBeVisible();
-		await navigateToFeature(page, `/wg/${SHARE_CODE}/einkauf`);
+		await navigateToFeature(page, `/wg/${SHARE_CODE}/shopping`);
 		await dismissOnboarding(page);
 		const item = page.getByRole('checkbox', { name: 'Ungesüßte Hafermilch erledigen' });
 		await expect(item).toBeVisible();
 
 		const inventoryLink = page.locator(
-			`nav[aria-label="Haushalt"] a[href="/wg/${SHARE_CODE}/vorraete"]:visible`,
+			`nav[aria-label="Haushalt"] a[href="/wg/${SHARE_CODE}/supplies"]:visible`,
 		);
 		await inventoryLink.click();
-		await expect(page).toHaveURL(new RegExp(`/wg/${SHARE_CODE}/vorraete$`));
+		await expect(page).toHaveURL(new RegExp(`/wg/${SHARE_CODE}/supplies$`));
 		await expect(page.getByRole('heading', { name: 'Vorräte' })).toBeVisible();
 		const shoppingLink = page.locator(
-			`nav[aria-label="Haushalt"] a[href="/wg/${SHARE_CODE}/einkauf"]:visible`,
+			`nav[aria-label="Haushalt"] a[href="/wg/${SHARE_CODE}/shopping"]:visible`,
 		);
 		holdNextShoppingRead = true;
 		await shoppingLink.click();
-		await expect(page).toHaveURL(new RegExp(`/wg/${SHARE_CODE}/einkauf$`));
+		await expect(page).toHaveURL(new RegExp(`/wg/${SHARE_CODE}/shopping$`));
 		await secondReadStarted;
 
 		try {
@@ -166,17 +166,17 @@ test.describe('wg cached fetch', () => {
 			route.fulfill({ json: { items: [], grouped: {} } }),
 		);
 
-		await navigateToFeature(page, `/wg/${SHARE_CODE}/putzen`);
+		await navigateToFeature(page, `/wg/${SHARE_CODE}/chores`);
 		await dismissOnboarding(page);
 		const row = page.locator(`#chore-${chore.id}`);
 		await expect(row).toBeVisible();
 
 		await page
-			.locator(`nav[aria-label="Haushalt"] a[href="/wg/${SHARE_CODE}/vorraete"]:visible`)
+			.locator(`nav[aria-label="Haushalt"] a[href="/wg/${SHARE_CODE}/supplies"]:visible`)
 			.click();
 		await expect(page.getByRole('heading', { name: 'Vorräte' })).toBeVisible();
 		await page
-			.locator(`nav[aria-label="Haushalt"] a[href="/wg/${SHARE_CODE}/putzen"]:visible`)
+			.locator(`nav[aria-label="Haushalt"] a[href="/wg/${SHARE_CODE}/chores"]:visible`)
 			.click();
 
 		await expect(page.getByText('Putzplan konnte nicht geladen werden')).toBeVisible();
@@ -248,7 +248,7 @@ test.describe('wg optimistic actions', () => {
 			return route.fulfill({ status: 500, json: { error: 'completion_insert_failed' } });
 		});
 
-		await navigateToFeature(page, `/wg/${SHARE_CODE}/putzen`);
+		await navigateToFeature(page, `/wg/${SHARE_CODE}/chores`);
 		await dismissOnboarding(page);
 		await page.getByRole('button', { name: 'Als erledigt markieren: Bad putzen' }).click();
 		await page.getByRole('button', { name: 'Erledigt bestätigen: Bad putzen' }).click();

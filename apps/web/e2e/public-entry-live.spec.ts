@@ -48,10 +48,10 @@ test.describe('live public dashboard entry', () => {
 		// Account first: the guest start page offers registration; sign-in sits in the header.
 		await expect(page.getByRole('link', { name: 'Konto erstellen', exact: true })).toHaveAttribute(
 			'href',
-			'/registrieren',
+			'/signup',
 		);
 		await page.getByRole('link', { name: 'Anmelden', exact: true }).click();
-		await expect(page).toHaveURL(/\/neu$/);
+		await expect(page).toHaveURL(/\/login$/);
 		await expect(page.getByLabel('E-Mail-Adresse')).toBeVisible();
 		await page.getByRole('tab', { name: 'Passwort', exact: true }).click();
 		await expect(page.getByRole('textbox', { name: 'Passwort', exact: true })).toBeVisible();
@@ -62,7 +62,7 @@ test.describe('live public dashboard entry', () => {
 
 		// Registration has its own page; short passwords are rejected before any sign-up request.
 		await page.getByRole('link', { name: 'Konto erstellen', exact: true }).click();
-		await expect(page).toHaveURL(/\/registrieren$/);
+		await expect(page).toHaveURL(/\/signup$/);
 		let signUpRequests = 0;
 		await page.route(
 			(url) => url.pathname === '/api/auth/sign-up',
@@ -92,12 +92,12 @@ test.describe('live public dashboard entry', () => {
 		await page.goto(`/?invite=${token}`);
 		await expect(
 			page.getByRole('link', { name: 'Einladung annehmen', exact: true }),
-		).toHaveAttribute('href', `/einladung/${token}`);
+		).toHaveAttribute('href', `/invite/${token}`);
 		await page
 			.getByRole('navigation', { name: 'Öffentliche Hauptnavigation' })
 			.getByRole('link', { name: 'Haushalt', exact: true })
 			.click();
-		await expect(page).toHaveURL(`/entdecken/putzen?invite=${token}`);
+		await expect(page).toHaveURL(`/discover/chores?invite=${token}`);
 		await expect(
 			page
 				.getByRole('navigation', { name: 'Öffentliche Hauptnavigation' })
@@ -105,7 +105,7 @@ test.describe('live public dashboard entry', () => {
 		).toHaveAttribute('href', `/?invite=${token}`);
 		await page.reload();
 		await page.getByRole('link', { name: 'Einladung annehmen', exact: true }).first().click();
-		await expect(page).toHaveURL(`/einladung/${token}`);
+		await expect(page).toHaveURL(`/invite/${token}`);
 		await expect(page.getByText('Melde dich an, um der WG beizutreten.')).toBeVisible();
 	});
 
@@ -177,8 +177,8 @@ test.describe('live public dashboard entry', () => {
 		});
 		await page.goto('/');
 		await expect(page.getByText('Old browser history')).toHaveCount(0);
-		await page.goto('/wg/ZZZZZZZZ/ausgaben');
-		await expect(page).toHaveURL(/\/neu\?next=/);
-		expect(new URL(page.url()).searchParams.get('next')).toBe('/wg/ZZZZZZZZ/ausgaben');
+		await page.goto('/wg/ZZZZZZZZ/expenses');
+		await expect(page).toHaveURL(/\/login\?next=/);
+		expect(new URL(page.url()).searchParams.get('next')).toBe('/wg/ZZZZZZZZ/expenses');
 	});
 });

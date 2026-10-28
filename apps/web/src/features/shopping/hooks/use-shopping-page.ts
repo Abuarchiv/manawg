@@ -71,7 +71,7 @@ export function useShoppingPage({
 		reload: (reason) => void load(reason !== 'mount'),
 		offline: {
 			shareCode: wg.shareCode,
-			page: 'einkauf',
+			page: 'shopping',
 			// The "queued offline" notices are outdated once the queue reached the server.
 			onReplayed: () => {
 				setAddNotice(null);

@@ -15,38 +15,38 @@ export const HOME_NAV_LABEL = 'shell.nav.home';
 export const WG_SECTIONS = [
 	{
 		label: 'shell.nav.household',
-		iconKey: 'haushalt',
+		iconKey: 'household',
 		pages: [
-			{ slug: 'putzen', label: 'shell.nav.cleaning', icon: Sparkles },
-			{ slug: 'einkauf', label: 'shell.nav.shopping', icon: ListChecks },
-			{ slug: 'vorraete', label: 'shell.nav.supplies', icon: Package },
+			{ slug: 'chores', label: 'shell.nav.cleaning', icon: Sparkles },
+			{ slug: 'shopping', label: 'shell.nav.shopping', icon: ListChecks },
+			{ slug: 'supplies', label: 'shell.nav.supplies', icon: Package },
 		],
 		related: [],
 	},
 	{
 		label: 'shell.nav.finance',
-		iconKey: 'finanzen',
+		iconKey: 'finances',
 		pages: [
-			{ slug: 'ausgaben', label: 'shell.nav.expenses', icon: Receipt },
-			{ slug: 'abos', label: 'shell.nav.fixedCosts', icon: Repeat2 },
+			{ slug: 'expenses', label: 'shell.nav.expenses', icon: Receipt },
+			{ slug: 'recurring', label: 'shell.nav.fixedCosts', icon: Repeat2 },
 		],
 		// Finance actions with their own page: no segment, but the tab stays active.
-		related: ['mahnungen', 'import', 'abrechnung'],
+		related: ['reminders', 'import', 'statement'],
 	},
 	{
 		label: 'shell.nav.exchange',
-		iconKey: 'austausch',
+		iconKey: 'community',
 		pages: [
-			{ slug: 'pinnwand', label: 'shell.nav.noticeboard', icon: Megaphone },
+			{ slug: 'pinboard', label: 'shell.nav.noticeboard', icon: Megaphone },
 			{ slug: 'chat', label: 'shell.nav.chat', icon: MessageCircle },
-			{ slug: 'kalender', label: 'shell.nav.calendar', icon: CalendarDays },
+			{ slug: 'calendar', label: 'shell.nav.calendar', icon: CalendarDays },
 		],
 		related: [],
 	},
 ] as const;
 
 /** The Fixkosten page lives under the route slug `abos` in the app but `fixkosten` on public pages. */
-const ROUTE_TO_MODULE_SLUG: Record<string, string> = { abos: 'fixkosten' };
+const ROUTE_TO_MODULE_SLUG: Record<string, string> = { abos: 'recurring' };
 
 export function moduleSlugOf(pageSlug: string): string {
 	return ROUTE_TO_MODULE_SLUG[pageSlug] ?? pageSlug;

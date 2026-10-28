@@ -30,7 +30,7 @@ const browser = await chromium.launch();
 const c = await browser.newContext({ ...devices['iPhone 13'], baseURL: BASE });
 const p = await c.newPage();
 // 1 password login wrong/right
-await p.goto('/neu');
+await p.goto('/login');
 await p.getByRole('tab', { name: 'Passwort' }).click();
 await p.getByLabel('E-Mail-Adresse').fill(email);
 await p.locator('#auth-password').fill('falsch-falsch-1');
@@ -56,7 +56,7 @@ await c.addCookies([
 const _r = await p.evaluate(
 	async () => (await fetch('/api/wg/mine', { cache: 'no-store' })).status,
 );
-await p.goto('/neu');
+await p.goto('/login');
 await wait(1500);
 const ck2 = await c.cookies();
 const t2 = ck2.find((x) => /^sb-.*-auth-token$/.test(x.name));
@@ -66,7 +66,7 @@ const s2 = JSON.parse(
 if (s2.access_token === sess.access_token) bug('abgelaufenes Token wurde nicht erneuert');
 // 3 forgot password
 const p2 = await (await browser.newContext({ ...devices['iPhone 13'], baseURL: BASE })).newPage();
-await p2.goto('/neu');
+await p2.goto('/login');
 await p2.getByRole('tab', { name: 'Passwort' }).click();
 await p2.getByLabel('E-Mail-Adresse').fill(email);
 await p2.getByRole('button', { name: 'Passwort vergessen?' }).click();

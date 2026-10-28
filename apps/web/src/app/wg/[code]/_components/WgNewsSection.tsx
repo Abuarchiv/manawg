@@ -69,7 +69,7 @@ export function WgNewsSection({
 												href={
 													latestAnnouncement.id
 														? getDashboardAnnouncementHref(shareCode, latestAnnouncement.id)
-														: `${wgBaseHref}/pinnwand`
+														: `${wgBaseHref}/pinboard`
 												}
 											/>
 										}
@@ -105,7 +105,7 @@ export function WgNewsSection({
 							</div>
 						)}
 						<Link
-							href={`${wgBaseHref}/aktivitaet`}
+							href={`${wgBaseHref}/activity`}
 							className={cn(
 								buttonVariants({ variant: 'ghost' }),
 								'min-w-0 max-w-full self-end whitespace-normal px-0 text-meta text-muted-foreground leading-snug',

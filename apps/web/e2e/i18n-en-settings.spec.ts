@@ -12,10 +12,10 @@ import {
 import { expectNoGermanChrome, expectNoHorizontalOverflow, setEnglishLocale } from './support/i18n';
 
 const TABS = [
-	{ hash: '#profil', tab: 'Profile', landmark: 'Your profile' },
-	{ hash: '#benachrichtigungen', tab: 'Notifications', landmark: 'Quiet hours' },
-	{ hash: '#zugang', tab: 'Access', landmark: 'Sign-in methods' },
-	{ hash: '#daten', tab: 'Data', landmark: 'Data export' },
+	{ hash: '#profile', tab: 'Profile', landmark: 'Your profile' },
+	{ hash: '#notifications', tab: 'Notifications', landmark: 'Quiet hours' },
+	{ hash: '#access', tab: 'Access', landmark: 'Sign-in methods' },
+	{ hash: '#data', tab: 'Data', landmark: 'Data export' },
 ] as const;
 
 // Elements other packages own and translate: the page banner and the invite-by-mail form.
@@ -116,7 +116,7 @@ test.describe('settings in English', () => {
 				await setupMember(page);
 
 				for (const { hash, tab, landmark } of TABS) {
-					await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen${hash}`);
+					await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings${hash}`);
 					await dismissOnboarding(page);
 					await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
 					await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible({
@@ -146,7 +146,7 @@ test.describe('settings in English', () => {
 			{ id: 'fixture-other-member', name: 'Mira', active: true },
 			{ id: 'fixture-moved-out', name: 'Jonas', active: false, hasAccount: false },
 		]);
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen#zugang`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings#access`);
 		await dismissOnboarding(page);
 		await expect(page.getByRole('heading', { name: 'Danger zone', level: 2 })).toBeVisible({
 			timeout: 60_000,
@@ -164,7 +164,7 @@ test.describe('settings in English', () => {
 		await setupMember(page);
 		// An object as member name fails the render, which lands in the route's error.tsx.
 		await mockAdminMembers(page, [{ ...MEMBER_ME, name: {} }]);
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen#zugang`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings#access`);
 		await expect(page.getByText('Settings could not be loaded right now')).toBeVisible({
 			timeout: 60_000,
 		});

@@ -19,14 +19,14 @@ test.describe('session expired banner', () => {
 			}),
 		);
 
-		const path = `/wg/${FIXTURE_WG.shareCode}/einkauf?x=1`;
+		const path = `/wg/${FIXTURE_WG.shareCode}/shopping?x=1`;
 		await page.goto(path);
 
 		const banner = page.locator('[data-session-banner]');
 		await expect(banner).toContainText('Deine Sitzung ist abgelaufen');
 		await expect(banner.getByRole('link', { name: 'Neu anmelden' })).toHaveAttribute(
 			'href',
-			`/neu?next=${encodeURIComponent(path)}`,
+			`/login?next=${encodeURIComponent(path)}`,
 		);
 	});
 });

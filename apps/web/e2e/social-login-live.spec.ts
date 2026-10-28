@@ -14,9 +14,9 @@ test.describe('live social-login entry', () => {
 	test('cancelled OAuth returns a visible error without losing the safe destination', async ({
 		page,
 	}) => {
-		await page.goto('/auth/callback?error=access_denied&next=%2Fwg%2FZZZZZZZZ%2Fausgaben');
-		await expect(page).toHaveURL(/\/neu\?error=auth_callback/);
-		expect(new URL(page.url()).searchParams.get('next')).toBe('/wg/ZZZZZZZZ/ausgaben');
+		await page.goto('/auth/callback?error=access_denied&next=%2Fwg%2FZZZZZZZZ%2Fexpenses');
+		await expect(page).toHaveURL(/\/login\?error=auth_callback/);
+		expect(new URL(page.url()).searchParams.get('next')).toBe('/wg/ZZZZZZZZ/expenses');
 		await expect(page.getByRole('main').getByRole('alert')).toContainText(
 			'Der Link konnte nicht verwendet werden.',
 		);
@@ -30,7 +30,7 @@ test.describe('live social-login entry', () => {
 		);
 		const destination = new URL(defined(response.headers().location, 'redirect location'));
 		expect(destination.origin).toBe(new URL(response.url()).origin);
-		expect(destination.pathname).toBe('/neu');
+		expect(destination.pathname).toBe('/login');
 		expect(destination.searchParams.get('next')).toBe('/');
 	});
 

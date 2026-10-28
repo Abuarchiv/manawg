@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 const APP_ORIGIN = 'https://app.manawg.test';
-const TARGET = `${APP_ORIGIN}/ausgaben?highlight=new#message-1`;
+const TARGET = `${APP_ORIGIN}/expenses?highlight=new#message-1`;
 
 type Handler = (event: unknown) => void;
 type WindowClient = {
@@ -45,7 +45,7 @@ async function clickNotification(url: string, windows: WindowClient[]) {
 test('navigates a same-path window to the notification query and fragment before focusing', async () => {
 	const calls: unknown[] = [];
 	const windowClient: WindowClient = {
-		url: `${APP_ORIGIN}/ausgaben?highlight=old`,
+		url: `${APP_ORIGIN}/expenses?highlight=old`,
 		focus: async () => calls.push(['focus', windowClient.url]),
 		navigate: async (target: string) => {
 			calls.push(['navigate', target]);
@@ -54,7 +54,7 @@ test('navigates a same-path window to the notification query and fragment before
 		},
 	};
 
-	const opened = await clickNotification('/ausgaben?highlight=new#message-1', [windowClient]);
+	const opened = await clickNotification('/expenses?highlight=new#message-1', [windowClient]);
 
 	assert.deepEqual(calls, [
 		['navigate', TARGET],
@@ -71,7 +71,7 @@ test('focuses an exact full-URL match without navigating', async () => {
 		navigate: async () => calls.push('navigate'),
 	};
 
-	const opened = await clickNotification('/ausgaben?highlight=new#message-1', [windowClient]);
+	const opened = await clickNotification('/expenses?highlight=new#message-1', [windowClient]);
 
 	assert.deepEqual(calls, ['focus']);
 	assert.deepEqual(opened, []);
@@ -81,7 +81,7 @@ for (const result of ['null', 'reject']) {
 	test(`opens the target when a matching tab ${result === 'null' ? 'closes' : 'cannot navigate'}`, async () => {
 		const calls: unknown[] = [];
 		const windowClient: WindowClient = {
-			url: `${APP_ORIGIN}/ausgaben?highlight=old`,
+			url: `${APP_ORIGIN}/expenses?highlight=old`,
 			focus: async () => calls.push('focus'),
 			navigate: async () => {
 				calls.push('navigate');
@@ -90,7 +90,7 @@ for (const result of ['null', 'reject']) {
 			},
 		};
 
-		const opened = await clickNotification('/ausgaben?highlight=new#message-1', [windowClient]);
+		const opened = await clickNotification('/expenses?highlight=new#message-1', [windowClient]);
 
 		assert.deepEqual(calls, ['navigate']);
 		assert.deepEqual(opened, [TARGET]);
@@ -100,13 +100,13 @@ for (const result of ['null', 'reject']) {
 test('does not navigate to a foreign target and opens the app root', async () => {
 	const calls: unknown[] = [];
 	const windowClient: WindowClient = {
-		url: `${APP_ORIGIN}/ausgaben?highlight=old`,
+		url: `${APP_ORIGIN}/expenses?highlight=old`,
 		focus: async () => calls.push('focus'),
 		navigate: async () => calls.push('navigate'),
 	};
 
 	const opened = await clickNotification(
-		'https://foreign.example/ausgaben?highlight=new#message-1',
+		'https://foreign.example/expenses?highlight=new#message-1',
 		[windowClient],
 	);
 
@@ -175,7 +175,7 @@ test('a navigation the network does not answer in time falls back to the offline
 			cached: { '/offline': 'offline-page' },
 		},
 		async (timers) => {
-			const pending = navigateTo('/wg/ABCD2345/ausgaben');
+			const pending = navigateTo('/wg/ABCD2345/expenses');
 			assert.equal(timers.length, 1);
 			assert.equal(timers[0]?.ms, 15000);
 			timers[0]?.fn();
@@ -188,7 +188,7 @@ test('a navigation the network does not answer in time falls back to the offline
 test('a timely answer is served as is', async () => {
 	const answer = { ok: true, clone: () => answer };
 	await withNetwork({ fetch: async () => answer, cached: {} }, async () => {
-		assert.equal(await navigateTo('/wg/ABCD2345/ausgaben'), answer);
+		assert.equal(await navigateTo('/wg/ABCD2345/expenses'), answer);
 	});
 });
 
@@ -204,7 +204,7 @@ test('a response whose headers arrived is passed on without reading the body', a
 	await withNetwork(
 		{ fetch: async () => answer, cached: { '/offline': 'offline-page' } },
 		async () => {
-			assert.equal(await navigateTo('/wg/ABCD2345/ausgaben'), answer);
+			assert.equal(await navigateTo('/wg/ABCD2345/expenses'), answer);
 		},
 	);
 });

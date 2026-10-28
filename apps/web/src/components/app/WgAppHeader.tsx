@@ -73,7 +73,7 @@ export function WgAppHeader() {
 						className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'relative shrink-0')}
 					/>
 					<Link
-						href={`${baseHref}/einstellungen`}
+						href={`${baseHref}/settings`}
 						aria-label={t('settingsLabel')}
 						className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'shrink-0')}
 					>

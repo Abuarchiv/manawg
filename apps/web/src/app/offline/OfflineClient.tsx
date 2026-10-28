@@ -255,7 +255,12 @@ export function OfflineClient() {
 						</Button>
 					)}
 					{status === 'unauthenticated' && (
-						<Button size="lg" render={<Link href="/neu" />} nativeButton={false} className="w-full">
+						<Button
+							size="lg"
+							render={<Link href="/login" />}
+							nativeButton={false}
+							className="w-full"
+						>
 							{t('signIn')}
 						</Button>
 					)}

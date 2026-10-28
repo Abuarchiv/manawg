@@ -11,7 +11,7 @@
 - [x] 1.3 Add `src/shared/i18n/intl.ts` (memoized formatters, `intlTag`) with unit tests for `de-DE` unchanged and `en-GB` `€12.50`
 - [x] 1.4 Add all namespace catalog files, both registries, `Catalog<T>` parity typing and `src/i18n/next-intl.d.ts`; verify a missing English key fails `pnpm typecheck`
 - [x] 1.5 Add `src/i18n/request.ts`, `withNextIntl` in `next.config.ts`, `src/core/i18n/{server-t,request-locale}.ts` and `src/shared/i18n/message.ts` (`Message`, `useMessage`)
-- [x] 1.6 Wire `NextIntlClientProvider`, `lang` and the skip link in `src/app/layout.tsx`; verify the German `<head>` snapshot of `/`, `/neu`, `/registrieren` and `/entdecken/<module>` equals `main`
+- [x] 1.6 Wire `NextIntlClientProvider`, `lang` and the skip link in `src/app/layout.tsx`; verify the German `<head>` snapshot of `/`, `/login`, `/signup` and `/discover/<module>` equals `main`
 - [x] 1.7 Add optional `locale` to money, amount and time helpers, the English `parseEuroAmount` branch and `relativeTimeMessage`/`weekLabelMessage`; verify existing tests unchanged and new en cases pass
 - [x] 1.8 Add additive `mutationError`, mark the D11 codes `// i18n-ignore` and replace the 7 literal sites with the constants; verify the unit suite passes without test edits
 - [x] 1.9 Migrate the pilot consumers (`load-errors.ts`, `LoadErrorBanner.tsx`, `api/email/unsubscribe/route.ts`); verify `pnpm knip` is clean

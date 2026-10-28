@@ -35,7 +35,7 @@ const bad = [];
 p.on('response', (r) => {
 	if (r.status() >= 500) bad.push(`${r.status()} ${r.url()}`);
 });
-await p.goto('/neu');
+await p.goto('/login');
 await p.waitForLoadState('networkidle');
 await p.locator('#auth-code-email').fill(email);
 await p.getByRole('button', { name: 'Code per E-Mail senden' }).click();

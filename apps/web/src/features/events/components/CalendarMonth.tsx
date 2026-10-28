@@ -349,7 +349,7 @@ export function CalendarMonth({
 								{selectedChores.map((chore) => (
 									<li key={`chore-${chore.choreId}-${chore.startsAt}`}>
 										<Link
-											href={`${wgBaseHref}/putzen?highlight=${encodeURIComponent(chore.choreId)}`}
+											href={`${wgBaseHref}/chores?highlight=${encodeURIComponent(chore.choreId)}`}
 											aria-label={t('agenda.openChore', { title: chore.title })}
 											className={CALENDAR_ROW_CLASS}
 										>

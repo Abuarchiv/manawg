@@ -138,7 +138,7 @@ const writes = [
 	['POST', '/api/auth/password-reset', { email: 'x@example.test' }],
 	['POST', '/api/auth/resend', { email: 'x@example.test' }],
 	['POST', '/api/auth/identity-link', { provider: 'google' }],
-	['POST', '/api/auth/oauth-start', { provider: 'google', next: '/neu' }],
+	['POST', '/api/auth/oauth-start', { provider: 'google', next: '/login' }],
 	['POST', '/api/email/unsubscribe', { token: 'abc' }],
 ];
 // Auth routes swap the session cookie (sign-up, code-verify): fuzz them from a throwaway account.

@@ -98,7 +98,7 @@ export function getWeekAgenda(input: {
 							values: { owner: who, due: dueLabel(chore.nextDueAt, now) },
 						}
 					: who,
-			href: `${base}/putzen?highlight=${encodeURIComponent(chore.id)}`,
+			href: `${base}/chores?highlight=${encodeURIComponent(chore.id)}`,
 			dayKey,
 			at,
 		};
@@ -129,7 +129,7 @@ export function getWeekAgenda(input: {
 			detail: event.location
 				? { key: 'home.agenda.withLocation', values: { when, location: event.location } }
 				: when,
-			href: `${base}/kalender?highlight=${encodeURIComponent(event.eventId)}`,
+			href: `${base}/calendar?highlight=${encodeURIComponent(event.eventId)}`,
 			dayKey,
 			at: event.allDay
 				? startOfBerlinDay(new Date(`${dayKey}T12:00:00.000Z`)).getTime()

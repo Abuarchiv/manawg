@@ -35,7 +35,7 @@ function PreviewRows({ module }: { module: PublicPreviewModule }) {
 	const t = useTranslations('entry.preview');
 	const copy = { title: t(`${module.slug}.title`), detail: t(`${module.slug}.detail`) };
 
-	if (module.slug === 'einkauf') {
+	if (module.slug === 'shopping') {
 		return (
 			<ItemGroup className="gap-0">
 				{SHOPPING_ROWS.map(([row, done]) => (
@@ -68,7 +68,7 @@ function PreviewRows({ module }: { module: PublicPreviewModule }) {
 		);
 	}
 
-	if (module.slug === 'ausgaben') {
+	if (module.slug === 'expenses') {
 		return (
 			<ItemGroup className="gap-0">
 				<ItemEntry className={ROW}>
@@ -91,7 +91,7 @@ function PreviewRows({ module }: { module: PublicPreviewModule }) {
 		);
 	}
 
-	if (module.slug === 'putzen') {
+	if (module.slug === 'chores') {
 		return (
 			<ItemGroup className="gap-0">
 				<ItemEntry className={ROW}>

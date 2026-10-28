@@ -341,7 +341,7 @@ test.describe('offline queue in the data settings in English', () => {
 					),
 				]);
 
-				await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen#daten`);
+				await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings#data`);
 				await dismissOnboarding(page);
 				const section = page.getByRole('region', { name: 'Offline queue' });
 				await expect(section).toBeVisible({ timeout: 60_000 });
@@ -434,7 +434,7 @@ test.describe('offline queue in the data settings in English', () => {
 			),
 		]);
 
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen#daten`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings#data`);
 		await dismissOnboarding(page);
 		const section = page.getByRole('region', { name: 'Offline queue' });
 		await expect(section).toBeVisible({ timeout: 60_000 });

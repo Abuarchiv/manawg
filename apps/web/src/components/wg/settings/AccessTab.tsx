@@ -1,0 +1,104 @@
+'use client';
+
+import { useTranslations } from 'next-intl';
+import { useEffect, useState } from 'react';
+import { useGoogleSignIn } from '@/components/auth/google-sign-in';
+import { SocialLoginButtons, type SocialProvider } from '@/components/auth/SocialLoginButtons';
+import { AccountSignOutSection } from '@/components/wg/settings/AccountSignOutSection';
+import { AccountWgsSection } from '@/components/wg/settings/AccountWgsSection';
+import { DangerZoneSection } from '@/components/wg/settings/DangerZoneSection';
+import { EmailChangeRow } from '@/components/wg/settings/EmailChangeRow';
+import { InvitesSection } from '@/components/wg/settings/InvitesSection';
+import { MembersSection } from '@/components/wg/settings/MembersSection';
+import { PasswordChangeRow } from '@/components/wg/settings/PasswordChangeRow';
+import { Section } from '@/components/wg/settings/Section';
+import type { Member, WgSummary } from '@/components/wg/WgContextProvider';
+import type { SessionMember } from '@/core/auth/local-account';
+
+interface AccessTabProps {
+	wg: WgSummary;
+	members: Member[];
+	identity: SessionMember;
+}
+
+async function linkSocialIdentity(provider: SocialProvider, next: string): Promise<void> {
+	const { linkSocialIdentity } = await import('@/core/auth/client');
+	await linkSocialIdentity(provider, next);
+}
+
+function useGoogleLinked(): boolean {
+	const [linked, setLinked] = useState(false);
+	useEffect(() => {
+		let active = true;
+		import('@/core/auth/client')
+			.then(({ hasLinkedIdentity }) => hasLinkedIdentity('google'))
+			.then((value) => {
+				if (active) setLinked(value);
+			})
+			// Without an answer the button stays visible; a failure while linking is explained there.
+			.catch(() => {});
+		return () => {
+			active = false;
+		};
+	}, []);
+	return linked;
+}
+
+/** The account e-mail for password accounts; null for others and while unknown. */
+function usePasswordAccountEmail(): string | null {
+	const [email, setEmail] = useState<string | null>(null);
+	useEffect(() => {
+		let active = true;
+		import('@/core/auth/client')
+			.then(({ getEmailAccount }) => getEmailAccount())
+			.then((account) => {
+				if (active && account?.hasPassword) setEmail(account.email);
+			})
+			// Without an answer the rows stay hidden; sign-in and reset remain available.
+			.catch(() => {});
+		return () => {
+			active = false;
+		};
+	}, []);
+	return email;
+}
+
+export function AccessTab({ wg, members, identity }: AccessTabProps) {
+	const t = useTranslations('settings.accessTab');
+	const googleSignIn = useGoogleSignIn();
+	const googleLinked = useGoogleLinked();
+	const accountEmail = usePasswordAccountEmail();
+	const settingsReturnPath = `/wg/${encodeURIComponent(wg.shareCode)}/settings#access`;
+
+	return (
+		<>
+			<InvitesSection wg={wg} identity={identity} />
+			<Section title={t('signInMethods')}>
+				<div className="flex flex-col gap-3 p-3">
+					<PasswordChangeRow email={accountEmail} />
+					<EmailChangeRow current={accountEmail} returnPath={settingsReturnPath} />
+					{googleLinked ? (
+						<p className="text-sm text-muted-foreground">{t('googleLinked')}</p>
+					) : (
+						googleSignIn && (
+							<SocialLoginButtons
+								variant="link"
+								next={settingsReturnPath}
+								onOAuthStart={linkSocialIdentity}
+							/>
+						)
+					)}
+				</div>
+			</Section>
+
+			<AccountWgsSection currentCode={wg.shareCode} />
+			<MembersSection wg={wg} members={members} identity={identity} />
+			<Section title={t('account')}>
+				<div className="p-3">
+					<AccountSignOutSection wg={wg} identity={identity} />
+				</div>
+			</Section>
+			<DangerZoneSection wg={wg} members={members} identity={identity} />
+		</>
+	);
+}

@@ -19,7 +19,7 @@ test.describe('start credentials auth validation', () => {
 					body: '{"error":"auth_required"}',
 				}),
 			);
-			await page.goto('/neu');
+			await page.goto('/login');
 			await page.getByRole('tab', { name: 'Passwort', exact: true }).click();
 
 			const email = page.locator('#auth-email');
@@ -44,7 +44,7 @@ test.describe('start credentials auth validation', () => {
 			await page.route('**/api/wg/mine', (route) =>
 				route.fulfill({ status: 401, contentType: 'application/json', body: '{}' }),
 			);
-			await page.goto(`/neu?invite=${INVITE_TOKEN}&utm=x`);
+			await page.goto(`/login?invite=${INVITE_TOKEN}&utm=x`);
 			await page.getByRole('tab', { name: 'Passwort', exact: true }).click();
 			await expect(page.locator('#auth-password')).toHaveAttribute(
 				'autocomplete',
@@ -52,23 +52,23 @@ test.describe('start credentials auth validation', () => {
 			);
 			await expect(page.getByRole('button', { name: 'Konto erstellen' })).toHaveCount(0);
 			await page.getByRole('link', { name: 'Konto erstellen', exact: true }).click();
-			await expect(page).toHaveURL(/\/registrieren\?next=%2Feinladung%2Ffixture-invite-token01$/);
+			await expect(page).toHaveURL(/\/signup\?next=%2Finvite%2Ffixture-invite-token01$/);
 			await expect(
 				page.getByRole('heading', { name: 'Konto erstellen', exact: true, level: 1 }),
 			).toBeVisible();
 			await page.getByRole('link', { name: 'Anmelden', exact: true }).click();
-			await expect(page).toHaveURL(/\/neu\?next=%2Feinladung%2Ffixture-invite-token01$/);
+			await expect(page).toHaveURL(/\/login\?next=%2Finvite%2Ffixture-invite-token01$/);
 		});
 
 		test('a malformed invitation is explained on the sign-in page', async ({ page }) => {
 			await page.route('**/api/wg/mine', (route) =>
 				route.fulfill({ status: 401, contentType: 'application/json', body: '{}' }),
 			);
-			await page.goto('/neu?invite=abc');
+			await page.goto('/login?invite=abc');
 			await expect(
 				page.getByText('Dieser Einladungslink ist unvollständig oder ungültig.'),
 			).toBeVisible();
-			await page.goto('/neu?code=mte8pzat');
+			await page.goto('/login?code=mte8pzat');
 			await expect(page.getByText('Ein WG-Code')).toHaveCount(0);
 		});
 
@@ -91,7 +91,7 @@ test.describe('start credentials auth validation', () => {
 					await route.abort();
 				},
 			);
-			await page.goto('/registrieren?action=create');
+			await page.goto('/signup?action=create');
 			const name = page.getByLabel('Dein Name');
 			const email = page.getByLabel('E-Mail-Adresse');
 			const password = page.getByLabel('Passwort', { exact: true });
@@ -132,7 +132,7 @@ test.describe('start credentials auth validation', () => {
 			await page.setViewportSize({ width: 320, height: 780 });
 			for (const scheme of ['light', 'dark'] as const) {
 				await page.emulateMedia({ colorScheme: scheme });
-				await page.goto('/registrieren');
+				await page.goto('/signup');
 				await expect(
 					page.getByRole('heading', { name: 'Konto erstellen', level: 1 }),
 				).toBeVisible();
@@ -155,16 +155,16 @@ test.describe('entry accessibility', () => {
 			await page.goto(`/?invite=${INVITE_TOKEN}`);
 			await expect(
 				page.getByRole('link', { name: 'Konto erstellen', exact: true }),
-			).toHaveAttribute('href', '/registrieren?next=%2Feinladung%2Ffixture-invite-token01');
+			).toHaveAttribute('href', '/signup?next=%2Finvite%2Ffixture-invite-token01');
 			// Account first: without an invitation the WG is created after sign-in, so no intent is carried.
 			await page.goto('/');
 			await expect(
 				page.getByRole('link', { name: 'Konto erstellen', exact: true }),
-			).toHaveAttribute('href', '/registrieren');
+			).toHaveAttribute('href', '/signup');
 			await expect(page.getByRole('link', { name: 'WG erstellen', exact: true })).toHaveCount(0);
 			await expect(page.getByRole('link', { name: 'Anmelden', exact: true })).toHaveAttribute(
 				'href',
-				'/neu',
+				'/login',
 			);
 		});
 
@@ -194,7 +194,7 @@ test.describe('entry accessibility', () => {
 				await route.continue();
 			});
 
-			await page.goto('/neu');
+			await page.goto('/login');
 			await page.getByRole('button', { name: 'Neue WG erstellen', exact: true }).click();
 
 			const wgName = page.getByLabel('WG-Name');
@@ -231,9 +231,9 @@ test.describe('entry accessibility', () => {
 				page.getByText('Das ist kein Einladungslink. Füge den ganzen Link ein.'),
 			).toBeVisible();
 
-			await inviteLink.fill(`http://localhost/einladung/${INVITE_TOKEN}`);
+			await inviteLink.fill(`http://localhost/invite/${INVITE_TOKEN}`);
 			await page.getByRole('button', { name: 'Einladung öffnen', exact: true }).click();
-			await expect(page).toHaveURL(`/einladung/${INVITE_TOKEN}`);
+			await expect(page).toHaveURL(`/invite/${INVITE_TOKEN}`);
 			await expect(page.getByLabel('Dein Anzeigename')).toBeFocused();
 			await expect(page.getByLabel('Dein Anzeigename')).toHaveAttribute('required', '');
 			// The invitation names the WG before joining; the share code never appears.

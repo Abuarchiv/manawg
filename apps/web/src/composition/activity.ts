@@ -142,7 +142,7 @@ export function buildActivityTimeline(
 			completed: false,
 			amountCents: item.amountCents,
 			currency: item.currency ?? 'EUR',
-			href: `/ausgaben?highlight=${encodeURIComponent(item.id)}`,
+			href: `/expenses?highlight=${encodeURIComponent(item.id)}`,
 		});
 	}
 
@@ -161,7 +161,7 @@ export function buildActivityTimeline(
 				name: item.name,
 			}),
 			completed: item.boughtAt !== null,
-			href: `/einkauf?highlight=${encodeURIComponent(item.id)}`,
+			href: `/shopping?highlight=${encodeURIComponent(item.id)}`,
 		});
 	}
 
@@ -174,7 +174,7 @@ export function buildActivityTimeline(
 			memberName: memberName(members, item.authorMemberId),
 			text: item.content,
 			completed: false,
-			href: `/pinnwand#announcement-${encodeURIComponent(item.id)}`,
+			href: `/pinboard#announcement-${encodeURIComponent(item.id)}`,
 		});
 	}
 
@@ -187,7 +187,7 @@ export function buildActivityTimeline(
 			memberName: memberName(members, item.completedByMemberId),
 			text: say('audit.timeline.choreDone', { title: item.choreTitle }),
 			completed: true,
-			href: `/putzen?highlight=${encodeURIComponent(item.choreId)}`,
+			href: `/chores?highlight=${encodeURIComponent(item.choreId)}`,
 		});
 	}
 
@@ -208,7 +208,7 @@ export function buildActivityTimeline(
 			detail: say('audit.timeline.recurringLabel'),
 			amountCents: item.amountCents,
 			currency: item.currency ?? 'EUR',
-			href: `/ausgaben?recurring=${encodeURIComponent(item.id)}`,
+			href: `/expenses?recurring=${encodeURIComponent(item.id)}`,
 		});
 	}
 
@@ -226,7 +226,7 @@ export function buildActivityTimeline(
 			detail: item.reason
 				? `${shortDateRange(item.startDate, item.endDate, locale)} · ${item.reason}`
 				: shortDateRange(item.startDate, item.endDate, locale),
-			href: `/putzen?panel=absences&absence=${encodeURIComponent(item.id)}`,
+			href: `/chores?panel=absences&absence=${encodeURIComponent(item.id)}`,
 		});
 	}
 

@@ -40,7 +40,7 @@ test.describe('haushalt shopping checkbox hitarea', () => {
 			});
 		});
 		await setupMember(page);
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einkauf`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/shopping`);
 		await dismissOnboarding(page);
 
 		const checkbox = page.getByRole('checkbox', { name: 'Milch erledigen' });
@@ -98,7 +98,7 @@ test.describe('haushalt shopping swipe pointer capture', () => {
 			});
 		});
 		await setupMember(page);
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einkauf`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/shopping`);
 		await dismissOnboarding(page);
 
 		const row = page.locator('[data-shopping-row]').first();
@@ -156,7 +156,7 @@ test.describe('household list UI', () => {
 			}),
 		);
 
-		await navigateToFeature(page, `/wg/${shareCode}/einkauf`);
+		await navigateToFeature(page, `/wg/${shareCode}/shopping`);
 		await dismissOnboarding(page);
 		await page.getByRole('button', { name: `Artikelaktionen: ${itemName}` }).click();
 		const drawer = page.getByRole('dialog');
@@ -204,7 +204,7 @@ test.describe('household list UI', () => {
 			return route.fulfill({ json: { item: updated } });
 		});
 
-		await navigateToFeature(page, `/wg/${shareCode}/vorraete`);
+		await navigateToFeature(page, `/wg/${shareCode}/supplies`);
 		await dismissOnboarding(page);
 		const row = page.locator('[data-slot="item"]', { hasText: 'Spülmittel' });
 		await row.getByRole('button', { name: 'Spülmittel um eins erhöhen' }).click();

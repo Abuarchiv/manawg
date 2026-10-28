@@ -94,7 +94,7 @@ test.describe('shopping conflict handling', () => {
 		skipUnlessFixtures();
 		await mockShoppingPage(page, false);
 		await setupMember(page);
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einkauf`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/shopping`);
 		await dismissOnboarding(page);
 		await page.getByText('Erledigt (1)', { exact: true }).click();
 		await expect(page.getByRole('button', { name: 'Erledigte Artikel entfernen (1)' })).toHaveCount(
@@ -140,7 +140,7 @@ test.describe('shopping conflict handling', () => {
 			},
 		);
 		await setupMember(page);
-		await navigateToFeature(page, `/wg/${shareCode}/einkauf`);
+		await navigateToFeature(page, `/wg/${shareCode}/shopping`);
 		await dismissOnboarding(page);
 
 		await page.getByRole('button', { name: 'Artikelaktionen: Milch' }).click();
@@ -165,7 +165,7 @@ test.describe('shopping conflict handling', () => {
 		skipUnlessFixtures();
 		await mockShoppingPage(page, true, 403);
 		await setupMember(page);
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einkauf`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/shopping`);
 		await dismissOnboarding(page);
 		await page.getByText('Erledigt (1)', { exact: true }).click();
 		await page.getByRole('button', { name: 'Erledigte Artikel entfernen (1)' }).click();
@@ -211,7 +211,7 @@ test.describe('shopping conflict handling', () => {
 		});
 
 		await setupMember(page);
-		await navigateToFeature(page, `/wg/${shareCode}/einkauf`);
+		await navigateToFeature(page, `/wg/${shareCode}/shopping`);
 		await dismissOnboarding(page);
 		await page.getByLabel('Artikel-Name').fill('2 L Milch');
 		await page.getByRole('button', { name: 'Artikel hinzufügen' }).click();
@@ -258,7 +258,7 @@ test.describe('shopping conflict handling', () => {
 		});
 
 		await setupMember(page);
-		await navigateToFeature(page, `/wg/${shareCode}/einkauf`);
+		await navigateToFeature(page, `/wg/${shareCode}/shopping`);
 		await dismissOnboarding(page);
 		await page.getByLabel('Artikel-Name').fill('Hafermilch');
 		await page.getByRole('button', { name: 'Artikel hinzufügen' }).click();
@@ -310,7 +310,7 @@ test.describe('shopping conflict handling', () => {
 
 		await page.setViewportSize({ width: 320, height: 800 });
 		await setupMember(page);
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einkauf`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/shopping`);
 		await dismissOnboarding(page);
 		await page.getByText('Erledigt (1)', { exact: true }).click();
 		const getCallsBeforeReopen = getCalls();
@@ -440,7 +440,7 @@ test.describe('shopping conflict handling', () => {
 		await page.route(`**/api/wg/${shareCode}/inventory*`, (route) =>
 			route.fulfill({ json: { items: [] } }),
 		);
-		await navigateToFeature(page, `/wg/${shareCode}/einkauf`);
+		await navigateToFeature(page, `/wg/${shareCode}/shopping`);
 		await dismissOnboarding(page);
 
 		const suggestions = page.locator('ul[aria-label="Vorschläge"]');

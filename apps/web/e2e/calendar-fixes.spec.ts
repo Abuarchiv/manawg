@@ -53,7 +53,7 @@ test.describe('calendar fixes', () => {
 			route.fulfill({ json: { chores: [] } }),
 		);
 
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/kalender`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/calendar`);
 		await dismissOnboarding(page);
 		await page.getByRole('tab', { name: 'Monat' }).click();
 		const occupiedDays = page.locator('[data-day-cell][aria-label$=", 1 Termin"]');
@@ -79,7 +79,7 @@ test.describe('calendar fixes', () => {
 		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/chores*`, (route) =>
 			route.fulfill({ json: { chores: [] } }),
 		);
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/kalender`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/calendar`);
 		await dismissOnboarding(page);
 		await page.getByRole('tab', { name: 'Monat' }).click();
 
@@ -198,7 +198,7 @@ test.describe('calendar fixes', () => {
 			route.fulfill({ json: { chores: [] } }),
 		);
 
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/kalender`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/calendar`);
 		await dismissOnboarding(page);
 		await page
 			.getByRole('button', { name: 'Termin öffnen: WG-Meeting', exact: true })
@@ -251,7 +251,7 @@ test.describe('calendar fixes', () => {
 		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/chores*`, (route) =>
 			route.fulfill({ json: { chores: [] } }),
 		);
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/kalender`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/calendar`);
 		await dismissOnboarding(page);
 		const eventButton = page.getByRole('button', {
 			name: `Termin öffnen: ${event.title}`,
@@ -303,7 +303,7 @@ test.describe('calendar fixes', () => {
 		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/chores*`, (route) =>
 			route.fulfill({ json: { chores: [] } }),
 		);
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/kalender?highlight=${event.id}`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/calendar?highlight=${event.id}`);
 		await dismissOnboarding(page);
 		await expect(page.locator(`#event-${event.id}`)).toBeVisible();
 		await page.getByRole('button', { name: `Termin öffnen: ${event.title}`, exact: true }).click();
@@ -344,7 +344,7 @@ test.describe('calendar fixes', () => {
 		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/chores*`, (route) =>
 			route.fulfill({ json: { chores: [] } }),
 		);
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/kalender?highlight=${event.id}`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/calendar?highlight=${event.id}`);
 		await dismissOnboarding(page);
 		await expect(page.getByRole('heading', { name: 'Termin bearbeiten' })).toBeVisible();
 		await expect(page.locator(`input[value="${event.title}"]`)).toBeVisible();
@@ -392,7 +392,7 @@ test.describe('calendar fixes', () => {
 			route.fulfill({ json: { chores: [] } }),
 		);
 
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/kalender`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/calendar`);
 		await dismissOnboarding(page);
 		const openEdit = (title: string) =>
 			page.getByRole('button', { name: `Termin öffnen: ${title}`, exact: true }).first();
@@ -445,7 +445,7 @@ test.describe('calendar fixes', () => {
 		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/chores*`, (route) =>
 			route.fulfill({ json: { chores: [] } }),
 		);
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/kalender`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/calendar`);
 		await dismissOnboarding(page);
 		await page.getByRole('button', { name: `Termin öffnen: ${event.title}`, exact: true }).click();
 		await expect(page.getByRole('heading', { name: 'Termin', exact: true })).toBeVisible();

@@ -105,7 +105,7 @@ export function WeekSection({
 					{t('heading')}
 				</h2>
 				<Link
-					href={`${wgBaseHref}/kalender`}
+					href={`${wgBaseHref}/calendar`}
 					className={cn(
 						buttonVariants({ variant: 'ghost' }),
 						'ml-auto shrink-0 px-2 text-sm text-muted-foreground after:h-[44px] after:min-w-[44px]',
@@ -150,7 +150,7 @@ export function WeekSection({
 						))}
 					</ul>
 					{agenda.overdue.length > overdueVisible.length && (
-						<MoreLink href={`${wgBaseHref}/putzen?filter=overdue`}>
+						<MoreLink href={`${wgBaseHref}/chores?filter=overdue`}>
 							{t('allOverdue', { count: String(agenda.overdue.length) })}
 						</MoreLink>
 					)}
@@ -168,7 +168,7 @@ export function WeekSection({
 						))}
 					</ul>
 					{agenda.upcoming.length > upcomingVisible.length && (
-						<MoreLink href={`${wgBaseHref}/kalender`}>
+						<MoreLink href={`${wgBaseHref}/calendar`}>
 							{t('moreUpcoming', { count: agenda.upcoming.length - upcomingVisible.length })}
 						</MoreLink>
 					)}

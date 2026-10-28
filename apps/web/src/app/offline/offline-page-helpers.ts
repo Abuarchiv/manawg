@@ -51,7 +51,7 @@ export type OfflineStatus =
 export async function getAccountMemberships(
 	signal?: AbortSignal,
 ): Promise<AccountMembership[] | null> {
-	// Signed-out visitors: no probe, no 401 in the console (same as /neu).
+	// Signed-out visitors: no probe, no 401 in the console (same as /login).
 	if (!hasSessionCookie()) return null;
 	const res = await fetch('/api/wg/mine', {
 		cache: 'no-store',

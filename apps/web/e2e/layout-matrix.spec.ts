@@ -18,7 +18,7 @@ test.describe('mobile layout matrix', () => {
 	const SHARE_CODE = FIXTURE_WG.shareCode;
 	const MEMBER_ID = FIXTURE_WG.memberId;
 	const WG_ID = FIXTURE_WG.id;
-	type LayoutRoute = 'home' | 'chores' | 'shopping' | 'inventory';
+	type LayoutRoute = 'home' | 'chores' | 'shopping' | 'supplies';
 	const LONG_INVENTORY_NAME = 'Spülmaschinenreinigung mit Entkalkung und gründlicher Küchenhygiene';
 
 	function fixtureBerlinTodayAtNoon(): string {
@@ -395,7 +395,7 @@ test.describe('mobile layout matrix', () => {
 				).toBe(true);
 				expect(actionsBox.x + actionsBox.width).toBeLessThanOrEqual(rowBox.x + rowBox.width);
 			}
-		} else if (route === 'inventory') {
+		} else if (route === 'supplies') {
 			const row = page
 				.locator('[data-slot="item"]')
 				.filter({ hasText: LONG_INVENTORY_NAME })
@@ -526,7 +526,7 @@ test.describe('mobile layout matrix', () => {
 		const lastAction =
 			route === 'shopping'
 				? page.getByRole('button', { name: /Erledigte Artikel entfernen/ })
-				: route === 'inventory'
+				: route === 'supplies'
 					? page.locator('a').filter({ hasText: 'Einkaufsliste öffnen' }).last()
 					: route === 'chores'
 						? page.getByRole('button', { name: /Als erledigt markieren: Bad putzen/ })
@@ -545,7 +545,7 @@ test.describe('mobile layout matrix', () => {
 		}).toPass({ timeout: 5000 });
 	}
 
-	for (const route of ['home', 'chores', 'shopping', 'inventory'] as const) {
+	for (const route of ['home', 'chores', 'shopping', 'supplies'] as const) {
 		for (const colorScheme of ['light'] as const) {
 			for (const textScale of ['normal', '200%'] as const) {
 				test(`${route} remains readable at 320px (${colorScheme}, ${textScale} text)`, async ({
@@ -571,7 +571,7 @@ test.describe('mobile layout matrix', () => {
 						page,
 						route === 'home'
 							? `/wg/${SHARE_CODE}`
-							: `/wg/${SHARE_CODE}/${route === 'chores' ? 'putzen' : route === 'shopping' ? 'einkauf' : 'vorraete'}`,
+							: `/wg/${SHARE_CODE}/${route === 'chores' ? 'chores' : route === 'shopping' ? 'shopping' : 'supplies'}`,
 					);
 					await dismissOnboarding(page);
 					await expect(
@@ -607,7 +607,7 @@ test.describe('mobile layout matrix', () => {
 						expect(Number.parseFloat(rootFontSize)).toBeGreaterThanOrEqual(14.4);
 						expect(Number.parseFloat(rootFontSize)).toBeLessThanOrEqual(16);
 					}
-					if (route === 'inventory') {
+					if (route === 'supplies') {
 						await page
 							.getByRole('button', { name: 'Vorrat hinzufügen', exact: true })
 							.first()
@@ -672,7 +672,7 @@ test.describe('mobile layout matrix', () => {
 			await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
 			await setupMember(page);
 			await mockLayoutApis(page);
-			await navigateToFeature(page, `/wg/${SHARE_CODE}/vorraete`);
+			await navigateToFeature(page, `/wg/${SHARE_CODE}/supplies`);
 			await dismissOnboarding(page);
 			await expect(page.getByRole('heading', { name: 'Vorräte' })).toBeVisible({ timeout: 30_000 });
 			if (textScale === '200%') {
@@ -694,7 +694,7 @@ test.describe('mobile layout matrix', () => {
 				expect(Number.parseFloat(rootFontSize)).toBeGreaterThanOrEqual(14.4);
 				expect(Number.parseFloat(rootFontSize)).toBeLessThanOrEqual(16);
 			}
-			await assertViewportLayout(page, 'inventory');
+			await assertViewportLayout(page, 'supplies');
 			await page.screenshot({
 				path: test
 					.info()

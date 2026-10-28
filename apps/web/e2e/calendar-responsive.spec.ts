@@ -16,7 +16,7 @@ test.describe('public calendar preview responsive', () => {
 	test('keeps the featured calendar preview readable at narrow widths and 200% text', async ({
 		page,
 	}) => {
-		await page.goto('/entdecken/kalender');
+		await page.goto('/discover/calendar');
 
 		const example = page.locator('article[aria-label="Kalender, Beispiel-WG"]');
 		await expect(example).toBeVisible();

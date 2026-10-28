@@ -73,7 +73,7 @@ test('a cash payment is voided after confirmation and the list reloads without i
 		});
 	});
 
-	await navigateToFeature(page, `/wg/${shareCode}/ausgaben`);
+	await navigateToFeature(page, `/wg/${shareCode}/expenses`);
 	await dismissOnboarding(page);
 
 	const list = page.getByRole('list', { name: 'Deine Barzahlungen' });

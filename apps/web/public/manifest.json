@@ -49,7 +49,7 @@
 			"name": "WG beitreten",
 			"short_name": "Beitreten",
 			"description": "Mit einem Einladungslink einer WG beitreten",
-			"url": "/neu?source=pwa-shortcut",
+			"url": "/login?source=pwa-shortcut",
 			"icons": [
 				{
 					"src": "/icon-192.png",

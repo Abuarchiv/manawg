@@ -74,7 +74,7 @@ export function PasswordResetForm({ recoveryRequested }: PasswordResetFormProps)
 				// The marker expires quickly; a successful password update must still finish.
 			}
 			toast.success(t('reset.saved'));
-			router.replace('/neu');
+			router.replace('/login');
 		} catch (error) {
 			if (isWeakPasswordError(error)) setError(message(WEAK_PASSWORD_MESSAGE));
 			// Supabase rejects reusing the current password; a new link would not change that.
@@ -94,7 +94,7 @@ export function PasswordResetForm({ recoveryRequested }: PasswordResetFormProps)
 					<AlertDescription>{t('reset.invalidLink')}</AlertDescription>
 				</Alert>
 				<PasswordResetRequest />
-				<Link href="/neu" className={cn(buttonVariants({ variant: 'ghost' }))}>
+				<Link href="/login" className={cn(buttonVariants({ variant: 'ghost' }))}>
 					{t('reset.back')}
 				</Link>
 			</div>

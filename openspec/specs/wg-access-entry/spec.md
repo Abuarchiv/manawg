@@ -31,7 +31,7 @@ The WG-create rate limit SHALL be consumed only after the body and authenticatio
 
 ### Requirement: Invite codes and moved-out members are handled
 
-Opening `?code=X` for a WG the account already belongs to SHALL redirect to that WG. A moved-out member opening a WG SHALL be sent to `/neu` with `reason=moved_out` and an explanation. Pasting text containing "Code XXXXXXXX" or a `?code=` link SHALL fill the code field.
+Opening `?code=X` for a WG the account already belongs to SHALL redirect to that WG. A moved-out member opening a WG SHALL be sent to `/login` with `reason=moved_out` and an explanation. Pasting text containing "Code XXXXXXXX" or a `?code=` link SHALL fill the code field.
 
 #### Scenario: Moved-out member
 - **WHEN** a deactivated member opens the WG

@@ -46,7 +46,7 @@ export default async function WgNotFound() {
 							<Button
 								variant="outline"
 								size="lg"
-								render={<Link href="/neu" />}
+								render={<Link href="/login" />}
 								nativeButton={false}
 							>
 								{t('create')}

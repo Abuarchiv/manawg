@@ -50,7 +50,7 @@ test.describe('shopping retry', () => {
 			});
 		});
 		await setupMember(page);
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einkauf`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/shopping`);
 		await dismissOnboarding(page);
 		await page.getByLabel('Artikel-Name').fill('Rettich');
 		await page.getByRole('button', { name: 'Artikel hinzufügen', exact: true }).click();
@@ -98,7 +98,7 @@ test.describe('shopping retry', () => {
 			});
 		});
 		await setupMember(page);
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einkauf`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/shopping`);
 		await dismissOnboarding(page);
 		const input = page.getByLabel('Artikel-Name');
 		await input.fill('Milch');
@@ -125,7 +125,7 @@ test.describe('shopping retry', () => {
 			await route.abort('internetdisconnected');
 		});
 		await setupMember(page);
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einkauf`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/shopping`);
 		await dismissOnboarding(page);
 		const readQueuedKeys = () =>
 			page.evaluate(() => {

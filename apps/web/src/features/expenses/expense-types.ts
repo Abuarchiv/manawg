@@ -45,11 +45,9 @@ export interface RecurringExpense {
 	splits: ExpenseSplitShare[];
 }
 
-/** The fixed-cost (Abo) view of a recurring template. */
-export type Abo = RecurringExpense;
-export type AboSplit = ExpenseSplitShare;
+export type RecurringSplit = ExpenseSplitShare;
 
-export type AboFilter = 'active' | 'paused' | 'all';
+export type RecurringFilter = 'active' | 'paused' | 'all';
 
 export interface MemberOption {
 	id: string;

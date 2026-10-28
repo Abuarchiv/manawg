@@ -44,14 +44,14 @@ test.describe('settings notifications responsive', () => {
 			});
 		});
 		await setupMember(page);
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen#benachrichtigungen`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings#notifications`);
 		await expect(page.getByRole('tablist')).toBeVisible({ timeout: 60_000 });
 
-		const card = page.locator('#benachrichtigungen > .overflow-hidden');
+		const card = page.locator('#notification-settings > .overflow-hidden');
 		const startHour = page.getByRole('combobox', { name: 'Ruhezeit von' });
 		const endHour = page.getByRole('combobox', { name: 'Ruhezeit bis' });
 		const quietSwitch = page
-			.locator('#benachrichtigungen')
+			.locator('#notification-settings')
 			.getByRole('switch', { name: 'Ruhezeit', exact: true });
 		await expect(startHour).toBeVisible({ timeout: 30_000 });
 		await expect(endHour).toBeVisible();
@@ -141,7 +141,7 @@ test.describe('settings offline queue responsive', () => {
 	test('manual review explains the uncertain result and opens the WG list', async ({ page }) => {
 		await page.setViewportSize({ width: 320, height: 844 });
 		await setupMember(page);
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen#daten`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings#data`);
 		const section = page.getByRole('region', { name: 'Offline-Warteschlange' });
 		await expect(section).toBeVisible();
 		const warning =
@@ -181,7 +181,7 @@ test.describe('settings offline queue responsive', () => {
 		);
 		await expect(section.getByRole('button', { name: /Offline-Aktion verwerfen:/ })).toBeVisible();
 		await section.getByRole('link', { name: /WG-Eintrag prüfen:/ }).click();
-		await expect(page).toHaveURL(new RegExp(`/wg/${FIXTURE_WG.shareCode}/pinnwand$`));
+		await expect(page).toHaveURL(new RegExp(`/wg/${FIXTURE_WG.shareCode}/pinboard$`));
 	});
 
 	const width = 320;
@@ -193,7 +193,7 @@ test.describe('settings offline queue responsive', () => {
 				await page.setViewportSize({ width, height: 844 });
 				await page.emulateMedia({ colorScheme });
 				await setupMember(page);
-				await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen#daten`);
+				await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings#data`);
 				await expect(page.getByRole('heading', { name: 'Offline-Warteschlange' })).toBeVisible({
 					timeout: 30_000,
 				});
@@ -250,7 +250,7 @@ test.describe('settings theme responsive', () => {
 
 	test('all theme choices stay reachable at 320px with 200% text', async ({ page }) => {
 		await setupMember(page);
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings`);
 		await expect(page.getByRole('button', { name: 'System', exact: true })).toBeVisible();
 		await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
 		expect(
@@ -303,7 +303,7 @@ test.describe('settings theme responsive', () => {
 			sentName = route.request().postDataJSON().name;
 			return route.fulfill({ status, json: { wg: { name: sentName } } });
 		});
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings`);
 		const name = page.getByLabel('Name eurer WG');
 		const save = page.getByLabel('WG-Name').getByRole('button', { name: 'Speichern', exact: true });
 		await expect(save).toBeDisabled();
@@ -331,11 +331,11 @@ test.describe('invitations', () => {
 			});
 		});
 		await setupMember(page);
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen#zugang`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings#access`);
 
 		await page.getByRole('button', { name: 'Neue Einladung', exact: true }).click();
 		await expect(page.getByText('Neuer Einladungslink')).toBeVisible();
-		await expect(page.getByText('/einladung/fixture-invite-token01')).toBeVisible();
+		await expect(page.getByText('/invite/fixture-invite-token01')).toBeVisible();
 
 		await page.getByRole('button', { name: 'Teilen', exact: true }).click();
 
@@ -390,7 +390,7 @@ test.describe('invitations', () => {
 			},
 		);
 
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen#zugang`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings#access`);
 		await page.getByRole('button', { name: `Ausziehen: ${otherMember.name}` }).click();
 
 		await expect(
@@ -438,7 +438,7 @@ test.describe('invitations', () => {
 			},
 		);
 
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen#zugang`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings#access`);
 		await expect(page.getByText('Ausgezogen, Verlauf bleibt erhalten')).toBeVisible();
 		// WCAG 2.5.3 — the visible "Aktivieren" label must stay at the start of the
 		// accessible name, disambiguated by the affected member's name.
@@ -464,7 +464,7 @@ test.describe('invitations', () => {
 			});
 		});
 
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen#zugang`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings#access`);
 		const leave = page.getByRole('button', { name: 'WG verlassen', exact: true });
 		await leave.click();
 
@@ -489,7 +489,7 @@ test.describe('invite link copy', () => {
 			page,
 		}) => {
 			const code = FIXTURE_WG.shareCode;
-			const inviteUrl = 'http://localhost/einladung/fixture-invite-token01';
+			const inviteUrl = 'http://localhost/invite/fixture-invite-token01';
 			await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
 			await page.addInitScript(() => window.localStorage.clear());
 			await mockNoWgs(page);
@@ -511,7 +511,7 @@ test.describe('invite link copy', () => {
 				}),
 			);
 
-			await page.goto('/neu');
+			await page.goto('/login');
 			await page.getByRole('button', { name: 'Neue WG erstellen', exact: true }).click();
 			await page.getByLabel('WG-Name').fill('Fixture WG');
 			await page.getByLabel('Dein Anzeigename').fill('Anna');

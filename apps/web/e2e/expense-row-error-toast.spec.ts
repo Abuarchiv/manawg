@@ -58,7 +58,7 @@ test.describe('expense row error toast', () => {
 		);
 		await mockUnreadCount(page, `/api/wg/${shareCode}`);
 
-		await navigateToFeature(page, `/wg/${shareCode}/ausgaben`);
+		await navigateToFeature(page, `/wg/${shareCode}/expenses`);
 		await dismissOnboarding(page);
 
 		await page.getByRole('button', { name: 'Aktionen für Pizza' }).click();

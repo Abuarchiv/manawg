@@ -7,7 +7,7 @@ Give email sign-up its own registration page, keep the visitor's intent across s
 
 ### Requirement: Dedicated registration page
 
-The system SHALL provide a public registration page at `/registrieren` that offers the same configured methods as sign-in (Google, e-mail/password, and phone/SMS when enabled) with registration wording. The e-mail form MUST require the new password twice and enforce the minimum length before any Supabase request. Signed-in visitors SHALL be redirected to the start flow instead of seeing the form.
+The system SHALL provide a public registration page at `/signup` that offers the same configured methods as sign-in (Google, e-mail/password, and phone/SMS when enabled) with registration wording. The e-mail form MUST require the new password twice and enforce the minimum length before any Supabase request. Signed-in visitors SHALL be redirected to the start flow instead of seeing the form.
 
 #### Scenario: New visitor registers with e-mail
 
@@ -21,17 +21,17 @@ The system SHALL provide a public registration page at `/registrieren` that offe
 
 #### Scenario: Signed-in visitor opens the page
 
-- **WHEN** a visitor with a valid session opens `/registrieren`
-- **THEN** the system redirects to `/neu` with the validated intent
+- **WHEN** a visitor with a valid session opens `/signup`
+- **THEN** the system redirects to `/login` with the validated intent
 
 ### Requirement: Intent survives moving between sign-in and registration
 
-The system SHALL carry only a validated create/join intent (`action=create`, a valid share `code`, or a safe `next` path) between `/neu` and `/registrieren` and through e-mail confirmation. Unknown query parameters, absolute URLs, and `/neu` or `/registrieren` as `next` target MUST NOT be forwarded.
+The system SHALL carry only a validated create/join intent (`action=create`, a valid share `code`, or a safe `next` path) between `/login` and `/signup` and through e-mail confirmation. Unknown query parameters, absolute URLs, and `/login` or `/signup` as `next` target MUST NOT be forwarded.
 
 #### Scenario: Join intent from an invitation
 
-- **WHEN** a visitor opens `/neu?code=MTE8PZAT` and follows "Konto erstellen"
-- **THEN** the registration page opens with the same code and the confirmation link returns to `/neu?code=MTE8PZAT`
+- **WHEN** a visitor opens `/login?code=MTE8PZAT` and follows "Konto erstellen"
+- **THEN** the registration page opens with the same code and the confirmation link returns to `/login?code=MTE8PZAT`
 
 ### Requirement: Missing confirmation mail has a recovery path
 

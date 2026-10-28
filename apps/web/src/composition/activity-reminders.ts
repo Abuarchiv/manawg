@@ -67,7 +67,7 @@ export function getActivityReminders(
 					key: 'activity.reminder.choreStuck',
 					values: { title: chore.title, days: status.overdueDays },
 				},
-				href: `/putzen?highlight=${encodeURIComponent(chore.id)}`,
+				href: `/chores?highlight=${encodeURIComponent(chore.id)}`,
 				detail: {
 					key: 'activity.reminder.choreDetail',
 					values: { assignee: chore.assignedName ?? { key: 'activity.reminder.nobody' } },
@@ -88,7 +88,7 @@ export function getActivityReminders(
 			item: {
 				kind: 'announcement',
 				title: { key: 'activity.reminder.announcementOpen', values: { days } },
-				href: `/pinnwand#announcement-${encodeURIComponent(item.id)}`,
+				href: `/pinboard#announcement-${encodeURIComponent(item.id)}`,
 				detail: item.content,
 			},
 		});
@@ -105,7 +105,7 @@ export function getActivityReminders(
 			item: {
 				kind: 'shopping',
 				title: { key: 'activity.reminder.shoppingOpen', values: { name: item.name, days } },
-				href: `/einkauf?highlight=${encodeURIComponent(item.id)}`,
+				href: `/shopping?highlight=${encodeURIComponent(item.id)}`,
 				detail: { key: 'activity.reminder.shoppingDetail' },
 			},
 		});

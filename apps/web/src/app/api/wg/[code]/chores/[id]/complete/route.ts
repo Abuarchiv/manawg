@@ -248,7 +248,7 @@ async function writeCompletion(
 				eq(announcements.wgId, c.wgId),
 				eq(announcements.status, 'open'),
 				eq(announcements.source, 'chore_swap'),
-				eq(announcements.sourcePath, `/putzen?highlight=${encodeURIComponent(c.id)}`),
+				eq(announcements.sourcePath, `/chores?highlight=${encodeURIComponent(c.id)}`),
 			),
 		);
 	const body: ChoreCompleteResponseBody = { chore: updated };

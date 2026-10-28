@@ -8,8 +8,8 @@ import { transformSync } from 'esbuild';
 const root = new URL('../src/', import.meta.url);
 const [instrumentation, createFlow, joinFlow, pwa] = await Promise.all([
 	readFile(new URL('instrumentation-client.ts', root), 'utf8'),
-	readFile(new URL('app/neu/use-create-wg.ts', root), 'utf8'),
-	readFile(new URL('app/einladung/[token]/use-invite-join.ts', root), 'utf8'),
+	readFile(new URL('app/login/use-create-wg.ts', root), 'utf8'),
+	readFile(new URL('app/invite/[token]/use-invite-join.ts', root), 'utf8'),
 	readFile(new URL('components/app/PwaRegister.tsx', root), 'utf8'),
 ]);
 const onboarding = createFlow + joinFlow;
