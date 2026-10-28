@@ -126,7 +126,9 @@ test.describe('English calendar', () => {
 					page.getByRole('button', { name: 'Open event: Lena’s birthday' }),
 				).toContainText('all day');
 				await expect(
-					page.getByRole('link', { name: 'Open cleaning task: Clean the bathroom' }),
+					page.getByRole('link', {
+						name: 'Open cleaning task: Clean the bathroom',
+					}),
 				).toContainText('Cleaning rota');
 				await expect(page.getByRole('button', { name: 'Add event' })).toBeVisible();
 				await expect(page.getByText('Subscribe to calendar')).toBeVisible();
@@ -135,13 +137,15 @@ test.describe('English calendar', () => {
 
 				await page.getByRole('tab', { name: 'Month' }).click();
 				const grid = page.getByRole('grid');
-				await expect(grid.getByRole('columnheader').first()).toHaveText('Mo');
-				await expect(grid.getByRole('columnheader').nth(6)).toHaveText('Su');
+				await expect(grid.getByRole('columnheader').first()).toHaveText('Mon');
+				await expect(grid.getByRole('columnheader').nth(6)).toHaveText('Sun');
 				await expect(page.getByRole('button', { name: 'Previous month' })).toBeVisible();
 				await expect(page.getByRole('button', { name: 'Next month' })).toBeVisible();
 				await expect(page.locator('[data-day-cell][aria-label$=", cleaning rota"]')).toHaveCount(1);
 				await page.locator('[data-day-cell][aria-label$=", cleaning rota"]').click();
-				const dayList = page.getByRole('region', { name: 'Events on the selected day' });
+				const dayList = page.getByRole('region', {
+					name: 'Events on the selected day',
+				});
 				await expect(dayList.getByText('1 entry')).toBeVisible();
 				await expect(dayList.getByText('Cleaning rota')).toBeVisible();
 				await expectNoGermanChrome(page);
@@ -254,5 +258,93 @@ test.describe('English calendar', () => {
 		await expect(page.getByText('Events could not be loaded.').first()).toBeVisible();
 		await expect(page.getByRole('button', { name: 'Reload calendar' })).toBeVisible();
 		await expectNoGermanChrome(page);
+	});
+
+	test('an active feed, its guide and the renew and revoke dialogs are English', async ({
+		page,
+		context,
+		baseURL,
+	}) => {
+		await prepare(page, context, baseURL, 390, 'light');
+		const stamp = new Date().toISOString();
+		const subscription = {
+			feedUrl: 'https://example.com/feed/abc.ics',
+			createdAt: stamp,
+			updatedAt: stamp,
+		};
+		await page.route(`**${BASE}/calendar-subscription*`, (route) => {
+			const method = route.request().method();
+			if (method === 'DELETE') return route.fulfill({ json: { ok: true } });
+			return route.fulfill({ json: { subscription } });
+		});
+		await navigateToFeature(page, KALENDER);
+		await dismissOnboarding(page);
+
+		await page.getByText('Subscribe to calendar').click();
+		await expect(page.getByText('Your personal feed link')).toBeVisible();
+		await expect(page.getByRole('link', { name: 'Subscribe in calendar app' })).toBeVisible();
+		await expect(page.getByRole('link', { name: 'Open feed' })).toBeVisible();
+		await page.getByRole('button', { name: 'Copy link' }).click();
+		await expect(page.getByRole('button', { name: /^(Copied|Copy link)$/ })).toBeVisible();
+		await page.getByText('Apple and Android instructions').click();
+		await expect(page.getByText('Apple (iPhone/iPad)')).toBeVisible();
+		await expect(page.getByText('Android (Google Calendar)')).toBeVisible();
+		await expect(page.getByText(/^The feed contains flat events\./)).toBeAttached();
+		await expectNoGermanChrome(page);
+		await expectNoSidewaysScroll(page, 390);
+
+		await page.getByRole('button', { name: 'Renew link' }).click();
+		const renew = page.getByRole('dialog');
+		await expect(renew.getByText('Renew feed link?')).toBeVisible();
+		await expect(renew.getByText(/^The current link stops working straight away\./)).toBeVisible();
+		await expectNoGermanChrome(page);
+		await renew.getByRole('button', { name: 'Cancel' }).click();
+
+		await page.getByRole('button', { name: 'Revoke subscription' }).click();
+		const revoke = page.getByRole('dialog');
+		await expect(revoke.getByText('Revoke calendar feed?')).toBeVisible();
+		await expectNoGermanChrome(page);
+		await revoke.getByRole('button', { name: 'Revoke', exact: true }).click();
+		await expect(page.getByText('Calendar feed revoked.')).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Create calendar feed' })).toBeVisible();
+		await expectNoGermanChrome(page);
+	});
+
+	test('deleting a single date of a series is English', async ({ page, context, baseURL }) => {
+		await prepare(page, context, baseURL, 390, 'light');
+		await navigateToFeature(page, KALENDER);
+		await dismissOnboarding(page);
+
+		await page.getByRole('button', { name: 'Open event: Flat meeting' }).first().click();
+		const edit = page.getByRole('dialog');
+		await expect(edit.getByRole('button', { name: /^Only .+/ })).toBeVisible();
+		await edit.getByRole('button', { name: /^Only .+/ }).click();
+		await edit.getByRole('button', { name: 'Delete this date only' }).click();
+		const confirm = page.getByRole('alertdialog');
+		await expect(confirm.getByText('Delete this date?')).toBeVisible();
+		await expect(
+			confirm.getByText(
+				'Only this date of “Flat meeting” is deleted. The other dates in the series stay.',
+			),
+		).toBeVisible();
+		await expectNoGermanChrome(page);
+		await expectNoSidewaysScroll(page, 390);
+	});
+
+	test.describe('on a device outside Berlin time', () => {
+		test.use({ timezoneId: 'America/New_York' });
+
+		test('the time zone notice is English', async ({ page, context, baseURL }) => {
+			await prepare(page, context, baseURL, 390, 'light');
+			await navigateToFeature(page, KALENDER);
+			await dismissOnboarding(page);
+			await expect(
+				page.getByText(
+					'This device uses the time zone America/New_York. Times appear in that zone, while repeats and reminders follow Berlin time.',
+				),
+			).toBeVisible();
+			await expectNoGermanChrome(page);
+			await expectNoSidewaysScroll(page, 390);
+		});
 	});
 });
