@@ -10,6 +10,7 @@ import { removeAccountFromWgs } from '@/core/db/delete-account';
 import { withTransaction } from '@/core/db/transaction';
 import { requireAccount } from '@/core/guards/require-account';
 import { serverError, serviceUnavailable } from '@/core/http/api-errors';
+import { requestLocale } from '@/core/i18n/request-locale';
 import { afterResponse } from '@/core/infra/after-response';
 import { logApiError } from '@/core/infra/observability';
 import { confirmedEmailOf, sendAccountDeletedMail } from '@/core/mail/account-deleted';
@@ -84,8 +85,10 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
 			(await tryCompleteAccountDeletion(user.id, (authUserId) =>
 				deleteAuthUser(url, serviceRoleKey, authUserId),
 			));
-		if (completed && !local.completedAt)
-			afterResponse(() => sendAccountDeletedMail(user.id, email));
+		if (completed && !local.completedAt) {
+			const locale = requestLocale(req);
+			afterResponse(() => sendAccountDeletedMail(user.id, email, locale));
+		}
 		return acceptedDeletionResponse(req, completed, local.deletedWgs);
 	} catch (err) {
 		logApiError('[api/account DELETE] failed', err);

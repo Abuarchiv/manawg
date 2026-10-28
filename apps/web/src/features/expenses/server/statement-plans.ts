@@ -2,6 +2,7 @@ import 'server-only';
 import { loadConfirmedEmails } from '@/core/auth/auth-user-emails';
 import { db, expensePayments, expenseSplits, expenses, wgMembers, wgs } from '@/core/db';
 import { MS_PER_DAY } from '@/core/utils/time';
+import { resolveLocale } from '@/shared/i18n/locale';
 import { and, asc, eq, gte, inArray, lt } from 'drizzle-orm';
 import type { ExpensePaymentInput } from '../expense-payment-input';
 import type { StatementExpense } from '../monthly-statement';
@@ -139,6 +140,7 @@ export async function loadStatementPlans(monthKey: string): Promise<WgStatementP
 					notify: member.notifyStatementEmail,
 					email: (member.authUserId && emails.get(member.authUserId)) || null,
 					lookupFailed: member.authUserId !== null && unresolved.has(member.authUserId),
+					locale: resolveLocale({ cookie: member.locale }),
 				}));
 			result.push({
 				wg,

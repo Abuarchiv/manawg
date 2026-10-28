@@ -1,7 +1,7 @@
 import { rateLimitResponse } from '@/core/http/api-errors';
 import { requestLocale } from '@/core/i18n/request-locale';
 import { serverT } from '@/core/i18n/server-t';
-import { disableMailKind, verifyUnsubscribeToken } from '@/core/mail/unsubscribe';
+import { disableMailKind, memberLocale, verifyUnsubscribeToken } from '@/core/mail/unsubscribe';
 import { checkRateLimit, clientIpKey, unsubscribeLimiter } from '@/core/rate-limit';
 import { type Locale, htmlLang } from '@/shared/i18n/locale';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -38,7 +38,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 	const token = req.nextUrl.searchParams.get('t') ?? '';
 	const parsed = verifyUnsubscribeToken(token);
 	if (!parsed) return invalid();
-	const locale = requestLocale(req);
+	const locale = (await memberLocale(parsed.memberId)) ?? requestLocale(req);
 	const t = serverT(locale, 'server-pages');
 	return page(
 		locale,
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 	const parsed = verifyUnsubscribeToken(req.nextUrl.searchParams.get('t') ?? '');
 	if (!parsed) return invalid();
 	await disableMailKind(parsed.memberId, parsed.kind);
-	const locale = requestLocale(req);
+	const locale = (await memberLocale(parsed.memberId)) ?? requestLocale(req);
 	const t = serverT(locale, 'server-pages');
 	return page(
 		locale,

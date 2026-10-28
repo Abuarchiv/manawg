@@ -2,6 +2,7 @@ import 'server-only';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { db, wgMembers } from '@/core/db';
 import { acceptedSigningSecrets, currentSigningSecret } from '@/core/infra/signing-secrets';
+import { type Locale, resolveLocale } from '@/shared/i18n/locale';
 import { eq } from 'drizzle-orm';
 import { APP_ORIGIN } from './brand-mail';
 
@@ -61,6 +62,19 @@ export function verifyUnsubscribeToken(
 
 export function unsubscribeUrl(memberId: string, kind: UnsubscribeKind = 'statement'): string {
 	return `${APP_ORIGIN}/api/email/unsubscribe?t=${encodeURIComponent(signUnsubscribeToken(memberId, kind))}`;
+}
+
+/** The member's stored language; `null` when the member is unknown or the lookup fails. */
+export async function memberLocale(memberId: string): Promise<Locale | null> {
+	try {
+		const [row] = await db
+			.select({ locale: wgMembers.locale })
+			.from(wgMembers)
+			.where(eq(wgMembers.id, memberId));
+		return row ? resolveLocale({ cookie: row.locale }) : null;
+	} catch {
+		return null;
+	}
 }
 
 const PREFERENCE_KEY = {

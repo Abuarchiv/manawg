@@ -1,8 +1,11 @@
+import { serverT } from '@/core/i18n/server-t';
+import { APP_ORIGIN, escapeHtml } from '@/core/mail/brand-mail';
 import { formatEuroCents } from '@/core/utils/money';
+import { dateTimeFormat } from '@/shared/i18n/intl';
+import { DEFAULT_LOCALE, type Locale, htmlLang } from '@/shared/i18n/locale';
 import type { MonthlyStatement } from './monthly-statement';
 
-import { APP_ORIGIN, escapeHtml } from '@/core/mail/brand-mail';
-import { pluralize } from '@/shared/lib/plural';
+type MailT = ReturnType<typeof serverT<'mail'>>;
 
 export interface StatementMailInput {
 	wgName: string;
@@ -10,6 +13,8 @@ export interface StatementMailInput {
 	statement: MonthlyStatement;
 	memberId: string;
 	unsubscribeUrl: string;
+	/** The recipient's language; German when absent. */
+	locale?: Locale | undefined;
 }
 
 export interface StatementMail {
@@ -48,23 +53,22 @@ const BUTTON_BG = '#171717';
 const OWES_COLOR = '#E7000B';
 const SETTLED_COLOR = '#14874E';
 
-const SEGMENT_LABELS: Record<StatusKind, string> = {
-	settled: 'Alles ausgeglichen',
-	owed: 'Du bekommst',
-	owes: 'Du schuldest',
-};
+function segmentLabel(t: MailT, kind: StatusKind): string {
+	if (kind === 'settled') return t('statement.segmentSettled');
+	return kind === 'owed' ? t('statement.segmentOwed') : t('statement.segmentOwes');
+}
 
-function monthParts(monthKey: string): { monthName: string; year: string } {
+function monthParts(monthKey: string, locale: Locale): { monthName: string; year: string } {
 	const [year = '', month = '1'] = monthKey.split('-');
-	const monthName = new Intl.DateTimeFormat('de-DE', { month: 'long', timeZone: 'UTC' }).format(
+	const monthName = dateTimeFormat(locale, { month: 'long', timeZone: 'UTC' }).format(
 		new Date(Date.UTC(Number(year), Number(month) - 1, 1)),
 	);
 	return { monthName, year };
 }
 
-function buildView(input: StatementMailInput): StatementView {
+function buildView(input: StatementMailInput, locale: Locale): StatementView {
 	const { statement, memberId } = input;
-	const { monthName, year } = monthParts(statement.monthKey);
+	const { monthName, year } = monthParts(statement.monthKey, locale);
 	const row = statement.members.find((member) => member.id === memberId);
 	const balance = row?.balanceCents ?? 0;
 	const kind: StatusKind =
@@ -90,47 +94,60 @@ function buildView(input: StatementMailInput): StatementView {
 	};
 }
 
-function statusAmount(view: StatementView): string {
-	if (view.kind === 'owed') return formatEuroCents(view.statusCents, 'EUR', { signed: true });
-	return formatEuroCents(view.statusCents);
+function statusAmount(view: StatementView, locale: Locale): string {
+	if (view.kind === 'owed') {
+		return formatEuroCents(view.statusCents, 'EUR', { signed: true, locale });
+	}
+	return formatEuroCents(view.statusCents, 'EUR', { locale });
 }
 
-function preheader(view: StatementView): string {
-	const people = pluralize(view.participants, 'Person', 'Personen');
-	const expenses = pluralize(view.expenseCount, 'Ausgabe', 'Ausgaben');
-	const status =
-		view.kind === 'settled'
-			? 'alles ausgeglichen'
-			: `${view.kind === 'owed' ? 'du bekommst' : 'du schuldest'} ${formatEuroCents(view.statusCents)}`;
-	return `${people}, ${expenses}, ${status}.`;
+function preheader(view: StatementView, t: MailT, locale: Locale): string {
+	return t('statement.preheader', {
+		people: view.participants,
+		expenses: view.expenseCount,
+		status: view.kind === 'owes' ? 'other' : view.kind,
+		amount: formatEuroCents(view.statusCents, 'EUR', { locale }),
+	});
 }
 
-function transferLines(view: StatementView): Array<{ label: string; amount: string }> {
-	const preposition = view.kind === 'owed' ? 'von' : 'an';
+function transferLines(
+	view: StatementView,
+	t: MailT,
+	locale: Locale,
+): Array<{ label: string; amount: string }> {
 	return view.transfers.map((transfer) => ({
-		label: `${preposition} ${transfer.name}`,
-		amount: formatEuroCents(transfer.cents),
+		label: t(view.kind === 'owed' ? 'statement.transferFrom' : 'statement.transferTo', {
+			name: transfer.name,
+		}),
+		amount: formatEuroCents(transfer.cents, 'EUR', { locale }),
 	}));
 }
 
-function plainText(input: StatementMailInput, view: StatementView, links: Links): string {
+function plainText(
+	input: StatementMailInput,
+	view: StatementView,
+	links: Links,
+	t: MailT,
+	locale: Locale,
+): string {
+	const money = (cents: number) => formatEuroCents(cents, 'EUR', { locale });
 	const lines = [
 		`${input.wgName} · ${view.monthLabel}`,
 		'',
-		`${view.monthName} ist abgerechnet.`,
+		t('statement.title', { month: view.monthName }),
 		'',
-		`Gesamt: ${formatEuroCents(input.statement.totalCents)}`,
-		`Ausgaben: ${view.expenseCount}`,
-		`Dein Anteil: ${formatEuroCents(view.shareCents)}`,
+		`${t('statement.total')}: ${money(input.statement.totalCents)}`,
+		`${t('statement.expenses')}: ${view.expenseCount}`,
+		`${t('statement.share')}: ${money(view.shareCents)}`,
 		'',
-		`${SEGMENT_LABELS[view.kind]}: ${statusAmount(view)}`,
-		...transferLines(view).map((line) => `  ${line.label} ${line.amount}`),
+		`${segmentLabel(t, view.kind)}: ${statusAmount(view, locale)}`,
+		...transferLines(view, t, locale).map((line) => `  ${line.label} ${line.amount}`),
 		'',
-		`Abrechnung ansehen: ${links.statement}`,
+		`${t('statement.viewStatement')}: ${links.statement}`,
 		'',
-		'Einmal im Monat, am Ersten. Als PDF in der App.',
-		`Einstellungen ändern: ${links.settings}`,
-		`Abbestellen: ${links.unsubscribe}`,
+		t('statement.cadence'),
+		`${t('shell.changeSettings')}: ${links.settings}`,
+		`${t('shell.unsubscribe')}: ${links.unsubscribe}`,
 	];
 	return lines.join('\n');
 }
@@ -155,18 +172,18 @@ function tile(label: string, value: string, divider: boolean): string {
 	);
 }
 
-function statusRow(view: StatementView): string {
+function statusRow(view: StatementView, t: MailT, locale: Locale): string {
 	const color = view.kind === 'owes' ? OWES_COLOR : SETTLED_COLOR;
 	const dot = `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background-color:${color};margin-right:10px;vertical-align:middle;"></span>`;
 	const amountColor = view.kind === 'settled' ? MUTED : color;
-	const transfers = transferLines(view)
+	const transfers = transferLines(view, t, locale)
 		.map(
 			(line) =>
 				`<tr><td style="padding:6px 0 0 17px;font-family:${SANS};font-size:14px;line-height:1.5;color:${BODY};">${escapeHtml(line.label)}</td>` +
 				`<td align="right" style="padding:6px 0 0 0;font-family:${MONO};font-size:13px;line-height:1.5;color:${BODY};white-space:nowrap;">${line.amount}</td></tr>`,
 		)
 		.join('');
-	return `<tr><td style="padding:0 0 24px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td valign="middle" style="font-family:${SANS};font-weight:500;font-size:15px;line-height:1.4;color:${color};">${dot}${SEGMENT_LABELS[view.kind]}</td><td align="right" valign="middle" style="font-family:${MONO};font-size:14px;line-height:1.4;color:${amountColor};white-space:nowrap;">${statusAmount(view)}</td></tr>${transfers}</table></td></tr>`;
+	return `<tr><td style="padding:0 0 24px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td valign="middle" style="font-family:${SANS};font-weight:500;font-size:15px;line-height:1.4;color:${color};">${dot}${escapeHtml(segmentLabel(t, view.kind))}</td><td align="right" valign="middle" style="font-family:${MONO};font-size:14px;line-height:1.4;color:${amountColor};white-space:nowrap;">${statusAmount(view, locale)}</td></tr>${transfers}</table></td></tr>`;
 }
 
 function header(monthLabel: string): string {
@@ -174,27 +191,34 @@ function header(monthLabel: string): string {
 	return `<tr><td style="padding:22px 40px;border-bottom:1px solid ${LINE};"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td valign="middle" width="1" style="padding-right:10px;">${mark}</td><td valign="middle" style="font-family:${HEADLINE};font-weight:600;font-size:15px;line-height:1;letter-spacing:-0.02em;color:${INK};">ManaWG</td><td align="right" valign="middle" style="font-family:${MONO};font-size:11px;line-height:1;letter-spacing:0.14em;text-transform:uppercase;color:${MUTED};white-space:nowrap;">${escapeHtml(monthLabel)}</td></tr></table></td></tr>`;
 }
 
-function footer(links: Links): string {
+function footer(links: Links, t: MailT): string {
 	const link = `style="color:${MUTED};text-decoration:underline;"`;
-	return `<tr><td bgcolor="${SURFACE}" style="background-color:${SURFACE};border-top:1px solid ${LINE};padding:22px 40px;"><div style="font-family:${SANS};font-size:12px;line-height:1.55;color:${MUTED};">Einmal im Monat, am Ersten. Als PDF in der App.</div><div style="padding-top:6px;font-family:${MONO};font-size:11px;line-height:1.55;letter-spacing:0.06em;color:${MUTED};"><a href="${escapeHtml(links.settings)}" ${link}>Einstellungen ändern</a> &middot; <a href="${escapeHtml(links.unsubscribe)}" ${link}>Abbestellen</a></div></td></tr>`;
+	return `<tr><td bgcolor="${SURFACE}" style="background-color:${SURFACE};border-top:1px solid ${LINE};padding:22px 40px;"><div style="font-family:${SANS};font-size:12px;line-height:1.55;color:${MUTED};">${escapeHtml(t('statement.cadence'))}</div><div style="padding-top:6px;font-family:${MONO};font-size:11px;line-height:1.55;letter-spacing:0.06em;color:${MUTED};"><a href="${escapeHtml(links.settings)}" ${link}>${escapeHtml(t('shell.changeSettings'))}</a> &middot; <a href="${escapeHtml(links.unsubscribe)}" ${link}>${escapeHtml(t('shell.unsubscribe'))}</a></div></td></tr>`;
 }
 
-function htmlDocument(input: StatementMailInput, view: StatementView, links: Links): string {
-	const button = `<tr><td style="padding:0;"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="${BUTTON_BG}" style="background-color:${BUTTON_BG};border-radius:10px;"><a href="${escapeHtml(links.statement)}" style="display:inline-block;padding:13px 20px;font-family:${SANS};font-size:15px;line-height:1.3;font-weight:500;color:${SURFACE};text-decoration:none;border-radius:10px;">Abrechnung ansehen</a></td></tr></table></td></tr>`;
-	const tiles = `<tr><td style="padding:0 0 24px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid ${LINE};border-radius:14px;border-collapse:separate;"><tr>${tile('Gesamt', formatEuroCents(input.statement.totalCents), false)}${tile('Ausgaben', String(view.expenseCount), true)}${tile('Dein Anteil', formatEuroCents(view.shareCents), true)}</tr></table></td></tr>`;
+function htmlDocument(
+	input: StatementMailInput,
+	view: StatementView,
+	links: Links,
+	t: MailT,
+	locale: Locale,
+): string {
+	const money = (cents: number) => formatEuroCents(cents, 'EUR', { locale });
+	const button = `<tr><td style="padding:0;"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="${BUTTON_BG}" style="background-color:${BUTTON_BG};border-radius:10px;"><a href="${escapeHtml(links.statement)}" style="display:inline-block;padding:13px 20px;font-family:${SANS};font-size:15px;line-height:1.3;font-weight:500;color:${SURFACE};text-decoration:none;border-radius:10px;">${escapeHtml(t('statement.viewStatement'))}</a></td></tr></table></td></tr>`;
+	const tiles = `<tr><td style="padding:0 0 24px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid ${LINE};border-radius:14px;border-collapse:separate;"><tr>${tile(escapeHtml(t('statement.total')), money(input.statement.totalCents), false)}${tile(escapeHtml(t('statement.expenses')), String(view.expenseCount), true)}${tile(escapeHtml(t('statement.share')), money(view.shareCents), true)}</tr></table></td></tr>`;
 	const eyebrow = `<tr><td style="padding:0 0 14px 0;font-family:${MONO};font-size:11px;line-height:1.4;letter-spacing:0.14em;text-transform:uppercase;color:${MUTED};">${escapeHtml(input.wgName)}</td></tr>`;
-	const title = `<tr><td style="padding:0 0 28px 0;font-family:${HEADLINE};font-weight:600;font-size:34px;line-height:1.1;letter-spacing:-0.03em;color:${INK};">${escapeHtml(view.monthName)} ist abgerechnet.</td></tr>`;
+	const title = `<tr><td style="padding:0 0 28px 0;font-family:${HEADLINE};font-weight:600;font-size:34px;line-height:1.1;letter-spacing:-0.03em;color:${INK};">${escapeHtml(t('statement.title', { month: view.monthName }))}</td></tr>`;
 	return `<!DOCTYPE html>
-<html lang="de" xmlns="http://www.w3.org/1999/xhtml">
+<html lang="${htmlLang(locale)}" xmlns="http://www.w3.org/1999/xhtml">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <meta name="supported-color-schemes" content="light">
-<title>${escapeHtml(view.monthName)} ist abgerechnet</title>
+<title>${escapeHtml(t('statement.subject', { month: view.monthName }))}</title>
 </head>
 <body style="margin:0;padding:0;background-color:${PAGE_BG};">
-<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;font-size:1px;line-height:1px;">${escapeHtml(preheader(view))}</div>
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;font-size:1px;line-height:1px;">${escapeHtml(preheader(view, t, locale))}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${PAGE_BG}" style="background-color:${PAGE_BG};">
 <tr><td align="center" style="padding:32px 16px;">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" bgcolor="${CARD_BG}" style="width:100%;max-width:600px;background-color:${CARD_BG};border:1px solid ${LINE};">
@@ -203,10 +227,10 @@ ${header(view.monthLabel)}
 ${eyebrow}
 ${title}
 ${tiles}
-${statusRow(view)}
+${statusRow(view, t, locale)}
 ${button}
 </table></td></tr>
-${footer(links)}
+${footer(links, t)}
 </table>
 </td></tr>
 </table>
@@ -217,7 +241,9 @@ ${footer(links)}
 
 /** Renders one member's statement mail: subject, inbox preview, HTML and plain text. */
 export function renderStatementMail(input: StatementMailInput): StatementMail {
-	const view = buildView(input);
+	const locale = input.locale ?? DEFAULT_LOCALE;
+	const t = serverT(locale, 'mail');
+	const view = buildView(input, locale);
 	const wgBase = `${APP_ORIGIN}/wg/${encodeURIComponent(input.shareCode)}`;
 	const links: Links = {
 		statement: `${wgBase}/abrechnung?monat=${input.statement.monthKey}`,
@@ -225,9 +251,9 @@ export function renderStatementMail(input: StatementMailInput): StatementMail {
 		unsubscribe: input.unsubscribeUrl,
 	};
 	return {
-		subject: `${view.monthName} ist abgerechnet`,
-		preheader: preheader(view),
-		html: htmlDocument(input, view, links),
-		text: plainText(input, view, links),
+		subject: t('statement.subject', { month: view.monthName }),
+		preheader: preheader(view, t, locale),
+		html: htmlDocument(input, view, links, t, locale),
+		text: plainText(input, view, links, t, locale),
 	};
 }

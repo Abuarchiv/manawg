@@ -2,6 +2,7 @@ import { safeNextPath } from '@/core/auth/next-path';
 import { createSupabaseServerClient } from '@/core/auth/server';
 import { queueWelcomeMail } from '@/core/auth/welcome-mail';
 import { requestOrigin } from '@/core/http/request-origin';
+import { requestLocale } from '@/core/i18n/request-locale';
 import { type NextRequest, NextResponse } from 'next/server';
 
 function callbackError(request: NextRequest, response?: NextResponse): NextResponse {
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 			flowId !== null ? { flowId } : undefined,
 		);
 		if (error || !data.session) return callbackError(request, response);
-		queueWelcomeMail(data.session.user);
+		queueWelcomeMail(data.session.user, requestLocale(request));
 		if (next === '/auth/reset') {
 			response.cookies.set({
 				name: 'manawg_password_recovery',
