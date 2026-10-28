@@ -118,9 +118,6 @@ test.describe('mobile layout matrix', () => {
 		totalSpendByCurrency: { EUR: 3290 },
 		weekSpendByCurrency: { EUR: 3290 },
 		monthSpendByCurrency: { EUR: 3290 },
-		totalSpendCents: 3290,
-		weekSpendCents: 3290,
-		monthSpendCents: 3290,
 		openShoppingCount: 1,
 		openShoppingTop: ['Ungesüßte Hafermilch'],
 		dueChores: [
