@@ -65,7 +65,9 @@ if [ -n "${STORAGE_KEY_FILE:-}" ]; then
 fi
 
 tar -cf "$stage.tar" -C "$stage" database.dump storage
-gpg --batch --quiet --trust-model always --encrypt --recipient-file "$PUBLIC_KEY_FILE" \
+gpg --batch --quiet --import "$PUBLIC_KEY_FILE"
+recipient="$(gpg --batch --with-colons --list-keys | awk -F: '/^fpr/ { print $10; exit }')"
+gpg --batch --quiet --trust-model always --encrypt --recipient "$recipient" \
 	--output "$stage.tar.gpg" "$stage.tar"
 
 if [ -n "${PRIVATE_KEY_FILE:-}" ]; then
