@@ -70,6 +70,17 @@ function isQuotaError(status: number, body: unknown): boolean {
 	return name.includes('quota_exceeded');
 }
 
+function unsubscribeHeaders(mail: OutgoingMail): { headers?: Record<string, string> } {
+	return mail.unsubscribeUrl
+		? {
+				headers: {
+					'List-Unsubscribe': `<${mail.unsubscribeUrl}>`,
+					'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+				},
+			}
+		: {};
+}
+
 function createResendTransport(apiKey: string, from: string, prefix: string): MailTransport {
 	async function post(mails: readonly OutgoingMail[]): Promise<MailOutcome[]> {
 		const payload = mails.map((mail) => ({
@@ -78,14 +89,7 @@ function createResendTransport(apiKey: string, from: string, prefix: string): Ma
 			subject: mail.subject,
 			html: mail.html,
 			text: mail.text,
-			...(mail.unsubscribeUrl
-				? {
-						headers: {
-							'List-Unsubscribe': `<${mail.unsubscribeUrl}>`,
-							'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-						},
-					}
-				: {}),
+			...unsubscribeHeaders(mail),
 		}));
 		let response: Response;
 		try {
@@ -141,21 +145,37 @@ function createResendTransport(apiKey: string, from: string, prefix: string): Ma
 	return { name: 'resend', sendBatch: post };
 }
 
+/** A mail catcher on the Docker network or this machine, which speaks no TLS. */
+const LOCAL_SMTP_HOST = /^(?:localhost|127\.0\.0\.1|::1|[a-z0-9][a-z0-9_-]*)$/i;
+
+/**
+ * Port 465 is implicit TLS; any other port must upgrade with STARTTLS, so a relay on the internet
+ * cannot be downgraded to plain text. Hosts without a dot (Mailpit) are exempt.
+ */
+export function smtpOptions(env: Readonly<Record<string, string | undefined>>) {
+	const host = env.SMTP_HOST?.trim() ?? '';
+	const port = Number(env.SMTP_PORT?.trim() || 587);
+	if (!Number.isInteger(port) || port < 1 || port > 65535) {
+		throw new Error('SMTP_PORT must be a port number.');
+	}
+	const user = env.SMTP_USER?.trim();
+	return {
+		host,
+		port,
+		secure: port === 465,
+		requireTLS: port !== 465 && !LOCAL_SMTP_HOST.test(host),
+		auth: user ? { user, pass: env.SMTP_PASS ?? '' } : undefined,
+		connectionTimeout: REQUEST_TIMEOUT_MS,
+		socketTimeout: REQUEST_TIMEOUT_MS,
+	};
+}
+
 /** Plain SMTP for self-hosted instances; mails go out one by one, failures stay per mail. */
 function createSmtpTransport(
 	env: Readonly<Record<string, string | undefined>>,
 	from: string,
 ): MailTransport {
-	const port = Number(env.SMTP_PORT?.trim() || 587);
-	const user = env.SMTP_USER?.trim();
-	const transporter = nodemailer.createTransport({
-		host: env.SMTP_HOST?.trim(),
-		port,
-		secure: port === 465,
-		auth: user ? { user, pass: env.SMTP_PASS ?? '' } : undefined,
-		connectionTimeout: REQUEST_TIMEOUT_MS,
-		socketTimeout: REQUEST_TIMEOUT_MS,
-	});
+	const transporter = nodemailer.createTransport(smtpOptions(env));
 	return {
 		name: 'smtp',
 		async sendBatch(mails) {
@@ -168,14 +188,7 @@ function createSmtpTransport(
 						subject: mail.subject,
 						html: mail.html,
 						text: mail.text,
-						...(mail.unsubscribeUrl
-							? {
-									headers: {
-										'List-Unsubscribe': `<${mail.unsubscribeUrl}>`,
-										'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-									},
-								}
-							: {}),
+						...unsubscribeHeaders(mail),
 					});
 					outcomes.push({ kind: 'sent', providerId: info.messageId });
 				} catch (error) {
@@ -205,10 +218,10 @@ function createDryRunTransport(): MailTransport {
 }
 
 /**
- * SMTP whenever `SMTP_HOST` is set (self-hosted instances). Otherwise Resend in production (a missing key throws instead of degrading to a dry
- * run); elsewhere only when an allow-list limits the recipients and a key is
- * set (Preview testing). Otherwise the dry-run transport. `prefix` namespaces
- * the provider idempotency keys per sender (statements, transactional mails).
+ * SMTP whenever `SMTP_HOST` is set (self-hosted instances). Otherwise Resend in production (a
+ * missing key throws instead of degrading to a dry run); elsewhere only when an allow-list limits
+ * the recipients and a key is set (Preview testing). Otherwise the dry-run transport. `prefix`
+ * namespaces the provider idempotency keys per sender (statements, transactional mails).
  */
 export function createMailTransport(
 	env: Readonly<Record<string, string | undefined>> = process.env,

@@ -26,7 +26,7 @@ docker compose exec -T db psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 
 docker compose exec -T db pg_restore -U supabase_admin -d postgres --exit-on-error <"$work/database.dump"
 
 docker compose run --rm --no-deps -T --entrypoint sh storage \
-	-c 'rm -rf /var/lib/storage/* && tar -xf - -C /var/lib/storage' <"$work/storage.tar"
+	-c 'find /var/lib/storage -mindepth 1 -delete && tar -xf - -C /var/lib/storage' <"$work/storage.tar"
 
 docker compose up -d
 echo "Restored $archive"

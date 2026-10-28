@@ -6,6 +6,7 @@
  * Docker image (Dockerfile CMD).
  */
 
+import { createHash } from 'node:crypto';
 import { readFile, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -26,11 +27,19 @@ export const PUBLIC_ENV_PLACEHOLDERS = {
 		url: true,
 		default: 'https://manawg.com',
 	},
+	// Error reports stay on the instance: without a support address they go to its sender address.
 	NEXT_PUBLIC_SUPPORT_EMAIL: {
 		placeholder: `support@${MARKER}.invalid`,
-		default: 'info@manawg.com',
+		fallback: 'SMTP_ADMIN_EMAIL',
 	},
 };
+
+/**
+ * Built in as Next's deployment id, which every asset URL carries as `?dpl=`. Chunk file names
+ * hash the build, not these values, so the id changes with them: browsers and the service worker
+ * then fetch chunks with the new values instead of serving cached ones.
+ */
+const ASSET_VERSION_PLACEHOLDER = `${MARKER}-config`;
 
 const TEXT_FILE = /\.(?:js|mjs|cjs|json|html|rsc|body|meta|txt|xml|webmanifest)$/;
 
@@ -48,7 +57,8 @@ export function replacements(env) {
 		}
 		pairs.push([spec.placeholder, value]);
 	}
-	return [...pairs, ...hosts];
+	const version = createHash('sha256').update(JSON.stringify(pairs)).digest('hex').slice(0, 12);
+	return [...pairs, ...hosts, [ASSET_VERSION_PLACEHOLDER, `c${version}`]];
 }
 
 export function replaceAll(text, pairs) {
@@ -73,7 +83,10 @@ async function main() {
 	const pairs = replacements(process.env);
 	let changed = 0;
 	const leftovers = [];
-	for await (const file of textFiles(path.join(appDir, '.next'))) {
+	// server.js carries the Next config, deployment id included, inline.
+	const files = [path.join(appDir, 'server.js')];
+	for await (const file of textFiles(path.join(appDir, '.next'))) files.push(file);
+	for (const file of files) {
 		const text = await readFile(file, 'utf8');
 		if (!text.includes(MARKER)) continue;
 		const next = replaceAll(text, pairs);

@@ -2,6 +2,7 @@ import { InputModality } from '@/components/app/InputModality';
 import { InstallPrompt } from '@/components/app/InstallPrompt';
 import { PwaRegister } from '@/components/app/PwaRegister';
 import { ThemeProvider } from '@/components/app/ThemeProvider';
+import { GoogleSignInProvider } from '@/components/auth/google-sign-in';
 import { SplashScreen } from '@/components/brand/SplashScreen';
 import { getAppUrl } from '@/shared/lib/app-url';
 import { APP_SCHEMA_ID, IS_OFFICIAL_INSTANCE, LANDING_SCHEMA_IDS } from '@/shared/lib/landing-url';
@@ -193,17 +194,19 @@ export default async function RootLayout({
 				<SplashScreen />
 				<InputModality />
 				<ThemeProvider>
-					{/* Phone column on every screen; wider viewports show backdrop
+					<GoogleSignInProvider enabled={process.env.GOOGLE_SIGN_IN?.trim() !== 'false'}>
+						{/* Phone column on every screen; wider viewports show backdrop
 					    and a hairline edge around it. */}
-					<div
-						data-app-frame
-						className="relative mx-auto min-h-svh w-full max-w-[var(--app-frame-width)] overflow-x-clip bg-background min-[30rem]:border-x print:max-w-none print:border-x-0"
-						style={{ paddingBottom: 'var(--install-prompt-space, 0px)' }}
-					>
-						{children}
-						<PwaRegister />
-						<InstallPrompt />
-					</div>
+						<div
+							data-app-frame
+							className="relative mx-auto min-h-svh w-full max-w-[var(--app-frame-width)] overflow-x-clip bg-background min-[30rem]:border-x print:max-w-none print:border-x-0"
+							style={{ paddingBottom: 'var(--install-prompt-space, 0px)' }}
+						>
+							{children}
+							<PwaRegister />
+							<InstallPrompt />
+						</div>
+					</GoogleSignInProvider>
 				</ThemeProvider>
 			</body>
 		</html>

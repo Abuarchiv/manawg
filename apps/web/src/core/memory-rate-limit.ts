@@ -4,7 +4,7 @@
  * several instances need the Upstash limiter.
  */
 
-interface Window {
+interface Bucket {
 	count: number;
 	reset: number;
 }
@@ -17,29 +17,29 @@ export function createMemoryLimiter(
 	windowSec: number,
 	now: () => number = Date.now,
 ) {
-	const windows = new Map<string, Window>();
+	const buckets = new Map<string, Bucket>();
 	const windowMs = windowSec * 1000;
 
 	function prune(at: number): void {
-		for (const [key, window] of windows) {
-			if (window.reset <= at) windows.delete(key);
+		for (const [key, bucket] of buckets) {
+			if (bucket.reset <= at) buckets.delete(key);
 		}
 	}
 
 	return {
 		async limit(key: string): Promise<{ success: boolean; remaining: number; reset: number }> {
 			const at = now();
-			let window = windows.get(key);
-			if (!window || window.reset <= at) {
-				if (!window && windows.size >= PRUNE_THRESHOLD) prune(at);
-				window = { count: 0, reset: at + windowMs };
-				windows.set(key, window);
+			let bucket = buckets.get(key);
+			if (!bucket || bucket.reset <= at) {
+				if (!bucket && buckets.size >= PRUNE_THRESHOLD) prune(at);
+				bucket = { count: 0, reset: at + windowMs };
+				buckets.set(key, bucket);
 			}
-			window.count += 1;
+			bucket.count += 1;
 			return {
-				success: window.count <= limit,
-				remaining: Math.max(0, limit - window.count),
-				reset: window.reset,
+				success: bucket.count <= limit,
+				remaining: Math.max(0, limit - bucket.count),
+				reset: bucket.reset,
 			};
 		},
 	};

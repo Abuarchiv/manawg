@@ -40,10 +40,26 @@ test('empty optional values fall back to the defaults the code uses', () => {
 		replacements({
 			NEXT_PUBLIC_APP_URL: 'http://localhost',
 			NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'k',
+			SMTP_ADMIN_EMAIL: 'noreply@wg.example.com',
 		}),
 	);
 	assert.match(out, /legal:"https:\/\/manawg\.com\/impressum"/);
-	assert.match(out, /mail:"info@manawg\.com"/);
+	// Error reports stay on the instance: its sender address, never the ManaWG maintainers.
+	assert.match(out, /mail:"noreply@wg\.example\.com"/);
 	assert.match(out, /fetch\("http:\/\/localhost\/auth\/v1"\)/);
 	assert.throws(() => replacements({}), /NEXT_PUBLIC_APP_URL is not set/);
+});
+
+test('the asset version follows the instance values, so browsers drop chunks with old ones', () => {
+	const env = {
+		NEXT_PUBLIC_APP_URL: 'https://wg.example.com',
+		NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'k',
+		SMTP_ADMIN_EMAIL: 'noreply@wg.example.com',
+	};
+	const version = (values: Record<string, string>) =>
+		replaceAll('src="/_next/static/chunks/a.js?dpl=manawg-selfhost-config"', replacements(values));
+
+	assert.match(version(env), /\?dpl=c[0-9a-f]{12}"$/);
+	assert.equal(version(env), version({ ...env }));
+	assert.notEqual(version(env), version({ ...env, NEXT_PUBLIC_SUPPORT_EMAIL: 'help@example.com' }));
 });

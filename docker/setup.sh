@@ -6,6 +6,8 @@
 #
 # An existing .env is never overwritten; empty secrets in it are filled in.
 set -eu
+# .env holds the instance's secrets: readable by its owner only, from the first write on.
+umask 077
 
 cd "$(dirname "$0")/.."
 command -v openssl >/dev/null || { echo "openssl is required." >&2; exit 1; }
