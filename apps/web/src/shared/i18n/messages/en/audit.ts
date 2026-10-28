@@ -6,12 +6,12 @@ const same = (sentence: string) => `{self, select, yes {${sentence}} other {${se
 
 export default {
 	summary: '{actorName} {text}',
-	absenceCreated: { feed: same('added an absence.') },
-	absenceDeleted: { feed: same('removed an absence.') },
-	announcementCommentCreated: { feed: same('wrote a comment.') },
-	announcementCommentUpdated: { feed: same('updated a comment.') },
+	absenceCreated: { feed: same('added time away.') },
+	absenceDeleted: { feed: same('removed time away.') },
+	announcementCommentCreated: { feed: same('wrote a reply.') },
+	announcementCommentUpdated: { feed: same('updated a reply.') },
 	announcementCommentDeleted: {
-		feed: same('removed a comment{moderated, select, yes { as admin} other {}}.'),
+		feed: same('removed a reply{moderated, select, yes { as admin} other {}}.'),
 	},
 	announcementReactionAdded: { feed: same('reacted with “{reaction}”.') },
 	announcementReactionRemoved: { feed: same('removed a reaction.') },
@@ -44,9 +44,9 @@ export default {
 		feed: same('settled {count, plural, one {# open share} other {# open shares}}.'),
 	},
 	expenseDebtSettledManual: { feed: same('recorded a cash payment of {amount}.') },
-	expenseDebtSettledManualVoided: { feed: same('cancelled a cash payment of {amount}.') },
+	expenseDebtSettledManualVoided: { feed: same('reversed a cash payment of {amount}.') },
 	expenseReminderSent: {
-		feed: same('reminded {debtorName} about open debts to {creditorName}.'),
+		feed: same('reminded {debtorName} about amounts open to {creditorName}.'),
 	},
 	importCompleted: {
 		feed: same('imported {inserted, plural, one {# expense} other {# expenses}}.'),
@@ -61,7 +61,7 @@ export default {
 	},
 	inventoryConsumed: {
 		feed: same(
-			'took {quantity} {unitKey, select, piece {pcs} litre {L} kilogram {kg} roll {roll} pack {pack} other {{unit}}} of {name}.',
+			'took {quantity} {unitKey, select, piece {pcs} litre {L} kilogram {kg} roll {roll(s)} pack {pack(s)} other {{unit}}} of {name}.',
 		),
 	},
 	memberInvited: { feed: same('sent an invitation by email.') },
@@ -81,12 +81,12 @@ export default {
 	notificationPushSubscribed: { feed: same('turned on Web Push.') },
 	notificationPushUnsubscribed: { feed: same('turned off Web Push.') },
 	recurringCreated: { feed: same('saved {description} as a fixed-cost template.') },
-	recurringPaused: { feed: same('paused the fixed costs {description}.') },
-	recurringResumed: { feed: same('resumed the fixed costs {description}.') },
+	recurringPaused: { feed: same('paused the fixed cost {description}.') },
+	recurringResumed: { feed: same('resumed the fixed cost {description}.') },
 	recurringUpdated: { feed: same('updated the fixed-cost template {description}.') },
 	recurringDeleted: { feed: same('deleted the fixed-cost template {description}.') },
 	recurringCharged: {
-		feed: 'Fixed-cost booking {description} was entered automatically.',
+		feed: '{description} was added automatically from fixed costs.',
 	},
 	recurringAdvanced: {
 		feed: '{description} was taken from a fixed-cost template.',
@@ -96,7 +96,7 @@ export default {
 	shoppingBought: { feed: same('bought {name}.') },
 	shoppingReopened: { feed: same('reopened {name}.') },
 	shoppingDeleted: { feed: same('removed {name} from the shopping list.') },
-	shoppingClearedBought: { feed: same('removed {count} bought items.') },
+	shoppingClearedBought: { feed: same('removed {count, plural, one {# bought item} other {# bought items}}.') },
 	wgCreated: { feed: same('created the flat.') },
 	wgUpdated: { feed: same('changed the flat settings.') },
 	wgInviteCreated: { feed: same('created an invitation.') },
@@ -110,7 +110,7 @@ export default {
 		recurringCreated: '{description} saved as a fixed-cost template',
 		recurringLabel: 'Fixed costs',
 		absenceAway: '{self, select, yes {are} other {is}} away',
-		absenceEntered: 'Absence added',
+		absenceEntered: 'Time away added',
 	},
 	detail: {
 		kind: 'Type: {kind}',
@@ -119,7 +119,7 @@ export default {
 		pushOff: 'Web Push off',
 		quietHours: 'Quiet hours {start}-{end}',
 		quietHoursOff: 'Quiet hours off',
-		splitCount: '{count} splits',
+		splitCount: '{count, plural, one {# split} other {# splits}}',
 		reaction: 'Reaction: {reaction}',
 		everyDays: '{days, plural, =1 {daily} other {every # days}}',
 		everyMonths: '{months, plural, =1 {monthly} other {every # months}}',

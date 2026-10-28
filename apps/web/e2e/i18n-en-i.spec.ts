@@ -168,7 +168,7 @@ test.describe('English noticeboard', () => {
 					.click();
 				const menu = page.getByRole('menu');
 				await expect(menu.getByRole('menuitem', { name: /^Add to shopping list/ })).toBeVisible();
-				await expect(menu.getByRole('menuitem', { name: /^Add as task/ })).toBeVisible();
+				await expect(menu.getByRole('menuitem', { name: /^Add to cleaning rota/ })).toBeVisible();
 				await expect(menu.getByRole('menuitem', { name: /^Add as expense/ })).toBeVisible();
 				await expect(menu.getByRole('menuitem', { name: /^Edit post/ })).toBeVisible();
 				await expect(menu.getByRole('menuitem', { name: /^Unpin post/ })).toBeVisible();
@@ -419,7 +419,7 @@ test.describe('English chat', () => {
 				await expect(picker.getByText('One emoji for this message.')).toBeVisible();
 				await expect(picker.getByRole('button', { name: 'Reaction 👍' })).toBeVisible();
 				await expect(
-					picker.getByRole('textbox', { name: 'Your own emoji reaction' }),
+					picker.getByRole('textbox', { name: 'Custom emoji' }),
 				).toBeVisible();
 				await expect(picker.getByRole('button', { name: 'Close' })).toBeVisible();
 				await expectNoGermanChrome(page);
@@ -476,7 +476,7 @@ test.describe('English chat', () => {
 				await page.getByRole('button', { name: 'Send message' }).click();
 				await expect(
 					page.getByText(
-						'The message you are replying to no longer exists. Remove the reply and send again. Your text is still there.',
+						'The message you are replying to no longer exists. Cancel the reply and send again. Your text is still there.',
 					),
 				).toBeVisible();
 				await expect(composer).toHaveValue('Hello back');
@@ -586,7 +586,7 @@ test.describe('English chat extras', () => {
 			await expect(log.getByText(WEEKDAY_PILL)).toBeVisible();
 			await expect(log.getByText('New messages')).toBeVisible();
 			await expect(
-				log.getByRole('button', { name: /^Reaction 👍 \(1\) from Mina: add — message from / }),
+				log.getByRole('button', { name: /^Add reaction 👍 \(1, from Mina\) on message from / }),
 			).toBeVisible();
 			await expect(log.getByRole('img', { name: /^Image from / })).toBeAttached();
 			await expectNoGermanChrome(page);

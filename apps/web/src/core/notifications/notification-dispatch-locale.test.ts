@@ -61,12 +61,12 @@ test('each recipient gets the push text in their own locale', async () => {
 	assert.deepEqual(titles, [
 		'Barzahlung storniert',
 		'Barzahlung storniert',
-		'Cash payment cancelled',
+		'Cash payment reversed',
 	]);
-	const english = sent.find((entry) => entry.payload.title === 'Cash payment cancelled');
+	const english = sent.find((entry) => entry.payload.title === 'Cash payment reversed');
 	assert.equal(
 		english?.payload.body,
-		'Anna cancelled the cash payment of €12.50. The amount is open again.',
+		'Anna reversed the cash payment of €12.50. The amount is open again.',
 	);
 	assert.equal(english?.payload.url, '/wg/ABC/ausgaben');
 });

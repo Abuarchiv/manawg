@@ -3,9 +3,9 @@ import type de from '../de/meta';
 
 export default {
 	brand: {
-		title: 'ManaWG, die WG-App: Ausgaben, Einkauf, Putzplan für eure WG',
+		title: 'ManaWG, the flat app: expenses, shopping and cleaning rota for your flat',
 		description:
-			'Mit ManaWG teilt ihr Ausgaben, organisiert Einkäufe und verteilt Aufgaben im Putzplan. Die App ist kostenlos und läuft im Browser.',
+			'With ManaWG you share expenses, organise shopping and split tasks on the cleaning rota. The app is free and runs in the browser.',
 	},
 	authReset: { title: 'Reset password' },
 	invite: {

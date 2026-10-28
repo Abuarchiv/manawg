@@ -10,9 +10,9 @@ export default {
 		formLoading: 'Loading expense form…',
 		reload: 'Reload expenses',
 		add: 'Add expense',
-		errorTitle: 'Expenses could not be loaded just now',
+		errorTitle: 'Expenses could not be loaded right now',
 		errorBody:
-			'Something went wrong on the expenses overview. Please try again or go back to the flat overview.',
+			'Something went wrong in the expenses overview. Try again or go back to the flat overview.',
 		loadRecurringLead: 'Fixed costs could not be loaded',
 	},
 	history: {
@@ -32,7 +32,7 @@ export default {
 		unknownDate: 'Date unknown',
 	},
 	row: {
-		impactLent: 'you’re owed',
+		impactLent: 'you are owed',
 		impactOwe: 'you owe',
 		impactSettled: 'settled',
 		impactOwn: 'only for you',
@@ -68,7 +68,7 @@ export default {
 			'{who} · {amount} for “{description}”, paid by {payer, select, you {you} other {{payerName}}}. This share will be marked as open again. No money is transferred.',
 	},
 	recurring: {
-		focusHeading: 'Fixed costs focus',
+		focusHeading: 'Fixed costs due',
 		toggle: 'Fixed costs',
 		showAll: 'Show all {count} fixed costs',
 		emptyTitle: 'No fixed-cost template yet',
@@ -88,7 +88,7 @@ export default {
 			'{amount} · paid by {payer} · {paused, select, true {paused} other {due {date}}}{hasLast, select, true { · last recorded {last}} other {}}',
 		share: '{name}: {amount}',
 		probablyBooked: 'Probably already recorded for this due date.',
-		onlyParticipants: 'Only people involved can record these fixed costs.',
+		onlyParticipants: 'Only people involved can record this fixed cost.',
 		book: 'Record',
 		bookAria: 'Record: {description}',
 		review: 'Review',
@@ -122,8 +122,8 @@ export default {
 		memberNotInWg:
 			'The settlement could not be saved: at least one member is no longer in this flat.',
 		notPartyToDebt: 'Only members involved can mark this settlement.',
-		changeInvalidRequest: 'The change could not be saved: the request was invalid.',
-		idInvalid: 'This action could not be matched clearly.',
+		changeInvalidRequest: 'The change could not be saved: the request was not valid.',
+		idInvalid: 'This action could not be identified.',
 		imageRemoved: 'The attachment was removed. Upload it again before you save the expense.',
 		settledInvalid: 'This payment could not be marked: reload the expenses and try again.',
 		hasSettledShares: 'This expense has settled shares and cannot be deleted.',

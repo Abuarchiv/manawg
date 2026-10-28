@@ -3,8 +3,8 @@ import type de from '../de/events';
 
 export default {
 	errorPage: {
-		title: 'The calendar could not load right now',
-		body: 'Something went wrong while loading the events. Try again or go back to your flat overview.',
+		title: 'The calendar could not be loaded right now',
+		body: 'Something went wrong while loading the events. Try again or go back to the flat overview.',
 	},
 	page: {
 		title: 'Calendar',
@@ -18,7 +18,7 @@ export default {
 		agendaLoadingText: 'Loading agenda…',
 		add: 'Add event',
 		timeZoneNotice:
-			'This device uses the time zone {zone}. Times appear in that zone, while repeats and reminders follow Berlin time.',
+			'This device uses the time zone {zone}. Times appear in that zone, while repeating events and reminders follow Berlin time.',
 	},
 	load: {
 		events: 'Events could not be loaded.',
@@ -94,12 +94,12 @@ export default {
 			startMissing: 'The start time is missing.',
 			startInvalid: 'The start date is not valid.',
 			endInvalid: 'The end date is not valid.',
-			endBeforeStart: 'The end is before the start.',
+			endBeforeStart: 'The end time is before the start time.',
 		},
 	},
 	create: {
 		title: 'New event',
-		description: 'For your flat. Date and time as on your device.',
+		description: 'For your flat. Dates and times use your device’s time zone.',
 		templates: 'Templates',
 		submit: 'Save event',
 		saveFailed: 'The event could not be saved.',
@@ -116,8 +116,8 @@ export default {
 		titleEdit: 'Edit event',
 		readOnly: 'Only the person who created the event and flat admins can change it.',
 		wholeSeries: 'Changes apply to the whole series.',
-		saveFailed: 'Saving failed. Try again.',
-		deleteFailed: 'Deleting failed. Try again.',
+		saveFailed: 'The event could not be saved. Try again.',
+		deleteFailed: 'The event could not be deleted. Try again.',
 		scopeLegend: 'Change applies to',
 		scopeSeries: 'Whole series',
 		scopeOccurrence: 'Only {date}',
@@ -148,7 +148,7 @@ export default {
 		eventChanged: 'The event has changed in the meantime. Open it again.',
 		occurrenceChanged: 'This event has changed in the meantime. The view is being refreshed.',
 		gone: 'The event no longer exists.',
-		keyUnavailableSend: 'The event could not be sent safely. Try again.',
+		keyUnavailableSend: 'The event could not be sent reliably. Try again.',
 	},
 	toast: {
 		saved: 'Event saved.',
@@ -167,7 +167,7 @@ export default {
 		subscribe: 'Subscribe in calendar app',
 		open: 'Open feed',
 		rotate: 'Renew link',
-		revoke: 'Revoke subscription',
+		revoke: 'Revoke calendar feed',
 		copyFailed: 'Copying failed. Select the link and copy it manually.',
 		guideSummary: 'Apple and Android instructions',
 		appleTitle: 'Apple (iPhone/iPad)',
@@ -191,7 +191,7 @@ export default {
 		created: 'Calendar feed created.',
 		rotated: 'Calendar feed renewed.',
 		revoked: 'Calendar feed revoked.',
-		keyUnavailableSave: 'The calendar feed could not be saved safely. Try again.',
-		keyUnavailableRevoke: 'The calendar feed could not be revoked safely. Try again.',
+		keyUnavailableSave: 'The calendar feed could not be saved reliably. Try again.',
+		keyUnavailableRevoke: 'The calendar feed could not be revoked reliably. Try again.',
 	},
 } satisfies Catalog<typeof de>;

@@ -17,10 +17,10 @@ export default {
 		imageRemoved:
 			'Image removed. Remove the attachment in the offline queue or choose the image again.',
 		recurringAdvance:
-			'Fixed cost template not advanced. The expense was created. The template stays in the queue to catch up.',
+			'Fixed-cost template not advanced. The expense was created. The template stays in the queue to catch up.',
 		reauth: 'Sign-in needed again. Open the flat again or join with a current invite link.',
 		idempotency:
-			'The action could not be prepared for safe sending. It stays saved and is not sent; try again later.',
+			'The action could not be prepared for reliable sending. It stays saved and is not sent; try again later.',
 	},
 	copy: {
 		queueCount:
@@ -51,8 +51,8 @@ export default {
 		choreComplete: { title: 'Cleaning rota', detail: 'Mark task as done' },
 		expense: { title: 'Expense', fallback: 'New expense' },
 		expenseUpdate: { title: 'Update expense', fallback: 'Expense' },
-		recurring: { title: 'Fixed cost template', fallback: 'New template' },
-		recurringAdvance: { title: 'Fixed cost template', detail: 'Catch up the due date' },
+		recurring: { title: 'Fixed-cost template', fallback: 'New template' },
+		recurringAdvance: { title: 'Fixed-cost template', detail: 'Catch up on the missed due date' },
 	},
 	risk: {
 		stale: {
@@ -68,7 +68,7 @@ export default {
 			detail: 'Check whether the content, category or status is out of date.',
 		},
 		absence: {
-			title: 'Check away period',
+			title: 'Check time away',
 			detail: 'Check whether the period or the cleaning rota has changed.',
 		},
 		chore: {
@@ -107,11 +107,11 @@ export default {
 	conflict: {
 		unknownDate: 'Date unknown',
 		templateExists:
-			'The same fixed cost template already exists. Its next due date is {date}. Check before sending whether this would be a duplicate.',
+			'The same fixed-cost template already exists. Its next due date is {date}. Check before sending whether this would be a duplicate.',
 		advanceSame:
 			'The server template is still on the expected due date, {expected}. You can send the offline action.',
 		advanceMoved:
-			'The server template is now on {server} instead of {expected}. Check before sending whether the due date has already been caught up.',
+			'The server template is now on {server} instead of {expected}. Check before sending whether the due date has already been recorded.',
 	},
 	serverCheck: {
 		notFound: 'Not found on the server.',
@@ -126,10 +126,10 @@ export default {
 		choreGone: 'The task no longer exists on the server.',
 		choreDuplicate:
 			'The same cleaning task already exists. Its interval there is every {days, plural, one {day} other {# days}}. Check before sending whether this would be a duplicate.',
-		absenceDuplicate: 'The same away period already exists on the server.',
+		absenceDuplicate: 'The same time away already exists on the server.',
 		expenseDuplicate:
 			'The same expense with the same amount already exists. Check before sending whether this would be a duplicate.',
-		templateGone: 'This fixed cost template no longer exists on the server.',
+		templateGone: 'This fixed-cost template no longer exists on the server.',
 	},
 	page: {
 		heading: 'Queue',
@@ -185,7 +185,7 @@ export default {
 		otherAccount: 'Actions from another account on this device are not shown here.',
 		signInFirst: 'Sign in before you sync offline actions.',
 		noMatchingFlat: 'The flat for these actions is missing from your account. They stay saved.',
-		stays: '{modules} stays saved on this device.',
+		stays: 'Saved on this device: {modules}.',
 		reloadOnline: 'Reload the page once you are online.',
 		flats: {
 			titleNone: 'Your flats',
@@ -224,7 +224,7 @@ export default {
 		discardBody: '“{summary}” has not been sent yet and cannot be restored once discarded.',
 		keep: 'Keep',
 		discard: 'Discard',
-		attempts: '{count}x',
+		attempts: '{count}×',
 		inspect: 'Check flat entry',
 		inspectLabel: 'Check flat entry: {action}',
 		compare: 'Compare with server',

@@ -37,7 +37,7 @@ export default {
 		you: 'you',
 		settlement: 'Settlement',
 		settlementHint:
-			'The shortest route: {count, plural, one {one transfer} other {# transfers}}, then everyone is settled.',
+			'The simplest way: {count, plural, one {one transfer} other {# transfers}}, then everyone is settled up.',
 		transferTo: 'to',
 		transferDone: 'done',
 		transferOpen: 'open',
@@ -63,6 +63,6 @@ export default {
 			'Each expense is split the way it was entered. Balance = paid minus share. Positive means you get money back.',
 		note: 'Note',
 		noteBody:
-			'This overview is not an invoice in the tax sense. Receipts and photos are on each expense in the app. Export as CSV under Settings → Data.',
+			'This overview is not an invoice for tax purposes. Receipts and photos are on each expense in the app. You can export it as CSV under Settings → Data.',
 	},
 } satisfies Catalog<typeof de>;

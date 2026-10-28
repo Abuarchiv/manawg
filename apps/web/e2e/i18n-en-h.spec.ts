@@ -163,9 +163,9 @@ test.describe('English shopping list', () => {
 				await expect(list.getByText('Added by Mina')).toBeVisible();
 				await expect(page.getByText('Running low', { exact: true }).first()).toBeVisible();
 				await expect(page.getByRole('button', { name: 'Add Soap' })).toBeVisible();
-				await expect(page.getByPlaceholder('e.g. 2 rice')).toBeVisible();
+				await expect(page.getByPlaceholder('e.g. 2 avocados')).toBeVisible();
 				await expect(page.getByRole('button', { name: 'Add item', exact: true })).toBeDisabled();
-				await expect(page.getByRole('checkbox', { name: 'Mark Milk as done' })).toBeVisible();
+				await expect(page.getByRole('checkbox', { name: 'Mark Milk as bought' })).toBeVisible();
 				await expect(page.getByText('Record 1 item as an expense?')).toBeVisible();
 				await expect(page.getByRole('link', { name: 'Record expense' })).toBeVisible();
 				await expect(page.getByRole('button', { name: 'Not now' }).first()).toBeVisible();
@@ -174,7 +174,7 @@ test.describe('English shopping list', () => {
 				await expectNoGermanChrome(page);
 				await expectNoSidewaysScroll(page, width);
 
-				await page.getByText('Done (2)').click();
+				await page.getByText('Bought (2)').click();
 				await expect(list.getByText('Bought by Mina')).toBeVisible();
 				await expect(list.getByText('Bought by you')).toBeVisible();
 				await expectNoGermanChrome(page);
@@ -197,7 +197,7 @@ test.describe('English shopping list', () => {
 					drawer.getByText('“Milk” will be removed permanently. This cannot be undone.'),
 				).toBeVisible();
 				await expect(
-					drawer.getByRole('button', { name: 'Remove permanently: Milk' }),
+					drawer.getByRole('button', { name: 'Remove for good: Milk' }),
 				).toBeVisible();
 				await expectNoGermanChrome(page);
 				await expectNoSidewaysScroll(page, width);
@@ -239,26 +239,26 @@ test.describe('English shopping list', () => {
 		await dismissOnboarding(page);
 
 		await expect(page.getByText('Everything has been bought.')).toBeVisible();
-		await page.getByText('Done (2)').click();
+		await page.getByText('Bought (2)').click();
 		await expect(page.getByText('Bought', { exact: true })).toBeVisible();
 		await page.getByRole('button', { name: 'Item actions: Coffee' }).click();
 		const drawer = page.getByRole('dialog');
 		await expect(drawer.getByText('Added by you · Bought by Mina')).toBeVisible();
 		await expect(drawer.getByRole('link', { name: 'Add as expense' })).toBeVisible();
-		await expect(drawer.getByText('You check the amount and split before saving.')).toBeVisible();
+		await expect(drawer.getByText('You can check the amount and split before saving.')).toBeVisible();
 		await expect(
 			drawer.getByText('Only the person who added the item or a flat admin can remove it.'),
 		).toHaveCount(0);
 		await expectNoGermanChrome(page);
 		await drawer.getByRole('button', { name: 'Close' }).click();
 
-		const clear = page.getByRole('button', { name: 'Remove done items (2)' });
+		const clear = page.getByRole('button', { name: 'Remove bought items (2)' });
 		await expect(clear).toBeVisible();
 		await clear.click();
 		const dialog = page.getByRole('alertdialog');
-		await expect(dialog.getByText('Remove done items?')).toBeVisible();
+		await expect(dialog.getByText('Remove bought items?')).toBeVisible();
 		await expect(
-			dialog.getByText('2 done items are permanently removed for the whole flat. Open items stay.'),
+			dialog.getByText('2 bought items are permanently removed for the whole flat. Open items stay.'),
 		).toBeVisible();
 		await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeVisible();
 		await expect(dialog.getByRole('button', { name: 'Remove', exact: true })).toBeVisible();
@@ -282,16 +282,16 @@ test.describe('English shopping list', () => {
 		await dismissOnboarding(page);
 
 		await expect(page.getByText('Nothing on the list yet')).toBeVisible();
-		await expect(page.getByText('Write an item below or tap a suggestion.')).toBeVisible();
+		await expect(page.getByText('Add an item below or tap a suggestion.')).toBeVisible();
 		await expect(page.getByText('Suggestions', { exact: true })).toBeVisible();
 		await expect(page.getByRole('button', { name: 'Add Toilet paper' })).toBeVisible();
 		await expectNoGermanChrome(page);
 
-		await page.getByPlaceholder('e.g. 2 rice').fill('2 oat milk');
+		await page.getByPlaceholder('e.g. 2 avocados').fill('2 oat milk');
 		await page.getByRole('button', { name: 'Add item', exact: true }).click();
 		await expect(
 			page.getByText(
-				'Could not be added. Check the list to see whether the item is already there, then try again.',
+				'The item could not be added. Check whether it is already on the list, then try again.',
 			),
 		).toBeVisible();
 		await expectNoGermanChrome(page);
@@ -317,9 +317,9 @@ test.describe('English shopping list', () => {
 		await page.route(`**${BASE}/shopping`, (route) => route.fulfill({ json: { items: 'broken' } }));
 		await navigateToFeature(page, EINKAUF);
 		await expect(
-			page.getByRole('heading', { name: 'Shopping could not load right now' }),
+			page.getByRole('heading', { name: 'Shopping could not be loaded right now' }),
 		).toBeVisible();
-		await expect(page.getByText('Something went wrong on the shopping list.')).toBeVisible();
+		await expect(page.getByText('Something went wrong in the shopping list.')).toBeVisible();
 		await expectNoGermanChrome(page);
 	});
 });
@@ -360,9 +360,9 @@ test.describe('English supplies', () => {
 				await expectNoSidewaysScroll(page, width);
 
 				await page.getByRole('button', { name: 'Remove Rice' }).click();
-				await expect(page.getByRole('button', { name: 'Remove permanently: Rice' })).toBeVisible();
-				await expect(page.getByRole('button', { name: 'Cancel: remove Rice' })).toBeVisible();
-				await page.getByRole('button', { name: 'Cancel: remove Rice' }).click();
+				await expect(page.getByRole('button', { name: 'Remove for good: Rice' })).toBeVisible();
+				await expect(page.getByRole('button', { name: 'Cancel removing Rice' })).toBeVisible();
+				await page.getByRole('button', { name: 'Cancel removing Rice' }).click();
 
 				await page.getByRole('button', { name: 'Quick restock' }).click();
 				const sheet = page.getByRole('dialog');
@@ -436,7 +436,7 @@ test.describe('English supplies', () => {
 		);
 		await navigateToFeature(page, VORRAETE);
 		await expect(
-			page.getByRole('heading', { name: 'Supplies could not load right now' }),
+			page.getByRole('heading', { name: 'Supplies could not be loaded right now' }),
 		).toBeVisible();
 		await expect(page.getByText('Something went wrong in supplies.')).toBeVisible();
 		await expectNoGermanChrome(page);
@@ -450,7 +450,7 @@ test.describe('English supplies', () => {
 		await expect(page.getByText('No supplies recorded yet')).toBeVisible();
 		await expect(
 			page.getByText(
-				'When an item drops below its limit, it is added to the shopping list automatically.',
+				'When an item reaches its restock level, it is added to the shopping list automatically.',
 			),
 		).toBeVisible();
 		await expectNoGermanChrome(page);

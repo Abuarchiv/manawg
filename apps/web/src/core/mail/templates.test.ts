@@ -170,11 +170,11 @@ test('English mails set lang en-GB and carry no German chrome', () => {
 
 test('English invitation and reminder use the English wording and formats', () => {
 	const [, invitation, reminder] = ALL_EN;
-	assert.equal(invitation?.subject, 'Lina invites you to the flat Kastanienallee');
+	assert.equal(invitation?.subject, 'Lina has invited you to join Kastanienallee');
 	assert.ok(invitation?.text.includes('Lina, Jonas and Mira are already members.'));
 	assert.equal(
 		reminder?.subject,
-		`Still open with Jonas: ${formatEuroCents(2340, 'EUR', { locale: 'en' })}`,
+		`${formatEuroCents(2340, 'EUR', { locale: 'en' })} to Jonas, still open`,
 	);
 	assert.equal(reminder?.preheader, 'The oldest item is 9 days old.');
 	assert.ok(reminder?.text.includes('−€23.40'));

@@ -43,11 +43,11 @@ test('a pause that collides with another edit says the list was reloaded', () =>
 test('the same codes render English', () => {
 	assert.equal(
 		renderMessage(en, aboSaveError('something_else', 'created')),
-		'Fixed costs could not be added.',
+		'The fixed cost could not be added.',
 	);
 	assert.equal(
 		renderMessage(en, aboDeleteError('delete_failed')),
-		'Fixed costs could not be deleted: Reload the list and check whether the entry still exists.',
+		'The fixed cost could not be deleted: Reload the list and check whether the entry still exists.',
 	);
 	assert.match(renderMessage(en, aboSaveError('rate_limited', 'created')), /Too many requests/);
 });

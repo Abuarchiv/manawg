@@ -48,7 +48,7 @@ test('passive sentences and calls without a translator keep the stored summary',
 		metadataJson: JSON.stringify({ description: 'Miete' }),
 	};
 	assert.deepEqual(auditActivitySentence(passive, 'System', serverRenderContext('en')), {
-		text: 'Fixed-cost booking Miete was entered automatically.',
+		text: 'Miete was added automatically from fixed costs.',
 	});
 	assert.deepEqual(auditActivitySentence(NEW_ROW, 'Anna'), {
 		text: 'hat Brot gekauft.',
@@ -140,5 +140,5 @@ test('the dashboard feed renders its sentences in the reader locale', async () =
 		return activity.map((item) => item.text);
 	};
 	assert.deepEqual(feed('de'), ['hat Brot gekauft.', 'Abwesenheit eingetragen']);
-	assert.deepEqual(feed('en'), ['bought Brot.', 'Absence added']);
+	assert.deepEqual(feed('en'), ['bought Brot.', 'Time away added']);
 });

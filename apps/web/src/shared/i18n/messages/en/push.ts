@@ -36,21 +36,21 @@ export default {
 	},
 	expenseReminder: {
 		title: 'Reminder',
-		body: 'Still open with {creditor}: {amount}.',
+		body: '{amount} to {creditor}, still open.',
 		bodyAged:
-			'Still open with {creditor}: {amount} (oldest item {days, plural, one {{days, number, ::group-off} day} other {{days, number, ::group-off} days}} old).',
+			'{amount} to {creditor}, still open (oldest item {days, plural, one {{days, number, ::group-off} day} other {{days, number, ::group-off} days}} old).',
 	},
 	debtSettled: {
 		title: 'Settlement recorded',
 		received: '{actorName} confirmed receiving {amount} from you.',
-		paid: '{actorName} paid you {amount}. If that is not right, open Expenses and object there.',
+		paid: '{actorName} paid you {amount}. If that is not right, open Expenses and dispute it there.',
 	},
 	paymentVoided: {
-		title: 'Cash payment cancelled',
-		body: '{actorName} cancelled the cash payment of {amount}. The amount is open again.',
+		title: 'Cash payment reversed',
+		body: '{actorName} reversed the cash payment of {amount}. The amount is open again.',
 	},
 	importCompleted: {
-		title: 'Import complete',
+		title: 'Import finished',
 		body: '{actorName} imported {inserted, plural, one {{inserted, number, ::group-off} expense} other {{inserted, number, ::group-off} expenses}} into {wgName}.',
 	},
 	announcementPosted: {
@@ -66,7 +66,7 @@ export default {
 		body: '{actorName} reacted to your post: {title}',
 	},
 	announcementResolved: {
-		title: 'Noticeboard item resolved',
+		title: 'Noticeboard post resolved',
 		body: '{actorName} marked a post as resolved: {title}',
 	},
 	choreDue: {
@@ -99,13 +99,13 @@ export default {
 	eventUpcoming: {
 		title: 'Event tomorrow',
 		allDay: 'Tomorrow in {wgName}: “{title}” on {when}.',
-		timed: 'Tomorrow in {wgName}: “{title}” on {when}.',
+		timed: 'Tomorrow in {wgName}: “{title}” at {when}.',
 	},
 	eventToday: {
 		title: 'Event today',
 		allDay: 'Today in {wgName}: “{title}” is all day.',
 		ongoing: 'Today in {wgName}: “{title}” is still on.',
-		timed: 'Today in {wgName}: “{title}” on {when}.',
+		timed: 'Today in {wgName}: “{title}” at {when}.',
 	},
 	lowStock: {
 		title: 'Supply running low',
@@ -113,7 +113,7 @@ export default {
 		bodyDetail: '{itemName} is running low ({quantity} of {threshold}) in {wgName}.',
 	},
 	chatMessage: {
-		title: 'Chat — {wgName}',
+		title: 'Chat – {wgName}',
 		body: '{sender}: {preview}',
 	},
 	chatMention: {

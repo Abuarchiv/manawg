@@ -126,7 +126,7 @@ test.describe('English sweep', () => {
 
 					if (path === '/einkauf') {
 						// The shopping list adds inline: a typed item enables the button, and the unmocked write fails.
-						await page.getByPlaceholder('e.g. 2 rice').fill('2 oat milk');
+						await page.getByPlaceholder('e.g. 2 avocados').fill('2 oat milk');
 						await page.getByRole('button', { name: 'Add item', exact: true }).click();
 						await page.waitForTimeout(1_000);
 						await expectEnglishPage(page);
