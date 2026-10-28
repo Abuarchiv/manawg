@@ -34,6 +34,7 @@ supabase/templates/  Auth mail templates (HTML, subjects) used by the Docker sta
 scripts/          maintenance scripts: `generate-brand-assets.mjs` (icons from the brand mark),
                   `supabase-auth-templates.mjs` (push the mail templates to a hosted Supabase project)
 .github/          CI workflows, issue and PR templates
+openspec/         behaviour specs per capability (specs/) and proposals for larger changes (changes/)
 ```
 
 Root files: `compose.yaml` and `Dockerfile` (self-hosting image), `biome.json` (lint and format),

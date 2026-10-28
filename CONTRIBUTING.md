@@ -16,7 +16,8 @@ German. You do not need to be a developer to report a problem or fix a typo.
 - **Small fixes** (typos, obvious bugs): open a pull request directly.
 - **Features and larger changes:** open an issue first and wait for a maintainer's answer. ManaWG
   is deliberately small and phone-first, so not every good idea fits. For larger changes, agree
-  on the approach in the issue before you write the code.
+  on the approach in the issue before you write the code; accepted ones may start as an
+  [OpenSpec](https://github.com/Fission-AI/OpenSpec) proposal in `openspec/changes/`.
 
 By participating you agree to the [Code of Conduct](CODE_OF_CONDUCT.md).
 
