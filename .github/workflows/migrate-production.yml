@@ -24,10 +24,17 @@ concurrency:
   group: production-database-migration
   cancel-in-progress: false
 
+env:
+  # Repository variables of the instance this repository deploys. Forks without them
+  # skip the Preview gates, migrations, backups and releases.
+  SUPABASE_PRODUCTION_PROJECT_HOST: ${{ vars.SUPABASE_PRODUCTION_PROJECT_HOST }}
+  SUPABASE_PREVIEW_PROJECT_HOST: ${{ vars.SUPABASE_PREVIEW_PROJECT_HOST }}
+  VERCEL_PROJECT_NAME: ${{ vars.VERCEL_PROJECT_NAME }}
+  VERCEL_TEAM_SLUG: ${{ vars.VERCEL_TEAM_SLUG }}
+
 jobs:
   verify-candidate-ci:
-    # Operates the official instance; forks keep this workflow inert.
-    if: github.repository == 'Abuarchiv/manawg-app'
+    if: vars.SUPABASE_PRODUCTION_PROJECT_HOST != ''
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -191,7 +198,7 @@ jobs:
           const url = new URL(process.env.DATABASE_MIGRATION_URL);
           if (
             !['postgres:', 'postgresql:'].includes(url.protocol) ||
-            url.hostname.toLowerCase() !== 'db.bwsvsvfgbrsonepffqff.supabase.co' ||
+            url.hostname.toLowerCase() !== `db.${process.env.SUPABASE_PRODUCTION_PROJECT_HOST.toLowerCase()}` ||
             url.port !== '5432'
           ) {
             throw new Error('Production migration requires the direct ManaWG Production Supabase connection on port 5432.');

@@ -63,7 +63,11 @@ const SESSION_POOLER_HOST = 'aws-0-eu-central-1.pooler.supabase.com';
  * GitHub runners have no IPv6, and the direct Supabase host has no IPv4: CI keeps the pinned
  * direct URL as its secret and connects through the session pooler (port 5432, session locks).
  */
-function pinnedSessionPoolerUrl(value, projectRef, user, failure) {
+function pinnedSessionPoolerUrl(value, projectHost, user, failure) {
+	if (!projectHost || !/^[a-z0-9]+\.supabase\.co$/.test(projectHost)) {
+		throw new Error(`${failure} needs its Supabase project host (e.g. abcdefgh.supabase.co).`);
+	}
+	const projectRef = projectHost.split('.')[0];
 	let url;
 	try {
 		url = new URL(value);
@@ -88,14 +92,27 @@ function pinnedSessionPoolerUrl(value, projectRef, user, failure) {
 	return url.href;
 }
 
-/** Explicit CI transport for the pinned Preview verifier; never a Production fallback. */
-export function previewSessionDatabaseUrl(value) {
-	return pinnedSessionPoolerUrl(value, 'sthiwjebcwwiphashgla', 'manawg_preview_ci', 'Preview CI');
+/**
+ * Explicit CI transport for the pinned Preview verifier; never a Production fallback.
+ * @param {string} value
+ * @param {Record<string, string | undefined>} [env]
+ */
+export function previewSessionDatabaseUrl(value, env = process.env) {
+	const host = env.SUPABASE_PREVIEW_PROJECT_HOST?.toLowerCase();
+	if (host && host === env.SUPABASE_PRODUCTION_PROJECT_HOST?.toLowerCase()) {
+		throw new Error('Preview CI must not point at the Production project.');
+	}
+	return pinnedSessionPoolerUrl(value, host, 'manawg_preview_ci', 'Preview CI');
 }
 
-/** Explicit CI transport for the protected Production migration workflow. */
-export function productionSessionDatabaseUrl(value) {
-	return pinnedSessionPoolerUrl(value, 'bwsvsvfgbrsonepffqff', 'postgres', 'Production CI');
+/**
+ * Explicit CI transport for the protected Production migration workflow.
+ * @param {string} value
+ * @param {Record<string, string | undefined>} [env]
+ */
+export function productionSessionDatabaseUrl(value, env = process.env) {
+	const host = env.SUPABASE_PRODUCTION_PROJECT_HOST?.toLowerCase();
+	return pinnedSessionPoolerUrl(value, host, 'postgres', 'Production CI');
 }
 
 /**

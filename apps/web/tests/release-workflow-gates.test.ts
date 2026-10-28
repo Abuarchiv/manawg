@@ -13,7 +13,9 @@ import {
 
 const SHA = 'a'.repeat(40);
 const OTHER_SHA = 'b'.repeat(40);
-const ORIGIN = 'https://manawg-abc123-abditubes-projects.vercel.app';
+process.env.VERCEL_PROJECT_NAME = 'manawg';
+process.env.VERCEL_TEAM_SLUG = 'example-team';
+const ORIGIN = 'https://manawg-abc123-example-team.vercel.app';
 
 const goodRun = {
 	id: 42,
@@ -32,16 +34,17 @@ test('preview origin accepts only the exact project origin', () => {
 	assert.equal(assertPreviewOrigin(ORIGIN), ORIGIN);
 	for (const bad of [
 		'not a url',
-		'http://manawg-abc-abditubes-projects.vercel.app',
+		'http://manawg-abc-example-team.vercel.app',
 		'https://app.manawg.com',
-		'https://manawg-abc-abditubes-projects.vercel.app.evil.com',
+		'https://manawg-abc-example-team.vercel.app.evil.com',
 		`${ORIGIN}/path`,
 		`${ORIGIN}?x=1`,
 		`${ORIGIN}:8443`,
-		'https://user:pw@manawg-abc-abditubes-projects.vercel.app',
+		'https://user:pw@manawg-abc-example-team.vercel.app',
 	]) {
 		assert.throws(() => assertPreviewOrigin(bad), bad);
 	}
+	assert.throws(() => assertPreviewOrigin(ORIGIN, {}));
 });
 
 test('preview event must be a successful Vercel Preview deployment of main or an exact SHA', () => {
