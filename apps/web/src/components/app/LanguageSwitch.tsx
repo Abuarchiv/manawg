@@ -21,6 +21,7 @@ const OPTIONS: ReadonlyArray<{ value: Locale; label: string }> = [
  * reload renders every screen, title and chunk in the new language.
  */
 async function applyLocale(next: Locale): Promise<void> {
+	// biome-ignore lint/suspicious/noDocumentCookie: the Cookie Store API is missing in Firefox; localeCookie builds the fixed value.
 	document.cookie = localeCookie(next);
 	if (hasSessionCookie()) {
 		await fetch('/api/account', {
