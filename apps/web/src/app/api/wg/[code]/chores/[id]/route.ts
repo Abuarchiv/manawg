@@ -1,6 +1,7 @@
 import { recordAuditEvent } from '@/core/audit';
 import { CHORE_RECURRENCE_TYPES, chores, db, wgMembers } from '@/core/db';
 import type { ChoreRecurrenceType } from '@/core/db';
+import { rowHoldsPatch } from '@/core/db/row-holds-patch';
 import { withTransaction } from '@/core/db/transaction';
 import { isWgAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
@@ -210,12 +211,22 @@ export const PATCH = withWgRoute<{ id: string }>('chores PATCH', async (req, { c
 
 	if (!updated) {
 		if (currentChore || expectedVersion) {
-			const stillExists = await db
-				.select({ id: chores.id })
+			const [stored] = await db
+				.select()
 				.from(chores)
 				.where(and(eq(chores.id, id), eq(chores.wgId, wgId)))
 				.limit(1);
-			if (stillExists.length > 0) return conflict('chore_changed');
+			if (!stored) return notFound('chore_not_found');
+			// The retry of a save whose answer got lost finds its own values in place.
+			const requested = {
+				title: parsed.data.title,
+				assignedMemberId: parsed.data.assignedMemberId,
+				intervalDays: parsed.data.intervalDays,
+				recurrenceType: parsed.data.recurrenceType,
+				nextDueAt: parsed.data.nextDueAt ? new Date(parsed.data.nextDueAt) : undefined,
+			};
+			if (rowHoldsPatch(stored, requested)) return NextResponse.json({ chore: stored });
+			return conflict('chore_changed');
 		}
 		return notFound('chore_not_found');
 	}

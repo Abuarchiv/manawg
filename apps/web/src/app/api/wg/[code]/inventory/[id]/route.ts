@@ -135,6 +135,7 @@ export const PATCH = withWgRoute<{ id: string }>('inventory PATCH', async (req, 
 				});
 				if (mutation.kind === 'not_found') return rejectWrite(notFound('item_not_found'));
 				if (mutation.kind === 'conflict') return rejectWrite(conflict('version_conflict'));
+				if (mutation.kind === 'held') return { status: 200, body: { item: mutation.item } };
 				return { status: 200, body: { item: mutation.updated }, context: mutation };
 			},
 		);

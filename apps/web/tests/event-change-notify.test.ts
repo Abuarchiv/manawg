@@ -245,3 +245,18 @@ test('postponing a past event to next week respects quiet hours', async () => {
 	assert.equal(dispatched.length, 1);
 	assert.equal(dispatched[0]?.urgent, false);
 });
+
+test('a retried move whose answer got lost succeeds silently; a stale other edit is a conflict', async () => {
+	reset();
+	const version = { expectedUpdatedAt: '2026-01-01T00:00:00.000Z' };
+	selectRows = [eventRow(movedStart)];
+	updateRows = [];
+	const retried = await call(itemRoute.PATCH, 'PATCH', {
+		startsAt: movedStart.toISOString(),
+		...version,
+	});
+	assert.equal(retried.status, 200);
+	assert.equal(dispatched.length, 0);
+	const stale = await call(itemRoute.PATCH, 'PATCH', { title: 'Neu', ...version });
+	assert.equal(stale.status, 409);
+});

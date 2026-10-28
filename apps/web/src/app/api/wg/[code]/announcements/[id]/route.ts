@@ -1,6 +1,7 @@
 import { recordAuditEvent } from '@/core/audit';
 import { announcementReactions, announcements, db, wgMembers } from '@/core/db';
 import { revokePrivateImageIfUnreferenced } from '@/core/db/private-image-deletions';
+import { rowHoldsPatch } from '@/core/db/row-holds-patch';
 import { lockExpensePayments, withTransaction } from '@/core/db/transaction';
 import { isWgAdmin, requireOwnerOrAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
@@ -158,12 +159,23 @@ export const PATCH = withWgRoute<{ id: string }>(
 		if (outcome === 'member_deactivated') return unauthorized('member_deactivated');
 		if (outcome === 'not_allowed') return forbidden('not_owner', 'not_owner');
 		if (!outcome) {
-			const [stillThere] = await db
-				.select({ id: announcements.id })
+			const [stored] = await db
+				.select()
 				.from(announcements)
 				.where(and(eq(announcements.id, id), eq(announcements.wgId, wg.id)))
 				.limit(1);
-			return stillThere ? conflict('announcement_changed') : notFound('announcement_not_found');
+			if (!stored) return notFound('announcement_not_found');
+			// The retry of a save whose answer got lost finds its own values in place.
+			const requested = {
+				content: patch.content,
+				kind: patch.kind,
+				status: patch.status,
+				pinned: parsed.data.pinned,
+			};
+			if (rowHoldsPatch({ ...stored, pinned: stored.pinnedAt !== null }, requested)) {
+				return NextResponse.json({ announcement: stored, warning: null });
+			}
+			return conflict('announcement_changed');
 		}
 		const updated = outcome.saved;
 		await recordAuditEvent({
