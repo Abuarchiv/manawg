@@ -1,3 +1,4 @@
+import { auditValues } from '@/core/audit-values';
 import { SESSION_HINT_COOKIE } from '@/core/auth/cookie-options';
 import { deleteAuthUser } from '@/core/auth/delete-user';
 import { getSupabaseEnv, hasSupabaseEnv } from '@/core/auth/supabase-env';
@@ -64,17 +65,17 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
 			if (!deletion) throw new Error('account_deletion_fence_missing');
 
 			for (const { wgId, memberId, name, newAdminId, newAdminName } of removed.left) {
-				await tx.insert(auditEvents).values({
-					wgId,
-					memberId,
-					eventType: 'member.account_deletion_requested',
-					entityType: 'member',
-					entityId: memberId,
-					summary: `${name} hat die Kontolöschung angefragt und ist ausgezogen.${
-						newAdminName ? ` ${newAdminName} ist jetzt Admin.` : ''
-					}`,
-					metadataJson: JSON.stringify({ name, newAdminId }),
-				});
+				await tx.insert(auditEvents).values(
+					auditValues({
+						wgId,
+						memberId,
+						eventType: 'member.account_deletion_requested',
+						entityType: 'member',
+						entityId: memberId,
+						actorName: name,
+						metadata: { name, newAdminId, newAdminName },
+					}),
+				);
 			}
 			return { deletedWgs: removed.deletedWgIds.length, completedAt: deletion.completedAt };
 		});

@@ -9,7 +9,8 @@ import { NextResponse } from 'next/server';
 
 interface BalanceDto {
 	debtor_id: string;
-	debtor_name: string;
+	/** Null when the member left the flat; clients show the shared unknown-person label. */
+	debtor_name: string | null;
 	amount_cents: number;
 	currency: string;
 	oldest_age_days: number;
@@ -48,7 +49,7 @@ export const GET = withWgRoute('reminders/balances GET', async (req, { code }) =
 	);
 	const balances: BalanceDto[] = myCredits.map((pair, i) => ({
 		debtor_id: pair.debtorId,
-		debtor_name: nameById.get(pair.debtorId) ?? 'Unbekannt',
+		debtor_name: nameById.get(pair.debtorId) ?? null,
 		amount_cents: pair.amountCents,
 		currency: pair.currency,
 		oldest_age_days: oldestAges[i] ?? 0,

@@ -76,7 +76,7 @@ export const PATCH = withWgRoute('api/wg/[code] PATCH', async (req, { code }) =>
 			eventType: 'wg.updated',
 			entityType: 'wg',
 			entityId: wg.id,
-			summary: `${member.name} hat die WG-Einstellungen geändert.`,
+			actorName: member.name,
 			metadata: { nameBefore: result.currentWg.name, nameAfter: result.updated.name },
 		});
 		return NextResponse.json({ wg: result.updated });

@@ -262,8 +262,10 @@ export const POST = withWgRoute('reminders POST', async (req, { code }) => {
 		eventType: 'expense.reminder.sent',
 		entityType: 'expense_reminder',
 		entityId: inserted.id,
-		summary: `${auth.member.name} hat ${debtor.name} an offene Schulden bei ${creditor.name} erinnert.`,
+		actorName: auth.member.name,
 		metadata: {
+			debtorName: debtor.name,
+			creditorName: creditor.name,
 			amountCents: pair.amountCents,
 			currency,
 			oldestDebtAgeDays: inserted.oldestDebtAgeDays,

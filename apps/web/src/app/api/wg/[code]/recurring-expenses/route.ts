@@ -198,7 +198,7 @@ export const POST = withWgRoute('recurring-expenses POST', async (req, { code })
 				eventType: 'recurring.created',
 				entityType: 'recurring_expense',
 				entityId: template.id,
-				summary: `${member.name} hat ${template.description} als Fixkosten-Vorlage angelegt.`,
+				actorName: member.name,
 				metadata: {
 					description: template.description,
 					amountCents: template.amountCents,

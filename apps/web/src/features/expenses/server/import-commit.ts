@@ -15,7 +15,6 @@ import {
 	loadDuplicateState,
 } from '@/features/expenses/server/import-duplicate-keys';
 import { settledAtForOwnShare } from '@/features/expenses/split-math';
-import { pluralize } from '@/shared/lib/plural';
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { ImportSource, ParsedExpense } from '../import-parsers';
 
@@ -316,14 +315,13 @@ export async function commitImport<S>(
 /** Tell the WG about an import that already committed; a failure here must not undo it. */
 async function announceImport(input: CommitInput, value: ImportWriteResult): Promise<CommitResult> {
 	const { importId, inserted, skipped, errors, totalAmountCents } = value;
-	const importedLabel = pluralize(inserted, 'Ausgabe', 'Ausgaben');
 	await recordAuditEvent({
 		wgId: input.wg.id,
 		memberId: input.importedByMemberId,
 		eventType: 'import.completed',
 		entityType: 'expense_import',
 		entityId: importId,
-		summary: `${input.importedByName} hat ${importedLabel} importiert.`,
+		actorName: input.importedByName,
 		metadata: {
 			source: input.source,
 			inserted,

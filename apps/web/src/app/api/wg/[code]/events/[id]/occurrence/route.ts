@@ -1,3 +1,4 @@
+import { auditValues } from '@/core/audit-values';
 import { auditEvents, wgEvents, wgMembers } from '@/core/db';
 import { rejectWrite, responseCodec, withIdempotentWrite } from '@/core/db/idempotent-write';
 import { TransactionAbort } from '@/core/db/transaction';
@@ -168,21 +169,21 @@ export const POST = withWgRoute<{ id: string }>('events occurrence', async (req,
 					if (!created) throw new TransactionAbort('insert_failed');
 				}
 				// Written with the change, so a replayed request never finds a change without its audit entry.
-				await tx.insert(auditEvents).values({
-					wgId,
-					memberId: auth.member.memberId,
-					eventType: 'event.updated',
-					entityType: 'wg_event',
-					entityId: id,
-					summary:
-						body.action === 'cancel'
-							? `${auth.member.name} hat einen Termin der Serie „${updated.title}“ entfernt.`
-							: `${auth.member.name} hat einen Termin der Serie „${updated.title}“ geändert.`,
-					metadataJson: JSON.stringify({
-						occurrenceStartsAt: body.occurrenceStartsAt,
-						action: body.action,
+				await tx.insert(auditEvents).values(
+					auditValues({
+						wgId,
+						memberId: auth.member.memberId,
+						eventType: 'event.updated',
+						entityType: 'wg_event',
+						entityId: id,
+						actorName: auth.member.name,
+						metadata: {
+							title: updated.title,
+							occurrenceStartsAt: body.occurrenceStartsAt,
+							action: body.action,
+						},
 					}),
-				});
+				);
 				return {
 					status: 200,
 					body: {

@@ -155,8 +155,9 @@ export const PATCH = withWgRoute<{ id: string }>('events PATCH', async (req, { c
 		eventType: 'event.updated',
 		entityType: 'wg_event',
 		entityId: row.id,
-		summary: `${auth.member.name} hat den Termin „${row.title}“ aktualisiert.`,
+		actorName: auth.member.name,
 		metadata: {
+			title: row.title,
 			startsAt: row.startsAt.toISOString(),
 			allDay: row.allDay,
 		},
@@ -226,7 +227,7 @@ export const DELETE = withWgRoute<{ id: string }>('events DELETE', async (req, {
 		eventType: 'event.deleted',
 		entityType: 'wg_event',
 		entityId: id,
-		summary: `${auth.member.name} hat den Termin „${row.title}“ entfernt.`,
+		actorName: auth.member.name,
 		metadata: { title: row.title },
 	});
 

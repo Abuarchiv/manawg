@@ -1,15 +1,17 @@
+import { KEY_RENDER_CONTEXT, type RenderContext } from '@/core/audit-messages';
 import { berlinDayKey, prevBerlinDayStart, startOfBerlinDay } from '@/core/utils/berlin-day';
-import { formatShortDateRange as formatSharedShortDateRange } from '@/core/utils/time';
+import { formatShortDate } from '@/core/utils/time';
+import type { MessageKey } from '@/shared/i18n/message';
 import {
 	ACTIVITY_HIDDEN_AUDIT_EVENT_TYPES,
+	auditActivitySentence,
 	auditDetail,
-	formatAuditActivityText,
 	getAuditHref,
 } from './activity-audit';
 import type { ActivityFilter, ActivityItem, ActivityKind } from './activity-types';
 
 export type { ActivityFilter, ActivityItem, ActivityKind };
-export { ACTIVITY_HIDDEN_AUDIT_EVENT_TYPES, formatAuditActivityText };
+export { ACTIVITY_HIDDEN_AUDIT_EVENT_TYPES };
 export {
 	type ActivityReminder,
 	REMINDER_ANNOUNCEMENT_KINDS,
@@ -114,11 +116,18 @@ function isCurrentMemberActivity(
 	return item.memberName === currentMemberName;
 }
 
-function shortDateRange(startIso: string, endIso: string): string {
-	return formatSharedShortDateRange(startIso, endIso).replace(' bis ', '-');
+function shortDateRange(startIso: string, endIso: string, locale: RenderContext['locale']): string {
+	return `${formatShortDate(startIso, 'Europe/Berlin', locale)}-${formatShortDate(endIso, 'Europe/Berlin', locale)}`;
 }
 
-export function buildActivityTimeline(input: ActivityTimelineInput): ActivityItem[] {
+/** Sentences are rendered in the reader's locale; without a translator the keys stay and audit rows keep their stored summary. */
+export function buildActivityTimeline(
+	input: ActivityTimelineInput,
+	ctx?: RenderContext,
+): ActivityItem[] {
+	const { locale, render } = ctx ?? KEY_RENDER_CONTEXT;
+	const say = (key: MessageKey, values?: Record<string, string>) =>
+		render(values ? { key, values } : { key });
 	const members = new Map(input.members.map((member) => [member.id, member]));
 	const items: ActivityItem[] = [];
 
@@ -148,7 +157,9 @@ export function buildActivityTimeline(input: ActivityTimelineInput): ActivityIte
 			timestamp: item.boughtAt ?? item.createdAt,
 			memberId: actorId,
 			memberName: memberName(members, actorId),
-			text: item.boughtAt ? `${item.name} gekauft` : `${item.name} hinzugefügt`,
+			text: say(item.boughtAt ? 'audit.timeline.shoppingBought' : 'audit.timeline.shoppingAdded', {
+				name: item.name,
+			}),
 			completed: item.boughtAt !== null,
 			href: `/einkauf?highlight=${encodeURIComponent(item.id)}`,
 		});
@@ -174,7 +185,7 @@ export function buildActivityTimeline(input: ActivityTimelineInput): ActivityIte
 			timestamp: item.completedAt,
 			memberId: item.completedByMemberId,
 			memberName: memberName(members, item.completedByMemberId),
-			text: `${item.choreTitle} erledigt`,
+			text: say('audit.timeline.choreDone', { title: item.choreTitle }),
 			completed: true,
 			href: `/putzen?highlight=${encodeURIComponent(item.choreId)}`,
 		});
@@ -187,11 +198,14 @@ export function buildActivityTimeline(input: ActivityTimelineInput): ActivityIte
 			timestamp: item.lastCreatedAt ?? item.createdAt,
 			memberId: item.paidByMemberId,
 			memberName: memberName(members, item.paidByMemberId),
-			text: item.lastCreatedAt
-				? `${item.description} aus Vorlage erstellt`
-				: `${item.description} als Fixkosten-Vorlage angelegt`,
+			text: say(
+				item.lastCreatedAt
+					? 'audit.timeline.recurringFromTemplate'
+					: 'audit.timeline.recurringCreated',
+				{ description: item.description },
+			),
 			completed: false,
-			detail: 'Fixkosten',
+			detail: say('audit.timeline.recurringLabel'),
 			amountCents: item.amountCents,
 			currency: item.currency ?? 'EUR',
 			href: `/ausgaben?recurring=${encodeURIComponent(item.id)}`,
@@ -205,27 +219,32 @@ export function buildActivityTimeline(input: ActivityTimelineInput): ActivityIte
 			timestamp: item.createdAt,
 			memberId: item.memberId,
 			memberName: memberName(members, item.memberId),
-			text: 'ist abwesend',
+			text: say('audit.timeline.absenceAway', { self: 'no' }),
+			selfText: say('audit.timeline.absenceAway', { self: 'yes' }),
 			completed: false,
 			sentence: true,
 			detail: item.reason
-				? `${shortDateRange(item.startDate, item.endDate)} · ${item.reason}`
-				: shortDateRange(item.startDate, item.endDate),
+				? `${shortDateRange(item.startDate, item.endDate, locale)} · ${item.reason}`
+				: shortDateRange(item.startDate, item.endDate, locale),
 			href: `/putzen?panel=absences&absence=${encodeURIComponent(item.id)}`,
 		});
 	}
 
 	for (const item of input.auditEvents ?? []) {
-		const detail = auditDetail(item.metadataJson);
+		const detail = auditDetail(item.metadataJson, ctx);
 		const href = getAuditHref(item);
-		const actorName = item.memberId ? memberName(members, item.memberId) : 'System';
+		const actorName = item.memberId
+			? memberName(members, item.memberId)
+			: say('audit.timeline.system');
+		const { text, selfText } = auditActivitySentence(item, actorName, ctx);
 		items.push({
 			id: item.id,
 			kind: 'audit',
 			timestamp: item.createdAt,
 			memberId: item.memberId,
 			memberName: actorName,
-			text: formatAuditActivityText(item.summary, actorName),
+			text,
+			...(selfText ? { selfText } : {}),
 			sentence: true,
 			completed: false,
 			...(detail ? { detail } : {}),
@@ -282,9 +301,9 @@ export function groupActivityItemsByDay(
 			date,
 			label:
 				date === todayKey
-					? 'Heute'
+					? 'Heute' // i18n-ignore label of the grouping helper; the page renders day labels from the catalog
 					: date === yesterdayKey
-						? 'Gestern'
+						? 'Gestern' // i18n-ignore label of the grouping helper; the page renders day labels from the catalog
 						: formatter.format(new Date(`${date}T12:00:00.000Z`)),
 			items: groupItems,
 		}));

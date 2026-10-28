@@ -97,7 +97,7 @@ export const POST = withWgRoute('invitations POST', async (req, { code }) => {
 			eventType: 'member.invited',
 			entityType: 'member',
 			entityId: auth.member.memberId,
-			summary: `${auth.member.name} hat eine Einladung per E-Mail verschickt.`,
+			actorName: auth.member.name,
 		});
 	}
 	return NextResponse.json({ status: result });

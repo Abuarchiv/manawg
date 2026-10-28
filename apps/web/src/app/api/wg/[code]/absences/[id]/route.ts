@@ -50,7 +50,7 @@ export const DELETE = withWgRoute<{ id: string }>('absences DELETE', async (req,
 		eventType: 'absence.deleted',
 		entityType: 'member_absence',
 		entityId: id,
-		summary: `${auth.member.name} hat eine Abwesenheit entfernt.`,
+		actorName: auth.member.name,
 		metadata: row
 			? {
 					memberId: row.memberId,

@@ -49,7 +49,7 @@ export const POST = withWgRoute('invites POST', async (req, { code }) => {
 		eventType: 'wg.invite_created',
 		entityType: 'wg',
 		entityId: wgId,
-		summary: `${auth.member.name} hat eine Einladung erstellt.`,
+		actorName: auth.member.name,
 		metadata: { inviteId: invite.id },
 	});
 	return NextResponse.json({
