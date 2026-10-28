@@ -1,6 +1,6 @@
 # Self-hosting image. Pull requests that touch the image build it for linux/amd64 and scan it with
-# Trivy. A release tag (v1.2.3) builds linux/amd64 and linux/arm64 and pushes them to
-# ghcr.io/abuarchiv/manawg-app as 1.2.3, 1.2, 1 and latest.
+# Trivy. A tag vX.Y.Z builds linux/amd64 and linux/arm64 and pushes them to
+# ghcr.io/abuarchiv/manawg-app as X.Y.Z, X.Y, X and latest.
 name: Docker
 on:
   pull_request:

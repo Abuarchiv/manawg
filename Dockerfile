@@ -6,7 +6,7 @@
 # (apps/web/scripts/selfhost/public-env.mjs). Optional browser features are baked in only when
 # their build arguments are set: build your own image to enable Web Push, Sentry or PostHog.
 
-ARG NODE_IMAGE=node:22.23.4-alpine
+ARG NODE_IMAGE=node:22.23.4-alpine@sha256:fe4f6d74e20370acb04ad889077d14d0f64a9c8ea6a42bc60cddf1e844699914
 
 FROM ${NODE_IMAGE} AS deps
 WORKDIR /repo
@@ -24,6 +24,7 @@ ARG NEXT_PUBLIC_POSTHOG_KEY=""
 ARG NEXT_PUBLIC_POSTHOG_HOST=""
 ENV NEXT_TELEMETRY_DISABLED=1 \
 	NEXT_OUTPUT_STANDALONE=true \
+	NEXT_DEPLOYMENT_ID=manawg-selfhost-config \
 	NEXT_PUBLIC_APP_URL=https://app.manawg-selfhost.invalid \
 	NEXT_PUBLIC_SUPABASE_URL=https://supabase.manawg-selfhost.invalid \
 	NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=manawg-selfhost-publishable-key \

@@ -199,7 +199,7 @@ services:
       SMTP_PASS: ${SMTP_PASS:-}
       STATEMENT_EMAIL_FROM: ${SMTP_SENDER_NAME:-ManaWG} <${SMTP_ADMIN_EMAIL}>
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
-      VAPID_SUBJECT: ${VAPID_SUBJECT:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:${SMTP_ADMIN_EMAIL}}
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
       interval: 15s

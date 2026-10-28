@@ -1,4 +1,3 @@
-import { requestOrigin } from '@/core/http/request-origin';
 import 'server-only';
 
 import { createSupabaseServerClient } from '@/core/auth/server';
@@ -11,6 +10,7 @@ import {
 	unauthorized,
 } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
+import { requestOrigin } from '@/core/http/request-origin';
 import {
 	authAttemptLimiter,
 	checkRateLimit,

@@ -40,21 +40,18 @@ function getSupabaseServiceClient(timeoutMs?: number) {
 			autoRefreshToken: false,
 			detectSessionInUrl: false,
 		},
-		global: { fetch: supabaseFetch },
-		...(timeoutMs
-			? {
-					global: {
-						// Every request gets its own deadline, so a long paginated listing is not cut off.
-						fetch: (input, init) => {
-							const timeoutSignal = AbortSignal.timeout(timeoutMs);
-							const signal = init?.signal
-								? AbortSignal.any([init.signal, timeoutSignal])
-								: timeoutSignal;
-							return supabaseFetch(input, { ...init, signal });
-						},
-					},
-				}
-			: {}),
+		global: {
+			fetch: timeoutMs
+				? // Every request gets its own deadline, so a long paginated listing is not cut off.
+					(input, init) => {
+						const timeoutSignal = AbortSignal.timeout(timeoutMs);
+						const signal = init?.signal
+							? AbortSignal.any([init.signal, timeoutSignal])
+							: timeoutSignal;
+						return supabaseFetch(input, { ...init, signal });
+					}
+				: supabaseFetch,
+		},
 	});
 }
 

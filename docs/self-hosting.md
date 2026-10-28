@@ -110,17 +110,16 @@ boot lines starting with `[env]`.
 
 ### Updating
 
-Read the [release notes](https://github.com/Abuarchiv/manawg-app/releases) first; they name
-every manual step.
+Take a backup first (`./docker/backup.sh`). If Compose built the image from your checkout:
 
 ```sh
-docker compose pull
-docker compose up -d
+git pull
+docker compose up -d --build
 ```
 
-`setup` applies new migrations before the new app version starts. To stay on a version, set
-`MANAWG_VERSION` to it. If you build from the checkout instead, run `git pull` and
-`docker compose up -d --build`.
+With a published image (`MANAWG_VERSION`), `docker compose pull && docker compose up -d` instead.
+The `setup` service applies new migrations before the new app version starts. A change that needs
+a manual step on self-hosted instances says so in its pull request.
 
 ### Backup and restore
 
@@ -311,9 +310,8 @@ git push
 ```
 
 Apply migrations before the new version goes live; the push to your fork deploys it. Keep your
-own `vercel.json` changes if the pull reports a conflict there. Read the
-[release notes](https://github.com/Abuarchiv/manawg-app/releases) first; they name every manual
-step.
+own `vercel.json` changes if the pull reports a conflict there. A change that needs a manual step
+says so in its pull request.
 
 ### Backups on Supabase
 

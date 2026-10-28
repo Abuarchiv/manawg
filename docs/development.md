@@ -202,21 +202,6 @@ answers `503 cron_secret_missing`, with a wrong header `401`.
 | `/api/cron/event-reminders` | `0 9 * * *` | Push reminders for calendar events (including recurring occurrences) starting tomorrow (Berlin day). |
 | `/api/cron/monthly-statements` | `0 7 1-5 * *` | Mails the statement of the finished month. Day 1 sends; days 2–5 retry what failed or was deferred by the provider quota. |
 
-## Releases
-
-A release is a tag on `main`:
-
-```sh
-git tag -s vX.Y.Z -m "ManaWG X.Y.Z"
-git push origin vX.Y.Z
-```
-
-`.github/workflows/docker.yml` then builds `linux/amd64` and `linux/arm64` and pushes
-`ghcr.io/abuarchiv/manawg-app` as `X.Y.Z`, `X.Y`, `X` and `latest` ([Semantic
-Versioning](https://semver.org/)). The first push creates the package; make it public once under
-the repository's **Packages** settings. Write the GitHub release notes from the merged pull
-requests, and name every manual step a self-hosted instance needs.
-
 ## Troubleshooting
 
 | Symptom | Cause / check |

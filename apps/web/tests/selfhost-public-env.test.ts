@@ -49,3 +49,17 @@ test('empty optional values fall back to the defaults the code uses', () => {
 	assert.match(out, /fetch\("http:\/\/localhost\/auth\/v1"\)/);
 	assert.throws(() => replacements({}), /NEXT_PUBLIC_APP_URL is not set/);
 });
+
+test('the asset version follows the instance values, so browsers drop chunks with old ones', () => {
+	const env = {
+		NEXT_PUBLIC_APP_URL: 'https://wg.example.com',
+		NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'k',
+		SMTP_ADMIN_EMAIL: 'noreply@wg.example.com',
+	};
+	const version = (values: Record<string, string>) =>
+		replaceAll('src="/_next/static/chunks/a.js?dpl=manawg-selfhost-config"', replacements(values));
+
+	assert.match(version(env), /\?dpl=c[0-9a-f]{12}"$/);
+	assert.equal(version(env), version({ ...env }));
+	assert.notEqual(version(env), version({ ...env, NEXT_PUBLIC_SUPPORT_EMAIL: 'help@example.com' }));
+});

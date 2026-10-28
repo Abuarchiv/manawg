@@ -1,19 +1,18 @@
-# Only what the image build needs; never local secrets or build output.
+# Allowlist: the image build reads only these paths, so local secrets, editor and tool folders
+# and build output never enter the build context.
+*
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!.npmrc
+!apps/web
+!supabase/templates
+
 **/node_modules
 **/.next
 **/.next-*
 **/.env*
-!apps/web/.env.example
-.git
-.github
-.claude
-.codex
-.agents
-.vercel
-docs
-openspec
-backups
+**/.vercel
 apps/web/e2e
 apps/web/test-results
 apps/web/playwright-report
-*.log
