@@ -20,9 +20,8 @@ import { z } from 'zod';
 
 const reactionSchema = z.object({
 	reaction: z.enum(ANNOUNCEMENT_REACTIONS),
-	// New clients send the desired state so a lost response can be retried
-	// safely. Omitting it preserves the legacy toggle contract.
-	active: z.boolean().optional(),
+	// The desired state, so a lost response can be retried safely.
+	active: z.boolean(),
 });
 
 type ReactionEffect =
@@ -53,8 +52,7 @@ export const POST = withWgRoute<{ id: string }>(
 			);
 			if (limited) return { response: limited, effect: null };
 
-			// Lock the announcement while resolving a legacy toggle, so distinct
-			// idempotency keys cannot both read the same old reaction state.
+			// Lock the announcement so a take cannot race a concurrent resolve.
 			const [announcement] = await tx
 				.select({
 					id: announcements.id,
@@ -73,18 +71,7 @@ export const POST = withWgRoute<{ id: string }>(
 				};
 			}
 
-			const existingReaction = await tx
-				.select({ id: announcementReactions.id })
-				.from(announcementReactions)
-				.where(
-					and(
-						eq(announcementReactions.announcementId, id),
-						eq(announcementReactions.memberId, auth.member.memberId),
-						eq(announcementReactions.reaction, parsed.data.reaction),
-					),
-				)
-				.limit(1);
-			const wantActive = parsed.data.active ?? !existingReaction[0];
+			const wantActive = parsed.data.active;
 			if (wantActive && parsed.data.reaction === 'take' && announcement.status === 'resolved') {
 				return {
 					response: { status: 409, body: { error: 'announcement_resolved' } },

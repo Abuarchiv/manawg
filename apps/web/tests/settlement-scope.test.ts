@@ -506,7 +506,6 @@ describe('currency-scoped accounting', () => {
 			assert.deepEqual(summary.totalSpendByCurrency, { EUR: 1000, CHF: 2500 });
 			assert.deepEqual(summary.weekSpendByCurrency, { EUR: 1000, CHF: 2500 });
 			assert.deepEqual(summary.monthSpendByCurrency, { EUR: 1000, CHF: 2500 });
-			assert.equal(summary.totalSpendCents, null);
 			for (const row of [
 				{ date: '2026-01-15', currency: 'EUR', cents: 1000 },
 				{ date: '2026-01-15', currency: 'CHF', cents: 2500 },

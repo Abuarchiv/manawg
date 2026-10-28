@@ -38,10 +38,6 @@ export interface DashboardData {
 	totalSpendByCurrency: CurrencyTotals;
 	weekSpendByCurrency: CurrencyTotals;
 	monthSpendByCurrency: CurrencyTotals;
-	/** Legacy scalar fields are null when more than one currency is present. */
-	totalSpendCents: number | null;
-	weekSpendCents: number | null;
-	monthSpendCents: number | null;
 	openShoppingCount: number;
 	openShoppingTop: string[];
 	dueChores: ChoreDue[];

@@ -6,7 +6,7 @@ for self-hosted instances (environment variables, Supabase settings) say so here
 
 ## [Unreleased]
 
-First public release under the AGPL-3.0.
+First public release under the Apache License 2.0.
 
 ### Added
 
