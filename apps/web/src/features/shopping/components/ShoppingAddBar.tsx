@@ -4,7 +4,9 @@ import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { ThumbAction } from '@/components/wg/ThumbAction';
 import { NAME_MAX } from '@/features/shopping/components/constants';
+import { type Message, useMessage } from '@/shared/i18n/message';
 import { Plus } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 export function ShoppingAddBar({
 	value,
@@ -20,11 +22,13 @@ export function ShoppingAddBar({
 	onChange: (value: string) => void;
 	onSubmit: () => void;
 	adding: boolean;
-	addError: string | null;
-	addNotice: string | null;
-	actionError: string | null;
-	toggleNotice: string | null;
+	addError: Message | null;
+	addNotice: Message | null;
+	actionError: Message | null;
+	toggleNotice: Message | null;
 }) {
+	const t = useTranslations('shopping.addBar');
+	const render = useMessage();
 	return (
 		<ThumbAction>
 			<div className="flex flex-col gap-1.5 bg-background py-1.5">
@@ -41,8 +45,8 @@ export function ShoppingAddBar({
 						value={value}
 						onChange={(event) => onChange(event.target.value)}
 						maxLength={NAME_MAX}
-						placeholder="z. B. 2 Reis"
-						aria-label="Artikel-Name"
+						placeholder={t('placeholder')}
+						aria-label={t('nameAria')}
 						enterKeyHint="done"
 						aria-invalid={Boolean(addError)}
 						aria-describedby={addError ? 'shopping-add-error' : undefined}
@@ -55,7 +59,7 @@ export function ShoppingAddBar({
 						// and the next item would be swallowed instead of queued.
 						disabled={!value.trim()}
 						aria-busy={adding}
-						aria-label="Artikel hinzufügen"
+						aria-label={t('addAria')}
 						// mousedown instead of pointerdown: on touch, WebKit fires no click after a pointerdown preventDefault.
 						onMouseDown={(event) => event.preventDefault()}
 						className="size-11 shrink-0"
@@ -66,22 +70,22 @@ export function ShoppingAddBar({
 				{/* In the fixed footer rather than at the top of the list: otherwise the message lies outside the viewport and pushes rows. */}
 				{actionError && (
 					<Alert variant="destructive">
-						<AlertDescription>{actionError}</AlertDescription>
+						<AlertDescription>{render(actionError)}</AlertDescription>
 					</Alert>
 				)}
 				{toggleNotice && (
 					<Alert>
-						<AlertDescription>{toggleNotice}</AlertDescription>
+						<AlertDescription>{render(toggleNotice)}</AlertDescription>
 					</Alert>
 				)}
 				{addError && (
 					<Alert id="shopping-add-error" variant="destructive">
-						<AlertDescription>{addError}</AlertDescription>
+						<AlertDescription>{render(addError)}</AlertDescription>
 					</Alert>
 				)}
 				{addNotice && (
 					<Alert>
-						<AlertDescription>{addNotice}</AlertDescription>
+						<AlertDescription>{render(addNotice)}</AlertDescription>
 					</Alert>
 				)}
 			</div>

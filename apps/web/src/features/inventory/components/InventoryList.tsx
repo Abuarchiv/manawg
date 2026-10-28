@@ -15,7 +15,6 @@ import { InventoryItemRow } from '@/features/inventory/components/InventoryItemR
 import { QuickRestockSheet } from '@/features/inventory/components/QuickRestockSheet';
 import {
 	INVENTORY_CATEGORIES,
-	INVENTORY_CATEGORY_LABELS,
 	type InventoryCategory,
 	type InventoryItemDto,
 	type InventoryMutationItemDto,
@@ -24,6 +23,7 @@ import {
 } from '@/features/inventory/inventory';
 import { cn } from '@/shared/lib/cn';
 import { Package, ShoppingBasket, Zap } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -49,6 +49,8 @@ export function InventoryList({
 	onAddOpenChange: setAddOpen,
 	highlightedId = null,
 }: InventoryListProps) {
+	const t = useTranslations('inventory.list');
+	const tCategories = useTranslations('inventory.categories');
 	const [quickOpen, setQuickOpen] = useState(false);
 	const [editing, setEditing] = useState<InventoryItemDto | null>(null);
 	// Scarce items are collected at the top, the rest stays sorted by category. A known
@@ -89,7 +91,7 @@ export function InventoryList({
 					className="self-start"
 				>
 					<Zap data-icon="inline-start" aria-hidden />
-					Schnell nachfüllen
+					{t('quick')}
 				</Button>
 			)}
 			{isEmpty ? (
@@ -98,10 +100,8 @@ export function InventoryList({
 						<EmptyMedia variant="icon">
 							<Package aria-hidden />
 						</EmptyMedia>
-						<EmptyTitle>Noch keine Vorräte erfasst</EmptyTitle>
-						<EmptyDescription>
-							Fällt ein Vorrat unter seine Grenze, landet er automatisch auf der Einkaufsliste.
-						</EmptyDescription>
+						<EmptyTitle>{t('emptyTitle')}</EmptyTitle>
+						<EmptyDescription>{t('emptyDescription')}</EmptyDescription>
 					</EmptyHeader>
 				</Empty>
 			) : (
@@ -109,7 +109,7 @@ export function InventoryList({
 					{lowItems.length > 0 && (
 						<section aria-labelledby="inventory-low" className="flex flex-col gap-2">
 							<h2 id="inventory-low" className="text-sm font-medium text-muted-foreground">
-								Bald leer ({lowItems.length})
+								{t('low', { count: lowItems.length })}
 							</h2>
 							<Card className="py-0">
 								<CardContent className="p-0">
@@ -133,7 +133,7 @@ export function InventoryList({
 								className={cn(buttonVariants({ variant: 'outline' }), 'self-start')}
 							>
 								<ShoppingBasket data-icon="inline-start" aria-hidden />
-								Einkaufsliste öffnen
+								{t('openShopping')}
 							</Link>
 						</section>
 					)}
@@ -149,7 +149,7 @@ export function InventoryList({
 								id={`inventory-${category}`}
 								className="text-sm font-medium text-muted-foreground"
 							>
-								{INVENTORY_CATEGORY_LABELS[category]} ({grouped[category].length})
+								{t('group', { category: tCategories(category), count: grouped[category].length })}
 							</h2>
 							<Card className="py-0">
 								<CardContent className="p-0">

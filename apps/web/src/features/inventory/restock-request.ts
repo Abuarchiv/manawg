@@ -1,17 +1,17 @@
-import { mutationErrorMessage } from '@/core/http/error-codes';
+import { mutationError } from '@/core/http/error-codes';
 import { createIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
-import { keyUnavailableMessage } from '@/core/offline/offline-copy';
 import {
 	type InventoryItemDto,
 	type InventoryMutationItemDto,
 	restockAmount,
 } from '@/features/inventory/inventory';
+import type { Message } from '@/shared/i18n/message';
 
 export type RestockOutcome =
 	| { kind: 'ok'; item: InventoryMutationItemDto }
 	| { kind: 'gone' }
-	| { kind: 'error'; message: string };
+	| { kind: 'error'; message: Message };
 
 /**
  * Raises one item by its restock amount. `keys` maps `${itemId}:${amount}` to the idempotency
@@ -28,10 +28,7 @@ export async function restockItem(args: {
 	const requestKey = `${item.id}:${amount}`;
 	const idempotencyKey = keys.get(requestKey) ?? createIdempotencyKey();
 	if (!idempotencyKey) {
-		return {
-			kind: 'error',
-			message: keyUnavailableMessage('Aktualisierung', 'gesendet'),
-		};
+		return { kind: 'error', message: { key: 'inventory.update.keyUnavailable' } };
 	}
 	keys.set(requestKey, idempotencyKey);
 	const res = await apiFetch<{ item: InventoryMutationItemDto }>(
@@ -54,11 +51,11 @@ export async function restockItem(args: {
 	if (shouldReleaseIdempotencyKey(res.status, res.error)) keys.delete(requestKey);
 	return {
 		kind: 'error',
-		message: mutationErrorMessage(
-			'Aktualisierung fehlgeschlagen',
+		message: mutationError(
+			{ key: 'inventory.update.failed' },
 			res.error,
 			{},
-			'Aktualisierung fehlgeschlagen. Versuche es erneut.',
+			{ key: 'inventory.update.failedRetry' },
 		),
 	};
 }

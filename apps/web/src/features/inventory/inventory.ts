@@ -1,12 +1,28 @@
 import { formatDecimal } from '@/core/utils/amount';
+import { intlTag } from '@/shared/i18n/intl';
+import type { Locale } from '@/shared/i18n/locale';
 
 export const INVENTORY_LIST_LIMIT = 1000;
 
 export const INVENTORY_CATEGORIES = ['bad', 'kueche', 'putzmittel', 'sonstiges'] as const;
 export type InventoryCategory = (typeof INVENTORY_CATEGORIES)[number];
 
+// i18n-ignore stored unit key
 export const INVENTORY_UNITS = ['Stück', 'L', 'kg', 'Rolle', 'Packung'] as const;
 export type InventoryUnit = (typeof INVENTORY_UNITS)[number];
+
+const UNIT_LABEL_KEYS: Partial<Record<string, string>> = {
+	Stück: 'piece', // i18n-ignore stored unit key
+	L: 'litre',
+	kg: 'kilogram',
+	Rolle: 'roll',
+	Packung: 'pack',
+};
+
+/** Argument of `inventory.unit`: the stored unit values stay German, the labels come from the catalog. */
+export function unitLabelKey(unit: string): string {
+	return UNIT_LABEL_KEYS[unit] ?? unit;
+}
 
 export const INVENTORY_LIMITS = {
 	NAME_MIN: 1,
@@ -22,13 +38,6 @@ export const INVENTORY_LIMITS = {
 	// low-stock push and shopping entry without anything being used.
 	CONSUME_DELTA_MAX: -1,
 } as const;
-
-export const INVENTORY_CATEGORY_LABELS: Record<InventoryCategory, string> = {
-	bad: 'Bad',
-	kueche: 'Küche',
-	putzmittel: 'Putzmittel',
-	sonstiges: 'Sonstiges',
-};
 
 /**
  * An inventory item as the API returns it.
@@ -74,9 +83,10 @@ interface ShoppingPushPayload {
 	note: string;
 }
 
+// i18n-ignore German words of the shopping entry the server writes
 const UNIT_PLURALS: Partial<Record<string, string>> = { Rolle: 'Rollen', Packung: 'Packungen' };
 
-/** "2 Rollen", "1 Rolle": Stück, L and kg stay as they are. */
+/** "2 Rollen", "1 Rolle" as the server writes it into the shopping entry; screens use `inventory.unit`. */
 export function formatQuantity(quantity: number, unit: string): string {
 	return `${formatDecimal(quantity)} ${quantity === 1 ? unit : (UNIT_PLURALS[unit] ?? unit)}`;
 }
@@ -90,7 +100,7 @@ export function buildShoppingPushPayload(
 	return {
 		name: item.name,
 		quantity: formatQuantity(restockAmount(item), item.unit),
-		note: 'Auto: Vorrat unter Schwelle',
+		note: 'Auto: Vorrat unter Schwelle', // i18n-ignore text stored with the shopping entry
 	};
 }
 
@@ -114,12 +124,13 @@ const QUICK_RESTOCK_MAX_LOW = 10;
 /** Scarce items first (largest shortfall), then the most consumed of the last 30 days up to a minimum row count. */
 export function quickRestockCandidates<
 	T extends InventoryItemForThresholdCheck & { name: string; decrementCount30d: number },
->(items: T[]): T[] {
+>(items: T[], locale: Locale = 'de'): T[] {
 	const low = items
 		.filter(isBelowThreshold)
 		.sort(
 			(a, b) =>
-				b.threshold - b.quantity - (a.threshold - a.quantity) || a.name.localeCompare(b.name, 'de'),
+				b.threshold - b.quantity - (a.threshold - a.quantity) ||
+				a.name.localeCompare(b.name, intlTag(locale)),
 		)
 		.slice(0, QUICK_RESTOCK_MAX_LOW);
 	const frequent = items
@@ -161,12 +172,15 @@ export function groupItemsByCategory<T extends { category: string }>(
 	return groups;
 }
 
-/** Typed quantity text as German decimal: "." becomes ",", digits only, at most two after the comma. */
-export function decimalQuantityText(raw: string): string {
+/** The decimal separator the quantity fields show: a comma in German, a point in English. */
+const decimalSeparator = (locale: Locale): string => (locale === 'en' ? '.' : ',');
+
+/** Typed quantity text with the locale's separator: "." and "," both count, digits only, at most two decimals. */
+export function decimalQuantityText(raw: string, locale: Locale = 'de'): string {
 	const [whole = '', ...fraction] = raw.replace(/\./g, ',').split(',');
 	const digits = whole.replace(/\D/g, '');
 	if (fraction.length === 0) return digits;
-	return `${digits},${fraction.join('').replace(/\D/g, '').slice(0, 2)}`;
+	return `${digits}${decimalSeparator(locale)}${fraction.join('').replace(/\D/g, '').slice(0, 2)}`;
 }
 
 /** An empty field counts as 0; the value is clamped only on save so the field can stay empty while typing. */
@@ -174,7 +188,7 @@ export function parseQuantityText(text: string): number {
 	return clampQuantity(Number(text.replace(',', '.') || 0));
 }
 
-/** Input field text for a stored quantity: 1.5 is "1,5". */
-export function quantityInputText(quantity: number): string {
-	return String(quantity).replace('.', ',');
+/** Input field text for a stored quantity: 1.5 is "1,5" in German and "1.5" in English. */
+export function quantityInputText(quantity: number, locale: Locale = 'de'): string {
+	return String(quantity).replace('.', decimalSeparator(locale));
 }

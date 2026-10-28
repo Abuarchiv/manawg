@@ -1,1 +1,149 @@
-export default {} as const;
+export default {
+	errorPage: {
+		title: 'Einkäufe konnten gerade nicht geladen werden',
+		body: 'In der Einkaufsliste ist ein Fehler aufgetreten. Bitte versuche es erneut oder kehre zur WG-Übersicht zurück.',
+	},
+	page: {
+		title: 'Einkäufe',
+		openCount: '{count, number} offen',
+		emptyTitle: 'Noch nichts auf der Liste',
+		emptyWithSuggestions: 'Schreib unten einen Artikel auf oder tippe einen Vorschlag.',
+		empty: 'Schreib unten einen Artikel auf.',
+		reload: 'Liste erneut laden',
+		queued:
+			'{count, plural, one {# Aktion wartet auf Synchronisierung.} other {# Aktionen warten auf Synchronisierung.}}',
+	},
+	load: { list: 'Einkaufsliste konnte nicht geladen werden' },
+	suggestions: {
+		lowStock: 'Bald leer',
+		frequent: 'Oft gekauft',
+		staples: 'Vorschläge',
+		quick: { milk: 'Milch', bread: 'Brot', coffee: 'Kaffee', toiletPaper: 'Toilettenpapier' },
+		addAria: '{name} hinzufügen',
+		added: '{name} hinzugefügt.',
+	},
+	list: {
+		sectionLabel: 'Einkaufsartikel',
+		allBought: 'Alles eingekauft.',
+		showMore: 'Mehr anzeigen ({count, number})',
+		done: 'Erledigt ({count, number})',
+		clearBought: 'Erledigte entfernen',
+		clearBoughtAria: 'Erledigte Artikel entfernen ({count, number})',
+	},
+	row: {
+		swipeBought: 'Gekauft',
+		swipeReopen: 'Wieder offen',
+		checkReopenAria: '{name} wieder öffnen',
+		checkCompleteAria: '{name} erledigen',
+		saving: 'Speichert…',
+		waitingToSync: 'Wartet auf Synchronisierung…',
+		bought: 'Gekauft',
+		boughtBy: '{who, select, self {Gekauft von dir} other {Gekauft von {name}}}',
+		boughtUnknown: 'Gekauft · Person nicht angegeben',
+		addedByShort: '{who, select, self {von dir} other {von {name}}}',
+		addedBy: '{who, select, self {Hinzugefügt von dir} other {Hinzugefügt von {name}}}',
+		actionsAria: 'Artikelaktionen: {name}',
+		edit: 'Bearbeiten',
+		addAsExpense: 'Als Ausgabe übernehmen',
+		expenseHint: 'Betrag und Aufteilung prüfst du vor dem Speichern.',
+		removeConfirm: '„{name}“ endgültig entfernen? Das lässt sich nicht rückgängig machen.',
+		removeFinalAria: 'Endgültig entfernen: {name}',
+		removeAria: 'Artikel entfernen: {name}',
+		removeFinal: 'Endgültig entfernen',
+		remove: 'Artikel entfernen',
+		cannotRemove:
+			'Nur die Person, die den Artikel hinzugefügt hat, oder ein WG-Admin kann ihn entfernen.',
+		close: 'Schließen',
+	},
+	addBar: {
+		placeholder: 'z. B. 2 Reis',
+		nameAria: 'Artikel-Name',
+		addAria: 'Artikel hinzufügen',
+	},
+	editForm: {
+		name: 'Name',
+		quantity: 'Menge (optional)',
+		save: 'Speichern',
+		cancel: 'Abbrechen',
+	},
+	receipt: {
+		prompt: 'Beleg für {count, number} Artikel als Ausgabe erfassen?',
+		cta: 'Ausgabe erfassen',
+		dismiss: 'Nicht jetzt',
+		description: 'Einkauf: {names}',
+	},
+	skeleton: { loadingAria: 'Einkaufsliste wird geladen' },
+	clearDialog: {
+		title: 'Erledigte Artikel entfernen?',
+		description:
+			'{count, plural, one {# erledigter Artikel wird} other {# erledigte Artikel werden}} für die ganze WG endgültig entfernt. Offene Artikel bleiben erhalten.',
+		cancel: 'Abbrechen',
+		confirm: 'Entfernen',
+	},
+	errors: {
+		sentence: '{subject}.',
+		addSubject: 'Artikel konnte nicht gespeichert werden',
+		nameInvalid: 'Der Name muss 1 bis {max} Zeichen haben.',
+		quantityInvalid: 'Die Menge darf höchstens {max} Zeichen haben.',
+		statusInvalid: 'Der Status ist ungültig.',
+		requestInvalid: 'Die Anfrage war ungültig.',
+		insertFailed: 'Prüfe die Einkaufsliste und versuche es erneut.',
+		addFallback: 'Hinzufügen fehlgeschlagen. Versuche es gleich erneut.',
+		idInvalid: 'Dieser Einkaufsartikel kann nicht mehr eindeutig zugeordnet werden.',
+		subjectChecked: '„{name}“ konnte nicht abgehakt werden',
+		subjectReopened: '„{name}“ konnte nicht wieder geöffnet werden',
+		subjectRemoved: '„{name}“ konnte nicht entfernt werden',
+		subjectChanged: '„{name}“ konnte nicht geändert werden',
+		actionFallback: '{subject}. Versuche es gleich erneut.',
+		duplicate: '„{name}“ steht schon offen auf der Liste.',
+		duplicateWithQuantity:
+			'„{name}“ steht schon offen auf der Liste. Die Menge änderst du über „Artikelaktionen“ → „Bearbeiten“.',
+		clearNotAdmin: 'Nur Admins dürfen erledigte Artikel für die ganze WG entfernen.',
+		clearSubject: 'Erledigte konnten nicht entfernt werden',
+	},
+	toggle: {
+		itemGone: 'Dieser Einkaufsartikel existiert nicht mehr und wurde aus deiner Liste entfernt.',
+		queueBlocked:
+			'Offline-Speicher ist blockiert. Der Einkaufsstatus konnte nicht vorgemerkt werden.',
+		queuedCreateBought:
+			'Offline vorgemerkt. Der neue Artikel wird direkt als erledigt synchronisiert.',
+		queuedCreateOpen: 'Offline vorgemerkt. Der neue Artikel wird wieder offen synchronisiert.',
+		queuedBought: 'Offline vorgemerkt. Der Artikel wird später als erledigt synchronisiert.',
+		queuedReopen: 'Offline vorgemerkt. Der Artikel wird später wieder geöffnet.',
+		notAdder: 'Nur wer den Artikel hinzugefügt hat, kann ihn abhaken.',
+		statusChanged: 'Der Einkaufsstatus hat sich geändert. Prüfe den aktualisierten Stand.',
+		pendingChange:
+			'„{name}“ hat noch eine nicht gesendete Änderung. Sie steht unter Einstellungen → Daten → Offline-Warteschlange.',
+		versionMissing: 'Der Artikelstand wird aktualisiert. Prüfe die Liste und versuche es erneut.',
+		keyUnavailable: 'Einkaufsstatus konnte nicht sicher gespeichert werden. Versuche es erneut.',
+	},
+	removal: {
+		storageBlocked:
+			'Offline-Speicher ist blockiert. Der vorgemerkte Artikel konnte nicht entfernt werden.',
+		queuedRemoved: 'Offline vorgemerkter Artikel wurde entfernt.',
+		notAllowed: 'Nur wer den Artikel hinzugefügt hat oder ein WG-Admin kann ihn entfernen.',
+		cleared: 'Erledigte Artikel entfernt.',
+	},
+	edit: {
+		nameEmpty: 'Der Name darf nicht leer sein.',
+		waitingForSync: 'Dieser Artikel wartet noch auf Synchronisierung. Bearbeiten geht danach.',
+		versionMissing: 'Der Artikelstand wird aktualisiert. Versuche es gleich erneut.',
+		changed:
+			'Der Artikel hat sich geändert. Prüfe den aktualisierten Stand und versuche es erneut.',
+		needsConnection: 'Bearbeiten braucht eine Verbindung.',
+	},
+	add: {
+		keyUnavailable: 'Artikel konnte nicht sicher gespeichert werden. Versuche es erneut.',
+		retryHint:
+			'Konnte nicht hinzugefügt werden. Prüfe kurz die Liste, ob der Artikel schon drin ist, und versuche es noch einmal.',
+		queueBlocked:
+			'Offline-Speicher ist blockiert. Lass den Entwurf offen und versuche es später erneut.',
+		draftCleanupFailedOffline:
+			'Offline gespeichert, aber der alte Entwurf konnte nicht entfernt werden. Prüfe die Offline-Warteschlange.',
+		draftCleanupFailed: 'Gespeichert, aber der alte Offline-Entwurf konnte nicht entfernt werden.',
+		queueEditAlreadySent: 'Der Eintrag wurde inzwischen schon gesendet – bitte prüfe die Liste.',
+		savedOffline: 'Offline gespeichert. Wird synchronisiert, sobald du wieder online bist.',
+		deliveryFailed: 'Gespeichert. Nicht alle Push-Benachrichtigungen konnten versendet werden.',
+		deliveryUnknown: 'Gespeichert. Push-Versand konnte nicht bestätigt werden.',
+	},
+} as const;

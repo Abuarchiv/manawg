@@ -4,6 +4,7 @@ import type { ShoppingItem } from '@/features/shopping/components/shopping-types
 import { expensePrefillHref } from '@/features/shopping/shopping-view';
 import { cn } from '@/shared/lib/cn';
 import { Receipt } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
@@ -21,6 +22,7 @@ export function ShoppingReceiptPrompt({
 	memberId: string;
 	shareCode: string;
 }) {
+	const t = useTranslations('shopping.receipt');
 	const [receiptSince, setReceiptSince] = useState<string | null>(null);
 	const receiptKey = `manawg:receipt-prompt:${shareCode}`;
 	useEffect(() => {
@@ -72,23 +74,25 @@ export function ShoppingReceiptPrompt({
 		<Alert ref={promptRef}>
 			<Receipt aria-hidden />
 			<AlertDescription className="flex flex-col gap-2 text-xs">
-				<span>Beleg für {myFreshBought.length} Artikel als Ausgabe erfassen?</span>
+				<span>{t('prompt', { count: myFreshBought.length })}</span>
 				<span className="flex flex-wrap gap-2">
 					<Link
 						href={expensePrefillHref(shareCode, {
 							new: '1',
-							desc: `Einkauf: ${myFreshBought
-								.slice(0, 5)
-								.map((item) => item.name)
-								.join(', ')}`,
+							desc: t('description', {
+								names: myFreshBought
+									.slice(0, 5)
+									.map((item) => item.name)
+									.join(', '),
+							}),
 						})}
 						onClick={dismissReceiptPrompt}
 						className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'no-underline!')}
 					>
-						Ausgabe erfassen
+						{t('cta')}
 					</Link>
 					<Button variant="ghost" size="sm" onClick={dismissReceiptPrompt}>
-						Nicht jetzt
+						{t('dismiss')}
 					</Button>
 				</span>
 			</AlertDescription>

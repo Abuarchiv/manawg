@@ -8,6 +8,7 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { useTranslations } from 'next-intl';
 
 export function ClearBoughtDialog({
 	open,
@@ -22,20 +23,16 @@ export function ClearBoughtDialog({
 	clearing: boolean;
 	onConfirm: () => void;
 }) {
+	const t = useTranslations('shopping.clearDialog');
 	return (
 		<AlertDialog open={open} onOpenChange={onOpenChange}>
 			<AlertDialogContent className="max-w-[calc(100%-2rem)]">
 				<AlertDialogHeader>
-					<AlertDialogTitle>Erledigte Artikel entfernen?</AlertDialogTitle>
-					<AlertDialogDescription>
-						{doneCount === 1
-							? '1 erledigter Artikel wird'
-							: `${doneCount} erledigte Artikel werden`}{' '}
-						für die ganze WG endgültig entfernt. Offene Artikel bleiben erhalten.
-					</AlertDialogDescription>
+					<AlertDialogTitle>{t('title')}</AlertDialogTitle>
+					<AlertDialogDescription>{t('description', { count: doneCount })}</AlertDialogDescription>
 				</AlertDialogHeader>
 				<AlertDialogFooter>
-					<AlertDialogCancel className="min-h-11">Abbrechen</AlertDialogCancel>
+					<AlertDialogCancel className="min-h-11">{t('cancel')}</AlertDialogCancel>
 					<AlertDialogAction
 						variant="destructive"
 						className="min-h-11 min-w-0 max-w-full shrink whitespace-normal"
@@ -45,7 +42,7 @@ export function ClearBoughtDialog({
 							onConfirm();
 						}}
 					>
-						Entfernen
+						{t('confirm')}
 					</AlertDialogAction>
 				</AlertDialogFooter>
 			</AlertDialogContent>

@@ -1,6 +1,7 @@
 'use client';
 
 import { WgRouteErrorBoundary } from '@/components/wg/WgRouteErrorBoundary';
+import { useTranslations } from 'next-intl';
 
 interface EinkaufErrorProps {
 	error: Error & { digest?: string };
@@ -8,13 +9,14 @@ interface EinkaufErrorProps {
 }
 
 export default function EinkaufError({ error, reset }: EinkaufErrorProps) {
+	const t = useTranslations('shopping.errorPage');
 	return (
 		<WgRouteErrorBoundary
 			error={error}
 			reset={reset}
 			boundary="wg-einkauf"
-			title="Einkäufe konnten gerade nicht geladen werden"
-			body="In der Einkaufsliste ist ein Fehler aufgetreten. Bitte versuche es erneut oder kehre zur WG-Übersicht zurück."
+			title={t('title')}
+			body={t('body')}
 		/>
 	);
 }

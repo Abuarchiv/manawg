@@ -3,12 +3,10 @@ import type { usePendingSet } from '@/core/hooks/use-pending-set';
 import { apiFetch } from '@/core/infra/api-client';
 import { discardQueuedEntry, updateOfflineQueue } from '@/core/offline/offline-client';
 import { isQueuedCreateId } from '@/core/offline/offline-queue';
-import {
-	clearBoughtErrorMessage,
-	shoppingActionErrorMessage,
-} from '@/features/shopping/shopping-errors';
+import { clearBoughtError, shoppingActionError } from '@/features/shopping/shopping-errors';
 import { dropShoppingItems, withoutQueuedFollowUps } from '@/features/shopping/shopping-toggle';
 import { isTempItemId } from '@/features/shopping/shopping-view';
+import { type Message, useMessage } from '@/shared/i18n/message';
 import { useCallback, useRef, useState } from 'react';
 import type { ShoppingActionContext } from './shopping-action-context';
 
@@ -32,12 +30,13 @@ export function useShoppingRemoval(ctx: RemovalContext) {
 		setToggleNotice,
 	} = ctx;
 	const toast = useToast();
-	const [removeError, setRemoveError] = useState<string | null>(null);
+	const render = useMessage();
+	const [removeError, setRemoveError] = useState<Message | null>(null);
 	const [removeErrorId, setRemoveErrorId] = useState<string | null>(null);
 	const [clearingBought, setClearingBought] = useState(false);
 	const clearingBoughtRef = useRef(false);
 
-	const failRemove = useCallback((id: string | null, message: string) => {
+	const failRemove = useCallback((id: string | null, message: Message) => {
 		setRemoveErrorId(id);
 		setRemoveError(message);
 	}, []);
@@ -64,16 +63,13 @@ export function useShoppingRemoval(ctx: RemovalContext) {
 				setRemoveErrorId(null);
 				const queued = await discardQueuedEntry(wg.shareCode, id);
 				if (queued === 'storage_blocked') {
-					failRemove(
-						id,
-						'Offline-Speicher ist blockiert. Der vorgemerkte Artikel konnte nicht entfernt werden.',
-					);
+					failRemove(id, { key: 'shopping.removal.storageBlocked' });
 					return false;
 				}
 				if (queued === 'removed' || isQueuedCreateId(id)) {
 					commit((prev) => dropShoppingItems(prev, (item) => item.id === id));
 					refreshCount();
-					setToggleNotice('Offline vorgemerkter Artikel wurde entfernt.');
+					setToggleNotice({ key: 'shopping.removal.queuedRemoved' });
 					return true;
 				}
 				const res = await apiFetch<unknown>(
@@ -84,16 +80,14 @@ export function useShoppingRemoval(ctx: RemovalContext) {
 					if (res.status === 404 && res.error === 'item_not_found') {
 						await dropQueuedFollowUps(id);
 						commit((prev) => dropShoppingItems(prev, (item) => item.id === id));
-						setRemoveError(
-							'Dieser Einkaufsartikel existiert nicht mehr und wurde aus deiner Liste entfernt.',
-						);
+						setRemoveError({ key: 'shopping.toggle.itemGone' });
 						return true;
 					}
 					failRemove(
 						id,
 						res.status === 403
-							? 'Nur wer den Artikel hinzugefügt hat oder ein WG-Admin kann ihn entfernen.'
-							: shoppingActionErrorMessage(res.error, itemName, 'entfernt'),
+							? { key: 'shopping.removal.notAllowed' }
+							: shoppingActionError(res.error, itemName, 'removed'),
 					);
 					return false;
 				}
@@ -138,10 +132,10 @@ export function useShoppingRemoval(ctx: RemovalContext) {
 			if (res.ok) {
 				commit((prev) => dropShoppingItems(prev, (item) => item.boughtAt !== null));
 				void load(true);
-				toast.success('Erledigte Artikel entfernt.');
+				toast.success(render({ key: 'shopping.removal.cleared' }));
 				return true;
 			}
-			setRemoveError(clearBoughtErrorMessage(res.status, res.error));
+			setRemoveError(clearBoughtError(res.status, res.error));
 			return false;
 		} finally {
 			clearingBoughtRef.current = false;

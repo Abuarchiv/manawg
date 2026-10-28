@@ -6,11 +6,13 @@ import { Spinner } from '@/components/ui/spinner';
 import {
 	type InventoryItemDto,
 	boughtRestockMatches,
-	formatQuantity,
 	restockAmount,
 } from '@/features/inventory/inventory';
 import { restockItem } from '@/features/inventory/restock-request';
+import { useQuantityText } from '@/features/inventory/use-quantity-text';
+import { type Message, useMessage } from '@/shared/i18n/message';
 import { PackagePlus } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useEffect, useRef, useState } from 'react';
 
 const MAX_ROWS = 3;
@@ -35,9 +37,12 @@ export function InventoryRestockPrompt({
 	memberId: string;
 	onRestocked: () => void;
 }) {
+	const t = useTranslations('inventory.restockPrompt');
+	const render = useMessage();
+	const quantityText = useQuantityText();
 	const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set());
 	const [pendingId, setPendingId] = useState<string | null>(null);
-	const [error, setError] = useState<string | null>(null);
+	const [error, setError] = useState<Message | null>(null);
 	const keysRef = useRef(new Map<string, string>());
 	const storageKey = (id: string): string => `manawg:restock-prompt:${shareCode}:${id}`;
 
@@ -93,8 +98,10 @@ export function InventoryRestockPrompt({
 				{visible.map((item) => (
 					<span key={item.id} className="flex flex-col gap-2">
 						<span>
-							{item.name} gekauft. Vorrat um {formatQuantity(restockAmount(item), item.unit)}{' '}
-							erhöhen?
+							{t('question', {
+								name: item.name,
+								amount: quantityText(restockAmount(item), item.unit),
+							})}
 						</span>
 						<span className="flex flex-wrap gap-2">
 							<Button
@@ -104,25 +111,25 @@ export function InventoryRestockPrompt({
 								disabled={pendingId !== null}
 								focusableWhenDisabled
 								aria-busy={pendingId === item.id}
-								aria-label={`${item.name}: Vorrat erhöhen`}
+								aria-label={t('restockAria', { name: item.name })}
 							>
 								{pendingId === item.id && <Spinner aria-hidden />}
-								Vorrat erhöhen
+								{t('restock')}
 							</Button>
 							<Button
 								variant="ghost"
 								size="sm"
 								onClick={() => dismiss(item.id)}
-								aria-label={`${item.name}: Nicht jetzt`}
+								aria-label={t('dismissAria', { name: item.name })}
 							>
-								Nicht jetzt
+								{t('dismiss')}
 							</Button>
 						</span>
 					</span>
 				))}
 				{error && (
 					<span role="alert" className="text-xs text-destructive">
-						{error}
+						{render(error)}
 					</span>
 				)}
 			</AlertDescription>

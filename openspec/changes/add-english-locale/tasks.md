@@ -35,7 +35,7 @@
 - [x] 3.5 Package E fixed costs and statement page; verify English spec
 - [x] 3.6 Package F chores with `action` keys instead of German labels; verify English spec and no verb choice in code
 - [x] 3.7 Package G calendar; verify English spec
-- [ ] 3.8 Package H shopping and supplies with unit labels; verify English spec and unchanged stored units
+- [x] 3.8 Package H shopping and supplies with unit labels; verify English spec and unchanged stored units
 - [ ] 3.9 Package I noticeboard and chat; verify English spec and localized chat amounts
 - [x] 3.10 Package J settings; verify English spec
 - [x] 3.11 Package K entry and auth; verify English spec and flag the consent sentence for owner review
