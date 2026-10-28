@@ -6,11 +6,14 @@ const AMOUNT_NUMBER: Record<Locale, string> = {
 	en: String.raw`\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d{1,5}(?:\.\d{1,2})?`,
 };
 
+// "euros" is accepted in English only; German keeps "Euro" and "EUR".
+const EURO_WORD: Record<Locale, string> = { de: 'euro?|eur', en: 'euros?|eur' };
+
 // Currency either before ("€ 35,50") or after ("35 Euro", "12,5 EUR", "35€") the number.
 function amountPattern(locale: Locale): RegExp {
 	const number = AMOUNT_NUMBER[locale];
 	return new RegExp(
-		String.raw`(?:^|\s)(?:€\s*(${number})|(${number})\s*(?:€|euros?|eur))(?=[\s.,;:!?)]|$)`,
+		String.raw`(?:^|\s)(?:€\s*(${number})|(${number})\s*(?:€|${EURO_WORD[locale]}))(?=[\s.,;:!?)]|$)`,
 		'i',
 	);
 }

@@ -8,8 +8,6 @@ test('recognises the amount with € / EUR / Euro after or € before the number
 		['Putzmittel 5 euro', '5', 'Putzmittel'],
 		['Strom € 35,50', '35,50', 'Strom'],
 		['Pizza 35 EUR.', '35', 'Pizza'],
-		['Pay 35 euros', '35', 'Pay'],
-		['Pay 35 Euros.', '35', 'Pay'],
 		['Miete 1.234,50 €', '1234,50', 'Miete'],
 		['Nebenkosten 1.200 Euro', '1200', 'Nebenkosten'],
 		['Pizza 12,5 EUR', '12,5', 'Pizza'],
@@ -18,6 +16,10 @@ test('recognises the amount with € / EUR / Euro after or € before the number
 	for (const [input, amountStr, title] of cases) {
 		assert.deepEqual(buildAnnouncementPrefill(input, 'de'), { title, amountStr }, input);
 	}
+});
+
+test('German does not take the English plural "euros" as a unit', () => {
+	assert.equal(buildAnnouncementPrefill('Pay 35 euros', 'de').amountStr, null);
 });
 
 test('does not mistake other words or numbers for an amount', () => {
@@ -30,6 +32,8 @@ test('reads English amounts with comma grouping and a decimal point', () => {
 		['Internet bill €1,234.50 this month', '1234.50', 'Internet bill this month'],
 		['Rent is €1,200', '1200', 'Rent is'],
 		['Lamp 12.50 EUR', '12.50', 'Lamp'],
+		['Pay 35 euros', '35', 'Pay'],
+		['Pay 35 Euros.', '35', 'Pay'],
 		['1,234.50 EUR rent', '1234.50', 'rent'],
 		['Pizza 35 EUR.', '35', 'Pizza'],
 	];
