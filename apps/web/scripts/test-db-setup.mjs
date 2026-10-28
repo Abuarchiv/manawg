@@ -60,7 +60,7 @@ try {
 			break;
 		}
 	}
-	if (!process.exitCode) console.log(`Applied ${entries.length} migrations.`);
+	if (!process.exitCode) process.stdout.write(`Applied ${entries.length} migrations.\n`);
 } finally {
 	await client.end();
 }
