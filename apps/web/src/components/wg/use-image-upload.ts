@@ -1,15 +1,16 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { subscribeOnline } from '@/core/hooks/use-online-status';
 import {
-	PRIVATE_IMAGE_MAX_BYTES,
 	isAllowedPrivateImageMimeType,
+	PRIVATE_IMAGE_MAX_BYTES,
 } from '@/core/infra/private-image-policy';
 import {
 	type ImageUploadPurpose,
-	PendingImageMissingError,
 	isPendingImageToken,
+	PendingImageMissingError,
 	readPendingImage,
 	removePendingImage,
 	signAndPut,
@@ -17,10 +18,9 @@ import {
 	uploadPendingImageToken,
 } from '@/core/offline/offline-images';
 import type { Message } from '@/shared/i18n/message';
-import { useEffect, useRef, useState } from 'react';
 import {
-	MISSING_PENDING_IMAGE,
 	isRejectedPendingUpload,
+	MISSING_PENDING_IMAGE,
 	pendingUploadErrorMessage,
 	uploadSignErrorMessage,
 } from './image-upload-errors';

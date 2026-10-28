@@ -1,8 +1,9 @@
 'use client';
 
-import { SocialLoginButtons, type SocialProvider } from '@/components/auth/SocialLoginButtons';
+import { useTranslations } from 'next-intl';
+import { useEffect, useState } from 'react';
 import { useGoogleSignIn } from '@/components/auth/google-sign-in';
-import type { Member, WgSummary } from '@/components/wg/WgContextProvider';
+import { SocialLoginButtons, type SocialProvider } from '@/components/auth/SocialLoginButtons';
 import { AccountSignOutSection } from '@/components/wg/einstellungen/AccountSignOutSection';
 import { AccountWgsSection } from '@/components/wg/einstellungen/AccountWgsSection';
 import { DangerZoneSection } from '@/components/wg/einstellungen/DangerZoneSection';
@@ -11,9 +12,8 @@ import { InvitesSection } from '@/components/wg/einstellungen/InvitesSection';
 import { MembersSection } from '@/components/wg/einstellungen/MembersSection';
 import { PasswordChangeRow } from '@/components/wg/einstellungen/PasswordChangeRow';
 import { Section } from '@/components/wg/einstellungen/Section';
+import type { Member, WgSummary } from '@/components/wg/WgContextProvider';
 import type { SessionMember } from '@/core/auth/local-account';
-import { useTranslations } from 'next-intl';
-import { useEffect, useState } from 'react';
 
 interface AccessTabProps {
 	wg: WgSummary;

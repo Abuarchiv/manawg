@@ -1,15 +1,15 @@
 'use client';
 
+import { useLocale } from 'next-intl';
+import { useEffect, useState } from 'react';
 import { isOfflineActionQueued, removeQueuedAction } from '@/core/offline/offline-client';
 import type { OfflineActionType } from '@/core/offline/offline-queue';
 import {
-	type SplitInputResult,
 	buildSplitsFromForm,
+	type SplitInputResult,
 } from '@/features/expenses/expense-split-input';
 import type { ExpenseFormField, ExpenseFormFieldErrors } from '@/features/expenses/expense-types';
 import { useMessage } from '@/shared/i18n/message';
-import { useLocale } from 'next-intl';
-import { useEffect, useState } from 'react';
 import type { ExpenseFormState, ExpensePageContext } from './expense-page-context';
 
 /** Field validation state and the queue/split helpers the expense and template save paths share. */

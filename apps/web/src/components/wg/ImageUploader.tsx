@@ -1,5 +1,8 @@
 'use client';
 
+import { AlertTriangle, ImagePlus, Maximize2, X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -8,9 +11,6 @@ import { PRIVATE_IMAGE_MIME_TYPES } from '@/core/infra/private-image-policy';
 import { isPendingImageToken } from '@/core/offline/offline-images';
 import { type Message, useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
-import { AlertTriangle, ImagePlus, Maximize2, X } from 'lucide-react';
-import { useTranslations } from 'next-intl';
-import { useEffect, useRef, useState } from 'react';
 import { ImagePreviewDialog } from './ImagePreviewDialog';
 import { MAX_UPLOAD_MB, useImageUpload } from './use-image-upload';
 
@@ -73,6 +73,7 @@ export function ImageUploader({
 			<>
 				<div className="relative aspect-[16/9] w-full overflow-hidden rounded-lg border border-border bg-card">
 					{previewSrc ? (
+						// biome-ignore lint/performance/noImgElement: blob preview or storage URL, next/image cannot optimise it
 						<img
 							src={previewSrc}
 							alt={

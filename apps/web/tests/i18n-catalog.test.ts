@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { type MessageFormatElement, TYPE, parse } from '@formatjs/icu-messageformat-parser';
+import { type MessageFormatElement, parse, TYPE } from '@formatjs/icu-messageformat-parser';
 import { createTranslator } from 'use-intl/core';
 
 const { default: messages } = await import('@/shared/i18n/messages');

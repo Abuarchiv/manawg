@@ -1,10 +1,12 @@
+import { type NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { recordAuditEvent } from '@/core/audit';
 import { db, wgMembers, wgs } from '@/core/db';
 import { assertAccountCanAcquireMembership } from '@/core/db/account-deletion';
 import {
+	responseCodec,
 	type WriteFn,
 	type WriteOutcome,
-	responseCodec,
 	withIdempotentWrite,
 } from '@/core/db/idempotent-write';
 import { isUniqueViolation } from '@/core/db/pg-errors';
@@ -19,8 +21,6 @@ import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, clientIpKey, rateLimitFailMode, registerLimiter } from '@/core/rate-limit';
 import { generateShareCode, isValidShareCode } from '@/core/utils/share-code';
 import { WG_NAME_MAX_LENGTH } from '@/shared/lib/limits';
-import { type NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
 
 const WG_NAME_MIN = 1;
 const SHARE_CODE_RETRIES = 5;

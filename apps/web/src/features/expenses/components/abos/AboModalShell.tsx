@@ -1,5 +1,16 @@
 'use client';
 
+import { ArrowLeft } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import {
+	createContext,
+	type ReactNode,
+	type SyntheticEvent,
+	useContext,
+	useEffect,
+	useRef,
+	useState,
+} from 'react';
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -13,17 +24,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft } from 'lucide-react';
-import { useTranslations } from 'next-intl';
-import {
-	type ReactNode,
-	type SyntheticEvent,
-	createContext,
-	useContext,
-	useEffect,
-	useRef,
-	useState,
-} from 'react';
 
 /**
  * The page keeps create and edit permanently mounted and only toggles this flag,

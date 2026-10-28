@@ -1,7 +1,7 @@
 // English entry and auth: landing, discovery pages, sign-in, registration, invitation and password reset.
 // Why: These screens are the first contact for an English-speaking flatmate; German chrome here loses them.
 
-import { type Page, expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 import {
 	FIXTURE_WG,
 	mockNoWgs,

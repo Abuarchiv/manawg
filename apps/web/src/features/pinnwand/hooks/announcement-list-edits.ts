@@ -1,3 +1,4 @@
+import type { MutableRefObject } from 'react';
 import { withReplacedComment, withRestoredFields } from '@/features/pinnwand/announcement-edits';
 import {
 	type CommentOverride,
@@ -9,7 +10,6 @@ import type {
 	Announcement,
 	AnnouncementComment,
 } from '@/features/pinnwand/components/announcement-types';
-import type { MutableRefObject } from 'react';
 import type { AnnouncementPageContext } from './announcement-page-context';
 
 /** Card-level writes to the board shared by the Pinnwand action hooks. */

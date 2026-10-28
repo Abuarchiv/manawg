@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { createIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
 import { readOfflineQueue } from '@/core/offline/offline-client';
@@ -6,7 +7,6 @@ import { shoppingActionError, shoppingDuplicateError } from '@/features/shopping
 import { dropShoppingItems, replaceShoppingItem } from '@/features/shopping/shopping-toggle';
 import { isTempItemId } from '@/features/shopping/shopping-view';
 import type { Message } from '@/shared/i18n/message';
-import { useCallback } from 'react';
 import type { ShoppingActionContext } from './shopping-action-context';
 
 /** An error message for the edit form, or null when the change was saved. */

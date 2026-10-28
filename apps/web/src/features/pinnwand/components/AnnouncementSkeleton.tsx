@@ -1,6 +1,6 @@
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useTranslations } from 'next-intl';
 
 export function AnnouncementSkeleton() {
 	const t = useTranslations('pinnwand.page');

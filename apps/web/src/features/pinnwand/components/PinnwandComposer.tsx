@@ -1,4 +1,7 @@
 'use client';
+import { ChevronDown, ImagePlus, Send } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { type ReactElement, type RefObject, useState } from 'react';
 import {
 	Collapsible,
 	CollapsiblePanel,
@@ -23,9 +26,6 @@ import { ANNOUNCEMENT_KINDS } from '@/features/pinnwand/announcement-workflow';
 import type { AnnouncementKind } from '@/features/pinnwand/components/announcement-types';
 import { CONTENT_MAX } from '@/features/pinnwand/constants';
 import { type Message, useMessage } from '@/shared/i18n/message';
-import { ChevronDown, ImagePlus, Send } from 'lucide-react';
-import { useTranslations } from 'next-intl';
-import { type ReactElement, type RefObject, useState } from 'react';
 
 interface PinnwandComposerProps {
 	open: boolean;

@@ -1,19 +1,19 @@
+import { useLocale, useTranslations } from 'next-intl';
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import {
+	decimalQuantityText,
 	INVENTORY_CATEGORIES,
 	INVENTORY_LIMITS,
 	INVENTORY_UNITS,
 	type InventoryCategory,
 	type InventoryUnit,
-	decimalQuantityText,
 	isBelowThreshold,
 	unitLabelKey,
 } from '@/features/inventory/inventory';
 import type { Locale } from '@/shared/i18n/locale';
 import { type Message, useMessage } from '@/shared/i18n/message';
-import { useLocale, useTranslations } from 'next-intl';
 
 interface InventoryFormFieldsProps {
 	mode: 'create' | 'edit';

@@ -1,5 +1,6 @@
 'use client';
 
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CachedFetchError, CachedFetchResult } from '@/core/hooks/cached-fetch-store';
 import { useCachedFetch } from '@/core/hooks/use-cached-fetch';
 import { captureException } from '@/core/infra/capture-client';
@@ -9,8 +10,7 @@ import {
 	LIST_REFRESH_INTERVAL_MS,
 	useVisibilityPausedInterval,
 } from '@/core/utils/use-visibility-paused-interval';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { type HideLoadError, applyPendingOverlay, loadErrorMessage } from './collection-overlay';
+import { applyPendingOverlay, type HideLoadError, loadErrorMessage } from './collection-overlay';
 
 const DEFAULT_POLL_INTERVAL_MS = LIST_REFRESH_INTERVAL_MS;
 

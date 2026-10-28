@@ -83,7 +83,7 @@ export function pickInitialFocusIndex(
 		if (idx >= 0) return idx;
 	}
 	const firstOfMonth = days.findIndex((d) => d.inCurrentMonth);
-	return firstOfMonth >= 0 ? firstOfMonth : 0;
+	return Math.max(firstOfMonth, 0);
 }
 
 /** Chore due dates keyed by local calendar day. */

@@ -1,11 +1,11 @@
 'use client';
 
+import { useLocale, useTranslations } from 'next-intl';
+import type { ReactNode } from 'react';
 import { Item, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { formatEuroCents } from '@/core/utils/money';
 import { cn } from '@/shared/lib/cn';
-import { useLocale, useTranslations } from 'next-intl';
-import type { ReactNode } from 'react';
 
 interface DebtRowMember {
 	id: string;

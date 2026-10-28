@@ -1,7 +1,7 @@
+import { useEffect, useRef, useState } from 'react';
 import { readDraft, removeDraft, writeDraft } from '@/core/offline/drafts';
 import type { Message } from '@/shared/i18n/message';
 import { haptic } from '@/shared/lib/haptics';
-import { useEffect, useRef, useState } from 'react';
 import type { BubbleMessage } from '../chat-types';
 
 interface BubbleActionsOptions {

@@ -1,3 +1,5 @@
+import { Plus } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -5,8 +7,6 @@ import { Spinner } from '@/components/ui/spinner';
 import { ThumbAction } from '@/components/wg/ThumbAction';
 import { NAME_MAX } from '@/features/shopping/components/constants';
 import { type Message, useMessage } from '@/shared/i18n/message';
-import { Plus } from 'lucide-react';
-import { useTranslations } from 'next-intl';
 
 export function ShoppingAddBar({
 	value,

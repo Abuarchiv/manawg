@@ -1,4 +1,5 @@
 'use client';
+import { useLocale, useTranslations } from 'next-intl';
 import { Empty, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BackLink } from '@/components/wg/BackLink';
@@ -16,7 +17,6 @@ import {
 	useRemindersPage,
 } from '@/features/expenses/hooks/use-reminders-page';
 import { useMessage } from '@/shared/i18n/message';
-import { useLocale, useTranslations } from 'next-intl';
 
 export default function MahnungenPage() {
 	const locale = useLocale();
@@ -161,7 +161,6 @@ export default function MahnungenPage() {
 								className="flex flex-col gap-2"
 								aria-busy="true"
 								aria-label={t('openDebtsLoading')}
-								// biome-ignore lint/a11y/useSemanticElements: role="status" names the loading region without swapping the wrapper element to <output>.
 								role="status"
 							>
 								<div className="divide-y overflow-hidden rounded-xl border">

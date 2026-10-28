@@ -1,3 +1,6 @@
+import { eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { recordAuditEvent } from '@/core/audit';
 import { db, wgMembers, wgs } from '@/core/db';
 import { lockActiveAccountMember } from '@/core/db/account-deletion';
@@ -10,9 +13,6 @@ import { forbidden, notFound } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { withExpensePaymentLock } from '@/features/expenses/server/expense-payments';
 import { WG_NAME_MAX_LENGTH } from '@/shared/lib/limits';
-import { eq } from 'drizzle-orm';
-import { NextResponse } from 'next/server';
-import { z } from 'zod';
 
 const WG_NAME_MIN = 1;
 
@@ -52,7 +52,7 @@ export const PATCH = withWgRoute('api/wg/[code] PATCH', async (req, { code }) =>
 		const { wg, member } = admin;
 		const result = await withTransaction(async (tx) => {
 			const actor = await lockActiveAccountMember(tx, wg.id, member.memberId, admin.authUserId);
-			if (!actor || actor.role !== 'admin') {
+			if (actor?.role !== 'admin') {
 				return { ok: false as const, response: forbidden('not_admin', 'not_admin') };
 			}
 			const [currentWg] = await tx
@@ -89,7 +89,7 @@ export const DELETE = withWgRoute('api/wg/[code] DELETE', async (req, { code }) 
 	const { wg, member } = admin;
 	const result = await withExpensePaymentLock(wg.id, async (tx) => {
 		const actor = await lockActiveAccountMember(tx, wg.id, member.memberId, admin.authUserId);
-		if (!actor || actor.role !== 'admin') {
+		if (actor?.role !== 'admin') {
 			return { ok: false as const, reason: 'not_admin' as const };
 		}
 		return { ok: true as const, deleted: await deleteWgCascade(tx, wg.id) };

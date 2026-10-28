@@ -1,11 +1,14 @@
 'use client';
 
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { useEffect, useRef, useState } from 'react';
 import { useAccountNamePrefill } from '@/app/use-account-name-prefill';
 import { ErrorBox } from '@/components/app/ErrorBox';
 import { CredentialsAuth } from '@/components/auth/CredentialsAuth';
+import { useGoogleSignIn } from '@/components/auth/google-sign-in';
 import { SignUpPrompt } from '@/components/auth/SignUpPrompt';
 import { SocialLoginButtons } from '@/components/auth/SocialLoginButtons';
-import { useGoogleSignIn } from '@/components/auth/google-sign-in';
 import { EntryFrame } from '@/components/entry/EntryFrame';
 import { LegalLinks } from '@/components/entry/LegalLinks';
 import { useConfirmLogoutDiscard } from '@/components/entry/use-confirm-logout-discard';
@@ -17,9 +20,6 @@ import { isAuthPagePath } from '@/core/auth/auth-intent';
 import { safeNextPath } from '@/core/auth/next-path';
 import { invitePath } from '@/core/utils/invite-token';
 import { useMessage } from '@/shared/i18n/message';
-import { useTranslations } from 'next-intl';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
 import { ChooseStep } from './ChooseStep';
 import { CreateStep } from './CreateStep';
 import { InviteStep } from './InviteStep';

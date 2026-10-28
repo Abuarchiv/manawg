@@ -1,10 +1,10 @@
 // Language switch in the entry footer and the settings profile.
 // Why: The choice must persist across reloads, reach the account when signed in, and stay usable at 320px.
 
-import { type Page, expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 import {
-	FIXTURE_WG,
 	dismissOnboarding,
+	FIXTURE_WG,
 	navigateToFeature,
 	setupMember,
 	skipUnlessFixtures,

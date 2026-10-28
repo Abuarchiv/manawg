@@ -1,7 +1,7 @@
+import type { User } from '@supabase/supabase-js';
 import { afterResponse } from '@/core/infra/after-response';
 import { sendMailSafely } from '@/core/mail/send-mail';
 import { renderWelcomeMail } from '@/core/mail/templates';
-import type { User } from '@supabase/supabase-js';
 
 // A session for an account younger than this is the first one: the welcome mail (E1) goes out once.
 const NEW_ACCOUNT_WINDOW_MS = 24 * 60 * 60 * 1000;

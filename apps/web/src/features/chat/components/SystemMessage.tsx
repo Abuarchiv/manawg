@@ -1,9 +1,9 @@
+import { CheckCircle2, Info, LogIn, LogOut, Receipt } from 'lucide-react';
+import Link from 'next/link';
+import { useLocale, useTranslations } from 'next-intl';
+import type { ReactNode } from 'react';
 import { Marker, MarkerContent, MarkerIcon } from '@/components/ui/marker';
 import type { Locale } from '@/shared/i18n/locale';
-import { CheckCircle2, Info, LogIn, LogOut, Receipt } from 'lucide-react';
-import { useLocale, useTranslations } from 'next-intl';
-import Link from 'next/link';
-import type { ReactNode } from 'react';
 import { systemAmountText } from '../chat-system';
 
 interface SystemMessageProps {
@@ -71,13 +71,7 @@ export function SystemMessage({ shareCode, systemKind, payload }: SystemMessageP
 	}
 }
 
-function SystemRow({
-	icon: Icon,
-	text,
-}: {
-	icon: typeof CheckCircle2;
-	text: ReactNode;
-}) {
+function SystemRow({ icon: Icon, text }: { icon: typeof CheckCircle2; text: ReactNode }) {
 	return (
 		<Marker
 			variant="separator"

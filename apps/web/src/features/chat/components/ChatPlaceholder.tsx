@@ -1,3 +1,5 @@
+import { MessageCircle } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -8,8 +10,6 @@ import {
 	EmptyTitle,
 } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
-import { MessageCircle } from 'lucide-react';
-import { useTranslations } from 'next-intl';
 
 /** Three speech-bubble placeholders; deliberately stronger than --muted, which is almost white in light mode. */
 export function ChatBubbleSkeletons() {

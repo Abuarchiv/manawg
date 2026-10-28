@@ -1,5 +1,9 @@
 'use client';
 
+import { Plus } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { SubNav } from '@/components/wg/SubNav';
@@ -8,10 +12,6 @@ import { useWg } from '@/components/wg/WgContextProvider';
 import { InventoryList } from '@/features/inventory/components/InventoryList';
 import { ListSkeleton } from '@/features/inventory/components/ListSkeleton';
 import { useInventoryPage } from '@/features/inventory/hooks/use-inventory-page';
-import { Plus } from 'lucide-react';
-import { useTranslations } from 'next-intl';
-import { useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
 
 /** Delay before the deep-linked item is scrolled into view, so the list has laid out. */
 const SCROLL_DELAY_MS = 80;

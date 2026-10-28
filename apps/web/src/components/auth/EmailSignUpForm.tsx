@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+import { useEffect, useRef, useState } from 'react';
 import { ErrorBox } from '@/components/app/ErrorBox';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -8,20 +10,18 @@ import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import {
 	type AuthFailure,
-	WEAK_PASSWORD_MESSAGE,
 	classifyAuthError,
 	isWeakPasswordError,
+	WEAK_PASSWORD_MESSAGE,
 } from '@/core/auth/password-errors';
 import { type Message, useMessage } from '@/shared/i18n/message';
 import { MEMBER_NAME_MAX_LENGTH } from '@/shared/lib/limits';
-import { useTranslations } from 'next-intl';
-import { useEffect, useRef, useState } from 'react';
 import {
 	type AuthFormProps,
 	type BusyAction,
 	GenericAuthError,
-	NEW_PASSWORD_MIN_LENGTH,
 	isValidEmail,
+	NEW_PASSWORD_MIN_LENGTH,
 	normalizeEmail,
 	useResendCooldown,
 } from './auth-form-shared';
@@ -121,7 +121,7 @@ export function useEmailSignUp({
 		}
 	}
 
-	function useOtherAddress(): void {
+	function pickOtherAddress(): void {
 		clearFeedback();
 		setSentTo(null);
 		setCooldown(0);
@@ -143,15 +143,18 @@ export function useEmailSignUp({
 		resendNotice,
 		submit,
 		resend,
-		useOtherAddress,
+		pickOtherAddress,
 	};
 }
 
 function InboxNotice({
 	auth,
 	busy,
-}: { auth: ReturnType<typeof useEmailSignUp>; busy: BusyAction }) {
-	const { sentTo, cooldown, resendNotice, error, failure, resend, useOtherAddress } = auth;
+}: {
+	auth: ReturnType<typeof useEmailSignUp>;
+	busy: BusyAction;
+}) {
+	const { sentTo, cooldown, resendNotice, error, failure, resend, pickOtherAddress } = auth;
 	const t = useTranslations('auth');
 	const titleRef = useRef<HTMLDivElement>(null);
 	// The form was replaced by this notice, so keyboard and screen reader users land on it.
@@ -182,7 +185,7 @@ function InboxNotice({
 					{busy === 'email-resend' && <Spinner data-icon="inline-start" aria-hidden />}
 					{cooldown > 0 ? t('resendIn', { seconds: cooldown }) : t('signUp.resend')}
 				</Button>
-				<Button type="button" variant="ghost" onClick={useOtherAddress} disabled={busy !== null}>
+				<Button type="button" variant="ghost" onClick={pickOtherAddress} disabled={busy !== null}>
 					{t('otherEmail')}
 				</Button>
 			</div>
@@ -203,7 +206,10 @@ const ERROR_MESSAGES: Record<Exclude<SignUpError, 'generic' | null>, Message> = 
 export function EmailSignUpForm({
 	auth,
 	busy,
-}: { auth: ReturnType<typeof useEmailSignUp>; busy: BusyAction }) {
+}: {
+	auth: ReturnType<typeof useEmailSignUp>;
+	busy: BusyAction;
+}) {
 	const t = useTranslations('auth');
 	const message = useMessage();
 	const {

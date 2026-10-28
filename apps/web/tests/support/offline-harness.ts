@@ -5,7 +5,7 @@ import { mock } from 'node:test';
 import { PendingImageMissingError } from '../../src/core/offline/offline-images.ts';
 import { deferred } from './deferred.ts';
 
-export { PendingImageMissingError, deferred };
+export { deferred, PendingImageMissingError };
 
 export const { OFFLINE_REPLAY_MAX_AGE_MS, RESPONSE_REPLAY_TTL_SECONDS } = await import(
 	'../../src/core/offline/replay-retention.ts'

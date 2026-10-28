@@ -1,17 +1,17 @@
 'use client';
 
+import { useRef, useState } from 'react';
 import { useToast } from '@/components/ui/Toast';
 import { mutationError } from '@/core/http/error-codes';
 import { createIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
 import type { NotificationWarning } from '@/core/notifications/notification-warning';
 import {
+	clampQuantity,
 	type InventoryItemDto,
 	type InventoryMutationItemDto,
-	clampQuantity,
 } from '@/features/inventory/inventory';
 import { type Message, useMessage } from '@/shared/i18n/message';
-import { useRef, useState } from 'react';
 
 type QuantityAction = 'decrement' | 'increment';
 type ConsumeResponse = {

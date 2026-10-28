@@ -1,5 +1,8 @@
 'use client';
 
+import { Check, MoreHorizontal, Pencil, Receipt, Trash2 } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
+import { memo, useState } from 'react';
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -34,9 +37,6 @@ import { formatTimeFull } from '@/core/utils/time';
 import { type ExpenseImpact, getExpenseImpact } from '@/features/expenses/expense-impact';
 import type { Expense, ExpenseSplit } from '@/features/expenses/expense-types';
 import { cn } from '@/shared/lib/cn';
-import { Check, MoreHorizontal, Pencil, Receipt, Trash2 } from 'lucide-react';
-import { useLocale, useTranslations } from 'next-intl';
-import { memo, useState } from 'react';
 import { monoAmount } from './mono-amount';
 
 const IMPACT_KEY = {

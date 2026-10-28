@@ -1,5 +1,8 @@
 'use client';
 
+import { FileInput, Receipt, Search } from 'lucide-react';
+import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
 	Empty,
@@ -16,9 +19,6 @@ import type { ExpenseScope } from '@/features/expenses/expense-filter';
 import type { Expense, ExpenseSplit } from '@/features/expenses/expense-types';
 import { type Message, useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
-import { FileInput, Receipt, Search } from 'lucide-react';
-import { useTranslations } from 'next-intl';
-import Link from 'next/link';
 
 /** Below this many expenses the list is short enough to scan without a filter. */
 const FILTER_MIN_EXPENSES = 6;

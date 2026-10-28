@@ -1,7 +1,7 @@
 import { eurosToCents, parseEuroAmount } from '@/core/utils/amount';
 import {
-	type DebtorShare,
 	buildEqualSplits,
+	type DebtorShare,
 	distributeCentsEqually,
 } from '@/features/expenses/split-math';
 import type { Locale } from '@/shared/i18n/locale';

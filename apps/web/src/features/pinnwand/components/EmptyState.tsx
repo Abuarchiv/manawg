@@ -1,3 +1,5 @@
+import type { LucideIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
 import {
 	Empty,
 	EmptyDescription,
@@ -5,14 +7,16 @@ import {
 	EmptyMedia,
 	EmptyTitle,
 } from '@/components/ui/empty';
-import type { LucideIcon } from 'lucide-react';
-import type { ReactNode } from 'react';
 
 export function EmptyState({
 	icon: Icon,
 	hint,
 	children,
-}: { icon: LucideIcon; hint?: string; children: ReactNode }) {
+}: {
+	icon: LucideIcon;
+	hint?: string;
+	children: ReactNode;
+}) {
 	return (
 		<Empty>
 			<EmptyHeader>

@@ -1,5 +1,8 @@
 'use client';
 
+import { ChevronRight, Circle, Loader2 } from 'lucide-react';
+import Link from 'next/link';
+import { useLocale, useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { useText } from '@/components/wg/use-text';
 import type { TodayImportantItem } from '@/composition/dashboard-insights';
@@ -11,9 +14,6 @@ import {
 } from '@/features/chores/components/ChoreCompleteDialog';
 import type { Locale } from '@/shared/i18n/locale';
 import { cn } from '@/shared/lib/cn';
-import { ChevronRight, Circle, Loader2 } from 'lucide-react';
-import { useLocale, useTranslations } from 'next-intl';
-import Link from 'next/link';
 import { TodayIcon } from './TodayIcon';
 
 export function TodayRow({

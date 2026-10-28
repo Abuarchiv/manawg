@@ -1,5 +1,8 @@
 'use client';
 
+import { Mail } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { useState } from 'react';
 import { isValidEmail, normalizeEmail } from '@/components/auth/auth-form-shared';
 import { Button } from '@/components/ui/button';
 import { Field, FieldLabel } from '@/components/ui/field';
@@ -9,15 +12,15 @@ import { RowNotice, type RowNoticeState } from '@/components/wg/einstellungen/Ro
 import { authFailureMessage } from '@/components/wg/einstellungen/settings-errors';
 import { classifyAuthError } from '@/core/auth/password-errors';
 import { useMessage } from '@/shared/i18n/message';
-import { Mail } from 'lucide-react';
-import { useTranslations } from 'next-intl';
-import { useState } from 'react';
 
 /** E-mail change for password accounts: the new address only takes over once its link is opened. */
 export function EmailChangeRow({
 	current,
 	returnPath,
-}: { current: string | null; returnPath: string }) {
+}: {
+	current: string | null;
+	returnPath: string;
+}) {
 	const t = useTranslations('settings');
 	const m = useMessage();
 	const [open, setOpen] = useState(false);

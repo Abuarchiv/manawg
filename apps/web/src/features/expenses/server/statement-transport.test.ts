@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-	type OutgoingMail,
 	createStatementTransport,
 	maskEmail,
+	type OutgoingMail,
 	readAllowlist,
 } from './statement-transport';
 

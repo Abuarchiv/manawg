@@ -1,4 +1,5 @@
 import { chromium, devices } from '@playwright/test';
+
 const BASE = 'http://localhost:3140';
 const SB = 'http://127.0.0.1:54321';
 // Service key of the local `supabase start` stack: `supabase status -o env` prints it.

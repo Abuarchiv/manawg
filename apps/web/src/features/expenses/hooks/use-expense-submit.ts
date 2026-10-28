@@ -1,5 +1,7 @@
 'use client';
 
+import { useLocale } from 'next-intl';
+import { useRef, useState } from 'react';
 import { resolveIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
 import {
@@ -30,8 +32,6 @@ import {
 import { buildQueuedExpenseAction } from '@/features/expenses/queued-expense-action';
 import type { DebtorShare } from '@/features/expenses/split-math';
 import { type Message, useMessage } from '@/shared/i18n/message';
-import { useLocale } from 'next-intl';
-import { useRef, useState } from 'react';
 import type { ExpenseFormState, ExpensePageContext } from './expense-page-context';
 import { validateExpenseFields } from './expense-submit-validation';
 import { RECEIPT_UPLOAD_FAILED, resolveSubmitImage } from './resolve-submit-image';

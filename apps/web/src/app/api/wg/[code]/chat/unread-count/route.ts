@@ -1,10 +1,10 @@
+import { and, count, eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 import { db, wgChatMessages, wgChatReads, wgMembers } from '@/core/db';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { toChatUnreadCountResponse } from '@/features/chat/chat-unread-count';
 import { buildUnreadChatMessagesWhere } from '@/features/chat/server/chat-unread-query';
-import { and, count, eq } from 'drizzle-orm';
-import { NextResponse } from 'next/server';
 
 export const GET = withWgRoute('chat unread-count GET', async (req, { code }) => {
 	const auth = await requireWgMember(req, code);

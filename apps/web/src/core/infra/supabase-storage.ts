@@ -1,12 +1,12 @@
 import 'server-only';
 
-import { supabaseFetch } from '@/core/auth/supabase-fetch';
 import { createClient } from '@supabase/supabase-js';
+import { supabaseFetch } from '@/core/auth/supabase-fetch';
 import {
-	PRIVATE_IMAGE_MAX_BYTES,
 	hasExactPrivateImageBucketConfig,
 	isAllowedPrivateImageMimeType,
 	isValidPrivateImageSize,
+	PRIVATE_IMAGE_MAX_BYTES,
 } from './private-image-policy';
 
 export class ImageStorageConfigurationError extends Error {

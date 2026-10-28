@@ -156,7 +156,7 @@ export async function runOcrOnImage(
 }
 
 const AMOUNT_PATTERN =
-	/(?<![\p{L}\d.,/+−$£¥\-])(?<!\d[\u00A0\u202F'’])(\d+(?:[.,]\d+)*)(?:\s*(?:€|EUR))?(?![\p{L}\d.,/+−$£¥%\u00A0\u202F'’\-]|\s*(?:USD|CHF|GBP)\b|\s*[$£¥%])/giu;
+	/(?<![\p{L}\d.,/+−$£¥-])(?<!\d[\u00A0\u202F'’])(\d+(?:[.,]\d+)*)(?:\s*(?:€|EUR))?(?![\p{L}\d.,/+−$£¥%\u00A0\u202F'’-]|\s*(?:USD|CHF|GBP)\b|\s*[$£¥%])/giu;
 const DATE_PATTERN = /(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})/;
 const PAYER_PATTERN = /(?:bezahlt von|paid by|von:)\s*([A-Za-zÄÖÜäöüß][A-Za-zÄÖÜäöüß\s-]{1,40})/i;
 

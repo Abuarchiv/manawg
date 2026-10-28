@@ -1,10 +1,10 @@
 // English debts, settlement and reminders page.
 // Why: The balance card, the settle dialogs and /mahnungen must read as English at phone widths.
 
-import { type Page, expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 import {
-	FIXTURE_WG,
 	dismissOnboarding,
+	FIXTURE_WG,
 	mockUnreadCount,
 	navigateToFeature,
 	setupMember,

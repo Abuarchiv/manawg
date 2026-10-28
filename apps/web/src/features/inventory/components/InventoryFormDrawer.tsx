@@ -1,6 +1,7 @@
 'use client';
 
-import { useToast } from '@/components/ui/Toast';
+import { useLocale, useTranslations } from 'next-intl';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
 	AlertDialog,
@@ -21,6 +22,7 @@ import {
 	DrawerTitle,
 } from '@/components/ui/drawer';
 import { Spinner } from '@/components/ui/spinner';
+import { useToast } from '@/components/ui/Toast';
 import { mutationError } from '@/core/http/error-codes';
 import {
 	type PendingIdempotentRequest,
@@ -42,8 +44,6 @@ import {
 import { useQuantityText } from '@/features/inventory/use-quantity-text';
 import type { Locale } from '@/shared/i18n/locale';
 import { type Message, useMessage } from '@/shared/i18n/message';
-import { useLocale, useTranslations } from 'next-intl';
-import { useEffect, useRef, useState } from 'react';
 import { InventoryFormFields } from './InventoryFormFields';
 
 interface InventoryFormDrawerProps {

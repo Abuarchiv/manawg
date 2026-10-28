@@ -1,18 +1,21 @@
 'use client';
 
+import { CheckCircle2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { Spinner } from '@/components/ui/spinner';
 import { type Message, useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
-import { CheckCircle2 } from 'lucide-react';
-import { useTranslations } from 'next-intl';
 
 /** Indeterminate bar with a stronger track; the indicator fills the track and pulses. */
 export function ImportRunningBar({
 	className,
 	decorative = false,
-}: { className?: string; decorative?: boolean }) {
+}: {
+	className?: string;
+	decorative?: boolean;
+}) {
 	const t = useTranslations('expenses-import.progress');
 	return (
 		<Progress

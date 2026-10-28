@@ -1,11 +1,11 @@
 // English shopping list and supplies: rows, drawers, prompts, suggestions, forms and load errors.
 // Why: Every shopping and supplies string ships in two languages; a missed one would show German chrome in English.
 
-import { type BrowserContext, type Page, expect, test } from '@playwright/test';
-import { type InventoryItemDto, groupItemsByCategory } from '../src/features/inventory/inventory';
+import { type BrowserContext, expect, type Page, test } from '@playwright/test';
+import { groupItemsByCategory, type InventoryItemDto } from '../src/features/inventory/inventory';
 import {
-	FIXTURE_WG,
 	dismissOnboarding,
+	FIXTURE_WG,
 	mockUnreadCount,
 	navigateToFeature,
 	setupMember,

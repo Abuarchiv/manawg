@@ -1,5 +1,5 @@
-import { haptic } from '@/shared/lib/haptics';
 import { type PointerEvent, type RefObject, useEffect, useRef } from 'react';
+import { haptic } from '@/shared/lib/haptics';
 
 const LONG_PRESS_MS = 400;
 const SWIPE_TRIGGER_PX = 56;

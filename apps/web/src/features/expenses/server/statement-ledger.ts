@@ -1,6 +1,6 @@
 import 'server-only';
-import { db, statementEmails, withTransaction } from '@/core/db';
 import { and, asc, eq, inArray, lt, notInArray, sql } from 'drizzle-orm';
+import { db, statementEmails, withTransaction } from '@/core/db';
 import type { WgStatementPlan } from './statement-plans';
 
 export const CLAIM_BATCH_SIZE = 100;

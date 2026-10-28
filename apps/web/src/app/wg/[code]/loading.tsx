@@ -1,5 +1,5 @@
-import { Skeleton } from '@/components/ui/skeleton';
 import { useTranslations } from 'next-intl';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const ROWS = ['r0', 'r1', 'r2', 'r3'] as const;
 

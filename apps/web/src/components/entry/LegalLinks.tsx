@@ -1,8 +1,8 @@
+import { useTranslations } from 'next-intl';
 import { LanguageSwitch } from '@/components/app/LanguageSwitch';
 import { richArgument } from '@/components/entry/rich-argument';
 import { cn } from '@/shared/lib/cn';
 import { landingUrl, legalUrl } from '@/shared/lib/landing-url';
-import { useTranslations } from 'next-intl';
 
 const LEGAL_LINKS = [
 	{ href: landingUrl('/ueber-manawg'), label: 'about' },
@@ -25,7 +25,11 @@ export function LegalLinks({
 	consent = false,
 	registration = false,
 	className,
-}: { consent?: boolean; registration?: boolean; className?: string }) {
+}: {
+	consent?: boolean;
+	registration?: boolean;
+	className?: string;
+}) {
 	const t = useTranslations('entry.legal');
 	return (
 		<footer

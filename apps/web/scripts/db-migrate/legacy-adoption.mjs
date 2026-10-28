@@ -15,9 +15,9 @@
 
 import {
 	BASELINE_TAG,
+	hashMigration,
 	MIGRATIONS_SCHEMA,
 	MIGRATIONS_TABLE,
-	hashMigration,
 	readJournalEntry,
 	tableExists,
 } from './migrations.mjs';

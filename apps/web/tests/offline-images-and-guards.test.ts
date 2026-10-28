@@ -2,11 +2,11 @@ import assert from 'node:assert/strict';
 import { afterEach, mock, test } from 'node:test';
 import {
 	type Action,
-	PendingImageMissingError,
 	createAction,
 	deferred,
 	makeQueueModule,
 	makeStorage,
+	PendingImageMissingError,
 	readStoredQueue,
 	restoreGlobals,
 	setGlobal,

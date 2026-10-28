@@ -1,5 +1,7 @@
 'use client';
 
+import { Bell } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/badge';
 import {
 	Empty,
@@ -19,8 +21,6 @@ import { formatEuroCents } from '@/core/utils/money';
 import { formatTimeFull, relativeTimeMessage } from '@/core/utils/time';
 import type { ReminderHistoryItem } from '@/features/expenses/expense-types';
 import { useMessage } from '@/shared/i18n/message';
-import { Bell } from 'lucide-react';
-import { useLocale, useTranslations } from 'next-intl';
 
 interface ReminderHistoryProps {
 	items: ReadonlyArray<ReminderHistoryItem>;

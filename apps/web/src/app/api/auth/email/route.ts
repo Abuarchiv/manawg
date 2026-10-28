@@ -1,7 +1,7 @@
-import { authPost } from '@/core/auth/route-helpers';
-import { emailField, nextField } from '@/core/auth/route-schemas';
 import { AuthSessionMissingError } from '@supabase/supabase-js';
 import { z } from 'zod';
+import { authPost } from '@/core/auth/route-helpers';
+import { emailField, nextField } from '@/core/auth/route-schemas';
 
 const schema = z.object({ email: emailField, next: nextField });
 

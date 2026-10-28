@@ -1,6 +1,6 @@
 // Helpers for the English-locale E2E specs.
 
-import { type BrowserContext, type Page, expect } from '@playwright/test';
+import { type BrowserContext, expect, type Page } from '@playwright/test';
 import { LOCALE_COOKIE } from '../../src/shared/i18n/locale';
 
 /** Sets the English language cookie for every page of `context`. */

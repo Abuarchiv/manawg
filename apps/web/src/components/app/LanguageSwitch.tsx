@@ -1,12 +1,12 @@
 'use client';
 
+import { useLocale } from 'next-intl';
+import { useState } from 'react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { hasSessionCookie } from '@/core/auth/session-hint';
 import { useOnlineStatus } from '@/core/hooks/use-online-status';
 import { type Locale, localeCookie } from '@/shared/i18n/locale';
 import { cn } from '@/shared/lib/cn';
-import { useLocale } from 'next-intl';
-import { useState } from 'react';
 
 // Endonyms are never translated. The group label names both languages so it reads in either.
 const GROUP_LABEL = 'Sprache / Language'; // i18n-ignore bilingual label of the language group

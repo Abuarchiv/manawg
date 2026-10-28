@@ -1,5 +1,9 @@
 'use client';
 
+import { UserX } from 'lucide-react';
+import Link from 'next/link';
+import { useTranslations } from 'next-intl';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
 	AlertDialog,
@@ -17,10 +21,6 @@ import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { Section } from '@/components/wg/einstellungen/Section';
 import { noteSessionExpiry } from '@/core/infra/api-client';
-import { UserX } from 'lucide-react';
-import { useTranslations } from 'next-intl';
-import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
 
 export function AccountDeleteSection() {
 	const t = useTranslations('settings.accountDelete');

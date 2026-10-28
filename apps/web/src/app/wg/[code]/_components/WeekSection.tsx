@@ -1,5 +1,8 @@
 'use client';
 
+import { CalendarDays, ChevronRight, Sparkles } from 'lucide-react';
+import Link from 'next/link';
+import { useLocale, useTranslations } from 'next-intl';
 import { buttonVariants } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
@@ -10,9 +13,6 @@ import { MS_PER_DAY } from '@/core/utils/time';
 import { dateTimeFormat } from '@/shared/i18n/intl';
 import type { Locale } from '@/shared/i18n/locale';
 import { cn } from '@/shared/lib/cn';
-import { CalendarDays, ChevronRight, Sparkles } from 'lucide-react';
-import { useLocale, useTranslations } from 'next-intl';
-import Link from 'next/link';
 
 const AGENDA_VISIBLE = 4;
 
@@ -116,12 +116,7 @@ export function WeekSection({
 			</div>
 
 			{((events.loading && !events.loaded) || (!choresLoaded && !choresFailed)) && (
-				<div
-					className="flex min-w-0 flex-col gap-2"
-					aria-label={t('loading')}
-					// biome-ignore lint/a11y/useSemanticElements: role="status" names the loading region without swapping the wrapper element to <output>.
-					role="status"
-				>
+				<div className="flex min-w-0 flex-col gap-2" aria-label={t('loading')} role="status">
 					<Skeleton className="h-11 w-full bg-foreground/[0.07]" />
 					<Skeleton className="h-11 w-full bg-foreground/[0.07]" />
 				</div>

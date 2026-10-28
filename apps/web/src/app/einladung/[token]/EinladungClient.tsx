@@ -1,5 +1,9 @@
 'use client';
 
+import { ArrowRight } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useAccountNamePrefill } from '@/app/use-account-name-prefill';
 import { BackButton } from '@/components/app/BackButton';
 import { ErrorBox } from '@/components/app/ErrorBox';
@@ -13,10 +17,6 @@ import { Spinner } from '@/components/ui/spinner';
 import { invitePath } from '@/core/utils/invite-token';
 import { cn } from '@/shared/lib/cn';
 import { MEMBER_NAME_MAX_LENGTH } from '@/shared/lib/limits';
-import { ArrowRight } from 'lucide-react';
-import { useTranslations } from 'next-intl';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useInviteJoin } from './use-invite-join';
 
 /** The page behind an invitation link: sign in if needed, show the WG, ask for a name, join. */

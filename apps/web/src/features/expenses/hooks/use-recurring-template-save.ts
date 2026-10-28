@@ -1,5 +1,7 @@
 'use client';
 
+import { useLocale } from 'next-intl';
+import { useRef, useState } from 'react';
 import { resolveIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
 import { removeDraft } from '@/core/offline/drafts';
@@ -16,8 +18,6 @@ import { findQueuedRecurringTemplate } from '@/features/expenses/queued-recurrin
 import { planTemplateSchedule } from '@/features/expenses/recurring-template-plan';
 import type { DebtorShare } from '@/features/expenses/split-math';
 import { useMessage } from '@/shared/i18n/message';
-import { useLocale } from 'next-intl';
-import { useRef, useState } from 'react';
 import type { ExpenseFormState, ExpensePageContext } from './expense-page-context';
 import { validateDescriptionAndAmount } from './expense-submit-validation';
 import type { ExpenseFormSupport } from './use-expense-form-support';

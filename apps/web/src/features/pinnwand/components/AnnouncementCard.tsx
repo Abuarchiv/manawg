@@ -1,5 +1,8 @@
 'use client';
 
+import { Pin } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
+import { memo, type ReactElement, useState } from 'react';
 import {
 	Card,
 	CardAction,
@@ -11,22 +14,19 @@ import {
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { buildDraftKey } from '@/core/offline/drafts';
 import { formatTimeFull, relativeTimeMessage } from '@/core/utils/time';
-import { REACTION_OPTIONS, pickReactionOptions } from '@/features/pinnwand/announcement-card-model';
+import { pickReactionOptions, REACTION_OPTIONS } from '@/features/pinnwand/announcement-card-model';
 import { buildPinnwandPrefill } from '@/features/pinnwand/pinnwand-prefill';
 import type { Locale } from '@/shared/i18n/locale';
 import { type Message, useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
 import type { MemberInfo } from '@/shared/lib/member-types';
-import { Pin } from 'lucide-react';
-import { useLocale, useTranslations } from 'next-intl';
-import { type ReactElement, memo, useState } from 'react';
 import { AnnouncementActionsMenu } from './AnnouncementActionsMenu';
 import { AnnouncementBody } from './AnnouncementBody';
 import { AnnouncementDeleteDialog } from './AnnouncementDeleteDialog';
 import { AnnouncementEditDrawer } from './AnnouncementEditDrawer';
 import { AnnouncementFooter } from './AnnouncementFooter';
-import { actionLabelSubject } from './CommentRow';
 import type { Announcement, AnnouncementKind, ReactionKey } from './announcement-types';
+import { actionLabelSubject } from './CommentRow';
 
 interface AnnouncementCardProps {
 	announcement: Announcement;

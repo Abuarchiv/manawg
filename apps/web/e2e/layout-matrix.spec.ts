@@ -1,10 +1,10 @@
 // Mobile layout matrix at 320px / 200% text.
 // Why: Phone-only product; nothing may overflow at the smallest supported viewport.
 
-import { type Locator, type Page, expect, test } from '@playwright/test';
+import { expect, type Locator, type Page, test } from '@playwright/test';
 import {
-	FIXTURE_WG,
 	dismissOnboarding,
+	FIXTURE_WG,
 	navigateToFeature,
 	setupMember,
 	skipUnlessFixtures,

@@ -1,7 +1,7 @@
+import { useTranslations } from 'next-intl';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CHAT_FRAME_STYLE } from '@/features/chat/chat-frame';
 import { ChatBubbleSkeletons } from '@/features/chat/components/ChatPlaceholder';
-import { useTranslations } from 'next-intl';
 
 // Mirrors page.tsx (frame, tab bar, history, composer) so nothing shifts while loading.
 export default function ChatLoading() {

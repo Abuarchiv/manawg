@@ -1,13 +1,16 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { Button } from '@/components/ui/button';
 
 export function BackButton({
 	onClick,
 	disabled = false,
-}: { onClick: () => void; disabled?: boolean }) {
+}: {
+	onClick: () => void;
+	disabled?: boolean;
+}) {
 	const t = useTranslations('shell');
 	return (
 		<Button

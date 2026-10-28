@@ -1,5 +1,6 @@
 'use client';
 
+import { useLocale, useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/badge';
 import {
 	ItemContent,
@@ -11,7 +12,6 @@ import {
 import { formatEuroCents } from '@/core/utils/money';
 import type { ExpenseSplitShare } from '@/features/expenses/expense-types';
 import type { MemberRef } from '@/shared/lib/member-types';
-import { useLocale, useTranslations } from 'next-intl';
 
 interface SplitReviewProps {
 	members: ReadonlyArray<MemberRef>;

@@ -1,3 +1,6 @@
+import { and, eq, sql } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { recordAuditEvent } from '@/core/audit';
 import { db, wgEvents } from '@/core/db';
 import { rowHoldsPatch } from '@/core/db/row-holds-patch';
@@ -20,9 +23,6 @@ import {
 	eventRelevantUntil,
 	notifyEventChange,
 } from '@/features/events/server/event-change-notification';
-import { and, eq, sql } from 'drizzle-orm';
-import { NextResponse } from 'next/server';
-import { z } from 'zod';
 
 const patchSchema = z.object({
 	title: eventTitleSchema.optional(),

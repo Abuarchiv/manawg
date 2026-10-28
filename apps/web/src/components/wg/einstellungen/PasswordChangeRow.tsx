@@ -1,14 +1,14 @@
 'use client';
 
+import { KeyRound } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { RowNotice, type RowNoticeState } from '@/components/wg/einstellungen/RowNotice';
 import { authFailureMessage } from '@/components/wg/einstellungen/settings-errors';
 import { classifyAuthError } from '@/core/auth/password-errors';
 import { useMessage } from '@/shared/i18n/message';
-import { KeyRound } from 'lucide-react';
-import { useTranslations } from 'next-intl';
-import { useState } from 'react';
 
 /** Password change for password accounts: shows the account e-mail and mails a reset link to it. */
 export function PasswordChangeRow({ email }: { email: string | null }) {

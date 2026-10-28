@@ -6,6 +6,7 @@ export { addMonthsFromAnchor };
 
 /** A due date may lie at most a year back, so a monthly template catches up 13 times at most. */
 const MAX_CATCH_UP_OCCURRENCES = 13;
+
 import { checkPaidByGuard } from '@/features/expenses/paid-by-guard';
 import { validateSplits } from '@/features/expenses/split-math';
 

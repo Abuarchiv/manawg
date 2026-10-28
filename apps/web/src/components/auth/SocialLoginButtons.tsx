@@ -1,11 +1,11 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+import { type ComponentProps, useEffect, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { FieldSet } from '@/components/ui/field';
 import { Spinner } from '@/components/ui/spinner';
-import { useTranslations } from 'next-intl';
-import { type ComponentProps, useEffect, useState } from 'react';
 
 export type SocialProvider = 'google';
 

@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { computeNetBalances } from './debt-reduction';
 import {
-	type SettlementExpenseInput,
 	parseSettlementConfirmation,
+	type SettlementExpenseInput,
 	selectSettlementScope,
 	settlementScopeMatches,
 } from './settlement-scope';

@@ -1,3 +1,4 @@
+import { type MutableRefObject, useRef } from 'react';
 import { mutationError } from '@/core/http/error-codes';
 import { createIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
@@ -12,7 +13,6 @@ import type {
 	ReactionKey,
 } from '@/features/pinnwand/components/announcement-types';
 import { type Message, useMessage } from '@/shared/i18n/message';
-import { type MutableRefObject, useRef } from 'react';
 import { announcementListEdits } from './announcement-list-edits';
 import type {
 	AnnouncementPageContext,

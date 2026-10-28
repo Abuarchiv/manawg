@@ -1,16 +1,18 @@
+import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 import { PublicApp } from '@/components/entry/PublicApp';
 import { isPublicModuleSlug } from '@/components/entry/public-modules';
 import { OG_BASE, TWITTER_BASE } from '@/shared/lib/og';
-import type { Metadata } from 'next';
-import { getTranslations } from 'next-intl/server';
-import { notFound } from 'next/navigation';
 
 // Demo modules duplicate the topic pages on manawg.com; the landing ranks, these pages
 // stay noindex (layout). No canonical here: combined with noindex it is a contradictory
 // signal, and a self-canonical on a noindex page is pointless.
 export async function generateMetadata({
 	params,
-}: { params: Promise<{ module: string }> }): Promise<Metadata> {
+}: {
+	params: Promise<{ module: string }>;
+}): Promise<Metadata> {
 	const { module } = await params;
 	if (!isPublicModuleSlug(module)) notFound();
 	const [t, meta] = await Promise.all([getTranslations('entry.modules'), getTranslations('meta')]);

@@ -3,9 +3,9 @@ import type { Locale } from '@/shared/i18n/locale';
 import type { Message } from '@/shared/i18n/message';
 import {
 	DEFAULT_DURATION_MS,
+	durationMsFor,
 	type EventInput,
 	type EventOccurrence,
-	durationMsFor,
 	expandRecurrence,
 } from './event-recurrence';
 

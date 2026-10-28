@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
 	AlertDialog,
@@ -13,8 +15,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Spinner } from '@/components/ui/spinner';
 import { type Message, useMessage } from '@/shared/i18n/message';
-import { useTranslations } from 'next-intl';
-import { useEffect, useRef, useState } from 'react';
 
 interface AnnouncementDeleteDialogProps {
 	open: boolean;

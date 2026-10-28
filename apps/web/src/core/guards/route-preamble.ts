@@ -1,7 +1,7 @@
+import type { NextResponse } from 'next/server';
 import { badRequest } from '@/core/http/api-errors';
 import type { RouteCtx } from '@/core/infra/api-types';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
-import type { NextResponse } from 'next/server';
 
 /**
  * The share-code step every `/api/wg/[code]/...` handler runs before it

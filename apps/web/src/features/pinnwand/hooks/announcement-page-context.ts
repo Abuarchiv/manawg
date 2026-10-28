@@ -1,3 +1,4 @@
+import type { MutableRefObject } from 'react';
 import type { useToast } from '@/components/ui/Toast';
 import type { Member, WgSummary } from '@/components/wg/WgContextProvider';
 import type { SessionMember } from '@/core/auth/local-account';
@@ -8,7 +9,6 @@ import type {
 	ReactionKey,
 } from '@/features/pinnwand/components/announcement-types';
 import type { Message } from '@/shared/i18n/message';
-import type { MutableRefObject } from 'react';
 
 /** What the Pinnwand mutation hooks share: who acts, where results go, and the loaded board. */
 export interface AnnouncementPageContext {

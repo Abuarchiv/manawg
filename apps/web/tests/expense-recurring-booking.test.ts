@@ -98,7 +98,9 @@ test('a recurring booking advances its template in the booking transaction', asy
 	});
 	assert.equal(state.updates.length, 1);
 	// The anchor day (31st) survives the clamp to February.
-	assert.equal((state.updates[0]?.nextDueAt as Date).toISOString(), '2026-02-28T00:00:00.000Z');
+	const [update] = state.updates;
+	assert.ok(update);
+	assert.equal((update.nextDueAt as Date).toISOString(), '2026-02-28T00:00:00.000Z');
 	assert.ok(outcome.context && 'created' in outcome.context);
 	assert.equal(outcome.context.created.recurringDueAt, DUE);
 	assert.equal(outcome.context.advanced?.nextDueAt.toISOString(), '2026-02-28T00:00:00.000Z');

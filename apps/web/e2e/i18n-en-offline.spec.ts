@@ -1,10 +1,10 @@
 // English offline: the offline page and the offline queue in the data settings.
 // Why: These screens are the fallback when the connection fails; a German string here breaks the calm.
 
-import { type Page, type Route, expect, test } from '@playwright/test';
+import { expect, type Page, type Route, test } from '@playwright/test';
 import {
-	FIXTURE_WG,
 	dismissOnboarding,
+	FIXTURE_WG,
 	navigateToFeature,
 	seedLocalAccount,
 	setupMember,

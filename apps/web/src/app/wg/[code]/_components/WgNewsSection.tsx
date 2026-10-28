@@ -1,5 +1,9 @@
 'use client';
 
+import { ChevronDown, ChevronRight, Megaphone } from 'lucide-react';
+import { useReducedMotion } from 'motion/react';
+import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import {
 	Collapsible,
 	CollapsiblePanel,
@@ -11,10 +15,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { DashboardData } from '@/composition/dashboard-data';
 import { getDashboardAnnouncementHref } from '@/composition/dashboard-links';
 import { cn } from '@/shared/lib/cn';
-import { ChevronDown, ChevronRight, Megaphone } from 'lucide-react';
-import { useReducedMotion } from 'motion/react';
-import { useTranslations } from 'next-intl';
-import Link from 'next/link';
 import { ActivityFeed } from './ActivityFeed';
 
 interface WgNewsSectionProps {
@@ -98,12 +98,7 @@ export function WgNewsSection({
 						) : failed ? (
 							<p className="text-sm text-muted-foreground">{t('failed')}</p>
 						) : (
-							<div
-								className="flex flex-col gap-2"
-								aria-label={t('loading')}
-								// biome-ignore lint/a11y/useSemanticElements: role="status" names the loading region without swapping the wrapper element to <output>.
-								role="status"
-							>
+							<div className="flex flex-col gap-2" aria-label={t('loading')} role="status">
 								<Skeleton className="h-16 w-full bg-foreground/[0.07]" />
 								<Skeleton className="h-11 w-full bg-foreground/[0.07]" />
 								<Skeleton className="h-11 w-full bg-foreground/[0.07]" />

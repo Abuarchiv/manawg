@@ -1,6 +1,6 @@
-import { captureException } from '@/core/infra/observability';
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis/cloudflare';
+import { captureException } from '@/core/infra/observability';
 import { createMemoryLimiter } from './memory-rate-limit';
 
 /**

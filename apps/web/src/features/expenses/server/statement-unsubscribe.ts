@@ -1,9 +1,9 @@
 import 'server-only';
 import {
-	unsubscribeUrl as url,
-	type UnsubscribeToken,
 	disableMailKind,
 	signUnsubscribeToken as signToken,
+	type UnsubscribeToken,
+	unsubscribeUrl as url,
 	verifyUnsubscribeToken as verifyToken,
 } from '@/core/mail/unsubscribe';
 

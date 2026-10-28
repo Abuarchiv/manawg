@@ -1,9 +1,9 @@
+import { useCallback, useRef } from 'react';
 import {
 	type ChoreCompletionOutcome,
 	type ChoreOccurrence,
 	submitChoreCompletion,
 } from '@/features/chores/chore-completion';
-import { useCallback, useRef } from 'react';
 
 interface ChoreCompletionIdentity {
 	memberId: string;

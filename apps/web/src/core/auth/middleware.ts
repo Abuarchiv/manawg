@@ -1,9 +1,9 @@
 import { createServerClient } from '@supabase/ssr';
 import { type NextRequest, NextResponse } from 'next/server';
 import {
+	authCookieOptions,
 	SESSION_COOKIE_MAX_AGE_SECONDS,
 	SESSION_HINT_COOKIE,
-	authCookieOptions,
 	sessionHintCookieOptions,
 } from './cookie-options';
 import { applySessionHint, isAuthTokenCookie } from './session-hint-cookie';

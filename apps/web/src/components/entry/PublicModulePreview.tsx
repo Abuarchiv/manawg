@@ -1,3 +1,7 @@
+import type { LucideIcon } from 'lucide-react';
+import { Check, ChevronRight } from 'lucide-react';
+import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -11,10 +15,6 @@ import {
 	ItemTitle,
 } from '@/components/ui/item';
 import { cn } from '@/shared/lib/cn';
-import type { LucideIcon } from 'lucide-react';
-import { Check, ChevronRight } from 'lucide-react';
-import { useTranslations } from 'next-intl';
-import Link from 'next/link';
 import type { PublicModuleSlug } from './public-modules';
 
 export interface PublicPreviewModule {

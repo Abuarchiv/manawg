@@ -1,15 +1,15 @@
 'use client';
 
-import { LogoMark } from '@/components/ui/LogoMark';
+import { UserRound } from 'lucide-react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { useLayoutEffect, useRef } from 'react';
 import { buttonVariants } from '@/components/ui/button';
+import { LogoMark } from '@/components/ui/LogoMark';
 import { ChatTopBarLink } from '@/components/wg/ChatTopBarLink';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { cn } from '@/shared/lib/cn';
-import { UserRound } from 'lucide-react';
-import { useTranslations } from 'next-intl';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useLayoutEffect, useRef } from 'react';
 
 export function WgAppHeader() {
 	const t = useTranslations('shell.header');

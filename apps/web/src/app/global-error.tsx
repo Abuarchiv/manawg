@@ -10,9 +10,9 @@ import {
 } from '@/components/ui/empty';
 import { captureException } from '@/core/infra/capture-client';
 import { isChunkLoadError, reloadOnStaleChunk } from '@/core/infra/stale-chunk';
-import { LOCALE_COOKIE, type Locale, htmlLang } from '@/shared/i18n/locale';
+import { htmlLang, LOCALE_COOKIE, type Locale } from '@/shared/i18n/locale';
 import { SUPPORT_MAILTO } from '@/shared/lib/support-mailto';
-import { THEME_BOOTSTRAP_SCRIPT, applyStoredTheme } from '@/shared/lib/theme';
+import { applyStoredTheme, THEME_BOOTSTRAP_SCRIPT } from '@/shared/lib/theme';
 import '@/shared/globals.css';
 import { TriangleAlert } from 'lucide-react';
 import { useEffect, useLayoutEffect, useSyncExternalStore } from 'react';
@@ -50,7 +50,10 @@ const subscribeNever = () => () => {};
 export default function GlobalError({
 	error,
 	reset,
-}: { error: Error & { digest?: string }; reset: () => void }) {
+}: {
+	error: Error & { digest?: string };
+	reset: () => void;
+}) {
 	// The server pass renders German; the client picks the reader's language right after hydration.
 	const locale = useSyncExternalStore(subscribeNever, readLocale, () => 'de' as const);
 	const copy = COPY[locale];

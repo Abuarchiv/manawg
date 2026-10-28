@@ -1,3 +1,4 @@
+import { asc, desc, eq } from 'drizzle-orm';
 import {
 	announcementComments,
 	announcements,
@@ -7,7 +8,6 @@ import {
 	wgEvents,
 } from '@/core/db';
 import { feedAuditCondition } from '@/core/db/feed-audit-filter';
-import { asc, desc, eq } from 'drizzle-orm';
 import type { ExportPage } from './export-queries-types';
 
 export async function fetchAnnouncementRows(wgId: string, page: ExportPage) {

@@ -1,5 +1,6 @@
 'use client';
 
+import { useLocale, useTranslations } from 'next-intl';
 import {
 	Field,
 	FieldDescription,
@@ -23,7 +24,6 @@ import { EqualParticipantsPicker } from '@/features/expenses/components/ausgaben
 import { SplitReview } from '@/features/expenses/components/ausgaben/SplitReview';
 import type { AboSplit, MemberOption } from '@/features/expenses/expense-types';
 import type { Locale } from '@/shared/i18n/locale';
-import { useLocale, useTranslations } from 'next-intl';
 
 interface AboSplitFieldsProps {
 	submitting: boolean;

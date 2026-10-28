@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+import type { ReactElement } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
 	AlertDialog,
@@ -15,8 +17,6 @@ import { Spinner } from '@/components/ui/spinner';
 import type { NextAssignee } from '@/features/chores/chore-completion';
 import type { ChoreAction } from '@/features/chores/chore-status';
 import type { Message } from '@/shared/i18n/message';
-import { useTranslations } from 'next-intl';
-import type { ReactElement } from 'react';
 
 /** Trigger wording: Start and cleaning plan use the same labels. */
 export function completeTriggerLabel(title: string, action: ChoreAction): Message {

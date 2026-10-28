@@ -1,6 +1,6 @@
-import { OG_BASE, TWITTER_BASE } from '@/shared/lib/og';
 import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
+import { OG_BASE, TWITTER_BASE } from '@/shared/lib/og';
 import { EntryClient } from './EntryClient';
 
 // Entry page stays noindex (inherited from the layout) and carries no canonical:

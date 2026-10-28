@@ -1,6 +1,6 @@
 import { mutationError } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
-import { type NavigatorWithShare, copyText } from '@/core/utils/clipboard';
+import { copyText, type NavigatorWithShare } from '@/core/utils/clipboard';
 import { INVITE_VALID_DAYS } from '@/core/utils/invite-token';
 import type { Message } from '@/shared/i18n/message';
 

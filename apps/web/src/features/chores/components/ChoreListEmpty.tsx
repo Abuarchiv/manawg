@@ -1,3 +1,5 @@
+import { Sparkles } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import {
 	Empty,
@@ -10,8 +12,6 @@ import {
 import { QUICK_CHORE_TEMPLATES } from '@/features/chores/components/constants';
 import type { ChoreSuggestion } from '@/features/chores/hooks/use-chore-create';
 import { useMessage } from '@/shared/i18n/message';
-import { Sparkles } from 'lucide-react';
-import { useTranslations } from 'next-intl';
 
 /** Shown instead of the list: after a failed first load, or when there are no chores yet. */
 export function ChoreListEmpty({

@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { wgLoadError } from '@/core/guards/load-errors';
 import { usePendingSet } from '@/core/hooks/use-pending-set';
 import { readOfflineQueue } from '@/core/offline/offline-client';
@@ -7,7 +8,6 @@ import { useShoppingAdd } from '@/features/shopping/hooks/use-shopping-add';
 import { overlayQueuedShopping } from '@/features/shopping/shopping-toggle';
 import { isTempItemId } from '@/features/shopping/shopping-view';
 import { type Message, useMessage } from '@/shared/i18n/message';
-import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ShoppingActionContext } from './shopping-action-context';
 import { useShoppingEdit } from './use-shopping-edit';
 import { useShoppingRemoval } from './use-shopping-removal';

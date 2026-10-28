@@ -1,5 +1,7 @@
 'use client';
 
+import { useLocale, useTranslations } from 'next-intl';
+import { type RefObject, useEffect, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { MessageGroup } from '@/components/ui/message';
 import { MessageScrollerItem } from '@/components/ui/message-scroller';
@@ -7,8 +9,6 @@ import { Spinner } from '@/components/ui/spinner';
 import { SYSTEM_MESSAGE_KIND } from '@/core/feed-kinds';
 import type { Locale } from '@/shared/i18n/locale';
 import { type Message, useMessage } from '@/shared/i18n/message';
-import { useLocale, useTranslations } from 'next-intl';
-import { type RefObject, useEffect, useMemo, useRef } from 'react';
 import { chatEditDraftKey } from '../chat-draft';
 import {
 	type ChatReadMarker,

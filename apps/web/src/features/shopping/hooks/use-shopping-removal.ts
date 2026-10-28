@@ -1,3 +1,4 @@
+import { useCallback, useRef, useState } from 'react';
 import { useToast } from '@/components/ui/Toast';
 import type { usePendingSet } from '@/core/hooks/use-pending-set';
 import { apiFetch } from '@/core/infra/api-client';
@@ -7,7 +8,6 @@ import { clearBoughtError, shoppingActionError } from '@/features/shopping/shopp
 import { dropShoppingItems, withoutQueuedFollowUps } from '@/features/shopping/shopping-toggle';
 import { isTempItemId } from '@/features/shopping/shopping-view';
 import { type Message, useMessage } from '@/shared/i18n/message';
-import { useCallback, useRef, useState } from 'react';
 import type { ShoppingActionContext } from './shopping-action-context';
 
 type RemovalContext = Omit<ShoppingActionContext, 'pending' | 'isPending'> &

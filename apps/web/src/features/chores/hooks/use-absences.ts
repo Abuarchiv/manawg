@@ -1,3 +1,5 @@
+import { useTranslations } from 'next-intl';
+import { useRef, useState } from 'react';
 import { isNetworkError } from '@/core/http/error-codes';
 import {
 	type PendingIdempotentRequest,
@@ -6,15 +8,12 @@ import {
 } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
 import { discardQueuedEntry, enqueueOfflineAction } from '@/core/offline/offline-client';
-
 import { createQueuedAbsence, isQueuedCreateId } from '@/core/offline/offline-queue';
 import { endOfBerlinDay, instantAtBerlinWallTime } from '@/core/utils/berlin-day';
 import type { AbsenceInput } from '@/features/chores/absence';
 import { absenceSaveErrorMessage } from '@/features/chores/chore-errors';
 import { pendingKeys } from '@/features/chores/pending-keys';
 import { useMessage } from '@/shared/i18n/message';
-import { useTranslations } from 'next-intl';
-import { useRef, useState } from 'react';
 import type { ChorePageContext } from './chore-page-context';
 import type { QueueEdit } from './use-chore-create';
 

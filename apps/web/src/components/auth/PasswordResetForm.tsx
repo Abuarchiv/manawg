@@ -1,24 +1,24 @@
 'use client';
 
-import { PasswordResetRequest } from '@/components/auth/PasswordResetRequest';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { useEffect, useState } from 'react';
 import { NEW_PASSWORD_MIN_LENGTH } from '@/components/auth/auth-form-shared';
-import { useToast } from '@/components/ui/Toast';
+import { PasswordResetRequest } from '@/components/auth/PasswordResetRequest';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
+import { useToast } from '@/components/ui/Toast';
 import {
-	WEAK_PASSWORD_MESSAGE,
 	isSamePasswordError,
 	isWeakPasswordError,
+	WEAK_PASSWORD_MESSAGE,
 } from '@/core/auth/password-errors';
 import { useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
-import { useTranslations } from 'next-intl';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
 
 type ResetState = 'ready' | 'submitting' | 'unavailable';
 

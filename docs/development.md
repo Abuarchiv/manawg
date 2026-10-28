@@ -103,7 +103,7 @@ dev:fixtures` sets the same for `next dev` on port `3000`: open
 [localhost:3000/wg/MTE8PZAT](http://localhost:3000/wg/MTE8PZAT) to click through a sample WG.
 Sign-in and saving to a database are not available there.
 
-Only `src/app/` (including `src/middleware.ts`) imports `src/fixtures/`, through one seam per
+Only `src/app/` (including `src/proxy.ts`) imports `src/fixtures/`, through one seam per
 entry: `resolveFixtureRequest` in the middleware answers fixture API reads and `POST /api/wg`
 before any route runs, `loadFixtureWgView` feeds the WG layout and chat page,
 and the WG layout hands the first fixture member to the provider as the initial identity, without

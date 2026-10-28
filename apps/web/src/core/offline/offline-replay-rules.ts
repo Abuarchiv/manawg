@@ -1,9 +1,9 @@
 import { createIdempotencyKey, isIdempotencyKey } from '@/core/http/idempotency-key';
 import {
 	type FailureState,
-	IMAGE_REMOVED_STATE,
 	holdsImageReview,
 	holdsServerReview,
+	IMAGE_REMOVED_STATE,
 	noteState,
 	requestFailureState,
 } from './offline-failure-copy';

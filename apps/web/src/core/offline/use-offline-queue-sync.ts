@@ -1,13 +1,13 @@
 'use client';
 
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { subscribeOnline } from '@/core/hooks/use-online-status';
 import { captureException } from '@/core/infra/capture-client';
-import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-	OFFLINE_QUEUE_EVENT,
-	OFFLINE_SYNCED_EVENT,
 	countOfflineActions,
 	getSyncedCountForWg,
+	OFFLINE_QUEUE_EVENT,
+	OFFLINE_SYNCED_EVENT,
 	syncOfflineActions,
 } from './offline-client';
 

@@ -1,5 +1,5 @@
-import { IS_OFFICIAL_INSTANCE, landingUrl } from '@/shared/lib/landing-url';
 import type { MetadataRoute } from 'next';
+import { IS_OFFICIAL_INSTANCE, landingUrl } from '@/shared/lib/landing-url';
 
 // Search engines may crawl everything so they can read the noindex from layout.tsx;
 // the only sitemap of the brand lives on the landing. AI crawlers get the brand from

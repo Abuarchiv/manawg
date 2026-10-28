@@ -1,8 +1,8 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { LogoMark } from '@/components/ui/LogoMark';
 import { SPLASH_DURATION_MS, SPLASH_FADE_MS } from '@/shared/lib/splash';
-import { useEffect, useState } from 'react';
 
 /**
  * Cold-start overlay. It is part of the SSR HTML so the app never flashes underneath;

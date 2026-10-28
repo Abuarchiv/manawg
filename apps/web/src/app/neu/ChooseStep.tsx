@@ -1,5 +1,8 @@
 'use client';
 
+import { Home, KeyRound, Plus } from 'lucide-react';
+import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import {
 	Item,
@@ -11,9 +14,6 @@ import {
 	ItemTitle,
 } from '@/components/ui/item';
 import type { AccountWg } from '@/core/infra/account-wgs';
-import { Home, KeyRound, Plus } from 'lucide-react';
-import { useTranslations } from 'next-intl';
-import Link from 'next/link';
 
 interface ChooseStepProps {
 	accountWgs: AccountWg[];

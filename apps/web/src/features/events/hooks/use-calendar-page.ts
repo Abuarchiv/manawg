@@ -1,3 +1,5 @@
+import { useTranslations } from 'next-intl';
+import { useMemo, useRef, useState } from 'react';
 import { useToast } from '@/components/ui/Toast';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { useCachedFetch } from '@/core/hooks/use-cached-fetch';
@@ -11,9 +13,9 @@ import { apiFetch } from '@/core/infra/api-client';
 import { useSyncedCollection } from '@/core/sync/use-synced-collection';
 import { MS_PER_DAY } from '@/core/utils/time';
 import {
+	buildChoreOccurrences,
 	type CalendarEvent,
 	type ChoreSummary,
-	buildChoreOccurrences,
 	eventToInput,
 } from '@/features/events/calendar-page-model';
 import type { CreateEventPayload } from '@/features/events/components/EventCreateModal';
@@ -32,8 +34,6 @@ import {
 import { postOccurrenceChange } from '@/features/events/occurrence-api';
 import { type Message, useMessage } from '@/shared/i18n/message';
 import { haptic } from '@/shared/lib/haptics';
-import { useTranslations } from 'next-intl';
-import { useMemo, useRef, useState } from 'react';
 
 type CalendarCreateResponse = {
 	event: CalendarEvent;

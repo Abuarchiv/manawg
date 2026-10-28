@@ -1,5 +1,8 @@
 'use client';
 
+import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import Link from 'next/link';
+import { useLocale, useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
@@ -29,9 +32,6 @@ import {
 } from '@/features/expenses/recurring-expenses';
 import { useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
-import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
-import { useLocale, useTranslations } from 'next-intl';
-import Link from 'next/link';
 import { monoAmount } from './mono-amount';
 
 interface RecurringTemplateItemProps {

@@ -1,5 +1,8 @@
 'use client';
 
+import { Check, ChevronDown, Receipt, Repeat2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from 'react';
 import {
 	Collapsible,
 	CollapsiblePanel,
@@ -18,9 +21,6 @@ import {
 import type { RecurringExpense } from '@/features/expenses/expense-types';
 import { useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
-import { Check, ChevronDown, Receipt, Repeat2 } from 'lucide-react';
-import { useTranslations } from 'next-intl';
-import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from 'react';
 
 interface ExpenseExtrasProps {
 	shareCode: string;

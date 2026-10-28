@@ -18,9 +18,9 @@ import { adoptBaseline, assertBaselineSchema, ledgerHasBaseline } from './legacy
 import { acquireMigrationLock, releaseMigrationLock } from './lock.mjs';
 import {
 	BASELINE_TAG,
+	hashMigration,
 	MIGRATIONS_SCHEMA,
 	MIGRATIONS_TABLE,
-	hashMigration,
 	migrationsFolder,
 	tableExists,
 } from './migrations.mjs';

@@ -1,10 +1,10 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/badge';
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { UNKNOWN_NAME } from '@/features/expenses/import-parsers';
-import { useTranslations } from 'next-intl';
 import { SKIP_NAME } from './import-wizard-types';
 
 interface MemberOption {

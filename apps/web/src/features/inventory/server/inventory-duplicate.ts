@@ -1,9 +1,9 @@
 import 'server-only';
+import { and, eq, sql } from 'drizzle-orm';
 import { wgInventoryItems } from '@/core/db';
 import { isUniqueViolation } from '@/core/db/pg-errors';
 import type { DbTransaction } from '@/core/db/transaction';
 import { normalizeForMatch } from '@/features/inventory/inventory';
-import { and, eq, sql } from 'drizzle-orm';
 
 /**
  * Whether another inventory item of the WG already has this name (case and surrounding

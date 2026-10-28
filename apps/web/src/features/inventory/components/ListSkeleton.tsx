@@ -1,7 +1,7 @@
+import { useTranslations } from 'next-intl';
 import { Card, CardContent } from '@/components/ui/card';
 import { ItemContent, ItemEntry, ItemGroup } from '@/components/ui/item';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useTranslations } from 'next-intl';
 
 const SKELETON_KEYS = ['s0', 's1', 's2'];
 

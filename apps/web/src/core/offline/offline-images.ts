@@ -2,9 +2,9 @@
 
 import { createIdempotencyKey } from '@/core/http/idempotency-key';
 import {
-	REQUEST_TIMEOUT_MS,
 	anySignal,
 	noteSessionExpiry,
+	REQUEST_TIMEOUT_MS,
 	readApiErrorCode,
 } from '@/core/infra/api-client';
 import { EXPECTED_MEMBER_ID_HEADER } from '@/shared/lib/member-header';

@@ -1,3 +1,5 @@
+import { and, asc, eq, gt, isNotNull, isNull, or } from 'drizzle-orm';
+import { type NextRequest, NextResponse } from 'next/server';
 import { calendarSubscriptions, wgEvents, wgMembers, wgs } from '@/core/db';
 import { withTransaction } from '@/core/db/transaction';
 import { isUuid } from '@/core/guards/api-auth';
@@ -22,8 +24,6 @@ import {
 	buildEventsWindowFilter,
 	withEventWindowCandidates,
 } from '@/features/events/server/event-reminder-window';
-import { and, asc, eq, gt, isNotNull, isNull, or } from 'drizzle-orm';
-import { type NextRequest, NextResponse } from 'next/server';
 
 const FEED_HORIZON_DAYS = 365;
 // Calendar apps mirror the feed: an occurrence that leaves the feed is deleted

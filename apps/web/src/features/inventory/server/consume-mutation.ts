@@ -1,11 +1,11 @@
 import 'server-only';
+import { and, eq } from 'drizzle-orm';
 import { wgInventoryItems, wgInventoryLog } from '@/core/db';
 import type { WgMember } from '@/core/db/schema';
 import type { WgInventoryItem } from '@/core/db/schema-inventory';
 import type { DbTransaction } from '@/core/db/transaction';
 import { clampQuantity, isBelowThreshold, roundQuantity } from '@/features/inventory/inventory';
 import { pushBelowThresholdItemToShopping } from '@/features/inventory/server/inventory-mutations';
-import { and, eq } from 'drizzle-orm';
 
 export type ConsumeInventoryMutationInput = {
 	itemId: WgInventoryItem['id'];

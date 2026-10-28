@@ -1,3 +1,5 @@
+import { eq } from 'drizzle-orm';
+import { type NextRequest, NextResponse } from 'next/server';
 import { SESSION_HINT_COOKIE } from '@/core/auth/cookie-options';
 import { deleteAuthUser } from '@/core/auth/delete-user';
 import { getSupabaseEnv, hasSupabaseEnv } from '@/core/auth/supabase-env';
@@ -13,8 +15,6 @@ import { serverError, serviceUnavailable } from '@/core/http/api-errors';
 import { afterResponse } from '@/core/infra/after-response';
 import { logApiError } from '@/core/infra/observability';
 import { confirmedEmailOf, sendAccountDeletedMail } from '@/core/mail/account-deleted';
-import { eq } from 'drizzle-orm';
-import { type NextRequest, NextResponse } from 'next/server';
 
 export { PATCH } from './locale-patch';
 

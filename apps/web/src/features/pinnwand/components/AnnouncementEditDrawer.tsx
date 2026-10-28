@@ -1,5 +1,8 @@
 'use client';
 
+import { Check } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { type ReactElement, useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,9 +23,6 @@ import type {
 	AnnouncementKind,
 } from '@/features/pinnwand/components/announcement-types';
 import { CONTENT_MAX } from '@/features/pinnwand/constants';
-import { Check } from 'lucide-react';
-import { useTranslations } from 'next-intl';
-import { type ReactElement, useRef, useState } from 'react';
 
 interface AnnouncementEditDrawerProps {
 	open: boolean;

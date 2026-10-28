@@ -2,9 +2,9 @@ import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import { toCsv } from '../src/composition/export.ts';
 import {
+	claimReplaySlot,
 	type ReplaySlotDependencies,
 	type ReplaySlotResult,
-	claimReplaySlot,
 } from '../src/core/guards/replay-slot.ts';
 import { serverError } from '../src/core/http/api-errors.ts';
 import { readJsonBody } from '../src/core/http/read-json.ts';

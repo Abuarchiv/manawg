@@ -1,5 +1,8 @@
 'use client';
 
+import { ChevronDown } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
 	MessageScroller,
 	MessageScrollerButton,
@@ -10,9 +13,6 @@ import {
 import { useWg } from '@/components/wg/WgContextProvider';
 import { useStableCallback } from '@/core/hooks/use-stable-callback';
 import { haptic } from '@/shared/lib/haptics';
-import { ChevronDown } from 'lucide-react';
-import { useTranslations } from 'next-intl';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { chatDraftKey } from '../chat-draft';
 import { previewBody } from '../chat-pure';
 import { type ChatMessageDto, type ChatReactionRow, useChatRoom } from '../hooks/use-chat-room';

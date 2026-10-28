@@ -1,8 +1,8 @@
 import 'server-only';
+import { createTranslator } from 'use-intl/core';
 import type { Locale } from '@/shared/i18n/locale';
 import { type Message, resolveMessage } from '@/shared/i18n/message';
 import messages from '@/shared/i18n/messages';
-import { createTranslator } from 'use-intl/core';
 
 const TIME_ZONE = 'Europe/Berlin';
 

@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { wgLoadError } from '@/core/guards/load-errors';
 import { useSyncedCollection } from '@/core/sync/use-synced-collection';
 import {
@@ -5,12 +6,11 @@ import {
 	reconcilePendingAnnouncements,
 } from '@/features/pinnwand/announcement-workflow';
 import {
-	type CommentOverrides,
 	applyCommentOverrides as applyOverrides,
+	type CommentOverrides,
 } from '@/features/pinnwand/comment-overrides';
 import type { Announcement } from '@/features/pinnwand/components/announcement-types';
 import { useMessage } from '@/shared/i18n/message';
-import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface AnnouncementsDataParams {
 	wg: { shareCode: string };

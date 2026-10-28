@@ -1,3 +1,5 @@
+import { useTranslations } from 'next-intl';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
 	type PendingIdempotentRequest,
 	resolveIdempotencyKey,
@@ -17,8 +19,7 @@ import {
 	isOfflineActionQueued,
 	removeQueuedAction,
 } from '@/core/offline/offline-client';
-
-import { type OfflineActionType, createQueuedChore } from '@/core/offline/offline-queue';
+import { createQueuedChore, type OfflineActionType } from '@/core/offline/offline-queue';
 import { berlinDayKey } from '@/core/utils/berlin-day';
 import { dueAtForDay } from '@/features/chores/chore-due-date';
 import { choreCreateErrorMessage } from '@/features/chores/chore-errors';
@@ -26,11 +27,8 @@ import type { ChoreFairness } from '@/features/chores/chore-fairness';
 import { CHORE_TITLE_MAX } from '@/features/chores/chore-limits';
 import { computeNextDueAt } from '@/features/chores/chore-recurrence';
 import type { RecurrenceType } from '@/features/chores/components/chore-types';
-
 import { pendingKeys } from '@/features/chores/pending-keys';
 import { useMessage } from '@/shared/i18n/message';
-import { useTranslations } from 'next-intl';
-import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChorePageContext } from './chore-page-context';
 import type { AbsenceFormState } from './use-absences';
 import { useChoreDraftSync, useChoreFormFields } from './use-chore-draft';

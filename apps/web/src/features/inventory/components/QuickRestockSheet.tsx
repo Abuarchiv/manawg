@@ -1,5 +1,8 @@
 'use client';
 
+import { Plus } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
+import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -31,9 +34,6 @@ import { restockItem } from '@/features/inventory/restock-request';
 import { useQuantityText } from '@/features/inventory/use-quantity-text';
 import type { Locale } from '@/shared/i18n/locale';
 import { type Message, useMessage } from '@/shared/i18n/message';
-import { Plus } from 'lucide-react';
-import { useLocale, useTranslations } from 'next-intl';
-import { useRef, useState } from 'react';
 
 interface QuickRestockSheetProps {
 	open: boolean;

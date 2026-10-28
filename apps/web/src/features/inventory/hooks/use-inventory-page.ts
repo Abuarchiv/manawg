@@ -1,17 +1,17 @@
+import { useCallback, useState } from 'react';
 import { wgLoadError } from '@/core/guards/load-errors';
 import { refreshCachedFetch } from '@/core/hooks/use-cached-fetch';
 import { useStableCallback } from '@/core/hooks/use-stable-callback';
 import { isNetworkError } from '@/core/http/error-codes';
 import { useSyncedCollection } from '@/core/sync/use-synced-collection';
 import {
+	groupItemsByCategory,
 	type InventoryCategory,
 	type InventoryItemDto,
 	type InventoryMutationItemDto,
-	groupItemsByCategory,
 	isBelowThreshold,
 } from '@/features/inventory/inventory';
 import { useMessage } from '@/shared/i18n/message';
-import { useCallback, useState } from 'react';
 
 interface InventoryResponse {
 	items: InventoryItemDto[];

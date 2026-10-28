@@ -1,9 +1,10 @@
 'use client';
 
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { useToast } from '@/components/ui/Toast';
+import { useLocale, useTranslations } from 'next-intl';
+import { useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import {
 	ItemContent,
 	ItemDescription,
@@ -11,6 +12,7 @@ import {
 	ItemGroup,
 	ItemTitle,
 } from '@/components/ui/item';
+import { useToast } from '@/components/ui/Toast';
 import { NETWORK_ERROR_CODE } from '@/core/http/error-codes';
 import { createIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
@@ -18,8 +20,6 @@ import { formatEuroCents } from '@/core/utils/money';
 import { formatTimeFull, relativeTimeMessage } from '@/core/utils/time';
 import type { ExpensePaymentInput } from '@/features/expenses/expense-payment-input';
 import { useMessage } from '@/shared/i18n/message';
-import { useLocale, useTranslations } from 'next-intl';
-import { useRef, useState } from 'react';
 import { cashVoidError } from './settlement-errors';
 
 const MAX_LISTED = 5;

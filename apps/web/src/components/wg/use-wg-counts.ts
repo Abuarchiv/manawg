@@ -1,9 +1,9 @@
 'use client';
 
+import { useCallback, useEffect } from 'react';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { useCachedFetch } from '@/core/hooks/use-cached-fetch';
-import { useCallback, useEffect } from 'react';
-import { type DueChoreRef, countOwnDueChores } from './own-due-chores';
+import { countOwnDueChores, type DueChoreRef } from './own-due-chores';
 
 /** The part of the dashboard read (`GET /api/wg/<code>/dashboard`) the segment counts use. */
 interface DashboardCountsRead {

@@ -1,10 +1,10 @@
 // English cleaning rota: groups, status labels, drawers, dialogs, forms, fairness, toasts and errors.
 // Why: Every chores string ships in two languages; a missed one would show German chrome in English.
 
-import { type BrowserContext, type Page, expect, test } from '@playwright/test';
+import { type BrowserContext, expect, type Page, test } from '@playwright/test';
 import {
-	FIXTURE_WG,
 	dismissOnboarding,
+	FIXTURE_WG,
 	mockUnreadCount,
 	navigateToFeature,
 	setupMember,

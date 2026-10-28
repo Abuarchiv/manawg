@@ -1,5 +1,8 @@
 'use client';
 
+import { TriangleAlert as AlertTriangle } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
 	AlertDialog,
@@ -18,9 +21,6 @@ import { apiFetch } from '@/core/infra/api-client';
 import { formatEuroCents } from '@/core/utils/money';
 import type { Locale } from '@/shared/i18n/locale';
 import { useMessage } from '@/shared/i18n/message';
-import { TriangleAlert as AlertTriangle } from 'lucide-react';
-import { useLocale, useTranslations } from 'next-intl';
-import { useEffect, useRef, useState } from 'react';
 
 /** One open debt of the member being moved out, from their own perspective. */
 interface OpenBalanceDto {

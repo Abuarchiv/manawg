@@ -1,10 +1,10 @@
 'use client';
 
+import { RotateCw } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { type Message, useMessage } from '@/shared/i18n/message';
-import { RotateCw } from 'lucide-react';
 
 interface LoadErrorBannerProps {
 	message: string | Message;

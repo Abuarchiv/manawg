@@ -1,18 +1,18 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+import { type FormEvent, useEffect, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { useWg } from '@/components/wg/WgContextProvider';
-import { NETWORK_ERROR_CODE, mutationError } from '@/core/http/error-codes';
+import { mutationError, NETWORK_ERROR_CODE } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
-import { useMessage } from '@/shared/i18n/message';
 import type { Message } from '@/shared/i18n/message';
+import { useMessage } from '@/shared/i18n/message';
 import { MEMBER_NAME_MAX_LENGTH } from '@/shared/lib/limits';
-import { useTranslations } from 'next-intl';
-import { type FormEvent, useEffect, useState } from 'react';
 
 function renameErrorMessage(status: number, error: string): Message {
 	if (status === 409 && error === 'name_taken') return { key: 'settings.memberName.errors.taken' };

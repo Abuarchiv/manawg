@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,14 +18,12 @@ import { Spinner } from '@/components/ui/spinner';
 import { EventFormFields, focusEventField } from '@/features/events/components/EventFormFields';
 import { RecurrenceOptions } from '@/features/events/components/RecurrenceOptions';
 import {
-	type RecurrenceFreq,
 	formatRecurrenceRule,
+	type RecurrenceFreq,
 	toDatetimeLocalValue,
 	validateEventForm,
 } from '@/features/events/events';
 import { type Message, useMessage } from '@/shared/i18n/message';
-import { useTranslations } from 'next-intl';
-import { useEffect, useRef, useState } from 'react';
 
 interface EventCreateModalProps {
 	open: boolean;

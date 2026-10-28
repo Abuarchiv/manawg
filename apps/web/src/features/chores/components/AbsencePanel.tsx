@@ -1,5 +1,8 @@
 'use client';
 
+import Link from 'next/link';
+import { useLocale, useTranslations } from 'next-intl';
+import { useEffect, useState } from 'react';
 import { Collapsible, CollapsiblePanel } from '@/components/animate-ui/primitives/base/collapsible';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -32,9 +35,6 @@ import type { ChoreMember } from '@/features/chores/components/chore-types';
 import { pendingKeys } from '@/features/chores/pending-keys';
 import type { Locale } from '@/shared/i18n/locale';
 import { cn } from '@/shared/lib/cn';
-import { useLocale, useTranslations } from 'next-intl';
-import Link from 'next/link';
-import { useEffect, useState } from 'react';
 
 interface AbsencePanelProps {
 	active: boolean;

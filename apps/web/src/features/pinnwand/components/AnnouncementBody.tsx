@@ -1,14 +1,14 @@
 'use client';
 
+import { CheckCircle2, ChevronDown, ChevronUp, Hand, ImageOff } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { relativeTimeMessage } from '@/core/utils/time';
 import { isLongAnnouncementBody } from '@/features/pinnwand/announcement-card-model';
 import type { Locale } from '@/shared/i18n/locale';
 import { useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
-import { CheckCircle2, ChevronDown, ChevronUp, Hand, ImageOff } from 'lucide-react';
-import { useLocale, useTranslations } from 'next-intl';
-import { useState } from 'react';
 import type { Announcement } from './announcement-types';
 
 interface AnnouncementBodyProps {
@@ -77,6 +77,7 @@ export function AnnouncementBody({
 							<ImageOff aria-hidden />
 						</span>
 					) : (
+						// biome-ignore lint/performance/noImgElement: user-uploaded storage URL, next/image is not used for these
 						<img
 							src={announcement.imageUrl}
 							alt=""

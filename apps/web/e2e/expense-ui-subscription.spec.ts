@@ -3,8 +3,8 @@
 
 import { expect, test } from '@playwright/test';
 import {
-	FIXTURE_WG,
 	dismissOnboarding,
+	FIXTURE_WG,
 	inMinimalMatrix,
 	navigateToFeature,
 	setupMember,

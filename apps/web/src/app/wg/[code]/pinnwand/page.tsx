@@ -1,4 +1,7 @@
 'use client';
+import { Megaphone, Plus } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import type React from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
@@ -10,15 +13,12 @@ import {
 } from '@/features/pinnwand/announcement-workflow';
 import { AnnouncementCard } from '@/features/pinnwand/components/AnnouncementCard';
 import { AnnouncementSkeleton } from '@/features/pinnwand/components/AnnouncementSkeleton';
+import type { Announcement } from '@/features/pinnwand/components/announcement-types';
 import { EmptyState } from '@/features/pinnwand/components/EmptyState';
 import { MyOpenAnnouncements } from '@/features/pinnwand/components/MyOpenAnnouncements';
 import { PinnwandComposer } from '@/features/pinnwand/components/PinnwandComposer';
-import type { Announcement } from '@/features/pinnwand/components/announcement-types';
 import { usePinnwandPage } from '@/features/pinnwand/hooks/use-pinnwand-page';
 import { useMessage } from '@/shared/i18n/message';
-import { Megaphone, Plus } from 'lucide-react';
-import { useTranslations } from 'next-intl';
-import type React from 'react';
 
 export default function PinnwandPage(): React.ReactElement {
 	const t = useTranslations('pinnwand.page');

@@ -3,16 +3,16 @@ import { test } from 'node:test';
 import {
 	CALLER_ID,
 	EXPENSE_ID,
-	PAYER_ID,
-	type Predicate,
-	WG_ID,
 	errorOf,
 	installWgRouteMocks,
 	jsonRequest,
 	matches,
+	PAYER_ID,
+	type Predicate,
 	routeContext,
 	tables,
 	thenableQuery,
+	WG_ID,
 } from './support/expense-route-fakes.ts';
 
 // Expense [id] and split-settle routes against fake databases [suite "expense integrity regressions"]: authorization is rechecked under the payment lock, expenses

@@ -1,5 +1,9 @@
 'use client';
 
+import { Check, MoreHorizontal, Pencil, Receipt, RotateCcw, Trash2 } from 'lucide-react';
+import Link from 'next/link';
+import { useTranslations } from 'next-intl';
+import { memo, useEffect, useRef, useState } from 'react';
 import { Checkbox } from '@/components/animate-ui/components/base/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -31,10 +35,6 @@ import { expensePrefillHref } from '@/features/shopping/shopping-view';
 import { type Message, useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
 import type { MemberInfo } from '@/shared/lib/member-types';
-import { Check, MoreHorizontal, Pencil, Receipt, RotateCcw, Trash2 } from 'lucide-react';
-import { useTranslations } from 'next-intl';
-import Link from 'next/link';
-import { memo, useEffect, useRef, useState } from 'react';
 
 // From this swipe distance to the right, the item counts as checked off (or open again).
 const SWIPE_TOGGLE_PX = 72;

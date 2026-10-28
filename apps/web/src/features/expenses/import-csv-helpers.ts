@@ -1,6 +1,7 @@
 import { eurosToCents } from '@/core/utils/amount';
 import { AMOUNT_MAX_CENTS } from '@/features/expenses/expense-constants';
 import { type RejectedRow, UNKNOWN_NAME } from './import-types';
+
 const MIN_PLAUSIBLE_YEAR = 2000;
 const MAX_PLAUSIBLE_YEAR = 2100;
 const BOM = '﻿';

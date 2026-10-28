@@ -1,6 +1,6 @@
 // Module-level API checks, part 2: crons, pinnwand, absences, chores, members, notifications,
 // activity, export, WG deletion, account deletion. Runs standalone or after modules.mjs.
-import { BASE, CRON, DAY, call, expect, finish, iso, setup, sql } from './modules-lib.mjs';
+import { BASE, CRON, call, DAY, expect, finish, iso, setup, sql } from './modules-lib.mjs';
 
 const { A, B, code, annaId, benId } = await setup();
 

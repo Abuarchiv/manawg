@@ -1,5 +1,9 @@
 'use client';
 
+import { CalendarDays, List, Plus } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -20,10 +24,6 @@ import { EventEditModal } from '@/features/events/components/EventEditModal';
 import { TimeZoneNotice } from '@/features/events/components/TimeZoneNotice';
 import { useCalendarPage } from '@/features/events/hooks/use-calendar-page';
 import { haptic } from '@/shared/lib/haptics';
-import { CalendarDays, List, Plus } from 'lucide-react';
-import { useTranslations } from 'next-intl';
-import { useSearchParams } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
 
 type ViewMode = 'month' | 'list';
 
@@ -165,7 +165,6 @@ export default function KalenderPage() {
 							{t('next30Days')}
 						</h2>
 						{loading ? (
-							// biome-ignore lint/a11y/useSemanticElements: role="status" names the loading region without swapping the wrapper element to <output>.
 							<div
 								role="status"
 								aria-label={t('agendaLoading')}

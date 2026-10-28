@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { safeFailureReason } from '../scripts/db-migrate/failure.mjs';
 import {
-	MigrationLockBusyError,
 	acquireMigrationLock,
+	MigrationLockBusyError,
 	releaseMigrationLock,
 } from '../scripts/db-migrate/lock.mjs';
 

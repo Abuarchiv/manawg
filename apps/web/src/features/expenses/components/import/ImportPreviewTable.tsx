@@ -1,5 +1,6 @@
 'use client';
 
+import { useLocale, useTranslations } from 'next-intl';
 import { Checkbox } from '@/components/animate-ui/components/base/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -14,13 +15,12 @@ import {
 } from '@/components/ui/item';
 import { formatEuroCents } from '@/core/utils/money';
 import {
+	describeParsedExpenseWarning,
 	type ParsedExpense,
 	UNKNOWN_NAME,
-	describeParsedExpenseWarning,
 } from '@/features/expenses/import-parsers';
 import { useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
-import { useLocale, useTranslations } from 'next-intl';
 import { formatImportDate } from './import-date';
 
 interface MemberOption {
@@ -69,6 +69,7 @@ export function ImportPreviewTable({
 				const skipped = skipIndexes.has(index);
 				return (
 					<Item
+						// biome-ignore lint/suspicious/noArrayIndexKey: parsed rows have no id; the list is static and index is the skip key
 						key={`${parsed.date}-${index}`}
 						variant="outline"
 						className={cn('items-start', skipped && '[&>:not([data-slot=checkbox])]:opacity-60')}
@@ -104,6 +105,7 @@ export function ImportPreviewTable({
 							<ul className="flex w-full flex-col gap-1 text-sm" aria-label={t('splitAria')}>
 								{parsed.splits.map((split, splitIndex) => (
 									<li
+										// biome-ignore lint/suspicious/noArrayIndexKey: splits have no id; the list is static and a member can repeat
 										key={`${split.memberName}-${splitIndex}`}
 										className="flex justify-between gap-3"
 									>

@@ -1,15 +1,14 @@
+import { ChevronRight, Trash2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { useCallback, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { readOfflineQueue } from '@/core/offline/offline-client';
 import { ShoppingItemRow } from '@/features/shopping/components/ShoppingItemRow';
 import type { ShoppingItem } from '@/features/shopping/components/shopping-types';
 import type { EditShoppingItem } from '@/features/shopping/hooks/use-shopping-edit';
-import type { MemberInfo } from '@/shared/lib/member-types';
-
 import type { Message } from '@/shared/i18n/message';
-import { ChevronRight, Trash2 } from 'lucide-react';
-import { useTranslations } from 'next-intl';
-import { useCallback, useMemo, useState } from 'react';
+import type { MemberInfo } from '@/shared/lib/member-types';
 
 /** Rows per list rendered initially; "Show more" loads more. */
 const ROW_RENDER_PAGE = 100;

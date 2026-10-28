@@ -1,11 +1,11 @@
 // English noticeboard and chat: cards, menus, dialogs, composers, system notices and load errors.
 // Why: Every noticeboard and chat string ships in two languages; a missed one would show German chrome in English.
 
-import { type BrowserContext, type Page, expect, test } from '@playwright/test';
+import { type BrowserContext, expect, type Page, test } from '@playwright/test';
 import type { Announcement } from '../src/features/pinnwand/components/announcement-types';
 import {
-	FIXTURE_WG,
 	dismissOnboarding,
+	FIXTURE_WG,
 	mockUnreadCount,
 	navigateToFeature,
 	setupMember,
