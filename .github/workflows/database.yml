@@ -1,0 +1,63 @@
+# Database tests against a disposable PostgreSQL: the statement-run ledger, connection handling,
+# private image deletions (pnpm test:db) and the account-deletion suite (test:e2e:account-delete-db).
+# Pull requests that touch the schema, the migrations or the code these tests import, and every
+# push to main.
+name: Database
+on:
+  pull_request:
+    paths:
+      - pnpm-lock.yaml
+      - apps/web/package.json
+      - apps/web/drizzle/**
+      - apps/web/src/core/**
+      - apps/web/src/composition/**
+      - apps/web/src/features/**
+      - apps/web/e2e/account-delete-db*
+      - apps/web/e2e/support/account-delete-db*
+      - apps/web/tests/**
+      - apps/web/scripts/test-db-setup.mjs
+      - .github/workflows/database.yml
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: database-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17@sha256:b8faeff7712663c2773a190181e1246e37e364b887611c04658c28b44e2408fe
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: manawg_test
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
+    env:
+      DB_URL: postgresql://postgres@127.0.0.1:55432/manawg_test
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: 9.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply the migrations
+        run: node apps/web/scripts/test-db-setup.mjs "$DB_URL"
+      - name: Database unit tests
+        run: TEST_DATABASE_URL="$DB_URL" pnpm --filter @manawg/web test:db
+      - name: Account deletion suite
+        run: ACCOUNT_DELETE_TEST_URL="$DB_URL" pnpm --filter @manawg/web test:e2e:account-delete-db
