@@ -16,7 +16,7 @@ import {
 } from '../src/features/events/server/event-reminder-window.ts';
 import { withEnv } from './support/env.ts';
 
-describe('calendar time zones and recurrence windows', () => {
+describe('calendar fixes', () => {
 	const ALL_DAY_EVENT: EventInput = {
 		id: 'all-day-pilot',
 		title: 'Pilottag',
