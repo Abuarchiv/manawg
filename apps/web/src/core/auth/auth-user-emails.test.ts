@@ -28,6 +28,7 @@ test('an Auth outage is unresolved, a missing or unconfirmed user is plainly abs
 					id: UID(1),
 					email: 'a@example.org',
 					email_confirmed_at: '2026-01-01',
+					user_metadata: { locale: 'en' },
 				});
 			if (url.endsWith(UID(2)))
 				return Response.json({ id: UID(2), email: 'b@example.org', email_confirmed_at: null });
@@ -42,6 +43,7 @@ test('an Auth outage is unresolved, a missing or unconfirmed user is plainly abs
 			globalThis.fetch = originalFetch;
 		}
 		assert.deepEqual([...result.emails], [[UID(1), 'a@example.org']]);
+		assert.deepEqual([...result.locales], [[UID(1), 'en']]);
 		assert.deepEqual([...result.unresolved], [UID(4)]);
 	});
 });

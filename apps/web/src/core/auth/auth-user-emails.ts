@@ -1,5 +1,6 @@
 import 'server-only';
 import { createClient } from '@supabase/supabase-js';
+import { isLocale, type Locale } from '@/shared/i18n/locale';
 import { supabaseFetch } from './supabase-fetch';
 
 const LOOKUP_TIMEOUT_MS = 5_000;
@@ -8,6 +9,8 @@ const LOOKUP_CONCURRENCY = 10;
 export interface ConfirmedEmails {
 	/** Confirmed e-mail address per Supabase Auth user id. */
 	emails: Map<string, string>;
+	/** Language stored in the account metadata, for users in `emails` that have one. */
+	locales: Map<string, Locale>;
 	/** Ids Auth did not answer for (timeout, 429, 5xx): unknown, not "has no address". */
 	unresolved: Set<string>;
 }
@@ -22,7 +25,7 @@ export interface ConfirmedEmails {
 export async function loadConfirmedEmails(
 	authUserIds: readonly string[],
 ): Promise<ConfirmedEmails> {
-	const result: ConfirmedEmails = { emails: new Map(), unresolved: new Set() };
+	const result: ConfirmedEmails = { emails: new Map(), locales: new Map(), unresolved: new Set() };
 	if (authUserIds.length === 0) return result;
 	const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
 	const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
@@ -48,7 +51,10 @@ export async function loadConfirmedEmails(
 					continue;
 				}
 				const user = data.user;
-				if (user?.email && user.email_confirmed_at) result.emails.set(id, user.email);
+				if (!user?.email || !user.email_confirmed_at) continue;
+				result.emails.set(id, user.email);
+				const locale = user.user_metadata?.locale;
+				if (isLocale(locale)) result.locales.set(id, locale);
 			} catch {
 				result.unresolved.add(id);
 			}

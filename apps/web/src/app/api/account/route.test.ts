@@ -70,7 +70,7 @@ mock.module('@/core/db', {
 });
 mock.module('@/core/mail/account-deleted', {
 	namedExports: {
-		confirmedEmailOf: async () => null,
+		confirmedRecipientOf: async () => null,
 		sendAccountDeletedMail: async () => undefined,
 	},
 });
