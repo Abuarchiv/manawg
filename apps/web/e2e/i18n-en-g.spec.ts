@@ -52,7 +52,7 @@ async function prepare(
 		calendarEvent({
 			id: 'meeting',
 			title: 'Flat meeting',
-			endsAt: new Date(Date.now() + DAY_MS + 60 * 60 * 1000).toISOString(),
+			endsAt: new Date(Date.now() + DAY_MS + 60 * 1000).toISOString(),
 			location: 'Kitchen',
 			recurrence: 'FREQ=WEEKLY',
 		}),
