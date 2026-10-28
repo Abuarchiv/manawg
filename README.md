@@ -6,7 +6,7 @@ in the browser and installable as a PWA.
 **Use it:** [app.manawg.com](https://app.manawg.com) · **Host it yourself:** [self-hosting guide](docs/self-hosting.md)
 
 [![CI](https://github.com/Abuarchiv/manawg-app/actions/workflows/ci.yml/badge.svg)](https://github.com/Abuarchiv/manawg-app/actions/workflows/ci.yml)
-[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
 <p>
   <img src="docs/screenshots/start.png" width="24%" alt="WG overview">
@@ -54,8 +54,8 @@ Please report vulnerabilities privately, see [SECURITY.md](SECURITY.md).
 
 ## License
 
-The code is licensed under the [GNU Affero General Public License v3.0](LICENSE). If you run a
-modified version as a network service, you must offer its source code to its users.
+The code is licensed under the [Apache License 2.0](LICENSE): use it, change it and build on it,
+also commercially. Keep the license and the [NOTICE](NOTICE) file with your copy.
 
 "ManaWG" and the ManaWG logo are not covered by this license, see [TRADEMARK.md](TRADEMARK.md).
 

@@ -1,6 +1,6 @@
 # Trademark policy
 
-The code of ManaWG is free software under the [AGPL-3.0](LICENSE). The name "ManaWG" and the
+The code of ManaWG is free software under the [Apache License 2.0](LICENSE). The name "ManaWG" and the
 ManaWG logo are not part of that license. This policy says how you may use them.
 
 ## Allowed without asking
