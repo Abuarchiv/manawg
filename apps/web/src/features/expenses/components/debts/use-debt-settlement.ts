@@ -3,11 +3,12 @@
 import { useToast } from '@/components/ui/Toast';
 import { resolveIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
-import { keyUnavailableMessage } from '@/core/offline/offline-copy';
 import { formatEuroCents, normalizeCurrency } from '@/core/utils/money';
 import type { SimplifiedDebt } from '@/features/expenses/debt-reduction';
+import { useMessage } from '@/shared/i18n/message';
+import { useLocale, useTranslations } from 'next-intl';
 import { type MutableRefObject, useRef, useState } from 'react';
-import { settlementErrorMessage } from './settlement-errors';
+import { settlementError } from './settlement-errors';
 
 /** What the server can settle for a debt right now; the confirmation must match it. */
 export interface SettlementPreview {
@@ -58,6 +59,10 @@ export function useDebtSettlement({
 }: DebtSettlementInput) {
 	// Settle errors stay visible inline (dialog or row, role=alert); only the review has no inline spot.
 	const toast = useToast();
+	const locale = useLocale();
+	const t = useTranslations('expenses-debts.settle');
+	const message = useMessage();
+	const money = (cents: number) => formatEuroCents(cents, debt.currency, { locale });
 	const [reviewOpen, setReviewOpen] = useState(false);
 	const [settling, setSettling] = useState(false);
 	const [reviewing, setReviewing] = useState(false);
@@ -84,7 +89,7 @@ export function useDebtSettlement({
 				setPreview(res.data);
 				setReviewOpen(true);
 			} else {
-				toast.error('Prüfung fehlgeschlagen. Versuche es gleich erneut.');
+				toast.error(t('checkFailed'));
 			}
 		} finally {
 			settlingRef.current = false;
@@ -114,8 +119,7 @@ export function useDebtSettlement({
 		};
 		const idempotencyKey = idempotencyKeyFor(settlementRequestRef, body);
 		if (!idempotencyKey) {
-			const message = keyUnavailableMessage('Ausgleich', 'gespeichert');
-			setError(message);
+			setError(t('keyUnavailable'));
 			settlingRef.current = false;
 			setSettling(false);
 			return;
@@ -129,8 +133,7 @@ export function useDebtSettlement({
 			});
 			if (!res.ok) {
 				if (shouldReleaseIdempotencyKey(res.status, res.error)) settlementRequestRef.current = null;
-				const message = settlementErrorMessage(res.error);
-				setError(message);
+				setError(message(settlementError(res.error)));
 				if (res.error === 'settlement_changed') {
 					setPreview(null);
 					setReviewOpen(false);
@@ -141,13 +144,19 @@ export function useDebtSettlement({
 			const { settled, settledCents, remainingCents, reason } = res.data;
 			setPreview(null);
 			setReviewOpen(false);
-			const message =
-				reason === 'no_direct_splits'
-					? 'Diese Verrechnung hat keine direkt zuordenbaren Anteile. Prüfe die ursprünglichen Ausgaben einzeln.'
-					: settled > 0
-						? `Zahlung eingetragen: ${formatEuroCents(settledCents ?? 0, debt.currency)} von ${debt.fromName} an ${debt.toName}.${remainingCents ? ` ${formatEuroCents(remainingCents, debt.currency)} bleiben in der Verrechnung offen.` : ''}`
-						: 'Keine Zahlung eingetragen. Die offenen Ausgaben werden neu geladen.';
-			onSettled(message);
+			const names = { from: debt.fromName, to: debt.toName };
+			if (reason === 'no_direct_splits') onSettled(t('noDirectSplits'));
+			else if (settled > 0 && remainingCents) {
+				onSettled(
+					t('recordedWithRemaining', {
+						amount: money(settledCents ?? 0),
+						remaining: money(remainingCents),
+						...names,
+					}),
+				);
+			} else if (settled > 0)
+				onSettled(t('recorded', { amount: money(settledCents ?? 0), ...names }));
+			else onSettled(t('nothingRecorded'));
 		} finally {
 			settlingRef.current = false;
 			setSettling(false);
@@ -168,8 +177,7 @@ export function useDebtSettlement({
 		};
 		const idempotencyKey = idempotencyKeyFor(cashRequestRef, body);
 		if (!idempotencyKey) {
-			const message = keyUnavailableMessage('Barzahlung', 'gespeichert');
-			setError(message);
+			setError(t('cashKeyUnavailable'));
 			settlingRef.current = false;
 			setSettling(false);
 			return;
@@ -183,8 +191,7 @@ export function useDebtSettlement({
 			});
 			if (!res.ok) {
 				if (shouldReleaseIdempotencyKey(res.status, res.error)) cashRequestRef.current = null;
-				const message = settlementErrorMessage(res.error);
-				setError(message);
+				setError(message(settlementError(res.error)));
 				if (res.error === 'settlement_changed') {
 					setPreview(null);
 					setReviewOpen(false);
@@ -195,7 +202,11 @@ export function useDebtSettlement({
 			setPreview(null);
 			setReviewOpen(false);
 			onSettled(
-				`Barzahlung eingetragen: ${formatEuroCents(res.data.amountCents, debt.currency)} von ${debt.fromName} an ${debt.toName}.`,
+				t('cashRecorded', {
+					amount: money(res.data.amountCents),
+					from: debt.fromName,
+					to: debt.toName,
+				}),
 			);
 		} finally {
 			settlingRef.current = false;

@@ -4,7 +4,7 @@ import { Item, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/i
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { formatEuroCents } from '@/core/utils/money';
 import { cn } from '@/shared/lib/cn';
-import { pluralize } from '@/shared/lib/plural';
+import { useLocale, useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
 
 interface DebtRowMember {
@@ -19,7 +19,7 @@ interface DebtRowProps {
 	amountCents: number;
 	currency: string;
 	oldestDebtAgeDays: number;
-	/** Phrase from this person's point of view: "schuldet dir" instead of their own name. */
+	/** Phrase from this person's point of view: "owes you" instead of their own name. */
 	currentMemberId?: string;
 	action?: ReactNode;
 }
@@ -33,12 +33,12 @@ export function DebtRow({
 	currentMemberId,
 	action,
 }: DebtRowProps) {
+	const locale = useLocale();
+	const t = useTranslations('expenses-debts');
 	const owedToMe = creditor.id === currentMemberId;
 	const iOwe = debtor.id === currentMemberId;
 	const ageLabel =
-		oldestDebtAgeDays >= 1
-			? `seit ${pluralize(oldestDebtAgeDays, 'Tag', 'Tagen')}`
-			: 'heute fällig';
+		oldestDebtAgeDays >= 1 ? t('age.days', { count: oldestDebtAgeDays }) : t('age.dueToday');
 
 	return (
 		<li>
@@ -49,7 +49,12 @@ export function DebtRow({
 				</div>
 				<ItemContent className="min-w-0 basis-28">
 					<ItemTitle className="line-clamp-none break-words">
-						{iOwe ? 'Du schuldest' : `${debtor.name} schuldet`} {owedToMe ? 'dir' : creditor.name}
+						{t('debtLine', {
+							debtorSelf: iOwe ? 'yes' : 'no',
+							debtor: debtor.name,
+							creditorSelf: owedToMe ? 'yes' : 'no',
+							creditor: creditor.name,
+						})}
 					</ItemTitle>
 					<ItemDescription>
 						{ageLabel} ·{' '}
@@ -59,7 +64,7 @@ export function DebtRow({
 								owedToMe ? 'text-settled' : iOwe ? 'text-destructive' : 'text-foreground',
 							)}
 						>
-							{formatEuroCents(amountCents, currency)}
+							{formatEuroCents(amountCents, currency, { locale })}
 						</span>
 					</ItemDescription>
 				</ItemContent>
