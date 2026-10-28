@@ -4,7 +4,13 @@ import { z } from 'zod';
 import { db } from '@/core/db';
 import { requireMember } from '@/core/guards/api-auth';
 import { requireAccount } from '@/core/guards/require-account';
-import { badRequest, notFound, rateLimitResponse, serverError } from '@/core/http/api-errors';
+import {
+	badRequest,
+	noStore,
+	notFound,
+	rateLimitResponse,
+	serverError,
+} from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import {
 	PRIVATE_IMAGE_MAX_BYTES,
@@ -27,11 +33,6 @@ const signSchema = z.object({
 	mimeType: z.enum(PRIVATE_IMAGE_MIME_TYPES),
 	fileSize: z.number().int().positive().max(PRIVATE_IMAGE_MAX_BYTES),
 });
-
-function noStore<T extends NextResponse>(response: T): T {
-	response.headers.set('Cache-Control', 'no-store');
-	return response;
-}
 
 function extFromMime(mime: string): string {
 	const map: Record<string, string> = {
