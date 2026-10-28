@@ -100,7 +100,7 @@ ManaWG ist die WG-App für Ausgaben, Putzplan und Einkaufsliste: komplett kosten
 und ohne Tracking, im Browser und als App installierbar. Nutzen kannst du sie direkt auf
 [app.manawg.com](https://app.manawg.com). Wer die Daten lieber selbst hält, startet ManaWG mit
 Docker auf dem eigenen Rechner oder Server, siehe [oben](#host-it-yourself) und die
-[Anleitung zum Selbsthosten](docs/self-hosting.md) (auf Englisch). Mitmachen ist willkommen:
+[Anleitung zum Selbsthosten](docs/self-hosting.de.md). Mitmachen ist willkommen:
 Fragen und Ideen in den [Discussions](https://github.com/Abuarchiv/manawg-app/discussions),
 Fehler und Wünsche als [Issue](https://github.com/Abuarchiv/manawg-app/issues), auf Deutsch oder
 Englisch.
