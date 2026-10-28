@@ -83,7 +83,7 @@ test.describe('English fixed costs and statement', () => {
 				await expect(page.getByText('12,99')).toHaveCount(0);
 				await expect(page.getByRole('group', { name: 'Filter fixed costs' })).toBeVisible();
 				await expect(page.getByRole('button', { name: 'Paused' })).toBeVisible();
-				await expect(page.getByText(/next on \d\d\/\d\d/).first()).toBeVisible();
+				await expect(page.getByText(/next on \d{1,2} \p{L}{3,4}/u).first()).toBeVisible();
 				await expect(page.getByRole('button', { name: 'Add fixed costs' })).toBeVisible();
 
 				await page

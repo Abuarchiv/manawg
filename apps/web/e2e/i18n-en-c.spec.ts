@@ -232,7 +232,7 @@ test.describe('English debts and reminders', () => {
 	});
 
 	for (const rejection of [
-		{ status: 429, error: 'reminder_cooldown', label: 'Available again later' },
+		{ status: 429, error: 'reminder_cooldown', label: /^Available again (later|in \d+ days?)$/ },
 		{ status: 403, error: 'debtor_opted_out', label: 'Prefers no reminders' },
 	]) {
 		test(`a rejected reminder (${rejection.error}) reads English`, async ({
