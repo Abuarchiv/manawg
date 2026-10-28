@@ -37,6 +37,14 @@ function calendarEvent(overrides: Record<string, unknown>) {
 	};
 }
 
+/** Tomorrow at midday in Berlin (11:00 UTC is 12:00 or 13:00 there), so the event never crosses midnight. */
+function tomorrowMidday(): Date {
+	const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin' }).format(
+		new Date(Date.now() + DAY_MS),
+	);
+	return new Date(`${day}T11:00:00Z`);
+}
+
 function allDayStart(offsetDays: number): string {
 	const date = new Date(Date.now() + offsetDays * DAY_MS);
 	return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())).toISOString();
@@ -52,7 +60,8 @@ async function prepare(
 		calendarEvent({
 			id: 'meeting',
 			title: 'Flat meeting',
-			endsAt: new Date(Date.now() + DAY_MS + 60 * 1000).toISOString(),
+			startsAt: tomorrowMidday().toISOString(),
+			endsAt: new Date(tomorrowMidday().getTime() + 60 * 60 * 1000).toISOString(),
 			location: 'Kitchen',
 			recurrence: 'FREQ=WEEKLY',
 		}),
