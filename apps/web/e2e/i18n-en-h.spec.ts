@@ -1,11 +1,11 @@
 // English shopping list and supplies: rows, drawers, prompts, suggestions, forms and load errors.
 // Why: Every shopping and supplies string ships in two languages; a missed one would show German chrome in English.
 
-import { type BrowserContext, type Page, expect, test } from '@playwright/test';
-import { type InventoryItemDto, groupItemsByCategory } from '../src/features/inventory/inventory';
+import { type BrowserContext, expect, type Page, test } from '@playwright/test';
+import { groupItemsByCategory, type InventoryItemDto } from '../src/features/inventory/inventory';
 import {
-	FIXTURE_WG,
 	dismissOnboarding,
+	FIXTURE_WG,
 	mockUnreadCount,
 	navigateToFeature,
 	setupMember,
@@ -196,9 +196,7 @@ test.describe('English shopping list', () => {
 				await expect(
 					drawer.getByText('“Milk” will be removed permanently. This cannot be undone.'),
 				).toBeVisible();
-				await expect(
-					drawer.getByRole('button', { name: 'Remove for good: Milk' }),
-				).toBeVisible();
+				await expect(drawer.getByRole('button', { name: 'Remove for good: Milk' })).toBeVisible();
 				await expectNoGermanChrome(page);
 				await expectNoSidewaysScroll(page, width);
 			});
@@ -245,7 +243,9 @@ test.describe('English shopping list', () => {
 		const drawer = page.getByRole('dialog');
 		await expect(drawer.getByText('Added by you · Bought by Mina')).toBeVisible();
 		await expect(drawer.getByRole('link', { name: 'Add as expense' })).toBeVisible();
-		await expect(drawer.getByText('You can check the amount and split before saving.')).toBeVisible();
+		await expect(
+			drawer.getByText('You can check the amount and split before saving.'),
+		).toBeVisible();
 		await expect(
 			drawer.getByText('Only the person who added the item or a flat admin can remove it.'),
 		).toHaveCount(0);
@@ -258,7 +258,9 @@ test.describe('English shopping list', () => {
 		const dialog = page.getByRole('alertdialog');
 		await expect(dialog.getByText('Remove bought items?')).toBeVisible();
 		await expect(
-			dialog.getByText('2 bought items are permanently removed for the whole flat. Open items stay.'),
+			dialog.getByText(
+				'2 bought items are permanently removed for the whole flat. Open items stay.',
+			),
 		).toBeVisible();
 		await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeVisible();
 		await expect(dialog.getByRole('button', { name: 'Remove', exact: true })).toBeVisible();

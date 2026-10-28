@@ -1,22 +1,22 @@
 'use client';
 
+import dynamic from 'next/dynamic';
+import { useTranslations } from 'next-intl';
+import { useEffect, useRef, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useWg } from '@/components/wg/WgContextProvider';
 import {
-	type ExportSectionCounts,
 	buildEmptyExportSummary,
 	buildExportSummaryFromCounts,
+	type ExportSectionCounts,
 } from '@/composition/export';
 import { wgLoadError } from '@/core/guards/load-errors';
-import { SETTINGS_TABS, getSettingsTabFromHash } from '@/core/guards/settings-tabs';
 import type { SettingsTab } from '@/core/guards/settings-tabs';
+import { getSettingsTabFromHash, SETTINGS_TABS } from '@/core/guards/settings-tabs';
 import { apiFetch } from '@/core/infra/api-client';
-import { useMessage } from '@/shared/i18n/message';
 import type { Message } from '@/shared/i18n/message';
-import { useTranslations } from 'next-intl';
-import dynamic from 'next/dynamic';
-import { useEffect, useRef, useState } from 'react';
+import { useMessage } from '@/shared/i18n/message';
 
 // Mimics title row plus card so the tab content barely jumps.
 const tabFallback = () => (

@@ -22,7 +22,7 @@ import {
 	shoppingId,
 	splitId,
 } from './fuzz-lib.mjs';
-import { DAY, call, expect, iso, user } from './modules-lib.mjs';
+import { call, DAY, expect, iso, user } from './modules-lib.mjs';
 
 // ---- 1. malformed bodies: 4xx only
 const writes = [

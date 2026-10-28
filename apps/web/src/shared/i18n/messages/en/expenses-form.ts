@@ -40,8 +40,7 @@ export default {
 		replaceKeep: 'Keep draft',
 		replaceDiscard: 'Discard draft',
 		closeTitle: 'Keep draft?',
-		closeBody:
-			'No expense is saved. You can carry on with your draft later or discard it.',
+		closeBody: 'No expense is saved. You can carry on with your draft later or discard it.',
 		closeContinue: 'Keep editing',
 		closeDiscard: 'Discard draft',
 		closeKeep: 'Keep draft',
@@ -140,7 +139,8 @@ export default {
 		withPeriod: '{subject}.',
 		invalidRequest: 'The request was not valid.',
 		splitSumMismatch: 'The amounts do not add up. The shares must match the total exactly.',
-		paidByMustIncludeCaller: 'If you add an expense for someone else, your own share must be more than €0.',
+		paidByMustIncludeCaller:
+			'If you add an expense for someone else, your own share must be more than €0.',
 		notTemplateOwner:
 			'Only the person who created this fixed cost or a flat admin can change or delete it.',
 		recurringNotFound: 'This fixed-cost template no longer exists. Reload the expenses.',
@@ -194,7 +194,8 @@ export default {
 				'The expense was recorded, but the fixed-cost template could not be moved to the next due date. Check it again later.',
 		},
 		split: {
-			invalidShare: 'At least one share is not valid. Enter a valid amount or leave the field empty.',
+			invalidShare:
+				'At least one share is not valid. Enter a valid amount or leave the field empty.',
 			empty: 'The split is empty. Enter at least one amount.',
 			noMembers: 'Choose at least one person involved.',
 		},

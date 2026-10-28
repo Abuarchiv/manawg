@@ -1,5 +1,5 @@
-import { isYearInRange } from '@/shared/lib/limits';
 import { z } from 'zod';
+import { isYearInRange } from '@/shared/lib/limits';
 
 export const CHORE_TITLE_MIN = 1;
 export const CHORE_TITLE_MAX = 120;

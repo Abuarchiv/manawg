@@ -1,5 +1,9 @@
 'use client';
 
+import { ChevronDown, Repeat2 } from 'lucide-react';
+import Link from 'next/link';
+import { useTranslations } from 'next-intl';
+import { useEffect, useRef, useState } from 'react';
 import {
 	Collapsible,
 	CollapsiblePanel,
@@ -27,10 +31,6 @@ import {
 import { ItemGroup } from '@/components/ui/item';
 import type { RecurringExpense } from '@/features/expenses/expense-types';
 import { cn } from '@/shared/lib/cn';
-import { ChevronDown, Repeat2 } from 'lucide-react';
-import { useTranslations } from 'next-intl';
-import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
 import { RecurringTemplateItem } from './RecurringTemplateItem';
 
 interface RecurringExpensesSectionProps {

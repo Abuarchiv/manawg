@@ -1,10 +1,10 @@
 // English expenses: list, row details, form and amount entry.
 // Why: The expenses screens ship in English and English amounts must save the right cents.
 
-import { type Page, expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 import {
-	FIXTURE_WG,
 	dismissOnboarding,
+	FIXTURE_WG,
 	mockUnreadCount,
 	navigateToFeature,
 	setupMember,

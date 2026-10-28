@@ -1,5 +1,8 @@
 'use client';
 
+import { Bell, FileText } from 'lucide-react';
+import Link from 'next/link';
+import { useLocale, useTranslations } from 'next-intl';
 import { buttonVariants } from '@/components/ui/button';
 import {
 	Card,
@@ -17,9 +20,6 @@ import type { SettlementSummary, SimplifiedDebt } from '@/features/expenses/debt
 import type { ExpensePaymentInput } from '@/features/expenses/expense-payment-input';
 import type { Expense } from '@/features/expenses/expense-types';
 import { cn } from '@/shared/lib/cn';
-import { Bell, FileText } from 'lucide-react';
-import { useLocale, useTranslations } from 'next-intl';
-import Link from 'next/link';
 import { CashPaymentList, ownCashPayments } from './CashPaymentList';
 import { SALDO_HEADING_ID, SettlementDebtRow } from './SettlementDebtRow';
 

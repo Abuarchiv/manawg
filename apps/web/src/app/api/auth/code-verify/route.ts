@@ -1,8 +1,8 @@
+import { z } from 'zod';
 import { authPost } from '@/core/auth/route-helpers';
 import { emailField } from '@/core/auth/route-schemas';
 import { queueWelcomeMail } from '@/core/auth/welcome-mail';
 import { requestLocale } from '@/core/i18n/request-locale';
-import { z } from 'zod';
 
 const schema = z.object({ email: emailField, token: z.string().regex(/^\d{4,12}$/) });
 

@@ -1,12 +1,15 @@
+import { and, eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { recordAuditEvent } from '@/core/audit';
 import { db, wgMembers } from '@/core/db';
 import { lockActiveAccountMember } from '@/core/db/account-deletion';
 import {
 	type IdempotentWriteResult,
-	type WriteOutcome,
-	type Rejected as WriteRejection,
 	rejectWrite,
 	responseCodec,
+	type WriteOutcome,
+	type Rejected as WriteRejection,
 	withIdempotentWrite,
 } from '@/core/db/idempotent-write';
 import { TransactionAbort, withTransaction } from '@/core/db/transaction';
@@ -25,8 +28,8 @@ import { readIdempotencyKey } from '@/core/idempotency-store';
 import { checkEnv } from '@/core/infra/env';
 import { logApiError } from '@/core/infra/observability';
 import {
-	NoPushSubscriptionError,
 	dispatchNotification,
+	NoPushSubscriptionError,
 } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, notifTestLimiter, wgWriteLimiter } from '@/core/rate-limit';
 import {
@@ -34,9 +37,6 @@ import {
 	pushEndpointSchema,
 	pushP256dhSchema,
 } from '@/core/validators/push-endpoint';
-import { and, eq } from 'drizzle-orm';
-import { NextResponse } from 'next/server';
-import { z } from 'zod';
 import {
 	type NotificationSettingsUpdate,
 	type NotificationWriter,

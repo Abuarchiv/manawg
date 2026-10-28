@@ -1,10 +1,10 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useToast } from '@/components/ui/Toast';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { apiFetch } from '@/core/infra/api-client';
 import type { NotificationWarning } from '@/core/notifications/notification-warning';
 import { useVisibilityPausedInterval } from '@/core/utils/use-visibility-paused-interval';
 import { type Message, useMessage } from '@/shared/i18n/message';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { explainChatError } from '../chat-errors';
 import {
 	type ChatReadMarker,

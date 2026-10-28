@@ -1,3 +1,6 @@
+import { eq } from 'drizzle-orm';
+import { type NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { createSupabaseServerClient } from '@/core/auth/server';
 import { hasSupabaseEnv } from '@/core/auth/supabase-env';
 import { db, wgMembers } from '@/core/db';
@@ -6,9 +9,6 @@ import { serverError } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { logApiError } from '@/core/infra/observability';
 import type { Locale } from '@/shared/i18n/locale';
-import { eq } from 'drizzle-orm';
-import { type NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
 
 const localeSchema = z.object({ locale: z.enum(['de', 'en']) satisfies z.ZodType<Locale> });
 

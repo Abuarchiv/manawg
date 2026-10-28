@@ -4,8 +4,8 @@ import type { ParsedExpense } from './import-types';
 
 export { parseSplidCsv } from './import-splid-csv';
 export { parseSplitwiseCsv } from './import-splitwise-csv';
-export { UNKNOWN_NAME } from './import-types';
 export type { ImportSource, ParsedExpense, RejectedRow } from './import-types';
+export { UNKNOWN_NAME } from './import-types';
 
 /** Short names differ by one letter all the time (Tom/Tim); only longer ones may be fuzzy. */
 function maxFuzzyDistance(length: number): number {

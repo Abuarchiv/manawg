@@ -12,7 +12,7 @@
  * Usage: node scripts/check-wg-auth-invariant.mjs
  */
 
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 const WG_DIR = join(process.cwd(), 'src', 'app', 'wg');

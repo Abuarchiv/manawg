@@ -1,5 +1,8 @@
 'use client';
 
+import { ArrowRight } from 'lucide-react';
+import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import {
 	Item,
@@ -11,9 +14,6 @@ import {
 } from '@/components/ui/item';
 import type { KnownWg } from '@/core/auth/local-account';
 import { useMessage } from '@/shared/i18n/message';
-import { ArrowRight } from 'lucide-react';
-import { useTranslations } from 'next-intl';
-import Link from 'next/link';
 import { type OfflineStatus, wgHref, wgQueuedActionCountMessage } from './offline-page-helpers';
 
 interface KnownWgsCardProps {

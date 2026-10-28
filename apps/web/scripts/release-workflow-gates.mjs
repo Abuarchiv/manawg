@@ -59,8 +59,7 @@ export function assertPreviewEvent(event) {
 			FULL_SHA.test(deploymentRef) &&
 			deploymentRef.toLowerCase() === deploymentSha.toLowerCase());
 	if (
-		!event ||
-		event.state !== 'success' ||
+		event?.state !== 'success' ||
 		!deploymentRefIsTrusted ||
 		event.environment !== 'Preview' ||
 		event.deploymentCreator !== 'vercel[bot]' ||
@@ -125,8 +124,7 @@ export function assertProductionDispatch({
 export function assertMainCiEvidence({ candidateSha, run, jobs }) {
 	assertExactRevision(candidateSha, candidateSha);
 	if (
-		!run ||
-		run.name !== 'CI' ||
+		run?.name !== 'CI' ||
 		!CI_WORKFLOW_PATH.test(run.path ?? '') ||
 		run.event !== 'push' ||
 		run.head_branch !== 'main' ||
@@ -148,7 +146,7 @@ export function assertMainCiEvidence({ candidateSha, run, jobs }) {
 	}
 	for (const requiredJob of ['validate', 'e2e-fixtures']) {
 		const job = jobs.find((candidate) => candidate?.name === requiredJob);
-		if (!job || job.status !== 'completed' || job.conclusion !== 'success') {
+		if (job?.status !== 'completed' || job.conclusion !== 'success') {
 			throw new Error(`Main CI evidence is missing a successful ${requiredJob} job.`);
 		}
 	}
@@ -165,8 +163,7 @@ export function assertPreviewEvidence({
 	expectedRunId,
 }) {
 	if (
-		!run ||
-		run.name !== 'CI' ||
+		run?.name !== 'CI' ||
 		!CI_WORKFLOW_PATH.test(run.path ?? '') ||
 		run.event !== 'deployment_status' ||
 		run.status !== 'completed' ||
@@ -184,7 +181,7 @@ export function assertPreviewEvidence({
 
 	for (const requiredJob of ['db-supabase-preview', 'e2e-preview']) {
 		const job = jobs?.find((candidate) => candidate?.name === requiredJob);
-		if (!job || job.status !== 'completed' || job.conclusion !== 'success') {
+		if (job?.status !== 'completed' || job.conclusion !== 'success') {
 			throw new Error(`Preview evidence is missing a successful ${requiredJob} job.`);
 		}
 	}

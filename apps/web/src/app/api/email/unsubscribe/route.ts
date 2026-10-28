@@ -1,10 +1,10 @@
+import { type NextRequest, NextResponse } from 'next/server';
 import { rateLimitResponse } from '@/core/http/api-errors';
 import { requestLocale } from '@/core/i18n/request-locale';
 import { serverT } from '@/core/i18n/server-t';
 import { disableMailKind, memberLocale, verifyUnsubscribeToken } from '@/core/mail/unsubscribe';
 import { checkRateLimit, clientIpKey, unsubscribeLimiter } from '@/core/rate-limit';
-import { type Locale, htmlLang } from '@/shared/i18n/locale';
-import { type NextRequest, NextResponse } from 'next/server';
+import { htmlLang, type Locale } from '@/shared/i18n/locale';
 
 const PAGE_HEADERS = {
 	'Content-Type': 'text/html; charset=utf-8',

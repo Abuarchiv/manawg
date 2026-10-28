@@ -1,5 +1,9 @@
 'use client';
 
+import { History, Search } from 'lucide-react';
+import Link from 'next/link';
+import { useLocale, useTranslations } from 'next-intl';
+import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -24,8 +28,8 @@ import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
-import { useWg } from '@/components/wg/WgContextProvider';
 import { useText } from '@/components/wg/use-text';
+import { useWg } from '@/components/wg/WgContextProvider';
 import {
 	type ActivityFilter,
 	type ActivityKind,
@@ -38,10 +42,6 @@ import { dayMonthOptions } from '@/core/utils/time';
 import { dateTimeFormat } from '@/shared/i18n/intl';
 import type { Locale } from '@/shared/i18n/locale';
 import { cn } from '@/shared/lib/cn';
-import { History, Search } from 'lucide-react';
-import { useLocale, useTranslations } from 'next-intl';
-import Link from 'next/link';
-import { useMemo, useState } from 'react';
 import { ActivityFeed } from '../_components/ActivityFeed';
 import { useActivityFeed } from './use-activity-feed';
 
@@ -305,7 +305,6 @@ export default function AktivitaetPage() {
 							)}
 						</div>
 					) : loading ? (
-						// biome-ignore lint/a11y/useSemanticElements: role="status" names the loading region without swapping the wrapper element to <output>.
 						<div className="space-y-2" aria-label={t('loadingLabel')} role="status">
 							<div className="flex justify-center py-2">
 								<Spinner className="motion-reduce:animate-none" aria-hidden />

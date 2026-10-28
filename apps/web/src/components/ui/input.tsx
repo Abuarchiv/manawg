@@ -1,8 +1,8 @@
-import { cn } from '@/shared/lib/cn';
 import { Input as InputPrimitive } from '@base-ui/react/input';
 import { Eye, EyeOff } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import * as React from 'react';
+import { cn } from '@/shared/lib/cn';
 
 // A keyboard labelled "next" must move on, not submit a half-filled form
 // (Apple HIG / Material 3); browsers only change the key's label.

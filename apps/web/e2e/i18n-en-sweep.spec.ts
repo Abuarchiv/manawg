@@ -2,11 +2,11 @@
 // Why: package reports pass each screen alone; this run catches German chrome that only shows when
 // a consumer and its helper belong to different packages. It also pins that German stays German.
 
-import { type Page, expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 import { E2E_INVITE_TOKEN } from '../src/fixtures/data';
 import {
-	FIXTURE_WG,
 	dismissOnboarding,
+	FIXTURE_WG,
 	mockUnreadCount,
 	navigateToFeature,
 	seedLocalAccount,

@@ -1,5 +1,7 @@
 'use client';
 
+import { ChevronDown } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import {
 	Collapsible,
 	CollapsiblePanel,
@@ -17,8 +19,6 @@ import {
 } from '@/components/ui/item';
 import type { ChoreFairness } from '@/features/chores/chore-fairness';
 import type { MemberRef } from '@/shared/lib/member-types';
-import { ChevronDown } from 'lucide-react';
-import { useTranslations } from 'next-intl';
 
 const FAIRNESS_RULES = ['leastLoad', 'recalculated'] as const;
 

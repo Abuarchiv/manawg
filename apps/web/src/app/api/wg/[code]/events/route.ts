@@ -1,3 +1,6 @@
+import { and, asc, eq, gt, or } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { recordAuditEvent } from '@/core/audit';
 import { db, wgEvents } from '@/core/db';
 import { responseCodec, withIdempotentWrite } from '@/core/db/idempotent-write';
@@ -25,17 +28,14 @@ import {
 	eventTitleSchema,
 } from '@/features/events/event-schemas';
 import {
-	type SerializedWgEvent,
 	canonicalRecurrenceRule,
+	type SerializedWgEvent,
 	serializeWgEvent,
 } from '@/features/events/events';
 import {
 	buildEventsWindowFilter,
 	withEventWindowCandidates,
 } from '@/features/events/server/event-reminder-window';
-import { and, asc, eq, gt, or } from 'drizzle-orm';
-import { NextResponse } from 'next/server';
-import { z } from 'zod';
 
 type EventCreateResponseBody = { event: SerializedWgEvent; warning: NotificationWarning };
 const eventCreateCodec = responseCodec();

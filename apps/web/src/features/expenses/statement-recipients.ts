@@ -1,9 +1,9 @@
 import type { Locale } from '@/shared/i18n/locale';
 import type { ExpensePaymentInput } from './expense-payment-input';
 import {
+	buildMonthlyStatement,
 	type MonthlyStatement,
 	type StatementExpense,
-	buildMonthlyStatement,
 } from './monthly-statement';
 
 type StatementSkipReason =

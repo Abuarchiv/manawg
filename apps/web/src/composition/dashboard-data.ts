@@ -3,8 +3,8 @@ import { getAbsentMemberIds } from '@/features/chores/absence';
 import { getChoreStatus } from '@/features/chores/chore-status';
 import { getDueRecurringExpenses } from '@/features/expenses/recurring-expenses';
 import type { Locale } from '@/shared/i18n/locale';
-import { balanceTotalsFromRows, computeMemberBalances } from './dashboard-balances';
 import type { MemberBalance } from './dashboard-balances';
+import { balanceTotalsFromRows, computeMemberBalances } from './dashboard-balances';
 import { type ActivityItem, appendSecondaryActivity, buildPrimaryActivity } from './dashboard-feed';
 import { ACTIVITY_LIMIT, loadPrimaryRows, loadSecondaryRows } from './dashboard-queries';
 import {

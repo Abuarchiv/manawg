@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
 	notificationSaveErrorMessage,
 	notificationTestErrorMessage,
@@ -22,8 +24,6 @@ import {
 } from '@/core/notifications/web-push-errors';
 import { useMessage } from '@/shared/i18n/message';
 import { haptic } from '@/shared/lib/haptics';
-import { useTranslations } from 'next-intl';
-import { useCallback, useEffect, useRef, useState } from 'react';
 
 export interface NotificationStatus {
 	pushOptIn: boolean;

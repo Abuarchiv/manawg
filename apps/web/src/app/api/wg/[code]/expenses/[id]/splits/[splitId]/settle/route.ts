@@ -1,3 +1,5 @@
+import { and, eq, isNotNull, isNull } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 import { recordAuditEvent } from '@/core/audit';
 import { db, expenseSplits, expenses, wgMembers } from '@/core/db';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
@@ -19,8 +21,6 @@ import {
 	withExpensePaymentLock,
 } from '@/features/expenses/server/expense-payments';
 import { notifySettlement } from '@/features/expenses/server/settle-notify';
-import { and, eq, isNotNull, isNull } from 'drizzle-orm';
-import { NextResponse } from 'next/server';
 
 export const POST = withWgRoute<{ id: string; splitId: string }>(
 	'split settle POST',

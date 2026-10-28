@@ -12,7 +12,6 @@ import {
 	holdsServerReview,
 } from './offline-failure-copy';
 
-export { explainOfflineActionFailure };
 export type {
 	OfflineAction,
 	OfflineActionType,
@@ -28,6 +27,7 @@ export {
 	createQueuedShoppingItem,
 	createQueuedShoppingUpdate,
 } from './offline-action-builders';
+export { explainOfflineActionFailure };
 
 export function serializeOfflineAction(action: OfflineAction): string {
 	return JSON.stringify(action);

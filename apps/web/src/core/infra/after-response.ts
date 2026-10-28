@@ -1,5 +1,5 @@
-import { captureException } from '@/core/infra/observability';
 import { after } from 'next/server';
+import { captureException } from '@/core/infra/observability';
 
 /**
  * Runs `task` once the response has been sent. Outside a Next request scope

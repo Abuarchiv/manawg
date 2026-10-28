@@ -2,7 +2,7 @@ import { eurosToCents, formatCentsInput, parseEuroAmount } from '@/core/utils/am
 import type { ExpenseCategory } from '@/features/expenses/expense-categories';
 import { AMOUNT_MAX_EUROS } from '@/features/expenses/expense-constants';
 import { participantsOrAll } from '@/features/expenses/expense-form-draft';
-import { type SplitMode, equalSplitParticipants } from '@/features/expenses/expense-split-input';
+import { equalSplitParticipants, type SplitMode } from '@/features/expenses/expense-split-input';
 import type { AboSplit, MemberOption } from '@/features/expenses/expense-types';
 import { distributeCentsEqually } from '@/features/expenses/split-math';
 import type { Locale } from '@/shared/i18n/locale';

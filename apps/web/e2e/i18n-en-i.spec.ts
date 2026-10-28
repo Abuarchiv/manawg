@@ -1,11 +1,11 @@
 // English noticeboard and chat: cards, menus, dialogs, composers, system notices and load errors.
 // Why: Every noticeboard and chat string ships in two languages; a missed one would show German chrome in English.
 
-import { type BrowserContext, type Page, expect, test } from '@playwright/test';
+import { type BrowserContext, expect, type Page, test } from '@playwright/test';
 import type { Announcement } from '../src/features/pinnwand/components/announcement-types';
 import {
-	FIXTURE_WG,
 	dismissOnboarding,
+	FIXTURE_WG,
 	mockUnreadCount,
 	navigateToFeature,
 	setupMember,
@@ -418,9 +418,7 @@ test.describe('English chat', () => {
 				await expect(picker.getByText('Choose a reaction')).toBeVisible();
 				await expect(picker.getByText('One emoji for this message.')).toBeVisible();
 				await expect(picker.getByRole('button', { name: 'Reaction 👍' })).toBeVisible();
-				await expect(
-					picker.getByRole('textbox', { name: 'Custom emoji' }),
-				).toBeVisible();
+				await expect(picker.getByRole('textbox', { name: 'Custom emoji' })).toBeVisible();
 				await expect(picker.getByRole('button', { name: 'Close' })).toBeVisible();
 				await expectNoGermanChrome(page);
 				await picker.getByRole('button', { name: 'Close' }).click();

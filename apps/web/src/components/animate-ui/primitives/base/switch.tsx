@@ -203,4 +203,4 @@ function SwitchThumb({ pressedWidth = 59, children, ...props }: SwitchThumbProps
 	);
 }
 
-export { Switch, SwitchThumb, type SwitchProps };
+export { Switch, type SwitchProps, SwitchThumb };

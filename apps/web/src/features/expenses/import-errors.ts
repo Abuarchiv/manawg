@@ -1,9 +1,9 @@
 import {
 	type ApiErrorKind,
-	NETWORK_ERROR_CODE,
 	classifyApiError,
 	isRateLimited,
 	isRetryableServerError,
+	NETWORK_ERROR_CODE,
 } from '@/core/http/error-codes';
 import type { Message } from '@/shared/i18n/message';
 

@@ -1,3 +1,4 @@
+import { NextResponse } from 'next/server';
 import { recordAuditEvent } from '@/core/audit';
 import { db } from '@/core/db';
 import { withIdempotentWrite } from '@/core/db/idempotent-write';
@@ -17,19 +18,18 @@ import { readIdempotencyKey } from '@/core/idempotency-store';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { withExpensePaymentLock } from '@/features/expenses/server/expense-payments';
 import {
-	SettlementChangedError,
 	loadSettlementSnapshot,
 	pairIsInWg,
+	SettlementChangedError,
 	settleDebtPair,
 	settlementCodec,
 } from '@/features/expenses/server/settle-debt';
 import { notifySettlement } from '@/features/expenses/server/settle-notify';
 import {
-	type SettlementConfirmation,
 	parseSettlementConfirmation,
+	type SettlementConfirmation,
 	selectSettlementScope,
 } from '@/features/expenses/settlement-scope';
-import { NextResponse } from 'next/server';
 
 function noStore<T extends NextResponse>(response: T): T {
 	response.headers.set('Cache-Control', 'no-store');

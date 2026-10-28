@@ -1,3 +1,6 @@
+import { and, eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { db, recurringExpenses } from '@/core/db';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
@@ -19,9 +22,6 @@ import {
 	editRecurringTemplate,
 	hasEditFields,
 } from '@/features/expenses/server/recurring-template-writes';
-import { and, eq } from 'drizzle-orm';
-import { NextResponse } from 'next/server';
-import { z } from 'zod';
 
 const patchSchema = z.object({
 	description: expenseDescriptionSchema.optional(),

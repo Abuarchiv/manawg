@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+import { useState } from 'react';
 import { ErrorBox } from '@/components/app/ErrorBox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -7,15 +9,13 @@ import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { type AuthFailure, classifyAuthError } from '@/core/auth/password-errors';
-import { useTranslations } from 'next-intl';
-import { useState } from 'react';
 import {
 	type AuthFormProps,
 	type BusyAction,
 	GenericAuthError,
-	SIGN_IN_PASSWORD_MIN_LENGTH,
 	isValidEmail,
 	normalizeEmail,
+	SIGN_IN_PASSWORD_MIN_LENGTH,
 	useResendCooldown,
 } from './auth-form-shared';
 
@@ -147,7 +147,10 @@ export function useEmailAuth({
 export function EmailAuthForm({
 	auth,
 	busy,
-}: { auth: ReturnType<typeof useEmailAuth>; busy: BusyAction }) {
+}: {
+	auth: ReturnType<typeof useEmailAuth>;
+	busy: BusyAction;
+}) {
 	const t = useTranslations('auth');
 	const {
 		email,

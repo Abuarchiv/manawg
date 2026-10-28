@@ -1,10 +1,10 @@
 // English settings: every tab renders English chrome at phone widths.
 // Why: The settings screens are the only place a member sees account, access and data actions.
 
-import { type Locator, type Page, expect, test } from '@playwright/test';
+import { expect, type Locator, type Page, test } from '@playwright/test';
 import {
-	FIXTURE_WG,
 	dismissOnboarding,
+	FIXTURE_WG,
 	navigateToFeature,
 	setupMember,
 	skipUnlessFixtures,

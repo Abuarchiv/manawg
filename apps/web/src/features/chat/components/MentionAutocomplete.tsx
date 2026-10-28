@@ -52,11 +52,9 @@ export function MentionAutocomplete({
 	if (items.length === 0) return null;
 
 	return (
-		// biome-ignore lint/a11y/useFocusableInteractive: WAI-ARIA combobox listbox — focus stays on the parent textarea via aria-activedescendant, so the listbox itself is intentionally not focusable.
 		<ul
 			id={listboxId}
 			ref={listRef}
-			// biome-ignore lint/a11y/useSemanticElements: no native HTML listbox element exists; role="listbox" is the correct ARIA pattern for a combobox popup.
 			// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: <ul role="listbox"> is the standard WAI-ARIA combobox popup markup.
 			role="listbox"
 			aria-label={t('mentionAria')}
@@ -69,7 +67,6 @@ export function MentionAutocomplete({
 					<li
 						key={member.id}
 						id={mentionOptionId(listboxId, index)}
-						// biome-ignore lint/a11y/useSemanticElements: no native HTML option-in-listbox element exists outside <select>; role="option" is the correct ARIA pattern here.
 						// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: <li role="option"> is the standard WAI-ARIA combobox option markup.
 						role="option"
 						aria-selected={isActive}

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 import { formatEuroCents } from '@/core/utils/money';
 import { APP_ORIGIN } from './brand-mail';

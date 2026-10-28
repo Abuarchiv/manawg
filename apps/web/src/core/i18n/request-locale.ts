@@ -1,5 +1,5 @@
-import { LOCALE_COOKIE, type Locale, resolveLocale } from '@/shared/i18n/locale';
 import type { NextRequest } from 'next/server';
+import { LOCALE_COOKIE, type Locale, resolveLocale } from '@/shared/i18n/locale';
 
 export function requestLocale(req: Pick<NextRequest, 'cookies' | 'headers'>): Locale {
 	return resolveLocale({

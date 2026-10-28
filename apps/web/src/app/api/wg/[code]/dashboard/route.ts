@@ -1,8 +1,8 @@
+import { NextResponse } from 'next/server';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { rateLimitResponse } from '@/core/http/api-errors';
 import { requestLocale } from '@/core/i18n/request-locale';
 import { checkRateLimit, dashboardLimiter } from '@/core/rate-limit';
-import { NextResponse } from 'next/server';
 
 export const GET = withWgRoute('dashboard GET', async (req, { code }) => {
 	// Dynamic imports keep DB-backed modules out of the route module's top

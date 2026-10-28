@@ -96,7 +96,9 @@ export default {
 	shoppingBought: { feed: same('bought {name}.') },
 	shoppingReopened: { feed: same('reopened {name}.') },
 	shoppingDeleted: { feed: same('removed {name} from the shopping list.') },
-	shoppingClearedBought: { feed: same('removed {count, plural, one {# bought item} other {# bought items}}.') },
+	shoppingClearedBought: {
+		feed: same('removed {count, plural, one {# bought item} other {# bought items}}.'),
+	},
 	wgCreated: { feed: same('created the flat.') },
 	wgUpdated: { feed: same('changed the flat settings.') },
 	wgInviteCreated: { feed: same('created an invitation.') },

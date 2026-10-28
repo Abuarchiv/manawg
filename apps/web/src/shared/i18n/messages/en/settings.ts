@@ -46,7 +46,8 @@ export default {
 		},
 	},
 	authFailure: {
-		credentials: 'The email address or password is incorrect. Check what you entered or reset your password.',
+		credentials:
+			'The email address or password is incorrect. Check what you entered or reset your password.',
 		unconfirmed:
 			'Your email address is not confirmed yet. Open the link in the confirmation email, then sign in.',
 		rateLimit: 'Too many attempts. Wait a few minutes and try again.',

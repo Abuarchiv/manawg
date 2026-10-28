@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+import type { ReactNode } from 'react';
 import { Switch } from '@/components/animate-ui/components/base/switch';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -10,8 +12,6 @@ import {
 	EVENT_TITLE_MAX,
 } from '@/features/events/event-limits';
 import { normalizeEventDateTime } from '@/features/events/events';
-import { useTranslations } from 'next-intl';
-import type { ReactNode } from 'react';
 
 interface EventFormFieldsProps {
 	idPrefix: string;

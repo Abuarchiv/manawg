@@ -1,6 +1,6 @@
 import 'server-only';
-import { db, mailLog } from '@/core/db';
 import { and, eq, inArray, lt } from 'drizzle-orm';
+import { db, mailLog } from '@/core/db';
 
 const DIGEST_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
 const PURGE_BATCH_SIZE = 5000;

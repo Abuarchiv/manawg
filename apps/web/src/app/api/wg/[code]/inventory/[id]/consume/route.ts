@@ -1,3 +1,5 @@
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { recordAuditEvent } from '@/core/audit';
 import { bodyCodec, rejectWrite, withIdempotentWrite } from '@/core/db/idempotent-write';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
@@ -12,8 +14,6 @@ import type { NotificationWarning } from '@/core/notifications/notification-warn
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { INVENTORY_LIMITS } from '@/features/inventory/inventory';
 import { consumeInventoryMutation } from '@/features/inventory/server/consume-mutation';
-import { NextResponse } from 'next/server';
-import { z } from 'zod';
 
 const consumeSchema = z.object({
 	delta: z

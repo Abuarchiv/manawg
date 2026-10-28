@@ -1,12 +1,11 @@
 'use client';
 
-import { cn } from '@/shared/lib/cn';
 import { MessageScroller as MessageScrollerPrimitive } from '@shadcn/react/message-scroller';
-import type * as React from 'react';
-
-import { Button } from '@/components/ui/button';
 import { ArrowDownIcon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import type * as React from 'react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/shared/lib/cn';
 
 function MessageScrollerProvider(
 	props: React.ComponentProps<typeof MessageScrollerPrimitive.Provider>,
@@ -115,10 +114,10 @@ function MessageScrollerButton({
 }
 
 export {
-	MessageScrollerProvider,
 	MessageScroller,
-	MessageScrollerViewport,
+	MessageScrollerButton,
 	MessageScrollerContent,
 	MessageScrollerItem,
-	MessageScrollerButton,
+	MessageScrollerProvider,
+	MessageScrollerViewport,
 };

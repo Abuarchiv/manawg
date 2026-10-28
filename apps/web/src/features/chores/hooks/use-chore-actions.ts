@@ -1,3 +1,5 @@
+import { useLocale, useTranslations } from 'next-intl';
+import { useState } from 'react';
 import { apiFetch } from '@/core/infra/api-client';
 import { discardQueuedEntry } from '@/core/offline/offline-client';
 import { isQueuedCreateId } from '@/core/offline/offline-queue';
@@ -5,8 +7,7 @@ import { parseValidDate } from '@/core/utils/time';
 import { getAbsentMemberIds } from '@/features/chores/absence';
 import { choreCompletionFeedback } from '@/features/chores/chore-completion';
 import type { ChoreEditChanges } from '@/features/chores/chore-edit';
-import { choreEditErrorMessage } from '@/features/chores/chore-errors';
-import { choreActionErrorMessage } from '@/features/chores/chore-errors';
+import { choreActionErrorMessage, choreEditErrorMessage } from '@/features/chores/chore-errors';
 import { chooseNextAvailableMember } from '@/features/chores/chore-fairness';
 import { computeNextDueAt } from '@/features/chores/chore-recurrence';
 import { getChoreStatus } from '@/features/chores/chore-status';
@@ -14,8 +15,6 @@ import type { Chore } from '@/features/chores/components/chore-types';
 import { pendingKeys } from '@/features/chores/pending-keys';
 import type { Locale } from '@/shared/i18n/locale';
 import { type Message, useMessage } from '@/shared/i18n/message';
-import { useLocale, useTranslations } from 'next-intl';
-import { useState } from 'react';
 import type { ChorePageContext } from './chore-page-context';
 import { useChoreCompletion } from './use-chore-completion';
 

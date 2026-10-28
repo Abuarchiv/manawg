@@ -1,5 +1,8 @@
 'use client';
 
+import { Trash2 } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -17,16 +20,16 @@ import { Spinner } from '@/components/ui/spinner';
 import { Section } from '@/components/wg/einstellungen/Section';
 import { apiFetch } from '@/core/infra/api-client';
 import {
-	type QueueEditDraft,
 	buildDraftKey,
 	buildQueueEditHref,
 	isEmptyModuleDraft,
+	type QueueEditDraft,
 	readDraft,
 	writeDraft,
 } from '@/core/offline/drafts';
 import {
-	OFFLINE_QUEUE_EVENT,
 	needsManualOfflineResolution,
+	OFFLINE_QUEUE_EVENT,
 	readOfflineQueue,
 	syncOfflineActions,
 	updateOfflineQueue,
@@ -35,19 +38,15 @@ import { offlineQueueCountMessage } from '@/core/offline/offline-copy';
 import { titled } from '@/core/offline/offline-failure-copy';
 import { isPendingImageToken, removePendingImage } from '@/core/offline/offline-images';
 import {
-	type OfflineAction,
 	explainOfflineActionFailure,
 	getOfflineActionSummary,
+	type OfflineAction,
 } from '@/core/offline/offline-queue';
 import type { Locale } from '@/shared/i18n/locale';
 import { type Message, useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
-import { Trash2 } from 'lucide-react';
-import { useLocale } from 'next-intl';
-import { useTranslations } from 'next-intl';
-import { useCallback, useEffect, useRef, useState } from 'react';
 import { OfflineQueueItem } from './OfflineQueueItem';
-import { SERVER_CHECKS, offlineActionInspectHref } from './offline-queue-server-checks';
+import { offlineActionInspectHref, SERVER_CHECKS } from './offline-queue-server-checks';
 
 export function OfflineQueueSection({
 	shareCode,

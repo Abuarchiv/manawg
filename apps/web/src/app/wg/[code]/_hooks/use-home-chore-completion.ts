@@ -1,5 +1,7 @@
 'use client';
 
+import { useLocale } from 'next-intl';
+import { useEffect, useState } from 'react';
 import { useToast } from '@/components/ui/Toast';
 import type { Member } from '@/components/wg/WgContextProvider';
 import type { TodayImportantItem } from '@/composition/dashboard-insights';
@@ -13,8 +15,6 @@ import {
 import { useChoreCompletion } from '@/features/chores/hooks/use-chore-completion';
 import type { Locale } from '@/shared/i18n/locale';
 import { useMessage } from '@/shared/i18n/message';
-import { useLocale } from 'next-intl';
-import { useEffect, useState } from 'react';
 
 interface HomeChoreCompletionInput {
 	wg: { id: string; shareCode: string };

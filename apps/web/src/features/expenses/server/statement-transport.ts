@@ -1,11 +1,11 @@
 import 'server-only';
-import { type MailTransport, createMailTransport } from '@/core/mail/transport';
+import { createMailTransport, type MailTransport } from '@/core/mail/transport';
 
 export {
 	type MailOutcome,
 	type MailTransport,
-	type OutgoingMail,
 	maskEmail,
+	type OutgoingMail,
 	readAllowlist,
 } from '@/core/mail/transport';
 

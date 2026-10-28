@@ -96,7 +96,7 @@ docker compose up -d
 
 The first start builds the app image, which takes about ten minutes. Then open
 [http://localhost](http://localhost) and create an account; the sign-in code arrives in Mailpit at
-[http://localhost:8025](http://localhost:8025). The [self-hosting guide](docs/self-hosting.md)
+[http://localhost:8025](http://localhost:8025). The [self-hosting guide](docs/self-hosting.md) ([German](docs/self-hosting.de.md))
 covers a public instance with your own domain and HTTPS, mail, updates, backups, and the
 alternative setup on Vercel and Supabase.
 
@@ -141,13 +141,8 @@ Contributions are welcome: code, bug reports, documentation, translations and id
 ## Roadmap
 
 - English interface (in progress)
-- [#637](https://github.com/Abuarchiv/manawg-app/issues/637): upgrade to Next.js 16
-- [#638](https://github.com/Abuarchiv/manawg-app/issues/638): upgrade Biome to 2.x
-- [#639](https://github.com/Abuarchiv/manawg-app/issues/639): upgrade to TypeScript 7
 - [#644](https://github.com/Abuarchiv/manawg-app/issues/644): split the database schema into one file per feature
 - [#645](https://github.com/Abuarchiv/manawg-app/issues/645): split the account-deletion e2e spec into smaller files
-- [#632](https://github.com/Abuarchiv/manawg-app/issues/632): silence the warnings in unit tests
-- [#633](https://github.com/Abuarchiv/manawg-app/issues/633): translate the self-hosting guide to German
 
 ## Community and support
 

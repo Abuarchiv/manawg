@@ -1,8 +1,8 @@
 'use client';
 
-import { cn } from '@/shared/lib/cn';
 import { Menu as MenuPrimitive } from '@base-ui/react/menu';
 import { useState } from 'react';
+import { cn } from '@/shared/lib/cn';
 
 /**
  * Space the menu keeps free at the bottom: the fixed tab bar (published by AppBottomNav as
@@ -108,9 +108,9 @@ function DropdownMenuSeparator({ className, ...props }: MenuPrimitive.Separator.
 
 export {
 	DropdownMenu,
-	DropdownMenuTrigger,
 	DropdownMenuContent,
 	DropdownMenuGroup,
 	DropdownMenuItem,
 	DropdownMenuSeparator,
+	DropdownMenuTrigger,
 };

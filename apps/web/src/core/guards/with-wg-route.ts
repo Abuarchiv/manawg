@@ -1,8 +1,8 @@
+import type { NextRequest, NextResponse } from 'next/server';
 import { readShareCode } from '@/core/guards/route-preamble';
 import { serverError } from '@/core/http/api-errors';
 import type { RouteCtx } from '@/core/infra/api-types';
 import { logApiError } from '@/core/infra/observability';
-import type { NextRequest, NextResponse } from 'next/server';
 
 /**
  * The ceremony every `/api/wg/[code]/...` handler opens and closes with.

@@ -1,12 +1,12 @@
 'use client';
 
+import { ArrowRight } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { BackButton } from '@/components/app/BackButton';
 import { ErrorBox } from '@/components/app/ErrorBox';
 import { Button } from '@/components/ui/button';
 import { FieldDescription, FieldGroup, FieldLabel, Field as UiField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { ArrowRight } from 'lucide-react';
-import { useTranslations } from 'next-intl';
 import type { StartField } from './start-flow';
 
 // Inlined at build time, so server and client render the same placeholder.

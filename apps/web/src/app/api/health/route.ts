@@ -1,8 +1,8 @@
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import { rateLimitResponse } from '@/core/http/api-errors';
 import { checkEnv } from '@/core/infra/env';
 import { checkRateLimit, clientIpKey, healthLimiter } from '@/core/rate-limit';
-import type { NextRequest } from 'next/server';
-import { NextResponse } from 'next/server';
 
 /**
  * Readiness probe.

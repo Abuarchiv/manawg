@@ -1,12 +1,5 @@
 'use client';
 
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
-import { InputGroup, InputGroupTextarea } from '@/components/ui/input-group';
-import { Spinner } from '@/components/ui/spinner';
-import { removeDraft } from '@/core/offline/drafts';
-import { type Message, useMessage } from '@/shared/i18n/message';
-import { haptic } from '@/shared/lib/haptics';
 import { Send, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import {
@@ -18,13 +11,20 @@ import {
 	useRef,
 	useState,
 } from 'react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { InputGroup, InputGroupTextarea } from '@/components/ui/input-group';
+import { Spinner } from '@/components/ui/spinner';
+import { removeDraft } from '@/core/offline/drafts';
+import { type Message, useMessage } from '@/shared/i18n/message';
+import { haptic } from '@/shared/lib/haptics';
 import { readChatDraft, writeChatDraft } from '../chat-draft';
 import { CHAT_BODY_MAX } from '../chat-pure';
-import { type MentionTrigger, detectMention, findMentions } from '../chat-text';
+import { detectMention, findMentions, type MentionTrigger } from '../chat-text';
 import {
+	filterMentionMembers,
 	MentionAutocomplete,
 	type MentionMember,
-	filterMentionMembers,
 	mentionOptionId,
 } from './MentionAutocomplete';
 

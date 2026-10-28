@@ -1,10 +1,10 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+import { useEffect, useState } from 'react';
 import { ErrorBox } from '@/components/app/ErrorBox';
 import { isInviteToken } from '@/core/utils/invite-token';
 import { isAppInstalled, isIosLikeDevice } from '@/shared/lib/pwa-install';
-import { useTranslations } from 'next-intl';
-import { useEffect, useState } from 'react';
 
 /**
  * Messages from a failed auth callback (an expired or reused link, or a link opened in another

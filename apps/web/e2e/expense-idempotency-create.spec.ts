@@ -4,17 +4,17 @@
 import { expect, test } from '@playwright/test';
 import {
 	API,
-	type RequestAttempt,
 	expectOfflineAutoSyncBackoff,
 	expense,
 	mockReads,
 	queuedActionCount,
+	type RequestAttempt,
 	recordAttempt,
 	sendQueueIfStillPending,
 } from './support/expense-idempotency';
 import {
-	FIXTURE_WG,
 	dismissOnboarding,
+	FIXTURE_WG,
 	navigateToFeature,
 	setupMember,
 	skipUnlessFixtures,

@@ -28,6 +28,8 @@ const nextConfig: NextConfig = {
 			process.env.SENTRY_RELEASE ?? process.env.VERCEL_GIT_COMMIT_SHA ?? 'local',
 	},
 	distDir: process.env.NEXT_DIST_DIR ?? '.next',
+	// next dev otherwise writes an AGENTS.md into the app when it detects a coding agent.
+	agentRules: false,
 	// The Docker image (Dockerfile) runs the self-contained server; Vercel builds without it.
 	...(process.env.NEXT_OUTPUT_STANDALONE === 'true'
 		? { output: 'standalone' as const, outputFileTracingRoot: path.join(process.cwd(), '..', '..') }
@@ -35,9 +37,6 @@ const nextConfig: NextConfig = {
 	typescript: {
 		ignoreBuildErrors: false,
 		tsconfigPath: process.env.NEXT_TSCONFIG_PATH ?? 'tsconfig.json',
-	},
-	eslint: {
-		ignoreDuringBuilds: false,
 	},
 	// Browsers and bookmark importers still ask for /favicon.ico; the metadata icons are PNG/SVG.
 	async rewrites() {
@@ -54,6 +53,8 @@ const nextConfig: NextConfig = {
 		];
 	},
 	experimental: {
+		// TypeScript 7 ships no compiler API, so the build type-checks with its CLI.
+		useTypeScriptCli: true,
 		// Visited and prefetched tabs stay in the router cache for 5 minutes: a tab tap without a
 		// network stays in the app (last data) instead of falling back to the offline page.
 		staleTimes: { dynamic: 300, static: 300 },
@@ -64,7 +65,7 @@ const nextConfig: NextConfig = {
 	},
 };
 
-const withNextIntl = createNextIntlPlugin();
+const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 const analyzedConfig = withBundleAnalyzer(withNextIntl(nextConfig));
 const sentryUploadOptions =
 	process.env.SENTRY_ORG && process.env.SENTRY_PROJECT && process.env.SENTRY_AUTH_TOKEN

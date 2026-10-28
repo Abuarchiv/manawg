@@ -1,7 +1,7 @@
 'use client';
 
-import { WgRouteErrorBoundary } from '@/components/wg/WgRouteErrorBoundary';
 import { useTranslations } from 'next-intl';
+import { WgRouteErrorBoundary } from '@/components/wg/WgRouteErrorBoundary';
 
 interface AktivitaetErrorProps {
 	error: Error & { digest?: string };

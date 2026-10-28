@@ -1,6 +1,6 @@
-import { HTTP, apiError } from '@/core/http/api-errors';
-import { EXPECTED_MEMBER_ID_HEADER } from '@/shared/lib/member-header';
 import type { NextResponse } from 'next/server';
+import { apiError, HTTP } from '@/core/http/api-errors';
+import { EXPECTED_MEMBER_ID_HEADER } from '@/shared/lib/member-header';
 
 /** The caller's active membership, resolved from their server-verified Supabase user. */
 export interface AuthenticatedMember {

@@ -1,7 +1,7 @@
+import { type ReactElement, useEffect, useState } from 'react';
 import { ErrorBox } from '@/components/app/ErrorBox';
 import { AUTH_FAILURE_MESSAGES, type AuthFailure } from '@/core/auth/password-errors';
 import { type Message, useMessage } from '@/shared/i18n/message';
-import { type ReactElement, useEffect, useState } from 'react';
 
 /** Minimum for passwords chosen now (sign-up, reset); Supabase enforces the same value. */
 export const NEW_PASSWORD_MIN_LENGTH = 8;
@@ -51,7 +51,10 @@ export function useResendCooldown(): [number, (seconds: number) => void] {
 export function GenericAuthError({
 	failure = 'other',
 	fallback = { key: 'auth.failure.signIn' },
-}: { failure?: AuthFailure; fallback?: Message }): ReactElement {
+}: {
+	failure?: AuthFailure;
+	fallback?: Message;
+}): ReactElement {
 	const message = useMessage();
 	return (
 		<ErrorBox>{message(failure === 'other' ? fallback : AUTH_FAILURE_MESSAGES[failure])}</ErrorBox>

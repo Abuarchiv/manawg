@@ -9,14 +9,14 @@ import {
 	withFailureState,
 } from './offline-failure-copy';
 import {
-	PendingImageMissingError,
 	isPendingImageToken,
+	PendingImageMissingError,
 	removePendingImage,
 	uploadPendingImageToken,
 } from './offline-images';
 import {
-	type OfflineAction,
 	getOfflineActionRequest,
+	type OfflineAction,
 	shouldRetryOfflineAction,
 } from './offline-queue';
 import {
@@ -36,10 +36,10 @@ import {
 import {
 	OFFLINE_QUEUE_EVENT,
 	OFFLINE_SYNCED_EVENT,
-	REVIEW_REQUIRED_STATE,
 	persistOfflineQueue,
 	persistOfflineReviewIds,
 	persistSyncedIds,
+	REVIEW_REQUIRED_STATE,
 	readOfflineQueue,
 	readOfflineQueueFromStorage,
 	reviewAfterFailedQueueSave,

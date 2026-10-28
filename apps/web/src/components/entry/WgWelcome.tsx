@@ -1,9 +1,9 @@
+import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { SignUpPrompt } from '@/components/auth/SignUpPrompt';
 import { buttonVariants } from '@/components/ui/button';
 import { invitePath } from '@/core/utils/invite-token';
 import { cn } from '@/shared/lib/cn';
-import { useTranslations } from 'next-intl';
-import Link from 'next/link';
 
 type WgWelcomeProps = (
 	| { variant: 'create'; outline?: boolean }

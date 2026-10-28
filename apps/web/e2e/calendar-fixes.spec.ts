@@ -1,10 +1,10 @@
 // Calendar month grid, recurrence editing, deletion and push links in the browser.
 // Why: A calendar day must be identical for every device time zone.
 
-import { type Route, expect, test } from '@playwright/test';
+import { expect, type Route, test } from '@playwright/test';
 import {
-	FIXTURE_WG,
 	dismissOnboarding,
+	FIXTURE_WG,
 	navigateToFeature,
 	setupMember,
 	skipUnlessFixtures,

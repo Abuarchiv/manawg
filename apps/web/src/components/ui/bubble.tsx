@@ -1,8 +1,8 @@
-import { cn } from '@/shared/lib/cn';
 import { mergeProps } from '@base-ui/react/merge-props';
 import { useRender } from '@base-ui/react/use-render';
-import { type VariantProps, cva } from 'class-variance-authority';
+import { cva, type VariantProps } from 'class-variance-authority';
 import type * as React from 'react';
+import { cn } from '@/shared/lib/cn';
 
 function BubbleGroup({ className, ...props }: React.ComponentProps<'div'>) {
 	return (
@@ -139,4 +139,4 @@ function BubbleReactions({
 	);
 }
 
-export { BubbleGroup, Bubble, BubbleContent, BubbleReactions, BubbleTail };
+export { Bubble, BubbleContent, BubbleGroup, BubbleReactions, BubbleTail };

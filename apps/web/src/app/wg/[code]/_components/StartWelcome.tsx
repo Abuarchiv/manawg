@@ -1,5 +1,9 @@
 'use client';
 
+import { X } from 'lucide-react';
+import Link from 'next/link';
+import { useTranslations } from 'next-intl';
+import { useEffect, useState } from 'react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
 	Card,
@@ -11,10 +15,6 @@ import {
 } from '@/components/ui/card';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { cn } from '@/shared/lib/cn';
-import { X } from 'lucide-react';
-import { useTranslations } from 'next-intl';
-import Link from 'next/link';
-import { useEffect, useState } from 'react';
 import { InviteButton } from './InviteButton';
 
 export function StartWelcome({ dismissedFallback }: { dismissedFallback?: React.ReactNode }) {

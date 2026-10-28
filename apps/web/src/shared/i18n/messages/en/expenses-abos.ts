@@ -20,8 +20,7 @@ export default {
 	},
 	deleteDialog: {
 		title: 'Delete fixed cost?',
-		description:
-			'“{description}” will be deleted. Expenses already recorded stay.',
+		description: '“{description}” will be deleted. Expenses already recorded stay.',
 		cancel: 'Cancel',
 		confirm: 'Delete',
 	},

@@ -1,5 +1,5 @@
-import { Skeleton } from '@/components/ui/skeleton';
 import { useTranslations } from 'next-intl';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function Loading() {
 	const t = useTranslations('expenses.page');

@@ -1,3 +1,4 @@
+import { useTranslations } from 'next-intl';
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -10,7 +11,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Spinner } from '@/components/ui/spinner';
 import { DiscardChangesDialog } from '@/features/events/components/DiscardChangesDialog';
-import { useTranslations } from 'next-intl';
 
 /** The two confirmations of the event drawer: delete (series or one date) and discard changes. */
 export function EventEditDialogs({

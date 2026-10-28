@@ -24,8 +24,7 @@ export default {
 			'Your email address is not confirmed yet. Open the link in the confirmation email, then sign in.',
 		rateLimit: 'Too many attempts. Wait a few minutes and try again.',
 		network: 'No connection to the sign-in service. Check your connection and try again.',
-		weakPassword:
-			'Choose a longer password that you do not use anywhere else.',
+		weakPassword: 'Choose a longer password that you do not use anywhere else.',
 		signIn: 'Sign-in could not be completed right now. Try again.',
 		signUp: 'Registration could not be completed right now. Try again.',
 	},

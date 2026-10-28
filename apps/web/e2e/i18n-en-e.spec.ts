@@ -1,7 +1,7 @@
 // English fixed costs and monthly statement.
 // Why: Both routes must read as English chrome at phone widths and parse English amounts.
 
-import { type Page, expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 import { FIXTURE_WG, navigateToFeature, setupMember, skipUnlessFixtures } from './support/helpers';
 import { expectNoGermanChrome, setEnglishLocale } from './support/i18n';
 
@@ -195,7 +195,9 @@ test.describe('English fixed costs and statement', () => {
 		await page.getByRole('button', { name: 'Pause: Music plan' }).click();
 		await expect(
 			page
-				.getByText(/The change to this fixed cost could not be saved: This fixed cost has just been added as an expense or changed/)
+				.getByText(
+					/The change to this fixed cost could not be saved: This fixed cost has just been added as an expense or changed/,
+				)
 				.first(),
 		).toBeVisible();
 

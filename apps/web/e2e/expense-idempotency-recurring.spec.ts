@@ -1,21 +1,21 @@
 // Recurring-template expense retries: key, due date and splits across refreshes, replays and offline queueing.
 // Why: a recurring expense must be booked once per period even when the network response is lost.
 
-import { type Page, expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 import {
 	API,
-	type RequestAttempt,
 	expectOfflineAutoSyncBackoff,
 	expense,
 	mockReads,
 	queuedActionCount,
+	type RequestAttempt,
 	recordAttempt,
 	recurringExpense,
 	sendQueueIfStillPending,
 } from './support/expense-idempotency';
 import {
-	FIXTURE_WG,
 	dismissOnboarding,
+	FIXTURE_WG,
 	navigateToFeature,
 	setupMember,
 	skipUnlessFixtures,

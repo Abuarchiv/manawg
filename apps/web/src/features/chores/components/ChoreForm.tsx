@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+import type React from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,8 +24,6 @@ import {
 	INTERVAL_PRESETS_MONTHS,
 } from '@/features/chores/components/constants';
 import { useMessage } from '@/shared/i18n/message';
-import { useTranslations } from 'next-intl';
-import type React from 'react';
 
 interface ChoreFormProps {
 	open: boolean;

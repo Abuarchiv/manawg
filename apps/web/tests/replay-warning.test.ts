@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { mock, test } from 'node:test';
 import type { SQL } from 'drizzle-orm';
-import { PgDialect, jsonb, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import { jsonb, PgDialect, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 
 // setReplayWarning against a fake db that records the generated SQL; the row matching is the
 // database's job, so the test checks which conditions reach it.

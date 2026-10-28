@@ -1,4 +1,4 @@
-import { type E2EWgFixture, buildE2EChatMessages, getE2EWgFixture } from './data';
+import { buildE2EChatMessages, type E2EWgFixture, getE2EWgFixture } from './data';
 import { isE2EDbDownMode } from './mode';
 
 export interface FixtureWgView {

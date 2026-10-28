@@ -1,3 +1,6 @@
+import { and, eq, isNull } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { recordAuditEvent } from '@/core/audit';
 import { db, wgChatMessages } from '@/core/db';
 import { revokePrivateImageIfUnreferenced } from '@/core/db/private-image-deletions';
@@ -17,9 +20,6 @@ import { parseBody } from '@/core/http/parse-body';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { CHAT_BODY_MAX, canEditMessage, sanitizeMessageBody } from '@/features/chat/chat-pure';
 import { replaceMessageMentions } from '@/features/chat/server/chat-mentions';
-import { and, eq, isNull } from 'drizzle-orm';
-import { NextResponse } from 'next/server';
-import { z } from 'zod';
 
 const patchSchema = z.object({
 	body: z.string().min(1).max(CHAT_BODY_MAX),

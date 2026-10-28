@@ -1,9 +1,9 @@
+import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
+import { getTranslations } from 'next-intl/server';
 import { PasswordResetForm } from '@/components/auth/PasswordResetForm';
 import { EntryFrame } from '@/components/entry/EntryFrame';
 import { getAuthenticatedUserFromCookies } from '@/core/auth/server';
-import type { Metadata } from 'next';
-import { getTranslations } from 'next-intl/server';
-import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 

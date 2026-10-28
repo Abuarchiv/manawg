@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-	type WgSessionState,
 	initWgSessionState,
+	type WgSessionState,
 	wgSessionReducer,
 } from '@/components/wg/wg-session-state';
 

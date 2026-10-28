@@ -1,8 +1,7 @@
 // Module-level API checks against the local real stack (see README), part 1: shopping,
 // inventory, events, calendar subscription, expenses, settlement, manual payments, recurring
 // expenses with the cron. Continues with modules-admin.mjs (one summary at the end).
-import { BASE, CRON, VERBOSE } from './modules-lib.mjs';
-import { DAY, call, expect, iso, setup, sql } from './modules-lib.mjs';
+import { BASE, CRON, call, DAY, expect, iso, setup, sql, VERBOSE } from './modules-lib.mjs';
 
 const { A, B, code, annaId, benId } = await setup();
 

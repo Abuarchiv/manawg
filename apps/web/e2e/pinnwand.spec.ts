@@ -4,8 +4,8 @@
 import { expect, test } from '@playwright/test';
 import type { Announcement } from '../src/features/pinnwand/components/announcement-types';
 import {
-	FIXTURE_WG,
 	dismissOnboarding,
+	FIXTURE_WG,
 	inMinimalMatrix,
 	navigateToFeature,
 	setupMember,

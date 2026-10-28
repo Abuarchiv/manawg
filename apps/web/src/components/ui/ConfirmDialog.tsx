@@ -1,5 +1,8 @@
 'use client';
 
+import type { LucideIcon } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import {
 	Dialog,
@@ -9,9 +12,6 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/components/ui/dialog';
-import type { LucideIcon } from 'lucide-react';
-import { useTranslations } from 'next-intl';
-import { useRef } from 'react';
 
 type ConfirmDialogVariant = 'default' | 'danger';
 

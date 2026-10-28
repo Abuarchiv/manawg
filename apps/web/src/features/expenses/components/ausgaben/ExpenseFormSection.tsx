@@ -1,5 +1,8 @@
 'use client';
 
+import { ArrowLeft } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -20,9 +23,6 @@ import type { ExpenseFormState } from '@/features/expenses/hooks/expense-page-co
 import { type Message, useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
 import { useKeyboardOpen } from '@/shared/lib/use-keyboard-open';
-import { ArrowLeft } from 'lucide-react';
-import { useTranslations } from 'next-intl';
-import { useEffect, useRef, useState } from 'react';
 import { ExpenseCategoryField } from './ExpenseCategoryField';
 import { CloseDraftDialog, ReplaceDraftDialog } from './ExpenseDraftDialogs';
 import { ExpenseExtras } from './ExpenseExtras';

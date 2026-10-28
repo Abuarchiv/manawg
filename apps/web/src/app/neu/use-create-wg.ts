@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef, useState } from 'react';
 import {
 	type PendingIdempotentRequest,
 	resolveIdempotencyKey,
@@ -9,14 +10,13 @@ import { REQUEST_TIMEOUT_MS, readApiErrorCode } from '@/core/infra/api-client';
 import { removeDraft } from '@/core/offline/drafts';
 import { useMessage } from '@/shared/i18n/message';
 import posthog from '@/shared/lib/analytics';
-import { useRef, useState } from 'react';
 import {
-	type CreateResponse,
 	type CreatedWg,
-	START_DRAFT_KEY,
-	type StartStep,
+	type CreateResponse,
 	createWgErrorField,
 	createWgErrorMessage,
+	START_DRAFT_KEY,
+	type StartStep,
 } from './start-flow';
 import type { BusyLock } from './use-busy-lock';
 import type { StartErrorActions } from './use-start-error';

@@ -1,9 +1,9 @@
 'use client';
 
+import { z } from 'zod';
 import { safeLocalStorage } from '@/core/utils/browser';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import { WG_NAME_MAX_LENGTH } from '@/shared/lib/limits';
-import { z } from 'zod';
 
 /**
  * What this browser remembers about the signed-in account, only for the offline page and the

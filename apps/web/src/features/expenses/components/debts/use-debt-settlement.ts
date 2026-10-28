@@ -1,13 +1,13 @@
 'use client';
 
+import { useLocale, useTranslations } from 'next-intl';
+import { type MutableRefObject, useRef, useState } from 'react';
 import { useToast } from '@/components/ui/Toast';
 import { resolveIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
 import { formatEuroCents, normalizeCurrency } from '@/core/utils/money';
 import type { SimplifiedDebt } from '@/features/expenses/debt-reduction';
 import { useMessage } from '@/shared/i18n/message';
-import { useLocale, useTranslations } from 'next-intl';
-import { type MutableRefObject, useRef, useState } from 'react';
 import { settlementError } from './settlement-errors';
 
 /** What the server can settle for a debt right now; the confirmation must match it. */

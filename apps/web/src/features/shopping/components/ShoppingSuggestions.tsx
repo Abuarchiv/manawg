@@ -1,7 +1,7 @@
-import { Button } from '@/components/ui/button';
-import { type Message, useMessage } from '@/shared/i18n/message';
 import { Plus } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { Button } from '@/components/ui/button';
+import { type Message, useMessage } from '@/shared/i18n/message';
 
 export interface SuggestionGroup {
 	label: Message;

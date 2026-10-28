@@ -95,8 +95,7 @@ export default {
 		expense: 'Expense',
 		offset: 'Offset against what they owe you',
 		currentShare: 'Current open share',
-		remaining:
-			'{amount} of the combined balance cannot be applied to these shares and stays open.',
+		remaining: '{amount} of the combined balance cannot be applied to these shares and stays open.',
 		checkedNote:
 			'These shares were checked just now. If they change in the meantime, you will need to check the payment again.',
 		noShares:

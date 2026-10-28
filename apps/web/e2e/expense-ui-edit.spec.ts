@@ -1,15 +1,15 @@
 // Expense row reflow, currency and payer edit, offline edit.
 // Why: Edit paths must keep amounts and payers intact at 320px.
 
-import { type Locator, type Page, expect, test } from '@playwright/test';
+import { expect, type Locator, type Page, test } from '@playwright/test';
 import {
 	createQueuedExpenseUpdate,
 	getOfflineActionRequest,
 } from '../src/core/offline/offline-queue';
 import type { Expense } from '../src/features/expenses/expense-types';
 import {
-	FIXTURE_WG,
 	dismissOnboarding,
+	FIXTURE_WG,
 	mockUnreadCount,
 	navigateToFeature,
 	setupMember,

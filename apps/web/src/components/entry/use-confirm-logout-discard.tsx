@@ -1,6 +1,6 @@
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useTranslations } from 'next-intl';
 import { useCallback, useRef, useState } from 'react';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 /** `confirmDiscard` for `signOutSocialAccount`, resolved by the returned dialog. */
 export function useConfirmLogoutDiscard() {

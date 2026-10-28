@@ -1,5 +1,8 @@
 'use client';
 
+import { ChevronDown } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { type ReactNode, type Ref, useEffect, useRef } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
@@ -7,9 +10,6 @@ import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/shared/lib/cn';
-import { ChevronDown } from 'lucide-react';
-import { useTranslations } from 'next-intl';
-import { type ReactNode, type Ref, useEffect, useRef } from 'react';
 import type { ImportSourceKind } from './ImportSourcePicker';
 import { ImportStepHeading } from './ImportStepHeading';
 import type { ImportInput } from './use-import-input';
@@ -19,7 +19,11 @@ function FilePickLabel({
 	htmlFor,
 	fallback,
 	name,
-}: { htmlFor: string; fallback: string; name: string | null }) {
+}: {
+	htmlFor: string;
+	fallback: string;
+	name: string | null;
+}) {
 	return (
 		<label
 			htmlFor={htmlFor}

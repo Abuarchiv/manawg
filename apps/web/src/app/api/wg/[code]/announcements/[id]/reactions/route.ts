@@ -1,3 +1,6 @@
+import { and, eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { recordAuditEvent } from '@/core/audit';
 import { announcementReactions, announcements } from '@/core/db';
 import { persistReplayWarning, withIdempotentReplay } from '@/core/db/with-replay';
@@ -8,14 +11,11 @@ import { badRequest, rateLimitedReplayResponse } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { logApiError } from '@/core/infra/observability';
 import {
-	type NotificationDispatchWarning,
 	dispatchNotificationSafely,
+	type NotificationDispatchWarning,
 } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { ANNOUNCEMENT_REACTIONS } from '@/features/pinnwand/announcement-workflow';
-import { and, eq } from 'drizzle-orm';
-import { NextResponse } from 'next/server';
-import { z } from 'zod';
 
 const reactionSchema = z.object({
 	reaction: z.enum(ANNOUNCEMENT_REACTIONS),

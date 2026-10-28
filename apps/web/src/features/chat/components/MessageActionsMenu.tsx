@@ -1,6 +1,9 @@
 'use client';
 
-import { useToast } from '@/components/ui/Toast';
+import { Copy, ExternalLink, Pencil, Plus, Reply, Trash2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { type ReactNode, type RefObject, useLayoutEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { BubbleContent } from '@/components/ui/bubble';
 import {
 	DropdownMenu,
@@ -10,15 +13,12 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useToast } from '@/components/ui/Toast';
 import { memberTint } from '@/components/wg/MemberAvatar';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { copyText } from '@/core/utils/clipboard';
 import { cn } from '@/shared/lib/cn';
 import { haptic } from '@/shared/lib/haptics';
-import { Copy, ExternalLink, Pencil, Plus, Reply, Trash2 } from 'lucide-react';
-import { useTranslations } from 'next-intl';
-import { type ReactNode, type RefObject, useLayoutEffect, useMemo, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { reactorNames } from '../chat-reactions';
 import { extractLinks, splitMentions } from '../chat-text';
 import type { BubbleMessage, ReactionSummary } from '../chat-types';
@@ -265,7 +265,6 @@ export function MessageActionsMenu({
 							<DropdownMenuItem
 								key={url}
 								className="min-h-11"
-								// biome-ignore lint/a11y/useAnchorContent: the menu item renders its children into this anchor
 								render={<a href={url} target="_blank" rel="noopener noreferrer" />}
 							>
 								<ExternalLink aria-hidden />

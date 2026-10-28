@@ -1,7 +1,7 @@
 // Release smoke test for create-WG and join entry; runs in fixture, preview and hosted lanes (CI references this file by name).
 // Why: the single end-to-end proof that a new household can be created and the join path fails safely.
 
-import { type Page, expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 import { createServerClient } from '@supabase/ssr';
 import { FIXTURE_WG, skipUnlessFixtures } from './support/helpers';
 

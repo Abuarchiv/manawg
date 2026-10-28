@@ -1,7 +1,7 @@
 'use client';
 
-import { useKeyboardOpen } from '@/shared/lib/use-keyboard-open';
 import { type ReactNode, useLayoutEffect, useRef } from 'react';
+import { useKeyboardOpen } from '@/shared/lib/use-keyboard-open';
 
 /**
  * One floating bottom navigation for the public shell and the WG shell: same

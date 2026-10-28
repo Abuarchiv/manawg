@@ -1,10 +1,10 @@
 // English expense import wizard (Splitwise, Splid, screenshot) and its history.
 // Why: every wizard step, error and the undo flow must read as English at phone widths.
 
-import { type Page, expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 import {
-	FIXTURE_WG,
 	dismissOnboarding,
+	FIXTURE_WG,
 	navigateToFeature,
 	setupMember,
 	skipUnlessFixtures,

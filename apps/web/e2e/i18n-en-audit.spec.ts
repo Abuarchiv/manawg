@@ -1,10 +1,10 @@
 // English activity feed: audit rows with sentence parameters read in English, older rows stay German.
 // Why: The feed renders the server's text and selfText; a regression would show German or the wrong verb form.
 
-import { type Page, expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 import {
-	FIXTURE_WG,
 	dismissOnboarding,
+	FIXTURE_WG,
 	mockUnreadCount,
 	navigateToFeature,
 	setupMember,

@@ -1,7 +1,7 @@
 import 'server-only';
+import { eq } from 'drizzle-orm';
 import { db, expenseSplits, expenses } from '@/core/db';
 import { rowHoldsPatch } from '@/core/db/row-holds-patch';
-import { eq } from 'drizzle-orm';
 
 type Split = { debtorMemberId: string; amountCents: number };
 

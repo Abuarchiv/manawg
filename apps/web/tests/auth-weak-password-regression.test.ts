@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { AuthWeakPasswordError } from '@supabase/supabase-js';
-import { WEAK_PASSWORD_MESSAGE, isWeakPasswordError } from '../src/core/auth/password-errors.ts';
+import { isWeakPasswordError, WEAK_PASSWORD_MESSAGE } from '../src/core/auth/password-errors.ts';
 
 test('only rejected weak passwords get actionable feedback', () => {
 	assert.equal(

@@ -1,8 +1,8 @@
+import { CalendarPlus, Trash2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { DrawerFooter } from '@/components/ui/drawer';
 import { Spinner } from '@/components/ui/spinner';
-import { CalendarPlus, Trash2 } from 'lucide-react';
-import { useTranslations } from 'next-intl';
 
 /** Save, cancel, calendar export and delete for the event drawer; read-only viewers only close or export. */
 export function EventEditFooter({

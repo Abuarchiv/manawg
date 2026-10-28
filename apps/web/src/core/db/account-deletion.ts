@@ -1,5 +1,5 @@
-import { logApiError } from '@/core/infra/observability';
 import { and, asc, eq, isNull, sql } from 'drizzle-orm';
+import { logApiError } from '@/core/infra/observability';
 import { accountDeletions, wgMembers, wgs } from './schema';
 import { type DbTransaction, withFreshTransaction, withTransaction } from './transaction';
 import { TransactionAbort } from './transaction-abort';

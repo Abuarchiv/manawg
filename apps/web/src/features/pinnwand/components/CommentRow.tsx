@@ -1,4 +1,7 @@
 'use client';
+import { Pencil, Trash2 } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
+import { type ReactElement, useEffect, useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
 	AlertDialog,
@@ -21,9 +24,6 @@ import { isRestorableDraft } from '@/features/pinnwand/announcement-edits';
 import { COMMENT_MAX } from '@/features/pinnwand/constants';
 import type { Locale } from '@/shared/i18n/locale';
 import { useMessage } from '@/shared/i18n/message';
-import { Pencil, Trash2 } from 'lucide-react';
-import { useLocale, useTranslations } from 'next-intl';
-import { type ReactElement, useEffect, useRef, useState } from 'react';
 import type { AnnouncementComment } from './announcement-types';
 
 export function actionLabelSubject(value: string, fallback: string): string {

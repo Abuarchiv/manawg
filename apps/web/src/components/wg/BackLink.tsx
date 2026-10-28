@@ -1,8 +1,8 @@
+import { ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/shared/lib/cn';
-import { ArrowLeft } from 'lucide-react';
-import { useTranslations } from 'next-intl';
-import Link from 'next/link';
 
 interface BackLinkProps {
 	href: string;

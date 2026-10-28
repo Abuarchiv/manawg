@@ -2,16 +2,16 @@ import assert from 'node:assert/strict';
 import { afterEach, test } from 'node:test';
 import {
 	type Action,
-	OFFLINE_REPLAY_MAX_AGE_MS,
-	RESPONSE_REPLAY_TTL_SECONDS,
-	VALID_KEY,
 	createAction,
 	deferred,
 	makeLockManager,
 	makeQueueModule,
 	makeStorage,
+	OFFLINE_REPLAY_MAX_AGE_MS,
+	RESPONSE_REPLAY_TTL_SECONDS,
 	restoreGlobals,
 	setQueue,
+	VALID_KEY,
 } from './support/offline-harness.ts';
 
 afterEach(restoreGlobals);

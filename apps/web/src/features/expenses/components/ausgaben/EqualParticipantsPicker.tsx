@@ -1,8 +1,8 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Checkbox } from '@/components/animate-ui/components/base/checkbox';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
-import { useTranslations } from 'next-intl';
 
 interface EqualParticipantsPickerProps {
 	candidates: ReadonlyArray<{ id: string; name: string }>;

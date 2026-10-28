@@ -1,5 +1,5 @@
-import { drizzle } from 'drizzle-orm/node-postgres';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import { closeClientOnQueryTimeout, resolveConnectionString } from './connection';
 import * as schema from './schema';
@@ -86,7 +86,7 @@ export function withTransaction<T>(fn: (tx: DbTransaction) => Promise<T>): Promi
 }
 
 export * from './schema';
-export * from './schema-statement-emails';
-export * from './schema-mail-log';
-export * from './schema-invites';
 export * from './schema-inventory';
+export * from './schema-invites';
+export * from './schema-mail-log';
+export * from './schema-statement-emails';

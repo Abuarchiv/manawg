@@ -1,6 +1,6 @@
+import { useTranslations } from 'next-intl';
 import { LogoMark } from '@/components/ui/LogoMark';
 import { cn } from '@/shared/lib/cn';
-import { useTranslations } from 'next-intl';
 
 function Spinner({ className, ...props }: React.ComponentProps<'svg'>) {
 	const t = useTranslations('shell.ui');

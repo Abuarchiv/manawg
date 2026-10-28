@@ -2,7 +2,7 @@ import { serverT } from '@/core/i18n/server-t';
 import { APP_ORIGIN, escapeHtml } from '@/core/mail/brand-mail';
 import { formatEuroCents } from '@/core/utils/money';
 import { dateTimeFormat } from '@/shared/i18n/intl';
-import { DEFAULT_LOCALE, type Locale, htmlLang } from '@/shared/i18n/locale';
+import { DEFAULT_LOCALE, htmlLang, type Locale } from '@/shared/i18n/locale';
 import type { MonthlyStatement } from './monthly-statement';
 
 type MailT = ReturnType<typeof serverT<'mail'>>;

@@ -1,40 +1,5 @@
 'use client';
 
-import { AppBottomNav } from '@/components/app/AppBottomNav';
-import { ErrorBox } from '@/components/app/ErrorBox';
-import { RouteFocusOnNavigate } from '@/components/app/RouteFocusOnNavigate';
-import {
-	HOME_NAV_LABEL,
-	WG_SECTIONS,
-	isActivePage,
-	moduleSlugOf,
-} from '@/components/app/navigation';
-import { LegalLinks } from '@/components/entry/LegalLinks';
-import { type AccountWg, MembershipCard } from '@/components/entry/MembershipCard';
-import {
-	PublicModulePreview,
-	PublicModulePreviews,
-	type PublicPreviewModule,
-} from '@/components/entry/PublicModulePreview';
-import { SignOutActions } from '@/components/entry/SignOutActions';
-import { InvitationNotice, WgWelcome } from '@/components/entry/WgWelcome';
-import {
-	PRIMARY_MODULE_SLUGS,
-	type PublicModuleSlug,
-	isPublicModuleSlug,
-} from '@/components/entry/public-modules';
-import { LogoMark } from '@/components/ui/LogoMark';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Button, buttonVariants } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Spinner } from '@/components/ui/spinner';
-import { NavItem } from '@/components/wg/NavItem';
-import { SubNav } from '@/components/wg/SubNav';
-import { hasSessionCookie } from '@/core/auth/session-hint';
-import { fetchAccountWgs } from '@/core/infra/account-wgs';
-import { invitePath, isInviteToken } from '@/core/utils/invite-token';
-import { useMessage } from '@/shared/i18n/message';
-import { cn } from '@/shared/lib/cn';
 import {
 	CalendarDays,
 	Clock3,
@@ -47,10 +12,45 @@ import {
 	Repeat2,
 	Sparkles,
 } from 'lucide-react';
-import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Suspense, useEffect, useState } from 'react';
+import { AppBottomNav } from '@/components/app/AppBottomNav';
+import { ErrorBox } from '@/components/app/ErrorBox';
+import {
+	HOME_NAV_LABEL,
+	isActivePage,
+	moduleSlugOf,
+	WG_SECTIONS,
+} from '@/components/app/navigation';
+import { RouteFocusOnNavigate } from '@/components/app/RouteFocusOnNavigate';
+import { LegalLinks } from '@/components/entry/LegalLinks';
+import { type AccountWg, MembershipCard } from '@/components/entry/MembershipCard';
+import {
+	PublicModulePreview,
+	PublicModulePreviews,
+	type PublicPreviewModule,
+} from '@/components/entry/PublicModulePreview';
+import {
+	isPublicModuleSlug,
+	PRIMARY_MODULE_SLUGS,
+	type PublicModuleSlug,
+} from '@/components/entry/public-modules';
+import { SignOutActions } from '@/components/entry/SignOutActions';
+import { InvitationNotice, WgWelcome } from '@/components/entry/WgWelcome';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { LogoMark } from '@/components/ui/LogoMark';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
+import { NavItem } from '@/components/wg/NavItem';
+import { SubNav } from '@/components/wg/SubNav';
+import { hasSessionCookie } from '@/core/auth/session-hint';
+import { fetchAccountWgs } from '@/core/infra/account-wgs';
+import { invitePath, isInviteToken } from '@/core/utils/invite-token';
+import { useMessage } from '@/shared/i18n/message';
+import { cn } from '@/shared/lib/cn';
 
 const MODULE_ICONS: Record<PublicModuleSlug, LucideIcon> = {
 	ausgaben: Receipt,

@@ -1,6 +1,8 @@
 'use client';
 
-import { useToast } from '@/components/ui/Toast';
+import { Minus, Pencil, Plus, Trash2 } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
 	Item,
@@ -11,6 +13,7 @@ import {
 	ItemTitle,
 } from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
+import { useToast } from '@/components/ui/Toast';
 import { useConfirmDelete } from '@/core/hooks/use-confirm-delete';
 import { apiFetch } from '@/core/infra/api-client';
 import { formatDecimal } from '@/core/utils/amount';
@@ -18,9 +21,6 @@ import { useInventoryQuantity } from '@/features/inventory/hooks/use-inventory-q
 import type { InventoryItemDto, InventoryMutationItemDto } from '@/features/inventory/inventory';
 import { useQuantityText } from '@/features/inventory/use-quantity-text';
 import type { Locale } from '@/shared/i18n/locale';
-import { Minus, Pencil, Plus, Trash2 } from 'lucide-react';
-import { useLocale, useTranslations } from 'next-intl';
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
 
 interface InventoryItemRowProps {
 	item: InventoryItemDto;
@@ -82,7 +82,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 	// The row disappears: focus moves to the neighboring row instead of BODY.
 	function focusNeighborRow(): void {
 		const rows = [...document.querySelectorAll<HTMLElement>('[data-inventory-row]')];
-		const index = rows.findIndex((row) => row === rowRef.current);
+		const index = rows.indexOf(rowRef.current as HTMLElement);
 		const neighbor = rows[index + 1] ?? rows[index - 1];
 		const target = neighbor?.querySelector<HTMLElement>('button') ?? document.querySelector('h1');
 		requestAnimationFrame(() => target?.focus());

@@ -1,7 +1,13 @@
+import type { Metadata } from 'next';
+import { headers } from 'next/headers';
+import { notFound, redirect } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { getTranslations } from 'next-intl/server';
+import type { ReactNode } from 'react';
 import { AppBottomNav } from '@/components/app/AppBottomNav';
+import { HOME_NAV_LABEL, WG_SECTIONS } from '@/components/app/navigation';
 import { RouteFocusOnNavigate } from '@/components/app/RouteFocusOnNavigate';
 import { WgAppHeader } from '@/components/app/WgAppHeader';
-import { HOME_NAV_LABEL, WG_SECTIONS } from '@/components/app/navigation';
 import { ToastContainer } from '@/components/ui/Toast';
 import { NavItem } from '@/components/wg/NavItem';
 import { OfflineBanner } from '@/components/wg/OfflineBanner';
@@ -12,12 +18,6 @@ import { REQUEST_PATH_HEADER, wgReturnPath } from '@/core/auth/next-path';
 import { loadWgShell, loadWgViewer } from '@/core/guards/load-wg-viewer';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import { loadFixtureWgView } from '@/fixtures/pages';
-import type { Metadata } from 'next';
-import { useTranslations } from 'next-intl';
-import { getTranslations } from 'next-intl/server';
-import { headers } from 'next/headers';
-import { notFound, redirect } from 'next/navigation';
-import type { ReactNode } from 'react';
 import { TabWarmup } from './_components/TabWarmup';
 
 interface Props {
@@ -33,7 +33,9 @@ function wgTitle(name: string): Metadata['title'] {
 
 export async function generateMetadata({
 	params,
-}: { params: Promise<{ code: string }> }): Promise<Metadata> {
+}: {
+	params: Promise<{ code: string }>;
+}): Promise<Metadata> {
 	const { code: rawCode } = await params;
 	const t = await getTranslations('meta.wg');
 	const code = normalizeShareCode(rawCode);

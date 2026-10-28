@@ -1,3 +1,4 @@
+import { NextResponse } from 'next/server';
 import { withIdempotentWrite } from '@/core/db/idempotent-write';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
@@ -18,7 +19,6 @@ import {
 	recordCashPayment,
 } from '@/features/expenses/server/manual-payment';
 import { notifySettlement } from '@/features/expenses/server/settle-notify';
-import { NextResponse } from 'next/server';
 
 /**
  * Enter a cash payment that settles the whole current net debt between two members. Either member

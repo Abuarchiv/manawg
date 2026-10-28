@@ -1,4 +1,8 @@
 'use client';
+import { ListChecks } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
 	Empty,
@@ -15,18 +19,14 @@ import { MS_PER_DAY } from '@/core/utils/time';
 import { InventoryRestockPrompt } from '@/features/inventory/components/InventoryRestockPrompt';
 import type { InventoryItemDto } from '@/features/inventory/inventory';
 import { ClearBoughtDialog } from '@/features/shopping/components/ClearBoughtDialog';
+import { QUICK_SHOPPING_ITEMS } from '@/features/shopping/components/constants';
 import { ListSkeleton, SuggestionsSkeleton } from '@/features/shopping/components/ListSkeleton';
 import { ShoppingAddBar } from '@/features/shopping/components/ShoppingAddBar';
 import { ShoppingList } from '@/features/shopping/components/ShoppingList';
 import { ShoppingReceiptPrompt } from '@/features/shopping/components/ShoppingReceiptPrompt';
 import { ShoppingSuggestions } from '@/features/shopping/components/ShoppingSuggestions';
-import { QUICK_SHOPPING_ITEMS } from '@/features/shopping/components/constants';
 import { useShoppingPage } from '@/features/shopping/hooks/use-shopping-page';
 import { splitShoppingItems } from '@/features/shopping/shopping-view';
-import { ListChecks } from 'lucide-react';
-import { useTranslations } from 'next-intl';
-import { useSearchParams } from 'next/navigation';
-import { useRef, useState } from 'react';
 import { buildSuggestionGroups } from './shopping-suggestions';
 
 const NO_INVENTORY: InventoryItemDto[] = [];

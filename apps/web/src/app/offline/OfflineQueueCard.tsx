@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { richArgument } from '@/components/entry/rich-argument';
 import {
 	ItemContent,
@@ -12,13 +14,11 @@ import { Separator } from '@/components/ui/separator';
 import type { KnownWg } from '@/core/auth/local-account';
 import { titled } from '@/core/offline/offline-failure-copy';
 import {
-	type OfflineAction,
 	getOfflineActionRisk,
 	getOfflineActionSummary,
+	type OfflineAction,
 } from '@/core/offline/offline-queue';
 import { useMessage } from '@/shared/i18n/message';
-import { useTranslations } from 'next-intl';
-import Link from 'next/link';
 import {
 	type OfflineStatus,
 	offlineAgeMessage,
@@ -33,7 +33,11 @@ export function OfflineQueueCard({
 	queue,
 	primaryWg,
 	status,
-}: { queue: OfflineAction[]; primaryWg: KnownWg | null; status: OfflineStatus }) {
+}: {
+	queue: OfflineAction[];
+	primaryWg: KnownWg | null;
+	status: OfflineStatus;
+}) {
 	const t = useTranslations('offline.page');
 	const message = useMessage();
 	const common = useTranslations('common');

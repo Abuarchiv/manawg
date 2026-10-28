@@ -1,3 +1,6 @@
+import { and, eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { recordAuditEvent } from '@/core/audit';
 import { announcementComments, announcements, db } from '@/core/db';
 import { isWgAdmin } from '@/core/guards/admin';
@@ -8,9 +11,6 @@ import { badRequest, forbidden, notFound, rateLimitResponse } from '@/core/http/
 import { parseBody } from '@/core/http/parse-body';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { COMMENT_MAX } from '@/features/pinnwand/constants';
-import { and, eq } from 'drizzle-orm';
-import { NextResponse } from 'next/server';
-import { z } from 'zod';
 
 const commentSchema = z.object({
 	content: z.string().trim().min(1).max(COMMENT_MAX),

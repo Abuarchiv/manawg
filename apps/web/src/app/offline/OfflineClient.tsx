@@ -1,32 +1,32 @@
 'use client';
 
+import { CloudOff, RefreshCw, RotateCw, Wifi } from 'lucide-react';
+import Link from 'next/link';
+import { useTranslations } from 'next-intl';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import { type KnownWg, getKnownWgs, getLocalAccount } from '@/core/auth/local-account';
+import { getKnownWgs, getLocalAccount, type KnownWg } from '@/core/auth/local-account';
 import { subscribeConnectivity } from '@/core/hooks/use-online-status';
 import {
-	OFFLINE_QUEUE_EVENT,
 	filterOfflineActionsForAuthUser,
 	needsManualOfflineResolution,
+	OFFLINE_QUEUE_EVENT,
 	readOfflineQueue,
 	syncOfflineActions,
 } from '@/core/offline/offline-client';
-import { SYNC_NOT_STARTED_MESSAGE, manualSyncResultMessage } from '@/core/offline/offline-copy';
+import { manualSyncResultMessage, SYNC_NOT_STARTED_MESSAGE } from '@/core/offline/offline-copy';
 import type { OfflineAction } from '@/core/offline/offline-queue';
 import { type Message, useMessage } from '@/shared/i18n/message';
-import { CloudOff, RefreshCw, RotateCw, Wifi } from 'lucide-react';
-import { useTranslations } from 'next-intl';
-import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { KnownWgsCard } from './KnownWgsCard';
 import { OfflineQueueCard } from './OfflineQueueCard';
 import {
-	type OfflineStatus,
 	countByShareCode,
 	getAccountMemberships,
 	moduleLabel,
+	type OfflineStatus,
 	offlineStatusCopy,
 	visibleKnownWgs,
 	wgHref,
@@ -194,7 +194,7 @@ export function OfflineClient() {
 			className="min-h-svh bg-background px-4 pt-[max(1.5rem,env(safe-area-inset-top,0px))] pb-6 text-foreground focus:outline-none"
 		>
 			<div className="mx-auto flex w-full max-w-md flex-col gap-5 pb-[env(safe-area-inset-bottom)]">
-				<header className="flex flex-col gap-3" aria-labelledby="offline-heading">
+				<header className="flex flex-col gap-3">
 					<div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
 						<div className="flex min-w-0 max-w-full items-center gap-2">
 							<span className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-muted">

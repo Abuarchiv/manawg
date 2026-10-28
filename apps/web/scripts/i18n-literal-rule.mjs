@@ -9,7 +9,7 @@
  */
 
 import { dirname, join, relative, resolve, sep } from 'node:path';
-import ts from 'typescript';
+import ts from '@typescript/typescript6';
 
 const IGNORE_MARKER = 'i18n-ignore';
 const COPY_ATTRIBUTES = new Set([

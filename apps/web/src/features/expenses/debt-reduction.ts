@@ -1,5 +1,5 @@
 import { normalizeCurrency } from '@/core/utils/money';
-import { type PairExpenseInput, aggregatePairTotals } from './debts';
+import { aggregatePairTotals, type PairExpenseInput } from './debts';
 import type { ExpensePaymentInput } from './expense-payment-input';
 
 export interface SimplifiedDebt {

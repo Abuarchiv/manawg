@@ -1,3 +1,6 @@
+import { and, eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { db, wgChatMessages, wgChatReads } from '@/core/db';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
@@ -6,9 +9,6 @@ import { badRequest, notFound, rateLimitResponse } from '@/core/http/api-errors'
 import { parseBody } from '@/core/http/parse-body';
 import { chatReadLimiter, checkRateLimit } from '@/core/rate-limit';
 import { buildChatReadMarkerSetWhere } from '@/features/chat/server/chat-read-query';
-import { and, eq } from 'drizzle-orm';
-import { NextResponse } from 'next/server';
-import { z } from 'zod';
 
 const postSchema = z.object({
 	lastReadMessageId: z.string().uuid().nullable(),

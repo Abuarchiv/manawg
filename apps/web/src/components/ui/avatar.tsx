@@ -1,7 +1,7 @@
 'use client';
 
-import { cn } from '@/shared/lib/cn';
 import { Avatar as AvatarPrimitive } from '@base-ui/react/avatar';
+import { cn } from '@/shared/lib/cn';
 
 function Avatar({
 	className,

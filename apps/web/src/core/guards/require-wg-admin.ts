@@ -1,9 +1,9 @@
+import type { NextRequest } from 'next/server';
 import { isWgAdmin } from '@/core/guards/admin';
-import { type WgMembershipResult, requireWgMembership } from '@/core/guards/require-wg-member';
+import { requireWgMembership, type WgMembershipResult } from '@/core/guards/require-wg-member';
 import type { ResolvedWg } from '@/core/guards/resolve';
 import { forbidden, rateLimitResponse } from '@/core/http/api-errors';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
-import type { NextRequest } from 'next/server';
 
 /**
  * The guard for WG-settings writes: resolve the share code, verify the caller

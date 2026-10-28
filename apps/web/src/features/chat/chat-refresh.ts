@@ -1,10 +1,10 @@
 import {
+	advanceChatRefreshSequence,
 	CHAT_REFRESH_BATCH_SIZE,
 	type ChatReadMarker,
-	type OwnReadMarker,
-	advanceChatRefreshSequence,
 	isLatestChatRefreshResponse,
 	nextChatRefreshBatch,
+	type OwnReadMarker,
 	reactionKeysToPreserve,
 	reconcileChatMessages,
 	reconcileChatReactions,

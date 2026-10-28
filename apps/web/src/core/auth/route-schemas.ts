@@ -1,5 +1,5 @@
-import { MEMBER_NAME_MAX_LENGTH } from '@/shared/lib/limits';
 import { z } from 'zod';
+import { MEMBER_NAME_MAX_LENGTH } from '@/shared/lib/limits';
 
 export const emailField = z.string().trim().toLowerCase().email().max(254);
 // Strength is Supabase's call (`weak_password`); only bound the size here.

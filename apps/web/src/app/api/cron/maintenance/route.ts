@@ -1,3 +1,4 @@
+import { type NextRequest, NextResponse } from 'next/server';
 import { deleteAuthUser } from '@/core/auth/delete-user';
 import { getSupabaseEnv, hasSupabaseEnv } from '@/core/auth/supabase-env';
 import { retryPendingAccountDeletions } from '@/core/db/account-deletion';
@@ -16,7 +17,6 @@ import { logApiError, withCronLogging } from '@/core/infra/observability';
 import { removeSupabaseImages } from '@/core/infra/supabase-storage';
 import { confirmedEmailOf, sendAccountDeletedMail } from '@/core/mail/account-deleted';
 import { purgeOldDigestMailLog } from '@/core/mail/mail-retention';
-import { type NextRequest, NextResponse } from 'next/server';
 
 async function cleanupPrivateImages(): Promise<{
 	attempted: number;

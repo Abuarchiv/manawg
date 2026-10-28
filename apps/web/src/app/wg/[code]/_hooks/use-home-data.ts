@@ -1,19 +1,19 @@
 'use client';
 
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { DashboardData } from '@/composition/dashboard-data';
 import { getBerlinWeekWindow } from '@/composition/dashboard-insights';
 import { wgLoadError } from '@/core/guards/load-errors';
 import { useCachedFetch } from '@/core/hooks/use-cached-fetch';
 import { subscribeVisibility, useOnlineStatus } from '@/core/hooks/use-online-status';
-import { OFFLINE_SYNCED_EVENT, getSyncedCountForWg } from '@/core/offline/offline-client';
+import { getSyncedCountForWg, OFFLINE_SYNCED_EVENT } from '@/core/offline/offline-client';
 import { berlinDayKey } from '@/core/utils/berlin-day';
 import {
 	LIST_REFRESH_INTERVAL_MS,
 	useVisibilityPausedInterval,
 } from '@/core/utils/use-visibility-paused-interval';
-import { type SerializedWgEvent, expandRecurrence } from '@/features/events/events';
+import { expandRecurrence, type SerializedWgEvent } from '@/features/events/events';
 import { useMessage } from '@/shared/i18n/message';
-import { useCallback, useEffect, useMemo, useState } from 'react';
 
 interface HomeDataIdentity {
 	memberId: string;

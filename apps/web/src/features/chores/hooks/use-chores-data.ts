@@ -1,3 +1,4 @@
+import { useCallback, useRef } from 'react';
 import { wgLoadError } from '@/core/guards/load-errors';
 import { isNetworkError } from '@/core/http/error-codes';
 import { type SyncedReloadReason, useSyncedCollection } from '@/core/sync/use-synced-collection';
@@ -8,7 +9,6 @@ import type {
 	ChoreListResponse,
 } from '@/features/chores/components/chore-types';
 import { useMessage } from '@/shared/i18n/message';
-import { useCallback, useRef } from 'react';
 
 interface ChoresDataParams {
 	wg: { shareCode: string };

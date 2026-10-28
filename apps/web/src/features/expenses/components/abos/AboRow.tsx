@@ -1,5 +1,7 @@
 'use client';
 
+import { ChevronDown, Pause, Pencil, Play, Trash2 } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 import {
 	Collapsible,
 	CollapsiblePanel,
@@ -19,8 +21,6 @@ import {
 } from '@/features/expenses/recurring-expenses';
 import type { Locale } from '@/shared/i18n/locale';
 import { useMessage } from '@/shared/i18n/message';
-import { ChevronDown, Pause, Pencil, Play, Trash2 } from 'lucide-react';
-import { useLocale, useTranslations } from 'next-intl';
 
 /** Yearly recurring expenses: without the year all dates would look the same (03.02., 03.02., 03.02.). */
 function formatAboDate(iso: string, intervalMonths: number, locale: Locale): string {

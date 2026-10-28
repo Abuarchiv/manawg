@@ -1,6 +1,6 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { notifyChatReadConfirmed } from '@/components/wg/use-wg-counts';
 import { apiFetch } from '@/core/infra/api-client';
-import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChatMessageDto } from '../chat-types';
 
 interface ChatReadReceiptOptions {

@@ -1,9 +1,9 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { EXPENSE_CATEGORIES, type ExpenseCategory } from '@/features/expenses/expense-categories';
-import { useTranslations } from 'next-intl';
 
 interface ExpenseCategoryFieldProps {
 	id: string;

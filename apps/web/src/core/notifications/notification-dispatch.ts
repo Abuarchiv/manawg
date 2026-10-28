@@ -1,10 +1,11 @@
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { db, pushSubscriptions, wgMembers } from '@/core/db';
 import { captureException, logApiError } from '@/core/infra/observability';
 import { isQuietHoursActive } from '@/core/notifications/notification-preferences';
 import {
+	formatNotificationMessage,
 	type NotificationEvent,
 	type NotificationMessage,
-	formatNotificationMessage,
 	notificationCategoryForEvent,
 	notificationPriorityForEvent,
 } from '@/core/notifications/notifications';
@@ -14,7 +15,6 @@ import {
 	parseWebPushStatusCode,
 } from '@/core/notifications/web-push-errors';
 import type { Locale } from '@/shared/i18n/locale';
-import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 
 export interface DispatchInput {
 	wg: { id: string; name: string; shareCode: string };

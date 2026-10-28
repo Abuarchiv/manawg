@@ -6,11 +6,11 @@ import type { ShoppingItem } from '../src/core/db/schema.ts';
 import type { DbTransaction } from '../src/core/db/transaction.ts';
 import { parseShoppingInput } from '../src/features/shopping/parse-shopping-input.ts';
 import {
+	insertShoppingItem,
+	normalizeShoppingCreateReplayResponse,
 	SHOPPING_CREATE_DUPLICATE_RESPONSE,
 	type ShoppingCreateInput,
 	type ShoppingCreateReplayResponse,
-	insertShoppingItem,
-	normalizeShoppingCreateReplayResponse,
 	shoppingCreateCodec,
 	shoppingCreateHttpResponse,
 	withShoppingCreatePostCommitFallback,

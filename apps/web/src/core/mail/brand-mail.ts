@@ -6,7 +6,7 @@
  */
 
 import { serverT } from '@/core/i18n/server-t';
-import { DEFAULT_LOCALE, type Locale, htmlLang } from '@/shared/i18n/locale';
+import { DEFAULT_LOCALE, htmlLang, type Locale } from '@/shared/i18n/locale';
 import { getAppUrl } from '@/shared/lib/app-url';
 import { legalUrl } from '@/shared/lib/landing-url';
 import { MAIL_COLOR_SCHEME_META, MAIL_DARK_STYLE, markImages } from './dark-mode';

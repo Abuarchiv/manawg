@@ -1,7 +1,7 @@
 'use client';
 
-import { cn } from '@/shared/lib/cn';
 import { type ReactNode, useLayoutEffect, useRef } from 'react';
+import { cn } from '@/shared/lib/cn';
 
 export function ThumbAction({ children }: { children: ReactNode }) {
 	const spacerRef = useRef<HTMLDivElement>(null);

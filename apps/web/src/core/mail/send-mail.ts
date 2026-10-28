@@ -1,9 +1,9 @@
 import 'server-only';
+import { eq, sql } from 'drizzle-orm';
 import { db, mailLog } from '@/core/db';
 import { logApiError } from '@/core/infra/observability';
-import { eq, sql } from 'drizzle-orm';
 import type { RenderedMail } from './brand-mail';
-import { type MailTransport, createMailTransport, maskEmail } from './transport';
+import { createMailTransport, type MailTransport, maskEmail } from './transport';
 
 type MailKind = 'welcome' | 'invitation' | 'reminder' | 'account_deleted';
 

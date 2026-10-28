@@ -45,4 +45,7 @@ session refresh against real Supabase and real PostgreSQL instead of fixtures.
     `burst.mjs` adds 36 shopping items in one minute and expects no 429; `ui.mjs`, `ui-edit.mjs`
     and `journey.mjs` must also pass in this mode without 429.
 
-The scripts expect the default local keys of `supabase start`.
+The scripts expect the default local keys of `supabase start`. The addresses live in `env.mjs`;
+override them with `REAL_STACK_APP_URL` (default `http://localhost:3140`), `REAL_STACK_SUPABASE_URL`
+(`http://127.0.0.1:54321`), `REAL_STACK_MAILPIT_URL` (`http://127.0.0.1:54324`) and
+`REAL_STACK_DATABASE_URL` (`postgresql://postgres:postgres@127.0.0.1:54322/postgres`).

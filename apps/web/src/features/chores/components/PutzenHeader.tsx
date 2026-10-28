@@ -1,6 +1,6 @@
 'use client';
-import type { getChorePlanHealth } from '@/features/chores/chore-status';
 import { useTranslations } from 'next-intl';
+import type { getChorePlanHealth } from '@/features/chores/chore-status';
 
 interface PutzenHeaderProps {
 	itemCount: number;

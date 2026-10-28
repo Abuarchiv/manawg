@@ -1,7 +1,7 @@
 'use client';
 
-import { prefetchCachedFetch } from '@/core/hooks/use-cached-fetch';
 import { useEffect } from 'react';
+import { prefetchCachedFetch } from '@/core/hooks/use-cached-fetch';
 
 /**
  * Warms the tab data in idle time: the first switch into Haushalt/Finanzen/Austausch then

@@ -1,5 +1,8 @@
 'use client';
 
+import { Check, CheckCheck, Reply } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
+import { memo, useEffect, useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Bubble, BubbleContent, BubbleGroup, BubbleTail } from '@/components/ui/bubble';
@@ -11,9 +14,6 @@ import type { Locale } from '@/shared/i18n/locale';
 import { type Message as I18nMessage, useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
 import type { MemberInfo } from '@/shared/lib/member-types';
-import { Check, CheckCheck, Reply } from 'lucide-react';
-import { useLocale, useTranslations } from 'next-intl';
-import { memo, useEffect, useRef, useState } from 'react';
 import { canDeleteMessage, canEditMessage } from '../chat-pure';
 import type { BubbleMessage, ReactionSummary } from '../chat-types';
 import { useBubbleGestures } from '../hooks/use-bubble-gestures';

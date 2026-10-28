@@ -1,3 +1,6 @@
+import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { recordAuditEvent } from '@/core/audit';
 import {
 	db,
@@ -12,7 +15,7 @@ import { type DbTransaction, lockExpensePayments, withTransaction } from '@/core
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { HTTP, badRequest, rateLimitedReplayResponse } from '@/core/http/api-errors';
+import { badRequest, HTTP, rateLimitedReplayResponse } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
 import { readListLimit } from '@/core/infra/env';
@@ -29,9 +32,6 @@ import {
 } from '@/features/chat/chat-pure';
 import { buildChatCursorWhere } from '@/features/chat/server/chat-unread-query';
 import { loadOwnReadMarker } from '@/features/chat/server/own-read-marker';
-import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
-import { NextResponse } from 'next/server';
-import { z } from 'zod';
 
 // Operator-tunable via CHAT_MESSAGES_*. Every value runs through readListLimit,
 // so an empty, unparsable or out-of-range setting falls back to / clamps to a

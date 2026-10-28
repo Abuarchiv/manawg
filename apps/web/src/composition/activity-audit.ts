@@ -1,9 +1,9 @@
 import {
-	KEY_RENDER_CONTEXT,
-	type RenderContext,
 	auditFeedMessage,
 	isPassiveAuditEvent,
+	KEY_RENDER_CONTEXT,
 	parseAuditMetadata,
+	type RenderContext,
 } from '@/core/audit-messages';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatShortDate, formatShortDateRange } from '@/core/utils/time';

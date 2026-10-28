@@ -1,14 +1,14 @@
 'use client';
 
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { CalendarPlus, ChevronRight, ExternalLink, RefreshCw, Trash2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { useCalendarSubscription } from '@/features/events/hooks/use-calendar-subscription';
-import { CalendarPlus, ChevronRight, ExternalLink, RefreshCw, Trash2 } from 'lucide-react';
-import { useTranslations } from 'next-intl';
 
 export function CalendarSubscriptionSection({ encodedShareCode }: { encodedShareCode: string }) {
 	const t = useTranslations('events.subscription');

@@ -1,3 +1,9 @@
+import type { Metadata, Viewport } from 'next';
+import localFont from 'next/font/local';
+import { headers } from 'next/headers';
+import Script from 'next/script';
+import { NextIntlClientProvider } from 'next-intl';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { InputModality } from '@/components/app/InputModality';
 import { InstallPrompt } from '@/components/app/InstallPrompt';
 import { PwaRegister } from '@/components/app/PwaRegister';
@@ -9,12 +15,6 @@ import { getAppUrl } from '@/shared/lib/app-url';
 import { APP_SCHEMA_ID, IS_OFFICIAL_INSTANCE, LANDING_SCHEMA_IDS } from '@/shared/lib/landing-url';
 import { SPLASH_BOOTSTRAP_SCRIPT } from '@/shared/lib/splash';
 import { THEME_BOOTSTRAP_SCRIPT } from '@/shared/lib/theme';
-import type { Metadata, Viewport } from 'next';
-import { NextIntlClientProvider } from 'next-intl';
-import { getLocale, getTranslations } from 'next-intl/server';
-import localFont from 'next/font/local';
-import { headers } from 'next/headers';
-import Script from 'next/script';
 import '@/shared/globals.css';
 
 export const dynamic = 'force-dynamic';
@@ -136,11 +136,7 @@ export const viewport: Viewport = {
 	themeColor: '#0a0a0a',
 };
 
-export default async function RootLayout({
-	children,
-}: {
-	children: React.ReactNode;
-}) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
 	// The CSP only allows scripts with the per-request nonce from the middleware.
 	const nonce = (await headers()).get('x-nonce') ?? undefined;
 	const [locale, t] = await Promise.all([getLocale(), getTranslations('common')]);

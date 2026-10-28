@@ -1,11 +1,3 @@
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
-import { useWg } from '@/components/wg/WgContextProvider';
-import { activityItemKey } from '@/composition/activity';
-import { formatEuroCents } from '@/core/utils/money';
-import { relativeTimeMessage } from '@/core/utils/time';
-import type { Locale } from '@/shared/i18n/locale';
-import { useMessage } from '@/shared/i18n/message';
-import { cn } from '@/shared/lib/cn';
 import {
 	CalendarOff,
 	History,
@@ -15,8 +7,16 @@ import {
 	Repeat2,
 	Sparkles,
 } from 'lucide-react';
-import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
+import { useLocale, useTranslations } from 'next-intl';
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
+import { useWg } from '@/components/wg/WgContextProvider';
+import { activityItemKey } from '@/composition/activity';
+import { formatEuroCents } from '@/core/utils/money';
+import { relativeTimeMessage } from '@/core/utils/time';
+import type { Locale } from '@/shared/i18n/locale';
+import { useMessage } from '@/shared/i18n/message';
+import { cn } from '@/shared/lib/cn';
 
 interface ActivityItem {
 	id?: string;

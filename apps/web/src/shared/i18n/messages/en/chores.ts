@@ -78,8 +78,7 @@ export default {
 		notFound: 'This cleaning task no longer exists and has been removed from the rota.',
 		alreadyCompleted: 'This cleaning task is already done. The rota is updating.',
 		occurrenceChanged: 'The date or assignee has changed. The rota is updating.',
-		insertFailed:
-			'The task was only partly marked as done. Reload the rota and check the history.',
+		insertFailed: 'The task was only partly marked as done. Reload the rota and check the history.',
 		doneUnconfirmed: '{title} is done. The confirmed next date and assignee are loading.',
 		doneUnassigned: '{title} is done. Next due {date}, nobody assigned yet.',
 		doneNext:

@@ -1,3 +1,4 @@
+import { useLocale, useTranslations } from 'next-intl';
 import { LogoMark } from '@/components/ui/LogoMark';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { formatEuroCents } from '@/core/utils/money';
@@ -6,7 +7,6 @@ import type { MonthlyStatement } from '@/features/expenses/monthly-statement';
 import { dateTimeFormat } from '@/shared/i18n/intl';
 import type { Locale } from '@/shared/i18n/locale';
 import { cn } from '@/shared/lib/cn';
-import { useLocale, useTranslations } from 'next-intl';
 
 const EYEBROW = 'font-mono text-[11px] tracking-[0.1em] uppercase text-muted-foreground';
 const H2 = 'font-heading text-[18px] font-semibold tracking-[-0.02em] print:text-[22px]';

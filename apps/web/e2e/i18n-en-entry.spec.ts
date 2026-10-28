@@ -1,7 +1,7 @@
 // English entry and auth: landing, discovery pages, sign-in, registration, invitation and password reset.
 // Why: These screens are the first contact for an English-speaking flatmate; German chrome here loses them.
 
-import { type Page, expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 import {
 	FIXTURE_WG,
 	mockNoWgs,
@@ -253,9 +253,7 @@ test.describe('entry and auth in English', () => {
 				await expect(page.getByText(/^The link could not be used\. It has expired/)).toBeVisible({
 					timeout: 60_000,
 				});
-				await expect(
-					page.getByText(/^This invite link is incomplete or not valid/),
-				).toBeVisible();
+				await expect(page.getByText(/^This invite link is incomplete or not valid/)).toBeVisible();
 				await expectEnglishPage(page, width);
 				await page.goto('/?invite=bad');
 				await expect(page.getByText(/^This invite link is incomplete or not valid/)).toBeVisible({
@@ -294,7 +292,9 @@ test.describe('entry and auth in English', () => {
 				await submitSignUp.click();
 				await expect(page.getByText('Check your inbox')).toBeVisible();
 				await expect(
-					page.getByText(/^If no account exists for mina@example\.invalid yet, we have sent a confirmation link/),
+					page.getByText(
+						/^If no account exists for mina@example\.invalid yet, we have sent a confirmation link/,
+					),
 				).toBeVisible();
 				await expect(page.getByRole('button', { name: /^Resend in \d+ s$/ })).toBeDisabled();
 				await expectEnglishPage(page, width);
@@ -357,7 +357,11 @@ test.describe('entry and auth in English', () => {
 				await passwordPanel.getByRole('button', { name: 'Sign in', exact: true }).click();
 				await expect(page.getByText(/^Your email address is not confirmed yet/)).toBeVisible();
 				await page.getByRole('button', { name: 'Resend confirmation email' }).click();
-				await expect(page.getByText(/^If this address is waiting for confirmation, we have sent the email again/)).toBeVisible();
+				await expect(
+					page.getByText(
+						/^If this address is waiting for confirmation, we have sent the email again/,
+					),
+				).toBeVisible();
 				await expectEnglishPage(page, width);
 				await page.getByRole('button', { name: 'Forgot your password?' }).click();
 				await expect(page.getByText(/^If an account exists for this email address/)).toBeVisible();

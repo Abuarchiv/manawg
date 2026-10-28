@@ -1,10 +1,9 @@
 import { chromium, devices } from '@playwright/test';
-const BASE = 'http://localhost:3140';
-const SB = 'http://127.0.0.1:54321';
+import { BASE, MAIL, SB } from './env.mjs';
+
 // Service key of the local `supabase start` stack: `supabase status -o env` prints it.
 const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
 if (!SERVICE) throw new Error('SUPABASE_SERVICE_ROLE_KEY missing (see supabase status -o env)');
-const MAIL = 'http://127.0.0.1:54324/api/v1';
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const bugs = [];
 const bug = (m) => {

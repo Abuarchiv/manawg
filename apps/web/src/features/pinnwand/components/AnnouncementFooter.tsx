@@ -1,5 +1,8 @@
 'use client';
 
+import { CheckCircle2, MessageCircle, Send } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { useEffect, useRef, useState } from 'react';
 import {
 	Collapsible,
 	CollapsiblePanel,
@@ -17,12 +20,9 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { COMMENT_MAX } from '@/features/pinnwand/constants';
-import { CheckCircle2, MessageCircle, Send } from 'lucide-react';
-import { useTranslations } from 'next-intl';
-import { useEffect, useRef, useState } from 'react';
 import { REACTION_ICONS } from './AnnouncementActionsMenu';
-import { CommentRow, useCommentDraft } from './CommentRow';
 import type { Announcement, ReactionKey } from './announcement-types';
+import { CommentRow, useCommentDraft } from './CommentRow';
 
 interface AnnouncementFooterProps {
 	announcement: Announcement;

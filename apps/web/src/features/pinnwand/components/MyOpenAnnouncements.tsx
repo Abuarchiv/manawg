@@ -1,15 +1,18 @@
 'use client';
 
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { ChevronRight, Hand } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import type { Announcement } from './announcement-types';
 
 export function MyOpenAnnouncements({
 	items,
 	onSelect,
-}: { items: Announcement[]; onSelect: (id: string) => void }) {
+}: {
+	items: Announcement[];
+	onSelect: (id: string) => void;
+}) {
 	const t = useTranslations('pinnwand');
 	return (
 		<section className="flex flex-col gap-2" aria-labelledby="my-announcements">
