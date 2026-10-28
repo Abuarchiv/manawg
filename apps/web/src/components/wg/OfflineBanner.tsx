@@ -16,13 +16,14 @@ import {
 	syncOfflineActions,
 } from '@/core/offline/offline-client';
 import {
-	OFFLINE_REPLAY_UNSUPPORTED_NOTICE,
-	formatManualOfflineSyncResult,
-	formatOfflineQueueCount,
-	formatOfflineReviewNeeded,
-	formatQueuedOfflineActions,
-	getOfflineSyncFailureMessage,
+	OFFLINE_REPLAY_UNSUPPORTED_MESSAGE,
+	SYNC_NOT_STARTED_MESSAGE,
+	manualSyncResultMessage,
+	offlineQueueCountMessage,
+	offlineReviewNeededMessage,
+	queuedOfflineActionsMessage,
 } from '@/core/offline/offline-copy';
+import { type Message, useMessage } from '@/shared/i18n/message';
 import { AlertCircle, WifiOff } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
@@ -38,6 +39,9 @@ function isScopedSyncEventForOtherWg(event: Event, shareCode: string): boolean {
 
 export function OfflineBanner() {
 	const t = useTranslations('shell.offlineBanner');
+	const render = useMessage();
+	const renderRef = useRef(render);
+	renderRef.current = render;
 	const { wg, identity } = useWg();
 	const settingsDataHref = `/wg/${encodeURIComponent(wg.shareCode)}/einstellungen#daten`;
 	const online = useOnlineStatus();
@@ -46,7 +50,7 @@ export function OfflineBanner() {
 	const [reviewCount, setReviewCount] = useState(0);
 	const [syncing, setSyncing] = useState(false);
 	// Only a warning stays in the bar; a finished sync is a toast so the page below never shifts.
-	const [notice, setNotice] = useState<string | null>(null);
+	const [notice, setNotice] = useState<Message | null>(null);
 	const toast = useToast();
 	const syncingRef = useRef(false);
 
@@ -88,7 +92,9 @@ export function OfflineBanner() {
 			const synced = getSyncedCountForWg(event, wg.shareCode);
 			if (synced > 0) {
 				const remaining = countOfflineActions(wg.shareCode, { memberId: identity.memberId });
-				toast.success(formatManualOfflineSyncResult(synced, remaining));
+				toast.success(
+					renderRef.current(manualSyncResultMessage(synced, remaining, { offlineLabel: true })),
+				);
 			}
 			update({ clearNotice: synced <= 0 });
 		};
@@ -116,13 +122,15 @@ export function OfflineBanner() {
 			const after = countOfflineActions(wg.shareCode, { memberId: identity.memberId });
 			setQueueCount(after);
 			if (synced > 0) {
-				toast.success(formatManualOfflineSyncResult(synced, after));
+				toast.success(
+					render(manualSyncResultMessage(synced, after, { offlineLabel: true })),
+				);
 			} else if (before > 0 && after > 0) {
-				setNotice(t('notSent'));
+				setNotice({ key: 'shell.offlineBanner.notSent' });
 			}
 		} catch {
 			setQueueCount(countOfflineActions(wg.shareCode, { memberId: identity.memberId }));
-			setNotice(getOfflineSyncFailureMessage());
+			setNotice(SYNC_NOT_STARTED_MESSAGE);
 		} finally {
 			syncingRef.current = false;
 			setSyncing(false);
@@ -142,7 +150,7 @@ export function OfflineBanner() {
 						<WifiOff className="h-4 w-4 shrink-0" aria-hidden />
 						<span>
 							{t('offline', {
-								detail: queueCount > 0 ? formatOfflineQueueCount(queueCount) : t('pending'),
+								detail: queueCount > 0 ? render(offlineQueueCountMessage(queueCount)) : t('pending'),
 							})}
 						</span>
 					</div>
@@ -174,12 +182,14 @@ export function OfflineBanner() {
 					href={settingsDataHref}
 					className="flex min-h-11 min-w-0 flex-[1_1_8rem] items-center leading-snug text-pretty"
 				>
-					{notice ??
-						(replayUnsupported
-							? OFFLINE_REPLAY_UNSUPPORTED_NOTICE
-							: nothingToRetry
-								? formatOfflineReviewNeeded(reviewCount)
-								: formatQueuedOfflineActions(queueCount))}
+					{render(
+						notice ??
+							(replayUnsupported
+								? OFFLINE_REPLAY_UNSUPPORTED_MESSAGE
+								: nothingToRetry
+									? offlineReviewNeededMessage(reviewCount)
+									: queuedOfflineActionsMessage(queueCount)),
+					)}
 				</Link>
 				{nothingToRetry ? null : (
 					<Button

@@ -34,13 +34,13 @@ export function amountError(euros: number | null, raw = ''): Message {
 	};
 }
 
-/** Picker values in order; the German `label` is plain text for the fixed-cost form. */
+/** Picker values in order; the labels come from `recurringIntervalOption`. */
 export const RECURRING_INTERVAL_OPTIONS = [
-	{ value: 1, label: '1 Monat' }, // i18n-ignore plain German text for the fixed-cost form
-	{ value: 2, label: '2 Monate' }, // i18n-ignore plain German text for the fixed-cost form
-	{ value: 3, label: 'Quartal' }, // i18n-ignore plain German text for the fixed-cost form
-	{ value: 6, label: '6 Monate' }, // i18n-ignore plain German text for the fixed-cost form
-	{ value: 12, label: 'Jahr' }, // i18n-ignore plain German text for the fixed-cost form
+	{ value: 1 },
+	{ value: 2 },
+	{ value: 3 },
+	{ value: 6 },
+	{ value: 12 },
 ] as const;
 
 /** How often a template books ("monatlich", "alle 4 Monate"), as data. */

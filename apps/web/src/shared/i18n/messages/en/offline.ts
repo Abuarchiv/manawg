@@ -29,6 +29,14 @@ export default {
 		remaining:
 			'{count, plural, one {# action is still waiting.} other {# actions are still waiting.}}',
 		syncedAndRemaining: '{synced} {remaining}',
+		syncedOffline:
+			'{count, plural, one {# offline action synced.} other {# offline actions synced.}}',
+		queued:
+			'{count, plural, one {# offline action is waiting to sync.} other {# offline actions are waiting to sync.}}',
+		reviewNeeded:
+			'{count, plural, one {# action needs your review.} other {# actions need your review.}}',
+		replayUnsupported:
+			'This browser cannot send the queue from here. Open the app over https in a current browser so the actions can be transferred.',
 		nothingLeft: 'No actions waiting any more.',
 		nothingSynced: 'Nothing synced yet. The actions stay safely saved.',
 		syncNotStarted: 'Syncing could not be started. Check your connection; the actions stay saved.',

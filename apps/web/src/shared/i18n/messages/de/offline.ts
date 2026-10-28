@@ -27,6 +27,14 @@ export default {
 		synced: '{count, plural, one {# Aktion synchronisiert.} other {# Aktionen synchronisiert.}}',
 		remaining: '{count, plural, one {# Aktion wartet weiter.} other {# Aktionen warten weiter.}}',
 		syncedAndRemaining: '{synced} {remaining}',
+		syncedOffline:
+			'{count, plural, one {# Offline-Aktion synchronisiert.} other {# Offline-Aktionen synchronisiert.}}',
+		queued:
+			'{count, plural, one {# Offline-Aktion wartet auf Synchronisierung.} other {# Offline-Aktionen warten auf Synchronisierung.}}',
+		reviewNeeded:
+			'{count, plural, one {# Aktion braucht deine Prüfung.} other {# Aktionen brauchen deine Prüfung.}}',
+		replayUnsupported:
+			'Dieser Browser kann die Warteschlange hier nicht senden. Öffne die App über https in einer aktuellen Browser-Version, damit die Aktionen übertragen werden.',
 		nothingLeft: 'Keine wartenden Aktionen mehr.',
 		nothingSynced: 'Noch nichts synchronisiert. Die Aktionen bleiben sicher gespeichert.',
 		syncNotStarted:

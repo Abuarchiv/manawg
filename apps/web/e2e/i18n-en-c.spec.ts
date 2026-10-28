@@ -244,14 +244,33 @@ test.describe('English debts and reminders', () => {
 			await page.setViewportSize({ width: 390, height: 780 });
 			await setupMember(page);
 			await mockExpenses(page);
-			await page.route(`${API}/reminders`, (route) =>
-				route.request().method() === 'POST'
-					? route.fulfill({
-							status: rejection.status,
-							json: { error: rejection.error, code: rejection.error },
-						})
-					: route.fulfill({ json: { reminders: [] } }),
-			);
+			// After the rejected POST the page reloads the history: a cooldown shows up there as the recent reminder.
+			let posted = false;
+			await page.route(`${API}/reminders`, (route) => {
+				if (route.request().method() === 'POST') {
+					posted = true;
+					return route.fulfill({
+						status: rejection.status,
+						json: { error: rejection.error, code: rejection.error },
+					});
+				}
+				const reminders =
+					posted && rejection.error === 'reminder_cooldown'
+						? [
+								{
+									id: 'reminder-en-recent',
+									debtorMemberId: MINA_ID,
+									creditorMemberId: FIXTURE_WG.memberId,
+									amountCents: 1000,
+									currency: 'EUR',
+									channel: 'push',
+									sentAt: new Date().toISOString(),
+									oldestDebtAgeDays: 3,
+								},
+							]
+						: [];
+				return route.fulfill({ json: { reminders } });
+			});
 			await navigateToFeature(page, `${BASE}/mahnungen`);
 			await dismissOnboarding(page);
 

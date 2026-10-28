@@ -250,6 +250,27 @@ export default {
 			noSubscription:
 				'Dieses Gerät ist nicht mehr für Push angemeldet. Schalte Push-Benachrichtigungen aus und wieder ein.',
 			testFallback: 'Test konnte nicht gesendet werden.',
+			pushNotAllowed: 'Benachrichtigungen wurden nicht erlaubt.',
+			pushServiceWorker:
+				'Web Push konnte nicht aktiviert werden: Lade die Seite neu und versuche es erneut.',
+			pushActivateFailed: 'Web Push konnte nicht aktiviert werden.',
+			pushIncomplete:
+				'Web Push konnte nicht aktiviert werden: Der Browser lieferte unvollständige Daten.',
+			pushDeactivateFailed: 'Web Push konnte nicht deaktiviert werden.',
+			pushDeactivateRejoin:
+				'Web Push konnte nicht deaktiviert werden: Tritt der WG erneut bei.',
+			pushDeactivateRetry:
+				'Web Push konnte nicht deaktiviert werden: Versuche es gleich erneut.',
+			pushSaveFailed: 'Web Push konnte nicht gespeichert werden.',
+			pushSaveReactivate: 'Web Push konnte nicht gespeichert werden: Aktiviere es neu.',
+			pushSaveRejoin:
+				'Web Push konnte nicht gespeichert werden: Tritt der WG erneut bei.',
+			pushSaveRetry:
+				'Web Push konnte nicht gespeichert werden: Versuche es gleich erneut.',
+			pushEndpointOwned:
+				'Web Push konnte nicht gespeichert werden: Dieser Browser ist mit einem anderen Konto verbunden. Versuche es erneut.',
+			pushUnsupported: 'Push wird von diesem Browser nicht unterstützt.',
+			pushNotConfigured: 'Push ist noch nicht konfiguriert.',
 		},
 	},
 	data: {

@@ -35,6 +35,14 @@ const FALLBACK_WORDS: Record<
 	en: { unknownDate: 'Date unknown', unknownTime: 'Time unknown', rangeTo: 'to' },
 };
 
+/** Day and month options: numeric in German ("06.10."), day plus short month name in English ("6 Oct"). */
+export function dayMonthOptions(locale: Locale, withYear = false): Intl.DateTimeFormatOptions {
+	const year = withYear ? { year: 'numeric' as const } : {};
+	return locale === 'de'
+		? { day: '2-digit', month: '2-digit', ...year }
+		: { day: 'numeric', month: 'short', ...year };
+}
+
 export function formatRelativeTime(iso: string, now = Date.now()): string {
 	const date = parseValidDate(iso);
 	if (!date) return 'Zeit unbekannt';
@@ -85,12 +93,9 @@ export function formatRelativeTime(iso: string, now = Date.now()): string {
 	}).format(date);
 }
 
-const SHORT_DATE_TIME: Intl.DateTimeFormatOptions = {
-	day: '2-digit',
-	month: '2-digit',
-	hour: '2-digit',
-	minute: '2-digit',
-};
+function shortDateTime(locale: Locale): Intl.DateTimeFormatOptions {
+	return { ...dayMonthOptions(locale), hour: '2-digit', minute: '2-digit' };
+}
 
 /** Same buckets as `formatRelativeTime`, as data; the date fallback is formatted in `locale`. */
 export function relativeTimeMessage(iso: string, now = Date.now(), locale: Locale = 'de'): Message {
@@ -99,7 +104,7 @@ export function relativeTimeMessage(iso: string, now = Date.now(), locale: Local
 	const diff = now - date.getTime();
 	const absolute = (): Message => ({
 		key: 'common.time.date',
-		values: { date: dateTimeFormat(locale, SHORT_DATE_TIME).format(date) },
+		values: { date: dateTimeFormat(locale, shortDateTime(locale)).format(date) },
 	});
 
 	if (diff <= -MS_PER_MINUTE) {
@@ -150,19 +155,16 @@ export function formatShortDate(
 ): string {
 	const date = parseValidDate(iso);
 	if (!date) return FALLBACK_WORDS[locale].unknownDate;
-	return dateTimeFormat(locale, { day: '2-digit', month: '2-digit', timeZone }).format(date);
+	return dateTimeFormat(locale, { ...dayMonthOptions(locale), timeZone }).format(date);
 }
 
 /** Berlin calendar day with year ("06.10.2026"), for due dates; see `formatShortDate`. */
 export function formatDayMonthYear(iso: string, locale: Locale = 'de'): string {
 	const date = parseValidDate(iso);
 	if (!date) return FALLBACK_WORDS[locale].unknownDate;
-	return dateTimeFormat(locale, {
-		day: '2-digit',
-		month: '2-digit',
-		year: 'numeric',
-		timeZone: 'Europe/Berlin',
-	}).format(date);
+	return dateTimeFormat(locale, { ...dayMonthOptions(locale, true), timeZone: 'Europe/Berlin' }).format(
+		date,
+	);
 }
 
 /** Absence range: Berlin days, see `formatShortDate`. */
@@ -178,9 +180,7 @@ export function formatTimeFull(iso: string, locale: Locale = 'de'): string {
 	const date = parseValidDate(iso);
 	if (!date) return FALLBACK_WORDS[locale].unknownTime;
 	return dateTimeFormat(locale, {
-		day: '2-digit',
-		month: '2-digit',
-		year: 'numeric',
+		...dayMonthOptions(locale, true),
 		hour: '2-digit',
 		minute: '2-digit',
 	}).format(date);
@@ -219,9 +219,7 @@ export function weekLabelMessage(
 	// Without a year, weeks exactly 52 weeks apart share a label and key.
 	const sameYear = weekStart.getFullYear() === now.getFullYear();
 	const date = dateTimeFormat(locale, {
-		day: '2-digit',
-		month: '2-digit',
-		...(sameYear ? {} : { year: 'numeric' }),
+		...dayMonthOptions(locale, !sameYear),
 	}).format(weekStart);
 	return { key: 'common.time.weekOf', values: { date } };
 }

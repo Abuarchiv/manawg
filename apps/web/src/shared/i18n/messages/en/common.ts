@@ -19,6 +19,10 @@ export default {
 		authInvalidated: 'Join the flat again.',
 		queryTooLong: 'The search term is too long.',
 	},
+	notificationWarning: {
+		failed: 'Saved. Not all push notifications could be sent.',
+		unknown: 'Saved. Push delivery could not be confirmed.',
+	},
 	loadError: {
 		withoutDetail: '{lead}.',
 		lead: {

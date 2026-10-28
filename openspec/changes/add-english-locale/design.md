@@ -600,7 +600,8 @@ Without one plan, parallel sessions would collide in the same few files and the 
 - **Inventory units:** the values stay and act as keys. Labels per locale: `Stück` "pcs", `L` "L", `kg` "kg", `Rolle` "roll", `Packung` "pack". The stored keys carry `// i18n-ignore stored unit key` (`inventory.ts:8`, `schema-inventory.ts:14`, `inventory/route.ts:39`, `InventoryFormDrawer.tsx:72`).
 - **Expense and inventory categories:** the values stay. Only the label maps move into catalogs.
 - **Fallback display names:**
-  - OCR payer `'Unbekannt'` (`features/expenses/ocr.ts:249`) becomes `null`.
+  - OCR payer `'Unbekannt'` (`features/expenses/ocr.ts:249`) becomes a sentinel instead of `null`.
+    - **Builder decision (package D):** the unknown payer is a single control character (`import-types.ts`), not `null`. No CSV or OCR name can equal it, so a parsed name never collides with the marker, and the field stays a string through the import pipeline. Screens render `common.unknownPerson` for it.
   - The API fallbacks in `members/[id]/route.ts:84,91` and `reminders/balances/route.ts:51` become `null`.
   - Clients render `common.unknownPerson`. Client-side fallbacks (`pinnwand/page.tsx:23`, chat components, `ExpenseSplitFieldset.tsx:83`, `CommentRow.tsx`) use the same key.
 

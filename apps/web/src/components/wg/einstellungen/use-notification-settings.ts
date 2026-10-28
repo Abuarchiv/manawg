@@ -171,7 +171,7 @@ export function useNotificationSettings({ code, memberId }: NotificationSettings
 					prev && prev.pushOptIn === false ? { ...prev, pushOptIn: true } : prev,
 				);
 			} catch (err) {
-				if (!cancelled) setError(formatPushActivationError(err));
+				if (!cancelled) setError(m(formatPushActivationError(err)));
 			}
 		}
 		void syncPushSubscriptionState();
@@ -191,7 +191,7 @@ export function useNotificationSettings({ code, memberId }: NotificationSettings
 			setStatus((prev) => (prev ? { ...prev, pushOptIn: true } : prev));
 			setMessage(t('pushOn'));
 		} catch (err) {
-			setError(formatPushActivationError(err));
+			setError(m(formatPushActivationError(err)));
 		} finally {
 			pendingRef.current = false;
 			setPending(null);
@@ -211,7 +211,7 @@ export function useNotificationSettings({ code, memberId }: NotificationSettings
 			setStatus((prev) => (prev ? { ...prev, pushOptIn: false } : prev));
 			setMessage(t('pushOff'));
 		} catch (err) {
-			setError(formatPushDeactivationError(err));
+			setError(m(formatPushDeactivationError(err)));
 		} finally {
 			pendingRef.current = false;
 			setPending(null);

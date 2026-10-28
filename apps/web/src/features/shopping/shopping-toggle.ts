@@ -1,5 +1,5 @@
 import { resolveIdempotencyKey } from '@/core/http/idempotency-key';
-import { OFFLINE_NO_CONNECTION_TITLE } from '@/core/offline/offline-failure-copy';
+import { failedWithoutConnection } from '@/core/offline/offline-failure-copy';
 import type { OfflineAction } from '@/core/offline/offline-queue';
 import type { ShoppingItem } from '@/features/shopping/components/shopping-types';
 import { keepItems } from '@/features/shopping/shopping-view';
@@ -130,7 +130,7 @@ export function overlayQueuedShopping(
 	const updates = new Map<string, OfflineAction>();
 	for (const action of mine) {
 		// A rejected update (e.g. changed meanwhile) will never apply, so the list must not show it.
-		const rejected = action.lastError && !action.lastError.startsWith(OFFLINE_NO_CONNECTION_TITLE);
+		const rejected = action.lastError && !failedWithoutConnection(action);
 		if (action.type === 'shopping.update' && !rejected) {
 			updates.set(String(action.payload.itemId), action);
 		}

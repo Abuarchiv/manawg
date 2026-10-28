@@ -72,7 +72,7 @@ test('relativeTimeMessage renders English words', () => {
 	assert.equal(at(-5 * 60_000), 'in 5 min');
 	assert.equal(at(-3 * MS_PER_HOUR), 'in 3 h');
 	assert.equal(renderMessage(t, relativeTimeMessage('nope', NOW, 'en')), 'Time unknown');
-	assert.match(at(40 * MS_PER_DAY), /^\d\d\/\d\d, \d\d:\d\d$/);
+	assert.match(at(40 * MS_PER_DAY), /^\d{1,2} \p{L}{3,4}, \d\d:\d\d$/u);
 });
 
 test('relativeTimeMessage keeps counts as numbers', () => {
@@ -105,20 +105,20 @@ test('weekLabelMessage renders English words and dates', () => {
 		);
 	assert.equal(render(0), 'This week');
 	assert.equal(render(1), 'Last week');
-	assert.equal(render(5), 'Week of 07/09');
-	assert.equal(render(52), 'Week of 13/10/2025');
+	assert.equal(render(5), 'Week of 7 Sept');
+	assert.equal(render(52), 'Week of 13 Oct 2025');
 });
 
 test('date formatters take a locale and default to German', () => {
 	const iso = '2026-10-06T10:00:00.000Z';
 	assert.equal(formatShortDate(iso, 'Europe/Berlin'), '06.10.');
-	assert.equal(formatShortDate(iso, 'Europe/Berlin', 'en'), '06/10');
+	assert.equal(formatShortDate(iso, 'Europe/Berlin', 'en'), '6 Oct');
 	assert.equal(formatDayMonthYear(iso), '06.10.2026');
-	assert.equal(formatDayMonthYear(iso, 'en'), '06/10/2026');
+	assert.equal(formatDayMonthYear(iso, 'en'), '6 Oct 2026');
 	assert.equal(formatTimeFull('2026-10-06T10:05:00.000Z', 'de').slice(0, 10), '06.10.2026');
-	assert.match(formatTimeFull('2026-10-06T10:05:00.000Z', 'en'), /^06\/10\/2026, \d\d:\d\d$/);
+	assert.match(formatTimeFull('2026-10-06T10:05:00.000Z', 'en'), /^6 Oct 2026, \d\d:\d\d$/);
 	assert.equal(formatShortDateRange(iso, '2026-10-09T10:00:00.000Z'), '06.10. bis 09.10.');
-	assert.equal(formatShortDateRange(iso, '2026-10-09T10:00:00.000Z', 'en'), '06/10 to 09/10');
+	assert.equal(formatShortDateRange(iso, '2026-10-09T10:00:00.000Z', 'en'), '6 Oct to 9 Oct');
 	assert.equal(formatDayMonthYear('nope', 'en'), 'Date unknown');
 	assert.equal(formatTimeFull('nope', 'en'), 'Time unknown');
 });

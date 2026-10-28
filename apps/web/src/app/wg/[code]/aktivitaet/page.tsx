@@ -34,6 +34,7 @@ import {
 	groupActivityItemsByDay,
 } from '@/composition/activity';
 import { berlinDayKey, prevBerlinDayStart, startOfBerlinDay } from '@/core/utils/berlin-day';
+import { dayMonthOptions } from '@/core/utils/time';
 import { dateTimeFormat } from '@/shared/i18n/intl';
 import type { Locale } from '@/shared/i18n/locale';
 import { cn } from '@/shared/lib/cn';
@@ -94,8 +95,7 @@ export default function AktivitaetPage() {
 		}
 		return dateTimeFormat(locale, {
 			weekday: 'short',
-			day: '2-digit',
-			month: '2-digit',
+			...dayMonthOptions(locale),
 			timeZone: 'Europe/Berlin',
 		}).format(new Date(`${date}T12:00:00.000Z`));
 	}

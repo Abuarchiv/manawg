@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 const { renderMessage, serverRootT } = await import('@/core/i18n/server-t');
-const { INVALID_RESPONSE_CODE, NETWORK_ERROR_CODE, mutationError, mutationErrorMessage } =
+const { INVALID_RESPONSE_CODE, NETWORK_ERROR_CODE, mutationError } =
 	await import('./error-codes');
 
 const SUBJECT = { key: 'common.loadError.lead.expenses' } as const;
@@ -28,23 +28,34 @@ const CODES = [
 	INVALID_RESPONSE_CODE,
 ];
 
-test('mutationError renders the German of mutationErrorMessage for every bucket', () => {
+test('mutationError renders every bucket in German', () => {
 	const t = serverRootT('de');
-	for (const code of CODES) {
-		const expected = mutationErrorMessage(
-			SUBJECT_TEXT,
-			code,
-			{ [SPECIFIC_CODE]: 'Der Suchbegriff ist zu lang.' },
-			FALLBACK_TEXT,
+	const render = (code: string) =>
+		renderMessage(
+			t,
+			mutationError(
+				SUBJECT,
+				code,
+				{ [SPECIFIC_CODE]: { key: 'common.errors.queryTooLong' } },
+				FALLBACK,
+			),
 		);
-		const message = mutationError(
-			SUBJECT,
-			code,
-			{ [SPECIFIC_CODE]: { key: 'common.errors.queryTooLong' } },
-			FALLBACK,
-		);
-		assert.equal(renderMessage(t, message), expected, code);
-	}
+	assert.equal(
+		render(NETWORK_ERROR_CODE),
+		`${SUBJECT_TEXT}: Prüfe deine Verbindung und versuche es erneut.`,
+	);
+	assert.equal(
+		render('migration_read_only'),
+		`${SUBJECT_TEXT}: Die App ist gerade in Wartung und nur lesbar. Versuche es später erneut.`,
+	);
+	assert.equal(render('auth_required'), `${SUBJECT_TEXT}: Deine Sitzung ist abgelaufen. Melde dich neu an.`);
+	assert.equal(render('wg_not_found'), `${SUBJECT_TEXT}: Öffne die WG über den aktuellen Link erneut.`);
+	assert.equal(render('invalid_share_code'), `${SUBJECT_TEXT}: Der WG-Code ist ungültig.`);
+	assert.equal(render('not_a_member'), `${SUBJECT_TEXT}: Tritt der WG erneut bei.`);
+	assert.equal(render(SPECIFIC_CODE), 'Der Suchbegriff ist zu lang.');
+	for (const code of CODES) assert.ok(render(code).length > 0, code);
+	assert.equal(render('something_else'), FALLBACK_TEXT);
+	assert.equal(render(INVALID_RESPONSE_CODE), FALLBACK_TEXT);
 });
 
 test('mutationError uses the retry subject only for the retryable bucket', () => {

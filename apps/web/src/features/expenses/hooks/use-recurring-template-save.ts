@@ -4,11 +4,6 @@ import { resolveIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/
 import { apiFetch } from '@/core/infra/api-client';
 import { removeDraft } from '@/core/offline/drafts';
 import { enqueueOfflineAction, readOfflineQueue } from '@/core/offline/offline-client';
-import {
-	DRAFT_CLEANUP_FAILED_MESSAGE,
-	OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE,
-	OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
-} from '@/core/offline/offline-copy';
 import { createQueuedRecurring } from '@/core/offline/offline-queue';
 import { eurosToCents, parseEuroAmount } from '@/core/utils/amount';
 import { todayAtLocalNoon } from '@/core/utils/local-date';
@@ -193,7 +188,7 @@ export function useRecurringTemplateSave(
 					splits,
 				});
 				if ((await enqueueOfflineAction(queued)) === 0) {
-					notify.error(OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE);
+					notify.error(t({ key: 'expenses-form.notices.queueBlockedDraft' }));
 					finishSaving();
 					return;
 				}
@@ -218,7 +213,7 @@ export function useRecurringTemplateSave(
 					},
 				]);
 				if (!(await support.clearEditedQueueItem(['recurring.create']))) {
-					notify.error(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
+					notify.error(t({ key: 'expenses-form.notices.offlineDraftCleanupFailed' }));
 					finishSaving();
 					return;
 				}
@@ -262,7 +257,7 @@ export function useRecurringTemplateSave(
 		);
 		form.setEditingRecurringExpense(null);
 		if (!(await support.clearEditedQueueItem(['recurring.create']))) {
-			notify.error(DRAFT_CLEANUP_FAILED_MESSAGE);
+			notify.error(t({ key: 'expenses-form.notices.draftCleanupFailed' }));
 			finishSaving();
 			return;
 		}

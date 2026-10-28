@@ -1,13 +1,13 @@
 'use client';
 
 import { isOfflineActionQueued, removeQueuedAction } from '@/core/offline/offline-client';
-import { QUEUE_EDIT_ALREADY_SENT_MESSAGE } from '@/core/offline/offline-copy';
 import type { OfflineActionType } from '@/core/offline/offline-queue';
 import {
 	type SplitInputResult,
 	buildSplitsFromForm,
 } from '@/features/expenses/expense-split-input';
 import type { ExpenseFormField, ExpenseFormFieldErrors } from '@/features/expenses/expense-types';
+import { useMessage } from '@/shared/i18n/message';
 import { useLocale } from 'next-intl';
 import { useEffect, useState } from 'react';
 import type { ExpenseFormState, ExpensePageContext } from './expense-page-context';
@@ -18,6 +18,7 @@ export function useExpenseFormSupport(
 	form: ExpenseFormState,
 ) {
 	const locale = useLocale();
+	const t = useMessage();
 	const [fieldErrors, setFieldErrors] = useState<ExpenseFormFieldErrors>({});
 	const [validationAttempt, setValidationAttempt] = useState(0);
 
@@ -76,7 +77,7 @@ export function useExpenseFormSupport(
 		if (!queueEditId || queueEditType !== type || isOfflineActionQueued(queueEditId)) return false;
 		form.resetForm();
 		form.setShowForm(false);
-		notify.warning(QUEUE_EDIT_ALREADY_SENT_MESSAGE);
+		notify.warning(t({ key: 'expenses-form.notices.queueEditAlreadySent' }));
 		void reload();
 		return true;
 	}

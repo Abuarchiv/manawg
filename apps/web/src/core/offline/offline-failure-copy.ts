@@ -21,7 +21,7 @@ type FailureName = keyof (typeof deMessages)['offline']['failure'];
  * so these stay as persisted markers and are never shown for new rows.
  */
 // i18n-ignore persisted marker matched by older builds
-export const OFFLINE_NO_CONNECTION_TITLE = 'Noch keine Verbindung';
+const OFFLINE_NO_CONNECTION_TITLE = 'Noch keine Verbindung';
 // i18n-ignore persisted marker matched by older builds
 export const SERVER_CHECK_PREFIX = 'Server prüfen:';
 // i18n-ignore persisted marker matched by older builds

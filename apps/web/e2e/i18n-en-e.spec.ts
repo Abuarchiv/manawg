@@ -114,7 +114,7 @@ test.describe('English fixed costs and statement', () => {
 				await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
 				await expect(page.getByRole('heading', { level: 1, name: 'September 2026' })).toBeVisible();
 				await expect(page.getByText(/^Monthly statement · /)).toBeVisible();
-				await expect(page.getByText('01/09 – 30/09/2026')).toBeVisible();
+				await expect(page.getByText('1 Sept – 30 Sept 2026')).toBeVisible();
 				await expect(page.getByRole('heading', { name: 'Balances' })).toBeVisible();
 				await expect(page.getByText('Split between 2 people')).toBeVisible();
 				await expect(page.getByRole('heading', { name: 'Settlement' })).toBeVisible();

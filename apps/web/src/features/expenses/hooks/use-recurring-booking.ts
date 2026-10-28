@@ -225,7 +225,7 @@ export function useRecurringBooking(ctx: ExpensePageContext) {
 		if (advanced) {
 			expenseRequestsRef.current.delete(template.id);
 			const pushWarning = notificationWarningMessage(createRes.data.warning);
-			if (pushWarning) notify.warning(pushWarning);
+			if (pushWarning) notify.warning(t(pushWarning));
 			else notify.success(t({ key: 'expenses-form.notices.recurringBooked' }));
 		}
 		finishCreating();

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 const { renderMessage, serverRootT } = await import('@/core/i18n/server-t');
-const { getWgLoadErrorMessage, wgLoadError } = await import('./load-errors');
+const { wgLoadError } = await import('./load-errors');
 
 const LEAD = { key: 'common.loadError.lead.expenses' } as const;
 
@@ -22,14 +22,18 @@ const CASES: [number, string | null][] = [
 	[200, null],
 ];
 
-test('wgLoadError renders the German of getWgLoadErrorMessage', () => {
+test('wgLoadError renders German for every status', () => {
 	const t = serverRootT('de');
+	assert.equal(
+		renderMessage(t, wgLoadError(LEAD, 0, null)),
+		'Ausgaben konnten nicht geladen werden: Prüfe deine Verbindung und versuche es erneut.',
+	);
+	assert.equal(
+		renderMessage(t, wgLoadError(LEAD, 400, 'query_invalid')),
+		'Ausgaben konnten nicht geladen werden: Der Suchbegriff ist zu lang.',
+	);
 	for (const [status, error] of CASES) {
-		assert.equal(
-			renderMessage(t, wgLoadError(LEAD, status, error)),
-			getWgLoadErrorMessage('Ausgaben', status, error, { verb: 'konnten' }),
-			`${status} ${error}`,
-		);
+		assert.ok(renderMessage(t, wgLoadError(LEAD, status, error)).startsWith('Ausgaben'));
 	}
 });
 

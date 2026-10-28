@@ -129,6 +129,13 @@ export default {
 			'Diese Fixkosten-Vorlage existiert nicht mehr und wurde aus der Liste entfernt.',
 		templateUpdated: 'Fixkosten-Vorlage aktualisiert.',
 		templateSaved: 'Als Vorlage gespeichert ({interval}).',
+		offlineSaved: 'Offline gespeichert. Wird synchronisiert, sobald du wieder online bist.',
+		queueBlockedDraft:
+			'Offline-Speicher ist blockiert. Lass den Entwurf offen und versuche es später erneut.',
+		offlineDraftCleanupFailed:
+			'Offline gespeichert, aber der alte Entwurf konnte nicht entfernt werden. Prüfe die Offline-Warteschlange.',
+		draftCleanupFailed: 'Gespeichert, aber der alte Offline-Entwurf konnte nicht entfernt werden.',
+		queueEditAlreadySent: 'Der Eintrag wurde inzwischen schon gesendet – bitte prüfe die Liste.',
 	},
 	errors: {
 		withPeriod: '{subject}.',

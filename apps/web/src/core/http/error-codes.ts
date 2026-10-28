@@ -6,8 +6,7 @@ import type { Message } from '@/shared/i18n/message';
  * WG-unavailable, invalid share code, and auth-invalidated.
  *
  * These predicates classify a `(code, status?)` pair. `mutationError` turns the
- * shared buckets into one `Message` (`mutationErrorMessage` into one German
- * sentence); each feature only supplies its subject and its feature-specific codes.
+ * shared buckets into one `Message`; each feature only supplies its subject and its feature-specific codes.
  */
 
 const HTTP_NOT_FOUND = 404;
@@ -21,11 +20,6 @@ export const NETWORK_ERROR_CODE = 'Netzwerkfehler';
 /** `error` that `apiFetch` reports with status 0 when the answer was not readable JSON. */
 // i18n-ignore internal error code, never displayed
 export const INVALID_RESPONSE_CODE = 'Unerwartete Serverantwort';
-
-const RATE_LIMITED_MESSAGE = 'Zu viele Anfragen. Warte kurz und versuche es dann erneut.';
-const READ_ONLY_MESSAGE =
-	'Die App ist gerade in Wartung und nur lesbar. Versuche es später erneut.';
-const SESSION_EXPIRED_MESSAGE = 'Deine Sitzung ist abgelaufen. Melde dich neu an.';
 
 export function isNetworkError(code: string | null, status?: number): boolean {
 	return status === 0 || code === NETWORK_ERROR_CODE || code === 'Failed to fetch';
@@ -100,30 +94,6 @@ export function classifyApiError(code: string | null, status?: number): ApiError
 	if (isAuthInvalidated(code, status)) return 'authInvalidated';
 	if (isRetryableServerError(code, status)) return 'retryable';
 	return null;
-}
-
-/**
- * Error copy for a failed mutation: the shared buckets first (network, retryable,
- * WG unavailable, share code, auth), then the feature's own `specific` texts, else
- * `fallback`. `retrySubject` lets the retryable bucket name a different action.
- */
-export function mutationErrorMessage(
-	subject: string,
-	code: string,
-	specific: Readonly<Record<string, string>>,
-	fallback: string,
-	retrySubject: string = subject,
-): string {
-	if (isNetworkError(code)) return `${subject}: Prüfe deine Verbindung und versuche es erneut.`;
-	// Before the retryable bucket: a 429 is retryable, but "warte kurz" is the useful next step.
-	if (isRateLimited(code)) return `${subject}: ${RATE_LIMITED_MESSAGE}`;
-	if (isReadOnlyMode(code)) return `${subject}: ${READ_ONLY_MESSAGE}`;
-	if (isSessionExpired(code)) return `${subject}: ${SESSION_EXPIRED_MESSAGE}`;
-	if (isRetryableServerError(code)) return `${retrySubject}: Versuche es gleich erneut.`;
-	if (isWgUnavailable(code)) return `${subject}: Öffne die WG über den aktuellen Link erneut.`;
-	if (isInvalidShareCode(code)) return `${subject}: Der WG-Code ist ungültig.`;
-	if (isAuthInvalidated(code)) return `${subject}: Tritt der WG erneut bei.`;
-	return Object.hasOwn(specific, code) ? (specific[code] as string) : fallback;
 }
 
 function withSubject(subject: Message, detailKey: Message['key']): Message {

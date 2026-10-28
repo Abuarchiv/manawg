@@ -8,12 +8,6 @@ import {
 } from '@/core/notifications/notification-warning';
 import { removeDraft } from '@/core/offline/drafts';
 import { enqueueOfflineAction } from '@/core/offline/offline-client';
-import {
-	DRAFT_CLEANUP_FAILED_MESSAGE,
-	OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE,
-	OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE,
-	OFFLINE_SAVED_NOTICE,
-} from '@/core/offline/offline-copy';
 import { eurosToCents, parseEuroAmount } from '@/core/utils/amount';
 import {
 	inputDateOrToday,
@@ -272,7 +266,7 @@ export function useExpenseSubmit(
 					rollbackOptimisticExpense();
 					pending.end(optimisticId);
 					finishSubmitting();
-					reportError(OFFLINE_QUEUE_BLOCKED_DRAFT_MESSAGE);
+					reportError(t({ key: 'expenses-form.notices.queueBlockedDraft' }));
 					return;
 				}
 				if (!isEdit) pendingRequestRef.current = null;
@@ -280,7 +274,7 @@ export function useExpenseSubmit(
 				if (!(await support.clearEditedQueueItem(['expense.create', 'expense.update']))) {
 					pending.end(optimisticId);
 					finishSubmitting();
-					reportError(OFFLINE_DRAFT_CLEANUP_FAILED_MESSAGE);
+					reportError(t({ key: 'expenses-form.notices.offlineDraftCleanupFailed' }));
 					return;
 				}
 				form.resetForm();
@@ -288,7 +282,7 @@ export function useExpenseSubmit(
 				finishSubmitting();
 				pending.end(optimisticId);
 				removeDraft(form.draftKey);
-				notify.warning(OFFLINE_SAVED_NOTICE);
+				notify.warning(t({ key: 'expenses-form.notices.offlineSaved' }));
 				return;
 			}
 			if (!isEdit && shouldReleaseIdempotencyKey(res.status, res.error)) {
@@ -335,12 +329,12 @@ export function useExpenseSubmit(
 		pending.end(optimisticId);
 		if (!(await support.clearEditedQueueItem(['expense.create', 'expense.update']))) {
 			finishSubmitting();
-			reportError(DRAFT_CLEANUP_FAILED_MESSAGE);
+			reportError(t({ key: 'expenses-form.notices.draftCleanupFailed' }));
 			return;
 		}
 		form.resetForm();
 		if (pushWarning) {
-			notify.warning(pushWarning);
+			notify.warning(t(pushWarning));
 		} else {
 			notify.success(
 				t({ key: isEdit ? 'expenses-form.notices.updated' : 'expenses-form.notices.saved' }),

@@ -250,6 +250,23 @@ export default {
 			noSubscription:
 				'This device is no longer registered for push. Turn push notifications off and on again.',
 			testFallback: 'The test could not be sent.',
+			pushNotAllowed: 'Notifications were not allowed.',
+			pushServiceWorker:
+				'Web Push could not be turned on: reload the page and try again.',
+			pushActivateFailed: 'Web Push could not be turned on.',
+			pushIncomplete:
+				'Web Push could not be turned on: the browser returned incomplete data.',
+			pushDeactivateFailed: 'Web Push could not be turned off.',
+			pushDeactivateRejoin: 'Web Push could not be turned off: join the flat again.',
+			pushDeactivateRetry: 'Web Push could not be turned off: try again in a moment.',
+			pushSaveFailed: 'Web Push could not be saved.',
+			pushSaveReactivate: 'Web Push could not be saved: turn it on again.',
+			pushSaveRejoin: 'Web Push could not be saved: join the flat again.',
+			pushSaveRetry: 'Web Push could not be saved: try again in a moment.',
+			pushEndpointOwned:
+				'Web Push could not be saved: this browser is linked to another account. Try again.',
+			pushUnsupported: 'This browser does not support push.',
+			pushNotConfigured: 'Push is not set up yet.',
 		},
 	},
 	data: {

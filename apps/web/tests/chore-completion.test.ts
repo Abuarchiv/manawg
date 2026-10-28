@@ -69,7 +69,7 @@ test('the date follows the requested locale', () => {
 	};
 	assert.equal(
 		choreCompletionFeedback(completed, chore, names, 'en').message.values?.date,
-		'13/10',
+		'13 Oct',
 	);
 });
 

@@ -1,6 +1,7 @@
 import { LogoMark } from '@/components/ui/LogoMark';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { formatEuroCents } from '@/core/utils/money';
+import { dayMonthOptions } from '@/core/utils/time';
 import type { MonthlyStatement } from '@/features/expenses/monthly-statement';
 import { dateTimeFormat } from '@/shared/i18n/intl';
 import type { Locale } from '@/shared/i18n/locale';
@@ -33,15 +34,10 @@ function periodBounds(monthKey: string, locale: Locale): { start: string; end: s
 	const first = new Date(Date.UTC(year ?? 0, (month ?? 1) - 1, 1));
 	const last = new Date(Date.UTC(year ?? 0, month ?? 1, 0));
 	return {
-		start: dateTimeFormat(locale, { day: '2-digit', month: '2-digit', timeZone: 'UTC' }).format(
-			first,
+		start: dateTimeFormat(locale, { ...dayMonthOptions(locale), timeZone: 'UTC' }).format(first),
+		end: dateTimeFormat(locale, { ...dayMonthOptions(locale, true), timeZone: 'UTC' }).format(
+			last,
 		),
-		end: dateTimeFormat(locale, {
-			day: '2-digit',
-			month: '2-digit',
-			year: 'numeric',
-			timeZone: 'UTC',
-		}).format(last),
 	};
 }
 
@@ -57,11 +53,7 @@ export function MonthlyStatementDocument({
 	const locale = useLocale();
 	const { monthKey, members, transfers, categories, items, totalCents, settled } = statement;
 	const money = (cents: number) => formatEuroCents(cents, 'EUR', { locale });
-	const dayMonth = dateTimeFormat(locale, {
-		day: '2-digit',
-		month: '2-digit',
-		timeZone: 'Europe/Berlin',
-	});
+	const dayMonth = dateTimeFormat(locale, { ...dayMonthOptions(locale), timeZone: 'Europe/Berlin' });
 	const number = `MWG-${monthKey.slice(2, 4)}${monthKey.slice(5, 7)}-${shareCode.slice(0, 3).toUpperCase()}`;
 	const viewerShare = members.find((member) => member.id === viewerId)?.shareCents ?? 0;
 	const empty = items.length === 0;

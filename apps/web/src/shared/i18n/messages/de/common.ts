@@ -16,6 +16,10 @@ export default {
 		authInvalidated: 'Tritt der WG erneut bei.',
 		queryTooLong: 'Der Suchbegriff ist zu lang.',
 	},
+	notificationWarning: {
+		failed: 'Gespeichert. Nicht alle Push-Benachrichtigungen konnten versendet werden.',
+		unknown: 'Gespeichert. Push-Versand konnte nicht bestätigt werden.',
+	},
 	loadError: {
 		withoutDetail: '{lead}.',
 		lead: {

@@ -129,6 +129,12 @@ export default {
 		templateGoneRemoved: 'This fixed-cost template no longer exists and was removed from the list.',
 		templateUpdated: 'Fixed-cost template updated.',
 		templateSaved: 'Saved as a template ({interval}).',
+		offlineSaved: 'Saved offline. It syncs as soon as you are back online.',
+		queueBlockedDraft: 'Offline storage is blocked. Keep the draft open and try again later.',
+		offlineDraftCleanupFailed:
+			'Saved offline, but the old draft could not be removed. Check the offline queue.',
+		draftCleanupFailed: 'Saved, but the old offline draft could not be removed.',
+		queueEditAlreadySent: 'The entry has already been sent in the meantime. Check the list.',
 	},
 	errors: {
 		withPeriod: '{subject}.',
