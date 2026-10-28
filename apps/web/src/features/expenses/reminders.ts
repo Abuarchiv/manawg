@@ -85,12 +85,13 @@ interface ReminderMessageInput {
 	oldestDebtAgeDays: number;
 }
 
+// Persisted German audit text for expense_reminders.message; no UI renders it.
 export function formatReminderMessage(input: ReminderMessageInput): string {
 	// Intl puts a no-break space before the currency sign; the push text uses a normal space.
-	const amount = formatEuroCents(input.amountCents, input.currency).replace(/\u00a0/g, ' ');
+	const amount = formatEuroCents(input.amountCents, input.currency).replace(/\u00a0/g, ' '); // i18n-ignore persisted German DB text
 	const ageSuffix =
 		input.oldestDebtAgeDays >= 1
-			? ` seit ${pluralize(input.oldestDebtAgeDays, 'Tag', 'Tagen')}`
+			? ` seit ${pluralize(input.oldestDebtAgeDays, 'Tag', 'Tagen')}` // i18n-ignore persisted German DB text
 			: '';
-	return `Du schuldest ${input.creditorName} noch ${amount}${ageSuffix} — bitte zeitnah ausgleichen.`;
+	return `Du schuldest ${input.creditorName} noch ${amount}${ageSuffix} — bitte zeitnah ausgleichen.`; // i18n-ignore persisted German DB text
 }

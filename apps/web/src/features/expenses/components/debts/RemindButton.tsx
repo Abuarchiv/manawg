@@ -4,12 +4,13 @@ import { useToast } from '@/components/ui/Toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import { mutationErrorMessage } from '@/core/http/error-codes';
+import { mutationError } from '@/core/http/error-codes';
 import { createIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
-import { keyUnavailableMessage } from '@/core/offline/offline-copy';
 import { REMINDER_COOLDOWN_HOURS } from '@/features/expenses/reminders';
+import { type Message, useMessage } from '@/shared/i18n/message';
 import { Bell, Check } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useEffect, useRef, useState } from 'react';
 
 type RemindButtonStatus = 'idle' | 'sending' | 'sent' | 'error' | 'cooldown' | 'optedOut';
@@ -35,33 +36,38 @@ interface RemindButtonProps {
 	size?: 'sm' | 'md';
 	primary?: boolean;
 	label?: string;
-	/** For the confirmation: „Erinnerung an Jona gesendet“. */
+	/** For the confirmation: "Reminder sent to Jona". */
 	debtorName?: string;
 }
 
-function errorMessage(error: string): string {
-	if (error === 'reminder_cooldown')
-		return `Bitte etwas warten (${REMINDER_COOLDOWN_HOURS} Std. pro Person).`;
-	if (error === 'reminder_rate_limited') return 'Zu viele Erinnerungen. Bitte später erneut.';
-	if (error === 'debtor_opted_out') return 'Diese Person erhält keine Erinnerungen.';
-	if (error === 'no_open_debt') return 'Keine offene Schuld zwischen euch.';
-	if (error === 'not_a_member') return 'Tritt der WG bitte erneut bei.';
-	return mutationErrorMessage(
-		'Erinnerung konnte nicht gesendet werden',
+const SUBJECT: Message = { key: 'expenses-debts.remind.errors.subject' };
+
+function errorMessage(error: string): Message {
+	if (error === 'reminder_cooldown') {
+		return {
+			key: 'expenses-debts.remind.errors.cooldown',
+			values: { hours: REMINDER_COOLDOWN_HOURS },
+		};
+	}
+	if (error === 'reminder_rate_limited') return { key: 'expenses-debts.remind.errors.rateLimited' };
+	if (error === 'debtor_opted_out') return { key: 'expenses-debts.remind.errors.optedOut' };
+	if (error === 'no_open_debt') return { key: 'expenses-debts.remind.errors.noOpenDebt' };
+	if (error === 'not_a_member') return { key: 'expenses-debts.remind.errors.notAMember' };
+	return mutationError(
+		SUBJECT,
 		error,
 		{},
-		'Erinnerung konnte nicht gesendet werden.',
+		{ key: 'expenses-debts.errors.sentence', values: { subject: SUBJECT } },
 	);
 }
 
-function successMessage(warning: RemindResponseWarning): string {
-	if (warning === 'notification_delivery_failed') {
-		return 'Erinnerung gespeichert. Push-Benachrichtigung konnte nicht versendet werden.';
-	}
+function successMessage(warning: RemindResponseWarning): Message {
+	if (warning === 'notification_delivery_failed')
+		return { key: 'expenses-debts.remind.deliveryFailed' };
 	if (warning === 'notification_delivery_unknown') {
-		return 'Erinnerung gespeichert. Push-Versand konnte nicht bestätigt werden.';
+		return { key: 'expenses-debts.remind.deliveryUnknown' };
 	}
-	return 'Erinnerung gesendet.';
+	return { key: 'expenses-debts.remind.sentPlain' };
 }
 
 export function RemindButton({
@@ -78,14 +84,16 @@ export function RemindButton({
 	onOptimistic,
 	size = 'md',
 	primary = false,
-	label: idleLabel = 'Erinnern',
+	label: idleLabel,
 	debtorName,
 }: RemindButtonProps) {
 	const toast = useToast();
+	const t = useTranslations('expenses-debts.remind');
+	const message = useMessage();
 	const [status, setStatus] = useState<RemindButtonStatus>(
 		debtorOptedOut ? 'optedOut' : cooldownActive ? 'cooldown' : 'idle',
 	);
-	const [feedback, setFeedback] = useState<string | null>(null);
+	const [feedback, setFeedback] = useState<Message | null>(null);
 	const sendingRef = useRef(false);
 	const requestKeyRef = useRef<string | null>(null);
 
@@ -119,10 +127,10 @@ export function RemindButton({
 		const idempotencyKey = requestKeyRef.current ?? createIdempotencyKey();
 		if (!idempotencyKey) {
 			rollbackOptimistic?.();
-			const message = keyUnavailableMessage('Erinnerung', 'gesendet');
+			const unavailable: Message = { key: 'expenses-debts.remind.keyUnavailable' };
 			setStatus('error');
-			setFeedback(message);
-			toast.error(message);
+			setFeedback(unavailable);
+			toast.error(message(unavailable));
 			sendingRef.current = false;
 			return;
 		}
@@ -143,8 +151,8 @@ export function RemindButton({
 				// The primary button switches to the next person immediately (remount): only a toast survives that.
 				toast.success(
 					res.data.warning || !debtorName
-						? successMessage(res.data.warning)
-						: `Erinnerung an ${debtorName} gesendet.`,
+						? message(successMessage(res.data.warning))
+						: t('sentTo', { name: debtorName }),
 				);
 				onSent?.(res.data.reminder.id);
 				return;
@@ -160,25 +168,25 @@ export function RemindButton({
 			} else {
 				setStatus('error');
 			}
-			const message = errorMessage(res.error);
-			setFeedback(message);
-			toast.error(message);
+			const failure = errorMessage(res.error);
+			setFeedback(failure);
+			toast.error(message(failure));
 		} catch (err) {
 			rollbackOptimistic?.();
-			const message = err instanceof Error ? errorMessage(err.message) : errorMessage('unknown');
+			const failure = errorMessage(err instanceof Error ? err.message : 'unknown');
 			setStatus('error');
-			setFeedback(message);
-			toast.error(message);
+			setFeedback(failure);
+			toast.error(message(failure));
 		} finally {
 			sendingRef.current = false;
 		}
 	}
 
-	let label = idleLabel;
-	if (status === 'sending') label = 'Sendet…';
-	else if (status === 'sent') label = 'Gesendet';
-	else if (status === 'cooldown') label = cooldownLabel ?? 'Wieder später möglich';
-	else if (status === 'optedOut') label = 'Mag keine Erinnerungen';
+	let label = idleLabel ?? t('idle');
+	if (status === 'sending') label = t('sending');
+	else if (status === 'sent') label = t('sent');
+	else if (status === 'cooldown') label = cooldownLabel ?? t('cooldown');
+	else if (status === 'optedOut') label = t('optedOut');
 
 	return (
 		<div
@@ -203,7 +211,9 @@ export function RemindButton({
 				) : (
 					<Bell data-icon="inline-start" />
 				)}
-				{status === 'cooldown' && cooldownLabel && <span className="sr-only">Wieder möglich </span>}
+				{status === 'cooldown' && cooldownLabel && (
+					<span className="sr-only">{t('cooldownSr')} </span>
+				)}
 				{label}
 			</Button>
 			{/* Errors and hints already appear in the toast; inline only on the primary button, never twice in one row. */}
@@ -213,7 +223,7 @@ export function RemindButton({
 					variant={status === 'error' ? 'destructive' : 'default'}
 				>
 					<AlertDescription className="whitespace-normal [overflow-wrap:break-word]">
-						{feedback}
+						{message(feedback)}
 					</AlertDescription>
 				</Alert>
 			)}

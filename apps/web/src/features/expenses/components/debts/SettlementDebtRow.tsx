@@ -10,6 +10,7 @@ import { RemindButton } from '@/features/expenses/components/debts/RemindButton'
 import type { SimplifiedDebt } from '@/features/expenses/debt-reduction';
 import type { Expense } from '@/features/expenses/expense-types';
 import { cn } from '@/shared/lib/cn';
+import { useLocale, useTranslations } from 'next-intl';
 import { useEffect, useRef } from 'react';
 import { SettlementReviewDialog } from './SettlementReviewDialog';
 import { useDebtSettlement } from './use-debt-settlement';
@@ -39,6 +40,8 @@ export function SettlementDebtRow({
 	backedByDirectDebt,
 	onSettled,
 }: DebtRowProps) {
+	const locale = useLocale();
+	const t = useTranslations('expenses-debts');
 	const settledRef = useRef(false);
 	const handleSettled = (message?: string) => {
 		settledRef.current = true;
@@ -79,8 +82,12 @@ export function SettlementDebtRow({
 			</div>
 			<ItemContent className="min-w-[7rem] flex-1">
 				<ItemTitle className="line-clamp-none text-sm font-normal break-words">
-					{iOwe ? 'Du' : debt.fromName} {iOwe ? 'schuldest' : 'schuldet'}{' '}
-					{owedToMe ? 'dir' : debt.toName}
+					{t('debtLine', {
+						debtorSelf: iOwe ? 'yes' : 'no',
+						debtor: debt.fromName,
+						creditorSelf: owedToMe ? 'yes' : 'no',
+						creditor: debt.toName,
+					})}
 				</ItemTitle>
 			</ItemContent>
 			<span
@@ -89,7 +96,7 @@ export function SettlementDebtRow({
 					iOwe ? 'text-destructive' : owedToMe ? 'text-settled' : 'text-foreground',
 				)}
 			>
-				{formatEuroCents(debt.cents, debt.currency)}
+				{formatEuroCents(debt.cents, debt.currency, { locale })}
 			</span>
 
 			{canSettle && (
@@ -103,7 +110,7 @@ export function SettlementDebtRow({
 						onClick={() => void review()}
 					>
 						{reviewing && <Spinner data-icon="inline-start" />}
-						{reviewing ? 'Prüft…' : 'Ausgleichen'}
+						{reviewing ? t('settle.checking') : t('settle.button')}
 					</Button>
 					{owedToMe && backedByDirectDebt && (
 						<RemindButton

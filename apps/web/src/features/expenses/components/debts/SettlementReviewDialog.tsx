@@ -24,6 +24,7 @@ import { formatEuroCents } from '@/core/utils/money';
 import { formatShortDate } from '@/core/utils/time';
 import type { SimplifiedDebt } from '@/features/expenses/debt-reduction';
 import type { Expense } from '@/features/expenses/expense-types';
+import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 import type { RefObject } from 'react';
 import type { DebtSettlement } from './use-debt-settlement';
@@ -45,30 +46,31 @@ export function SettlementReviewDialog({
 	finalFocusRef: RefObject<HTMLElement | null>;
 	currentMemberId: string;
 }) {
+	const locale = useLocale();
+	const t = useTranslations('expenses-debts.review');
 	const { reviewOpen, setReviewOpen, settling, preview, error, settle, settleCash } = settlement;
+	const money = (cents: number) => formatEuroCents(cents, debt.currency, { locale });
 	return (
 		<AlertDialog open={reviewOpen} onOpenChange={settlement.setReviewDialogOpen}>
 			<AlertDialogContent className="max-h-[90dvh] overflow-y-auto" finalFocus={finalFocusRef}>
 				<AlertDialogHeader className="place-items-start text-left">
-					<AlertDialogTitle>Bereits erfolgte Zahlung bestätigen</AlertDialogTitle>
+					<AlertDialogTitle>{t('title')}</AlertDialogTitle>
 					<AlertDialogDescription>
-						Nur bestätigen, wenn {debt.fromId === currentMemberId ? 'du' : debt.fromName}{' '}
-						{formatEuroCents(preview?.settleableCents || (preview?.netCents ?? 0), debt.currency)}{' '}
-						bereits an {debt.toId === currentMemberId ? 'dich' : debt.toName} gezahlt{' '}
-						{debt.fromId === currentMemberId ? 'hast' : 'hat'}. Es wird kein Geld überwiesen.
+						{t('body', {
+							payerSelf: debt.fromId === currentMemberId ? 'yes' : 'no',
+							payer: debt.fromName,
+							amount: money(preview?.settleableCents || (preview?.netCents ?? 0)),
+							payeeSelf: debt.toId === currentMemberId ? 'yes' : 'no',
+							payee: debt.toName,
+						})}
 						{preview &&
 							preview.settleableCents > 0 &&
-							preview.settleableCents < preview.netCents && (
-								<>
-									{' '}
-									„Gesamten Saldo bar eintragen“ bestätigt dagegen den ganzen verrechneten Saldo von{' '}
-									{formatEuroCents(preview.netCents, debt.currency)}.
-								</>
-							)}
+							preview.settleableCents < preview.netCents &&
+							` ${t('cashNote', { amount: money(preview.netCents) })}`}
 					</AlertDialogDescription>
 				</AlertDialogHeader>
 				{(preview?.splits.length ?? 0) > 0 && (
-					<ItemGroup aria-label="Unterstützte Ausgabenanteile">
+					<ItemGroup aria-label={t('sharesLabel')}>
 						{(preview?.splits ?? []).map((split) => {
 							const expense = expenses.find((item) => item.id === split.expenseId);
 							return (
@@ -89,20 +91,20 @@ export function SettlementReviewDialog({
 													{expense.description}
 												</Link>
 											) : (
-												<span>Ausgabe</span>
+												<span>{t('expense')}</span>
 											)}
 										</ItemTitle>
 										<ItemDescription className="line-clamp-none [overflow-wrap:break-word]">
 											{split.offset
-												? 'Gegenforderung, wird verrechnet'
+												? t('offset')
 												: expense
-													? formatShortDate(expense.occurredAt)
-													: 'Aktueller offener Anteil'}
+													? formatShortDate(expense.occurredAt, undefined, locale)
+													: t('currentShare')}
 										</ItemDescription>
 									</ItemContent>
 									<Badge variant="outline" className="font-mono tabular-nums">
 										{split.offset ? '−' : ''}
-										{formatEuroCents(split.amountCents, debt.currency)}
+										{money(split.amountCents)}
 									</Badge>
 								</ItemEntry>
 							);
@@ -112,22 +114,15 @@ export function SettlementReviewDialog({
 				{preview && preview.remainingCents > 0 && (
 					<Alert>
 						<AlertDescription>
-							{formatEuroCents(preview.remainingCents, debt.currency)} des verrechneten Saldos sind
-							mit diesen Anteilen nicht verbuchbar und bleiben offen.
+							{t('remaining', { amount: money(preview.remainingCents) })}
 						</AlertDescription>
 					</Alert>
 				)}
-				<p className="text-xs text-muted-foreground">
-					Diese Anteile wurden aktuell geprüft. Ändern sie sich zwischenzeitlich, musst du die
-					Zahlung erneut prüfen.
-				</p>
+				<p className="text-xs text-muted-foreground">{t('checkedNote')}</p>
 
 				{preview?.splits.length === 0 && (
 					<Alert>
-						<AlertDescription>
-							Dieser Saldo entsteht durch Verrechnung und lässt sich keinem einzelnen Anteil
-							zuordnen. Du kannst ihn als Barzahlung eintragen.
-						</AlertDescription>
+						<AlertDescription>{t('noShares')}</AlertDescription>
 					</Alert>
 				)}
 				{error && (
@@ -137,7 +132,7 @@ export function SettlementReviewDialog({
 				)}
 				<AlertDialogFooter className="flex-col">
 					<AlertDialogCancel className="min-h-11" disabled={settling}>
-						Abbrechen
+						{t('cancel')}
 					</AlertDialogCancel>
 					{preview && preview.netCents > 0 && (
 						<Button
@@ -147,9 +142,7 @@ export function SettlementReviewDialog({
 							onClick={() => void settleCash()}
 						>
 							{settling && <Spinner data-icon="inline-start" />}
-							{settling
-								? 'Speichert…'
-								: `Gesamten Saldo ${formatEuroCents(preview.netCents, debt.currency)} bar eintragen`}
+							{settling ? t('saving') : t('recordCash', { amount: money(preview.netCents) })}
 						</Button>
 					)}
 					{preview && preview.settleableCents > 0 && (
@@ -159,9 +152,7 @@ export function SettlementReviewDialog({
 							onClick={() => void settle()}
 						>
 							{settling && <Spinner data-icon="inline-start" />}
-							{settling
-								? 'Speichert…'
-								: `${formatEuroCents(preview.settleableCents, debt.currency)} als bezahlt eintragen`}
+							{settling ? t('saving') : t('recordPaid', { amount: money(preview.settleableCents) })}
 						</Button>
 					)}
 				</AlertDialogFooter>

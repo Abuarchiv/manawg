@@ -5,7 +5,7 @@ import { BackLink } from '@/components/wg/BackLink';
 import { LoadErrorBanner } from '@/components/wg/LoadErrorBanner';
 import { ThumbAction } from '@/components/wg/ThumbAction';
 import { formatEuroCents } from '@/core/utils/money';
-import { formatRelativeTime } from '@/core/utils/time';
+import { relativeTimeMessage } from '@/core/utils/time';
 import { DebtRow } from '@/features/expenses/components/debts/DebtRow';
 import { RemindButton } from '@/features/expenses/components/debts/RemindButton';
 import { ReminderHistory } from '@/features/expenses/components/debts/ReminderHistory';
@@ -15,8 +15,14 @@ import {
 	reminderKey,
 	useRemindersPage,
 } from '@/features/expenses/hooks/use-reminders-page';
+import { useMessage } from '@/shared/i18n/message';
+import { useLocale, useTranslations } from 'next-intl';
 
 export default function MahnungenPage() {
+	const locale = useLocale();
+	const t = useTranslations('expenses-debts.page');
+	const tRemind = useTranslations('expenses-debts.remind');
+	const message = useMessage();
 	const {
 		wg,
 		identity,
@@ -45,12 +51,16 @@ export default function MahnungenPage() {
 		const debtorName = memberName(row.debtorId);
 		const primaryLabel =
 			row.creditorId === identity.memberId
-				? `${debtorName} erinnern`
-				: `${debtorName} an ${memberName(row.creditorId)} erinnern · ${formatEuroCents(row.amountCents, row.currency)}`;
+				? tRemind('primaryOwn', { debtor: debtorName })
+				: tRemind('primaryOther', {
+						debtor: debtorName,
+						creditor: memberName(row.creditorId),
+						amount: formatEuroCents(row.amountCents, row.currency, { locale }),
+					});
 		const cooldown = cooldownFor(row.debtorId, row.creditorId, row.currency);
-		// Keep it short ("in 2 Tagen"): a long chip wraps below the row and makes it jump.
+		// Keep it short ("in 2 days"): a long chip wraps below the row and makes it jump.
 		const cooldownLabel = cooldown.nextAllowedAt
-			? formatRelativeTime(cooldown.nextAllowedAt.toISOString())
+			? message(relativeTimeMessage(cooldown.nextAllowedAt.toISOString(), Date.now(), locale))
 			: null;
 		return (
 			<RemindButton
@@ -108,7 +118,7 @@ export default function MahnungenPage() {
 				}
 				primary={primary}
 				size={primary ? 'md' : 'sm'}
-				label={primary ? primaryLabel : 'Erinnern'}
+				label={primary ? primaryLabel : tRemind('idle')}
 				debtorName={debtorName}
 			/>
 		);
@@ -120,37 +130,37 @@ export default function MahnungenPage() {
 			className="mx-auto flex w-full min-w-0 max-w-4xl flex-col gap-3 px-4 py-3"
 		>
 			<header className="flex min-w-0 flex-wrap items-center gap-2">
-				<BackLink href={`${wgBaseHref}/ausgaben`} label="Ausgaben" />
+				<BackLink href={`${wgBaseHref}/ausgaben`} label={t('back')} />
 				<h1 className="font-heading min-w-0 flex-1 text-base font-semibold [overflow-wrap:normal] hyphens-auto">
-					Erinnerungen
+					{t('title')}
 				</h1>
 				<output aria-live="polite" aria-hidden={!refreshing} className="sr-only">
-					Lädt…
+					{t('loading')}
 				</output>
 			</header>
 			{allClear ? (
 				<Empty>
 					<EmptyHeader>
-						<EmptyTitle>Alles ausgeglichen. Nichts offen.</EmptyTitle>
+						<EmptyTitle>{t('allClear')}</EmptyTitle>
 					</EmptyHeader>
 				</Empty>
 			) : (
 				<>
 					<section className="flex flex-col gap-2">
-						<h2 className="text-meta font-medium text-muted-foreground">Offene Schulden</h2>
+						<h2 className="text-meta font-medium text-muted-foreground">{t('openDebts')}</h2>
 						{loadErrors.expenses && (
 							<LoadErrorBanner
 								message={loadErrors.expenses}
 								onRetry={() => void load(true)}
 								busy={loading || refreshing}
-								retryLabel="Erneut laden"
+								retryLabel={t('reload')}
 							/>
 						)}
 						{loading ? (
 							<div
 								className="flex flex-col gap-2"
 								aria-busy="true"
-								aria-label="Offene Schulden werden geladen"
+								aria-label={t('openDebtsLoading')}
 								// biome-ignore lint/a11y/useSemanticElements: role="status" names the loading region without swapping the wrapper element to <output>.
 								role="status"
 							>
@@ -163,7 +173,7 @@ export default function MahnungenPage() {
 						) : expensesLoadFailed && rows.length === 0 ? null : rows.length === 0 ? (
 							<Empty>
 								<EmptyHeader>
-									<EmptyTitle>Alles ausgeglichen. Nichts offen.</EmptyTitle>
+									<EmptyTitle>{t('allClear')}</EmptyTitle>
 								</EmptyHeader>
 							</Empty>
 						) : (
@@ -196,15 +206,13 @@ export default function MahnungenPage() {
 						)}
 					</section>
 					<section className="flex flex-col gap-2">
-						<h2 className="text-meta font-medium text-muted-foreground">
-							Letzte Erinnerungen (30 Tage)
-						</h2>
+						<h2 className="text-meta font-medium text-muted-foreground">{t('recent')}</h2>
 						{loadErrors.reminders && (
 							<LoadErrorBanner
 								message={loadErrors.reminders}
 								onRetry={() => void load(true)}
 								busy={loading || refreshing}
-								retryLabel="Erneut laden"
+								retryLabel={t('reload')}
 							/>
 						)}
 						{loading ? (

@@ -1,6 +1,7 @@
 'use client';
 
 import { WgRouteErrorBoundary } from '@/components/wg/WgRouteErrorBoundary';
+import { useTranslations } from 'next-intl';
 
 interface ErinnerungenErrorProps {
 	error: Error & { digest?: string };
@@ -8,13 +9,14 @@ interface ErinnerungenErrorProps {
 }
 
 export default function ErinnerungenError({ error, reset }: ErinnerungenErrorProps) {
+	const t = useTranslations('expenses-debts.page.boundary');
 	return (
 		<WgRouteErrorBoundary
 			error={error}
 			reset={reset}
 			boundary="wg-mahnungen"
-			title="Erinnerungen konnten gerade nicht geladen werden"
-			body="Auf der Erinnerungs-Seite ist ein Fehler aufgetreten. Bitte versuche es erneut oder kehre zur WG-Übersicht zurück."
+			title={t('title')}
+			body={t('body')}
 		/>
 	);
 }
