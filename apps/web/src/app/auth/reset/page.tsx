@@ -27,7 +27,7 @@ export default async function PasswordResetPage() {
 			title={t('reset.title')}
 			description={recoveryRequested ? t('reset.recovery') : t('reset.request')}
 			headingId="password-reset-heading"
-			backHref="/neu"
+			backHref="/login"
 			backLabel={t('frame.backToSignIn')}
 		>
 			<PasswordResetForm recoveryRequested={recoveryRequested} />

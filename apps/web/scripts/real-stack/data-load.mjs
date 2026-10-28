@@ -85,11 +85,11 @@ export async function run({ A, B, code, annaId, benId, page, consoleErrors }) {
 
 	for (const path of [
 		'',
-		'/ausgaben',
+		'/expenses',
 		'/chat',
-		'/einkauf',
-		'/abrechnung?monat=2026-10',
-		'/aktivitaet',
+		'/shopping',
+		'/statement?monat=2026-10',
+		'/activity',
 	]) {
 		consoleErrors.length = 0;
 		const t0 = performance.now();
@@ -105,7 +105,7 @@ export async function run({ A, B, code, annaId, benId, page, consoleErrors }) {
 			`${ms} ms ${consoleErrors.join(' | ')} ${errorText ?? ''}`,
 		);
 	}
-	await page.goto(`/wg/${code}/ausgaben`);
+	await page.goto(`/wg/${code}/expenses`);
 	await page.waitForLoadState('networkidle');
 	// The list renders in pages; "Mehr anzeigen" must reach the end without errors.
 	const more = page.getByRole('button', { name: /^Mehr anzeigen/ });

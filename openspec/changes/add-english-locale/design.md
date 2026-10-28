@@ -61,7 +61,7 @@ Without one plan, parallel sessions would collide in the same few files and the 
 
 ## 3. Non-goals
 
-- Localized URLs, locale prefixes or `hreflang`. Routes stay German (`/wg/[code]/putzen` and so on).
+- Localized URLs, locale prefixes or `hreflang`. Routes stay German (`/wg/[code]/chores` and so on).
 - **Translating user content:** names, titles, chat and Pinnwand posts.
   - This includes the app-composed swap request post (`features/chores/server/resolve-swap-request.ts`), which is written once in the author's language.
   - It also includes the ` (ausgezogen)` suffix that `core/db/member-names.ts` writes into a moved-out member's stored name. Builder decision: it is stored data now, and changing it would need a data migration that can collide with the unique-name index.
@@ -296,10 +296,10 @@ Without one plan, parallel sessions would collide in the same few files and the 
 - `use-intl/core` imports under `test:unit`.
 - The client runtime delta fits `bundle:check`. If it does not, enable precompiled messages: next-intl/icu-minify with the `use-intl/format-message/format-only` runtime. The flag is `createNextIntlPlugin({ experimental: { messages: { path, locales, precompile: true } } })`. It belongs to the extractor catalog pipeline (`messages.path`), so it does not apply to the TypeScript catalogs without further work. **Builder decision (Phase 1): no precompile, the full runtime stays.**
   - Measured against the branch base: the shared first-load JS is unchanged at 102.6 kB gzip (budget 120 kB). The runtime sits in one lazy chunk of 11.7 kB gzip (`intl-messageformat`), reached through `useMessage` in `LoadErrorBanner`. Today 11 of 22 pages share it, so neither budget counts it.
-  - Every route that reaches it grows: `/wg/[code]` 234.0 to 246.2 kB gzip first-load JS (+12.2 kB; Next's own table says 239 to 252 kB), `/wg/[code]/ausgaben` +12.8 kB, `/` +0.1 kB, `/neu` +0.3 kB.
+  - Every route that reaches it grows: `/wg/[code]` 234.0 to 246.2 kB gzip first-load JS (+12.2 kB; Next's own table says 239 to 252 kB), `/wg/[code]/expenses` +12.8 kB, `/` +0.1 kB, `/login` +0.3 kB.
   - Projection: once a root-level or non-WG client component uses `useMessage`, the chunk joins the all-pages set, and the shared first-load JS becomes about 102.6 + 11.7 = 114.3 kB, which leaves about 5.7 kB of headroom under 120 kB. That fits, so the extractor pipeline for precompiled messages is not built.
   - Trigger: if `bundle:check` reports a shared first-load JS above 118 kB in any phase, switch to precompiled messages before merging.
-  - `bundle:check` also prints the largest `/wg/[code]` first-load JS (informational, currently `/wg/[code]/ausgaben` at 308.6 kB) so the growth is visible in every PR.
+  - `bundle:check` also prints the largest `/wg/[code]` first-load JS (informational, currently `/wg/[code]/expenses` at 308.6 kB) so the growth is visible in every PR.
 
 ### D2. Locale model
 
@@ -333,7 +333,7 @@ Without one plan, parallel sessions would collide in the same few files and the 
 
 **Why Accept-Language counts**
 
-- An English-speaking invitee opening `/einladung/...` should land in English without searching for a switch.
+- An English-speaking invitee opening `/invite/...` should land in English without searching for a switch.
 - Playwright pins `de-DE`. Node `fetch` sends `*` and crawlers usually send nothing, so tests and previews stay German.
 
 **Known effect.** Existing users whose browser prefers English will see English after rollout. The visible switch (D5) covers that. The owner can veto by deleting step 2 (one line).
@@ -383,8 +383,8 @@ Without one plan, parallel sessions would collide in the same few files and the 
 
 **Component:** `src/components/app/LanguageSwitch.tsx`. It is a segmented `ToggleGroup` (`components/ui/toggle-group.tsx`) with the endonyms "Deutsch" and "English", which are never translated.
 
-- In `components/wg/einstellungen/ProfileTab.tsx`, directly below the theme switch (L54–72).
-- As a compact link variant in the entry footer `components/entry/LegalLinks.tsx`, which covers `/`, `/neu`, `/einladung/[token]` and `/registrieren`.
+- In `components/wg/settings/ProfileTab.tsx`, directly below the theme switch (L54–72).
+- As a compact link variant in the entry footer `components/entry/LegalLinks.tsx`, which covers `/`, `/login`, `/invite/[token]` and `/signup`.
 
 **Flow on change**
 
@@ -626,10 +626,10 @@ ALTER TABLE "wg_members" ADD CONSTRAINT "wg_members_locale_check" CHECK ("wg_mem
   - `page.tsx`, `not-found.tsx`, `registrieren/page.tsx`, `neu/layout.tsx`, `auth/reset/page.tsx`, `einladung/[token]/page.tsx`, `wg/not-found.tsx`, `entdecken/[module]/page.tsx`, `offline/page.tsx`;
   - `wg/[code]/layout.tsx` and the 12 `wg/[code]/*/layout.tsx` files;
   - `chat/page.tsx`.
-- **German `<head>`.** The German values are the existing literals. Phase 1 snapshots the server HTML `<head>` of `/`, `/neu`, `/registrieren` and `/entdecken/<module>` before and after.
+- **German `<head>`.** The German values are the existing literals. Phase 1 snapshots the server HTML `<head>` of `/`, `/login`, `/signup` and `/discover/<module>` before and after.
   - The snapshot normalizes the per-request nonce and build hashes.
   - It must match exactly in German.
-  - **Result (Phase 1, production build in the fixture environment, base `f8241466` against the branch):** every `<html>` attribute, `meta`, `link`, `title` and JSON-LD tag is identical for `/`, `/neu`, `/registrieren` and `/entdecken/ausgaben`. The only difference is one additional async `<script>` for the shared chunk that holds the message runtime (26 to 27, 24 to 25, 22 to 23, 26 to 27 chunk scripts). Chunk file names differ between builds, so scripts are compared by count.
+  - **Result (Phase 1, production build in the fixture environment, base `f8241466` against the branch):** every `<html>` attribute, `meta`, `link`, `title` and JSON-LD tag is identical for `/`, `/login`, `/signup` and `/discover/expenses`. The only difference is one additional async `<script>` for the shared chunk that holds the message runtime (26 to 27, 24 to 25, 22 to 23, 26 to 27 chunk scripts). Chunk file names differ between builds, so scripts are compared by count.
   - **Builder decision:** the extra chunk script is accepted. The acceptance reads "metadata, link and JSON-LD tags identical".
 - **Route titles are pre-seeded.** Phase 1 puts every static title and description of the 24 sites into `meta` in both locales, so no package edits `meta` and parallel packages cannot collide:
   - `meta.brand.*` (root, `page.tsx`), `meta.authReset.title`, `meta.invite.{title,description}`, `meta.discover.description` (`{description}` suffix of the module pages, the module title and description stay data), `meta.join.{title,description}` (`neu/layout.tsx`), `meta.notFound.title`, `meta.offline.title`, `meta.register.{title,description}`, `meta.wg.{fallbackName,notFound}`;
@@ -895,7 +895,7 @@ Binding for all packages. The file `docs/brand/glossary-en.md` is created in Pha
 **Acceptance**
 
 - A cookie `manawg_locale=en` renders `<html lang="en-GB">`, the skip link is English, and the provider serves English `common` strings (smoke spec).
-- With no cookie and `de-DE`, output is unchanged. The German `<head>` snapshot for `/`, `/neu`, `/registrieren` and `/entdecken/<module>` (nonce and hashes normalized) is identical to `main`.
+- With no cookie and `de-DE`, output is unchanged. The German `<head>` snapshot for `/`, `/login`, `/signup` and `/discover/<module>` (nonce and hashes normalized) is identical to `main`.
 - `bundle:check` passes. The shared and per-route delta and the RSC/HTML gzip delta for `/` and `/wg/[code]` are recorded in the PR. If the gzip delta exceeds 30 KB, the D6 fallback is applied in this PR.
 - `use-intl/core` works under `test:unit`. `pnpm audit --prod --audit-level high` passes.
 - `[architecture] OK`. The new baseline contains only `i18n-literal` entries plus the 2 existing size entries.
@@ -939,18 +939,18 @@ May run **in parallel with Phase 3**. Phase 3 packages must not touch the files 
 
 | Pkg | Namespaces | Owns (globs) | DE lines (approx.) |
 |---|---|---|---|
-| A shell | `shell`, `home`, `activity` (client part) | `components/app/**` (except `LanguageSwitch.tsx`), `components/ui/**`, `components/animate-ui/**`, `components/brand/**`, `components/wg/*` (root files only, not `einstellungen/`; `LoadErrorBanner.tsx` after Phase 1), `app/wg/[code]/{layout,page,loading,error}.tsx`, `app/wg/[code]/_components/**`, `app/wg/[code]/_hooks/**`, `app/wg/[code]/aktivitaet/**`, `app/error.tsx`, `app/not-found.tsx`, `app/wg/not-found.tsx`, `app/global-error.tsx` (inline map, D6), `composition/{dashboard-today,dashboard-week-agenda,dashboard-insights,dashboard-balances,dashboard-data,dashboard-spend,activity-reminders,dashboard-links}.ts` | about 300 |
-| B expenses | `expenses`, `expenses-form` | `features/expenses/**` except `components/{debts,import,abos,statement}/**`, `import-*.ts`, `ocr.ts`, `abo-*.ts`, `recurring-*.ts`, `monthly-statement*.ts`, `statement-mail.ts`, `statement-recipients.ts`, `debt-*.ts`, `debts.ts`, `settlement-scope.ts`, `reminders.ts`, `hooks/{use-abos-page,use-reminders-page}.ts`, `server/**`; plus `app/wg/[code]/ausgaben/**` | about 250 |
-| C debts | `expenses-debts` | `features/expenses/components/debts/**` (incl. `settlement-errors.ts`), `features/expenses/{reminders,debts,settlement-scope}.ts`, `features/expenses/debt-*.ts`, `features/expenses/hooks/use-reminders-page.ts`, `app/wg/[code]/mahnungen/**` | about 110 |
+| A shell | `shell`, `home`, `activity` (client part) | `components/app/**` (except `LanguageSwitch.tsx`), `components/ui/**`, `components/animate-ui/**`, `components/brand/**`, `components/wg/*` (root files only, not `einstellungen/`; `LoadErrorBanner.tsx` after Phase 1), `app/wg/[code]/{layout,page,loading,error}.tsx`, `app/wg/[code]/_components/**`, `app/wg/[code]/_hooks/**`, `app/wg/[code]/activity/**`, `app/error.tsx`, `app/not-found.tsx`, `app/wg/not-found.tsx`, `app/global-error.tsx` (inline map, D6), `composition/{dashboard-today,dashboard-week-agenda,dashboard-insights,dashboard-balances,dashboard-data,dashboard-spend,activity-reminders,dashboard-links}.ts` | about 300 |
+| B expenses | `expenses`, `expenses-form` | `features/expenses/**` except `components/{debts,import,abos,statement}/**`, `import-*.ts`, `ocr.ts`, `abo-*.ts`, `recurring-*.ts`, `monthly-statement*.ts`, `statement-mail.ts`, `statement-recipients.ts`, `debt-*.ts`, `debts.ts`, `settlement-scope.ts`, `reminders.ts`, `hooks/{use-abos-page,use-reminders-page}.ts`, `server/**`; plus `app/wg/[code]/expenses/**` | about 250 |
+| C debts | `expenses-debts` | `features/expenses/components/debts/**` (incl. `settlement-errors.ts`), `features/expenses/{reminders,debts,settlement-scope}.ts`, `features/expenses/debt-*.ts`, `features/expenses/hooks/use-reminders-page.ts`, `app/wg/[code]/reminders/**` | about 110 |
 | D import | `expenses-import` | `features/expenses/components/import/**`, `features/expenses/import-*.ts`, `features/expenses/ocr.ts`, `app/wg/[code]/import/**` | about 100 |
 | E abos and statement | `expenses-abos`, `statement` | `features/expenses/components/{abos,statement}/**`, `features/expenses/{abo-*,recurring-*,monthly-statement*}.ts` (not `server/`), `features/expenses/hooks/use-abos-page.ts`, `app/wg/[code]/{abos,abrechnung}/**` | about 90 |
-| F chores | `chores` | `features/chores/**` except `server/**`, `app/wg/[code]/putzen/**`; plus the `action` consumer lines in `app/wg/[code]/_components/TodayRow.tsx` (D11, after A is merged) | about 160 |
-| G events | `events` | `features/events/**` except `server/**`, plus `app/wg/[code]/kalender/**` | about 90 |
+| F chores | `chores` | `features/chores/**` except `server/**`, `app/wg/[code]/chores/**`; plus the `action` consumer lines in `app/wg/[code]/_components/TodayRow.tsx` (D11, after A is merged) | about 160 |
+| G events | `events` | `features/events/**` except `server/**`, plus `app/wg/[code]/calendar/**` | about 90 |
 | H shopping and inventory | `shopping`, `inventory` | `features/shopping/**` and `features/inventory/**` except `server/**`, plus `app/wg/[code]/{einkauf,vorraete}/**` | about 125 |
-| I pinnwand and chat | `pinnwand`, `chat` | `features/pinnwand/**` and `features/chat/**` except `server/**`, plus `app/wg/[code]/{pinnwand,chat}/**`. Includes the `SystemMessage.tsx` `amountCents` fallback (D12) and `common.unknownPerson` at the chat and Pinnwand fallbacks. | about 130 |
-| J settings | `settings` | `components/wg/einstellungen/**` except `ProfileTab.tsx` (until Phase 2 is merged) and `OfflineQueue*`/`offline-queue-*`; plus `app/wg/[code]/einstellungen/**` and `core/guards/settings-tabs.ts` | about 200 |
+| I pinnwand and chat | `pinnwand`, `chat` | `features/pinboard/**` and `features/chat/**` except `server/**`, plus `app/wg/[code]/{pinnwand,chat}/**`. Includes the `SystemMessage.tsx` `amountCents` fallback (D12) and `common.unknownPerson` at the chat and Pinnwand fallbacks. | about 130 |
+| J settings | `settings` | `components/wg/settings/**` except `ProfileTab.tsx` (until Phase 2 is merged) and `OfflineQueue*`/`offline-queue-*`; plus `app/wg/[code]/settings/**` and `core/guards/settings-tabs.ts` | about 200 |
 | K entry and auth | `entry`, `auth` | `components/entry/**` (except `LegalLinks.tsx` until Phase 2 is merged; the consent sentence is flagged for legal review), `components/auth/**`, `app/{page.tsx,EntryClient.tsx,use-account-name-prefill.ts}`, `app/{neu,einladung,entdecken,registrieren,auth}/**` (except the welcome-mail locale argument in `auth/callback/route.ts`, owned by N), `core/auth/{password-errors,auth-errors}.ts`, `core/infra/join-flow.ts`. Includes the German demo content in `PublicModulePreview.tsx`. | about 230 |
-| L offline | `offline` | `core/offline/**`, `app/offline/**`, `components/wg/einstellungen/{OfflineQueue*,offline-queue-*}`. Includes the D11 flags with legacy prefix compatibility. | about 190 |
+| L offline | `offline` | `core/offline/**`, `app/offline/**`, `components/wg/settings/{OfflineQueue*,offline-queue-*}`. Includes the D11 flags with legacy prefix compatibility. | about 190 |
 
 Package-specific acceptance, on top of the shared criteria:
 
@@ -1054,7 +1054,7 @@ The defaults in this document apply until they are answered. None of them blocks
    Resolved in Phase 1: next-intl and use-intl 4.14.9 install with a frozen lockfile, `pnpm audit --prod --audit-level high` reports no known vulnerabilities, and `use-intl/core` runs under `test:unit`. The only warning is the unmet optional peer `@swc/helpers@>=0.5.17` (found 0.5.15) under next-intl > @swc/core.
 2. Phase 1 (measured, production build with the fixture environment): shared first-load JS is 102.6 kB gzip (budget 120 kB), the heaviest route 34.3 kB (budget 55 kB), `bundle:check` passes. The HTML of `/` is 11,108 B gzip with the `de` cookie and 11,036 B with `en`. `/wg/MTE8PZAT` is 10,079 B (`de`) and 10,008 B (`en`). Before the provider, `/` was 10,102 B, so the catalog added about 1.0 KB gzip (3.4 KB raw) before the `meta` pre-seed, and the same constant applies to every page. The nested provider fallback is not needed yet; the projection for the full catalog is in D6.
    Deltas against the branch base `f8241466` (same build, fixture environment), gzip:
-   - First-load JS: `/` +0.1 kB, `/neu` +0.3 kB, `/wg/[code]` +12.2 kB (234.0 to 246.2), `/wg/[code]/ausgaben` +12.8 kB, `/wg/[code]/chat` +0.9 kB. The shared set is unchanged (102.7 to 102.6 kB). The growth is the lazy message runtime chunk (11.7 kB, 11 of 22 pages), which the two budgets do not count.
+   - First-load JS: `/` +0.1 kB, `/login` +0.3 kB, `/wg/[code]` +12.2 kB (234.0 to 246.2), `/wg/[code]/expenses` +12.8 kB, `/wg/[code]/chat` +0.9 kB. The shared set is unchanged (102.7 to 102.6 kB). The growth is the lazy message runtime chunk (11.7 kB, 11 of 22 pages), which the two budgets do not count.
    - HTML after the meta pre-seed (D14): `/` 10,082 to 11,461 B (`de`) and 11,431 B (`en`), `/wg/MTE8PZAT` 9,047 to 10,416 B (`de`) and 10,371 B (`en`), so +1.4 KB per page.
    - Decision and trigger for the runtime: D1.
 3. Phase 1: `tsc` behaviour with strict ICU argument inference at scale (D6). Resolved, no problem at 400 messages.

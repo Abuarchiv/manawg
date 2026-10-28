@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 const { renderMessage, serverRootT } = await import('@/core/i18n/server-t');
-const { aboAmountError, aboSplitError, buildAboSplits, initialManualMap } = await import(
-	'./abo-form-model'
+const { aboAmountError, aboSplitError, buildRecurringSplits, initialManualMap } = await import(
+	'./recurring-form-model'
 );
 
 test('amount errors tell too many decimals, too large and too small apart', () => {
@@ -43,10 +43,10 @@ test('manual shares are read and written in the locale of the form', () => {
 		splitCandidates: members,
 		manualSplits: { a: '12.50' },
 	};
-	assert.deepEqual(buildAboSplits({ ...input, locale: 'en' }), [
+	assert.deepEqual(buildRecurringSplits({ ...input, locale: 'en' }), [
 		{ debtorMemberId: 'a', amountCents: 1250 },
 	]);
-	assert.deepEqual(buildAboSplits({ ...input, manualSplits: { a: '12,50' } }), [
+	assert.deepEqual(buildRecurringSplits({ ...input, manualSplits: { a: '12,50' } }), [
 		{ debtorMemberId: 'a', amountCents: 1250 },
 	]);
 	const initial = {

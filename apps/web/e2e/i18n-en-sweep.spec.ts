@@ -17,47 +17,47 @@ import { expectNoGermanChrome, expectNoHorizontalOverflow, setEnglishLocale } fr
 const WG = `/wg/${FIXTURE_WG.shareCode}`;
 const SCHEMES = ['light', 'dark'] as const;
 const MODULES = [
-	'ausgaben',
-	'einkauf',
-	'pinnwand',
-	'putzen',
-	'fixkosten',
-	'mahnungen',
-	'vorraete',
-	'kalender',
-	'aktivitaet',
+	'expenses',
+	'shopping',
+	'pinboard',
+	'chores',
+	'recurring',
+	'reminders',
+	'supplies',
+	'calendar',
+	'activity',
 	'chat',
 ];
 
 /** Pages without a signed-in member. */
 const ENTRY_ROUTES = [
 	'/',
-	'/neu',
-	'/registrieren',
+	'/login',
+	'/signup',
 	'/auth/reset',
-	`/einladung/${E2E_INVITE_TOKEN}`,
-	...MODULES.map((slug) => `/entdecken/${slug}`),
+	`/invite/${E2E_INVITE_TOKEN}`,
+	...MODULES.map((slug) => `/discover/${slug}`),
 ];
 
 /** WG sections; `dialog` is the primary button that opens a form on that page. */
 const WG_ROUTES: { path: string; dialog?: string }[] = [
 	{ path: '' },
-	{ path: '/ausgaben', dialog: 'Add expense' },
-	{ path: '/abos' },
-	{ path: '/abrechnung' },
-	{ path: '/mahnungen' },
+	{ path: '/expenses', dialog: 'Add expense' },
+	{ path: '/recurring' },
+	{ path: '/statement' },
+	{ path: '/reminders' },
 	{ path: '/import' },
-	{ path: '/putzen', dialog: 'Add cleaning task' },
-	{ path: '/kalender', dialog: 'Add event' },
-	{ path: '/einkauf' },
-	{ path: '/vorraete', dialog: 'Add item' },
-	{ path: '/pinnwand', dialog: 'Add post' },
+	{ path: '/chores', dialog: 'Add cleaning task' },
+	{ path: '/calendar', dialog: 'Add event' },
+	{ path: '/shopping' },
+	{ path: '/supplies', dialog: 'Add item' },
+	{ path: '/pinboard', dialog: 'Add post' },
 	{ path: '/chat' },
-	{ path: '/aktivitaet' },
-	{ path: '/einstellungen#profil' },
-	{ path: '/einstellungen#benachrichtigungen' },
-	{ path: '/einstellungen#zugang' },
-	{ path: '/einstellungen#daten' },
+	{ path: '/activity' },
+	{ path: '/settings#profile' },
+	{ path: '/settings#notifications' },
+	{ path: '/settings#access' },
+	{ path: '/settings#data' },
 ];
 
 async function guestSession(page: Page): Promise<void> {
@@ -123,7 +123,7 @@ test.describe('English sweep', () => {
 					await settle(page);
 					await expectEnglishPage(page);
 
-					if (path === '/einkauf') {
+					if (path === '/shopping') {
 						// The shopping list adds inline: a typed item enables the button, and the unmocked write fails.
 						await page.getByPlaceholder('e.g. 2 rice').fill('2 oat milk');
 						await page.getByRole('button', { name: 'Add item', exact: true }).click();
@@ -142,11 +142,11 @@ test.describe('English sweep', () => {
 
 	test.describe('German stays German', () => {
 		const GERMAN_ROUTES: [string, RegExp][] = [
-			['/neu', /Anmelden|Konto/],
-			['/ausgaben', /Ausgaben/],
-			['/einkauf', /Einkäufe/],
-			['/kalender', /Kalender/],
-			['/einstellungen#profil', /Einstellungen/],
+			['/login', /Anmelden|Konto/],
+			['/expenses', /Ausgaben/],
+			['/shopping', /Einkäufe/],
+			['/calendar', /Kalender/],
+			['/settings#profile', /Einstellungen/],
 		];
 
 		for (const [path, heading] of GERMAN_ROUTES) {
@@ -154,7 +154,7 @@ test.describe('English sweep', () => {
 				test.setTimeout(120_000);
 				await page.setViewportSize({ width: 320, height: 780 });
 				await setupMember(page);
-				if (path === '/neu') await page.goto(path, { timeout: 120_000 });
+				if (path === '/login') await page.goto(path, { timeout: 120_000 });
 				else {
 					await navigateToFeature(page, `${WG}${path}`);
 					await dismissOnboarding(page);

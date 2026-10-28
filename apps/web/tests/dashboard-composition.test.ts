@@ -152,7 +152,7 @@ test('feed keys stay unique when items share an href', () => {
 		kind: 'audit' as const,
 		timestamp: 't',
 		memberName: 'Anna',
-		href: '/einkauf?highlight=1',
+		href: '/shopping?highlight=1',
 		text: 'x',
 	};
 	assert.notEqual(activityItemKey(item, 0), activityItemKey(item, 1));

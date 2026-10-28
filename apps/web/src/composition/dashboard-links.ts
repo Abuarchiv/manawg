@@ -8,12 +8,12 @@ export function getDashboardActivityHref(
 ): string {
 	const base = `/wg/${encodeURIComponent(shareCode)}`;
 	const encodedId = encodeURIComponent(id);
-	if (kind === 'expense') return `${base}/ausgaben?highlight=${encodedId}`;
-	if (kind === 'recurring') return `${base}/ausgaben?recurring=${encodedId}`;
-	if (kind === 'shopping') return `${base}/einkauf?highlight=${encodedId}`;
-	if (kind === 'announcement') return `${base}/pinnwand#announcement-${encodedId}`;
-	if (kind === 'absence') return `${base}/putzen?panel=absences&absence=${encodedId}`;
-	return `${base}/putzen?highlight=${encodedId}`;
+	if (kind === 'expense') return `${base}/expenses?highlight=${encodedId}`;
+	if (kind === 'recurring') return `${base}/expenses?recurring=${encodedId}`;
+	if (kind === 'shopping') return `${base}/shopping?highlight=${encodedId}`;
+	if (kind === 'announcement') return `${base}/pinboard#announcement-${encodedId}`;
+	if (kind === 'absence') return `${base}/chores?panel=absences&absence=${encodedId}`;
+	return `${base}/chores?highlight=${encodedId}`;
 }
 
 export function getDashboardAnnouncementHref(shareCode: string, id: string): string {

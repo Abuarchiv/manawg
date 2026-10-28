@@ -20,7 +20,7 @@ browser
 **Proxy** (`proxy.ts`, the Next.js middleware):
 
 - Pages (non-`/api`): fresh CSP nonce per request (`core/infra/security-headers.ts`), COOP
-  header, Supabase session refresh. `/wg/*` without a session redirects to `/neu?next=...`
+  header, Supabase session refresh. `/wg/*` without a session redirects to `/login?next=...`
   (`core/auth/middleware.ts`).
 - API paths in the matcher (`/api/account`, `/api/auth/*`, `/api/wg[/*]`, `/api/calendar/*`,
   `/api/upload/*`, `/api/cron/*`):
@@ -386,7 +386,7 @@ Route folders under `app/wg/[code]/`, with the code names behind them.
 | Mahnungen / Erinnerungen (`mahnungen`) | payment reminders (`features/expenses/reminders.ts`) | `reminders` | `expense_reminders` |
 | Putzen / Putzplan (`putzen`) | `features/chores` | `chores` | `chores`, `chore_completions` |
 | Abwesenheiten (panel on `putzen`) | absences (`features/chores/absence.ts`) | `absences` | `member_absences` |
-| Pinnwand (`pinnwand`) | announcements (`features/pinnwand`) | `announcements` | `announcements`, `announcement_comments`, `announcement_reactions` |
+| Pinnwand (`pinnwand`) | announcements (`features/pinboard`) | `announcements` | `announcements`, `announcement_comments`, `announcement_reactions` |
 | Einkauf (`einkauf`) | `features/shopping` | `shopping` | `shopping_items` |
 | Vorräte / Inventar (`vorraete`) | `features/inventory` | `inventory` | `wg_inventory_items`, `wg_inventory_log` |
 | Kalender (`kalender`) | events (`features/events`) | `events`, `calendar-subscription` | `wg_events`, `calendar_subscriptions` |

@@ -110,11 +110,11 @@ const a = await session(A, 'A');
 const b = await session(B, 'B');
 
 // ---- Einkauf: action sheet, rename to a long name, delete
-await step(a, 'einkauf-sheet', async (p) => {
-	await open(p, '/einkauf');
+await step(a, 'shopping-sheet', async (p) => {
+	await open(p, '/shopping');
 	await actions(p, /^Artikelaktionen: Hafermilch/);
 });
-await step(a, 'einkauf-edit-long', async (p) => {
+await step(a, 'shopping-edit-long', async (p) => {
 	await pick(p, /^Bearbeiten$/i);
 	const box = p.getByRole('dialog').getByRole('textbox').first();
 	await box.fill(LONG);
@@ -125,7 +125,7 @@ await step(a, 'einkauf-edit-long', async (p) => {
 		.click();
 	await p.getByText(SHORT).first().waitFor();
 });
-await step(a, 'einkauf-delete-empty', async (p) => {
+await step(a, 'shopping-delete-empty', async (p) => {
 	await actions(p, /^Artikelaktionen:/);
 	await pick(p, /entfernen|löschen/i);
 	await confirm(p);
@@ -133,12 +133,12 @@ await step(a, 'einkauf-delete-empty', async (p) => {
 });
 
 // ---- Vorräte: edit dialog, long name, remove, empty state
-await step(a, 'vorrat-edit', async (p) => {
-	await open(p, '/vorraete');
+await step(a, 'supply-edit', async (p) => {
+	await open(p, '/supplies');
 	await p.getByRole('button', { name: 'Klopapier bearbeiten' }).click();
 	await p.getByRole('dialog').waitFor();
 });
-await step(a, 'vorrat-edit-long', async (p) => {
+await step(a, 'supply-edit-long', async (p) => {
 	await p.getByRole('dialog').getByRole('textbox').first().fill(LONG);
 	await p
 		.getByRole('dialog')
@@ -147,7 +147,7 @@ await step(a, 'vorrat-edit-long', async (p) => {
 		.click();
 	await p.getByText(SHORT).first().waitFor();
 });
-await step(a, 'vorrat-remove-empty', async (p) => {
+await step(a, 'supply-remove-empty', async (p) => {
 	await p
 		.getByRole('button', { name: / entfernen$/ })
 		.filter({ visible: true })
@@ -158,11 +158,11 @@ await step(a, 'vorrat-remove-empty', async (p) => {
 });
 
 // ---- Putzplan: action sheet, edit, distribution panel, absence dialog, delete, empty
-await step(a, 'putzen-sheet', async (p) => {
-	await open(p, '/putzen');
+await step(a, 'chores-sheet', async (p) => {
+	await open(p, '/chores');
 	await actions(p, /^Aufgabenaktionen: Bad putzen/);
 });
-await step(a, 'putzen-edit-long', async (p) => {
+await step(a, 'chores-edit-long', async (p) => {
 	await pick(p, /^Aufgabe bearbeiten/);
 	const d = p.getByRole('dialog', { name: /bearbeiten/i });
 	await d.getByLabel('Aufgabe').fill(LONG);
@@ -172,21 +172,21 @@ await step(a, 'putzen-edit-long', async (p) => {
 		.click();
 	await p.getByText(SHORT).first().waitFor();
 });
-await step(a, 'putzen-verteilung', async (p) => {
+await step(a, 'chores-rotation', async (p) => {
 	await p.getByRole('button', { name: 'So wird verteilt' }).click();
 	await wait(500);
 });
-await step(a, 'putzen-abwesenheit', async (p) => {
+await step(a, 'chores-absence', async (p) => {
 	await p.getByRole('button', { name: 'Abwesenheit eintragen' }).click();
 	await p.getByRole('button', { name: 'Abwesenheitsformular schließen' }).waitFor();
 });
-await step(a, 'putzen-abwesenheit-save', async (p) => {
+await step(a, 'chores-absence-save', async (p) => {
 	await p.getByLabel('Abwesenheit von').fill(iso(DAY).slice(0, 10));
 	await p.getByLabel('Abwesenheit bis').fill(iso(3 * DAY).slice(0, 10));
 	await p.getByRole('button', { name: 'Abwesenheit speichern' }).click();
 	await p.getByRole('button', { name: /^Abwesenheit von .* entfernen$/ }).waitFor();
 });
-await step(a, 'putzen-delete-empty', async (p) => {
+await step(a, 'chores-delete-empty', async (p) => {
 	await actions(p, /^Aufgabenaktionen:/);
 	await pick(p, /^Aufgabe entfernen/);
 	await confirm(p);
@@ -194,32 +194,32 @@ await step(a, 'putzen-delete-empty', async (p) => {
 });
 
 // ---- Ausgaben: details, action sheet, edit, settle, delete
-await step(a, 'ausgabe-details', async (p) => {
-	await open(p, '/ausgaben');
+await step(a, 'expense-details', async (p) => {
+	await open(p, '/expenses');
 	await p.getByRole('button', { name: /^Details öffnen: Wocheneinkauf/ }).click();
 	await p.getByRole('button', { name: /^Als bezahlt eintragen/ }).waitFor();
 });
-await step(a, 'ausgabe-sheet', async (p) => {
+await step(a, 'expense-sheet', async (p) => {
 	await actions(p, 'Aktionen für Wocheneinkauf');
 });
-await step(a, 'ausgabe-edit-form', async (p) => {
+await step(a, 'expense-edit-form', async (p) => {
 	await pick(p, /bearbeiten/i);
 	await p.getByLabel('Beschreibung').waitFor();
 });
-await step(a, 'ausgabe-edit-save', async (p) => {
+await step(a, 'expense-edit-save', async (p) => {
 	await p.getByLabel('Beschreibung').fill(LONG);
 	await p.getByLabel('Betrag').fill('99999,99');
 	await p.getByRole('button', { name: 'Ausgabe speichern' }).click();
 	await p.getByText(SHORT).first().waitFor();
 });
-await step(b, 'ausgabe-b-saldo', async (p) => {
-	await open(p, '/ausgaben');
+await step(b, 'expense-b-balance', async (p) => {
+	await open(p, '/expenses');
 });
-await step(b, 'ausgleichen-dialog', async (p) => {
+await step(b, 'settle-dialog', async (p) => {
 	await p.getByRole('button', { name: 'Ausgleichen' }).first().click();
 	await p.getByRole('alertdialog').waitFor();
 });
-await step(b, 'ausgleichen-confirm', async (p) => {
+await step(b, 'settle-confirm', async (p) => {
 	await p
 		.getByRole('alertdialog')
 		.getByRole('button', { name: /bar eintragen/i })
@@ -228,8 +228,8 @@ await step(b, 'ausgleichen-confirm', async (p) => {
 	await p.getByRole('alertdialog').waitFor({ state: 'detached' });
 	await wait(800);
 });
-await step(a, 'ausgabe-delete-empty', async (p) => {
-	await open(p, '/ausgaben');
+await step(a, 'expense-delete-empty', async (p) => {
+	await open(p, '/expenses');
 	await actions(p, /^Aktionen für/);
 	await pick(p, /entfernen|löschen/i);
 	await confirm(p);
@@ -237,16 +237,16 @@ await step(a, 'ausgabe-delete-empty', async (p) => {
 });
 
 // ---- Fixkosten: details, pause, delete
-await step(a, 'abo-details', async (p) => {
-	await open(p, '/abos');
+await step(a, 'recurring-details', async (p) => {
+	await open(p, '/recurring');
 	await p.getByRole('button', { name: /^Details öffnen: Internet/ }).click();
 	await p.getByRole('button', { name: 'Internet löschen' }).waitFor();
 });
-await step(a, 'abo-pause', async (p) => {
+await step(a, 'recurring-pause', async (p) => {
 	await p.getByRole('button', { name: /^Pausieren: Internet/ }).click();
 	await wait(800);
 });
-await step(a, 'abo-delete-empty', async (p) => {
+await step(a, 'recurring-delete-empty', async (p) => {
 	await p.getByRole('button', { name: 'Pausiert' }).click();
 	await p.getByRole('button', { name: /^Details öffnen: Internet/ }).click();
 	await p.getByRole('button', { name: 'Internet löschen' }).click();
@@ -255,33 +255,33 @@ await step(a, 'abo-delete-empty', async (p) => {
 });
 
 // ---- Abrechnung: month navigation
-await step(a, 'abrechnung-prev', async (p) => {
-	await open(p, '/abrechnung');
+await step(a, 'statement-prev', async (p) => {
+	await open(p, '/statement');
 	await p.getByRole('button', { name: 'Vorheriger Monat' }).click();
 	await wait(600);
 });
-await step(a, 'abrechnung-next', async (p) => {
+await step(a, 'statement-next', async (p) => {
 	await p.getByRole('button', { name: 'Nächster Monat' }).click();
 	await p.getByRole('button', { name: 'Nächster Monat' }).click();
 	await wait(600);
 });
 
 // ---- Kalender: edit dialog, month view, delete
-await step(a, 'kalender-edit', async (p) => {
-	await open(p, '/kalender');
+await step(a, 'calendar-edit', async (p) => {
+	await open(p, '/calendar');
 	await p.getByRole('button', { name: /^Termin bearbeiten: Hausversammlung/ }).click();
 	await p.getByRole('dialog').waitFor();
 });
-await step(a, 'kalender-edit-long', async (p) => {
+await step(a, 'calendar-edit-long', async (p) => {
 	await p.getByRole('dialog').getByLabel('Titel').fill(LONG);
 	await p.getByRole('dialog').getByRole('button', { name: 'Speichern' }).click();
 	await p.getByText(SHORT).first().waitFor();
 });
-await step(a, 'kalender-monat', async (p) => {
+await step(a, 'calendar-month', async (p) => {
 	await p.getByRole('tab', { name: 'Monat' }).click();
 	await wait(600);
 });
-await step(a, 'kalender-delete-empty', async (p) => {
+await step(a, 'calendar-delete-empty', async (p) => {
 	await p.getByRole('tab', { name: 'Agenda' }).click();
 	await p.getByRole('button', { name: /^Termin bearbeiten:/ }).click();
 	await p.getByRole('dialog').getByRole('button', { name: 'Termin löschen' }).click();
@@ -290,11 +290,11 @@ await step(a, 'kalender-delete-empty', async (p) => {
 });
 
 // ---- Pinnwand: menu, edit, resolve, empty
-await step(a, 'pinnwand-menu', async (p) => {
-	await open(p, '/pinnwand');
+await step(a, 'pinboard-menu', async (p) => {
+	await open(p, '/pinboard');
 	await actions(p, /^Beitragsaktionen:/);
 });
-await step(a, 'pinnwand-edit-long', async (p) => {
+await step(a, 'pinboard-edit-long', async (p) => {
 	await pick(p, /^Beitrag bearbeiten/);
 	await p.getByRole('textbox').first().fill(LONG);
 	await p
@@ -303,7 +303,7 @@ await step(a, 'pinnwand-edit-long', async (p) => {
 		.click();
 	await p.getByText(SHORT).first().waitFor();
 });
-await step(a, 'pinnwand-resolve-empty', async (p) => {
+await step(a, 'pinboard-resolve-empty', async (p) => {
 	await actions(p, /^Beitragsaktionen:/);
 	await pick(p, /^Als geklärt markieren/);
 	await confirm(p);
@@ -331,16 +331,16 @@ await step(a, 'chat-delete', async (p) => {
 });
 
 // ---- Einstellungen tabs + dark mode
-await step(a, 'settings-hinweise', async (p) => {
-	await open(p, '/einstellungen');
+await step(a, 'settings-notifications', async (p) => {
+	await open(p, '/settings');
 	await p.getByRole('tab', { name: 'Hinweise' }).click();
 	await wait(500);
 });
-await step(a, 'settings-zugang', async (p) => {
+await step(a, 'settings-access', async (p) => {
 	await p.getByRole('tab', { name: 'Zugang' }).click();
 	await wait(500);
 });
-await step(a, 'settings-daten', async (p) => {
+await step(a, 'settings-data', async (p) => {
 	await p.getByRole('tab', { name: 'Daten' }).click();
 	await wait(500);
 });
@@ -351,17 +351,17 @@ await step(a, 'dark-on', async (p) => {
 });
 await step(a, 'dark-dashboard', async (p) => open(p, ''));
 await step(b, 'dark-b-chat', async (p) => {
-	await open(p, '/einstellungen');
+	await open(p, '/settings');
 	await p.getByRole('button', { name: 'Dunkel' }).click();
 	await open(p, '/chat');
 });
-await step(b, 'dark-b-aktivitaet', async (p) => {
-	await open(p, '/aktivitaet');
+await step(b, 'dark-b-activity', async (p) => {
+	await open(p, '/activity');
 	await p.getByRole('searchbox').fill('Klopapier');
 	await wait(700);
 });
 await step(a, 'light-back', async (p) => {
-	await open(p, '/einstellungen');
+	await open(p, '/settings');
 	await p.getByRole('button', { name: 'Hell' }).click();
 	await wait(300);
 });

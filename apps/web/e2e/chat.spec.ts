@@ -395,8 +395,8 @@ test.describe('chat compose', () => {
 				await expect(composer).toHaveValue('Erste Zeile\nZweite Zeile');
 				await expect.poll(() => sentBodies.length).toBe(0);
 
-				await page.goto(`/wg/${SHARE_CODE}/einkauf`, { waitUntil: 'domcontentloaded' });
-				await expect(page).toHaveURL(new RegExp(`/wg/${SHARE_CODE}/einkauf$`));
+				await page.goto(`/wg/${SHARE_CODE}/shopping`, { waitUntil: 'domcontentloaded' });
+				await expect(page).toHaveURL(new RegExp(`/wg/${SHARE_CODE}/shopping$`));
 				await navigateToFeature(page, `/wg/${SHARE_CODE}/chat`);
 				await dismissOnboarding(page);
 				await expect(composer).toHaveValue('Erste Zeile\nZweite Zeile');
@@ -503,7 +503,7 @@ test.describe('chat pinnwand reflow 200', () => {
 					},
 				});
 			});
-			await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/pinnwand`);
+			await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/pinboard`);
 			await dismissOnboarding(page);
 			await expect(
 				page.getByText('Ein etwas längerer Pinnwand-Beitrag', { exact: false }),

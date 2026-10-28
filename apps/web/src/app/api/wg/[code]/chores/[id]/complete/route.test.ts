@@ -274,6 +274,7 @@ mock.module('drizzle-orm', {
 		eq: (...values: unknown[]) => values,
 		gt: (...values: unknown[]) => values,
 		gte: (...values: unknown[]) => values,
+		inArray: (...values: unknown[]) => values,
 		isNull: (value: unknown) => [value, null],
 		sql: () => 'sql-updated-at',
 	},

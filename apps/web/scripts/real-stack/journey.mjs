@@ -46,7 +46,7 @@ async function ctx() {
 	return { c, p };
 }
 async function register(p, u, tag) {
-	await p.goto('/registrieren');
+	await p.goto('/signup');
 	await p.getByLabel('Dein Name').fill(u.name);
 	await p.getByLabel('E-Mail-Adresse').fill(u.email);
 	await p.getByLabel('Passwort', { exact: true }).fill(u.pw);
@@ -83,7 +83,7 @@ note(
 	`A Cookies: ${cookies.map((c) => `${c.name}${c.httpOnly ? '[httpOnly]' : '[JS]'}`).join(', ')}`,
 );
 if (cookies.some((c) => c.name.startsWith('sb-') && !c.httpOnly)) bug('A sb-Cookie nicht HttpOnly');
-await a.p.goto('/neu');
+await a.p.goto('/login');
 await wait(1500);
 note(`A /neu: ${(await a.p.locator('main').innerText()).replace(/\s+/g, ' ').slice(0, 200)}`);
 // WG erstellen
@@ -98,19 +98,19 @@ await a.p
 	.catch(() => bug('A WG-Erstellung: kein Erfolg-Screen'));
 const linkBtn = a.p.getByRole('button', { name: 'Einladungslink kopieren' });
 await a.p
-	.waitForFunction(() => /einladung\/[\w-]{22}/.test(document.body.innerText), null, {
+	.waitForFunction(() => /invite\/[\w-]{22}/.test(document.body.innerText), null, {
 		timeout: 15000,
 	})
 	.catch(() => {});
 const inviteUrl = ((await linkBtn.textContent().catch(() => '')) ?? '').trim();
 note(`A Einladungslink: ${inviteUrl}`);
-if (!/einladung\/[\w-]{22}/.test(inviteUrl)) bug('Einladungslink fehlt/ungültig');
+if (!/invite\/[\w-]{22}/.test(inviteUrl)) bug('Einladungslink fehlt/ungültig');
 const token = inviteUrl.split('/').pop();
 await a.p.screenshot({ path: `${process.env.SHOTS_DIR}/real-created.png` });
 // ---- account B joins
 const b = await ctx();
 watch(b.p, 'B');
-await b.p.goto(`/einladung/${token}`);
+await b.p.goto(`/invite/${token}`);
 await wait(1200);
 note(
 	`B Einladung (ausgeloggt): ${(await b.p.locator('main').innerText()).replace(/\s+/g, ' ').slice(0, 160)}`,
@@ -133,7 +133,7 @@ else {
 	await wait(2500);
 }
 note(`B nach Bestätigung: ${b.p.url()}`);
-if (!/einladung/.test(b.p.url()))
+if (!/invite/.test(b.p.url()))
 	bug(`B landet nach Bestätigung nicht auf der Einladung: ${b.p.url()}`);
 else {
 	note(
@@ -147,26 +147,26 @@ else {
 const wgPath = new URL(b.p.url()).pathname.split('/').slice(0, 3).join('/');
 note(`WG-Pfad: ${wgPath}`);
 // ---- Daten anlegen via UI: Einkauf
-await a.p.goto(`${wgPath}/einkauf`);
+await a.p.goto(`${wgPath}/shopping`);
 await wait(1500);
 await a.p.getByPlaceholder(/Reis/).fill('Hafermilch');
 await a.p.keyboard.press('Enter');
 await wait(1500);
 note(`A Einkauf: ${(await a.p.locator('main').innerText()).replace(/\s+/g, ' ').slice(0, 160)}`);
-await b.p.goto(`${wgPath}/einkauf`);
+await b.p.goto(`${wgPath}/shopping`);
 await wait(2000);
 if (!(await b.p.locator('text=Hafermilch').count())) bug('B sieht Hafermilch von A nicht');
 // Chores + expense via UI take long; load the dashboard instead
 for (const sub of [
 	'',
-	'/ausgaben',
-	'/putzen',
+	'/expenses',
+	'/chores',
 	'/chat',
-	'/pinnwand',
-	'/kalender',
-	'/einstellungen',
-	'/abrechnung',
-	'/aktivitaet',
+	'/pinboard',
+	'/calendar',
+	'/settings',
+	'/statement',
+	'/activity',
 ]) {
 	for (const [who, pg] of [
 		['A', a.p],
@@ -183,7 +183,7 @@ for (const sub of [
 	}
 }
 // ---- Abmelden + Code-Login A
-await a.p.goto(`${wgPath}/einstellungen`);
+await a.p.goto(`${wgPath}/settings`);
 await wait(1000);
 await a.p.screenshot({ path: `${process.env.SHOTS_DIR}/real-settings.png` });
 const out = await a.p.evaluate(
@@ -197,7 +197,7 @@ const out = await a.p.evaluate(
 		).status,
 );
 note(`A sign-out status ${out}`);
-await a.p.goto('/neu');
+await a.p.goto('/login');
 await wait(1200);
 note(
 	`A nach Sign-out /neu: ${(await a.p.locator('main').innerText()).replace(/\s+/g, ' ').slice(0, 120)}`,
@@ -221,7 +221,7 @@ else {
 	await wait(2500);
 	note(`A nach Code-Login: ${a.p.url()}`);
 }
-if (/\/neu$/.test(a.p.url()) || !/\/wg\//.test(a.p.url()))
+if (/\/login$/.test(a.p.url()) || !/\/wg\//.test(a.p.url()))
 	note(`A landet nicht automatisch in WG (ok wenn Auswahl): ${a.p.url()}`);
 // Reload-Persistenz
 await a.p.reload();

@@ -69,7 +69,7 @@ test.describe('cash settlement', () => {
 			return route.fulfill({ json: { amountCents: 1000, currency: 'EUR' } });
 		});
 
-		await navigateToFeature(page, `/wg/${shareCode}/ausgaben`);
+		await navigateToFeature(page, `/wg/${shareCode}/expenses`);
 		await dismissOnboarding(page);
 		await page.getByRole('button', { name: 'Ausgleichen' }).click();
 		const dialog = page.getByRole('alertdialog', { name: 'Bereits erfolgte Zahlung bestätigen' });

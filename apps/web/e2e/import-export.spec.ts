@@ -306,7 +306,7 @@ test.describe('import error notice', () => {
 		await cdp.send('Emulation.setCPUThrottlingRate', { rate: 20 });
 		await page.getByRole('button', { name: 'Verwerfen' }).click();
 		// At 20x even a plain link to Ausgaben takes ~5.5 s; a stuck navigation never arrives.
-		await expect(page).toHaveURL(new RegExp(`/wg/${FIXTURE_WG.shareCode}/ausgaben`), {
+		await expect(page).toHaveURL(new RegExp(`/wg/${FIXTURE_WG.shareCode}/expenses`), {
 			timeout: 30_000,
 		});
 		// The wizard's marker entries are gone: back does not land on the empty wizard.

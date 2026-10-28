@@ -14,8 +14,8 @@ import {
 import { expectNoGermanChrome, expectNoHorizontalOverflow, setEnglishLocale } from './support/i18n';
 
 const BASE = `/api/wg/${FIXTURE_WG.shareCode}`;
-const EINKAUF = `/wg/${FIXTURE_WG.shareCode}/einkauf`;
-const VORRAETE = `/wg/${FIXTURE_WG.shareCode}/vorraete`;
+const EINKAUF = `/wg/${FIXTURE_WG.shareCode}/shopping`;
+const VORRAETE = `/wg/${FIXTURE_WG.shareCode}/supplies`;
 const MINA_ID = '0ab8c8f2-5d03-4a84-aadc-4c5d7e8abf55';
 const WIDTHS = [320, 390] as const;
 const SCHEMES = ['light', 'dark'] as const;

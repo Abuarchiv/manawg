@@ -2,7 +2,7 @@
 // Why: Every noticeboard and chat string ships in two languages; a missed one would show German chrome in English.
 
 import { type BrowserContext, expect, type Page, test } from '@playwright/test';
-import type { Announcement } from '../src/features/pinnwand/components/announcement-types';
+import type { Announcement } from '../src/features/announcements/components/announcement-types';
 import {
 	dismissOnboarding,
 	FIXTURE_WG,
@@ -14,7 +14,7 @@ import {
 import { expectNoGermanChrome, expectNoHorizontalOverflow, setEnglishLocale } from './support/i18n';
 
 const BASE = `/api/wg/${FIXTURE_WG.shareCode}`;
-const PINNWAND = `/wg/${FIXTURE_WG.shareCode}/pinnwand`;
+const PINNWAND = `/wg/${FIXTURE_WG.shareCode}/pinboard`;
 const CHAT = `/wg/${FIXTURE_WG.shareCode}/chat`;
 const MINA_ID = '0ab8c8f2-5d03-4a84-aadc-4c5d7e8abf55';
 const FIXTURE_MESSAGE_ID = '8c1bb4a9-4722-42fe-bb86-aebf2e2d5b11';
@@ -112,7 +112,7 @@ test.describe('English noticeboard', () => {
 					post('swap', 'Swap request for the bathroom', {
 						kind: 'request',
 						source: 'chore_swap',
-						sourcePath: '/putzen',
+						sourcePath: '/chores',
 					}),
 					post('long', LONG_TEXT, { kind: 'decision' }),
 					post('done', 'Resolved topic', {
@@ -525,7 +525,7 @@ test.describe('English noticeboard extras', () => {
 		const actions = page.getByRole('button', { name: /^Post actions: Internet bill/ });
 		await actions.click();
 		await page.getByRole('menuitem', { name: /^Add as expense/ }).click();
-		await page.waitForURL(/\/ausgaben\?.*amount=1234\.50/);
+		await page.waitForURL(/\/expenses\?.*amount=1234\.50/);
 	});
 });
 

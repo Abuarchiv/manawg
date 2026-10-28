@@ -1,0 +1,197 @@
+'use client';
+
+import { FileInput, Receipt, Search } from 'lucide-react';
+import Link from 'next/link';
+import { useTranslations } from 'next-intl';
+import { Button, buttonVariants } from '@/components/ui/button';
+import {
+	Empty,
+	EmptyDescription,
+	EmptyHeader,
+	EmptyMedia,
+	EmptyTitle,
+} from '@/components/ui/empty';
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { ExpenseRow } from '@/features/expenses/components/ledger/ExpenseRow';
+import { ExpensesSkeleton } from '@/features/expenses/components/ledger/ExpensesSkeleton';
+import type { ExpenseScope } from '@/features/expenses/expense-filter';
+import type { Expense, ExpenseSplit } from '@/features/expenses/expense-types';
+import { type Message, useMessage } from '@/shared/i18n/message';
+import { cn } from '@/shared/lib/cn';
+
+/** Below this many expenses the list is short enough to scan without a filter. */
+const FILTER_MIN_EXPENSES = 6;
+
+interface ExpenseHistoryProps {
+	expenseCount: number;
+	shownCount: number;
+	scope: ExpenseScope;
+	onScopeChange: (scope: ExpenseScope) => void;
+	query: string;
+	onQueryChange: (query: string) => void;
+	weeks: Array<{ label: Message; items: Expense[] }>;
+	showSkeleton: boolean;
+	initialLoading: boolean;
+	loadFailed: boolean;
+	hiddenCount: number;
+	onShowMore: () => void;
+	importHref: string;
+	expanded: Set<string>;
+	highlightedId: string | null;
+	currentMemberId: string;
+	pendingIds: ReadonlySet<string>;
+	memberName: (id: string) => string;
+	onToggleExpand: (id: string) => void;
+	onDelete: (id: string) => void;
+	onEdit: (expense: Expense) => void;
+	onToggleSettle: (expenseId: string, split: ExpenseSplit) => void;
+}
+
+export function ExpenseHistory({
+	expenseCount,
+	shownCount,
+	scope,
+	onScopeChange,
+	query,
+	onQueryChange,
+	weeks,
+	showSkeleton,
+	initialLoading,
+	loadFailed,
+	hiddenCount,
+	onShowMore,
+	importHref,
+	expanded,
+	highlightedId,
+	currentMemberId,
+	pendingIds,
+	memberName,
+	onToggleExpand,
+	onDelete,
+	onEdit,
+	onToggleSettle,
+}: ExpenseHistoryProps): React.ReactElement {
+	const t = useTranslations('expenses.history');
+	const message = useMessage();
+	return (
+		<section className="flex flex-col gap-3" aria-label={t('regionAria')}>
+			{expenseCount > 0 && <h2 className="sr-only">{t('heading')}</h2>}
+			{showSkeleton ? (
+				<ExpensesSkeleton />
+			) : loadFailed && expenseCount === 0 ? null : expenseCount === 0 && !initialLoading ? (
+				<Empty>
+					<EmptyHeader>
+						<EmptyMedia variant="icon">
+							<Receipt aria-hidden />
+						</EmptyMedia>
+						<EmptyTitle>{t('emptyTitle')}</EmptyTitle>
+						<EmptyDescription>{t('emptyBody')}</EmptyDescription>
+					</EmptyHeader>
+				</Empty>
+			) : (
+				<div className="flex flex-col gap-4">
+					{/* An active filter keeps its controls, or the list could stay empty with no way back. */}
+					{(expenseCount >= FILTER_MIN_EXPENSES || query !== '' || scope !== 'all') && (
+						<div className="flex flex-col gap-2">
+							<InputGroup>
+								<InputGroupAddon align="inline-start">
+									<Search className="h-4 w-4" aria-hidden />
+								</InputGroupAddon>
+								<InputGroupInput
+									type="search"
+									value={query}
+									onChange={(event) => onQueryChange(event.currentTarget.value)}
+									placeholder={t('searchPlaceholder')}
+									aria-label={t('searchAria')}
+									enterKeyHint="search"
+									autoCapitalize="none"
+									className="min-h-11 text-base"
+								/>
+							</InputGroup>
+							<ToggleGroup
+								variant="segmented"
+								value={[scope]}
+								onValueChange={(values) => {
+									const value = values[0];
+									if (value === 'all' || value === 'paid' || value === 'involved') {
+										onScopeChange(value);
+									}
+								}}
+								className="w-full"
+								aria-label={t('filterAria')}
+							>
+								<ToggleGroupItem value="all" className="flex-1">
+									{t('scopeAll')}
+								</ToggleGroupItem>
+								<ToggleGroupItem value="paid" className="flex-1">
+									{t('scopePaid')}
+								</ToggleGroupItem>
+								<ToggleGroupItem value="involved" className="flex-1">
+									{t('scopeInvolved')}
+								</ToggleGroupItem>
+							</ToggleGroup>
+						</div>
+					)}
+					{shownCount === 0 && (
+						<output className="block py-6 text-center text-sm text-muted-foreground">
+							{t('noMatches')}
+						</output>
+					)}
+					{weeks.map((week) => (
+						<section
+							key={JSON.stringify(week.label)}
+							aria-label={message(week.label)}
+							className="flex flex-col gap-1.5"
+						>
+							<h3 className="px-0 text-meta font-medium text-muted-foreground">
+								{message(week.label)}
+							</h3>
+							<ul
+								className={cn(
+									'divide-y divide-border/60 overflow-hidden rounded-xl border',
+									// With ?highlight=, use real row heights: otherwise the page grows after scrolling and the target slides under the nav.
+									highlightedId && '[&>li]:[content-visibility:visible]',
+								)}
+							>
+								{week.items.map((expense) => (
+									<ExpenseRow
+										key={expense.id}
+										expense={expense}
+										expanded={expanded.has(expense.id)}
+										onToggleExpand={onToggleExpand}
+										onDelete={onDelete}
+										onEdit={onEdit}
+										onToggleSettle={onToggleSettle}
+										pendingIds={pendingIds}
+										memberName={memberName}
+										currentMemberId={currentMemberId}
+										highlighted={highlightedId === expense.id}
+									/>
+								))}
+							</ul>
+						</section>
+					))}
+					{hiddenCount > 0 && (
+						<Button variant="outline" onClick={onShowMore}>
+							{t('showMore', { count: String(hiddenCount) })}
+						</Button>
+					)}
+				</div>
+			)}
+			{/* Rarely needed: import at the end of the list rather than as an icon above the balance. */}
+			{!showSkeleton && (
+				<Link
+					href={importHref}
+					className={cn(
+						buttonVariants({ variant: 'ghost', size: 'sm' }),
+						'self-center text-muted-foreground',
+					)}
+				>
+					<FileInput data-icon="inline-start" aria-hidden />
+					{t('import')}
+				</Link>
+			)}
+		</section>
+	);
+}

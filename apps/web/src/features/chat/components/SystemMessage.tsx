@@ -43,7 +43,7 @@ export function SystemMessage({ shareCode, systemKind, payload }: SystemMessageP
 					text={
 						expenseId ? (
 							<Link
-								href={`/wg/${encodeURIComponent(shareCode)}/ausgaben?highlight=${encodeURIComponent(expenseId)}`}
+								href={`/wg/${encodeURIComponent(shareCode)}/expenses?highlight=${encodeURIComponent(expenseId)}`}
 								// The after pseudo-element extends the hit area to 44px without enlarging the pill.
 								className="relative underline underline-offset-2 after:absolute after:inset-x-0 after:-inset-y-3.5 focus-visible:outline-2 focus-visible:outline-offset-2"
 							>

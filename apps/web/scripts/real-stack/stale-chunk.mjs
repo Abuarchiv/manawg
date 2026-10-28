@@ -29,7 +29,7 @@ p.on('load', () => {
 });
 // Route handlers run before the prefetch of the visible segment links, so the page chunk is
 // never cached: like a tab whose chunk the next deploy removed.
-await p.goto(`/wg/${code}/putzen`);
+await p.goto(`/wg/${code}/chores`);
 await p.waitForLoadState('networkidle');
 armed = true;
 await p
@@ -46,7 +46,7 @@ expect(
 );
 expect(blocked > 0, 'alter Chunk wurde mit 404 beantwortet', String(blocked));
 expect(loads === 1, 'genau ein Reload', String(loads));
-expect(/\/einkauf/.test(p.url()), 'Einkauf nach Reload sichtbar', p.url());
+expect(/\/shopping/.test(p.url()), 'Einkauf nach Reload sichtbar', p.url());
 const stuck = await p.getByText('Etwas ist schiefgelaufen').count();
 expect(stuck === 0, 'keine Fehlerseite stehen geblieben');
 await browser.close();

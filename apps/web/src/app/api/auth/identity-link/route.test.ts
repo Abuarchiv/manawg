@@ -19,7 +19,7 @@ test('returns the link URL for the signed-in account', async () => {
 	};
 	const res = await call(POST, '/api/auth/identity-link', {
 		provider: 'google',
-		next: '/wg/ABCD2345/einstellungen',
+		next: '/wg/ABCD2345/settings',
 	});
 	assert.deepEqual(res.json, { url: 'https://accounts.example.test/link' });
 	assert.equal(received.options.skipBrowserRedirect, true);

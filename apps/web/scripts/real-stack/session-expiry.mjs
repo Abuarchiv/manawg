@@ -84,12 +84,12 @@ await expireWait('Browser');
 await dump('vor-klick');
 await p.locator('nav').getByText('Haushalt').click();
 await p.waitForLoadState('networkidle');
-expect(p.url().includes('/putzen'), 'Tabwechsel ohne Rauswurf', p.url());
+expect(p.url().includes('/chores'), 'Tabwechsel ohne Rauswurf', p.url());
 await p
 	.getByText(/^Einkäufe/)
 	.first()
 	.click();
-await p.waitForURL(/\/einkauf/);
+await p.waitForURL(/\/shopping/);
 await p.waitForLoadState('networkidle');
 await p.getByPlaceholder(/Reis/).fill('Nudeln');
 await p.keyboard.press('Enter');

@@ -17,11 +17,11 @@ test('returns the provider URL instead of redirecting the server', async () => {
 		received = args;
 		return { data: { url: 'https://accounts.example.test/auth' }, error: null };
 	};
-	const res = await call(POST, '/api/auth/oauth-start', { provider: 'google', next: '/neu' });
+	const res = await call(POST, '/api/auth/oauth-start', { provider: 'google', next: '/login' });
 	assert.deepEqual(res.json, { url: 'https://accounts.example.test/auth' });
 	assert.equal(received.provider, 'google');
 	assert.equal(received.options.skipBrowserRedirect, true);
-	assert.equal(received.options.redirectTo, 'https://app.example.test/auth/callback?next=%2Fneu');
+	assert.equal(received.options.redirectTo, 'https://app.example.test/auth/callback?next=%2Flogin');
 });
 
 test('only knows google', async () => {

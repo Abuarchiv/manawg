@@ -50,7 +50,7 @@ test.describe('pwa platform', () => {
 		await page.getByRole('button', { name: 'Installationshinweis ausblenden' }).click();
 		await expect(install).toHaveCount(0);
 		await page.getByRole('link', { name: 'Haushalt' }).click();
-		await expect(page).toHaveURL(/entdecken/);
+		await expect(page).toHaveURL(/discover/);
 		await expect(install).toHaveCount(0);
 
 		// The dismissal is remembered on this device: the next start page stays quiet.
@@ -234,17 +234,17 @@ test.describe('pwa platform', () => {
 	});
 
 	const wgFeatureTitles = [
-		['abos', 'Fixkosten — ManaWG'],
-		['putzen', 'Putzplan — ManaWG'],
-		['einkauf', 'Einkäufe — ManaWG'],
-		['kalender', 'Kalender — ManaWG'],
+		['recurring', 'Fixkosten — ManaWG'],
+		['chores', 'Putzplan — ManaWG'],
+		['shopping', 'Einkäufe — ManaWG'],
+		['calendar', 'Kalender — ManaWG'],
 		['import', 'Ausgaben importieren — ManaWG'],
-		['ausgaben', 'Ausgaben — ManaWG'],
-		['pinnwand', 'Pinnwand — ManaWG'],
-		['aktivitaet', 'Aktivität — ManaWG'],
-		['mahnungen', 'Erinnerungen — ManaWG'],
-		['einstellungen', 'Einstellungen — ManaWG'],
-		['vorraete', 'Vorräte — ManaWG'],
+		['expenses', 'Ausgaben — ManaWG'],
+		['pinboard', 'Pinnwand — ManaWG'],
+		['activity', 'Aktivität — ManaWG'],
+		['reminders', 'Erinnerungen — ManaWG'],
+		['settings', 'Einstellungen — ManaWG'],
+		['supplies', 'Vorräte — ManaWG'],
 	] as const;
 
 	/** WCAG 2.4.2: each WG feature segment must publish its own descriptive title. */
@@ -265,13 +265,13 @@ test.describe('pwa platform', () => {
 		page,
 	}) => {
 		await setupMember(page);
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/putzen`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/chores`);
 		await dismissOnboarding(page);
 		await expect.poll(() => page.title()).toBe('Putzplan — ManaWG');
 
 		const bottomNav = page.getByRole('navigation', { name: 'WG Hauptnavigation' });
 		await bottomNav.getByRole('link', { name: 'Finanzen' }).click();
-		await expect(page).toHaveURL(new RegExp(`/wg/${FIXTURE_WG.shareCode}/ausgaben`));
+		await expect(page).toHaveURL(new RegExp(`/wg/${FIXTURE_WG.shareCode}/expenses`));
 		await expect.poll(() => page.title()).toBe('Ausgaben — ManaWG');
 
 		await bottomNav.getByRole('link', { name: 'Start' }).click();
@@ -532,7 +532,7 @@ test.describe('offline banner focus', () => {
 		await page.setViewportSize({ width: 320, height: 640 });
 		await page.emulateMedia({ reducedMotion: 'reduce' });
 		await setupMember(page);
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen#zugang`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings#access`);
 		await dismissOnboarding(page);
 
 		const target = page.getByRole('button', { name: 'Neue Einladung', exact: true });

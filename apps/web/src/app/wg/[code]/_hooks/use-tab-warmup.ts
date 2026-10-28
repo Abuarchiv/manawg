@@ -29,10 +29,10 @@ export function useTabWarmup(encodedShareCode: string, memberId?: string) {
 			// Evaluate the tab page chunks now: on the first switch the route only has to render
 			// (the page modules are already installed), instead of download + parse + render.
 			for (const load of [
-				() => import('@/app/wg/[code]/putzen/page'),
-				() => import('@/app/wg/[code]/einkauf/page'),
-				() => import('@/app/wg/[code]/ausgaben/page'),
-				() => import('@/app/wg/[code]/pinnwand/page'),
+				() => import('@/app/wg/[code]/chores/page'),
+				() => import('@/app/wg/[code]/shopping/page'),
+				() => import('@/app/wg/[code]/expenses/page'),
+				() => import('@/app/wg/[code]/pinboard/page'),
 				() => import('@/features/chat/components/ChatView'),
 			]) {
 				load().catch(() => undefined);

@@ -22,7 +22,7 @@ export default function robots(): MetadataRoute.Robots {
 					'CCBot',
 				],
 				allow: ['/'],
-				disallow: ['/wg/', '/einladung/', '/auth/', '/api/'],
+				disallow: ['/wg/', '/invite/', '/auth/', '/api/'],
 			},
 			{ userAgent: '*', allow: ['/'], disallow: ['/api/'] },
 		],

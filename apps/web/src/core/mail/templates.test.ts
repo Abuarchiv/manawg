@@ -55,7 +55,7 @@ test('invitation carries the invitation link, its lifetime and who is already in
 	const mail = ALL[1];
 	assert.ok(mail);
 	assert.equal(mail.subject, 'Lina lädt dich in die WG Kastanienallee ein');
-	assert.ok(mail.text.includes(`${APP_ORIGIN}/einladung/aB3_-xYz09aB3_-xYz09kQ`));
+	assert.ok(mail.text.includes(`${APP_ORIGIN}/invite/aB3_-xYz09aB3_-xYz09kQ`));
 	assert.ok(!mail.text.includes('KST48210'));
 	assert.ok(mail.text.includes('Der Link gilt 7 Tage.'));
 	assert.ok(mail.text.includes('Lina, Jonas und Mira sind schon dabei.'));
@@ -76,7 +76,7 @@ test('welcome without a name still greets and lists the three steps', () => {
 	const mail = renderWelcomeMail({ firstName: null });
 	assert.ok(mail.text.includes('Dein Konto ist bereit.'));
 	assert.ok(mail.text.includes('3. Erste Ausgabe eintragen'));
-	assert.ok(mail.text.includes(`WG einrichten: ${APP_ORIGIN}/neu`));
+	assert.ok(mail.text.includes(`WG einrichten: ${APP_ORIGIN}/login`));
 });
 
 test('html escapes user supplied names', () => {

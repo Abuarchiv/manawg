@@ -10,7 +10,7 @@ const LEGAL_LINKS = [
 	{ href: legalUrl('/datenschutz'), label: 'privacy' },
 	{ href: legalUrl('/agb'), label: 'terms' },
 ] as const;
-const [, IMPRESSUM, DATENSCHUTZ, AGB] = LEGAL_LINKS;
+const [, IMPRINT, PRIVACY, AGB] = LEGAL_LINKS;
 // Product and guide pages live on the landing; shown only on the plain entry footer,
 // never in consent or registration flows (those keep the legal minimum).
 const INFO_LINKS = [
@@ -47,7 +47,7 @@ export function LegalLinks({
 							</a>,
 						),
 						privacy: richArgument(
-							<a href={DATENSCHUTZ.href} className={CONSENT_LINK}>
+							<a href={PRIVACY.href} className={CONSENT_LINK}>
 								{t('consentPrivacy')}
 							</a>,
 						),
@@ -68,7 +68,7 @@ export function LegalLinks({
 				</nav>
 			)}
 			<nav aria-label={t('legalNav')} className="flex flex-wrap justify-center">
-				{(consent || registration ? [IMPRESSUM] : LEGAL_LINKS).map((link) => (
+				{(consent || registration ? [IMPRINT] : LEGAL_LINKS).map((link) => (
 					<a
 						key={link.href}
 						href={link.href}

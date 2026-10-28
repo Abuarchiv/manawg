@@ -129,7 +129,7 @@ export function InventoryList({
 								</CardContent>
 							</Card>
 							<Link
-								href={`/wg/${encodeURIComponent(shareCode)}/einkauf`}
+								href={`/wg/${encodeURIComponent(shareCode)}/shopping`}
 								className={cn(buttonVariants({ variant: 'outline' }), 'self-start')}
 							>
 								<ShoppingBasket data-icon="inline-start" aria-hidden />

@@ -5,7 +5,7 @@ import { queueWelcomeMail } from '@/core/auth/welcome-mail';
 import { requestOrigin } from '@/core/http/request-origin';
 
 function callbackError(request: NextRequest, response?: NextResponse): NextResponse {
-	const url = new URL('/neu', requestOrigin(request));
+	const url = new URL('/login', requestOrigin(request));
 	url.searchParams.set('error', 'auth_callback');
 	url.searchParams.set('next', safeNextPath(request.nextUrl.searchParams.get('next')));
 	const redirect = response ?? NextResponse.redirect(url);

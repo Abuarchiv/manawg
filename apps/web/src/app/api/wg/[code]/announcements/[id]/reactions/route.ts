@@ -15,8 +15,8 @@ import {
 	type NotificationDispatchWarning,
 } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
-import { REACTION_OPTIONS } from '@/features/pinnwand/announcement-card-model';
-import { ANNOUNCEMENT_REACTIONS } from '@/features/pinnwand/announcement-workflow';
+import { REACTION_OPTIONS } from '@/features/announcements/announcement-card-model';
+import { ANNOUNCEMENT_REACTIONS } from '@/features/announcements/announcement-workflow';
 
 const reactionSchema = z.object({
 	reaction: z.enum(ANNOUNCEMENT_REACTIONS),

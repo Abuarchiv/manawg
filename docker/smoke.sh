@@ -42,7 +42,7 @@ step "sign-up and confirmation mail"
 email="smoke-$(openssl rand -hex 4)@example.test"
 password="Smoke-$(openssl rand -hex 12)!"
 api POST /api/auth/sign-up \
-	-d "{\"email\":\"$email\",\"password\":\"$password\",\"name\":\"Smoke\",\"next\":\"/neu\"}" \
+	-d "{\"email\":\"$email\",\"password\":\"$password\",\"name\":\"Smoke\",\"next\":\"/login\"}" \
 	>"$work/signup.json"
 jq -e '.sessionEstablished == false' "$work/signup.json" >/dev/null ||
 	fail "sign-up: $(cat "$work/signup.json")"
@@ -57,7 +57,7 @@ done
 link=$(curl -s "$mailpit/api/v1/message/$id" | jq -r .Text | grep -o "$app/auth/v1/verify?[^ ]*" | head -n 1)
 [ -n "$link" ] || fail "confirmation mail without a link"
 curl -sS -L -b "$jar" -c "$jar" -o /dev/null -w '%{url_effective}' "$link" >"$work/landing"
-grep -qx "$app/neu" "$work/landing" || fail "confirmation ended at $(cat "$work/landing")"
+grep -qx "$app/login" "$work/landing" || fail "confirmation ended at $(cat "$work/landing")"
 
 step "WG"
 api POST /api/wg -d '{"name":"Smoke WG","creatorName":"Smoke"}' >"$work/wg.json"

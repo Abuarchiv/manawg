@@ -23,7 +23,7 @@ import {
 	type NotificationDispatchWarning,
 } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
-import { patchAnnouncementSchema } from '@/features/pinnwand/server/announcement-patch-schema';
+import { patchAnnouncementSchema } from '@/features/announcements/server/announcement-patch-schema';
 
 export const PATCH = withWgRoute<{ id: string }>(
 	'announcement PATCH',

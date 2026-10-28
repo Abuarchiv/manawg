@@ -61,7 +61,7 @@ async function requestedPath(): Promise<string | null> {
 }
 
 async function signInPath(code: string): Promise<string> {
-	return `/neu?next=${encodeURIComponent(wgReturnPath(code, await requestedPath()))}`;
+	return `/login?next=${encodeURIComponent(wgReturnPath(code, await requestedPath()))}`;
 }
 
 export default async function WgLayout({ children, params }: Props) {
@@ -96,7 +96,7 @@ export default async function WgLayout({ children, params }: Props) {
 	if (!access) {
 		const next = encodeURIComponent(wgReturnPath(code, await requestedPath()));
 		// Tell moved-out members why the WG is gone instead of suggesting to join again.
-		redirect(`/neu?next=${next}${movedOut ? '&reason=moved_out' : ''}`);
+		redirect(`/login?next=${next}${movedOut ? '&reason=moved_out' : ''}`);
 	}
 	const { memberId, memberName, ...wg } = access;
 	const initialIdentity: SessionMember = { memberId, name: memberName, authUserId: user.id };
@@ -174,7 +174,7 @@ function WgShell({
 					href={wgBaseHref}
 					label={HOME_NAV_LABEL}
 					iconKey="home"
-					activePrefixes={[`${wgBaseHref}/aktivitaet`]}
+					activePrefixes={[`${wgBaseHref}/activity`]}
 				/>
 				{WG_SECTIONS.map((section) => (
 					<NavItem

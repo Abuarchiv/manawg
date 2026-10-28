@@ -19,7 +19,7 @@ test('a queued absence opens in the Putzplan chore draft that the page reads', (
 	assert.equal(draft?.draft.absenceStartDate, '2026-10-01');
 	assert.equal(
 		buildQueueEditHref('MTE8PZAT', 'chore', { openAbsencesPanel: true }),
-		'/wg/MTE8PZAT/putzen?panel=absences',
+		'/wg/MTE8PZAT/chores?panel=absences',
 	);
 });
 
@@ -40,7 +40,7 @@ test('create drafts still route to their owning page', () => {
 		buildQueueEditDraft(action('expense.create', { description: 'x', amountCents: 100 }))?.module,
 		'expense',
 	);
-	assert.equal(buildQueueEditHref('MTE8PZAT', 'shopping'), '/wg/MTE8PZAT/einkauf');
+	assert.equal(buildQueueEditHref('MTE8PZAT', 'shopping'), '/wg/MTE8PZAT/shopping');
 });
 
 test('a queued recurring booking keeps its template link and expected due date', () => {

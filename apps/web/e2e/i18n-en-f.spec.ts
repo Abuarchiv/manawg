@@ -13,7 +13,7 @@ import {
 import { expectNoGermanChrome, expectNoHorizontalOverflow, setEnglishLocale } from './support/i18n';
 
 const BASE = `/api/wg/${FIXTURE_WG.shareCode}`;
-const PUTZEN = `/wg/${FIXTURE_WG.shareCode}/putzen`;
+const PUTZEN = `/wg/${FIXTURE_WG.shareCode}/chores`;
 const WIDTHS = [320, 390] as const;
 const SCHEMES = ['light', 'dark'] as const;
 const DAY_MS = 24 * 60 * 60 * 1000;

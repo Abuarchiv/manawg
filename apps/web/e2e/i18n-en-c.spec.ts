@@ -1,5 +1,5 @@
 // English debts, settlement and reminders page.
-// Why: The balance card, the settle dialogs and /mahnungen must read as English at phone widths.
+// Why: The balance card, the settle dialogs and /reminders must read as English at phone widths.
 
 import { expect, type Page, test } from '@playwright/test';
 import {
@@ -76,7 +76,7 @@ test.describe('English debts and reminders', () => {
 						},
 					}),
 				);
-				await navigateToFeature(page, `${BASE}/mahnungen`);
+				await navigateToFeature(page, `${BASE}/reminders`);
 				await dismissOnboarding(page);
 
 				await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
@@ -123,7 +123,7 @@ test.describe('English debts and reminders', () => {
 					}),
 				);
 				await mockUnreadCount(page, `/api/wg/${FIXTURE_WG.shareCode}`);
-				await navigateToFeature(page, `${BASE}/ausgaben`);
+				await navigateToFeature(page, `${BASE}/expenses`);
 				await dismissOnboarding(page);
 
 				await expect(page.getByText('Your balance', { exact: true })).toBeVisible();
@@ -184,7 +184,7 @@ test.describe('English debts and reminders', () => {
 						json: { error: 'settlement_changed', code: 'settlement_changed' },
 					}),
 		);
-		await navigateToFeature(page, `${BASE}/ausgaben`);
+		await navigateToFeature(page, `${BASE}/expenses`);
 		await dismissOnboarding(page);
 
 		await page.getByRole('button', { name: 'Settle up' }).click();
@@ -223,7 +223,7 @@ test.describe('English debts and reminders', () => {
 				? route.fulfill({ status: 201, json: { reminder: { id: 'reminder-new' }, warning: null } })
 				: route.fulfill({ json: { reminders: [] } }),
 		);
-		await navigateToFeature(page, `${BASE}/mahnungen`);
+		await navigateToFeature(page, `${BASE}/reminders`);
 		await dismissOnboarding(page);
 
 		await expect(page.getByText('Reminders you send appear here.')).toBeVisible();
@@ -271,7 +271,7 @@ test.describe('English debts and reminders', () => {
 						: [];
 				return route.fulfill({ json: { reminders } });
 			});
-			await navigateToFeature(page, `${BASE}/mahnungen`);
+			await navigateToFeature(page, `${BASE}/reminders`);
 			await dismissOnboarding(page);
 
 			await page.getByRole('button', { name: 'Remind Mina' }).click();

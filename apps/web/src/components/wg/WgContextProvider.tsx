@@ -196,7 +196,7 @@ export function WgContextProvider({
 		);
 	}
 
-	const backToWgs = <ShellLink href="/neu">{t('backToWgs')}</ShellLink>;
+	const backToWgs = <ShellLink href="/login">{t('backToWgs')}</ShellLink>;
 
 	if (memberLoadError || retrying) {
 		return (
@@ -224,7 +224,7 @@ export function WgContextProvider({
 		const next = encodeURIComponent(`${window.location.pathname}${window.location.search}`);
 		return (
 			<ShellAlert title={t('sessionEnded')} description={t('sessionEndedBody')}>
-				<ShellLink href={`/neu?next=${next}`}>{t('signIn')}</ShellLink>
+				<ShellLink href={`/login?next=${next}`}>{t('signIn')}</ShellLink>
 			</ShellAlert>
 		);
 	}

@@ -25,7 +25,7 @@ The app SHALL render in the locale from the `manawg_locale` cookie when it holds
 Introducing English SHALL NOT change any German text, metadata, JSON-LD, OG data or manifest output. OG locale, JSON-LD `inLanguage`, OG images and the manifest SHALL stay German in every locale.
 
 #### Scenario: German head is identical
-- **WHEN** `/`, `/neu`, `/registrieren` and `/entdecken/<module>` render in German
+- **WHEN** `/`, `/login`, `/signup` and `/discover/<module>` render in German
 - **THEN** their server `<head>` SHALL equal the output before this change, apart from per-request nonces and build hashes
 
 ### Requirement: The language choice persists for the person

@@ -9,7 +9,7 @@ const OTHER_MEMBER_ID = '0ab8c8f2-5d03-4a84-aadc-4c5d7e8abf55';
 const BASE = `/wg/${FIXTURE_WG.shareCode}`;
 
 const abo = {
-	id: 'abo-en-1',
+	id: 'recurring-en-1',
 	description: 'Music plan',
 	category: 'freizeit',
 	amountCents: 1299,
@@ -70,10 +70,12 @@ test.describe('English fixed costs and statement', () => {
 				await setupMember(page);
 				await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/recurring-expenses*`, (route) =>
 					route.fulfill({
-						json: { recurringExpenses: [abo, { ...abo, id: 'abo-en-2', pausedAt: '2026-10-01' }] },
+						json: {
+							recurringExpenses: [abo, { ...abo, id: 'recurring-en-2', pausedAt: '2026-10-01' }],
+						},
 					}),
 				);
-				await navigateToFeature(page, `${BASE}/abos`);
+				await navigateToFeature(page, `${BASE}/recurring`);
 
 				await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
 				await expect(page.getByRole('heading', { level: 1, name: 'Fixed costs' })).toBeAttached();
@@ -109,7 +111,7 @@ test.describe('English fixed costs and statement', () => {
 				await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/expenses*`, (route) =>
 					route.fulfill({ json: { expenses: [septemberExpense], payments: [] } }),
 				);
-				await navigateToFeature(page, `${BASE}/abrechnung?monat=2026-09`);
+				await navigateToFeature(page, `${BASE}/statement?monat=2026-09`);
 
 				await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
 				await expect(page.getByRole('heading', { level: 1, name: 'September 2026' })).toBeVisible();
@@ -147,12 +149,12 @@ test.describe('English fixed costs and statement', () => {
 				created = route.request().postDataJSON();
 				return route.fulfill({
 					status: 201,
-					json: { recurringExpense: { ...abo, id: 'abo-created', ...created } },
+					json: { recurringExpense: { ...abo, id: 'recurring-created', ...created } },
 				});
 			}
 			return route.fulfill({ json: { recurringExpenses: [] } });
 		});
-		await navigateToFeature(page, `${BASE}/abos`);
+		await navigateToFeature(page, `${BASE}/recurring`);
 
 		await expect(page.getByText('No fixed costs yet')).toBeVisible();
 		await page.getByRole('button', { name: 'Add fixed costs' }).click();
@@ -183,7 +185,7 @@ test.describe('English fixed costs and statement', () => {
 						json: { error: 'recurring_expense_changed', code: 'recurring_expense_changed' },
 					}),
 		);
-		await navigateToFeature(page, `${BASE}/abos`);
+		await navigateToFeature(page, `${BASE}/recurring`);
 
 		await page.getByRole('button', { name: /Open details:/ }).click();
 		await page.getByRole('button', { name: 'Delete Music plan' }).click();

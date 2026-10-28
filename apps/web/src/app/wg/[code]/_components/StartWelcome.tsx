@@ -71,7 +71,7 @@ export function StartWelcome({ dismissedFallback }: { dismissedFallback?: React.
 				</CardHeader>
 				<CardContent className="flex flex-col gap-2">
 					{hasRoommates && (
-						<Link href={`${baseHref}/einkauf`} className={cn(buttonVariants(), 'w-full')}>
+						<Link href={`${baseHref}/shopping`} className={cn(buttonVariants(), 'w-full')}>
 							{t('openShopping')}
 						</Link>
 					)}

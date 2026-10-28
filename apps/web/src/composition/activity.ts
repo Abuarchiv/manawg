@@ -133,7 +133,7 @@ export function buildActivityTimeline(input: ActivityTimelineInput): ActivityIte
 			completed: false,
 			amountCents: item.amountCents,
 			currency: item.currency ?? 'EUR',
-			href: `/ausgaben?highlight=${encodeURIComponent(item.id)}`,
+			href: `/expenses?highlight=${encodeURIComponent(item.id)}`,
 		});
 	}
 
@@ -150,7 +150,7 @@ export function buildActivityTimeline(input: ActivityTimelineInput): ActivityIte
 			memberName: memberName(members, actorId),
 			text: item.boughtAt ? `${item.name} gekauft` : `${item.name} hinzugefügt`,
 			completed: item.boughtAt !== null,
-			href: `/einkauf?highlight=${encodeURIComponent(item.id)}`,
+			href: `/shopping?highlight=${encodeURIComponent(item.id)}`,
 		});
 	}
 
@@ -163,7 +163,7 @@ export function buildActivityTimeline(input: ActivityTimelineInput): ActivityIte
 			memberName: memberName(members, item.authorMemberId),
 			text: item.content,
 			completed: false,
-			href: `/pinnwand#announcement-${encodeURIComponent(item.id)}`,
+			href: `/pinboard#announcement-${encodeURIComponent(item.id)}`,
 		});
 	}
 
@@ -176,7 +176,7 @@ export function buildActivityTimeline(input: ActivityTimelineInput): ActivityIte
 			memberName: memberName(members, item.completedByMemberId),
 			text: `${item.choreTitle} erledigt`,
 			completed: true,
-			href: `/putzen?highlight=${encodeURIComponent(item.choreId)}`,
+			href: `/chores?highlight=${encodeURIComponent(item.choreId)}`,
 		});
 	}
 
@@ -194,7 +194,7 @@ export function buildActivityTimeline(input: ActivityTimelineInput): ActivityIte
 			detail: 'Fixkosten',
 			amountCents: item.amountCents,
 			currency: item.currency ?? 'EUR',
-			href: `/ausgaben?recurring=${encodeURIComponent(item.id)}`,
+			href: `/expenses?recurring=${encodeURIComponent(item.id)}`,
 		});
 	}
 
@@ -211,7 +211,7 @@ export function buildActivityTimeline(input: ActivityTimelineInput): ActivityIte
 			detail: item.reason
 				? `${shortDateRange(item.startDate, item.endDate)} · ${item.reason}`
 				: shortDateRange(item.startDate, item.endDate),
-			href: `/putzen?panel=absences&absence=${encodeURIComponent(item.id)}`,
+			href: `/chores?panel=absences&absence=${encodeURIComponent(item.id)}`,
 		});
 	}
 

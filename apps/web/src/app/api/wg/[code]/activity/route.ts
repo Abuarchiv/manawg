@@ -22,7 +22,7 @@ import {
 import { feedAuditCondition } from '@/core/db/feed-audit-filter';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { MEMBER_ANNOUNCEMENT_SOURCES } from '@/features/pinnwand/announcement-workflow';
+import { MEMBER_ANNOUNCEMENT_SOURCES } from '@/features/announcements/announcement-workflow';
 
 const DEFAULT_LIMIT = 80;
 const MAX_LIMIT = 320;

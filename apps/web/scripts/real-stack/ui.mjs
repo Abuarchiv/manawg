@@ -92,8 +92,8 @@ const B = await session(await makeUser('Ben'), 'B');
 
 // ---- create WG and invite B through the UI
 let wgPath = '';
-await step(A, 'neu', async (p) => {
-	await p.goto('/neu');
+await step(A, 'login', async (p) => {
+	await p.goto('/login');
 	await p.getByRole('button', { name: 'Neue WG erstellen', exact: true }).click();
 	await p.getByLabel('WG-Name').fill('Echte WG');
 	await p.getByRole('button', { name: 'WG erstellen', exact: true }).click();
@@ -108,15 +108,15 @@ await step(A, 'neu', async (p) => {
 	}
 });
 let inviteUrl = '';
-await step(A, 'einladungslink', async (p) => {
+await step(A, 'invite-link', async (p) => {
 	const text = await p.getByRole('button', { name: 'Einladungslink kopieren' }).innerText();
-	inviteUrl = text.match(/https?:\/\/\S+\/einladung\/\S+/)?.[0] ?? '';
+	inviteUrl = text.match(/https?:\/\/\S+\/invite\/\S+/)?.[0] ?? '';
 	if (!inviteUrl) throw new Error(`kein Einladungslink: ${text}`);
 	await p.getByRole('button', { name: 'Zur WG', exact: true }).click();
 	await p.waitForURL(/\/wg\//);
 	wgPath = new URL(p.url()).pathname.replace(/\/$/, '');
 });
-await step(B, 'beitreten', async (p) => {
+await step(B, 'join', async (p) => {
 	await p.goto(inviteUrl);
 	const nameField = p.getByLabel('Dein Anzeigename');
 	await nameField.waitFor();
@@ -132,28 +132,28 @@ await step(B, 'beitreten', async (p) => {
 });
 
 // ---- Einkauf
-await step(A, 'einkauf-add', async (p) => {
-	await p.goto(`${wgPath}/einkauf`);
+await step(A, 'shopping-add', async (p) => {
+	await p.goto(`${wgPath}/shopping`);
 	// WebKit hydrates later than Chromium; typing before hydration is lost.
 	await p.waitForLoadState('networkidle');
 	await p.getByPlaceholder(/Reis/).fill('Hafermilch');
 	await p.keyboard.press('Enter');
 	await p.getByText('Hafermilch').first().waitFor();
 });
-await step(B, 'einkauf-check', async (p) => {
-	await p.goto(`${wgPath}/einkauf`);
+await step(B, 'shopping-check', async (p) => {
+	await p.goto(`${wgPath}/shopping`);
 	await p.waitForLoadState('networkidle');
 	await p.getByRole('checkbox', { name: 'Hafermilch erledigen' }).click();
 	await wait(800);
 });
-await step(A, 'einkauf-after', async (p) => {
-	await p.goto(`${wgPath}/einkauf`);
+await step(A, 'shopping-after', async (p) => {
+	await p.goto(`${wgPath}/shopping`);
 	await p.waitForLoadState('networkidle');
 });
 
 // ---- Vorräte
-await step(A, 'vorrat-add', async (p) => {
-	await p.goto(`${wgPath}/vorraete`);
+await step(A, 'supply-add', async (p) => {
+	await p.goto(`${wgPath}/supplies`);
 	await p.getByRole('button', { name: 'Vorrat hinzufügen' }).click();
 	const dialog = p.getByRole('dialog');
 	await dialog
@@ -163,15 +163,15 @@ await step(A, 'vorrat-add', async (p) => {
 	await dialog.getByRole('button', { name: 'Speichern', exact: true }).click();
 	await p.getByText('Klopapier').first().waitFor();
 });
-await step(B, 'vorrat-plus', async (p) => {
-	await p.goto(`${wgPath}/vorraete`);
+await step(B, 'supply-plus', async (p) => {
+	await p.goto(`${wgPath}/supplies`);
 	await p.getByRole('button', { name: 'Klopapier um eins erhöhen' }).click();
 	await wait(800);
 });
 
 // ---- Ausgaben
-await step(A, 'ausgabe-add', async (p) => {
-	await p.goto(`${wgPath}/ausgaben`);
+await step(A, 'expense-add', async (p) => {
+	await p.goto(`${wgPath}/expenses`);
 	await p.getByRole('button', { name: 'Ausgabe hinzufügen' }).click();
 	const d = p.getByRole('dialog');
 	await d.getByLabel('Beschreibung', { exact: true }).fill('Wocheneinkauf');
@@ -179,12 +179,12 @@ await step(A, 'ausgabe-add', async (p) => {
 	await d.getByRole('button', { name: 'Ausgabe speichern', exact: true }).click();
 	await p.getByText('Wocheneinkauf').first().waitFor();
 });
-await step(B, 'ausgaben-view', async (p) => {
-	await p.goto(`${wgPath}/ausgaben`);
+await step(B, 'expenses-view', async (p) => {
+	await p.goto(`${wgPath}/expenses`);
 	await p.getByText('Wocheneinkauf').first().waitFor();
 });
-await step(A, 'abos-add', async (p) => {
-	await p.goto(`${wgPath}/abos`);
+await step(A, 'recurring-add', async (p) => {
+	await p.goto(`${wgPath}/recurring`);
 	await p.getByRole('button', { name: 'Fixkosten hinzufügen' }).click();
 	const d = p.getByRole('dialog');
 	await d.getByLabel('Beschreibung', { exact: true }).fill('Internet');
@@ -192,26 +192,26 @@ await step(A, 'abos-add', async (p) => {
 	await d.getByRole('button', { name: 'Fixkosten anlegen', exact: true }).click();
 	await p.getByText('Internet').first().waitFor();
 });
-await step(B, 'abrechnung', async (p) => {
-	await p.goto(`${wgPath}/abrechnung`);
+await step(B, 'statement', async (p) => {
+	await p.goto(`${wgPath}/statement`);
 	await p.waitForLoadState('networkidle');
 });
-await step(A, 'mahnungen', async (p) => {
-	await p.goto(`${wgPath}/mahnungen`);
+await step(A, 'reminders', async (p) => {
+	await p.goto(`${wgPath}/reminders`);
 	await p.waitForLoadState('networkidle');
 });
 
 // ---- Putzen
-await step(A, 'putzen-add', async (p) => {
-	await p.goto(`${wgPath}/putzen`);
+await step(A, 'chores-add', async (p) => {
+	await p.goto(`${wgPath}/chores`);
 	await p.getByRole('button', { name: 'Putzaufgabe hinzufügen' }).click();
 	const d = p.getByRole('dialog');
 	await d.getByLabel('Aufgabe', { exact: true }).fill('Bad putzen');
 	await d.getByRole('button', { name: 'Speichern' }).click();
 	await p.getByText('Bad putzen').first().waitFor();
 });
-await step(A, 'putzen-done', async (p) => {
-	await p.goto(`${wgPath}/putzen`);
+await step(A, 'chores-done', async (p) => {
+	await p.goto(`${wgPath}/chores`);
 	await p
 		.getByRole('button', {
 			name: /Als erledigt markieren: Bad putzen|Erledigt: Bad putzen|Erledigt bestätigen: Bad putzen/,
@@ -225,8 +225,8 @@ await step(A, 'putzen-done', async (p) => {
 });
 
 // ---- Kalender
-await step(A, 'kalender-add', async (p) => {
-	await p.goto(`${wgPath}/kalender`);
+await step(A, 'calendar-add', async (p) => {
+	await p.goto(`${wgPath}/calendar`);
 	const add = p
 		.getByRole('button', { name: /Termin hinzufügen|Neuer Termin|Termin anlegen/ })
 		.first();
@@ -235,15 +235,15 @@ await step(A, 'kalender-add', async (p) => {
 	await p.getByRole('button', { name: 'Termin speichern' }).click();
 	await p.getByText('Hausversammlung').first().waitFor();
 });
-await step(B, 'kalender-agenda', async (p) => {
-	await p.goto(`${wgPath}/kalender`);
+await step(B, 'calendar-agenda', async (p) => {
+	await p.goto(`${wgPath}/calendar`);
 	await p.getByRole('tab', { name: 'Agenda' }).click();
 	await wait(500);
 });
 
 // ---- Pinnwand
-await step(A, 'pinnwand-add', async (p) => {
-	await p.goto(`${wgPath}/pinnwand`);
+await step(A, 'pinboard-add', async (p) => {
+	await p.goto(`${wgPath}/pinboard`);
 	await p.getByRole('button', { name: 'Beitrag hinzufügen' }).click();
 	await p.getByRole('textbox').first().fill('Wer hat den Schlüssel?');
 	await p
@@ -252,8 +252,8 @@ await step(A, 'pinnwand-add', async (p) => {
 		.click();
 	await p.getByText('Wer hat den Schlüssel?').first().waitFor();
 });
-await step(B, 'pinnwand-antwort', async (p) => {
-	await p.goto(`${wgPath}/pinnwand`);
+await step(B, 'pinboard-reply', async (p) => {
+	await p.goto(`${wgPath}/pinboard`);
 	// The post is server-rendered: wait for hydration, otherwise the click is lost.
 	await p.waitForLoadState('networkidle');
 	await p
@@ -288,26 +288,26 @@ await step(B, 'dashboard', async (p) => {
 	await p.goto(wgPath);
 	await p.waitForLoadState('networkidle');
 });
-await step(A, 'aktivitaet', async (p) => {
-	await p.goto(`${wgPath}/aktivitaet`);
+await step(A, 'activity', async (p) => {
+	await p.goto(`${wgPath}/activity`);
 	await p.waitForLoadState('networkidle');
 });
 await step(A, 'import', async (p) => {
 	await p.goto(`${wgPath}/import`);
 	await p.waitForLoadState('networkidle');
 });
-await step(A, 'einstellungen', async (p) => {
-	await p.goto(`${wgPath}/einstellungen`);
+await step(A, 'settings', async (p) => {
+	await p.goto(`${wgPath}/settings`);
 	await p.waitForLoadState('networkidle');
 });
-await step(B, 'name-aendern', async (p) => {
-	await p.goto(`${wgPath}/einstellungen`);
+await step(B, 'rename', async (p) => {
+	await p.goto(`${wgPath}/settings`);
 	await p.getByLabel('Dein Name', { exact: true }).fill('Benjamin');
 	await p.getByRole('button', { name: 'Speichern', exact: true }).first().click();
 	await p.getByText('Name gespeichert.').waitFor();
 });
 await step(A, 'wg-name', async (p) => {
-	await p.goto(`${wgPath}/einstellungen`);
+	await p.goto(`${wgPath}/settings`);
 	await p.getByLabel('Name eurer WG').fill('Echte WG 2');
 	await p.getByLabel('Name eurer WG').press('Enter');
 	await p.getByText('WG-Name gespeichert.').waitFor();

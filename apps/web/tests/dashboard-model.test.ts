@@ -538,12 +538,12 @@ describe('start overview model', () => {
 			);
 			assert.partialDeepStrictEqual(items[0], {
 				isPersonal: true,
-				href: '/wg/WG%2F1/putzen?highlight=own-overdue',
+				href: '/wg/WG%2F1/chores?highlight=own-overdue',
 			});
 			assert.partialDeepStrictEqual(items[0]?.detail, { key: 'home.due.overdue' });
 			assert.partialDeepStrictEqual(items[1], {
 				isPersonal: false,
-				href: '/wg/WG%2F1/putzen?highlight=shared-overdue',
+				href: '/wg/WG%2F1/chores?highlight=shared-overdue',
 			});
 			assert.partialDeepStrictEqual(items[1]?.detail, {
 				key: 'home.today.choreDetail',
@@ -553,7 +553,7 @@ describe('start overview model', () => {
 			const shopping = items.find((item) => item.kind === 'shopping');
 			assert.partialDeepStrictEqual(shopping, {
 				detail: { key: 'home.today.shoppingDetail', values: { count: 7 } },
-				href: '/wg/WG%2F1/einkauf',
+				href: '/wg/WG%2F1/shopping',
 			});
 			assert.equal(
 				items.some((item) => item.kind === 'debt'),
@@ -567,21 +567,21 @@ describe('start overview model', () => {
 				items.find((item) => item.kind === 'announcement'),
 				{
 					entityId: 'announcement-1',
-					href: '/wg/WG%2F1/pinnwand#announcement-announcement-1',
+					href: '/wg/WG%2F1/pinboard#announcement-announcement-1',
 				},
 			);
 			assert.partialDeepStrictEqual(
 				items.find((item) => item.kind === 'recurring'),
 				{
 					entityId: 'recurring-1',
-					href: '/wg/WG%2F1/ausgaben?recurring=recurring-1',
+					href: '/wg/WG%2F1/expenses?recurring=recurring-1',
 				},
 			);
 			assert.partialDeepStrictEqual(
 				items.find((item) => item.kind === 'absence'),
 				{
 					entityId: 'absence-1',
-					href: '/wg/WG%2F1/putzen?panel=absences&absence=absence-1',
+					href: '/wg/WG%2F1/chores?panel=absences&absence=absence-1',
 				},
 			);
 		});

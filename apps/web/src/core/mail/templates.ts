@@ -40,7 +40,7 @@ export function renderWelcomeMail(input: { firstName: string | null }): Rendered
 				],
 			},
 		],
-		button: { label: 'WG einrichten', url: `${APP_ORIGIN}/neu` },
+		button: { label: 'WG einrichten', url: `${APP_ORIGIN}/login` },
 		footerNote: 'Du erhältst diese E-Mail, weil du ein Konto bei ManaWG erstellt hast.',
 	});
 }
@@ -126,11 +126,11 @@ export function renderReminderMail(input: {
 		eyebrow: 'Erinnerung',
 		title: `Noch offen bei ${input.creditorName}.`,
 		blocks,
-		button: { label: 'Jetzt ausgleichen', url: `${WG_PATH(input.shareCode)}/ausgaben` },
+		button: { label: 'Jetzt ausgleichen', url: `${WG_PATH(input.shareCode)}/expenses` },
 		footerNote:
 			'Erinnerungen kommen höchstens einmal pro Woche und nur, wenn du sie eingeschaltet hast.',
 		footerLinks: [
-			{ label: 'Einstellungen ändern', url: `${WG_PATH(input.shareCode)}/einstellungen` },
+			{ label: 'Einstellungen ändern', url: `${WG_PATH(input.shareCode)}/settings` },
 			{ label: 'Abbestellen', url: input.unsubscribeUrl },
 		],
 	});

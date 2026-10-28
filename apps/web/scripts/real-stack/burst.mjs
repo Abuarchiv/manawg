@@ -16,7 +16,7 @@ const statuses = [];
 p.on('response', (r) => {
 	if (r.url().includes('/api/')) statuses.push(`${r.request().method()} ${r.status()}`);
 });
-await p.goto(`/wg/${code}/einkauf`);
+await p.goto(`/wg/${code}/shopping`);
 await p.waitForLoadState('networkidle');
 const t0 = Date.now();
 for (let i = 1; i <= N; i += 1) {

@@ -21,7 +21,7 @@ import {
 	type NotificationDispatchWarning,
 } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
-import { COMMENT_MAX } from '@/features/pinnwand/constants';
+import { COMMENT_MAX } from '@/features/announcements/constants';
 
 const COMMENTS_LIST_LIMIT = 500;
 

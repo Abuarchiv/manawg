@@ -91,7 +91,7 @@ export async function navigateToFeature(page: Page, path: string): Promise<void>
 			if (body.includes('Seite nicht gefunden')) {
 				throw new Error('not-found-during-warmup');
 			}
-			if (new URL(page.url()).pathname.startsWith('/neu')) {
+			if (new URL(page.url()).pathname.startsWith('/login')) {
 				throw new Error(
 					`redirected to login (${page.url()}) — unexpected sign-in redirect; run the fixtures lane, not the live lane`,
 				);

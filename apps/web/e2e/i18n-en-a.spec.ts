@@ -131,7 +131,7 @@ async function prepare(
 						kind: 'shopping',
 						title: { key: 'activity.reminder.shoppingOpen', values: { name: 'Brot', days: 4 } },
 						detail: { key: 'activity.reminder.shoppingDetail' },
-						href: '/einkauf',
+						href: '/shopping',
 					},
 				],
 			},
@@ -188,7 +188,7 @@ test.describe('English app shell', () => {
 
 			test(`activity page at ${where}`, async ({ page, context, baseURL }) => {
 				await prepare(page, context, baseURL, width, scheme);
-				await navigateToFeature(page, `${WG_HREF}/aktivitaet`);
+				await navigateToFeature(page, `${WG_HREF}/activity`);
 				await dismissOnboarding(page);
 
 				await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
@@ -228,7 +228,7 @@ test.describe('English app shell', () => {
 		await page.route(`**${BASE}/activity?*`, (route) =>
 			route.fulfill({ json: { items: 'broken', reminders: 'broken' } }),
 		);
-		await navigateToFeature(page, `${WG_HREF}/aktivitaet`);
+		await navigateToFeature(page, `${WG_HREF}/activity`);
 		const heading = page.getByRole('heading', { name: 'Activity could not be loaded just now' });
 		await expect(heading).toBeVisible();
 		await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();

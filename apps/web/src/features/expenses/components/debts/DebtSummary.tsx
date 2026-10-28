@@ -21,7 +21,7 @@ import type { ExpensePaymentInput } from '@/features/expenses/expense-payment-in
 import type { Expense } from '@/features/expenses/expense-types';
 import { cn } from '@/shared/lib/cn';
 import { CashPaymentList, ownCashPayments } from './CashPaymentList';
-import { SALDO_HEADING_ID, SettlementDebtRow } from './SettlementDebtRow';
+import { BALANCE_HEADING_ID, SettlementDebtRow } from './SettlementDebtRow';
 
 interface MemberBalance {
 	memberId: string;
@@ -116,7 +116,7 @@ export function DebtSummary({
 			<CardHeader>
 				<CardDescription>{t('title')}</CardDescription>
 				<CardTitle>
-					<h2 id={SALDO_HEADING_ID} tabIndex={-1} className="outline-none">
+					<h2 id={BALANCE_HEADING_ID} tabIndex={-1} className="outline-none">
 						{ownBalances.length > 1 ? (
 							<>
 								{t('openBalances')}{' '}
@@ -154,7 +154,7 @@ export function DebtSummary({
 				</CardTitle>
 				<CardAction className="flex">
 					<Link
-						href={`/wg/${encodeURIComponent(shareCode)}/abrechnung`}
+						href={`/wg/${encodeURIComponent(shareCode)}/statement`}
 						aria-label={t('statementLink')}
 						title={t('statementLink')}
 						className={cn(buttonVariants({ variant: 'ghost', size: 'icon-sm' }))}
@@ -162,7 +162,7 @@ export function DebtSummary({
 						<FileText aria-hidden />
 					</Link>
 					<Link
-						href={`/wg/${encodeURIComponent(shareCode)}/mahnungen`}
+						href={`/wg/${encodeURIComponent(shareCode)}/reminders`}
 						aria-label={t('remindersLink')}
 						title={t('remindersLink')}
 						className={cn(buttonVariants({ variant: 'ghost', size: 'icon-sm' }))}

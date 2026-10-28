@@ -13,7 +13,7 @@ import { readVerifiedUser } from './verified-user';
 
 function signInRedirect(request: NextRequest, response: NextResponse): NextResponse {
 	const url = request.nextUrl.clone();
-	url.pathname = '/neu';
+	url.pathname = '/login';
 	url.search = '';
 	url.searchParams.set('next', `${request.nextUrl.pathname}${request.nextUrl.search}`);
 	const redirect = NextResponse.redirect(url);

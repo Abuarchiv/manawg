@@ -1,6 +1,6 @@
 /** An invitation token is 16 random bytes in base64url: 22 characters. */
 const INVITE_TOKEN_REGEX = /^[A-Za-z0-9_-]{22}$/;
-const INVITE_LINK_REGEX = /\/einladung\/([A-Za-z0-9_-]{22})(?![A-Za-z0-9_-])/;
+const INVITE_LINK_REGEX = /\/invite\/([A-Za-z0-9_-]{22})(?![A-Za-z0-9_-])/;
 const INVITE_QUERY_REGEX = /[?&]invite=([A-Za-z0-9_-]{22})(?![A-Za-z0-9_-])/;
 
 /** How long a new invitation link works, in days. */
@@ -19,5 +19,5 @@ export function extractInviteToken(text: string): string {
 }
 
 export function invitePath(token: string): string {
-	return `/einladung/${encodeURIComponent(token)}`;
+	return `/invite/${encodeURIComponent(token)}`;
 }

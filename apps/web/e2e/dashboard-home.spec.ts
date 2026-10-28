@@ -552,7 +552,7 @@ test.describe('large data render limit', () => {
 		);
 		await mockUnreadCount(page, `/api/wg/${shareCode}`);
 
-		await navigateToFeature(page, `/wg/${shareCode}/ausgaben`);
+		await navigateToFeature(page, `/wg/${shareCode}/expenses`);
 		await dismissOnboarding(page);
 
 		const rows = page.locator('li[id^="expense-"]');
@@ -582,7 +582,7 @@ test.describe('member avatar color', () => {
 			});
 		});
 
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen#zugang`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings#access`);
 		const own = page.locator('span[aria-hidden]', { hasText: /^DS$/ }).first();
 		const other = page.locator('span[aria-hidden]', { hasText: /^MI$/ }).first();
 		await expect(other).toBeVisible();

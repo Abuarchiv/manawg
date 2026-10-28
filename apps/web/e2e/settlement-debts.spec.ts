@@ -142,7 +142,7 @@ test.describe('debt summary reminder link', () => {
 			route.fulfill({ json: { openShoppingCount: 0, dueChores: [], dueRecurringExpenses: [] } }),
 		);
 		await mockUnreadCount(page, `/api/wg/${shareCode}`);
-		await navigateToFeature(page, `/wg/${shareCode}/ausgaben`);
+		await navigateToFeature(page, `/wg/${shareCode}/expenses`);
 		await dismissOnboarding(page);
 
 		const debtList = page.getByRole('list', { name: 'Deine offenen Zahlungen' });
@@ -172,7 +172,7 @@ test.describe('debt summary reminder link', () => {
 		await expect(remindButton).toBeFocused();
 		const reminderLink = page.getByRole('link', { name: 'Alle Erinnerungen' });
 		await expect(reminderLink).toBeVisible();
-		await expect(reminderLink).toHaveAttribute('href', `/wg/${shareCode}/mahnungen`);
+		await expect(reminderLink).toHaveAttribute('href', `/wg/${shareCode}/reminders`);
 		await reminderLink.focus();
 		await expect(reminderLink).toBeFocused();
 		await page.keyboard.press('Tab');
@@ -309,7 +309,7 @@ test.describe('debt summary reminder link', () => {
 		await reminderLink.focus();
 		await expect(reminderLink).toBeFocused();
 		await page.keyboard.press('Enter');
-		await expect(page).toHaveURL(new RegExp(`/wg/${shareCode}/mahnungen$`));
+		await expect(page).toHaveURL(new RegExp(`/wg/${shareCode}/reminders$`));
 	});
 });
 
@@ -373,7 +373,7 @@ test.describe('debt settle error notice', () => {
 			return route.fulfill({ status: 500, json: { error: 'server_error' } });
 		});
 
-		await navigateToFeature(page, `/wg/${shareCode}/ausgaben`);
+		await navigateToFeature(page, `/wg/${shareCode}/expenses`);
 		await dismissOnboarding(page);
 
 		await page.getByRole('button', { name: 'Ausgleichen' }).click();

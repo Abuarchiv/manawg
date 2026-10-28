@@ -82,27 +82,27 @@ function chatUrlPath(payload: Record<string, unknown>): string {
 
 function announcementUrlPath(payload: Record<string, unknown>): string {
 	const id = typeof payload.announcementId === 'string' ? payload.announcementId.trim() : '';
-	return id ? `/pinnwand#announcement-${encodeURIComponent(id)}` : '/pinnwand';
+	return id ? `/pinboard#announcement-${encodeURIComponent(id)}` : '/pinboard';
 }
 
 function expenseUrlPath(payload: Record<string, unknown>): string {
 	const id = typeof payload.expenseId === 'string' ? payload.expenseId.trim() : '';
-	return id ? `/ausgaben?highlight=${encodeURIComponent(id)}` : '/ausgaben';
+	return id ? `/expenses?highlight=${encodeURIComponent(id)}` : '/expenses';
 }
 
 function choreUrlPath(payload: Record<string, unknown>): string {
 	const id = typeof payload.choreId === 'string' ? payload.choreId.trim() : '';
-	return id ? `/putzen?highlight=${encodeURIComponent(id)}` : '/putzen';
+	return id ? `/chores?highlight=${encodeURIComponent(id)}` : '/chores';
 }
 
 function shoppingUrlPath(payload: Record<string, unknown>): string {
 	const id = typeof payload.shoppingItemId === 'string' ? payload.shoppingItemId.trim() : '';
-	return id ? `/einkauf?highlight=${encodeURIComponent(id)}` : '/einkauf';
+	return id ? `/shopping?highlight=${encodeURIComponent(id)}` : '/shopping';
 }
 
 function eventUrlPath(payload: Record<string, unknown>): string {
 	const id = typeof payload.eventId === 'string' ? payload.eventId.trim() : '';
-	return id ? `/kalender?highlight=${encodeURIComponent(id)}` : '/kalender';
+	return id ? `/calendar?highlight=${encodeURIComponent(id)}` : '/calendar';
 }
 
 function formatEventTime(value: unknown, allDay = false): string {
@@ -150,7 +150,7 @@ function choreDueSentence(payload: Record<string, unknown>, wgName: string): str
 
 function inventoryUrlPath(payload: Record<string, unknown>): string {
 	const id = typeof payload.inventoryItemId === 'string' ? payload.inventoryItemId.trim() : '';
-	return id ? `/vorraete?highlight=${encodeURIComponent(id)}` : '/vorraete';
+	return id ? `/supplies?highlight=${encodeURIComponent(id)}` : '/supplies';
 }
 
 function quantityNumber(value: unknown): number | null {
@@ -168,7 +168,7 @@ export function formatNotificationMessage(
 			return {
 				title: 'ManaWG Test',
 				body: `Benachrichtigungen funktionieren für ${wgName}.`,
-				urlPath: '/einstellungen#benachrichtigungen',
+				urlPath: '/settings#notifications',
 			};
 		case 'expense.created': {
 			const actorName = text(payload.actorName, 'Jemand');
@@ -195,7 +195,7 @@ export function formatNotificationMessage(
 			return {
 				title: 'Erinnerung',
 				body: `Noch offen bei ${creditor}: ${money(payload.amountCents, payload.currency)}${dayClause}.`,
-				urlPath: '/mahnungen',
+				urlPath: '/reminders',
 			};
 		}
 		case 'expense.debt_settled': {
@@ -207,7 +207,7 @@ export function formatNotificationMessage(
 					payload.direction === 'received'
 						? `${actorName} hat den Eingang von ${amount} von dir bestätigt.`
 						: `${actorName} hat ${amount} an dich beglichen. Stimmt das nicht, öffne die Ausgaben und widersprich dort.`,
-				urlPath: '/ausgaben',
+				urlPath: '/expenses',
 			};
 		}
 		case 'expense.payment_voided': {
@@ -216,7 +216,7 @@ export function formatNotificationMessage(
 			return {
 				title: 'Barzahlung storniert',
 				body: `${actorName} hat die Barzahlung über ${amount} storniert. Der Betrag ist wieder offen.`,
-				urlPath: '/ausgaben',
+				urlPath: '/expenses',
 			};
 		}
 		case 'import.completed': {
@@ -227,7 +227,7 @@ export function formatNotificationMessage(
 			return {
 				title: 'Import abgeschlossen',
 				body: `${actorName} hat ${inserted === 1 ? '1 Ausgabe' : `${inserted} Ausgaben`} in ${wgName} importiert.`,
-				urlPath: '/ausgaben',
+				urlPath: '/expenses',
 			};
 		}
 		case 'announcement.posted':

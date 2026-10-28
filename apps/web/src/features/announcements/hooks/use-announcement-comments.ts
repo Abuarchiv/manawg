@@ -1,0 +1,181 @@
+import { type MutableRefObject, useRef } from 'react';
+import { createIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
+import { apiFetch } from '@/core/infra/api-client';
+import { deliveryWarning } from '@/features/announcements/announcement-warning';
+import type { CommentOverrides } from '@/features/announcements/comment-overrides';
+import type {
+	Announcement,
+	AnnouncementComment,
+} from '@/features/announcements/components/announcement-types';
+import { useMessage } from '@/shared/i18n/message';
+import { announcementListEdits } from './announcement-list-edits';
+import type {
+	AnnouncementCommentResponse,
+	AnnouncementPageContext,
+} from './announcement-page-context';
+
+/**
+ * Adding, editing and deleting replies on a card. Each change is shown at once and remembered as
+ * a comment override, so a background refresh cannot undo it before the server reflects it.
+ */
+export function useAnnouncementComments(
+	ctx: AnnouncementPageContext,
+	commentOverridesRef: MutableRefObject<CommentOverrides>,
+) {
+	const {
+		identity,
+		members,
+		toast,
+		encodedShareCode,
+		isPending,
+		start,
+		end,
+		setActionError,
+		load,
+	} = ctx;
+	const render = useMessage();
+	const commentIdempotencyKeysRef = useRef(new Map<string, string>());
+	const edits = announcementListEdits(ctx, commentOverridesRef);
+	const commentUrl = (announcementId: string, commentId?: string) =>
+		`/api/wg/${encodedShareCode}/announcements/${encodeURIComponent(announcementId)}/comments${
+			commentId === undefined ? '' : `/${encodeURIComponent(commentId)}`
+		}`;
+
+	async function addComment(announcement: Announcement, content: string): Promise<boolean> {
+		const pendingKey = `${announcement.id}:comment`;
+		if (isPending(pendingKey)) return false;
+		const commentRequestKey = `${announcement.id}:${content}`;
+		const idempotencyKey =
+			commentIdempotencyKeysRef.current.get(commentRequestKey) ?? createIdempotencyKey();
+		if (!idempotencyKey) return false;
+		commentIdempotencyKeysRef.current.set(commentRequestKey, idempotencyKey);
+		const optimisticComment: AnnouncementComment = {
+			id: `temp-${Date.now()}`,
+			announcementId: announcement.id,
+			memberId: identity.memberId,
+			content,
+			createdAt: new Date().toISOString(),
+			authorName: identity.name,
+			authorColor: members.find((member) => member.id === identity.memberId)?.color ?? null,
+		};
+		edits.rememberCommentOverride(announcement.id, optimisticComment.id, optimisticComment);
+		edits.updateItem(announcement.id, (item) => ({
+			...item,
+			comments: [...item.comments, optimisticComment],
+		}));
+		start(pendingKey);
+		const res = await apiFetch<AnnouncementCommentResponse>(commentUrl(announcement.id), {
+			method: 'POST',
+			memberId: identity.memberId,
+			headers: { 'Idempotency-Key': idempotencyKey },
+			body: JSON.stringify({ content }),
+		});
+		end(pendingKey);
+		if (!res.ok) {
+			if (shouldReleaseIdempotencyKey(res.status, res.error)) {
+				commentIdempotencyKeysRef.current.delete(commentRequestKey);
+			}
+			if (res.status === 404 && res.error === 'announcement_not_found') {
+				commentOverridesRef.current.delete(announcement.id);
+				edits.dropVanishedAnnouncement(announcement.id);
+			} else {
+				edits.forgetCommentOverride(announcement.id, optimisticComment.id);
+				edits.replaceComment(announcement.id, optimisticComment.id, null);
+			}
+			return false;
+		}
+		commentIdempotencyKeysRef.current.delete(commentRequestKey);
+		edits.forgetCommentOverride(announcement.id, optimisticComment.id);
+		const confirmedComment = { ...optimisticComment, ...res.data.comment };
+		edits.rememberCommentOverride(announcement.id, confirmedComment.id, confirmedComment);
+		edits.updateItem(announcement.id, (item) => ({
+			...item,
+			comments: item.comments.map((comment) =>
+				comment.id === optimisticComment.id ? confirmedComment : comment,
+			),
+		}));
+		const warning = deliveryWarning(res.data.warning);
+		if (warning) toast.info(render(warning));
+		void load('background');
+		return true;
+	}
+
+	async function updateComment(
+		announcement: Announcement,
+		commentId: string,
+		content: string,
+	): Promise<boolean> {
+		const pendingKey = `${commentId}:comment-edit`;
+		if (isPending(pendingKey)) return false;
+		const previousComment = announcement.comments.find((comment) => comment.id === commentId);
+		if (previousComment) {
+			edits.rememberCommentOverride(announcement.id, commentId, { ...previousComment, content });
+		}
+		edits.updateItem(announcement.id, (item) => ({
+			...item,
+			comments: item.comments.map((comment) =>
+				comment.id === commentId ? { ...comment, content } : comment,
+			),
+		}));
+		start(pendingKey);
+		const res = await apiFetch<{ comment: AnnouncementComment }>(
+			commentUrl(announcement.id, commentId),
+			{
+				method: 'PATCH',
+				memberId: identity.memberId,
+				body: JSON.stringify({ content }),
+			},
+		);
+		end(pendingKey);
+		if (!res.ok) {
+			edits.forgetCommentOverride(announcement.id, commentId);
+			if (res.status === 404 && res.error === 'comment_not_found') {
+				edits.updateItem(announcement.id, (item) => ({
+					...item,
+					comments: item.comments.filter((comment) => comment.id !== commentId),
+				}));
+				setActionError({ key: 'pinboard.errors.replyVanished' });
+				return true;
+			}
+			if (previousComment) edits.replaceComment(announcement.id, commentId, previousComment);
+			return false;
+		}
+		const confirmedComment = { ...previousComment, ...res.data.comment };
+		edits.rememberCommentOverride(announcement.id, confirmedComment.id, confirmedComment);
+		edits.updateItem(announcement.id, (item) => ({
+			...item,
+			comments: item.comments.map((comment) =>
+				comment.id === commentId ? confirmedComment : comment,
+			),
+		}));
+		void load('background');
+		return true;
+	}
+
+	async function deleteComment(announcement: Announcement, commentId: string): Promise<boolean> {
+		const pendingKey = `${commentId}:comment-delete`;
+		if (isPending(pendingKey)) return false;
+		start(pendingKey);
+		const res = await apiFetch<Record<string, never>>(commentUrl(announcement.id, commentId), {
+			method: 'DELETE',
+			memberId: identity.memberId,
+		});
+		end(pendingKey);
+		const gone = res.ok || (res.status === 404 && res.error === 'comment_not_found');
+		if (!gone) {
+			// The comment stays until the server confirms; the open dialog shows the error.
+			return false;
+		}
+		// Remove only now: removing earlier would unmount the row and its dialog mid-request.
+		edits.rememberCommentOverride(announcement.id, commentId, null);
+		edits.updateItem(announcement.id, (item) => ({
+			...item,
+			comments: item.comments.filter((comment) => comment.id !== commentId),
+		}));
+		if (!res.ok) setActionError({ key: 'pinboard.errors.replyVanished' });
+		void load('background');
+		return true;
+	}
+
+	return { addComment, updateComment, deleteComment };
+}

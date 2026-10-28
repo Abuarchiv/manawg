@@ -20,7 +20,7 @@ const localeCookie = async (page: Page) =>
 
 test.describe('language switch in the entry footer', () => {
 	test('English persists across reloads and German switches back', async ({ page }) => {
-		await page.goto('/neu');
+		await page.goto('/login');
 		await expect(page.locator('html')).toHaveAttribute('lang', 'de');
 		await expect(switchGroup(page).getByRole('button', { name: 'Deutsch' })).toHaveAttribute(
 			'aria-pressed',
@@ -46,13 +46,13 @@ test.describe('language switch in the entry footer', () => {
 
 	test('the cookie decides even when the account request fails', async ({ page }) => {
 		await page.route('**/api/account', (route) => route.abort());
-		await page.goto('/neu');
+		await page.goto('/login');
 		await switchGroup(page).getByRole('button', { name: 'English' }).click();
 		await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
 	});
 
 	test('the switch is disabled offline', async ({ context, page }) => {
-		await page.goto('/neu');
+		await page.goto('/login');
 		await expect(switchGroup(page)).toBeVisible();
 		await context.setOffline(true);
 		await expect(switchGroup(page).getByRole('button', { name: 'English' })).toBeDisabled();
@@ -71,7 +71,7 @@ test.describe('language switch in the entry footer', () => {
 				});
 				await setEnglishLocale(context, baseURL ?? 'http://localhost:3101');
 				const page = await context.newPage();
-				await page.goto('/neu');
+				await page.goto('/login');
 				await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
 				await expect(switchGroup(page)).toBeVisible();
 				await expectNoHorizontalOverflow(page);
@@ -85,7 +85,7 @@ test.describe('browser language without a cookie', () => {
 	test.describe('de-DE', () => {
 		test.use({ locale: 'de-DE' });
 		test('stays German', async ({ page }) => {
-			await page.goto('/neu');
+			await page.goto('/login');
 			await expect(page.locator('html')).toHaveAttribute('lang', 'de');
 		});
 	});
@@ -93,7 +93,7 @@ test.describe('browser language without a cookie', () => {
 	test.describe('en-GB', () => {
 		test.use({ locale: 'en-GB' });
 		test('renders English', async ({ page }) => {
-			await page.goto('/neu');
+			await page.goto('/login');
 			await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
 			await expect(page.locator(SKIP_LINK)).toHaveText('Skip to main content');
 		});
@@ -106,7 +106,7 @@ test.describe('language switch in the settings profile', () => {
 	test('signed in, the choice is sent to the account and persists', async ({ page }) => {
 		test.setTimeout(120_000);
 		await setupMember(page);
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen`);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings`);
 		await dismissOnboarding(page);
 		await expect(switchGroup(page)).toBeVisible({ timeout: 60_000 });
 
@@ -138,7 +138,7 @@ test.describe('language switch in the settings profile', () => {
 				await setEnglishLocale(context, baseURL ?? 'http://localhost:3101');
 				const page = await context.newPage();
 				await setupMember(page);
-				await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/einstellungen`);
+				await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings`);
 				await dismissOnboarding(page);
 				await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
 				await expect(switchGroup(page)).toBeVisible({ timeout: 60_000 });

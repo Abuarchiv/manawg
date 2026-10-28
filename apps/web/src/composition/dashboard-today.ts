@@ -129,7 +129,7 @@ export function getTodayImportantItems(input: TodayImportantInput): TodayImporta
 					kind: 'chore' as const,
 					title: chore.title,
 					detail,
-					href: `${base}/putzen?highlight=${encodeURIComponent(chore.id)}`,
+					href: `${base}/chores?highlight=${encodeURIComponent(chore.id)}`,
 					tone: urgency === 0 ? ('danger' as const) : ('accent' as const),
 					isPersonal,
 					entityId: chore.id,
@@ -161,7 +161,7 @@ export function getTodayImportantItems(input: TodayImportantInput): TodayImporta
 					? { key: 'home.today.itemMissing', values: { name: input.openShoppingTop[0] } }
 					: { key: 'home.today.shoppingOpen' },
 				detail: { key: 'home.today.shoppingDetail', values: { count: input.openShoppingCount } },
-				href: `${base}/einkauf`,
+				href: `${base}/shopping`,
 				tone: 'neutral',
 				isPersonal: false,
 			},
@@ -184,7 +184,7 @@ export function getTodayImportantItems(input: TodayImportantInput): TodayImporta
 							? 'home.today.takeoverOpen'
 							: 'home.today.noticeboardOpen',
 				},
-				href: `${base}/pinnwand#announcement-${encodeURIComponent(announcement.id)}`,
+				href: `${base}/pinboard#announcement-${encodeURIComponent(announcement.id)}`,
 				tone: 'accent',
 				isPersonal: true,
 				entityId: announcement.id,
@@ -212,7 +212,7 @@ export function getTodayImportantItems(input: TodayImportantInput): TodayImporta
 							},
 						}
 					: { key: 'home.today.recurring', values: { amount: recurringAmount(recurring, locale) } },
-				href: `${base}/ausgaben?recurring=${encodeURIComponent(recurring.id)}`,
+				href: `${base}/expenses?recurring=${encodeURIComponent(recurring.id)}`,
 				tone: urgency === 0 ? 'danger' : 'accent',
 				isPersonal: false,
 				entityId: recurring.id,
@@ -245,7 +245,7 @@ export function getTodayImportantItems(input: TodayImportantInput): TodayImporta
 					},
 				},
 				detail: { key: outgoing ? 'home.today.youPay' : 'home.today.youReceive' },
-				href: `${base}/ausgaben`,
+				href: `${base}/expenses`,
 				tone: outgoing ? 'danger' : 'neutral',
 				isPersonal: true,
 				entityId: `settlement:${debt.fromId}:${debt.toId}:${debt.currency ?? 'EUR'}`,
@@ -273,8 +273,8 @@ export function getTodayImportantItems(input: TodayImportantInput): TodayImporta
 					values: { date: formatShortDate(absence.endDate, 'Europe/Berlin', locale) },
 				},
 				href: absence.id
-					? `${base}/putzen?panel=absences&absence=${encodeURIComponent(absence.id)}`
-					: `${base}/putzen?panel=absences`,
+					? `${base}/chores?panel=absences&absence=${encodeURIComponent(absence.id)}`
+					: `${base}/chores?panel=absences`,
 				tone: 'neutral',
 				isPersonal: absence.isCurrentMember,
 				...(absence.id ? { entityId: absence.id } : {}),

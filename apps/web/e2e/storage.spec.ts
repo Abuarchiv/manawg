@@ -113,7 +113,7 @@ test.describe('private attachment draft recovery', () => {
 			});
 		});
 
-		await navigateToFeature(page, `/wg/${SHARE_CODE}/ausgaben?new=1`);
+		await navigateToFeature(page, `/wg/${SHARE_CODE}/expenses?new=1`);
 		await dismissOnboarding(page);
 		let form = page.getByRole('dialog');
 		await form.getByLabel('Beschreibung').fill('Beleg-Entwurf');

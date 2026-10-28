@@ -10,7 +10,7 @@ import { withWgRoute } from '@/core/guards/with-wg-route';
 import { badRequest, forbidden, notFound, rateLimitResponse } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
-import { COMMENT_MAX } from '@/features/pinnwand/constants';
+import { COMMENT_MAX } from '@/features/announcements/constants';
 
 const commentSchema = z.object({
 	content: z.string().trim().min(1).max(COMMENT_MAX),

@@ -9,7 +9,7 @@ test.describe('security headers', () => {
 		skipUnlessFixtures();
 		await setupMember(page);
 
-		const response = await page.goto(`/wg/${FIXTURE_WG.shareCode}/putzen`, {
+		const response = await page.goto(`/wg/${FIXTURE_WG.shareCode}/chores`, {
 			waitUntil: 'domcontentloaded',
 		});
 		expect(response?.status()).toBe(200);

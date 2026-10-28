@@ -98,7 +98,7 @@ export function KnownWgsCard({
 						<Button
 							variant="outline"
 							size="lg"
-							render={<Link href={wgHref(primaryWg.code, '/einstellungen#daten')} />}
+							render={<Link href={wgHref(primaryWg.code, '/settings#data')} />}
 							nativeButton={false}
 							className="w-full"
 						>
@@ -108,7 +108,7 @@ export function KnownWgsCard({
 					<Button
 						variant="outline"
 						size="lg"
-						render={<Link href="/neu" />}
+						render={<Link href="/login" />}
 						nativeButton={false}
 						className="w-full"
 					>

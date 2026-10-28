@@ -104,7 +104,7 @@ export function OfflineQueueCard({
 							link: richArgument(
 								primaryWg ? (
 									<Link
-										href={wgHref(primaryWg.code, '/einstellungen#daten')}
+										href={wgHref(primaryWg.code, '/settings#data')}
 										className="text-primary underline underline-offset-4"
 									>
 										{t('hiddenLink')}

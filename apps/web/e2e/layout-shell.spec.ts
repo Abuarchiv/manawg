@@ -26,7 +26,7 @@ test.describe('entry frame overflow', () => {
 				await route.continue();
 			});
 
-			await page.goto('/neu');
+			await page.goto('/login');
 			await page.getByRole('button', { name: 'Neue WG erstellen', exact: true }).click();
 			await page.getByLabel('WG-Name').fill(wgName);
 			await page.getByLabel('Dein Anzeigename').fill('Anna');
@@ -87,12 +87,12 @@ test.describe('public header reflow', () => {
 		);
 
 		const layoutFailures: string[] = [];
-		for (const path of ['/', '/entdecken/kalender']) {
+		for (const path of ['/', '/discover/calendar']) {
 			await page.goto(path);
 			const brand = page.getByRole('link', { name: 'ManaWG Startseite', exact: true });
 			const account = page.getByRole('link', { name: 'Anmelden', exact: true });
 			await expect(brand).toHaveAttribute('href', '/');
-			await expect(account).toHaveAttribute('href', '/neu');
+			await expect(account).toHaveAttribute('href', '/login');
 
 			for (const width of [320, 360, 390]) {
 				await page.setViewportSize({ width, height: 844 });
@@ -180,7 +180,7 @@ test.describe('app shell state', () => {
 				}),
 			);
 
-			await page.goto('/entdecken/einkauf');
+			await page.goto('/discover/shopping');
 			const openWg = page.getByRole('link', { name: 'WG öffnen', exact: true });
 			await expect(openWg).toBeVisible();
 			await openWg.click();
@@ -205,7 +205,7 @@ test.describe('app shell state', () => {
 				}),
 			);
 
-			await page.goto('/entdecken/einkauf?invite=fixture-invite-token01');
+			await page.goto('/discover/shopping?invite=fixture-invite-token01');
 			const openWgs = page.getByRole('link', { name: 'Deine WGs', exact: true });
 			await expect(openWgs).toBeVisible();
 			await openWgs.click();

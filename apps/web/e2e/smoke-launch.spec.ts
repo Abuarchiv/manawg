@@ -96,7 +96,7 @@ function getRunNamespace(): string {
 
 /**
  * Smoke test for the core launch flow:
- * /neu → choose "Neue WG erstellen" → fill form → invite step → /wg/<code> dashboard
+ * /login → choose "Neue WG erstellen" → fill form → invite step → /wg/<code> dashboard
  */
 test.describe('ManaWG launch smoke', () => {
 	test.setTimeout(300_000);
@@ -107,7 +107,7 @@ test.describe('ManaWG launch smoke', () => {
 	test('an expired invitation says so and offers no join form', async ({ page }) => {
 		skipUnlessFixtures();
 		await page.addInitScript(() => window.localStorage.clear());
-		await gotoWithRetry(page, '/einladung/expired-invite-token-1');
+		await gotoWithRetry(page, '/invite/expired-invite-token-1');
 		await expect(
 			page.getByText('Diese Einladung ist abgelaufen. Bitte ein Mitglied um eine neue.'),
 		).toBeVisible({ timeout: 30_000 });
@@ -128,7 +128,7 @@ test.describe('ManaWG launch smoke', () => {
 			}),
 		);
 
-		await gotoWithRetry(page, '/einladung/fixture-invite-token01');
+		await gotoWithRetry(page, '/invite/fixture-invite-token01');
 		await page.getByLabel('Dein Anzeigename').fill('Smoke Tester');
 		await page.getByRole('button', { name: 'Beitreten', exact: true }).click();
 
@@ -150,7 +150,7 @@ test.describe('ManaWG launch smoke', () => {
 
 	test('prototype keys are not public modules', async ({ page }) => {
 		for (const slug of ['constructor', '__proto__']) {
-			await gotoWithRetry(page, `/entdecken/${slug}`);
+			await gotoWithRetry(page, `/discover/${slug}`);
 			await expect(page.getByRole('heading', { name: 'Seite nicht gefunden' })).toBeVisible();
 		}
 	});
@@ -185,9 +185,9 @@ test.describe('ManaWG launch smoke', () => {
 		let flowError: unknown = null;
 		let cleanupFailure: string | null = null;
 		try {
-			// Step 1: Land on /neu
+			// Step 1: Land on /login
 			await page.addInitScript(() => window.localStorage.clear());
-			await gotoWithRetry(page, '/neu');
+			await gotoWithRetry(page, '/login');
 			await authenticateQaUser(page, qaAuthConfig);
 			await page.reload();
 			await expect(
@@ -238,7 +238,7 @@ test.describe('ManaWG launch smoke', () => {
 			await expect(page.getByText(`Eure WG „${wgName}“ ist live.`, { exact: true })).toBeVisible();
 			// The invite step carries a personal link, never the share code.
 			const linkButton = page.getByRole('button', { name: 'Einladungslink kopieren' });
-			await expect(linkButton).toContainText('/einladung/', { timeout: 30_000 });
+			await expect(linkButton).toContainText('/invite/', { timeout: 30_000 });
 
 			// Step 5: Continue to /wg/<8-char-code>; ManaWG share codes are 8 alphanumeric chars.
 			await page.getByRole('button', { name: 'Zur WG', exact: true }).click();
@@ -313,7 +313,7 @@ test.describe('ManaWG launch smoke', () => {
 				expect.objectContaining({ id: createdExpense.expense?.id, amountCents: 1234 }),
 			]);
 
-			await gotoWithRetry(page, `/wg/${createdShareCode}/ausgaben`);
+			await gotoWithRetry(page, `/wg/${createdShareCode}/expenses`);
 			await expect(page.getByText(expenseDescription, { exact: true })).toBeVisible({
 				timeout: 30_000,
 			});
@@ -336,7 +336,7 @@ test.describe('ManaWG launch smoke', () => {
 			const shoppingId = shopping.item?.id;
 			if (!shoppingId) throw new Error('created shopping item ID was not returned');
 
-			await gotoWithRetry(page, `/wg/${createdShareCode}/einkauf`);
+			await gotoWithRetry(page, `/wg/${createdShareCode}/shopping`);
 			const shoppingCheckbox = page.getByRole('checkbox', { name: `${shoppingName} erledigen` });
 			await expect(shoppingCheckbox).toBeVisible({ timeout: 30_000 });
 			const shoppingBoughtResponse = page.waitForResponse(
@@ -373,7 +373,7 @@ test.describe('ManaWG launch smoke', () => {
 			const firstDueAt = createdChore.chore?.nextDueAt;
 			if (!choreId || !firstDueAt) throw new Error('created chore proof was not returned');
 
-			await gotoWithRetry(page, `/wg/${createdShareCode}/putzen`);
+			await gotoWithRetry(page, `/wg/${createdShareCode}/chores`);
 			await expect(page.getByText(choreTitle, { exact: true })).toBeVisible({ timeout: 30_000 });
 			// Like the app, the completion names the occurrence it saw.
 			const completion = await page.request.post(
@@ -472,7 +472,7 @@ test.describe('ManaWG launch smoke', () => {
 			expect(listedEvents.events?.filter((event) => event.id === eventId)).toEqual([
 				expect.objectContaining({ title: editedEventTitle, startsAt: eventStart.toISOString() }),
 			]);
-			await gotoWithRetry(page, `/wg/${createdShareCode}/kalender`);
+			await gotoWithRetry(page, `/wg/${createdShareCode}/calendar`);
 			await expect(page.getByText(editedEventTitle, { exact: true })).toBeVisible({
 				timeout: 30_000,
 			});

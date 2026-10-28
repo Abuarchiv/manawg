@@ -20,7 +20,7 @@ export async function closeChoreSwapRequest(
 				eq(announcements.wgId, wgId),
 				eq(announcements.status, 'open'),
 				eq(announcements.source, 'chore_swap'),
-				eq(announcements.sourcePath, `/putzen?highlight=${encodeURIComponent(choreId)}`),
+				eq(announcements.sourcePath, `/chores?highlight=${encodeURIComponent(choreId)}`),
 			),
 		);
 }
