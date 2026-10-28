@@ -11,7 +11,6 @@ import { badRequest, conflict, notFound } from '@/core/http/api-errors';
 import type { NotificationDispatchWarning } from '@/core/notifications/notification-dispatch';
 import { currencySchema } from '@/core/validators/currency';
 import { imageUrlSchema } from '@/core/validators/image-url';
-import { expenseCategorySchema } from '@/features/expenses/expense-categories';
 import { MAX_SPLITS } from '@/features/expenses/expense-constants';
 import {
 	expenseAmountSchema,
@@ -20,6 +19,7 @@ import {
 	occurredAtSchema,
 } from '@/features/expenses/expense-schemas';
 import { serializeRecurringExpense } from '@/features/expenses/recurring-expenses';
+import { expenseCategorySchema } from '@/features/expenses/server/expense-category-schema';
 import { insertExpenseWithSplits } from '@/features/expenses/server/expenses';
 import { advanceRecurringDue } from '@/features/expenses/server/recurring-booking';
 

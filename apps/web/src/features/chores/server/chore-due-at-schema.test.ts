@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { choreDueAtSchema } from './chore-limits';
+import { choreDueAtSchema } from './chore-due-at-schema';
 
 test('a due date outside the supported years is rejected before the recurrence math can throw', () => {
 	assert.equal(choreDueAtSchema.safeParse('2026-10-11T08:00:00+02:00').success, true);

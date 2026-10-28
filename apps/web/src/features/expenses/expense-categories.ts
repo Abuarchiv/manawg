@@ -1,5 +1,3 @@
-import { z } from 'zod';
-
 export const EXPENSE_CATEGORIES = [
 	'lebensmittel',
 	'haushalt',
@@ -25,11 +23,6 @@ export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
 };
 
 export const DEFAULT_EXPENSE_CATEGORY: ExpenseCategory = 'sonstiges';
-
-/** Request-body schema: optional, defaults to `sonstiges`. */
-export const expenseCategoryValueSchema = z.enum(EXPENSE_CATEGORIES);
-/** For creates: a missing category is the default. Edits use the value schema, so they keep theirs. */
-export const expenseCategorySchema = expenseCategoryValueSchema.default(DEFAULT_EXPENSE_CATEGORY);
 
 /** Label for a stored value; anything unknown reads as the default label. */
 export function expenseCategoryLabel(value: string | null | undefined): string {
