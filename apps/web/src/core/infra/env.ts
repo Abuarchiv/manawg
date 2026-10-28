@@ -1,23 +1,27 @@
 /**
  * Startup environment validation.
  *
- * The app degrades silently when optional infrastructure is unconfigured:
- * without Upstash the rate limiter fails open (on Vercel production it fails
- * closed and is therefore required, see below; a standalone server counts in
- * memory), without VAPID keys push notifications
- * never send, without the Supabase service-role key account deletion answers
- * 503, without the storage bucket image uploads answer 503. In production those are invisible until a user hits them.
- * `checkEnv` turns that into one explicit report at boot.
+ * `checkEnv` reports a misconfiguration once at boot, so it does not surface
+ * the first time a user reaches the affected feature.
  *
- * Split into two severities:
- *   - `missingRequired` — the app cannot serve correctly at all (no database,
- *     no signing secret for calendar feeds, unprotected cron routes). The
- *     database and `MEMBER_SESSION_SECRET` are checked in every
- *     environment; unprotected cron routes and the image-storage variables
- *     are only fatal in production, where a silently broken upload path is invisible
- *     until a user hits it.
- *   - `degraded` — a named non-critical feature is off. Logged loud, never
- *     fatal; production rate limiting is required because API routes fail closed.
+ * Required (`missingRequired`): the app cannot serve correctly without them.
+ *   - In every environment: the database URL, `MEMBER_SESSION_SECRET` (signs
+ *     calendar feed and unsubscribe links) and the Supabase URL and
+ *     publishable key.
+ *   - Only when `VERCEL_ENV` is `production`: `CRON_SECRET`, the Supabase
+ *     service-role key, the image-storage settings and Upstash rate limiting.
+ *     API routes fail closed without Upstash there, and account deletion must
+ *     work in production.
+ *
+ * Degraded (`degraded`): a named optional feature is off. It is logged as a
+ * warning and never fatal.
+ *   - Without Upstash the rate limiter fails open outside production; a
+ *     standalone server counts in memory per process.
+ *   - Without VAPID keys no push notifications are sent.
+ *   - Without the Supabase service-role key account deletion answers 503.
+ *   - Without the storage settings image uploads answer 503 (reported as
+ *     degraded outside production, required in production).
+ *   - Without a Sentry DSN errors are only visible in the logs.
  */
 
 type EnvSource = Record<string, string | undefined>;
