@@ -92,8 +92,8 @@ address people open.
   proxy sends and the app's rate limits, such as the sign-in limit, are shared by all visitors.
 - Caddy does not listen on 443 with `SITE_ADDRESS=:80`, but the host port is still reserved. If
   another service owns 443, set `HTTPS_PORT` to a free port.
-- With `HTTP_BIND=127.0.0.1` the gateway is reachable from this host only, so nobody can bypass
-  the proxy. Leave it at the default when the proxy runs in another container or on another host.
+- With `HTTP_BIND=127.0.0.1:` (keep the trailing colon) the gateway is reachable from this host
+  only, so nobody can bypass the proxy. Leave it at the default when the proxy runs in another container or on another host.
 
 ### Configuration
 
@@ -138,9 +138,10 @@ a manual step on self-hosted instances says so in its pull request; read the lis
 before you update (`git log --oneline <old commit>..origin/main`).
 
 Migrations only move forward and are never reversed. To go back, check out the old commit or tag
-(or set `MANAWG_VERSION` to the old tag for a published image) and restore the backup you took
-before updating with `./docker/restore.sh`. Starting an older version against an already migrated
-database is not supported.
+(or set `MANAWG_VERSION` to the old tag for a published image). When you build from source, run
+`docker compose build` next, because the local image is still the new build. Then restore the
+backup you took before updating with `./docker/restore.sh`. Starting an older version against an
+already migrated database is not supported.
 
 To rotate `MEMBER_SESSION_SECRET`, copy the old value to `MEMBER_SESSION_SECRET_PREVIOUS`, put a
 new one in `MEMBER_SESSION_SECRET` and run `docker compose up -d`. Calendar feed URLs and

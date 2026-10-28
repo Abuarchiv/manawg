@@ -146,9 +146,9 @@ services:
       - auth
       - storage
     ports:
-      - ${HTTP_BIND:-0.0.0.0}:${HTTP_PORT:-80}:80
-      - ${HTTP_BIND:-0.0.0.0}:${HTTPS_PORT:-443}:443
-      - ${HTTP_BIND:-0.0.0.0}:${HTTPS_PORT:-443}:443/udp
+      - ${HTTP_BIND:-}${HTTP_PORT:-80}:80
+      - ${HTTP_BIND:-}${HTTPS_PORT:-443}:443
+      - ${HTTP_BIND:-}${HTTPS_PORT:-443}:443/udp
     environment:
       SITE_ADDRESS: ${SITE_ADDRESS:-:80}
       TRUSTED_PROXIES: ${TRUSTED_PROXIES:-127.0.0.1/32}

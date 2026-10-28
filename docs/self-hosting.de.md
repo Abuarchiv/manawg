@@ -97,9 +97,9 @@ Wenn du stattdessen hinter einem eigenen Reverse Proxy läufst, lass `SITE_ADDRE
   Besucher gemeinsam.
 - Caddy lauscht mit `SITE_ADDRESS=:80` nicht auf 443, der Host-Port bleibt aber belegt. Gehört 443
   schon einem anderen Dienst, setze `HTTPS_PORT` auf einen freien Port.
-- Mit `HTTP_BIND=127.0.0.1` ist das Gateway nur von diesem Host aus erreichbar, niemand kann den
-  Proxy umgehen. Läuft der Proxy in einem anderen Container oder auf einem anderen Host, lass den
-  Standardwert.
+- Mit `HTTP_BIND=127.0.0.1:` (den Doppelpunkt am Ende behalten) ist das Gateway nur von diesem
+  Host aus erreichbar, niemand kann den Proxy umgehen. Läuft der Proxy in einem anderen Container
+  oder auf einem anderen Host, lass den Standardwert.
 
 ### Konfiguration
 
@@ -148,8 +148,10 @@ Schritt braucht, sagt das in ihrem Pull Request; lies vor dem Update die Liste d
 (`git log --oneline <alter Commit>..origin/main`).
 
 Migrationen laufen nur vorwärts und werden nie zurückgenommen. Willst du zurück, checke den alten
-Commit oder Tag aus (bei einem veröffentlichten Image setzt du `MANAWG_VERSION` auf den alten Tag)
-und stelle das Backup, das du vor dem Update gemacht hast, mit `./docker/restore.sh` wieder her.
+Commit oder Tag aus (bei einem veröffentlichten Image setzt du `MANAWG_VERSION` auf den alten Tag).
+Baust du aus dem Quellcode, führe danach `docker compose build` aus, denn das lokale Image ist noch
+der neue Build. Stelle dann das Backup, das du vor dem Update gemacht hast, mit
+`./docker/restore.sh` wieder her.
 Eine ältere Version auf einer schon migrierten Datenbank zu starten, wird nicht unterstützt.
 
 Um `MEMBER_SESSION_SECRET` zu wechseln, kopiere den alten Wert nach `MEMBER_SESSION_SECRET_PREVIOUS`,
