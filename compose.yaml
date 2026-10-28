@@ -12,7 +12,7 @@ x-logging: &logging
 
 x-app: &app
   logging: *logging
-  image: ${MANAWG_IMAGE:-ghcr.io/abuarchiv/manawg-app}:${MANAWG_VERSION:-latest}
+  image: ${MANAWG_IMAGE:-ghcr.io/abuarchiv/manawg}:${MANAWG_VERSION:-latest}
   build:
     context: .
     args:
