@@ -24,7 +24,10 @@
 	@auth path /auth/v1/verify /auth/v1/callback /auth/v1/authorize
 	handle @auth {
 		uri strip_prefix /auth/v1
-		reverse_proxy auth:9999
+		# GoTrue keys its rate limit on the whole X-Forwarded-For value: send only the client.
+		reverse_proxy auth:9999 {
+			header_up X-Forwarded-For {client_ip}
+		}
 	}
 	# Signed image uploads straight from the browser.
 	@upload path /storage/v1/object/upload/sign/*
