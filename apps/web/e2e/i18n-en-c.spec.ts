@@ -230,4 +230,34 @@ test.describe('English debts and reminders', () => {
 		await page.getByRole('button', { name: 'Remind Mina' }).click();
 		await expect(page.getByText('Reminder sent to Mina.')).toBeVisible();
 	});
+
+	for (const rejection of [
+		{ status: 429, error: 'reminder_cooldown', label: 'Available again later' },
+		{ status: 403, error: 'debtor_opted_out', label: 'Prefers no reminders' },
+	]) {
+		test(`a rejected reminder (${rejection.error}) reads English`, async ({
+			context,
+			page,
+			baseURL,
+		}) => {
+			await setEnglishLocale(context, baseURL ?? 'http://localhost:3112');
+			await page.setViewportSize({ width: 390, height: 780 });
+			await setupMember(page);
+			await mockExpenses(page);
+			await page.route(`${API}/reminders`, (route) =>
+				route.request().method() === 'POST'
+					? route.fulfill({
+							status: rejection.status,
+							json: { error: rejection.error, code: rejection.error },
+						})
+					: route.fulfill({ json: { reminders: [] } }),
+			);
+			await navigateToFeature(page, `${BASE}/mahnungen`);
+			await dismissOnboarding(page);
+
+			await page.getByRole('button', { name: 'Remind Mina' }).click();
+			await expect(page.getByRole('button', { name: rejection.label })).toBeVisible();
+			await expectNoGermanChrome(page);
+		});
+	}
 });

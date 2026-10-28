@@ -79,10 +79,10 @@ export default {
 		keyUnavailable: 'The settlement could not be saved safely. Try again.',
 		cashKeyUnavailable: 'The cash payment could not be saved safely. Try again.',
 		noDirectSplits:
-			'This netting has no shares that can be assigned directly. Check the original expenses one by one.',
+			'This combined balance has no shares that can be assigned directly. Check the original expenses one by one.',
 		recorded: 'Payment recorded: {amount} from {from} to {to}.',
 		recordedWithRemaining:
-			'Payment recorded: {amount} from {from} to {to}. {remaining} remains open after netting.',
+			'Payment recorded: {amount} from {from} to {to}. {remaining} remains open in the combined balance.',
 		nothingRecorded: 'No payment recorded. The open expenses are being reloaded.',
 		cashRecorded: 'Cash payment recorded: {amount} from {from} to {to}.',
 	},
@@ -90,17 +90,17 @@ export default {
 		title: 'Confirm a payment already made',
 		body: 'Only confirm if {payerSelf, select, yes {you have} other {{payer} has}} already paid {amount} to {payeeSelf, select, yes {you} other {{payee}}}. No money is transferred.',
 		cashNote:
-			'“Record the full balance as cash” confirms the whole netted balance of {amount} instead.',
+			'“Record the full balance as cash” confirms the whole combined balance of {amount} instead.',
 		sharesLabel: 'Expense shares covered',
 		expense: 'Expense',
-		offset: 'Offsetting claim, netted off',
+		offset: 'Offset against what they owe you',
 		currentShare: 'Current open share',
 		remaining:
-			'{amount} of the netted balance cannot be booked against these shares and stays open.',
+			'{amount} of the combined balance cannot be booked against these shares and stays open.',
 		checkedNote:
 			'These shares were checked just now. If they change in the meantime, you will need to check the payment again.',
 		noShares:
-			'This balance results from netting and cannot be assigned to a single share. You can record it as a cash payment.',
+			'This balance combines several debts and cannot be assigned to a single share. You can record it as a cash payment.',
 		cancel: 'Cancel',
 		saving: 'Saving…',
 		recordCash: 'Record the full balance as cash ({amount})',
