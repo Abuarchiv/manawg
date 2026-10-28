@@ -33,11 +33,13 @@ Supabase backup/PITR support depends on the actual project configuration. Databa
 [Database nightly](../.github/workflows/database-nightly.yml) runs daily at 02:17 UTC and on manual
 dispatch. It runs [db-backup.sh](../.github/scripts/db-backup.sh) against the Production session
 pooler: a `pg_dump --format=custom` of the `public`, `drizzle`, `auth` and `storage` schemas. The script
-checks that the archive lists `wgs`, `wg_members`, `auth.users` and the migration ledger, encrypts it
+checks that the archive lists `wgs`, `wg_members`, `auth.users` and the migration ledger, downloads
+every Storage object listed in `storage.objects` (Supabase secret key `SUPABASE_BACKUP_SECRET_KEY`),
+packs both into one tar (`database.dump`, `storage/<bucket>/<object>`), encrypts it
 for the OpenPGP key in [backup-public-key.asc](../.github/backup-public-key.asc) (fingerprint
 `326F1F1B3A8D3193C524DF875F55F8BE82C4D50F`), decrypts it again with the key from the `Production`
 environment, compares it byte for byte, and uploads only the encrypted file as a 90-day artifact.
-Storage object bytes (images) are not included. GitHub disables scheduled workflows after 60 days
+Operator copies land on the operator's Mac every morning (verified decrypt, newest 90 kept). GitHub disables scheduled workflows after 60 days
 without repository activity; a failed or disabled run shows on the Actions page.
 
 The private key is in the operator's GPG keyring and in the `Production` secrets
@@ -47,10 +49,11 @@ Keychain (service `ManaWG Backup GPG passphrase`). Restore into a disposable dat
 ```sh
 gh run download <run-id> --repo Abuarchiv/manawg-app --dir backup
 security find-generic-password -s 'ManaWG Backup GPG passphrase' -w |
-  gpg --batch --pinentry-mode loopback --passphrase-fd 0 --decrypt backup/*/manawg-*.dump.gpg > manawg.dump
-pg_restore --list manawg.dump | head
+  gpg --batch --pinentry-mode loopback --passphrase-fd 0 --decrypt backup/*/manawg-*.tar.gpg | tar -x
+pg_restore --list database.dump | head
 psql <disposable-url> -c 'create schema drizzle'
-pg_restore --no-owner --no-privileges --schema=public --schema=drizzle --dbname=<disposable-url> manawg.dump
+pg_restore --no-owner --no-privileges --schema=public --schema=drizzle --dbname=<disposable-url> database.dump
+# Images: upload storage/<bucket>/<object> to the same bucket and path in the target project.
 ```
 
 The same job queries the Preview database, so the free plan does not pause it for inactivity.
