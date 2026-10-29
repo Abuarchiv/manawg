@@ -8,6 +8,8 @@ const OFFICIAL_FROM = 'ManaWG <noreply@manawg.com>';
 const REQUEST_TIMEOUT_MS = 15_000;
 // Resend allows two requests per second; single retries after a rejected batch pace themselves.
 const SINGLE_SEND_GAP_MS = 550;
+// The cron function is killed at 60 s; the budget leaves room for the last request's timeout.
+const SINGLE_RESEND_BUDGET_MS = 40_000;
 
 export interface OutgoingMail {
 	/** Ledger row id and its attempt count; together they key the Idempotency-Key of the request. */
@@ -130,7 +132,13 @@ function createResendTransport(apiKey: string, from: string, prefix: string): Ma
 		// A rejected batch names no culprit; resend one by one so a single bad address cannot block the rest.
 		if (mails.length > 1 && (response.status === 400 || response.status === 422)) {
 			const outcomes: MailOutcome[] = [];
+			const deadline = Date.now() + SINGLE_RESEND_BUDGET_MS;
 			for (const mail of mails) {
+				// Mails past the budget stay queued instead of being lost when the function is killed.
+				if (Date.now() > deadline) {
+					while (outcomes.length < mails.length) outcomes.push({ kind: 'deferred' });
+					break;
+				}
 				await new Promise((resolve) => setTimeout(resolve, SINGLE_SEND_GAP_MS));
 				const [outcome] = await post([mail]);
 				outcomes.push(outcome ?? failed);
