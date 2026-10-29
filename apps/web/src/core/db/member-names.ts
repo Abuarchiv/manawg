@@ -2,15 +2,10 @@ import { and, eq, ne, sql } from 'drizzle-orm';
 import { LIMITS, wgMembers } from './schema';
 import type { DbTransaction } from './transaction';
 
-const MOVED_OUT_SUFFIX = ' (ausgezogen)';
-
-/**
- * A free name for a moved-out member whose name a current member wants: "Anna" becomes
- * "Anna (ausgezogen)", numbered when that is taken, and shortened so it still fits the limit.
- */
-function movedOutName(base: string, taken: ReadonlySet<string>): string {
-	for (let attempt = 1; attempt < 1000; attempt += 1) {
-		const suffix = attempt === 1 ? MOVED_OUT_SUFFIX : ` (ausgezogen ${attempt})`;
+/** The first "base (n)" from 2 up that is not in `taken` (lower-cased), shortened to fit the limit. */
+function numberedName(base: string, taken: ReadonlySet<string>): string {
+	for (let attempt = 2; attempt < 1000; attempt += 1) {
+		const suffix = ` (${attempt})`;
 		const candidate = `${base.slice(0, Math.max(1, LIMITS.NAME_MAX - suffix.length))}${suffix}`;
 		if (!taken.has(candidate.toLowerCase())) return candidate;
 	}
@@ -19,7 +14,7 @@ function movedOutName(base: string, taken: ReadonlySet<string>): string {
 
 /**
  * Makes `name` free inside the WG: another active member with that name (compared without
- * regard to case) blocks it; a moved-out member with it is renamed out of the way so a person
+ * regard to case) blocks it; a moved-out member with it is renamed out of the way ("Anna (2)") so a person
  * who left does not keep their name from the people who live there now.
  */
 export async function releaseMemberName(
@@ -46,7 +41,7 @@ export async function releaseMemberName(
 		.where(eq(wgMembers.wgId, wgId));
 	const taken = new Set(roster.map((row) => row.name.toLowerCase()));
 	for (const clash of clashes) {
-		const next = movedOutName(clash.name, taken);
+		const next = numberedName(clash.name, taken);
 		taken.add(next.toLowerCase());
 		await tx.update(wgMembers).set({ name: next }).where(eq(wgMembers.id, clash.id));
 	}
@@ -65,10 +60,5 @@ export async function availableMemberName(
 		.where(eq(wgMembers.wgId, wgId));
 	const taken = new Set(roster.map((row) => row.name.toLowerCase()));
 	if (!taken.has(base.toLowerCase())) return base;
-	for (let attempt = 2; attempt < 1000; attempt += 1) {
-		const suffix = ` (${attempt})`;
-		const candidate = `${base.slice(0, Math.max(1, LIMITS.NAME_MAX - suffix.length))}${suffix}`;
-		if (!taken.has(candidate.toLowerCase())) return candidate;
-	}
-	return `${base.slice(0, 20)} ${crypto.randomUUID().slice(0, 8)}`;
+	return numberedName(base, taken);
 }
