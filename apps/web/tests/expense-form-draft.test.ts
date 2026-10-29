@@ -49,3 +49,27 @@ test('a due template becomes a manual-split expense suggestion', () => {
 	assert.equal(suggestion.imageUrl, null);
 	assert.deepEqual(suggestion.manualSplits, { a: '12,50', b: '12,49' });
 });
+
+test('a manual booking of a fixed cost moves the extra cent like the automatic one', () => {
+	const splits = [
+		{ debtorMemberId: 'a', amountCents: 3334 },
+		{ debtorMemberId: 'b', amountCents: 3333 },
+		{ debtorMemberId: 'c', amountCents: 3333 },
+	];
+	const suggest = (nextDueAt: string) =>
+		recurringTemplateSuggestion({
+			id: 'tpl-1',
+			description: 'Miete',
+			amountCents: 10000,
+			intervalMonths: 1,
+			nextDueAt,
+			paidByMemberId: 'a',
+			splits,
+		} as never).manualSplits;
+	const january = suggest('2026-01-01T00:00:00.000Z');
+	const february = suggest('2026-02-01T00:00:00.000Z');
+	const extraOf = (shares: Record<string, string> | undefined) =>
+		Object.entries(shares ?? {}).find(([, value]) => value === '33,34')?.[0];
+	assert.ok(extraOf(january));
+	assert.notEqual(extraOf(january), extraOf(february));
+});
