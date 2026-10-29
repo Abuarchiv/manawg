@@ -592,6 +592,10 @@ test.describe('label in name audit', () => {
 		await expect(
 			page.getByRole('button', { name: 'Als bezahlt markieren: Mina', exact: true }),
 		).toBeVisible();
+		// The debt row's settle button names the parties and amount, so several rows stay apart.
+		await expect(
+			page.getByRole('button', { name: /^Ausgleichen: Mina an .+, 10,00\s€$/ }),
+		).toBeVisible();
 	});
 });
 

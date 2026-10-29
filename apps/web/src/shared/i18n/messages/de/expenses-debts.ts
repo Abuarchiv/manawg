@@ -71,6 +71,7 @@ export default {
 	},
 	settle: {
 		button: 'Ausgleichen',
+		buttonAria: 'Ausgleichen: {debtor} an {creditor}, {amount}',
 		checking: 'Prüft…',
 		checkFailed: 'Prüfung fehlgeschlagen. Versuche es gleich erneut.',
 		keyUnavailable: 'Ausgleich konnte nicht sicher gespeichert werden. Versuche es erneut.',
@@ -109,6 +110,7 @@ export default {
 		line: '{fromSelf, select, yes {Du} other {{from}}} an {toSelf, select, yes {dich} other {{to}}}',
 		paidInCash: 'Bar bezahlt',
 		void: 'Stornieren',
+		voidAria: 'Stornieren: {amount} von {from} an {to}',
 		voidTitle: 'Barzahlung stornieren?',
 		voidBody:
 			'Die Barzahlung über {amount} von {from} an {to} wird storniert, die Schuld ist danach wieder offen. Stimmt nur der Betrag nicht, trage die Zahlung danach neu ein.',
