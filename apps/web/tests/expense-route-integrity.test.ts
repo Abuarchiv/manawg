@@ -441,4 +441,9 @@ test('expense PATCH preserves split integrity with fractional timestamps and con
 	const cosmeticEdit = await patch({ description: 'Nur Text' });
 	assert.equal(cosmeticEdit.status, 200);
 	assert.equal(currentExpense.description, 'Nur Text');
+
+	// The currency fixes the meaning of every share and payment; an edit cannot switch it.
+	const currencyEdit = await patch({ currency: 'USD', description: 'Nur Text' });
+	assert.equal(currencyEdit.status, 200);
+	assert.equal(currentExpense.currency, 'EUR');
 });

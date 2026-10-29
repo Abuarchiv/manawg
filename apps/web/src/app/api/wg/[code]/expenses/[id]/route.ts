@@ -23,7 +23,6 @@ import {
 import { parseBody } from '@/core/http/parse-body';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
-import { currencySchema } from '@/core/validators/currency';
 import { imageUrlSchema, isAllowedImageUrlForWg } from '@/core/validators/image-url';
 import { EXPENSE_CATEGORIES } from '@/features/expenses/expense-categories';
 import { MAX_SPLITS } from '@/features/expenses/expense-constants';
@@ -46,7 +45,6 @@ const patchSchema = z.object({
 	description: expenseDescriptionSchema.optional(),
 	category: z.enum(EXPENSE_CATEGORIES).optional(),
 	amountCents: expenseAmountSchema.optional(),
-	currency: currencySchema.optional(),
 	imageUrl: imageUrlSchema,
 	occurredAt: occurredAtSchema.optional(),
 	expectedUpdatedAt: z.string().datetime({ offset: true }).optional(),
@@ -145,7 +143,6 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 			amountCents: 'amount_invalid',
 			description: 'description_invalid',
 			category: 'category_invalid',
-			currency: 'currency_invalid',
 			imageUrl: 'image_invalid',
 			occurredAt: 'occurred_at_invalid',
 			expectedUpdatedAt: 'expected_updated_at_invalid',
@@ -154,16 +151,8 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 	});
 	if (!parsed.ok) return parsed.response;
 
-	const {
-		description,
-		category,
-		amountCents,
-		currency,
-		imageUrl,
-		occurredAt,
-		expectedUpdatedAt,
-		splits,
-	} = parsed.data;
+	const { description, category, amountCents, imageUrl, occurredAt, expectedUpdatedAt, splits } =
+		parsed.data;
 
 	// A total change without a matching splits array would silently desync
 	// expenses.amountCents from sum(expenseSplits.amountCents) — the invariant
@@ -226,7 +215,6 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 	if (description !== undefined) updates.description = description;
 	if (category !== undefined) updates.category = category;
 	if (amountCents !== undefined) updates.amountCents = amountCents;
-	if (currency !== undefined) updates.currency = currency;
 	if (imageUrl !== undefined) updates.imageUrl = imageUrl ?? null;
 	if (occurredAt !== undefined) updates.occurredAt = new Date(occurredAt);
 
