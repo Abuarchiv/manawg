@@ -190,7 +190,8 @@ Code, bug reports, documentation, translations and ideas are all welcome.
 
 [CONTRIBUTING.md](CONTRIBUTING.md) walks through your first pull request in five minutes of setup.
 The website [manawg.com](https://manawg.com) is open source too:
-[Abuarchiv/manawg-landing](https://github.com/Abuarchiv/manawg-landing).
+[Abuarchiv/manawg-landing](https://github.com/Abuarchiv/manawg-landing). So is the MCP server that
+lets AI assistants use a household: [Abuarchiv/manawg-mcp](https://github.com/Abuarchiv/manawg-mcp).
 
 Want to say thanks? A ⭐ helps other flats find ManaWG.
 
