@@ -59,7 +59,7 @@ Import SHALL skip a row only when an existing WG expense has the same key. Repea
 
 ### Requirement: Recurring expenses book once and stay controlled
 
-Recording a recurring expense SHALL advance its template on the server within the booking transaction. Advancing without a booked expense for the current due date SHALL fail with `409 recurring_expense_not_booked` and no audit entry. Pause, edit and delete SHALL be limited to the creator or an admin. Booking SHALL be offered only to members the server accepts. A template skipped because its member moved out SHALL produce one bulletin notice on the first run within 25 hours of the due date. The form SHALL announce how many past bookings a past start date will create.
+Recording a recurring expense SHALL advance its template on the server within the booking transaction. A booking that carries the template version it was built from SHALL be refused with `409 recurring_expense_changed` when the template was edited since, and a booking without that version SHALL be accepted unchanged. Advancing without a booked expense for the current due date SHALL fail with `409 recurring_expense_not_booked` and no audit entry. Pause, edit and delete SHALL be limited to the creator or an admin. Booking SHALL be offered only to members the server accepts. A template skipped because its member moved out SHALL produce one bulletin notice on the first run within 25 hours of the due date. The form SHALL announce how many past bookings a past start date will create.
 
 #### Scenario: Advance without booking
 - **WHEN** a client asks to advance a template that has no expense for its current due date

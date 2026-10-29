@@ -7,7 +7,11 @@ import { withQueuedOccurredAt } from '@/features/expenses/queued-occurred-at';
 
 type QueuedExpenseFields = Omit<
 	Parameters<typeof createQueuedExpense>[0],
-	'idempotencyKey' | 'recurringExpenseId' | 'expectedRecurringNextDueAt' | 'now'
+	| 'idempotencyKey'
+	| 'recurringExpenseId'
+	| 'expectedRecurringNextDueAt'
+	| 'expectedRecurringUpdatedAt'
+	| 'now'
 >;
 
 /**
@@ -19,7 +23,11 @@ export function buildQueuedExpenseAction(input: {
 	occurredAt: string | null;
 	edit: { expenseId: string; expectedUpdatedAt: string } | null;
 	idempotencyKey: string | null;
-	recurring: { recurringExpenseId?: string; expectedRecurringNextDueAt?: string };
+	recurring: {
+		recurringExpenseId?: string;
+		expectedRecurringNextDueAt?: string;
+		expectedRecurringUpdatedAt?: string;
+	};
 }): OfflineAction {
 	const { fields, occurredAt, edit, idempotencyKey, recurring } = input;
 	if (edit) {

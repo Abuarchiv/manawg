@@ -48,7 +48,15 @@ export function useRecurringBooking(ctx: ExpensePageContext) {
 	const [creatingRecurringId, setCreatingRecurringId] = useState<string | null>(null);
 	const creatingRecurringRef = useRef(false);
 	const expenseRequestsRef = useRef(
-		new Map<string, { fingerprint: string; key: string; expectedRecurringNextDueAt: string }>(),
+		new Map<
+			string,
+			{
+				fingerprint: string;
+				key: string;
+				expectedRecurringNextDueAt: string;
+				expectedRecurringUpdatedAt?: string;
+			}
+		>(),
 	);
 
 	// Always awaited, so an advance failure surfaces as a warning even if the tab closes next.
@@ -128,6 +136,10 @@ export function useRecurringBooking(ctx: ExpensePageContext) {
 			reusePendingRequest && pendingRequest
 				? pendingRequest.expectedRecurringNextDueAt
 				: template.nextDueAt;
+		const expectedRecurringUpdatedAt =
+			reusePendingRequest && pendingRequest
+				? pendingRequest.expectedRecurringUpdatedAt
+				: template.updatedAt;
 		const idempotencyKey = resolveIdempotencyKey(pendingRequest, fingerprint);
 		if (!idempotencyKey) {
 			notify.error(t({ key: 'expenses-form.notices.keyUnavailableRecurring' }));
@@ -138,6 +150,7 @@ export function useRecurringBooking(ctx: ExpensePageContext) {
 			fingerprint,
 			key: idempotencyKey,
 			expectedRecurringNextDueAt,
+			...(expectedRecurringUpdatedAt ? { expectedRecurringUpdatedAt } : {}),
 		});
 		const optimisticId = `pending:${idempotencyKey}`;
 		const rollbackOptimisticExpense = () =>
@@ -164,6 +177,7 @@ export function useRecurringBooking(ctx: ExpensePageContext) {
 					...requestBody,
 					recurringExpenseId: template.id,
 					expectedRecurringNextDueAt,
+					...(expectedRecurringUpdatedAt ? { expectedRecurringUpdatedAt } : {}),
 				}),
 			},
 		);
@@ -184,6 +198,7 @@ export function useRecurringBooking(ctx: ExpensePageContext) {
 							splits: bookedSplits,
 							recurringExpenseId: template.id,
 							expectedRecurringNextDueAt,
+							...(expectedRecurringUpdatedAt ? { expectedRecurringUpdatedAt } : {}),
 						}),
 						new Date().toISOString(),
 					),

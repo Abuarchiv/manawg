@@ -77,6 +77,7 @@ interface QueuedExpenseInput extends QueuedIdentityInput {
 	imageUrl?: string | null;
 	recurringExpenseId?: string;
 	expectedRecurringNextDueAt?: string;
+	expectedRecurringUpdatedAt?: string;
 	now?: number;
 }
 
@@ -261,6 +262,9 @@ export function createQueuedExpense(input: QueuedExpenseInput): OfflineAction {
 			...(input.recurringExpenseId ? { recurringExpenseId: input.recurringExpenseId } : {}),
 			...(input.expectedRecurringNextDueAt
 				? { expectedRecurringNextDueAt: input.expectedRecurringNextDueAt }
+				: {}),
+			...(input.expectedRecurringUpdatedAt
+				? { expectedRecurringUpdatedAt: input.expectedRecurringUpdatedAt }
 				: {}),
 		},
 		now,

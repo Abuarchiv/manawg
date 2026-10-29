@@ -128,6 +128,9 @@ export const POST = withWgRoute('expenses POST', async (req, { code }) => {
 					recurring: {
 						id: body.recurringExpenseId,
 						expectedDueAt: new Date(body.expectedRecurringNextDueAt),
+						...(body.expectedRecurringUpdatedAt
+							? { expectedUpdatedAt: new Date(body.expectedRecurringUpdatedAt) }
+							: {}),
 					},
 				}
 			: {}),

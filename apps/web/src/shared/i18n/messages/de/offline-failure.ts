@@ -73,6 +73,11 @@ export default {
 		detail:
 			'Der Artikel existiert nicht mehr. Entferne diese Offline-Aktion oder lege den Einkauf neu an.',
 	},
+	templateChanged: {
+		title: 'Fixkosten-Vorlage geändert',
+		detail:
+			'Jemand hat die Vorlage inzwischen geändert. Entferne diese Offline-Aktion und buche die Fixkosten mit dem aktuellen Stand.',
+	},
 	shoppingChanged: {
 		title: 'Einkaufsstatus geändert',
 		detail:

@@ -42,6 +42,7 @@ const FAILURE_BY_CODE: Readonly<Record<string, FailureName>> = {
 	wg_not_found: 'flatLinkInvalid',
 	invalid_share_code: 'flatLinkInvalid',
 	recurring_expense_not_found: 'templateMissing',
+	recurring_expense_changed: 'templateChanged',
 	abo_paused: 'aboPaused',
 	item_not_found: 'shoppingMissing',
 	shopping_item_changed: 'shoppingChanged',

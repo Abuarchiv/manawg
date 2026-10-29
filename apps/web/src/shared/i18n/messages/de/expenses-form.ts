@@ -166,6 +166,8 @@ export default {
 			aboPaused: 'Diese Fixkosten sind pausiert. Setze sie in den Fixkosten fort.',
 			recurringAdvanced:
 				'Diese Fixkosten wurden für diese Fälligkeit schon übernommen. Lade die Ausgaben neu und prüfe die Liste.',
+			recurringChanged:
+				'Diese Fixkosten wurden inzwischen geändert. Die Liste ist neu geladen: Prüfe Betrag und Aufteilung und buche dann erneut.',
 			memberNotInWg: 'Mindestens ein Mitglied ist nicht mehr in dieser WG.',
 			insertFailed: 'Prüfe die Ausgabenliste und versuche es erneut.',
 			splitInsertFailed:
