@@ -17,6 +17,7 @@ export interface ReminderMailInput {
 	debtor: { id: string; authUserId: string };
 	creditor: { id: string; name: string };
 	amountCents: number;
+	currency: string;
 	oldestDebtAgeDays: number;
 }
 
@@ -41,6 +42,7 @@ export async function sendReminderMail(input: ReminderMailInput): Promise<void> 
 			.where(
 				and(
 					eq(expenses.wgId, input.wg.id),
+					eq(expenses.currency, input.currency),
 					eq(expenses.paidByMemberId, input.creditor.id),
 					eq(expenseSplits.debtorMemberId, input.debtor.id),
 					isNull(expenseSplits.settledAt),
@@ -60,6 +62,7 @@ export async function sendReminderMail(input: ReminderMailInput): Promise<void> 
 				shareCode: input.wg.shareCode,
 				creditorName: input.creditor.name,
 				amountCents: input.amountCents,
+				currency: input.currency,
 				oldestDebtAgeDays: input.oldestDebtAgeDays,
 				items: rows.map((row) => ({
 					description: row.description,
