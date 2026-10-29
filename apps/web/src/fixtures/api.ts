@@ -22,11 +22,13 @@ import { requestLocale } from '@/core/i18n/request-locale';
 import { INVITE_VALID_DAYS, invitePath } from '@/core/utils/invite-token';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import { MS_PER_DAY } from '@/core/utils/time';
+import { chatMessagesReadPayload } from '@/features/chat/chat-pure';
 import { toChatUnreadCountResponse } from '@/features/chat/chat-unread-count';
 import { groupItemsByCategory } from '@/features/inventory/inventory';
 import { MEMBER_NAME_MAX_LENGTH, WG_NAME_MAX_LENGTH } from '@/shared/lib/limits';
 import { EXPECTED_MEMBER_ID_HEADER } from '@/shared/lib/member-header';
 import {
+	buildE2EChatMessages,
 	buildE2EDashboardData,
 	E2E_CREATED_WG,
 	E2E_EXISTING_WG,
@@ -61,6 +63,7 @@ const MEMBER_READS: Record<string, MemberRead> = {
 			{ subscription: null },
 			{ headers: { 'Cache-Control': 'private, no-store' } },
 		),
+	'chat/messages': chatMessages,
 	'chat/unread-count': () => NextResponse.json(toChatUnreadCountResponse(0)),
 	chores: (_req, fixture) =>
 		NextResponse.json({
@@ -125,9 +128,40 @@ const MEMBER_READS: Record<string, MemberRead> = {
 				},
 			],
 		}),
+	reminders: () => NextResponse.json({ reminders: [] }),
 	'reminders/balances': () => NextResponse.json({ balances: [] }),
-	shopping: () => NextResponse.json({ items: [] }),
+	// Matches `openShoppingTop` on the dashboard.
+	shopping: (_req, fixture) =>
+		NextResponse.json({
+			items: [
+				{
+					id: '3f6b2c1e-8d4a-4e7b-9c2f-5a1d0e9b7c43',
+					addedByMemberId: fixture.members[0]?.id ?? '',
+					name: 'Hafermilch',
+					quantity: null,
+					boughtAt: null,
+					boughtByMemberId: null,
+					createdAt: new Date().toISOString(),
+				},
+			],
+		}),
 };
+
+/** The fixture chat as the latest page; there are no older pages, and everything is read. */
+function chatMessages(req: NextRequest, fixture: E2EWgFixture): NextResponse {
+	const params = req.nextUrl.searchParams;
+	const rows = params.has('beforeId') ? [] : buildE2EChatMessages(fixture.id);
+	const latest = rows.at(-1);
+	return NextResponse.json({
+		...chatMessagesReadPayload([...rows].reverse(), []),
+		reads: [],
+		...(params.get('includeReadMarker') === '1'
+			? { readMarker: latest ? { messageId: latest.id, createdAt: latest.createdAt } : null }
+			: {}),
+		reactions: [],
+		mentions: [],
+	});
+}
 
 function exportResponse(req: NextRequest, fixture: E2EWgFixture): NextResponse {
 	const params = req.nextUrl.searchParams;
@@ -342,6 +376,9 @@ export async function answerFixtureApiRequest(req: NextRequest): Promise<NextRes
 				expiresAt: new Date(Date.now() + INVITE_VALID_DAYS * MS_PER_DAY).toISOString(),
 			}),
 		);
+	}
+	if (req.method === 'POST' && rest.join('/') === 'chat/read') {
+		return memberRead(req, code, () => NextResponse.json({ ok: true, applied: false }));
 	}
 	if (req.method === 'DELETE' && rest[0] === 'invites' && rest.length === 2) {
 		return memberRead(req, code, () => NextResponse.json({ revoked: true }));
