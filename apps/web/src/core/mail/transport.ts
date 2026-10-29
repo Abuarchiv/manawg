@@ -202,7 +202,17 @@ function createSmtpTransport(
 					outcomes.push({ kind: 'sent', providerId: info.messageId });
 				} catch (error) {
 					const code = error instanceof Error && 'code' in error ? String(error.code) : 'error';
-					outcomes.push({ kind: 'failed', error: `smtp_${code}`.slice(0, 200) });
+					// An idle socket may time out after the relay took the message, so a socket timeout is
+					// never resent; connect, greeting and upgrade timeouts happen before and stay retryable.
+					const unconfirmed =
+						error instanceof Error &&
+						'timeoutType' in error &&
+						error.timeoutType === 'SOCKET_TIMEOUT';
+					outcomes.push({
+						kind: 'failed',
+						error: `smtp_${code}`.slice(0, 200),
+						...(unconfirmed ? { unconfirmed: true } : {}),
+					});
 				}
 			}
 			return outcomes;

@@ -21,7 +21,7 @@ On Berlin day 1 of a month the system SHALL send each eligible member one statem
 #### Scenario: Provider error or daily quota reached
 - **WHEN** Resend rejects a mail or the daily quota is exhausted
 - **THEN** the row stays `failed`/`pending` and is retried on days 2–5; after day 5 it stays failed and is logged
-- **AND** a request that timed out is unconfirmed (the provider may have accepted it) and is not retried automatically
+- **AND** a request that timed out (Resend) or an SMTP socket that timed out is unconfirmed (the provider may have accepted it) and is not retried automatically
 - **AND** a rejected batch is resent mail by mail for at most 40 seconds; the mails not reached stay `pending` and are retried on days 2–5
 
 #### Scenario: Member in two WGs
