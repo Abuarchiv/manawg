@@ -71,3 +71,16 @@ test('isOfficialInstance compares origins and ignores unusable values', async ()
 	assert.equal(landing.isOfficialInstance(undefined), false);
 	assert.equal(landing.isOfficialInstance(''), false);
 });
+
+test('English readers of the official instance get the English legal pages, other instances keep their paths', async () => {
+	const official = await loadWith({ NEXT_PUBLIC_APP_URL: 'https://app.manawg.com' });
+	assert.equal(official.landing.legalUrl('/impressum', 'en'), 'https://manawg.com/en/legal-notice');
+	assert.equal(official.landing.legalUrl('/datenschutz', 'en'), 'https://manawg.com/en/privacy');
+	assert.equal(official.landing.legalUrl('/agb', 'en'), 'https://manawg.com/en/terms');
+	assert.equal(official.landing.legalUrl('/agb', 'de'), 'https://manawg.com/agb');
+	const selfHosted = await loadWith({
+		NEXT_PUBLIC_APP_URL: 'https://wg.example.com',
+		NEXT_PUBLIC_LEGAL_URL: 'https://example.com',
+	});
+	assert.equal(selfHosted.landing.legalUrl('/agb', 'en'), 'https://example.com/agb');
+});

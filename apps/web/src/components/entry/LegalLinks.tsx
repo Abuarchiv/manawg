@@ -1,6 +1,7 @@
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { LanguageSwitch } from '@/components/app/LanguageSwitch';
 import { richArgument } from '@/components/entry/rich-argument';
+import type { Locale } from '@/shared/i18n/locale';
 import { cn } from '@/shared/lib/cn';
 import { IS_OFFICIAL_INSTANCE, landingUrl, legalUrl } from '@/shared/lib/landing-url';
 
@@ -10,26 +11,41 @@ interface LegalLink {
 	label: LegalLabel;
 }
 
-// The operator's legal pages are absent when the instance has none configured.
-const PRIVACY = legalUrl('/datenschutz');
-const AGB = legalUrl('/agb');
 const legalLink = (href: string | null, label: LegalLabel): LegalLink[] =>
 	href ? [{ href, label }] : [];
-const IMPRINT_ONLY = legalLink(legalUrl('/impressum'), 'imprint');
-const LEGAL_LINKS: LegalLink[] = [
-	{ href: landingUrl('/ueber-manawg'), label: 'about' },
-	...IMPRINT_ONLY,
-	...legalLink(PRIVACY, 'privacy'),
-	...legalLink(AGB, 'terms'),
-];
-// Product and guide pages of the official landing; shown only there and on the plain entry
-// footer, never in consent or registration flows (those keep the legal minimum).
-const INFO_LINKS = IS_OFFICIAL_INSTANCE
-	? ([
-			{ href: landingUrl('/wg-app'), label: 'flatApp' },
-			{ href: landingUrl('/ratgeber'), label: 'guide' },
-		] as const)
-	: [];
+
+// English readers get the English pages of the official landing.
+const LANDING_PAGES = {
+	about: { de: '/ueber-manawg', en: '/en/about-manawg' },
+	flatApp: { de: '/wg-app', en: '/en/flat-share-app' },
+	guide: { de: '/ratgeber', en: '/en/guides' },
+} as const;
+
+// The operator's legal pages are absent when the instance has none configured.
+function linksFor(locale: Locale) {
+	const privacy = legalUrl('/datenschutz', locale);
+	const terms = legalUrl('/agb', locale);
+	const imprintOnly = legalLink(legalUrl('/impressum', locale), 'imprint');
+	return {
+		privacy,
+		terms,
+		imprintOnly,
+		legal: [
+			{ href: landingUrl(LANDING_PAGES.about[locale]), label: 'about' as const },
+			...imprintOnly,
+			...legalLink(privacy, 'privacy'),
+			...legalLink(terms, 'terms'),
+		],
+		// Product and guide pages of the official landing; shown only there and on the plain entry
+		// footer, never in consent or registration flows (those keep the legal minimum).
+		info: IS_OFFICIAL_INSTANCE
+			? [
+					{ href: landingUrl(LANDING_PAGES.flatApp[locale]), label: 'flatApp' as const },
+					{ href: landingUrl(LANDING_PAGES.guide[locale]), label: 'guide' as const },
+				]
+			: [],
+	};
+}
 
 const CONSENT_LINK = '-my-3.5 inline-block py-3.5 underline underline-offset-4';
 
@@ -44,7 +60,11 @@ export function LegalLinks({
 	className?: string;
 }) {
 	const t = useTranslations('entry.legal');
-	const legalLinks = consent || registration ? IMPRINT_ONLY : LEGAL_LINKS;
+	const links = linksFor(useLocale() as Locale);
+	const AGB = links.terms;
+	const PRIVACY = links.privacy;
+	const INFO_LINKS = links.info;
+	const legalLinks = consent || registration ? links.imprintOnly : links.legal;
 	return (
 		<footer
 			className={cn(

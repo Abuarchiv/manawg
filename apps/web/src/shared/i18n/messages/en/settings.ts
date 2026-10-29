@@ -288,9 +288,9 @@ export default {
 		importExpenses: 'Import expenses',
 		legalTitle: 'Legal',
 		legal: {
-			imprint: 'Legal notice (German)',
-			privacy: 'Privacy policy (German)',
-			terms: 'Terms (German)',
+			imprint: 'Legal notice',
+			privacy: 'Privacy policy',
+			terms: 'Terms',
 		},
 		sections: {
 			members: 'Members',
