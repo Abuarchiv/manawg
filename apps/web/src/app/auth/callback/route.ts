@@ -54,7 +54,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 				name: 'manawg_password_recovery',
 				value: data.session.user.id,
 				httpOnly: true,
-				secure: true,
+				secure: request.nextUrl.protocol === 'https:',
 				sameSite: 'lax',
 				maxAge: 600,
 				path: '/auth/reset',
