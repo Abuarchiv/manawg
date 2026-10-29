@@ -290,7 +290,7 @@ export function MonthlyStatementDocument({
 										key={item.id}
 										className="break-inside-avoid border-b border-border/60 align-top"
 									>
-										<td className="py-2 font-mono text-[12px] text-muted-foreground">
+										<td className="py-2 font-mono text-[12px] whitespace-nowrap text-muted-foreground">
 											{dayMonth.format(new Date(item.occurredAt))}
 										</td>
 										<td className="py-2 pl-3 break-words">
