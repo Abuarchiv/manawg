@@ -8,6 +8,7 @@ import {
 	requestFailureState,
 	withFailureState,
 } from './offline-failure-copy';
+import { isPendingImageToken } from './offline-images';
 import { type OfflineAction, serializeOfflineAction } from './offline-queue';
 import { REVIEW_REQUIRED_STATE, replayWindowReviewError } from './offline-store';
 
@@ -34,7 +35,13 @@ export function editQueuedPayload(
 	patch: Record<string, unknown>,
 ): OfflineAction {
 	const edited = { ...action, payload: { ...action.payload, ...patch } };
-	return action.lastAttemptAt ? withFailureState(edited, REVIEW_REQUIRED_STATE) : edited;
+	// An image problem or a photo still waiting for its upload means the request never went out.
+	const imageUrl = action.payload.imageUrl;
+	const neverSent =
+		holdsImageReview(action) || (typeof imageUrl === 'string' && isPendingImageToken(imageUrl));
+	return action.lastAttemptAt && !neverSent
+		? withFailureState(edited, REVIEW_REQUIRED_STATE)
+		: edited;
 }
 
 export function mergeSyncOutcomes(

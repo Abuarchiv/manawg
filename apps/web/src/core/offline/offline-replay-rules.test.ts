@@ -44,3 +44,20 @@ test('an edit to an action that went out once is held for review', () => {
 	assert.equal(edited.payload.imageUrl, null);
 	assert.equal(edited.idempotencyKey, sent.idempotencyKey);
 });
+
+test('removing a photo that never left the device or was refused keeps the action sendable', () => {
+	const waiting = {
+		...queuedExpense,
+		payload: { description: 'Pizza', imageUrl: 'manawg-pending-image:abc' },
+		attempts: 1,
+		lastAttemptAt: '2026-10-01T10:05:00.000Z',
+	};
+	assert.equal(editQueuedPayload(waiting, { imageUrl: null }).needsReview, undefined);
+	const refused = {
+		...queuedExpense,
+		attempts: 1,
+		lastAttemptAt: '2026-10-01T10:05:00.000Z',
+		needsReview: 'imageRemoved' as const,
+	};
+	assert.equal(editQueuedPayload(refused, { imageUrl: null }).needsReview, 'imageRemoved');
+});
