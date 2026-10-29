@@ -39,7 +39,7 @@ HEIC/HEIF and large photos SHALL be converted to JPEG (at most 2048 px) before u
 
 ### Requirement: Members choose their language
 
-The profile settings SHALL offer a language choice between "Deutsch", "English" and "System", the languages shown in their own language. "System" SHALL clear the stored choice so the device language decides again, and it SHALL be selected while no choice is stored. While the device language decides, the account language for push and mail SHALL follow it. The choice SHALL be disabled while offline. Changing it SHALL apply to the whole app after a reload.
+The profile settings SHALL offer a language choice between "Deutsch", "English" and "System", the languages shown in their own language. "System" SHALL clear the stored choice so the device language decides again, and it SHALL be selected while no choice is stored. The account language for push and mail SHALL follow the language shown, also when it was chosen while signed out or could not be saved at first. The choice SHALL be disabled while offline. Changing it SHALL apply to the whole app after a reload.
 
 #### Scenario: Switch to English in settings
 - **WHEN** a member selects "English" in the profile settings
