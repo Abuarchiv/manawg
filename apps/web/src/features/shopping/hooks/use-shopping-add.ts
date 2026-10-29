@@ -119,7 +119,10 @@ export function useShoppingAdd({
 		// a second time after the wait and hit the duplicate check.
 		inFlightTextRef.current = submittedName;
 		while (addingRef.current && inFlightRef.current) await inFlightRef.current;
-		const { name, quantity } = parseShoppingInput(submittedName);
+		// A chip carries a complete item name ("7 Up"), so only typed input is split into amount and name.
+		const { name, quantity } = fromInput
+			? parseShoppingInput(submittedName)
+			: { name: submittedName.trim(), quantity: null };
 		if (name.length === 0) return;
 		// The edited queue entry may have been synced meanwhile; a new create would duplicate it.
 		if (fromInput && queueEditId && !isOfflineActionQueued(queueEditId)) {
