@@ -1,7 +1,7 @@
 # Contributing to ManaWG
 
-Thanks for helping. Bug reports, fixes, documentation and improvements are welcome, in English or
-German. You do not need to be a developer to report a problem or fix a typo.
+Thanks for helping. Bug reports, fixes, documentation and improvements are welcome. You do not
+need to be a developer to report a problem or fix a typo.
 
 ## Before you start
 
@@ -33,6 +33,10 @@ corepack enable                                     # provides pnpm 9
 pnpm install
 pnpm --filter @manawg/web dev:fixtures
 ```
+
+No local setup? Open the repository in [GitHub Codespaces](https://codespaces.new/Abuarchiv/manawg)
+or another dev container: `.devcontainer/` installs Node and the dependencies, so only the last
+command is left.
 
 Open [localhost:3000/wg/MTE8PZAT](http://localhost:3000/wg/MTE8PZAT): a sample WG with
 expenses, chores and a shopping list. Code changes reload in the browser. Sign-in and saving
@@ -101,6 +105,14 @@ Every key needs both locales. English wording follows
 [docs/brand/glossary-en.md](docs/brand/glossary-en.md). The `i18n-literal` check fails on German
 UI copy outside the catalogs; `// i18n-ignore <reason>` is only for technical literals. Server
 texts (push, mail, export, activity) use the recipient's language.
+
+## How decisions are made
+
+ManaWG has one maintainer, who reviews pull requests, merges them and decides which features fit.
+The reasons for a decision are written down where it was made: in the issue or pull request, and
+for lasting ones in [Key decisions](docs/architecture.md#key-decisions). If you think a decision is
+wrong, say so in an issue and explain why; a good argument changes it. Replies usually come within
+a few days.
 
 ## License
 
