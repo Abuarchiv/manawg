@@ -86,7 +86,7 @@ export function parseSplitwiseCsv(
 			warnings.push(`unknown_columns_ignored:${ignoredColumns.join('|')}`);
 		}
 		const descRaw = (fields[idxDesc] ?? '').trim();
-		if (!descRaw || /^total/i.test(descRaw)) continue;
+		if (!descRaw || /^(total balance|gesamtsaldo)$/i.test(descRaw)) continue;
 		const date = parseDateIso(fields[idxDate] ?? '', locale);
 		if (!date) {
 			rejected?.push({ line, reason: 'date_invalid', description: descRaw });
