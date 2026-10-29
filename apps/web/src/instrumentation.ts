@@ -11,8 +11,8 @@
  * feature fail silently at the moment a user first touches it.
  */
 async function reportEnvironment(): Promise<void> {
-	const { checkEnv, formatEnvReport } = await import('./core/infra/env');
-	const result = checkEnv(process.env);
+	const { checkEnv, formatEnvReport, runtimeEnv } = await import('./core/infra/env');
+	const result = checkEnv(runtimeEnv());
 	const report = formatEnvReport(result);
 
 	if (!result.ok) {

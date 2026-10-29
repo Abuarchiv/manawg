@@ -11,6 +11,7 @@ import { WgAppHeader } from '@/components/app/WgAppHeader';
 import { ToastContainer } from '@/components/ui/Toast';
 import { NavItem } from '@/components/wg/NavItem';
 import { OfflineBanner } from '@/components/wg/OfflineBanner';
+import { PullToRefresh } from '@/components/wg/PullToRefresh';
 import { SessionExpiredBanner } from '@/components/wg/SessionExpiredBanner';
 import { WgContextProvider } from '@/components/wg/WgContextProvider';
 import type { SessionMember } from '@/core/auth/local-account';
@@ -152,6 +153,7 @@ function WgShell({
 			initialIsAdmin={initialIsAdmin}
 		>
 			<TabWarmup />
+			<PullToRefresh />
 			<div
 				className="group/wg-shell min-h-svh bg-background"
 				style={{

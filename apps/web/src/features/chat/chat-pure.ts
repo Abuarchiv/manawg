@@ -1,7 +1,10 @@
 import { SYSTEM_MESSAGE_KIND } from '@/core/feed-kinds';
+import { previewBody } from '@/core/utils/preview-body';
 import { dateTimeFormat } from '@/shared/i18n/intl';
 import type { Locale } from '@/shared/i18n/locale';
 import type { Message } from '@/shared/i18n/message';
+
+export { previewBody };
 export const EDIT_WINDOW_MS = 15 * 60 * 1000;
 export const CHAT_BODY_MAX = 4000;
 const TEXT_MESSAGE_KIND = 'text';
@@ -146,14 +149,6 @@ export function sanitizeMessageBody(body: unknown, maxLength = CHAT_BODY_MAX): s
 	if (trimmed.length === 0) return null;
 	// Code points, like the zod max on the request body: an emoji counts once, not twice.
 	return [...trimmed].length > maxLength ? null : trimmed;
-}
-
-export function previewBody(body: string | null | undefined, max = 120): string {
-	if (typeof body !== 'string') return '';
-	const normalized = body.replace(/\s+/g, ' ').trim();
-	// Code points, not UTF-16 units: slicing mid-surrogate leaves a broken "�" at the cut.
-	const chars = Array.from(normalized);
-	return chars.length > max ? `${chars.slice(0, max - 1).join('')}…` : normalized;
 }
 
 export function filterPersistedMentionIds(

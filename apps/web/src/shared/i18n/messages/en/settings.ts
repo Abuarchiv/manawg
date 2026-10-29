@@ -189,7 +189,7 @@ export default {
 		confirmWord: 'DELETE',
 		dialogTitle: 'Delete account permanently?',
 		dialogBody:
-			'You are removed from all flats. If you are admin, the member who has been active longest takes over. Flats where you are the only member are deleted entirely. This cannot be undone.',
+			'You are removed from all flats. If you are admin, the longest-standing member with an account takes over. Flats where no other member has an account are deleted entirely, including their entries and balances. This cannot be undone.',
 		typeWord: 'Type {word}',
 		exportHint: 'If you need your flat data, export it first under “Data”.',
 		signInAgainBtn: 'Sign in again',

@@ -11,7 +11,13 @@ export function buildDuplicateKey(
 	paidByMemberId: string,
 	currency: string,
 ): string {
-	const key = [date.slice(0, 10), description.trim().toLowerCase(), amountCents, paidByMemberId];
+	// Both sides name the Berlin day the expense list shows; an undated OCR row carries an instant.
+	const key = [
+		berlinDayKey(new Date(date)),
+		description.trim().toLowerCase(),
+		amountCents,
+		paidByMemberId,
+	];
 	// EUR import keys already persisted in this four-part format; keep them stable.
 	return (currency === 'EUR' ? key : [...key, currency]).join('|');
 }

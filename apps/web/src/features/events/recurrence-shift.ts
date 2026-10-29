@@ -1,5 +1,5 @@
 import { berlinDayKey, berlinWallMinutes, instantAtBerlinWallTime } from '@/core/utils/berlin-day';
-import { MS_PER_DAY, parseTimestamp } from '@/core/utils/time';
+import { addMonthsFromAnchor, MS_PER_DAY, parseTimestamp } from '@/core/utils/time';
 import { formatRecurrenceRule, parseRecurrenceRule } from './event-recurrence-rule';
 
 /** The calendar day a series start or exception falls on: UTC for all-day series, else Berlin. */
@@ -11,7 +11,8 @@ function seriesDayKey(instant: Date, allDay: boolean): string {
  * The rule with every removed occurrence moved the way the series start moved. Exceptions keep
  * their calendar day relative to the start (a Berlin day for timed series, a UTC day for all-day
  * ones) and take the new start's time of day, so they also survive daylight-saving changes and a
- * switch between timed and all-day.
+ * switch between timed and all-day. MONTHLY and YEARLY exceptions keep their month offset from
+ * the start instead of a day offset, so they stay on an occurrence of the moved series.
  */
 export function withShiftedExclusions(
 	recurrence: string,
@@ -33,13 +34,23 @@ export function withShiftedExclusions(
 			dayOf(seriesDayKey(new Date(previous), previousAllDay))) /
 			MS_PER_DAY,
 	);
+	const monthly = rule.freq === 'MONTHLY' || rule.freq === 'YEARLY';
+	const nextAnchor = new Date(`${seriesDayKey(new Date(next), allDay)}T00:00:00Z`);
+	const monthsFrom = (key: string) => Number(key.slice(0, 4)) * 12 + Number(key.slice(5, 7));
+	const previousMonths = monthsFrom(seriesDayKey(new Date(previous), previousAllDay));
+	const shiftedDay = (instant: string) => {
+		const key = seriesDayKey(new Date(instant), previousAllDay);
+		if (monthly) {
+			const months = monthsFrom(key) - previousMonths;
+			return addMonthsFromAnchor(nextAnchor, nextAnchor.getUTCDate(), months)
+				.toISOString()
+				.slice(0, 10);
+		}
+		return new Date(dayOf(key) + dayShift * MS_PER_DAY).toISOString().slice(0, 10);
+	};
 	const nextWallMinutes = berlinWallMinutes(new Date(next));
 	const exdates = rule.exdates.map((instant) => {
-		const day = new Date(
-			dayOf(seriesDayKey(new Date(instant), previousAllDay)) + dayShift * MS_PER_DAY,
-		)
-			.toISOString()
-			.slice(0, 10);
+		const day = shiftedDay(instant);
 		const moved = allDay
 			? new Date(`${day}T${new Date(next).toISOString().slice(11)}`)
 			: instantAtBerlinWallTime(day, nextWallMinutes);

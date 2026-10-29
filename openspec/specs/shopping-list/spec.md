@@ -13,6 +13,10 @@ The update endpoint SHALL accept `name` and `quantity` in addition to `bought`, 
 - **WHEN** a member renames an item to the name of another open item
 - **THEN** the server SHALL answer `409 duplicate`
 
+#### Scenario: Item changed while the edit form is open
+- **WHEN** a housemate changes the item after a member opened its edit form, and the member saves
+- **THEN** the save SHALL carry the version the form was opened on, so the server answers `409` and the list reloads
+
 ### Requirement: Offline actions stay visible
 
 Unsynced offline creates and ticks SHALL be overlaid on any server state without duplicate rows. Rejected updates and entries of another WG or member SHALL be ignored. After a server delete, queued follow-up actions for that item SHALL be removed.
@@ -20,6 +24,8 @@ Unsynced offline creates and ticks SHALL be overlaid on any server state without
 #### Scenario: Create queued offline
 - **WHEN** a member adds an item offline and the list reloads before sync
 - **THEN** the item SHALL still be shown once
+
+A tick SHALL NOT be folded into a queued create that already went out once (its outcome is unknown); the member sees the pending-change notice instead.
 
 A tick or a bought create replayed after a delay SHALL keep the time it was made: the client sends it, the server clamps it to the offline replay window and stores it as the bought time.
 

@@ -155,6 +155,14 @@ export function eventDateForDisplay(iso: string, allDay: boolean): Date {
 		: date;
 }
 
+/** Items ordered by the day and time a viewer sees, all-day events ahead of timed ones of their day. */
+export function sortByDisplayDate<T extends { startsAt: string; allDay: boolean }>(
+	items: T[],
+): T[] {
+	const shown = (item: T) => eventDateForDisplay(item.startsAt, item.allDay).getTime();
+	return items.sort((a, b) => shown(a) - shown(b));
+}
+
 export function eventOverlapsCalendarDay(
 	event: Pick<EventOccurrence, 'startsAt' | 'endsAt' | 'allDay'>,
 	day: Date,

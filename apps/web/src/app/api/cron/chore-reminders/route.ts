@@ -105,7 +105,12 @@ export const GET = withCronLogging(
 			.where(
 				and(
 					lte(chores.nextDueAt, endOfDay),
-					gte(chores.nextDueAt, lookbackStart),
+					// An absence skips the chore on every run while it lasts, so the lookback
+					// also reaches back to the end of the assignee's last absence.
+					or(
+						gte(chores.nextDueAt, lookbackStart),
+						sql`exists (select 1 from ${memberAbsences} a where a.member_id = ${chores.assignedMemberId} and a.start_date <= ${endOfDay} and a.end_date >= ${lookbackStart})`,
+					),
 					isNotNull(chores.assignedMemberId),
 					or(isNull(chores.lastReminderAt), lte(chores.lastReminderAt, throttleCutoff)),
 					// Moved-out assignees are skipped entirely — the rotation

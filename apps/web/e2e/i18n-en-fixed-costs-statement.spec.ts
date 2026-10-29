@@ -29,7 +29,8 @@ const septemberExpense = {
 	currency: 'EUR',
 	description: 'Groceries',
 	category: 'groceries',
-	occurredAt: '2026-09-03T10:00:00.000Z',
+	// Two-digit day: with en-GB's four-letter "Sept" the date cell is at its widest.
+	occurredAt: '2026-09-14T10:00:00.000Z',
 	splits: [
 		{ debtorMemberId: FIXTURE_WG.memberId, amountCents: 1500, settledAt: null },
 		{ debtorMemberId: OTHER_MEMBER_ID, amountCents: 1500, settledAt: null },
@@ -129,6 +130,14 @@ test.describe('English fixed costs and statement', () => {
 				await expect(page.getByRole('heading', { name: 'Categories' })).toBeVisible();
 				await expect(page.getByText('Groceries').first()).toBeVisible();
 				await expect(page.getByText('€30.00').first()).toBeVisible();
+				const dateCell = page.getByRole('cell', { name: '14 Sept', exact: true });
+				await expect(dateCell).toBeVisible();
+				const dateLines = await dateCell.evaluate((cell) => {
+					const range = document.createRange();
+					range.selectNodeContents(cell);
+					return new Set([...range.getClientRects()].map((rect) => Math.round(rect.top))).size;
+				});
+				expect(dateLines, 'the expense date stays on one line').toBe(1);
 				await expect(page.getByRole('button', { name: 'Save as PDF' })).toBeVisible();
 				await expect(page.getByRole('button', { name: 'Previous month' })).toBeVisible();
 

@@ -125,7 +125,7 @@ export default {
 		choreFound: 'Server-Version gefunden. Prüfe Zuständigkeit und Fälligkeit vor dem Senden.',
 		choreGone: 'Die Aufgabe existiert serverseitig nicht mehr.',
 		choreDuplicate:
-			'Gleiche Putzaufgabe existiert schon. Intervall dort: alle {days} Tage. Prüfe vor dem Senden, ob es ein Duplikat wäre.',
+			'Gleiche Putzaufgabe existiert schon. Intervall dort: {days, plural, =1 {täglich} other {alle # Tage}}. Prüfe vor dem Senden, ob es ein Duplikat wäre.',
 		absenceDuplicate: 'Gleiche Abwesenheit existiert schon auf dem Server.',
 		expenseDuplicate:
 			'Gleiche Ausgabe mit gleichem Betrag existiert schon. Prüfe vor dem Senden, ob es ein Duplikat wäre.',

@@ -37,6 +37,14 @@ When an edit would change or remove the share of a member that is already marked
 - **WHEN** a member edits the amount of an expense that has a paid share
 - **THEN** the form SHALL state that the paid share cannot change and SHALL disable saving until the payment is reopened or the share is back at its paid amount
 
+### Requirement: Expense currency is fixed after recording
+
+An edit SHALL NOT change the currency of a recorded expense; the server ignores a currency in the edit request.
+
+#### Scenario: Currency sent with an edit
+- **WHEN** an edit request carries a currency different from the recorded one
+- **THEN** the expense SHALL keep its recorded currency
+
 ### Requirement: Expense list can be searched and filtered
 
 With six or more entries the list SHALL offer a text search over description and payer name and a segment "Alle", "Von mir bezahlt" and "Ich bin beteiligt". Filtering SHALL happen before week grouping and SHALL NOT change balances.
