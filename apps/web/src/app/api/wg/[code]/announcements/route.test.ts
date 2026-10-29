@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { mock, test } from 'node:test';
 import { z } from 'zod';
 import { TransactionAbort } from '@/core/db/transaction-abort';
+import { OFFLINE_REPLAY_MAX_AGE_MS } from '@/core/offline/replay-retention';
 
 const key = '11111111-1111-4111-8111-111111111111';
 const wgId = '22222222-2222-4222-8222-222222222222';
@@ -314,4 +315,30 @@ test('GET lists the board in one query, in the order the database returns', asyn
 		['pinned', 'recent', 'older'],
 	);
 	assert.equal(state.announcementQueries, 1);
+});
+
+test('a queued post keeps its tap time, clamped to the replay window', async () => {
+	const { state, post } = harness();
+	const tapAt = new Date(Date.now() - 2 * 60 * 60 * 1000);
+	assert.equal((await post(null, { createdAt: tapAt.toISOString() })).status, 200);
+	assert.equal(Number(state.created[0]?.createdAt), tapAt.getTime());
+
+	const stale = harness();
+	assert.equal((await stale.post(null, { createdAt: '2000-01-01T00:00:00.000Z' })).status, 200);
+	const stored = Number(stale.state.created[0]?.createdAt);
+	assert.ok(stored > Date.now() - OFFLINE_REPLAY_MAX_AGE_MS - 60_000);
+
+	const future = harness();
+	assert.equal((await future.post(null, { createdAt: '2999-01-01T00:00:00.000Z' })).status, 200);
+	assert.ok(Number(future.state.created[0]?.createdAt) <= Date.now());
+
+	const online = harness();
+	assert.equal((await online.post()).status, 200);
+	assert.equal('createdAt' in (online.state.created[0] ?? {}), false);
+});
+
+test('an unreadable createdAt is rejected', async () => {
+	const { state, post } = harness();
+	assert.equal((await post(null, { createdAt: 'yesterday' })).status, 400);
+	assert.equal(state.created.length, 0);
 });

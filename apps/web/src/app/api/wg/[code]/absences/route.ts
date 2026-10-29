@@ -14,6 +14,7 @@ import { readIdempotencyKey } from '@/core/idempotency-store';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { berlinDayKey, endOfBerlinDay, startOfBerlinDay } from '@/core/utils/berlin-day';
 import { ABSENCE_REASON_MAX } from '@/features/chores/chore-limits';
+import { isYearInRange } from '@/shared/lib/limits';
 
 type AbsenceCreateResponseBody = {
 	absence: {
@@ -31,10 +32,16 @@ const absenceCreateCodec = bodyCodec(
 		body !== null && typeof body === 'object' && 'absence' in body,
 );
 
+// Years outside the supported range would make the Berlin-day math throw.
+const absenceDateSchema = z
+	.string()
+	.datetime({ offset: true })
+	.refine((value) => isYearInRange(new Date(value)));
+
 const createAbsenceSchema = z.object({
 	memberId: z.string().uuid(),
-	startDate: z.string().datetime({ offset: true }),
-	endDate: z.string().datetime({ offset: true }),
+	startDate: absenceDateSchema,
+	endDate: absenceDateSchema,
 	reason: z.string().trim().max(ABSENCE_REASON_MAX).optional().nullable(),
 });
 

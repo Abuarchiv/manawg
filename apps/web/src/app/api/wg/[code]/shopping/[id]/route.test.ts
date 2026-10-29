@@ -494,3 +494,28 @@ test("non-admins cannot delete another member's item", async () => {
 		assert.equal(state.audits, 0);
 	}
 });
+
+test('a queued check-off keeps its tap time, clamped to the replay window', async () => {
+	const { patch, state } = harness();
+	const tapAt = new Date(Date.now() - 2 * 60 * 60 * 1000);
+	const response = await patch({
+		body: editBody({ bought: true, boughtAt: tapAt.toISOString() }),
+	});
+	assert.equal(response.status, 200);
+	assert.equal(Number(state.update?.boughtAt), tapAt.getTime());
+
+	const future = harness();
+	await future.patch({ body: editBody({ bought: true, boughtAt: '2999-01-01T00:00:00.000Z' }) });
+	assert.ok(Number(future.state.update?.boughtAt) <= Date.now());
+
+	const reopen = harness();
+	await reopen.patch({ body: editBody({ bought: false, boughtAt: tapAt.toISOString() }) });
+	assert.equal(reopen.state.update?.boughtAt, null);
+});
+
+test('an unreadable boughtAt is rejected', async () => {
+	const { patch, state } = harness();
+	const response = await patch({ body: editBody({ bought: true, boughtAt: 'gestern' }) });
+	assert.equal(response.status, 400);
+	assert.equal(state.update, null);
+});

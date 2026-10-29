@@ -59,8 +59,8 @@ export default {
 		shareAriaMovedOut:
 			'Anteil {name} in {currency, select, EUR {Euro} other {{currency}}}, ausgezogen. Anteil bleibt unverändert.',
 		zeroHint: 'Leer lassen oder {zero} für keinen Anteil.',
-		reopened:
-			'Der Anteil von {name} ({previous}) ist schon als bezahlt vermerkt und wird wegen der Änderung wieder geöffnet{removed, select, yes { (entfällt).} other { (neu {next}).}}',
+		settledShareLocked:
+			'Der Anteil von {name} ({previous}) ist schon als bezahlt vermerkt und kann sich nicht ändern{removed, select, yes { oder entfallen.} other { (neu wären {next}).}} Öffne die Zahlung erst wieder, dann kannst du ihn anpassen.',
 		participantsAria: 'Beteiligte Personen',
 		reviewAria: 'Anteile vor dem Speichern',
 		noShare: 'Kein Anteil',
@@ -166,6 +166,8 @@ export default {
 			aboPaused: 'Diese Fixkosten sind pausiert. Setze sie in den Fixkosten fort.',
 			recurringAdvanced:
 				'Diese Fixkosten wurden für diese Fälligkeit schon übernommen. Lade die Ausgaben neu und prüfe die Liste.',
+			recurringChanged:
+				'Diese Fixkosten wurden inzwischen geändert. Die Liste ist neu geladen: Prüfe Betrag und Aufteilung und buche dann erneut.',
 			memberNotInWg: 'Mindestens ein Mitglied ist nicht mehr in dieser WG.',
 			insertFailed: 'Prüfe die Ausgabenliste und versuche es erneut.',
 			splitInsertFailed:

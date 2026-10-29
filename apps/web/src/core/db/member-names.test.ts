@@ -37,19 +37,19 @@ test('a moved-out member with the name is renamed aside', async () => {
 		[{ name: 'Anna' }, { name: 'Ben' }],
 	]);
 	assert.equal(await releaseMemberName(tx, 'wg', 'Anna'), true);
-	assert.deepEqual(updates, [{ name: 'Anna (ausgezogen)' }]);
+	assert.deepEqual(updates, [{ name: 'Anna (2)' }]);
 });
 
 test('the moved-out name is numbered when taken and stays within the length limit', async () => {
 	const long = 'x'.repeat(80);
 	const { tx, updates } = fakeTx([
 		[{ id: 'm1', name: long, deactivatedAt: new Date() }],
-		[{ name: long }, { name: `${'x'.repeat(80 - ' (ausgezogen)'.length)} (ausgezogen)` }],
+		[{ name: long }, { name: `${'x'.repeat(80 - ' (2)'.length)} (2)` }],
 	]);
 	assert.equal(await releaseMemberName(tx, 'wg', long), true);
 	const renamed = String(updates[0]?.name);
 	assert.ok(renamed.length <= 80);
-	assert.match(renamed, /\(ausgezogen 2\)$/);
+	assert.match(renamed, / \(3\)$/);
 });
 
 test('an unused name is kept, a used one gets a number', async () => {

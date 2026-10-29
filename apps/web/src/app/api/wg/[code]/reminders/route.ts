@@ -297,6 +297,7 @@ export const POST = withWgRoute('reminders POST', async (req, { code }) => {
 				debtor: { id: debtor.id, authUserId: debtorAuthUserId },
 				creditor: { id: creditor.id, name: creditor.name },
 				amountCents: pair.amountCents,
+				currency,
 				oldestDebtAgeDays: inserted.oldestDebtAgeDays,
 			}),
 		);

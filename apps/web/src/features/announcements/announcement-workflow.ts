@@ -107,6 +107,20 @@ export function getMyOpenAnnouncements<
 	return items.filter((item) => item.status !== 'resolved' && item.myReactions.includes('take'));
 }
 
+/** Board order of the server: pinned posts first (latest pin on top), then newest first. */
+export function sortBoardAnnouncements<T extends { pinnedAt: string | null; createdAt: string }>(
+	items: readonly T[],
+): T[] {
+	return items.toSorted((a, b) => {
+		if (a.pinnedAt !== b.pinnedAt) {
+			if (!a.pinnedAt) return 1;
+			if (!b.pinnedAt) return -1;
+			return Date.parse(b.pinnedAt) - Date.parse(a.pinnedAt);
+		}
+		return Date.parse(b.createdAt) - Date.parse(a.createdAt);
+	});
+}
+
 function getNewAnnouncementCount(
 	currentItems: readonly { id: string }[],
 	remoteItems: readonly { id: string }[],

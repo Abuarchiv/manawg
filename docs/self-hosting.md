@@ -1,7 +1,5 @@
 # Self-hosting ManaWG
 
-Deutsche Fassung: [self-hosting.de.md](self-hosting.de.md)
-
 Most households do not need this: [app.manawg.com](https://app.manawg.com) is free and needs no
 setup. Self-host when you want the data on a machine you control.
 

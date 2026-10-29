@@ -29,13 +29,13 @@ The equal-split mode SHALL offer one checkbox per active member, all preselected
 - **WHEN** a member deselects one member and saves an equal split
 - **THEN** only the selected members SHALL receive shares
 
-### Requirement: Edits disclose reopened settlements
+### Requirement: Edits disclose locked settlements
 
-When an edit changes amount or split so that already paid shares are reopened or removed, the form SHALL show a notice before saving.
+When an edit would change or remove the share of a member that is already marked as paid, the form SHALL say so before saving, name the affected shares, and SHALL NOT offer the save, because the server refuses it. The payer's own share SHALL NOT count.
 
 #### Scenario: Paid share affected
 - **WHEN** a member edits the amount of an expense that has a paid share
-- **THEN** the form SHALL state that paid shares will be reopened
+- **THEN** the form SHALL state that the paid share cannot change and SHALL disable saving until the payment is reopened or the share is back at its paid amount
 
 ### Requirement: Expense list can be searched and filtered
 
@@ -59,7 +59,7 @@ Import SHALL skip a row only when an existing WG expense has the same key. Repea
 
 ### Requirement: Recurring expenses book once and stay controlled
 
-Recording a recurring expense SHALL advance its template on the server within the booking transaction. Advancing without a booked expense for the current due date SHALL fail with `409 recurring_expense_not_booked` and no audit entry. Pause, edit and delete SHALL be limited to the creator or an admin. Booking SHALL be offered only to members the server accepts. A template skipped because its member moved out SHALL produce one bulletin notice on the first run within 25 hours of the due date. The form SHALL announce how many past bookings a past start date will create.
+Recording a recurring expense SHALL advance its template on the server within the booking transaction. A booking that carries the template version it was built from SHALL be refused with `409 recurring_expense_changed` when the template was edited since, and a booking without that version SHALL be accepted unchanged. Advancing without a booked expense for the current due date SHALL fail with `409 recurring_expense_not_booked` and no audit entry. Pause, edit and delete SHALL be limited to the creator or an admin. Booking SHALL be offered only to members the server accepts. A template skipped because its member moved out SHALL produce one bulletin notice on the first run within 25 hours of the due date. The form SHALL announce how many past bookings a past start date will create.
 
 #### Scenario: Advance without booking
 - **WHEN** a client asks to advance a template that has no expense for its current due date

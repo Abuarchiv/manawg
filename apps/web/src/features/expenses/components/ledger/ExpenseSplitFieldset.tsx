@@ -23,7 +23,10 @@ import type { Member } from '@/components/wg/WgContextProvider';
 import { formatEuroInput, parseEuroAmount } from '@/core/utils/amount';
 import { formatEuroCents } from '@/core/utils/money';
 import type { SplitMode } from '@/features/expenses/expense-form-draft';
-import { type ReopenedShare, remainderCandidates } from '@/features/expenses/expense-split-input';
+import {
+	type ChangedSettledShare,
+	remainderCandidates,
+} from '@/features/expenses/expense-split-input';
 import type { ExpenseSplitShare } from '@/features/expenses/expense-types';
 import { EqualParticipantsPicker } from './EqualParticipantsPicker';
 import { ManualSplitSummary } from './ManualSplitSummary';
@@ -41,7 +44,7 @@ interface ExpenseSplitFieldsetProps {
 	participantIds: string[] | null;
 	setParticipantIds: (ids: string[] | null) => void;
 	/** Paid shares the current edit would reopen. */
-	reopenedShares: ReopenedShare[];
+	changedSettledShares: ChangedSettledShare[];
 	splitsError: string | undefined;
 	onClearSplitsError: () => void;
 	amountStr: string;
@@ -65,7 +68,7 @@ export function ExpenseSplitFieldset({
 	setManualSplits,
 	participantIds,
 	setParticipantIds,
-	reopenedShares,
+	changedSettledShares,
 	splitsError,
 	onClearSplitsError,
 	amountStr,
@@ -213,12 +216,12 @@ export function ExpenseSplitFieldset({
 					currency={currency}
 				/>
 			)}
-			{reopenedShares.length > 0 && (
-				<Alert>
+			{changedSettledShares.length > 0 && (
+				<Alert variant="destructive">
 					<AlertDescription className="flex flex-col gap-1">
-						{reopenedShares.map((share) => (
+						{changedSettledShares.map((share) => (
 							<span key={share.debtorMemberId}>
-								{t('reopened', {
+								{t('settledShareLocked', {
 									name: memberName(share.debtorMemberId),
 									previous: formatEuroCents(share.previousCents, currency, { locale }),
 									removed: share.nextCents === null ? 'yes' : 'other',

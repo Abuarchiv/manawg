@@ -25,7 +25,7 @@ import {
 import { expenseFormTitle } from '@/features/expenses/expense-form-mode';
 import {
 	payerOptions,
-	settledSharesAffectedByEdit,
+	settledSharesChangedByEdit,
 	splitCandidates,
 } from '@/features/expenses/expense-split-input';
 import { useExpenseForm } from '@/features/expenses/hooks/use-expense-form';
@@ -273,9 +273,9 @@ export function useExpensesPage() {
 	const editedExpense = form.editingExpense
 		? expenses.find((expense) => expense.id === form.editingExpense?.id)
 		: undefined;
-	const reopenedShares =
+	const changedSettledShares =
 		editedExpense && splitPreview?.ok
-			? settledSharesAffectedByEdit(
+			? settledSharesChangedByEdit(
 					editedExpense.splits,
 					splitPreview.splits,
 					editedExpense.paidByMemberId,
@@ -365,7 +365,7 @@ export function useExpensesPage() {
 		// moved-out member has to be offered anyway.
 		selectableSplitMembers: splitCandidates(members, form.splitMode, form.manualSplits),
 		splitPreview,
-		reopenedShares,
+		changedSettledShares,
 		formCurrency,
 		formTitle,
 		saving,

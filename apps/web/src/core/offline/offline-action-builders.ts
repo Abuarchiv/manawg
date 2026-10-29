@@ -51,6 +51,10 @@ interface QueuedChoreInput extends QueuedIdentityInput {
 	recurrenceType?: 'days' | 'months';
 	intervalDays: number;
 	assignedMemberId: string | null;
+	/** Due date fixed at creation; a replay must not recompute it from sync time. */
+	nextDueAt?: string;
+	/** Unclamped cadence start; omitted when the first due date was picked by hand. */
+	anchorAt?: string;
 	now?: number;
 }
 
@@ -73,6 +77,7 @@ interface QueuedExpenseInput extends QueuedIdentityInput {
 	imageUrl?: string | null;
 	recurringExpenseId?: string;
 	expectedRecurringNextDueAt?: string;
+	expectedRecurringUpdatedAt?: string;
 	now?: number;
 }
 
@@ -212,6 +217,8 @@ export function createQueuedChore(input: QueuedChoreInput): OfflineAction {
 			intervalDays: input.intervalDays,
 			recurrenceType: input.recurrenceType ?? 'days',
 			assignedMemberId: input.assignedMemberId,
+			...(input.nextDueAt && { nextDueAt: input.nextDueAt }),
+			...(input.anchorAt && { anchorAt: input.anchorAt }),
 		},
 		now,
 		input.idempotencyKey,
@@ -255,6 +262,9 @@ export function createQueuedExpense(input: QueuedExpenseInput): OfflineAction {
 			...(input.recurringExpenseId ? { recurringExpenseId: input.recurringExpenseId } : {}),
 			...(input.expectedRecurringNextDueAt
 				? { expectedRecurringNextDueAt: input.expectedRecurringNextDueAt }
+				: {}),
+			...(input.expectedRecurringUpdatedAt
+				? { expectedRecurringUpdatedAt: input.expectedRecurringUpdatedAt }
 				: {}),
 		},
 		now,

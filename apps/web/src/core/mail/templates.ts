@@ -94,6 +94,7 @@ export function renderReminderMail(input: {
 	shareCode: string;
 	creditorName: string;
 	amountCents: number;
+	currency?: string;
 	oldestDebtAgeDays: number;
 	items: ReadonlyArray<{ description: string; date: string; cents: number }>;
 	unsubscribeUrl: string;
@@ -101,7 +102,7 @@ export function renderReminderMail(input: {
 }): RenderedMail {
 	const locale = input.locale ?? DEFAULT_LOCALE;
 	const t = serverT(locale, 'mail');
-	const money = (cents: number) => formatEuroCents(cents, 'EUR', { locale });
+	const money = (cents: number) => formatEuroCents(cents, input.currency, { locale });
 	const amount = money(input.amountCents);
 	const creditor = { creditor: input.creditorName };
 	const blocks: MailBlock[] = [

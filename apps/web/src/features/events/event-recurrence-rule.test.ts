@@ -80,3 +80,15 @@ test('a series with the most exceptions still fits the edit schema', () => {
 	}
 	assert.ok(rule.length <= EVENT_RECURRENCE_MAX, `${rule.length} characters`);
 });
+
+test('a weekly weekday series with a long interval still reaches a window just before its next block', () => {
+	const occurrences = expandRecurrence(
+		{ ...weekly, recurrence: 'FREQ=WEEKLY;BYDAY=MO,WE;INTERVAL=100' },
+		'2028-08-28T00:00:00.000Z',
+		'2028-09-10T00:00:00.000Z',
+	);
+	assert.deepEqual(
+		occurrences.map((occurrence) => occurrence.startsAt.slice(0, 10)),
+		['2028-09-04', '2028-09-06'],
+	);
+});

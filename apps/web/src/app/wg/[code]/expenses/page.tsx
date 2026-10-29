@@ -78,7 +78,7 @@ export default function ExpensesPage() {
 					notice={page.actionNotice}
 					shareCode={wg.shareCode}
 					currency={page.formCurrency}
-					reopenedShares={page.reopenedShares}
+					changedSettledShares={page.changedSettledShares}
 					previewSplits={page.splitPreview?.ok ? page.splitPreview.splits : null}
 					saving={page.saving}
 					recurringTemplateCount={recurringExpenses.length}

@@ -19,3 +19,17 @@ test('German unit words keep matching', () => {
 		quantity: '2 Rollen',
 	});
 });
+
+test('further English and German unit words stay in the quantity', () => {
+	assert.deepEqual(parseShoppingInput('2 liters milk'), { name: 'milk', quantity: '2 liters' });
+	assert.deepEqual(parseShoppingInput('2 lb flour'), { name: 'flour', quantity: '2 lb' });
+	assert.deepEqual(parseShoppingInput('3 bags rice'), { name: 'rice', quantity: '3 bags' });
+	assert.deepEqual(parseShoppingInput('2 Gläser Gurken'), {
+		name: 'Gurken',
+		quantity: '2 Gläser',
+	});
+	assert.deepEqual(parseShoppingInput('1 Bund Radieschen'), {
+		name: 'Radieschen',
+		quantity: '1 Bund',
+	});
+});

@@ -96,13 +96,13 @@ export default {
 	eventUpcoming: {
 		title: 'Termin morgen',
 		allDay: 'Morgen in {wgName}: „{title}“ am {when}.',
-		timed: 'Morgen in {wgName}: „{title}“ um {when}.',
+		timed: 'Morgen in {wgName}: „{title}“ am {when}.',
 	},
 	eventToday: {
 		title: 'Termin heute',
 		allDay: 'Heute in {wgName}: „{title}“ ist ganztägig.',
 		ongoing: 'Heute in {wgName}: „{title}“ läuft noch.',
-		timed: 'Heute in {wgName}: „{title}“ um {when}.',
+		timed: 'Heute in {wgName}: „{title}“ am {when}.',
 	},
 	lowStock: {
 		title: 'Vorrat bald leer',

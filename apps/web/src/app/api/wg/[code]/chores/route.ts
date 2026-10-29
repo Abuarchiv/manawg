@@ -16,6 +16,7 @@ import type { NotificationWarning } from '@/core/notifications/notification-warn
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { berlinDayKey, startOfBerlinDay } from '@/core/utils/berlin-day';
 import { MS_PER_DAY } from '@/core/utils/time';
+import { isRecurringAnchorAllowed } from '@/core/validators/recurring-due-date';
 import { computeOpenGapsByMember } from '@/features/chores/chore-fairness';
 import {
 	CHORE_INTERVAL_MAX_DAYS,
@@ -26,6 +27,9 @@ import {
 } from '@/features/chores/chore-limits';
 import { computeNextDueAt } from '@/features/chores/chore-recurrence';
 import { choreDueAtSchema } from '@/features/chores/server/chore-due-at-schema';
+
+/** Longest monthly rhythm plus slack for month-length clamping. */
+const CHORE_ANCHOR_MAX_LEAD_DAYS = CHORE_INTERVAL_MAX_MONTHS * 31 + 1;
 
 type ChoreCreateResponseBody = { chore: unknown; warning: NotificationWarning };
 
@@ -45,6 +49,8 @@ const createChoreSchema = z
 			.default('days'),
 		assignedMemberId: z.string().uuid().optional().nullable(),
 		nextDueAt: choreDueAtSchema.optional(),
+		/** Unclamped cadence start of a chore queued offline; sent with its fixed first due date. */
+		anchorAt: z.string().datetime({ offset: true }).optional(),
 	})
 	.superRefine((data, ctx) => {
 		const cap =
@@ -149,6 +155,7 @@ export const POST = withWgRoute('chores POST', async (req, { code }) => {
 			recurrenceType: 'recurrence_type_invalid',
 			assignedMemberId: 'member_id_invalid',
 			nextDueAt: 'due_date_invalid',
+			anchorAt: 'due_date_invalid',
 		},
 	});
 	if (!parsed.ok) return parsed.response;
@@ -159,7 +166,17 @@ export const POST = withWgRoute('chores POST', async (req, { code }) => {
 		recurrenceType,
 		assignedMemberId = null,
 		nextDueAt: nextDueAtStr,
+		anchorAt: anchorAtStr,
 	} = parsed.data;
+	if (
+		anchorAtStr !== undefined &&
+		!(
+			nextDueAtStr &&
+			isRecurringAnchorAllowed(anchorAtStr, nextDueAtStr, CHORE_ANCHOR_MAX_LEAD_DAYS)
+		)
+	) {
+		return badRequest('due_date_invalid');
+	}
 	const createdAt = new Date();
 	const nextDueAt = nextDueAtStr
 		? new Date(nextDueAtStr)
@@ -168,7 +185,7 @@ export const POST = withWgRoute('chores POST', async (req, { code }) => {
 			computeNextDueAt(createdAt, intervalDays, createdAt, recurrenceType);
 	// Store the unclamped cadence anchor: a monthly chore created on 31.01 is
 	// first due 28.02 but must keep day 31 for 31.03, 30.04, …
-	const anchorAt = nextDueAtStr ? nextDueAt : createdAt;
+	const anchorAt = anchorAtStr ? new Date(anchorAtStr) : nextDueAtStr ? nextDueAt : createdAt;
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
 	const wg = auth.wg;
@@ -253,7 +270,12 @@ export const POST = withWgRoute('chores POST', async (req, { code }) => {
 		},
 	});
 	let warning: NotificationWarning = null;
-	if (assignedMemberId && nextDueAt.getTime() <= Date.now() + MS_PER_DAY) {
+	// Assigning a chore to yourself needs no push; handing a due chore to someone else does.
+	if (
+		assignedMemberId &&
+		assignedMemberId !== member.memberId &&
+		nextDueAt.getTime() <= Date.now() + MS_PER_DAY
+	) {
 		({ warning } = await dispatchNotificationSafely({
 			wg,
 			event: 'chore.due',

@@ -131,6 +131,21 @@ test('reminder mail explains items that do not add up to the netted amount', () 
 	assert.ok(renderReminderMail({ ...input, amountCents: 1000 }).text.includes('verrechnet'));
 });
 
+test('reminder mail formats every amount in the reminder currency', () => {
+	const mail = renderReminderMail({
+		wgName: 'Kastanienallee',
+		shareCode: 'KST48210',
+		creditorName: 'Jonas',
+		amountCents: 1200,
+		currency: 'CHF',
+		oldestDebtAgeDays: 3,
+		items: [{ description: 'Fondue', date: '25.09.', cents: 1200 }],
+		unsubscribeUrl: `${APP_ORIGIN}/api/email/unsubscribe?t=y`,
+	});
+	assert.ok(mail.subject.includes('CHF'), mail.subject);
+	assert.ok(!mail.text.includes('€'), mail.text);
+});
+
 const GERMAN_WORDS =
 	/\b(Einladung|Erinnerung|Konto|Dein|Deine|Abbestellen|Einstellungen|ausgleichen)\b/;
 

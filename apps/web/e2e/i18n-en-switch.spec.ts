@@ -12,7 +12,7 @@ import {
 } from './support/helpers';
 import { expectNoHorizontalOverflow, setEnglishLocale } from './support/i18n';
 
-const GROUP = 'Sprache / Language';
+const GROUP = /^(Sprache|Language)$/;
 const SKIP_LINK = 'a.skip-link';
 
 const switchGroup = (page: Page) => page.getByRole('group', { name: GROUP });

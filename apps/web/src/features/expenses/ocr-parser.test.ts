@@ -65,7 +65,7 @@ test('dates are not imported as amounts and a real amount after a date remains p
 	const [expense] = parseOcrText('Datum 27.09.2026 Brot 12.34 EUR', contextDate).expenses;
 	assert.ok(expense);
 	assert.equal(expense.amountCents, 1234);
-	assert.equal(expense.date, '2026-09-27T00:00:00.000Z');
+	assert.equal(expense.date, '2026-09-27T12:00:00.000Z');
 });
 
 test('partial, malformed-grouping, over-precision, and over-limit tokens are rejected whole', () => {

@@ -104,6 +104,8 @@ export interface ShoppingCreateInput {
 	name: string;
 	quantity: string | null;
 	bought: boolean;
+	/** When the item was ticked off, if the client reported it; defaults to the insert time. */
+	boughtAt?: Date | undefined;
 }
 
 export async function withShoppingCreatePostCommitFallback(
@@ -134,7 +136,7 @@ export async function insertShoppingItem(
 			addedByMemberId: input.addedByMemberId,
 			name: input.name,
 			quantity: input.quantity,
-			boughtAt: input.bought ? new Date() : null,
+			boughtAt: input.bought ? (input.boughtAt ?? new Date()) : null,
 			boughtByMemberId: input.bought ? input.addedByMemberId : null,
 		})
 		.returning();

@@ -19,7 +19,7 @@ import {
 import { readJsonLimited } from '@/core/http/read-json';
 import { readIdempotencyKey } from '@/core/idempotency-store';
 import { logApiError } from '@/core/infra/observability';
-import { OFFLINE_REPLAY_MAX_AGE_MS } from '@/core/offline/replay-retention';
+import { clampTapTime } from '@/core/offline/replay-retention';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { startOfBerlinDay } from '@/core/utils/berlin-day';
 import { getAbsentMemberIds } from '@/features/chores/absence';
@@ -55,14 +55,6 @@ type CompletionPlan = {
 	nextAssigned: string | null;
 	effectiveAnchor: Date;
 };
-
-/**
- * The tap time the client reports, clamped to the offline replay window so a queued completion
- * keeps its real time but a wrong device clock cannot reach into the future or the far past.
- */
-function clampTapTime(tapAt: Date, now: number): Date {
-	return new Date(Math.min(now, Math.max(now - OFFLINE_REPLAY_MAX_AGE_MS, tapAt.getTime())));
-}
 
 /**
  * The client sends the occurrence it completed. Queued actions that carry only the chore id

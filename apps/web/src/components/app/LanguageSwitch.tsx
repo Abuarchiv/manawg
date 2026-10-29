@@ -1,11 +1,10 @@
 'use client';
 
+import { usePathname } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { hasSessionCookie } from '@/core/auth/session-hint';
 import { useOnlineStatus } from '@/core/hooks/use-online-status';
-import { safeLocalStorage } from '@/core/utils/browser';
 import {
 	clearLocaleCookie,
 	deviceLocale,
@@ -15,16 +14,13 @@ import {
 	localeCookie,
 } from '@/shared/i18n/locale';
 import { cn } from '@/shared/lib/cn';
+import { saveAccountLocale, syncAccountLocale } from './account-locale';
 
-// Endonyms are never translated. The group label names both languages so it reads in either.
-const GROUP_LABEL = 'Sprache / Language'; // i18n-ignore bilingual label of the language group
+// Endonyms are never translated.
 const OPTIONS: ReadonlyArray<{ value: Locale; label: string }> = [
 	{ value: 'de', label: 'Deutsch' },
 	{ value: 'en', label: 'English' },
 ];
-/** The locale last stored on the account from this device, so the sync runs once per change. */
-const SYNCED_KEY = 'manawg:locale-synced';
-
 type Choice = Locale | 'system';
 
 /** No cookie means the device language decides, like the theme's `system`. */
@@ -38,22 +34,6 @@ function subscribeChoice(listener: () => void) {
 	return () => {
 		choiceListeners.delete(listener);
 	};
-}
-
-/**
- * Stores the language on the account (push and mail), best effort because rendering only needs
- * the cookie.
- */
-async function saveAccountLocale(locale: Locale): Promise<void> {
-	if (!hasSessionCookie()) return;
-	const res = await fetch('/api/account', {
-		method: 'PATCH',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ locale }),
-	}).catch(() => null);
-	// An unread body keeps the request open in Chromium, so the page never settles.
-	await res?.text().catch(() => undefined);
-	if (res?.ok) safeLocalStorage()?.setItem(SYNCED_KEY, locale);
 }
 
 /**
@@ -73,16 +53,17 @@ async function applyChoice(next: Choice, current: string): Promise<void> {
 }
 
 /**
- * While the device language decides, keeps the account language (push and mail) in step with it,
- * e.g. for accounts from before English existed or after switching devices.
+ * Keeps the account language (push and mail) in step with the language shown, e.g. for accounts
+ * from before English existed, after switching devices, or after a choice made signed out. The
+ * path dependency retries after a sign-in that did not reload the page.
  */
 export function DeviceLocaleSync() {
 	const current = useLocale();
+	const pathname = usePathname();
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the path only re-triggers the sync.
 	useEffect(() => {
-		if (!isLocale(current) || readChoice() !== 'system') return;
-		if (safeLocalStorage()?.getItem(SYNCED_KEY) === current) return;
-		void saveAccountLocale(current);
-	}, [current]);
+		if (isLocale(current)) void syncAccountLocale(current);
+	}, [current, pathname]);
 	return null;
 }
 
@@ -109,7 +90,7 @@ export function LanguageSwitch({ variant }: { variant: 'segmented' | 'links' }) 
 				variant="segmented"
 				className="w-full"
 				value={choice ? [choice] : []}
-				aria-label={GROUP_LABEL}
+				aria-label={t('language')}
 				disabled={disabled}
 				onValueChange={(values) => choose(values[0])}
 			>
@@ -125,7 +106,7 @@ export function LanguageSwitch({ variant }: { variant: 'segmented' | 'links' }) 
 		);
 	}
 	return (
-		<fieldset aria-label={GROUP_LABEL} className="flex min-w-0 flex-wrap justify-center">
+		<fieldset aria-label={t('language')} className="flex min-w-0 flex-wrap justify-center">
 			{OPTIONS.map(({ value, label }) => (
 				<button
 					key={value}

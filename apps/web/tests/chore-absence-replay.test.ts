@@ -4,6 +4,7 @@ import { TransactionAbort } from '../src/core/db/transaction-abort.ts';
 
 const wgId = '989ac820-58b7-431f-9c65-28721264f333';
 const memberId = '7d898f9e-5ad7-4f5d-abed-8c3e99a76973';
+const otherMemberId = '3c0f2c8e-6b1d-4c53-9d0e-0a6f1f2b7a11';
 const key = 'a597a363-9e4c-4df3-9946-a76375583cd4';
 const nextId = '910a55a3-1a79-450d-9922-38a0de395daa';
 // biome-ignore lint/suspicious/noExplicitAny: fake rows carry arbitrary shapes
@@ -260,7 +261,7 @@ function harness(kind: 'chore' | 'absence', bodyOverride?: Row) {
 					title: 'Bad putzen',
 					intervalDays: 7,
 					recurrenceType: 'days',
-					assignedMemberId: memberId,
+					assignedMemberId: otherMemberId,
 					nextDueAt: new Date(Date.now() + 1_000).toISOString(),
 				}
 			: { memberId, startDate: '2026-09-24T00:00:00+02:00', endDate: '2026-09-24T23:59:59+02:00' };
@@ -327,6 +328,18 @@ for (const kind of ['chore', 'absence'] as const) {
 	});
 }
 
+test('chore create assigned to the creator sends no push', async () => {
+	const { post, request, state } = harness('chore', {
+		title: 'Bad putzen',
+		assignedMemberId: memberId,
+		nextDueAt: new Date(Date.now() + 1_000).toISOString(),
+	});
+	const response = await post(request(), { code: 'MTE8PZAT' });
+	assert.equal(response.status, 200);
+	assert.equal(state.rows.length, 1);
+	assert.equal(state.notifications, 0);
+});
+
 test('absence create rejects an end before the start on the same Berlin day', async () => {
 	const { post, request, state } = harness('absence', {
 		memberId,
@@ -339,3 +352,16 @@ test('absence create rejects an end before the start on the same Berlin day', as
 	assert.equal(state.rows.length, 0);
 	assert.equal(state.audits, 0);
 });
+
+for (const [startDate, endDate] of [
+	['0050-01-01T00:00:00Z', '0050-01-02T00:00:00Z'],
+	['2026-09-24T00:00:00Z', '9999-12-31T23:30:00Z'],
+]) {
+	test(`absence create rejects dates outside the supported years (${startDate})`, async () => {
+		const { post, request, state } = harness('absence', { memberId, startDate, endDate });
+		const response = await post(request(), { code: 'MTE8PZAT' });
+		assert.equal(response.status, 400);
+		assert.deepEqual(await response.json(), { error: 'date_range_invalid' });
+		assert.equal(state.rows.length, 0);
+	});
+}

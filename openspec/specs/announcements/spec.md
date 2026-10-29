@@ -29,6 +29,14 @@ Accepting a resolved post SHALL answer `409 announcement_resolved` and the clien
 - **WHEN** an empty PATCH arrives
 - **THEN** no `updatedAt` or audit entry SHALL be written
 
+### Requirement: Queued posts keep their writing time
+
+A post replayed from the offline queue SHALL be stored with the time it was written: the client sends it, the server clamps it to the offline replay window and uses it as the creation time.
+
+#### Scenario: Post synced days later
+- **WHEN** a member writes a post offline and it syncs two days later
+- **THEN** the post SHALL be dated at the time of writing and sort by that time
+
 ### Requirement: Drafts and reloads stay calm
 
 Cancel and save SHALL clear drafts, and only non-empty drafts differing from the original SHALL be restored. Actions on existing cards SHALL reload in the background so the board does not jump. Euro amounts SHALL be detected before or after the number (€, Euro, EUR), not inside words such as "europäisch".

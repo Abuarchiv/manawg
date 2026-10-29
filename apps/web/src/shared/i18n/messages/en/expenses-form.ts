@@ -62,8 +62,8 @@ export default {
 		shareAriaMovedOut:
 			'Share of {name} in {currency, select, EUR {euros} other {{currency}}}, moved out. Share stays unchanged.',
 		zeroHint: 'Leave empty or enter {zero} for no share.',
-		reopened:
-			'The share of {name} ({previous}) is already marked as paid and will be reopened because of this change{removed, select, yes { (no longer applies).} other { (new {next}).}}',
+		settledShareLocked:
+			'The share of {name} ({previous}) is already marked as paid and cannot change{removed, select, yes { or be removed.} other { (it would be {next}).}} Reopen the payment first, then you can adjust it.',
 		participantsAria: 'People involved',
 		reviewAria: 'Shares before saving',
 		noShare: 'No share',
@@ -162,6 +162,8 @@ export default {
 			aboPaused: 'This fixed cost is paused. Resume it under Fixed costs.',
 			recurringAdvanced:
 				'This fixed cost was already recorded for this due date. Reload the expenses and check the list.',
+			recurringChanged:
+				'This fixed cost has been changed in the meantime. The list has been reloaded: check the amount and split, then book it again.',
 			memberNotInWg: 'At least one member is no longer in this flat.',
 			insertFailed: 'Check the expense list and try again.',
 			splitInsertFailed:

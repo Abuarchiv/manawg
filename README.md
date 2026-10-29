@@ -86,7 +86,7 @@ docker compose up -d
 
 The first start builds the app image, which takes about ten minutes. Then open
 [http://localhost](http://localhost) and create an account; the sign-in code arrives in Mailpit at
-[http://localhost:8025](http://localhost:8025). The [self-hosting guide](docs/self-hosting.md) ([German](docs/self-hosting.de.md))
+[http://localhost:8025](http://localhost:8025). The [self-hosting guide](docs/self-hosting.md)
 covers a public instance with your own domain and HTTPS, mail, updates, backups, and the
 alternative setup on Vercel and Supabase.
 

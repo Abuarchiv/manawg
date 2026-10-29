@@ -47,6 +47,20 @@ test('event notification times use Europe/Berlin in summer and winter', () => {
 	});
 });
 
+test('German timed event reminders never put a date into an "um" slot', () => {
+	withEnv({ TZ: 'UTC' }, () => {
+		for (const event of ['event.upcoming', 'event.today'] as const) {
+			const { body } = formatNotificationMessage(event, {
+				wgName: 'WG',
+				title: 'Plenum',
+				startsAt: '2026-11-03T18:00:00.000Z',
+			});
+			assert.match(body, /am 03\.11\., 19:00/);
+			assert.doesNotMatch(body, /um \d{2}\.\d{2}\./);
+		}
+	});
+});
+
 test('all-day event pushes show the Berlin date without a clock time', () => {
 	withEnv({ TZ: 'UTC' }, () => {
 		// All-day events are stored at Berlin midnight (22:00/23:00 UTC the day before).

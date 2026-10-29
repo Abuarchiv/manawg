@@ -76,6 +76,7 @@ export function useExpenseSubmit(
 		key: string;
 		splits: DebtorShare[];
 		expectedRecurringNextDueAt?: string;
+		expectedRecurringUpdatedAt?: string;
 	} | null>(null);
 
 	async function submit(): Promise<void> {
@@ -142,6 +143,14 @@ export function useExpenseSubmit(
 				? pendingRequest.expectedRecurringNextDueAt
 				: (queuedRecurringNextDueAt ?? recurringTemplateForCreate?.nextDueAt)
 			: undefined;
+		// Only a booking taken straight from the loaded template knows the version it was built from.
+		const expectedRecurringUpdatedAt = recurringSourceId
+			? reusePendingRequest && pendingRequest
+				? pendingRequest.expectedRecurringUpdatedAt
+				: queuedRecurringNextDueAt
+					? undefined
+					: recurringTemplateForCreate?.updatedAt
+			: undefined;
 		if (!isEdit && recurringSourceId && !expectedRecurringNextDueAt) {
 			notify.error(t({ key: 'expenses-form.notices.templateUnavailable' }));
 			return;
@@ -170,7 +179,11 @@ export function useExpenseSubmit(
 
 		const recurringSource =
 			recurringSourceId && expectedRecurringNextDueAt
-				? { recurringExpenseId: recurringSourceId, expectedRecurringNextDueAt }
+				? {
+						recurringExpenseId: recurringSourceId,
+						expectedRecurringNextDueAt,
+						...(expectedRecurringUpdatedAt ? { expectedRecurringUpdatedAt } : {}),
+					}
 				: {};
 		// Only a changed day is sent: an unchanged one keeps the real time of day.
 		const previousExpense = isEdit
@@ -203,6 +216,7 @@ export function useExpenseSubmit(
 				key: idempotencyKey,
 				splits,
 				...(expectedRecurringNextDueAt ? { expectedRecurringNextDueAt } : {}),
+				...(expectedRecurringUpdatedAt ? { expectedRecurringUpdatedAt } : {}),
 			};
 		}
 		const url = isEdit
@@ -308,6 +322,8 @@ export function useExpenseSubmit(
 			pending.end(optimisticId);
 			form.setFormError(msg);
 			finishSubmitting();
+			// The template changed under the booking: show its current state.
+			if (res.error === 'recurring_expense_changed') void reload();
 			return;
 		}
 
