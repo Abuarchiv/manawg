@@ -3,6 +3,7 @@
 import { Download, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useEffect, useRef, useState } from 'react';
+import { richArgument } from '@/components/entry/rich-argument';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -25,9 +26,8 @@ import {
 
 type Platform = 'desktop' | 'android' | 'ios' | 'unknown';
 
-// A plain ICU argument takes an element at runtime; the typed `rich` signature lists only tags.
 const bold = (text: string) =>
-	(<span className="font-medium text-foreground">{text}</span>) as unknown as string;
+	richArgument(<span className="font-medium text-foreground">{text}</span>);
 
 type Props = {
 	variant?: 'primary' | 'outline';

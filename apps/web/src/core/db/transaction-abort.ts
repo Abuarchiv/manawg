@@ -6,11 +6,8 @@
  * would have to guess which one it caught, and guessing wrong means reporting
  * "everything fine" after a failed write.
  *
- * Deliberately kept in its own module, free of driver imports: `transaction.ts`
- * pulls in both postgres drivers, and anything that only needs to recognise an
- * abort — a route test, an error mapper — should not have to load them. The
- * same split already exists for `member-header.ts` versus `api-auth.ts`, and a
- * test enforces it there for exactly this reason.
+ * Lives in its own module so callers that only need to recognise an abort do
+ * not load the postgres drivers `transaction.ts` imports.
  */
 export class TransactionAbort extends Error {
 	readonly code: string;

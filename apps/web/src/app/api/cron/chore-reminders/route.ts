@@ -15,10 +15,9 @@ import { withCronLogging } from '@/core/infra/observability';
 import { dispatchNotification } from '@/core/notifications/notification-dispatch';
 import { endOfBerlinDay, startOfBerlinDay } from '@/core/utils/berlin-day';
 
-// Minimum gap between reminder dispatches for the same chore. The cron runs
-// daily at 08:00, so 18h guarantees we never re-fire within the same day even
-// if the cron is re-invoked (manual replay, retry, drift). Bumped instead of
-// "calendar day" to remain robust against TZ/DST/replay edge cases.
+// Minimum gap between reminders for one chore. The cron runs daily at 08:00; 18 h keeps a
+// manual replay, retry or clock drift from firing twice on the same day without depending on
+// calendar-day (TZ/DST) maths.
 const REMINDER_THROTTLE_MS = 18 * 60 * 60 * 1000;
 const REMINDER_CLAIM_SCOPE = 'chore-reminders';
 // Chores overdue for longer than this are not reminded: without a lower
@@ -41,9 +40,6 @@ interface DueChore {
 	wgName: string;
 	shareCode: string;
 }
-
-// An unassigned chore (its assignee moved out) goes to every member who wants chore pushes.
-type PendingChore = DueChore;
 
 function reminderClaimKey(choreId: string, startOfDay: Date): string {
 	return `${choreId}:${startOfDay.toISOString()}`;
@@ -134,7 +130,7 @@ export const GET = withCronLogging(
 			.orderBy(sql`${chores.lastReminderAt} asc nulls first`, asc(chores.nextDueAt), asc(chores.id))
 			.limit(REMINDER_CANDIDATE_LIMIT)) as DueChore[];
 
-		// Nobody is answerable for these, so without a reminder they would simply stay overdue.
+		// Nobody is answerable for these, so without a reminder they would stay overdue.
 		// No lookback: the chore will not rotate on its own, so it keeps its one announcement
 		// per throttle window until somebody picks it up.
 		const unassigned = (await db
@@ -181,7 +177,7 @@ export const GET = withCronLogging(
 				),
 			);
 		const completedToday = new Set(completions.map((item) => item.choreId));
-		const pending = due.filter((item): item is PendingChore => {
+		const pending = due.filter((item) => {
 			if (completedToday.has(item.id)) return false;
 			// Throttle: skip if we already pinged the assignee within the window.
 			// `lastReminderAt` is null for chores that have never been reminded —
@@ -202,7 +198,7 @@ export const GET = withCronLogging(
 					claimKey: await claimReminderDispatch(item.id, startOfDay, now),
 				})),
 			);
-			const claimed: Array<PendingChore & { reminderClaimKey: string }> = [];
+			const claimed: Array<DueChore & { reminderClaimKey: string }> = [];
 			for (const { item, claimKey } of claimAttempts) {
 				if (claimKey) claimed.push({ ...item, reminderClaimKey: claimKey });
 			}

@@ -4,10 +4,7 @@ import type { Message } from '@/shared/i18n/message';
 import { eventDateForDisplay, isSameDay } from './event-display';
 import type { EventInput } from './event-recurrence';
 
-/**
- * Wire shape of a calendar event: dates as ISO strings, everything else as
- * stored. Both event routes carried an identical copy.
- */
+/** Wire shape of a calendar event: dates as ISO strings, everything else as stored. */
 export function serializeWgEvent(row: typeof wgEvents.$inferSelect) {
 	return {
 		id: row.id,

@@ -37,13 +37,16 @@ export function isPushPrimingDismissed(value: string | null): boolean {
 	return value !== null;
 }
 
-export interface PushPrimingState {
+interface PushCapability {
 	/** `Notification`, `serviceWorker` and `PushManager` all exist in this browser. */
 	supported: boolean;
 	/** `NEXT_PUBLIC_VAPID_PUBLIC_KEY` is set — without it, subscribing always fails. */
 	configured: boolean;
 	/** `Notification.permission`, or `null` when Notification isn't supported at all. */
 	permission: NotificationPermission | null;
+}
+
+export interface PushPrimingState extends PushCapability {
 	/** Already dismissed (or otherwise answered) on this device before. */
 	dismissed: boolean;
 	/** An input/textarea/contentEditable is focused right now (e.g. a chat composer). */
@@ -63,13 +66,7 @@ export function shouldShowPushPriming(state: PushPrimingState): boolean {
 	return true;
 }
 
-export interface AutoResubscribeState {
-	/** `Notification`, `serviceWorker` and `PushManager` all exist in this browser. */
-	supported: boolean;
-	/** `NEXT_PUBLIC_VAPID_PUBLIC_KEY` is set — without it, subscribing always fails. */
-	configured: boolean;
-	/** `Notification.permission`, or `null` when Notification isn't supported at all. */
-	permission: NotificationPermission | null;
+export interface AutoResubscribeState extends PushCapability {
 	/** This device already has a live `PushSubscription` for our service worker. */
 	hasSubscription: boolean;
 	/** The member switched Web Push off on purpose; a lost subscription is then not a bug. */
@@ -77,14 +74,9 @@ export interface AutoResubscribeState {
 }
 
 /**
- * Decides whether to silently (re)create a push subscription in the
- * background, with no card and no tap involved. Never requests permission —
- * only fires once permission was already granted at some earlier point (a
- * previous session, or a browser/OS that carried a standing grant for this
- * origin), closing the gap where a granted permission never actually
- * produced an active subscription (fresh browser profile, cleared
- * subscription, etc). The first-ever grant still goes through the
- * tap-triggered priming card or Einstellungen — this never bypasses that.
+ * Whether to recreate a lost push subscription in the background. Never
+ * requests permission: it only fires when permission is already 'granted'; the
+ * first grant still needs the tap on the priming card or the settings screen.
  */
 export function shouldAutoResubscribePush(state: AutoResubscribeState): boolean {
 	if (!state.supported || !state.configured) return false;

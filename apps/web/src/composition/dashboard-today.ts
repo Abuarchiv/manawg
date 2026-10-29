@@ -1,6 +1,6 @@
-import { berlinCalendarDayDistance } from '@/core/utils/berlin-day';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatShortDate, parseTimestamp } from '@/core/utils/time';
+import { calendarDayDistance } from '@/features/chores/chore-status';
 import { simplifyDebts } from '@/features/expenses/debt-reduction';
 import type { Locale } from '@/shared/i18n/locale';
 import type { Message } from '@/shared/i18n/message';
@@ -70,11 +70,6 @@ export interface TodayImportantInput {
 	now?: number;
 	/** Language of the amounts and dates inside the messages. */
 	locale?: Locale;
-}
-
-function calendarDayDistance(iso: string, now: number): number | null {
-	const dueAt = parseTimestamp(iso);
-	return dueAt === null ? null : berlinCalendarDayDistance(new Date(now), new Date(dueAt));
 }
 
 export function dueLabel(iso: string, now: number): Message {

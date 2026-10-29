@@ -8,7 +8,7 @@ The design contract for the app. Follow it for UI, typography, icons, motion and
 - Inter for UI, Inter Tight 600 for headings and the wordmark, JetBrains Mono 500 for amounts and labels. The Latin WOFF2 subsets are self-hosted in `apps/web/src/shared/fonts/`, with their OFL licenses next to them.
 - Light and dark tokens are the shadcn Neutral set. Only `settled` adds a semantic color; debt and destructive use `destructive`. Zero balances stay neutral. Charts use a neutral ramp; amount signs and wording carry meaning independently of color.
 - One radius source (`0.625rem`) with multiplicative steps. Cards use xl, controls lg. Mobile margins 16px, grouped spacing 8/16/24px, accessible touch regions at least 44px.
-- Content and navigation are opaque and bordered. Navigation: Start, Haushalt, Finanzen, Austausch and the icon-only account control; no header search.
+- Content and navigation are opaque and bordered. Navigation: Start, Household, Money, Together and the icon-only account control (German: Start, Haushalt, Finanzen, Austausch); no header search.
 - The mark is eight circles merged by a blur and threshold filter, with an off-center aperture. Icons are white on Neutral 950, with no baked rounding, shadows or gradients.
 - No tab bounce or page entrance animations. Loading uses the mark, 1200ms, and is static for reduced motion. No artificial startup delay.
 - Plain German, no guilt, advertising badges or decorative status colors. Labels above fields; visible focus and invalid states.
@@ -26,7 +26,7 @@ The bottom navigation is one component (`AppBottomNav`) with an opaque, bordered
 
 ## Member avatar color
 
-The color of member avatars is intentional. `memberTint(name)` in `src/components/wg/MemberAvatar.tsx` picks one of eight oklch hues from the member's name and mixes it with `--background`/`--foreground`, so every avatar of a person (members, chat, Pinnwand, balances) matches in light and dark, with initials contrast of at least 5.9:1. This is the only decorative color; do not neutralize avatars back to `bg-muted`, and do not reuse the hues for status or other surfaces.
+The color of member avatars is intentional. `memberTint(name)` in `src/components/wg/MemberAvatar.tsx` picks one of eight oklch hues from the member's name and mixes it with `--background`/`--foreground`, so every avatar of a person (members, chat, noticeboard, balances) matches in light and dark, with initials contrast of at least 5.9:1. This is the only decorative color; do not neutralize avatars back to `bg-muted`, and do not reuse the hues for status or other surfaces.
 
 ## Responsive control contract
 

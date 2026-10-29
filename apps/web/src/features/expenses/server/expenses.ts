@@ -21,8 +21,7 @@ interface ExpenseSplitInput {
 
 /**
  * Payer identity comes from the request body so the user can record an
- * expense paid by another roommate (common: someone forgot their phone /
- * asks Lisa to log "Tom paid for pizza"). Falls back to the authenticated
+ * expense paid by another roommate. Falls back to the authenticated
  * caller only when the body omits the field; a supplied-but-invalid member id
  * returns `null` so the route can reject it instead of silently attributing
  * the expense to the caller.
@@ -73,9 +72,8 @@ interface InsertExpenseInput {
 
 /**
  * An expense and its splits are one fact, so they are written in one
- * transaction. The previous two-step insert compensated by deleting the
- * expense when the splits failed — but that delete is itself a database
- * call, and when it failed the orphan survived and skewed every balance.
+ * transaction. A compensating delete would itself be a database call; if it
+ * failed, the orphaned expense would skew every balance.
  *
  * Throws {@link TransactionAbort} on either insert failure so the caller's
  * `withTransaction` rolls back cleanly; callers should run this inside

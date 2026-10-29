@@ -3,13 +3,7 @@ import { badRequest } from '@/core/http/api-errors';
 import type { RouteCtx } from '@/core/infra/api-types';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 
-/**
- * The share-code step every `/api/wg/[code]/...` handler runs before it
- * touches its own domain logic. One implementation instead of per-route
- * copies: copies drift, and an identical-looking duplicate of the client-IP
- * logic is exactly how a rate-limit bypass got into this codebase.
- */
-
+/** The share-code step every `/api/wg/[code]/...` handler runs before its own logic; one shared copy so the checks cannot drift between routes. */
 type ShareCodeResult<P> = ({ ok: true; code: string } & P) | { ok: false; response: NextResponse };
 
 /**

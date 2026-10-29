@@ -2,6 +2,7 @@ import { CheckCircle2, Info, LogIn, LogOut, Receipt } from 'lucide-react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
+import { richArgument } from '@/components/entry/rich-argument';
 import { Marker, MarkerContent, MarkerIcon } from '@/components/ui/marker';
 import type { Locale } from '@/shared/i18n/locale';
 import { systemAmountText } from '../chat-system';
@@ -30,10 +31,9 @@ export function SystemMessage({ shareCode, systemKind, payload }: SystemMessageP
 			const text = t.rich('expenseCreated', {
 				actor: asString(data.actorName, someone),
 				description: asString(data.description, t('anExpense')),
-				// t.rich renders React elements for plain arguments; its types only name strings.
-				amount: (
-					<span className="tabular-nums">{systemAmountText(data, locale) ?? t('zeroAmount')}</span>
-				) as unknown as string,
+				amount: richArgument(
+					<span className="tabular-nums">{systemAmountText(data, locale) ?? t('zeroAmount')}</span>,
+				),
 			});
 			// Older messages carry no expenseId and stay plain text.
 			const expenseId = asString(data.expenseId, '');

@@ -102,7 +102,6 @@ export function isIosLikeDevice(input: {
 
 export function subscribeInstall(fn: Subscriber): () => void {
 	subscribers.add(fn);
-	// Call immediately with the current state
 	fn(cached);
 	return () => {
 		subscribers.delete(fn);

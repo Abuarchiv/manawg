@@ -14,6 +14,8 @@ import {
 import { wgInventoryItems, wgInventoryLog } from './schema-inventory';
 import { type DbTransaction, lockExpensePayments } from './transaction';
 
+const WG_DELETE_TIMEOUT_MS = 60_000;
+
 /**
  * Deletes a WG and everything it owns. Several historical/member references
  * intentionally use RESTRICT so a member cannot be hard-deleted while its
@@ -29,9 +31,10 @@ export async function deleteWgCascade(tx: DbTransaction, wgId: string): Promise<
 	// The pool's 5 s statement_timeout would abort the final cascade of a large WG, so it could
 	// never be deleted. Raise it for this transaction only and clear the biggest child tables
 	// first, as separate statements, so the closing `delete from wgs` has little left to cascade.
-	await tx.execute(sql`set local statement_timeout = '60s'`);
-	// pg's own read deadline (query_timeout 5.5 s) would still end the connection first.
-	const restoreReadTimeout = raiseClientReadTimeout(tx, 61_000);
+	await tx.execute(sql.raw(`set local statement_timeout = '${WG_DELETE_TIMEOUT_MS} ms'`));
+	// pg's own read deadline (query_timeout 5.5 s) would still end the connection first, so
+	// the client must wait longer than the server does.
+	const restoreReadTimeout = raiseClientReadTimeout(tx, WG_DELETE_TIMEOUT_MS + 1_000);
 	try {
 		return await deleteWgRows(tx, wgId);
 	} finally {

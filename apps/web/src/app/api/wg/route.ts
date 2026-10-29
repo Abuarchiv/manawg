@@ -45,8 +45,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 	const locale = requestLocale(req);
 
 	// Defense in depth: middleware already covers /api/wg with wgWriteLimiter
-	// (30/min/IP). WG creation is rarer than other writes, so apply the
-	// stricter registerLimiter (10/hour/IP) on top to block WG spam. It runs after body
+	// (60/min per session, 150/min per IP backstop). WG creation is rarer than other writes, so
+	// apply the stricter registerLimiter (10/hour/IP) on top to block WG spam. It runs after body
 	// validation and auth so rejected attempts (400/401/auth outage) cost no budget.
 	// Known limit: idempotent replays and 5xx retries count too; the key is not known before the write.
 	const ip = clientIpKey(req);

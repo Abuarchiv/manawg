@@ -24,7 +24,7 @@ export interface PairBalance {
 }
 
 /**
- * Phase one to three of the pair maths: aggregate unsettled splits per
+ * Pair maths without netting: aggregate unsettled splits per
  * (debtor, creditor) pair, subtract payments, flip a negative residual into its
  * reverse pair. Netting and cycle cancellation are deliberately left out —
  * `computeBalances` adds them, `computeDirectDebts` must not.

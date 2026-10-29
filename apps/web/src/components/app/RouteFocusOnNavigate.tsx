@@ -4,26 +4,11 @@ import { usePathname } from 'next/navigation';
 import { useEffect } from 'react';
 
 /**
- * WCAG 2.4.3 / SPA route announcement.
- *
- * The WG shell's <main> never remounts across `/wg/[code]/*` client-side
- * navigations (same layout, one static per-WG <title> from generateMetadata),
- * so Next's App Router announcer has no title/h1 change to announce and focus
- * stays wherever the previous page left it (e.g. a bottom-nav link). This
- * moves focus to the shared #main landmark on every route change so screen
- * reader and keyboard users land at the top of the new view — the same
- * target the global skip link already uses.
- *
- * This layout-level effect can run after the new page's own mount effects,
- * so it only moves focus when it isn't already somewhere inside #main —
- * otherwise it would steal focus back from a page that autofocused its own
- * element (e.g. a search field) on mount.
- *
- * Used by the WG shell and by the public pages (`/`, `/discover/*`). The public
- * pages remount their whole tree on every route change, so a per-instance ref
- * would always start at the new pathname. The last pathname therefore lives at
- * module level and survives the remount; the first mount after the initial load
- * stays untouched.
+ * Moves focus to #main after every client-side route change (WCAG 2.4.3), because the
+ * shared <main> does not remount and Next's announcer sees no title change. Skips the
+ * first mount and any navigation where focus is already inside #main (a page may have
+ * autofocused a field). The last pathname lives at module level because the public
+ * pages remount their tree on every route change.
  */
 let lastPathname: string | null = null;
 

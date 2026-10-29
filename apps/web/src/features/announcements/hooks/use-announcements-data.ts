@@ -27,7 +27,7 @@ interface AnnouncementsResponse {
 type LoadMode = 'replace' | 'background';
 
 /**
- * Pinnwand posts, synced. Background refreshes update visible posts in place; new posts wait
+ * Noticeboard posts, synced. Background refreshes update visible posts in place; new posts wait
  * behind the "N new posts" banner so the board never jumps under the reader.
  */
 export function useAnnouncementsData({

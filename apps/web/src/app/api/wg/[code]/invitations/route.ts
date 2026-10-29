@@ -29,7 +29,7 @@ async function revokeInvite(id: string): Promise<void> {
 }
 
 /**
- * E6: a member invites someone by address. The mail carries a fresh invitation
+ * A member invites someone by address. The mail carries a fresh invitation
  * link (7 days); the address itself is not stored, only a hash in the dedupe
  * key (one mail per address, WG and day). A link whose mail was not sent is
  * revoked again, so a duplicate or failure leaves no live token behind. A mail

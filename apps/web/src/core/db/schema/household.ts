@@ -51,11 +51,7 @@ export const chores = pgTable(
 			.references(() => wgs.id, { onDelete: 'cascade' }),
 		title: text('title').notNull(),
 		intervalDays: integer('interval_days').notNull().default(7),
-		// 'days' = legacy ms-based cadence; 'months' = calendar-month cadence
-		// (no 5-day drift over a year). Default 'days' keeps existing rows on
-		// their current cadence after the column is added in migration 0011.
-		// $type<> narrows the column from raw string → ChoreRecurrenceType so
-		// callers don't need to cast on every read.
+		// 'days' = fixed day count; 'months' = calendar months (no drift over a year).
 		recurrenceType: varchar('recurrence_type', { length: 10 })
 			.$type<'days' | 'months'>()
 			.notNull()
@@ -74,10 +70,7 @@ export const chores = pgTable(
 		wgIdx: index('chores_wg_idx').on(t.wgId, t.nextDueAt),
 		// The reminder cron scans every WG's chores due in a window.
 		nextDueIdx: index('chores_next_due_idx').on(t.nextDueAt),
-		// Mirrors CHORE_RECURRENCE_TYPES below — every write goes through a zod
-		// enum of the same two values, and the column has always defaulted to
-		// 'days'. Added NOT VALID out of caution for any row from before that
-		// zod validation existed; new writes are checked immediately either way.
+		// Mirrors CHORE_RECURRENCE_TYPES; every write goes through a zod enum of the same two values.
 		recurrenceTypeCheck: check(
 			'chores_recurrence_type_check',
 			sql`${t.recurrenceType} in ('days', 'months')`,

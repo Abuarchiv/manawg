@@ -6,9 +6,8 @@ import { DEFAULT_LOCALE, type Locale } from '@/shared/i18n/locale';
 import { APP_ORIGIN, type MailBlock, type RenderedMail, renderBrandMail } from './brand-mail';
 
 /*
- * The transactional mails of the Touchpoints design (E1, E6, E7, E8, E10):
- * one thought per mail, amounts in mono, no exclamation marks, nothing that is
- * not actionable. E2–E5 are Supabase Auth templates, E9 is the statement mail.
+ * The transactional mails: one thought per mail, amounts in mono, no
+ * exclamation marks, nothing that is not actionable.
  */
 
 const WG_PATH = (shareCode: string) => `${APP_ORIGIN}/wg/${encodeURIComponent(shareCode)}`;
@@ -21,7 +20,7 @@ function joinNames(
 	return new Intl.ListFormat(intlTag(locale), { type }).format(names);
 }
 
-/** E1 · after the address is confirmed or the first social sign-in. */
+/** Welcome mail, sent after the address is confirmed or on the first social sign-in. */
 export function renderWelcomeMail(input: {
 	firstName: string | null;
 	locale?: Locale;
@@ -52,7 +51,7 @@ export function renderWelcomeMail(input: {
 	});
 }
 
-/** E6 · a member types an address; the mail carries a personal invitation link, valid for 7 days. */
+/** Invitation mail: a member types an address; the mail carries a personal invitation link, valid for 7 days. */
 export function renderInvitationMail(input: {
 	inviterName: string;
 	wgName: string;
@@ -89,7 +88,7 @@ export function renderInvitationMail(input: {
 	});
 }
 
-/** E8 · a creditor reminds a debtor who has no push; the debtor sees who and how much. */
+/** Reminder mail: a creditor reminds a debtor who has no push; the debtor sees who and how much. */
 export function renderReminderMail(input: {
 	wgName: string;
 	shareCode: string;
@@ -146,7 +145,7 @@ export function renderReminderMail(input: {
 	});
 }
 
-/** E10 · the last mail an account receives. */
+/** Farewell mail, the last one an account receives. */
 export function renderAccountDeletedMail(locale: Locale = DEFAULT_LOCALE): RenderedMail {
 	const t = serverT(locale, 'mail');
 	return renderBrandMail({

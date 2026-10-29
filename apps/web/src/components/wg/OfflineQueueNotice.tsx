@@ -4,10 +4,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { queuedOfflineActionsMessage } from '@/core/offline/offline-copy';
 import { useMessage } from '@/shared/i18n/message';
 
-/**
- * "N Änderungen warten auf Synchronisierung" — shown while the offline queue
- * is not empty. Ausgaben, Pinnwand and Putzen each inlined it identically.
- */
+/** Notice that queued changes are waiting to sync; renders nothing while the offline queue is empty. */
 export function OfflineQueueNotice({ queuedCount }: { queuedCount: number }) {
 	const render = useMessage();
 	if (queuedCount <= 0) return null;

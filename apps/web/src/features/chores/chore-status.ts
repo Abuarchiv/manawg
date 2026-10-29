@@ -31,7 +31,7 @@ interface ChorePlanHealth {
 	dueToday: number;
 }
 
-function calendarDayDistance(iso: string, now: number): number | null {
+export function calendarDayDistance(iso: string, now: number): number | null {
 	const dueAt = parseTimestamp(iso);
 	return dueAt === null ? null : berlinCalendarDayDistance(new Date(now), new Date(dueAt));
 }

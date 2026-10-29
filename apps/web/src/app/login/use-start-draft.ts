@@ -61,8 +61,8 @@ export function useStartDraft() {
 
 /**
  * Persists the in-progress inputs under START_DRAFT_KEY and drops the draft
- * once the WG exists. Separate from useStartDraft so it runs after the
- * account-WG effects, in the original effect order.
+ * once the WG exists. Separate from useStartDraft so the draft is written
+ * after the account-WG effects have run.
  */
 export function useSaveStartDraft({
 	interactive,
