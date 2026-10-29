@@ -13,6 +13,11 @@ test('editing keeps the wall time of the previous due date across DST', () => {
 	assert.equal(dueAtForDay('2026-11-02', '2026-10-05T16:30:00.000Z'), '2026-11-02T17:30:00.000Z');
 });
 
+test('a wall time inside the spring-forward gap lands an hour later', () => {
+	// 02:30 Berlin on 2026-03-25 (CET), moved to 2026-03-29 where 02:00-03:00 does not exist.
+	assert.equal(dueAtForDay('2026-03-29', '2026-03-25T01:30:00.000Z'), '2026-03-29T01:30:00.000Z');
+});
+
 test('invalid day keys are rejected instead of throwing', () => {
 	assert.equal(dueAtForDay(''), null);
 	assert.equal(dueAtForDay('12.10.2026'), null);

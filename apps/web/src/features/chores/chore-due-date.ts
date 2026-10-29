@@ -13,7 +13,10 @@ export function dueAtForDay(dayKey: string, previousDueAt?: string): string | nu
 	if (!DAY_KEY.test(dayKey)) return null;
 	const previous = previousDueAt ? parseValidDate(previousDueAt) : null;
 	const minutes = previous ? berlinWallMinutes(previous) : DEFAULT_DUE_MINUTES;
-	return instantAtBerlinWallTime(dayKey, minutes)?.toISOString() ?? null;
+	// A wall time inside the spring-forward gap does not exist; use the hour after.
+	const instant =
+		instantAtBerlinWallTime(dayKey, minutes) ?? instantAtBerlinWallTime(dayKey, minutes + 60);
+	return instant?.toISOString() ?? null;
 }
 
 /** Berlin day of a stored due date for a date input; empty when the date is unusable. */
