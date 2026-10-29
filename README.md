@@ -125,7 +125,9 @@ Contributions are welcome: code, bug reports, documentation, translations and id
 - **Pick something bigger.** Issues labelled
   [help wanted](https://github.com/Abuarchiv/manawg/labels/help%20wanted) are open to anyone.
 
-[CONTRIBUTING.md](CONTRIBUTING.md) walks through your first pull request.
+[CONTRIBUTING.md](CONTRIBUTING.md) walks through your first pull request. The website
+[manawg.com](https://manawg.com) is open source as well, in
+[Abuarchiv/manawg-landing](https://github.com/Abuarchiv/manawg-landing).
 
 ## Community and support
 
