@@ -14,6 +14,9 @@ need to be a developer to report a problem or fix a typo.
 - **Bugs and self-hosting problems:** open an
   [issue](https://github.com/Abuarchiv/manawg/issues/new/choose) with steps to reproduce. For
   security problems use [SECURITY.md](SECURITY.md) instead.
+- **Feature requests:** search the
+  [open requests](https://github.com/Abuarchiv/manawg/issues?q=is%3Aissue+is%3Aopen+label%3Aenhancement+sort%3Areactions-%2B1-desc)
+  first and vote with 👍 on the ones you want; the most-voted ones are built first.
 - **Small fixes** (typos, obvious bugs): open a pull request directly.
 - **Features and larger changes:** open an issue first and agree on the approach with a
   maintainer before you write the code. ManaWG is deliberately small and phone-first, so not every
