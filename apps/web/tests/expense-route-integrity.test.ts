@@ -216,6 +216,7 @@ test('expense PATCH preserves split integrity with fractional timestamps and con
 	const initialUpdatedAt = new Date('2026-09-20T00:00:00.123Z');
 	const concurrentUpdatedAt = new Date('2026-09-20T00:00:00.123Z');
 	let mutateAtLock = true;
+	const chatUpdates: Array<Record<string, unknown>> = [];
 	let currentExpense = {
 		id: EXPENSE_ID,
 		wgId: WG_ID,
@@ -264,24 +265,30 @@ test('expense PATCH preserves split integrity with fractional timestamps and con
 	};
 	const tx = {
 		select: makeSelect,
-		update: () => ({
+		update: (table: unknown) => ({
 			set: (values: Record<string, unknown>) => ({
-				where: (condition: Predicate) => ({
-					returning: async () => {
-						if (!matches(currentExpense, condition)) return [];
-						const updatedAt =
-							(values.updatedAt as Predicate).kind === 'nextVersion'
-								? new Date(Math.max(Date.now(), currentExpense.updatedAt.getTime() + 1))
-								: (values.updatedAt as Date);
-						currentExpense = {
-							...currentExpense,
-							...values,
-							updatedAt,
-							updatedAtPrecise: updatedAt.toISOString(),
-						};
-						return [{ id: EXPENSE_ID }];
-					},
-				}),
+				where: (condition: Predicate) => {
+					if (table === wgChatMessages) {
+						chatUpdates.push(values);
+						return Promise.resolve([]);
+					}
+					return {
+						returning: async () => {
+							if (!matches(currentExpense, condition)) return [];
+							const updatedAt =
+								(values.updatedAt as Predicate).kind === 'nextVersion'
+									? new Date(Math.max(Date.now(), currentExpense.updatedAt.getTime() + 1))
+									: (values.updatedAt as Date);
+							currentExpense = {
+								...currentExpense,
+								...values,
+								updatedAt,
+								updatedAtPrecise: updatedAt.toISOString(),
+							};
+							return [currentExpense];
+						},
+					};
+				},
 			}),
 		}),
 		delete: (table: unknown) => ({
@@ -438,9 +445,11 @@ test('expense PATCH preserves split integrity with fractional timestamps and con
 		settledSplits[1]?.settledAt,
 	);
 
+	const noticesBefore = chatUpdates.length;
 	const cosmeticEdit = await patch({ description: 'Nur Text' });
 	assert.equal(cosmeticEdit.status, 200);
 	assert.equal(currentExpense.description, 'Nur Text');
+	assert.equal(chatUpdates.length, noticesBefore + 1, 'a changed description refreshes the notice');
 
 	// The currency fixes the meaning of every share and payment; an edit cannot switch it.
 	const currencyEdit = await patch({ currency: 'USD', description: 'Nur Text' });

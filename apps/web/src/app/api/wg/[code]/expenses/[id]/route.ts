@@ -1,7 +1,7 @@
 import { and, eq, inArray, isNotNull, isNull, ne, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { withdrawExpenseChatNotice } from '@/core/activity-feed';
+import { updateExpenseChatNotice, withdrawExpenseChatNotice } from '@/core/activity-feed';
 import { recordAuditEvent } from '@/core/audit';
 import { db, expenseSplits, expenses, wgMembers } from '@/core/db';
 import {
@@ -294,7 +294,12 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 					updatedAt: sql`greatest(clock_timestamp(), ${expenses.updatedAt} + interval '1 millisecond')`,
 				})
 				.where(updateWhere)
-				.returning({ id: expenses.id });
+				.returning({
+					id: expenses.id,
+					description: expenses.description,
+					amountCents: expenses.amountCents,
+					currency: expenses.currency,
+				});
 			if (!updatedMarker) {
 				const [current] = await tx
 					.select({ id: expenses.id })
@@ -302,6 +307,9 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 					.where(and(eq(expenses.id, id), eq(expenses.wgId, wgId)))
 					.limit(1);
 				throw new TransactionAbort(current ? 'expense_changed' : 'expense_not_found');
+			}
+			if (description !== undefined || amountCents !== undefined) {
+				await updateExpenseChatNotice(tx, wgId, updatedMarker);
 			}
 			if (imageUrl !== undefined) {
 				await revokePrivateImageIfUnreferenced(tx, wgId, previousImageUrl, imageUrl ?? null);

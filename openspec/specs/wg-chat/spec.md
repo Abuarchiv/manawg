@@ -31,7 +31,7 @@ Editing a message SHALL require the sender, a text message and no deletion, othe
 
 ### Requirement: Orientation aids
 
-The list SHALL show a "Neue Nachrichten" separator at the first unread message, "Heute"/"Gestern" day labels (with year for earlier years), a quote header for replies to older messages, reactor names, a "Link öffnen" action for http(s) links, and a link from expense system messages to the expense.
+The list SHALL show a "Neue Nachrichten" separator at the first unread message, "Heute"/"Gestern" day labels (with year for earlier years), a quote header for replies to older messages, reactor names, a "Link öffnen" action for http(s) links, and a link from expense system messages to the expense. An expense system message SHALL show the current description and amount of the expense it links to, so an edit of the expense updates the message.
 
 #### Scenario: Unread messages on entry
 - **WHEN** a member opens a chat with unread messages
