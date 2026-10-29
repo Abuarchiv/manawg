@@ -5,7 +5,11 @@
  * modules; callers import from here.
  */
 
-export { createRecurringAdvanceRetry, needsManualOfflineResolution } from './offline-replay-rules';
+export {
+	createRecurringAdvanceRetry,
+	editQueuedPayload,
+	needsManualOfflineResolution,
+} from './offline-replay-rules';
 export {
 	adoptLocalAccount,
 	countOfflineActions,

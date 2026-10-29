@@ -25,6 +25,8 @@ Unsynced offline creates and ticks SHALL be overlaid on any server state without
 - **WHEN** a member adds an item offline and the list reloads before sync
 - **THEN** the item SHALL still be shown once
 
+A tick SHALL NOT be folded into a queued create that already went out once (its outcome is unknown); the member sees the pending-change notice instead.
+
 A tick or a bought create replayed after a delay SHALL keep the time it was made: the client sends it, the server clamps it to the offline replay window and stores it as the bought time.
 
 #### Scenario: Tick replayed days later

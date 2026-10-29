@@ -28,6 +28,7 @@ import {
 	writeDraft,
 } from '@/core/offline/drafts';
 import {
+	editQueuedPayload,
 	needsManualOfflineResolution,
 	OFFLINE_QUEUE_EVENT,
 	readOfflineQueue,
@@ -115,7 +116,7 @@ export function OfflineQueueSection({
 		const saved = await updateOfflineQueue((actions) =>
 			actions.map((item) =>
 				item.id === id && isActiveMemberItem(item)
-					? { ...item, payload: { ...item.payload, imageUrl: null } }
+					? editQueuedPayload(item, { imageUrl: null })
 					: item,
 			),
 		);

@@ -37,6 +37,14 @@ On-screen keyboard detection SHALL be one shared hook used by the bottom navigat
 - **WHEN** the WG error page renders
 - **THEN** its heading SHALL be focused
 
+### Requirement: Edits to a sent action are held for review
+
+Removing the attachment of a queued action that already went out once (its outcome is unknown) SHALL hold the action for a server check instead of resending it with the edit, because the server replays by idempotency key and would drop the edit.
+
+#### Scenario: Attachment removed after a lost response
+- **WHEN** a queued expense was sent, the response was lost, and the member removes its attachment
+- **THEN** the action SHALL need a server check and SHALL NOT be resent
+
 ### Requirement: Queued actions do not depend on display text
 
 Queued offline actions SHALL record review states (server check, missing image, removed image, no connection) as flags and their error as a message key, and SHALL render the text in the current language. Actions stored before this change with German error text SHALL keep their behaviour and show their stored text.

@@ -6,6 +6,7 @@ const {
 	planShoppingPatch,
 	replaceShoppingItem,
 	overlayQueuedShopping,
+	queuedCreateWasSent,
 	toggledShoppingItem,
 	withQueuedCreateBought,
 	withoutQueuedFollowUps,
@@ -103,6 +104,24 @@ test('a queued create of this member is marked bought, other actions stay untouc
 	]);
 	assert.equal(withQueuedCreateBought([other], target, true), null);
 	assert.equal(withQueuedCreateBought([queued], { ...target, memberId: 'member-b' }, true), null);
+});
+
+test('a queued create that already went out once is not edited in place', () => {
+	const sent = {
+		id: 'shopping:CODE:1:milch',
+		type: 'shopping.create' as const,
+		shareCode: 'CODE',
+		memberId: 'member-a',
+		createdAt: '2026-10-01T10:00:00.000Z',
+		attempts: 1,
+		lastAttemptAt: '2026-10-01T10:05:00.000Z',
+		payload: { name: 'Milch', quantity: null },
+	};
+	const target = { itemId: sent.id, shareCode: 'CODE', memberId: 'member-a' };
+	assert.equal(queuedCreateWasSent([sent], target), true);
+	assert.equal(withQueuedCreateBought([sent], target, true), null);
+	const { lastAttemptAt: _sent, ...unsent } = sent;
+	assert.equal(queuedCreateWasSent([unsent], target), false);
 });
 
 test('list edits keep the array identity when nothing changed', () => {
