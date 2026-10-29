@@ -6,6 +6,7 @@ import { useStableCallback } from '@/core/hooks/use-stable-callback';
 import {
 	getMyOpenAnnouncements,
 	isAnnouncementArchived,
+	sortBoardAnnouncements,
 } from '@/features/announcements/announcement-workflow';
 import type {
 	Announcement,
@@ -113,7 +114,7 @@ export function useAnnouncementsPage() {
 	// Resolved posts and acknowledged infos are not shown at all: the board holds only what is open.
 	const openItems = useMemo(() => {
 		const now = Date.now();
-		return items.filter((item) => !isAnnouncementArchived(item, now));
+		return sortBoardAnnouncements(items.filter((item) => !isAnnouncementArchived(item, now)));
 	}, [items]);
 	const [openLimit, setOpenLimit] = useState(CARD_RENDER_PAGE);
 	// The linked/highlighted element must always be in the DOM.

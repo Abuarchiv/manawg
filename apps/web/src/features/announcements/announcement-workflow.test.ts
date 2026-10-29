@@ -4,6 +4,7 @@ import {
 	getMyOpenAnnouncements,
 	isAnnouncementArchived,
 	reconcilePendingAnnouncements,
+	sortBoardAnnouncements,
 	summarizeAnnouncementReactions,
 } from './announcement-workflow';
 
@@ -112,5 +113,21 @@ test('my open announcements are the unresolved ones I took', () => {
 	assert.deepEqual(
 		getMyOpenAnnouncements(items).map((item) => item.id),
 		['1'],
+	);
+});
+
+test('orders the board pinned first, then newest first, like the server', () => {
+	const a = { id: 'a', pinnedAt: null, createdAt: '2026-09-27T10:00:00Z' };
+	const b = { id: 'b', pinnedAt: null, createdAt: '2026-09-27T11:00:00Z' };
+	const c = { id: 'c', pinnedAt: '2026-09-27T12:00:00Z', createdAt: '2026-09-20T10:00:00Z' };
+	const d = { id: 'd', pinnedAt: '2026-09-27T13:00:00Z', createdAt: '2026-09-21T10:00:00Z' };
+
+	assert.deepEqual(
+		sortBoardAnnouncements([a, b, c, d]).map((item) => item.id),
+		['d', 'c', 'b', 'a'],
+	);
+	assert.deepEqual(
+		sortBoardAnnouncements([{ ...d, pinnedAt: null }, c, b, a]).map((item) => item.id),
+		['c', 'b', 'a', 'd'],
 	);
 });
