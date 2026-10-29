@@ -42,7 +42,7 @@ export default {
 		oneClick: 'Ein Klick, und ihr seid quitt. {creditor} sieht es sofort in der App.',
 		button: 'Jetzt ausgleichen',
 		footer:
-			'Erinnerungen kommen höchstens einmal pro Woche und nur, wenn du sie eingeschaltet hast.',
+			'Erinnerungen kommen höchstens alle zwei Tage von derselben Person und nur, wenn du sie eingeschaltet hast.',
 	},
 	accountDeleted: {
 		subject: 'Dein Konto ist gelöscht',

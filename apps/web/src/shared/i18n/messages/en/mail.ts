@@ -44,7 +44,8 @@ export default {
 			'The newest items. Payments and expenses going the other way are already offset against the amount above.',
 		oneClick: 'One click and you are settled up. {creditor} sees it in the app straight away.',
 		button: 'Settle up now',
-		footer: 'Reminders come at most once a week, and only if you have turned them on.',
+		footer:
+			'Reminders come at most once every two days from the same person, and only if you have turned them on.',
 	},
 	accountDeleted: {
 		subject: 'Your account has been deleted',
