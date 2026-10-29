@@ -109,6 +109,24 @@ test('a name-only edit is applied on top of a concurrent tap instead of 409', as
 	assert.deepEqual(state.logs, []);
 });
 
+test('an absolute quantity edit is logged as an adjustment, not as consumption', async () => {
+	const { tx, state } = concurrentTapTx(6);
+	const result = await updateInventoryItemMutation(tx as never, {
+		itemId: 'item-1',
+		wgId: 'wg-1',
+		memberId: 'member-1',
+		locale: 'de',
+		quantity: 2,
+		expectedQuantity: 6,
+		expectedUpdatedAt: updatedAt.toISOString(),
+	});
+	assert.equal(result.kind, 'ok');
+	assert.deepEqual(
+		state.logs.map((log) => [log.delta, log.kind]),
+		[[-4, 'adjust']],
+	);
+});
+
 test('an absolute write keeps its optimistic conflict check', async () => {
 	const { tx, row, state } = concurrentTapTx();
 	const result = await updateInventoryItemMutation(tx as never, {

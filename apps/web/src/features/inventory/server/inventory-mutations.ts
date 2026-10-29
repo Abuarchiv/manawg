@@ -178,7 +178,8 @@ export async function updateInventoryItemMutation(
 			itemId: updated.id,
 			memberId: input.memberId,
 			delta,
-			kind: delta < 0 ? 'consume' : 'restock',
+			// A stocktake correction is neither consumption nor restocking.
+			kind: input.quantity !== undefined ? 'adjust' : delta < 0 ? 'consume' : 'restock',
 		});
 	}
 
