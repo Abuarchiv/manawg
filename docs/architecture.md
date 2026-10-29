@@ -107,9 +107,6 @@ Rules:
   actions are bound to the account.
 - **Fixture mode** answers as `FIXTURE_AUTH_USER_ID` (`fixtures/data.ts`) through the same member
   lookup the app uses; product code has no fixture branch beyond the `app/` seams named in development.md.
-- **Legacy-profile takeover** (`POST /api/wg/<code>/members/<id>/claim?invite=<token>`): links an
-  unlinked member row (no account yet) to the signed-in account. The proof is a valid invitation
-  to that WG; the invitation page lists the unlinked members. Normal API access never uses it.
 - **Admin**: `wg_members.role` is `admin` or `member`, at most one admin per WG (partial unique
   index). `core/guards/admin.ts`: `isWgAdmin` and `requireOwnerOrAdmin` (owner or admin for
   edits/deletes of others' items); `requireWgAdmin` gates WG rename/delete and invitations.
@@ -289,9 +286,9 @@ Mutation error copy goes through `mutationError` (`core/http/error-codes.ts`); f
 - Schema: `core/db/schema/` (Drizzle, one file per area; `core/db/schema.ts` re-exports them). Migrations: `apps/web/drizzle/` with
   `meta/_journal.json`; `0000_baseline.sql` creates the full schema and later files are
   incremental. `scripts/db-migrate.mjs` applies them under an advisory lock, checks the ledger
-  against the journal (fail-closed) and verifies the result (`--check`). A short fixed allowlist
-  of old ledger hashes (`scripts/db-migrate/legacy-adoption.mjs`) only matters for databases
-  created before the baseline.
+  against the journal (fail-closed) and verifies the result (`--check`). One reviewed historical
+  ledger hash (`HISTORICAL_LEDGER_ROWS` in `scripts/db-migrate/ledger.mjs`) is tolerated at its
+  exact position; a database with the schema but an empty ledger is refused.
 - Security: RLS is enabled on the application tables (`0010_enable_public_rls.sql`; later tables
   in `0015`, `0017`) without policies, as defense in depth. Privileges for `anon`,
   `authenticated` and `PUBLIC` are revoked (`0007`, `0016`). The app reads and writes tables
@@ -365,9 +362,6 @@ with claim rows/throttle timestamps so a re-run does not notify twice.
   `sw.js` does not change between deploys, so nothing else would evict them.
 - **Migrations give up instead of queueing.** `db-migrate.mjs` sets `lock_timeout = 5s`, so DDL
   that cannot get its lock rolls back rather than stalling every query on the table.
-- **Baseline migration with adoption.** The push-era migration chain could not replay on an empty
-  database; existing databases record the baseline as applied instead of executing it
-  (`scripts/db-migrate.mjs`).
 - **Calendar feed keeps 90 days of history.** Subscribed calendar apps mirror the feed and delete
   what leaves it; starting at today removed yesterday's events from everyone's phone.
 - **Event years 1900–2200.** Wide enough for yearly birthdays; a typo like year 0026 or 20266 is
@@ -432,8 +426,8 @@ These behaviors are deliberate.
   (`recurring-split-rotation.ts`); uneven custom splits stay as entered.
 - **Uploads.** Pictures that no row points at after 14 days are removed from the private bucket by
   the maintenance cron, a few WGs per run.
-- **Signing secret rotation.** `MEMBER_SESSION_SECRET_PREVIOUS` keeps calendar feed URLs and recovery
-  proofs valid while the secret changes.
+- **Signing secret rotation.** `MEMBER_SESSION_SECRET_PREVIOUS` keeps calendar feed URLs and
+  unsubscribe links valid while the secret changes.
 - **Session JWT verified locally.** `readVerifiedUser` (`core/auth/verified-user.ts`) checks the
   session JWT with `getClaims` instead of a Supabase round trip per request. The cost is that a
   revoked session ("sign out on all devices") or a deleted account stays valid on other devices

@@ -125,7 +125,7 @@ test('a retried absolute write whose answer got lost finds its quantity in place
 
 /** A single item row plus a record of what landed on the shopping list. */
 function itemTx(initial: Row) {
-	const row = { id: 'item-1', wgId: 'wg-1', unit: 'Stück', updatedAt, ...initial };
+	const row = { id: 'item-1', wgId: 'wg-1', unit: 'piece', updatedAt, ...initial };
 	const shopping: Row[] = [];
 	const tx = {
 		select: () => ({
@@ -281,13 +281,13 @@ async function autoRestockQuantity(
 }
 
 test('the auto-restock quantity reads in the language of the person who triggered it', async () => {
-	assert.equal(await autoRestockQuantity('de', 'Rolle', 2, 3), '2 Rollen');
-	assert.equal(await autoRestockQuantity('de', 'Rolle', 3, 3), '1 Rolle');
-	assert.equal(await autoRestockQuantity('de', 'Stück', 2, 4), '3 Stück');
-	assert.equal(await autoRestockQuantity('de', 'Packung', 1.5, 2), '1,5 Packungen');
+	assert.equal(await autoRestockQuantity('de', 'roll', 2, 3), '2 Rollen');
+	assert.equal(await autoRestockQuantity('de', 'roll', 3, 3), '1 Rolle');
+	assert.equal(await autoRestockQuantity('de', 'piece', 2, 4), '3 Stück');
+	assert.equal(await autoRestockQuantity('de', 'pack', 1.5, 2), '1,5 Packungen');
 	assert.equal(await autoRestockQuantity('de', 'Flasche', 2, 3), '2 Flasche');
-	assert.equal(await autoRestockQuantity('en', 'Rolle', 2, 3), '2 rolls');
-	assert.equal(await autoRestockQuantity('en', 'Rolle', 3, 3), '1 roll');
-	assert.equal(await autoRestockQuantity('en', 'Packung', 1.5, 2), '1.5 packs');
+	assert.equal(await autoRestockQuantity('en', 'roll', 2, 3), '2 rolls');
+	assert.equal(await autoRestockQuantity('en', 'roll', 3, 3), '1 roll');
+	assert.equal(await autoRestockQuantity('en', 'pack', 1.5, 2), '1.5 packs');
 	assert.equal(await autoRestockQuantity('en', 'Flasche', 2, 3), '2 Flasche');
 });

@@ -13,7 +13,7 @@ import {
 import { expectNoGermanChrome, expectNoHorizontalOverflow, setEnglishLocale } from './support/i18n';
 
 const BASE = `/api/wg/${FIXTURE_WG.shareCode}`;
-const KALENDER = `/wg/${FIXTURE_WG.shareCode}/calendar`;
+const CALENDAR = `/wg/${FIXTURE_WG.shareCode}/calendar`;
 const WIDTHS = [320, 390] as const;
 const SCHEMES = ['light', 'dark'] as const;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -115,7 +115,7 @@ test.describe('English calendar', () => {
 
 			test(`agenda, month grid and drawers ${where}`, async ({ page, context, baseURL }) => {
 				await prepare(page, context, baseURL, width, scheme);
-				await navigateToFeature(page, KALENDER);
+				await navigateToFeature(page, CALENDAR);
 				await dismissOnboarding(page);
 
 				await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
@@ -190,7 +190,7 @@ test.describe('English calendar', () => {
 
 			test(`new event drawer and feed section ${where}`, async ({ page, context, baseURL }) => {
 				await prepare(page, context, baseURL, width, scheme);
-				await navigateToFeature(page, KALENDER);
+				await navigateToFeature(page, CALENDAR);
 				await dismissOnboarding(page);
 
 				await page.getByRole('button', { name: 'Add event' }).click();
@@ -236,7 +236,7 @@ test.describe('English calendar', () => {
 				? route.fulfill({ status: 500, json: { error: 'unexpected_error' } })
 				: route.fallback(),
 		);
-		await navigateToFeature(page, KALENDER);
+		await navigateToFeature(page, CALENDAR);
 		await dismissOnboarding(page);
 		await page.getByRole('button', { name: 'Add event' }).click();
 		const drawer = page.getByRole('dialog');
@@ -251,7 +251,7 @@ test.describe('English calendar', () => {
 	test('a failed load and the empty agenda are English', async ({ page, context, baseURL }) => {
 		await prepare(page, context, baseURL, 390, 'light', []);
 		await page.route(`**${BASE}/chores*`, (route) => route.fulfill({ json: { chores: [] } }));
-		await navigateToFeature(page, KALENDER);
+		await navigateToFeature(page, CALENDAR);
 		await dismissOnboarding(page);
 		await expect(page.getByText('No events in the next 30 days')).toBeVisible();
 		await expect(page.getByText('Tap + to add an event.')).toBeVisible();
@@ -284,7 +284,7 @@ test.describe('English calendar', () => {
 			if (method === 'DELETE') return route.fulfill({ json: { ok: true } });
 			return route.fulfill({ json: { subscription } });
 		});
-		await navigateToFeature(page, KALENDER);
+		await navigateToFeature(page, CALENDAR);
 		await dismissOnboarding(page);
 
 		await page.getByText('Subscribe to calendar').click();
@@ -319,7 +319,7 @@ test.describe('English calendar', () => {
 
 	test('deleting a single date of a series is English', async ({ page, context, baseURL }) => {
 		await prepare(page, context, baseURL, 390, 'light');
-		await navigateToFeature(page, KALENDER);
+		await navigateToFeature(page, CALENDAR);
 		await dismissOnboarding(page);
 
 		await page.getByRole('button', { name: 'Open event: Flat meeting' }).first().click();
@@ -343,7 +343,7 @@ test.describe('English calendar', () => {
 
 		test('the time zone notice is English', async ({ page, context, baseURL }) => {
 			await prepare(page, context, baseURL, 390, 'light');
-			await navigateToFeature(page, KALENDER);
+			await navigateToFeature(page, CALENDAR);
 			await dismissOnboarding(page);
 			await expect(
 				page.getByText(

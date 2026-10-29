@@ -42,9 +42,9 @@ describe('inventory consume regression', () => {
 				wgId: mutationInput.wgId,
 				name: 'Toilettenpapier',
 				quantity: 5,
-				unit: 'Rolle',
+				unit: 'roll',
 				threshold: 4,
-				category: 'bad',
+				category: 'bathroom',
 				lastDecrementedAt: null,
 				createdAt: now,
 				updatedAt: now,
@@ -210,9 +210,9 @@ describe('inventory save regression', () => {
 		memberId: '33333333-3333-4333-8333-333333333333',
 		name: 'Toilettenpapier',
 		quantity: 0,
-		unit: 'Rolle',
+		unit: 'roll',
 		threshold: 1,
-		category: 'bad',
+		category: 'bathroom',
 		locale: 'de' as const,
 	};
 

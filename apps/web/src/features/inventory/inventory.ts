@@ -3,25 +3,12 @@ import type { Locale } from '@/shared/i18n/locale';
 
 export const INVENTORY_LIST_LIMIT = 1000;
 
-export const INVENTORY_CATEGORIES = ['bad', 'kueche', 'putzmittel', 'sonstiges'] as const;
+export const INVENTORY_CATEGORIES = ['bathroom', 'kitchen', 'cleaning', 'other'] as const;
 export type InventoryCategory = (typeof INVENTORY_CATEGORIES)[number];
 
-// i18n-ignore stored unit key
-export const INVENTORY_UNITS = ['Stück', 'L', 'kg', 'Rolle', 'Packung'] as const;
+/** Stored unit keys; each is also the argument of the `inventory.unit` message. */
+export const INVENTORY_UNITS = ['piece', 'litre', 'kilogram', 'roll', 'pack'] as const;
 export type InventoryUnit = (typeof INVENTORY_UNITS)[number];
-
-const UNIT_LABEL_KEYS: Partial<Record<string, string>> = {
-	Stück: 'piece', // i18n-ignore stored unit key
-	L: 'litre',
-	kg: 'kilogram',
-	Rolle: 'roll',
-	Packung: 'pack',
-};
-
-/** Argument of `inventory.unit`: the stored unit values stay German, the labels come from the catalog. */
-export function unitLabelKey(unit: string): string {
-	return UNIT_LABEL_KEYS[unit] ?? unit;
-}
 
 export const INVENTORY_LIMITS = {
 	NAME_MIN: 1,
@@ -131,13 +118,13 @@ export function groupItemsByCategory<T extends { category: string }>(
 	items: T[],
 ): Record<InventoryCategory, T[]> {
 	const groups: Record<InventoryCategory, T[]> = {
-		bad: [],
-		kueche: [],
-		putzmittel: [],
-		sonstiges: [],
+		bathroom: [],
+		kitchen: [],
+		cleaning: [],
+		other: [],
 	};
 	for (const item of items) {
-		const category = isValidCategory(item.category) ? item.category : 'sonstiges';
+		const category = isValidCategory(item.category) ? item.category : 'other';
 		groups[category].push(item);
 	}
 	return groups;

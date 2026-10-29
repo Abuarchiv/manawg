@@ -341,9 +341,10 @@ const ledgerRow = (index: number, id = index + 1) => {
 		created_at: String(when),
 	};
 };
-const LEGACY_0010 = {
-	hash: 'fb524f9b63dd0b63b84d8d1bf6d916781e7cc206682bf23bdd0106d9e9dbbb0e',
-	created_at: '1788436085539',
+// The earlier file hash of 0007 that Production and Preview recorded (HISTORICAL_LEDGER_ROWS).
+const HISTORICAL_0007 = {
+	hash: '88916329fbe6f5e5f4e4174e5db393aa3d7c4516790c4dbf3d1a41301f335aa0',
+	created_at: '1788112576655',
 };
 const ledgerClient = (rows: Array<Record<string, unknown>>) => ({
 	query: async (sql: string) => {
@@ -353,7 +354,7 @@ const ledgerClient = (rows: Array<Record<string, unknown>>) => ({
 	},
 });
 
-test('db:check accepts the canonical ledger and the reviewed legacy 0010 row at its position', async () => {
+test('db:check accepts the canonical ledger and the historical 0007 row at its position', async () => {
 	const canonical: Array<Record<string, unknown>> = journalEntries.map((_, index) =>
 		ledgerRow(index),
 	);
@@ -361,22 +362,22 @@ test('db:check accepts the canonical ledger and the reviewed legacy 0010 row at 
 		(await checker.assertMigrationLedgerPrefix(ledgerClient(canonical))).appliedCount,
 		journalEntries.length,
 	);
-	const withLegacy = canonical.slice(0, 11);
-	withLegacy[10] = { id: 11, ...LEGACY_0010 };
+	const withHistorical = [...canonical];
+	withHistorical[7] = { id: 8, ...HISTORICAL_0007 };
 	assert.equal(
-		(await checker.assertMigrationLedgerPrefix(ledgerClient(withLegacy))).appliedCount,
-		11,
+		(await checker.assertMigrationLedgerPrefix(ledgerClient(withHistorical))).appliedCount,
+		journalEntries.length,
 	);
 });
 
-test('db:check rejects legacy or unknown ledger rows outside their reviewed position', async (t) => {
+test('db:check rejects historical or unknown ledger rows outside their reviewed position', async (t) => {
 	const prefix = (count: number) =>
 		journalEntries.slice(0, count).map((_, index) => ledgerRow(index));
 	const cases = {
-		'legacy 0010 row at the wrong position': [...prefix(9), { id: 10, ...LEGACY_0010 }],
-		'legacy 0010 row with a different timestamp': [
-			...prefix(10),
-			{ id: 11, hash: LEGACY_0010.hash, created_at: '1788436085540' },
+		'historical 0007 row at the wrong position': [...prefix(8), { id: 9, ...HISTORICAL_0007 }],
+		'historical 0007 row with a different timestamp': [
+			...prefix(7),
+			{ id: 8, hash: HISTORICAL_0007.hash, created_at: '1788112576656' },
 		],
 		'unknown hash': [...prefix(3), { id: 4, hash: 'a'.repeat(64), created_at: '1' }],
 		'canonical rows out of order': [ledgerRow(0), ledgerRow(2, 2)],

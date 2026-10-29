@@ -171,7 +171,7 @@ test('private image deletion preserves shared references and serializes attachme
 			image_url text,
 			recurring_expense_id uuid,
 			recurring_due_at timestamptz,
-			category text DEFAULT 'sonstiges',
+			category text DEFAULT 'other',
 			import_id uuid,
 			import_duplicate_key text,
 			occurred_at timestamptz DEFAULT now(),

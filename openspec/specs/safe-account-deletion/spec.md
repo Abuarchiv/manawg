@@ -19,14 +19,14 @@ The system SHALL delete only the account identified by server-verified authentic
 
 ### Requirement: Accepted deletion permanently fences membership acquisition
 
-After local deletion has committed, the system SHALL reject creation of a WG, joining a WG, or claiming a legacy member for that account. The rejection SHALL apply to requests authenticated before deletion as well as requests received while Auth deletion is pending. Application-data cleanup and the durable deletion fence SHALL commit together or both roll back.
+After local deletion has committed, the system SHALL reject creating or joining a WG for that account. The rejection SHALL apply to requests authenticated before deletion as well as requests received while Auth deletion is pending. Application-data cleanup and the durable deletion fence SHALL commit together or both roll back.
 
 #### Scenario: Membership acquisition finishes first
 - **WHEN** a membership acquisition commits before the account's deletion fence
 - **THEN** account deletion SHALL include that membership in its cleanup
 
 #### Scenario: A previously authenticated request resumes after cleanup
-- **WHEN** an already authenticated create, join, or claim request attempts its write after local deletion commits
+- **WHEN** an already authenticated create or join request attempts its write after local deletion commits
 - **THEN** it SHALL be rejected without creating or linking a membership, including when it targets a previously unrelated WG
 
 #### Scenario: Local cleanup fails

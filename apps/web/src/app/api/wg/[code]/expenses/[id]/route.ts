@@ -25,7 +25,6 @@ import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
 import { imageUrlSchema, isAllowedImageUrlForWg } from '@/core/validators/image-url';
-import { EXPENSE_CATEGORIES } from '@/features/expenses/expense-categories';
 import { MAX_SPLITS } from '@/features/expenses/expense-constants';
 import {
 	expenseAmountSchema,
@@ -33,6 +32,7 @@ import {
 	expenseSplitSchema,
 	occurredAtSchema,
 } from '@/features/expenses/expense-schemas';
+import { expenseCategoryValueSchema } from '@/features/expenses/server/expense-category-schema';
 import { storedExpenseHoldingEdit } from '@/features/expenses/server/expense-held-edit';
 import { withExpensePaymentLock } from '@/features/expenses/server/expense-payments';
 import {
@@ -44,7 +44,7 @@ import {
 
 const patchSchema = z.object({
 	description: expenseDescriptionSchema.optional(),
-	category: z.enum(EXPENSE_CATEGORIES).optional(),
+	category: expenseCategoryValueSchema.optional(),
 	amountCents: expenseAmountSchema.optional(),
 	currency: currencySchema.optional(),
 	imageUrl: imageUrlSchema,

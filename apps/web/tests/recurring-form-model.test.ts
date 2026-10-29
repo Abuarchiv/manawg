@@ -42,7 +42,7 @@ test('manual splits must add up to the amount', () => {
 test('a recurring expense whose shares match the equal split opens in equal mode', () => {
 	const initial = {
 		description: 'Netflix',
-		category: 'freizeit' as const,
+		category: 'leisure' as const,
 		amountCents: 1000,
 		paidByMemberId: 'a',
 		intervalMonths: 1,

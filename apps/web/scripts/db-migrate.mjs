@@ -8,8 +8,7 @@
  *
  * It accepts only a Supabase session connection (db-migrate/connection.mjs), holds an advisory
  * lock for the whole run, refuses a ledger that is not an exact prefix of the journal, and fails
- * closed on any schema or catalog drift. A database that already has the schema but no baseline
- * row in its ledger is adopted instead of re-created (db-migrate/legacy-adoption.mjs). Failures
+ * closed on any schema or catalog drift. A database that has the schema but an empty ledger is refused. Failures
  * print one `[migrate] Failed [stage=...] [reason=...]` line and exit 1.
  *
  * The modules live in scripts/db-migrate/; this file is the entry point and re-exports the
@@ -28,8 +27,6 @@ export {
 	validateDatabaseUrl,
 } from './db-migrate/connection.mjs';
 export { assertMigrationLedgerPrefix } from './db-migrate/ledger.mjs';
-export { assertBaselineSchema } from './db-migrate/legacy-adoption.mjs';
-export { expectedBaselineSchema } from './db-migrate/migrations.mjs';
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
 	const progress = { stage: 'startup' };

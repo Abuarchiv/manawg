@@ -1,76 +1,9 @@
 {
-  "id": "26c24430-1d45-4de5-a68e-1ac68d486e78",
-  "prevId": "2f753abe-f61e-4b83-9db1-7d5bd6618376",
+  "id": "69db0e6d-2274-4668-9eb9-df45694db8c2",
+  "prevId": "26c24430-1d45-4de5-a68e-1ac68d486e78",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
-    "public.account_deletions": {
-      "name": "account_deletions",
-      "schema": "",
-      "columns": {
-        "auth_user_id": {
-          "name": "auth_user_id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "requested_at": {
-          "name": "requested_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "completed_at": {
-          "name": "completed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "last_attempt_at": {
-          "name": "last_attempt_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "account_deletions_pending_attempt_idx": {
-          "name": "account_deletions_pending_attempt_idx",
-          "columns": [
-            {
-              "expression": "last_attempt_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "requested_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "auth_user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "\"account_deletions\".\"completed_at\" IS NULL",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.announcement_comments": {
       "name": "announcement_comments",
       "schema": "",
@@ -530,6 +463,563 @@
       },
       "isRLSEnabled": false
     },
+    "public.wg_chat_mentions": {
+      "name": "wg_chat_mentions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "message_id": {
+          "name": "message_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mentioned_member_id": {
+          "name": "mentioned_member_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "wg_chat_mentions_member_idx": {
+          "name": "wg_chat_mentions_member_idx",
+          "columns": [
+            {
+              "expression": "mentioned_member_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "wg_chat_mentions_message_idx": {
+          "name": "wg_chat_mentions_message_idx",
+          "columns": [
+            {
+              "expression": "message_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "wg_chat_mentions_message_id_wg_chat_messages_id_fk": {
+          "name": "wg_chat_mentions_message_id_wg_chat_messages_id_fk",
+          "tableFrom": "wg_chat_mentions",
+          "tableTo": "wg_chat_messages",
+          "columnsFrom": [
+            "message_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "wg_chat_mentions_mentioned_member_id_wg_members_id_fk": {
+          "name": "wg_chat_mentions_mentioned_member_id_wg_members_id_fk",
+          "tableFrom": "wg_chat_mentions",
+          "tableTo": "wg_members",
+          "columnsFrom": [
+            "mentioned_member_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.wg_chat_messages": {
+      "name": "wg_chat_messages",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "wg_id": {
+          "name": "wg_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sender_member_id": {
+          "name": "sender_member_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "body": {
+          "name": "body",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "image_url": {
+          "name": "image_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "system_kind": {
+          "name": "system_kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "system_payload": {
+          "name": "system_payload",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reply_to_message_id": {
+          "name": "reply_to_message_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "edited_at": {
+          "name": "edited_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "wg_chat_messages_wg_created_idx": {
+          "name": "wg_chat_messages_wg_created_idx",
+          "columns": [
+            {
+              "expression": "wg_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "wg_chat_messages_reply_idx": {
+          "name": "wg_chat_messages_reply_idx",
+          "columns": [
+            {
+              "expression": "wg_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "reply_to_message_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "wg_chat_messages_reply_to_idx": {
+          "name": "wg_chat_messages_reply_to_idx",
+          "columns": [
+            {
+              "expression": "reply_to_message_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"wg_chat_messages\".\"reply_to_message_id\" IS NOT NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "wg_chat_messages_sender_idx": {
+          "name": "wg_chat_messages_sender_idx",
+          "columns": [
+            {
+              "expression": "sender_member_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "wg_chat_messages_wg_id_wgs_id_fk": {
+          "name": "wg_chat_messages_wg_id_wgs_id_fk",
+          "tableFrom": "wg_chat_messages",
+          "tableTo": "wgs",
+          "columnsFrom": [
+            "wg_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "wg_chat_messages_sender_member_id_wg_members_id_fk": {
+          "name": "wg_chat_messages_sender_member_id_wg_members_id_fk",
+          "tableFrom": "wg_chat_messages",
+          "tableTo": "wg_members",
+          "columnsFrom": [
+            "sender_member_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "wg_chat_messages_reply_to_message_id_wg_chat_messages_id_fk": {
+          "name": "wg_chat_messages_reply_to_message_id_wg_chat_messages_id_fk",
+          "tableFrom": "wg_chat_messages",
+          "tableTo": "wg_chat_messages",
+          "columnsFrom": [
+            "reply_to_message_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "wg_chat_messages_kind_check": {
+          "name": "wg_chat_messages_kind_check",
+          "value": "\"wg_chat_messages\".\"kind\" in ('text', 'image', 'system')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.wg_chat_reactions": {
+      "name": "wg_chat_reactions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "message_id": {
+          "name": "message_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "member_id": {
+          "name": "member_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "emoji": {
+          "name": "emoji",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "wg_chat_reactions_unique_idx": {
+          "name": "wg_chat_reactions_unique_idx",
+          "columns": [
+            {
+              "expression": "message_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "member_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "emoji",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "wg_chat_reactions_message_idx": {
+          "name": "wg_chat_reactions_message_idx",
+          "columns": [
+            {
+              "expression": "message_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "wg_chat_reactions_member_idx": {
+          "name": "wg_chat_reactions_member_idx",
+          "columns": [
+            {
+              "expression": "member_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "wg_chat_reactions_message_id_wg_chat_messages_id_fk": {
+          "name": "wg_chat_reactions_message_id_wg_chat_messages_id_fk",
+          "tableFrom": "wg_chat_reactions",
+          "tableTo": "wg_chat_messages",
+          "columnsFrom": [
+            "message_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "wg_chat_reactions_member_id_wg_members_id_fk": {
+          "name": "wg_chat_reactions_member_id_wg_members_id_fk",
+          "tableFrom": "wg_chat_reactions",
+          "tableTo": "wg_members",
+          "columnsFrom": [
+            "member_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.wg_chat_reads": {
+      "name": "wg_chat_reads",
+      "schema": "",
+      "columns": {
+        "wg_id": {
+          "name": "wg_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "member_id": {
+          "name": "member_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_read_message_id": {
+          "name": "last_read_message_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "wg_chat_reads_member_idx": {
+          "name": "wg_chat_reads_member_idx",
+          "columns": [
+            {
+              "expression": "member_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "wg_chat_reads_last_read_idx": {
+          "name": "wg_chat_reads_last_read_idx",
+          "columns": [
+            {
+              "expression": "last_read_message_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"wg_chat_reads\".\"last_read_message_id\" IS NOT NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "wg_chat_reads_wg_id_wgs_id_fk": {
+          "name": "wg_chat_reads_wg_id_wgs_id_fk",
+          "tableFrom": "wg_chat_reads",
+          "tableTo": "wgs",
+          "columnsFrom": [
+            "wg_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "wg_chat_reads_member_id_wg_members_id_fk": {
+          "name": "wg_chat_reads_member_id_wg_members_id_fk",
+          "tableFrom": "wg_chat_reads",
+          "tableTo": "wg_members",
+          "columnsFrom": [
+            "member_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "wg_chat_reads_last_read_message_id_wg_chat_messages_id_fk": {
+          "name": "wg_chat_reads_last_read_message_id_wg_chat_messages_id_fk",
+          "tableFrom": "wg_chat_reads",
+          "tableTo": "wg_chat_messages",
+          "columnsFrom": [
+            "last_read_message_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "wg_chat_reads_wg_id_member_id_pk": {
+          "name": "wg_chat_reads_wg_id_member_id_pk",
+          "columns": [
+            "wg_id",
+            "member_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.audit_events": {
       "name": "audit_events",
       "schema": "",
@@ -792,111 +1282,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.chore_completions": {
-      "name": "chore_completions",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "chore_id": {
-          "name": "chore_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "completed_by_member_id": {
-          "name": "completed_by_member_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "completed_at": {
-          "name": "completed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "chore_completions_chore_idx": {
-          "name": "chore_completions_chore_idx",
-          "columns": [
-            {
-              "expression": "chore_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "completed_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "chore_completions_completed_by_idx": {
-          "name": "chore_completions_completed_by_idx",
-          "columns": [
-            {
-              "expression": "completed_by_member_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "chore_completions_chore_id_chores_id_fk": {
-          "name": "chore_completions_chore_id_chores_id_fk",
-          "tableFrom": "chore_completions",
-          "tableTo": "chores",
-          "columnsFrom": [
-            "chore_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "chore_completions_completed_by_member_id_wg_members_id_fk": {
-          "name": "chore_completions_completed_by_member_id_wg_members_id_fk",
-          "tableFrom": "chore_completions",
-          "tableTo": "wg_members",
-          "columnsFrom": [
-            "completed_by_member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.chores": {
-      "name": "chores",
+    "public.wg_events": {
+      "name": "wg_events",
       "schema": "",
       "columns": {
         "id": {
@@ -918,42 +1305,46 @@
           "primaryKey": false,
           "notNull": true
         },
-        "interval_days": {
-          "name": "interval_days",
-          "type": "integer",
+        "description": {
+          "name": "description",
+          "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "default": 7
+          "notNull": false
         },
-        "recurrence_type": {
-          "name": "recurrence_type",
-          "type": "varchar(10)",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'days'"
-        },
-        "next_due_at": {
-          "name": "next_due_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "anchor_at": {
-          "name": "anchor_at",
+        "starts_at": {
+          "name": "starts_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true
         },
-        "assigned_member_id": {
-          "name": "assigned_member_id",
-          "type": "uuid",
+        "ends_at": {
+          "name": "ends_at",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
-        "last_reminder_at": {
-          "name": "last_reminder_at",
-          "type": "timestamp with time zone",
+        "all_day": {
+          "name": "all_day",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "location": {
+          "name": "location",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "recurrence": {
+          "name": "recurrence",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by_member_id": {
+          "name": "created_by_member_id",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": false
         },
@@ -973,17 +1364,11 @@
         }
       },
       "indexes": {
-        "chores_wg_idx": {
-          "name": "chores_wg_idx",
+        "wg_events_wg_idx": {
+          "name": "wg_events_wg_idx",
           "columns": [
             {
               "expression": "wg_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "next_due_at",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -994,11 +1379,32 @@
           "method": "btree",
           "with": {}
         },
-        "chores_next_due_idx": {
-          "name": "chores_next_due_idx",
+        "wg_events_wg_starts_idx": {
+          "name": "wg_events_wg_starts_idx",
           "columns": [
             {
-              "expression": "next_due_at",
+              "expression": "wg_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "starts_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "wg_events_starts_idx": {
+          "name": "wg_events_starts_idx",
+          "columns": [
+            {
+              "expression": "starts_at",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -1011,9 +1417,9 @@
         }
       },
       "foreignKeys": {
-        "chores_wg_id_wgs_id_fk": {
-          "name": "chores_wg_id_wgs_id_fk",
-          "tableFrom": "chores",
+        "wg_events_wg_id_wgs_id_fk": {
+          "name": "wg_events_wg_id_wgs_id_fk",
+          "tableFrom": "wg_events",
           "tableTo": "wgs",
           "columnsFrom": [
             "wg_id"
@@ -1024,12 +1430,12 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "chores_assigned_member_id_wg_members_id_fk": {
-          "name": "chores_assigned_member_id_wg_members_id_fk",
-          "tableFrom": "chores",
+        "wg_events_created_by_member_id_wg_members_id_fk": {
+          "name": "wg_events_created_by_member_id_wg_members_id_fk",
+          "tableFrom": "wg_events",
           "tableTo": "wg_members",
           "columnsFrom": [
-            "assigned_member_id"
+            "created_by_member_id"
           ],
           "columnsTo": [
             "id"
@@ -1041,12 +1447,7 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {
-        "chores_recurrence_type_check": {
-          "name": "chores_recurrence_type_check",
-          "value": "\"chores\".\"recurrence_type\" in ('days', 'months')"
-        }
-      },
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.expense_imports": {
@@ -1740,7 +2141,7 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "default": "'sonstiges'"
+          "default": "'other'"
         },
         "import_id": {
           "name": "import_id",
@@ -1931,38 +2332,95 @@
         },
         "expenses_category_check": {
           "name": "expenses_category_check",
-          "value": "\"expenses\".\"category\" IN ('lebensmittel', 'haushalt', 'wohnen', 'freizeit', 'mobilitaet', 'sonstiges')"
+          "value": "\"expenses\".\"category\" IN ('groceries', 'household', 'housing', 'leisure', 'transport', 'other', 'lebensmittel', 'haushalt', 'wohnen', 'freizeit', 'mobilitaet', 'sonstiges')"
         }
       },
       "isRLSEnabled": false
     },
-    "public.idempotency_responses": {
-      "name": "idempotency_responses",
+    "public.recurring_expenses": {
+      "name": "recurring_expenses",
       "schema": "",
       "columns": {
-        "scope": {
-          "name": "scope",
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "wg_id": {
+          "name": "wg_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_by_member_id": {
+          "name": "created_by_member_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "paid_by_member_id": {
+          "name": "paid_by_member_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "key": {
-          "name": "key",
-          "type": "text",
+        "amount_cents": {
+          "name": "amount_cents",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true
         },
-        "response_body": {
-          "name": "response_body",
-          "type": "jsonb",
+        "interval_months": {
+          "name": "interval_months",
+          "type": "integer",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "default": 1
         },
-        "expires_at": {
-          "name": "expires_at",
+        "next_due_at": {
+          "name": "next_due_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true
+        },
+        "anchor_at": {
+          "name": "anchor_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_created_at": {
+          "name": "last_created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "paused_at": {
+          "name": "paused_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "splits_json": {
+          "name": "splits_json",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "category": {
+          "name": "category",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'other'"
         },
         "created_at": {
           "name": "created_at",
@@ -1970,14 +2428,168 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
         }
       },
       "indexes": {
-        "idempotency_responses_expires_idx": {
-          "name": "idempotency_responses_expires_idx",
+        "recurring_expenses_wg_idx": {
+          "name": "recurring_expenses_wg_idx",
           "columns": [
             {
-              "expression": "expires_at",
+              "expression": "wg_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "next_due_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "recurring_expenses_next_due_idx": {
+          "name": "recurring_expenses_next_due_idx",
+          "columns": [
+            {
+              "expression": "next_due_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"recurring_expenses\".\"paused_at\" IS NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "recurring_expenses_wg_id_wgs_id_fk": {
+          "name": "recurring_expenses_wg_id_wgs_id_fk",
+          "tableFrom": "recurring_expenses",
+          "tableTo": "wgs",
+          "columnsFrom": [
+            "wg_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "recurring_expenses_created_by_member_id_wg_members_id_fk": {
+          "name": "recurring_expenses_created_by_member_id_wg_members_id_fk",
+          "tableFrom": "recurring_expenses",
+          "tableTo": "wg_members",
+          "columnsFrom": [
+            "created_by_member_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "recurring_expenses_paid_by_member_id_wg_members_id_fk": {
+          "name": "recurring_expenses_paid_by_member_id_wg_members_id_fk",
+          "tableFrom": "recurring_expenses",
+          "tableTo": "wg_members",
+          "columnsFrom": [
+            "paid_by_member_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "recurring_expenses_amount_cents_check": {
+          "name": "recurring_expenses_amount_cents_check",
+          "value": "\"recurring_expenses\".\"amount_cents\" > 0"
+        },
+        "recurring_expenses_category_check": {
+          "name": "recurring_expenses_category_check",
+          "value": "\"recurring_expenses\".\"category\" IN ('groceries', 'household', 'housing', 'leisure', 'transport', 'other', 'lebensmittel', 'haushalt', 'wohnen', 'freizeit', 'mobilitaet', 'sonstiges')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.chore_completions": {
+      "name": "chore_completions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "chore_id": {
+          "name": "chore_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "completed_by_member_id": {
+          "name": "completed_by_member_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "chore_completions_chore_idx": {
+          "name": "chore_completions_chore_idx",
+          "columns": [
+            {
+              "expression": "chore_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "completed_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "chore_completions_completed_by_idx": {
+          "name": "chore_completions_completed_by_idx",
+          "columns": [
+            {
+              "expression": "completed_by_member_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -1989,19 +2601,192 @@
           "with": {}
         }
       },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "idempotency_responses_scope_key_pk": {
-          "name": "idempotency_responses_scope_key_pk",
-          "columns": [
-            "scope",
-            "key"
-          ]
+      "foreignKeys": {
+        "chore_completions_chore_id_chores_id_fk": {
+          "name": "chore_completions_chore_id_chores_id_fk",
+          "tableFrom": "chore_completions",
+          "tableTo": "chores",
+          "columnsFrom": [
+            "chore_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "chore_completions_completed_by_member_id_wg_members_id_fk": {
+          "name": "chore_completions_completed_by_member_id_wg_members_id_fk",
+          "tableFrom": "chore_completions",
+          "tableTo": "wg_members",
+          "columnsFrom": [
+            "completed_by_member_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         }
       },
+      "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.chores": {
+      "name": "chores",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "wg_id": {
+          "name": "wg_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "interval_days": {
+          "name": "interval_days",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 7
+        },
+        "recurrence_type": {
+          "name": "recurrence_type",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'days'"
+        },
+        "next_due_at": {
+          "name": "next_due_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "anchor_at": {
+          "name": "anchor_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "assigned_member_id": {
+          "name": "assigned_member_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_reminder_at": {
+          "name": "last_reminder_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "chores_wg_idx": {
+          "name": "chores_wg_idx",
+          "columns": [
+            {
+              "expression": "wg_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "next_due_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "chores_next_due_idx": {
+          "name": "chores_next_due_idx",
+          "columns": [
+            {
+              "expression": "next_due_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "chores_wg_id_wgs_id_fk": {
+          "name": "chores_wg_id_wgs_id_fk",
+          "tableFrom": "chores",
+          "tableTo": "wgs",
+          "columnsFrom": [
+            "wg_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "chores_assigned_member_id_wg_members_id_fk": {
+          "name": "chores_assigned_member_id_wg_members_id_fk",
+          "tableFrom": "chores",
+          "tableTo": "wg_members",
+          "columnsFrom": [
+            "assigned_member_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "chores_recurrence_type_check": {
+          "name": "chores_recurrence_type_check",
+          "value": "\"chores\".\"recurrence_type\" in ('days', 'months')"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.member_absences": {
@@ -2148,390 +2933,6 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.private_image_deletions": {
-      "name": "private_image_deletions",
-      "schema": "",
-      "columns": {
-        "object_key": {
-          "name": "object_key",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "requested_at": {
-          "name": "requested_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "last_attempt_at": {
-          "name": "last_attempt_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "storage_deleted_at": {
-          "name": "storage_deleted_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "private_image_deletions_cleanup_idx": {
-          "name": "private_image_deletions_cleanup_idx",
-          "columns": [
-            {
-              "expression": "requested_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "last_attempt_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "storage_deleted_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.push_subscriptions": {
-      "name": "push_subscriptions",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "member_id": {
-          "name": "member_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "endpoint": {
-          "name": "endpoint",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "p256dh": {
-          "name": "p256dh",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "auth_key": {
-          "name": "auth_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "user_agent": {
-          "name": "user_agent",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "push_subscriptions_member_idx": {
-          "name": "push_subscriptions_member_idx",
-          "columns": [
-            {
-              "expression": "member_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "push_subscriptions_member_endpoint_idx": {
-          "name": "push_subscriptions_member_endpoint_idx",
-          "columns": [
-            {
-              "expression": "member_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "endpoint",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "push_subscriptions_endpoint_lookup_idx": {
-          "name": "push_subscriptions_endpoint_lookup_idx",
-          "columns": [
-            {
-              "expression": "endpoint",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "push_subscriptions_member_id_wg_members_id_fk": {
-          "name": "push_subscriptions_member_id_wg_members_id_fk",
-          "tableFrom": "push_subscriptions",
-          "tableTo": "wg_members",
-          "columnsFrom": [
-            "member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.recurring_expenses": {
-      "name": "recurring_expenses",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "wg_id": {
-          "name": "wg_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_by_member_id": {
-          "name": "created_by_member_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "paid_by_member_id": {
-          "name": "paid_by_member_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "description": {
-          "name": "description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "amount_cents": {
-          "name": "amount_cents",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "interval_months": {
-          "name": "interval_months",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        },
-        "next_due_at": {
-          "name": "next_due_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "anchor_at": {
-          "name": "anchor_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "last_created_at": {
-          "name": "last_created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "paused_at": {
-          "name": "paused_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "splits_json": {
-          "name": "splits_json",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "category": {
-          "name": "category",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'sonstiges'"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "recurring_expenses_wg_idx": {
-          "name": "recurring_expenses_wg_idx",
-          "columns": [
-            {
-              "expression": "wg_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "next_due_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "recurring_expenses_next_due_idx": {
-          "name": "recurring_expenses_next_due_idx",
-          "columns": [
-            {
-              "expression": "next_due_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "\"recurring_expenses\".\"paused_at\" IS NULL",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "recurring_expenses_wg_id_wgs_id_fk": {
-          "name": "recurring_expenses_wg_id_wgs_id_fk",
-          "tableFrom": "recurring_expenses",
-          "tableTo": "wgs",
-          "columnsFrom": [
-            "wg_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "recurring_expenses_created_by_member_id_wg_members_id_fk": {
-          "name": "recurring_expenses_created_by_member_id_wg_members_id_fk",
-          "tableFrom": "recurring_expenses",
-          "tableTo": "wg_members",
-          "columnsFrom": [
-            "created_by_member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "recurring_expenses_paid_by_member_id_wg_members_id_fk": {
-          "name": "recurring_expenses_paid_by_member_id_wg_members_id_fk",
-          "tableFrom": "recurring_expenses",
-          "tableTo": "wg_members",
-          "columnsFrom": [
-            "paid_by_member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "recurring_expenses_amount_cents_check": {
-          "name": "recurring_expenses_amount_cents_check",
-          "value": "\"recurring_expenses\".\"amount_cents\" > 0"
-        },
-        "recurring_expenses_category_check": {
-          "name": "recurring_expenses_category_check",
-          "value": "\"recurring_expenses\".\"category\" IN ('lebensmittel', 'haushalt', 'wohnen', 'freizeit', 'mobilitaet', 'sonstiges')"
-        }
-      },
       "isRLSEnabled": false
     },
     "public.shopping_items": {
@@ -2728,179 +3129,100 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.wg_chat_mentions": {
-      "name": "wg_chat_mentions",
+    "public.account_deletions": {
+      "name": "account_deletions",
       "schema": "",
       "columns": {
-        "id": {
-          "name": "id",
+        "auth_user_id": {
+          "name": "auth_user_id",
           "type": "uuid",
           "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "message_id": {
-          "name": "message_id",
-          "type": "uuid",
-          "primaryKey": false,
           "notNull": true
         },
-        "mentioned_member_id": {
-          "name": "mentioned_member_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
+        "requested_at": {
+          "name": "requested_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_attempt_at": {
+          "name": "last_attempt_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
-        "wg_chat_mentions_member_idx": {
-          "name": "wg_chat_mentions_member_idx",
+        "account_deletions_pending_attempt_idx": {
+          "name": "account_deletions_pending_attempt_idx",
           "columns": [
             {
-              "expression": "mentioned_member_id",
+              "expression": "last_attempt_at",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             },
             {
-              "expression": "created_at",
+              "expression": "requested_at",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "wg_chat_mentions_message_idx": {
-          "name": "wg_chat_mentions_message_idx",
-          "columns": [
+            },
             {
-              "expression": "message_id",
+              "expression": "auth_user_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             }
           ],
           "isUnique": false,
+          "where": "\"account_deletions\".\"completed_at\" IS NULL",
           "concurrently": false,
           "method": "btree",
           "with": {}
         }
       },
-      "foreignKeys": {
-        "wg_chat_mentions_message_id_wg_chat_messages_id_fk": {
-          "name": "wg_chat_mentions_message_id_wg_chat_messages_id_fk",
-          "tableFrom": "wg_chat_mentions",
-          "tableTo": "wg_chat_messages",
-          "columnsFrom": [
-            "message_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "wg_chat_mentions_mentioned_member_id_wg_members_id_fk": {
-          "name": "wg_chat_mentions_mentioned_member_id_wg_members_id_fk",
-          "tableFrom": "wg_chat_mentions",
-          "tableTo": "wg_members",
-          "columnsFrom": [
-            "mentioned_member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.wg_chat_messages": {
-      "name": "wg_chat_messages",
+    "public.idempotency_responses": {
+      "name": "idempotency_responses",
       "schema": "",
       "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "wg_id": {
-          "name": "wg_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "sender_member_id": {
-          "name": "sender_member_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "kind": {
-          "name": "kind",
+        "scope": {
+          "name": "scope",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "body": {
-          "name": "body",
+        "key": {
+          "name": "key",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
-        "image_url": {
-          "name": "image_url",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "system_kind": {
-          "name": "system_kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "system_payload": {
-          "name": "system_payload",
+        "response_body": {
+          "name": "response_body",
           "type": "jsonb",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
-        "reply_to_message_id": {
-          "name": "reply_to_message_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "edited_at": {
-          "name": "edited_at",
+        "expires_at": {
+          "name": "expires_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
-          "notNull": false
-        },
-        "deleted_at": {
-          "name": "deleted_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "created_at": {
           "name": "created_at",
@@ -2911,69 +3233,11 @@
         }
       },
       "indexes": {
-        "wg_chat_messages_wg_created_idx": {
-          "name": "wg_chat_messages_wg_created_idx",
+        "idempotency_responses_expires_idx": {
+          "name": "idempotency_responses_expires_idx",
           "columns": [
             {
-              "expression": "wg_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "wg_chat_messages_reply_idx": {
-          "name": "wg_chat_messages_reply_idx",
-          "columns": [
-            {
-              "expression": "wg_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "reply_to_message_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "wg_chat_messages_reply_to_idx": {
-          "name": "wg_chat_messages_reply_to_idx",
-          "columns": [
-            {
-              "expression": "reply_to_message_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "\"wg_chat_messages\".\"reply_to_message_id\" IS NOT NULL",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "wg_chat_messages_sender_idx": {
-          "name": "wg_chat_messages_sender_idx",
-          "columns": [
-            {
-              "expression": "sender_member_id",
+              "expression": "expires_at",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -2985,60 +3249,89 @@
           "with": {}
         }
       },
-      "foreignKeys": {
-        "wg_chat_messages_wg_id_wgs_id_fk": {
-          "name": "wg_chat_messages_wg_id_wgs_id_fk",
-          "tableFrom": "wg_chat_messages",
-          "tableTo": "wgs",
-          "columnsFrom": [
-            "wg_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "wg_chat_messages_sender_member_id_wg_members_id_fk": {
-          "name": "wg_chat_messages_sender_member_id_wg_members_id_fk",
-          "tableFrom": "wg_chat_messages",
-          "tableTo": "wg_members",
-          "columnsFrom": [
-            "sender_member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "wg_chat_messages_reply_to_message_id_wg_chat_messages_id_fk": {
-          "name": "wg_chat_messages_reply_to_message_id_wg_chat_messages_id_fk",
-          "tableFrom": "wg_chat_messages",
-          "tableTo": "wg_chat_messages",
-          "columnsFrom": [
-            "reply_to_message_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "idempotency_responses_scope_key_pk": {
+          "name": "idempotency_responses_scope_key_pk",
+          "columns": [
+            "scope",
+            "key"
+          ]
         }
       },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.private_image_deletions": {
+      "name": "private_image_deletions",
+      "schema": "",
+      "columns": {
+        "object_key": {
+          "name": "object_key",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "requested_at": {
+          "name": "requested_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "last_attempt_at": {
+          "name": "last_attempt_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "storage_deleted_at": {
+          "name": "storage_deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "private_image_deletions_cleanup_idx": {
+          "name": "private_image_deletions_cleanup_idx",
+          "columns": [
+            {
+              "expression": "requested_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "last_attempt_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "storage_deleted_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {
-        "wg_chat_messages_kind_check": {
-          "name": "wg_chat_messages_kind_check",
-          "value": "\"wg_chat_messages\".\"kind\" in ('text', 'image', 'system')"
-        }
-      },
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.wg_chat_reactions": {
-      "name": "wg_chat_reactions",
+    "public.push_subscriptions": {
+      "name": "push_subscriptions",
       "schema": "",
       "columns": {
         "id": {
@@ -3047,12 +3340,6 @@
           "primaryKey": true,
           "notNull": true,
           "default": "gen_random_uuid()"
-        },
-        "message_id": {
-          "name": "message_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
         },
         "member_id": {
           "name": "member_id",
@@ -3060,11 +3347,29 @@
           "primaryKey": false,
           "notNull": true
         },
-        "emoji": {
-          "name": "emoji",
+        "endpoint": {
+          "name": "endpoint",
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "p256dh": {
+          "name": "p256dh",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "auth_key": {
+          "name": "auth_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_agent": {
+          "name": "user_agent",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
@@ -3075,15 +3380,24 @@
         }
       },
       "indexes": {
-        "wg_chat_reactions_unique_idx": {
-          "name": "wg_chat_reactions_unique_idx",
+        "push_subscriptions_member_idx": {
+          "name": "push_subscriptions_member_idx",
           "columns": [
             {
-              "expression": "message_id",
+              "expression": "member_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
-            },
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "push_subscriptions_member_endpoint_idx": {
+          "name": "push_subscriptions_member_endpoint_idx",
+          "columns": [
             {
               "expression": "member_id",
               "isExpression": false,
@@ -3091,7 +3405,7 @@
               "nulls": "last"
             },
             {
-              "expression": "emoji",
+              "expression": "endpoint",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -3102,26 +3416,11 @@
           "method": "btree",
           "with": {}
         },
-        "wg_chat_reactions_message_idx": {
-          "name": "wg_chat_reactions_message_idx",
+        "push_subscriptions_endpoint_lookup_idx": {
+          "name": "push_subscriptions_endpoint_lookup_idx",
           "columns": [
             {
-              "expression": "message_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "wg_chat_reactions_member_idx": {
-          "name": "wg_chat_reactions_member_idx",
-          "columns": [
-            {
-              "expression": "member_id",
+              "expression": "endpoint",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -3134,22 +3433,9 @@
         }
       },
       "foreignKeys": {
-        "wg_chat_reactions_message_id_wg_chat_messages_id_fk": {
-          "name": "wg_chat_reactions_message_id_wg_chat_messages_id_fk",
-          "tableFrom": "wg_chat_reactions",
-          "tableTo": "wg_chat_messages",
-          "columnsFrom": [
-            "message_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "wg_chat_reactions_member_id_wg_members_id_fk": {
-          "name": "wg_chat_reactions_member_id_wg_members_id_fk",
-          "tableFrom": "wg_chat_reactions",
+        "push_subscriptions_member_id_wg_members_id_fk": {
+          "name": "push_subscriptions_member_id_wg_members_id_fk",
+          "tableFrom": "push_subscriptions",
           "tableTo": "wg_members",
           "columnsFrom": [
             "member_id"
@@ -3158,292 +3444,6 @@
             "id"
           ],
           "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.wg_chat_reads": {
-      "name": "wg_chat_reads",
-      "schema": "",
-      "columns": {
-        "wg_id": {
-          "name": "wg_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "member_id": {
-          "name": "member_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "last_read_message_id": {
-          "name": "last_read_message_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "wg_chat_reads_member_idx": {
-          "name": "wg_chat_reads_member_idx",
-          "columns": [
-            {
-              "expression": "member_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "wg_chat_reads_last_read_idx": {
-          "name": "wg_chat_reads_last_read_idx",
-          "columns": [
-            {
-              "expression": "last_read_message_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "\"wg_chat_reads\".\"last_read_message_id\" IS NOT NULL",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "wg_chat_reads_wg_id_wgs_id_fk": {
-          "name": "wg_chat_reads_wg_id_wgs_id_fk",
-          "tableFrom": "wg_chat_reads",
-          "tableTo": "wgs",
-          "columnsFrom": [
-            "wg_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "wg_chat_reads_member_id_wg_members_id_fk": {
-          "name": "wg_chat_reads_member_id_wg_members_id_fk",
-          "tableFrom": "wg_chat_reads",
-          "tableTo": "wg_members",
-          "columnsFrom": [
-            "member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "wg_chat_reads_last_read_message_id_wg_chat_messages_id_fk": {
-          "name": "wg_chat_reads_last_read_message_id_wg_chat_messages_id_fk",
-          "tableFrom": "wg_chat_reads",
-          "tableTo": "wg_chat_messages",
-          "columnsFrom": [
-            "last_read_message_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "wg_chat_reads_wg_id_member_id_pk": {
-          "name": "wg_chat_reads_wg_id_member_id_pk",
-          "columns": [
-            "wg_id",
-            "member_id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.wg_events": {
-      "name": "wg_events",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "wg_id": {
-          "name": "wg_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "title": {
-          "name": "title",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "description": {
-          "name": "description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "starts_at": {
-          "name": "starts_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "ends_at": {
-          "name": "ends_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "all_day": {
-          "name": "all_day",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "location": {
-          "name": "location",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "recurrence": {
-          "name": "recurrence",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_by_member_id": {
-          "name": "created_by_member_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "wg_events_wg_idx": {
-          "name": "wg_events_wg_idx",
-          "columns": [
-            {
-              "expression": "wg_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "wg_events_wg_starts_idx": {
-          "name": "wg_events_wg_starts_idx",
-          "columns": [
-            {
-              "expression": "wg_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "starts_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "wg_events_starts_idx": {
-          "name": "wg_events_starts_idx",
-          "columns": [
-            {
-              "expression": "starts_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "wg_events_wg_id_wgs_id_fk": {
-          "name": "wg_events_wg_id_wgs_id_fk",
-          "tableFrom": "wg_events",
-          "tableTo": "wgs",
-          "columnsFrom": [
-            "wg_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "wg_events_created_by_member_id_wg_members_id_fk": {
-          "name": "wg_events_created_by_member_id_wg_members_id_fk",
-          "tableFrom": "wg_events",
-          "tableTo": "wg_members",
-          "columnsFrom": [
-            "created_by_member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -4256,7 +4256,7 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "default": "'Stück'"
+          "default": "'piece'"
         },
         "threshold": {
           "name": "threshold",
@@ -4270,7 +4270,7 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "default": "'sonstiges'"
+          "default": "'other'"
         },
         "last_decremented_at": {
           "name": "last_decremented_at",

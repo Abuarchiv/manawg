@@ -10,7 +10,7 @@ import {
 	skipUnlessFixtures,
 } from './support/helpers';
 
-test.describe('pinnwand edit', () => {
+test.describe('pinboard edit', () => {
 	skipUnlessFixtures();
 
 	const post: Announcement = {

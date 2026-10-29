@@ -92,12 +92,12 @@ export default {
 		reviewAria: 'Fixkosten-Ausgabe prüfen: {description}',
 	},
 	categories: {
-		lebensmittel: 'Lebensmittel',
-		haushalt: 'Haushalt',
-		wohnen: 'Wohnen & Nebenkosten',
-		freizeit: 'Freizeit',
-		mobilitaet: 'Mobilität',
-		sonstiges: 'Sonstiges',
+		groceries: 'Lebensmittel',
+		household: 'Haushalt',
+		housing: 'Wohnen & Nebenkosten',
+		leisure: 'Freizeit',
+		transport: 'Mobilität',
+		other: 'Sonstiges',
 	},
 	notices: {
 		deleteForbidden: 'Nur wer bezahlt hat oder beteiligt ist, kann diese Ausgabe löschen.',

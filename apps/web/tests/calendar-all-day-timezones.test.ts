@@ -4,6 +4,7 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import { PgDialect } from 'drizzle-orm/pg-core';
+import { eventInstant } from '../src/features/events/event-schemas.ts';
 import {
 	type EventInput,
 	eventOverlapsCalendarDay,
@@ -132,5 +133,26 @@ describe('calendar all-day events and recurrence', () => {
 		const window = computeTomorrowUtcWindow(new Date('2026-09-29T09:00:00.000Z'));
 		assert.equal(window.start.toISOString(), '2026-09-29T22:00:00.000Z');
 		assert.equal(expandRecurrence(ALL_DAY_EVENT, window.start, window.end).length, 0);
+	});
+
+	// Regression: an API client stored an all-day end as 2026-10-17T23:00Z, a clock time that each
+	// device showed on its own local date. The server now stores UTC midnight of one date.
+	test('an all-day time from an API client is stored as UTC midnight of its date', () => {
+		for (const value of [
+			'2026-10-17T00:00:00Z',
+			'2026-10-16T22:00:00.000Z',
+			'2026-10-17T00:00:00+02:00',
+			'2026-10-17T14:37:00-07:00',
+		]) {
+			assert.equal(eventInstant(value, true).toISOString(), '2026-10-17T00:00:00.000Z', value);
+		}
+		assert.equal(
+			eventInstant('2026-10-17T23:00:00Z', true).toISOString(),
+			'2026-10-18T00:00:00.000Z',
+		);
+		assert.equal(
+			eventInstant('2026-10-17T23:00:00Z', false).toISOString(),
+			'2026-10-17T23:00:00.000Z',
+		);
 	});
 });

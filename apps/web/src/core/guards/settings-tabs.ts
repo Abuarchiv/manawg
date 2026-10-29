@@ -9,14 +9,6 @@ export const SETTINGS_TABS: ReadonlyArray<{ id: SettingsTab; label: MessageKey; 
 	{ id: 'data', label: 'settings.tabs.data', hash: '#data' },
 ];
 
-// Hashes from before the English rename, still in old notifications and bookmarks.
-const LEGACY_HASHES: Record<string, SettingsTab> = {
-	'#profil': 'profile',
-	'#benachrichtigungen': 'notifications',
-	'#zugang': 'access',
-	'#daten': 'data',
-};
-
 export function getSettingsTabFromHash(hash: string): SettingsTab {
-	return SETTINGS_TABS.find((tab) => tab.hash === hash)?.id ?? LEGACY_HASHES[hash] ?? 'profile';
+	return SETTINGS_TABS.find((tab) => tab.hash === hash)?.id ?? 'profile';
 }

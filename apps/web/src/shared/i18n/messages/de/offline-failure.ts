@@ -63,7 +63,7 @@ export default {
 		detail:
 			'Die Vorlage existiert nicht mehr. Entferne diese Offline-Aktion oder erstelle die Fixkosten neu.',
 	},
-	aboPaused: {
+	recurringPaused: {
 		title: 'Fixkosten pausiert',
 		detail:
 			'Die Fixkosten sind inzwischen pausiert. Entferne diese Offline-Aktion oder setze die Fixkosten fort.',

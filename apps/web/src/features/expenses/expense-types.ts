@@ -40,7 +40,7 @@ export interface RecurringExpense {
 	updatedAt?: string;
 	/** Original cadence anchor; absent on pending offline rows. */
 	anchorAt?: string;
-	/** Paused templates are neither booked by the cron nor captured manually (API: abo_paused). */
+	/** Paused templates are neither booked by the cron nor captured manually (API: recurring_paused). */
 	pausedAt: string | null;
 	splits: ExpenseSplitShare[];
 }

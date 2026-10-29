@@ -9,7 +9,7 @@ import { expectedSchema, latestAvailableSnapshotTag, readMigrationJournal } from
 import { assertExpectedSchema } from './schema-check.mjs';
 
 /** Domain rules that existing rows must satisfy, checked directly against the data. */
-const LEGACY_DATA_CHECKS = [
+const DATA_CHECKS = [
 	[
 		'announcements.kind',
 		`select count(*)::int as count from public.announcements where kind not in ('info', 'question', 'problem', 'request', 'decision')`,
@@ -54,7 +54,7 @@ export async function verifyDatabase(client) {
 	);
 	await assertCatalogSecurity(client, expected);
 	await assertMigrationLedger(client);
-	for (const [label, query] of LEGACY_DATA_CHECKS) {
+	for (const [label, query] of DATA_CHECKS) {
 		const { rows } = await client.query(query);
 		if (Number(rows[0]?.count ?? 0) !== 0) {
 			throw new Error(`Database check failed: existing data violates ${label}.`);

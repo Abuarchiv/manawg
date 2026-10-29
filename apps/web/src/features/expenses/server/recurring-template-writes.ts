@@ -339,7 +339,7 @@ export async function advanceRecurringTemplate(
 	) {
 		return conflict('recurring_expense_already_advanced');
 	}
-	if (template.pausedAt) return badRequest('abo_paused');
+	if (template.pausedAt) return badRequest('recurring_paused');
 	const [booked] = await db
 		.select({ id: expenses.id })
 		.from(expenses)
@@ -368,7 +368,7 @@ export async function advanceRecurringTemplate(
 		) {
 			return conflict('recurring_expense_already_advanced');
 		}
-		if (current.pausedAt) return badRequest('abo_paused');
+		if (current.pausedAt) return badRequest('recurring_paused');
 		return conflict('recurring_expense_already_advanced');
 	}
 	await recordRecurringAdvanced(member.memberId, updated);

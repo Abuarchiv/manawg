@@ -14,7 +14,7 @@ import {
 import { expectNoGermanChrome, expectNoHorizontalOverflow, setEnglishLocale } from './support/i18n';
 
 const BASE = `/api/wg/${FIXTURE_WG.shareCode}`;
-const EINKAUF = `/wg/${FIXTURE_WG.shareCode}/shopping`;
+const SHOPPING = `/wg/${FIXTURE_WG.shareCode}/shopping`;
 const VORRAETE = `/wg/${FIXTURE_WG.shareCode}/supplies`;
 const MINA_ID = '0ab8c8f2-5d03-4a84-aadc-4c5d7e8abf55';
 const WIDTHS = [320, 390] as const;
@@ -43,9 +43,9 @@ function stock(overrides: Partial<InventoryItemDto>): InventoryItemDto {
 		wgId: FIXTURE_WG.id,
 		name: 'Stock',
 		quantity: 3,
-		unit: 'Stück',
+		unit: 'piece',
 		threshold: 1,
-		category: 'sonstiges',
+		category: 'other',
 		lastDecrementedAt: null,
 		decrementCount30d: 0,
 		createdAt: at,
@@ -59,21 +59,21 @@ const SUPPLIES = [
 		id: 'soap',
 		name: 'Soap',
 		quantity: 0,
-		unit: 'Packung',
+		unit: 'pack',
 		threshold: 2,
-		category: 'bad',
+		category: 'bathroom',
 		decrementCount30d: 1,
 	}),
 	stock({
 		id: 'rice',
 		name: 'Rice',
 		quantity: 2,
-		unit: 'Rolle',
+		unit: 'roll',
 		threshold: 1,
-		category: 'kueche',
+		category: 'kitchen',
 		decrementCount30d: 3,
 	}),
-	stock({ id: 'detergent', name: 'Detergent', quantity: 1.5, unit: 'L', category: 'putzmittel' }),
+	stock({ id: 'detergent', name: 'Detergent', quantity: 1.5, unit: 'litre', category: 'cleaning' }),
 ];
 
 async function mockInventory(page: Page, items: InventoryItemDto[]): Promise<void> {
@@ -146,12 +146,12 @@ test.describe('English shopping list', () => {
 						id: 'bread-stock',
 						name: 'Bread',
 						quantity: 0,
-						unit: 'Stück',
+						unit: 'piece',
 						threshold: 2,
-						category: 'kueche',
+						category: 'kitchen',
 					}),
 				]);
-				await navigateToFeature(page, EINKAUF);
+				await navigateToFeature(page, SHOPPING);
 				await dismissOnboarding(page);
 
 				await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
@@ -233,7 +233,7 @@ test.describe('English shopping list', () => {
 					})
 				: route.fallback(),
 		);
-		await navigateToFeature(page, EINKAUF);
+		await navigateToFeature(page, SHOPPING);
 		await dismissOnboarding(page);
 
 		await expect(page.getByText('Everything has been bought.')).toBeVisible();
@@ -280,7 +280,7 @@ test.describe('English shopping list', () => {
 			if (method === 'GET') return route.fulfill({ json: { items: [] } });
 			return route.fulfill({ status: 500, json: { error: 'server_error' } });
 		});
-		await navigateToFeature(page, EINKAUF);
+		await navigateToFeature(page, SHOPPING);
 		await dismissOnboarding(page);
 
 		await expect(page.getByText('Nothing on the list yet')).toBeVisible();
@@ -317,7 +317,7 @@ test.describe('English shopping list', () => {
 		await mockInventory(page, []);
 		// A reply the page cannot parse makes the list throw while rendering.
 		await page.route(`**${BASE}/shopping`, (route) => route.fulfill({ json: { items: 'broken' } }));
-		await navigateToFeature(page, EINKAUF);
+		await navigateToFeature(page, SHOPPING);
 		await expect(
 			page.getByRole('heading', { name: 'Shopping could not be loaded right now' }),
 		).toBeVisible();
@@ -381,8 +381,8 @@ test.describe('English supplies', () => {
 				await expect(form.getByLabel('Name', { exact: true })).toHaveValue('Detergent');
 				await expect(form.getByLabel('Quantity')).toHaveValue('1.5');
 				await expect(form.getByLabel('Restock at')).toHaveValue('1');
-				await expect(form.getByLabel('Unit')).toHaveValue('L');
-				await expect(form.getByLabel('Category')).toHaveValue('putzmittel');
+				await expect(form.getByLabel('Unit')).toHaveValue('litre');
+				await expect(form.getByLabel('Category')).toHaveValue('cleaning');
 				await expect(
 					form.getByText('The item goes onto the shopping list once stock reaches this level.'),
 				).toBeVisible();

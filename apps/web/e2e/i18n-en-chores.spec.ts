@@ -13,7 +13,7 @@ import {
 import { expectNoGermanChrome, expectNoHorizontalOverflow, setEnglishLocale } from './support/i18n';
 
 const BASE = `/api/wg/${FIXTURE_WG.shareCode}`;
-const PUTZEN = `/wg/${FIXTURE_WG.shareCode}/chores`;
+const CHORES = `/wg/${FIXTURE_WG.shareCode}/chores`;
 const WIDTHS = [320, 390] as const;
 const SCHEMES = ['light', 'dark'] as const;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -111,7 +111,7 @@ test.describe('English cleaning rota', () => {
 
 			test(`plan, row drawer and dialogs at ${where}`, async ({ page, context, baseURL }) => {
 				await prepare(page, context, baseURL, width, scheme);
-				await navigateToFeature(page, PUTZEN);
+				await navigateToFeature(page, CHORES);
 				await dismissOnboarding(page);
 
 				await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
@@ -183,7 +183,7 @@ test.describe('English cleaning rota', () => {
 		await page.route(`**${BASE}/chores`, (route) =>
 			route.fulfill({ json: { chores: 'broken', monthCompletions: 'broken' } }),
 		);
-		await navigateToFeature(page, PUTZEN);
+		await navigateToFeature(page, CHORES);
 		await expect(
 			page.getByRole('heading', { name: 'The cleaning rota could not be loaded right now' }),
 		).toBeVisible();
@@ -194,7 +194,7 @@ test.describe('English cleaning rota', () => {
 
 	test('the overdue filter strip is English', async ({ page, context, baseURL }) => {
 		await prepare(page, context, baseURL, 390, 'light');
-		await navigateToFeature(page, `${PUTZEN}?filter=overdue`);
+		await navigateToFeature(page, `${CHORES}?filter=overdue`);
 		await dismissOnboarding(page);
 		await expect(page.getByText('Overdue tasks only')).toBeVisible();
 		await expect(page.getByText('Mop the kitchen')).toHaveCount(0);
@@ -211,7 +211,7 @@ test.describe('English cleaning rota', () => {
 				: route.fallback(),
 		);
 		await page.route(`**${BASE}/absences/*`, (route) => route.fulfill({ json: {} }));
-		await navigateToFeature(page, PUTZEN);
+		await navigateToFeature(page, CHORES);
 		await dismissOnboarding(page);
 
 		await page.getByRole('button', { name: 'Add time away' }).click();
@@ -261,7 +261,7 @@ test.describe('English cleaning rota', () => {
 		await page.route(`**${BASE}/announcements`, (route) =>
 			route.fulfill({ status: 500, json: { error: 'server_error' } }),
 		);
-		await navigateToFeature(page, PUTZEN);
+		await navigateToFeature(page, CHORES);
 		await dismissOnboarding(page);
 
 		await page.getByRole('button', { name: 'I’ll take it: Take out the rubbish' }).click();
@@ -310,7 +310,7 @@ test.describe('English cleaning rota', () => {
 		await page.route(`**${BASE}/chores/late/complete`, (route) =>
 			route.fulfill({ json: confirmed('late', FIXTURE_WG.memberId) }),
 		);
-		await navigateToFeature(page, PUTZEN);
+		await navigateToFeature(page, CHORES);
 		await dismissOnboarding(page);
 
 		await page.getByRole('button', { name: 'Mark as done: Clean the bathroom' }).click();
@@ -335,7 +335,7 @@ test.describe('English cleaning rota', () => {
 				? route.fulfill({ status: 500, json: { error: 'insert_failed' } })
 				: route.fallback(),
 		);
-		await navigateToFeature(page, PUTZEN);
+		await navigateToFeature(page, CHORES);
 		await dismissOnboarding(page);
 
 		await page.getByRole('button', { name: 'Add cleaning task' }).click();
@@ -355,7 +355,7 @@ test.describe('English cleaning rota', () => {
 			route.fulfill({ json: { chores: [], monthCompletions: {} } }),
 		);
 		await page.route(`**${BASE}/absences`, (route) => route.fulfill({ json: { absences: [] } }));
-		await navigateToFeature(page, PUTZEN);
+		await navigateToFeature(page, CHORES);
 		await dismissOnboarding(page);
 
 		await expect(page.getByText('No tasks yet')).toBeVisible();

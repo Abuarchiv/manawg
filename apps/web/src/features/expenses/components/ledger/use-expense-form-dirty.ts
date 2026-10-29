@@ -49,7 +49,7 @@ export function useExpenseFormDirty({
 	});
 	const emptyFormStateKey = JSON.stringify({
 		description: '',
-		category: 'sonstiges',
+		category: 'other',
 		amountStr: '',
 		paidByMemberId: identityMemberId,
 		splitMode: 'equal',

@@ -7,7 +7,7 @@ import {
 	skipUnlessFixtures,
 } from './support/helpers';
 
-test.describe('haushalt shopping checkbox hitarea', () => {
+test.describe('shopping checkbox hitarea', () => {
 	// Regression for a <44px touch target: ShoppingItemRow's checkbox grows its hit
 	// area with an invisible `after:-inset-2.5` pseudo-element, but the swipe-to-toggle
 	// row wraps everything in an <li> with `overflow-hidden`. Since the checkbox sits
@@ -66,7 +66,7 @@ test.describe('haushalt shopping checkbox hitarea', () => {
 	});
 });
 
-test.describe('haushalt shopping swipe pointer capture', () => {
+test.describe('shopping swipe pointer capture', () => {
 	// ShoppingItemRow drives its swipe-to-toggle gesture with raw pointer events. Unlike touch
 	// events, pointer events retarget to whatever element sits under the finger, so a fast or
 	// diagonal swipe that drifts off the row would never fire onPointerUp (which resets swipeX
@@ -177,9 +177,9 @@ test.describe('household list UI', () => {
 				wgId: FIXTURE_WG.id,
 				name: 'Spülmittel',
 				quantity: 5,
-				unit: 'Stück',
+				unit: 'piece',
 				threshold: 1,
-				category: 'putzmittel',
+				category: 'cleaning',
 				decrementCount30d: 0,
 				lastDecrementedAt: null,
 				createdAt: new Date().toISOString(),

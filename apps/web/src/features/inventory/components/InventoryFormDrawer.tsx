@@ -72,8 +72,8 @@ type InventoryEditorItem = NonNullable<InventoryFormDrawerProps['initial']>;
 const SAVE_SUBJECT: Message = { key: 'inventory.save.subject' };
 const SAVE_FALLBACK: Message = { key: 'inventory.save.fallback' };
 
-const DEFAULT_UNIT: InventoryUnit = 'Stück'; // i18n-ignore stored unit key
-const DEFAULT_CATEGORY: InventoryCategory = 'sonstiges';
+const DEFAULT_UNIT: InventoryUnit = 'piece';
+const DEFAULT_CATEGORY: InventoryCategory = 'other';
 
 function coerceUnit(unit: string | undefined): InventoryUnit {
 	if (unit && (INVENTORY_UNITS as readonly string[]).includes(unit)) {

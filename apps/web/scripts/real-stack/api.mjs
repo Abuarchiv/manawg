@@ -175,7 +175,7 @@ const ex = async (u, amt, ids, extra = {}) =>
 		{
 			amountCents: amt,
 			description: 'Test',
-			category: 'lebensmittel',
+			category: 'groceries',
 			splits: ids.map((id, i) => ({
 				debtorMemberId: id,
 				amountCents: Math.floor(amt / ids.length) + (i < amt % ids.length ? 1 : 0),
@@ -203,7 +203,7 @@ const bad = await call(
 	{
 		amountCents: 1000,
 		description: 'x',
-		category: 'lebensmittel',
+		category: 'groceries',
 		splits: [{ debtorMemberId: annaMember, amountCents: 999 }],
 	},
 	{ 'idempotency-key': randomUUID() },
@@ -216,7 +216,7 @@ const neg = await call(
 	{
 		amountCents: -500,
 		description: 'x',
-		category: 'lebensmittel',
+		category: 'groceries',
 		splits: [{ debtorMemberId: annaMember, amountCents: -500 }],
 	},
 	{ 'idempotency-key': randomUUID() },
@@ -229,7 +229,7 @@ const foreignPayer = await call(
 	{
 		amountCents: 1000,
 		description: 'x',
-		category: 'lebensmittel',
+		category: 'groceries',
 		paidByMemberId: randomUUID(),
 		splits: [{ debtorMemberId: annaMember, amountCents: 1000 }],
 	},
@@ -324,32 +324,6 @@ const empty = await call(
 	{ 'idempotency-key': randomUUID() },
 );
 expect(empty.status === 400, 'S5 empty message = 400', JSON.stringify(empty));
-// S7 profile takeover
-const unlinked = sql(
-	`insert into wg_members (wg_id,name,color,role) select id,'AltMitglied','#ff0000','member' from wgs where share_code='${code}' returning id`,
-).split('\n')[0];
-const inv4 = await call(A, 'POST', `/api/wg/${code}/invites`, {});
-const _lastFree = notJoined.find((u) => u !== notJoined[0]) ?? notJoined[0];
-const noInv = await call(notJoined[0], 'POST', `/api/wg/${code}/members/${unlinked}/claim`, {});
-expect(noInv.status === 403, 'S7 claim without invite = 403', JSON.stringify(noInv));
-const withInv = await call(
-	notJoined[0],
-	'POST',
-	`/api/wg/${code}/members/${unlinked}/claim?invite=${inv4.body.url.split('/').pop()}`,
-	{},
-);
-expect(withInv.status < 300, 'S7 claim with invite', JSON.stringify(withInv));
-expect(
-	sql(`select auth_user_id from wg_members where id='${unlinked}'`) === notJoined[0].id,
-	'S7 member now linked to account',
-);
-const again = await call(
-	joined[0],
-	'POST',
-	`/api/wg/${code}/members/${unlinked}/claim?invite=${inv4.body.url.split('/').pop()}`,
-	{},
-);
-expect(again.status === 409, 'S7 already linked member cannot be claimed', JSON.stringify(again));
 // S8 delete account
 const _delA = await call(B, 'DELETE', '/api/account', {});
 const _stillB = await call(B, 'GET', '/api/wg/mine');

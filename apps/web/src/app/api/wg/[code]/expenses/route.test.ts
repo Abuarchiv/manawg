@@ -539,7 +539,7 @@ test('rejects foreign, stale, and paused recurring templates without creating an
 		{
 			options: { pausedAt: new Date('2026-09-01T00:00:00.000Z') },
 			status: 400,
-			error: 'abo_paused',
+			error: 'recurring_paused',
 		},
 	];
 	for (const { options, status, error } of cases) {

@@ -150,7 +150,6 @@ for (const v of qValues) {
 		],
 		['GET', `/api/wg/${code}/activity?limit=${v}`],
 		['GET', `/api/wg/${code}/inventory?lowStock=${v}`],
-		['POST', `/api/wg/${code}/members/${benId}/claim?invite=${v}`],
 		['GET', `/api/wg/${code}/export?format=${v}&sections=${v}&section=${v}&summary=${v}`],
 		['GET', `/api/wg/${code}/events?from=${v}&to=${v}`],
 		['GET', `/api/email/unsubscribe?t=${v}`],

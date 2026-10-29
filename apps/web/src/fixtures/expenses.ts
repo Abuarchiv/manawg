@@ -1,12 +1,12 @@
 import type { E2EWgFixture } from './data';
 
 const MONTH_ENTRIES = [
-	{ description: 'Wocheneinkauf', category: 'lebensmittel', amountCents: 8640, day: 3 },
-	{ description: 'Internet', category: 'wohnen', amountCents: 3290, day: 5 },
-	{ description: 'Spülmittel und Schwämme', category: 'haushalt', amountCents: 1240, day: 9 },
-	{ description: 'Kinoabend', category: 'freizeit', amountCents: 3600, day: 14 },
-	{ description: 'Monatsticket', category: 'mobilitaet', amountCents: 4900, day: 17 },
-	{ description: 'Geschenk für Mina', category: 'sonstiges', amountCents: 2500, day: 21 },
+	{ description: 'Wocheneinkauf', category: 'groceries', amountCents: 8640, day: 3 },
+	{ description: 'Internet', category: 'housing', amountCents: 3290, day: 5 },
+	{ description: 'Spülmittel und Schwämme', category: 'household', amountCents: 1240, day: 9 },
+	{ description: 'Kinoabend', category: 'leisure', amountCents: 3600, day: 14 },
+	{ description: 'Monatsticket', category: 'transport', amountCents: 4900, day: 17 },
+	{ description: 'Geschenk für Mina', category: 'other', amountCents: 2500, day: 21 },
 ] as const;
 
 /** Expenses of the previous month, so the monthly statement (default month) has content. */

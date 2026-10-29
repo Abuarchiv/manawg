@@ -11,7 +11,6 @@ import {
 	isBelowThreshold,
 	restockAmount,
 	roundQuantity,
-	unitLabelKey,
 } from '@/features/inventory/inventory';
 import type { Locale } from '@/shared/i18n/locale';
 
@@ -29,7 +28,7 @@ export async function pushBelowThresholdItemToShopping(
 ): Promise<string | null> {
 	if (!isBelowThreshold(item)) return null;
 	const amount = restockAmount(item);
-	const quantity = `${formatDecimal(amount, locale)} ${serverT(locale, 'inventory')('unit', { unit: unitLabelKey(item.unit), count: amount })}`;
+	const quantity = `${formatDecimal(amount, locale)} ${serverT(locale, 'inventory')('unit', { unit: item.unit, count: amount })}`;
 	const [created] = await tx
 		.insert(shoppingItems)
 		.values({

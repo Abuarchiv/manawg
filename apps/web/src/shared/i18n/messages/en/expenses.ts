@@ -95,12 +95,12 @@ export default {
 		reviewAria: 'Review fixed-cost expense: {description}',
 	},
 	categories: {
-		lebensmittel: 'Groceries',
-		haushalt: 'Household',
-		wohnen: 'Housing',
-		freizeit: 'Leisure',
-		mobilitaet: 'Transport',
-		sonstiges: 'Other',
+		groceries: 'Groceries',
+		household: 'Household',
+		housing: 'Housing',
+		leisure: 'Leisure',
+		transport: 'Transport',
+		other: 'Other',
 	},
 	notices: {
 		deleteForbidden: 'Only the payer or someone involved can delete this expense.',

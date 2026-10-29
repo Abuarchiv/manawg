@@ -49,7 +49,7 @@ export function RecurringRow({
 	const t = useTranslations('expenses-recurring');
 	const message = useMessage();
 	const locale = useLocale();
-	const aboDate = (iso: string) =>
+	const dueDate = (iso: string) =>
 		formatRecurringDate(iso, recurringExpense.intervalMonths, locale);
 	const payer = members.find((member) => member.id === recurringExpense.paidByMemberId);
 	const isPaused = recurringExpense.pausedAt !== null;
@@ -110,10 +110,10 @@ export function RecurringRow({
 								<span className="font-medium text-foreground">{t('row.status.notBooked')}</span>
 							) : isOverdue ? (
 								<span className="font-medium text-foreground">
-									{t('row.status.overdue', { date: aboDate(recurringExpense.nextDueAt) })}
+									{t('row.status.overdue', { date: dueDate(recurringExpense.nextDueAt) })}
 								</span>
 							) : (
-								t('row.status.next', { date: aboDate(recurringExpense.nextDueAt) })
+								t('row.status.next', { date: dueDate(recurringExpense.nextDueAt) })
 							)}
 							{` · ${message(intervalLabelMessage(recurringExpense.intervalMonths))} · `}
 							<span className="sr-only">{t('row.paidBy')} </span>
@@ -167,7 +167,7 @@ export function RecurringRow({
 							<p className="text-sm text-muted-foreground">
 								{t('row.nextBookings', {
 									count: preview.length,
-									dates: preview.map((date) => aboDate(date.toISOString())).join(', '),
+									dates: preview.map((date) => dueDate(date.toISOString())).join(', '),
 								})}
 							</p>
 						)}

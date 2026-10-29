@@ -13,16 +13,16 @@ import { parseBody } from '@/core/http/parse-body';
 import { requestLocale } from '@/core/i18n/request-locale';
 import { readIdempotencyKey } from '@/core/idempotency-store';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
-import {
-	INVENTORY_CATEGORIES,
-	INVENTORY_LIMITS,
-	INVENTORY_UNITS,
-} from '@/features/inventory/inventory';
+import { INVENTORY_LIMITS } from '@/features/inventory/inventory';
 import {
 	isInventoryNameTaken,
 	isInventoryNameViolation,
 } from '@/features/inventory/server/inventory-duplicate';
 import { updateInventoryItemMutation } from '@/features/inventory/server/inventory-mutations';
+import {
+	inventoryCategorySchema,
+	inventoryUnitSchema,
+} from '@/features/inventory/server/inventory-value-schemas';
 
 const patchInventorySchema = z
 	.object({
@@ -56,8 +56,8 @@ const patchInventorySchema = z
 			.min(INVENTORY_LIMITS.THRESHOLD_MIN)
 			.max(INVENTORY_LIMITS.THRESHOLD_MAX)
 			.optional(),
-		unit: z.enum(INVENTORY_UNITS).optional(),
-		category: z.enum(INVENTORY_CATEGORIES).optional(),
+		unit: inventoryUnitSchema.optional(),
+		category: inventoryCategorySchema.optional(),
 		expectedUpdatedAt: z.string().datetime({ offset: true }).optional(),
 	})
 	.refine(

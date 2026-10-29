@@ -10,7 +10,6 @@ import {
 	type InventoryCategory,
 	type InventoryUnit,
 	isBelowThreshold,
-	unitLabelKey,
 } from '@/features/inventory/inventory';
 import type { Locale } from '@/shared/i18n/locale';
 import { type Message, useMessage } from '@/shared/i18n/message';
@@ -122,7 +121,7 @@ export function InventoryFormFields({
 					>
 						{INVENTORY_UNITS.map((u) => (
 							<NativeSelectOption key={u} value={u}>
-								{t('unit', { unit: unitLabelKey(u), count: 1 })}
+								{t('unit', { unit: u, count: 1 })}
 							</NativeSelectOption>
 						))}
 					</NativeSelect>

@@ -13,7 +13,7 @@ export function currentSigningSecret(): string | null {
 /**
  * Secrets a signature may still verify against: the current one first, then the ones in
  * `MEMBER_SESSION_SECRET_PREVIOUS` (comma-separated). During a rotation the old secret stays
- * listed, so calendar feeds and recovery proofs keep working until the old one is removed.
+ * listed, so calendar feeds and unsubscribe links keep working until the old one is removed.
  */
 export function acceptedSigningSecrets(): string[] {
 	const current = currentSigningSecret();
