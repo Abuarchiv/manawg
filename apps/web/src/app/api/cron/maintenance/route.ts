@@ -16,7 +16,7 @@ import { requireCronSecret } from '@/core/infra/cron-auth';
 import { logApiError, withCronLogging } from '@/core/infra/observability';
 import { removeSupabaseImages } from '@/core/infra/supabase-storage';
 import { confirmedRecipientOf, sendAccountDeletedMail } from '@/core/mail/account-deleted';
-import { purgeOldDigestMailLog } from '@/core/mail/mail-retention';
+import { purgeOldMailLog } from '@/core/mail/mail-retention';
 import { DEFAULT_LOCALE } from '@/shared/i18n/locale';
 
 async function cleanupPrivateImages(): Promise<{
@@ -87,11 +87,11 @@ async function sweepOrphans(): Promise<{ wgsChecked: number; queued: number } | 
 	return process.env.SUPABASE_STORAGE_BUCKET?.trim() ? sweepOrphanUploads() : null;
 }
 
-/** Drops old ledger rows (finished image tombstones, digest mail log); failures only get logged. */
+/** Drops old ledger rows (finished image tombstones, mail log); failures only get logged. */
 async function purgeRetention(): Promise<void> {
 	const results = await Promise.allSettled([
 		purgeFinishedPrivateImageDeletions(),
-		purgeOldDigestMailLog(),
+		purgeOldMailLog(),
 	]);
 	for (const result of results) {
 		if (result.status === 'rejected')

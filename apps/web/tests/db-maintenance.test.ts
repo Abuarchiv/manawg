@@ -130,7 +130,7 @@ mock.module('@/core/db/private-image-deletions', {
 });
 mock.module('@/core/mail/mail-retention', {
 	namedExports: {
-		purgeOldDigestMailLog: async () => {
+		purgeOldMailLog: async () => {
 			harness.retentionPurges++;
 			return 0;
 		},
