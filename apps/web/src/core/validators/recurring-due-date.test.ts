@@ -48,3 +48,10 @@ test('an anchor after the first due date or years before it is rejected', () => 
 	);
 	assert.equal(isRecurringAnchorAllowed('not-a-date', '2026-02-28T11:00:00.000Z'), false);
 });
+
+test('a longer lead is accepted when the caller allows it', () => {
+	const anchor = '2026-01-31T11:00:00.000Z';
+	const due = '2030-12-31T11:00:00.000Z';
+	assert.equal(isRecurringAnchorAllowed(anchor, due), false);
+	assert.equal(isRecurringAnchorAllowed(anchor, due, 60 * 31 + 1), true);
+});

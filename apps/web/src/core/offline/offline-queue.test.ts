@@ -93,6 +93,22 @@ test('queued shopping PATCH preserves the version, expected state, and online id
 	assert.deepEqual(JSON.parse(JSON.stringify(legacyBody)), { bought: true });
 });
 
+test('a queued chore carries the due date and cadence anchor fixed at creation', () => {
+	const chore = createQueuedChore({
+		shareCode,
+		memberId,
+		title: 'Bad putzen',
+		intervalDays: 1,
+		assignedMemberId: null,
+		nextDueAt: '2026-10-27T21:00:00.000Z',
+		anchorAt: '2026-10-26T21:00:00.000Z',
+		now: 1,
+	});
+	const body = getOfflineActionRequest(chore).body as Record<string, unknown>;
+	assert.equal(body.nextDueAt, '2026-10-27T21:00:00.000Z');
+	assert.equal(body.anchorAt, '2026-10-26T21:00:00.000Z');
+});
+
 test('withoutQueuedEntry drops the queued create and follow-ups that target it', () => {
 	const chore = createQueuedChore({
 		shareCode,
