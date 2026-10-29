@@ -7,7 +7,8 @@ export const normalizeSql = (value) =>
 	String(value ?? '')
 		.toLowerCase()
 		.replace(/"([^"\n]+)"/g, '$1')
-		.replace(/::[a-z ]+(?:\[\])?/g, '')
+		// Casts end at the type name; multi-word types are spelled out, so a following AND/OR survives.
+		.replace(/::[a-z_]+(?: with(?:out)? time zone| varying| precision)?(?:\[\])?/g, '')
 		.replace(/\s+/g, '');
 
 export const normalizeType = (type) => normalizeSql(type).replace('charactervarying', 'varchar');

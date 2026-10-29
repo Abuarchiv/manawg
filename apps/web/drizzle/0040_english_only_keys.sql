@@ -30,4 +30,4 @@ UPDATE "wg_events" SET "starts_at" = date_trunc('day', "starts_at" AT TIME ZONE 
 	WHERE "all_day" AND extract(epoch FROM "starts_at") % 86400 <> 0;--> statement-breakpoint
 UPDATE "wg_events" SET "ends_at" = date_trunc('day', "ends_at" AT TIME ZONE 'Europe/Berlin') AT TIME ZONE 'UTC'
 	WHERE "all_day" AND extract(epoch FROM "ends_at") % 86400 <> 0;--> statement-breakpoint
-ALTER TABLE "wg_events" ADD CONSTRAINT "wg_events_all_day_midnight_check" CHECK (NOT "wg_events"."all_day" OR (("wg_events"."starts_at" AT TIME ZONE 'UTC')::time = '00:00' AND ("wg_events"."ends_at" IS NULL OR ("wg_events"."ends_at" AT TIME ZONE 'UTC')::time = '00:00')));
+ALTER TABLE "wg_events" ADD CONSTRAINT "wg_events_all_day_midnight_check" CHECK (NOT "wg_events"."all_day" OR (("wg_events"."starts_at" AT TIME ZONE 'UTC')::time = '00:00:00' AND ("wg_events"."ends_at" IS NULL OR ("wg_events"."ends_at" AT TIME ZONE 'UTC')::time = '00:00:00')));

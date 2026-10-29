@@ -38,7 +38,7 @@ export const wgEvents = pgTable(
 		// An all-day event is a date: UTC midnight, the same day on every device (eventInstant).
 		allDayMidnightCheck: check(
 			'wg_events_all_day_midnight_check',
-			sql`NOT ${t.allDay} OR ((${t.startsAt} AT TIME ZONE 'UTC')::time = '00:00' AND (${t.endsAt} IS NULL OR (${t.endsAt} AT TIME ZONE 'UTC')::time = '00:00'))`,
+			sql`NOT ${t.allDay} OR ((${t.startsAt} AT TIME ZONE 'UTC')::time = '00:00:00' AND (${t.endsAt} IS NULL OR (${t.endsAt} AT TIME ZONE 'UTC')::time = '00:00:00'))`,
 		),
 	}),
 );

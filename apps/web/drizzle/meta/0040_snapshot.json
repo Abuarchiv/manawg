@@ -1450,7 +1450,7 @@
       "checkConstraints": {
         "wg_events_all_day_midnight_check": {
           "name": "wg_events_all_day_midnight_check",
-          "value": "NOT \"wg_events\".\"all_day\" OR ((\"wg_events\".\"starts_at\" AT TIME ZONE 'UTC')::time = '00:00' AND (\"wg_events\".\"ends_at\" IS NULL OR (\"wg_events\".\"ends_at\" AT TIME ZONE 'UTC')::time = '00:00'))"
+          "value": "NOT \"wg_events\".\"all_day\" OR ((\"wg_events\".\"starts_at\" AT TIME ZONE 'UTC')::time = '00:00:00' AND (\"wg_events\".\"ends_at\" IS NULL OR (\"wg_events\".\"ends_at\" AT TIME ZONE 'UTC')::time = '00:00:00'))"
         }
       },
       "isRLSEnabled": false
