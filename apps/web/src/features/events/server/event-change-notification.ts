@@ -4,9 +4,12 @@ import { dispatchNotificationSafely } from '@/core/notifications/notification-di
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** When an event stops mattering: its end, or for an all-day event the end of its day. */
+/**
+ * When an event stops mattering: its end, or its start when it has none. An all-day event
+ * stores its inclusive last day at UTC midnight, so it matters until that day is over.
+ */
 export function eventRelevantUntil(startsAt: number, endsAt: number | null, allDay: boolean) {
-	return endsAt ?? (allDay ? startsAt + DAY_MS : startsAt);
+	return (endsAt ?? startsAt) + (allDay ? DAY_MS : 0);
 }
 
 interface EventChange {

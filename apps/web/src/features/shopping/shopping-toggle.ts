@@ -74,9 +74,14 @@ function isQueuedCreate(action: OfflineAction, target: QueuedCreateTarget): bool
 	);
 }
 
+/** The queued create already went out once; the server may hold it under its first payload. */
+export function queuedCreateWasSent(actions: OfflineAction[], target: QueuedCreateTarget): boolean {
+	return actions.some((action) => isQueuedCreate(action, target) && Boolean(action.lastAttemptAt));
+}
+
 /**
  * Marks a not-yet-synced create as bought (or open) inside the queue, so it reaches the server in
- * its final state. Returns null when the create is not queued (anymore).
+ * its final state. Returns null when the create is not queued (anymore) or already went out once.
  */
 export function withQueuedCreateBought(
 	actions: OfflineAction[],
@@ -84,6 +89,7 @@ export function withQueuedCreateBought(
 	bought: boolean,
 ): OfflineAction[] | null {
 	if (!actions.some((action) => isQueuedCreate(action, target))) return null;
+	if (queuedCreateWasSent(actions, target)) return null;
 	return actions.map((action) =>
 		isQueuedCreate(action, target) ? { ...action, payload: { ...action.payload, bought } } : action,
 	);

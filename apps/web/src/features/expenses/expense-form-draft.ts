@@ -14,6 +14,7 @@ import type {
 	ExpenseSplitShare,
 	RecurringExpense,
 } from '@/features/expenses/expense-types';
+import { rotateRemainderCents } from '@/features/expenses/recurring-split-rotation';
 import type { Locale } from '@/shared/i18n/locale';
 
 export type { SplitMode };
@@ -106,6 +107,13 @@ export function recurringTemplateSuggestion(
 	template: RecurringExpense,
 	locale: Locale = 'de',
 ): ExpenseSuggestion {
+	// A manual booking charges the extra cent to the same person as the automatic one.
+	const splits = rotateRemainderCents(
+		template.splits,
+		template.amountCents,
+		new Date(template.nextDueAt),
+		template.intervalMonths,
+	);
 	return {
 		description: template.description,
 		category: template.category,
@@ -113,7 +121,7 @@ export function recurringTemplateSuggestion(
 		imageUrl: null,
 		paidByMemberId: template.paidByMemberId,
 		splitMode: 'manual',
-		manualSplits: splitsToManualInput(template.splits, locale),
+		manualSplits: splitsToManualInput(splits, locale),
 		recurringSourceId: template.id,
 	};
 }

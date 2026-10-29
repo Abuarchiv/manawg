@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createMailTransport, smtpOptions } from './transport';
+import { createMailTransport, type OutgoingMail, smtpOptions } from './transport';
 
 const FROM = 'ManaWG <noreply@wg.example.com>';
 const OFFICIAL = 'https://app.manawg.com';
@@ -76,4 +76,38 @@ test('SMTP requires TLS except for a mail catcher on the local network', () => {
 		() => smtpOptions({ SMTP_HOST: 'smtp.example.com', SMTP_PORT: 'abc' }),
 		/SMTP_PORT/,
 	);
+});
+
+const mail = (id: string): OutgoingMail => ({
+	ledgerId: id,
+	attempt: 1,
+	to: `${id}@example.org`,
+	subject: 's',
+	html: '<p>x</p>',
+	text: 'x',
+});
+
+test('a rejected batch is resent one by one only within the time budget', async (t) => {
+	const realNow = Date.now.bind(Date);
+	let offset = 0;
+	t.mock.method(Date, 'now', () => realNow() + offset);
+	const sizes: number[] = [];
+	t.mock.method(globalThis, 'fetch', async (_url: string, init: RequestInit) => {
+		const size = JSON.parse(String(init.body)).length;
+		sizes.push(size);
+		if (size > 1) return Response.json({ message: 'invalid' }, { status: 422 });
+		offset += 41_000;
+		return Response.json({ data: [{ id: `p${sizes.length}` }] });
+	});
+	const transport = createMailTransport({
+		VERCEL_ENV: 'production',
+		RESEND_API_KEY: 're_test',
+		STATEMENT_EMAIL_FROM: FROM,
+	});
+	const outcomes = await transport.sendBatch([mail('a'), mail('b'), mail('c')]);
+	assert.deepEqual(
+		outcomes.map((outcome) => outcome.kind),
+		['sent', 'deferred', 'deferred'],
+	);
+	assert.deepEqual(sizes, [3, 1]);
 });

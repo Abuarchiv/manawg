@@ -592,6 +592,10 @@ test.describe('label in name audit', () => {
 		await expect(
 			page.getByRole('button', { name: 'Als bezahlt markieren: Mina', exact: true }),
 		).toBeVisible();
+		// The debt row's settle button names the parties and amount, so several rows stay apart.
+		await expect(
+			page.getByRole('button', { name: /^Ausgleichen: Mina an .+, 10,00\s€$/ }),
+		).toBeVisible();
 	});
 });
 
@@ -673,6 +677,32 @@ test.describe('enter key hint forms', () => {
 		// `?panel=absences` already opens the form (button reads "...schließen").
 
 		await expect(page.locator('#absence-reason')).toHaveAttribute('enterkeyhint', 'done');
+	});
+
+	test('absence form opened by ?panel=absences can be closed', async ({ page }) => {
+		await setupMember(page);
+		await page.route(`**/api/wg/${shareCode}/chores*`, (route) =>
+			route.request().method() === 'GET'
+				? route.fulfill({ json: { chores: [] } })
+				: route.continue(),
+		);
+		await page.route(`**/api/wg/${shareCode}/absences*`, (route) =>
+			route.request().method() === 'GET'
+				? route.fulfill({ json: { absences: [] } })
+				: route.continue(),
+		);
+
+		await navigateToFeature(page, `/wg/${shareCode}/chores?panel=absences`);
+		await dismissOnboarding(page);
+		const toggle = page.locator('button[aria-controls="absence-form"]');
+		await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+
+		await toggle.click();
+
+		await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+		// Stays closed instead of being reopened by the cleared fields.
+		await page.waitForTimeout(500);
+		await expect(toggle).toHaveAttribute('aria-expanded', 'false');
 	});
 
 	test('expense description and amount fields hint "next"', async ({ page }) => {

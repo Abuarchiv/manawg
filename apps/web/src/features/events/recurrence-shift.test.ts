@@ -58,3 +58,47 @@ test('switching between timed and all-day keeps each exception on its calendar d
 	);
 	assert.deepEqual(toTimed?.exdates, ['2026-12-04T09:00:00.000Z']);
 });
+
+function shifted(rule: string, from: string, to: string, allDay = false) {
+	return parseRecurrenceRule(withShiftedExclusions(rule, from, to, allDay))?.exdates;
+}
+
+test('monthly and yearly exceptions follow their occurrence when the start moves', () => {
+	// Monthly 15th, 4th occurrence (April) cancelled; start moves one month later.
+	assert.deepEqual(
+		shifted(
+			'FREQ=MONTHLY;EXDATE=2026-04-15T17:00:00.000Z',
+			'2026-01-15T18:00:00.000Z',
+			'2026-02-15T18:00:00.000Z',
+		),
+		['2026-05-15T17:00:00.000Z'],
+	);
+	// Month-end clamp: 31 Jan -> 30 Jan keeps the cancelled 28 Feb occurrence cancelled.
+	assert.deepEqual(
+		shifted(
+			'FREQ=MONTHLY;EXDATE=2026-02-28T18:00:00.000Z',
+			'2026-01-31T18:00:00.000Z',
+			'2026-01-30T18:00:00.000Z',
+		),
+		['2026-02-28T18:00:00.000Z'],
+	);
+	// Yearly across a leap year.
+	assert.deepEqual(
+		shifted(
+			'FREQ=YEARLY;EXDATE=2028-01-15T18:00:00.000Z',
+			'2026-01-15T18:00:00.000Z',
+			'2026-03-15T18:00:00.000Z',
+		),
+		['2028-03-15T18:00:00.000Z'],
+	);
+	// All-day monthly.
+	assert.deepEqual(
+		shifted(
+			'FREQ=MONTHLY;EXDATE=2026-04-15T00:00:00.000Z',
+			'2026-01-15T00:00:00.000Z',
+			'2026-02-15T00:00:00.000Z',
+			true,
+		),
+		['2026-05-15T00:00:00.000Z'],
+	);
+});

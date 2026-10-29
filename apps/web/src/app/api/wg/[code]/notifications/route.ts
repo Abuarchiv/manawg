@@ -25,7 +25,7 @@ import {
 } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey } from '@/core/idempotency-store';
-import { checkEnv } from '@/core/infra/env';
+import { checkEnv, runtimeEnv } from '@/core/infra/env';
 import { logApiError } from '@/core/infra/observability';
 import {
 	dispatchNotification,
@@ -116,7 +116,7 @@ export const GET = withWgRoute('notifications GET', async (req, { code }) => {
 		notifyStatementEmail: member.notifyStatementEmail,
 		quietStartHour: member.quietStartHour,
 		quietEndHour: member.quietEndHour,
-		pushConfigured: !checkEnv(process.env).degraded.some(
+		pushConfigured: !checkEnv(runtimeEnv()).degraded.some(
 			(entry) => entry.feature === 'push-notifications',
 		),
 	});

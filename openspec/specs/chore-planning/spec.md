@@ -21,6 +21,10 @@ Reminders SHALL NOT be sent to an assignee with an absence on the current Berlin
 - **WHEN** the reminder run finds a due chore whose assignee is absent today
 - **THEN** that assignee SHALL receive no reminder and the plan SHALL show "Name ist abwesend"
 
+#### Scenario: Assignee returns from a long absence
+- **WHEN** an absence that covered the due date ended within the last 7 days and the chore is overdue by more than 7 days
+- **THEN** the assignee SHALL receive the daily reminders again until the 7 days have passed
+
 ### Requirement: Reassignment updates related state
 
 Changing the assignee SHALL close open swap requests for the chore and, when it is not a self-take and the chore is due within 24 hours, send a `chore.due` push to the new assignee. Deleting a chore SHALL close its swap requests.

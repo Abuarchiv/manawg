@@ -31,3 +31,13 @@ test('resolveMessage renders nested message values before the outer message', ()
 	assert.equal(out, 'common.skipToContent(n=2,inner=meta.brand.title(x=a))');
 	assert.deepEqual(calls, ['meta.brand.title', 'common.skipToContent']);
 });
+
+test('the duplicate-chore hint calls a daily chore täglich', () => {
+	const hint = (days: number) =>
+		renderMessage(serverRootT('de'), {
+			key: 'offline.serverCheck.choreDuplicate',
+			values: { days },
+		});
+	assert.match(hint(1), /Intervall dort: täglich\./);
+	assert.match(hint(3), /Intervall dort: alle 3 Tage\./);
+});

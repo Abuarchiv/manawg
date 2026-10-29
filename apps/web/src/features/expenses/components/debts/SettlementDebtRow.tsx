@@ -73,6 +73,7 @@ export function SettlementDebtRow({
 	const canSettle = debt.fromId === currentMemberId || debt.toId === currentMemberId;
 	const iOwe = debt.fromId === currentMemberId;
 	const owedToMe = debt.toId === currentMemberId;
+	const amount = formatEuroCents(debt.cents, debt.currency, { locale });
 
 	return (
 		<ItemEntry size="sm" className="flex-wrap items-center gap-x-2.5 px-0 py-1">
@@ -96,7 +97,7 @@ export function SettlementDebtRow({
 					iOwe ? 'text-destructive' : owedToMe ? 'text-settled' : 'text-foreground',
 				)}
 			>
-				{formatEuroCents(debt.cents, debt.currency, { locale })}
+				{amount}
 			</span>
 
 			{canSettle && (
@@ -107,6 +108,11 @@ export function SettlementDebtRow({
 						size="sm"
 						className="h-auto whitespace-normal"
 						disabled={reviewing || settling}
+						aria-label={
+							reviewing
+								? undefined
+								: t('settle.buttonAria', { debtor: debt.fromName, creditor: debt.toName, amount })
+						}
 						onClick={() => void review()}
 					>
 						{reviewing && <Spinner data-icon="inline-start" />}

@@ -109,3 +109,9 @@ test('the translator throws on malformed ICU and on missing arguments', () => {
 	assert.throws(() => t('broken', { name: 1 }));
 	assert.throws(() => t('needsName', { other: 1 }));
 });
+
+test('the account deletion dialog names accounts as the condition for deleting a flat', () => {
+	const key = 'settings.accountDelete.dialogBody';
+	assert.match(en.get(key) ?? '', /no other member has an account/);
+	assert.match(de.get(key) ?? '', /kein anderes Mitglied ein Konto hat/);
+});

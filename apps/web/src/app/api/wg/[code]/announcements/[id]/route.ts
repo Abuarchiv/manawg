@@ -23,6 +23,7 @@ import {
 	type NotificationDispatchWarning,
 } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
+import { announcementPushTitle } from '@/features/announcements/announcement-push-title';
 import { patchAnnouncementSchema } from '@/features/announcements/server/announcement-patch-schema';
 
 export const PATCH = withWgRoute<{ id: string }>(
@@ -211,7 +212,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 				event: 'announcement.resolved',
 				payload: {
 					announcementId: id,
-					title: row.content.slice(0, 120),
+					title: announcementPushTitle(row.content),
 					actorName: auth.member.name,
 				},
 				targetMemberIds,

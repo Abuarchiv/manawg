@@ -112,11 +112,12 @@ export async function updateInventoryItemMutation(
 		.from(wgInventoryItems)
 		.where(and(eq(wgInventoryItems.id, input.itemId), eq(wgInventoryItems.wgId, input.wgId)))
 		.limit(1);
-	// A relative +/- tap has no stale state to conflict on: lock the row so
-	// concurrent taps apply one after another (and log their exact delta)
-	// instead of failing the optimistic quantity check below with a 409.
-	const isDeltaOnly = input.quantity === undefined && input.quantityDelta !== undefined;
-	const existingRows = await (isDeltaOnly ? existingQuery.for('update') : existingQuery);
+	// Only an absolute quantity write carries a version check. Every other request
+	// (relative +/- tap, name, threshold, unit or category edit) locks the row so
+	// it applies after concurrent taps (and logs its exact delta) instead of
+	// failing the quantity match of the UPDATE below with a 409.
+	const lockRow = input.quantity === undefined;
+	const existingRows = await (lockRow ? existingQuery.for('update') : existingQuery);
 	const existing = existingRows[0];
 	if (!existing) return { kind: 'not_found' as const };
 
@@ -177,7 +178,8 @@ export async function updateInventoryItemMutation(
 			itemId: updated.id,
 			memberId: input.memberId,
 			delta,
-			kind: delta < 0 ? 'consume' : 'restock',
+			// A stocktake correction is neither consumption nor restocking.
+			kind: input.quantity !== undefined ? 'adjust' : delta < 0 ? 'consume' : 'restock',
 		});
 	}
 

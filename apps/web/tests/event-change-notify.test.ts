@@ -215,6 +215,15 @@ test('deleting today’s all-day event after midnight still notifies, urgently',
 	assert.equal(dispatched[0]?.urgent, true);
 });
 
+test('deleting an all-day event on its last day with an end date still notifies', async () => {
+	reset();
+	const todayMidnight = new Date(Date.now() - 6 * 60 * 60 * 1000);
+	selectRows = [eventRow(todayMidnight, { allDay: true, endsAt: todayMidnight })];
+	await call(itemRoute.DELETE, 'DELETE');
+	assert.equal(dispatched.length, 1);
+	assert.equal(dispatched[0]?.event, 'event.cancelled');
+});
+
 test('a change to an event more than a day away respects quiet hours', async () => {
 	reset();
 	selectRows = [eventRow(futureStart)];

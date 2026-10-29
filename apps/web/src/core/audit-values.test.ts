@@ -57,7 +57,7 @@ const GERMAN_SUMMARIES: Case[] = [
 		{ description: 'Strom' },
 		'Anna hat einen Anteil für Strom wieder geöffnet.',
 	],
-	['expense.debt.settled', { count: 1 }, 'Anna hat 1 offene Anteil beglichen.'],
+	['expense.debt.settled', { count: 1 }, 'Anna hat 1 offenen Anteil beglichen.'],
 	['expense.debt.settled', { count: 3 }, 'Anna hat 3 offene Anteile beglichen.'],
 	[
 		'expense.debt.settled.manual',
@@ -91,8 +91,16 @@ const GERMAN_SUMMARIES: Case[] = [
 	[
 		'inventory.consumed',
 		{ name: 'Papier', unit: 'Rolle', appliedDelta: -2 },
-		'Anna hat 2 Rolle Papier entnommen.',
+		'Anna hat 2 Rollen Papier entnommen.',
 	],
+
+	[
+		'inventory.consumed',
+		{ name: 'Papier', unit: 'Rolle', appliedDelta: -1 },
+		'Anna hat 1 Rolle Papier entnommen.',
+	],
+
+	['shopping.cleared_bought', { count: 1 }, 'Anna hat 1 erledigten Einkaufseintrag entfernt.'],
 	['member.invited', {}, 'Anna hat eine Einladung per E-Mail verschickt.'],
 	['member.joined', {}, 'Anna ist der WG per Einladung beigetreten.'],
 	['member.reactivated', { name: 'Ben' }, 'Anna hat Ben wieder aktiviert.'],

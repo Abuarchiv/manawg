@@ -172,6 +172,7 @@ function CashPaymentRow({
 				variant="ghost"
 				size="sm"
 				disabled={voiding}
+				aria-label={t('voidAria', { amount, from: fromName, to: toName })}
 				onClick={() => setConfirmOpen(true)}
 			>
 				{t('void')}

@@ -240,11 +240,22 @@ test('chore reminder candidates are bounded to a recent window and capped', asyn
 	});
 
 	const conditions = (state.candidateWhere?.args ?? []) as Op[];
-	const lowerBound = conditions.find(
-		(condition) => condition.operator === 'gte' && condition.args[0] === 'chores.nextDueAt',
+	const lookback = conditions.find(
+		(condition) =>
+			condition.operator === 'or' &&
+			(condition.args as Op[]).some((inner) => inner.args[0] === 'chores.nextDueAt'),
 	);
+	assert.ok(lookback, 'nextDueAt lookback is a top-level condition');
+	const lowerBound = (lookback.args as Op[]).find((inner) => inner.operator === 'gte');
 	assert.ok(lowerBound, 'nextDueAt needs a lower bound');
 	assert.equal((lowerBound.args[1] as Date).toISOString(), '2026-09-18T06:00:00.000Z');
+	const absenceLookback = (lookback.args as Op[]).find((inner) => inner.operator === 'sql');
+	assert.ok(absenceLookback, 'the lookback also reaches back to the end of the last absence');
+	assert.deepEqual(absenceLookback.args.slice(1), [
+		'chores.assignedMemberId',
+		new Date('2026-09-25T21:59:59.999Z'),
+		new Date('2026-09-18T06:00:00.000Z'),
+	]);
 	assert.ok(
 		conditions.some(
 			(condition) =>

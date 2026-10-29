@@ -74,6 +74,7 @@ export default {
 	},
 	settle: {
 		button: 'Settle up',
+		buttonAria: 'Settle up: {debtor} to {creditor}, {amount}',
 		checking: 'Checking…',
 		checkFailed: 'The payment could not be checked. Try again in a moment.',
 		keyUnavailable: 'The settlement could not be saved reliably. Try again.',
@@ -111,6 +112,7 @@ export default {
 		line: '{fromSelf, select, yes {You} other {{from}}} to {toSelf, select, yes {you} other {{to}}}',
 		paidInCash: 'Paid in cash',
 		void: 'Reverse',
+		voidAria: 'Reverse: {amount} from {from} to {to}',
 		voidTitle: 'Reverse cash payment?',
 		voidBody:
 			'The cash payment of {amount} from {from} to {to} will be reversed, and the amount is open again. If only the amount is wrong, enter the payment again afterwards.',
