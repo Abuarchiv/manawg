@@ -13,6 +13,10 @@ The update endpoint SHALL accept `name` and `quantity` in addition to `bought`, 
 - **WHEN** a member renames an item to the name of another open item
 - **THEN** the server SHALL answer `409 duplicate`
 
+#### Scenario: Item changed while the edit form is open
+- **WHEN** a housemate changes the item after a member opened its edit form, and the member saves
+- **THEN** the save SHALL carry the version the form was opened on, so the server answers `409` and the list reloads
+
 ### Requirement: Offline actions stay visible
 
 Unsynced offline creates and ticks SHALL be overlaid on any server state without duplicate rows. Rejected updates and entries of another WG or member SHALL be ignored. After a server delete, queued follow-up actions for that item SHALL be removed.

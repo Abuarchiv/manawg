@@ -1,5 +1,5 @@
 import { useTranslations } from 'next-intl';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,11 +8,15 @@ import { Spinner } from '@/components/ui/spinner';
 import { NAME_MAX, QUANTITY_MAX } from '@/features/shopping/components/constants';
 import type { ShoppingItem } from '@/features/shopping/components/shopping-types';
 import type { ShoppingEditResult } from '@/features/shopping/hooks/use-shopping-edit';
-import { type Message, useMessage } from '@/shared/i18n/message';
+import {
+	type ShoppingEditFields,
+	useShoppingEditForm,
+} from '@/features/shopping/hooks/use-shopping-edit-form';
+import { useMessage } from '@/shared/i18n/message';
 
 interface ShoppingEditFormProps {
 	item: ShoppingItem;
-	onSave: (fields: { name: string; quantity: string | null }) => Promise<ShoppingEditResult>;
+	onSave: (base: ShoppingItem, fields: ShoppingEditFields) => Promise<ShoppingEditResult>;
 	onDone: () => void;
 }
 
@@ -20,10 +24,11 @@ interface ShoppingEditFormProps {
 export function ShoppingEditForm({ item, onSave, onDone }: ShoppingEditFormProps) {
 	const t = useTranslations('shopping.editForm');
 	const render = useMessage();
-	const [name, setName] = useState(item.name);
-	const [quantity, setQuantity] = useState(item.quantity ?? '');
-	const [saving, setSaving] = useState(false);
-	const [error, setError] = useState<Message | null>(null);
+	const { name, setName, quantity, setQuantity, saving, error, submit } = useShoppingEditForm(
+		item,
+		onSave,
+		onDone,
+	);
 	const nameRef = useRef<HTMLInputElement>(null);
 	const idBase = `shopping-edit-${item.id}`;
 
@@ -31,15 +36,6 @@ export function ShoppingEditForm({ item, onSave, onDone }: ShoppingEditFormProps
 	useEffect(() => {
 		nameRef.current?.focus();
 	}, []);
-
-	async function submit(): Promise<void> {
-		setSaving(true);
-		setError(null);
-		const message = await onSave({ name, quantity: quantity.trim() || null });
-		setSaving(false);
-		if (message === null) onDone();
-		else setError(message);
-	}
 
 	return (
 		<form

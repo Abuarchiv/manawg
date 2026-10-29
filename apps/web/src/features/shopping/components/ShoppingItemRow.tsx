@@ -244,8 +244,8 @@ export const ShoppingItemRow = memo(function ShoppingItemRow({
 								{editing ? (
 									<ShoppingEditForm
 										item={item}
-										onSave={async (fields) => {
-											const message = await onEdit(item, fields);
+										onSave={async (base, fields) => {
+											const message = await onEdit(base, fields);
 											// Saved: back to the list, like the other modules.
 											if (message === null) setDrawerOpen(false);
 											return message;
