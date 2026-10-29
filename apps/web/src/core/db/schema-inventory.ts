@@ -1,5 +1,14 @@
 import { relations, sql } from 'drizzle-orm';
-import { index, numeric, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import {
+	check,
+	index,
+	numeric,
+	pgTable,
+	text,
+	timestamp,
+	uniqueIndex,
+	uuid,
+} from 'drizzle-orm/pg-core';
 import { wgMembers, wgs } from './schema';
 
 export const wgInventoryItems = pgTable(
@@ -27,6 +36,15 @@ export const wgInventoryItems = pgTable(
 			t.lastDecrementedAt,
 		),
 		nameKey: uniqueIndex('wg_inventory_items_unique_name').on(t.wgId, sql`lower(btrim(${t.name}))`),
+		// Keep in sync with INVENTORY_UNITS and INVENTORY_CATEGORIES in features/inventory/inventory.ts.
+		unitCheck: check(
+			'wg_inventory_items_unit_check',
+			sql`${t.unit} IN ('piece', 'litre', 'kilogram', 'roll', 'pack')`,
+		),
+		categoryCheck: check(
+			'wg_inventory_items_category_check',
+			sql`${t.category} IN ('bathroom', 'kitchen', 'cleaning', 'other')`,
+		),
 	}),
 );
 

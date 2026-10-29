@@ -82,11 +82,10 @@ export const expenses = pgTable(
 		// cron) already rejects amountCents <= 0 in JS. NOT VALID: existing rows
 		// are not re-checked; new writes are.
 		amountCheck: check('expenses_amount_cents_check', sql`${t.amountCents} > 0`),
-		// Keep in sync with EXPENSE_CATEGORIES in features/expenses/expense-categories.ts. The German
-		// keys stay valid until 0040, so the previous app version keeps working during the release.
+		// Keep in sync with EXPENSE_CATEGORIES in features/expenses/expense-categories.ts.
 		categoryCheck: check(
 			'expenses_category_check',
-			sql`${t.category} IN ('groceries', 'household', 'housing', 'leisure', 'transport', 'other', 'lebensmittel', 'haushalt', 'wohnen', 'freizeit', 'mobilitaet', 'sonstiges')`,
+			sql`${t.category} IN ('groceries', 'household', 'housing', 'leisure', 'transport', 'other')`,
 		),
 	}),
 );
@@ -183,11 +182,10 @@ export const recurringExpenses = pgTable(
 			.on(t.nextDueAt)
 			.where(sql`${t.pausedAt} IS NULL`),
 		amountCheck: check('recurring_expenses_amount_cents_check', sql`${t.amountCents} > 0`),
-		// Keep in sync with EXPENSE_CATEGORIES in features/expenses/expense-categories.ts. The German
-		// keys stay valid until 0040, so the previous app version keeps working during the release.
+		// Keep in sync with EXPENSE_CATEGORIES in features/expenses/expense-categories.ts.
 		categoryCheck: check(
 			'recurring_expenses_category_check',
-			sql`${t.category} IN ('groceries', 'household', 'housing', 'leisure', 'transport', 'other', 'lebensmittel', 'haushalt', 'wohnen', 'freizeit', 'mobilitaet', 'sonstiges')`,
+			sql`${t.category} IN ('groceries', 'household', 'housing', 'leisure', 'transport', 'other')`,
 		),
 	}),
 );

@@ -189,7 +189,7 @@ export function EventEditModal({
 		setError(null);
 		setErrorField(null);
 		if (!event) return;
-		const validation = validateEventForm({ title, startsAt, endsAt, allDay, original: baseline });
+		const validation = validateEventForm({ title, startsAt, endsAt, allDay });
 		if (!validation.ok) {
 			setError(render(validation.error));
 			setErrorField(validation.field);

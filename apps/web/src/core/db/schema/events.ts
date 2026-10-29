@@ -1,5 +1,14 @@
 import { relations, sql } from 'drizzle-orm';
-import { boolean, index, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import {
+	boolean,
+	check,
+	index,
+	pgTable,
+	text,
+	timestamp,
+	uniqueIndex,
+	uuid,
+} from 'drizzle-orm/pg-core';
 import { wgMembers, wgs } from './wg';
 
 export const wgEvents = pgTable(
@@ -26,6 +35,11 @@ export const wgEvents = pgTable(
 		wgIdx: index('wg_events_wg_idx').on(t.wgId),
 		wgStartsIdx: index('wg_events_wg_starts_idx').on(t.wgId, t.startsAt),
 		startsIdx: index('wg_events_starts_idx').on(t.startsAt),
+		// An all-day event is a date: UTC midnight, the same day on every device (eventInstant).
+		allDayMidnightCheck: check(
+			'wg_events_all_day_midnight_check',
+			sql`NOT ${t.allDay} OR ((${t.startsAt} AT TIME ZONE 'UTC')::time = '00:00' AND (${t.endsAt} IS NULL OR (${t.endsAt} AT TIME ZONE 'UTC')::time = '00:00'))`,
+		),
 	}),
 );
 
