@@ -30,15 +30,15 @@ type Row = Record<string, unknown>;
  * Another tap committed quantity 5 -> 6 after this transaction started: a
  * plain read still sees the stale 5, a locking read waits and sees the 6.
  */
-function concurrentTapTx() {
-	const row = { id: 'item-1', wgId: 'wg-1', quantity: 6, threshold: 0, updatedAt };
+function concurrentTapTx(staleQuantity = 5) {
+	const row = { id: 'item-1', wgId: 'wg-1', name: 'Spüli', quantity: 6, threshold: 0, updatedAt };
 	const state = { locked: false, logs: [] as Row[] };
 	const tx = {
 		select: () => ({
 			from: () => ({
 				where: () => ({
 					limit: () => {
-						const stale = Promise.resolve([{ ...row, quantity: 5 }]);
+						const stale = Promise.resolve([{ ...row, quantity: staleQuantity }]);
 						return Object.assign(stale, {
 							for: (mode: string) => {
 								assert.equal(mode, 'update');
@@ -91,6 +91,22 @@ test('a concurrent +1 tap is applied on top of the committed quantity instead of
 		state.logs.map((log) => log.delta),
 		[1],
 	);
+});
+
+test('a name-only edit is applied on top of a concurrent tap instead of 409', async () => {
+	const { tx, row, state } = concurrentTapTx();
+	const result = await updateInventoryItemMutation(tx as never, {
+		itemId: 'item-1',
+		wgId: 'wg-1',
+		memberId: 'member-1',
+		locale: 'de',
+		name: 'x',
+	});
+	assert.equal(result.kind, 'ok');
+	assert.equal(state.locked, true);
+	assert.equal(row.quantity, 6);
+	assert.equal(row.name, 'x');
+	assert.deepEqual(state.logs, []);
 });
 
 test('an absolute write keeps its optimistic conflict check', async () => {
