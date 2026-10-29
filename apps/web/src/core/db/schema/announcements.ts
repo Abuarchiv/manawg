@@ -31,10 +31,8 @@ export const announcements = pgTable(
 		pinnedIdx: index('announcements_pinned_idx').on(t.wgId, t.pinnedAt),
 		statusIdx: index('announcements_status_idx').on(t.wgId, t.status),
 		// Values mirror ANNOUNCEMENT_KINDS / ANNOUNCEMENT_STATUS / ANNOUNCEMENT_SOURCES
-		// in lib/announcement-workflow.ts, which every insert/update site already
-		// validates through. Added NOT VALID: this table predates that shared
-		// module, so an older row could carry a value dropped since then; new
-		// writes are checked immediately either way.
+		// in features/announcements/announcement-workflow.ts, which every insert/update
+		// site validates through.
 		kindCheck: check(
 			'announcements_kind_check',
 			sql`${t.kind} in ('info', 'question', 'problem', 'request', 'decision')`,

@@ -111,9 +111,10 @@ export const POST = withWgRoute('shopping POST', async (req, { code }) => {
 				codec: shoppingCreateCodec,
 				// A same-key duplicate replays as 409 like the original request answered.
 				storeStatus: (status) => status === 200 || status === 409,
-				// Per-member write cap on top of the middleware's per-IP limit: an item fans out to
+				// Per-member write cap on top of the middleware's per-session limit: an item fans out to
 				// a system notice and a push to every other member, so one member must not rotate
-				// IPs to spam the WG. Same 30/min ceiling as the middleware.
+				// IPs to spam the WG. Same 60/min budget as the middleware's per-session write limit,
+				// keyed per member.
 				prepare: async () => {
 					const limited = await checkRateLimit(
 						wgWriteLimiter,

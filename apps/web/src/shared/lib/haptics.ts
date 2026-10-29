@@ -1,19 +1,4 @@
-/**
- * Native-app haptic feedback via the Vibration API.
- *
- * Why: short, mechanically-meaningful vibrations communicate confirmation
- * the way a native iOS / Android tap does. Web doesn't have UIImpactFeedback,
- * so we approximate by mapping intent → vibration duration:
- *
- *   - light    (15ms)   primary tap, FAB open, toggle
- *   - medium   (25ms)   success confirmation, save
- *   - heavy    (40ms)   destructive confirm, error
- *   - selection ([10,30,10])  picker change
- *
- * No-op on devices without navigator.vibrate (most desktops, iOS Safari).
- * Respects the user's prefers-reduced-motion preference: when set, all
- * haptics are suppressed entirely.
- */
+/** Haptic feedback through the Vibration API; a no-op without navigator.vibrate (most desktops, iOS Safari) and with prefers-reduced-motion. */
 
 type HapticIntent = 'light' | 'medium' | 'heavy' | 'selection';
 

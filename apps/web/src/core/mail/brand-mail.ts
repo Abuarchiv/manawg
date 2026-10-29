@@ -1,5 +1,5 @@
 /**
- * The e-mail shell from the Touchpoints design: 600 px wide, mark and wordmark
+ * The e-mail shell: 600 px wide, mark and wordmark
  * in the head, eyebrow in mono, title in Inter Tight, 15 px body, one black
  * button, footer on #FAFAFA that names the reason for the mail. Colour is used
  * only for owed and settled amounts. Every mail is rendered as HTML and text, in light and dark.

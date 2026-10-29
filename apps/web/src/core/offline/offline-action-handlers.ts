@@ -17,19 +17,7 @@ export interface OfflineActionRisk {
 	detail: Message;
 }
 
-/**
- * Per-type behavior for the offline queue. Declared here in core rather
- * than split across features/<name>/offline.ts: the queue mechanism itself
- * (types, retry/staleness logic, request building) is one small, cohesive
- * unit, and splitting the ~9 handlers out would need a bootstrap module to
- * import every feature's offline.ts just for its registration side effect —
- * indirection with no reader benefit over this single table.
- *
- * Declared as a `Record<OfflineActionType, OfflineActionHandler>` literal
- * (below) rather than a Map so the compiler enforces that every action type
- * has a handler — add a type to the union and `tsc` fails until its entry
- * is added here, which a Map's runtime `.get()`/`.set()` can't guarantee.
- */
+/** Per-type behaviour of the offline queue. A Record keyed by OfflineActionType makes `tsc` fail when a new action type has no handler. */
 interface OfflineActionHandler {
 	buildRequest(action: OfflineAction): OfflineActionRequest;
 	summary(action: OfflineAction): OfflineActionSummary;

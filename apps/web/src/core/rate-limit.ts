@@ -117,7 +117,7 @@ export const wgShareCodeLookupLimiter = build(120, 60, 'wg-code-lookup'); // 120
 // members are never throttled while code enumeration stops after a few tries.
 export const wgShareCodeMissLimiter = build(20, 3600, 'wg-code-miss'); // 20 unknown/foreign share codes / hour / account
 export const notifTestLimiter = build(3, 60, 'notif-test'); // 3 test notifications / min / member — anti-spam
-export const reminderSendLimiter = build(10, 3600, 'reminder-send'); // 10 Mahnungen / hour / member — global anti-spam
+export const reminderSendLimiter = build(10, 3600, 'reminder-send'); // 10 reminders / hour / member — global anti-spam
 export const inviteMailLimiter = build(10, 3600, 'invite-mail'); // 10 invitation mails / hour / member — anti-spam
 export const inviteMailAccountLimiter = build(20, 86_400, 'invite-mail-account'); // 20 invitation mails / day / account across WGs — a second member row does not reset it
 export const inviteMailRecipientLimiter = build(2, 86_400, 'invite-mail-recipient'); // 2 invitation mails / day / address across all WGs — keeps one inbox from being mailed by many WGs
@@ -234,12 +234,8 @@ const FAIL_OPEN_PRODUCTION_LOG =
 const FAIL_CLOSED_PRODUCTION_LOG =
 	'[rate-limit] Upstash Redis not configured in production — failing closed';
 const OPEN_STATE_REPORT_INTERVAL_MS = 5 * 60 * 1000;
-// The report throttle is keyed by fail mode and `cause`.
-// Causes are internal literals today,
-// but nothing stops a future caller from passing request-derived text — and
-// in a long-lived serverless instance an unbounded module-level Map is a
-// textbook memory leak. Once the cap is reached only already-known causes
-// keep their entries, so memory stays bounded while the signal survives.
+// Caps the throttle map: a caller passing request-derived `cause` text must not
+// grow it without bound. Past the cap only known causes keep entries.
 const MAX_TRACKED_CAUSES = 32;
 const lastReportedAt = new Map<string, number>();
 

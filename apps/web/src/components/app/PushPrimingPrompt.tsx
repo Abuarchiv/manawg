@@ -25,21 +25,15 @@ function rememberDismissed(): void {
 	try {
 		safeLocalStorage()?.setItem(PUSH_PRIMING_DISMISS_KEY, String(Date.now()));
 	} catch {
-		// Storage blocked (private mode etc.) — the prompt just won't persist its
-		// dismissal across reloads this session; it still hides for now.
+		// Storage blocked (private mode): the dismissal is not persisted.
 	}
 }
 
 /**
- * A one-time, non-blocking inline offer to turn on push notifications. Mounted
- * for every member with a resolved identity (see app/wg/[code]/page.tsx), so it
- * naturally appears right after the moment a WG is created or joined for a
- * fresh device — without needing every join/create flow to know about it.
- *
- * `Notification.requestPermission()` (inside `subscribeWebPush`) only ever
- * fires from the user's tap on "Aktivieren" — never automatically. Most
- * browsers ignore/block an unsolicited call anyway, and a silent grant would
- * be the exact dark pattern app stores reject.
+ * One-time inline offer to enable push. Mounted for every member with a resolved identity
+ * (see app/wg/[code]/page.tsx), so it shows up on a fresh device without join/create flows
+ * knowing about it. `Notification.requestPermission()` runs only from the member's tap on the
+ * card, never automatically.
  */
 export function PushPrimingPrompt({ code, memberId }: { code: string; memberId: string }) {
 	const t = useTranslations('shell.pushPriming');
@@ -60,9 +54,7 @@ export function PushPrimingPrompt({ code, memberId }: { code: string; memberId: 
 		const dismissed = isPushPrimingDismissed(
 			safeLocalStorage()?.getItem(PUSH_PRIMING_DISMISS_KEY) ?? null,
 		);
-		// editingTarget is checked again at show-time and live below — typing can
-		// start or stop between mount and the initial show, so a single mount-time
-		// snapshot isn't enough.
+		// Typing can start between mount and show, so editingTarget is rechecked below.
 		const eligible = shouldShowPushPriming({
 			supported,
 			configured: !!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
@@ -82,14 +74,9 @@ export function PushPrimingPrompt({ code, memberId }: { code: string; memberId: 
 		};
 	}, []);
 
-	// Silent background resubscribe: if permission was already granted at some
-	// earlier point (a previous session, or a standing OS/browser grant) but
-	// this device has no live subscription (fresh profile, cleared/expired
-	// subscription), re-create it without any card or gesture — permission was
-	// already cleared, so no dark pattern here. Never requests permission
-	// itself (see shouldAutoResubscribePush); the first-ever grant still goes
-	// through the tap above or Einstellungen. Runs independently of the
-	// priming-card visibility/dismissal state above.
+	// Re-creates a lost subscription silently when permission is already granted (see
+	// shouldAutoResubscribePush). Never requests permission; the first grant goes through the
+	// card or Settings. Independent of the card state above.
 	useEffect(() => {
 		let cancelled = false;
 		async function autoResubscribe(): Promise<void> {
@@ -118,7 +105,7 @@ export function PushPrimingPrompt({ code, memberId }: { code: string; memberId: 
 				try {
 					await persistExistingWebPushSubscription(code, memberId, existing);
 				} catch {
-					// Silent like the resubscribe below; Einstellungen retries with a real error.
+					// Silent like the resubscribe below; Settings retries with a real error.
 				}
 				return;
 			}
@@ -136,7 +123,7 @@ export function PushPrimingPrompt({ code, memberId }: { code: string; memberId: 
 			try {
 				await subscribeWebPush(code, memberId);
 			} catch {
-				// Silent: VAPID misconfig, network hiccup, etc. Einstellungen still
+				// Silent: VAPID misconfig, network hiccup, etc. Settings still
 				// offers a manual retry with a real error message.
 			}
 		}

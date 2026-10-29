@@ -56,9 +56,8 @@ interface MemberDeactivateDialogProps {
  * Confirmation dialog for marking a member as moved out ("Auszug").
  *
  * On open it fetches the member's open balances and lists them as a warning.
- * The move-out is never blocked by open balances — the decision is "erlauben,
- * aber warnen": we surface the money that would be left hanging and let the
- * user proceed anyway. Deactivation is reversible, so this is not destructive.
+ * Open balances warn but never block the move-out; moving out is reversible,
+ * so it is not treated as destructive.
  */
 export function MemberDeactivateDialog({
 	encodedShareCode,

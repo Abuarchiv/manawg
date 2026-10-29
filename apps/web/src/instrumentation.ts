@@ -25,11 +25,7 @@ async function reportEnvironment(): Promise<void> {
 			missing: result.missingRequired,
 			report,
 		});
-		// Fail open: a missing env var degrades the affected feature, but
-		// crashing the entire server boot leaves every tenant without service.
-		// The captured exception surfaces the problem in the observability
-		// pipeline so operators can fix it without a global outage.
-		//
+		// Do not crash boot: a missing variable only degrades the affected feature.
 		console.error(report);
 		return;
 	}

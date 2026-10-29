@@ -13,16 +13,7 @@ interface FormatEuroCentsOptions {
 	locale?: Locale;
 }
 
-/**
- * Renders a cent amount as a localized currency string (German by default).
- *
- * - Uses `Intl.NumberFormat(tag, { style: 'currency', currency })`.
- * - Normalizes `-0` (and tiny sub-cent negatives) to `0` so we never render `-0,00 €`.
- * - With `{ signed: true }`, prefixes positive amounts with `+`.
- *
- * Centralizing here prevents drift like `(cents / 100).toFixed(2) + ' €'`
- * which would render `0,5 € → "0.50 €"` instead of `"0,50 €"`.
- */
+/** Formats a cent amount as a localized currency string (German by default). Sub-cent negatives render as 0, never "-0,00 €"; `signed: true` prefixes positive amounts with "+". */
 export function formatEuroCents(
 	cents: number,
 	currency = 'EUR',

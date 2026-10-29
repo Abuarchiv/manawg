@@ -24,8 +24,8 @@ function messageFor(
 	return detail ? subjectError(subject, detail) : { key: fallback };
 }
 
-// Worth being explicit here above all: on a dropped connection the request
-// may or may not have reached the server, so the copy must not claim the flat still exists.
+// On a dropped connection the request may or may not have reached the server,
+// so the copy must not claim the flat still exists.
 export function deleteWgErrorMessage(status: number, code: string | null): Message {
 	const kind = classifyApiError(code, status);
 	switch (kind) {

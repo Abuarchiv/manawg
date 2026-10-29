@@ -1,30 +1,9 @@
 /**
- * Fair expense splitting math.
- *
- * Centralized here so the UI, server validation and any future server-side
- * "auto-split" call site share one provably-correct, deterministic
- * implementation. Currency amounts are always integer cents — we never round
- * a float at the boundary, because a sum of rounded floats is not guaranteed
- * to equal the original total (classic 333,333… cent problem).
- *
- * Rounding strategy: Hamilton / largest-remainder.
- *   1. Every debtor gets floor(amount / n) cents.
- *   2. The leftover cents (always < n) are distributed one cent at a time
- *      to the FIRST k debtors in the input order.
- *
- * Properties this guarantees:
- *   - sum(splits) === amount, exactly.
- *   - max(splits) - min(splits) <= 1 cent — nobody pays more than one cent
- *     extra over anybody else.
- *   - Deterministic for a given debtor order: callers control fairness by
- *     rotating who is at index 0 (e.g. round-robin across expenses).
- *   - Works for any amount >= 0 and any n >= 1.
- *
- * Edge cases worth knowing:
- *   - amount=1, n=2 → [1, 0]. The single cent goes to the first debtor; the
- *     second debtor owes zero. We keep the 0-cent split because dropping it
- *     would silently change who's "in" the expense.
- *   - amount=0 → all splits are 0.
+ * Splits an integer cent amount across debtors by largest remainder: everyone gets
+ * floor(amount / n), the leftover cents (< n) go one each to the first debtors in input
+ * order. Sums are exact and shares differ by at most 1 cent; callers rotate debtor order
+ * for fairness. amount=1, n=2 yields [1, 0]; the 0 split is kept so the debtor stays part
+ * of the expense.
  */
 
 export interface DebtorShare {
@@ -141,14 +120,9 @@ export function splitValidationErrorCode(
 }
 
 /**
- * The payer's own share of an expense is never a debt: `computeBalances`
- * (debts.ts) already skips any split where the debtor is also the creditor.
- * Every insert site (manual create, recurring advance, import commit) should
- * write that split as already settled, otherwise it sits at `settledAt: null`
- * forever unless someone manually toggles it — showing the payer's own share
- * as a permanently "Offen" line with a settle button that has zero effect on
- * any balance, and undercounting the "X/Y beglichen" progress next to every
- * expense.
+ * The payer's own share is never a debt (computeBalances skips it), so every insert site
+ * (manual, recurring, import) writes it as already settled; otherwise it stays open forever
+ * with a settle button that changes no balance.
  */
 export function settledAtForOwnShare(debtorMemberId: string, paidByMemberId: string): Date | null {
 	return debtorMemberId === paidByMemberId ? new Date() : null;
