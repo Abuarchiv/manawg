@@ -175,3 +175,16 @@ test('a payment for an older month never shows up as a reverse debt in its own m
 		[['J', 'L', 300]],
 	);
 });
+
+test('a month whose opposite debts cancel out exactly counts as settled', () => {
+	const statement = buildMonthlyStatement(
+		[
+			expense('a', 'L', '2026-09-02T10:00:00Z', { L: 0, J: 1000 }),
+			expense('b', 'J', '2026-09-03T10:00:00Z', { J: 0, L: 1000 }),
+		],
+		members,
+		'2026-09',
+	);
+	assert.deepEqual(statement.transfers, []);
+	assert.equal(statement.settled, true);
+});

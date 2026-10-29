@@ -416,7 +416,7 @@ These behaviors are deliberate.
 - **Activity feed.** Every member reads it. Private details (one person's quiet hours, push opt-in,
   the creation-time share code) are removed before the response (`core/audit-visibility.ts`).
 - **Member names** are unique ignoring case among active members. A moved-out member who holds a name
-  a current member wants is renamed to "Name (ausgezogen)". The cap of 20 counts active members only.
+  a current member wants is renamed to "Name (2)", numbered, with no language in the stored name. The cap of 20 counts active members only.
 - **Time zones.** Event times are entered and shown in the device's zone; repeats, reminders and the
   calendar feed follow Berlin wall time. A device elsewhere gets a notice on the calendar page
   (`TimeZoneNotice`). Pinning every display to Berlin would change the month grid, the agenda and

@@ -226,6 +226,8 @@ export const ExpenseRow = memo(function ExpenseRow({
 							{expense.splits.map((split) => {
 								const settled = split.settledAt !== null;
 								const ownShare = split.debtorMemberId === expense.paidByMemberId;
+								// The server lets only the payer or the debtor of a share change its state.
+								const canSettle = isPayer || split.debtorMemberId === currentMemberId;
 								return (
 									<Item key={split.id} variant="muted" size="xs" className="flex-wrap">
 										<ItemContent className="min-w-0 flex-[1_1_8rem]">
@@ -235,7 +237,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 											</ItemTitle>
 											<ItemDescription>{shareStatusLabel(split, ownShare)}</ItemDescription>
 										</ItemContent>
-										{!ownShare && split.amountCents > 0 && (
+										{!ownShare && canSettle && split.amountCents > 0 && (
 											<Button
 												variant={settled ? 'secondary' : 'outline'}
 												size="sm"

@@ -71,6 +71,11 @@ export default {
 		title: 'Shopping item missing',
 		detail: 'The item no longer exists. Remove this offline action or add the item again.',
 	},
+	templateChanged: {
+		title: 'Fixed-cost template changed',
+		detail:
+			'Someone has changed the template in the meantime. Remove this offline action and book the fixed cost with the current values.',
+	},
 	shoppingChanged: {
 		title: 'Shopping status changed',
 		detail:

@@ -49,6 +49,7 @@ export const createExpenseSchema = z
 		occurredAt: occurredAtSchema.optional(),
 		recurringExpenseId: z.string().uuid().optional(),
 		expectedRecurringNextDueAt: z.string().datetime({ offset: true }).optional(),
+		expectedRecurringUpdatedAt: z.string().datetime({ offset: true }).optional(),
 		splits: z.array(expenseSplitSchema).min(1).max(MAX_SPLITS),
 	})
 	.superRefine((value, ctx) => {
@@ -76,6 +77,7 @@ export const EXPENSE_CREATE_FIELD_ERRORS = {
 	occurredAt: 'occurred_at_invalid',
 	recurringExpenseId: 'recurring_expense_invalid',
 	expectedRecurringNextDueAt: 'recurring_due_at_invalid',
+	expectedRecurringUpdatedAt: 'recurring_updated_at_invalid',
 	splits: (messages: string[]) =>
 		messages[0] === 'splits_sum_mismatch' ? 'splits_sum_mismatch' : 'splits_invalid',
 } as const;
@@ -90,8 +92,11 @@ export interface ExpenseCreateInput {
 	imageUrl: string | null;
 	occurredAt: Date;
 	splits: Split[];
-	/** A booking of a recurring template's due charge. */
-	recurring?: { id: string; expectedDueAt: Date };
+	/**
+	 * A booking of a recurring template's due charge. `expectedUpdatedAt` is the template version
+	 * the client built the booking from; a booking without it is not version-checked.
+	 */
+	recurring?: { id: string; expectedDueAt: Date; expectedUpdatedAt?: Date };
 }
 
 /**
@@ -166,6 +171,12 @@ export async function writeExpense(
 		if (locked.nextDueAt.getTime() !== input.recurring.expectedDueAt.getTime()) {
 			throw new TransactionAbort('recurring_expense_already_advanced');
 		}
+		if (
+			input.recurring.expectedUpdatedAt &&
+			input.recurring.expectedUpdatedAt.getTime() !== locked.updatedAt.getTime()
+		) {
+			throw new TransactionAbort('recurring_expense_changed');
+		}
 		template = locked;
 	}
 	const created = await insertExpenseWithSplits(tx, {
@@ -221,5 +232,6 @@ export function expenseCreateAbortResponse(error: unknown): NextResponse | null 
 	if (error.code === 'recurring_expense_already_advanced') {
 		return conflict('recurring_expense_already_advanced');
 	}
+	if (error.code === 'recurring_expense_changed') return conflict('recurring_expense_changed');
 	return null;
 }

@@ -18,6 +18,7 @@ export default {
 		title: 'Dein Profil',
 		appearance: 'Darstellung',
 		themes: { light: 'Hell', dark: 'Dunkel', system: 'System' },
+		language: 'Sprache',
 		languageSystem: 'System',
 		install: 'App installieren',
 		help: 'Hilfe',

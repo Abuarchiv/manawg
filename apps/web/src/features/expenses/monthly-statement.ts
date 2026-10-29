@@ -145,8 +145,6 @@ export function buildMonthlyStatement(
 		const pair = `${payment.fromMemberId}>${payment.toMemberId}`;
 		paymentPool.set(pair, (paymentPool.get(pair) ?? 0) + payment.amountCents);
 	}
-	// Open amount of this month per pair after settled shares and payments.
-	const openByPair = new Map<string, number>();
 	for (const expense of eur) {
 		const isInMonth = berlinMonthKey(new Date(expense.occurredAt)) === monthKey;
 		for (const split of expense.splits) {
@@ -160,12 +158,10 @@ export function buildMonthlyStatement(
 				paymentPool.set(pair, (paymentPool.get(pair) ?? 0) - covered);
 			}
 			if (!isInMonth) continue;
-			openByPair.set(pair, (openByPair.get(pair) ?? 0) + split.amountCents - covered);
 			adjustment.set(from, (adjustment.get(from) ?? 0) + covered);
 			adjustment.set(to, (adjustment.get(to) ?? 0) - covered);
 		}
 	}
-	const settled = [...openByPair.values()].every((cents) => cents <= 0);
 
 	const nameOf = (id: string) => members.find((member) => member.id === id)?.name ?? null;
 	// Active members always appear; former members only when they took part this month.
@@ -192,6 +188,9 @@ export function buildMonthlyStatement(
 			currency: 'EUR',
 		})),
 	);
+
+	// Opposite debts net out, so the month is settled exactly when no transfer is left.
+	const settled = transfers.length === 0;
 
 	const totalCents = inMonth.reduce((sum, expense) => sum + expense.amountCents, 0);
 	return {

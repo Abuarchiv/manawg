@@ -315,3 +315,27 @@ test('a rolled-back create keeps a claim another request took over', async () =>
 	assert.deepEqual(slot().responseBody, { _claimed: true });
 	assert.equal(state.items.length, 0);
 });
+
+test('a queued bought create keeps its tap time, clamped to the replay window', async () => {
+	const { state, post } = harness();
+	const tapAt = new Date(Date.now() - 2 * 60 * 60 * 1000);
+	assert.equal(
+		(await post({ name: 'Kaffee', bought: true, boughtAt: tapAt.toISOString() })).status,
+		200,
+	);
+	assert.equal(Number(state.items[0]?.boughtAt), tapAt.getTime());
+
+	const future = harness();
+	await future.post({ name: 'Tee', bought: true, boughtAt: '2999-01-01T00:00:00.000Z' });
+	assert.ok(Number(future.state.items[0]?.boughtAt) <= Date.now());
+
+	const open = harness();
+	await open.post({ name: 'Brot', boughtAt: tapAt.toISOString() });
+	assert.equal(open.state.items[0]?.boughtAt, null);
+});
+
+test('an unreadable boughtAt is rejected', async () => {
+	const { state, post } = harness();
+	assert.equal((await post({ name: 'Kaffee', bought: true, boughtAt: 'gestern' })).status, 400);
+	assert.equal(state.items.length, 0);
+});

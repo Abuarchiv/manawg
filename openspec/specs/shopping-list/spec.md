@@ -21,6 +21,12 @@ Unsynced offline creates and ticks SHALL be overlaid on any server state without
 - **WHEN** a member adds an item offline and the list reloads before sync
 - **THEN** the item SHALL still be shown once
 
+A tick or a bought create replayed after a delay SHALL keep the time it was made: the client sends it, the server clamps it to the offline replay window and stores it as the bought time.
+
+#### Scenario: Tick replayed days later
+- **WHEN** a member ticks an item offline and the action syncs two days later
+- **THEN** the bought time SHALL be the time of the tick, not the time of the sync
+
 ### Requirement: Ticking is idempotent and quiet
 
 Marking an item bought SHALL NOT create a bulletin entry. A request that already matches the stored state SHALL answer 200 with the row, without audit entry.

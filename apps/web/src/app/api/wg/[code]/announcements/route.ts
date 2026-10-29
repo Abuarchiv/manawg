@@ -37,8 +37,10 @@ import { badRequest, conflict, rateLimitedReplayResponse } from '@/core/http/api
 import { parseBody } from '@/core/http/parse-body';
 import { logApiError } from '@/core/infra/observability';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
+import { clampTapTime } from '@/core/offline/replay-retention';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { imageUrlSchema, isAllowedImageUrlForWg } from '@/core/validators/image-url';
+import { tapTimeSchema } from '@/core/validators/tap-time';
 import {
 	ANNOUNCEMENT_KINDS,
 	ANNOUNCEMENT_SOURCES,
@@ -72,6 +74,8 @@ const createAnnouncementSchema = z.object({
 	// server verifies. `sourcePath` is accepted for queued clients but only its
 	// chore id is used; the stored path is always rebuilt server-side.
 	choreId: z.string().uuid().optional(),
+	// A queued post keeps the time it was written.
+	createdAt: tapTimeSchema.optional(),
 	sourcePath: z
 		.string()
 		.trim()
@@ -214,12 +218,21 @@ export const POST = withWgRoute('announcements POST', async (req, { code }) => {
 			source: 'kind_invalid',
 			sourcePath: 'source_path_invalid',
 			imageUrl: 'image_invalid',
+			createdAt: 'created_at_invalid',
 		},
 		invalid: 'content_invalid',
 	});
 	if (!parsed.ok) return parsed.response;
 
-	const { content, imageUrl = null, kind, source, choreId, sourcePath = null } = parsed.data;
+	const {
+		content,
+		imageUrl = null,
+		kind,
+		source,
+		choreId,
+		sourcePath = null,
+		createdAt,
+	} = parsed.data;
 	const safeImageUrl = typeof imageUrl === 'string' && imageUrl.length > 0 ? imageUrl : null;
 	const swapChoreId = requestedSwapChoreId(source, choreId, sourcePath);
 	// SECURITY: system/expense/shopping provenance is server-generated only.
@@ -296,6 +309,7 @@ export const POST = withWgRoute('announcements POST', async (req, { code }) => {
 						kind,
 						source: safeSource,
 						sourcePath: safeSourcePath,
+						...(createdAt ? { createdAt: clampTapTime(createdAt, Date.now()) } : {}),
 					})
 					.returning();
 				if (!item) throw new Error('announcement_insert_failed');

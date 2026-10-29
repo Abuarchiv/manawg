@@ -131,15 +131,16 @@ export function parseAmountToCents(raw: string): number | null {
 }
 
 /**
- * UTC-midnight ISO timestamp of an exact calendar date, or null. A two-digit year means 20yy; years
- * outside the plausible range and dates like 31.02. are rejected.
+ * UTC-noon ISO timestamp of an exact calendar date, or null. Noon keeps the calendar day in every
+ * time zone from UTC-12 to UTC+11, like the local-noon stamp of manually entered dates. A two-digit
+ * year means 20yy; years outside the plausible range and dates like 31.02. are rejected.
  */
 export function parseDayMonthYear(day: string, month: string, year: string): string | null {
 	const y = Number(year.length === 2 ? `20${year}` : year);
 	if (!(y >= MIN_PLAUSIBLE_YEAR && y <= MAX_PLAUSIBLE_YEAR)) return null;
 	const m = Number(month);
 	const d = Number(day);
-	const date = new Date(Date.UTC(y, m - 1, d));
+	const date = new Date(Date.UTC(y, m - 1, d, 12));
 	if (
 		Number.isNaN(date.getTime()) ||
 		date.getUTCFullYear() !== y ||

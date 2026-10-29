@@ -248,7 +248,11 @@ export function useChoreCreate(
 					choreCreateRequestRef.current = null;
 				}
 				if (result.status === 0) {
-					const base = createQueuedChore({
+					// The replay posts the payload unchanged, so the due date is fixed here, at creation.
+					const now = new Date();
+					const nextDueAt =
+						firstDueAt ?? computeNextDueAt(now, newInterval, now, newRecurrenceType).toISOString();
+					const queued = createQueuedChore({
 						wgId: wg.id,
 						shareCode: wg.shareCode,
 						memberId: identity.memberId,
@@ -257,18 +261,15 @@ export function useChoreCreate(
 						intervalDays: newInterval,
 						recurrenceType: newRecurrenceType,
 						assignedMemberId: newAssigned || null,
+						nextDueAt,
+						...(!firstDueAt && { anchorAt: now.toISOString() }),
 					});
-					// The replay posts the payload unchanged, so the chosen day travels with it.
-					const queued = firstDueAt
-						? { ...base, payload: { ...base.payload, nextDueAt: firstDueAt } }
-						: base;
 					if ((await enqueueOfflineAction(queued)) === 0) {
 						setActionError(t('offline.queueBlocked'));
 						return;
 					}
 					choreCreateRequestRef.current = null;
 					refreshCount();
-					const now = new Date();
 					updateChores((current) => [
 						{
 							id: queued.id,
@@ -276,9 +277,7 @@ export function useChoreCreate(
 							intervalDays: newInterval,
 							recurrenceType: newRecurrenceType,
 							assignedMemberId: newAssigned || null,
-							nextDueAt:
-								firstDueAt ??
-								computeNextDueAt(now, newInterval, now, newRecurrenceType).toISOString(),
+							nextDueAt,
 							lastCompletedAt: null,
 							lastCompletedByName: null,
 							openGapCountForAssignee: 0,

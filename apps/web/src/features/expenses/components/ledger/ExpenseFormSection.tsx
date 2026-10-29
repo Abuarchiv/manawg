@@ -13,7 +13,7 @@ import { type ActionNotice, ActionNoticeBanner } from '@/components/wg/ActionNot
 import type { Member } from '@/components/wg/WgContextProvider';
 import { DESCRIPTION_MAX_LENGTH } from '@/features/expenses/expense-constants';
 import { expenseFormModeKey, expenseSubmitLabel } from '@/features/expenses/expense-form-mode';
-import type { ReopenedShare } from '@/features/expenses/expense-split-input';
+import type { ChangedSettledShare } from '@/features/expenses/expense-split-input';
 import type {
 	ExpenseFormField,
 	ExpenseFormFieldErrors,
@@ -70,7 +70,7 @@ interface ExpenseFormSectionProps {
 	notice: ActionNotice | null;
 	shareCode: string;
 	currency: string;
-	reopenedShares: ReopenedShare[];
+	changedSettledShares: ChangedSettledShare[];
 	previewSplits: ExpenseSplitShare[] | null;
 	/** A submit or template save is running. */
 	saving: boolean;
@@ -88,7 +88,7 @@ export function ExpenseFormSection({
 	notice,
 	shareCode,
 	currency,
-	reopenedShares,
+	changedSettledShares,
 	previewSplits,
 	saving: formSaving,
 	recurringTemplateCount,
@@ -178,7 +178,7 @@ export function ExpenseFormSection({
 
 	// Saving while the receipt still uploads would book the expense without it.
 	const [imageUploading, setImageUploading] = useState(false);
-	const submitBlocked = formSaving || imageUploading;
+	const submitBlocked = formSaving || imageUploading || changedSettledShares.length > 0;
 
 	function requestClose() {
 		if (formSaving) return;
@@ -288,7 +288,7 @@ export function ExpenseFormSection({
 									setManualSplits={setManualSplits}
 									participantIds={extras.participantIds}
 									setParticipantIds={extras.setParticipantIds}
-									reopenedShares={reopenedShares}
+									changedSettledShares={changedSettledShares}
 									splitsError={textError(fieldErrors.splits)}
 									onClearSplitsError={() => onClearFieldError('splits')}
 									amountStr={amountStr}

@@ -298,6 +298,14 @@ export function expandRecurrence(
 
 		if (weeklyByDay) {
 			current = new Date(current.getTime() + MS_PER_DAY);
+			// Weeks between interval blocks hold no occurrences; jump to the next block's
+			// Sunday so a long INTERVAL does not burn the iteration budget day by day.
+			const weeksIntoBlock =
+				Math.floor((current.getTime() - anchorWeekStartMs) / (7 * MS_PER_DAY)) % rule.interval;
+			if (weeksIntoBlock !== 0) {
+				const weekStartMs = current.getTime() - current.getUTCDay() * MS_PER_DAY;
+				current = new Date(weekStartMs + (rule.interval - weeksIntoBlock) * 7 * MS_PER_DAY);
+			}
 		} else if (rule.freq === 'MONTHLY' || rule.freq === 'YEARLY') {
 			stepIndex += 1;
 			current = addFromAnchor(recurrenceAnchor, rule.freq, rule.interval * stepIndex);

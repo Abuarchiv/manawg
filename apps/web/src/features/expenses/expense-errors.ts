@@ -47,6 +47,7 @@ const SAVE_ERRORS: Record<string, Message> = {
 	expense_has_settled_shares: saveDetail('expenses-form.errors.save.hasSettledShares'),
 	abo_paused: saveDetail('expenses-form.errors.save.aboPaused'),
 	recurring_expense_already_advanced: msg('expenses-form.errors.save.recurringAdvanced'),
+	recurring_expense_changed: msg('expenses-form.errors.save.recurringChanged'),
 	recurring_expense_not_found: RECURRING_NOT_FOUND,
 	member_not_in_wg: saveDetail('expenses-form.errors.save.memberNotInWg'),
 	insert_failed: saveDetail('expenses-form.errors.save.insertFailed'),

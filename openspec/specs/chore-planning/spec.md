@@ -7,7 +7,7 @@ Let members plan, change and complete chores with reminders that respect absence
 
 ### Requirement: Chores can be edited after creation
 
-Any member SHALL be able to edit a chore's title (trimmed, 1-120 characters, otherwise `title_invalid`), assignee (including "Niemand"), due date and rhythm. The client SHALL send only changed fields and SHALL reload on `chore_changed`. The create form SHALL offer an optional first due date that flows into the request, the offline queue and the local preview.
+Any member SHALL be able to edit a chore's title (trimmed, 1-120 characters, otherwise `title_invalid`), assignee (including "Niemand"), due date and rhythm. The client SHALL send only changed fields and SHALL reload on `chore_changed`. Creating a chore assigned to another member that is due within 24 hours SHALL send that member a `chore.due` push; assigning it to yourself SHALL NOT. The create form SHALL offer an optional first due date that flows into the request, the offline queue and the local preview. A chore created offline SHALL keep the first due date computed at creation time; replaying it later SHALL NOT recompute the date from the sync time.
 
 #### Scenario: Only the title changes
 - **WHEN** a member renames a chore

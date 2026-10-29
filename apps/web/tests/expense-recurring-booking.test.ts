@@ -24,6 +24,7 @@ const template = {
 	lastCreatedAt: null,
 	splitsJson: '[]',
 	createdAt: new Date('2026-01-01T00:00:00.000Z'),
+	updatedAt: new Date('2026-01-05T10:00:00.000Z'),
 };
 
 const state = { updates: [] as Array<Record<string, unknown>>, casMatches: true };
@@ -127,4 +128,32 @@ test('an ordinary expense touches no template', async () => {
 	assert.equal(state.updates.length, 0);
 	assert.ok(outcome.context && 'created' in outcome.context);
 	assert.equal(outcome.context.advanced, null);
+});
+
+test('a booking built from an older template version is refused', async () => {
+	state.updates = [];
+	state.casMatches = true;
+	await assert.rejects(
+		writeExpense(fakeTx(), {
+			...input,
+			recurring: {
+				id: template.id,
+				expectedDueAt: DUE,
+				expectedUpdatedAt: new Date('2026-01-04T10:00:00.000Z'),
+			},
+		}),
+		(err: unknown) => err instanceof TransactionAbort && err.code === 'recurring_expense_changed',
+	);
+	assert.equal(state.updates.length, 0);
+});
+
+test('a booking built from the current template version goes through', async () => {
+	state.updates = [];
+	state.casMatches = true;
+	const outcome = await writeExpense(fakeTx(), {
+		...input,
+		recurring: { id: template.id, expectedDueAt: DUE, expectedUpdatedAt: template.updatedAt },
+	});
+	assert.ok(outcome.context && 'created' in outcome.context);
+	assert.equal(state.updates.length, 1);
 });

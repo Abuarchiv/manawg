@@ -72,7 +72,7 @@ The system SHALL mail only active members with an Auth account, a confirmed e-ma
 The figures in the mail SHALL be computed by `buildMonthlyStatement` at send time, and the button SHALL open the in-app statement for the same month.
 
 #### Scenario: Settled month
-- **WHEN** every share of the month is settled
+- **WHEN** every share of the month is settled or the month's debts between members cancel out exactly
 - **THEN** the status reads "Alles ausgeglichen 0,00 €" in green
 
 #### Scenario: Open balance

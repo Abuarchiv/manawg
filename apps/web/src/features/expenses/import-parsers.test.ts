@@ -55,7 +55,7 @@ test('parseSplitwiseCsv reads UK slash dates day first for an English importer',
 	const parsed = parseSplitwiseCsv(csv, rejected, 'en');
 	assert.deepEqual(
 		parsed.map((expense) => expense.date),
-		['2026-12-25T00:00:00.000Z', '2026-01-03T00:00:00.000Z'],
+		['2026-12-25T12:00:00.000Z', '2026-01-03T12:00:00.000Z'],
 	);
 	assert.deepEqual(rejected, []);
 
@@ -151,4 +151,19 @@ test('a Splitwise row with several payers is reported, not booked on one of them
 	const rejected: RejectedRow[] = [];
 	assert.equal(parseSplitwiseCsv(csv, rejected).length, 0);
 	assert.deepEqual(rejected, [{ line: 2, reason: 'multiple_payers', description: 'Dinner' }]);
+});
+
+test('parseSplitwiseCsv keeps expenses whose description starts with "Total" and skips the balance footer', () => {
+	const csv = [
+		'Date,Description,Cost,Currency,Anna,Bob',
+		'2026-01-15,TotalEnergies fuel,50.00,EUR,25.00,-25.00',
+		',Total balance, ,EUR,0.00,0.00',
+	].join('\n');
+	const rejected: RejectedRow[] = [];
+	const parsed = parseSplitwiseCsv(csv, rejected);
+	assert.deepEqual(
+		parsed.map((e) => e.description),
+		['TotalEnergies fuel'],
+	);
+	assert.equal(rejected.length, 0);
 });

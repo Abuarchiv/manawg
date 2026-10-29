@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { NextRequest } from 'next/server';
-import { installAuthRouteMocks } from '../../../../tests/support/auth-route-kit';
+import { installAuthRouteMocks, kit } from '../../../../tests/support/auth-route-kit';
 
 installAuthRouteMocks();
 const { GET } = await import('./route');
@@ -20,4 +20,19 @@ test('a callback without code that reports an error still lands on the error pag
 		const location = (await callback(query)).headers.get('location') ?? '';
 		assert.match(location, /\/login\?error=auth_callback/);
 	}
+});
+
+test('the password-recovery marker is Secure only when the callback is served over https', async () => {
+	kit.auth.exchangeCodeForSession = async () => ({
+		data: { session: { user: { id: 'u1' } } },
+		error: null,
+	});
+	const marker = async (origin: string) =>
+		(await GET(new NextRequest(`${origin}/auth/callback?code=c&next=%2Fauth%2Freset`))).cookies.get(
+			'manawg_password_recovery',
+		);
+	const secure = async (origin: string) =>
+		(await marker(origin)) as unknown as { secure?: boolean };
+	assert.equal((await secure('https://app.manawg.test')).secure, true);
+	assert.notEqual((await secure('http://localhost:3000')).secure, true);
 });
