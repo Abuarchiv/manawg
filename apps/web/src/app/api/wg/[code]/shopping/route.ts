@@ -24,7 +24,9 @@ import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
 import { readListLimit } from '@/core/infra/env';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
+import { clampTapTime } from '@/core/offline/replay-retention';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
+import { tapTimeSchema } from '@/core/validators/tap-time';
 import { NAME_MAX, QUANTITY_MAX } from '@/features/shopping/components/constants';
 import {
 	insertShoppingItem,
@@ -47,6 +49,7 @@ const createShoppingItemSchema = z.object({
 	name: z.string().trim().min(NAME_MIN).max(NAME_MAX),
 	quantity: z.string().trim().max(QUANTITY_MAX).optional().nullable(),
 	bought: z.boolean().optional(),
+	boughtAt: tapTimeSchema.optional(),
 });
 
 export const GET = withWgRoute('shopping GET', async (req, { code }) => {
@@ -81,12 +84,16 @@ export const GET = withWgRoute('shopping GET', async (req, { code }) => {
 
 export const POST = withWgRoute('shopping POST', async (req, { code }) => {
 	const parsed = await parseBody(req, createShoppingItemSchema, {
-		fieldErrors: { quantity: 'quantity_invalid', bought: 'bought_invalid' },
+		fieldErrors: {
+			quantity: 'quantity_invalid',
+			bought: 'bought_invalid',
+			boughtAt: 'bought_at_invalid',
+		},
 		invalid: 'name_invalid',
 	});
 	if (!parsed.ok) return parsed.response;
 
-	const { name, quantity = null, bought = false } = parsed.data;
+	const { name, quantity = null, bought = false, boughtAt } = parsed.data;
 	const safeQuantity = typeof quantity === 'string' && quantity.length > 0 ? quantity : null;
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
@@ -101,6 +108,7 @@ export const POST = withWgRoute('shopping POST', async (req, { code }) => {
 		name,
 		quantity: safeQuantity,
 		bought,
+		boughtAt: boughtAt && clampTapTime(boughtAt, Date.now()),
 	};
 
 	const create = () =>

@@ -11,7 +11,9 @@ import { withWgRoute } from '@/core/guards/with-wg-route';
 import { badRequest, conflict, notFound, rateLimitResponse } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey } from '@/core/idempotency-store';
+import { clampTapTime } from '@/core/offline/replay-retention';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
+import { tapTimeSchema } from '@/core/validators/tap-time';
 import { NAME_MAX, QUANTITY_MAX } from '@/features/shopping/components/constants';
 import { isOpenShoppingItemDuplicate } from '@/features/shopping/shopping-duplicate';
 
@@ -23,6 +25,7 @@ const patchShoppingItemSchema = z
 		quantity: z.string().trim().max(QUANTITY_MAX).nullable().optional(),
 		expectedUpdatedAt: z.string().optional(),
 		expectedBoughtAt: z.string().nullable().optional(),
+		boughtAt: tapTimeSchema.optional(),
 	})
 	.refine(
 		(body) => body.bought !== undefined || body.name !== undefined || body.quantity !== undefined,
@@ -39,11 +42,12 @@ export const PATCH = withWgRoute<{ id: string }>('shopping PATCH', async (req, {
 			bought: 'bought_invalid',
 			name: 'name_invalid',
 			quantity: 'quantity_invalid',
+			boughtAt: 'bought_at_invalid',
 		},
 	});
 	if (!parsed.ok) return parsed.response;
 
-	const { bought: isBought, name, quantity } = parsed.data;
+	const { bought: isBought, name, quantity, boughtAt: tapAt } = parsed.data;
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
 	const wgId = auth.wg.id;
@@ -80,7 +84,10 @@ export const PATCH = withWgRoute<{ id: string }>('shopping PATCH', async (req, {
 				.set({
 					...(isBought === undefined
 						? {}
-						: { boughtAt: isBought ? new Date() : null, boughtByMemberId: boughtBy }),
+						: {
+								boughtAt: isBought ? clampTapTime(tapAt ?? new Date(), Date.now()) : null,
+								boughtByMemberId: boughtBy,
+							}),
 					...(name === undefined ? {} : { name }),
 					...(quantity === undefined ? {} : { quantity: quantity || null }),
 					updatedAt: sql`greatest(clock_timestamp(), ${shoppingItems.updatedAt} + interval '1 millisecond')`,

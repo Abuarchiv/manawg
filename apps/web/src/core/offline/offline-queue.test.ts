@@ -2,8 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
 	createQueuedAbsence,
+	createQueuedAnnouncement,
 	createQueuedChore,
 	createQueuedChoreCompletion,
+	createQueuedExpense,
 	createQueuedShoppingItem,
 	createQueuedShoppingUpdate,
 	explainOfflineActionFailure,
@@ -57,6 +59,7 @@ test('queued shopping PATCH preserves the version, expected state, and online id
 		expectedUpdatedAt: '2026-09-27T10:00:00.000Z',
 		expectedBoughtAt: null,
 	};
+	const tapTime = '2026-09-27T10:00:00.000Z';
 	const action = createQueuedShoppingUpdate({
 		shareCode,
 		memberId,
@@ -67,7 +70,7 @@ test('queued shopping PATCH preserves the version, expected state, and online id
 		now: Date.parse(expected.expectedUpdatedAt),
 	});
 	assert.equal(action.idempotencyKey, key);
-	assert.deepEqual(getOfflineActionRequest(action).body, expected);
+	assert.deepEqual(getOfflineActionRequest(action).body, { ...expected, boughtAt: tapTime });
 	assert.equal(
 		hasQueuedShoppingUpdate([action], shareCode, memberId, action.payload.itemId as string),
 		true,
@@ -90,7 +93,7 @@ test('queued shopping PATCH preserves the version, expected state, and online id
 		payload: { itemId: action.payload.itemId, name: 'Milch', bought: true },
 	};
 	const legacyBody = getOfflineActionRequest(legacy as never).body;
-	assert.deepEqual(JSON.parse(JSON.stringify(legacyBody)), { bought: true });
+	assert.deepEqual(JSON.parse(JSON.stringify(legacyBody)), { bought: true, boughtAt: tapTime });
 });
 
 test('a queued chore carries the due date and cadence anchor fixed at creation', () => {
@@ -238,4 +241,45 @@ test('a rejected chore completion is not pending; one waiting on the connection 
 	assert.deepEqual(pendingChoreCompletions([offlineRetry], shareCode), pending);
 	assert.deepEqual(pendingChoreCompletions([rejected], shareCode), []);
 	assert.deepEqual(pendingChoreCompletions([queued], 'OTHER'), []);
+});
+
+test('queued shopping create and announcement carry the time they were written', () => {
+	const now = Date.parse('2026-09-27T10:00:00.000Z');
+	const item = createQueuedShoppingItem({
+		shareCode,
+		memberId,
+		name: 'Milch',
+		quantity: null,
+		now,
+	});
+	assert.equal(getOfflineActionRequest(item).body.boughtAt, new Date(now).toISOString());
+	const post = createQueuedAnnouncement({
+		shareCode,
+		memberId,
+		content: 'Hallo',
+		kind: 'info',
+		now,
+	});
+	assert.equal(getOfflineActionRequest(post).body.createdAt, new Date(now).toISOString());
+});
+
+test('a queued fixed-cost booking sends the template version it was built from', () => {
+	const action = createQueuedExpense({
+		shareCode,
+		memberId,
+		description: 'Miete',
+		amountCents: 90000,
+		paidByMemberId: memberId,
+		splits: [{ debtorMemberId: otherMemberId, amountCents: 90000 }],
+		recurringExpenseId: '66666666-6666-4666-8666-666666666666',
+		expectedRecurringNextDueAt: '2026-11-01T00:00:00.000Z',
+		expectedRecurringUpdatedAt: '2026-10-20T08:00:00.000Z',
+	});
+	const body = getOfflineActionRequest(action).body;
+	assert.equal(body.expectedRecurringNextDueAt, '2026-11-01T00:00:00.000Z');
+	assert.equal(body.expectedRecurringUpdatedAt, '2026-10-20T08:00:00.000Z');
+	assert.equal(
+		explainOfflineActionFailure(409, 'recurring_expense_changed').title.key,
+		'offline.failure.templateChanged.title',
+	);
 });

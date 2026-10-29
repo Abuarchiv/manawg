@@ -62,7 +62,7 @@ export const offlineActionHandlers: Record<OfflineActionType, OfflineActionHandl
 		buildRequest: (action) => ({
 			path: `/api/wg/${pathSegment(action.shareCode)}/shopping`,
 			method: 'POST',
-			body: { ...action.payload, addedByMemberId: action.memberId },
+			body: { ...action.payload, addedByMemberId: action.memberId, boughtAt: action.createdAt },
 		}),
 		summary: (action) => ({
 			title: { key: 'offline.summary.shopping.title' },
@@ -78,6 +78,7 @@ export const offlineActionHandlers: Record<OfflineActionType, OfflineActionHandl
 			method: 'PATCH',
 			body: {
 				bought: action.payload.bought,
+				boughtAt: action.createdAt,
 				expectedUpdatedAt: action.payload.expectedUpdatedAt,
 				expectedBoughtAt: action.payload.expectedBoughtAt,
 			},
@@ -99,9 +100,10 @@ export const offlineActionHandlers: Record<OfflineActionType, OfflineActionHandl
 		buildRequest: (action) => ({
 			path: `/api/wg/${pathSegment(action.shareCode)}/announcements`,
 			method: 'POST',
-			body: Object.fromEntries(
-				Object.entries(action.payload).filter(([, value]) => value !== null),
-			),
+			body: {
+				...Object.fromEntries(Object.entries(action.payload).filter(([, value]) => value !== null)),
+				createdAt: action.createdAt,
+			},
 		}),
 		summary: (action) => ({
 			title: { key: 'offline.summary.announcement.title' },
