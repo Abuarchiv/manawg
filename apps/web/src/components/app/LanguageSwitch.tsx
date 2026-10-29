@@ -16,8 +16,7 @@ import {
 } from '@/shared/i18n/locale';
 import { cn } from '@/shared/lib/cn';
 
-// Endonyms are never translated. The group label names both languages so it reads in either.
-const GROUP_LABEL = 'Sprache / Language'; // i18n-ignore bilingual label of the language group
+// Endonyms are never translated.
 const OPTIONS: ReadonlyArray<{ value: Locale; label: string }> = [
 	{ value: 'de', label: 'Deutsch' },
 	{ value: 'en', label: 'English' },
@@ -109,7 +108,7 @@ export function LanguageSwitch({ variant }: { variant: 'segmented' | 'links' }) 
 				variant="segmented"
 				className="w-full"
 				value={choice ? [choice] : []}
-				aria-label={GROUP_LABEL}
+				aria-label={t('language')}
 				disabled={disabled}
 				onValueChange={(values) => choose(values[0])}
 			>
@@ -125,7 +124,7 @@ export function LanguageSwitch({ variant }: { variant: 'segmented' | 'links' }) 
 		);
 	}
 	return (
-		<fieldset aria-label={GROUP_LABEL} className="flex min-w-0 flex-wrap justify-center">
+		<fieldset aria-label={t('language')} className="flex min-w-0 flex-wrap justify-center">
 			{OPTIONS.map(({ value, label }) => (
 				<button
 					key={value}

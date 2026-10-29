@@ -254,7 +254,7 @@ test.describe('settings theme responsive', () => {
 		await setupMember(page);
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings`);
 		const themes = page.getByRole('group', { name: 'Darstellung' });
-		const languages = page.getByRole('group', { name: 'Sprache / Language' });
+		const languages = page.getByRole('group', { name: 'Sprache' });
 		await expect(themes.getByRole('button', { name: 'System', exact: true })).toBeVisible();
 		await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
 		expect(

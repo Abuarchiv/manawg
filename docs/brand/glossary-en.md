@@ -48,10 +48,10 @@ Terms used in the English interface (British English). Keep new strings consiste
 | Admin | Admin | |
 | Konto | Account | |
 | Konto & WG (aria) | Account and flat | |
-| AGB | Terms (German) | Link label in English UI |
-| Datenschutz, Datenschutzerklärung | Privacy policy (German) | |
-| Impressum | Legal notice (German) | |
-| Über ManaWG, Die WG-App, WG-Ratgeber | About ManaWG, The flat app, Flat-share guide | Landing pages stay German. Labels say "(German)" only in the legal row. |
+| AGB | Terms | |
+| Datenschutz, Datenschutzerklärung | Privacy policy | |
+| Impressum | Legal notice | |
+| Über ManaWG, Die WG-App, WG-Ratgeber | About ManaWG, The flat app, Flat-share guide | |
 | Kategorien: Lebensmittel, Haushalt, Wohnen, Freizeit, Mobilität, Sonstiges | Groceries, Household, Housing, Leisure, Transport, Other | |
 | Inventar-Kategorien: Bad, Küche, Putzmittel, Sonstiges | Bathroom, Kitchen, Cleaning supplies, Other | |
 | Einheiten: Stück, L, kg, Rolle, Packung | pcs, L, kg, roll, pack | |

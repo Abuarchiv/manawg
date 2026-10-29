@@ -1,7 +1,7 @@
 # Contributing to ManaWG
 
-Thanks for helping. Bug reports, fixes, documentation and improvements are welcome, in English or
-German. You do not need to be a developer to report a problem or fix a typo.
+Thanks for helping. Bug reports, fixes, documentation and improvements are welcome. You do not
+need to be a developer to report a problem or fix a typo.
 
 ## Before you start
 

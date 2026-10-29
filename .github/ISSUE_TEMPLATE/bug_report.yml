@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        English or German is fine. Never post keys, passwords or connection strings.
+        Never post keys, passwords or connection strings.
         Running your own instance and it does not start? Use "Self-hosting problem" instead.
   - type: textarea
     id: what
