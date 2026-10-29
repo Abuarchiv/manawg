@@ -1,0 +1,19 @@
+{
+	"name": "ManaWG",
+	"image": "mcr.microsoft.com/devcontainers/javascript-node:1-22",
+	"containerEnv": {
+		"COREPACK_ENABLE_DOWNLOAD_PROMPT": "0",
+		"NEXT_TELEMETRY_DISABLED": "1"
+	},
+	"postCreateCommand": "sudo corepack enable && pnpm install --frozen-lockfile",
+	"forwardPorts": [3000],
+	"portsAttributes": {
+		"3000": { "label": "ManaWG (fixture mode)", "onAutoForward": "notify" }
+	},
+	"customizations": {
+		"vscode": {
+			"extensions": ["biomejs.biome", "bradlc.vscode-tailwindcss"]
+		}
+	},
+	"hostRequirements": { "cpus": 4, "memory": "8gb" }
+}

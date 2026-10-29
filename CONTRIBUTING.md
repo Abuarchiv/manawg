@@ -14,6 +14,9 @@ need to be a developer to report a problem or fix a typo.
 - **Bugs and self-hosting problems:** open an
   [issue](https://github.com/Abuarchiv/manawg/issues/new/choose) with steps to reproduce. For
   security problems use [SECURITY.md](SECURITY.md) instead.
+- **Feature requests:** search the
+  [open requests](https://github.com/Abuarchiv/manawg/issues?q=is%3Aissue+is%3Aopen+label%3Aenhancement+sort%3Areactions-%2B1-desc)
+  first and vote with 👍 on the ones you want; the most-voted ones are built first.
 - **Small fixes** (typos, obvious bugs): open a pull request directly.
 - **Features and larger changes:** open an issue first and agree on the approach with a
   maintainer before you write the code. ManaWG is deliberately small and phone-first, so not every
@@ -33,6 +36,10 @@ corepack enable                                     # provides pnpm 9
 pnpm install
 pnpm --filter @manawg/web dev:fixtures
 ```
+
+No local setup? Open the repository in [GitHub Codespaces](https://codespaces.new/Abuarchiv/manawg)
+or another dev container: `.devcontainer/` installs Node and the dependencies, so only the last
+command is left.
 
 Open [localhost:3000/wg/MTE8PZAT](http://localhost:3000/wg/MTE8PZAT): a sample WG with
 expenses, chores and a shopping list. Code changes reload in the browser. Sign-in and saving
@@ -101,6 +108,14 @@ Every key needs both locales. English wording follows
 [docs/brand/glossary-en.md](docs/brand/glossary-en.md). The `i18n-literal` check fails on German
 UI copy outside the catalogs; `// i18n-ignore <reason>` is only for technical literals. Server
 texts (push, mail, export, activity) use the recipient's language.
+
+## How decisions are made
+
+ManaWG has one maintainer, who reviews pull requests, merges them and decides which features fit.
+The reasons for a decision are written down where it was made: in the issue or pull request, and
+for lasting ones in [Key decisions](docs/architecture.md#key-decisions). If you think a decision is
+wrong, say so in an issue and explain why; a good argument changes it. Replies usually come within
+a few days.
 
 ## License
 
