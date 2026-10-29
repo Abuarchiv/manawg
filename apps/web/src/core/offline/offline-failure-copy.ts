@@ -49,6 +49,7 @@ const FAILURE_BY_CODE: Readonly<Record<string, FailureName>> = {
 	chore_occurrence_changed: 'choreChanged',
 	chore_not_found: 'choreMissing',
 	expense_not_found: 'expenseMissing',
+	expense_changed: 'expenseChanged',
 	split_not_found: 'splitMissing',
 	image_invalid: 'imageInvalid',
 	amount_invalid: 'amountInvalid',

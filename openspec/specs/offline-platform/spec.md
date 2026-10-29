@@ -45,6 +45,14 @@ Removing the attachment of a queued action that already went out once (its outco
 - **WHEN** a queued expense was sent, the response was lost, and the member removes its attachment
 - **THEN** the action SHALL need a server check and SHALL NOT be resent
 
+### Requirement: A conflicting expense edit explains itself
+
+A queued expense edit refused with `409 expense_changed` because another member changed the expense meanwhile SHALL be held for a server check and show a dedicated explanation that asks the member to check the current values before queuing the change again, not the generic sync failure.
+
+#### Scenario: Expense edited by someone else
+- **WHEN** a queued expense edit is answered with `409 expense_changed`
+- **THEN** the queue entry SHALL name the changed expense and SHALL NOT be resent
+
 ### Requirement: Queued actions do not depend on display text
 
 Queued offline actions SHALL record review states (server check, missing image, removed image, no connection) as flags and their error as a message key, and SHALL render the text in the current language. Actions stored before this change with German error text SHALL keep their behaviour and show their stored text.

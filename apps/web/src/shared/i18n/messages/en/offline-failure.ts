@@ -90,6 +90,11 @@ export default {
 		title: 'Cleaning rota task missing',
 		detail: 'The task no longer exists. Remove this offline action or add the task again.',
 	},
+	expenseChanged: {
+		title: 'Expense changed',
+		detail:
+			'Someone has changed the expense in the meantime. Check the current values before you queue the change again.',
+	},
 	expenseMissing: {
 		title: 'Expense missing',
 		detail: 'The expense no longer exists. Remove this offline action or record the expense again.',

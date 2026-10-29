@@ -93,6 +93,11 @@ export default {
 		detail:
 			'Die Aufgabe existiert nicht mehr. Entferne diese Offline-Aktion oder lege die Aufgabe neu an.',
 	},
+	expenseChanged: {
+		title: 'Ausgabe geändert',
+		detail:
+			'Jemand hat die Ausgabe inzwischen geändert. Prüfe die aktuellen Werte, bevor du die Änderung erneut vormerkst.',
+	},
 	expenseMissing: {
 		title: 'Ausgabe fehlt',
 		detail:
