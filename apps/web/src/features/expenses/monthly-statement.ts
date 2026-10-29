@@ -1,11 +1,7 @@
 import { berlinDayKey } from '@/core/utils/berlin-day';
 import { normalizeCurrency } from '@/core/utils/money';
 import { type SimplifiedDebt, simplifyDebts } from './debt-reduction';
-import {
-	EXPENSE_CATEGORIES,
-	EXPENSE_CATEGORY_LABELS,
-	type ExpenseCategory,
-} from './expense-categories';
+import { EXPENSE_CATEGORIES, type ExpenseCategory } from './expense-categories';
 import type { ExpensePaymentInput } from './expense-payment-input';
 
 export interface StatementExpense {
@@ -44,7 +40,6 @@ interface StatementItem {
 
 interface StatementCategory {
 	category: ExpenseCategory;
-	label: string;
 	cents: number;
 	/** Share of the month total, whole percent. */
 	share: number;
@@ -87,7 +82,6 @@ function buildCategories(
 	return [...sums]
 		.map(([category, cents]) => ({
 			category,
-			label: EXPENSE_CATEGORY_LABELS[category],
 			cents,
 			share: totalCents > 0 ? Math.round((cents / totalCents) * 100) : 0,
 		}))

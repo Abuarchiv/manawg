@@ -71,15 +71,6 @@ export function normalizeShoppingCreateReplayResponse(
 	) {
 		return SHOPPING_CREATE_DUPLICATE_RESPONSE;
 	}
-	// Preserve replay of 7-day responses written by the pre-envelope route.
-	if (
-		'item' in value &&
-		isShoppingCreateItem(value.item) &&
-		'warning' in value &&
-		isShoppingCreateWarning(value.warning)
-	) {
-		return { status: 200, body: { item: value.item, warning: value.warning } };
-	}
 	return null;
 }
 
@@ -92,7 +83,7 @@ export function shoppingCreateHttpResponse(response: ShoppingCreateReplayRespons
 	return NextResponse.json(response.body, { status: response.status });
 }
 
-/** Stores `{ status, body }`; rows from before the envelope hold the bare body. */
+/** Stores `{ status, body }`. */
 export const shoppingCreateCodec: ReplayCodec<unknown> = {
 	encode: (response) => ({ status: response.status, body: response.body }),
 	decode: normalizeShoppingCreateReplayResponse,

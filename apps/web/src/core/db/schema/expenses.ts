@@ -79,8 +79,7 @@ export const expenses = pgTable(
 			.where(sql`${t.importDuplicateKey} IS NOT NULL`),
 		importIdx: index('expenses_import_idx').on(t.importId),
 		// Every write path (POST/PATCH validators, import parsers, the recurring
-		// cron) already rejects amountCents <= 0 in JS. NOT VALID: existing rows
-		// are not re-checked; new writes are.
+		// cron) already rejects amountCents <= 0 in JS.
 		amountCheck: check('expenses_amount_cents_check', sql`${t.amountCents} > 0`),
 		// Keep in sync with EXPENSE_CATEGORIES in features/expenses/expense-categories.ts.
 		categoryCheck: check(
@@ -107,9 +106,7 @@ export const expenseSplits = pgTable(
 		expenseIdx: index('expense_splits_expense_idx').on(t.expenseId),
 		debtorIdx: index('expense_splits_debtor_idx').on(t.debtorMemberId),
 		// >= 0 (not > 0): a Hamilton-distributed split can legitimately land a
-		// debtor's share at 0 cents (e.g. 1c over 3 debtors -> [1, 0, 0]). Added
-		// NOT VALID — see the amount_cents_check comment on `expenses` above for
-		// why pre-existing rows aren't force-validated here.
+		// debtor's share at 0 cents (e.g. 1c over 3 debtors -> [1, 0, 0]).
 		amountCheck: check('expense_splits_amount_cents_check', sql`${t.amountCents} >= 0`),
 	}),
 );

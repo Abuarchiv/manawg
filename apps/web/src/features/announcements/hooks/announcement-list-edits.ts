@@ -15,7 +15,7 @@ import type {
 } from '@/features/announcements/components/announcement-types';
 import type { AnnouncementPageContext } from './announcement-page-context';
 
-/** Card-level writes to the board shared by the Pinnwand action hooks. */
+/** Card-level writes to the board shared by the noticeboard action hooks. */
 export function announcementListEdits(
 	ctx: Pick<AnnouncementPageContext, 'itemsRef' | 'commitItems' | 'setActionError'>,
 	commentOverridesRef: MutableRefObject<CommentOverrides>,

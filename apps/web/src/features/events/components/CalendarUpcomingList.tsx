@@ -85,7 +85,7 @@ export function downloadOccurrenceIcs(occ: EventOccurrence): void {
 	const href = window.URL.createObjectURL(blob);
 	const a = document.createElement('a');
 	a.href = href;
-	a.download = `${occ.title.replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '') || 'termin'}.ics`;
+	a.download = `${occ.title.replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '') || 'event'}.ics`;
 	a.style.display = 'none';
 	document.body.appendChild(a);
 	a.click();

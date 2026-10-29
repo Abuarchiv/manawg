@@ -10,7 +10,7 @@ import type {
 } from '@/features/announcements/components/announcement-types';
 import type { Message } from '@/shared/i18n/message';
 
-/** What the Pinnwand mutation hooks share: who acts, where results go, and the loaded board. */
+/** What the noticeboard mutation hooks share: who acts, where results go, and the loaded board. */
 export interface AnnouncementPageContext {
 	wg: Pick<WgSummary, 'id' | 'shareCode'>;
 	identity: SessionMember;

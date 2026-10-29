@@ -1,4 +1,4 @@
-// Editing an existing chore from the Putzplan actions drawer.
+// Editing an existing chore from the cleaning rota actions drawer.
 
 import { expect, test } from '@playwright/test';
 import {

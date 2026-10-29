@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { prefetchCachedFetch } from '@/core/hooks/use-cached-fetch';
 
 /**
- * Warms the tab data in idle time: the first switch into Haushalt/Finanzen/Austausch then
+ * Warms the tab data in idle time: the first switch into Household/Money/Together then
  * renders from the useCachedFetch cache instead of starting its fetch after the page JS.
  */
 export function useTabWarmup(encodedShareCode: string, memberId?: string) {

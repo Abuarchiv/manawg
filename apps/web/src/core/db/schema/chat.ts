@@ -46,9 +46,8 @@ export const wgChatMessages = pgTable(
 			.where(sql`${t.replyToMessageId} IS NOT NULL`),
 		senderIdx: index('wg_chat_messages_sender_idx').on(t.senderMemberId),
 		// The only values ever written: 'text'/'image' in POST /chat/messages
-		// and 'system' via appendSystemMessage (see chat-pure.ts's
-		// TEXT_MESSAGE_KIND/SYSTEM_MESSAGE_KIND). Added NOT VALID out of caution
-		// for any pre-existing row; new writes are checked immediately either way.
+		// and 'system' via postChatSystemMessage (see chat-pure.ts and feed-kinds.ts for
+		// TEXT_MESSAGE_KIND/SYSTEM_MESSAGE_KIND).
 		kindCheck: check('wg_chat_messages_kind_check', sql`${t.kind} in ('text', 'image', 'system')`),
 	}),
 );

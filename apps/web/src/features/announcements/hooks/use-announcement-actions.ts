@@ -21,7 +21,7 @@ import type {
 } from './announcement-page-context';
 import { useAnnouncementComments } from './use-announcement-comments';
 
-/** Pinnwand cards: pin, status, reactions, replies and delete, each with an optimistic update. */
+/** Noticeboard cards: pin, status, reactions, replies and delete, each with an optimistic update. */
 export function useAnnouncementActions(
 	ctx: AnnouncementPageContext,
 	commentOverridesRef: MutableRefObject<CommentOverrides>,

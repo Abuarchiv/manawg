@@ -41,8 +41,10 @@ test('search matches description, category and payer, ignoring case and umlauts'
 		category: 'groceries' as const,
 	};
 	const name = (id: string) => (id === 'm1' ? 'Jürgen' : 'Mina');
-	assert.equal(matchesExpenseQuery(e, 'musli', name), true);
-	assert.equal(matchesExpenseQuery(e, 'JURGEN woche', name), true);
-	assert.equal(matchesExpenseQuery(e, 'miete', name), false);
-	assert.equal(matchesExpenseQuery(e, '  ', name), true);
+	const label = () => 'Lebensmittel';
+	assert.equal(matchesExpenseQuery(e, 'musli', name, label), true);
+	assert.equal(matchesExpenseQuery(e, 'JURGEN woche', name, label), true);
+	assert.equal(matchesExpenseQuery(e, 'lebensmittel', name, label), true);
+	assert.equal(matchesExpenseQuery(e, 'miete', name, label), false);
+	assert.equal(matchesExpenseQuery(e, '  ', name, label), true);
 });

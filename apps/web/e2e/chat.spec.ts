@@ -444,7 +444,7 @@ test.describe('chat pinboard reflow 200', () => {
 	skipUnlessFixtures();
 
 	// WCAG 1.4.10 Reflow + 1.4.4 Resize Text: existing specs cover Chat's edit-focus
-	// behaviour and Pinnwand's individual comment layout at 320px/32px root font-size, but
+	// behaviour and the noticeboard's individual comment layout at 320px/32px root font-size, but
 	// nothing asserted the *whole page* (composer, filter bar, message list together)
 	// never grows a horizontal scrollbar once every element inherits a doubled root
 	// font-size. This closes that gap for the two routes that didn't already have a

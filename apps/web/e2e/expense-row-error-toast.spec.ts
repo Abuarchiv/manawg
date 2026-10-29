@@ -1,4 +1,4 @@
-// A failed row action on the Ausgaben page.
+// A failed row action on the Expenses page.
 // Why: the error banner sits above the list, so a failure further down must also raise a toast.
 
 import { expect, test } from '@playwright/test';

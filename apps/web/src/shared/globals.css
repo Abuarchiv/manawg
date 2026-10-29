@@ -212,7 +212,7 @@ html:has([data-offline-banner], [data-session-banner]) {
       hide content scrolled/focused into view beneath it (e.g. Shift+Tab
       landing right under it). Scoped via :has() to pages that render this
       one marked tab list, not every page — a global scroll-padding-top broke
-      e2e/import-wizard-responsive.spec.ts before. --settings-tabs-height is
+      the responsive import-wizard e2e before. --settings-tabs-height is
       measured in JS (ResizeObserver) so it holds at larger text sizes too;
       the calc mirrors the strip's own `top` offset so it composes correctly
       with the offline banner rule above when both are present. */

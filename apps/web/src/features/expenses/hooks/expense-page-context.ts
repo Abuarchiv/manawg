@@ -17,7 +17,7 @@ interface PendingIds {
 	end: (id: string) => void;
 }
 
-/** What the Ausgaben mutation hooks share: who acts, where results go, how to reload. */
+/** What the Expenses mutation hooks share: who acts, where results go, how to reload. */
 export interface ExpensePageContext {
 	wg: Pick<WgSummary, 'id' | 'shareCode'>;
 	identity: SessionMember;

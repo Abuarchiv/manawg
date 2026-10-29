@@ -8,7 +8,7 @@ import type { DbTransaction } from './transaction';
  * account deletion). Otherwise the chore stays with someone who left: no
  * reminder reaches anyone, and the plan only flags it after two days overdue
  * instead of as "Niemand zuständig". Ongoing and future absences go too, so
- * Start and the Putzplan stop listing someone who moved out as "abwesend";
+ * Start and the cleaning rota stop listing someone who moved out as "abwesend";
  * past ones stay as history.
  */
 export async function releaseMemberChores(

@@ -61,7 +61,7 @@ export function CalendarSubscriptionSection({ encodedShareCode }: { encodedShare
 									nativeButton={false}
 									className="py-1 text-left"
 									render={
-										// webcal:// hands the feed to Apple Kalender (and most desktop calendars) in one tap.
+										// webcal:// hands the feed to Apple Calendar (and most desktop calendars) in one tap.
 										<a href={subscription.feedUrl.replace(/^https?:/, 'webcal:')}>
 											<CalendarPlus data-icon="inline-start" aria-hidden />
 											{t('subscribe')}

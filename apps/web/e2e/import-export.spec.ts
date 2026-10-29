@@ -293,7 +293,7 @@ test.describe('import error notice', () => {
 		);
 		await page.goBack();
 		await expect(page.getByRole('heading', { name: 'Importquelle wählen' })).toBeVisible();
-		// Die gewählte Quelle erneut antippen geht weiter, die Eingabe bleibt erhalten.
+		// Tapping the chosen source again moves on and keeps the input.
 		await expect(source).toHaveAttribute('aria-pressed', 'true');
 		await source.click();
 		await expect(page.getByLabel('Inhalt des Exports')).toHaveValue(
@@ -310,7 +310,7 @@ test.describe('import error notice', () => {
 		const cdp = await page.context().newCDPSession(page);
 		await cdp.send('Emulation.setCPUThrottlingRate', { rate: 20 });
 		await page.getByRole('button', { name: 'Verwerfen' }).click();
-		// At 20x even a plain link to Ausgaben takes ~5.5 s; a stuck navigation never arrives.
+		// At 20x even a plain link to Expenses takes ~5.5 s; a stuck navigation never arrives.
 		await expect(page).toHaveURL(new RegExp(`/wg/${FIXTURE_WG.shareCode}/expenses`), {
 			timeout: 30_000,
 		});

@@ -1,4 +1,4 @@
-// Voiding a recorded cash payment from the Ausgaben card.
+// Voiding a recorded cash payment from the Expenses card.
 // Why: the only way to correct a wrong cash entry; the void must be confirmed and idempotent.
 
 import { expect, test } from '@playwright/test';
