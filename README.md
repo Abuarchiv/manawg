@@ -183,7 +183,8 @@ Code, bug reports, documentation, translations and ideas are all welcome.
 
 - **First time?** Issues labelled
   [good first issue](https://github.com/Abuarchiv/manawg/labels/good%20first%20issue) are small
-  and written up for a first pull request.
+  and written up for a first pull request. None open right now? Ask in
+  [Discussions](https://github.com/Abuarchiv/manawg/discussions) and we will find one with you.
 - **Something bigger?** Issues labelled
   [help wanted](https://github.com/Abuarchiv/manawg/labels/help%20wanted) are open to anyone.
 
