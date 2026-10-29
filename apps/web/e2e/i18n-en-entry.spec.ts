@@ -94,7 +94,7 @@ test.describe('entry and auth in English', () => {
 				await expect(page.getByRole('link', { name: 'Create account' })).toBeVisible();
 				// The fixture server is not the official instance, so only the project link shows.
 				await expect(page.getByRole('link', { name: 'About ManaWG' })).toBeVisible();
-				await expect(page.getByRole('link', { name: 'Legal notice (German)' })).toBeVisible();
+				await expect(page.getByRole('link', { name: 'Legal notice' })).toBeVisible();
 				await expectEnglishPage(page, width);
 
 				await page.goto('/discover/expenses');
@@ -112,9 +112,7 @@ test.describe('entry and auth in English', () => {
 				await expect(page.getByRole('tab', { name: 'Code by email' })).toBeVisible();
 				await expect(page.getByRole('button', { name: 'Sign in with Google' })).toBeVisible();
 				await expect(
-					page.getByText(
-						'By signing in, you accept our terms (German) and the privacy policy (German).',
-					),
+					page.getByText('By signing in, you accept our terms and the privacy policy.'),
 				).toBeVisible();
 				await page.getByRole('tab', { name: 'Password' }).click();
 				await expect(page.getByRole('button', { name: 'Forgot your password?' })).toBeVisible();
@@ -126,9 +124,7 @@ test.describe('entry and auth in English', () => {
 				});
 				await expect(page.getByRole('button', { name: 'Register with Google' })).toBeVisible();
 				await expect(
-					page.getByText(
-						'By registering, you accept our terms (German) and the privacy policy (German).',
-					),
+					page.getByText('By registering, you accept our terms and the privacy policy.'),
 				).toBeVisible();
 				await expect(page.getByText('Already have an account?')).toBeVisible();
 				await expectEnglishPage(page, width);

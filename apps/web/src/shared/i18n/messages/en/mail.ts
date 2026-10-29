@@ -4,8 +4,8 @@ import type de from '../de/mail';
 export default {
 	shell: {
 		linkFallback: 'If the button does not work: {url}',
-		legalNotice: 'Legal notice (German)',
-		privacy: 'Privacy policy (German)',
+		legalNotice: 'Legal notice',
+		privacy: 'Privacy policy',
 		changeSettings: 'Change settings',
 		unsubscribe: 'Unsubscribe',
 	},

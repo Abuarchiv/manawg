@@ -1,3 +1,5 @@
+import { DEFAULT_LOCALE, type Locale } from '@/shared/i18n/locale';
+
 /**
  * Origin of the marketing site (manawg.com). It owns the brand in search:
  * the landing is indexable, this app is noindex. Every link, canonical and
@@ -38,9 +40,20 @@ const LEGAL_ORIGIN =
 	process.env.NEXT_PUBLIC_LEGAL_URL?.trim().replace(/\/$/, '') ||
 	(IS_OFFICIAL_INSTANCE ? LANDING_ORIGIN : null);
 
-/** Imprint, privacy policy or terms of whoever operates this instance; null when none is configured. */
-export function legalUrl(path: '/impressum' | '/datenschutz' | '/agb'): string | null {
-	return LEGAL_ORIGIN ? `${LEGAL_ORIGIN}${path}` : null;
+type LegalPath = '/impressum' | '/datenschutz' | '/agb';
+
+// The official landing publishes English translations of its legal pages under /en.
+const LANDING_LEGAL_EN: Record<LegalPath, string> = {
+	'/impressum': '/en/legal-notice',
+	'/datenschutz': '/en/privacy',
+	'/agb': '/en/terms',
+};
+
+/** Imprint, privacy policy or terms of whoever operates the instance; null if none is configured. */
+export function legalUrl(path: LegalPath, locale: Locale = DEFAULT_LOCALE): string | null {
+	if (!LEGAL_ORIGIN) return null;
+	const english = locale === 'en' && LEGAL_ORIGIN === LANDING_ORIGIN;
+	return `${LEGAL_ORIGIN}${english ? LANDING_LEGAL_EN[path] : path}`;
 }
 
 /** Absolute URL on the landing origin, e.g. `landingUrl('/putzplan')`. */

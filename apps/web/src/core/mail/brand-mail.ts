@@ -170,18 +170,18 @@ function head(label: string | undefined): string {
 type ShellT = ReturnType<typeof serverT<'mail'>>;
 
 /** Imprint and privacy links of the operator; none when the instance has no legal pages configured. */
-function legalFooterLinks(t: ShellT): { label: string; url: string }[] {
-	const imprint = legalUrl('/impressum');
-	const privacy = legalUrl('/datenschutz');
+function legalFooterLinks(t: ShellT, locale: Locale): { label: string; url: string }[] {
+	const imprint = legalUrl('/impressum', locale);
+	const privacy = legalUrl('/datenschutz', locale);
 	return [
 		...(imprint ? [{ label: t('shell.legalNotice'), url: imprint }] : []),
 		...(privacy ? [{ label: t('shell.privacy'), url: privacy }] : []),
 	];
 }
 
-function footer(spec: BrandMailSpec, t: ShellT): string {
+function footer(spec: BrandMailSpec, t: ShellT, locale: Locale): string {
 	const link = `style="color:${MUTED};text-decoration:underline;"`;
-	const anchors = [...(spec.footerLinks ?? []), ...legalFooterLinks(t)].map(
+	const anchors = [...(spec.footerLinks ?? []), ...legalFooterLinks(t, locale)].map(
 		(entry) => `<a href="${escapeHtml(entry.url)}" ${link}>${escapeHtml(entry.label)}</a>`,
 	);
 	const line = [escapeHtml(APP_ORIGIN.replace(/^https?:\/\//, '')), ...anchors].join(' &middot; ');
@@ -222,7 +222,7 @@ ${title}
 ${spec.blocks.map(renderBlock).join('\n')}
 ${button(spec, t)}
 </table></td></tr>
-${footer(spec, t)}
+${footer(spec, t, locale)}
 </table>
 </td></tr>
 </table>

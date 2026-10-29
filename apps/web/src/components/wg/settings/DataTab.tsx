@@ -2,7 +2,7 @@
 
 import { Download, Upload } from 'lucide-react';
 import Link from 'next/link';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useRef, useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -16,6 +16,7 @@ import type { WgSummary } from '@/components/wg/WgContextProvider';
 import type { SessionMember } from '@/core/auth/local-account';
 import { NETWORK_ERROR_CODE } from '@/core/http/error-codes';
 import { noteSessionExpiry, readApiErrorCode } from '@/core/infra/api-client';
+import type { Locale } from '@/shared/i18n/locale';
 import type { Message } from '@/shared/i18n/message';
 import { useMessage } from '@/shared/i18n/message';
 import type de from '@/shared/i18n/messages/de';
@@ -24,13 +25,15 @@ import { legalUrl } from '@/shared/lib/landing-url';
 import { memberContextHeader } from '@/shared/lib/member-header';
 
 // Empty when the instance has no legal pages configured.
-const LEGAL_ROWS = (
-	[
-		[legalUrl('/impressum'), 'legal.imprint'],
-		[legalUrl('/datenschutz'), 'legal.privacy'],
-		[legalUrl('/agb'), 'legal.terms'],
-	] as const
-).flatMap(([href, label]) => (href ? [{ href, label }] : []));
+function legalRows(locale: Locale) {
+	return (
+		[
+			[legalUrl('/impressum', locale), 'legal.imprint'],
+			[legalUrl('/datenschutz', locale), 'legal.privacy'],
+			[legalUrl('/agb', locale), 'legal.terms'],
+		] as const
+	).flatMap(([href, label]) => (href ? [{ href, label }] : []));
+}
 
 type ExportSectionKey = keyof (typeof de)['settings']['data']['sections'];
 
@@ -49,6 +52,7 @@ interface DataTabProps {
 
 export function DataTab({ wg, identity, exportSummary, exportSummaryError }: DataTabProps) {
 	const t = useTranslations('settings.data');
+	const legal = legalRows(useLocale() as Locale);
 	const m = useMessage();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const wgBaseHref = `/wg/${encodedShareCode}`;
@@ -202,10 +206,10 @@ export function DataTab({ wg, identity, exportSummary, exportSummaryError }: Dat
 
 			<OfflineQueueSection shareCode={wg.shareCode} memberId={identity.memberId} />
 
-			{LEGAL_ROWS.length > 0 && (
+			{legal.length > 0 && (
 				<Section title={t('legalTitle')}>
 					<ul className="divide-border divide-y">
-						{LEGAL_ROWS.map(({ href, label }) => (
+						{legal.map(({ href, label }) => (
 							<LinkRow key={href} href={href} label={t(label)} external />
 						))}
 					</ul>

@@ -162,9 +162,7 @@ test('English mails set lang en-GB and carry no German chrome', () => {
 		assert.ok(!GERMAN_WORDS.test(mail.text), mail.subject);
 		assert.ok(!mail.subject.includes('!'), mail.subject);
 	}
-	assert.ok(
-		ALL_EN.every((mail) => /Legal notice \(German\)|last email/.test(mail.html + mail.text)),
-	);
+	assert.ok(ALL_EN.every((mail) => /Legal notice|last email/.test(mail.html + mail.text)));
 });
 
 test('English invitation and reminder use the English wording and formats', () => {
