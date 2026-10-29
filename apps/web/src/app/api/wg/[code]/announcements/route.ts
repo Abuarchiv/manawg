@@ -41,6 +41,7 @@ import { clampTapTime } from '@/core/offline/replay-retention';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { imageUrlSchema, isAllowedImageUrlForWg } from '@/core/validators/image-url';
 import { tapTimeSchema } from '@/core/validators/tap-time';
+import { announcementPushTitle } from '@/features/announcements/announcement-push-title';
 import {
 	ANNOUNCEMENT_KINDS,
 	ANNOUNCEMENT_SOURCES,
@@ -356,7 +357,7 @@ export const POST = withWgRoute('announcements POST', async (req, { code }) => {
 			event: 'announcement.posted',
 			payload: {
 				announcementId: item.id,
-				title: content.slice(0, 120),
+				title: announcementPushTitle(content),
 				actorName: auth.member.name,
 			},
 			excludeMemberId: auth.member.memberId,
