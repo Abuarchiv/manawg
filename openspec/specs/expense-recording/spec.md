@@ -29,13 +29,13 @@ The equal-split mode SHALL offer one checkbox per active member, all preselected
 - **WHEN** a member deselects one member and saves an equal split
 - **THEN** only the selected members SHALL receive shares
 
-### Requirement: Edits disclose reopened settlements
+### Requirement: Edits disclose locked settlements
 
-When an edit changes amount or split so that already paid shares are reopened or removed, the form SHALL show a notice before saving.
+When an edit would change or remove the share of a member that is already marked as paid, the form SHALL say so before saving, name the affected shares, and SHALL NOT offer the save, because the server refuses it. The payer's own share SHALL NOT count.
 
 #### Scenario: Paid share affected
 - **WHEN** a member edits the amount of an expense that has a paid share
-- **THEN** the form SHALL state that paid shares will be reopened
+- **THEN** the form SHALL state that the paid share cannot change and SHALL disable saving until the payment is reopened or the share is back at its paid amount
 
 ### Requirement: Expense list can be searched and filtered
 

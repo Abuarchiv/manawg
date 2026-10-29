@@ -62,8 +62,8 @@ export default {
 		shareAriaMovedOut:
 			'Share of {name} in {currency, select, EUR {euros} other {{currency}}}, moved out. Share stays unchanged.',
 		zeroHint: 'Leave empty or enter {zero} for no share.',
-		reopened:
-			'The share of {name} ({previous}) is already marked as paid and will be reopened because of this change{removed, select, yes { (no longer applies).} other { (new {next}).}}',
+		settledShareLocked:
+			'The share of {name} ({previous}) is already marked as paid and cannot change{removed, select, yes { or be removed.} other { (it would be {next}).}} Reopen the payment first, then you can adjust it.',
 		participantsAria: 'People involved',
 		reviewAria: 'Shares before saving',
 		noShare: 'No share',

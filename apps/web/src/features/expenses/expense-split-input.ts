@@ -97,7 +97,7 @@ export function equalSplitParticipants(
 	return actual.every((cents, index) => cents === expected[index]) ? ids : null;
 }
 
-export interface ReopenedShare {
+export interface ChangedSettledShare {
 	debtorMemberId: string;
 	previousCents: number;
 	/** Null when the share is removed by the edit. */
@@ -105,15 +105,15 @@ export interface ReopenedShare {
 }
 
 /**
- * Shares already marked as paid that an edit reopens: the server only keeps the paid state of a
- * share whose amount stays the same, and drops it when the share changes or disappears. The
- * payer's own share never counts, it is settled by definition.
+ * Shares already marked as paid that an edit would change or drop. The server refuses such a
+ * save, so the form reports them up front. The payer's own share never counts, it is settled by
+ * definition.
  */
-export function settledSharesAffectedByEdit(
+export function settledSharesChangedByEdit(
 	previousSplits: ReadonlyArray<DebtorShare & { settledAt: string | null }>,
 	nextSplits: readonly DebtorShare[],
 	paidByMemberId: string,
-): ReopenedShare[] {
+): ChangedSettledShare[] {
 	const nextById = new Map(nextSplits.map((split) => [split.debtorMemberId, split.amountCents]));
 	return previousSplits.flatMap((split) => {
 		if (split.settledAt === null || split.debtorMemberId === paidByMemberId) return [];

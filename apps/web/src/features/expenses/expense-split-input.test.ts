@@ -6,7 +6,7 @@ const {
 	equalSplitParticipants,
 	isEqualExpenseSplit,
 	remainderCandidates,
-	settledSharesAffectedByEdit,
+	settledSharesChangedByEdit,
 } = await import('./expense-split-input');
 const { distributeRemainderCents } = await import('./components/ledger/manual-split-distribute');
 
@@ -208,7 +208,7 @@ test('a saved equal split among a subset reopens with that subset', () => {
 	);
 });
 
-test('edits that reopen paid shares are reported, unchanged and own shares are not', () => {
+test('edits that change paid shares are reported, unchanged and own shares are not', () => {
 	const paid = '2026-01-01T00:00:00.000Z';
 	const previous = [
 		{ debtorMemberId: 'payer', amountCents: 500, settledAt: paid },
@@ -222,11 +222,52 @@ test('edits that reopen paid shares are reported, unchanged and own shares are n
 		{ debtorMemberId: 'c', amountCents: 500 },
 		{ debtorMemberId: 'd', amountCents: 700 },
 	];
-	assert.deepEqual(settledSharesAffectedByEdit(previous, next, 'payer'), [
+	assert.deepEqual(settledSharesChangedByEdit(previous, next, 'payer'), [
 		{ debtorMemberId: 'b', previousCents: 500, nextCents: 600 },
 	]);
 	assert.deepEqual(
-		settledSharesAffectedByEdit(previous, [{ debtorMemberId: 'c', amountCents: 500 }], 'payer'),
+		settledSharesChangedByEdit(previous, [{ debtorMemberId: 'c', amountCents: 500 }], 'payer'),
 		[{ debtorMemberId: 'b', previousCents: 500, nextCents: null }],
 	);
+});
+
+test('the shares reported as changed are exactly the ones the server refuses to change', async () => {
+	const { splitChangeViolation } = await import('./split-math');
+	const paid = new Date('2026-01-01T00:00:00.000Z');
+	const previous = [
+		{ debtorMemberId: 'payer', amountCents: 500, settledAt: paid },
+		{ debtorMemberId: 'b', amountCents: 500, settledAt: paid },
+		{ debtorMemberId: 'c', amountCents: 500, settledAt: null },
+	];
+	const active = new Set(['payer', 'b', 'c']);
+	const edits = [
+		[
+			{ debtorMemberId: 'payer', amountCents: 500 },
+			{ debtorMemberId: 'b', amountCents: 500 },
+			{ debtorMemberId: 'c', amountCents: 500 },
+		],
+		[
+			{ debtorMemberId: 'payer', amountCents: 700 },
+			{ debtorMemberId: 'b', amountCents: 500 },
+			{ debtorMemberId: 'c', amountCents: 300 },
+		],
+		[
+			{ debtorMemberId: 'payer', amountCents: 400 },
+			{ debtorMemberId: 'b', amountCents: 600 },
+			{ debtorMemberId: 'c', amountCents: 500 },
+		],
+		[
+			{ debtorMemberId: 'payer', amountCents: 1000 },
+			{ debtorMemberId: 'c', amountCents: 500 },
+		],
+	];
+	for (const next of edits) {
+		const changed = settledSharesChangedByEdit(
+			previous.map((split) => ({ ...split, settledAt: split.settledAt?.toISOString() ?? null })),
+			next,
+			'payer',
+		);
+		const violation = splitChangeViolation(previous, next, active, 'payer');
+		assert.equal(changed.length > 0, violation === 'expense_has_settled_shares');
+	}
 });
