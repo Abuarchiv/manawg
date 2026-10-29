@@ -7,7 +7,10 @@ import {
 } from '@/core/audit-messages';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatShortDate, formatShortDateRange } from '@/core/utils/time';
-import { ANNOUNCEMENT_KINDS } from '@/features/announcements/announcement-workflow';
+import {
+	ANNOUNCEMENT_KINDS,
+	ANNOUNCEMENT_REACTIONS,
+} from '@/features/announcements/announcement-workflow';
 import type { Message, MessageKey } from '@/shared/i18n/message';
 import { MEMBER_NAME_MAX_LENGTH } from '@/shared/lib/limits';
 
@@ -113,7 +116,11 @@ export function auditDetail(
 			parts.push(say('audit.detail.splitCount', { count: metadata.splitCount }));
 		}
 		if (typeof metadata.reaction === 'string') {
-			parts.push(say('audit.detail.reaction', { reaction: metadata.reaction }));
+			// German keeps the stored code; other locales show the pinboard label.
+			const code = ANNOUNCEMENT_REACTIONS.find((known) => known === metadata.reaction);
+			const reaction =
+				code && locale !== 'de' ? say(`pinboard.reaction.${code}`) : metadata.reaction;
+			parts.push(say('audit.detail.reaction', { reaction }));
 		}
 		if (typeof metadata.nameBefore === 'string' && typeof metadata.nameAfter === 'string') {
 			if (metadata.nameBefore !== metadata.nameAfter) {

@@ -2,30 +2,13 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
 	boughtRestockMatches,
-	buildShoppingPushPayload,
 	clampQuantity,
 	decimalQuantityText,
-	formatQuantity,
 	parseQuantityText,
 	quantityInputText,
 	quickRestockCandidates,
 	restockAmount,
 } from './inventory';
-
-test('shopping payload asks for enough to get back above the threshold', () => {
-	assert.deepEqual(
-		buildShoppingPushPayload({ name: 'Klopapier', unit: 'Rolle', quantity: 1, threshold: 3 }),
-		{
-			name: 'Klopapier',
-			quantity: '3 Rollen',
-			note: 'Auto: Vorrat unter Schwelle',
-		},
-	);
-	assert.equal(
-		buildShoppingPushPayload({ name: 'Salz', unit: 'kg', quantity: 5, threshold: 2 }).quantity,
-		'1 kg',
-	);
-});
 
 const stock = (name: string, quantity: number, threshold: number, decrementCount30d = 0) => ({
 	name,
@@ -67,20 +50,16 @@ test('decimalQuantityText keeps German decimals up to two places', () => {
 	assert.equal(decimalQuantityText(''), '');
 });
 
-test('parseQuantityText and formatQuantity round-trip German decimals', () => {
+test('parseQuantityText and quantityInputText round-trip German decimals', () => {
 	assert.equal(parseQuantityText('1,5'), 1.5);
 	assert.equal(parseQuantityText(''), 0);
 	assert.equal(parseQuantityText('1,'), 1);
 	assert.equal(quantityInputText(1.5), '1,5');
-	assert.equal(formatQuantity(1.5, 'Rolle'), '1,5 Rollen');
-	assert.equal(formatQuantity(1, 'Rolle'), '1 Rolle');
 	assert.equal(clampQuantity(2.3 - 1), 1.3);
 });
 
-test('restock and shopping payload stay exact for decimal stock', () => {
+test('restockAmount stays exact for decimal stock', () => {
 	assert.equal(restockAmount({ quantity: 0.7, threshold: 2 }), 2.3);
-	assert.equal(
-		buildShoppingPushPayload({ name: 'Milch', unit: 'L', quantity: 0.5, threshold: 1 }).quantity,
-		'1,5 L',
-	);
+	assert.equal(restockAmount({ quantity: 0.5, threshold: 1 }), 1.5);
+	assert.equal(restockAmount({ quantity: 1, threshold: 3 }), 3);
 });

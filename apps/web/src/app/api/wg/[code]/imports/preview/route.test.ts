@@ -74,10 +74,13 @@ interface PreviewBody {
 function previewRoute() {
 	return async (memberMapping: Record<string, string>) => {
 		const response = await POST(
-			new Request('https://example.invalid', {
-				method: 'POST',
-				body: JSON.stringify({ source: 'splitwise_csv', payload: 'csv', memberMapping }),
-			}) as never,
+			Object.assign(
+				new Request('https://example.invalid', {
+					method: 'POST',
+					body: JSON.stringify({ source: 'splitwise_csv', payload: 'csv', memberMapping }),
+				}),
+				{ cookies: { get: () => undefined } },
+			) as never,
 			{ params: Promise.resolve({ code: 'MTE8PZAT' }) } as never,
 		);
 		return { json: async () => (await response.json()) as PreviewBody };

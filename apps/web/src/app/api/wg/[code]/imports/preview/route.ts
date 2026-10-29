@@ -5,6 +5,7 @@ import { db, wgMembers } from '@/core/db';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { badRequest, rateLimitResponse } from '@/core/http/api-errors';
+import { requestLocale } from '@/core/i18n/request-locale';
 import { checkRateLimit, importLimiter } from '@/core/rate-limit';
 import {
 	MAX_CSV_BYTES,
@@ -51,9 +52,9 @@ export const POST = withWgRoute('imports/preview', async (req, { code }) => {
 	const rejected: RejectedRow[] = [];
 	const parsedExpenses =
 		source === 'splitwise_csv'
-			? parseSplitwiseCsv(payload, rejected)
+			? parseSplitwiseCsv(payload, rejected, requestLocale(req))
 			: source === 'splid_csv'
-				? parseSplidCsv(payload, rejected)
+				? parseSplidCsv(payload, rejected, requestLocale(req))
 				: parseOcrText(payload).expenses;
 
 	if (parsedExpenses.length > MAX_IMPORT_ROWS) return badRequest('too_many_rows');

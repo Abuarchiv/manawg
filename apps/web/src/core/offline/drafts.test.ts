@@ -66,6 +66,20 @@ test('a plain queued expense carries no template link', () => {
 	assert.equal(draft?.draft.recurringNextDueAt, undefined);
 });
 
+test('a queued expense formats its amount and splits in the reader locale', () => {
+	const queued = action('expense.create', {
+		description: 'Einkauf',
+		amountCents: 1250,
+		splits: [{ debtorMemberId: 'm1', amountCents: 1250 }],
+	});
+	const german = buildQueueEditDraft(queued);
+	assert.equal(german?.draft.amountStr, '12,50');
+	assert.deepEqual(german?.draft.manualSplits, { m1: '12,50' });
+	const english = buildQueueEditDraft(queued, 'en');
+	assert.equal(english?.draft.amountStr, '12.50');
+	assert.deepEqual(english?.draft.manualSplits, { m1: '12.50' });
+});
+
 test('an expense draft that only kept an older date counts as empty', () => {
 	const untouched = {
 		description: '',

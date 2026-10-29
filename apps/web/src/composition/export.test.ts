@@ -1,6 +1,30 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import { mock, test } from 'node:test';
 import { buildExportSummaryFromCounts, getExportSectionHeaders, toCsv } from './export';
+
+const tables = Object.fromEntries(
+	[
+		'announcementComments',
+		'announcements',
+		'auditEvents',
+		'choreCompletions',
+		'chores',
+		'expensePayments',
+		'expenseSplits',
+		'expenses',
+		'memberAbsences',
+		'recurringExpenses',
+		'shoppingItems',
+		'wgChatMessages',
+		'wgEvents',
+		'wgInventoryItems',
+		'wgMembers',
+	].map((name) => [name, {}]),
+);
+mock.module('@/core/db', { namedExports: { db: {}, ...tables } });
+const { mapExpenseRows, mapRecurringRows } = await import('./export-queries-finance');
+const { mapShoppingRows } = await import('./export-queries-household');
+const { mapAuditRows } = await import('./export-queries-community');
 
 const ROW = {
 	id: 'e1',
@@ -47,4 +71,85 @@ test('the summary lists every section with its count', () => {
 	assert.equal(summary.length, 14);
 	assert.deepEqual(summary[0], { key: 'members', count: 2 });
 	assert.deepEqual(summary[1], { key: 'expenses', count: 0 });
+});
+
+const NAMES = new Map([['m1', 'Anna']]);
+const AT = new Date('2026-03-30T10:30:00.000Z');
+const STORED = 'Anna hat Putzplan aktualisiert.';
+
+function localizedRows(locale: 'de' | 'en') {
+	const expense = (category: string) =>
+		({ ...ROW, category, occurredAt: AT, imageUrl: null, amountCents: 100, id: category }) as never;
+	const recurring = {
+		id: 'r1',
+		category: 'wohnen',
+		paidByMemberId: 'm1',
+		nextDueAt: AT,
+		createdAt: AT,
+	};
+	const shopping = (boughtAt: Date | null) =>
+		({
+			id: 's',
+			name: 'Milch',
+			quantity: null,
+			addedByMemberId: 'm1',
+			boughtAt,
+			createdAt: AT,
+		}) as never;
+	return {
+		categories: ['lebensmittel', 'wohnen', 'mobilitaet', 'sonstiges', 'unknown'].map(
+			(code) => mapExpenseRows([expense(code)], NAMES, new Map(), locale)[0]?.category,
+		),
+		recurring: mapRecurringRows([recurring as never], NAMES, locale)[0]?.category,
+		status: [shopping(AT), shopping(null)].map(
+			(item) => mapShoppingRows([item], NAMES, locale)[0]?.status,
+		),
+		audit: mapAuditRows(
+			[
+				{
+					id: 'a1',
+					memberId: 'm1',
+					eventType: 'chore.updated',
+					entityType: 'chore',
+					summary: STORED,
+					metadataJson: JSON.stringify({ title: 'Bins' }),
+					createdAt: AT,
+				},
+				{
+					id: 'a2',
+					memberId: 'm1',
+					eventType: 'chore.updated',
+					entityType: 'chore',
+					summary: STORED,
+					metadataJson: null,
+					createdAt: AT,
+				},
+			],
+			NAMES,
+			locale,
+		).map((row) => row.summary),
+	};
+}
+
+test('the German export keeps its category names, shopping status and stored audit sentence', () => {
+	const rows = localizedRows('de');
+	assert.deepEqual(rows.categories, [
+		'Lebensmittel',
+		'Wohnen & Nebenkosten',
+		'Mobilität',
+		'Sonstiges',
+		'Sonstiges',
+	]);
+	assert.equal(rows.recurring, 'Wohnen & Nebenkosten');
+	assert.deepEqual(rows.status, ['erledigt', 'offen']);
+	assert.deepEqual(rows.audit, [STORED, STORED]);
+});
+
+test('the English export names categories and status in English and re-renders the audit sentence', () => {
+	const rows = localizedRows('en');
+	assert.deepEqual(rows.categories, ['Groceries', 'Housing', 'Transport', 'Other', 'Other']);
+	assert.equal(rows.recurring, 'Housing');
+	assert.deepEqual(rows.status, ['bought', 'open']);
+	assert.match(rows.audit[0] ?? '', /^Anna updated .*Bins/);
+	assert.equal(rows.audit[1], STORED);
 });

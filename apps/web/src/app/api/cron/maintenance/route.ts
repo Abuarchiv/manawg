@@ -15,8 +15,9 @@ import { purgeExpiredIdempotencyResponses } from '@/core/idempotency-store';
 import { requireCronSecret } from '@/core/infra/cron-auth';
 import { logApiError, withCronLogging } from '@/core/infra/observability';
 import { removeSupabaseImages } from '@/core/infra/supabase-storage';
-import { confirmedEmailOf, sendAccountDeletedMail } from '@/core/mail/account-deleted';
+import { confirmedRecipientOf, sendAccountDeletedMail } from '@/core/mail/account-deleted';
 import { purgeOldDigestMailLog } from '@/core/mail/mail-retention';
+import { DEFAULT_LOCALE } from '@/shared/i18n/locale';
 
 async function cleanupPrivateImages(): Promise<{
 	attempted: number;
@@ -114,9 +115,15 @@ export const GET = withCronLogging(
 			auth && serviceRoleKey
 				? async (authUserId: string) => {
 						// Read the address first; after the Auth delete it is gone. The mail (E10) follows a confirmed delete.
-						const email = await confirmedEmailOf(authUserId);
+						// The member rows are gone by now, so the account metadata is the only language left.
+						const recipient = await confirmedRecipientOf(authUserId);
 						const confirmed = await deleteAuthUser(auth.url, serviceRoleKey, authUserId);
-						if (confirmed) await sendAccountDeletedMail(authUserId, email, 'de');
+						if (confirmed)
+							await sendAccountDeletedMail(
+								authUserId,
+								recipient?.email ?? null,
+								recipient?.locale ?? DEFAULT_LOCALE,
+							);
 						return confirmed;
 					}
 				: null;

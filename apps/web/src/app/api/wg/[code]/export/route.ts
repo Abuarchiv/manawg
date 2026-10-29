@@ -166,12 +166,16 @@ export const GET = withWgRoute('export GET', async (req, { code }) => {
 			// The section's own queries are the only things that can fail here —
 			// a failure is logged with the section name and surfaced as a
 			// section-specific error instead of a generic 500.
-			const loaders = buildSectionLoaders(wg.id, page, async () =>
-				toMemberById(await fetchMemberRows(wg.id)),
+			const locale = csvLocale(req);
+			const loaders = buildSectionLoaders(
+				wg.id,
+				page,
+				async () => toMemberById(await fetchMemberRows(wg.id)),
+				locale,
 			);
 			const settled = await settleSection(section, loaders[section]);
 			if (!settled.ok) return serverError(null, `export_section_failed:${section}`);
-			return csvExportResponse(wg.shareCode, section, settled.value, csvLocale(req));
+			return csvExportResponse(wg.shareCode, section, settled.value, locale);
 		}
 
 		const parsedSections = parseRequestedSections(req);
@@ -197,10 +201,15 @@ export const GET = withWgRoute('export GET', async (req, { code }) => {
 		const memberById = memberRowsFetched
 			? toMemberById(memberRowsFetched)
 			: new Map<string, string>();
-		const loaders = buildSectionLoaders(wg.id, page, async () => {
-			if (directoryFailed) throw new Error('member_directory_unavailable');
-			return memberById;
-		});
+		const loaders = buildSectionLoaders(
+			wg.id,
+			page,
+			async () => {
+				if (directoryFailed) throw new Error('member_directory_unavailable');
+				return memberById;
+			},
+			csvLocale(req),
+		);
 
 		const failedSections: string[] = [];
 		const rowsBySection = new Map<ExportSectionKey, ExportRow[]>();

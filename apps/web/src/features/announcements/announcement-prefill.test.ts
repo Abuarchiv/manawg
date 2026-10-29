@@ -18,6 +18,10 @@ test('recognises the amount with € / EUR / Euro after or € before the number
 	}
 });
 
+test('German does not take the English plural "euros" as a unit', () => {
+	assert.equal(buildAnnouncementPrefill('Pay 35 euros', 'de').amountStr, null);
+});
+
 test('does not mistake other words or numbers for an amount', () => {
 	assert.equal(buildAnnouncementPrefill('Das ist 5 europäisch', 'de').amountStr, null);
 	assert.equal(buildAnnouncementPrefill('Zimmer 12 Uhr', 'de').amountStr, null);
@@ -28,6 +32,8 @@ test('reads English amounts with comma grouping and a decimal point', () => {
 		['Internet bill €1,234.50 this month', '1234.50', 'Internet bill this month'],
 		['Rent is €1,200', '1200', 'Rent is'],
 		['Lamp 12.50 EUR', '12.50', 'Lamp'],
+		['Pay 35 euros', '35', 'Pay'],
+		['Pay 35 Euros.', '35', 'Pay'],
 		['1,234.50 EUR rent', '1234.50', 'rent'],
 		['Pizza 35 EUR.', '35', 'Pizza'],
 	];

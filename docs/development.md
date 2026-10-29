@@ -18,7 +18,7 @@ apps/web/
                   features/<x>/server/ holds database and server-only code (import 'server-only')
   src/components/ reusable UI: ui/ (shadcn), animate-ui/ (motion variants), app/ (shell, PWA, theme), wg/ (WG-wide)
   src/fixtures/   in-memory fixture build for e2e (see Fixture mode); only src/app/ imports it
-  src/shared/     framework-light utilities (lib/, fonts, css): theme, brand, analytics
+  src/shared/     framework-light utilities (lib/, i18n/, fonts, css): theme, brand, analytics
   public/         static files: PWA manifest, service worker, icons, mail images
   drizzle/        SQL migrations (`pnpm --filter @manawg/web db:generate` / `db:migrate`)
   e2e/            Playwright specs (fixture mode needs no database)
@@ -133,7 +133,8 @@ and every key needs both locales. English wording follows the
 [English glossary](brand/glossary-en.md). The `i18n-literal` check in
 `apps/web/scripts/check-architecture.mjs` fails on German UI copy outside the catalogs;
 `// i18n-ignore <reason>` is only for technical literals such as stored keys. Server texts (push,
-mail, export, activity feed) are written in the recipient's language.
+mail, export, activity feed) are written in the recipient's language. `tests/i18n-catalog.test.ts`
+(part of `pnpm test:unit`) enforces equal keys and ICU argument names in both locales.
 
 ## Commands
 

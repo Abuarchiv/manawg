@@ -2,6 +2,7 @@ import { formatCentsInput } from '@/core/utils/amount';
 import { safeLocalStorage } from '@/core/utils/browser';
 import { isRecord } from '@/core/utils/is-record';
 import { todayInputValue } from '@/core/utils/local-date';
+import { DEFAULT_LOCALE, type Locale } from '@/shared/i18n/locale';
 import type { OfflineAction, OfflineActionType } from './offline-queue';
 
 export type DraftModule = 'announcement' | 'expense' | 'shopping' | 'chore' | 'absence';
@@ -123,7 +124,10 @@ export function isEmptyModuleDraft(
 	);
 }
 
-export function buildQueueEditDraft(action: OfflineAction): QueueEditDraft | null {
+export function buildQueueEditDraft(
+	action: OfflineAction,
+	locale: Locale = DEFAULT_LOCALE,
+): QueueEditDraft | null {
 	const rawSplits = action.payload.splits;
 	const manualSplits = Array.isArray(rawSplits)
 		? Object.fromEntries(
@@ -133,7 +137,7 @@ export function buildQueueEditDraft(action: OfflineAction): QueueEditDraft | nul
 						const debtorMemberId = Reflect.get(split, 'debtorMemberId');
 						const amountCents = Reflect.get(split, 'amountCents');
 						if (typeof debtorMemberId !== 'string' || typeof amountCents !== 'number') return null;
-						return [debtorMemberId, formatCentsInput(amountCents)];
+						return [debtorMemberId, formatCentsInput(amountCents, locale)];
 					})
 					.filter((split): split is [string, string] => Boolean(split)),
 			)
@@ -214,7 +218,7 @@ export function buildQueueEditDraft(action: OfflineAction): QueueEditDraft | nul
 						: {}),
 					amountStr:
 						typeof action.payload.amountCents === 'number'
-							? formatCentsInput(action.payload.amountCents)
+							? formatCentsInput(action.payload.amountCents, locale)
 							: '',
 					imageUrl: typeof action.payload.imageUrl === 'string' ? action.payload.imageUrl : null,
 					paidByMemberId:

@@ -13,8 +13,12 @@ import { APP_ORIGIN, type MailBlock, type RenderedMail, renderBrandMail } from '
 
 const WG_PATH = (shareCode: string) => `${APP_ORIGIN}/wg/${encodeURIComponent(shareCode)}`;
 
-function joinNames(names: readonly string[], locale: Locale): string {
-	return new Intl.ListFormat(intlTag(locale), { type: 'conjunction' }).format(names);
+function joinNames(
+	names: readonly string[],
+	locale: Locale,
+	type: 'conjunction' | 'unit' = 'conjunction',
+): string {
+	return new Intl.ListFormat(intlTag(locale), { type }).format(names);
 }
 
 /** E1 · after the address is confirmed or the first social sign-in. */
@@ -60,7 +64,7 @@ export function renderInvitationMail(input: {
 	const t = serverT(locale, 'mail');
 	const others = input.memberNames.filter((name) => name !== input.inviterName);
 	const names = [input.inviterName, ...others];
-	const listed = joinNames(names.slice(0, 3), locale);
+	const listed = joinNames(names.slice(0, 3), locale, names.length > 3 ? 'unit' : 'conjunction');
 	const caption =
 		names.length === 1
 			? t('invitation.captionOne', { name: input.inviterName })

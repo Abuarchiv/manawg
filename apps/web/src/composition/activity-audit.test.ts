@@ -113,6 +113,15 @@ test('details follow the locale; notification fields stored as keys are translat
 	);
 });
 
+test('reaction and quiet hours details read naturally in English and stay raw in German', () => {
+	const json = JSON.stringify({ reaction: 'seen', quietStartHour: 22, quietEndHour: 7 });
+	assert.equal(auditDetail(json, serverRenderContext('de')), 'Ruhezeit 22-7 Uhr · Reaktion: seen');
+	assert.equal(
+		auditDetail(json, serverRenderContext('en')),
+		'Quiet hours 22:00 to 7:00 · Reaction: Seen',
+	);
+});
+
 test('the dashboard feed renders its sentences in the reader locale', async () => {
 	const { appendSecondaryActivity } = await import('./dashboard-feed');
 	const members = new Map([['m1', { name: 'Anna' }]]);

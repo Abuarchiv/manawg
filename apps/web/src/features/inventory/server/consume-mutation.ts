@@ -6,12 +6,14 @@ import type { WgInventoryItem } from '@/core/db/schema-inventory';
 import type { DbTransaction } from '@/core/db/transaction';
 import { clampQuantity, isBelowThreshold, roundQuantity } from '@/features/inventory/inventory';
 import { pushBelowThresholdItemToShopping } from '@/features/inventory/server/inventory-mutations';
+import type { Locale } from '@/shared/i18n/locale';
 
 export type ConsumeInventoryMutationInput = {
 	itemId: WgInventoryItem['id'];
 	wgId: WgInventoryItem['wgId'];
 	memberId: WgMember['id'];
 	delta: number;
+	locale: Locale;
 };
 
 export async function consumeInventoryMutation(
@@ -65,7 +67,7 @@ export async function consumeInventoryMutation(
 	// back on every further tap (same rule as the PATCH path).
 	const justCrossedThreshold = !wasAlreadyBelowThreshold && isBelowThreshold(updated);
 	const autoPushedShoppingItemId = justCrossedThreshold
-		? await pushBelowThresholdItemToShopping(tx, updated, input.wgId, input.memberId)
+		? await pushBelowThresholdItemToShopping(tx, updated, input.wgId, input.memberId, input.locale)
 		: null;
 
 	return {

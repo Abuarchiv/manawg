@@ -16,7 +16,7 @@ import { serverError, serviceUnavailable } from '@/core/http/api-errors';
 import { requestLocale } from '@/core/i18n/request-locale';
 import { afterResponse } from '@/core/infra/after-response';
 import { logApiError } from '@/core/infra/observability';
-import { confirmedEmailOf, sendAccountDeletedMail } from '@/core/mail/account-deleted';
+import { confirmedRecipientOf, sendAccountDeletedMail } from '@/core/mail/account-deleted';
 
 export { PATCH } from './locale-patch';
 
@@ -80,7 +80,7 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
 			return { deletedWgs: removed.deletedWgIds.length, completedAt: deletion.completedAt };
 		});
 
-		const email = local.completedAt ? null : await confirmedEmailOf(user.id);
+		const recipient = local.completedAt ? null : await confirmedRecipientOf(user.id);
 		const completed =
 			Boolean(local.completedAt) ||
 			(await tryCompleteAccountDeletion(user.id, (authUserId) =>
@@ -88,7 +88,7 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
 			));
 		if (completed && !local.completedAt) {
 			const locale = requestLocale(req);
-			afterResponse(() => sendAccountDeletedMail(user.id, email, locale));
+			afterResponse(() => sendAccountDeletedMail(user.id, recipient?.email ?? null, locale));
 		}
 		return acceptedDeletionResponse(req, completed, local.deletedWgs);
 	} catch (err) {

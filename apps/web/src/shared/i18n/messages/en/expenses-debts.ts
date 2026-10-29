@@ -4,7 +4,7 @@ import type de from '../de/expenses-debts';
 export default {
 	page: {
 		title: 'Reminders',
-		back: 'Expenses',
+		back: 'expenses',
 		loading: 'Loading…',
 		allClear: 'All settled. Nothing open.',
 		openDebts: 'Open amounts',

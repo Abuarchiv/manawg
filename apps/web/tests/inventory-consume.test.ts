@@ -31,6 +31,7 @@ describe('inventory consume regression', () => {
 		wgId: '22222222-2222-4222-8222-222222222222',
 		memberId: '33333333-3333-4333-8333-333333333333',
 		delta: -1,
+		locale: 'de',
 	};
 
 	function createState(): InventoryState {
@@ -212,6 +213,7 @@ describe('inventory save regression', () => {
 		unit: 'Rolle',
 		threshold: 1,
 		category: 'bad',
+		locale: 'de' as const,
 	};
 
 	function createState(quantity = 5): State {
@@ -389,6 +391,7 @@ describe('inventory save regression', () => {
 			itemId: item.id,
 			wgId: mutationInput.wgId,
 			memberId: mutationInput.memberId,
+			locale: mutationInput.locale,
 			quantity: 4,
 			expectedQuantity: 5,
 			expectedUpdatedAt,
@@ -398,6 +401,7 @@ describe('inventory save regression', () => {
 			itemId: updated.id,
 			wgId: mutationInput.wgId,
 			memberId: mutationInput.memberId,
+			locale: mutationInput.locale,
 			quantity: 3,
 			expectedQuantity: 4,
 			expectedUpdatedAt: updated.updatedAt.toISOString(),
@@ -426,6 +430,7 @@ describe('inventory save regression', () => {
 			itemId: item.id,
 			wgId: mutationInput.wgId,
 			memberId: mutationInput.memberId,
+			locale: mutationInput.locale,
 			quantity: 9,
 			expectedQuantity: 5,
 			expectedUpdatedAt: staleUpdatedAt,
@@ -449,6 +454,7 @@ describe('inventory save regression', () => {
 			itemId: item.id,
 			wgId: mutationInput.wgId,
 			memberId: mutationInput.memberId,
+			locale: mutationInput.locale,
 			quantity: 9,
 			expectedQuantity: 5,
 			expectedUpdatedAt,

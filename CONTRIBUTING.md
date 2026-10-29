@@ -90,6 +90,7 @@ or in [Discussions](https://github.com/Abuarchiv/manawg/discussions).
   level that catches it.
 - **UI:** the app is phone-first, with one column on every screen size. Follow the
   [design language](docs/brand/design-language.md) and check light and dark mode.
+  New user-visible text goes into both catalogs (`de` and `en`).
 - **Dependencies:** reuse what is installed. A new dependency needs a reason in the pull request.
 - **Secrets:** never commit `.env` files, keys or connection strings, not even in tests.
 

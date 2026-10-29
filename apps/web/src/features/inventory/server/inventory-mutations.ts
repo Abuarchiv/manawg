@@ -4,12 +4,16 @@ import { shoppingItems, wgInventoryItems, wgInventoryLog } from '@/core/db';
 import { rowHoldsPatch } from '@/core/db/row-holds-patch';
 import type { WgInventoryItem } from '@/core/db/schema-inventory';
 import type { DbTransaction } from '@/core/db/transaction';
+import { serverT } from '@/core/i18n/server-t';
+import { formatDecimal } from '@/core/utils/amount';
 import {
-	buildShoppingPushPayload,
 	clampQuantity,
 	isBelowThreshold,
+	restockAmount,
 	roundQuantity,
+	unitLabelKey,
 } from '@/features/inventory/inventory';
+import type { Locale } from '@/shared/i18n/locale';
 
 type InventoryItemInput = Pick<
 	WgInventoryItem,
@@ -21,16 +25,18 @@ export async function pushBelowThresholdItemToShopping(
 	item: Pick<WgInventoryItem, 'name' | 'quantity' | 'threshold' | 'unit'>,
 	wgId: string,
 	memberId: string,
+	locale: Locale,
 ): Promise<string | null> {
 	if (!isBelowThreshold(item)) return null;
-	const payload = buildShoppingPushPayload(item);
+	const amount = restockAmount(item);
+	const quantity = `${formatDecimal(amount, locale)} ${serverT(locale, 'inventory')('unit', { unit: unitLabelKey(item.unit), count: amount })}`;
 	const [created] = await tx
 		.insert(shoppingItems)
 		.values({
 			wgId,
 			addedByMemberId: memberId,
-			name: payload.name,
-			quantity: payload.quantity,
+			name: item.name,
+			quantity,
 		})
 		.onConflictDoNothing({
 			target: [shoppingItems.wgId, shoppingItems.normalizedName],
@@ -42,7 +48,7 @@ export async function pushBelowThresholdItemToShopping(
 
 export async function createInventoryItemMutation(
 	tx: DbTransaction,
-	input: InventoryItemInput & { memberId: string },
+	input: InventoryItemInput & { memberId: string; locale: Locale },
 ) {
 	const [item] = await tx
 		.insert(wgInventoryItems)
@@ -62,6 +68,7 @@ export async function createInventoryItemMutation(
 		item,
 		input.wgId,
 		input.memberId,
+		input.locale,
 	);
 	return { kind: 'ok' as const, item, autoPushedShoppingItemId };
 }
@@ -70,6 +77,7 @@ export type UpdateInventoryItemMutationInput = {
 	itemId: string;
 	wgId: string;
 	memberId: string;
+	locale: Locale;
 	name?: string | undefined;
 	quantityDelta?: number | undefined;
 	quantity?: number | undefined;
@@ -178,7 +186,7 @@ export async function updateInventoryItemMutation(
 	// back an entry someone deleted or already bought.
 	const crossedThreshold = !isBelowThreshold(existing) && isBelowThreshold(updated);
 	const autoPushedShoppingItemId = crossedThreshold
-		? await pushBelowThresholdItemToShopping(tx, updated, input.wgId, input.memberId)
+		? await pushBelowThresholdItemToShopping(tx, updated, input.wgId, input.memberId, input.locale)
 		: null;
 	return { kind: 'ok' as const, updated, delta, autoPushedShoppingItemId };
 }

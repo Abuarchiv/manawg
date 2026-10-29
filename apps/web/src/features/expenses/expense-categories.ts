@@ -23,10 +23,3 @@ export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
 };
 
 export const DEFAULT_EXPENSE_CATEGORY: ExpenseCategory = 'sonstiges';
-
-/** Label for a stored value; anything unknown reads as the default label. */
-export function expenseCategoryLabel(value: string | null | undefined): string {
-	return (
-		EXPENSE_CATEGORY_LABELS[(value ?? '') as ExpenseCategory] ?? EXPENSE_CATEGORY_LABELS.sonstiges
-	);
-}

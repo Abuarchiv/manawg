@@ -1,6 +1,8 @@
 import { and, desc, eq, inArray, type SQL } from 'drizzle-orm';
 import { db, expensePayments, expenseSplits, expenses, recurringExpenses } from '@/core/db';
-import { expenseCategoryLabel } from '@/features/expenses/expense-categories';
+import { serverT } from '@/core/i18n/server-t';
+import { EXPENSE_CATEGORIES } from '@/features/expenses/expense-categories';
+import type { Locale } from '@/shared/i18n/locale';
 import { formatExpenseSplitsForExport, parseRecurringSplitsForExport } from './export';
 import type { ExportPage } from './export-queries-types';
 
@@ -68,15 +70,21 @@ export async function fetchExpenseRows(wgId: string, page: ExportPage) {
 		.limit(page.limit)
 		.offset(page.offset);
 }
+/** Category name in the reader's language; an unknown stored value reads as `sonstiges`. */
+function categoryName(locale: Locale, value: string | null): string {
+	const code = EXPENSE_CATEGORIES.find((known) => known === value) ?? 'sonstiges';
+	return serverT(locale, 'expenses')(`categories.${code}`);
+}
 export function mapExpenseRows(
 	expenseRows: Awaited<ReturnType<typeof fetchExpenseRows>>,
 	memberById: Map<string, string>,
 	splitsByExpense: Map<string, ExportSplitRow[]>,
+	locale: Locale,
 ) {
 	return expenseRows.map((expense) => ({
 		id: expense.id,
 		description: expense.description,
-		category: expenseCategoryLabel(expense.category),
+		category: categoryName(locale, expense.category),
 		amountCents: expense.amountCents,
 		currency: expense.currency,
 		paidBy: memberById.get(expense.paidByMemberId) ?? '',
@@ -143,11 +151,12 @@ export async function fetchRecurringRows(wgId: string, page: ExportPage) {
 export function mapRecurringRows(
 	recurringRows: Awaited<ReturnType<typeof fetchRecurringRows>>,
 	memberById: Map<string, string>,
+	locale: Locale,
 ) {
 	return recurringRows.map((item) => ({
 		id: item.id,
 		description: item.description,
-		category: expenseCategoryLabel(item.category),
+		category: categoryName(locale, item.category),
 		amountCents: item.amountCents,
 		currency: 'EUR',
 		paidBy: memberById.get(item.paidByMemberId) ?? '',

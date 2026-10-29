@@ -1,3 +1,4 @@
+import { DEFAULT_LOCALE, type Locale } from '@/shared/i18n/locale';
 import {
 	detectDelimiter,
 	distributeRemainder,
@@ -15,7 +16,11 @@ import {
 	UnsupportedCurrencyError,
 } from './import-types';
 
-export function parseSplidCsv(csv: string, rejected?: RejectedRow[]): ParsedExpense[] {
+export function parseSplidCsv(
+	csv: string,
+	rejected?: RejectedRow[],
+	locale: Locale = DEFAULT_LOCALE,
+): ParsedExpense[] {
 	const firstNewline = csv.indexOf('\n');
 	const headerLine = firstNewline === -1 ? csv : csv.slice(0, firstNewline);
 	const delimiter = detectDelimiter(stripBom(headerLine));
@@ -37,7 +42,7 @@ export function parseSplidCsv(csv: string, rejected?: RejectedRow[]): ParsedExpe
 		const warnings: string[] = [];
 		const descRaw = (fields[idxDesc] ?? '').trim();
 		if (!descRaw) continue;
-		const date = parseDateIso(fields[idxDate] ?? '');
+		const date = parseDateIso(fields[idxDate] ?? '', locale);
 		if (!date) {
 			rejected?.push({ line, reason: 'date_invalid', description: descRaw });
 			continue;

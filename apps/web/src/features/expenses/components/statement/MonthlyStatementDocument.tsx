@@ -296,11 +296,11 @@ export function MonthlyStatementDocument({
 										<td className="py-2 pl-3 break-words">
 											{item.description}
 											<span className="block text-[12px] text-muted-foreground print:hidden">
-												{item.payerName}
+												{item.payerName ?? t('document.formerMember')}
 											</span>
 										</td>
 										<td className="hidden py-2 pl-3 text-muted-foreground print:table-cell">
-											{item.payerName}
+											{item.payerName ?? t('document.formerMember')}
 										</td>
 										<td className={cn(MONEY, 'py-2 pl-3 text-right text-[12px]')}>
 											{money(item.amountCents)}

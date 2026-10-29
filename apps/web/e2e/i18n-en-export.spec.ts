@@ -1,6 +1,7 @@
 // English data export: the summary labels, the CSV download and the locale the request carries.
 // Why: The CSV follows the downloader's locale, so the request must carry the language cookie.
 
+import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 import {
 	dismissOnboarding,
@@ -67,6 +68,14 @@ test.describe('data export in English', () => {
 						'Expenses export started. The CSV file is saved to your browser downloads.',
 					),
 				).toBeVisible();
+
+				await select.selectOption({ label: 'Members' });
+				const membersDownload = page.waitForEvent('download');
+				await page.getByRole('button', { name: 'Export Members as CSV' }).click();
+				const membersFile = await (await membersDownload).path();
+				const header = (await readFile(membersFile, 'utf8')).split('\n')[0] ?? '';
+				expect(header).toContain(',');
+				expect(header).not.toContain(';');
 
 				await expectNoGermanChrome(page);
 				if (width === 320) await expectNoHorizontalOverflow(page);

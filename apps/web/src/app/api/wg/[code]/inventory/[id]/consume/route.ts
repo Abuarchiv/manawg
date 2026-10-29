@@ -7,6 +7,7 @@ import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { badRequest, conflict, notFound, tooMany } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
+import { requestLocale } from '@/core/i18n/request-locale';
 import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
 import { logApiError } from '@/core/infra/observability';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
@@ -65,6 +66,7 @@ export const POST = withWgRoute<{ id: string }>('inventory consume', async (req,
 				wgId: wg.id,
 				memberId: auth.member.memberId,
 				delta: parsed.data.delta,
+				locale: requestLocale(req),
 			});
 			if (mutation.kind === 'not_found') return rejectWrite(notFound('item_not_found'));
 			if (mutation.kind === 'conflict') return rejectWrite(conflict('version_conflict'));
