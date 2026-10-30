@@ -1,5 +1,6 @@
 import { berlinDayKey } from '@/core/utils/berlin-day';
 import { parseTimestamp } from '@/core/utils/time';
+import { isYearInRange } from '@/shared/lib/limits';
 
 export interface AbsenceInput {
 	id: string;
@@ -8,6 +9,13 @@ export interface AbsenceInput {
 	startDate: string;
 	endDate: string;
 	reason: string | null;
+}
+
+/** The period the form may send: ordered and inside the years the server accepts. */
+export function isAbsencePeriodValid(startDay: Date | null, endDay: Date | null): boolean {
+	return (
+		!!startDay && !!endDay && startDay <= endDay && isYearInRange(startDay) && isYearInRange(endDay)
+	);
 }
 
 export function getAbsentMemberIds(
