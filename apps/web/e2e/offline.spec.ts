@@ -40,6 +40,99 @@ test.describe('wg cached fetch', () => {
 	test.use({ hasTouch: true, isMobile: true });
 
 	const SHARE_CODE = FIXTURE_WG.shareCode;
+	for (const leaveWg of [false, true]) {
+		test(
+			leaveWg
+				? 'leaving the WG cancels an in-flight offline replay'
+				: 'a WG settings refresh preserves an in-flight offline replay',
+			async ({ page }) => {
+				await setupMember(page);
+				await page.route('**/api/wg/*/members', (route) =>
+					route.fulfill({
+						json: {
+							members: [E2E_EXISTING_WG.member],
+							viewerIsAdmin: true,
+						},
+					}),
+				);
+				let memberReads = 0;
+				await page.route(`**/api/wg/${SHARE_CODE}`, (route) => {
+					if (route.request().method() === 'PATCH') return route.fulfill({ json: { ok: true } });
+					memberReads += 1;
+					return route.fallback();
+				});
+				let started: () => void = () => {};
+				let release: () => void = () => {};
+				const requestStarted = new Promise<void>((resolve) => {
+					started = resolve;
+				});
+				const responseGate = new Promise<void>((resolve) => {
+					release = resolve;
+				});
+				let writes = 0;
+				await page.route(`**/api/wg/${SHARE_CODE}/announcements`, async (route) => {
+					if (route.request().method() !== 'POST') return route.fallback();
+					writes += 1;
+					started();
+					await responseGate;
+					return route.fulfill({ json: { announcement: { id: 'saved-announcement' } } });
+				});
+				await navigateToFeature(page, `/wg/${SHARE_CODE}/settings`);
+				const name = page.getByLabel('Name eurer WG');
+				await expect(name).toBeVisible();
+				await page.evaluate((wg) => {
+					localStorage.setItem(
+						'manawg:offline-actions',
+						JSON.stringify([
+							{
+								id: 'announcement.create:refresh-test',
+								idempotencyKey: '00000001-1111-4111-8111-111111111111',
+								type: 'announcement.create',
+								wgId: wg.id,
+								shareCode: wg.shareCode,
+								memberId: wg.memberId,
+								createdAt: new Date().toISOString(),
+								payload: { content: 'Boiler repaired', kind: 'info', imageUrl: null },
+							},
+						]),
+					);
+					window.dispatchEvent(new Event('focus'));
+				}, FIXTURE_WG);
+				await requestStarted;
+				try {
+					if (leaveWg) {
+						await page.getByRole('tab', { name: 'Zugang', exact: true }).click();
+						const aborted = page.waitForEvent(
+							'requestfailed',
+							(request) =>
+								request.method() === 'POST' &&
+								new URL(request.url()).pathname.endsWith('/announcements'),
+						);
+						await page.locator('a[href="/login"]:visible').click();
+						await aborted;
+						await expect(page).toHaveURL(/\/login$/);
+					} else {
+						const readsBeforeRefresh = memberReads;
+						await name.fill('Refreshed fixture WG');
+						await name.press('Enter');
+						await expect(page.getByText('WG-Name gespeichert.')).toBeVisible();
+						await expect.poll(() => memberReads).toBeGreaterThan(readsBeforeRefresh);
+					}
+				} finally {
+					release();
+				}
+				await expect
+					.poll(() =>
+						page.evaluate(
+							() => JSON.parse(localStorage.getItem('manawg:offline-actions') ?? '[]').length,
+						),
+					)
+					.toBe(leaveWg ? 1 : 0);
+				expect(writes).toBe(1);
+			},
+		);
+	}
+
 	const shoppingItems = [
 		{
 			id: 'shopping-oat-milk',
