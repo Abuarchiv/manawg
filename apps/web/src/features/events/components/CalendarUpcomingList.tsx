@@ -193,7 +193,6 @@ export function CalendarUpcomingList({
 									<li key={`chore-${entry.chore.choreId}-${entry.chore.startsAt}`}>
 										<Link
 											href={`${wgBaseHref}/chores?highlight=${encodeURIComponent(entry.chore.choreId)}`}
-											aria-label={t('agenda.openChore', { title: entry.chore.title })}
 											className={ROW_CLASS}
 										>
 											<span className="flex min-w-0 flex-1 flex-col">
@@ -222,7 +221,6 @@ export function CalendarUpcomingList({
 										<button
 											type="button"
 											onClick={() => onSelect(entry.occurrence)}
-											aria-label={t('agenda.openEvent', { title: entry.occurrence.title })}
 											className={ROW_CLASS}
 										>
 											<span className="flex min-w-0 flex-1 flex-col">

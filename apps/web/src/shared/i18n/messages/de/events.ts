@@ -36,8 +36,6 @@ export default {
 		dayToday: 'Heute · {date}',
 		dayTomorrow: 'Morgen · {date}',
 		todayShort: 'Heute',
-		openEvent: 'Termin öffnen: {title}',
-		openChore: 'Putzaufgabe öffnen: {title}',
 		choreBadge: 'Putzplan',
 		recurring: 'wiederkehrend',
 	},

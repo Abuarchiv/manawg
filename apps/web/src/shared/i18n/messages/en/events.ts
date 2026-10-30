@@ -39,8 +39,6 @@ export default {
 		dayToday: 'Today · {date}',
 		dayTomorrow: 'Tomorrow · {date}',
 		todayShort: 'Today',
-		openEvent: 'Open event: {title}',
-		openChore: 'Open cleaning task: {title}',
 		choreBadge: 'Cleaning rota',
 		recurring: 'repeating',
 	},
