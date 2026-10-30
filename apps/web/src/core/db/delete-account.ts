@@ -5,6 +5,7 @@ import { deleteWgCascade } from './delete-wg';
 import { releaseMemberChores } from './member-departure';
 import {
 	accountDeletions,
+	auditEvents,
 	calendarSubscriptions,
 	memberAbsences,
 	pushSubscriptions,
@@ -97,7 +98,30 @@ export async function removeAccountFromWgs(
 			})
 			.where(eq(wgMembers.id, membership.id));
 		await releaseMemberChores(tx, membership.wgId, membership.id);
-		// Absence reasons are free text and can be health related, so none outlive the account.
+		// Absence reasons are free text and can be health related, so none outlive the account:
+		// neither the rows nor the reason copied into their audit events.
+		await tx
+			.update(auditEvents)
+			.set({ metadataJson: sql`(${auditEvents.metadataJson}::jsonb - 'reason')::text` })
+			.where(
+				and(
+					eq(auditEvents.wgId, membership.wgId),
+					eq(auditEvents.eventType, 'absence.created'),
+					isNotNull(auditEvents.metadataJson),
+					inArray(
+						auditEvents.entityId,
+						tx
+							.select({ id: sql<string>`${memberAbsences.id}::text` })
+							.from(memberAbsences)
+							.where(
+								and(
+									eq(memberAbsences.wgId, membership.wgId),
+									eq(memberAbsences.memberId, membership.id),
+								),
+							),
+					),
+				),
+			);
 		await tx
 			.delete(memberAbsences)
 			.where(

@@ -97,7 +97,7 @@ test('account deletion erases the leaver absences and keeps the flatmates', asyn
 	process.env.DATABASE_MIGRATION_URL = 'placeholder';
 	const { withTransaction } = await import('../src/core/db/transaction');
 	const { removeAccountFromWgs } = await import('../src/core/db/delete-account');
-	const { memberAbsences, wgMembers, wgs } = await import('../src/core/db/schema');
+	const { auditEvents, memberAbsences, wgMembers, wgs } = await import('../src/core/db/schema');
 	const { eq } = await import('drizzle-orm');
 
 	const user = crypto.randomUUID();
@@ -128,14 +128,34 @@ test('account deletion erases the leaver absences and keeps the flatmates', asyn
 			endDate: new Date(Date.now() - 10 * day),
 			reason,
 		});
+		const [mine, , mates] = tuple(
+			await tx
+				.insert(memberAbsences)
+				.values([
+					past(me.id, 'Chemo'),
+					{
+						...past(me.id, 'Holiday'),
+						startDate: new Date(Date.now() + day),
+						endDate: new Date(Date.now() + 10 * day),
+					},
+					past(mate.id, 'Visiting family'),
+				])
+				.returning({ id: memberAbsences.id }),
+			3,
+		);
+		const audit = (absenceId: string, memberId: string, reason: string) => ({
+			wgId: wg.id,
+			memberId: me.id,
+			eventType: 'absence.created',
+			entityType: 'absence',
+			entityId: absenceId,
+			summary: 'Absence added',
+			metadataJson: JSON.stringify({ memberId, reason }),
+		});
 		await tx
-			.insert(memberAbsences)
-			.values([
-				past(me.id, 'Chemo'),
-				{ ...past(me.id, 'Holiday'), endDate: new Date(Date.now() + 10 * day) },
-				past(mate.id, 'Visiting family'),
-			]);
-		return { me: me.id, mate: mate.id };
+			.insert(auditEvents)
+			.values([audit(mine.id, me.id, 'Chemo'), audit(mates.id, mate.id, 'Visiting family')]);
+		return { me: me.id, mate: mate.id, mineAbsence: mine.id, mateAbsence: mates.id };
 	});
 
 	await withTransaction((tx) => removeAccountFromWgs(tx, user));
@@ -148,6 +168,14 @@ test('account deletion erases the leaver absences and keeps the flatmates', asyn
 			.from(memberAbsences)
 			.where(eq(memberAbsences.memberId, ids.mate));
 		expect(kept.map((row) => row.reason)).toEqual(['Visiting family']);
+		const events = await tx
+			.select()
+			.from(auditEvents)
+			.where(eq(auditEvents.eventType, 'absence.created'));
+		const metadata = (entityId: string) =>
+			JSON.parse(events.find((event) => event.entityId === entityId)?.metadataJson ?? 'null');
+		expect(metadata(ids.mineAbsence)).toEqual({ memberId: ids.me });
+		expect(metadata(ids.mateAbsence)).toEqual({ memberId: ids.mate, reason: 'Visiting family' });
 	});
 });
 
