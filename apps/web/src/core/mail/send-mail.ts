@@ -3,7 +3,7 @@ import { eq, sql } from 'drizzle-orm';
 import { db, mailLog } from '@/core/db';
 import { logApiError } from '@/core/infra/observability';
 import type { RenderedMail } from './brand-mail';
-import { createMailTransport, type MailTransport, maskEmail } from './transport';
+import { createMailTransport, type MailTransport, maskEmail, readAllowlist } from './transport';
 
 type MailKind = 'welcome' | 'invitation' | 'reminder' | 'account_deleted';
 
@@ -32,6 +32,10 @@ export async function sendMail(
 	input: SendMailInput,
 	transport: MailTransport = createMailTransport(process.env, 'mail'),
 ): Promise<SendMailResult> {
+	// `STATEMENT_EMAIL_ALLOWLIST` covers every mail the app sends, so a recipient outside it is
+	// refused before a ledger row exists.
+	const allowlist = readAllowlist();
+	if (allowlist && !allowlist.has(input.to.trim().toLowerCase())) return 'failed';
 	const [claimed] = await db
 		.insert(mailLog)
 		.values({

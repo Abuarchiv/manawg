@@ -99,3 +99,7 @@ The system SHALL send statement mails only from the production deployment.
 #### Scenario: Production without mail key
 - **WHEN** the cron runs in production and `RESEND_API_KEY` is missing
 - **THEN** the run fails loudly instead of recording anything
+
+#### Scenario: Recipient allowlist
+- **WHEN** `STATEMENT_EMAIL_ALLOWLIST` is set
+- **THEN** every mail the app sends itself (statement, invitation, reminder, welcome, account deleted) goes only to the listed addresses, in any environment; an invitation to another address answers 503 `mail_unavailable`
