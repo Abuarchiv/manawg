@@ -3,6 +3,7 @@ import test from 'node:test';
 import type { RejectedRow } from './import-types';
 
 const { matchMembers, parseSplidCsv, parseSplitwiseCsv } = await import('./import-parsers');
+const { parseAmountToCents } = await import('./import-csv-helpers');
 
 test('parseSplitwiseCsv recovers the payer share from their net-balance column', () => {
 	// Splitwise CSV convention: each person's column holds their NET balance for the row
@@ -166,4 +167,10 @@ test('parseSplitwiseCsv keeps expenses whose description starts with "Total" and
 		['TotalEnergies fuel'],
 	);
 	assert.equal(rejected.length, 0);
+});
+
+test('parseAmountToCents rejects a thousands group that starts with zero', () => {
+	assert.equal(parseAmountToCents('0,001'), null);
+	assert.equal(parseAmountToCents('0,125'), null);
+	assert.equal(parseAmountToCents('1,234'), 123400);
 });

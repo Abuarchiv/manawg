@@ -59,7 +59,7 @@ Push notifications, monthly statements, reminder mails and unsubscribe pages SHA
 
 ### Requirement: Formatting and amount input follow the locale
 
-Dates, numbers and currency SHALL be formatted with `de-DE` for German and `en-GB` for English. WG day boundaries SHALL stay in `Europe/Berlin`. Amount input SHALL accept `12,50` and `12.50` as 12.50 in both locales; a three-digit tail after a single separator SHALL be read as grouping in the separator's locale convention and SHALL be rejected otherwise. English CSV export SHALL use `,` as separator and `.` as decimal point; German CSV SHALL stay unchanged.
+Dates, numbers and currency SHALL be formatted with `de-DE` for German and `en-GB` for English. WG day boundaries SHALL stay in `Europe/Berlin`. Amount input SHALL accept `12,50` and `12.50` as 12.50 in both locales; a three-digit tail after a single separator SHALL be read as grouping in the separator's locale convention and SHALL be rejected otherwise, as is a grouped number whose first group starts with `0` (`0,001`). English CSV export SHALL use `,` as separator and `.` as decimal point; German CSV SHALL stay unchanged.
 
 #### Scenario: English amount with grouping
 - **WHEN** an English user enters `1,234.50`

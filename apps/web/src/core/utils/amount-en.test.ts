@@ -62,3 +62,12 @@ test('amount formatters switch separators by locale and default to German', () =
 	assert.equal(formatDecimal(1.5, 'en'), '1.5');
 	assert.equal(formatDecimal(2, 'en'), '2');
 });
+
+test('parseEuroAmount rejects a thousands group that starts with zero', () => {
+	assert.equal(parseEuroAmount('0,001', 'en'), null);
+	assert.equal(parseEuroAmount('007,500', 'en'), null);
+	assert.equal(parseEuroAmount('0.500', 'de'), null);
+	assert.equal(parseEuroAmount('0.001'), null);
+	assert.equal(parseEuroAmount('1,234', 'en'), 1234);
+	assert.equal(parseEuroAmount('1.234,56'), 1234.56);
+});
