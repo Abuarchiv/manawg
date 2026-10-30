@@ -19,7 +19,11 @@
  */
 
 import type { ChoreRecurrenceType } from '@/core/db/schema';
-import { berlinDayKey, berlinWallMinutes, instantAtBerlinWallTime } from '@/core/utils/berlin-day';
+import {
+	berlinDayKey,
+	berlinWallMinutes,
+	instantAtBerlinWallTimeOrAfterGap,
+} from '@/core/utils/berlin-day';
 
 const MS_PER_MINUTE = 60 * 1000;
 const MINUTES_PER_HOUR = 60;
@@ -51,10 +55,7 @@ function fromBerlinWallTime(wall: BerlinWallTime): Date {
 	// Normalize overflowing day/month values (e.g. day 35) via UTC calendar math.
 	const normalized = new Date(Date.UTC(wall.year, wall.month, wall.day));
 	const dayKey = normalized.toISOString().slice(0, 10);
-	// A wall time inside the spring-forward gap does not exist; use the hour after.
-	const instant =
-		instantAtBerlinWallTime(dayKey, wall.minutes) ??
-		instantAtBerlinWallTime(dayKey, wall.minutes + MINUTES_PER_HOUR);
+	const instant = instantAtBerlinWallTimeOrAfterGap(dayKey, wall.minutes);
 	if (!instant) throw new Error(`Cannot resolve Berlin wall time on ${dayKey}`);
 	return new Date(instant.getTime() + wall.subMinuteMs);
 }

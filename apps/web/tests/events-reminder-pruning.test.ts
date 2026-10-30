@@ -140,6 +140,25 @@ test('weekly BYDAY UNTIL last start uses Berlin DST wall time and timed-end boun
 	assert.deepEqual(expired, []);
 });
 
+test('UNTIL pruning places a summer-anchored 02:30 occurrence at 03:30 on the gap day', async () => {
+	const series = eventCandidate(
+		'dst-gap-until',
+		'2025-06-01T00:30:00.000Z',
+		'FREQ=DAILY;UNTIL=2026-03-29T01:00:00.000Z',
+	);
+	const overflowResult = { status: 503, body: 'events_window_too_large' };
+	const run = (from: string) =>
+		withEventWindowCandidates(
+			new Date(from),
+			eventCandidatePages([series]),
+			() => overflowResult,
+			(candidates) => candidates.map(({ id }) => id),
+		);
+	// The gap-day occurrence is 03:30 CEST (01:30Z), after UNTIL, so the series ends on 28.03.
+	assert.deepEqual(await run('2026-03-28T05:00:00.000Z'), []);
+	assert.deepEqual(await run('2026-03-28T01:45:00.000Z'), ['dst-gap-until']);
+});
+
 test('finite UNTIL pruning uses the last Berlin wall-time occurrence', async () => {
 	const series = eventCandidate(
 		'finite-weekly-until-after-dst',
