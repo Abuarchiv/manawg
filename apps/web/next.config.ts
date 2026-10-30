@@ -33,6 +33,8 @@ const nextConfig: NextConfig = {
 	distDir: process.env.NEXT_DIST_DIR ?? '.next',
 	// Keep next dev from generating extra files in the app directory.
 	agentRules: false,
+	// Responses do not advertise the framework.
+	poweredByHeader: false,
 	// The Docker image (Dockerfile) runs the self-contained server; Vercel builds without it.
 	...(process.env.NEXT_OUTPUT_STANDALONE === 'true'
 		? { output: 'standalone' as const, outputFileTracingRoot: path.join(process.cwd(), '..', '..') }
