@@ -134,3 +134,21 @@ describe('require wg member regression', () => {
 		assert.equal(isShareCodeLookup('/api/wg/ABCDEFGH', 'POST'), false);
 	});
 });
+
+describe('malformed percent-encoding in the path', () => {
+	test('answers an API path with 400 and a JSON error', async () => {
+		const res = await proxy(new NextRequest('http://localhost/api/wg/%E0%A4%A'));
+		assert.equal(res.status, 400);
+		assert.deepEqual(await res.json(), { error: 'bad_request' });
+	});
+
+	test('answers a page path with 400', async () => {
+		const res = await proxy(new NextRequest('http://localhost/wg/%E0%A4%A'));
+		assert.equal(res.status, 400);
+	});
+
+	test('lets a well-formed page path through', async () => {
+		const res = await proxy(new NextRequest('http://localhost/wg/SMKETEST'));
+		assert.notEqual(res.status, 400);
+	});
+});
