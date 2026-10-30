@@ -23,7 +23,7 @@ export interface PlanChore extends Chore {
 
 export interface ChoreListResponse {
 	chores: Chore[];
-	/** Erledigungen pro Mitglied seit Monatsbeginn. */
+	/** Completions per member since the start of the month. */
 	monthCompletions?: Record<string, number>;
 }
 

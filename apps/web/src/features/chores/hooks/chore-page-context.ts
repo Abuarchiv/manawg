@@ -4,7 +4,7 @@ import type { SessionMember } from '@/core/auth/local-account';
 import type { AbsenceInput } from '@/features/chores/absence';
 import type { Chore } from '@/features/chores/components/chore-types';
 
-/** What the Putzplan hooks share: who acts, where results go, and the loaded plan. */
+/** What the cleaning rota hooks share: who acts, where results go, and the loaded plan. */
 export interface ChorePageContext {
 	wg: Pick<WgSummary, 'id' | 'shareCode'>;
 	identity: SessionMember;

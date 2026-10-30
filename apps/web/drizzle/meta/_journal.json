@@ -281,6 +281,13 @@
       "when": 1793258419965,
       "tag": "0039_english_stored_values",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1793258557859,
+      "tag": "0040_english_only_keys",
+      "breakpoints": true
     }
   ]
 }

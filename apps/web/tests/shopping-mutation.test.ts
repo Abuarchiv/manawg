@@ -97,12 +97,9 @@ describe('shopping mutation regression', () => {
 		assert.equal(await insertShoppingItem(empty.tx, input), undefined);
 	});
 
-	test('replays legacy successful shopping cache rows during the response-envelope rollout', () => {
-		const legacyItem = JSON.parse(JSON.stringify(item));
-		assert.deepEqual(normalizeShoppingCreateReplayResponse({ item: legacyItem, warning: null }), {
-			status: 200,
-			body: { item: legacyItem, warning: null },
-		});
+	test('replays only stored shopping envelopes', () => {
+		const storedItem = JSON.parse(JSON.stringify(item));
+		assert.equal(normalizeShoppingCreateReplayResponse({ item: storedItem, warning: null }), null);
 		assert.equal(normalizeShoppingCreateReplayResponse({ status: 201, body: {} }), null);
 		assert.equal(shoppingCreateCodec.decode({ status: 201, body: {} }), null);
 	});

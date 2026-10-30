@@ -4,7 +4,7 @@ import deMessages from '../../shared/i18n/messages/de';
 import { isQuietHoursActive } from './notification-preferences';
 import { notificationPriorityForEvent } from './notifications';
 
-test('Ruhezeit-Hinweis passt zur Zustellung', () => {
+test('the quiet-hours hint matches the delivery', () => {
 	for (const event of ['chore.due', 'event.upcoming', 'event.today'] as const) {
 		assert.equal(notificationPriorityForEvent(event), 'urgent');
 	}

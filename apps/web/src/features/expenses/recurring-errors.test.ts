@@ -5,7 +5,7 @@ const { renderMessage, serverRootT } = await import('@/core/i18n/server-t');
 const { recurringActionError, recurringDeleteError, recurringSaveError } = await import(
 	'./recurring-errors'
 );
-const { SPLIT_SUM_MISMATCH } = await import('./expense-errors');
+const { splitInputError } = await import('./expense-errors');
 
 const de = serverRootT('de');
 const en = serverRootT('en');
@@ -63,6 +63,6 @@ test('the same codes render English', () => {
 test('the split mismatch text stays identical to the expense form text', () => {
 	assert.equal(
 		renderMessage(de, recurringSaveError('splits_invalid', 'created')),
-		SPLIT_SUM_MISMATCH,
+		renderMessage(de, splitInputError('splits_mismatch')),
 	);
 });

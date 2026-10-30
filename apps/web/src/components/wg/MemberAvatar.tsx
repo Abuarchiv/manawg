@@ -10,7 +10,7 @@ const DEFAULT_SIZE = 28;
 const HIDE_INITIALS_BELOW = 18;
 // Colored avatars are intentional: the rest of the UI stays monochrome, so a stable
 // per-person hue is what lets flatmates tell each other apart at a glance in chat,
-// Pinnwand and balances. Keyed on the name so every avatar of a person matches.
+// noticeboard and balances. Keyed on the name so every avatar of a person matches.
 const HUES = [25, 60, 95, 145, 190, 240, 285, 330];
 
 function hashCode(s: string): number {

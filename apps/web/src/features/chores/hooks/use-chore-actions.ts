@@ -43,7 +43,7 @@ export function useChoreActions(ctx: ChorePageContext) {
 	const locale = useLocale() as Locale;
 	const completeChore = useChoreCompletion(wg, identity);
 	const [completeConfirmId, setCompleteConfirmId] = useState<string | null>(null);
-	// Chores whose swap request is already on the Pinnwand; a second tap would post a duplicate.
+	// Chores whose swap request is already on the noticeboard; a second tap would post a duplicate.
 	const [swapRequestedIds, setSwapRequestedIds] = useState<ReadonlySet<string>>(new Set());
 
 	/**

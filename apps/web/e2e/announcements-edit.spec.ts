@@ -1,4 +1,4 @@
-// Editing the text of a manual Pinnwand post.
+// Editing the text of a manual noticeboard post.
 
 import { expect, test } from '@playwright/test';
 import type { Announcement } from '../src/features/announcements/components/announcement-types';

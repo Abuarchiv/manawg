@@ -116,7 +116,7 @@ export function isEmptyModuleDraft(
 			queueEditId: null,
 		},
 	};
-	// The Putzplan page keeps its absence form in the same draft as the chore form.
+	// The cleaning rota page keeps its absence form in the same draft as the chore form.
 	const known = module === 'chore' ? { ...defaults.chore, ...defaults.absence } : defaults[module];
 	return Object.entries(draft).every(
 		([key, value]) =>
@@ -156,7 +156,7 @@ export function buildQueueEditDraft(
 					quantity: typeof action.payload.quantity === 'string' ? action.payload.quantity : '',
 				},
 			};
-		// Queued updates have no owning edit form: the Einkaufs-/Ausgaben-forms
+		// Queued updates have no owning edit form: the shopping and expense forms
 		// only create, so editing one there would turn the update into a new
 		// item and drop the original. They can only be synced or discarded.
 		case 'shopping.update':
@@ -176,7 +176,7 @@ export function buildQueueEditDraft(
 				},
 			};
 		case 'absence.create':
-			// The Putzplan owns both forms and reads only the chore draft key.
+			// The cleaning rota owns both forms and reads only the chore draft key.
 			return {
 				module: 'chore',
 				draft: {

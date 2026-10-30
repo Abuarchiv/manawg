@@ -220,6 +220,17 @@ test('normalizers treat catalog output and snapshot SQL as equal', () => {
 		normalizeCheck('CHECK ((amount_cents > 0)) NOT VALID', 'expenses'),
 		normalizeCheck('"expenses"."amount_cents" > 0', 'expenses'),
 	);
+	// A multi-word cast followed by AND must not swallow the AND (wg_events_all_day_midnight_check).
+	assert.equal(
+		normalizeCheck(
+			"CHECK (NOT all_day OR (starts_at AT TIME ZONE 'UTC'::text)::time without time zone = '00:00:00'::time without time zone AND (ends_at IS NULL OR (ends_at AT TIME ZONE 'UTC'::text)::time without time zone = '00:00:00'::time without time zone))",
+			'wg_events',
+		),
+		normalizeCheck(
+			`NOT "wg_events"."all_day" OR (("wg_events"."starts_at" AT TIME ZONE 'UTC')::time = '00:00:00' AND ("wg_events"."ends_at" IS NULL OR ("wg_events"."ends_at" AT TIME ZONE 'UTC')::time = '00:00:00'))`,
+			'wg_events',
+		),
+	);
 	assert.equal(normalizeType('character varying(64)'), normalizeType('varchar(64)'));
 	assert.equal(normalizeDefault("('open'::text)"), normalizeDefault("'open'"));
 	assert.notEqual(normalizeDefault('now()'), normalizeDefault("'open'"));

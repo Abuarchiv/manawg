@@ -14,7 +14,9 @@ import {
 test.describe('daily overview navigation', () => {
 	const BASE = `/api/wg/${FIXTURE_WG.shareCode}`;
 
-	test('keeps Kalender in Austausch and shows confirmed unread count', async ({ page }) => {
+	test('keeps the calendar in the exchange group and shows the confirmed unread count', async ({
+		page,
+	}) => {
 		await setupMember(page);
 		let dashboardReads = 0;
 		let unreadReads = 0;

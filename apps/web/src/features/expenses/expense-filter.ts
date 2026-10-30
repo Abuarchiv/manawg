@@ -1,7 +1,4 @@
-import {
-	EXPENSE_CATEGORY_LABELS,
-	type ExpenseCategory,
-} from '@/features/expenses/expense-categories';
+import type { ExpenseCategory } from '@/features/expenses/expense-categories';
 import type { Expense } from '@/features/expenses/expense-types';
 
 export type ExpenseScope = 'all' | 'paid' | 'involved';
@@ -29,8 +26,7 @@ export function matchesExpenseQuery(
 	expense: Expense,
 	query: string,
 	payerName: (memberId: string) => string,
-	categoryLabel: (category: ExpenseCategory) => string = (category) =>
-		EXPENSE_CATEGORY_LABELS[category],
+	categoryLabel: (category: ExpenseCategory) => string,
 ): boolean {
 	const words = fold(query).split(/\s+/).filter(Boolean);
 	if (words.length === 0) return true;

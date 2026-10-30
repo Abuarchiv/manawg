@@ -12,7 +12,7 @@ const PRIVATE_METADATA_KEYS: Readonly<Record<string, readonly string[]>> = {
 
 /**
  * Events the shared feeds leave out entirely: one person's own notification choice, and
- * Pinnwand reactions, which the post itself already shows and which would flood the feed.
+ * noticeboard reactions, which the post itself already shows and which would flood the feed.
  */
 export const HIDDEN_FROM_FEED_EVENT_TYPES: readonly string[] = [
 	'notification.push.subscribed',

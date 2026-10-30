@@ -491,50 +491,6 @@ test.describe('date integrity ui', () => {
 		await expect(end).toHaveValue('2026-09-22T15:00');
 	});
 
-	test('legacy all-day title-only edit preserves the displayed date and both stored timestamps', async ({
-		page,
-	}) => {
-		await page.clock.setFixedTime(new Date('2026-09-20T10:00:00Z'));
-		await setupMember(page);
-		const legacy = {
-			id: 'legacy-date',
-			title: 'Alter Geburtstag',
-			description: null,
-			startsAt: '2026-09-21T22:00:00.000Z',
-			endsAt: '2026-09-22T21:00:00.000Z',
-			allDay: true,
-			location: null,
-			recurrence: null,
-			createdByMemberId: FIXTURE_WG.memberId,
-		};
-		let saved: unknown;
-		await page.route(`**/api/wg/${SHARE_CODE}/events*`, (route) =>
-			route.fulfill({ json: { events: [legacy] } }),
-		);
-		await page.route(`**/api/wg/${SHARE_CODE}/events/${legacy.id}`, (route) => {
-			saved = route.request().postDataJSON();
-			return route.fulfill({ json: { event: { ...legacy, ...route.request().postDataJSON() } } });
-		});
-		await navigateToFeature(page, `/wg/${SHARE_CODE}/calendar`);
-		await expect(
-			page
-				.getByRole('list', { name: /Dienstag, 22\. September$/ })
-				.getByText('ganztägig', { exact: true }),
-		).toBeVisible();
-		await page.getByRole('button', { name: 'Alter Geburtstag' }).click();
-		await expect(page.getByLabel('Beginn')).toHaveValue('2026-09-22');
-		await expect(page.getByLabel('Ende (optional)')).toHaveValue('2026-09-22');
-		await page.getByLabel('Titel').fill('Neuer Titel');
-		await page.getByRole('button', { name: 'Speichern', exact: true }).click();
-		await expect
-			.poll(() => saved)
-			.toMatchObject({
-				title: 'Neuer Titel',
-				startsAt: legacy.startsAt,
-				endsAt: legacy.endsAt,
-			});
-	});
-
 	for (const timezoneId of ['America/Los_Angeles', 'Pacific/Kiritimati']) {
 		test.describe(`agenda in ${timezoneId}`, () => {
 			test.use({ timezoneId });

@@ -95,7 +95,6 @@ test('categories are summed per month, largest first, "other" last', () => {
 			['other', 12000, 60],
 		],
 	);
-	assert.equal(statement.categories[0]?.label, 'Lebensmittel');
 });
 
 test('a payer missing from the members list has no name', () => {

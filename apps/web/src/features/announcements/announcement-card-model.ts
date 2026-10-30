@@ -4,7 +4,7 @@ import type {
 	ReactionKey,
 } from '@/features/announcements/components/announcement-types';
 
-/** What a Pinnwand card shows, derived from the post; the components only render it. */
+/** What a noticeboard card shows, derived from the post; the components only render it. */
 
 /** The reactions in display order. */
 export const REACTION_OPTIONS: ReadonlyArray<{ key: ReactionKey }> = [

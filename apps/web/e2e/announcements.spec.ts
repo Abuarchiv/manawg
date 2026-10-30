@@ -1,4 +1,4 @@
-// Pinnwand (announcements): done posts leave the board, comment edit focus/layout and refresh.
+// Noticeboard (announcements): done posts leave the board, comment edit focus/layout and refresh.
 // Why: refreshes must not clobber a comment being edited.
 
 import { expect, test } from '@playwright/test';
@@ -298,7 +298,7 @@ test.describe('pinboard comment layout', () => {
 		for (const largeText of [false, true] as const) {
 			for (const colorScheme of ['light', 'dark'] as const) {
 				if (!inMinimalMatrix({ width, dark: colorScheme === 'dark', large: largeText })) continue;
-				test(`keeps Pinnwand comments usable at ${width}px, ${largeText ? '32px' : 'normal'} text, ${colorScheme}`, async ({
+				test(`keeps pinboard comments usable at ${width}px, ${largeText ? '32px' : 'normal'} text, ${colorScheme}`, async ({
 					page,
 				}) => {
 					await page.setViewportSize({ width, height: 844 });
@@ -426,7 +426,7 @@ test.describe('pinboard refresh', () => {
 		return { started, gate, markStarted, release };
 	}
 
-	test('keeps the Pinnwand loading skeleton within a 320px viewport at 200% text', async ({
+	test('keeps the pinboard loading skeleton within a 320px viewport at 200% text', async ({
 		page,
 	}) => {
 		await page.setViewportSize({ width: 320, height: 720 });
@@ -473,7 +473,7 @@ test.describe('pinboard refresh', () => {
 		await expect(geometry.elements).toEqual([]);
 	});
 
-	test('shows refresh error while cached Pinnwand posts stay visible', async ({ page }) => {
+	test('shows refresh error while cached pinboard posts stay visible', async ({ page }) => {
 		await setupMember(page);
 		let phase: 'startup' | 'controlled' = 'startup';
 		let failReads = false;
@@ -519,7 +519,7 @@ test.describe('pinboard refresh', () => {
 		await expect(page.getByText('Cache-Beitrag', { exact: true })).toBeVisible();
 	});
 
-	test('removes a cached Pinnwand post missing from the focus refresh', async ({ page }) => {
+	test('removes a cached pinboard post missing from the focus refresh', async ({ page }) => {
 		await setupMember(page);
 		let removeOnNextRead = false;
 		let changedReads = 0;

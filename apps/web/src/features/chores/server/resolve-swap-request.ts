@@ -32,7 +32,7 @@ export async function closeChoreSwapRequest(
 }
 
 /**
- * Closes the open Pinnwand swap request of a chore once the question is settled
+ * Closes the open noticeboard swap request of a chore once the question is settled
  * (someone took it over or the chore is gone). Best-effort like the shopping
  * counterpart: a failed update must not fail the chore mutation itself.
  */

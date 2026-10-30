@@ -1,6 +1,6 @@
 {
-  "id": "69db0e6d-2274-4668-9eb9-df45694db8c2",
-  "prevId": "26c24430-1d45-4de5-a68e-1ac68d486e78",
+  "id": "8b642612-8487-4743-a88a-ea1c6cbf6a6a",
+  "prevId": "69db0e6d-2274-4668-9eb9-df45694db8c2",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1447,7 +1447,12 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "wg_events_all_day_midnight_check": {
+          "name": "wg_events_all_day_midnight_check",
+          "value": "NOT \"wg_events\".\"all_day\" OR ((\"wg_events\".\"starts_at\" AT TIME ZONE 'UTC')::time = '00:00:00' AND (\"wg_events\".\"ends_at\" IS NULL OR (\"wg_events\".\"ends_at\" AT TIME ZONE 'UTC')::time = '00:00:00'))"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.expense_imports": {
@@ -2332,7 +2337,7 @@
         },
         "expenses_category_check": {
           "name": "expenses_category_check",
-          "value": "\"expenses\".\"category\" IN ('groceries', 'household', 'housing', 'leisure', 'transport', 'other', 'lebensmittel', 'haushalt', 'wohnen', 'freizeit', 'mobilitaet', 'sonstiges')"
+          "value": "\"expenses\".\"category\" IN ('groceries', 'household', 'housing', 'leisure', 'transport', 'other')"
         }
       },
       "isRLSEnabled": false
@@ -2527,7 +2532,7 @@
         },
         "recurring_expenses_category_check": {
           "name": "recurring_expenses_category_check",
-          "value": "\"recurring_expenses\".\"category\" IN ('groceries', 'household', 'housing', 'leisure', 'transport', 'other', 'lebensmittel', 'haushalt', 'wohnen', 'freizeit', 'mobilitaet', 'sonstiges')"
+          "value": "\"recurring_expenses\".\"category\" IN ('groceries', 'household', 'housing', 'leisure', 'transport', 'other')"
         }
       },
       "isRLSEnabled": false
@@ -4370,7 +4375,16 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "wg_inventory_items_unit_check": {
+          "name": "wg_inventory_items_unit_check",
+          "value": "\"wg_inventory_items\".\"unit\" IN ('piece', 'litre', 'kilogram', 'roll', 'pack')"
+        },
+        "wg_inventory_items_category_check": {
+          "name": "wg_inventory_items_category_check",
+          "value": "\"wg_inventory_items\".\"category\" IN ('bathroom', 'kitchen', 'cleaning', 'other')"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.wg_inventory_log": {

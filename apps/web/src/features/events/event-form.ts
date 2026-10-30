@@ -1,8 +1,6 @@
 import type { wgEvents } from '@/core/db';
 import { isEventYearInRange } from '@/features/events/event-limits';
 import type { Message } from '@/shared/i18n/message';
-import { eventDateForDisplay, isSameDay } from './event-display';
-import type { EventInput } from './event-recurrence';
 
 /** Wire shape of a calendar event: dates as ISO strings, everything else as stored. */
 export function serializeWgEvent(row: typeof wgEvents.$inferSelect) {
@@ -48,7 +46,6 @@ export function validateEventForm(input: {
 	startsAt: string;
 	endsAt: string;
 	allDay?: boolean;
-	original?: Pick<EventInput, 'startsAt' | 'endsAt' | 'allDay'>;
 }): EventFormValidation {
 	if (input.title.trim().length === 0) {
 		return { ok: false, error: { key: 'events.form.errors.titleMissing' }, field: 'title' };
@@ -72,29 +69,6 @@ export function validateEventForm(input: {
 	}
 	if (endsAt && endsAt.getTime() < startsAt.getTime()) {
 		return { ok: false, error: { key: 'events.form.errors.endBeforeStart' }, field: 'endsAt' };
-	}
-	const original = input.original;
-	if (
-		allDay &&
-		original?.allDay &&
-		isSameDay(
-			eventDateForDisplay(startsAt.toISOString(), true),
-			eventDateForDisplay(original.startsAt, true),
-		) &&
-		(endsAt && original.endsAt
-			? isSameDay(
-					eventDateForDisplay(endsAt.toISOString(), true),
-					eventDateForDisplay(original.endsAt, true),
-				)
-			: endsAt === null && original.endsAt === null)
-	) {
-		// Preserve both legacy instants when only title/metadata changed. An explicit
-		// date edit writes the pair canonically, avoiding mixed old/new end ordering.
-		return {
-			ok: true,
-			startsAt: new Date(original.startsAt),
-			endsAt: original.endsAt ? new Date(original.endsAt) : null,
-		};
 	}
 	return { ok: true, startsAt, endsAt };
 }

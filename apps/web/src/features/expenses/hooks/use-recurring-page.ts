@@ -45,7 +45,7 @@ function upsertRecurring(current: RecurringExpense[], next: RecurringExpense): R
 	);
 }
 
-/** Fixkosten page: cached list, 30 s refresh, create/edit/pause/delete with optimistic updates. */
+/** Fixed costs page: cached list, 30 s refresh, create/edit/pause/delete with optimistic updates. */
 export function useRecurringPage() {
 	const { wg, members, identity } = useWg();
 	const toast = useToast();

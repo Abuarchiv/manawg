@@ -141,7 +141,7 @@ export async function GET(
 		return new NextResponse(body, {
 			headers: {
 				'Cache-Control': 'no-store',
-				'Content-Disposition': 'inline; filename="manawg-kalender.ics"',
+				'Content-Disposition': 'inline; filename="manawg-calendar.ics"',
 				'Content-Type': 'text/calendar; charset=utf-8',
 				'X-Content-Type-Options': 'nosniff',
 			},

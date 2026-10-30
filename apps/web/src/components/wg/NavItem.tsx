@@ -25,7 +25,7 @@ interface NavItemProps {
 	iconKey: NavIconKey;
 	/**
 	 * Additional hrefs that mark this item active (parent grouping). Compared
-	 * by exact path or `<prefix>/…` so `/wg/ABC/supplies` keeps Haushalt
+	 * by exact path or `<prefix>/…` so `/wg/ABC/supplies` keeps Household
 	 * active while all deep links keep resolving.
 	 */
 	activePrefixes?: string[];
