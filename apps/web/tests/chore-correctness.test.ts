@@ -196,5 +196,5 @@ test('absence dates use Berlin days across daylight saving and travel', () => {
 		getAbsentMemberIds(absence, Date.parse('2026-03-30T00:00:00+02:00')).includes('alice'),
 		false,
 	);
-	assert.equal(formatShortDateRange(startDate, endDate), '29.03. bis 29.03.');
+	assert.equal(formatShortDateRange(startDate, endDate), '29.03.');
 });
