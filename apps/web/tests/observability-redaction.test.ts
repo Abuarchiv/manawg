@@ -6,6 +6,7 @@ import { mock, test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { format } from 'node:util';
 import { contentSecurityPolicy } from '../src/core/infra/security-headers.ts';
+import { deferred } from './support/deferred.ts';
 import { applyEnv, withEnv } from './support/env.ts';
 
 // The envelope test drives the browser SDK; @sentry/browser is only reachable through
@@ -152,9 +153,6 @@ test('Sentry strips personal data and WG codes from error events', async () => {
 	);
 });
 
-// The entrypoint loads its optional modules through a dynamic import; give it time to settle.
-const flushOptionalImport = () => new Promise((resolve) => setTimeout(resolve, 30));
-
 let clientEntryRuns = 0;
 /**
  * Evaluates the client entrypoint afresh: its work happens at module load, driven by the env.
@@ -162,12 +160,25 @@ let clientEntryRuns = 0;
  */
 async function runInstrumentationClient(env: Record<string, string | undefined>) {
 	const restore = applyEnv({ NODE_ENV: 'production', NEXT_PUBLIC_SENTRY_DSN: undefined, ...env });
+	const initialized = deferred<void>();
+	const onInit = sdk.onInit;
+	sdk.onInit = (options) => {
+		try {
+			onInit?.(options);
+		} finally {
+			initialized.resolve();
+		}
+	};
 	clientEntryRuns += 1;
 	await import(`../src/instrumentation-client.ts?run=${clientEntryRuns}`);
 	return {
 		settled: async () => {
-			await flushOptionalImport();
-			restore();
+			try {
+				if (env.NEXT_PUBLIC_SENTRY_DSN) await initialized.promise;
+			} finally {
+				sdk.onInit = onInit;
+				restore();
+			}
 		},
 	};
 }
