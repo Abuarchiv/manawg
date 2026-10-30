@@ -10,14 +10,20 @@ export interface CalendarFeedOccurrence extends EventOccurrence {
 
 /**
  * RFC 5545 TEXT escaping — backslash first, or the escapes it inserts below
- * would themselves get escaped.
+ * would themselves get escaped. Unicode line separators become `\n` and the
+ * other control characters (tab stays) are dropped, since parsers that split on
+ * them would cut the line.
  */
 function escapeIcsText(value: string): string {
-	return value
-		.replace(/\\/g, '\\\\')
-		.replace(/;/g, '\\;')
-		.replace(/,/g, '\\,')
-		.replace(/\r\n|\r|\n/g, '\\n');
+	return (
+		value
+			.replace(/\\/g, '\\\\')
+			.replace(/;/g, '\\;')
+			.replace(/,/g, '\\,')
+			.replace(/\r\n|[\r\n\u0085\u2028\u2029]/g, '\\n')
+			// biome-ignore lint/suspicious/noControlCharactersInRegex: the class names exactly the characters to drop
+			.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '')
+	);
 }
 
 function takeUtf8Prefix(value: string, maxBytes: number): [string, string] {
