@@ -57,7 +57,7 @@ export function OfflineBanner() {
 	// The bar wraps instead of truncating, so its real height (small phones, large text) feeds
 	// the sticky offsets of settings tabs and the chat frame via --offline-banner-height.
 	const observerRef = useRef<ResizeObserver | null>(null);
-	const bannerRef = useCallback((el: HTMLDivElement | null) => {
+	const bannerRef = useCallback((el: HTMLElement | null) => {
 		observerRef.current?.disconnect();
 		observerRef.current = null;
 		const root = document.documentElement;
@@ -125,7 +125,7 @@ export function OfflineBanner() {
 		setAnnouncement(online ? backOnlineText : offlineTextRef.current);
 	}, [online, backOnlineText]);
 	const statusRegion = (
-		<output className="sr-only" aria-atomic="true" data-offline-banner-status>
+		<output className="sr-only" data-offline-banner-status>
 			{announcement}
 		</output>
 	);
@@ -190,10 +190,11 @@ export function OfflineBanner() {
 	return (
 		<>
 			{statusRegion}
-			<div
+			<output
 				ref={bannerRef}
 				data-offline-banner
 				className="bg-card text-foreground border-border sticky top-0 z-20 grid min-h-[calc(44px+1rem+1px)] grid-cols-[minmax(0,1fr)] content-center border-b px-4 py-2 text-meta font-medium"
+				aria-live="polite"
 			>
 				<div className="mx-auto flex w-full max-w-2xl flex-wrap items-center justify-between gap-x-3">
 					<Link
@@ -223,7 +224,7 @@ export function OfflineBanner() {
 						</Button>
 					)}
 				</div>
-			</div>
+			</output>
 		</>
 	);
 }

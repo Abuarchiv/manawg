@@ -298,4 +298,39 @@ test.describe('offline status announcement', () => {
 		await expect(status).toHaveText('Wieder online.');
 		await expect(page.locator('[data-offline-banner]')).toHaveCount(0);
 	});
+
+	test('the queued banner stays a polite live region while online', async ({ page }) => {
+		await setupMember(page);
+		await page.addInitScript(
+			({ wg }) => {
+				localStorage.setItem(
+					'manawg:offline-actions',
+					JSON.stringify([
+						{
+							id: `announcement.create:${wg.shareCode}:l-1`,
+							idempotencyKey: '00000001-1111-4111-8111-111111111111',
+							type: 'announcement.create',
+							wgId: wg.id,
+							shareCode: wg.shareCode,
+							memberId: wg.memberId,
+							createdAt: new Date().toISOString(),
+							payload: { content: 'Boiler repaired', kind: 'info', imageUrl: null },
+							attempts: 1,
+							lastAttemptAt: new Date().toISOString(),
+							lastError: 'Server prüfen: 404:chore_not_found',
+							needsReview: 'server',
+						},
+					]),
+				);
+			},
+			{ wg: FIXTURE_WG },
+		);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/shopping`);
+		await dismissOnboarding(page);
+
+		const banner = page.locator('[data-offline-banner]');
+		await expect(banner).toBeVisible();
+		await expect(banner).toHaveAttribute('aria-live', 'polite');
+		expect(await banner.evaluate((el) => el.tagName.toLowerCase())).toBe('output');
+	});
 });
