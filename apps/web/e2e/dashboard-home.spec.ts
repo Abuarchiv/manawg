@@ -558,7 +558,12 @@ test.describe('large data render limit', () => {
 		const rows = page.locator('li[id^="expense-"]');
 		await expect(rows.first()).toBeVisible();
 		await expect(rows).toHaveCount(60);
-		await page.getByRole('button', { name: /Mehr anzeigen \(440\)/ }).click();
+		// The button sits thousands of pixels down. WebKit can hit-test a click against the
+		// pre-scroll layout when it follows the scroll immediately, so scroll first and wait.
+		const showMore = page.getByRole('button', { name: /Mehr anzeigen \(440\)/ });
+		await showMore.scrollIntoViewIfNeeded();
+		await expect(showMore).toBeInViewport();
+		await showMore.click();
 		await expect(rows).toHaveCount(120);
 	});
 });
