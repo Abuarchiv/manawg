@@ -71,8 +71,10 @@ test.describe('manual split validation', () => {
 		await invalidShare.fill('-5');
 		await dialog.getByRole('button', { name: 'Ausgabe speichern', exact: true }).click();
 		await expect(dialog.getByText(INVALID_SPLIT_MESSAGE, { exact: true })).toBeVisible();
-		await expect(firstShare).toHaveAttribute('aria-invalid', 'true');
-		await expect(firstShare).toHaveAttribute('aria-describedby', 'expense-splits-error');
+		await expect(invalidShare).toHaveAttribute('aria-invalid', 'true');
+		await expect(invalidShare).toHaveAttribute('aria-describedby', 'expense-splits-error');
+		await expect(invalidShare).toBeFocused();
+		await expect(firstShare).not.toHaveAttribute('aria-invalid', 'true');
 		expect((await invalidShare.boundingBox())?.width).toBeGreaterThan(0);
 		expect(submitted).toBeNull();
 		expect(postCount).toBe(0);

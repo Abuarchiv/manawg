@@ -4,6 +4,7 @@ import test from 'node:test';
 const {
 	buildSplitsFromForm,
 	equalSplitParticipants,
+	isUnreadableShare,
 	remainderCandidates,
 	settledSharesChangedByEdit,
 } = await import('./expense-split-input');
@@ -269,4 +270,14 @@ test('the shares reported as changed are exactly the ones the server refuses to 
 		const violation = splitChangeViolation(previous, next, active, 'payer');
 		assert.equal(changed.length > 0, violation === 'expense_has_settled_shares');
 	}
+});
+
+test('isUnreadableShare flags only filled shares that cannot be read', () => {
+	assert.equal(isUnreadableShare('', 'de'), false);
+	assert.equal(isUnreadableShare('  ', 'de'), false);
+	assert.equal(isUnreadableShare(undefined, 'de'), false);
+	assert.equal(isUnreadableShare('5', 'de'), false);
+	assert.equal(isUnreadableShare('5,00', 'de'), false);
+	assert.equal(isUnreadableShare('abc', 'de'), true);
+	assert.equal(isUnreadableShare('-1', 'de'), true);
 });
