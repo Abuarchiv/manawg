@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { mock, test } from 'node:test';
 import { deferred } from '../../../tests/support/deferred';
+import { DESCRIPTION_MAX_LENGTH } from './expense-constants';
 
 type WorkerOptions = { errorHandler?: (message: string) => void };
 type CreateWorker = (langs?: unknown, oem?: unknown, options?: WorkerOptions) => Promise<unknown>;
@@ -252,4 +253,10 @@ test('SDK init errors reject promptly and repeated attempts do not spawn another
 	await assertRejectsWithin(runOcrOnImage(new Blob(), undefined, runtime), 250, reloadRequired);
 	await assert.rejects(runOcrOnImage(new Blob(), undefined, runtime), reloadRequired);
 	assert.equal(createCalls, 1);
+});
+
+test('an OCR description is capped at the description limit', () => {
+	const text = `${'a'.repeat(DESCRIPTION_MAX_LENGTH - 1)} ${'b'.repeat(100)} 12,34 EUR`;
+	const [expense] = parseOcrText(text, contextDate).expenses;
+	assert.equal(expense?.description, 'a'.repeat(DESCRIPTION_MAX_LENGTH - 1));
 });

@@ -1,5 +1,5 @@
 import { eurosToCents, parseEuroAmount } from '@/core/utils/amount';
-import { AMOUNT_MAX_CENTS } from '@/features/expenses/expense-constants';
+import { AMOUNT_MAX_CENTS, DESCRIPTION_MAX_LENGTH } from '@/features/expenses/expense-constants';
 import { parseDayMonthYear } from './import-csv-helpers';
 import type { ParsedExpense } from './import-parsers';
 import { UNKNOWN_NAME } from './import-types';
@@ -204,7 +204,9 @@ function cleanDescription(raw: string): string {
 		.replace(/(?:bezahlt von|paid by|von:)\s*[A-Za-zÄÖÜäöüß\s-]+/i, '')
 		.replace(DATE_PATTERN, '')
 		.replace(/\s+/g, ' ')
-		.trim();
+		.trim()
+		.slice(0, DESCRIPTION_MAX_LENGTH)
+		.trimEnd();
 }
 
 function hasWholeAmountBoundary(line: string, match: RegExpMatchArray): boolean {

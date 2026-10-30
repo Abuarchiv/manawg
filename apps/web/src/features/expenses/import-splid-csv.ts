@@ -1,4 +1,5 @@
 import { DEFAULT_LOCALE, type Locale } from '@/shared/i18n/locale';
+import { DESCRIPTION_MAX_LENGTH } from './expense-constants';
 import {
 	detectDelimiter,
 	distributeRemainder,
@@ -40,7 +41,7 @@ export function parseSplidCsv(
 		const fields = rows[r]?.fields ?? [];
 		const line = rows[r]?.lineNumber ?? r + 1;
 		const warnings: string[] = [];
-		const descRaw = (fields[idxDesc] ?? '').trim();
+		const descRaw = (fields[idxDesc] ?? '').trim().slice(0, DESCRIPTION_MAX_LENGTH).trimEnd();
 		if (!descRaw) continue;
 		const date = parseDateIso(fields[idxDate] ?? '', locale);
 		if (!date) {

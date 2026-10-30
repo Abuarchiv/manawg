@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { DESCRIPTION_MAX_LENGTH } from './expense-constants';
 import type { RejectedRow } from './import-types';
 
 const { matchMembers, parseSplidCsv, parseSplitwiseCsv } = await import('./import-parsers');
@@ -167,6 +168,21 @@ test('parseSplitwiseCsv keeps expenses whose description starts with "Total" and
 		['TotalEnergies fuel'],
 	);
 	assert.equal(rejected.length, 0);
+});
+
+test('imported descriptions are capped at the description limit without a trailing space', () => {
+	const long = `${'a'.repeat(DESCRIPTION_MAX_LENGTH - 1)} ${'b'.repeat(100)}`;
+	const splitwise = [
+		'Date,Description,Cost,Currency,Anna,Bob',
+		`2026-01-15,${long},30.00,EUR,20.00,-20.00`,
+	];
+	const splid = [
+		'Datum,Beschreibung,Betrag,Bezahlt von,Teilnehmer',
+		`2026-01-15,${long},12.00,Anna,Anna`,
+	];
+	const expected = 'a'.repeat(DESCRIPTION_MAX_LENGTH - 1);
+	assert.equal(parseSplitwiseCsv(splitwise.join('\n'))[0]?.description, expected);
+	assert.equal(parseSplidCsv(splid.join('\n'))[0]?.description, expected);
 });
 
 test('parseAmountToCents rejects a thousands group that starts with zero', () => {
