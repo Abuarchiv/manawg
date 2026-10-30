@@ -163,7 +163,7 @@ export default {
 			notPayer: 'Nur wer bezahlt hat, kann diese Ausgabe bearbeiten.',
 			hasSettledShares:
 				'Ein Anteil ist schon beglichen. Betrag und Aufteilung bleiben deshalb, wie sie sind; Beschreibung, Datum und Kategorie lassen sich ändern.',
-			aboPaused: 'Diese Fixkosten sind pausiert. Setze sie in den Fixkosten fort.',
+			recurringPaused: 'Diese Fixkosten sind pausiert. Setze sie in den Fixkosten fort.',
 			recurringAdvanced:
 				'Diese Fixkosten wurden für diese Fälligkeit schon übernommen. Lade die Ausgaben neu und prüfe die Liste.',
 			recurringChanged:

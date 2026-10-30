@@ -12,7 +12,7 @@ export default {
 	},
 	load: { list: 'Vorräte konnten nicht geladen werden' },
 	skeleton: { loadingAria: 'Vorräte werden geladen' },
-	categories: { bad: 'Bad', kueche: 'Küche', putzmittel: 'Putzmittel', sonstiges: 'Sonstiges' },
+	categories: { bathroom: 'Bad', kitchen: 'Küche', cleaning: 'Putzmittel', other: 'Sonstiges' },
 	unit: '{unit, select, piece {Stück} litre {L} kilogram {kg} roll {{count, plural, =1 {Rolle} other {Rollen}}} pack {{count, plural, =1 {Packung} other {Packungen}}} other {{unit}}}',
 	list: {
 		quick: 'Schnell nachfüllen',

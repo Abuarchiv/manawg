@@ -28,7 +28,7 @@ export default function StatementPage() {
 	const searchParams = useSearchParams();
 	const wgBaseHref = `/wg/${encodeURIComponent(wg.shareCode)}`;
 	const currentMonth = berlinMonthKey(new Date());
-	const param = searchParams.get('monat') ?? '';
+	const param = searchParams.get('month') ?? '';
 	// Default is the last finished month, the one the statement e-mail points to.
 	const monthKey =
 		MONTH_PARAM.test(param) && param <= currentMonth ? param : shiftMonthKey(currentMonth, -1);
@@ -62,7 +62,7 @@ export default function StatementPage() {
 	}, []);
 
 	function goTo(delta: number) {
-		router.replace(`${wgBaseHref}/statement?monat=${shiftMonthKey(monthKey, delta)}`, {
+		router.replace(`${wgBaseHref}/statement?month=${shiftMonthKey(monthKey, delta)}`, {
 			scroll: false,
 		});
 	}

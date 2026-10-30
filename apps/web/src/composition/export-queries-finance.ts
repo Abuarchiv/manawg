@@ -70,9 +70,9 @@ export async function fetchExpenseRows(wgId: string, page: ExportPage) {
 		.limit(page.limit)
 		.offset(page.offset);
 }
-/** Category name in the reader's language; an unknown stored value reads as `sonstiges`. */
+/** Category name in the reader's language; an unknown stored value reads as `other`. */
 function categoryName(locale: Locale, value: string | null): string {
-	const code = EXPENSE_CATEGORIES.find((known) => known === value) ?? 'sonstiges';
+	const code = EXPENSE_CATEGORIES.find((known) => known === value) ?? 'other';
 	return serverT(locale, 'expenses')(`categories.${code}`);
 }
 export function mapExpenseRows(

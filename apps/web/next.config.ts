@@ -79,6 +79,13 @@ const nextConfig: NextConfig = {
 				{ source: `/${from}`, destination: `/${to}`, permanent: true },
 				{ source: `/${from}/:path+`, destination: `/${to}/:path+`, permanent: true },
 			]),
+			// Monthly statement mails sent before the rename link `?monat=`.
+			{
+				source: '/wg/:code/statement',
+				has: [{ type: 'query', key: 'monat', value: '(?<month>\\d{4}-\\d{2})' }],
+				destination: '/wg/:code/statement?month=:month',
+				permanent: true,
+			},
 			...Object.entries(wg).flatMap(([from, to]) => [
 				{ source: `/wg/:code/${from}`, destination: `/wg/:code/${to}`, permanent: true },
 				{

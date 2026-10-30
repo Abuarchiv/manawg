@@ -246,7 +246,7 @@ export function renderStatementMail(input: StatementMailInput): StatementMail {
 	const view = buildView(input, locale);
 	const wgBase = `${APP_ORIGIN}/wg/${encodeURIComponent(input.shareCode)}`;
 	const links: Links = {
-		statement: `${wgBase}/statement?monat=${input.statement.monthKey}`,
+		statement: `${wgBase}/statement?month=${input.statement.monthKey}`,
 		settings: `${wgBase}/settings`,
 		unsubscribe: input.unsubscribeUrl,
 	};

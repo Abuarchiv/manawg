@@ -6,7 +6,7 @@ const { filterExpenses } = await import('./expense-filter');
 const expense = (id: string, description: string, paidBy: string, debtors: string[]) => ({
 	id,
 	description,
-	category: 'sonstiges' as const,
+	category: 'other' as const,
 	paidByMemberId: paidBy,
 	amountCents: 1000,
 	currency: 'EUR',
@@ -38,7 +38,7 @@ test('search matches description, category and payer, ignoring case and umlauts'
 	const { matchesExpenseQuery } = await import('./expense-filter');
 	const e = {
 		...expense('e1', 'Wocheneinkauf Müsli', 'm1', ['m2']),
-		category: 'lebensmittel' as const,
+		category: 'groceries' as const,
 	};
 	const name = (id: string) => (id === 'm1' ? 'Jürgen' : 'Mina');
 	assert.equal(matchesExpenseQuery(e, 'musli', name), true);

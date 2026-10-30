@@ -16,14 +16,13 @@ import {
 
 /**
  * Throws `${failurePrefix} Mismatches: ...` when the catalog differs from `snapshotTag`.
- * `knownDrift` lists reviewed differences to tolerate (see legacy-adoption.mjs); with
- * `rejectUnexpected`, tables, columns and constraints missing from the snapshot also fail.
+ * With `rejectUnexpected`, tables, columns and constraints missing from the snapshot also fail.
  */
 export async function assertExpectedSchema(
 	client,
 	snapshotTag,
 	failurePrefix,
-	{ knownDrift = null, rejectUnexpected = false } = {},
+	{ rejectUnexpected = false } = {},
 ) {
 	const { rows: columnRows } =
 		await client.query(`select rel.relname as table_name, attr.attname as column_name,
@@ -69,12 +68,8 @@ export async function assertExpectedSchema(
 			if (!expectedTables.has(tableName)) mismatches.push(`unexpected table public.${tableName}`);
 		}
 		for (const [key] of columns) {
-			const [tableName, columnName] = key.split('.');
-			if (
-				expectedTables.has(tableName) &&
-				!expectedColumns.has(key) &&
-				!knownDrift?.extraColumns.has(`${tableName}.${columnName}`)
-			) {
+			const [tableName] = key.split('.');
+			if (expectedTables.has(tableName) && !expectedColumns.has(key)) {
 				mismatches.push(`unexpected column public.${key}`);
 			}
 		}
@@ -89,15 +84,11 @@ export async function assertExpectedSchema(
 			if (normalizeType(actual.type) !== normalizeType(column.type)) {
 				mismatches.push(`column public.${table.table}.${column.name} type`);
 			}
-			if (
-				actual.not_null !== column.notNull &&
-				!knownDrift?.columnNullability.has(`${table.table}.${column.name}`)
-			)
+			if (actual.not_null !== column.notNull)
 				mismatches.push(`column public.${table.table}.${column.name} nullability`);
 			if (
 				!column.generated &&
-				normalizeDefault(actual.default_expr) !== normalizeDefault(column.default) &&
-				!knownDrift?.columnDefaults.has(`${table.table}.${column.name}`)
+				normalizeDefault(actual.default_expr) !== normalizeDefault(column.default)
 			) {
 				mismatches.push(`column public.${table.table}.${column.name} default`);
 			}
@@ -148,9 +139,7 @@ export async function assertExpectedSchema(
 				);
 			if (
 				!expectedTables.has(row.table_name) ||
-				(!expectedNamedConstraints.has(key) &&
-					!isExpectedSinglePrimaryKey &&
-					!knownDrift?.constraints.has(key))
+				(!expectedNamedConstraints.has(key) && !isExpectedSinglePrimaryKey)
 			) {
 				mismatches.push(`unexpected constraint public.${row.table_name}.${row.constraint_name}`);
 			}
@@ -189,8 +178,7 @@ export async function assertExpectedSchema(
 				(requireValidatedConstraints && actual.is_valid !== true) ||
 				normalizeCheck(actual.definition, table.table) !==
 					normalizeCheck(constraint.value, table.table);
-			if (mismatch && !knownDrift?.constraints.has(`c.${table.table}.${constraint.name}`))
-				mismatches.push(`check constraint public.${table.table}.${constraint.name}`);
+			if (mismatch) mismatches.push(`check constraint public.${table.table}.${constraint.name}`);
 		}
 		for (const foreignKey of Object.values(table.foreignKeys)) {
 			const actual = findConstraint('f', table.table, foreignKey.name);

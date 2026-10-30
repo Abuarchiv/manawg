@@ -50,7 +50,7 @@ const writes = [
 		`/api/wg/${code}/recurring-expenses`,
 		{
 			description: 'Strom',
-			category: 'wohnen',
+			category: 'housing',
 			amountCents: 1000,
 			paidByMemberId: annaId,
 			intervalMonths: 1,
@@ -67,7 +67,7 @@ const writes = [
 	[
 		'POST',
 		`/api/wg/${code}/inventory`,
-		{ name: 'Spüli', quantity: 1, threshold: 1, category: 'putzmittel' },
+		{ name: 'Spüli', quantity: 1, threshold: 1, category: 'cleaning' },
 	],
 	['PATCH', `/api/wg/${code}/inventory/${inventoryId}`, { quantity: 3 }],
 	['POST', `/api/wg/${code}/inventory/${inventoryId}/consume`, { delta: -1 }],
@@ -202,7 +202,6 @@ for (const id of ids) {
 		['DELETE', `/api/wg/${code}/absences/${id}`],
 		['PATCH', `/api/wg/${code}/members/${id}`],
 		['POST', `/api/wg/${code}/members/${id}/admin`],
-		['POST', `/api/wg/${code}/members/${id}/claim`],
 		['DELETE', `/api/wg/${code}/invites/${id}`],
 		['GET', `/api/wg/invites/${id}`],
 		['GET', `/api/wg/${code}/imports/${id}`],

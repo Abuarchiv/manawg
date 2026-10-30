@@ -25,7 +25,7 @@ export function RecurringEditModal({
 	onSubmit,
 }: RecurringEditModalProps) {
 	const t = useTranslations('expenses-recurring');
-	// AboForm resyncs its fields whenever `initial` changes identity (so
+	// RecurringForm resyncs its fields whenever `initial` changes identity (so
 	// switching to a different recurringExpense picks up fresh values). A fresh object
 	// literal here would give it a new identity on every re-render of this
 	// modal — e.g. any unrelated state change on the parent recurringExpenses page while

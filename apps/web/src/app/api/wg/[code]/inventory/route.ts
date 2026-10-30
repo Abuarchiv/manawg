@@ -14,10 +14,8 @@ import { readListLimit } from '@/core/infra/env';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import {
 	groupItemsByCategory,
-	INVENTORY_CATEGORIES,
 	INVENTORY_LIMITS,
 	INVENTORY_LIST_LIMIT,
-	INVENTORY_UNITS,
 } from '@/features/inventory/inventory';
 import { getRecentDecrementCounts } from '@/features/inventory/server/inventory-decrements';
 import {
@@ -25,6 +23,10 @@ import {
 	isInventoryNameViolation,
 } from '@/features/inventory/server/inventory-duplicate';
 import { createInventoryItemMutation } from '@/features/inventory/server/inventory-mutations';
+import {
+	inventoryCategorySchema,
+	inventoryUnitSchema,
+} from '@/features/inventory/server/inventory-value-schemas';
 
 /** Hard ceiling for `INVENTORY_LIST_LIMIT` — env can lower or raise, never unbound. */
 const INVENTORY_LIST_LIMIT_MAX = 5000;
@@ -37,14 +39,14 @@ const createInventorySchema = z.object({
 		.min(INVENTORY_LIMITS.QUANTITY_MIN)
 		.max(INVENTORY_LIMITS.QUANTITY_MAX)
 		.default(0),
-	unit: z.enum(INVENTORY_UNITS).default('Stück'), // i18n-ignore stored unit key
+	unit: inventoryUnitSchema.default('piece'),
 	threshold: z
 		.number()
 		.multipleOf(0.01)
 		.min(INVENTORY_LIMITS.THRESHOLD_MIN)
 		.max(INVENTORY_LIMITS.THRESHOLD_MAX)
 		.default(1),
-	category: z.enum(INVENTORY_CATEGORIES).default('sonstiges'),
+	category: inventoryCategorySchema.default('other'),
 });
 
 export const GET = withWgRoute('inventory GET', async (req, { code }) => {

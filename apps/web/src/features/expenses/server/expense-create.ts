@@ -167,7 +167,7 @@ export async function writeExpense(
 			.limit(1)
 			.for('update');
 		if (!locked) throw new TransactionAbort('recurring_expense_not_found');
-		if (locked.pausedAt) throw new TransactionAbort('abo_paused');
+		if (locked.pausedAt) throw new TransactionAbort('recurring_paused');
 		if (locked.nextDueAt.getTime() !== input.recurring.expectedDueAt.getTime()) {
 			throw new TransactionAbort('recurring_expense_already_advanced');
 		}
@@ -228,7 +228,7 @@ export function expenseCreateAbortResponse(error: unknown): NextResponse | null 
 	if (!(error instanceof TransactionAbort)) return null;
 	if (error.code === 'image_removed') return conflict('image_removed', 'image_removed');
 	if (error.code === 'recurring_expense_not_found') return notFound('recurring_expense_not_found');
-	if (error.code === 'abo_paused') return badRequest('abo_paused');
+	if (error.code === 'recurring_paused') return badRequest('recurring_paused');
 	if (error.code === 'recurring_expense_already_advanced') {
 		return conflict('recurring_expense_already_advanced');
 	}

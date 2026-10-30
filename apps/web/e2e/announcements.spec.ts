@@ -12,7 +12,7 @@ import {
 	skipUnlessFixtures,
 } from './support/helpers';
 
-test.describe('pinnwand done posts', () => {
+test.describe('pinboard done posts', () => {
 	skipUnlessFixtures();
 
 	const SHARE_CODE = FIXTURE_WG.shareCode;
@@ -148,7 +148,7 @@ test.describe('pinnwand done posts', () => {
 	});
 });
 
-test.describe('pinnwand comment edit focus', () => {
+test.describe('pinboard comment edit focus', () => {
 	skipUnlessFixtures();
 
 	const ANNOUNCEMENT_ID = 'comment-edit-focus';
@@ -252,7 +252,7 @@ test.describe('pinnwand comment edit focus', () => {
 	});
 });
 
-test.describe('pinnwand comment layout', () => {
+test.describe('pinboard comment layout', () => {
 	skipUnlessFixtures();
 
 	const ANNOUNCEMENT_ID = 'comment-layout';
@@ -386,7 +386,7 @@ test.describe('pinnwand comment layout', () => {
 	}
 });
 
-test.describe('pinnwand refresh', () => {
+test.describe('pinboard refresh', () => {
 	skipUnlessFixtures();
 	test.use({ serviceWorkers: 'block' });
 

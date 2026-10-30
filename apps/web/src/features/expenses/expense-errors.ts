@@ -45,7 +45,7 @@ const SAVE_ERRORS: Record<string, Message> = {
 	paid_by_must_include_caller: PAID_BY_MUST_INCLUDE_CALLER,
 	not_payer: msg('expenses-form.errors.save.notPayer'),
 	expense_has_settled_shares: saveDetail('expenses-form.errors.save.hasSettledShares'),
-	abo_paused: saveDetail('expenses-form.errors.save.aboPaused'),
+	recurring_paused: saveDetail('expenses-form.errors.save.recurringPaused'),
 	recurring_expense_already_advanced: msg('expenses-form.errors.save.recurringAdvanced'),
 	recurring_expense_changed: msg('expenses-form.errors.save.recurringChanged'),
 	recurring_expense_not_found: RECURRING_NOT_FOUND,

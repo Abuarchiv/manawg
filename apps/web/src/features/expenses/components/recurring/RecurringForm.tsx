@@ -31,12 +31,12 @@ import {
 import type { MemberOption } from '@/features/expenses/expense-types';
 import { countMissedOccurrences } from '@/features/expenses/recurring-expenses';
 import {
-	aboAmountError,
-	aboSplitError,
 	buildRecurringSplits,
 	initialEqualParticipants,
 	initialManualMap,
 	type RecurringFormValues,
+	recurringAmountError,
+	recurringSplitError,
 	type SplitMode,
 } from '@/features/expenses/recurring-form-model';
 import { type Message, useMessage } from '@/shared/i18n/message';
@@ -138,7 +138,7 @@ export function RecurringForm({
 			: null;
 	const amountError =
 		error && parsedAmountCents === null
-			? message(aboAmountError(parseEuroAmount(amountStr, locale), amountStr))
+			? message(recurringAmountError(parseEuroAmount(amountStr, locale), amountStr))
 			: null;
 	// A start in the past is booked retroactively by the daily run; say so before it happens.
 	const dueDateChanged = !initial || nextDueAt !== isoToInputDate(initial.nextDueAt);
@@ -189,7 +189,7 @@ export function RecurringForm({
 			return;
 		}
 		if (parsedAmountCents === null) {
-			setError(aboAmountError(parseEuroAmount(amountStr, locale), amountStr));
+			setError(recurringAmountError(parseEuroAmount(amountStr, locale), amountStr));
 			return;
 		}
 		if (dueOn.trim().length === 0) {
@@ -208,11 +208,11 @@ export function RecurringForm({
 		}
 		const splits = buildSplits();
 		if (typeof splits === 'string') {
-			if (splits === 'amount_invalid') setError(aboAmountError(null, ''));
+			if (splits === 'amount_invalid') setError(recurringAmountError(null, ''));
 			else if (splits === 'no_members')
 				setError({ key: 'expenses-recurring.form.error.noMembers' });
 			else {
-				setSplitError(aboSplitError(splits));
+				setSplitError(recurringSplitError(splits));
 				// The message sits below the fields, often outside the visible area.
 				requestAnimationFrame(() =>
 					document.getElementById('recurring-splits-error')?.scrollIntoView({ block: 'nearest' }),

@@ -162,7 +162,7 @@ await check(
 	`/api/wg/${codeC}/recurring-expenses`,
 	{
 		description: 'X',
-		category: 'wohnen',
+		category: 'housing',
 		amountCents: 1000,
 		paidByMemberId: cId,
 		intervalMonths: 1,

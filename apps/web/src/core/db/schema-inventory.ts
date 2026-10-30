@@ -11,11 +11,11 @@ export const wgInventoryItems = pgTable(
 			.references(() => wgs.id, { onDelete: 'cascade' }),
 		name: text('name').notNull(),
 		quantity: numeric('quantity', { precision: 10, scale: 2, mode: 'number' }).notNull().default(0),
-		unit: text('unit').notNull().default('Stück'), // i18n-ignore stored unit key
+		unit: text('unit').notNull().default('piece'),
 		threshold: numeric('threshold', { precision: 10, scale: 2, mode: 'number' })
 			.notNull()
 			.default(1),
-		category: text('category').notNull().default('sonstiges'),
+		category: text('category').notNull().default('other'),
 		lastDecrementedAt: timestamp('last_decremented_at', { withTimezone: true }),
 		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

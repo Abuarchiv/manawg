@@ -116,7 +116,7 @@ const MEMBER_READS: Record<string, MemberRead> = {
 					createdByMemberId: fixture.members[0]?.id ?? '',
 					paidByMemberId: fixture.members[0]?.id ?? '',
 					description: 'Internet',
-					category: 'wohnen',
+					category: 'housing',
 					amountCents: 3290,
 					currency: 'EUR',
 					intervalMonths: 1,

@@ -140,8 +140,6 @@ export default {
 		notAnInviteLink: 'Das ist kein Einladungslink. Füge den ganzen Link ein.',
 		wgNameMissing: 'WG-Name fehlt.',
 		displayNameMissing: 'Dein Anzeigename fehlt.',
-		profileLinked: 'Dieses Profil gehört schon zu einem Konto.',
-		accountLinked: 'Dein Konto ist in dieser WG schon Mitglied.',
 		inviteInvalid:
 			'Dieser Einladungslink stimmt nicht. Prüfe, ob er vollständig kopiert wurde, oder bitte ein Mitglied um einen neuen.',
 	},
@@ -225,9 +223,6 @@ export default {
 		joinBody: 'Mit diesem Namen sehen dich deine Mitbewohner.',
 		joining: 'Tritt bei…',
 		join: 'Beitreten',
-		claimTitle: 'Schon Mitglied?',
-		claimBody: 'Wurde dein Profil angelegt, bevor es Konten gab? Übernimm es mit deinem Konto.',
-		claimAs: 'Ich bin {name}',
 	},
 	register: {
 		title: 'Konto erstellen',

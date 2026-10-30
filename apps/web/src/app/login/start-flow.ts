@@ -13,7 +13,7 @@ import { MEMBER_NAME_MAX_LENGTH, WG_NAME_MAX_LENGTH } from '@/shared/lib/limits'
 
 export const WG_NAME_MAX = WG_NAME_MAX_LENGTH;
 export const NAME_MAX = MEMBER_NAME_MAX_LENGTH;
-export const START_DRAFT_KEY = 'manawg:draft:neu';
+export const START_DRAFT_KEY = 'manawg:draft:start';
 
 export interface CreateResponse {
 	wg: { id: string; shareCode: string; name: string };

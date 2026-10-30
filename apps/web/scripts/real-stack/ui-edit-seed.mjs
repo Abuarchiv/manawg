@@ -6,7 +6,7 @@ export async function seed({ A, B, code, annaId, benId, LONG }) {
 	await call(A, 'POST', `${api}/expenses`, {
 		amountCents: 4250,
 		description: 'Wocheneinkauf',
-		category: 'lebensmittel',
+		category: 'groceries',
 		paidByMemberId: annaId,
 		splits: [
 			{ debtorMemberId: annaId, amountCents: 2125 },
@@ -18,7 +18,7 @@ export async function seed({ A, B, code, annaId, benId, LONG }) {
 		name: 'Klopapier',
 		quantity: 1,
 		threshold: 2,
-		category: 'putzmittel',
+		category: 'cleaning',
 	});
 	await call(A, 'POST', `${api}/chores`, {
 		title: 'Bad putzen',
@@ -38,7 +38,7 @@ export async function seed({ A, B, code, annaId, benId, LONG }) {
 	await call(B, 'POST', `${api}/chat/messages`, { body: LONG.repeat(4).slice(0, 600) });
 	await call(A, 'POST', `${api}/recurring-expenses`, {
 		description: 'Internet',
-		category: 'wohnen',
+		category: 'housing',
 		amountCents: 4000,
 		paidByMemberId: annaId,
 		intervalMonths: 1,

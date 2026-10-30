@@ -25,7 +25,7 @@ export async function run({ A, B, code, annaId, benId, page, consoleErrors }) {
 	const failed = await batched(400, 20, (i) =>
 		call(i % 2 ? A : B, 'POST', `${api}/expenses`, {
 			description: `Last ${i}`,
-			category: i % 3 ? 'lebensmittel' : 'wohnen',
+			category: i % 3 ? 'groceries' : 'housing',
 			amountCents: 100 + (i % 97) * 7,
 			paidByMemberId: i % 2 ? annaId : benId,
 			occurredAt: new Date(Date.now() - (i % 120) * day).toISOString(),
@@ -88,7 +88,7 @@ export async function run({ A, B, code, annaId, benId, page, consoleErrors }) {
 		'/expenses',
 		'/chat',
 		'/shopping',
-		'/statement?monat=2026-10',
+		'/statement?month=2026-10',
 		'/activity',
 	]) {
 		consoleErrors.length = 0;

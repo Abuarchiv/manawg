@@ -82,7 +82,7 @@ export function isEmptyModuleDraft(
 	const defaults: Record<DraftModule, Record<string, unknown>> = {
 		expense: {
 			description: '',
-			category: 'sonstiges',
+			category: 'other',
 			amountStr: '',
 			imageUrl: null,
 			paidByMemberId: memberId,

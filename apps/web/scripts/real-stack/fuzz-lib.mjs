@@ -80,7 +80,7 @@ export function fuzzBodies(base) {
 export const exp = (amt, payer, members) => ({
 	amountCents: amt,
 	description: 'Fuzz',
-	category: 'lebensmittel',
+	category: 'groceries',
 	paidByMemberId: payer,
 	splits: members.map((id, i) => ({
 		debtorMemberId: id,
@@ -108,7 +108,7 @@ export const iv = await call(A, 'POST', `/api/wg/${code}/inventory`, {
 	name: 'Seife',
 	quantity: 5,
 	threshold: 1,
-	category: 'putzmittel',
+	category: 'cleaning',
 });
 export const inventoryId = (iv.body.item ?? iv.body).id;
 export const ev = await call(A, 'POST', `/api/wg/${code}/events`, {
@@ -145,7 +145,7 @@ export const ab = await call(A, 'POST', `/api/wg/${code}/absences`, {
 export const absenceId = (ab.body.absence ?? ab.body).id;
 export const re = await call(A, 'POST', `/api/wg/${code}/recurring-expenses`, {
 	description: 'Miete',
-	category: 'wohnen',
+	category: 'housing',
 	amountCents: 4000,
 	paidByMemberId: annaId,
 	intervalMonths: 1,

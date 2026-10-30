@@ -136,8 +136,6 @@ export default {
 		notAnInviteLink: 'That is not an invite link. Paste the whole link.',
 		wgNameMissing: 'The flat name is missing.',
 		displayNameMissing: 'Your display name is missing.',
-		profileLinked: 'This profile already belongs to an account.',
-		accountLinked: 'Your account is already a member of this flat.',
 		inviteInvalid:
 			'This invite link is not correct. Check that it was copied completely, or ask a member for a new one.',
 	},
@@ -220,9 +218,6 @@ export default {
 		joinBody: 'Your flatmates will see you under this name.',
 		joining: 'Joining…',
 		join: 'Join',
-		claimTitle: 'Already a member?',
-		claimBody: 'Was your profile created before accounts existed? Take it over with your account.',
-		claimAs: 'I am {name}',
 	},
 	register: {
 		title: 'Create account',

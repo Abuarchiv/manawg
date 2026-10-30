@@ -69,18 +69,18 @@ test('month balances, Berlin month edges and fewest transfers', () => {
 	assert.equal(statement.settled, false);
 });
 
-test('categories are summed per month, largest first, "sonstiges" last', () => {
+test('categories are summed per month, largest first, "other" last', () => {
 	const withCategory = (category: string | undefined, id: string, cents: number) => ({
 		...expense(id, 'L', '2026-09-10T10:00:00Z', { L: cents }),
 		...(category ? { category } : {}),
 	});
 	const statement = buildMonthlyStatement(
 		[
-			withCategory('sonstiges', 'a', 10000),
-			withCategory('freizeit', 'b', 2000),
-			withCategory('lebensmittel', 'c', 5000),
-			withCategory('lebensmittel', 'd', 1000),
-			// Missing or unknown categories count as "sonstiges".
+			withCategory('other', 'a', 10000),
+			withCategory('leisure', 'b', 2000),
+			withCategory('groceries', 'c', 5000),
+			withCategory('groceries', 'd', 1000),
+			// Missing or unknown categories count as "other".
 			withCategory(undefined, 'e', 1000),
 			withCategory('unbekannt', 'f', 1000),
 		],
@@ -90,9 +90,9 @@ test('categories are summed per month, largest first, "sonstiges" last', () => {
 	assert.deepEqual(
 		statement.categories.map(({ category, cents, share }) => [category, cents, share]),
 		[
-			['lebensmittel', 6000, 30],
-			['freizeit', 2000, 10],
-			['sonstiges', 12000, 60],
+			['groceries', 6000, 30],
+			['leisure', 2000, 10],
+			['other', 12000, 60],
 		],
 	);
 	assert.equal(statement.categories[0]?.label, 'Lebensmittel');

@@ -14,7 +14,7 @@ import {
 import { expectNoGermanChrome, expectNoHorizontalOverflow, setEnglishLocale } from './support/i18n';
 
 const BASE = `/api/wg/${FIXTURE_WG.shareCode}`;
-const PINNWAND = `/wg/${FIXTURE_WG.shareCode}/pinboard`;
+const PINBOARD = `/wg/${FIXTURE_WG.shareCode}/pinboard`;
 const CHAT = `/wg/${FIXTURE_WG.shareCode}/chat`;
 const MINA_ID = '0ab8c8f2-5d03-4a84-aadc-4c5d7e8abf55';
 const FIXTURE_MESSAGE_ID = '8c1bb4a9-4722-42fe-bb86-aebf2e2d5b11';
@@ -120,7 +120,7 @@ test.describe('English noticeboard', () => {
 						resolvedAt: new Date().toISOString(),
 					}),
 				]);
-				await navigateToFeature(page, PINNWAND);
+				await navigateToFeature(page, PINBOARD);
 				await dismissOnboarding(page);
 
 				await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
@@ -212,7 +212,7 @@ test.describe('English noticeboard', () => {
 						? route.fulfill({ status: 500, json: { error: 'insert_failed' } })
 						: route.fallback(),
 				);
-				await navigateToFeature(page, PINNWAND);
+				await navigateToFeature(page, PINBOARD);
 				await dismissOnboarding(page);
 
 				await expect(page.getByText('No posts yet')).toBeVisible();
@@ -250,7 +250,7 @@ test.describe('English noticeboard', () => {
 		await mockAnnouncements(page, [
 			post('done', 'Resolved topic', { status: 'resolved', resolvedAt: new Date().toISOString() }),
 		]);
-		await navigateToFeature(page, PINNWAND);
+		await navigateToFeature(page, PINBOARD);
 		await dismissOnboarding(page);
 		await expect(page.getByText('Nothing open')).toBeVisible();
 		await expect(
@@ -282,7 +282,7 @@ test.describe('English noticeboard', () => {
 			post('open', 'Open question'),
 			post('done', 'Resolved topic', { status: 'resolved', resolvedAt: new Date().toISOString() }),
 		]);
-		await navigateToFeature(page, `${PINNWAND}#announcement-done`);
+		await navigateToFeature(page, `${PINBOARD}#announcement-done`);
 		await dismissOnboarding(page);
 		await expect(
 			page.getByText('This post is resolved or ticked off and is no longer on the noticeboard.'),
@@ -507,7 +507,7 @@ test.describe('English noticeboard extras', () => {
 			if (calls === 1) await new Promise((resolve) => setTimeout(resolve, 1500));
 			return route.fulfill({ json: { announcements: calls === 1 ? [first] : [second, first] } });
 		});
-		await navigateToFeature(page, PINNWAND);
+		await navigateToFeature(page, PINBOARD);
 		await expect(page.getByRole('status', { name: 'Loading noticeboard' })).toBeVisible();
 		await dismissOnboarding(page);
 		await expect(page.getByText('Internet bill')).toBeVisible();

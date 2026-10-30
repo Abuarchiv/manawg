@@ -39,7 +39,7 @@ const i1 = await call(A, 'POST', `/api/wg/${code}/inventory`, {
 	name: 'Klopapier',
 	quantity: 5,
 	threshold: 2,
-	category: 'putzmittel',
+	category: 'cleaning',
 });
 expect(i1.status < 300, 'Inventory: create', JSON.stringify(i1.body));
 const invItem = i1.body.item ?? i1.body;
@@ -144,7 +144,7 @@ const ex = async (u, amt, payer, ids) =>
 	call(u, 'POST', `/api/wg/${code}/expenses`, {
 		amountCents: amt,
 		description: 'Einkauf',
-		category: 'lebensmittel',
+		category: 'groceries',
 		paidByMemberId: payer,
 		splits: ids.map((id, i) => ({
 			debtorMemberId: id,
@@ -285,7 +285,7 @@ expect(xStranger.status >= 400, 'foreign expense not editable', JSON.stringify(x
 // ---- Recurring + cron
 const rc = await call(A, 'POST', `/api/wg/${code}/recurring-expenses`, {
 	description: 'Internet',
-	category: 'wohnen',
+	category: 'housing',
 	amountCents: 4000,
 	paidByMemberId: annaId,
 	intervalMonths: 1,

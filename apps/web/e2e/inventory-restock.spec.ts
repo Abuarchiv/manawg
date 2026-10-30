@@ -15,9 +15,9 @@ test.describe('inventory restock retry', () => {
 				wgId: FIXTURE_WG.id,
 				name: 'Reis',
 				quantity: 5,
-				unit: 'Packung',
+				unit: 'pack',
 				threshold: 1,
-				category: 'kueche',
+				category: 'kitchen',
 				lastDecrementedAt: '2026-09-23T10:00:00.000Z',
 				decrementCount30d: 3,
 				createdAt: '2026-09-20T10:00:00.000Z',
@@ -28,9 +28,9 @@ test.describe('inventory restock retry', () => {
 				wgId: FIXTURE_WG.id,
 				name: 'Linsen',
 				quantity: 2,
-				unit: 'Packung',
+				unit: 'pack',
 				threshold: 1,
-				category: 'kueche',
+				category: 'kitchen',
 				lastDecrementedAt: '2026-09-23T10:00:00.000Z',
 				decrementCount30d: 2,
 				createdAt: '2026-09-20T10:00:00.000Z',
@@ -53,7 +53,7 @@ test.describe('inventory restock retry', () => {
 				contentType: 'application/json',
 				body: JSON.stringify({
 					items,
-					grouped: { bad: [], kueche: items, putzmittel: [], sonstiges: [] },
+					grouped: { bathroom: [], kitchen: items, cleaning: [], other: [] },
 				}),
 			});
 		});
@@ -126,9 +126,9 @@ test.describe('inventory restock retry', () => {
 			wgId: FIXTURE_WG.id,
 			name: 'Reis',
 			quantity: 5,
-			unit: 'Packung',
+			unit: 'pack',
 			threshold: 1,
-			category: 'kueche',
+			category: 'kitchen',
 			lastDecrementedAt: '2026-09-23T10:00:00.000Z',
 			decrementCount30d: 4,
 			createdAt: '2026-09-20T10:00:00.000Z',
@@ -274,9 +274,9 @@ test.describe('inventory restock retry', () => {
 			wgId: FIXTURE_WG.id,
 			name: 'Reis',
 			quantity: 5,
-			unit: 'Packung',
+			unit: 'pack',
 			threshold: 1,
-			category: 'kueche',
+			category: 'kitchen',
 			lastDecrementedAt: null,
 			decrementCount30d: 0,
 			createdAt: '2026-09-20T10:00:00.000Z',
@@ -292,7 +292,7 @@ test.describe('inventory restock retry', () => {
 			await route.fulfill({
 				json: {
 					items: [item],
-					grouped: { bad: [], kueche: [item], putzmittel: [], sonstiges: [] },
+					grouped: { bathroom: [], kitchen: [item], cleaning: [], other: [] },
 				},
 			});
 		});
@@ -318,9 +318,9 @@ test.describe('inventory restock retry', () => {
 			wgId: FIXTURE_WG.id,
 			name: 'Reis',
 			quantity: 3,
-			unit: 'Packung',
+			unit: 'pack',
 			threshold: 2,
-			category: 'kueche',
+			category: 'kitchen',
 			lastDecrementedAt: null,
 			decrementCount30d: 0,
 			createdAt: '2026-09-20T10:00:00.000Z',
@@ -346,7 +346,7 @@ test.describe('inventory restock retry', () => {
 			await route.fulfill({
 				json: {
 					items: [current],
-					grouped: { bad: [], kueche: [current], putzmittel: [], sonstiges: [] },
+					grouped: { bathroom: [], kitchen: [current], cleaning: [], other: [] },
 				},
 			});
 		});
@@ -394,9 +394,9 @@ test.describe('inventory restock retry', () => {
 			wgId: FIXTURE_WG.id,
 			name: 'Reis',
 			quantity: 5,
-			unit: 'Packung',
+			unit: 'pack',
 			threshold: 1,
-			category: 'kueche',
+			category: 'kitchen',
 			lastDecrementedAt: null,
 			decrementCount30d: 0,
 			createdAt: '2026-09-20T10:00:00.000Z',
@@ -410,7 +410,7 @@ test.describe('inventory restock retry', () => {
 			await route.fulfill({
 				json: {
 					items: [item],
-					grouped: { bad: [], kueche: [item], putzmittel: [], sonstiges: [] },
+					grouped: { bathroom: [], kitchen: [item], cleaning: [], other: [] },
 				},
 			});
 		});
@@ -438,9 +438,9 @@ test.describe('inventory restock retry', () => {
 			wgId: FIXTURE_WG.id,
 			name: 'Spülmittel',
 			quantity: 3,
-			unit: 'L',
+			unit: 'litre',
 			threshold: 2,
-			category: 'kueche',
+			category: 'kitchen',
 			lastDecrementedAt: null,
 			decrementCount30d: 0,
 			createdAt: '2026-09-20T10:00:00.000Z',
@@ -454,7 +454,7 @@ test.describe('inventory restock retry', () => {
 			await route.fulfill({
 				json: {
 					items: [item],
-					grouped: { bad: [], kueche: [item], putzmittel: [], sonstiges: [] },
+					grouped: { bathroom: [], kitchen: [item], cleaning: [], other: [] },
 				},
 			});
 		});

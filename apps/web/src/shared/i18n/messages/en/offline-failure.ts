@@ -62,7 +62,7 @@ export default {
 		detail:
 			'The template no longer exists. Remove this offline action or create the fixed cost again.',
 	},
-	aboPaused: {
+	recurringPaused: {
 		title: 'Fixed cost paused',
 		detail:
 			'The fixed cost has been paused in the meantime. Remove this offline action or resume the fixed cost.',

@@ -10,7 +10,6 @@ import { fileURLToPath } from 'node:url';
 
 export const MIGRATIONS_SCHEMA = 'drizzle';
 export const MIGRATIONS_TABLE = '__drizzle_migrations';
-export const BASELINE_TAG = '0000_baseline';
 
 const moduleDir = path.dirname(fileURLToPath(import.meta.url));
 export const migrationsFolder = path.join(moduleDir, '..', '..', 'drizzle');
@@ -54,13 +53,6 @@ export function readMigrationJournal() {
 		throw new Error('Migration journal must list every SQL migration exactly once.');
 	}
 	return journal;
-}
-
-export function readJournalEntry(tag) {
-	const journal = readMigrationJournal();
-	const entry = journal.entries.find((it) => it.tag === tag);
-	if (!entry) throw new Error(`Journal has no entry tagged "${tag}".`);
-	return entry;
 }
 
 /** Must match drizzle's own hash: sha256 over the raw file contents. */
@@ -111,8 +103,4 @@ export function expectedSchema(snapshotTag) {
 			uniqueConstraints: table.uniqueConstraints,
 			checkConstraints: table.checkConstraints,
 		}));
-}
-
-export function expectedBaselineSchema() {
-	return expectedSchema(BASELINE_TAG);
 }

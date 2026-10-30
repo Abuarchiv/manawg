@@ -92,7 +92,7 @@ expect(
 const mk = (d, desc) =>
 	call(A, 'POST', `${api}/expenses`, {
 		description: desc,
-		category: 'sonstiges',
+		category: 'other',
 		amountCents: 1000,
 		paidByMemberId: annaId,
 		occurredAt: d,
@@ -122,7 +122,7 @@ await page.request.post('/api/auth/sign-in', {
 	headers: { origin: BASE },
 });
 const statementText = async (month) => {
-	await page.goto(`/wg/${code}/statement?monat=${month}`);
+	await page.goto(`/wg/${code}/statement?month=${month}`);
 	await page.waitForLoadState('networkidle');
 	await page.getByRole('heading', { level: 1 }).or(page.getByText(/2026/)).first().waitFor();
 	return (await page.locator('main').innerText()).replace(/\s+/g, ' ');

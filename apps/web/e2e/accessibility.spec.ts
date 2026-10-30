@@ -463,8 +463,8 @@ test.describe('label in name audit', () => {
 		await dismissOnboarding(page);
 
 		const nav = page.getByRole('navigation', { name: 'WG Hauptnavigation' });
-		const haushalt = nav.getByRole('link', { name: 'Haushalt', exact: true });
-		await haushalt.click();
+		const household = nav.getByRole('link', { name: 'Haushalt', exact: true });
+		await household.click();
 
 		// Without RouteFocusOnNavigate, the just-activated <a> keeps focus because
 		// the shared <main> never remounts across sibling `/wg/[code]/*` routes.

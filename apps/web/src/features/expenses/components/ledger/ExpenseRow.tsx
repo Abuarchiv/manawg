@@ -134,7 +134,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 													<span className="tabular-nums"> {money(expense.amountCents)}</span>
 												)}
 											</span>
-											{expense.category !== 'sonstiges' && (
+											{expense.category !== 'other' && (
 												<>
 													{' · '}
 													{tCategories(expense.category)}

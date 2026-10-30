@@ -14,11 +14,8 @@ import {
 	validateSupabaseSessionUrl,
 } from './connection.mjs';
 import { assertMigrationLedgerPrefix } from './ledger.mjs';
-import { adoptBaseline, assertBaselineSchema, ledgerHasBaseline } from './legacy-adoption.mjs';
 import { acquireMigrationLock, releaseMigrationLock } from './lock.mjs';
 import {
-	BASELINE_TAG,
-	hashMigration,
 	MIGRATIONS_SCHEMA,
 	MIGRATIONS_TABLE,
 	migrationsFolder,
@@ -74,24 +71,12 @@ export async function main(progress) {
 			console.error('[migrate] Verified up to date.');
 			return;
 		}
-		// Baseline adoption for pre-chain ledgers; legacy-adoption.mjs says when this can go.
-		progress.stage = 'inspect-baseline';
-		const baselineHash = hashMigration(BASELINE_TAG);
-		progress.stage = 'inspect-baseline-ledger';
-		const needsAdoption = hasSchema && !(await ledgerHasBaseline(client, baselineHash));
-
-		if (needsAdoption) {
-			progress.stage = 'adoption-verify';
-			await assertBaselineSchema(client);
-			console.error(
-				`[migrate] Existing schema without this baseline in the ledger — recording ${BASELINE_TAG} as applied.`,
+		// The baseline would fail on existing tables; a schema without a ledger needs a person.
+		if (hasSchema && !ledger?.appliedCount) {
+			throw new Error(
+				'Database check failed: the schema exists but the migration ledger is empty. Restore the ledger before migrating.',
 			);
-			progress.stage = 'adopt';
-			await adoptBaseline(client);
 		}
-
-		progress.stage = 'ledger';
-		if (hasMigrationLedger || needsAdoption) await assertMigrationLedgerPrefix(client);
 		const db = drizzle(client);
 		// DDL waits for an ACCESS EXCLUSIVE (or SHARE) lock and, while waiting,
 		// queues every later query on that table behind it. Give up quickly

@@ -82,7 +82,7 @@ function localizedRows(locale: 'de' | 'en') {
 		({ ...ROW, category, occurredAt: AT, imageUrl: null, amountCents: 100, id: category }) as never;
 	const recurring = {
 		id: 'r1',
-		category: 'wohnen',
+		category: 'housing',
 		paidByMemberId: 'm1',
 		nextDueAt: AT,
 		createdAt: AT,
@@ -97,7 +97,7 @@ function localizedRows(locale: 'de' | 'en') {
 			createdAt: AT,
 		}) as never;
 	return {
-		categories: ['lebensmittel', 'wohnen', 'mobilitaet', 'sonstiges', 'unknown'].map(
+		categories: ['groceries', 'housing', 'transport', 'other', 'unknown'].map(
 			(code) => mapExpenseRows([expense(code)], NAMES, new Map(), locale)[0]?.category,
 		),
 		recurring: mapRecurringRows([recurring as never], NAMES, locale)[0]?.category,

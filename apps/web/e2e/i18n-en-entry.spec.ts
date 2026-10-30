@@ -160,10 +160,7 @@ test.describe('entry and auth in English', () => {
 				await page.route(`**/api/wg/invites/${TOKEN}`, (route) =>
 					route.fulfill({
 						status: 200,
-						json: {
-							wg: { name: 'Altbau', shareCode: FIXTURE_WG.shareCode },
-							unclaimed: [{ id: FIXTURE_WG.memberId, name: 'Anna' }],
-						},
+						json: { wg: { name: 'Altbau', shareCode: FIXTURE_WG.shareCode } },
 					}),
 				);
 
@@ -207,8 +204,7 @@ test.describe('entry and auth in English', () => {
 				await expect(
 					page.getByRole('heading', { name: 'Join the flat “Altbau”', level: 1 }),
 				).toBeVisible({ timeout: 60_000 });
-				await expect(page.getByRole('heading', { name: 'Already a member?' })).toBeVisible();
-				await expect(page.getByRole('button', { name: 'I am Anna' })).toBeVisible();
+				await expect(page.getByLabel('Your display name')).toBeVisible();
 				await expectEnglishPage(page, width);
 
 				await page.goto('/invite/not-a-valid-token');

@@ -25,15 +25,8 @@ interface AuditEventDef {
 }
 
 const REACTIONS = ['seen', 'take', 'ok'];
-
-// i18n-ignore stored unit keys; the catalog maps them to the unit labels
-const UNIT_KEYS: Record<string, string> = {
-	Stück: 'piece',
-	L: 'litre',
-	kg: 'kilogram',
-	Rolle: 'roll',
-	Packung: 'pack',
-};
+// Mirrors INVENTORY_UNITS (features/inventory); core cannot import features.
+const UNITS = ['piece', 'litre', 'kilogram', 'roll', 'pack'];
 
 function withAmount(metadata: Record<string, unknown>, locale: Locale): Values | null {
 	if (typeof metadata.amountCents !== 'number') return null;
@@ -112,7 +105,7 @@ const EVENTS: Readonly<Record<string, AuditEventDef>> = {
 				? {
 						quantity: formatDecimal(Math.abs(metadata.appliedDelta), locale),
 						count: Math.abs(metadata.appliedDelta),
-						unitKey: UNIT_KEYS[String(metadata.unit)] ?? 'other',
+						unitKey: UNITS.includes(String(metadata.unit)) ? String(metadata.unit) : 'other',
 					}
 				: null,
 	},

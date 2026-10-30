@@ -1,25 +1,25 @@
 export const EXPENSE_CATEGORIES = [
-	'lebensmittel',
-	'haushalt',
-	'wohnen',
-	'freizeit',
-	'mobilitaet',
-	'sonstiges',
+	'groceries',
+	'household',
+	'housing',
+	'leisure',
+	'transport',
+	'other',
 ] as const;
 export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
 
 /** Plain German names for server output (exports, statements); screens render `expenseCategoryMessage`. */
 export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
-	lebensmittel: 'Lebensmittel',
+	groceries: 'Lebensmittel',
 	// i18n-ignore German name for server output
-	haushalt: 'Haushalt',
+	household: 'Haushalt',
 	// i18n-ignore German name for server output
-	wohnen: 'Wohnen & Nebenkosten',
-	freizeit: 'Freizeit',
+	housing: 'Wohnen & Nebenkosten',
+	leisure: 'Freizeit',
 	// i18n-ignore German name for server output
-	mobilitaet: 'Mobilität',
+	transport: 'Mobilität',
 	// i18n-ignore German name for server output
-	sonstiges: 'Sonstiges',
+	other: 'Sonstiges',
 };
 
-export const DEFAULT_EXPENSE_CATEGORY: ExpenseCategory = 'sonstiges';
+export const DEFAULT_EXPENSE_CATEGORY: ExpenseCategory = 'other';

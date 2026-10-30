@@ -11,9 +11,11 @@ import { withWgRoute } from '@/core/guards/with-wg-route';
 import { badRequest, conflict, notFound, rateLimitResponse } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { checkRateLimit, clientIpKey, wgReadLimiter, wgWriteLimiter } from '@/core/rate-limit';
+import { berlinDayKey } from '@/core/utils/berlin-day';
 import {
 	eventDateTimeSchema,
 	eventDescriptionSchema,
+	eventInstant,
 	eventLocationSchema,
 	eventRecurrenceSchema,
 	eventTitleSchema,
@@ -108,9 +110,16 @@ export const PATCH = withWgRoute<{ id: string }>('events PATCH', async (req, { c
 	};
 	if (parsed.data.title !== undefined) update.title = parsed.data.title;
 	if (parsed.data.description !== undefined) update.description = parsed.data.description;
-	if (parsed.data.startsAt !== undefined) update.startsAt = new Date(parsed.data.startsAt);
-	if (parsed.data.endsAt !== undefined)
-		update.endsAt = parsed.data.endsAt ? new Date(parsed.data.endsAt) : null;
+	const allDay = parsed.data.allDay ?? current.allDay;
+	// Turning a timed event into an all-day one without new dates keeps its Berlin dates.
+	const switchedToAllDay = allDay && !current.allDay;
+	const storedTime = (instant: Date) => eventInstant(berlinDayKey(instant), true);
+	if (parsed.data.startsAt !== undefined) {
+		update.startsAt = eventInstant(parsed.data.startsAt, allDay);
+	} else if (switchedToAllDay) update.startsAt = storedTime(current.startsAt);
+	if (parsed.data.endsAt !== undefined) {
+		update.endsAt = parsed.data.endsAt ? eventInstant(parsed.data.endsAt, allDay) : null;
+	} else if (switchedToAllDay && current.endsAt) update.endsAt = storedTime(current.endsAt);
 	if (parsed.data.allDay !== undefined) update.allDay = parsed.data.allDay;
 	if (parsed.data.location !== undefined) update.location = parsed.data.location;
 	if (recurrence?.ok) update.recurrence = recurrence.rule;

@@ -26,7 +26,7 @@ function commonTexts(prefix: Message): Record<string, Message> {
 	};
 }
 
-export function aboSaveError(error: string, action: 'created' | 'updated'): Message {
+export function recurringSaveError(error: string, action: 'created' | 'updated'): Message {
 	const prefix: Message = {
 		key:
 			action === 'created'
@@ -51,7 +51,7 @@ export function aboSaveError(error: string, action: 'created' | 'updated'): Mess
 	);
 }
 
-export function aboActionError(error: string): Message {
+export function recurringActionError(error: string): Message {
 	const prefix: Message = { key: 'expenses-recurring.errors.action' };
 	return mutationError(
 		prefix,
@@ -64,7 +64,7 @@ export function aboActionError(error: string): Message {
 	);
 }
 
-export function aboDeleteError(error: string): Message {
+export function recurringDeleteError(error: string): Message {
 	const prefix: Message = { key: 'expenses-recurring.errors.delete' };
 	return mutationError(
 		prefix,

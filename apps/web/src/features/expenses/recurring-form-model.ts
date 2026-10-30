@@ -75,7 +75,7 @@ export function initialManualMap(
 }
 
 /** Why an amount field is rejected; above the maximum the amount is too large, not too small. */
-export function aboAmountError(euros: number | null, raw: string): Message {
+export function recurringAmountError(euros: number | null, raw: string): Message {
 	if (euros === null && /[.,]\d{3,}\s*(€|EUR)?$/i.test(raw.trim())) {
 		return { key: 'expenses-recurring.form.error.amountDecimals' };
 	}
@@ -91,7 +91,7 @@ const SPLIT_ERROR_KEYS = {
 } as const;
 
 /** The error shown under the split fields for a failed manual split. */
-export function aboSplitError(reason: keyof typeof SPLIT_ERROR_KEYS): Message {
+export function recurringSplitError(reason: keyof typeof SPLIT_ERROR_KEYS): Message {
 	return { key: SPLIT_ERROR_KEYS[reason] };
 }
 

@@ -83,7 +83,7 @@ test('a queued expense formats its amount and splits in the reader locale', () =
 test('an expense draft that only kept an older date counts as empty', () => {
 	const untouched = {
 		description: '',
-		category: 'sonstiges',
+		category: 'other',
 		amountStr: '',
 		occurredOn: '2000-01-01',
 		participantIds: null,

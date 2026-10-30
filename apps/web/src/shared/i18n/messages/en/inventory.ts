@@ -16,10 +16,10 @@ export default {
 	load: { list: 'Supplies could not be loaded' },
 	skeleton: { loadingAria: 'Loading supplies' },
 	categories: {
-		bad: 'Bathroom',
-		kueche: 'Kitchen',
-		putzmittel: 'Cleaning supplies',
-		sonstiges: 'Other',
+		bathroom: 'Bathroom',
+		kitchen: 'Kitchen',
+		cleaning: 'Cleaning supplies',
+		other: 'Other',
 	},
 	unit: '{unit, select, piece {pcs} litre {L} kilogram {kg} roll {{count, plural, =1 {roll} other {rolls}}} pack {{count, plural, =1 {pack} other {packs}}} other {{unit}}}',
 	list: {

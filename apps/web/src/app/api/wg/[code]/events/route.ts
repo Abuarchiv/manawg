@@ -23,6 +23,7 @@ import { checkRateLimit, clientIpKey, wgReadLimiter, wgWriteLimiter } from '@/co
 import {
 	eventDateTimeSchema,
 	eventDescriptionSchema,
+	eventInstant,
 	eventLocationSchema,
 	eventRecurrenceSchema,
 	eventTitleSchema,
@@ -108,8 +109,9 @@ export const POST = withWgRoute('events POST', async (req, { code }) => {
 		},
 	});
 	if (!parsed.ok) return parsed.response;
-	const startsAt = new Date(parsed.data.startsAt);
-	const endsAt = parsed.data.endsAt ? new Date(parsed.data.endsAt) : null;
+	const { allDay } = parsed.data;
+	const startsAt = eventInstant(parsed.data.startsAt, allDay);
+	const endsAt = parsed.data.endsAt ? eventInstant(parsed.data.endsAt, allDay) : null;
 	if (endsAt && endsAt.getTime() < startsAt.getTime()) {
 		return badRequest('ends_before_start');
 	}

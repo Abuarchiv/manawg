@@ -3,15 +3,12 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
-import { assertMigrationLedgerPrefix } from '../scripts/db-migrate/ledger.mjs';
 import {
-	ADOPTION_KNOWN_DRIFT,
-	assertBaselineSchema,
-	isAllowedLegacyLedgerRow,
-	LEGACY_LEDGER_ALLOWLIST,
-} from '../scripts/db-migrate/legacy-adoption.mjs';
+	assertMigrationLedgerPrefix,
+	HISTORICAL_LEDGER_ROWS,
+	isHistoricalLedgerRow,
+} from '../scripts/db-migrate/ledger.mjs';
 import {
-	BASELINE_TAG,
 	expectedSchema,
 	hashMigration,
 	latestAvailableSnapshotTag,
@@ -239,7 +236,7 @@ test('normalizers treat catalog output and snapshot SQL as equal', () => {
 
 test('the journal on disk is contiguous and hashes match the raw SQL files', () => {
 	const entries: JournalEntry[] = readMigrationJournal().entries;
-	assert.equal(entries[0]?.tag, BASELINE_TAG);
+	assert.equal(entries[0]?.tag, '0000_baseline');
 	for (const [index, entry] of entries.entries()) assert.equal(entry.idx, index);
 	const last = entries.at(-1);
 	assert.ok(last);
@@ -279,20 +276,20 @@ test('ledger prefix rejects reordered, mistimed, duplicated and malformed rows',
 });
 
 test('allowlisted historical hashes are accepted only at their position and timestamp', async () => {
-	const [legacy] = [...LEGACY_LEDGER_ALLOWLIST];
-	assert.ok(legacy);
-	const [hash, { when, position }] = legacy;
-	assert.equal(isAllowedLegacyLedgerRow(hash, String(when), position), true);
-	assert.equal(isAllowedLegacyLedgerRow(hash, String(when), position + 1), false);
-	assert.equal(isAllowedLegacyLedgerRow(hash, String(when + 1), position), false);
-	assert.equal(isAllowedLegacyLedgerRow('ab'.repeat(32), String(when), position), false);
+	const [historical] = [...HISTORICAL_LEDGER_ROWS];
+	assert.ok(historical);
+	const [hash, { when, position }] = historical;
+	assert.equal(isHistoricalLedgerRow(hash, String(when), position), true);
+	assert.equal(isHistoricalLedgerRow(hash, String(when), position + 1), false);
+	assert.equal(isHistoricalLedgerRow(hash, String(when + 1), position), false);
+	assert.equal(isHistoricalLedgerRow('ab'.repeat(32), String(when), position), false);
 
 	const rows = canonicalRows();
-	const withLegacy = rows.map((row, index) =>
+	const withHistorical = rows.map((row, index) =>
 		index === position ? { ...row, hash, created_at: String(when) } : row,
 	);
 	assert.equal(
-		(await assertMigrationLedgerPrefix(ledgerClient(withLegacy))).appliedCount,
+		(await assertMigrationLedgerPrefix(ledgerClient(withHistorical))).appliedCount,
 		rows.length,
 	);
 	const misplaced = [{ id: 1, hash, created_at: String(when) }];
@@ -342,32 +339,5 @@ test('schema check reports missing, unexpected and invalid objects', async () =>
 			);
 			return true;
 		},
-	);
-});
-
-test('baseline adoption tolerates exactly the reviewed drift', async () => {
-	const catalog = catalogFor(BASELINE_TAG);
-	const [extraKey] = ADOPTION_KNOWN_DRIFT.extraColumns;
-	assert.ok(extraKey);
-	const [extraTable = '', extraColumn = ''] = extraKey.split('.');
-	const [firstColumn] = catalog.columns;
-	assert.ok(firstColumn);
-	const withDrift: Catalog = {
-		...catalog,
-		columns: catalog.columns.some(
-			(column) => column.table_name === extraTable && column.column_name === extraColumn,
-		)
-			? catalog.columns
-			: [...catalog.columns, { ...firstColumn, table_name: extraTable, column_name: extraColumn }],
-	};
-	await assertBaselineSchema(catalogClient(withDrift));
-
-	const unreviewed: Catalog = {
-		...catalog,
-		columns: [...catalog.columns, { ...firstColumn, column_name: 'unreviewed_column' }],
-	};
-	await assert.rejects(
-		assertBaselineSchema(catalogClient(unreviewed)),
-		/^Error: Refusing to adopt 0000_baseline: baseline schema is incomplete\. .* Mismatches: unexpected column public\.\w+\.unreviewed_column\.$/,
 	);
 });

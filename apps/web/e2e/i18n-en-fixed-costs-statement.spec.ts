@@ -8,10 +8,10 @@ import { expectNoGermanChrome, setEnglishLocale } from './support/i18n';
 const OTHER_MEMBER_ID = '0ab8c8f2-5d03-4a84-aadc-4c5d7e8abf55';
 const BASE = `/wg/${FIXTURE_WG.shareCode}`;
 
-const abo = {
+const recurring = {
 	id: 'recurring-en-1',
 	description: 'Music plan',
-	category: 'freizeit',
+	category: 'leisure',
 	amountCents: 1299,
 	currency: 'EUR',
 	paidByMemberId: FIXTURE_WG.memberId,
@@ -28,7 +28,7 @@ const septemberExpense = {
 	amountCents: 3000,
 	currency: 'EUR',
 	description: 'Groceries',
-	category: 'lebensmittel',
+	category: 'groceries',
 	// Two-digit day: with en-GB's four-letter "Sept" the date cell is at its widest.
 	occurredAt: '2026-09-14T10:00:00.000Z',
 	splits: [
@@ -72,7 +72,10 @@ test.describe('English fixed costs and statement', () => {
 				await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/recurring-expenses*`, (route) =>
 					route.fulfill({
 						json: {
-							recurringExpenses: [abo, { ...abo, id: 'recurring-en-2', pausedAt: '2026-10-01' }],
+							recurringExpenses: [
+								recurring,
+								{ ...recurring, id: 'recurring-en-2', pausedAt: '2026-10-01' },
+							],
 						},
 					}),
 				);
@@ -112,7 +115,7 @@ test.describe('English fixed costs and statement', () => {
 				await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/expenses*`, (route) =>
 					route.fulfill({ json: { expenses: [septemberExpense], payments: [] } }),
 				);
-				await navigateToFeature(page, `${BASE}/statement?monat=2026-09`);
+				await navigateToFeature(page, `${BASE}/statement?month=2026-09`);
 
 				await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
 				await expect(page.getByRole('heading', { level: 1, name: 'September 2026' })).toBeVisible();
@@ -158,7 +161,7 @@ test.describe('English fixed costs and statement', () => {
 				created = route.request().postDataJSON();
 				return route.fulfill({
 					status: 201,
-					json: { recurringExpense: { ...abo, id: 'recurring-created', ...created } },
+					json: { recurringExpense: { ...recurring, id: 'recurring-created', ...created } },
 				});
 			}
 			return route.fulfill({ json: { recurringExpenses: [] } });
@@ -188,7 +191,7 @@ test.describe('English fixed costs and statement', () => {
 		await setupMember(page);
 		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/recurring-expenses**`, (route) =>
 			route.request().method() === 'GET'
-				? route.fulfill({ json: { recurringExpenses: [abo] } })
+				? route.fulfill({ json: { recurringExpenses: [recurring] } })
 				: route.fulfill({
 						status: 409,
 						json: { error: 'recurring_expense_changed', code: 'recurring_expense_changed' },

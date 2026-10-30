@@ -28,6 +28,7 @@ import {
 import {
 	eventDateTimeSchema,
 	eventDescriptionSchema,
+	eventInstant,
 	eventLocationSchema,
 	eventTitleSchema,
 } from '@/features/events/event-schemas';
@@ -71,7 +72,7 @@ export const POST = withWgRoute<{ id: string }>('events occurrence', async (req,
 	if (
 		body.action === 'detach' &&
 		body.endsAt &&
-		Date.parse(body.endsAt) < Date.parse(body.startsAt)
+		eventInstant(body.endsAt, body.allDay) < eventInstant(body.startsAt, body.allDay)
 	) {
 		return badRequest('ends_before_start');
 	}
@@ -158,8 +159,8 @@ export const POST = withWgRoute<{ id: string }>('events occurrence', async (req,
 							wgId,
 							title: body.title,
 							description: body.description ?? null,
-							startsAt: new Date(body.startsAt),
-							endsAt: body.endsAt ? new Date(body.endsAt) : null,
+							startsAt: eventInstant(body.startsAt, body.allDay),
+							endsAt: body.endsAt ? eventInstant(body.endsAt, body.allDay) : null,
 							allDay: body.allDay,
 							location: body.location ?? null,
 							recurrence: null,

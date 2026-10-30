@@ -81,7 +81,7 @@ function buildCategories(
 ): StatementCategory[] {
 	const sums = new Map<ExpenseCategory, number>();
 	for (const expense of expenses) {
-		const category = EXPENSE_CATEGORIES.find((code) => code === expense.category) ?? 'sonstiges';
+		const category = EXPENSE_CATEGORIES.find((code) => code === expense.category) ?? 'other';
 		sums.set(category, (sums.get(category) ?? 0) + expense.amountCents);
 	}
 	return [...sums]
@@ -92,8 +92,8 @@ function buildCategories(
 			share: totalCents > 0 ? Math.round((cents / totalCents) * 100) : 0,
 		}))
 		.sort((a, b) => {
-			if (a.category === 'sonstiges' || b.category === 'sonstiges') {
-				return a.category === 'sonstiges' ? 1 : -1;
+			if (a.category === 'other' || b.category === 'other') {
+				return a.category === 'other' ? 1 : -1;
 			}
 			return b.cents - a.cents;
 		});

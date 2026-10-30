@@ -12,7 +12,11 @@ import { apiFetch } from '@/core/infra/api-client';
 import { useSyncedCollection } from '@/core/sync/use-synced-collection';
 import { LIST_REFRESH_INTERVAL_MS } from '@/core/utils/use-visibility-paused-interval';
 import type { RecurringExpense, RecurringFilter } from '@/features/expenses/expense-types';
-import { aboActionError, aboDeleteError, aboSaveError } from '@/features/expenses/recurring-errors';
+import {
+	recurringActionError,
+	recurringDeleteError,
+	recurringSaveError,
+} from '@/features/expenses/recurring-errors';
 import { getDueRecurringExpenses } from '@/features/expenses/recurring-expenses';
 import type { RecurringFormValues } from '@/features/expenses/recurring-form-model';
 import { useMessage } from '@/shared/i18n/message';
@@ -146,7 +150,7 @@ export function useRecurringPage() {
 				current.filter((recurringExpense) => recurringExpense.id !== optimisticId),
 			);
 			if (shouldReleaseIdempotencyKey(res.status, res.error)) createRequestRef.current = null;
-			const message = t(aboSaveError(res.error, 'created'));
+			const message = t(recurringSaveError(res.error, 'created'));
 			setNoticeMessage('error', message);
 		}
 		setSubmitting(false);
@@ -183,7 +187,7 @@ export function useRecurringPage() {
 			setNoticeMessage('success', t({ key: 'expenses-recurring.notice.updated' }));
 		} else {
 			updateRecurring((current) => upsertRecurring(current, previousRecurring));
-			const message = t(aboSaveError(res.error, 'updated'));
+			const message = t(recurringSaveError(res.error, 'updated'));
 			setNoticeMessage('error', message);
 			if (res.status === 409 && res.error === 'recurring_expense_changed') {
 				// The form holds the old due date; close it so the next edit starts from fresh data.
@@ -221,7 +225,7 @@ export function useRecurringPage() {
 			);
 		} else {
 			updateRecurring((current) => upsertRecurring(current, recurringExpense));
-			const message = t(aboActionError(res.error));
+			const message = t(recurringActionError(res.error));
 			setNoticeMessage('error', message);
 			toast.error(message);
 			if (res.status === 409 && res.error === 'recurring_expense_changed') void load(false);
@@ -245,7 +249,7 @@ export function useRecurringPage() {
 			const alreadyGone = res.status === 404 && res.error === 'recurring_expense_not_found';
 			if (alreadyGone) void load(false);
 			else updateRecurring((current) => upsertRecurring(current, previousRecurring));
-			const message = t(aboDeleteError(res.error));
+			const message = t(recurringDeleteError(res.error));
 			setNoticeMessage('error', message);
 			toast.error(message);
 		}

@@ -440,7 +440,7 @@ test.describe('chat compose', () => {
 	});
 });
 
-test.describe('chat pinnwand reflow 200', () => {
+test.describe('chat pinboard reflow 200', () => {
 	skipUnlessFixtures();
 
 	// WCAG 1.4.10 Reflow + 1.4.4 Resize Text: existing specs cover Chat's edit-focus
@@ -493,7 +493,7 @@ test.describe('chat pinnwand reflow 200', () => {
 			await expect(page.getByRole('textbox').last()).toBeVisible();
 		});
 
-		test(`pinnwand page reflows without horizontal scroll at 320px/200% text (${colorScheme})`, async ({
+		test(`pinboard page reflows without horizontal scroll at 320px/200% text (${colorScheme})`, async ({
 			page,
 		}) => {
 			await page.setViewportSize({ width: 320, height: 740 });

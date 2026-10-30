@@ -122,7 +122,7 @@ export default function RecurringPage() {
 				</Card>
 			)}
 			{loading ? (
-				<AbosSkeleton />
+				<RecurringSkeleton />
 			) : (
 				<RecurringList
 					recurringExpenses={recurringExpenses}
@@ -225,7 +225,7 @@ export default function RecurringPage() {
 	);
 }
 
-function AbosSkeleton() {
+function RecurringSkeleton() {
 	const t = useTranslations('expenses-recurring');
 	return (
 		<>

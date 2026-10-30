@@ -31,7 +31,7 @@ const EXPENSE = {
 	amountCents: 4800,
 	currency: 'EUR',
 	description: 'Weekly shop',
-	category: 'lebensmittel',
+	category: 'groceries',
 	imageUrl: null,
 	occurredAt: '2026-09-24T17:00:00.000Z',
 	createdAt: '2026-09-24T17:00:00.000Z',

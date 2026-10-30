@@ -156,7 +156,7 @@ const ids = members.body.members.map((x) => x.id);
 const ex = await call(A, 'POST', `/api/wg/${wg}/expenses`, {
 	amountCents: 1000,
 	description: 'Beleg',
-	category: 'lebensmittel',
+	category: 'groceries',
 	paidByMemberId: ids[0],
 	splits: ids.map((id) => ({ debtorMemberId: id, amountCents: 500 })),
 	imageUrl: url,
@@ -169,7 +169,7 @@ expect(
 const foreign = await call(A, 'POST', `/api/wg/${wg}/expenses`, {
 	amountCents: 1000,
 	description: 'Fremdbild',
-	category: 'lebensmittel',
+	category: 'groceries',
 	paidByMemberId: ids[0],
 	splits: ids.map((id) => ({ debtorMemberId: id, amountCents: 500 })),
 	imageUrl: `/api/upload/read?key=${encodeURIComponent(`manawg/${randomUUID()}/expense/${randomUUID()}.png`)}`,

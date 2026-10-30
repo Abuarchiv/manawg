@@ -85,18 +85,18 @@ const GERMAN_SUMMARIES: Case[] = [
 	['inventory.deleted', { name: null }, 'Anna hat einen Vorrat aus den Vorräten entfernt.'],
 	[
 		'inventory.consumed',
-		{ name: 'Seife', unit: 'Stück', appliedDelta: -1.5 },
+		{ name: 'Seife', unit: 'piece', appliedDelta: -1.5 },
 		'Anna hat 1,5 Stück Seife entnommen.',
 	],
 	[
 		'inventory.consumed',
-		{ name: 'Papier', unit: 'Rolle', appliedDelta: -2 },
+		{ name: 'Papier', unit: 'roll', appliedDelta: -2 },
 		'Anna hat 2 Rollen Papier entnommen.',
 	],
 
 	[
 		'inventory.consumed',
-		{ name: 'Papier', unit: 'Rolle', appliedDelta: -1 },
+		{ name: 'Papier', unit: 'roll', appliedDelta: -1 },
 		'Anna hat 1 Rolle Papier entnommen.',
 	],
 
@@ -238,13 +238,13 @@ test('English renders amounts, counts and units in the reader locale', () => {
 	);
 	assert.equal(say('expense.debt.settled', { count: 1 }), 'settled 1 open share.');
 	assert.equal(
-		say('inventory.consumed', { name: 'Soap', unit: 'Stück', appliedDelta: -1.5 }),
+		say('inventory.consumed', { name: 'Soap', unit: 'piece', appliedDelta: -1.5 }),
 		'took 1.5 pcs of Soap.',
 	);
 	for (const [unit, appliedDelta, expected] of [
-		['Rolle', -1, 'took 1 roll of Paper.'],
-		['Rolle', -2, 'took 2 rolls of Paper.'],
-		['Packung', -1.5, 'took 1.5 packs of Paper.'],
+		['roll', -1, 'took 1 roll of Paper.'],
+		['roll', -2, 'took 2 rolls of Paper.'],
+		['pack', -1.5, 'took 1.5 packs of Paper.'],
 	] as const) {
 		assert.equal(say('inventory.consumed', { name: 'Paper', unit, appliedDelta }), expected);
 	}

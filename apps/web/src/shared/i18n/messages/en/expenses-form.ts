@@ -159,7 +159,7 @@ export default {
 			notPayer: 'Only the payer can edit this expense.',
 			hasSettledShares:
 				'A share is already settled, so the amount and split stay as they are; you can still change the description, date and category.',
-			aboPaused: 'This fixed cost is paused. Resume it under Fixed costs.',
+			recurringPaused: 'This fixed cost is paused. Resume it under Fixed costs.',
 			recurringAdvanced:
 				'This fixed cost was already recorded for this due date. Reload the expenses and check the list.',
 			recurringChanged:

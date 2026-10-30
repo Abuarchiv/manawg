@@ -178,7 +178,6 @@ const account = await import('../src/app/api/account/route.ts');
 const wgByCode = await import('../src/app/api/wg/[code]/route.ts');
 const wgMine = await import('../src/app/api/wg/mine/route.ts');
 const wgMembers = await import('../src/app/api/wg/[code]/members/route.ts');
-const memberClaim = await import('../src/app/api/wg/[code]/members/[id]/claim/route.ts');
 const wgCreate = await import('../src/app/api/wg/route.ts');
 
 async function assertAuthOutage(response: Response): Promise<void> {
@@ -262,17 +261,6 @@ test('WG join returns a retryable 503 when Supabase Auth is unavailable', async 
 			body: JSON.stringify({ name: 'Mia' }),
 		}) as never,
 		wgCtx(),
-	);
-
-	await assertAuthOutage(response);
-});
-
-test('member claim returns a retryable 503 when Supabase Auth is unavailable', async () => {
-	freshState();
-
-	const response = await memberClaim.POST(
-		new Request(`https://app.test/api/wg/${WG_CODE}/members/claim`, { method: 'POST' }) as never,
-		wgCtx({ id: '11111111-1111-4111-8111-111111111111' }),
 	);
 
 	await assertAuthOutage(response);

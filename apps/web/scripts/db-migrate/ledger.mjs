@@ -3,7 +3,6 @@
  * entry at its position by hash and timestamp, or be an allowlisted historical row.
  */
 
-import { isAllowedLegacyLedgerRow } from './legacy-adoption.mjs';
 import {
 	hashMigration,
 	MIGRATIONS_SCHEMA,
@@ -11,6 +10,25 @@ import {
 	readMigrationJournal,
 	tableExists,
 } from './migrations.mjs';
+
+/**
+ * Reviewed historical ledger hashes, each tolerated only with its exact timestamp at its zero-based
+ * journal position. `0007_data_api_security` was edited after Production and Preview had applied
+ * it, so both ledgers carry the earlier file hash. Ledger rows are never rewritten, so an entry can
+ * only go once no database holds that hash any more (for example after it was recreated).
+ */
+export const HISTORICAL_LEDGER_ROWS = new Map([
+	[
+		'88916329fbe6f5e5f4e4174e5db393aa3d7c4516790c4dbf3d1a41301f335aa0',
+		{ when: 1788112576655, position: 7 },
+	],
+]);
+
+/** Whether a ledger row outside the canonical chain is an allowlisted historical row. */
+export function isHistoricalLedgerRow(hash, createdAt, position) {
+	const row = HISTORICAL_LEDGER_ROWS.get(hash);
+	return Boolean(row) && createdAt === String(row.when) && position === Number(row.position);
+}
 
 /**
  * Returns how many journal entries the ledger has applied, in order. Throws on unknown, duplicate,
@@ -53,17 +71,17 @@ export async function assertMigrationLedgerPrefix(client, { requireTable = true 
 
 		const entry = expectedByHash.get(hash);
 		if (!entry) {
-			// Fail-closed: LEGACY_LEDGER_ALLOWLIST documents every tolerated
+			// Fail-closed: HISTORICAL_LEDGER_ROWS documents every tolerated
 			// historical row by exact hash, timestamp, and canonical journal
 			// position. Any unknown row — including arbitrary 64-hex values —
 			// is rejected here and never adopted.
-			if (!isAllowedLegacyLedgerRow(hash, createdAt, appliedCount)) {
+			if (!isHistoricalLedgerRow(hash, createdAt, appliedCount)) {
 				throw new Error(
 					`Database check failed: unexpected migration row ${row.id} outside the canonical ledger (hash ${hash}, created_at ${createdAt}).`,
 				);
 			}
 			if (appliedHashes.has(hash)) {
-				throw new Error(`Database check failed: duplicate legacy migration row ${row.id}.`);
+				throw new Error(`Database check failed: duplicate historical migration row ${row.id}.`);
 			}
 			appliedHashes.add(hash);
 			appliedCount += 1;
