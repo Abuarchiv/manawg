@@ -136,7 +136,8 @@ const decimalSeparator = (locale: Locale): string => (locale === 'en' ? '.' : ',
 /** Typed quantity text with the locale's separator: "." and "," both count, digits only, at most two decimals. */
 export function decimalQuantityText(raw: string, locale: Locale = 'de'): string {
 	const [whole = '', ...fraction] = raw.replace(/\./g, ',').split(',');
-	const digits = whole.replace(/\D/g, '');
+	// Quantity and threshold share the four-digit maximum, so a fifth digit is never typed in.
+	const digits = whole.replace(/\D/g, '').slice(0, String(INVENTORY_LIMITS.QUANTITY_MAX).length);
 	if (fraction.length === 0) return digits;
 	return `${digits}${decimalSeparator(locale)}${fraction.join('').replace(/\D/g, '').slice(0, 2)}`;
 }

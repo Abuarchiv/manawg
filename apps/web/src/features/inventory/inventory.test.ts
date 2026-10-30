@@ -50,6 +50,13 @@ test('decimalQuantityText keeps German decimals up to two places', () => {
 	assert.equal(decimalQuantityText(''), '');
 });
 
+test('decimalQuantityText stops at four whole digits, the quantity and threshold maximum', () => {
+	assert.equal(decimalQuantityText('15000'), '1500');
+	assert.equal(decimalQuantityText('9999'), '9999');
+	assert.equal(decimalQuantityText('12345,5'), '1234,5');
+	assert.equal(decimalQuantityText('12345.5', 'en'), '1234.5');
+});
+
 test('parseQuantityText and quantityInputText round-trip German decimals', () => {
 	assert.equal(parseQuantityText('1,5'), 1.5);
 	assert.equal(parseQuantityText(''), 0);
