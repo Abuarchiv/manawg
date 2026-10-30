@@ -1,7 +1,7 @@
 'use client';
 
 import { useLocale, useTranslations } from 'next-intl';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
@@ -111,6 +111,14 @@ export function RecurringForm({
 	);
 	const [error, setError] = useState<Message | null>(null);
 	const [splitError, setSplitError] = useState<Message | null>(null);
+	const formRef = useRef<HTMLFormElement>(null);
+	const [validationAttempt, setValidationAttempt] = useState(0);
+
+	// Each submit moves focus to the first invalid field, so a rejection puts its message in view.
+	useEffect(() => {
+		if (validationAttempt === 0) return;
+		formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+	}, [validationAttempt]);
 
 	useEffect(() => {
 		if (!initial) return;
@@ -182,6 +190,7 @@ export function RecurringForm({
 		event.preventDefault();
 		setError(null);
 		setSplitError(null);
+		setValidationAttempt((attempt) => attempt + 1);
 		const dueOn = inputDateOrToday(pickedNextDueAt);
 		const trimmedDescription = description.trim();
 		if (trimmedDescription.length === 0 || trimmedDescription.length > DESCRIPTION_MAX_LENGTH) {
@@ -233,7 +242,7 @@ export function RecurringForm({
 
 	const splitPreview = buildSplits();
 	return (
-		<form onSubmit={handleSubmit} className="flex min-h-full flex-col gap-5">
+		<form ref={formRef} onSubmit={handleSubmit} className="flex min-h-full flex-col gap-5">
 			<FieldGroup>
 				<Field data-disabled={submitting} data-invalid={Boolean(descriptionError)}>
 					<FieldLabel htmlFor="recurring-description">{t('form.description')}</FieldLabel>
