@@ -15,7 +15,8 @@ for tool in curl jq openssl; do
 done
 get() { sed -n "s/^$1=//p" .env | tail -n 1; }
 app=$(get APP_URL)
-mailpit=http://localhost:8025
+mailpit_port=$(get MAILPIT_PORT)
+mailpit=http://localhost:${mailpit_port:-8025}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 jar="$work/cookies"

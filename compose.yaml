@@ -231,14 +231,14 @@ services:
       CRON_TARGET_URL: http://app:3000
       CRON_SECRET: ${CRON_SECRET}
 
-  # Local mail catch-all (profile "mailpit"): every mail lands at http://localhost:8025.
+  # Local mail catch-all (profile "mailpit"): every mail lands at http://localhost:${MAILPIT_PORT:-8025}.
   mailpit:
     image: axllent/mailpit:v1.32.0
     restart: unless-stopped
     profiles: ["mailpit"]
     logging: *logging
     ports:
-      - 127.0.0.1:8025:8025
+      - 127.0.0.1:${MAILPIT_PORT:-8025}:8025
 
 volumes:
   db-data:
