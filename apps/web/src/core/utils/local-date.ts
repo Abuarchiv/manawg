@@ -1,3 +1,17 @@
+import {
+	berlinDayKey,
+	endOfBerlinDay,
+	instantAtBerlinWallTime,
+	startOfBerlinDay,
+} from './berlin-day';
+
+/**
+ * A picked `<input type="date">` value as an instant that is that calendar day
+ * both on the device and in Berlin. Local noon does it everywhere except zones
+ * far from Berlin (e.g. UTC+14), where noon falls on another Berlin day; there
+ * the midpoint of the device day and the Berlin day is used, an overlap of at
+ * least ten hours in every zone from UTC-11 to UTC+14.
+ */
 export function inputDateToIso(value: string): string | null {
 	if (value.trim().length === 0) return null;
 	const parts = value.split('-').map((part) => Number.parseInt(part, 10));
@@ -5,7 +19,19 @@ export function inputDateToIso(value: string): string | null {
 	const month = parts[1];
 	const day = parts[2];
 	if (year === undefined || month === undefined || day === undefined) return null;
-	return new Date(year, month - 1, day, 12, 0, 0).toISOString();
+	const noon = new Date(year, month - 1, day, 12, 0, 0);
+	if (berlinDayKey(noon) === value) return noon.toISOString();
+	const berlinNoon = /^\d{4}-\d{2}-\d{2}$/.test(value) ? instantAtBerlinWallTime(value, 720) : null;
+	if (!berlinNoon) return noon.toISOString();
+	const start = Math.max(
+		new Date(year, month - 1, day).getTime(),
+		startOfBerlinDay(berlinNoon).getTime(),
+	);
+	const end = Math.min(
+		new Date(year, month - 1, day + 1).getTime(),
+		endOfBerlinDay(berlinNoon).getTime() + 1,
+	);
+	return new Date((start + end) / 2).toISOString();
 }
 
 /** Today's date in the browser's time zone, as an `<input type="date">` value. */
