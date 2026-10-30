@@ -21,5 +21,8 @@ export default {
 		hint: 'You can turn it back on under Settings at any time.',
 		doneTitle: 'Unsubscribed',
 		doneHeading: 'Unsubscribed.',
+		invalidTitle: 'Invalid link',
+		invalidBody:
+			'This link is invalid or has expired. Change the setting in the app under Settings.',
 	},
 } satisfies Catalog<typeof de>;
