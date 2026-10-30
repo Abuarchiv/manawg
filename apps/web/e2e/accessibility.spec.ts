@@ -29,7 +29,7 @@ test.describe('contrast tokens', () => {
 	function sampleBoundaryContrast(args: {
 		selector: string;
 		pseudo?: string;
-		prop: 'backgroundColor' | 'borderTopColor';
+		prop: 'backgroundColor' | 'borderTopColor' | 'color';
 		/** Compare against this element/pseudo instead of walking up to the nearest opaque ancestor. */
 		against?: { selector: string; pseudo?: string };
 	}) {
@@ -213,6 +213,29 @@ test.describe('contrast tokens', () => {
 				prop: 'borderTopColor' as const,
 			});
 			expect(focused.ratio, JSON.stringify(focused)).toBeGreaterThanOrEqual(3);
+		});
+
+		test(`destructive alert description meets 4.5:1 text contrast in ${scheme}`, async ({
+			page,
+		}) => {
+			await page.emulateMedia({ colorScheme: scheme });
+			await setupMember(page);
+			await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/shopping`, (route) =>
+				route.request().method() === 'GET'
+					? route.fulfill({ json: { items: [] } })
+					: route.fulfill({ status: 500, json: { error: 'internal' } }),
+			);
+			await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/shopping`);
+			await dismissOnboarding(page);
+			await page.getByLabel('Artikel-Name').fill('Brot');
+			await page.getByRole('button', { name: 'Artikel hinzufügen' }).click();
+			await expect(page.locator('#shopping-add-error')).toBeVisible();
+
+			const text = await page.evaluate(sampleBoundaryContrast, {
+				selector: '#shopping-add-error [data-slot="alert-description"]',
+				prop: 'color' as const,
+			});
+			expect(text.ratio, JSON.stringify(text)).toBeGreaterThanOrEqual(4.5);
 		});
 
 		test(`switch track/thumb meet 3:1 non-text contrast in ${scheme}`, async ({ page }) => {
