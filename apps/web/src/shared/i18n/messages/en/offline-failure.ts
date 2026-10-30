@@ -95,6 +95,16 @@ export default {
 		detail:
 			'Someone has changed the expense in the meantime. Check the current values before you queue the change again.',
 	},
+	expenseSettled: {
+		title: 'Share already settled',
+		detail:
+			'A share has been settled in the meantime. Discard the change and edit the expense again.',
+	},
+	recurringAdvanced: {
+		title: 'Fixed cost already booked',
+		detail:
+			'This fixed cost was already booked for this due date. Remove this offline action and check the expenses.',
+	},
 	expenseMissing: {
 		title: 'Expense missing',
 		detail: 'The expense no longer exists. Remove this offline action or record the expense again.',

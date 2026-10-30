@@ -47,7 +47,7 @@ Removing the attachment of a queued action that already went out once (its outco
 
 ### Requirement: A conflicting expense edit explains itself
 
-A queued expense edit refused with `409 expense_changed` because another member changed the expense meanwhile SHALL be held for a server check and show a dedicated explanation that asks the member to check the current values before queuing the change again, not the generic sync failure.
+A queued expense edit refused with `409 expense_changed` because another member changed the expense meanwhile SHALL be held for a server check and show a dedicated explanation that asks the member to check the current values before queuing the change again, not the generic sync failure. The same SHALL hold for a queued expense edit refused with `409 expense_has_settled_shares` and a queued fixed-cost booking refused with `409 recurring_expense_already_advanced`.
 
 #### Scenario: Expense edited by someone else
 - **WHEN** a queued expense edit is answered with `409 expense_changed`
