@@ -1,4 +1,8 @@
-import { berlinDayKey, berlinWallMinutes, instantAtBerlinWallTime } from '@/core/utils/berlin-day';
+import {
+	berlinDayKey,
+	berlinWallMinutes,
+	instantAtBerlinWallTimeOrAfterGap,
+} from '@/core/utils/berlin-day';
 import { addMonths, addMonthsFromAnchor, MS_PER_DAY, parseTimestamp } from '@/core/utils/time';
 import {
 	BYDAY_TO_INDEX,
@@ -270,10 +274,10 @@ export function expandRecurrence(
 		iterations += 1;
 		const occurrenceDayMs = current.getTime();
 		// Resolve the anchor's Berlin wall time on each recurrence date. If that
-		// time falls in the spring gap, preserve the old raw-instant fallback.
+		// time falls in the spring gap, it moves to the hour after the gap.
 		const occurrenceMs = event.allDay
 			? occurrenceDayMs
-			: (instantAtBerlinWallTime(berlinDayKey(current), anchorWallMinutes)?.getTime() ??
+			: (instantAtBerlinWallTimeOrAfterGap(berlinDayKey(current), anchorWallMinutes)?.getTime() ??
 				startMs + occurrenceDayMs - recurrenceStartMs);
 		if (occurrenceMs > window.to) break;
 		if (untilMs !== null && occurrenceMs > untilMs) break;

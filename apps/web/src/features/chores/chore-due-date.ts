@@ -1,4 +1,8 @@
-import { berlinDayKey, berlinWallMinutes, instantAtBerlinWallTime } from '@/core/utils/berlin-day';
+import {
+	berlinDayKey,
+	berlinWallMinutes,
+	instantAtBerlinWallTimeOrAfterGap,
+} from '@/core/utils/berlin-day';
 import { parseValidDate } from '@/core/utils/time';
 
 const DAY_KEY = /^\d{4}-\d{2}-\d{2}$/;
@@ -13,9 +17,7 @@ export function dueAtForDay(dayKey: string, previousDueAt?: string): string | nu
 	if (!DAY_KEY.test(dayKey)) return null;
 	const previous = previousDueAt ? parseValidDate(previousDueAt) : null;
 	const minutes = previous ? berlinWallMinutes(previous) : DEFAULT_DUE_MINUTES;
-	// A wall time inside the spring-forward gap does not exist; use the hour after.
-	const instant =
-		instantAtBerlinWallTime(dayKey, minutes) ?? instantAtBerlinWallTime(dayKey, minutes + 60);
+	const instant = instantAtBerlinWallTimeOrAfterGap(dayKey, minutes);
 	return instant?.toISOString() ?? null;
 }
 

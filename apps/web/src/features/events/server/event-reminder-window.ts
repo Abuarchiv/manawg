@@ -4,7 +4,7 @@ import { wgEvents } from '@/core/db/schema';
 import {
 	berlinDayKey,
 	berlinWallMinutes,
-	instantAtBerlinWallTime,
+	instantAtBerlinWallTimeOrAfterGap,
 	nextBerlinDayStart,
 	startOfBerlinDay,
 } from '@/core/utils/berlin-day';
@@ -160,7 +160,10 @@ function lastTimedRecurrenceIndexAtOrBefore(
 
 	const rawStart = recurrenceRawStartAtIndex(recurrenceAnchor, rule, index);
 	if (rawStart === null) return -1;
-	const wallStart = instantAtBerlinWallTime(berlinDayKey(new Date(rawStart)), wallMinutes);
+	const wallStart = instantAtBerlinWallTimeOrAfterGap(
+		berlinDayKey(new Date(rawStart)),
+		wallMinutes,
+	);
 	const occurrenceMs = wallStart?.getTime() ?? anchorMs + rawStart - recurrenceAnchor.getTime();
 	if (occurrenceMs <= untilMs) return index;
 
@@ -190,7 +193,10 @@ function lastRecurrenceStartMs(
 	if (candidate.allDay) return rawStart;
 	const rawYear = new Date(rawStart).getUTCFullYear();
 	if (rawYear < 1000 || rawYear >= 9999) return null;
-	const wallAligned = instantAtBerlinWallTime(berlinDayKey(new Date(rawStart)), wallMinutes);
+	const wallAligned = instantAtBerlinWallTimeOrAfterGap(
+		berlinDayKey(new Date(rawStart)),
+		wallMinutes,
+	);
 	return (wallAligned ?? new Date(anchorMs + rawStart - recurrenceAnchor.getTime())).getTime();
 }
 

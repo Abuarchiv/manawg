@@ -296,7 +296,7 @@ test('spring DST wall time is included when its raw UTC recurrence is beyond win
 	);
 });
 
-test('spring-gap recurrence keeps the existing raw-instant fallback', () => {
+test('winter-anchored spring-gap recurrence lands on the hour after the gap', () => {
 	const event = {
 		id: 'spring-gap-series',
 		title: 'Spring-gap series',
@@ -316,6 +316,41 @@ test('spring-gap recurrence keeps the existing raw-instant fallback', () => {
 	assert.deepEqual(
 		occurrences.map(({ startsAt }) => startsAt),
 		['2026-03-29T01:30:00.000Z'],
+	);
+});
+
+test('a summer-anchored 02:30 series lands on 03:30 Berlin in the spring-forward gap', () => {
+	const base = {
+		title: 'Gap series',
+		description: null,
+		startsAt: '2025-06-01T00:30:00.000Z',
+		endsAt: null,
+		allDay: false,
+		location: null,
+	};
+	const daily = expandRecurrence(
+		{ ...base, id: 'gap-daily', recurrence: 'FREQ=DAILY' },
+		new Date('2026-03-27T00:00:00.000Z'),
+		new Date('2026-03-31T23:00:00.000Z'),
+	);
+	assert.deepEqual(
+		daily.map(({ startsAt }) => startsAt),
+		[
+			'2026-03-27T01:30:00.000Z',
+			'2026-03-28T01:30:00.000Z',
+			'2026-03-29T01:30:00.000Z',
+			'2026-03-30T00:30:00.000Z',
+			'2026-03-31T00:30:00.000Z',
+		],
+	);
+	const weekly = expandRecurrence(
+		{ ...base, id: 'gap-weekly', startsAt: '2025-06-01T00:30:00.000Z', recurrence: 'FREQ=WEEKLY' },
+		new Date('2026-03-22T00:00:00.000Z'),
+		new Date('2026-03-31T23:00:00.000Z'),
+	);
+	assert.deepEqual(
+		weekly.map(({ startsAt }) => startsAt),
+		['2026-03-22T01:30:00.000Z', '2026-03-29T01:30:00.000Z'],
 	);
 });
 

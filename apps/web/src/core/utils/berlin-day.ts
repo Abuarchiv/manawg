@@ -110,6 +110,14 @@ export function instantAtBerlinWallTime(dayKey: string, minutes: number): Date |
 	return null;
 }
 
+/**
+ * Like `instantAtBerlinWallTime`, but a wall time inside the spring-forward gap
+ * resolves to the same minute one hour later, the first instant after the gap.
+ */
+export function instantAtBerlinWallTimeOrAfterGap(dayKey: string, minutes: number): Date | null {
+	return instantAtBerlinWallTime(dayKey, minutes) ?? instantAtBerlinWallTime(dayKey, minutes + 60);
+}
+
 /** Berlin midnight following the given Berlin-day start (DST-safe stepping). */
 export function nextBerlinDayStart(dayStart: Date): Date {
 	return startOfBerlinDay(new Date(dayStart.getTime() + NEXT_DAY_PROBE_MS));
