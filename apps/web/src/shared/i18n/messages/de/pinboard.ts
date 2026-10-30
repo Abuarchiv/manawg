@@ -174,7 +174,8 @@ export default {
 		replyVanished: 'Diese Antwort existiert nicht mehr und wurde entfernt.',
 		reactionKeyUnavailable: 'Reaktion konnte nicht sicher gesendet werden. Versuche es erneut.',
 		postKeyUnavailable: 'Beitrag konnte nicht sicher gesendet werden. Versuche es erneut.',
-		imageUploading: 'Das Bild wird noch hochgeladen. Warte kurz und versuche es erneut.',
+		imageUploadFailed:
+			'Das Bild konnte nicht hochgeladen werden. Versuche es erneut oder entferne es.',
 		queueBlocked:
 			'Offline-Speicher ist blockiert. Lass den Entwurf offen und versuche es später erneut.',
 		draftCleanupFailedOffline:

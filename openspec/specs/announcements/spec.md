@@ -44,3 +44,11 @@ Cancel and save SHALL clear drafts, and only non-empty drafts differing from the
 #### Scenario: Reload after cancel
 - **WHEN** a member cancels an edit and reloads
 - **THEN** the editor SHALL NOT reopen
+
+### Requirement: Posting retries a failed image upload
+
+An image whose upload failed SHALL be uploaded again when the member posts while online; if that fails the post SHALL NOT be sent and the member SHALL see that the image could not be uploaded. Offline, the image SHALL stay queued with the post.
+
+#### Scenario: Post after a failed upload
+- **WHEN** a member posts online with an image whose upload failed earlier
+- **THEN** the upload SHALL be retried and the post SHALL carry the stored image URL
