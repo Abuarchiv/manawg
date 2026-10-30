@@ -144,6 +144,11 @@ const GERMAN_SUMMARIES: Case[] = [
 		'Fixkosten-Buchung Miete wurde automatisch eingetragen.',
 	],
 	[
+		'recurring.auto_paused',
+		{ description: 'Miete' },
+		'Fixkosten-Vorlage Miete wurde automatisch pausiert.',
+	],
+	[
 		'recurring.advanced',
 		{ description: 'Miete' },
 		'Miete wurde aus einer Fixkosten-Vorlage übernommen.',

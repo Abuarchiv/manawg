@@ -130,6 +130,7 @@ const EVENTS: Readonly<Record<string, AuditEventDef>> = {
 	'recurring.updated': DESCRIPTION,
 	'recurring.deleted': DESCRIPTION,
 	'recurring.charged': { ...DESCRIPTION, passive: true },
+	'recurring.auto_paused': { ...DESCRIPTION, passive: true },
 	'recurring.advanced': { ...DESCRIPTION, passive: true },
 	'shopping.created': TITLE,
 	'shopping.updated': NAME,

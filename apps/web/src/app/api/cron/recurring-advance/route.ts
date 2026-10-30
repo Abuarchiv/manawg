@@ -52,7 +52,7 @@ async function createExpenseForDueAt(
 	template: DueRecurring,
 	splits: RecurringSplit[],
 	dueAt: Date,
-): Promise<string | 'duplicate' | 'failed' | null> {
+): Promise<string | 'duplicate' | 'failed' | 'paused' | null> {
 	try {
 		// The expense and its splits are one fact and are written in one
 		// transaction: a compensating delete is itself a database call, and if it
@@ -125,7 +125,7 @@ async function createExpenseForDueAt(
 					recurringExpenseId: template.id,
 					wgId: template.wgId,
 				});
-				return null;
+				return 'paused';
 			}
 			const [inserted] = await tx
 				.insert(expenses)
@@ -169,6 +169,21 @@ async function createExpenseForDueAt(
 	}
 }
 
+/** Tells the WG why a template stopped booking; the pause itself has no other feed row. */
+async function recordAutoPause(
+	template: DueRecurring,
+	reason: 'inactive_member' | 'split_mismatch',
+): Promise<void> {
+	await recordAuditEvent({
+		wgId: template.wgId,
+		memberId: null,
+		eventType: 'recurring.auto_paused',
+		entityType: 'recurring_expense',
+		entityId: template.id,
+		metadata: { description: template.description, reason },
+	});
+}
+
 async function advanceTemplate(template: DueRecurring): Promise<TemplateAdvance> {
 	const splits = parseRecurringSplits(template.splitsJson);
 	if (!recurringSplitsMatchAmount(splits, template.amountCents)) {
@@ -181,6 +196,7 @@ async function advanceTemplate(template: DueRecurring): Promise<TemplateAdvance>
 			recurringExpenseId: template.id,
 			wgId: template.wgId,
 		});
+		await recordAutoPause(template, 'split_mismatch');
 		return { created: [], failed: false };
 	}
 
@@ -200,6 +216,10 @@ async function advanceTemplate(template: DueRecurring): Promise<TemplateAdvance>
 		if (expenseId === 'failed') {
 			// Dues booked earlier in this loop still advance the template below.
 			failed = true;
+			break;
+		}
+		if (expenseId === 'paused') {
+			await recordAutoPause(template, 'inactive_member');
 			break;
 		}
 		if (expenseId === null) break;

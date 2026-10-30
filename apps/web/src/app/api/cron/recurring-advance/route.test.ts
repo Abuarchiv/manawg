@@ -659,6 +659,17 @@ test('a template with a moved-out payer or debtor is skipped without advancing',
 		assert.notEqual(state.template.pausedAt, null);
 		assert.deepEqual(await (await get()).json(), { ok: true, charged: 0 });
 		assert.equal(state.memberQueries.length, 1);
+		// One notice per pause: the second run does not write another.
+		assert.deepEqual(state.events, [
+			{
+				wgId: state.template.wgId,
+				memberId: null,
+				eventType: 'recurring.auto_paused',
+				entityType: 'recurring_expense',
+				entityId: state.template.id,
+				metadata: { description: state.template.description, reason: 'inactive_member' },
+			},
+		]);
 	});
 });
 
@@ -674,5 +685,15 @@ test('a template whose splits do not add up is logged and paused', async (t) => 
 		assert.equal(state.expenses.length, 0);
 		assert.equal(state.loggedErrors.length, 1);
 		assert.notEqual(state.template.pausedAt, null);
+		assert.deepEqual(state.events, [
+			{
+				wgId: state.template.wgId,
+				memberId: null,
+				eventType: 'recurring.auto_paused',
+				entityType: 'recurring_expense',
+				entityId: state.template.id,
+				metadata: { description: state.template.description, reason: 'split_mismatch' },
+			},
+		]);
 	});
 });
