@@ -26,7 +26,7 @@ body:
   - type: textarea
     id: ps
     attributes:
-      label: Output of `docker compose ps`
+      label: Output of `docker compose ps -a`
       description: Docker only.
       render: text
   - type: textarea

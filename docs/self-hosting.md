@@ -31,7 +31,7 @@ start downloads the database, sign-in and storage images, gets the app image and
 database. Then open [http://localhost](http://localhost) and create an account. Every mail,
 including the sign-in codes, lands in Mailpit at [http://localhost:8025](http://localhost:8025).
 
-`docker compose ps` lists the services; `setup` has exited with code 0 and the others are
+`docker compose ps -a` lists the services; `setup` has exited with code 0 and the others are
 running. If port 80 is taken, set `HTTP_PORT=8080` and `APP_URL=http://localhost:8080` in `.env`
 and run `docker compose up -d` again. Mailpit uses port 8025; if that is taken, set `MAILPIT_PORT`
 to a free port and open Mailpit there.
@@ -437,6 +437,6 @@ For the Docker setup. On Vercel, start with [Check the deployment](#7-check-the-
 
 Questions go to [Discussions](https://github.com/Abuarchiv/manawg/discussions), bugs to an
 [issue](https://github.com/Abuarchiv/manawg/issues/new/choose) with the boot log lines
-starting with `[env]`. For a Docker instance, add the output of `docker compose ps` and the logs
+starting with `[env]`. For a Docker instance, add the output of `docker compose ps -a` and the logs
 of the failing service (`docker compose logs <service>`). Remove secrets, connection strings and
 keys first, and never post them.
