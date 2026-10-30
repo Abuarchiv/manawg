@@ -384,6 +384,9 @@ test.describe('English chat', () => {
 				await expect(page).toHaveTitle(/Chat/);
 				await expect(page.getByRole('heading', { name: 'Chat', level: 1 })).toBeAttached();
 				const log = page.getByRole('log', { name: 'Chat messages' });
+				// The message scroller exposes exactly one log; the focusable viewport stays a region.
+				await expect(page.getByRole('log')).toHaveCount(1);
+				await expect(page.locator('[role=log] [role=log]')).toHaveCount(0);
 				await expect(log.getByText('Today').first()).toBeVisible();
 				// The fixture page lists its own messages first; the mocked page arrives with the next poll.
 				await expect(log.getByText('Mina joined the flat.')).toBeVisible({ timeout: POLL_WAIT_MS });

@@ -152,11 +152,13 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 					<MessageScrollerViewport
 						ref={chat.scrollRef}
 						preserveScrollOnPrepend
-						role="log"
 						aria-label={t('logAria')}
 						className="[scroll-behavior:auto]!"
 					>
-						<MessageScrollerContent className="mx-auto w-full max-w-3xl gap-2 px-3 py-2">
+						<MessageScrollerContent
+							aria-label={t('logAria')}
+							className="mx-auto w-full max-w-3xl gap-2 px-3 py-2"
+						>
 							{chat.bootstrapping ? (
 								<ChatLoadingPlaceholder />
 							) : chat.bootstrapError ? (
