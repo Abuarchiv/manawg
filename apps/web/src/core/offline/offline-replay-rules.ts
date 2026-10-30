@@ -6,9 +6,11 @@ import {
 	IMAGE_REMOVED_STATE,
 	noteState,
 	requestFailureState,
+	withFailureState,
 } from './offline-failure-copy';
+import { isPendingImageToken } from './offline-images';
 import { type OfflineAction, serializeOfflineAction } from './offline-queue';
-import { replayWindowReviewError } from './offline-store';
+import { REVIEW_REQUIRED_STATE, replayWindowReviewError } from './offline-store';
 
 /** How a replay attempt is judged: which outcomes count as synced, retried or held for review. */
 
@@ -21,6 +23,25 @@ export function needsReviewAfterRequest(current: OfflineAction, snapshot: Offlin
 		JSON.stringify(current.payload) !== JSON.stringify(snapshot.payload) ||
 		current.idempotencyKey !== snapshot.idempotencyKey
 	);
+}
+
+/**
+ * Merges `patch` into the payload of a queued action. The server replays by idempotency key only,
+ * so an action that already went out once may be stored under its old payload: it is held for
+ * review instead of being resent with the edit.
+ */
+export function editQueuedPayload(
+	action: OfflineAction,
+	patch: Record<string, unknown>,
+): OfflineAction {
+	const edited = { ...action, payload: { ...action.payload, ...patch } };
+	// An image problem or a photo still waiting for its upload means the request never went out.
+	const imageUrl = action.payload.imageUrl;
+	const neverSent =
+		holdsImageReview(action) || (typeof imageUrl === 'string' && isPendingImageToken(imageUrl));
+	return action.lastAttemptAt && !neverSent
+		? withFailureState(edited, REVIEW_REQUIRED_STATE)
+		: edited;
 }
 
 export function mergeSyncOutcomes(

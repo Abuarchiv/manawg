@@ -5,6 +5,7 @@ import { db, wgChatMessages } from '@/core/db';
 import type { DbTransaction } from '@/core/db/transaction';
 import { type ChatSystemKind, SYSTEM_MESSAGE_KIND } from '@/core/feed-kinds';
 import { logApiError } from '@/core/infra/observability';
+import { formatEuroCents } from '@/core/utils/money';
 
 export interface ChatSystemMessageInput {
 	wgId: string;
@@ -48,6 +49,27 @@ export async function withdrawExpenseChatNotice(
 				eq(wgChatMessages.wgId, wgId),
 				eq(wgChatMessages.systemKind, 'expense.created'),
 				sql`${wgChatMessages.systemPayload}->>'expenseId' = ${expenseId}`,
+				isNull(wgChatMessages.deletedAt),
+			),
+		);
+}
+
+/** Keeps the chat notice of an edited expense in step with the expense it links to. */
+export async function updateExpenseChatNotice(
+	tx: DbTransaction,
+	wgId: string,
+	expense: { id: string; description: string; amountCents: number; currency: string },
+): Promise<void> {
+	await tx
+		.update(wgChatMessages)
+		.set({
+			systemPayload: sql`coalesce(${wgChatMessages.systemPayload}, '{}'::jsonb) || jsonb_build_object('description', ${expense.description}::text, 'amountCents', ${expense.amountCents}::int, 'currency', ${expense.currency}::text, 'amount', ${formatEuroCents(expense.amountCents, expense.currency)}::text)`,
+		})
+		.where(
+			and(
+				eq(wgChatMessages.wgId, wgId),
+				eq(wgChatMessages.systemKind, 'expense.created'),
+				sql`${wgChatMessages.systemPayload}->>'expenseId' = ${expense.id}`,
 				isNull(wgChatMessages.deletedAt),
 			),
 		);

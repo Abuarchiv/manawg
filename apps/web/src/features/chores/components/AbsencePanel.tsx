@@ -96,9 +96,13 @@ export function AbsencePanel({
 	const openForm = active && !highlightedAbsenceId;
 	const [formOpen, setFormOpen] = useState(openForm || Boolean(start || end || reason));
 	const { confirmId, request: requestRemove, cancel: cancelRemove } = useConfirmDelete();
+	// Separate effects: closing clears the fields, which must not re-trigger the deep-link open.
 	useEffect(() => {
-		if (openForm || start || end || reason) setFormOpen(true);
-	}, [openForm, start, end, reason]);
+		if (openForm) setFormOpen(true);
+	}, [openForm]);
+	useEffect(() => {
+		if (start || end || reason) setFormOpen(true);
+	}, [start, end, reason]);
 	// An open, empty form starts with today: otherwise WebKit displays a date while the button stays disabled.
 	useEffect(() => {
 		if (!formOpen || start || end) return;
@@ -108,7 +112,7 @@ export function AbsencePanel({
 	}, [formOpen, start, end, onStartChange, onEndChange]);
 	function toggleForm() {
 		if (formOpen) {
-			// Otherwise the effect above reopens the form immediately.
+			// Otherwise the field effect above reopens the form immediately.
 			onStartChange('');
 			onEndChange('');
 			onReasonChange('');

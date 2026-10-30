@@ -268,6 +268,18 @@ test('an expense late on a Berlin evening counts as that Berlin day for duplicat
 	assert.deepEqual([result.inserted, result.skipped], [0, 1]);
 });
 
+test('an undated OCR row is a duplicate of the same purchase stored shortly after Berlin midnight', async () => {
+	// 22:30 UTC on 28 July is already 29 July in Berlin; the re-import at 23:10 UTC names the same day.
+	const lateExisting = {
+		...existingCoffee,
+		occurredAt: new Date('2026-07-28T22:30:00.000Z'),
+		importDuplicateKey: '2026-07-29|kaffee|300|33333333-3333-4333-8333-333333333333',
+	};
+	const ocrRow = { ...coffee, date: '2026-07-28T23:10:00.000Z' };
+	const result = await runCommit([lateExisting], { rows: [ocrRow] }).commit();
+	assert.deepEqual([result.inserted, result.skipped], [0, 1]);
+});
+
 const foreignRow: ParsedExpense = {
 	date: '2025-02-01',
 	description: 'Strom',

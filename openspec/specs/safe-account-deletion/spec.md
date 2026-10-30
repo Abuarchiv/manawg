@@ -35,7 +35,7 @@ After local deletion has committed, the system SHALL reject creating or joining 
 
 ### Requirement: WG deletion and admin transfer preserve concurrent members
 
-Account deletion SHALL decide whether a WG has remaining active members using membership state serialized with joins, other account deletions, member activation changes, and direct WG deletion. A WG with another active member SHALL retain its data. A remaining active member SHALL receive the admin role when the departing account was admin, preferring an account-linked member and then the longest-standing active member. If no other active member remains, the WG SHALL be deleted as disclosed by the confirmation.
+Account deletion SHALL decide whether a WG has remaining active members using membership state serialized with joins, other account deletions, member activation changes, and direct WG deletion. A WG with another active member who has an account SHALL retain its data. A remaining active member SHALL receive the admin role when the departing account was admin, choosing the longest-standing active member with an account. If no other active member with an account remains, the WG SHALL be deleted as disclosed by the confirmation.
 
 #### Scenario: A join completes while account deletion is starting
 - **WHEN** a new member's join commits before the deletion decision for that WG
@@ -47,7 +47,7 @@ Account deletion SHALL decide whether a WG has remaining active members using me
 
 #### Scenario: Two accounts delete themselves from shared WGs
 - **WHEN** two members concurrently delete accounts that share one or more WGs
-- **THEN** the resulting retained WGs SHALL have a valid active admin, or be removed when no active member remains, without deleting a WG that still has another active member
+- **THEN** the resulting retained WGs SHALL have a valid active admin, or be removed when no other active member with an account remains, without deleting a WG that still has another active member with an account
 
 #### Scenario: The proposed successor moves out
 - **WHEN** a candidate successor is concurrently deactivated or deletes their account

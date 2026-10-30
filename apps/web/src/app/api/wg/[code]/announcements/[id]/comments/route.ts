@@ -21,6 +21,7 @@ import {
 	type NotificationDispatchWarning,
 } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
+import { announcementPushTitle } from '@/features/announcements/announcement-push-title';
 import { COMMENT_MAX } from '@/features/announcements/constants';
 
 const COMMENTS_LIST_LIMIT = 500;
@@ -159,7 +160,7 @@ export const POST = withWgRoute<{ id: string }>(
 					event: 'announcement.commented',
 					payload: {
 						announcementId: id,
-						title: parsed.data.content.slice(0, 120),
+						title: announcementPushTitle(parsed.data.content),
 						actorName: auth.member.name,
 					},
 					targetMemberIds,

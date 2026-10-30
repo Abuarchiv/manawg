@@ -78,6 +78,8 @@ test('a cash payment is voided after confirmation and the list reloads without i
 
 	const list = page.getByRole('list', { name: 'Deine Barzahlungen' });
 	await expect(list).toBeVisible();
+	// The accessible name tells payments apart: amount and both parties.
+	await expect(list.getByRole('button', { name: /^Stornieren: .+ von .+ an .+/ })).toBeVisible();
 	await list.getByRole('button', { name: /Stornieren/ }).click();
 
 	const dialog = page.getByRole('dialog', { name: 'Barzahlung stornieren?' });

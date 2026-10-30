@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { rateLimitResponse } from '@/core/http/api-errors';
-import { checkEnv } from '@/core/infra/env';
+import { checkEnv, runtimeEnv } from '@/core/infra/env';
 import { checkRateLimit, clientIpKey, healthLimiter } from '@/core/rate-limit';
 
 /**
@@ -49,7 +49,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 		return limited;
 	}
 
-	const env = checkEnv(process.env);
+	const env = checkEnv(runtimeEnv());
 	const database = await probeDatabase();
 	const healthy = env.ok && database === 'ok';
 

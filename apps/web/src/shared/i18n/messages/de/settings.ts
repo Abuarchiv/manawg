@@ -187,7 +187,7 @@ export default {
 		confirmWord: 'LÖSCHEN',
 		dialogTitle: 'Konto dauerhaft löschen?',
 		dialogBody:
-			'Du wirst aus allen WGs ausgetragen. Bist du Admin, übernimmt das am längsten aktive Mitglied. WGs, in denen du allein bist, werden komplett gelöscht. Das lässt sich nicht rückgängig machen.',
+			'Du wirst aus allen WGs ausgetragen. Bist du Admin, übernimmt das dienstälteste Mitglied mit Konto. WGs, in denen kein anderes Mitglied ein Konto hat, werden samt Einträgen und Salden komplett gelöscht. Das lässt sich nicht rückgängig machen.',
 		typeWord: 'Tippe {word}',
 		exportHint: 'Exportiere vorher bei Bedarf deine WG-Daten unter „Daten“.',
 		signInAgainBtn: 'Erneut anmelden',

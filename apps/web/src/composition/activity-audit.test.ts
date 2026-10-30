@@ -151,3 +151,9 @@ test('the dashboard feed renders its sentences in the reader locale', async () =
 	assert.deepEqual(feed('de'), ['hat Brot gekauft.', 'Abwesenheit eingetragen']);
 	assert.deepEqual(feed('en'), ['bought Brot.', 'Time away added']);
 });
+
+test('the split count detail pluralises in German', () => {
+	const de = serverRenderContext('de');
+	assert.equal(auditDetail(JSON.stringify({ splitCount: 1 }), de), '1 Aufteilung');
+	assert.equal(auditDetail(JSON.stringify({ splitCount: 3 }), de), '3 Aufteilungen');
+});

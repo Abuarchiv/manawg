@@ -85,7 +85,7 @@ export default {
 		feed: '{self, select, yes {hast} other {hat}} einen Anteil für {description} wieder geöffnet.',
 	},
 	expenseDebtSettled: {
-		feed: '{self, select, yes {hast} other {hat}} {count, plural, one {# offene Anteil} other {# offene Anteile}} beglichen.',
+		feed: '{self, select, yes {hast} other {hat}} {count, plural, one {# offenen Anteil} other {# offene Anteile}} beglichen.',
 	},
 	expenseDebtSettledManual: {
 		feed: '{self, select, yes {hast} other {hat}} eine Barzahlung über {amount} eingetragen.',
@@ -112,7 +112,7 @@ export default {
 		feed: '{self, select, yes {hast} other {hat}} {hasName, select, yes {{name}} other {einen Vorrat}} aus den Vorräten entfernt.',
 	},
 	inventoryConsumed: {
-		feed: '{self, select, yes {hast} other {hat}} {quantity} {unitKey, select, piece {Stück} litre {L} kilogram {kg} roll {{count, plural, other {Rolle}}} pack {{count, plural, other {Packung}}} other {{unit}}} {name} entnommen.',
+		feed: '{self, select, yes {hast} other {hat}} {quantity} {unitKey, select, piece {Stück} litre {L} kilogram {kg} roll {{count, plural, =1 {Rolle} other {Rollen}}} pack {{count, plural, =1 {Packung} other {Packungen}}} other {{unit}}} {name} entnommen.',
 	},
 	memberInvited: {
 		feed: '{self, select, yes {hast} other {hat}} eine Einladung per E-Mail verschickt.',
@@ -181,7 +181,7 @@ export default {
 		feed: '{self, select, yes {hast} other {hat}} {name} aus der Einkaufsliste entfernt.',
 	},
 	shoppingClearedBought: {
-		feed: '{self, select, yes {hast} other {hat}} {count} erledigte Einkaufseinträge entfernt.',
+		feed: '{self, select, yes {hast} other {hat}} {count, plural, one {# erledigten Einkaufseintrag} other {# erledigte Einkaufseinträge}} entfernt.',
 	},
 	wgCreated: {
 		feed: '{self, select, yes {hast} other {hat}} die WG erstellt.',
@@ -213,7 +213,7 @@ export default {
 		pushOff: 'Web Push aus',
 		quietHours: 'Ruhezeit {start}-{end} Uhr',
 		quietHoursOff: 'Ruhezeit aus',
-		splitCount: '{count} Aufteilungen',
+		splitCount: '{count, plural, one {# Aufteilung} other {# Aufteilungen}}',
 		reaction: 'Reaktion: {reaction}',
 		everyDays: '{days, plural, =1 {täglich} other {alle # Tage}}',
 		everyMonths: '{months, plural, =1 {monatlich} other {alle # Monate}}',

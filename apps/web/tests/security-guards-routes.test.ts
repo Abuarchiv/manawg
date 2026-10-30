@@ -9,7 +9,10 @@ import { captureException, logApiError } from '../src/core/infra/observability.t
 const routeState = { databaseCalls: 0, authCalls: 0, limiterUnavailable: true };
 
 mock.module('@/core/infra/env', {
-	namedExports: { checkEnv: () => ({ ok: true, missingRequired: [], degraded: [] }) },
+	namedExports: {
+		checkEnv: () => ({ ok: true, missingRequired: [], degraded: [] }),
+		runtimeEnv: () => ({}),
+	},
 });
 mock.module('@/core/rate-limit', {
 	namedExports: {

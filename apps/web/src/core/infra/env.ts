@@ -146,6 +146,21 @@ function privateImageStorageMissing(env: EnvSource): { missing: string[]; impact
 	};
 }
 
+/**
+ * The environment `checkEnv` inspects at runtime. Next inlines the literal
+ * `process.env.NEXT_PUBLIC_*` reads below at build time, while a read through
+ * the whole `process.env` object sees only the container environment. Spelling
+ * the two public variables out keeps the report in line with what the push and
+ * Sentry code actually use in a Docker image built with those build arguments.
+ */
+export function runtimeEnv(): EnvSource {
+	return {
+		...process.env,
+		NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+		NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
+	};
+}
+
 export function checkEnv(env: EnvSource): EnvCheckResult {
 	const isProduction = env.VERCEL_ENV === 'production';
 	const isFixtureE2EDbDown =

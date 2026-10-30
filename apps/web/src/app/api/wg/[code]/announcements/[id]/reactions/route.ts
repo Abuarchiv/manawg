@@ -15,6 +15,7 @@ import {
 	type NotificationDispatchWarning,
 } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
+import { announcementPushTitle } from '@/features/announcements/announcement-push-title';
 import { ANNOUNCEMENT_REACTIONS } from '@/features/announcements/announcement-workflow';
 
 const reactionSchema = z.object({
@@ -157,7 +158,7 @@ export const POST = withWgRoute<{ id: string }>(
 					event: 'announcement.reacted',
 					payload: {
 						announcementId: id,
-						title: effect.announcementContent.slice(0, 120),
+						title: announcementPushTitle(effect.announcementContent),
 						actorName: auth.member.name,
 					},
 					targetMemberIds: [effect.authorMemberId],

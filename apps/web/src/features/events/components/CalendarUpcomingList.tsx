@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/empty';
 import { MS_PER_DAY } from '@/core/utils/time';
 import { CALENDAR_ROW_CLASS } from '@/features/events/components/calendar-row';
-import { isSameDay } from '@/features/events/event-display';
+import { isSameDay, sortByDisplayDate } from '@/features/events/event-display';
 import {
 	type EventOccurrence,
 	eventDateForDisplay,
@@ -111,18 +111,20 @@ export function CalendarUpcomingList({
 		document.getElementById(`event-${highlightEventId}`)?.scrollIntoView({ block: 'center' });
 	}, [highlightEventId]);
 
-	const entries = [
+	const entries = sortByDisplayDate([
 		...occurrences.map((occurrence) => ({
 			kind: 'event' as const,
 			startsAt: occurrence.startsAt,
+			allDay: occurrence.allDay,
 			occurrence,
 		})),
 		...choreOccurrences.map((chore) => ({
 			kind: 'chore' as const,
 			startsAt: chore.startsAt,
+			allDay: false,
 			chore,
 		})),
-	].sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+	]);
 
 	if (entries.length === 0) {
 		return (
@@ -148,10 +150,7 @@ export function CalendarUpcomingList({
 	const now = new Date();
 	const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 	for (const entry of entries) {
-		const startDate =
-			entry.kind === 'event'
-				? eventDateForDisplay(entry.startsAt, entry.occurrence.allDay)
-				: new Date(entry.startsAt);
+		const startDate = eventDateForDisplay(entry.startsAt, entry.allDay);
 		// A span that began before today is still running: list it under today, not under a past day.
 		const date = startDate < todayStart ? todayStart : startDate;
 		const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;

@@ -58,7 +58,7 @@ mock.module('@/core/db/private-image-deletions', {
 	},
 });
 mock.module('@/core/mail/mail-retention', {
-	namedExports: { purgeOldDigestMailLog: async () => 0 },
+	namedExports: { purgeOldMailLog: async () => 0 },
 });
 mock.module('@/core/idempotency-store', {
 	namedExports: { purgeExpiredIdempotencyResponses: async () => 0 },

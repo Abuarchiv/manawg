@@ -12,6 +12,7 @@ import { shoppingActionError, shoppingDuplicateError } from '@/features/shopping
 import {
 	dropShoppingItems,
 	planShoppingPatch,
+	queuedCreateWasSent,
 	replaceShoppingItem,
 	type ShoppingPatchRequest,
 	toggledShoppingItem,
@@ -54,18 +55,22 @@ export function useShoppingToggle(ctx: ShoppingActionContext) {
 	const toggleQueuedCreate = useCallback(
 		async (item: ShoppingItem, bought: boolean, rollback: () => void): Promise<void> => {
 			let updated = false;
+			let sent = false;
 			const saved = await updateOfflineQueue((actions) => {
-				const next = withQueuedCreateBought(
-					actions,
-					{ itemId: item.id, shareCode: wg.shareCode, memberId },
-					bought,
-				);
+				const target = { itemId: item.id, shareCode: wg.shareCode, memberId };
+				const next = withQueuedCreateBought(actions, target, bought);
 				updated = next !== null;
+				sent = queuedCreateWasSent(actions, target);
 				return next;
 			});
 			if (!saved) {
 				rollback();
 				setToggleError(QUEUE_BLOCKED_MESSAGE);
+				return;
+			}
+			if (sent) {
+				rollback();
+				setToggleError({ key: 'shopping.toggle.pendingChange', values: { name: item.name } });
 				return;
 			}
 			if (!updated) {

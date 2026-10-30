@@ -73,7 +73,7 @@ export async function loadPrimaryRows(wgId: string, spendSince: Date) {
 				paidByMemberId: expenses.paidByMemberId,
 				debtorMemberId: expenseSplits.debtorMemberId,
 				currency: expenses.currency,
-				totalCents: sql<number>`sum(${expenseSplits.amountCents})::int`,
+				totalCents: sql<number>`sum(${expenseSplits.amountCents})`.mapWith(Number),
 			})
 			.from(expenseSplits)
 			.innerJoin(expenses, eq(expenseSplits.expenseId, expenses.id))
@@ -138,7 +138,7 @@ export async function loadPrimaryRows(wgId: string, spendSince: Date) {
 			.select({
 				paidByMemberId: expenses.paidByMemberId,
 				currency: expenses.currency,
-				totalCents: sql<number>`sum(${expenses.amountCents})::int`,
+				totalCents: sql<number>`sum(${expenses.amountCents})`.mapWith(Number),
 			})
 			.from(expenses)
 			.where(eq(expenses.wgId, wgId))

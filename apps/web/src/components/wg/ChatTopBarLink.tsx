@@ -4,6 +4,7 @@ import { MessageCircle } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { segmentCountStatus } from '@/components/wg/segment-count-status';
@@ -32,6 +33,11 @@ export function ChatTopBarLink({ href, className }: ChatTopBarLinkProps) {
 
 	const isActive = pathname.endsWith('/chat');
 	const count = unread.data?.count;
+	// Unread chat messages on the installed app icon (Badging API; Chrome, Edge, Safari 17+ home screen apps)
+	useEffect(() => {
+		if (count === undefined || !('setAppBadge' in navigator)) return;
+		void (count > 0 ? navigator.setAppBadge(count) : navigator.clearAppBadge()).catch(() => {});
+	}, [count]);
 	const exactCount = unread.data?.exactCount;
 	const accessibleCount = exactCount ?? (unread.data?.overflow ? undefined : count);
 	const state =
