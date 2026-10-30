@@ -7,7 +7,8 @@
  *   2. the Drizzle migrations (scripts/db-migrate, same ledger and checks as production),
  *   3. the private image bucket with the rules of src/core/infra/private-image-policy.ts,
  *   4. the Supabase Auth mail templates, rendered for this instance into MAIL_TEMPLATES_DIR,
- *      where the gateway serves them to Auth.
+ *      where the gateway serves them to Auth,
+ *   5. stored receipt photo links, moved onto the current NEXT_PUBLIC_APP_URL origin.
  *
  * The Docker image ships this file bundled (Dockerfile); `node scripts/selfhost/setup.mjs` runs it
  * from a checkout as well.
@@ -24,6 +25,7 @@ import {
 } from '../../src/core/infra/private-image-policy.ts';
 import { errorCodeSuffix, safeFailureReason } from '../db-migrate/failure.mjs';
 import { main as migrate } from '../db-migrate/run.mjs';
+import { rewriteImageOrigins } from './image-origin.mjs';
 
 const moduleDir = path.dirname(fileURLToPath(import.meta.url));
 const TEMPLATES_SOURCE = path.join(moduleDir, '..', '..', '..', '..', 'supabase', 'templates');
@@ -58,6 +60,19 @@ async function ensureRuntimeRole() {
 		await client.end();
 	}
 	log('Runtime role manawg_app is ready.');
+}
+
+async function moveImageOrigins() {
+	const origin = new URL(required('NEXT_PUBLIC_APP_URL')).origin;
+	const client = new pg.Client({ connectionString: required('DATABASE_MIGRATION_URL') });
+	await client.connect();
+	try {
+		const counts = await rewriteImageOrigins(client, origin);
+		const total = Object.values(counts).reduce((sum, count) => sum + count, 0);
+		log(`Receipt photo links point at ${origin} (${total} rewritten).`);
+	} finally {
+		await client.end();
+	}
 }
 
 async function storage(method, route, body) {
@@ -112,6 +127,8 @@ try {
 	progress.stage = 'startup';
 	process.env.MANAWG_SELF_HOSTED = 'true';
 	await migrate(progress);
+	progress.stage = 'image-origin';
+	await moveImageOrigins();
 	progress.stage = 'storage-bucket';
 	await ensureBucket();
 	progress.stage = 'mail-templates';
