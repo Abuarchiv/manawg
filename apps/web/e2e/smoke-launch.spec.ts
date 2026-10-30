@@ -148,6 +148,12 @@ test.describe('ManaWG launch smoke', () => {
 		await expect(page.locator('main#main')).toHaveCount(1);
 	});
 
+	test('a malformed share code answers 404 with the WG not-found title', async ({ page }) => {
+		const response = await page.goto('/wg/zz');
+		expect(response?.status()).toBe(404);
+		await expect(page).toHaveTitle(/WG nicht gefunden — ManaWG/);
+	});
+
 	test('prototype keys are not public modules', async ({ page }) => {
 		for (const slug of ['constructor', '__proto__']) {
 			await gotoWithRetry(page, `/discover/${slug}`);
