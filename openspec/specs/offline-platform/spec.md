@@ -13,6 +13,14 @@ Plain connection failures (no status, fetch error, timeout) SHALL NOT increase a
 - **WHEN** a queued action fails only because the device is offline
 - **THEN** its attempt count SHALL NOT grow
 
+### Requirement: The offline page does not wait forever
+
+The offline page's account lookup SHALL stop after the standard request timeout and show the server-unreachable state with the locally known flats and queued actions.
+
+#### Scenario: Connection hangs
+- **WHEN** the browser reports online but /api/wg/mine never answers
+- **THEN** the page SHALL leave the checking state after the request timeout
+
 ### Requirement: Offline pages do not offer dead links
 
 On the offline page the "Zurück zu" button and known-WG links SHALL be disabled with a hint while the browser is offline. The queue card SHALL list the newest actions first.
@@ -47,7 +55,7 @@ Removing the attachment of a queued action that already went out once (its outco
 
 ### Requirement: A conflicting expense edit explains itself
 
-A queued expense edit refused with `409 expense_changed` because another member changed the expense meanwhile SHALL be held for a server check and show a dedicated explanation that asks the member to check the current values before queuing the change again, not the generic sync failure.
+A queued expense edit refused with `409 expense_changed` because another member changed the expense meanwhile SHALL be held for a server check and show a dedicated explanation that asks the member to check the current values before queuing the change again, not the generic sync failure. The same SHALL hold for a queued expense edit refused with `409 expense_has_settled_shares` and a queued fixed-cost booking refused with `409 recurring_expense_already_advanced`.
 
 #### Scenario: Expense edited by someone else
 - **WHEN** a queued expense edit is answered with `409 expense_changed`

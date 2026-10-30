@@ -35,6 +35,16 @@ export function berlinDayKey(date: Date): string {
 }
 
 /**
+ * Berlin calendar day of a stored value: a YYYY-MM-DD key passes through, an ISO
+ * instant is converted, anything unreadable gives '' (an empty form field).
+ */
+export function toBerlinDayKey(value: string): string {
+	if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+	const instant = new Date(value);
+	return Number.isNaN(instant.getTime()) ? '' : berlinDayKey(instant);
+}
+
+/**
  * Whole Berlin calendar days from `from` to `to` (negative when `to` is
  * earlier). Counts date changes, not 24h spans: a chore due this evening is
  * 0 days away, not "morgen", and DST days still count as one day.

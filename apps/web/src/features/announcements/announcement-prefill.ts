@@ -2,8 +2,8 @@ import type { Locale } from '@/shared/i18n/locale';
 
 // German: "." groups thousands, "," is the decimal mark. English: the reverse.
 const AMOUNT_NUMBER: Record<Locale, string> = {
-	de: String.raw`\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?|\d{1,5}(?:[,.]\d{1,2})?`,
-	en: String.raw`\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d{1,5}(?:\.\d{1,2})?`,
+	de: String.raw`[1-9]\d{0,2}(?:\.\d{3})+(?:,\d{1,2})?|\d{1,5}(?:[,.]\d{1,2})?`,
+	en: String.raw`[1-9]\d{0,2}(?:,\d{3})+(?:\.\d{1,2})?|\d{1,5}(?:\.\d{1,2})?`,
 };
 
 // "euros" is accepted in English only; German keeps "Euro" and "EUR".
@@ -21,7 +21,7 @@ function amountPattern(locale: Locale): RegExp {
 function normalizeAmountStr(raw: string, locale: Locale): string {
 	if (locale === 'en') return raw.replace(/,/g, '');
 	if (raw.includes(',')) return raw.replace(/\./g, '');
-	if (/^\d{1,3}(?:\.\d{3})+$/.test(raw)) return raw.replace(/\./g, '');
+	if (/^[1-9]\d{0,2}(?:\.\d{3})+$/.test(raw)) return raw.replace(/\./g, '');
 	return raw;
 }
 

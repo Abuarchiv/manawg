@@ -1,4 +1,5 @@
 import { formatCentsInput } from '@/core/utils/amount';
+import { toBerlinDayKey } from '@/core/utils/berlin-day';
 import { safeLocalStorage } from '@/core/utils/browser';
 import { isRecord } from '@/core/utils/is-record';
 import { todayInputValue } from '@/core/utils/local-date';
@@ -104,6 +105,7 @@ export function isEmptyModuleDraft(
 			intervalDays: 7,
 			recurrenceType: 'days',
 			assignedMemberId: '',
+			firstDueDay: '',
 			queueEditId: null,
 		},
 		absence: {
@@ -202,6 +204,11 @@ export function buildQueueEditDraft(
 					assignedMemberId:
 						typeof action.payload.assignedMemberId === 'string'
 							? action.payload.assignedMemberId
+							: '',
+					// A missing anchorAt marks a first due day the member picked.
+					firstDueDay:
+						typeof action.payload.nextDueAt === 'string' && !action.payload.anchorAt
+							? toBerlinDayKey(action.payload.nextDueAt)
 							: '',
 				},
 			};

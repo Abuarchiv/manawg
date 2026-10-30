@@ -50,6 +50,8 @@ const FAILURE_BY_CODE: Readonly<Record<string, FailureName>> = {
 	chore_not_found: 'choreMissing',
 	expense_not_found: 'expenseMissing',
 	expense_changed: 'expenseChanged',
+	expense_has_settled_shares: 'expenseSettled',
+	recurring_expense_already_advanced: 'recurringAdvanced',
 	split_not_found: 'splitMissing',
 	image_invalid: 'imageInvalid',
 	amount_invalid: 'amountInvalid',

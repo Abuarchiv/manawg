@@ -18,5 +18,8 @@ export default {
 		hint: 'Du kannst es jederzeit unter Einstellungen wieder einschalten.',
 		doneTitle: 'Abbestellt',
 		doneHeading: 'Abbestellt.',
+		invalidTitle: 'Link ungültig',
+		invalidBody:
+			'Dieser Link ist ungültig oder abgelaufen. Ändere die Einstellung in der App unter Einstellungen.',
 	},
 } as const;

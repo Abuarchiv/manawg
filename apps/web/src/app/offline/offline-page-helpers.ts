@@ -1,6 +1,7 @@
 import { belongsToAccount, getKnownWgs, type KnownWg } from '@/core/auth/local-account';
 import { hasSessionCookie } from '@/core/auth/session-hint';
 import { parseAccountWgs } from '@/core/infra/account-wgs';
+import { anySignal, REQUEST_TIMEOUT_MS } from '@/core/infra/api-client';
 import { getOfflineActionSummary, type OfflineAction } from '@/core/offline/offline-queue';
 import { parseTimestamp } from '@/core/utils/time';
 import type { Message, MessageKey } from '@/shared/i18n/message';
@@ -53,9 +54,11 @@ export async function getAccountMemberships(
 ): Promise<AccountMembership[] | null> {
 	// Signed-out visitors: no probe, no 401 in the console (same as /login).
 	if (!hasSessionCookie()) return null;
+	// A hung connection ends in the unreachable state instead of an endless check.
+	const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
 	const res = await fetch('/api/wg/mine', {
 		cache: 'no-store',
-		...(signal ? { signal } : {}),
+		signal: signal ? anySignal([signal, timeout]) : timeout,
 	});
 	if (res.status === 401) return null;
 	if (!res.ok) throw new Error('account_wgs_failed');

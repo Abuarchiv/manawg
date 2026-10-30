@@ -68,6 +68,10 @@ The system SHALL mail only active members with an Auth account, a confirmed e-ma
 - **WHEN** a member uses the unsubscribe link or the List-Unsubscribe one-click action
 - **THEN** `notify_statement_email` becomes false without login and no later statement mail is sent for any WG of the same account; Einstellungen shows the switch off and can turn it back on
 
+#### Scenario: Invalid unsubscribe link
+- **WHEN** the unsubscribe link or the one-click action carries a truncated or foreign token
+- **THEN** the answer is status 400 with an HTML page in the request locale that points to Einstellungen, and nothing changes
+
 ### Requirement: Mail content matches the in-app statement
 
 The figures in the mail SHALL be computed by `buildMonthlyStatement` at send time, and the button SHALL open the in-app statement for the same month.

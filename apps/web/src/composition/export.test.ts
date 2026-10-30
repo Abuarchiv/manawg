@@ -23,7 +23,7 @@ const tables = Object.fromEntries(
 );
 mock.module('@/core/db', { namedExports: { db: {}, ...tables } });
 const { mapExpenseRows, mapRecurringRows } = await import('./export-queries-finance');
-const { mapShoppingRows } = await import('./export-queries-household');
+const { mapInventoryRows, mapShoppingRows } = await import('./export-queries-household');
 const { mapAuditRows } = await import('./export-queries-community');
 
 const ROW = {
@@ -152,4 +152,36 @@ test('the English export names categories and status in English and re-renders t
 	assert.deepEqual(rows.status, ['bought', 'open']);
 	assert.match(rows.audit[0] ?? '', /^Anna updated .*Bins/);
 	assert.equal(rows.audit[1], STORED);
+});
+
+const AT_CREATED = new Date('2026-03-30T10:00:00Z');
+const INVENTORY = [
+	{ id: 'i1', name: 'Milk', quantity: 1.5, unit: 'litre', threshold: 0.5, category: 'kitchen' },
+	{ id: 'i2', name: 'Tape', quantity: 1, unit: 'roll', threshold: 0, category: 'legacy' },
+].map((row) => ({ ...row, lastDecrementedAt: null, createdAt: AT_CREATED }));
+
+test('the inventory export names unit and category in the reader language', () => {
+	const de = mapInventoryRows(INVENTORY as never, 'de');
+	assert.deepEqual(
+		de.map((row) => [row.unit, row.category]),
+		[
+			['L', 'Küche'],
+			['Rolle', 'Sonstiges'],
+		],
+	);
+	const en = mapInventoryRows(INVENTORY as never, 'en');
+	assert.deepEqual(
+		en.map((row) => [row.unit, row.category]),
+		[
+			['L', 'Kitchen'],
+			['roll', 'Other'],
+		],
+	);
+});
+
+test('CSV writes fractional numbers with the locale decimal mark', () => {
+	const headers = ['name', 'quantity', 'threshold'];
+	const rows = [{ name: 'Milk', quantity: 1.5, threshold: 3 }];
+	assert.equal(toCsv(rows, headers, 'de'), '\uFEFFname;quantity;threshold\nMilk;1,5;3');
+	assert.equal(toCsv(rows, headers, 'en'), '\uFEFFname,quantity,threshold\nMilk,1.5,3');
 });
