@@ -103,11 +103,6 @@ export default {
 		toasts: 'Benachrichtigungen',
 		scrollToEnd: 'Zum Ende scrollen',
 		scrollToStart: 'Zum Anfang scrollen',
-		checkbox: {
-			mixed: 'Teilweise ausgewählt',
-			checked: 'Ausgewählt',
-			unchecked: 'Nicht ausgewählt',
-		},
 	},
 	upload: {
 		missingPending:
