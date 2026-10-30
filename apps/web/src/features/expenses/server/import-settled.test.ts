@@ -102,6 +102,14 @@ test('a payment that closes a circle through the import counts as settling it', 
 	assert.equal(await isSettled(), true);
 });
 
+test('an import that closes a circle of expenses is settled once any payment follows', async () => {
+	// B owes A 10 (import), A owes C 10, C owes B 10 cancel out; undo would bring back A→C and C→B.
+	state.importRows = [{ paidBy: 'A', debtor: 'B', amount: 1000 }];
+	state.otherExpenses = [expense('C', 'A', 1000), expense('B', 'C', 1000)];
+	state.payments = [{ fromMemberId: 'D', toMemberId: 'E', amountCents: 100, currency: 'EUR' }];
+	assert.equal(await isSettled(), true);
+});
+
 test('a payment between other members that leaves the import untouched does not block undo', async () => {
 	state.importRows = [{ paidBy: 'A', debtor: 'B', amount: 100 }];
 	state.otherExpenses = [expense('D', 'C', 500)];
