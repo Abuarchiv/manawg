@@ -126,15 +126,15 @@ test.describe('English calendar', () => {
 				await expect(page.getByRole('heading', { name: 'Next 30 days', level: 2 })).toBeAttached();
 				await expect(page.getByRole('tab', { name: 'Agenda' })).toBeVisible();
 				await expect(page.getByRole('tab', { name: 'Month' })).toBeVisible();
-				await expect(
-					page.getByRole('button', { name: 'Open event: Flat meeting' }).first(),
-				).toContainText('weekly');
-				await expect(
-					page.getByRole('button', { name: 'Open event: Lena’s birthday' }),
-				).toContainText('all day');
+				await expect(page.getByRole('button', { name: 'Flat meeting' }).first()).toContainText(
+					'weekly',
+				);
+				await expect(page.getByRole('button', { name: 'Lena’s birthday' })).toContainText(
+					'all day',
+				);
 				await expect(
 					page.getByRole('link', {
-						name: 'Open cleaning task: Clean the bathroom',
+						name: 'Clean the bathroom',
 					}),
 				).toContainText('Cleaning rota');
 				await expect(page.getByRole('button', { name: 'Add event' })).toBeVisible();
@@ -159,7 +159,7 @@ test.describe('English calendar', () => {
 				await expectNoSidewaysScroll(page, width);
 
 				await page.getByRole('tab', { name: 'Agenda' }).click();
-				await page.getByRole('button', { name: 'Open event: Flat meeting' }).first().click();
+				await page.getByRole('button', { name: 'Flat meeting' }).first().click();
 				const edit = page.getByRole('dialog');
 				await expect(edit.getByText('Edit event')).toBeVisible();
 				await expect(edit.getByText('Change applies to')).toBeVisible();
@@ -322,7 +322,7 @@ test.describe('English calendar', () => {
 		await navigateToFeature(page, CALENDAR);
 		await dismissOnboarding(page);
 
-		await page.getByRole('button', { name: 'Open event: Flat meeting' }).first().click();
+		await page.getByRole('button', { name: 'Flat meeting' }).first().click();
 		const edit = page.getByRole('dialog');
 		await expect(edit.getByRole('button', { name: /^Only .+/ })).toBeVisible();
 		await edit.getByRole('button', { name: /^Only .+/ }).click();

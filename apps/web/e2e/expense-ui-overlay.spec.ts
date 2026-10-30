@@ -521,7 +521,7 @@ test.describe('date integrity ui', () => {
 				.getByRole('list', { name: /Dienstag, 22\. September$/ })
 				.getByText('ganztägig', { exact: true }),
 		).toBeVisible();
-		await page.getByRole('button', { name: 'Termin öffnen: Alter Geburtstag' }).click();
+		await page.getByRole('button', { name: 'Alter Geburtstag' }).click();
 		await expect(page.getByLabel('Beginn')).toHaveValue('2026-09-22');
 		await expect(page.getByLabel('Ende (optional)')).toHaveValue('2026-09-22');
 		await page.getByLabel('Titel').fill('Neuer Titel');
