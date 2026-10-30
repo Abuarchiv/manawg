@@ -162,6 +162,9 @@ export default {
 	recurringCharged: {
 		feed: 'Fixkosten-Buchung {description} wurde automatisch eingetragen.',
 	},
+	recurringAutoPaused: {
+		feed: 'Fixkosten-Vorlage {description} wurde automatisch pausiert.',
+	},
 	recurringAdvanced: {
 		feed: '{description} wurde aus einer Fixkosten-Vorlage übernommen.',
 	},

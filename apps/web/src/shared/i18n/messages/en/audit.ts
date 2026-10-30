@@ -88,6 +88,9 @@ export default {
 	recurringCharged: {
 		feed: '{description} was added automatically from fixed costs.',
 	},
+	recurringAutoPaused: {
+		feed: 'Fixed-cost template {description} was paused automatically.',
+	},
 	recurringAdvanced: {
 		feed: '{description} was taken from a fixed-cost template.',
 	},

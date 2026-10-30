@@ -56,6 +56,18 @@ test('passive sentences and calls without a translator keep the stored summary',
 	});
 });
 
+test('an automatic pause shows only the template name as its detail', () => {
+	const row = {
+		eventType: 'recurring.auto_paused',
+		summary: 'Fixkosten-Vorlage Miete wurde automatisch pausiert.',
+		metadataJson: JSON.stringify({ description: 'Miete' }),
+	};
+	assert.deepEqual(auditActivitySentence(row, 'System', serverRenderContext('en')), {
+		text: 'Fixed-cost template Miete was paused automatically.',
+	});
+	assert.equal(auditDetail(row.metadataJson, serverRenderContext('en')), 'Miete');
+});
+
 test('the timeline renders audit rows, system rows and details per locale', () => {
 	const input = {
 		members: [{ id: 'm1', name: 'Anna' }],
