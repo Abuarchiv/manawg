@@ -72,3 +72,15 @@ Queued offline actions SHALL record review states (server check, missing image, 
 #### Scenario: Language switch with a queued error
 - **WHEN** a new queued action failed and the person switches to English
 - **THEN** its error SHALL be shown in English
+
+### Requirement: Device-wide state follows the queue and the account
+
+A change to the offline queue made in another tab or window of the same browser SHALL refresh the queue banner and counters without a reload. Dropping the previous account's queued actions on an account switch SHALL also delete their pending image blobs. Sign-out and account deletion SHALL clear the unread count on the app icon, and leaving the WG shell SHALL clear it too.
+
+#### Scenario: Queue emptied in another window
+- **WHEN** another window of the same browser sends the queued actions
+- **THEN** this window's banner and counters SHALL update to the empty queue
+
+#### Scenario: Account switch with a queued photo
+- **WHEN** a different account signs in on a browser that holds the previous account's queued action with a pending photo
+- **THEN** the action and its stored photo SHALL both be removed
