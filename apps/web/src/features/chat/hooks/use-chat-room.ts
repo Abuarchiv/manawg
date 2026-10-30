@@ -14,7 +14,12 @@ import {
 } from '../chat-pure';
 import { summarizeReactions } from '../chat-reactions';
 import { CHAT_PAGE_SIZE, createChatRefresher } from '../chat-refresh';
-import { type ChatMessageInput, type PendingChatSend, postChatMessage } from '../chat-send';
+import {
+	type ChatMessageInput,
+	type PendingChatSend,
+	type PersistPendingChatSend,
+	postChatMessage,
+} from '../chat-send';
 import type { ChatMessageDto, ChatReactionRow } from '../chat-types';
 import { useChatReactions } from './use-chat-reactions';
 import { useChatReadReceipt } from './use-chat-read-receipt';
@@ -58,7 +63,6 @@ export function useChatRoom({
 	const [firstUnreadId, setFirstUnreadId] = useState<string | null>(null);
 	const [sendError, setSendError] = useState<Message | null>(null);
 	const loadingOlderRef = useRef(false);
-	const pendingSendRef = useRef<PendingChatSend['current']>(null);
 	const messagesRef = useRef(messages);
 	messagesRef.current = messages;
 
@@ -148,18 +152,25 @@ export function useChatRoom({
 		}
 	}
 
-	async function sendMessage(input: ChatMessageInput): Promise<boolean> {
+	async function sendMessage(
+		input: ChatMessageInput,
+		pending: PendingChatSend,
+		persistPending: PersistPendingChatSend,
+	): Promise<boolean> {
 		setSendError(null);
 		const result = await postChatMessage(input, {
 			messagesUrl,
 			memberId: identity.memberId,
-			pending: pendingSendRef,
+			pending,
+			persistPending,
 		});
 		if (!result.ok) {
 			setSendError(
 				result.reason === 'key_unavailable'
 					? { key: 'chat.errors.keyUnavailable' }
-					: explainChatError('send', result.error),
+					: result.reason === 'replay_expired'
+						? { key: 'chat.errors.replayExpired' }
+						: explainChatError('send', result.error),
 			);
 			return false;
 		}

@@ -4,10 +4,7 @@ import { db, expenseSplits, expenses } from '@/core/db';
 import type { DbTransaction } from '@/core/db/transaction';
 import type { DebtExpenseInput } from '@/features/expenses/debts';
 
-/**
- * Every expense of a WG with all its splits, settled and unsettled, shaped for
- * `computeBalances` in `debts.ts`, which decides which splits still count.
- */
+/** Every expense with all splits; the debt calculation decides which splits still count. */
 export async function loadExpensesWithSplits(
 	wgId: string,
 	client: typeof db | DbTransaction = db,
@@ -15,90 +12,70 @@ export async function loadExpensesWithSplits(
 	return (await loadLedger(wgId, client)).map((entry) => entry.debt);
 }
 
-/** An expense of the ledger with what is needed to see the ledger as it stood at a past moment. */
+/** Booking data for reconstructing the ledger at a past moment. */
 export interface LedgerEntry {
 	importId: string | null;
 	createdAt: Date;
 	debt: DebtExpenseInput;
 }
 
-/** The whole ledger of a WG in two queries, each expense with its import and booking time. */
+/** One query keeps a concurrent edit from mixing an old payer with new splits. */
 export async function loadLedger(
 	wgId: string,
 	client: typeof db | DbTransaction = db,
 ): Promise<LedgerEntry[]> {
-	const expenseRows = await client
+	const rows = await client
 		.select({
-			id: expenses.id,
-			paidByMemberId: expenses.paidByMemberId,
-			currency: expenses.currency,
-			occurredAt: expenses.occurredAt,
-			importId: expenses.importId,
-			createdAt: expenses.createdAt,
+			expense: {
+				id: expenses.id,
+				paidByMemberId: expenses.paidByMemberId,
+				currency: expenses.currency,
+				occurredAt: expenses.occurredAt,
+				importId: expenses.importId,
+				createdAt: expenses.createdAt,
+			},
+			split: {
+				expenseId: expenseSplits.expenseId,
+				debtorMemberId: expenseSplits.debtorMemberId,
+				amountCents: expenseSplits.amountCents,
+				settledAt: expenseSplits.settledAt,
+			},
 		})
 		.from(expenses)
-		.where(eq(expenses.wgId, wgId));
-	if (expenseRows.length === 0) return [];
-
-	// Joined by WG instead of `inArray(expenseIds)`: one bind parameter per
-	// expense would exceed PostgreSQL's 65,535-parameter limit for large WGs.
-	const splitRows = await client
-		.select({
-			expenseId: expenseSplits.expenseId,
-			debtorMemberId: expenseSplits.debtorMemberId,
-			amountCents: expenseSplits.amountCents,
-			settledAt: expenseSplits.settledAt,
-		})
-		.from(expenseSplits)
-		.innerJoin(expenses, eq(expenseSplits.expenseId, expenses.id))
+		.leftJoin(expenseSplits, eq(expenseSplits.expenseId, expenses.id))
 		.where(eq(expenses.wgId, wgId));
 
-	const splitsByExpense = groupSplitsByExpense(splitRows);
-
-	return expenseRows.map((row) => ({
-		importId: row.importId ?? null,
-		createdAt: row.createdAt,
-		debt: {
-			paidByMemberId: row.paidByMemberId,
-			...(row.currency ? { currency: row.currency } : {}),
-			occurredAt:
-				row.occurredAt instanceof Date ? row.occurredAt.toISOString() : String(row.occurredAt),
-			splits: splitsByExpense.get(row.id) ?? [],
-		},
-	}));
-}
-
-interface RawSplitRow {
-	expenseId: string;
-	debtorMemberId: string;
-	amountCents: number;
-	settledAt: Date | string | null;
-}
-
-/**
- * Group split rows by expense id, normalising `settledAt` to an ISO string.
- *
- * The normalisation is not cosmetic: driver versions can return different
- * types for timestamp columns, so comparing the raw value would depend on the
- * driver. An ISO string is the same everywhere.
- */
-function groupSplitsByExpense(
-	rows: readonly RawSplitRow[],
-): Map<string, DebtExpenseInput['splits']> {
-	const splitsByExpense = new Map<string, DebtExpenseInput['splits']>();
-	for (const split of rows) {
-		const list = splitsByExpense.get(split.expenseId) ?? [];
-		list.push({
-			debtorMemberId: split.debtorMemberId,
-			amountCents: split.amountCents,
-			settledAt:
-				split.settledAt === null
-					? null
-					: split.settledAt instanceof Date
-						? split.settledAt.toISOString()
-						: String(split.settledAt),
-		});
-		splitsByExpense.set(split.expenseId, list);
+	const ledger = new Map<string, LedgerEntry>();
+	for (const { expense, split } of rows) {
+		let entry = ledger.get(expense.id);
+		if (!entry) {
+			entry = {
+				importId: expense.importId ?? null,
+				createdAt: expense.createdAt,
+				debt: {
+					paidByMemberId: expense.paidByMemberId,
+					...(expense.currency ? { currency: expense.currency } : {}),
+					occurredAt:
+						expense.occurredAt instanceof Date
+							? expense.occurredAt.toISOString()
+							: String(expense.occurredAt),
+					splits: [],
+				},
+			};
+			ledger.set(expense.id, entry);
+		}
+		if (split) {
+			entry.debt.splits.push({
+				debtorMemberId: split.debtorMemberId,
+				amountCents: split.amountCents,
+				settledAt:
+					split.settledAt === null
+						? null
+						: split.settledAt instanceof Date
+							? split.settledAt.toISOString()
+							: String(split.settledAt),
+			});
+		}
 	}
-	return splitsByExpense;
+	return [...ledger.values()];
 }

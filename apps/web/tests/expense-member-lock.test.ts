@@ -7,6 +7,7 @@ import pg from 'pg';
 import * as schema from '../src/core/db/schema.ts';
 import type { DbTransaction } from '../src/core/db/transaction.ts';
 import { writeExpense } from '../src/features/expenses/server/expense-create.ts';
+import { loadLedger } from '../src/features/expenses/server/expense-ledger.ts';
 import { writeImport } from '../src/features/expenses/server/import-commit.ts';
 
 // The payer and debtor check that runs inside the expense payment lock, against a real
@@ -154,5 +155,40 @@ test('writeImport refuses a mapped member who moved out and writes nothing', { s
 			.from(schema.expenseImports)
 			.where(eq(schema.expenseImports.wgId, wgId));
 		assert.equal(imports.length, 0);
+	});
+});
+
+test('the ledger reads real SQL joins scoped to the flat and keeps expenses without shares', {
+	skip,
+}, async () => {
+	await withWg(async ({ database, wgId, active }) => {
+		const [withSplit, withoutSplit] = await database
+			.insert(schema.expenses)
+			.values([
+				{ wgId, paidByMemberId: active, amountCents: 500, description: 'Mit Anteil' },
+				{ wgId, paidByMemberId: active, amountCents: 100, description: 'Ohne Anteil' },
+			])
+			.returning();
+		assert.ok(withSplit && withoutSplit);
+		await database.insert(schema.expenseSplits).values({
+			expenseId: withSplit.id,
+			debtorMemberId: active,
+			amountCents: 500,
+		});
+		const result = await loadLedger(wgId, database);
+		assert.equal(result.length, 2);
+		assert.ok(result.every((entry) => entry.debt.paidByMemberId === active));
+		assert.deepEqual(result.map((entry) => entry.debt.splits.length).sort(), [0, 1]);
+		assert.deepEqual(
+			result.flatMap((entry) => entry.debt.splits),
+			[
+				{
+					debtorMemberId: active,
+					amountCents: 500,
+					settledAt: null,
+				},
+			],
+		);
+		assert.deepEqual(await loadLedger(randomUUID(), database), []);
 	});
 });

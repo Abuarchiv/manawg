@@ -112,6 +112,8 @@ export default {
 			'Die Nachricht, auf die du antwortest, gibt es nicht mehr. Entferne die Antwort und sende erneut.',
 		editNotAllowed: 'Nachrichten lassen sich nur {minutes} Minuten nach dem Senden bearbeiten.',
 		keyUnavailable: 'Nachricht konnte nicht sicher gesendet werden. Versuche es erneut.',
+		replayExpired:
+			'Der sichere Wiederholzeitraum ist abgelaufen oder unklar. Prüfe den Chatverlauf, bevor du diese Nachricht erneut sendest.',
 		textKept: '{error} Dein Text ist noch da.',
 	},
 	warning: {

@@ -35,6 +35,9 @@ const state = {
 	locks: 0,
 	audits: [] as string[],
 	notifications: 0,
+	activeMember: true,
+	deactivateAfterGuard: false,
+	replayLockedWgId: undefined as string | undefined,
 };
 let cache = new Map<string, Cached>();
 let prior: Promise<void> = Promise.resolve();
@@ -43,7 +46,9 @@ const withIdempotentReplay = async (
 	req: Request,
 	scope: string,
 	mutate: (tx: unknown) => Promise<{ response: Cached }>,
+	wgIdForLock?: string,
 ) => {
+	state.replayLockedWgId = wgIdForLock;
 	const key = req.headers.get('idempotency-key');
 	const cacheKey = `${scope}:${key}`;
 	const waitFor = prior;
@@ -108,14 +113,36 @@ mock.module('@/core/audit', {
 	},
 });
 mock.module('@/core/db', { namedExports: { announcements, announcementReactions } });
+mock.module('@/core/db/account-deletion', {
+	namedExports: {
+		lockActiveAccountMember: async () =>
+			state.activeMember
+				? {
+						id: memberId,
+						name: 'Member',
+						role: 'member',
+						authUserId: 'auth-1',
+						deactivatedAt: null,
+					}
+				: null,
+	},
+});
 mock.module('@/core/guards/api-auth', { namedExports: { UUID_PATTERN: /^[0-9a-f-]{36}$/i } });
 mock.module('@/core/guards/require-wg-member', {
 	namedExports: {
-		requireWgMember: async () => ({
-			ok: true,
-			wg: { id: wgId, name: 'WG', shareCode: 'MTE8PZAT' },
-			member: { memberId, name: 'Member' },
-		}),
+		requireWgMember: async () => {
+			const auth = {
+				ok: true,
+				wg: { id: wgId, name: 'WG', shareCode: 'MTE8PZAT' },
+				member: { memberId, name: 'Member' },
+				authUserId: 'auth-1',
+			};
+			if (state.deactivateAfterGuard) {
+				state.deactivateAfterGuard = false;
+				state.activeMember = false;
+			}
+			return auth;
+		},
 	},
 });
 mock.module('@/core/infra/observability', {
@@ -153,6 +180,9 @@ function harness() {
 	state.locks = 0;
 	state.audits = [];
 	state.notifications = 0;
+	state.activeMember = true;
+	state.deactivateAfterGuard = false;
+	state.replayLockedWgId = undefined;
 	cache = new Map();
 	prior = Promise.resolve();
 	return {
@@ -199,4 +229,18 @@ test('explicit active true with a new key is a no-op when already active', async
 	assert.equal(state.reaction?.id, 'reaction-1');
 	assert.deepEqual(state.audits, ['announcement.reaction.added']);
 	assert.equal(state.notifications, 1);
+});
+
+test('a reaction is not saved after a concurrent move-out', async () => {
+	const { state, post } = harness();
+	state.deactivateAfterGuard = true;
+
+	const response = await post(keyA);
+	assert.equal(response.status, 401);
+	assert.equal((await response.json()).error, 'member_deactivated');
+	assert.equal(state.reaction, null);
+	assert.deepEqual(state.audits, []);
+	assert.equal(state.notifications, 0);
+	assert.equal(state.locks, 0);
+	assert.equal(state.replayLockedWgId, wgId);
 });

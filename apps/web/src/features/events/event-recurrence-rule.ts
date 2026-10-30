@@ -15,6 +15,7 @@ export interface RecurrenceRule {
 }
 const FREQS: ReadonlySet<RecurrenceFreq> = new Set(['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY']);
 const BYDAYS: ReadonlySet<RecurrenceByDay> = new Set(['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU']);
+const RULE_KEYS = new Set(['FREQ', 'INTERVAL', 'BYDAY', 'COUNT', 'UNTIL', 'EXDATE']);
 export const RECURRENCE_OPTIONS: ReadonlyArray<{ value: string; label: Message }> = [
 	{ value: '', label: { key: 'events.recurrence.once' } },
 	{ value: 'DAILY', label: { key: 'events.recurrence.daily' } },
@@ -56,21 +57,23 @@ function parseExdates(value: string): string[] | null {
 
 export function parseRecurrenceRule(value: string | null | undefined): RecurrenceRule | null {
 	if (!value || typeof value !== 'string') return null;
-	const parts = value.split(';').filter(Boolean);
+	const parts = value.split(';');
+	if (parts.some((part) => part.trim().length === 0)) return null;
 	const map: Record<string, string> = {};
 	for (const part of parts) {
 		const eq = part.indexOf('=');
 		if (eq <= 0) return null;
 		const key = part.slice(0, eq).trim().toUpperCase();
 		const val = part.slice(eq + 1).trim();
-		if (!key || !val) return null;
+		if (!RULE_KEYS.has(key) || !val || Object.hasOwn(map, key)) return null;
 		map[key] = val;
 	}
 	const freq = map.FREQ?.toUpperCase();
 	if (!freq || !isRecurrenceFreq(freq)) return null;
 	const intervalRaw = map.INTERVAL ?? '1';
-	const interval = Number.parseInt(intervalRaw, 10);
-	if (!Number.isFinite(interval) || interval < 1 || interval > 365) return null;
+	if (!/^\d+$/.test(intervalRaw)) return null;
+	const interval = Number(intervalRaw);
+	if (!Number.isSafeInteger(interval) || interval < 1 || interval > 365) return null;
 	const rule: RecurrenceRule = { freq, interval };
 	if (map.BYDAY) {
 		const days = map.BYDAY.split(',')
@@ -85,8 +88,9 @@ export function parseRecurrenceRule(value: string | null | undefined): Recurrenc
 		rule.byDay = filtered;
 	}
 	if (map.COUNT) {
-		const count = Number.parseInt(map.COUNT, 10);
-		if (!Number.isFinite(count) || count < 1 || count > MAX_OCCURRENCES) return null;
+		if (!/^\d+$/.test(map.COUNT)) return null;
+		const count = Number(map.COUNT);
+		if (!Number.isSafeInteger(count) || count < 1 || count > MAX_OCCURRENCES) return null;
 		rule.count = count;
 	}
 	if (map.UNTIL) {
@@ -108,7 +112,9 @@ export function canonicalRecurrenceRule(
 ): { ok: true; rule: string | null } | { ok: false } {
 	if (!value) return { ok: true, rule: null };
 	const parsed = parseRecurrenceRule(value);
-	return parsed ? { ok: true, rule: formatRecurrenceRule(parsed) } : { ok: false };
+	return parsed && (parsed.byDay === undefined || parsed.freq === 'WEEKLY')
+		? { ok: true, rule: formatRecurrenceRule(parsed) }
+		: { ok: false };
 }
 
 export function formatRecurrenceRule(rule: RecurrenceRule): string {

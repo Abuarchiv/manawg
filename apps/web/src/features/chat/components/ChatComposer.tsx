@@ -20,6 +20,7 @@ import { type Message, useMessage } from '@/shared/i18n/message';
 import { haptic } from '@/shared/lib/haptics';
 import { readChatDraft, writeChatDraft } from '../chat-draft';
 import { CHAT_BODY_MAX } from '../chat-pure';
+import type { ChatMessageInput, PendingChatSend, PersistPendingChatSend } from '../chat-send';
 import { detectMention, findMentions, type MentionTrigger } from '../chat-text';
 import {
 	filterMentionMembers,
@@ -39,11 +40,11 @@ interface ChatComposerProps {
 	replyToSenderName: string | null;
 	onClearReply: () => void;
 	onRestoreReply: (id: string | null) => void;
-	onSend: (input: {
-		body: string;
-		mentionMemberIds: string[];
-		replyToMessageId: string | null;
-	}) => Promise<boolean>;
+	onSend: (
+		input: ChatMessageInput,
+		pending: PendingChatSend,
+		persistPending: PersistPendingChatSend,
+	) => Promise<boolean>;
 }
 
 export function ChatComposer({
@@ -65,6 +66,7 @@ export function ChatComposer({
 	const rootRef = useRef<HTMLDivElement | null>(null);
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 	const draftRef = useRef('');
+	const pendingSendRef = useRef<PendingChatSend>({ current: null });
 	const replyToMessageIdRef = useRef(replyToMessageId);
 	const handledReplyFocusRequestRef = useRef(0);
 	replyToMessageIdRef.current = replyToMessageId;
@@ -92,6 +94,7 @@ export function ChatComposer({
 	useEffect(() => {
 		const saved = readChatDraft(draftKey, CHAT_BODY_MAX);
 		draftRef.current = saved.body;
+		pendingSendRef.current.current = saved.pendingSend ?? null;
 		setDraft(saved.body);
 		onRestoreReply(saved.replyToMessageId);
 		setDraftHydrated(true);
@@ -172,12 +175,25 @@ export function ChatComposer({
 			).map((match) => match.name),
 		);
 		const mentionedIds = visibleMembers.filter((m) => matchedNames.has(m.name)).map((m) => m.id);
-		try {
-			const ok = await onSend({
-				body: text,
-				mentionMemberIds: mentionedIds,
-				replyToMessageId: outgoingReplyToMessageId,
+		const persistPending: PersistPendingChatSend = (pendingSend) => {
+			const saved = writeChatDraft(draftKey, {
+				body: draftRef.current,
+				replyToMessageId: replyToMessageIdRef.current,
+				pendingSend,
 			});
+			setDraftStorageFailed(!saved);
+			return saved;
+		};
+		try {
+			const ok = await onSend(
+				{
+					body: text,
+					mentionMemberIds: mentionedIds,
+					replyToMessageId: outgoingReplyToMessageId,
+				},
+				pendingSendRef.current,
+				persistPending,
+			);
 			if (ok) {
 				haptic('medium');
 				// A user may continue composing while the request is in flight. Only

@@ -241,7 +241,7 @@ export async function editRecurringTemplate(
 					: dueAt,
 			anchorAt: moved ?? template.anchorAt,
 			splitsJson: JSON.stringify(splits),
-			updatedAt: new Date(),
+			updatedAt: sql`greatest(clock_timestamp(), ${recurringExpenses.updatedAt} + interval '1 millisecond')`,
 			...(transition === 'pause' ? { pausedAt: new Date() } : {}),
 			...(transition === 'resume' ? { pausedAt: null } : {}),
 		})

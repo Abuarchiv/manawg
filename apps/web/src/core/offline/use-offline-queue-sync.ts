@@ -6,8 +6,8 @@ import { captureException } from '@/core/infra/capture-client';
 import {
 	countOfflineActions,
 	getSyncedCountForWg,
-	OFFLINE_QUEUE_EVENT,
 	OFFLINE_SYNCED_EVENT,
+	subscribeOfflineQueueChanges,
 	syncOfflineActions,
 } from './offline-client';
 
@@ -110,13 +110,13 @@ export function useOfflineQueueSync({
 		};
 
 		const unsubscribeOnline = subscribeOnline(sync);
-		window.addEventListener(OFFLINE_QUEUE_EVENT, updateCount);
+		const unsubscribeQueueChanges = subscribeOfflineQueueChanges(updateCount);
 		window.addEventListener(OFFLINE_SYNCED_EVENT, onExternalSync);
 		return () => {
 			active = false;
 			mountedRef.current = false;
 			unsubscribeOnline();
-			window.removeEventListener(OFFLINE_QUEUE_EVENT, updateCount);
+			unsubscribeQueueChanges();
 			window.removeEventListener(OFFLINE_SYNCED_EVENT, onExternalSync);
 		};
 	}, [shareCode, memberId]);

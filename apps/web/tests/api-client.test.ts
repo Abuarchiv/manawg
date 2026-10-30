@@ -3,6 +3,7 @@ import test, { type TestContext } from 'node:test';
 
 const { anySignal, apiFetch, readApiErrorCode } = await import('../src/core/infra/api-client.ts');
 const { postChatMessage } = await import('../src/features/chat/chat-send.ts');
+const CHAT_SEND_KEY = '00000000-0000-4000-8000-000000000001';
 
 function replaceFetch(t: TestContext, implementation: typeof fetch) {
 	const originalFetch = globalThis.fetch;
@@ -131,12 +132,18 @@ test('retrying an ambiguously committed chat message reuses its idempotency key'
 		bodies.push(init?.body);
 		return truncatedResponse(200);
 	});
-	const pending = { current: null };
+	const pending = {
+		current: null as { fingerprint: string; key: string; createdAtMs: number | null } | null,
+	};
 	const deps = {
 		messagesUrl: '/api/wg/MTE8PZAT/chat/messages',
 		memberId: 'member-1',
 		pending,
-		createKey: () => `chat-key-${++generatedKeys}`,
+		createKey: () => {
+			generatedKeys += 1;
+			return CHAT_SEND_KEY;
+		},
+		persistPending: () => true,
 	};
 	const message = {
 		body: 'committed message',
@@ -146,7 +153,7 @@ test('retrying an ambiguously committed chat message reuses its idempotency key'
 
 	assert.equal((await postChatMessage(message, deps)).ok, false);
 	assert.equal((await postChatMessage(message, deps)).ok, false);
-	assert.deepEqual(keys, ['chat-key-1', 'chat-key-1']);
+	assert.deepEqual(keys, [CHAT_SEND_KEY, CHAT_SEND_KEY]);
 	assert.deepEqual(
 		bodies.map((body) => JSON.parse(String(body))),
 		[message, message],
@@ -160,9 +167,17 @@ test('a rejected chat message frees its key, a missing key sends nothing', async
 		requests += 1;
 		return Response.json({ error: 'reply_to_not_found' }, { status: 404 });
 	});
-	const pending = { current: null as { fingerprint: string; key: string } | null };
+	const pending = {
+		current: null as { fingerprint: string; key: string; createdAtMs: number | null } | null,
+	};
 	const message = { body: 'hi', mentionMemberIds: [], replyToMessageId: 'gone' };
-	const deps = { messagesUrl: '/api/x', memberId: 'member-1', pending, createKey: () => 'key' };
+	const deps = {
+		messagesUrl: '/api/x',
+		memberId: 'member-1',
+		pending,
+		createKey: () => CHAT_SEND_KEY,
+		persistPending: () => true,
+	};
 
 	assert.deepEqual(await postChatMessage(message, deps), {
 		ok: false,
@@ -217,12 +232,20 @@ test('a rate-limited or still-pending chat message keeps its key', async (t) => 
 		Response.json({ error: 'idempotency_response_pending' }, { status: 409 }),
 	];
 	replaceFetch(t, async () => answers.shift() as Response);
-	const pending = { current: null as { fingerprint: string; key: string } | null };
+	const pending = {
+		current: null as { fingerprint: string; key: string; createdAtMs: number | null } | null,
+	};
 	const message = { body: 'hi', mentionMemberIds: [], replyToMessageId: null };
-	const deps = { messagesUrl: '/api/x', memberId: 'member-1', pending, createKey: () => 'key' };
+	const deps = {
+		messagesUrl: '/api/x',
+		memberId: 'member-1',
+		pending,
+		createKey: () => CHAT_SEND_KEY,
+		persistPending: () => true,
+	};
 
 	await postChatMessage(message, deps);
-	assert.equal(pending.current?.key, 'key');
+	assert.equal(pending.current?.key, CHAT_SEND_KEY);
 	await postChatMessage(message, deps);
-	assert.equal(pending.current?.key, 'key');
+	assert.equal(pending.current?.key, CHAT_SEND_KEY);
 });

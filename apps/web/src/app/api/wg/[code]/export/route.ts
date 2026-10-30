@@ -47,8 +47,9 @@ function parseExportPage(req: NextRequest): { page: ExportPage; explicit: boolea
 	const params = req.nextUrl.searchParams;
 	const rawLimit = params.get('limit');
 	const rawOffset = params.get('offset');
-	const limit = rawLimit === null ? NO_EXPORT_LIMIT : Number.parseInt(rawLimit, 10);
-	const offset = rawOffset === null ? 0 : Number.parseInt(rawOffset, 10);
+	if ([rawLimit, rawOffset].some((value) => value !== null && !/^\d+$/.test(value))) return null;
+	const limit = rawLimit === null ? NO_EXPORT_LIMIT : Number(rawLimit);
+	const offset = rawOffset === null ? 0 : Number(rawOffset);
 	if (!Number.isFinite(limit) || limit < 1 || (rawLimit !== null && limit > EXPORT_LIMIT_MAX)) {
 		return null;
 	}

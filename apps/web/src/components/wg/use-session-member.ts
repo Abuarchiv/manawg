@@ -6,8 +6,32 @@ import { subscribeVisibility } from '@/core/hooks/use-online-status';
 import { isSessionExpired } from '@/core/http/error-codes';
 import { apiFetch } from '@/core/infra/api-client';
 import { adoptLocalAccount } from '@/core/offline/offline-client';
+import { safeLocalStorage } from '@/core/utils/browser';
 import type { WgSummary } from './WgContextProvider';
 import type { WgAuthRef, WgSessionAction } from './wg-session-state';
+
+const LOCAL_ACCOUNT_KEY = 'manawg_account';
+
+export function isAccountStorageChange(
+	event: Pick<StorageEvent, 'key' | 'oldValue' | 'newValue' | 'storageArea'>,
+	currentUserId: string | null,
+	storage: Storage,
+): boolean {
+	if (event.storageArea !== storage) return false;
+	let storedUserId: string | null;
+	try {
+		storedUserId = storage.getItem(LOCAL_ACCOUNT_KEY);
+	} catch {
+		return false;
+	}
+	if (event.key === null) return currentUserId !== null && storedUserId === null;
+	return (
+		event.key === LOCAL_ACCOUNT_KEY &&
+		event.oldValue !== event.newValue &&
+		event.newValue === storedUserId &&
+		event.newValue !== currentUserId
+	);
+}
 
 /**
  * Resolves the signed-in Supabase user to this WG's member: hydration and the /api/wg/[code] member
@@ -101,25 +125,41 @@ export function useSessionMember({
 	useEffect(() => {
 		if (!hydrated) return;
 		let revalidating = false;
-		const revalidate = () => {
+		let requestId = 0;
+		const revalidate = (userId: string | null, keepCurrentContext: boolean): void => {
 			if (revalidating) return;
 			revalidating = true;
-			void loadSessionMember(auth.current.userId, auth.current.generation, true).finally(() => {
-				revalidating = false;
+			const currentRequestId = ++requestId;
+			void loadSessionMember(userId, auth.current.generation, keepCurrentContext).finally(() => {
+				if (requestId === currentRequestId) revalidating = false;
 			});
 		};
-		revalidate();
+		const onVisible = () => revalidate(auth.current.userId, true);
+		const onStorage = (event: StorageEvent): void => {
+			const storage = safeLocalStorage();
+			if (!storage || !isAccountStorageChange(event, auth.current.userId, storage)) return;
+			auth.current.generation += 1;
+			auth.current.syncAbort?.abort();
+			auth.current.syncAbort = null;
+			auth.current.userId = null;
+			dispatch({ type: 'member-lost' });
+			requestId += 1;
+			revalidating = false;
+			revalidate(null, false);
+		};
+
+		revalidate(auth.current.userId, true);
 		// Sign-out or an account switch in another tab shows up on the next lookup.
-		const offVisible = subscribeVisibility((visible) => {
-			if (visible) revalidate();
-		});
+		const offVisible = subscribeVisibility((visible) => visible && onVisible());
+		window.addEventListener('storage', onStorage);
 		return () => {
 			offVisible();
+			window.removeEventListener('storage', onStorage);
 			auth.current.generation += 1;
 			auth.current.syncAbort?.abort();
 			auth.current.syncAbort = null;
 		};
-	}, [auth, hydrated, loadSessionMember]);
+	}, [auth, dispatch, hydrated, loadSessionMember]);
 
 	return { hydrated, loadSessionMember };
 }

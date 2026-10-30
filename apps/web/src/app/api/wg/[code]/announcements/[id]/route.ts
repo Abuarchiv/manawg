@@ -1,7 +1,8 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, type SQL, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { recordAuditEvent } from '@/core/audit';
 import { announcementReactions, announcements, db, wgMembers } from '@/core/db';
+import { lockActiveAccountMember } from '@/core/db/account-deletion';
 import { revokePrivateImageIfUnreferenced } from '@/core/db/private-image-deletions';
 import { rowHoldsPatch } from '@/core/db/row-holds-patch';
 import { lockExpensePayments, withTransaction } from '@/core/db/transaction';
@@ -86,9 +87,10 @@ export const PATCH = withWgRoute<{ id: string }>(
 			status?: string;
 			resolvedAt?: Date | null;
 			resolvedByMemberId?: string | null;
-			updatedAt?: Date;
-		} = {};
-		patch.updatedAt = now;
+			updatedAt: SQL;
+		} = {
+			updatedAt: sql`greatest(clock_timestamp(), ${announcements.updatedAt} + interval '1 millisecond')`,
+		};
 		if (parsed.data.kind) patch.kind = parsed.data.kind;
 		if (parsed.data.content !== undefined) patch.content = parsed.data.content;
 		if (typeof parsed.data.pinned === 'boolean') {
@@ -136,6 +138,20 @@ export const PATCH = withWgRoute<{ id: string }>(
 				.limit(1)
 				.for('update');
 			if (!current) return null;
+			if (patch.status !== undefined && !isAuthor && caller.role !== 'admin') {
+				const [take] = await tx
+					.select({ id: announcementReactions.id })
+					.from(announcementReactions)
+					.where(
+						and(
+							eq(announcementReactions.announcementId, id),
+							eq(announcementReactions.memberId, auth.member.memberId),
+							eq(announcementReactions.reaction, 'take'),
+						),
+					)
+					.limit(1);
+				if (!take) return 'status_change_not_allowed' as const;
+			}
 			// A repeated resolve (stale board, retry) keeps who resolved the post and when.
 			const statusChanged = patch.status !== undefined && patch.status !== current.status;
 			const [saved] = await tx
@@ -159,6 +175,9 @@ export const PATCH = withWgRoute<{ id: string }>(
 		});
 		if (outcome === 'member_deactivated') return unauthorized('member_deactivated');
 		if (outcome === 'not_allowed') return forbidden('not_owner', 'not_owner');
+		if (outcome === 'status_change_not_allowed') {
+			return forbidden('status_change_not_allowed', 'status_change_not_allowed');
+		}
 		if (!outcome) {
 			const [stored] = await db
 				.select()
@@ -240,6 +259,10 @@ export const DELETE = withWgRoute<{ id: string }>(
 		// can moderate stale or inappropriate content, e.g. posts of members who moved out.
 		const deletion = await withTransaction(async (tx) => {
 			await lockExpensePayments(tx, wgId);
+			const actor = await lockActiveAccountMember(tx, wgId, auth.member.memberId, auth.authUserId);
+			if (!actor) {
+				return { ok: false as const, response: unauthorized('member_deactivated') };
+			}
 			const [row] = await tx
 				.select({
 					authorMemberId: announcements.authorMemberId,

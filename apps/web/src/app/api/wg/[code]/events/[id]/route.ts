@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, type SQL, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { recordAuditEvent } from '@/core/audit';
@@ -20,7 +20,12 @@ import {
 	eventRecurrenceSchema,
 	eventTitleSchema,
 } from '@/features/events/event-schemas';
-import { canonicalRecurrenceRule, serializeWgEvent } from '@/features/events/events';
+import {
+	canonicalRecurrenceRule,
+	parseRecurrenceRule,
+	serializeWgEvent,
+} from '@/features/events/events';
+import { shiftedSeriesRule } from '@/features/events/recurrence-shift';
 import {
 	eventRelevantUntil,
 	notifyEventChange,
@@ -76,11 +81,16 @@ export const PATCH = withWgRoute<{ id: string }>('events PATCH', async (req, { c
 	});
 	if (!parsed.ok) return parsed.response;
 
+	const recurrenceInput = parsed.data.recurrence;
 	const recurrence =
-		parsed.data.recurrence === undefined
-			? undefined
-			: canonicalRecurrenceRule(parsed.data.recurrence);
-	if (recurrence && !recurrence.ok) return badRequest('recurrence_invalid');
+		recurrenceInput === undefined ? undefined : canonicalRecurrenceRule(recurrenceInput);
+	const legacyByDayRule =
+		recurrence?.ok === false && recurrenceInput !== undefined
+			? parseRecurrenceRule(recurrenceInput)
+			: null;
+	const legacyByDayCandidate =
+		legacyByDayRule?.byDay !== undefined && legacyByDayRule.freq !== 'WEEKLY';
+	if (recurrence?.ok === false && !legacyByDayCandidate) return badRequest('recurrence_invalid');
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
 	const wgId = auth.wg.id;
@@ -96,6 +106,8 @@ export const PATCH = withWgRoute<{ id: string }>('events PATCH', async (req, { c
 			startsAt: wgEvents.startsAt,
 			endsAt: wgEvents.endsAt,
 			allDay: wgEvents.allDay,
+			recurrence: wgEvents.recurrence,
+			updatedAt: wgEvents.updatedAt,
 		})
 		.from(wgEvents)
 		.where(and(eq(wgEvents.id, id), eq(wgEvents.wgId, wgId)))
@@ -105,8 +117,8 @@ export const PATCH = withWgRoute<{ id: string }>('events PATCH', async (req, { c
 	const denied = await requireOwnerOrAdmin(wgId, auth.member, current.createdByMemberId);
 	if (denied) return denied;
 
-	const update: Partial<typeof wgEvents.$inferInsert> & { updatedAt: Date } = {
-		updatedAt: new Date(),
+	const update: Omit<Partial<typeof wgEvents.$inferInsert>, 'updatedAt'> & { updatedAt: SQL } = {
+		updatedAt: sql`greatest(clock_timestamp(), ${wgEvents.updatedAt} + interval '1 millisecond')`,
 	};
 	if (parsed.data.title !== undefined) update.title = parsed.data.title;
 	if (parsed.data.description !== undefined) update.description = parsed.data.description;
@@ -122,13 +134,36 @@ export const PATCH = withWgRoute<{ id: string }>('events PATCH', async (req, { c
 	} else if (switchedToAllDay && current.endsAt) update.endsAt = storedTime(current.endsAt);
 	if (parsed.data.allDay !== undefined) update.allDay = parsed.data.allDay;
 	if (parsed.data.location !== undefined) update.location = parsed.data.location;
-	if (recurrence?.ok) update.recurrence = recurrence.rule;
 
 	const effectiveStartsAt = update.startsAt ?? current.startsAt;
 	const effectiveEndsAt = update.endsAt === undefined ? current.endsAt : update.endsAt;
 	if (effectiveEndsAt && effectiveEndsAt.getTime() < effectiveStartsAt.getTime()) {
 		return badRequest('ends_before_start');
 	}
+
+	let recurrenceToStore = recurrence?.ok ? recurrence.rule : undefined;
+	if (legacyByDayCandidate) {
+		const storedRule = current.recurrence ? parseRecurrenceRule(current.recurrence) : null;
+		if (!storedRule?.byDay || storedRule.freq === 'WEEKLY' || !current.recurrence) {
+			return badRequest('recurrence_invalid');
+		}
+		const shifted = shiftedSeriesRule(
+			current.recurrence,
+			current.startsAt.toISOString(),
+			effectiveStartsAt,
+			allDay,
+			current.allDay,
+		);
+		if (!shifted || recurrenceInput !== shifted) return badRequest('recurrence_invalid');
+		recurrenceToStore = shifted;
+	}
+	if (recurrenceToStore !== undefined) update.recurrence = recurrenceToStore;
+
+	const expectedVersion = parsed.data.expectedUpdatedAt
+		? new Date(parsed.data.expectedUpdatedAt)
+		: legacyByDayCandidate
+			? current.updatedAt
+			: undefined;
 
 	const [row] = await db
 		.update(wgEvents)
@@ -137,8 +172,8 @@ export const PATCH = withWgRoute<{ id: string }>('events PATCH', async (req, { c
 			and(
 				eq(wgEvents.id, id),
 				eq(wgEvents.wgId, wgId),
-				parsed.data.expectedUpdatedAt
-					? sql`date_trunc('milliseconds', ${wgEvents.updatedAt}) = ${new Date(parsed.data.expectedUpdatedAt)}`
+				expectedVersion
+					? sql`date_trunc('milliseconds', ${wgEvents.updatedAt}) = ${expectedVersion}`
 					: undefined,
 			),
 		)

@@ -9,6 +9,7 @@ import {
 	db,
 	wgMembers,
 } from '@/core/db';
+import { lockActiveAccountMember } from '@/core/db/account-deletion';
 import { persistReplayWarning, withIdempotentReplay } from '@/core/db/with-replay';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
@@ -78,53 +79,70 @@ export const POST = withWgRoute<{ id: string }>(
 		if (!auth.ok) return auth.response;
 		const wg = auth.wg;
 		const scope = `announcement-comment:${wg.id}:${auth.member.memberId}:${id}`;
-		const outcome = await withIdempotentReplay(req, scope, async (tx) => {
-			const limited = rateLimitedReplayResponse(
-				await checkRateLimit(wgWriteLimiter, `comment:${wg.id}:${auth.member.memberId}`),
-			);
-			if (limited) return { response: limited, effect: null };
+		const outcome = await withIdempotentReplay(
+			req,
+			scope,
+			async (tx) => {
+				const limited = rateLimitedReplayResponse(
+					await checkRateLimit(wgWriteLimiter, `comment:${wg.id}:${auth.member.memberId}`),
+				);
+				if (limited) return { response: limited, effect: null };
+				const actor = await lockActiveAccountMember(
+					tx,
+					wg.id,
+					auth.member.memberId,
+					auth.authUserId,
+				);
+				if (!actor) {
+					return {
+						response: { status: 401, body: { error: 'member_deactivated' } },
+						effect: null,
+					};
+				}
 
-			const [announcement] = await tx
-				.select({ id: announcements.id, authorMemberId: announcements.authorMemberId })
-				.from(announcements)
-				.where(and(eq(announcements.id, id), eq(announcements.wgId, wg.id)))
-				.limit(1)
-				// Held until commit: a concurrent DELETE would otherwise slip in between
-				// this check and the insert and turn the FK violation into a 500.
-				.for('share');
-			if (!announcement) {
-				return {
-					response: { status: 404, body: { error: 'announcement_not_found' } },
-					effect: null,
+				const [announcement] = await tx
+					.select({ id: announcements.id, authorMemberId: announcements.authorMemberId })
+					.from(announcements)
+					.where(and(eq(announcements.id, id), eq(announcements.wgId, wg.id)))
+					.limit(1)
+					// Held until commit: a concurrent DELETE would otherwise slip in between
+					// this check and the insert and turn the FK violation into a 500.
+					.for('share');
+				if (!announcement) {
+					return {
+						response: { status: 404, body: { error: 'announcement_not_found' } },
+						effect: null,
+					};
+				}
+
+				const [comment] = await tx
+					.insert(announcementComments)
+					.values({
+						announcementId: id,
+						memberId: auth.member.memberId,
+						content: parsed.data.content,
+					})
+					.returning();
+				if (!comment) throw new Error('announcement_comment_insert_failed');
+
+				const body = {
+					comment: {
+						...comment,
+						authorName: auth.member.name,
+						authorColor:
+							'color' in auth.member && typeof auth.member.color === 'string'
+								? auth.member.color
+								: null,
+					},
+					warning: null,
 				};
-			}
-
-			const [comment] = await tx
-				.insert(announcementComments)
-				.values({
-					announcementId: id,
-					memberId: auth.member.memberId,
-					content: parsed.data.content,
-				})
-				.returning();
-			if (!comment) throw new Error('announcement_comment_insert_failed');
-
-			const body = {
-				comment: {
-					...comment,
-					authorName: auth.member.name,
-					authorColor:
-						'color' in auth.member && typeof auth.member.color === 'string'
-							? auth.member.color
-							: null,
-				},
-				warning: null,
-			};
-			return {
-				response: { status: 200, body, entityId: comment.id },
-				effect: { comment, authorMemberId: announcement.authorMemberId },
-			};
-		});
+				return {
+					response: { status: 200, body, entityId: comment.id },
+					effect: { comment, authorMemberId: announcement.authorMemberId },
+				};
+			},
+			wg.id,
+		);
 		if (!outcome.effect) {
 			return NextResponse.json(outcome.response.body, { status: outcome.response.status });
 		}

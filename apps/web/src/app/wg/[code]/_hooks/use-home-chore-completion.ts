@@ -6,7 +6,7 @@ import { useToast } from '@/components/ui/Toast';
 import type { Member } from '@/components/wg/WgContextProvider';
 import type { TodayImportantItem } from '@/composition/dashboard-insights';
 import { pendingChoreCompletions } from '@/core/offline/offline-queue';
-import { readOfflineQueue } from '@/core/offline/offline-store';
+import { readOfflineQueue, subscribeOfflineQueueChanges } from '@/core/offline/offline-store';
 import {
 	type ChoreOccurrence,
 	choreCompletionFeedback,
@@ -52,10 +52,10 @@ export function useHomeChoreCompletion({
 	useEffect(() => {
 		const update = () => setQueuedOccurrences(queuedChoreCompletions(wg.shareCode));
 		update();
-		window.addEventListener('manawg:offline-queue', update);
+		const unsubscribeQueueChanges = subscribeOfflineQueueChanges(update);
 		window.addEventListener('manawg:offline-synced', update);
 		return () => {
-			window.removeEventListener('manawg:offline-queue', update);
+			unsubscribeQueueChanges();
 			window.removeEventListener('manawg:offline-synced', update);
 		};
 	}, [wg.shareCode]);

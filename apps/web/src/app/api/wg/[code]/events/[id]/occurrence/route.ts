@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { auditValues } from '@/core/audit-values';
@@ -147,7 +147,10 @@ export const POST = withWgRoute<{ id: string }>('events occurrence', async (req,
 				if (!recurrence) return rejectWrite(conflict('occurrence_changed'));
 				const [updated] = await tx
 					.update(wgEvents)
-					.set({ recurrence, updatedAt: new Date() })
+					.set({
+						recurrence,
+						updatedAt: sql`greatest(clock_timestamp(), ${wgEvents.updatedAt} + interval '1 millisecond')`,
+					})
 					.where(eq(wgEvents.id, id))
 					.returning();
 				if (!updated) throw new TransactionAbort('update_failed');

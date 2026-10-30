@@ -30,15 +30,30 @@ const OFFLINE_QUEUE_LOCK_NAME = 'manawg:offline-queue';
 export const OFFLINE_QUEUE_EVENT = 'manawg:offline-queue';
 /** Window event fired after a sync pass moved actions out of the queue. */
 export const OFFLINE_SYNCED_EVENT = 'manawg:offline-synced';
-// Another tab or window wrote the queue: its writes never fire the same-window event, so re-emit it
-// here for the banner and counters. The writing tab never receives its own `storage` event.
-if (typeof window !== 'undefined') {
-	window.addEventListener('storage', (event) => {
-		if (event.key === OFFLINE_QUEUE_KEY || event.key === null) {
-			window.dispatchEvent(new CustomEvent(OFFLINE_QUEUE_EVENT));
+
+export function subscribeOfflineQueueChanges(
+	listener: () => void,
+	target: EventTarget = window,
+): () => void {
+	const storage = safeLocalStorage();
+	const onStorage = (event: Event): void => {
+		if (
+			'key' in event &&
+			(event.key === OFFLINE_QUEUE_KEY || event.key === null) &&
+			'storageArea' in event &&
+			event.storageArea === storage
+		) {
+			listener();
 		}
-	});
+	};
+	target.addEventListener(OFFLINE_QUEUE_EVENT, listener);
+	target.addEventListener('storage', onStorage);
+	return () => {
+		target.removeEventListener(OFFLINE_QUEUE_EVENT, listener);
+		target.removeEventListener('storage', onStorage);
+	};
 }
+
 /** No expiry: replaying an edited action under its original key can drop the edit. */
 const OFFLINE_REVIEW_IDS_KEY = 'manawg:offline-review-ids';
 /** How long a "synced but queue-write failed" marker survives reloads. */

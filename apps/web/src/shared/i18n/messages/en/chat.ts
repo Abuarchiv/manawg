@@ -112,6 +112,8 @@ export default {
 		replyGone: 'The message you are replying to no longer exists. Cancel the reply and send again.',
 		editNotAllowed: 'Messages can only be edited within {minutes} minutes of sending.',
 		keyUnavailable: 'The message could not be sent reliably. Try again.',
+		replayExpired:
+			'The safe retry window has expired or is unclear. Check the chat history before sending this message again.',
 		textKept: '{error} Your text is still there.',
 	},
 	warning: {

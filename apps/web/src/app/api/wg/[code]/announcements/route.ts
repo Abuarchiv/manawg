@@ -24,6 +24,7 @@ import {
 	db,
 	wgMembers,
 } from '@/core/db';
+import { lockActiveAccountMember } from '@/core/db/account-deletion';
 import { assertPrivateImageCanBeAttached } from '@/core/db/private-image-deletions';
 import { TransactionAbort } from '@/core/db/transaction';
 import {
@@ -260,6 +261,18 @@ export const POST = withWgRoute('announcements POST', async (req, { code }) => {
 					await checkRateLimit(wgWriteLimiter, `announcement:${wg.id}:${auth.member.memberId}`),
 				);
 				if (limited) return { response: limited, effect: null };
+				const actor = await lockActiveAccountMember(
+					tx,
+					wg.id,
+					auth.member.memberId,
+					auth.authUserId,
+				);
+				if (!actor) {
+					return {
+						response: { status: 401, body: { error: 'member_deactivated' } },
+						effect: null,
+					};
+				}
 				await assertPrivateImageCanBeAttached(tx, wg.id, safeImageUrl);
 				if (swapChoreId) {
 					const [chore] = await tx

@@ -27,7 +27,11 @@ const testDb = new Proxy({} as TestDb, {
 	},
 });
 
-const routeContext = { wgId, memberId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' };
+const routeContext = {
+	wgId,
+	memberId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+	authUserId: 'abababab-abab-4bab-8bab-abababababab',
+};
 const lockProbe: { onLock?: (() => void) | undefined } = {};
 
 mock.module('@/core/db', {
@@ -75,6 +79,7 @@ mock.module('@/core/guards/require-wg-member', {
 	namedExports: {
 		requireWgMember: async () => ({
 			ok: true,
+			authUserId: routeContext.authUserId,
 			wg: { id: routeContext.wgId, name: 'Test WG', shareCode: 'MTE8PZAT' },
 			member: { memberId: routeContext.memberId, name: 'Member' },
 		}),
@@ -608,10 +613,9 @@ test('private image deletion preserves shared references and serializes attachme
 			releaseCascade();
 			await deletingWg;
 			const postResponse = await post;
-			assert.equal(postResponse.status, 409);
+			assert.equal(postResponse.status, 401);
 			assert.deepEqual(await postResponse.json(), {
-				error: 'image_removed',
-				code: 'image_removed',
+				error: 'member_deactivated',
 			});
 			assert.equal(await helper.isPrivateImageKeyRevoked(cascadeImage.key), true);
 			const remainingImages = await setup.query(
@@ -650,6 +654,10 @@ test('private image deletion preserves shared references and serializes attachme
 		routeContext.wgId = routeWgId;
 		routeContext.memberId = routeMemberId;
 		await setup.query(`INSERT INTO ${schemaName}.wgs (id) VALUES ($1)`, [routeWgId]);
+		await setup.query(
+			`INSERT INTO ${schemaName}.wg_members (id, wg_id, auth_user_id, name, role) VALUES ($1, $2, $3, 'Route actor', 'member')`,
+			[routeMemberId, routeWgId, routeContext.authUserId],
+		);
 		const patchImage = imageUrl('12121212-1212-4212-8212-121212121212', routeWgId);
 		const deleteImage = imageUrl('13131313-1313-4313-8313-131313131313', routeWgId);
 		const patchExpense = await setup.query(
