@@ -140,6 +140,24 @@ export async function persistExistingWebPushSubscription(
 	await saveServerPushOptIn(code, memberId, subscription, false);
 }
 
+const SERVICE_WORKER_READY_TIMEOUT_MS = 8000;
+
+/** `serviceWorker.ready` never settles while no worker is active (failed install or register). */
+async function waitForServiceWorker(): Promise<ServiceWorkerRegistration> {
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const timeout = new Promise<never>((_, reject) => {
+		timer = setTimeout(
+			() => reject(new PushError('settings.notifications.errors.pushServiceWorker')),
+			SERVICE_WORKER_READY_TIMEOUT_MS,
+		);
+	});
+	try {
+		return await Promise.race([navigator.serviceWorker.ready, timeout]);
+	} finally {
+		clearTimeout(timer);
+	}
+}
+
 export async function subscribeWebPush(code: string, memberId: string): Promise<void> {
 	if (!isPushSupported()) {
 		throw new PushError('settings.notifications.errors.pushUnsupported');
@@ -153,7 +171,7 @@ export async function subscribeWebPush(code: string, memberId: string): Promise<
 		throw new PushError('settings.notifications.errors.pushNotAllowed');
 	}
 
-	const registration = await navigator.serviceWorker.ready;
+	const registration = await waitForServiceWorker();
 	const existing = await registration.pushManager.getSubscription();
 	let createdSubscription = false;
 	let subscription = existing;
@@ -192,8 +210,9 @@ async function removeWebPush(code: string, memberId: string): Promise<void> {
 		await saveServerPushOptOut(code, memberId, undefined);
 		return;
 	}
-	const registration = await navigator.serviceWorker.ready;
-	const subscription = await registration.pushManager.getSubscription();
+	// Not `ready`: it never settles without an active worker, which would hang the toggle.
+	const registration = await navigator.serviceWorker.getRegistration();
+	const subscription = (await registration?.pushManager.getSubscription()) ?? null;
 	const endpoint = subscription?.endpoint;
 	if (!endpoint) {
 		// Without a PATCH: it wipes the subscriptions of this member's other devices.

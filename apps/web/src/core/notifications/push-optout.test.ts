@@ -36,6 +36,16 @@ function makeSubscription(endpoint: string, log: string[]) {
 
 function setBrowser(opts: { existing: ReturnType<typeof makeSubscription> | null; log: string[] }) {
 	let current = opts.existing;
+	const registration = {
+		pushManager: {
+			getSubscription: async () => current,
+			subscribe: async () => {
+				current = makeSubscription('https://push.example.test/new', opts.log);
+				opts.log.push('subscribe');
+				return current;
+			},
+		},
+	};
 	Object.defineProperty(globalThis, 'window', {
 		configurable: true,
 		value: {
@@ -53,16 +63,8 @@ function setBrowser(opts: { existing: ReturnType<typeof makeSubscription> | null
 		configurable: true,
 		value: {
 			serviceWorker: {
-				ready: Promise.resolve({
-					pushManager: {
-						getSubscription: async () => current,
-						subscribe: async () => {
-							current = makeSubscription('https://push.example.test/new', opts.log);
-							opts.log.push('subscribe');
-							return current;
-						},
-					},
-				}),
+				ready: Promise.resolve(registration),
+				getRegistration: async () => registration,
 			},
 		},
 	});
