@@ -208,3 +208,11 @@ export function manualSplitsFingerprint(
 		? Object.entries(manualSplits).sort(([left], [right]) => left.localeCompare(right))
 		: null;
 }
+
+/** Only an unreadable share is a problem in itself; a wrong sum concerns no single field. */
+export function isUnreadableShare(raw: string | undefined, locale: Locale): boolean {
+	const value = raw?.trim() ?? '';
+	if (value.length === 0) return false;
+	const parsed = parseEuroAmount(value, locale);
+	return parsed === null || parsed < 0;
+}

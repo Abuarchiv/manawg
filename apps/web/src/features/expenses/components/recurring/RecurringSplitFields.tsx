@@ -21,6 +21,7 @@ import { eurosToCents, parseEuroAmount } from '@/core/utils/amount';
 import { formatEuroCents } from '@/core/utils/money';
 import { EqualParticipantsPicker } from '@/features/expenses/components/ledger/EqualParticipantsPicker';
 import { SplitReview } from '@/features/expenses/components/ledger/SplitReview';
+import { isUnreadableShare } from '@/features/expenses/expense-split-input';
 import type { MemberOption, RecurringSplit } from '@/features/expenses/expense-types';
 import type { RecurringSplitBuildError, SplitMode } from '@/features/expenses/recurring-form-model';
 import type { Locale } from '@/shared/i18n/locale';
@@ -40,14 +41,6 @@ interface RecurringSplitFieldsProps {
 	splitError: string | null;
 	splitPreview: RecurringSplit[] | RecurringSplitBuildError;
 	paidByMemberId: string;
-}
-
-/** Only an unreadable share is a problem in itself; a wrong sum concerns no single field. */
-function isUnreadableShare(raw: string | undefined, locale: Locale): boolean {
-	const value = raw?.trim() ?? '';
-	if (value.length === 0) return false;
-	const parsed = parseEuroAmount(value, locale);
-	return parsed === null || parsed < 0;
 }
 
 /** Cents the manual shares add up to; unreadable and non-positive shares count as zero. */

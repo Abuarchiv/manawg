@@ -25,6 +25,7 @@ import { formatEuroCents } from '@/core/utils/money';
 import type { SplitMode } from '@/features/expenses/expense-form-draft';
 import {
 	type ChangedSettledShare,
+	isUnreadableShare,
 	remainderCandidates,
 } from '@/features/expenses/expense-split-input';
 import type { ExpenseSplitShare } from '@/features/expenses/expense-types';
@@ -90,6 +91,13 @@ export function ExpenseSplitFieldset({
 	const firstSplitMemberId = splitCandidates[0]?.id;
 	const memberName = (id: string) =>
 		members.find((member) => member.id === id)?.name ?? tCommon('unknownPerson');
+	// An unreadable share is the field to fix; a wrong sum or empty split anchors on the first row.
+	const unreadableIds = splitCandidates
+		.filter((member) => isUnreadableShare(manualSplits[member.id], locale))
+		.map((member) => member.id);
+	const marksShare = (id: string) =>
+		Boolean(splitsError) &&
+		(unreadableIds.length > 0 ? unreadableIds.includes(id) : id === firstSplitMemberId);
 	const splitErrorTargetsMode =
 		Boolean(splitsError) && (splitMode !== 'manual' || firstSplitMemberId === undefined);
 	return (
@@ -167,10 +175,8 @@ export function ExpenseSplitFieldset({
 										isEditingExpense && !member.active ? 'shareAriaMovedOut' : 'shareAria',
 										{ name: member.name, currency },
 									)}
-									aria-invalid={splitsError && member.id === firstSplitMemberId ? true : undefined}
-									aria-describedby={
-										splitsError && member.id === firstSplitMemberId ? splitErrorId : undefined
-									}
+									aria-invalid={marksShare(member.id) ? true : undefined}
+									aria-describedby={marksShare(member.id) ? splitErrorId : undefined}
 									className="min-h-11 font-mono tabular-nums text-base"
 								/>
 								<InputGroupAddon align="inline-end">
