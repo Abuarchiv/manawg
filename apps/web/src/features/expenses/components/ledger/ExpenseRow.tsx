@@ -27,6 +27,7 @@ import {
 	ItemActions,
 	ItemContent,
 	ItemDescription,
+	ItemEntry,
 	ItemGroup,
 	ItemTitle,
 } from '@/components/ui/item';
@@ -229,7 +230,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 								// The server lets only the payer or the debtor of a share change its state.
 								const canSettle = isPayer || split.debtorMemberId === currentMemberId;
 								return (
-									<Item key={split.id} variant="muted" size="xs" className="flex-wrap">
+									<ItemEntry key={split.id} variant="muted" size="xs" className="flex-wrap">
 										<ItemContent className="min-w-0 flex-[1_1_8rem]">
 											<ItemTitle className="line-clamp-none break-words">
 												{who(split.debtorMemberId)} ·{' '}
@@ -256,7 +257,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 												{settled ? t('markOpen') : t('markPaid')}
 											</Button>
 										)}
-									</Item>
+									</ItemEntry>
 								);
 							})}
 						</ItemGroup>

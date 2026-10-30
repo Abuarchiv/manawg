@@ -288,6 +288,57 @@ test.describe('fab summary overlay', () => {
 	});
 });
 
+test.describe('expense share rows', () => {
+	skipUnlessFixtures();
+
+	test('an expanded expense lists each share as a list item', async ({ page }) => {
+		const SHARE_CODE = FIXTURE_WG.shareCode;
+		const createdAt = new Date().toISOString();
+		const debtors = [
+			'0ab8c8f2-5d03-4a84-aadc-4c5d7e8abf55',
+			'7d3f6c1e-2b94-4e0a-9a51-3c8e5b7f1d02',
+		];
+		await page.route(`**/api/wg/${SHARE_CODE}/expenses`, (route) =>
+			route.request().method() === 'GET'
+				? route.fulfill({
+						json: {
+							payments: [],
+							expenses: [
+								{
+									id: 'share-list-expense',
+									paidByMemberId: FIXTURE_WG.memberId,
+									amountCents: 3000,
+									currency: 'EUR',
+									description: 'Wocheneinkauf',
+									imageUrl: null,
+									occurredAt: createdAt,
+									createdAt,
+									updatedAt: createdAt,
+									splits: debtors.map((debtorMemberId, index) => ({
+										id: `share-list-split-${index}`,
+										debtorMemberId,
+										amountCents: 1000,
+										settledAt: null,
+									})),
+								},
+							],
+						},
+					})
+				: route.continue(),
+		);
+		await setupMember(page);
+		await navigateToFeature(page, `/wg/${SHARE_CODE}/expenses`);
+		await dismissOnboarding(page);
+		await page
+			.getByRole('button', { name: /Wocheneinkauf/ })
+			.first()
+			.click();
+		const shares = page.getByRole('list', { name: 'Ausgabenanteile' });
+		await expect(shares).toBeVisible();
+		await expect(shares.getByRole('listitem')).toHaveCount(debtors.length);
+	});
+});
+
 test.describe('date integrity ui', () => {
 	skipUnlessFixtures();
 
