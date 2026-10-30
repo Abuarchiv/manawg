@@ -46,6 +46,11 @@ test.describe('shopping checkbox hitarea', () => {
 		const checkbox = page.getByRole('checkbox', { name: 'Milch erledigen' });
 		await expect(checkbox).toBeVisible();
 
+		// The tick svg is decorative: the checkbox role already exposes the checked state.
+		const indicator = checkbox.locator('[data-slot="checkbox-indicator"]');
+		await expect(indicator).toHaveAttribute('aria-hidden', 'true');
+		await expect(indicator.locator('title')).toHaveCount(0);
+
 		const li = page.locator('li:has(> :has([aria-label="Milch erledigen"]))').first();
 		const overflow = await li.evaluate((el) => getComputedStyle(el).overflow);
 		expect(overflow).not.toBe('hidden');

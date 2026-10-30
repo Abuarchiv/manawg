@@ -3,7 +3,6 @@
 import { Checkbox as CheckboxPrimitive } from '@base-ui/react/checkbox';
 import type { HTMLMotionProps, SVGMotionProps } from 'motion/react';
 import * as m from 'motion/react-m';
-import { useTranslations } from 'next-intl';
 import type * as React from 'react';
 
 import { useControlledState } from '@/core/hooks/use-controlled-state';
@@ -78,7 +77,6 @@ function Checkbox({
 type CheckboxIndicatorProps = SVGMotionProps<SVGSVGElement>;
 
 function CheckboxIndicator(props: CheckboxIndicatorProps) {
-	const t = useTranslations('shell.ui');
 	const { isChecked, isIndeterminate } = useCheckbox();
 
 	return (
@@ -87,6 +85,7 @@ function CheckboxIndicator(props: CheckboxIndicatorProps) {
 			render={
 				<m.svg
 					data-slot="checkbox-indicator"
+					aria-hidden="true"
 					xmlns="http://www.w3.org/2000/svg"
 					fill="none"
 					viewBox="0 0 24 24"
@@ -96,13 +95,6 @@ function CheckboxIndicator(props: CheckboxIndicatorProps) {
 					animate={isChecked ? 'checked' : 'unchecked'}
 					{...props}
 				>
-					<title>
-						{isIndeterminate
-							? t('checkbox.mixed')
-							: isChecked
-								? t('checkbox.checked')
-								: t('checkbox.unchecked')}
-					</title>
 					{isIndeterminate ? (
 						<m.line
 							x1="5"
