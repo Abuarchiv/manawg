@@ -667,7 +667,7 @@ test('a template with a moved-out payer or debtor is skipped without advancing',
 				eventType: 'recurring.auto_paused',
 				entityType: 'recurring_expense',
 				entityId: state.template.id,
-				metadata: { description: state.template.description, reason: 'inactive_member' },
+				metadata: { description: state.template.description },
 			},
 		]);
 	});
@@ -692,7 +692,7 @@ test('a template whose splits do not add up is logged and paused', async (t) => 
 				eventType: 'recurring.auto_paused',
 				entityType: 'recurring_expense',
 				entityId: state.template.id,
-				metadata: { description: state.template.description, reason: 'split_mismatch' },
+				metadata: { description: state.template.description },
 			},
 		]);
 	});

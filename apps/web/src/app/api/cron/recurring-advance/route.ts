@@ -170,17 +170,14 @@ async function createExpenseForDueAt(
 }
 
 /** Tells the WG why a template stopped booking; the pause itself has no other feed row. */
-async function recordAutoPause(
-	template: DueRecurring,
-	reason: 'inactive_member' | 'split_mismatch',
-): Promise<void> {
+async function recordAutoPause(template: DueRecurring): Promise<void> {
 	await recordAuditEvent({
 		wgId: template.wgId,
 		memberId: null,
 		eventType: 'recurring.auto_paused',
 		entityType: 'recurring_expense',
 		entityId: template.id,
-		metadata: { description: template.description, reason },
+		metadata: { description: template.description },
 	});
 }
 
@@ -196,7 +193,7 @@ async function advanceTemplate(template: DueRecurring): Promise<TemplateAdvance>
 			recurringExpenseId: template.id,
 			wgId: template.wgId,
 		});
-		await recordAutoPause(template, 'split_mismatch');
+		await recordAutoPause(template);
 		return { created: [], failed: false };
 	}
 
@@ -219,7 +216,7 @@ async function advanceTemplate(template: DueRecurring): Promise<TemplateAdvance>
 			break;
 		}
 		if (expenseId === 'paused') {
-			await recordAutoPause(template, 'inactive_member');
+			await recordAutoPause(template);
 			break;
 		}
 		if (expenseId === null) break;
