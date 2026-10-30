@@ -9,6 +9,7 @@ import {
 	wgMembers,
 } from '@/core/db';
 import { serverT } from '@/core/i18n/server-t';
+import { INVENTORY_CATEGORIES } from '@/features/inventory/inventory';
 import type { Locale } from '@/shared/i18n/locale';
 import type { ExportPage } from './export-queries-types';
 
@@ -175,14 +176,21 @@ export async function fetchInventoryRows(wgId: string, page: ExportPage) {
 		.limit(page.limit)
 		.offset(page.offset);
 }
-export function mapInventoryRows(rows: Awaited<ReturnType<typeof fetchInventoryRows>>) {
+/** Unit and category in the reader's language; an unknown stored category reads as `other`. */
+export function mapInventoryRows(
+	rows: Awaited<ReturnType<typeof fetchInventoryRows>>,
+	locale: Locale,
+) {
+	const t = serverT(locale, 'inventory');
 	return rows.map((item) => ({
 		id: item.id,
 		name: item.name,
 		quantity: item.quantity,
-		unit: item.unit,
+		unit: t('unit', { unit: item.unit, count: item.quantity }),
 		threshold: item.threshold,
-		category: item.category,
+		category: t(
+			`categories.${INVENTORY_CATEGORIES.find((known) => known === item.category) ?? 'other'}`,
+		),
 		lastDecrementedAt: item.lastDecrementedAt?.toISOString() ?? '',
 		createdAt: item.createdAt.toISOString(),
 	}));
