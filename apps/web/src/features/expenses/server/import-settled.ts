@@ -21,7 +21,9 @@ export interface ImportToCheck {
  * taking the import out must not leave a debt, or a larger one, that the current balances do
  * not have. That holds for a payment of the imported debt itself, for one carried on through a
  * netted chain, and for a payment that closed a circle through the import. A payment by the
- * creditor or one that a different debt fully backs leaves undo possible.
+ * creditor or one that a different debt fully backs leaves undo possible. An import that closes a
+ * circle of expenses is cancelled in the balances, so taking it out would bring the circle's
+ * debts back; once a payment in the same currency follows, that counts as settled too.
  */
 export async function findSettledImportIds(
 	executor: typeof db | DbTransaction,
