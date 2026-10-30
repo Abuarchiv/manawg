@@ -230,8 +230,9 @@ CI (`.github/workflows/ci.yml`, job `validate`) runs, in this order:
 8. Schema drift check: `db:generate` must not produce a new migration from the committed schema
 9. `pnpm typecheck` (app, plus `tsconfig.e2e.json` for `e2e/`, `tests/*.test.ts` and Playwright configs)
 10. `pnpm --filter @manawg/web test:unit`
-11. `pnpm build`
-12. `pnpm --filter @manawg/web bundle:check`
+11. `TZ=Pacific/Kiritimati pnpm --filter @manawg/web test:unit` (the same unit tests in UTC+14, so date code must not depend on the host time zone)
+12. `pnpm build`
+13. `pnpm --filter @manawg/web bundle:check`
 
 `validate` runs on every PR (drafts and docs-only PRs included) and every push to `main`. Job
 `e2e-fixtures` (`test:e2e:fixtures`, Chromium) runs on every non-draft PR and every push to
