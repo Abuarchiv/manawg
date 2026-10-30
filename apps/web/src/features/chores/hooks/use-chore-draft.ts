@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { isEmptyModuleDraft, readDraft, writeDraft } from '@/core/offline/drafts';
+import { toBerlinDayKey } from '@/core/utils/berlin-day';
 import type { RecurrenceType } from '@/features/chores/components/chore-types';
 import type { AbsenceFormState } from './use-absences';
 
@@ -144,8 +145,8 @@ export function useChoreDraftSync({
 			setNewRecurrenceType(draft.recurrenceType);
 		if (typeof draft.assignedMemberId === 'string') setNewAssigned(draft.assignedMemberId);
 		if (draft.absenceMemberId) setAbsenceMemberId(draft.absenceMemberId);
-		if (draft.absenceStartDate) setAbsenceStart(draft.absenceStartDate.slice(0, 10));
-		if (draft.absenceEndDate) setAbsenceEnd(draft.absenceEndDate.slice(0, 10));
+		if (draft.absenceStartDate) setAbsenceStart(toBerlinDayKey(draft.absenceStartDate));
+		if (draft.absenceEndDate) setAbsenceEnd(toBerlinDayKey(draft.absenceEndDate));
 		if (draft.absenceReason !== undefined) setAbsenceReason(draft.absenceReason);
 		if (draft.queueEditId) setQueueEditId(draft.queueEditId);
 		setDraftHydrated(true);

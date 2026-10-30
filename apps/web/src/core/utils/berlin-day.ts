@@ -34,6 +34,11 @@ export function berlinDayKey(date: Date): string {
 	return dayKeyFormat.format(date);
 }
 
+/** Berlin calendar day of a stored value: a YYYY-MM-DD key passes through, an ISO instant is converted. */
+export function toBerlinDayKey(value: string): string {
+	return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : berlinDayKey(new Date(value));
+}
+
 /**
  * Whole Berlin calendar days from `from` to `to` (negative when `to` is
  * earlier). Counts date changes, not 24h spans: a chore due this evening is
