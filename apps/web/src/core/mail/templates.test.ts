@@ -211,6 +211,19 @@ test('the invitation caption lists three names and counts the rest once', () => 
 	);
 });
 
+test('the invitation people block keeps emoji and short names well-formed', () => {
+	const mail = renderInvitationMail({
+		inviterName: 'Lina',
+		wgName: 'Kastanienallee',
+		inviteToken: 'tok',
+		memberNames: ['😀 Max', 'anna'],
+	});
+	assert.ok(mail.html.isWellFormed());
+	assert.ok(!mail.html.includes('\uFFFD'));
+	assert.ok(mail.html.includes('>😀M<'));
+	assert.ok(mail.html.includes('>AN<'));
+});
+
 test('German stays the default and an explicit de renders the same mail', () => {
 	assert.deepEqual(renderWelcomeMail({ firstName: 'Lina', locale: 'de' }), ALL[0]);
 	assert.deepEqual(renderAccountDeletedMail('de'), ALL[3]);

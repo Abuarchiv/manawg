@@ -8,6 +8,7 @@
 import { serverT } from '@/core/i18n/server-t';
 import { DEFAULT_LOCALE, htmlLang, type Locale } from '@/shared/i18n/locale';
 import { getAppUrl } from '@/shared/lib/app-url';
+import { initials } from '@/shared/lib/initials';
 import { legalUrl } from '@/shared/lib/landing-url';
 import { MAIL_COLOR_SCHEME_META, MAIL_DARK_STYLE, markImages } from './dark-mode';
 
@@ -75,10 +76,6 @@ function toneColor(tone: Tone | undefined): string {
 	if (tone === 'owes') return OWES_COLOR;
 	if (tone === 'settled') return SETTLED_COLOR;
 	return INK;
-}
-
-function initials(name: string): string {
-	return name.trim().charAt(0).toUpperCase() || '?';
 }
 
 function renderBlock(block: MailBlock): string {
