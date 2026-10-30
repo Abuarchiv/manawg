@@ -7,6 +7,7 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import pg from 'pg';
+import { assertPublicRoles } from './catalog-security.mjs';
 import {
 	previewSessionDatabaseUrl,
 	productionSessionDatabaseUrl,
@@ -83,6 +84,8 @@ export async function main(progress) {
 		// instead: the whole migration rolls back and can simply be re-run.
 		progress.stage = 'lock-timeout';
 		await client.query(`set lock_timeout = '${MIGRATION_LOCK_TIMEOUT}'`);
+		progress.stage = 'roles';
+		await assertPublicRoles(client);
 		progress.stage = 'migrate';
 		await migrate(db, { migrationsFolder });
 		console.error('[migrate] Up to date.');

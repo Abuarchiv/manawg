@@ -98,7 +98,7 @@ non-pooling pair) and only accepts a Supabase session connection on port `5432` 
 session pooler `*.pooler.supabase.com`), with `sslmode` as the only query parameter. The
 transaction pooler port `6543` is rejected.
 The Docker stack migrates itself on every start (`scripts/selfhost/setup.mjs` with
-`MANAWG_SELF_HOSTED=true`, which accepts any PostgreSQL URL).
+`MANAWG_SELF_HOSTED=true`, which only skips the Supabase URL check; the server still needs the `anon` and `authenticated` roles, which the stack's `supabase/postgres` image provides).
 
 New migrations: edit the feature file in `src/core/db/schema/` (`schema.ts` re-exports them all), then `pnpm --filter @manawg/web db:generate`
 (drizzle-kit; `drizzle.config.ts` loads `.env` via `dotenv/config`).
@@ -274,4 +274,4 @@ answers `503 cron_secret_missing`, with a wrong header `401`.
 | Cron answers `503 cron_secret_missing` / `401` | `CRON_SECRET` unset / wrong bearer header. |
 | Image upload or read answers `503 feature_disabled` | Storage variables missing, or the bucket is not private with an 8 MiB limit and exactly the allowed image MIME types (`src/core/infra/private-image-policy.ts`). |
 | Fixture E2E hits the real app instead of fixtures | A fixture condition is missing (e.g. `VERCEL=1` or `POSTGRES_URL` exported in the shell). Use the `test:e2e:fixtures` script. |
-| `db:migrate` rejects the URL | Not a Supabase session connection on port `5432`, port `6543`, missing `sslmode`, or extra query parameters. Other PostgreSQL servers need `MANAWG_SELF_HOSTED=true`. |
+| `db:migrate` rejects the URL | Not a Supabase session connection on port `5432`, port `6543`, missing `sslmode`, or extra query parameters. Other PostgreSQL servers need `MANAWG_SELF_HOSTED=true` and must have the `anon` and `authenticated` roles. |

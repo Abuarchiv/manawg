@@ -12,7 +12,8 @@ import {
 	PUBLIC_SCHEMA,
 } from './catalog-contract.mjs';
 
-export async function assertCatalogSecurity(client, expectedTables) {
+/** Fails when the PostgreSQL server lacks the Supabase API roles the migrations grant to and revoke from. */
+export async function assertPublicRoles(client) {
 	const roleResult = await client.query(
 		'select rolname from pg_roles where rolname = any($1::name[])',
 		[PUBLIC_ROLES],
@@ -21,9 +22,13 @@ export async function assertCatalogSecurity(client, expectedTables) {
 	const missingRoles = PUBLIC_ROLES.filter((role) => !presentRoles.has(role));
 	if (missingRoles.length) {
 		throw new Error(
-			`Database check failed: required Supabase roles are missing: ${missingRoles.join(', ')}.`,
+			`Database check failed: required Supabase roles are missing: ${missingRoles.join(', ')}. Use the supabase/postgres image, or create them with CREATE ROLE ${missingRoles.join(' NOLOGIN; CREATE ROLE ')} NOLOGIN.`,
 		);
 	}
+}
+
+export async function assertCatalogSecurity(client, expectedTables) {
+	await assertPublicRoles(client);
 	const { rows: schemaCreatePrivileges } = await client.query(
 		// has_schema_privilege includes effective grants inherited from PUBLIC and role memberships.
 		`select grantee.rolname as role_name

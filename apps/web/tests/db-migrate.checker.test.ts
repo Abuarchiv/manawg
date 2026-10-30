@@ -226,6 +226,22 @@ test('db:check uses effective schema privileges and rejects CREATE for API roles
 	assert.deepEqual(privilegeQuery.params, [['anon', 'authenticated'], 'public']);
 });
 
+test('db:migrate names the missing API roles and how to create them', async () => {
+	const queryRoles = (rolnames: string[]) => ({
+		query: async () => ({ rows: rolnames.map((rolname) => ({ rolname })) }),
+	});
+
+	await assert.rejects(
+		checker.assertPublicRoles(queryRoles([])),
+		/roles are missing: anon, authenticated.*CREATE ROLE/,
+	);
+	await assert.rejects(
+		checker.assertPublicRoles(queryRoles(['anon'])),
+		/roles are missing: authenticated\..*CREATE ROLE/,
+	);
+	await checker.assertPublicRoles(queryRoles(['anon', 'authenticated']));
+});
+
 test('db:check includes durable private image revocations in the RLS catalog scope', async () => {
 	const client = createCatalogClient();
 	await checker.assertCatalogSecurity(client, [
