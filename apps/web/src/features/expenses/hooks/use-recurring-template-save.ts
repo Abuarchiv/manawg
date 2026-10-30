@@ -8,7 +8,7 @@ import { removeDraft } from '@/core/offline/drafts';
 import { enqueueOfflineAction, readOfflineQueue } from '@/core/offline/offline-client';
 import { createQueuedRecurring } from '@/core/offline/offline-queue';
 import { eurosToCents, parseEuroAmount } from '@/core/utils/amount';
-import { todayAtLocalNoon } from '@/core/utils/local-date';
+import { todayAsPickedDate } from '@/core/utils/local-date';
 import { parseTimestamp } from '@/core/utils/time';
 import { recurringIntervalLabel } from '@/features/expenses/expense-constants';
 import { recurringTemplateSaveError, splitInputError } from '@/features/expenses/expense-errors';
@@ -120,7 +120,7 @@ export function useRecurringTemplateSave(
 			queuedNextDueAt,
 			pending: reusePendingRequest && pendingRequest ? pendingRequest : null,
 			intervalMonths: recurringIntervalMonths,
-			today: todayAtLocalNoon,
+			today: todayAsPickedDate,
 		});
 		const idempotencyKey = editingRecurringExpense
 			? null
