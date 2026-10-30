@@ -23,8 +23,8 @@ const patchShoppingItemSchema = z
 		bought: z.boolean().optional(),
 		name: z.string().trim().min(1).max(NAME_MAX).optional(),
 		quantity: z.string().trim().max(QUANTITY_MAX).nullable().optional(),
-		expectedUpdatedAt: z.string().optional(),
-		expectedBoughtAt: z.string().nullable().optional(),
+		expectedUpdatedAt: z.string().datetime({ offset: true }).optional(),
+		expectedBoughtAt: z.string().datetime({ offset: true }).nullable().optional(),
 		boughtAt: tapTimeSchema.optional(),
 	})
 	.refine(
@@ -43,6 +43,8 @@ export const PATCH = withWgRoute<{ id: string }>('shopping PATCH', async (req, {
 			name: 'name_invalid',
 			quantity: 'quantity_invalid',
 			boughtAt: 'bought_at_invalid',
+			expectedUpdatedAt: 'expected_state_invalid',
+			expectedBoughtAt: 'expected_state_invalid',
 		},
 	});
 	if (!parsed.ok) return parsed.response;
@@ -58,13 +60,7 @@ export const PATCH = withWgRoute<{ id: string }>('shopping PATCH', async (req, {
 	}
 	const expectedUpdatedAt = new Date(parsed.data.expectedUpdatedAt);
 	const expectedBoughtAt = parsed.data.expectedBoughtAt;
-	if (
-		!Number.isFinite(expectedUpdatedAt.getTime()) ||
-		(expectedBoughtAt !== null &&
-			(expectedBoughtAt === undefined || !Number.isFinite(Date.parse(expectedBoughtAt))))
-	) {
-		return badRequest('expected_state_invalid');
-	}
+	if (expectedBoughtAt === undefined) return badRequest('expected_state_invalid');
 
 	const limited = rateLimitResponse(
 		await checkRateLimit(wgWriteLimiter, `shopping:item:${wgId}:${auth.member.memberId}`),
