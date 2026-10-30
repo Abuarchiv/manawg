@@ -486,6 +486,37 @@ test.describe('invitations', () => {
 
 		await expect(leave).toBeFocused();
 	});
+
+	test('an invitation sent by email shows up in the list of active invitations', async ({
+		page,
+	}) => {
+		const invite = (id: string) => ({
+			id,
+			createdAt: new Date().toISOString(),
+			expiresAt: new Date(Date.now() + 7 * 86_400_000).toISOString(),
+			maxUses: 10,
+			useCount: 0,
+			createdByName: FIXTURE_WG.memberName,
+		});
+		const invites = [invite('11111111-1111-4111-8111-111111111111')];
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/invites`, (route) =>
+			route.request().method() === 'GET' ? route.fulfill({ json: { invites } }) : route.fallback(),
+		);
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/invitations`, (route) => {
+			invites.unshift(invite('22222222-2222-4222-8222-222222222222'));
+			return route.fulfill({ json: { status: 'sent' } });
+		});
+		await setupMember(page);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings#access`);
+
+		const active = page.getByRole('list', { name: 'Aktive Einladungen' }).getByRole('listitem');
+		await expect(active).toHaveCount(1);
+		await page.getByLabel('Per E-Mail einladen').fill('mitbewohner@example.com');
+		await page.getByRole('button', { name: 'Einladung senden' }).click();
+
+		await expect(page.getByText('Einladung ist unterwegs.')).toBeVisible();
+		await expect(active).toHaveCount(2);
+	});
 });
 
 test.describe('invite link copy', () => {
