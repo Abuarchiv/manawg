@@ -14,6 +14,8 @@ function readUpstashSetting(name: string, value: string | undefined): string | u
 	if (value === undefined) return undefined;
 	const trimmed = value.trim();
 	if (trimmed.length === 0) {
+		// The fixture scripts blank these variables on purpose, so fixture mode stays quiet.
+		if (process.env.E2E_FIXTURE_MODE === 'true') return undefined;
 		console.warn(
 			`[rate-limit] ${name} is set but empty — rate limiting stays disabled until it holds a value.`,
 		);
