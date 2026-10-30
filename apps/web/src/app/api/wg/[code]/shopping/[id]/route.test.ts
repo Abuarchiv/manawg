@@ -519,3 +519,27 @@ test('an unreadable boughtAt is rejected', async () => {
 	assert.equal(response.status, 400);
 	assert.equal(state.update, null);
 });
+
+test('an expected state outside the valid date range is rejected before the update', async () => {
+	const outOfRange = '-271821-04-20T00:00:00.000Z';
+
+	const updated = harness();
+	const staleResponse = await updated.patch({
+		body: { bought: true, expectedUpdatedAt: outOfRange, expectedBoughtAt: null },
+	});
+	assert.equal(staleResponse.status, 400);
+	assert.deepEqual(await staleResponse.json(), { error: 'expected_state_invalid' });
+	assert.equal(updated.state.update, null);
+
+	const bought = harness();
+	const boughtResponse = await bought.patch({
+		body: {
+			bought: false,
+			expectedUpdatedAt: '2026-09-27T10:00:00.123Z',
+			expectedBoughtAt: outOfRange,
+		},
+	});
+	assert.equal(boughtResponse.status, 400);
+	assert.deepEqual(await boughtResponse.json(), { error: 'expected_state_invalid' });
+	assert.equal(bought.state.update, null);
+});
