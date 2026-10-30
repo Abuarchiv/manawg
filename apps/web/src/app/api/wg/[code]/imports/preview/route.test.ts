@@ -103,3 +103,24 @@ test('preview rejects unknown member ids and keeps valid ones', async () => {
 	const clean = await (await post({ Sam: ACTIVE })).json();
 	assert.deepEqual(clean.conflicts, []);
 });
+
+test('preview keeps an impossible long Splid payer unmapped for manual review', async () => {
+	const payer = 'a'.repeat(100_000);
+	const response = await POST(
+		Object.assign(
+			new Request('https://example.invalid', {
+				method: 'POST',
+				body: JSON.stringify({
+					source: 'splid_csv',
+					payload: `Date,Description,Amount,Payer\n2026-10-30,Shared groceries,12.00,${payer}`,
+				}),
+			}),
+			{ cookies: { get: () => undefined } },
+		) as never,
+		{ params: Promise.resolve({ code: 'MTE8PZAT' }) } as never,
+	);
+	assert.equal(response.status, 200);
+	const body = (await response.json()) as PreviewBody;
+	assert.equal(body.memberMapping[payer], null);
+	assert.deepEqual(body.conflicts, [payer]);
+});
