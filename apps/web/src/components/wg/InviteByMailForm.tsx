@@ -11,6 +11,8 @@ import { apiFetch } from '@/core/infra/api-client';
 interface Props {
 	shareCode: string;
 	memberId: string;
+	/** Called after the server answered; a sent mail adds an active invitation. */
+	onSent?: () => void;
 }
 
 const ERROR_KEYS = {
@@ -21,7 +23,7 @@ const ERROR_KEYS = {
 } as const;
 
 /** Sends the invitation mail (E6); the address is only used for this one mail. */
-export function InviteByMailForm({ shareCode, memberId }: Props) {
+export function InviteByMailForm({ shareCode, memberId, onSent }: Props) {
 	const t = useTranslations('shell.inviteMail');
 	const id = useId();
 	const [email, setEmail] = useState('');
@@ -50,6 +52,7 @@ export function InviteByMailForm({ shareCode, memberId }: Props) {
 			return;
 		}
 		setEmail('');
+		onSent?.();
 		setMessage({
 			tone: 'ok',
 			text:
