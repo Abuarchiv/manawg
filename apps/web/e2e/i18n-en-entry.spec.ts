@@ -513,7 +513,7 @@ test.describe('entry and auth in English', () => {
 				await expect(
 					page.getByText('Your flat is created. You can now share the invitation.'),
 				).toBeVisible();
-				await expect(page.getByText('Your flat “Altbau” is live.')).toBeVisible();
+				await expect(page.getByText('Your flat “Altbau” has been created.')).toBeVisible();
 				await expect(
 					page.getByText('Send your flatmates the invite link. It is valid for 7 days.'),
 				).toBeVisible();

@@ -1,6 +1,7 @@
 // Editing an existing chore from the cleaning rota actions drawer.
 
 import { expect, test } from '@playwright/test';
+import { berlinDayKey } from '../src/core/utils/berlin-day';
 import {
 	dismissOnboarding,
 	FIXTURE_WG,
@@ -57,4 +58,50 @@ test.describe('chore edit', () => {
 			.poll(() => patchBody)
 			.toEqual({ title: 'Bad gründlich putzen', expectedUpdatedAt: row.updatedAt });
 	});
+});
+
+test.describe('chore submission feedback', () => {
+	skipUnlessFixtures();
+
+	for (const kind of ['task', 'absence'] as const) {
+		test(`${kind} exposes its saving state until a failed request can be retried`, async ({
+			page,
+		}) => {
+			await setupMember(page);
+			const response = Promise.withResolvers<void>();
+			const endpoint = kind === 'task' ? 'chores' : 'absences';
+			await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/${endpoint}`, async (route) => {
+				if (route.request().method() !== 'POST') return route.fallback();
+				await response.promise;
+				await route.fulfill({ status: 503, json: { error: 'unexpected_error' } });
+			});
+			await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/chores`);
+			await dismissOnboarding(page);
+
+			if (kind === 'task') {
+				await page.getByRole('button', { name: 'Putzaufgabe hinzufügen' }).click();
+				await page.getByLabel('Aufgabe', { exact: true }).fill('Bad putzen');
+			} else {
+				await page.getByRole('button', { name: 'Abwesenheit eintragen' }).click();
+				const day = berlinDayKey(new Date());
+				await page.getByLabel('Abwesenheit von', { exact: true }).fill(day);
+				await page.getByLabel('Abwesenheit bis', { exact: true }).fill(day);
+			}
+
+			const save = page.getByRole('button', {
+				name: kind === 'task' ? 'Aufgabe speichern' : 'Abwesenheit speichern',
+				exact: true,
+			});
+			try {
+				await save.click();
+				const saving = page.getByRole('button', { name: 'Speichert…', exact: true });
+				await expect(saving).toBeDisabled();
+				await expect(saving).toHaveAttribute('aria-busy', 'true');
+			} finally {
+				response.resolve();
+			}
+			await expect(save).toBeEnabled();
+			await expect(save).toHaveAttribute('aria-busy', 'false');
+		});
+	}
 });

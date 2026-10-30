@@ -33,7 +33,7 @@ The color of member avatars is intentional. `memberTint(name)` in `src/component
 - Component sizes belong to the shared primitives, not a phone-only global override. Button variants use visible 24/32/36/40px minimum heights and grow when text wraps. Their hit regions extend to 44px without enlarging the painted box; adjacent grouped controls reserve their own width to avoid overlapping hits.
 - Native inputs, selects and single-line input groups use 44px actual height and 16px text on phones and tablets. Native controls cannot reliably use pseudo-elements to extend their hit area, so the 44px touch floor wins over a smaller visual size. Do not use zoom, transforms or clipped focus rings to simulate smaller fields.
 - On phones, primary add actions may be icon-only plus buttons. Every such action keeps its accessible name.
-- Tablet Home uses balanced columns; phone Home remains a single column. Forms retain internal scrolling and reachable actions on short viewports.
+- Home stays a single column on phones, tablets and desktops, within `--app-frame-width`. Forms retain internal scrolling and reachable actions on short viewports.
 
 ## Secondary text contrast
 

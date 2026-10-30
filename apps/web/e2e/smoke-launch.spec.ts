@@ -241,7 +241,9 @@ test.describe('ManaWG launch smoke', () => {
 			await expect(
 				page.getByRole('heading', { name: 'WG erstellt', exact: true, level: 1 }),
 			).toBeVisible({ timeout: 30_000 });
-			await expect(page.getByText(`Eure WG „${wgName}“ ist live.`, { exact: true })).toBeVisible();
+			await expect(
+				page.getByText(`Eure WG „${wgName}“ wurde erstellt.`, { exact: true }),
+			).toBeVisible();
 			// The invite step carries a personal link, never the share code.
 			const linkButton = page.getByRole('button', { name: 'Einladungslink kopieren' });
 			await expect(linkButton).toContainText('/invite/', { timeout: 30_000 });
