@@ -52,7 +52,7 @@ export const GET = withWgRoute('expenses GET', async (req, { code }) => {
 		.select()
 		.from(expenses)
 		.where(eq(expenses.wgId, wgId))
-		.orderBy(desc(expenses.occurredAt));
+		.orderBy(desc(expenses.occurredAt), desc(expenses.createdAt), desc(expenses.id));
 
 	// Payments are a pair-level ledger, independent of any expense: after
 	// the last expense is deleted, completed repayments still shift balances.

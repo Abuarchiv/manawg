@@ -6,6 +6,7 @@ import { db, expenses, recurringExpenses, wgMembers } from '@/core/db';
 import { rowHoldsPatch } from '@/core/db/row-holds-patch';
 import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { badRequest, conflict, forbidden, notFound } from '@/core/http/api-errors';
+import { startOfBerlinDay } from '@/core/utils/berlin-day';
 import { isRecurringDueAtEditAllowed } from '@/core/validators/recurring-due-date';
 import { checkPaidByGuard } from '@/features/expenses/paid-by-guard';
 import {
@@ -110,8 +111,7 @@ function pauseTransition(
  */
 function resumedDueAt(dueAt: Date, template: RecurringTemplate, intervalMonths: number): Date {
 	const anchorDay = template.anchorAt.getUTCDate();
-	const today = new Date();
-	today.setUTCHours(0, 0, 0, 0);
+	const today = startOfBerlinDay(new Date());
 	let next = dueAt;
 	while (next < today) next = addMonthsFromAnchor(next, anchorDay, intervalMonths);
 	return next;

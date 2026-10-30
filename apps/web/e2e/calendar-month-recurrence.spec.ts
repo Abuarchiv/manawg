@@ -200,10 +200,7 @@ test.describe('calendar month grid and recurrence', () => {
 
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/calendar`);
 		await dismissOnboarding(page);
-		await page
-			.getByRole('button', { name: 'Termin öffnen: WG-Meeting', exact: true })
-			.first()
-			.click();
+		await page.getByRole('button', { name: 'WG-Meeting' }).first().click();
 
 		const recurrence = page.locator('#event-edit-recurrence');
 		await expect(recurrence).toHaveValue('WEEKLY');
@@ -254,8 +251,7 @@ test.describe('calendar month grid and recurrence', () => {
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/calendar`);
 		await dismissOnboarding(page);
 		const eventButton = page.getByRole('button', {
-			name: `Termin öffnen: ${event.title}`,
-			exact: true,
+			name: event.title,
 			includeHidden: true,
 		});
 		await eventButton.click();
@@ -306,7 +302,7 @@ test.describe('calendar month grid and recurrence', () => {
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/calendar?highlight=${event.id}`);
 		await dismissOnboarding(page);
 		await expect(page.locator(`#event-${event.id}`)).toBeVisible();
-		await page.getByRole('button', { name: `Termin öffnen: ${event.title}`, exact: true }).click();
+		await page.getByRole('button', { name: event.title }).click();
 		await page.getByRole('button', { name: 'Termin löschen', exact: true }).click();
 		await page
 			.getByRole('alertdialog')
@@ -394,8 +390,7 @@ test.describe('calendar month grid and recurrence', () => {
 
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/calendar`);
 		await dismissOnboarding(page);
-		const openEdit = (title: string) =>
-			page.getByRole('button', { name: `Termin öffnen: ${title}`, exact: true }).first();
+		const openEdit = (title: string) => page.getByRole('button', { name: title }).first();
 		await openEdit('WG-Meeting').click();
 
 		const recurrence = page.locator('#event-edit-recurrence');
@@ -447,7 +442,7 @@ test.describe('calendar month grid and recurrence', () => {
 		);
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/calendar`);
 		await dismissOnboarding(page);
-		await page.getByRole('button', { name: `Termin öffnen: ${event.title}`, exact: true }).click();
+		await page.getByRole('button', { name: event.title }).click();
 		await expect(page.getByRole('heading', { name: 'Termin', exact: true })).toBeVisible();
 		await expect(page.getByRole('button', { name: 'Speichern', exact: true })).toHaveCount(0);
 		await expect(page.getByRole('button', { name: 'Termin löschen', exact: true })).toHaveCount(0);

@@ -162,3 +162,28 @@ test('a stale version is a conflict unless the template already holds the edit',
 	assert.equal(held.status, 200);
 	assert.equal(state.sets.length, 0);
 });
+
+test('resuming compares the due date with the Berlin day, not the UTC day', async () => {
+	const pausedAt = new Date('2026-07-01T10:00:00Z');
+	const paused = template({
+		pausedAt,
+		nextDueAt: new Date('2026-07-14T10:00:00Z'),
+		anchorAt: new Date('2026-06-14T10:00:00Z'),
+	});
+	const resumeAt = async (now: string) => {
+		mock.timers.enable({ apis: ['Date'], now: new Date(now) });
+		state.sets = [];
+		try {
+			await editRecurringTemplate(caller, paused as never, { id: 'template-1', paused: false });
+		} finally {
+			mock.timers.reset();
+		}
+		const [set] = state.sets;
+		assert.ok(set);
+		return (set.nextDueAt as Date).toISOString();
+	};
+	// 00:30 Berlin on 15.07.: the 14.07. charge is yesterday and must not be booked.
+	assert.equal(await resumeAt('2026-07-14T22:30:00Z'), '2026-08-14T10:00:00.000Z');
+	// 23:30 Berlin on 14.07.: due today stays due.
+	assert.equal(await resumeAt('2026-07-14T21:30:00Z'), '2026-07-14T10:00:00.000Z');
+});

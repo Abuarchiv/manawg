@@ -286,4 +286,12 @@ test('a queued fixed-cost booking sends the template version it was built from',
 		explainOfflineActionFailure(409, 'expense_changed').title.key,
 		'offline.failure.expenseChanged.title',
 	);
+	assert.equal(
+		explainOfflineActionFailure(409, 'expense_has_settled_shares').title.key,
+		'offline.failure.expenseSettled.title',
+	);
+	assert.equal(
+		explainOfflineActionFailure(409, 'recurring_expense_already_advanced').title.key,
+		'offline.failure.recurringAdvanced.title',
+	);
 });

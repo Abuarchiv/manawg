@@ -86,10 +86,14 @@ test('date formatters take a locale and default to German', () => {
 	assert.equal(formatShortDate(iso, 'Europe/Berlin', 'en'), '6 Oct');
 	assert.equal(formatDayMonthYear(iso), '06.10.2026');
 	assert.equal(formatDayMonthYear(iso, 'en'), '6 Oct 2026');
-	assert.equal(formatTimeFull('2026-10-06T10:05:00.000Z', 'de').slice(0, 10), '06.10.2026');
-	assert.match(formatTimeFull('2026-10-06T10:05:00.000Z', 'en'), /^6 Oct 2026, \d\d:\d\d$/);
+	const localNoon = new Date(2026, 9, 6, 12, 5).toISOString();
+	assert.equal(formatTimeFull(localNoon, 'de').slice(0, 10), '06.10.2026');
+	assert.match(formatTimeFull(localNoon, 'en'), /^6 Oct 2026, \d\d:\d\d$/);
 	assert.equal(formatShortDateRange(iso, '2026-10-09T10:00:00.000Z'), '06.10. bis 09.10.');
 	assert.equal(formatShortDateRange(iso, '2026-10-09T10:00:00.000Z', 'en'), '6 Oct to 9 Oct');
+	assert.equal(formatShortDateRange(iso, iso), '06.10.');
+	assert.equal(formatShortDateRange(iso, iso, 'en'), '6 Oct');
+	assert.equal(formatShortDateRange(iso, '2027-10-06T10:00:00.000Z'), '06.10. bis 06.10.');
 	assert.equal(formatDayMonthYear('nope', 'en'), 'Date unknown');
 	assert.equal(formatTimeFull('nope', 'en'), 'Time unknown');
 });

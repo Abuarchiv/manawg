@@ -10,6 +10,7 @@ import {
 } from '@/core/notifications/notification-warning';
 import { removeDraft } from '@/core/offline/drafts';
 import { enqueueOfflineAction } from '@/core/offline/offline-client';
+import { resolveSubmitImage } from '@/core/offline/resolve-submit-image';
 import { eurosToCents, parseEuroAmount } from '@/core/utils/amount';
 import {
 	inputDateOrToday,
@@ -34,7 +35,6 @@ import type { DebtorShare } from '@/features/expenses/split-math';
 import { type Message, useMessage } from '@/shared/i18n/message';
 import type { ExpenseFormState, ExpensePageContext } from './expense-page-context';
 import { validateExpenseFields } from './expense-submit-validation';
-import { RECEIPT_UPLOAD_FAILED, resolveSubmitImage } from './resolve-submit-image';
 import type { ExpenseFormSupport } from './use-expense-form-support';
 import type { AdvanceRecurringTemplate } from './use-recurring-booking';
 
@@ -110,7 +110,7 @@ export function useExpenseSubmit(
 			return;
 		}
 		const image = await resolveSubmitImage(formImageUrl, identity.memberId, navigator.onLine);
-		if (!image) return form.setFormError(RECEIPT_UPLOAD_FAILED);
+		if (!image) return form.setFormError({ key: 'expenses-form.notices.receiptUploadFailed' });
 		const imageUrl = image.url;
 		if (imageUrl !== formImageUrl) form.setImageUrl(imageUrl);
 		const amountCents = eurosToCents(amountEuros);

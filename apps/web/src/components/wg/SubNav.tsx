@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl';
 import { navText } from '@/components/app/nav-text';
 import { getWgSection } from '@/components/app/navigation';
 import { segmentCountStatus } from '@/components/wg/segment-count-status';
+import { subNavBadgeColor } from '@/components/wg/sub-nav-badge';
 import type { CountHint, SegmentCountState } from '@/components/wg/use-wg-counts';
 import { useChatUnreadCount, useDashboardCounts } from '@/components/wg/use-wg-counts';
 import { useMessage } from '@/shared/i18n/message';
@@ -210,7 +211,10 @@ function SegmentList({
 									{showCount && (
 										<span
 											aria-hidden
-											className="text-meta leading-none font-medium tabular-nums text-muted-foreground"
+											className={cn(
+												'text-meta leading-none font-medium tabular-nums',
+												subNavBadgeColor(active),
+											)}
 										>
 											{marker}
 											{countOverflow || count > 99 || (countExact ?? 0) > 99 ? '99+' : count}
@@ -219,7 +223,7 @@ function SegmentList({
 									{!showCount && marker && (
 										<span
 											aria-hidden
-											className="text-meta leading-none font-medium text-muted-foreground"
+											className={cn('text-meta leading-none font-medium', subNavBadgeColor(active))}
 										>
 											{marker}
 										</span>

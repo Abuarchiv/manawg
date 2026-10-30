@@ -20,6 +20,7 @@ import { logApiError } from '@/core/infra/observability';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import type { NotificationWarning } from '@/core/notifications/notification-warning';
 import { checkRateLimit, clientIpKey, wgReadLimiter, wgWriteLimiter } from '@/core/rate-limit';
+import { isEventYearInRange } from '@/features/events/event-limits';
 import {
 	eventDateTimeSchema,
 	eventDescriptionSchema,
@@ -63,8 +64,8 @@ export const GET = withWgRoute('events GET', async (req, { code }) => {
 	const toParam = url.searchParams.get('to');
 	const from = fromParam ? new Date(fromParam) : null;
 	const to = toParam ? new Date(toParam) : null;
-	if (from !== null && Number.isNaN(from.getTime())) return badRequest('from_invalid');
-	if (to !== null && Number.isNaN(to.getTime())) return badRequest('to_invalid');
+	if (from !== null && !isEventYearInRange(from)) return badRequest('from_invalid');
+	if (to !== null && !isEventYearInRange(to)) return badRequest('to_invalid');
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
 	const wg = auth.wg;

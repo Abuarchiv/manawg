@@ -115,7 +115,7 @@ export function parseAmountToCents(raw: string): number | null {
 	} else if (lastComma > -1) {
 		// A lone comma is a decimal mark ("12,5" = 12,50 €) unless it only
 		// ever separates 3-digit groups ("1,234" / "1,234,567").
-		normalized = /^-?\d{1,3}(?:,\d{3})+$/.test(normalized)
+		normalized = /^-?[1-9]\d{0,2}(?:,\d{3})+$/.test(normalized)
 			? normalized.replace(/,/g, '')
 			: normalized.replace(',', '.');
 	} else if (/^-?[1-9]\d{0,2}(?:\.\d{3})+$/.test(normalized)) {

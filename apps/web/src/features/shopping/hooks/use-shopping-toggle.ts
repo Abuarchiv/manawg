@@ -119,10 +119,7 @@ export function useShoppingToggle(ctx: ShoppingActionContext) {
 			if (shouldReleaseIdempotencyKey(res.status, res.error)) {
 				forgetPatchKey(item.id, request.fingerprint);
 			}
-			if (res.status === 403) {
-				rollback();
-				setToggleError({ key: 'shopping.toggle.notAdder' });
-			} else if (res.status === 404 && res.error === 'item_not_found') {
+			if (res.status === 404 && res.error === 'item_not_found') {
 				commit((prev) => dropShoppingItems(prev, (current) => current.id === item.id));
 				setToggleError(ITEM_GONE_MESSAGE);
 			} else if (res.status === 409 && res.error === 'shopping_item_duplicate') {

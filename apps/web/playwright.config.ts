@@ -33,10 +33,10 @@ const APP_DIR = import.meta.dirname;
 const useBuiltServer = process.env.PLAYWRIGHT_USE_BUILD === 'true';
 const isFixtureServer =
 	!isRemoteBase && (useBuiltServer || process.env.NEXT_PUBLIC_DB_DOWN === 'true');
-// The auth UI specs need the browser client to be configured, which Next inlines at build time.
+// The auth UI specs need the Supabase environment to be configured, which Next inlines at build time.
 // They run on a second fixture server whose Supabase project is the server's own origin; the
 // specs answer its /auth/v1 and /api/auth requests through page routes. Every other spec runs
-// against the first server, where the browser client is unconfigured.
+// against the first server, where the Supabase environment is unconfigured.
 const AUTH_UI_SPEC = /auth-ui\.spec\.ts$/;
 const authUiPort = String(Number(serverPort) + 1000);
 const authUiUrl = `http://localhost:${authUiPort}`;

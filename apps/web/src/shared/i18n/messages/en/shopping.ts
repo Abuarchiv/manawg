@@ -110,7 +110,6 @@ export default {
 		queuedCreateOpen: 'Queued offline. The new item will sync as open.',
 		queuedBought: 'Queued offline. The item will sync as bought later.',
 		queuedReopen: 'Queued offline. The item will be reopened later.',
-		notAdder: 'Only the person who added the item can tick it off.',
 		statusChanged: 'The shopping status has changed. Check the updated list.',
 		pendingChange:
 			'“{name}” has a change that has not been sent yet. It is listed under Settings → Data → Offline queue.',

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { startOfBerlinDay } from '../src/core/utils/berlin-day.ts';
+import { MS_PER_HOUR } from '../src/core/utils/time.ts';
 import {
 	processReminderBatches,
 	reminderCopyForOccurrence,
@@ -19,7 +20,7 @@ import {
 import { eventCandidate, eventCandidatePages } from './support/event-candidates.ts';
 
 test('prunes old finite COUNT and UNTIL roots but retains long BYDAY and unknown rules', async () => {
-	const from = new Date('2026-03-29T12:00:00.000Z');
+	const from = new Date(2026, 2, 29, 12);
 	const rows = [
 		eventCandidate('expired-count', '2020-01-01T12:00:00.000Z', 'FREQ=DAILY;COUNT=5'),
 		eventCandidate(
@@ -49,9 +50,12 @@ test('prunes old finite COUNT and UNTIL roots but retains long BYDAY and unknown
 		),
 		eventCandidate('unknown-rule', '2020-01-01T12:00:00.000Z', 'NOT-A-RRULE'),
 		eventCandidate('year-135245', '2020-01-01T12:00:00.000Z', 'FREQ=YEARLY;INTERVAL=365;COUNT=366'),
-		eventCandidate('timed-end-at-from', '2026-03-28T23:00:00.000Z', 'FREQ=DAILY;COUNT=1', {
-			endsAt: '2026-03-29T12:00:00.000Z',
-		}),
+		eventCandidate(
+			'timed-end-at-from',
+			new Date(from.getTime() - MS_PER_HOUR).toISOString(),
+			'FREQ=DAILY;COUNT=1',
+			{ endsAt: from.toISOString() },
+		),
 		eventCandidate('all-day-end-date-from', '2026-03-28T00:00:00.000Z', 'FREQ=DAILY;COUNT=1', {
 			allDay: true,
 			endsAt: '2026-03-29T00:00:00.000Z',

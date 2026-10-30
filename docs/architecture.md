@@ -58,9 +58,9 @@ under `app/wg/**`; WG APIs belong under `app/api/wg/**`.
 | `fixtures/` | Database-free fixture build: mode detection, fixture API and page data (development.md "Fixture mode") | `composition/` and everything below |
 | `features/<x>/` | Vertical slices: `chat`, `chores`, `events`, `expenses`, `inventory`, `announcements`, `shopping` (logic, hooks, components, and a `server/` folder) | `components/`, `core/`, `shared/`, own files |
 | `composition/` | Cross-feature reads: dashboard data and insights, activity, export | `features/`, `components/`, `core/`, `shared/` |
-| `core/` | Domain-neutral blocks: `db`, `auth`, `guards`, `http`, `hooks`, `offline`, `sync`, `notifications`, `infra`, `utils`, `validators` | `core/`, `shared/` |
-| `components/` | Shared UI: `ui/` shadcn primitives (plus `LogoMark`, `Toast`, `ConfirmDialog`), `animate-ui/`, `app/` app-wide composites (shell, PWA install/push prompts, theme), `wg/` WG-wide composites | `components/`, `core/`, `shared/` |
-| `shared/` | Framework-light utilities (`lib/`, fonts, css): theme, analytics, header names | `shared/` |
+| `core/` | Domain-neutral blocks: `db`, `auth`, `guards`, `http`, `hooks`, `offline`, `sync`, `notifications`, `infra`, `utils`, `validators`, `i18n` (server-side locale translation helpers), `mail` (SMTP and Resend transport, templates) | `core/`, `shared/` |
+| `components/` | Shared UI: `ui/` shadcn primitives (plus `LogoMark`, `Toast`, `ConfirmDialog`), `animate-ui/`, `app/` app-wide composites (shell, PWA install/push prompts, theme), `wg/` WG-wide composites, `auth/` (sign-in, sign-up and password-reset forms), `brand/` (splash screen), `entry/` (public signed-out entry app, WG welcome) | `components/`, `core/`, `shared/` |
+| `shared/` | Framework-light utilities (`lib/`, `i18n/` message catalogs, fonts, css): theme, analytics, header names | `shared/` |
 
 Rules:
 

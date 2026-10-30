@@ -189,7 +189,7 @@ self.addEventListener('push', (event) => {
 	const notificationOptions = {
 		body: data.body,
 		icon: typeof data.icon === 'string' && data.icon.length > 0 ? data.icon : '/icon-192.png',
-		badge: '/icon-192.png',
+		badge: '/badge-96.png',
 		data: { url: data.url },
 	};
 	if (typeof data.tag === 'string' && data.tag.length > 0) {

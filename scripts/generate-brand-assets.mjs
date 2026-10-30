@@ -27,6 +27,13 @@ function tile(hole = 22, fraction = 0.62) {
 	const y = (512 - g.height * scale) / 2;
 	return `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><rect width="512" height="512" fill="#0a0a0a"/><g transform="translate(${x} ${y}) scale(${scale})">${mark(hole)}</g></svg>`;
 }
+// Android masks a notification badge by its alpha channel, so it is the bare white mark on transparency.
+function badge(size = 96, fraction = 0.8) {
+	const scale = (size * fraction) / g.width;
+	const x = (size - g.width * scale) / 2;
+	const y = (size - g.height * scale) / 2;
+	return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><g transform="translate(${x} ${y}) scale(${scale})">${mark()}</g></svg>`;
+}
 await writeFile(resolve(publicDir, 'icon.svg'), tile());
 await writeFile(resolve(publicDir, 'favicon.svg'), tile(26));
 for (const [name, size, hole, fraction] of [
@@ -47,6 +54,11 @@ for (const [name, size, hole, fraction] of [
 	if (metadata.width !== size || metadata.height !== size || metadata.hasAlpha)
 		throw new Error(`Invalid brand asset: ${name}`);
 }
+const badgePath = resolve(publicDir, 'badge-96.png');
+await sharp(Buffer.from(badge()), { density: 288 }).resize(96, 96).png().toFile(badgePath);
+const badgeStats = await sharp(badgePath).stats();
+if (!(await sharp(badgePath).metadata()).hasAlpha || badgeStats.channels[3].min !== 0)
+	throw new Error('Invalid brand asset: badge-96.png');
 process.stdout.write(
-	'Generated SVG and seven opaque PNG brand assets from the brand mark geometry.\n',
+	'Generated SVG, six opaque PNG brand assets and a transparent notification badge from the brand mark geometry.\n',
 );

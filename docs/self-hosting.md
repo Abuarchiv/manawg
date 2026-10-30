@@ -33,15 +33,17 @@ including the sign-in codes, lands in Mailpit at [http://localhost:8025](http://
 
 `docker compose ps` lists the services; `setup` has exited with code 0 and the others are
 running. If port 80 is taken, set `HTTP_PORT=8080` and `APP_URL=http://localhost:8080` in `.env`
-and run `docker compose up -d` again.
+and run `docker compose up -d` again. Mailpit uses port 8025; if that is taken, set `MAILPIT_PORT`
+to a free port and open Mailpit there.
 
 Compose pulls `ghcr.io/abuarchiv/manawg:<MANAWG_VERSION>` when that tag exists. Otherwise it
 builds the image from your checkout, which takes about ten minutes; the message that it cannot
 pull the image is harmless then.
 
-To check the whole instance, run `./docker/smoke.sh`. It signs up a test account, creates a WG,
-uploads a picture, calls the scheduled jobs and backs up and restores the data. It leaves that
-test data behind, so run it on a local instance, not on one people use.
+To check the whole instance, run `./docker/smoke.sh`. It needs `curl` and `jq` on the host and the
+default Mailpit setup. It signs up a test account, creates a WG, uploads a picture, calls the
+scheduled jobs and backs up and restores the data. It leaves the test data and a backup in
+`backups/` behind, so run it on a local instance, not on one people use.
 
 ### What runs
 
@@ -428,7 +430,7 @@ For the Docker setup. On Vercel, start with [Check the deployment](#7-check-the-
 | The build stops with exit code 137 | The machine ran out of memory. Add swap, or build on a larger machine |
 | No certificate for the domain | Check that the DNS record points at the server and TCP ports 80 and 443 are reachable, then read `docker compose logs gateway` |
 | No sign-in code arrives | `docker compose logs auth` shows the SMTP error. Check the `SMTP_*` settings and the sender in `SMTP_ADMIN_EMAIL`; locally, look in Mailpit |
-| A port is already in use | Set `HTTP_PORT` (see [Quick start](#quick-start)) or `HTTPS_PORT` (see [Public instance with a domain](#public-instance-with-a-domain)) |
+| A port is already in use | Set `HTTP_PORT` (see [Quick start](#quick-start)), `MAILPIT_PORT` for Mailpit, or `HTTPS_PORT` (see [Public instance with a domain](#public-instance-with-a-domain)) |
 | `password authentication failed` | `.env` does not match the database volume, see [What runs](#what-runs) |
 
 ## Getting help

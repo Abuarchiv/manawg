@@ -1,5 +1,5 @@
-// E-mail code login, password tab and registration inbox state against the configured Supabase
-// browser client. Live Supabase auth is covered by supabase-auth-live and social-login-live.
+// E-mail code login, password tab and registration inbox state against a fake Supabase
+// project served by the second fixture server. Live Supabase auth is covered by supabase-auth-live and social-login-live.
 
 import { expect, type Route, test } from '@playwright/test';
 

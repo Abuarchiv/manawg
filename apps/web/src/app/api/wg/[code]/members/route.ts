@@ -46,7 +46,9 @@ function readPageParams(req: NextRequest): { limit: number; offset: number } {
 	const limit = Number.isFinite(rawLimit)
 		? Math.min(Math.max(rawLimit, 1), MEMBERS_PAGE_LIMIT_MAX)
 		: MEMBERS_PAGE_LIMIT_DEFAULT;
-	const offset = Number.isFinite(rawOffset) ? Math.max(rawOffset, 0) : 0;
+	const offset = Number.isFinite(rawOffset)
+		? Math.min(Math.max(rawOffset, 0), MAX_MEMBER_ROWS_PER_WG)
+		: 0;
 	return { limit, offset };
 }
 

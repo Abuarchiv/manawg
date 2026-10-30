@@ -110,7 +110,6 @@ export default {
 		queuedCreateOpen: 'Offline vorgemerkt. Der neue Artikel wird wieder offen synchronisiert.',
 		queuedBought: 'Offline vorgemerkt. Der Artikel wird später als erledigt synchronisiert.',
 		queuedReopen: 'Offline vorgemerkt. Der Artikel wird später wieder geöffnet.',
-		notAdder: 'Nur wer den Artikel hinzugefügt hat, kann ihn abhaken.',
 		statusChanged: 'Der Einkaufsstatus hat sich geändert. Prüfe den aktualisierten Stand.',
 		pendingChange:
 			'„{name}“ hat noch eine nicht gesendete Änderung. Sie steht unter Einstellungen → Daten → Offline-Warteschlange.',

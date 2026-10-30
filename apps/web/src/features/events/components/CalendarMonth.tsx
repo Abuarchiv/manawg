@@ -335,7 +335,6 @@ export function CalendarMonth({
 										<button
 											type="button"
 											onClick={() => onSelectOccurrence(occurrence)}
-											aria-label={t('agenda.openEvent', { title: occurrence.title })}
 											className={CALENDAR_ROW_CLASS}
 										>
 											<span className="flex min-w-0 flex-1 flex-col">
@@ -355,7 +354,6 @@ export function CalendarMonth({
 									<li key={`chore-${chore.choreId}-${chore.startsAt}`}>
 										<Link
 											href={`${wgBaseHref}/chores?highlight=${encodeURIComponent(chore.choreId)}`}
-											aria-label={t('agenda.openChore', { title: chore.title })}
 											className={CALENDAR_ROW_CLASS}
 										>
 											<span className="flex min-w-0 flex-1 flex-col">

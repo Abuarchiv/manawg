@@ -80,13 +80,12 @@ export function useChoreCreate(
 		setNewRecurrenceType,
 		newAssigned,
 		setNewAssigned,
+		newFirstDue,
+		setNewFirstDue,
 		assigneeTouchedRef,
 		resetFields,
 	} = fields;
 	const [showForm, setShowForm] = useState(false);
-	// Optional day picked for the first due date; empty means "interval from today".
-	// Not part of the draft: the shared draft key only knows the persisted fields.
-	const [newFirstDue, setNewFirstDue] = useState('');
 	const [pendingSuggestion, setPendingSuggestion] = useState<ChoreSuggestion | null>(null);
 	const [confirmSuggestion, setConfirmSuggestion] = useState(false);
 	const [queueEditId, setQueueEditId] = useState<string | null>(null);
@@ -134,6 +133,7 @@ export function useChoreCreate(
 			setNewInterval,
 			setNewRecurrenceType,
 			setNewTitle,
+			setNewFirstDue,
 		],
 	);
 

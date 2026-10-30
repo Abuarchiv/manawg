@@ -434,6 +434,7 @@ test('Vercel config loads the public Sentry config wrapper', async () => {
 		() => import('../next.config.ts'),
 	);
 	assert.equal(typeof nextConfig.default?.headers, 'function');
+	assert.equal(nextConfig.default?.poweredByHeader, false);
 });
 
 // Reads the error boundary components themselves (non-executable here): each must declare a

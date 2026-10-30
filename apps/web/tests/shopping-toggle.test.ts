@@ -223,3 +223,10 @@ test('removing an item drops its queued follow-ups only', () => {
 	);
 	assert.equal(withoutQueuedFollowUps([other] as never, 'ABC', 'item-1'), null);
 });
+
+test('ticking is open to every member, so no catalog claims an adder-only rule', async () => {
+	const { default: messages } = await import('../src/shared/i18n/messages/index.ts');
+	for (const catalog of Object.values(messages)) {
+		assert.equal('notAdder' in catalog.shopping.toggle, false);
+	}
+});

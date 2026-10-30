@@ -118,13 +118,15 @@ export function formatDayMonthYear(iso: string, locale: Locale = 'de'): string {
 	}).format(date);
 }
 
-/** Absence range: Berlin days, see `formatShortDate`. */
+/** Absence range: Berlin days, see `formatShortDate`; a single day prints once. */
 export function formatShortDateRange(
 	startIso: string,
 	endIso: string,
 	locale: Locale = 'de',
 ): string {
-	return `${formatShortDate(startIso, 'Europe/Berlin', locale)} ${FALLBACK_WORDS[locale].rangeTo} ${formatShortDate(endIso, 'Europe/Berlin', locale)}`;
+	const from = formatShortDate(startIso, 'Europe/Berlin', locale);
+	if (formatDayMonthYear(startIso, locale) === formatDayMonthYear(endIso, locale)) return from;
+	return `${from} ${FALLBACK_WORDS[locale].rangeTo} ${formatShortDate(endIso, 'Europe/Berlin', locale)}`;
 }
 
 export function formatTimeFull(iso: string, locale: Locale = 'de'): string {
