@@ -1,6 +1,6 @@
-import { and, asc, eq, gt, inArray, isNull, lte, or } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, isNull, lte, or, sql } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
-import { db, idempotencyResponses, wgEvents, wgMembers, wgs } from '@/core/db';
+import { db, idempotencyResponses, pushSubscriptions, wgEvents, wgMembers, wgs } from '@/core/db';
 import { requireCronSecret } from '@/core/infra/cron-auth';
 import { withCronLogging } from '@/core/infra/observability';
 import { dispatchNotification } from '@/core/notifications/notification-dispatch';
@@ -193,7 +193,17 @@ export const GET = withCronLogging(
 				const members = await db
 					.select({ id: wgMembers.id, wgId: wgMembers.wgId })
 					.from(wgMembers)
-					.where(and(inArray(wgMembers.wgId, wgIds), isNull(wgMembers.deactivatedAt)));
+					.where(
+						and(
+							inArray(wgMembers.wgId, wgIds),
+							isNull(wgMembers.deactivatedAt),
+							// Members without push would only cost a claim, a dispatch and a release.
+							// Mirrors the eligibility checks in dispatchNotification.
+							eq(wgMembers.pushOptIn, true),
+							eq(wgMembers.notifyEvents, true),
+							sql`exists (select 1 from ${pushSubscriptions} where ${pushSubscriptions.memberId} = ${wgMembers.id})`,
+						),
+					);
 				const membersByWg = new Map<string, string[]>();
 				for (const member of members) {
 					const memberIds = membersByWg.get(member.wgId) ?? [];

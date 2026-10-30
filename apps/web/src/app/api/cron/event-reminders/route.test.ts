@@ -15,7 +15,10 @@ const wgMembers = {
 	id: 'members.id',
 	wgId: 'members.wgId',
 	deactivatedAt: 'members.deactivatedAt',
+	pushOptIn: 'members.pushOptIn',
+	notifyEvents: 'members.notifyEvents',
 };
+const pushSubscriptions = { memberId: 'pushSubscriptions.memberId' };
 const wgs = { id: 'wgs.id', name: 'wgs.name', shareCode: 'wgs.shareCode' };
 const idempotencyResponses = {
 	scope: 'idempotency.scope',
@@ -55,7 +58,16 @@ const state = {
 
 function selectedRows(table: unknown, filter: unknown): Row[] {
 	if (table === wgEvents) return state.events;
-	if (table === wgMembers) return state.members;
+	if (table === wgMembers) {
+		const requires = (column: string) => findCondition(filter, 'eq', column)?.value === true;
+		const requiresSubscription = Boolean(findCondition(filter, 'sql', undefined));
+		return state.members.filter(
+			(row) =>
+				(!requires(wgMembers.pushOptIn) || row.pushOptIn === true) &&
+				(!requires(wgMembers.notifyEvents) || row.notifyEvents === true) &&
+				(!requiresSubscription || row.subscribed === true),
+		);
+	}
 	if (table === idempotencyResponses) {
 		const scope = findCondition(filter, 'eq', idempotencyResponses.scope)?.value;
 		const keys = (findCondition(filter, 'inArray', idempotencyResponses.key)?.value ??
@@ -144,7 +156,7 @@ const db = {
 };
 
 mock.module('@/core/db', {
-	namedExports: { db, idempotencyResponses, wgEvents, wgMembers, wgs },
+	namedExports: { db, idempotencyResponses, pushSubscriptions, wgEvents, wgMembers, wgs },
 });
 mock.module('@/core/infra/cron-auth', { namedExports: { requireCronSecret: () => null } });
 mock.module('@/core/infra/observability', {
@@ -190,10 +202,23 @@ mock.module('drizzle-orm', {
 		isNull: (column: unknown) => condition('isNull', column),
 		lte: (column: unknown, value: unknown) => condition('lte', column, value),
 		or: (...conditions: unknown[]) => ({ op: 'or', conditions }),
+		sql: () => ({ op: 'sql' }),
 	},
 });
 
 const { GET } = await import('./route');
+
+function eligibleMember(id: string, overrides: Row = {}): Row {
+	return {
+		id,
+		wgId: 'wg-1',
+		deactivatedAt: null,
+		pushOptIn: true,
+		notifyEvents: true,
+		subscribed: true,
+		...overrides,
+	};
+}
 
 function makeHarness(options: { failureMode?: string; eventEndsAt?: string } = {}) {
 	failureMode = options.failureMode ?? 'partial';
@@ -213,10 +238,7 @@ function makeHarness(options: { failureMode?: string; eventEndsAt?: string } = {
 	};
 	Object.assign(state, {
 		events: [event],
-		members: [
-			{ id: 'member-A', wgId: 'wg-1', deactivatedAt: null },
-			{ id: 'member-B', wgId: 'wg-1', deactivatedAt: null },
-		],
+		members: [eligibleMember('member-A'), eligibleMember('member-B')],
 		claims: new Map(),
 		dispatches: [],
 	});
@@ -314,11 +336,7 @@ test('successful claims cover long occurrences while failed members remain retry
 test('a run cut off by the time budget answers 503 with complete:false', async () => {
 	await withEnv({ CRON_SECRET: 'cron-secret' }, async () => {
 		const { state, get } = makeHarness({ failureMode: 'ok' });
-		state.members = Array.from({ length: 12 }, (_, index) => ({
-			id: `member-${index}`,
-			wgId: 'wg-1',
-			deactivatedAt: null,
-		}));
+		state.members = Array.from({ length: 12 }, (_, index) => eligibleMember(`member-${index}`));
 		const RealDate = globalThis.Date;
 		let now = RealDate.parse('2026-10-25T09:00:00.000Z');
 		class SteppedDate extends RealDate {
@@ -350,4 +368,48 @@ test('a run cut off by the time budget answers 503 with complete:false', async (
 			onDispatch = () => {};
 		}
 	});
+});
+
+test('only members who opted in, enabled event pushes and have a subscription are claimed', async () => {
+	const { state, get } = makeHarness();
+	state.members = [
+		eligibleMember('member-ok'),
+		eligibleMember('member-no-opt-in', { pushOptIn: false }),
+		eligibleMember('member-muted', { notifyEvents: false }),
+		eligibleMember('member-no-device', { subscribed: false }),
+		...Array.from({ length: 4 }, (_, index) =>
+			eligibleMember(`member-off-${index}`, { pushOptIn: false, subscribed: false }),
+		),
+	];
+	let claimInserts = 0;
+	let claimDeletes = 0;
+	const realInsert = db.insert;
+	const realDelete = db.delete;
+	db.insert = () => {
+		claimInserts += 1;
+		return realInsert();
+	};
+	db.delete = () => {
+		claimDeletes += 1;
+		return realDelete();
+	};
+	try {
+		await withEnv({ CRON_SECRET: 'cron-secret' }, async () => {
+			const response = await withFrozenTime('2026-10-25T09:00:00.000Z', () =>
+				get(new Request('https://example.test/api/cron/event-reminders')),
+			);
+			assert.equal(response.status, 200);
+			assert.deepEqual(await response.json(), { ok: true, sent: 1, failed: 0 });
+		});
+	} finally {
+		db.insert = realInsert;
+		db.delete = realDelete;
+	}
+
+	assert.deepEqual(
+		state.dispatches.map(({ memberId }) => memberId),
+		['member-ok'],
+	);
+	assert.equal(claimInserts, 1);
+	assert.equal(claimDeletes, 0);
 });
