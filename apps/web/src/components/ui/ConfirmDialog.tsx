@@ -74,7 +74,7 @@ export function ConfirmDialog({
 					<Button
 						type="button"
 						onClick={handleConfirm}
-						variant={variant === 'danger' ? 'destructive' : 'default'}
+						variant={variant === 'danger' ? 'destructive-solid' : 'default'}
 						className="h-auto min-h-11 w-full whitespace-normal py-2"
 					>
 						{confirmLabel ?? t('confirm')}

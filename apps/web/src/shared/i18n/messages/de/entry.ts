@@ -120,7 +120,8 @@ export default {
 		joinOffline:
 			'Beitritt konnte nicht abgeschlossen werden: Prüfe deine Verbindung und versuche es erneut.',
 		joinFailed: 'Der Beitritt hat nicht geklappt. Bitte versuche es noch einmal.',
-		joinKeyUnavailable: 'WG-Beitritt konnte nicht sicher gesendet werden. Versuche es erneut.',
+		joinKeyUnavailable:
+			'WG-Beitritt konnte nicht gestartet werden. Lade die Seite neu und versuche es erneut.',
 		createRateLimited:
 			'Du hast gerade mehrere WGs erstellt. Bitte versuche es in etwa einer Stunde erneut.',
 		signInFirst: 'Melde dich zuerst mit deinem Konto an.',
@@ -136,7 +137,8 @@ export default {
 		createOffline:
 			'WG konnte nicht erstellt werden: Prüfe deine Verbindung und versuche es erneut.',
 		createFailed: 'WG konnte nicht erstellt werden. Bitte versuche es erneut.',
-		createKeyUnavailable: 'WG konnte nicht sicher erstellt werden. Versuche es erneut.',
+		createKeyUnavailable:
+			'WG-Erstellung konnte nicht gestartet werden. Lade die Seite neu und versuche es erneut.',
 		notAnInviteLink: 'Das ist kein Einladungslink. Füge den ganzen Link ein.',
 		wgNameMissing: 'WG-Name fehlt.',
 		displayNameMissing: 'Dein Anzeigename fehlt.',
@@ -195,7 +197,7 @@ export default {
 		liveCopied: 'Einladung wurde kopiert.',
 		liveLinkCopied: 'Einladungslink wurde kopiert.',
 		liveFailed: 'Teilen fehlgeschlagen. Kopiere den Link stattdessen.',
-		live: 'Eure WG „{wgName}“ ist live.',
+		live: 'Eure WG „{wgName}“ wurde erstellt.',
 		validity:
 			'Schick deiner WG den Einladungslink. {days, plural, one {Er gilt # Tag.} other {Er gilt # Tage.}}',
 		tryAgain: 'Erneut versuchen',

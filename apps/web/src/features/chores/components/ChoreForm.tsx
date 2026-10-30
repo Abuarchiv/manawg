@@ -195,7 +195,8 @@ export function ChoreForm({
 						<Button
 							type="submit"
 							disabled={!title.trim() || pending}
-							aria-label={t('saveAria')}
+							aria-label={pending ? t('saving') : t('saveAria')}
+							aria-busy={pending}
 							className="flex-1"
 						>
 							{pending && <Spinner data-icon="inline-start" aria-hidden />}

@@ -64,6 +64,7 @@ export default {
 		name: 'Name',
 		quantity: 'Menge (optional)',
 		save: 'Speichern',
+		saving: 'Speichert…',
 		cancel: 'Abbrechen',
 	},
 	receipt: {

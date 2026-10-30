@@ -236,7 +236,12 @@ export function AbsencePanel({
 									<AlertDescription>{error}</AlertDescription>
 								</Alert>
 							)}
-							<Button type="submit" disabled={!start || !end || pending} aria-label={t('saveAria')}>
+							<Button
+								type="submit"
+								disabled={!start || !end || pending}
+								aria-label={pending ? t('saving') : t('saveAria')}
+								aria-busy={pending}
+							>
 								{pending && <Spinner data-icon="inline-start" aria-hidden />}
 								{pending ? t('saving') : t('save')}
 							</Button>

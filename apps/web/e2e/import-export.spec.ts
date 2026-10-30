@@ -14,6 +14,26 @@ import {
 test.describe('import wizard responsive', () => {
 	skipUnlessFixtures();
 
+	test('vertical source choices follow Up and Down keys and select with Enter', async ({
+		page,
+	}) => {
+		await setupMember(page);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/import`);
+		await dismissOnboarding(page);
+
+		const splitwise = page.getByRole('button', { name: 'Splitwise CSV' });
+		const splid = page.getByRole('button', { name: 'Splid CSV' });
+		await splitwise.focus();
+		await page.keyboard.press('ArrowDown');
+		await expect(splid).toBeFocused();
+		await page.keyboard.press('ArrowUp');
+		await expect(splitwise).toBeFocused();
+		await page.keyboard.press('ArrowDown');
+		await page.keyboard.press('Enter');
+		await expect(page.getByRole('heading', { name: 'Importquelle wählen' })).toBeHidden();
+		await expect(page.getByLabel('CSV-Datei auswählen')).toBeAttached();
+	});
+
 	async function setLargeText(page: Page): Promise<void> {
 		await page.evaluate(() => {
 			const nonce = document.querySelector<HTMLScriptElement>('script[nonce]')?.nonce;

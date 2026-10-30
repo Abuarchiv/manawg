@@ -23,15 +23,15 @@ Keep your `.env` next to the backups: without it you can still restore, but a ne
 ends all sessions, so members sign in again, and a new `MEMBER_SESSION_SECRET` breaks the calendar
 feed URLs and unsubscribe links that were already handed out.
 
-A nightly backup with cron, keeping 14 days, with the files encrypted to a key that does not live
-on the server:
+A nightly backup with cron, keeping 14 days:
 
 ```text
 15 3 * * * cd /srv/manawg && ./docker/backup.sh && find backups -name 'manawg-*.tar.gz' -mtime +14 -delete
 ```
 
-Copy `backups/` off the machine (for example with `rsync` or `restic`). An encrypted copy with
-[age](https://age-encryption.org) or GPG:
+The archives above are not encrypted. Store them on an encrypted volume and copy them off the
+machine. To encrypt a copy with [age](https://age-encryption.org), use a public recipient key
+and keep its private key off the server:
 
 ```sh
 age -r <your public key> -o manawg.tar.gz.age backups/manawg-20261028-031500.tar.gz

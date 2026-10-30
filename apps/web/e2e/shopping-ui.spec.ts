@@ -134,6 +134,68 @@ test.describe('shopping swipe pointer capture', () => {
 });
 
 test.describe('household list UI', () => {
+	test('locks shopping edit fields while saving and preserves them for a retry after failure', async ({
+		page,
+	}) => {
+		skipUnlessFixtures();
+		const { shareCode, memberId } = FIXTURE_WG;
+		let item = {
+			id: 'shopping-edit-pending',
+			name: 'Milch',
+			quantity: '1 Packung',
+			addedByMemberId: memberId,
+			boughtAt: null,
+			boughtByMemberId: null,
+			createdAt: '2026-10-01T10:00:00.000Z',
+			updatedAt: '2026-10-01T10:00:00.000Z',
+		};
+		const response = Promise.withResolvers<void>();
+		let patchCalls = 0;
+		let submitted: unknown;
+		await page.route(`**/api/wg/${shareCode}/shopping`, (route) =>
+			route.fulfill({ json: { items: [item] } }),
+		);
+		await page.route(`**/api/wg/${shareCode}/shopping/${item.id}`, async (route) => {
+			patchCalls += 1;
+			submitted = route.request().postDataJSON();
+			if (patchCalls === 1) {
+				await response.promise;
+				return route.fulfill({ status: 503, json: { error: 'unexpected_error' } });
+			}
+			item = { ...item, name: 'Hafermilch', quantity: '2 Packungen' };
+			return route.fulfill({ json: { item } });
+		});
+		await setupMember(page);
+		await navigateToFeature(page, `/wg/${shareCode}/shopping`);
+		await dismissOnboarding(page);
+		await page.getByRole('button', { name: 'Artikelaktionen: Milch' }).click();
+		await page.getByRole('button', { name: 'Bearbeiten', exact: true }).click();
+		const form = page.getByRole('dialog').locator('form');
+		const name = form.getByLabel('Name', { exact: true });
+		const quantity = form.getByLabel('Menge (optional)', { exact: true });
+		await name.fill('Hafermilch');
+		await quantity.fill('2 Packungen');
+		try {
+			await form.getByRole('button', { name: 'Speichern', exact: true }).click();
+			await expect(name).toBeDisabled();
+			await expect(quantity).toBeDisabled();
+			await expect(form).toHaveAttribute('aria-busy', 'true');
+			await expect(form.getByRole('button', { name: 'Speichert…' })).toBeDisabled();
+		} finally {
+			response.resolve();
+		}
+		await expect(name).toBeEnabled();
+		await expect(quantity).toBeEnabled();
+		await expect(name).toHaveValue('Hafermilch');
+		await expect(quantity).toHaveValue('2 Packungen');
+		await expect(form.getByRole('alert')).toBeVisible();
+		await form.getByRole('button', { name: 'Speichern', exact: true }).click();
+		await expect(page.getByRole('dialog')).toBeHidden();
+		await expect(page.getByRole('button', { name: 'Artikelaktionen: Hafermilch' })).toBeVisible();
+		expect(patchCalls).toBe(2);
+		expect(submitted).toMatchObject({ name: 'Hafermilch', quantity: '2 Packungen' });
+	});
+
 	skipUnlessFixtures();
 
 	const shareCode = FIXTURE_WG.shareCode;

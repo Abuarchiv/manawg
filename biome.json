@@ -27,6 +27,7 @@
 			"**/supabase/**",
 			"**/*.json",
 			"!**/node_modules",
+			"!**/graphify-out",
 			"!**/supabase/.temp",
 			"!**/dist",
 			"!**/.next",

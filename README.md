@@ -28,14 +28,14 @@
 shopping list, calendar and chat of a flat in one place, on every flatmate's phone. A *WG*
 (*Wohngemeinschaft*) is the German word for a shared flat.
 
-- **Expenses that settle themselves:** split evenly or by amount, see who owes whom, settle up
+- **Shared expenses:** split evenly or by amount, see who owes whom, settle up
   in as few transfers as possible.
 - **A cleaning rota that is fair:** chores rotate between flatmates and skip whoever is away.
 - **One shopping list for the flat,** plus household supplies, a shared calendar, chat and
   pinboard.
 - **An app without an app store:** install it from the browser on Android and iPhone; it keeps
   working offline.
-- **Yours to run:** no ads, Apache-2.0, and one `docker compose up` for your own instance.
+- **Self-hosting:** run your own instance with Docker Compose under Apache-2.0.
 
 > [!TIP]
 > No account needed to look around: the [live demo on manawg.com](https://manawg.com/en) ends with
@@ -45,7 +45,8 @@ shopping list, calendar and chat of a flat in one place, on every flatmate's pho
 
 [Features](#features) · [Why ManaWG](#why-manawg) · [Get started](#get-started) ·
 [Self-hosting](#self-hosting) · [Develop](#develop) · [Feedback and roadmap](#feedback-and-roadmap) ·
-[Contributing](#contributing) · [Translations](#translations) · [License](#license)
+[Contributing](#contributing) · [Translations](#translations) ·
+[Community and support](#community-and-support) · [License](#license)
 
 ## Features
 
@@ -56,7 +57,7 @@ shopping list, calendar and chat of a flat in one place, on every flatmate's pho
   <img src="docs/screenshots/shopping.png" width="24%" alt="Shopping list with suggestions for the flat">
 </p>
 
-| | |
+| Area | Features |
 | --- | --- |
 | **Money** | Even or custom splits · balances and settle-up suggestions with as few transfers as possible · payment reminders · recurring costs such as rent and internet · a monthly statement by mail · import from Splitwise or Splid (CSV) or from a screenshot, with the text recognition running in your browser |
 | **Chores** | Rotating cleaning rota · absences taken into account · reminders when a chore is due |
@@ -87,11 +88,11 @@ What we hold on to:
 
 ## Get started
 
-| | [app.manawg.com](https://app.manawg.com) | Your own instance |
+| Aspect | [app.manawg.com](https://app.manawg.com) | Your own instance |
 | --- | --- | --- |
 | **Setup** | Sign up with an email code or Google, create a WG, share the invite link | `./docker/setup.sh` and `docker compose up -d` on any machine with Docker |
 | **Cost** | Free | Your server |
-| **Updates** | Deployed for you from `main` | `git pull`, then rebuild; migrations run on start |
+| **Updates** | Managed for you after release checks | Pull a published image or rebuild your checkout; migrations run on start |
 | **Data location** | Database and servers in Frankfurt, Germany (EU) | Wherever your server is |
 | **Analytics** | Cookieless page views and counts of new and joined WGs, nothing else | Off |
 | **Mail** | Included | Your SMTP server, or Mailpit for testing |
@@ -110,7 +111,8 @@ cd manawg
 docker compose up -d
 ```
 
-The first start builds the app image, which takes about ten minutes. Then open
+Compose pulls the published app image when available, or builds it from your checkout
+(about ten minutes). Then open
 [http://localhost](http://localhost) and create an account; the sign-in code arrives in Mailpit at
 [http://localhost:8025](http://localhost:8025).
 
@@ -163,8 +165,9 @@ and the offline queue.
 
 ## Feedback and roadmap
 
-ManaWG is in daily use at [app.manawg.com](https://app.manawg.com). There are no versioned
-releases yet: `main` is always deployable, and the hosted instance runs it.
+ManaWG is available at [app.manawg.com](https://app.manawg.com). There are no versioned
+releases yet. Production releases promote a commit from `main` after CI, Preview checks and
+database migrations pass; the hosted instance can lag behind `main`.
 
 What gets built next is decided in the open:
 

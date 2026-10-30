@@ -40,6 +40,7 @@ export function ShoppingEditForm({ item, onSave, onDone }: ShoppingEditFormProps
 	return (
 		<form
 			className="flex flex-col gap-3"
+			aria-busy={saving}
 			onSubmit={(event) => {
 				event.preventDefault();
 				void submit();
@@ -53,6 +54,7 @@ export function ShoppingEditForm({ item, onSave, onDone }: ShoppingEditFormProps
 					value={name}
 					onChange={(event) => setName(event.target.value)}
 					maxLength={NAME_MAX}
+					disabled={saving}
 					enterKeyHint="next"
 					required
 				/>
@@ -64,6 +66,7 @@ export function ShoppingEditForm({ item, onSave, onDone }: ShoppingEditFormProps
 					value={quantity}
 					onChange={(event) => setQuantity(event.target.value)}
 					maxLength={QUANTITY_MAX}
+					disabled={saving}
 					enterKeyHint="done"
 				/>
 			</div>
@@ -75,7 +78,7 @@ export function ShoppingEditForm({ item, onSave, onDone }: ShoppingEditFormProps
 			<div className="flex gap-2">
 				<Button type="submit" disabled={saving || name.trim().length === 0}>
 					{saving && <Spinner data-icon="inline-start" aria-hidden />}
-					{t('save')}
+					{saving ? t('saving') : t('save')}
 				</Button>
 				<Button type="button" variant="outline" onClick={onDone} disabled={saving}>
 					{t('cancel')}

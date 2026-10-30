@@ -119,7 +119,7 @@ export default {
 		checkInput: 'Check what you entered.',
 		joinOffline: 'Joining could not be completed: check your connection and try again.',
 		joinFailed: 'Joining did not work. Try once more.',
-		joinKeyUnavailable: 'Joining the flat could not be sent reliably. Try again.',
+		joinKeyUnavailable: 'Could not start joining the flat. Reload the page and try again.',
 		createRateLimited: 'You have just created several flats. Try again in about an hour.',
 		signInFirst: 'Sign in with your account first.',
 		wgNameInvalid:
@@ -132,7 +132,7 @@ export default {
 		createRetry: 'The flat could not be created: try again in a moment.',
 		createOffline: 'The flat could not be created: check your connection and try again.',
 		createFailed: 'The flat could not be created. Try again.',
-		createKeyUnavailable: 'The flat could not be created reliably. Try again.',
+		createKeyUnavailable: 'Could not start creating the flat. Reload the page and try again.',
 		notAnInviteLink: 'That is not an invite link. Paste the whole link.',
 		wgNameMissing: 'The flat name is missing.',
 		displayNameMissing: 'Your display name is missing.',
@@ -190,7 +190,7 @@ export default {
 		liveCopied: 'The invitation was copied.',
 		liveLinkCopied: 'The invite link was copied.',
 		liveFailed: 'Sharing failed. Copy the link instead.',
-		live: 'Your flat “{wgName}” is live.',
+		live: 'Your flat “{wgName}” has been created.',
 		validity:
 			'Send your flatmates the invite link. {days, plural, one {It is valid for # day.} other {It is valid for # days.}}',
 		tryAgain: 'Try again',
