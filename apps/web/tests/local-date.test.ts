@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-const { inputDateOrToday, msUntilNextLocalDay } = await import('../src/core/utils/local-date.ts');
+const { inputDateOrToday, inputDateToIso, msUntilNextLocalDay, todayInputValue } = await import(
+	'../src/core/utils/local-date.ts'
+);
+const { berlinDayKey } = await import('../src/core/utils/berlin-day.ts');
 
 test('an untouched date input follows the day after midnight, a picked one stays', () => {
 	const afterMidnight = new Date(2026, 9, 28, 0, 5);
@@ -16,4 +19,40 @@ test('the midnight timer fires just after the next local midnight', () => {
 	assert.equal(msUntilNextLocalDay(evening), 61_000);
 	const fired = new Date(evening.getTime() + msUntilNextLocalDay(evening));
 	assert.equal(fired.getDate(), 27);
+});
+
+test('a picked date is the same calendar day on the device and in Berlin', () => {
+	const originalTz = process.env.TZ;
+	try {
+		for (const tz of [
+			'Pacific/Kiritimati',
+			'Pacific/Honolulu',
+			'Pacific/Pago_Pago',
+			'America/Los_Angeles',
+			'Europe/Berlin',
+		]) {
+			process.env.TZ = tz;
+			for (const day of ['2026-07-01', '2026-10-29', '2026-11-01', '2027-01-31']) {
+				const stored = new Date(inputDateToIso(day) ?? '');
+				assert.equal(berlinDayKey(stored), day, `${tz} ${day} in Berlin`);
+				assert.equal(todayInputValue(stored), day, `${tz} ${day} on the device`);
+			}
+		}
+	} finally {
+		if (originalTz === undefined) delete process.env.TZ;
+		else process.env.TZ = originalTz;
+	}
+});
+
+test('zones that already agree with Berlin keep local noon', () => {
+	const originalTz = process.env.TZ;
+	try {
+		for (const tz of ['Europe/Berlin', 'America/Los_Angeles']) {
+			process.env.TZ = tz;
+			assert.equal(inputDateToIso('2026-10-29'), new Date(2026, 9, 29, 12).toISOString());
+		}
+	} finally {
+		if (originalTz === undefined) delete process.env.TZ;
+		else process.env.TZ = originalTz;
+	}
 });
