@@ -3,6 +3,7 @@ import { safeLocalStorage } from '@/core/utils/browser';
 import { isRecord } from '@/core/utils/is-record';
 import { isOfflineAction } from './offline-action-guard';
 import { type FailureState, SERVER_CHECK_PREFIX, withFailureState } from './offline-failure-copy';
+import { isPendingImageToken, removePendingImage } from './offline-images';
 import {
 	isQueuedCreateId,
 	type OfflineAction,
@@ -258,10 +259,21 @@ export function filterOfflineActionsForAuthUser(
 export async function adoptLocalAccount(authUserId: string): Promise<void> {
 	const previous = setLocalAccount(authUserId);
 	if (!previous) return;
-	await updateOfflineQueue((actions) => {
+	let dropped: OfflineAction[] = [];
+	const saved = await updateOfflineQueue((actions) => {
 		const own = actions.filter((action) => (action.authUserId ?? previous) === authUserId);
+		dropped = actions.filter((action) => !own.includes(action));
 		return own.length === actions.length ? null : own;
 	});
+	if (!saved) return;
+	// Their pending photos stay on the device otherwise; a failed delete leaves a harmless orphan.
+	await Promise.allSettled(
+		dropped.flatMap(({ payload, memberId }) =>
+			typeof payload.imageUrl === 'string' && isPendingImageToken(payload.imageUrl)
+				? [removePendingImage(payload.imageUrl, memberId)]
+				: [],
+		),
+	);
 }
 
 /**
