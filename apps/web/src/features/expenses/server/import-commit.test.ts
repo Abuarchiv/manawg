@@ -93,6 +93,7 @@ function runCommit(
 	} = {},
 ) {
 	const state = { inserted: [] as Row[], splits: [] as unknown[] };
+	const memberRows = () => Object.values(mapping ?? { Alice: memberId }).map((id) => ({ id }));
 	const tx = {
 		select(fields: Record<string, unknown>) {
 			let table: unknown;
@@ -102,6 +103,7 @@ function runCommit(
 					return query;
 				},
 				where: async () => {
+					if (table === wgMembers) return memberRows();
 					assert.equal(table, expenses);
 					return existingExpenses.map((row) =>
 						Object.fromEntries(
@@ -148,7 +150,7 @@ function runCommit(
 			from: (table: unknown) => {
 				assert.equal(table, wgMembers);
 				return {
-					where: async () => Object.values(mapping ?? { Alice: memberId }).map((id) => ({ id })),
+					where: async () => memberRows(),
 				};
 			},
 		}),

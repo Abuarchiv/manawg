@@ -37,13 +37,15 @@ export function resolveExpensePayer(bodyPaidByMemberId: unknown, callerId: strin
 /**
  * Resolves which of the given member ids actually belong to this WG. Callers
  * compare the returned set's size against the input to detect any id that
- * does not (e.g. a member who already left).
+ * does not (e.g. a member who already left). Inside the expense payment lock, pass the
+ * transaction: every deactivation takes that lock too, so the answer holds until commit.
  */
 export async function findExpenseMemberIds(
 	wgId: string,
 	memberIds: readonly string[],
+	executor: Pick<DbTransaction, 'select'> = db,
 ): Promise<Set<string>> {
-	const memberRows = await db
+	const memberRows = await executor
 		.select({ id: wgMembers.id })
 		.from(wgMembers)
 		.where(

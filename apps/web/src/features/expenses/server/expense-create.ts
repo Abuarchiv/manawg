@@ -20,7 +20,7 @@ import {
 } from '@/features/expenses/expense-schemas';
 import { serializeRecurringExpense } from '@/features/expenses/recurring-expenses';
 import { expenseCategorySchema } from '@/features/expenses/server/expense-category-schema';
-import { insertExpenseWithSplits } from '@/features/expenses/server/expenses';
+import { findExpenseMemberIds, insertExpenseWithSplits } from '@/features/expenses/server/expenses';
 import { advanceRecurringDue } from '@/features/expenses/server/recurring-booking';
 
 /** `recurringExpense` is the template the booking advanced, so the client needs no follow-up PATCH. */
@@ -179,6 +179,13 @@ export async function writeExpense(
 		}
 		template = locked;
 	}
+	// The route checked this before the payment lock; a move-out that committed meanwhile is
+	// caught here, where no deactivation can run alongside.
+	const memberIds = Array.from(
+		new Set([input.paidByMemberId, ...input.splits.map((split) => split.debtorMemberId)]),
+	);
+	const activeIds = await findExpenseMemberIds(input.wgId, memberIds, tx);
+	if (activeIds.size !== memberIds.length) throw new TransactionAbort('member_not_in_wg');
 	const created = await insertExpenseWithSplits(tx, {
 		wgId: input.wgId,
 		paidByMemberId: input.paidByMemberId,
@@ -233,5 +240,6 @@ export function expenseCreateAbortResponse(error: unknown): NextResponse | null 
 		return conflict('recurring_expense_already_advanced');
 	}
 	if (error.code === 'recurring_expense_changed') return conflict('recurring_expense_changed');
+	if (error.code === 'member_not_in_wg') return badRequest('member_not_in_wg');
 	return null;
 }
