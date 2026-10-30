@@ -158,7 +158,7 @@ function selectQuery(local: Loose, baseDb = false) {
 			return this;
 		},
 		where() {
-			if (baseDb || this.table === expenseSplits) {
+			if (baseDb || this.table === expenseSplits || this.table === wgMembers) {
 				return Promise.resolve(selectRows(this.table, local));
 			}
 			return this;

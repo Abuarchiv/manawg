@@ -41,6 +41,7 @@ mock.module('@/core/infra/observability', {
 });
 mock.module('@/features/expenses/server/expenses', {
 	namedExports: {
+		findExpenseMemberIds: async (_wgId: string, ids: string[]) => new Set(ids),
 		insertExpenseWithSplits: async (_tx: unknown, input: Record<string, unknown>) => ({
 			expense: { id: 'expense-1', ...input },
 			splits: [],

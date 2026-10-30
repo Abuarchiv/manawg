@@ -46,7 +46,10 @@ interface CommitResult {
  * Every member in a row that will be imported must belong to this WG. Skipped
  * preview rows are excluded; validation runs before the import row exists.
  */
-async function assertMembersInWg(input: CommitInput): Promise<void> {
+async function assertMembersInWg(
+	input: CommitInput,
+	executor: Pick<DbTransaction, 'select'> = db,
+): Promise<void> {
 	const memberIds = new Set<string>();
 	for (const item of input.expenses) {
 		if (item.skip) continue;
@@ -60,7 +63,7 @@ async function assertMembersInWg(input: CommitInput): Promise<void> {
 	const memberIdsList = Array.from(memberIds);
 	if (memberIdsList.length === 0) return;
 
-	const memberRows = await db
+	const memberRows = await executor
 		.select({ id: wgMembers.id })
 		.from(wgMembers)
 		.where(
@@ -167,7 +170,9 @@ function isCommitResult(value: unknown): value is CommitResult {
  * exactly as it was: an expense without splits, or expenses without the import
  * row that documents where they came from, would both be wrong balances.
  */
-async function writeImport(tx: DbTransaction, input: CommitInput) {
+export async function writeImport(tx: DbTransaction, input: CommitInput) {
+	// The prepare check ran before the payment lock; a member who moved out since is caught here.
+	await assertMembersInWg(input, tx);
 	const [imp] = await tx
 		.insert(expenseImports)
 		.values({
