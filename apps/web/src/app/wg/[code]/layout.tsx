@@ -41,7 +41,7 @@ export async function generateMetadata({
 	const t = await getTranslations('meta.wg');
 	const code = normalizeShareCode(rawCode);
 	if (!isValidShareCode(code)) {
-		return { robots: { index: false, follow: false } };
+		return { title: wgTitle(t('notFound')), robots: { index: false, follow: false } };
 	}
 	const fixture = loadFixtureWgView(code);
 	if (fixture) {

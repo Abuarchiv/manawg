@@ -218,6 +218,10 @@ test.describe('English app shell', () => {
 		await expect(page.getByRole('link', { name: 'Create or join a flat' })).toBeVisible();
 		await expectNoGermanChrome(page);
 		await expectNoHorizontalOverflow(page);
+
+		const malformed = await page.goto('/wg/zz');
+		expect(malformed?.status()).toBe(404);
+		await expect(page).toHaveTitle(/Flat not found — ManaWG/);
 	});
 
 	test('the route error boundary is English', async ({ page, context, baseURL }) => {
