@@ -371,6 +371,23 @@ textarea,
 	}
 }
 
+/* Selected tab, segment and sub-nav link in forced colors: their fill and ring drop out, so the
+   selected one fills with Highlight. forced-color-adjust is inherited, so descendants (the count
+   badge) take the text colour. */
+@media (forced-colors: active) {
+	[data-slot="tabs-list"][data-variant="default"] [data-slot="tabs-trigger"][aria-selected="true"],
+	[data-slot="toggle-group-item"][data-variant="segmented"][aria-pressed="true"],
+	[data-slot="subnav-link"][aria-current] {
+		background-color: Highlight;
+		color: HighlightText;
+		forced-color-adjust: none;
+	}
+
+	[data-slot="subnav-link"][aria-current] * {
+		color: inherit;
+	}
+}
+
 /* The start header stays put and gains an opaque bar with a hairline when
    scrolling (iOS 27 scroll-edge effect), scroll-driven without JS. Without
    animation-timeline or with reduced motion the bar is always opaque. */

@@ -191,6 +191,7 @@ function SegmentList({
 								<Link
 									href={href}
 									prefetch
+									data-slot="subnav-link"
 									aria-current={active ? (current ? 'page' : 'location') : undefined}
 									aria-label={
 										status
