@@ -209,6 +209,69 @@ test('split settle authenticates before lookup and scopes expenses to the WG', a
 	assert.equal(lookups, 1);
 });
 
+test('expense PATCH answers a racing replay with the stored expense once its own edit is in', async () => {
+	const initialUpdatedAt = new Date('2026-09-20T00:00:00.123Z');
+	let currentExpense: Record<string, unknown>;
+	let committedAtLock: Record<string, unknown>;
+	const makeSelect = () => {
+		let table: unknown;
+		const query = {
+			from(nextTable: unknown) {
+				table = nextTable;
+				return query;
+			},
+			where: () => query,
+			...thenableQuery(() => (table === expenses ? [currentExpense] : [])),
+		};
+		return query;
+	};
+	// The version-guarded update finds no row: another request committed first.
+	const tx = {
+		select: makeSelect,
+		update: () => ({ set: () => ({ where: () => ({ returning: async () => [] }) }) }),
+	};
+	env.db = { select: makeSelect } as never;
+	env.payments = {
+		withExpensePaymentLock: async (
+			_wgId: string,
+			operation: (value: typeof tx) => Promise<unknown>,
+		) => {
+			currentExpense = committedAtLock;
+			return operation(tx);
+		},
+	} as never;
+	const racePatch = async (committedDescription: string) => {
+		currentExpense = {
+			id: EXPENSE_ID,
+			wgId: WG_ID,
+			paidByMemberId: CALLER_ID,
+			amountCents: 1200,
+			updatedAt: initialUpdatedAt,
+			description: 'Einkauf',
+		};
+		committedAtLock = {
+			...currentExpense,
+			description: committedDescription,
+			updatedAt: new Date('2026-09-20T00:00:01.000Z'),
+		};
+		return PATCH(
+			jsonRequest('PATCH', {
+				description: 'Wocheneinkauf',
+				expectedUpdatedAt: initialUpdatedAt.toISOString(),
+			}),
+			routeContext({ id: EXPENSE_ID }),
+		);
+	};
+
+	const replay = await racePatch('Wocheneinkauf');
+	assert.equal(replay.status, 200);
+	assert.equal(((await replay.json()) as { description: string }).description, 'Wocheneinkauf');
+
+	const conflicting = await racePatch('Getraenke');
+	assert.equal(conflicting.status, 409);
+	assert.equal(await errorOf(conflicting), 'expense_changed');
+});
+
 test('expense PATCH preserves split integrity with fractional timestamps and concurrent amount changes', async () => {
 	const { wgMembers } = tables;
 	const debtorId = 'f2e2a748-3888-44fc-8c3c-6badfcad5690';

@@ -344,8 +344,11 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 		if (writeErr instanceof TransactionAbort) {
 			if (writeErr.code === 'image_removed') return conflict('image_removed', 'image_removed');
 			if (writeErr.code === 'expense_not_found') return notFound('expense_not_found');
-			if (writeErr.code === 'expense_changed')
-				return conflict('expense_changed', 'expense_conflict');
+			if (writeErr.code === 'expense_changed') {
+				// A request that waited on the lock finds the edit another one just committed.
+				const held = await storedExpenseHoldingEdit(id, updates, splits);
+				return held ? NextResponse.json(held) : conflict('expense_changed', 'expense_conflict');
+			}
 			if (writeErr.code === 'member_not_in_wg') return badRequest('member_not_in_wg');
 			if (writeErr.code === 'expense_has_settled_shares')
 				return conflict('expense_has_settled_shares');
