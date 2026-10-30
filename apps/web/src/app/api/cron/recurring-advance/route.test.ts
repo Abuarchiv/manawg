@@ -45,6 +45,7 @@ interface Options {
 	initialDueAt: Date;
 	initialIntervalMonths: number;
 	errorConstraint: string | null;
+	failInsertAt: number | null;
 	duplicateErrorShape: 'cause' | 'direct';
 	initialAnchorAt: Date;
 	activeMemberIds: string[];
@@ -99,6 +100,7 @@ function freshState(initialDueAt: Date, intervalMonths: number, anchorAt: Date) 
 		lockOrder: [] as string[],
 		wgExists: true,
 		loggedErrors: [] as unknown[],
+		insertCalls: 0,
 		memberQueries: [] as string[][],
 		pauses: [] as unknown[],
 	};
@@ -198,6 +200,8 @@ const transaction = {
 				if (table === expenses) {
 					return {
 						returning: async () => {
+							state.insertCalls++;
+							if (opts.failInsertAt === state.insertCalls) throw new Error('connection lost');
 							if (opts.errorConstraint) {
 								throw Object.assign(new Error('unrelated unique violation'), {
 									code: '23505',
@@ -367,6 +371,7 @@ function harness(overrides: Partial<Options> = {}) {
 		initialDueAt: originalDueAt,
 		initialIntervalMonths: 1,
 		errorConstraint: null,
+		failInsertAt: null,
 		duplicateErrorShape: 'cause',
 		activeMemberIds: [memberId],
 		...overrides,
@@ -477,7 +482,7 @@ test('catch-up charges keep comparing against the initially loaded nextDueAt', a
 	});
 });
 
-test('an unrelated unique violation is logged and does not advance the template', async (t) => {
+test('an unrelated unique violation is logged, answers 503 and does not advance the template', async (t) => {
 	t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-09-25T12:00:00.000Z') });
 	const { state, get } = harness({
 		patchAfterInsert: null,
@@ -485,12 +490,32 @@ test('an unrelated unique violation is logged and does not advance the template'
 	});
 	await withCronSecret(async () => {
 		const response = await get();
-		assert.deepEqual(await response.json(), { ok: true, charged: 0, failedTemplates: 0 });
+		assert.equal(response.status, 503);
+		assert.deepEqual(await response.json(), { ok: false, charged: 0, failedTemplates: 1 });
 		assert.equal(state.loggedErrors.length, 1);
 		assert.equal(state.expenses.length, 0);
 		assert.equal(state.template.nextDueAt.toISOString(), originalDueAt.toISOString());
 		assert.deepEqual(state.updateResults, []);
 		assert.equal(state.notifications.length, 0);
+	});
+});
+
+test('a failed insert keeps the earlier charges of the template and answers 503', async (t) => {
+	t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-09-25T12:00:00.000Z') });
+	const { state, get } = harness({
+		initialDueAt: new Date('2026-08-01T00:00:00.000Z'),
+		patchAfterInsert: null,
+		failInsertAt: 2,
+	});
+	await withCronSecret(async () => {
+		const response = await get();
+		assert.equal(response.status, 503);
+		assert.deepEqual(await response.json(), { ok: false, charged: 1, failedTemplates: 1 });
+		assert.equal(state.loggedErrors.length, 1);
+		assert.equal(state.expenses.length, 1);
+		assert.equal(state.template.nextDueAt.toISOString(), originalDueAt.toISOString());
+		assert.equal(state.events.length, 1);
+		assert.equal(state.notifications.length, 1);
 	});
 });
 
