@@ -134,21 +134,28 @@ export function MonthlyStatementDocument({
 						{t('document.splitBetween', { count: members.length })}
 					</span>
 				</div>
-				{/* Four columns do not fit at 320 px: the table scrolls sideways instead of the page. */}
-				<div className="overflow-x-auto">
+				{/* The name column truncates; the wrapper scrolls only for very large amounts. */}
+				{/* biome-ignore lint/a11y/useSemanticElements: A <section> cannot be the scroll container here; role="region" names it. */}
+				<div
+					// biome-ignore lint/a11y/noNoninteractiveTabindex: The scrollable table must be reachable by keyboard.
+					tabIndex={0}
+					role="region"
+					aria-labelledby="statement-balances"
+					className="overflow-x-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+				>
 					<table className="w-full border-collapse text-[14px]">
 						<thead>
 							<tr className={cn(EYEBROW, 'border-b border-foreground')}>
-								<th scope="col" className={cn(TH, 'text-left')}>
+								<th scope="col" className={cn(TH, 'w-full max-w-0 text-left')}>
 									{t('document.person')}
 								</th>
-								<th scope="col" className={cn(TH, 'pl-3 text-right')}>
+								<th scope="col" className={cn(TH, 'pl-2 text-right sm:pl-3')}>
 									{t('document.paid')}
 								</th>
-								<th scope="col" className={cn(TH, 'pl-3 text-right')}>
+								<th scope="col" className={cn(TH, 'pl-2 text-right sm:pl-3')}>
 									{t('document.share')}
 								</th>
-								<th scope="col" className={cn(TH, 'pl-3 text-right')}>
+								<th scope="col" className={cn(TH, 'pl-2 text-right sm:pl-3')}>
 									{t('document.balance')}
 								</th>
 							</tr>
@@ -156,12 +163,14 @@ export function MonthlyStatementDocument({
 						<tbody>
 							{members.map((member) => (
 								<tr key={member.id} className="border-b border-border">
-									<th scope="row" className="py-2.5 text-left font-medium">
+									<th scope="row" className="max-w-0 py-2.5 text-left font-medium">
 										<span className="flex min-w-0 items-center gap-2">
 											<MemberAvatar name={member.name} size={24} />
-											<span className="truncate">{member.name}</span>
+											<span className="truncate" title={member.name}>
+												{member.name}
+											</span>
 											{member.id === viewerId && (
-												<span className="text-[12px] font-normal text-muted-foreground">
+												<span className="shrink-0 text-[12px] font-normal text-muted-foreground">
 													{t('document.you')}
 												</span>
 											)}
@@ -266,7 +275,14 @@ export function MonthlyStatementDocument({
 							{t('document.entriesByDate', { count: items.length })}
 						</span>
 					</div>
-					<div className="overflow-x-auto">
+					{/* biome-ignore lint/a11y/useSemanticElements: A <section> cannot be the scroll container here; role="region" names it. */}
+					<div
+						// biome-ignore lint/a11y/noNoninteractiveTabindex: The scrollable table must be reachable by keyboard.
+						tabIndex={0}
+						role="region"
+						aria-labelledby="statement-items"
+						className="overflow-x-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+					>
 						<table className="w-full border-collapse text-[13px]">
 							<thead>
 								<tr className={cn(EYEBROW, 'border-b border-foreground')}>
