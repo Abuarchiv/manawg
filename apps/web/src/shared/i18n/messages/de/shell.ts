@@ -172,6 +172,7 @@ export default {
 		signIn: 'Neu anmelden',
 	},
 	offlineBanner: {
+		backOnline: 'Wieder online.',
 		notSent: 'Noch nicht gesendet. Die Aktionen bleiben gespeichert.',
 		offline: 'Offline. {detail}',
 		pending: 'Änderungen werden vorgemerkt.',

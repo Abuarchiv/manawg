@@ -170,6 +170,7 @@ export default {
 		signIn: 'Sign in again',
 	},
 	offlineBanner: {
+		backOnline: 'Back online.',
 		notSent: 'Not sent yet. The actions stay saved.',
 		offline: 'Offline. {detail}',
 		pending: 'Changes are queued.',
