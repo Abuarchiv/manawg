@@ -1,4 +1,5 @@
 import { DEFAULT_LOCALE, type Locale } from '@/shared/i18n/locale';
+import { DESCRIPTION_MAX_LENGTH } from './expense-constants';
 import {
 	detectDelimiter,
 	distributeRemainder,
@@ -85,7 +86,7 @@ export function parseSplitwiseCsv(
 		if (ignoredColumns.length > 0) {
 			warnings.push(`unknown_columns_ignored:${ignoredColumns.join('|')}`);
 		}
-		const descRaw = (fields[idxDesc] ?? '').trim();
+		const descRaw = (fields[idxDesc] ?? '').trim().slice(0, DESCRIPTION_MAX_LENGTH).trimEnd();
 		if (!descRaw || /^(total balance|gesamtsaldo)$/i.test(descRaw)) continue;
 		const date = parseDateIso(fields[idxDate] ?? '', locale);
 		if (!date) {
