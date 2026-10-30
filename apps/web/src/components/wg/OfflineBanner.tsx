@@ -13,10 +13,10 @@ import {
 	countOfflineActions,
 	getSyncedCountForWg,
 	needsManualOfflineResolution,
-	OFFLINE_QUEUE_EVENT,
 	OFFLINE_SYNCED_EVENT,
 	offlineQueueReplaySupported,
 	readOfflineQueue,
+	subscribeOfflineQueueChanges,
 	syncOfflineActions,
 } from '@/core/offline/offline-client';
 import {
@@ -100,11 +100,11 @@ export function OfflineBanner() {
 		};
 		update();
 		const unsubscribeConnectivity = subscribeConnectivity(updateFromEvent);
-		window.addEventListener(OFFLINE_QUEUE_EVENT, updateFromEvent);
+		const unsubscribeQueueChanges = subscribeOfflineQueueChanges(updateFromEvent);
 		window.addEventListener(OFFLINE_SYNCED_EVENT, onSynced);
 		return () => {
 			unsubscribeConnectivity();
-			window.removeEventListener(OFFLINE_QUEUE_EVENT, updateFromEvent);
+			unsubscribeQueueChanges();
 			window.removeEventListener(OFFLINE_SYNCED_EVENT, onSynced);
 		};
 	}, [identity, wg.shareCode, toast]);

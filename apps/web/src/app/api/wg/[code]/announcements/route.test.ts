@@ -21,6 +21,8 @@ const state = {
 	warning: null as string | null,
 	warningUpdateSucceeds: true,
 	rejectImageAttachment: false,
+	activeMember: true,
+	deactivateAfterGuard: false,
 	replayWgId: null as string | null,
 	existingChoreId: null as string | null,
 	existingSwapPosts: [] as Row[],
@@ -120,13 +122,35 @@ mock.module('@/core/db/private-image-deletions', {
 	},
 });
 mock.module('@/core/db/transaction', { namedExports: { TransactionAbort } });
+mock.module('@/core/db/account-deletion', {
+	namedExports: {
+		lockActiveAccountMember: async () =>
+			state.activeMember
+				? {
+						id: memberId,
+						name: 'Member',
+						role: 'member',
+						authUserId: 'auth-1',
+						deactivatedAt: null,
+					}
+				: null,
+	},
+});
 mock.module('@/core/guards/require-wg-member', {
 	namedExports: {
-		requireWgMember: async () => ({
-			ok: true,
-			wg: { id: wgId, name: 'WG', shareCode: 'MTE8PZAT' },
-			member: { memberId, name: 'Member' },
-		}),
+		requireWgMember: async () => {
+			const auth = {
+				ok: true,
+				wg: { id: wgId, name: 'WG', shareCode: 'MTE8PZAT' },
+				member: { memberId, name: 'Member' },
+				authUserId: 'auth-1',
+			};
+			if (state.deactivateAfterGuard) {
+				state.deactivateAfterGuard = false;
+				state.activeMember = false;
+			}
+			return auth;
+		},
 	},
 });
 mock.module('@/core/infra/observability', {
@@ -185,6 +209,8 @@ function harness() {
 	state.warning = null;
 	state.warningUpdateSucceeds = true;
 	state.rejectImageAttachment = false;
+	state.activeMember = true;
+	state.deactivateAfterGuard = false;
 	state.replayWgId = null;
 	state.existingChoreId = null;
 	state.existingSwapPosts = [];
@@ -341,4 +367,16 @@ test('an unreadable createdAt is rejected', async () => {
 	const { state, post } = harness();
 	assert.equal((await post(null, { createdAt: 'yesterday' })).status, 400);
 	assert.equal(state.created.length, 0);
+});
+
+test('a member deactivated after auth cannot create an announcement', async () => {
+	const { state, post } = harness();
+	state.deactivateAfterGuard = true;
+
+	const response = await post();
+	assert.equal(response.status, 401);
+	assert.equal((await response.json()).error, 'member_deactivated');
+	assert.equal(state.created.length, 0);
+	assert.equal(state.notifications, 0);
+	assert.equal(state.replayWgId, wgId);
 });

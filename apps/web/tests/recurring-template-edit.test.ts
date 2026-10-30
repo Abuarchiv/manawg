@@ -37,6 +37,7 @@ const state = {
 	sets: [] as Array<Record<string, unknown>>,
 	memberWhere: [] as string[],
 	updateWhere: [] as string[],
+	currentTemplate: null as Record<string, unknown> | null,
 };
 
 mock.module('@/core/db', {
@@ -44,20 +45,55 @@ mock.module('@/core/db', {
 		...schema,
 		db: {
 			select: () => ({
-				from: () => ({
-					where: async (condition: Parameters<typeof dialect.sqlToQuery>[0]) => {
-						state.memberWhere.push(dialect.sqlToQuery(condition).sql);
-						return [{ id: MEMBER }];
-					},
-				}),
+				from: (table: unknown) =>
+					table === schema.wgMembers
+						? {
+								where: async (condition: Parameters<typeof dialect.sqlToQuery>[0]) => {
+									state.memberWhere.push(dialect.sqlToQuery(condition).sql);
+									return [{ id: MEMBER }];
+								},
+							}
+						: {
+								where: () => ({
+									limit: async () => (state.currentTemplate ? [{ ...state.currentTemplate }] : []),
+								}),
+							},
 			}),
 			update: () => ({
 				set: (values: Record<string, unknown>) => ({
 					where: (condition: Parameters<typeof dialect.sqlToQuery>[0]) => ({
 						returning: async () => {
-							state.updateWhere.push(dialect.sqlToQuery(condition).sql);
+							const query = dialect.sqlToQuery(condition);
+							state.updateWhere.push(query.sql);
+							if (!state.currentTemplate) {
+								state.sets.push(values);
+								return [
+									{
+										...template(),
+										...values,
+										updatedAt: values.updatedAt instanceof Date ? values.updatedAt : new Date(),
+									},
+								];
+							}
+							const dateParams = query.params.filter(
+								(param): param is Date => param instanceof Date,
+							);
+							const expectedVersion = dateParams.at(-1);
+							if (
+								expectedVersion &&
+								expectedVersion.getTime() !== (state.currentTemplate.updatedAt as Date).getTime()
+							) {
+								return [];
+							}
+							const previousUpdatedAt = state.currentTemplate.updatedAt as Date;
+							const nextUpdatedAt =
+								values.updatedAt instanceof Date
+									? values.updatedAt
+									: new Date(Math.max(Date.now(), previousUpdatedAt.getTime() + 1));
+							const updated = { ...state.currentTemplate, ...values, updatedAt: nextUpdatedAt };
+							state.currentTemplate = updated;
 							state.sets.push(values);
-							return [{ ...template(), ...values }];
+							return [updated];
 						},
 					}),
 				}),
@@ -161,6 +197,37 @@ test('a stale version is a conflict unless the template already holds the edit',
 	});
 	assert.equal(held.status, 200);
 	assert.equal(state.sets.length, 0);
+});
+
+test('a second template edit with an old version conflicts in the same millisecond', async (t) => {
+	const version = new Date('2026-10-30T10:00:00.000Z');
+	const snapshot = template({ updatedAt: version });
+	state.currentTemplate = { ...snapshot };
+	state.sets = [];
+	t.mock.timers.enable({ apis: ['Date'], now: version });
+	try {
+		const first = await editRecurringTemplate(caller, snapshot as never, {
+			id: 'template-1',
+			description: 'Strom',
+			expectedUpdatedAt: version.toISOString(),
+		});
+		assert.equal(first.status, 200);
+
+		const stale = await editRecurringTemplate(caller, snapshot as never, {
+			id: 'template-1',
+			description: 'Miete',
+			expectedUpdatedAt: version.toISOString(),
+		});
+		assert.equal(stale.status, 409);
+		assert.equal(state.currentTemplate?.description, 'Strom');
+
+		const timestampSql = dialect.sqlToQuery(state.sets[0]?.updatedAt as never).sql;
+		assert.match(timestampSql, /greatest\(clock_timestamp\(\)/);
+		assert.match(timestampSql, /"updated_at" \+ interval '1 millisecond'/);
+	} finally {
+		t.mock.timers.reset();
+		state.currentTemplate = null;
+	}
 });
 
 test('resuming compares the due date with the Berlin day, not the UTC day', async () => {

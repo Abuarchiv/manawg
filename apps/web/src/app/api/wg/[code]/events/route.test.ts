@@ -78,15 +78,22 @@ test('a to date after the supported years answers to_invalid', async () => {
 	assert.equal(selects, 0);
 });
 
-const create = () =>
+const create = (extra: Record<string, unknown> = {}) =>
 	POST(
 		new NextRequest('https://app.example.test/api/wg/ABCD2345/events', {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({ title: 'Party', startsAt: '2030-01-01T18:00:00.000Z' }),
+			body: JSON.stringify({ title: 'Party', startsAt: '2030-01-01T18:00:00.000Z', ...extra }),
 		}),
 		{ params: Promise.resolve({ code: 'ABCD2345' }) },
 	);
+
+test('POST rejects an RRULE component that would otherwise be silently dropped', async () => {
+	rateLimit = { success: true };
+	const res = await create({ recurrence: 'FREQ=DAILY;BYDAY=MO;COUNT=2' });
+	assert.equal(res.status, 400);
+	assert.deepEqual(await res.json(), { error: 'recurrence_invalid' });
+});
 
 test('POST answers 503 with Retry-After when the rate limiter is down', async () => {
 	rateLimit = {

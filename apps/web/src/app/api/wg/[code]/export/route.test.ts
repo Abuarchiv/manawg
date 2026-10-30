@@ -162,6 +162,16 @@ test('explicit export limits remain bounded', async () => {
 	assert.equal((await route.get('?offset=99999999999999999999')).status, 400);
 });
 
+test('export pagination rejects incomplete numbers instead of silently truncating them', async () => {
+	for (const parameter of ['limit', 'offset']) {
+		for (const value of ['1.5', '10rows', '1e3', '', ' ']) {
+			const response = await exportRoute().get(`?${parameter}=${encodeURIComponent(value)}`);
+			assert.equal(response.status, 400, `${parameter}=${value}`);
+			assert.deepEqual(await response.json(), { error: 'pagination_invalid' });
+		}
+	}
+});
+
 test('the audit section leaves out the events the shared feed hides', async () => {
 	state.feedAuditWgIds = [];
 	const response = await exportRoute().get('?format=csv&section=auditEvents');

@@ -30,8 +30,8 @@ import {
 import {
 	editQueuedPayload,
 	needsManualOfflineResolution,
-	OFFLINE_QUEUE_EVENT,
 	readOfflineQueue,
+	subscribeOfflineQueueChanges,
 	syncOfflineActions,
 	updateOfflineQueue,
 } from '@/core/offline/offline-client';
@@ -79,8 +79,7 @@ export function OfflineQueueSection({
 
 	useEffect(() => {
 		refresh();
-		window.addEventListener(OFFLINE_QUEUE_EVENT, refresh);
-		return () => window.removeEventListener(OFFLINE_QUEUE_EVENT, refresh);
+		return subscribeOfflineQueueChanges(refresh);
 	}, [refresh]);
 
 	function discardSummary(item: OfflineAction): string {

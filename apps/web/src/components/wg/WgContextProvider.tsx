@@ -237,7 +237,14 @@ export function WgContextProvider({
 		);
 	}
 
-	return <WgContext.Provider value={value}>{children}</WgContext.Provider>;
+	return (
+		<WgContext.Provider
+			key={JSON.stringify([identity.authUserId ?? null, identity.memberId])}
+			value={value}
+		>
+			{children}
+		</WgContext.Provider>
+	);
 }
 
 // No WG header or bottom nav around the shell alerts, so the status bar inset is theirs.

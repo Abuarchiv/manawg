@@ -153,9 +153,9 @@ export const PATCH = withWgRoute<{ id: string }>('chores PATCH', async (req, { c
 		intervalDays?: number;
 		recurrenceType?: ChoreRecurrenceType;
 		lastReminderAt?: SQL;
-		updatedAt: Date;
+		updatedAt: SQL;
 	} = {
-		updatedAt: new Date(),
+		updatedAt: sql`greatest(clock_timestamp(), ${chores.updatedAt} + interval '1 millisecond')`,
 	};
 	if (recurrencePatch) Object.assign(update, recurrencePatch.update);
 	if (parsed.data.title !== undefined) update.title = parsed.data.title;

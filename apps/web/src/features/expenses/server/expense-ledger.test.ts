@@ -8,6 +8,8 @@ const expenses = {
 	paidByMemberId: 'expenses.paidByMemberId',
 	currency: 'expenses.currency',
 	occurredAt: 'expenses.occurredAt',
+	importId: 'expenses.importId',
+	createdAt: 'expenses.createdAt',
 };
 const expenseSplits = {
 	expenseId: 'expenseSplits.expenseId',
@@ -16,19 +18,31 @@ const expenseSplits = {
 	settledAt: 'expenseSplits.settledAt',
 };
 const eq = (field: unknown, value: unknown) => ({ operator: 'eq', field, value });
-
 mock.module('@/core/db', { namedExports: { db: null, expenseSplits, expenses } });
 mock.module('drizzle-orm', {
 	namedExports: {
 		eq,
-		inArray: () => assert.fail('splits must not be loaded by an id list'),
+		inArray: () => assert.fail('Anteile müssen ohne Liste aller Ausgaben-IDs geladen werden'),
 	},
 });
+const { loadExpensesWithSplits, loadLedger } = await import('./expense-ledger');
+const expense = {
+	id: 'e1',
+	paidByMemberId: 'a',
+	currency: 'EUR',
+	occurredAt: new Date('2026-09-01T00:00:00.000Z'),
+	importId: 'import-1',
+	createdAt: new Date('2026-09-01T10:00:00.000Z'),
+};
+const split = { expenseId: 'e1', debtorMemberId: 'b', amountCents: 500, settledAt: null };
+type Expense = Omit<typeof expense, 'currency' | 'occurredAt'> & {
+	currency: string | null;
+	occurredAt: Date | string;
+};
+type Split = Omit<typeof split, 'settledAt'> & { settledAt: Date | string | null };
 
-const { loadExpensesWithSplits } = await import('./expense-ledger');
-
-test('loadExpensesWithSplits joins splits by WG instead of binding every expense id', async () => {
-	const splitQueries: unknown[] = [];
+function clientFor(expenseRows: Expense[], splitRows: Split[], afterRead = () => {}) {
+	const reads: unknown[] = [];
 	const client = {
 		select() {
 			const query = {
@@ -42,54 +56,91 @@ test('loadExpensesWithSplits joins splits by WG instead of binding every expense
 					query.join = { table, on };
 					return query;
 				},
+				leftJoin(table: unknown, on: unknown) {
+					query.join = { table, on };
+					return query;
+				},
 				where: async (predicate: unknown) => {
-					if (query.table === expenses) {
-						assert.deepEqual(predicate, eq(expenses.wgId, wgId));
-						return [
-							{
-								id: 'e1',
-								paidByMemberId: 'a',
-								currency: 'EUR',
-								occurredAt: new Date('2026-09-01T00:00:00.000Z'),
-							},
-							{ id: 'e2', paidByMemberId: 'b', currency: null, occurredAt: '2026-09-02' },
-						];
+					assert.deepEqual(predicate, eq(expenses.wgId, wgId));
+					reads.push({ table: query.table, join: query.join });
+					let rows: unknown[];
+					if (query.table === expenses && query.join) {
+						rows = expenseRows.flatMap<{ expense: Expense; split: Split | null }>((row) => {
+							const matching = splitRows.filter((entry) => entry.expenseId === row.id);
+							return matching.length > 0
+								? matching.map((entry) => ({ expense: { ...row }, split: { ...entry } }))
+								: [{ expense: { ...row }, split: null }];
+						});
+					} else {
+						rows = (query.table === expenses ? expenseRows : splitRows).map((row) => ({ ...row }));
 					}
-					splitQueries.push({ join: query.join, predicate });
-					return [
-						{ expenseId: 'e1', debtorMemberId: 'b', amountCents: 500, settledAt: null },
-						{
-							expenseId: 'e2',
-							debtorMemberId: 'a',
-							amountCents: 300,
-							settledAt: new Date('2026-09-03T00:00:00.000Z'),
-						},
-					];
+					afterRead();
+					return rows;
 				},
 			};
 			return query;
 		},
 	};
+	return { client, reads };
+}
 
+test('the ledger never combines old payers with new shares during a concurrent edit', async () => {
+	const currentExpense = { ...expense };
+	const currentSplit = { ...split };
+	const { client } = clientFor([currentExpense], [currentSplit], () => {
+		currentExpense.paidByMemberId = 'b';
+		currentSplit.debtorMemberId = 'a';
+	});
 	const result = await loadExpensesWithSplits(wgId, client as never);
-
-	assert.deepEqual(splitQueries, [
-		{
-			join: { table: expenses, on: eq(expenseSplits.expenseId, expenses.id) },
-			predicate: eq(expenses.wgId, wgId),
-		},
-	]);
 	assert.deepEqual(result, [
 		{
 			paidByMemberId: 'a',
 			currency: 'EUR',
-			occurredAt: '2026-09-01T00:00:00.000Z',
+			occurredAt: expense.occurredAt.toISOString(),
 			splits: [{ debtorMemberId: 'b', amountCents: 500, settledAt: null }],
 		},
+	]);
+});
+
+test('the ledger keeps all shares, expenses without shares and import data in a flat-scoped snapshot', async () => {
+	const settledAt = new Date('2026-09-03T00:00:00.000Z');
+	const { client, reads } = clientFor(
+		[
+			{ ...expense },
+			{ ...expense, id: 'e2', paidByMemberId: 'b', currency: null, occurredAt: '2026-09-02' },
+		],
+		[{ ...split }, { ...split, debtorMemberId: 'c', amountCents: 300, settledAt }],
+	);
+	const result = await loadLedger(wgId, client as never);
+	assert.deepEqual(reads, [
 		{
-			paidByMemberId: 'b',
-			occurredAt: '2026-09-02',
-			splits: [{ debtorMemberId: 'a', amountCents: 300, settledAt: '2026-09-03T00:00:00.000Z' }],
+			table: expenses,
+			join: { table: expenseSplits, on: eq(expenseSplits.expenseId, expenses.id) },
 		},
 	]);
+	assert.deepEqual(result, [
+		{
+			importId: expense.importId,
+			createdAt: expense.createdAt,
+			debt: {
+				paidByMemberId: 'a',
+				currency: 'EUR',
+				occurredAt: expense.occurredAt.toISOString(),
+				splits: [
+					{ debtorMemberId: 'b', amountCents: 500, settledAt: null },
+					{ debtorMemberId: 'c', amountCents: 300, settledAt: settledAt.toISOString() },
+				],
+			},
+		},
+		{
+			importId: expense.importId,
+			createdAt: expense.createdAt,
+			debt: { paidByMemberId: 'b', occurredAt: '2026-09-02', splits: [] },
+		},
+	]);
+});
+
+test('an empty ledger stays empty', async () => {
+	const { client } = clientFor([], []);
+	assert.deepEqual(await loadLedger(wgId, client as never), []);
 });

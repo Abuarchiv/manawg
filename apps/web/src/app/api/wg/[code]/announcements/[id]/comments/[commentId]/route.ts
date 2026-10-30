@@ -2,12 +2,18 @@ import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { recordAuditEvent } from '@/core/audit';
-import { announcementComments, announcements, db } from '@/core/db';
-import { isWgAdmin } from '@/core/guards/admin';
+import { announcementComments, announcements, wgMembers } from '@/core/db';
+import { type DbTransaction, withTransaction } from '@/core/db/transaction';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, forbidden, notFound, rateLimitResponse } from '@/core/http/api-errors';
+import {
+	badRequest,
+	forbidden,
+	notFound,
+	rateLimitResponse,
+	unauthorized,
+} from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { COMMENT_MAX } from '@/features/announcements/constants';
@@ -17,13 +23,15 @@ const commentSchema = z.object({
 });
 
 async function assertCommentOwner(
+	tx: DbTransaction,
 	wgId: string,
 	announcementId: string,
 	commentId: string,
 	memberId: string,
+	role: string,
 	allowAdmin = false,
 ): Promise<{ status: 'ok'; moderated: boolean } | { status: 'not_found' | 'forbidden' }> {
-	const rows = await db
+	const rows = await tx
 		.select({
 			memberId: announcementComments.memberId,
 		})
@@ -36,12 +44,13 @@ async function assertCommentOwner(
 				eq(announcements.wgId, wgId),
 			),
 		)
-		.limit(1);
+		.limit(1)
+		.for('update', { of: announcementComments });
 	const row = rows[0];
 	if (!row) return { status: 'not_found' };
 	if (row.memberId === memberId) return { status: 'ok', moderated: false };
 	// Editing stays with the author; only removal may be moderated by the WG admin.
-	if (allowAdmin && (await isWgAdmin(wgId, memberId))) {
+	if (allowAdmin && role === 'admin') {
 		return { status: 'ok', moderated: true };
 	}
 	return { status: 'forbidden' };
@@ -62,19 +71,43 @@ export const PATCH = withWgRoute<{ id: string; commentId: string }>(
 		);
 		if (limited) return limited;
 
-		const owner = await assertCommentOwner(wgId, id, commentId, auth.member.memberId);
-		if (owner.status !== 'ok') {
-			return owner.status === 'not_found'
-				? notFound('comment_not_found')
-				: forbidden('not_owner', 'not_owner');
-		}
-
-		const [comment] = await db
-			.update(announcementComments)
-			.set({ content: parsed.data.content })
-			.where(eq(announcementComments.id, commentId))
-			.returning();
-		if (!comment) return notFound('comment_not_found');
+		const outcome = await withTransaction(async (tx) => {
+			const [caller] = await tx
+				.select({ deactivatedAt: wgMembers.deactivatedAt, role: wgMembers.role })
+				.from(wgMembers)
+				.where(and(eq(wgMembers.id, auth.member.memberId), eq(wgMembers.wgId, wgId)))
+				.limit(1)
+				.for('share');
+			if (!caller || caller.deactivatedAt) {
+				return { response: unauthorized('member_deactivated') };
+			}
+			const owner = await assertCommentOwner(
+				tx,
+				wgId,
+				id,
+				commentId,
+				auth.member.memberId,
+				caller.role,
+			);
+			if (owner.status !== 'ok') {
+				return {
+					response:
+						owner.status === 'not_found'
+							? notFound('comment_not_found')
+							: forbidden('not_owner', 'not_owner'),
+				};
+			}
+			const [comment] = await tx
+				.update(announcementComments)
+				.set({ content: parsed.data.content })
+				.where(
+					and(eq(announcementComments.id, commentId), eq(announcementComments.announcementId, id)),
+				)
+				.returning();
+			return comment ? { comment } : { response: notFound('comment_not_found') };
+		});
+		if ('response' in outcome) return outcome.response;
+		const { comment } = outcome;
 		await recordAuditEvent({
 			wgId,
 			memberId: auth.member.memberId,
@@ -100,18 +133,43 @@ export const DELETE = withWgRoute<{ id: string; commentId: string }>(
 		);
 		if (limited) return limited;
 
-		const owner = await assertCommentOwner(wgId, id, commentId, auth.member.memberId, true);
-		if (owner.status !== 'ok') {
-			return owner.status === 'not_found'
-				? notFound('comment_not_found')
-				: forbidden('not_owner', 'not_owner');
-		}
-
-		const [deleted] = await db
-			.delete(announcementComments)
-			.where(eq(announcementComments.id, commentId))
-			.returning({ id: announcementComments.id });
-		if (!deleted) return notFound('comment_not_found');
+		const outcome = await withTransaction(async (tx) => {
+			const [caller] = await tx
+				.select({ deactivatedAt: wgMembers.deactivatedAt, role: wgMembers.role })
+				.from(wgMembers)
+				.where(and(eq(wgMembers.id, auth.member.memberId), eq(wgMembers.wgId, wgId)))
+				.limit(1)
+				.for('share');
+			if (!caller || caller.deactivatedAt) {
+				return { response: unauthorized('member_deactivated') };
+			}
+			const owner = await assertCommentOwner(
+				tx,
+				wgId,
+				id,
+				commentId,
+				auth.member.memberId,
+				caller.role,
+				true,
+			);
+			if (owner.status !== 'ok') {
+				return {
+					response:
+						owner.status === 'not_found'
+							? notFound('comment_not_found')
+							: forbidden('not_owner', 'not_owner'),
+				};
+			}
+			const [deleted] = await tx
+				.delete(announcementComments)
+				.where(
+					and(eq(announcementComments.id, commentId), eq(announcementComments.announcementId, id)),
+				)
+				.returning({ id: announcementComments.id });
+			return deleted ? { owner } : { response: notFound('comment_not_found') };
+		});
+		if ('response' in outcome) return outcome.response;
+		const { owner } = outcome;
 		await recordAuditEvent({
 			wgId,
 			memberId: auth.member.memberId,

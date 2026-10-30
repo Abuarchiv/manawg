@@ -3,6 +3,7 @@ import test from 'node:test';
 import { EVENT_RECURRENCE_MAX } from '@/features/events/event-limits';
 import { expandRecurrence } from './event-recurrence';
 import {
+	canonicalRecurrenceRule,
 	formatRecurrenceRule,
 	MAX_EXDATES,
 	parseRecurrenceRule,
@@ -69,6 +70,41 @@ test('an occurrence is removed only once and only up to the limit', () => {
 
 test('malformed exception dates make the rule invalid', () => {
 	assert.equal(parseRecurrenceRule('FREQ=WEEKLY;EXDATE=nonsense'), null);
+});
+
+test('unsupported or duplicate RRULE parts are rejected', () => {
+	for (const rule of [
+		'FREQ=MONTHLY;INTERVAL=1.5',
+		'FREQ=DAILY;COUNT=2junk',
+		'FREQ=DAILY;BYMONTHDAY=15;COUNT=2',
+		'FREQ=DAILY;FREQ=WEEKLY;COUNT=2',
+		'FREQ=WEEKLY;COUNT=2;COUNT=3',
+	]) {
+		assert.equal(parseRecurrenceRule(rule), null, rule);
+	}
+});
+
+test('old DAILY series with BYDAY stay readable, new writes are rejected', () => {
+	const rule = 'FREQ=DAILY;BYDAY=MO;COUNT=3';
+	assert.deepEqual(parseRecurrenceRule(rule), {
+		freq: 'DAILY',
+		interval: 1,
+		byDay: ['MO'],
+		count: 3,
+	});
+	assert.equal(canonicalRecurrenceRule(rule).ok, false);
+	assert.deepEqual(starts(rule), [
+		'2026-10-05T18:00:00.000Z',
+		'2026-10-06T18:00:00.000Z',
+		'2026-10-07T18:00:00.000Z',
+	]);
+});
+
+test('occurrence exclusions are kept in an old DAILY series with BYDAY', () => {
+	const rule = withExcludedOccurrence('FREQ=DAILY;BYDAY=MO;COUNT=3', '2026-10-06T18:00:00.000Z');
+	assert.ok(rule);
+	assert.equal(rule, 'FREQ=DAILY;BYDAY=MO;COUNT=3;EXDATE=2026-10-06T18:00:00.000Z');
+	assert.deepEqual(starts(rule), ['2026-10-05T18:00:00.000Z', '2026-10-07T18:00:00.000Z']);
 });
 
 test('a series with the most exceptions still fits the edit schema', () => {

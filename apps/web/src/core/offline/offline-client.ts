@@ -22,6 +22,7 @@ export {
 	offlineQueueReplaySupported,
 	readOfflineQueue,
 	removeQueuedAction,
+	subscribeOfflineQueueChanges,
 	updateOfflineQueue,
 } from './offline-store';
 export { getSyncedCountForWg, syncOfflineActions } from './offline-sync';

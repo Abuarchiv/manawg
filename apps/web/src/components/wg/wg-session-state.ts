@@ -62,6 +62,10 @@ function sameMember(a: SessionMember | null, b: SessionMember): boolean {
 	);
 }
 
+function samePrincipal(a: SessionMember | null, b: SessionMember): boolean {
+	return a !== null && a.memberId === b.memberId && a.authUserId === b.authUserId;
+}
+
 /** Returns `state` itself when nothing changes, so React skips the re-render. */
 function patch(state: WgSessionState, changes: Partial<WgSessionState>): WgSessionState {
 	const keys = Object.keys(changes) as Array<keyof WgSessionState>;
@@ -87,6 +91,7 @@ export function wgSessionReducer(state: WgSessionState, action: WgSessionAction)
 			return patch(state, {
 				sessionEnded: false,
 				identity: sameMember(state.identity, action.identity) ? state.identity : action.identity,
+				isAdmin: samePrincipal(state.identity, action.identity) ? state.isAdmin : false,
 				accountReady: true,
 				memberLoaded: true,
 			});

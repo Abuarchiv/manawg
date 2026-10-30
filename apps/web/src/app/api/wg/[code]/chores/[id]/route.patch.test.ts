@@ -15,6 +15,7 @@ let calls: Calls;
 let current: { assignedMemberId: string | null; nextDueAt: Date };
 // When false the guarded update matches no row, like a chore saved by someone else meanwhile.
 let updateMatches = true;
+let storedVersion: Date | undefined;
 
 const chores = {
 	id: 'chores.id',
@@ -24,6 +25,7 @@ const chores = {
 	recurrenceType: 'chores.recurrence_type',
 	nextDueAt: 'chores.next_due_at',
 	lastReminderAt: 'chores.last_reminder_at',
+	updatedAt: 'chores.updated_at',
 };
 
 const db = {
@@ -51,9 +53,28 @@ const db = {
 		set: (values: Record<string, unknown>) => {
 			calls.set.push(values);
 			return {
-				where: () => ({
-					returning: async () =>
-						!updateMatches
+				where: (conditions: unknown[]) => ({
+					returning: async () => {
+						if (storedVersion) {
+							const version = conditions.find((condition) =>
+								(condition as { parts?: string[] } | undefined)?.parts
+									?.join('')
+									.includes('date_trunc'),
+							) as { values: [unknown, Date] } | undefined;
+							if (version && version.values[1].getTime() !== storedVersion.getTime()) return [];
+							const next = values.updatedAt;
+							if (next instanceof Date) storedVersion = next;
+							else {
+								const expression = next as { parts: string[]; values: unknown[] };
+								assert.equal(
+									expression.parts.join('?'),
+									"greatest(clock_timestamp(), ? + interval '1 millisecond')",
+								);
+								assert.equal(expression.values[0], chores.updatedAt);
+								storedVersion = new Date(Math.max(Date.now(), storedVersion.getTime() + 1));
+							}
+						}
+						return !updateMatches
 							? []
 							: [
 									{
@@ -68,7 +89,8 @@ const db = {
 												: current.assignedMemberId,
 										...values,
 									},
-								],
+								];
+					},
 				}),
 			};
 		},
@@ -142,6 +164,7 @@ function setup(assignedMemberId: string | null = actorId, nextDueAt = inHours(2)
 	calls = { set: [], resolved: [], dispatched: [] };
 	current = { assignedMemberId, nextDueAt };
 	updateMatches = true;
+	storedVersion = undefined;
 }
 
 function patch(body: unknown) {
@@ -253,4 +276,16 @@ test('a retried save whose answer got lost finds its values in place and succeed
 	assert.equal(response.status, 200);
 	assert.equal(calls.resolved.length, 0);
 	assert.equal(calls.dispatched.length, 0);
+});
+
+test('concurrent edits with the same version do not overwrite a newer edit', async (t) => {
+	const now = new Date('2026-10-30T12:00:00.000Z');
+	t.mock.timers.enable({ apis: ['Date'], now: now.getTime() });
+	setup();
+	storedVersion = now;
+	const first = await patch({ title: 'Küche putzen', expectedUpdatedAt: now.toISOString() });
+	assert.equal(first.status, 200);
+	const stale = await patch({ title: 'Flur putzen', expectedUpdatedAt: now.toISOString() });
+	assert.equal(stale.status, 409);
+	assert.deepEqual(await stale.json(), { error: 'chore_changed' });
 });

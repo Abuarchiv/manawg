@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { recordAuditEvent } from '@/core/audit';
 import { announcementReactions, announcements } from '@/core/db';
+import { lockActiveAccountMember } from '@/core/db/account-deletion';
 import { persistReplayWarning, withIdempotentReplay } from '@/core/db/with-replay';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
@@ -46,83 +47,100 @@ export const POST = withWgRoute<{ id: string }>(
 		if (!auth.ok) return auth.response;
 		const wg = auth.wg;
 		const scope = `announcement-reaction:${wg.id}:${auth.member.memberId}:${id}:${parsed.data.reaction}`;
-		const outcome = await withIdempotentReplay<ReactionEffect>(req, scope, async (tx) => {
-			const limited = rateLimitedReplayResponse(
-				await checkRateLimit(wgWriteLimiter, `reaction:${wg.id}:${auth.member.memberId}`),
-			);
-			if (limited) return { response: limited, effect: null };
+		const outcome = await withIdempotentReplay<ReactionEffect>(
+			req,
+			scope,
+			async (tx) => {
+				const limited = rateLimitedReplayResponse(
+					await checkRateLimit(wgWriteLimiter, `reaction:${wg.id}:${auth.member.memberId}`),
+				);
+				if (limited) return { response: limited, effect: null };
+				const actor = await lockActiveAccountMember(
+					tx,
+					wg.id,
+					auth.member.memberId,
+					auth.authUserId,
+				);
+				if (!actor) {
+					return {
+						response: { status: 401, body: { error: 'member_deactivated' } },
+						effect: null,
+					};
+				}
 
-			// Lock the announcement so a take cannot race a concurrent resolve.
-			const [announcement] = await tx
-				.select({
-					id: announcements.id,
-					authorMemberId: announcements.authorMemberId,
-					content: announcements.content,
-					status: announcements.status,
-				})
-				.from(announcements)
-				.where(and(eq(announcements.id, id), eq(announcements.wgId, wg.id)))
-				.limit(1)
-				.for('update');
-			if (!announcement) {
-				return {
-					response: { status: 404, body: { error: 'announcement_not_found' } },
-					effect: null,
-				};
-			}
+				// Lock the announcement so a take cannot race a concurrent resolve.
+				const [announcement] = await tx
+					.select({
+						id: announcements.id,
+						authorMemberId: announcements.authorMemberId,
+						content: announcements.content,
+						status: announcements.status,
+					})
+					.from(announcements)
+					.where(and(eq(announcements.id, id), eq(announcements.wgId, wg.id)))
+					.limit(1)
+					.for('update');
+				if (!announcement) {
+					return {
+						response: { status: 404, body: { error: 'announcement_not_found' } },
+						effect: null,
+					};
+				}
 
-			const wantActive = parsed.data.active;
-			if (wantActive && parsed.data.reaction === 'take' && announcement.status === 'resolved') {
-				return {
-					response: { status: 409, body: { error: 'announcement_resolved' } },
-					effect: null,
-				};
-			}
-			const response = (active: boolean) => ({
-				status: 200,
-				body: { reaction: parsed.data.reaction, active, warning: null },
-			});
+				const wantActive = parsed.data.active;
+				if (wantActive && parsed.data.reaction === 'take' && announcement.status === 'resolved') {
+					return {
+						response: { status: 409, body: { error: 'announcement_resolved' } },
+						effect: null,
+					};
+				}
+				const response = (active: boolean) => ({
+					status: 200,
+					body: { reaction: parsed.data.reaction, active, warning: null },
+				});
 
-			if (!wantActive) {
-				const [deleted] = await tx
-					.delete(announcementReactions)
-					.where(
-						and(
-							eq(announcementReactions.announcementId, id),
-							eq(announcementReactions.memberId, auth.member.memberId),
-							eq(announcementReactions.reaction, parsed.data.reaction),
-						),
-					)
+				if (!wantActive) {
+					const [deleted] = await tx
+						.delete(announcementReactions)
+						.where(
+							and(
+								eq(announcementReactions.announcementId, id),
+								eq(announcementReactions.memberId, auth.member.memberId),
+								eq(announcementReactions.reaction, parsed.data.reaction),
+							),
+						)
+						.returning({ id: announcementReactions.id });
+					return deleted
+						? {
+								response: { ...response(false), entityId: deleted.id },
+								effect: { type: 'removed' as const, reactionId: deleted.id },
+							}
+						: { response: response(false), effect: null };
+				}
+
+				const [reaction] = await tx
+					.insert(announcementReactions)
+					.values({
+						announcementId: id,
+						memberId: auth.member.memberId,
+						reaction: parsed.data.reaction,
+					})
+					.onConflictDoNothing()
 					.returning({ id: announcementReactions.id });
-				return deleted
+				return reaction
 					? {
-							response: { ...response(false), entityId: deleted.id },
-							effect: { type: 'removed' as const, reactionId: deleted.id },
+							response: { ...response(true), entityId: reaction.id },
+							effect: {
+								type: 'added' as const,
+								reactionId: reaction.id,
+								authorMemberId: announcement.authorMemberId,
+								announcementContent: announcement.content,
+							},
 						}
-					: { response: response(false), effect: null };
-			}
-
-			const [reaction] = await tx
-				.insert(announcementReactions)
-				.values({
-					announcementId: id,
-					memberId: auth.member.memberId,
-					reaction: parsed.data.reaction,
-				})
-				.onConflictDoNothing()
-				.returning({ id: announcementReactions.id });
-			return reaction
-				? {
-						response: { ...response(true), entityId: reaction.id },
-						effect: {
-							type: 'added' as const,
-							reactionId: reaction.id,
-							authorMemberId: announcement.authorMemberId,
-							announcementContent: announcement.content,
-						},
-					}
-				: { response: response(true), effect: null };
-		});
+					: { response: response(true), effect: null };
+			},
+			wg.id,
+		);
 		if (!outcome.effect) {
 			return NextResponse.json(outcome.response.body, { status: outcome.response.status });
 		}
