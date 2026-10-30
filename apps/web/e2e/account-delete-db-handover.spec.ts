@@ -92,6 +92,65 @@ test('account deletion hands over admin, moves out, and deletes solo WGs', async
 	});
 });
 
+test('account deletion erases the leaver absences and keeps the flatmates', async () => {
+	process.env.POSTGRES_URL = accountDeleteTestUrl;
+	process.env.DATABASE_MIGRATION_URL = 'placeholder';
+	const { withTransaction } = await import('../src/core/db/transaction');
+	const { removeAccountFromWgs } = await import('../src/core/db/delete-account');
+	const { memberAbsences, wgMembers, wgs } = await import('../src/core/db/schema');
+	const { eq } = await import('drizzle-orm');
+
+	const user = crypto.randomUUID();
+	trackDeletionFixture(user);
+	const day = 24 * 60 * 60 * 1000;
+	const ids = await withTransaction(async (tx) => {
+		const [wg] = tuple(
+			await tx
+				.insert(wgs)
+				.values({ shareCode: crypto.randomUUID().slice(0, 8).toUpperCase(), name: 'Absences' })
+				.returning({ id: wgs.id }),
+			1,
+		);
+		const [me, mate] = tuple(
+			await tx
+				.insert(wgMembers)
+				.values([
+					{ wgId: wg.id, name: 'Me', role: 'admin', authUserId: user },
+					{ wgId: wg.id, name: 'Mate', role: 'member', authUserId: crypto.randomUUID() },
+				])
+				.returning({ id: wgMembers.id }),
+			2,
+		);
+		const past = (memberId: string, reason: string) => ({
+			wgId: wg.id,
+			memberId,
+			startDate: new Date(Date.now() - 20 * day),
+			endDate: new Date(Date.now() - 10 * day),
+			reason,
+		});
+		await tx
+			.insert(memberAbsences)
+			.values([
+				past(me.id, 'Chemo'),
+				{ ...past(me.id, 'Holiday'), endDate: new Date(Date.now() + 10 * day) },
+				past(mate.id, 'Visiting family'),
+			]);
+		return { me: me.id, mate: mate.id };
+	});
+
+	await withTransaction((tx) => removeAccountFromWgs(tx, user));
+
+	await withTransaction(async (tx) => {
+		const rows = await tx.select().from(memberAbsences).where(eq(memberAbsences.memberId, ids.me));
+		expect(rows).toHaveLength(0);
+		const kept = await tx
+			.select()
+			.from(memberAbsences)
+			.where(eq(memberAbsences.memberId, ids.mate));
+		expect(kept.map((row) => row.reason)).toEqual(['Visiting family']);
+	});
+});
+
 test('deletion includes a membership whose join transaction commits first', async () => {
 	process.env.POSTGRES_URL = accountDeleteTestUrl;
 	process.env.DATABASE_MIGRATION_URL = 'placeholder';

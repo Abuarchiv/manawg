@@ -9,7 +9,7 @@ import type { DbTransaction } from './transaction';
  * reminder reaches anyone, and the plan only flags it after two days overdue
  * instead of as "Niemand zuständig". Ongoing and future absences go too, so
  * Start and the cleaning rota stop listing someone who moved out as "abwesend";
- * past ones stay as history.
+ * past ones stay as history (account deletion erases them separately).
  */
 export async function releaseMemberChores(
 	tx: DbTransaction,

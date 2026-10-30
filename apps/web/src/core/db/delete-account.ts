@@ -6,6 +6,7 @@ import { releaseMemberChores } from './member-departure';
 import {
 	accountDeletions,
 	calendarSubscriptions,
+	memberAbsences,
 	pushSubscriptions,
 	wgMembers,
 	wgs,
@@ -23,7 +24,7 @@ export type LeftWg = {
 /**
  * Detaches an auth user from every WG before the account is deleted. The
  * member moves out like an "Auszug": history and balances stay with the WG,
- * the login link and push subscriptions are removed, and the WG
+ * the login link, push subscriptions and all absences are removed, and the WG
  * keeps an admin who can sign in: the role passes to the longest-standing
  * active flatmate with an account. A WG with no such member is deleted entirely.
  */
@@ -96,6 +97,12 @@ export async function removeAccountFromWgs(
 			})
 			.where(eq(wgMembers.id, membership.id));
 		await releaseMemberChores(tx, membership.wgId, membership.id);
+		// Absence reasons are free text and can be health related, so none outlive the account.
+		await tx
+			.delete(memberAbsences)
+			.where(
+				and(eq(memberAbsences.wgId, membership.wgId), eq(memberAbsences.memberId, membership.id)),
+			);
 		// Runs after the unlink, so the leaving member is never the successor.
 		const newAdmin = await ensureWgAdmin(tx, membership.wgId);
 		left.push({
