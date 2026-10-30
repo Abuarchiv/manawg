@@ -3,6 +3,7 @@ import { mock, test } from 'node:test';
 import { NextRequest } from 'next/server';
 
 let selects = 0;
+let rateLimit: Record<string, unknown> = { success: true };
 
 mock.module('@/core/audit', { namedExports: { recordAuditEvent: async () => undefined } });
 mock.module('@/core/db', {
@@ -17,13 +18,23 @@ mock.module('@/core/db', {
 	},
 });
 mock.module('@/core/db/idempotent-write', {
-	namedExports: { responseCodec: () => ({}), withIdempotentWrite: async () => undefined },
+	namedExports: {
+		responseCodec: () => ({}),
+		withIdempotentWrite: async (options: {
+			prepare: () => Promise<{ stop: unknown } | { input: unknown }>;
+		}) => {
+			const prepared = await options.prepare();
+			return 'stop' in prepared ? { kind: 'stopped', response: prepared.stop } : undefined;
+		},
+	},
 });
 mock.module('@/core/db/transaction', {
 	namedExports: { TransactionAbort: class extends Error {} },
 });
 mock.module('@/core/guards/require-wg-member', {
-	namedExports: { requireWgMember: async () => ({ ok: true, wg: { id: 'wg-1' } }) },
+	namedExports: {
+		requireWgMember: async () => ({ ok: true, wg: { id: 'wg-1' }, member: { memberId: 'm-1' } }),
+	},
 });
 mock.module('@/core/idempotency-store', {
 	namedExports: { readIdempotencyKey: () => null, setReplayWarning: () => undefined },
@@ -36,13 +47,13 @@ mock.module('@/core/notifications/notification-dispatch', {
 });
 mock.module('@/core/rate-limit', {
 	namedExports: {
-		checkRateLimit: async () => ({ success: true }),
+		checkRateLimit: async () => rateLimit,
 		clientIpKey: () => '203.0.113.9',
 		wgReadLimiter: null,
 		wgWriteLimiter: null,
 	},
 });
-const { GET } = await import('./route');
+const { GET, POST } = await import('./route');
 
 async function list(query: string) {
 	selects = 0;
@@ -65,4 +76,34 @@ test('a to date after the supported years answers to_invalid', async () => {
 	assert.equal(res.status, 400);
 	assert.deepEqual(res.body, { error: 'to_invalid' });
 	assert.equal(selects, 0);
+});
+
+const create = () =>
+	POST(
+		new NextRequest('https://app.example.test/api/wg/ABCD2345/events', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ title: 'Party', startsAt: '2030-01-01T18:00:00.000Z' }),
+		}),
+		{ params: Promise.resolve({ code: 'ABCD2345' }) },
+	);
+
+test('POST answers 503 with Retry-After when the rate limiter is down', async () => {
+	rateLimit = {
+		success: false,
+		remaining: 0,
+		reset: Date.now() + 60_000,
+		limiterUnavailable: true,
+	};
+	const res = await create();
+	assert.equal(res.status, 503);
+	assert.deepEqual(Object.keys(await res.json()).sort(), ['error', 'retryAfterMs']);
+	assert.ok(Number(res.headers.get('Retry-After')) >= 1);
+});
+
+test('POST answers 429 rate_limited when the member exceeds the limit', async () => {
+	rateLimit = { success: false, remaining: 0, reset: Date.now() + 60_000 };
+	const res = await create();
+	assert.equal(res.status, 429);
+	assert.equal((await res.json()).error, 'rate_limited');
 });

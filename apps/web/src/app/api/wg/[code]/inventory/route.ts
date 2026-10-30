@@ -6,7 +6,7 @@ import { db, wgInventoryItems } from '@/core/db';
 import { rejectWrite, responseCodec, withIdempotentWrite } from '@/core/db/idempotent-write';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { conflict, serverError, tooMany } from '@/core/http/api-errors';
+import { conflict, rateLimitResponse, serverError } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { requestLocale } from '@/core/i18n/request-locale';
 import { readIdempotencyKey } from '@/core/idempotency-store';
@@ -111,7 +111,8 @@ export const POST = withWgRoute('inventory POST', async (req, { code }) => {
 				codec: inventoryCreateCodec,
 				prepare: async () => {
 					const limited = await checkRateLimit(wgWriteLimiter, replayScope);
-					return limited.success ? { input: undefined } : { stop: tooMany() };
+					const blocked = rateLimitResponse(limited);
+					return blocked ? { stop: blocked } : { input: undefined };
 				},
 			},
 			async (tx) => {

@@ -13,8 +13,8 @@ import {
 	badRequest,
 	conflict,
 	notFound,
+	rateLimitResponse,
 	serverError,
-	tooMany,
 	unauthorized,
 } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
@@ -96,7 +96,8 @@ export const POST = withWgRoute<{ id: string }>('events occurrence', async (req,
 						wgWriteLimiter,
 						`events:item:${wgId}:${auth.member.memberId}`,
 					);
-					return limit.success ? { input: undefined } : { stop: tooMany('rate_limited') };
+					const blocked = rateLimitResponse(limit, 'rate_limited');
+					return blocked ? { stop: blocked } : { input: undefined };
 				},
 			},
 			async (tx) => {

@@ -13,13 +13,7 @@ import type { ShoppingItem } from '@/core/db/schema';
 import { isWgAdmin } from '@/core/guards/admin';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import {
-	conflict,
-	forbidden,
-	rateLimitResponse,
-	serverError,
-	tooMany,
-} from '@/core/http/api-errors';
+import { conflict, forbidden, rateLimitResponse, serverError } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
 import { readListLimit } from '@/core/infra/env';
@@ -128,7 +122,8 @@ export const POST = withWgRoute('shopping POST', async (req, { code }) => {
 						wgWriteLimiter,
 						`shopping:create:${wg.id}:${member.memberId}`,
 					);
-					return limited.success ? { input: undefined } : { stop: tooMany() };
+					const blocked = rateLimitResponse(limited);
+					return blocked ? { stop: blocked } : { input: undefined };
 				},
 				retryAfterRollback: (error, attempt) =>
 					attempt === 1 && isOpenShoppingItemDuplicate(error)

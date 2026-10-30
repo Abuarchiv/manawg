@@ -8,7 +8,7 @@ import type { WgInventoryItem } from '@/core/db/schema-inventory';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, conflict, notFound, rateLimitResponse, tooMany } from '@/core/http/api-errors';
+import { badRequest, conflict, notFound, rateLimitResponse } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { requestLocale } from '@/core/i18n/request-locale';
 import { readIdempotencyKey } from '@/core/idempotency-store';
@@ -118,7 +118,8 @@ export const PATCH = withWgRoute<{ id: string }>('inventory PATCH', async (req, 
 						wgWriteLimiter,
 						`inventory-patch:${wgId}:${auth.member.memberId}`,
 					);
-					return limited.success ? { input: undefined } : { stop: tooMany() };
+					const blocked = rateLimitResponse(limited);
+					return blocked ? { stop: blocked } : { input: undefined };
 				},
 			},
 			async (tx) => {

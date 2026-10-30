@@ -12,6 +12,7 @@ interface Row {
 type Predicate = [string, ...unknown[]];
 
 const state = { rows: [] as Row[] };
+let rateLimit: Record<string, unknown> = { success: true };
 
 const shoppingItems = {
 	wgId: 'wgId',
@@ -87,7 +88,7 @@ mock.module('@/core/notifications/notification-dispatch', {
 	namedExports: { dispatchNotificationSafely: async () => ({ warning: null }) },
 });
 mock.module('@/core/rate-limit', {
-	namedExports: { checkRateLimit: async () => ({ success: true }), wgWriteLimiter: {} },
+	namedExports: { checkRateLimit: async () => rateLimit, wgWriteLimiter: {} },
 });
 mock.module('drizzle-orm', {
 	namedExports: {
@@ -101,7 +102,7 @@ mock.module('drizzle-orm', {
 	},
 });
 
-const { GET } = await import('./route');
+const { GET, POST } = await import('./route');
 
 test('GET keeps every open item even when the bought history exceeds the list limit', async () => {
 	const base = Date.parse('2026-01-01T00:00:00.000Z');
@@ -142,4 +143,34 @@ test('GET keeps every open item even when the bought history exceeds the list li
 	// Bought history is capped from the newest purchase backwards.
 	assert.equal(bought[0], 'bought-1499');
 	assert.equal(bought.at(-1), 'bought-500');
+});
+
+const create = () =>
+	POST(
+		new Request('https://example.invalid/api/wg/MTE8PZAT/shopping', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ name: 'Milk' }),
+		}) as never,
+		{ params: Promise.resolve({ code: 'MTE8PZAT' }) } as never,
+	);
+
+test('POST answers 503 with Retry-After when the rate limiter is down', async () => {
+	rateLimit = {
+		success: false,
+		remaining: 0,
+		reset: Date.now() + 60_000,
+		limiterUnavailable: true,
+	};
+	const response = await create();
+	assert.equal(response.status, 503);
+	assert.equal(((await response.json()) as { error: string }).error, 'rate_limiter_unavailable');
+	assert.ok(Number(response.headers.get('Retry-After')) >= 1);
+});
+
+test('POST answers 429 when the member exceeds the limit', async () => {
+	rateLimit = { success: false, remaining: 0, reset: Date.now() + 60_000 };
+	const response = await create();
+	assert.equal(response.status, 429);
+	assert.equal(((await response.json()) as { error: string }).error, 'too_many_requests');
 });

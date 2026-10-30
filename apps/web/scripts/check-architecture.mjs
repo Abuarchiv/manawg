@@ -231,7 +231,9 @@ function collect() {
 			if (/\bapiError\(\s*[^,()]+,\s*\d{3}\b/.test(source)) add('status-literal', r);
 			if (/^src\/app\/api\//.test(r)) {
 				for (const match of source.matchAll(/const (\w+) = await checkRateLimit\(/g)) {
-					if (new RegExp(`!${match[1]}\\.success\\b`).test(source))
+					if (
+						new RegExp(`(!${match[1]}\\.success\\b|\\b${match[1]}\\.success\\s*\\?)`).test(source)
+					)
 						add('route-limiter', r, match[1]);
 				}
 				if (/\bgetAuthenticatedUser\(/.test(source)) add('route-auth', r);
