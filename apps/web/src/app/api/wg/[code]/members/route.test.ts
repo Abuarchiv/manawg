@@ -7,11 +7,24 @@ const future = new Date(Date.now() + 86_400_000);
 const invite = { id: 'inv-1', expiresAt: future, revokedAt: null, useCount: 0, maxUses: 5 };
 const member = { id: 'm-1', name: 'Mina' };
 let fake = queryFake([]);
+const offsets: unknown[] = [];
+const listing: object = new Proxy(function listingRoot() {}, {
+	get: (_target, key) => {
+		if (key === 'then') return (resolve: (rows: unknown[]) => void) => resolve([]);
+		if (key === 'offset') {
+			return (value: unknown) => {
+				offsets.push(value);
+				return listing;
+			};
+		}
+		return () => listing;
+	},
+});
 
 mock.module('@/core/audit', { namedExports: { recordAuditEvent: async () => undefined } });
 mock.module('@/core/db', {
 	namedExports: {
-		db: { query: { wgs: { findFirst: async () => ({ id: 'wg-1' }) } } },
+		db: { query: { wgs: { findFirst: async () => ({ id: 'wg-1' }) } }, select: () => listing },
 		wgInvites: {},
 		wgMembers: {},
 		wgs: {},
@@ -40,7 +53,9 @@ mock.module('@/core/guards/require-account', {
 	namedExports: { requireAccount: async () => ({ ok: true, user: { id: 'user-1' } }) },
 });
 mock.module('@/core/guards/require-wg-member', {
-	namedExports: { requireWgMember: async () => null },
+	namedExports: {
+		requireWgMember: async () => ({ ok: true, wg: { id: 'wg-1' }, member: { memberId: 'm-1' } }),
+	},
 });
 mock.module('@/core/guards/share-code-miss', {
 	namedExports: { shareCodeMissResponse: () => null },
@@ -56,7 +71,7 @@ mock.module('@/core/rate-limit', {
 		wgWriteLimiter: null,
 	},
 });
-const { POST } = await import('./route');
+const { GET, POST } = await import('./route');
 
 async function join(headers: Record<string, string>) {
 	fake = queryFake([
@@ -87,4 +102,14 @@ test('a German request stores German', async () => {
 	const res = await join({ 'accept-language': 'de-DE' });
 	assert.equal(res.status, 200);
 	assert.equal(fake.values[0]?.locale, 'de');
+});
+
+test('a huge offset is clamped to the member row cap instead of reaching the database', async () => {
+	offsets.length = 0;
+	const res = await GET(
+		new NextRequest('https://app.example.test/api/wg/ABCD2345/members?offset=99999999999999999999'),
+		{ params: Promise.resolve({ code: 'ABCD2345' }) },
+	);
+	assert.equal(res.status, 200);
+	assert.deepEqual(offsets, [500]);
 });
