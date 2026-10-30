@@ -28,7 +28,11 @@ const wgChatReads = pgTable('wg_chat_reads', {
 const wgChatMentions = pgTable('wg_chat_mentions', {
 	mentionedMemberId: uuid('mentioned_member_id'),
 });
-const wgMembers = pgTable('wg_members', { id: uuid('id'), wgId: uuid('wg_id') });
+const wgMembers = pgTable('wg_members', {
+	id: uuid('id'),
+	wgId: uuid('wg_id'),
+	deactivatedAt: timestamp('deactivated_at', { withTimezone: true }),
+});
 
 type Json = Record<string, unknown>;
 
@@ -51,6 +55,7 @@ const state = {
 	readMarkerRows: [] as Json[],
 	readMarkerQueries: 0,
 	insertedCreatedAt: undefined as unknown,
+	senderActive: true,
 };
 
 function reset(): void {
@@ -71,6 +76,7 @@ function reset(): void {
 	state.locks = 0;
 	state.readMarkerRows = [];
 	state.readMarkerQueries = 0;
+	state.senderActive = true;
 }
 
 let prior = Promise.resolve();
@@ -128,7 +134,10 @@ const withTransaction = async <R>(operation: (tx: unknown) => Promise<R>): Promi
 			from: (table: unknown) => ({
 				where: () =>
 					table === wgMembers
-						? Promise.resolve([{ id: mentionedId }])
+						? Object.assign(Promise.resolve([{ id: mentionedId }]), {
+								// The sender's active-member re-check under the lock.
+								limit: () => ({ for: async () => (state.senderActive ? [{ id: memberId }] : []) }),
+							})
 						: {
 								limit: () =>
 									table === idempotencyResponses
@@ -161,6 +170,16 @@ const withTransaction = async <R>(operation: (tx: unknown) => Promise<R>): Promi
 						return value;
 					},
 				}),
+			}),
+		}),
+		delete: (table: unknown) => ({
+			where: () => ({
+				returning: async () => {
+					assert.equal(table, idempotencyResponses);
+					const claimed = JSON.stringify(slot) === '{"_claimed":true}';
+					slot = null;
+					return claimed ? [{ scope: 'chat-message' }] : [];
+				},
 			}),
 		}),
 		update: (table: unknown) => ({
@@ -299,6 +318,20 @@ test('concurrent claimed retries commit one chat message and replay one response
 		new PgDialect().sqlToQuery(state.insertedCreatedAt as never).sql,
 		/clock_timestamp\(\)/,
 	);
+});
+
+test('a sender deactivated while waiting for the lock is rejected without a message', async () => {
+	const { state, post } = harness();
+	state.senderActive = false;
+	const response = await post();
+	assert.equal(response.status, 401);
+	assert.deepEqual(await response.json(), { error: 'member_deactivated' });
+	assert.equal(state.messages.length, 0);
+	assert.equal(state.mentions.length, 0);
+	assert.equal(state.audits, 0);
+	assert.equal(state.notifications, 0);
+	// The rejection is not stored, so the claim is released.
+	assert.equal(state.slot, null);
 });
 
 test('failed replay write rolls back message and mentions before a safe retry', async () => {

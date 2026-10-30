@@ -10,12 +10,12 @@ import {
 	wgChatReads,
 	wgMembers,
 } from '@/core/db';
-import { responseCodec, withIdempotentWrite } from '@/core/db/idempotent-write';
+import { rejectWrite, responseCodec, withIdempotentWrite } from '@/core/db/idempotent-write';
 import { type DbTransaction, lockExpensePayments, withTransaction } from '@/core/db/transaction';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, HTTP, rateLimitedReplayResponse } from '@/core/http/api-errors';
+import { badRequest, HTTP, rateLimitedReplayResponse, unauthorized } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
 import { readListLimit } from '@/core/infra/env';
@@ -42,10 +42,10 @@ const PAGE_DEFAULT = readListLimit(process.env, 'CHAT_MESSAGES_PAGE_DEFAULT', 50
 const PREVIEW_LENGTH = 120;
 const MENTIONS_MAX = 20;
 
-// Rejected replies (400) replay as stored; a rate-limited send may retry the same key.
+// Rejected replies (400) replay as stored; a rate-limited or deactivated-sender send may retry the same key.
 const chatMessageCodec = responseCodec();
 const storeChatStatus = (status: number) =>
-	status !== HTTP.TOO_MANY && status !== HTTP.SERVICE_UNAVAILABLE;
+	status !== HTTP.TOO_MANY && status !== HTTP.SERVICE_UNAVAILABLE && status !== HTTP.UNAUTHORIZED;
 
 // Text only: storage is limited, so new messages carry no pictures.
 const createMessageSchema = z
@@ -206,6 +206,21 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 					}),
 			},
 			async (tx) => {
+				// The member resolved before the transaction may have moved out since.
+				const [sender] = await tx
+					.select({ id: wgMembers.id })
+					.from(wgMembers)
+					.where(
+						and(
+							eq(wgMembers.id, member.memberId),
+							eq(wgMembers.wgId, wg.id),
+							isNull(wgMembers.deactivatedAt),
+						),
+					)
+					.limit(1)
+					// A shared lock until commit: moving the member out waits for this write.
+					.for('share');
+				if (!sender) return rejectWrite(unauthorized('member_deactivated'));
 				// The rate limit runs under the claim, so only the request that sends counts.
 				const limited = rateLimitedReplayResponse(
 					await checkRateLimit(chatMessageLimiter, `chat:${wg.id}:${member.memberId}`),
@@ -224,6 +239,7 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 	if (result.kind === 'replayed' || !result.context) {
 		return NextResponse.json(result.body, { status: result.status });
 	}
+	if ('rejected' in result.context) return result.context.rejected;
 	const { created, mentionIds } = result.context;
 
 	const preview = previewBody(cleanBody ?? '', PREVIEW_LENGTH);
