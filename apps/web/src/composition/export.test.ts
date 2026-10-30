@@ -23,7 +23,7 @@ const tables = Object.fromEntries(
 );
 mock.module('@/core/db', { namedExports: { db: {}, ...tables } });
 const { mapExpenseRows, mapRecurringRows } = await import('./export-queries-finance');
-const { mapShoppingRows } = await import('./export-queries-household');
+const { mapInventoryRows, mapShoppingRows } = await import('./export-queries-household');
 const { mapAuditRows } = await import('./export-queries-community');
 
 const ROW = {
@@ -152,4 +152,11 @@ test('the English export names categories and status in English and re-renders t
 	assert.deepEqual(rows.status, ['bought', 'open']);
 	assert.match(rows.audit[0] ?? '', /^Anna updated .*Bins/);
 	assert.equal(rows.audit[1], STORED);
+});
+
+test('CSV writes fractional numbers with the locale decimal mark', () => {
+	const headers = ['name', 'quantity', 'threshold'];
+	const rows = [{ name: 'Milk', quantity: 1.5, threshold: 3 }];
+	assert.equal(toCsv(rows, headers, 'de'), '\uFEFFname;quantity;threshold\nMilk;1,5;3');
+	assert.equal(toCsv(rows, headers, 'en'), '\uFEFFname,quantity,threshold\nMilk,1.5,3');
 });

@@ -252,6 +252,9 @@ function csvCell(header: string, value: unknown, row: ExportRow, format: CsvForm
 		const allDayDate = row.allDay === true && (header === 'startsAt' || header === 'endsAt');
 		return allDayDate ? value.slice(0, 10) : formatBerlinMinutes(value);
 	}
+	if (typeof value === 'number' && Number.isFinite(value) && !Number.isInteger(value)) {
+		return escapeCsv(String(value).replace('.', format.decimalMark), format);
+	}
 	return escapeCsv(value, format);
 }
 
