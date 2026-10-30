@@ -173,6 +173,9 @@ export async function runOcrOnImage(
 
 const AMOUNT_PATTERN =
 	/(?<![\p{L}\d.,/+−$£¥-])(?<!\d[\u00A0\u202F'’])(\d+(?:[.,]\d+)*)(?:\s*(?:€|EUR))?(?![\p{L}\d.,/+−$£¥%\u00A0\u202F'’-]|\s*(?:USD|CHF|GBP)\b|\s*[$£¥%])/giu;
+// Receipt lines are short; longer lines are noise and would make the boundary regexes expensive.
+const MAX_OCR_LINE_LENGTH = 1000;
+const BOUNDARY_LOOKBEHIND = 40;
 const DATE_PATTERN = /(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})/;
 const PAYER_PATTERN = /(?:bezahlt von|paid by|von:)\s*([A-Za-zÄÖÜäöüß][A-Za-zÄÖÜäöüß\s-]{1,40})/i;
 
@@ -211,7 +214,7 @@ function cleanDescription(raw: string): string {
 
 function hasWholeAmountBoundary(line: string, match: RegExpMatchArray): boolean {
 	const start = match.index ?? 0;
-	const before = line.slice(0, start);
+	const before = line.slice(Math.max(0, start - BOUNDARY_LOOKBEHIND), start);
 	const after = line.slice(start + match[0].length);
 	const precedingNumber = before.match(
 		/(?:^|[^\p{L}\d])(\d+(?:[.,]\d+)*)(?:[\s\u00A0\u202F'’]+)$/u,
@@ -237,7 +240,7 @@ export function parseOcrText(rawText: string, contextDateIso?: string): OcrParse
 	const lines = rawText
 		.split(/\r?\n/)
 		.map((l) => l.trim())
-		.filter(Boolean);
+		.filter((l) => l.length > 0 && l.length <= MAX_OCR_LINE_LENGTH);
 	const expenses: ParsedExpense[] = [];
 	let currentPayer = '';
 	let currentDate = contextDateIso ?? new Date().toISOString();

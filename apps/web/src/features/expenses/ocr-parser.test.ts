@@ -260,3 +260,13 @@ test('an OCR description is capped at the description limit', () => {
 	const [expense] = parseOcrText(text, contextDate).expenses;
 	assert.equal(expense?.description, 'a'.repeat(DESCRIPTION_MAX_LENGTH - 1));
 });
+
+test('a single pathological OCR line yields no expense', () => {
+	assert.deepEqual(parseOcrText(`${'1.'.repeat(50_000)}x 5,00`, contextDate).expenses, []);
+});
+
+test('a normal receipt line still parses next to an overlong one', () => {
+	const text = `${'1.'.repeat(50_000)}x 5,00\nRewe 12,34`;
+	const [expense] = parseOcrText(text, contextDate).expenses;
+	assert.equal(expense?.amountCents, 1234);
+});
