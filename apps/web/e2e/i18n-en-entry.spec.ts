@@ -8,6 +8,7 @@ import {
 	seedLocalAccount,
 	setupMember,
 	skipUnlessFixtures,
+	waitForHydration,
 } from './support/helpers';
 import { expectNoGermanChrome, expectNoHorizontalOverflow, setEnglishLocale } from './support/i18n';
 
@@ -263,6 +264,7 @@ test.describe('entry and auth in English', () => {
 						: route.fulfill({ status: 200, json: { sessionEstablished: false } });
 				});
 				await page.goto('/signup');
+				await waitForHydration(page, 'form');
 				await page.getByLabel('Your name').fill('Mina');
 				await page.getByLabel('Email address').fill('mina@example.invalid');
 				await page.getByLabel('Password', { exact: true }).fill('short');

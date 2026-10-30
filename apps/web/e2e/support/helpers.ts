@@ -55,6 +55,17 @@ export async function setupMember(page: Page): Promise<void> {
 }
 
 /**
+ * Waits until React has hydrated the element. Server-rendered forms are visible and fillable
+ * earlier; in WebKit a value filled while hydration runs was sometimes reset to the initial state.
+ */
+export async function waitForHydration(page: Page, selector: string): Promise<void> {
+	await page.waitForFunction((target) => {
+		const element = document.querySelector(target);
+		return element !== null && Object.keys(element).some((key) => key.startsWith('__reactFiber'));
+	}, selector);
+}
+
+/**
  * Records the fixture account as this browser's local account, as a WG visit does. Needed by specs
  * that seed the offline queue or open /offline without visiting a WG first: the queue and the
  * remembered WGs are filtered by that account.
