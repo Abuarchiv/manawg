@@ -99,12 +99,23 @@ export function useExpenseSubmit(
 		const desc = form.description.trim();
 		const amountEuros = parseEuroAmount(form.amountStr, locale);
 		const occurredOn = inputDateOrToday(form.extras.pickedOccurredOn);
-		const validationErrors = validateExpenseFields({
-			description: desc,
-			amountEuros,
-			amountText: form.amountStr,
-			occurredOn,
-		});
+		const isEdit = editingExpense !== null;
+		// Only a changed day is sent: an unchanged one keeps the real time of day.
+		const previousExpense = isEdit
+			? (expenses.find((expense) => expense.id === editingExpense.id) ?? null)
+			: null;
+		const shownDay = previousExpense
+			? isoToInputDate(previousExpense.occurredAt)
+			: todayInputValue();
+		const validationErrors = validateExpenseFields(
+			{
+				description: desc,
+				amountEuros,
+				amountText: form.amountStr,
+				occurredOn,
+			},
+			previousExpense ? shownDay : null,
+		);
 		if (Object.keys(validationErrors).length > 0 || amountEuros === null) {
 			support.setValidationErrors(validationErrors);
 			return;
@@ -114,7 +125,6 @@ export function useExpenseSubmit(
 		const imageUrl = image.url;
 		if (imageUrl !== formImageUrl) form.setImageUrl(imageUrl);
 		const amountCents = eurosToCents(amountEuros);
-		const isEdit = editingExpense !== null;
 		const fingerprint = JSON.stringify({
 			recurringSourceId,
 			description: desc,
@@ -185,13 +195,6 @@ export function useExpenseSubmit(
 						...(expectedRecurringUpdatedAt ? { expectedRecurringUpdatedAt } : {}),
 					}
 				: {};
-		// Only a changed day is sent: an unchanged one keeps the real time of day.
-		const previousExpense = isEdit
-			? (expenses.find((expense) => expense.id === editingExpense.id) ?? null)
-			: null;
-		const shownDay = previousExpense
-			? isoToInputDate(previousExpense.occurredAt)
-			: todayInputValue();
 		const occurredAt = occurredOn !== shownDay ? inputDateToIso(occurredOn) : null;
 		const requestBody = {
 			...(occurredAt ? { occurredAt } : {}),

@@ -15,7 +15,7 @@ Taps on plus and minus SHALL update the display immediately, taps during an in-f
 
 ### Requirement: Low-stock alerts fire on crossing
 
-Consuming stock SHALL add the item to the shopping list and dispatch `inventory.low_stock` only when the quantity crosses the threshold. Name or threshold edits SHALL NOT require a quantity version check. Setting the count in the edit form SHALL be logged as an adjustment that does not count as consumption for the quick-restock ranking.
+Consuming stock SHALL add the item to the shopping list and dispatch `inventory.low_stock` only when the quantity crosses the threshold. Name or threshold edits SHALL NOT require a quantity version check. Setting the count in the edit form SHALL be logged as an adjustment that does not count as consumption for the quick-restock ranking. The quantity and threshold fields SHALL accept at most four whole digits, the stored maximum of 9999.
 
 #### Scenario: Already low
 - **WHEN** an item below its threshold is consumed further

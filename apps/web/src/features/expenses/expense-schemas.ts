@@ -4,6 +4,7 @@ import {
 	AMOUNT_MAX_CENTS,
 	AMOUNT_MIN_CENTS,
 	DESCRIPTION_MAX_LENGTH,
+	EXPENSE_MAX_AGE_DAYS,
 } from '@/features/expenses/expense-constants';
 
 /**
@@ -30,7 +31,7 @@ export const expenseDescriptionSchema = z.string().trim().min(1).max(DESCRIPTION
 
 /** Local noon plus time zone offsets can put "today" up to a day ahead of the server clock. */
 const OCCURRED_AT_MAX_FUTURE_MS = 2 * MS_PER_DAY;
-const OCCURRED_AT_MAX_AGE_MS = 5 * 365 * MS_PER_DAY;
+const OCCURRED_AT_MAX_AGE_MS = EXPENSE_MAX_AGE_DAYS * MS_PER_DAY;
 
 /** The day an expense happened: not meaningfully in the future and at most about five years back. */
 export const occurredAtSchema = z
