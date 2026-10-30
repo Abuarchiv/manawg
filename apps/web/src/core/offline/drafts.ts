@@ -1,5 +1,5 @@
 import { formatCentsInput } from '@/core/utils/amount';
-import { berlinDayKey } from '@/core/utils/berlin-day';
+import { toBerlinDayKey } from '@/core/utils/berlin-day';
 import { safeLocalStorage } from '@/core/utils/browser';
 import { isRecord } from '@/core/utils/is-record';
 import { todayInputValue } from '@/core/utils/local-date';
@@ -208,7 +208,7 @@ export function buildQueueEditDraft(
 					// A missing anchorAt marks a first due day the member picked.
 					firstDueDay:
 						typeof action.payload.nextDueAt === 'string' && !action.payload.anchorAt
-							? berlinDayKey(new Date(action.payload.nextDueAt))
+							? toBerlinDayKey(action.payload.nextDueAt)
 							: '',
 				},
 			};

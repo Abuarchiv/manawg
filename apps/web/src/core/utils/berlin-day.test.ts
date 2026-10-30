@@ -35,4 +35,5 @@ test('stored absence instants map back to their Berlin day, day keys pass throug
 	assert.equal(toBerlinDayKey('2026-07-20T21:59:59.999Z'), '2026-07-20');
 	assert.equal(toBerlinDayKey('2026-12-20T22:59:59.999Z'), '2026-12-20');
 	assert.equal(toBerlinDayKey('2026-07-15'), '2026-07-15');
+	assert.equal(toBerlinDayKey('not a date'), '');
 });
