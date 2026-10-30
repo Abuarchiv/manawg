@@ -55,10 +55,15 @@ export function buildOptimisticExpense({
 	};
 }
 
-/** The list is shown newest first; a stable sort keeps entries of the same moment in place. */
+/** The list is shown newest first; ties fall back to entry time and id like the server order. */
 export function sortExpensesNewestFirst(expenses: Expense[]): Expense[] {
-	const time = (expense: Expense) => Date.parse(expense.occurredAt) || 0;
-	return [...expenses].sort((a, b) => time(b) - time(a));
+	const time = (value: string) => Date.parse(value) || 0;
+	return [...expenses].sort(
+		(a, b) =>
+			time(b.occurredAt) - time(a.occurredAt) ||
+			time(b.createdAt) - time(a.createdAt) ||
+			b.id.localeCompare(a.id),
+	);
 }
 
 /** Undoes an optimistic row: a new one goes, an edited one gets its previous version back. */

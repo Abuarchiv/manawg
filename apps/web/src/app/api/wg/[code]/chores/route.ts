@@ -75,7 +75,7 @@ export const GET = withWgRoute('chores GET', async (req, { code }) => {
 		.select()
 		.from(chores)
 		.where(eq(chores.wgId, wgId))
-		.orderBy(asc(chores.nextDueAt));
+		.orderBy(asc(chores.nextDueAt), asc(chores.createdAt), asc(chores.id));
 
 	if (items.length === 0) {
 		return NextResponse.json({ chores: [] });
