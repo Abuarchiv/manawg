@@ -6,7 +6,7 @@ import {
 } from '../src/features/expenses/expense-errors.ts';
 import {
 	buildSplitsFromForm,
-	isEqualExpenseSplit,
+	equalSplitParticipants,
 } from '../src/features/expenses/expense-split-input.ts';
 import { recurringSplitsMatchAmount } from '../src/features/expenses/recurring-expenses.ts';
 
@@ -25,7 +25,8 @@ test('expense edit keeps departed historical shares in manual splits', () => {
 		{ debtorMemberId: CALLER_ID, amountCents: 500 },
 		{ debtorMemberId: departedId, amountCents: 500 },
 	];
-	const splitMode = isEqualExpenseSplit(1000, historicalSplits, members) ? 'equal' : 'manual';
+	const splitMode =
+		equalSplitParticipants(1000, historicalSplits, members) === null ? 'manual' : 'equal';
 
 	assert.equal(splitMode, 'manual');
 	assert.deepEqual(
@@ -38,9 +39,9 @@ test('expense edit keeps departed historical shares in manual splits', () => {
 		}),
 		{ ok: true, splits: historicalSplits },
 	);
-	assert.equal(
-		isEqualExpenseSplit(1000, [{ debtorMemberId: CALLER_ID, amountCents: 1000 }], members),
-		true,
+	assert.deepEqual(
+		equalSplitParticipants(1000, [{ debtorMemberId: CALLER_ID, amountCents: 1000 }], members),
+		[CALLER_ID],
 	);
 });
 
