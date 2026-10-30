@@ -35,13 +35,15 @@ const commitSchema = z.object({
 	skipIndexes: z.array(z.number().int().min(0)).optional().default([]),
 });
 
-function parseFor(source: string, payload: string, locale: Locale): ParsedExpense[] {
+function parseFor(source: string, payload: string, locale: Locale) {
 	// Rejected rows are already listed in the preview, so the commit must skip
 	// them the same way instead of aborting on the first one.
 	const rejected: RejectedRow[] = [];
-	if (source === 'splitwise_csv') return parseSplitwiseCsv(payload, rejected, locale);
-	if (source === 'splid_csv') return parseSplidCsv(payload, rejected, locale);
-	return parseOcrText(payload).expenses;
+	let expenses: ParsedExpense[];
+	if (source === 'splitwise_csv') expenses = parseSplitwiseCsv(payload, rejected, locale);
+	else if (source === 'splid_csv') expenses = parseSplidCsv(payload, rejected, locale);
+	else expenses = parseOcrText(payload).expenses;
+	return { expenses, rejected };
 }
 
 export const POST = withWgRoute('imports/commit', async (req, { code }) => {
@@ -80,9 +82,12 @@ export const POST = withWgRoute('imports/commit', async (req, { code }) => {
 			);
 			if (limited) return { stop: limited };
 
-			const parsedExpenses = parseFor(source, payload, requestLocale(req));
+			const { expenses: parsedExpenses, rejected } = parseFor(source, payload, requestLocale(req));
+			// A parse that stopped at the row limit must never be committed truncated.
+			if (parsedExpenses.length > MAX_IMPORT_ROWS || rejected.length > MAX_IMPORT_ROWS) {
+				return { stop: badRequest('too_many_rows') };
+			}
 			if (parsedExpenses.length === 0) return { stop: badRequest('empty_payload') };
-			if (parsedExpenses.length > MAX_IMPORT_ROWS) return { stop: badRequest('too_many_rows') };
 			if (skipIndexes.some((index) => index >= parsedExpenses.length)) {
 				return { stop: badRequest('invalid_skip_indexes') };
 			}

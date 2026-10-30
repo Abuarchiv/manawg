@@ -1,5 +1,6 @@
 import { DEFAULT_LOCALE, type Locale } from '@/shared/i18n/locale';
 import { DESCRIPTION_MAX_LENGTH } from './expense-constants';
+import { MAX_IMPORT_ROWS } from './import-body';
 import {
 	detectDelimiter,
 	distributeRemainder,
@@ -38,6 +39,8 @@ export function parseSplidCsv(
 
 	const out: ParsedExpense[] = [];
 	for (let r = 1; r < rows.length; r += 1) {
+		// The routes answer too_many_rows past the limit, so parsing further is wasted work.
+		if (out.length > MAX_IMPORT_ROWS || (rejected?.length ?? 0) > MAX_IMPORT_ROWS) break;
 		const fields = rows[r]?.fields ?? [];
 		const line = rows[r]?.lineNumber ?? r + 1;
 		const warnings: string[] = [];

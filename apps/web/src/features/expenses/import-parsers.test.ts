@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { DESCRIPTION_MAX_LENGTH } from './expense-constants';
+import { MAX_IMPORT_COLUMNS, MAX_IMPORT_ROWS } from './import-body';
 import type { RejectedRow } from './import-types';
 
 const { matchMembers, parseSplidCsv, parseSplitwiseCsv } = await import('./import-parsers');
@@ -189,4 +190,28 @@ test('parseAmountToCents rejects a thousands group that starts with zero', () =>
 	assert.equal(parseAmountToCents('0,001'), null);
 	assert.equal(parseAmountToCents('0,125'), null);
 	assert.equal(parseAmountToCents('1,234'), 123400);
+});
+
+test('parseSplitwiseCsv gives up on a header with more columns than MAX_IMPORT_COLUMNS', () => {
+	const columns = Array.from({ length: MAX_IMPORT_COLUMNS + 1 }, (_, i) => `p${i}`);
+	const rows = Array.from({ length: 50_000 }, () => 'bad,x,1.00');
+	const csv = [['Date', 'Description', 'Cost', ...columns].join(','), ...rows].join('\n');
+	const rejected: RejectedRow[] = [];
+	assert.deepEqual(parseSplitwiseCsv(csv, rejected), []);
+	assert.equal(rejected.length, 0);
+});
+
+test('both parsers stop collecting rows once the row limit is exceeded', () => {
+	const bad = Array.from({ length: 10_000 }, () => 'bad,x,1.00,Anna');
+	const splitwise = ['Date,Description,Cost,Anna,Bob', ...bad].join('\n');
+	const splid = ['Datum,Beschreibung,Betrag,Bezahlt von', ...bad].join('\n');
+	for (const parse of [parseSplitwiseCsv, parseSplidCsv]) {
+		const rejected: RejectedRow[] = [];
+		parse(parse === parseSplitwiseCsv ? splitwise : splid, rejected);
+		assert.ok(rejected.length > MAX_IMPORT_ROWS, 'the overflow stays detectable');
+		assert.ok(rejected.length <= MAX_IMPORT_ROWS + 1);
+	}
+	const good = Array.from({ length: 10_000 }, () => '2026-01-15,x,1.00,Anna');
+	const parsed = parseSplidCsv(['Datum,Beschreibung,Betrag,Bezahlt von', ...good].join('\n'));
+	assert.equal(parsed.length, MAX_IMPORT_ROWS + 1);
 });
