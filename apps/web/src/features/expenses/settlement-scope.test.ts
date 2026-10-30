@@ -10,6 +10,7 @@ import {
 
 const ANNA = '11111111-1111-4111-8111-111111111111';
 const BEN = '22222222-2222-4222-8222-222222222222';
+const CEM = '33333333-3333-4333-8333-333333333333';
 const members = [
 	{ id: ANNA, name: 'Anna', color: null },
 	{ id: BEN, name: 'Ben', color: null },
@@ -54,6 +55,24 @@ test('mutual expenses settle as one pair when no single split fits the net amoun
 			['e1-0', false],
 			['e2-0', true],
 		],
+	);
+});
+
+test('pair settlement never touches splits that involve a third member', () => {
+	const threeMembers = [...members, { id: CEM, name: 'Cem', color: null }];
+	// The third-member splits form a cycle through Cem, so the Ben to Anna net stays 4,43.
+	const expenses = [
+		...mutual,
+		expense('e3', CEM, BEN, [1000], '2026-09-03T10:00:00.000Z'),
+		expense('e4', ANNA, CEM, [1000], '2026-09-04T10:00:00.000Z'),
+		expense('e5', CEM, ANNA, [1000], '2026-09-05T10:00:00.000Z'),
+		expense('e6', BEN, CEM, [1000], '2026-09-06T10:00:00.000Z'),
+	];
+	const scope = selectSettlementScope(expenses, threeMembers, [], BEN, ANNA);
+	assert.equal(scope.netCents, 443);
+	assert.deepEqual(
+		scope.splits.map((s) => s.id),
+		['e1-0', 'e2-0'],
 	);
 });
 
