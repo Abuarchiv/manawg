@@ -23,6 +23,7 @@ const ENV_KEYS = [
 	'UPSTASH_REDIS_REST_TOKEN',
 	'VERCEL_ENV',
 	'NODE_ENV',
+	'E2E_FIXTURE_MODE',
 ] as const;
 
 let captured: unknown[][] = [];
@@ -248,6 +249,31 @@ describe('rate limit fail open stats', () => {
 			spy.restore();
 			restore();
 		}
+	});
+});
+
+describe('empty Upstash variables', () => {
+	async function warningsFor(env: Parameters<typeof pinEnv>[0]): Promise<string[]> {
+		const warn = mock.method(console, 'warn', () => {});
+		const restore = pinEnv({ UPSTASH_REDIS_REST_URL: '', UPSTASH_REDIS_REST_TOKEN: '', ...env });
+		try {
+			await loadRateLimit();
+			return warn.mock.calls.map((call) => String(call.arguments[0]));
+		} finally {
+			restore();
+			warn.mock.restore();
+		}
+	}
+
+	test('fixture mode leaves the blank variables unreported', async () => {
+		assert.deepEqual(await warningsFor({ E2E_FIXTURE_MODE: 'true' }), []);
+	});
+
+	test('a real deployment names each empty variable once', async () => {
+		const warnings = await warningsFor({});
+		assert.equal(warnings.length, 2);
+		assert.ok(warnings.some((message) => message.includes('UPSTASH_REDIS_REST_URL')));
+		assert.ok(warnings.some((message) => message.includes('UPSTASH_REDIS_REST_TOKEN')));
 	});
 });
 
