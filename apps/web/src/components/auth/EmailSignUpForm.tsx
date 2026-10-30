@@ -235,6 +235,7 @@ export function EmailSignUpForm({
 
 	return (
 		<form
+			method="post"
 			noValidate
 			onSubmit={(event) => {
 				event.preventDefault();

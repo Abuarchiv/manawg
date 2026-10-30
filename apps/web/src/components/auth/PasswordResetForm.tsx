@@ -111,7 +111,7 @@ export function PasswordResetForm({ recoveryRequested }: PasswordResetFormProps)
 					<PasswordResetRequest />
 				</>
 			)}
-			<form onSubmit={(event) => void submit(event)} noValidate>
+			<form method="post" onSubmit={(event) => void submit(event)} noValidate>
 				<FieldGroup>
 					<Field data-invalid={Boolean(error)}>
 						<FieldLabel htmlFor="reset-password">{t('fields.newPassword')}</FieldLabel>

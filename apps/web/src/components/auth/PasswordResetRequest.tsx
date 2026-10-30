@@ -42,7 +42,12 @@ export function PasswordResetRequest() {
 	}
 
 	return (
-		<form noValidate onSubmit={(event) => void submit(event)} className="flex flex-col gap-4">
+		<form
+			method="post"
+			noValidate
+			onSubmit={(event) => void submit(event)}
+			className="flex flex-col gap-4"
+		>
 			<FieldGroup>
 				<Field data-invalid={state === 'invalid'}>
 					<FieldLabel htmlFor="reset-request-email">{t('fields.email')}</FieldLabel>
