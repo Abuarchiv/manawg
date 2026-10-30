@@ -444,16 +444,6 @@ mock.module('@/features/expenses/server/recurring-booking', {
 		recordRecurringAdvanced: async () => undefined,
 	},
 });
-mock.module('@/features/expenses/split-math', {
-	namedExports: {
-		settledAtForOwnShare: () => null,
-		splitValidationErrorCode: (reason: string) => reason,
-		validateSplits: (amount: number, splits: { amountCents: number }[]) =>
-			splits.reduce((sum, split) => sum + split.amountCents, 0) === amount
-				? { ok: true }
-				: { ok: false, reason: 'splits_sum_mismatch' },
-	},
-});
 
 const { GET, POST } = await import('./route');
 
@@ -513,6 +503,16 @@ test('different members and idempotency keys replay one recurring due after its 
 		[...state.idempotency.values()].every((row) => row.body.expense?.id === canonical.expense.id),
 		'both durable claims resolve to the canonical expense',
 	);
+});
+
+test("only the payer's own share is stored as settled", async () => {
+	const { state, post } = harness();
+	const response = await post({ key: 'own-share-key' });
+	assert.equal(response.status, 200);
+	const settled = (debtorMemberId: string) =>
+		state.splits.find((split) => split.debtorMemberId === debtorMemberId)?.settledAt;
+	assert.ok(settled(firstMemberId) instanceof Date);
+	assert.equal(settled(secondMemberId), null);
 });
 
 test('rejects a one-sided recurring reference', async () => {
