@@ -292,6 +292,40 @@ test.describe('chore next assignee', () => {
 		await expect(page.getByRole('button', { name: `Aufgabe entfernen: ${title}` })).toHaveCount(0);
 	});
 
+	test('sends the chore version when taking over and shows the conflict message', async ({
+		page,
+	}) => {
+		const viewer: FixtureMember = { id: CURRENT_MEMBER, name: 'Abu', color: null, active: true };
+		const flatmate: FixtureMember = {
+			id: '0ab8c8f2-5d03-4a84-aadc-4c5d7e8abf55',
+			name: 'Mina',
+			color: null,
+			active: true,
+		};
+		const updatedAt = '2026-10-01T09:00:00.000Z';
+		const title = 'Aufgabe take-over-version';
+		const versioned = { ...chore('take-over-version', flatmate.id), updatedAt };
+		let body: Record<string, unknown> | null = null;
+		await page.route(`**/api/wg/${SHARE_CODE}/chores/take-over-version`, (route) => {
+			if (route.request().method() !== 'PATCH') return route.fallback();
+			body = route.request().postDataJSON();
+			return route.fulfill({ status: 409, json: { error: 'chore_changed' } });
+		});
+
+		await openChores(page, [viewer, flatmate], [versioned], []);
+		await page.getByRole('button', { name: `Aufgabenaktionen: ${title}` }).click();
+		await page.getByRole('button', { name: 'Ich übernehme' }).click();
+
+		await expect
+			.poll(() => body)
+			.toEqual({ assignedMemberId: CURRENT_MEMBER, expectedUpdatedAt: updatedAt });
+		await expect(
+			page.getByText(
+				'Die Aufgabe wurde inzwischen geändert. Der Plan wird neu geladen, bitte versuche es erneut.',
+			),
+		).toBeVisible();
+	});
+
 	test('offers other members for an absence only to admins', async ({ page }) => {
 		const viewer: FixtureMember = { id: CURRENT_MEMBER, name: 'Abu', color: null, active: true };
 		const other: FixtureMember = { id: 'anna', name: 'Anna', color: null, active: true };
