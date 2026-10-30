@@ -3,6 +3,7 @@ import { safeLocalStorage } from '@/core/utils/browser';
 import { isRecord } from '@/core/utils/is-record';
 import { isOfflineAction } from './offline-action-guard';
 import { type FailureState, SERVER_CHECK_PREFIX, withFailureState } from './offline-failure-copy';
+import { isPendingImageToken, removePendingImage } from './offline-images';
 import {
 	isQueuedCreateId,
 	type OfflineAction,
@@ -29,6 +30,15 @@ const OFFLINE_QUEUE_LOCK_NAME = 'manawg:offline-queue';
 export const OFFLINE_QUEUE_EVENT = 'manawg:offline-queue';
 /** Window event fired after a sync pass moved actions out of the queue. */
 export const OFFLINE_SYNCED_EVENT = 'manawg:offline-synced';
+// Another tab or window wrote the queue: its writes never fire the same-window event, so re-emit it
+// here for the banner and counters. The writing tab never receives its own `storage` event.
+if (typeof window !== 'undefined') {
+	window.addEventListener('storage', (event) => {
+		if (event.key === OFFLINE_QUEUE_KEY || event.key === null) {
+			window.dispatchEvent(new CustomEvent(OFFLINE_QUEUE_EVENT));
+		}
+	});
+}
 /** No expiry: replaying an edited action under its original key can drop the edit. */
 const OFFLINE_REVIEW_IDS_KEY = 'manawg:offline-review-ids';
 /** How long a "synced but queue-write failed" marker survives reloads. */
@@ -249,10 +259,21 @@ export function filterOfflineActionsForAuthUser(
 export async function adoptLocalAccount(authUserId: string): Promise<void> {
 	const previous = setLocalAccount(authUserId);
 	if (!previous) return;
-	await updateOfflineQueue((actions) => {
+	let dropped: OfflineAction[] = [];
+	const saved = await updateOfflineQueue((actions) => {
 		const own = actions.filter((action) => (action.authUserId ?? previous) === authUserId);
+		dropped = actions.filter((action) => !own.includes(action));
 		return own.length === actions.length ? null : own;
 	});
+	if (!saved) return;
+	// Their pending photos stay on the device otherwise; a failed delete leaves a harmless orphan.
+	await Promise.allSettled(
+		dropped.flatMap(({ payload, memberId }) =>
+			typeof payload.imageUrl === 'string' && isPendingImageToken(payload.imageUrl)
+				? [removePendingImage(payload.imageUrl, memberId)]
+				: [],
+		),
+	);
 }
 
 /**

@@ -1,6 +1,7 @@
 import 'server-only';
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
+import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import { db, wgMembers } from '@/core/db';
 import { acceptedSigningSecrets, currentSigningSecret } from '@/core/infra/signing-secrets';
 import { type Locale, resolveLocale } from '@/shared/i18n/locale';
@@ -99,4 +100,18 @@ export async function disableMailKind(memberId: string, kind: UnsubscribeKind): 
 		.where(
 			member.authUserId ? eq(wgMembers.authUserId, member.authUserId) : eq(wgMembers.id, memberId),
 		);
+}
+
+/**
+ * Mail preferences for a new membership: off when any active membership of the account has
+ * them off, because a one-click unsubscribe reads as a global opt-out. Moved-out rows cannot be
+ * edited in Einstellungen, so they are not consulted. An account without memberships gets on.
+ */
+export function inheritedMailPrefs(authUserId: string | null) {
+	const fromActive = (column: AnyPgColumn) =>
+		sql<boolean>`coalesce((select bool_and(${column}) from ${wgMembers} where ${wgMembers.authUserId} = ${authUserId} and ${wgMembers.deactivatedAt} is null), true)`;
+	return {
+		notifyStatementEmail: fromActive(wgMembers.notifyStatementEmail),
+		notifyReminders: fromActive(wgMembers.notifyReminders),
+	};
 }

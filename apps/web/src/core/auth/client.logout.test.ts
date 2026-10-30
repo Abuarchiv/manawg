@@ -217,10 +217,17 @@ test('logout wipes account-bound browser data but keeps the theme', async () => 
 		},
 	});
 	const state = harness();
+	Object.assign(navigator, {
+		clearAppBadge: async () => void deleted.push('app-badge'),
+	});
 	try {
 		await state.client.signOutSocialAccount();
 		assert.deepEqual([...store.keys()], ['manawg-theme']);
-		assert.deepEqual(deleted.sort(), ['cache:manawg-app-v4-shell', 'idb:manawg-offline-images']);
+		assert.deepEqual(deleted.sort(), [
+			'app-badge',
+			'cache:manawg-app-v4-shell',
+			'idb:manawg-offline-images',
+		]);
 	} finally {
 		state.cleanup();
 		names.forEach((name, i) => {

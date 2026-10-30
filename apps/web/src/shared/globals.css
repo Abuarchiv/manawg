@@ -343,6 +343,12 @@ textarea,
 		inset 0 0 0 1px rgb(255 255 255 / 0.14),
 		0 1px 3px rgb(0 0 0 / 0.4);
 }
+/* The pill's box-shadow replaces the Tailwind focus ring, so keyboard focus uses an outline.
+   :where() keeps specificity low so the forced-colors outline further down still wins. */
+:where(.glass-pill):focus-visible {
+	outline: 2px solid var(--ring);
+	outline-offset: 2px;
+}
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
 	.glass-pill {
 		background: var(--accent);

@@ -25,6 +25,7 @@ import {
 import { parseBody } from '@/core/http/parse-body';
 import { requestLocale } from '@/core/i18n/request-locale';
 import { readIdempotencyKey } from '@/core/idempotency-store';
+import { inheritedMailPrefs } from '@/core/mail/unsubscribe';
 import { checkRateLimit, clientIpKey, wgWriteLimiter } from '@/core/rate-limit';
 import { isInviteToken } from '@/core/utils/invite-token';
 import type { Locale } from '@/shared/i18n/locale';
@@ -209,6 +210,7 @@ async function insertJoiningMember(
 					role: 'member',
 					authUserId: input.authUserId,
 					locale: input.locale,
+					...inheritedMailPrefs(input.authUserId),
 				})
 				.onConflictDoNothing({ target: [wgMembers.wgId, wgMembers.name] })
 				.returning(),

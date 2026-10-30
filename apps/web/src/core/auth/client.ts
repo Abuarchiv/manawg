@@ -216,6 +216,10 @@ export async function clearLocalAccountData(): Promise<void> {
 							keys.filter((key) => key.startsWith('manawg-app-')).map((key) => caches.delete(key)),
 						),
 					),
+		// The icon badge is device-global; the next account must not inherit this one's unread count.
+		typeof navigator !== 'undefined' && 'clearAppBadge' in navigator
+			? navigator.clearAppBadge()
+			: undefined,
 	]);
 	// The wipe took the offline page with it; the worker fetches it again.
 	if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {

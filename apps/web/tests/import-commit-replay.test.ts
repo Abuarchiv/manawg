@@ -15,6 +15,8 @@ type CommitResult = {
 };
 
 const expenseImports = { id: 'expense-import-id' };
+const expensesTable = { id: 'expense-id' };
+const splitsTable = {};
 const idempotencyResponses = {
 	scope: 'scope',
 	key: 'key',
@@ -51,22 +53,27 @@ const withExpensePaymentLock = async (
 	const tx = {
 		select: () => ({
 			from: () => ({
-				where: () => ({
-					limit: () => ({
-						for: async () =>
-							slotDraft === undefined ? [] : [{ body: slotDraft, expiresAt: state.claimExpiresAt }],
+				where: () =>
+					Object.assign(Promise.resolve([{ id: 'member' }]), {
+						limit: () => ({
+							for: async () =>
+								slotDraft === undefined
+									? []
+									: [{ body: slotDraft, expiresAt: state.claimExpiresAt }],
+						}),
 					}),
-				}),
 			}),
 		}),
 		insert: (table: unknown) => ({
-			values: () => ({
-				returning: async () => {
-					if (table !== expenseImports) throw new Error('unexpected insert');
-					importsDraft += 1;
-					return [{ id: 'import-1' }];
-				},
-			}),
+			values: () =>
+				Object.assign(Promise.resolve(), {
+					returning: async () => {
+						if (table === expensesTable) return [{ id: 'expense-1' }];
+						if (table !== expenseImports) throw new Error('unexpected insert');
+						importsDraft += 1;
+						return [{ id: 'import-1' }];
+					},
+				}),
 		}),
 		update: (table: unknown) => ({
 			set: (value: { responseBody?: unknown }) => ({
@@ -94,10 +101,10 @@ const withExpensePaymentLock = async (
 mock.module('@/core/audit', { namedExports: { recordAuditEvent: async () => state.audits++ } });
 mock.module('@/core/db', {
 	namedExports: {
-		db: {},
+		db: { select: () => ({ from: () => ({ where: async () => [{ id: 'member' }] }) }) },
 		expenseImports,
-		expenseSplits: {},
-		expenses: {},
+		expenseSplits: splitsTable,
+		expenses: expensesTable,
 		idempotencyResponses,
 		wgMembers: {},
 	},
@@ -161,7 +168,7 @@ function input(count = 1, skip = true) {
 				amountCents: 100,
 				currency: 'EUR' as const,
 				paidByName: 'Unknown',
-				splits: [],
+				splits: [] as Array<{ memberName: string; amountCents: number }>,
 				warnings: [],
 			},
 			skip,
@@ -169,6 +176,23 @@ function input(count = 1, skip = true) {
 		mapping: {},
 		skipDuplicates: false,
 		rawPayloadHash: 'hash',
+	};
+}
+
+/** One mapped row that is inserted, so the import announces itself. */
+function insertableInput() {
+	const base = input(1, false);
+	const [item] = base.expenses;
+	assert.ok(item);
+	return {
+		...base,
+		mapping: { Unknown: 'member' },
+		expenses: [
+			{
+				...item,
+				parsed: { ...item.parsed, splits: [{ memberName: 'Unknown', amountCents: 100 }] },
+			},
+		],
 	};
 }
 
@@ -188,8 +212,8 @@ function harness(initialSlot: unknown) {
 
 test('lost response and notification failure replay the one committed import', async () => {
 	const { state, commitImport } = harness({ _claimed: true });
-	const first = await commitImport(input());
-	const replayed = await commitImport(input());
+	const first = await commitImport(insertableInput());
+	const replayed = await commitImport(insertableInput());
 	assert.equal(first.warning, 'notification_delivery_failed');
 	assert.deepEqual(replayed, { ...first, warning: null });
 	assert.equal(state.imports, 1);
@@ -198,7 +222,10 @@ test('lost response and notification failure replay the one committed import', a
 
 test('a concurrent retry after claim lease reclaim inserts only once', async () => {
 	const { state, commitImport } = harness({ _claimed: true });
-	const results = await Promise.all([commitImport(input()), commitImport(input())]);
+	const results = await Promise.all([
+		commitImport(insertableInput()),
+		commitImport(insertableInput()),
+	]);
 	assert.equal(results[0]?.importId, results[1]?.importId);
 	assert.equal(state.imports, 1);
 	assert.equal(state.dispatches, 1);

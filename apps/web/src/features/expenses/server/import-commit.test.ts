@@ -26,7 +26,15 @@ const expenses = expenseFields;
 // delegate to whatever is current.
 let current: { db: unknown; tx: unknown } = { db: null, tx: null };
 
-mock.module('@/core/audit', { namedExports: { recordAuditEvent: async () => {} } });
+const announced = { audit: 0, dispatch: 0 };
+
+mock.module('@/core/audit', {
+	namedExports: {
+		recordAuditEvent: async () => {
+			announced.audit += 1;
+		},
+	},
+});
 mock.module('@/core/db', {
 	namedExports: {
 		db: {
@@ -53,7 +61,12 @@ mock.module('@/core/idempotency-store', {
 });
 mock.module('@/core/infra/observability', { namedExports: { logApiError: () => undefined } });
 mock.module('@/core/notifications/notification-dispatch', {
-	namedExports: { dispatchNotificationSafely: async () => ({ warning: null }) },
+	namedExports: {
+		dispatchNotificationSafely: async () => {
+			announced.dispatch += 1;
+			return { warning: null };
+		},
+	},
 });
 mock.module('@/core/utils/money', { namedExports: { formatEuroCents: () => '12,00 €' } });
 mock.module('@/features/expenses/server/expense-payments', {
@@ -212,6 +225,25 @@ test('duplicate checks distinguish currencies and keep the legacy EUR import key
 	const sameCurrency = runCommit([existing('EUR')]);
 	const skipped = await sameCurrency.commit();
 	assert.deepEqual([skipped.inserted, skipped.skipped], [0, 1]);
+});
+
+test('an import that inserts nothing is not announced to the WG', async () => {
+	const duplicate = {
+		wgId,
+		paidByMemberId: memberId,
+		description: 'Dinner',
+		amountCents: 1200,
+		currency: 'EUR',
+		occurredAt: new Date('2025-01-15T12:00:00.000Z'),
+	};
+	announced.audit = announced.dispatch = 0;
+	const none = await runCommit([duplicate]).commit();
+	assert.deepEqual([none.inserted, none.skipped], [0, 1]);
+	assert.deepEqual(announced, { audit: 0, dispatch: 0 });
+
+	const some = await runCommit([]).commit();
+	assert.equal(some.inserted, 1);
+	assert.deepEqual(announced, { audit: 1, dispatch: 1 });
 });
 
 const coffee: ParsedExpense = {

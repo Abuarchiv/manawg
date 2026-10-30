@@ -38,6 +38,13 @@ export function ChatTopBarLink({ href, className }: ChatTopBarLinkProps) {
 		if (count === undefined || !('setAppBadge' in navigator)) return;
 		void (count > 0 ? navigator.setAppBadge(count) : navigator.clearAppBadge()).catch(() => {});
 	}, [count]);
+	// The badge is device-global: leaving the WG shell (sign-out, session end, WG list) must not keep this count.
+	useEffect(
+		() => () => {
+			if ('clearAppBadge' in navigator) void navigator.clearAppBadge().catch(() => {});
+		},
+		[],
+	);
 	const exactCount = unread.data?.exactCount;
 	const accessibleCount = exactCount ?? (unread.data?.overflow ? undefined : count);
 	const state =

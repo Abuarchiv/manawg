@@ -10,7 +10,7 @@ import { apiFetch } from '@/core/infra/api-client';
 import { discardQueuedEntry, enqueueOfflineAction } from '@/core/offline/offline-client';
 import { createQueuedAbsence, isQueuedCreateId } from '@/core/offline/offline-queue';
 import { endOfBerlinDay, instantAtBerlinWallTime } from '@/core/utils/berlin-day';
-import type { AbsenceInput } from '@/features/chores/absence';
+import { type AbsenceInput, isAbsencePeriodValid } from '@/features/chores/absence';
 import { absenceSaveErrorMessage } from '@/features/chores/chore-errors';
 import { pendingKeys } from '@/features/chores/pending-keys';
 import { useMessage } from '@/shared/i18n/message';
@@ -69,7 +69,7 @@ export function useAbsences(ctx: ChorePageContext, form: AbsenceFormState, queue
 		const endDay = /^\d{4}-\d{2}-\d{2}$/.test(absenceEnd)
 			? instantAtBerlinWallTime(absenceEnd, 0)
 			: null;
-		if (!startDay || !endDay || startDay > endDay) {
+		if (!startDay || !endDay || !isAbsencePeriodValid(startDay, endDay)) {
 			setAbsenceError(t('absence.invalidRange'));
 			return;
 		}

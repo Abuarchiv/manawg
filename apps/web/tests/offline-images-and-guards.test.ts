@@ -456,6 +456,47 @@ test('offline data follows the local account and an account switch drops the old
 	);
 });
 
+test('an account switch also deletes the dropped actions pending image blobs', async () => {
+	const records = new Map<string, Loose>([
+		['pic', { id: 'pic', file: new Blob(['abc']), memberId: 'member-a' }],
+		['keep', { id: 'keep', file: new Blob(['def']), memberId: 'member-b' }],
+	]);
+	setGlobal('indexedDB', fakeIndexedDb(records));
+	const { module, storage } = await makeQueueModule({ images: null });
+	storage.setItem('manawg_account', 'user-a');
+	await setQueue(module, [
+		createAction({
+			id: 'a',
+			authUserId: 'user-a',
+			payload: { content: 'x', kind: 'info', imageUrl: 'manawg-pending-image:pic' },
+		}),
+		createAction({
+			id: 'b',
+			authUserId: 'user-b',
+			memberId: 'member-b',
+			payload: { content: 'y', kind: 'info', imageUrl: 'manawg-pending-image:keep' },
+		}),
+	]);
+	await module.adoptLocalAccount('user-b');
+	assert.deepEqual(
+		module.readOfflineQueue().map((action) => action.id),
+		['b'],
+	);
+	assert.equal(records.has('pic'), false);
+	assert.equal(records.has('keep'), true);
+});
+
+test('a queue write by another tab re-emits the same-window queue event', async () => {
+	const { window } = await makeQueueModule();
+	const queueEvents = () => window.dispatched.filter((e) => e.type === 'manawg:offline-queue');
+	window.dispatchEvent({ type: 'storage', key: 'manawg:offline-actions' });
+	assert.equal(queueEvents().length, 1);
+	window.dispatchEvent({ type: 'storage', key: null });
+	assert.equal(queueEvents().length, 2);
+	window.dispatchEvent({ type: 'storage', key: 'manawg:theme' });
+	assert.equal(queueEvents().length, 2);
+});
+
 test('a synced queue entry no longer counts as queued for an open queue edit', async () => {
 	const { module } = await makeQueueModule({ apiFetch: async () => ({ ok: true, data: {} }) });
 	await setQueue(module, [createAction()]);

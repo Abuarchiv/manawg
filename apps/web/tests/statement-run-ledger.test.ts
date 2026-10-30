@@ -25,7 +25,8 @@ type Deps = {
 	wgs: typeof import('../src/core/db/index.ts').wgs;
 	run: typeof import('../src/features/expenses/server/statement-run.ts').runStatementPlans;
 	eq: typeof import('drizzle-orm').eq;
-	disable: (memberId: string) => Promise<void>;
+	disable: (memberId: string, kind?: 'statement' | 'reminders') => Promise<void>;
+	inherited: typeof import('../src/core/mail/unsubscribe.ts').inheritedMailPrefs;
 };
 let d: Deps;
 const wgIds: string[] = [];
@@ -43,7 +44,8 @@ before(async () => {
 		wgs: core.wgs,
 		run: runModule.runStatementPlans,
 		eq: orm.eq,
-		disable: (id) => unsubscribe.disableMailKind(id, 'statement'),
+		disable: (id, kind = 'statement') => unsubscribe.disableMailKind(id, kind),
+		inherited: unsubscribe.inheritedMailPrefs,
 	};
 });
 
@@ -219,5 +221,39 @@ test('one-click unsubscribe switches off every membership of the account', { ski
 	assert.deepEqual(
 		flags.map((row) => row.notifyStatementEmail),
 		[false, false],
+	);
+});
+
+test('a new membership inherits the unsubscribe of the account', { skip }, async () => {
+	const first = (await setup(1)).members[0];
+	assert.ok(first);
+	const account = crypto.randomUUID();
+	const join = async (name: string) => {
+		const wgId = (await setup(1)).members[0]?.wgId ?? '';
+		const [row] = await d.db
+			.insert(d.wgMembers)
+			.values({ wgId, name, authUserId: account, ...d.inherited(account) })
+			.returning();
+		assert.ok(row);
+		return [row.notifyStatementEmail, row.notifyReminders];
+	};
+	await d.db.update(d.wgMembers).set({ authUserId: account }).where(d.eq(d.wgMembers.id, first.id));
+	assert.deepEqual(await join('Fresh'), [true, true]);
+
+	await d.disable(first.id, 'statement');
+	await d.disable(first.id, 'reminders');
+	assert.deepEqual(await join('Later'), [false, false]);
+
+	// Moved-out rows keep their opt-out but cannot be edited, so only active rows count.
+	await d.db
+		.update(d.wgMembers)
+		.set({ deactivatedAt: new Date() })
+		.where(d.eq(d.wgMembers.authUserId, account));
+	assert.deepEqual(await join('Rejoined'), [true, true]);
+	assert.deepEqual(
+		(await d.db.select().from(d.wgMembers).where(d.eq(d.wgMembers.id, first.id))).map(
+			(row) => row.notifyStatementEmail,
+		),
+		[false],
 	);
 });

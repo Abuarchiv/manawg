@@ -95,3 +95,27 @@ test('a single event export carries no refresh hint', () => {
 	});
 	assert.doesNotMatch(ics, /REFRESH-INTERVAL|X-PUBLISHED-TTL/);
 });
+
+test('control characters and Unicode line separators never reach the ICS text', () => {
+	const ics = calendarFeedToIcs(
+		[
+			{
+				eventId: 'e',
+				title: 'a\u000bb\u2028c\u0085d\u001ce',
+				description: null,
+				location: null,
+				recurring: false,
+				allDay: false,
+				startsAt: '2026-10-20T18:00:00.000Z',
+				endsAt: null,
+				occurrenceIndex: 0,
+			},
+		],
+		'ManaWG',
+		'2026-10-05T00:00:00.000Z',
+	);
+	assert.match(ics, /SUMMARY:ab\\nc\\nde\r\n/);
+	for (const code of [0x0b, 0x0c, 0x1c, 0x1d, 0x1e, 0x85, 0x2028, 0x2029]) {
+		assert.equal(ics.includes(String.fromCharCode(code)), false);
+	}
+});

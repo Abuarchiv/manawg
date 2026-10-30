@@ -31,8 +31,9 @@ export function EqualParticipantsPicker({
 		else next.delete(memberId);
 		onChange(next.size === candidates.length ? null : [...next]);
 	}
+	// No container queries here: the default inline-size containment collapses the group beside the share review.
 	return (
-		<FieldGroup className="gap-1" aria-label={t('participantsAria')}>
+		<FieldGroup className="gap-1 @container-normal" aria-label={t('participantsAria')}>
 			{candidates.map((member) => {
 				const checked = chosen.has(member.id);
 				return (
