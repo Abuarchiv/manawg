@@ -75,9 +75,6 @@ mock.module('@/features/expenses/server/expense-payments', {
 			operation(current.tx),
 	},
 });
-mock.module('@/features/expenses/split-math', {
-	namedExports: { settledAtForOwnShare: () => null },
-});
 mock.module('drizzle-orm', {
 	namedExports: {
 		and: (...conditions: unknown[]) => conditions,
@@ -342,4 +339,21 @@ test('a WG admin may import a shared history that includes other members', async
 	const result = await run.commit();
 	assert.equal(result.inserted, 1);
 	assert.deepEqual(result.errors, []);
+});
+
+test("only the payer's own share is stored as settled", async () => {
+	const row = {
+		...coffee,
+		amountCents: 1000,
+		splits: [
+			{ memberName: 'Alice', amountCents: 400 },
+			{ memberName: 'Bob', amountCents: 600 },
+		],
+	};
+	const run = runCommit([], { rows: [row], mapping: { Alice: memberId, Bob: bobId } });
+	await run.commit();
+	const settled = (debtorMemberId: string) =>
+		(run.state.splits as Row[]).find((split) => split.debtorMemberId === debtorMemberId)?.settledAt;
+	assert.ok(settled(memberId) instanceof Date);
+	assert.equal(settled(bobId), null);
 });

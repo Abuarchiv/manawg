@@ -354,9 +354,6 @@ mock.module('@/features/expenses/recurring-expenses', {
 			splits.reduce((sum, split) => sum + split.amountCents, 0) === amount,
 	},
 });
-mock.module('@/features/expenses/split-math', {
-	namedExports: { settledAtForOwnShare: () => null },
-});
 mock.module('drizzle-orm', {
 	namedExports: { and, asc: (column: unknown) => column, eq, inArray, isNull, lte },
 });
@@ -695,5 +692,24 @@ test('a template whose splits do not add up is logged and paused', async (t) => 
 				metadata: { description: state.template.description },
 			},
 		]);
+	});
+});
+
+test("only the payer's own share is stored as settled", async (t) => {
+	t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-09-25T12:00:00.000Z') });
+	const otherMemberId = '44444444-4444-4444-8444-444444444444';
+	const { state, get } = harness({ activeMemberIds: [memberId, otherMemberId] });
+	state.template.splitsJson = JSON.stringify([
+		{ debtorMemberId: memberId, amountCents: 200 },
+		{ debtorMemberId: otherMemberId, amountCents: 300 },
+	]);
+	await withCronSecret(async () => {
+		await get();
+		const settled = (debtorMemberId: string) =>
+			(state.splits as { debtorMemberId: string; settledAt: Date | null }[]).find(
+				(split) => split.debtorMemberId === debtorMemberId,
+			)?.settledAt;
+		assert.ok(settled(memberId) instanceof Date);
+		assert.equal(settled(otherMemberId), null);
 	});
 });
