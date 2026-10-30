@@ -227,6 +227,7 @@ export function useChoreActions(ctx: ChorePageContext) {
 			pendingKeys.take(chore.id),
 			(result) => choreActionErrorMessage({ key: 'chores.errors.takeOverSubject' }, result),
 			t('actions.takenOver'),
+			chore.updatedAt,
 		);
 	}
 

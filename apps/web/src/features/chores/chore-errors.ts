@@ -91,6 +91,7 @@ export function choreActionErrorMessage(
 	if (isNetworkError(result.error, result.status)) {
 		return withSubject(subject, { key: 'common.errors.network' });
 	}
+	if (result.error === 'chore_changed') return { key: 'chores.errors.choreChanged' };
 	return sentence(subject);
 }
 
