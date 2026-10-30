@@ -81,6 +81,8 @@ old `.env`, or set the new password on the roles `postgres`, `supabase_auth_admi
    off. Caddy fetches a Let's Encrypt certificate on the first start. If `.env` already exists,
    `setup.sh` changes nothing and lists the keys to edit yourself: `APP_URL`, `SITE_ADDRESS`,
    `COMPOSE_PROFILES`, `SMTP_HOST`, `SMTP_PORT` and `SMTP_ADMIN_EMAIL`.
+   Changing `APP_URL` later is safe: the setup step rewrites the stored receipt photo links to the
+   new address on the next start.
 3. Fill in the SMTP account in `.env` (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`) and use
    a sender address in `SMTP_ADMIN_EMAIL` that your provider accepts. Any SMTP provider works,
    many have a free tier that is enough for a household. Sign-in needs mail, so this is required:
