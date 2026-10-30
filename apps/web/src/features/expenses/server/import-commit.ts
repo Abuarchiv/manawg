@@ -320,6 +320,8 @@ export async function commitImport<S>(
 /** Tell the WG about an import that already committed; a failure here must not undo it. */
 async function announceImport(input: CommitInput, value: ImportWriteResult): Promise<CommitResult> {
 	const { importId, inserted, skipped, errors, totalAmountCents } = value;
+	// A re-import that skips every row changed nothing, so there is nothing to tell the WG.
+	if (inserted === 0) return { importId, inserted, skipped, errors, warning: null };
 	await recordAuditEvent({
 		wgId: input.wg.id,
 		memberId: input.importedByMemberId,

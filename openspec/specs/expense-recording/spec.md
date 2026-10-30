@@ -55,7 +55,7 @@ With six or more entries the list SHALL offer a text search over description and
 
 ### Requirement: Import de-duplicates against existing expenses only
 
-Import SHALL skip a row only when an existing WG expense has the same key. Repeated rows inside the file SHALL be imported with a distinguishing `|#n` suffix. Member matching SHALL accept fuzzy matches only above a name-length dependent threshold, SHALL NOT reuse exactly matched members, and SHALL label fuzzy suggestions for review. Rows that cannot be read SHALL be listed with row, reason and description, and error messages SHALL name description, date and amount.
+Import SHALL skip a row only when an existing WG expense has the same key. Repeated rows inside the file SHALL be imported with a distinguishing `|#n` suffix. Member matching SHALL accept fuzzy matches only above a name-length dependent threshold, SHALL NOT reuse exactly matched members, and SHALL label fuzzy suggestions for review. Rows that cannot be read SHALL be listed with row, reason and description, and error messages SHALL name description, date and amount. An import that inserts no expense SHALL NOT notify the WG or write an audit entry.
 
 #### Scenario: Two identical rows in one file
 - **WHEN** a file contains the same expense twice and the WG has none of them
