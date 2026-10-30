@@ -176,7 +176,7 @@ export default {
 		replyVanished: 'This reply no longer exists and has been removed.',
 		reactionKeyUnavailable: 'The reaction could not be sent reliably. Try again.',
 		postKeyUnavailable: 'The post could not be sent reliably. Try again.',
-		imageUploading: 'The image is still uploading. Wait a moment and try again.',
+		imageUploadFailed: 'The image could not be uploaded. Try again or remove it.',
 		queueBlocked: 'Offline storage is blocked. Keep the draft open and try again later.',
 		draftCleanupFailedOffline:
 			'Saved offline, but the old draft could not be removed. Check the offline queue.',

@@ -2,7 +2,7 @@
 
 import { Crown, UserPlus } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
 	AlertDialog,
@@ -28,6 +28,10 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { MemberDeactivateDialog } from '@/components/wg/MemberDeactivateDialog';
+import {
+	type PendingAdminTransfer,
+	postAdminTransfer,
+} from '@/components/wg/settings/admin-transfer';
 import { Section } from '@/components/wg/settings/Section';
 import type { Member, WgSummary } from '@/components/wg/WgContextProvider';
 import { useWg } from '@/components/wg/WgContextProvider';
@@ -54,6 +58,7 @@ export function MembersSection({ wg, members, identity }: MembersSectionProps) {
 	);
 	const [memberToPromote, setMemberToPromote] = useState<{ id: string; name: string } | null>(null);
 	const [promoting, setPromoting] = useState(false);
+	const pendingTransferRef = useRef<PendingAdminTransfer['current']>(null);
 	const [promoteError, setPromoteError] = useState<string | null>(null);
 	const [reactivatingId, setReactivatingId] = useState<string | null>(null);
 	const [memberActionMessage, setMemberActionMessage] = useState<string | null>(null);
@@ -79,14 +84,12 @@ export function MembersSection({ wg, members, identity }: MembersSectionProps) {
 		if (!memberToPromote || promoting) return;
 		setPromoting(true);
 		setPromoteError(null);
-		const res = await apiFetch<{ member: { id: string; name: string } }>(
-			`/api/wg/${encodedShareCode}/members/${memberToPromote.id}/admin`,
-			{
-				method: 'POST',
-				memberId: identity.memberId,
-				body: JSON.stringify({}),
-			},
-		);
+		const res = await postAdminTransfer({
+			adminsUrl: `/api/wg/${encodedShareCode}/members/${memberToPromote.id}/admin`,
+			actorMemberId: identity.memberId,
+			targetMemberId: memberToPromote.id,
+			pending: pendingTransferRef,
+		});
 		setPromoting(false);
 		if (!res.ok) {
 			setPromoteError(

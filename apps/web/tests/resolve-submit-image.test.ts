@@ -1,9 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-const { resolveSubmitImage } = await import(
-	'../src/features/expenses/hooks/resolve-submit-image.ts'
-);
+const { resolveSubmitImage } = await import('../src/core/offline/resolve-submit-image.ts');
 
 const token = 'manawg-pending-image:11111111-1111-4111-8111-111111111111';
 
@@ -32,4 +30,12 @@ test('offline the token stays for the replay; plain URLs pass through', async ()
 		url: 'https://cdn.test/a.jpg',
 	});
 	assert.deepEqual(await resolveSubmitImage(null, 'm1', true, never), { url: null });
+});
+
+test('the pinboard names a failed image upload instead of asking to wait', async () => {
+	const { default: messages } = await import('../src/shared/i18n/messages/index.ts');
+	for (const catalog of Object.values(messages)) {
+		assert.equal('imageUploading' in catalog.pinboard.errors, false);
+		assert.ok(catalog.pinboard.errors.imageUploadFailed);
+	}
 });

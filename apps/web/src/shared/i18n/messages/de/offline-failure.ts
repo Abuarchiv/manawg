@@ -98,6 +98,16 @@ export default {
 		detail:
 			'Jemand hat die Ausgabe inzwischen geändert. Prüfe die aktuellen Werte, bevor du die Änderung erneut vormerkst.',
 	},
+	expenseSettled: {
+		title: 'Anteil schon beglichen',
+		detail:
+			'Ein Anteil wurde inzwischen beglichen. Verwirf die Änderung und bearbeite die Ausgabe neu.',
+	},
+	recurringAdvanced: {
+		title: 'Fixkosten schon übernommen',
+		detail:
+			'Diese Fixkosten wurden für diese Fälligkeit schon übernommen. Entferne diese Offline-Aktion und prüfe die Ausgaben.',
+	},
 	expenseMissing: {
 		title: 'Ausgabe fehlt',
 		detail:

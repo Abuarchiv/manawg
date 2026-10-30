@@ -69,6 +69,27 @@ test('dates are not imported as amounts and a real amount after a date remains p
 	assert.equal(expense.date, '2026-09-27T12:00:00.000Z');
 });
 
+test('an amount followed by a date, time or count on the same line is still imported', () => {
+	for (const text of [
+		'Pizza 24,50 € 12.05.2026',
+		'Pizza 24,50 am 12.05.26',
+		'Pizza 24,50 € 18:30',
+		'Pizza 24,50 (2 Personen)',
+		'Pizza 24,50 € Tisch 4',
+	]) {
+		const [expense] = parseOcrText(text, contextDate).expenses;
+		assert.equal(expense?.amountCents, 2450, text);
+	}
+	const [dated] = parseOcrText('Pizza 24,50 € 12.05.2026', contextDate).expenses;
+	assert.equal(dated?.date, '2026-05-12T12:00:00.000Z');
+});
+
+test('a thousands group that starts with zero is rejected', () => {
+	for (const text of ['Brot 0.001,00 EUR', 'Brot 0,001.00 EUR']) {
+		assert.deepEqual(parseOcrText(text, contextDate).expenses, [], text);
+	}
+});
+
 test('partial, malformed-grouping, over-precision, and over-limit tokens are rejected whole', () => {
 	for (const text of [
 		'Brot 12,345 EUR',

@@ -178,9 +178,9 @@ const PAYER_PATTERN = /(?:bezahlt von|paid by|von:)\s*([A-Za-zÄÖÜäöüß][A-
 
 function parseOcrAmount(raw: string): number | null {
 	let normalized = raw;
-	if (/^\d{1,3}(?:\.\d{3})+,\d{2}$/.test(raw)) {
+	if (/^[1-9]\d{0,2}(?:\.\d{3})+,\d{2}$/.test(raw)) {
 		normalized = raw.replace(/\./g, '').replace(',', '.');
-	} else if (/^\d{1,3}(?:,\d{3})+\.\d{2}$/.test(raw)) {
+	} else if (/^[1-9]\d{0,2}(?:,\d{3})+\.\d{2}$/.test(raw)) {
 		normalized = raw.replace(/,/g, '');
 	} else if (!/^\d+[.,]\d{2}$/.test(raw)) {
 		return null;
@@ -258,9 +258,12 @@ export function parseOcrText(rawText: string, contextDateIso?: string): OcrParse
 			hasWholeAmountBoundary(line, match),
 		);
 		if (amounts.length === 0) continue;
-		const last = amounts[amounts.length - 1];
-		if (!last || typeof last[1] !== 'string') continue;
-		const amountCents = parseOcrAmount(last[1]);
+		// Trailing dates, times and counts ("12.05.2026", "18:30", "Tisch 4") are not amounts; the
+		// last token that reads as money wins.
+		const amountCents = amounts.reduceRight<number | null>(
+			(found, m) => found ?? parseOcrAmount(m[1] ?? ''),
+			null,
+		);
 		if (amountCents === null || amountCents <= 0) continue;
 
 		const description = cleanDescription(line);

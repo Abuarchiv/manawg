@@ -91,3 +91,38 @@ test('an expense draft that only kept an older date counts as empty', () => {
 	assert.equal(isEmptyModuleDraft('expense', untouched, 'me'), true);
 	assert.equal(isEmptyModuleDraft('expense', { ...untouched, amountStr: '12' }, 'me'), false);
 });
+
+test('a queued chore keeps the first due day the member picked', () => {
+	const draft = buildQueueEditDraft(
+		action('chore.create', {
+			title: 'Bad putzen',
+			intervalDays: 1,
+			recurrenceType: 'months',
+			nextDueAt: '2026-12-01T11:00:00.000Z',
+		}),
+	);
+	assert.equal(draft?.draft.firstDueDay, '2026-12-01');
+	const automatic = buildQueueEditDraft(
+		action('chore.create', {
+			title: 'Bad putzen',
+			nextDueAt: '2026-12-01T11:00:00.000Z',
+			anchorAt: '2026-11-01T11:00:00.000Z',
+		}),
+	);
+	assert.equal(automatic?.draft.firstDueDay, '');
+	assert.equal(
+		isEmptyModuleDraft(
+			'chore',
+			{
+				title: '',
+				intervalDays: 7,
+				recurrenceType: 'days',
+				assignedMemberId: '',
+				firstDueDay: '',
+				queueEditId: null,
+			},
+			'm1',
+		),
+		true,
+	);
+});

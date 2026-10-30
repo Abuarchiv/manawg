@@ -13,8 +13,8 @@ import {
 	isOfflineActionQueued,
 	removeQueuedAction,
 } from '@/core/offline/offline-client';
-import { isPendingImageToken } from '@/core/offline/offline-images';
 import { createQueuedAnnouncement } from '@/core/offline/offline-queue';
+import { resolveSubmitImage } from '@/core/offline/resolve-submit-image';
 import { announcementCreateError } from '@/features/announcements/announcement-errors';
 import { deliveryWarning } from '@/features/announcements/announcement-warning';
 import { ANNOUNCEMENT_KINDS } from '@/features/announcements/announcement-workflow';
@@ -158,21 +158,22 @@ export function useAnnouncementComposer(
 			void load();
 			return;
 		}
-		// Race guard: if the image is still a local pending-image-token (upload
-		// hasn't resolved to the stored URL yet), do NOT post. Server's imageUrlSchema
-		// would reject the token as image_invalid, the user would see a generic
-		// error, and the draft state stays — they'd be stuck retrying. Online
-		// path needs the public URL; offline path is fine (sync resolves later).
-		if (imageUrl && isPendingImageToken(imageUrl) && navigator.onLine) {
-			setError({ key: 'pinboard.errors.imageUploading' });
-			return;
-		}
 		if (submittingRef.current) return;
 		submittingRef.current = true;
 		setSubmitting(true);
 		setError(null);
 		setNotice(null);
-		const fingerprint = JSON.stringify({ text, imageUrl, kind });
+		// A pending image token from a failed upload is retried here; offline it stays for the replay.
+		const image = await resolveSubmitImage(imageUrl, identity.memberId, navigator.onLine);
+		if (!image) {
+			setError({ key: 'pinboard.errors.imageUploadFailed' });
+			setSubmitting(false);
+			submittingRef.current = false;
+			return;
+		}
+		const finalImageUrl = image.url;
+		if (finalImageUrl !== imageUrl) setImageUrl(finalImageUrl);
+		const fingerprint = JSON.stringify({ text, imageUrl: finalImageUrl, kind });
 		const idempotencyKey = resolveIdempotencyKey(
 			announcementIdempotencyKeyRef.current,
 			fingerprint,
@@ -193,7 +194,7 @@ export function useAnnouncementComposer(
 					headers: { 'Idempotency-Key': idempotencyKey },
 					body: JSON.stringify({
 						content: text,
-						imageUrl,
+						imageUrl: finalImageUrl,
 						kind,
 					}),
 				},
@@ -210,7 +211,7 @@ export function useAnnouncementComposer(
 						idempotencyKey,
 						content: text,
 						kind,
-						imageUrl,
+						imageUrl: finalImageUrl,
 					});
 					if ((await enqueueOfflineAction(queued)) === 0) {
 						setError({ key: 'pinboard.errors.queueBlocked' });

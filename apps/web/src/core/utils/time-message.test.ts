@@ -91,6 +91,9 @@ test('date formatters take a locale and default to German', () => {
 	assert.match(formatTimeFull(localNoon, 'en'), /^6 Oct 2026, \d\d:\d\d$/);
 	assert.equal(formatShortDateRange(iso, '2026-10-09T10:00:00.000Z'), '06.10. bis 09.10.');
 	assert.equal(formatShortDateRange(iso, '2026-10-09T10:00:00.000Z', 'en'), '6 Oct to 9 Oct');
+	assert.equal(formatShortDateRange(iso, iso), '06.10.');
+	assert.equal(formatShortDateRange(iso, iso, 'en'), '6 Oct');
+	assert.equal(formatShortDateRange(iso, '2027-10-06T10:00:00.000Z'), '06.10. bis 06.10.');
 	assert.equal(formatDayMonthYear('nope', 'en'), 'Date unknown');
 	assert.equal(formatTimeFull('nope', 'en'), 'Time unknown');
 });

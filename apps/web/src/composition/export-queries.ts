@@ -130,7 +130,7 @@ export function buildSectionLoaders(
 		),
 		chores: withNames(() => fetchChoreRows(wgId, page), mapChoreRows),
 		choreCompletions: withNames(() => fetchChoreCompletionRows(wgId, page), mapChoreCompletionRows),
-		inventory: async () => mapInventoryRows(await fetchInventoryRows(wgId, page)),
+		inventory: async () => mapInventoryRows(await fetchInventoryRows(wgId, page), locale),
 		absences: withNames(() => fetchAbsenceRows(wgId, page), mapAbsenceRows),
 		announcements: withNames(() => fetchAnnouncementRows(wgId, page), mapAnnouncementRows),
 		announcementComments: withNames(

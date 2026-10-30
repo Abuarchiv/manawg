@@ -4,6 +4,7 @@ import { DESCRIPTION_MAX_LENGTH } from './expense-constants';
 import type { RejectedRow } from './import-types';
 
 const { matchMembers, parseSplidCsv, parseSplitwiseCsv } = await import('./import-parsers');
+const { parseAmountToCents } = await import('./import-csv-helpers');
 
 test('parseSplitwiseCsv recovers the payer share from their net-balance column', () => {
 	// Splitwise CSV convention: each person's column holds their NET balance for the row
@@ -182,4 +183,10 @@ test('imported descriptions are capped at the description limit without a traili
 	const expected = 'a'.repeat(DESCRIPTION_MAX_LENGTH - 1);
 	assert.equal(parseSplitwiseCsv(splitwise.join('\n'))[0]?.description, expected);
 	assert.equal(parseSplidCsv(splid.join('\n'))[0]?.description, expected);
+});
+
+test('parseAmountToCents rejects a thousands group that starts with zero', () => {
+	assert.equal(parseAmountToCents('0,001'), null);
+	assert.equal(parseAmountToCents('0,125'), null);
+	assert.equal(parseAmountToCents('1,234'), 123400);
 });
