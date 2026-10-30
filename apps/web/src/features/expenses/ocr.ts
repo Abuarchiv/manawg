@@ -256,9 +256,12 @@ export function parseOcrText(rawText: string, contextDateIso?: string): OcrParse
 			hasWholeAmountBoundary(line, match),
 		);
 		if (amounts.length === 0) continue;
-		const last = amounts[amounts.length - 1];
-		if (!last || typeof last[1] !== 'string') continue;
-		const amountCents = parseOcrAmount(last[1]);
+		// Trailing dates, times and counts ("12.05.2026", "18:30", "Tisch 4") are not amounts; the
+		// last token that reads as money wins.
+		const amountCents = amounts.reduceRight<number | null>(
+			(found, m) => found ?? parseOcrAmount(m[1] ?? ''),
+			null,
+		);
 		if (amountCents === null || amountCents <= 0) continue;
 
 		const description = cleanDescription(line);
