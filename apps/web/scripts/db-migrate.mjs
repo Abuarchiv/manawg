@@ -20,7 +20,7 @@ import { fileURLToPath } from 'node:url';
 import { errorCodeSuffix, safeFailureReason } from './db-migrate/failure.mjs';
 import { main } from './db-migrate/run.mjs';
 
-export { assertCatalogSecurity } from './db-migrate/catalog-security.mjs';
+export { assertCatalogSecurity, assertPublicRoles } from './db-migrate/catalog-security.mjs';
 export {
 	previewSessionDatabaseUrl,
 	productionSessionDatabaseUrl,
