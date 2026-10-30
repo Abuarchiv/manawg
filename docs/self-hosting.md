@@ -40,9 +40,10 @@ Compose pulls `ghcr.io/abuarchiv/manawg:<MANAWG_VERSION>` when that tag exists. 
 builds the image from your checkout, which takes about ten minutes; the message that it cannot
 pull the image is harmless then.
 
-To check the whole instance, run `./docker/smoke.sh`. It signs up a test account, creates a WG,
-uploads a picture, calls the scheduled jobs and backs up and restores the data. It leaves that
-test data behind, so run it on a local instance, not on one people use.
+To check the whole instance, run `./docker/smoke.sh`. It needs `curl` and `jq` on the host and the
+default Mailpit setup. It signs up a test account, creates a WG, uploads a picture, calls the
+scheduled jobs and backs up and restores the data. It leaves the test data and a backup in
+`backups/` behind, so run it on a local instance, not on one people use.
 
 ### What runs
 
