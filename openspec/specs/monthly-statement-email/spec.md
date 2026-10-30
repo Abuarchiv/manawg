@@ -66,7 +66,7 @@ The system SHALL mail only active members with an Auth account, a confirmed e-ma
 
 #### Scenario: Unsubscribe
 - **WHEN** a member uses the unsubscribe link or the List-Unsubscribe one-click action
-- **THEN** `notify_statement_email` becomes false without login and no later statement mail is sent for any WG of the same account; Einstellungen shows the switch off and can turn it back on
+- **THEN** `notify_statement_email` becomes false without login and no later statement mail is sent for any WG of the same account, including a WG the account joins or creates afterwards (the new membership copies the switch from the account's active memberships); Einstellungen shows the switch off and can turn it back on
 
 #### Scenario: Invalid unsubscribe link
 - **WHEN** the unsubscribe link or the one-click action carries a truncated or foreign token

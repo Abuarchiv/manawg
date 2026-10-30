@@ -18,6 +18,7 @@ import { parseBody } from '@/core/http/parse-body';
 import { requestLocale } from '@/core/i18n/request-locale';
 import { readIdempotencyKey } from '@/core/idempotency-store';
 import { logApiError } from '@/core/infra/observability';
+import { inheritedMailPrefs } from '@/core/mail/unsubscribe';
 import { checkRateLimit, clientIpKey, rateLimitFailMode, registerLimiter } from '@/core/rate-limit';
 import { generateShareCode, isValidShareCode } from '@/core/utils/share-code';
 import { WG_NAME_MAX_LENGTH } from '@/shared/lib/limits';
@@ -79,7 +80,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 		if (!createdWg) throw new TransactionAbort('insert_failed');
 		const [createdMember] = await tx
 			.insert(wgMembers)
-			.values({ wgId: createdWg.id, name: creatorName, role: 'admin', authUserId, locale })
+			.values({
+				wgId: createdWg.id,
+				name: creatorName,
+				role: 'admin',
+				authUserId,
+				locale,
+				...inheritedMailPrefs(authUserId),
+			})
 			.returning();
 		if (!createdMember) throw new TransactionAbort('member_insert_failed');
 		return {
