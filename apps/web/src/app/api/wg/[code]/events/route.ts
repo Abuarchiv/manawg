@@ -12,7 +12,6 @@ import {
 	rateLimitResponse,
 	serverError,
 	serviceUnavailable,
-	tooMany,
 } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
@@ -134,7 +133,8 @@ export const POST = withWgRoute('events POST', async (req, { code }) => {
 				codec: eventCreateCodec,
 				prepare: async () => {
 					const limit = await checkRateLimit(wgWriteLimiter, `events:${wg.id}:${member.memberId}`);
-					return limit.success ? { input: undefined } : { stop: tooMany('rate_limited') };
+					const blocked = rateLimitResponse(limit, 'rate_limited');
+					return blocked ? { stop: blocked } : { input: undefined };
 				},
 			},
 			async (tx) => {

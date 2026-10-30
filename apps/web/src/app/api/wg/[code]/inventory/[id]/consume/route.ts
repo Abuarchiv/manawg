@@ -5,7 +5,7 @@ import { bodyCodec, rejectWrite, withIdempotentWrite } from '@/core/db/idempoten
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { badRequest, conflict, notFound, tooMany } from '@/core/http/api-errors';
+import { badRequest, conflict, notFound, rateLimitResponse } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { requestLocale } from '@/core/i18n/request-locale';
 import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
@@ -57,7 +57,8 @@ export const POST = withWgRoute<{ id: string }>('inventory consume', async (req,
 					wgWriteLimiter,
 					`inventory-consume:${wg.id}:${auth.member.memberId}`,
 				);
-				return limited.success ? { input: undefined } : { stop: tooMany() };
+				const blocked = rateLimitResponse(limited);
+				return blocked ? { stop: blocked } : { input: undefined };
 			},
 		},
 		async (tx) => {
