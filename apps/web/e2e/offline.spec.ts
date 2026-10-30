@@ -267,3 +267,35 @@ test.describe('wg optimistic actions', () => {
 		);
 	});
 });
+
+test.describe('offline status announcement', () => {
+	skipUnlessFixtures();
+
+	test('an always-mounted status region announces going offline and back online', async ({
+		context,
+		page,
+	}) => {
+		await setupMember(page);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/shopping`);
+		await dismissOnboarding(page);
+		await page.waitForLoadState('networkidle');
+
+		const status = page.locator('[data-offline-banner-status]');
+		await expect(status).toHaveCount(1);
+		await expect(status).toHaveText('');
+
+		await context.setOffline(true);
+		await page.evaluate(() => window.dispatchEvent(new Event('offline')));
+		await expect(status).toHaveText(/Offline/);
+		// The visible bar is not a second live region, so the text is read once.
+		await expect(page.locator('[data-offline-banner]')).not.toHaveAttribute('aria-live', /.*/);
+		expect(
+			await page.locator('[data-offline-banner]').evaluate((el) => el.tagName.toLowerCase()),
+		).toBe('div');
+
+		await context.setOffline(false);
+		await page.evaluate(() => window.dispatchEvent(new Event('online')));
+		await expect(status).toHaveText('Wieder online.');
+		await expect(page.locator('[data-offline-banner]')).toHaveCount(0);
+	});
+});
