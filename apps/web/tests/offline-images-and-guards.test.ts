@@ -456,6 +456,17 @@ test('offline data follows the local account and an account switch drops the old
 	);
 });
 
+test('a queue write by another tab re-emits the same-window queue event', async () => {
+	const { window } = await makeQueueModule();
+	const queueEvents = () => window.dispatched.filter((e) => e.type === 'manawg:offline-queue');
+	window.dispatchEvent({ type: 'storage', key: 'manawg:offline-actions' });
+	assert.equal(queueEvents().length, 1);
+	window.dispatchEvent({ type: 'storage', key: null });
+	assert.equal(queueEvents().length, 2);
+	window.dispatchEvent({ type: 'storage', key: 'manawg:theme' });
+	assert.equal(queueEvents().length, 2);
+});
+
 test('a synced queue entry no longer counts as queued for an open queue edit', async () => {
 	const { module } = await makeQueueModule({ apiFetch: async () => ({ ok: true, data: {} }) });
 	await setQueue(module, [createAction()]);

@@ -164,7 +164,20 @@ export async function makeQueueModule({
 	clock = Date,
 	locks = makeLockManager(),
 }: QueueOptions = {}) {
-	const window = { localStorage: storage, dispatchEvent() {} };
+	const listeners = new Map<string, Array<(event: Action) => void>>();
+	const window = {
+		localStorage: storage,
+		/** Every event dispatched on this window, in order. */
+		dispatched: [] as Action[],
+		addEventListener(type: string, listener: (event: Action) => void) {
+			listeners.set(type, [...(listeners.get(type) ?? []), listener]);
+		},
+		dispatchEvent(event: Action) {
+			window.dispatched.push(event);
+			for (const listener of listeners.get(event.type) ?? []) listener(event);
+			return true;
+		},
+	};
 	setGlobal('window', window);
 	setGlobal('CustomEvent', FakeCustomEvent);
 	setGlobal('Date', clock);
