@@ -43,11 +43,16 @@ interface CreatedAdvance {
 	expenseId: string;
 }
 
+interface TemplateAdvance {
+	created: CreatedAdvance[];
+	failed: boolean;
+}
+
 async function createExpenseForDueAt(
 	template: DueRecurring,
 	splits: RecurringSplit[],
 	dueAt: Date,
-): Promise<string | 'duplicate' | null> {
+): Promise<string | 'duplicate' | 'failed' | null> {
 	try {
 		// The expense and its splits are one fact and are written in one
 		// transaction: a compensating delete is itself a database call, and if it
@@ -156,15 +161,15 @@ async function createExpenseForDueAt(
 			return inserted.id;
 		});
 	} catch (err) {
-		if (err instanceof TransactionAbort) return null;
+		if (err instanceof TransactionAbort && err.code !== 'insert_failed') return null;
 		// Unique (recurring_expense_id, recurring_due_at) ⇒ already advanced for this window.
 		if (isUniqueViolation(err, 'expenses_recurring_due_unique_idx')) return 'duplicate';
 		logApiError('[cron/recurring-advance] insert failed', err);
-		return null;
+		return 'failed';
 	}
 }
 
-async function advanceTemplate(template: DueRecurring): Promise<CreatedAdvance[]> {
+async function advanceTemplate(template: DueRecurring): Promise<TemplateAdvance> {
 	const splits = parseRecurringSplits(template.splitsJson);
 	if (!recurringSplitsMatchAmount(splits, template.amountCents)) {
 		// Same starvation as an inactive member: take the broken template out of the run window.
@@ -176,7 +181,7 @@ async function advanceTemplate(template: DueRecurring): Promise<CreatedAdvance[]
 			recurringExpenseId: template.id,
 			wgId: template.wgId,
 		});
-		return [];
+		return { created: [], failed: false };
 	}
 
 	const now = new Date();
@@ -187,10 +192,16 @@ async function advanceTemplate(template: DueRecurring): Promise<CreatedAdvance[]
 	let dueAt = template.nextDueAt;
 	let nextDueAt = dueAt;
 	let shouldUpdateTemplate = false;
+	let failed = false;
 
 	while (dueAt <= now) {
 		const followingDueAt = addMonthsFromAnchor(dueAt, anchorDay, intervalMonths);
 		const expenseId = await createExpenseForDueAt(template, splits, dueAt);
+		if (expenseId === 'failed') {
+			// Dues booked earlier in this loop still advance the template below.
+			failed = true;
+			break;
+		}
 		if (expenseId === null) break;
 
 		shouldUpdateTemplate = true;
@@ -224,10 +235,10 @@ async function advanceTemplate(template: DueRecurring): Promise<CreatedAdvance[]
 				),
 			)
 			.returning({ id: recurringExpenses.id });
-		if (!updated) return created;
+		if (!updated) return { created, failed };
 	}
 
-	return created;
+	return { created, failed };
 }
 
 /** Runs `task` over `items` at most {@link TEMPLATE_BATCH_SIZE} at a time. */
@@ -281,7 +292,8 @@ export const GET = withCronLogging(
 		let failedTemplates = 0;
 		for (const result of settled) {
 			if (result.status === 'fulfilled') {
-				created.push(...result.value);
+				created.push(...result.value.created);
+				if (result.value.failed) failedTemplates += 1;
 			} else {
 				failedTemplates += 1;
 				logApiError('[cron/recurring-advance] template advance failed', result.reason);
@@ -317,10 +329,10 @@ export const GET = withCronLogging(
 			});
 		});
 
-		return NextResponse.json({
-			ok: failedTemplates === 0,
-			charged: created.length,
-			failedTemplates,
-		});
+		// A 503 keeps a failed template visible in the cron log instead of reporting success.
+		return NextResponse.json(
+			{ ok: failedTemplates === 0, charged: created.length, failedTemplates },
+			{ status: failedTemplates === 0 ? 200 : 503 },
+		);
 	},
 );
