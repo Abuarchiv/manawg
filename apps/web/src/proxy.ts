@@ -93,6 +93,15 @@ export function originAllowed(req: NextRequest): boolean {
 export async function proxy(req: NextRequest): Promise<NextResponse> {
 	const isRead = READ_METHODS.has(req.method);
 	const path = req.nextUrl.pathname;
+	// A malformed escape such as `%E0%A4%A` makes the route handlers throw, which `next start`
+	// answers with 500; reject it here as a client error.
+	try {
+		decodeURIComponent(path);
+	} catch {
+		return path.startsWith('/api/')
+			? NextResponse.json({ error: 'bad_request' }, { status: 400 })
+			: new NextResponse('Bad Request', { status: 400 });
+	}
 	const fixture = resolveFixtureRequest(req);
 
 	if (!path.startsWith('/api/')) {
