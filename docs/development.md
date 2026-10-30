@@ -11,12 +11,14 @@ with shadcn/Base UI, Playwright and `node:test`.
 ```text
 apps/web/
   src/app/        routes only: pages, layouts, API handlers (thin, call core/features)
-  src/core/       domain-neutral building blocks: db, auth, guards, http, offline, notifications, infra
+  src/core/       domain-neutral building blocks: db, auth, guards, http, hooks, offline, sync, notifications, infra,
+                  utils, validators, i18n (server-side translation), mail (SMTP/Resend transport, templates)
   src/composition/ cross-feature reads (dashboard, activity, export)
   src/features/   vertical slices (chat, chores, events, expenses, inventory, announcements, shopping)
                   a feature may import core/, shared/ and itself, never another feature
                   features/<x>/server/ holds database and server-only code (import 'server-only')
-  src/components/ reusable UI: ui/ (shadcn), animate-ui/ (motion variants), app/ (shell, PWA, theme), wg/ (WG-wide)
+  src/components/ reusable UI: ui/ (shadcn), animate-ui/ (motion variants), app/ (shell, PWA, theme), wg/ (WG-wide),
+                  auth/ (sign-in, sign-up, password-reset forms), brand/ (splash screen), entry/ (signed-out entry app, WG welcome)
   src/fixtures/   in-memory fixture build for e2e (see Fixture mode); only src/app/ imports it
   src/shared/     framework-light utilities (lib/, i18n/, fonts, css): theme, brand, analytics
   public/         static files: PWA manifest, service worker, icons, mail images
