@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { renderTemplate } from '../../../supabase/templates/render.mjs';
+import { renderTemplate, selectLocale } from '../../../supabase/templates/render.mjs';
 
 const footer =
 	'<a href="https://app.manawg.com" style="x">app.manawg.com</a> &middot; ' +
@@ -18,4 +19,18 @@ test('the footer points at the app and legal pages of the instance', () => {
 test('without legal pages the footer keeps only the app link', () => {
 	const out = renderTemplate(footer, 'https://wg.example.com', null);
 	assert.equal(out, '<a href="https://wg.example.com" style="x">wg.example.com</a>');
+});
+
+test('the password-changed mail only promises what the app does', () => {
+	const html = readFileSync(
+		new URL('../../../supabase/templates/password_changed.html', import.meta.url),
+		'utf8',
+	);
+	assert.match(html, /<a href="\{\{ \.SiteURL \}\}\/login"/);
+	for (const locale of ['de', 'en']) {
+		const text = selectLocale(html, locale);
+		assert.doesNotMatch(text, /sign out all sessions|sperren wir alle Sitzungen/i);
+	}
+	assert.match(selectLocale(html, 'de'), /„Passwort vergessen\?“/);
+	assert.match(selectLocale(html, 'en'), /“Forgot your password\?”/);
 });
