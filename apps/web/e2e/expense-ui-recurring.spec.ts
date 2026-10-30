@@ -150,6 +150,27 @@ test.describe('subscription error notice', () => {
 			dialog.getByText('Fixkosten konnten nicht gelöscht werden', { exact: false }),
 		).toHaveCount(0);
 	});
+
+	test('a rejected create submit focuses the first invalid field and keeps its message in view', async ({
+		page,
+	}) => {
+		await page.setViewportSize({ width: 320, height: 568 });
+		await setupMember(page);
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/recurring-expenses`, (route) =>
+			route.fulfill({ json: { recurringExpenses: [] } }),
+		);
+
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/recurring`);
+		await dismissOnboarding(page);
+
+		await page.getByRole('button', { name: 'Fixkosten hinzufügen' }).click();
+		const dialog = page.getByRole('dialog', { name: 'Neue Fixkosten' });
+		await dialog.locator('#recurring-description').fill('Strom');
+		await dialog.getByRole('button', { name: 'Fixkosten anlegen' }).click();
+
+		await expect(dialog.locator('#recurring-amount')).toBeFocused();
+		await expect(dialog.locator('#recurring-amount-error')).toBeInViewport();
+	});
 });
 
 test.describe('paused fixed cost in expenses', () => {
