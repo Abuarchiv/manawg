@@ -61,7 +61,10 @@ jobs:
         env:
           MANAWG_IMAGE: manawg-app
           MANAWG_VERSION: ci
-        run: ./docker/setup.sh && docker compose up -d --no-build
+        run: |
+          ./docker/setup.sh
+          echo MAILPIT_PORT=18025 >> .env
+          docker compose up -d --no-build
       - name: Smoke test
         env:
           MANAWG_IMAGE: manawg-app
