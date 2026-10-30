@@ -9,7 +9,7 @@ const MONTH_ENTRIES = [
 	{ description: 'Geschenk für Mina', category: 'other', amountCents: 2500, day: 21 },
 ] as const;
 
-/** Expenses of the previous month, so the monthly statement (default month) has content. */
+/** Expenses of the previous month, newest first like the expenses API, so the monthly statement (default month) has content. */
 export function buildE2EExpenses(fixture: E2EWgFixture) {
 	const now = new Date();
 	const memberIds = fixture.members.map((member) => member.id);
@@ -40,5 +40,5 @@ export function buildE2EExpenses(fixture: E2EWgFixture) {
 				settledAt: debtorMemberId === payer ? occurredAt : null,
 			})),
 		};
-	});
+	}).reverse();
 }
