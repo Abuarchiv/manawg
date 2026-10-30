@@ -7,7 +7,7 @@ Let members record, correct, find and import shared expenses accurately, includi
 
 ### Requirement: Expense date is chosen and validated
 
-The expense form SHALL let the member choose the expense day (default today, not after today, prefilled when editing). The client SHALL send `occurredAt` only when the chosen day differs from the default, and offline queue payloads SHALL carry it. The server SHALL validate `occurredAt` on create and update with one range: at most 2 days in the future and at most 5 years in the past, otherwise `occurred_at_invalid`.
+The expense form SHALL let the member choose the expense day (default today, not after today, prefilled when editing). The client SHALL send `occurredAt` only when the chosen day differs from the default, and offline queue payloads SHALL carry it. The server SHALL validate `occurredAt` on create and update with one range: at most 2 days in the future and at most 5 years in the past, otherwise `occurred_at_invalid`. The form SHALL also reject a newly picked day older than that range before sending, while an edited expense SHALL keep its stored day even when it is older.
 
 #### Scenario: Backdated expense
 - **WHEN** a member records an expense for an earlier day

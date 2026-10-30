@@ -13,6 +13,8 @@ export const AMOUNT_MAX_CENTS = 100_000_000;
 
 /** Longest expense or template description the API accepts. */
 export const DESCRIPTION_MAX_LENGTH = 200;
+/** Oldest expense day the API accepts, in days before today. */
+export const EXPENSE_MAX_AGE_DAYS = 5 * 365;
 /** Most debtor shares one expense or template may have. */
 export const MAX_SPLITS = 50;
 /** Longest billing interval of a recurring template. */
