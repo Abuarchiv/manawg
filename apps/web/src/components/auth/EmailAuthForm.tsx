@@ -170,6 +170,7 @@ export function EmailAuthForm({
 	} = auth;
 	return (
 		<form
+			method="post"
 			noValidate
 			onSubmit={(event) => {
 				event.preventDefault();

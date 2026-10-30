@@ -250,3 +250,29 @@ test.describe('entry accessibility', () => {
 		});
 	});
 });
+
+test.describe('auth forms before hydration', () => {
+	skipUnlessDbDown();
+
+	// A tap on submit before the JavaScript has loaded submits the form natively. Without
+	// method="post" that is a GET, which puts the password into the URL, the history and server logs.
+	test.use({ javaScriptEnabled: false });
+
+	test('a native sign-up submit keeps the password out of the URL', async ({ page }) => {
+		await page.goto('/signup');
+		await page.getByLabel('E-Mail-Adresse').fill('mina@example.invalid');
+		const password = page.getByLabel('Passwort', { exact: true });
+		await password.fill('native-submit-secret');
+		await Promise.all([page.waitForURL('**/signup'), password.press('Enter')]);
+		expect(page.url()).not.toContain('native-submit-secret');
+		expect(page.url()).not.toContain('mina%40example.invalid');
+	});
+
+	test('a native reset request keeps the email address out of the URL', async ({ page }) => {
+		await page.goto('/auth/reset');
+		const email = page.getByLabel('E-Mail-Adresse');
+		await email.fill('mina@example.invalid');
+		await Promise.all([page.waitForURL('**/auth/reset'), email.press('Enter')]);
+		expect(page.url()).not.toContain('mina%40example.invalid');
+	});
+});

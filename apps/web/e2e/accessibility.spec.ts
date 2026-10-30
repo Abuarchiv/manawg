@@ -362,8 +362,11 @@ test.describe('forced colors focus', () => {
 		await page.emulateMedia({ forcedColors: 'none', colorScheme: 'light' });
 		await page.keyboard.press('Tab');
 		if (browserName === 'webkit') {
-			// WebKit's default macOS Tab order skips buttons and links without Full Keyboard Access.
-			await expect(page.getByTestId('focus-input')).toBeFocused();
+			// WebKit's default macOS Tab order skips buttons and links without Full Keyboard Access;
+			// WebKit on Linux (CI) does not, so Tab lands on either the button or the input.
+			await expect(
+				page.locator('[data-testid="focus-button"]:focus, [data-testid="focus-input"]:focus'),
+			).toHaveCount(1);
 			await fixtureButton.focus();
 			await expect(fixtureButton).toBeFocused();
 		} else {
