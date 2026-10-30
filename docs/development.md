@@ -181,7 +181,7 @@ To look at the Auth mail templates while you change them, run `node supabase/tem
 
 ### Opt-in test gates
 
-These tests skip themselves unless their variable is set. `pnpm test:unit` and `test:e2e:fixtures` never set them, because each needs something those lanes do not provide: a database, a public network, or real credentials. The database suites run in their own workflow (`.github/workflows/database.yml`) against a PostgreSQL service. Locally, `node scripts/test-db-setup.mjs <url>` (from `apps/web`) prepares a fresh loopback database for them: the Supabase roles, a minimal `auth` schema and every migration. The auth UI specs (`e2e/auth-ui.spec.ts`) are not gated: `test:e2e:fixtures` starts a second fixture server on `E2E_PORT` + 1000 whose Supabase browser client points at a fake project (the specs answer its requests through page routes), so they run in CI.
+These tests skip themselves unless their variable is set. `pnpm test:unit` and `test:e2e:fixtures` never set them, because each needs something those lanes do not provide: a database, a public network, or real credentials. The database suites run in their own workflow (`.github/workflows/database.yml`) against a PostgreSQL service. Locally, `node scripts/test-db-setup.mjs <url>` (from `apps/web`) prepares a fresh loopback database for them: the Supabase roles, a minimal `auth` schema and every migration. The auth UI specs (`e2e/auth-ui.spec.ts`) are not gated: `test:e2e:fixtures` starts a second fixture server on `E2E_PORT` + 1000 built with a fake Supabase project (the specs answer its `/auth/v1` and `/api/auth` requests through page routes), so they run in CI.
 
 | Variable | Enables | How to run | Why not in CI |
 | --- | --- | --- | --- |
