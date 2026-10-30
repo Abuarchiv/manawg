@@ -42,8 +42,8 @@ describe('calendar all-day events and recurrence', () => {
 				endsAt: '2026-10-25T00:00:00.000Z',
 				recurrence: null,
 			},
-			'2026-10-25T18:00:00.000Z',
-			'2026-10-25T22:00:00.000Z',
+			new Date(2026, 9, 25, 18),
+			new Date(2026, 9, 25, 22),
 		);
 
 		assert.equal(occurrences.length, 1);
