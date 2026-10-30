@@ -10,6 +10,8 @@ export function useChoreFormFields() {
 	const [newInterval, setNewInterval] = useState(7);
 	const [newRecurrenceType, setNewRecurrenceType] = useState<RecurrenceType>('days');
 	const [newAssigned, setNewAssigned] = useState<string>('');
+	// Optional day picked for the first due date; empty means "interval from today".
+	const [newFirstDue, setNewFirstDue] = useState('');
 	/** Only an assignee the member picked is part of the draft, not the automatic suggestion. */
 	const assigneeTouchedRef = useRef(false);
 
@@ -18,6 +20,7 @@ export function useChoreFormFields() {
 		setNewInterval(7);
 		setNewRecurrenceType('days');
 		setNewAssigned('');
+		setNewFirstDue('');
 	}
 
 	function handleAssignedMemberIdChange(value: string): void {
@@ -48,6 +51,8 @@ export function useChoreFormFields() {
 		setNewRecurrenceType,
 		newAssigned,
 		setNewAssigned,
+		newFirstDue,
+		setNewFirstDue,
 		assigneeTouchedRef,
 		resetFields,
 		handleAssignedMemberIdChange,
@@ -63,6 +68,7 @@ type StoredChoreDraft = {
 	intervalDays?: number;
 	recurrenceType?: RecurrenceType;
 	assignedMemberId?: string;
+	firstDueDay?: string;
 	assigneeTouched?: boolean;
 	absenceMemberId?: string;
 	absenceStartDate?: string;
@@ -105,6 +111,8 @@ export function useChoreDraftSync({
 		setNewRecurrenceType,
 		newAssigned,
 		setNewAssigned,
+		newFirstDue,
+		setNewFirstDue,
 		assigneeTouchedRef,
 	} = fields;
 	const {
@@ -144,13 +152,22 @@ export function useChoreDraftSync({
 		if (draft.recurrenceType === 'months' || draft.recurrenceType === 'days')
 			setNewRecurrenceType(draft.recurrenceType);
 		if (typeof draft.assignedMemberId === 'string') setNewAssigned(draft.assignedMemberId);
+		if (draft.firstDueDay) setNewFirstDue(draft.firstDueDay);
 		if (draft.absenceMemberId) setAbsenceMemberId(draft.absenceMemberId);
 		if (draft.absenceStartDate) setAbsenceStart(toBerlinDayKey(draft.absenceStartDate));
 		if (draft.absenceEndDate) setAbsenceEnd(toBerlinDayKey(draft.absenceEndDate));
 		if (draft.absenceReason !== undefined) setAbsenceReason(draft.absenceReason);
 		if (draft.queueEditId) setQueueEditId(draft.queueEditId);
 		setDraftHydrated(true);
-	}, [draftKey, memberId, setAbsenceEnd, setAbsenceMemberId, setAbsenceReason, setAbsenceStart]);
+	}, [
+		draftKey,
+		memberId,
+		setNewFirstDue,
+		setAbsenceEnd,
+		setAbsenceMemberId,
+		setAbsenceReason,
+		setAbsenceStart,
+	]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: assigneeTouchedRef is read at write time on purpose.
 	useEffect(() => {
@@ -166,6 +183,7 @@ export function useChoreDraftSync({
 			// Only a chosen assignee is a draft; the automatic suggestion would otherwise
 			// make the empty form pop open again on every visit.
 			assignedMemberId: assigneeTouchedRef.current ? newAssigned : '',
+			firstDueDay: newFirstDue,
 			absenceMemberId,
 			absenceStartDate: absenceStart,
 			absenceEndDate: absenceEnd,
@@ -187,6 +205,7 @@ export function useChoreDraftSync({
 		draftKey,
 		memberId,
 		newAssigned,
+		newFirstDue,
 		newInterval,
 		newRecurrenceType,
 		newTitle,
