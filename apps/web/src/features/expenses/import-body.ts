@@ -3,6 +3,8 @@ import { readJsonBody } from '@/core/http/read-json';
 export const MAX_CSV_BYTES = 5 * 1024 * 1024;
 // The commit writes row by row in one transaction; more rows would exceed the function time limit.
 export const MAX_IMPORT_ROWS = 2000;
+// A Splitwise header wider than this is not a member list; scanning it costs columns x rows.
+export const MAX_IMPORT_COLUMNS = 64;
 export const MAX_OCR_BYTES = 1 * 1024 * 1024;
 const MAX_JSON_OVERHEAD_BYTES = 16 * 1024;
 const MAX_IMPORT_BODY_BYTES = MAX_CSV_BYTES + MAX_JSON_OVERHEAD_BYTES;

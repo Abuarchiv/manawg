@@ -1,5 +1,6 @@
 import { DEFAULT_LOCALE, type Locale } from '@/shared/i18n/locale';
 import { DESCRIPTION_MAX_LENGTH } from './expense-constants';
+import { MAX_IMPORT_COLUMNS, MAX_IMPORT_ROWS } from './import-body';
 import {
 	detectDelimiter,
 	distributeRemainder,
@@ -54,6 +55,7 @@ export function parseSplitwiseCsv(
 	const rows = parseCsv(csv, delimiter);
 	if (rows.length < 2) return [];
 	const header = rows[0]?.fields ?? [];
+	if (header.length > MAX_IMPORT_COLUMNS) return [];
 	const idxDate = findColumnIndex(header, ['date', 'datum']);
 	const idxDesc = findColumnIndex(header, ['description', 'beschreibung']);
 	const idxCost = findColumnIndex(header, ['cost', 'kosten', 'amount', 'betrag']);
@@ -78,14 +80,16 @@ export function parseSplitwiseCsv(
 		memberColumns.push({ index: i, name: raw });
 	}
 
+	const ignoredWarning =
+		ignoredColumns.length > 0 ? `unknown_columns_ignored:${ignoredColumns.join('|')}` : null;
 	const out: ParsedExpense[] = [];
 	for (let r = 1; r < rows.length; r += 1) {
+		// The routes answer too_many_rows past the limit, so parsing further is wasted work.
+		if (out.length > MAX_IMPORT_ROWS || (rejected?.length ?? 0) > MAX_IMPORT_ROWS) break;
 		const fields = rows[r]?.fields ?? [];
 		const line = rows[r]?.lineNumber ?? r + 1;
 		const warnings: string[] = [];
-		if (ignoredColumns.length > 0) {
-			warnings.push(`unknown_columns_ignored:${ignoredColumns.join('|')}`);
-		}
+		if (ignoredWarning) warnings.push(ignoredWarning);
 		const descRaw = (fields[idxDesc] ?? '').trim().slice(0, DESCRIPTION_MAX_LENGTH).trimEnd();
 		if (!descRaw || /^(total balance|gesamtsaldo)$/i.test(descRaw)) continue;
 		const date = parseDateIso(fields[idxDate] ?? '', locale);

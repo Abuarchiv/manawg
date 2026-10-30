@@ -57,7 +57,9 @@ export const POST = withWgRoute('imports/preview', async (req, { code }) => {
 				? parseSplidCsv(payload, rejected, requestLocale(req))
 				: parseOcrText(payload).expenses;
 
-	if (parsedExpenses.length > MAX_IMPORT_ROWS) return badRequest('too_many_rows');
+	if (parsedExpenses.length > MAX_IMPORT_ROWS || rejected.length > MAX_IMPORT_ROWS) {
+		return badRequest('too_many_rows');
+	}
 
 	// Same contract as the commit: only active members can be mapped, so a
 	// clean preview never turns into member_not_in_wg on commit.
