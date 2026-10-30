@@ -4,7 +4,6 @@ import test from 'node:test';
 const {
 	buildSplitsFromForm,
 	equalSplitParticipants,
-	isEqualExpenseSplit,
 	remainderCandidates,
 	settledSharesChangedByEdit,
 } = await import('./expense-split-input');
@@ -28,9 +27,9 @@ test('an equal split saved with a rotation offset reopens as equal', () => {
 			rotationOffset,
 		});
 		assert.ok(result.ok);
-		assert.equal(
-			isEqualExpenseSplit(1001, result.splits, members),
-			true,
+		assert.notEqual(
+			equalSplitParticipants(1001, result.splits, members),
+			null,
 			`offset ${rotationOffset}`,
 		);
 	}
@@ -42,7 +41,7 @@ test('an uneven manual split is not mistaken for an equal one', () => {
 		{ debtorMemberId: 'b', amountCents: 333 },
 		{ debtorMemberId: 'c', amountCents: 335 },
 	];
-	assert.equal(isEqualExpenseSplit(1001, splits, members), false);
+	assert.equal(equalSplitParticipants(1001, splits, members), null);
 });
 
 test('a split missing an active member is not equal', () => {
@@ -51,7 +50,7 @@ test('a split missing an active member is not equal', () => {
 		{ debtorMemberId: 'a', amountCents: 334 },
 		{ debtorMemberId: 'b', amountCents: 333 },
 	];
-	assert.equal(isEqualExpenseSplit(1001, splits, members), false);
+	assert.equal(equalSplitParticipants(1001, splits, members), null);
 });
 
 test('"Rest aufteilen" never assigns cents to a moved-out member when creating', () => {
