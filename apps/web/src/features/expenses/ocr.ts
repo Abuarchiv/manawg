@@ -178,9 +178,9 @@ const PAYER_PATTERN = /(?:bezahlt von|paid by|von:)\s*([A-Za-zÄÖÜäöüß][A-
 
 function parseOcrAmount(raw: string): number | null {
 	let normalized = raw;
-	if (/^\d{1,3}(?:\.\d{3})+,\d{2}$/.test(raw)) {
+	if (/^[1-9]\d{0,2}(?:\.\d{3})+,\d{2}$/.test(raw)) {
 		normalized = raw.replace(/\./g, '').replace(',', '.');
-	} else if (/^\d{1,3}(?:,\d{3})+\.\d{2}$/.test(raw)) {
+	} else if (/^[1-9]\d{0,2}(?:,\d{3})+\.\d{2}$/.test(raw)) {
 		normalized = raw.replace(/,/g, '');
 	} else if (!/^\d+[.,]\d{2}$/.test(raw)) {
 		return null;

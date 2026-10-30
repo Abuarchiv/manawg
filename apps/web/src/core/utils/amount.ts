@@ -12,7 +12,7 @@ function parseEnglishAmount(value: string): number | null {
 		.replace(/€|EUR/gi, '')
 		.trim()
 		.replace(
-			/^(\d{1,3})((?:\s\d{3})+)(?=[.,]|$)/,
+			/^([1-9]\d{0,2})((?:\s\d{3})+)(?=[.,]|$)/,
 			(_, head: string, rest: string) => head + rest.replace(/\s/g, ''),
 		);
 	const decimal = /^(.*?)([.,])(\d{0,2})$/.exec(text);
@@ -33,7 +33,7 @@ export function parseEuroAmount(value: string, locale: Locale = 'de'): number | 
 		.replace(/€|EUR/gi, '')
 		.trim()
 		.replace(
-			/^(\d{1,3})((?:[\s  ]\d{3})+)(?=,|$)/,
+			/^([1-9]\d{0,2})((?:[\s  ]\d{3})+)(?=,|$)/,
 			(_, head: string, rest: string) => head + rest.replace(/\s/g, '').replace(/[  ]/g, ''),
 		);
 	// German thousands dots ("1.234,56", "1.200") — only in the strict 3-digit-group form.

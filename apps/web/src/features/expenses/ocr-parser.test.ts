@@ -83,6 +83,12 @@ test('an amount followed by a date, time or count on the same line is still impo
 	assert.equal(dated?.date, '2026-05-12T12:00:00.000Z');
 });
 
+test('a thousands group that starts with zero is rejected', () => {
+	for (const text of ['Brot 0.001,00 EUR', 'Brot 0,001.00 EUR']) {
+		assert.deepEqual(parseOcrText(text, contextDate).expenses, [], text);
+	}
+});
+
 test('partial, malformed-grouping, over-precision, and over-limit tokens are rejected whole', () => {
 	for (const text of [
 		'Brot 12,345 EUR',

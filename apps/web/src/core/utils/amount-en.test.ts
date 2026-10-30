@@ -68,6 +68,9 @@ test('parseEuroAmount rejects a thousands group that starts with zero', () => {
 	assert.equal(parseEuroAmount('007,500', 'en'), null);
 	assert.equal(parseEuroAmount('0.500', 'de'), null);
 	assert.equal(parseEuroAmount('0.001'), null);
+	assert.equal(parseEuroAmount('0 001', 'en'), null);
+	assert.equal(parseEuroAmount('0 500'), null);
+	assert.equal(parseEuroAmount('1 234,50'), 1234.5);
 	assert.equal(parseEuroAmount('1,234', 'en'), 1234);
 	assert.equal(parseEuroAmount('1.234,56'), 1234.56);
 });

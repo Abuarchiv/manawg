@@ -27,6 +27,11 @@ test('does not mistake other words or numbers for an amount', () => {
 	assert.equal(buildAnnouncementPrefill('Zimmer 12 Uhr', 'de').amountStr, null);
 });
 
+test('a grouping that starts with zero is not an amount', () => {
+	assert.equal(buildAnnouncementPrefill('Fee 0,001 EUR', 'en').amountStr, null);
+	assert.equal(buildAnnouncementPrefill('Fee 0.500 EUR', 'de').amountStr, null);
+});
+
 test('reads English amounts with comma grouping and a decimal point', () => {
 	const cases: [string, string | null, string][] = [
 		['Internet bill €1,234.50 this month', '1234.50', 'Internet bill this month'],
