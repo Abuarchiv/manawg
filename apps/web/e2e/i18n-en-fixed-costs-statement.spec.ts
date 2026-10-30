@@ -29,7 +29,7 @@ const septemberExpense = {
 	currency: 'EUR',
 	description: 'Groceries',
 	category: 'groceries',
-	// Two-digit day: with en-GB's four-letter "Sept" the date cell is at its widest.
+	// Two-digit day: with en-GB's four-letter "Sept" (Chromium; WebKit writes "Sep") the date cell is at its widest.
 	occurredAt: '2026-09-14T10:00:00.000Z',
 	splits: [
 		{ debtorMemberId: FIXTURE_WG.memberId, amountCents: 1500, settledAt: null },
@@ -120,7 +120,7 @@ test.describe('English fixed costs and statement', () => {
 				await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
 				await expect(page.getByRole('heading', { level: 1, name: 'September 2026' })).toBeVisible();
 				await expect(page.getByText(/^Monthly statement · /)).toBeVisible();
-				await expect(page.getByText('1 Sept – 30 Sept 2026')).toBeVisible();
+				await expect(page.getByText(/^1 Sept? – 30 Sept? 2026$/)).toBeVisible();
 				await expect(page.getByRole('heading', { name: 'Balances' })).toBeVisible();
 				await expect(page.getByText('Split between 2 people')).toBeVisible();
 				await expect(page.getByRole('heading', { name: 'Settlement' })).toBeVisible();
@@ -130,7 +130,7 @@ test.describe('English fixed costs and statement', () => {
 				await expect(page.getByRole('heading', { name: 'Categories' })).toBeVisible();
 				await expect(page.getByText('Groceries').first()).toBeVisible();
 				await expect(page.getByText('€30.00').first()).toBeVisible();
-				const dateCell = page.getByRole('cell', { name: '14 Sept', exact: true });
+				const dateCell = page.getByRole('cell', { name: /^14 Sept?$/ });
 				await expect(dateCell).toBeVisible();
 				const dateLines = await dateCell.evaluate((cell) => {
 					const range = document.createRange();
