@@ -3,7 +3,10 @@ import { ErrorBox } from '@/components/app/ErrorBox';
 import { AUTH_FAILURE_MESSAGES, type AuthFailure } from '@/core/auth/password-errors';
 import { type Message, useMessage } from '@/shared/i18n/message';
 
-/** Minimum for passwords chosen now (sign-up, reset); Supabase enforces the same value. */
+/**
+ * Minimum for passwords chosen now (sign-up, reset). GoTrue enforces the same value through
+ * GOTRUE_PASSWORD_MIN_LENGTH (compose.yaml) and minimum_password_length (real-stack config).
+ */
 export const NEW_PASSWORD_MIN_LENGTH = 8;
 
 /**
