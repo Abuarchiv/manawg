@@ -165,3 +165,53 @@ test('a pair naming a member outside the roster stays in the raw balances but ne
 	assert.deepEqual(pairRows(computeBalances(expenses)), expected);
 	assert.deepEqual(directRows(computeDirectDebts(expenses, members)), []);
 });
+
+test('a circle made only of expenses cancels out', () => {
+	const expenses = [expense('B', 'A', 1000), expense('C', 'B', 1000), expense('A', 'C', 1000)];
+	assert.deepEqual(computeBalances(expenses), []);
+});
+
+test('an unequal circle of expenses keeps only the excess of the larger edges', () => {
+	const balances = computeBalances([
+		expense('B', 'A', 1000),
+		expense('C', 'B', 600),
+		expense('A', 'C', 1000),
+	]);
+	assert.deepEqual(
+		balances.map((pair) => [pair.debtorId, pair.creditorId, pair.amountCents]).sort(),
+		[
+			['A', 'B', 400],
+			['C', 'A', 400],
+		],
+	);
+});
+
+test('random expenses paid off along the settlement plan leave no balances', () => {
+	const people = ['A', 'B', 'C', 'D', 'E'];
+	let seed = 20260930;
+	const next = (max: number) => {
+		seed = (seed * 1664525 + 1013904223) % 2 ** 32;
+		return seed % max;
+	};
+	for (let round = 0; round < 50; round += 1) {
+		const roster = people.slice(0, 3 + next(3)).map((id) => ({ id, name: id, color: null }));
+		const expenses = Array.from({ length: 2 + next(6) }, () => {
+			const payer = roster[next(roster.length)]?.id ?? 'A';
+			const debtors = roster.filter((member) => member.id !== payer);
+			const debtor = debtors[next(debtors.length)]?.id ?? 'B';
+			return expense(payer, debtor, 100 + next(2000));
+		});
+		const plan = simplifyDebts(computeNetBalances(expenses, roster));
+		const payments = plan.map((debt) => payment(debt.fromId, debt.toId, debt.cents));
+		assert.deepEqual(computeBalances(expenses, payments), []);
+
+		const net = new Map<string, number>();
+		for (const pair of computeBalances(expenses)) {
+			net.set(pair.creditorId, (net.get(pair.creditorId) ?? 0) + pair.amountCents);
+			net.set(pair.debtorId, (net.get(pair.debtorId) ?? 0) - pair.amountCents);
+		}
+		for (const entry of computeNetBalances(expenses, roster)) {
+			assert.equal(net.get(entry.memberId) ?? 0, entry.cents);
+		}
+	}
+});
