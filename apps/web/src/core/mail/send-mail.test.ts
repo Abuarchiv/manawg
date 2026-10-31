@@ -21,7 +21,8 @@ mock.module('@/core/db', {
 		mailLog: {},
 	},
 });
-mock.module('@/core/infra/observability', { namedExports: { logApiError: () => undefined } });
+const logApiError = mock.fn((_label: string, ..._errors: unknown[]) => undefined);
+mock.module('@/core/infra/observability', { namedExports: { logApiError } });
 mock.module('drizzle-orm', {
 	namedExports: { eq: () => ({}), sql: () => ({}) },
 });
@@ -42,6 +43,7 @@ const input = (to: string) => ({ kind: 'invitation' as const, dedupeKey: `k-${to
 afterEach(() => {
 	delete process.env.STATEMENT_EMAIL_ALLOWLIST;
 	inserts = batches = 0;
+	logApiError.mock.resetCalls();
 });
 
 test('a recipient outside the allowlist is refused before the ledger and the provider', async () => {
@@ -59,4 +61,29 @@ test('an allowlisted recipient is mailed whatever its case', async () => {
 test('without an allowlist every recipient is mailed', async () => {
 	assert.equal(await sendMail(input('stranger@y.de'), transport), 'sent');
 	assert.equal(batches, 1);
+});
+
+const failing = (error: string): MailTransport => ({
+	name: 'dry-run',
+	sendBatch: async (mails) => mails.map(() => ({ kind: 'failed' as const, error })),
+});
+
+test('a failed send logs the failure token without the recipient', async () => {
+	assert.equal(await sendMail(input('a@b.test'), failing('smtp_EAUTH')), 'failed');
+	assert.equal(logApiError.mock.callCount(), 1);
+	const label = String(logApiError.mock.calls[0]?.arguments[0]);
+	assert.ok(label.includes('invitation failed reason:smtp_EAUTH'));
+	assert.ok(!label.includes('a@b.test'));
+});
+
+test('the log keeps the provider status and drops its free text', async () => {
+	await sendMail(input('a@b.test'), failing('http_422 Invalid from address'));
+	const label = String(logApiError.mock.calls[0]?.arguments[0]);
+	assert.ok(label.includes('reason:http_422'));
+	assert.ok(!label.includes('Invalid'));
+});
+
+test('a sent mail logs nothing', async () => {
+	await sendMail(input('a@b.test'), transport);
+	assert.equal(logApiError.mock.callCount(), 0);
 });
