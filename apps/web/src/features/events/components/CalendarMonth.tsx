@@ -282,7 +282,7 @@ export function CalendarMonth({
 														isSelected
 															? 'bg-primary text-primary-foreground'
 															: isToday
-																? 'bg-secondary text-secondary-foreground'
+																? 'border border-muted-foreground font-semibold'
 																: 'group-active/button:bg-muted',
 													)}
 												>
