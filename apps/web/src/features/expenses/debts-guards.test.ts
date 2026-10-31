@@ -74,7 +74,7 @@ test('an overpayment flips the direction of the pair', () => {
 	);
 });
 
-test('a settled split and a departed member keep the net balances at zero and gets no balance', () => {
+test('a settled split and a departed member leave the net balances at zero without a departed balance', () => {
 	const roster = members.slice(0, 2);
 	const expenses = [
 		{
