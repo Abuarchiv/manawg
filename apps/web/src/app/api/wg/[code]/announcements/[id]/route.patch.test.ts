@@ -346,3 +346,27 @@ test('an author can no longer delete a noticeboard post after moving out', async
 	assert.equal((await response.json()).error, 'member_deactivated');
 	assert.equal(deletedAnnouncements, 0);
 });
+
+test("a non-owner cannot delete another member's announcement", async () => {
+	setup();
+	guardAllows = false;
+	caller = { deactivatedAt: null, role: 'member' };
+
+	const response = await DELETE(
+		new Request('https://example.invalid/announcement', { method: 'DELETE' }) as never,
+		{ params: Promise.resolve({ code: 'MTE8PZAT', id: announcementId }) } as never,
+	);
+	assert.equal(response.status, 403);
+	assert.equal(deletedAnnouncements, 0);
+});
+
+test("an admin deletes another member's announcement", async () => {
+	setup();
+
+	const response = await DELETE(
+		new Request('https://example.invalid/announcement', { method: 'DELETE' }) as never,
+		{ params: Promise.resolve({ code: 'MTE8PZAT', id: announcementId }) } as never,
+	);
+	assert.equal(response.status, 200);
+	assert.equal(deletedAnnouncements, 1);
+});
