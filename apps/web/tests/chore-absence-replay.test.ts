@@ -365,3 +365,16 @@ for (const [startDate, endDate] of [
 		assert.equal(state.rows.length, 0);
 	});
 }
+
+test('absence create for another member is refused before inserting', async () => {
+	const { post, request, state } = harness('absence', {
+		memberId: otherMemberId,
+		startDate: '2026-09-24T00:00:00+02:00',
+		endDate: '2026-09-24T23:59:59+02:00',
+	});
+	const response = await post(request(), { code: 'MTE8PZAT' });
+	assert.equal(response.status, 403);
+	assert.deepEqual(await response.json(), { error: 'not_owner' });
+	assert.equal(state.rows.length, 0);
+	assert.equal(state.audits, 0);
+});
