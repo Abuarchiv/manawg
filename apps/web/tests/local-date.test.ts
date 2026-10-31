@@ -1,9 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-const { inputDateOrToday, inputDateToIso, msUntilNextLocalDay, todayInputValue } = await import(
-	'../src/core/utils/local-date.ts'
-);
+const {
+	inputDateOrToday,
+	inputDateToIso,
+	msUntilNextLocalDay,
+	todayAsPickedDate,
+	todayInputValue,
+} = await import('../src/core/utils/local-date.ts');
 const { berlinDayKey } = await import('../src/core/utils/berlin-day.ts');
 
 test('an untouched date input follows the day after midnight, a picked one stays', () => {
@@ -50,6 +54,22 @@ test('zones that already agree with Berlin keep local noon', () => {
 		for (const tz of ['Europe/Berlin', 'America/Los_Angeles']) {
 			process.env.TZ = tz;
 			assert.equal(inputDateToIso('2026-10-29'), new Date(2026, 9, 29, 12).toISOString());
+		}
+	} finally {
+		if (originalTz === undefined) delete process.env.TZ;
+		else process.env.TZ = originalTz;
+	}
+});
+
+test('today is stored like a picked day, also in UTC+14', () => {
+	const originalTz = process.env.TZ;
+	try {
+		for (const tz of ['Pacific/Kiritimati', 'Pacific/Pago_Pago', 'Europe/Berlin']) {
+			process.env.TZ = tz;
+			const morning = new Date(2026, 10, 1, 8, 0);
+			const today = todayAsPickedDate(morning);
+			assert.equal(berlinDayKey(today), '2026-11-01', `${tz} in Berlin`);
+			assert.equal(today.getUTCDate(), 1, `${tz} UTC day for the anchor`);
 		}
 	} finally {
 		if (originalTz === undefined) delete process.env.TZ;

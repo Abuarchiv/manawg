@@ -60,10 +60,9 @@ export function msUntilNextLocalDay(now = new Date()): number {
 }
 
 /**
- * Today at local noon. Due dates are stored at noon so their UTC calendar day
- * equals the local one; `new Date()` shortly after midnight would otherwise
- * still be "yesterday" in UTC.
+ * Today as a picked `<input type="date">` value is stored (see `inputDateToIso`), so a
+ * start date is the same calendar day on the device, in Berlin and in UTC.
  */
-export function todayAtLocalNoon(now = new Date()): Date {
-	return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0);
+export function todayAsPickedDate(now = new Date()): Date {
+	return new Date(inputDateToIso(todayInputValue(now)) ?? now);
 }
