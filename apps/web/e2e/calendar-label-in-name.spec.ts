@@ -82,6 +82,21 @@ test.describe('calendar label in name', () => {
 			await expectVisibleTextInName();
 
 			await page.getByRole('tab', { name: monthTab }).click();
+			await expect(page.getByRole('grid')).toBeVisible();
+			const targetMonth = new Intl.DateTimeFormat(language, {
+				month: 'long',
+				year: 'numeric',
+				timeZone: 'Europe/Berlin',
+			}).format(noon);
+			if (!(await page.getByText(targetMonth, { exact: true }).isVisible())) {
+				await page
+					.getByRole('button', {
+						name: language === 'de' ? 'Nächster Monat' : 'Next month',
+						exact: true,
+					})
+					.click();
+			}
+			await expect(page.getByText(targetMonth, { exact: true })).toBeVisible();
 			await page.locator(`[data-day-cell][aria-label$=", ${rota}"]`).click();
 			await expect(page.locator(CHORE_LINK)).toBeVisible();
 			await expectVisibleTextInName();
