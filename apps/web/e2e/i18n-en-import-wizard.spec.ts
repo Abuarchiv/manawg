@@ -303,7 +303,7 @@ test.describe('English expense import', () => {
 		await expect(page.getByText(/Splitwise from 3 Mar 2026: 2 expenses/)).toBeVisible();
 		await page.getByRole('button', { name: 'Undo import: Splitwise from 3 Mar 2026' }).click();
 		expect(undoRequests).toEqual([]);
-		await page.getByRole('button', { name: /confirm removal/ }).click();
+		await page.getByRole('button', { name: /Remove all imported expenses/ }).click();
 		await expect(page.getByText('Import undone: 2 expenses removed.')).toBeVisible();
 		expect(undoRequests).toEqual(['DELETE']);
 		await expectNoGermanChrome(page);
