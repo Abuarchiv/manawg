@@ -85,8 +85,10 @@ test('retries one numeric Retry-After 429 with the same credentials after waitin
 	const result = await createUser('Retry');
 	try {
 		assert.equal(signInAttempts.length, 2);
-		assert.deepEqual(signInAttempts[0].body, signInAttempts[1].body);
-		assert.ok(signInAttempts[1].at - signInAttempts[0].at >= 900);
+		const [first, second] = signInAttempts;
+		assert.ok(first && second);
+		assert.deepEqual(first.body, second.body);
+		assert.ok(second.at - first.at >= 900);
 	} finally {
 		await result.ctx.dispose();
 	}
@@ -100,7 +102,9 @@ test('stops after one retry when a second 429 has Retry-After zero', async () =>
 	];
 	await assert.rejects(createUser('Persistent'), /signin Persistent 429/);
 	assert.equal(signInAttempts.length, 2);
-	assert.deepEqual(signInAttempts[0].body, signInAttempts[1].body);
+	const [first, second] = signInAttempts;
+	assert.ok(first && second);
+	assert.deepEqual(first.body, second.body);
 });
 
 test('does not retry a 401 response', async () => {
