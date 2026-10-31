@@ -10,6 +10,7 @@ import {
 	type OfflineActionType,
 	serializeOfflineAction,
 	withoutQueuedEntry,
+	withQueuedExpenseUpdate,
 } from './offline-queue';
 import {
 	OFFLINE_REPLAY_CLOCK_SKEW_MS,
@@ -383,7 +384,7 @@ export async function enqueueOfflineAction(action: OfflineAction): Promise<numbe
 	const authUserId = action.authUserId ?? getLocalAccount();
 	const owned = authUserId ? { ...action, authUserId } : action;
 	const saved = await updateOfflineQueue((actions) => {
-		const next = [...actions, owned];
+		const next = withQueuedExpenseUpdate(actions, owned);
 		count = next.length;
 		return next;
 	});

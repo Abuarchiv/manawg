@@ -40,7 +40,8 @@ export function buildOptimisticExpense({
 		imageUrl,
 		occurredAt: occurredAt ?? previous?.occurredAt ?? now,
 		createdAt: previous?.createdAt ?? now,
-		updatedAt: now,
+		// An edit keeps the loaded server version so a queued follow-up edit still names it.
+		updatedAt: previous?.updatedAt ?? now,
 		splits: splits.map((split, index) => {
 			const existing = previous?.splits.find(
 				(current) => current.debtorMemberId === split.debtorMemberId,
