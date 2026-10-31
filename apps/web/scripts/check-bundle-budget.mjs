@@ -138,7 +138,7 @@ function main() {
 		const routeOnly = chunks.filter((c) => counts.get(c) === 1 && !isLazyChunk(c));
 		const sizeKb = sumGzipKb(routeOnly);
 		perRouteResults.push({ page, sizeKb });
-				if (sizeKb > PER_ROUTE_BUDGET_KB) {
+		if (sizeKb > PER_ROUTE_BUDGET_KB) {
 			failures.push(`Route ${page} = ${sizeKb.toFixed(1)} kB exceeds ${PER_ROUTE_BUDGET_KB} kB`);
 		}
 	}
