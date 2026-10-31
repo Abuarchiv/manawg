@@ -75,11 +75,8 @@ const chainedSplits = [
 	{ id: 's2', expenseId: 'e2', debtorMemberId: B, amountCents: 1000, settledAt: null },
 ];
 
-function datasets(
-	caller: unknown[],
-	activePair: unknown[] = [{ id: A }, { id: B }, { id: C }].slice(0, 2),
-) {
-	return [caller, members, chainedExpenses, chainedSplits, [], activePair];
+function datasets(caller: unknown[]) {
+	return [caller, members, chainedExpenses, chainedSplits, []];
 }
 
 const input = { fromMemberId: B, toMemberId: A, currency: 'EUR' as const, expectedNetCents: 1000 };
@@ -131,11 +128,14 @@ test('a moved-out caller is refused', async () => {
 	assert.equal(inserted.length, 0);
 });
 
-test('a moved-out counterparty is refused', async () => {
-	const { tx, inserted } = fakeTx(datasets([{ id: B }], [{ id: B }]));
-	const result = await recordCashPayment(tx, WG, B, input);
-	assert.equal(result.context?.kind, 'member_not_in_wg');
-	assert.equal(inserted.length, 0);
+test('a moved-out counterparty can be paid in cash', async () => {
+	const { tx, inserted } = fakeTx(datasets([{ id: B }]));
+	const result = await recordCashPayment(tx, WG, B, input, 'Ben');
+	assert.equal(result.status, 200);
+	assert.equal(result.context?.kind, 'recorded');
+	assert.equal(inserted.length, 2);
+	assert.equal(inserted[0]?.toMemberId, A);
+	assert.equal(inserted[1]?.eventType, 'expense.debt.settled.manual');
 });
 
 test('a member outside the WG is refused', async () => {
