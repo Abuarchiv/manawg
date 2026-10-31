@@ -13,6 +13,7 @@ import {
 	MAX_OCR_BYTES,
 	readImportJsonBody,
 } from '@/features/expenses/import-body';
+import { importMemberMappingSchema } from '@/features/expenses/import-member-mapping-schema';
 import {
 	collectUniqueNames,
 	findMappingConflicts,
@@ -27,7 +28,7 @@ import { hashPayload } from '@/features/expenses/server/import-hash';
 const previewSchema = z.object({
 	source: z.enum(['splitwise_csv', 'splid_csv', 'ocr_text']),
 	payload: z.string().min(1),
-	memberMapping: z.record(z.string(), z.string().nullable()).optional(),
+	memberMapping: importMemberMappingSchema(z.string().nullable()).optional(),
 });
 
 export const POST = withWgRoute('imports/preview', async (req, { code }) => {
@@ -72,14 +73,17 @@ export const POST = withWgRoute('imports/preview', async (req, { code }) => {
 	const names = collectUniqueNames(parsedExpenses);
 	const fuzzyNames = new Set<string>();
 	const autoMatched = matchMembers(names, members, fuzzyNames);
-	const mapping: Record<string, string | null> = {};
+	const mappingEntries: [string, string | null][] = [];
 	for (const name of names) {
-		const candidate = memberMapping?.[name] ?? autoMatched.get(name);
+		const explicit =
+			memberMapping && Object.hasOwn(memberMapping, name) ? memberMapping[name] : undefined;
+		const candidate = explicit ?? autoMatched.get(name);
 		// A mapping the member chose explicitly is not a guess.
-		if (memberMapping?.[name]) fuzzyNames.delete(name);
+		if (explicit) fuzzyNames.delete(name);
 		// An unknown or moved-out member id becomes a conflict for that name.
-		mapping[name] = candidate && activeMemberIds.has(candidate) ? candidate : null;
+		mappingEntries.push([name, candidate && activeMemberIds.has(candidate) ? candidate : null]);
 	}
+	const mapping = Object.fromEntries(mappingEntries);
 	const conflicts = findMappingConflicts(parsedExpenses, mapping);
 
 	return NextResponse.json({

@@ -155,7 +155,7 @@ export function findMappingConflicts(
 ): string[] {
 	const conflicts = new Set<string>();
 	for (const name of collectUniqueNames(parsed)) {
-		if (!mapping[name]) conflicts.add(name);
+		if (!Object.hasOwn(mapping, name) || !mapping[name]) conflicts.add(name);
 	}
 	return Array.from(conflicts);
 }

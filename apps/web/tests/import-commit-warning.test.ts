@@ -37,6 +37,7 @@ const db = {
 };
 
 let logs = 0;
+let committedInput: unknown;
 let commitResult: () => Promise<unknown> = async () => ({
 	importId: 'import-1',
 	inserted: 1,
@@ -100,6 +101,7 @@ mock.module('@/features/expenses/server/import-commit', {
 		) => {
 			const prepared = await prepare();
 			if ('stop' in prepared) return { kind: 'stopped', response: prepared.stop };
+			committedInput = prepared.input;
 			return { kind: 'committed', result: await commitResult() };
 		},
 	},
@@ -124,13 +126,14 @@ mock.module('next/server', {
 const { setReplayWarning } = await import('../src/core/idempotency-store.ts');
 const route = await import('../src/app/api/wg/[code]/imports/commit/route.ts');
 
-function post() {
+function post(memberMapping: unknown = {}) {
+	committedInput = undefined;
 	return route.POST(
 		Object.assign(
 			new Request('https://example.invalid', {
 				method: 'POST',
 				headers: { 'idempotency-key': KEY },
-				body: JSON.stringify({ source: 'splitwise_csv', payload: 'data', memberMapping: {} }),
+				body: JSON.stringify({ source: 'splitwise_csv', payload: 'data', memberMapping }),
 			}),
 			{ cookies: { get: () => undefined } },
 		) as never,
@@ -190,4 +193,22 @@ test('a failed commit answers with the real error on every same-key retry', asyn
 	assert.equal((await postWith('saved', failing)).response.status, 400);
 
 	assert.equal((await postWith('saved')).response.status, 200);
+});
+
+test('commit wire validation preserves __proto__ as an own mapping key', async () => {
+	const mapping = Object.fromEntries([['__proto__', KEY]]);
+	const response = await post(mapping);
+	assert.equal(response.status, 200);
+	assert.ok(committedInput && typeof committedInput === 'object' && 'mapping' in committedInput);
+	const committedMapping = Reflect.get(committedInput, 'mapping');
+	assert.ok(committedMapping && typeof committedMapping === 'object');
+	assert.equal(Object.hasOwn(committedMapping, '__proto__'), true);
+	assert.equal(Reflect.get(committedMapping, '__proto__'), KEY);
+});
+
+test('commit wire validation still rejects invalid mapping shapes and UUIDs', async () => {
+	for (const memberMapping of [null, [], 'invalid', { Anna: 'not-a-uuid' }]) {
+		assert.equal((await post(memberMapping)).status, 400);
+		assert.equal(committedInput, undefined);
+	}
 });
