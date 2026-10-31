@@ -134,7 +134,7 @@ export function renderReminderMail(input: {
 		locale,
 		subject: t('reminder.subject', { ...creditor, amount }),
 		preheader: t('reminder.age', { days: Math.max(0, input.oldestDebtAgeDays) }),
-		eyebrow: t('reminder.eyebrow'),
+		eyebrow: `${t('reminder.eyebrow')} · ${input.wgName}`,
 		title: t('reminder.title', creditor),
 		blocks,
 		button: { label: t('reminder.button'), url: `${WG_PATH(input.shareCode)}/expenses` },
