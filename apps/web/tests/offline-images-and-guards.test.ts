@@ -18,7 +18,11 @@ type Loose = any;
 
 afterEach(restoreGlobals);
 
-function fakeIndexedDb(records: Map<string, Loose>, beforeGetAllKeys?: () => void) {
+function fakeIndexedDb(
+	records: Map<string, Loose>,
+	beforeGetAllKeys?: () => void,
+	afterPut?: () => void,
+) {
 	return {
 		open() {
 			const request: Loose = {
@@ -32,14 +36,30 @@ function fakeIndexedDb(records: Map<string, Loose>, beforeGetAllKeys?: () => voi
 				createObjectStore() {},
 				close() {},
 				transaction() {
-					const tx: Loose = { oncomplete: null, onerror: null, error: null };
+					const before = new Map(records);
+					let aborted = false;
+					const tx: Loose = {
+						oncomplete: null,
+						onerror: null,
+						onabort: null,
+						error: null,
+						abort() {
+							if (aborted) return;
+							aborted = true;
+							records.clear();
+							for (const [key, value] of before) records.set(key, value);
+							this.error = new DOMException('transaction aborted', 'AbortError');
+							queueMicrotask(() => this.onabort?.());
+						},
+					};
 					const makeRequest = (run: () => unknown) => {
 						const req: Loose = { result: undefined, error: null, onsuccess: null, onerror: null };
 						queueMicrotask(() => {
+							if (aborted) return;
 							try {
 								req.result = run();
 								req.onsuccess?.();
-								queueMicrotask(() => tx.oncomplete?.());
+								if (!aborted) queueMicrotask(() => !aborted && tx.oncomplete?.());
 							} catch (error) {
 								req.error = error;
 								tx.error = error;
@@ -59,6 +79,7 @@ function fakeIndexedDb(records: Map<string, Loose>, beforeGetAllKeys?: () => voi
 						put: (value: Loose, key: string) =>
 							makeRequest(() => {
 								records.set(key, value);
+								afterPut?.();
 								return key;
 							}),
 						delete: (key: string) => makeRequest(() => records.delete(key)),
@@ -104,6 +125,33 @@ test('pending image cleanup removes its key snapshot while the account stays cur
 	const { clearPendingImages } = await import('../src/core/offline/offline-images.ts');
 
 	assert.equal(await clearPendingImages('account-a'), true);
+	assert.equal(records.size, 0);
+});
+
+test('storePendingImage rolls back if account changes during its IndexedDB write', async () => {
+	const storage = makeStorage();
+	storage.setItem('manawg_account', 'account-a');
+	const windowTarget = Object.assign(new EventTarget(), { localStorage: storage });
+	setGlobal('window', windowTarget);
+	const records = new Map<string, Loose>();
+	setGlobal(
+		'indexedDB',
+		fakeIndexedDb(records, undefined, () => {
+			storage.setItem('manawg_account', 'account-b');
+			windowTarget.dispatchEvent(new Event('storage'));
+		}),
+	);
+	const { storePendingImage } = await import('../src/core/offline/offline-images.ts');
+
+	await assert.rejects(
+		storePendingImage({
+			file: new File(['account-a image'], 'a.png', { type: 'image/png' }),
+			shareCode: 'TEST1234',
+			memberId: 'member-a',
+			purpose: 'expense',
+		}),
+		{ name: 'AbortError' },
+	);
 	assert.equal(records.size, 0);
 });
 
@@ -646,4 +694,219 @@ test('signAndPut reports sign and PUT failures by kind and status', async () => 
 	});
 	assert.deepEqual(await signAndPut(input), { ok: false, kind: 'put', status: 0 });
 	assert.equal(new Missing().message, 'pending-image-missing');
+});
+
+test('signAndPut does not start requests for a pre-aborted upload', async () => {
+	const { signAndPut } = await import('../src/core/offline/offline-images.ts');
+	const controller = new AbortController();
+	controller.abort();
+	let requests = 0;
+	setGlobal('fetch', async () => {
+		requests += 1;
+		return Response.json({
+			presignedUrl: 'https://storage.invalid/upload',
+			publicUrl: 'https://app.invalid/read?key=1',
+		});
+	});
+
+	assert.deepEqual(
+		await signAndPut({
+			shareCode: 'TEST1234',
+			purpose: 'expense',
+			file: new Blob(['abc'], { type: 'image/png' }),
+			contentType: 'image/png',
+			signal: controller.signal,
+		}),
+		{ ok: false, kind: 'sign', status: 0, code: '' },
+	);
+	assert.equal(requests, 0);
+});
+
+test('storage account change aborts an active sign request', async () => {
+	const storage = makeStorage();
+	storage.setItem('manawg_account', 'account-a');
+	const windowTarget = Object.assign(new EventTarget(), { localStorage: storage });
+	setGlobal('window', windowTarget);
+	const response = deferred<Response>();
+	const started = deferred<void>();
+	let requestSignal: AbortSignal | undefined;
+	let putRequests = 0;
+	setGlobal('fetch', async (url: string, init?: RequestInit) => {
+		if (url === '/api/upload/sign') {
+			requestSignal = init?.signal ?? undefined;
+			started.resolve();
+			return response.promise;
+		}
+		putRequests += 1;
+		return new Response(null, { status: 200 });
+	});
+	const { signAndPut } = await import('../src/core/offline/offline-images.ts');
+	const pending = signAndPut({
+		shareCode: 'TEST1234',
+		purpose: 'expense',
+		file: new Blob(['abc'], { type: 'image/png' }),
+		contentType: 'image/png',
+	});
+	await started.promise;
+	storage.setItem('manawg_account', 'account-b');
+	windowTarget.dispatchEvent(new Event('storage'));
+	assert.equal(requestSignal?.aborted, true);
+	response.resolve(
+		Response.json({
+			presignedUrl: 'https://storage.invalid/upload',
+			publicUrl: 'https://app.invalid/read?key=account-a',
+		}),
+	);
+
+	assert.deepEqual(await pending, { ok: false, kind: 'sign', status: 0, code: '' });
+	assert.equal(putRequests, 0);
+});
+
+for (const phase of ['sign response', 'sign body', 'PUT response'] as const) {
+	test(`account switch during ${phase} stops obsolete upload work`, async () => {
+		const storage = makeStorage();
+		storage.setItem('manawg_account', 'account-a');
+		setGlobal('window', Object.assign(new EventTarget(), { localStorage: storage }));
+		const gate = deferred<Response>();
+		const bodyGate = deferred<object>();
+		const started = deferred();
+		const signed = {
+			presignedUrl: 'https://storage.invalid/upload',
+			publicUrl: 'https://app.invalid/read?key=owned-by-a',
+		};
+		let puts = 0;
+		setGlobal('fetch', async (url: string) => {
+			if (url === '/api/upload/sign') {
+				if (phase === 'sign response') {
+					started.resolve();
+					return gate.promise;
+				}
+				const response = Response.json(signed);
+				if (phase === 'sign body') {
+					mock.method(response, 'json', async () => {
+						started.resolve();
+						return bodyGate.promise;
+					});
+				}
+				return response;
+			}
+			puts += 1;
+			started.resolve();
+			return gate.promise;
+		});
+		const { signAndPut } = await import('../src/core/offline/offline-images.ts');
+		const pending = signAndPut({
+			shareCode: 'TEST1234',
+			purpose: 'expense',
+			file: new Blob(['private image A'], { type: 'image/png' }),
+			contentType: 'image/png',
+			memberId: 'member-a',
+		});
+		await started.promise;
+		storage.setItem('manawg_account', 'account-b');
+		gate.resolve(phase === 'sign response' ? Response.json(signed) : new Response(null));
+		bodyGate.resolve(signed);
+		const result = await pending;
+		assert.equal(result.ok, false, 'a completed old upload cannot become a result for B');
+		assert.equal(puts, phase === 'PUT response' ? 1 : 0, 'no obsolete PUT may start');
+	});
+}
+
+test('pending upload preserves a concurrent public URL instead of overwriting it', async () => {
+	const storage = makeStorage();
+	storage.setItem('manawg_account', 'account-a');
+	setGlobal('window', Object.assign(new EventTarget(), { localStorage: storage }));
+	const record = (id: string) => ({
+		id,
+		file: new Blob([id]),
+		name: `${id}.png`,
+		type: 'image/png',
+		size: id.length,
+		shareCode: 'TEST1234',
+		memberId: 'member-a',
+		purpose: 'expense',
+		createdAt: new Date().toISOString(),
+	});
+	const first = record('first');
+	const concurrent = record('concurrent');
+	const records = new Map<string, Loose>([
+		[first.id, first],
+		[concurrent.id, concurrent],
+	]);
+	setGlobal('indexedDB', fakeIndexedDb(records));
+	const putGate = deferred<Response>();
+	const putStarted = deferred<void>();
+	let holdPut = false;
+	setGlobal('fetch', async (url: string) => {
+		if (url === '/api/upload/sign')
+			return Response.json({
+				presignedUrl: 'https://storage.invalid/upload',
+				publicUrl: 'https://app.invalid/read?key=upload-response',
+			});
+		if (holdPut) {
+			putStarted.resolve();
+			return putGate.promise;
+		}
+		return new Response(null, { status: 200 });
+	});
+	const { uploadPendingImageToken } = await import('../src/core/offline/offline-images.ts');
+	assert.equal(
+		await uploadPendingImageToken('manawg-pending-image:first', 'member-a'),
+		'https://app.invalid/read?key=upload-response',
+	);
+	assert.equal(
+		(records.get(first.id) as { publicUrl?: string }).publicUrl,
+		'https://app.invalid/read?key=upload-response',
+	);
+
+	holdPut = true;
+	const pending = uploadPendingImageToken('manawg-pending-image:concurrent', 'member-a');
+	await putStarted.promise;
+	const latestUrl = 'https://app.invalid/read?key=already-saved';
+	records.set(concurrent.id, { ...concurrent, publicUrl: latestUrl });
+	putGate.resolve(new Response(null, { status: 200 }));
+
+	assert.equal(await pending, latestUrl);
+	assert.equal((records.get(concurrent.id) as { publicUrl?: string }).publicUrl, latestUrl);
+});
+
+test('an image removed while its upload is pending is never recreated by writeback', async () => {
+	const records = new Map<string, Loose>([
+		[
+			'pic',
+			{
+				id: 'pic',
+				file: new Blob(['image A']),
+				name: 'a.png',
+				type: 'image/png',
+				size: 7,
+				shareCode: 'TEST1234',
+				memberId: 'member-a',
+				purpose: 'expense',
+				createdAt: new Date().toISOString(),
+			},
+		],
+	]);
+	setGlobal('indexedDB', fakeIndexedDb(records));
+	const started = deferred();
+	const response = deferred<Response>();
+	setGlobal('fetch', async (url: string) => {
+		if (url === '/api/upload/sign')
+			return Response.json({
+				presignedUrl: 'https://storage.invalid/upload',
+				publicUrl: 'https://app.invalid/read?key=A',
+			});
+		started.resolve();
+		return response.promise;
+	});
+	const { uploadPendingImageToken, removePendingImage } = await import(
+		'../src/core/offline/offline-images.ts'
+	);
+	const pending = uploadPendingImageToken('manawg-pending-image:pic', 'member-a');
+	await started.promise;
+	await removePendingImage('manawg-pending-image:pic', 'member-a');
+	assert.equal(records.has('pic'), false);
+	response.resolve(new Response(null));
+	await assert.rejects(pending, PendingImageMissingError);
+	assert.equal(records.has('pic'), false, 'the removed private blob must stay removed');
 });

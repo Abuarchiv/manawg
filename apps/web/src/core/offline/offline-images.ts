@@ -74,33 +74,95 @@ function openDb(): Promise<IDBDatabase> {
 async function withStore<T>(
 	mode: IDBTransactionMode,
 	run: (store: IDBObjectStore) => IDBRequest<T>,
+	onSuccess?: (store: IDBObjectStore, result: T, tx: IDBTransaction) => void,
+	signal?: AbortSignal,
 ): Promise<T> {
 	const db = await openDb();
 	return new Promise((resolve, reject) => {
 		const tx = db.transaction(STORE_NAME, mode);
-		const request = run(tx.objectStore(STORE_NAME));
+		const store = tx.objectStore(STORE_NAME);
 		let result: T;
 		let requestError: DOMException | null = null;
+		let callbackError: unknown;
+		let callbackFailed = false;
+		const onAbort = () => {
+			try {
+				tx.abort();
+			} catch {
+				// The transaction may already be complete.
+			}
+		};
+		const close = () => {
+			signal?.removeEventListener('abort', onAbort);
+			db.close();
+		};
+		tx.oncomplete = () => {
+			close();
+			if (callbackFailed) reject(callbackError);
+			else if (requestError) reject(requestError);
+			else resolve(result);
+		};
+		tx.onerror = () => {
+			close();
+			reject(callbackFailed ? callbackError : (tx.error ?? requestError));
+		};
+		tx.onabort = () => {
+			close();
+			reject(
+				callbackFailed
+					? callbackError
+					: (tx.error ?? new Error('offline-image-transaction-aborted')),
+			);
+		};
+		if (signal) {
+			signal.addEventListener('abort', onAbort, { once: true });
+			if (signal.aborted) {
+				onAbort();
+				return;
+			}
+		}
+		let request: IDBRequest<T>;
+		try {
+			request = run(store);
+		} catch (error) {
+			callbackFailed = true;
+			callbackError = error;
+			onAbort();
+			return;
+		}
 		request.onsuccess = () => {
 			result = request.result;
+			try {
+				onSuccess?.(store, result, tx);
+			} catch (error) {
+				callbackFailed = true;
+				callbackError = error;
+				onAbort();
+			}
 		};
 		request.onerror = () => {
 			requestError = request.error;
 		};
-		tx.oncomplete = () => {
-			db.close();
-			if (requestError) reject(requestError);
-			else resolve(result);
-		};
-		tx.onerror = () => {
-			db.close();
-			reject(tx.error);
-		};
-		tx.onabort = () => {
-			db.close();
-			reject(tx.error ?? new Error('offline-image-transaction-aborted'));
-		};
 	});
+}
+
+function createUploadScope(inputSignal?: AbortSignal) {
+	const account = getLocalAccount();
+	const accountController = new AbortController();
+	const signal = inputSignal
+		? anySignal([accountController.signal, inputSignal])
+		: accountController.signal;
+	const storageWindow = typeof window === 'undefined' ? null : window;
+	const onStorage = () => {
+		if (getLocalAccount() !== account) accountController.abort();
+	};
+	storageWindow?.addEventListener('storage', onStorage);
+	return {
+		account,
+		signal,
+		isCurrent: () => !signal.aborted && getLocalAccount() === account,
+		dispose: () => storageWindow?.removeEventListener('storage', onStorage),
+	};
 }
 
 export async function clearPendingImages(
@@ -110,22 +172,27 @@ export async function clearPendingImages(
 	const isCurrent = () => !signal?.aborted && getLocalAccount() === expectedAccount;
 	if (!isCurrent()) return false;
 	try {
-		const keys = await withStore('readonly', (store) => store.getAllKeys());
+		const keys = await withStore('readonly', (store) => store.getAllKeys(), undefined, signal);
 		if (!isCurrent()) return false;
 		let stillCurrent = false;
-		await withStore('readwrite', (store) => {
-			stillCurrent = isCurrent();
-			if (stillCurrent) {
-				for (const key of keys) {
-					if (!isCurrent()) {
-						stillCurrent = false;
-						break;
+		await withStore(
+			'readwrite',
+			(store) => {
+				stillCurrent = isCurrent();
+				if (stillCurrent) {
+					for (const key of keys) {
+						if (!isCurrent()) {
+							stillCurrent = false;
+							break;
+						}
+						store.delete(key);
 					}
-					store.delete(key);
 				}
-			}
-			return store.count();
-		});
+				return store.count();
+			},
+			undefined,
+			signal,
+		);
 		return stillCurrent && isCurrent();
 	} catch {
 		return isCurrent();
@@ -137,25 +204,50 @@ export async function storePendingImage(input: {
 	shareCode: string;
 	memberId: string;
 	purpose: ImageUploadPurpose;
+	signal?: AbortSignal;
 }): Promise<string> {
-	const now = Date.now();
-	// Local IndexedDB key only: prefer UUID, but keep browsers without Web Crypto usable.
-	const suffix =
-		createIdempotencyKey() ?? `${now.toString(36)}-${Math.random().toString(36).slice(2)}`;
-	const id = `${input.shareCode}:${input.purpose}:${now}:${suffix}`;
-	const record: PendingImageRecord = {
-		id,
-		file: input.file,
-		name: input.file.name,
-		type: input.file.type,
-		size: input.file.size,
-		shareCode: input.shareCode,
-		memberId: input.memberId,
-		purpose: input.purpose,
-		createdAt: new Date(now).toISOString(),
-	};
-	await withStore('readwrite', (store) => store.put(record, id));
-	return createPendingImageToken(id);
+	const scope = createUploadScope(input.signal);
+	try {
+		if (!scope.isCurrent()) throw new DOMException('Upload cancelled.', 'AbortError');
+		const now = Date.now();
+		// Local IndexedDB key only: prefer UUID, but keep browsers without Web Crypto usable.
+		const suffix =
+			createIdempotencyKey() ?? `${now.toString(36)}-${Math.random().toString(36).slice(2)}`;
+		const id = `${input.shareCode}:${input.purpose}:${now}:${suffix}`;
+		const record: PendingImageRecord = {
+			id,
+			file: input.file,
+			name: input.file.name,
+			type: input.file.type,
+			size: input.file.size,
+			shareCode: input.shareCode,
+			memberId: input.memberId,
+			purpose: input.purpose,
+			createdAt: new Date(now).toISOString(),
+		};
+		let committed = false;
+		try {
+			await withStore(
+				'readwrite',
+				(store) => store.put(record, id),
+				(_store, _result, tx) => {
+					if (!scope.isCurrent()) tx.abort();
+				},
+				scope.signal,
+			);
+			committed = true;
+		} catch (error) {
+			if (!scope.isCurrent()) throw new DOMException('Upload cancelled.', 'AbortError');
+			throw error;
+		}
+		if (!scope.isCurrent()) {
+			if (committed) await withStore('readwrite', (store) => store.delete(id)).catch(() => {});
+			throw new DOMException('Upload cancelled.', 'AbortError');
+		}
+		return createPendingImageToken(id);
+	} finally {
+		scope.dispose();
+	}
 }
 
 export async function readPendingImage(
@@ -191,80 +283,136 @@ export async function signAndPut(input: {
 	memberId?: string;
 	signal?: AbortSignal | undefined;
 }): Promise<SignAndPutResult> {
-	// A stalled request must not block the uploader forever.
-	const withTimeout = (ms: number) =>
-		input.signal ? anySignal([input.signal, AbortSignal.timeout(ms)]) : AbortSignal.timeout(ms);
-	const account = getLocalAccount();
-	let sigRes: Response;
+	const scope = createUploadScope(input.signal);
+	const withTimeout = (ms: number) => anySignal([scope.signal, AbortSignal.timeout(ms)]);
 	try {
-		sigRes = await fetch('/api/upload/sign', {
-			method: 'POST',
-			headers: {
-				'content-type': 'application/json',
-				// The server checks it against the session so a switched member cannot sign for another.
-				...(input.memberId ? { [EXPECTED_MEMBER_ID_HEADER]: input.memberId } : {}),
-			},
-			signal: withTimeout(REQUEST_TIMEOUT_MS),
-			body: JSON.stringify({
-				shareCode: input.shareCode,
-				purpose: input.purpose,
-				mimeType: input.contentType,
-				fileSize: input.file.size,
-			}),
-		});
-	} catch {
-		return { ok: false, kind: 'sign', status: 0, code: '' };
-	}
-	noteSessionExpiry(sigRes, account);
-	if (!sigRes.ok) {
-		return { ok: false, kind: 'sign', status: sigRes.status, code: await readApiErrorCode(sigRes) };
-	}
-	let sig: SignResponse;
-	try {
-		sig = (await sigRes.json()) as SignResponse;
-	} catch {
-		return { ok: false, kind: 'sign', status: 0, code: '' };
-	}
-	try {
-		const uploadRes = await fetch(sig.presignedUrl, {
-			method: 'PUT',
-			body: input.file,
-			headers: { ...sig.uploadHeaders, 'Content-Type': input.contentType },
-			signal: withTimeout(UPLOAD_TIMEOUT_MS),
-		});
+		if (!scope.isCurrent()) return { ok: false, kind: 'sign', status: 0, code: '' };
+		let sigRes: Response;
+		try {
+			sigRes = await fetch('/api/upload/sign', {
+				method: 'POST',
+				headers: {
+					'content-type': 'application/json',
+					// The server checks it against the session so a switched member cannot sign for another.
+					...(input.memberId ? { [EXPECTED_MEMBER_ID_HEADER]: input.memberId } : {}),
+				},
+				signal: withTimeout(REQUEST_TIMEOUT_MS),
+				body: JSON.stringify({
+					shareCode: input.shareCode,
+					purpose: input.purpose,
+					mimeType: input.contentType,
+					fileSize: input.file.size,
+				}),
+			});
+		} catch {
+			return { ok: false, kind: 'sign', status: 0, code: '' };
+		}
+		if (!scope.isCurrent()) return { ok: false, kind: 'sign', status: 0, code: '' };
+		noteSessionExpiry(sigRes, scope.account);
+		if (!sigRes.ok) {
+			const code = await readApiErrorCode(sigRes);
+			if (!scope.isCurrent()) return { ok: false, kind: 'sign', status: 0, code: '' };
+			return { ok: false, kind: 'sign', status: sigRes.status, code };
+		}
+		let sig: SignResponse;
+		try {
+			sig = (await sigRes.json()) as SignResponse;
+		} catch {
+			return { ok: false, kind: 'sign', status: 0, code: '' };
+		}
+		if (!scope.isCurrent()) return { ok: false, kind: 'sign', status: 0, code: '' };
+		let uploadRes: Response;
+		try {
+			uploadRes = await fetch(sig.presignedUrl, {
+				method: 'PUT',
+				body: input.file,
+				headers: { ...sig.uploadHeaders, 'Content-Type': input.contentType },
+				signal: withTimeout(UPLOAD_TIMEOUT_MS),
+			});
+		} catch {
+			return { ok: false, kind: 'put', status: 0 };
+		}
+		if (!scope.isCurrent()) return { ok: false, kind: 'put', status: 0 };
 		if (!uploadRes.ok) return { ok: false, kind: 'put', status: uploadRes.status };
-	} catch {
-		return { ok: false, kind: 'put', status: 0 };
+		return { ok: true, publicUrl: sig.publicUrl };
+	} finally {
+		scope.dispose();
 	}
-	return { ok: true, publicUrl: sig.publicUrl };
 }
-
 export async function uploadPendingImageToken(
 	token: string,
 	memberId: string,
 	signal?: AbortSignal,
 ): Promise<string> {
-	const record = await readPendingImage(token, memberId);
-	if (!record) throw new PendingImageMissingError();
-	if (record.publicUrl) return record.publicUrl;
-	const result = await signAndPut({
-		shareCode: record.shareCode,
-		purpose: record.purpose,
-		file: record.file,
-		contentType: record.type,
-		memberId,
-		signal,
-	});
-	if (!result.ok) {
-		// The sync classifies these messages (offline-replay-rules, image-upload-errors).
-		if (result.status === 0) throw new Error(`${result.kind}-network-failed`);
-		if (result.kind === 'put') throw new Error(`upload-failed:${result.status}`);
-		throw new Error(
-			result.code ? `sign-failed:${result.status}:${result.code}` : `sign-failed:${result.status}`,
-		);
+	const scope = createUploadScope(signal);
+	try {
+		if (!scope.isCurrent()) throw new Error('sign-network-failed');
+		const record = await readPendingImage(token, memberId);
+		if (!scope.isCurrent()) throw new Error('sign-network-failed');
+		if (!record) throw new PendingImageMissingError();
+		if (record.publicUrl !== undefined) return record.publicUrl;
+		const result = await signAndPut({
+			shareCode: record.shareCode,
+			purpose: record.purpose,
+			file: record.file,
+			contentType: record.type,
+			memberId,
+			signal: scope.signal,
+		});
+		if (!scope.isCurrent()) {
+			throw new Error(
+				result.ok || result.kind === 'put' ? 'put-network-failed' : 'sign-network-failed',
+			);
+		}
+		if (!result.ok) {
+			// sync classifies messages (offline-replay-rules, image-upload-errors).
+			if (result.status === 0) throw new Error(`${result.kind}-network-failed`);
+			if (result.kind === 'put') throw new Error(`upload-failed:${result.status}`);
+			throw new Error(
+				result.code
+					? `sign-failed:${result.status}:${result.code}`
+					: `sign-failed:${result.status}`,
+			);
+		}
+
+		let missing = false;
+		let stale = false;
+		let existingUrl: string | undefined;
+		try {
+			await withStore(
+				'readwrite',
+				(store) => store.get(record.id) as IDBRequest<PendingImageRecord | undefined>,
+				(store, current, tx) => {
+					if (!scope.isCurrent()) {
+						stale = true;
+						tx.abort();
+						return;
+					}
+					if (!current || current.memberId !== memberId) {
+						missing = true;
+						return;
+					}
+					if (current.publicUrl !== undefined) {
+						existingUrl = current.publicUrl;
+						return;
+					}
+					if (!scope.isCurrent()) {
+						stale = true;
+						tx.abort();
+						return;
+					}
+					store.put({ ...current, publicUrl: result.publicUrl }, current.id);
+				},
+				scope.signal,
+			);
+		} catch (error) {
+			if (!scope.isCurrent() || stale) throw new Error('put-network-failed');
+			throw error;
+		}
+		if (!scope.isCurrent() || stale) throw new Error('put-network-failed');
+		if (missing) throw new PendingImageMissingError();
+		return existingUrl ?? result.publicUrl;
+	} finally {
+		scope.dispose();
 	}
-	await withStore('readwrite', (store) =>
-		store.put({ ...record, publicUrl: result.publicUrl }, record.id),
-	);
-	return result.publicUrl;
 }

@@ -172,6 +172,12 @@ export async function makeQueueModule({
 		addEventListener(type: string, listener: (event: Action) => void) {
 			listeners.set(type, [...(listeners.get(type) ?? []), listener]);
 		},
+		removeEventListener(type: string, listener: (event: Action) => void) {
+			listeners.set(
+				type,
+				(listeners.get(type) ?? []).filter((entry) => entry !== listener),
+			);
+		},
 		dispatchEvent(event: Action) {
 			window.dispatched.push(event);
 			for (const listener of listeners.get(event.type) ?? []) listener(event);
