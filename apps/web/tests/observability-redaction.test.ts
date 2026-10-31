@@ -404,6 +404,23 @@ test('a route path that is not a plain template is not logged', () => {
 	}
 });
 
+test('a route template is kept up to 160 characters and rejected beyond that', () => {
+	const calls: unknown[][] = [];
+	const original = console.error;
+	console.error = (...args: unknown[]) => calls.push(args);
+	try {
+		const kept = `/${'a'.repeat(159)}`;
+		captureException(new Error('x'), { routePath: kept });
+		captureException(new Error('x'), { routePath: `${kept}a` });
+
+		assert.equal(kept.length, 160);
+		assert.ok(JSON.stringify(calls[0]).includes(kept));
+		assert.equal(JSON.stringify(calls[1]).includes('routePath'), false);
+	} finally {
+		console.error = original;
+	}
+});
+
 test('idempotency cache failures never log a push endpoint or provider error', async () => {
 	const secret = 'privatePushEndpointToken123';
 	const calls: string[] = [];
