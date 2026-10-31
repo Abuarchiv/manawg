@@ -50,6 +50,9 @@ session refresh against real Supabase and real PostgreSQL instead of fixtures.
     needs `VAPID_*` set at build time. FCM sometimes answers 410 for a subscription for several
     seconds after creating it, or accepts a message and delivers it to headless Chrome late; a
     single failed run is therefore no app bug, the server log tells the two apart.
+13. `statement-mail.mjs` books an expense in the previous month, runs the monthly statement cron
+    with `force=1`, checks the debtor's mail in Mailpit (amount owed, statement link) and the
+    one-click unsubscribe from its `List-Unsubscribe` header, including a tampered token.
 
 The scripts expect the default local keys of `supabase start`. The addresses live in `env.mjs`;
 override them with `REAL_STACK_APP_URL` (default `http://localhost:3140`), `REAL_STACK_SUPABASE_URL`
