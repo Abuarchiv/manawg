@@ -1,3 +1,4 @@
+import { isSessionExpired } from '@/core/http/error-codes';
 import type { Message } from '@/shared/i18n/message';
 
 export const MISSING_PENDING_IMAGE: Message = { key: 'shell.upload.missingPending' };
@@ -16,6 +17,7 @@ export function uploadSignErrorMessage(status: number, error: string): Message {
 	if (error === 'invalid_share_code') {
 		return failedBecause({ key: 'common.errors.invalidShareCode' });
 	}
+	if (isSessionExpired(error)) return failedBecause({ key: 'common.errors.sessionExpired' });
 	if (status === 401 || error === 'not_a_member') {
 		return failedBecause({ key: 'common.errors.authInvalidated' });
 	}
