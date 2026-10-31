@@ -159,7 +159,11 @@ export const InventoryItemRow = memo(function InventoryItemRow({
 								{item.name}
 							</span>
 						</ItemTitle>
-						<ItemDescription className="line-clamp-none tabular-nums">
+						<ItemDescription
+							aria-live="polite"
+							aria-atomic="true"
+							className="line-clamp-none tabular-nums"
+						>
 							{t('meta', {
 								quantity: quantityText(quantity, item.unit),
 								threshold: formatDecimal(item.threshold, locale),

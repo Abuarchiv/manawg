@@ -474,4 +474,55 @@ test.describe('inventory restock retry', () => {
 		// A housemate's newer threshold or unit is not reset by values the form only displayed.
 		await expect.poll(() => bodies).toEqual([{ name: 'Spüli' }]);
 	});
+
+	test('a restock tap announces the new quantity in the row and in the quick restock sheet', async ({
+		page,
+	}) => {
+		const item: InventoryItemDto = {
+			id: '11111111-1111-4111-8111-111111111111',
+			wgId: FIXTURE_WG.id,
+			name: 'Reis',
+			quantity: 3,
+			unit: 'pack',
+			threshold: 1,
+			category: 'kitchen',
+			lastDecrementedAt: null,
+			decrementCount30d: 2,
+			createdAt: '2026-09-20T10:00:00.000Z',
+			updatedAt: '2026-09-23T10:00:00.000Z',
+		};
+		let quantity = item.quantity;
+
+		await setupMember(page);
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/inventory`, async (route) => {
+			if (route.request().method() !== 'GET') return route.continue();
+			const current = { ...item, quantity };
+			await route.fulfill({
+				json: { items: [current], grouped: groupItemsByCategory([current]) },
+			});
+		});
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/inventory/${item.id}`, async (route) => {
+			if (route.request().method() !== 'PATCH') return route.continue();
+			quantity += 1;
+			await route.fulfill({ json: { item: { ...item, quantity, decrementCount30d: undefined } } });
+		});
+
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/supplies`);
+		await dismissOnboarding(page);
+
+		// The regions exist before the tap, so only the text change is announced.
+		const rowRegion = page.locator('[data-inventory-row] [aria-live="polite"]');
+		await expect(rowRegion).toContainText('3 Packungen');
+		await page.getByRole('button', { name: 'Reis um eins erhöhen' }).click();
+		await expect(rowRegion).toContainText('4 Packungen');
+
+		await page.getByRole('button', { name: 'Schnell nachfüllen' }).click();
+		const drawer = page
+			.locator('[data-slot="drawer-popup"]')
+			.filter({ hasText: 'Schnell nachfüllen' });
+		const sheetRegion = drawer.locator('[aria-live="polite"]');
+		await expect(sheetRegion).toContainText('4 Packungen');
+		await drawer.getByRole('button', { name: 'Reis um eins erhöhen' }).click();
+		await expect(sheetRegion).toContainText('5 Packungen');
+	});
 });
