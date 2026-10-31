@@ -15,9 +15,8 @@ registerHooks({
 	},
 });
 
-const { buildChoreFairness, chooseNextAvailableMember, predictNextAssigneeId } = await import(
-	'../src/features/chores/chore-fairness.ts'
-);
+const { buildChoreFairness, chooseNextAvailableMember, predictNextAssigneeId, predictNextDueAt } =
+	await import('../src/features/chores/chore-fairness.ts');
 const { computeNextDueAt } = await import('../src/features/chores/chore-recurrence.ts');
 const { getAbsentMemberIds } = await import('../src/features/chores/absence.ts');
 const { formatShortDateRange } = await import('../src/core/utils/time.ts');
@@ -240,6 +239,31 @@ test('next-assignee prediction uses the month-end anchor like the server', () =>
 		assert.equal(predictNextAssigneeId({ ...chore, anchorAt }, [chore], members, absences), 'C');
 		const withoutAnchor = predictNextAssigneeId(chore, [chore], members, absences);
 		assert.ok(members.some((member) => member.id === withoutAnchor));
+	} finally {
+		mock.timers.reset();
+	}
+});
+
+test('the optimistic next due date keeps the month-end anchor like the complete route', () => {
+	mock.timers.enable({ apis: ['Date'], now: Date.parse('2026-02-27T12:00:00.000Z') });
+	try {
+		const chore = {
+			nextDueAt: '2026-02-28T11:00:00.000Z',
+			anchorAt: '2026-01-31T11:00:00.000Z',
+			intervalDays: 1,
+			recurrenceType: 'months' as const,
+			assignedMemberId: 'A',
+		};
+		const serverDue = computeNextDueAt(
+			new Date(chore.nextDueAt),
+			1,
+			new Date(),
+			'months',
+			new Date(chore.anchorAt),
+		);
+		assert.equal(serverDue.toISOString().slice(0, 10), '2026-03-31');
+		assert.equal(predictNextDueAt(chore)?.getTime(), serverDue.getTime());
+		assert.equal(predictNextDueAt({ ...chore, nextDueAt: 'not a date' }), null);
 	} finally {
 		mock.timers.reset();
 	}
