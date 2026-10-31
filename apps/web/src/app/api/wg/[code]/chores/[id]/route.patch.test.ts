@@ -10,8 +10,10 @@ interface Calls {
 	set: Record<string, unknown>[];
 	resolved: string[][];
 	dispatched: Record<string, unknown>[];
+	deletes: number;
 }
 let calls: Calls;
+let isAdmin = true;
 let current: { assignedMemberId: string | null; nextDueAt: Date };
 // When false the guarded update matches no row, like a chore saved by someone else meanwhile.
 let updateMatches = true;
@@ -95,9 +97,10 @@ const db = {
 			};
 		},
 	}),
-	delete: () => ({
-		where: () => ({ returning: async () => [{ id: choreId }] }),
-	}),
+	delete: () => {
+		calls.deletes++;
+		return { where: () => ({ returning: async () => [{ id: choreId }] }) };
+	},
 };
 
 mock.module('@/core/audit', { namedExports: { recordAuditEvent: async () => undefined } });
@@ -107,7 +110,7 @@ mock.module('@/core/db', {
 mock.module('@/core/db/transaction', {
 	namedExports: { withTransaction: async (fn: (tx: typeof db) => Promise<unknown>) => fn(db) },
 });
-mock.module('@/core/guards/admin', { namedExports: { isWgAdmin: async () => true } });
+mock.module('@/core/guards/admin', { namedExports: { isWgAdmin: async () => isAdmin } });
 mock.module('@/core/guards/api-auth', {
 	namedExports: {
 		UUID_PATTERN: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
@@ -161,7 +164,8 @@ const { PATCH, DELETE } = await import('./route');
 const inHours = (hours: number) => new Date(Date.now() + hours * 3_600_000);
 
 function setup(assignedMemberId: string | null = actorId, nextDueAt = inHours(2)) {
-	calls = { set: [], resolved: [], dispatched: [] };
+	calls = { set: [], resolved: [], dispatched: [], deletes: 0 };
+	isAdmin = true;
 	current = { assignedMemberId, nextDueAt };
 	updateMatches = true;
 	storedVersion = undefined;
@@ -264,6 +268,19 @@ test('DELETE closes the swap request of the removed chore', async () => {
 	);
 	assert.equal(response.status, 200);
 	assert.deepEqual(calls.resolved, [[wgId, choreId, actorId]]);
+});
+
+test('a non-admin cannot delete a chore from the plan', async () => {
+	setup();
+	isAdmin = false;
+	const response = await DELETE(
+		new Request('https://example.invalid/x', { method: 'DELETE' }) as never,
+		{ params: Promise.resolve({ code: 'MTE8PZAT', id: choreId }) } as never,
+	);
+	assert.equal(response.status, 403);
+	assert.deepEqual(await response.json(), { error: 'admin_required', code: 'admin_required' });
+	assert.equal(calls.deletes, 0);
+	assert.equal(calls.resolved.length, 0);
 });
 
 test('a retried save whose answer got lost finds its values in place and succeeds', async () => {

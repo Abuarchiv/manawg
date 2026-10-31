@@ -11,7 +11,7 @@ interface Row {
 }
 type Predicate = [string, ...unknown[]];
 
-const state = { rows: [] as Row[] };
+const state = { rows: [] as Row[], isAdmin: true, deletes: 0 };
 let rateLimit: Record<string, unknown> = { success: true };
 
 const shoppingItems = {
@@ -56,6 +56,10 @@ const db = {
 			};
 		},
 	}),
+	delete: () => {
+		state.deletes++;
+		return { where: () => ({ returning: async () => [{ id: 'bought-1', name: 'Milk' }] }) };
+	},
 };
 
 mock.module('@/core/audit', { namedExports: { recordAuditEvent: async () => undefined } });
@@ -68,6 +72,7 @@ mock.module('@/core/db/transaction', {
 		withTransaction: async () => assert.fail('GET opens no transaction'),
 	},
 });
+mock.module('@/core/guards/admin', { namedExports: { isWgAdmin: async () => state.isAdmin } });
 mock.module('@/core/guards/require-wg-member', {
 	namedExports: {
 		requireWgMember: async () => ({ ok: true, wg: { id: wgId }, member: { memberId: 'm' } }),
@@ -102,7 +107,7 @@ mock.module('drizzle-orm', {
 	},
 });
 
-const { GET, POST } = await import('./route');
+const { DELETE, GET, POST } = await import('./route');
 
 test('GET keeps every open item even when the bought history exceeds the list limit', async () => {
 	const base = Date.parse('2026-01-01T00:00:00.000Z');
@@ -173,4 +178,30 @@ test('POST answers 429 when the member exceeds the limit', async () => {
 	const response = await create();
 	assert.equal(response.status, 429);
 	assert.equal(((await response.json()) as { error: string }).error, 'too_many_requests');
+});
+
+const clearBought = () =>
+	DELETE(
+		new Request('https://example.invalid/api/wg/MTE8PZAT/shopping', { method: 'DELETE' }) as never,
+		{ params: Promise.resolve({ code: 'MTE8PZAT' }) } as never,
+	);
+
+test('a non-admin cannot clear bought items', async () => {
+	rateLimit = { success: true };
+	state.isAdmin = false;
+	state.deletes = 0;
+	const response = await clearBought();
+	assert.equal(response.status, 403);
+	assert.equal(((await response.json()) as { error: string }).error, 'not_admin');
+	assert.equal(state.deletes, 0);
+});
+
+test('an admin clears the bought items', async () => {
+	rateLimit = { success: true };
+	state.isAdmin = true;
+	state.deletes = 0;
+	const response = await clearBought();
+	assert.equal(response.status, 200);
+	assert.deepEqual(await response.json(), { deleted: 1 });
+	assert.equal(state.deletes, 1);
 });
