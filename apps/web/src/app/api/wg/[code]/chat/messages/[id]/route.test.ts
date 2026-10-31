@@ -29,6 +29,9 @@ const wgMembers = pgTable('wg_members', {
 
 const annaId = '55555555-5555-4555-8555-555555555555';
 const state = {
+	senderMemberId: memberId,
+	callerIsAdmin: false,
+	updates: 0,
 	updateWhere: '',
 	updateRows: [] as unknown[],
 	audits: 0,
@@ -37,13 +40,23 @@ const state = {
 };
 
 const db = {
-	select: (projection?: unknown) => (projection ? db.selectMembers() : db.selectMessage()),
+	select: (projection?: Record<string, unknown>) =>
+		projection && !('senderMemberId' in projection) ? db.selectMembers() : db.selectMessage(),
 	selectMessage: () => ({
 		from: () => ({
 			where: () => ({
-				limit: async () => [
-					{ id, senderMemberId: memberId, kind: 'text', deletedAt: null, createdAt: new Date() },
-				],
+				limit: () => {
+					const rows = [
+						{
+							id,
+							senderMemberId: state.senderMemberId,
+							kind: 'text',
+							deletedAt: null,
+							createdAt: new Date(),
+						},
+					];
+					return Object.assign(Promise.resolve(rows), { for: async () => rows });
+				},
 			}),
 		}),
 	}),
@@ -69,14 +82,17 @@ const db = {
 		}),
 	}),
 	update: () => ({
-		set: () => ({
-			where: (condition: never) => ({
-				returning: async () => {
-					state.updateWhere = new PgDialect().sqlToQuery(condition).sql;
-					return state.updateRows;
-				},
-			}),
-		}),
+		set: () => {
+			state.updates += 1;
+			return {
+				where: (condition: never) => ({
+					returning: async () => {
+						state.updateWhere = new PgDialect().sqlToQuery(condition).sql;
+						return state.updateRows;
+					},
+				}),
+			};
+		},
 	}),
 };
 
@@ -91,7 +107,14 @@ mock.module('@/core/db/transaction', {
 		withTransaction: async (work: (tx: unknown) => unknown) => work(db),
 	},
 });
-mock.module('@/core/guards/admin', { namedExports: { requireOwnerOrAdmin: async () => null } });
+mock.module('@/core/guards/admin', {
+	namedExports: {
+		requireOwnerOrAdmin: async (_wg: string, member: { memberId: string }, owner: string) =>
+			state.callerIsAdmin || owner === member.memberId
+				? null
+				: Response.json({ error: 'not_owner' }, { status: 403 }),
+	},
+});
 mock.module('@/core/guards/api-auth', { namedExports: { UUID_PATTERN: /^[0-9a-f-]{36}$/i } });
 mock.module('@/core/guards/require-wg-member', {
 	namedExports: {
@@ -114,7 +137,7 @@ mock.module('@/core/rate-limit', {
 	namedExports: { wgWriteLimiter: {}, checkRateLimit: async () => ({ success: true }) },
 });
 
-const { PATCH } = await import('./route');
+const { DELETE, PATCH } = await import('./route');
 
 function patch(body = 'neuer Text') {
 	return PATCH(
@@ -123,6 +146,13 @@ function patch(body = 'neuer Text') {
 			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify({ body }),
 		}) as never,
+		{ params: Promise.resolve({ code: 'MTE8PZAT', id }) } as never,
+	);
+}
+
+function remove() {
+	return DELETE(
+		new Request('https://example.invalid', { method: 'DELETE' }) as never,
 		{ params: Promise.resolve({ code: 'MTE8PZAT', id }) } as never,
 	);
 }
@@ -161,4 +191,35 @@ test('an edit re-derives the mention rows from the new text in the same transact
 	assert.equal((await patch('Hi')).status, 200);
 	assert.deepEqual(state.deletedMentionTables, [wgChatMentions]);
 	assert.deepEqual(state.insertedMentions, []);
+});
+
+test("a non-owner cannot delete another member's chat message", async () => {
+	state.senderMemberId = annaId;
+	state.callerIsAdmin = false;
+	state.updates = 0;
+	state.audits = 0;
+	const response = await remove();
+	assert.equal(response.status, 403);
+	assert.equal(state.updates, 0);
+	assert.equal(state.audits, 0);
+});
+
+test('the author deletes the own chat message', async () => {
+	state.senderMemberId = memberId;
+	state.callerIsAdmin = false;
+	state.updates = 0;
+	state.updateRows = [{ id }];
+	const response = await remove();
+	assert.equal(response.status, 200);
+	assert.equal(state.updates, 1);
+});
+
+test("an admin deletes another member's chat message", async () => {
+	state.senderMemberId = annaId;
+	state.callerIsAdmin = true;
+	state.updates = 0;
+	state.updateRows = [{ id }];
+	const response = await remove();
+	assert.equal(response.status, 200);
+	assert.equal(state.updates, 1);
 });
