@@ -8,6 +8,8 @@ export interface Chore {
 	intervalDays: number;
 	recurrenceType: RecurrenceType;
 	nextDueAt: string;
+	/** Original month-end day of a monthly cadence; the server advances due dates from it. */
+	anchorAt?: string;
 	assignedMemberId: string | null;
 	lastCompletedAt: string | null;
 	lastCompletedByName: string | null;
