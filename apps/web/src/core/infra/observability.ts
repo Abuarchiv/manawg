@@ -49,6 +49,9 @@ function describeThrown(err: unknown): string {
 	return `thrown ${typeof err}`;
 }
 
+// A Next.js route template such as `/wg/[code]/expenses`; concrete URLs fail the charset.
+const ROUTE_TEMPLATE = /^\/[A-Za-z0-9_\-./[\]()@]{0,160}$/;
+
 function safeContext(context?: Record<string, unknown>): Record<string, string> {
 	const safe: Record<string, string> = {};
 	if (!context) return safe;
@@ -57,6 +60,10 @@ function safeContext(context?: Record<string, unknown>): Record<string, string> 
 		if (typeof value === 'string' && allowedValues.has(value)) {
 			safe[key] = value;
 		}
+	}
+	const routePath = context.routePath;
+	if (typeof routePath === 'string' && ROUTE_TEMPLATE.test(routePath)) {
+		safe.routePath = routePath;
 	}
 	return safe;
 }

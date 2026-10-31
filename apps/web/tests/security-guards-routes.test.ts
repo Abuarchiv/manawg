@@ -6,7 +6,12 @@ import { captureException, logApiError } from '../src/core/infra/observability.t
 // Trust-boundary contracts of guards and API routes: redacted error reporting and early rejection in the health and
 // upload-sign routes.
 
-const routeState = { databaseCalls: 0, authCalls: 0, limiterUnavailable: true };
+const routeState = {
+	databaseCalls: 0,
+	authCalls: 0,
+	limiterUnavailable: true,
+	databaseFails: false,
+};
 
 mock.module('@/core/infra/env', {
 	namedExports: {
@@ -36,6 +41,7 @@ mock.module('@/core/db', {
 		db: {
 			execute: async () => {
 				routeState.databaseCalls += 1;
+				if (routeState.databaseFails) throw new Error('connect ECONNREFUSED 10.0.0.1:5432');
 			},
 			query: {
 				wgs: {
@@ -106,6 +112,25 @@ describe('api infra security contracts', () => {
 		assert.equal((await response.json()).error, 'rate_limiter_unavailable');
 		assert.notEqual(response.headers.get('retry-after'), null);
 		assert.equal(routeState.databaseCalls, 0);
+	});
+
+	test('health logs a failed database probe without exposing it in the response', async () => {
+		routeState.limiterUnavailable = false;
+		routeState.databaseFails = true;
+		const calls: unknown[][] = [];
+		const original = console.error;
+		console.error = (...args: unknown[]) => calls.push(args);
+		try {
+			const response = await health.GET(new Request('https://example.invalid/api/health') as never);
+			assert.equal(response.status, 503);
+			assert.equal((await response.json()).database, 'unreachable');
+			assert.equal(calls.length, 1);
+			assert.equal(calls[0]?.[0], '[health] database probe failed');
+			assert.ok(!inspect(calls).includes('10.0.0.1'));
+		} finally {
+			console.error = original;
+			routeState.databaseFails = false;
+		}
 	});
 
 	test('upload-sign rejects an oversized unauthenticated JSON body before auth or database work', async () => {

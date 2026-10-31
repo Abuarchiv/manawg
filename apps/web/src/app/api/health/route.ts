@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { rateLimitResponse } from '@/core/http/api-errors';
 import { checkEnv, runtimeEnv } from '@/core/infra/env';
+import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, clientIpKey, healthLimiter } from '@/core/rate-limit';
 
 /**
@@ -35,8 +36,9 @@ async function probeDatabase(): Promise<ProbeStatus> {
 			),
 		]);
 		return 'ok';
-	} catch {
+	} catch (err) {
 		// The reason belongs in the logs, not in an unauthenticated response.
+		logApiError('[health] database probe failed', err);
 		return 'unreachable';
 	}
 }
