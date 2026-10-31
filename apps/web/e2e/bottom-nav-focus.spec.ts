@@ -17,9 +17,6 @@ test.describe('bottom navigation focus', () => {
 	test('draws a focus outline on the active tab', async ({ page }) => {
 		const { shareCode } = FIXTURE_WG;
 		await setupMember(page);
-		await page.route(`**/api/wg/${shareCode}/dashboard`, (route) =>
-			route.fulfill({ json: { openShoppingCount: 0, dueChores: [], dueRecurringExpenses: [] } }),
-		);
 		await mockUnreadCount(page, `/api/wg/${shareCode}`);
 
 		await navigateToFeature(page, `/wg/${shareCode}`);
