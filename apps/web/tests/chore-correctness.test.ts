@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { registerHooks } from 'node:module';
 import { resolve } from 'node:path';
-import test from 'node:test';
+import test, { mock } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const appRoot = fileURLToPath(new URL('..', import.meta.url));
@@ -15,9 +15,10 @@ registerHooks({
 	},
 });
 
-const { buildChoreFairness, chooseNextAvailableMember } = await import(
+const { buildChoreFairness, chooseNextAvailableMember, predictNextAssigneeId } = await import(
 	'../src/features/chores/chore-fairness.ts'
 );
+const { computeNextDueAt } = await import('../src/features/chores/chore-recurrence.ts');
 const { getAbsentMemberIds } = await import('../src/features/chores/absence.ts');
 const { formatShortDateRange } = await import('../src/core/utils/time.ts');
 const { buildChorePatchUpdate } = await import('../src/features/chores/chore-patch.ts');
@@ -197,4 +198,49 @@ test('absence dates use Berlin days across daylight saving and travel', () => {
 		false,
 	);
 	assert.equal(formatShortDateRange(startDate, endDate), '29.03.');
+});
+
+test('next-assignee prediction uses the month-end anchor like the server', () => {
+	mock.timers.enable({ apis: ['Date'], now: Date.parse('2026-02-27T12:00:00.000Z') });
+	try {
+		const members = [
+			{ id: 'A', name: 'A' },
+			{ id: 'B', name: 'B' },
+			{ id: 'C', name: 'C' },
+		];
+		const absences = [
+			{
+				memberId: 'B',
+				startDate: '2026-03-29T00:00:00+01:00',
+				endDate: '2026-03-31T23:59:59+02:00',
+			},
+		];
+		const chore = {
+			nextDueAt: '2026-02-28T11:00:00.000Z',
+			intervalDays: 1,
+			recurrenceType: 'months' as const,
+			assignedMemberId: 'A',
+			openGapCountForAssignee: 0,
+		};
+		const anchorAt = '2026-01-31T11:00:00.000Z';
+		const serverDue = computeNextDueAt(
+			new Date(chore.nextDueAt),
+			1,
+			new Date(),
+			'months',
+			new Date(anchorAt),
+		);
+		const expected = chooseNextAvailableMember({
+			members,
+			currentMemberId: 'A',
+			absentMemberIds: getAbsentMemberIds(absences, serverDue.getTime()),
+			chores: [chore],
+		});
+		assert.equal(expected, 'C');
+		assert.equal(predictNextAssigneeId({ ...chore, anchorAt }, [chore], members, absences), 'C');
+		const withoutAnchor = predictNextAssigneeId(chore, [chore], members, absences);
+		assert.ok(members.some((member) => member.id === withoutAnchor));
+	} finally {
+		mock.timers.reset();
+	}
 });
