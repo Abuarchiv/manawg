@@ -301,7 +301,7 @@ export default {
 			inventory: 'Vorräte',
 			absences: 'Abwesenheiten',
 			announcements: 'Pinnwand',
-			announcementComments: 'Pinnwand-Kommentare',
+			announcementComments: 'Pinnwand-Antworten',
 			events: 'Termine',
 			chatMessages: 'Chat',
 			auditEvents: 'WG-Änderungen',
