@@ -134,6 +134,61 @@ test.describe('shopping swipe pointer capture', () => {
 });
 
 test.describe('household list UI', () => {
+	test('retries a committed shopping edit after its response is lost with the same key', async ({
+		page,
+	}) => {
+		skipUnlessFixtures();
+		const { shareCode, memberId } = FIXTURE_WG;
+		let item = {
+			id: 'shopping-edit-retry',
+			name: 'Milch',
+			quantity: '1 Packung',
+			addedByMemberId: memberId,
+			boughtAt: null,
+			boughtByMemberId: null,
+			createdAt: '2026-10-01T10:00:00.000Z',
+			updatedAt: '2026-10-01T10:00:00.000Z',
+		};
+		const keys: string[] = [];
+		let committedKey: string | null = null;
+		await page.route(`**/api/wg/${shareCode}/shopping`, (route) =>
+			route.fulfill({ json: { items: [item] } }),
+		);
+		await page.route(`**/api/wg/${shareCode}/shopping/${item.id}`, (route) => {
+			const key = route.request().headers()['idempotency-key'] ?? '';
+			keys.push(key);
+			if (key === committedKey) return route.fulfill({ json: { item } });
+			const body = route.request().postDataJSON();
+			if (body.expectedUpdatedAt !== item.updatedAt)
+				return route.fulfill({ status: 409, json: { error: 'shopping_item_changed' } });
+			item = {
+				...item,
+				name: body.name,
+				quantity: body.quantity,
+				updatedAt: '2026-10-01T11:00:00.000Z',
+			};
+			committedKey = key;
+			return route.abort('connectionreset');
+		});
+		await setupMember(page);
+		await navigateToFeature(page, `/wg/${shareCode}/shopping`);
+		await dismissOnboarding(page);
+		await page.getByRole('button', { name: 'Artikelaktionen: Milch' }).click();
+		await page.getByRole('button', { name: 'Bearbeiten', exact: true }).click();
+		const form = page.getByRole('dialog').locator('form');
+		await form.getByLabel('Name', { exact: true }).fill('Hafermilch');
+		const save = form.getByRole('button', { name: 'Speichern', exact: true });
+		await save.click();
+		await expect(form.getByRole('alert')).toBeVisible();
+		await expect(save).toBeEnabled();
+		await save.click();
+		await expect.poll(() => keys.length).toBe(2);
+		expect(keys[0]).not.toBe('');
+		expect(keys[1]).toBe(keys[0]);
+		await expect(page.getByRole('dialog')).toBeHidden();
+		await expect(page.getByRole('button', { name: 'Artikelaktionen: Hafermilch' })).toBeVisible();
+	});
+
 	test('locks shopping edit fields while saving and preserves them for a retry after failure', async ({
 		page,
 	}) => {
