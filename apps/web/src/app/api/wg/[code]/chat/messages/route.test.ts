@@ -56,6 +56,7 @@ const state = {
 	readMarkerQueries: 0,
 	insertedCreatedAt: undefined as unknown,
 	senderActive: true,
+	pageLimit: 0,
 };
 
 function reset(): void {
@@ -77,6 +78,7 @@ function reset(): void {
 	state.readMarkerRows = [];
 	state.readMarkerQueries = 0;
 	state.senderActive = true;
+	state.pageLimit = 0;
 }
 
 let prior = Promise.resolve();
@@ -94,7 +96,16 @@ const db = {
 							}),
 						}),
 					}
-				: { where: () => ({ orderBy: () => ({ limit: async () => [] }) }) },
+				: {
+						where: () => ({
+							orderBy: () => ({
+								limit: async (n: number) => {
+									state.pageLimit = n;
+									return [];
+								},
+							}),
+						}),
+					},
 	}),
 	delete: () => ({
 		where: (condition: never) => ({
@@ -286,6 +297,7 @@ mock.module('@/core/rate-limit', {
 	namedExports: { chatMessageLimiter: {}, checkRateLimit: async () => ({ success: true }) },
 });
 
+process.env.CHAT_MESSAGES_PAGE_MAX = '30';
 const { GET, POST } = await import('./route');
 
 function harness() {
@@ -411,4 +423,13 @@ test('GET returns the read marker only when the bootstrap asks for it', async ()
 	});
 	state.readMarkerRows = [];
 	assert.equal((await get('includeReadMarker=1')).readMarker, null);
+});
+
+test('a page max below the client page size still serves a full client page', async () => {
+	reset();
+	await GET(
+		new Request('https://example.invalid/?limit=50') as never,
+		{ params: Promise.resolve({ code: 'MTE8PZAT' }) } as never,
+	);
+	assert.equal(state.pageLimit, 50);
 });
