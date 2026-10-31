@@ -10,6 +10,7 @@ import {
 	type OfflineActionType,
 	serializeOfflineAction,
 	withoutQueuedEntry,
+	withQueuedExpenseUpdate,
 } from './offline-queue';
 import {
 	OFFLINE_REPLAY_CLOCK_SKEW_MS,
@@ -382,10 +383,17 @@ export async function enqueueOfflineAction(action: OfflineAction): Promise<numbe
 	// Tag the owner here, once: the account recorded when this tab loaded its member.
 	const authUserId = action.authUserId ?? getLocalAccount();
 	const owned = authUserId ? { ...action, authUserId } : action;
+	let replaced: OfflineAction | undefined;
 	const saved = await updateOfflineQueue((actions) => {
-		const next = [...actions, owned];
+		const next = withQueuedExpenseUpdate(actions, owned);
 		count = next.length;
+		replaced = actions.find((entry) => !next.includes(entry));
 		return next;
 	});
+	// A replaced update's pending photo is unreferenced once the new one points elsewhere.
+	const token = replaced?.payload.imageUrl;
+	if (saved && typeof token === 'string' && token !== owned.payload.imageUrl) {
+		await removePendingImage(token, owned.memberId).catch(() => undefined);
+	}
 	return saved ? count : 0;
 }
