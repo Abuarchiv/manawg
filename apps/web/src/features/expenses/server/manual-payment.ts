@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, eq, inArray, isNull } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 import { auditValues } from '@/core/audit-values';
 import { auditEvents, expensePayments, wgMembers } from '@/core/db';
@@ -83,18 +83,6 @@ export async function recordCashPayment(
 	if (!pairIsInWg(snapshot, input.fromMemberId, input.toMemberId)) {
 		return rejected('member_not_in_wg');
 	}
-	// Both sides must still live in the WG; a moved-out member's debt is settled by other means.
-	const activePair = await tx
-		.select({ id: wgMembers.id })
-		.from(wgMembers)
-		.where(
-			and(
-				eq(wgMembers.wgId, wgId),
-				inArray(wgMembers.id, [input.fromMemberId, input.toMemberId]),
-				isNull(wgMembers.deactivatedAt),
-			),
-		);
-	if (activePair.length !== 2) return rejected('member_not_in_wg');
 
 	const preview = selectSettlementScope(
 		snapshot.expenses,
