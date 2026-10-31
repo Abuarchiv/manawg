@@ -80,6 +80,17 @@ test.describe('wg cached fetch', () => {
 				await navigateToFeature(page, `/wg/${SHARE_CODE}/settings`);
 				const name = page.getByLabel('Name eurer WG');
 				await expect(name).toBeVisible();
+				await page.evaluate(() => {
+					const originalFetch = window.fetch;
+					window.fetch = (input, init) => {
+						if (String(input).endsWith('/announcements')) {
+							init?.signal?.addEventListener('abort', () => {
+								sessionStorage.setItem('test:announcement-aborted', '1');
+							});
+						}
+						return originalFetch(input, init);
+					};
+				});
 				await page.evaluate((wg) => {
 					localStorage.setItem(
 						'manawg:offline-actions',
@@ -102,14 +113,10 @@ test.describe('wg cached fetch', () => {
 				try {
 					if (leaveWg) {
 						await page.getByRole('tab', { name: 'Zugang', exact: true }).click();
-						const aborted = page.waitForEvent(
-							'requestfailed',
-							(request) =>
-								request.method() === 'POST' &&
-								new URL(request.url()).pathname.endsWith('/announcements'),
-						);
 						await page.locator('a[href="/login"]:visible').click();
-						await aborted;
+						await expect
+							.poll(() => page.evaluate(() => sessionStorage.getItem('test:announcement-aborted')))
+							.toBe('1');
 						await expect(page).toHaveURL(/\/login$/);
 					} else {
 						const readsBeforeRefresh = memberReads;
