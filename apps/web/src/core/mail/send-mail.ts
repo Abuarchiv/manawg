@@ -83,22 +83,23 @@ export async function sendMail(
 	// Deferred (quota) and failed rows stay claimable for a later attempt. A timed-out
 	// request may still have been delivered; such rows are marked and never retried.
 	const unconfirmed = outcome?.kind === 'failed' && outcome.unconfirmed === true;
+	const error =
+		outcome?.kind === 'failed'
+			? unconfirmed
+				? 'unconfirmed_timeout'
+				: outcome.error
+			: outcome?.kind === 'deferred'
+				? 'provider_deferred'
+				: 'no_outcome';
 	await db
 		.update(mailLog)
-		.set({
-			status: unconfirmed ? 'sent' : 'failed',
-			error:
-				outcome?.kind === 'failed'
-					? unconfirmed
-						? 'unconfirmed_timeout'
-						: outcome.error
-					: outcome?.kind === 'deferred'
-						? 'provider_deferred'
-						: 'no_outcome',
-		})
+		.set({ status: unconfirmed ? 'sent' : 'failed', error })
 		.where(eq(mailLog.id, claimed.id));
 	if (unconfirmed) return 'unconfirmed';
-	return outcome?.kind === 'deferred' ? 'deferred' : 'failed';
+	const result = outcome?.kind === 'deferred' ? 'deferred' : 'failed';
+	// Only the leading token (`smtp_EAUTH`, `http_422`): provider free text can echo addresses.
+	logApiError(`[mail] ${input.kind} ${result} reason:${error.split(' ')[0]}`);
+	return result;
 }
 
 /** Fire-and-forget variant for request handlers: logs instead of throwing. */
