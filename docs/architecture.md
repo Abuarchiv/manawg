@@ -109,7 +109,7 @@ Rules:
   lookup the app uses; product code has no fixture branch beyond the `app/` seams named in development.md.
 - **Admin**: `wg_members.role` is `admin` or `member`, at most one admin per WG (partial unique
   index). `core/guards/admin.ts`: `isWgAdmin` and `requireOwnerOrAdmin` (owner or admin for
-  edits/deletes of others' items); `requireWgAdmin` gates WG rename/delete and invitations.
+  edits/deletes of others' items); `requireWgAdmin` gates WG rename/delete.
 
 ## Idempotency
 
