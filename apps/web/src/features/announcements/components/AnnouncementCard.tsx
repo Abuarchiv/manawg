@@ -209,7 +209,7 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 					open
 					onOpenChange={setEditOpen}
 					announcement={announcement}
-					onSave={(next) => onEdit(announcement, next)}
+					onSave={(base, next) => onEdit(base, next)}
 				/>
 			)}
 			<AnnouncementDeleteDialog

@@ -34,7 +34,7 @@ import {
 } from '@/features/chores/components/ChoreCompleteDialog';
 import { ChoreEditDrawer } from '@/features/chores/components/ChoreEditDrawer';
 import { formatChoreCadence } from '@/features/chores/components/chore-cadence';
-import type { ChoreMember, PlanChore } from '@/features/chores/components/chore-types';
+import type { Chore, ChoreMember, PlanChore } from '@/features/chores/components/chore-types';
 import type { Locale } from '@/shared/i18n/locale';
 import { useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
@@ -58,7 +58,7 @@ interface ChoreRowProps {
 	onComplete: (chore: PlanChore) => void;
 	onSwapRequest: (chore: PlanChore) => void;
 	onTakeOver: (chore: PlanChore) => void;
-	onEdit: (chore: PlanChore, changes: ChoreEditChanges) => Promise<boolean>;
+	onEdit: (chore: Chore, changes: ChoreEditChanges) => Promise<boolean>;
 	onRemove: (id: string) => void;
 	highlighted: boolean;
 }
@@ -304,8 +304,8 @@ export const ChoreRow = memo(function ChoreRow({
 				members={members}
 				pending={isEditPending}
 				error={editOpen ? completeError : null}
-				onSave={(changes) => {
-					void onEdit(chore, changes).then((saved) => {
+				onSave={(base, changes) => {
+					void onEdit(base, changes).then((saved) => {
 						if (saved) setEditOpen(false);
 					});
 				}}
