@@ -151,6 +151,44 @@ test.describe('pinboard edit', () => {
 		await expect(page.getByText(/wurde inzwischen geändert/).first()).toBeVisible();
 	});
 
+	test('an edit keeps the version the drawer opened on when a refresh lands meanwhile', async ({
+		page,
+	}) => {
+		const refreshed = {
+			...post,
+			content: 'Wer bringt Klopapier und Seife mit?',
+			updatedAt: '2026-01-01T11:00:00.000Z',
+		};
+		let served = post;
+		let patchBody: unknown = null;
+		await page.clock.install();
+		await setupMember(page);
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/announcements/edit-post`, (route) => {
+			if (route.request().method() !== 'PATCH') return route.fallback();
+			patchBody = route.request().postDataJSON();
+			return route.fulfill({ status: 409, json: { error: 'announcement_changed' } });
+		});
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/announcements*`, (route) =>
+			route.request().method() === 'GET'
+				? route.fulfill({ json: { announcements: [served] } })
+				: route.fallback(),
+		);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/pinboard`);
+		await dismissOnboarding(page);
+
+		await page.getByRole('button', { name: /^Beitragsaktionen:/ }).click();
+		await page.getByRole('menuitem', { name: /^Beitrag bearbeiten:/ }).click();
+		served = refreshed;
+		await page.clock.fastForward(31_000);
+		await expect(page.getByText(refreshed.content).first()).toBeVisible();
+		await expect(page.getByRole('textbox', { name: 'Beitragstext' })).toHaveValue(post.content);
+		await page.getByRole('dialog').getByRole('button', { name: 'Info', exact: true }).click();
+		await page.getByRole('button', { name: 'Speichern' }).click();
+
+		await expect.poll(() => patchBody).toEqual({ kind: 'info', expectedUpdatedAt: post.updatedAt });
+		await expect(page.getByText(/wurde inzwischen geändert/).first()).toBeVisible();
+	});
+
 	test('generated posts offer no edit action', async ({ page }) => {
 		await setupMember(page);
 		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/announcements*`, (route) =>

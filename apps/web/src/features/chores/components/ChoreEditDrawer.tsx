@@ -33,7 +33,7 @@ interface ChoreEditDrawerProps {
 	members: ChoreMember[];
 	pending: boolean;
 	error: string | null;
-	onSave: (changes: ChoreEditChanges) => void;
+	onSave: (base: Chore, changes: ChoreEditChanges) => void;
 }
 
 const PRESETS = [...INTERVAL_PRESETS_DAYS, ...INTERVAL_PRESETS_MONTHS];
@@ -49,19 +49,22 @@ function EditFields({
 }: Omit<ChoreEditDrawerProps, 'open' | 'onOpenChange'> & { onClose: () => void }): ReactElement {
 	const t = useTranslations('chores.editDrawer');
 	const render = useMessage();
-	const [title, setTitle] = useState(chore.title);
-	const [assigned, setAssigned] = useState(chore.assignedMemberId ?? '');
-	const [dueDay, setDueDay] = useState(dueDayKey(chore.nextDueAt));
-	const [interval, setInterval] = useState(chore.intervalDays);
-	const [recurrenceType, setRecurrenceType] = useState(chore.recurrenceType);
-	const changes = diffChoreEdit(chore, { title, assigned, dueDay, interval, recurrenceType });
+	// The version the form opened on: edits are diffed against it and saved on top of it, so a
+	// refresh that lands while the drawer is open cannot leak into the request.
+	const [base] = useState(chore);
+	const [title, setTitle] = useState(base.title);
+	const [assigned, setAssigned] = useState(base.assignedMemberId ?? '');
+	const [dueDay, setDueDay] = useState(dueDayKey(base.nextDueAt));
+	const [interval, setInterval] = useState(base.intervalDays);
+	const [recurrenceType, setRecurrenceType] = useState(base.recurrenceType);
+	const changes = diffChoreEdit(base, { title, assigned, dueDay, interval, recurrenceType });
 	const canSave = Object.keys(changes).length > 0 && title.trim().length > 0 && !pending;
 
 	return (
 		<form
 			onSubmit={(event) => {
 				event.preventDefault();
-				if (canSave) onSave(changes);
+				if (canSave) onSave(base, changes);
 			}}
 			className="flex min-h-0 flex-col"
 		>

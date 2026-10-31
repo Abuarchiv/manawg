@@ -29,10 +29,13 @@ interface AnnouncementEditDrawerProps {
 	onOpenChange: (open: boolean) => void;
 	announcement: Announcement;
 	/** Resolves true when saved; on false the drawer stays open and the page shows the error. */
-	onSave: (next: { content: string; kind: AnnouncementKind }) => Promise<boolean>;
+	onSave: (
+		base: Announcement,
+		next: { content: string; kind: AnnouncementKind },
+	) => Promise<boolean>;
 }
 
-/** Edit text and type of an own post. Mounted per open, so the fields always start from the current post. */
+/** Edit text and type of an own post. Mounted per open; the drawer pins the version it opened on. */
 export function AnnouncementEditDrawer({
 	open,
 	onOpenChange,
@@ -40,13 +43,14 @@ export function AnnouncementEditDrawer({
 	onSave,
 }: AnnouncementEditDrawerProps): ReactElement {
 	const t = useTranslations('pinboard');
-	const [content, setContent] = useState(announcement.content);
-	const [kind, setKind] = useState<AnnouncementKind>(announcement.kind);
+	const [base] = useState(announcement);
+	const [content, setContent] = useState(base.content);
+	const [kind, setKind] = useState<AnnouncementKind>(base.kind);
 	const [saving, setSaving] = useState(false);
 	const savingRef = useRef(false);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const trimmed = content.trim();
-	const unchanged = trimmed === announcement.content.trim() && kind === announcement.kind;
+	const unchanged = trimmed === base.content.trim() && kind === base.kind;
 
 	async function save() {
 		if (savingRef.current || !trimmed) return;
@@ -57,7 +61,7 @@ export function AnnouncementEditDrawer({
 		savingRef.current = true;
 		setSaving(true);
 		try {
-			if (await onSave({ content: trimmed, kind })) onOpenChange(false);
+			if (await onSave(base, { content: trimmed, kind })) onOpenChange(false);
 		} finally {
 			savingRef.current = false;
 			setSaving(false);
