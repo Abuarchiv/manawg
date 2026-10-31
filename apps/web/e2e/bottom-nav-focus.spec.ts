@@ -2,6 +2,7 @@
 // Why: The active tab's pill shadow overrides the focus ring, so only an outline can show focus.
 
 import { expect, test } from '@playwright/test';
+import type { DashboardData } from '../src/composition/dashboard-data';
 import {
 	dismissOnboarding,
 	FIXTURE_WG,
@@ -16,11 +17,52 @@ test.describe('bottom navigation focus', () => {
 
 	test('draws a focus outline on the active tab', async ({ page }) => {
 		const { shareCode } = FIXTURE_WG;
+		const dashboard: DashboardData = {
+			balances: [],
+			spendByDay: [],
+			totalSpendByCurrency: {},
+			weekSpendByCurrency: {},
+			monthSpendByCurrency: {},
+			openShoppingCount: 0,
+			openShoppingTop: [],
+			dueChores: [
+				{
+					id: 'focus-fixture',
+					title: 'Focus fixture chore',
+					assignedMemberId: FIXTURE_WG.memberId,
+					assignedMemberName: FIXTURE_WG.memberName,
+					assignedColor: null,
+					nextDueAt: new Date().toISOString(),
+					overdue: false,
+				},
+			],
+			activity: [],
+			latestAnnouncement: null,
+			myOpenAnnouncements: [],
+			dueRecurringExpenses: [],
+			absentMembers: [],
+			setup: {
+				choreCount: 1,
+				hasExpense: true,
+				hasShoppingItem: true,
+				hasAnnouncement: true,
+				notificationsEnabled: false,
+			},
+		};
 		await setupMember(page);
+		await page.route(`**/api/wg/${shareCode}/dashboard`, (route) =>
+			route.fulfill({ json: dashboard }),
+		);
 		await mockUnreadCount(page, `/api/wg/${shareCode}`);
 
+		const dashboardResponse = page.waitForResponse((response) =>
+			response.url().endsWith(`/api/wg/${shareCode}/dashboard`),
+		);
 		await navigateToFeature(page, `/wg/${shareCode}`);
 		await dismissOnboarding(page);
+		await dashboardResponse;
+		await expect(page.locator('[data-home-content]')).toBeVisible();
+		await expect(page.getByText('Focus fixture chore', { exact: true })).toBeVisible();
 		const activeTab = page.locator('[data-bottom-nav-item][aria-current]').first();
 		await page.keyboard.press('Tab');
 		await activeTab.focus();

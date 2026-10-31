@@ -26,6 +26,8 @@ function noonIn(offsetDays: number): number {
 	return Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() + offsetDays, 12);
 }
 
+const CLEANING_ROTA_DUE_AT = new Date(noonIn(2));
+
 function calendarEvent(overrides: Record<string, unknown>) {
 	const startsAt = new Date(noonIn(1)).toISOString();
 	return {
@@ -85,7 +87,7 @@ async function prepare(
 					{
 						id: 'bathroom',
 						title: 'Clean the bathroom',
-						nextDueAt: new Date(noonIn(2)).toISOString(),
+						nextDueAt: CLEANING_ROTA_DUE_AT.toISOString(),
 					},
 				],
 			},

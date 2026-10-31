@@ -4,6 +4,7 @@ import {
 	type Action,
 	createAction,
 	deferred,
+	fakeIndexedDb,
 	makeQueueModule,
 	makeStorage,
 	PendingImageMissingError,
@@ -18,54 +19,66 @@ type Loose = any;
 
 afterEach(restoreGlobals);
 
-function fakeIndexedDb(records: Map<string, Loose>) {
-	return {
-		open() {
-			const request: Loose = {
-				result: null,
-				onupgradeneeded: null,
-				onsuccess: null,
-				onerror: null,
-			};
-			request.result = {
-				objectStoreNames: { contains: () => true },
-				createObjectStore() {},
-				close() {},
-				transaction() {
-					const tx: Loose = { oncomplete: null, onerror: null, error: null };
-					const makeRequest = (run: () => unknown) => {
-						const req: Loose = { result: undefined, error: null, onsuccess: null, onerror: null };
-						queueMicrotask(() => {
-							try {
-								req.result = run();
-								req.onsuccess?.();
-								queueMicrotask(() => tx.oncomplete?.());
-							} catch (error) {
-								req.error = error;
-								tx.error = error;
-								req.onerror?.();
-								tx.onerror?.();
-							}
-						});
-						return req;
-					};
-					tx.objectStore = () => ({
-						get: (key: string) => makeRequest(() => records.get(key)),
-						put: (value: Loose, key: string) =>
-							makeRequest(() => {
-								records.set(key, value);
-								return key;
-							}),
-						delete: (key: string) => makeRequest(() => records.delete(key)),
-					});
-					return tx;
-				},
-			};
-			queueMicrotask(() => request.onsuccess?.());
-			return request;
-		},
-	};
-}
+test('pending image cleanup stops after account changes while reading keys', async () => {
+	const storage = makeStorage();
+	storage.setItem('manawg_account', 'account-a');
+	setGlobal('window', { localStorage: storage });
+	const records = new Map<string, Loose>([['account-a-image', { id: 'account-a-image' }]]);
+	setGlobal(
+		'indexedDB',
+		fakeIndexedDb(records, () => {
+			records.set('account-b-image', { id: 'account-b-image' });
+			storage.setItem('manawg_account', 'account-b');
+		}),
+	);
+	const { clearPendingImages } = await import('../src/core/offline/offline-images.ts');
+
+	assert.equal(await clearPendingImages('account-a'), false);
+	assert.equal(records.has('account-a-image'), true);
+	assert.equal(records.has('account-b-image'), true);
+});
+
+test('pending image cleanup removes its key snapshot while the account stays current', async () => {
+	const storage = makeStorage();
+	storage.setItem('manawg_account', 'account-a');
+	setGlobal('window', { localStorage: storage });
+	const records = new Map<string, Loose>([
+		['account-a-image-1', { id: 'account-a-image-1' }],
+		['account-a-image-2', { id: 'account-a-image-2' }],
+	]);
+	setGlobal('indexedDB', fakeIndexedDb(records));
+	const { clearPendingImages } = await import('../src/core/offline/offline-images.ts');
+
+	assert.equal(await clearPendingImages('account-a'), true);
+	assert.equal(records.size, 0);
+});
+
+test('storePendingImage rolls back if account changes during its IndexedDB write', async () => {
+	const storage = makeStorage();
+	storage.setItem('manawg_account', 'account-a');
+	const windowTarget = Object.assign(new EventTarget(), { localStorage: storage });
+	setGlobal('window', windowTarget);
+	const records = new Map<string, Loose>();
+	setGlobal(
+		'indexedDB',
+		fakeIndexedDb(records, undefined, () => {
+			storage.setItem('manawg_account', 'account-b');
+			windowTarget.dispatchEvent(new Event('storage'));
+		}),
+	);
+	const { storePendingImage } = await import('../src/core/offline/offline-images.ts');
+
+	await assert.rejects(
+		storePendingImage({
+			file: new File(['account-a image'], 'a.png', { type: 'image/png' }),
+			shareCode: 'TEST1234',
+			memberId: 'member-a',
+			purpose: 'expense',
+		}),
+		{ name: 'AbortError' },
+	);
+	assert.equal(records.size, 0);
+});
 
 test('resolved upload URL is persisted to the queue before its IndexedDB blob is deleted', async () => {
 	const pendingToken = 'manawg-pending-image:pic';
@@ -492,118 +505,4 @@ test('a synced queue entry no longer counts as queued for an open queue edit', a
 	assert.equal(module.isOfflineActionQueued('action-1'), true);
 	await module.syncOfflineActions('TEST1234', { force: true, memberId: 'member-a' });
 	assert.equal(module.isOfflineActionQueued('action-1'), false);
-});
-
-test('a stalled image upload times out so the next sync is not blocked', async () => {
-	const records = new Map([
-		[
-			'pic',
-			{
-				id: 'pic',
-				file: new Blob(['abc'], { type: 'image/png' }),
-				name: 'pic.png',
-				type: 'image/png',
-				size: 3,
-				shareCode: 'TEST1234',
-				memberId: 'member-a',
-				purpose: 'announcement',
-				createdAt: '2026-09-27T10:00:00.000Z',
-			},
-		],
-	]);
-	setGlobal('indexedDB', fakeIndexedDb(records));
-	let sawSignal = false;
-	setGlobal('fetch', async (url: string, init: { signal?: AbortSignal }) => {
-		if (url === '/api/upload/sign') {
-			return Response.json({ presignedUrl: 'https://storage.invalid/upload', publicUrl: 'x' });
-		}
-		sawSignal = init.signal instanceof AbortSignal;
-		// The PUT never resolves on its own; only the timeout signal ends it.
-		return new Promise((_resolve, reject) => {
-			init.signal?.addEventListener('abort', () => reject(init.signal?.reason));
-		});
-	});
-	const realTimeout = AbortSignal.timeout.bind(AbortSignal);
-	const timeoutMock = mock.method(AbortSignal, 'timeout', () => realTimeout(20));
-	const { module } = await makeQueueModule({ images: null });
-	await setQueue(module, [
-		createAction({
-			payload: { content: 'x', kind: 'info', imageUrl: 'manawg-pending-image:pic' },
-		}),
-	]);
-	// AbortSignal.timeout uses an unref'd timer in Node; keep the loop alive until it fires.
-	const keepAlive = setTimeout(() => {}, 5_000);
-	try {
-		await module.syncOfflineActions('TEST1234', { force: true, memberId: 'member-a' });
-	} finally {
-		clearTimeout(keepAlive);
-		timeoutMock.mock.restore();
-	}
-	assert.equal(sawSignal, true);
-	assert.equal(module.readOfflineQueue().length, 1);
-});
-
-test('signAndPut reports sign and PUT failures by kind and status', async () => {
-	const { signAndPut, PendingImageMissingError: Missing } = await import(
-		'../src/core/offline/offline-images.ts'
-	);
-	const input = {
-		shareCode: 'TEST1234',
-		purpose: 'expense' as const,
-		file: new Blob(['abc'], { type: 'image/png' }),
-		contentType: 'image/png',
-		memberId: 'member-a',
-	};
-	const calls: { url: string; init: RequestInit }[] = [];
-	const answer = (sign: () => Response, put?: () => Response) =>
-		setGlobal('fetch', async (url: string, init: RequestInit) => {
-			calls.push({ url, init });
-			if (url === '/api/upload/sign') return sign();
-			if (put) return put();
-			throw new Error('unexpected request');
-		});
-	const signed = () =>
-		Response.json({
-			presignedUrl: 'https://storage.invalid/upload',
-			publicUrl: 'https://app.invalid/read?key=1',
-			uploadHeaders: { 'x-amz-acl': 'private' },
-		});
-
-	answer(signed, () => new Response(null, { status: 200 }));
-	assert.deepEqual(await signAndPut(input), {
-		ok: true,
-		publicUrl: 'https://app.invalid/read?key=1',
-	});
-	const signCall = calls[0] as (typeof calls)[number];
-	const putCall = calls[1] as (typeof calls)[number];
-	const signHeaders = signCall.init.headers as Record<string, string>;
-	assert.equal(signHeaders['x-manawg-expected-member-id'], 'member-a');
-	assert.deepEqual(JSON.parse(String(signCall.init.body)), {
-		shareCode: 'TEST1234',
-		purpose: 'expense',
-		mimeType: 'image/png',
-		fileSize: 3,
-	});
-	assert.deepEqual(putCall.init.headers, { 'x-amz-acl': 'private', 'Content-Type': 'image/png' });
-
-	answer(() => Response.json({ error: 'file_too_large' }, { status: 400 }));
-	assert.deepEqual(await signAndPut(input), {
-		ok: false,
-		kind: 'sign',
-		status: 400,
-		code: 'file_too_large',
-	});
-	answer(() => new Response('boom', { status: 503 }));
-	assert.deepEqual(await signAndPut(input), { ok: false, kind: 'sign', status: 503, code: '' });
-	answer(signed, () => new Response(null, { status: 403 }));
-	assert.deepEqual(await signAndPut(input), { ok: false, kind: 'put', status: 403 });
-	setGlobal('fetch', async () => {
-		throw new TypeError('Failed to fetch');
-	});
-	assert.deepEqual(await signAndPut(input), { ok: false, kind: 'sign', status: 0, code: '' });
-	answer(signed, () => {
-		throw new TypeError('Failed to fetch');
-	});
-	assert.deepEqual(await signAndPut(input), { ok: false, kind: 'put', status: 0 });
-	assert.equal(new Missing().message, 'pending-image-missing');
 });

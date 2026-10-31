@@ -47,6 +47,15 @@ export function berlinCalendarDate(date: Date): Date {
 	return new Date(`${berlinDayKey(date)}T00:00:00.000Z`);
 }
 
+/** Preserve exact starts for exclusions, including the anchor's choice of the repeated DST hour. */
+export function timedRecurrenceStart(anchor: Date, dayKey: string): Date | null {
+	if (berlinDayKey(anchor) === dayKey) return new Date(anchor);
+	const instant = instantAtBerlinWallTimeOrAfterGap(dayKey, berlinWallMinutes(anchor));
+	return instant
+		? new Date(instant.getTime() + anchor.getUTCSeconds() * 1_000 + anchor.getUTCMilliseconds())
+		: null;
+}
+
 function addToDate(date: Date, freq: RecurrenceFreq, interval: number): Date {
 	const next = new Date(date);
 	if (freq === 'DAILY') {
@@ -247,9 +256,6 @@ export function expandRecurrence(
 	const weeklyByDay = rule.freq === 'WEEKLY' && !!rule.byDay && rule.byDay.length > 0;
 	const weeklyAllowedDays = weeklyByDay ? new Set(rule.byDay?.map((d) => BYDAY_TO_INDEX[d])) : null;
 	const anchorWeekStartMs = recurrenceStartMs - recurrenceAnchor.getUTCDay() * MS_PER_DAY;
-	// Wall time (Berlin minutes since midnight) the anchor starts at; every
-	// occurrence is re-aligned to it so DST transitions keep 20:00 at 20:00.
-	const anchorWallMinutes = berlinWallMinutes(anchor);
 	const skipFromMs = window.from - baseDuration;
 	const recurrenceSkipFromMs = event.allDay
 		? skipFromMs
@@ -277,7 +283,7 @@ export function expandRecurrence(
 		// time falls in the spring gap, it moves to the hour after the gap.
 		const occurrenceMs = event.allDay
 			? occurrenceDayMs
-			: (instantAtBerlinWallTimeOrAfterGap(berlinDayKey(current), anchorWallMinutes)?.getTime() ??
+			: (timedRecurrenceStart(anchor, berlinDayKey(current))?.getTime() ??
 				startMs + occurrenceDayMs - recurrenceStartMs);
 		if (occurrenceMs > window.to) break;
 		if (untilMs !== null && occurrenceMs > untilMs) break;
@@ -290,8 +296,16 @@ export function expandRecurrence(
 		}
 
 		if (emit) {
+			// Minute-rounded exclusions remain valid for existing series, including the repeated hour.
+			const legacyStart =
+				!event.allDay && rule.exdates?.length
+					? instantAtBerlinWallTimeOrAfterGap(berlinDayKey(current), berlinWallMinutes(anchor))
+					: null;
+			const excluded =
+				isExcludedOccurrence(rule, occurrenceMs) ||
+				(legacyStart !== null && isExcludedOccurrence(rule, legacyStart.getTime()));
 			if (
-				!isExcludedOccurrence(rule, occurrenceMs) &&
+				!excluded &&
 				withinWindow(occurrenceMs, occurrenceMs + baseDuration, window, event.allDay)
 			) {
 				occurrences.push(buildOccurrence(event, occurrenceMs, baseDuration, index, true));

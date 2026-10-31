@@ -20,6 +20,7 @@ import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { Section } from '@/components/wg/settings/Section';
+import { getLocalAccount } from '@/core/auth/local-account';
 import { noteSessionExpiry } from '@/core/infra/api-client';
 
 export function AccountDeleteSection() {
@@ -33,6 +34,8 @@ export function AccountDeleteSection() {
 	const [error, setError] = useState<string | null>(null);
 	// Focus the cancel button so iOS does not open the keyboard unprompted.
 	const cancelRef = useRef<HTMLButtonElement>(null);
+	const deleteAbortRef = useRef<AbortController | null>(null);
+	useEffect(() => () => deleteAbortRef.current?.abort(), []);
 
 	// With large text the message lies below the visible dialog area.
 	useEffect(() => {
@@ -43,11 +46,21 @@ export function AccountDeleteSection() {
 	async function handleDelete(): Promise<void> {
 		setStage('pending');
 		setError(null);
+		const abort = new AbortController();
+		deleteAbortRef.current = abort;
+		const account = getLocalAccount();
+		const isCurrent = () => !abort.signal.aborted && getLocalAccount() === account;
+		const onAccountChange = () => {
+			if (getLocalAccount() !== account) abort.abort();
+		};
+		window.addEventListener('storage', onAccountChange);
 		try {
-			const res = await fetch('/api/account', { method: 'DELETE' });
-			noteSessionExpiry(res);
+			const res = await fetch('/api/account', { method: 'DELETE', signal: abort.signal });
+			if (!isCurrent()) return;
+			noteSessionExpiry(res, account);
 			if (res.status === 503) {
 				const result = await res.json().catch(() => null);
+				if (!isCurrent()) return;
 				if (
 					result?.status === 'unknown' &&
 					result?.error === 'account_deletion_outcome_unconfirmed'
@@ -80,17 +93,32 @@ export function AccountDeleteSection() {
 			const pending = res.status === 202;
 			try {
 				const { clearLocalAccountData, signOutSocialAccount } = await import('@/core/auth/client');
-				await signOutSocialAccount().catch(() => {
-					// The server already removed WG access; a stale local session is harmless.
-				});
-				await clearLocalAccountData();
+				if (!isCurrent()) return;
+				try {
+					const outcome = await signOutSocialAccount([], { signal: abort.signal });
+					if (outcome.cancelled || abort.signal.aborted) return;
+				} catch {
+					if (!isCurrent()) return;
+					await clearLocalAccountData(account, abort.signal);
+				}
 			} catch {
 				// Browser storage failure does not change the server's accepted deletion.
 			}
+			const currentAccount = getLocalAccount();
+			if (abort.signal.aborted || (currentAccount !== null && currentAccount !== account)) return;
 			window.location.assign(pending ? '/?accountDeletion=pending' : '/');
 		} catch {
-			setError(t('unknownOutcome'));
-			setStage('confirm');
+			if (isCurrent()) {
+				setError(t('unknownOutcome'));
+				setStage('confirm');
+			}
+		} finally {
+			window.removeEventListener('storage', onAccountChange);
+			if (deleteAbortRef.current === abort) deleteAbortRef.current = null;
+			if (!isCurrent()) {
+				setStage('idle');
+				setConfirmText('');
+			}
 		}
 	}
 

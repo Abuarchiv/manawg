@@ -8,18 +8,26 @@ import {
 	summarizeAnnouncementReactions,
 } from './announcement-workflow';
 
-test('tracks A to A+B to A across focus and background revisions before apply', () => {
+test('keeps only unseen posts pending across focus and background revisions', () => {
 	const postA = { id: 'post-a' };
 	const postB = { id: 'post-b' };
 
 	const firstFocus = reconcilePendingAnnouncements([postA], [postA, postB], 2, 1);
-	assert.deepEqual(firstFocus, { items: [postA, postB], count: 1, serverRevision: 2 });
+	assert.deepEqual(firstFocus, { items: [postB], count: 1, serverRevision: 2 });
 
 	const duplicateBackgroundResult = reconcilePendingAnnouncements([postA], [postA, postB], 2, 2);
 	assert.equal(duplicateBackgroundResult, null);
 
 	const secondBackground = reconcilePendingAnnouncements([postA], [postA], 3, 2);
-	assert.deepEqual(secondBackground, { items: [postA], count: 0, serverRevision: 3 });
+	assert.deepEqual(secondBackground, { items: [], count: 0, serverRevision: 3 });
+});
+
+test('the first server snapshot has no hidden posts to reveal', () => {
+	assert.deepEqual(reconcilePendingAnnouncements([], [{ id: 'first' }], 1, 0), {
+		items: [],
+		count: 0,
+		serverRevision: 1,
+	});
 });
 
 test('archives resolved posts and quiet unpinned infos, keeps open asks on the board', () => {

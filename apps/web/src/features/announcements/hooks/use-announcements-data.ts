@@ -4,6 +4,7 @@ import { useSyncedCollection } from '@/core/sync/use-synced-collection';
 import {
 	mergeBackgroundAnnouncements,
 	reconcilePendingAnnouncements,
+	sortBoardAnnouncements,
 } from '@/features/announcements/announcement-workflow';
 import {
 	applyCommentOverrides as applyOverrides,
@@ -129,7 +130,14 @@ export function useAnnouncementsData({
 
 	function applyPendingItems(): void {
 		if (!pendingRemoteItems) return;
-		commitItems(pendingRemoteItems.map(applyCommentOverrides));
+		const shownIds = new Set(itemsRef.current.map((item) => item.id));
+		commitItems(
+			sortBoardAnnouncements(
+				[...itemsRef.current, ...pendingRemoteItems.filter((item) => !shownIds.has(item.id))].map(
+					applyCommentOverrides,
+				),
+			),
+		);
 		setPendingRemoteItems(null);
 		setNewCount(0);
 	}

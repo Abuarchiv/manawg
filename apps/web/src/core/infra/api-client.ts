@@ -1,3 +1,4 @@
+import { getLocalAccount } from '@/core/auth/local-account';
 import { INVALID_RESPONSE_CODE, NETWORK_ERROR_CODE } from '@/core/http/error-codes';
 import { EXPECTED_MEMBER_ID_HEADER } from '@/shared/lib/member-header';
 
@@ -41,10 +42,12 @@ const MEMBERSHIP_LOST_ERRORS = new Set(['not_a_member', 'member_deactivated', 'w
  * For the few WG calls that use plain `fetch` (uploads, downloads, deleting the WG): lets a
  * 401 `auth_required` raise the same session-expired banner as `apiFetch` does.
  */
-export function noteSessionExpiry(response: Response): void {
+export function noteSessionExpiry(response: Response, expectedAccount: string | null): void {
 	if (response.status !== 401 || typeof window === 'undefined') return;
 	void readApiErrorCode(response).then((code) => {
-		if (code === 'auth_required') window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
+		if (code === 'auth_required' && expectedAccount === getLocalAccount()) {
+			window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
+		}
 	});
 }
 
@@ -75,6 +78,7 @@ export async function apiFetch<T>(
 	path: string,
 	init: ApiFetchInit = {},
 ): Promise<ApiFetchResult<T>> {
+	const requestAccount = getLocalAccount();
 	const { memberId, signal, ...rest } = init;
 	const method = rest.method ?? 'GET';
 
@@ -106,6 +110,7 @@ export async function apiFetch<T>(
 			if (
 				(res.status === 401 || res.status === 404) &&
 				MEMBERSHIP_LOST_ERRORS.has(error) &&
+				requestAccount === getLocalAccount() &&
 				typeof window !== 'undefined' &&
 				path.startsWith('/api/wg/')
 			) {
@@ -114,6 +119,7 @@ export async function apiFetch<T>(
 			if (
 				res.status === 401 &&
 				error === 'auth_required' &&
+				requestAccount === getLocalAccount() &&
 				typeof window !== 'undefined' &&
 				path.startsWith('/api/')
 			) {

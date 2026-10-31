@@ -30,19 +30,18 @@ function ExpenseFormLoading() {
 	);
 }
 
-const ExpenseFormSection = dynamic(
-	() =>
-		import('@/features/expenses/components/ledger/ExpenseFormSection').then(
-			(module) => module.ExpenseFormSection,
-		),
-	{ loading: ExpenseFormLoading },
-);
+const loadExpenseForm = () =>
+	import('@/features/expenses/components/ledger/ExpenseFormSection').then(
+		(module) => module.ExpenseFormSection,
+	);
+
+const ExpenseFormSection = dynamic(loadExpenseForm, { loading: ExpenseFormLoading });
 
 /** Request the form chunk once while online so the service worker has it for offline use. */
 function usePreloadExpenseForm(): void {
 	useEffect(() => {
 		if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
-		void import('@/features/expenses/components/ledger/ExpenseFormSection');
+		void loadExpenseForm().catch(() => undefined);
 	}, []);
 }
 

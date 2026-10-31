@@ -3,7 +3,7 @@
 import { Download, Upload } from 'lucide-react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
@@ -13,7 +13,7 @@ import { OfflineQueueSection } from '@/components/wg/settings/OfflineQueueSectio
 import { Section } from '@/components/wg/settings/Section';
 import { exportErrorMessage } from '@/components/wg/settings/settings-errors';
 import type { WgSummary } from '@/components/wg/WgContextProvider';
-import type { SessionMember } from '@/core/auth/local-account';
+import { getLocalAccount, type SessionMember } from '@/core/auth/local-account';
 import { NETWORK_ERROR_CODE } from '@/core/http/error-codes';
 import { noteSessionExpiry, readApiErrorCode } from '@/core/infra/api-client';
 import type { Locale } from '@/shared/i18n/locale';
@@ -69,6 +69,8 @@ export function DataTab({
 	const [exportPending, setExportPending] = useState<'json' | 'csv' | null>(null);
 	const [csvExportSection, setCsvExportSection] = useState('expenses');
 	const exportPendingRef = useRef(false);
+	const exportAbortRef = useRef<AbortController | null>(null);
+	useEffect(() => () => exportAbortRef.current?.abort(), []);
 	const sectionLabel = (key: string) =>
 		exportSummary.some((item) => item.key === key)
 			? t(`sections.${key as ExportSectionKey}`)
@@ -81,19 +83,29 @@ export function DataTab({
 		setExportError(null);
 		setExportMessage(null);
 		setExportPending(format);
+		const abort = new AbortController();
+		exportAbortRef.current = abort;
+		const account = getLocalAccount();
+		const isCurrent = () => !abort.signal.aborted && getLocalAccount() === account;
 		const csvSection = section ?? csvExportSection;
 		try {
 			const url =
 				format === 'csv'
 					? `/api/wg/${encodedShareCode}/export?format=csv&section=${encodeURIComponent(csvSection)}`
 					: `/api/wg/${encodedShareCode}/export`;
-			const res = await fetch(url, { headers: memberContextHeader(identity.memberId) });
-			noteSessionExpiry(res);
+			const res = await fetch(url, {
+				headers: memberContextHeader(identity.memberId),
+				signal: abort.signal,
+			});
+			if (!isCurrent()) return;
+			noteSessionExpiry(res, account);
 			if (!res.ok) {
-				setExportError(m(exportErrorMessage(res.status, (await readApiErrorCode(res)) || null)));
+				const code = await readApiErrorCode(res);
+				if (isCurrent()) setExportError(m(exportErrorMessage(res.status, code || null)));
 				return;
 			}
 			const blob = await res.blob();
+			if (!isCurrent()) return;
 			const href = window.URL.createObjectURL(blob);
 			const a = document.createElement('a');
 			a.href = href;
@@ -107,8 +119,9 @@ export function DataTab({
 				format === 'csv' ? t('csvStarted', { label: sectionLabel(csvSection) }) : t('jsonStarted'),
 			);
 		} catch {
-			setExportError(m(exportErrorMessage(0, NETWORK_ERROR_CODE)));
+			if (isCurrent()) setExportError(m(exportErrorMessage(0, NETWORK_ERROR_CODE)));
 		} finally {
+			if (exportAbortRef.current === abort) exportAbortRef.current = null;
 			exportPendingRef.current = false;
 			setExportPending(null);
 		}

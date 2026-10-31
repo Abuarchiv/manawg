@@ -165,14 +165,16 @@ export default function ShoppingPage() {
 			/>
 			<InventoryRestockPrompt
 				items={inventory}
-				boughtNames={done
+				purchases={done
 					.filter(
 						(item) =>
 							item.boughtByMemberId === identity.memberId &&
 							item.boughtAt !== null &&
 							now - Date.parse(item.boughtAt) < RESTOCK_WINDOW_MS,
 					)
-					.map((item) => item.name)}
+					.flatMap((item) =>
+						item.boughtAt ? [{ id: item.id, name: item.name, boughtAt: item.boughtAt }] : [],
+					)}
 				shareCode={wg.shareCode}
 				memberId={identity.memberId}
 				onRestocked={refreshInventory}

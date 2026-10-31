@@ -195,6 +195,7 @@ test.describe('import wizard responsive', () => {
 
 					await page.getByRole('button', { name: 'Importieren (1)', exact: true }).click();
 					await expect(page.getByRole('heading', { name: 'Import abgeschlossen' })).toBeVisible();
+					await expect(page.getByRole('heading', { name: 'Import abgeschlossen' })).toBeFocused();
 					const expensesLink = page.getByRole('link', { name: 'Zu den Ausgaben', exact: true });
 					await expectElementReachable(page, expensesLink, width);
 					await expectPageFits(page, width);

@@ -87,7 +87,6 @@ export function useAnnouncementComments(
 		commentIdempotencyKeysRef.current.delete(commentRequestKey);
 		edits.forgetCommentOverride(announcement.id, optimisticComment.id);
 		const confirmedComment = { ...optimisticComment, ...res.data.comment };
-		edits.rememberCommentOverride(announcement.id, confirmedComment.id, confirmedComment);
 		edits.updateItem(announcement.id, (item) => ({
 			...item,
 			comments: item.comments.map((comment) =>
@@ -108,8 +107,9 @@ export function useAnnouncementComments(
 		const pendingKey = `${commentId}:comment-edit`;
 		if (isPending(pendingKey)) return false;
 		const previousComment = announcement.comments.find((comment) => comment.id === commentId);
-		if (previousComment) {
-			edits.rememberCommentOverride(announcement.id, commentId, { ...previousComment, content });
+		const optimisticComment = previousComment ? { ...previousComment, content } : null;
+		if (optimisticComment) {
+			edits.rememberCommentOverride(announcement.id, commentId, optimisticComment);
 		}
 		edits.updateItem(announcement.id, (item) => ({
 			...item,
@@ -127,9 +127,12 @@ export function useAnnouncementComments(
 			},
 		);
 		end(pendingKey);
+		const ownsOverride =
+			optimisticComment !== null &&
+			commentOverridesRef.current.get(announcement.id)?.get(commentId) === optimisticComment;
 		if (!res.ok) {
-			edits.forgetCommentOverride(announcement.id, commentId);
 			if (res.status === 404 && res.error === 'comment_not_found') {
+				edits.forgetCommentOverride(announcement.id, commentId);
 				edits.updateItem(announcement.id, (item) => ({
 					...item,
 					comments: item.comments.filter((comment) => comment.id !== commentId),
@@ -137,17 +140,22 @@ export function useAnnouncementComments(
 				setActionError({ key: 'pinboard.errors.replyVanished' });
 				return true;
 			}
-			if (previousComment) edits.replaceComment(announcement.id, commentId, previousComment);
+			if (ownsOverride) {
+				edits.forgetCommentOverride(announcement.id, commentId);
+				if (previousComment) edits.replaceComment(announcement.id, commentId, previousComment);
+			}
 			return false;
 		}
 		const confirmedComment = { ...previousComment, ...res.data.comment };
-		edits.rememberCommentOverride(announcement.id, confirmedComment.id, confirmedComment);
-		edits.updateItem(announcement.id, (item) => ({
-			...item,
-			comments: item.comments.map((comment) =>
-				comment.id === commentId ? confirmedComment : comment,
-			),
-		}));
+		if (ownsOverride) {
+			edits.forgetCommentOverride(announcement.id, commentId);
+			edits.updateItem(announcement.id, (item) => ({
+				...item,
+				comments: item.comments.map((comment) =>
+					comment.id === commentId ? confirmedComment : comment,
+				),
+			}));
+		}
 		void load('background');
 		return true;
 	}

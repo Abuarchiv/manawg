@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useWg } from '@/components/wg/WgContextProvider';
+import { getLocalAccount } from '@/core/auth/local-account';
 import { subscribeOnline } from '@/core/hooks/use-online-status';
 import {
 	isAllowedPrivateImageMimeType,
@@ -55,7 +56,8 @@ export function useImageUpload({
 	const [featureDisabled, setFeatureDisabled] = useState(false);
 	const [localPreview, setLocalPreview] = useState<string | null>(null);
 	const uploadPendingRef = useRef(false);
-	const syncPendingRef = useRef<string | null>(null);
+	const syncPendingRef = useRef<AbortController | null>(null);
+	const uploadAbortRef = useRef<AbortController | null>(null);
 	// Callers pass a fresh onChange on every render; effects must not restart for that.
 	const onChangeRef = useRef(onChange);
 	onChangeRef.current = onChange;
@@ -65,6 +67,7 @@ export function useImageUpload({
 		mountedRef.current = true;
 		return () => {
 			mountedRef.current = false;
+			uploadAbortRef.current?.abort();
 		};
 	}, []);
 
@@ -110,20 +113,22 @@ export function useImageUpload({
 		if (!isPendingImageToken(value)) return;
 		// A discarded form or a new image must not get this upload's result written back.
 		let stale = false;
+		const abort = new AbortController();
+		const account = getLocalAccount();
+		const isCurrent = () => !stale && !abort.signal.aborted && getLocalAccount() === account;
 
 		async function syncPending(): Promise<void> {
-			if (!navigator.onLine || !value) return;
-			if (syncPendingRef.current === value) return;
-			syncPendingRef.current = value;
+			if (!isCurrent() || !navigator.onLine || !value || syncPendingRef.current) return;
+			syncPendingRef.current = abort;
 			setUploading(true);
 			setError(null);
 			setNotice(null);
 			try {
-				const publicUrl = await uploadPendingImageToken(value, identity.memberId);
-				if (stale) return;
+				const publicUrl = await uploadPendingImageToken(value, identity.memberId, abort.signal);
+				if (!isCurrent()) return;
 				onChangeRef.current(publicUrl);
 			} catch (err) {
-				if (stale) return;
+				if (!isCurrent()) return;
 				if (err instanceof PendingImageMissingError) {
 					setNotice(null);
 					setError(MISSING_PENDING_IMAGE);
@@ -143,8 +148,10 @@ export function useImageUpload({
 				}
 				setNotice({ key: 'shell.upload.retryWhenStable' });
 			} finally {
-				syncPendingRef.current = null;
-				setUploading(false);
+				if (syncPendingRef.current === abort) {
+					syncPendingRef.current = null;
+					if (isCurrent()) setUploading(false);
+				}
 			}
 		}
 
@@ -152,7 +159,12 @@ export function useImageUpload({
 		const unsubscribe = subscribeOnline(() => void syncPending());
 		return () => {
 			stale = true;
+			abort.abort();
 			unsubscribe();
+			if (syncPendingRef.current === abort) {
+				syncPendingRef.current = null;
+				setUploading(false);
+			}
 		};
 	}, [identity.memberId, value]);
 
@@ -170,6 +182,17 @@ export function useImageUpload({
 			return;
 		}
 		uploadPendingRef.current = true;
+		const abort = new AbortController();
+		uploadAbortRef.current = abort;
+		const account = getLocalAccount();
+		const isCurrent = () =>
+			mountedRef.current && !abort.signal.aborted && getLocalAccount() === account;
+		const finishUpload = () => {
+			if (uploadAbortRef.current !== abort) return;
+			uploadAbortRef.current = null;
+			uploadPendingRef.current = false;
+			if (mountedRef.current) setUploading(false);
+		};
 		setUploading(true);
 		setError(null);
 		setNotice(null);
@@ -177,31 +200,36 @@ export function useImageUpload({
 		try {
 			file = await prepareUploadImage(original);
 		} catch (err) {
-			setError({
-				key:
-					err instanceof Error && err.message === HEIC_UNSUPPORTED_ERROR
-						? 'shell.upload.heicUnsupported'
-						: 'shell.upload.processFailed',
-			});
-			uploadPendingRef.current = false;
-			setUploading(false);
+			if (isCurrent())
+				setError({
+					key:
+						err instanceof Error && err.message === HEIC_UNSUPPORTED_ERROR
+							? 'shell.upload.heicUnsupported'
+							: 'shell.upload.processFailed',
+				});
+			finishUpload();
+			return;
+		}
+		if (!isCurrent()) {
+			finishUpload();
 			return;
 		}
 		if (file.size > PRIVATE_IMAGE_MAX_BYTES) {
 			setError({ key: 'shell.upload.tooBig', values: { max: MAX_UPLOAD_MB } });
-			uploadPendingRef.current = false;
-			setUploading(false);
+			finishUpload();
 			return;
 		}
 		async function keepPending(message: Message): Promise<boolean> {
+			if (!isCurrent()) return false;
 			try {
 				const token = await storePendingImage({
 					file,
 					shareCode,
 					memberId: identity.memberId,
 					purpose,
+					signal: abort.signal,
 				});
-				if (!mountedRef.current) {
+				if (!isCurrent()) {
 					void removePendingImage(token, identity.memberId).catch(() => undefined);
 					return false;
 				}
@@ -210,8 +238,10 @@ export function useImageUpload({
 				setNotice(message);
 				return true;
 			} catch {
-				setNotice(null);
-				setError({ key: 'shell.upload.cacheFailed' });
+				if (isCurrent()) {
+					setNotice(null);
+					setError({ key: 'shell.upload.cacheFailed' });
+				}
 				return false;
 			}
 		}
@@ -219,8 +249,7 @@ export function useImageUpload({
 			try {
 				await keepPending({ key: 'shell.upload.offlineQueued' });
 			} finally {
-				uploadPendingRef.current = false;
-				setUploading(false);
+				finishUpload();
 			}
 			return;
 		}
@@ -231,10 +260,12 @@ export function useImageUpload({
 				file,
 				contentType: file.type,
 				memberId: identity.memberId,
+				signal: abort.signal,
 			});
+			if (!isCurrent()) return;
 			if (result.ok) {
 				setNotice(null);
-				if (mountedRef.current) onChange(result.publicUrl);
+				onChange(result.publicUrl);
 				return;
 			}
 			if (result.kind === 'sign') {
@@ -261,8 +292,7 @@ export function useImageUpload({
 		} catch {
 			await keepPending(NETWORK_UNSTABLE_NOTICE);
 		} finally {
-			uploadPendingRef.current = false;
-			setUploading(false);
+			finishUpload();
 		}
 	}
 

@@ -283,12 +283,10 @@ await step(a, 'calendar-month', async (p) => {
 });
 await step(a, 'calendar-delete-empty', async (p) => {
 	await p.getByRole('tab', { name: 'Agenda' }).click();
-	// Agenda entries are named by title and time range.
-	const entry = p.getByRole('button', { name: /\d{2}:\d{2}–\d{2}:\d{2}$/ });
-	await entry.click();
+	await p.getByRole('button').filter({ hasText: LONG }).click();
 	await p.getByRole('dialog').getByRole('button', { name: 'Termin löschen' }).click();
 	await confirm(p);
-	await entry.waitFor({ state: 'detached' });
+	await p.getByRole('button').filter({ hasText: LONG }).waitFor({ state: 'detached' });
 });
 
 // ---- Pinboard: menu, edit, resolve, empty
@@ -335,7 +333,7 @@ await step(a, 'chat-delete', async (p) => {
 // ---- Settings tabs + dark mode
 await step(a, 'settings-notifications', async (p) => {
 	await open(p, '/settings');
-	await p.getByRole('tab', { name: 'Benachrichtigungen' }).click();
+	await p.getByRole('tab', { name: 'Benachrichtigungen', exact: true }).click();
 	await wait(500);
 });
 await step(a, 'settings-access', async (p) => {
@@ -372,3 +370,4 @@ process.stdout.write(`steps=${shot} bugs=${bugs.length}\n`);
 for (const n of notes) process.stdout.write(`+ ${n}\n`);
 for (const entry of bugs) process.stdout.write(`- ${entry}\n`);
 await browser.close();
+if (bugs.length > 0) process.exitCode = 1;

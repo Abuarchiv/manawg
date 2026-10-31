@@ -3,7 +3,7 @@
 import { LogOut, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
 	AlertDialog,
@@ -25,8 +25,7 @@ import { Section } from '@/components/wg/settings/Section';
 import { deleteWgErrorMessage, subjectError } from '@/components/wg/settings/settings-errors';
 import type { Member, WgSummary } from '@/components/wg/WgContextProvider';
 import { useWg } from '@/components/wg/WgContextProvider';
-import type { SessionMember } from '@/core/auth/local-account';
-import { forgetWg } from '@/core/auth/local-account';
+import { forgetWg, getLocalAccount, type SessionMember } from '@/core/auth/local-account';
 import { noteSessionExpiry, readApiErrorCode } from '@/core/infra/api-client';
 import { useMessage } from '@/shared/i18n/message';
 import { memberContextHeader } from '@/shared/lib/member-header';
@@ -51,15 +50,27 @@ export function DangerZoneSection({ wg, members, identity }: DangerZoneSectionPr
 	const [leaving, setLeaving] = useState(false);
 	// Focus the cancel button so iOS does not open the keyboard unprompted.
 	const cancelRef = useRef<HTMLButtonElement>(null);
+	const accountRef = useRef<string | null>(null);
+	const mounted = useRef(true);
+	const deleteAbortRef = useRef<AbortController | null>(null);
+	useEffect(() => {
+		mounted.current = true;
+		return () => {
+			mounted.current = false;
+			deleteAbortRef.current?.abort();
+		};
+	}, []);
 	const activeMemberCount = members.filter((m) => m.active).length;
 
 	function leaveWg(outcome: 'left' | 'deleted' = 'left'): void {
+		if (!mounted.current || accountRef.current !== getLocalAccount()) return;
 		forgetWg(wg.shareCode);
 		router.push(outcome === 'deleted' ? '/?deleted=1' : '/?left=1');
 	}
 
 	function openLeaveConfirm(): void {
 		if (isAdmin || activeMemberCount <= 1) return;
+		accountRef.current = getLocalAccount();
 		setLeaving(true);
 		setDeleteStage('idle');
 		setDeleteError(null);
@@ -68,6 +79,7 @@ export function DangerZoneSection({ wg, members, identity }: DangerZoneSectionPr
 
 	function openDeleteConfirm(): void {
 		if (!isAdmin) return;
+		accountRef.current = getLocalAccount();
 		setLeaving(false);
 		setDeleteStage('confirm');
 		setDeleteError(null);
@@ -78,28 +90,41 @@ export function DangerZoneSection({ wg, members, identity }: DangerZoneSectionPr
 		if (!isAdmin) return;
 		setDeleteStage('pending');
 		setDeleteError(null);
+		const abort = new AbortController();
+		deleteAbortRef.current = abort;
+		const account = getLocalAccount();
+		accountRef.current = account;
+		const isCurrent = () => !abort.signal.aborted && getLocalAccount() === account;
 		try {
 			const res = await fetch(`/api/wg/${encodedShareCode}`, {
 				method: 'DELETE',
 				headers: memberContextHeader(identity.memberId),
+				signal: abort.signal,
 			});
-			noteSessionExpiry(res);
+			if (!isCurrent()) return;
+			noteSessionExpiry(res, account);
 			if (res.status === 403) {
 				setDeleteError(t('adminOnlyDelete'));
 				setDeleteStage('confirm');
 				return;
 			}
 			if (!res.ok) {
-				setDeleteError(m(deleteWgErrorMessage(res.status, (await readApiErrorCode(res)) || null)));
+				const code = await readApiErrorCode(res);
+				if (!isCurrent()) return;
+				setDeleteError(m(deleteWgErrorMessage(res.status, code || null)));
 				setDeleteStage('confirm');
 				return;
 			}
 			leaveWg('deleted');
 		} catch {
-			setDeleteError(
-				m(subjectError('settings.dangerZone.errors.subject', 'common.errors.network')),
-			);
-			setDeleteStage('confirm');
+			if (isCurrent()) {
+				setDeleteError(
+					m(subjectError('settings.dangerZone.errors.subject', 'common.errors.network')),
+				);
+				setDeleteStage('confirm');
+			}
+		} finally {
+			if (deleteAbortRef.current === abort) deleteAbortRef.current = null;
 		}
 	}
 

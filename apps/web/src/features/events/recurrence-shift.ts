@@ -1,9 +1,6 @@
-import {
-	berlinDayKey,
-	berlinWallMinutes,
-	instantAtBerlinWallTimeOrAfterGap,
-} from '@/core/utils/berlin-day';
+import { berlinDayKey } from '@/core/utils/berlin-day';
 import { addMonthsFromAnchor, MS_PER_DAY, parseTimestamp } from '@/core/utils/time';
+import { timedRecurrenceStart } from './event-recurrence';
 import { formatRecurrenceRule, parseRecurrenceRule } from './event-recurrence-rule';
 
 /** The calendar day a series start or exception falls on: UTC for all-day series, else Berlin. */
@@ -52,12 +49,11 @@ export function withShiftedExclusions(
 		}
 		return new Date(dayOf(key) + dayShift * MS_PER_DAY).toISOString().slice(0, 10);
 	};
-	const nextWallMinutes = berlinWallMinutes(new Date(next));
 	const exdates = rule.exdates.map((instant) => {
 		const day = shiftedDay(instant);
 		const moved = allDay
 			? new Date(`${day}T${new Date(next).toISOString().slice(11)}`)
-			: instantAtBerlinWallTimeOrAfterGap(day, nextWallMinutes);
+			: timedRecurrenceStart(new Date(next), day);
 		return (moved ?? new Date(Date.parse(instant) + (next - previous))).toISOString();
 	});
 	return formatRecurrenceRule({ ...rule, exdates: exdates.sort() });

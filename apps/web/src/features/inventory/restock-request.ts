@@ -4,6 +4,7 @@ import { apiFetch } from '@/core/infra/api-client';
 import {
 	type InventoryItemDto,
 	type InventoryMutationItemDto,
+	type RestockPurchase,
 	restockAmount,
 } from '@/features/inventory/inventory';
 import type { Message } from '@/shared/i18n/message';
@@ -22,6 +23,7 @@ export async function restockItem(args: {
 	memberId: string;
 	item: InventoryItemDto;
 	keys: Map<string, string>;
+	purchase?: Pick<RestockPurchase, 'id' | 'boughtAt'>;
 }): Promise<RestockOutcome> {
 	const { shareCode, memberId, item, keys } = args;
 	const amount = restockAmount(item);
@@ -37,7 +39,10 @@ export async function restockItem(args: {
 			method: 'PATCH',
 			memberId,
 			headers: { 'Idempotency-Key': idempotencyKey },
-			body: JSON.stringify({ quantityDelta: amount }),
+			body: JSON.stringify({
+				quantityDelta: amount,
+				...(args.purchase ? { purchase: args.purchase } : {}),
+			}),
 		},
 	);
 	if (res.ok) {
@@ -45,6 +50,10 @@ export async function restockItem(args: {
 		return { kind: 'ok', item: res.data.item };
 	}
 	if (res.status === 404 && res.error === 'item_not_found') {
+		keys.delete(requestKey);
+		return { kind: 'gone' };
+	}
+	if (args.purchase && res.status === 409 && res.error === 'inventory_purchase_changed') {
 		keys.delete(requestKey);
 		return { kind: 'gone' };
 	}

@@ -23,6 +23,7 @@ export {
 	type EventInput,
 	type EventOccurrence,
 	expandRecurrence,
+	timedRecurrenceStart,
 } from './event-recurrence';
 export {
 	BYDAY_TO_INDEX,

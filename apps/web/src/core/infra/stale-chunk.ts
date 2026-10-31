@@ -18,6 +18,8 @@ export function isChunkLoadError(error: Error): boolean {
 /** Reloads for a stale chunk and reports whether it did. */
 export function reloadOnStaleChunk(error: Error): boolean {
 	if (typeof window === 'undefined' || !isChunkLoadError(error)) return false;
+	// Reloading offline discards the open page without being able to fetch fresh chunks.
+	if (typeof navigator !== 'undefined' && navigator.onLine === false) return false;
 	try {
 		if (window.sessionStorage.getItem(RELOADED_KEY) === window.location.href) return false;
 		window.sessionStorage.setItem(RELOADED_KEY, window.location.href);

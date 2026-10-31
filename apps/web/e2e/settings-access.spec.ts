@@ -60,6 +60,35 @@ test.describe('settings access responsive', () => {
 		await expect(page.getByText(/behält aber Zugriff auf dieses Gerät/)).toHaveCount(0);
 	});
 
+	test('confirmed WG deletion navigates away from a fresh settings visit', async ({ page }) => {
+		await setupMember(page);
+		await mockMemberRole(page, () => true);
+		await page.route('**/api/wg/mine', (route) => route.fulfill({ json: { wgs: [] } }));
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}`, (route) =>
+			route.request().method() === 'DELETE'
+				? route.fulfill({ json: { ok: true } })
+				: route.continue(),
+		);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings#access`);
+		await page.getByRole('button', { name: 'Komplette WG für alle löschen', exact: true }).click();
+		await page.getByLabel('WG-Code', { exact: true }).fill(FIXTURE_WG.shareCode);
+		await page.getByRole('button', { name: 'WG löschen', exact: true }).click();
+		await expect(page).toHaveURL('/?deleted=1');
+	});
+
+	test('normal logout succeeds after removing its own account marker', async ({ page }) => {
+		await setupMember(page);
+		await page.route('**/api/wg/mine', (route) => route.fulfill({ json: { wgs: [] } }));
+		await page.route('**/api/auth/sign-out', (route) => route.fulfill({ json: { ok: true } }));
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings#access`);
+		await expect
+			.poll(() => page.evaluate(() => localStorage.getItem('manawg_account')))
+			.not.toBeNull();
+		await page.getByRole('button', { name: 'Konto abmelden', exact: true }).click();
+		await expect(page).toHaveURL('/');
+		expect(await page.evaluate(() => localStorage.getItem('manawg_account'))).toBeNull();
+	});
+
 	test('admin_required explains why an admin cannot leave the WG', async ({ page }) => {
 		await setupMember(page);
 		await mockMemberRole(page, () => false);
