@@ -117,12 +117,14 @@ export async function navigateToFeature(page: Page, path: string): Promise<void>
 }
 
 /**
- * Fixture setup must not fall through to the production access-denied state.
+ * Waits for the WG shell, then fails if it shows the production access-denied
+ * state instead of the fixture member's WG.
  */
 export async function dismissOnboarding(page: Page): Promise<void> {
 	const accessDenied = page.getByRole('alert', {
 		name: 'Du bist in dieser WG nicht (mehr) Mitglied, z. B. weil du ausgezogen bist, entfernt wurdest oder die WG gelöscht wurde.',
 	});
+	await expect(page.locator('[data-bottom-nav-item]').first().or(accessDenied)).toBeAttached();
 	await expect(accessDenied)
 		.toBeHidden({ timeout: 2_000 })
 		.catch(() => {
