@@ -111,6 +111,39 @@ test.describe('chore absence cache', () => {
 		expect(deleteCalls).toBe(0);
 	});
 
+	test('the fairness and absences cards are headings in the page outline', async ({ page }) => {
+		const shareCode = FIXTURE_WG.shareCode;
+		await setupMember(page);
+		await page.route(`**/api/wg/${shareCode}/chores`, (route) =>
+			route.fulfill({
+				json: {
+					chores: [
+						{
+							id: 'chore-bath',
+							title: 'Bad putzen',
+							intervalDays: 7,
+							recurrenceType: 'days',
+							nextDueAt: new Date().toISOString(),
+							assignedMemberId: FIXTURE_WG.memberId,
+							lastCompletedAt: null,
+							lastCompletedByName: null,
+							openGapCountForAssignee: 0,
+						},
+					],
+					monthCompletions: {},
+				},
+			}),
+		);
+		await page.route(`**/api/wg/${shareCode}/absences`, (route) =>
+			route.fulfill({ json: { absences: [] } }),
+		);
+		await navigateToFeature(page, `/wg/${shareCode}/chores`);
+		await dismissOnboarding(page);
+
+		await expect(page.getByRole('heading', { name: 'Abwesenheiten', level: 2 })).toBeVisible();
+		await expect(page.getByRole('heading', { name: /^Diesen Monat/, level: 2 })).toBeVisible();
+	});
+
 	test('an absence removal stays pending until the server answers and is retryable after a failure', async ({
 		page,
 	}) => {
