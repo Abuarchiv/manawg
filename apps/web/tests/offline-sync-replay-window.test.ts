@@ -354,3 +354,18 @@ test('queued PATCH keeps its idempotency key and expected member in the request'
 	assert.equal(request?.headers['Idempotency-Key'], VALID_KEY);
 	assert.equal(request?.memberId, 'member-a');
 });
+
+test("sync preflight keeps a queued action's existing idempotency key", async () => {
+	const existingKey = '00000000-0000-4000-8000-000000000002';
+	let sentKey: string | undefined;
+	const { module } = await makeQueueModule({
+		apiFetch: async (_path, init) => {
+			sentKey = init.headers['Idempotency-Key'];
+			return { ok: false, status: 0, error: 'network' };
+		},
+	});
+	await setQueue(module, [createAction({ idempotencyKey: existingKey })]);
+	await module.syncOfflineActions('TEST1234', { force: true, memberId: 'member-a' });
+	assert.equal(sentKey, existingKey);
+	assert.equal(module.readOfflineQueue()[0].idempotencyKey, existingKey);
+});
