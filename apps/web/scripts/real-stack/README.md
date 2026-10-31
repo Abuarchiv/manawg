@@ -44,6 +44,11 @@ session refresh against real Supabase and real PostgreSQL instead of fixtures.
     UPSTASH_REDIS_REST_TOKEN=local-token VERCEL_ENV=preview NODE_TLS_REJECT_UNAUTHORIZED=0`.
     `burst.mjs` adds 36 shopping items in one minute and expects no 429; `ui.mjs`, `ui-edit.mjs`
     and `journey.mjs` must also pass in this mode without 429.
+12. `push.mjs` turns Web Push on in installed Google Chrome (real FCM), sends the test notification
+    and a pinboard post from the second member, and expects both in the service worker. The app
+    needs `VAPID_*` set at build time. FCM sometimes answers 410 for a subscription for several
+    seconds after creating it, or accepts a message and delivers it to headless Chrome late; a
+    single failed run is therefore no app bug, the server log tells the two apart.
 
 The scripts expect the default local keys of `supabase start`. The addresses live in `env.mjs`;
 override them with `REAL_STACK_APP_URL` (default `http://localhost:3140`), `REAL_STACK_SUPABASE_URL`
