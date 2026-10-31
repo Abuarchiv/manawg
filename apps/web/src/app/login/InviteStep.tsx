@@ -89,7 +89,7 @@ export function InviteStep({ code, wgName, memberId, onSkip }: InviteStepProps) 
 	const onShare = () =>
 		run(async () => {
 			if (!invite) return;
-			const outcome = await shareInvite(render(inviteShareMessage(wgName, invite.url)), invite.url);
+			const outcome = await shareInvite(render(inviteShareMessage(wgName, invite.url)));
 			if (outcome === 'cancelled') setState('idle');
 			else flash(outcome);
 		});

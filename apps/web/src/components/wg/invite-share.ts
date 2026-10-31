@@ -44,9 +44,9 @@ export function inviteShareMessage(wgName: string, url: string): Message {
 	return { key: 'shell.inviteShare.text', values: { wgName, url, days: INVITE_VALID_DAYS } };
 }
 
-/** Native share sheet when there is one, the clipboard otherwise. `text` is the rendered share message. */
-export async function shareInvite(text: string, url: string): Promise<ShareOutcome> {
-	const shareData = { title: 'ManaWG', text, url };
+/** Native share sheet when there is one, the clipboard otherwise. `text` is the rendered share message, which already carries the link. */
+export async function shareInvite(text: string): Promise<ShareOutcome> {
+	const shareData = { title: 'ManaWG', text };
 	try {
 		const nav = (typeof navigator !== 'undefined' ? navigator : null) as
 			| (Navigator & NavigatorWithShare)
