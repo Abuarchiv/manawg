@@ -3,13 +3,11 @@ import { useState } from 'react';
 import { apiFetch } from '@/core/infra/api-client';
 import { discardQueuedEntry } from '@/core/offline/offline-client';
 import { isQueuedCreateId } from '@/core/offline/offline-queue';
-import { parseValidDate } from '@/core/utils/time';
 import { getAbsentMemberIds } from '@/features/chores/absence';
 import { choreCompletionFeedback } from '@/features/chores/chore-completion';
 import type { ChoreEditChanges } from '@/features/chores/chore-edit';
 import { choreActionErrorMessage, choreEditErrorMessage } from '@/features/chores/chore-errors';
-import { chooseNextAvailableMember } from '@/features/chores/chore-fairness';
-import { computeNextDueAt } from '@/features/chores/chore-recurrence';
+import { chooseNextAvailableMember, predictNextDueAt } from '@/features/chores/chore-fairness';
 import { getChoreStatus } from '@/features/chores/chore-status';
 import type { Chore } from '@/features/chores/components/chore-types';
 import { pendingKeys } from '@/features/chores/pending-keys';
@@ -67,18 +65,12 @@ export function useChoreActions(ctx: ChorePageContext) {
 
 	/** The chore stays in the plan offline: move it to its next date and assignee locally. */
 	function advanceLocally(previousChore: Chore): void {
-		const dueAt = parseValidDate(previousChore.nextDueAt);
-		if (!dueAt) {
+		const localNextDueAt = predictNextDueAt(previousChore);
+		if (!localNextDueAt) {
 			// Without a valid date there is nothing to move; the row stays as it was.
 			restore(previousChore);
 			return;
 		}
-		const localNextDueAt = computeNextDueAt(
-			dueAt,
-			previousChore.intervalDays,
-			new Date(),
-			previousChore.recurrenceType,
-		);
 		const localNextAssignee = chooseNextAvailableMember({
 			members: activeMembers,
 			currentMemberId: previousChore.assignedMemberId,
