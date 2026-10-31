@@ -208,7 +208,9 @@ export function CalendarMonth({
 					>
 						<ChevronLeft aria-hidden />
 					</Button>
-					<CardTitle className="min-w-0 text-center">{monthLabel}</CardTitle>
+					<CardTitle className="min-w-0 text-center" aria-live="polite" aria-atomic="true">
+						{monthLabel}
+					</CardTitle>
 					<Button
 						variant="ghost"
 						size="icon"

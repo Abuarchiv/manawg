@@ -82,7 +82,11 @@ export function MonthlyStatementDocument({
 				</div>
 				<div className="flex flex-col gap-2">
 					<p className={cn(EYEBROW, 'tracking-[0.14em]')}>{t('document.eyebrow', { wgName })}</p>
-					<h1 className="font-heading text-[32px] leading-none font-semibold tracking-[-0.035em] print:text-[52px]">
+					<h1
+						aria-live="polite"
+						aria-atomic="true"
+						className="font-heading text-[32px] leading-none font-semibold tracking-[-0.035em] print:text-[52px]"
+					>
 						{monthTitle(monthKey, locale)}
 					</h1>
 				</div>
