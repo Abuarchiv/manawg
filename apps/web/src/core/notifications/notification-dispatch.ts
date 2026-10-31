@@ -268,7 +268,6 @@ export async function dispatchNotification(
 	};
 	const category = notificationCategoryForEvent(input.event);
 	const priority = input.urgent ? 'urgent' : notificationPriorityForEvent(input.event);
-	if (priority === 'silent') return { sent: 0, failures: [] };
 	const currentHour = berlinCurrentHour();
 
 	const targetMembers = rows
