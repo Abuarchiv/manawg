@@ -24,6 +24,11 @@ const GERMAN_SUMMARIES: Case[] = [
 	['announcement.reaction.removed', {}, 'Anna hat eine Reaktion entfernt.'],
 	['announcement.created', {}, 'Anna hat einen Pinnwand-Beitrag erstellt.'],
 	['announcement.updated', {}, 'Anna hat einen Pinnwand-Beitrag aktualisiert.'],
+	[
+		'announcement.updated',
+		{ status: 'resolved', statusChanged: true },
+		'Anna hat einen Pinnwand-Beitrag als geklärt markiert.',
+	],
 	['announcement.deleted', {}, 'Anna hat einen Pinnwand-Beitrag entfernt.'],
 	['calendar.feed_created', {}, 'Anna hat den Kalender-Feed angelegt.'],
 	['calendar.feed_rotated', {}, 'Anna hat den Kalender-Feed erneuert.'],

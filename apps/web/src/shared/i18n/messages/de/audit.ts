@@ -25,7 +25,7 @@ export default {
 		feed: '{self, select, yes {hast} other {hat}} einen Pinnwand-Beitrag erstellt.',
 	},
 	announcementUpdated: {
-		feed: '{self, select, yes {hast} other {hat}} einen Pinnwand-Beitrag aktualisiert.',
+		feed: '{self, select, yes {hast} other {hat}} {change, select, resolved {einen Pinnwand-Beitrag als geklärt markiert.} open {einen Pinnwand-Beitrag wieder geöffnet.} other {einen Pinnwand-Beitrag aktualisiert.}}',
 	},
 	announcementDeleted: {
 		feed: '{self, select, yes {hast} other {hat}} einen Pinnwand-Beitrag entfernt.',
