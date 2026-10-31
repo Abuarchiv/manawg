@@ -1,12 +1,12 @@
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { request } from '@playwright/test';
-import { DB } from './env.mjs';
+import { BASE, DB, SB } from './env.mjs';
 
 // Module-level API checks against the local real stack (see README): shopping, inventory, events,
 // payments and settlement, recurring expenses with the cron, pinnwand, absences, members, calendar
 // subscription, export, crons, WG rename and deletion, account deletion.
-export { BASE, SB } from './env.mjs';
+export { BASE, SB };
 export const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
 export const CRON = process.env.CRON_SECRET ?? '';
 if (!SERVICE) throw new Error('SUPABASE_SERVICE_ROLE_KEY missing (see supabase status -o env)');
@@ -45,7 +45,16 @@ export async function user(name) {
 	});
 	const u = await r.json();
 	const ctx = await request.newContext({ baseURL: BASE, extraHTTPHeaders: { origin: BASE } });
-	const s = await ctx.post('/api/auth/sign-in', { data: { email, password } });
+	const signin = () => ctx.post('/api/auth/sign-in', { data: { email, password } });
+	let s = await signin();
+	if (s.status() === 429) {
+		const retryAfter = s.headers()['retry-after'];
+		const seconds = retryAfter?.trim() ? Number(retryAfter) : Number.NaN;
+		if (Number.isFinite(seconds) && seconds >= 0 && seconds <= 60) {
+			await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
+			s = await signin();
+		}
+	}
 	if (!s.ok()) throw new Error(`signin ${name} ${s.status()}${await s.text()}`);
 	return { name, id: u.id, email, ctx };
 }
@@ -93,4 +102,5 @@ export async function setup() {
 export function finish() {
 	process.stdout.write(`oks=${oks.length} bugs=${bugs.length}\n`);
 	for (const entry of bugs) process.stdout.write(`- ${entry}\n`);
+	if (bugs.length > 0) process.exitCode = 1;
 }

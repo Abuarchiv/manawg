@@ -1,7 +1,9 @@
 'use client';
 
-import { apiFetch } from '@/core/infra/api-client';
+import { getLocalAccount } from '@/core/auth/local-account';
+import { anySignal, apiFetch } from '@/core/infra/api-client';
 import { retireWebPushEndpoint } from '@/core/notifications/push-subscribe';
+import { clearPendingImages } from '@/core/offline/offline-images';
 
 // The session lives in HttpOnly cookies that only the server reads and writes. Every call below
 // goes through /api/auth/*; there is no Supabase client in the browser.
@@ -33,11 +35,11 @@ class AuthRequestError extends Error {
 	}
 }
 
-async function authRequest<T>(path: string, body?: object): Promise<T> {
-	const res = await apiFetch<T>(
-		path,
-		body === undefined ? {} : { method: 'POST', body: JSON.stringify(body) },
-	);
+async function authRequest<T>(path: string, body?: object, signal?: AbortSignal): Promise<T> {
+	const res = await apiFetch<T>(path, {
+		...(body === undefined ? {} : { method: 'POST', body: JSON.stringify(body) }),
+		...(signal ? { signal } : {}),
+	});
 	if (!res.ok)
 		throw new AuthRequestError(res.status === 0 ? 'network_error' : res.error, res.status);
 	return res.data;
@@ -131,8 +133,10 @@ export function verifyEmailCode(email: string, token: string): Promise<AuthSessi
 
 async function removeCurrentBrowserPushSubscription(
 	targets: readonly LogoutPushTarget[],
+	isCurrent: () => boolean,
 ): Promise<LogoutPushCleanup> {
-	if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return 'none';
+	if (!isCurrent() || typeof navigator === 'undefined' || !('serviceWorker' in navigator))
+		return 'none';
 
 	let registration: ServiceWorkerRegistration | undefined;
 	try {
@@ -141,6 +145,7 @@ async function removeCurrentBrowserPushSubscription(
 		console.warn('[auth] browser push subscription could not be inspected during logout');
 		return 'failed';
 	}
+	if (!isCurrent()) return 'none';
 	if (!registration) return 'none';
 	if (!registration.pushManager) return 'none';
 
@@ -151,6 +156,7 @@ async function removeCurrentBrowserPushSubscription(
 		console.warn('[auth] browser push subscription could not be inspected during logout');
 		return 'failed';
 	}
+	if (!isCurrent()) return 'none';
 	if (!subscription) return 'none';
 
 	const uniqueTargets = [
@@ -192,41 +198,68 @@ async function removeCurrentBrowserPushSubscription(
  * Remove everything this browser stored for the signed-out account: identities,
  * drafts, offline queue, pending images, shell caches. Theme stays (device preference).
  */
-export async function clearLocalAccountData(): Promise<void> {
+export async function clearLocalAccountData(
+	expectedAccount = getLocalAccount(),
+	signal?: AbortSignal,
+): Promise<boolean> {
+	const isCurrent = () => !signal?.aborted && getLocalAccount() === expectedAccount;
+	if (!isCurrent()) return false;
 	try {
 		for (const key of Object.keys(localStorage)) {
-			if (key.startsWith('manawg:') || key.startsWith('manawg_')) localStorage.removeItem(key);
+			if (!isCurrent()) return false;
+			if (key !== 'manawg_account' && (key.startsWith('manawg:') || key.startsWith('manawg_')))
+				localStorage.removeItem(key);
 		}
 	} catch {
 		// Blocked storage has nothing to leak.
 	}
-	await Promise.allSettled([
-		typeof indexedDB === 'undefined'
-			? undefined
-			: new Promise<void>((resolve) => {
-					const request = indexedDB.deleteDatabase('manawg-offline-images');
-					request.onsuccess = request.onerror = request.onblocked = () => resolve();
-				}),
-		typeof caches === 'undefined'
-			? undefined
-			: caches
-					.keys()
-					.then((keys) =>
-						Promise.all(
-							keys.filter((key) => key.startsWith('manawg-app-')).map((key) => caches.delete(key)),
-						),
-					),
-		// The icon badge is device-global; the next account must not inherit this one's unread count.
-		typeof navigator !== 'undefined' && 'clearAppBadge' in navigator
-			? navigator.clearAppBadge()
-			: undefined,
-	]);
+	if (!isCurrent()) return false;
+	if (typeof indexedDB !== 'undefined' && !(await clearPendingImages(expectedAccount, signal)))
+		return false;
+	if (!isCurrent()) return false;
+
+	if (typeof caches !== 'undefined') {
+		let keys: string[] = [];
+		try {
+			keys = await caches.keys();
+		} catch {
+			// Cache cleanup is best effort, as before.
+		}
+		if (!isCurrent()) return false;
+		const deletions: Promise<boolean>[] = [];
+		for (const key of keys) {
+			if (!key.startsWith('manawg-app-')) continue;
+			if (!isCurrent()) return false;
+			try {
+				deletions.push(caches.delete(key));
+			} catch {
+				// Cache cleanup is best effort, as before.
+			}
+		}
+		await Promise.allSettled(deletions);
+		if (!isCurrent()) return false;
+	}
+	if (!isCurrent()) return false;
+	if (typeof navigator !== 'undefined' && 'clearAppBadge' in navigator) {
+		try {
+			await navigator.clearAppBadge();
+		} catch {
+			// Badge cleanup is best effort, as before.
+		}
+	}
+	if (!isCurrent()) return false;
 	// The wipe took the offline page with it; the worker fetches it again.
 	if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
 		navigator.serviceWorker.controller?.postMessage('refresh-shell');
 	}
+	if (!isCurrent()) return false;
+	try {
+		localStorage.removeItem('manawg_account');
+	} catch {
+		// Blocked storage has nothing to leak.
+	}
+	return true;
 }
-
 const LOGOUT_SYNC_TIMEOUT_MS = 5_000;
 
 /** Best effort: send what the offline queue still holds before the wipe takes it. */
@@ -270,18 +303,56 @@ async function flushOfflineQueueBeforeLogout(): Promise<number> {
  */
 export async function signOutSocialAccount(
 	pushTargets: readonly LogoutPushTarget[] = [],
-	options: { confirmDiscard?: (count: number) => Promise<boolean>; everywhere?: boolean } = {},
+	options: {
+		confirmDiscard?: (count: number) => Promise<boolean>;
+		everywhere?: boolean;
+		signal?: AbortSignal;
+	} = {},
 ): Promise<{ pushCleanup: LogoutPushCleanup; cancelled?: true }> {
-	if (options.confirmDiscard) {
-		const unsent = await flushOfflineQueueBeforeLogout();
-		if (unsent > 0 && !(await options.confirmDiscard(unsent))) {
-			return { pushCleanup: 'none', cancelled: true };
+	const account = getLocalAccount();
+	const accountController = new AbortController();
+	const signal = options.signal
+		? anySignal([accountController.signal, options.signal])
+		: accountController.signal;
+	const isCurrent = () => !signal.aborted && getLocalAccount() === account;
+	const storageWindow = typeof window === 'undefined' ? null : window;
+	const onStorage = () => {
+		if (getLocalAccount() !== account) accountController.abort();
+	};
+	storageWindow?.addEventListener('storage', onStorage);
+	try {
+		if (!isCurrent()) return { pushCleanup: 'none', cancelled: true };
+		if (options.confirmDiscard) {
+			const unsent = await flushOfflineQueueBeforeLogout();
+			if (!isCurrent()) return { pushCleanup: 'none', cancelled: true };
+			if (unsent > 0 && !(await options.confirmDiscard(unsent))) {
+				return { pushCleanup: 'none', cancelled: true };
+			}
+			if (!isCurrent()) return { pushCleanup: 'none', cancelled: true };
 		}
+		if (!isCurrent()) return { pushCleanup: 'none', cancelled: true };
+		const pushCleanup = await removeCurrentBrowserPushSubscription(pushTargets, isCurrent).catch(
+			() => 'failed' as const,
+		);
+		if (!isCurrent()) return { pushCleanup: 'none', cancelled: true };
+		try {
+			await authRequest(
+				'/api/auth/sign-out',
+				options.everywhere ? { everywhere: true } : {},
+				signal,
+			);
+		} catch (error) {
+			if (!isCurrent()) return { pushCleanup: 'none', cancelled: true };
+			throw error;
+		}
+		if (!isCurrent()) return { pushCleanup: 'none', cancelled: true };
+		if (!(await clearLocalAccountData(account, signal)))
+			return { pushCleanup: 'none', cancelled: true };
+		const currentAccount = getLocalAccount();
+		if (signal.aborted || (currentAccount !== null && currentAccount !== account))
+			return { pushCleanup: 'none', cancelled: true };
+		return { pushCleanup };
+	} finally {
+		storageWindow?.removeEventListener('storage', onStorage);
 	}
-	const pushCleanup = await removeCurrentBrowserPushSubscription(pushTargets).catch(
-		() => 'failed' as const,
-	);
-	await authRequest('/api/auth/sign-out', options.everywhere ? { everywhere: true } : {});
-	await clearLocalAccountData();
-	return { pushCleanup };
 }

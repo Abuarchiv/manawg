@@ -5,14 +5,19 @@ Provide one predictable browser-verification contract that separates determinist
 
 ## Requirements
 
-### Requirement: Playwright is the canonical application test runner
+### Requirement: Playwright is the canonical browser verification runner
 
-The project SHALL expose one supported application test entry point that executes the Playwright suite, and SHALL NOT require a second test framework for the supported verification workflow.
+The project SHALL expose `pnpm --filter @manawg/web test:e2e:fixtures` as the supported deterministic browser verification entry point. Unit and route contracts SHALL remain a separate lane using Node's built-in test runner; no additional unit-test framework is required.
 
 #### Scenario: Standard application test command
 
-- **WHEN** a contributor runs the standard application test command
+- **WHEN** a contributor runs `pnpm --filter @manawg/web test:e2e:fixtures`
 - **THEN** the Playwright suite starts and its exit status represents the suite result
+
+#### Scenario: Unit and route verification
+
+- **WHEN** a contributor runs `pnpm test` from the repository root
+- **THEN** the Node unit and route suite starts and its exit status represents that suite, independently of the browser lane
 
 #### Scenario: Obsolete runner is absent from the supported workflow
 

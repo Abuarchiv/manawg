@@ -156,10 +156,18 @@ export function useSessionMember({
 			offVisible();
 			window.removeEventListener('storage', onStorage);
 			auth.current.generation += 1;
-			auth.current.syncAbort?.abort();
-			auth.current.syncAbort = null;
 		};
 	}, [auth, dispatch, hydrated, loadSessionMember]);
+
+	// A metadata refresh replaces the lookup callback without ending the replay's auth context.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: principal and WG changes must cancel the previous replay.
+	useEffect(
+		() => () => {
+			auth.current.syncAbort?.abort();
+			auth.current.syncAbort = null;
+		},
+		[auth, wg.shareCode, initialIdentity?.authUserId, initialIdentity?.memberId],
+	);
 
 	return { hydrated, loadSessionMember };
 }

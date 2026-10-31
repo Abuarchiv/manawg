@@ -26,6 +26,7 @@ const cm = await call(B, 'POST', `/api/wg/${code}/announcements/${post.id}/comme
 expect(cm.status < 300, 'Pinboard: comment', JSON.stringify(cm.body));
 const rx = await call(B, 'POST', `/api/wg/${code}/announcements/${post.id}/reactions`, {
 	reaction: 'ok',
+	active: true,
 });
 expect(rx.status < 300, 'Pinboard: reaction', JSON.stringify(rx.body));
 const anList = await call(B, 'GET', `/api/wg/${code}/announcements`);

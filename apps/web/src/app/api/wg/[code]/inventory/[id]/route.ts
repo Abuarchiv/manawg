@@ -59,6 +59,19 @@ const patchInventorySchema = z
 		unit: inventoryUnitSchema.optional(),
 		category: inventoryCategorySchema.optional(),
 		expectedUpdatedAt: z.string().datetime({ offset: true }).optional(),
+		purchase: z
+			.object({
+				id: z
+					.string()
+					.uuid()
+					.transform((value) => value.toLowerCase()),
+				boughtAt: z
+					.string()
+					.datetime({ offset: true })
+					.transform((value) => new Date(value).toISOString()),
+			})
+			.strict()
+			.optional(),
 	})
 	.refine(
 		(value) =>
@@ -67,8 +80,21 @@ const patchInventorySchema = z
 			value.quantity !== undefined ||
 			value.threshold !== undefined ||
 			value.unit !== undefined ||
-			value.category !== undefined,
+			value.category !== undefined ||
+			value.purchase !== undefined,
 		{ message: 'empty_update' },
+	)
+	.refine(
+		(value) =>
+			value.purchase === undefined ||
+			(value.quantityDelta !== undefined &&
+				value.quantityDelta > 0 &&
+				value.name === undefined &&
+				value.quantity === undefined &&
+				value.threshold === undefined &&
+				value.unit === undefined &&
+				value.category === undefined),
+		{ message: 'purchase_invalid' },
 	)
 	.refine((value) => value.quantity === undefined || value.expectedUpdatedAt !== undefined, {
 		message: 'expected_updated_at_required',
@@ -95,23 +121,28 @@ export const PATCH = withWgRoute<{ id: string }>('inventory PATCH', async (req, 
 			unit: 'unit_invalid',
 			category: 'category_invalid',
 			expectedUpdatedAt: 'expected_updated_at_invalid',
+			purchase: 'purchase_invalid',
 		},
 		formErrors: {
 			empty_update: 'empty_update',
 			expected_updated_at_required: 'expected_updated_at_required',
 			expected_quantity_required: 'expected_quantity_required',
+			purchase_invalid: 'purchase_invalid',
 		},
 	});
 	if (!parsed.ok) return parsed.response;
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
 	const wgId = auth.wg.id;
+	const purchase = parsed.data.purchase;
 
 	const write = () =>
 		withIdempotentWrite(
 			{
-				scope: `inventory-patch:${wgId}:${auth.member.memberId}:${id}`,
-				key: readIdempotencyKey(req),
+				scope: purchase
+					? `inventory-restock:${wgId}:${auth.member.memberId}:${purchase.boughtAt}`
+					: `inventory-patch:${wgId}:${auth.member.memberId}:${id}`,
+				key: purchase?.id ?? readIdempotencyKey(req),
 				codec: inventoryPatchCodec,
 				prepare: async () => {
 					const limited = await checkRateLimit(
@@ -138,6 +169,9 @@ export const PATCH = withWgRoute<{ id: string }>('inventory PATCH', async (req, 
 				});
 				if (mutation.kind === 'not_found') return rejectWrite(notFound('item_not_found'));
 				if (mutation.kind === 'conflict') return rejectWrite(conflict('version_conflict'));
+				if (mutation.kind === 'purchase_rejected') {
+					return rejectWrite(conflict('inventory_purchase_changed'));
+				}
 				if (mutation.kind === 'held') return { status: 200, body: { item: mutation.item } };
 				return { status: 200, body: { item: mutation.updated }, context: mutation };
 			},

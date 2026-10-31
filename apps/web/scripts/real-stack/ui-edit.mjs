@@ -197,7 +197,7 @@ await step(a, 'chores-delete-empty', async (p) => {
 await step(a, 'expense-details', async (p) => {
 	await open(p, '/expenses');
 	await p.getByRole('button', { name: /^Details öffnen: Wocheneinkauf/ }).click();
-	await p.getByRole('button', { name: /^Als bezahlt eintragen/ }).waitFor();
+	await p.getByRole('button', { name: /^Als bezahlt markieren/ }).waitFor();
 });
 await step(a, 'expense-sheet', async (p) => {
 	await actions(p, 'Aktionen für Wocheneinkauf');
@@ -269,7 +269,7 @@ await step(a, 'statement-next', async (p) => {
 // ---- Calendar: edit dialog, month view, delete
 await step(a, 'calendar-edit', async (p) => {
 	await open(p, '/calendar');
-	await p.getByRole('button', { name: /^Termin bearbeiten: Hausversammlung/ }).click();
+	await p.getByRole('button', { name: /^Hausversammlung / }).click();
 	await p.getByRole('dialog').waitFor();
 });
 await step(a, 'calendar-edit-long', async (p) => {
@@ -283,10 +283,10 @@ await step(a, 'calendar-month', async (p) => {
 });
 await step(a, 'calendar-delete-empty', async (p) => {
 	await p.getByRole('tab', { name: 'Agenda' }).click();
-	await p.getByRole('button', { name: /^Termin bearbeiten:/ }).click();
+	await p.getByRole('button').filter({ hasText: LONG }).click();
 	await p.getByRole('dialog').getByRole('button', { name: 'Termin löschen' }).click();
 	await confirm(p);
-	await p.getByRole('button', { name: /^Termin bearbeiten:/ }).waitFor({ state: 'detached' });
+	await p.getByRole('button').filter({ hasText: LONG }).waitFor({ state: 'detached' });
 });
 
 // ---- Pinboard: menu, edit, resolve, empty
@@ -333,7 +333,7 @@ await step(a, 'chat-delete', async (p) => {
 // ---- Settings tabs + dark mode
 await step(a, 'settings-notifications', async (p) => {
 	await open(p, '/settings');
-	await p.getByRole('tab', { name: 'Hinweise' }).click();
+	await p.getByRole('tab', { name: 'Benachrichtigungen', exact: true }).click();
 	await wait(500);
 });
 await step(a, 'settings-access', async (p) => {
@@ -370,3 +370,4 @@ process.stdout.write(`steps=${shot} bugs=${bugs.length}\n`);
 for (const n of notes) process.stdout.write(`+ ${n}\n`);
 for (const entry of bugs) process.stdout.write(`- ${entry}\n`);
 await browser.close();
+if (bugs.length > 0) process.exitCode = 1;

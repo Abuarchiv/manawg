@@ -125,8 +125,7 @@ export function useChoreActions(ctx: ChorePageContext) {
 					const next = outcome.next;
 					const completed: Chore = {
 						...chore,
-						nextDueAt: next.nextDueAt,
-						assignedMemberId: next.assignedMemberId,
+						...next,
 						lastCompletedAt: new Date().toISOString(),
 						lastCompletedByName: identity.name,
 					};

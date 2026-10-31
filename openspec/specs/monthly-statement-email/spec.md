@@ -88,16 +88,25 @@ The figures in the mail SHALL be computed by `buildMonthlyStatement` at send tim
 - **WHEN** an expense for the month is added after the mail went out
 - **THEN** no new mail is sent; the linked in-app statement shows the updated figures
 
-### Requirement: Non-production never sends
+### Requirement: Mail transport and dry-run boundaries are explicit
 
-The system SHALL send statement mails only from the production deployment.
+The system SHALL use the configured SMTP transport for self-hosted instances. Without SMTP, it SHALL use Resend only in production or with an explicit recipient allowlist and API key; otherwise it SHALL render a dry run without writing ledger rows.
 
 #### Scenario: Preview deployment
-- **WHEN** the cron runs with `VERCEL_ENV` other than `production`
+- **WHEN** the cron runs with `VERCEL_ENV` other than `production`, no SMTP host and no recipient allowlist
 - **THEN** mails are rendered and logged but not sent, and no ledger row is written
 
+#### Scenario: Self-hosted SMTP
+- **WHEN** SMTP and the sender are configured on a self-hosted instance, including without a Vercel environment
+- **THEN** eligible statement mails use SMTP and the same delivery ledger and retry rules
+- **AND** no Resend API key is required
+
+#### Scenario: Explicit Resend test allowlist
+- **WHEN** SMTP is not configured and both a recipient allowlist and Resend API key are set outside production
+- **THEN** eligible mails may be delivered only to allowlisted addresses
+
 #### Scenario: Production without mail key
-- **WHEN** the cron runs in production and `RESEND_API_KEY` is missing
+- **WHEN** the cron runs in production with no SMTP host and `RESEND_API_KEY` is missing
 - **THEN** the run fails loudly instead of recording anything
 
 #### Scenario: Recipient allowlist

@@ -327,4 +327,6 @@ expect(empty.status === 400, 'S5 empty message = 400', JSON.stringify(empty));
 // S8 delete account
 const _delA = await call(B, 'DELETE', '/api/account', {});
 const _stillB = await call(B, 'GET', '/api/wg/mine');
+process.stdout.write(`oks=${oks.length} bugs=${bugs.length}\n`);
 for (const entry of bugs) process.stdout.write(`- ${entry}\n`);
+if (bugs.length > 0) process.exitCode = 1;

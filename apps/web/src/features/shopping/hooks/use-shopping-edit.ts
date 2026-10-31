@@ -1,5 +1,9 @@
-import { useCallback } from 'react';
-import { createIdempotencyKey } from '@/core/http/idempotency-key';
+import { useCallback, useRef } from 'react';
+import {
+	type PendingIdempotentRequest,
+	resolveIdempotencyKey,
+	shouldReleaseIdempotencyKey,
+} from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
 import { readOfflineQueue } from '@/core/offline/offline-client';
 import type { ShoppingItem } from '@/features/shopping/components/shopping-types';
@@ -23,6 +27,7 @@ export type EditShoppingItem = (
  */
 export function useShoppingEdit(ctx: ShoppingActionContext): EditShoppingItem {
 	const { memberId, encodedShareCode, commit, pending, load, isPending, togglingRef } = ctx;
+	const editKeysRef = useRef(new Map<string, PendingIdempotentRequest>());
 
 	return useCallback(
 		async (item, fields) => {
@@ -41,11 +46,18 @@ export function useShoppingEdit(ctx: ShoppingActionContext): EditShoppingItem {
 			if (waitingForSync || isPending(item.id) || togglingRef.current.has(item.id)) {
 				return { key: 'shopping.edit.waitingForSync' };
 			}
-			const idempotencyKey = createIdempotencyKey();
+			const fingerprint = JSON.stringify({
+				name,
+				quantity,
+				expectedUpdatedAt: item.updatedAt,
+				expectedBoughtAt: item.boughtAt,
+			});
+			const idempotencyKey = resolveIdempotencyKey(editKeysRef.current.get(item.id), fingerprint);
 			if (!item.updatedAt || !idempotencyKey) {
 				void load(true);
 				return { key: 'shopping.edit.versionMissing' };
 			}
+			editKeysRef.current.set(item.id, { fingerprint, key: idempotencyKey });
 
 			togglingRef.current.add(item.id);
 			const optimistic = { ...item, name, quantity };
@@ -62,14 +74,12 @@ export function useShoppingEdit(ctx: ShoppingActionContext): EditShoppingItem {
 						method: 'PATCH',
 						memberId,
 						headers: { 'Idempotency-Key': idempotencyKey },
-						body: JSON.stringify({
-							name,
-							quantity,
-							expectedUpdatedAt: item.updatedAt,
-							expectedBoughtAt: item.boughtAt,
-						}),
+						body: fingerprint,
 					},
 				);
+				if (res.ok || shouldReleaseIdempotencyKey(res.status, res.error)) {
+					editKeysRef.current.delete(item.id);
+				}
 				if (res.ok) {
 					pending.delete(item.id);
 					commit((prev) => replaceShoppingItem(prev, item.id, res.data.item));

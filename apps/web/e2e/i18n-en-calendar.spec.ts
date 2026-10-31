@@ -25,6 +25,8 @@ function noonIn(offsetDays: number): number {
 	return Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() + offsetDays, 12);
 }
 
+const CLEANING_ROTA_DUE_AT = new Date(noonIn(2));
+
 function calendarEvent(overrides: Record<string, unknown>) {
 	const startsAt = new Date(noonIn(1)).toISOString();
 	return {
@@ -84,7 +86,7 @@ async function prepare(
 					{
 						id: 'bathroom',
 						title: 'Clean the bathroom',
-						nextDueAt: new Date(noonIn(2)).toISOString(),
+						nextDueAt: CLEANING_ROTA_DUE_AT.toISOString(),
 					},
 				],
 			},
@@ -148,6 +150,15 @@ test.describe('English calendar', () => {
 				await expect(grid.getByRole('columnheader').nth(6)).toHaveText('Sun');
 				await expect(page.getByRole('button', { name: 'Previous month' })).toBeVisible();
 				await expect(page.getByRole('button', { name: 'Next month' })).toBeVisible();
+				const choreMonth = new Intl.DateTimeFormat('en-GB', {
+					month: 'long',
+					year: 'numeric',
+					timeZone: 'Europe/Berlin',
+				}).format(CLEANING_ROTA_DUE_AT);
+				if (!(await page.getByText(choreMonth, { exact: true }).isVisible())) {
+					await page.getByRole('button', { name: 'Next month', exact: true }).click();
+				}
+				await expect(page.getByText(choreMonth, { exact: true })).toBeVisible();
 				await expect(page.locator('[data-day-cell][aria-label$=", cleaning rota"]')).toHaveCount(1);
 				await page.locator('[data-day-cell][aria-label$=", cleaning rota"]').click();
 				const dayList = page.getByRole('region', {

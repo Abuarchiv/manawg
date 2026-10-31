@@ -121,6 +121,7 @@ export function matchMembers(
 		for (const m of memberIndex) {
 			if (claimedExactly.has(m.id)) continue;
 			const maxDistance = maxFuzzyDistance(Math.min(normalized.length, m.normalized.length));
+			if (Math.abs(normalized.length - m.normalized.length) > maxDistance) continue;
 			const distance = levenshtein(normalized, m.normalized);
 			if (distance > maxDistance) continue;
 			if (best === null || distance < best.distance) {
@@ -154,7 +155,7 @@ export function findMappingConflicts(
 ): string[] {
 	const conflicts = new Set<string>();
 	for (const name of collectUniqueNames(parsed)) {
-		if (!mapping[name]) conflicts.add(name);
+		if (!Object.hasOwn(mapping, name) || !mapping[name]) conflicts.add(name);
 	}
 	return Array.from(conflicts);
 }

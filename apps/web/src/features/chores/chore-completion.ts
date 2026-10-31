@@ -6,6 +6,7 @@ import { createQueuedChoreCompletion } from '@/core/offline/offline-queue';
 import { formatShortDate, parseTimestamp } from '@/core/utils/time';
 import type { Locale } from '@/shared/i18n/locale';
 import type { Message } from '@/shared/i18n/message';
+import type { Chore } from './components/chore-types';
 
 /** The occurrence a member confirms as done: the server rejects it once date or assignee moved. */
 export interface ChoreOccurrence {
@@ -16,7 +17,7 @@ export interface ChoreOccurrence {
 }
 
 /** Next occurrence as `POST /chores/<id>/complete` confirms it. */
-interface ConfirmedChore {
+interface ConfirmedChore extends Partial<Chore> {
 	id: string;
 	nextDueAt: string;
 	assignedMemberId: string | null;

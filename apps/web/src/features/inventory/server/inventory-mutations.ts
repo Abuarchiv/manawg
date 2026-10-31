@@ -85,6 +85,7 @@ export type UpdateInventoryItemMutationInput = {
 	unit?: string | undefined;
 	category?: string | undefined;
 	expectedUpdatedAt?: string | undefined;
+	purchase?: { id: string; boughtAt: string } | undefined;
 };
 
 /** The retry of a save whose answer got lost finds its own values in place: no conflict then. */
@@ -119,6 +120,29 @@ export async function updateInventoryItemMutation(
 	const existingRows = await (lockRow ? existingQuery.for('update') : existingQuery);
 	const existing = existingRows[0];
 	if (!existing) return { kind: 'not_found' as const };
+
+	if (input.purchase) {
+		const purchaseQuery = tx
+			.select()
+			.from(shoppingItems)
+			.where(and(eq(shoppingItems.id, input.purchase.id), eq(shoppingItems.wgId, input.wgId)))
+			.limit(1);
+		const purchaseRows = await purchaseQuery.for('update');
+		const purchase = purchaseRows[0];
+		const boughtAt = new Date(input.purchase.boughtAt);
+		const boughtAtMs = boughtAt.getTime();
+		const now = Date.now();
+		if (
+			!purchase?.boughtAt ||
+			purchase.boughtAt.getTime() !== boughtAtMs ||
+			purchase.boughtByMemberId !== input.memberId ||
+			boughtAtMs > now ||
+			now - boughtAtMs >= 12 * 60 * 60 * 1000 ||
+			purchase.normalizedName !== existing.name.trim().toLowerCase()
+		) {
+			return { kind: 'purchase_rejected' as const };
+		}
+	}
 
 	if (input.quantity !== undefined) {
 		if (!input.expectedUpdatedAt || input.expectedQuantity === undefined) {

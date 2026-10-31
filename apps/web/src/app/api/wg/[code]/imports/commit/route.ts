@@ -14,6 +14,7 @@ import {
 	MAX_OCR_BYTES,
 	readImportJsonBody,
 } from '@/features/expenses/import-body';
+import { importMemberMappingSchema } from '@/features/expenses/import-member-mapping-schema';
 import {
 	findMappingConflicts,
 	type ParsedExpense,
@@ -29,7 +30,7 @@ import type { Locale } from '@/shared/i18n/locale';
 const commitSchema = z.object({
 	source: z.enum(['splitwise_csv', 'splid_csv', 'ocr_text']),
 	payload: z.string().min(1),
-	memberMapping: z.record(z.string(), z.string().uuid().nullable()),
+	memberMapping: importMemberMappingSchema(z.string().uuid().nullable()),
 	previewPayloadHash: z.string().optional(),
 	skipDuplicates: z.boolean().optional().default(true),
 	skipIndexes: z.array(z.number().int().min(0)).optional().default([]),

@@ -2,9 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { DESCRIPTION_MAX_LENGTH } from './expense-constants';
 import { MAX_IMPORT_COLUMNS, MAX_IMPORT_ROWS } from './import-body';
-import type { RejectedRow } from './import-types';
+import type { ParsedExpense, RejectedRow } from './import-types';
 
-const { matchMembers, parseSplidCsv, parseSplitwiseCsv } = await import('./import-parsers');
+const { collectUniqueNames, findMappingConflicts, matchMembers, parseSplidCsv, parseSplitwiseCsv } =
+	await import('./import-parsers');
 const { parseAmountToCents } = await import('./import-csv-helpers');
 
 test('parseSplitwiseCsv recovers the payer share from their net-balance column', () => {
@@ -90,6 +91,42 @@ test('matchMembers never reuses a member that another name already matches exact
 	const matched = matchMembers(['Katarina', 'Katharina'], members);
 	assert.equal(matched.get('Katarina'), 'katarina');
 	assert.equal(matched.get('Katharina'), null);
+});
+
+test('matchMembers preserves insertions and deletions at the allowed length difference', () => {
+	for (const [raw, memberName] of [
+		['ABXCDE', 'ABCDE'],
+		['ABCDE', 'ABXCDE'],
+		['ABXYCDEFGHI', 'ABCDEFGHI'],
+		['ABCDEFGHI', 'ABXYCDEFGHI'],
+	] as const) {
+		const fuzzy = new Set<string>();
+		assert.equal(
+			matchMembers([raw], [{ id: 'member', name: memberName }], fuzzy).get(raw),
+			'member',
+		);
+		assert.deepEqual([...fuzzy], [raw]);
+	}
+	assert.equal(matchMembers(['ABCD'], [{ id: 'member', name: 'ABCDE' }]).get('ABCD'), null);
+});
+
+test('matchMembers skips edit-distance scans for impossible Splid CSV name lengths', (t) => {
+	const raw = 'a'.repeat(100_000);
+	const csv = `Date,Description,Amount,Payer\n2026-10-30,Shared groceries,12.00,${raw}`;
+	const [expense] = parseSplidCsv(csv);
+	assert.ok(expense);
+	assert.equal(expense.paidByName, raw);
+	const members = Array.from({ length: 20 }, (_, index) => ({
+		id: `member-${index}`,
+		name: `Roommate Number${index}`,
+	}));
+	// Reject algorithmic work rather than relying on a machine-dependent time limit.
+	t.mock.method(String.prototype, 'charCodeAt', () => {
+		assert.fail('An impossible length difference must not enter the edit-distance scan');
+	});
+	const fuzzy = new Set<string>();
+	assert.equal(matchMembers(collectUniqueNames([expense]), members, fuzzy).get(raw), null);
+	assert.equal(fuzzy.size, 0);
 });
 
 test('parsers report rows they cannot read instead of dropping them silently', () => {
@@ -214,4 +251,24 @@ test('both parsers stop collecting rows once the row limit is exceeded', () => {
 	const good = Array.from({ length: 10_000 }, () => '2026-01-15,x,1.00,Anna');
 	const parsed = parseSplidCsv(['Datum,Beschreibung,Betrag,Bezahlt von', ...good].join('\n'));
 	assert.equal(parsed.length, MAX_IMPORT_ROWS + 1);
+});
+
+test('mapping conflicts require own keys for prototype-sensitive payer names', () => {
+	const expense: ParsedExpense = {
+		date: '2026-01-15',
+		description: 'Dinner',
+		amountCents: 100,
+		currency: 'EUR',
+		paidByName: 'constructor',
+		splits: [{ memberName: 'toString', amountCents: 100 }],
+		warnings: [],
+	};
+	assert.deepEqual(findMappingConflicts([expense], {}), ['constructor', 'toString']);
+
+	const mapping = Object.fromEntries([['__proto__', 'valid-member-id']]);
+	assert.equal(Object.hasOwn(mapping, '__proto__'), true);
+	assert.deepEqual(
+		findMappingConflicts([{ ...expense, paidByName: '__proto__', splits: [] }], mapping),
+		[],
+	);
 });

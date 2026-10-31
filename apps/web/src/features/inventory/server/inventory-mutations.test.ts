@@ -2,12 +2,24 @@ import assert from 'node:assert/strict';
 import { mock, test } from 'node:test';
 
 const updatedAt = new Date('2026-09-29T10:00:00.000Z');
-const wgInventoryItems = { id: 'id', wgId: 'wgId', quantity: 'quantity', updatedAt: 'updatedAt' };
+const shoppingItems = {
+	id: 'shopping.id',
+	wgId: 'shopping.wgId',
+	boughtAt: 'shopping.boughtAt',
+	boughtByMemberId: 'shopping.boughtByMemberId',
+	normalizedName: 'shopping.normalizedName',
+};
+const wgInventoryItems = {
+	id: 'id',
+	wgId: 'wgId',
+	quantity: 'quantity',
+	updatedAt: 'updatedAt',
+};
 
 mock.module('@/core/db', {
 	namedExports: {
 		db: {},
-		shoppingItems: {},
+		shoppingItems,
 		wgInventoryItems,
 		wgInventoryLog: { name: 'log' },
 	},
@@ -91,6 +103,127 @@ test('a concurrent +1 tap is applied on top of the committed quantity instead of
 		state.logs.map((log) => log.delta),
 		[1],
 	);
+});
+
+function purchaseTx(purchaseOverrides: Row = {}, requestedBoughtAt?: Date) {
+	const boughtAt = new Date(Date.now() - 60_000);
+	const item = {
+		id: 'item-1',
+		wgId: 'wg-1',
+		name: 'Dish soap',
+		quantity: 1,
+		threshold: 0,
+		unit: 'piece',
+		category: 'cleaning',
+		updatedAt,
+	};
+	const purchase = {
+		id: 'purchase-1',
+		wgId: 'wg-1',
+		boughtAt,
+		boughtByMemberId: 'member-1',
+		normalizedName: 'dish soap',
+		...purchaseOverrides,
+	};
+	const state = {
+		inventoryLocked: false,
+		purchaseLocked: false,
+		updates: 0,
+		logs: [] as Row[],
+	};
+	const tx = {
+		select: () => ({
+			from: (table: unknown) => ({
+				where: (conditions: unknown[]) => ({
+					limit: () => {
+						const source = table === shoppingItems ? purchase : item;
+						const matches = conditions.every((condition) => {
+							if (!Array.isArray(condition)) return false;
+							const column = (condition[0] as string).split('.').pop();
+							return column !== undefined && (source as Row)[column] === condition[1];
+						});
+						const rows = matches ? [{ ...source }] : [];
+						return Object.assign(Promise.resolve(rows), {
+							for: (mode: string) => {
+								assert.equal(mode, 'update');
+								if (table === shoppingItems) state.purchaseLocked = true;
+								else state.inventoryLocked = true;
+								return Promise.resolve(rows);
+							},
+						});
+					},
+				}),
+			}),
+		}),
+		update: () => ({
+			set: (values: Row) => ({
+				where: () => ({
+					returning: async () => {
+						state.updates += 1;
+						Object.assign(item, values);
+						return [{ ...item }];
+					},
+				}),
+			}),
+		}),
+		insert: () => ({
+			values: async (value: Row) => {
+				state.logs.push(value);
+			},
+		}),
+	};
+	return { tx, item, state, boughtAt: requestedBoughtAt ?? boughtAt };
+}
+
+test('a valid recent purchase restocks inventory and locks both rows', async () => {
+	const { tx, item, state, boughtAt } = purchaseTx();
+	const result = await updateInventoryItemMutation(tx as never, {
+		itemId: 'item-1',
+		wgId: 'wg-1',
+		memberId: 'member-1',
+		locale: 'en',
+		quantityDelta: 2,
+		purchase: { id: 'purchase-1', boughtAt: boughtAt.toISOString() },
+	});
+	assert.equal(result.kind, 'ok');
+	assert.equal(state.inventoryLocked, true);
+	assert.equal(state.purchaseLocked, true);
+	assert.equal(item.quantity, 3);
+	assert.deepEqual(
+		state.logs.map((log) => [log.delta, log.kind]),
+		[[2, 'restock']],
+	);
+});
+
+test('purchase restock rejects ineligible or mismatched purchase rows', async (t) => {
+	const staleBoughtAt = new Date(Date.now() - 13 * 60 * 60 * 1000);
+	const futureBoughtAt = new Date(Date.now() + 60_000);
+	const cases: Array<[string, Row, Date?]> = [
+		['another WG', { wgId: 'wg-2' }],
+		['another buyer', { boughtByMemberId: 'member-2' }],
+		['stale purchase', { boughtAt: staleBoughtAt }, staleBoughtAt],
+		['future purchase', { boughtAt: futureBoughtAt }, futureBoughtAt],
+		['reopened purchase', { boughtAt: null, boughtByMemberId: null }],
+		['retoggled purchase', { boughtAt: new Date(Date.now() - 30_000) }],
+		['different normalized name', { normalizedName: 'dishwasher tablets' }],
+	];
+	for (const [label, overrides, requestedBoughtAt] of cases) {
+		await t.test(label, async () => {
+			const { tx, item, state, boughtAt } = purchaseTx(overrides, requestedBoughtAt);
+			const result = await updateInventoryItemMutation(tx as never, {
+				itemId: 'item-1',
+				wgId: 'wg-1',
+				memberId: 'member-1',
+				locale: 'en',
+				quantityDelta: 2,
+				purchase: { id: 'purchase-1', boughtAt: boughtAt.toISOString() },
+			});
+			assert.equal(result.kind, 'purchase_rejected');
+			assert.equal(item.quantity, 1);
+			assert.equal(state.updates, 0);
+			assert.deepEqual(state.logs, []);
+		});
+	}
 });
 
 test('a name-only edit is applied on top of a concurrent tap instead of 409', async () => {

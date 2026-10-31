@@ -121,14 +121,6 @@ export function sortBoardAnnouncements<T extends { pinnedAt: string | null; crea
 	});
 }
 
-function getNewAnnouncementCount(
-	currentItems: readonly { id: string }[],
-	remoteItems: readonly { id: string }[],
-): number {
-	const currentIds = new Set(currentItems.map((item) => item.id));
-	return remoteItems.filter((item) => !currentIds.has(item.id)).length;
-}
-
 export function reconcilePendingAnnouncements<T extends { id: string }>(
 	currentItems: readonly { id: string }[],
 	remoteItems: readonly T[],
@@ -136,9 +128,12 @@ export function reconcilePendingAnnouncements<T extends { id: string }>(
 	lastProcessedServerRevision: number,
 ): { items: T[]; count: number; serverRevision: number } | null {
 	if (serverRevision <= lastProcessedServerRevision) return null;
+	const currentIds = new Set(currentItems.map((item) => item.id));
+	const items =
+		currentItems.length > 0 ? remoteItems.filter((item) => !currentIds.has(item.id)) : [];
 	return {
-		items: [...remoteItems],
-		count: currentItems.length > 0 ? getNewAnnouncementCount(currentItems, remoteItems) : 0,
+		items,
+		count: items.length,
 		serverRevision,
 	};
 }
@@ -146,7 +141,7 @@ export function reconcilePendingAnnouncements<T extends { id: string }>(
 /**
  * Refresh already-visible announcements in place from a background poll, without inserting or
  * reordering rows (new posts stay gated behind the "new posts" button via
- * `getNewAnnouncementCount`). Posts missing from the server response are removed.
+ * `reconcilePendingAnnouncements`). Posts missing from the server response are removed.
  */
 export function mergeBackgroundAnnouncements<T extends { id: string }>(
 	currentItems: readonly T[],
