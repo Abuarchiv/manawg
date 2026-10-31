@@ -125,6 +125,24 @@ test('matchMembers never reuses a member that another name already matches exact
 	assert.equal(matched.get('Katharina'), null);
 });
 
+test('matchMembers leaves a name unmatched when two members are equally close', () => {
+	const members = [
+		{ id: 'marcel', name: 'Marcel' },
+		{ id: 'marcal', name: 'Marcal' },
+	];
+	const fuzzy = new Set<string>();
+	assert.equal(matchMembers(['Marcol'], members, fuzzy).get('Marcol'), null);
+	assert.equal(fuzzy.size, 0);
+});
+
+test('matchMembers does not match a blank import name to a blank-named member', () => {
+	const fuzzy = new Set<string>();
+	const matched = matchMembers(['', '   '], [{ id: 'blank', name: '' }], fuzzy);
+	assert.equal(matched.get(''), null);
+	assert.equal(matched.get('   '), null);
+	assert.equal(fuzzy.size, 0);
+});
+
 test('matchMembers preserves insertions and deletions at the allowed length difference', () => {
 	for (const [raw, memberName] of [
 		['ABXCDE', 'ABCDE'],
@@ -303,4 +321,17 @@ test('mapping conflicts require own keys for prototype-sensitive payer names', (
 		findMappingConflicts([{ ...expense, paidByName: '__proto__', splits: [] }], mapping),
 		[],
 	);
+});
+
+test('mapping conflicts report names that are mapped to null', () => {
+	const expense: ParsedExpense = {
+		date: '2026-01-15',
+		description: 'Dinner',
+		amountCents: 100,
+		currency: 'EUR',
+		paidByName: 'Alice',
+		splits: [{ memberName: 'Bob', amountCents: 100 }],
+		warnings: [],
+	};
+	assert.deepEqual(findMappingConflicts([expense], { Alice: null, Bob: 'bob-id' }), ['Alice']);
 });
