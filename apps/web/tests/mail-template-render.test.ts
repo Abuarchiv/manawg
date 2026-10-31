@@ -34,3 +34,23 @@ test('the password-changed mail only promises what the app does', () => {
 	assert.match(selectLocale(html, 'de'), /„Passwort vergessen\?“/);
 	assert.match(selectLocale(html, 'en'), /“Forgot your password\?”/);
 });
+
+test('the email-change mail names both addresses and says both links are needed', () => {
+	const html = readFileSync(
+		new URL('../../../supabase/templates/email_change.html', import.meta.url),
+		'utf8',
+	);
+	const subjects = JSON.parse(
+		readFileSync(new URL('../../../supabase/templates/subjects.json', import.meta.url), 'utf8'),
+	);
+	for (const [locale, both] of [
+		['de', /beide/],
+		['en', /both/],
+	] as const) {
+		const text = selectLocale(html, locale);
+		assert.match(text, /\{\{ \.Email \}\}/);
+		assert.match(text, /\{\{ \.NewEmail \}\}/);
+		assert.match(text, both);
+	}
+	assert.doesNotMatch(subjects.email_change, /neue E-Mail-Adresse|new email address/);
+});
