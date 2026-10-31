@@ -226,3 +226,82 @@ export async function makeQueueModule({
 export async function setQueue(module: QueueModule, actions: Action[]): Promise<void> {
 	assert.equal(await module.updateOfflineQueue(() => actions), true);
 }
+
+// biome-ignore lint/suspicious/noExplicitAny: hand-rolled IndexedDB fake
+type Loose = any;
+
+export function fakeIndexedDb(
+	records: Map<string, Loose>,
+	beforeGetAllKeys?: () => void,
+	afterPut?: () => void,
+) {
+	return {
+		open() {
+			const request: Loose = {
+				result: null,
+				onupgradeneeded: null,
+				onsuccess: null,
+				onerror: null,
+			};
+			request.result = {
+				objectStoreNames: { contains: () => true },
+				createObjectStore() {},
+				close() {},
+				transaction() {
+					const before = new Map(records);
+					let aborted = false;
+					const tx: Loose = {
+						oncomplete: null,
+						onerror: null,
+						onabort: null,
+						error: null,
+						abort() {
+							if (aborted) return;
+							aborted = true;
+							records.clear();
+							for (const [key, value] of before) records.set(key, value);
+							this.error = new DOMException('transaction aborted', 'AbortError');
+							queueMicrotask(() => this.onabort?.());
+						},
+					};
+					const makeRequest = (run: () => unknown) => {
+						const req: Loose = { result: undefined, error: null, onsuccess: null, onerror: null };
+						queueMicrotask(() => {
+							if (aborted) return;
+							try {
+								req.result = run();
+								req.onsuccess?.();
+								if (!aborted) queueMicrotask(() => !aborted && tx.oncomplete?.());
+							} catch (error) {
+								req.error = error;
+								tx.error = error;
+								req.onerror?.();
+								tx.onerror?.();
+							}
+						});
+						return req;
+					};
+					tx.objectStore = () => ({
+						get: (key: string) => makeRequest(() => records.get(key)),
+						getAllKeys: () =>
+							makeRequest(() => {
+								beforeGetAllKeys?.();
+								return [...records.keys()];
+							}),
+						put: (value: Loose, key: string) =>
+							makeRequest(() => {
+								records.set(key, value);
+								afterPut?.();
+								return key;
+							}),
+						delete: (key: string) => makeRequest(() => records.delete(key)),
+						count: () => makeRequest(() => records.size),
+					});
+					return tx;
+				},
+			};
+			queueMicrotask(() => request.onsuccess?.());
+			return request;
+		},
+	};
+}

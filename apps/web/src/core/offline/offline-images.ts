@@ -9,10 +9,8 @@ import {
 	readApiErrorCode,
 } from '@/core/infra/api-client';
 import { EXPECTED_MEMBER_ID_HEADER } from '@/shared/lib/member-header';
+import { withPendingImageStore } from './pending-image-store';
 
-const DB_NAME = 'manawg-offline-images';
-const STORE_NAME = 'images';
-const DB_VERSION = 1;
 const TOKEN_PREFIX = 'manawg-pending-image:';
 // A stalled PUT on a bad mobile connection would otherwise block the uploader indefinitely.
 const UPLOAD_TIMEOUT_MS = 60_000;
@@ -59,93 +57,6 @@ function pendingImageIdFromToken(token: string): string {
 	return token.slice(TOKEN_PREFIX.length);
 }
 
-function openDb(): Promise<IDBDatabase> {
-	return new Promise((resolve, reject) => {
-		const request = indexedDB.open(DB_NAME, DB_VERSION);
-		request.onupgradeneeded = () => {
-			const db = request.result;
-			if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME);
-		};
-		request.onsuccess = () => resolve(request.result);
-		request.onerror = () => reject(request.error);
-	});
-}
-
-async function withStore<T>(
-	mode: IDBTransactionMode,
-	run: (store: IDBObjectStore) => IDBRequest<T>,
-	onSuccess?: (store: IDBObjectStore, result: T, tx: IDBTransaction) => void,
-	signal?: AbortSignal,
-): Promise<T> {
-	const db = await openDb();
-	return new Promise((resolve, reject) => {
-		const tx = db.transaction(STORE_NAME, mode);
-		const store = tx.objectStore(STORE_NAME);
-		let result: T;
-		let requestError: DOMException | null = null;
-		let callbackError: unknown;
-		let callbackFailed = false;
-		const onAbort = () => {
-			try {
-				tx.abort();
-			} catch {
-				// The transaction may already be complete.
-			}
-		};
-		const close = () => {
-			signal?.removeEventListener('abort', onAbort);
-			db.close();
-		};
-		tx.oncomplete = () => {
-			close();
-			if (callbackFailed) reject(callbackError);
-			else if (requestError) reject(requestError);
-			else resolve(result);
-		};
-		tx.onerror = () => {
-			close();
-			reject(callbackFailed ? callbackError : (tx.error ?? requestError));
-		};
-		tx.onabort = () => {
-			close();
-			reject(
-				callbackFailed
-					? callbackError
-					: (tx.error ?? new Error('offline-image-transaction-aborted')),
-			);
-		};
-		if (signal) {
-			signal.addEventListener('abort', onAbort, { once: true });
-			if (signal.aborted) {
-				onAbort();
-				return;
-			}
-		}
-		let request: IDBRequest<T>;
-		try {
-			request = run(store);
-		} catch (error) {
-			callbackFailed = true;
-			callbackError = error;
-			onAbort();
-			return;
-		}
-		request.onsuccess = () => {
-			result = request.result;
-			try {
-				onSuccess?.(store, result, tx);
-			} catch (error) {
-				callbackFailed = true;
-				callbackError = error;
-				onAbort();
-			}
-		};
-		request.onerror = () => {
-			requestError = request.error;
-		};
-	});
-}
-
 function createUploadScope(inputSignal?: AbortSignal) {
 	const account = getLocalAccount();
 	const accountController = new AbortController();
@@ -172,10 +83,15 @@ export async function clearPendingImages(
 	const isCurrent = () => !signal?.aborted && getLocalAccount() === expectedAccount;
 	if (!isCurrent()) return false;
 	try {
-		const keys = await withStore('readonly', (store) => store.getAllKeys(), undefined, signal);
+		const keys = await withPendingImageStore(
+			'readonly',
+			(store) => store.getAllKeys(),
+			undefined,
+			signal,
+		);
 		if (!isCurrent()) return false;
 		let stillCurrent = false;
-		await withStore(
+		await withPendingImageStore(
 			'readwrite',
 			(store) => {
 				stillCurrent = isCurrent();
@@ -227,7 +143,7 @@ export async function storePendingImage(input: {
 		};
 		let committed = false;
 		try {
-			await withStore(
+			await withPendingImageStore(
 				'readwrite',
 				(store) => store.put(record, id),
 				(_store, _result, tx) => {
@@ -241,7 +157,8 @@ export async function storePendingImage(input: {
 			throw error;
 		}
 		if (!scope.isCurrent()) {
-			if (committed) await withStore('readwrite', (store) => store.delete(id)).catch(() => {});
+			if (committed)
+				await withPendingImageStore('readwrite', (store) => store.delete(id)).catch(() => {});
 			throw new DOMException('Upload cancelled.', 'AbortError');
 		}
 		return createPendingImageToken(id);
@@ -255,14 +172,16 @@ export async function readPendingImage(
 	memberId: string,
 ): Promise<PendingImageRecord | null> {
 	if (!isPendingImageToken(token)) return null;
-	const record = await withStore('readonly', (store) => store.get(pendingImageIdFromToken(token)));
+	const record = await withPendingImageStore('readonly', (store) =>
+		store.get(pendingImageIdFromToken(token)),
+	);
 	return record?.memberId === memberId ? record : null;
 }
 
 export async function removePendingImage(token: string, memberId: string): Promise<void> {
 	if (!isPendingImageToken(token)) return;
 	if (!(await readPendingImage(token, memberId))) return;
-	await withStore('readwrite', (store) => store.delete(pendingImageIdFromToken(token)));
+	await withPendingImageStore('readwrite', (store) => store.delete(pendingImageIdFromToken(token)));
 }
 
 export type SignAndPutResult =
@@ -379,7 +298,7 @@ export async function uploadPendingImageToken(
 		let stale = false;
 		let existingUrl: string | undefined;
 		try {
-			await withStore(
+			await withPendingImageStore(
 				'readwrite',
 				(store) => store.get(record.id) as IDBRequest<PendingImageRecord | undefined>,
 				(store, current, tx) => {
