@@ -259,6 +259,29 @@ test.describe('English expense import', () => {
 		await expectNoGermanChrome(page);
 	});
 
+	test('a file without one readable row names each rejected row', async ({
+		context,
+		page,
+		baseURL,
+	}) => {
+		await setEnglishLocale(context, baseURL ?? 'http://localhost:3111');
+		await page.setViewportSize({ width: 390, height: 844 });
+		await setupMember(page);
+		await mockHistory(page);
+		await page.route(`${API}/imports/preview`, (route) =>
+			route.fulfill({ json: { ...previewBody, parsed: [], memberMapping: {}, conflicts: [] } }),
+		);
+		await openWizard(page);
+		await pasteExport(page);
+		await page.getByRole('button', { name: 'Create preview', exact: true }).click();
+
+		const error = page.locator('#import-error');
+		await expect(error).toContainText('Preview failed:');
+		await error.getByText('Show details', { exact: true }).click();
+		await expect(error.getByText(/^Row 4: Rent \(.+\)$/)).toBeVisible();
+		await expectNoGermanChrome(page);
+	});
+
 	test('leaving with typed input asks in English', async ({ context, page, baseURL }) => {
 		await setEnglishLocale(context, baseURL ?? 'http://localhost:3111');
 		await page.setViewportSize({ width: 390, height: 844 });
