@@ -98,7 +98,7 @@ await step(A, 'login', async (p) => {
 	await p.getByLabel('WG-Name').fill('Echte WG');
 	await p.getByRole('button', { name: 'WG erstellen', exact: true }).click();
 	// An early submit races the account-name prefill; the stale "fehlt" error must clear by itself.
-	const live = p.getByText('ist live');
+	const live = p.getByText('wurde erstellt');
 	const stale = p.getByText('Dein Anzeigename fehlt.');
 	await live.or(stale).first().waitFor({ timeout: 15_000 });
 	if (await stale.count()) {
