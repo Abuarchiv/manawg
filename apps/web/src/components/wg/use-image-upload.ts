@@ -274,14 +274,13 @@ export function useImageUpload({
 			if (result.kind === 'sign') {
 				if (
 					result.status === 503 &&
-					(result.code === '' ||
-						result.code === 'feature_disabled' ||
-						result.code === 'image_uploads_unavailable')
+					(result.code === 'feature_disabled' || result.code === 'image_uploads_unavailable')
 				) {
 					setNotice(null);
 					setFeatureDisabled(true);
 					return;
 				}
+				// A 503 without a code comes from a proxy during a deploy, so it is retried like any server fault.
 				// No answer or a server fault: keep the file and retry once the network is stable.
 				if (result.status === 0 || result.status >= 500) {
 					await keepPending(NETWORK_UNSTABLE_NOTICE);

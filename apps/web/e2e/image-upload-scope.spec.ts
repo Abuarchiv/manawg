@@ -216,4 +216,55 @@ test.describe('image upload lifetime', () => {
 			await context.setOffline(false);
 		}
 	});
+
+	test('a 503 without an error code keeps the receipt and retries later', async ({ page }) => {
+		await setupMember(page);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/expenses`);
+		await page.getByRole('button', { name: 'Ausgabe hinzufügen', exact: true }).click();
+		const dialog = page.getByRole('dialog');
+		await dialog.getByRole('button', { name: 'Beleg hinzufügen', exact: true }).click();
+		await page.waitForLoadState('networkidle');
+		await page.route('**/api/upload/sign', (route) =>
+			route.fulfill({
+				status: 503,
+				contentType: 'text/html',
+				body: '<html><body>503 Service Temporarily Unavailable</body></html>',
+			}),
+		);
+		await dialog.getByLabel('Bild auswählen', { exact: true }).setInputFiles({
+			name: 'proxy.png',
+			mimeType: 'image/png',
+			buffer: Buffer.from(
+				'iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAEklEQVR4nGNgYGD4z4AGgCQAAEgAAj0t4HUAAAAASUVORK5CYII=',
+				'base64',
+			),
+		});
+		await expect(dialog.getByText('Angehängt', { exact: true })).toBeVisible();
+		await expect(dialog.getByText(/Bild ist vorbereitet/)).toBeVisible();
+		await expect(dialog.getByText('noch nicht konfiguriert')).toHaveCount(0);
+	});
+
+	test('a 503 with the feature-disabled code still disables the uploader', async ({ page }) => {
+		await setupMember(page);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/expenses`);
+		await page.getByRole('button', { name: 'Ausgabe hinzufügen', exact: true }).click();
+		const dialog = page.getByRole('dialog');
+		await dialog.getByRole('button', { name: 'Beleg hinzufügen', exact: true }).click();
+		await page.waitForLoadState('networkidle');
+		await page.route('**/api/upload/sign', (route) =>
+			route.fulfill({
+				status: 503,
+				json: { error: 'feature_disabled', code: 'image_uploads_unavailable' },
+			}),
+		);
+		await dialog.getByLabel('Bild auswählen', { exact: true }).setInputFiles({
+			name: 'off.png',
+			mimeType: 'image/png',
+			buffer: Buffer.from(
+				'iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAEklEQVR4nGNgYGD4z4AGgCQAAEgAAj0t4HUAAAAASUVORK5CYII=',
+				'base64',
+			),
+		});
+		await expect(dialog.getByText('noch nicht konfiguriert')).toBeVisible();
+	});
 });
