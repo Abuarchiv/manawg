@@ -439,6 +439,8 @@ test.describe('ocr runtime', () => {
 
 	async function openOcrImport(page: Page): Promise<Response> {
 		await setupMember(page);
+		// Account-language setup is separate from the OCR no-write contract.
+		await page.addInitScript(() => localStorage.setItem('manawg:locale-synced', 'de'));
 		const documentResponse = page.waitForResponse(
 			(response) =>
 				response.request().resourceType() === 'document' &&
