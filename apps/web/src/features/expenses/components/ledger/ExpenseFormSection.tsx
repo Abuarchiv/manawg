@@ -183,7 +183,7 @@ export function ExpenseFormSection({
 	function requestClose() {
 		if (formSaving) return;
 		if (isDirty) setConfirmClose(true);
-		else onCancel();
+		else onDiscard();
 	}
 
 	return (
