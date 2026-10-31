@@ -129,7 +129,10 @@ export function useAnnouncementsData({
 
 	function applyPendingItems(): void {
 		if (!pendingRemoteItems) return;
-		commitItems(pendingRemoteItems.map(applyCommentOverrides));
+		const shown = new Map(itemsRef.current.map((item) => [item.id, item]));
+		commitItems(
+			pendingRemoteItems.map((item) => applyCommentOverrides(shown.get(item.id) ?? item)),
+		);
 		setPendingRemoteItems(null);
 		setNewCount(0);
 	}

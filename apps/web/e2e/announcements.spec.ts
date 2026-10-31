@@ -153,7 +153,7 @@ test.describe('pinboard comment edit focus', () => {
 
 	const ANNOUNCEMENT_ID = 'comment-edit-focus';
 
-	function announcement() {
+	function announcement(): Announcement {
 		return {
 			id: ANNOUNCEMENT_ID,
 			authorMemberId: FIXTURE_WG.memberId,
@@ -183,6 +183,108 @@ test.describe('pinboard comment edit focus', () => {
 			],
 		};
 	}
+
+	test('a lost comment edit response preserves the text already confirmed by a poll', async ({
+		page,
+	}) => {
+		const remote = announcement();
+		const response = Promise.withResolvers<void>();
+		const patchStarted = Promise.withResolvers<void>();
+		await setupMember(page);
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/announcements*`, (route) =>
+			route.request().method() === 'GET'
+				? route.fulfill({ json: { announcements: [remote] } })
+				: route.fallback(),
+		);
+		await page.route(
+			`**/api/wg/${FIXTURE_WG.shareCode}/announcements/${ANNOUNCEMENT_ID}/comments/comment-focus`,
+			async (route) => {
+				remote.comments = remote.comments.map((comment) => ({
+					...comment,
+					content: 'Neue Antwort.',
+					authorName: 'Nachladen bestätigt',
+				}));
+				patchStarted.resolve();
+				await response.promise;
+				return route.abort('connectionreset');
+			},
+		);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/pinboard`);
+		await dismissOnboarding(page);
+		await page.getByRole('button', { name: /^Antworten anzeigen:/ }).click();
+		const panel = page.locator(`#announcement-comments-${ANNOUNCEMENT_ID}`);
+		const row = panel.locator('li').first();
+		await row.getByRole('button', { name: /^Antwort bearbeiten:/ }).click();
+		await row.getByRole('textbox', { name: 'Antwort bearbeiten' }).fill('Neue Antwort.');
+		try {
+			await row.getByRole('button', { name: /^Antwort speichern:/ }).click();
+			await patchStarted.promise;
+			await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+			await expect(row.getByText('Nachladen bestätigt', { exact: true })).toBeVisible();
+		} finally {
+			response.resolve();
+		}
+		await expect(row.getByRole('alert')).toBeVisible();
+		await row.getByRole('button', { name: 'Abbrechen', exact: true }).click();
+		await expect(row.getByText('Neue Antwort.', { exact: true })).toBeVisible();
+	});
+
+	test('revealing pending posts preserves a comment saved after that snapshot', async ({
+		page,
+	}) => {
+		const remote = announcement();
+		const newPost = {
+			...announcement(),
+			id: 'new-post-after-comment',
+			content: 'Zusätzlicher Beitrag',
+			comments: [],
+		};
+		let includeNew = false;
+		let holdReads = false;
+		const refreshStarted = Promise.withResolvers<void>();
+		const refreshGate = Promise.withResolvers<void>();
+		await setupMember(page);
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/announcements*`, async (route) => {
+			if (route.request().method() !== 'GET') return route.fallback();
+			if (holdReads) {
+				refreshStarted.resolve();
+				await refreshGate.promise;
+			}
+			return route.fulfill({ json: { announcements: includeNew ? [newPost, remote] : [remote] } });
+		});
+		await page.route(
+			`**/api/wg/${FIXTURE_WG.shareCode}/announcements/${ANNOUNCEMENT_ID}/comments/comment-focus`,
+			(route) => {
+				remote.comments = remote.comments.map((comment) => ({
+					...comment,
+					content: 'Gespeicherte Antwort.',
+				}));
+				holdReads = true;
+				return route.fulfill({ json: { comment: remote.comments[0] } });
+			},
+		);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/pinboard`);
+		await dismissOnboarding(page);
+		await page.getByRole('button', { name: /^Antworten anzeigen:/ }).click();
+		const panel = page.locator(`#announcement-comments-${ANNOUNCEMENT_ID}`);
+		const row = panel.locator('li').first();
+		includeNew = true;
+		await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+		const pending = page.getByRole('button', { name: /neuer? Beitr/ });
+		await expect(pending).toBeVisible();
+		await row.getByRole('button', { name: /^Antwort bearbeiten:/ }).click();
+		await row.getByRole('textbox', { name: 'Antwort bearbeiten' }).fill('Gespeicherte Antwort.');
+		try {
+			await row.getByRole('button', { name: /^Antwort speichern:/ }).click();
+			await refreshStarted.promise;
+			await expect(row.getByText('Gespeicherte Antwort.', { exact: true })).toBeVisible();
+			await pending.click();
+			await expect(page.getByText('Zusätzlicher Beitrag', { exact: true })).toBeVisible();
+			await expect(row.getByText('Gespeicherte Antwort.', { exact: true })).toBeVisible();
+		} finally {
+			refreshGate.resolve();
+		}
+	});
 
 	for (const colorScheme of ['light', 'dark'] as const) {
 		test(`moves focus into comment editor at 320px (${colorScheme})`, async ({ page }) => {
