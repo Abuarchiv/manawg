@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mock, test } from 'node:test';
+import { beforeEach, mock, test } from 'node:test';
 
 const eventId = '11111111-1111-4111-8111-111111111111';
 const oldVersion = new Date('2026-10-30T10:00:00.000Z');
@@ -13,6 +13,11 @@ const auditEvents = {};
 
 let root: Record<string, unknown>;
 let detached = 0;
+let callerIsAdmin = false;
+
+beforeEach(() => {
+	callerIsAdmin = false;
+});
 
 function resetRows() {
 	root = {
@@ -103,7 +108,16 @@ mock.module('@/core/db/transaction', {
 	namedExports: { TransactionAbort: class extends Error {} },
 });
 mock.module('@/core/guards/admin', {
-	namedExports: { requireOwnerOrAdmin: async () => null },
+	namedExports: {
+		requireOwnerOrAdmin: async (
+			_wgId: string,
+			member: { memberId: string },
+			ownerId: string | null,
+		) =>
+			ownerId === member.memberId || callerIsAdmin
+				? null
+				: Response.json({ error: 'not_owner' }, { status: 403 }),
+	},
 });
 mock.module('@/core/guards/api-auth', {
 	namedExports: { UUID_PATTERN: /^[0-9a-f-]{36}$/i },
@@ -172,5 +186,21 @@ test('a stale detach of an event occurrence conflicts in the same millisecond', 
 	const stale = await detach('2030-01-03T18:00:00.000Z', 'Getrennt 2');
 	assert.equal(stale.status, 409);
 	assert.deepEqual(await stale.json(), { error: 'event_changed' });
+	assert.equal(detached, 1);
+});
+
+test('a non-owner non-admin cannot edit a single occurrence', async () => {
+	resetRows();
+	root.createdByMemberId = 'member-2';
+
+	const denied = await detach('2030-01-02T18:00:00.000Z', 'Fremd');
+	assert.equal(denied.status, 403);
+	assert.deepEqual(await denied.json(), { error: 'not_owner' });
+	assert.equal(detached, 0);
+	assert.equal(root.recurrence, 'FREQ=DAILY;COUNT=3');
+
+	callerIsAdmin = true;
+	const allowed = await detach('2030-01-02T18:00:00.000Z', 'Admin');
+	assert.equal(allowed.status, 200);
 	assert.equal(detached, 1);
 });
