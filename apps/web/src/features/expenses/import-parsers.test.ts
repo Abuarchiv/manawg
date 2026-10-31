@@ -4,8 +4,14 @@ import { DESCRIPTION_MAX_LENGTH } from './expense-constants';
 import { MAX_IMPORT_COLUMNS, MAX_IMPORT_ROWS } from './import-body';
 import type { ParsedExpense, RejectedRow } from './import-types';
 
-const { collectUniqueNames, findMappingConflicts, matchMembers, parseSplidCsv, parseSplitwiseCsv } =
-	await import('./import-parsers');
+const {
+	collectUniqueNames,
+	describeParsedExpenseWarning,
+	findMappingConflicts,
+	matchMembers,
+	parseSplidCsv,
+	parseSplitwiseCsv,
+} = await import('./import-parsers');
 const { parseAmountToCents } = await import('./import-csv-helpers');
 
 test('parseSplitwiseCsv recovers the payer share from their net-balance column', () => {
@@ -32,6 +38,32 @@ test('parseSplitwiseCsv recovers the payer share from their net-balance column',
 	// Bob's column already is his share (net -20 = -share).
 	assert.equal(bob?.amountCents, 2000);
 	assert.equal((anna?.amountCents ?? 0) + (bob?.amountCents ?? 0), expense.amountCents);
+});
+
+test('parseSplitwiseCsv flags settle-up rows with a payment_row warning', () => {
+	const english = [
+		'Date,Description,Category,Cost,Currency,Anna,Ben',
+		'2024-01-10,Payment,Payment,25.00,EUR,25.00,-25.00',
+		'2024-01-11,Pizza,Food,20.00,EUR,10.00,-10.00',
+	].join('\n');
+	const german = [
+		'Datum;Beschreibung;Kategorie;Kosten;Währung;Anna;Ben',
+		'10.01.2024;Zahlung;Zahlung;25,00;EUR;25,00;-25,00',
+		'11.01.2024;Pizza;Essen;20,00;EUR;10,00;-10,00',
+	].join('\n');
+
+	for (const parsed of [
+		parseSplitwiseCsv(english, [], 'en'),
+		parseSplitwiseCsv(german, [], 'de'),
+	]) {
+		assert.equal(parsed.length, 2);
+		assert.ok(parsed[0]?.warnings.includes('payment_row'));
+		assert.equal(parsed[1]?.warnings.includes('payment_row'), false);
+	}
+	assert.equal(
+		describeParsedExpenseWarning('payment_row').key,
+		'expenses-import.warnings.paymentRow',
+	);
 });
 
 test('parseSplitwiseCsv still handles an equal split correctly', () => {
