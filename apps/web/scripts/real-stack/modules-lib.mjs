@@ -45,7 +45,16 @@ export async function user(name) {
 	});
 	const u = await r.json();
 	const ctx = await request.newContext({ baseURL: BASE, extraHTTPHeaders: { origin: BASE } });
-	const s = await ctx.post('/api/auth/sign-in', { data: { email, password } });
+	const signin = () => ctx.post('/api/auth/sign-in', { data: { email, password } });
+	let s = await signin();
+	if (s.status() === 429) {
+		const retryAfter = s.headers()['retry-after'];
+		const seconds = retryAfter?.trim() ? Number(retryAfter) : Number.NaN;
+		if (Number.isFinite(seconds) && seconds >= 0 && seconds <= 60) {
+			await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
+			s = await signin();
+		}
+	}
 	if (!s.ok()) throw new Error(`signin ${name} ${s.status()}${await s.text()}`);
 	return { name, id: u.id, email, ctx };
 }
