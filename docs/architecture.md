@@ -282,7 +282,8 @@ Mutation error copy goes through `mutationError` (`core/http/error-codes.ts`); f
 
 ## Database
 
-- Schema: `core/db/schema/` (Drizzle, one file per area; `core/db/schema.ts` re-exports them). Migrations: `apps/web/drizzle/` with
+- Schema: `core/db/schema/` (Drizzle, one file per area; `core/db/schema.ts` re-exports them) plus the
+  tables of the newer areas in `core/db/schema-*.ts` (inventory, invites, mail log, statement emails). Migrations: `apps/web/drizzle/` with
   `meta/_journal.json`; `0000_baseline.sql` creates the full schema and later files are
   incremental. `scripts/db-migrate.mjs` applies them under an advisory lock, checks the ledger
   against the journal (fail-closed) and verifies the result (`--check`). One reviewed historical
