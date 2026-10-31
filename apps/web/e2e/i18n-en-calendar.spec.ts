@@ -8,6 +8,7 @@ import {
 	mockUnreadCount,
 	navigateToFeature,
 	setupMember,
+	showMonthOf,
 	skipUnlessFixtures,
 } from './support/helpers';
 import { expectNoGermanChrome, expectNoHorizontalOverflow, setEnglishLocale } from './support/i18n';
@@ -148,6 +149,7 @@ test.describe('English calendar', () => {
 				await expect(grid.getByRole('columnheader').nth(6)).toHaveText('Sun');
 				await expect(page.getByRole('button', { name: 'Previous month' })).toBeVisible();
 				await expect(page.getByRole('button', { name: 'Next month' })).toBeVisible();
+				await showMonthOf(page, new Date(noonIn(2)).toISOString(), 'Next month');
 				await expect(page.locator('[data-day-cell][aria-label$=", cleaning rota"]')).toHaveCount(1);
 				await page.locator('[data-day-cell][aria-label$=", cleaning rota"]').click();
 				const dayList = page.getByRole('region', {

@@ -32,7 +32,7 @@ const p = await c.newPage();
 // 1 password login wrong/right
 await p.goto('/login');
 await p.getByRole('tab', { name: 'Passwort' }).click();
-await p.getByLabel('E-Mail-Adresse').fill(email);
+await p.locator('#auth-email').fill(email);
 await p.locator('#auth-password').fill('falsch-falsch-1');
 await p.getByRole('button', { name: 'Anmelden', exact: true }).click();
 await wait(1500);
@@ -68,7 +68,7 @@ if (s2.access_token === sess.access_token) bug('expired token was not renewed');
 const p2 = await (await browser.newContext({ ...devices['iPhone 13'], baseURL: BASE })).newPage();
 await p2.goto('/login');
 await p2.getByRole('tab', { name: 'Passwort' }).click();
-await p2.getByLabel('E-Mail-Adresse').fill(email);
+await p2.locator('#auth-email').fill(email);
 await p2.getByRole('button', { name: 'Passwort vergessen?' }).click();
 await wait(2500);
 let rm;

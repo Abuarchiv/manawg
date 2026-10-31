@@ -28,7 +28,8 @@ session refresh against real Supabase and real PostgreSQL instead of fixtures.
    with the old token, writes, browser tab switch and reload). Set `jwt_expiry = 120` in the
    throwaway `supabase/config.toml` and pass `JWT_EXPIRY=120`; anything below the 90 s margin of
    auth-js refreshes on every request and fakes a sign-out. `stale-chunk.mjs` answers the shopping
-   page chunk with 404 as after a deploy and expects exactly one reload from the error boundary.
+   page's own chunks with 404 as after a deploy and expects the page without an error screen and
+   at most one reload, which must come from the error boundary.
 10. `auth-flows.mjs`: e-mail code sign-in in the browser (code from Mailpit on port 54324, a wrong
     code first), invitation by mail (`mail_log` ledger, invalid address 400) and receipt upload
     through Supabase Storage (signature, PUT, read as member and flatmate, stranger 401
