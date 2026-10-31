@@ -108,3 +108,60 @@ test('localStorage removal failure does not turn an accepted deletion into an er
 		true,
 	);
 });
+
+for (const status of [200, 202]) {
+	test(`a delayed HTTP ${status} deletion never signs out or clears the next account`, async ({
+		page,
+		context,
+	}) => {
+		await openConfirmation(page);
+		await page.evaluate(() => localStorage.setItem('manawg_account', 'account-A'));
+		const otherTab = await context.newPage();
+		await otherTab.goto('/login');
+		let release!: () => void;
+		let started!: () => void;
+		let finished!: () => void;
+		const gate = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const requestStarted = new Promise<void>((resolve) => {
+			started = resolve;
+		});
+		const requestFinished = new Promise<void>((resolve) => {
+			finished = resolve;
+		});
+		let signOutCalls = 0;
+		page.on('request', (request) => {
+			if (new URL(request.url()).pathname === '/api/auth/sign-out') signOutCalls += 1;
+		});
+		await page.route('**/api/account', async (route) => {
+			if (route.request().method() !== 'DELETE') return route.continue();
+			started();
+			await gate;
+			await route
+				.fulfill({ status, json: { status: status === 202 ? 'pending' : 'completed' } })
+				.catch(() => undefined)
+				.finally(finished);
+		});
+		try {
+			await page.getByRole('button', { name: 'Konto löschen', exact: true }).click();
+			await requestStarted;
+			await otherTab.evaluate(() => {
+				localStorage.setItem('manawg_account', 'account-B');
+				localStorage.setItem('manawg:scope-B', 'keep');
+			});
+			release();
+			await requestFinished;
+			await page.waitForLoadState('networkidle');
+			expect(signOutCalls).toBe(0);
+			expect(await otherTab.evaluate(() => localStorage.getItem('manawg_account'))).toBe(
+				'account-B',
+			);
+			expect(await otherTab.evaluate(() => localStorage.getItem('manawg:scope-B'))).toBe('keep');
+			await expect(page).toHaveURL('/');
+		} finally {
+			release();
+			await otherTab.close();
+		}
+	});
+}

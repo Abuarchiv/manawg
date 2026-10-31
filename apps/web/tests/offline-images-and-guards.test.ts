@@ -18,7 +18,7 @@ type Loose = any;
 
 afterEach(restoreGlobals);
 
-function fakeIndexedDb(records: Map<string, Loose>) {
+function fakeIndexedDb(records: Map<string, Loose>, beforeGetAllKeys?: () => void) {
 	return {
 		open() {
 			const request: Loose = {
@@ -51,12 +51,18 @@ function fakeIndexedDb(records: Map<string, Loose>) {
 					};
 					tx.objectStore = () => ({
 						get: (key: string) => makeRequest(() => records.get(key)),
+						getAllKeys: () =>
+							makeRequest(() => {
+								beforeGetAllKeys?.();
+								return [...records.keys()];
+							}),
 						put: (value: Loose, key: string) =>
 							makeRequest(() => {
 								records.set(key, value);
 								return key;
 							}),
 						delete: (key: string) => makeRequest(() => records.delete(key)),
+						count: () => makeRequest(() => records.size),
 					});
 					return tx;
 				},
@@ -66,6 +72,40 @@ function fakeIndexedDb(records: Map<string, Loose>) {
 		},
 	};
 }
+
+test('pending image cleanup stops after account changes while reading keys', async () => {
+	const storage = makeStorage();
+	storage.setItem('manawg_account', 'account-a');
+	setGlobal('window', { localStorage: storage });
+	const records = new Map<string, Loose>([['account-a-image', { id: 'account-a-image' }]]);
+	setGlobal(
+		'indexedDB',
+		fakeIndexedDb(records, () => {
+			records.set('account-b-image', { id: 'account-b-image' });
+			storage.setItem('manawg_account', 'account-b');
+		}),
+	);
+	const { clearPendingImages } = await import('../src/core/offline/offline-images.ts');
+
+	assert.equal(await clearPendingImages('account-a'), false);
+	assert.equal(records.has('account-a-image'), true);
+	assert.equal(records.has('account-b-image'), true);
+});
+
+test('pending image cleanup removes its key snapshot while the account stays current', async () => {
+	const storage = makeStorage();
+	storage.setItem('manawg_account', 'account-a');
+	setGlobal('window', { localStorage: storage });
+	const records = new Map<string, Loose>([
+		['account-a-image-1', { id: 'account-a-image-1' }],
+		['account-a-image-2', { id: 'account-a-image-2' }],
+	]);
+	setGlobal('indexedDB', fakeIndexedDb(records));
+	const { clearPendingImages } = await import('../src/core/offline/offline-images.ts');
+
+	assert.equal(await clearPendingImages('account-a'), true);
+	assert.equal(records.size, 0);
+});
 
 test('resolved upload URL is persisted to the queue before its IndexedDB blob is deleted', async () => {
 	const pendingToken = 'manawg-pending-image:pic';

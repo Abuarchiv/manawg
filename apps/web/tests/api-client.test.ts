@@ -1,7 +1,15 @@
 import assert from 'node:assert/strict';
 import test, { type TestContext } from 'node:test';
 
-const { anySignal, apiFetch, readApiErrorCode } = await import('../src/core/infra/api-client.ts');
+const {
+	anySignal,
+	apiFetch,
+	MEMBERSHIP_LOST_EVENT,
+	noteSessionExpiry,
+	readApiErrorCode,
+	SESSION_EXPIRED_EVENT,
+} = await import('../src/core/infra/api-client.ts');
+const { getLocalAccount } = await import('../src/core/auth/local-account.ts');
 const { postChatMessage } = await import('../src/features/chat/chat-send.ts');
 const CHAT_SEND_KEY = '00000000-0000-4000-8000-000000000001';
 
@@ -11,6 +19,41 @@ function replaceFetch(t: TestContext, implementation: typeof fetch) {
 	t.after(() => {
 		globalThis.fetch = originalFetch;
 	});
+}
+
+function replaceAccountWindow(t: TestContext, initialAccount: string | null) {
+	const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+	let account = initialAccount;
+	const events: Event[] = [];
+	const fakeWindow = Object.assign(new EventTarget(), {
+		localStorage: {
+			getItem(key: string) {
+				return key === 'manawg_account' ? account : null;
+			},
+		},
+	});
+	for (const eventName of [SESSION_EXPIRED_EVENT, MEMBERSHIP_LOST_EVENT]) {
+		fakeWindow.addEventListener(eventName, (event) => events.push(event));
+	}
+	Object.defineProperty(globalThis, 'window', { configurable: true, value: fakeWindow });
+	t.after(() => {
+		if (previousWindow) Object.defineProperty(globalThis, 'window', previousWindow);
+		else Reflect.deleteProperty(globalThis, 'window');
+	});
+	return {
+		events,
+		setAccount(value: string | null) {
+			account = value;
+		},
+	};
+}
+
+function deferred<T>() {
+	let resolve!: (value: T) => void;
+	const promise = new Promise<T>((resolvePromise) => {
+		resolve = resolvePromise;
+	});
+	return { promise, resolve };
 }
 
 function truncatedResponse(status = 200) {
@@ -248,4 +291,106 @@ test('a rate-limited or still-pending chat message keeps its key', async (t) => 
 	assert.equal(pending.current?.key, CHAT_SEND_KEY);
 	await postChatMessage(message, deps);
 	assert.equal(pending.current?.key, CHAT_SEND_KEY);
+});
+
+test('apiFetch does not dispatch stale account failures after a pending fetch resolves', async (t) => {
+	const account = replaceAccountWindow(t, 'account-a');
+	let pendingFetch = deferred<Response>();
+	replaceFetch(t, () => pendingFetch.promise);
+	const failures = [
+		{ path: '/api/account', status: 401, error: 'auth_required' },
+		{ path: '/api/wg/TEST1234/expenses', status: 401, error: 'not_a_member' },
+		{ path: '/api/wg/TEST1234/expenses', status: 404, error: 'wg_not_found' },
+	];
+
+	for (const failure of failures) {
+		account.setAccount('account-a');
+		pendingFetch = deferred<Response>();
+		const resultPromise = apiFetch(failure.path);
+		account.setAccount('account-b');
+		pendingFetch.resolve(Response.json({ error: failure.error }, { status: failure.status }));
+
+		assert.deepEqual(await resultPromise, {
+			ok: false,
+			status: failure.status,
+			error: failure.error,
+		});
+		assert.deepEqual(account.events, []);
+	}
+});
+
+test('apiFetch rechecks the account after parsing a delayed error body', async (t) => {
+	const account = replaceAccountWindow(t, 'account-a');
+	const body = deferred<{ error: string }>();
+	const bodyStarted = deferred<void>();
+	const response = Response.json({ error: 'auth_required' }, { status: 401 });
+	response.json = () => {
+		bodyStarted.resolve();
+		return body.promise;
+	};
+	replaceFetch(t, async () => response);
+
+	const resultPromise = apiFetch('/api/account');
+	await bodyStarted.promise;
+	account.setAccount('account-b');
+	body.resolve({ error: 'auth_required' });
+
+	assert.deepEqual(await resultPromise, {
+		ok: false,
+		status: 401,
+		error: 'auth_required',
+	});
+	assert.deepEqual(account.events, []);
+});
+
+test('noteSessionExpiry ignores a delayed old-account 401 body', async (t) => {
+	const account = replaceAccountWindow(t, 'account-a');
+	const expectedAccount = getLocalAccount();
+	const body = deferred<{ error: string }>();
+	const bodyStarted = deferred<void>();
+	const response = Response.json({ error: 'auth_required' }, { status: 401 });
+	const clone = response.clone.bind(response);
+	response.clone = () => {
+		const copy = clone();
+		copy.json = () => {
+			bodyStarted.resolve();
+			return body.promise;
+		};
+		return copy;
+	};
+
+	noteSessionExpiry(response, expectedAccount);
+	await bodyStarted.promise;
+	account.setAccount('account-b');
+	body.resolve({ error: 'auth_required' });
+	await body.promise;
+	await new Promise((resolve) => setImmediate(resolve));
+
+	assert.deepEqual(account.events, []);
+});
+
+test('same-account auth failures still notify and item_not_found stays ordinary', async (t) => {
+	const account = replaceAccountWindow(t, 'account-a');
+	const responses = [
+		Response.json({ error: 'auth_required' }, { status: 401 }),
+		Response.json({ error: 'item_not_found' }, { status: 404 }),
+	];
+	replaceFetch(t, async () => responses.shift() as Response);
+
+	assert.deepEqual(await apiFetch('/api/account'), {
+		ok: false,
+		status: 401,
+		error: 'auth_required',
+	});
+	assert.deepEqual(
+		account.events.map((event) => event.type),
+		[SESSION_EXPIRED_EVENT],
+	);
+	account.events.length = 0;
+	assert.deepEqual(await apiFetch('/api/wg/TEST1234/expenses'), {
+		ok: false,
+		status: 404,
+		error: 'item_not_found',
+	});
+	assert.deepEqual(account.events, []);
 });

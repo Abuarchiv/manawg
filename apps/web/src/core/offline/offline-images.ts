@@ -1,5 +1,6 @@
 'use client';
 
+import { getLocalAccount } from '@/core/auth/local-account';
 import { createIdempotencyKey } from '@/core/http/idempotency-key';
 import {
 	anySignal,
@@ -102,6 +103,35 @@ async function withStore<T>(
 	});
 }
 
+export async function clearPendingImages(
+	expectedAccount: string | null,
+	signal?: AbortSignal,
+): Promise<boolean> {
+	const isCurrent = () => !signal?.aborted && getLocalAccount() === expectedAccount;
+	if (!isCurrent()) return false;
+	try {
+		const keys = await withStore('readonly', (store) => store.getAllKeys());
+		if (!isCurrent()) return false;
+		let stillCurrent = false;
+		await withStore('readwrite', (store) => {
+			stillCurrent = isCurrent();
+			if (stillCurrent) {
+				for (const key of keys) {
+					if (!isCurrent()) {
+						stillCurrent = false;
+						break;
+					}
+					store.delete(key);
+				}
+			}
+			return store.count();
+		});
+		return stillCurrent && isCurrent();
+	} catch {
+		return isCurrent();
+	}
+}
+
 export async function storePendingImage(input: {
 	file: File;
 	shareCode: string;
@@ -164,6 +194,7 @@ export async function signAndPut(input: {
 	// A stalled request must not block the uploader forever.
 	const withTimeout = (ms: number) =>
 		input.signal ? anySignal([input.signal, AbortSignal.timeout(ms)]) : AbortSignal.timeout(ms);
+	const account = getLocalAccount();
 	let sigRes: Response;
 	try {
 		sigRes = await fetch('/api/upload/sign', {
@@ -184,7 +215,7 @@ export async function signAndPut(input: {
 	} catch {
 		return { ok: false, kind: 'sign', status: 0, code: '' };
 	}
-	noteSessionExpiry(sigRes);
+	noteSessionExpiry(sigRes, account);
 	if (!sigRes.ok) {
 		return { ok: false, kind: 'sign', status: sigRes.status, code: await readApiErrorCode(sigRes) };
 	}
