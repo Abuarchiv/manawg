@@ -45,7 +45,8 @@ session refresh against real Supabase and real PostgreSQL instead of fixtures.
     `burst.mjs` adds 36 shopping items in one minute and expects no 429; `ui.mjs`, `ui-edit.mjs`
     and `journey.mjs` must also pass in this mode without 429.
 12. `push.mjs` turns Web Push on in installed Google Chrome (real FCM), sends the test notification
-    and a pinboard post from the second member, and expects both in the service worker. The app
+    and a pinboard post from the second member, runs the chore and event reminder crons for a chore
+    due today and a meeting tomorrow, and expects all four in the service worker. The app
     needs `VAPID_*` set at build time. FCM sometimes answers 410 for a subscription for several
     seconds after creating it, or accepts a message and delivers it to headless Chrome late; a
     single failed run is therefore no app bug, the server log tells the two apart.

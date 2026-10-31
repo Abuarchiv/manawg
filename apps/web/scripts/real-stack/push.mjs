@@ -5,10 +5,10 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { chromium } from '@playwright/test';
-import { BASE, call, expect, finish, setup } from './modules-lib.mjs';
+import { BASE, CRON, call, DAY, expect, finish, setup } from './modules-lib.mjs';
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-const { A, B, code } = await setup();
+const { A, B, code, annaId } = await setup();
 
 const ctx = await chromium.launchPersistentContext(mkdtempSync(join(tmpdir(), 'push-')), {
 	channel: 'chrome',
@@ -85,6 +85,43 @@ expect(
 );
 const event = await shown(/Heizung/);
 expect(!!event, 'pinboard post from Ben arrives as push', JSON.stringify(event));
+
+// The daily crons remind Anna of her chore due today and of tomorrow's meeting.
+const chore = await call(A, 'POST', `/api/wg/${code}/chores`, {
+	title: 'Altglas wegbringen',
+	intervalDays: 7,
+	assignedMemberId: annaId,
+	nextDueAt: new Date().toISOString(),
+});
+expect(chore.status < 300, 'chore for Anna created', JSON.stringify(chore.body).slice(0, 200));
+const tomorrow = new Date(Date.now() + DAY);
+tomorrow.setUTCHours(17, 0, 0, 0);
+const meeting = await call(A, 'POST', `/api/wg/${code}/events`, {
+	title: 'Hausplenum',
+	startsAt: tomorrow.toISOString(),
+	endsAt: new Date(tomorrow.getTime() + 3_600_000).toISOString(),
+	location: null,
+	description: null,
+});
+expect(
+	meeting.status < 300,
+	'meeting tomorrow created',
+	JSON.stringify(meeting.body).slice(0, 200),
+);
+for (const job of ['chore-reminders', 'event-reminders']) {
+	const res = await fetch(`${BASE}/api/cron/${job}`, {
+		headers: { authorization: `Bearer ${CRON}` },
+	});
+	expect(
+		res.status === 200,
+		`cron ${job} ran`,
+		`${res.status} ${(await res.text()).slice(0, 120)}`,
+	);
+}
+const choreReminder = await shown(/Altglas wegbringen/);
+expect(!!choreReminder, 'chore reminder arrives as push', JSON.stringify(choreReminder));
+const meetingReminder = await shown(/Hausplenum/);
+expect(!!meetingReminder, 'meeting reminder arrives as push', JSON.stringify(meetingReminder));
 if (process.env.VERBOSE_PUSH) process.stdout.write(`${reqLog.join('\n')}\n`);
 await ctx.close();
 finish();
