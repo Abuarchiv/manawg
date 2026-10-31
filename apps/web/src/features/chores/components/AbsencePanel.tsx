@@ -124,7 +124,9 @@ export function AbsencePanel({
 		<Card id="absences-panel" className={cn('scroll-mt-28', openForm && 'ring-2 ring-ring')}>
 			<CardHeader className="flex flex-wrap items-center justify-between gap-2">
 				<div className="flex min-w-fit flex-1 flex-col gap-1">
-					<CardTitle className="break-normal">{t('title')}</CardTitle>
+					<CardTitle role="heading" aria-level={2} className="break-normal">
+						{t('title')}
+					</CardTitle>
 					{absentCount > 0 && (
 						<CardDescription className="break-normal">
 							{t('currentlyAway', { count: String(absentCount) })}
