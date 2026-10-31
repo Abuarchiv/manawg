@@ -91,3 +91,10 @@ test('other action types are appended unchanged', () => {
 	const create = { ...first, type: 'expense.create' as const };
 	assert.equal(withQueuedExpenseUpdate([create], second).length, 2);
 });
+
+test('a date changed by the first edit stays queued when the second edit sends none', () => {
+	const dated = { ...first, payload: { ...first.payload, occurredAt: '2026-10-05T10:00:00.000Z' } };
+	const result = withQueuedExpenseUpdate([dated], second);
+	assert.equal(result[0]?.payload.description, 'Einkauf B');
+	assert.equal(result[0]?.payload.occurredAt, '2026-10-05T10:00:00.000Z');
+});

@@ -55,7 +55,8 @@ export function hasQueuedShoppingUpdate(
 /**
  * Appends `action` to the queue. A second edit of an expense whose first queued edit was never
  * sent replaces it in place and keeps the server version the first edit was made against, so
- * the single request that replays still matches what the server holds.
+ * the single request that replays still matches what the server holds. A changed date stays
+ * queued when the second edit leaves the date as the first edit set it.
  */
 export function withQueuedExpenseUpdate(
 	actions: readonly OfflineAction[],
@@ -75,7 +76,11 @@ export function withQueuedExpenseUpdate(
 	if (!queued) return [...actions, action];
 	const merged = {
 		...action,
-		payload: { ...action.payload, expectedUpdatedAt: queued.payload.expectedUpdatedAt },
+		payload: {
+			...queued.payload,
+			...action.payload,
+			expectedUpdatedAt: queued.payload.expectedUpdatedAt,
+		},
 	};
 	return actions.map((entry, i) => (i === index ? merged : entry));
 }
