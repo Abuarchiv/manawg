@@ -42,9 +42,16 @@ test.describe('month navigation announcement', () => {
 		await expect(page.getByRole('grid')).toBeVisible();
 
 		const now = new Date();
-		const next = new Date(now);
-		next.setUTCDate(1);
-		next.setUTCMonth(next.getUTCMonth() + 1);
+		const [year = 0, month = 0] = new Intl.DateTimeFormat('en-CA', {
+			year: 'numeric',
+			month: '2-digit',
+			timeZone: 'Europe/Berlin',
+		})
+			.format(now)
+			.split('-')
+			.map(Number);
+		// A mid-month anchor in the month after the Berlin month, safe from UTC/Berlin offsets.
+		const next = new Date(Date.UTC(year, month, 15));
 		const title = page.locator('[data-slot="card-title"][aria-live="polite"][aria-atomic="true"]');
 		await expect(title).toHaveText(monthLabel(now));
 		await page.getByRole('button', { name: 'Nächster Monat', exact: true }).click();
