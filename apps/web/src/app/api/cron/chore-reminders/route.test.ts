@@ -37,6 +37,8 @@ const idempotencyResponses = {
 
 const state = {
 	candidateWhere: null as Op | null,
+	completionsWhere: null as Op | null,
+	completedChoreIds: [] as string[],
 	orderBy: null as Op[] | null,
 	limit: null as number | null,
 	inFlight: 0,
@@ -67,7 +69,10 @@ const db = {
 				return query;
 			},
 			where(predicate: Op) {
-				if (table === choreCompletions) return Promise.resolve([]);
+				if (table === choreCompletions) {
+					state.completionsWhere = predicate;
+					return Promise.resolve(state.completedChoreIds.map((choreId) => ({ choreId })));
+				}
 				// The unassigned-chore query has no member join and finds nothing here.
 				if (joinsMembers) state.candidateWhere = predicate;
 				return query;
@@ -204,6 +209,8 @@ function harness({
 	harnessRuns += 1;
 	Object.assign(state, {
 		candidateWhere: null,
+		completionsWhere: null,
+		completedChoreIds: [],
 		orderBy: null,
 		limit: null,
 		inFlight: 0,
@@ -343,4 +350,36 @@ test('a chore nobody is assigned to is announced to the whole WG', async (t) => 
 	const assigned = state.payloads.findIndex((payload) => payload.choreId.startsWith('chore-'));
 	assert.deepEqual(state.targets[assigned], ['member-0']);
 	assert.equal(state.payloads[assigned]?.unassigned, undefined);
+});
+
+test('only a completion since Berlin midnight and a reminder within 18 hours suppress a reminder', async (t) => {
+	t.mock.timers.enable({ apis: ['Date'], now });
+	const { state, get } = harness({ choreCount: 2 });
+	state.completedChoreIds = [`chore-${harnessRuns}-0`];
+	await withCronSecret(async () => {
+		const response = await get();
+		assert.deepEqual(await response.json(), { ok: true, sent: 1 });
+	});
+
+	assert.deepEqual(state.dispatched, [`chore-${harnessRuns}-1`]);
+	const completionConditions = (state.completionsWhere?.args ?? []) as Op[];
+	const sinceMidnight = completionConditions.find(
+		(condition) => condition.operator === 'gte' && condition.args[0] === 'c.completedAt',
+	);
+	assert.ok(sinceMidnight, 'completions are filtered by completedAt');
+	assert.equal(
+		(sinceMidnight.args[1] as Date).toISOString(),
+		'2026-09-24T22:00:00.000Z',
+		'a completion from earlier in the week does not count as done today',
+	);
+
+	const conditions = (state.candidateWhere?.args ?? []) as Op[];
+	const throttle = conditions.find(
+		(condition) =>
+			condition.operator === 'or' &&
+			(condition.args as Op[]).some((inner) => inner.args[0] === 'chores.lastReminderAt'),
+	);
+	const cutoff = (throttle?.args as Op[] | undefined)?.find((inner) => inner.operator === 'lte');
+	assert.ok(cutoff, 'the throttle compares lastReminderAt with a cutoff');
+	assert.equal((cutoff.args[1] as Date).toISOString(), '2026-09-24T12:00:00.000Z');
 });
