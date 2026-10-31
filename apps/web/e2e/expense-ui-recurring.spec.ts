@@ -211,3 +211,100 @@ test.describe('paused fixed cost in expenses', () => {
 		await expect(page.getByRole('button', { name: 'Erfassen: Netflix' })).toHaveCount(0);
 	});
 });
+
+test.describe('fixed-cost badge after booking', () => {
+	skipUnlessFixtures();
+
+	test('the sub-nav due count drops without a focus change once a fixed cost is booked', async ({
+		page,
+	}) => {
+		const { shareCode } = FIXTURE_WG;
+		const template = (nextDueAt: string) => ({
+			id: 'recurring-strom',
+			description: 'Strom',
+			amountCents: 4500,
+			currency: 'EUR',
+			paidByMemberId: FIXTURE_WG.memberId,
+			intervalMonths: 1,
+			nextDueAt,
+			lastCreatedAt: null,
+			pausedAt: null,
+			updatedAt: new Date().toISOString(),
+			splits: [{ debtorMemberId: FIXTURE_WG.memberId, amountCents: 4500 }],
+		});
+		const overdue = template(new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString());
+		const advanced = template(new Date(Date.now() + 27 * 24 * 60 * 60 * 1000).toISOString());
+		let booked = false;
+
+		await setupMember(page);
+		await page.route(`**/api/wg/${shareCode}/dashboard`, (route) =>
+			route.fulfill({
+				json: {
+					balances: [],
+					spendByDay: [],
+					totalSpendByCurrency: {},
+					weekSpendByCurrency: {},
+					monthSpendByCurrency: {},
+					openShoppingCount: 0,
+					openShoppingTop: [],
+					dueChores: [],
+					activity: [],
+					latestAnnouncement: null,
+					myOpenAnnouncements: [],
+					dueRecurringExpenses: booked
+						? []
+						: [
+								{
+									id: overdue.id,
+									description: overdue.description,
+									amountCents: overdue.amountCents,
+									currency: 'EUR',
+									nextDueAt: overdue.nextDueAt,
+								},
+							],
+					absentMembers: [],
+					setup: {
+						choreCount: 0,
+						hasExpense: true,
+						hasShoppingItem: true,
+						hasAnnouncement: true,
+						notificationsEnabled: false,
+					},
+				},
+			}),
+		);
+		await page.route(`**/api/wg/${shareCode}/recurring-expenses`, (route) =>
+			route.fulfill({ json: { recurringExpenses: [booked ? advanced : overdue] } }),
+		);
+		await page.route(`**/api/wg/${shareCode}/expenses`, (route) => {
+			if (route.request().method() !== 'POST') return route.fallback();
+			booked = true;
+			return route.fulfill({
+				status: 201,
+				json: {
+					expense: {
+						id: 'expense-strom',
+						description: 'Strom',
+						amountCents: 4500,
+						currency: 'EUR',
+						paidByMemberId: FIXTURE_WG.memberId,
+						createdAt: new Date().toISOString(),
+						splits: [{ debtorMemberId: FIXTURE_WG.memberId, amountCents: 4500 }],
+					},
+					recurringExpense: advanced,
+				},
+			});
+		});
+
+		await navigateToFeature(page, `/wg/${shareCode}/expenses?filter=recurring`);
+		await dismissOnboarding(page);
+		await expect(page.getByRole('link', { name: 'Fixkosten, 1 fällig' })).toBeVisible();
+
+		await page.getByRole('button', { name: 'Erfassen: Strom' }).click();
+
+		await expect(page.getByRole('link', { name: 'Fixkosten, 0 fällig' })).toBeVisible({
+			timeout: 5000,
+		});
+		await expect(page.getByRole('link', { name: 'Fixkosten, 1 fällig' })).toHaveCount(0);
+	});
+});
