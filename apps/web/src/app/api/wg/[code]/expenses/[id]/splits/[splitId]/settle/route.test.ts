@@ -353,3 +353,26 @@ test('rejects a JSON null body with 400 instead of a 500', async () => {
 	assert.deepEqual(await result.response.json(), { error: 'invalid_body' });
 	assert.equal(result.state.updates.length, 0);
 });
+
+test('a member who is neither debtor nor payer cannot settle the split', async () => {
+	const target = entry(eid(0), eid(1), payerId, debtorId, 1200);
+	const result = await post({ expenses: [target], target, currentMemberId: thirdId });
+
+	assert.equal(result.response.status, 403);
+	assert.deepEqual(await result.response.json(), {
+		error: 'not_split_party',
+		code: 'not_split_party',
+	});
+	assert.equal(result.split.settledAt, null);
+	assert.equal(result.state.updates.length, 0);
+	assert.equal(result.state.audits.length, 0);
+});
+
+test('the payer may mark the split settled', async () => {
+	const target = entry(eid(0), eid(1), payerId, debtorId, 1200);
+	const result = await post({ expenses: [target], target, currentMemberId: payerId });
+
+	assert.equal(result.response.status, 200);
+	assert.ok(result.split.settledAt);
+	assert.equal(result.state.audits[0]?.eventType, 'expense.split.settled');
+});
