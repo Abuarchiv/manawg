@@ -7,11 +7,11 @@ Keep the shared shopping list editable, consistent offline and quiet.
 
 ### Requirement: Items can be renamed and re-quantified
 
-The update endpoint SHALL accept `name` and `quantity` in addition to `bought`, require at least one field, apply the existing version check, and answer `409 duplicate` when the new name equals an open item. A successful edit SHALL be audited as `shopping.updated`.
+The update endpoint SHALL accept `name` and `quantity` in addition to `bought`, require at least one field, apply the existing version check, and answer `409 shopping_item_duplicate` when the new name equals an open item. A successful edit SHALL be audited as `shopping.updated`.
 
 #### Scenario: Rename to an open name
 - **WHEN** a member renames an item to the name of another open item
-- **THEN** the server SHALL answer `409 duplicate`
+- **THEN** the server SHALL answer `409 shopping_item_duplicate`
 
 #### Scenario: Item changed while the edit form is open
 - **WHEN** a housemate changes the item after a member opened its edit form, and the member saves
