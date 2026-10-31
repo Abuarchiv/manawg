@@ -301,7 +301,7 @@ test.describe('English expense import', () => {
 
 		await expect(page.getByRole('heading', { name: 'Earlier imports' })).toBeVisible();
 		await expect(page.getByText(/Splitwise from 3 Mar 2026: 2 expenses/)).toBeVisible();
-		await page.getByRole('button', { name: 'Undo Splitwise from 3 Mar 2026' }).click();
+		await page.getByRole('button', { name: 'Undo import: Splitwise from 3 Mar 2026' }).click();
 		expect(undoRequests).toEqual([]);
 		await page.getByRole('button', { name: /confirm removal/ }).click();
 		await expect(page.getByText('Import undone: 2 expenses removed.')).toBeVisible();
