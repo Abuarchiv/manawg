@@ -49,6 +49,12 @@ export type InventoryMutationItemDto = Omit<InventoryItemDto, 'decrementCount30d
 	decrementCount30d?: number;
 };
 
+export interface RestockPurchase {
+	id: string;
+	name: string;
+	boughtAt: string;
+}
+
 interface InventoryItemForThresholdCheck {
 	quantity: number;
 	threshold: number;
@@ -70,10 +76,20 @@ export function restockAmount(item: InventoryItemForThresholdCheck): number {
 /** Scarce items whose name matches something just bought: the stock was not raised by the purchase. */
 export function boughtRestockMatches<T extends InventoryItemForThresholdCheck & { name: string }>(
 	items: T[],
-	boughtNames: string[],
-): T[] {
-	const bought = new Set(boughtNames.map(normalizeForMatch));
-	return items.filter((item) => isBelowThreshold(item) && bought.has(normalizeForMatch(item.name)));
+	purchases: readonly RestockPurchase[],
+): { item: T; purchase: RestockPurchase }[] {
+	const bought = new Map<string, RestockPurchase>();
+	for (const purchase of purchases) {
+		const name = normalizeForMatch(purchase.name);
+		const previous = bought.get(name);
+		if (!previous || Date.parse(purchase.boughtAt) > Date.parse(previous.boughtAt)) {
+			bought.set(name, purchase);
+		}
+	}
+	return items.flatMap((item) => {
+		const purchase = bought.get(normalizeForMatch(item.name));
+		return isBelowThreshold(item) && purchase ? [{ item, purchase }] : [];
+	});
 }
 
 const QUICK_RESTOCK_MIN_ROWS = 5;

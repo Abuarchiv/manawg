@@ -35,9 +35,13 @@ test('quick restock lists scarce items first and skips idle full ones', () => {
 	);
 });
 
-test('bought names match scarce items case-insensitively', () => {
+test('the latest matching purchase stays attached to each scarce item', () => {
 	const items = [stock('Klopapier', 0, 2), stock('Salz', 5, 1)];
-	assert.deepEqual(boughtRestockMatches(items, [' klopapier ', 'Salz']), [items[0]]);
+	const first = { id: 'first', name: 'Klopapier', boughtAt: '2026-10-30T12:00:00Z' };
+	const latest = { id: 'second', name: ' klopapier ', boughtAt: '2026-10-31T12:00:00Z' };
+	assert.deepEqual(boughtRestockMatches(items, [latest, first, { ...latest, name: 'Salz' }]), [
+		{ item: items[0], purchase: latest },
+	]);
 });
 
 test('decimalQuantityText keeps German decimals up to two places', () => {
