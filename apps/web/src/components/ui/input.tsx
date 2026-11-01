@@ -57,7 +57,7 @@ function PasswordInput({ className, ...props }: React.ComponentProps<'input'>) {
 				aria-pressed={visible}
 				aria-label={visible ? t('hidePassword') : t('showPassword')}
 				onClick={() => setVisible((value) => !value)}
-				className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-lg text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+				className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-lg text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring"
 			>
 				{visible ? (
 					<EyeOff aria-hidden className="size-4" />
