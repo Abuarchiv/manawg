@@ -1,3 +1,4 @@
+import { isSessionExpired } from '@/core/http/error-codes';
 import { createIdempotencyKey, isIdempotencyKey } from '@/core/http/idempotency-key';
 import {
 	type FailureState,
@@ -154,8 +155,14 @@ export function needsManualOfflineResolution(action: OfflineAction): boolean {
 /** The state a failed pending-image upload records, or null for errors of another kind. */
 export function pendingImageUploadFailure(err: unknown): FailureState | null {
 	if (!(err instanceof Error)) return null;
-	const match = /^(?:sign|upload)-failed:(\d+)(?::(.+))?$/.exec(err.message);
+	const match = /^(sign|upload)-failed:(\d+)(?::(.+))?$/.exec(err.message);
 	if (!match) return null;
-	if (match[2] === 'image_removed') return IMAGE_REMOVED_STATE;
-	return requestFailureState(Number(match[1]), match[2], false);
+	if (match[3] === 'image_removed') return IMAGE_REMOVED_STATE;
+	if (match[3] === 'member_context_changed') return noteState('reauth');
+	const status = Number(match[2]);
+	// A rejected signing request repeats on every replay. A failed storage PUT does not: a 4xx
+	// there, such as an expired signed URL, is fixed by signing again.
+	const hold =
+		match[1] === 'sign' && isTerminalReplayStatus(status) && !isSessionExpired(match[3] ?? null);
+	return requestFailureState(status, match[3], hold);
 }
