@@ -44,6 +44,7 @@ const state = {
 	inFlight: 0,
 	maxInFlight: 0,
 	dispatched: [] as string[],
+	dispatchSent: 1,
 	payloads: [] as { choreId: string; nextDueAt?: string; unassigned?: boolean }[],
 	targets: [] as (string[] | undefined)[],
 	stamped: null as unknown[] | null,
@@ -153,7 +154,7 @@ mock.module('@/core/notifications/notification-dispatch', {
 			state.dispatched.push(notification.payload.choreId);
 			state.payloads.push(notification.payload);
 			state.targets.push(notification.targetMemberIds);
-			return { sent: 1, failures: [] };
+			return { sent: state.dispatchSent, failures: [] };
 		},
 	},
 });
@@ -216,6 +217,7 @@ function harness({
 		inFlight: 0,
 		maxInFlight: 0,
 		dispatched: [],
+		dispatchSent: 1,
 		payloads: [],
 		targets: [],
 		stamped: null,
@@ -382,4 +384,50 @@ test('only a completion since Berlin midnight and a reminder within 18 hours sup
 	const cutoff = (throttle?.args as Op[] | undefined)?.find((inner) => inner.operator === 'lte');
 	assert.ok(cutoff, 'the throttle compares lastReminderAt with a cutoff');
 	assert.equal((cutoff.args[1] as Date).toISOString(), '2026-09-24T12:00:00.000Z');
+});
+
+test('chores due later today are candidates up to the end of the Berlin day', async (t) => {
+	t.mock.timers.enable({ apis: ['Date'], now });
+	const { state, get } = harness({ choreCount: 1 });
+	await withCronSecret(async () => {
+		await get();
+	});
+
+	const conditions = (state.candidateWhere?.args ?? []) as Op[];
+	const dueCutoff = conditions.find(
+		(condition) => condition.operator === 'lte' && condition.args[0] === 'chores.nextDueAt',
+	);
+	assert.ok(dueCutoff, 'nextDueAt has an upper bound');
+	assert.equal((dueCutoff.args[1] as Date).toISOString(), '2026-09-25T21:59:59.999Z');
+});
+
+test('moved-out assignees are excluded from the candidates', async (t) => {
+	t.mock.timers.enable({ apis: ['Date'], now });
+	const { state, get } = harness({ choreCount: 1 });
+	await withCronSecret(async () => {
+		await get();
+	});
+
+	const conditions = (state.candidateWhere?.args ?? []) as Op[];
+	assert.ok(
+		conditions.some(
+			(condition) =>
+				condition.operator === 'isNull' && condition.args[0] === 'wgMembers.deactivatedAt',
+		),
+		'assignees with a deactivation date are filtered in SQL',
+	);
+});
+
+test('a dispatch that reaches nobody releases its claim and does not stamp the chore', async (t) => {
+	t.mock.timers.enable({ apis: ['Date'], now });
+	const { state, get } = harness({ choreCount: 2 });
+	state.dispatchSent = 0;
+	await withCronSecret(async () => {
+		const response = await get();
+		assert.deepEqual(await response.json(), { ok: true, sent: 0 });
+	});
+
+	assert.equal(state.dispatched.length, 2, 'both chores were attempted');
+	assert.equal(state.stamped, null, 'no lastReminderAt is written for an undelivered reminder');
+	assert.equal(state.claims.size, 0, 'the claims are released so the next run can retry');
 });
