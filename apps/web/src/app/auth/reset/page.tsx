@@ -12,11 +12,16 @@ export async function generateMetadata(): Promise<Metadata> {
 	return { title: t('title'), robots: { index: false, follow: false } };
 }
 
-export default async function PasswordResetPage() {
-	const [cookieStore, user, t] = await Promise.all([
+export default async function PasswordResetPage({
+	searchParams,
+}: {
+	searchParams: Promise<{ choose?: string }>;
+}) {
+	const [cookieStore, user, t, { choose }] = await Promise.all([
 		cookies(),
 		getAuthenticatedUserFromCookies(),
 		getTranslations('entry'),
+		searchParams,
 	]);
 	const recoveryRequested = Boolean(
 		user && cookieStore.get('manawg_password_recovery')?.value === user.id,
@@ -24,7 +29,7 @@ export default async function PasswordResetPage() {
 
 	return (
 		<EntryFrame
-			title={t('reset.title')}
+			title={recoveryRequested && choose === '1' ? t('reset.choose') : t('reset.title')}
 			description={recoveryRequested ? t('reset.recovery') : t('reset.request')}
 			headingId="password-reset-heading"
 			backHref="/login"

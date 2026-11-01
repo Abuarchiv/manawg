@@ -58,7 +58,9 @@ done
 link=$(curl -s "$mailpit/api/v1/message/$id" | jq -r .Text | grep -o "$app/auth/v1/verify?[^ ]*" | head -n 1)
 [ -n "$link" ] || fail "confirmation mail without a link"
 curl -sS -L -b "$jar" -c "$jar" -o /dev/null -w '%{url_effective}' "$link" >"$work/landing"
-grep -qx "$app/login" "$work/landing" || fail "confirmation ended at $(cat "$work/landing")"
+# Confirming drops the password given at sign-up; the account chooses one on /auth/reset.
+grep -qx "$app/auth/reset?choose=1" "$work/landing" || fail "confirmation ended at $(cat "$work/landing")"
+api POST /api/auth/password -d "{\"password\":\"$password\"}" | jq -e '.ok == true' >/dev/null || fail "choosing a password failed"
 
 step "WG"
 api POST /api/wg -d '{"name":"Smoke WG","creatorName":"Smoke"}' >"$work/wg.json"

@@ -1,5 +1,10 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { safeNextPath } from '@/core/auth/next-path';
+import {
+	CHOOSE_PASSWORD_PATH,
+	passwordPending,
+	passwordRecoveryCookie,
+} from '@/core/auth/password-pending';
 import { createSupabaseServerClient } from '@/core/auth/server';
 import { queueWelcomeMail } from '@/core/auth/welcome-mail';
 import { requestOrigin } from '@/core/http/request-origin';
@@ -49,16 +54,17 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 		);
 		if (error || !data.session) return callbackError(request, response);
 		queueWelcomeMail(data.session.user, requestLocale(request));
-		if (next === '/auth/reset') {
-			response.cookies.set({
-				name: 'manawg_password_recovery',
-				value: data.session.user.id,
-				httpOnly: true,
-				secure: request.nextUrl.protocol === 'https:',
-				sameSite: 'lax',
-				maxAge: 600,
-				path: '/auth/reset',
-			});
+		const choosePassword = await passwordPending(supabase.auth);
+		if (choosePassword) {
+			response.headers.set(
+				'Location',
+				new URL(CHOOSE_PASSWORD_PATH, requestOrigin(request)).toString(),
+			);
+		}
+		if (choosePassword || next === '/auth/reset') {
+			response.cookies.set(
+				passwordRecoveryCookie(data.session.user.id, request.nextUrl.protocol === 'https:'),
+			);
 		}
 		return response;
 	} catch {

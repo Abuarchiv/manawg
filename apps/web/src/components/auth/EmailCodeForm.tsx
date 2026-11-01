@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useEffect, useRef, useState } from 'react';
 import { ErrorBox } from '@/components/app/ErrorBox';
@@ -12,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { authPageHref } from '@/core/auth/auth-intent';
 import { AUTH_FAILURE_MESSAGES, classifyAuthError } from '@/core/auth/password-errors';
+import { CHOOSE_PASSWORD_PATH } from '@/core/auth/password-pending';
 import { type Message, useMessage } from '@/shared/i18n/message';
 import {
 	type AuthFormProps,
@@ -43,6 +45,7 @@ export function useEmailCode({
 	setBusy,
 	onAuthenticated,
 }: AuthFormProps & { email: string; setEmail: (value: string) => void }) {
+	const router = useRouter();
 	const [code, setCode] = useState('');
 	const [error, setError] = useState<CodeError>(null);
 	// The address the code went to; set means the code step is shown.
@@ -103,7 +106,8 @@ export function useEmailCode({
 			const { verifyEmailCode } = await import('@/core/auth/client');
 			const result = await verifyEmailCode(sentTo, token);
 			if (result.sessionEstablished) {
-				onAuthenticated();
+				if (result.passwordPending) router.replace(CHOOSE_PASSWORD_PATH);
+				else onAuthenticated();
 				return;
 			}
 			setError('generic');
