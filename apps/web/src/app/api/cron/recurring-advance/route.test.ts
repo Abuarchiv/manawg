@@ -311,6 +311,7 @@ mock.module('@/core/infra/observability', {
 	namedExports: {
 		logApiError: (...args: unknown[]) => state.loggedErrors.push(args),
 		withCronLogging: (_name: string, handler: unknown) => handler,
+		monitorCron: (_slug: string, _schedule: string, run: () => Promise<unknown>) => run(),
 	},
 });
 mock.module('@/core/notifications/notification-dispatch', {

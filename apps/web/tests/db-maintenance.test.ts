@@ -139,7 +139,7 @@ mock.module('@/core/mail/mail-retention', {
 });
 mock.module('@/core/infra/cron-auth', { namedExports: { requireCronSecret: () => null } });
 mock.module('@/core/infra/sentry', {
-	namedExports: { captureSentryException() {}, logSentryApiError() {} },
+	namedExports: { captureSentryException() {}, logSentryApiError() {}, monitorCron() {} },
 });
 mock.module('@/core/db/orphan-uploads', { namedExports: { sweepOrphanUploads: async () => null } });
 mock.module('@/core/infra/supabase-storage', {

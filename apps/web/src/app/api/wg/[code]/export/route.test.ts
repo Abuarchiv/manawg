@@ -105,7 +105,7 @@ mock.module('@/core/guards/require-wg-member', {
 });
 // The real observability module runs against a stubbed Sentry so tests can inspect console output.
 mock.module('@/core/infra/sentry', {
-	namedExports: { captureSentryException() {}, logSentryApiError() {} },
+	namedExports: { captureSentryException() {}, logSentryApiError() {}, monitorCron() {} },
 });
 mock.module('@/core/rate-limit', {
 	namedExports: { wgExportLimiter: {}, checkRateLimit: async () => ({ success: true }) },

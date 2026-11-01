@@ -269,7 +269,9 @@ Mutation error copy goes through `mutationError` (`core/http/error-codes.ts`); f
   contexts, replaces exception values with `[redacted]`, normalizes error names, strips query
   strings, redacts share codes in `/wg/<code>`, calendar tokens and storage object paths, and
   only keeps allowlisted tags. Console and UI breadcrumbs are dropped. Session tracking is off
-  on client and server (no release health).
+  on client and server (no release health). `monitorCron` reports the money-moving
+  `recurring-advance` cron to Sentry Crons, so a run that never starts or hits the function
+  timeout alerts too (the free plan has one monitor seat).
 - **Server logs**: `logApiError` (`core/infra/observability.ts`) logs the static label and the
   error name only, never message or stack.
 - **PostHog** (`instrumentation-client.ts`): initialized only when `NEXT_PUBLIC_POSTHOG_HOST` is
