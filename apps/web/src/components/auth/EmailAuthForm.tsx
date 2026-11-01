@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ErrorBox } from '@/components/app/ErrorBox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -168,8 +168,16 @@ export function EmailAuthForm({
 		emailFieldInvalid,
 		passwordFieldInvalid,
 	} = auth;
+	const formRef = useRef<HTMLFormElement>(null);
+	// A failed check leaves focus on the submit button; move it to the field that needs fixing.
+	useEffect(() => {
+		if (emailError === 'invalid' || emailError === 'reset-invalid') {
+			formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+		}
+	}, [emailError]);
 	return (
 		<form
+			ref={formRef}
 			method="post"
 			noValidate
 			onSubmit={(event) => {

@@ -224,6 +224,13 @@ export function EmailSignUpForm({
 		error,
 		failure,
 	} = auth;
+	const formRef = useRef<HTMLFormElement>(null);
+	// A failed check leaves focus on the submit button; move it to the field that needs fixing.
+	useEffect(() => {
+		if (error && error !== 'generic') {
+			formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+		}
+	}, [error]);
 	if (auth.sentTo) return <InboxNotice auth={auth} busy={busy} />;
 
 	const nameInvalid = error === 'name';
@@ -235,6 +242,7 @@ export function EmailSignUpForm({
 
 	return (
 		<form
+			ref={formRef}
 			method="post"
 			noValidate
 			onSubmit={(event) => {
