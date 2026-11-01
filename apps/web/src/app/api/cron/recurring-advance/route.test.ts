@@ -311,6 +311,10 @@ mock.module('@/core/infra/observability', {
 	namedExports: {
 		logApiError: (...args: unknown[]) => state.loggedErrors.push(args),
 		withCronLogging: (_name: string, handler: unknown) => handler,
+	},
+});
+mock.module('@/core/infra/cron-monitor', {
+	namedExports: {
 		monitorCron: (_slug: string, _schedule: string, run: () => Promise<unknown>) => run(),
 	},
 });

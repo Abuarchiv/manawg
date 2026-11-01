@@ -19,7 +19,7 @@ mock.module('@sentry/nextjs', {
 	},
 });
 
-const { monitorCron } = await import('../src/core/infra/sentry.ts');
+const { monitorCron } = await import('../src/core/infra/cron-monitor.ts');
 
 function run(response: () => Promise<Response>) {
 	checkIns.length = 0;

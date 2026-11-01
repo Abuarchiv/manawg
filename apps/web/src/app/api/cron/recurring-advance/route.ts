@@ -5,7 +5,8 @@ import { db, expenseSplits, expenses, recurringExpenses, wgMembers, wgs } from '
 import { isUniqueViolation } from '@/core/db/pg-errors';
 import { TransactionAbort } from '@/core/db/transaction';
 import { requireCronSecret } from '@/core/infra/cron-auth';
-import { logApiError, monitorCron, withCronLogging } from '@/core/infra/observability';
+import { monitorCron } from '@/core/infra/cron-monitor';
+import { logApiError, withCronLogging } from '@/core/infra/observability';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import {
 	addMonthsFromAnchor,

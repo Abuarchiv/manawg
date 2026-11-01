@@ -11,8 +11,6 @@
 
 import { captureSentryException, logSentryApiError } from './sentry';
 
-export { monitorCron } from './sentry';
-
 import { SAFE_TAG_VALUES, safeErrorName } from './sentry-privacy';
 
 /**
