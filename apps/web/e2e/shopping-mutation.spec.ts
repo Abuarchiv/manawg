@@ -115,6 +115,41 @@ test.describe('shopping retry', () => {
 		expect(posted).toEqual(['Milch', 'Brot']);
 	});
 
+	test('keeps the typed item in the stored draft while the create is still in flight', async ({
+		page,
+	}) => {
+		skipUnlessFixtures();
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/shopping`, async (route) => {
+			if (route.request().method() !== 'POST') {
+				await route.fallback();
+				return;
+			}
+			// Never answers: the page is reloaded while the request is open.
+			await new Promise(() => {});
+		});
+		await setupMember(page);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/shopping`);
+		await dismissOnboarding(page);
+		const input = page.getByLabel('Artikel-Name');
+		await input.fill('Brot');
+		await page.getByRole('button', { name: 'Artikel hinzufügen', exact: true }).click();
+		await expect(input).toHaveValue('');
+		// Let React flush the effects that follow the cleared field before reading the draft.
+		await page.evaluate(
+			() => new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 100))),
+		);
+		// A killed tab runs no more code, so the stored draft is what survives it.
+		const storedName = await page.evaluate(() => {
+			const key = Object.keys(window.localStorage).find((k) => k.endsWith(':shopping'));
+			const raw = key ? window.localStorage.getItem(key) : null;
+			return raw ? (JSON.parse(raw) as { name?: string }).name : null;
+		});
+		expect(storedName).toBe('Brot');
+		await page.unroute(`**/api/wg/${FIXTURE_WG.shareCode}/shopping`);
+		await page.reload();
+		await expect(page.getByLabel('Artikel-Name')).toHaveValue('Brot');
+	});
+
 	test('uses a fresh idempotency key after an offline-queued shopping create', async ({ page }) => {
 		skipUnlessFixtures();
 		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/shopping`, async (route) => {
