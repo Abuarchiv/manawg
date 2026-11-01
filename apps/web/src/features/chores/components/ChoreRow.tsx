@@ -2,7 +2,7 @@
 
 import { Check, Hand, MessageSquareMore, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
-import { memo, type ReactElement, useState } from 'react';
+import { memo, type ReactElement, useEffect, useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -33,6 +33,7 @@ import {
 	completeTriggerLabel,
 } from '@/features/chores/components/ChoreCompleteDialog';
 import { ChoreEditDrawer } from '@/features/chores/components/ChoreEditDrawer';
+import { CHORES_HEADING_ID } from '@/features/chores/components/ChoresHeader';
 import { formatChoreCadence } from '@/features/chores/components/chore-cadence';
 import type { Chore, ChoreMember, PlanChore } from '@/features/chores/components/chore-types';
 import type { Locale } from '@/shared/i18n/locale';
@@ -91,6 +92,18 @@ export const ChoreRow = memo(function ChoreRow({
 	const [actionsOpen, setActionsOpen] = useState(false);
 	const [editOpen, setEditOpen] = useState(false);
 	const removeConfirm = useConfirmDelete();
+	const confirmedRef = useRef(false);
+	// A completion can move the chore to another section: the row remounts there and focus would fall back to body.
+	useEffect(
+		() => () => {
+			if (!confirmedRef.current) return;
+			requestAnimationFrame(() => {
+				if (document.activeElement !== document.body) return;
+				document.getElementById(CHORES_HEADING_ID)?.focus({ preventScroll: true });
+			});
+		},
+		[],
+	);
 	const status = getChoreStatus(chore.nextDueAt);
 	// Taking over your own chore is a no-op, so the shortcut only shows for others'.
 	const needsTakeOver = !isMine && choreNeedsRepair(chore);
@@ -318,7 +331,10 @@ export const ChoreRow = memo(function ChoreRow({
 				error={completeError}
 				nextAssignee={nextAssignee}
 				onCancel={onCancelComplete}
-				onConfirm={() => onComplete(chore)}
+				onConfirm={() => {
+					confirmedRef.current = true;
+					onComplete(chore);
+				}}
 			/>
 		</ItemEntry>
 	);
