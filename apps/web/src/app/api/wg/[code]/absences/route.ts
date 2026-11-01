@@ -14,6 +14,7 @@ import { readIdempotencyKey } from '@/core/idempotency-store';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { berlinDayKey, endOfBerlinDay, startOfBerlinDay } from '@/core/utils/berlin-day';
 import { ABSENCE_REASON_MAX } from '@/features/chores/chore-limits';
+import { withExpensePaymentLock } from '@/features/expenses/server/expense-payments';
 import { isYearInRange } from '@/shared/lib/limits';
 
 type AbsenceCreateResponseBody = {
@@ -103,6 +104,8 @@ export const POST = withWgRoute('absences POST', async (req, { code }) => {
 				key: readIdempotencyKey(req),
 				codec: absenceCreateCodec,
 				completeFailureCode: 'idempotency_response_write_failed',
+				// The payment lock comes first, matching the order account deletion takes it.
+				inTransaction: (work) => withExpensePaymentLock(wg.id, work),
 				prepare: async () => {
 					const limited = rateLimitResponse(
 						await checkRateLimit(wgWriteLimiter, `absence:${wg.id}:${auth.member.memberId}`),
@@ -125,6 +128,19 @@ export const POST = withWgRoute('absences POST', async (req, { code }) => {
 				},
 			},
 			async (tx) => {
+				const stillActive = await tx
+					.select({ id: wgMembers.id })
+					.from(wgMembers)
+					.where(
+						and(
+							eq(wgMembers.wgId, wg.id),
+							eq(wgMembers.id, absentMemberId),
+							isNull(wgMembers.deactivatedAt),
+						),
+					)
+					.limit(1)
+					.for('share');
+				if (stillActive.length === 0) return rejectWrite(badRequest('member_not_in_wg'));
 				await tx.execute(
 					sql`select pg_advisory_xact_lock(hashtext(${`absence:${wg.id}:${absentMemberId}`}))`,
 				);
@@ -188,7 +204,6 @@ export const POST = withWgRoute('absences POST', async (req, { code }) => {
 			memberId: absentMemberId,
 			startDate: absence.startDate.toISOString(),
 			endDate: absence.endDate.toISOString(),
-			reason: absence.reason,
 		},
 	});
 	return NextResponse.json(result.body, { status: result.status });
