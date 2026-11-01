@@ -114,6 +114,7 @@ export function useEmailAuth({
 		const normalizedEmail = normalizeEmail(email);
 		if (!isValidEmail(normalizedEmail)) {
 			setEmailError('reset-invalid');
+			setInvalidAttempt((attempt) => attempt + 1);
 			return;
 		}
 		setBusy('password-reset');
