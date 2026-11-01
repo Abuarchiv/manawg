@@ -519,3 +519,98 @@ test('expense PATCH preserves split integrity with fractional timestamps and con
 	assert.equal(currencyEdit.status, 200);
 	assert.equal(currentExpense.currency, 'EUR');
 });
+
+const OTHER_WG = '11111111-2222-4333-8444-555555555555';
+const THIRD = '9f2f0a21-b135-4d08-b1bd-846b034e7e90';
+
+/** A select whose where predicate is evaluated against in-memory rows. */
+function selectOver(data: Map<unknown, Record<string, unknown>[]>) {
+	return () => {
+		let table: unknown;
+		let condition: Predicate | undefined;
+		const query = {
+			from(nextTable: unknown) {
+				table = nextTable;
+				return query;
+			},
+			where(next: Predicate) {
+				condition = next;
+				return query;
+			},
+			...thenableQuery(() =>
+				(data.get(table) ?? []).filter((row) => !condition || matches(row, condition)),
+			),
+		};
+		return query;
+	};
+}
+
+test('expense PATCH is for the payer only', async () => {
+	const row = {
+		id: EXPENSE_ID,
+		wgId: WG_ID,
+		paidByMemberId: PAYER_ID,
+		amountCents: 1200,
+		updatedAt: new Date(),
+	};
+	env.db = { select: selectOver(new Map([[expenses, [row]]])) } as never;
+
+	const response = await PATCH(
+		jsonRequest('PATCH', { description: 'Neu' }),
+		routeContext({ id: EXPENSE_ID }),
+	);
+
+	assert.equal(response.status, 403);
+	assert.equal(await errorOf(response), 'not_payer');
+});
+
+for (const [label, expense, splits, status, error] of [
+	[
+		'a stranger to the expense',
+		{ paidByMemberId: PAYER_ID, wgId: WG_ID },
+		[{ expenseId: EXPENSE_ID, debtorMemberId: THIRD, settledAt: null }],
+		403,
+		'not_owner',
+	],
+	[
+		'an expense of another WG',
+		{ paidByMemberId: CALLER_ID, wgId: OTHER_WG },
+		[],
+		404,
+		'expense_not_found',
+	],
+] as const) {
+	test(`expense DELETE refuses ${label}`, async () => {
+		let deleted = 0;
+		const data = new Map<unknown, Record<string, unknown>[]>([
+			[
+				expenses,
+				[{ id: EXPENSE_ID, description: 'x', amountCents: 100, imageUrl: null, ...expense }],
+			],
+			[expenseSplits, splits.map((split) => ({ ...split }))],
+		]);
+		const tx = {
+			select: selectOver(data),
+			delete: () => ({
+				where: () => ({
+					returning: async () => {
+						deleted += 1;
+						return [{ id: EXPENSE_ID }];
+					},
+				}),
+			}),
+		};
+		env.payments = {
+			withExpensePaymentLock: async (
+				_wgId: string,
+				operation: (value: typeof tx) => Promise<unknown>,
+			) => operation(tx),
+		} as never;
+
+		const response = await DELETE(jsonRequest('DELETE'), routeContext({ id: EXPENSE_ID }));
+
+		assert.equal(response.status, status);
+		assert.equal(await errorOf(response), error);
+		assert.equal(deleted, 0);
+	});
+}
