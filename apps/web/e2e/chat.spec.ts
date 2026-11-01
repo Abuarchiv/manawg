@@ -564,11 +564,14 @@ test.describe('chat scroll-to-end button', () => {
 			timeout: 15_000,
 		});
 		const viewport = page.locator('[data-slot="message-scroller-viewport"]');
-		await viewport.evaluate((el) => {
-			el.scrollTop = 0;
-		});
 		const button = page.getByRole('button', { name: 'Zum Ende scrollen' });
-		await expect(button).toBeVisible();
+		// The scroller can still be settling at the end after the first render and swallow a single jump, so retry until the button is active.
+		await expect(async () => {
+			await viewport.evaluate((el) => {
+				el.scrollTop = 0;
+			});
+			await expect(button).toHaveAttribute('data-active', 'true', { timeout: 1000 });
+		}).toPass({ timeout: 15_000 });
 		return { viewport, button };
 	}
 
