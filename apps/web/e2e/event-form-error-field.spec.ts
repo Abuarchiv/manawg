@@ -113,4 +113,45 @@ test.describe('event form error field', () => {
 		await drawer.getByRole('button', { name: 'Save', exact: true }).click();
 		await expectFieldClearOfAlert(page, page.locator('#event-edit-end'));
 	});
+
+	test('a failed create announces the error once, inline in the dialog', async ({
+		page,
+		context,
+		baseURL,
+	}) => {
+		await openCalendar(page, context, baseURL, { width: 390, height: 700 });
+		await page.route(`**${BASE}/events*`, (route) =>
+			route.request().method() === 'POST'
+				? route.fulfill({ status: 500, json: { error: 'server_error' } })
+				: route.fallback(),
+		);
+		await page.getByRole('button', { name: 'Add event' }).click();
+		const drawer = page.getByRole('dialog');
+		await drawer.getByLabel('Title', { exact: true }).fill('Plant swap');
+		await drawer.getByRole('button', { name: 'Save event' }).click();
+		const saveError = page.getByRole('alert').filter({ hasText: 'The event could not be saved' });
+		await expect(drawer.getByRole('alert')).toBeVisible();
+		await expect(saveError).toHaveCount(1);
+	});
+
+	test('a failed update announces the error once, inline in the dialog', async ({
+		page,
+		context,
+		baseURL,
+	}) => {
+		await openCalendar(page, context, baseURL, { width: 390, height: 700 });
+		await page.route(`**${BASE}/events/*`, (route) =>
+			route.request().method() === 'PATCH'
+				? route.fulfill({ status: 500, json: { error: 'server_error' } })
+				: route.fallback(),
+		);
+		await page.getByRole('tab', { name: 'Agenda' }).click();
+		await page.getByRole('button', { name: 'Flat meeting' }).first().click();
+		const drawer = page.getByRole('dialog');
+		await drawer.getByLabel('Title', { exact: true }).fill('Flat meeting 2');
+		await drawer.getByRole('button', { name: 'Save', exact: true }).click();
+		const saveError = page.getByRole('alert').filter({ hasText: 'The event could not be updated' });
+		await expect(drawer.getByRole('alert')).toBeVisible();
+		await expect(saveError).toHaveCount(1);
+	});
 });
