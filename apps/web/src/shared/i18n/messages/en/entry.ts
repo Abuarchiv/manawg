@@ -229,6 +229,7 @@ export default {
 	},
 	reset: {
 		title: 'Reset password',
+		choose: 'Choose your password',
 		recovery: 'Set a new password for your account.',
 		request: 'Request a new link below.',
 	},

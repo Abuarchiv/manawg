@@ -1,15 +1,11 @@
 import { type NextRequest, NextResponse } from 'next/server';
+import { passwordRecoveryCookie } from '@/core/auth/password-pending';
 
 export async function DELETE(request: NextRequest): Promise<NextResponse> {
 	const response = NextResponse.json({ cleared: true });
 	response.cookies.set({
-		name: 'manawg_password_recovery',
-		value: '',
-		httpOnly: true,
-		secure: request.nextUrl.protocol === 'https:',
-		sameSite: 'lax',
+		...passwordRecoveryCookie('', request.nextUrl.protocol === 'https:'),
 		maxAge: 0,
-		path: '/auth/reset',
 	});
 	return response;
 }
