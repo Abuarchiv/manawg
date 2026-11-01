@@ -75,6 +75,21 @@ test('a timed event without an end exports the one-hour default the app shows', 
 	assert.match(ics, /DTSTART:20261005T180000Z\r\nDTEND:20261005T190000Z\r\n/);
 });
 
+test('an all-day event exports an exclusive DTEND one day after its last Berlin day', () => {
+	const ics = occurrenceToIcs({
+		eventId: 'e',
+		title: 'Trip',
+		description: null,
+		location: null,
+		recurring: false,
+		allDay: true,
+		startsAt: '2026-10-05T10:00:00.000Z',
+		endsAt: '2026-10-06T10:00:00.000Z',
+		occurrenceIndex: 0,
+	});
+	assert.match(ics, /DTSTART;VALUE=DATE:20261005\r\nDTEND;VALUE=DATE:20261007\r\n/);
+});
+
 test('the subscribed feed asks clients to refresh hourly', () => {
 	const ics = calendarFeedToIcs([], 'ManaWG', '2026-10-05T00:00:00.000Z');
 	assert.match(ics, /REFRESH-INTERVAL;VALUE=DURATION:PT1H\r\n/);
