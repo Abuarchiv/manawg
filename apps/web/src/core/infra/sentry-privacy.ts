@@ -22,6 +22,16 @@ type SentryEventShape = {
 };
 
 export const SAFE_TAG_VALUES: Record<string, ReadonlySet<string>> = {
+	// One value per `captureException(…, { action })` call site; unlisted values are dropped.
+	action: new Set([
+		'cachedFetch',
+		'dispatchNotificationSafely',
+		'loadDashboardData',
+		'offlineAutoSync',
+		'refreshMembers',
+		'swRegister',
+		'syncOfflineActions',
+	]),
 	area: new Set(['startup', 'rate-limit']),
 	// One value per error.tsx; keep in sync when a route boundary is added.
 	boundary: new Set([
@@ -49,7 +59,40 @@ export const SAFE_TAG_VALUES: Record<string, ReadonlySet<string>> = {
 		'recurring-advance',
 		'monthly-statements',
 	]),
+	// NotificationEvent (core/notifications/notifications.ts); a test keeps both lists equal.
+	event: new Set([
+		'expense.created',
+		'expense.recurring_charged',
+		'expense.reminder',
+		'expense.debt_settled',
+		'expense.payment_voided',
+		'import.completed',
+		'notification.test',
+		'announcement.posted',
+		'announcement.commented',
+		'announcement.resolved',
+		'chore.due',
+		'shopping.added',
+		'event.created',
+		'event.moved',
+		'event.cancelled',
+		'event.upcoming',
+		'event.today',
+		'inventory.low_stock',
+		'chat.message',
+		'chat.mention',
+	]),
 	method: new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD']),
+	// Module whose offline queue failed to replay (`offline.page` of useSyncedCollection).
+	page: new Set(['chores', 'expenses', 'pinboard', 'shopping']),
+	// Dashboard reads that fall back to an empty value (`withFallback` labels).
+	query: new Set([
+		'announcements',
+		'auditEvents',
+		'currentMemberPushOptIn',
+		'memberAbsences',
+		'myOpenAnnouncements',
+	]),
 };
 
 const TRUSTED_ERROR_NAMES = new Set([
@@ -61,6 +104,18 @@ const TRUSTED_ERROR_NAMES = new Set([
 	'TypeError',
 	'URIError',
 	'AggregateError',
+	// DOMException names and the bundler's chunk error: fixed identifiers that tell issues apart.
+	'AbortError',
+	'ChunkLoadError',
+	'DataCloneError',
+	'InvalidStateError',
+	'NetworkError',
+	'NotAllowedError',
+	'NotFoundError',
+	'NotSupportedError',
+	'QuotaExceededError',
+	'SecurityError',
+	'TimeoutError',
 ]);
 
 export function safeErrorName(name: unknown): string {

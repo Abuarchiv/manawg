@@ -1,7 +1,13 @@
 import * as Sentry from '@sentry/nextjs';
 import { sanitizeSentryBreadcrumb, sanitizeSentryEvent } from './sentry-privacy';
 
-export function initializeSentry(): void {
+type Integration = { name: string };
+
+// Release health (sessions) is not collected; the privacy policy promises no session data.
+const SESSION_INTEGRATIONS = new Set(['BrowserSession', 'ProcessSession']);
+
+/** `overrides` replace the default integration with the same name. */
+export function initializeSentry(overrides: Integration[] = []): void {
 	const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
 	if (!dsn) return;
 
@@ -12,7 +18,12 @@ export function initializeSentry(): void {
 			release: process.env.NEXT_PUBLIC_SENTRY_RELEASE,
 			dataCollection: { userInfo: false },
 			integrations: (integrations) =>
-				integrations.filter((integration) => integration.name !== 'BrowserSession'),
+				integrations
+					.filter(
+						({ name }) =>
+							!SESSION_INTEGRATIONS.has(name) && !overrides.some((o) => o.name === name),
+					)
+					.concat(overrides as typeof integrations),
 			beforeSend: sanitizeSentryEvent,
 			beforeBreadcrumb: sanitizeSentryBreadcrumb,
 		});

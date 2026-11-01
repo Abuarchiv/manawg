@@ -5,6 +5,7 @@ import { db, expenseSplits, expenses, recurringExpenses, wgMembers, wgs } from '
 import { isUniqueViolation } from '@/core/db/pg-errors';
 import { TransactionAbort } from '@/core/db/transaction';
 import { requireCronSecret } from '@/core/infra/cron-auth';
+import { monitorCron } from '@/core/infra/cron-monitor';
 import { logApiError, withCronLogging } from '@/core/infra/observability';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import {
@@ -277,79 +278,85 @@ export const GET = withCronLogging(
 	async (req: NextRequest): Promise<NextResponse> => {
 		const denied = requireCronSecret(req);
 		if (denied) return denied;
-
-		const now = new Date();
-		const due = (await db
-			.select({
-				id: recurringExpenses.id,
-				wgId: recurringExpenses.wgId,
-				paidByMemberId: recurringExpenses.paidByMemberId,
-				description: recurringExpenses.description,
-				category: recurringExpenses.category,
-				amountCents: recurringExpenses.amountCents,
-				intervalMonths: recurringExpenses.intervalMonths,
-				nextDueAt: recurringExpenses.nextDueAt,
-				anchorAt: recurringExpenses.anchorAt,
-				splitsJson: recurringExpenses.splitsJson,
-				wgName: wgs.name,
-				shareCode: wgs.shareCode,
-			})
-			.from(recurringExpenses)
-			.innerJoin(wgs, eq(recurringExpenses.wgId, wgs.id))
-			.where(and(lte(recurringExpenses.nextDueAt, now), isNull(recurringExpenses.pausedAt)))
-			.orderBy(asc(recurringExpenses.nextDueAt), asc(recurringExpenses.id))
-			.limit(TEMPLATE_LIMIT)) as DueRecurring[];
-
-		if (due.length === 0) return NextResponse.json({ ok: true, charged: 0 });
-
-		// allSettled, not all: one corrupt template (DB error, constraint
-		// violation) must not block advancing every other WG's templates.
-		const settled = await settleInBatches(due, advanceTemplate);
-		const created: CreatedAdvance[] = [];
-		let failedTemplates = 0;
-		for (const result of settled) {
-			if (result.status === 'fulfilled') {
-				created.push(...result.value.created);
-				if (result.value.failed) failedTemplates += 1;
-			} else {
-				failedTemplates += 1;
-				logApiError('[cron/recurring-advance] template advance failed', result.reason);
-			}
-		}
-
-		// Batched like the advances: on the 1st of the month hundreds of bookings
-		// fire at once, and an unbounded fan-out would exhaust the small
-		// connection pool (audit rows are then lost silently).
-		await settleInBatches(created, async ({ template, expenseId }) => {
-			await recordAuditEvent({
-				wgId: template.wgId,
-				memberId: null,
-				eventType: 'recurring.charged',
-				entityType: 'expense',
-				entityId: expenseId,
-				metadata: {
-					recurringExpenseId: template.id,
-					amountCents: template.amountCents,
-					currency: 'EUR',
-					description: template.description,
-				},
-			});
-			await dispatchNotificationSafely({
-				wg: { id: template.wgId, name: template.wgName, shareCode: template.shareCode },
-				event: 'expense.recurring_charged',
-				payload: {
-					description: template.description,
-					amountCents: template.amountCents,
-					currency: 'EUR',
-					expenseId,
-				},
-			});
-		});
-
-		// A 503 keeps a failed template visible in the cron log instead of reporting success.
-		return NextResponse.json(
-			{ ok: failedTemplates === 0, charged: created.length, failedTemplates },
-			{ status: failedTemplates === 0 ? 200 : 503 },
-		);
+		return monitorCron('recurring-advance', RECURRING_ADVANCE_SCHEDULE, advanceDueTemplates);
 	},
 );
+
+/** Must match the `crons` entry in vercel.json (a test compares them). */
+export const RECURRING_ADVANCE_SCHEDULE = '10 6 * * *';
+
+async function advanceDueTemplates(): Promise<NextResponse> {
+	const now = new Date();
+	const due = (await db
+		.select({
+			id: recurringExpenses.id,
+			wgId: recurringExpenses.wgId,
+			paidByMemberId: recurringExpenses.paidByMemberId,
+			description: recurringExpenses.description,
+			category: recurringExpenses.category,
+			amountCents: recurringExpenses.amountCents,
+			intervalMonths: recurringExpenses.intervalMonths,
+			nextDueAt: recurringExpenses.nextDueAt,
+			anchorAt: recurringExpenses.anchorAt,
+			splitsJson: recurringExpenses.splitsJson,
+			wgName: wgs.name,
+			shareCode: wgs.shareCode,
+		})
+		.from(recurringExpenses)
+		.innerJoin(wgs, eq(recurringExpenses.wgId, wgs.id))
+		.where(and(lte(recurringExpenses.nextDueAt, now), isNull(recurringExpenses.pausedAt)))
+		.orderBy(asc(recurringExpenses.nextDueAt), asc(recurringExpenses.id))
+		.limit(TEMPLATE_LIMIT)) as DueRecurring[];
+
+	if (due.length === 0) return NextResponse.json({ ok: true, charged: 0 });
+
+	// allSettled, not all: one corrupt template (DB error, constraint
+	// violation) must not block advancing every other WG's templates.
+	const settled = await settleInBatches(due, advanceTemplate);
+	const created: CreatedAdvance[] = [];
+	let failedTemplates = 0;
+	for (const result of settled) {
+		if (result.status === 'fulfilled') {
+			created.push(...result.value.created);
+			if (result.value.failed) failedTemplates += 1;
+		} else {
+			failedTemplates += 1;
+			logApiError('[cron/recurring-advance] template advance failed', result.reason);
+		}
+	}
+
+	// Batched like the advances: on the 1st of the month hundreds of bookings
+	// fire at once, and an unbounded fan-out would exhaust the small
+	// connection pool (audit rows are then lost silently).
+	await settleInBatches(created, async ({ template, expenseId }) => {
+		await recordAuditEvent({
+			wgId: template.wgId,
+			memberId: null,
+			eventType: 'recurring.charged',
+			entityType: 'expense',
+			entityId: expenseId,
+			metadata: {
+				recurringExpenseId: template.id,
+				amountCents: template.amountCents,
+				currency: 'EUR',
+				description: template.description,
+			},
+		});
+		await dispatchNotificationSafely({
+			wg: { id: template.wgId, name: template.wgName, shareCode: template.shareCode },
+			event: 'expense.recurring_charged',
+			payload: {
+				description: template.description,
+				amountCents: template.amountCents,
+				currency: 'EUR',
+				expenseId,
+			},
+		});
+	});
+
+	// A 503 keeps a failed template visible in the cron log instead of reporting success.
+	return NextResponse.json(
+		{ ok: failedTemplates === 0, charged: created.length, failedTemplates },
+		{ status: failedTemplates === 0 ? 200 : 503 },
+	);
+}

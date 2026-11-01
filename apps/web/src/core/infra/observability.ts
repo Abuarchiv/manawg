@@ -10,6 +10,7 @@
  */
 
 import { captureSentryException, logSentryApiError } from './sentry';
+
 import { SAFE_TAG_VALUES, safeErrorName } from './sentry-privacy';
 
 /**

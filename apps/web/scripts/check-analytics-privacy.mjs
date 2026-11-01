@@ -22,15 +22,23 @@ const compiled = transformSync(instrumentation, {
 	supported: { 'dynamic-import': false },
 }).code;
 
-async function initialize(env, failImport = false, failInit = false) {
+async function initialize(
+	env,
+	failImport = false,
+	failInit = false,
+	location = {},
+	webdriver = false,
+) {
 	const calls = [];
 	let imports = 0;
 	vm.runInNewContext(
 		compiled,
 		{
 			Date,
-			window: { location: { hostname: 'app.manawg.com' } },
-			navigator: { userAgent: 'ManaWG-privacy-check' },
+			window: {
+				location: { hostname: 'app.manawg.com', pathname: `/wg/${secret}/expenses`, ...location },
+			},
+			navigator: { userAgent: 'ManaWG-privacy-check', webdriver },
 			exports: {},
 			process: { env },
 			console: { warn() {}, error() {} },
@@ -56,6 +64,7 @@ async function initialize(env, failImport = false, failInit = false) {
 	return { calls, imports };
 }
 
+const secret = 'private-household-content';
 const env = {
 	NODE_ENV: 'production',
 	NEXT_PUBLIC_POSTHOG_KEY: 'phc_privacy_test',
@@ -85,7 +94,6 @@ assert.equal(typeof config.before_send, 'function');
 assert.equal(config.before_send(null), null);
 const uuid = '12345678-1234-4234-8234-123456789abc';
 const timestamp = new Date('2026-09-03T00:00:00.000Z');
-const secret = 'private-household-content';
 for (const event of ['$pageview', 'wg_created', 'wg_joined']) {
 	const cleaned = config.before_send({
 		uuid,
@@ -126,9 +134,29 @@ for (const event of ['$pageview', 'wg_created', 'wg_joined']) {
 			$cookieless_mode: true,
 			$process_person_profile: false,
 			$host: 'app.manawg.com',
+			$pathname: '/wg/[code]/expenses',
 			$raw_user_agent: 'ManaWG-privacy-check',
 		},
 	});
+}
+// Page paths keep only the route: household codes, invite tokens and unknown paths are replaced.
+for (const [pathname, expected] of [
+	['/', '/'],
+	['/login', '/login'],
+	[`/wg/${secret}`, '/wg/[code]'],
+	[`/invite/${secret}`, '/invite/[token]'],
+	['/discover/expenses', '/discover/expenses'],
+	['/Max.Mustermann@example.com', '/[other]'],
+	['/a/b/c/d/e', '/[other]'],
+]) {
+	const run = await initialize(env, false, false, { pathname });
+	const cleaned = run.calls[0].config.before_send({
+		uuid,
+		event: '$pageview',
+		timestamp,
+		properties: {},
+	});
+	assert.equal(cleaned.properties.$pathname, expected, pathname);
 }
 for (const event of [
 	'$identify',
@@ -167,6 +195,16 @@ for (const invalidEnv of [
 	].map((host) => ({ ...env, NEXT_PUBLIC_POSTHOG_HOST: host })),
 ]) {
 	assert.deepEqual(await initialize(invalidEnv), { calls: [], imports: 0 });
+}
+// Preview deployments and local builds stay out of the production numbers.
+assert.deepEqual(await initialize({ ...env, NEXT_PUBLIC_SENTRY_ENVIRONMENT: 'preview' }), {
+	calls: [],
+	imports: 0,
+});
+// Automated browsers (smoke runs, QA, Lighthouse) are not visitors.
+assert.deepEqual(await initialize(env, false, false, {}, true), { calls: [], imports: 0 });
+for (const hostname of ['localhost', '127.0.0.1', '[::1]']) {
+	assert.deepEqual(await initialize(env, false, false, { hostname }), { calls: [], imports: 0 });
 }
 assert.equal((await initialize(env, true)).calls.length, 0);
 assert.equal((await initialize(env, false, true)).calls.length, 0);

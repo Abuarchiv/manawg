@@ -31,6 +31,30 @@ function whenIdle(task: () => void): void {
 	}
 }
 
+/**
+ * The page path with WG codes and invite tokens replaced by their route parameter, so page
+ * views show which screens are used without carrying anything that identifies a household.
+ * Paths outside the plain lowercase route charset (for example a mistyped URL) collapse to one value.
+ */
+function routeTemplate(pathname: string): string {
+	const template = pathname
+		.replace(/^\/wg\/[^/]+/, '/wg/[code]')
+		.replace(/^\/invite\/[^/]+/, '/invite/[token]');
+	return /^(\/([a-z0-9-]+|\[code\]|\[token\])){0,4}\/?$/.test(template) ? template : '/[other]';
+}
+
+/**
+ * Local builds (e2e, `next start`), preview deployments and automated browsers (prod smoke runs,
+ * QA matrices, Lighthouse; they set navigator.webdriver) must not count as real usage.
+ */
+function isTestDeployment(): boolean {
+	return (
+		process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT === 'preview' ||
+		['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname) ||
+		navigator.webdriver === true
+	);
+}
+
 function loadAnalytics(key: string, host: string): void {
 	import('posthog-js')
 		.then(({ default: posthog }) => {
@@ -68,6 +92,7 @@ function loadAnalytics(key: string, host: string): void {
 							$cookieless_mode: true,
 							$process_person_profile: false,
 							$host: window.location.hostname,
+							$pathname: routeTemplate(window.location.pathname),
 							$raw_user_agent: navigator.userAgent,
 						},
 					};
@@ -80,7 +105,7 @@ function loadAnalytics(key: string, host: string): void {
 		});
 }
 
-if (key && host === 'https://eu.i.posthog.com') {
+if (key && host === 'https://eu.i.posthog.com' && !isTestDeployment()) {
 	whenIdle(() => loadAnalytics(key, host));
 } else if (process.env.NODE_ENV === 'development') {
 	for (const variable of [

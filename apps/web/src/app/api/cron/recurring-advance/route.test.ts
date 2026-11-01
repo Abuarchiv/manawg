@@ -313,6 +313,11 @@ mock.module('@/core/infra/observability', {
 		withCronLogging: (_name: string, handler: unknown) => handler,
 	},
 });
+mock.module('@/core/infra/cron-monitor', {
+	namedExports: {
+		monitorCron: (_slug: string, _schedule: string, run: () => Promise<unknown>) => run(),
+	},
+});
 mock.module('@/core/notifications/notification-dispatch', {
 	namedExports: {
 		dispatchNotificationSafely: async (notification: unknown) =>

@@ -518,3 +518,50 @@ test('every route error boundary tag survives Sentry tag filtering', async () =>
 		assert.ok(SAFE_TAG_VALUES.boundary?.has(tag), `${file}: boundary "${tag}" is not allowed`);
 	}
 });
+
+// An `action` value missing from the allowlist is dropped without a warning, so the issue
+// loses the only hint at which call site failed.
+test('every captureException action tag survives Sentry tag filtering', async () => {
+	const { SAFE_TAG_VALUES } = await import('../src/core/infra/sentry-privacy.ts');
+	const srcDir = fileURLToPath(new URL('../src', import.meta.url));
+	const actions = readdirSync(srcDir, { recursive: true })
+		.filter((file) => /\.tsx?$/.test(String(file)) && !/\.test\./.test(String(file)))
+		.flatMap((file) => {
+			const source = readFileSync(path.join(srcDir, String(file)), 'utf8');
+			return [...source.matchAll(/captureException\([^;]*?action: '([^']+)'/g)].map(
+				(m) => m[1] ?? '',
+			);
+		});
+	assert.ok(actions.length > 0);
+	for (const action of actions) {
+		assert.ok(SAFE_TAG_VALUES.action?.has(action), `action "${action}" is not allowed`);
+	}
+});
+
+// The other fixed-value context keys: each list must cover every value the code can pass.
+test('notification events, offline pages and dashboard query labels survive tag filtering', async () => {
+	const { SAFE_TAG_VALUES } = await import('../src/core/infra/sentry-privacy.ts');
+	const src = (file: string) => readFileSync(new URL(`../src/${file}`, import.meta.url), 'utf8');
+	const union = src('core/notifications/notifications.ts').match(
+		/export type NotificationEvent =([^;]+);/,
+	)?.[1];
+	const events = [...(union ?? '').matchAll(/'([a-z_.]+)'/g)].map((m) => m[1] ?? '');
+	assert.ok(events.length > 0);
+	assert.deepEqual([...(SAFE_TAG_VALUES.event ?? [])].sort(), events.sort());
+
+	const labels = [
+		...src('composition/dashboard-queries.ts').matchAll(/withFallback\(\s*'([^']+)'/g),
+	].map((m) => m[1] ?? '');
+	assert.ok(labels.length > 0);
+	for (const label of labels) assert.ok(SAFE_TAG_VALUES.query?.has(label), label);
+
+	const featuresDir = fileURLToPath(new URL('../src/features', import.meta.url));
+	const pages = readdirSync(featuresDir, { recursive: true })
+		.filter((file) => /\.tsx?$/.test(String(file)))
+		.flatMap((file) => {
+			const source = readFileSync(path.join(featuresDir, String(file)), 'utf8');
+			return [...source.matchAll(/offline: \{[^}]*?page: '([a-z-]+)'/g)].map((m) => m[1] ?? '');
+		});
+	assert.ok(pages.length > 0);
+	for (const page of pages) assert.ok(SAFE_TAG_VALUES.page?.has(page), page);
+});
