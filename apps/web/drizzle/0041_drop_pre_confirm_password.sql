@@ -4,7 +4,20 @@
 -- Supabase Auth owns auth.users; databases without that schema skip this migration.
 DO $migration$
 BEGIN
+	-- Checked in this order: resolving auth.users already needs USAGE on the auth schema.
+	IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_namespace WHERE nspname = 'auth') THEN
+		RETURN;
+	END IF;
+	-- The Preview CI role has no access to the auth schema; Production migrates as postgres, which does.
+	IF NOT has_schema_privilege('auth', 'USAGE') THEN
+		RAISE NOTICE 'manawg_drop_pre_confirm_password skipped: % has no access to the auth schema', current_user;
+		RETURN;
+	END IF;
 	IF to_regclass('auth.users') IS NULL THEN
+		RETURN;
+	END IF;
+	IF NOT has_table_privilege('auth.users', 'TRIGGER') THEN
+		RAISE NOTICE 'manawg_drop_pre_confirm_password skipped: % may not create triggers on auth.users', current_user;
 		RETURN;
 	END IF;
 
