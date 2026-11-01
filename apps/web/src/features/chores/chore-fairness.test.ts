@@ -4,6 +4,7 @@ import {
 	buildChoreFairness,
 	chooseNextAvailableMember,
 	computeOpenGapsByMember,
+	predictNextAssigneeId,
 } from './chore-fairness';
 
 const NOW = Date.parse('2026-10-31T10:00:00.000Z');
@@ -31,6 +32,10 @@ test('open gaps count only overdue chores per assignee', () => {
 
 test('open gaps are empty when nothing is overdue', () => {
 	assert.equal(computeOpenGapsByMember([chore('a', 1), chore('b', 6)], NOW).size, 0);
+});
+
+test('a chore due right now is not an open gap', () => {
+	assert.equal(computeOpenGapsByMember([chore('a', 0)], NOW).size, 0);
 });
 
 test('the suggested assignee is the member with the lowest score', () => {
@@ -158,4 +163,31 @@ test('a one-person WG keeps the chore with its only member', () => {
 		'a',
 	);
 	assert.equal(chooseNextAvailableMember({ members: [anna], currentMemberId: 'a' }), 'a');
+});
+
+test('a tie between two candidates rotates to the one after the current owner', () => {
+	// Ben holds the only chore; Anna and Cem tie at zero once Ben is the owner.
+	const chores = [chore('b', 3)];
+	assert.equal(chooseNextAvailableMember({ members, currentMemberId: 'a', chores, now: NOW }), 'c');
+	assert.equal(chooseNextAvailableMember({ members, currentMemberId: 'b', chores, now: NOW }), 'c');
+	assert.equal(chooseNextAvailableMember({ members, currentMemberId: 'c', chores, now: NOW }), 'a');
+});
+
+test('the predicted next assignee is never the current owner', () => {
+	const farFuture = '2099-01-10T10:00:00.000Z';
+	const chores = [
+		{ assignedMemberId: 'a', nextDueAt: farFuture, openGapCountForAssignee: 0 },
+		{ assignedMemberId: 'a', nextDueAt: farFuture, openGapCountForAssignee: 0 },
+		{ assignedMemberId: 'b', nextDueAt: farFuture, openGapCountForAssignee: 0 },
+		{ assignedMemberId: 'c', nextDueAt: farFuture, openGapCountForAssignee: 0 },
+		{ assignedMemberId: 'c', nextDueAt: farFuture, openGapCountForAssignee: 0 },
+	];
+	// Ben is the least loaded, but the chore he owns moves on to someone else.
+	const next = predictNextAssigneeId(
+		{ nextDueAt: farFuture, intervalDays: 7, recurrenceType: 'days', assignedMemberId: 'b' },
+		chores,
+		members,
+		[],
+	);
+	assert.equal(next, 'c');
 });
