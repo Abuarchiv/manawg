@@ -101,7 +101,10 @@ mock.module('@/core/db', {
 		},
 	},
 });
-mock.module('@/core/audit', { namedExports: { recordAuditEvent: async () => undefined } });
+const audits: Array<{ eventType: string; memberId: string | null }> = [];
+mock.module('@/core/audit', {
+	namedExports: { recordAuditEvent: async (e: (typeof audits)[number]) => void audits.push(e) },
+});
 mock.module('@/core/guards/admin', { namedExports: { requireOwnerOrAdmin: async () => null } });
 mock.module('@/core/infra/observability', {
 	namedExports: { captureException: () => undefined, logApiError: () => undefined },
@@ -253,4 +256,32 @@ test('resuming compares the due date with the Berlin day, not the UTC day', asyn
 	assert.equal(await resumeAt('2026-07-14T22:30:00Z'), '2026-08-14T10:00:00.000Z');
 	// 23:30 Berlin on 14.07.: due today stays due.
 	assert.equal(await resumeAt('2026-07-14T21:30:00Z'), '2026-07-14T10:00:00.000Z');
+});
+
+test('pause, resume and edit each write their own audit entry and guard on the pause state', async () => {
+	audits.length = 0;
+	state.updateWhere = [];
+	state.sets = [];
+	await editRecurringTemplate(caller, template() as never, { id: 'template-1', paused: true });
+	await editRecurringTemplate(caller, template({ pausedAt: anchorAt }) as never, {
+		id: 'template-1',
+		paused: false,
+	});
+	await editRecurringTemplate(caller, template() as never, {
+		id: 'template-1',
+		description: 'Neu',
+	});
+	assert.deepEqual(
+		audits.map((a) => [a.eventType, a.memberId]),
+		[
+			['recurring.paused', MEMBER],
+			['recurring.resumed', MEMBER],
+			['recurring.updated', MEMBER],
+		],
+	);
+	assert.ok(state.sets[0]?.pausedAt instanceof Date);
+	assert.equal(state.sets[1]?.pausedAt, null);
+	assert.equal('pausedAt' in (state.sets[2] ?? {}), false);
+	assert.match(state.updateWhere[0] ?? '', /"paused_at" is null/);
+	assert.match(state.updateWhere[1] ?? '', /"paused_at" is not null/);
 });
