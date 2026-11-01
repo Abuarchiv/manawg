@@ -13,6 +13,7 @@ import {
 } from '@/features/announcements/announcement-workflow';
 import { AnnouncementCard } from '@/features/announcements/components/AnnouncementCard';
 import { AnnouncementComposer } from '@/features/announcements/components/AnnouncementComposer';
+import { PINBOARD_HEADING_ID } from '@/features/announcements/components/AnnouncementDeleteDialog';
 import { AnnouncementSkeleton } from '@/features/announcements/components/AnnouncementSkeleton';
 import type { Announcement } from '@/features/announcements/components/announcement-types';
 import { EmptyState } from '@/features/announcements/components/EmptyState';
@@ -90,7 +91,9 @@ export default function PinboardPage(): React.ReactElement {
 	return (
 		<div data-exchange-content className="mx-auto flex w-full max-w-4xl flex-col gap-3 px-4 py-3">
 			<SubNav />
-			<h1 className="sr-only">{t('title')}</h1>
+			<h1 id={PINBOARD_HEADING_ID} tabIndex={-1} className="sr-only">
+				{t('title')}
+			</h1>
 
 			{newCount > 0 && (
 				<Button

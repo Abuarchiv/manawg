@@ -12,6 +12,8 @@ export type SocialProvider = 'google';
 
 export type AuthSessionResult = {
 	sessionEstablished: boolean;
+	/** The session belongs to an account that has no password yet and chooses one next. */
+	passwordPending?: boolean;
 };
 
 export type LogoutPushTarget = {

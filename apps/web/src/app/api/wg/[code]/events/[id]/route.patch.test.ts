@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mock, test } from 'node:test';
+import { beforeEach, mock, test } from 'node:test';
 
 const eventId = '11111111-1111-4111-8111-111111111111';
 const oldVersion = new Date('2026-10-30T10:00:00.000Z');
@@ -11,6 +11,13 @@ const wgEvents = {
 
 let row: Record<string, unknown>;
 let loggedError: unknown;
+let callerIsAdmin = false;
+let deleteCalls = 0;
+
+beforeEach(() => {
+	callerIsAdmin = false;
+	deleteCalls = 0;
+});
 
 function resetRow() {
 	row = {
@@ -30,6 +37,14 @@ function resetRow() {
 }
 
 const db = {
+	delete: () => ({
+		where: () => ({
+			returning: async () => {
+				deleteCalls += 1;
+				return [{ id: eventId }];
+			},
+		}),
+	}),
 	select: () => ({
 		from: () => ({
 			where: () => ({ limit: async () => [{ ...row }] }),
@@ -79,7 +94,16 @@ const db = {
 mock.module('@/core/audit', { namedExports: { recordAuditEvent: async () => undefined } });
 mock.module('@/core/db', { namedExports: { db, wgEvents } });
 mock.module('@/core/guards/admin', {
-	namedExports: { requireOwnerOrAdmin: async () => null },
+	namedExports: {
+		requireOwnerOrAdmin: async (
+			_wgId: string,
+			member: { memberId: string },
+			ownerId: string | null,
+		) =>
+			ownerId === member.memberId || callerIsAdmin
+				? null
+				: Response.json({ error: 'not_owner' }, { status: 403 }),
+	},
 });
 mock.module('@/core/guards/api-auth', {
 	namedExports: { UUID_PATTERN: /^[0-9a-f-]{36}$/i },
@@ -136,7 +160,7 @@ mock.module('drizzle-orm', {
 	},
 });
 
-const { PATCH } = await import('./route');
+const { DELETE, PATCH } = await import('./route');
 
 function patchBody(body: unknown) {
 	return PATCH(
@@ -145,6 +169,13 @@ function patchBody(body: unknown) {
 			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify(body),
 		}) as never,
+		{ params: Promise.resolve({ code: 'ABCD2345', id: eventId }) } as never,
+	);
+}
+
+function remove() {
+	return DELETE(
+		new Request('https://example.invalid/events', { method: 'DELETE' }) as never,
 		{ params: Promise.resolve({ code: 'ABCD2345', id: eventId }) } as never,
 	);
 }
@@ -230,4 +261,32 @@ test('PATCH shifts legacy EXDATE when switching to all-day across the Berlin DST
 	assert.equal(row.allDay, true);
 	assert.equal((row.startsAt as Date).toISOString(), '2026-03-28T00:00:00.000Z');
 	assert.equal(row.recurrence, shiftedRule);
+});
+
+test('a non-owner non-admin cannot edit or delete the event', async () => {
+	resetRow();
+	row.createdByMemberId = 'member-2';
+
+	const edited = await patch('Fremd');
+	assert.equal(edited.status, 403);
+	assert.deepEqual(await edited.json(), { error: 'not_owner' });
+	assert.equal(row.title, 'Alt');
+
+	const deleted = await remove();
+	assert.equal(deleted.status, 403);
+	assert.equal(deleteCalls, 0);
+});
+
+test('the admin can edit and delete an event created by another member', async () => {
+	resetRow();
+	row.createdByMemberId = 'member-2';
+	callerIsAdmin = true;
+
+	const edited = await patch('Admin');
+	assert.equal(edited.status, 200);
+	assert.equal(row.title, 'Admin');
+
+	const deleted = await remove();
+	assert.equal(deleted.status, 200);
+	assert.equal(deleteCalls, 1);
 });

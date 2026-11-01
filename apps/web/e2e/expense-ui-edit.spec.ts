@@ -388,6 +388,33 @@ test.describe('expense edit payer', () => {
 		await expect(page.getByLabel('Aufteilung: Gleichmäßig')).toBeEnabled();
 	});
 
+	test('opens an empty new expense after closing an unchanged edit', async ({ page }) => {
+		await openExpenses(page, [expense]);
+		const requests: string[] = [];
+		await page.route(`**/api/wg/${SHARE_CODE}/expenses**`, (route) => {
+			const method = route.request().method();
+			if (method === 'GET') return route.fallback();
+			requests.push(method);
+			return route.fulfill({ json: { expense } });
+		});
+		await page.getByRole('button', { name: `Aktionen für ${expense.description}` }).click();
+		await page.getByRole('menuitem', { name: 'Bearbeiten' }).click();
+		await expect(page.getByRole('heading', { name: 'Ausgabe bearbeiten' })).toBeVisible();
+		await page.getByRole('button', { name: 'Abbrechen', exact: true }).click();
+		await expect(page.getByRole('dialog')).toBeHidden();
+
+		await page.getByRole('button', { name: 'Ausgabe hinzufügen' }).first().click();
+		await expect(page.getByRole('heading', { name: 'Ausgabe hinzufügen' })).toBeVisible();
+		await expect(page.getByLabel('Beschreibung')).toHaveValue('');
+		await expect(page.getByLabel('Betrag')).toHaveValue('');
+		await expect(page.getByLabel('Bezahlt von')).toBeEnabled();
+
+		await page.getByLabel('Beschreibung').fill('Neue Ausgabe');
+		await page.getByLabel('Betrag').fill('5,00');
+		await page.getByRole('button', { name: 'Ausgabe speichern', exact: true }).click();
+		await expect.poll(() => requests).toEqual(['POST']);
+	});
+
 	test('preserves historical inactive shares on a description-only edit', async ({ page }) => {
 		await openExpenses(page, [expense]);
 		await page.getByRole('button', { name: `Aktionen für ${expense.description}` }).click();

@@ -90,9 +90,11 @@ export function useShoppingAdd({
 	}, [prefillName]);
 
 	useEffect(() => {
-		if (!draftHydrated) return;
+		// While a create is in flight the field is empty; the stored draft keeps the submitted text
+		// until the request settles, so a reload or a killed tab does not lose the item.
+		if (!draftHydrated || adding) return;
 		writeDraft(draftKey, { name: newName, queueEditId });
-	}, [draftHydrated, draftKey, newName, queueEditId]);
+	}, [adding, draftHydrated, draftKey, newName, queueEditId]);
 
 	useEffect(() => {
 		nameValueRef.current = newName;

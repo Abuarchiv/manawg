@@ -48,7 +48,7 @@ export function WgNewsSection({
 						render={
 							<Button
 								variant="ghost"
-								className="group w-full justify-between border-0 px-0 -my-1.5 leading-[inherit] font-heading text-[length:inherit] font-semibold text-foreground hover:bg-transparent active:bg-transparent dark:hover:bg-transparent aria-expanded:bg-transparent"
+								className="group w-full justify-between border-0 px-0 -my-1.5 leading-[inherit] font-heading text-[length:inherit] font-semibold text-foreground hover:bg-transparent active:bg-transparent dark:hover:bg-transparent aria-expanded:bg-transparent [@media(any-hover:hover)]:focus-visible:ring-ring"
 							/>
 						}
 					>

@@ -194,6 +194,7 @@ export default {
 		splitsDrift: 'The split differed slightly from the total and was adjusted automatically.',
 		splitsDiscarded:
 			'The custom split differed too much from the total and was discarded. The amount is split equally instead.',
+		paymentRow: 'Repayment, not an expense. Skip this row if you do not want it in the ledger.',
 		ocr: 'Read from the image: check the date, amount and payer. The expense is assigned to the payer only, so no open amount is created.',
 		fallback: 'Check this row.',
 	},

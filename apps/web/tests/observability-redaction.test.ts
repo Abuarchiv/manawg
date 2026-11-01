@@ -367,6 +367,60 @@ test('custom Error.name values are reduced to a trusted error type', () => {
 	}
 });
 
+test('server request errors name the route template and omit the concrete path', async () => {
+	const { onRequestError } = await import('../src/instrumentation.ts');
+	const calls: unknown[][] = [];
+	const original = console.error;
+	console.error = (...args: unknown[]) => calls.push(args);
+	try {
+		await onRequestError(
+			new TypeError('provider payload'),
+			{ path: '/wg/abc123/expenses?x=1', method: 'GET' },
+			{ routePath: '/wg/[code]/expenses' },
+		);
+
+		const line = format(...(calls[0] ?? []));
+		assert.ok(line.includes('/wg/[code]/expenses'));
+		assert.ok(!line.includes('abc123'));
+		assert.ok(!line.includes('x=1'));
+		assert.ok(!line.includes('provider payload'));
+	} finally {
+		console.error = original;
+	}
+});
+
+test('a route path that is not a plain template is not logged', () => {
+	const calls: unknown[][] = [];
+	const original = console.error;
+	console.error = (...args: unknown[]) => calls.push(args);
+	try {
+		captureException(new Error('x'), { routePath: '/wg/abc 123?token=secret' });
+		captureException(new Error('x'), { routePath: 'wg/[code]' });
+		captureException(new Error('x'), { routePath: `/${'a'.repeat(200)}` });
+
+		assert.equal(JSON.stringify(calls).includes('routePath'), false);
+	} finally {
+		console.error = original;
+	}
+});
+
+test('a route template is kept up to 160 characters and rejected beyond that', () => {
+	const calls: unknown[][] = [];
+	const original = console.error;
+	console.error = (...args: unknown[]) => calls.push(args);
+	try {
+		const kept = `/${'a'.repeat(159)}`;
+		captureException(new Error('x'), { routePath: kept });
+		captureException(new Error('x'), { routePath: `${kept}a` });
+
+		assert.equal(kept.length, 160);
+		assert.ok(JSON.stringify(calls[0]).includes(kept));
+		assert.equal(JSON.stringify(calls[1]).includes('routePath'), false);
+	} finally {
+		console.error = original;
+	}
+});
+
 test('idempotency cache failures never log a push endpoint or provider error', async () => {
 	const secret = 'privatePushEndpointToken123';
 	const calls: string[] = [];

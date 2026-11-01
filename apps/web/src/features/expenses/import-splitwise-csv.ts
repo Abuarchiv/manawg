@@ -60,6 +60,7 @@ export function parseSplitwiseCsv(
 	const idxDesc = findColumnIndex(header, ['description', 'beschreibung']);
 	const idxCost = findColumnIndex(header, ['cost', 'kosten', 'amount', 'betrag']);
 	const idxCurrency = findColumnIndex(header, ['currency', 'währung', 'wahrung']); // i18n-ignore import parser column names
+	const idxCategory = findColumnIndex(header, ['category', 'kategorie']);
 	if (idxDate === -1 || idxDesc === -1 || idxCost === -1) return [];
 
 	const memberColumns: { index: number; name: string }[] = [];
@@ -90,6 +91,10 @@ export function parseSplitwiseCsv(
 		const line = rows[r]?.lineNumber ?? r + 1;
 		const warnings: string[] = [];
 		if (ignoredWarning) warnings.push(ignoredWarning);
+		// Splitwise exports settle-ups as rows in the Payment category; they repay a debt.
+		if (idxCategory !== -1 && /^(payment|zahlung)$/i.test((fields[idxCategory] ?? '').trim())) {
+			warnings.push('payment_row');
+		}
 		const descRaw = (fields[idxDesc] ?? '').trim().slice(0, DESCRIPTION_MAX_LENGTH).trimEnd();
 		if (!descRaw || /^(total balance|gesamtsaldo)$/i.test(descRaw)) continue;
 		const date = parseDateIso(fields[idxDate] ?? '', locale);

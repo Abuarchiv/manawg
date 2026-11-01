@@ -78,7 +78,7 @@ export function InvitesSection({ wg, identity }: { wg: WgSummary; identity: Sess
 	}
 
 	async function share(url: string): Promise<void> {
-		const outcome = await shareInvite(render(inviteShareMessage(wg.name, url)), url);
+		const outcome = await shareInvite(render(inviteShareMessage(wg.name, url)));
 		if (outcome === 'copied') toast.success(t('shared'));
 		if (outcome === 'failed') toast.error(t('shareFailed'));
 	}

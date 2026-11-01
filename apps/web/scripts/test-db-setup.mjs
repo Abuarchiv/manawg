@@ -34,6 +34,8 @@ create table if not exists auth.users (
 	email text,
 	raw_user_meta_data jsonb,
 	raw_app_meta_data jsonb,
+	encrypted_password text,
+	email_confirmed_at timestamptz,
 	created_at timestamptz default now(),
 	deleted_at timestamptz
 );

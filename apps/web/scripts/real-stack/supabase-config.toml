@@ -425,5 +425,5 @@ subject = "{{ .Token }} ist dein Anmeldecode"
 content_path = "./tpl/magic_link.html"
 
 [auth.email.template.email_change]
-subject = "Best\u00e4tige deine neue E-Mail-Adresse"
+subject = "Best\u00e4tige die \u00c4nderung deiner E-Mail-Adresse"
 content_path = "./tpl/email_change.html"

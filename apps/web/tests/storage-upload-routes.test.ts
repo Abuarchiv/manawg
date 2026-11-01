@@ -15,13 +15,16 @@ const BODY = {
 	fileSize: 1024,
 };
 const WG_ID = '989ac820-58b7-431f-9c65-28721264f333';
+const OTHER_WG_ID = '0d5f1b7e-6c1c-4e55-9a39-1f3f6a3a2b10';
 class ImageStorageConfigurationError extends Error {}
 
 const initialState = () => ({
 	authenticatedUser: { id: 'user-1' } as { id: string } | null,
 	authOutage: false,
 	membership: 'active' as 'active' | 'foreign' | 'revoked',
+	memberOf: WG_ID,
 	membershipCalls: 0,
+	membershipWgIds: [] as string[],
 	downloadCalls: 0,
 	downloadedKeys: [] as string[],
 	limitResult: { success: true } as {
@@ -60,9 +63,10 @@ mock.module('@/core/db', {
 });
 mock.module('@/core/guards/api-auth', {
 	namedExports: {
-		requireMember: async () => {
+		requireMember: async (_req: unknown, wgId: string) => {
 			state.membershipCalls += 1;
-			return state.membership === 'active'
+			state.membershipWgIds.push(wgId);
+			return state.membership === 'active' && wgId === state.memberOf
 				? { ok: true, member: { memberId: 'member-1', name: 'Member' } }
 				: {
 						ok: false,
@@ -153,6 +157,7 @@ describe('private storage contract', () => {
 			assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
 			assert.equal(response.headers.get('location'), null);
 			assert.deepEqual(state.downloadedKeys, [PRIVATE_KEY]);
+			assert.deepEqual(state.membershipWgIds.slice(-1), [WG_ID]);
 
 			state.membership = 'revoked';
 			const revoked = await readRoute.GET(request);
@@ -162,6 +167,21 @@ describe('private storage contract', () => {
 		} finally {
 			globalThis.fetch = originalFetch;
 		}
+	});
+
+	test('private reads check membership of the WG named in the key, not any other WG', async () => {
+		const request = {
+			nextUrl: new URL(
+				`https://app.example/api/upload/read?key=${encodeURIComponent(PRIVATE_KEY)}`,
+			),
+		} as never;
+		state.memberOf = OTHER_WG_ID;
+
+		const response = await readRoute.GET(request);
+
+		assert.equal(response.status, 401);
+		assert.deepEqual(state.membershipWgIds, [WG_ID]);
+		assert.equal(state.downloadCalls, 0);
 	});
 });
 
@@ -175,6 +195,29 @@ describe('upload sign contract', () => {
 			}) as never,
 		);
 	}
+
+	test('upload signing checks membership of the WG behind the share code', async () => {
+		await post();
+
+		assert.deepEqual(state.membershipWgIds, [WG_ID]);
+	});
+
+	test('upload signing answers 404 wg_not_found without signing for a non-member', async () => {
+		for (const membership of ['foreign', 'revoked'] as const) {
+			state.membership = membership;
+			let signed = 0;
+			state.signUpload = async () => {
+				signed += 1;
+				return {};
+			};
+
+			const response = await post();
+
+			assert.equal(response.status, 404, membership);
+			assert.deepEqual(await response.json(), { error: 'wg_not_found' }, membership);
+			assert.equal(signed, 0, membership);
+		}
+	});
 
 	test('upload signing reports an unavailable limiter as 503 with a retry hint', async () => {
 		state.limitResult = {

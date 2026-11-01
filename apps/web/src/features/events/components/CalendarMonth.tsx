@@ -208,7 +208,9 @@ export function CalendarMonth({
 					>
 						<ChevronLeft aria-hidden />
 					</Button>
-					<CardTitle className="min-w-0 text-center">{monthLabel}</CardTitle>
+					<CardTitle className="min-w-0 text-center" aria-live="polite" aria-atomic="true">
+						{monthLabel}
+					</CardTitle>
 					<Button
 						variant="ghost"
 						size="icon"
@@ -282,7 +284,7 @@ export function CalendarMonth({
 														isSelected
 															? 'bg-primary text-primary-foreground'
 															: isToday
-																? 'bg-secondary text-secondary-foreground'
+																? 'border border-muted-foreground font-semibold'
 																: 'group-active/button:bg-muted',
 													)}
 												>

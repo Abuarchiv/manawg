@@ -180,3 +180,71 @@ test('a 410 is retried before the subscription is removed, and never for a new o
 		sendNotification = async () => ({ statusCode: 201 });
 	}
 });
+
+test('a rejected push logs the push service status', async () => {
+	memberRows = [{ ...member(true), notifyEvents: true }];
+	subscriptionRows = [
+		{
+			id: 'sub-1',
+			endpoint: 'https://push.test',
+			p256dh: 'p',
+			authKey: 'a',
+			createdAt: new Date(0),
+		},
+	];
+	sendNotification = async () => {
+		throw Object.assign(new Error('forbidden'), { statusCode: 403 });
+	};
+	const logged = mock.method(console, 'error', () => {});
+	try {
+		await withEnv(VAPID_ENV, async () => {
+			const { sent, failures } = await dispatchNotification({
+				wg: input.wg,
+				event: 'event.cancelled',
+				payload: { title: 'Plenum', startsAt: new Date().toISOString(), allDay: false },
+				urgent: true,
+			});
+			assert.equal(sent, 0);
+			assert.equal(failures.length, 1);
+		});
+		assert.ok(logged.mock.calls.some((call) => String(call.arguments[0]).includes('status:403')));
+	} finally {
+		logged.mock.restore();
+		sendNotification = async () => ({ statusCode: 201 });
+		subscriptionRows = [];
+	}
+});
+
+test('a rejected push without a status code logs none', async () => {
+	memberRows = [{ ...member(true), notifyEvents: true }];
+	subscriptionRows = [
+		{
+			id: 'sub-1',
+			endpoint: 'https://push.test',
+			p256dh: 'p',
+			authKey: 'a',
+			createdAt: new Date(0),
+		},
+	];
+	sendNotification = async () => {
+		throw new Error('socket hang up');
+	};
+	const logged = mock.method(console, 'error', () => {});
+	try {
+		await withEnv(VAPID_ENV, async () => {
+			const { sent, failures } = await dispatchNotification({
+				wg: input.wg,
+				event: 'event.cancelled',
+				payload: { title: 'Plenum', startsAt: new Date().toISOString(), allDay: false },
+				urgent: true,
+			});
+			assert.equal(sent, 0);
+			assert.equal(failures.length, 1);
+		});
+		assert.ok(logged.mock.calls.some((call) => String(call.arguments[0]).includes('status:none')));
+	} finally {
+		logged.mock.restore();
+		sendNotification = async () => ({ statusCode: 201 });
+		subscriptionRows = [];
+	}
+});

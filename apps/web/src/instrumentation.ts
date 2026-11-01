@@ -46,11 +46,16 @@ export async function register() {
  * Next.js calls this for every server-side error, including ones thrown during
  * rendering that never reach a route's own catch block. Without it those
  * failures would only show up as an opaque 500 in the platform log.
+ *
+ * `request.path` holds concrete segments such as invite codes, so only the
+ * route template from `context.routePath` (for example `/wg/[code]/expenses`)
+ * is reported.
  */
 export async function onRequestError(
 	error: unknown,
 	request: { path: string; method: string },
+	context?: { routePath?: string },
 ): Promise<void> {
 	const { captureException } = await import('./core/infra/observability');
-	captureException(error, { path: request.path, method: request.method });
+	captureException(error, { method: request.method, routePath: context?.routePath });
 }

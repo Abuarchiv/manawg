@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { recordAuditEvent } from '@/core/audit';
 import { announcements, choreCompletions, chores, db, memberAbsences, wgMembers } from '@/core/db';
 import { bodyCodec, withIdempotentWrite } from '@/core/db/idempotent-write';
+import { lockActiveMember } from '@/core/db/member-departure';
 import { type DbTransaction, TransactionAbort } from '@/core/db/transaction';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
@@ -192,17 +193,23 @@ async function writeCompletion(
 	plan: CompletionPlan,
 	completedBy: string,
 ) {
+	// The planned assignee may have moved out since planning; the lock keeps them from leaving
+	// before this commits, and the chore stays unassigned otherwise.
+	const nextAssigned =
+		plan.nextAssigned && (await lockActiveMember(tx, c.wgId, plan.nextAssigned))
+			? plan.nextAssigned
+			: null;
 	const assigneeMatch = c.assignedMemberId
 		? eq(chores.assignedMemberId, c.assignedMemberId)
 		: isNull(chores.assignedMemberId);
 	// A new assignee must not be muted by the previous assignee's 18 h reminder throttle; an
 	// unchanged assignee keeps it so a single-member WG is not reminded twice a day.
-	const reminderReset = plan.nextAssigned !== c.assignedMemberId ? { lastReminderAt: null } : {};
+	const reminderReset = nextAssigned !== c.assignedMemberId ? { lastReminderAt: null } : {};
 	const [updated] = await tx
 		.update(chores)
 		.set({
 			nextDueAt: plan.nextDueAt,
-			assignedMemberId: plan.nextAssigned,
+			assignedMemberId: nextAssigned,
 			anchorAt: plan.effectiveAnchor,
 			// Bumps the version `expectedUpdatedAt` edits compare against, never backwards.
 			updatedAt: sql`greatest(clock_timestamp(), ${chores.updatedAt} + interval '1 millisecond')`,
@@ -245,7 +252,7 @@ async function writeCompletion(
 			),
 		);
 	const body: ChoreCompleteResponseBody = { chore: updated };
-	return { status: 200, body, context: { nextAssigned: plan.nextAssigned } };
+	return { status: 200, body, context: { nextAssigned } };
 }
 
 export const POST = withWgRoute<{ id: string }>(

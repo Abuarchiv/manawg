@@ -236,6 +236,7 @@ export default {
 	},
 	reset: {
 		title: 'Passwort zurücksetzen',
+		choose: 'Wähle dein Passwort',
 		recovery: 'Lege ein neues Passwort für dein Konto fest.',
 		request: 'Fordere unten einen neuen Link an.',
 	},

@@ -570,6 +570,37 @@ test('ordinary expenses remain unlinked to recurring templates', async () => {
 	assert.equal(state.sideEffects, 1);
 });
 
+test('a member cannot book an expense paid by someone else that does not include them', async () => {
+	const { state, post } = harness();
+	const response = await post({
+		body: defaultBody({
+			recurringExpenseId: undefined,
+			expectedRecurringNextDueAt: undefined,
+			paidByMemberId: secondMemberId,
+			splits: [{ debtorMemberId: secondMemberId, amountCents: 100 }],
+		}),
+	});
+	assert.equal(response.status, 403);
+	assert.equal((await response.json()).error, 'paid_by_must_include_caller');
+	assert.equal(state.expenseInsertAttempts, 0);
+	assert.equal(state.expenses.length, 0);
+	assert.equal(state.idempotency.size, 0);
+});
+
+test('a member can book an expense paid by someone else when they bear a share', async () => {
+	const { state, post } = harness();
+	const response = await post({
+		body: defaultBody({
+			recurringExpenseId: undefined,
+			expectedRecurringNextDueAt: undefined,
+			paidByMemberId: secondMemberId,
+		}),
+	});
+	assert.equal(response.status, 200);
+	assert.equal(state.expenses.length, 1);
+	assert.equal(state.expenses[0].paidByMemberId, secondMemberId);
+});
+
 test('recovers only the recurring due unique-index race with the winning canonical expense', async () => {
 	const { state, post } = harness();
 	const winner = {

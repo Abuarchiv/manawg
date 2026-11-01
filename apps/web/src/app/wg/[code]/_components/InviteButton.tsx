@@ -68,10 +68,7 @@ export function InviteButton({
 				flash('failed');
 				return;
 			}
-			const outcome = await shareInvite(
-				render(inviteShareMessage(wgName, created.invite.url)),
-				created.invite.url,
-			);
+			const outcome = await shareInvite(render(inviteShareMessage(wgName, created.invite.url)));
 			if (outcome === 'cancelled') return;
 			if (outcome === 'failed') toast.error(t('shareFailed'));
 			flash(outcome);

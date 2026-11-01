@@ -206,7 +206,7 @@ async function sendWebPush(
 					staleSubscriptionIds.push(sub.id);
 				} else {
 					failures.push(err);
-					logApiError('[notifications] web push failed', err);
+					logApiError(`[notifications] web push failed status:${statusCode || 'none'}`, err);
 				}
 			}
 		}),

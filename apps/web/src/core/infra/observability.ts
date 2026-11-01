@@ -13,8 +13,9 @@ import { captureSentryException, logSentryApiError } from './sentry';
 import { SAFE_TAG_VALUES, safeErrorName } from './sentry-privacy';
 
 /**
- * Report an unexpected error with only fixed diagnostic labels. Error messages
- * and arbitrary context can contain provider responses, SQL, or request data.
+ * Report an unexpected error with only fixed diagnostic labels and, when given,
+ * the route template from `context.routePath` (no ids, no query). Error messages
+ * and other context can contain provider responses, SQL, or request data.
  */
 export function captureException(err: unknown, context?: Record<string, unknown>): void {
 	captureSentryException(err, safeContext(context));
@@ -61,6 +62,9 @@ function systemErrorCode(err: unknown): string | null {
 	return typeof code === 'string' && /^E[A-Z_]{2,30}$/.test(code) ? code : null;
 }
 
+// A Next.js route template such as `/wg/[code]/expenses`, at most 160 characters; concrete URLs fail the charset.
+const ROUTE_TEMPLATE = /^\/[A-Za-z0-9_\-./[\]()@]{0,159}$/;
+
 function safeContext(context?: Record<string, unknown>): Record<string, string> {
 	const safe: Record<string, string> = {};
 	if (!context) return safe;
@@ -69,6 +73,10 @@ function safeContext(context?: Record<string, unknown>): Record<string, string> 
 		if (typeof value === 'string' && allowedValues.has(value)) {
 			safe[key] = value;
 		}
+	}
+	const routePath = context.routePath;
+	if (typeof routePath === 'string' && ROUTE_TEMPLATE.test(routePath)) {
+		safe.routePath = routePath;
 	}
 	return safe;
 }

@@ -58,6 +58,7 @@ export function describeParsedExpenseWarning(code: string): Message {
 	if (code === 'custom_splits_discarded') {
 		return { key: 'expenses-import.warnings.splitsDiscarded' };
 	}
+	if (code === 'payment_row') return { key: 'expenses-import.warnings.paymentRow' };
 	if (code === 'ocr_heuristic') return { key: 'expenses-import.warnings.ocr' };
 	return { key: 'expenses-import.warnings.fallback' };
 }

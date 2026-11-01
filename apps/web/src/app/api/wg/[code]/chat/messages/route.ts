@@ -30,14 +30,20 @@ import {
 	previewBody,
 	sanitizeMessageBody,
 } from '@/features/chat/chat-pure';
+import { CHAT_PAGE_SIZE } from '@/features/chat/chat-refresh';
 import { buildChatCursorWhere } from '@/features/chat/server/chat-unread-query';
 import { loadOwnReadMarker } from '@/features/chat/server/own-read-marker';
 
 // Operator-tunable via CHAT_MESSAGES_*. Every value runs through readListLimit,
 // so an empty, unparsable or out-of-range setting falls back to / clamps to a
 // working limit instead of disabling the bound. The page ceiling matches the
-// members listing, so neither knob can degenerate into an unbounded read.
-const PAGE_MAX = readListLimit(process.env, 'CHAT_MESSAGES_PAGE_MAX', 100, 500);
+// members listing, so neither knob can degenerate into an unbounded read. The
+// client pages by CHAT_PAGE_SIZE and treats a shorter page as the oldest one,
+// so the ceiling never drops below it: a lower cap would hide older history.
+const PAGE_MAX = Math.max(
+	CHAT_PAGE_SIZE,
+	readListLimit(process.env, 'CHAT_MESSAGES_PAGE_MAX', 100, 500),
+);
 const PAGE_DEFAULT = readListLimit(process.env, 'CHAT_MESSAGES_PAGE_DEFAULT', 50, PAGE_MAX);
 const PREVIEW_LENGTH = 120;
 const MENTIONS_MAX = 20;

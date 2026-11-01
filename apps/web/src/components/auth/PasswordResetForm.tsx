@@ -24,9 +24,11 @@ type ResetState = 'ready' | 'submitting' | 'unavailable';
 
 interface PasswordResetFormProps {
 	recoveryRequested: boolean;
+	/** Where to go once the new password is saved. */
+	continueTo: string;
 }
 
-export function PasswordResetForm({ recoveryRequested }: PasswordResetFormProps) {
+export function PasswordResetForm({ recoveryRequested, continueTo }: PasswordResetFormProps) {
 	const t = useTranslations('auth');
 	const message = useMessage();
 	const router = useRouter();
@@ -74,7 +76,7 @@ export function PasswordResetForm({ recoveryRequested }: PasswordResetFormProps)
 				// The marker expires quickly; a successful password update must still finish.
 			}
 			toast.success(t('reset.saved'));
-			router.replace('/login');
+			router.replace(continueTo);
 		} catch (error) {
 			if (isWeakPasswordError(error)) setError(message(WEAK_PASSWORD_MESSAGE));
 			// Supabase rejects reusing the current password; a new link would not change that.

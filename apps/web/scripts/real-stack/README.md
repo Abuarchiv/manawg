@@ -34,7 +34,10 @@ session refresh against real Supabase and real PostgreSQL instead of fixtures.
     code first), invitation by mail (`mail_log` ledger, invalid address 400) and receipt upload
     through Supabase Storage (signature, PUT, read as member and flatmate, stranger 401
     `not_a_member`, signed out 401, broken key 400, foreign image on an expense 400, revocation
-    after deletion 404).
+    after deletion 404) and a password set before the address is confirmed (pre-registered
+    directly at Supabase, then confirmed by the owner through sign-up or a code request: the old
+    password must fail, a single sign-up lands on the choose-a-password page, and accounts created
+    confirmed keep their password).
 11. Production rate limits: locally the limiter is open (`VERCEL_ENV=development`). For a run with
     real limits start an Upstash-compatible Redis
     (`docker run -d --name srh-redis redis:7-alpine` and

@@ -164,14 +164,34 @@ export function chooseNextAvailableMember(input: {
 	return null;
 }
 
+/** The next due date the complete route will set; null when the stored date is unreadable. */
+export function predictNextDueAt(chore: {
+	nextDueAt: string;
+	anchorAt?: string;
+	intervalDays: number;
+	recurrenceType: RecurrenceType;
+}): Date | null {
+	const dueAt = chore.nextDueAt ? parseValidDate(chore.nextDueAt) : null;
+	if (!dueAt) return null;
+	const anchor = chore.anchorAt ? parseValidDate(chore.anchorAt) : null;
+	return computeNextDueAt(
+		dueAt,
+		chore.intervalDays,
+		new Date(),
+		chore.recurrenceType,
+		anchor ?? undefined,
+	);
+}
+
 /**
  * Mirrors the complete route: availability is checked on the next due day, not today.
- * The client record lacks the anchor, which only affects month-end clamping, never the
- * day absences are checked against.
+ * The anchor keeps the month-end day equal to the complete route's, so the absence check
+ * lands on the same calendar day.
  */
 export function predictNextAssigneeId(
 	chore: {
 		nextDueAt: string;
+		anchorAt?: string;
 		intervalDays: number;
 		recurrenceType: RecurrenceType;
 		assignedMemberId: string | null;
@@ -181,9 +201,8 @@ export function predictNextAssigneeId(
 	absences: Parameters<typeof getAbsentMemberIds>[0],
 ): string | null {
 	// An unreadable date must not break the whole plan: the row then shows "Datum prüfen".
-	const dueAt = chore.nextDueAt ? parseValidDate(chore.nextDueAt) : null;
-	if (!dueAt) return null;
-	const nextDueAt = computeNextDueAt(dueAt, chore.intervalDays, new Date(), chore.recurrenceType);
+	const nextDueAt = predictNextDueAt(chore);
+	if (!nextDueAt) return null;
 	return chooseNextAvailableMember({
 		members,
 		currentMemberId: chore.assignedMemberId,

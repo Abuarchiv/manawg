@@ -141,6 +141,36 @@ export function useNotificationSettings({ code, memberId }: NotificationSettings
 		void refreshDevice();
 	}, [refreshDevice]);
 
+	// The browser permission changes outside the page (site settings, page-info popup).
+	useEffect(() => {
+		let cancelled = false;
+		let permissionStatus: PermissionStatus | null = null;
+		const onVisible = (): void => {
+			if (document.visibilityState === 'visible') void refreshDevice();
+		};
+		const onChange = (): void => void refreshDevice();
+		window.addEventListener('focus', onChange);
+		document.addEventListener('visibilitychange', onVisible);
+		try {
+			navigator.permissions
+				?.query({ name: 'notifications' })
+				.then((result) => {
+					if (cancelled) return;
+					permissionStatus = result;
+					result.addEventListener('change', onChange);
+				})
+				.catch(() => {});
+		} catch {
+			// Safari can throw for unsupported permission names.
+		}
+		return () => {
+			cancelled = true;
+			window.removeEventListener('focus', onChange);
+			document.removeEventListener('visibilitychange', onVisible);
+			permissionStatus?.removeEventListener('change', onChange);
+		};
+	}, [refreshDevice]);
+
 	// Reconcile server opt-in when the browser still has a live push subscription.
 	useEffect(() => {
 		let cancelled = false;

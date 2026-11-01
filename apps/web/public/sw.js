@@ -22,6 +22,8 @@ const PUBLIC_DOCUMENT_PATHS = new Set(['/', '/offline']);
 // A navigation whose headers the network has not delivered by then falls back to the cache, so a bad
 // connection shows the offline page instead of a page that never finishes loading.
 const NAVIGATION_TIMEOUT_MS = 15000;
+// The cached offline page is revalidated at most this often while the user browses online.
+const OFFLINE_MAX_AGE_MS = 6 * 60 * 60 * 1000;
 
 const SHELL_ASSETS = [
 	'/',
@@ -95,11 +97,30 @@ const precacheShell = async () => {
 };
 
 // A newer /offline page references newer chunks. Store those first, so the page that
-// replaces the old one never points at assets the cache does not hold.
+// replaces the old one never points at assets the cache does not hold. Chunks only the old
+// page referenced are dropped once the new page is in place.
 const refreshOfflinePage = async (request, response) => {
 	const cache = await caches.open(SHELL_CACHE);
-	await cache.addAll(offlineShellAssetsOf(await response.clone().text()));
+	const assets = offlineShellAssetsOf(await response.clone().text());
+	await cache.addAll(assets);
 	await cache.put(request, response);
+	const current = new Set(assets);
+	for (const key of await cache.keys()) {
+		if (new URL(key.url).pathname.startsWith('/_next/static/') && !current.has(key.url)) {
+			await cache.delete(key);
+		}
+	}
+};
+
+// The worker file never changes between deploys, so a deploy reaches the cached offline page
+// only through this check. The Date header of the cached copy carries its age across restarts.
+const refreshOfflineIfStale = async () => {
+	const cache = await caches.open(SHELL_CACHE);
+	const cached = await cache.match('/offline');
+	const age = cached ? Date.now() - Date.parse(cached.headers.get('date')) : Infinity;
+	if (age >= 0 && age < OFFLINE_MAX_AGE_MS) return;
+	const response = await fetch('/offline', { cache: 'reload' });
+	if (response.ok) await refreshOfflinePage('/offline', response);
 };
 
 // The timer covers only the wait for the response headers. Once they are here the response goes
@@ -277,8 +298,9 @@ self.addEventListener('fetch', (event) => {
 				.then((res) => {
 					if (url.pathname === '/offline' && res.ok) {
 						refreshOfflinePage(request, res.clone()).catch(() => undefined);
-					} else if (PUBLIC_DOCUMENT_PATHS.has(url.pathname)) {
-						cacheResponse(request, res.clone());
+					} else {
+						if (PUBLIC_DOCUMENT_PATHS.has(url.pathname)) cacheResponse(request, res.clone());
+						if (res.ok) event.waitUntil(refreshOfflineIfStale().catch(() => undefined));
 					}
 					return res;
 				})

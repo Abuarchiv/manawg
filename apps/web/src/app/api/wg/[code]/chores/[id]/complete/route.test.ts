@@ -29,6 +29,8 @@ interface State {
 	audits: number;
 	failReplayWrite: boolean;
 	absenceCheckedAt?: number;
+	// True when the planned next assignee moved out before the write.
+	nextAssigneeLeft?: boolean;
 }
 
 const tables = {
@@ -202,6 +204,9 @@ mock.module('@/core/audit', {
 	},
 });
 mock.module('@/core/db', { namedExports: { ...tables, db } });
+mock.module('@/core/db/member-departure', {
+	namedExports: { lockActiveMember: async () => !state.nextAssigneeLeft },
+});
 mock.module('@/core/db/transaction', { namedExports: { TransactionAbort, withTransaction } });
 mock.module('@/core/guards/api-auth', { namedExports: { UUID_PATTERN: /^[0-9a-f-]{36}$/i } });
 mock.module('@/core/guards/replay-slot', {
@@ -357,6 +362,16 @@ test('rotation checks absences on the next due day, not at completion time', asy
 	const response = await route.post(route.request(), route.context);
 	assert.equal(response.status, 200);
 	assert.equal(state.absenceCheckedAt, originalDueAt.getTime() + 7 * 86_400_000);
+});
+
+test('a next assignee who moved out meanwhile is not given the chore', async () => {
+	const state = makeState({ nextAssigneeLeft: true });
+	const route = makeRoute(state);
+	const response = await route.post(route.request(), route.context);
+	assert.equal(response.status, 200);
+	assert.equal(state.chore.assignedMemberId, null);
+	assert.equal((state.chore as Chore & { lastReminderAt?: unknown }).lastReminderAt, null);
+	assert.equal(state.completions.length, 1);
 });
 
 test('completion bumps the chore version so a stale expectedUpdatedAt edit conflicts', async () => {

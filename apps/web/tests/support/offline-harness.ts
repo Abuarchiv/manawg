@@ -136,6 +136,7 @@ const defaultQueue = {
 	}),
 	serializeOfflineAction: (action: Action) => JSON.stringify(action),
 	shouldRetryOfflineAction: () => true,
+	withQueuedExpenseUpdate: (actions: Action[], action: Action) => [...actions, action],
 	withoutQueuedEntry: (actions: Action[], shareCode: string, id: string) => {
 		if (!actions.some((action) => action.shareCode === shareCode && action.id === id)) return null;
 		return actions.filter((action) => action.id !== id || action.shareCode !== shareCode);

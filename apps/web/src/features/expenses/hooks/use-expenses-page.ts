@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useToast } from '@/components/ui/Toast';
 import type { ActionNotice } from '@/components/wg/ActionNoticeBanner';
 import { useWg } from '@/components/wg/WgContextProvider';
+import { refreshCachedFetch } from '@/core/hooks/use-cached-fetch';
 import { usePendingSet } from '@/core/hooks/use-pending-set';
 import { useStableCallback } from '@/core/hooks/use-stable-callback';
 import { eurosToCents, parseEuroAmount } from '@/core/utils/amount';
@@ -118,6 +119,11 @@ export function useExpensesPage() {
 		updateRecurringExpenses: data.updateRecurringExpenses,
 		reload: async () => {
 			await data.load(false, true);
+			// The "fällig" badge on Fixkosten in the finance sub-nav reads the dashboard cache,
+			// which otherwise only refreshes on focus.
+			void refreshCachedFetch(`/api/wg/${encodeURIComponent(wg.shareCode)}/dashboard`, {
+				memberId: identity.memberId,
+			});
 		},
 		refreshQueuedCount: data.refreshQueuedCount,
 	};

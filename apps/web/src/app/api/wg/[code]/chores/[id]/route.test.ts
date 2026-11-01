@@ -74,6 +74,9 @@ mock.module('@/core/audit', { namedExports: { recordAuditEvent: async () => unde
 mock.module('@/core/db', {
 	namedExports: { CHORE_RECURRENCE_TYPES: ['days', 'months'], chores, db, wgMembers: {} },
 });
+mock.module('@/core/db/member-departure', {
+	namedExports: { lockActiveMember: async () => true },
+});
 mock.module('@/core/db/transaction', {
 	namedExports: { withTransaction: async (fn: (tx: typeof db) => Promise<unknown>) => fn(db) },
 });

@@ -5,13 +5,17 @@ Keep profile, member management and notification settings clear and durable.
 
 ## Requirements
 
-### Requirement: Owners rename members
+### Requirement: Members and admins rename members
 
-An owner SHALL be able to rename members; other members SHALL receive `403 not_owner`. Names SHALL be unique case-insensitively including moved-out members (`409 name_taken`) and the change SHALL be audited as `member.renamed`. The members list SHALL show admin badges.
+A member SHALL be able to rename themselves and an admin SHALL be able to rename any active member; others SHALL receive `403 not_owner`, and renaming a moved-out member SHALL answer `409 member_deactivated`. Names SHALL be unique case-insensitively among active members (`409 name_taken`); a moved-out member holding the requested name SHALL be renamed to a numbered name ("Name (2)") instead of blocking it. The change SHALL be audited as `member.renamed`. The members list SHALL show admin badges.
 
 #### Scenario: Name taken
-- **WHEN** an owner renames a member to an existing name in another case
+- **WHEN** a member renames to the name of another active member in another case
 - **THEN** the server SHALL answer `409 name_taken`
+
+#### Scenario: Name held by a moved-out member
+- **WHEN** a member renames to a name a moved-out member holds
+- **THEN** the rename SHALL succeed and the moved-out member SHALL become "Name (2)"
 
 ### Requirement: Push opt-out is respected
 

@@ -42,7 +42,7 @@ function AgendaRow({ item, todayKey }: { item: WeekAgendaItem; todayKey: string 
 			</span>
 			<Link
 				href={item.href}
-				className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-lg py-1.5 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+				className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-lg py-1.5 outline-none focus-visible:ring-3 focus-visible:ring-ring"
 			>
 				<span className="flex min-w-0 flex-1 flex-col">
 					<span className="text-body font-medium leading-snug break-words">{item.title}</span>

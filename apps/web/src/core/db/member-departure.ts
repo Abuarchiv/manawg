@@ -1,6 +1,6 @@
-import { and, eq, gte } from 'drizzle-orm';
+import { and, eq, gte, isNull } from 'drizzle-orm';
 import { startOfBerlinDay } from '@/core/utils/berlin-day';
-import { chores, memberAbsences } from './schema';
+import { chores, memberAbsences, wgMembers } from './schema';
 import type { DbTransaction } from './transaction';
 
 /**
@@ -28,4 +28,25 @@ export async function releaseMemberChores(
 			gte(memberAbsences.endDate, startOfBerlinDay(new Date())),
 		),
 	);
+}
+
+/**
+ * Whether the member is still active in the WG, holding a shared row lock until commit. Move-out
+ * takes the member row FOR UPDATE before it frees their chores, so it waits for a write that
+ * assigns the chore and then releases it; without the lock the chore would stay with the leaver.
+ */
+export async function lockActiveMember(
+	tx: DbTransaction,
+	wgId: string,
+	memberId: string,
+): Promise<boolean> {
+	const rows = await tx
+		.select({ id: wgMembers.id })
+		.from(wgMembers)
+		.where(
+			and(eq(wgMembers.id, memberId), eq(wgMembers.wgId, wgId), isNull(wgMembers.deactivatedAt)),
+		)
+		.limit(1)
+		.for('share');
+	return rows.length > 0;
 }

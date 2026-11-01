@@ -162,7 +162,12 @@ export function EventFormFields({
 
 const FIELD_ID_SUFFIX = { title: 'title', startsAt: 'start', endsAt: 'end' } as const;
 
-/** Focus the invalid field; the browser scrolls it into view. */
+/**
+ * Focus the invalid field, then scroll it into view once the pinned form error has rendered
+ * and shrunk the scroll area.
+ */
 export function focusEventField(idPrefix: string, field: keyof typeof FIELD_ID_SUFFIX): void {
-	document.getElementById(`${idPrefix}-${FIELD_ID_SUFFIX[field]}`)?.focus();
+	const el = document.getElementById(`${idPrefix}-${FIELD_ID_SUFFIX[field]}`);
+	el?.focus();
+	requestAnimationFrame(() => el?.scrollIntoView({ block: 'nearest' }));
 }

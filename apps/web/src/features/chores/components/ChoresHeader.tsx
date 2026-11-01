@@ -2,6 +2,9 @@
 import { useTranslations } from 'next-intl';
 import type { getChorePlanHealth } from '@/features/chores/chore-status';
 
+/** Focus target when a completed chore leaves the section its button was in. */
+export const CHORES_HEADING_ID = 'chores-heading';
+
 interface ChoresHeaderProps {
 	itemCount: number;
 	loading: boolean;
@@ -14,7 +17,9 @@ export function ChoresHeader({ itemCount, loading, health }: ChoresHeaderProps) 
 	return (
 		// The active tab already names the page; title and count stay for screen readers.
 		<header className="sr-only">
-			<h1>{t('title')}</h1>
+			<h1 id={CHORES_HEADING_ID} tabIndex={-1}>
+				{t('title')}
+			</h1>
 			<p aria-live="polite" aria-atomic="true">
 				{loading
 					? common('loading')

@@ -29,7 +29,7 @@ function FilePickLabel({
 			htmlFor={htmlFor}
 			className={cn(
 				buttonVariants({ variant: 'outline' }),
-				'w-full cursor-pointer peer-focus-visible:ring-3 peer-focus-visible:ring-ring/50 peer-disabled:pointer-events-none peer-disabled:opacity-50',
+				'w-full cursor-pointer peer-focus-visible:ring-3 peer-focus-visible:ring-ring peer-disabled:pointer-events-none peer-disabled:opacity-50',
 			)}
 		>
 			<span className="min-w-0 truncate">{name ?? fallback}</span>

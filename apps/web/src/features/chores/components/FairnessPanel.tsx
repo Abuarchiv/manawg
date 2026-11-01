@@ -48,7 +48,7 @@ export function FairnessPanel({
 	return (
 		<Card>
 			<CardHeader>
-				<CardTitle>
+				<CardTitle role="heading" aria-level={2}>
 					{t('thisMonth')}
 					{fairness.suggestedAssignee && (
 						<span className="font-normal text-muted-foreground">

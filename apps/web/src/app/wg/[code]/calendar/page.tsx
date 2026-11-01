@@ -20,6 +20,7 @@ import {
 	downloadOccurrenceIcs,
 } from '@/features/events/components/CalendarUpcomingList';
 import { EventCreateModal } from '@/features/events/components/EventCreateModal';
+import { CALENDAR_HEADING_ID } from '@/features/events/components/EventEditDialogs';
 import { EventEditModal } from '@/features/events/components/EventEditModal';
 import { TimeZoneNotice } from '@/features/events/components/TimeZoneNotice';
 import { useCalendarPage } from '@/features/events/hooks/use-calendar-page';
@@ -113,7 +114,9 @@ export default function CalendarPage() {
 			<SubNav />
 			{/* The tab above already names the page; title and count stay for screen readers. */}
 			<header className="sr-only">
-				<h1>{t('title')}</h1>
+				<h1 id={CALENDAR_HEADING_ID} tabIndex={-1}>
+					{t('title')}
+				</h1>
 				<p>{loading ? tCommon('loading') : t('count', { count: calendar.eventCount })}</p>
 			</header>
 

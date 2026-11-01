@@ -1,8 +1,8 @@
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { recordAuditEvent } from '@/core/audit';
-import { db, wgChatMessages } from '@/core/db';
+import { db, idempotencyResponses, wgChatMessages } from '@/core/db';
 import { revokePrivateImageIfUnreferenced } from '@/core/db/private-image-deletions';
 import { lockExpensePayments, withTransaction } from '@/core/db/transaction';
 import { requireOwnerOrAdmin } from '@/core/guards/admin';
@@ -145,6 +145,19 @@ export const DELETE = withWgRoute<{ id: string }>(
 				)
 				.returning({ id: wgChatMessages.id });
 			if (!updated) return { ok: false as const, response: notFound('message_not_found') };
+			// The author's stored send response still holds the text; blank it but keep the row,
+			// so a late retry of the same key replays instead of posting the message again.
+			await tx
+				.update(idempotencyResponses)
+				.set({
+					responseBody: sql`jsonb_set(${idempotencyResponses.responseBody}, '{body,message,body}', 'null'::jsonb)`,
+				})
+				.where(
+					and(
+						eq(idempotencyResponses.scope, `chat-message:${wgId}:${row.senderMemberId}`),
+						sql`${idempotencyResponses.responseBody} #>> '{body,message,id}' = ${id}`,
+					),
+				);
 			await revokePrivateImageIfUnreferenced(tx, wgId, row.imageUrl);
 			return { ok: true as const, deleted: true as const, row, isAuthor };
 		});

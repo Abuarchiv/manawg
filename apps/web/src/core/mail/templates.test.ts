@@ -192,6 +192,23 @@ test('English invitation and reminder use the English wording and formats', () =
 	assert.ok(reminder?.text.includes('−€23.40'));
 });
 
+test('the reminder mail names the WG the debt belongs to', () => {
+	for (const locale of ['de', 'en'] as const) {
+		const mail = renderReminderMail({
+			wgName: 'WG & Co',
+			shareCode: 'KST48210',
+			creditorName: 'Jonas',
+			amountCents: 2340,
+			oldestDebtAgeDays: 9,
+			items: [],
+			unsubscribeUrl: `${APP_ORIGIN}/api/email/unsubscribe?t=y`,
+			locale,
+		});
+		assert.ok(mail.html.includes('WG &amp; Co'), locale);
+		assert.ok(mail.text.includes('WG & Co'), locale);
+	}
+});
+
 test('the invitation caption lists three names and counts the rest once', () => {
 	const input = {
 		inviterName: 'Lina',

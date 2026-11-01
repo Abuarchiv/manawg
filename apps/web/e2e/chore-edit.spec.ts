@@ -146,6 +146,62 @@ test.describe('chore edit', () => {
 			.poll(() => patchBody)
 			.toEqual({ title: 'Bad gründlich putzen', expectedUpdatedAt: row.updatedAt });
 	});
+
+	test('an edit keeps the version the drawer opened on when a refresh lands meanwhile', async ({
+		page,
+	}) => {
+		const shareCode = FIXTURE_WG.shareCode;
+		const viewer = { id: FIXTURE_WG.memberId, name: 'Abu', color: null, active: true };
+		const other = { id: 'member-other', name: 'Mara', color: null, active: true };
+		const v1 = {
+			id: 'edit-base',
+			title: 'Muell',
+			intervalDays: 7,
+			recurrenceType: 'days',
+			nextDueAt: new Date(Date.now() + 3_600_000).toISOString(),
+			assignedMemberId: viewer.id,
+			lastCompletedAt: null,
+			lastCompletedByName: null,
+			openGapCountForAssignee: 0,
+			updatedAt: '2026-10-01T08:00:00.000Z',
+		};
+		const v2 = { ...v1, title: 'Restmuell', updatedAt: '2026-10-01T09:00:00.000Z' };
+		let served = v1;
+		let patchBody: Record<string, unknown> | null = null;
+		await page.clock.install();
+		await setupMember(page);
+		await page.route(`**/api/wg/${shareCode}/members`, (route) =>
+			route.fulfill({ json: { members: [viewer, other], viewerIsAdmin: false } }),
+		);
+		await page.route(`**/api/wg/${shareCode}/chores`, (route) =>
+			route.fulfill({ json: { chores: [served], monthCompletions: {} } }),
+		);
+		await page.route(`**/api/wg/${shareCode}/absences`, (route) =>
+			route.fulfill({ json: { absences: [] } }),
+		);
+		await page.route(`**/api/wg/${shareCode}/chores/${v1.id}`, (route) => {
+			if (route.request().method() !== 'PATCH') return route.fallback();
+			patchBody = route.request().postDataJSON();
+			return route.fulfill({ status: 409, json: { error: 'chore_changed' } });
+		});
+		await mockUnreadCount(page, `/api/wg/${shareCode}`);
+		await navigateToFeature(page, `/wg/${shareCode}/chores`);
+		await dismissOnboarding(page);
+
+		await page.getByRole('button', { name: 'Aufgabenaktionen: Muell' }).click();
+		await page.getByRole('button', { name: 'Aufgabe bearbeiten: Muell' }).click();
+		served = v2;
+		await page.clock.fastForward(31_000);
+		await expect(page.getByText('Restmuell').first()).toBeVisible();
+		await expect(page.getByLabel('Aufgabe', { exact: true })).toHaveValue('Muell');
+		await page.getByRole('dialog').getByLabel('Zuständig').selectOption(other.id);
+		await page.getByRole('button', { name: 'Speichern' }).click();
+
+		await expect
+			.poll(() => patchBody)
+			.toEqual({ assignedMemberId: other.id, expectedUpdatedAt: v1.updatedAt });
+		await expect(page.getByText(/wurde inzwischen geändert/).first()).toBeVisible();
+	});
 });
 
 test.describe('chore submission feedback', () => {

@@ -2,7 +2,7 @@
 
 import { Check, MoreHorizontal, Pencil, Receipt, Trash2 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
-import { memo, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -39,6 +39,9 @@ import { type ExpenseImpact, getExpenseImpact } from '@/features/expenses/expens
 import type { Expense, ExpenseSplit } from '@/features/expenses/expense-types';
 import { cn } from '@/shared/lib/cn';
 import { monoAmount } from './mono-amount';
+
+/** Heading above the ledger list; it receives focus once a deleted row is gone. */
+export const EXPENSE_HISTORY_HEADING_ID = 'expense-history-heading';
 
 const IMPACT_KEY = {
 	lent: 'impactLent',
@@ -95,6 +98,20 @@ export const ExpenseRow = memo(function ExpenseRow({
 			: t('statusOpenTo', { name: memberName(expense.paidByMemberId) });
 	};
 	const [deleteOpen, setDeleteOpen] = useState(false);
+	const deletedRef = useRef(false);
+	// The confirmed row unmounts together with its dialog, so focus would otherwise fall to body.
+	useEffect(
+		() => () => {
+			if (!deletedRef.current) return;
+			requestAnimationFrame(() => {
+				if (document.activeElement !== document.body) return;
+				(
+					document.getElementById(EXPENSE_HISTORY_HEADING_ID) ?? document.getElementById('main')
+				)?.focus({ preventScroll: true });
+			});
+		},
+		[],
+	);
 	const [settleCandidate, setSettleCandidate] = useState<ExpenseSplit | null>(null);
 	return (
 		<li
@@ -285,6 +302,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 							className="min-h-11"
 							disabled={locked}
 							onClick={() => {
+								deletedRef.current = true;
 								setDeleteOpen(false);
 								onDelete(expense.id);
 							}}

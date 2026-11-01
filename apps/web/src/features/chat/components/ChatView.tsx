@@ -2,7 +2,7 @@
 
 import { ChevronDown } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import {
 	MessageScroller,
 	MessageScrollerButton,
@@ -31,6 +31,14 @@ const HIGHLIGHT_MS = 2500;
 const HASH_JUMP_DELAY_MS = 120;
 const SCROLL_AFTER_SEND_DELAY_MS = 100;
 
+const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
+
+function subscribeReducedMotion(onChange: () => void) {
+	const query = window.matchMedia(REDUCED_MOTION_QUERY);
+	query.addEventListener('change', onChange);
+	return () => query.removeEventListener('change', onChange);
+}
+
 interface ChatViewProps {
 	wgId: string;
 	shareCode: string;
@@ -43,6 +51,12 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 	const { members, identity, isAdmin } = useWg();
 	const chat = useChatRoom({ wgId, shareCode, initialMessages, initialReactions });
 	const { messages } = chat;
+	// An explicit scroll behavior overrides the reduced-motion CSS rule, so the button reads the preference itself.
+	const reducedMotion = useSyncExternalStore(
+		subscribeReducedMotion,
+		() => window.matchMedia(REDUCED_MOTION_QUERY).matches,
+		() => false,
+	);
 	const chatRootRef = useRef<HTMLDivElement | null>(null);
 	const [replyToId, setReplyToId] = useState<string | null>(null);
 	const [replyFocusRequest, setReplyFocusRequest] = useState(0);
@@ -195,7 +209,7 @@ export function ChatView({ wgId, shareCode, initialMessages, initialReactions }:
 					<MessageScrollerButton
 						direction="end"
 						aria-label={t('scrollEnd')}
-						behavior="smooth"
+						behavior={reducedMotion ? 'auto' : 'smooth'}
 						className="inset-s-auto end-3 translate-x-0 rounded-full shadow-md rtl:translate-x-0"
 						onClick={() => haptic('selection')}
 					>

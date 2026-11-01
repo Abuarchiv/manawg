@@ -136,7 +136,11 @@ export function QuickRestockSheet({
 															{item.name}
 														</span>
 													</ItemTitle>
-													<ItemDescription className="line-clamp-none text-xs tabular-nums [overflow-wrap:break-word]">
+													<ItemDescription
+														aria-live="polite"
+														aria-atomic="true"
+														className="line-clamp-none text-xs tabular-nums [overflow-wrap:break-word]"
+													>
 														{t('usage', {
 															quantity: quantityText(item.quantity, item.unit),
 															count: item.decrementCount30d,

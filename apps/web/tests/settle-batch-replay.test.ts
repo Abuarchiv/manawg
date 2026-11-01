@@ -9,8 +9,10 @@ const WG = '11111111-1111-4111-8111-111111111111';
 const FROM = '22222222-2222-4222-8222-222222222222';
 const TO = '33333333-3333-4333-8333-333333333333';
 const KEY = '44444444-4444-4444-8444-444444444444';
+const THIRD = '55555555-5555-4555-8555-555555555555';
 
 const state = {
+	callerId: FROM,
 	stored: new Map<string, unknown>(),
 	lease: new Map<string, Date>(),
 	limit: { success: true, remaining: 1, reset: Date.now() } as {
@@ -62,7 +64,7 @@ mock.module('@/core/guards/require-wg-member', {
 		requireWgMember: async () => ({
 			ok: true,
 			wg: { id: WG },
-			member: { memberId: FROM, name: 'From' },
+			member: { memberId: state.callerId, name: 'Caller' },
 		}),
 	},
 });
@@ -113,9 +115,10 @@ mock.module('@/features/expenses/server/settle-debt', {
 	},
 });
 
-const { POST } = (await import(
+const { GET, POST } = (await import(
 	'../src/app/api/wg/[code]/expenses/settle-batch/route.ts'
 )) as unknown as {
+	GET: (req: Request, ctx: { code: string }) => Promise<Response>;
 	POST: (req: Request, ctx: { code: string }) => Promise<Response>;
 };
 
@@ -172,4 +175,42 @@ test('a limiter outage answers a retryable 503 before claiming the key', async (
 	assert.equal(((await response.json()) as { error: string }).error, 'rate_limiter_unavailable');
 	assert.equal(state.claims, 0);
 	assert.equal(state.writes, 0);
+});
+
+test("a third member cannot preview or confirm another pair's settlement", async () => {
+	state.stored.clear();
+	state.claims = 0;
+	state.writes = 0;
+	state.limit = { success: true, remaining: 1, reset: Date.now() };
+	state.callerId = THIRD;
+	try {
+		const url = `https://example.invalid/api/wg/CODE/expenses/settle-batch?fromMemberId=${FROM}&toMemberId=${TO}`;
+		const request = new Request(url) as Request & { nextUrl: URL };
+		request.nextUrl = new URL(url);
+		const preview = await GET(request, { code: 'CODE' });
+		assert.equal(preview.status, 403);
+		assert.equal(((await preview.json()) as { error: string }).error, 'not_party_to_debt');
+
+		const confirm = await settle();
+		assert.equal(confirm.status, 403);
+		assert.equal(((await confirm.json()) as { error: string }).error, 'not_party_to_debt');
+		assert.equal(state.writes, 0);
+		assert.equal(state.claims, 0);
+	} finally {
+		state.callerId = FROM;
+	}
+});
+
+test('the creditor of the pair may confirm the settlement', async () => {
+	state.stored.clear();
+	state.writes = 0;
+	state.limit = { success: true, remaining: 1, reset: Date.now() };
+	state.callerId = TO;
+	try {
+		const response = await settle();
+		assert.equal(response.status, 200);
+		assert.equal(state.writes, 1);
+	} finally {
+		state.callerId = FROM;
+	}
 });

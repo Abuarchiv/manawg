@@ -432,6 +432,8 @@ For the Docker setup. On Vercel, start with [Check the deployment](#7-check-the-
 | The build stops with exit code 137 | The machine ran out of memory. Add swap, or build on a larger machine |
 | No certificate for the domain | Check that the DNS record points at the server and TCP ports 80 and 443 are reachable, then read `docker compose logs gateway` |
 | No sign-in code arrives | `docker compose logs auth` shows the SMTP error. Check the `SMTP_*` settings and the sender in `SMTP_ADMIN_EMAIL`; locally, look in Mailpit |
+| Reminders or welcome mails never arrive | `docker compose logs app` shows `[mail] ... reason:` lines with the failure (for example `smtp_EAUTH`). The rows in `mail_log` with status `failed` carry the same text in `error` |
+| Push notifications are not delivered | Look for `web push failed status:403` or `status:401` in `docker compose logs app`, then check the VAPID keys and `VAPID_SUBJECT` |
 | A port is already in use | Set `HTTP_PORT` (see [Quick start](#quick-start)), `MAILPIT_PORT` for Mailpit, or `HTTPS_PORT` (see [Public instance with a domain](#public-instance-with-a-domain)) |
 | `password authentication failed` | `.env` does not match the database volume, see [What runs](#what-runs) |
 

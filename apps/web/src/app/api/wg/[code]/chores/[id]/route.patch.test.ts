@@ -10,12 +10,16 @@ interface Calls {
 	set: Record<string, unknown>[];
 	resolved: string[][];
 	dispatched: Record<string, unknown>[];
+	deletes: number;
 }
 let calls: Calls;
+let isAdmin = true;
 let current: { assignedMemberId: string | null; nextDueAt: Date };
 // When false the guarded update matches no row, like a chore saved by someone else meanwhile.
 let updateMatches = true;
 let storedVersion: Date | undefined;
+// False when the new assignee moved out; the in-transaction member lock then finds no row.
+let memberActive = true;
 
 const chores = {
 	id: 'chores.id',
@@ -95,19 +99,23 @@ const db = {
 			};
 		},
 	}),
-	delete: () => ({
-		where: () => ({ returning: async () => [{ id: choreId }] }),
-	}),
+	delete: () => {
+		calls.deletes++;
+		return { where: () => ({ returning: async () => [{ id: choreId }] }) };
+	},
 };
 
 mock.module('@/core/audit', { namedExports: { recordAuditEvent: async () => undefined } });
 mock.module('@/core/db', {
 	namedExports: { CHORE_RECURRENCE_TYPES: ['days', 'months'], chores, db, wgMembers: {} },
 });
+mock.module('@/core/db/member-departure', {
+	namedExports: { lockActiveMember: async () => memberActive },
+});
 mock.module('@/core/db/transaction', {
 	namedExports: { withTransaction: async (fn: (tx: typeof db) => Promise<unknown>) => fn(db) },
 });
-mock.module('@/core/guards/admin', { namedExports: { isWgAdmin: async () => true } });
+mock.module('@/core/guards/admin', { namedExports: { isWgAdmin: async () => isAdmin } });
 mock.module('@/core/guards/api-auth', {
 	namedExports: {
 		UUID_PATTERN: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
@@ -161,10 +169,12 @@ const { PATCH, DELETE } = await import('./route');
 const inHours = (hours: number) => new Date(Date.now() + hours * 3_600_000);
 
 function setup(assignedMemberId: string | null = actorId, nextDueAt = inHours(2)) {
-	calls = { set: [], resolved: [], dispatched: [] };
+	calls = { set: [], resolved: [], dispatched: [], deletes: 0 };
+	isAdmin = true;
 	current = { assignedMemberId, nextDueAt };
 	updateMatches = true;
 	storedVersion = undefined;
+	memberActive = true;
 }
 
 function patch(body: unknown) {
@@ -249,6 +259,17 @@ test('PATCH with an outdated version answers chore_changed and closes nothing', 
 	assert.equal(calls.dispatched.length, 0);
 });
 
+test('PATCH to a member who moved out is rejected before anything is written', async () => {
+	setup(actorId, inHours(2));
+	memberActive = false;
+	const response = await patch({ assignedMemberId: otherId });
+	assert.equal(response.status, 400);
+	assert.deepEqual(await response.json(), { error: 'member_not_in_wg' });
+	assert.equal(calls.set.length, 0);
+	assert.equal(calls.resolved.length, 0);
+	assert.equal(calls.dispatched.length, 0);
+});
+
 test('PATCH rejects a malformed expectedUpdatedAt', async () => {
 	setup();
 	const response = await patch({ title: 'Neu', expectedUpdatedAt: 'gestern' });
@@ -264,6 +285,19 @@ test('DELETE closes the swap request of the removed chore', async () => {
 	);
 	assert.equal(response.status, 200);
 	assert.deepEqual(calls.resolved, [[wgId, choreId, actorId]]);
+});
+
+test('a non-admin cannot delete a chore from the plan', async () => {
+	setup();
+	isAdmin = false;
+	const response = await DELETE(
+		new Request('https://example.invalid/x', { method: 'DELETE' }) as never,
+		{ params: Promise.resolve({ code: 'MTE8PZAT', id: choreId }) } as never,
+	);
+	assert.equal(response.status, 403);
+	assert.deepEqual(await response.json(), { error: 'admin_required', code: 'admin_required' });
+	assert.equal(calls.deletes, 0);
+	assert.equal(calls.resolved.length, 0);
 });
 
 test('a retried save whose answer got lost finds its values in place and succeeds', async () => {
