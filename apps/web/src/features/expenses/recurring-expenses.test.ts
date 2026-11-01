@@ -5,6 +5,7 @@ const {
 	canBookRecurringTemplate,
 	canManageRecurringTemplate,
 	countMissedOccurrences,
+	intervalLabelMessage,
 	previewNextOccurrences,
 } = await import('./recurring-expenses');
 
@@ -48,4 +49,16 @@ test('only the creator or an admin manages a template, and booking needs a share
 	const template = { paidByMemberId: 'a', splits: [{ debtorMemberId: 'a', amountCents: 500 }] };
 	assert.equal(canBookRecurringTemplate(template, 'a'), true);
 	assert.equal(canBookRecurringTemplate(template, 'b'), false);
+});
+
+test('interval labels name the common cadences and fall back to a month count', () => {
+	assert.deepEqual(intervalLabelMessage(1), { key: 'expenses-recurring.interval.monthly' });
+	assert.deepEqual(intervalLabelMessage(3), { key: 'expenses-recurring.interval.quarterly' });
+	assert.deepEqual(intervalLabelMessage(6), { key: 'expenses-recurring.interval.halfYearly' });
+	assert.deepEqual(intervalLabelMessage(12), { key: 'expenses-recurring.interval.yearly' });
+	assert.deepEqual(intervalLabelMessage(2), {
+		key: 'expenses-recurring.interval.everyMonths',
+		values: { count: 2 },
+	});
+	assert.deepEqual(intervalLabelMessage(0), { key: 'expenses-recurring.interval.monthly' });
 });
