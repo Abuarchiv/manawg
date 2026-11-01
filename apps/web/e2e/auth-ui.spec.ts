@@ -1,7 +1,7 @@
 // E-mail code login, password tab and registration inbox state against a fake Supabase
 // project served by the second fixture server. Live Supabase auth is covered by supabase-auth-live and social-login-live.
 
-import { expect, type Route, test } from '@playwright/test';
+import { expect, type Page, type Route, test } from '@playwright/test';
 
 import { mockNoWgs, skipUnlessDbDown } from './support/helpers';
 
@@ -337,5 +337,37 @@ test.describe('auth invalid field focus', () => {
 		await submit.focus();
 		await submit.click();
 		await expect(email).toBeFocused();
+	});
+});
+
+test.describe('auth code request mail failure', () => {
+	skipUnlessDbDown();
+
+	async function requestCodeWithServerFault(page: Page, field: string, button: string) {
+		await page.route('**/api/auth/code-request', (route) =>
+			route.fulfill({
+				status: 500,
+				contentType: 'application/json',
+				body: JSON.stringify({ error: 'unexpected_failure' }),
+			}),
+		);
+		await page.goto('/login');
+		await page.getByLabel(field).fill('mina@example.invalid');
+		await page.getByRole('button', { name: button }).click();
+	}
+
+	test('names the failed mail send instead of a failed sign-in', async ({ page }) => {
+		await requestCodeWithServerFault(page, 'E-Mail-Adresse', 'Code per E-Mail senden');
+		await expect(page.locator('#auth-code-error')).toContainText(
+			'Die E-Mail konnte gerade nicht gesendet werden',
+		);
+	});
+
+	test('names the failed mail send in English', async ({ page, baseURL }) => {
+		await page.context().addCookies([{ name: 'manawg_locale', value: 'en', url: `${baseURL}/` }]);
+		await requestCodeWithServerFault(page, 'Email address', 'Send code by email');
+		await expect(page.locator('#auth-code-error')).toContainText(
+			'The email could not be sent right now',
+		);
 	});
 });
