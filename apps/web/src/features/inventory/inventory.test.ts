@@ -35,6 +35,22 @@ test('quick restock lists scarce items first and skips idle full ones', () => {
 	);
 });
 
+test('quick restock fills up to five rows with the most consumed items first', () => {
+	const result = quickRestockCandidates([
+		stock('Low', 0, 2),
+		stock('A', 5, 1, 1),
+		stock('B', 5, 1, 9),
+		stock('C', 5, 1, 5),
+		stock('D', 5, 1, 7),
+		stock('E', 5, 1, 3),
+		stock('F', 5, 1, 2),
+	]);
+	assert.deepEqual(
+		result.map((item) => item.name),
+		['Low', 'B', 'D', 'C', 'E'],
+	);
+});
+
 test('the latest matching purchase stays attached to each scarce item', () => {
 	const items = [stock('Klopapier', 0, 2), stock('Salz', 5, 1)];
 	const first = { id: 'first', name: 'Klopapier', boughtAt: '2026-10-30T12:00:00Z' };
