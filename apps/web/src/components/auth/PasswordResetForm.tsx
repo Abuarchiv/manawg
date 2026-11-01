@@ -137,7 +137,9 @@ export function PasswordResetForm({ recoveryRequested, continueTo }: PasswordRes
 							aria-invalid={error ? true : undefined}
 							className="text-base"
 						/>
-						<FieldDescription id="reset-password-hint">{t('reset.hint')}</FieldDescription>
+						<FieldDescription id="reset-password-hint">
+							{t('reset.hint', { min: NEW_PASSWORD_MIN_LENGTH })}
+						</FieldDescription>
 					</Field>
 					<Field data-invalid={Boolean(error)}>
 						<FieldLabel htmlFor="reset-password-confirmation">

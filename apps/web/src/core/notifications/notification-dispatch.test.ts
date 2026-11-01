@@ -6,6 +6,7 @@ const pushSubscriptions = { __table: 'push_subscriptions' };
 const wgMembers = { __table: 'wg_members' };
 let memberRows: unknown[] = [];
 let subscriptionRows: unknown[] = [];
+let deletedSubscriptions = 0;
 
 mock.module('@/core/db', {
 	namedExports: {
@@ -17,10 +18,15 @@ mock.module('@/core/db', {
 					where: async () => (table === wgMembers ? memberRows : subscriptionRows),
 				}),
 			}),
+			delete: () => ({
+				where: async () => {
+					deletedSubscriptions += 1;
+				},
+			}),
 		},
 	},
 });
-let sendNotification: () => Promise<void> = async () => {};
+let sendNotification: () => Promise<unknown> = async () => ({ statusCode: 201 });
 mock.module('web-push', {
 	namedExports: { setVapidDetails: () => {}, sendNotification: () => sendNotification() },
 });
@@ -84,7 +90,15 @@ test('an urgent push reaches a member in quiet hours, a normal one does not', as
 			quietEndHour: (hour + 1) % 24,
 		},
 	];
-	subscriptionRows = [{ id: 'sub-1', endpoint: 'https://push.test', p256dh: 'p', authKey: 'a' }];
+	subscriptionRows = [
+		{
+			id: 'sub-1',
+			endpoint: 'https://push.test',
+			p256dh: 'p',
+			authKey: 'a',
+			createdAt: new Date(0),
+		},
+	];
 	const change = {
 		wg: input.wg,
 		event: 'event.cancelled' as const,
@@ -102,7 +116,15 @@ test('an urgent push reaches a member in quiet hours, a normal one does not', as
 
 test('without VAPID_SUBJECT push is skipped outside production and refused in production', async () => {
 	memberRows = [{ ...member(true), notifyEvents: true }];
-	subscriptionRows = [{ id: 'sub-1', endpoint: 'https://push.test', p256dh: 'p', authKey: 'a' }];
+	subscriptionRows = [
+		{
+			id: 'sub-1',
+			endpoint: 'https://push.test',
+			p256dh: 'p',
+			authKey: 'a',
+			createdAt: new Date(0),
+		},
+	];
 	const change = {
 		wg: input.wg,
 		event: 'event.cancelled' as const,
@@ -123,9 +145,53 @@ test('without VAPID_SUBJECT push is skipped outside production and refused in pr
 	}
 });
 
+test('a 410 is retried before the subscription is removed, and never for a new one', async () => {
+	memberRows = [{ ...member(true), notifyEvents: true }];
+	const minutesAgo = (minutes: number) => new Date(Date.now() - minutes * 60_000);
+	const cases = [
+		{ createdAt: minutesAgo(60), answers: [410, 201], sent: 1, deleted: 0 },
+		{ createdAt: minutesAgo(60), answers: [410, 410], sent: 0, deleted: 1 },
+		{ createdAt: minutesAgo(0), answers: [410, 410, 201], sent: 1, deleted: 0 },
+	];
+	try {
+		for (const { createdAt, answers, sent, deleted } of cases) {
+			subscriptionRows = [
+				{ id: 'sub-1', endpoint: 'https://push.test', p256dh: 'p', authKey: 'a', createdAt },
+			];
+			sendNotification = async () => {
+				const statusCode = answers.shift();
+				if (statusCode === 410) throw Object.assign(new Error('gone'), { statusCode });
+				return { statusCode };
+			};
+			deletedSubscriptions = 0;
+			await withEnv(VAPID_ENV, async () => {
+				const result = await dispatchNotification({
+					wg: input.wg,
+					event: 'event.cancelled' as const,
+					payload: { title: 'Plenum', startsAt: new Date().toISOString(), allDay: false },
+					urgent: true,
+				});
+				assert.equal(result.sent, sent);
+			});
+			assert.equal(deletedSubscriptions, deleted);
+		}
+	} finally {
+		subscriptionRows = [];
+		sendNotification = async () => ({ statusCode: 201 });
+	}
+});
+
 test('a rejected push logs the push service status', async () => {
 	memberRows = [{ ...member(true), notifyEvents: true }];
-	subscriptionRows = [{ id: 'sub-1', endpoint: 'https://push.test', p256dh: 'p', authKey: 'a' }];
+	subscriptionRows = [
+		{
+			id: 'sub-1',
+			endpoint: 'https://push.test',
+			p256dh: 'p',
+			authKey: 'a',
+			createdAt: new Date(0),
+		},
+	];
 	sendNotification = async () => {
 		throw Object.assign(new Error('forbidden'), { statusCode: 403 });
 	};
@@ -144,14 +210,22 @@ test('a rejected push logs the push service status', async () => {
 		assert.ok(logged.mock.calls.some((call) => String(call.arguments[0]).includes('status:403')));
 	} finally {
 		logged.mock.restore();
-		sendNotification = async () => {};
+		sendNotification = async () => ({ statusCode: 201 });
 		subscriptionRows = [];
 	}
 });
 
 test('a rejected push without a status code logs none', async () => {
 	memberRows = [{ ...member(true), notifyEvents: true }];
-	subscriptionRows = [{ id: 'sub-1', endpoint: 'https://push.test', p256dh: 'p', authKey: 'a' }];
+	subscriptionRows = [
+		{
+			id: 'sub-1',
+			endpoint: 'https://push.test',
+			p256dh: 'p',
+			authKey: 'a',
+			createdAt: new Date(0),
+		},
+	];
 	sendNotification = async () => {
 		throw new Error('socket hang up');
 	};
@@ -170,7 +244,7 @@ test('a rejected push without a status code logs none', async () => {
 		assert.ok(logged.mock.calls.some((call) => String(call.arguments[0]).includes('status:none')));
 	} finally {
 		logged.mock.restore();
-		sendNotification = async () => {};
+		sendNotification = async () => ({ statusCode: 201 });
 		subscriptionRows = [];
 	}
 });

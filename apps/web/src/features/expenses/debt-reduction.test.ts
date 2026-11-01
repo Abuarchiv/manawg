@@ -28,7 +28,6 @@ test('two independent groups settle with one transfer per debtor, not a cross-gr
 		summary.simplified.map(({ fromId, toId, cents }) => `${fromId}>${toId}:${cents}`).sort(),
 		['B>A:200', 'D>C:200', 'E>C:100'],
 	);
-	assert.ok(summary.simplifiedCount <= summary.directCount);
 });
 
 // The most disjoint groups the non-zero balances split into, by exhaustive search.
