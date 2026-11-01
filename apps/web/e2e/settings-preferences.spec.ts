@@ -174,6 +174,51 @@ test.describe('settings notifications responsive', () => {
 		await expect(pushSwitch).toBeEnabled();
 		await expect(blockedHint).toBeHidden();
 	});
+
+	test('the Web Push switch is disabled and explains why when the browser has no push', async ({
+		page,
+	}) => {
+		test.setTimeout(120_000);
+		const notificationStatus = {
+			pushOptIn: false,
+			notifyAnnouncements: true,
+			notifyChores: true,
+			notifyExpenses: true,
+			notifyReminders: true,
+			notifyShopping: true,
+			notifyInventory: true,
+			notifyChat: true,
+			notifyEvents: true,
+			notifyStatementEmail: true,
+			quietStartHour: 22,
+			quietEndHour: 7,
+			pushConfigured: true,
+		};
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/notifications`, async (route) => {
+			await route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify(
+					route.request().method() === 'GET' ? notificationStatus : { ok: true },
+				),
+			});
+		});
+		await page.addInitScript(() => {
+			delete (window as unknown as { PushManager?: unknown }).PushManager;
+		});
+		await setupMember(page);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings#notifications`);
+		await expect(page.getByRole('tablist')).toBeVisible({ timeout: 60_000 });
+
+		const pushSwitch = page
+			.locator('#notification-settings')
+			.getByRole('switch', { name: 'Web Push', exact: true });
+		await expect(pushSwitch).toBeDisabled({ timeout: 30_000 });
+		await expect(pushSwitch).toHaveAttribute('aria-describedby', 'notification-push-hint');
+		await expect(page.locator('#notification-push-hint')).toContainText(
+			'Push ist in diesem Browser nicht verfügbar.',
+		);
+	});
 });
 
 test.describe('settings offline queue responsive', () => {

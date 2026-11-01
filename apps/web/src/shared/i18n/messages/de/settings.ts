@@ -208,6 +208,8 @@ export default {
 		blocked:
 			'Benachrichtigungen sind im Browser blockiert. Erlaube sie in den Website-Einstellungen.',
 		inactiveHere: 'Auf diesem Gerät noch nicht aktiv',
+		unsupported:
+			'Push ist in diesem Browser nicht verfügbar. Auf dem iPhone ManaWG zuerst zum Home-Bildschirm hinzufügen.',
 		sendTest: 'Test senden',
 		sendTestAria: 'Testbenachrichtigung senden',
 		sendingTestAria: 'Testbenachrichtigung wird gesendet',

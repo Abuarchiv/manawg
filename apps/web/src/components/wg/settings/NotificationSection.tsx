@@ -63,6 +63,7 @@ export function NotificationSection({ code, memberId }: { code: string; memberId
 		status,
 		pushActive,
 		pushBlocked,
+		pushUnsupported,
 		pending,
 		pushTarget,
 		message,
@@ -78,7 +79,9 @@ export function NotificationSection({ code, memberId }: { code: string; memberId
 	const notificationControlsDisabled = !status || notificationBusy;
 	const pushConfigured = status?.pushConfigured !== false;
 	// Exactly one hint shows at a time; the switch points at it so a screen reader hears why it is off or disabled.
-	const pushHint = !pushConfigured || (!pushActive && (pushBlocked || status?.pushOptIn === true));
+	const pushHint =
+		!pushConfigured ||
+		(!pushActive && (pushUnsupported || pushBlocked || status?.pushOptIn === true));
 	const quietHoursSet = status?.quietStartHour != null && status?.quietEndHour != null;
 	const feedbackRef = useRef<HTMLDivElement>(null);
 	// The message sits below all switches; a user toggling one at the top would not see it.
@@ -117,12 +120,19 @@ export function NotificationSection({ code, memberId }: { code: string; memberId
 								{!pushConfigured && (
 									<FieldDescription id={PUSH_HINT_ID}>{t('notConfigured')}</FieldDescription>
 								)}
-								{pushConfigured && !pushActive && pushBlocked && (
+								{pushConfigured && !pushActive && pushUnsupported && (
+									<FieldDescription id={PUSH_HINT_ID}>{t('unsupported')}</FieldDescription>
+								)}
+								{pushConfigured && !pushActive && !pushUnsupported && pushBlocked && (
 									<FieldDescription id={PUSH_HINT_ID}>{t('blocked')}</FieldDescription>
 								)}
-								{pushConfigured && !pushActive && !pushBlocked && status.pushOptIn && (
-									<FieldDescription id={PUSH_HINT_ID}>{t('inactiveHere')}</FieldDescription>
-								)}
+								{pushConfigured &&
+									!pushActive &&
+									!pushUnsupported &&
+									!pushBlocked &&
+									status.pushOptIn && (
+										<FieldDescription id={PUSH_HINT_ID}>{t('inactiveHere')}</FieldDescription>
+									)}
 								{pushActive && (
 									<Button
 										type="button"
@@ -141,7 +151,9 @@ export function NotificationSection({ code, memberId }: { code: string; memberId
 							<Switch
 								checked={pushTarget ?? pushActive}
 								disabled={
-									notificationControlsDisabled || !pushConfigured || (pushBlocked && !pushActive)
+									notificationControlsDisabled ||
+									!pushConfigured ||
+									((pushBlocked || pushUnsupported) && !pushActive)
 								}
 								aria-busy={pending === 'push'}
 								aria-label={t('webPush')}
