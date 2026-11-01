@@ -27,6 +27,12 @@ const wgMembers = pgTable('wg_members', {
 	name: text('name'),
 });
 
+const idempotencyResponses = pgTable('idempotency_responses', {
+	scope: text('scope'),
+	key: text('key'),
+	responseBody: text('response_body'),
+});
+
 const annaId = '55555555-5555-4555-8555-555555555555';
 const state = {
 	senderMemberId: memberId,
@@ -34,6 +40,7 @@ const state = {
 	updates: 0,
 	updateWhere: '',
 	updateRows: [] as unknown[],
+	replayUpdates: [] as { set: unknown; where: { sql: string; params: unknown[] } }[],
 	audits: 0,
 	deletedMentionTables: [] as unknown[],
 	insertedMentions: [] as unknown[],
@@ -81,8 +88,16 @@ const db = {
 			},
 		}),
 	}),
-	update: () => ({
-		set: () => {
+	update: (table: unknown) => ({
+		set: (values: unknown) => {
+			if (table === idempotencyResponses) {
+				return {
+					where: async (condition: never) => {
+						const { sql, params } = new PgDialect().sqlToQuery(condition);
+						state.replayUpdates.push({ set: values, where: { sql, params } });
+					},
+				};
+			}
 			state.updates += 1;
 			return {
 				where: (condition: never) => ({
@@ -97,7 +112,9 @@ const db = {
 };
 
 mock.module('@/core/audit', { namedExports: { recordAuditEvent: async () => state.audits++ } });
-mock.module('@/core/db', { namedExports: { db, wgChatMentions, wgChatMessages, wgMembers } });
+mock.module('@/core/db', {
+	namedExports: { db, idempotencyResponses, wgChatMentions, wgChatMessages, wgMembers },
+});
 mock.module('@/core/db/private-image-deletions', {
 	namedExports: { revokePrivateImageIfUnreferenced: async () => undefined },
 });
@@ -222,4 +239,31 @@ test("an admin deletes another member's chat message", async () => {
 	const response = await remove();
 	assert.equal(response.status, 200);
 	assert.equal(state.updates, 1);
+});
+
+test("deleting a message erases its text from the author's stored send replay", async () => {
+	state.senderMemberId = annaId;
+	state.callerIsAdmin = true;
+	state.updates = 0;
+	state.updateRows = [{ id }];
+	state.replayUpdates = [];
+	assert.equal((await remove()).status, 200);
+	assert.equal(state.replayUpdates.length, 1);
+	const { set, where } = state.replayUpdates[0] as (typeof state.replayUpdates)[number];
+	// The replay of the author's send, not the deleting admin's.
+	assert.match(where.sql, /"scope" = \$/);
+	assert.ok(where.params.includes(`chat-message:${wgId}:${annaId}`));
+	assert.ok(!where.params.includes(`chat-message:${wgId}:${memberId}`));
+	assert.ok(where.params.includes(id));
+	const { responseBody } = set as { responseBody: never };
+	const rendered = new PgDialect().sqlToQuery(responseBody).sql;
+	assert.match(rendered, /jsonb_set\(.*'\{body,message,body\}'.*'null'::jsonb\)/);
+});
+
+test('a refused delete leaves the stored send replay alone', async () => {
+	state.senderMemberId = annaId;
+	state.callerIsAdmin = false;
+	state.replayUpdates = [];
+	assert.equal((await remove()).status, 403);
+	assert.equal(state.replayUpdates.length, 0);
 });
