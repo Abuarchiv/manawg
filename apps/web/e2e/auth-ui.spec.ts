@@ -248,3 +248,70 @@ test.describe('auth sign-out intent', () => {
 		await expect(page).toHaveURL('/invite/fixture-invite-token01');
 	});
 });
+
+test.describe('auth invalid field focus', () => {
+	skipUnlessDbDown();
+
+	test('sign-up moves focus to the first invalid field after a failed submit', async ({ page }) => {
+		await page.goto('/signup');
+		const submit = page.getByRole('button', { name: 'Konto erstellen', exact: true });
+		await submit.click();
+		const name = page.getByLabel('Dein Name');
+		await expect(name).toHaveAttribute('aria-invalid', 'true');
+		await expect(name).toBeFocused();
+
+		await name.fill('Mina');
+		await page.getByLabel('E-Mail-Adresse').fill('mina@example.invalid');
+		await page.getByLabel('Passwort', { exact: true }).fill('langes-passwort');
+		await page.getByLabel('Passwort wiederholen').fill('anderes-passwort');
+		await submit.click();
+		await expect(page.locator('#signup-password-confirmation')).toHaveAttribute(
+			'aria-invalid',
+			'true',
+		);
+		await expect(page.locator('#signup-password-confirmation')).toBeFocused();
+	});
+
+	test('sign-up refocuses the invalid field when the same error repeats', async ({ page }) => {
+		await page.goto('/signup');
+		const submit = page.getByRole('button', { name: 'Konto erstellen', exact: true });
+		await submit.click();
+		await expect(page.getByLabel('Dein Name')).toBeFocused();
+
+		await page.getByLabel('E-Mail-Adresse').fill('mina@example.invalid');
+		await submit.click();
+		await expect(page.getByLabel('Dein Name')).toBeFocused();
+	});
+
+	test('password sign-in moves focus to the e-mail field after an empty submit', async ({
+		page,
+	}) => {
+		await page.goto('/login');
+		await page.getByRole('tab', { name: 'Passwort', exact: true }).click();
+		await page
+			.locator('form')
+			.filter({ has: page.locator('#auth-email') })
+			.getByRole('button', { name: 'Anmelden', exact: true })
+			.click();
+		await expect(page.locator('#auth-email')).toHaveAttribute('aria-invalid', 'true');
+		await expect(page.locator('#auth-email')).toBeFocused();
+	});
+
+	test('password sign-in moves focus to the password field once the e-mail is valid', async ({
+		page,
+	}) => {
+		await page.goto('/login');
+		await page.getByRole('tab', { name: 'Passwort', exact: true }).click();
+		const submit = page
+			.locator('form')
+			.filter({ has: page.locator('#auth-email') })
+			.getByRole('button', { name: 'Anmelden', exact: true });
+		await submit.click();
+		await expect(page.locator('#auth-email')).toBeFocused();
+
+		await page.locator('#auth-email').fill('mina@example.invalid');
+		await submit.click();
+		await expect(page.locator('#auth-password')).toHaveAttribute('aria-invalid', 'true');
+		await expect(page.locator('#auth-password')).toBeFocused();
+	});
+});

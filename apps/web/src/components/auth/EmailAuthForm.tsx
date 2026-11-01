@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ErrorBox } from '@/components/app/ErrorBox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -36,6 +36,8 @@ export function useEmailAuth({
 		null,
 	);
 	const [failure, setFailure] = useState<AuthFailure>('other');
+	// Counts failed field checks, so a repeated failure with the same error still refocuses.
+	const [invalidAttempt, setInvalidAttempt] = useState(0);
 	// The unconfirmed address behind the last sign-in; the resend action outlives later feedback.
 	const [unconfirmedEmail, setUnconfirmedEmail] = useState<string | null>(null);
 	const [emailMessage, setEmailMessage] = useState<string | null>(null);
@@ -54,6 +56,7 @@ export function useEmailAuth({
 		const normalizedEmail = normalizeEmail(email);
 		if (!isValidEmail(normalizedEmail) || password.length < SIGN_IN_PASSWORD_MIN_LENGTH) {
 			setEmailError('invalid');
+			setInvalidAttempt((attempt) => attempt + 1);
 			return;
 		}
 		setBusy('email-sign-in');
@@ -81,6 +84,7 @@ export function useEmailAuth({
 		resetEmailFeedback();
 		if (!isValidEmail(normalizedEmail)) {
 			setEmailError('reset-invalid');
+			setInvalidAttempt((attempt) => attempt + 1);
 			return;
 		}
 		setBusy('email-resend');
@@ -132,6 +136,7 @@ export function useEmailAuth({
 		password,
 		setPassword,
 		emailError,
+		invalidAttempt,
 		failure,
 		emailMessage,
 		submitEmail,
@@ -158,6 +163,7 @@ export function EmailAuthForm({
 		password,
 		setPassword,
 		emailError,
+		invalidAttempt,
 		failure,
 		emailMessage,
 		submitEmail,
@@ -168,8 +174,16 @@ export function EmailAuthForm({
 		emailFieldInvalid,
 		passwordFieldInvalid,
 	} = auth;
+	const formRef = useRef<HTMLFormElement>(null);
+	// A failed check leaves focus on the submit button; move it to the field that needs fixing.
+	useEffect(() => {
+		if (invalidAttempt > 0) {
+			formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+		}
+	}, [invalidAttempt]);
 	return (
 		<form
+			ref={formRef}
 			method="post"
 			noValidate
 			onSubmit={(event) => {
