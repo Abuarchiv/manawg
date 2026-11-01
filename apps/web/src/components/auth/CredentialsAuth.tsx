@@ -31,6 +31,7 @@ export function CredentialsAuth({
 	const emailCode = useEmailCode({
 		email: emailAuth.email,
 		setEmail: emailAuth.setEmail,
+		next,
 		busy,
 		setBusy,
 		onAuthenticated,

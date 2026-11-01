@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { safeNextPath } from '@/core/auth/next-path';
 import {
-	CHOOSE_PASSWORD_PATH,
+	choosePasswordHref,
 	passwordPending,
 	passwordRecoveryCookie,
 } from '@/core/auth/password-pending';
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 		if (choosePassword) {
 			response.headers.set(
 				'Location',
-				new URL(CHOOSE_PASSWORD_PATH, requestOrigin(request)).toString(),
+				new URL(choosePasswordHref(next), requestOrigin(request)).toString(),
 			);
 		}
 		if (choosePassword || next === '/auth/reset') {

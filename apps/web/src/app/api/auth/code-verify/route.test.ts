@@ -24,7 +24,13 @@ test('a code that confirmed the address marks the account as needing a password'
 		error: null,
 	});
 	kit.auth.getUser = async () => ({
-		data: { user: { id: 'u1', app_metadata: { password_pending: true } } },
+		data: {
+			user: {
+				id: 'u1',
+				app_metadata: { password_pending: true },
+				email_confirmed_at: new Date().toISOString(),
+			},
+		},
 		error: null,
 	});
 	const res = await call(POST, '/api/auth/code-verify', { email: 'a@b.test', token: '12345678' });

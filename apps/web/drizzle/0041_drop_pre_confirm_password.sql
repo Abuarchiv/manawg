@@ -11,7 +11,6 @@ BEGIN
 	CREATE OR REPLACE FUNCTION public.manawg_drop_pre_confirm_password()
 	RETURNS trigger
 	LANGUAGE plpgsql
-	SECURITY DEFINER
 	SET search_path = ''
 	AS $fn$
 	DECLARE

@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { authPageHref } from '@/core/auth/auth-intent';
 import { AUTH_FAILURE_MESSAGES, classifyAuthError } from '@/core/auth/password-errors';
-import { CHOOSE_PASSWORD_PATH } from '@/core/auth/password-pending';
+import { choosePasswordHref } from '@/core/auth/password-pending';
 import { type Message, useMessage } from '@/shared/i18n/message';
 import {
 	type AuthFormProps,
@@ -41,10 +41,11 @@ type CodeError =
 export function useEmailCode({
 	email,
 	setEmail,
+	next,
 	busy,
 	setBusy,
 	onAuthenticated,
-}: AuthFormProps & { email: string; setEmail: (value: string) => void }) {
+}: AuthFormProps & { email: string; setEmail: (value: string) => void; next: string }) {
 	const router = useRouter();
 	const [code, setCode] = useState('');
 	const [error, setError] = useState<CodeError>(null);
@@ -106,7 +107,7 @@ export function useEmailCode({
 			const { verifyEmailCode } = await import('@/core/auth/client');
 			const result = await verifyEmailCode(sentTo, token);
 			if (result.sessionEstablished) {
-				if (result.passwordPending) router.replace(CHOOSE_PASSWORD_PATH);
+				if (result.passwordPending) router.replace(choosePasswordHref(next));
 				else onAuthenticated();
 				return;
 			}

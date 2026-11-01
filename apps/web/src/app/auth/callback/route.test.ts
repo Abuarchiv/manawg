@@ -38,23 +38,40 @@ test('the password-recovery marker is Secure only when the callback is served ov
 	assert.notEqual((await secure('http://localhost:3000')).secure, true);
 });
 
-const signedInAs = (appMetadata: Record<string, unknown>) => {
+const signedInAs = (appMetadata: Record<string, unknown>, confirmedAt = new Date()) => {
 	kit.auth.exchangeCodeForSession = async () => ({
 		data: { session: { user: { id: 'u1', app_metadata: {} } } },
 		error: null,
 	});
 	// The session's own copy of the user is stale after a confirmation; the server's is current.
 	kit.auth.getUser = async () => ({
-		data: { user: { id: 'u1', app_metadata: appMetadata } },
+		data: {
+			user: { id: 'u1', app_metadata: appMetadata, email_confirmed_at: confirmedAt.toISOString() },
+		},
 		error: null,
 	});
 };
 
 test('an account whose password was dropped at confirmation goes on to choose one', async () => {
 	signedInAs({ password_pending: true });
-	const res = await callback('code=c&next=%2Fwg%2FABC');
+	const res = await callback('code=c');
 	assert.equal(res.headers.get('location'), 'https://app.manawg.test/auth/reset?choose=1');
 	assert.equal(res.cookies.get('manawg_password_recovery')?.value, 'u1');
+});
+
+test('the page to continue to after choosing a password is carried along', async () => {
+	signedInAs({ password_pending: true });
+	const res = await callback('code=c&next=%2Finvite%2Fx');
+	assert.equal(
+		res.headers.get('location'),
+		'https://app.manawg.test/auth/reset?choose=1&next=%2Finvite%2Fx',
+	);
+});
+
+test('an account that skipped choosing a password is not sent back on later sign-ins', async () => {
+	signedInAs({ password_pending: true }, new Date(Date.now() - 3_600_000));
+	const res = await callback('code=c&next=%2Fwg%2FABC');
+	assert.equal(res.headers.get('location'), 'https://app.manawg.test/wg/ABC');
 });
 
 test('a confirmed account with a password continues to the requested page', async () => {
