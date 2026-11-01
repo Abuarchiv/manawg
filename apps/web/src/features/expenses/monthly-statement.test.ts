@@ -207,3 +207,80 @@ test('a month with two independent groups needs one transfer per debtor', () => 
 		['B>A:200', 'C>A:100', 'J>L:200'],
 	);
 });
+
+test('a former member who only owes a share stays on the statement', () => {
+	const statement = buildMonthlyStatement(
+		[expense('a', 'J', '2026-09-02T10:00:00Z', { L: 1000, J: 1000, M: 1000 })],
+		members,
+		'2026-09',
+	);
+	assert.deepEqual(
+		statement.members.map(({ id, balanceCents }) => [id, balanceCents]),
+		[
+			['L', -1000],
+			['J', 2000],
+			['M', -1000],
+		],
+	);
+	assert.deepEqual(
+		statement.transfers.map(({ fromId, toId, cents }) => [fromId, toId, cents]),
+		[
+			['L', 'J', 1000],
+			['M', 'J', 1000],
+		],
+	);
+});
+
+test('a former member who only paid stays on the statement', () => {
+	const statement = buildMonthlyStatement(
+		[expense('a', 'M', '2026-09-02T10:00:00Z', { L: 1500, J: 1500 })],
+		members,
+		'2026-09',
+	);
+	assert.deepEqual(
+		statement.members.map(({ id, balanceCents }) => [id, balanceCents]),
+		[
+			['L', -1500],
+			['J', -1500],
+			['M', 3000],
+		],
+	);
+	assert.equal(statement.transfers.length, 2);
+});
+
+test('a payment in another currency does not pay off EUR shares', () => {
+	const statement = buildMonthlyStatement(
+		[expense('a', 'L', '2026-09-02T10:00:00Z', { L: 1000, J: 1000 })],
+		members,
+		'2026-09',
+		[
+			{
+				fromMemberId: 'J',
+				toMemberId: 'L',
+				amountCents: 1000,
+				currency: 'USD',
+				completedAt: '2026-09-10T10:00:00Z',
+			},
+		],
+	);
+	assert.equal(statement.settled, false);
+	assert.equal(statement.transfers[0]?.cents, 1000);
+});
+
+test('category shares round to the nearest whole percent', () => {
+	const statement = buildMonthlyStatement(
+		[
+			{ ...expense('a', 'L', '2026-09-02T10:00:00Z', { J: 1000 }), category: 'groceries' },
+			{ ...expense('b', 'L', '2026-09-03T10:00:00Z', { J: 2000 }), category: 'household' },
+		],
+		members,
+		'2026-09',
+	);
+	assert.deepEqual(
+		statement.categories.map(({ category, share }) => [category, share]),
+		[
+			['household', 67],
+			['groceries', 33],
+		],
+	);
+});
