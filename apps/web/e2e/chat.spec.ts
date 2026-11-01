@@ -533,3 +533,72 @@ test.describe('chat pinboard reflow 200', () => {
 		});
 	}
 });
+
+test.describe('chat scroll-to-end button', () => {
+	skipUnlessFixtures();
+
+	async function scrollOffEnd(page: Page) {
+		const now = Date.now();
+		const messages = Array.from({ length: 40 }, (_, index) => ({
+			id: `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
+			wgId: FIXTURE_WG.id,
+			senderMemberId: FIXTURE_WG.memberId,
+			kind: 'text',
+			body: `Scroll-Nachricht ${index + 1}`,
+			imageUrl: null,
+			replyToMessageId: null,
+			systemKind: null,
+			systemPayload: null,
+			createdAt: new Date(now - (40 - index) * 1000).toISOString(),
+			editedAt: null,
+			deletedAt: null,
+		}));
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/chat/messages*`, (route) =>
+			route.request().method() === 'GET'
+				? route.fulfill({ json: { messages, reactions: [] } })
+				: route.fallback(),
+		);
+		await page.reload({ waitUntil: 'domcontentloaded' });
+		await dismissOnboarding(page);
+		await expect(page.getByText('Scroll-Nachricht 39')).toBeVisible({
+			timeout: 15_000,
+		});
+		const viewport = page.locator('[data-slot="message-scroller-viewport"]');
+		await viewport.evaluate((el) => {
+			el.scrollTop = 0;
+		});
+		const button = page.getByRole('button', { name: 'Zum Ende scrollen' });
+		await expect(button).toBeVisible();
+		return { viewport, button };
+	}
+
+	for (const [reducedMotion, expectJump] of [
+		['reduce', true],
+		['no-preference', false],
+	] as const) {
+		test(`scroll-to-end button ${expectJump ? 'jumps' : 'animates'} with reducedMotion=${reducedMotion}`, async ({
+			page,
+		}) => {
+			await page.setViewportSize({ width: 320, height: 520 });
+			await page.emulateMedia({ reducedMotion });
+			await setupMember(page);
+			await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/chat`);
+			await dismissOnboarding(page);
+			const { viewport, button } = await scrollOffEnd(page);
+
+			await button.click();
+			// One frame after the click: a smooth scroll has barely moved, an instant one has arrived.
+			const atEnd = await viewport.evaluate(
+				(el) =>
+					new Promise<boolean>((resolve) =>
+						requestAnimationFrame(() =>
+							requestAnimationFrame(() =>
+								resolve(el.scrollHeight - el.clientHeight - el.scrollTop <= 2),
+							),
+						),
+					),
+			);
+			expect(atEnd).toBe(expectJump);
+		});
+	}
+});
