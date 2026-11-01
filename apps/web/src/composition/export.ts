@@ -50,7 +50,7 @@ export interface ExportSectionSummary {
 }
 
 const SECTION_HEADERS: Record<ExportSectionKey, string[]> = {
-	members: ['id', 'name', 'createdAt'],
+	members: ['id', 'name', 'role', 'createdAt', 'deactivatedAt'],
 	expenses: [
 		'id',
 		'description',

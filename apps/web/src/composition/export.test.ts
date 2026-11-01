@@ -23,7 +23,9 @@ const tables = Object.fromEntries(
 );
 mock.module('@/core/db', { namedExports: { db: {}, ...tables } });
 const { mapExpenseRows, mapRecurringRows } = await import('./export-queries-finance');
-const { mapInventoryRows, mapShoppingRows } = await import('./export-queries-household');
+const { mapInventoryRows, mapMemberRows, mapShoppingRows } = await import(
+	'./export-queries-household'
+);
 const { mapAuditRows } = await import('./export-queries-community');
 
 const ROW = {
@@ -184,4 +186,30 @@ test('CSV writes fractional numbers with the locale decimal mark', () => {
 	const rows = [{ name: 'Milk', quantity: 1.5, threshold: 3 }];
 	assert.equal(toCsv(rows, headers, 'de'), '\uFEFFname;quantity;threshold\nMilk;1,5;3');
 	assert.equal(toCsv(rows, headers, 'en'), '\uFEFFname,quantity,threshold\nMilk,1.5,3');
+});
+
+test('the members export carries role and move-out date', () => {
+	const rows = mapMemberRows([
+		{ id: 'm1', name: 'Anna', role: 'admin', createdAt: AT, deactivatedAt: null },
+		{
+			id: 'm2',
+			name: 'Dora',
+			role: 'member',
+			createdAt: AT,
+			deactivatedAt: new Date('2026-09-01T08:00:00.000Z'),
+		},
+	] as never);
+	assert.deepEqual(
+		rows.map((row) => [row.role, row.deactivatedAt]),
+		[
+			['admin', ''],
+			['member', '2026-09-01T08:00:00.000Z'],
+		],
+	);
+	const headers = getExportSectionHeaders('members');
+	assert.deepEqual(headers, ['id', 'name', 'role', 'createdAt', 'deactivatedAt']);
+	assert.equal(
+		toCsv(rows, headers, 'en'),
+		'\uFEFFid,name,role,createdAt,deactivatedAt\nm1,Anna,admin,2026-03-30 12:30,\nm2,Dora,member,2026-03-30 12:30,2026-09-01 10:00',
+	);
 });
