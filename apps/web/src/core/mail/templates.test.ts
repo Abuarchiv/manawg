@@ -115,6 +115,18 @@ test('the farewell mail states what is removed and that the name stays in WG ent
 	assert.ok(!text.includes('Anhänge'));
 });
 
+test('the plain-text welcome and farewell mails name the brand once in the first line', () => {
+	for (const locale of ['de', 'en'] as const) {
+		for (const { text } of [
+			renderWelcomeMail({ firstName: 'Mika', locale }),
+			renderAccountDeletedMail(locale),
+		]) {
+			assert.equal(text.split('\n')[0], 'ManaWG', locale);
+		}
+	}
+	assert.equal(ALL[1]?.text.split('\n')[0], 'ManaWG · Einladung');
+});
+
 test('reminder mail explains items that do not add up to the netted amount', () => {
 	const input = {
 		wgName: 'Kastanienallee',
