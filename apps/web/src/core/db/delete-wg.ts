@@ -1,4 +1,4 @@
-import { eq, inArray, sql } from 'drizzle-orm';
+import { eq, inArray, like, or, sql } from 'drizzle-orm';
 import { recordWgImageDeletions } from './private-image-deletions';
 import {
 	announcements,
@@ -6,6 +6,7 @@ import {
 	chores,
 	expensePayments,
 	expenses,
+	idempotencyResponses,
 	recurringExpenses,
 	shoppingItems,
 	wgChatMessages,
@@ -63,6 +64,15 @@ function raiseClientReadTimeout(tx: DbTransaction, ms: number): () => void {
 async function deleteWgRows(tx: DbTransaction, wgId: string): Promise<boolean> {
 	await tx.delete(wgChatMessages).where(eq(wgChatMessages.wgId, wgId));
 	await tx.delete(auditEvents).where(eq(auditEvents.wgId, wgId));
+	// Stored replays of absence and chat creates carry the free text; they have no foreign key.
+	await tx
+		.delete(idempotencyResponses)
+		.where(
+			or(
+				like(idempotencyResponses.scope, `absences-create:${wgId}:%`),
+				like(idempotencyResponses.scope, `chat-message:${wgId}:%`),
+			),
+		);
 	await tx
 		.delete(wgInventoryLog)
 		.where(

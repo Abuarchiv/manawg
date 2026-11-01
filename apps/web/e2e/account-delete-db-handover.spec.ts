@@ -195,6 +195,77 @@ test('account deletion erases the leaver absences and keeps the flatmates', asyn
 	});
 });
 
+test('account deletion drops stored absence and chat replays of the leaver and of a deleted WG', async () => {
+	process.env.POSTGRES_URL = accountDeleteTestUrl;
+	process.env.DATABASE_MIGRATION_URL = 'placeholder';
+	const { withTransaction } = await import('../src/core/db/transaction');
+	const { removeAccountFromWgs } = await import('../src/core/db/delete-account');
+	const { idempotencyResponses, wgMembers, wgs } = await import('../src/core/db/schema');
+	const { like, or } = await import('drizzle-orm');
+
+	const user = crypto.randomUUID();
+	trackDeletionFixture(user);
+	const code = () => crypto.randomUUID().slice(0, 8).toUpperCase();
+	const ids = await withTransaction(async (tx) => {
+		const [shared, solo] = tuple(
+			await tx
+				.insert(wgs)
+				.values([
+					{ shareCode: code(), name: 'Shared' },
+					{ shareCode: code(), name: 'Solo' },
+				])
+				.returning({ id: wgs.id }),
+			2,
+		);
+		const [me, admin, soloMe] = tuple(
+			await tx
+				.insert(wgMembers)
+				.values([
+					{ wgId: shared.id, name: 'Me', role: 'member', authUserId: user },
+					{ wgId: shared.id, name: 'Admin', role: 'admin', authUserId: crypto.randomUUID() },
+					{ wgId: solo.id, name: 'Me', role: 'admin', authUserId: user },
+				])
+				.returning({ id: wgMembers.id }),
+			3,
+		);
+		// The stored body is the bare created absence, keyed by the acting member in the scope.
+		const replay = (scope: string, key: string, memberId: string) => ({
+			scope,
+			key,
+			responseBody: { absence: { id: crypto.randomUUID(), memberId, reason: 'Chemotherapie' } },
+			expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+		});
+		await tx
+			.insert(idempotencyResponses)
+			.values([
+				replay(`absences-create:${shared.id}:${me.id}`, 'own', me.id),
+				replay(`absences-create:${shared.id}:${admin.id}`, 'by-admin', me.id),
+				replay(`absences-create:${shared.id}:${me.id}`, 'for-admin', admin.id),
+				replay(`absences-create:${shared.id}:${admin.id}`, 'admin-own', admin.id),
+				replay(`chat-message:${shared.id}:${me.id}`, 'chat', me.id),
+				replay(`absences-create:${solo.id}:${soloMe.id}`, 'solo-absence', soloMe.id),
+				replay(`chat-message:${solo.id}:${soloMe.id}`, 'solo-chat', soloMe.id),
+			]);
+		return { shared: shared.id, solo: solo.id };
+	});
+
+	await withTransaction((tx) => removeAccountFromWgs(tx, user));
+
+	await withTransaction(async (tx) => {
+		const rows = await tx
+			.select({ key: idempotencyResponses.key })
+			.from(idempotencyResponses)
+			.where(
+				or(
+					like(idempotencyResponses.scope, `%:${ids.shared}:%`),
+					like(idempotencyResponses.scope, `%:${ids.solo}:%`),
+				),
+			);
+		// Only the leaver's own absence replays are gone; flatmates' absences and the WG's chat history stay.
+		expect(rows.map((row) => row.key).sort()).toEqual(['admin-own', 'chat', 'for-admin']);
+	});
+});
+
 test('deletion includes a membership whose join transaction commits first', async () => {
 	process.env.POSTGRES_URL = accountDeleteTestUrl;
 	process.env.DATABASE_MIGRATION_URL = 'placeholder';
