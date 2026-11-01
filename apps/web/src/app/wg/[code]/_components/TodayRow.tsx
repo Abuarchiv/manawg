@@ -70,7 +70,7 @@ export function TodayRow({
 			)}
 			<Link
 				href={item.href}
-				className="flex min-h-11 min-w-0 flex-1 flex-wrap items-center gap-x-2 rounded-lg py-1.5 outline-none transition-colors duration-75 active:bg-muted/60 focus-visible:ring-3 focus-visible:ring-ring/50"
+				className="flex min-h-11 min-w-0 flex-1 flex-wrap items-center gap-x-2 rounded-lg py-1.5 outline-none transition-colors duration-75 active:bg-muted/60 focus-visible:ring-3 focus-visible:ring-ring"
 			>
 				<span className="flex min-w-16 flex-1 flex-col">
 					<span className="line-clamp-3 text-body font-medium leading-snug break-words">

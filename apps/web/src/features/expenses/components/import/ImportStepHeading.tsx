@@ -12,7 +12,7 @@ export function ImportStepHeading({
 		<h2
 			ref={headingRef}
 			tabIndex={-1}
-			className="text-base font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+			className="text-base font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 		>
 			{children}
 		</h2>
