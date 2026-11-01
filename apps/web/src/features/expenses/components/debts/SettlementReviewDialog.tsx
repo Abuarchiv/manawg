@@ -78,7 +78,7 @@ export function SettlementReviewDialog({
 									key={split.id}
 									variant="muted"
 									size="xs"
-									className="relative min-h-11 has-[a:focus-visible]:ring-[3px] has-[a:focus-visible]:ring-ring/50"
+									className="relative min-h-11 has-[a:focus-visible]:ring-[3px] has-[a:focus-visible]:ring-ring"
 								>
 									<ItemContent className="min-w-0 group-data-[size=xs]/item:gap-0.5">
 										<ItemTitle className="line-clamp-none [overflow-wrap:break-word]">
