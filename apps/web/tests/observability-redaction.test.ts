@@ -518,3 +518,22 @@ test('every route error boundary tag survives Sentry tag filtering', async () =>
 		assert.ok(SAFE_TAG_VALUES.boundary?.has(tag), `${file}: boundary "${tag}" is not allowed`);
 	}
 });
+
+// An `action` value missing from the allowlist is dropped without a warning, so the issue
+// loses the only hint at which call site failed.
+test('every captureException action tag survives Sentry tag filtering', async () => {
+	const { SAFE_TAG_VALUES } = await import('../src/core/infra/sentry-privacy.ts');
+	const srcDir = fileURLToPath(new URL('../src', import.meta.url));
+	const actions = readdirSync(srcDir, { recursive: true })
+		.filter((file) => /\.tsx?$/.test(String(file)) && !/\.test\./.test(String(file)))
+		.flatMap((file) => {
+			const source = readFileSync(path.join(srcDir, String(file)), 'utf8');
+			return [...source.matchAll(/captureException\([^;]*?action: '([^']+)'/g)].map(
+				(m) => m[1] ?? '',
+			);
+		});
+	assert.ok(actions.length > 0);
+	for (const action of actions) {
+		assert.ok(SAFE_TAG_VALUES.action?.has(action), `action "${action}" is not allowed`);
+	}
+});

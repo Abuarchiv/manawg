@@ -22,6 +22,16 @@ type SentryEventShape = {
 };
 
 export const SAFE_TAG_VALUES: Record<string, ReadonlySet<string>> = {
+	// One value per `captureException(…, { action })` call site; unlisted values are dropped.
+	action: new Set([
+		'cachedFetch',
+		'dispatchNotificationSafely',
+		'loadDashboardData',
+		'offlineAutoSync',
+		'refreshMembers',
+		'swRegister',
+		'syncOfflineActions',
+	]),
 	area: new Set(['startup', 'rate-limit']),
 	// One value per error.tsx; keep in sync when a route boundary is added.
 	boundary: new Set([
@@ -61,6 +71,18 @@ const TRUSTED_ERROR_NAMES = new Set([
 	'TypeError',
 	'URIError',
 	'AggregateError',
+	// DOMException names and the bundler's chunk error: fixed identifiers that tell issues apart.
+	'AbortError',
+	'ChunkLoadError',
+	'DataCloneError',
+	'InvalidStateError',
+	'NetworkError',
+	'NotAllowedError',
+	'NotFoundError',
+	'NotSupportedError',
+	'QuotaExceededError',
+	'SecurityError',
+	'TimeoutError',
 ]);
 
 export function safeErrorName(name: unknown): string {

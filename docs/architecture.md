@@ -268,14 +268,16 @@ Mutation error copy goes through `mutationError` (`core/http/error-codes.ts`); f
   `sanitizeSentryEvent` (`core/infra/sentry-privacy.ts`) drops user, message, extra and most
   contexts, replaces exception values with `[redacted]`, normalizes error names, strips query
   strings, redacts share codes in `/wg/<code>`, calendar tokens and storage object paths, and
-  only keeps allowlisted tags. Console and UI breadcrumbs are dropped.
+  only keeps allowlisted tags. Console and UI breadcrumbs are dropped. Session tracking is off
+  on client and server (no release health).
 - **Server logs**: `logApiError` (`core/infra/observability.ts`) logs the static label and the
   error name only, never message or stack.
 - **PostHog** (`instrumentation-client.ts`): initialized only when `NEXT_PUBLIC_POSTHOG_HOST` is
   `https://eu.i.posthog.com`; cookieless, memory persistence, no person profiles, no autocapture
   or session recording. `before_send` allows only `$pageview`, `wg_created`, `wg_joined` and
-  rebuilds the event without URL or caller properties. `scripts/check-analytics-privacy.mjs`
-  enforces this in CI.
+  rebuilds the event without URL or caller properties; only the page path goes along, with WG
+  codes and invite tokens replaced by `[code]` / `[token]`. Preview deployments and loopback hosts
+  send nothing. `scripts/check-analytics-privacy.mjs` enforces this in CI.
 - **Boot report**: `instrumentation.ts` runs `checkEnv` and logs `[env] MISSING REQUIRED` /
   `[env] DEGRADED`; it reports to Sentry but does not crash the server. `/api/health` returns only
   counts and feature names.
