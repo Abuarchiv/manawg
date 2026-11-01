@@ -33,3 +33,19 @@ test('further English and German unit words stay in the quantity', () => {
 		quantity: '1 Bund',
 	});
 });
+
+test('an English "of" after the unit is not part of the name', () => {
+	assert.deepEqual(parseShoppingInput('2 packs of oat milk'), {
+		name: 'oat milk',
+		quantity: '2 packs',
+	});
+	assert.deepEqual(parseShoppingInput('1 kg of flour'), { name: 'flour', quantity: '1 kg' });
+	assert.deepEqual(parseShoppingInput('500 g of butter'), { name: 'butter', quantity: '500 g' });
+	assert.deepEqual(parseShoppingInput('2 packs pasta'), { name: 'pasta', quantity: '2 packs' });
+	assert.deepEqual(parseShoppingInput('2 Packungen Hafermilch'), {
+		name: 'Hafermilch',
+		quantity: '2 Packungen',
+	});
+	assert.deepEqual(parseShoppingInput('7Up'), { name: '7Up', quantity: null });
+	assert.deepEqual(parseShoppingInput('2 of'), { name: 'of', quantity: '2' });
+});
