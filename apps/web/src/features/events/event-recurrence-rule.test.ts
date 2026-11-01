@@ -128,3 +128,12 @@ test('a weekly weekday series with a long interval still reaches a window just b
 		['2028-09-04', '2028-09-06'],
 	);
 });
+
+test('a weekly series on Tuesday, Thursday, Friday and Saturday lands on those weekdays', () => {
+	assert.deepEqual(starts('FREQ=WEEKLY;BYDAY=TU,TH,FR,SA').slice(0, 4), [
+		'2026-10-06T18:00:00.000Z',
+		'2026-10-08T18:00:00.000Z',
+		'2026-10-09T18:00:00.000Z',
+		'2026-10-10T18:00:00.000Z',
+	]);
+});
