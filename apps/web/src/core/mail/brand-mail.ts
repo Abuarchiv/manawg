@@ -227,7 +227,7 @@ ${footer(spec, t, locale)}
 </html>
 `;
 	const text = [
-		`ManaWG · ${spec.eyebrow}`,
+		spec.eyebrow === 'ManaWG' ? 'ManaWG' : `ManaWG · ${spec.eyebrow}`,
 		'',
 		spec.title,
 		'',
