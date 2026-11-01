@@ -363,11 +363,13 @@ export function useNotificationSettings({ code, memberId }: NotificationSettings
 	// The server flag belongs to the member; only a live subscription means this device gets pushes.
 	const pushActive = !!status?.pushOptIn && (device === null || device.hasSubscription);
 	const pushBlocked = device?.permission === 'denied';
+	const pushUnsupported = device?.supported === false;
 
 	return {
 		status,
 		pushActive,
 		pushBlocked,
+		pushUnsupported,
 		pending,
 		pushTarget,
 		message,

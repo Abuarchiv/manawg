@@ -209,6 +209,8 @@ export default {
 		notConfigured: 'Not configured',
 		blocked: 'Notifications are blocked in the browser. Allow them in the site settings.',
 		inactiveHere: 'Not active on this device yet',
+		unsupported:
+			'Push is not available in this browser. On iPhone, add ManaWG to your Home Screen first.',
 		sendTest: 'Send test',
 		sendTestAria: 'Send test notification',
 		sendingTestAria: 'Sending test notification',
