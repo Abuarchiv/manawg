@@ -68,8 +68,37 @@ async function expectScrollRegionsFocusable(page: Page): Promise<void> {
 	}
 }
 
+async function firstTermFontSize(page: Page): Promise<number> {
+	return page
+		.locator('dt')
+		.first()
+		.evaluate((dt) => Number.parseFloat(getComputedStyle(dt).fontSize));
+}
+
 test.describe('Statement balances at 320px', () => {
 	skipUnlessFixtures();
+
+	test('statement text follows a 200% root font size without sideways page scroll', async ({
+		page,
+	}) => {
+		await openStatement(page);
+		await expect(page.getByRole('columnheader', { name: 'Saldo', exact: true })).toBeVisible();
+		const normal = await firstTermFontSize(page);
+
+		await page.evaluate(() => {
+			document.documentElement.style.fontSize = '200%';
+		});
+
+		expect(await firstTermFontSize(page)).toBeGreaterThanOrEqual(normal * 1.9);
+		const root = await page.evaluate(() => ({
+			scroll: document.documentElement.scrollWidth,
+			client: document.documentElement.clientWidth,
+		}));
+		expect(root.scroll, 'the page does not scroll sideways at 200% text').toBeLessThanOrEqual(
+			root.client,
+		);
+		await expectScrollRegionsFocusable(page);
+	});
 
 	for (const lang of ['de', 'en'] as const) {
 		const balance = lang === 'en' ? 'Balance' : 'Saldo';
