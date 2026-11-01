@@ -7,10 +7,10 @@ import {
 
 /**
  * A picked `<input type="date">` value as an instant that is that calendar day
- * both on the device and in Berlin. Local noon does it everywhere except zones
- * far from Berlin (e.g. UTC+14), where noon falls on another Berlin day; there
- * the midpoint of the device day and the Berlin day is used, an overlap of at
- * least ten hours in every zone from UTC-11 to UTC+14.
+ * on the device, in Berlin and in UTC. Local noon does it everywhere except
+ * zones far from Berlin (e.g. UTC+12 to UTC+14), where noon falls on another
+ * Berlin or UTC day; there the midpoint of the three days' overlap is used,
+ * which is at least ten hours long in every zone from UTC-11 to UTC+14.
  */
 export function inputDateToIso(value: string): string | null {
 	if (value.trim().length === 0) return null;
@@ -20,16 +20,19 @@ export function inputDateToIso(value: string): string | null {
 	const day = parts[2];
 	if (year === undefined || month === undefined || day === undefined) return null;
 	const noon = new Date(year, month - 1, day, 12, 0, 0);
-	if (berlinDayKey(noon) === value) return noon.toISOString();
+	if (berlinDayKey(noon) === value && noon.toISOString().startsWith(value))
+		return noon.toISOString();
 	const berlinNoon = /^\d{4}-\d{2}-\d{2}$/.test(value) ? instantAtBerlinWallTime(value, 720) : null;
 	if (!berlinNoon) return noon.toISOString();
 	const start = Math.max(
 		new Date(year, month - 1, day).getTime(),
 		startOfBerlinDay(berlinNoon).getTime(),
+		Date.UTC(year, month - 1, day),
 	);
 	const end = Math.min(
 		new Date(year, month - 1, day + 1).getTime(),
 		endOfBerlinDay(berlinNoon).getTime() + 1,
+		Date.UTC(year, month - 1, day + 1),
 	);
 	return new Date((start + end) / 2).toISOString();
 }
