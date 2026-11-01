@@ -314,4 +314,28 @@ test.describe('auth invalid field focus', () => {
 		await expect(page.locator('#auth-password')).toHaveAttribute('aria-invalid', 'true');
 		await expect(page.locator('#auth-password')).toBeFocused();
 	});
+
+	test('forgot-password moves focus to the e-mail field when the address is empty', async ({
+		page,
+	}) => {
+		await page.goto('/login');
+		await page.getByRole('tab', { name: 'Passwort', exact: true }).click();
+		await page.getByRole('button', { name: 'Passwort vergessen?' }).click();
+		await expect(page.locator('#auth-email')).toHaveAttribute('aria-invalid', 'true');
+		await expect(page.locator('#auth-email')).toBeFocused();
+	});
+
+	test('reset request page focuses the e-mail field on every invalid submit', async ({ page }) => {
+		await page.goto('/auth/reset');
+		const email = page.locator('#reset-request-email');
+		await email.fill('nope');
+		const submit = page.getByRole('button', { name: 'Link senden', exact: true });
+		await submit.click();
+		await expect(email).toHaveAttribute('aria-invalid', 'true');
+		await expect(email).toBeFocused();
+
+		await submit.focus();
+		await submit.click();
+		await expect(email).toBeFocused();
+	});
 });

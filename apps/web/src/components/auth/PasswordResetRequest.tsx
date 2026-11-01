@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
@@ -15,6 +15,7 @@ import { GenericAuthError, isValidEmail, normalizeEmail } from './auth-form-shar
 export function PasswordResetRequest() {
 	const t = useTranslations('auth');
 	const [email, setEmail] = useState('');
+	const emailRef = useRef<HTMLInputElement>(null);
 	const [busy, setBusy] = useState(false);
 	const [state, setState] = useState<'idle' | 'invalid' | 'sent' | 'failed'>('idle');
 	const [failure, setFailure] = useState<AuthFailure>('other');
@@ -25,6 +26,7 @@ export function PasswordResetRequest() {
 		const normalizedEmail = normalizeEmail(email);
 		if (!isValidEmail(normalizedEmail)) {
 			setState('invalid');
+			emailRef.current?.focus();
 			return;
 		}
 		setBusy(true);
@@ -53,6 +55,7 @@ export function PasswordResetRequest() {
 					<FieldLabel htmlFor="reset-request-email">{t('fields.email')}</FieldLabel>
 					<Input
 						id="reset-request-email"
+						ref={emailRef}
 						name="email"
 						type="email"
 						value={email}
