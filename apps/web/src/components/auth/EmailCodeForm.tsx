@@ -34,6 +34,7 @@ type CodeError =
 	| 'wrong-code'
 	| 'rate-limit'
 	| 'network'
+	| 'mail'
 	| 'generic'
 	| null;
 
@@ -74,7 +75,9 @@ export function useEmailCode({
 			setCooldown(RESEND_COOLDOWN_SECONDS);
 			setResendNotice(isResend);
 		} catch (caught) {
-			setError(failureOf(caught, 'generic'));
+			// Anything but rate limit and network means the mail was not sent.
+			const failure = failureOf(caught, 'generic');
+			setError(failure === 'generic' ? 'mail' : failure);
 		} finally {
 			setBusy(null);
 		}
@@ -153,6 +156,7 @@ const ERROR_MESSAGES: Record<NonNullable<CodeError>, Message> = {
 	'wrong-code': { key: 'auth.code.wrong' },
 	'rate-limit': { key: 'auth.code.rateLimit' },
 	network: AUTH_FAILURE_MESSAGES.network,
+	mail: { key: 'auth.failure.mail' },
 	generic: { key: 'auth.failure.signIn' },
 };
 
