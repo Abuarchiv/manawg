@@ -204,7 +204,6 @@ export function useCalendarPage(month: Date) {
 			if (shouldReleaseIdempotencyKey(res.status, res.error)) createEventRequestRef.current = null;
 			commit((current) => current.filter((event) => event.id !== optimisticId));
 			const message = render(eventSaveError(subject('saveSubject'), res));
-			toast.error(message);
 			throw new Error(message);
 		}
 		createEventRequestRef.current = null;
@@ -249,7 +248,6 @@ export function useCalendarPage(month: Date) {
 			}
 			const message = render(eventSaveError(subject('updateSubject'), res));
 			if (res.error === 'event_changed') reloadAfterConflict();
-			toast.error(message);
 			throw new Error(message);
 		}
 		commit((current) => current.map((event) => (event.id === id ? res.data.event : event)));
@@ -277,7 +275,6 @@ export function useCalendarPage(month: Date) {
 			}
 			const message = render(eventSaveError(subject('deleteSubject'), res));
 			setActionError(message);
-			toast.error(message);
 			return;
 		}
 		commit((current) => current.filter((event) => event.id !== id));
@@ -306,7 +303,6 @@ export function useCalendarPage(month: Date) {
 			// Status 0 with `idempotency_key_unavailable` ends in eventSaveError's fallback text.
 			const message = render(eventSaveError(subject('changeSubject'), res));
 			if (res.status === 409 || res.status === 404) reloadAfterConflict();
-			toast.error(message);
 			throw new Error(message);
 		}
 		const { event, created } = res.data;
