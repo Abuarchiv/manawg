@@ -252,6 +252,8 @@ test('English renders amounts, counts and units in the reader locale', () => {
 		'took 1.5 pcs of Soap.',
 	);
 	for (const [unit, appliedDelta, expected] of [
+		['piece', -1, 'took 1 pc of Paper.'],
+		['piece', -2, 'took 2 pcs of Paper.'],
 		['roll', -1, 'took 1 roll of Paper.'],
 		['roll', -2, 'took 2 rolls of Paper.'],
 		['pack', -1.5, 'took 1.5 packs of Paper.'],
