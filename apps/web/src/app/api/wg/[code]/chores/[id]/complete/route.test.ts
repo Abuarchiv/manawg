@@ -29,6 +29,8 @@ interface State {
 	audits: number;
 	failReplayWrite: boolean;
 	absenceCheckedAt?: number;
+	// The condition the chore lookup ran with.
+	choreLookup?: unknown;
 	// True when the planned next assignee moved out before the write.
 	nextAssigneeLeft?: boolean;
 }
@@ -126,7 +128,10 @@ const query = (rows: unknown[]) =>
 	});
 const makeSelect = (draft?: State) => (projection?: Json) => ({
 	from: (table: unknown) => ({
-		where: () => query(rowsFor(table, projection, draft ?? state)),
+		where: (condition: unknown) => {
+			if (table === tables.chores && projection?.intervalDays) state.choreLookup = condition;
+			return query(rowsFor(table, projection, draft ?? state));
+		},
 	}),
 });
 const releaseClaim = (conditions: [unknown, unknown][]) => {
@@ -417,4 +422,30 @@ test('a queued completion keeps its tap time, clamped to the replay window', asy
 	route = makeRoute(makeState());
 	const invalid = await route.post(route.request(body('not-a-date')), route.context);
 	assert.equal(invalid.status, 400);
+});
+
+test('a completion is credited to the caller, not to the chore assignee', async () => {
+	const state = makeState({ chore: { ...makeState().chore, assignedMemberId: memberB } });
+	const route = makeRoute(state);
+	const response = await route.post(
+		route.request({
+			expectedNextDueAt: originalDueAt.toISOString(),
+			expectedAssignedMemberId: memberB,
+		}),
+		route.context,
+	);
+	assert.equal(response.status, 200);
+	const [completion] = state.completions as { completedByMemberId: string }[];
+	assert.equal(completion?.completedByMemberId, memberA);
+});
+
+test('the chore lookup is scoped to the caller WG', async () => {
+	const state = makeState();
+	const route = makeRoute(state);
+	const response = await route.post(route.request(), route.context);
+	assert.equal(response.status, 200);
+	assert.deepEqual(state.choreLookup, [
+		[tables.chores.id, choreId],
+		[tables.chores.wgId, wgId],
+	]);
 });
