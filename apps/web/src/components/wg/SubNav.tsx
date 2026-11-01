@@ -4,6 +4,7 @@ import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { useEffect, useRef } from 'react';
 import { navText } from '@/components/app/nav-text';
 import { getWgSection } from '@/components/app/navigation';
 import { segmentCountStatus } from '@/components/wg/segment-count-status';
@@ -158,13 +159,29 @@ function SegmentList({
 }) {
 	const t = useTranslations('shell.subNav');
 	const message = useMessage();
+	const listRef = useRef<HTMLUListElement>(null);
+	// The list hides its scrollbar, so a clipped active tab is brought into view when the list
+	// mounts or the route changes. Rects are used because the list is not the offset parent.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `pathname` and the link count re-run the scroll when the active tab or the list changes.
+	useEffect(() => {
+		const list = listRef.current;
+		const active = list?.querySelector<HTMLElement>('[aria-current]');
+		if (!list || !active) return;
+		const listRect = list.getBoundingClientRect();
+		const rect = active.getBoundingClientRect();
+		if (rect.left >= listRect.left && rect.right <= listRect.right) return;
+		list.scrollLeft += rect.left - listRect.left - (listRect.width - rect.width) / 2;
+	}, [pathname, links.length]);
 	if (links.length < 2) return null;
 	return (
 		<nav
 			aria-label={navText(label ?? t('fallbackLabel'), message)}
 			className={cn('min-w-0', className)}
 		>
-			<ul className="grid auto-cols-[minmax(max-content,1fr)] grid-flow-col gap-0.5 overflow-x-auto rounded-lg bg-muted p-0.5 [scrollbar-width:none]">
+			<ul
+				ref={listRef}
+				className="grid auto-cols-[minmax(max-content,1fr)] grid-flow-col gap-0.5 overflow-x-auto rounded-lg bg-muted p-0.5 [scrollbar-width:none]"
+			>
 				{links.map(
 					({ href, label: itemLabel, count, countHint, countState, countOverflow, countExact }) => {
 						const target = new URL(href, 'https://manawg.invalid').pathname.replace(/\/+$/, '');
