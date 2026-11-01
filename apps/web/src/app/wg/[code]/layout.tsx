@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { NextIntlClientProvider, useTranslations } from 'next-intl';
 import { getTranslations } from 'next-intl/server';
 import type { ReactNode } from 'react';
 import { AppBottomNav } from '@/components/app/AppBottomNav';
@@ -145,55 +145,58 @@ function WgShell({
 	const wgBaseHref = `/wg/${encodeURIComponent(code)}`;
 
 	return (
-		<WgContextProvider
-			key={wg.id}
-			wg={wg}
-			members={members}
-			initialIdentity={initialIdentity}
-			initialIsAdmin={initialIsAdmin}
-		>
-			<TabWarmup />
-			<PullToRefresh />
-			<div
-				className="group/wg-shell min-h-svh bg-background"
-				style={{
-					paddingTop: 'env(safe-area-inset-top, 0px)',
-					paddingBottom: 'calc(var(--app-nav-height, 5rem) + 0.5rem)',
-				}}
+		// No `messages`: the server variant carries the full catalog, which /wg pages read; the root provider trims it.
+		<NextIntlClientProvider>
+			<WgContextProvider
+				key={wg.id}
+				wg={wg}
+				members={members}
+				initialIdentity={initialIdentity}
+				initialIsAdmin={initialIsAdmin}
 			>
-				<OfflineBanner />
-				<SessionExpiredBanner />
-				<RouteFocusOnNavigate />
-				<WgAppHeader />
-				{/* WCAG 1.3.1 / 2.4.1 — single <main> landmark.
+				<TabWarmup />
+				<PullToRefresh />
+				<div
+					className="group/wg-shell min-h-svh bg-background"
+					style={{
+						paddingTop: 'env(safe-area-inset-top, 0px)',
+						paddingBottom: 'calc(var(--app-nav-height, 5rem) + 0.5rem)',
+					}}
+				>
+					<OfflineBanner />
+					<SessionExpiredBanner />
+					<RouteFocusOnNavigate />
+					<WgAppHeader />
+					{/* WCAG 1.3.1 / 2.4.1 — single <main> landmark.
 				    tabIndex={-1} lets the skip-link target receive programmatic focus. */}
-				<main id="main" tabIndex={-1} className="focus:outline-none">
-					{children}
-				</main>
-			</div>
-			<AppBottomNav label={t('label')}>
-				<NavItem
-					href={wgBaseHref}
-					label={HOME_NAV_LABEL}
-					iconKey="home"
-					activePrefixes={[`${wgBaseHref}/activity`]}
-				/>
-				{WG_SECTIONS.map((section) => (
+					<main id="main" tabIndex={-1} className="focus:outline-none">
+						{children}
+					</main>
+				</div>
+				<AppBottomNav label={t('label')}>
 					<NavItem
-						key={section.label}
-						href={`${wgBaseHref}/${section.pages[0].slug}`}
-						label={section.label}
-						iconKey={section.iconKey}
-						slugs={section.pages.map((page) => page.slug)}
-						activePrefixes={[...section.pages.map((page) => page.slug), ...section.related].map(
-							(slug) => `${wgBaseHref}/${slug}`,
-						)}
+						href={wgBaseHref}
+						label={HOME_NAV_LABEL}
+						iconKey="home"
+						activePrefixes={[`${wgBaseHref}/activity`]}
 					/>
-				))}
-			</AppBottomNav>
-			{/* Last in the DOM so Tab reaches a toast's dismiss button right after
+					{WG_SECTIONS.map((section) => (
+						<NavItem
+							key={section.label}
+							href={`${wgBaseHref}/${section.pages[0].slug}`}
+							label={section.label}
+							iconKey={section.iconKey}
+							slugs={section.pages.map((page) => page.slug)}
+							activePrefixes={[...section.pages.map((page) => page.slug), ...section.related].map(
+								(slug) => `${wgBaseHref}/${slug}`,
+							)}
+						/>
+					))}
+				</AppBottomNav>
+				{/* Last in the DOM so Tab reaches a toast's dismiss button right after
 			    whatever the user just did, instead of jumping back to the page top. */}
-			<ToastContainer />
-		</WgContextProvider>
+				<ToastContainer />
+			</WgContextProvider>
+		</NextIntlClientProvider>
 	);
 }

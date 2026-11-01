@@ -3,7 +3,7 @@ import localFont from 'next/font/local';
 import { headers } from 'next/headers';
 import Script from 'next/script';
 import { NextIntlClientProvider } from 'next-intl';
-import { getLocale, getTranslations } from 'next-intl/server';
+import { getLocale, getMessages, getTranslations } from 'next-intl/server';
 import { InputModality } from '@/components/app/InputModality';
 import { InstallPrompt } from '@/components/app/InstallPrompt';
 import { DeviceLocaleSync } from '@/components/app/LanguageSwitch';
@@ -12,6 +12,7 @@ import { ThemeProvider } from '@/components/app/ThemeProvider';
 import { GoogleSignInProvider } from '@/components/auth/google-sign-in';
 import { SplashScreen } from '@/components/brand/SplashScreen';
 import { htmlLang } from '@/shared/i18n/locale';
+import { pickMessages, ROOT_CLIENT_NAMESPACES } from '@/shared/i18n/root-client-messages';
 import { getAppUrl } from '@/shared/lib/app-url';
 import { APP_SCHEMA_ID, IS_OFFICIAL_INSTANCE, LANDING_SCHEMA_IDS } from '@/shared/lib/landing-url';
 import { SPLASH_BOOTSTRAP_SCRIPT } from '@/shared/lib/splash';
@@ -140,7 +141,11 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
 	// The CSP only allows scripts with the per-request nonce from the middleware.
 	const nonce = (await headers()).get('x-nonce') ?? undefined;
-	const [locale, t] = await Promise.all([getLocale(), getTranslations('common')]);
+	const [locale, t, messages] = await Promise.all([
+		getLocale(),
+		getTranslations('common'),
+		getMessages(),
+	]);
 	return (
 		<html
 			lang={htmlLang(locale)}
@@ -188,7 +193,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 				)}
 			</head>
 			<body suppressHydrationWarning>
-				<NextIntlClientProvider>
+				<NextIntlClientProvider messages={pickMessages(messages, ROOT_CLIENT_NAMESPACES)}>
 					{/* WCAG 2.4.1 Bypass Blocks — keyboard-only skip link.
 					    Targets the <main id="main"> rendered by per-route layouts. */}
 					<a href="#main" className="skip-link">

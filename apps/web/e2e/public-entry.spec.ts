@@ -89,4 +89,11 @@ test.describe('public entry api', () => {
 		const dashboard = await request.get(`/api/wg/${code}/dashboard`, { headers: validHeaders });
 		expect(dashboard.status()).toBe(200);
 	});
+
+	test('the login page does not embed the full message catalog', async ({ request }) => {
+		const response = await request.get('/login');
+		expect(response.status()).toBe(200);
+		// The full catalog alone is ~165 kB; the public pages carry only their namespaces.
+		expect(Buffer.byteLength(await response.text())).toBeLessThan(100_000);
+	});
 });
