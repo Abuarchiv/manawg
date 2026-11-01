@@ -357,3 +357,50 @@ test("only the payer's own share is stored as settled", async () => {
 	assert.ok(settled(memberId) instanceof Date);
 	assert.equal(settled(bobId), null);
 });
+
+test('two file names mapped to one member are stored as one summed share', async () => {
+	const row = {
+		...coffee,
+		date: '2025-03-04T12:00:00.000Z',
+		amountCents: 1000,
+		splits: [
+			{ memberName: 'Alice', amountCents: 400 },
+			{ memberName: 'Thomas', amountCents: 600 },
+		],
+	};
+	const run = runCommit([], { rows: [row], mapping: { Alice: memberId, Thomas: memberId } });
+	const result = await run.commit();
+	assert.equal(result.inserted, 1);
+	assert.deepEqual(
+		(run.state.splits as Row[]).map((split) => split.amountCents),
+		[1000],
+	);
+	assert.deepEqual(run.state.inserted[0]?.occurredAt, new Date(row.date));
+});
+
+test('a row whose shares do not add up to the amount is rejected', async () => {
+	const row = { ...coffee, amountCents: 1000, splits: [{ memberName: 'Alice', amountCents: 900 }] };
+	const result = await runCommit([], { rows: [row] }).commit();
+	assert.equal(result.inserted, 0);
+	assert.deepEqual(result.errors, [{ index: 0, reason: 'split_sum_mismatch' }]);
+});
+
+test('a row paid by a name without a mapping is rejected', async () => {
+	const result = await runCommit([], { rows: [{ ...coffee, paidByName: 'Nobody' }] }).commit();
+	assert.equal(result.inserted, 0);
+	assert.deepEqual(result.errors, [{ index: 0, reason: 'payer_unmapped' }]);
+});
+
+test('an unmapped debtor leaves the shares short and the row is rejected', async () => {
+	const row = {
+		...coffee,
+		amountCents: 1000,
+		splits: [
+			{ memberName: 'Alice', amountCents: 600 },
+			{ memberName: 'Ghost', amountCents: 400 },
+		],
+	};
+	const result = await runCommit([], { rows: [row] }).commit();
+	assert.equal(result.inserted, 0);
+	assert.deepEqual(result.errors, [{ index: 0, reason: 'split_sum_mismatch' }]);
+});
