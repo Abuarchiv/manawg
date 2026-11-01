@@ -65,7 +65,7 @@ export default {
 	},
 	inventoryConsumed: {
 		feed: same(
-			'took {quantity} {unitKey, select, piece {pcs} litre {L} kilogram {kg} roll {{count, plural, =1 {roll} other {rolls}}} pack {{count, plural, =1 {pack} other {packs}}} other {{unit}}} of {name}.',
+			'took {quantity} {unitKey, select, piece {{count, plural, =1 {pc} other {pcs}}} litre {L} kilogram {kg} roll {{count, plural, =1 {roll} other {rolls}}} pack {{count, plural, =1 {pack} other {packs}}} other {{unit}}} of {name}.',
 		),
 	},
 	memberInvited: { feed: same('sent an invitation by email.') },

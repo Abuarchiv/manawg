@@ -21,7 +21,7 @@ export default {
 		cleaning: 'Cleaning supplies',
 		other: 'Other',
 	},
-	unit: '{unit, select, piece {pcs} litre {L} kilogram {kg} roll {{count, plural, =1 {roll} other {rolls}}} pack {{count, plural, =1 {pack} other {packs}}} other {{unit}}}',
+	unit: '{unit, select, piece {{count, plural, =1 {pc} other {pcs}}} litre {L} kilogram {kg} roll {{count, plural, =1 {roll} other {rolls}}} pack {{count, plural, =1 {pack} other {packs}}} other {{unit}}}',
 	list: {
 		quick: 'Quick restock',
 		emptyTitle: 'No supplies recorded yet',

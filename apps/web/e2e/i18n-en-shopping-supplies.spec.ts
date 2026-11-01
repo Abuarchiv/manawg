@@ -413,7 +413,7 @@ test.describe('English supplies', () => {
 		const form = page.getByRole('dialog');
 		await expect(form.getByText('New item')).toBeVisible();
 		await expect(form.getByPlaceholder('e.g. Pasta')).toBeVisible();
-		await expect(form.getByLabel('Unit').getByRole('option', { name: 'pcs' })).toBeAttached();
+		await expect(form.getByLabel('Unit').getByRole('option', { name: 'pc' })).toBeAttached();
 		await expect(form.getByLabel('Unit').getByRole('option', { name: 'roll' })).toBeAttached();
 		await expect(form.getByLabel('Unit').getByRole('option', { name: 'pack' })).toBeAttached();
 		await expect(

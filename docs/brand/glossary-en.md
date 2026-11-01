@@ -54,7 +54,7 @@ Terms used in the English interface (British English). Keep new strings consiste
 | Über ManaWG, Die WG-App, WG-Ratgeber | About ManaWG, The flat app, Flat-share guide | |
 | Kategorien: Lebensmittel, Haushalt, Wohnen, Freizeit, Mobilität, Sonstiges | Groceries, Household, Housing, Leisure, Transport, Other | |
 | Inventar-Kategorien: Bad, Küche, Putzmittel, Sonstiges | Bathroom, Kitchen, Cleaning supplies, Other | |
-| Einheiten: Stück, L, kg, Rolle, Packung | pcs, L, kg, roll, pack | |
+| Einheiten: Stück, L, kg, Rolle, Packung | pc/pcs, L, kg, roll, pack | |
 | Pinnwand-Arten: Info, Frage, Problem, Bitte, Entscheidung | Info, Question, Problem, Request, Decision | |
 | Hell, Dunkel, System | Light, Dark, System | |
 | Offline | Offline | |
