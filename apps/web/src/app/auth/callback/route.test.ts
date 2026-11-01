@@ -68,6 +68,12 @@ test('the page to continue to after choosing a password is carried along', async
 	);
 });
 
+test('the sign-in page is not carried along as the page to continue to', async () => {
+	signedInAs({ password_pending: true });
+	const res = await callback('code=c&next=%2Flogin');
+	assert.equal(res.headers.get('location'), 'https://app.manawg.test/auth/reset?choose=1');
+});
+
 test('an account that skipped choosing a password is not sent back on later sign-ins', async () => {
 	signedInAs({ password_pending: true }, new Date(Date.now() - 3_600_000));
 	const res = await callback('code=c&next=%2Fwg%2FABC');

@@ -1,13 +1,14 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { isAuthPagePath } from './auth-intent';
 import { safeNextPath } from './next-path';
 
 /** Where an account whose password was dropped at confirmation chooses a new one. */
 const CHOOSE_PASSWORD_PATH = '/auth/reset?choose=1';
 
-/** The page that chooses a password, carrying the validated page to continue to afterwards. */
+/** The page that chooses a password, carrying the validated page to continue to afterwards (sign-in pages are not one). */
 export function choosePasswordHref(next: string | null): string {
 	const target = safeNextPath(next);
-	return target === '/'
+	return target === '/' || isAuthPagePath(target)
 		? CHOOSE_PASSWORD_PATH
 		: `${CHOOSE_PASSWORD_PATH}&next=${encodeURIComponent(target)}`;
 }
