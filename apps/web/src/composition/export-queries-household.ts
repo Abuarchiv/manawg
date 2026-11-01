@@ -18,7 +18,13 @@ export async function fetchMemberRows(wgId: string) {
 	// the name directory for every other section — paging is only applied to
 	// the potentially unbounded sections below.
 	return db
-		.select({ id: wgMembers.id, name: wgMembers.name, createdAt: wgMembers.createdAt })
+		.select({
+			id: wgMembers.id,
+			name: wgMembers.name,
+			role: wgMembers.role,
+			createdAt: wgMembers.createdAt,
+			deactivatedAt: wgMembers.deactivatedAt,
+		})
 		.from(wgMembers)
 		.where(eq(wgMembers.wgId, wgId))
 		.orderBy(asc(wgMembers.createdAt), asc(wgMembers.id));
@@ -32,7 +38,9 @@ export function mapMemberRows(memberRows: MemberRows) {
 	return memberRows.map((member) => ({
 		id: member.id,
 		name: member.name,
+		role: member.role,
 		createdAt: member.createdAt.toISOString(),
+		deactivatedAt: member.deactivatedAt?.toISOString() ?? '',
 	}));
 }
 
