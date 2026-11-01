@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNotNull, isNull, ne, or, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull, isNull, like, ne, or, sql } from 'drizzle-orm';
 import { lockAccount } from './account-deletion';
 import { ensureWgAdmin } from './admin-succession';
 import { deleteWgCascade } from './delete-wg';
@@ -7,6 +7,7 @@ import {
 	accountDeletions,
 	auditEvents,
 	calendarSubscriptions,
+	idempotencyResponses,
 	memberAbsences,
 	pushSubscriptions,
 	wgMembers,
@@ -99,7 +100,7 @@ export async function removeAccountFromWgs(
 			.where(eq(wgMembers.id, membership.id));
 		await releaseMemberChores(tx, membership.wgId, membership.id);
 		// Absence reasons are free text and can be health related, so none outlive the account:
-		// neither the rows nor the reason copied into their audit events.
+		// neither the rows nor the reason copied into their audit events or stored replays.
 		await tx
 			.update(auditEvents)
 			.set({ metadataJson: sql`(${auditEvents.metadataJson}::jsonb - 'reason')::text` })
@@ -130,6 +131,16 @@ export async function removeAccountFromWgs(
 			.delete(memberAbsences)
 			.where(
 				and(eq(memberAbsences.wgId, membership.wgId), eq(memberAbsences.memberId, membership.id)),
+			);
+		// A stored create replay holds the reason too. The scope carries the acting member, so match
+		// the absent member in the body to also catch absences an admin created for the leaver.
+		await tx
+			.delete(idempotencyResponses)
+			.where(
+				and(
+					like(idempotencyResponses.scope, `absences-create:${membership.wgId}:%`),
+					sql`(${idempotencyResponses.responseBody} -> 'absence' ->> 'memberId') = ${membership.id}`,
+				),
 			);
 		// Runs after the unlink, so the leaving member is never the successor.
 		const newAdmin = await ensureWgAdmin(tx, membership.wgId);
