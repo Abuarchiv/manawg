@@ -122,6 +122,58 @@ test.describe('settings notifications responsive', () => {
 		await endHour.selectOption('8');
 		await expect(endHour).toHaveValue('8');
 	});
+
+	test('the Web Push switch re-reads the browser permission when the user returns to the page', async ({
+		page,
+	}) => {
+		test.setTimeout(120_000);
+		const notificationStatus = {
+			pushOptIn: false,
+			notifyAnnouncements: true,
+			notifyChores: true,
+			notifyExpenses: true,
+			notifyReminders: true,
+			notifyShopping: true,
+			notifyInventory: true,
+			notifyChat: true,
+			notifyEvents: true,
+			notifyStatementEmail: true,
+			quietStartHour: 22,
+			quietEndHour: 7,
+			pushConfigured: true,
+		};
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/notifications`, async (route) => {
+			await route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify(
+					route.request().method() === 'GET' ? notificationStatus : { ok: true },
+				),
+			});
+		});
+		await page.addInitScript(() => {
+			const state = window as unknown as { __perm: NotificationPermission };
+			state.__perm = 'denied';
+			Object.defineProperty(Notification, 'permission', { get: () => state.__perm });
+		});
+		await setupMember(page);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings#notifications`);
+		await expect(page.getByRole('tablist')).toBeVisible({ timeout: 60_000 });
+
+		const pushSwitch = page
+			.locator('#notification-settings')
+			.getByRole('switch', { name: 'Web Push', exact: true });
+		const blockedHint = page.getByText('Benachrichtigungen sind im Browser blockiert.');
+		await expect(pushSwitch).toBeDisabled({ timeout: 30_000 });
+		await expect(blockedHint).toBeVisible();
+
+		await page.evaluate(() => {
+			(window as unknown as { __perm: NotificationPermission }).__perm = 'granted';
+			window.dispatchEvent(new Event('focus'));
+		});
+		await expect(pushSwitch).toBeEnabled();
+		await expect(blockedHint).toBeHidden();
+	});
 });
 
 test.describe('settings offline queue responsive', () => {
