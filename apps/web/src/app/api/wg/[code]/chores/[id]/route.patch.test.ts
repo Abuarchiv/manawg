@@ -18,6 +18,8 @@ let current: { assignedMemberId: string | null; nextDueAt: Date };
 // When false the guarded update matches no row, like a chore saved by someone else meanwhile.
 let updateMatches = true;
 let storedVersion: Date | undefined;
+// False when the new assignee moved out; the in-transaction member lock then finds no row.
+let memberActive = true;
 
 const chores = {
 	id: 'chores.id',
@@ -107,6 +109,9 @@ mock.module('@/core/audit', { namedExports: { recordAuditEvent: async () => unde
 mock.module('@/core/db', {
 	namedExports: { CHORE_RECURRENCE_TYPES: ['days', 'months'], chores, db, wgMembers: {} },
 });
+mock.module('@/core/db/member-departure', {
+	namedExports: { lockActiveMember: async () => memberActive },
+});
 mock.module('@/core/db/transaction', {
 	namedExports: { withTransaction: async (fn: (tx: typeof db) => Promise<unknown>) => fn(db) },
 });
@@ -169,6 +174,7 @@ function setup(assignedMemberId: string | null = actorId, nextDueAt = inHours(2)
 	current = { assignedMemberId, nextDueAt };
 	updateMatches = true;
 	storedVersion = undefined;
+	memberActive = true;
 }
 
 function patch(body: unknown) {
@@ -249,6 +255,17 @@ test('PATCH with an outdated version answers chore_changed and closes nothing', 
 	});
 	assert.equal(response.status, 409);
 	assert.deepEqual(await response.json(), { error: 'chore_changed' });
+	assert.equal(calls.resolved.length, 0);
+	assert.equal(calls.dispatched.length, 0);
+});
+
+test('PATCH to a member who moved out is rejected before anything is written', async () => {
+	setup(actorId, inHours(2));
+	memberActive = false;
+	const response = await patch({ assignedMemberId: otherId });
+	assert.equal(response.status, 400);
+	assert.deepEqual(await response.json(), { error: 'member_not_in_wg' });
+	assert.equal(calls.set.length, 0);
 	assert.equal(calls.resolved.length, 0);
 	assert.equal(calls.dispatched.length, 0);
 });

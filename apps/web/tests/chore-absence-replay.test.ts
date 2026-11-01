@@ -146,6 +146,9 @@ mock.module('@/core/db', {
 		},
 	},
 });
+mock.module('@/core/db/member-departure', {
+	namedExports: { lockActiveMember: async () => true },
+});
 mock.module('@/core/db/transaction', { namedExports: { TransactionAbort, withTransaction } });
 mock.module('@/features/expenses/server/expense-payments', {
 	namedExports: {

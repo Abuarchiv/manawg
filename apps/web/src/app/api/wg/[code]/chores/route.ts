@@ -1,9 +1,10 @@
-import { and, asc, desc, eq, gte, isNull, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { recordAuditEvent } from '@/core/audit';
 import { CHORE_RECURRENCE_TYPES, choreCompletions, chores, db, wgMembers } from '@/core/db';
-import { bodyCodec, withIdempotentWrite } from '@/core/db/idempotent-write';
+import { bodyCodec, rejectWrite, withIdempotentWrite } from '@/core/db/idempotent-write';
+import { lockActiveMember } from '@/core/db/member-departure';
 import { TransactionAbort } from '@/core/db/transaction';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
@@ -205,26 +206,15 @@ export const POST = withWgRoute('chores POST', async (req, { code }) => {
 						await checkRateLimit(wgWriteLimiter, `chore:${wg.id}:${member.memberId}`),
 					);
 					if (limited) return { stop: limited };
-					if (!assignedMemberId) return { input: undefined };
-					// A chore may only be assigned to an active member, never to someone who
-					// moved out.
-					const memberExists = await db
-						.select({ id: wgMembers.id })
-						.from(wgMembers)
-						.where(
-							and(
-								eq(wgMembers.id, assignedMemberId),
-								eq(wgMembers.wgId, wg.id),
-								isNull(wgMembers.deactivatedAt),
-							),
-						)
-						.limit(1);
-					return memberExists.length === 0
-						? { stop: badRequest('member_not_in_wg') }
-						: { input: undefined };
+					return { input: undefined };
 				},
 			},
 			async (tx) => {
+				// A chore may only be assigned to an active member, never to someone who moved out;
+				// the lock holds until commit so a move-out cannot slip in before the insert.
+				if (assignedMemberId && !(await lockActiveMember(tx, wg.id, assignedMemberId))) {
+					return rejectWrite(badRequest('member_not_in_wg'));
+				}
 				const [chore] = await tx
 					.insert(chores)
 					.values({
@@ -253,6 +243,7 @@ export const POST = withWgRoute('chores POST', async (req, { code }) => {
 	if (result.kind === 'replayed' || !result.context) {
 		return NextResponse.json(result.body, { status: result.status });
 	}
+	if ('rejected' in result.context) return result.context.rejected;
 	const chore = result.context;
 	await recordAuditEvent({
 		wgId: wg.id,

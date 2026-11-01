@@ -1,9 +1,10 @@
-import { and, eq, isNull, type SQL, sql } from 'drizzle-orm';
+import { and, eq, type SQL, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { recordAuditEvent } from '@/core/audit';
 import type { ChoreRecurrenceType } from '@/core/db';
-import { CHORE_RECURRENCE_TYPES, chores, db, wgMembers } from '@/core/db';
+import { CHORE_RECURRENCE_TYPES, chores, db } from '@/core/db';
+import { lockActiveMember } from '@/core/db/member-departure';
 import { rowHoldsPatch } from '@/core/db/row-holds-patch';
 import { withTransaction } from '@/core/db/transaction';
 import { isWgAdmin } from '@/core/guards/admin';
@@ -104,20 +105,6 @@ export const PATCH = withWgRoute<{ id: string }>('chores PATCH', async (req, { c
 	);
 	if (limited) return limited;
 
-	if (parsed.data.assignedMemberId) {
-		const member = await db
-			.select({ id: wgMembers.id })
-			.from(wgMembers)
-			.where(
-				and(
-					eq(wgMembers.id, parsed.data.assignedMemberId),
-					eq(wgMembers.wgId, wgId),
-					isNull(wgMembers.deactivatedAt),
-				),
-			)
-			.limit(1);
-		if (member.length === 0) return badRequest('member_not_in_wg');
-	}
 	const cadenceChanged =
 		parsed.data.intervalDays !== undefined || parsed.data.recurrenceType !== undefined;
 	const needsCurrentChore = cadenceChanged || parsed.data.nextDueAt !== undefined;
@@ -179,7 +166,14 @@ export const PATCH = withWgRoute<{ id: string }>('chores PATCH', async (req, { c
 		: undefined;
 	// The chore and the swap request it answers change together: a failure in between would
 	// leave an open request that no retry could ever close.
-	const { updated, previousAssigneeId } = await withTransaction(async (tx) => {
+	const written = await withTransaction(async (tx) => {
+		// Locked first, as move-out does: the new assignee cannot leave before this commits.
+		if (
+			parsed.data.assignedMemberId &&
+			!(await lockActiveMember(tx, wgId, parsed.data.assignedMemberId))
+		) {
+			return { rejected: true as const };
+		}
 		// Read under the row lock that the update below keeps: a request opened by someone who
 		// took the chore a moment ago is only answered by a change this transaction really makes.
 		const previousAssigneeId =
@@ -206,8 +200,10 @@ export const PATCH = withWgRoute<{ id: string }>('chores PATCH', async (req, { c
 		) {
 			await closeChoreSwapRequest(tx, wgId, row.id, auth.member.memberId);
 		}
-		return { updated: row, previousAssigneeId };
+		return { rejected: false as const, updated: row, previousAssigneeId };
 	});
+	if (written.rejected) return badRequest('member_not_in_wg');
+	const { updated, previousAssigneeId } = written;
 
 	if (!updated) {
 		if (currentChore || expectedVersion) {
