@@ -84,6 +84,10 @@ test.describe('Statement balances at 320px', () => {
 		await openStatement(page);
 		await expect(page.getByRole('columnheader', { name: 'Saldo', exact: true })).toBeVisible();
 		const normal = await firstTermFontSize(page);
+		const rootSize = await page.evaluate(() =>
+			Number.parseFloat(getComputedStyle(document.documentElement).fontSize),
+		);
+		expect(normal, 'the label size is 0.75rem').toBeCloseTo(rootSize * 0.75, 2);
 
 		await page.evaluate(() => {
 			document.documentElement.style.fontSize = '200%';
