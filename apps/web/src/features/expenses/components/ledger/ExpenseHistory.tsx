@@ -13,7 +13,10 @@ import {
 } from '@/components/ui/empty';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { ExpenseRow } from '@/features/expenses/components/ledger/ExpenseRow';
+import {
+	EXPENSE_HISTORY_HEADING_ID,
+	ExpenseRow,
+} from '@/features/expenses/components/ledger/ExpenseRow';
 import { ExpensesSkeleton } from '@/features/expenses/components/ledger/ExpensesSkeleton';
 import type { ExpenseScope } from '@/features/expenses/expense-filter';
 import type { Expense, ExpenseSplit } from '@/features/expenses/expense-types';
@@ -76,7 +79,11 @@ export function ExpenseHistory({
 	const message = useMessage();
 	return (
 		<section className="flex flex-col gap-3" aria-label={t('regionAria')}>
-			{expenseCount > 0 && <h2 className="sr-only">{t('heading')}</h2>}
+			{expenseCount > 0 && (
+				<h2 id={EXPENSE_HISTORY_HEADING_ID} tabIndex={-1} className="sr-only">
+					{t('heading')}
+				</h2>
+			)}
 			{showSkeleton ? (
 				<ExpensesSkeleton />
 			) : loadFailed && expenseCount === 0 ? null : expenseCount === 0 && !initialLoading ? (
