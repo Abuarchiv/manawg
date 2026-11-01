@@ -1,4 +1,5 @@
 import { useTranslations } from 'next-intl';
+import { useEffect } from 'react';
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -11,6 +12,9 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Spinner } from '@/components/ui/spinner';
 import { DiscardChangesDialog } from '@/features/events/components/DiscardChangesDialog';
+
+/** Id of the calendar page heading, the focus target when the edited row is gone. */
+export const CALENDAR_HEADING_ID = 'calendar-heading';
 
 /** The two confirmations of the event drawer: delete (series or one date) and discard changes. */
 export function EventEditDialogs({
@@ -37,6 +41,18 @@ export function EventEditDialogs({
 	onDiscard: () => void;
 }) {
 	const t = useTranslations('events');
+	// A deleted event leaves no row for the drawer to return focus to. After the drawer's own
+	// focus return has run, a page that still has no focus gets the heading.
+	useEffect(
+		() => () => {
+			requestAnimationFrame(() => {
+				if (document.activeElement === document.body) {
+					document.getElementById(CALENDAR_HEADING_ID)?.focus({ preventScroll: true });
+				}
+			});
+		},
+		[],
+	);
 	const kind = onlyThis ? 'occurrence' : recurring ? 'series' : 'single';
 	return (
 		<>
