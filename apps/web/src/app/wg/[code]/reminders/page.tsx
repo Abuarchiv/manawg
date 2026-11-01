@@ -80,6 +80,13 @@ export default function RemindersPage() {
 				onSent={(reminderId) => {
 					if (primary) {
 						setPrimaryReminderKey(null);
+						// The sent button unmounts and takes keyboard focus with it: park focus on the heading.
+						// The next person's button is not focused, so a second Enter cannot send by accident.
+						requestAnimationFrame(() => {
+							if (document.activeElement === document.body) {
+								document.getElementById('reminders-heading')?.focus({ preventScroll: true });
+							}
+						});
 						const pendingPrefix = `pending:${reminderKey(row)}:`;
 						updateReminders((current) => {
 							const optimistic = current.find((item) => item.id.startsWith(pendingPrefix));
@@ -131,7 +138,11 @@ export default function RemindersPage() {
 		>
 			<header className="flex min-w-0 flex-wrap items-center gap-2">
 				<BackLink href={`${wgBaseHref}/expenses`} label={t('back')} />
-				<h1 className="font-heading min-w-0 flex-1 text-base font-semibold [overflow-wrap:normal] hyphens-auto">
+				<h1
+					id="reminders-heading"
+					tabIndex={-1}
+					className="font-heading min-w-0 flex-1 text-base font-semibold [overflow-wrap:normal] hyphens-auto focus:outline-none"
+				>
 					{t('title')}
 				</h1>
 				<output aria-live="polite" aria-hidden={!refreshing} className="sr-only">
