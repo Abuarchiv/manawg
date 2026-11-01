@@ -51,6 +51,8 @@ export function useEmailSignUp({
 	const [confirmation, setConfirmation] = useState('');
 	const [error, setError] = useState<SignUpError>(null);
 	const [failure, setFailure] = useState<AuthFailure>('other');
+	// Counts failed field checks, so a repeated failure with the same error still refocuses.
+	const [invalidAttempt, setInvalidAttempt] = useState(0);
 	// The address the confirmation mail went to; set means the inbox state is shown.
 	const [sentTo, setSentTo] = useState<string | null>(null);
 	const [cooldown, setCooldown] = useResendCooldown();
@@ -68,19 +70,23 @@ export function useEmailSignUp({
 		const trimmedName = name.trim();
 		if (trimmedName.length === 0) {
 			setError('name');
+			setInvalidAttempt((attempt) => attempt + 1);
 			return;
 		}
 		const normalizedEmail = normalizeEmail(email);
 		if (!isValidEmail(normalizedEmail)) {
 			setError('invalid');
+			setInvalidAttempt((attempt) => attempt + 1);
 			return;
 		}
 		if (password.length < NEW_PASSWORD_MIN_LENGTH) {
 			setError('too-short');
+			setInvalidAttempt((attempt) => attempt + 1);
 			return;
 		}
 		if (password !== confirmation) {
 			setError('mismatch');
+			setInvalidAttempt((attempt) => attempt + 1);
 			return;
 		}
 		setBusy('email-sign-up');
@@ -137,6 +143,7 @@ export function useEmailSignUp({
 		confirmation,
 		setConfirmation,
 		error,
+		invalidAttempt,
 		failure,
 		sentTo,
 		cooldown,
@@ -222,15 +229,16 @@ export function EmailSignUpForm({
 		confirmation,
 		setConfirmation,
 		error,
+		invalidAttempt,
 		failure,
 	} = auth;
 	const formRef = useRef<HTMLFormElement>(null);
 	// A failed check leaves focus on the submit button; move it to the field that needs fixing.
 	useEffect(() => {
-		if (error && error !== 'generic') {
+		if (invalidAttempt > 0) {
 			formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
 		}
-	}, [error]);
+	}, [invalidAttempt]);
 	if (auth.sentTo) return <InboxNotice auth={auth} busy={busy} />;
 
 	const nameInvalid = error === 'name';
