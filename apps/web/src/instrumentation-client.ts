@@ -43,11 +43,15 @@ function routeTemplate(pathname: string): string {
 	return /^(\/([a-z0-9-]+|\[code\]|\[token\])){0,4}\/?$/.test(template) ? template : '/[other]';
 }
 
-/** Local builds (e2e, `next start`) and preview deployments must not count as real usage. */
+/**
+ * Local builds (e2e, `next start`), preview deployments and automated browsers (prod smoke runs,
+ * QA matrices, Lighthouse; they set navigator.webdriver) must not count as real usage.
+ */
 function isTestDeployment(): boolean {
 	return (
 		process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT === 'preview' ||
-		['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)
+		['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname) ||
+		navigator.webdriver === true
 	);
 }
 

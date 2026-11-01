@@ -22,7 +22,13 @@ const compiled = transformSync(instrumentation, {
 	supported: { 'dynamic-import': false },
 }).code;
 
-async function initialize(env, failImport = false, failInit = false, location = {}) {
+async function initialize(
+	env,
+	failImport = false,
+	failInit = false,
+	location = {},
+	webdriver = false,
+) {
 	const calls = [];
 	let imports = 0;
 	vm.runInNewContext(
@@ -32,7 +38,7 @@ async function initialize(env, failImport = false, failInit = false, location = 
 			window: {
 				location: { hostname: 'app.manawg.com', pathname: `/wg/${secret}/expenses`, ...location },
 			},
-			navigator: { userAgent: 'ManaWG-privacy-check' },
+			navigator: { userAgent: 'ManaWG-privacy-check', webdriver },
 			exports: {},
 			process: { env },
 			console: { warn() {}, error() {} },
@@ -195,6 +201,8 @@ assert.deepEqual(await initialize({ ...env, NEXT_PUBLIC_SENTRY_ENVIRONMENT: 'pre
 	calls: [],
 	imports: 0,
 });
+// Automated browsers (smoke runs, QA, Lighthouse) are not visitors.
+assert.deepEqual(await initialize(env, false, false, {}, true), { calls: [], imports: 0 });
 for (const hostname of ['localhost', '127.0.0.1', '[::1]']) {
 	assert.deepEqual(await initialize(env, false, false, { hostname }), { calls: [], imports: 0 });
 }
