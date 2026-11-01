@@ -128,7 +128,7 @@ test('account deletion erases the leaver absences and keeps the flatmates', asyn
 			endDate: new Date(Date.now() - 10 * day),
 			reason,
 		});
-		const [mine, , mates] = tuple(
+		const [mine, future, mates] = tuple(
 			await tx
 				.insert(memberAbsences)
 				.values([
@@ -143,6 +143,8 @@ test('account deletion erases the leaver absences and keeps the flatmates', asyn
 				.returning({ id: memberAbsences.id }),
 			3,
 		);
+		// An absence deleted before the account: its audit event stays, its row is gone.
+		const removedAbsence = crypto.randomUUID();
 		const audit = (absenceId: string, memberId: string, reason: string) => ({
 			wgId: wg.id,
 			memberId: me.id,
@@ -154,8 +156,20 @@ test('account deletion erases the leaver absences and keeps the flatmates', asyn
 		});
 		await tx
 			.insert(auditEvents)
-			.values([audit(mine.id, me.id, 'Chemo'), audit(mates.id, mate.id, 'Visiting family')]);
-		return { me: me.id, mate: mate.id, mineAbsence: mine.id, mateAbsence: mates.id };
+			.values([
+				audit(mine.id, me.id, 'Chemo'),
+				audit(future.id, me.id, 'Holiday'),
+				audit(removedAbsence, me.id, 'Arzttermin'),
+				audit(mates.id, mate.id, 'Visiting family'),
+			]);
+		return {
+			me: me.id,
+			mate: mate.id,
+			mineAbsence: mine.id,
+			futureAbsence: future.id,
+			removedAbsence,
+			mateAbsence: mates.id,
+		};
 	});
 
 	await withTransaction((tx) => removeAccountFromWgs(tx, user));
@@ -175,6 +189,8 @@ test('account deletion erases the leaver absences and keeps the flatmates', asyn
 		const metadata = (entityId: string) =>
 			JSON.parse(events.find((event) => event.entityId === entityId)?.metadataJson ?? 'null');
 		expect(metadata(ids.mineAbsence)).toEqual({ memberId: ids.me });
+		expect(metadata(ids.futureAbsence)).toEqual({ memberId: ids.me });
+		expect(metadata(ids.removedAbsence)).toEqual({ memberId: ids.me });
 		expect(metadata(ids.mateAbsence)).toEqual({ memberId: ids.mate, reason: 'Visiting family' });
 	});
 });

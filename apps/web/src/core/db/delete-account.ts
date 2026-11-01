@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNotNull, isNull, ne, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull, isNull, ne, or, sql } from 'drizzle-orm';
 import { lockAccount } from './account-deletion';
 import { ensureWgAdmin } from './admin-succession';
 import { deleteWgCascade } from './delete-wg';
@@ -108,17 +108,21 @@ export async function removeAccountFromWgs(
 					eq(auditEvents.wgId, membership.wgId),
 					eq(auditEvents.eventType, 'absence.created'),
 					isNotNull(auditEvents.metadataJson),
-					inArray(
-						auditEvents.entityId,
-						tx
-							.select({ id: sql<string>`${memberAbsences.id}::text` })
-							.from(memberAbsences)
-							.where(
-								and(
-									eq(memberAbsences.wgId, membership.wgId),
-									eq(memberAbsences.memberId, membership.id),
+					// By member as well as by absence id: events of absences removed earlier have no row left.
+					or(
+						sql`(${auditEvents.metadataJson}::jsonb ->> 'memberId') = ${membership.id}`,
+						inArray(
+							auditEvents.entityId,
+							tx
+								.select({ id: sql<string>`${memberAbsences.id}::text` })
+								.from(memberAbsences)
+								.where(
+									and(
+										eq(memberAbsences.wgId, membership.wgId),
+										eq(memberAbsences.memberId, membership.id),
+									),
 								),
-							),
+						),
 					),
 				),
 			);
