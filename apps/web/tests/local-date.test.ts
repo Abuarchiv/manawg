@@ -25,11 +25,12 @@ test('the midnight timer fires just after the next local midnight', () => {
 	assert.equal(fired.getDate(), 27);
 });
 
-test('a picked date is the same calendar day on the device and in Berlin', () => {
+test('a picked date is the same calendar day on the device, in Berlin and in UTC', () => {
 	const originalTz = process.env.TZ;
 	try {
 		for (const tz of [
 			'Pacific/Kiritimati',
+			'Pacific/Auckland',
 			'Pacific/Honolulu',
 			'Pacific/Pago_Pago',
 			'America/Los_Angeles',
@@ -38,6 +39,7 @@ test('a picked date is the same calendar day on the device and in Berlin', () =>
 			process.env.TZ = tz;
 			for (const day of ['2026-07-01', '2026-10-29', '2026-11-01', '2027-01-31']) {
 				const stored = new Date(inputDateToIso(day) ?? '');
+				assert.equal(stored.toISOString().slice(0, 10), day, `${tz} ${day} in UTC`);
 				assert.equal(berlinDayKey(stored), day, `${tz} ${day} in Berlin`);
 				assert.equal(todayInputValue(stored), day, `${tz} ${day} on the device`);
 			}
@@ -70,6 +72,20 @@ test('today is stored like a picked day, also in UTC+14', () => {
 			const today = todayAsPickedDate(morning);
 			assert.equal(berlinDayKey(today), '2026-11-01', `${tz} in Berlin`);
 			assert.equal(today.getUTCDate(), 1, `${tz} UTC day for the anchor`);
+		}
+	} finally {
+		if (originalTz === undefined) delete process.env.TZ;
+		else process.env.TZ = originalTz;
+	}
+});
+
+test('a monthly series keeps its day of month in UTC+13', () => {
+	const originalTz = process.env.TZ;
+	try {
+		process.env.TZ = 'Pacific/Auckland';
+		const days = ['2026-01-31', '2026-02-28', '2026-03-31', '2026-04-30'];
+		for (const day of days) {
+			assert.equal(new Date(inputDateToIso(day) ?? '').getUTCDate(), Number(day.slice(8)), day);
 		}
 	} finally {
 		if (originalTz === undefined) delete process.env.TZ;
