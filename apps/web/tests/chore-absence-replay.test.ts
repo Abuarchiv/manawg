@@ -33,6 +33,9 @@ interface HarnessState {
 	claimExpiresAt: Date | null;
 	rows: Row[];
 	audits: number;
+	auditMetadata: Row[];
+	memberActiveInTx: boolean;
+	lockCalls: string[];
 	notifications: number;
 	missReplayWrite: boolean;
 	forceWon: boolean;
@@ -53,7 +56,9 @@ const withTransaction = async (operation: (tx: unknown) => Promise<unknown>) => 
 						const rows: Row[] & { for?: () => Promise<Row[]> } =
 							table === tables.idempotencyResponses
 								? [{ body: draftClaim, expiresAt: state.claimExpiresAt }]
-								: [];
+								: table === tables.wgMembers && state.memberActiveInTx
+									? [{ id: memberId }]
+									: [];
 						rows.for = async () => rows;
 						return rows;
 					},
@@ -65,6 +70,14 @@ const withTransaction = async (operation: (tx: unknown) => Promise<unknown>) => 
 				returning: async () => {
 					draftRow = { id: nextId, ...value, createdAt: new Date(), updatedAt: new Date() };
 					return [draftRow];
+				},
+			}),
+		}),
+		delete: () => ({
+			where: () => ({
+				returning: async () => {
+					draftClaim = null;
+					return [{ scope: 'released' }];
 				},
 			}),
 		}),
@@ -100,8 +113,9 @@ const jsonError = (code: string, status: number) => Response.json({ error: code 
 
 mock.module('@/core/audit', {
 	namedExports: {
-		recordAuditEvent: async () => {
+		recordAuditEvent: async (event: { metadata: Row }) => {
 			state.audits += 1;
+			state.auditMetadata.push(event.metadata);
 		},
 	},
 });
@@ -133,6 +147,14 @@ mock.module('@/core/db', {
 	},
 });
 mock.module('@/core/db/transaction', { namedExports: { TransactionAbort, withTransaction } });
+mock.module('@/features/expenses/server/expense-payments', {
+	namedExports: {
+		withExpensePaymentLock: async (id: string, work: (tx: unknown) => Promise<unknown>) => {
+			state.lockCalls.push(id);
+			return withTransaction(work);
+		},
+	},
+});
 mock.module('@/core/http/api-errors', {
 	namedExports: {
 		badRequest: (code: string) => jsonError(code, 400),
@@ -249,6 +271,9 @@ function harness(kind: 'chore' | 'absence', bodyOverride?: Row) {
 		claimExpiresAt: null,
 		rows: [],
 		audits: 0,
+		auditMetadata: [],
+		memberActiveInTx: true,
+		lockCalls: [],
 		notifications: 0,
 		missReplayWrite: false,
 		forceWon: false,
@@ -377,4 +402,28 @@ test('absence create for another member is refused before inserting', async () =
 	assert.deepEqual(await response.json(), { error: 'not_owner' });
 	assert.equal(state.rows.length, 0);
 	assert.equal(state.audits, 0);
+});
+
+test('absence create rejects a member deactivated after prepare and writes under the payment lock', async () => {
+	const { post, request, state } = harness('absence');
+	state.memberActiveInTx = false;
+	const response = await post(request(), { code: 'MTE8PZAT' });
+	assert.equal(response.status, 400);
+	assert.deepEqual(await response.json(), { error: 'member_not_in_wg' });
+	assert.equal(state.rows.length, 0);
+	assert.equal(state.audits, 0);
+	assert.deepEqual(state.lockCalls, [wgId]);
+});
+
+test('absence create keeps the reason out of the audit metadata', async () => {
+	const { post, request, state } = harness('absence', {
+		memberId,
+		startDate: '2026-09-24T00:00:00+02:00',
+		endDate: '2026-09-24T23:59:59+02:00',
+		reason: 'Arzttermin',
+	});
+	const response = await post(request(), { code: 'MTE8PZAT' });
+	assert.equal(response.status, 200);
+	assert.equal(state.auditMetadata.length, 1);
+	assert.equal('reason' in (state.auditMetadata[0] ?? {}), false);
 });
