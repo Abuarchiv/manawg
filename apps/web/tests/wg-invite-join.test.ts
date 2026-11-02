@@ -55,6 +55,8 @@ interface Fixture {
 	revoke: (userId: string, code: string, inviteId: string) => Promise<Response>;
 	memberCount: (wgId: string) => Promise<number>;
 	invite: (id: string) => Promise<typeof wgInvites.$inferSelect>;
+	list: (userId: string, code: string) => Promise<Response>;
+	create: (userId: string, code: string) => Promise<Response>;
 }
 
 async function withFixture(run: (fixture: Fixture) => Promise<void>) {
@@ -64,6 +66,7 @@ async function withFixture(run: (fixture: Fixture) => Promise<void>) {
 	const previewRoute = await import('../src/app/api/wg/invites/[token]/route.ts');
 	const revokeRoute = await import('../src/app/api/wg/[code]/invites/[id]/route.ts');
 	const { createWgInvite } = await import('../src/core/db/wg-invites.ts');
+	const listRoute = await import('../src/app/api/wg/[code]/invites/route.ts');
 
 	const pool = new pg.Pool({ connectionString: url, max: 2 });
 	const database = drizzle(pool, { schema });
@@ -122,6 +125,14 @@ async function withFixture(run: (fixture: Fixture) => Promise<void>) {
 					},
 				);
 			},
+			list: (userId, code) =>
+				listRoute.GET(request(userId, `/api/wg/${code}/invites`, 'GET'), {
+					params: Promise.resolve({ code }),
+				}),
+			create: (userId, code) =>
+				listRoute.POST(request(userId, `/api/wg/${code}/invites`, 'POST'), {
+					params: Promise.resolve({ code }),
+				}),
 			memberCount: async (wgId) =>
 				(await database.select().from(schema.wgMembers).where(eq(schema.wgMembers.wgId, wgId)))
 					.length,
@@ -295,5 +306,117 @@ test('revoking needs the WG and the invite to match, and stops the link', { skip
 		const joined = await f.join(randomUUID(), f.a.code, own.token);
 		assert.equal(joined.status, 410);
 		assert.equal(await f.memberCount(f.a.id), 1);
+	});
+});
+
+test("the invite list shows only this WG's active invites", { skip }, async () => {
+	await withFixture(async (f) => {
+		const own = await f.joinTokenOf('a');
+		await f.joinTokenOf('b');
+		for (const [, patch] of unusable) {
+			const spent = await f.joinTokenOf('a');
+			await f.database.update(wgInvites).set(patch).where(eq(wgInvites.id, spent.id));
+		}
+		const listed = await f.list(f.a.memberUserId, f.a.code);
+		assert.equal(listed.status, 200);
+		const { invites } = (await listed.json()) as { invites: Array<{ id: string }> };
+		assert.deepEqual(
+			invites.map((invite) => invite.id),
+			[own.id],
+		);
+	});
+});
+
+test('expired, revoked and used-up invites do not count against the cap of 20', {
+	skip,
+}, async () => {
+	await withFixture(async (f) => {
+		const spent: string[] = [];
+		for (let n = 0; n < 5; n += 1) {
+			const made = await f.joinTokenOf('a');
+			spent.push(made.id);
+			await f.database
+				.update(wgInvites)
+				.set(unusable[n % unusable.length]?.[1] ?? {})
+				.where(eq(wgInvites.id, made.id));
+		}
+		for (let n = 0; n < 19; n += 1) await f.joinTokenOf('a');
+		// 19 active + 5 spent: one more fits, the next one hits the cap.
+		assert.equal((await f.create(f.a.memberUserId, f.a.code)).status, 200);
+		const capped = await f.create(f.a.memberUserId, f.a.code);
+		assert.equal(capped.status, 409);
+		assert.equal(await codeOf(capped), 'invite_limit_reached');
+		// Another WG is not affected by this WG's invites.
+		assert.equal((await f.create(f.b.memberUserId, f.b.code)).status, 200);
+	});
+});
+
+test('a member of another WG still gets a preview, not already_member', { skip }, async () => {
+	await withFixture(async (f) => {
+		const { token } = await f.joinTokenOf('a');
+		const preview = await f.preview(f.b.memberUserId, token);
+		assert.equal(preview.status, 200);
+		assert.equal(((await preview.json()) as { wg: Json }).wg.shareCode, f.a.code);
+	});
+});
+
+test('an active member cannot join again and burns no invite use', { skip }, async () => {
+	await withFixture(async (f) => {
+		const { id, token } = await f.joinTokenOf('a');
+		const again = await f.join(f.a.memberUserId, f.a.code, token, 'Founder two');
+		assert.equal(again.status, 409);
+		assert.equal(await codeOf(again), 'already_joined');
+		assert.equal(await f.memberCount(f.a.id), 1);
+		assert.equal((await f.invite(id)).useCount, 0);
+	});
+});
+
+test('an account whose deletion is pending cannot join', { skip }, async () => {
+	await withFixture(async (f) => {
+		const { id, token } = await f.joinTokenOf('a');
+		const leaving = randomUUID();
+		await f.database.insert(schema.accountDeletions).values({ authUserId: leaving });
+		try {
+			const joined = await f.join(leaving, f.a.code, token);
+			assert.equal(joined.status, 409);
+			assert.equal(await codeOf(joined), 'account_deletion_pending');
+			assert.equal(await f.memberCount(f.a.id), 1);
+			assert.equal((await f.invite(id)).useCount, 0);
+		} finally {
+			await f.database
+				.delete(schema.accountDeletions)
+				.where(eq(schema.accountDeletions.authUserId, leaving));
+		}
+	});
+});
+
+test('a new member may take the name of someone who moved out, who is renamed aside', {
+	skip,
+}, async () => {
+	await withFixture(async (f) => {
+		const { token } = await f.joinTokenOf('a');
+		await f.database
+			.insert(schema.wgMembers)
+			.values({ wgId: f.a.id, name: 'Anna', deactivatedAt: new Date() });
+		const joined = await f.join(randomUUID(), f.a.code, token, 'anna');
+		assert.equal(joined.status, 200);
+		const rows = await f.database
+			.select({ name: schema.wgMembers.name, gone: schema.wgMembers.deactivatedAt })
+			.from(schema.wgMembers)
+			.where(eq(schema.wgMembers.wgId, f.a.id));
+		assert.deepEqual(
+			rows.filter((row) => row.gone).map((row) => row.name),
+			['Anna (2)'],
+		);
+		assert.ok(rows.some((row) => !row.gone && row.name === 'anna'));
+	});
+});
+
+test('two active members cannot share a name, even in another case', { skip }, async () => {
+	await withFixture(async (f) => {
+		const { token } = await f.joinTokenOf('a');
+		const clash = await f.join(randomUUID(), f.a.code, token, 'FOUNDER');
+		assert.equal(clash.status, 409);
+		assert.equal(await codeOf(clash), 'name_taken');
 	});
 });
