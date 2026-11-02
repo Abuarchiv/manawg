@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { aggregatePairTotals } from './debts';
-import { buildEqualSplits } from './split-math';
+import { buildEqualSplits, distributeCentsEqually } from './split-math';
 
 function expense(paidByMemberId: string, debtorMemberId: string, amountCents: number) {
 	return {
@@ -34,4 +34,8 @@ test('buildEqualSplits gives the leftover cent to the first debtor after rotatio
 		{ debtorMemberId: 'x', amountCents: 0 },
 		{ debtorMemberId: 'y', amountCents: 0 },
 	]);
+});
+
+test('distributeCentsEqually rejects a negative amount', () => {
+	assert.throws(() => distributeCentsEqually(-1, ['a']), /non-negative/);
 });
