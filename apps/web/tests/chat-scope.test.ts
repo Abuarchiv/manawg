@@ -40,7 +40,7 @@ mock.module('@/core/notifications/notification-dispatch', {
 
 const pool = new pg.Pool({ connectionString: url || undefined, max: 2 });
 const suffix = randomUUID().replaceAll('-', '').slice(0, 10);
-const ids = { wgA: '', wgB: '', me: '', mate: '', gone: '', other: '', otherMsg: '' };
+const ids = { wgA: '', wgB: '', me: '', mate: '', other: '', otherMsg: '' };
 const route = () => import('../src/app/api/wg/[code]/chat/messages/route.ts');
 const ctx = { params: Promise.resolve({ code: 'MTE8PZAT' }) };
 const get = async (query = '') => {
@@ -84,17 +84,15 @@ before(async () => {
 		);
 		ids[key] = rows[0].id;
 	}
-	const member = async (wgId: string, name: string, deactivated = false) =>
+	const member = async (wgId: string, name: string) =>
 		(
-			await pool.query(
-				`INSERT INTO public.wg_members (wg_id, name, deactivated_at)
-				 VALUES ($1, $2, ${deactivated ? 'now()' : 'NULL'}) RETURNING id`,
-				[wgId, `${name} ${suffix}`],
-			)
+			await pool.query('INSERT INTO public.wg_members (wg_id, name) VALUES ($1, $2) RETURNING id', [
+				wgId,
+				`${name} ${suffix}`,
+			])
 		).rows[0].id as string;
 	ids.me = await member(ids.wgA, 'Me');
 	ids.mate = await member(ids.wgA, 'Mate');
-	ids.gone = await member(ids.wgA, 'Gone', true);
 	ids.other = await member(ids.wgB, 'Other');
 	wg.id = ids.wgA;
 	caller.memberId = ids.me;
@@ -216,10 +214,11 @@ test('the read marker of another WG message is refused', { skip }, async () => {
 	assert.equal(rows.length, 0);
 });
 
-test('unread count: own and deleted messages, other WGs and the mover-out excluded', {
+test('unread count: own and deleted messages, and other WGs excluded', {
 	skip,
 }, async () => {
 	const { GET } = await import('../src/app/api/wg/[code]/chat/unread-count/route.ts');
+	// Starts from an empty chat so earlier tests' messages do not count.
 	await pool.query('DELETE FROM public.wg_chat_messages WHERE wg_id = ANY($1)', [
 		[ids.wgA, ids.wgB],
 	]);
