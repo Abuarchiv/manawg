@@ -112,7 +112,7 @@ services:
       retries: 20
 
   storage:
-    image: supabase/storage-api:v1.84.23
+    image: supabase/storage-api:v1.87.0
     restart: unless-stopped
     logging: *logging
     depends_on:
