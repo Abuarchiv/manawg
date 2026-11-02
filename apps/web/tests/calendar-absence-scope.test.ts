@@ -15,8 +15,12 @@ if (url) {
 		['localhost', '127.0.0.1', '[::1]'].includes(new URL(url).hostname),
 		'TEST_DATABASE_URL must be a loopback database',
 	);
-	process.env.DATABASE_URL = url;
-	process.env.POSTGRES_URL = url;
+	// The app connection avoids index scans so the (wg_id, start_date) index cannot supply the
+	// sort order that the list route must request with ORDER BY.
+	const appUrl = new URL(url);
+	appUrl.searchParams.set('options', '-c enable_indexscan=off -c enable_bitmapscan=off');
+	process.env.DATABASE_URL = appUrl.toString();
+	process.env.POSTGRES_URL = appUrl.toString();
 }
 
 const code = 'ABS8PZAT';
@@ -92,7 +96,7 @@ test('two members of one WG can be away on the same days, one member cannot over
 	assert.equal(again.status, 409);
 });
 
-test('an absence of another WG does not block this WG and is not listed', { skip }, async () => {
+test('an absence of another WG is not listed', { skip }, async () => {
 	const { POST, GET } = await import('../src/app/api/wg/[code]/absences/route.ts');
 	await pool.query(
 		`INSERT INTO public.member_absences (wg_id, member_id, start_date, end_date)
@@ -114,11 +118,18 @@ test('an absence of another WG does not block this WG and is not listed', { skip
 
 test('absences are listed by start date, earliest first', { skip }, async () => {
 	const { GET } = await import('../src/app/api/wg/[code]/absences/route.ts');
+	// The later absence is inserted first, so heap order differs from start-date order.
+	await pool.query(
+		`INSERT INTO public.member_absences (wg_id, member_id, start_date, end_date)
+		 VALUES ($1, $2, '2034-05-01T00:00:00Z', '2034-05-05T00:00:00Z'),
+		        ($1, $3, '2034-02-01T00:00:00Z', '2034-02-05T00:00:00Z')`,
+		[ids.wgA, ids.anna, ids.ben],
+	);
 	const listed = (await (
 		await GET(new NextRequest(`https://example.invalid/api/wg/${code}/absences`) as never, ctx())
 	).json()) as { absences: { startDate: string }[] };
-	const starts = listed.absences.map((a) => a.startDate);
-	assert.deepEqual(starts, [...starts].sort());
+	const starts = listed.absences.map((a) => a.startDate.slice(0, 10)).filter((d) => d >= '2034');
+	assert.deepEqual(starts, ['2034-02-01', '2034-05-01']);
 });
 
 test('an admin of another WG cannot cancel an occurrence of this WG series', { skip }, async () => {
