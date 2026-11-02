@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { AMOUNT_MAX_CENTS, DESCRIPTION_MAX_LENGTH } from './expense-constants';
-import { expenseAmountSchema, expenseDescriptionSchema, occurredAtSchema } from './expense-schemas';
+import {
+	expenseAmountSchema,
+	expenseDescriptionSchema,
+	expenseSplitSchema,
+	occurredAtSchema,
+} from './expense-schemas';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const at = (offsetMs: number) => new Date(Date.now() + offsetMs).toISOString();
@@ -21,6 +26,18 @@ test('occurredAt rejects far future dates and dates older than five years', () =
 test('amount accepts the cap and rejects one cent above it', () => {
 	assert.equal(expenseAmountSchema.safeParse(AMOUNT_MAX_CENTS).success, true);
 	assert.equal(expenseAmountSchema.safeParse(AMOUNT_MAX_CENTS + 1).success, false);
+});
+
+test('amount rejects zero and accepts one cent', () => {
+	assert.equal(expenseAmountSchema.safeParse(0).success, false);
+	assert.equal(expenseAmountSchema.safeParse(1).success, true);
+});
+
+test('split rejects a debtor id that is not a uuid', () => {
+	assert.equal(
+		expenseSplitSchema.safeParse({ debtorMemberId: 'not-a-uuid', amountCents: 1 }).success,
+		false,
+	);
 });
 
 test('description is trimmed and bounded', () => {
