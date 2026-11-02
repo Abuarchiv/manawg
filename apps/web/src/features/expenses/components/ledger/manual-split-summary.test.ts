@@ -81,3 +81,8 @@ test('is pure: same input, same output, input left untouched', () => {
 	);
 	assert.equal(cents, 1000 + 2001);
 });
+
+test('tops up a field that holds 0,00', () => {
+	const next = distributeRemainderCents({ a: '0,00', b: '1,00' }, [{ id: 'a' }, { id: 'b' }], 500);
+	assert.deepEqual(next, { a: '5,00', b: '1,00' });
+});
