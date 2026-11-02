@@ -48,8 +48,8 @@ test('an unreadable attempt time does not block the action', () => {
 	assert.equal(shouldRetryOfflineAction(action(4, 'not a date'), NOW), true);
 });
 
-test('an attempt stamped in the future (clock corrected backwards) does not block for long', () => {
-	// The stamp is a day ahead of the corrected clock: a delay of one step, not a day.
+test('an attempt stamped in the future (clock corrected backwards) is retried immediately', () => {
+	// The stamp is a day ahead of the corrected clock: retry now, do not wait for the clock to reach it.
 	const future = new Date(NOW + 24 * 60 * MINUTE).toISOString();
 	assert.equal(shouldRetryOfflineAction(action(1, future), NOW + 30 * SECOND), true);
 });
