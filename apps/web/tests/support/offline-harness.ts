@@ -152,6 +152,10 @@ export interface QueueOptions {
 	storage?: FakeStorage;
 	clock?: unknown;
 	locks?: FakeLockManager | null;
+	/** Replaces single exports of the mocked offline-queue module (e.g. `shouldRetryOfflineAction`). */
+	queue?: Record<string, unknown>;
+	/** What `createIdempotencyKey` answers; null makes a keyless action stay keyless. */
+	createKey?: () => string | null;
 }
 
 /**
@@ -164,6 +168,8 @@ export async function makeQueueModule({
 	storage = makeStorage(),
 	clock = Date,
 	locks = makeLockManager(),
+	queue = {},
+	createKey = () => VALID_KEY,
 }: QueueOptions = {}) {
 	const listeners = new Map<string, Array<(event: Action) => void>>();
 	const window = {
@@ -205,9 +211,9 @@ export async function makeQueueModule({
 	mockInstance('@/core/http/idempotency-key', {
 		isIdempotencyKey: (value: unknown) =>
 			typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value),
-		createIdempotencyKey: () => VALID_KEY,
+		createIdempotencyKey: createKey,
 	});
-	mockInstance('@/core/offline/offline-queue', defaultQueue);
+	mockInstance('@/core/offline/offline-queue', { ...defaultQueue, ...queue });
 	if (images !== null) {
 		mockInstance('@/core/offline/offline-images', {
 			isPendingImageToken: (value: unknown) =>
