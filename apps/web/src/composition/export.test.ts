@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import { mock, test } from 'node:test';
-import { buildExportSummaryFromCounts, getExportSectionHeaders, toCsv } from './export';
+import {
+	buildExportSummaryFromCounts,
+	formatExpenseSplitsForExport,
+	getExportSectionHeaders,
+	parseRecurringSplitsForExport,
+	toCsv,
+} from './export';
 
 const tables = Object.fromEntries(
 	[
@@ -212,4 +218,41 @@ test('the members export carries role and move-out date', () => {
 		toCsv(rows, headers, 'en'),
 		'\uFEFFid,name,role,createdAt,deactivatedAt\nm1,Anna,admin,2026-03-30 12:30,\nm2,Dora,member,2026-03-30 12:30,2026-09-01 10:00',
 	);
+});
+
+test('expense splits carry the debtor name, the ISO settled instant and fall back to the id', () => {
+	const settledAt = new Date('2026-03-01T10:00:00.000Z');
+	assert.deepEqual(
+		formatExpenseSplitsForExport(
+			[
+				{ debtorMemberId: 'm1', amountCents: 100, settledAt },
+				{ debtorMemberId: 'm2', amountCents: 200, settledAt: null },
+			],
+			new Map([['m1', 'Ann']]),
+		),
+		[
+			{
+				debtorMemberId: 'm1',
+				debtor: 'Ann',
+				amountCents: 100,
+				settledAt: '2026-03-01T10:00:00.000Z',
+			},
+			{ debtorMemberId: 'm2', debtor: 'm2', amountCents: 200, settledAt: null },
+		],
+	);
+});
+
+test('recurring splits name the debtor, fall back to the id and skip malformed entries', () => {
+	const names = new Map([['m1', 'Ann']]);
+	assert.deepEqual(
+		parseRecurringSplitsForExport(
+			'[{"debtorMemberId":"m1","amountCents":5},{"debtorMemberId":"zz","amountCents":6},{"debtorMemberId":"m1","amountCents":"7"}]',
+			names,
+		),
+		[
+			{ debtor: 'Ann', amountCents: 5 },
+			{ debtor: 'zz', amountCents: 6 },
+		],
+	);
+	assert.deepEqual(parseRecurringSplitsForExport('not json', names), []);
 });
