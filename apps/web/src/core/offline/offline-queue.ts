@@ -157,11 +157,10 @@ export function shouldRetryOfflineAction(action: OfflineAction, now = Date.now()
 	if (!action.lastAttemptAt) return true;
 	const lastAttempt = parseTimestamp(action.lastAttemptAt);
 	if (lastAttempt === null) return true;
-	// A lastAttempt far in the future means the device clock has been
-	// corrected backwards — treat it as "now" instead of blocking retries
-	// until the clock catches up.
-	const effectiveLastAttempt = Math.min(lastAttempt, now);
-	return now - effectiveLastAttempt >= getOfflineRetryDelayMs(action);
+	// An attempt stamped in the future (device clock corrected backwards) would block the retry
+	// until the clock catches up; retry now instead.
+	if (lastAttempt > now) return true;
+	return now - lastAttempt >= getOfflineRetryDelayMs(action);
 }
 
 export function getOfflineActionRisk(
