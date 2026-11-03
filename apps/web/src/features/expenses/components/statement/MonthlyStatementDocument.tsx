@@ -336,7 +336,7 @@ export function MonthlyStatementDocument({
 									</tr>
 								))}
 							</tbody>
-							<tfoot>
+							<tfoot className="print:table-row-group">
 								<tr className="border-t border-foreground font-semibold">
 									<th scope="row" colSpan={2} className="py-3 text-left print:hidden">
 										{t('document.sum')}
