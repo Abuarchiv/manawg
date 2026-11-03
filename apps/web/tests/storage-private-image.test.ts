@@ -19,6 +19,7 @@ import { applyEnv } from './support/env.ts';
 
 const WG_A = '11111111-1111-4111-8111-111111111111';
 const WG_B = '22222222-2222-4222-8222-222222222222';
+const WG_HEX = 'abcdef12-1111-4111-8111-abcdefabcdef';
 const IMAGE_ID = '33333333-3333-4333-8333-333333333333';
 const PRIVATE_KEY = `manawg/${WG_A}/expense/${IMAGE_ID}.webp`;
 
@@ -86,6 +87,16 @@ describe('private image URL contract', () => {
 		assert.equal(imageUrlSchema.safeParse(url).success, true);
 		assert.equal(isAllowedImageUrlForWg(url, WG_A), true);
 		assert.equal(isAllowedImageUrlForWg(url, WG_B), false);
+		const upperKey = `manawg/${WG_HEX.toUpperCase()}/expense/${IMAGE_ID}.webp`;
+		const upperUrl = `https://preview.manawg.example/api/upload/read?key=${encodeURIComponent(upperKey)}`;
+		assert.equal(isAllowedImageUrlForWg(upperUrl, WG_HEX), true);
+		assert.equal(
+			isAllowedImageUrlForWg(
+				`https://preview.manawg.example/api/upload/read?key=${encodeURIComponent(`manawg/${WG_HEX}/expense/${IMAGE_ID}.webp`)}`,
+				WG_HEX.toUpperCase(),
+			),
+			true,
+		);
 		assert.equal(
 			imageUrlSchema.safeParse(`https://preview.manawg.example/api/upload/read?key=${PRIVATE_KEY}`)
 				.success,
