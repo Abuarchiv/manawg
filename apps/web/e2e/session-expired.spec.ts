@@ -1,5 +1,7 @@
 // Session expiry banner on WG screens.
 // Why: an expired session must show one explanation and a way back to the same page.
+// Every WG data request answers 401, so no other request on the page clears the banner
+// in between; the WG itself (/api/wg/<code>) still loads so the layout renders.
 
 import { expect, test } from '@playwright/test';
 import { FIXTURE_WG, setupMember, skipUnlessDbDown } from './support/helpers';
@@ -11,7 +13,7 @@ test.describe('session expired banner', () => {
 		page,
 	}) => {
 		await setupMember(page);
-		await page.route('**/api/wg/*/members*', (route) =>
+		await page.route('**/api/wg/*/**', (route) =>
 			route.fulfill({
 				status: 401,
 				contentType: 'application/json',
@@ -34,7 +36,7 @@ test.describe('session expired banner', () => {
 		await page.clock.install();
 		await setupMember(page);
 		let expired = true;
-		await page.route('**/api/wg/*/members*', (route) =>
+		await page.route('**/api/wg/*/**', (route) =>
 			expired
 				? route.fulfill({
 						status: 401,
