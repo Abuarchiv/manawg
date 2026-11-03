@@ -2,8 +2,14 @@ import { type MutableRefObject, useRef } from 'react';
 import { mutationError } from '@/core/http/error-codes';
 import { createIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
-import { withToggledReaction } from '@/features/announcements/announcement-edits';
-import { announcementActionError } from '@/features/announcements/announcement-errors';
+import {
+	type AnnouncementEditResult,
+	withToggledReaction,
+} from '@/features/announcements/announcement-edits';
+import {
+	announcementActionError,
+	announcementEditError,
+} from '@/features/announcements/announcement-errors';
 import { deliveryWarning } from '@/features/announcements/announcement-warning';
 import type { CommentOverrides } from '@/features/announcements/comment-overrides';
 import type {
@@ -60,6 +66,7 @@ export function useAnnouncementActions(
 		rollback: () => void,
 		onSuccess?: () => void,
 		onError?: (error: string) => void,
+		errorMessage: (error: string) => Message = announcementActionError,
 	): Promise<boolean> {
 		if (isPending(pendingKey)) return false;
 		start(pendingKey);
@@ -77,7 +84,7 @@ export function useAnnouncementActions(
 				dropVanishedAnnouncement(id);
 			} else {
 				rollback();
-				setActionError(announcementActionError(res.error));
+				setActionError(errorMessage(res.error));
 				onError?.(res.error);
 			}
 			return false;
@@ -129,24 +136,29 @@ export function useAnnouncementActions(
 		);
 	}
 
-	/** Text and type of a manual post; resolves true once saved so the editor can close. */
-	function editAnnouncement(
+	/** Text and type of a manual post; the result tells the editor to close, rebase or stay. */
+	async function editAnnouncement(
 		announcement: Announcement,
 		next: { content: string; kind: AnnouncementKind },
-	): Promise<boolean> {
+	): Promise<AnnouncementEditResult> {
 		const body: { content?: string; kind?: AnnouncementKind } = {};
 		if (next.content !== announcement.content) body.content = next.content;
 		if (next.kind !== announcement.kind) body.kind = next.kind;
-		return patchAnnouncement(
+		let conflict = false;
+		const saved = await patchAnnouncement(
 			announcement.id,
 			announcement.updatedAt ? { ...body, expectedUpdatedAt: announcement.updatedAt } : body,
 			`${announcement.id}:edit`,
 			() => undefined,
 			() => updateItem(announcement.id, (item) => ({ ...item, ...body })),
 			(error) => {
-				if (error === 'announcement_changed') void load();
+				if (error !== 'announcement_changed') return;
+				conflict = true;
+				void load();
 			},
+			announcementEditError,
 		);
+		return saved ? 'saved' : conflict ? 'conflict' : 'failed';
 	}
 
 	async function toggleReaction(announcement: Announcement, reaction: ReactionKey): Promise<void> {

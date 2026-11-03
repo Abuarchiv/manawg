@@ -26,7 +26,7 @@ import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { useConfirmDelete } from '@/core/hooks/use-confirm-delete';
 import { formatDayMonthYear, parseValidDate, relativeTimeMessage } from '@/core/utils/time';
 import type { NextAssignee } from '@/features/chores/chore-completion';
-import type { ChoreEditChanges } from '@/features/chores/chore-edit';
+import type { ChoreEditChanges, ChoreEditResult } from '@/features/chores/chore-edit';
 import { choreNeedsRepair, getChoreStatus } from '@/features/chores/chore-status';
 import {
 	ChoreCompleteDialog,
@@ -59,7 +59,7 @@ interface ChoreRowProps {
 	onComplete: (chore: PlanChore) => void;
 	onSwapRequest: (chore: PlanChore) => void;
 	onTakeOver: (chore: PlanChore) => void;
-	onEdit: (chore: Chore, changes: ChoreEditChanges) => Promise<boolean>;
+	onEdit: (chore: Chore, changes: ChoreEditChanges) => Promise<ChoreEditResult>;
 	onRemove: (id: string) => void;
 	highlighted: boolean;
 }
@@ -317,10 +317,10 @@ export const ChoreRow = memo(function ChoreRow({
 				members={members}
 				pending={isEditPending}
 				error={editOpen ? completeError : null}
-				onSave={(base, changes) => {
-					void onEdit(base, changes).then((saved) => {
-						if (saved) setEditOpen(false);
-					});
+				onSave={async (base, changes) => {
+					const result = await onEdit(base, changes);
+					if (result === 'saved') setEditOpen(false);
+					return result;
 				}}
 			/>
 			<ChoreCompleteDialog

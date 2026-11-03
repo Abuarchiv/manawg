@@ -101,7 +101,7 @@ const CHORE_EDIT_ERRORS: Record<string, Message> = {
 	interval_invalid: withSubject(EDIT_SUBJECT, INTERVAL_INVALID),
 	due_date_invalid: withSubject(EDIT_SUBJECT, DUE_DATE_INVALID),
 	member_not_in_wg: withSubject(EDIT_SUBJECT, MEMBER_NOT_IN_FLAT),
-	chore_changed: { key: 'chores.errors.choreChanged' },
+	chore_changed: { key: 'chores.errors.choreChangedEdit' },
 	invalid_body: withSubject(EDIT_SUBJECT, INVALID_REQUEST),
 	invalid_json: withSubject(EDIT_SUBJECT, INVALID_REQUEST),
 };

@@ -57,6 +57,8 @@ export default {
 		editSubject: 'The task could not be edited',
 		choreChanged:
 			'The task has changed in the meantime. The rota is reloading. Try again once it has loaded.',
+		choreChangedEdit:
+			'The task has changed in the meantime. The latest version is loaded and your input is kept. Check it and save again.',
 		swapPostSubject: 'The swap request could not be posted',
 		takeOverSubject: 'The task could not be taken over',
 		removeSubject: 'The task could not be removed',

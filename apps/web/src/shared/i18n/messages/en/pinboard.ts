@@ -163,6 +163,8 @@ export default {
 		expectedStateInvalid: 'The state of the post is not valid.',
 		announcementChanged:
 			'The post has changed in the meantime. The view is updating. You can then edit it again.',
+		announcementChangedEdit:
+			'The post has changed in the meantime. The latest version is loaded and your input is kept. Check it and save again.',
 		contentLocked: 'This post was created automatically and cannot be edited.',
 		notOwner: 'Only the author of the post or flat admins can edit it.',
 		announcementResolved: 'This post has been resolved in the meantime.',

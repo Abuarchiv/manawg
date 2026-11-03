@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 const { renderMessage, serverRootT } = await import('@/core/i18n/server-t');
-const { announcementActionError, announcementCreateError } = await import('./announcement-errors');
+const { announcementActionError, announcementCreateError, announcementEditError } = await import(
+	'./announcement-errors'
+);
 
 const de = serverRootT('de');
 const en = serverRootT('en');
@@ -45,5 +47,17 @@ test('the same codes render English', () => {
 	assert.equal(
 		renderMessage(en, announcementActionError('whatever')),
 		'The action could not be saved. Try again.',
+	);
+});
+
+test('an edit conflict says the typed input is kept, other actions keep the reload hint', () => {
+	assert.match(
+		renderMessage(de, announcementEditError('announcement_changed')),
+		/deine Eingaben bleiben/,
+	);
+	assert.match(renderMessage(de, announcementActionError('announcement_changed')), /aktualisiert/);
+	assert.equal(
+		renderMessage(de, announcementEditError('not_owner')),
+		renderMessage(de, announcementActionError('not_owner')),
 	);
 });

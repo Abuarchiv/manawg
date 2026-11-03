@@ -189,6 +189,50 @@ test.describe('pinboard edit', () => {
 		await expect(page.getByText(/wurde inzwischen geändert/).first()).toBeVisible();
 	});
 
+	test('a second save after a conflict carries the reloaded version and keeps the typed text', async ({
+		page,
+	}) => {
+		const refreshed = { ...post, kind: 'info' as const, updatedAt: '2026-01-01T11:00:00.000Z' };
+		let served = post;
+		const patchBodies: unknown[] = [];
+		await setupMember(page);
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/announcements/edit-post`, (route) => {
+			if (route.request().method() !== 'PATCH') return route.fallback();
+			patchBodies.push(route.request().postDataJSON());
+			if (patchBodies.length === 1) {
+				served = refreshed;
+				return route.fulfill({ status: 409, json: { error: 'announcement_changed' } });
+			}
+			return route.fulfill({
+				json: { announcement: { ...refreshed, content: 'Neuer Text' }, warning: null },
+			});
+		});
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/announcements*`, (route) =>
+			route.request().method() === 'GET'
+				? route.fulfill({ json: { announcements: [served] } })
+				: route.fallback(),
+		);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/pinboard`);
+		await dismissOnboarding(page);
+
+		await page.getByRole('button', { name: /^Beitragsaktionen:/ }).click();
+		await page.getByRole('menuitem', { name: /^Beitrag bearbeiten:/ }).click();
+		const field = page.getByRole('textbox', { name: 'Beitragstext' });
+		await field.fill('Neuer Text');
+		await page.getByRole('button', { name: 'Speichern' }).click();
+		await expect(page.getByText(/Eingaben bleiben/).first()).toBeVisible();
+		await expect(field).toHaveValue('Neuer Text');
+		await expect(
+			page.getByRole('dialog').getByRole('button', { name: 'Info', exact: true }),
+		).toHaveAttribute('aria-pressed', 'true');
+
+		await page.getByRole('button', { name: 'Speichern' }).click();
+		await expect
+			.poll(() => patchBodies[1])
+			.toEqual({ content: 'Neuer Text', expectedUpdatedAt: refreshed.updatedAt });
+		await expect(field).toBeHidden();
+	});
+
 	test('generated posts offer no edit action', async ({ page }) => {
 		await setupMember(page);
 		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/announcements*`, (route) =>
