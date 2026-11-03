@@ -115,7 +115,10 @@ test('logs a failed code exchange only when GoTrue is down or answers 5xx', asyn
 	assert.deepEqual(kit.logged, ['[auth/callback] exchange threw']);
 	await exchangeFails(new AuthApiError('expired', 400, 'flow_state_expired'));
 	assert.deepEqual(kit.logged, []);
-	// A non-JSON error body (an HTML 500 or 403 from a proxy) yields an error without a status.
-	await exchangeFails(new AuthUnknownError('Unexpected token <', new SyntaxError('x')));
+	// A non-JSON error body with a status outside the retryable list (an HTML 403 from a proxy)
+	// yields an AuthUnknownError without a status.
+	await exchangeFails(
+		new AuthUnknownError('Unexpected token <', new SyntaxError("Unexpected token '<'")),
+	);
 	assert.deepEqual(kit.logged, ['[auth/callback] exchange failed']);
 });
