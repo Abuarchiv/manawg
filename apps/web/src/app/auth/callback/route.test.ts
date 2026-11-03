@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { AuthApiError, AuthRetryableFetchError } from '@supabase/supabase-js';
+import { AuthApiError, AuthRetryableFetchError, AuthUnknownError } from '@supabase/supabase-js';
 import { NextRequest } from 'next/server';
 import { installAuthRouteMocks, kit } from '../../../../tests/support/auth-route-kit';
 
@@ -115,4 +115,10 @@ test('logs a failed code exchange only when GoTrue is down or answers 5xx', asyn
 	assert.deepEqual(kit.logged, ['[auth/callback] exchange threw']);
 	await exchangeFails(new AuthApiError('expired', 400, 'flow_state_expired'));
 	assert.deepEqual(kit.logged, []);
+	// A non-JSON error body with a status outside the retryable list (an HTML 403 from a proxy)
+	// yields an AuthUnknownError without a status.
+	await exchangeFails(
+		new AuthUnknownError('Unexpected token <', new SyntaxError("Unexpected token '<'")),
+	);
+	assert.deepEqual(kit.logged, ['[auth/callback] exchange failed']);
 });
