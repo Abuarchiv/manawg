@@ -54,6 +54,8 @@ export default {
 		editSubject: 'Aufgabe konnte nicht bearbeitet werden',
 		choreChanged:
 			'Die Aufgabe wurde inzwischen geändert. Der Plan wird neu geladen, bitte versuche es erneut.',
+		choreChangedEdit:
+			'Die Aufgabe wurde inzwischen geändert. Der aktuelle Stand ist geladen, deine Eingaben bleiben. Prüfe sie und speichere erneut.',
 		swapPostSubject: 'Tauschanfrage konnte nicht gepostet werden',
 		takeOverSubject: 'Aufgabe konnte nicht übernommen werden',
 		removeSubject: 'Entfernen fehlgeschlagen',

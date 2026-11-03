@@ -162,6 +162,8 @@ export default {
 		expectedStateInvalid: 'Der Stand des Beitrags ist ungültig.',
 		announcementChanged:
 			'Der Beitrag wurde inzwischen geändert. Die Ansicht wird aktualisiert, dann kannst du erneut bearbeiten.',
+		announcementChangedEdit:
+			'Der Beitrag wurde inzwischen geändert. Der aktuelle Stand ist geladen, deine Eingaben bleiben. Prüfe sie und speichere erneut.',
 		contentLocked: 'Dieser Beitrag wurde automatisch erstellt und lässt sich nicht bearbeiten.',
 		notOwner: 'Nur wer den Beitrag geschrieben hat oder WG-Admins können ihn bearbeiten.',
 		announcementResolved: 'Dieser Beitrag wurde inzwischen geklärt.',

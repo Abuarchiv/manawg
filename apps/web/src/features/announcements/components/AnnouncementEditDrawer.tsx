@@ -2,7 +2,7 @@
 
 import { Check } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { type ReactElement, useRef, useState } from 'react';
+import { type ReactElement, useEffect, useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,6 +17,10 @@ import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import {
+	type AnnouncementEditResult,
+	rebaseAnnouncementEdit,
+} from '@/features/announcements/announcement-edits';
 import { ANNOUNCEMENT_KINDS } from '@/features/announcements/announcement-workflow';
 import type {
 	Announcement,
@@ -28,14 +32,17 @@ interface AnnouncementEditDrawerProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	announcement: Announcement;
-	/** Resolves true when saved; on false the drawer stays open and the page shows the error. */
+	/** Resolves 'saved' to close; otherwise the drawer stays open and the page shows the error. */
 	onSave: (
 		base: Announcement,
 		next: { content: string; kind: AnnouncementKind },
-	) => Promise<boolean>;
+	) => Promise<AnnouncementEditResult>;
 }
 
-/** Edit text and type of an own post. Mounted per open; the drawer pins the version it opened on. */
+/**
+ * Edit text and type of an own post. Mounted per open; the drawer pins the version it opened on
+ * and moves it only after a version conflict, once the reloaded post arrived.
+ */
 export function AnnouncementEditDrawer({
 	open,
 	onOpenChange,
@@ -43,7 +50,8 @@ export function AnnouncementEditDrawer({
 	onSave,
 }: AnnouncementEditDrawerProps): ReactElement {
 	const t = useTranslations('pinboard');
-	const [base] = useState(announcement);
+	const [base, setBase] = useState(announcement);
+	const [awaitingRebase, setAwaitingRebase] = useState(false);
 	const [content, setContent] = useState(base.content);
 	const [kind, setKind] = useState<AnnouncementKind>(base.kind);
 	const [saving, setSaving] = useState(false);
@@ -51,6 +59,15 @@ export function AnnouncementEditDrawer({
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const trimmed = content.trim();
 	const unchanged = trimmed === base.content.trim() && kind === base.kind;
+
+	useEffect(() => {
+		if (!awaitingRebase || announcement.updatedAt === base.updatedAt) return;
+		const next = rebaseAnnouncementEdit(base, announcement, { content, kind });
+		setContent(next.content);
+		setKind(next.kind);
+		setBase(announcement);
+		setAwaitingRebase(false);
+	}, [awaitingRebase, base, announcement, content, kind]);
 
 	async function save() {
 		if (savingRef.current || !trimmed) return;
@@ -61,7 +78,9 @@ export function AnnouncementEditDrawer({
 		savingRef.current = true;
 		setSaving(true);
 		try {
-			if (await onSave(base, { content: trimmed, kind })) onOpenChange(false);
+			const result = await onSave(base, { content: trimmed, kind });
+			if (result === 'saved') onOpenChange(false);
+			else if (result === 'conflict') setAwaitingRebase(true);
 		} finally {
 			savingRef.current = false;
 			setSaving(false);

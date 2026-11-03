@@ -1,3 +1,4 @@
+import type { AnnouncementKind } from '@/features/announcements/announcement-workflow';
 import type {
 	Announcement,
 	AnnouncementComment,
@@ -69,4 +70,19 @@ export function withRestoredFields<K extends keyof Announcement>(
 export function isRestorableDraft(saved: unknown, initial: string): saved is { content: string } {
 	const content = (saved as { content?: unknown } | null | undefined)?.content;
 	return typeof content === 'string' && content.length > 0 && content !== initial;
+}
+
+/** How a post edit save ended; a conflict means another change landed first and the list reloads. */
+export type AnnouncementEditResult = 'saved' | 'conflict' | 'failed';
+
+/** After a version conflict: untouched fields follow `latest`, touched fields keep what was typed. */
+export function rebaseAnnouncementEdit(
+	base: Announcement,
+	latest: Announcement,
+	form: { content: string; kind: AnnouncementKind },
+): { content: string; kind: AnnouncementKind } {
+	return {
+		content: form.content.trim() === base.content.trim() ? latest.content : form.content,
+		kind: form.kind === base.kind ? latest.kind : form.kind,
+	};
 }

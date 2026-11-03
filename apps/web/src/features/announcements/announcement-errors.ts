@@ -59,3 +59,10 @@ export function announcementActionError(error: string): Message {
 		values: { subject: ACTION_SUBJECT },
 	});
 }
+
+/** The page error for a failed post edit; a version conflict says the typed input is kept. */
+export function announcementEditError(error: string): Message {
+	return error === 'announcement_changed'
+		? { key: 'pinboard.errors.announcementChangedEdit' }
+		: announcementActionError(error);
+}

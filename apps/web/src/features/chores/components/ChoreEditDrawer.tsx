@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { type ReactElement, useState } from 'react';
+import { type ReactElement, useEffect, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,7 +17,12 @@ import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Spinner } from '@/components/ui/spinner';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { dueDayKey } from '@/features/chores/chore-due-date';
-import { type ChoreEditChanges, diffChoreEdit } from '@/features/chores/chore-edit';
+import {
+	type ChoreEditChanges,
+	type ChoreEditResult,
+	diffChoreEdit,
+	rebaseChoreEdit,
+} from '@/features/chores/chore-edit';
 import { CHORE_TITLE_MAX } from '@/features/chores/chore-limits';
 import type { Chore, ChoreMember } from '@/features/chores/components/chore-types';
 import {
@@ -33,7 +38,7 @@ interface ChoreEditDrawerProps {
 	members: ChoreMember[];
 	pending: boolean;
 	error: string | null;
-	onSave: (base: Chore, changes: ChoreEditChanges) => void;
+	onSave: (base: Chore, changes: ChoreEditChanges) => Promise<ChoreEditResult>;
 }
 
 const PRESETS = [...INTERVAL_PRESETS_DAYS, ...INTERVAL_PRESETS_MONTHS];
@@ -50,8 +55,10 @@ function EditFields({
 	const t = useTranslations('chores.editDrawer');
 	const render = useMessage();
 	// The version the form opened on: edits are diffed against it and saved on top of it, so a
-	// refresh that lands while the drawer is open cannot leak into the request.
-	const [base] = useState(chore);
+	// refresh that lands while the drawer is open cannot leak into the request. Only a version
+	// conflict moves it, once the reloaded chore arrived.
+	const [base, setBase] = useState(chore);
+	const [awaitingRebase, setAwaitingRebase] = useState(false);
 	const [title, setTitle] = useState(base.title);
 	const [assigned, setAssigned] = useState(base.assignedMemberId ?? '');
 	const [dueDay, setDueDay] = useState(dueDayKey(base.nextDueAt));
@@ -60,11 +67,32 @@ function EditFields({
 	const changes = diffChoreEdit(base, { title, assigned, dueDay, interval, recurrenceType });
 	const canSave = Object.keys(changes).length > 0 && title.trim().length > 0 && !pending;
 
+	useEffect(() => {
+		if (!awaitingRebase || chore.updatedAt === base.updatedAt) return;
+		const next = rebaseChoreEdit(base, chore, {
+			title,
+			assigned,
+			dueDay,
+			interval,
+			recurrenceType,
+		});
+		setTitle(next.title);
+		setAssigned(next.assigned);
+		setDueDay(next.dueDay);
+		setInterval(next.interval);
+		setRecurrenceType(next.recurrenceType);
+		setBase(chore);
+		setAwaitingRebase(false);
+	}, [awaitingRebase, base, chore, title, assigned, dueDay, interval, recurrenceType]);
+
 	return (
 		<form
 			onSubmit={(event) => {
 				event.preventDefault();
-				if (canSave) onSave(base, changes);
+				if (!canSave) return;
+				void onSave(base, changes).then((result) => {
+					if (result === 'conflict') setAwaitingRebase(true);
+				});
 			}}
 			className="flex min-h-0 flex-col"
 		>

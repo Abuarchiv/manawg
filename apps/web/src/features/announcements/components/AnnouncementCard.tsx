@@ -18,6 +18,7 @@ import {
 	pickReactionOptions,
 	REACTION_OPTIONS,
 } from '@/features/announcements/announcement-card-model';
+import type { AnnouncementEditResult } from '@/features/announcements/announcement-edits';
 import { buildAnnouncementPrefill } from '@/features/announcements/announcement-prefill';
 import type { Locale } from '@/shared/i18n/locale';
 import { type Message, useMessage } from '@/shared/i18n/message';
@@ -45,7 +46,7 @@ interface AnnouncementCardProps {
 	onEdit: (
 		announcement: Announcement,
 		next: { content: string; kind: AnnouncementKind },
-	) => Promise<boolean>;
+	) => Promise<AnnouncementEditResult>;
 	onToggleReaction: (announcement: Announcement, reaction: ReactionKey) => void;
 	onAddComment: (announcement: Announcement, content: string) => Promise<boolean>;
 	onUpdateComment: (

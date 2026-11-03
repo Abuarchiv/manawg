@@ -202,6 +202,69 @@ test.describe('chore edit', () => {
 			.toEqual({ assignedMemberId: other.id, expectedUpdatedAt: v1.updatedAt });
 		await expect(page.getByText(/wurde inzwischen geändert/).first()).toBeVisible();
 	});
+
+	test('a second save after a conflict carries the reloaded version and keeps the typed title', async ({
+		page,
+	}) => {
+		const shareCode = FIXTURE_WG.shareCode;
+		const viewer = { id: FIXTURE_WG.memberId, name: 'Abu', color: null, active: true };
+		const v1 = {
+			id: 'edit-rebase',
+			title: 'Muell',
+			intervalDays: 7,
+			recurrenceType: 'days',
+			nextDueAt: new Date(Date.now() + 3_600_000).toISOString(),
+			assignedMemberId: viewer.id as string,
+			lastCompletedAt: null,
+			lastCompletedByName: null,
+			openGapCountForAssignee: 0,
+			updatedAt: '2026-10-01T08:00:00.000Z',
+		};
+		const v2 = { ...v1, intervalDays: 14, updatedAt: '2026-10-01T09:00:00.000Z' };
+		let served = v1;
+		const patchBodies: Record<string, unknown>[] = [];
+		await setupMember(page);
+		await page.route(`**/api/wg/${shareCode}/members`, (route) =>
+			route.fulfill({ json: { members: [viewer], viewerIsAdmin: false } }),
+		);
+		await page.route(`**/api/wg/${shareCode}/chores`, (route) =>
+			route.fulfill({ json: { chores: [served], monthCompletions: {} } }),
+		);
+		await page.route(`**/api/wg/${shareCode}/absences`, (route) =>
+			route.fulfill({ json: { absences: [] } }),
+		);
+		await page.route(`**/api/wg/${shareCode}/chores/${v1.id}`, (route) => {
+			if (route.request().method() !== 'PATCH') return route.fallback();
+			const body = route.request().postDataJSON();
+			patchBodies.push(body);
+			if (patchBodies.length === 1) {
+				served = v2;
+				return route.fulfill({ status: 409, json: { error: 'chore_changed' } });
+			}
+			return route.fulfill({ json: { chore: { ...v2, title: 'Restmuell' } } });
+		});
+		await mockUnreadCount(page, `/api/wg/${shareCode}`);
+		await navigateToFeature(page, `/wg/${shareCode}/chores`);
+		await dismissOnboarding(page);
+
+		await page.getByRole('button', { name: 'Aufgabenaktionen: Muell' }).click();
+		await page.getByRole('button', { name: 'Aufgabe bearbeiten: Muell' }).click();
+		const title = page.getByLabel('Aufgabe', { exact: true });
+		await title.fill('Restmuell');
+		await page.getByRole('button', { name: 'Speichern' }).click();
+		await expect(page.getByText(/Eingaben bleiben/).first()).toBeVisible();
+		await expect(title).toHaveValue('Restmuell');
+		await expect(page.getByRole('button', { name: 'alle 14 T.', exact: true })).toHaveAttribute(
+			'aria-pressed',
+			'true',
+		);
+
+		await page.getByRole('button', { name: 'Speichern' }).click();
+		await expect
+			.poll(() => patchBodies[1])
+			.toEqual({ title: 'Restmuell', expectedUpdatedAt: v2.updatedAt });
+		await expect(page.getByLabel('Aufgabe', { exact: true })).toBeHidden();
+	});
 });
 
 test.describe('chore submission feedback', () => {

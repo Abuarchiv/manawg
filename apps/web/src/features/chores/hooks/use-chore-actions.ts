@@ -5,7 +5,7 @@ import { discardQueuedEntry } from '@/core/offline/offline-client';
 import { isQueuedCreateId } from '@/core/offline/offline-queue';
 import { getAbsentMemberIds } from '@/features/chores/absence';
 import { choreCompletionFeedback } from '@/features/chores/chore-completion';
-import type { ChoreEditChanges } from '@/features/chores/chore-edit';
+import type { ChoreEditChanges, ChoreEditResult } from '@/features/chores/chore-edit';
 import { choreActionErrorMessage, choreEditErrorMessage } from '@/features/chores/chore-errors';
 import { chooseNextAvailableMember, predictNextDueAt } from '@/features/chores/chore-fairness';
 import { getChoreStatus } from '@/features/chores/chore-status';
@@ -222,8 +222,8 @@ export function useChoreActions(ctx: ChorePageContext) {
 		);
 	}
 
-	/** Saves the edit form; resolves to whether it went through, so the drawer can close. */
-	async function handleEdit(chore: Chore, changes: ChoreEditChanges): Promise<boolean> {
+	/** Saves the edit form; the result tells the drawer to close, rebase onto the reload or stay. */
+	async function handleEdit(chore: Chore, changes: ChoreEditChanges): Promise<ChoreEditResult> {
 		const assigneeName =
 			changes.assignedMemberId === undefined
 				? null
@@ -251,8 +251,8 @@ export function useChoreActions(ctx: ChorePageContext) {
 		errorMessage: (result: { error: string; status: number }) => Message,
 		notice: string,
 		expectedUpdatedAt?: string,
-	): Promise<boolean> {
-		if (isPending(pendingKey) || isStillQueued(chore)) return false;
+	): Promise<ChoreEditResult> {
+		if (isPending(pendingKey) || isStillQueued(chore)) return 'failed';
 		startPending(pendingKey);
 		setActionError(null);
 		setActionNotice(null);
@@ -272,11 +272,14 @@ export function useChoreActions(ctx: ChorePageContext) {
 					updateChores((current) => current.filter((item) => item.id !== chore.id));
 					setActionError(t('completion.notFound'));
 					void load(false);
-					return true;
+					return 'saved';
 				}
 				setActionError(render(errorMessage(result)));
-				if (result.status === 409 && result.error === 'chore_changed') void load(false);
-				return false;
+				if (result.status === 409 && result.error === 'chore_changed') {
+					void load(false);
+					return 'conflict';
+				}
+				return 'failed';
 			}
 			const savedVersion = result.data.chore.updatedAt
 				? { updatedAt: result.data.chore.updatedAt }
@@ -297,7 +300,7 @@ export function useChoreActions(ctx: ChorePageContext) {
 			}
 			toast.success(notice);
 			void load(false);
-			return true;
+			return 'saved';
 		} finally {
 			endPending(pendingKey);
 		}
