@@ -1,5 +1,5 @@
 import { useTranslations } from 'next-intl';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useToast } from '@/components/ui/Toast';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { useCachedFetch } from '@/core/hooks/use-cached-fetch';
@@ -23,7 +23,7 @@ import type {
 	EditableEvent,
 	UpdateEventPayload,
 } from '@/features/events/components/EventEditModal';
-import { eventSaveError, isEventGone } from '@/features/events/event-save-errors';
+import { eventSaveError, eventUpdateError, isEventGone } from '@/features/events/event-save-errors';
 import {
 	type EventOccurrence,
 	expandAgendaRecurrence,
@@ -130,6 +130,22 @@ export function useCalendarPage(month: Date) {
 	function reloadAfterConflict(): void {
 		void loadEvents({ silent: true, afterMutation: true });
 	}
+
+	// The event whose edit hit a version conflict: once the reload brings a newer version, the open
+	// form moves onto it, so the next save carries that version.
+	const conflictEventIdRef = useRef<string | null>(null);
+	useEffect(() => {
+		const id = conflictEventIdRef.current;
+		if (!id) return;
+		if (editing?.id !== id) {
+			conflictEventIdRef.current = null;
+			return;
+		}
+		const latest = events.find((event) => event.id === id);
+		if (!latest || latest.updatedAt === editing.updatedAt) return;
+		conflictEventIdRef.current = null;
+		setEditingState(latest);
+	}, [events, editing]);
 
 	const monthOccurrences = useMemo<EventOccurrence[]>(() => {
 		const bounds = getMonthBounds(month);
@@ -246,8 +262,11 @@ export function useCalendarPage(month: Date) {
 			} else if (previous) {
 				commit((current) => current.map((event) => (event.id === id ? previous : event)));
 			}
-			const message = render(eventSaveError(subject('updateSubject'), res));
-			if (res.error === 'event_changed') reloadAfterConflict();
+			const message = render(eventUpdateError(subject('updateSubject'), res));
+			if (res.error === 'event_changed') {
+				conflictEventIdRef.current = id;
+				reloadAfterConflict();
+			}
 			throw new Error(message);
 		}
 		commit((current) => current.map((event) => (event.id === id ? res.data.event : event)));
