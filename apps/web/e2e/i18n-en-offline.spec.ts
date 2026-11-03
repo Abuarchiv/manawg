@@ -184,7 +184,7 @@ test.describe('offline page in English', () => {
 				).toBeVisible();
 				await expect(page.getByRole('link', { name: 'Back to Fixture flat' })).toBeVisible();
 				await expect(page.getByRole('heading', { name: 'Back to your flat' })).toBeVisible();
-				await expect(page.getByRole('link', { name: 'Enter code' })).toBeVisible();
+				await expect(page.getByRole('link', { name: 'Go to sign-in' })).toBeVisible();
 				await expectEnglishPage(page, width);
 			});
 		}

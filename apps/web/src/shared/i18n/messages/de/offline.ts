@@ -196,17 +196,17 @@ export default {
 				'{count, plural, one {Deine WG öffnet sich erst, sobald du wieder online bist.} other {Deine WGs öffnen sich erst, sobald du wieder online bist.}}',
 			looking: 'Gemerkte WGs werden gesucht…',
 			codeMissing:
-				'Auf diesem Gerät bist du angemeldet, aber der Code deiner WG ist hier nicht gespeichert. Gib den Code ein, um sie zu öffnen.',
+				'Auf diesem Gerät bist du angemeldet, aber deine WG ist hier nicht gespeichert. Öffne die Anmeldeseite und wähle sie aus deinen WGs aus.',
 			codeMissingOffline:
-				'Auf diesem Gerät bist du in einer WG angemeldet, aber ihr Code ist hier nicht gespeichert. Sobald du wieder online bist, lade die Seite neu, dann kannst du deine WG wieder öffnen.',
+				'Auf diesem Gerät bist du in einer WG angemeldet, aber sie ist hier nicht gespeichert. Sobald du wieder online bist, lade die Seite neu, dann kannst du deine WG wieder öffnen.',
 			noneRemembered:
-				'Noch keine WG auf diesem Gerät gemerkt. Gib deinen Code ein, um beizutreten.',
+				'Noch keine WG auf diesem Gerät gemerkt. Öffne die Anmeldeseite und tritt mit einem Einladungslink bei.',
 			noneRememberedOffline:
-				'Noch keine WG auf diesem Gerät gemerkt. Sobald du wieder online bist, kannst du mit deinem Code erneut beitreten.',
+				'Noch keine WG auf diesem Gerät gemerkt. Sobald du wieder online bist, kannst du mit einem Einladungslink erneut beitreten.',
 			listLabel: 'Bekannte WGs',
 			open: '{name} öffnen',
 			checkActions: 'Aktionen prüfen',
-			enterCode: 'Code eingeben',
+			signIn: 'Zur Anmeldung',
 		},
 	},
 	queue: {
