@@ -1,72 +1,40 @@
 # Dependencies
-node_modules
-.pnp
-.pnp.js
+node_modules/
 
-# Build outputs
-dist
-build
-.next
+# Build output (.next-* covers the Playwright fixture builds and their tsconfigs)
+.next/
 .next-*
-out
-
-# Turbo
-.turbo
-
-# Testing
-coverage
-.nyc_output
-test-results
-playwright-report
-
-# Environment
-.env
-.env.local
-.env.development
-.env.production
-.env.staging
-.env.test
-.env.*.local
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Editor
-.vscode/*
-!.vscode/extensions.json
-!.vscode/settings.json
-.idea
-*.swp
-*.swo
-
-# TypeScript
+next-env.d.ts
 *.tsbuildinfo
 
-# pnpm
-.pnpm-debug.log
+# Test reports
+coverage/
+test-results/
+playwright-report/
 
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Vercel
-.vercel
-
-# Supabase
-supabase/.branches
-supabase/.temp
-
-# Vercel CLI writes these on `vercel link` (OIDC tokens) — but keep the templates
+# Local environment, except the templates
 .env*
 !.env.example
 
+# Vercel and Supabase CLI state
+.vercel/
+**/supabase/.branches/
+**/supabase/.temp/
 
-# Docker self-hosting backups (docker/backup.sh)
+# Self-hosting backups (docker/backup.sh)
 backups/
 
-# Copied from the installed tesseract packages by apps/web/scripts/copy-tesseract-assets.mjs
+# Copied from node_modules by apps/web/scripts/copy-tesseract-assets.mjs
 apps/web/public/tesseract/
+
+# Logs
+*.log
+
+# Operating system and editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
