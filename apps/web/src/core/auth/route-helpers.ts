@@ -18,6 +18,7 @@ import {
 } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { requestOrigin } from '@/core/http/request-origin';
+import { logApiError } from '@/core/infra/observability';
 import {
 	authAttemptLimiter,
 	checkRateLimit,
@@ -39,16 +40,21 @@ export type AuthRouteContext<T> = {
 /**
  * Turn a Supabase Auth error into the JSON error format of the API. The Supabase error code is
  * passed through as `error` and `code` so the client can keep mapping it to German texts.
+ * An unreachable GoTrue and its 5xx answers are logged; 4xx answers are not.
  */
 function authErrorResponse(error: unknown): NextResponse {
-	if (isAuthRetryableFetchError(error))
+	if (isAuthRetryableFetchError(error)) {
+		logApiError('[auth] GoTrue unreachable', error);
 		return serviceUnavailable('auth_unavailable', 'auth_unavailable');
+	}
 	if (error instanceof AuthSessionMissingError)
 		return unauthorized('auth_required', 'auth_required');
 	if (isAuthError(error)) {
 		const code = error.code ?? 'auth_error';
 		const status =
 			error.status !== undefined && error.status >= 400 && error.status < 600 ? error.status : 500;
+		// Only server-side failures (a broken mail relay, for example) are for the operator; 4xx answers are user outcomes.
+		if (status >= 500) logApiError(`[auth] GoTrue responded ${status}`, error);
 		return apiError(code, status, code);
 	}
 	return serverError(error, 'auth_error');

@@ -1,3 +1,4 @@
+import { isAuthRetryableFetchError } from '@supabase/supabase-js';
 import { type NextRequest, NextResponse } from 'next/server';
 import { safeNextPath } from '@/core/auth/next-path';
 import {
@@ -9,6 +10,7 @@ import { createSupabaseServerClient } from '@/core/auth/server';
 import { queueWelcomeMail } from '@/core/auth/welcome-mail';
 import { requestOrigin } from '@/core/http/request-origin';
 import { requestLocale } from '@/core/i18n/request-locale';
+import { logApiError } from '@/core/infra/observability';
 
 function callbackError(request: NextRequest, response?: NextResponse): NextResponse {
 	const url = new URL('/login', requestOrigin(request));
@@ -52,7 +54,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 			code,
 			flowId !== null ? { flowId } : undefined,
 		);
-		if (error || !data.session) return callbackError(request, response);
+		if (error || !data.session) {
+			// Expired or used links are 4xx outcomes and stay silent; only a failing GoTrue is logged.
+			if (error && (isAuthRetryableFetchError(error) || (error.status ?? 500) >= 500)) {
+				logApiError('[auth/callback] exchange failed', error);
+			}
+			return callbackError(request, response);
+		}
 		queueWelcomeMail(data.session.user, requestLocale(request));
 		const choosePassword = await passwordPending(supabase.auth);
 		if (choosePassword) {
@@ -67,7 +75,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 			);
 		}
 		return response;
-	} catch {
+	} catch (error) {
+		logApiError('[auth/callback] exchange threw', error);
 		return callbackError(request, response);
 	}
 }

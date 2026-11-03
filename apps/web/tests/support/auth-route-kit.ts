@@ -19,6 +19,8 @@ export const kit = {
 	cookieResponse: undefined as NextResponse | undefined,
 	/** Passwords the breach lookup reports as known. */
 	pwnedPasswords: new Set<string>(),
+	/** Labels the code under test passed to `logApiError`, in call order. */
+	logged: [] as string[],
 };
 
 export function installAuthRouteMocks(): void {
@@ -27,6 +29,7 @@ export function installAuthRouteMocks(): void {
 	kit.limit = { success: true };
 	kit.forwardedIp = undefined;
 	kit.pwnedPasswords = new Set();
+	kit.logged = [];
 	mock.module('@/core/auth/pwned-password', {
 		namedExports: {
 			assertPasswordNotPwned: async (password: string) => {
@@ -57,7 +60,12 @@ export function installAuthRouteMocks(): void {
 		},
 	});
 	mock.module('@/core/infra/observability', {
-		namedExports: { captureException: () => undefined, logApiError: () => undefined },
+		namedExports: {
+			captureException: () => undefined,
+			logApiError: (label: string) => {
+				kit.logged.push(label);
+			},
+		},
 	});
 }
 
