@@ -32,7 +32,7 @@ POSIX shell. No database and no accounts: fixture mode serves sample WGs from me
 ```sh
 git clone https://github.com/<you>/manawg.git   # your fork
 cd manawg
-corepack enable                                     # provides pnpm 9
+corepack enable                                     # provides pnpm 9; Node 25+ needs npm install -g corepack first
 pnpm install
 pnpm --filter @manawg/web dev:fixtures
 ```

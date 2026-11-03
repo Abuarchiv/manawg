@@ -130,7 +130,7 @@ last command below.
 **On your machine,** with Node 22 and pnpm 9:
 
 ```sh
-corepack enable
+corepack enable   # Node 25 and later: npm install -g corepack first
 pnpm install
 pnpm --filter @manawg/web dev:fixtures
 ```
