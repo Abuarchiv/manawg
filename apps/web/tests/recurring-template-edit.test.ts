@@ -315,3 +315,36 @@ test('resuming keeps a due date that was already due when the cron paused the te
 	// Paused before the due date on purpose: the missed cycle is skipped.
 	assert.equal(await resumeWith('2026-06-20T10:00:00Z'), '2026-08-01T10:00:00.000Z');
 });
+
+test('resuming a month-end template steps from the anchor day, not the clamped due day', async () => {
+	const resumeAt = async (now: string, nextDue: string) => {
+		mock.timers.enable({ apis: ['Date'], now: new Date(now) });
+		state.sets = [];
+		try {
+			await editRecurringTemplate(
+				caller,
+				template({
+					anchorAt: new Date('2026-01-31T10:00:00Z'),
+					pausedAt: new Date('2026-02-10T10:00:00Z'),
+					nextDueAt: new Date(nextDue),
+				}) as never,
+				{ id: 'template-1', paused: false },
+			);
+		} finally {
+			mock.timers.reset();
+		}
+		const [set] = state.sets;
+		assert.ok(set);
+		return (set.nextDueAt as Date).toISOString();
+	};
+	// The due date 28.02. is the clamped 31st; the next charge is 31.03., not 28.03.
+	assert.equal(
+		await resumeAt('2026-03-05T10:00:00Z', '2026-02-28T10:00:00Z'),
+		'2026-03-31T10:00:00.000Z',
+	);
+	// A 30-day month clamps the same way: 30.04. steps to 31.05.
+	assert.equal(
+		await resumeAt('2026-05-05T10:00:00Z', '2026-04-30T10:00:00Z'),
+		'2026-05-31T10:00:00.000Z',
+	);
+});
