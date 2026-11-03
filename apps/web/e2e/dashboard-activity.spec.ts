@@ -51,4 +51,25 @@ test.describe('activity feed', () => {
 		releaseLarger?.();
 		await expect(page.getByText('Eintrag 99', { exact: true })).toBeVisible();
 	});
+
+	test('the filter hint stays when the 320-entry cap is reached', async ({ page }) => {
+		const base = `/api/wg/${FIXTURE_WG.shareCode}`;
+		await setupMember(page);
+		await mockUnreadCount(page, base);
+		await page.route(`**${base}/activity?*`, async (route) => {
+			const limit = Number(new URL(route.request().url()).searchParams.get('limit'));
+			await route.fulfill({ json: { items: entries(limit), reminders: [] } });
+		});
+
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/activity`);
+		const loadOlder = page.getByRole('button', { name: 'Ältere Einträge laden' });
+		for (const next of [160, 240, 320]) {
+			await loadOlder.click();
+			await expect(page.getByText(`Eintrag ${next - 1}`, { exact: true })).toBeAttached();
+		}
+		await expect(loadOlder).toHaveCount(0);
+
+		await page.getByRole('searchbox', { name: 'Aktivität durchsuchen' }).fill('zzz-kein-treffer');
+		await expect(page.getByText('Gefiltert wird in den neuesten 320 Einträgen.')).toBeVisible();
+	});
 });

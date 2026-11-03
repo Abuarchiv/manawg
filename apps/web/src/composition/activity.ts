@@ -293,3 +293,13 @@ export function activityDayRelation(date: string, now = Date.now()): 'today' | '
 		return 'yesterday';
 	return null;
 }
+
+/** Whether the loaded window is full (filters only see these entries) and whether a larger window can still be requested. */
+export function activityWindowState(
+	itemCount: number,
+	limit: number,
+	maxItems: number,
+): { windowFull: boolean; canLoadMore: boolean } {
+	const windowFull = itemCount >= limit;
+	return { windowFull, canLoadMore: windowFull && limit < maxItems };
+}
