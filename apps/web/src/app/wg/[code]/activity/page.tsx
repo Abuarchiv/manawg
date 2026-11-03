@@ -34,6 +34,7 @@ import {
 	type ActivityFilter,
 	type ActivityKind,
 	activityDayRelation,
+	activityWindowState,
 	buildActivityInbox,
 	filterActivityItems,
 	groupActivityItemsByDay,
@@ -103,7 +104,9 @@ export default function ActivityPage() {
 
 	const hasActiveFilter =
 		filter.kind !== 'all' || filter.mineOnly || filter.query.trim().length > 0;
-	const canLoadMore = loaded && items.length >= limit && limit < MAX_ITEMS;
+	const windowState = activityWindowState(items.length, limit, MAX_ITEMS);
+	const windowFull = loaded && windowState.windowFull;
+	const canLoadMore = loaded && windowState.canLoadMore;
 
 	function resetFilters(): void {
 		setFilter({ kind: 'all', mineOnly: false, query: '' });
@@ -283,7 +286,7 @@ export default function ActivityPage() {
 									</EmptyHeader>
 								</Empty>
 							)}
-							{items.length > 0 && hasActiveFilter && canLoadMore && (
+							{items.length > 0 && hasActiveFilter && windowFull && (
 								<p className="text-meta text-muted-foreground">
 									{t('filteredWithin', { count: String(items.length) })}
 								</p>

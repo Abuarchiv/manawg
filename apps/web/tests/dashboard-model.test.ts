@@ -3,7 +3,11 @@
 
 import assert from 'node:assert/strict';
 import test, { describe } from 'node:test';
-import { activityDayRelation, groupActivityItemsByDay } from '../src/composition/activity';
+import {
+	activityDayRelation,
+	activityWindowState,
+	groupActivityItemsByDay,
+} from '../src/composition/activity';
 import {
 	getBerlinWeekWindow,
 	getForYouItems,
@@ -681,5 +685,19 @@ describe('edge data helpers', () => {
 	test('an overlong digit run is a name, not a quantity', () => {
 		const name = `${'1'.repeat(45)} Milch`;
 		assert.deepEqual(parseShoppingInput(name), { name, quantity: null });
+	});
+});
+
+describe('activity window state', () => {
+	test('a page below the limit has no older entries to load', () => {
+		assert.deepEqual(activityWindowState(79, 80, 320), { windowFull: false, canLoadMore: false });
+	});
+
+	test('a full page below the cap can load more', () => {
+		assert.deepEqual(activityWindowState(80, 80, 320), { windowFull: true, canLoadMore: true });
+	});
+
+	test('a full page at the cap keeps the window full but cannot load more', () => {
+		assert.deepEqual(activityWindowState(320, 320, 320), { windowFull: true, canLoadMore: false });
 	});
 });
