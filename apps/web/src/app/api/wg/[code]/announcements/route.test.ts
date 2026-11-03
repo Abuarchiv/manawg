@@ -171,7 +171,9 @@ mock.module('@/core/rate-limit', {
 mock.module('@/core/validators/image-url', {
 	namedExports: {
 		imageUrlSchema: z.string().nullable().optional(),
-		isAllowedImageUrlForWg: () => true,
+		// Same rule as the real check: the key in the URL must name the flat being written to.
+		isAllowedImageUrlForWg: (url: string | null | undefined, wg: string) =>
+			!url || url.includes(encodeURIComponent(`manawg/${wg}/`)),
 	},
 });
 mock.module('@/core/db/with-replay', {
@@ -277,6 +279,17 @@ test('revoked private image attachment returns 409 without creating an announcem
 	);
 	assert.equal(response.status, 409);
 	assert.deepEqual(await response.json(), { error: 'image_removed', code: 'image_removed' });
+	assert.equal(state.created.length, 0);
+	assert.equal(state.notifications, 0);
+});
+
+test('a picture that belongs to another flat is refused with image_invalid and no post is created', async () => {
+	const { state, post } = harness();
+	const response = await post(
+		'https://app.example/api/upload/read?key=manawg%2F99999999-9999-4999-8999-999999999999%2Fannouncement%2F33333333-3333-4333-8333-333333333333.jpg',
+	);
+	assert.equal(response.status, 400);
+	assert.deepEqual(await response.json(), { error: 'image_invalid' });
 	assert.equal(state.created.length, 0);
 	assert.equal(state.notifications, 0);
 });
