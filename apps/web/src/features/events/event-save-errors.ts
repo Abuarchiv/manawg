@@ -26,6 +26,17 @@ export function eventSaveError(subject: Message, res: { status: number; error: s
 	);
 }
 
+/** Saving an edit: a version conflict keeps the form open on the reloaded event with the input. */
+export function eventUpdateError(
+	subject: Message,
+	res: { status: number; error: string },
+): Message {
+	if (res.error === 'event_changed') {
+		return withSubject(subject, { key: 'events.errors.eventChangedEdit' });
+	}
+	return eventSaveError(subject, res);
+}
+
 /** Someone else deleted the event meanwhile; restoring it locally would be wrong. */
 export function isEventGone(res: { status: number; error: string }): boolean {
 	return res.status === 404 && res.error === 'event_not_found';

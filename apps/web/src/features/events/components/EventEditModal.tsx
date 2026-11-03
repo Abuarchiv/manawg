@@ -18,10 +18,13 @@ import { EventFormFields, focusEventField } from '@/features/events/components/E
 import { type EventScope, EventScopeSwitch } from '@/features/events/components/EventScopeSwitch';
 import { RecurrenceOptions } from '@/features/events/components/RecurrenceOptions';
 import {
+	type EventFormValues,
+	eventFormValues,
+	rebaseEventForm,
+} from '@/features/events/event-form-values';
+import {
 	type EventOccurrence,
-	eventDateForDisplay,
 	parseRecurrenceRule,
-	toDatetimeLocalValue,
 	validateEventForm,
 } from '@/features/events/events';
 import { shiftedSeriesRule } from '@/features/events/recurrence-shift';
@@ -66,10 +69,6 @@ interface EventEditModalProps {
 	readOnly?: boolean;
 }
 
-function toLocalInputValue(iso: string, allDay: boolean): string {
-	return toDatetimeLocalValue(eventDateForDisplay(iso, allDay));
-}
-
 export function EventEditModal({
 	event,
 	onClose,
@@ -109,25 +108,52 @@ export function EventEditModal({
 	}
 	const shownError = error || actionError;
 
-	const showValues = useCallback((source: EditableEvent | EventOccurrence, rule: string | null) => {
-		setTitle(source.title);
-		setDescription(source.description ?? '');
-		setStartsAt(toLocalInputValue(source.startsAt, source.allDay));
-		setEndsAt(source.endsAt ? toLocalInputValue(source.endsAt, source.allDay) : '');
-		setAllDay(source.allDay);
-		setLocation(source.location ?? '');
-		setRecurrence(rule ?? '');
+	const showFormValues = useCallback((values: EventFormValues) => {
+		setTitle(values.title);
+		setDescription(values.description);
+		setStartsAt(values.startsAt);
+		setEndsAt(values.endsAt);
+		setAllDay(values.allDay);
+		setLocation(values.location);
+		setRecurrence(values.recurrence);
 	}, []);
+	// The form as it is right now, for rebasing onto a newer version without a dependency on it.
+	const currentValues: EventFormValues = {
+		title,
+		description,
+		startsAt,
+		endsAt,
+		allDay,
+		location,
+		recurrence,
+	};
+	const currentValuesRef = useRef(currentValues);
+	currentValuesRef.current = currentValues;
+	const shownEventRef = useRef<EditableEvent | null>(null);
 
 	useEffect(() => {
+		const shown = shownEventRef.current;
+		shownEventRef.current = event;
 		if (!event) return;
+		// The same event with a newer version (after a conflict): keep what was typed, take the
+		// rest from the newer version.
+		if (shown && shown.id === event.id && shown.updatedAt !== event.updatedAt) {
+			showFormValues(
+				rebaseEventForm(
+					eventFormValues(shown, shown.recurrence),
+					eventFormValues(event, event.recurrence),
+					currentValuesRef.current,
+				),
+			);
+			return;
+		}
 		setScope('series');
-		showValues(event, event.recurrence);
+		showFormValues(eventFormValues(event, event.recurrence));
 		setError(null);
 		setErrorField(null);
 		setConfirmingDelete(false);
 		setConfirmingDiscard(false);
-	}, [event, showValues]);
+	}, [event, showFormValues]);
 
 	const busy = saving || deleting;
 	const locked = busy || readOnly;
@@ -159,20 +185,16 @@ export function EventEditModal({
 		setScope(next);
 		setError(null);
 		setErrorField(null);
-		if (next === 'occurrence' && occurrence) showValues(occurrence, null);
-		else if (event) showValues(event, event.recurrence);
+		if (next === 'occurrence' && occurrence) showFormValues(eventFormValues(occurrence, null));
+		else if (event) showFormValues(eventFormValues(event, event.recurrence));
 	}
 
 	function requestClose(): void {
 		if (!event || busy) return;
-		const dirty =
-			title !== baseline.title ||
-			description !== (baseline.description ?? '') ||
-			startsAt !== toLocalInputValue(baseline.startsAt, baseline.allDay) ||
-			endsAt !== (baseline.endsAt ? toLocalInputValue(baseline.endsAt, baseline.allDay) : '') ||
-			allDay !== baseline.allDay ||
-			location !== (baseline.location ?? '') ||
-			recurrence !== baselineRule;
+		const start = eventFormValues(baseline, baselineRule);
+		const dirty = (Object.keys(start) as Array<keyof EventFormValues>).some(
+			(key) => currentValues[key] !== start[key],
+		);
 		if (dirty) setConfirmingDiscard(true);
 		else onClose();
 	}

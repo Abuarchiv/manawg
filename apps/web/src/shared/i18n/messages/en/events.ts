@@ -144,6 +144,8 @@ export default {
 		sentence: '{subject}.',
 		notAllowed: 'Only flat admins and the person who created the event can do that.',
 		eventChanged: 'The event has changed in the meantime. Open it again.',
+		eventChangedEdit:
+			'The event has changed in the meantime. The current version is loaded and your input is kept. Check it and save again.',
 		occurrenceChanged: 'This event has changed in the meantime. The view is being refreshed.',
 		gone: 'The event no longer exists.',
 		keyUnavailableSend: 'The event could not be sent reliably. Try again.',

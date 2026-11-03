@@ -141,6 +141,8 @@ export default {
 		sentence: '{subject}.',
 		notAllowed: 'Das dürfen nur WG-Admins und wer den Termin angelegt hat.',
 		eventChanged: 'Der Termin wurde inzwischen geändert. Öffne ihn erneut.',
+		eventChangedEdit:
+			'Der Termin wurde inzwischen geändert. Der aktuelle Stand ist geladen, deine Eingaben bleiben. Prüfe sie und speichere erneut.',
 		occurrenceChanged: 'Dieser Termin wurde inzwischen geändert. Die Ansicht wird aktualisiert.',
 		gone: 'Der Termin existiert nicht mehr.',
 		keyUnavailableSend: 'Termin konnte nicht sicher gesendet werden. Versuche es erneut.',
