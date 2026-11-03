@@ -29,4 +29,27 @@ test.describe('session expired banner', () => {
 			`/login?next=${encodeURIComponent(path)}`,
 		);
 	});
+
+	test('the banner goes away once WG requests succeed again', async ({ page }) => {
+		await page.clock.install();
+		await setupMember(page);
+		let expired = true;
+		await page.route('**/api/wg/*/members*', (route) =>
+			expired
+				? route.fulfill({
+						status: 401,
+						contentType: 'application/json',
+						body: JSON.stringify({ error: 'auth_required', code: 'auth_required' }),
+					})
+				: route.fallback(),
+		);
+
+		await page.goto(`/wg/${FIXTURE_WG.shareCode}/shopping`);
+		const banner = page.locator('[data-session-banner]');
+		await expect(banner).toBeVisible();
+
+		expired = false;
+		await page.clock.fastForward(31_000);
+		await expect(banner).toHaveCount(0);
+	});
 });

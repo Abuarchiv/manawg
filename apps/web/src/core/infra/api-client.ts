@@ -33,9 +33,40 @@ type ApiFetchInit = RequestInit & { memberId?: string };
 type ApiFetchResult<T> = { ok: true; data: T } | { ok: false; status: number; error: string };
 
 let mutationCount = 0;
+let sessionExpired = false;
+let expiryGeneration = 0;
+
+function markSessionExpired(): void {
+	sessionExpired = true;
+	expiryGeneration += 1;
+	window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
+}
+
+/**
+ * A WG request that started after the latest expiry and succeeded proves the session works
+ * again (for example after signing in in another tab), so the banner can go away.
+ */
+function noteSessionRestored(
+	path: string,
+	generationAtStart: number,
+	account: string | null,
+): void {
+	if (
+		!sessionExpired ||
+		generationAtStart !== expiryGeneration ||
+		typeof window === 'undefined' ||
+		!path.startsWith('/api/wg/') ||
+		account !== getLocalAccount()
+	) {
+		return;
+	}
+	sessionExpired = false;
+	window.dispatchEvent(new CustomEvent(SESSION_RESTORED_EVENT));
+}
 
 export const MEMBERSHIP_LOST_EVENT = 'manawg:membership-lost';
 export const SESSION_EXPIRED_EVENT = 'manawg:session-expired';
+export const SESSION_RESTORED_EVENT = 'manawg:session-restored';
 const MEMBERSHIP_LOST_ERRORS = new Set(['not_a_member', 'member_deactivated', 'wg_not_found']);
 
 /**
@@ -46,7 +77,7 @@ export function noteSessionExpiry(response: Response, expectedAccount: string | 
 	if (response.status !== 401 || typeof window === 'undefined') return;
 	void readApiErrorCode(response).then((code) => {
 		if (code === 'auth_required' && expectedAccount === getLocalAccount()) {
-			window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
+			markSessionExpired();
 		}
 	});
 }
@@ -100,6 +131,7 @@ export async function apiFetch<T>(
 	}
 
 	const isMutation = method !== 'GET' && method !== 'HEAD';
+	const generationAtStart = expiryGeneration;
 	try {
 		const timeoutSignal = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
 		const requestSignal = signal ? anySignal([signal, timeoutSignal]) : timeoutSignal;
@@ -110,6 +142,8 @@ export async function apiFetch<T>(
 			headers,
 			signal: requestSignal,
 		});
+
+		if (res.ok) noteSessionRestored(path, generationAtStart, requestAccount);
 
 		if (res.status === 204) return { ok: true, data: undefined as T };
 
@@ -133,7 +167,7 @@ export async function apiFetch<T>(
 				typeof window !== 'undefined' &&
 				path.startsWith('/api/')
 			) {
-				window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
+				markSessionExpired();
 			}
 			return { ok: false, status: res.status, error };
 		}
