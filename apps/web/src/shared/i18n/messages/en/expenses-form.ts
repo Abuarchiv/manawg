@@ -163,7 +163,7 @@ export default {
 			recurringAdvanced:
 				'This fixed cost was already recorded for this due date. Reload the expenses and check the list.',
 			recurringChanged:
-				'This fixed cost has been changed in the meantime. The list has been reloaded: check the amount and split, then book it again.',
+				'This fixed cost has been changed in the meantime. The list has been reloaded: check the amount and split, then record it again.',
 			memberNotInWg: 'At least one member is no longer in this flat.',
 			insertFailed: 'Check the expense list and try again.',
 			splitInsertFailed:
