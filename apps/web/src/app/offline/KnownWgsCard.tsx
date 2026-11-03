@@ -24,7 +24,7 @@ interface KnownWgsCardProps {
 	primaryWg: KnownWg | null;
 }
 
-/** Ways back into a WG: remembered WGs, the queue review and the code entry. */
+/** Ways back into a WG: remembered WGs, the queue review and the sign-in page. */
 export function KnownWgsCard({
 	status,
 	knownWgs,
@@ -112,7 +112,7 @@ export function KnownWgsCard({
 						nativeButton={false}
 						className="w-full"
 					>
-						{t('enterCode')}
+						{t('signIn')}
 					</Button>
 				</div>
 			</div>

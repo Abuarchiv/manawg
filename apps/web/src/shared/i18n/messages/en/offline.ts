@@ -194,16 +194,17 @@ export default {
 				'{count, plural, one {Your flat opens once you are back online.} other {Your flats open once you are back online.}}',
 			looking: 'Looking for remembered flats…',
 			codeMissing:
-				'You are signed in on this device, but your flat code is not saved here. Enter the code to open it.',
+				'You are signed in on this device, but your flat is not saved here. Open the sign-in page and pick it from your flats.',
 			codeMissingOffline:
-				'You are signed in to a flat on this device, but its code is not saved here. Once you are back online, reload the page and you can open your flat again.',
-			noneRemembered: 'No flat remembered on this device yet. Enter your code to join.',
+				'You are signed in to a flat on this device, but it is not saved here. Once you are back online, reload the page and you can open your flat again.',
+			noneRemembered:
+				'No flat remembered on this device yet. Open the sign-in page to join with an invite link.',
 			noneRememberedOffline:
-				'No flat remembered on this device yet. Once you are back online, you can join again with your code.',
+				'No flat remembered on this device yet. Once you are back online, you can join again with an invite link.',
 			listLabel: 'Known flats',
 			open: 'Open {name}',
 			checkActions: 'Check actions',
-			enterCode: 'Enter code',
+			signIn: 'Go to sign-in',
 		},
 	},
 	queue: {
