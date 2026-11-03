@@ -228,11 +228,11 @@ test('German keeps the reader-own wording of the earlier client rewrite', () => 
 	};
 	assert.equal(
 		own('member.renamed', { before: 'Ben', after: 'Benno', byOther: false }),
-		'hast sich umbenannt (vorher Ben).',
+		'hast dich umbenannt (vorher Ben).',
 	);
 	assert.equal(
 		own('member.account_deletion_requested', { name: 'Anna', newAdminName: null }),
-		'hast die Kontolöschung angefragt und ist ausgezogen.',
+		'hast die Kontolöschung angefragt und bist ausgezogen.',
 	);
 });
 
