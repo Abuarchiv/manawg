@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useToast } from '@/components/ui/Toast';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { useCachedFetch } from '@/core/hooks/use-cached-fetch';
+import { useTodayInputValue } from '@/core/hooks/use-today-input-value';
 import { isNetworkError } from '@/core/http/error-codes';
 import {
 	type PendingIdempotentRequest,
@@ -56,7 +57,10 @@ export function useCalendarPage(month: Date) {
 	const render = useMessage();
 	const encodedShareCode = encodeURIComponent(wg.shareCode);
 	const eventsBaseUrl = `/api/wg/${encodedShareCode}/events`;
+	const today = useTodayInputValue();
 
+	// `today` moves the agenda window forward when the day changes in an open tab.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: today only invalidates the window
 	const calendarEventsUrl = useMemo(() => {
 		const bounds = getMonthBounds(month);
 		const upcomingFrom = new Date();
@@ -68,7 +72,7 @@ export function useCalendarPage(month: Date) {
 			Math.max(bounds.end.getTime(), getCalendarDayBounds(upcomingTo).end.getTime()),
 		).toISOString();
 		return `${eventsBaseUrl}?from=${encodeURIComponent(fromParam)}&to=${encodeURIComponent(toParam)}`;
-	}, [eventsBaseUrl, month]);
+	}, [eventsBaseUrl, month, today]);
 	const choresUrl = `/api/wg/${encodedShareCode}/chores`;
 
 	const {
@@ -154,12 +158,13 @@ export function useCalendarPage(month: Date) {
 		);
 	}, [events, month]);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: today only invalidates the window
 	const upcomingOccurrences = useMemo<EventOccurrence[]>(() => {
 		const from = new Date();
 		const to = new Date(from.getTime() + UPCOMING_DAYS * MS_PER_DAY);
 		const all = events.flatMap((event) => expandAgendaRecurrence(eventToInput(event), from, to));
 		return all.sort((a, b) => a.startsAt.localeCompare(b.startsAt));
-	}, [events]);
+	}, [events, today]);
 
 	// For series, the agenda names the interval; the occurrence itself only carries a flag.
 	const recurrenceByEventId = useMemo(
@@ -167,13 +172,14 @@ export function useCalendarPage(month: Date) {
 		[events],
 	);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: today only invalidates the window
 	const upcomingChoreOccurrences = useMemo(() => {
 		// From the start of today: a chore due this morning is still today's chore.
 		const from = new Date();
 		const to = new Date(from.getTime() + UPCOMING_DAYS * MS_PER_DAY);
 		from.setHours(0, 0, 0, 0);
 		return buildChoreOccurrences(chores, from, to);
-	}, [chores]);
+	}, [chores, today]);
 
 	// The month grid is not limited to the agenda's 30 days.
 	const monthChoreOccurrences = useMemo(() => {
