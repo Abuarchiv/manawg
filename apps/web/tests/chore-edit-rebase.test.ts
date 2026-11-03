@@ -50,3 +50,27 @@ test('touched chore fields keep what was typed', () => {
 	assert.equal(rebased.interval, 1);
 	assert.equal(rebased.dueDay, '2026-10-12');
 });
+
+test('an untouched title with surrounding whitespace follows latest', () => {
+	const rebased = rebaseChoreEdit(base, latest, { ...untouched, title: 'Muell ' });
+	assert.equal(rebased.title, 'Restmuell');
+});
+
+test('an unassigned chore rebases onto the latest assignee or stays unassigned', () => {
+	const unassigned: Chore = { ...base, assignedMemberId: null };
+	const form = { ...untouched, assigned: '' };
+	assert.equal(rebaseChoreEdit(unassigned, latest, form).assigned, 'm2');
+	const latestUnassigned: Chore = { ...latest, assignedMemberId: null };
+	assert.equal(rebaseChoreEdit(unassigned, latestUnassigned, form).assigned, '');
+	assert.equal(rebaseChoreEdit(base, latestUnassigned, untouched).assigned, '');
+});
+
+test('an untouched rhythm follows latest recurrenceType', () => {
+	const latestMonthly: Chore = { ...latest, recurrenceType: 'months', intervalDays: 1 };
+	const rebased = rebaseChoreEdit(base, latestMonthly, untouched);
+	assert.equal(rebased.recurrenceType, 'months');
+	assert.equal(rebased.interval, 1);
+	const typed = rebaseChoreEdit(base, latest, { ...untouched, recurrenceType: 'months' });
+	assert.equal(typed.recurrenceType, 'months');
+	assert.equal(typed.interval, 7);
+});
