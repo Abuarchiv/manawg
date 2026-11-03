@@ -34,7 +34,7 @@ await toggle.and(p.locator(':enabled')).waitFor();
 await p.waitForLoadState('networkidle');
 await toggle.click();
 await p
-	.getByRole('button', { name: 'Testbenachrichtigung senden' })
+	.getByRole('button', { name: 'Test senden (Testbenachrichtigung)' })
 	.waitFor({ timeout: 120_000 })
 	.catch(async () => {
 		const text = (await p.locator('main').innerText()).replace(/\s+/g, ' ').slice(0, 600);
@@ -63,7 +63,7 @@ const shown = async (title) => {
 const testSent = p.waitForResponse(
 	(r) => r.url().endsWith('/notifications') && r.request().method() === 'POST',
 );
-await p.getByRole('button', { name: 'Testbenachrichtigung senden' }).click();
+await p.getByRole('button', { name: 'Test senden (Testbenachrichtigung)' }).click();
 const testResponse = await testSent;
 expect(
 	testResponse.status() === 200,

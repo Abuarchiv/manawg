@@ -80,7 +80,7 @@ test.describe('shopping conflict handling', () => {
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/shopping`);
 		await dismissOnboarding(page);
 		await page.getByText('Erledigt (1)', { exact: true }).click();
-		await expect(page.getByRole('button', { name: 'Erledigte Artikel entfernen (1)' })).toHaveCount(
+		await expect(page.getByRole('button', { name: 'Erledigte entfernen (1 Artikel)' })).toHaveCount(
 			0,
 		);
 	});
@@ -151,7 +151,7 @@ test.describe('shopping conflict handling', () => {
 		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/shopping`);
 		await dismissOnboarding(page);
 		await page.getByText('Erledigt (1)', { exact: true }).click();
-		await page.getByRole('button', { name: 'Erledigte Artikel entfernen (1)' }).click();
+		await page.getByRole('button', { name: 'Erledigte entfernen (1 Artikel)' }).click();
 		await page.getByRole('button', { name: 'Entfernen', exact: true }).click();
 		await expect(
 			page.getByText('Nur Admins dürfen erledigte Artikel für die ganze WG entfernen.'),

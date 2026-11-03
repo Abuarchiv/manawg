@@ -79,10 +79,10 @@ export default {
 		cancel: 'Cancel',
 		delete: 'Delete',
 		actionsAria: 'Fixed-cost actions: {description}',
-		editAria: 'Edit fixed-cost template: {description}',
+		editAria: 'Edit template: {description}',
 		edit: 'Edit template',
 		manual: 'Record manually',
-		manualAria: 'Record fixed-cost expense manually: {description}',
+		manualAria: 'Record manually: {description}',
 		deleteAria: 'Delete fixed-cost template: {description}',
 		summary:
 			'{amount} · paid by {payer} · {paused, select, true {paused} other {due {date}}}{hasLast, select, true { · last recorded {last}} other {}}',

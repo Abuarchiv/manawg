@@ -525,7 +525,7 @@ test.describe('mobile layout matrix', () => {
 		if (route === 'shopping') await page.getByText(/^Erledigt \(/).click();
 		const lastAction =
 			route === 'shopping'
-				? page.getByRole('button', { name: /Erledigte Artikel entfernen/ })
+				? page.getByRole('button', { name: /Erledigte entfernen/ })
 				: route === 'supplies'
 					? page.locator('a').filter({ hasText: 'Einkaufsliste öffnen' }).last()
 					: route === 'chores'

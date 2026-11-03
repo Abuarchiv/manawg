@@ -28,7 +28,7 @@ export default {
 		showMore: 'Mehr anzeigen ({count, number})',
 		done: 'Erledigt ({count, number})',
 		clearBought: 'Erledigte entfernen',
-		clearBoughtAria: 'Erledigte Artikel entfernen ({count, number})',
+		clearBoughtAria: 'Erledigte entfernen ({count, number} Artikel)',
 	},
 	row: {
 		swipeBought: 'Gekauft',
