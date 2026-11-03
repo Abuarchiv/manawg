@@ -34,7 +34,8 @@ docs/             architecture, self-hosting, backup and recovery, brand/ (desig
 docker/           self-hosting stack: setup, gateway, backup, restore and smoke test (with compose.yaml)
 supabase/templates/  Auth mail templates (HTML, subjects) used by the Docker stack and hosted Supabase
 scripts/          maintenance scripts: `generate-brand-assets.mjs` (icons from the brand mark),
-                  `supabase-auth-templates.mjs` (push the mail templates to a hosted Supabase project)
+                  `supabase-auth-templates.mjs` (push the mail templates to a hosted Supabase project),
+                  `check-repo-files.mjs` (allowed top-level entries, no local files; part of `pnpm lint`)
 .github/          CI workflows, issue and PR templates
 openspec/         behaviour specs per capability
 ```
@@ -145,7 +146,7 @@ mail, export, activity feed) are written in the recipient's language. `tests/i18
 ```sh
 pnpm install
 pnpm dev                          # http://localhost:3000
-pnpm lint                         # biome (whole repo) + architecture and wg-auth-invariant checks
+pnpm lint                         # biome (whole repo) + repo-files, architecture and wg-auth-invariant checks
 pnpm --filter @manawg/web lint   # the same two checks, with biome limited to the web package
 pnpm typecheck                    # runs next typegen first
 pnpm --filter @manawg/web test:unit

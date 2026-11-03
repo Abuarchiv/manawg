@@ -100,6 +100,9 @@ or in [Discussions](https://github.com/Abuarchiv/manawg/discussions).
   New user-visible text goes into both catalogs (`de` and `en`).
 - **Dependencies:** reuse what is installed. A new dependency needs a reason in the pull request.
 - **Secrets:** never commit `.env` files, keys or connection strings, not even in tests.
+- **Repository files:** local notes, plans and editor or assistant folders stay out of commits.
+  A new top-level file or folder needs a reason in the pull request and an entry in
+  `scripts/check-repo-files.mjs`, which `pnpm lint` runs.
 
 ## Texts and translations
 

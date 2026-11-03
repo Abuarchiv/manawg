@@ -1,6 +1,0 @@
-.vercel
-.env*.local
-.next-e2e-*
-.next-e2e-tsconfig-*.json
-supabase/.temp
-next-env.d.ts
