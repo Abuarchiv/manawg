@@ -53,13 +53,13 @@ test.describe('data export in English', () => {
 				});
 				const select = page.getByLabel('CSV section');
 				await expect(select.locator('option')).toHaveText(SECTION_LABELS);
-				await expect(page.getByRole('button', { name: 'Export flat data as JSON' })).toBeVisible();
+				await expect(page.getByRole('button', { name: 'Export JSON: flat data' })).toBeVisible();
 
 				const csvRequest = page.waitForRequest((request) =>
 					request.url().includes('format=csv&section=expenses'),
 				);
 				const download = page.waitForEvent('download');
-				await page.getByRole('button', { name: 'Export Expenses as CSV' }).click();
+				await page.getByRole('button', { name: 'Export CSV: Expenses' }).click();
 				const request = await csvRequest;
 				expect((await request.allHeaders()).cookie).toContain('manawg_locale=en');
 				expect((await download).suggestedFilename()).toBe(`${FIXTURE_WG.shareCode}-expenses.csv`);
@@ -71,7 +71,7 @@ test.describe('data export in English', () => {
 
 				await select.selectOption({ label: 'Members' });
 				const membersDownload = page.waitForEvent('download');
-				await page.getByRole('button', { name: 'Export Members as CSV' }).click();
+				await page.getByRole('button', { name: 'Export CSV: Members' }).click();
 				const membersFile = await (await membersDownload).path();
 				const header = (await readFile(membersFile, 'utf8')).split('\n')[0] ?? '';
 				expect(header).toContain(',');
