@@ -235,9 +235,21 @@ test('the invitation caption lists three names and counts the rest once', () => 
 	);
 	assert.ok(
 		renderInvitationMail({ ...input, locale: 'de' }).text.includes(
-			'Lina, Jonas und Mira und 2 weitere sind schon dabei.',
+			'Lina, Jonas, Mira und 2 weitere sind schon dabei.',
 		),
 	);
+});
+
+test('the German invitation caption says one more person in the singular', () => {
+	const mail = renderInvitationMail({
+		inviterName: 'Lina',
+		wgName: 'Kastanienallee',
+		inviteToken: 'tok',
+		memberNames: ['Lina', 'Jonas', 'Mira', 'Sam'],
+		locale: 'de',
+	});
+	assert.ok(mail.text.includes('Lina, Jonas, Mira und eine weitere Person sind schon dabei.'));
+	assert.ok(!/und \w+ und /.test(mail.text));
 });
 
 test('the invitation people block keeps emoji and short names well-formed', () => {
