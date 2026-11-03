@@ -1,10 +1,12 @@
 /**
  * A deploy replaces the hashed /_next/static chunks; a tab opened before it (PWA users keep
  * theirs for days) gets 404 on the next lazy chunk and lands in an error boundary where
- * "Erneut versuchen" can only fail again. The fix is a reload, once per URL so a real outage
- * does not loop.
+ * "Erneut versuchen" can only fail again. The fix is a reload, at most once a minute per URL so a
+ * real outage does not loop while a later deploy still heals the same tab.
  */
 const RELOADED_KEY = 'manawg:stale-chunk-reload';
+const RELOADED_AT_KEY = 'manawg:stale-chunk-reload-at';
+const GUARD_MS = 60_000;
 
 export function isChunkLoadError(error: Error): boolean {
 	return (
@@ -21,8 +23,16 @@ export function reloadOnStaleChunk(error: Error): boolean {
 	// Reloading offline discards the open page without being able to fetch fresh chunks.
 	if (typeof navigator !== 'undefined' && navigator.onLine === false) return false;
 	try {
-		if (window.sessionStorage.getItem(RELOADED_KEY) === window.location.href) return false;
-		window.sessionStorage.setItem(RELOADED_KEY, window.location.href);
+		const { sessionStorage, location } = window;
+		const reloadedAt = Number(sessionStorage.getItem(RELOADED_AT_KEY));
+		// A missing or unparsable timestamp counts as expired.
+		if (
+			sessionStorage.getItem(RELOADED_KEY) === location.href &&
+			Date.now() - reloadedAt < GUARD_MS
+		)
+			return false;
+		sessionStorage.setItem(RELOADED_KEY, location.href);
+		sessionStorage.setItem(RELOADED_AT_KEY, String(Date.now()));
 	} catch {
 		// Storage blocked: still reload once; the guard only matters for loops.
 	}
