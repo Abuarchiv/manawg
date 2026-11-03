@@ -36,6 +36,7 @@ const idempotencyResponses = pgTable('idempotency_responses', {
 const annaId = '55555555-5555-4555-8555-555555555555';
 const state = {
 	senderMemberId: memberId,
+	deletedAt: null as Date | null,
 	callerIsAdmin: false,
 	updates: 0,
 	updateWhere: '',
@@ -58,7 +59,7 @@ const db = {
 							id,
 							senderMemberId: state.senderMemberId,
 							kind: 'text',
-							deletedAt: null,
+							deletedAt: state.deletedAt,
 							createdAt: new Date(),
 						},
 					];
@@ -185,6 +186,26 @@ test('an edit that loses the race against a delete answers 409 and writes no aud
 	assert.match(state.updateWhere, /"deleted_at" is null/);
 	assert.match(state.updateWhere, /"sender_member_id" = \$/);
 	assert.match(state.updateWhere, /"kind" = \$/);
+});
+
+test('an edit of a message deleted elsewhere answers 409 message_deleted, not 403 edit_not_allowed', async () => {
+	state.deletedAt = new Date();
+	state.updates = 0;
+	state.audits = 0;
+	try {
+		const response = await patch();
+		assert.equal(response.status, 409);
+		assert.equal(((await response.json()) as { error: string }).error, 'message_deleted');
+		assert.equal(state.updates, 0);
+		assert.equal(state.audits, 0);
+
+		// Another member's deleted message stays a plain refusal.
+		state.senderMemberId = annaId;
+		assert.equal((await patch()).status, 403);
+	} finally {
+		state.deletedAt = null;
+		state.senderMemberId = memberId;
+	}
 });
 
 test('an edit of a live message still succeeds', async () => {

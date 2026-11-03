@@ -51,6 +51,10 @@ export const PATCH = withWgRoute<{ id: string }>(
 			.limit(1);
 		const row = existing[0];
 		if (!row) return notFound('message_not_found');
+		// The author learns the message is gone instead of hearing the edit window has passed.
+		if (row.deletedAt && row.senderMemberId === auth.member.memberId) {
+			return conflict('message_deleted', 'message_deleted');
+		}
 
 		if (!canEditMessage(row, { id: auth.member.memberId })) {
 			return forbidden('edit_not_allowed', 'edit_not_allowed');
