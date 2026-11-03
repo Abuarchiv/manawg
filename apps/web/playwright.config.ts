@@ -79,7 +79,8 @@ export default defineConfig({
 	forbidOnly: !!process.env.CI,
 	retries: process.env.CI ? 2 : 0,
 	reporter: [['html', { open: 'never' }], ['list']],
-	workers: 1,
+	// Serial unless E2E_WORKERS is set: the preview and live lanes share per-IP rate limits and one storage state.
+	workers: process.env.E2E_WORKERS ? Number(process.env.E2E_WORKERS) : 1,
 	timeout: previewE2E ? 60_000 : 30_000,
 	use: {
 		baseURL: BASE_URL,
