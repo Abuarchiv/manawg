@@ -63,6 +63,24 @@ test('an unreachable Auth service is a retryable 503, not a credentials error', 
 	assert.equal(res.json.code, 'auth_unavailable');
 });
 
+test('logs an unreachable Auth service and a GoTrue 5xx, but not a rejected sign-in', async () => {
+	const signInFails = async (error: Error) => {
+		kit.logged = [];
+		kit.auth.signInWithPassword = async () => ({ data: { session: null }, error });
+		return call(POST, '/api/auth/sign-in', { email: 'a@b.test', password: 'p' });
+	};
+	assert.equal((await signInFails(new AuthRetryableFetchError('fetch failed', 0))).status, 503);
+	assert.deepEqual(kit.logged, ['[auth] GoTrue unreachable']);
+	const failed = await signInFails(
+		new AuthApiError('Error sending confirmation email', 500, 'unexpected_failure'),
+	);
+	assert.equal(failed.status, 500);
+	assert.deepEqual(kit.logged, ['[auth] GoTrue responded 500']);
+	await signInFails(new AuthApiError('Invalid login credentials', 400, 'invalid_credentials'));
+	await signInFails(new AuthApiError('Too many', 429, 'over_email_send_rate_limit'));
+	assert.deepEqual(kit.logged, []);
+});
+
 test('rejects malformed bodies before calling Supabase', async () => {
 	kit.auth.signInWithPassword = async () => assert.fail('must not run');
 	assert.equal(

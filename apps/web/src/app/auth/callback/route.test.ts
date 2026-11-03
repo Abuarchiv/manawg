@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { AuthApiError, AuthRetryableFetchError } from '@supabase/supabase-js';
 import { NextRequest } from 'next/server';
 import { installAuthRouteMocks, kit } from '../../../../tests/support/auth-route-kit';
 
@@ -94,4 +95,24 @@ test('a confirmed account with a password continues to the requested page', asyn
 	const res = await callback('code=c&next=%2Fwg%2FABC');
 	assert.equal(res.headers.get('location'), 'https://app.manawg.test/wg/ABC');
 	assert.equal(res.cookies.get('manawg_password_recovery'), undefined);
+});
+
+test('logs a failed code exchange only when GoTrue is down or answers 5xx', async () => {
+	const exchangeFails = async (error: unknown, mode: 'return' | 'throw' = 'return') => {
+		kit.logged = [];
+		kit.auth.exchangeCodeForSession = async () => {
+			if (mode === 'throw') throw error;
+			return { data: { session: null }, error };
+		};
+		const res = await callback('code=c');
+		assert.match(res.headers.get('location') ?? '', /\/login\?error=auth_callback/);
+	};
+	await exchangeFails(new AuthRetryableFetchError('fetch failed', 0));
+	assert.deepEqual(kit.logged, ['[auth/callback] exchange failed']);
+	await exchangeFails(new AuthApiError('unexpected', 500, 'unexpected_failure'));
+	assert.deepEqual(kit.logged, ['[auth/callback] exchange failed']);
+	await exchangeFails(new Error('boom'), 'throw');
+	assert.deepEqual(kit.logged, ['[auth/callback] exchange threw']);
+	await exchangeFails(new AuthApiError('expired', 400, 'flow_state_expired'));
+	assert.deepEqual(kit.logged, []);
 });
