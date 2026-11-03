@@ -1,16 +1,23 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { isAuthPagePath } from './auth-intent';
+import { authIntentQuery, isAuthPagePath } from './auth-intent';
 import { safeNextPath } from './next-path';
 
 /** Where an account whose password was dropped at confirmation chooses a new one. */
 const CHOOSE_PASSWORD_PATH = '/auth/reset?choose=1';
 
-/** The page that chooses a password, carrying the validated page to continue to afterwards (sign-in pages are not one). */
+/**
+ * The page that chooses a password, carrying the validated page to continue to afterwards. A
+ * sign-in page is not a target itself, but the intent it carries (an invitation, the create
+ * action) is kept as the sign-in page the choice continues to.
+ */
 export function choosePasswordHref(next: string | null): string {
 	const target = safeNextPath(next);
-	return target === '/' || isAuthPagePath(target)
-		? CHOOSE_PASSWORD_PATH
-		: `${CHOOSE_PASSWORD_PATH}&next=${encodeURIComponent(target)}`;
+	if (target === '/') return CHOOSE_PASSWORD_PATH;
+	if (!isAuthPagePath(target)) return `${CHOOSE_PASSWORD_PATH}&next=${encodeURIComponent(target)}`;
+	const intent = authIntentQuery(new URL(target, 'https://manawg.invalid').search);
+	return intent
+		? `${CHOOSE_PASSWORD_PATH}&next=${encodeURIComponent(`/login?${intent}`)}`
+		: CHOOSE_PASSWORD_PATH;
 }
 
 /** The address counts as just confirmed for this long, which covers the confirming exchange. */
