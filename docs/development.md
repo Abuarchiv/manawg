@@ -46,7 +46,8 @@ Root files: `compose.yaml` and `Dockerfile` (self-hosting image), `biome.json` (
 
 - Linux, macOS, or Windows via WSL2; the package scripts assume a POSIX shell.
 - Node 22 (`.nvmrc`, `engines.node: 22.x`).
-- pnpm 9.0.0 (`packageManager: pnpm@9.0.0`; `corepack enable` picks it up).
+- pnpm 9.0.0 (`packageManager: pnpm@9.0.0`; `corepack enable` picks it up). Node 25 and later
+  do not ship Corepack: install it once with `npm install -g corepack`.
 - Nothing else for fixture mode (`dev:fixtures`, see [Fixture mode](#fixture-mode-no-database)).
 - For sign-in and a real database: Docker for the [self-hosting stack](self-hosting.md#docker), or
   a Supabase project of your own that serves no users.
