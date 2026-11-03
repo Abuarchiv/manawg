@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/item';
 import { Spinner } from '@/components/ui/spinner';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
+import { isPendingImageToken } from '@/core/offline/offline-images';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatTimeFull } from '@/core/utils/time';
 import { type ExpenseImpact, getExpenseImpact } from '@/features/expenses/expense-impact';
@@ -227,7 +228,8 @@ export const ExpenseRow = memo(function ExpenseRow({
 							</time>
 							{expense.id.startsWith('pending:') && ` · ${t('pendingNote')}`}
 						</p>
-						{expense.imageUrl && (
+						{/* An offline receipt is still a local token without a URL to open. */}
+						{expense.imageUrl && !isPendingImageToken(expense.imageUrl) && (
 							<Button
 								variant="outline"
 								render={
