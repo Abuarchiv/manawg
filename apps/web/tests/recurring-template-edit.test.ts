@@ -285,3 +285,33 @@ test('pause, resume and edit each write their own audit entry and guard on the p
 	assert.match(state.updateWhere[0] ?? '', /"paused_at" is null/);
 	assert.match(state.updateWhere[1] ?? '', /"paused_at" is not null/);
 });
+
+test('resuming keeps a due date that was already due when the cron paused the template', async () => {
+	const nextDueAt = new Date('2026-07-01T10:00:00Z');
+	const resumeWith = async (pausedAt: string) => {
+		mock.timers.enable({ apis: ['Date'], now: new Date('2026-07-03T10:00:00Z') });
+		state.sets = [];
+		try {
+			await editRecurringTemplate(
+				caller,
+				template({
+					pausedAt: new Date(pausedAt),
+					nextDueAt,
+					anchorAt: new Date('2026-06-01T10:00:00Z'),
+				}) as never,
+				{ id: 'template-1', paused: false },
+			);
+		} finally {
+			mock.timers.reset();
+		}
+		const [set] = state.sets;
+		assert.ok(set);
+		return (set.nextDueAt as Date).toISOString();
+	};
+	// Paused on 02.07. with the 01.07. charge unbooked: the cron books it after the resume.
+	assert.equal(await resumeWith('2026-07-02T10:00:00Z'), '2026-07-01T10:00:00.000Z');
+	// Paused exactly at the due date counts as already due.
+	assert.equal(await resumeWith('2026-07-01T10:00:00Z'), '2026-07-01T10:00:00.000Z');
+	// Paused before the due date on purpose: the missed cycle is skipped.
+	assert.equal(await resumeWith('2026-06-20T10:00:00Z'), '2026-08-01T10:00:00.000Z');
+});

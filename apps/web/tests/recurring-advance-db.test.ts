@@ -27,6 +27,7 @@ mock.module('@/core/infra/observability', {
 	namedExports: {
 		withCronLogging: (_name: string, handler: unknown) => handler,
 		logApiError: () => undefined,
+		captureException: () => undefined,
 	},
 });
 mock.module('@/core/notifications/notification-dispatch', {
@@ -226,4 +227,59 @@ test('a paused template is never booked', { skip }, async () => {
 
 	assert.equal(await countBooked(id), 0);
 	assert.equal(await countAudit(wgId, 'recurring.charged'), 0);
+});
+
+test('resuming a template auto-paused for a departed member books the occurrence that was due', {
+	skip,
+}, async () => {
+	const { wgId, member } = await newWg();
+	const anna = await member('Anna', false);
+	const ben = await member('Ben', false);
+	const cara = await member('Cara', false);
+	const dora = await member('Dora', false);
+	const due = monthStart(-1);
+	const id = await newTemplate(wgId, anna, [anna, ben, cara, dora], due);
+	await q('UPDATE public.wg_members SET deactivated_at = now() WHERE id = $1', [dora]);
+
+	await run();
+	assert.equal(await countBooked(id), 0);
+
+	const { db, recurringExpenses } = await import('../src/core/db/index.ts');
+	const { editRecurringTemplate } = await import(
+		'../src/features/expenses/server/recurring-template-writes.ts'
+	);
+	const { eq } = await import('drizzle-orm');
+	const [paused] = await db.select().from(recurringExpenses).where(eq(recurringExpenses.id, id));
+	assert.ok(paused?.pausedAt, 'the cron paused the template');
+	const response = await editRecurringTemplate(
+		{ wgId, member: { memberId: anna, name: 'Anna' } },
+		paused,
+		{
+			id,
+			paused: false,
+			splits: [
+				{ debtorMemberId: anna, amountCents: 167 },
+				{ debtorMemberId: ben, amountCents: 167 },
+				{ debtorMemberId: cara, amountCents: 166 },
+			],
+		},
+	);
+	assert.equal(response.status, 200);
+
+	await run();
+
+	const booked = await q<{ id: string; recurring_due_at: Date }>(
+		`SELECT id, recurring_due_at FROM public.expenses
+		 WHERE recurring_expense_id = $1 ORDER BY recurring_due_at`,
+		[id],
+	);
+	assert.deepEqual(
+		booked.map((row) => row.recurring_due_at.toISOString()),
+		[monthStart(-1), monthStart(0)].map((date) => date.toISOString()),
+	);
+	const debtors = await q<{ debtor_member_id: string }>(
+		'SELECT debtor_member_id FROM public.expense_splits WHERE expense_id = $1',
+		[booked[0]?.id],
+	);
+	assert.deepEqual(debtors.map((row) => row.debtor_member_id).sort(), [anna, ben, cara].sort());
 });
