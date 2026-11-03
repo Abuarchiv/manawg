@@ -14,6 +14,7 @@ const CODES = [
 	NETWORK_ERROR_CODE,
 	'Failed to fetch',
 	'too_many_requests',
+	'server_error',
 	'x_rate_limited',
 	'migration_read_only',
 	'auth_required',
@@ -42,6 +43,11 @@ test('mutationError renders every bucket in German', () => {
 	assert.equal(
 		render(NETWORK_ERROR_CODE),
 		`${SUBJECT_TEXT}: Prüfe deine Verbindung und versuche es erneut.`,
+	);
+	assert.equal(render('server_error'), `${SUBJECT_TEXT}: Versuche es gleich erneut.`);
+	assert.equal(
+		render('too_many_requests'),
+		`${SUBJECT_TEXT}: Zu viele Anfragen. Warte kurz und versuche es dann erneut.`,
 	);
 	assert.equal(
 		render('migration_read_only'),

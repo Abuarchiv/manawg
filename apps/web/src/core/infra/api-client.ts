@@ -74,6 +74,16 @@ export async function readApiErrorCode(response: Response): Promise<string> {
 	return '';
 }
 
+/**
+ * The error code for a failed answer without a JSON error body (a proxy or CDN page): 429 and 5xx
+ * get the codes the retry and rate-limit copy recognises, other statuses keep the status text.
+ */
+export function codeFromStatus(status: number, statusText: string): string {
+	if (status === 429) return 'too_many_requests';
+	if (status >= 500) return 'server_error';
+	return statusText;
+}
+
 export async function apiFetch<T>(
 	path: string,
 	init: ApiFetchInit = {},
@@ -104,7 +114,7 @@ export async function apiFetch<T>(
 		if (res.status === 204) return { ok: true, data: undefined as T };
 
 		if (!res.ok) {
-			const error = (await readApiErrorCode(res)) || res.statusText;
+			const error = (await readApiErrorCode(res)) || codeFromStatus(res.status, res.statusText);
 			// Removed, left, or the share code rotated while the app was open: every screen
 			// would otherwise show an empty list. The WG shell reacts (explain or redirect).
 			if (
