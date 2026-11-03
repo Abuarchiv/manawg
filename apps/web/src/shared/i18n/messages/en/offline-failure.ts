@@ -78,7 +78,7 @@ export default {
 	templateChanged: {
 		title: 'Fixed-cost template changed',
 		detail:
-			'Someone has changed the template in the meantime. Remove this offline action and book the fixed cost with the current values.',
+			'Someone has changed the template in the meantime. Remove this offline action and record the fixed cost with the current values.',
 	},
 	shoppingChanged: {
 		title: 'Shopping status changed',
@@ -105,9 +105,9 @@ export default {
 			'A share has been settled in the meantime. Discard the change and edit the expense again.',
 	},
 	recurringAdvanced: {
-		title: 'Fixed cost already booked',
+		title: 'Fixed cost already recorded',
 		detail:
-			'This fixed cost was already booked for this due date. Remove this offline action and check the expenses.',
+			'This fixed cost was already recorded for this due date. Remove this offline action and check the expenses.',
 	},
 	expenseMissing: {
 		title: 'Expense missing',
