@@ -267,4 +267,41 @@ test.describe('image upload lifetime', () => {
 		});
 		await expect(dialog.getByText('noch nicht konfiguriert')).toBeVisible();
 	});
+
+	test('an expense saved offline with a receipt shows no link to the pending image token', async ({
+		page,
+		context,
+	}) => {
+		await setupMember(page);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/expenses`);
+		await page.getByRole('button', { name: 'Ausgabe hinzufügen', exact: true }).click();
+		const dialog = page.getByRole('dialog');
+		await dialog.getByRole('button', { name: 'Beleg hinzufügen', exact: true }).click();
+		await page.waitForLoadState('networkidle');
+		try {
+			await context.setOffline(true);
+			await expect.poll(() => page.evaluate(() => navigator.onLine)).toBe(false);
+			await dialog.getByLabel('Bild auswählen', { exact: true }).setInputFiles({
+				name: 'offline.png',
+				mimeType: 'image/png',
+				buffer: Buffer.from(
+					'iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAEklEQVR4nGNgYGD4z4AGgCQAAEgAAj0t4HUAAAAASUVORK5CYII=',
+					'base64',
+				),
+			});
+			await expect(dialog.getByText('Angehängt', { exact: true })).toBeVisible();
+			await dialog.getByLabel('Beschreibung').fill('Offline-Beleg');
+			await dialog.getByLabel('Betrag').fill('12,35');
+			await dialog.getByRole('button', { name: 'Ausgabe speichern', exact: true }).click();
+			await expect(dialog).toBeHidden();
+			await page
+				.getByRole('button', { name: /Offline-Beleg/ })
+				.first()
+				.click();
+			await expect(page.getByText('Wartet auf Verbindung, danach bearbeitbar')).toBeVisible();
+			await expect(page.getByRole('link', { name: 'Beleg öffnen', exact: true })).toHaveCount(0);
+		} finally {
+			await context.setOffline(false);
+		}
+	});
 });
