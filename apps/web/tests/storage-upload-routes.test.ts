@@ -17,6 +17,7 @@ const BODY = {
 const WG_ID = '989ac820-58b7-431f-9c65-28721264f333';
 const OTHER_WG_ID = '0d5f1b7e-6c1c-4e55-9a39-1f3f6a3a2b10';
 class ImageStorageConfigurationError extends Error {}
+class ImageStorageObjectNotFoundError extends Error {}
 
 const initialState = () => ({
 	authenticatedUser: { id: 'user-1' } as { id: string } | null,
@@ -33,6 +34,8 @@ const initialState = () => ({
 		reset?: number;
 	},
 	dayLimitResult: { success: true } as { success: boolean; reset?: number },
+	contentLength: 3,
+	downloadError: null as Error | null,
 	signUpload: async (_key: string, _contentType: string): Promise<unknown> => ({
 		presignedUrl: 'https://app.example/storage/v1/object/upload/sign/private/key?token=t',
 		maxFileSize: 8 * 1024 * 1024,
@@ -81,12 +84,13 @@ mock.module('@/core/guards/api-auth', {
 mock.module('@/core/infra/supabase-storage', {
 	namedExports: {
 		ImageStorageConfigurationError,
-		ImageStorageObjectNotFoundError: class extends Error {},
+		ImageStorageObjectNotFoundError,
 		createSupabaseSignedUpload: (key: string, contentType: string) =>
 			state.signUpload(key, contentType),
 		downloadSupabaseImage: async (key: string) => {
 			state.downloadCalls += 1;
 			state.downloadedKeys.push(key);
+			if (state.downloadError) throw state.downloadError;
 			return {
 				stream: new ReadableStream({
 					start(controller) {
@@ -95,7 +99,7 @@ mock.module('@/core/infra/supabase-storage', {
 					},
 				}),
 				contentType: 'image/png',
-				contentLength: 3,
+				contentLength: state.contentLength,
 			};
 		},
 	},
@@ -185,16 +189,158 @@ describe('private storage contract', () => {
 	});
 });
 
+describe('private image read answers', () => {
+	function get(key: string | null): Promise<Response> {
+		const url = new URL('https://app.example/api/upload/read');
+		if (key !== null) url.searchParams.set('key', key);
+		return readRoute.GET({ nextUrl: url } as never);
+	}
+
+	test('Content-Length is forwarded only when the object reports a size', async () => {
+		const sized = await get(PRIVATE_KEY);
+		assert.equal(sized.status, 200);
+		assert.equal(sized.headers.get('content-length'), '3');
+
+		state.contentLength = 0;
+		const unsized = await get(PRIVATE_KEY);
+		assert.equal(unsized.status, 200);
+		assert.equal(unsized.headers.get('content-length'), null);
+	});
+
+	test('a missing, traversing or non-uuid key is a 400 invalid_image_key without any lookup', async () => {
+		const keys = [
+			null,
+			'',
+			`../${PRIVATE_KEY}`,
+			`manawg/${WG_ID}/../expense/550e8400-e29b-41d4-a716-446655440000.png`,
+			`manawg/${WG_ID}/expense/not-a-uuid.png`,
+			`manawg/not-a-wg/expense/550e8400-e29b-41d4-a716-446655440000.png`,
+			`manawg/${WG_ID}/expense/550e8400-e29b-41d4-a716-446655440000.gif`,
+			`${PRIVATE_KEY}/extra`,
+		];
+		for (const key of keys) {
+			const response = await get(key);
+			assert.equal(response.status, 400, String(key));
+			assert.deepEqual(await response.json(), { error: 'invalid_image_key' }, String(key));
+			assert.equal(response.headers.get('cache-control'), 'no-store', String(key));
+		}
+		assert.equal(state.membershipCalls, 0);
+		assert.equal(state.downloadCalls, 0);
+	});
+
+	test('a storage configuration failure is a 503 image_reads_unavailable', async () => {
+		state.downloadError = new ImageStorageConfigurationError();
+		const response = await get(PRIVATE_KEY);
+		assert.equal(response.status, 503);
+		assert.deepEqual(await response.json(), {
+			error: 'feature_disabled',
+			code: 'image_reads_unavailable',
+		});
+		assert.equal(response.headers.get('cache-control'), 'no-store');
+	});
+
+	test('a missing object is a 404 image_not_found', async () => {
+		state.downloadError = new ImageStorageObjectNotFoundError();
+		const response = await get(PRIVATE_KEY);
+		assert.equal(response.status, 404);
+		assert.deepEqual(await response.json(), { error: 'image_not_found' });
+	});
+
+	test('an unrelated storage failure is a 500 image_read_failed', async () => {
+		state.downloadError = new Error('storage answered 500');
+		const response = await get(PRIVATE_KEY);
+		assert.equal(response.status, 500);
+		assert.deepEqual(await response.json(), { error: 'image_read_failed' });
+	});
+});
+
 describe('upload sign contract', () => {
-	function post(): Promise<Response> {
+	function post(body: Record<string, unknown> = BODY): Promise<Response> {
 		return signRoute.POST(
 			new Request('https://example.invalid/api/upload/sign', {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify(BODY),
+				body: JSON.stringify(body),
 			}) as never,
 		);
 	}
+
+	function trackSigning(): string[] {
+		const signed: string[] = [];
+		state.signUpload = async (key, contentType) => {
+			signed.push(`${key} ${contentType}`);
+			return { presignedUrl: 'https://app.example/storage/v1/object/upload/sign/k?token=t' };
+		};
+		return signed;
+	}
+
+	test('file sizes up to 8 MiB are signed, anything above or non-positive is refused', async () => {
+		const max = 8 * 1024 * 1024;
+		const signed = trackSigning();
+		const restore = applyEnv({ NEXT_PUBLIC_APP_URL: 'https://app.example', VERCEL_URL: undefined });
+		try {
+			assert.equal((await post({ ...BODY, fileSize: max })).status, 200);
+		} finally {
+			restore();
+		}
+		assert.equal(signed.length, 1);
+
+		for (const fileSize of [max + 1, 0, -1]) {
+			const response = await post({ ...BODY, fileSize });
+			assert.equal(response.status, 400, String(fileSize));
+			assert.deepEqual(await response.json(), { error: 'file_too_large' }, String(fileSize));
+		}
+		assert.equal(signed.length, 1);
+	});
+
+	test('only the five image MIME types are signed', async () => {
+		const signed = trackSigning();
+		for (const mimeType of ['application/pdf', 'image/svg+xml', 'image/gif', 'text/html']) {
+			const response = await post({ ...BODY, mimeType });
+			assert.equal(response.status, 400, mimeType);
+			assert.deepEqual(await response.json(), { error: 'invalid_mime_type' }, mimeType);
+		}
+		assert.equal(signed.length, 0);
+	});
+
+	test('only the expense and announcement purposes are signed', async () => {
+		const signed = trackSigning();
+		for (const purpose of ['chat', '../expense', '']) {
+			const response = await post({ ...BODY, purpose });
+			assert.equal(response.status, 400, purpose);
+			assert.deepEqual(await response.json(), { error: 'invalid_purpose' }, purpose);
+		}
+		assert.equal(signed.length, 0);
+	});
+
+	test('the key carries the WG, the purpose and the extension of the MIME type', async () => {
+		const extensions = {
+			'image/jpeg': 'jpg',
+			'image/png': 'png',
+			'image/webp': 'webp',
+			'image/heic': 'heic',
+			'image/heif': 'heif',
+		};
+		const restore = applyEnv({ NEXT_PUBLIC_APP_URL: 'https://app.example', VERCEL_URL: undefined });
+		try {
+			for (const purpose of ['expense', 'announcement']) {
+				for (const [mimeType, ext] of Object.entries(extensions)) {
+					const signed = trackSigning();
+					const response = await post({ ...BODY, purpose, mimeType });
+					assert.equal(response.status, 200, `${purpose} ${mimeType}`);
+					assert.match(
+						signed[0] ?? '',
+						new RegExp(
+							`^manawg/${WG_ID}/${purpose}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.${ext} ${mimeType}$`,
+						),
+						`${purpose} ${mimeType}`,
+					);
+				}
+			}
+		} finally {
+			restore();
+		}
+	});
 
 	test('upload signing checks membership of the WG behind the share code', async () => {
 		await post();
