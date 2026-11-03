@@ -5,12 +5,13 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { buttonVariants } from '@/components/ui/button';
-import { SESSION_EXPIRED_EVENT } from '@/core/infra/api-client';
+import { SESSION_EXPIRED_EVENT, SESSION_RESTORED_EVENT } from '@/core/infra/api-client';
 import { cn } from '@/shared/lib/cn';
 
 /**
  * Any request answered with "session expired" lands here, so every screen shows the same
- * explanation and one way back in, which returns to the page the visitor was on.
+ * explanation and one way back in, which returns to the page the visitor was on. A later
+ * successful WG request (the session works again) hides it.
  */
 export function SessionExpiredBanner() {
 	const t = useTranslations('shell.sessionBanner');
@@ -20,8 +21,15 @@ export function SessionExpiredBanner() {
 		function onExpired(): void {
 			setReturnTo(`${window.location.pathname}${window.location.search}${window.location.hash}`);
 		}
+		function onRestored(): void {
+			setReturnTo(null);
+		}
 		window.addEventListener(SESSION_EXPIRED_EVENT, onExpired);
-		return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired);
+		window.addEventListener(SESSION_RESTORED_EVENT, onRestored);
+		return () => {
+			window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired);
+			window.removeEventListener(SESSION_RESTORED_EVENT, onRestored);
+		};
 	}, []);
 
 	// Sticky chrome below (home header, settings tabs, chat frame) reads the banner's real
