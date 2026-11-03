@@ -31,6 +31,11 @@ async function readShareCode(res: Response): Promise<string> {
 	}
 }
 
+/** Moves focus to the name field so a screen reader lands on the marked field and its error. */
+function focusNameField(): void {
+	document.getElementById('join-name')?.focus();
+}
+
 /** Looks the invitation up for the signed-in account, then joins the WG with the typed name. */
 export function useInviteJoin(token: string) {
 	const router = useRouter();
@@ -43,10 +48,12 @@ export function useInviteJoin(token: string) {
 	const [busy, setBusy] = useState(false);
 	const busyRef = useRef(false);
 	const requestRef = useRef<PendingIdempotentRequest | null>(null);
+	// The name a name error was shown for; the error stays until the name changes.
+	const invalidNameRef = useRef<string | null>(null);
 
 	// The prefilled account name can arrive after an early submit; the "fehlt" error must not outlive it.
 	useEffect(() => {
-		if (nameInvalid && name.trim()) {
+		if (nameInvalid && name.trim() && name !== invalidNameRef.current) {
 			setNameInvalid(false);
 			setError(null);
 		}
@@ -92,8 +99,10 @@ export function useInviteJoin(token: string) {
 		if (busyRef.current || phase.kind !== 'ready') return;
 		const trimmed = name.trim();
 		if (trimmed.length === 0) {
+			invalidNameRef.current = name;
 			setNameInvalid(true);
 			setError(render({ key: 'entry.errors.displayNameMissing' }));
+			focusNameField();
 			return;
 		}
 		busyRef.current = true;
@@ -128,8 +137,10 @@ export function useInviteJoin(token: string) {
 				}
 				const nameProblem =
 					apiError === 'name_invalid' || (res.status === 409 && apiError === 'name_taken');
+				if (nameProblem) invalidNameRef.current = name;
 				setNameInvalid(nameProblem);
 				setError(render(joinErrorMessage(res.status, apiError)));
+				if (nameProblem) focusNameField();
 				return;
 			}
 			requestRef.current = null;
