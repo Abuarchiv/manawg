@@ -26,7 +26,8 @@ export default {
 			'{count, plural, one {Eine Person ist schon dabei.} other {# Leute sind schon dabei.}}',
 		captionOne: '{name} ist schon dabei.',
 		captionMany: '{names} sind schon dabei.',
-		captionMore: '{names} und {count} weitere sind schon dabei.',
+		captionMore:
+			'{count, plural, one {{names} und eine weitere Person sind schon dabei.} other {{names} und # weitere sind schon dabei.}}',
 		button: 'Einladung annehmen',
 		footer:
 			'Der Link gilt {days} Tage. {inviter} hat deine Adresse eingegeben, wir speichern sie nicht weiter.',
