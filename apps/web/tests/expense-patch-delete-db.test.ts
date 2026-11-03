@@ -46,6 +46,8 @@ async function withExpense(
 		payer: { id: string; userId: string };
 		debtor: { id: string; userId: string };
 		stranger: { id: string };
+		wgId: string;
+		otherWgId: string;
 		expenseId: string;
 		patch: (body: Record<string, unknown>) => Promise<Response>;
 		del: (user: string) => Promise<Response>;
@@ -113,6 +115,8 @@ async function withExpense(
 			payer: flat.payer,
 			debtor: flat.debtor,
 			stranger: other.payer,
+			wgId: flat.id,
+			otherWgId: other.id,
 			expenseId: expense.id,
 			patch: (body) => route.PATCH(request(flat.payer.userId, 'PATCH', body), ctx),
 			del: (user) => route.DELETE(request(user, 'DELETE'), ctx),
@@ -183,4 +187,59 @@ test("delete ignores the payer's settled own share but is refused once a debtor 
 			0,
 		);
 	});
+});
+
+const imageUrlFor = (wgId: string) =>
+	`https://app.example/api/upload/read?key=${encodeURIComponent(
+		`manawg/${wgId}/expense/${randomUUID()}.jpg`,
+	)}`;
+
+test('PATCH refuses a receipt of another flat and a receipt already queued for deletion', {
+	skip,
+}, async () => {
+	const previous = {
+		app: process.env.NEXT_PUBLIC_APP_URL,
+		vercel: process.env.VERCEL_URL,
+		env: process.env.VERCEL_ENV,
+	};
+	process.env.NEXT_PUBLIC_APP_URL = 'https://app.example';
+	delete process.env.VERCEL_URL;
+	process.env.VERCEL_ENV = 'production';
+	try {
+		await withExpense(async ({ patch, database, wgId, otherWgId, expenseId }) => {
+			const foreign = await patch({ imageUrl: imageUrlFor(otherWgId) });
+			assert.equal(foreign.status, 400);
+			assert.equal(((await foreign.json()) as { error: string }).error, 'image_invalid');
+
+			const queuedUrl = imageUrlFor(wgId);
+			const queuedKey = new URL(queuedUrl).searchParams.get('key') ?? '';
+			await database.insert(schema.privateImageDeletions).values({ objectKey: queuedKey });
+			try {
+				const revoked = await patch({ imageUrl: queuedUrl });
+				assert.equal(revoked.status, 409);
+				assert.equal(((await revoked.json()) as { error: string }).error, 'image_removed');
+			} finally {
+				await database
+					.delete(schema.privateImageDeletions)
+					.where(eq(schema.privateImageDeletions.objectKey, queuedKey));
+			}
+
+			const own = await patch({ imageUrl: imageUrlFor(wgId) });
+			assert.equal(own.status, 200);
+			const [row] = await database
+				.select({ imageUrl: schema.expenses.imageUrl })
+				.from(schema.expenses)
+				.where(eq(schema.expenses.id, expenseId));
+			assert.match(row?.imageUrl ?? '', new RegExp(`manawg%2F${wgId}%2Fexpense%2F`));
+		});
+	} finally {
+		for (const [key, value] of [
+			['NEXT_PUBLIC_APP_URL', previous.app],
+			['VERCEL_URL', previous.vercel],
+			['VERCEL_ENV', previous.env],
+		] as const) {
+			if (value === undefined) delete process.env[key];
+			else process.env[key] = value;
+		}
+	}
 });

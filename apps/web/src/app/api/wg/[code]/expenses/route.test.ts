@@ -397,7 +397,9 @@ mock.module('@/core/validators/currency', { namedExports: { currencySchema: z.st
 mock.module('@/core/validators/image-url', {
 	namedExports: {
 		imageUrlSchema: z.string().nullable().optional(),
-		isAllowedImageUrlForWg: () => true,
+		// Same rule as the real check: the key in the URL must name the flat being written to.
+		isAllowedImageUrlForWg: (url: string | null | undefined, wg: string) =>
+			!url || url.includes(encodeURIComponent(`manawg/${wg}/`)),
 	},
 });
 mock.module('@/features/expenses/server/expense-payments', {
@@ -700,6 +702,21 @@ test('revoked private image attachment returns 409 without creating an expense',
 	});
 	assert.equal(response.status, 409);
 	assert.deepEqual(await response.json(), { error: 'image_removed', code: 'image_removed' });
+	assert.equal(state.expenses.length, 0);
+	assert.equal(state.sideEffects, 0);
+});
+
+test('a receipt that belongs to another flat is refused with image_invalid and nothing is created', async () => {
+	const { state, post } = harness();
+	const response = await post({
+		key: 'foreign-image-key',
+		body: defaultBody({
+			imageUrl:
+				'https://app.example/api/upload/read?key=manawg%2F99999999-9999-4999-8999-999999999999%2Fexpense%2F22222222-2222-4222-8222-222222222222.jpg',
+		}),
+	});
+	assert.equal(response.status, 400);
+	assert.deepEqual(await response.json(), { error: 'image_invalid' });
 	assert.equal(state.expenses.length, 0);
 	assert.equal(state.sideEffects, 0);
 });
