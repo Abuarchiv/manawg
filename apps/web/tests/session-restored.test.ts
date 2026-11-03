@@ -5,12 +5,16 @@ const { apiFetch, SESSION_EXPIRED_EVENT, SESSION_RESTORED_EVENT } = await import
 	'../src/core/infra/api-client.ts'
 );
 
-function setup(t: TestContext, responses: Array<() => Promise<Response> | Response>) {
+function setup(
+	t: TestContext,
+	responses: Array<() => Promise<Response> | Response>,
+	signedIn = { account: 'account-1' },
+) {
 	const originalFetch = globalThis.fetch;
 	const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
 	const events: string[] = [];
 	const fakeWindow = Object.assign(new EventTarget(), {
-		localStorage: { getItem: () => 'account-1' },
+		localStorage: { getItem: () => signedIn.account },
 	});
 	for (const name of [SESSION_EXPIRED_EVENT, SESSION_RESTORED_EVENT]) {
 		fakeWindow.addEventListener(name, () => events.push(name));
@@ -86,4 +90,25 @@ test('a successful request without a prior expiry announces nothing', async (t) 
 	await apiFetch('/api/wg/abc/shopping');
 	await apiFetch('/api/wg/abc/shopping/1', { method: 'DELETE' });
 	assert.deepEqual(events, []);
+});
+
+test('a WG answer that arrives after an account switch does not announce a restored session', async (t) => {
+	const signedIn = { account: 'account-1' };
+	const events = setup(
+		t,
+		[
+			expired,
+			() => {
+				signedIn.account = 'account-2';
+				return okJson();
+			},
+			okJson,
+		],
+		signedIn,
+	);
+	await apiFetch('/api/wg/abc/shopping');
+	await apiFetch('/api/wg/abc/shopping');
+	assert.deepEqual(events, [SESSION_EXPIRED_EVENT]);
+	await apiFetch('/api/wg/abc/shopping');
+	assert.deepEqual(events, [SESSION_EXPIRED_EVENT, SESSION_RESTORED_EVENT]);
 });
