@@ -19,3 +19,14 @@ test('only old, unreferenced and unqueued pictures are orphans', () => {
 		['old-orphan'],
 	);
 });
+
+test('the 14 day retention boundary keeps younger uploads and selects older ones', () => {
+	const day = 24 * 60 * 60 * 1000;
+	const objects = [
+		{ key: 'thirteen-days', createdAt: new Date(now.getTime() - 13 * day) },
+		{ key: 'exactly-fourteen-days', createdAt: new Date(now.getTime() - 14 * day) },
+		{ key: 'just-inside', createdAt: new Date(now.getTime() - 14 * day + 1000) },
+		{ key: 'just-outside', createdAt: new Date(now.getTime() - 14 * day - 1000) },
+	];
+	assert.deepEqual(selectOrphanKeys(objects, new Set(), new Set(), now), ['just-outside']);
+});

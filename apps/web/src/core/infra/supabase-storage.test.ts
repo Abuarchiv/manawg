@@ -132,6 +132,47 @@ test('cleanup fails closed when bucket policy no longer matches the private imag
 	}
 });
 
+test('cleanup fails closed for every bucket config that drifts from the private image contract', async () => {
+	const imageTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+	const drifted = [
+		{ public: false, file_size_limit: 16 * 1024 * 1024, allowed_mime_types: imageTypes },
+		{ public: false, allowed_mime_types: imageTypes },
+		{
+			public: false,
+			file_size_limit: 8 * 1024 * 1024,
+			allowed_mime_types: [...imageTypes, 'text/html'],
+		},
+		{ public: false, file_size_limit: 8 * 1024 * 1024, allowed_mime_types: imageTypes.slice(1) },
+		{
+			public: false,
+			file_size_limit: 8 * 1024 * 1024,
+			allowed_mime_types: [...imageTypes.slice(0, -1), 'text/html'],
+		},
+		{ public: false, file_size_limit: 8 * 1024 * 1024 },
+	];
+	for (const bucket of drifted) {
+		const { state, ImageStorageConfigurationError, removeSupabaseImages } = harness();
+		state.bucket = bucket;
+		const restoreEnv = applyEnv({
+			NEXT_PUBLIC_SUPABASE_URL: 'https://supabase.example',
+			SUPABASE_SERVICE_ROLE_KEY: 'test-service-role-key',
+			SUPABASE_STORAGE_BUCKET: 'private-images',
+		});
+		try {
+			await assert.rejects(
+				removeSupabaseImages([
+					'manawg/11111111-1111-4111-8111-111111111111/expense/22222222-2222-4222-8222-222222222222.jpg',
+				]),
+				ImageStorageConfigurationError,
+				JSON.stringify(bucket),
+			);
+			assert.equal(state.keys, null);
+		} finally {
+			restoreEnv();
+		}
+	}
+});
+
 const MAX_BYTES = 8 * 1024 * 1024;
 const IMAGE_KEY =
 	'manawg/11111111-1111-4111-8111-111111111111/expense/22222222-2222-4222-8222-222222222222.png';
@@ -209,6 +250,21 @@ test('download stream errors and cancels the source once it exceeds the size cap
 		const download = await downloadSupabaseImage(IMAGE_KEY);
 		await assert.rejects(readAll(download.stream), ImageStorageObjectNotFoundError);
 		assert.equal(state.sourceCancelled, true);
+	} finally {
+		restoreEnv();
+	}
+});
+
+test('download streams an object of exactly the size cap without error', async () => {
+	const { state } = harness();
+	state.bucket = privateBucket();
+	state.info = { contentType: 'image/png', size: MAX_BYTES };
+	state.chunks = [new Uint8Array(MAX_BYTES - 1), new Uint8Array(1)];
+	const restoreEnv = applyImageEnv();
+	try {
+		const download = await downloadSupabaseImage(IMAGE_KEY);
+		assert.equal((await readAll(download.stream)).byteLength, MAX_BYTES);
+		assert.equal(state.sourceCancelled, false);
 	} finally {
 		restoreEnv();
 	}
