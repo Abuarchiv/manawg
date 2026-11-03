@@ -1,8 +1,7 @@
-# Database tests against a disposable PostgreSQL: the statement-run ledger, connection handling,
-# private image deletions, the shopping unique index (pnpm test:db), the runtime pool timeouts
-# against their own server (pnpm test:db-timeouts) and the account-deletion suite
-# (test:e2e:account-delete-db). Every pull request and every push to main, so the check can be
-# required without blocking unrelated pull requests.
+# Database tests against a disposable PostgreSQL: the suites in the test:db script of
+# apps/web/package.json, the runtime pool timeouts against their own server (pnpm test:db-timeouts)
+# and the account-deletion suite (test:e2e:account-delete-db). Every pull request and every push
+# to main, so the check can be required without blocking unrelated pull requests.
 name: Database
 on:
   pull_request:
