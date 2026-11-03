@@ -107,9 +107,13 @@ function pauseTransition(
 
 /**
  * Resuming does not book the missed charges: the due date moves to the first cycle day from
- * today on (due today stays due); otherwise the cron would book every paused month.
+ * today on (due today stays due); otherwise the cron would book every paused month. A template
+ * that was already due when it was paused is the cron's auto-pause (moved-out member, broken
+ * split sum): its due date keeps pointing at the charge the cron did not book, so the cron books
+ * that charge, and any cycle up to today, with the edited shares.
  */
 function resumedDueAt(dueAt: Date, template: RecurringTemplate, intervalMonths: number): Date {
+	if (template.pausedAt && dueAt <= template.pausedAt) return dueAt;
 	const anchorDay = template.anchorAt.getUTCDate();
 	const today = startOfBerlinDay(new Date());
 	let next = dueAt;
