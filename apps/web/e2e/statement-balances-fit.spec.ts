@@ -108,6 +108,37 @@ test.describe('Statement balances at 320px', () => {
 		await expectScrollRegionsFocusable(page);
 	});
 
+	for (const { width, size } of [
+		{ width: 390, size: '150%' },
+		{ width: 320, size: '125%' },
+	]) {
+		test(`member names keep room in the balances table at ${width}px and ${size} text`, async ({
+			page,
+		}) => {
+			await openStatement(page, LONG_NAME, [
+				{ ...septemberExpense, id: 'expense-fit-3', amountCents: 123456789 },
+			]);
+			await page.setViewportSize({ width, height: 700 });
+			await page.evaluate((fontSize) => {
+				document.documentElement.style.fontSize = fontSize;
+			}, size);
+			const rowHeader = page.getByRole('rowheader', { name: new RegExp(LONG_NAME) });
+			await expect(rowHeader).toBeVisible();
+			const name = await rowHeader.locator('span.truncate').evaluate((span) => ({
+				width: span.getBoundingClientRect().width,
+				rem: Number.parseFloat(getComputedStyle(document.documentElement).fontSize),
+			}));
+			expect(name.width, 'the member name keeps at least 2rem of room').toBeGreaterThanOrEqual(
+				name.rem * 2,
+			);
+			const root = await page.evaluate(() => ({
+				scroll: document.documentElement.scrollWidth,
+				client: document.documentElement.clientWidth,
+			}));
+			expect(root.scroll, 'the page does not scroll sideways').toBeLessThanOrEqual(root.client);
+		});
+	}
+
 	test('the page shows the open status, signed balances and the transfer from debtor to creditor', async ({
 		page,
 	}) => {

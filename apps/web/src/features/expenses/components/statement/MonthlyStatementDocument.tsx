@@ -150,7 +150,7 @@ export function MonthlyStatementDocument({
 				<p className="text-[0.8125rem] leading-relaxed text-muted-foreground">
 					{t('document.balancesHint', { month: monthTitle(monthKey, locale), date: asOf })}
 				</p>
-				{/* The name column truncates; the wrapper scrolls only for very large amounts. */}
+				{/* The name column truncates above a 4rem floor; the wrapper scrolls when enlarged text or long amounts need the room. */}
 				{/* biome-ignore lint/a11y/useSemanticElements: A <section> cannot be the scroll container here; role="region" names it. */}
 				<div
 					// biome-ignore lint/a11y/noNoninteractiveTabindex: The scrollable table must be reachable by keyboard.
@@ -162,7 +162,7 @@ export function MonthlyStatementDocument({
 					<table className="w-full border-collapse text-[0.875rem]">
 						<thead>
 							<tr className={cn(EYEBROW, 'border-b border-foreground')}>
-								<th scope="col" className={cn(TH, 'w-full max-w-0 text-left')}>
+								<th scope="col" className={cn(TH, 'w-full min-w-16 max-w-0 text-left')}>
 									{t('document.person')}
 								</th>
 								<th scope="col" className={cn(TH, 'pl-2 text-right sm:pl-3')}>
@@ -181,7 +181,7 @@ export function MonthlyStatementDocument({
 								const openRows = openByMember.get(member.id) ?? [];
 								return (
 									<tr key={member.id} className="border-b border-border">
-										<th scope="row" className="max-w-0 py-2.5 text-left font-medium">
+										<th scope="row" className="min-w-16 max-w-0 py-2.5 text-left font-medium">
 											<span className="flex min-w-0 items-center gap-2">
 												<MemberAvatar name={member.name} size={24} />
 												<span className="flex min-w-0 flex-wrap items-baseline gap-x-2">
