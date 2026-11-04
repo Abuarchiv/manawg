@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { regexes } from 'zod/v4/core';
 import { emailField } from '@/core/auth/route-schemas';
-import { isValidEmail } from './email-format';
+import { EMAIL_PATTERN, isValidEmail } from './email-format';
 
 const REJECTED = [
 	'anna@gmail.c',
@@ -27,4 +28,8 @@ test('the form accepts normal addresses the auth routes accept', () => {
 		assert.equal(emailField.safeParse(address).success, true, `server rejects ${address}`);
 		assert.equal(isValidEmail(address), true, address);
 	}
+});
+
+test('the copied pattern is the one zod checks with', () => {
+	assert.equal(EMAIL_PATTERN.source, regexes.email.source);
 });
