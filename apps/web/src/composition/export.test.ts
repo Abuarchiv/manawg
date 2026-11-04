@@ -194,6 +194,16 @@ test('CSV writes fractional numbers with the locale decimal mark', () => {
 	assert.equal(toCsv(rows, headers, 'en'), '\uFEFFname,quantity,threshold\nMilk,1.5,3');
 });
 
+test('the chore completions export names the chore by id and title', () => {
+	assert.deepEqual(getExportSectionHeaders('choreCompletions'), [
+		'id',
+		'choreId',
+		'choreTitle',
+		'completedByName',
+		'completedAt',
+	]);
+});
+
 test('the members export carries role and move-out date', () => {
 	const rows = mapMemberRows([
 		{ id: 'm1', name: 'Anna', role: 'admin', createdAt: AT, deactivatedAt: null },
