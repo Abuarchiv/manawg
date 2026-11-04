@@ -221,6 +221,20 @@ test('the reminder mail names the WG the debt belongs to', () => {
 	}
 });
 
+test('the reminder footer link opens the Notifications tab of the settings page', () => {
+	const mail = renderReminderMail({
+		wgName: 'Kastanienallee',
+		shareCode: 'KST4821X',
+		creditorName: 'Jonas',
+		amountCents: 2340,
+		oldestDebtAgeDays: 9,
+		items: [],
+		unsubscribeUrl: `${APP_ORIGIN}/api/email/unsubscribe?t=y`,
+	});
+	assert.ok(mail.html.includes('/wg/KST4821X/settings#notifications'));
+	assert.ok(mail.text.includes('/wg/KST4821X/settings#notifications'));
+});
+
 test('the invitation caption lists three names and counts the rest once', () => {
 	const input = {
 		inviterName: 'Lina',

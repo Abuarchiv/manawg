@@ -136,7 +136,10 @@ export function renderReminderMail(input: {
 		button: { label: t('reminder.button'), url: `${WG_PATH(input.shareCode)}/expenses` },
 		footerNote: t('reminder.footer'),
 		footerLinks: [
-			{ label: t('shell.changeSettings'), url: `${WG_PATH(input.shareCode)}/settings` },
+			{
+				label: t('shell.changeSettings'),
+				url: `${WG_PATH(input.shareCode)}/settings#notifications`,
+			},
 			{ label: t('shell.unsubscribe'), url: input.unsubscribeUrl },
 		],
 	});

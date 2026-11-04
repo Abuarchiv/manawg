@@ -39,6 +39,12 @@ test('the German statement mail is the default', () => {
 	assert.deepEqual(renderStatementMail({ ...base, locale: 'de' }), mail);
 });
 
+test('the settings footer link opens the Notifications tab, in HTML and plain text', () => {
+	const mail = renderStatementMail(base);
+	assert.ok(mail.html.includes(`/wg/${base.shareCode}/settings#notifications`));
+	assert.ok(mail.text.includes(`/wg/${base.shareCode}/settings#notifications`));
+});
+
 test('the English statement mail uses English words, month and amounts', () => {
 	const mail = renderStatementMail({ ...base, locale: 'en' });
 	assert.equal(mail.subject, 'The September statement is ready');
