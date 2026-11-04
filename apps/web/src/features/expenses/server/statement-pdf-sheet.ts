@@ -32,21 +32,26 @@ function loadFonts(): Promise<[Buffer, Buffer]> {
 	return fontBytes;
 }
 
-/** Look-alikes for symbols the font lacks. */
-const SUBSTITUTES: Readonly<Record<string, string>> = { '→': '>', '\u2212': '-' };
+const EMOJI = /\p{Extended_Pictographic}|\u200d|\ufe0e|\ufe0f|[\u{1f3fb}-\u{1f3ff}]/gu;
 
 /**
  * Maps text to what the embedded font can draw: whitespace variants become a plain space,
- * a character the font lacks becomes a look-alike or its base letter (Ž to Z), otherwise `?`.
+ * emoji are dropped, a character the font lacks becomes its base letter (ӂ to ж), otherwise `?`.
  */
 function makeSafe(font: PDFFont): (text: string) => string {
 	const known = new Set(font.getCharacterSet());
 	return (text) =>
-		Array.from(text.replace(/[\s  ]+/g, ' '), (char) => {
-			if (known.has(char.codePointAt(0) ?? -1)) return char;
-			const base = SUBSTITUTES[char] ?? char.normalize('NFD').charAt(0);
-			return base && known.has(base.codePointAt(0) ?? -1) ? base : '?';
-		}).join('');
+		Array.from(
+			text
+				.replace(EMOJI, '')
+				.replace(/[\s  ]+/g, ' ')
+				.trim(),
+			(char) => {
+				if (known.has(char.codePointAt(0) ?? -1)) return char;
+				const base = char.normalize('NFD').charAt(0);
+				return base && known.has(base.codePointAt(0) ?? -1) ? base : '?';
+			},
+		).join('');
 }
 
 export interface Sheet {

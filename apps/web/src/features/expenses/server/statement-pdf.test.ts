@@ -79,13 +79,31 @@ test('the file name carries the month and the language', () => {
 	assert.equal(statementPdfFilename('2026-09', 'en'), 'ManaWG-statement-2026-09.pdf');
 });
 
-test('text outside the font falls back to a plain space, the base letter or a question mark', async () => {
+test('names from Central and Eastern Europe, Turkey, Greece and Cyrillic keep their letters', async () => {
+	const { safe } = await createSheet('de');
+	for (const name of [
+		'Łukasz Wójcik',
+		'Ayşe Yılmaz',
+		'İbrahim Gök',
+		'Ştefan Ţară',
+		'Đorđe Øster',
+		'Ödön Hűvös',
+		'Žaneta Čech',
+		'Νίκος',
+		'Дмитрий Ёлкин',
+		'Олена Ґудзь',
+	]) {
+		assert.equal(safe(name), name);
+	}
+});
+
+test('text outside the font falls back to a plain space, the base letter or a question mark, and emoji are dropped', async () => {
 	const { safe } = await createSheet('de');
 	assert.equal(safe('Zoë'), 'Zoë');
-	assert.equal(safe('Ž'), 'Z');
-	assert.equal(safe('Łukasz'), '?ukasz');
-	assert.equal(safe('🙂 Mia'), '? Mia');
+	assert.equal(safe('\u04c2'), '\u0436');
+	assert.equal(safe('🙂 Mia'), 'Mia');
+	assert.equal(safe('Kastanienallee 🏠 12 👩🏽‍🍳'), 'Kastanienallee 12');
 	assert.equal(safe('日本'), '??');
 	assert.equal(safe('a\u00a0b\u202fc\td'), 'a b c d');
-	assert.equal(safe('A → B'), 'A > B');
+	assert.equal(safe('A → B'), 'A → B');
 });
