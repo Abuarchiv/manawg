@@ -284,3 +284,54 @@ test('category shares round to the nearest whole percent', () => {
 		],
 	);
 });
+
+const chainPayment = (fromMemberId: string, toMemberId: string, amountCents: number) => ({
+	fromMemberId,
+	toMemberId,
+	amountCents,
+	currency: 'EUR',
+	completedAt: '2026-09-10T10:00:00Z',
+});
+
+// J paid for L, M paid for J: the plan says L pays M directly.
+const chainExpenses = (month: string) => [
+	expense(`a-${month}`, 'J', `${month}-02T10:00:00Z`, { L: 10000 }),
+	expense(`b-${month}`, 'M', `${month}-03T10:00:00Z`, { J: 10000 }),
+];
+
+test('a cash payment the plan routed through a third member settles the chain', () => {
+	const expenses = chainExpenses('2026-09');
+	const open = buildMonthlyStatement(expenses, members, '2026-09');
+	assert.deepEqual(
+		open.transfers.map(({ fromId, toId, cents }) => [fromId, toId, cents]),
+		[['L', 'M', 10000]],
+	);
+	const paid = buildMonthlyStatement(expenses, members, '2026-09', [chainPayment('L', 'M', 10000)]);
+	assert.deepEqual(
+		paid.members.map((member) => member.balanceCents),
+		[0, 0, 0],
+	);
+	assert.deepEqual(paid.transfers, []);
+	assert.equal(paid.settled, true);
+});
+
+test('a chain payment is counted in one month only', () => {
+	const expenses = [...chainExpenses('2026-09'), ...chainExpenses('2026-10')];
+	const payments = [chainPayment('L', 'M', 10000)];
+	assert.equal(buildMonthlyStatement(expenses, members, '2026-09', payments).settled, true);
+	const october = buildMonthlyStatement(expenses, members, '2026-10', payments);
+	assert.deepEqual(
+		october.transfers.map(({ fromId, toId, cents }) => [fromId, toId, cents]),
+		[['L', 'M', 10000]],
+	);
+});
+
+test('an opposite-direction leftover never creates a reverse debt', () => {
+	const statement = buildMonthlyStatement(chainExpenses('2026-09'), members, '2026-09', [
+		chainPayment('M', 'L', 5000),
+	]);
+	assert.deepEqual(
+		statement.members.map((member) => member.balanceCents),
+		[-10000, 0, 10000],
+	);
+});
