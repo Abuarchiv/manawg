@@ -64,8 +64,9 @@ export function planStatementMails(
 	expenses: readonly StatementExpense[],
 	monthKey: string,
 	payments: readonly ExpensePaymentInput[] = [],
+	asOf: Date = new Date(),
 ): StatementPlan {
-	const statement = buildMonthlyStatement(expenses, members, monthKey, payments);
+	const statement = buildMonthlyStatement(expenses, members, monthKey, payments, asOf);
 	const plan: StatementPlan = { recipients: [], skipped: [] };
 	if (statement.items.length === 0) return plan;
 

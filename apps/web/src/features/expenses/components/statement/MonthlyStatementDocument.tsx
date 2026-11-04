@@ -2,7 +2,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { LogoMark } from '@/components/ui/LogoMark';
 import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { formatEuroCents } from '@/core/utils/money';
-import { dayMonthOptions } from '@/core/utils/time';
+import { dayMonthOptions, formatDayMonthYear } from '@/core/utils/time';
 import type { MonthlyStatement } from '@/features/expenses/monthly-statement';
 import { dateTimeFormat } from '@/shared/i18n/intl';
 import type { Locale } from '@/shared/i18n/locale';
@@ -49,13 +49,15 @@ export function MonthlyStatementDocument({
 }: MonthlyStatementDocumentProps) {
 	const t = useTranslations('statement');
 	const locale = useLocale();
-	const { monthKey, members, transfers, categories, items, totalCents, settled } = statement;
+	const { monthKey, members, open, transfers, categories, items, totalCents, settled } = statement;
 	const money = (cents: number) => formatEuroCents(cents, 'EUR', { locale });
 	const dayMonth = dateTimeFormat(locale, {
 		...dayMonthOptions(locale),
 		timeZone: 'Europe/Berlin',
 	});
 	const number = `MWG-${monthKey.slice(2, 4)}${monthKey.slice(5, 7)}-${shareCode.slice(0, 3).toUpperCase()}`;
+	const openByMember = Map.groupBy(open, (row) => row.memberId);
+	const asOf = formatDayMonthYear(statement.asOf, locale);
 	const viewerShare = members.find((member) => member.id === viewerId)?.shareCents ?? 0;
 	const empty = items.length === 0;
 
@@ -140,6 +142,9 @@ export function MonthlyStatementDocument({
 						{t('document.splitBetween', { count: members.length })}
 					</span>
 				</div>
+				<p className="text-[0.8125rem] leading-relaxed text-muted-foreground">
+					{t('document.balancesHint', { month: monthTitle(monthKey, locale), date: asOf })}
+				</p>
 				{/* The name column truncates; the wrapper scrolls only for very large amounts. */}
 				{/* biome-ignore lint/a11y/useSemanticElements: A <section> cannot be the scroll container here; role="region" names it. */}
 				<div
@@ -192,20 +197,26 @@ export function MonthlyStatementDocument({
 									>
 										{money(member.shareCents)}
 									</td>
-									<td
-										className={cn(
-											MONEY,
-											'pl-3 text-right text-[0.8125rem] font-medium',
-											member.balanceCents === 0
-												? 'text-muted-foreground'
-												: member.balanceCents > 0
-													? 'text-settled'
-													: 'text-destructive',
-										)}
-									>
-										{formatEuroCents(member.balanceCents, 'EUR', { signed: true, locale }).replace(
-											'-',
-											'−',
+									<td className="pl-3 text-right text-[0.8125rem] font-medium">
+										{(openByMember.get(member.id) ?? []).length === 0 ? (
+											<span className="text-muted-foreground">{t('document.balanceSettled')}</span>
+										) : (
+											<ul className="flex flex-col items-end">
+												{(openByMember.get(member.id) ?? []).map((row) => (
+													<li
+														key={row.currency}
+														className={cn(
+															MONEY,
+															row.cents > 0 ? 'text-settled' : 'text-destructive',
+														)}
+													>
+														{formatEuroCents(row.cents, row.currency, {
+															signed: true,
+															locale,
+														}).replace('-', '−')}
+													</li>
+												))}
+											</ul>
 										)}
 									</td>
 								</tr>
@@ -226,7 +237,7 @@ export function MonthlyStatementDocument({
 					<ul className="flex flex-col border-t border-border">
 						{transfers.map((transfer) => (
 							<li
-								key={`${transfer.fromId}-${transfer.toId}`}
+								key={`${transfer.fromId}-${transfer.toId}-${transfer.currency}`}
 								className="flex items-center gap-3 border-b border-border py-2.5 text-[0.875rem]"
 							>
 								<span className="min-w-0 flex-1">
@@ -235,15 +246,7 @@ export function MonthlyStatementDocument({
 									<span className="font-medium">{transfer.toName}</span>
 								</span>
 								<span className={cn(MONEY, 'text-[0.8125rem] font-medium')}>
-									{money(transfer.cents)}
-								</span>
-								<span
-									className={cn(
-										'w-16 text-right font-mono text-[0.6875rem] tracking-[0.06em] uppercase',
-										settled ? 'text-settled' : 'text-destructive',
-									)}
-								>
-									{settled ? t('document.transferDone') : t('document.transferOpen')}
+									{formatEuroCents(transfer.cents, transfer.currency ?? 'EUR', { locale })}
 								</span>
 							</li>
 						))}

@@ -88,8 +88,10 @@ async function setup(mailCount: number) {
 		totalCents: 1000,
 		items: [],
 		members: [],
+		open: [],
 		transfers: [],
 		settled: true,
+		asOf: '2026-10-02T08:00:00Z',
 		categories: [],
 	};
 	const recipient = (index: number) => ({

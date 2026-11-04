@@ -1,6 +1,7 @@
 import { serverT } from '@/core/i18n/server-t';
 import { APP_ORIGIN, escapeHtml } from '@/core/mail/brand-mail';
-import { formatEuroCents } from '@/core/utils/money';
+import { formatEuroCents, normalizeCurrency } from '@/core/utils/money';
+import { formatDayMonthYear } from '@/core/utils/time';
 import { dateTimeFormat } from '@/shared/i18n/intl';
 import { DEFAULT_LOCALE, htmlLang, type Locale } from '@/shared/i18n/locale';
 import type { MonthlyStatement } from './monthly-statement';
@@ -26,16 +27,24 @@ export interface StatementMail {
 
 type StatusKind = 'settled' | 'owed' | 'owes';
 
+/** One currency the recipient has an open balance in, with the transfers that involve them. */
+interface BalanceBlock {
+	kind: 'owed' | 'owes';
+	currency: string;
+	cents: number;
+	/** Who they pay or who pays them. */
+	transfers: Array<{ name: string; cents: number }>;
+}
+
 interface StatementView {
 	monthName: string;
 	monthLabel: string;
 	participants: number;
 	expenseCount: number;
 	shareCents: number;
-	kind: StatusKind;
-	statusCents: number;
-	/** Transfers that involve the member: who they pay or who pays them. */
-	transfers: Array<{ name: string; cents: number }>;
+	asOf: string;
+	/** Empty when the recipient has nothing open in any currency. */
+	balances: BalanceBlock[];
 }
 
 const SANS = "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
@@ -70,56 +79,85 @@ function buildView(input: StatementMailInput, locale: Locale): StatementView {
 	const { statement, memberId } = input;
 	const { monthName, year } = monthParts(statement.monthKey, locale);
 	const row = statement.members.find((member) => member.id === memberId);
-	const balance = row?.balanceCents ?? 0;
-	const kind: StatusKind =
-		statement.settled || balance === 0 ? 'settled' : balance > 0 ? 'owed' : 'owes';
-	const transfers: StatementView['transfers'] = [];
-	for (const transfer of statement.transfers) {
-		if (kind === 'owes' && transfer.fromId === memberId) {
-			transfers.push({ name: transfer.toName, cents: transfer.cents });
-		}
-		if (kind === 'owed' && transfer.toId === memberId) {
-			transfers.push({ name: transfer.fromName, cents: transfer.cents });
-		}
-	}
+	const balances = statement.open
+		.filter((open) => open.memberId === memberId)
+		.map((open): BalanceBlock => {
+			const kind = open.cents > 0 ? 'owed' : 'owes';
+			const transfers: BalanceBlock['transfers'] = [];
+			for (const transfer of statement.transfers) {
+				if (normalizeCurrency(transfer.currency ?? 'EUR') !== open.currency) continue;
+				if (kind === 'owes' && transfer.fromId === memberId) {
+					transfers.push({ name: transfer.toName, cents: transfer.cents });
+				}
+				if (kind === 'owed' && transfer.toId === memberId) {
+					transfers.push({ name: transfer.fromName, cents: transfer.cents });
+				}
+			}
+			return { kind, currency: open.currency, cents: Math.abs(open.cents), transfers };
+		});
 	return {
 		monthName,
 		monthLabel: `${monthName} ${year}`,
 		participants: statement.members.filter((m) => m.paidCents > 0 || m.shareCents > 0).length,
 		expenseCount: statement.items.length,
 		shareCents: row?.shareCents ?? 0,
-		kind,
-		statusCents: kind === 'settled' ? 0 : Math.abs(balance),
-		transfers,
+		asOf: formatDayMonthYear(statement.asOf, locale),
+		balances,
 	};
 }
 
-function statusAmount(view: StatementView, locale: Locale): string {
-	if (view.kind === 'owed') {
-		return formatEuroCents(view.statusCents, 'EUR', { signed: true, locale });
+/** The rows of the status block: one per open currency, or a single settled row. */
+function statusEntries(
+	view: StatementView,
+	locale: Locale,
+): Array<{
+	kind: StatusKind;
+	amount: string;
+	transfers: BalanceBlock['transfers'];
+	currency: string;
+}> {
+	if (view.balances.length === 0) {
+		return [
+			{
+				kind: 'settled',
+				amount: formatEuroCents(0, 'EUR', { locale }),
+				transfers: [],
+				currency: 'EUR',
+			},
+		];
 	}
-	return formatEuroCents(view.statusCents, 'EUR', { locale });
+	return view.balances.map((balance) => ({
+		kind: balance.kind,
+		amount: formatEuroCents(balance.cents, balance.currency, {
+			signed: balance.kind === 'owed',
+			locale,
+		}),
+		transfers: balance.transfers,
+		currency: balance.currency,
+	}));
 }
 
 function preheader(view: StatementView, t: MailT, locale: Locale): string {
+	const [only] = view.balances;
+	const status = view.balances.length > 1 ? 'multiple' : (only?.kind ?? 'settled');
 	return t('statement.preheader', {
 		people: view.participants,
 		expenses: view.expenseCount,
-		status: view.kind === 'owes' ? 'other' : view.kind,
-		amount: formatEuroCents(view.statusCents, 'EUR', { locale }),
+		status: status === 'owes' ? 'other' : status,
+		amount: only ? formatEuroCents(only.cents, only.currency, { locale }) : '',
 	});
 }
 
 function transferLines(
-	view: StatementView,
+	entry: ReturnType<typeof statusEntries>[number],
 	t: MailT,
 	locale: Locale,
 ): Array<{ label: string; amount: string }> {
-	return view.transfers.map((transfer) => ({
-		label: t(view.kind === 'owed' ? 'statement.transferFrom' : 'statement.transferTo', {
+	return entry.transfers.map((transfer) => ({
+		label: t(entry.kind === 'owed' ? 'statement.transferFrom' : 'statement.transferTo', {
 			name: transfer.name,
 		}),
-		amount: formatEuroCents(transfer.cents, 'EUR', { locale }),
+		amount: formatEuroCents(transfer.cents, entry.currency, { locale }),
 	}));
 }
 
@@ -140,8 +178,11 @@ function plainText(
 		`${t('statement.expenses')}: ${view.expenseCount}`,
 		`${t('statement.share')}: ${money(view.shareCents)}`,
 		'',
-		`${segmentLabel(t, view.kind)}: ${statusAmount(view, locale)}`,
-		...transferLines(view, t, locale).map((line) => `  ${line.label} ${line.amount}`),
+		t('statement.openAsOf', { date: view.asOf }),
+		...statusEntries(view, locale).flatMap((entry) => [
+			`${segmentLabel(t, entry.kind)}: ${entry.amount}`,
+			...transferLines(entry, t, locale).map((line) => `  ${line.label} ${line.amount}`),
+		]),
 		'',
 		`${t('statement.viewStatement')}: ${links.statement}`,
 		'',
@@ -173,17 +214,21 @@ function tile(label: string, value: string, divider: boolean): string {
 }
 
 function statusRow(view: StatementView, t: MailT, locale: Locale): string {
-	const color = view.kind === 'owes' ? OWES_COLOR : SETTLED_COLOR;
-	const dot = `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background-color:${color};margin-right:10px;vertical-align:middle;"></span>`;
-	const amountColor = view.kind === 'settled' ? MUTED : color;
-	const transfers = transferLines(view, t, locale)
-		.map(
-			(line) =>
-				`<tr><td style="padding:6px 0 0 17px;font-family:${SANS};font-size:14px;line-height:1.5;color:${BODY};">${escapeHtml(line.label)}</td>` +
-				`<td align="right" style="padding:6px 0 0 0;font-family:${MONO};font-size:13px;line-height:1.5;color:${BODY};white-space:nowrap;">${line.amount}</td></tr>`,
-		)
-		.join('');
-	return `<tr><td style="padding:0 0 24px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td valign="middle" style="font-family:${SANS};font-weight:500;font-size:15px;line-height:1.4;color:${color};">${dot}${escapeHtml(segmentLabel(t, view.kind))}</td><td align="right" valign="middle" style="font-family:${MONO};font-size:14px;line-height:1.4;color:${amountColor};white-space:nowrap;">${statusAmount(view, locale)}</td></tr>${transfers}</table></td></tr>`;
+	const asOf = `<tr><td style="padding:0 0 10px 0;font-family:${MONO};font-size:11px;line-height:1.4;letter-spacing:0.14em;text-transform:uppercase;color:${MUTED};">${escapeHtml(t('statement.openAsOf', { date: view.asOf }))}</td></tr>`;
+	const rows = statusEntries(view, locale).map((entry) => {
+		const color = entry.kind === 'owes' ? OWES_COLOR : SETTLED_COLOR;
+		const dot = `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background-color:${color};margin-right:10px;vertical-align:middle;"></span>`;
+		const amountColor = entry.kind === 'settled' ? MUTED : color;
+		const transfers = transferLines(entry, t, locale)
+			.map(
+				(line) =>
+					`<tr><td style="padding:6px 0 0 17px;font-family:${SANS};font-size:14px;line-height:1.5;color:${BODY};">${escapeHtml(line.label)}</td>` +
+					`<td align="right" style="padding:6px 0 0 0;font-family:${MONO};font-size:13px;line-height:1.5;color:${BODY};white-space:nowrap;">${line.amount}</td></tr>`,
+			)
+			.join('');
+		return `<tr><td valign="middle" style="padding-top:8px;font-family:${SANS};font-weight:500;font-size:15px;line-height:1.4;color:${color};">${dot}${escapeHtml(segmentLabel(t, entry.kind))}</td><td align="right" valign="middle" style="padding-top:8px;font-family:${MONO};font-size:14px;line-height:1.4;color:${amountColor};white-space:nowrap;">${entry.amount}</td></tr>${transfers}`;
+	});
+	return `<tr><td style="padding:0 0 24px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${asOf}<tr><td><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${rows.join('')}</table></td></tr></table></td></tr>`;
 }
 
 function header(monthLabel: string): string {

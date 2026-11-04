@@ -18,11 +18,11 @@ function recipient(memberId: string, email: string): StatementRecipient {
 			totalCents: 1000,
 			items: [],
 			categories: [],
-			members: [
-				{ id: memberId, name: memberId, paidCents: 1000, shareCents: 500, balanceCents: 500 },
-			],
+			members: [{ id: memberId, name: memberId, paidCents: 1000, shareCents: 500 }],
+			open: [],
 			transfers: [],
 			settled: true,
+			asOf: '2026-10-02T08:00:00Z',
 		},
 	};
 }

@@ -58,10 +58,11 @@ export default {
 		subject: '{month} ist abgerechnet',
 		title: '{month} ist abgerechnet.',
 		preheader:
-			'{people, plural, one {# Person} other {# Personen}}, {expenses, plural, one {# Ausgabe} other {# Ausgaben}}, {status, select, settled {alles ausgeglichen} owed {du bekommst {amount}} other {du schuldest {amount}}}.',
+			'{people, plural, one {# Person} other {# Personen}}, {expenses, plural, one {# Ausgabe} other {# Ausgaben}}, {status, select, settled {alles ausgeglichen} owed {du bekommst {amount}} multiple {offene Beträge in mehreren Währungen} other {du schuldest {amount}}}.',
 		segmentSettled: 'Alles ausgeglichen',
 		segmentOwed: 'Du bekommst',
 		segmentOwes: 'Du schuldest',
+		openAsOf: 'Offen, Stand {date}',
 		total: 'Gesamt',
 		expenses: 'Ausgaben',
 		share: 'Dein Anteil',

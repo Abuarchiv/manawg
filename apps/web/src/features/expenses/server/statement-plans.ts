@@ -28,13 +28,10 @@ function monthWindow(monthKey: string): { from: Date; to: Date } {
 	};
 }
 
-/** Expenses up to the end of the window: older open shares take payments first. */
-async function loadWgExpenses(
-	wgIds: string[],
-	window: { from: Date; to: Date },
-): Promise<Map<string, StatementExpense[]>> {
-	const inWindow = and(inArray(expenses.wgId, wgIds), lt(expenses.occurredAt, window.to));
-	const rows = await db.select().from(expenses).where(inWindow).orderBy(asc(expenses.occurredAt));
+/** Every expense of the WGs: the open balances cover all months and currencies. */
+async function loadWgExpenses(wgIds: string[]): Promise<Map<string, StatementExpense[]>> {
+	const inWgs = inArray(expenses.wgId, wgIds);
+	const rows = await db.select().from(expenses).where(inWgs).orderBy(asc(expenses.occurredAt));
 	const splits = await db
 		.select({
 			expenseId: expenseSplits.expenseId,
@@ -44,7 +41,7 @@ async function loadWgExpenses(
 		})
 		.from(expenseSplits)
 		.innerJoin(expenses, eq(expenseSplits.expenseId, expenses.id))
-		.where(inWindow);
+		.where(inWgs);
 	const splitsByExpense = new Map<string, StatementExpense['splits']>();
 	for (const split of splits) {
 		const list = splitsByExpense.get(split.expenseId) ?? [];
@@ -72,7 +69,7 @@ async function loadWgExpenses(
 	return byWg;
 }
 
-/** All completed payments per WG; `buildMonthlyStatement` spends them on open shares oldest first. */
+/** All completed payments per WG; they offset the open balances. */
 async function loadWgPayments(wgIds: string[]): Promise<Map<string, ExpensePaymentInput[]>> {
 	const rows = await db
 		.select({
@@ -95,9 +92,10 @@ async function loadWgPayments(wgIds: string[]): Promise<Map<string, ExpensePayme
 }
 
 /**
- * Statement plans for every WG that booked an expense in the month. Earlier
- * expenses are read too, because payments settle the oldest open shares first; only active members who kept the preference on
- * are looked up in Auth.
+ * Statement plans for every WG that booked an expense in the month. All
+ * expenses and payments of those WGs are read, because the open balances
+ * cover every month; only active members who kept the preference on are
+ * looked up in Auth.
  */
 export async function loadStatementPlans(monthKey: string): Promise<WgStatementPlan[]> {
 	const window = monthWindow(monthKey);
@@ -116,7 +114,7 @@ export async function loadStatementPlans(monthKey: string): Promise<WgStatementP
 				.from(wgs)
 				.where(inArray(wgs.id, chunk)),
 			db.select().from(wgMembers).where(inArray(wgMembers.wgId, chunk)),
-			loadWgExpenses(chunk, window),
+			loadWgExpenses(chunk),
 			loadWgPayments(chunk),
 		]);
 		const wantsMail = memberRows.filter(

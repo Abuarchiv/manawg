@@ -23,7 +23,11 @@ const septemberExpense = {
 	],
 };
 
-async function openStatement(page: Page, otherName?: string): Promise<void> {
+async function openStatement(
+	page: Page,
+	otherName?: string,
+	extraExpenses: unknown[] = [],
+): Promise<void> {
 	await page.setViewportSize({ width: 320, height: 700 });
 	await setupMember(page);
 	if (otherName) {
@@ -40,7 +44,7 @@ async function openStatement(page: Page, otherName?: string): Promise<void> {
 		);
 	}
 	await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/expenses*`, (route) =>
-		route.fulfill({ json: { expenses: [septemberExpense], payments: [] } }),
+		route.fulfill({ json: { expenses: [septemberExpense, ...extraExpenses], payments: [] } }),
 	);
 	await navigateToFeature(page, `${BASE}/statement?month=2026-09`);
 }
@@ -82,7 +86,7 @@ test.describe('Statement balances at 320px', () => {
 		page,
 	}) => {
 		await openStatement(page);
-		await expect(page.getByRole('columnheader', { name: 'Saldo', exact: true })).toBeVisible();
+		await expect(page.getByRole('columnheader', { name: 'Offen', exact: true })).toBeVisible();
 		const normal = await firstTermFontSize(page);
 		const rootSize = await page.evaluate(() =>
 			Number.parseFloat(getComputedStyle(document.documentElement).fontSize),
@@ -104,8 +108,21 @@ test.describe('Statement balances at 320px', () => {
 		await expectScrollRegionsFocusable(page);
 	});
 
+	test('open amounts in two currencies show one line each and fit', async ({ page }) => {
+		const dollars = {
+			...septemberExpense,
+			id: 'expense-fit-2',
+			currency: 'USD',
+			occurredAt: '2026-08-20T10:00:00.000Z',
+		};
+		await openStatement(page, undefined, [dollars]);
+		const row = page.getByRole('row').filter({ hasText: '$' }).first();
+		await expect(row.getByRole('listitem')).toHaveCount(2);
+		await expectBalancesFit(page, 'Offen');
+	});
+
 	for (const lang of ['de', 'en'] as const) {
-		const balance = lang === 'en' ? 'Balance' : 'Saldo';
+		const balance = lang === 'en' ? 'Open' : 'Offen';
 
 		test(`balances fit without sideways scroll in ${lang}`, async ({ context, page, baseURL }) => {
 			if (lang === 'en') await setEnglishLocale(context, baseURL ?? 'http://localhost:3112');

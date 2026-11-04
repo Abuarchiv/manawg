@@ -34,14 +34,15 @@ export default {
 		person: 'Person',
 		paid: 'Paid',
 		share: 'Share',
-		balance: 'Balance',
+		balance: 'Open',
+		balancesHint:
+			'Paid and Share cover {month}. Open shows where things stand on {date}, across all months and currencies.',
+		balanceSettled: 'settled',
 		you: 'you',
 		settlement: 'Settlement',
 		settlementHint:
 			'The simplest way: {count, plural, one {one transfer} other {# transfers}}, then everyone is settled up.',
 		transferTo: 'to',
-		transferDone: 'done',
-		transferOpen: 'open',
 		categories: 'Categories',
 		categoryShare: '{share, number}%',
 		category: {
@@ -61,7 +62,7 @@ export default {
 		sum: 'Total',
 		howWeCalculate: 'How we calculate',
 		howWeCalculateBody:
-			'Each expense is split the way it was entered. Balance = paid minus share. Positive means you get money back.',
+			'Each expense is split the way it was entered. Open is everything not yet settled, across all months and after confirmed payments. Positive means you get money back.',
 		note: 'Note',
 		noteBody:
 			'This overview is not an invoice for tax purposes. Receipts and photos are on each expense in the app. You can export it as CSV under Settings → Data.',
