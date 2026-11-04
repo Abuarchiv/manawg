@@ -106,6 +106,7 @@ export default {
 		error: {
 			description: 'Enter a short description.',
 			dueMissing: 'The due date is missing.',
+			dueOutOfRange: 'Pick a date at most one year back and at most ten years ahead.',
 			amountPositive: 'Enter an amount above €0, for example 12.50.',
 			amountDecimals: 'At most two decimal places.',
 			amountMax: 'The amount can be at most €1,000,000.',

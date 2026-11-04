@@ -3,9 +3,9 @@ import test from 'node:test';
 import {
 	isRecurringAnchorAllowed,
 	isRecurringDueAtEditAllowed,
-	isRecurringDueAtInRange,
 	recurringDueAtSchema,
 } from './recurring-due-date';
+import { isRecurringDueAtInRange } from './recurring-due-range';
 
 test('a due date far in the past or future is out of range', (t) => {
 	t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-09-25T12:00:00.000Z') });

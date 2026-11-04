@@ -2,8 +2,14 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 const { renderMessage, serverRootT } = await import('@/core/i18n/server-t');
-const { recurringAmountError, recurringSplitError, buildRecurringSplits, initialManualMap } =
-	await import('./recurring-form-model');
+const {
+	recurringAmountError,
+	recurringSplitError,
+	recurringDueCheck,
+	buildRecurringSplits,
+	initialManualMap,
+} = await import('./recurring-form-model');
+const { todayInputValue } = await import('@/core/utils/local-date');
 
 test('amount errors tell too many decimals, too large and too small apart', () => {
 	const t = serverRootT('de');
@@ -62,4 +68,39 @@ test('manual shares are read and written in the locale of the form', () => {
 	};
 	assert.deepEqual(initialManualMap(initial), { a: '12,50' });
 	assert.deepEqual(initialManualMap(initial, 'en'), { a: '12.50' });
+});
+
+function inputDateOffset(days: number): string {
+	return todayInputValue(new Date(Date.now() + days * 86_400_000));
+}
+
+test('a first due date outside the server bounds is out of range and promises no back-bookings', () => {
+	const today = todayInputValue();
+	assert.deepEqual(recurringDueCheck(inputDateOffset(-400), undefined, today, 1), {
+		outOfRange: true,
+		missedBookings: 0,
+	});
+	assert.deepEqual(recurringDueCheck(inputDateOffset(3651), undefined, today, 1), {
+		outOfRange: true,
+		missedBookings: 0,
+	});
+});
+
+test('a first due date in the past but within range announces its back-bookings', () => {
+	const check = recurringDueCheck(inputDateOffset(-30), undefined, todayInputValue(), 1);
+	assert.equal(check.outOfRange, false);
+	assert.ok(check.missedBookings > 0);
+});
+
+test('an unchanged long-overdue date stays valid in edit mode', () => {
+	const initialIso = new Date(Date.now() - 400 * 86_400_000).toISOString();
+	const unchanged = todayInputValue(new Date(initialIso));
+	assert.deepEqual(recurringDueCheck(unchanged, initialIso, todayInputValue(), 1), {
+		outOfRange: false,
+		missedBookings: 0,
+	});
+	assert.equal(
+		recurringDueCheck(inputDateOffset(-500), initialIso, todayInputValue(), 1).outOfRange,
+		true,
+	);
 });
