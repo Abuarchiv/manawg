@@ -1,5 +1,6 @@
 # Weekly dependency updates: one grouped PR per ecosystem for minor and patch releases, majors
-# one by one. Security updates arrive as soon as an advisory is published.
+# one by one, all labelled `dependencies`. Security updates arrive as soon as an advisory is
+# published.
 version: 2
 updates:
   - package-ecosystem: npm
@@ -9,6 +10,7 @@ updates:
       day: monday
       time: "06:00"
       timezone: Europe/Berlin
+    labels: [dependencies]
     open-pull-requests-limit: 5
     groups:
       # next and @next/bundle-analyzer move together.
@@ -28,6 +30,7 @@ updates:
       day: monday
       time: "06:00"
       timezone: Europe/Berlin
+    labels: [dependencies]
     groups:
       actions-minor-and-patch:
         update-types: [minor, patch]
@@ -40,6 +43,7 @@ updates:
       day: monday
       time: "06:00"
       timezone: Europe/Berlin
+    labels: [dependencies]
     ignore:
       # Node 22 is the supported runtime.
       - dependency-name: node
@@ -52,3 +56,4 @@ updates:
       day: monday
       time: "06:00"
       timezone: Europe/Berlin
+    labels: [dependencies]
