@@ -16,6 +16,7 @@ export default {
 		},
 	},
 	document: {
+		pdfFilename: 'ManaWG-statement-{month}.pdf',
 		formerMember: 'Former member',
 		statementNumber: 'Statement',
 		period: 'Period',

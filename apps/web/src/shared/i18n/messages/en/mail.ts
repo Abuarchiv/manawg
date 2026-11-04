@@ -71,6 +71,7 @@ export default {
 		transferFrom: 'from {name}',
 		transferTo: 'to {name}',
 		viewStatement: 'View statement',
-		cadence: 'Once a month, on the 1st. As a PDF in the app.',
+		attached: 'The statement is attached as a PDF.',
+		cadence: 'Once a month, on the 1st.',
 	},
 } satisfies Catalog<typeof de>;

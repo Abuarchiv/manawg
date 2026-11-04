@@ -13,6 +13,7 @@ export default {
 		},
 	},
 	document: {
+		pdfFilename: 'ManaWG-Abrechnung-{month}.pdf',
 		formerMember: 'Ehemaliges Mitglied',
 		statementNumber: 'Abrechnung',
 		period: 'Zeitraum',

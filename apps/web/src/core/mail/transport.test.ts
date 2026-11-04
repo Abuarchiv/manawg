@@ -111,3 +111,22 @@ test('a rejected batch is resent one by one only within the time budget', async 
 	);
 	assert.deepEqual(sizes, [3, 1]);
 });
+
+test('a rejected batch is not resent one by one after the run deadline', async (t) => {
+	const sizes: number[] = [];
+	t.mock.method(globalThis, 'fetch', async (_url: string, init: RequestInit) => {
+		sizes.push(JSON.parse(String(init.body)).length);
+		return Response.json({ message: 'invalid' }, { status: 422 });
+	});
+	const transport = createMailTransport({
+		VERCEL_ENV: 'production',
+		RESEND_API_KEY: 're_test',
+		STATEMENT_EMAIL_FROM: FROM,
+	});
+	const outcomes = await transport.sendBatch([mail('a'), mail('b')], Date.now() - 1);
+	assert.deepEqual(
+		outcomes.map((outcome) => outcome.kind),
+		['deferred', 'deferred'],
+	);
+	assert.deepEqual(sizes, [2]);
+});

@@ -103,6 +103,122 @@ test('a batch goes out with unsubscribe headers and an idempotency key tied to t
 	);
 });
 
+const pdf = {
+	filename: 'ManaWG-Abrechnung-2026-09.pdf',
+	content: new Uint8Array([37, 80, 68, 70]),
+	contentType: 'application/pdf',
+};
+const withPdf = (id: string, attempt = 0): OutgoingMail => ({
+	...mail(id, attempt),
+	attachments: [pdf],
+});
+
+test('a mail with an attachment goes to the single-send endpoint with its own idempotency key', async () => {
+	await withFetch(
+		(url) =>
+			url.endsWith('/emails/batch')
+				? Response.json({ data: [{ id: 'b1' }] })
+				: Response.json({ id: 'p9' }),
+		async (calls) => {
+			const outcomes = await createStatementTransport(production).sendBatch([
+				mail('a'),
+				withPdf('b'),
+				withPdf('c'),
+			]);
+			assert.deepEqual(outcomes, [
+				{ kind: 'sent', providerId: 'b1' },
+				{ kind: 'sent', providerId: 'p9' },
+				{ kind: 'sent', providerId: 'p9' },
+			]);
+			assert.deepEqual(
+				calls.map((call) => call.url),
+				[
+					'https://api.resend.com/emails/batch',
+					'https://api.resend.com/emails',
+					'https://api.resend.com/emails',
+				],
+			);
+			const single = JSON.parse(String(calls[1]?.init.body));
+			assert.deepEqual(single.to, ['b@example.org']);
+			assert.deepEqual(single.attachments, [
+				{
+					filename: pdf.filename,
+					content: Buffer.from(pdf.content).toString('base64'),
+					content_type: 'application/pdf',
+				},
+			]);
+			assert.equal(single.headers['List-Unsubscribe-Post'], 'List-Unsubscribe=One-Click');
+			const keys = calls.map(
+				(call) => (call.init.headers as Record<string, string>)['Idempotency-Key'],
+			);
+			assert.equal(new Set(keys).size, 3);
+			assert.equal(JSON.parse(String(calls[0]?.init.body)).length, 1);
+		},
+	);
+});
+
+test('a quota error on an attachment mail defers it and the ones after it', async () => {
+	await withFetch(
+		() => Response.json({ name: 'rate_limit_exceeded', message: 'slow down' }, { status: 429 }),
+		async (calls) => {
+			const outcomes = await createStatementTransport(production).sendBatch([
+				withPdf('a'),
+				withPdf('b'),
+			]);
+			assert.deepEqual(
+				outcomes.map((o) => o.kind),
+				['deferred', 'deferred'],
+			);
+			assert.deepEqual(
+				calls.map((call) => call.url),
+				['https://api.resend.com/emails'],
+			);
+		},
+	);
+});
+
+test('an attachment mail that times out is unconfirmed, a rejected one fails alone', async () => {
+	const original = globalThis.fetch;
+	try {
+		globalThis.fetch = (async () => {
+			const error = new Error('boom');
+			error.name = 'TimeoutError';
+			throw error;
+		}) as typeof fetch;
+		const [timedOut] = await createStatementTransport(production).sendBatch([withPdf('a')]);
+		assert.deepEqual(timedOut, { kind: 'failed', error: 'timeout', unconfirmed: true });
+		globalThis.fetch = (async () =>
+			Response.json({ message: 'bad address' }, { status: 422 })) as typeof fetch;
+		const outcomes = await createStatementTransport(production).sendBatch([
+			withPdf('a'),
+			withPdf('b'),
+		]);
+		assert.deepEqual(
+			outcomes.map((o) => o.kind),
+			['failed', 'failed'],
+		);
+	} finally {
+		globalThis.fetch = original;
+	}
+});
+
+test('no attachment request starts after the run deadline', async () => {
+	await withFetch(
+		() => Response.json({ id: 'p1' }),
+		async (calls) => {
+			const outcomes = await createStatementTransport(production).sendBatch(
+				[withPdf('a'), withPdf('b')],
+				Date.now() - 1,
+			);
+			assert.deepEqual(
+				outcomes.map((o) => o.kind),
+				['deferred', 'deferred'],
+			);
+			assert.equal(calls.length, 0);
+		},
+	);
+});
+
 test('429 defers the whole batch instead of failing it', async () => {
 	await withFetch(
 		() => Response.json({ name: 'rate_limit_exceeded', message: 'slow down' }, { status: 429 }),

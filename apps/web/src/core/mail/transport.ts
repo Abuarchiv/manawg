@@ -4,6 +4,8 @@ import nodemailer from 'nodemailer';
 import { isOfficialInstance } from '@/shared/lib/landing-url';
 
 const RESEND_BATCH_URL = 'https://api.resend.com/emails/batch';
+// The batch endpoint cannot carry attachments, so those mails go one request each.
+const RESEND_SINGLE_URL = 'https://api.resend.com/emails';
 const OFFICIAL_FROM = 'ManaWG <noreply@manawg.com>';
 const REQUEST_TIMEOUT_MS = 15_000;
 // Resend allows two requests per second; single retries after a rejected batch pace themselves.
@@ -21,6 +23,7 @@ export interface OutgoingMail {
 	text: string;
 	/** Absent for transactional mails (account, invitation) that must always arrive. */
 	unsubscribeUrl?: string;
+	attachments?: Array<{ filename: string; content: Uint8Array; contentType: string }>;
 }
 
 export type MailOutcome =
@@ -32,8 +35,11 @@ export type MailOutcome =
 
 export interface MailTransport {
 	readonly name: 'resend' | 'smtp' | 'dry-run';
-	/** One outcome per mail, in order. */
-	sendBatch(mails: readonly OutgoingMail[]): Promise<MailOutcome[]>;
+	/**
+	 * One outcome per mail, in order. No new request starts after `deadline` (epoch ms); the mails
+	 * left are deferred. Mails with attachments are sent one by one.
+	 */
+	sendBatch(mails: readonly OutgoingMail[], deadline?: number): Promise<MailOutcome[]>;
 }
 
 /** `l***@posteo.de`: enough to recognise a log line, never the full address. */
@@ -84,19 +90,18 @@ function unsubscribeHeaders(mail: OutgoingMail): { headers?: Record<string, stri
 		: {};
 }
 
+type ResendReply =
+	| { response: Response; body: unknown }
+	| { failure: Extract<MailOutcome, { kind: 'failed' }> };
+
 function createResendTransport(apiKey: string, from: string, prefix: string): MailTransport {
-	async function post(mails: readonly OutgoingMail[]): Promise<MailOutcome[]> {
-		const payload = mails.map((mail) => ({
-			from,
-			to: [mail.to],
-			subject: mail.subject,
-			html: mail.html,
-			text: mail.text,
-			...unsubscribeHeaders(mail),
-		}));
-		let response: Response;
+	async function request(
+		url: string,
+		payload: unknown,
+		mails: readonly OutgoingMail[],
+	): Promise<ResendReply> {
 		try {
-			response = await fetch(RESEND_BATCH_URL, {
+			const response = await fetch(url, {
 				method: 'POST',
 				headers: {
 					Authorization: `Bearer ${apiKey}`,
@@ -106,15 +111,58 @@ function createResendTransport(apiKey: string, from: string, prefix: string): Ma
 				body: JSON.stringify(payload),
 				signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
 			});
+			return { response, body: await response.json().catch(() => null) };
 		} catch (error) {
 			const timedOut = error instanceof Error && error.name === 'TimeoutError';
-			return mails.map(() => ({
-				kind: 'failed',
-				error: timedOut ? 'timeout' : 'network_error',
-				unconfirmed: timedOut,
-			}));
+			return {
+				failure: {
+					kind: 'failed',
+					error: timedOut ? 'timeout' : 'network_error',
+					unconfirmed: timedOut,
+				},
+			};
 		}
-		const body: unknown = await response.json().catch(() => null);
+	}
+
+	const content = (mail: OutgoingMail) => ({
+		from,
+		to: [mail.to],
+		subject: mail.subject,
+		html: mail.html,
+		text: mail.text,
+		...unsubscribeHeaders(mail),
+	});
+
+	/** One mail with attachments to the single-send endpoint. */
+	async function postSingle(mail: OutgoingMail): Promise<MailOutcome> {
+		const payload = {
+			...content(mail),
+			attachments: mail.attachments?.map((file) => ({
+				filename: file.filename,
+				content: Buffer.from(file.content).toString('base64'),
+				content_type: file.contentType,
+			})),
+		};
+		const reply = await request(RESEND_SINGLE_URL, payload, [mail]);
+		if ('failure' in reply) return reply.failure;
+		const { response, body } = reply;
+		const id: unknown = body && typeof body === 'object' && 'id' in body ? body.id : undefined;
+		if (response.ok) {
+			return typeof id === 'string'
+				? { kind: 'sent', providerId: id }
+				: { kind: 'failed', error: 'missing_provider_id' };
+		}
+		if (isQuotaError(response.status, body)) return { kind: 'deferred' };
+		return { kind: 'failed', error: errorMessage(response.status, body) };
+	}
+
+	async function post(
+		mails: readonly OutgoingMail[],
+		runDeadline = Infinity,
+	): Promise<MailOutcome[]> {
+		const reply = await request(RESEND_BATCH_URL, mails.map(content), mails);
+		if ('failure' in reply) return mails.map(() => reply.failure);
+		const { response, body } = reply;
 		if (response.ok) {
 			const data =
 				body && typeof body === 'object' && 'data' in body && Array.isArray(body.data)
@@ -132,7 +180,7 @@ function createResendTransport(apiKey: string, from: string, prefix: string): Ma
 		// A rejected batch names no culprit; resend one by one so a single bad address cannot block the rest.
 		if (mails.length > 1 && (response.status === 400 || response.status === 422)) {
 			const outcomes: MailOutcome[] = [];
-			const deadline = Date.now() + SINGLE_RESEND_BUDGET_MS;
+			const deadline = Math.min(runDeadline, Date.now() + SINGLE_RESEND_BUDGET_MS);
 			for (const mail of mails) {
 				// Mails past the budget stay queued instead of being lost when the function is killed.
 				if (Date.now() > deadline) {
@@ -151,7 +199,32 @@ function createResendTransport(apiKey: string, from: string, prefix: string): Ma
 		}
 		return mails.map(() => failed);
 	}
-	return { name: 'resend', sendBatch: post };
+
+	/** Mails without attachments share one batch request; the others follow one by one, paced. */
+	async function sendBatch(mails: readonly OutgoingMail[], runDeadline = Infinity) {
+		const outcomes: MailOutcome[] = mails.map(() => ({ kind: 'deferred' }));
+		const plain = mails.filter((mail) => !mail.attachments?.length);
+		const plainOutcomes = plain.length > 0 ? await post(plain, runDeadline) : [];
+		plain.forEach((mail, index) => {
+			outcomes[mails.indexOf(mail)] = plainOutcomes[index] ?? { kind: 'deferred' };
+		});
+		// A refused batch means the quota is used up; the attachment mails wait for the next run.
+		if (plainOutcomes.some((outcome) => outcome.kind === 'deferred')) return outcomes;
+		const deadline = Math.min(runDeadline, Date.now() + SINGLE_RESEND_BUDGET_MS);
+		let paced = plain.length > 0;
+		for (const [index, mail] of mails.entries()) {
+			if (!mail.attachments?.length) continue;
+			// Mails past the budget stay deferred instead of being lost when the function is killed.
+			if (Date.now() > deadline) break;
+			if (paced) await new Promise((resolve) => setTimeout(resolve, SINGLE_SEND_GAP_MS));
+			paced = true;
+			const outcome = await postSingle(mail);
+			outcomes[index] = outcome;
+			if (outcome.kind === 'deferred') break;
+		}
+		return outcomes;
+	}
+	return { name: 'resend', sendBatch };
 }
 
 /** A mail catcher on the Docker network or this machine, which speaks no TLS. */
@@ -187,9 +260,14 @@ function createSmtpTransport(
 	const transporter = nodemailer.createTransport(smtpOptions(env));
 	return {
 		name: 'smtp',
-		async sendBatch(mails) {
+		async sendBatch(mails, deadline = Infinity) {
 			const outcomes: MailOutcome[] = [];
 			for (const mail of mails) {
+				// Mails past the deadline stay queued instead of being lost when the function is killed.
+				if (Date.now() > deadline) {
+					outcomes.push({ kind: 'deferred' });
+					continue;
+				}
 				try {
 					const info = await transporter.sendMail({
 						from,
@@ -198,6 +276,15 @@ function createSmtpTransport(
 						html: mail.html,
 						text: mail.text,
 						...unsubscribeHeaders(mail),
+						...(mail.attachments?.length
+							? {
+									attachments: mail.attachments.map((file) => ({
+										filename: file.filename,
+										content: Buffer.from(file.content),
+										contentType: file.contentType,
+									})),
+								}
+							: {}),
 					});
 					outcomes.push({ kind: 'sent', providerId: info.messageId });
 				} catch (error) {
@@ -228,7 +315,7 @@ function createDryRunTransport(): MailTransport {
 			return mails.map((mail) => {
 				// biome-ignore lint/suspicious/noConsole: the dry-run transport exists to log.
 				console.info(
-					`[mail] dry-run to=${maskEmail(mail.to)} subject="${mail.subject}" html=${mail.html.length}b`,
+					`[mail] dry-run to=${maskEmail(mail.to)} subject="${mail.subject}" html=${mail.html.length}b attachments=${mail.attachments?.length ?? 0} ${mail.attachments?.reduce((sum, file) => sum + file.content.byteLength, 0) ?? 0}b`,
 				);
 				return { kind: 'sent', providerId: 'dry-run' } as const;
 			});

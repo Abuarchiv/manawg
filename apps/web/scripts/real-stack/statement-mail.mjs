@@ -49,6 +49,12 @@ if (benMail) {
 		'mail states what Ben owes',
 		benMail.Text.slice(0, 300),
 	);
+	const pdf = benMail.Attachments?.find((file) => file.ContentType === 'application/pdf');
+	expect(
+		pdf?.FileName === `ManaWG-Abrechnung-${monthKey}.pdf` && pdf.Size > 1000,
+		'mail carries the statement as a PDF',
+		JSON.stringify(benMail.Attachments),
+	);
 	expect(
 		benMail.Text.includes(`${BASE}/wg/${code}/statement?month=${monthKey}`),
 		'mail links the statement of that month',
