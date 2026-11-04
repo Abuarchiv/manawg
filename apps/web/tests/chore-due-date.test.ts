@@ -66,3 +66,30 @@ test('clearing the assignee and changing the rhythm are sent together with their
 		{ assignedMemberId: null, intervalDays: 1, recurrenceType: 'months' },
 	);
 });
+
+test('changing only the unit sends the interval together with the new unit', () => {
+	assert.deepEqual(diffChoreEdit(stored, { ...untouched, recurrenceType: 'months' }), {
+		intervalDays: 7,
+		recurrenceType: 'months',
+	});
+});
+
+test('changing only the interval sends the unchanged unit along', () => {
+	assert.deepEqual(diffChoreEdit(stored, { ...untouched, interval: 3 }), {
+		intervalDays: 3,
+		recurrenceType: 'days',
+	});
+});
+
+test('an empty or blank title is never sent', () => {
+	assert.deepEqual(diffChoreEdit(stored, { ...untouched, title: '' }), {});
+	assert.deepEqual(diffChoreEdit(stored, { ...untouched, title: '   ' }), {});
+});
+
+test('an unassigned chore stays untouched until someone is picked', () => {
+	const unassigned = { ...stored, assignedMemberId: null };
+	assert.deepEqual(diffChoreEdit(unassigned, { ...untouched, assigned: '' }), {});
+	assert.deepEqual(diffChoreEdit(unassigned, { ...untouched, assigned: 'ben' }), {
+		assignedMemberId: 'ben',
+	});
+});

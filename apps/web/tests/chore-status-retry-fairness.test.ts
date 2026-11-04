@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import test, { describe } from 'node:test';
 import * as offlineClient from '../src/core/offline/offline-client';
 import { buildChoreFairness } from '../src/features/chores/chore-fairness';
-import { getChoreStatus } from '../src/features/chores/chore-status';
+import { getChoreStatus, groupChoresForPlan } from '../src/features/chores/chore-status';
 
 describe('chore status', () => {
 	test('uses Berlin calendar days instead of rounding elapsed hours', () => {
@@ -20,6 +20,41 @@ describe('chore status', () => {
 			overdueDays: 1,
 			label: { key: 'chores.status.overdue', values: { days: 1 } },
 		});
+	});
+
+	test('escalates a chore from its second overdue day', () => {
+		const now = Date.parse('2026-09-05T12:00:00+02:00');
+
+		assert.equal(getChoreStatus('2026-09-04T12:00:00+02:00', now).escalated, false);
+		assert.equal(getChoreStatus('2026-09-03T12:00:00+02:00', now).escalated, true);
+	});
+
+	test('groups chores by the calendar-day thresholds of the plan', () => {
+		const now = Date.parse('2026-09-05T12:00:00+02:00');
+		const chore = (id: string, assignedMemberId: string, nextDueAt: string) => ({
+			id,
+			assignedMemberId,
+			nextDueAt,
+		});
+		const groups = groupChoresForPlan(
+			[
+				chore('own-tomorrow', 'me', '2026-09-06T12:00:00+02:00'),
+				chore('other-in-7', 'other', '2026-09-12T12:00:00+02:00'),
+				chore('other-in-8', 'other', '2026-09-13T12:00:00+02:00'),
+				chore('other-invalid', 'other', 'not-a-date'),
+			],
+			'me',
+			now,
+		);
+
+		assert.deepEqual(
+			groups.map((group) => [group.key, group.chores.map((c) => c.id)]),
+			[
+				['mine', ['own-tomorrow']],
+				['week', ['other-in-7']],
+				['later', ['other-in-8', 'other-invalid']],
+			],
+		);
 	});
 });
 
