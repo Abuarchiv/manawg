@@ -74,15 +74,22 @@ The system SHALL mail only active members with an Auth account, a confirmed e-ma
 
 ### Requirement: Mail content matches the in-app statement
 
-The figures in the mail SHALL be computed by `buildMonthlyStatement` at send time, and the button SHALL open the in-app statement for the same month.
+The figures in the mail SHALL be computed by `buildMonthlyStatement` at send time, and the button SHALL open the in-app statement for the same month. Total, expense count and share describe the mailed month; the status is not limited to that month and shows the member's overall open balance as of send time, the same balances the expenses page shows.
 
 #### Scenario: Settled month
-- **WHEN** every share of the month is settled or the month's debts between members cancel out exactly
+- **WHEN** the member has no open balance in any month or currency as of send time
 - **THEN** the status reads "Alles ausgeglichen 0,00 €" in green
 
 #### Scenario: Open balance
-- **WHEN** the member owes money for the month
-- **THEN** the status shows "Du schuldest" with the amount in red and lists the member's transfers
+- **WHEN** the member has an open balance as of send time in any month or currency
+- **THEN** the status shows one row per currency: "Du schuldest" with the amount in red and the transfers the member makes, or "Du bekommst" with the amount and who pays the member
+- **AND** only transfers the recipient is part of are listed
+
+#### Scenario: Statement as PDF attachment
+- **WHEN** the statement PDF renders
+- **THEN** the mail carries it as an attachment and the body says "Die Abrechnung als PDF hängt an." in HTML and plain text
+- **WHEN** rendering the PDF fails
+- **THEN** the mail is still sent, without the attachment and without that sentence
 
 #### Scenario: Expense added after sending
 - **WHEN** an expense for the month is added after the mail went out
