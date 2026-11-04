@@ -108,6 +108,31 @@ test.describe('Statement balances at 320px', () => {
 		await expectScrollRegionsFocusable(page);
 	});
 
+	test('the page shows the open status, signed balances and the transfer from debtor to creditor', async ({
+		page,
+	}) => {
+		await openStatement(page);
+		const status = page.getByText('Status', { exact: true }).locator('xpath=following-sibling::dd');
+		await expect(status).toHaveText('Offen');
+		await expect(status).toHaveClass(/text-destructive/);
+
+		const balanceOf = (name: string) =>
+			page
+				.getByRole('row')
+				.filter({ has: page.getByRole('rowheader', { name: new RegExp(name) }) })
+				.getByRole('listitem');
+		const debtor = balanceOf('Mina');
+		await expect(debtor).toHaveText(/^−15,00\s€$/);
+		await expect(debtor).toHaveClass(/text-destructive/);
+		const creditor = balanceOf(FIXTURE_WG.memberName);
+		await expect(creditor).toHaveText(/^\+15,00\s€$/);
+		await expect(creditor).toHaveClass(/text-settled/);
+
+		const transfers = page.locator('section[aria-labelledby="statement-transfers"] li');
+		await expect(transfers).toHaveCount(1);
+		await expect(transfers.first()).toHaveText(/^Mina\s+an\s+Jonas\s*15,00\s€$/);
+	});
+
 	test('open amounts in two currencies show one line each and fit', async ({ page }) => {
 		const dollars = {
 			...septemberExpense,
