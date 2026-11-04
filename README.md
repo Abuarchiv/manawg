@@ -17,7 +17,6 @@
 <p align="center">
   <a href="https://github.com/Abuarchiv/manawg/actions/workflows/ci.yml"><img src="https://github.com/Abuarchiv/manawg/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="License: Apache-2.0"></a>
-  <a href="https://scorecard.dev/viewer/?uri=github.com/Abuarchiv/manawg"><img src="https://api.scorecard.dev/projects/github.com/Abuarchiv/manawg/badge" alt="OpenSSF Scorecard"></a>
 </p>
 
 ManaWG is a free, open-source app for shared flats. Flatmates use it to split expenses, rotate

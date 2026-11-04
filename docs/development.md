@@ -248,7 +248,7 @@ against a PostgreSQL service on every PR and every push to `main`. Workflow `web
 Workflow `security.yml` runs Trivy over the lockfile, the Dockerfile and the tree (known
 vulnerabilities, misconfigurations, secrets) on every PR, on `main` and weekly. Workflow
 `docker.yml` builds the self-hosting image and scans it with Trivy when a PR touches the image
-inputs, and the release scan blocks the push of a vulnerable image; `scorecard.yml` publishes the OpenSSF Scorecard.
+inputs, and the release scan blocks the push of a vulnerable image.
 
 Run the same gates locally before you open a pull request.
 
