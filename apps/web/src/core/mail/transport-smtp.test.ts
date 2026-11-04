@@ -75,3 +75,15 @@ test('SMTP hands attachments to the message as buffers', async () => {
 		{ filename: 'a.pdf', content: Buffer.from([37, 80, 68, 70]), contentType: 'application/pdf' },
 	]);
 });
+
+test('SMTP defers the mails left once the run deadline has passed', async () => {
+	failure.current = null;
+	const before = sentOptions.length;
+	const transport = createMailTransport({
+		SMTP_HOST: 'mailpit',
+		STATEMENT_EMAIL_FROM: 'ManaWG <noreply@wg.example.com>',
+	});
+	const outcomes = await transport.sendBatch([mail, mail], Date.now() - 1);
+	assert.deepEqual(outcomes, [{ kind: 'deferred' }, { kind: 'deferred' }]);
+	assert.equal(sentOptions.length, before);
+});

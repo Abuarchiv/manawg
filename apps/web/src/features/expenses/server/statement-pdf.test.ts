@@ -3,6 +3,7 @@ import test from 'node:test';
 import { PDFDocument } from 'pdf-lib';
 import type { MonthlyStatement } from '../monthly-statement';
 import { renderStatementPdf, statementPdfFilename } from './statement-pdf';
+import { createSheet } from './statement-pdf-sheet';
 
 function statement(overrides: Partial<MonthlyStatement> = {}): MonthlyStatement {
 	return {
@@ -76,4 +77,15 @@ test('a long expense list continues on further pages', async () => {
 test('the file name carries the month and the language', () => {
 	assert.equal(statementPdfFilename('2026-09', 'de'), 'ManaWG-Abrechnung-2026-09.pdf');
 	assert.equal(statementPdfFilename('2026-09', 'en'), 'ManaWG-statement-2026-09.pdf');
+});
+
+test('text outside the font falls back to a plain space, the base letter or a question mark', async () => {
+	const { safe } = await createSheet('de');
+	assert.equal(safe('Zoë'), 'Zoë');
+	assert.equal(safe('Ž'), 'Z');
+	assert.equal(safe('Łukasz'), '?ukasz');
+	assert.equal(safe('🙂 Mia'), '? Mia');
+	assert.equal(safe('日本'), '??');
+	assert.equal(safe('a\u00a0b\u202fc\td'), 'a b c d');
+	assert.equal(safe('A → B'), 'A > B');
 });

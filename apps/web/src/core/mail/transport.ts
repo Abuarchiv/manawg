@@ -36,8 +36,8 @@ export type MailOutcome =
 export interface MailTransport {
 	readonly name: 'resend' | 'smtp' | 'dry-run';
 	/**
-	 * One outcome per mail, in order. Mails with attachments are sent one by one; no new request
-	 * starts after `deadline` (epoch ms), the rest is deferred.
+	 * One outcome per mail, in order. No new request starts after `deadline` (epoch ms); the mails
+	 * left are deferred. Mails with attachments are sent one by one.
 	 */
 	sendBatch(mails: readonly OutgoingMail[], deadline?: number): Promise<MailOutcome[]>;
 }
@@ -156,7 +156,10 @@ function createResendTransport(apiKey: string, from: string, prefix: string): Ma
 		return { kind: 'failed', error: errorMessage(response.status, body) };
 	}
 
-	async function post(mails: readonly OutgoingMail[]): Promise<MailOutcome[]> {
+	async function post(
+		mails: readonly OutgoingMail[],
+		runDeadline = Infinity,
+	): Promise<MailOutcome[]> {
 		const reply = await request(RESEND_BATCH_URL, mails.map(content), mails);
 		if ('failure' in reply) return mails.map(() => reply.failure);
 		const { response, body } = reply;
@@ -177,7 +180,7 @@ function createResendTransport(apiKey: string, from: string, prefix: string): Ma
 		// A rejected batch names no culprit; resend one by one so a single bad address cannot block the rest.
 		if (mails.length > 1 && (response.status === 400 || response.status === 422)) {
 			const outcomes: MailOutcome[] = [];
-			const deadline = Date.now() + SINGLE_RESEND_BUDGET_MS;
+			const deadline = Math.min(runDeadline, Date.now() + SINGLE_RESEND_BUDGET_MS);
 			for (const mail of mails) {
 				// Mails past the budget stay queued instead of being lost when the function is killed.
 				if (Date.now() > deadline) {
@@ -201,7 +204,7 @@ function createResendTransport(apiKey: string, from: string, prefix: string): Ma
 	async function sendBatch(mails: readonly OutgoingMail[], runDeadline = Infinity) {
 		const outcomes: MailOutcome[] = mails.map(() => ({ kind: 'deferred' }));
 		const plain = mails.filter((mail) => !mail.attachments?.length);
-		const plainOutcomes = plain.length > 0 ? await post(plain) : [];
+		const plainOutcomes = plain.length > 0 ? await post(plain, runDeadline) : [];
 		plain.forEach((mail, index) => {
 			outcomes[mails.indexOf(mail)] = plainOutcomes[index] ?? { kind: 'deferred' };
 		});
@@ -257,9 +260,14 @@ function createSmtpTransport(
 	const transporter = nodemailer.createTransport(smtpOptions(env));
 	return {
 		name: 'smtp',
-		async sendBatch(mails) {
+		async sendBatch(mails, deadline = Infinity) {
 			const outcomes: MailOutcome[] = [];
 			for (const mail of mails) {
+				// Mails past the deadline stay queued instead of being lost when the function is killed.
+				if (Date.now() > deadline) {
+					outcomes.push({ kind: 'deferred' });
+					continue;
+				}
 				try {
 					const info = await transporter.sendMail({
 						from,
