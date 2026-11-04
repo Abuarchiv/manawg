@@ -7,10 +7,7 @@ function split(debtorMemberId: string, settledAt: string | null = null) {
 }
 
 test('an expense without settled shares stays deletable', () => {
-	assert.equal(
-		hasSettledShares({ paidByMemberId: 'A', splits: [split('A'), split('B')] }),
-		false,
-	);
+	assert.equal(hasSettledShares({ paidByMemberId: 'A', splits: [split('A'), split('B')] }), false);
 });
 
 test('the payer having settled their own share does not block deletion', () => {
