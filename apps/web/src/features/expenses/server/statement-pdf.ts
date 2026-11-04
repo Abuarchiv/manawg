@@ -74,7 +74,10 @@ function drawHeader(sheet: Sheet, input: StatementPdfInput, t: DocumentT): void 
 		sheet.y -= 12;
 	}
 	sheet.y -= 22;
-	text(sheet, t('document.eyebrow', { wgName }), MARGIN, { size: 9, color: MUTED });
+	text(sheet, fit(sheet, t('document.eyebrow', { wgName }), CONTENT_WIDTH, 9), MARGIN, {
+		size: 9,
+		color: MUTED,
+	});
 	sheet.y -= 18;
 	text(sheet, monthTitle(monthKey, locale), MARGIN, { size: 26, bold: true });
 	sheet.y -= 38;

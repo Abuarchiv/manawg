@@ -3,7 +3,7 @@ import test from 'node:test';
 import { PDFDocument, PDFPage } from 'pdf-lib';
 import type { MonthlyStatement } from '../monthly-statement';
 import { renderStatementPdf, statementPdfFilename } from './statement-pdf';
-import { createSheet, OWES, SETTLED } from './statement-pdf-sheet';
+import { CONTENT_WIDTH, createSheet, MARGIN, OWES, SETTLED } from './statement-pdf-sheet';
 
 function statement(overrides: Partial<MonthlyStatement> = {}): MonthlyStatement {
 	return {
@@ -199,4 +199,31 @@ test('an expense without a payer shows the former member label', async () => {
 	assert.ok(item);
 	const drawn = await drawnTexts(statement({ items: [{ ...item, payerName: null }] }));
 	assert.equal(texts(drawn, 'Ehemaliges Mitglied').length, 1);
+});
+
+test('every line stays inside the page margins for a 100-character WG name', async () => {
+	const original = PDFPage.prototype.drawText;
+	const bounds: Array<{ value: string; left: number; right: number }> = [];
+	PDFPage.prototype.drawText = function record(this: PDFPage, value, options) {
+		const { x = 0, size = 0, font } = options ?? {};
+		bounds.push({ value, left: x, right: x + (font?.widthOfTextAtSize(value, size) ?? 0) });
+		return original.call(this, value, options);
+	};
+	try {
+		for (const locale of ['de', 'en'] as const) {
+			await renderStatementPdf({
+				...input,
+				wgName: 'W'.repeat(100),
+				locale,
+				statement: statement(),
+			});
+		}
+	} finally {
+		PDFPage.prototype.drawText = original;
+	}
+	assert.ok(bounds.length > 0);
+	for (const { value, left, right } of bounds) {
+		assert.ok(left >= MARGIN - 0.01, `"${value}" starts at ${left}`);
+		assert.ok(right <= MARGIN + CONTENT_WIDTH + 0.01, `"${value}" ends at ${right}`);
+	}
 });
