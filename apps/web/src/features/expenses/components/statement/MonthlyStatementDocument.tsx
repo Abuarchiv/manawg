@@ -56,7 +56,12 @@ export function MonthlyStatementDocument({
 		timeZone: 'Europe/Berlin',
 	});
 	const number = `MWG-${monthKey.slice(2, 4)}${monthKey.slice(5, 7)}-${shareCode.slice(0, 3).toUpperCase()}`;
-	const openByMember = Map.groupBy(open, (row) => row.memberId);
+	const openByMember = new Map<string, typeof open>();
+	for (const row of open) {
+		const rows = openByMember.get(row.memberId);
+		if (rows) rows.push(row);
+		else openByMember.set(row.memberId, [row]);
+	}
 	const asOf = formatDayMonthYear(statement.asOf, locale);
 	const viewerShare = members.find((member) => member.id === viewerId)?.shareCents ?? 0;
 	const empty = items.length === 0;
@@ -172,55 +177,63 @@ export function MonthlyStatementDocument({
 							</tr>
 						</thead>
 						<tbody>
-							{members.map((member) => (
-								<tr key={member.id} className="border-b border-border">
-									<th scope="row" className="max-w-0 py-2.5 text-left font-medium">
-										<span className="flex min-w-0 items-center gap-2">
-											<MemberAvatar name={member.name} size={24} />
-											<span className="flex min-w-0 flex-wrap items-baseline gap-x-2">
-												<span className="max-w-full truncate" title={member.name}>
-													{member.name}
-												</span>
-												{member.id === viewerId && (
-													<span className="text-[0.75rem] font-normal text-muted-foreground">
-														{t('document.you')}
+							{members.map((member) => {
+								const openRows = openByMember.get(member.id) ?? [];
+								return (
+									<tr key={member.id} className="border-b border-border">
+										<th scope="row" className="max-w-0 py-2.5 text-left font-medium">
+											<span className="flex min-w-0 items-center gap-2">
+												<MemberAvatar name={member.name} size={24} />
+												<span className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+													<span className="max-w-full truncate" title={member.name}>
+														{member.name}
 													</span>
-												)}
+													{member.id === viewerId && (
+														<span className="text-[0.75rem] font-normal text-muted-foreground">
+															{t('document.you')}
+														</span>
+													)}
+												</span>
 											</span>
-										</span>
-									</th>
-									<td className={cn(MONEY, 'pl-3 text-right text-[0.8125rem]')}>
-										{money(member.paidCents)}
-									</td>
-									<td
-										className={cn(MONEY, 'pl-3 text-right text-[0.8125rem] text-muted-foreground')}
-									>
-										{money(member.shareCents)}
-									</td>
-									<td className="pl-3 text-right text-[0.8125rem] font-medium">
-										{(openByMember.get(member.id) ?? []).length === 0 ? (
-											<span className="text-muted-foreground">{t('document.balanceSettled')}</span>
-										) : (
-											<ul className="flex flex-col items-end">
-												{(openByMember.get(member.id) ?? []).map((row) => (
-													<li
-														key={row.currency}
-														className={cn(
-															MONEY,
-															row.cents > 0 ? 'text-settled' : 'text-destructive',
-														)}
-													>
-														{formatEuroCents(row.cents, row.currency, {
-															signed: true,
-															locale,
-														}).replace('-', '−')}
-													</li>
-												))}
-											</ul>
-										)}
-									</td>
-								</tr>
-							))}
+										</th>
+										<td className={cn(MONEY, 'pl-3 text-right text-[0.8125rem]')}>
+											{money(member.paidCents)}
+										</td>
+										<td
+											className={cn(
+												MONEY,
+												'pl-3 text-right text-[0.8125rem] text-muted-foreground',
+											)}
+										>
+											{money(member.shareCents)}
+										</td>
+										<td className="pl-3 text-right text-[0.8125rem] font-medium">
+											{openRows.length === 0 ? (
+												<span className="text-muted-foreground">
+													{t('document.balanceSettled')}
+												</span>
+											) : (
+												<ul className="flex flex-col items-end">
+													{openRows.map((row) => (
+														<li
+															key={row.currency}
+															className={cn(
+																MONEY,
+																row.cents > 0 ? 'text-settled' : 'text-destructive',
+															)}
+														>
+															{formatEuroCents(row.cents, row.currency, {
+																signed: true,
+																locale,
+															}).replace('-', '−')}
+														</li>
+													))}
+												</ul>
+											)}
+										</td>
+									</tr>
+								);
+							})}
 						</tbody>
 					</table>
 				</div>
