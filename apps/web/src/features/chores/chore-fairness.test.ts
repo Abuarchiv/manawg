@@ -5,6 +5,7 @@ import {
 	chooseNextAvailableMember,
 	computeOpenGapsByMember,
 	predictNextAssigneeId,
+	sharePercents,
 } from './chore-fairness';
 
 const NOW = Date.parse('2026-10-31T10:00:00.000Z');
@@ -190,4 +191,22 @@ test('the predicted next assignee is never the current owner', () => {
 		[],
 	);
 	assert.equal(next, 'c');
+});
+
+test('share percentages add up to 100', () => {
+	assert.deepEqual(sharePercents([2, 2, 2]), [34, 33, 33]);
+	assert.deepEqual(sharePercents([1, 1, 1, 1, 1, 1, 1]), [15, 15, 14, 14, 14, 14, 14]);
+	assert.deepEqual(sharePercents([5]), [100]);
+	assert.deepEqual(sharePercents([0, 0]), [0, 0]);
+	for (const counts of [[3, 7, 11], [1, 2, 3, 4, 5, 6], [13, 1, 1, 1], Array(20).fill(1)]) {
+		assert.equal(
+			sharePercents(counts).reduce((sum, percent) => sum + percent, 0),
+			100,
+		);
+	}
+});
+
+test('a share above zero never shows as 0%', () => {
+	assert.deepEqual(sharePercents([200, 1]), [99, 1]);
+	assert.deepEqual(sharePercents([400, 1, 1]), [98, 1, 1]);
 });

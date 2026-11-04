@@ -210,3 +210,30 @@ export function predictNextAssigneeId(
 		chores,
 	});
 }
+
+/**
+ * Whole-number percentages that add up to 100 (largest remainder method). A count above zero
+ * never shows as 0%; the point it needs is taken from the largest share.
+ */
+export function sharePercents(counts: number[]): number[] {
+	const total = counts.reduce((sum, count) => sum + count, 0);
+	if (total === 0) return counts.map(() => 0);
+	const exact = counts.map((count) => (count / total) * 100);
+	const percents = exact.map(Math.floor);
+	let missing = 100 - percents.reduce((sum, percent) => sum + percent, 0);
+	const byRemainder = exact
+		.map((value, index) => ({ index, remainder: value - Math.floor(value) }))
+		.sort((a, b) => b.remainder - a.remainder);
+	for (const { index } of byRemainder) {
+		if (missing === 0) break;
+		percents[index] = (percents[index] ?? 0) + 1;
+		missing -= 1;
+	}
+	counts.forEach((count, index) => {
+		if (count === 0 || percents[index] !== 0) return;
+		const largest = percents.indexOf(Math.max(...percents));
+		percents[largest] = (percents[largest] ?? 0) - 1;
+		percents[index] = 1;
+	});
+	return percents;
+}

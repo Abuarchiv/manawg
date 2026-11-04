@@ -17,14 +17,18 @@ import {
 	ItemGroup,
 	ItemTitle,
 } from '@/components/ui/item';
-import type { ChoreFairness } from '@/features/chores/chore-fairness';
+import { type ChoreFairness, sharePercents } from '@/features/chores/chore-fairness';
 import type { MemberRef } from '@/shared/lib/member-types';
 
 const FAIRNESS_RULES = ['leastLoad', 'recalculated'] as const;
 
-/** Bar segment and legend dot share the shading so they can be matched. */
-function segmentTint(index: number): string {
-	return `color-mix(in oklab, var(--primary) ${Math.max(100 - index * 25, 20)}%, transparent)`;
+/**
+ * Bar segment and legend dot share the shading so they can be matched. The shades run evenly
+ * from 100% to 20%, so every member gets their own.
+ */
+function segmentTint(index: number, count: number): string {
+	const strength = 100 - index * (80 / Math.max(count - 1, 1));
+	return `color-mix(in oklab, var(--primary) ${Math.round(strength)}%, transparent)`;
 }
 
 export function FairnessPanel({
@@ -45,6 +49,7 @@ export function FairnessPanel({
 		.filter((member) => member.count > 0)
 		.sort((a, b) => b.count - a.count);
 	const total = shares.reduce((sum, member) => sum + member.count, 0);
+	const percents = sharePercents(shares.map((member) => member.count));
 	return (
 		<Card>
 			<CardHeader>
@@ -77,7 +82,7 @@ export function FairnessPanel({
 										className="h-full border-background border-r-2 last:border-r-0"
 										style={{
 											width: `${(member.count / total) * 100}%`,
-											backgroundColor: segmentTint(index),
+											backgroundColor: segmentTint(index, shares.length),
 										}}
 									/>
 								))}
@@ -88,12 +93,12 @@ export function FairnessPanel({
 										<span
 											aria-hidden
 											className="size-2 shrink-0 rounded-full"
-											style={{ backgroundColor: segmentTint(index) }}
+											style={{ backgroundColor: segmentTint(index, shares.length) }}
 										/>
 										<span>
 											{t('share', {
 												name: member.id === currentMemberId ? t('youCapital') : member.name,
-												percent: String(Math.round((member.count / total) * 100)),
+												percent: String(percents[index]),
 												count: String(member.count),
 											})}
 										</span>
