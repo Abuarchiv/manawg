@@ -36,9 +36,10 @@ running. If port 80 is taken, set `HTTP_PORT=8080` and `APP_URL=http://localhost
 and run `docker compose up -d` again. Mailpit uses port 8025; if that is taken, set `MAILPIT_PORT`
 to a free port and open Mailpit there.
 
-Compose pulls `ghcr.io/abuarchiv/manawg:<MANAWG_VERSION>` when that tag exists. Otherwise it
-builds the image from your checkout, which takes about ten minutes; the message that it cannot
-pull the image is harmless then.
+Compose pulls `ghcr.io/abuarchiv/manawg:<MANAWG_VERSION>` when that tag exists, `latest` by
+default. Otherwise it builds the image from your checkout, which takes about ten minutes; the
+message that it cannot pull the image is harmless then. To stay on one major version, set
+`MANAWG_VERSION=1` (see [Updating](#updating)).
 
 To check the whole instance, run `./docker/smoke.sh`. It needs `curl` and `jq` on the host and the
 default Mailpit setup. It signs up a test account, creates a WG, uploads a picture, calls the
@@ -128,7 +129,7 @@ Every setting is in `.env`, described in [`.env.example`](../.env.example). Afte
 | `SMTP_*` | yes | Outgoing mail for sign-in codes, invitations and statements; `SMTP_ADMIN_EMAIL` is the sender address and `SMTP_SENDER_NAME` its display name |
 | Secrets (`POSTGRES_PASSWORD` … `CRON_SECRET`) | yes | Created by `setup.sh`. `ANON_KEY` and `SERVICE_ROLE_KEY` are signed with `JWT_SECRET`; change all three together |
 | `LEGAL_URL`, `SUPPORT_EMAIL` | for public instances | Your legal pages and the address for error reports, see [Legal pages and support](#legal-pages-and-support) |
-| `MANAWG_VERSION` | no | Image tag to run; Compose pulls it when it exists and builds from the checkout otherwise |
+| `MANAWG_VERSION` | no | Image tag to run: `latest` (default), a version such as `1.0.1`, or `1` for every 1.x release. Compose pulls it when it exists and builds from the checkout otherwise |
 | `MANAWG_IMAGE` | no | Image repository, default `ghcr.io/abuarchiv/manawg`; for a fork or a private registry |
 | `STORAGE_BUCKET` | no | Name of the image storage bucket, default `private-images`. Do not change it after the first start |
 | `GOOGLE_ENABLED`, `GOOGLE_CLIENT_ID`, `GOOGLE_SECRET` | no | Google sign-in with your own OAuth client; redirect URI `<APP_URL>/auth/v1/callback`. Off by default, and the app then shows no Google buttons |
@@ -149,27 +150,35 @@ boot lines starting with `[env]`.
 
 ### Updating
 
-Take a backup first (`./docker/backup.sh`). If Compose built the image from your checkout:
+ManaWG has numbered releases. [CHANGELOG.md](../CHANGELOG.md) and the
+[releases page](https://github.com/Abuarchiv/manawg/releases) list what changed in each one, and
+say when a self-hosted instance needs a manual step. Versions follow
+[Semantic Versioning](https://semver.org): a patch release (1.0.1) only fixes bugs, a minor release
+(1.1.0) adds features, and a major release (2.0.0) needs something from you, which its notes
+explain. Watch the repository with *Custom → Releases* to get a mail for each one.
+
+Take a backup first (`./docker/backup.sh`). Then, with the published image, set `MANAWG_VERSION`
+in `.env` to the new version, or to `1` to follow every 1.x release, and run:
 
 ```sh
-git pull
+docker compose pull && docker compose up -d
+```
+
+If Compose builds the image from your checkout, check out the release tag and rebuild:
+
+```sh
+git fetch --tags && git checkout v1.0.1
 docker compose up -d --build
 ```
 
-With a published image (`MANAWG_VERSION`), `docker compose pull && docker compose up -d` instead.
 Once the new version works, run `docker image prune -f` to remove the old images, and optionally
-`docker builder prune` to clear the build cache. Neither touches volumes.
+`docker builder prune` to clear the build cache. Neither touches the volumes.
 
-The `setup` service applies new migrations before the new app version starts. A change that needs
-a manual step on self-hosted instances says so in its pull request; read the list of changes
-before you update (`git fetch && git log --oneline HEAD..origin/main` in the checkout, or the
-commit history on GitHub for a published image).
-
-Migrations only move forward and are never reversed. To go back, check out the old commit or tag
-(or set `MANAWG_VERSION` to the old tag for a published image). When you build from source, run
-`docker compose build` next, because the local image is still the new build. Then restore the
-backup you took before updating with `./docker/restore.sh`. Starting an older version against an
-already migrated database is not supported.
+The `setup` service applies new migrations before the new app version starts. Migrations only move
+forward and are never reversed. To go back, set `MANAWG_VERSION` to the old version (or check out
+the old tag and run `docker compose build`), then restore the backup you took before updating with
+`./docker/restore.sh`. Starting an older version against an already migrated database is not
+supported.
 
 Container logs are rotated (three files of 10 MB per container), so they do not fill the disk.
 

@@ -252,6 +252,30 @@ inputs, and the release scan blocks the push of a vulnerable image.
 
 Run the same gates locally before you open a pull request.
 
+## Releases
+
+`main` stays releasable; a release is a version of it that reaches app.manawg.com and the Docker
+image. Versions follow [Semantic Versioning](https://semver.org):
+
+| Bump | When | Example |
+| --- | --- | --- |
+| Patch | Bug fixes only | `1.0.0` → `1.0.1` |
+| Minor | New features, nothing to do on update | `1.0.1` → `1.1.0` |
+| Major | Self-hosted instances need a manual step, such as a renamed setting | `1.1.0` → `2.0.0` |
+
+Pull requests add their user-facing change under `## [Unreleased]` in `CHANGELOG.md`. To release:
+
+1. Rename `## [Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD`, add a new empty `## [Unreleased]` above
+   it and the `[X.Y.Z]: …/releases/tag/vX.Y.Z` link at the end, and set `"version"` in the root
+   `package.json`. `pnpm lint` runs `scripts/release-notes.mjs`, which checks both agree.
+2. Merge that pull request, wait until CI on `main` is green, then run the **Release production**
+   workflow with `RELEASE_PRODUCTION`.
+
+The workflow refuses a version that is already released from another commit. After the Preview
+gate, the production migration and the deployment, it creates the tag `vX.Y.Z` and the GitHub
+release from the `CHANGELOG.md` section, and starts `docker.yml`, which pushes the image as
+`X.Y.Z`, `X.Y`, `X` and `latest`.
+
 ## Cron jobs
 
 Defined in `apps/web/vercel.json` (UTC schedules), which Vercel reads and the `cron` container of
