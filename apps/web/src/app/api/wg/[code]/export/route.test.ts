@@ -314,6 +314,7 @@ test('new sections are part of the full dump and export CSV headers', async () =
 			choreCompletions: [
 				{
 					id: 'done',
+					choreId: 'chore',
 					choreTitle: 'Bad',
 					completedByMemberId: 'member',
 					completedAt: new Date('2026-03-03T08:00:00Z'),
@@ -357,6 +358,7 @@ test('new sections are part of the full dump and export CSV headers', async () =
 	assert.deepEqual(sections.choreCompletions, [
 		{
 			id: 'done',
+			choreId: 'chore',
 			choreTitle: 'Bad',
 			completedByName: 'Alice',
 			completedAt: '2026-03-03T08:00:00.000Z',

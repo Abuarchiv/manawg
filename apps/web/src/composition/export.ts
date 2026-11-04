@@ -99,7 +99,7 @@ const SECTION_HEADERS: Record<ExportSectionKey, string[]> = {
 	],
 	// intervalDays counts months when recurrenceType is 'months'.
 	chores: ['id', 'title', 'assignedName', 'nextDueAt', 'intervalDays', 'recurrenceType'],
-	choreCompletions: ['id', 'choreTitle', 'completedByName', 'completedAt'],
+	choreCompletions: ['id', 'choreId', 'choreTitle', 'completedByName', 'completedAt'],
 	inventory: [
 		'id',
 		'name',

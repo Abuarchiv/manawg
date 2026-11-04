@@ -143,6 +143,7 @@ export async function fetchChoreCompletionRows(wgId: string, page: ExportPage) {
 	return db
 		.select({
 			id: choreCompletions.id,
+			choreId: choreCompletions.choreId,
 			choreTitle: chores.title,
 			completedByMemberId: choreCompletions.completedByMemberId,
 			completedAt: choreCompletions.completedAt,
@@ -160,6 +161,7 @@ export function mapChoreCompletionRows(
 ) {
 	return rows.map((row) => ({
 		id: row.id,
+		choreId: row.choreId,
 		choreTitle: row.choreTitle,
 		completedByName: memberById.get(row.completedByMemberId) ?? '',
 		completedAt: row.completedAt.toISOString(),

@@ -109,6 +109,17 @@ test('the export of one flat holds only its own rows, newest first and paged', {
 				body: `chat ${flat.wgId}`,
 			});
 		}
+		const twins = await database
+			.insert(schema.chores)
+			.values([
+				{ wgId: mine.wgId, title: 'Müll', anchorAt: new Date() },
+				{ wgId: mine.wgId, title: 'Müll', anchorAt: new Date() },
+			])
+			.returning({ id: schema.chores.id });
+		assert.equal(twins.length, 2);
+		await database
+			.insert(schema.choreCompletions)
+			.values(twins.map((chore) => ({ choreId: chore.id, completedByMemberId: mine.a })));
 		const names = async () =>
 			new Map([
 				[mine.a, 'A0'],
@@ -143,6 +154,11 @@ test('the export of one flat holds only its own rows, newest first and paged', {
 		assert.deepEqual(
 			(await load().chatMessages()).map((r) => r.body),
 			[`chat ${mine.wgId}`],
+		);
+
+		assert.deepEqual(
+			(await load().choreCompletions()).map((r) => r.choreId).sort(),
+			twins.map((chore) => chore.id).sort(),
 		);
 
 		const counts = await countExportSections(mine.wgId);
