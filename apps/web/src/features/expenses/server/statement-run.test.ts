@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import test, { mock } from 'node:test';
 import type { StatementRecipient } from '../statement-recipients';
 import { dispatchStatementBatch } from './statement-run';
 import type { MailOutcome, MailTransport, OutgoingMail } from './statement-transport';
@@ -103,19 +103,24 @@ test('one PDF per WG and language is attached to every mail of the run', async (
 	assert.deepEqual(deadlines, [123_456]);
 });
 
-test('a statement that cannot be rendered as PDF is still mailed, without the attachment line', async () => {
+test('a statement that cannot be rendered as PDF is still mailed, without the attachment line, and logs the cause', async () => {
 	const { transport, sent } = fakeTransport(() => ({ kind: 'sent', providerId: 'x' }));
 	const broken = recipient(ID(1), 'a@example.org');
 	broken.statement.items = [
 		{ id: 'e', occurredAt: 'not a date', description: 'x', payerName: 'a', amountCents: 100 },
 	];
 	const recipients = new Map([[ID(1), { wg, recipient: broken }]]);
+	const warn = mock.method(console, 'warn', () => {});
 	const { updates } = await dispatchStatementBatch(
 		[{ id: 'row1', memberId: ID(1), attempts: 1 }],
 		recipients,
 		transport,
 	);
+	const [message, cause] = warn.mock.calls[0]?.arguments ?? [];
+	warn.mock.restore();
 	assert.equal(updates[0]?.status, 'sent');
 	assert.equal(sent[0]?.attachments, undefined);
 	assert.ok(!sent[0]?.text.includes('PDF'));
+	assert.equal(message, '[statement-mail] pdf_render_failed wg=wg');
+	assert.ok(cause instanceof Error, 'the render error is logged with the warning');
 });

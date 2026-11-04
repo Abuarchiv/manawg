@@ -58,8 +58,8 @@ function statementPdf(
 			wgName: entry.wg.name,
 			shareCode: entry.wg.shareCode,
 			locale,
-		}).catch(() => {
-			console.warn(`[statement-mail] pdf_render_failed wg=${entry.wg.id}`);
+		}).catch((error: unknown) => {
+			console.warn(`[statement-mail] pdf_render_failed wg=${entry.wg.id}`, error);
 			return null;
 		});
 		pdfs.set(key, pdf);
