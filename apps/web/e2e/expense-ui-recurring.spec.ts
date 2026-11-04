@@ -192,8 +192,12 @@ test.describe('subscription error notice', () => {
 		const dialog = page.getByRole('dialog', { name: 'Neue Fixkosten' });
 		await dialog.locator('#recurring-description').fill('Miete');
 		await dialog.locator('#recurring-amount').fill('500');
+		const backBookingNotice = dialog.getByText('Liegt in der Vergangenheit', { exact: false });
+		const monthAgo = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
+		await dialog.locator('#recurring-next-due').fill(monthAgo);
+		await expect(backBookingNotice).toBeVisible();
 		await dialog.locator('#recurring-next-due').fill('2020-01-01');
-		await expect(dialog.getByText('nachgebucht', { exact: false })).toHaveCount(0);
+		await expect(backBookingNotice).toHaveCount(0);
 		await dialog.getByRole('button', { name: 'Fixkosten anlegen' }).click();
 
 		await expect(dialog.locator('#recurring-next-due-error')).toHaveText(
