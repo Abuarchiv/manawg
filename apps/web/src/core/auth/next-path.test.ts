@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import fc from 'fast-check';
-import { safeNextPath, wgReturnPath } from './next-path';
+import { safeNextPath, wgReturnPath, withHash } from './next-path';
 
 test('keeps same-origin paths with query and hash', () => {
 	assert.equal(safeNextPath('/wg/MTE8PZAT/shopping?x=1#a'), '/wg/MTE8PZAT/shopping?x=1#a');
@@ -72,4 +72,23 @@ test('no input leaves the origin', () => {
 		}),
 		{ numRuns: 2000 },
 	);
+});
+
+test('withHash appends the entry fragment to a WG path', () => {
+	assert.equal(withHash('/wg/ABC/chat', '#message-1'), '/wg/ABC/chat#message-1');
+	assert.equal(withHash('/wg/ABC/chat?x=1', '#notifications'), '/wg/ABC/chat?x=1#notifications');
+	assert.equal(
+		safeNextPath(withHash('/wg/ABC/pinboard', '#announcement-9')),
+		'/wg/ABC/pinboard#announcement-9',
+	);
+});
+
+test('withHash leaves other targets and unusable fragments alone', () => {
+	assert.equal(withHash('/wg/ABC/chat#x', '#y'), '/wg/ABC/chat#x');
+	assert.equal(withHash('/', '#a'), '/');
+	assert.equal(withHash('/login', '#a'), '/login');
+	assert.equal(withHash('/wg/ABC/chat', '#<script>'), '/wg/ABC/chat');
+	assert.equal(withHash('/wg/ABC/chat', '#'), '/wg/ABC/chat');
+	assert.equal(withHash('/wg/ABC/chat', ''), '/wg/ABC/chat');
+	assert.equal(withHash('/wg/ABC/chat', `#${'a'.repeat(201)}`), '/wg/ABC/chat');
 });

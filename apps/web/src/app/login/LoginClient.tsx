@@ -17,7 +17,7 @@ import { FieldGroup, FieldSeparator } from '@/components/ui/field';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { isAuthPagePath } from '@/core/auth/auth-intent';
-import { safeNextPath } from '@/core/auth/next-path';
+import { safeNextPath, withHash } from '@/core/auth/next-path';
 import { invitePath } from '@/core/utils/invite-token';
 import { useMessage } from '@/shared/i18n/message';
 import { ChooseStep } from './ChooseStep';
@@ -45,6 +45,11 @@ export function LoginClient({ appOrigin }: { appOrigin: string }) {
 	const render = useMessage();
 	const router = useRouter();
 	const searchParams = useSearchParams();
+	// The entry fragment is client-only; it is read after mount so server and client markup match.
+	const [entryHash, setEntryHash] = useState('');
+	useEffect(() => {
+		setEntryHash(window.location.hash);
+	}, []);
 	const {
 		step,
 		setStep,
@@ -93,7 +98,9 @@ export function LoginClient({ appOrigin }: { appOrigin: string }) {
 		const params = new URLSearchParams();
 		if (step === 'create') params.set('action', 'create');
 		const invite = getLoginIntentFromSearch(searchParams.toString()).inviteToken;
-		const next = invite ? invitePath(invite) : safeNextPath(searchParams.get('next'));
+		const next = invite
+			? invitePath(invite)
+			: withHash(safeNextPath(searchParams.get('next')), entryHash);
 		if (next !== '/' && !isAuthPagePath(next)) params.set('next', next);
 		const query = params.toString();
 		return query ? `/login?${query}` : '/login';

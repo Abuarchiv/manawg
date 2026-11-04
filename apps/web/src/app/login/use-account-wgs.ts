@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { isAuthPagePath } from '@/core/auth/auth-intent';
-import { safeNextPath } from '@/core/auth/next-path';
+import { safeNextPath, withHash } from '@/core/auth/next-path';
 import { hasSessionCookie } from '@/core/auth/session-hint';
 import { subscribeVisibility } from '@/core/hooks/use-online-status';
 import { type AccountWg, fetchAccountWgs } from '@/core/infra/account-wgs';
@@ -105,7 +105,7 @@ export function useAccountWgs({
 		}
 		const nextWgCode = getWgCodeFromPath(next);
 		if (nextWgCode && !accountWgs.some((accountWg) => accountWg.code === nextWgCode)) return;
-		router.replace(next);
+		router.replace(withHash(next, window.location.hash));
 	}, [accountWgs, authState, router, searchParams, step]);
 
 	function retryAuth(): void {
