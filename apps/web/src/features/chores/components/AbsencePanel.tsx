@@ -29,7 +29,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { useConfirmDelete } from '@/core/hooks/use-confirm-delete';
 import { berlinDayKey } from '@/core/utils/berlin-day';
 import { formatShortDateRange } from '@/core/utils/time';
-import type { AbsenceInput } from '@/features/chores/absence';
+import { type AbsenceInput, canRemoveAbsence } from '@/features/chores/absence';
 import { ABSENCE_REASON_MAX } from '@/features/chores/chore-limits';
 import type { ChoreMember } from '@/features/chores/components/chore-types';
 import { pendingKeys } from '@/features/chores/pending-keys';
@@ -54,6 +54,8 @@ interface AbsencePanelProps {
 	totalCount: number;
 	allAbsencesHref: string;
 	visibleAbsences: AbsenceInput[];
+	currentMemberId: string;
+	isAdmin: boolean;
 	highlightedAbsenceId: string | null;
 	/** Row briefly tinted after a deep link; resets to null after a few seconds. */
 	flashedAbsenceId: string | null;
@@ -83,6 +85,8 @@ export function AbsencePanel({
 	totalCount,
 	allAbsencesHref,
 	visibleAbsences,
+	currentMemberId,
+	isAdmin,
 	highlightedAbsenceId,
 	flashedAbsenceId,
 	onRemove,
@@ -283,32 +287,34 @@ export function AbsencePanel({
 											</ItemDescription>
 										)}
 									</ItemContent>
-									<ItemActions className="ml-auto gap-2">
-										<Button
-											variant={armed ? 'destructive' : 'outline'}
-											disabled={removing}
-											onClick={() => {
-												if (requestRemove(absence.id)) onRemove(absence.id);
-											}}
-											aria-label={t(armed ? 'removeConfirmAria' : 'removeAria', {
-												name: absence.memberName,
-												range: formatShortDateRange(absence.startDate, absence.endDate, locale),
-											})}
-										>
-											{removing && <Spinner data-icon="inline-start" aria-hidden />}
-											{armed ? t('removeConfirm') : t('remove')}
-										</Button>
-										{armed && (
+									{canRemoveAbsence(absence, currentMemberId, isAdmin) && (
+										<ItemActions className="ml-auto gap-2">
 											<Button
-												variant="outline"
+												variant={armed ? 'destructive' : 'outline'}
 												disabled={removing}
-												onClick={() => cancelRemove()}
-												aria-label={t('cancelRemoveAria', { name: absence.memberName })}
+												onClick={() => {
+													if (requestRemove(absence.id)) onRemove(absence.id);
+												}}
+												aria-label={t(armed ? 'removeConfirmAria' : 'removeAria', {
+													name: absence.memberName,
+													range: formatShortDateRange(absence.startDate, absence.endDate, locale),
+												})}
 											>
-												{t('cancel')}
+												{removing && <Spinner data-icon="inline-start" aria-hidden />}
+												{armed ? t('removeConfirm') : t('remove')}
 											</Button>
-										)}
-									</ItemActions>
+											{armed && (
+												<Button
+													variant="outline"
+													disabled={removing}
+													onClick={() => cancelRemove()}
+													aria-label={t('cancelRemoveAria', { name: absence.memberName })}
+												>
+													{t('cancel')}
+												</Button>
+											)}
+										</ItemActions>
+									)}
 								</ItemEntry>
 							);
 						})}

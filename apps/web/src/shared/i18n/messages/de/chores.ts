@@ -220,6 +220,8 @@ export default {
 		removeNetwork:
 			'Abwesenheit konnte nicht entfernt werden: Prüfe deine Verbindung und versuche es erneut.',
 		removeFailed: 'Abwesenheit konnte nicht entfernt werden.',
+		removeForbidden:
+			'Nur die Person selbst oder ein Admin der WG kann diese Abwesenheit entfernen.',
 		removedNamed: 'Abwesenheit von {name} entfernt.',
 		removed: 'Abwesenheit entfernt.',
 	},

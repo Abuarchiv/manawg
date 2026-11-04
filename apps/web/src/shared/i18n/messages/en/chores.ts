@@ -216,6 +216,7 @@ export default {
 		gone: 'This time away no longer exists and has been removed from the rota.',
 		removeNetwork: 'The time away could not be removed. Check your connection and try again.',
 		removeFailed: 'The time away could not be removed.',
+		removeForbidden: 'Only the person themselves or a flat admin can remove this time away.',
 		removedNamed: 'Time away for {name} removed.',
 		removed: 'Time away removed.',
 	},

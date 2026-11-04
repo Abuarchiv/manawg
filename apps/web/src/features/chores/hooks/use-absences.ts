@@ -218,6 +218,11 @@ export function useAbsences(ctx: ChorePageContext, form: AbsenceFormState, queue
 					void load(false);
 					return;
 				}
+				if (result.status === 403) {
+					setAbsenceListError(t('absence.removeForbidden'));
+					void load(false);
+					return;
+				}
 				setAbsenceListError(
 					t(
 						isNetworkError(result.error, result.status)

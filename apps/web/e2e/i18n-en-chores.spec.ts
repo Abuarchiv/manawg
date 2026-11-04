@@ -205,6 +205,18 @@ test.describe('English cleaning rota', () => {
 
 	test('the absence form and its messages are English', async ({ page, context, baseURL }) => {
 		await prepare(page, context, baseURL, 320, 'dark');
+		// Only an admin may remove a flatmate's time away.
+		await page.route(`**${BASE}/members`, (route) =>
+			route.fulfill({
+				json: {
+					members: [
+						{ id: FIXTURE_WG.memberId, name: FIXTURE_WG.memberName, color: null, active: true },
+						{ id: 'anna', name: 'Anna', color: null, active: true },
+					],
+					viewerIsAdmin: true,
+				},
+			}),
+		);
 		await page.route(`**${BASE}/absences`, (route) =>
 			route.request().method() === 'POST'
 				? route.fulfill({ status: 409, json: { error: 'absence_overlaps_existing' } })
