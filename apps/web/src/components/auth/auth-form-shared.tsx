@@ -3,6 +3,8 @@ import { ErrorBox } from '@/components/app/ErrorBox';
 import { AUTH_FAILURE_MESSAGES, type AuthFailure } from '@/core/auth/password-errors';
 import { type Message, useMessage } from '@/shared/i18n/message';
 
+export { isValidEmail } from './email-format';
+
 /**
  * Minimum for passwords chosen now (sign-up, reset). GoTrue enforces the same value through
  * GOTRUE_PASSWORD_MIN_LENGTH (compose.yaml) and minimum_password_length (real-stack config).
@@ -29,10 +31,6 @@ export interface AuthFormProps {
 	busy: BusyAction;
 	setBusy: (action: BusyAction) => void;
 	onAuthenticated: () => void;
-}
-
-export function isValidEmail(value: string): boolean {
-	return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
 /** Lower-cased, trimmed address as the auth endpoints expect it. */

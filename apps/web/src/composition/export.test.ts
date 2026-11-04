@@ -32,7 +32,7 @@ const { mapExpenseRows, mapRecurringRows } = await import('./export-queries-fina
 const { mapInventoryRows, mapMemberRows, mapShoppingRows } = await import(
 	'./export-queries-household'
 );
-const { mapAuditRows } = await import('./export-queries-community');
+const { mapAnnouncementRows, mapAuditRows } = await import('./export-queries-community');
 
 const ROW = {
 	id: 'e1',
@@ -265,4 +265,53 @@ test('recurring splits name the debtor, fall back to the id and skip malformed e
 		],
 	);
 	assert.deepEqual(parseRecurringSplitsForExport('not json', names), []);
+});
+
+test('a pinned, resolved announcement keeps both dates and the resolver name', () => {
+	const memberById = new Map([
+		['m1', 'Anna'],
+		['m2', 'Ben'],
+	]);
+	const rows = mapAnnouncementRows(
+		[
+			{
+				id: 'a1',
+				content: 'Heizung',
+				kind: 'issue',
+				status: 'resolved',
+				authorMemberId: 'm1',
+				imageUrl: null,
+				pinnedAt: new Date('2026-09-01T08:00:00.000Z'),
+				resolvedAt: new Date('2026-09-02T08:00:00.000Z'),
+				resolvedByMemberId: 'm2',
+				createdAt: AT,
+			},
+			{
+				id: 'a2',
+				content: 'Hallo',
+				kind: 'note',
+				status: 'open',
+				authorMemberId: 'm1',
+				imageUrl: null,
+				pinnedAt: null,
+				resolvedAt: null,
+				resolvedByMemberId: null,
+				createdAt: AT,
+			},
+		] as never,
+		memberById,
+	);
+	const headers = getExportSectionHeaders('announcements');
+	assert.deepEqual(headers.slice(6, 9), ['pinnedAt', 'resolvedAt', 'resolvedByName']);
+	assert.deepEqual(
+		rows.map((row) => [row.pinnedAt, row.resolvedAt, row.resolvedByName]),
+		[
+			['2026-09-01T08:00:00.000Z', '2026-09-02T08:00:00.000Z', 'Ben'],
+			['', '', ''],
+		],
+	);
+	assert.equal(
+		toCsv(rows, headers, 'en').split('\n')[1],
+		'a1,Heizung,issue,resolved,Anna,,2026-09-01 10:00,2026-09-02 10:00,Ben,2026-03-30 12:30',
+	);
 });
