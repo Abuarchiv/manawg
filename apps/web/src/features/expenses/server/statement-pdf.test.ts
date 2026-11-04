@@ -104,6 +104,10 @@ test('text outside the font falls back to a plain space, the base letter or a qu
 	assert.equal(safe('🙂 Mia'), 'Mia');
 	assert.equal(safe('Kastanienallee 🏠 12 👩🏽‍🍳'), 'Kastanienallee 12');
 	assert.equal(safe('日本'), '??');
+	assert.equal(safe('🙂'), '?');
+	assert.equal(safe('👩🏽‍🍳 🏠'), '?');
+	assert.equal(safe(''), '');
+	assert.equal(safe('   '), '');
 	assert.equal(safe('a\u00a0b\u202fc\td'), 'a b c d');
 	assert.equal(safe('A → B'), 'A → B');
 });

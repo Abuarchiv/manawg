@@ -37,21 +37,22 @@ const EMOJI = /\p{Extended_Pictographic}|\u200d|\ufe0e|\ufe0f|[\u{1f3fb}-\u{1f3f
 /**
  * Maps text to what the embedded font can draw: whitespace variants become a plain space,
  * emoji are dropped, a character the font lacks becomes its base letter (ӂ to ж), otherwise `?`.
+ * Text that is only emoji becomes a single `?`, so a name never disappears from a row.
  */
 function makeSafe(font: PDFFont): (text: string) => string {
 	const known = new Set(font.getCharacterSet());
-	return (text) =>
-		Array.from(
-			text
-				.replace(EMOJI, '')
-				.replace(/[\s  ]+/g, ' ')
-				.trim(),
-			(char) => {
-				if (known.has(char.codePointAt(0) ?? -1)) return char;
-				const base = char.normalize('NFD').charAt(0);
-				return base && known.has(base.codePointAt(0) ?? -1) ? base : '?';
-			},
-		).join('');
+	return (text) => {
+		const cleaned = text
+			.replace(EMOJI, '')
+			.replace(/[\s  ]+/g, ' ')
+			.trim();
+		if (cleaned === '') return text.trim() === '' ? '' : '?';
+		return Array.from(cleaned, (char) => {
+			if (known.has(char.codePointAt(0) ?? -1)) return char;
+			const base = char.normalize('NFD').charAt(0);
+			return base && known.has(base.codePointAt(0) ?? -1) ? base : '?';
+		}).join('');
+	};
 }
 
 export interface Sheet {
