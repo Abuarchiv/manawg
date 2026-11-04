@@ -20,7 +20,7 @@ x-app: &app
 
 services:
   db:
-    image: supabase/postgres:17.11.0.011
+    image: supabase/postgres:17.11.0.016
     restart: unless-stopped
     logging: *logging
     command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf", "-c", "log_min_messages=fatal"]
