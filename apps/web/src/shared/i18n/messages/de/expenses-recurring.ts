@@ -148,7 +148,7 @@ export default {
 		invalidRequest: 'Die Anfrage war ungültig.',
 		memberNotInWg: 'Mindestens ein Mitglied ist nicht mehr in dieser WG.',
 		paidByMustIncludeCaller:
-			'Um Betrag, Zahler oder Anteile zu ändern, musst du selbst zahlen oder einen Anteil über 0 € haben. Admins, die nicht beteiligt sind, können nur die Beschreibung ändern oder die Fixkosten pausieren.',
+			'Um Betrag, Zahler oder Anteile zu ändern, musst du selbst zahlen oder einen Anteil über 0 € haben.',
 		changedSave:
 			'Diese Fixkosten wurden inzwischen gebucht oder geändert. Die Liste ist neu geladen, bearbeite sie noch einmal.',
 		changedAction:

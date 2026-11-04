@@ -148,7 +148,7 @@ export default {
 		invalidRequest: 'The request was not valid.',
 		memberNotInWg: 'At least one member is no longer in this flat.',
 		paidByMustIncludeCaller:
-			'To change the amount, payer or shares you must be the payer or have a share above €0 yourself. Admins who are not part of this fixed cost can only change the description or pause it.',
+			'To change the amount, payer or shares you must be the payer or have a share above €0 yourself.',
 		changedSave:
 			'This fixed cost has been added as an expense or changed in the meantime. The list has been reloaded. Edit it again.',
 		changedAction:
