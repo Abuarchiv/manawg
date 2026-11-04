@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, PDFPage } from 'pdf-lib';
 import type { MonthlyStatement } from '../monthly-statement';
 import { renderStatementPdf, statementPdfFilename } from './statement-pdf';
-import { createSheet } from './statement-pdf-sheet';
+import { createSheet, OWES, SETTLED } from './statement-pdf-sheet';
 
 function statement(overrides: Partial<MonthlyStatement> = {}): MonthlyStatement {
 	return {
@@ -106,4 +106,80 @@ test('text outside the font falls back to a plain space, the base letter or a qu
 	assert.equal(safe('日本'), '??');
 	assert.equal(safe('a\u00a0b\u202fc\td'), 'a b c d');
 	assert.equal(safe('A → B'), 'A → B');
+});
+
+interface DrawnText {
+	text: string;
+	color: unknown;
+}
+
+/** Renders the statement and returns every string drawn on a page, in drawing order. */
+async function drawnTexts(
+	next: MonthlyStatement,
+	locale: 'de' | 'en' = 'de',
+): Promise<DrawnText[]> {
+	const drawn: DrawnText[] = [];
+	const original = PDFPage.prototype.drawText;
+	PDFPage.prototype.drawText = function record(this: PDFPage, value, options) {
+		drawn.push({ text: value, color: options?.color });
+		return original.call(this, value, options);
+	};
+	try {
+		await renderStatementPdf({ ...input, locale, statement: next });
+	} finally {
+		PDFPage.prototype.drawText = original;
+	}
+	return drawn;
+}
+
+const texts = (drawn: DrawnText[], value: string) => drawn.filter((entry) => entry.text === value);
+
+test('the PDF draws the statement number, the period and the totals', async () => {
+	const drawn = await drawnTexts(statement());
+	assert.equal(texts(drawn, 'MWG-2609-KST').length, 1);
+	assert.equal(texts(drawn, '01.09. – 30.09.2026').length, 1);
+	assert.equal(texts(drawn, '123,45 €').length, 5);
+	assert.equal(texts(drawn, '100 %').length, 1);
+});
+
+test('a negative balance is drawn red with a minus sign and a positive one green with a plus sign', async () => {
+	const drawn = await drawnTexts(statement());
+	assert.deepEqual(
+		texts(drawn, '-41,15 €').map((entry) => entry.color),
+		[OWES],
+	);
+	assert.deepEqual(
+		texts(drawn, '-41,15 $').map((entry) => entry.color),
+		[OWES],
+	);
+	assert.deepEqual(
+		texts(drawn, '+82,30 €').map((entry) => entry.color),
+		[SETTLED],
+	);
+	assert.equal(texts(drawn, 'ausgeglichen').length, 1);
+});
+
+test('the open status is red and the settled status green', async () => {
+	const open = await drawnTexts(statement());
+	assert.ok(texts(open, 'Offen').some((entry) => entry.color === OWES));
+	assert.equal(texts(open, 'Ausgeglichen').length, 0);
+	const settled = await drawnTexts(statement({ settled: true }));
+	assert.deepEqual(
+		texts(settled, 'Ausgeglichen').map((entry) => entry.color),
+		[SETTLED],
+	);
+	assert.ok(!texts(settled, 'Offen').some((entry) => entry.color === OWES));
+});
+
+test('the transfer names who pays whom', async () => {
+	const drawn = await drawnTexts(statement());
+	assert.equal(texts(drawn, 'Zoë an Jürgen').length, 1);
+	assert.equal(texts(drawn, 'Jürgen an Zoë').length, 0);
+});
+
+test('an expense without a payer shows the former member label', async () => {
+	const [item] = statement().items;
+	assert.ok(item);
+	const drawn = await drawnTexts(statement({ items: [{ ...item, payerName: null }] }));
+	assert.equal(texts(drawn, 'Ehemaliges Mitglied').length, 1);
 });
