@@ -7,7 +7,7 @@ import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState }
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { subscribeVisibility } from '@/core/hooks/use-online-status';
+import { useTodayInputValue } from '@/core/hooks/use-today-input-value';
 import {
 	buildDays,
 	type ChoreOccurrence,
@@ -71,17 +71,11 @@ export function CalendarMonth({
 		[month, occurrences, choreOccurrences],
 	);
 	const monthLabel = monthFormat.format(month);
-	const [today, setToday] = useState(() => new Date());
-	useEffect(() => {
-		const refresh = () =>
-			setToday((prev) => (dayKey(prev) === dayKey(new Date()) ? prev : new Date()));
-		window.addEventListener('focus', refresh);
-		const unsubscribeVisibility = subscribeVisibility(refresh);
-		return () => {
-			window.removeEventListener('focus', refresh);
-			unsubscribeVisibility();
-		};
-	}, []);
+	const todayValue = useTodayInputValue();
+	const today = useMemo(() => {
+		const [y, m, d] = todayValue.split('-').map(Number) as [number, number, number];
+		return new Date(y, m - 1, d);
+	}, [todayValue]);
 
 	const [focusedIndex, setFocusedIndex] = useState<number>(() =>
 		pickInitialFocusIndex(days, selectedDay, today, month),
