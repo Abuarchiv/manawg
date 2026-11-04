@@ -3,6 +3,7 @@
 import { Bell, FileText } from 'lucide-react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
+import { Fragment } from 'react';
 import { buttonVariants } from '@/components/ui/button';
 import {
 	Card,
@@ -121,14 +122,18 @@ export function DebtSummary({
 							<>
 								{t('openBalances')}{' '}
 								<span className={HERO_AMOUNT}>
-									{ownBalances
-										.map((balance) =>
-											formatEuroCents(balance.balanceCents, balance.currency, {
-												signed: true,
-												locale,
-											}),
-										)
-										.join(' · ')}
+									{ownBalances.map((balance, index) => (
+										<Fragment key={balance.currency}>
+											{index > 0 && ' · '}
+											{/* -US$20.00 may otherwise break after the minus sign. */}
+											<span className="whitespace-nowrap">
+												{formatEuroCents(balance.balanceCents, balance.currency, {
+													signed: true,
+													locale,
+												})}
+											</span>
+										</Fragment>
+									))}
 								</span>
 							</>
 						) : ownBalance && ownBalance.balanceCents > 0 ? (
