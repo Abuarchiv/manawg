@@ -1,9 +1,12 @@
 import { eurosToCents, formatCentsInput, parseEuroAmount } from '@/core/utils/amount';
+import { inputDateToIso, isoToInputDate } from '@/core/utils/local-date';
+import { isRecurringDueAtInRange } from '@/core/validators/recurring-due-range';
 import type { ExpenseCategory } from '@/features/expenses/expense-categories';
 import { AMOUNT_MAX_EUROS } from '@/features/expenses/expense-constants';
 import { participantsOrAll } from '@/features/expenses/expense-form-draft';
 import { equalSplitParticipants, type SplitMode } from '@/features/expenses/expense-split-input';
 import type { MemberOption, RecurringSplit } from '@/features/expenses/expense-types';
+import { countMissedOccurrences } from '@/features/expenses/recurring-expenses';
 import { distributeCentsEqually } from '@/features/expenses/split-math';
 import type { Locale } from '@/shared/i18n/locale';
 import type { Message } from '@/shared/i18n/message';
@@ -82,6 +85,27 @@ export function recurringAmountError(euros: number | null, raw: string): Message
 	return euros !== null && euros > AMOUNT_MAX_EUROS
 		? { key: 'expenses-recurring.form.error.amountMax' }
 		: { key: 'expenses-recurring.form.error.amountPositive' };
+}
+
+/**
+ * Whether a picked due date is outside the range the server accepts, and how many
+ * back-bookings an accepted past date triggers. An unchanged edit date is never
+ * checked, since the server accepts it as it is.
+ */
+export function recurringDueCheck(
+	nextDueAt: string,
+	initialNextDueAt: string | undefined,
+	today: string,
+	intervalMonths: number,
+): { outOfRange: boolean; missedBookings: number } {
+	const changed = initialNextDueAt === undefined || nextDueAt !== isoToInputDate(initialNextDueAt);
+	const iso = inputDateToIso(nextDueAt);
+	if (!changed || iso === null) return { outOfRange: false, missedBookings: 0 };
+	if (!isRecurringDueAtInRange(iso)) return { outOfRange: true, missedBookings: 0 };
+	return {
+		outOfRange: false,
+		missedBookings: nextDueAt < today ? countMissedOccurrences(iso, intervalMonths) : 0,
+	};
 }
 
 const SPLIT_ERROR_KEYS = {

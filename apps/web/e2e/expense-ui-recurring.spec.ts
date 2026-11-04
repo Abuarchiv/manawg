@@ -171,6 +171,37 @@ test.describe('subscription error notice', () => {
 		await expect(dialog.locator('#recurring-amount')).toBeFocused();
 		await expect(dialog.locator('#recurring-amount-error')).toBeInViewport();
 	});
+
+	test('a first due date out of range is rejected in the form without a request', async ({
+		page,
+	}) => {
+		await setupMember(page);
+		let posts = 0;
+		await page.route(`**/api/wg/${FIXTURE_WG.shareCode}/recurring-expenses`, (route) => {
+			if (route.request().method() === 'POST') {
+				posts += 1;
+				return route.fulfill({ status: 400, json: { error: 'due_date_invalid' } });
+			}
+			return route.fulfill({ json: { recurringExpenses: [] } });
+		});
+
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/recurring`);
+		await dismissOnboarding(page);
+
+		await page.getByRole('button', { name: 'Fixkosten hinzufügen' }).click();
+		const dialog = page.getByRole('dialog', { name: 'Neue Fixkosten' });
+		await dialog.locator('#recurring-description').fill('Miete');
+		await dialog.locator('#recurring-amount').fill('500');
+		await dialog.locator('#recurring-next-due').fill('2020-01-01');
+		await expect(dialog.getByText('nachgebucht', { exact: false })).toHaveCount(0);
+		await dialog.getByRole('button', { name: 'Fixkosten anlegen' }).click();
+
+		await expect(dialog.locator('#recurring-next-due-error')).toHaveText(
+			'Wähle ein Datum höchstens ein Jahr zurück und höchstens zehn Jahre voraus.',
+		);
+		await expect(dialog.locator('#recurring-next-due')).toHaveAttribute('aria-invalid', 'true');
+		expect(posts).toBe(0);
+	});
 });
 
 test.describe('paused fixed cost in expenses', () => {

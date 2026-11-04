@@ -29,13 +29,13 @@ import {
 	RECURRING_INTERVAL_OPTIONS,
 } from '@/features/expenses/expense-constants';
 import type { MemberOption } from '@/features/expenses/expense-types';
-import { countMissedOccurrences } from '@/features/expenses/recurring-expenses';
 import {
 	buildRecurringSplits,
 	initialEqualParticipants,
 	initialManualMap,
 	type RecurringFormValues,
 	recurringAmountError,
+	recurringDueCheck,
 	recurringSplitError,
 	type SplitMode,
 } from '@/features/expenses/recurring-form-model';
@@ -52,6 +52,7 @@ const INTERVAL_OPTION_KEYS = {
 
 const DESCRIPTION_ERROR: Message = { key: 'expenses-recurring.form.error.description' };
 const DUE_MISSING_ERROR: Message = { key: 'expenses-recurring.form.error.dueMissing' };
+const DUE_OUT_OF_RANGE_ERROR: Message = { key: 'expenses-recurring.form.error.dueOutOfRange' };
 
 interface RecurringFormProps {
 	mode: 'create' | 'edit';
@@ -149,12 +150,10 @@ export function RecurringForm({
 			? message(recurringAmountError(parseEuroAmount(amountStr, locale), amountStr))
 			: null;
 	// A start in the past is booked retroactively by the daily run; say so before it happens.
-	const dueDateChanged = !initial || nextDueAt !== isoToInputDate(initial.nextDueAt);
-	const missedBookings =
-		dueDateChanged && nextDueAt.length > 0 && nextDueAt < today
-			? countMissedOccurrences(inputDateToIso(nextDueAt) ?? '', intervalMonths)
-			: 0;
-	const nextDueError = error && nextDueAt.trim().length === 0 ? message(DUE_MISSING_ERROR) : null;
+	const dueCheck = recurringDueCheck(nextDueAt, initial?.nextDueAt, today, intervalMonths);
+	const dueError = nextDueAt.trim().length === 0 ? DUE_MISSING_ERROR : DUE_OUT_OF_RANGE_ERROR;
+	const nextDueError =
+		error && (nextDueAt.trim().length === 0 || dueCheck.outOfRange) ? message(dueError) : null;
 	const formError =
 		error && !descriptionError && !amountError && !nextDueError ? message(error) : null;
 
@@ -201,10 +200,6 @@ export function RecurringForm({
 			setError(recurringAmountError(parseEuroAmount(amountStr, locale), amountStr));
 			return;
 		}
-		if (dueOn.trim().length === 0) {
-			setError(DUE_MISSING_ERROR);
-			return;
-		}
 		// An unchanged date keeps the stored timestamp: otherwise every edit would move it to
 		// 12:00 local time, and the server would reject a long-overdue date as out of range.
 		const nextDueAtIso =
@@ -213,6 +208,10 @@ export function RecurringForm({
 				: inputDateToIso(dueOn);
 		if (nextDueAtIso === null) {
 			setError(DUE_MISSING_ERROR);
+			return;
+		}
+		if (dueCheck.outOfRange) {
+			setError(DUE_OUT_OF_RANGE_ERROR);
 			return;
 		}
 		const splits = buildSplits();
@@ -343,9 +342,9 @@ export function RecurringForm({
 						aria-describedby={nextDueError ? 'recurring-next-due-error' : undefined}
 						className="text-base"
 					/>
-					{missedBookings > 0 && (
+					{dueCheck.missedBookings > 0 && (
 						<FieldDescription>
-							{t('form.missedBookings', { count: missedBookings })}
+							{t('form.missedBookings', { count: dueCheck.missedBookings })}
 						</FieldDescription>
 					)}
 					<FieldError id="recurring-next-due-error">{nextDueError}</FieldError>

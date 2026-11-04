@@ -106,6 +106,7 @@ export default {
 		error: {
 			description: 'Gib eine kurze Beschreibung ein.',
 			dueMissing: 'Fälligkeit fehlt.',
+			dueOutOfRange: 'Wähle ein Datum höchstens ein Jahr zurück und höchstens zehn Jahre voraus.',
 			amountPositive: 'Gib einen Betrag über 0 € ein, z. B. 12,50.',
 			amountDecimals: 'Maximal zwei Nachkommastellen.',
 			amountMax: 'Der Betrag darf höchstens 1.000.000 € betragen.',
