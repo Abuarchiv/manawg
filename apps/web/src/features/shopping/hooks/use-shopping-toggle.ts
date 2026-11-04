@@ -120,6 +120,7 @@ export function useShoppingToggle(ctx: ShoppingActionContext) {
 				forgetPatchKey(item.id, request.fingerprint);
 			}
 			if (res.status === 404 && res.error === 'item_not_found') {
+				pending.delete(item.id);
 				commit((prev) => dropShoppingItems(prev, (current) => current.id === item.id));
 				setToggleError(ITEM_GONE_MESSAGE);
 			} else if (res.status === 409 && res.error === 'shopping_item_duplicate') {
