@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { type NextRequest, NextResponse } from 'next/server';
+import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import {
 	authCookieOptions,
 	SESSION_COOKIE_MAX_AGE_SECONDS,
@@ -10,6 +11,12 @@ import { applySessionHint, isAuthTokenCookie } from './session-hint-cookie';
 import { getSupabaseEnv, hasSupabaseEnv } from './supabase-env';
 import { supabaseFetch } from './supabase-fetch';
 import { readVerifiedUser } from './verified-user';
+
+/** A WG page path with a well-formed share code; a malformed one is answered 404 by the WG layout. */
+function isWgPage(path: string): boolean {
+	const code = /^\/wg\/([^/]+)/.exec(path)?.[1];
+	return code !== undefined && isValidShareCode(normalizeShareCode(code));
+}
 
 function signInRedirect(request: NextRequest, response: NextResponse): NextResponse {
 	const url = request.nextUrl.clone();
@@ -71,7 +78,7 @@ export async function refreshSupabaseSession(
 	response: NextResponse,
 	{ requireWgSignIn = true }: { requireWgSignIn?: boolean } = {},
 ): Promise<NextResponse> {
-	const requiresSignIn = request.nextUrl.pathname.startsWith('/wg/') && requireWgSignIn;
+	const requiresSignIn = requireWgSignIn && isWgPage(request.nextUrl.pathname);
 	if (!hasSupabaseEnv()) return requiresSignIn ? signInRedirect(request, response) : response;
 
 	const { url, publishableKey } = getSupabaseEnv();
