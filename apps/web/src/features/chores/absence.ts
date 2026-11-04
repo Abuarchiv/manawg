@@ -11,6 +11,15 @@ export interface AbsenceInput {
 	reason: string | null;
 }
 
+/** The API lets only the member themselves or a flat admin remove an absence. */
+export function canRemoveAbsence(
+	absence: Pick<AbsenceInput, 'memberId'>,
+	currentMemberId: string,
+	isAdmin: boolean,
+): boolean {
+	return isAdmin || absence.memberId === currentMemberId;
+}
+
 /**
  * The period the form may send: ordered and inside the years the server accepts.
  * The end is checked at the end of its Berlin day, the instant the form sends.

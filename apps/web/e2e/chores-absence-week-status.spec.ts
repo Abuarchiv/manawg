@@ -194,6 +194,59 @@ test.describe('chore absence cache', () => {
 		await expect(absenceRow).toHaveCount(0);
 		expect(deleteCalls).toBe(2);
 	});
+
+	test('a flatmate can remove only their own absence and a 403 names the reason', async ({
+		page,
+	}) => {
+		const shareCode = FIXTURE_WG.shareCode;
+		const base = `**/api/wg/${shareCode}`;
+		const absence = (id: string, memberId: string, memberName: string) => ({
+			id,
+			memberId,
+			memberName,
+			startDate: '2026-01-01T00:00:00.000Z',
+			endDate: '2099-12-31T00:00:00.000Z',
+			reason: null,
+		});
+		const own = absence('absence-own', FIXTURE_WG.memberId, FIXTURE_WG.memberName);
+		const foreign = absence('absence-foreign', 'anna', 'Anna');
+		await setupMember(page);
+		await page.route(`${base}/members`, (route) =>
+			route.fulfill({
+				json: {
+					members: [
+						{ id: FIXTURE_WG.memberId, name: FIXTURE_WG.memberName, color: null, active: true },
+						{ id: 'anna', name: 'Anna', color: null, active: true },
+					],
+					viewerIsAdmin: false,
+				},
+			}),
+		);
+		await page.route(`${base}/chores`, (route) =>
+			route.fulfill({ json: { chores: [], monthCompletions: {} } }),
+		);
+		await page.route(`${base}/absences`, (route) =>
+			route.fulfill({ json: { absences: [own, foreign] } }),
+		);
+		await page.route(`${base}/absences/${own.id}`, (route) =>
+			route.fulfill({ status: 403, json: { error: 'not_owner' } }),
+		);
+
+		await navigateToFeature(page, `/wg/${shareCode}/chores`);
+		await dismissOnboarding(page);
+		const foreignRow = page.locator(`#absence-${foreign.id}`);
+		await expect(foreignRow).toBeVisible();
+		await expect(foreignRow.getByRole('button')).toHaveCount(0);
+
+		const ownRow = page.locator(`#absence-${own.id}`);
+		await ownRow.getByRole('button', { name: /entfernen$/ }).click();
+		await ownRow.getByRole('button', { name: /^Wirklich entfernen\?/ }).click();
+		await expect(
+			page.getByText(
+				'Nur die Person selbst oder ein Admin der WG kann diese Abwesenheit entfernen.',
+			),
+		).toBeVisible();
+	});
 });
 
 test.describe('week status', () => {

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { instantAtBerlinWallTime } from '@/core/utils/berlin-day';
-import { getAbsentMemberIds, isAbsencePeriodValid } from './absence';
+import { canRemoveAbsence, getAbsentMemberIds, isAbsencePeriodValid } from './absence';
 
 const day = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
 
@@ -46,4 +46,10 @@ test('an absence covers whole Berlin days, including the first and the last', ()
 	assert.deepEqual(at('2026-10-14T21:59:00.000Z'), ['a']);
 	assert.deepEqual(at('2026-10-14T22:00:00.000Z'), []);
 	assert.deepEqual(at('2026-10-15T12:00:00.000Z'), []);
+});
+
+test('only the member themselves or a flat admin can remove an absence', () => {
+	assert.equal(canRemoveAbsence({ memberId: 'me' }, 'me', false), true);
+	assert.equal(canRemoveAbsence({ memberId: 'other' }, 'me', false), false);
+	assert.equal(canRemoveAbsence({ memberId: 'other' }, 'me', true), true);
 });

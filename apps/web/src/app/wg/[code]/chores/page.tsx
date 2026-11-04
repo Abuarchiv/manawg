@@ -280,6 +280,8 @@ export default function ChoresPage() {
 					totalCount={absences.length}
 					allAbsencesHref={`${wgBaseHref}/chores?panel=absences`}
 					visibleAbsences={visibleAbsences}
+					currentMemberId={identity.memberId}
+					isAdmin={isAdmin}
 					highlightedAbsenceId={absenceParam}
 					flashedAbsenceId={flashAbsenceId}
 					onRemove={(id) => void removeAbsence(id)}
