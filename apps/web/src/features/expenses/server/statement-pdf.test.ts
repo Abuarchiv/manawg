@@ -181,6 +181,19 @@ test('the transfer names who pays whom', async () => {
 	assert.equal(texts(drawn, 'Jürgen an Zoë').length, 0);
 });
 
+test('the transfer keeps both parties when a name is only emoji', async () => {
+	const [transfer] = statement().transfers;
+	assert.ok(transfer);
+	const emojiTo = await drawnTexts(
+		statement({ transfers: [{ ...transfer, fromName: 'Ben', toName: '🙂' }] }),
+	);
+	assert.equal(texts(emojiTo, 'Ben an ?').length, 1);
+	const emojiFrom = await drawnTexts(
+		statement({ transfers: [{ ...transfer, fromName: '🙂', toName: 'Ben' }] }),
+	);
+	assert.equal(texts(emojiFrom, '? an Ben').length, 1);
+});
+
 test('an expense without a payer shows the former member label', async () => {
 	const [item] = statement().items;
 	assert.ok(item);

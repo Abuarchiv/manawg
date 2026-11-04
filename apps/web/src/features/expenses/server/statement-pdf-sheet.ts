@@ -37,7 +37,7 @@ const EMOJI = /\p{Extended_Pictographic}|\u200d|\ufe0e|\ufe0f|[\u{1f3fb}-\u{1f3f
 /**
  * Maps text to what the embedded font can draw: whitespace variants become a plain space,
  * emoji are dropped, a character the font lacks becomes its base letter (ӂ to ж), otherwise `?`.
- * Text that is only emoji becomes a single `?`, so a name never disappears from a row.
+ * Text that is only emoji becomes a single `?`, so a name drawn through it never disappears.
  */
 function makeSafe(font: PDFFont): (text: string) => string {
 	const known = new Set(font.getCharacterSet());
