@@ -181,15 +181,16 @@ async function logDryRun(recipients: RecipientMap, transport: MailTransport): Pr
  * a repeated or parallel run skips rows in flight and a crash leaves them
  * `sending` (closed as unconfirmed later, never resent). Once the claim budget
  * is used up no further batch is claimed; the remaining rows stay pending for
- * the next run. The dry-run transport never writes the ledger.
+ * the next run. Both budgets count from `startedAt`, which is the start of the
+ * cron function. The dry-run transport never writes the ledger.
  */
 export async function runStatementPlans(
 	plans: readonly WgStatementPlan[],
 	monthKey: string,
 	transport: MailTransport,
 	claimBudgetMs = CLAIM_BUDGET_MS,
+	startedAt = Date.now(),
 ): Promise<StatementRunSummary> {
-	const startedAt = Date.now();
 	const allowlist = readAllowlist();
 	const recipients: RecipientMap = new Map();
 	for (const { wg, plan } of plans) {
@@ -272,5 +273,7 @@ export async function runMonthlyStatements(
 	monthKey: string,
 	transport: MailTransport,
 ): Promise<StatementRunSummary> {
-	return runStatementPlans(await loadStatementPlans(monthKey), monthKey, transport);
+	const startedAt = Date.now();
+	const plans = await loadStatementPlans(monthKey);
+	return runStatementPlans(plans, monthKey, transport, CLAIM_BUDGET_MS, startedAt);
 }
