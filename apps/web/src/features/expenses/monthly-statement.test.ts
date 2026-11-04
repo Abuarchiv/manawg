@@ -1,6 +1,21 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildMonthlyStatement, shiftMonthKey } from './monthly-statement';
+import { computeNetBalances, simplifyDebts } from './debt-reduction';
+import type { ExpensePaymentInput } from './expense-payment-input';
+import {
+	buildMonthlyStatement,
+	type StatementExpense,
+	type StatementMemberInput,
+	shiftMonthKey,
+} from './monthly-statement';
+
+const AS_OF = new Date('2026-11-04T09:00:00Z');
+const build = (
+	expenses: StatementExpense[],
+	people: StatementMemberInput[],
+	monthKey: string,
+	payments: ExpensePaymentInput[] = [],
+) => buildMonthlyStatement(expenses, people, monthKey, payments, AS_OF);
 
 const members = [
 	{ id: 'L', name: 'Lina', active: true },
@@ -32,7 +47,7 @@ function expense(
 }
 
 test('month balances, Berlin month edges and fewest transfers', () => {
-	const statement = buildMonthlyStatement(
+	const statement = build(
 		[
 			expense('a', 'L', '2026-09-02T10:00:00Z', { L: 1000, J: 1000 }),
 			expense('b', 'J', '2026-09-03T10:00:00Z', { L: 300, J: 300 }, '2026-09-04T00:00:00Z'),
@@ -50,21 +65,23 @@ test('month balances, Berlin month edges and fewest transfers', () => {
 	);
 	assert.equal(statement.totalCents, 2000 + 600 + 400);
 	assert.deepEqual(
-		statement.members.map(({ id, paidCents, shareCents, balanceCents }) => [
-			id,
-			paidCents,
-			shareCents,
-			balanceCents,
-		]),
+		statement.members.map(({ id, paidCents, shareCents }) => [id, paidCents, shareCents]),
 		[
-			// L's settled 300 of "b" does not count as open.
-			['L', 2000, 1500, 800],
-			['J', 1000, 1500, -800],
+			['L', 2000, 1500],
+			['J', 1000, 1500],
+		],
+	);
+	// Open over all months: J owes 1000 and 500, L owes 200; the settled 300 of "b" is not open.
+	assert.deepEqual(
+		statement.open.map(({ memberId, cents }) => [memberId, cents]),
+		[
+			['J', -1300],
+			['L', 1300],
 		],
 	);
 	assert.deepEqual(
 		statement.transfers.map(({ fromId, toId, cents }) => [fromId, toId, cents]),
-		[['J', 'L', 800]],
+		[['J', 'L', 1300]],
 	);
 	assert.equal(statement.settled, false);
 });
@@ -74,7 +91,7 @@ test('categories are summed per month, largest first, "other" last', () => {
 		...expense(id, 'L', '2026-09-10T10:00:00Z', { L: cents }),
 		...(category ? { category } : {}),
 	});
-	const statement = buildMonthlyStatement(
+	const statement = build(
 		[
 			withCategory('other', 'a', 10000),
 			withCategory('leisure', 'b', 2000),
@@ -98,7 +115,7 @@ test('categories are summed per month, largest first, "other" last', () => {
 });
 
 test('a payer missing from the members list has no name', () => {
-	const statement = buildMonthlyStatement(
+	const statement = build(
 		[expense('a', 'X', '2026-09-02T10:00:00Z', { L: 1000 })],
 		members,
 		'2026-09',
@@ -111,145 +128,184 @@ test('month key arithmetic crosses years', () => {
 	assert.equal(shiftMonthKey('2026-12', 1), '2027-01');
 });
 
-test('completed payments of the month offset open shares', () => {
+test('open balances count every month, so a chain payment settles both statements', () => {
+	// B paid for A in January, C paid for B in February; A paid C directly.
+	const expenses = [
+		expense('jan', 'B', '2026-01-10T10:00:00Z', { A: 1000 }),
+		expense('feb', 'C', '2026-02-10T10:00:00Z', { B: 1000 }),
+	];
+	const people = [
+		{ id: 'A', name: 'Anna', active: true },
+		{ id: 'B', name: 'Ben', active: true },
+		{ id: 'C', name: 'Cem', active: true },
+	];
+	const payments = [
+		{
+			fromMemberId: 'A',
+			toMemberId: 'C',
+			amountCents: 1000,
+			currency: 'EUR',
+			completedAt: '2026-02-20T10:00:00Z',
+		},
+	];
+	for (const month of ['2026-01', '2026-02']) {
+		const statement = build(expenses, people, month, payments);
+		assert.deepEqual(statement.open, []);
+		assert.deepEqual(statement.transfers, []);
+		assert.equal(statement.settled, true);
+	}
+});
+
+const ledgerMembers = [
+	{ id: 'A', name: 'Anna', active: true },
+	{ id: 'B', name: 'Ben', active: true },
+	{ id: 'C', name: 'Cem', active: true },
+	{ id: 'D', name: 'Dora', active: true },
+];
+
+test('open balances and transfers equal the expenses page ledger', () => {
+	const usd = (value: StatementExpense): StatementExpense => ({ ...value, currency: 'USD' });
+	const expenses = [
+		expense('a', 'A', '2026-08-03T10:00:00Z', { A: 900, B: 700, C: 400 }),
+		expense('b', 'B', '2026-09-05T10:00:00Z', { A: 1200, B: 300, D: 800 }),
+		usd(expense('c', 'C', '2026-09-12T10:00:00Z', { A: 500, C: 500, D: 500 })),
+		expense('d', 'D', '2026-10-01T10:00:00Z', { A: 250, B: 250, C: 250, D: 250 }),
+		expense('e', 'A', '2026-10-09T10:00:00Z', { B: 600, C: 300 }, '2026-10-10T10:00:00Z'),
+	];
+	const payments: ExpensePaymentInput[] = [
+		{
+			fromMemberId: 'C',
+			toMemberId: 'A',
+			amountCents: 300,
+			currency: 'EUR',
+			completedAt: '2026-09-01T10:00:00Z',
+		},
+		{
+			fromMemberId: 'D',
+			toMemberId: 'C',
+			amountCents: 200,
+			currency: 'USD',
+			completedAt: '2026-10-02T10:00:00Z',
+		},
+	];
+	const statement = build(expenses, ledgerMembers, '2026-09', payments);
+	const balances = computeNetBalances(
+		expenses,
+		ledgerMembers.map((member) => ({ ...member, color: null })),
+		payments,
+	);
+	const key = (memberId: string, currency: string) => `${memberId}:${currency}`;
+	assert.deepEqual(
+		Object.fromEntries(statement.open.map((row) => [key(row.memberId, row.currency), row.cents])),
+		Object.fromEntries(
+			balances
+				.filter((row) => row.cents !== 0)
+				.map((row) => [key(row.memberId, row.currency), row.cents]),
+		),
+	);
+	assert.deepEqual(statement.transfers, simplifyDebts(balances));
+	assert.ok(statement.open.some((row) => row.currency === 'USD'));
+	assert.equal(statement.settled, false);
+	assert.equal(statement.asOf, AS_OF.toISOString());
+});
+
+test('open balances list EUR first, then other currencies, each sorted by name', () => {
+	const statement = build(
+		[
+			{ ...expense('usd', 'L', '2026-09-02T10:00:00Z', { J: 400 }), currency: 'USD' },
+			{ ...expense('chf', 'J', '2026-09-03T10:00:00Z', { L: 300 }), currency: 'CHF' },
+			expense('eur', 'J', '2026-09-04T10:00:00Z', { L: 1000 }),
+		],
+		members,
+		'2026-09',
+	);
+	assert.deepEqual(
+		statement.open.map((row) => `${row.currency}:${row.name}:${row.cents}`),
+		[
+			'EUR:Jonas:1000',
+			'EUR:Lina:-1000',
+			'CHF:Jonas:300',
+			'CHF:Lina:-300',
+			'USD:Jonas:-400',
+			'USD:Lina:400',
+		],
+	);
+});
+
+test('the month part ignores other months while the open part includes them', () => {
+	const statement = build(
+		[
+			expense('sep', 'L', '2026-09-02T10:00:00Z', { J: 1000 }),
+			expense('oct', 'L', '2026-10-05T10:00:00Z', { J: 500 }),
+		],
+		members,
+		'2026-09',
+	);
+	assert.equal(statement.totalCents, 1000);
+	assert.deepEqual(
+		statement.items.map((item) => item.id),
+		['sep'],
+	);
+	assert.deepEqual(
+		statement.members.map(({ id, paidCents, shareCents }) => [id, paidCents, shareCents]),
+		[
+			['L', 1000, 0],
+			['J', 0, 1000],
+		],
+	);
+	assert.deepEqual(
+		statement.open.map(({ memberId, cents }) => [memberId, cents]),
+		[
+			['J', -1500],
+			['L', 1500],
+		],
+	);
+});
+
+test('a former member shows in the open part while a balance is left', () => {
+	const statement = build(
+		[expense('a', 'J', '2026-08-02T10:00:00Z', { L: 1000, M: 1000 })],
+		members,
+		'2026-09',
+	);
+	assert.deepEqual(
+		statement.members.map((row) => row.id),
+		['L', 'J', 'M'],
+	);
+	assert.deepEqual(
+		statement.open.map(({ memberId, cents }) => [memberId, cents]),
+		[
+			['J', 2000],
+			['L', -1000],
+			['M', -1000],
+		],
+	);
+	assert.equal(
+		statement.transfers.filter((transfer) => transfer.fromId === 'M' && transfer.toId === 'J')
+			.length,
+		1,
+	);
+});
+
+test('partial and later payments reduce the open amount and settle it fully', () => {
 	const expenses = [expense('a', 'L', '2026-09-02T10:00:00Z', { L: 2000, J: 1000 })];
-	const payment = (completedAt: string, cents = 1000) => ({
+	const payment = (completedAt: string, cents: number): ExpensePaymentInput => ({
 		fromMemberId: 'J',
 		toMemberId: 'L',
 		amountCents: cents,
 		currency: 'EUR',
 		completedAt,
 	});
-	const paid = buildMonthlyStatement(expenses, members, '2026-09', [
-		payment('2026-09-10T10:00:00Z'),
-	]);
-	assert.deepEqual(
-		paid.members.map(({ id, balanceCents }) => [id, balanceCents]),
-		[
-			['L', 0],
-			['J', 0],
-		],
-	);
-	assert.deepEqual(paid.transfers, []);
-	assert.equal(paid.settled, true);
-
-	// A later payment settles this month too.
-	const later = buildMonthlyStatement(expenses, members, '2026-09', [
-		payment('2026-10-10T10:00:00Z'),
-	]);
-	assert.equal(later.settled, true);
-	assert.deepEqual(later.transfers, []);
-
-	// A partial payment keeps the month open with the remainder.
-	const partial = buildMonthlyStatement(expenses, members, '2026-09', [
-		payment('2026-09-10T10:00:00Z', 400),
-	]);
+	const partial = build(expenses, members, '2026-09', [payment('2026-09-10T10:00:00Z', 400)]);
 	assert.equal(partial.settled, false);
 	assert.equal(partial.transfers[0]?.cents, 600);
-});
-
-test('a payment for an older month never shows up as a reverse debt in its own month', () => {
-	const expenses = [
-		expense('sep', 'L', '2026-09-02T10:00:00Z', { L: 1000, J: 1000 }),
-		expense('oct', 'L', '2026-10-05T10:00:00Z', { L: 500, J: 500 }),
-	];
-	const payments = [
-		{
-			fromMemberId: 'J',
-			toMemberId: 'L',
-			amountCents: 1200,
-			currency: 'EUR',
-			completedAt: '2026-10-20T10:00:00Z',
-		},
-	];
-	const september = buildMonthlyStatement(expenses, members, '2026-09', payments);
-	assert.equal(september.settled, true);
-	assert.deepEqual(september.transfers, []);
-
-	// 1000 of the payment went to September; October keeps 300 of its 500 open, same direction.
-	const october = buildMonthlyStatement(expenses, members, '2026-10', payments);
-	assert.equal(october.settled, false);
-	assert.deepEqual(
-		october.transfers.map(({ fromId, toId, cents }) => [fromId, toId, cents]),
-		[['J', 'L', 300]],
-	);
-});
-
-test('a month whose opposite debts cancel out exactly counts as settled', () => {
-	const statement = buildMonthlyStatement(
-		[
-			expense('a', 'L', '2026-09-02T10:00:00Z', { L: 0, J: 1000 }),
-			expense('b', 'J', '2026-09-03T10:00:00Z', { J: 0, L: 1000 }),
-		],
-		members,
-		'2026-09',
-	);
-	assert.deepEqual(statement.transfers, []);
-	assert.equal(statement.settled, true);
-});
-
-test('a month with two independent groups needs one transfer per debtor', () => {
-	const statement = buildMonthlyStatement(
-		[
-			expense('a', 'L', '2026-09-02T10:00:00Z', { L: 200, J: 200 }),
-			expense('b', 'A', '2026-09-03T10:00:00Z', { A: 200, B: 200, C: 100 }),
-		],
-		[
-			...members,
-			{ id: 'A', name: 'Anna', active: true },
-			{ id: 'B', name: 'Ben', active: true },
-			{ id: 'C', name: 'Cem', active: true },
-		],
-		'2026-09',
-	);
-	assert.deepEqual(
-		statement.transfers.map(({ fromId, toId, cents }) => `${fromId}>${toId}:${cents}`).sort(),
-		['B>A:200', 'C>A:100', 'J>L:200'],
-	);
-});
-
-test('a former member who only owes a share stays on the statement', () => {
-	const statement = buildMonthlyStatement(
-		[expense('a', 'J', '2026-09-02T10:00:00Z', { L: 1000, J: 1000, M: 1000 })],
-		members,
-		'2026-09',
-	);
-	assert.deepEqual(
-		statement.members.map(({ id, balanceCents }) => [id, balanceCents]),
-		[
-			['L', -1000],
-			['J', 2000],
-			['M', -1000],
-		],
-	);
-	assert.deepEqual(
-		statement.transfers.map(({ fromId, toId, cents }) => [fromId, toId, cents]),
-		[
-			['L', 'J', 1000],
-			['M', 'J', 1000],
-		],
-	);
-});
-
-test('a former member who only paid stays on the statement', () => {
-	const statement = buildMonthlyStatement(
-		[expense('a', 'M', '2026-09-02T10:00:00Z', { L: 1500, J: 1500 })],
-		members,
-		'2026-09',
-	);
-	assert.deepEqual(
-		statement.members.map(({ id, balanceCents }) => [id, balanceCents]),
-		[
-			['L', -1500],
-			['J', -1500],
-			['M', 3000],
-		],
-	);
-	assert.equal(statement.transfers.length, 2);
+	const paid = build(expenses, members, '2026-09', [payment('2026-10-10T10:00:00Z', 1000)]);
+	assert.equal(paid.settled, true);
+	assert.deepEqual(paid.transfers, []);
 });
 
 test('a payment in another currency does not pay off EUR shares', () => {
-	const statement = buildMonthlyStatement(
+	const statement = build(
 		[expense('a', 'L', '2026-09-02T10:00:00Z', { L: 1000, J: 1000 })],
 		members,
 		'2026-09',
@@ -264,11 +320,28 @@ test('a payment in another currency does not pay off EUR shares', () => {
 		],
 	);
 	assert.equal(statement.settled, false);
-	assert.equal(statement.transfers[0]?.cents, 1000);
+	assert.deepEqual(
+		statement.open.map((row) => `${row.currency}:${row.memberId}:${row.cents}`),
+		['EUR:J:-1000', 'EUR:L:1000', 'USD:J:1000', 'USD:L:-1000'],
+	);
+});
+
+test('opposite debts that cancel out leave nothing open', () => {
+	const statement = build(
+		[
+			expense('a', 'L', '2026-09-02T10:00:00Z', { L: 0, J: 1000 }),
+			expense('b', 'J', '2026-09-03T10:00:00Z', { J: 0, L: 1000 }),
+		],
+		members,
+		'2026-09',
+	);
+	assert.deepEqual(statement.open, []);
+	assert.deepEqual(statement.transfers, []);
+	assert.equal(statement.settled, true);
 });
 
 test('category shares round to the nearest whole percent', () => {
-	const statement = buildMonthlyStatement(
+	const statement = build(
 		[
 			{ ...expense('a', 'L', '2026-09-02T10:00:00Z', { J: 1000 }), category: 'groceries' },
 			{ ...expense('b', 'L', '2026-09-03T10:00:00Z', { J: 2000 }), category: 'household' },
@@ -282,56 +355,5 @@ test('category shares round to the nearest whole percent', () => {
 			['household', 67],
 			['groceries', 33],
 		],
-	);
-});
-
-const chainPayment = (fromMemberId: string, toMemberId: string, amountCents: number) => ({
-	fromMemberId,
-	toMemberId,
-	amountCents,
-	currency: 'EUR',
-	completedAt: '2026-09-10T10:00:00Z',
-});
-
-// J paid for L, M paid for J: the plan says L pays M directly.
-const chainExpenses = (month: string) => [
-	expense(`a-${month}`, 'J', `${month}-02T10:00:00Z`, { L: 10000 }),
-	expense(`b-${month}`, 'M', `${month}-03T10:00:00Z`, { J: 10000 }),
-];
-
-test('a cash payment the plan routed through a third member settles the chain', () => {
-	const expenses = chainExpenses('2026-09');
-	const open = buildMonthlyStatement(expenses, members, '2026-09');
-	assert.deepEqual(
-		open.transfers.map(({ fromId, toId, cents }) => [fromId, toId, cents]),
-		[['L', 'M', 10000]],
-	);
-	const paid = buildMonthlyStatement(expenses, members, '2026-09', [chainPayment('L', 'M', 10000)]);
-	assert.deepEqual(
-		paid.members.map((member) => member.balanceCents),
-		[0, 0, 0],
-	);
-	assert.deepEqual(paid.transfers, []);
-	assert.equal(paid.settled, true);
-});
-
-test('a chain payment is counted in one month only', () => {
-	const expenses = [...chainExpenses('2026-09'), ...chainExpenses('2026-10')];
-	const payments = [chainPayment('L', 'M', 10000)];
-	assert.equal(buildMonthlyStatement(expenses, members, '2026-09', payments).settled, true);
-	const october = buildMonthlyStatement(expenses, members, '2026-10', payments);
-	assert.deepEqual(
-		october.transfers.map(({ fromId, toId, cents }) => [fromId, toId, cents]),
-		[['L', 'M', 10000]],
-	);
-});
-
-test('an opposite-direction leftover never creates a reverse debt', () => {
-	const statement = buildMonthlyStatement(chainExpenses('2026-09'), members, '2026-09', [
-		chainPayment('M', 'L', 5000),
-	]);
-	assert.deepEqual(
-		statement.members.map((member) => member.balanceCents),
-		[-10000, 0, 10000],
 	);
 });

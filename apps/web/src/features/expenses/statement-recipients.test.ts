@@ -103,3 +103,20 @@ test('a member whose address lookup failed is neither mailed nor skipped', () =>
 	);
 	assert.deepEqual(plan.skipped, []);
 });
+
+test('recipients carry the open balances of every month and currency', () => {
+	const older = { ...expense('J', { L: 800, J: 800 }, 'USD'), occurredAt: '2026-07-10T10:00:00Z' };
+	const plan = planStatementMails(
+		[member('L'), member('J')],
+		[older, expense('L', { L: 500, J: 500 })],
+		'2026-09',
+		[],
+		new Date('2026-10-01T05:00:00Z'),
+	);
+	const statement = plan.recipients[0]?.statement;
+	assert.deepEqual(
+		statement?.open.map((row) => `${row.currency}:${row.memberId}:${row.cents}`),
+		['EUR:J:-500', 'EUR:L:500', 'USD:J:800', 'USD:L:-800'],
+	);
+	assert.equal(statement?.asOf, '2026-10-01T05:00:00.000Z');
+});

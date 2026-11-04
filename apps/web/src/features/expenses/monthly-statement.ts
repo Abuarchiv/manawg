@@ -1,6 +1,6 @@
 import { berlinDayKey } from '@/core/utils/berlin-day';
 import { normalizeCurrency } from '@/core/utils/money';
-import { type SimplifiedDebt, simplifyDebts } from './debt-reduction';
+import { computeNetBalances, type SimplifiedDebt, simplifyDebts } from './debt-reduction';
 import { EXPENSE_CATEGORIES, type ExpenseCategory } from './expense-categories';
 import type { ExpensePaymentInput } from './expense-payment-input';
 
@@ -26,7 +26,6 @@ interface StatementMemberRow {
 	name: string;
 	paidCents: number;
 	shareCents: number;
-	balanceCents: number;
 }
 
 interface StatementItem {
@@ -45,16 +44,30 @@ interface StatementCategory {
 	share: number;
 }
 
+/** What a member still owes (negative) or gets (positive) in one currency; zero balances are left out. */
+interface StatementOpenBalance {
+	memberId: string;
+	name: string;
+	currency: string;
+	cents: number;
+}
+
 export interface MonthlyStatement {
 	monthKey: string;
 	totalCents: number;
 	items: StatementItem[];
 	/** Spending per category, largest first; the catch-all category always last. */
 	categories: StatementCategory[];
+	/** What each member paid and owed in the month (EUR). */
 	members: StatementMemberRow[];
+	/** Open balances as of `asOf`, EUR first, then by currency code and name. */
+	open: StatementOpenBalance[];
+	/** The transfers that settle every open balance, all currencies. */
 	transfers: SimplifiedDebt[];
-	/** Every share owed to someone else in this month is settled. */
+	/** No member has an open balance in any currency. */
 	settled: boolean;
+	/** ISO instant the open balances are as of. */
+	asOf: string;
 }
 
 /** Berlin calendar month (YYYY-MM) of an instant. */
@@ -93,156 +106,71 @@ function buildCategories(
 		});
 }
 
-function monthMap(maps: Map<string, Map<string, number>>, monthKey: string): Map<string, number> {
-	let map = maps.get(monthKey);
-	if (!map) {
-		map = new Map();
-		maps.set(monthKey, map);
-	}
-	return map;
-}
-
-function bump(map: Map<string, number>, key: string, delta: number): void {
-	map.set(key, (map.get(key) ?? 0) + delta);
-}
-
 /**
- * Spends what the direct shares left in the payment pool, oldest month first
- * up to `monthKey`: a payer with an open debt in that month hands it to the
- * receiver who is still owed there. The amount never exceeds either open
- * balance, so a leftover never creates a reverse debt.
- */
-function spendChainPayments(
-	paymentPool: Map<string, number>,
-	net: Map<string, Map<string, number>>,
-	adjustments: Map<string, Map<string, number>>,
-	monthKey: string,
-): void {
-	const pairs = [...paymentPool.keys()].sort();
-	for (const month of [...net.keys()].sort()) {
-		if (month > monthKey) break;
-		const balances = net.get(month) ?? new Map<string, number>();
-		const adjustment = monthMap(adjustments, month);
-		const open = (memberId: string) =>
-			(balances.get(memberId) ?? 0) + (adjustment.get(memberId) ?? 0);
-		for (const pair of pairs) {
-			const [from = '', to = ''] = pair.split('>');
-			const used = Math.min(
-				paymentPool.get(pair) ?? 0,
-				Math.max(0, -open(from)),
-				Math.max(0, open(to)),
-			);
-			if (used <= 0) continue;
-			paymentPool.set(pair, (paymentPool.get(pair) ?? 0) - used);
-			bump(adjustment, from, used);
-			bump(adjustment, to, -used);
-		}
-	}
-}
-
-/**
- * One month of a WG's expenses: what each member paid, their share, the
- * month balance (what is still open: paid minus share, minus shares marked
- * settled and payments) and the fewest transfers that clear it. Paid and
- * share count settled shares too, so a paid-off month still shows who
- * carried what. Cash payments never set `settledAt`; each pays off the open
- * shares of its debtor/payer pair oldest first, whenever it was made, so a
- * later payment settles an earlier month and never turns into a reverse
- * debt. What no direct share of the pair absorbs (the plan routed the debt
- * through a third member) settles the oldest open balances of the two
- * members, each payment counted in exactly one month. Pass all expenses and
- * payments of the WG, not only the month's. Only EUR expenses and payments
- * are counted.
+ * One month of a WG: totals, items, categories and what each member paid and
+ * owed in that month (EUR), plus what each member still owes or gets as of
+ * `asOf`. The open part uses the ledger maths of the expenses page over all
+ * expenses and completed payments in every currency, so both show the same
+ * numbers. Pass all expenses and payments of the WG, not only the month's.
  */
 export function buildMonthlyStatement(
 	expenses: readonly StatementExpense[],
 	members: readonly StatementMemberInput[],
 	monthKey: string,
-	payments: readonly ExpensePaymentInput[] = [],
+	payments: readonly ExpensePaymentInput[],
+	asOf: Date,
 ): MonthlyStatement {
-	const eur = expenses
-		.filter((expense) => normalizeCurrency(expense.currency) === 'EUR')
+	const inMonth = expenses
+		.filter(
+			(expense) =>
+				normalizeCurrency(expense.currency) === 'EUR' &&
+				berlinMonthKey(new Date(expense.occurredAt)) === monthKey,
+		)
 		.sort((a, b) => a.occurredAt.localeCompare(b.occurredAt));
-	const inMonth = eur.filter(
-		(expense) => berlinMonthKey(new Date(expense.occurredAt)) === monthKey,
-	);
 
 	const paid = new Map<string, number>();
 	const share = new Map<string, number>();
-	const net = new Map<string, Map<string, number>>();
-	const adjustments = new Map<string, Map<string, number>>();
-	for (const expense of eur) {
-		const balances = monthMap(net, berlinMonthKey(new Date(expense.occurredAt)));
-		bump(balances, expense.paidByMemberId, expense.amountCents);
-		for (const split of expense.splits) bump(balances, split.debtorMemberId, -split.amountCents);
-	}
 	for (const expense of inMonth) {
 		paid.set(expense.paidByMemberId, (paid.get(expense.paidByMemberId) ?? 0) + expense.amountCents);
 		for (const split of expense.splits) {
 			share.set(split.debtorMemberId, (share.get(split.debtorMemberId) ?? 0) + split.amountCents);
 		}
 	}
-	// Payment total per `debtor>payer` pair, spent on that pair's open shares oldest first.
-	const paymentPool = new Map<string, number>();
-	for (const payment of payments) {
-		if (
-			payment.amountCents <= 0 ||
-			normalizeCurrency(payment.currency) !== 'EUR' ||
-			!payment.completedAt
-		) {
-			continue;
-		}
-		const pair = `${payment.fromMemberId}>${payment.toMemberId}`;
-		paymentPool.set(pair, (paymentPool.get(pair) ?? 0) + payment.amountCents);
-	}
-	for (const expense of eur) {
-		const expenseMonth = berlinMonthKey(new Date(expense.occurredAt));
-		for (const split of expense.splits) {
-			const { debtorMemberId: from } = split;
-			const to = expense.paidByMemberId;
-			if (from === to || split.amountCents <= 0) continue;
-			const pair = `${from}>${to}`;
-			let covered = split.amountCents;
-			if (split.settledAt === null) {
-				covered = Math.min(paymentPool.get(pair) ?? 0, split.amountCents);
-				paymentPool.set(pair, (paymentPool.get(pair) ?? 0) - covered);
-			}
-			const adjustment = monthMap(adjustments, expenseMonth);
-			bump(adjustment, from, covered);
-			bump(adjustment, to, -covered);
-		}
-	}
-	spendChainPayments(paymentPool, net, adjustments, monthKey);
-	const adjustment = adjustments.get(monthKey) ?? new Map<string, number>();
 
-	const nameOf = (id: string) => members.find((member) => member.id === id)?.name ?? null;
-	// Active members always appear; former members only when they took part this month.
-	const rows = members
-		.filter((member) => member.active || paid.has(member.id) || share.has(member.id))
-		.map((member) => {
-			const paidCents = paid.get(member.id) ?? 0;
-			const shareCents = share.get(member.id) ?? 0;
-			return {
-				id: member.id,
-				name: member.name,
-				paidCents,
-				shareCents,
-				balanceCents: paidCents - shareCents + (adjustment.get(member.id) ?? 0),
-			};
-		});
-
-	const transfers = simplifyDebts(
-		rows.map((row) => ({
-			memberId: row.id,
-			memberName: row.name,
-			color: null,
-			cents: row.balanceCents,
-			currency: 'EUR',
-		})),
+	const balances = computeNetBalances(
+		[...expenses],
+		members.map((member) => ({ id: member.id, name: member.name, color: null })),
+		payments,
 	);
+	const open = balances
+		.filter((balance) => balance.cents !== 0)
+		.map((balance) => ({
+			memberId: balance.memberId,
+			name: balance.memberName,
+			currency: balance.currency,
+			cents: balance.cents,
+		}))
+		.sort(
+			(a, b) =>
+				Number(b.currency === 'EUR') - Number(a.currency === 'EUR') ||
+				a.currency.localeCompare(b.currency) ||
+				a.name.localeCompare(b.name),
+		);
 
-	// Opposite debts net out, so the month is settled exactly when no transfer is left.
-	const settled = transfers.length === 0;
+	// Active members always appear; former members when they took part this month or still hold a balance.
+	const holders = new Set(open.map((row) => row.memberId));
+	const rows = members
+		.filter(
+			(member) =>
+				member.active || paid.has(member.id) || share.has(member.id) || holders.has(member.id),
+		)
+		.map((member) => ({
+			id: member.id,
+			name: member.name,
+			paidCents: paid.get(member.id) ?? 0,
+			shareCents: share.get(member.id) ?? 0,
+		}));
+	const nameOf = (id: string) => members.find((member) => member.id === id)?.name ?? null;
 
 	const totalCents = inMonth.reduce((sum, expense) => sum + expense.amountCents, 0);
 	return {
@@ -257,7 +185,9 @@ export function buildMonthlyStatement(
 			amountCents: expense.amountCents,
 		})),
 		members: rows,
-		transfers,
-		settled,
+		open,
+		transfers: simplifyDebts(balances),
+		settled: open.length === 0,
+		asOf: asOf.toISOString(),
 	};
 }

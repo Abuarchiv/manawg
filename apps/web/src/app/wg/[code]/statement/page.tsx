@@ -38,7 +38,10 @@ export default function StatementPage() {
 		payments?: ExpensePaymentInput[];
 	}>(`/api/wg/${encodeURIComponent(wg.shareCode)}/expenses`, { memberId: identity.memberId });
 	const statement = useMemo(
-		() => (data ? buildMonthlyStatement(data.expenses, members, monthKey, data.payments) : null),
+		() =>
+			data
+				? buildMonthlyStatement(data.expenses, members, monthKey, data.payments ?? [], new Date())
+				: null,
 		[data, members, monthKey],
 	);
 

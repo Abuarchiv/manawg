@@ -31,14 +31,15 @@ export default {
 		person: 'Person',
 		paid: 'Bezahlt',
 		share: 'Anteil',
-		balance: 'Saldo',
+		balance: 'Offen',
+		balancesHint:
+			'Bezahlt und Anteil gelten für {month}. Offen zeigt den Stand vom {date} über alle Monate und Währungen.',
+		balanceSettled: 'ausgeglichen',
 		you: 'du',
 		settlement: 'Ausgleich',
 		settlementHint:
 			'Die kürzeste Lösung: {count, plural, one {eine Überweisung} other {# Überweisungen}}, dann sind alle quitt.',
 		transferTo: 'an',
-		transferDone: 'erledigt',
-		transferOpen: 'offen',
 		categories: 'Kategorien',
 		categoryShare: '{share, number} %',
 		category: {
@@ -58,7 +59,7 @@ export default {
 		sum: 'Summe',
 		howWeCalculate: 'So rechnen wir',
 		howWeCalculateBody:
-			'Jede Ausgabe wird so verteilt, wie sie eingetragen ist. Saldo = bezahlt minus Anteil. Positiv heißt: Du bekommst Geld zurück.',
+			'Jede Ausgabe wird so verteilt, wie sie eingetragen ist. Offen ist alles, was noch nicht ausgeglichen ist, über alle Monate und abzüglich bestätigter Zahlungen. Positiv heißt: Du bekommst Geld zurück.',
 		note: 'Hinweis',
 		noteBody:
 			'Diese Übersicht ist keine Rechnung im steuerlichen Sinn. Belege und Fotos findest du an jeder Ausgabe in der App. Export als CSV unter Einstellungen → Daten.',

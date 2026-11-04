@@ -60,10 +60,11 @@ export default {
 		subject: 'The {month} statement is ready',
 		title: 'The {month} statement is ready.',
 		preheader:
-			'{people, plural, one {# person} other {# people}}, {expenses, plural, one {# expense} other {# expenses}}, {status, select, settled {all settled} owed {you are owed {amount}} other {you owe {amount}}}.',
+			'{people, plural, one {# person} other {# people}}, {expenses, plural, one {# expense} other {# expenses}}, {status, select, settled {all settled} owed {you are owed {amount}} multiple {open amounts in several currencies} other {you owe {amount}}}.',
 		segmentSettled: 'All settled',
 		segmentOwed: 'You are owed',
 		segmentOwes: 'You owe',
+		openAsOf: 'Open, as of {date}',
 		total: 'Total',
 		expenses: 'Expenses',
 		share: 'Your share',

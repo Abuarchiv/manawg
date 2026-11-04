@@ -9,11 +9,18 @@ const statement: MonthlyStatement = {
 	items: [{}, {}] as unknown as MonthlyStatement['items'],
 	categories: [],
 	settled: false,
+	asOf: '2026-10-02T08:00:00Z',
 	members: [
-		{ id: 'a', name: 'Lina', paidCents: 10000, shareCents: 4000, balanceCents: 6000 },
-		{ id: 'b', name: 'Jonas', paidCents: 2345, shareCents: 8345, balanceCents: -6000 },
+		{ id: 'a', name: 'Lina', paidCents: 10000, shareCents: 4000 },
+		{ id: 'b', name: 'Jonas', paidCents: 2345, shareCents: 8345 },
 	],
-	transfers: [{ fromId: 'b', toId: 'a', fromName: 'Jonas', toName: 'Lina', cents: 6000 }],
+	open: [
+		{ memberId: 'a', name: 'Lina', currency: 'EUR', cents: 6000 },
+		{ memberId: 'b', name: 'Jonas', currency: 'EUR', cents: -6000 },
+	],
+	transfers: [
+		{ fromId: 'b', toId: 'a', fromName: 'Jonas', toName: 'Lina', cents: 6000, currency: 'EUR' },
+	],
 };
 const base = {
 	wgName: 'Kastanienallee',
@@ -41,4 +48,48 @@ test('the English statement mail uses English words, month and amounts', () => {
 	assert.ok(mail.text.includes('  from Jonas €60.00'));
 	assert.ok(mail.text.includes('Unsubscribe: https://app.example/unsubscribe?t=x'));
 	assert.ok(!/Abbestellen|Einstellungen/.test(mail.html));
+});
+
+const multi: MonthlyStatement = {
+	...statement,
+	open: [
+		{ memberId: 'a', name: 'Lina', currency: 'EUR', cents: -1500 },
+		{ memberId: 'b', name: 'Jonas', currency: 'EUR', cents: 1500 },
+		{ memberId: 'a', name: 'Lina', currency: 'USD', cents: 2000 },
+		{ memberId: 'b', name: 'Jonas', currency: 'USD', cents: -2000 },
+		{ memberId: 'c', name: 'Mira', currency: 'CHF', cents: 700 },
+		{ memberId: 'b', name: 'Jonas', currency: 'CHF', cents: -700 },
+	],
+	transfers: [
+		{ fromId: 'a', toId: 'b', fromName: 'Lina', toName: 'Jonas', cents: 1500, currency: 'EUR' },
+		{ fromId: 'b', toId: 'a', fromName: 'Jonas', toName: 'Lina', cents: 2000, currency: 'USD' },
+		{ fromId: 'b', toId: 'c', fromName: 'Jonas', toName: 'Mira', cents: 700, currency: 'CHF' },
+	],
+};
+
+test('a member who owes in one currency and is owed in another gets one line per currency', () => {
+	const mail = renderStatementMail({ ...base, statement: multi, locale: 'en' });
+	const lines = mail.text.split('\n');
+	assert.ok(lines.includes('You owe: €15.00'));
+	assert.ok(lines.includes('You are owed: +US$20.00'));
+	assert.ok(lines.includes('  to Jonas €15.00'));
+	assert.ok(lines.includes('  from Jonas US$20.00'));
+	assert.ok(!mail.text.includes('Mira'));
+	assert.ok(!mail.text.includes('CHF'));
+	assert.equal(mail.preheader, '2 people, 2 expenses, open amounts in several currencies.');
+	assert.equal((mail.html.match(/You owe|You are owed/g) ?? []).length, 2);
+});
+
+test('transfer lines name only the transfers the recipient is part of', () => {
+	const mail = renderStatementMail({ ...base, statement: multi, memberId: 'c', locale: 'en' });
+	assert.ok(mail.text.includes('You are owed: +CHF'));
+	assert.ok(mail.text.includes('  from Jonas'));
+	assert.ok(!mail.text.includes('Lina'));
+});
+
+test('a recipient without an open balance sees the settled segment', () => {
+	const mail = renderStatementMail({ ...base, statement: multi, memberId: 'z' });
+	assert.match(mail.text, /^Alles ausgeglichen: 0,00\s€$/m);
+	assert.ok(!mail.text.includes('Du bekommst'));
+	assert.match(mail.html, /Alles ausgeglichen/);
 });
