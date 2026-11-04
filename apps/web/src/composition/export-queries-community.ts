@@ -27,6 +27,9 @@ export async function fetchAnnouncementRows(wgId: string, page: ExportPage) {
 			status: announcements.status,
 			authorMemberId: announcements.authorMemberId,
 			imageUrl: announcements.imageUrl,
+			pinnedAt: announcements.pinnedAt,
+			resolvedAt: announcements.resolvedAt,
+			resolvedByMemberId: announcements.resolvedByMemberId,
 			createdAt: announcements.createdAt,
 		})
 		.from(announcements)
@@ -46,6 +49,9 @@ export function mapAnnouncementRows(
 		status: item.status,
 		authorName: memberById.get(item.authorMemberId) ?? '',
 		imageUrl: item.imageUrl ?? '',
+		pinnedAt: item.pinnedAt?.toISOString() ?? '',
+		resolvedAt: item.resolvedAt?.toISOString() ?? '',
+		resolvedByName: item.resolvedByMemberId ? (memberById.get(item.resolvedByMemberId) ?? '') : '',
 		createdAt: item.createdAt.toISOString(),
 	}));
 }
