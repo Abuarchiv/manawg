@@ -16,6 +16,8 @@ export interface StatementMailInput {
 	unsubscribeUrl: string;
 	/** The recipient's language; German when absent. */
 	locale?: Locale | undefined;
+	/** The statement travels as a PDF attachment; true when absent. */
+	withPdf?: boolean;
 }
 
 export interface StatementMail {
@@ -184,6 +186,7 @@ function plainText(
 			...transferLines(entry, t, locale).map((line) => `  ${line.label} ${line.amount}`),
 		]),
 		'',
+		...(input.withPdf === false ? [] : [t('statement.attached')]),
 		`${t('statement.viewStatement')}: ${links.statement}`,
 		'',
 		t('statement.cadence'),
@@ -249,6 +252,10 @@ function htmlDocument(
 	locale: Locale,
 ): string {
 	const money = (cents: number) => formatEuroCents(cents, 'EUR', { locale });
+	const attached =
+		input.withPdf === false
+			? ''
+			: `<tr><td style="padding:0 0 16px 0;font-family:${SANS};font-size:14px;line-height:1.5;color:${BODY};">${escapeHtml(t('statement.attached'))}</td></tr>`;
 	const button = `<tr><td style="padding:0;"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="${BUTTON_BG}" style="background-color:${BUTTON_BG};border-radius:10px;"><a href="${escapeHtml(links.statement)}" style="display:inline-block;padding:13px 20px;font-family:${SANS};font-size:15px;line-height:1.3;font-weight:500;color:${SURFACE};text-decoration:none;border-radius:10px;">${escapeHtml(t('statement.viewStatement'))}</a></td></tr></table></td></tr>`;
 	const tiles = `<tr><td style="padding:0 0 24px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid ${LINE};border-radius:14px;border-collapse:separate;"><tr>${tile(escapeHtml(t('statement.total')), money(input.statement.totalCents), false)}${tile(escapeHtml(t('statement.expenses')), String(view.expenseCount), true)}${tile(escapeHtml(t('statement.share')), money(view.shareCents), true)}</tr></table></td></tr>`;
 	const eyebrow = `<tr><td style="padding:0 0 14px 0;font-family:${MONO};font-size:11px;line-height:1.4;letter-spacing:0.14em;text-transform:uppercase;color:${MUTED};">${escapeHtml(input.wgName)}</td></tr>`;
@@ -273,6 +280,7 @@ ${eyebrow}
 ${title}
 ${tiles}
 ${statusRow(view, t, locale)}
+${attached}
 ${button}
 </table></td></tr>
 ${footer(links, t)}

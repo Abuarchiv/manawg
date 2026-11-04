@@ -198,6 +198,25 @@ test('rows left sending by a dead run are closed, not resent', { skip }, async (
 	assert.deepEqual(states, { [stale.id]: 'failed', [fresh.id]: 'sending' });
 });
 
+test('a run past its claim budget claims nothing and leaves the rows pending', {
+	skip,
+}, async () => {
+	const { plan, rows } = await setup(2);
+	const idle = transport(ok);
+	const summary = await d.run(plan([0, 1]), '2026-09', idle.fake, 0);
+	assert.deepEqual(idle.sent, []);
+	assert.equal(summary.quotaReached, true);
+	assert.deepEqual(
+		(await rows()).map((row) => [row.status, row.attempts]),
+		[
+			['pending', 0],
+			['pending', 0],
+		],
+	);
+	const next = transport(ok);
+	assert.equal((await d.run(plan([0, 1]), '2026-09', next.fake)).sent, 2);
+});
+
 test('the dry-run transport leaves the ledger empty', { skip }, async () => {
 	const { plan, rows } = await setup(2);
 	const dry = transport(ok, 'dry-run');

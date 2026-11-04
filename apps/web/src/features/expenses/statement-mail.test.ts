@@ -50,6 +50,21 @@ test('the English statement mail uses English words, month and amounts', () => {
 	assert.ok(!/Abbestellen|Einstellungen/.test(mail.html));
 });
 
+test('the mail says the statement is attached, in HTML and plain text', () => {
+	const de = renderStatementMail(base);
+	assert.ok(de.text.includes('Die Abrechnung als PDF hängt an.'));
+	assert.ok(de.html.includes('Die Abrechnung als PDF hängt an.'));
+	const en = renderStatementMail({ ...base, locale: 'en' });
+	assert.ok(en.text.includes('The statement is attached as a PDF.'));
+	assert.ok(en.html.includes('The statement is attached as a PDF.'));
+});
+
+test('without a PDF the mail does not claim an attachment', () => {
+	const mail = renderStatementMail({ ...base, withPdf: false });
+	assert.ok(!mail.text.includes('PDF'));
+	assert.ok(!mail.html.includes('PDF'));
+});
+
 const multi: MonthlyStatement = {
 	...statement,
 	open: [

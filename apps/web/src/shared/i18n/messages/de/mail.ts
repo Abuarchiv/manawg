@@ -69,6 +69,7 @@ export default {
 		transferFrom: 'von {name}',
 		transferTo: 'an {name}',
 		viewStatement: 'Abrechnung ansehen',
-		cadence: 'Einmal im Monat, am Ersten. Als PDF in der App.',
+		attached: 'Die Abrechnung als PDF hängt an.',
+		cadence: 'Einmal im Monat, am Ersten.',
 	},
 } as const;
