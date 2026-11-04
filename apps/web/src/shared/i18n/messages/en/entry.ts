@@ -219,6 +219,32 @@ export default {
 		joining: 'Joining…',
 		join: 'Join',
 	},
+	agentConsent: {
+		title: 'Connect an AI assistant',
+		signInBody: 'Sign in to connect an AI assistant to your ManaWG account.',
+		signIn: 'Sign in',
+		createAccount: 'Create account',
+		checking: 'Checking the request',
+		checkFailed: 'The request could not be checked right now.',
+		recheck: 'Check again',
+		invalidTitle: 'Request no longer valid',
+		invalidBody:
+			'The request has expired or was already answered. Start connecting again in the assistant.',
+		toApp: 'Go to ManaWG',
+		consentTitle: 'Connect {client} to ManaWG?',
+		unnamedClient: 'An assistant',
+		from: 'Request from {host}',
+		consentBody:
+			'The assistant then acts as {email} in all your flats: it can read and change expenses, the shopping list, supplies, the cleaning rota, the noticeboard, chat and calendar.',
+		limits:
+			'It cannot delete a whole flat or change your account. You can disconnect it at any time in the settings under “Access”.',
+		approve: 'Allow',
+		deny: 'Deny',
+		approving: 'Connecting…',
+		denying: 'Denying…',
+		decideFailed: 'That did not work. Please try again.',
+		returning: 'Back to the assistant…',
+	},
 	register: {
 		title: 'Create account',
 		inviteIntent: 'Create your account to accept the invitation.',

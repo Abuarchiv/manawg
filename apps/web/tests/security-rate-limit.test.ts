@@ -306,6 +306,7 @@ describe('rate limit subjects', () => {
 			const { sessionRateLimitKey } = await loadRateLimit();
 			const cookies = (...entries: [string, string][]) => ({
 				cookies: { getAll: () => entries.map(([name, value]) => ({ name, value })) },
+				headers: new Headers(),
 			});
 			const alice = await sessionRateLimitKey(cookies(['sb-proj-auth-token', 'alice-secret']));
 			const bob = await sessionRateLimitKey(cookies(['sb-proj-auth-token', 'bob-secret']));
@@ -327,6 +328,12 @@ describe('rate limit subjects', () => {
 			);
 			assert.ok(!alice.includes('alice-secret'));
 			assert.equal(await sessionRateLimitKey(cookies(['theme', 'dark'])), null);
+			// An agent's bearer token gets its own bucket, apart from any cookie session.
+			const agent = await sessionRateLimitKey({
+				cookies: { getAll: () => [] },
+				headers: new Headers({ authorization: 'Bearer agent-token' }),
+			});
+			assert.ok(agent && agent !== alice && !agent.includes('agent-token'));
 		} finally {
 			restore();
 		}

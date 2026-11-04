@@ -5,6 +5,10 @@ export default {
 			'Mit ManaWG teilt ihr Ausgaben, organisiert Einkäufe und verteilt Aufgaben im Putzplan. Die App ist kostenlos und läuft im Browser.',
 	},
 	authReset: { title: 'Passwort zurücksetzen' },
+	agentConsent: {
+		title: 'KI-Assistent verbinden',
+		description: 'Erlaube einem KI-Assistenten den Zugriff auf deine WGs in ManaWG.',
+	},
 	invite: {
 		title: 'Du bist in eine WG eingeladen',
 		description:

@@ -197,20 +197,27 @@ function ipRateLimitKey(ip: string): string {
 const SESSION_COOKIE_NAME = /^sb-[A-Za-z0-9-]+-auth-token(?:\.\d+)?$/;
 
 /**
- * Per-session key for the WG routes: a short hash of the Supabase session cookie, so flatmates on
- * one router IP (or strangers behind carrier NAT) get separate buckets. Only the hash is kept.
- * `null` without a session cookie. The cookie is not verified here, so callers must pair this
- * with an IP-level backstop (`wgReadIpBackstop`/`wgWriteIpBackstop`).
+ * Per-session key for the WG routes: a short hash of the Supabase session cookie, or of the
+ * bearer token an agent sends through the MCP server, so flatmates on one router IP (or strangers
+ * behind carrier NAT) get separate buckets. Only the hash is kept. `null` without either. Neither
+ * is verified here, so callers must pair this with an IP-level backstop
+ * (`wgReadIpBackstop`/`wgWriteIpBackstop`).
  */
 export async function sessionRateLimitKey(req: {
 	cookies: { getAll(): { name: string; value: string }[] };
+	headers: Headers;
 }): Promise<string | null> {
-	const session = req.cookies
-		.getAll()
-		.filter(({ name }) => SESSION_COOKIE_NAME.test(name))
-		.sort((a, b) => a.name.localeCompare(b.name))
-		.map(({ name, value }) => `${name}=${value}`)
-		.join(';');
+	const bearer = req.headers.get('authorization')?.startsWith('Bearer ')
+		? req.headers.get('authorization')
+		: null;
+	const session =
+		bearer ??
+		req.cookies
+			.getAll()
+			.filter(({ name }) => SESSION_COOKIE_NAME.test(name))
+			.sort((a, b) => a.name.localeCompare(b.name))
+			.map(({ name, value }) => `${name}=${value}`)
+			.join(';');
 	if (!session) return null;
 	const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(session));
 	const hex = Array.from(new Uint8Array(digest).slice(0, 8), (byte) =>
@@ -221,6 +228,8 @@ export async function sessionRateLimitKey(req: {
 
 // Per-IP ceilings that stay on when the middleware keys by session: a forged cookie value would
 // otherwise open a fresh bucket per request.
+// Known ceiling: every agent behind the hosted MCP server shares that server's egress IPs, so these
+// also cap all agents together. Key verified bearer requests by user when that limit gets close.
 export const wgReadIpBackstop = build(1200, 60, 'wg-read-ip'); // 1200 reads / min / IP (a household behind one router)
 export const wgWriteIpBackstop = build(150, 60, 'wg-write-ip'); // 150 writes / min / IP
 

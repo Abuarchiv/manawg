@@ -8,6 +8,10 @@ export default {
 			'With ManaWG you share expenses, organise shopping and split tasks on the cleaning rota. The app is free and runs in the browser.',
 	},
 	authReset: { title: 'Reset password' },
+	agentConsent: {
+		title: 'Connect an AI assistant',
+		description: 'Allow an AI assistant to access your flats in ManaWG.',
+	},
 	invite: {
 		title: 'You have been invited to a flat',
 		description:
