@@ -41,6 +41,27 @@ test('feature codes keep their own texts', () => {
 	);
 });
 
+test('the payer rule explains who may change amount, payer or shares', () => {
+	const updated = renderMessage(de, recurringSaveError('paid_by_must_include_caller', 'updated'));
+	assert.notEqual(updated, 'Fixkosten konnten nicht aktualisiert werden.');
+	assert.match(
+		updated,
+		/^Fixkosten konnten nicht aktualisiert werden: Um Betrag, Zahler oder Anteile zu ändern, musst du selbst zahlen oder einen Anteil über 0 € haben\.$/,
+	);
+	assert.match(
+		renderMessage(de, recurringSaveError('paid_by_must_include_caller', 'created')),
+		/^Fixkosten konnten nicht angelegt werden: .*Anteil über 0 € haben\.$/,
+	);
+	assert.match(
+		renderMessage(en, recurringSaveError('paid_by_must_include_caller', 'updated')),
+		/^The fixed cost could not be updated: .*have a share above €0 yourself\.$/,
+	);
+	assert.match(
+		renderMessage(en, recurringSaveError('paid_by_must_include_caller', 'created')),
+		/^The fixed cost could not be added: .*have a share above €0 yourself\.$/,
+	);
+});
+
 test('a pause that collides with another edit says the list was reloaded', () => {
 	assert.match(renderMessage(de, recurringActionError('recurring_expense_changed')), /neu geladen/);
 });

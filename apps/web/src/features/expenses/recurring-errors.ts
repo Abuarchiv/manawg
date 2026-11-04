@@ -40,6 +40,10 @@ export function recurringSaveError(error: string, action: 'created' | 'updated')
 			...commonTexts(prefix),
 			member_not_in_wg: detail(prefix, 'expenses-recurring.errors.memberNotInWg'),
 			recurring_expense_changed: detail(prefix, 'expenses-recurring.errors.changedSave'),
+			paid_by_must_include_caller: detail(
+				prefix,
+				'expenses-recurring.errors.paidByMustIncludeCaller',
+			),
 			amount_invalid: detail(prefix, 'expenses-recurring.errors.amountInvalid'),
 			description_invalid: detail(prefix, 'expenses-recurring.errors.descriptionInvalid'),
 			interval_invalid: detail(prefix, 'expenses-recurring.errors.intervalInvalid'),
