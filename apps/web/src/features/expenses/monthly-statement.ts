@@ -93,6 +93,53 @@ function buildCategories(
 		});
 }
 
+function monthMap(maps: Map<string, Map<string, number>>, monthKey: string): Map<string, number> {
+	let map = maps.get(monthKey);
+	if (!map) {
+		map = new Map();
+		maps.set(monthKey, map);
+	}
+	return map;
+}
+
+function bump(map: Map<string, number>, key: string, delta: number): void {
+	map.set(key, (map.get(key) ?? 0) + delta);
+}
+
+/**
+ * Spends what the direct shares left in the payment pool, oldest month first
+ * up to `monthKey`: a payer with an open debt in that month hands it to the
+ * receiver who is still owed there. The amount never exceeds either open
+ * balance, so a leftover never creates a reverse debt.
+ */
+function spendChainPayments(
+	paymentPool: Map<string, number>,
+	net: Map<string, Map<string, number>>,
+	adjustments: Map<string, Map<string, number>>,
+	monthKey: string,
+): void {
+	const pairs = [...paymentPool.keys()].sort();
+	for (const month of [...net.keys()].sort()) {
+		if (month > monthKey) break;
+		const balances = net.get(month) ?? new Map<string, number>();
+		const adjustment = monthMap(adjustments, month);
+		const open = (memberId: string) =>
+			(balances.get(memberId) ?? 0) + (adjustment.get(memberId) ?? 0);
+		for (const pair of pairs) {
+			const [from = '', to = ''] = pair.split('>');
+			const used = Math.min(
+				paymentPool.get(pair) ?? 0,
+				Math.max(0, -open(from)),
+				Math.max(0, open(to)),
+			);
+			if (used <= 0) continue;
+			paymentPool.set(pair, (paymentPool.get(pair) ?? 0) - used);
+			bump(adjustment, from, used);
+			bump(adjustment, to, -used);
+		}
+	}
+}
+
 /**
  * One month of a WG's expenses: what each member paid, their share, the
  * month balance (what is still open: paid minus share, minus shares marked
@@ -101,8 +148,11 @@ function buildCategories(
  * carried what. Cash payments never set `settledAt`; each pays off the open
  * shares of its debtor/payer pair oldest first, whenever it was made, so a
  * later payment settles an earlier month and never turns into a reverse
- * debt. Pass all expenses and payments of the
- * WG, not only the month's. Only EUR expenses and payments are counted.
+ * debt. What no direct share of the pair absorbs (the plan routed the debt
+ * through a third member) settles the oldest open balances of the two
+ * members, each payment counted in exactly one month. Pass all expenses and
+ * payments of the WG, not only the month's. Only EUR expenses and payments
+ * are counted.
  */
 export function buildMonthlyStatement(
 	expenses: readonly StatementExpense[],
@@ -119,7 +169,13 @@ export function buildMonthlyStatement(
 
 	const paid = new Map<string, number>();
 	const share = new Map<string, number>();
-	const adjustment = new Map<string, number>();
+	const net = new Map<string, Map<string, number>>();
+	const adjustments = new Map<string, Map<string, number>>();
+	for (const expense of eur) {
+		const balances = monthMap(net, berlinMonthKey(new Date(expense.occurredAt)));
+		bump(balances, expense.paidByMemberId, expense.amountCents);
+		for (const split of expense.splits) bump(balances, split.debtorMemberId, -split.amountCents);
+	}
 	for (const expense of inMonth) {
 		paid.set(expense.paidByMemberId, (paid.get(expense.paidByMemberId) ?? 0) + expense.amountCents);
 		for (const split of expense.splits) {
@@ -140,7 +196,7 @@ export function buildMonthlyStatement(
 		paymentPool.set(pair, (paymentPool.get(pair) ?? 0) + payment.amountCents);
 	}
 	for (const expense of eur) {
-		const isInMonth = berlinMonthKey(new Date(expense.occurredAt)) === monthKey;
+		const expenseMonth = berlinMonthKey(new Date(expense.occurredAt));
 		for (const split of expense.splits) {
 			const { debtorMemberId: from } = split;
 			const to = expense.paidByMemberId;
@@ -151,11 +207,13 @@ export function buildMonthlyStatement(
 				covered = Math.min(paymentPool.get(pair) ?? 0, split.amountCents);
 				paymentPool.set(pair, (paymentPool.get(pair) ?? 0) - covered);
 			}
-			if (!isInMonth) continue;
-			adjustment.set(from, (adjustment.get(from) ?? 0) + covered);
-			adjustment.set(to, (adjustment.get(to) ?? 0) - covered);
+			const adjustment = monthMap(adjustments, expenseMonth);
+			bump(adjustment, from, covered);
+			bump(adjustment, to, -covered);
 		}
 	}
+	spendChainPayments(paymentPool, net, adjustments, monthKey);
+	const adjustment = adjustments.get(monthKey) ?? new Map<string, number>();
 
 	const nameOf = (id: string) => members.find((member) => member.id === id)?.name ?? null;
 	// Active members always appear; former members only when they took part this month.
