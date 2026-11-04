@@ -158,7 +158,7 @@ function drawTransfers(sheet: Sheet, statement: MonthlyStatement, t: DocumentT):
 	for (const transfer of statement.transfers) {
 		ensure(sheet, 22);
 		sheet.y -= 4;
-		const label = `${transfer.fromName} ${t('document.transferTo')} ${transfer.toName}`;
+		const label = `${sheet.safe(transfer.fromName)} ${t('document.transferTo')} ${sheet.safe(transfer.toName)}`;
 		text(sheet, fit(sheet, label, 380, 9.5), MARGIN);
 		const amount = formatEuroCents(transfer.cents, transfer.currency ?? 'EUR', {
 			locale: sheet.locale,

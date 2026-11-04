@@ -104,6 +104,10 @@ test('text outside the font falls back to a plain space, the base letter or a qu
 	assert.equal(safe('🙂 Mia'), 'Mia');
 	assert.equal(safe('Kastanienallee 🏠 12 👩🏽‍🍳'), 'Kastanienallee 12');
 	assert.equal(safe('日本'), '??');
+	assert.equal(safe('🙂'), '?');
+	assert.equal(safe('👩🏽‍🍳 🏠'), '?');
+	assert.equal(safe(''), '');
+	assert.equal(safe('   '), '');
 	assert.equal(safe('a\u00a0b\u202fc\td'), 'a b c d');
 	assert.equal(safe('A → B'), 'A → B');
 });
@@ -175,6 +179,19 @@ test('the transfer names who pays whom', async () => {
 	const drawn = await drawnTexts(statement());
 	assert.equal(texts(drawn, 'Zoë an Jürgen').length, 1);
 	assert.equal(texts(drawn, 'Jürgen an Zoë').length, 0);
+});
+
+test('the transfer keeps both parties when a name is only emoji', async () => {
+	const [transfer] = statement().transfers;
+	assert.ok(transfer);
+	const emojiTo = await drawnTexts(
+		statement({ transfers: [{ ...transfer, fromName: 'Ben', toName: '🙂' }] }),
+	);
+	assert.equal(texts(emojiTo, 'Ben an ?').length, 1);
+	const emojiFrom = await drawnTexts(
+		statement({ transfers: [{ ...transfer, fromName: '🙂', toName: 'Ben' }] }),
+	);
+	assert.equal(texts(emojiFrom, '? an Ben').length, 1);
 });
 
 test('an expense without a payer shows the former member label', async () => {
