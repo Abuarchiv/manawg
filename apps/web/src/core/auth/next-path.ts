@@ -19,6 +19,18 @@ export function safeNextPath(value: string | null): string {
 	}
 }
 
+const DEEP_LINK_HASH = /^#[\w.%-]{1,200}$/;
+
+/**
+ * Re-attaches the fragment of the entry URL (#message-1, #notifications) to a
+ * WG path. The server redirect to sign-in cannot carry it, so the browser
+ * reads it from the login URL. Other targets and unusable fragments pass through.
+ */
+export function withHash(next: string, hash: string): string {
+	if (!next.startsWith('/wg/') || next.includes('#') || !DEEP_LINK_HASH.test(hash)) return next;
+	return `${next}${hash}`;
+}
+
 /** Set by the middleware on page requests so server layouts can see the requested URL. */
 export const REQUEST_PATH_HEADER = 'x-manawg-path';
 
