@@ -11,12 +11,26 @@ import { supabaseFetch } from './supabase-fetch';
 import { readVerifiedUser } from './verified-user';
 
 const SUPABASE_AUTH_TOKEN_COOKIE = /^sb-[A-Za-z0-9-]+-auth-token(?:\.\d+)?$/;
+const BEARER = /^Bearer ([\w.~+/=-]+)$/;
+const WG_ROOT = /^\/api\/wg\/[^/]+$/;
 
-function hasSupabaseAuthAttempt(request: NextRequest): boolean {
-	return (
-		request.headers.has('authorization') ||
-		request.cookies.getAll().some(({ name }) => SUPABASE_AUTH_TOKEN_COOKIE.test(name))
-	);
+function hasSessionCookie(request: NextRequest): boolean {
+	return request.cookies.getAll().some(({ name }) => SUPABASE_AUTH_TOKEN_COOKIE.test(name));
+}
+
+/**
+ * Agents connected through the ManaWG MCP server send the user's Supabase access token as
+ * `Authorization: Bearer` (OAuth through Supabase Auth, consent on /oauth/consent). It counts
+ * for the WG API only: account, auth and upload routes stay with the person in the browser, and
+ * an agent never deletes a whole WG.
+ */
+export function bearerTokenFor(request: NextRequest): string | null {
+	const token = BEARER.exec(request.headers.get('authorization') ?? '')?.[1];
+	if (!token) return null;
+	const path = request.nextUrl.pathname;
+	if (path !== '/api/wg' && !path.startsWith('/api/wg/')) return null;
+	if (request.method === 'DELETE' && WG_ROOT.test(path)) return null;
+	return token;
 }
 
 /**
@@ -53,9 +67,10 @@ export function createSupabaseServerClient(
 }
 
 export async function getAuthenticatedUser(request: NextRequest): Promise<Pick<User, 'id'> | null> {
-	if (!hasSupabaseAuthAttempt(request)) return null;
+	const token = bearerTokenFor(request);
+	if (!token && !hasSessionCookie(request)) return null;
 	const supabase = createSupabaseServerClient(request, NextResponse.next());
-	return readVerifiedUser(supabase.auth);
+	return readVerifiedUser(supabase.auth, token ?? undefined);
 }
 
 /** Read the middleware-refreshed session in a server component without a module-level client. */

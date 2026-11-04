@@ -6,6 +6,7 @@ import { useGoogleSignIn } from '@/components/auth/google-sign-in';
 import { SocialLoginButtons, type SocialProvider } from '@/components/auth/SocialLoginButtons';
 import { AccountSignOutSection } from '@/components/wg/settings/AccountSignOutSection';
 import { AccountWgsSection } from '@/components/wg/settings/AccountWgsSection';
+import { AgentsSection } from '@/components/wg/settings/AgentsSection';
 import { DangerZoneSection } from '@/components/wg/settings/DangerZoneSection';
 import { EmailChangeRow } from '@/components/wg/settings/EmailChangeRow';
 import { InvitesSection } from '@/components/wg/settings/InvitesSection';
@@ -91,6 +92,7 @@ export function AccessTab({ wg, members, identity }: AccessTabProps) {
 				</div>
 			</Section>
 
+			<AgentsSection memberId={identity.memberId} />
 			<AccountWgsSection currentCode={wg.shareCode} />
 			<MembersSection wg={wg} members={members} identity={identity} />
 			<Section title={t('account')}>

@@ -226,6 +226,32 @@ export default {
 		joining: 'Tritt bei…',
 		join: 'Beitreten',
 	},
+	agentConsent: {
+		title: 'KI-Assistent verbinden',
+		signInBody: 'Melde dich an, um einen KI-Assistenten mit deinem ManaWG-Konto zu verbinden.',
+		signIn: 'Anmelden',
+		createAccount: 'Konto erstellen',
+		checking: 'Anfrage wird geprüft',
+		checkFailed: 'Die Anfrage konnte gerade nicht geprüft werden.',
+		recheck: 'Erneut prüfen',
+		invalidTitle: 'Anfrage nicht mehr gültig',
+		invalidBody:
+			'Die Anfrage ist abgelaufen oder wurde schon beantwortet. Starte die Verbindung im Assistenten neu.',
+		toApp: 'Zu ManaWG',
+		consentTitle: '{client} mit ManaWG verbinden?',
+		unnamedClient: 'Ein Assistent',
+		from: 'Anfrage von {host}',
+		consentBody:
+			'Der Assistent handelt dann als {email} in allen deinen WGs: Ausgaben, Einkaufsliste, Vorräte, Putzplan, Pinnwand, Chat und Kalender lesen und ändern.',
+		limits:
+			'Eine ganze WG löschen und dein Konto ändern kann er nicht. Du trennst ihn jederzeit in den Einstellungen unter „Zugang“.',
+		approve: 'Erlauben',
+		deny: 'Ablehnen',
+		approving: 'Verbinde…',
+		denying: 'Lehne ab…',
+		decideFailed: 'Das hat nicht geklappt. Versuche es noch einmal.',
+		returning: 'Zurück zum Assistenten…',
+	},
 	register: {
 		title: 'Konto erstellen',
 		inviteIntent: 'Erstelle dein Konto, um der Einladung zu folgen.',

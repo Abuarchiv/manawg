@@ -7,16 +7,19 @@ import { isTransientAuthError } from './auth-errors';
  * on every request; an expired token still costs one refresh call. Projects signing with a
  * symmetric secret fall back to that round trip inside `getClaims`.
  *
+ * `jwt` verifies a bearer token instead of the cookie session; its expiry is checked as well.
+ *
  * Throws only for an Auth outage (network error, 5xx, 429), which callers answer with a
  * retryable 503. A cookie that is not a JWT at all makes `getClaims` throw a plain Error; that
  * is an invalid session, not an outage.
  */
 export async function readVerifiedUser(
 	auth: Pick<SupabaseClient['auth'], 'getClaims'>,
+	jwt?: string,
 ): Promise<{ id: string } | null> {
 	let claims: { sub?: unknown } | undefined;
 	try {
-		const { data, error } = await auth.getClaims();
+		const { data, error } = await auth.getClaims(jwt);
 		if (error) {
 			if (isTransientAuthError(error)) throw error;
 			return null;

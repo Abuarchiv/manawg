@@ -368,6 +368,7 @@ Optional:
 | `NEXT_PUBLIC_SENTRY_DSN` | Error reporting to your Sentry project |
 | `GOOGLE_SIGN_IN` | `false` hides the Google buttons. Set it when you did not enable the Google provider (see [step 4](#4-configure-supabase-auth)); unset, they are shown |
 | `NEXT_PUBLIC_LEGAL_URL`, `NEXT_PUBLIC_SUPPORT_EMAIL` | See [Legal pages and support](#legal-pages-and-support) |
+| `NEXT_PUBLIC_MCP_URL` | See [AI agents](#ai-agents) |
 
 Leave `NEXT_PUBLIC_POSTHOG_*` empty: product analytics stays off.
 Every variable is described in [`apps/web/.env.example`](../apps/web/.env.example).
@@ -399,6 +400,25 @@ says so in its pull request.
 
 The Supabase free plan has no automatic backups. Take your own, see
 [backup and restore](database-recovery.md#vercel-and-supabase).
+
+## AI agents
+
+People can connect Claude, ChatGPT or another MCP client to their account through the
+[ManaWG MCP server](https://github.com/Abuarchiv/manawg-mcp). The agent signs in with OAuth: the
+browser opens the app's sign-in and the consent page `/oauth/consent`, and the agent then sends
+the user's access token as `Authorization: Bearer`. The app accepts it on the `/api/wg` routes
+only, never on account, auth or upload routes, and never for deleting a whole WG.
+
+To offer it on a Vercel deployment:
+
+1. In the Supabase dashboard, open Authentication → OAuth Server, enable it, set the
+   authorization path to `/oauth/consent` and allow dynamic client registration.
+2. Deploy the MCP server in OAuth mode (its README, "Hosted with OAuth").
+3. Set `NEXT_PUBLIC_MCP_URL` to its endpoint, for example `https://mcp.example.com/mcp`, and
+   redeploy. Settings → Access then shows the address and the connected agents, who can be
+   disconnected there.
+
+The Docker setup does not include the MCP server; `NEXT_PUBLIC_MCP_URL` stays empty there.
 
 ## Time zone
 
