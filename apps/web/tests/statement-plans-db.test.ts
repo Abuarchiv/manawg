@@ -154,7 +154,7 @@ test('an expense on the Berlin side of a month edge belongs to that month', { sk
 	}
 });
 
-test('an expense late in the month belongs to that month', { skip }, async () => {
+test('an expense within the month is loaded', { skip }, async () => {
 	// 22:30 UTC on 31 October is 23:30 in Berlin.
 	const { wg } = await setup('other', { occurredAt: '2026-10-31T22:30:00Z' });
 	const plan = await planOf('2026-10', wg.id);
