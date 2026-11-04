@@ -83,8 +83,8 @@ async function setup(mailCount: number) {
 		.insert(d.wgMembers)
 		.values(Array.from({ length: mailCount }, (_, i) => ({ wgId: wg.id, name: `M${i}` })))
 		.returning();
-	const statement = {
-		monthKey: '2026-09',
+	const statementFor = (monthKey: string) => ({
+		monthKey,
 		totalCents: 1000,
 		items: [],
 		members: [],
@@ -93,18 +93,18 @@ async function setup(mailCount: number) {
 		settled: true,
 		asOf: '2026-10-02T08:00:00Z',
 		categories: [],
-	};
-	const recipient = (index: number) => ({
+	});
+	const recipient = (index: number, monthKey: string) => ({
 		memberId: members[index]?.id ?? '',
 		name: `M${index}`,
 		email: `m${index}@example.org`,
-		statement,
+		statement: statementFor(monthKey),
 	});
-	const plan = (recipients: number[], skipped: number[] = []) => [
+	const plan = (recipients: number[], skipped: number[] = [], monthKey = '2026-09') => [
 		{
 			wg: { id: wg.id, name: wg.name, shareCode: wg.shareCode },
 			plan: {
-				recipients: recipients.map(recipient),
+				recipients: recipients.map((index) => recipient(index, monthKey)),
 				skipped: skipped.map((i) => ({
 					memberId: members[i]?.id ?? '',
 					reason: 'no_email' as const,
@@ -215,6 +215,22 @@ test('a run past its claim budget claims nothing and leaves the rows pending', {
 	);
 	const next = transport(ok);
 	assert.equal((await d.run(plan([0, 1]), '2026-09', next.fake)).sent, 2);
+});
+
+test("a run for one month never claims or mails another month's open rows", { skip }, async () => {
+	const { plan, rows } = await setup(2);
+	const august = transport(() => ({ kind: 'failed', error: 'http_500' }));
+	await d.run(plan([0], [], '2026-08'), '2026-08', august.fake);
+	const september = transport(ok);
+	const summary = await d.run(plan([0, 1]), '2026-09', september.fake);
+	assert.deepEqual(september.sent.sort(), ['m0@example.org', 'm1@example.org']);
+	assert.equal(summary.sent, 2);
+	const byMonth = (await rows()).map((row) => [row.monthKey, row.status, row.attempts]);
+	assert.deepEqual(byMonth.sort(), [
+		['2026-08', 'failed', 1],
+		['2026-09', 'sent', 1],
+		['2026-09', 'sent', 1],
+	]);
 });
 
 test('the dry-run transport leaves the ledger empty', { skip }, async () => {
