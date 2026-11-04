@@ -114,7 +114,7 @@ test('temporary Auth failures keep WG page headers and cookies for the retry bou
 		mockAuthResponse(status);
 		const response = middlewareResponse();
 		const result = await refreshSupabaseSession(
-			await authenticatedRequest('/wg/ABC123/expenses'),
+			await authenticatedRequest('/wg/K7Q2M9XD/expenses'),
 			response,
 		);
 
@@ -159,7 +159,7 @@ test('an invalid signature still redirects to sign-in', async () => {
 	);
 	assert.ok(authFetchCalls > 0, 'the signing key must be fetched from Supabase Auth');
 	const response = await refreshSupabaseSession(
-		await authenticatedRequest('/wg/ABC123/expenses', foreignKey),
+		await authenticatedRequest('/wg/K7Q2M9XD/expenses', foreignKey),
 		NextResponse.next(),
 	);
 	assert.equal(response.status, 307);
@@ -167,4 +167,14 @@ test('an invalid signature still redirects to sign-in', async () => {
 
 	const user = await getAuthenticatedUser(await authenticatedRequest());
 	assert.deepEqual(user, { id: 'user-1' });
+});
+
+test('a malformed share code skips the sign-in redirect so the WG layout answers 404', async () => {
+	mockAuthResponse(200);
+	const response = NextResponse.next();
+	const result = await refreshSupabaseSession(
+		await authenticatedRequest('/wg/zz', foreignKey),
+		response,
+	);
+	assert.equal(result.headers.get('location'), null);
 });
