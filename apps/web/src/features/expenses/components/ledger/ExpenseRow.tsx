@@ -36,6 +36,7 @@ import { MemberAvatar } from '@/components/wg/MemberAvatar';
 import { isPendingImageToken } from '@/core/offline/offline-images';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatTimeFull } from '@/core/utils/time';
+import { hasSettledShares } from '@/features/expenses/expense-delete-guard';
 import { type ExpenseImpact, getExpenseImpact } from '@/features/expenses/expense-impact';
 import type { Expense, ExpenseSplit } from '@/features/expenses/expense-types';
 import { cn } from '@/shared/lib/cn';
@@ -85,9 +86,11 @@ export const ExpenseRow = memo(function ExpenseRow({
 	// server knows nothing to edit, delete or settle yet.
 	const locked = pendingIds.has(expense.id) || expense.id.startsWith('pending:');
 	const isPayer = expense.paidByMemberId === currentMemberId;
-	// The server lets only the payer or a debtor delete an expense.
+	// The server lets only the payer or a debtor delete an expense, and refuses
+	// once a share someone else settled records money that moved.
 	const canDelete =
-		isPayer || expense.splits.some((split) => split.debtorMemberId === currentMemberId);
+		(isPayer || expense.splits.some((split) => split.debtorMemberId === currentMemberId)) &&
+		!hasSettledShares(expense);
 	const impact = getExpenseImpact(expense, currentMemberId);
 	const who = (id: string) => (id === currentMemberId ? t('you') : memberName(id));
 	const shareStatusLabel = (split: ExpenseSplit, ownShare: boolean): string => {
@@ -191,7 +194,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 						</CollapsibleTrigger>
 					</ItemContent>
 					<ItemActions className="shrink-0">
-						{canDelete && (
+						{(canDelete || isPayer) && (
 							<DropdownMenu>
 								<DropdownMenuTrigger
 									render={<Button variant="ghost" size="icon" />}
@@ -207,14 +210,16 @@ export const ExpenseRow = memo(function ExpenseRow({
 												{t('edit')}
 											</DropdownMenuItem>
 										)}
-										<DropdownMenuItem
-											variant="destructive"
-											onClick={() => setDeleteOpen(true)}
-											disabled={locked}
-										>
-											<Trash2 />
-											{t('delete')}
-										</DropdownMenuItem>
+										{canDelete && (
+											<DropdownMenuItem
+												variant="destructive"
+												onClick={() => setDeleteOpen(true)}
+												disabled={locked}
+											>
+												<Trash2 />
+												{t('delete')}
+											</DropdownMenuItem>
+										)}
 									</DropdownMenuGroup>
 								</DropdownMenuContent>
 							</DropdownMenu>
