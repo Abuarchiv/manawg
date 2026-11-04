@@ -61,6 +61,7 @@ async function loadWgExpenses(wgIds: string[]): Promise<Map<string, StatementExp
 			amountCents: row.amountCents,
 			currency: row.currency,
 			description: row.description,
+			category: row.category,
 			occurredAt: row.occurredAt.toISOString(),
 			splits: splitsByExpense.get(row.id) ?? [],
 		});
