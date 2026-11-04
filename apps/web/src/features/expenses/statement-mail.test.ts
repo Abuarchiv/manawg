@@ -114,3 +114,36 @@ test('a recipient without an open balance sees the settled segment', () => {
 	assert.ok(!mail.text.includes('Du bekommst'));
 	assert.match(mail.html, /Alles ausgeglichen/);
 });
+
+test('the HTML escapes the WG name and transfer member names while the plain text keeps them readable', () => {
+	const wgName = '<a href="https://evil.example">WG</a>';
+	const memberName = '<img src=x onerror=alert(1)>Mia';
+	const hostile: MonthlyStatement = {
+		...statement,
+		members: [
+			{ id: 'a', name: 'Lina', paidCents: 10000, shareCents: 4000 },
+			{ id: 'b', name: memberName, paidCents: 2345, shareCents: 8345 },
+		],
+		open: [
+			{ memberId: 'a', name: 'Lina', currency: 'EUR', cents: 6000 },
+			{ memberId: 'b', name: memberName, currency: 'EUR', cents: -6000 },
+		],
+		transfers: [
+			{
+				fromId: 'b',
+				toId: 'a',
+				fromName: memberName,
+				toName: 'Lina',
+				cents: 6000,
+				currency: 'EUR',
+			},
+		],
+	};
+	const mail = renderStatementMail({ ...base, wgName, statement: hostile, locale: 'en' });
+	assert.ok(!mail.html.includes('<a href="https://evil.example"'));
+	assert.ok(!mail.html.includes('<img src=x'));
+	assert.ok(mail.html.includes('&lt;a href=&quot;https://evil.example&quot;&gt;WG&lt;/a&gt;'));
+	assert.ok(mail.html.includes('from &lt;img src=x onerror=alert(1)&gt;Mia'));
+	assert.ok(mail.text.includes(`  from ${memberName} €60.00`));
+	assert.ok(!mail.text.includes('&lt;'));
+});
