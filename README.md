@@ -61,13 +61,14 @@ cd manawg
 docker compose up -d
 ```
 
-The stack runs the app, PostgreSQL, sign-in, image storage and a mail catcher. Until there are
-published images, the first start builds the app from your checkout, which takes about ten
-minutes. Then open [localhost](http://localhost) and sign up; the sign-in code arrives in Mailpit at
+The stack runs the app, PostgreSQL, sign-in, image storage and a mail catcher, and pulls the
+image of the latest release. Then open [localhost](http://localhost) and sign up; the sign-in code arrives in Mailpit at
 [localhost:8025](http://localhost:8025).
 
 The [self-hosting guide](docs/self-hosting.md) covers a public domain with HTTPS, real mail,
 Google sign-in, updates and backups, and a setup on Vercel and Supabase instead of Docker.
+Releases follow [Semantic Versioning](https://semver.org); [CHANGELOG.md](CHANGELOG.md) lists what
+changed and whether an update needs a manual step.
 
 ## Development
 

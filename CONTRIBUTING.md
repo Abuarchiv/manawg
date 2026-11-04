@@ -70,8 +70,11 @@ All commands and tests are in [docs/development.md](docs/development.md).
    Run the Playwright suite too if you touched a UI or a route. Once per machine:
    `pnpm --filter @manawg/web exec playwright install chromium` (on Linux add `--with-deps`).
    The suite builds the app first and takes a few minutes.
-5. Commit and push to your fork.
-6. Open the pull request against `main`. Its title is one sentence that says what the change
+5. If users will notice the change, add a line under `## [Unreleased]` in
+   [CHANGELOG.md](CHANGELOG.md), in the section `Added`, `Changed`, `Fixed`, `Removed` or
+   `Security`. Say what changed for them, and whether a self-hosted instance needs a manual step.
+6. Commit and push to your fork.
+7. Open the pull request against `main`. Its title is one sentence that says what the change
    does; the template asks what changed, why, and how you tested it. Add screenshots for UI
    changes at a 320 px and a 390 px wide viewport, light and dark.
 

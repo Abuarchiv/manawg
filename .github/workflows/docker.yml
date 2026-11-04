@@ -1,8 +1,8 @@
 # Self-hosting image. Pull requests that touch the image or the paths the stack depends on, and
 # every push to main, build it for linux/amd64, scan it with Trivy and run the whole stack through
-# docker/smoke.sh. A tag vX.Y.Z builds linux/amd64, scans it with Trivy and only then builds
-# linux/amd64 and linux/arm64 and pushes them to ghcr.io/abuarchiv/manawg as X.Y.Z, X.Y, X and
-# latest.
+# docker/smoke.sh. A release tag vX.Y.Z, dispatched by release-production.yml or pushed, builds
+# linux/amd64, scans it with Trivy and only then builds linux/amd64 and linux/arm64 and pushes
+# them to ghcr.io/abuarchiv/manawg as X.Y.Z, X.Y, X and latest.
 name: Docker
 on:
   pull_request:
@@ -27,6 +27,8 @@ on:
   push:
     branches: [main]
     tags: ["v*.*.*"]
+  # The production release dispatches this for its tag.
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:

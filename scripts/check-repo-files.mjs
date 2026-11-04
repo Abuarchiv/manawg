@@ -13,6 +13,7 @@ const TOP_LEVEL = new Set([
 	'.vercelignore',
 	'apps',
 	'biome.json',
+	'CHANGELOG.md',
 	'CODE_OF_CONDUCT.md',
 	'compose.yaml',
 	'CONTRIBUTING.md',

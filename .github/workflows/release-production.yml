@@ -1,7 +1,8 @@
 name: Release production
 
 # One dispatch for the documented release: main tip -> Preview gate -> production migration ->
-# production deployment. Each stage waits for the previous one and stops the release on failure.
+# production deployment -> tag, GitHub release and Docker image for the version in package.json.
+# Each stage waits for the previous one and stops the release on failure.
 on:
   workflow_dispatch:
     inputs:
@@ -50,6 +51,22 @@ jobs:
           [ -n "$DEPLOY_HOOK" ] || { echo 'Production secret VERCEL_PRODUCTION_DEPLOY_HOOK is missing.' >&2; exit 1; }
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           echo "Candidate: $(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Check the version
+        id: version
+        env:
+          SHA: ${{ steps.candidate.outputs.sha }}
+        run: |
+          version="$(jq -r .version package.json)"
+          node scripts/release-notes.mjs "v$version" > /dev/null
+          # A tag on another commit means main changed since that release: bump the version first.
+          tagged="$(gh api "repos/$GITHUB_REPOSITORY/commits/v$version" --jq .sha 2>/dev/null || true)"
+          if [ -n "$tagged" ] && [ "$tagged" != "$SHA" ]; then
+            echo "v$version is already released from $tagged. Bump the version in package.json and add its CHANGELOG.md section." >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Version: $version" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Wait for main CI
         env:
@@ -143,3 +160,18 @@ jobs:
           done
           echo "Production does not serve $SHA healthily: $health" >&2
           exit 1
+
+      - name: Publish the release
+        env:
+          SHA: ${{ steps.candidate.outputs.sha }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if gh release view "v$VERSION" > /dev/null 2>&1; then
+            echo "Release v$VERSION exists already." >> "$GITHUB_STEP_SUMMARY"
+          else
+            node scripts/release-notes.mjs "v$VERSION" > notes.md
+            gh release create "v$VERSION" --target "$SHA" --title "ManaWG $VERSION" --notes-file notes.md --latest
+            echo "Release: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/v$VERSION" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          # A tag pushed with this token starts no workflow, so the image build is dispatched.
+          gh workflow run docker.yml --ref "v$VERSION"
