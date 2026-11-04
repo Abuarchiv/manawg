@@ -4,7 +4,7 @@ import { after, before, mock, test } from 'node:test';
 import { NextRequest } from 'next/server';
 import pg from 'pg';
 
-// Chat listing, send and read marker against a real PostgreSQL: ordering, cursor paging, WG scope
+// Chat listing, send, read marker and reactions against a real PostgreSQL: ordering, cursor paging, WG scope
 // and who is pushed live in SQL that the fake-DB route tests cannot see. Opt-in: TEST_DATABASE_URL
 // must name a disposable loopback database with all migrations applied (`pnpm test:db`).
 const url = process.env.TEST_DATABASE_URL?.trim() ?? '';
@@ -264,4 +264,91 @@ test('an edit re-derives mentions from the new text: never the author, only memb
 	assert.deepEqual(await mentioned(), [ids.mate]);
 	assert.equal((await edit('no mention any more')).status, 200);
 	assert.deepEqual(await mentioned(), []);
+});
+
+const reactionsRoute = () =>
+	import('../src/app/api/wg/[code]/chat/messages/[id]/reactions/route.ts');
+const reactionCall = (method: 'POST' | 'DELETE', id: string, emoji: string) =>
+	new NextRequest(
+		`http://localhost/api/wg/MTE8PZAT/chat/messages/${id}/reactions${method === 'DELETE' ? `?emoji=${encodeURIComponent(emoji)}` : ''}`,
+		{
+			method,
+			headers: { 'content-type': 'application/json' },
+			body: method === 'POST' ? JSON.stringify({ emoji }) : null,
+		},
+	);
+const reactionCtx = (id: string) => ({ params: Promise.resolve({ code: 'MTE8PZAT', id }) });
+const reactionRows = async (messageId: string) =>
+	(
+		await pool.query(
+			'SELECT member_id, emoji FROM public.wg_chat_reactions WHERE message_id = $1 ORDER BY emoji',
+			[messageId],
+		)
+	).rows as { member_id: string; emoji: string }[];
+const addReaction = (messageId: string, memberId: string, emoji: string) =>
+	pool.query(
+		'INSERT INTO public.wg_chat_reactions (message_id, member_id, emoji) VALUES ($1,$2,$3)',
+		[messageId, memberId, emoji],
+	);
+
+test('a reaction on a message of another WG is refused and nothing is stored or removed', {
+	skip,
+}, async () => {
+	const { POST, DELETE } = await reactionsRoute();
+	const foreign = await message(ids.wgB, ids.other, 'foreign', '2026-01-03T10:00:00Z');
+	const added = await POST(reactionCall('POST', foreign, '👍'), reactionCtx(foreign));
+	assert.equal(added.status, 404);
+	assert.deepEqual(await reactionRows(foreign), []);
+	await addReaction(foreign, ids.other, '👍');
+	const removed = await DELETE(reactionCall('DELETE', foreign, '👍'), reactionCtx(foreign));
+	assert.equal(removed.status, 404);
+	assert.equal((await reactionRows(foreign)).length, 1);
+});
+
+test('a deleted message refuses adding and removing a reaction with 409', { skip }, async () => {
+	const { POST, DELETE } = await reactionsRoute();
+	const gone = await message(ids.wgA, ids.mate, 'gone', '2026-01-03T10:00:01Z');
+	await pool.query('UPDATE public.wg_chat_messages SET deleted_at = now() WHERE id = $1', [gone]);
+	const added = await POST(reactionCall('POST', gone, '👍'), reactionCtx(gone));
+	assert.equal(added.status, 409);
+	assert.deepEqual(await reactionRows(gone), []);
+	await addReaction(gone, ids.me, '👍');
+	const removed = await DELETE(reactionCall('DELETE', gone, '👍'), reactionCtx(gone));
+	assert.equal(removed.status, 409);
+	assert.equal((await reactionRows(gone)).length, 1);
+});
+
+test('removing a reaction deletes only the caller row with that emoji', { skip }, async () => {
+	const { POST, DELETE } = await reactionsRoute();
+	const msg = await message(ids.wgA, ids.mate, 'react', '2026-01-03T10:00:02Z');
+	const added = await POST(reactionCall('POST', msg, '🎉'), reactionCtx(msg));
+	assert.equal(added.status, 200);
+	await addReaction(msg, ids.me, '👍');
+	await addReaction(msg, ids.mate, '👍');
+	const removed = await DELETE(reactionCall('DELETE', msg, '👍'), reactionCtx(msg));
+	assert.equal(removed.status, 200);
+	assert.deepEqual(
+		(await reactionRows(msg))
+			.map((r) => `${r.member_id === ids.me ? 'me' : 'mate'}${r.emoji}`)
+			.sort(),
+		['me🎉', 'mate👍'].sort(),
+	);
+});
+
+test('reaction emoji guards: adding needs a single emoji, removing an emoji of at most 16 characters', {
+	skip,
+}, async () => {
+	const { POST, DELETE } = await reactionsRoute();
+	const msg = await message(ids.wgA, ids.mate, 'guards', '2026-01-03T10:00:03Z');
+	for (const bad of ['not an emoji', 'ab', '👍👍']) {
+		const refused = await POST(reactionCall('POST', msg, bad), reactionCtx(msg));
+		assert.equal(refused.status, 400, bad);
+	}
+	assert.deepEqual(await reactionRows(msg), []);
+	await addReaction(msg, ids.me, 'x'.repeat(17));
+	for (const bad of ['x'.repeat(17), '   ', 'a\u0000b']) {
+		const refused = await DELETE(reactionCall('DELETE', msg, bad), reactionCtx(msg));
+		assert.equal(refused.status, 400, JSON.stringify(bad));
+	}
+	assert.equal((await reactionRows(msg)).length, 1);
 });
