@@ -2,7 +2,7 @@
   <a href="https://manawg.com/en">
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/cover-dark.webp">
-      <img src="docs/screenshots/cover-light.webp" alt="ManaWG: the free app for shared flats. Three phone screens show the home overview, the cleaning rota and the expenses.">
+      <img src="docs/screenshots/cover-light.webp" alt="ManaWG: life in a shared flat, sorted. Three phone screens show the expenses, the home overview and the cleaning rota.">
     </picture>
   </a>
 </p>
@@ -39,12 +39,10 @@ web app. *WG* is short for *Wohngemeinschaft*, German for shared flat.
 
 ## Features
 
-<p align="center">
-  <img src="docs/screenshots/home.png" width="24%" alt="Home: what is due for you, this week's dates and what is new in the flat">
-  <img src="docs/screenshots/expenses.png" width="24%" alt="Expenses: your balance, who owes whom and how to settle up">
-  <img src="docs/screenshots/chores.png" width="24%" alt="Cleaning rota: chores due for you, upcoming ones and who is away">
-  <img src="docs/screenshots/shopping.png" width="24%" alt="Shopping list with suggestions for the flat">
-</p>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/features-dark.webp">
+  <img src="docs/screenshots/features-light.webp" alt="Six phone screens: Home with what is due for you, Expenses with balances and settle-up suggestions, the cleaning rota, the shopping list with suggestions, the flat calendar and the chat.">
+</picture>
 
 | Area | What it does |
 | --- | --- |
