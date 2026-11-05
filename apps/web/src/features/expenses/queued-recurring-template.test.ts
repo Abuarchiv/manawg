@@ -40,7 +40,7 @@ const input = {
 		{ debtorMemberId: 'anna', amountCents: 500 },
 		{ debtorMemberId: 'ben', amountCents: 501 },
 	],
-	splitMode: 'equal' as const,
+	splitMode: 'equal' as 'equal' | 'manual',
 	queuedNextDueAt: null,
 };
 const find = (queue: OfflineAction[], over: Partial<typeof input> = {}) =>
