@@ -104,6 +104,9 @@ test('a queued create of this member is marked bought, other actions stay untouc
 	]);
 	assert.equal(withQueuedCreateBought([other], target, true), null);
 	assert.equal(withQueuedCreateBought([queued], { ...target, memberId: 'member-b' }, true), null);
+	assert.equal(withQueuedCreateBought([queued], { ...target, shareCode: 'OTHER' }, true), null);
+	const update = { ...queued, type: 'shopping.update' as const };
+	assert.equal(withQueuedCreateBought([update], target, true), null);
 });
 
 test('a queued create that already went out once is not edited in place', () => {
@@ -207,6 +210,36 @@ test('a rejected queued check-off and other WGs or members are ignored', () => {
 	);
 	const offline = { ...update, lastError: 'Noch keine Verbindung: später' };
 	assert.notEqual(overlayQueuedShopping([item], [offline] as never, me)[0], item);
+});
+
+test('a queued check-off of a row someone already checked off keeps their name', () => {
+	const done = { ...item, boughtAt: '2026-10-02T08:00:00.000Z', boughtByMemberId: 'member-b' };
+	const update = queued({
+		id: 'shopping-update:ABC:1:item-1',
+		type: 'shopping.update',
+		payload: { itemId: 'item-1', bought: true },
+	});
+	assert.deepEqual(overlayQueuedShopping([done], [update] as never, me), [done]);
+});
+
+test('a queued create shows once, as bought if it was ticked, even next to a same-named row', () => {
+	const done = { ...item, name: 'Brot', boughtAt: '2026-10-01T12:00:00.000Z' };
+	// Only an open row with the same name turns the replay into a duplicate.
+	assert.deepEqual(
+		overlayQueuedShopping([done], [queued({})] as never, me).map((row) => row.id),
+		['shopping:ABC:1:brot', 'item-1'],
+	);
+	const open = { ...item, name: 'Brot' };
+	const [ticked] = overlayQueuedShopping(
+		[open],
+		[queued({ payload: { name: 'Brot', quantity: null, bought: true } })] as never,
+		me,
+	);
+	assert.equal(ticked?.id, 'shopping:ABC:1:brot');
+	assert.equal(ticked?.boughtAt, '2026-10-02T09:00:00.000Z');
+	assert.equal(ticked?.boughtByMemberId, 'member-a');
+	const synced = { ...item, id: 'shopping:ABC:1:brot', name: 'Brötchen' };
+	assert.deepEqual(overlayQueuedShopping([synced], [queued({})] as never, me), [synced]);
 });
 
 test('removing an item drops its queued follow-ups only', () => {
