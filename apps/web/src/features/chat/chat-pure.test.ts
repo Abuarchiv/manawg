@@ -89,6 +89,14 @@ test('extractLinks finds http(s) links and drops trailing punctuation', () => {
 	assert.equal(extractLinks('https://a.de https://b.de https://c.de https://d.de').length, 3);
 });
 
+test('extractLinks keeps a closing bracket that belongs to the link', () => {
+	assert.deepEqual(extractLinks('Lies https://de.wikipedia.org/wiki/Berlin_(Begriffsklärung).'), [
+		'https://de.wikipedia.org/wiki/Berlin_(Begriffskl%C3%A4rung)',
+	]);
+	assert.deepEqual(extractLinks('(siehe https://x.de/a_(b))'), ['https://x.de/a_(b)']);
+	assert.deepEqual(extractLinks('[https://x.de/c]!'), ['https://x.de/c']);
+});
+
 test('findFirstUnreadId points at the first foreign message after the read marker', () => {
 	const msg = (id: string, minute: number, sender: string | null, extra = {}) => ({
 		id,

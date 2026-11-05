@@ -21,6 +21,8 @@ settled.
   before leaving; the danger zone now also mentions inviting someone.
 - The sign-in page has "Sign in" as its browser tab title again instead of "Create or join a
   flat".
+- A chat link ending in a closing bracket, such as a Wikipedia page "…_(disambiguation)", opens
+  with the bracket instead of a page that does not exist.
 
 ## [0.1.0] - 2026-11-05
 
