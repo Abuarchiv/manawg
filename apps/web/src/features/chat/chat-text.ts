@@ -60,11 +60,27 @@ export function splitMentions(body: string, names: readonly string[]): MentionSe
 	return segments.length > 0 ? segments : [{ text: body }];
 }
 
+const OPENING_BRACKET: Record<string, string> = { ')': '(', ']': '[', '}': '{' };
+
+const count = (text: string, char: string) => text.split(char).length - 1;
+
+/** Drops trailing sentence punctuation; a closing bracket stays when the link opened it ("…/Berlin_(Stadt)"). */
+function trimLinkEnd(raw: string): string {
+	let link = raw;
+	for (;;) {
+		const last = link.at(-1) ?? '';
+		const opening = OPENING_BRACKET[last];
+		const strayBracket = opening !== undefined && count(link, opening) < count(link, last);
+		if (!/^[.,;:!?]$/u.test(last) && !strayBracket) return link;
+		link = link.slice(0, -1);
+	}
+}
+
 /** Distinct http(s) links in a message, without trailing sentence punctuation. */
 export function extractLinks(body: string, max = 3): string[] {
 	const links = new Set<string>();
 	for (const match of body.matchAll(/https?:\/\/[^\s<>"']+/giu)) {
-		const candidate = match[0].replace(/[.,;:!?)\]}]+$/u, '');
+		const candidate = trimLinkEnd(match[0]);
 		try {
 			const url = new URL(candidate);
 			if (url.protocol === 'http:' || url.protocol === 'https:') links.add(url.href);
