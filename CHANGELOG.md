@@ -8,6 +8,8 @@ settled.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-05
+
 ### Fixed
 
 - The data export calls its payment section "Cash payments", the name used on the expenses
@@ -25,6 +27,9 @@ settled.
   with the bracket instead of a page that does not exist.
 - Screen readers announce the balances and expense tables of the monthly statement once each,
   instead of twice as regions with the same name.
+### Self-hosting
+
+- No manual step. Pull the `0.1.1` image and restart; there are no new database migrations.
 
 ## [0.1.0] - 2026-11-05
 
@@ -50,4 +55,5 @@ image is listed in this file.
 
 - No manual step. The `setup` service applies all database migrations on start.
 
+[0.1.1]: https://github.com/Abuarchiv/manawg/releases/tag/v0.1.1
 [0.1.0]: https://github.com/Abuarchiv/manawg/releases/tag/v0.1.0
