@@ -127,3 +127,31 @@ test('getChorePlanHealth counts gaps and due-today on Berlin days', () => {
 	);
 	assert.deepEqual(health, { gaps: 2, dueToday: 1 });
 });
+
+test('an anchor at 02:00 sharp counts as inside the spring-forward gap', () => {
+	const anchorAt = new Date('2026-03-28T01:00:00.000Z'); // 28.03. 02:00 CET
+	const gapNight = computeNextDueAt(anchorAt, 1, anchorAt, 'days', anchorAt);
+	assert.equal(inBerlin(gapNight), '2026-03-29 03:00');
+	assert.equal(
+		inBerlin(computeNextDueAt(gapNight, 1, gapNight, 'days', anchorAt)),
+		'2026-03-30 02:00',
+	);
+});
+
+test('an anchor at 03:00 is after the gap, so a due time an hour later stays', () => {
+	const anchorAt = new Date('2026-03-28T02:00:00.000Z'); // 28.03. 03:00 CET
+	const moved = new Date('2026-03-29T02:00:00.000Z'); // 29.03. 04:00 CEST
+	assert.equal(inBerlin(computeNextDueAt(moved, 1, moved, 'days', anchorAt)), '2026-03-30 04:00');
+});
+
+test('seconds of the due time carry over to the next cycle', () => {
+	const due = new Date('2026-06-01T08:00:30.500Z');
+	assert.equal(computeNextDueAt(due, 7, due, 'days').toISOString(), '2026-06-08T08:00:30.500Z');
+});
+
+test('an interval that is not a number keeps the due date', () => {
+	const due = new Date('2026-06-01T08:00:00.000Z');
+	for (const interval of [Number.NaN, Number.POSITIVE_INFINITY]) {
+		assert.equal(computeNextDueAt(due, interval, due).getTime(), due.getTime());
+	}
+});
