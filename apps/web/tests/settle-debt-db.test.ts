@@ -25,6 +25,9 @@ const { loadSettlementSnapshot, SettlementChangedError, settleDebtPair } = await
 	'../src/features/expenses/server/settle-debt.ts'
 );
 const { selectSettlementScope } = await import('../src/features/expenses/settlement-scope.ts');
+const { recordCashPayment, voidCashPayment } = await import(
+	'../src/features/expenses/server/manual-payment.ts'
+);
 
 const pool = new pg.Pool({ connectionString: url || undefined, max: 4 });
 const database = drizzle(pool, { schema });
@@ -209,4 +212,96 @@ test('a debt that only exists through a third member settles nothing and says wh
 		debtor: third.id,
 		reason: 'no_direct_splits',
 	});
+});
+
+const record = (wgId: string, callerId: string, input: Record<string, unknown>) =>
+	database.transaction((tx) =>
+		recordCashPayment(tx as never, wgId, callerId, { currency: 'EUR', ...input } as never),
+	);
+const voidPayment = (wgId: string, callerId: string, paymentId: string) =>
+	database.transaction((tx) => voidCashPayment(tx as never, wgId, callerId, paymentId));
+const paymentStatus = async (paymentId: string) =>
+	(
+		await database
+			.select({ status: schema.expensePayments.status })
+			.from(schema.expensePayments)
+			.where(eq(schema.expensePayments.id, paymentId))
+	)[0]?.status;
+
+test('a cash payment covers the reviewed net debt and only a party can void it', {
+	skip,
+}, async () => {
+	const flat = await flatWithDebt();
+	const pair = { fromMemberId: flat.debtor, toMemberId: flat.payer };
+	assert.equal(
+		(await record(flat.wgId, flat.debtor, { ...pair, expectedNetCents: 400 })).status,
+		409,
+	);
+	const recorded = await record(flat.wgId, flat.debtor, { ...pair, expectedNetCents: 500 });
+	assert.equal(recorded.status, 200);
+	const { paymentId } = recorded.body as { paymentId: string };
+	assert.equal(await paymentStatus(paymentId), 'completed');
+	// Paid in full: a second payment for the same debt is refused.
+	assert.equal(
+		(await record(flat.wgId, flat.debtor, { ...pair, expectedNetCents: 500 })).status,
+		409,
+	);
+
+	const [third] = await database
+		.insert(schema.wgMembers)
+		.values({ wgId: flat.wgId, name: 'Third', authUserId: randomUUID() })
+		.returning({ id: schema.wgMembers.id });
+	assert.ok(third);
+	const notParty = await voidPayment(flat.wgId, third.id, paymentId);
+	assert.equal(notParty.status, 403);
+	const voided = await voidPayment(flat.wgId, flat.payer, paymentId);
+	assert.equal(voided.status, 200);
+	assert.deepEqual(voided.context, {
+		kind: 'voided',
+		otherMemberId: flat.debtor,
+		amountCents: 500,
+		currency: 'EUR',
+	});
+	assert.equal(await paymentStatus(paymentId), 'voided');
+	assert.deepEqual((await voidPayment(flat.wgId, flat.payer, paymentId)).context, {
+		kind: 'already_voided',
+	});
+});
+
+test('a cash payment of another flat or by a moved-out member is not touched', {
+	skip,
+}, async () => {
+	const flat = await flatWithDebt();
+	const other = await flatWithDebt();
+	const recorded = await record(other.wgId, other.debtor, {
+		fromMemberId: other.debtor,
+		toMemberId: other.payer,
+		expectedNetCents: 500,
+	});
+	const { paymentId } = recorded.body as { paymentId: string };
+	// The caller is a party by id only in the other flat; through this flat the payment does not exist.
+	assert.deepEqual((await voidPayment(flat.wgId, flat.payer, paymentId)).context, {
+		kind: 'not_found',
+	});
+	assert.equal(await paymentStatus(paymentId), 'completed');
+	// A member of another flat can neither act here nor be named as a party.
+	const pair = { fromMemberId: flat.debtor, toMemberId: flat.payer, expectedNetCents: 500 };
+	assert.equal((await record(flat.wgId, other.debtor, pair)).status, 401);
+	assert.equal(
+		(await record(flat.wgId, flat.debtor, { ...pair, toMemberId: other.payer })).status,
+		400,
+	);
+
+	await database
+		.update(schema.wgMembers)
+		.set({ deactivatedAt: new Date() })
+		.where(eq(schema.wgMembers.id, other.payer));
+	assert.equal((await voidPayment(other.wgId, other.payer, paymentId)).status, 401);
+	const movedOut = await record(other.wgId, other.payer, {
+		fromMemberId: other.debtor,
+		toMemberId: other.payer,
+		expectedNetCents: 500,
+	});
+	assert.equal(movedOut.status, 401);
+	assert.equal(await paymentStatus(paymentId), 'completed');
 });
