@@ -15,7 +15,7 @@ import { expectNoGermanChrome, expectNoHorizontalOverflow, setEnglishLocale } fr
 const SECTION_LABELS = [
 	'Members',
 	'Expenses',
-	'Settled payments',
+	'Cash payments',
 	'Fixed costs',
 	'Shopping',
 	'Cleaning rota',

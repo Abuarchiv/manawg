@@ -294,7 +294,8 @@ export default {
 	},
 	data: {
 		exportTitle: 'Data export',
-		exportHint: 'All flat data including settled payments, without file attachments.',
+		exportHint:
+			'All flat data including settled shares and cash payments, without file attachments.',
 		summaryLead: 'Export summary could not be loaded',
 		summaryError: '{error} Downloads still work.',
 		jsonAria: 'Export JSON: flat data',
@@ -318,7 +319,7 @@ export default {
 		sections: {
 			members: 'Members',
 			expenses: 'Expenses',
-			expensePayments: 'Settled payments',
+			expensePayments: 'Cash payments',
 			recurringExpenses: 'Fixed costs',
 			shoppingItems: 'Shopping',
 			chores: 'Cleaning rota',
