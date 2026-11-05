@@ -64,6 +64,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 			degradedFeatures: env.degraded.map((entry) => entry.feature),
 			// The repository is public; the release workflow waits for this commit to serve.
 			version: process.env.VERCEL_GIT_COMMIT_SHA ?? null,
+			release: process.env.NEXT_PUBLIC_APP_VERSION ?? null,
 		},
 		{
 			status: healthy ? 200 : 503,

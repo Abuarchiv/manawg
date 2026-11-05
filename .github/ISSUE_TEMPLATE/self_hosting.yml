@@ -45,4 +45,4 @@ body:
     id: version
     attributes:
       label: ManaWG version
-      description: Commit hash or `MANAWG_VERSION`.
+      description: Shown at the bottom of Settings → Profile, or `MANAWG_VERSION` in `.env`. For a build from source, the commit hash.

@@ -43,7 +43,7 @@ body:
     id: version
     attributes:
       label: Version
-      description: Self-hosted or local only. Commit hash or `MANAWG_VERSION`.
+      description: Shown at the bottom of Settings → Profile, for example `ManaWG 0.1.0`. For a local build, the commit hash.
   - type: textarea
     id: extra
     attributes:

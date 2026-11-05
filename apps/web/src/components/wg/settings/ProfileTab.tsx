@@ -74,13 +74,16 @@ export function ProfileTab({ memberName, wgName, shareCode, memberId }: ProfileT
 
 			{isAdmin && <WgNameSection wgName={wgName} shareCode={shareCode} memberId={memberId} />}
 
-			{SUPPORT_MAILTO && (
-				<Section title={t('help')}>
+			<Section title={t('help')}>
+				{SUPPORT_MAILTO && (
 					<ul>
 						<LinkRow href={SUPPORT_MAILTO} label={t('reportProblem')} />
 					</ul>
-				</Section>
-			)}
+				)}
+				<p className="text-muted-foreground px-3 py-2 text-xs">
+					{t('version', { version: process.env.NEXT_PUBLIC_APP_VERSION ?? '' })}
+				</p>
+			</Section>
 		</>
 	);
 }

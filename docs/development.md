@@ -259,9 +259,11 @@ image. Versions follow [Semantic Versioning](https://semver.org):
 
 | Bump | When | Example |
 | --- | --- | --- |
-| Patch | Bug fixes only | `1.0.0` → `1.0.1` |
-| Minor | New features, nothing to do on update | `1.0.1` → `1.1.0` |
-| Major | Self-hosted instances need a manual step, such as a renamed setting | `1.1.0` → `2.0.0` |
+| Patch | Bug fixes only | `0.1.0` → `0.1.1` |
+| Minor | New features, or a change that needs a manual step on self-hosted instances | `0.1.1` → `0.2.0` |
+
+ManaWG stays below 1.0.0 while setup and data model still change. 1.0.0 marks the point where
+only a major release may need a manual step.
 
 Pull requests add their user-facing change under `## [Unreleased]` in `CHANGELOG.md`. To release:
 

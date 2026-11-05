@@ -1,15 +1,16 @@
 # Changelog
 
 All notable changes to ManaWG are listed here, newest first. Versions follow
-[Semantic Versioning](https://semver.org): a patch release fixes bugs, a minor release adds
-features, and a major release needs something from you when you update, such as a changed setting.
-Every release says whether a self-hosted instance needs a manual step.
+[Semantic Versioning](https://semver.org). Until 1.0.0, the middle number counts feature releases:
+0.1.1 only fixes bugs, while 0.2.0 adds features and may need a manual step on a self-hosted
+instance. Every release says whether it does. 1.0.0 will follow once setup and data model have
+settled.
 
 ## [Unreleased]
 
-## [1.0.0] - 2026-11-04
+## [0.1.0] - 2026-11-05
 
-The first stable release. From here on, every change that reaches app.manawg.com and the Docker
+The first public release. From here on, every change that reaches app.manawg.com and the Docker
 image is listed in this file.
 
 ### Added
@@ -31,4 +32,4 @@ image is listed in this file.
 
 - No manual step. The `setup` service applies all database migrations on start.
 
-[1.0.0]: https://github.com/Abuarchiv/manawg/releases/tag/v1.0.0
+[0.1.0]: https://github.com/Abuarchiv/manawg/releases/tag/v0.1.0
