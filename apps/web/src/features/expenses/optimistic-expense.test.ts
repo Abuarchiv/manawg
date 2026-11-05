@@ -12,7 +12,7 @@ const loaded: Expense = {
 	amountCents: 3000,
 	currency: 'CHF',
 	description: 'Pizza',
-	category: 'food',
+	category: 'groceries',
 	imageUrl: null,
 	occurredAt: '2026-10-01T12:00:00.000Z',
 	createdAt: '2026-10-01T13:00:00.000Z',
@@ -37,7 +37,7 @@ test('an edited expense keeps its server fields and the settled state of unchang
 	const edited = buildOptimisticExpense({
 		id: 'e1',
 		description: 'Pizza und Getränke',
-		category: 'food',
+		category: 'groceries',
 		amountCents: 3500,
 		paidByMemberId: 'anna',
 		imageUrl: null,
@@ -70,7 +70,7 @@ test('a new expense is in euros, open, and dated by the form or now', () => {
 	const created = buildOptimisticExpense({
 		id: 'tmp-1',
 		description: 'Brot',
-		category: 'food',
+		category: 'groceries',
 		amountCents: 300,
 		paidByMemberId: 'anna',
 		imageUrl: null,
@@ -83,7 +83,7 @@ test('a new expense is in euros, open, and dated by the form or now', () => {
 		{ id: 'tmp-1:split:0', debtorMemberId: 'ben', amountCents: 150, settledAt: null },
 	]);
 	const dated = buildOptimisticExpense({
-		...{ id: 'tmp-2', description: 'Brot', category: 'food' as const, amountCents: 300 },
+		...{ id: 'tmp-2', description: 'Brot', category: 'groceries' as const, amountCents: 300 },
 		...{ paidByMemberId: 'anna', imageUrl: null, splits: [] },
 		occurredAt: '2026-09-01T12:00:00.000Z',
 		previous: loaded,
