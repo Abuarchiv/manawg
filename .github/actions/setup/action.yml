@@ -1,0 +1,50 @@
+# Node 22, pnpm and the locked dependencies, optionally with one Playwright browser.
+# Used by every job that runs repository code; check out the code before calling it.
+name: Set up the workspace
+description: Install Node.js, pnpm and the locked dependencies, and optionally a Playwright browser.
+
+inputs:
+  playwright-browser:
+    description: Playwright browser to install (chromium or webkit). Empty skips Playwright.
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      with:
+        version: 9.0.0
+    - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with:
+        node-version: 22
+        cache: pnpm
+    - name: Install dependencies
+      shell: bash
+      run: pnpm install --frozen-lockfile
+
+    - name: Read the Playwright version
+      id: playwright
+      if: inputs.playwright-browser != ''
+      shell: bash
+      run: echo "version=$(pnpm --filter @manawg/web exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+    - name: Restore the Playwright browser
+      id: playwright-cache
+      if: inputs.playwright-browser != ''
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-${{ inputs.playwright-browser }}
+    - name: Install the Playwright browser
+      if: inputs.playwright-browser != '' && steps.playwright-cache.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        BROWSER: ${{ inputs.playwright-browser }}
+      run: pnpm --filter @manawg/web exec playwright install --with-deps "$BROWSER"
+    # The cache holds the browser only; its system libraries still come from apt.
+    - name: Install the browser's system libraries
+      if: inputs.playwright-browser != '' && steps.playwright-cache.outputs.cache-hit == 'true'
+      shell: bash
+      env:
+        BROWSER: ${{ inputs.playwright-browser }}
+      run: pnpm --filter @manawg/web exec playwright install-deps "$BROWSER"
