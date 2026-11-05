@@ -29,6 +29,6 @@ and do not run automated scans against app.manawg.com.
 
 ## Supported versions
 
-Only the latest release gets security fixes, as a patch release (for example 1.0.1) listed in
+Only the latest release gets security fixes, as a patch release (for example 0.1.1) listed in
 [CHANGELOG.md](CHANGELOG.md). app.manawg.com always runs the latest release. Self-hosted instances
 get fixes by updating, see the [self-hosting guide](docs/self-hosting.md#updating).

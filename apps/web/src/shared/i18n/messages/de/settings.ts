@@ -23,6 +23,7 @@ export default {
 		install: 'App installieren',
 		help: 'Hilfe',
 		reportProblem: 'Fehler per E-Mail melden',
+		version: 'ManaWG {version}',
 	},
 	linkRow: { opensInNewTab: '{label} (öffnet in neuem Tab)' },
 	memberName: {

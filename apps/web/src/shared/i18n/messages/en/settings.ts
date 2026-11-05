@@ -26,6 +26,7 @@ export default {
 		install: 'Install app',
 		help: 'Help',
 		reportProblem: 'Report a problem by email',
+		version: 'ManaWG {version}',
 	},
 	linkRow: { opensInNewTab: '{label} (opens in a new tab)' },
 	memberName: {

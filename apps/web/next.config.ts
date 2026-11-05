@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import bundleAnalyzer from '@next/bundle-analyzer';
 import { withSentryConfig } from '@sentry/nextjs/config';
@@ -24,8 +25,14 @@ const securityHeaders = [
 	{ key: 'X-DNS-Prefetch-Control', value: 'off' },
 ];
 
+// The release version lives in the root package.json; CHANGELOG.md and the release tag follow it.
+const { version: APP_VERSION } = JSON.parse(
+	readFileSync(path.join(process.cwd(), '..', '..', 'package.json'), 'utf8'),
+) as { version: string };
+
 const nextConfig: NextConfig = {
 	env: {
+		NEXT_PUBLIC_APP_VERSION: APP_VERSION,
 		NEXT_PUBLIC_SENTRY_ENVIRONMENT: process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? 'development',
 		NEXT_PUBLIC_SENTRY_RELEASE:
 			process.env.SENTRY_RELEASE ?? process.env.VERCEL_GIT_COMMIT_SHA ?? 'local',
