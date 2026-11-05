@@ -118,7 +118,7 @@ test.describe('English cleaning rota', () => {
 				await expect(page.getByRole('heading', { name: 'Cleaning rota', level: 1 })).toHaveText(
 					'Cleaning rota',
 				);
-				for (const group of ['For you', 'Still open', 'This week']) {
+				for (const group of ['For you', 'Still open', 'Next 7 days']) {
 					await expect(page.getByRole('heading', { name: group, level: 2 })).toBeVisible();
 				}
 				await expect(page.getByText('due today', { exact: false }).first()).toBeVisible();

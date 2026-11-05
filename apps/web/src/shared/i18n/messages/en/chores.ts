@@ -12,7 +12,7 @@ export default {
 	groups: {
 		mine: 'For you',
 		overdue: 'Still open',
-		week: 'This week',
+		week: 'Next 7 days',
 		later: 'Later',
 	},
 	cadence: {

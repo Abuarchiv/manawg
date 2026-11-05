@@ -9,7 +9,7 @@ export default {
 	groups: {
 		mine: 'Für dich',
 		overdue: 'Noch offen',
-		week: 'Diese Woche',
+		week: 'Nächste 7 Tage',
 		later: 'Später',
 	},
 	cadence: {
