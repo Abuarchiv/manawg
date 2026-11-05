@@ -44,7 +44,7 @@ RUN "$(node -p "require.resolve('esbuild/bin/esbuild', { paths: [require('node:p
 
 FROM base AS runner
 LABEL org.opencontainers.image.title="ManaWG" \
-	org.opencontainers.image.description="The app for shared flats: expenses, cleaning schedule, shopping list" \
+	org.opencontainers.image.description="Free, open-source app for shared flats: expenses, cleaning rota, shopping list, calendar and chat" \
 	org.opencontainers.image.source="https://github.com/Abuarchiv/manawg" \
 	org.opencontainers.image.licenses="Apache-2.0"
 ENV NODE_ENV=production \
