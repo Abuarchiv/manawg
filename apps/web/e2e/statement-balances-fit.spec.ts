@@ -64,11 +64,14 @@ async function expectBalancesFit(page: Page, balanceHeader: string): Promise<voi
 	expect(fit.right, 'the balance column ends inside the viewport').toBeLessThanOrEqual(320);
 }
 
-async function expectScrollRegionsFocusable(page: Page): Promise<void> {
-	for (const heading of ['statement-balances', 'statement-items']) {
-		const region = page.locator(`section[aria-labelledby="${heading}"] [role="region"]`);
+async function expectScrollRegionsFocusable(page: Page, lang: 'de' | 'en' = 'de'): Promise<void> {
+	// One named region per table: a section with the same name around it would be announced twice.
+	const names = lang === 'en' ? ['Balances', 'All expenses'] : ['Salden', 'Alle Ausgaben'];
+	for (const name of names) {
+		const region = page.getByRole('region', { name, exact: true });
+		await expect(region).toHaveCount(1);
 		await expect(region).toHaveAttribute('tabindex', '0');
-		await expect(region).toHaveAttribute('aria-labelledby', heading);
+		await expect(region.locator('table')).toHaveCount(1);
 	}
 }
 
@@ -184,7 +187,7 @@ test.describe('Statement balances at 320px', () => {
 			if (lang === 'en') await setEnglishLocale(context, baseURL ?? 'http://localhost:3112');
 			await openStatement(page);
 			await expectBalancesFit(page, balance);
-			await expectScrollRegionsFocusable(page);
+			await expectScrollRegionsFocusable(page, lang);
 		});
 
 		test(`balances fit with a long member name in ${lang}`, async ({ context, page, baseURL }) => {
@@ -192,7 +195,7 @@ test.describe('Statement balances at 320px', () => {
 			await openStatement(page, LONG_NAME);
 			await expect(page.getByRole('rowheader', { name: new RegExp(LONG_NAME) })).toBeVisible();
 			await expectBalancesFit(page, balance);
-			await expectScrollRegionsFocusable(page);
+			await expectScrollRegionsFocusable(page, lang);
 		});
 	}
 });

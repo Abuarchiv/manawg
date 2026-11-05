@@ -23,6 +23,8 @@ settled.
   flat".
 - A chat link ending in a closing bracket, such as a Wikipedia page "…_(disambiguation)", opens
   with the bracket instead of a page that does not exist.
+- Screen readers announce the balances and expense tables of the monthly statement once each,
+  instead of twice as regions with the same name.
 
 ## [0.1.0] - 2026-11-05
 

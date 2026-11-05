@@ -138,7 +138,7 @@ export function MonthlyStatementDocument({
 				</div>
 			</dl>
 
-			<section aria-labelledby="statement-balances" className="flex flex-col gap-3">
+			<section className="flex flex-col gap-3">
 				<div className="flex items-baseline justify-between gap-3">
 					<h2 id="statement-balances" className={H2}>
 						{t('document.balances')}
@@ -294,7 +294,7 @@ export function MonthlyStatementDocument({
 			)}
 
 			{!empty && (
-				<section aria-labelledby="statement-items" className="flex flex-col gap-3">
+				<section className="flex flex-col gap-3">
 					<div className="flex items-baseline justify-between gap-3">
 						<h2 id="statement-items" className={H2}>
 							{t('document.allExpenses')}
