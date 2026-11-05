@@ -10,6 +10,9 @@ settled.
 
 ### Fixed
 
+- The data export calls its payment section "Cash payments", the name used on the expenses
+  page. As "Settled payments" it showed 0 after shares had been marked as paid, which are listed
+  with their expenses.
 - The cleaning rota groups the tasks due within a week under "Next 7 days" instead of "This week",
   which also covered days of the following week.
 - After confirming the email address, the page that asks for the password again explains why,

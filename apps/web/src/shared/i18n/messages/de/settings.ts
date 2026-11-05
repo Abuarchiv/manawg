@@ -295,7 +295,7 @@ export default {
 	},
 	data: {
 		exportTitle: 'Datenexport',
-		exportHint: 'Alle WG-Daten inklusive erledigter Zahlungen, ohne Dateianhänge.',
+		exportHint: 'Alle WG-Daten inklusive beglichener Anteile und Barzahlungen, ohne Dateianhänge.',
 		summaryLead: 'Export-Zusammenfassung konnte nicht geladen werden',
 		summaryError: '{error} Downloads sind trotzdem möglich.',
 		jsonAria: 'WG-Daten als JSON exportieren',
@@ -315,7 +315,7 @@ export default {
 		sections: {
 			members: 'Mitglieder',
 			expenses: 'Ausgaben',
-			expensePayments: 'Erledigte Zahlungen',
+			expensePayments: 'Barzahlungen',
 			recurringExpenses: 'Fixkosten',
 			shoppingItems: 'Einkauf',
 			chores: 'Putzplan',
