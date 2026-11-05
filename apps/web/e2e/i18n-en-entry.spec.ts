@@ -248,6 +248,10 @@ test.describe('entry and auth in English', () => {
 					timeout: 60_000,
 				});
 				await expect(page.getByText(/^This invite link is incomplete or not valid/)).toBeVisible();
+				// The server sends the title; a title set only after hydration can be overwritten.
+				const signInHtml = await (await page.request.get('/login')).text();
+				expect(signInHtml).toContain('<title>Sign in — ManaWG</title>');
+				await expect(page).toHaveTitle('Sign in — ManaWG');
 				await expectEnglishPage(page, width);
 				await page.goto('/?invite=bad');
 				await expect(page.getByText(/^This invite link is incomplete or not valid/)).toBeVisible({

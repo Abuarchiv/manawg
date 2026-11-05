@@ -185,17 +185,6 @@ export function LoginClient({ appOrigin }: { appOrigin: string }) {
 		previousStepRef.current = step;
 	}, [step]);
 
-	// The static metadata title names the WG flow; the signed-out page shows the sign-in form.
-	const showsSignIn = authState !== 'authenticated' && !checkingSession;
-	useEffect(() => {
-		if (!showsSignIn) return;
-		const previous = document.title;
-		document.title = `${t('titleSignIn')} — ManaWG`;
-		return () => {
-			document.title = previous;
-		};
-	}, [showsSignIn, t]);
-
 	useClearCallbackError(signedInHere);
 
 	const movedOut = searchParams.get('reason') === 'moved_out';
