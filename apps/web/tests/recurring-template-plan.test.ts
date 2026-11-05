@@ -19,6 +19,17 @@ test('a new template starts today, anchors on that day and is due one interval l
 	assert.equal(plan.nextDueAt.getUTCMonth(), 1);
 });
 
+test('a new quarterly template is first due three months after today', () => {
+	const plan = planTemplateSchedule({
+		editingNextDueAt: null,
+		queuedNextDueAt: null,
+		pending: null,
+		intervalMonths: 3,
+		today,
+	});
+	assert.equal(plan.nextDueAt.getUTCMonth(), 3);
+});
+
 test('edits, queued edits and retries keep their due date', () => {
 	assert.deepEqual(
 		planTemplateSchedule({
@@ -74,4 +85,21 @@ test('a booking counts as queued only for the same template due date and member'
 	);
 	assert.equal(isRecurringBookingQueued([{ ...action, memberId: 'm2' }], target, template), false);
 	assert.equal(isRecurringBookingQueued([{ ...action, wgId: 'other' }], target, template), false);
+	assert.equal(
+		isRecurringBookingQueued([{ ...action, shareCode: 'OTHER' }], target, template),
+		false,
+	);
+	assert.equal(
+		isRecurringBookingQueued(
+			[{ ...action, payload: { ...action.payload, recurringExpenseId: 'x' } }],
+			target,
+			template,
+		),
+		false,
+	);
+	// A queued advance past this due date counts too: booking it again would charge twice.
+	assert.equal(
+		isRecurringBookingQueued([{ ...action, type: 'recurring.advance' as const }], target, template),
+		true,
+	);
 });
