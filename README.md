@@ -17,6 +17,8 @@
   <a href="https://github.com/Abuarchiv/manawg/discussions">Discussions</a>
 </p>
 
+<p align="center"><strong>English</strong> · <a href="README.de.md">Deutsch</a></p>
+
 <p align="center">
   <a href="https://github.com/Abuarchiv/manawg/releases/latest"><img src="https://img.shields.io/github/v/release/Abuarchiv/manawg?label=release" alt="Latest release"></a>
   <a href="https://github.com/Abuarchiv/manawg/pkgs/container/manawg"><img src="https://img.shields.io/badge/docker-ghcr.io%2Fabuarchiv%2Fmanawg-2496ED?logo=docker&logoColor=white" alt="Docker image"></a>
@@ -41,7 +43,7 @@ web app. *WG* is short for *Wohngemeinschaft*, German for shared flat.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/features-dark.webp">
-  <img src="docs/screenshots/features-light.webp" alt="Six phone screens: Home with what is due for you, Expenses with balances and settle-up suggestions, the cleaning rota, the shopping list with suggestions, the flat calendar and the chat.">
+  <img src="docs/screenshots/features-light.webp" alt="Nine phone screens: Home with what is due for you, Expenses with balances and settle-up suggestions, the cleaning rota, the shopping list, household supplies, the flat calendar, the noticeboard, the chat and the fixed costs.">
 </picture>
 
 | Area | What it does |

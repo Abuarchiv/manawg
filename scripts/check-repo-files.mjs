@@ -26,6 +26,7 @@ const TOP_LEVEL = new Set([
 	'package.json',
 	'pnpm-lock.yaml',
 	'pnpm-workspace.yaml',
+	'README.de.md',
 	'README.md',
 	'scripts',
 	'SECURITY.md',
