@@ -256,6 +256,8 @@ export default {
 	reset: {
 		title: 'Reset password',
 		choose: 'Choose your password',
+		chooseHint:
+			'Your email address is confirmed. To keep your account safe, set the password you will sign in with once more.',
 		recovery: 'Set a new password for your account.',
 		request: 'Request a new link below.',
 	},

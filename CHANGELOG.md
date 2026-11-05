@@ -12,6 +12,8 @@ settled.
 
 - The cleaning rota groups the tasks due within a week under "Next 7 days" instead of "This week",
   which also covered days of the following week.
+- After confirming the email address, the page that asks for the password again explains why,
+  instead of reading like a password reset.
 
 ## [0.1.0] - 2026-11-05
 

@@ -32,10 +32,18 @@ export default async function PasswordResetPage({
 	const chosen = choose === '1' ? safeNextPath(next ?? null) : '/';
 	const continuePath = chosen === '/' ? '/login' : chosen;
 
+	const choosing = recoveryRequested && choose === '1';
+
 	return (
 		<EntryFrame
-			title={recoveryRequested && choose === '1' ? t('reset.choose') : t('reset.title')}
-			description={recoveryRequested ? t('reset.recovery') : t('reset.request')}
+			title={choosing ? t('reset.choose') : t('reset.title')}
+			description={
+				choosing
+					? t('reset.chooseHint')
+					: recoveryRequested
+						? t('reset.recovery')
+						: t('reset.request')
+			}
 			headingId="password-reset-heading"
 			backHref="/login"
 			backLabel={t('frame.backToSignIn')}
