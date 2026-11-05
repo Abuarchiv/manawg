@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildSettlementSummary, simplifyDebts } from './debt-reduction';
+import { buildSettlementSummary, computeNetBalances, simplifyDebts } from './debt-reduction';
 
 function member(id: string) {
 	return { id, name: id, color: null };
@@ -72,4 +72,47 @@ test('random balances settle in the fewest possible transfers', () => {
 		}
 		for (const value of left.values()) assert.equal(value, 0, cents.join(','));
 	}
+});
+
+test('a flat without expenses lists every member as settled in EUR', () => {
+	assert.deepEqual(
+		computeNetBalances([], ['A', 'B'].map(member), []).map(({ memberId, cents, currency }) => [
+			memberId,
+			cents,
+			currency,
+		]),
+		[
+			['A', 0, 'EUR'],
+			['B', 0, 'EUR'],
+		],
+	);
+});
+
+test('suggestions come in currency order, whatever order the balances arrive in', () => {
+	const balance = (memberId: string, cents: number, currency: string) => ({
+		memberId,
+		memberName: memberId,
+		color: null,
+		cents,
+		currency,
+	});
+	const debts = simplifyDebts([
+		balance('A', 100, 'EUR'),
+		balance('B', -100, 'EUR'),
+		balance('A', 50, 'CHF'),
+		balance('B', -50, 'CHF'),
+	]);
+	assert.deepEqual(
+		debts.map((d) => d.currency),
+		['CHF', 'EUR'],
+	);
+});
+
+test('many open balances settle without the exact group search', { timeout: 5_000 }, () => {
+	// 2^30 subsets would not even fit in memory; above 16 balances one greedy pass runs instead.
+	const members = Array.from({ length: 31 }, (_, i) => member(`m${String(i).padStart(2, '0')}`));
+	const shares = Object.fromEntries(members.slice(1).map((m, i) => [m.id, 100 + i]));
+	const summary = buildSettlementSummary([expense('m00', shares)], members);
+	assert.equal(summary.simplified.length, 30);
+	assert.ok(summary.simplified.every((d) => d.toId === 'm00'));
 });
