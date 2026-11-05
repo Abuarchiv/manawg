@@ -4,6 +4,7 @@ import {
 	boughtRestockMatches,
 	clampQuantity,
 	decimalQuantityText,
+	groupItemsByCategory,
 	parseQuantityText,
 	quantityInputText,
 	quickRestockCandidates,
@@ -89,4 +90,53 @@ test('restockAmount stays exact for decimal stock', () => {
 	assert.equal(restockAmount({ quantity: 0.7, threshold: 2 }), 2.3);
 	assert.equal(restockAmount({ quantity: 0.5, threshold: 1 }), 1.5);
 	assert.equal(restockAmount({ quantity: 1, threshold: 3 }), 3);
+});
+
+test('the latest purchase wins whatever order the purchases come in', () => {
+	const items = [stock('Klopapier', 0, 2)];
+	const first = { id: 'first', name: 'Klopapier', boughtAt: '2026-10-30T12:00:00Z' };
+	const latest = { id: 'second', name: 'Klopapier', boughtAt: '2026-10-31T12:00:00Z' };
+	assert.equal(boughtRestockMatches(items, [first, latest])[0]?.purchase, latest);
+});
+
+test('quick restock orders scarce items by shortfall, then by name, and shows at most ten', () => {
+	const result = quickRestockCandidates([
+		stock('Apfel', 1, 2),
+		stock('Zucker', 0, 5),
+		stock('Brot', 1, 2),
+		...Array.from({ length: 10 }, (_, i) => stock(`Rest ${i}`, 0, 1)),
+	]);
+	assert.equal(result.length, 10);
+	assert.deepEqual(
+		result.slice(0, 1).map((item) => item.name),
+		['Zucker'],
+	);
+	const ties = quickRestockCandidates([stock('Brot', 1, 2), stock('Apfel', 1, 2)]);
+	assert.deepEqual(
+		ties.map((item) => item.name),
+		['Apfel', 'Brot'],
+	);
+});
+
+test('clampQuantity keeps a quantity inside what the database column holds', () => {
+	assert.equal(clampQuantity(Number.NaN), 0);
+	assert.equal(clampQuantity(Number.POSITIVE_INFINITY), 0);
+	assert.equal(clampQuantity(-3), 0);
+	assert.equal(clampQuantity(12_345), 9999);
+	assert.equal(clampQuantity(2.345), 2.35);
+});
+
+test('an item with an unknown category lands under other', () => {
+	const groups = groupItemsByCategory([
+		{ category: 'kitchen', name: 'Salz' },
+		{ category: 'garage', name: 'Öl' },
+	]);
+	assert.deepEqual(
+		groups.kitchen.map((item) => item.name),
+		['Salz'],
+	);
+	assert.deepEqual(
+		groups.other.map((item) => item.name),
+		['Öl'],
+	);
 });
