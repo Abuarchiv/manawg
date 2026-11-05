@@ -60,7 +60,10 @@ jobs:
           version="$(jq -r .version package.json)"
           node scripts/release-notes.mjs "v$version" > /dev/null
           # A tag on another commit means main changed since that release: bump the version first.
-          tagged="$(gh api "repos/$GITHUB_REPOSITORY/commits/v$version" --jq .sha 2>/dev/null || true)"
+          # The peeled ref (^{}) of an annotated tag is the commit; a lightweight tag has none.
+          refs="$(git ls-remote origin "refs/tags/v$version" "refs/tags/v$version^{}")"
+          tagged="$(grep -F "^{}" <<<"$refs" | cut -f1 || true)"
+          [ -n "$tagged" ] || tagged="$(cut -f1 <<<"$refs")"
           if [ -n "$tagged" ] && [ "$tagged" != "$SHA" ]; then
             echo "v$version is already released from $tagged. Bump the version in package.json and add its CHANGELOG.md section." >&2
             exit 1
