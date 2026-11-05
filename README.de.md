@@ -1,8 +1,8 @@
 <p align="center">
   <a href="https://manawg.com">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/cover-dark.webp">
-      <img src="docs/screenshots/cover-light.webp" alt="ManaWG: die kostenlose App für WGs. Drei Handy-Bildschirme zeigen die Ausgaben, die Startseite und den Putzplan.">
+      <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/cover-de-dark.webp">
+      <img src="docs/screenshots/cover-de-light.webp" alt="ManaWG: WG-Leben, geregelt. Drei Handy-Bildschirme zeigen die Ausgaben, die Startseite und den Putzplan.">
     </picture>
   </a>
 </p>
@@ -43,8 +43,8 @@ zur Sprache des Geräts.
 ## Funktionen
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/features-dark.webp">
-  <img src="docs/screenshots/features-light.webp" alt="Neun Handy-Bildschirme: Startseite mit dem, was für dich ansteht, Ausgaben mit Salden und Ausgleichsvorschlägen, Putzplan, Einkaufsliste, Vorräte, WG-Kalender, Pinnwand, Chat und Fixkosten.">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/features-de-dark.webp">
+  <img src="docs/screenshots/features-de-light.webp" alt="Neun Handy-Bildschirme: Startseite mit dem, was für dich ansteht, Ausgaben mit Salden und Ausgleichsvorschlägen, Putzplan, Einkaufsliste, Vorräte, WG-Kalender, Pinnwand, Chat und Fixkosten.">
 </picture>
 
 | Bereich | Was es kann |
