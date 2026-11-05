@@ -21,6 +21,7 @@ export default {
 		title: 'WG erstellen oder beitreten',
 		description: 'WG erstellen oder mit einer Einladung beitreten.',
 	},
+	signIn: { title: 'Anmelden' },
 	notFound: { title: 'Seite nicht gefunden' },
 	offline: { title: 'Offline' },
 	register: {

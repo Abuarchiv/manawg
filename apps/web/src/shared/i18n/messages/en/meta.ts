@@ -25,6 +25,7 @@ export default {
 		title: 'Create or join a flat',
 		description: 'Create a flat or join one with an invitation.',
 	},
+	signIn: { title: 'Sign in' },
 	notFound: { title: 'Page not found' },
 	offline: { title: 'Offline' },
 	register: {
