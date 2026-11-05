@@ -178,3 +178,31 @@ test('a malformed share code skips the sign-in redirect so the WG layout answers
 	);
 	assert.equal(result.headers.get('location'), null);
 });
+
+test('an agent bearer token signs in an /api/wg request on its own and wins over the cookie', async () => {
+	mockAuthResponse(200);
+	const expiresAt = Math.floor(Date.now() / 1000) + 3600;
+	const token = await accessToken(signingKey, expiresAt);
+	const bearer = (path: string, value = token) =>
+		new NextRequest(`https://app.test${path}`, { headers: { authorization: `Bearer ${value}` } });
+
+	assert.deepEqual(await getAuthenticatedUser(bearer('/api/wg/mine')), { id: 'user-1' });
+	// A cookie session that does not verify must not shadow a valid bearer token.
+	const forgedCookie = await authenticatedRequest('/api/wg/mine', foreignKey);
+	const both = new NextRequest(forgedCookie.url, {
+		headers: { cookie: forgedCookie.headers.get('cookie') ?? '', authorization: `Bearer ${token}` },
+	});
+	assert.deepEqual(await getAuthenticatedUser(both), { id: 'user-1' });
+	// Signed with another key, expired, or outside /api/wg: no user.
+	assert.equal(
+		await getAuthenticatedUser(bearer('/api/wg/mine', await accessToken(foreignKey, expiresAt))),
+		null,
+	);
+	assert.equal(
+		await getAuthenticatedUser(
+			bearer('/api/wg/mine', await accessToken(signingKey, expiresAt - 7200)),
+		),
+		null,
+	);
+	assert.equal(await getAuthenticatedUser(bearer('/api/account')), null);
+});

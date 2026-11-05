@@ -80,3 +80,48 @@ test('an expired request is invalid, a missing session is 401', async () => {
 	const signedOut = await call(GET, '/api/auth/agent-consent?authorization_id=abc-123');
 	assert.equal(signedOut.status, 401);
 });
+
+test('only http(s)-style redirect targets and plain ids pass; a server failure is not "invalid"', async () => {
+	const body = (redirect_url: string) => ({ data: { redirect_url }, error: null });
+	for (const url of ['data:text/html,x', 'vbscript:x', 'blob:https://a/b', 'javascript:x']) {
+		oauth({ approveAuthorization: async () => body(url) });
+		const res = await call(POST, '/api/auth/agent-consent', {
+			authorizationId: 'abc',
+			approve: true,
+		});
+		assert.deepEqual(res.json, { status: 'invalid' }, url);
+	}
+	assert.equal(
+		(await call(POST, '/api/auth/agent-consent', { authorizationId: 'a b', approve: true })).status,
+		400,
+	);
+	assert.equal(
+		(await call(POST, '/api/auth/agent-consent', { authorizationId: 'abc' })).status,
+		400,
+	);
+	for (const id of ['a b', 'a/b', 'x'.repeat(129)]) {
+		const res = await call(
+			GET,
+			`/api/auth/agent-consent?authorization_id=${encodeURIComponent(id)}`,
+		);
+		assert.deepEqual(res.json, { status: 'invalid' }, id);
+	}
+	const down = Object.assign(new Error('x'), {
+		status: 500,
+		code: 'unexpected_failure',
+		__isAuthError: true,
+	});
+	oauth({ getAuthorizationDetails: async () => ({ data: null, error: down }) });
+	assert.equal((await call(GET, '/api/auth/agent-consent?authorization_id=abc')).status, 500);
+	// An agent that already consented is sent straight back.
+	oauth({
+		getAuthorizationDetails: async () => ({
+			data: { redirect_url: 'https://claude.ai/cb?code=1' },
+			error: null,
+		}),
+	});
+	assert.deepEqual((await call(GET, '/api/auth/agent-consent?authorization_id=abc')).json, {
+		status: 'redirect',
+		redirectUrl: 'https://claude.ai/cb?code=1',
+	});
+});
