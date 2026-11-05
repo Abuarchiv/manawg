@@ -104,6 +104,27 @@ describe('shopping mutation regression', () => {
 		assert.equal(shoppingCreateCodec.decode({ status: 201, body: {} }), null);
 	});
 
+	test('a stored success replays as the saved item with its warning', () => {
+		const storedItem = JSON.parse(JSON.stringify(item));
+		for (const warning of [null, 'notification_delivery_failed'] as const) {
+			const stored = shoppingCreateCodec.encode({
+				status: 200,
+				body: { item: storedItem, warning },
+			});
+			assert.deepEqual(shoppingCreateCodec.decode(JSON.parse(JSON.stringify(stored))), {
+				status: 200,
+				body: { item: storedItem, warning },
+			});
+		}
+		assert.equal(
+			normalizeShoppingCreateReplayResponse({
+				status: 200,
+				body: { item: storedItem, warning: 'something_else' },
+			}),
+			null,
+		);
+	});
+
 	test('rejects malformed cached shopping success instead of replaying it as a saved item', () => {
 		const serializedItem = JSON.parse(JSON.stringify(item));
 		for (const malformedItem of [
