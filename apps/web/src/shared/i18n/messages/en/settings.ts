@@ -172,7 +172,7 @@ export default {
 	dangerZone: {
 		title: 'Danger zone',
 		adminLastMember:
-			'You are admin and the last active member. First reactivate a member who has moved out and hand over the admin role, or delete the flat below.',
+			'You are admin and the last active member, so you cannot leave yet. Invite someone or reactivate a member who has moved out, hand over the admin role, then leave. Or delete the flat below.',
 		adminHandover:
 			'First hand over the admin role to an active member (the “Hand over admin” button in the members list), then you can leave the flat.',
 		leaveTitle: 'Leave flat',

@@ -17,6 +17,10 @@ settled.
   which also covered days of the following week.
 - After confirming the email address, the page that asks for the password again explains why,
   instead of reading like a password reset.
+- A new flat's only member no longer reads that they should reactivate a member who moved out
+  before leaving; the danger zone now also mentions inviting someone.
+- The sign-in page has "Sign in" as its browser tab title again instead of "Create or join a
+  flat".
 
 ## [0.1.0] - 2026-11-05
 
