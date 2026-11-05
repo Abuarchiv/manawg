@@ -8,6 +8,11 @@ settled.
 
 ## [Unreleased]
 
+### Fixed
+
+- The cleaning rota groups the tasks due within a week under "Next 7 days" instead of "This week",
+  which also covered days of the following week.
+
 ## [0.1.0] - 2026-11-05
 
 The first public release. From here on, every change that reaches app.manawg.com and the Docker
