@@ -141,3 +141,83 @@ test('the offset flag is part of the confirmation contract', () => {
 	matching.splits[1] = { ...matching.splits[1], offset: false } as (typeof matching.splits)[number];
 	assert.equal(settlementScopeMatches(matching, scope), false);
 });
+
+test('splits of the same moment keep one order, whatever order the database returns', () => {
+	const at = '2026-09-01T10:00:00.000Z';
+	const a = expense('a', ANNA, BEN, [300], at);
+	const b = expense('b', ANNA, BEN, [200], at);
+	const forward = selectSettlementScope([a, b], members, [], BEN, ANNA);
+	const backward = selectSettlementScope([b, a], members, [], BEN, ANNA);
+	assert.deepEqual(
+		backward.splits.map((s) => s.id),
+		['a-0', 'b-0'],
+	);
+	assert.ok(settlementScopeMatches(forward, backward));
+});
+
+test('a share of zero is never part of a settlement', () => {
+	const scope = selectSettlementScope(
+		[expense('e1', ANNA, BEN, [0, 500], '2026-09-01T10:00:00.000Z')],
+		members,
+		[],
+		BEN,
+		ANNA,
+	);
+	assert.deepEqual(
+		scope.splits.map((s) => s.id),
+		['e1-1'],
+	);
+});
+
+test('a settled-up pair has an empty scope without a reason', () => {
+	const scope = selectSettlementScope(
+		[
+			expense('e1', ANNA, BEN, [500], '2026-09-01T10:00:00.000Z'),
+			expense('e2', BEN, ANNA, [500], '2026-09-02T10:00:00.000Z'),
+		],
+		members,
+		[],
+		BEN,
+		ANNA,
+	);
+	assert.deepEqual(scope, {
+		currency: 'EUR',
+		netCents: 0,
+		settleableCents: 0,
+		remainingCents: 0,
+		splits: [],
+	});
+});
+
+test('direct splits win when they settle as much as the pair would', () => {
+	const expenses = [
+		expense('e1', ANNA, BEN, [1000, 500], '2026-09-01T10:00:00.000Z'),
+		expense('e2', BEN, ANNA, [500], '2026-09-02T10:00:00.000Z'),
+	];
+	const scope = selectSettlementScope(expenses, members, [], BEN, ANNA);
+	assert.equal(scope.settleableCents, 1000);
+	assert.deepEqual(
+		scope.splits.map((s) => [s.id, s.offset ?? false]),
+		[['e1-0', false]],
+	);
+});
+
+test('a review in another currency does not confirm the scope', () => {
+	const scope = selectSettlementScope(mutual, members, [], BEN, ANNA);
+	assert.ok(settlementScopeMatches({ ...scope, currency: 'EUR' }, scope));
+	assert.equal(settlementScopeMatches({ ...scope, currency: 'CHF' }, scope), false);
+});
+
+test('a review that settles more than the net debt is rejected', () => {
+	const uuid = '00000000-0000-4000-8000-000000000001';
+	const parsed = parseSettlementConfirmation({
+		fromMemberId: BEN,
+		toMemberId: ANNA,
+		expected: {
+			netCents: 100,
+			settleableCents: 200,
+			splits: [{ id: uuid, amountCents: 200 }],
+		},
+	});
+	assert.deepEqual(parsed, { ok: false, reason: 'invalid' });
+});
