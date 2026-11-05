@@ -170,7 +170,7 @@ export default {
 	dangerZone: {
 		title: 'Gefahrenzone',
 		adminLastMember:
-			'Du bist Admin und das letzte aktive Mitglied. Aktiviere zuerst ein ausgezogenes Mitglied und übergib die Admin-Rolle, oder lösche die WG unten.',
+			'Du bist Admin und das letzte aktive Mitglied und kannst die WG noch nicht verlassen. Lade jemanden ein oder aktiviere ein ausgezogenes Mitglied, übergib die Admin-Rolle und verlass dann die WG. Oder lösche die WG unten.',
 		adminHandover:
 			'Übergib zuerst die Admin-Rolle an ein aktives Mitglied (Button „Admin übergeben“ bei den Mitgliedern), danach kannst du die WG verlassen.',
 		leaveTitle: 'WG verlassen',
