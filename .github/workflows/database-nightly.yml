@@ -1,3 +1,5 @@
+# Every night: an encrypted backup of the production database (backup-production) and a query
+# against the Preview database so the free Supabase project is not paused (preview-keepalive).
 name: Database nightly
 
 on:

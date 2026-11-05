@@ -1,0 +1,415 @@
+# Migrates and tests the Vercel Preview deployment of the current main tip against the Preview
+# Supabase project. Runs after CI succeeded on a push to main (migration check only) and when
+# Vercel reports a successful Preview deployment (migration check and Preview end-to-end tests).
+# release-production.yml waits for a successful deployment_status run of this workflow.
+# The jobs only run while the repository variable PREVIEW_GATE is `on`, and only for the current
+# main tip; forks without the repository variables skip them.
+name: Preview
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  deployment_status:
+
+permissions:
+  contents: read
+
+# A newer main tip supersedes an older one, but a started migration check is never cancelled.
+concurrency:
+  group: preview-${{ github.event.deployment.sha || github.event.workflow_run.head_sha }}
+  cancel-in-progress: false
+
+env:
+  # Repository variables of the instance this repository deploys. Forks without them
+  # skip the Preview gates, migrations, backups and releases.
+  SUPABASE_PRODUCTION_PROJECT_HOST: ${{ vars.SUPABASE_PRODUCTION_PROJECT_HOST }}
+  SUPABASE_PREVIEW_PROJECT_HOST: ${{ vars.SUPABASE_PREVIEW_PROJECT_HOST }}
+  VERCEL_PROJECT_NAME: ${{ vars.VERCEL_PROJECT_NAME }}
+  VERCEL_TEAM_SLUG: ${{ vars.VERCEL_TEAM_SLUG }}
+
+jobs:
+  # The Preview environment only admits approved branches, and the jobs below
+  # require the deployment SHA to be the current main tip anyway. Check that
+  # here, outside the environment, so PR-branch deployments skip instead of
+  # being rejected by the environment protection rules as a failed job.
+  # Pushes to main that were already superseded skip the same way.
+  # Preview gates only run while repo variable PREVIEW_GATE is `on` (release time).
+  preview-source:
+    if: >-
+      always() &&
+      vars.PREVIEW_GATE == 'on' &&
+      (
+        github.event_name == 'deployment_status' ||
+        (
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.event == 'push' &&
+          github.event.workflow_run.head_branch == 'main' &&
+          github.event.workflow_run.head_repository.full_name == github.repository
+        )
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      trusted: ${{ steps.main-tip.outputs.trusted }}
+    steps:
+      - id: main-tip
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ github.event.deployment.sha || github.event.workflow_run.head_sha }}
+        run: |
+          main_sha="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)"
+          if [ "$main_sha" = "$SOURCE_SHA" ]; then
+            echo 'trusted=true' >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::$SOURCE_SHA is not the current main tip; skipping Preview gates."
+          fi
+
+  # Vercel deployments use commit-SHA refs, so GITHUB_REF can be empty here.
+  # Gate on the provider/status/origin before Preview environment access, then
+  # verify the current main SHA before checkout.
+  db-supabase-preview:
+    if: >-
+      always() &&
+      (
+        (
+          github.event_name == 'workflow_run' &&
+          needs.preview-source.outputs.trusted == 'true'
+        ) ||
+        (
+          github.event_name == 'deployment_status' &&
+          github.event.deployment_status.state == 'success' &&
+          github.event.deployment.environment == 'Preview' &&
+          github.event.deployment.creator.login == 'vercel[bot]' &&
+          github.event.deployment_status.creator.login == 'vercel[bot]' &&
+          (
+            github.event.deployment.ref == 'main' ||
+            github.event.deployment.ref == github.event.deployment.sha
+          ) &&
+          startsWith(github.event.deployment_status.target_url, format('https://{0}-', vars.VERCEL_PROJECT_NAME)) &&
+          endsWith(github.event.deployment_status.target_url, format('-{0}.vercel.app', vars.VERCEL_TEAM_SLUG)) &&
+          needs.preview-source.outputs.trusted == 'true'
+        )
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: preview-source
+    environment:
+      name: Preview
+      deployment: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Start from main. Run deployment code only when its SHA is also the
+          # current main tip.
+          ref: main
+      - name: Require the trusted Preview source tree
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
+          DEPLOYMENT_SHA: ${{ github.event.deployment.sha }}
+        run: |
+          if [ "$EVENT_NAME" = deployment_status ]; then
+            if ! [[ "$DEPLOYMENT_SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
+              echo 'deployment SHA must be a full 40-character commit SHA.' >&2
+              exit 1
+            fi
+            CURRENT_MAIN_SHA="$(git ls-remote --exit-code origin refs/heads/main | cut -f1)"
+            if [ "$DEPLOYMENT_SHA" != "$CURRENT_MAIN_SHA" ]; then
+              echo 'Preview deployment SHA must equal current main SHA.' >&2
+              exit 1
+            fi
+            git fetch --no-tags --depth=1 origin "$DEPLOYMENT_SHA"
+            git checkout --detach "$DEPLOYMENT_SHA"
+            DEPLOYMENT_TREE="$(git rev-parse "${DEPLOYMENT_SHA}^{tree}")"
+            CHECKED_OUT_TREE="$(git rev-parse 'HEAD^{tree}')"
+            if [ "$DEPLOYMENT_TREE" != "$CHECKED_OUT_TREE" ]; then
+              echo 'deployment tree does not match the checked-out trusted source tree.' >&2
+              exit 1
+            fi
+          else
+            if ! [[ "$SOURCE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
+              echo 'source SHA must be a full 40-character commit SHA.' >&2
+              exit 1
+            fi
+            CHECKED_OUT_SHA="$(git rev-parse HEAD)"
+            if [ "$SOURCE_SHA" != "$CHECKED_OUT_SHA" ]; then
+              echo 'checked-out source revision does not match the event revision.' >&2
+              exit 1
+            fi
+          fi
+          export EVENT_NAME SOURCE_SHA DEPLOYMENT_SHA
+          export DEPLOYMENT_TREE CHECKED_OUT_TREE CHECKED_OUT_SHA
+          node --input-type=module <<'NODE'
+          const { assertExactRevision, assertMatchingTree } = await import(
+            './apps/web/scripts/release-workflow-gates.mjs',
+          );
+
+          if (process.env.EVENT_NAME === 'deployment_status') {
+            assertExactRevision(process.env.DEPLOYMENT_SHA, process.env.DEPLOYMENT_SHA);
+            assertMatchingTree(process.env.DEPLOYMENT_TREE, process.env.CHECKED_OUT_TREE);
+          } else {
+            assertExactRevision(process.env.SOURCE_SHA, process.env.CHECKED_OUT_SHA);
+          }
+          NODE
+      - name: Require a trusted Vercel Preview event
+        if: github.event_name == 'deployment_status'
+        env:
+          DEPLOYMENT_STATUS: ${{ github.event.deployment_status.state }}
+          DEPLOYMENT_REF: ${{ github.event.deployment.ref }}
+          DEPLOYMENT_SHA: ${{ github.event.deployment.sha }}
+          DEPLOYMENT_ENVIRONMENT: ${{ github.event.deployment.environment }}
+          DEPLOYMENT_CREATOR: ${{ github.event.deployment.creator.login }}
+          STATUS_CREATOR: ${{ github.event.deployment_status.creator.login }}
+          TARGET_URL: ${{ github.event.deployment_status.target_url }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { assertPreviewEvent } from './apps/web/scripts/release-workflow-gates.mjs';
+
+          assertPreviewEvent({
+            state: process.env.DEPLOYMENT_STATUS,
+            deploymentRef: process.env.DEPLOYMENT_REF,
+            deploymentSha: process.env.DEPLOYMENT_SHA,
+            environment: process.env.DEPLOYMENT_ENVIRONMENT,
+            deploymentCreator: process.env.DEPLOYMENT_CREATOR,
+            statusCreator: process.env.STATUS_CREATOR,
+            targetUrl: process.env.TARGET_URL,
+          });
+          NODE
+      - name: Require the protected Supabase direct connection
+        env:
+          DATABASE_MIGRATION_URL: ${{ secrets.SUPABASE_PREVIEW_DATABASE_MIGRATION_URL }}
+        run: |
+          test -n "$DATABASE_MIGRATION_URL"
+          if [ -z "$SUPABASE_PREVIEW_PROJECT_HOST" ]; then
+            echo 'Set the SUPABASE_PREVIEW_PROJECT_HOST repository variable to the Preview Supabase project hostname (e.g. project.supabase.co).' >&2
+            exit 1
+          fi
+          node <<'NODE'
+          const projectHost = process.env.SUPABASE_PREVIEW_PROJECT_HOST.toLowerCase();
+          if (projectHost === (process.env.SUPABASE_PRODUCTION_PROJECT_HOST ?? '').toLowerCase()) {
+            throw new Error('SUPABASE_PREVIEW_PROJECT_HOST points at the Production project.');
+          }
+          const url = new URL(process.env.DATABASE_MIGRATION_URL);
+          if (
+            !['postgres:', 'postgresql:'].includes(url.protocol) ||
+            url.hostname.toLowerCase() !== `db.${projectHost}` ||
+            url.port !== '5432'
+          ) {
+            throw new Error('Preview database checks require the direct ManaWG Preview Supabase connection on port 5432.');
+          }
+          NODE
+      - uses: ./.github/actions/setup
+      - name: Trust the pinned Supabase database certificate
+        run: |
+          node --experimental-strip-types --input-type=module <<'NODE'
+          import { appendFileSync, writeFileSync } from 'node:fs';
+          import path from 'node:path';
+          import { X509Certificate } from 'node:crypto';
+          import { SUPABASE_ROOT_CA } from './apps/web/src/core/db/supabase-ca.ts';
+
+          const certificate = new X509Certificate(SUPABASE_ROOT_CA);
+          if (certificate.fingerprint256 !== '80:70:25:AD:50:D4:ED:21:9D:2C:9C:7D:29:9C:00:4F:82:4E:B0:0C:F7:F6:5A:FE:F6:07:D0:7B:72:E6:CA:FA') {
+            throw new Error('Unexpected Supabase root certificate.');
+          }
+          const file = path.join(process.env.RUNNER_TEMP, 'supabase-root.crt');
+          writeFileSync(file, SUPABASE_ROOT_CA, { mode: 0o600 });
+          appendFileSync(process.env.GITHUB_ENV, 'NODE_EXTRA_CA_CERTS=' + file + '\n');
+          NODE
+      - name: Apply pending Preview migrations
+        env:
+          DATABASE_MIGRATION_URL: ${{ secrets.SUPABASE_PREVIEW_DATABASE_MIGRATION_URL }}
+        run: node apps/web/scripts/preview-db-check.mjs
+      - name: Verify Preview schema and migration ledger
+        env:
+          DATABASE_MIGRATION_URL: ${{ secrets.SUPABASE_PREVIEW_DATABASE_MIGRATION_URL }}
+        run: node apps/web/scripts/preview-db-check.mjs --check
+
+  # See the SHA-ref note above: the provider/status/origin gate runs before
+  # Preview environment access; both jobs recheck trusted source revisions.
+  e2e-preview:
+    if: >-
+      always() &&
+      github.event_name == 'deployment_status' &&
+      github.event.deployment_status.state == 'success' &&
+      github.event.deployment.environment == 'Preview' &&
+      github.event.deployment.creator.login == 'vercel[bot]' &&
+      github.event.deployment_status.creator.login == 'vercel[bot]' &&
+      (
+        github.event.deployment.ref == 'main' ||
+        github.event.deployment.ref == github.event.deployment.sha
+      ) &&
+      startsWith(github.event.deployment_status.target_url, format('https://{0}-', vars.VERCEL_PROJECT_NAME)) &&
+      endsWith(github.event.deployment_status.target_url, format('-{0}.vercel.app', vars.VERCEL_TEAM_SLUG)) &&
+      needs.preview-source.outputs.trusted == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [preview-source, db-supabase-preview]
+    environment:
+      name: Preview
+      deployment: false
+    steps:
+      - name: Require the tree-matched Preview migration gate
+        env:
+          MIGRATION_GATE_RESULT: ${{ needs.db-supabase-preview.result }}
+        run: test "$MIGRATION_GATE_RESULT" = success
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Start from main. Run deployment code only when its SHA is also the
+          # current main tip.
+          ref: main
+      - name: Require the trusted deployment tree
+        env:
+          DEPLOYMENT_SHA: ${{ github.event.deployment.sha }}
+        run: |
+          if ! [[ "$DEPLOYMENT_SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            echo 'deployment SHA must be a full 40-character commit SHA.' >&2
+            exit 1
+          fi
+          CURRENT_MAIN_SHA="$(git ls-remote --exit-code origin refs/heads/main | cut -f1)"
+          if [ "$DEPLOYMENT_SHA" != "$CURRENT_MAIN_SHA" ]; then
+            echo 'Preview deployment SHA must equal current main SHA.' >&2
+            exit 1
+          fi
+          git fetch --no-tags --depth=1 origin "$DEPLOYMENT_SHA"
+          git checkout --detach "$DEPLOYMENT_SHA"
+          DEPLOYMENT_TREE="$(git rev-parse "${DEPLOYMENT_SHA}^{tree}")"
+          CHECKED_OUT_TREE="$(git rev-parse 'HEAD^{tree}')"
+          export DEPLOYMENT_TREE CHECKED_OUT_TREE
+          node --input-type=module <<'NODE'
+          const { assertMatchingTree } = await import(
+            './apps/web/scripts/release-workflow-gates.mjs',
+          );
+
+          assertMatchingTree(process.env.DEPLOYMENT_TREE, process.env.CHECKED_OUT_TREE);
+          NODE
+      - name: Validate trusted Vercel Preview event and target
+        id: preview
+        env:
+          DEPLOYMENT_STATUS: ${{ github.event.deployment_status.state }}
+          DEPLOYMENT_REF: ${{ github.event.deployment.ref }}
+          DEPLOYMENT_SHA: ${{ github.event.deployment.sha }}
+          DEPLOYMENT_ENVIRONMENT: ${{ github.event.deployment.environment }}
+          DEPLOYMENT_CREATOR: ${{ github.event.deployment.creator.login }}
+          STATUS_CREATOR: ${{ github.event.deployment_status.creator.login }}
+          TARGET_URL: ${{ github.event.deployment_status.target_url }}
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import { assertPreviewEvent } from './apps/web/scripts/release-workflow-gates.mjs';
+
+          const baseUrl = assertPreviewEvent({
+            state: process.env.DEPLOYMENT_STATUS,
+            deploymentRef: process.env.DEPLOYMENT_REF,
+            deploymentSha: process.env.DEPLOYMENT_SHA,
+            environment: process.env.DEPLOYMENT_ENVIRONMENT,
+            deploymentCreator: process.env.DEPLOYMENT_CREATOR,
+            statusCreator: process.env.STATUS_CREATOR,
+            targetUrl: process.env.TARGET_URL,
+          });
+
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `base_url=${baseUrl}\n`);
+          NODE
+      - uses: ./.github/actions/setup
+        with:
+          playwright-browser: chromium
+      - name: Require real Supabase QA credentials
+        env:
+          E2E_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+          E2E_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.E2E_SUPABASE_PUBLISHABLE_KEY }}
+          E2E_SUPABASE_TEST_EMAIL: ${{ secrets.E2E_SUPABASE_TEST_EMAIL }}
+          E2E_SUPABASE_TEST_PASSWORD: ${{ secrets.E2E_SUPABASE_TEST_PASSWORD }}
+          SUPABASE_AUTH_TEST_EMAIL: ${{ secrets.SUPABASE_AUTH_TEST_EMAIL }}
+          SUPABASE_AUTH_TEST_PASSWORD: ${{ secrets.SUPABASE_AUTH_TEST_PASSWORD }}
+          SUPABASE_AUTH_TEST_MEMBER_WG_CODE: ${{ secrets.SUPABASE_AUTH_TEST_MEMBER_WG_CODE }}
+          SUPABASE_AUTH_TEST_MEMBER_NAME: ${{ secrets.SUPABASE_AUTH_TEST_MEMBER_NAME }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: |
+          node --input-type=module <<'NODE'
+          import {
+            PREVIEW_AUTH_ENV_NAMES,
+            assertRequiredEnv,
+          } from './apps/web/scripts/release-workflow-gates.mjs';
+
+          assertRequiredEnv(process.env, [
+            'E2E_SUPABASE_URL',
+            'E2E_SUPABASE_PUBLISHABLE_KEY',
+            'E2E_SUPABASE_TEST_EMAIL',
+            'E2E_SUPABASE_TEST_PASSWORD',
+            'VERCEL_AUTOMATION_BYPASS_SECRET',
+            ...PREVIEW_AUTH_ENV_NAMES,
+          ], 'Protected Preview verification');
+          NODE
+          node <<'NODE'
+          const projectHost = process.env.SUPABASE_PREVIEW_PROJECT_HOST;
+          if (!projectHost) {
+            throw new Error(
+              'Set the SUPABASE_PREVIEW_PROJECT_HOST repository variable to the Preview Supabase project hostname (e.g. project.supabase.co).',
+            );
+          }
+          if (projectHost.toLowerCase() === (process.env.SUPABASE_PRODUCTION_PROJECT_HOST ?? '').toLowerCase()) {
+            throw new Error('SUPABASE_PREVIEW_PROJECT_HOST points at the Production project.');
+          }
+          const url = new URL(process.env.E2E_SUPABASE_URL);
+          if (
+            url.protocol !== 'https:' ||
+            url.hostname.toLowerCase() !== projectHost.toLowerCase() ||
+            url.port ||
+            url.pathname !== '/' ||
+            url.search ||
+            url.hash
+          ) {
+            throw new Error('Preview E2E auth must use the ManaWG Preview Supabase project.');
+          }
+          NODE
+      - name: Test the protected Preview deployment
+        env:
+          BASE_URL: ${{ steps.preview.outputs.base_url }}
+          PREVIEW_E2E: 'true'
+          REAL_PRODUCT_E2E: 'true'
+          E2E_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+          E2E_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.E2E_SUPABASE_PUBLISHABLE_KEY }}
+          E2E_SUPABASE_TEST_EMAIL: ${{ secrets.E2E_SUPABASE_TEST_EMAIL }}
+          E2E_SUPABASE_TEST_PASSWORD: ${{ secrets.E2E_SUPABASE_TEST_PASSWORD }}
+          SUPABASE_AUTH_TEST_EMAIL: ${{ secrets.SUPABASE_AUTH_TEST_EMAIL }}
+          SUPABASE_AUTH_TEST_PASSWORD: ${{ secrets.SUPABASE_AUTH_TEST_PASSWORD }}
+          SUPABASE_AUTH_TEST_MEMBER_WG_CODE: ${{ secrets.SUPABASE_AUTH_TEST_MEMBER_WG_CODE }}
+          SUPABASE_AUTH_TEST_MEMBER_NAME: ${{ secrets.SUPABASE_AUTH_TEST_MEMBER_NAME }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+          PUBLIC_ENTRY_E2E: 'true'
+          AUTH_LIVE_E2E: 'true'
+          SUPABASE_AUTH_LIVE_E2E: 'true'
+          SUPABASE_AUTH_PASSWORD_RESET_SMOKE: 'true'
+          PLAYWRIGHT_JSON_OUTPUT_NAME: ${{ runner.temp }}/preview-results.json
+        run: pnpm --filter @manawg/web exec playwright test --retries=0 --reporter=list,json preview-protection.spec.ts smoke-launch.spec.ts public-entry-live.spec.ts social-login-live.spec.ts supabase-auth-live.spec.ts
+      - name: Require executed Preview tests
+        env:
+          RESULTS_FILE: ${{ runner.temp }}/preview-results.json
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          const { stats } = JSON.parse(readFileSync(process.env.RESULTS_FILE, 'utf8'));
+          const line = `expected=${stats.expected} skipped=${stats.skipped} unexpected=${stats.unexpected} flaky=${stats.flaky}`;
+          console.log(line);
+          if (process.env.GITHUB_STEP_SUMMARY) {
+            const { appendFileSync } = await import('node:fs');
+            appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### Preview test counts\n- ${line}\n`);
+          }
+          if (stats.expected === 0) throw new Error('No Preview test actually ran; skips are not proof.');
+          NODE
+      - name: Record protected Preview execution evidence
+        if: always()
+        env:
+          VALIDATED_TARGET_ORIGIN: ${{ steps.preview.outputs.base_url || 'not-validated' }}
+          DEPLOYMENT_ID: ${{ github.event.deployment.id }}
+          DEPLOYMENT_SHA: ${{ github.event.deployment.sha }}
+        run: |
+          {
+            printf '%s\n' '### Protected Preview execution evidence'
+            printf '%s\n' "- validated target origin: $VALIDATED_TARGET_ORIGIN"
+            printf '%s\n' "- deployment identifier: $DEPLOYMENT_ID"
+            printf '%s\n' "- source revision: $DEPLOYMENT_SHA"
+            printf '%s\n' '- execution mode: protected-preview'
+            printf '%s\n' '- result: ${{ job.status }}'
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,6 +1,7 @@
 const SLUG = /^[a-z0-9-]+$/;
 const FULL_SHA = /^[0-9a-f]{40}$/i;
 const CI_WORKFLOW_PATH = /^\.github\/workflows\/ci\.yml(?:@main)?$/;
+const PREVIEW_WORKFLOW_PATH = /^\.github\/workflows\/preview\.yml(?:@main)?$/;
 
 export const PREVIEW_AUTH_ENV_NAMES = Object.freeze([
 	'SUPABASE_AUTH_TEST_EMAIL',
@@ -163,15 +164,17 @@ export function assertPreviewEvidence({
 	expectedRunId,
 }) {
 	if (
-		run?.name !== 'CI' ||
-		!CI_WORKFLOW_PATH.test(run.path ?? '') ||
+		run?.name !== 'Preview' ||
+		!PREVIEW_WORKFLOW_PATH.test(run.path ?? '') ||
 		run.event !== 'deployment_status' ||
 		run.status !== 'completed' ||
 		run.conclusion !== 'success' ||
 		!Number.isInteger(run.id) ||
 		run.id <= 0
 	) {
-		throw new Error('Preview evidence must be a completed successful CI deployment-status run.');
+		throw new Error(
+			'Preview evidence must be a completed successful deployment-status run of the Preview workflow.',
+		);
 	}
 	if (expectedRunId !== undefined && run.id !== expectedRunId) {
 		throw new Error('Preview evidence run ID does not match the requested run.');

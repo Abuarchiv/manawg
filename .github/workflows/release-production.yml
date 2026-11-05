@@ -1,8 +1,8 @@
-name: Release production
-
 # One dispatch for the documented release: main tip -> Preview gate -> production migration ->
 # production deployment -> tag, GitHub release and Docker image for the version in package.json.
 # Each stage waits for the previous one and stops the release on failure.
+name: Release production
+
 on:
   workflow_dispatch:
     inputs:
@@ -92,9 +92,9 @@ jobs:
         env:
           SHA: ${{ steps.candidate.outputs.sha }}
         run: |
-          # Vercel builds preview-main and reports a deployment_status; that CI run is the gate.
+          # Vercel builds preview-main and reports a deployment_status; that Preview run is the gate.
           gate() {
-            for id in $(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$SHA&event=deployment_status&per_page=50" \
+            for id in $(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/preview.yml/runs?head_sha=$SHA&event=deployment_status&per_page=50" \
               --jq '.workflow_runs[].id'); do
               gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id/jobs?per_page=100" \
                 --jq "[.jobs[] | select(.name == \"db-supabase-preview\" or .name == \"e2e-preview\") | .status + \"/\" + (.conclusion // \"\")] | sort | \"$id \" + join(\" \")"

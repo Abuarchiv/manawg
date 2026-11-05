@@ -126,7 +126,12 @@ test('main CI evidence needs a green push run on main with both required jobs', 
 });
 
 test('preview evidence needs the matching revision, tree, run id and both preview jobs', () => {
-	const run = { ...goodRun, event: 'deployment_status' };
+	const run = {
+		...goodRun,
+		name: 'Preview',
+		path: '.github/workflows/preview.yml',
+		event: 'deployment_status',
+	};
 	const base = {
 		candidateSha: SHA,
 		candidateTree: SHA,
@@ -143,6 +148,11 @@ test('preview evidence needs the matching revision, tree, run id and both previe
 	assert.throws(() => assertPreviewEvidence({ ...base, runTree: OTHER_SHA }));
 	assert.throws(() => assertPreviewEvidence({ ...base, candidateSha: OTHER_SHA }));
 	assert.throws(() => assertPreviewEvidence({ ...base, run: { ...run, event: 'push' } }));
+	// A run of the CI workflow is no Preview evidence, even with jobs of the same names.
+	assert.throws(() => assertPreviewEvidence({ ...base, run: { ...run, name: 'CI' } }));
+	assert.throws(() =>
+		assertPreviewEvidence({ ...base, run: { ...run, path: '.github/workflows/ci.yml' } }),
+	);
 	assert.throws(() =>
 		assertPreviewEvidence({ ...base, jobs: passedJobs(['db-supabase-preview']) }),
 	);

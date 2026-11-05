@@ -203,7 +203,7 @@ Contributors need no Vercel or Supabase account for any of these. The specs run 
 
 | Variable | Enables | How to run | Why not in CI |
 | --- | --- | --- | --- |
-| `PREVIEW_E2E` | `e2e/preview-protection.spec.ts` and the Preview branches of `e2e/smoke-launch.spec.ts` | Set by the `e2e-preview` job in `.github/workflows/ci.yml` against a trusted Vercel Preview URL (`BASE_URL`) with `VERCEL_AUTOMATION_BYPASS_SECRET` | Needs a deployed, protected Preview and the bypass secret |
+| `PREVIEW_E2E` | `e2e/preview-protection.spec.ts` and the Preview branches of `e2e/smoke-launch.spec.ts` | Set by the `e2e-preview` job in `.github/workflows/preview.yml` against a trusted Vercel Preview URL (`BASE_URL`) with `VERCEL_AUTOMATION_BYPASS_SECRET` | Needs a deployed, protected Preview and the bypass secret |
 | `REAL_PRODUCT_E2E` | The real-account path of `e2e/smoke-launch.spec.ts` | Same job as `PREVIEW_E2E`, or locally against a hosted `BASE_URL` with the `E2E_SUPABASE_*` credentials | Needs a hosted deployment and a real test account |
 | `PUBLIC_ENTRY_E2E` | `e2e/public-entry-live.spec.ts` (hosted public entry) | `BASE_URL=<hosted origin> PUBLIC_ENTRY_E2E=true pnpm --filter @manawg/web exec playwright test public-entry-live.spec.ts` | Needs a deployed app on real Supabase |
 | `AUTH_LIVE_E2E` | `e2e/social-login-live.spec.ts` (OAuth callback errors) | `BASE_URL=<hosted origin> AUTH_LIVE_E2E=true pnpm --filter @manawg/web exec playwright test social-login-live.spec.ts` | Needs a deployed app on real Supabase |
@@ -217,7 +217,7 @@ Contributors need no Vercel or Supabase account for any of these. The specs run 
 | `E2E_SUPABASE_URL`, `E2E_SUPABASE_PUBLISHABLE_KEY`, `E2E_SUPABASE_TEST_EMAIL`, `E2E_SUPABASE_TEST_PASSWORD` | Project and disposable test account for the real-account path of `smoke-launch.spec.ts` |
 | `SUPABASE_AUTH_TEST_EMAIL`, `SUPABASE_AUTH_TEST_PASSWORD`, `SUPABASE_AUTH_TEST_MEMBER_WG_CODE`, `SUPABASE_AUTH_TEST_MEMBER_NAME`, `SUPABASE_AUTH_TEST_MEMBER_INVITE_TOKEN` | Test account and member WG for `supabase-auth-live.spec.ts` |
 
-The `e2e-preview` job of the CI workflow sets the six gate variables to `true`. While the repo variable `PREVIEW_GATE` is `on`, the Preview jobs (`preview-source`, `db-supabase-preview`, `e2e-preview`) migrate and test the Preview deployment of the current `main` tip.
+The `e2e-preview` job of the Preview workflow (`.github/workflows/preview.yml`) sets the six gate variables to `true`. While the repo variable `PREVIEW_GATE` is `on`, its jobs (`preview-source`, `db-supabase-preview`, `e2e-preview`) migrate and test the Preview deployment of the current `main` tip: the migration check after CI passed on a push to `main`, the migration check and the end-to-end tests when Vercel reports the Preview deployment.
 
 ## Quality gates
 
@@ -225,23 +225,22 @@ CI (`.github/workflows/ci.yml`, job `validate`) runs, in this order:
 
 1. `pnpm install --frozen-lockfile`
 2. `pnpm audit --prod --audit-level high`
-3. `pnpm lint`
+3. `pnpm lint` (Biome, repository files, release notes, and the architecture and WG authorisation rules in `apps/web/scripts/`)
 4. `pnpm knip` (unused files, exports and dependencies; config in `knip.json`)
 5. `pnpm --dir apps/web analytics:check`
-6. `pnpm --filter @manawg/web exec node scripts/check-architecture.mjs`
-7. `pnpm --filter @manawg/web exec node scripts/check-wg-auth-invariant.mjs`
-8. Schema drift check: `db:generate` must not produce a new migration from the committed schema
-9. `pnpm typecheck` (app, plus `tsconfig.e2e.json` for `e2e/`, `tests/*.test.ts` and Playwright configs)
-10. `pnpm --filter @manawg/web test:unit`
-11. `TZ=Pacific/Kiritimati pnpm --filter @manawg/web test:unit` (the same unit tests in UTC+14, so date code must not depend on the host time zone)
-12. `pnpm build`
-13. `pnpm --filter @manawg/web bundle:check`
+6. Schema drift check: `db:generate` must not produce a new migration from the committed schema
+7. `pnpm typecheck` (app, plus `tsconfig.e2e.json` for `e2e/`, `tests/*.test.ts` and Playwright configs)
+8. `pnpm --filter @manawg/web test:unit`
+9. `TZ=Pacific/Kiritimati pnpm --filter @manawg/web test:unit` (the same unit tests in UTC+14, so date code must not depend on the host time zone)
+10. `pnpm build`
+11. `pnpm --filter @manawg/web bundle:check`
 
 `validate` runs on every PR (drafts and docs-only PRs included) and every push to `main`. Job
 `e2e-fixtures` (`test:e2e:fixtures`, Chromium) runs on every non-draft PR and every push to
 `main`. Dependabot (`.github/dependabot.yml`) opens one grouped minor/patch PR per week and
 ecosystem (npm, GitHub Actions, Docker) and a separate PR per major update; third-party actions
-are pinned by commit SHA. Workflow `database.yml` runs the database suites from the table above
+are pinned by commit SHA. Every job sets up Node, pnpm and the locked dependencies (and a
+Playwright browser where needed) through the local action `.github/actions/setup`. Workflow `database.yml` runs the database suites from the table above
 against a PostgreSQL service on every PR and every push to `main`. Workflow `webkit.yml` runs
 `test:e2e:webkit` weekly and on demand.
 
