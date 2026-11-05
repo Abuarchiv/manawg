@@ -300,3 +300,38 @@ test('a queued fixed-cost booking sends the template version it was built from',
 		'offline.failure.recurringAdvanced.title',
 	);
 });
+
+test('discarding a queued shopping item also drops the queued edit of it', () => {
+	const item = createQueuedShoppingItem({
+		shareCode,
+		memberId,
+		name: 'Milch',
+		quantity: null,
+		now: 1,
+	});
+	const edit = createQueuedShoppingUpdate({
+		shareCode,
+		memberId,
+		itemId: item.id,
+		name: 'Milch',
+		bought: true,
+		expectedUpdatedAt: '2026-10-01T10:00:00.000Z',
+		expectedBoughtAt: null,
+		now: 2,
+	});
+	assert.deepEqual(withoutQueuedEntry([item, edit], shareCode, item.id), []);
+});
+
+test('only a queued shopping edit counts as a pending edit of the item', () => {
+	const itemId = '11111111-1111-4111-8111-111111111111';
+	const otherAction = {
+		...createQueuedShoppingItem({ shareCode, memberId, name: 'Milch', quantity: null, now: 1 }),
+		payload: { itemId },
+	};
+	assert.equal(hasQueuedShoppingUpdate([otherAction], shareCode, memberId, itemId), false);
+});
+
+test('a server id is never taken for an offline create', () => {
+	assert.equal(isQueuedCreateId(`shopping:${shareCode}:1:milch`), true);
+	assert.equal(isQueuedCreateId(`x-shopping:${shareCode}:1:milch`), false);
+});
