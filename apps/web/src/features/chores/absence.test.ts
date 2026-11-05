@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { instantAtBerlinWallTime } from '@/core/utils/berlin-day';
-import { canRemoveAbsence, getAbsentMemberIds, isAbsencePeriodValid } from './absence';
+import {
+	type AbsenceInput,
+	canRemoveAbsence,
+	getAbsentMemberIds,
+	isAbsencePeriodValid,
+	pickVisibleAbsences,
+} from './absence';
 
 const day = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
 
@@ -52,4 +58,27 @@ test('only the member themselves or a flat admin can remove an absence', () => {
 	assert.equal(canRemoveAbsence({ memberId: 'me' }, 'me', false), true);
 	assert.equal(canRemoveAbsence({ memberId: 'other' }, 'me', false), false);
 	assert.equal(canRemoveAbsence({ memberId: 'other' }, 'me', true), true);
+});
+
+test('an absence of a single day is valid', () => {
+	assert.equal(isAbsencePeriodValid(day('2026-11-05'), day('2026-11-05')), true);
+});
+
+test('an absence opened by link stays visible in the short list', () => {
+	const absences: AbsenceInput[] = Array.from({ length: 6 }, (_, i) => ({
+		id: `a${i}`,
+		memberId: 'm',
+		memberName: 'Anna',
+		startDate: '2026-11-05',
+		endDate: '2026-11-06',
+		reason: null,
+	}));
+	assert.deepEqual(
+		pickVisibleAbsences(absences, false, 'a5').map((a) => a.id),
+		['a5', 'a0', 'a1', 'a2'],
+	);
+	assert.deepEqual(
+		pickVisibleAbsences(absences, false, 'a1').map((a) => a.id),
+		['a0', 'a1', 'a2', 'a3'],
+	);
 });

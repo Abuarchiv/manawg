@@ -5,7 +5,11 @@ import assert from 'node:assert/strict';
 import test, { describe } from 'node:test';
 import * as offlineClient from '../src/core/offline/offline-client';
 import { buildChoreFairness } from '../src/features/chores/chore-fairness';
-import { getChoreStatus, groupChoresForPlan } from '../src/features/chores/chore-status';
+import {
+	choreNeedsRepair,
+	getChoreStatus,
+	groupChoresForPlan,
+} from '../src/features/chores/chore-status';
 
 describe('chore status', () => {
 	test('uses Berlin calendar days instead of rounding elapsed hours', () => {
@@ -106,4 +110,24 @@ describe('chore recurring retry and fairness', () => {
 
 		assert.partialDeepStrictEqual(fairness.rows[0], { openGapCount: 2, score: 10 });
 	});
+});
+
+test('a chore two days overdue needs someone to step in, one day overdue does not yet', () => {
+	const now = Date.parse('2026-09-05T12:00:00+02:00');
+	const chore = (nextDueAt: string) => ({ assignedMemberId: 'm', nextDueAt });
+	assert.equal(choreNeedsRepair(chore('2026-09-04T12:00:00+02:00'), now), false);
+	assert.equal(choreNeedsRepair(chore('2026-09-03T12:00:00+02:00'), now), true);
+});
+
+test("a flatmate's overdue chore is listed as still open, not as upcoming", () => {
+	const now = Date.parse('2026-09-05T12:00:00+02:00');
+	const groups = groupChoresForPlan(
+		[{ id: 'c1', assignedMemberId: 'other', nextDueAt: '2026-09-04T12:00:00+02:00' }],
+		'me',
+		now,
+	);
+	assert.deepEqual(
+		groups.map((g) => g.key),
+		['overdue'],
+	);
 });
