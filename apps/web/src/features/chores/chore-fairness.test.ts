@@ -198,6 +198,8 @@ test('share percentages add up to 100', () => {
 	assert.deepEqual(sharePercents([1, 1, 1, 1, 1, 1, 1]), [15, 15, 14, 14, 14, 14, 14]);
 	assert.deepEqual(sharePercents([5]), [100]);
 	assert.deepEqual(sharePercents([0, 0]), [0, 0]);
+	// The leftover point goes to the largest remainder, not to the first count.
+	assert.deepEqual(sharePercents([1, 2]), [33, 67]);
 	for (const counts of [[3, 7, 11], [1, 2, 3, 4, 5, 6], [13, 1, 1, 1], Array(20).fill(1)]) {
 		assert.equal(
 			sharePercents(counts).reduce((sum, percent) => sum + percent, 0),
