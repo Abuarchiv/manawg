@@ -40,13 +40,6 @@ web app. *WG* is short for *Wohngemeinschaft*, German for shared flat.
   duplicates.
 - **Easy to leave:** export the whole flat as JSON or CSV at any time.
 
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/demo-en-dark.webp">
-    <img src="docs/screenshots/demo-en-light.webp" width="280" alt="Screen recording of ManaWG on a phone: installing it from the browser, adding an expense, ticking off a chore and working through the shopping list.">
-  </picture>
-</p>
-
 ## Features
 
 <picture>
