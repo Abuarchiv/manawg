@@ -11,6 +11,7 @@
 
 <p align="center">
   <a href="https://app.manawg.com"><strong>App öffnen</strong></a> ·
+  <a href="https://manawg.com/demo"><strong>Demo ausprobieren</strong></a> ·
   <a href="#selbst-hosten">Selbst hosten</a> ·
   <a href="https://manawg.com">Website</a> ·
   <a href="docs/README.md">Doku</a> ·
