@@ -8,6 +8,13 @@ settled.
 
 ## [Unreleased]
 
+### Self-hosting
+
+- A Portainer template and a stack file for it: `portainer-template.json` and
+  `docker/portainer/compose.yaml` run the Docker stack from Portainer without a shell, without
+  `./docker/setup.sh` and without bind mounts ([Portainer](docs/self-hosting.md#portainer)). The
+  normal `compose.yaml` is unchanged.
+
 ## [0.1.1] - 2026-11-05
 
 ### Fixed

@@ -31,7 +31,8 @@ apps/web/
   vercel.json     cron schedule and settings for Vercel deployments
   playwright*.ts  Playwright configs: default, and WebKit against the fixture build
 docs/             architecture, self-hosting, backup and recovery, brand/ (design language, English glossary)
-docker/           self-hosting stack: setup, gateway, backup, restore and smoke test (with compose.yaml)
+docker/           self-hosting stack: setup, gateway, backup, restore and smoke test (with compose.yaml),
+                  `portainer/` (the same stack as a Portainer stack, with a drift check)
 supabase/templates/  Auth mail templates (HTML, subjects) used by the Docker stack and hosted Supabase
 scripts/          maintenance scripts: `generate-brand-assets.mjs` (icons from the brand mark),
                   `supabase-auth-templates.mjs` (push the mail templates to a hosted Supabase project),
@@ -40,7 +41,8 @@ scripts/          maintenance scripts: `generate-brand-assets.mjs` (icons from t
 openspec/         behaviour specs per capability
 ```
 
-Root files: `compose.yaml` and `Dockerfile` (self-hosting image), `biome.json` (lint and format),
+Root files: `compose.yaml` and `Dockerfile` (self-hosting image), `portainer-template.json`
+(Portainer app template for `docker/portainer/compose.yaml`), `biome.json` (lint and format),
 `knip.json` (unused code check), `.vercelignore`.
 
 ## Prerequisites
@@ -247,7 +249,8 @@ against a PostgreSQL service on every PR and every push to `main`. Workflow `web
 Workflow `security.yml` runs Trivy over the lockfile, the Dockerfile and the tree (known
 vulnerabilities, misconfigurations, secrets) on every PR, on `main` and weekly. Workflow
 `docker.yml` builds the self-hosting image and scans it with Trivy when a PR touches the image
-inputs, and the release scan blocks the push of a vulnerable image.
+inputs, and the release scan blocks the push of a vulnerable image. It also runs
+`docker/portainer/check.sh`, which keeps the Portainer stack file in step with `compose.yaml`.
 
 Run the same gates locally before you open a pull request.
 

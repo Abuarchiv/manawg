@@ -1,0 +1,87 @@
+{
+	"type": 3,
+	"title": "ManaWG",
+	"name": "manawg",
+	"description": "Free, open-source app for shared flats: expenses, cleaning rota, shopping list, calendar and chat. Runs the app with PostgreSQL, sign-in and image storage. Source: https://github.com/Abuarchiv/manawg",
+	"note": "Needs an SMTP account for sign-in codes (or the Mailpit test profile). <b>POSTGRES_PASSWORD</b>: letters and digits only, from <code>openssl rand -hex 24</code> or any password generator; it is fixed when the database is first created, so keep it. <b>JWT_SECRET</b>: 32 or more characters; the stack derives its API keys from it and needs no key generation. Both are stored in the stack's environment. Every other secret is derived. Behind HTTPS, set <b>APP_URL</b> to the public address and <b>SITE_ADDRESS</b> to the bare domain for a Let's Encrypt certificate; for a reverse proxy keep <code>:80</code>. Details: <a href=\"https://github.com/Abuarchiv/manawg/blob/main/docs/self-hosting.md#portainer\">docs/self-hosting.md</a>.",
+	"categories": ["Productivity", "Household", "Self-hosted"],
+	"platform": "linux",
+	"logo": "https://raw.githubusercontent.com/Abuarchiv/manawg/main/apps/web/public/icon-512.png",
+	"restart_policy": "unless-stopped",
+	"repository": {
+		"url": "https://github.com/Abuarchiv/manawg",
+		"stackfile": "docker/portainer/compose.yaml"
+	},
+	"env": [
+		{
+			"name": "APP_URL",
+			"label": "Address people open",
+			"description": "Full URL without a trailing slash, e.g. https://wg.example.com. Only localhost may use plain http.",
+			"default": "http://localhost"
+		},
+		{
+			"name": "SITE_ADDRESS",
+			"label": "What the gateway serves",
+			"description": ":80 for plain HTTP (localhost or behind a reverse proxy) or the bare domain, e.g. wg.example.com, for HTTPS with Let's Encrypt.",
+			"default": ":80"
+		},
+		{
+			"name": "HTTP_PORT",
+			"label": "Host port for HTTP",
+			"default": "80"
+		},
+		{
+			"name": "HTTPS_PORT",
+			"label": "Host port for HTTPS",
+			"default": "443"
+		},
+		{
+			"name": "POSTGRES_PASSWORD",
+			"label": "Database password (letters and digits, 16 or more)",
+			"description": "Fixed when the database is first created. Example: openssl rand -hex 24"
+		},
+		{
+			"name": "JWT_SECRET",
+			"label": "Signing secret (32 or more characters)",
+			"description": "The Auth and Storage API keys are signed with it when the stack starts. Changing it later signs everyone out."
+		},
+		{
+			"name": "SMTP_HOST",
+			"label": "SMTP server",
+			"description": "Required: sign-in codes go out by mail. mailpit with the Mailpit profile below catches all mail for a test."
+		},
+		{
+			"name": "SMTP_PORT",
+			"label": "SMTP port",
+			"default": "587"
+		},
+		{
+			"name": "SMTP_USER",
+			"label": "SMTP user (optional)"
+		},
+		{
+			"name": "SMTP_PASS",
+			"label": "SMTP password (optional)"
+		},
+		{
+			"name": "SMTP_ADMIN_EMAIL",
+			"label": "Sender address",
+			"description": "An address your SMTP provider accepts, e.g. noreply@example.com.",
+			"default": "noreply@example.com"
+		},
+		{
+			"name": "LEGAL_URL",
+			"label": "Site with your legal pages (optional)",
+			"description": "Needs /impressum, /datenschutz and /agb. Set it before others use the instance."
+		},
+		{
+			"name": "COMPOSE_PROFILES",
+			"label": "Local test mail",
+			"description": "Mailpit catches every mail at port 8025 of the Docker host. Also set SMTP_HOST to mailpit and SMTP_PORT to 1025.",
+			"select": [
+				{ "text": "Own SMTP server", "value": "", "default": true },
+				{ "text": "Mailpit (test only)", "value": "mailpit" }
+			]
+		}
+	]
+}
