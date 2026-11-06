@@ -49,22 +49,17 @@ updates:
       - dependency-name: node
         update-types: [version-update:semver-major]
 
+  # Service images in compose.yaml and the Portainer stack file. docker/portainer/check.sh fails
+  # when the two differ, so each image is bumped in both files in one PR.
   - package-ecosystem: docker-compose
-    directory: /
+    directories: [/, /docker/portainer]
     schedule:
       interval: weekly
       day: monday
       time: "06:00"
       timezone: Europe/Berlin
     labels: [dependencies]
-
-  # Service images in the Portainer stack file; docker/portainer/check.sh keeps them equal to
-  # compose.yaml.
-  - package-ecosystem: docker-compose
-    directory: /docker/portainer
-    schedule:
-      interval: weekly
-      day: monday
-      time: "06:00"
-      timezone: Europe/Berlin
-    labels: [dependencies]
+    groups:
+      compose-images:
+        patterns: ["*"]
+        group-by: dependency-name
