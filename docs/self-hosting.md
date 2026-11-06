@@ -7,7 +7,8 @@ There are two ways:
 
 - **[Docker](#docker)** (recommended): one `compose.yaml` runs the app, PostgreSQL, sign-in and
   image storage on any machine with Docker, from a laptop to a small server. No external accounts
-  apart from an SMTP provider for a public instance.
+  apart from an SMTP provider for a public instance. If you manage your Docker host with
+  [Portainer](https://www.portainer.io), use the [Portainer stack](#portainer) instead of a shell.
 - **[Vercel and Supabase](#vercel-and-supabase)**: the app on Vercel with a Supabase project, on
   the free tiers of both services.
 
@@ -214,6 +215,75 @@ The archive holds the database (app, accounts, storage metadata) and all images.
 a fresh machine too, after copying your old `.env` (a new `.env` invalidates existing calendar
 feed and unsubscribe links). Scheduling, encryption and checking a restore are
 in [backup and restore](database-recovery.md#docker).
+
+### Portainer
+
+The [Docker stack](#what-runs) also runs as a Portainer stack. `docker/portainer/compose.yaml`
+is the same stack as `compose.yaml` with three changes that Portainer needs:
+
+- It has no bind mounts and no build. The gateway config and the database init script are inline,
+  and the stack only pulls images. Portainer clones a repository stack into its own data
+  directory, where relative host paths such as `./docker/Caddyfile` do not resolve.
+- You do not run `./docker/setup.sh`. A one-shot `keys` service signs `ANON_KEY` and
+  `SERVICE_ROLE_KEY` from `JWT_SECRET` when the stack starts, and derives `MANAWG_APP_DB_PASSWORD`,
+  `MEMBER_SESSION_SECRET` and `CRON_SECRET` from it. The result is the same on every start. You
+  can still set any of the three yourself (letters and digits, 16 or more).
+- Settings come from the stack's environment variables, not from a `.env` file.
+
+It needs a Docker host with Compose 2.23.1 or newer (inline `configs`) and Portainer on a
+standalone Docker environment. It was tested with Portainer CE 2.45.3.
+
+**From the template.** In Portainer open *Settings* and enter this address as the *URL* under
+*App templates*:
+
+```text
+https://raw.githubusercontent.com/Abuarchiv/manawg/main/portainer-template.json
+```
+
+Then pick ManaWG under *App Templates* and fill in the form. The template is a single stack
+template that points at `docker/portainer/compose.yaml` in this repository.
+
+**Without the template.** *Stacks → Add stack → Repository*, repository URL
+`https://github.com/Abuarchiv/manawg`, compose path `docker/portainer/compose.yaml`. Or paste that
+file into *Web editor*. Add the environment variables below.
+
+| Variable | Required | Value |
+| --- | --- | --- |
+| `APP_URL`, `SITE_ADDRESS` | yes | As in [Configuration](#configuration): the address people open, and `:80` or the bare domain |
+| `POSTGRES_PASSWORD` | yes | Letters and digits, 16 or more, e.g. from `openssl rand -hex 24`. Fixed when the database is first created |
+| `JWT_SECRET` | yes | 32 or more characters, e.g. from `openssl rand -hex 32`. The API keys are signed with it |
+| `SMTP_HOST`, `SMTP_ADMIN_EMAIL`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` | yes | As in [Public instance with a domain](#public-instance-with-a-domain), step 3 |
+| `HTTP_PORT`, `HTTPS_PORT` | no | Host ports, default 80 and 443; change them when Portainer or another service uses them |
+| `COMPOSE_PROFILES` | no | `mailpit` starts the local mail catch-all; then set `SMTP_HOST=mailpit` and `SMTP_PORT=1025` |
+| everything else in [Configuration](#configuration) | no | `LEGAL_URL`, `SUPPORT_EMAIL`, `MANAWG_VERSION`, `GOOGLE_*` and so on, with the same meaning |
+
+Deploy the stack and open `APP_URL`. The first start takes a few minutes while the images are
+pulled; `setup` and `keys` exit with code 0 and the other services keep running.
+
+Things that differ from the shell setup:
+
+- **Secrets live in the stack.** Portainer stores the environment variables with the stack, and
+  everyone who may edit the stack can read them. `POSTGRES_PASSWORD` must stay as it was at the
+  first start, or the services fail with `password authentication failed`
+  ([What runs](#what-runs)). To rotate `JWT_SECRET`, change it in the stack and redeploy; all
+  sessions end and the derived secrets change with it, so calendar feed and unsubscribe links
+  signed before stop working. Set `MEMBER_SESSION_SECRET` yourself to keep them.
+- **Updating.** Set `MANAWG_VERSION` in the stack to the new version (or leave `latest`), then
+  *Update the stack* with *Re-pull images*. The published image is always pulled, never built.
+  Read [Updating](#updating) first and back up before.
+- **Backup and restore.** `./docker/backup.sh` and `./docker/restore.sh` expect a checkout with
+  `compose.yaml`. On the Docker host, replace `<stack>` with the stack name:
+
+  ```sh
+  docker exec <stack>-db-1 pg_dump -U supabase_admin -d postgres -Fc \
+    --schema=public --schema=auth --schema=storage --schema=drizzle >database.dump
+  docker exec <stack>-storage-1 tar -cf - -C /var/lib/storage . >storage.tar
+  ```
+
+  Keep both files together and somewhere else; they hold personal data. To restore on a fresh
+  stack, see the steps in `docker/restore.sh`, which uses the same commands in reverse.
+- **Removing the stack.** Deleting it in Portainer keeps the volumes. Tick *Remove associated
+  volumes* only to delete the data.
 
 ## Vercel and Supabase
 

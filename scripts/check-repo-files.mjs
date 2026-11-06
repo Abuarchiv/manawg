@@ -26,6 +26,7 @@ const TOP_LEVEL = new Set([
 	'package.json',
 	'pnpm-lock.yaml',
 	'pnpm-workspace.yaml',
+	'portainer-template.json',
 	'README.de.md',
 	'README.md',
 	'scripts',

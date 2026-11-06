@@ -1,0 +1,419 @@
+# ManaWG for Portainer: the same stack as ../../compose.yaml, deployable from a Portainer
+# repository stack or web editor on any Docker host. Docs: docs/self-hosting.md#portainer
+#
+# What differs from compose.yaml:
+#   - no bind mounts and no build: the gateway config and the database init script are inline
+#     `configs`, and the stack only pulls images. Keep them equal to ../Caddyfile and
+#     ../db/roles.sql (./check.sh compares them).
+#   - no ./docker/setup.sh: the `keys` service signs ANON_KEY and SERVICE_ROLE_KEY from JWT_SECRET
+#     and derives the other secrets, so you only enter POSTGRES_PASSWORD and JWT_SECRET.
+#   - all settings come from the stack's environment variables (Portainer: "Environment
+#     variables"), not from a .env file.
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "3"
+
+x-app: &app
+  logging: *logging
+  image: ${MANAWG_IMAGE:-ghcr.io/abuarchiv/manawg}:${MANAWG_VERSION:-latest}
+
+services:
+  # Creates the keys and derived secrets every other service reads; exits when done. Runs as root
+  # because it writes the empty named volume; the files are readable by the other services.
+  keys:
+    <<: *app
+    user: "0"
+    command: ["node", "/keys.mjs"]
+    restart: "no"
+    environment:
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET (32 or more characters)}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD (letters and digits)}
+      MANAWG_APP_DB_PASSWORD: ${MANAWG_APP_DB_PASSWORD:-}
+      MEMBER_SESSION_SECRET: ${MEMBER_SESSION_SECRET:-}
+      CRON_SECRET: ${CRON_SECRET:-}
+    configs:
+      - source: keys_script
+        target: /keys.mjs
+    volumes:
+      - keys:/keys
+
+  db:
+    image: supabase/postgres:17.11.0.016
+    restart: unless-stopped
+    logging: *logging
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf", "-c", "log_min_messages=fatal"]
+    environment:
+      POSTGRES_HOST: /var/run/postgresql
+      POSTGRES_PORT: 5432
+      PGPORT: 5432
+      POSTGRES_DB: postgres
+      PGDATABASE: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    depends_on:
+      keys:
+        condition: service_completed_successfully
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - db-config:/etc/postgresql-custom
+    configs:
+      - source: roles
+        target: /docker-entrypoint-initdb.d/init-scripts/99-roles.sql
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  auth:
+    image: supabase/gotrue:v2.197.0
+    restart: unless-stopped
+    logging: *logging
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      API_EXTERNAL_URL: ${APP_URL}/auth/v1
+      GOTRUE_SITE_URL: ${APP_URL}
+      GOTRUE_URI_ALLOW_LIST: ${APP_URL}/**
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@db:5432/postgres
+      GOTRUE_DISABLE_SIGNUP: "false"
+      GOTRUE_JWT_SECRET: ${JWT_SECRET}
+      GOTRUE_JWT_EXP: 3600
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_ISSUER: ${APP_URL}/auth/v1
+      GOTRUE_SECURITY_REFRESH_TOKEN_ROTATION_ENABLED: "true"
+      GOTRUE_SECURITY_REFRESH_TOKEN_REUSE_INTERVAL: 10
+      # Per-visitor rate limits: the gateway sets X-Forwarded-For, the app passes it on.
+      GOTRUE_RATE_LIMIT_HEADER: X-Forwarded-For
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      GOTRUE_MAILER_AUTOCONFIRM: "false"
+      # Matches NEW_PASSWORD_MIN_LENGTH in the sign-up and reset forms.
+      GOTRUE_PASSWORD_MIN_LENGTH: 8
+      GOTRUE_MAILER_SECURE_EMAIL_CHANGE_ENABLED: "true"
+      # The sign-in form expects 8-digit codes.
+      GOTRUE_MAILER_OTP_LENGTH: 8
+      GOTRUE_MAILER_OTP_EXP: 3600
+      # Links in mails go through the gateway's public /auth/v1 routes.
+      GOTRUE_MAILER_URLPATHS_INVITE: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_CONFIRMATION: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_RECOVERY: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: /auth/v1/verify
+      GOTRUE_SMTP_HOST: ${SMTP_HOST:?set SMTP_HOST (docs/self-hosting.md#portainer)}
+      GOTRUE_SMTP_PORT: ${SMTP_PORT:-587}
+      GOTRUE_SMTP_USER: ${SMTP_USER:-}
+      GOTRUE_SMTP_PASS: ${SMTP_PASS:-}
+      GOTRUE_SMTP_ADMIN_EMAIL: ${SMTP_ADMIN_EMAIL}
+      GOTRUE_SMTP_SENDER_NAME: ${SMTP_SENDER_NAME:-ManaWG}
+      # Templates from supabase/templates, rendered for this instance by the setup service.
+      GOTRUE_MAILER_TEMPLATES_CONFIRMATION: http://gateway:8000/mail-templates/confirmation.html
+      GOTRUE_MAILER_TEMPLATES_RECOVERY: http://gateway:8000/mail-templates/recovery.html
+      GOTRUE_MAILER_TEMPLATES_MAGIC_LINK: http://gateway:8000/mail-templates/magic_link.html
+      GOTRUE_MAILER_TEMPLATES_EMAIL_CHANGE: http://gateway:8000/mail-templates/email_change.html
+      GOTRUE_MAILER_TEMPLATES_PASSWORD_CHANGED_NOTIFICATION: http://gateway:8000/mail-templates/password_changed.html
+      # Same subjects as supabase/templates/subjects.json.
+      GOTRUE_MAILER_SUBJECTS_CONFIRMATION: '{{ if eq .Data.locale "en" }}Confirm your email address{{ else }}Bestätige deine E-Mail-Adresse{{ end }}'
+      GOTRUE_MAILER_SUBJECTS_RECOVERY: '{{ if eq .Data.locale "en" }}Set a new password{{ else }}Neues Passwort festlegen{{ end }}'
+      GOTRUE_MAILER_SUBJECTS_MAGIC_LINK: '{{ if eq .Data.locale "en" }}{{ .Token }} is your sign-in code{{ else }}{{ .Token }} ist dein Anmeldecode{{ end }}'
+      GOTRUE_MAILER_SUBJECTS_EMAIL_CHANGE: '{{ if eq .Data.locale "en" }}Confirm the change of your email address{{ else }}Bestätige die Änderung deiner E-Mail-Adresse{{ end }}'
+      GOTRUE_MAILER_SUBJECTS_PASSWORD_CHANGED_NOTIFICATION: '{{ if eq .Data.locale "en" }}Your password was changed{{ else }}Dein Passwort wurde geändert{{ end }}'
+      GOTRUE_MAILER_NOTIFICATIONS_PASSWORD_CHANGED_ENABLED: "true"
+      # Optional Google sign-in; register ${APP_URL}/auth/v1/callback as redirect URI at Google.
+      GOTRUE_EXTERNAL_GOOGLE_ENABLED: ${GOOGLE_ENABLED:-false}
+      GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOTRUE_EXTERNAL_GOOGLE_SECRET: ${GOOGLE_SECRET:-}
+      GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI: ${APP_URL}/auth/v1/callback
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:9999/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  storage:
+    image: supabase/storage-api:v1.87.2
+    restart: unless-stopped
+    logging: *logging
+    depends_on:
+      db:
+        condition: service_healthy
+      keys:
+        condition: service_completed_successfully
+    # The image's own entrypoint and command, after loading ANON_KEY and SERVICE_KEY.
+    entrypoint: ["sh", "-c", ". /keys/storage.env && exec docker-entrypoint.sh \"$$@\"", "sh"]
+    command: ["node", "dist/start/server.js"]
+    environment:
+      AUTH_JWT_SECRET: ${JWT_SECRET}
+      DATABASE_URL: postgres://supabase_storage_admin:${POSTGRES_PASSWORD}@db:5432/postgres
+      STORAGE_PUBLIC_URL: ${APP_URL}
+      REQUEST_ALLOW_X_FORWARDED_PATH: "true"
+      FILE_SIZE_LIMIT: 52428800
+      STORAGE_BACKEND: file
+      FILE_STORAGE_BACKEND_PATH: /var/lib/storage
+      GLOBAL_S3_BUCKET: stub
+      TENANT_ID: stub
+      REGION: stub
+      ENABLE_IMAGE_TRANSFORMATION: "false"
+    volumes:
+      - storage-data:/var/lib/storage
+      - keys:/keys:ro
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:5000/status"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  gateway:
+    image: caddy:2.11.7-alpine
+    restart: unless-stopped
+    logging: *logging
+    depends_on:
+      - auth
+      - storage
+    ports:
+      - ${HTTP_BIND:-}${HTTP_PORT:-80}:80
+      - ${HTTP_BIND:-}${HTTPS_PORT:-443}:443
+      - ${HTTP_BIND:-}${HTTPS_PORT:-443}:443/udp
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-127.0.0.1/32}
+    volumes:
+      - mail-templates:/srv/mail-templates:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    configs:
+      - source: caddyfile
+        target: /etc/caddy/Caddyfile
+
+  # Runtime role, migrations, storage bucket and mail templates; exits when done.
+  setup:
+    <<: *app
+    command: ["sh", "-c", ". /keys/setup.env && exec node scripts/selfhost/setup.mjs"]
+    restart: "no"
+    depends_on:
+      keys:
+        condition: service_completed_successfully
+      db:
+        condition: service_healthy
+      auth:
+        condition: service_healthy
+      storage:
+        condition: service_healthy
+      gateway:
+        condition: service_started
+    environment:
+      DATABASE_MIGRATION_URL: postgres://postgres:${POSTGRES_PASSWORD}@db:5432/postgres
+      SUPABASE_INTERNAL_URL: http://gateway:8000
+      SUPABASE_STORAGE_BUCKET: ${STORAGE_BUCKET:-private-images}
+      NEXT_PUBLIC_APP_URL: ${APP_URL}
+      NEXT_PUBLIC_LEGAL_URL: ${LEGAL_URL:-}
+      MAIL_TEMPLATES_DIR: /app/mail-templates
+    volumes:
+      - mail-templates:/app/mail-templates
+      - keys:/keys:ro
+
+  app:
+    <<: *app
+    restart: unless-stopped
+    # The image's own command, after loading the keys.
+    command: ["sh", "-c", ". /keys/app.env && node scripts/selfhost/public-env.mjs && exec node server.js"]
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+    environment:
+      NEXT_PUBLIC_APP_URL: ${APP_URL:?set APP_URL}
+      NEXT_PUBLIC_SUPABASE_URL: ${APP_URL}
+      NEXT_PUBLIC_LEGAL_URL: ${LEGAL_URL:-}
+      NEXT_PUBLIC_SUPPORT_EMAIL: ${SUPPORT_EMAIL:-}
+      SMTP_ADMIN_EMAIL: ${SMTP_ADMIN_EMAIL}
+      GOOGLE_SIGN_IN: ${GOOGLE_ENABLED:-false}
+      SUPABASE_INTERNAL_URL: http://gateway:8000
+      SUPABASE_STORAGE_BUCKET: ${STORAGE_BUCKET:-private-images}
+      MEMBER_SESSION_SECRET_PREVIOUS: ${MEMBER_SESSION_SECRET_PREVIOUS:-}
+      SMTP_HOST: ${SMTP_HOST:?set SMTP_HOST (docs/self-hosting.md#portainer)}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      STATEMENT_EMAIL_FROM: ${SMTP_SENDER_NAME:-ManaWG} <${SMTP_ADMIN_EMAIL}>
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:${SMTP_ADMIN_EMAIL}}
+    volumes:
+      - keys:/keys:ro
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  # Calls the /api/cron/* routes on the schedules in apps/web/vercel.json (UTC).
+  cron:
+    <<: *app
+    command: ["sh", "-c", ". /keys/cron.env && exec node scripts/selfhost/cron.mjs"]
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      CRON_TARGET_URL: http://app:3000
+    volumes:
+      - keys:/keys:ro
+
+  # Local mail catch-all (profile "mailpit"): every mail lands at http://localhost:${MAILPIT_PORT:-8025}
+  # on the Docker host. Enable it with COMPOSE_PROFILES=mailpit and SMTP_HOST=mailpit, SMTP_PORT=1025.
+  mailpit:
+    image: axllent/mailpit:v1.33.0
+    restart: unless-stopped
+    profiles: ["mailpit"]
+    logging: *logging
+    ports:
+      - 127.0.0.1:${MAILPIT_PORT:-8025}:8025
+
+volumes:
+  keys:
+  db-data:
+  db-config:
+  storage-data:
+  caddy-data:
+  caddy-config:
+  mail-templates:
+
+configs:
+  # Same as docker/Caddyfile.
+  caddyfile:
+    content: |
+      # Gateway of the self-hosted stack (compose.yaml).
+      #
+      # Public site (SITE_ADDRESS): the app, plus only those Supabase routes a browser has to reach
+      # itself. A domain as SITE_ADDRESS gets a Let's Encrypt certificate automatically.
+      # Internal listener :8000 (container network only): the full Auth and Storage APIs for the app's
+      # server, and the rendered mail templates for Auth.
+
+      {
+      	# TRUSTED_PROXIES: addresses of your own reverse proxy in front of the gateway, so its
+      	# X-Forwarded-* headers (client address, https) reach the app. Strict mode picks the client
+      	# address as the rightmost entry of X-Forwarded-For that is not a trusted proxy, so a visitor
+      	# cannot choose it by sending the header.
+      	servers {
+      		trusted_proxies static {$$TRUSTED_PROXIES:127.0.0.1/32}
+      		trusted_proxies_strict
+      	}
+      	servers :8000 {
+      		trusted_proxies static private_ranges
+      	}
+      }
+
+      {$$SITE_ADDRESS} {
+      	# Mail confirmation links and OAuth redirects.
+      	@auth path /auth/v1/verify /auth/v1/callback /auth/v1/authorize
+      	handle @auth {
+      		uri strip_prefix /auth/v1
+      		# GoTrue keys its rate limit on the whole X-Forwarded-For value: send only the client.
+      		reverse_proxy auth:9999 {
+      			header_up X-Forwarded-For {client_ip}
+      		}
+      	}
+      	# Signed image uploads straight from the browser.
+      	@upload path /storage/v1/object/upload/sign/*
+      	handle @upload {
+      		uri strip_prefix /storage/v1
+      		reverse_proxy storage:5000
+      	}
+      	handle {
+      		# The app keys its rate limits on the last X-Forwarded-For entry: send only the client.
+      		reverse_proxy app:3000 {
+      			header_up X-Forwarded-For {client_ip}
+      		}
+      	}
+      }
+
+      :8000 {
+      	handle_path /auth/v1/* {
+      		reverse_proxy auth:9999
+      	}
+      	handle_path /storage/v1/* {
+      		reverse_proxy storage:5000
+      	}
+      	handle_path /mail-templates/* {
+      		root * /srv/mail-templates
+      		file_server
+      	}
+      }
+
+  # Same as docker/db/roles.sql.
+  roles:
+    content: |
+      -- Runs once when the database volume is created: Auth and Storage log in with the database password.
+      \set pgpass `echo "$$POSTGRES_PASSWORD"`
+
+      ALTER USER supabase_auth_admin WITH PASSWORD :'pgpass';
+      ALTER USER supabase_storage_admin WITH PASSWORD :'pgpass';
+
+  # Run by the `keys` service.
+  keys_script:
+    content: |
+      // Writes the keys and secrets the ManaWG stack needs, so nothing has to be generated by hand.
+      // ANON_KEY and SERVICE_ROLE_KEY are HS256 JWTs signed with JWT_SECRET (what docker/setup.sh does
+      // with openssl). The app database password, MEMBER_SESSION_SECRET and CRON_SECRET are derived from
+      // JWT_SECRET unless the stack sets them. The output is the same on every start.
+      import { createHmac } from "node:crypto";
+      import { chmodSync, writeFileSync } from "node:fs";
+
+      const fail = (message) => {
+        console.error("[keys] " + message);
+        process.exit(1);
+      };
+      const env = (name) => (process.env[name] || "").trim();
+      const plain = (name, value) => {
+        if (!/^[A-Za-z0-9]{16,}$$/.test(value)) {
+          fail(name + " must be 16 or more letters and digits (for example the output of: openssl rand -hex 24).");
+        }
+        return value;
+      };
+
+      const jwtSecret = env("JWT_SECRET");
+      if (jwtSecret.length < 32) fail("JWT_SECRET must have 32 or more characters.");
+      plain("POSTGRES_PASSWORD", env("POSTGRES_PASSWORD"));
+
+      const b64 = (input) => Buffer.from(input).toString("base64url");
+      const sign = (data, key) => createHmac("sha256", key).update(data).digest();
+      const jwt = (role) => {
+        // Fixed issue and expiry dates (2025 to 2125) keep the key the same on every start.
+        const head = b64(JSON.stringify({ alg: "HS256", typ: "JWT" }));
+        const body = b64(JSON.stringify({ role, iss: "supabase", iat: 1735689600, exp: 4889289600 }));
+        return head + "." + body + "." + b64(sign(head + "." + body, jwtSecret));
+      };
+      const secret = (name) =>
+        env(name) ? plain(name, env(name)) : sign("manawg/" + name, jwtSecret).toString("hex");
+
+      const anon = jwt("anon");
+      const service = jwt("service_role");
+      const appDbPassword = secret("MANAWG_APP_DB_PASSWORD");
+      const memberSecret = secret("MEMBER_SESSION_SECRET");
+      const cronSecret = secret("CRON_SECRET");
+
+      const files = {
+        "storage.env": { ANON_KEY: anon, SERVICE_KEY: service },
+        "setup.env": { MANAWG_APP_DB_PASSWORD: appDbPassword, SUPABASE_SERVICE_ROLE_KEY: service },
+        "app.env": {
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: anon,
+          SUPABASE_SERVICE_ROLE_KEY: service,
+          POSTGRES_URL: "postgres://manawg_app:" + appDbPassword + "@db:5432/postgres",
+          MEMBER_SESSION_SECRET: memberSecret,
+          CRON_SECRET: cronSecret,
+        },
+        "cron.env": { CRON_SECRET: cronSecret },
+      };
+      for (const [name, values] of Object.entries(files)) {
+        const text = Object.entries(values).map(([key, value]) => "export " + key + "='" + value + "'\n").join("");
+        writeFileSync("/keys/" + name, text);
+        chmodSync("/keys/" + name, 0o644);
+      }
+      console.error("[keys] Keys and secrets are ready.");
