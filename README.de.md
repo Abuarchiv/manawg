@@ -10,7 +10,6 @@
 <h3 align="center">Eine App für die ganze WG: Ausgaben, Putzplan, Einkaufsliste, Kalender und Chat.</h3>
 
 <p align="center">
-  <a href="https://manawg.com/demo"><strong>Demo ausprobieren</strong></a> (ohne Konto) ·
   <a href="https://app.manawg.com"><strong>App öffnen</strong></a> ·
   <a href="#selbst-hosten">Selbst hosten</a> ·
   <a href="https://manawg.com">Website</a> ·

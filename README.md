@@ -10,7 +10,6 @@
 <h3 align="center">One app for the whole flat: expenses, cleaning rota, shopping list, calendar and chat.</h3>
 
 <p align="center">
-  <a href="https://manawg.com/en/demo"><strong>Try the demo</strong></a> (no account) ·
   <a href="https://app.manawg.com"><strong>Open the app</strong></a> ·
   <a href="#self-hosting">Self-host</a> ·
   <a href="https://manawg.com/en">Website</a> ·
