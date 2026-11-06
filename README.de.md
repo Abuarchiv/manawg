@@ -40,6 +40,13 @@ zur Sprache des Geräts.
   übertragen.
 - **Kein Lock-in:** Du kannst die ganze WG jederzeit als JSON oder CSV exportieren.
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/demo-de-dark.webp">
+    <img src="docs/screenshots/demo-de-light.webp" width="280" alt="Bildschirmaufnahme von ManaWG auf dem Handy: aus dem Browser installieren, eine Ausgabe eintragen, eine Putzaufgabe abhaken und die Einkaufsliste abarbeiten.">
+  </picture>
+</p>
+
 ## Funktionen
 
 <picture>
