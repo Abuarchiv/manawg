@@ -1,5 +1,6 @@
 'use client';
 
+import { COPY } from '@/app/global-error-copy';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
 	Empty,
@@ -16,29 +17,6 @@ import { applyStoredTheme, THEME_BOOTSTRAP_SCRIPT } from '@/shared/lib/theme';
 import '@/shared/globals.css';
 import { TriangleAlert } from 'lucide-react';
 import { useEffect, useLayoutEffect, useSyncExternalStore } from 'react';
-
-// This boundary sits above the root layout, so it has no message provider: two tiny inline copies.
-const COPY: Record<Locale, Record<'wrong' | 'reload' | 'retry' | 'home' | 'report', string>> = {
-	de: {
-		// i18n-ignore German copy of the provider-less boundary
-		wrong: 'Etwas ist schiefgelaufen',
-		// i18n-ignore German copy of the provider-less boundary
-		reload: 'Bitte lade die Seite neu.',
-		// i18n-ignore German copy of the provider-less boundary
-		retry: 'Erneut versuchen',
-		// i18n-ignore German copy of the provider-less boundary
-		home: 'Zur Startseite',
-		// i18n-ignore German copy of the provider-less boundary
-		report: 'Fehler per E-Mail melden',
-	},
-	en: {
-		wrong: 'Something went wrong',
-		reload: 'Please reload the page.',
-		retry: 'Try again',
-		home: 'Go to home page',
-		report: 'Report error by email',
-	},
-};
 
 function readLocale(): Locale {
 	if (document.documentElement.lang.startsWith('en')) return 'en';
