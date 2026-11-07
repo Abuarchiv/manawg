@@ -181,7 +181,7 @@ export const config = {
 	// matcher does not include the bare prefix without a trailing slash, so
 	// POST /api/wg (create-WG) would otherwise bypass all limits.
 	matcher: [
-		'/((?!api|_next/static|_next/image|favicon.ico|manifest.json|.*\\..*).*)',
+		'/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)',
 		'/api/account',
 		'/api/auth/:path*',
 		'/api/wg',

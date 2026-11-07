@@ -103,7 +103,7 @@ export const metadata: Metadata = {
 		description: metaDescription,
 		images: ['/opengraph-image'],
 	},
-	manifest: '/manifest.json',
+	manifest: '/manifest.webmanifest',
 	icons: {
 		icon: [
 			{ url: '/favicon.svg', type: 'image/svg+xml' },
