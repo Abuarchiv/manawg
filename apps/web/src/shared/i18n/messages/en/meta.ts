@@ -7,6 +7,13 @@ export default {
 		description:
 			'With ManaWG you share expenses, organise shopping and split tasks on the cleaning rota. The app is free and runs in the browser.',
 	},
+	manifest: {
+		description:
+			'Expenses, cleaning rota, shopping and noticeboard for your flat, available offline.',
+		shortcutName: 'Join a flat',
+		shortcutShortName: 'Join',
+		shortcutDescription: 'Join a flat with an invitation link',
+	},
 	authReset: { title: 'Reset password' },
 	agentConsent: {
 		title: 'Connect an AI assistant',

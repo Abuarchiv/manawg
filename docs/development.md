@@ -21,7 +21,7 @@ apps/web/
                   auth/ (sign-in, sign-up, password-reset forms), brand/ (splash screen), entry/ (signed-out entry app, WG welcome)
   src/fixtures/   in-memory fixture build for e2e (see Fixture mode); only src/app/ imports it
   src/shared/     framework-light utilities (lib/, i18n/, fonts, css): theme, brand, analytics
-  public/         static files: PWA manifest, service worker, icons, mail images
+  public/         static files: service worker, icons, mail images (the PWA manifest is `src/app/manifest.ts`)
   drizzle/        SQL migrations (`pnpm --filter @manawg/web db:generate` / `db:migrate`)
   e2e/            Playwright specs (fixture mode needs no database)
   tests/          node:test suites that are not colocated with a module

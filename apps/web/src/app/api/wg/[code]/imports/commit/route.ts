@@ -18,8 +18,10 @@ import { importMemberMappingSchema } from '@/features/expenses/import-member-map
 import {
 	findMappingConflicts,
 	type ParsedExpense,
+	parseSettleUpCsv,
 	parseSplidCsv,
 	parseSplitwiseCsv,
+	parseTricountCsv,
 	type RejectedRow,
 } from '@/features/expenses/import-parsers';
 import { parseOcrText } from '@/features/expenses/ocr';
@@ -28,7 +30,7 @@ import { hashPayload } from '@/features/expenses/server/import-hash';
 import type { Locale } from '@/shared/i18n/locale';
 
 const commitSchema = z.object({
-	source: z.enum(['splitwise_csv', 'splid_csv', 'ocr_text']),
+	source: z.enum(['splitwise_csv', 'splid_csv', 'tricount_csv', 'settleup_csv', 'ocr_text']),
 	payload: z.string().min(1),
 	memberMapping: importMemberMappingSchema(z.string().uuid().nullable()),
 	previewPayloadHash: z.string().optional(),
@@ -43,6 +45,8 @@ function parseFor(source: string, payload: string, locale: Locale) {
 	let expenses: ParsedExpense[];
 	if (source === 'splitwise_csv') expenses = parseSplitwiseCsv(payload, rejected, locale);
 	else if (source === 'splid_csv') expenses = parseSplidCsv(payload, rejected, locale);
+	else if (source === 'tricount_csv') expenses = parseTricountCsv(payload, rejected);
+	else if (source === 'settleup_csv') expenses = parseSettleUpCsv(payload, rejected);
 	else expenses = parseOcrText(payload).expenses;
 	return { expenses, rejected };
 }

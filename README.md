@@ -58,9 +58,10 @@ web app. *WG* is short for *Wohngemeinschaft*, German for shared flat.
 
 ManaWG is built for one flat of up to 20 people. Trips, offices and landlords are out of scope.
 
-### Moving from Splitwise or Splid
+### Moving from Splitwise, Splid, Tricount or Settle Up
 
-Export a CSV from Splitwise or Splid and import it under *Expenses → Import*. ManaWG matches the
+Export a CSV from Splitwise, Splid, Tricount or Settle Up (for Tricount, save its Excel export as
+CSV) and import it under *Expenses → Import*. ManaWG matches the
 names to your flatmates, skips rows it already has and can undo a whole import. It can also read
 expenses from a screenshot; the text recognition runs in your browser, so the image never leaves
 your device.

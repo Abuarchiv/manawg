@@ -10,7 +10,7 @@
 // served from cache, and the app has its own offline queue for writes.
 //
 // Bump VERSION to evict every cached shell asset on the next activate.
-const VERSION = 'manawg-app-v9-english-sweep';
+const VERSION = 'manawg-app-v10-localized-manifest';
 const SHELL_CACHE = `${VERSION}-shell`;
 // Hashed /_next/static chunks fetched while browsing. sw.js itself does not
 // change between deploys, so nothing would ever evict them; the cap keeps the
@@ -25,14 +25,7 @@ const NAVIGATION_TIMEOUT_MS = 15000;
 // The cached offline page is revalidated at most this often while the user browses online.
 const OFFLINE_MAX_AGE_MS = 6 * 60 * 60 * 1000;
 
-const SHELL_ASSETS = [
-	'/',
-	'/offline',
-	'/icon-192.png',
-	'/icon-512.png',
-	'/apple-touch-icon.png',
-	'/manifest.json',
-];
+const SHELL_ASSETS = ['/', '/offline', '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png'];
 
 const cacheResponse = (request, response) => {
 	if (response.ok === false) return;

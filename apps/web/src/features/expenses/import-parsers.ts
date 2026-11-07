@@ -2,8 +2,10 @@ import type { Message } from '@/shared/i18n/message';
 import { normalizeMemberName } from './import-csv-helpers';
 import type { ParsedExpense } from './import-types';
 
+export { parseSettleUpCsv } from './import-settleup-csv';
 export { parseSplidCsv } from './import-splid-csv';
 export { parseSplitwiseCsv } from './import-splitwise-csv';
+export { parseTricountCsv } from './import-tricount-csv';
 export type { ImportSource, ParsedExpense, RejectedRow } from './import-types';
 export { UNKNOWN_NAME } from './import-types';
 
@@ -19,6 +21,7 @@ const REJECTED_ROW_REASONS: Record<string, Message> = {
 	no_participants: { key: 'expenses-import.rejected.noParticipants' },
 	payer_missing: { key: 'expenses-import.rejected.payerMissing' },
 	multiple_payers: { key: 'expenses-import.rejected.multiplePayers' },
+	income_unsupported: { key: 'expenses-import.rejected.incomeUnsupported' },
 	currency_unsupported: { key: 'expenses-import.rejected.currencyUnsupported' },
 };
 

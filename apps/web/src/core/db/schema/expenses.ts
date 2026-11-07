@@ -37,7 +37,7 @@ export const expenseImports = pgTable(
 		wgStartedIdx: index('expense_imports_wg_started_idx').on(t.wgId, t.startedAt.desc()),
 		sourceCheck: check(
 			'expense_imports_source_check',
-			sql`${t.source} in ('splitwise_csv', 'splid_csv', 'ocr_screenshot', 'manual')`,
+			sql`${t.source} in ('splitwise_csv', 'splid_csv', 'tricount_csv', 'settleup_csv', 'ocr_screenshot', 'manual')`,
 		),
 	}),
 );

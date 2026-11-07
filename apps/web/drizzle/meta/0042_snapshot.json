@@ -1,5 +1,5 @@
 {
-  "id": "c18c7d49-08bf-49d4-aa34-1f2618029372",
+  "id": "20d24aa9-1116-42d3-975c-4187bf5874b3",
   "prevId": "8b642612-8487-4743-a88a-ea1c6cbf6a6a",
   "version": "7",
   "dialect": "postgresql",
@@ -1595,7 +1595,7 @@
       "checkConstraints": {
         "expense_imports_source_check": {
           "name": "expense_imports_source_check",
-          "value": "\"expense_imports\".\"source\" in ('splitwise_csv', 'splid_csv', 'ocr_screenshot', 'manual')"
+          "value": "\"expense_imports\".\"source\" in ('splitwise_csv', 'splid_csv', 'tricount_csv', 'settleup_csv', 'ocr_screenshot', 'manual')"
         }
       },
       "isRLSEnabled": false
@@ -3720,7 +3720,7 @@
         },
         "wg_members_locale_check": {
           "name": "wg_members_locale_check",
-          "value": "\"wg_members\".\"locale\" in ('de', 'en', 'es')"
+          "value": "\"wg_members\".\"locale\" in ('de', 'en')"
         }
       },
       "isRLSEnabled": false

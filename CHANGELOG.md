@@ -12,12 +12,19 @@ settled.
 
 - Spanish (Español) as a third language: the interface, mails, push notifications, monthly
   statements and exports follow the device language or the choice in the profile settings.
-  Migration 0042 allows the new value for the stored language. The Splitwise and Splid CSV
+  Migration 0043 allows the new value for the stored language. The Splitwise and Splid CSV
   importers also read Spanish column headers. Receipt scanning still recognises German and
   English text only.
+- Import from Tricount and Settle Up (CSV) under *Expenses → Import*, next to Splitwise and Splid.
+  Money transfers are marked as repayments like Splitwise payments, income entries and rows in other
+  currencies than euros are listed as not imported. Needs a database migration (`0042`), which
+  `setup` applies on start.
 
 ### Changed
 
+- The installed app's description and its "Join a flat" home-screen shortcut follow the device
+  language instead of always being German. The PWA manifest is now served at
+  `/manifest.webmanifest`.
 - Links that open a new tab are announced as such by screen readers.
 
 ### Fixed

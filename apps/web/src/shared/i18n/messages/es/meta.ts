@@ -7,6 +7,13 @@ export default {
 		description:
 			'Con ManaWG compartes gastos, organizas las compras y repartes las tareas con el plan de limpieza. La app es gratuita y funciona en el navegador.',
 	},
+	manifest: {
+		description:
+			'Gastos, plan de limpieza, compras y tablón para tu piso compartido, también sin conexión.',
+		shortcutName: 'Unirse a un piso',
+		shortcutShortName: 'Unirse',
+		shortcutDescription: 'Únete a un piso con un enlace de invitación',
+	},
 	authReset: { title: 'Restablecer contraseña' },
 	agentConsent: {
 		title: 'Conectar un asistente de IA',
