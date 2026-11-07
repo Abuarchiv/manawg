@@ -126,3 +126,23 @@ test('Tricount: a row without a title is described by its people, a file without
 	assert.deepEqual(parseTricountCsv('Title,Amount,Date,Paid by\nA,1,2026-10-01,Anna'), []);
 	assert.deepEqual(parseTricountCsv(''), []);
 });
+
+test('Tricount: negative share cells, year-first slash dates and a comma-joined payer cell', () => {
+	const rejected: RejectedRow[] = [];
+	const csv = [
+		'Title,Amount,Date,Paid by,Impacted to Anna,Impacted to Ben',
+		'Signed,20,2026/04/03,Anna,-10,-10',
+		'"Joint",20,2026-04-03,"Anna, Ben",10,10',
+	].join('\n');
+	const rows = parseTricountCsv(csv, rejected);
+	assert.equal(rows.length, 1);
+	assert.equal(rows[0]?.date, '2026-04-03T12:00:00.000Z');
+	assert.deepEqual(rows[0]?.splits, [
+		{ memberName: 'Anna', amountCents: 1000 },
+		{ memberName: 'Ben', amountCents: 1000 },
+	]);
+	assert.deepEqual(
+		rejected.map((r) => [r.line, r.reason]),
+		[[3, 'multiple_payers']],
+	);
+});

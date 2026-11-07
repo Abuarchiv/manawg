@@ -25,7 +25,7 @@ const SHARE_COLUMN = /^(?:impacted(?: to| for)?|paid for|bezahlt für|share(?: o
 const TRANSFER_TYPE = /transfer|reimburs|remboursement|balance|settle|payment|überweis|erstattung/i; // i18n-ignore import parser column names
 // Income is money the group received; an expense here cannot go backwards.
 const INCOME_TYPE = /income|einnahme|revenu|recette/i; // i18n-ignore import parser column names
-const MULTIPLE_PAYERS = /[;|]/;
+const MULTIPLE_PAYERS = /[;,|]/;
 
 interface TricountColumns {
 	title: number;
@@ -96,8 +96,9 @@ export function parseTricountCsv(csv: string, rejected?: RejectedRow[]): ParsedE
 		const sharing = columns.shares
 			.map(({ index, name }) => ({
 				memberName: name,
-				// Euros, as splitProportionally compares them with the total.
-				weight: (parseAmountToCents(cell(fields, index)) ?? 0) / 100,
+				// Euros, as splitProportionally compares them with the total. Some exports sign
+				// allocations negatively; the sign carries no meaning for a share.
+				weight: Math.abs(parseAmountToCents(cell(fields, index)) ?? 0) / 100,
 			}))
 			.filter((entry) => entry.weight > 0);
 		const label = () =>

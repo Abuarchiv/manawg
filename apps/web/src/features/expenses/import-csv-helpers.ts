@@ -261,6 +261,7 @@ export function readCsvTable(
 	return null;
 }
 
+const YEAR_FIRST_DATE = /^(\d{4})\/(\d{1,2})\/(\d{1,2})(?!\d)/;
 const NUMERIC_DATE = /^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})(?!\d)/;
 
 /**
@@ -279,6 +280,11 @@ export function detectDayFirst(values: readonly string[]): boolean {
 
 /** `parseDateIso` for exports whose slash and dash dates follow the file, not the UI language. */
 export function parseExportDate(raw: string, dayFirst: boolean): string | null {
+	const yearFirst = raw.trim().match(YEAR_FIRST_DATE);
+	if (yearFirst) {
+		const [, year = '', month = '', day = ''] = yearFirst;
+		return parseDayMonthYear(day, month, year);
+	}
 	const match = raw.trim().match(NUMERIC_DATE);
 	if (!match) return parseDateIso(raw);
 	const [, first = '', second = '', year = ''] = match;
@@ -294,6 +300,36 @@ export function parseDecimal(raw: string): number | null {
 	return Number(normalized);
 }
 
+const WEIGHT_SCALE = 1_000_000;
+
+/**
+ * Weights that already are whole cents adding up to the total are the file's own split and stay as
+ * they are. Anything else (ratios, sub-cent amounts, a split that misses the total) is allocated
+ * proportionally in exact integer math, the largest remainders getting the leftover cents.
+ */
+function allocateShares(totalCents: number, weights: readonly number[]): number[] {
+	const exact = weights.map((w) => Math.round(w * 100));
+	if (exact.reduce((acc, n) => acc + n, 0) === totalCents) return exact;
+	const scaled = weights.map((w) => BigInt(Math.max(1, Math.round(w * WEIGHT_SCALE))));
+	const sum = scaled.reduce((acc, n) => acc + n, BigInt(0));
+	const total = BigInt(totalCents);
+	const parts = scaled.map((w, idx) => ({
+		idx,
+		cents: (total * w) / sum,
+		remainder: (total * w) % sum,
+	}));
+	let leftover = Number(total - parts.reduce((acc, p) => acc + p.cents, BigInt(0)));
+	const byRemainder = [...parts].sort((a, b) =>
+		a.remainder === b.remainder ? a.idx - b.idx : a.remainder > b.remainder ? -1 : 1,
+	);
+	for (const part of byRemainder) {
+		if (leftover <= 0) break;
+		part.cents += BigInt(1);
+		leftover -= 1;
+	}
+	return parts.map((p) => Number(p.cents));
+}
+
 /**
  * Splits `totalCents` in proportion to `weights` (exact amounts or plain ratios) so the shares add
  * up to the total to the cent. `drifted` is set when the weights, read as euros, miss the total by
@@ -306,8 +342,10 @@ export function splitProportionally(
 	const valid = entries.filter((e) => Number.isFinite(e.weight) && e.weight > 0);
 	const weightSum = valid.reduce((acc, e) => acc + e.weight, 0);
 	if (valid.length === 0 || weightSum <= 0) return { splits: [], drifted: false };
-	const raw = valid.map((e) => Math.floor((totalCents * e.weight) / weightSum));
-	const shares = distributeRemainder(totalCents, raw);
+	const shares = allocateShares(
+		totalCents,
+		valid.map((e) => e.weight),
+	);
 	const splits = valid
 		.map((e, i) => ({ memberName: e.memberName, amountCents: shares[i] ?? 0 }))
 		.filter((split) => split.amountCents > 0);

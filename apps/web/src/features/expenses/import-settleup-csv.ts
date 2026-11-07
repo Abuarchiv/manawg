@@ -114,8 +114,8 @@ export function parseSettleUpCsv(csv: string, rejected?: RejectedRow[]): ParsedE
 			continue;
 		}
 
-		// The split column holds one amount per name (or, in older exports, a ratio). Without a
-		// matching list every name takes an equal share.
+		// The split column holds one amount per name. Amounts that miss the total are scaled to it
+		// and flagged. Without a matching list every name takes an equal share.
 		const splitRaw = cell(fields, columns.split);
 		const values = splitList(splitRaw).map(parseDecimal);
 		const listed = values.length === names.length && values.every((v) => v !== null && v >= 0);

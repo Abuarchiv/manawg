@@ -71,7 +71,7 @@ test('Settle Up: without usable split amounts everyone takes an equal share', ()
 	assert.deepEqual(mismatch?.warnings, ['custom_splits_discarded']);
 });
 
-test('Settle Up: split ratios are scaled to the amount and flagged for a check', () => {
+test('Settle Up: split values that miss the amount are scaled to it and flagged for a check', () => {
 	const csv = `${HEADER}\nBen,6.6,EUR,Anna;Ben,3;1,Drinks,,2026-06-01 10:00:00,,,,expense,`;
 	const [row] = parseSettleUpCsv(csv);
 	assert.deepEqual(row?.splits, [
