@@ -12,7 +12,9 @@ settled.
 
 - Spanish (Español) as a third language: the interface, mails, push notifications, monthly
   statements and exports follow the device language or the choice in the profile settings.
-  Migration 0042 allows the new value for the stored language.
+  Migration 0042 allows the new value for the stored language. The Splitwise and Splid CSV
+  importers also read Spanish column headers. Receipt scanning still recognises German and
+  English text only.
 
 ### Self-hosting
 

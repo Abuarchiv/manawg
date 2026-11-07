@@ -66,6 +66,30 @@ test('parseSplitwiseCsv flags settle-up rows with a payment_row warning', () => 
 	);
 });
 
+test('parseSplitwiseCsv and parseSplidCsv read Spanish column headers', () => {
+	const splitwise = [
+		'Fecha;Descripción;Categoría;Coste;Moneda;Ana;Ben',
+		'10/01/2024;Pago;Pago;25,00;EUR;25,00;-25,00',
+		'11/01/2024;Pizza;Comida;20,00;EUR;10,00;-10,00',
+		'12/01/2024;Saldo total;;0,00;EUR;0,00;0,00',
+	].join('\n');
+	const parsed = parseSplitwiseCsv(splitwise, [], 'es');
+	assert.equal(parsed.length, 2);
+	assert.equal(parsed[1]?.date, '2024-01-11T12:00:00.000Z');
+	assert.equal(parsed[1]?.amountCents, 2000);
+	assert.ok(parsed[0]?.warnings.includes('payment_row'));
+	assert.deepEqual(parsed[1]?.splits.map((split) => split.memberName).sort(), ['Ana', 'Ben']);
+
+	const splid = [
+		'Fecha;Descripción;Importe;Pagado por;Participantes;Moneda',
+		'11/01/2024;Pizza;20,00;Ana;Ana, Ben;EUR',
+	].join('\n');
+	const [expense] = parseSplidCsv(splid, [], 'es');
+	assert.equal(expense?.date, '2024-01-11T12:00:00.000Z');
+	assert.equal(expense?.paidByName, 'Ana');
+	assert.equal(expense?.splits.length, 2);
+});
+
 test('parseSplitwiseCsv still handles an equal split correctly', () => {
 	const csv = [
 		'Date,Description,Cost,Currency,Anna,Bob',

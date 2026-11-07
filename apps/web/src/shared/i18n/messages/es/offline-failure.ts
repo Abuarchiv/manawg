@@ -16,7 +16,7 @@ export default {
 	},
 	accessMissing: {
 		title: 'Falta acceso',
-		detail: 'Abre el piso otra vez o comprueba que tu membresía siga teniendo acceso.',
+		detail: 'Abre el piso otra vez o comprueba que tu cuenta de miembro siga teniendo acceso.',
 	},
 	sessionExpired: {
 		title: 'Sesión caducada',
@@ -44,14 +44,14 @@ export default {
 		detail: 'La acción sigue en la cola y se enviará cuando termine el mantenimiento.',
 	},
 	memberInvalid: {
-		title: 'La membresía ya no es válida',
+		title: 'Tu acceso como miembro ya no es válido',
 		detail:
 			'Abre el piso otra vez o únete con un enlace de invitación actual antes de enviar esta acción.',
 	},
 	movedOut: {
 		title: 'Te has ido del piso',
 		detail:
-			'Tu membresía figura como baja en este piso. Volver a iniciar sesión no lo soluciona. Pide a un admin que te reactive antes de enviar esta acción.',
+			'Figuras como baja en este piso. Volver a iniciar sesión no lo soluciona. Pide a un admin que te reactive antes de enviar esta acción.',
 	},
 	memberInAction: {
 		title: 'Revisa a las personas implicadas',

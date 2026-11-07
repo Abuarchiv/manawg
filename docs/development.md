@@ -30,7 +30,7 @@ apps/web/
   components.json shadcn registry configuration
   vercel.json     cron schedule and settings for Vercel deployments
   playwright*.ts  Playwright configs: default, and WebKit against the fixture build
-docs/             architecture, self-hosting, backup and recovery, brand/ (design language, English glossary)
+docs/             architecture, self-hosting, backup and recovery, brand/ (design language, English and Spanish glossaries)
 docker/           self-hosting stack: setup, gateway, backup, restore and smoke test (with compose.yaml),
                   `portainer/` (the same stack as a Portainer stack, with a drift check)
 supabase/templates/  Auth mail templates (HTML, subjects) used by the Docker stack and hosted Supabase
@@ -137,7 +137,7 @@ WG store that account as `manawg_account` first (`seedLocalAccount` in `e2e/supp
 
 User-facing text lives in `apps/web/src/shared/i18n/messages/{de,en,es}/*.ts`, never in components,
 and every key needs every locale. English wording follows the
-[English glossary](brand/glossary-en.md). The `i18n-literal` check in
+[English](brand/glossary-en.md) and [Spanish](brand/glossary-es.md) glossaries. The `i18n-literal` check in
 `apps/web/scripts/check-architecture.mjs` fails on German UI copy outside the catalogs;
 `// i18n-ignore <reason>` is only for technical literals such as stored keys. Server texts (push,
 mail, export, activity feed) are written in the recipient's language. `tests/i18n-catalog.test.ts`
@@ -196,6 +196,8 @@ These tests skip themselves unless their variable is set. `pnpm test:unit` and `
 | `RUN_DB_TIMEOUT_INTEGRATION` | The pool timeout case in `tests/runtime-pool.test.ts` | `pnpm --filter @manawg/web test:db-timeouts` (needs `initdb` and `pg_ctl` on the PATH and a non-root user) | Runs in `database.yml` |
 | `ACCOUNT_DELETE_TEST_URL` | `e2e/account-delete-db-*.spec.ts` (account deletion against real data) | `ACCOUNT_DELETE_TEST_URL=postgresql://postgres@127.0.0.1:55432/manawg_test pnpm --filter @manawg/web test:e2e:account-delete-db` (loopback host and explicit port required) | Runs in `database.yml` |
 | `OCR_RUNTIME_E2E` | The real Tesseract worker proof in `e2e/expense-ui-form.spec.ts` | `OCR_RUNTIME_E2E=true pnpm --filter @manawg/web test:e2e:fixtures e2e/expense-ui-form.spec.ts` | Needs no network: the worker, WASM core and models come from the app's `public/tesseract` (copied from `node_modules` by `next.config.ts`) |
+
+Receipt scanning (OCR) ships the German and English Tesseract models only. The receipt parser reads Spanish payer words and accented names, but Spanish receipts lose `ñ` and accents until a `spa` model is added.
 
 `test:e2e:fixtures` and `dev:fixtures` set the fixture-mode variables themselves, so you never export them: `E2E_FIXTURE_MODE` and `NEXT_PUBLIC_E2E_FIXTURE_MODE` (`true`) and `NEXT_PUBLIC_DB_DOWN` (`true`, see [Fixture mode](#fixture-mode-no-database)). `E2E_PORT` (default `3101`) is the port of the fixture suite; set it to run the suite next to another server, for example `E2E_PORT=3221 pnpm --filter @manawg/web test:e2e:fixtures`. `BASE_URL` defaults to `http://localhost:$E2E_PORT`.
 

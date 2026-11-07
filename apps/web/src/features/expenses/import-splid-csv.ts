@@ -18,6 +18,8 @@ import {
 	UnsupportedCurrencyError,
 } from './import-types';
 
+const PARTICIPANT_HEADERS = ['teilnehmer', 'participants', 'participantes', 'für']; // i18n-ignore import parser column names
+
 export function parseSplidCsv(
 	csv: string,
 	rejected?: RejectedRow[],
@@ -29,12 +31,32 @@ export function parseSplidCsv(
 	const rows = parseCsv(csv, delimiter);
 	if (rows.length < 2) return [];
 	const header = rows[0]?.fields ?? [];
-	const idxDate = findColumnIndex(header, ['datum', 'date']);
-	const idxDesc = findColumnIndex(header, ['beschreibung', 'titel', 'description']);
-	const idxAmount = findColumnIndex(header, ['betrag', 'kosten', 'amount']);
-	const idxPaidBy = findColumnIndex(header, ['bezahlt von', 'zahler', 'payer', 'paid by']);
-	const idxParticipants = findColumnIndex(header, ['teilnehmer', 'participants', 'für']); // i18n-ignore import parser column names
-	const idxCurrency = findColumnIndex(header, ['währung', 'wahrung', 'currency']); // i18n-ignore import parser column names
+	const idxDate = findColumnIndex(header, ['datum', 'date', 'fecha']);
+	const idxDesc = findColumnIndex(header, [
+		'beschreibung',
+		'titel',
+		'description',
+		'descripcion',
+		'titulo',
+	]);
+	const idxAmount = findColumnIndex(header, [
+		'betrag',
+		'kosten',
+		'amount',
+		'importe',
+		'coste',
+		'costo',
+	]);
+	const idxPaidBy = findColumnIndex(header, [
+		'bezahlt von',
+		'zahler',
+		'payer',
+		'paid by',
+		'pagado por',
+		'pagador',
+	]);
+	const idxParticipants = findColumnIndex(header, PARTICIPANT_HEADERS);
+	const idxCurrency = findColumnIndex(header, ['währung', 'wahrung', 'currency', 'moneda']); // i18n-ignore import parser column names
 	if (idxDate === -1 || idxDesc === -1 || idxAmount === -1 || idxPaidBy === -1) return [];
 
 	const out: ParsedExpense[] = [];

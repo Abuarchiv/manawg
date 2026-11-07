@@ -7,7 +7,7 @@ export default {
 		body: 'Algo ha salido mal en la lista de la compra. Inténtalo de nuevo o vuelve al resumen del piso.',
 	},
 	page: {
-		title: 'Compra',
+		title: 'Compras',
 		openCount: '{count, plural, one {# pendiente} other {# pendientes}}',
 		emptyTitle: 'La lista está vacía',
 		emptyWithSuggestions: 'Añade un artículo abajo o toca una sugerencia.',

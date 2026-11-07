@@ -111,7 +111,7 @@ or in [Discussions](https://github.com/Abuarchiv/manawg/discussions).
 
 User-facing text lives in `apps/web/src/shared/i18n/messages/{de,en,es}/*.ts`, never in
 components. Every key needs every locale. English wording follows
-[docs/brand/glossary-en.md](docs/brand/glossary-en.md); Spanish uses the informal "tú" and is
+[docs/brand/glossary-en.md](docs/brand/glossary-en.md); Spanish follows [docs/brand/glossary-es.md](docs/brand/glossary-es.md), uses the informal "tú" and is
 translated from the English text. The `i18n-literal` check fails on German
 UI copy outside the catalogs; `// i18n-ignore <reason>` is only for technical literals. Server
 texts (push, mail, export, activity) use the recipient's language.

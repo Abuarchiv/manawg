@@ -59,7 +59,7 @@ Push notifications, monthly statements, reminder mails and unsubscribe pages SHA
 
 ### Requirement: Formatting and amount input follow the locale
 
-Dates, numbers and currency SHALL be formatted with `de-DE` for German and `en-GB` for English. WG day boundaries SHALL stay in `Europe/Berlin`. Amount input SHALL accept `12,50` and `12.50` as 12.50 in both locales; a three-digit tail after a single separator SHALL be read as grouping in the separator's locale convention and SHALL be rejected otherwise, as is a grouped number whose first group starts with `0` (`0,001`). English CSV export SHALL use `,` as separator and `.` as decimal point, German CSV `;` and a decimal comma, for amounts and for fractional quantities alike. The inventory export SHALL name units and categories in the reader's language.
+Dates, numbers and currency SHALL be formatted with `de-DE` for German, `en-GB` for English and `es-ES` for Spanish; Spanish short dates are unpadded numeric day/month (`6/10`). WG day boundaries SHALL stay in `Europe/Berlin`. Amount input SHALL accept `12,50` and `12.50` as 12.50 in every locale; a three-digit tail after a single separator SHALL be read as grouping in the separator's locale convention and SHALL be rejected otherwise, as is a grouped number whose first group starts with `0` (`0,001`). English CSV export SHALL use `,` as separator and `.` as decimal point, German and Spanish CSV `;` and a decimal comma, for amounts and for fractional quantities alike. The inventory export SHALL name units and categories in the reader's language.
 
 #### Scenario: English amount with grouping
 - **WHEN** an English user enters `1,234.50`
@@ -68,6 +68,14 @@ Dates, numbers and currency SHALL be formatted with `de-DE` for German and `en-G
 #### Scenario: German amount unchanged
 - **WHEN** a German user enters `1.234,56`
 - **THEN** the amount SHALL be 123456 cents
+
+#### Scenario: Spanish amount
+- **WHEN** a Spanish user enters `1.234,56`
+- **THEN** the amount SHALL be 123456 cents
+
+#### Scenario: Spanish CSV import
+- **WHEN** a Spanish user imports a CSV with the columns `Fecha`, `Descripción`, `Coste` and the date `11/01/2024`
+- **THEN** the date SHALL be read day first as 2024-01-11 and the amounts with a decimal comma
 
 ### Requirement: Display text is not stored or used as logic
 

@@ -9,7 +9,7 @@ export default {
 	page: {
 		title: 'Suministros',
 		unavailable: 'No disponible por ahora',
-		count: '{count, plural, one {# artículo en stock} other {# artículos en stock}}',
+		count: '{count, plural, one {# artículo en existencias} other {# artículos en existencias}}',
 		reload: 'Recargar suministros',
 		add: 'Añadir artículo',
 	},
@@ -34,7 +34,7 @@ export default {
 	row: {
 		meta: '{quantity} · Reponer al llegar a {threshold}',
 		decreaseAria: 'Reducir {name} en uno',
-		decreaseZeroAria: 'Reducir {name} en uno (stock 0)',
+		decreaseZeroAria: 'Reducir {name} en uno (existencias 0)',
 		increaseAria: 'Aumentar {name} en uno',
 		editAria: 'Editar {name}',
 		removeFinalAria: 'Eliminar definitivamente: {name}',
@@ -55,9 +55,9 @@ export default {
 		close: 'Cerrar',
 	},
 	restockPrompt: {
-		question: 'Has comprado {name}. ¿Aumentar el stock en {amount}?',
-		restockAria: '{name}: aumentar stock',
-		restock: 'Aumentar stock',
+		question: 'Has comprado {name}. ¿Aumentar las existencias en {amount}?',
+		restockAria: '{name}: aumentar existencias',
+		restock: 'Aumentar existencias',
 		dismiss: 'Ahora no',
 		dismissAria: '{name}: ahora no',
 	},
@@ -71,7 +71,7 @@ export default {
 		unit: 'Unidad',
 		category: 'Categoría',
 		hintCreateLow: 'Al guardarlo, pasa directamente a la lista de la compra.',
-		hint: 'El artículo pasa a la lista de la compra cuando el stock llega a este nivel.',
+		hint: 'El artículo pasa a la lista de la compra cuando las existencias llegan a este nivel.',
 		save: 'Guardar',
 		saving: 'Guardando…',
 		cancel: 'Cancelar',
@@ -98,14 +98,16 @@ export default {
 	},
 	update: {
 		keyUnavailable: 'No se pudo enviar la actualización de forma fiable. Inténtalo de nuevo.',
-		failed: 'No se pudo actualizar el stock',
-		failedRetry: 'No se pudo actualizar el stock. Inténtalo de nuevo.',
+		failed: 'No se pudo actualizar las existencias',
+		failedRetry: 'No se pudo actualizar las existencias. Inténtalo de nuevo.',
 		subjectDecrease: 'No se pudo reducir “{name}”',
 		subjectIncrease: 'No se pudo aumentar “{name}”',
 		fallbackWithSubject: '{subject}. Inténtalo de nuevo.',
-		clamped: 'El stock no puede bajar de 0.',
-		clampedWithWarning: 'El stock no puede bajar de 0. {warning}',
-		deliveryFailed: 'Stock actualizado. No se pudieron enviar todas las notificaciones push.',
-		deliveryUnknown: 'Stock actualizado. No se pudo confirmar el envío de las notificaciones push.',
+		clamped: 'Las existencias no pueden bajar de 0.',
+		clampedWithWarning: 'Las existencias no pueden bajar de 0. {warning}',
+		deliveryFailed:
+			'Existencias actualizadas. No se pudieron enviar todas las notificaciones push.',
+		deliveryUnknown:
+			'Existencias actualizadas. No se pudo confirmar el envío de las notificaciones push.',
 	},
 } satisfies Catalog<typeof de>;

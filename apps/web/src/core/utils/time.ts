@@ -33,7 +33,7 @@ const FALLBACK_WORDS: Record<
 	// i18n-ignore German words of the string formatters
 	de: { unknownDate: 'Datum unbekannt', unknownTime: 'Zeit unbekannt', rangeTo: 'bis' },
 	en: { unknownDate: 'Date unknown', unknownTime: 'Time unknown', rangeTo: 'to' },
-	es: { unknownDate: 'Fecha desconocida', unknownTime: 'Hora desconocida', rangeTo: 'al' },
+	es: { unknownDate: 'Fecha desconocida', unknownTime: 'Hora desconocida', rangeTo: 'a' },
 };
 
 /**

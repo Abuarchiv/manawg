@@ -58,10 +58,10 @@ export default {
 	importUndone: {
 		feed: `${v('deshiciste', 'deshizo')} una importación ({removed, plural, one {# gasto} other {# gastos}}).`,
 	},
-	inventoryCreated: { feed: `${v('añadiste', 'añadió')} {name} a las provisiones.` },
-	inventoryUpdated: { feed: `${v('actualizaste', 'actualizó')} {name} en las provisiones.` },
+	inventoryCreated: { feed: `${v('añadiste', 'añadió')} {name} a los suministros.` },
+	inventoryUpdated: { feed: `${v('actualizaste', 'actualizó')} {name} en los suministros.` },
 	inventoryDeleted: {
-		feed: `${v('eliminaste', 'eliminó')} {hasName, select, yes {{name}} other {un artículo}} de las provisiones.`,
+		feed: `${v('eliminaste', 'eliminó')} {hasName, select, yes {{name}} other {un artículo}} de los suministros.`,
 	},
 	inventoryConsumed: {
 		feed: `${v('tomaste', 'tomó')} {quantity} {unitKey, select, piece {{count, plural, =1 {ud.} other {uds.}}} litre {L} kilogram {kg} roll {{count, plural, =1 {rollo} other {rollos}}} pack {{count, plural, =1 {paquete} other {paquetes}}} other {{unit}}} de {name}.`,
@@ -148,8 +148,8 @@ export default {
 			notifyAnnouncements: 'Tablón',
 			notifyChores: 'Plan de limpieza',
 			notifyExpenses: 'Gastos',
-			notifyShopping: 'Compra',
-			notifyInventory: 'Provisiones',
+			notifyShopping: 'Compras',
+			notifyInventory: 'Suministros',
 			notifyReminders: 'Recordatorios',
 			notifyChat: 'Chat',
 			notifyEvents: 'Calendario',
