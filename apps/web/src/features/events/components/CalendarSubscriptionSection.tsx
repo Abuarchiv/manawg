@@ -12,6 +12,7 @@ import { useCalendarSubscription } from '@/features/events/hooks/use-calendar-su
 
 export function CalendarSubscriptionSection({ encodedShareCode }: { encodedShareCode: string }) {
 	const t = useTranslations('events.subscription');
+	const tCommon = useTranslations('common');
 	const feed = useCalendarSubscription(encodedShareCode);
 	const { subscription } = feed;
 
@@ -73,7 +74,12 @@ export function CalendarSubscriptionSection({ encodedShareCode }: { encodedShare
 									variant="outline"
 									className="py-1 text-left"
 									render={
-										<a href={subscription.feedUrl} target="_blank" rel="noopener noreferrer">
+										<a
+											href={subscription.feedUrl}
+											target="_blank"
+											rel="noopener noreferrer"
+											aria-label={tCommon('opensInNewTab', { label: t('open') })}
+										>
 											<ExternalLink data-icon="inline-start" aria-hidden />
 											{t('open')}
 										</a>

@@ -4,6 +4,12 @@ export default {
 		description:
 			'Mit ManaWG teilt ihr Ausgaben, organisiert Einkäufe und verteilt Aufgaben im Putzplan. Die App ist kostenlos und läuft im Browser.',
 	},
+	manifest: {
+		description: 'Ausgaben, Putzplan, Einkauf und Pinnwand für deine WG — offlinefähig.',
+		shortcutName: 'WG beitreten',
+		shortcutShortName: 'Beitreten',
+		shortcutDescription: 'Mit einem Einladungslink einer WG beitreten',
+	},
 	authReset: { title: 'Passwort zurücksetzen' },
 	agentConsent: {
 		title: 'KI-Assistent verbinden',

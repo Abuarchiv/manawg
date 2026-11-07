@@ -11,7 +11,7 @@ export function LinkRow({
 	label: string;
 	external?: boolean;
 }) {
-	const t = useTranslations('settings.linkRow');
+	const t = useTranslations('common');
 	return (
 		<li>
 			<Link

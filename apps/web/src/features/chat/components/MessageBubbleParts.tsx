@@ -149,6 +149,8 @@ export function MessageReactions({
 
 export function MessageImage({ imageUrl, senderName }: { imageUrl: string; senderName: string }) {
 	const t = useTranslations('chat.bubble');
+	const tCommon = useTranslations('common');
+	const openLabel = tCommon('opensInNewTab', { label: t('imageFullAria') });
 	return (
 		<Attachment state="done" className="min-w-0 max-w-full">
 			<AttachmentMedia variant="image" className="size-20">
@@ -160,10 +162,10 @@ export function MessageImage({ imageUrl, senderName }: { imageUrl: string; sende
 				<AttachmentDescription>{t('imageOpen')}</AttachmentDescription>
 			</AttachmentContent>
 			<AttachmentTrigger
-				aria-label={t('imageFullAria')}
+				aria-label={openLabel}
 				render={
 					<a href={imageUrl} target="_blank" rel="noopener noreferrer">
-						<span className="sr-only">{t('imageFullAria')}</span>
+						<span className="sr-only">{openLabel}</span>
 					</a>
 				}
 			/>

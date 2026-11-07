@@ -46,3 +46,13 @@ for (const locale of ['de', 'en'] as const) {
 		});
 	}
 }
+
+// The shared new-tab wrapper embeds the visible label, so the accessible name
+// of every link that uses it still contains the visible text (WCAG 2.5.3).
+for (const locale of ['de', 'en'] as const) {
+	test(`${locale} common.opensInNewTab embeds the wrapped label`, () => {
+		const message = lookup(catalog[locale] as unknown as Tree, 'common').opensInNewTab;
+		assert.equal(typeof message, 'string');
+		assert.ok((message as string).includes('{label}'));
+	});
+}
