@@ -25,7 +25,6 @@ export default {
 		reportProblem: 'Fehler per E-Mail melden',
 		version: 'ManaWG {version}',
 	},
-	linkRow: { opensInNewTab: '{label} (öffnet in neuem Tab)' },
 	memberName: {
 		label: 'Dein Name',
 		mentionsHint: 'Alte @Erwähnungen im Chat bleiben mit dem alten Namen stehen.',

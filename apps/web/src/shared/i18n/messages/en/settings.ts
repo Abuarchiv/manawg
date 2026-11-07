@@ -28,7 +28,6 @@ export default {
 		reportProblem: 'Report a problem by email',
 		version: 'ManaWG {version}',
 	},
-	linkRow: { opensInNewTab: '{label} (opens in a new tab)' },
 	memberName: {
 		label: 'Your name',
 		mentionsHint: 'Earlier @mentions in the chat keep the old name.',

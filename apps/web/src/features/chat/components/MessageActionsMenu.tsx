@@ -261,18 +261,29 @@ export function MessageActionsMenu({
 								<Copy aria-hidden /> {t('menu.copy')}
 							</DropdownMenuItem>
 						)}
-						{links.map((url) => (
-							<DropdownMenuItem
-								key={url}
-								className="min-h-11"
-								render={<a href={url} target="_blank" rel="noopener noreferrer" />}
-							>
-								<ExternalLink aria-hidden />
-								{links.length > 1
+						{links.map((url) => {
+							const label =
+								links.length > 1
 									? t('menu.openLinkHost', { host: new URL(url).hostname })
-									: t('menu.openLink')}
-							</DropdownMenuItem>
-						))}
+									: t('menu.openLink');
+							return (
+								<DropdownMenuItem
+									key={url}
+									className="min-h-11"
+									render={
+										<a
+											href={url}
+											target="_blank"
+											rel="noopener noreferrer"
+											aria-label={tCommon('opensInNewTab', { label })}
+										/>
+									}
+								>
+									<ExternalLink aria-hidden />
+									{label}
+								</DropdownMenuItem>
+							);
+						})}
 						{editable && (
 							<DropdownMenuItem className="min-h-11" onClick={onEdit}>
 								<Pencil aria-hidden /> {hasDraft ? t('menu.editDraft') : t('menu.edit')}

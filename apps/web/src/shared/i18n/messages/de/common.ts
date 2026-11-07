@@ -1,6 +1,7 @@
 export default {
 	skipToContent: 'Zum Hauptinhalt springen',
 	loading: 'Lädt…',
+	opensInNewTab: '{label} (öffnet in neuem Tab)',
 	unknownPerson: 'Unbekannt',
 	errors: {
 		withSubject: '{subject}: {detail}',
