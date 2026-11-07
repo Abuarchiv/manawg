@@ -5,7 +5,12 @@ import { useTranslations } from 'next-intl';
 import { FieldLegend, FieldSet } from '@/components/ui/field';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
-export type ImportSourceKind = 'splitwise_csv' | 'splid_csv' | 'ocr_screenshot';
+export type ImportSourceKind =
+	| 'splitwise_csv'
+	| 'splid_csv'
+	| 'tricount_csv'
+	| 'settleup_csv'
+	| 'ocr_screenshot';
 
 interface Props {
 	value: ImportSourceKind | null;
@@ -14,11 +19,13 @@ interface Props {
 
 const OPTIONS: ReadonlyArray<{
 	id: ImportSourceKind;
-	text: 'splitwise' | 'splid' | 'screenshot';
+	text: 'splitwise' | 'splid' | 'tricount' | 'settleup' | 'screenshot';
 	icon: typeof FileText;
 }> = [
 	{ id: 'splitwise_csv', text: 'splitwise', icon: FileText },
 	{ id: 'splid_csv', text: 'splid', icon: FileUp },
+	{ id: 'tricount_csv', text: 'tricount', icon: FileText },
+	{ id: 'settleup_csv', text: 'settleup', icon: FileUp },
 	{ id: 'ocr_screenshot', text: 'screenshot', icon: ImageIcon },
 ];
 

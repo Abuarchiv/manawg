@@ -1,0 +1,2 @@
+ALTER TABLE "expense_imports" DROP CONSTRAINT "expense_imports_source_check";--> statement-breakpoint
+ALTER TABLE "expense_imports" ADD CONSTRAINT "expense_imports_source_check" CHECK ("expense_imports"."source" in ('splitwise_csv', 'splid_csv', 'tricount_csv', 'settleup_csv', 'ocr_screenshot', 'manual'));

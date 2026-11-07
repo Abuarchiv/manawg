@@ -37,10 +37,10 @@ export interface CommitResponse {
 	warning: NotificationWarning;
 }
 
-export function payloadKey(source: ImportSourceKind): 'splitwise_csv' | 'splid_csv' | 'ocr_text' {
-	if (source === 'splitwise_csv') return 'splitwise_csv';
-	if (source === 'splid_csv') return 'splid_csv';
-	return 'ocr_text';
+export function payloadKey(
+	source: ImportSourceKind,
+): Exclude<ImportSourceKind, 'ocr_screenshot'> | 'ocr_text' {
+	return source === 'ocr_screenshot' ? 'ocr_text' : source;
 }
 
 /** Names in the preview that have to point at a member: payers and split participants. */
@@ -89,8 +89,18 @@ export function mergeMemberMapping(
 	);
 }
 
-/** Decodes a CSV export; Excel CSV from German installations is often Windows-1252, not UTF-8. */
+/**
+ * Decodes a CSV export. Settle Up writes UTF-16 (with or without a byte order mark), and Excel CSV
+ * from German installations is often Windows-1252, not UTF-8.
+ */
 export function decodeCsv(buffer: ArrayBuffer): string {
+	const bytes = new Uint8Array(buffer);
+	if (bytes[0] === 0xff && bytes[1] === 0xfe) return new TextDecoder('utf-16le').decode(buffer);
+	if (bytes[0] === 0xfe && bytes[1] === 0xff) return new TextDecoder('utf-16be').decode(buffer);
+	// Latin text in UTF-16LE has a zero byte after every character.
+	if (bytes.length >= 4 && bytes[0] !== 0 && bytes[1] === 0 && bytes[2] !== 0 && bytes[3] === 0) {
+		return new TextDecoder('utf-16le').decode(buffer);
+	}
 	try {
 		return new TextDecoder('utf-8', { fatal: true }).decode(buffer);
 	} catch {

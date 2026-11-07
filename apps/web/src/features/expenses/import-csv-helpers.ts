@@ -1,7 +1,7 @@
 import { eurosToCents } from '@/core/utils/amount';
 import { AMOUNT_MAX_CENTS } from '@/features/expenses/expense-constants';
 import { DEFAULT_LOCALE, type Locale } from '@/shared/i18n/locale';
-import { type RejectedRow, UNKNOWN_NAME } from './import-types';
+import { type ParsedSplit, type RejectedRow, UNKNOWN_NAME } from './import-types';
 
 const MIN_PLAUSIBLE_YEAR = 2000;
 const MAX_PLAUSIBLE_YEAR = 2100;
@@ -233,4 +233,84 @@ export function rejectForeignCurrencyRow(
 		description: `${description} (${currency})`,
 	});
 	return true;
+}
+
+/** How many header rows to scan for the column names; exports may carry a title line above them. */
+const HEADER_SCAN_ROWS = 15;
+const DELIMITER_CANDIDATES = [',', ';', '\t'];
+
+/**
+ * Reads a CSV whose header row is not necessarily the first line (a sheet saved from Excel starts
+ * with the group name) and whose delimiter is not known up front. `isHeader` decides which row
+ * holds the column names; the rows below it are returned with their file line numbers.
+ */
+export function readCsvTable(
+	csv: string,
+	isHeader: (fields: string[]) => boolean,
+): { header: string[]; rows: CsvRow[] } | null {
+	const firstNewline = csv.indexOf('\n');
+	const firstLine = firstNewline === -1 ? csv : csv.slice(0, firstNewline);
+	const guess = detectDelimiter(stripBom(firstLine));
+	const delimiters = [guess, ...DELIMITER_CANDIDATES.filter((d) => d !== guess)];
+	for (const delimiter of delimiters) {
+		const rows = parseCsv(csv, delimiter);
+		const headerIndex = rows.slice(0, HEADER_SCAN_ROWS).findIndex((row) => isHeader(row.fields));
+		const headerRow = rows[headerIndex];
+		if (headerRow) return { header: headerRow.fields, rows: rows.slice(headerIndex + 1) };
+	}
+	return null;
+}
+
+const NUMERIC_DATE = /^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})(?!\d)/;
+
+/**
+ * Whether slash dates in one file read day first. The file decides (a first number above 12 means
+ * day first, a second one means month first); an undecided file reads day first, like both apps.
+ */
+export function detectDayFirst(values: readonly string[]): boolean {
+	for (const value of values) {
+		const match = value.trim().match(NUMERIC_DATE);
+		if (!match) continue;
+		if (Number(match[1]) > 12) return true;
+		if (Number(match[2]) > 12) return false;
+	}
+	return true;
+}
+
+/** `parseDateIso` for exports whose slash and dash dates follow the file, not the UI language. */
+export function parseExportDate(raw: string, dayFirst: boolean): string | null {
+	const match = raw.trim().match(NUMERIC_DATE);
+	if (!match) return parseDateIso(raw);
+	const [, first = '', second = '', year = ''] = match;
+	return dayFirst ? parseDayMonthYear(first, second, year) : parseDayMonthYear(second, first, year);
+}
+
+/** An amount in euros that may carry more than two decimals ("4.055"), as a plain number. */
+export function parseDecimal(raw: string): number | null {
+	const trimmed = raw.trim().replace(/\s/g, '');
+	if (!trimmed) return null;
+	const normalized = trimmed.includes('.') ? trimmed.replace(/,/g, '') : trimmed.replace(',', '.');
+	if (!/^-?\d+(?:\.\d+)?$/.test(normalized)) return null;
+	return Number(normalized);
+}
+
+/**
+ * Splits `totalCents` in proportion to `weights` (exact amounts or plain ratios) so the shares add
+ * up to the total to the cent. `drifted` is set when the weights, read as euros, miss the total by
+ * more than their own rounding, which means the file's split does not match its amount.
+ */
+export function splitProportionally(
+	totalCents: number,
+	entries: readonly { memberName: string; weight: number }[],
+): { splits: ParsedSplit[]; drifted: boolean } {
+	const valid = entries.filter((e) => Number.isFinite(e.weight) && e.weight > 0);
+	const weightSum = valid.reduce((acc, e) => acc + e.weight, 0);
+	if (valid.length === 0 || weightSum <= 0) return { splits: [], drifted: false };
+	const raw = valid.map((e) => Math.floor((totalCents * e.weight) / weightSum));
+	const shares = distributeRemainder(totalCents, raw);
+	const splits = valid
+		.map((e, i) => ({ memberName: e.memberName, amountCents: shares[i] ?? 0 }))
+		.filter((split) => split.amountCents > 0);
+	const drifted = Math.abs(weightSum * 100 - totalCents) > valid.length / 2 + 1e-6;
+	return { splits, drifted };
 }

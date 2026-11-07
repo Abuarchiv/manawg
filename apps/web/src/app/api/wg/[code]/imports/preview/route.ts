@@ -18,15 +18,17 @@ import {
 	collectUniqueNames,
 	findMappingConflicts,
 	matchMembers,
+	parseSettleUpCsv,
 	parseSplidCsv,
 	parseSplitwiseCsv,
+	parseTricountCsv,
 	type RejectedRow,
 } from '@/features/expenses/import-parsers';
 import { parseOcrText } from '@/features/expenses/ocr';
 import { hashPayload } from '@/features/expenses/server/import-hash';
 
 const previewSchema = z.object({
-	source: z.enum(['splitwise_csv', 'splid_csv', 'ocr_text']),
+	source: z.enum(['splitwise_csv', 'splid_csv', 'tricount_csv', 'settleup_csv', 'ocr_text']),
 	payload: z.string().min(1),
 	memberMapping: importMemberMappingSchema(z.string().nullable()).optional(),
 });
@@ -56,7 +58,11 @@ export const POST = withWgRoute('imports/preview', async (req, { code }) => {
 			? parseSplitwiseCsv(payload, rejected, requestLocale(req))
 			: source === 'splid_csv'
 				? parseSplidCsv(payload, rejected, requestLocale(req))
-				: parseOcrText(payload).expenses;
+				: source === 'tricount_csv'
+					? parseTricountCsv(payload, rejected)
+					: source === 'settleup_csv'
+						? parseSettleUpCsv(payload, rejected)
+						: parseOcrText(payload).expenses;
 
 	if (parsedExpenses.length > MAX_IMPORT_ROWS || rejected.length > MAX_IMPORT_ROWS) {
 		return badRequest('too_many_rows');

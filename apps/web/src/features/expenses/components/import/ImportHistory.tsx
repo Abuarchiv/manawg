@@ -18,6 +18,8 @@ interface PastImport {
 const SOURCE_KEYS = {
 	splitwise_csv: 'splitwise',
 	splid_csv: 'splid',
+	tricount_csv: 'tricount',
+	settleup_csv: 'settleup',
 	ocr_screenshot: 'screenshot',
 } as const;
 
