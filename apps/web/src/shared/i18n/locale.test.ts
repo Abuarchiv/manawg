@@ -22,6 +22,13 @@ test('Accept-Language is sorted by q and the first supported primary subtag wins
 	assert.equal(resolveLocale({ acceptLanguage: 'EN-gb' }), 'en');
 });
 
+test('Spanish is a supported language', () => {
+	assert.equal(resolveLocale({ cookie: 'es', acceptLanguage: 'de-DE' }), 'es');
+	assert.equal(resolveLocale({ acceptLanguage: 'es-MX,es;q=0.9,en;q=0.5' }), 'es');
+	assert.equal(resolveLocale({ acceptLanguage: 'fr, es;q=0.8' }), 'es');
+	assert.equal(htmlLang('es'), 'es-ES');
+});
+
 test('equal q keeps header order', () => {
 	assert.equal(resolveLocale({ acceptLanguage: 'en, de' }), 'en');
 	assert.equal(resolveLocale({ acceptLanguage: 'de, en' }), 'de');
@@ -86,10 +93,12 @@ test('the device locale reads navigator.languages in order', () => {
 	try {
 		as(['en-US', 'de']);
 		assert.equal(deviceLocale(), 'en');
-		as(['es-ES', 'de-DE']);
+		as(['fr-FR', 'de-DE']);
 		assert.equal(deviceLocale(), 'de');
-		as(['es-ES']);
+		as(['fr-FR']);
 		assert.equal(deviceLocale(), 'en');
+		as(['es-MX', 'de-DE']);
+		assert.equal(deviceLocale(), 'es');
 	} finally {
 		if (original) Object.defineProperty(globalThis, 'navigator', original);
 	}

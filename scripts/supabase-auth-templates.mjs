@@ -6,8 +6,8 @@
 // and of the site with your imprint and privacy policy. Without --apply this is a dry run that
 // prints what would be sent. --apply needs SUPABASE_ACCESS_TOKEN (Supabase dashboard > Account >
 // Access Tokens).
-// The templates and subjects hold German and English text in `{{ if eq .Data.locale "en" }}` blocks;
-// Supabase Auth picks the branch from the user's `user_metadata.locale`, German by default.
+// The templates and subjects hold German, English and Spanish text in `{{ if eq .Data.locale "en" }}`
+// blocks; Supabase Auth picks the branch from the user's `user_metadata.locale`, German by default.
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { renderTemplate } from '../supabase/templates/render.mjs';

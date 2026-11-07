@@ -10,9 +10,9 @@ import {
 	setupMember,
 	skipUnlessFixtures,
 } from './support/helpers';
-import { expectNoHorizontalOverflow, setEnglishLocale } from './support/i18n';
+import { expectNoHorizontalOverflow, setEnglishLocale, setLocale } from './support/i18n';
 
-const GROUP = /^(Sprache|Language)$/;
+const GROUP = /^(Sprache|Language|Idioma)$/;
 const SKIP_LINK = 'a.skip-link';
 
 const switchGroup = (page: Page) => page.getByRole('group', { name: GROUP });
@@ -50,6 +50,20 @@ test.describe('language switch in the entry footer', () => {
 		await switchGroup(page).getByRole('button', { name: 'Deutsch' }).click();
 		await expect(page.locator('html')).toHaveAttribute('lang', 'de');
 		expect(await localeCookie(page)).toBe('de');
+	});
+
+	test('Spanish can be chosen and persists across reloads', async ({ page }) => {
+		await page.goto('/login');
+		await switchGroup(page).getByRole('button', { name: 'Español' }).click();
+		await expect(page.locator('html')).toHaveAttribute('lang', 'es-ES');
+		expect(await localeCookie(page)).toBe('es');
+
+		await page.reload();
+		await expect(page.locator('html')).toHaveAttribute('lang', 'es-ES');
+		await expect(switchGroup(page).getByRole('button', { name: 'Español' })).toHaveAttribute(
+			'aria-pressed',
+			'true',
+		);
 	});
 
 	test('the cookie decides even when the account request fails', async ({ page }) => {
@@ -107,8 +121,16 @@ test.describe('browser language without a cookie', () => {
 		});
 	});
 
-	test.describe('es-ES, a language without a translation', () => {
+	test.describe('es-ES', () => {
 		test.use({ locale: 'es-ES' });
+		test('renders Spanish', async ({ page }) => {
+			await page.goto('/login');
+			await expect(page.locator('html')).toHaveAttribute('lang', 'es-ES');
+		});
+	});
+
+	test.describe('fr-FR, a language without a translation', () => {
+		test.use({ locale: 'fr-FR' });
 		test('falls back to English', async ({ page }) => {
 			await page.goto('/login');
 			await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
@@ -178,6 +200,24 @@ test.describe('language switch in the settings profile', () => {
 			await request;
 			await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
 		});
+	});
+
+	test('settings fit 320px in Spanish', async ({ browser, baseURL }) => {
+		test.setTimeout(120_000);
+		const context = await browser.newContext({
+			viewport: { width: 320, height: 780 },
+			locale: 'de-DE',
+			timezoneId: 'Europe/Berlin',
+		});
+		await setLocale(context, baseURL ?? 'http://localhost:3101', 'es');
+		const page = await context.newPage();
+		await setupMember(page);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/settings`);
+		await dismissOnboarding(page);
+		await expect(page.locator('html')).toHaveAttribute('lang', 'es-ES');
+		await expect(switchGroup(page)).toBeVisible({ timeout: 60_000 });
+		await expectNoHorizontalOverflow(page);
+		await context.close();
 	});
 
 	for (const width of [320, 390]) {

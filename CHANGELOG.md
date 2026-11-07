@@ -8,6 +8,12 @@ settled.
 
 ## [Unreleased]
 
+### Added
+
+- Spanish (Español) as a third language: the interface, mails, push notifications, monthly
+  statements and exports follow the device language or the choice in the profile settings.
+  Migration 0042 allows the new value for the stored language.
+
 ### Self-hosting
 
 - A Portainer template and a stack file for it: `portainer-template.json` and

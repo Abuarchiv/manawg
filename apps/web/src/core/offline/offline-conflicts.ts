@@ -16,6 +16,7 @@ type RecurringAdvanceConflict = {
 const DUE_DATE_FORMAT: Record<Locale, Intl.DateTimeFormatOptions> = {
 	de: { day: 'numeric', month: 'numeric', year: 'numeric' },
 	en: { day: 'numeric', month: 'long', year: 'numeric' },
+	es: { day: 'numeric', month: 'numeric', year: 'numeric' },
 };
 
 function formatDueDate(value: string, locale: Locale): string | Message {

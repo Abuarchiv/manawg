@@ -155,7 +155,7 @@ export function parseDayMonthYear(day: string, month: string, year: string): str
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})/;
 const GERMAN_DATE = /^(\d{1,2})\.(\d{1,2})\.(\d{2,4})/;
 // Slash dates are ambiguous: German-language imports read them month first (US export order),
-// English-language imports day first (en-GB export order).
+// English- and Spanish-language imports day first (en-GB and es-ES export order).
 const SLASH_DATE = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/;
 
 export function parseDateIso(raw: string, locale: Locale = DEFAULT_LOCALE): string | null {
@@ -173,9 +173,9 @@ export function parseDateIso(raw: string, locale: Locale = DEFAULT_LOCALE): stri
 	const slash = value.match(SLASH_DATE);
 	if (slash) {
 		const [, first = '', second = '', year = ''] = slash;
-		return locale === 'en'
-			? parseDayMonthYear(first, second, year)
-			: parseDayMonthYear(second, first, year);
+		return locale === 'de'
+			? parseDayMonthYear(second, first, year)
+			: parseDayMonthYear(first, second, year);
 	}
 	return null;
 }

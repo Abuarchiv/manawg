@@ -135,13 +135,13 @@ WG store that account as `manawg_account` first (`seedLocalAccount` in `e2e/supp
 
 ## Texts and translations
 
-User-facing text lives in `apps/web/src/shared/i18n/messages/{de,en}/*.ts`, never in components,
-and every key needs both locales. English wording follows the
+User-facing text lives in `apps/web/src/shared/i18n/messages/{de,en,es}/*.ts`, never in components,
+and every key needs every locale. English wording follows the
 [English glossary](brand/glossary-en.md). The `i18n-literal` check in
 `apps/web/scripts/check-architecture.mjs` fails on German UI copy outside the catalogs;
 `// i18n-ignore <reason>` is only for technical literals such as stored keys. Server texts (push,
 mail, export, activity feed) are written in the recipient's language. `tests/i18n-catalog.test.ts`
-(part of `pnpm test:unit`) enforces equal keys and ICU argument names in both locales.
+(part of `pnpm test:unit`) enforces equal keys and ICU argument names in every locale.
 
 ## Commands
 

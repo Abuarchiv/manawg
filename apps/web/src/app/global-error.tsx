@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/empty';
 import { captureException } from '@/core/infra/capture-client';
 import { isChunkLoadError, reloadOnStaleChunk } from '@/core/infra/stale-chunk';
-import { htmlLang, LOCALE_COOKIE, type Locale } from '@/shared/i18n/locale';
+import { htmlLang, isLocale, LOCALE_COOKIE, type Locale } from '@/shared/i18n/locale';
 import { SUPPORT_MAILTO } from '@/shared/lib/support-mailto';
 import { applyStoredTheme, THEME_BOOTSTRAP_SCRIPT } from '@/shared/lib/theme';
 import '@/shared/globals.css';
@@ -38,11 +38,23 @@ const COPY: Record<Locale, Record<'wrong' | 'reload' | 'retry' | 'home' | 'repor
 		home: 'Go to home page',
 		report: 'Report error by email',
 	},
+	es: {
+		wrong: 'Algo ha salido mal',
+		reload: 'Vuelve a cargar la página.',
+		retry: 'Intentarlo de nuevo',
+		home: 'Ir al inicio',
+		report: 'Informar del error por correo',
+	},
 };
 
 function readLocale(): Locale {
-	if (document.documentElement.lang.startsWith('en')) return 'en';
-	return document.cookie.split('; ').includes(`${LOCALE_COOKIE}=en`) ? 'en' : 'de';
+	const lang = document.documentElement.lang.toLowerCase().split('-')[0];
+	if (isLocale(lang) && lang !== 'de') return lang;
+	const stored = document.cookie
+		.split('; ')
+		.find((entry) => entry.startsWith(`${LOCALE_COOKIE}=`))
+		?.slice(LOCALE_COOKIE.length + 1);
+	return isLocale(stored) ? stored : 'de';
 }
 
 const subscribeNever = () => () => {};

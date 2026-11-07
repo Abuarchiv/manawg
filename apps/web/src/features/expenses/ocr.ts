@@ -177,7 +177,8 @@ const AMOUNT_PATTERN =
 const MAX_OCR_LINE_LENGTH = 1000;
 const BOUNDARY_LOOKBEHIND = 40;
 const DATE_PATTERN = /(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})/;
-const PAYER_PATTERN = /(?:bezahlt von|paid by|von:)\s*([A-Za-zÄÖÜäöüß][A-Za-zÄÖÜäöüß\s-]{1,40})/i;
+const PAYER_PATTERN =
+	/(?:bezahlt von|paid by|pagado por|von:)\s*([A-Za-zÄÖÜäöüß][A-Za-zÄÖÜäöüß\s-]{1,40})/i;
 
 function parseOcrAmount(raw: string): number | null {
 	let normalized = raw;
@@ -204,7 +205,7 @@ function parseDate(raw: string): string | null {
 function cleanDescription(raw: string): string {
 	return raw
 		.replace(AMOUNT_PATTERN, '')
-		.replace(/(?:bezahlt von|paid by|von:)\s*[A-Za-zÄÖÜäöüß\s-]+/i, '')
+		.replace(/(?:bezahlt von|paid by|pagado por|von:)\s*[A-Za-zÄÖÜäöüß\s-]+/i, '')
 		.replace(DATE_PATTERN, '')
 		.replace(/\s+/g, ' ')
 		.trim()

@@ -196,7 +196,7 @@ function neutralizeCsvFormula(text: string): string {
 	return /^[\s]*[=+\-@\t\r]/.test(text) ? `'${text}` : text;
 }
 
-/** German Excel reads `;` and `,`; English Excel reads `,` and `.`. */
+/** German and Spanish Excel read `;` and `,`; English Excel reads `,` and `.`. */
 interface CsvFormat {
 	separator: string;
 	decimalMark: string;
@@ -205,6 +205,7 @@ interface CsvFormat {
 const CSV_FORMATS: Record<Locale, CsvFormat> = {
 	de: { separator: ';', decimalMark: ',' },
 	en: { separator: ',', decimalMark: '.' },
+	es: { separator: ';', decimalMark: ',' },
 };
 
 function escapeCsv(value: unknown, { separator }: CsvFormat): string {

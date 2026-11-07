@@ -1,13 +1,13 @@
 # internationalization Specification
 
 ## Purpose
-Let every person use ManaWG in German or English, with their own choice applied to the interface, server-generated messages and formatting, while German output stays unchanged.
+Let every person use ManaWG in German, English or Spanish, with their own choice applied to the interface, server-generated messages and formatting, while German output stays unchanged.
 
 ## Requirements
 
 ### Requirement: Locale is resolved per request
 
-The app SHALL render in the locale from the `manawg_locale` cookie when it holds `de` or `en`. Without a valid cookie it SHALL use the first `Accept-Language` tag (by q value) whose primary subtag is `de` or `en`. When the header names only other languages it SHALL use English, unless English is refused with `q=0`; without any language it SHALL use German. URLs SHALL NOT carry a locale. The document SHALL declare `lang="de"` for German and `lang="en-GB"` for English.
+The app SHALL render in the locale from the `manawg_locale` cookie when it holds `de`, `en` or `es`. Without a valid cookie it SHALL use the first `Accept-Language` tag (by q value) whose primary subtag is `de`, `en` or `es`. When the header names only other languages it SHALL use English, unless English is refused with `q=0`; without any language it SHALL use German. URLs SHALL NOT carry a locale. The document SHALL declare `lang="de"` for German, `lang="en-GB"` for English and `lang="es-ES"` for Spanish.
 
 #### Scenario: Cookie wins over the browser
 - **WHEN** a browser that prefers `de-DE` sends `manawg_locale=en`
@@ -77,9 +77,9 @@ New code SHALL NOT compare, parse or store localized display text. API responses
 - **WHEN** an API response refers to a member without a stored name
 - **THEN** the name field SHALL be `null`
 
-### Requirement: Both languages stay complete
+### Requirement: All languages stay complete
 
-The build SHALL fail when a German catalog key has no English counterpart or vice versa, when a message has invalid ICU syntax, or when placeholder names differ between the languages. A ratchet check SHALL reject new hard-coded UI text in source files.
+The build SHALL fail when a German catalog key has no counterpart in another language or vice versa, when a message has invalid ICU syntax, or when placeholder names differ between the languages. A ratchet check SHALL reject new hard-coded UI text in source files.
 
 #### Scenario: Missing English key
 - **WHEN** a German message is added without an English one

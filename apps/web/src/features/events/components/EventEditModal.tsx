@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/drawer';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { dayMonthOptions } from '@/core/utils/time';
 import { EventEditDialogs } from '@/features/events/components/EventEditDialogs';
 import { EventEditFooter } from '@/features/events/components/EventEditFooter';
 import { EventFormFields, focusEventField } from '@/features/events/components/EventFormFields';
@@ -290,9 +291,7 @@ export function EventEditModal({
 									scope={scope}
 									dateLabel={dateTimeFormat(locale, {
 										weekday: 'short',
-										...(locale === 'de'
-											? { day: '2-digit', month: '2-digit' }
-											: { day: 'numeric', month: 'short' }),
+										...dayMonthOptions(locale),
 										...(occurrence.allDay ? { timeZone: 'UTC' } : {}),
 									}).format(new Date(occurrence.startsAt))}
 									disabled={busy}

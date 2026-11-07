@@ -10,7 +10,7 @@ import { parseBody } from '@/core/http/parse-body';
 import { logApiError } from '@/core/infra/observability';
 import type { Locale } from '@/shared/i18n/locale';
 
-const localeSchema = z.object({ locale: z.enum(['de', 'en']) satisfies z.ZodType<Locale> });
+const localeSchema = z.object({ locale: z.enum(['de', 'en', 'es']) satisfies z.ZodType<Locale> });
 
 /**
  * Stores the language choice of the signed-in person: every membership row of the account (push

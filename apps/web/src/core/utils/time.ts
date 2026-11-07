@@ -33,14 +33,18 @@ const FALLBACK_WORDS: Record<
 	// i18n-ignore German words of the string formatters
 	de: { unknownDate: 'Datum unbekannt', unknownTime: 'Zeit unbekannt', rangeTo: 'bis' },
 	en: { unknownDate: 'Date unknown', unknownTime: 'Time unknown', rangeTo: 'to' },
+	es: { unknownDate: 'Fecha desconocida', unknownTime: 'Hora desconocida', rangeTo: 'al' },
 };
 
-/** Day and month options: numeric in German ("06.10."), day plus short month name in English ("6 Oct"). */
+/**
+ * Day and month options: padded numbers in German ("06.10."), day plus short month name in
+ * English ("6 Oct"), unpadded numbers in Spanish ("6/10").
+ */
 export function dayMonthOptions(locale: Locale, withYear = false): Intl.DateTimeFormatOptions {
 	const year = withYear ? { year: 'numeric' as const } : {};
-	return locale === 'de'
-		? { day: '2-digit', month: '2-digit', ...year }
-		: { day: 'numeric', month: 'short', ...year };
+	if (locale === 'de') return { day: '2-digit', month: '2-digit', ...year };
+	if (locale === 'es') return { day: 'numeric', month: 'numeric', ...year };
+	return { day: 'numeric', month: 'short', ...year };
 }
 
 function shortDateTime(locale: Locale): Intl.DateTimeFormatOptions {

@@ -1,0 +1,2 @@
+ALTER TABLE "wg_members" DROP CONSTRAINT "wg_members_locale_check";--> statement-breakpoint
+ALTER TABLE "wg_members" ADD CONSTRAINT "wg_members_locale_check" CHECK ("wg_members"."locale" in ('de', 'en', 'es'));

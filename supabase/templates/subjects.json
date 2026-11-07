@@ -1,7 +1,7 @@
 {
-	"confirmation": "{{ if eq .Data.locale \"en\" }}Confirm your email address{{ else }}Bestätige deine E-Mail-Adresse{{ end }}",
-	"recovery": "{{ if eq .Data.locale \"en\" }}Set a new password{{ else }}Neues Passwort festlegen{{ end }}",
-	"magic_link": "{{ if eq .Data.locale \"en\" }}{{ .Token }} is your sign-in code{{ else }}{{ .Token }} ist dein Anmeldecode{{ end }}",
-	"email_change": "{{ if eq .Data.locale \"en\" }}Confirm the change of your email address{{ else }}Bestätige die Änderung deiner E-Mail-Adresse{{ end }}",
-	"password_changed": "{{ if eq .Data.locale \"en\" }}Your password was changed{{ else }}Dein Passwort wurde geändert{{ end }}"
+	"confirmation": "{{ if eq .Data.locale \"en\" }}Confirm your email address{{ else if eq .Data.locale \"es\" }}Confirma tu dirección de correo{{ else }}Bestätige deine E-Mail-Adresse{{ end }}",
+	"recovery": "{{ if eq .Data.locale \"en\" }}Set a new password{{ else if eq .Data.locale \"es\" }}Elige una contraseña nueva{{ else }}Neues Passwort festlegen{{ end }}",
+	"magic_link": "{{ if eq .Data.locale \"en\" }}{{ .Token }} is your sign-in code{{ else if eq .Data.locale \"es\" }}{{ .Token }} es tu código de inicio de sesión{{ else }}{{ .Token }} ist dein Anmeldecode{{ end }}",
+	"email_change": "{{ if eq .Data.locale \"en\" }}Confirm the change of your email address{{ else if eq .Data.locale \"es\" }}Confirma el cambio de tu dirección de correo{{ else }}Bestätige die Änderung deiner E-Mail-Adresse{{ end }}",
+	"password_changed": "{{ if eq .Data.locale \"en\" }}Your password was changed{{ else if eq .Data.locale \"es\" }}Tu contraseña se ha cambiado{{ else }}Dein Passwort wurde geändert{{ end }}"
 }

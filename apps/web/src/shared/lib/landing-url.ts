@@ -42,7 +42,8 @@ const LEGAL_ORIGIN =
 
 type LegalPath = '/impressum' | '/datenschutz' | '/agb';
 
-// The official landing publishes English translations of its legal pages under /en.
+// The official landing publishes English translations of its legal pages under /en; Spanish
+// readers get those too, as the landing has no Spanish pages.
 const LANDING_LEGAL_EN: Record<LegalPath, string> = {
 	'/impressum': '/en/legal-notice',
 	'/datenschutz': '/en/privacy',
@@ -52,7 +53,7 @@ const LANDING_LEGAL_EN: Record<LegalPath, string> = {
 /** Imprint, privacy policy or terms of whoever operates the instance; null if none is configured. */
 export function legalUrl(path: LegalPath, locale: Locale = DEFAULT_LOCALE): string | null {
 	if (!LEGAL_ORIGIN) return null;
-	const english = locale === 'en' && LEGAL_ORIGIN === LANDING_ORIGIN;
+	const english = locale !== 'de' && LEGAL_ORIGIN === LANDING_ORIGIN;
 	return `${LEGAL_ORIGIN}${english ? LANDING_LEGAL_EN[path] : path}`;
 }
 

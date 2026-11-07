@@ -1,4 +1,4 @@
-const LOCALES = ['de', 'en'] as const;
+const LOCALES = ['de', 'en', 'es'] as const;
 export type Locale = (typeof LOCALES)[number];
 export const DEFAULT_LOCALE: Locale = 'de';
 /** For devices set to a language we do not offer: English is the usual second language. */
@@ -60,7 +60,9 @@ export function deviceLocale(): Locale {
 	return resolveLocale({ acceptLanguage: languages.join(',') });
 }
 
+const HTML_LANG: Record<Locale, string> = { de: 'de', en: 'en-GB', es: 'es-ES' };
+
 /** Value of the `<html lang>` attribute; German stays the bare `de`. */
 export function htmlLang(locale: Locale): string {
-	return locale === 'en' ? 'en-GB' : 'de';
+	return HTML_LANG[locale];
 }

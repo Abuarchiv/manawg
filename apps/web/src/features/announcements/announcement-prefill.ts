@@ -1,13 +1,15 @@
 import type { Locale } from '@/shared/i18n/locale';
 
-// German: "." groups thousands, "," is the decimal mark. English: the reverse.
+// German and Spanish: "." groups thousands, "," is the decimal mark. English: the reverse.
+const DECIMAL_COMMA = String.raw`[1-9]\d{0,2}(?:\.\d{3})+(?:,\d{1,2})?|\d{1,5}(?:[,.]\d{1,2})?`;
 const AMOUNT_NUMBER: Record<Locale, string> = {
-	de: String.raw`[1-9]\d{0,2}(?:\.\d{3})+(?:,\d{1,2})?|\d{1,5}(?:[,.]\d{1,2})?`,
+	de: DECIMAL_COMMA,
 	en: String.raw`[1-9]\d{0,2}(?:,\d{3})+(?:\.\d{1,2})?|\d{1,5}(?:\.\d{1,2})?`,
+	es: DECIMAL_COMMA,
 };
 
-// "euros" is accepted in English only; German keeps "Euro" and "EUR".
-const EURO_WORD: Record<Locale, string> = { de: 'euro?|eur', en: 'euros?|eur' };
+// The plural "euros" is accepted in English and Spanish; German keeps "Euro" and "EUR".
+const EURO_WORD: Record<Locale, string> = { de: 'euro?|eur', en: 'euros?|eur', es: 'euros?|eur' };
 
 // Currency either before ("€ 35,50") or after ("35 Euro", "12,5 EUR", "35€") the number.
 function amountPattern(locale: Locale): RegExp {

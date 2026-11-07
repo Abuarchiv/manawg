@@ -44,8 +44,9 @@ function argumentNames(message: string): string[] {
 
 const de = flatten(messages.de as Tree);
 const en = flatten(messages.en as Tree);
+const es = flatten(messages.es as Tree);
 
-function translator(locale: 'de' | 'en', source: object = messages[locale]): Translate {
+function translator(locale: 'de' | 'en' | 'es', source: object = messages[locale]): Translate {
 	return createTranslator({
 		locale,
 		messages: source,
@@ -56,14 +57,16 @@ function translator(locale: 'de' | 'en', source: object = messages[locale]): Tra
 	}) as unknown as Translate;
 }
 
-test('German and English catalogs hold the same keys', () => {
+test('all catalogs hold the same keys', () => {
 	assert.ok(de.size > 0);
 	assert.deepEqual([...en.keys()].sort(), [...de.keys()].sort());
+	assert.deepEqual([...es.keys()].sort(), [...de.keys()].sort());
 });
 
-test('both catalogs use the same ICU argument names per key', () => {
+test('all catalogs use the same ICU argument names per key', () => {
 	for (const [key, text] of de) {
 		assert.deepEqual(argumentNames(en.get(key) ?? ''), argumentNames(text), key);
+		assert.deepEqual(argumentNames(es.get(key) ?? ''), argumentNames(text), key);
 	}
 });
 
@@ -71,6 +74,7 @@ test('no catalog value is empty', () => {
 	for (const [locale, catalog] of [
 		['de', de],
 		['en', en],
+		['es', es],
 	] as const) {
 		for (const [key, text] of catalog) assert.notEqual(text.trim(), '', `${locale}:${key}`);
 	}
@@ -80,6 +84,7 @@ test('every message renders with dummy arguments and leaves no brace behind', ()
 	for (const [locale, catalog] of [
 		['de', de],
 		['en', en],
+		['es', es],
 	] as const) {
 		const t = translator(locale);
 		for (const [key, text] of catalog) {
@@ -93,6 +98,13 @@ test('every message renders with dummy arguments and leaves no brace behind', ()
 
 test('English values contain no sharp s or umlauts', () => {
 	for (const [key, text] of en) {
+		if (ENGLISH_GERMAN_EXEMPT.test(key)) continue;
+		assert.doesNotMatch(text, /[äöüÄÖÜß]/, key);
+	}
+});
+
+test('Spanish values contain no sharp s or umlauts', () => {
+	for (const [key, text] of es) {
 		if (ENGLISH_GERMAN_EXEMPT.test(key)) continue;
 		assert.doesNotMatch(text, /[äöüÄÖÜß]/, key);
 	}

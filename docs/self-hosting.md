@@ -381,8 +381,8 @@ Run it once without `--apply` to see what would change. `--app-url` and `--legal
 required; `--legal-url` is the site with your legal pages (see
 [Legal pages and support](#legal-pages-and-support)).
 
-The mail bodies and subjects pick German or English from the account's `locale` in the user
-metadata. Accounts without one get German.
+The mail bodies and subjects pick German, English or Spanish from the account's `locale` in the
+user metadata. Accounts without one get German.
 
 **Google sign-in (optional):** enable the Google provider under **Authentication → Providers**
 with your own OAuth client. The redirect URI to register at Google is shown there. Without it, set

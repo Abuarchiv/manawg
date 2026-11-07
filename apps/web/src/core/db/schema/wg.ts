@@ -77,7 +77,7 @@ export const wgMembers = pgTable(
 			.on(t.wgId)
 			.where(sql`${t.role} = 'admin'`),
 		roleCheck: check('wg_members_role_check', sql`${t.role} in ('admin', 'member')`),
-		localeCheck: check('wg_members_locale_check', sql`${t.locale} in ('de', 'en')`),
+		localeCheck: check('wg_members_locale_check', sql`${t.locale} in ('de', 'en', 'es')`),
 	}),
 );
 

@@ -49,3 +49,18 @@ test('an English "of" after the unit is not part of the name', () => {
 	assert.deepEqual(parseShoppingInput('7Up'), { name: '7Up', quantity: null });
 	assert.deepEqual(parseShoppingInput('2 of'), { name: 'of', quantity: '2' });
 });
+
+test('Spanish unit words stay in the quantity and the "de" after them is dropped', () => {
+	assert.deepEqual(parseShoppingInput('2 paquetes de pasta'), {
+		name: 'pasta',
+		quantity: '2 paquetes',
+	});
+	assert.deepEqual(parseShoppingInput('1,5 litros leche'), {
+		name: 'leche',
+		quantity: '1,5 litros',
+	});
+	assert.deepEqual(parseShoppingInput('2 De Cecco Spaghetti'), {
+		name: 'De Cecco Spaghetti',
+		quantity: '2',
+	});
+});
