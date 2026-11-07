@@ -1,0 +1,93 @@
+import type { Catalog } from '../catalog';
+import type de from '../de/home';
+
+export default {
+	due: {
+		checkDate: 'Revisa la fecha',
+		overdue: 'pendiente desde hace {count, plural, one {# día} other {# días}}',
+		today: 'toca hoy',
+		tomorrow: 'toca mañana',
+		inDays: 'en {count, plural, one {# día} other {# días}}',
+	},
+	today: {
+		unassigned: 'Sin asignar',
+		choreDetail: '{owner} · {due}',
+		itemMissing: 'Falta {name}',
+		shoppingOpen: 'Cosas por comprar',
+		shoppingDetail:
+			'Piso · {count, plural, one {# artículo pendiente} other {# artículos pendientes}}',
+		takeoverOpen: 'Se puede asumir',
+		noticeboardOpen: 'Publicación del tablón pendiente',
+		recurringDue: 'Gastos fijos · {amount} · {due}',
+		recurring: 'Gastos fijos · {amount}',
+		debtTitle: '{direction, select, outgoing {Para {name}} other {De {name}}}',
+		youPay: 'Tú pagas',
+		youReceive: 'Tú recibes',
+		absent: '{self, select, yes {Estás ausente} other {{name} está ausente}}',
+		until: 'hasta el {date}',
+	},
+	agenda: {
+		you: 'Tú',
+		allDay: 'todo el día',
+		ongoing: 'en curso',
+		endedAt: 'Terminó hoy a las {time}',
+		withLocation: '{when} · {location}',
+	},
+	loadError: { lead: 'No se pudo cargar el inicio' },
+	page: {
+		staleData: '{error} Es posible que los datos mostrados estén desactualizados.',
+		reload: 'Recargar inicio',
+	},
+	forYou: {
+		heading: 'Para ti',
+		showLess: 'Ver menos',
+		showMore: 'Ver más ({count})',
+		allDone: 'Todo hecho. Ahora mismo no tienes nada pendiente.',
+		failed: 'No se pudieron cargar tus tareas personales.',
+		loading: 'Cargando tus tareas',
+		saving: 'Guardando…',
+	},
+	welcome: {
+		title: 'Tu piso está listo',
+		descriptionAlone: 'Invita a tus compañeros de piso y empezad juntos.',
+		descriptionWithRoommates: 'Empieza con tu primer registro.',
+		dismiss: 'Ocultar este aviso de bienvenida para siempre',
+		openShopping: 'Abrir compras',
+	},
+	invite: {
+		shareFailed: 'No se pudo compartir la invitación.',
+		shared: 'Invitación compartida',
+		copied: 'Invitación copiada',
+		failedStatus: 'No se pudo compartir',
+		sharing: 'Compartiendo invitación…',
+		shareAgain: 'Compartir de nuevo',
+		invite: 'Invitar a compañeros de piso',
+	},
+	week: {
+		today: 'Hoy',
+		tomorrow: 'Mañana',
+		heading: 'Esta semana',
+		calendar: 'Calendario',
+		loading: 'Cargando eventos y tareas del plan de limpieza',
+		eventsStale:
+			'No se pudieron actualizar los eventos. Es posible que las entradas mostradas estén desactualizadas.',
+		eventsFailedChoresShown:
+			'No se pudieron cargar los eventos. Las tareas del plan de limpieza siguen visibles.',
+		eventsFailed: 'No se pudieron cargar los eventos.',
+		retryEvents: 'Recargar eventos',
+		choresFailed: 'No se pudieron cargar las tareas del plan de limpieza.',
+		overdue: 'Atrasadas',
+		allOverdue: 'Las {count} tareas atrasadas',
+		upcoming: 'Próximamente',
+		moreUpcoming: '{count, plural, one {Un evento o tarea más} other {# eventos y tareas más}}',
+		nothingPlanned: 'No hay nada planeado hasta el domingo.',
+	},
+	news: {
+		heading: 'Novedades en tu piso',
+		newOnNoticeboard: 'Novedades en el tablón',
+		noNewEntries: 'Aún no hay entradas nuevas.',
+		failed: 'No se pudieron cargar las novedades.',
+		loading: 'Cargando novedades',
+		allActivity: 'Toda la actividad',
+	},
+} satisfies Catalog<typeof de>;

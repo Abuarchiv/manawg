@@ -1,0 +1,71 @@
+import type { Catalog } from '../catalog';
+import type de from '../de/statement';
+
+export default {
+	page: {
+		title: 'Resumen mensual',
+		backLabel: 'gastos',
+		previousMonth: 'Mes anterior',
+		nextMonth: 'Mes siguiente',
+		asPdf: 'Guardar como PDF',
+		reload: 'Recargar',
+		loading: 'Cargando resumen',
+		boundary: {
+			title: 'No se pudo cargar el resumen ahora mismo',
+			body: 'Algo salió mal en la página del resumen. Inténtalo de nuevo o vuelve al resumen del piso.',
+		},
+	},
+	document: {
+		pdfFilename: 'ManaWG-resumen-{month}.pdf',
+		formerMember: 'Antiguo miembro',
+		statementNumber: 'Resumen',
+		period: 'Periodo',
+		preparedFor: 'Preparado para',
+		periodRange: '{start} – {end}',
+		eyebrow: 'Resumen mensual · {wgName}',
+		total: 'Total',
+		expenses: 'Gastos',
+		yourShare: 'Tu parte',
+		status: 'Estado',
+		statusEmpty: 'Sin gastos',
+		statusSettled: 'Saldado',
+		statusOpen: 'Pendiente',
+		balances: 'Saldos',
+		splitBetween: 'Repartido entre {count, plural, one {# persona} other {# personas}}',
+		person: 'Persona',
+		paid: 'Pagado',
+		share: 'Parte',
+		balance: 'Pendiente',
+		balancesHint:
+			'Pagado y Parte corresponden a {month}. Pendiente muestra la situación a {date}, sumando todos los meses y monedas.',
+		balanceSettled: 'saldado',
+		you: 'tú',
+		settlement: 'Liquidación',
+		settlementHint:
+			'La forma más sencilla: {count, plural, one {una transferencia} other {# transferencias}} y todos quedan en paz.',
+		transferTo: 'a',
+		categories: 'Categorías',
+		categoryShare: '{share, number}%',
+		category: {
+			groceries: 'Alimentación',
+			household: 'Hogar',
+			housing: 'Vivienda',
+			leisure: 'Ocio',
+			transport: 'Transporte',
+			other: 'Otros',
+		},
+		allExpenses: 'Todos los gastos',
+		entriesByDate: '{count, plural, one {# registro} other {# registros}}, por fecha',
+		date: 'Fecha',
+		description: 'Descripción',
+		from: 'Pagado por',
+		amount: 'Importe',
+		sum: 'Total',
+		howWeCalculate: 'Cómo calculamos',
+		howWeCalculateBody:
+			'Cada gasto se reparte tal como se introdujo. Pendiente es todo lo que aún no está saldado, sumando todos los meses y tras los pagos confirmados. Un valor positivo significa que te deben dinero.',
+		note: 'Nota',
+		noteBody:
+			'Este resumen no es una factura a efectos fiscales. Los recibos y las fotos están en cada gasto dentro de la app. Puedes exportarlo como CSV en Ajustes → Datos.',
+	},
+} satisfies Catalog<typeof de>;
