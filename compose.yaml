@@ -20,7 +20,7 @@ x-app: &app
 
 services:
   db:
-    image: supabase/postgres:17.11.0.016
+    image: supabase/postgres:17.11.0.018
     restart: unless-stopped
     logging: *logging
     command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf", "-c", "log_min_messages=fatal"]
@@ -112,7 +112,7 @@ services:
       retries: 20
 
   storage:
-    image: supabase/storage-api:v1.87.2
+    image: supabase/storage-api:v1.89.2
     restart: unless-stopped
     logging: *logging
     depends_on:
