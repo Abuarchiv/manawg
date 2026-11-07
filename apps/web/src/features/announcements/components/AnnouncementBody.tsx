@@ -26,6 +26,7 @@ export function AnnouncementBody({
 	busy,
 }: AnnouncementBodyProps) {
 	const t = useTranslations('pinboard.card');
+	const tCommon = useTranslations('common');
 	const render = useMessage();
 	const locale = useLocale() as Locale;
 	const [imageFailed, setImageFailed] = useState(false);
@@ -69,7 +70,9 @@ export function AnnouncementBody({
 					href={announcement.imageUrl}
 					target="_blank"
 					rel="noopener noreferrer"
-					aria-label={t('imageAria', { subject: actionSubject })}
+					aria-label={tCommon('opensInNewTab', {
+						label: t('imageAria', { subject: actionSubject }),
+					})}
 					className="block"
 				>
 					{imageFailed ? (

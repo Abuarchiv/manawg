@@ -33,6 +33,7 @@ interface InviteStepProps {
 export function InviteStep({ code, wgName, memberId, onSkip }: InviteStepProps) {
 	const render = useMessage();
 	const t = useTranslations('entry.share');
+	const tCommon = useTranslations('common');
 	const [invite, setInvite] = useState<CreatedInvite | null>(null);
 	const [loadError, setLoadError] = useState<string | null>(null);
 	const [attempt, setAttempt] = useState(0);
@@ -202,7 +203,7 @@ export function InviteStep({ code, wgName, memberId, onSkip }: InviteStepProps) 
 						href={whatsappHref}
 						target="_blank"
 						rel="noopener noreferrer"
-						aria-label={t('whatsapp')}
+						aria-label={tCommon('opensInNewTab', { label: t('whatsapp') })}
 						aria-disabled={!ready}
 						tabIndex={ready ? undefined : -1}
 						onClick={(event) => {

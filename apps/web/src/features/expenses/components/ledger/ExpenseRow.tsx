@@ -80,6 +80,7 @@ export const ExpenseRow = memo(function ExpenseRow({
 }: ExpenseRowProps) {
 	const locale = useLocale();
 	const t = useTranslations('expenses.row');
+	const tCommon = useTranslations('common');
 	const tCategories = useTranslations('expenses.categories');
 	const money = (cents: number) => formatEuroCents(cents, expense.currency, { locale });
 	// An offline-queued expense has only a placeholder id until it syncs; the
@@ -238,7 +239,12 @@ export const ExpenseRow = memo(function ExpenseRow({
 							<Button
 								variant="outline"
 								render={
-									<a href={expense.imageUrl} target="_blank" rel="noopener noreferrer">
+									<a
+										href={expense.imageUrl}
+										target="_blank"
+										rel="noopener noreferrer"
+										aria-label={tCommon('opensInNewTab', { label: t('openReceipt') })}
+									>
 										<Receipt data-icon="inline-start" />
 										{t('openReceipt')}
 									</a>

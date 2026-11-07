@@ -13,6 +13,12 @@ settled.
 - The installed app's description and its "Join a flat" home-screen shortcut follow the device
   language (German or English) instead of always being German. The PWA manifest is now served at
   `/manifest.webmanifest`.
+- Links that open a new tab are announced as such by screen readers.
+
+### Fixed
+
+- The English crash page labels its mail link "Report a problem by email", the wording the other
+  error screens use.
 
 ### Self-hosting
 
