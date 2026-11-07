@@ -113,6 +113,11 @@ const nextConfig: NextConfig = {
 			// Vercel otherwise labels header-less API responses "public, max-age=0, must-revalidate".
 			// Routes that set their own Cache-Control keep it.
 			{ source: '/api/:path*', headers: [{ key: 'Cache-Control', value: 'private, no-store' }] },
+			// The manifest language follows the locale cookie and Accept-Language; shared caches must not mix them.
+			{
+				source: '/manifest.webmanifest',
+				headers: [{ key: 'Vary', value: 'Accept-Language, Cookie' }],
+			},
 		];
 	},
 	experimental: {
