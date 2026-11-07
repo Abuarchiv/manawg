@@ -1,3 +1,4 @@
+import { dayMonthOptions } from '@/core/utils/time';
 import { dateTimeFormat } from '@/shared/i18n/intl';
 import type { Locale } from '@/shared/i18n/locale';
 import type { Message } from '@/shared/i18n/message';
@@ -28,12 +29,8 @@ export function expandAgendaRecurrence(event: EventInput, from: Date, to: Date):
 
 /** Weekday, date and time formatters of one locale; German keeps the numeric day and month. */
 function formatters(locale: Locale) {
-	const dateOptions: Intl.DateTimeFormatOptions =
-		locale === 'de' ? { day: '2-digit', month: '2-digit' } : { day: 'numeric', month: 'short' };
-	const fullDateOptions: Intl.DateTimeFormatOptions =
-		locale === 'de'
-			? { day: '2-digit', month: '2-digit', year: 'numeric' }
-			: { day: 'numeric', month: 'short', year: 'numeric' };
+	const dateOptions = dayMonthOptions(locale);
+	const fullDateOptions = dayMonthOptions(locale, true);
 	return {
 		weekday: dateTimeFormat(locale, { weekday: 'short' }),
 		allDayWeekday: dateTimeFormat(locale, { weekday: 'short', timeZone: 'UTC' }),

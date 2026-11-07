@@ -25,6 +25,7 @@ import { MS_PER_DAY } from '@/core/utils/time';
 import { chatMessagesReadPayload } from '@/features/chat/chat-pure';
 import { toChatUnreadCountResponse } from '@/features/chat/chat-unread-count';
 import { groupItemsByCategory } from '@/features/inventory/inventory';
+import { isLocale } from '@/shared/i18n/locale';
 import { MEMBER_NAME_MAX_LENGTH, WG_NAME_MAX_LENGTH } from '@/shared/lib/limits';
 import { EXPECTED_MEMBER_ID_HEADER } from '@/shared/lib/member-header';
 import {
@@ -349,7 +350,7 @@ function readShareCode(segment: string): string | null {
 async function accountLocale(req: NextRequest): Promise<NextResponse> {
 	const body: unknown = await req.json().catch(() => null);
 	const locale = (body as { locale?: unknown } | null)?.locale;
-	if (locale !== 'de' && locale !== 'en') return badRequest('locale_invalid');
+	if (!isLocale(locale)) return badRequest('locale_invalid');
 	return NextResponse.json({ locale });
 }
 

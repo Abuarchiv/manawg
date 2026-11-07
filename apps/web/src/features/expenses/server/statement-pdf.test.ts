@@ -210,7 +210,7 @@ test('every line stays inside the page margins for a 100-character WG name', asy
 		return original.call(this, value, options);
 	};
 	try {
-		for (const locale of ['de', 'en'] as const) {
+		for (const locale of ['de', 'en', 'es'] as const) {
 			await renderStatementPdf({
 				...input,
 				wgName: 'W'.repeat(100),

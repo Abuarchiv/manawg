@@ -24,20 +24,29 @@ const CUSTOM_SPLIT_MAX_DRIFT_CENTS = 2;
 const SPLITWISE_KNOWN_COLS = new Set([
 	'date',
 	'datum',
+	'fecha',
 	'description',
 	'beschreibung',
+	'descripcion',
 	'notes',
 	'notizen',
+	'notas',
 	'details',
+	'detalles',
 	'repayments',
 	'category',
 	'kategorie',
+	'categoria',
 	'cost',
 	'kosten',
+	'coste',
+	'costo',
 	'amount',
 	'betrag',
+	'importe',
 	'currency',
 	'wahrung',
+	'moneda',
 	'created date',
 	'created by',
 	'last changed',
@@ -56,11 +65,19 @@ export function parseSplitwiseCsv(
 	if (rows.length < 2) return [];
 	const header = rows[0]?.fields ?? [];
 	if (header.length > MAX_IMPORT_COLUMNS) return [];
-	const idxDate = findColumnIndex(header, ['date', 'datum']);
-	const idxDesc = findColumnIndex(header, ['description', 'beschreibung']);
-	const idxCost = findColumnIndex(header, ['cost', 'kosten', 'amount', 'betrag']);
-	const idxCurrency = findColumnIndex(header, ['currency', 'währung', 'wahrung']); // i18n-ignore import parser column names
-	const idxCategory = findColumnIndex(header, ['category', 'kategorie']);
+	const idxDate = findColumnIndex(header, ['date', 'datum', 'fecha']);
+	const idxDesc = findColumnIndex(header, ['description', 'beschreibung', 'descripcion']);
+	const idxCost = findColumnIndex(header, [
+		'cost',
+		'kosten',
+		'coste',
+		'costo',
+		'amount',
+		'betrag',
+		'importe',
+	]);
+	const idxCurrency = findColumnIndex(header, ['currency', 'währung', 'wahrung', 'moneda']); // i18n-ignore import parser column names
+	const idxCategory = findColumnIndex(header, ['category', 'kategorie', 'categoria']);
 	if (idxDate === -1 || idxDesc === -1 || idxCost === -1) return [];
 
 	const memberColumns: { index: number; name: string }[] = [];
@@ -92,11 +109,14 @@ export function parseSplitwiseCsv(
 		const warnings: string[] = [];
 		if (ignoredWarning) warnings.push(ignoredWarning);
 		// Splitwise exports settle-ups as rows in the Payment category; they repay a debt.
-		if (idxCategory !== -1 && /^(payment|zahlung)$/i.test((fields[idxCategory] ?? '').trim())) {
+		if (
+			idxCategory !== -1 &&
+			/^(payment|zahlung|pago)$/i.test((fields[idxCategory] ?? '').trim())
+		) {
 			warnings.push('payment_row');
 		}
 		const descRaw = (fields[idxDesc] ?? '').trim().slice(0, DESCRIPTION_MAX_LENGTH).trimEnd();
-		if (!descRaw || /^(total balance|gesamtsaldo)$/i.test(descRaw)) continue;
+		if (!descRaw || /^(total balance|gesamtsaldo|saldo total)$/i.test(descRaw)) continue;
 		const date = parseDateIso(fields[idxDate] ?? '', locale);
 		if (!date) {
 			rejected?.push({ line, reason: 'date_invalid', description: descRaw });

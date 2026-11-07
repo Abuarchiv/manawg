@@ -1,11 +1,20 @@
 // Helpers for the English-locale E2E specs.
 
 import { type BrowserContext, expect, type Page } from '@playwright/test';
-import { LOCALE_COOKIE } from '../../src/shared/i18n/locale';
+import { LOCALE_COOKIE, type Locale } from '../../src/shared/i18n/locale';
+
+/** Sets the language cookie for every page of `context`. */
+export async function setLocale(
+	context: BrowserContext,
+	baseURL: string,
+	locale: Locale,
+): Promise<void> {
+	await context.addCookies([{ name: LOCALE_COOKIE, value: locale, url: baseURL }]);
+}
 
 /** Sets the English language cookie for every page of `context`. */
 export async function setEnglishLocale(context: BrowserContext, baseURL: string): Promise<void> {
-	await context.addCookies([{ name: LOCALE_COOKIE, value: 'en', url: baseURL }]);
+	await setLocale(context, baseURL, 'en');
 }
 
 /** German UI words that must not appear in English chrome; fixture user content is not scanned. */

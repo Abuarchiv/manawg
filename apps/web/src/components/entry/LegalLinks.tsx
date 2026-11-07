@@ -14,11 +14,11 @@ interface LegalLink {
 const legalLink = (href: string | null, label: LegalLabel): LegalLink[] =>
 	href ? [{ href, label }] : [];
 
-// English readers get the English pages of the official landing.
+// English and Spanish readers get the English pages of the official landing.
 const LANDING_PAGES = {
-	about: { de: '/ueber-manawg', en: '/en/about-manawg' },
-	flatApp: { de: '/wg-app', en: '/en/flat-share-app' },
-	guide: { de: '/ratgeber', en: '/en/guides' },
+	about: { de: '/ueber-manawg', en: '/en/about-manawg', es: '/en/about-manawg' },
+	flatApp: { de: '/wg-app', en: '/en/flat-share-app', es: '/en/flat-share-app' },
+	guide: { de: '/ratgeber', en: '/en/guides', es: '/en/guides' },
 } as const;
 
 // The operator's legal pages are absent when the instance has none configured.

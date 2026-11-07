@@ -10,7 +10,7 @@
 | Find a command, test or quality gate | [Development](development.md) |
 | Understand how the code is built and why | [Architecture](architecture.md) |
 | Design a screen that fits the app | [Design language](brand/design-language.md) |
-| Write English UI text | [English glossary](brand/glossary-en.md) |
+| Write English or Spanish UI text | [English](brand/glossary-en.md) and [Spanish](brand/glossary-es.md) glossaries |
 | Report a vulnerability | [Security policy](../SECURITY.md) |
 | Get help | [Support](../.github/SUPPORT.md) |
 

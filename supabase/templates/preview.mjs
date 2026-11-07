@@ -1,5 +1,5 @@
 // Renders the templates with sample data and screenshots them.
-// Usage: node supabase/templates/preview.mjs [email] [token] [outDir] [de|en]
+// Usage: node supabase/templates/preview.mjs [email] [token] [outDir] [de|en|es]
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';

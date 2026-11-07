@@ -20,6 +20,7 @@ import { saveAccountLocale, syncAccountLocale } from './account-locale';
 const OPTIONS: ReadonlyArray<{ value: Locale; label: string }> = [
 	{ value: 'de', label: 'Deutsch' },
 	{ value: 'en', label: 'English' },
+	{ value: 'es', label: 'Español' },
 ];
 type Choice = Locale | 'system';
 

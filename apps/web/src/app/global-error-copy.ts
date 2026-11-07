@@ -1,6 +1,6 @@
 import type { Locale } from '@/shared/i18n/locale';
 
-// This boundary sits above the root layout, so it has no message provider: two tiny inline copies.
+// This boundary sits above the root layout, so it has no message provider: small inline copies.
 export const COPY: Record<
 	Locale,
 	Record<'wrong' | 'reload' | 'retry' | 'home' | 'report', string>
@@ -23,5 +23,12 @@ export const COPY: Record<
 		retry: 'Try again',
 		home: 'Go to home page',
 		report: 'Report a problem by email',
+	},
+	es: {
+		wrong: 'Algo ha salido mal',
+		reload: 'Vuelve a cargar la página.',
+		retry: 'Intentar de nuevo',
+		home: 'Ir a la página de inicio',
+		report: 'Informar de un problema por correo',
 	},
 };

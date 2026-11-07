@@ -15,7 +15,7 @@ import {
 	isTransientWebPushError,
 	parseWebPushStatusCode,
 } from '@/core/notifications/web-push-errors';
-import type { Locale } from '@/shared/i18n/locale';
+import { isLocale, type Locale } from '@/shared/i18n/locale';
 
 export interface DispatchInput {
 	wg: { id: string; name: string; shareCode: string };
@@ -277,7 +277,7 @@ export async function dispatchNotification(
 				: and(eq(wgMembers.wgId, input.wg.id), isNull(wgMembers.deactivatedAt)),
 		);
 
-	// One message per distinct recipient locale (at most two), formatted on first use.
+	// One message per distinct recipient locale (one per language), formatted on first use.
 	const messages = new Map<Locale, NotificationMessage>();
 	const messageFor = (locale: Locale): NotificationMessage => {
 		let message = messages.get(locale);
@@ -320,7 +320,7 @@ export async function dispatchNotification(
 
 	const pushResults = await mapInBatches(targetMembers, PUSH_BATCH_SIZE, async (member) => {
 		if (!member.pushOptIn) return { sent: 0, failures: [] };
-		const message = messageFor(member.locale === 'en' ? 'en' : 'de');
+		const message = messageFor(isLocale(member.locale) ? member.locale : 'de');
 		const url = buildNotificationUrl(input.wg.shareCode, message.urlPath);
 		return sendWebPush(member.id, { title: message.title, body: message.body, url }, priority);
 	});

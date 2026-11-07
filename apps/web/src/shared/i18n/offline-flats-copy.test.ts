@@ -5,12 +5,16 @@ const { default: catalog } = await import('./messages');
 
 // The sign-in page has no code field: members come back through their flats list and new
 // members join with an invite link, so the offline flats card must not ask for a code.
-for (const locale of ['de', 'en'] as const) {
+for (const locale of ['de', 'en', 'es'] as const) {
 	const flats = catalog[locale].offline.page.flats;
 
 	test(`${locale} offline flats copy never asks for a code`, () => {
 		for (const [key, message] of Object.entries(flats) as [string, string][]) {
-			assert.doesNotMatch(message, /\bcode\b/i, `offline.page.flats.${key} mentions a code`);
+			assert.doesNotMatch(
+				message,
+				/\b(?:code|c[oó]digo)\b/i,
+				`offline.page.flats.${key} mentions a code`,
+			);
 		}
 	});
 }

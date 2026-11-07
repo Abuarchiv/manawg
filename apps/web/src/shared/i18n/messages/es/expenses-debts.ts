@@ -1,0 +1,140 @@
+import type { Catalog } from '../catalog';
+import type de from '../de/expenses-debts';
+
+export default {
+	page: {
+		title: 'Recordatorios',
+		back: 'gastos',
+		loading: 'Cargando…',
+		allClear: 'Todo saldado. No hay nada pendiente.',
+		openDebts: 'Importes pendientes',
+		openDebtsLoading: 'Cargando importes pendientes',
+		recent: 'Recordatorios recientes (30 días)',
+		reload: 'Recargar',
+		loadError: { reminders: 'No se han podido cargar los recordatorios' },
+		boundary: {
+			title: 'No se han podido cargar los recordatorios ahora mismo',
+			body: 'Algo ha salido mal en la página de recordatorios. Inténtalo de nuevo o vuelve al resumen del piso.',
+		},
+	},
+	debtLine:
+		'{debtorSelf, select, yes {Debes a {creditor}} other {{creditorSelf, select, yes {{debtor} te debe} other {{debtor} debe a {creditor}}}}}',
+	age: {
+		days: 'pendiente desde hace {count, plural, one {# día} other {# días}}',
+		today: 'pendiente desde hoy',
+	},
+	remind: {
+		idle: 'Recordar',
+		sending: 'Enviando…',
+		sent: 'Enviado',
+		cooldown: 'Disponible de nuevo más tarde',
+		cooldownSr: 'Disponible de nuevo',
+		optedOut: 'Prefiere no recibir recordatorios',
+		primaryOwn: 'Recordar a {debtor}',
+		primaryOther: 'Recordar a {debtor}: {amount} a {creditor}',
+		sentTo: 'Recordatorio enviado a {name}.',
+		sentPlain: 'Recordatorio enviado.',
+		deliveryFailed: 'Recordatorio guardado. No se ha podido enviar la notificación push.',
+		deliveryUnknown: 'Recordatorio guardado. No se ha podido confirmar el envío del push.',
+		keyUnavailable: 'No se ha podido enviar el recordatorio de forma fiable. Inténtalo de nuevo.',
+		errors: {
+			subject: 'No se ha podido enviar el recordatorio',
+			cooldown: 'Espera un poco ({hours} h por persona).',
+			rateLimited: 'Demasiados recordatorios. Inténtalo más tarde.',
+			optedOut: 'Esta persona no recibe recordatorios.',
+			noOpenDebt: 'No hay ningún importe pendiente entre vosotros.',
+			notAMember: 'Vuelve a unirte al piso.',
+		},
+	},
+	history: {
+		emptyTitle: 'Aún no hay recordatorios',
+		emptyBody: 'Los recordatorios que envíes aparecerán aquí.',
+		channel: {
+			push: 'Notificación push',
+			inapp: 'En la app',
+			pending: 'Enviando',
+			unknown: 'Desconocido',
+		},
+	},
+	summary: {
+		title: 'Tu balance',
+		openBalances: 'Saldos pendientes',
+		owed: 'Te deben',
+		owe: 'Debes',
+		settled: 'Estás al día',
+		statementLink: 'Resumen mensual',
+		remindersLink: 'Todos los recordatorios',
+		balances: 'Saldos',
+		balancesLabel: 'Saldo por miembro',
+		you: 'Tú',
+		balanceSettled: 'saldado',
+		howToSettle: 'Cómo saldar cuentas',
+		yourPayments: 'Tus pagos pendientes',
+		otherPayments: 'Otros pagos del piso',
+	},
+	settle: {
+		button: 'Saldar',
+		buttonAria: 'Saldar: {debtor} a {creditor}, {amount}',
+		checking: 'Comprobando…',
+		checkFailed: 'No se ha podido comprobar el pago. Inténtalo de nuevo en un momento.',
+		keyUnavailable: 'No se ha podido guardar el saldo de forma fiable. Inténtalo de nuevo.',
+		cashKeyUnavailable:
+			'No se ha podido guardar el pago en efectivo de forma fiable. Inténtalo de nuevo.',
+		noDirectSplits:
+			'Este saldo combinado no tiene partes que se puedan asignar directamente. Revisa los gastos originales uno por uno.',
+		recorded: 'Pago registrado: {amount} de {from} a {to}.',
+		recordedWithRemaining:
+			'Pago registrado: {amount} de {from} a {to}. Quedan {remaining} pendientes en el saldo combinado.',
+		nothingRecorded: 'No se ha registrado ningún pago. Se están recargando los gastos pendientes.',
+		cashRecorded: 'Pago en efectivo registrado: {amount} de {from} a {to}.',
+	},
+	review: {
+		title: 'Confirma un pago ya realizado',
+		body: 'Confirma solo si {payerSelf, select, yes {ya has pagado {amount} a {payee}} other {{payeeSelf, select, yes {{payer} ya te ha pagado {amount}} other {{payer} ya ha pagado {amount} a {payee}}}}}. No se transfiere dinero.',
+		cashNote:
+			'“Registrar el saldo completo como efectivo” confirma en su lugar todo el saldo combinado de {amount}.',
+		sharesLabel: 'Partes de gastos cubiertas',
+		expense: 'Gasto',
+		offset: 'Compensado con lo que te debe',
+		currentShare: 'Parte pendiente actual',
+		remaining:
+			'{amount} del saldo combinado no se pueden aplicar a estas partes y siguen pendientes.',
+		checkedNote:
+			'Estas partes se han comprobado hace un momento. Si cambian entretanto, tendrás que volver a comprobar el pago.',
+		noShares:
+			'Este saldo combina varios importes y no se puede asignar a una sola parte. Puedes registrarlo como pago en efectivo.',
+		cancel: 'Cancelar',
+		saving: 'Guardando…',
+		recordCash: 'Registrar el saldo completo como efectivo ({amount})',
+		recordPaid: 'Registrar {amount} como pagado',
+	},
+	cash: {
+		title: 'Pagos en efectivo',
+		listLabel: 'Tus pagos en efectivo',
+		line: '{fromSelf, select, yes {Tú} other {{from}}} a {toSelf, select, yes {ti} other {{to}}}',
+		paidInCash: 'Pagado en efectivo',
+		void: 'Anular',
+		voidAria: 'Anular: {amount} de {from} a {to}',
+		voidTitle: '¿Anular el pago en efectivo?',
+		voidBody:
+			'Se anulará el pago en efectivo de {amount} de {from} a {to} y el importe volverá a estar pendiente. Si solo el importe es incorrecto, vuelve a registrar el pago después.',
+		voidKeyUnavailable: 'No se ha podido guardar la anulación de forma fiable. Inténtalo de nuevo.',
+		voided: 'Pago en efectivo anulado: {amount} de {from} a {to}.',
+	},
+	errors: {
+		sentence: '{subject}.',
+		settleSubject: 'No se ha podido guardar el saldo',
+		cashSubject: 'No se ha podido guardar el pago en efectivo',
+		voidSubject: 'No se ha podido anular el pago en efectivo',
+		settlementChanged:
+			'Los importes pendientes han cambiado. Vuelve a comprobar el pago antes de registrarlo.',
+		reviewRequired: 'Revisa primero los gastos afectados y el importe.',
+		memberNotInWg: 'Al menos un miembro ya no está en este piso.',
+		notPartyToDebt: 'No participas en este importe.',
+		notPartyToPayment: 'No participas en este pago.',
+		invalidRequest: 'La solicitud no era válida.',
+		amountInvalid: 'El importe no es válido.',
+		paymentNotFound: 'Este pago en efectivo ya no existe.',
+		paymentVoided: 'Este pago en efectivo ya se ha anulado.',
+	},
+} satisfies Catalog<typeof de>;
