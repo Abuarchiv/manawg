@@ -8,6 +8,10 @@ settled.
 
 ## [Unreleased]
 
+### Changed
+
+- Links that open a new tab are announced as such by screen readers.
+
 ### Self-hosting
 
 - A Portainer template and a stack file for it: `portainer-template.json` and

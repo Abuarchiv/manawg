@@ -299,7 +299,7 @@ test.describe('image upload lifetime', () => {
 				.first()
 				.click();
 			await expect(page.getByText('Wartet auf Verbindung, danach bearbeitbar')).toBeVisible();
-			await expect(page.getByRole('link', { name: 'Beleg öffnen', exact: true })).toHaveCount(0);
+			await expect(page.getByRole('link', { name: 'Beleg öffnen' })).toHaveCount(0);
 		} finally {
 			await context.setOffline(false);
 		}
