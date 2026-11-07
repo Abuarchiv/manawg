@@ -3,11 +3,12 @@ import { test } from 'node:test';
 import { COPY } from '@/app/global-error-copy';
 import de from '@/shared/i18n/messages/de/shell';
 import en from '@/shared/i18n/messages/en/shell';
+import es from '@/shared/i18n/messages/es/shell';
 
-const catalogs = { de, en };
+const catalogs = { de, en, es };
 
 // global-error.tsx has no message provider, so it keeps an inline copy that must match the catalog.
-for (const locale of ['de', 'en'] as const) {
+for (const locale of ['de', 'en', 'es'] as const) {
 	test(`global error copy matches the shell.errorPage catalog (${locale})`, () => {
 		const page = catalogs[locale].errorPage;
 		assert.equal(COPY[locale].wrong, page.somethingWrong);

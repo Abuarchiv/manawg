@@ -1,6 +1,6 @@
 import type { Locale } from './locale';
 
-const INTL_TAGS: Record<Locale, string> = { de: 'de-DE', en: 'en-GB' };
+const INTL_TAGS: Record<Locale, string> = { de: 'de-DE', en: 'en-GB', es: 'es-ES' };
 
 export function intlTag(locale: Locale): string {
 	return INTL_TAGS[locale];

@@ -31,7 +31,7 @@ function normalize(message: string): string {
 		.toLowerCase();
 }
 
-for (const locale of ['de', 'en'] as const) {
+for (const locale of ['de', 'en', 'es'] as const) {
 	for (const [path, visibleKey, ariaKey] of PAIRS) {
 		test(`${locale} ${path}.${ariaKey} contains the visible text of ${visibleKey} (WCAG 2.5.3)`, () => {
 			const namespace = lookup(catalog[locale] as unknown as Tree, path);

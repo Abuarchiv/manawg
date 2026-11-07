@@ -116,7 +116,7 @@ test('the farewell mail states what is removed and that the name stays in WG ent
 });
 
 test('the plain-text welcome and farewell mails name the brand once in the first line', () => {
-	for (const locale of ['de', 'en'] as const) {
+	for (const locale of ['de', 'en', 'es'] as const) {
 		for (const { text } of [
 			renderWelcomeMail({ firstName: 'Mika', locale }),
 			renderAccountDeletedMail(locale),
@@ -205,7 +205,7 @@ test('English invitation and reminder use the English wording and formats', () =
 });
 
 test('the reminder mail names the WG the debt belongs to', () => {
-	for (const locale of ['de', 'en'] as const) {
+	for (const locale of ['de', 'en', 'es'] as const) {
 		const mail = renderReminderMail({
 			wgName: 'WG & Co',
 			shareCode: 'KST48210',
@@ -286,10 +286,10 @@ test('German stays the default and an explicit de renders the same mail', () => 
 
 const SUPABASE_DIR = new URL('../../../../../supabase/templates/', import.meta.url);
 const { selectLocale } = (await import(new URL('render.mjs', SUPABASE_DIR).href)) as {
-	selectLocale: (text: string, locale: 'de' | 'en') => string;
+	selectLocale: (text: string, locale: 'de' | 'en' | 'es') => string;
 };
 
-test('the Supabase auth templates render in both locales and balance every block', () => {
+test('the Supabase auth templates render in every locale and balance every block', () => {
 	const subjects = JSON.parse(
 		readFileSync(new URL('subjects.json', SUPABASE_DIR), 'utf8'),
 	) as Record<string, string>;
@@ -303,14 +303,23 @@ test('the Supabase auth templates render in both locales and balance every block
 		const opens = text.match(/\{\{\s*if\b/g)?.length ?? 0;
 		assert.equal(text.match(/\{\{\s*end\s*\}\}/g)?.length ?? 0, opens, name);
 		assert.equal(text.match(/\{\{\s*else\s*\}\}/g)?.length ?? 0, opens, name);
+		assert.equal(
+			text.match(/\{\{\s*else if eq \.Data\.locale "es"\s*\}\}/g)?.length ?? 0,
+			opens,
+			name,
+		);
 		const de = selectLocale(text, 'de');
 		const en = selectLocale(text, 'en');
-		assert.ok(!/\{\{\s*(if|else|end)\b/.test(de + en), name);
+		const es = selectLocale(text, 'es');
+		assert.ok(!/\{\{\s*(if|else|end)\b/.test(de + en + es), name);
 		assert.notEqual(de, en, name);
+		assert.notEqual(es, en, name);
+		assert.notEqual(es, de, name);
 		if (name.endsWith('.html')) {
 			assert.ok(de.includes('<html lang="de"'), name);
 			assert.ok(en.includes('<html lang="en-GB"'), name);
-			assert.ok(!/Impressum|Datenschutz/.test(en), name);
+			assert.ok(es.includes('<html lang="es-ES"'), name);
+			assert.ok(!/Impressum|Datenschutz/.test(en + es), name);
 		}
 	}
 });

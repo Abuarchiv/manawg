@@ -129,10 +129,13 @@ const fetchWithTimeout = async (request) => {
 };
 
 // The worker has no catalog, so the one fallback sentence follows the browser language.
+const pushFallbackBody = (language) => {
+	if (language.startsWith('en')) return 'The notification could not be read.';
+	if (language.startsWith('es')) return 'No se pudo leer la notificación.';
+	return 'Benachrichtigung konnte nicht gelesen werden.';
+};
 const fallbackPushData = () => ({
-	body: self.navigator.language.toLowerCase().startsWith('en')
-		? 'The notification could not be read.'
-		: 'Benachrichtigung konnte nicht gelesen werden.',
+	body: pushFallbackBody(self.navigator.language.toLowerCase()),
 	title: 'ManaWG',
 	url: '/',
 });

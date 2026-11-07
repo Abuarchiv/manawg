@@ -27,12 +27,13 @@ test('the password-changed mail only promises what the app does', () => {
 		'utf8',
 	);
 	assert.match(html, /<a href="\{\{ \.SiteURL \}\}\/login"/);
-	for (const locale of ['de', 'en']) {
+	for (const locale of ['de', 'en', 'es']) {
 		const text = selectLocale(html, locale);
 		assert.doesNotMatch(text, /sign out all sessions|sperren wir alle Sitzungen/i);
 	}
 	assert.match(selectLocale(html, 'de'), /„Passwort vergessen\?“/);
 	assert.match(selectLocale(html, 'en'), /“Forgot your password\?”/);
+	assert.match(selectLocale(html, 'es'), /«¿Has olvidado tu contraseña\?»/);
 });
 
 test('the email-change mail names both addresses and says both links are needed', () => {
@@ -46,11 +47,15 @@ test('the email-change mail names both addresses and says both links are needed'
 	for (const [locale, both] of [
 		['de', /beide/],
 		['en', /both/],
+		['es', /los dos/],
 	] as const) {
 		const text = selectLocale(html, locale);
 		assert.match(text, /\{\{ \.Email \}\}/);
 		assert.match(text, /\{\{ \.NewEmail \}\}/);
 		assert.match(text, both);
 	}
-	assert.doesNotMatch(subjects.email_change, /neue E-Mail-Adresse|new email address/);
+	assert.doesNotMatch(
+		subjects.email_change,
+		/neue E-Mail-Adresse|new email address|nueva dirección de correo/,
+	);
 });

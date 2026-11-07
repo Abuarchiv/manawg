@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/empty';
 import { captureException } from '@/core/infra/capture-client';
 import { isChunkLoadError, reloadOnStaleChunk } from '@/core/infra/stale-chunk';
-import { htmlLang, LOCALE_COOKIE, type Locale } from '@/shared/i18n/locale';
+import { htmlLang, isLocale, LOCALE_COOKIE, type Locale } from '@/shared/i18n/locale';
 import { SUPPORT_MAILTO } from '@/shared/lib/support-mailto';
 import { applyStoredTheme, THEME_BOOTSTRAP_SCRIPT } from '@/shared/lib/theme';
 import '@/shared/globals.css';
@@ -19,8 +19,13 @@ import { TriangleAlert } from 'lucide-react';
 import { useEffect, useLayoutEffect, useSyncExternalStore } from 'react';
 
 function readLocale(): Locale {
-	if (document.documentElement.lang.startsWith('en')) return 'en';
-	return document.cookie.split('; ').includes(`${LOCALE_COOKIE}=en`) ? 'en' : 'de';
+	const lang = document.documentElement.lang.toLowerCase().split('-')[0];
+	if (isLocale(lang) && lang !== 'de') return lang;
+	const stored = document.cookie
+		.split('; ')
+		.find((entry) => entry.startsWith(`${LOCALE_COOKIE}=`))
+		?.slice(LOCALE_COOKIE.length + 1);
+	return isLocale(stored) ? stored : 'de';
 }
 
 const subscribeNever = () => () => {};

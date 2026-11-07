@@ -80,6 +80,12 @@ test('stores the locale on every membership row and in the account metadata', as
 	assert.deepEqual(state.metadata, [{ data: { locale: 'en' } }]);
 });
 
+test('Spanish is a supported locale', async () => {
+	const res = await patch({ locale: 'es' });
+	assert.equal(res.status, 200);
+	assert.deepEqual(state.updates, [{ locale: 'es' }]);
+});
+
 test('an unsupported locale is a 400 with a code and writes nothing', async () => {
 	const res = await patch({ locale: 'fr' });
 	assert.equal(res.status, 400);

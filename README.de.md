@@ -30,7 +30,7 @@
 ManaWG ist eine kostenlose Open-Source-App für Wohngemeinschaften. Ihr teilt Ausgaben, wechselt
 euch beim Putzen ab, führt eine gemeinsame Einkaufsliste, plant Termine und schreibt im Chat,
 ohne Kostenrechner, Putz-App und Gruppenchat nebeneinander. Die App läuft im Browser und lässt
-sich auf Android und iPhone als Web-App installieren. Sie spricht Deutsch und Englisch, passend
+sich auf Android und iPhone als Web-App installieren. Sie spricht Deutsch, Englisch und Spanisch, passend
 zur Sprache des Geräts.
 
 - **Kostenlos:** Die gehostete Version auf [app.manawg.com](https://app.manawg.com) hat keine
@@ -55,7 +55,7 @@ zur Sprache des Geräts.
 | **Einkauf und Vorräte** | Eine gemeinsame Liste mit Vorschlägen und Vorräte, die einen Artikel auf die Liste setzen, sobald er knapp wird. |
 | **Kalender** | Wiederkehrende Termine, Erinnerungen und ein iCal-Feed für den Kalender auf dem Handy. |
 | **Pinnwand und Chat** | Ankündigungen mit Kommentaren und Reaktionen und ein Chat mit Antworten und @Erwähnungen. |
-| **Überall** | Push-Benachrichtigungen, heller und dunkler Modus, Deutsch und Englisch je nach Gerätesprache. |
+| **Überall** | Push-Benachrichtigungen, heller und dunkler Modus, Deutsch, Englisch und Spanisch je nach Gerätesprache. |
 
 ManaWG ist für eine WG mit bis zu 20 Personen gebaut. Reisen, Büros und Vermieter gehören nicht
 dazu.

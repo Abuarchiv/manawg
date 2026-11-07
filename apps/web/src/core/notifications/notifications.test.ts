@@ -232,7 +232,7 @@ test('every event has a complete message in both locales', () => {
 		'chat.mention',
 	] as const;
 	for (const event of events) {
-		for (const locale of ['de', 'en'] as const) {
+		for (const locale of ['de', 'en', 'es'] as const) {
 			const message = formatNotificationMessage(event, {}, locale);
 			assert.ok(message.title.length > 0 && message.body.length > 0, `${event} ${locale}`);
 			assert.doesNotMatch(message.body, /\{|undefined|NaN/, `${event} ${locale}`);

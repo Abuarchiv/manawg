@@ -54,7 +54,7 @@ web app. *WG* is short for *Wohngemeinschaft*, German for shared flat.
 | **Shopping and supplies** | One shared list with suggestions, and household supplies that put an item on the list when it runs low. |
 | **Calendar** | Recurring dates, reminders and an iCal feed for your phone's calendar. |
 | **Pinboard and chat** | Announcements with comments and reactions, and a chat with replies and @mentions. |
-| **Everywhere** | Push notifications, light and dark mode, English and German following the device language. |
+| **Everywhere** | Push notifications, light and dark mode, English, German and Spanish following the device language. |
 
 ManaWG is built for one flat of up to 20 people. Trips, offices and landlords are out of scope.
 
