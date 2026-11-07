@@ -8,6 +8,13 @@ settled.
 
 ## [Unreleased]
 
+### Added
+
+- Import from Tricount and Settle Up (CSV) under *Expenses → Import*, next to Splitwise and Splid.
+  Money transfers are marked as repayments like Splitwise payments, income entries and rows in other
+  currencies than euros are listed as not imported. Needs a database migration (`0042`), which
+  `setup` applies on start.
+
 ### Changed
 
 - The installed app's description and its "Join a flat" home-screen shortcut follow the device

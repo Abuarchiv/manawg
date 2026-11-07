@@ -295,6 +295,13 @@
       "when": 1793264000000,
       "tag": "0041_drop_pre_confirm_password",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1794045908753,
+      "tag": "0042_import_sources_tricount_settleup",
+      "breakpoints": true
     }
   ]
 }

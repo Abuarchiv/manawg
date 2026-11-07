@@ -112,7 +112,9 @@ mock.module('@/features/expenses/server/import-hash', {
 mock.module('@/features/expenses/import-parsers', {
 	namedExports: {
 		findMappingConflicts: () => [],
+		parseSettleUpCsv: () => [{ paidByName: 'Member', splits: [] }],
 		parseSplidCsv: () => [{ paidByName: 'Member', splits: [] }],
+		parseTricountCsv: () => [{ paidByName: 'Member', splits: [] }],
 		parseSplitwiseCsv: () => [{ paidByName: 'Member', splits: [] }],
 	},
 });

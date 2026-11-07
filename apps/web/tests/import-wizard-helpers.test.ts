@@ -33,8 +33,21 @@ test('decodeCsv falls back to Windows-1252 for non-UTF-8 exports', () => {
 	assert.equal(decodeCsv(new Uint8Array([0x42, 0x72, 0xf6, 0x74]).buffer), 'Bröt');
 });
 
+test('decodeCsv reads the UTF-16 files Settle Up writes, with and without a byte order mark', () => {
+	const utf16 = (text: string, bom: boolean) => {
+		const units = new Uint16Array((bom ? 1 : 0) + text.length);
+		if (bom) units[0] = 0xfeff;
+		for (let i = 0; i < text.length; i += 1) units[(bom ? 1 : 0) + i] = text.charCodeAt(i);
+		return units.buffer;
+	};
+	assert.equal(decodeCsv(utf16('Who paid,Amount\nAnna,5', true)), 'Who paid,Amount\nAnna,5');
+	assert.equal(decodeCsv(utf16('Who paid,Amount\nAnna,5', false)), 'Who paid,Amount\nAnna,5');
+});
+
 test('payloadKey sends screenshots as OCR text', () => {
 	assert.equal(payloadKey('splid_csv'), 'splid_csv');
+	assert.equal(payloadKey('tricount_csv'), 'tricount_csv');
+	assert.equal(payloadKey('settleup_csv'), 'settleup_csv');
 	assert.equal(payloadKey('ocr_screenshot'), 'ocr_text');
 });
 

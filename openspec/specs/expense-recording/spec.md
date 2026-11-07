@@ -62,7 +62,7 @@ Import SHALL skip a row only when an existing WG expense has the same key. Repea
 - **THEN** both SHALL be imported
 
 #### Scenario: Unreadable rows
-- **WHEN** a Splitwise or Splid file contains unreadable rows
+- **WHEN** a Splitwise, Splid, Tricount or Settle Up file contains unreadable rows
 - **THEN** the preview SHALL list them, and a file with no readable row SHALL report `rows_unreadable`
 
 ### Requirement: Recurring expenses book once and stay controlled

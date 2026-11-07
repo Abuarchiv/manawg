@@ -29,12 +29,19 @@ export interface RejectedRow {
 		| 'no_participants'
 		| 'payer_missing'
 		| 'multiple_payers'
+		| 'income_unsupported'
 		| 'currency_unsupported';
 	/** Row description, plus the offending currency for `currency_unsupported`. */
 	description: string;
 }
 
-export type ImportSource = 'splitwise_csv' | 'splid_csv' | 'ocr_screenshot' | 'manual';
+export type ImportSource =
+	| 'splitwise_csv'
+	| 'splid_csv'
+	| 'tricount_csv'
+	| 'settleup_csv'
+	| 'ocr_screenshot'
+	| 'manual';
 
 export class UnsupportedCurrencyError extends Error {
 	readonly currency: string;

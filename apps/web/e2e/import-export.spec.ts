@@ -34,6 +34,26 @@ test.describe('import wizard responsive', () => {
 		await expect(page.getByLabel('CSV-Datei auswählen')).toBeAttached();
 	});
 
+	test('the source picker offers Tricount and Settle Up next to the other sources', async ({
+		page,
+	}) => {
+		await setupMember(page);
+		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}/import`);
+		await dismissOnboarding(page);
+
+		for (const name of [
+			'Splitwise CSV',
+			'Splid CSV',
+			'Tricount CSV',
+			'Settle Up CSV',
+			'Screenshot',
+		]) {
+			await expect(page.getByRole('button', { name })).toBeVisible();
+		}
+		await page.getByRole('button', { name: 'Settle Up CSV' }).click();
+		await expect(page.getByLabel('CSV-Datei auswählen')).toBeAttached();
+	});
+
 	async function setLargeText(page: Page): Promise<void> {
 		await page.evaluate(() => {
 			const nonce = document.querySelector<HTMLScriptElement>('script[nonce]')?.nonce;
