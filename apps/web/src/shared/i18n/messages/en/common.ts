@@ -4,6 +4,7 @@ import type de from '../de/common';
 export default {
 	skipToContent: 'Skip to main content',
 	loading: 'Loading…',
+	opensInNewTab: '{label} (opens in a new tab)',
 	unknownPerson: 'Unknown',
 	errors: {
 		withSubject: '{subject}: {detail}',

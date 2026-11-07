@@ -16,6 +16,15 @@ settled.
   importers also read Spanish column headers. Receipt scanning still recognises German and
   English text only.
 
+### Changed
+
+- Links that open a new tab are announced as such by screen readers.
+
+### Fixed
+
+- The English crash page labels its mail link "Report a problem by email", the wording the other
+  error screens use.
+
 ### Self-hosting
 
 - A Portainer template and a stack file for it: `portainer-template.json` and
