@@ -146,7 +146,7 @@ test.describe('hosted Supabase auth release coverage', () => {
 		});
 
 		await page.goto(`/invite/${memberInviteToken}`);
-		await page.getByRole('link', { name: 'Anmelden', exact: true }).click();
+		await page.getByRole('link', { name: 'Ich habe schon ein Konto', exact: true }).click();
 		await page.getByRole('tab', { name: 'Passwort', exact: true }).click();
 		await page.getByLabel('E-Mail-Adresse').fill(testEmail);
 		await page.getByRole('textbox', { name: 'Passwort', exact: true }).fill(testPassword);

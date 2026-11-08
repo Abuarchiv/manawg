@@ -40,6 +40,7 @@ import {
 	getE2EWgFixture,
 } from './data';
 import { buildE2EExpenses } from './expenses';
+import { inviteLookup, invitePreview } from './invites';
 
 /**
  * API answers of the database-free Playwright build, served by the middleware
@@ -300,19 +301,6 @@ async function createWg(req: NextRequest): Promise<NextResponse | null> {
 	});
 }
 
-/** `GET /api/wg/invites/[token]`: one valid, one expired fixture invitation, anything else unknown. */
-function inviteLookup(token: string): NextResponse {
-	if (token === E2E_INVITE_TOKEN) {
-		return NextResponse.json({
-			wg: { name: E2E_EXISTING_WG.name, shareCode: E2E_EXISTING_WG.shareCode },
-			expiresAt: new Date(Date.now() + INVITE_VALID_DAYS * MS_PER_DAY).toISOString(),
-		});
-	}
-	if (token === E2E_EXPIRED_INVITE_TOKEN)
-		return apiError('invite_expired', HTTP.GONE, 'invite_expired');
-	return notFound('invite_invalid', 'invite_invalid');
-}
-
 /** `POST /api/wg/[code]/members`: joining works with the valid fixture invitation only. */
 async function joinWg(req: NextRequest, code: string): Promise<NextResponse | null> {
 	const fixture = getE2EWgFixture(code);
@@ -364,7 +352,9 @@ export async function answerFixtureApiRequest(req: NextRequest): Promise<NextRes
 	if (codeSegment === 'mine')
 		return req.method === 'GET' && rest.length === 0 ? accountWgs(req) : null;
 	if (codeSegment === 'invites') {
-		return req.method === 'GET' && rest[0] && rest.length === 1 ? inviteLookup(rest[0]) : null;
+		if (req.method !== 'GET' || !rest[0]) return null;
+		if (rest.length === 1) return inviteLookup(rest[0]);
+		return rest.length === 2 && rest[1] === 'preview' ? invitePreview(rest[0]) : null;
 	}
 	const code = readShareCode(codeSegment);
 	if (!code) return null;

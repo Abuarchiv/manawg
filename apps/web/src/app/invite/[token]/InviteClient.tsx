@@ -4,16 +4,20 @@ import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { startSocialLogin } from '@/app/login/start-flow';
 import { useAccountNamePrefill } from '@/app/use-account-name-prefill';
 import { BackButton } from '@/components/app/BackButton';
 import { ErrorBox } from '@/components/app/ErrorBox';
 import { TextField } from '@/components/app/TextField';
+import { useGoogleSignIn } from '@/components/auth/google-sign-in';
+import { SocialLoginButtons } from '@/components/auth/SocialLoginButtons';
 import { EntryFrame } from '@/components/entry/EntryFrame';
 import { LegalLinks } from '@/components/entry/LegalLinks';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { FieldGroup } from '@/components/ui/field';
+import { FieldGroup, FieldSeparator } from '@/components/ui/field';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
+import { authPageHref } from '@/core/auth/auth-intent';
 import { invitePath } from '@/core/utils/invite-token';
 import { cn } from '@/shared/lib/cn';
 import { MEMBER_NAME_MAX_LENGTH } from '@/shared/lib/limits';
@@ -24,30 +28,46 @@ export function InviteClient({ token }: { token: string }) {
 	const t = useTranslations('entry');
 	const ts = useTranslations('entry.start');
 	const router = useRouter();
-	const { phase, name, setName, error, nameInvalid, busy, join, retry, deadMessage } =
+	const { phase, preview, name, setName, error, nameInvalid, busy, join, retry, deadMessage } =
 		useInviteJoin(token);
+	const googleSignIn = useGoogleSignIn();
 	useAccountNamePrefill(phase.kind === 'ready', setName);
 	const next = encodeURIComponent(invitePath(token));
 
 	if (phase.kind === 'signed-out') {
+		const guestTitle = preview
+			? preview.inviterName
+				? t('invite.guestTitle', { inviter: preview.inviterName, wgName: preview.wgName })
+				: t('invite.guestTitleAnonymous', { wgName: preview.wgName })
+			: t('invite.title');
 		return (
 			<EntryFrame
-				title={t('invite.title')}
+				title={guestTitle}
 				headingId="invite-heading"
 				description={t('invite.signInBody')}
 			>
-				<div className="flex flex-col gap-2">
-					<Link href={`/login?next=${next}`} className={cn(buttonVariants(), 'w-full')}>
-						{t('invite.signIn')}
-					</Link>
-					<Link
-						href={`/signup?next=${next}`}
-						className={cn(buttonVariants({ variant: 'outline' }), 'w-full')}
-					>
+				<div className="flex flex-col gap-3">
+					{googleSignIn && (
+						<>
+							<SocialLoginButtons
+								variant="sign-up"
+								next={authPageHref('/login', `next=${next}`)}
+								onOAuthStart={startSocialLogin}
+							/>
+							<FieldSeparator>{ts('or')}</FieldSeparator>
+						</>
+					)}
+					<Link href={`/signup?next=${next}`} className={cn(buttonVariants(), 'w-full')}>
 						{t('invite.createAccount')}
 					</Link>
+					<Link
+						href={`/login?next=${next}`}
+						className="-my-3 inline-block self-center py-3 text-sm font-medium text-foreground underline underline-offset-4"
+					>
+						{t('invite.haveAccount')}
+					</Link>
 				</div>
-				<LegalLinks consent />
+				<LegalLinks registration />
 			</EntryFrame>
 		);
 	}
