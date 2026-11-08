@@ -1,18 +1,11 @@
-<p align="center">
-  <a href="https://manawg.com">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/cover-de-dark.webp">
-      <img src="docs/screenshots/cover-de-light.webp" alt="ManaWG: WG-Leben, geregelt. Drei Handy-Bildschirme zeigen die Ausgaben, die Startseite und den Putzplan.">
-    </picture>
-  </a>
-</p>
+<h3 align="center">ManaWG ist eine kostenlose Open-Source-Alternative zu Splitwise für Wohngemeinschaften, mit Putzplan, Einkaufsliste, Kalender und Chat.</h3>
 
-<h3 align="center">Eine App für die ganze WG: Ausgaben, Putzplan, Einkaufsliste, Kalender und Chat.</h3>
+<p align="center">Apache-2.0, mit Docker selbst hostbar.</p>
 
 <p align="center">
-  <a href="https://app.manawg.com"><strong>App öffnen</strong></a> ·
   <a href="https://manawg.com/demo"><strong>Demo ausprobieren</strong></a> ·
-  <a href="#selbst-hosten">Selbst hosten</a> ·
+  <a href="https://app.manawg.com"><strong>App öffnen</strong></a> ·
+  <a href="#selbst-hosten"><strong>Selbst hosten</strong></a> ·
   <a href="https://manawg.com">Website</a> ·
   <a href="docs/README.md">Doku</a> ·
   <a href="https://github.com/Abuarchiv/manawg/discussions">Discussions</a>
@@ -27,16 +20,80 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="Lizenz: Apache-2.0"></a>
 </p>
 
-ManaWG ist eine kostenlose Open-Source-App für Wohngemeinschaften. Ihr teilt Ausgaben, wechselt
-euch beim Putzen ab, führt eine gemeinsame Einkaufsliste, plant Termine und schreibt im Chat,
-ohne Kostenrechner, Putz-App und Gruppenchat nebeneinander. Die App läuft im Browser und lässt
-sich auf Android und iPhone als Web-App installieren. Sie spricht Deutsch, Englisch und Spanisch, passend
-zur Sprache des Geräts.
+<p align="center">
+  <a href="https://manawg.com">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/cover-de-dark.webp">
+      <img src="docs/screenshots/cover-de-light.webp" alt="ManaWG: WG-Leben, geregelt. Drei Handy-Bildschirme zeigen die Ausgaben, die Startseite und den Putzplan.">
+    </picture>
+  </a>
+</p>
 
-- **Kostenlos:** Die gehostete Version auf [app.manawg.com](https://app.manawg.com) hat keine
-  Werbung, keine Tracking-Cookies und kein Bezahl-Abo.
-- **Selbst betreibbar:** Ein `docker compose up` startet deine eigene Instanz, auf einem kleinen
-  Server oder einem Raspberry Pi (Images für amd64 und arm64).
+## Im Vergleich
+
+ManaWG ist für eine WG gebaut. Splitwise und Spliit sind für beliebige Gruppen gebaut, etwa für eine Reise.
+
+| | ManaWG | Splitwise | Spliit |
+| --- | --- | --- | --- |
+| Gemeinsame Ausgaben, Salden, Ausgleich | Ja | Ja | Ja |
+| Putzplan, Einkaufsliste, Kalender, Chat | Ja | Nein | Nein |
+| Konto nötig | Ja, eines pro Mitbewohner | Ja | Nein, der Gruppenlink genügt |
+| Selbst hosten | Ja, Docker Compose | Nein | Ja |
+| Lizenz | Apache-2.0 | Proprietär | MIT |
+| Preis | Kostenlos, keine Werbung, kein Bezahl-Abo | Kostenlos, mit bezahltem Pro-Tarif | Kostenlos, keine Werbung, durch Spenden finanziert |
+| Import aus anderen Apps (CSV) | Splitwise, Splid, Tricount, Settle Up | Nicht aufgeführt | Noch nicht, als mögliche Funktion gelistet |
+| Währungen | EUR, CHF, USD, GBP | 100+ | Pro Gruppe einstellbar |
+| Oberflächensprachen | Deutsch, Englisch, Spanisch | 7+ | 24 |
+| Apps | Installierbare Web-App (PWA) | iPhone, Android, Web | Web-App (PWA), iPhone-App |
+
+Verglichen anhand der öffentlichen Seiten von [Splitwise](https://www.splitwise.com),
+[Splitwise Pro](https://www.splitwise.com/pro), [Spliit](https://spliit.app) und der
+[Spliit-README](https://github.com/spliit-app/spliit#readme) am 08.11.2026. „Nein“ und „Nicht
+aufgeführt“ heißen, dass die Funktion in der eigenen Funktionsliste des Projekts nicht vorkommt. Wenn
+ihr nur eine Reise abrechnen wollt und niemand ein Konto anlegen soll, passt Spliit besser. Fehler
+entdeckt? Dann [eröffne bitte ein Issue](https://github.com/Abuarchiv/manawg/issues/new/choose).
+
+Spanisch und der Import aus Tricount und Settle Up sind im Zweig `main`, aber noch nicht im Release
+0.1.1 und nicht auf [app.manawg.com](https://app.manawg.com). Sie kommen mit dem nächsten
+Funktions-Release.
+
+## Stand
+
+ManaWG ist in Version 0.1.x. Das erste öffentliche Release, 0.1.0, erschien am 5. November 2026, und
+die gehostete Instanz auf [app.manawg.com](https://app.manawg.com) wird aus diesem Repository
+ausgeliefert; der ausgelieferte Commit und das Release stehen unter `/api/health`. Migrationen laufen beim Start, und das
+[CHANGELOG](CHANGELOG.md) sagt, wann ein Update einen Handgriff braucht.
+
+## Selbst hosten
+
+Du brauchst Docker mit Compose v2, `git` und `openssl`. Eine laufende Instanz braucht etwa 500 MB
+Arbeitsspeicher.
+
+```sh
+git clone https://github.com/Abuarchiv/manawg.git && cd manawg
+./docker/setup.sh        # schreibt .env mit frischen Secrets
+docker compose up -d
+```
+
+Öffne [localhost](http://localhost) und registriere dich. Der Anmeldecode landet in Mailpit unter
+[localhost:8025](http://localhost:8025). Der Stack startet die App, PostgreSQL, die Anmeldung, den
+Bildspeicher, ein HTTPS-Gateway und den Mail-Fänger und lädt das Image des neuesten Releases.
+
+Zum Aktualisieren setzt du `MANAWG_VERSION` in `.env` auf das neue Release (oder auf `0.1`, um
+dessen Fehlerbehebungen zu folgen) und führst `docker compose pull && docker compose up -d` aus.
+Die [Anleitung zum Selbst-Hosten](docs/self-hosting.md) (Englisch) erklärt eine eigene Domain mit
+HTTPS, echten Mailversand, Google-Anmeldung, Backups und Wiederherstellung sowie den Betrieb auf
+Vercel und Supabase statt Docker.
+
+## Was die App kann
+
+ManaWG ist für WGs, die Ausgaben teilen, sich beim Putzen abwechseln, eine gemeinsame Einkaufsliste
+führen, Termine planen und chatten, ohne Kostenrechner, Putz-App und Gruppenchat nebeneinander. Die
+App läuft im Browser und lässt sich auf Android und iPhone als Web-App installieren. Sie spricht
+Deutsch, Englisch und Spanisch, passend zur Sprache des Geräts.
+
+- **Kostenlos:** Die gehostete Version hat keine Werbung, keine Tracking-Cookies und kein Bezahl-Abo.
+- **Selbst betreibbar:** Images für amd64 und arm64, ein kleiner Server oder ein Raspberry Pi genügt.
 - **Funktioniert offline:** Änderungen ohne Verbindung werden gesammelt und später ohne Duplikate
   übertragen.
 - **Kein Lock-in:** Du kannst die ganze WG jederzeit als JSON oder CSV exportieren.
@@ -67,31 +124,6 @@ Excel-Export als CSV speichern) und importiere sie unter *Ausgaben → Import*.
 ManaWG ordnet die Namen deinen Mitbewohnern zu, überspringt Zeilen, die es schon gibt, und kann
 einen ganzen Import rückgängig machen. Ausgaben lassen sich auch aus einem Screenshot lesen; die
 Texterkennung läuft in deinem Browser, das Bild verlässt dein Gerät also nicht.
-
-## Selbst hosten
-
-Du brauchst Docker mit Compose v2, `git` und `openssl`. Eine laufende Instanz braucht etwa 500 MB
-Arbeitsspeicher.
-
-```sh
-git clone https://github.com/Abuarchiv/manawg.git
-cd manawg
-./docker/setup.sh        # schreibt .env mit frischen Secrets
-docker compose up -d
-```
-
-Öffne [localhost](http://localhost) und registriere dich. Der Anmeldecode landet in Mailpit unter
-[localhost:8025](http://localhost:8025). Der Stack startet die App, PostgreSQL, die Anmeldung, den
-Bildspeicher, ein HTTPS-Gateway und den Mail-Fänger und lädt das Image des neuesten Releases.
-
-Zum Aktualisieren setzt du `MANAWG_VERSION` in `.env` auf das neue Release (oder auf `0.1`, um
-dessen Fehlerbehebungen zu folgen) und führst `docker compose pull && docker compose up -d` aus.
-Migrationen laufen beim Start. [CHANGELOG.md](CHANGELOG.md) listet jede Änderung und sagt, wann
-ein Update einen Handgriff braucht.
-
-Die [Anleitung zum Selbst-Hosten](docs/self-hosting.md) (Englisch) erklärt eine eigene Domain mit
-HTTPS, echten Mailversand, Google-Anmeldung, Backups und Wiederherstellung sowie den Betrieb auf
-Vercel und Supabase statt Docker.
 
 ## KI-Assistenten verbinden
 
