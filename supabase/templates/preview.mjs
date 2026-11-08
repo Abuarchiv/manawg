@@ -1,11 +1,12 @@
 // Renders the templates with sample data and screenshots them.
-// Usage: node supabase/templates/preview.mjs [email] [token] [outDir] [de|en|es]
+// Usage: node supabase/templates/preview.mjs [email] [token] [outDir] [de|en|es] [code]
+// A last argument `code` renders the mails of an account created by the sign-up code.
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { selectLocale } from './render.mjs';
+import { selectLocale, selectRegistration } from './render.mjs';
 
 const log = (line) => process.stdout.write(`${line}\n`);
 
@@ -14,6 +15,7 @@ const [
 	token = '48291374',
 	out = resolve(tmpdir(), 'manawg-mail-preview'),
 	locale = 'de',
+	registration = '',
 ] = process.argv.slice(2);
 const urls = {
 	'.ConfirmationURL':
@@ -25,7 +27,7 @@ const urls = {
 // The mark is only hosted after deploy; point the preview at the local file.
 const markDir = pathToFileURL(resolve(import.meta.dirname, '../../apps/web/public/email/')).href;
 const render = (s) =>
-	selectLocale(s, locale)
+	selectLocale(selectRegistration(s, registration), locale)
 		.replaceAll('https://app.manawg.com/email/', `${markDir}/`)
 		.replace(/\{\{\s*slice \.Token (\d+) (\d+)\s*\}\}/g, (_, a, b) => token.slice(+a, +b))
 		.replace(/\{\{\s*\.Token\s*\}\}/g, token)

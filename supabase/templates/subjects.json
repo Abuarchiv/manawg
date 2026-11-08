@@ -1,5 +1,5 @@
 {
-	"confirmation": "{{ if eq .Data.locale \"en\" }}Confirm your email address{{ else if eq .Data.locale \"es\" }}Confirma tu dirección de correo{{ else }}Bestätige deine E-Mail-Adresse{{ end }}",
+	"confirmation": "{{ if eq .Data.registration \"code\" }}{{ if eq .Data.locale \"en\" }}{{ .Token }} is your code to create the account{{ else if eq .Data.locale \"es\" }}{{ .Token }} es tu código para crear la cuenta{{ else }}{{ .Token }} ist dein Code zum Erstellen des Kontos{{ end }}{{ else }}{{ if eq .Data.locale \"en\" }}Confirm your email address{{ else if eq .Data.locale \"es\" }}Confirma tu dirección de correo{{ else }}Bestätige deine E-Mail-Adresse{{ end }}{{ end }}",
 	"recovery": "{{ if eq .Data.locale \"en\" }}Set a new password{{ else if eq .Data.locale \"es\" }}Elige una contraseña nueva{{ else }}Neues Passwort festlegen{{ end }}",
 	"magic_link": "{{ if eq .Data.locale \"en\" }}{{ .Token }} is your sign-in code{{ else if eq .Data.locale \"es\" }}{{ .Token }} es tu código de inicio de sesión{{ else }}{{ .Token }} ist dein Anmeldecode{{ end }}",
 	"email_change": "{{ if eq .Data.locale \"en\" }}Confirm the change of your email address{{ else if eq .Data.locale \"es\" }}Confirma el cambio de tu dirección de correo{{ else }}Bestätige die Änderung deiner E-Mail-Adresse{{ end }}",

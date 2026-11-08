@@ -80,9 +80,9 @@ export default {
 		loadFailed: 'The connected assistants could not be loaded.',
 	},
 	passwordChange: {
-		signedInWith: 'Signed in with email and password: {email}',
-		action: 'Change password',
-		sent: 'We have sent a link to change your password to {email}.',
+		signedInWith: 'Email sign-in: {email}. A password is optional, the code by email is enough.',
+		action: 'Set or change password',
+		sent: 'We have sent a link to set or change your password to {email}.',
 		failed: 'The link could not be sent right now. Try again later.',
 	},
 	emailChange: {

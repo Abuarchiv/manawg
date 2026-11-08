@@ -60,29 +60,19 @@ test.describe('live public dashboard entry', () => {
 		).toBeVisible();
 		await expect(page.getByRole('button', { name: 'WG erstellen', exact: true })).toHaveCount(0);
 
-		// Registration has its own page; short passwords are rejected before any sign-up request.
+		// Registration has its own page: name and address only, no password, no request before both are valid.
 		await page.getByRole('link', { name: 'Konto erstellen', exact: true }).click();
 		await expect(page).toHaveURL(/\/signup$/);
-		let signUpRequests = 0;
-		await page.route(
-			(url) => url.pathname === '/api/auth/sign-up',
-			async (route) => {
-				signUpRequests += 1;
-				await route.abort();
-			},
-		);
-		const passwordWarning = page
-			.getByRole('alert')
-			.filter({ hasText: 'Dein Passwort braucht mindestens 8 Zeichen.' });
-		for (const short of ['12345', '1234567']) {
-			await page.getByLabel('Dein Name').fill('Kurz');
-			await page.getByLabel('E-Mail-Adresse').fill('kurz@example.invalid');
-			await page.getByLabel('Passwort', { exact: true }).fill(short);
-			await page.getByLabel('Passwort wiederholen').fill(short);
-			await page.getByRole('button', { name: 'Konto erstellen', exact: true }).click();
-			await expect(passwordWarning).toBeVisible();
-		}
-		expect(signUpRequests).toBe(0);
+		let codeRequests = 0;
+		await page.route('**/api/auth/code-request', async (route) => {
+			codeRequests += 1;
+			await route.abort();
+		});
+		await expect(page.getByLabel('Passwort')).toHaveCount(0);
+		await page.getByLabel('E-Mail-Adresse').fill('kurz@example.invalid');
+		await page.getByRole('button', { name: 'Weiter', exact: true }).click();
+		await expect(page.getByRole('alert').filter({ hasText: 'Namen' })).toBeVisible();
+		expect(codeRequests).toBe(0);
 	});
 
 	test('an invitation survives public navigation and enters join only after selection', async ({

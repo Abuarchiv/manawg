@@ -20,7 +20,6 @@ export const SIGN_IN_PASSWORD_MIN_LENGTH = 6;
 /** The request in flight; one at a time across all sign-in forms. */
 export type BusyAction =
 	| 'email-sign-in'
-	| 'email-sign-up'
 	| 'email-resend'
 	| 'password-reset'
 	| 'code-request'

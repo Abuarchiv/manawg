@@ -20,8 +20,22 @@ export function choosePasswordHref(next: string | null): string {
 		: CHOOSE_PASSWORD_PATH;
 }
 
+/**
+ * Account metadata set when the account is created by a registration code. GoTrue gives such an
+ * account a random password that the database drops at confirmation like any password stored
+ * before it (migration 0041), but nobody chose it, so there is no password to choose again. The
+ * mark only spares the choose-a-password step: whoever registers an address first with a password
+ * of their own and sets this mark too still has that password dropped.
+ */
+export const CODE_REGISTRATION_METADATA = { registration: 'code' } as const;
+
 /** The address counts as just confirmed for this long, which covers the confirming exchange. */
 const JUST_CONFIRMED_MS = 5 * 60_000;
+
+/** True when the address was confirmed within the last minutes, which covers the confirming exchange. */
+export function justConfirmed(user: { email_confirmed_at?: string | null }): boolean {
+	return Date.now() - Date.parse(user.email_confirmed_at ?? '') < JUST_CONFIRMED_MS;
+}
 
 /**
  * True when the address was confirmed just now and the password stored before was dropped, so
@@ -32,8 +46,8 @@ export async function passwordPending(auth: SupabaseClient['auth']): Promise<boo
 	const { data } = await auth.getUser();
 	const user = data.user;
 	if (user?.app_metadata?.password_pending !== true) return false;
-	const confirmedAt = Date.parse(user.email_confirmed_at ?? '');
-	return Date.now() - confirmedAt < JUST_CONFIRMED_MS;
+	if (user.user_metadata?.registration === CODE_REGISTRATION_METADATA.registration) return false;
+	return justConfirmed(user);
 }
 
 export const PASSWORD_RECOVERY_COOKIE = 'manawg_password_recovery';

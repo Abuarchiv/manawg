@@ -285,8 +285,11 @@ test('German stays the default and an explicit de renders the same mail', () => 
 });
 
 const SUPABASE_DIR = new URL('../../../../../supabase/templates/', import.meta.url);
-const { selectLocale } = (await import(new URL('render.mjs', SUPABASE_DIR).href)) as {
+const { selectLocale, selectRegistration } = (await import(
+	new URL('render.mjs', SUPABASE_DIR).href
+)) as {
 	selectLocale: (text: string, locale: 'de' | 'en' | 'es') => string;
+	selectRegistration: (text: string, registration: string) => string;
 };
 
 test('the Supabase auth templates render in every locale and balance every block', () => {
@@ -299,7 +302,16 @@ test('the Supabase auth templates render in every locale and balance every block
 			.map((file) => ({ name: file, text: readFileSync(new URL(file, SUPABASE_DIR), 'utf8') })),
 		...Object.entries(subjects).map(([name, text]) => ({ name, text })),
 	];
-	for (const { name, text } of files) {
+	// A mail may differ for accounts created by the sign-up code; both variants must hold on their own.
+	const variants = files.flatMap(({ name, text }) =>
+		/\.Data\.registration/.test(text)
+			? [
+					{ name: `${name} (code)`, text: selectRegistration(text, 'code') },
+					{ name: `${name} (other)`, text: selectRegistration(text, '') },
+				]
+			: [{ name, text }],
+	);
+	for (const { name, text } of variants) {
 		const opens = text.match(/\{\{\s*if\b/g)?.length ?? 0;
 		assert.equal(text.match(/\{\{\s*end\s*\}\}/g)?.length ?? 0, opens, name);
 		assert.equal(text.match(/\{\{\s*else\s*\}\}/g)?.length ?? 0, opens, name);

@@ -82,50 +82,40 @@ test.describe('start credentials auth validation', () => {
 			await expect(page.getByText('Bitte gib eine gültige E-Mail-Adresse ein.')).toBeVisible();
 		});
 
-		test('registration validates locally and never sends invalid sign-ups', async ({ page }) => {
-			let signUpRequests = 0;
-			await page.route(
-				(url) => url.pathname === '/api/auth/sign-up',
-				async (route) => {
-					signUpRequests += 1;
-					await route.abort();
-				},
-			);
+		test('registration checks name and address locally, then asks for a code', async ({ page }) => {
+			const requests: unknown[] = [];
+			await page.route('**/api/auth/code-request', async (route) => {
+				requests.push(route.request().postDataJSON());
+				await route.fulfill({
+					status: 200,
+					contentType: 'application/json',
+					body: JSON.stringify({ ok: true }),
+				});
+			});
 			await page.goto('/signup?action=create');
 			const name = page.getByLabel('Dein Name');
 			const email = page.getByLabel('E-Mail-Adresse');
-			const password = page.getByLabel('Passwort', { exact: true });
-			const confirmation = page.getByLabel('Passwort wiederholen');
-			const submit = page.getByRole('button', { name: 'Konto erstellen', exact: true });
-			await expect(password).toHaveAttribute('autocomplete', 'new-password');
-			await expect(confirmation).toHaveAttribute('autocomplete', 'new-password');
+			const submit = page.getByRole('button', { name: 'Weiter', exact: true });
+			await expect(page.getByLabel('Passwort')).toHaveCount(0);
 			await expect(page.getByText('danach legst du deine neue WG an')).toBeVisible();
 
 			await email.fill('nicht-gueltig');
-			await password.fill('langes-passwort');
-			await confirmation.fill('langes-passwort');
 			await submit.click();
-			await expect(page.locator('#signup-error')).toContainText('Namen');
+			await expect(page.locator('#auth-code-error')).toContainText('Namen');
 			await expect(name).toHaveAttribute('aria-invalid', 'true');
+			await expect(name).toBeFocused();
 
 			await name.fill('Mina');
 			await submit.click();
-			await expect(page.locator('#signup-error')).toContainText('gültige E-Mail-Adresse');
+			await expect(page.locator('#auth-code-error')).toContainText('gültige E-Mail-Adresse');
 			await expect(email).toHaveAttribute('aria-invalid', 'true');
+			await expect(email).toBeFocused();
+			expect(requests).toHaveLength(0);
 
-			await email.fill('neu@example.invalid');
-			await password.fill('kurz');
-			await confirmation.fill('kurz');
+			await email.fill('Neu@Example.invalid');
 			await submit.click();
-			await expect(page.locator('#signup-error')).toContainText('mindestens 8 Zeichen');
-			await expect(password).toHaveAttribute('aria-invalid', 'true');
-
-			await password.fill('langes-passwort');
-			await confirmation.fill('anderes-passwort');
-			await submit.click();
-			await expect(page.locator('#signup-error')).toContainText('stimmen nicht überein');
-			await expect(confirmation).toHaveAttribute('aria-invalid', 'true');
-			expect(signUpRequests).toBe(0);
+			await expect(page.getByLabel('8-stelliger Code')).toBeVisible();
+			expect(requests).toEqual([{ email: 'neu@example.invalid', name: 'Mina' }]);
 		});
 
 		test('registration fits a 320px viewport without horizontal scroll', async ({ page }) => {
@@ -258,13 +248,13 @@ test.describe('auth forms before hydration', () => {
 	// method="post" that is a GET, which puts the password into the URL, the history and server logs.
 	test.use({ javaScriptEnabled: false });
 
-	test('a native sign-up submit keeps the password out of the URL', async ({ page }) => {
+	test('a native sign-up submit keeps name and address out of the URL', async ({ page }) => {
 		await page.goto('/signup');
-		await page.getByLabel('E-Mail-Adresse').fill('mina@example.invalid');
-		const password = page.getByLabel('Passwort', { exact: true });
-		await password.fill('native-submit-secret');
-		await Promise.all([page.waitForURL('**/signup'), password.press('Enter')]);
-		expect(page.url()).not.toContain('native-submit-secret');
+		await page.getByLabel('Dein Name').fill('Native Submit Name');
+		const email = page.getByLabel('E-Mail-Adresse');
+		await email.fill('mina@example.invalid');
+		await Promise.all([page.waitForURL('**/signup'), email.press('Enter')]);
+		expect(page.url()).not.toContain('Native');
 		expect(page.url()).not.toContain('mina%40example.invalid');
 	});
 

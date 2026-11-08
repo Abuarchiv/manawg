@@ -78,9 +78,10 @@ export default {
 		loadFailed: 'Die verbundenen Assistenten konnten nicht geladen werden.',
 	},
 	passwordChange: {
-		signedInWith: 'Angemeldet mit E-Mail und Passwort: {email}',
-		action: 'Passwort ändern',
-		sent: 'Wir haben dir einen Link zum Ändern des Passworts an {email} gesendet.',
+		signedInWith:
+			'Anmeldung per E-Mail: {email}. Ein Passwort ist optional, der Code per E-Mail genügt.',
+		action: 'Passwort festlegen oder ändern',
+		sent: 'Wir haben dir einen Link zum Festlegen oder Ändern des Passworts an {email} gesendet.',
 		failed: 'Der Link konnte gerade nicht gesendet werden. Bitte versuche es später erneut.',
 	},
 	emailChange: {
