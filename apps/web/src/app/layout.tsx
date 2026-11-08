@@ -4,6 +4,7 @@ import { headers } from 'next/headers';
 import Script from 'next/script';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages, getTranslations } from 'next-intl/server';
+import { FunnelBeacon } from '@/components/app/FunnelBeacon';
 import { InputModality } from '@/components/app/InputModality';
 import { InstallPrompt } from '@/components/app/InstallPrompt';
 import { DeviceLocaleSync } from '@/components/app/LanguageSwitch';
@@ -213,6 +214,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 							>
 								{children}
 								<PwaRegister />
+								<FunnelBeacon />
 								<InstallPrompt />
 							</div>
 						</GoogleSignInProvider>

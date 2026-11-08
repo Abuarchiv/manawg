@@ -33,6 +33,7 @@ import {
 import { buildQueuedExpenseAction } from '@/features/expenses/queued-expense-action';
 import type { DebtorShare } from '@/features/expenses/split-math';
 import { type Message, useMessage } from '@/shared/i18n/message';
+import posthog from '@/shared/lib/analytics';
 import type { ExpenseFormState, ExpensePageContext } from './expense-page-context';
 import { validateExpenseFields } from './expense-submit-validation';
 import type { ExpenseFormSupport } from './use-expense-form-support';
@@ -100,6 +101,8 @@ export function useExpenseSubmit(
 		const amountEuros = parseEuroAmount(form.amountStr, locale);
 		const occurredOn = inputDateOrToday(form.extras.pickedOccurredOn);
 		const isEdit = editingExpense !== null;
+		// Read before the optimistic row joins the list: the WG's first expense, as this device sees it.
+		const isFirstExpense = !isEdit && expenses.length === 0;
 		// Only a changed day is sent: an unchanged one keeps the real time of day.
 		const previousExpense = isEdit
 			? (expenses.find((expense) => expense.id === editingExpense.id) ?? null)
@@ -331,6 +334,7 @@ export function useExpenseSubmit(
 		}
 
 		if (!isEdit) pendingRequestRef.current = null;
+		if (isFirstExpense) posthog.capture('first_expense_created');
 		const savedExpense = 'expense' in res.data ? res.data.expense : res.data;
 		const pushWarning = 'expense' in res.data ? notificationWarningMessage(res.data.warning) : null;
 		updateExpenses((current) =>

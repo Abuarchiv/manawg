@@ -4,6 +4,7 @@ import { getLocalAccount } from '@/core/auth/local-account';
 import { anySignal, apiFetch } from '@/core/infra/api-client';
 import { retireWebPushEndpoint } from '@/core/notifications/push-subscribe';
 import { clearPendingImages } from '@/core/offline/offline-images';
+import posthog from '@/shared/lib/analytics';
 
 // The session lives in HttpOnly cookies that only the server reads and writes. Every call below
 // goes through /api/auth/*; there is no Supabase client in the browser.
@@ -79,20 +80,39 @@ export async function hasLinkedIdentity(provider: SocialProvider): Promise<boole
 	return provider === 'google' && account.hasGoogle;
 }
 
-export function signInWithEmailPassword(
+/**
+ * Funnel step of a finished sign-in; an answer without a session (failed or pending) is none.
+ * `firstSession` marks the account's first session: a sign-up that needs no mail confirmation, or
+ * a code that confirms an account which still has to choose its password.
+ */
+function trackSession(result: AuthSessionResult, firstSession = false): AuthSessionResult {
+	if (!result.sessionEstablished) return result;
+	if (firstSession || result.passwordPending) posthog.capture('signup_confirmed');
+	else posthog.capture('login_completed');
+	return result;
+}
+
+export async function signInWithEmailPassword(
 	email: string,
 	password: string,
 ): Promise<AuthSessionResult> {
-	return authRequest('/api/auth/sign-in', { email, password });
+	return trackSession(await authRequest('/api/auth/sign-in', { email, password }));
 }
 
-export function signUpWithEmailPassword(
+export async function signUpWithEmailPassword(
 	email: string,
 	password: string,
 	next: string,
 	name: string,
 ): Promise<AuthSessionResult> {
-	return authRequest('/api/auth/sign-up', { email, password, next, name });
+	const result = await authRequest<AuthSessionResult>('/api/auth/sign-up', {
+		email,
+		password,
+		next,
+		name,
+	});
+	posthog.capture('signup_submitted');
+	return trackSession(result, true);
 }
 
 /** Sends the sign-up confirmation mail again; the response never reveals whether the address exists. */
@@ -129,8 +149,8 @@ export async function requestEmailCode(email: string): Promise<void> {
 	await authRequest('/api/auth/code-request', { email });
 }
 
-export function verifyEmailCode(email: string, token: string): Promise<AuthSessionResult> {
-	return authRequest('/api/auth/code-verify', { email, token });
+export async function verifyEmailCode(email: string, token: string): Promise<AuthSessionResult> {
+	return trackSession(await authRequest('/api/auth/code-verify', { email, token }));
 }
 
 async function removeCurrentBrowserPushSubscription(
