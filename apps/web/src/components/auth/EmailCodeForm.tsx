@@ -15,6 +15,7 @@ import { authPageHref } from '@/core/auth/auth-intent';
 import { AUTH_FAILURE_MESSAGES, classifyAuthError } from '@/core/auth/password-errors';
 import { choosePasswordHref } from '@/core/auth/password-pending';
 import { type Message, useMessage } from '@/shared/i18n/message';
+import { MEMBER_NAME_MAX_LENGTH } from '@/shared/lib/limits';
 import {
 	type AuthFormProps,
 	type BusyAction,
@@ -29,6 +30,7 @@ const EMAIL_CODE_LENGTH = 8;
 const RESEND_COOLDOWN_SECONDS = 30;
 
 type CodeError =
+	| 'name'
 	| 'invalid-email'
 	| 'invalid-code'
 	| 'wrong-code'
@@ -38,7 +40,10 @@ type CodeError =
 	| 'generic'
 	| null;
 
-/** Sign-in with a one-time code mailed to an existing account. */
+/**
+ * Sign-in with a one-time code mailed to an existing account. With a `signUpName` the code
+ * registers a new account instead (an address that already has one is signed in).
+ */
 export function useEmailCode({
 	email,
 	setEmail,
@@ -46,10 +51,18 @@ export function useEmailCode({
 	busy,
 	setBusy,
 	onAuthenticated,
-}: AuthFormProps & { email: string; setEmail: (value: string) => void; next: string }) {
+	signUpName,
+}: AuthFormProps & {
+	email: string;
+	setEmail: (value: string) => void;
+	next: string;
+	signUpName?: string;
+}) {
 	const router = useRouter();
 	const [code, setCode] = useState('');
 	const [error, setError] = useState<CodeError>(null);
+	// Counts failed field checks, so a repeated failure with the same error still refocuses the field.
+	const [invalidAttempt, setInvalidAttempt] = useState(0);
 	// The address the code went to; set means the code step is shown.
 	const [sentTo, setSentTo] = useState<string | null>(null);
 	const [cooldown, setCooldown] = useResendCooldown();
@@ -69,7 +82,7 @@ export function useEmailCode({
 		setBusy('code-request');
 		try {
 			const { requestEmailCode } = await import('@/core/auth/client');
-			await requestEmailCode(address);
+			await requestEmailCode(address, signUpName?.trim());
 			setSentTo(address);
 			setCode('');
 			setCooldown(RESEND_COOLDOWN_SECONDS);
@@ -86,9 +99,15 @@ export function useEmailCode({
 	async function requestCode(): Promise<void> {
 		if (busy) return;
 		setError(null);
+		if (signUpName !== undefined && signUpName.trim().length === 0) {
+			setError('name');
+			setInvalidAttempt((attempt) => attempt + 1);
+			return;
+		}
 		const address = normalizeEmail(email);
 		if (!isValidEmail(address)) {
 			setError('invalid-email');
+			setInvalidAttempt((attempt) => attempt + 1);
 			return;
 		}
 		await send(address, false);
@@ -107,6 +126,7 @@ export function useEmailCode({
 		const token = code.replace(/\s/g, '');
 		if (!new RegExp(`^\\d{${EMAIL_CODE_LENGTH}}$`).test(token)) {
 			setError('invalid-code');
+			setInvalidAttempt((attempt) => attempt + 1);
 			return;
 		}
 		setBusy('code-verify');
@@ -140,6 +160,7 @@ export function useEmailCode({
 		code,
 		setCode,
 		error,
+		invalidAttempt,
 		sentTo,
 		cooldown,
 		resendNotice,
@@ -151,6 +172,7 @@ export function useEmailCode({
 }
 
 const ERROR_MESSAGES: Record<NonNullable<CodeError>, Message> = {
+	name: { key: 'auth.signUp.name' },
 	'invalid-email': { key: 'auth.validEmail' },
 	'invalid-code': { key: 'auth.code.invalid', values: { length: EMAIL_CODE_LENGTH } },
 	'wrong-code': { key: 'auth.code.wrong' },
@@ -170,20 +192,26 @@ function CodeErrorBox({ error }: { error: CodeError }) {
 	);
 }
 
+/** The sign-in form; with `signUp` it is the registration form (name field, other texts). */
 export function EmailCodeForm({
 	auth,
 	busy,
 	intentQuery,
+	signUp,
 }: {
 	auth: ReturnType<typeof useEmailCode>;
 	busy: BusyAction;
 	intentQuery: string;
+	signUp?: { name: string; setName: (value: string) => void };
 }) {
 	const t = useTranslations('auth');
-	const { email, setEmail, code, setCode, error, sentTo, cooldown, resendNotice } = auth;
+	const { email, setEmail, code, setCode, error, invalidAttempt, sentTo, cooldown, resendNotice } =
+		auth;
 	const codeRef = useRef<HTMLInputElement>(null);
 	const emailRef = useRef<HTMLInputElement>(null);
+	const nameRef = useRef<HTMLInputElement>(null);
 	const codeStep = sentTo !== null;
+	const registering = signUp !== undefined;
 	const first = useRef(true);
 	// The form swaps between the two steps, so focus follows the visitor to the field that is needed now.
 	useEffect(() => {
@@ -191,18 +219,22 @@ export function EmailCodeForm({
 			first.current = false;
 			return;
 		}
-		(codeStep ? codeRef : emailRef).current?.focus();
-	}, [codeStep]);
+		(codeStep ? codeRef : registering ? nameRef : emailRef).current?.focus();
+	}, [codeStep, registering]);
 	// A failed request keeps the form; send focus back to the field that needs fixing.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: invalidAttempt re-runs this when the same error repeats
 	useEffect(() => {
+		if (error === 'name') nameRef.current?.focus();
 		if (error === 'invalid-email') emailRef.current?.focus();
 		if (error === 'invalid-code' || error === 'wrong-code') codeRef.current?.focus();
-	}, [error]);
+	}, [error, invalidAttempt]);
 
 	if (!codeStep) {
 		const invalid = error === 'invalid-email';
+		const nameInvalid = error === 'name';
 		return (
 			<form
+				method="post"
 				noValidate
 				onSubmit={(event) => {
 					event.preventDefault();
@@ -211,6 +243,27 @@ export function EmailCodeForm({
 				className="flex flex-col gap-4"
 			>
 				<FieldGroup>
+					{signUp && (
+						<Field data-invalid={nameInvalid}>
+							<FieldLabel htmlFor="signup-name">{t('fields.name')}</FieldLabel>
+							<Input
+								ref={nameRef}
+								id="signup-name"
+								name="name"
+								type="text"
+								value={signUp.name}
+								onChange={(event) => signUp.setName(event.target.value)}
+								readOnly={busy !== null}
+								autoComplete="name"
+								enterKeyHint="next"
+								maxLength={MEMBER_NAME_MAX_LENGTH}
+								required
+								aria-describedby={error ? 'auth-code-error' : undefined}
+								aria-invalid={nameInvalid || undefined}
+								className="text-base"
+							/>
+						</Field>
+					)}
 					<Field data-invalid={invalid}>
 						<FieldLabel htmlFor="auth-code-email">{t('fields.email')}</FieldLabel>
 						<Input
@@ -229,11 +282,14 @@ export function EmailCodeForm({
 							aria-invalid={invalid || undefined}
 							className="text-base"
 						/>
+						{signUp && (
+							<FieldDescription className="text-xs">{t('signUp.codeHint')}</FieldDescription>
+						)}
 					</Field>
 					<CodeErrorBox error={error} />
 					<Button type="submit" variant="default" disabled={busy !== null}>
 						{busy === 'code-request' && <Spinner data-icon="inline-start" aria-hidden />}
-						{t('code.send')}
+						{signUp ? t('signUp.submit') : t('code.send')}
 					</Button>
 				</FieldGroup>
 			</form>
@@ -243,6 +299,7 @@ export function EmailCodeForm({
 	const invalid = error === 'invalid-code' || error === 'wrong-code';
 	return (
 		<form
+			method="post"
 			noValidate
 			onSubmit={(event) => {
 				event.preventDefault();
@@ -253,17 +310,19 @@ export function EmailCodeForm({
 			<FieldGroup>
 				<Alert>
 					<AlertDescription className="[overflow-wrap:anywhere]">
-						{t.rich('code.sent', {
-							email: sentTo,
-							create: richArgument(
-								<Link
-									href={authPageHref('/signup', intentQuery)}
-									className="font-medium underline underline-offset-4"
-								>
-									{t('code.createLink')}
-								</Link>,
-							),
-						})}
+						{signUp
+							? t('signUp.sent', { email: sentTo })
+							: t.rich('code.sent', {
+									email: sentTo,
+									create: richArgument(
+										<Link
+											href={authPageHref('/signup', intentQuery)}
+											className="font-medium underline underline-offset-4"
+										>
+											{t('code.createLink')}
+										</Link>,
+									),
+								})}
 					</AlertDescription>
 				</Alert>
 				<Field data-invalid={invalid}>
@@ -299,7 +358,7 @@ export function EmailCodeForm({
 				<CodeErrorBox error={error} />
 				<Button type="submit" variant="default" disabled={busy !== null}>
 					{busy === 'code-verify' && <Spinner data-icon="inline-start" aria-hidden />}
-					{t('code.submit')}
+					{signUp ? t('signUp.confirm') : t('code.submit')}
 				</Button>
 				<Button
 					type="button"

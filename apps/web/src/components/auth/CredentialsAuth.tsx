@@ -9,7 +9,7 @@ import { EmailCodeForm, useEmailCode } from './EmailCodeForm';
 import { EmailSignUpForm, useEmailSignUp } from './EmailSignUpForm';
 
 type CredentialsAuthProps = {
-	/** Sign-in offers a mailed code or a password; registration is the password form only. */
+	/** Sign-in offers a mailed code or a password; registration is name and e-mail with a mailed code. */
 	mode?: 'sign-in' | 'sign-up';
 	next: string;
 	onAuthenticated: () => void;
@@ -47,7 +47,7 @@ export function CredentialsAuth({
 	if (mode === 'sign-up') {
 		return (
 			<section aria-label={t('sections.signUp')} aria-busy={isBusy}>
-				<EmailSignUpForm auth={emailSignUp} busy={busy} />
+				<EmailSignUpForm auth={emailSignUp} busy={busy} intentQuery={next.split('?')[1] ?? ''} />
 			</section>
 		);
 	}

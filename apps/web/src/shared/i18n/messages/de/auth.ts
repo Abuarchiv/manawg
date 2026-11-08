@@ -9,7 +9,6 @@ export default {
 		email: 'E-Mail-Adresse',
 		password: 'Passwort',
 		name: 'Dein Name',
-		passwordRepeat: 'Passwort wiederholen',
 		code: '{length, number}-stelliger Code',
 		newPassword: 'Neues Passwort',
 		confirmPassword: 'Passwort bestätigen',
@@ -24,7 +23,6 @@ export default {
 		weakPassword:
 			'Wähle ein längeres oder anderes sicheres Passwort, das du nicht schon an anderer Stelle verwendest.',
 		signIn: 'Die Anmeldung konnte gerade nicht abgeschlossen werden. Bitte versuche es erneut.',
-		signUp: 'Die Registrierung konnte gerade nicht abgeschlossen werden. Bitte versuche es erneut.',
 		mail: 'Die E-Mail konnte gerade nicht gesendet werden. Bitte versuche es erneut.',
 	},
 	validEmail: 'Bitte gib eine gültige E-Mail-Adresse ein.',
@@ -59,14 +57,10 @@ export default {
 	},
 	signUp: {
 		name: 'Bitte gib deinen Namen ein.',
-		tooShort: 'Dein Passwort braucht mindestens {min, number} Zeichen.',
-		inboxTitle: 'Prüfe dein Postfach',
-		inboxBody:
-			'Wir haben einen Bestätigungslink an {email} geschickt, sofern für diese Adresse noch kein Konto besteht. Öffne den Link, danach geht es hier weiter. Schau auch im Spam-Ordner nach. Hast du schon ein Konto, melde dich stattdessen an.',
-		resent: 'Die E-Mail wurde erneut gesendet.',
-		resend: 'E-Mail erneut senden',
-		hint: 'Mindestens {min, number} Zeichen.',
-		submit: 'Konto erstellen',
+		codeHint: 'Wir schicken dir einen Code, ein Passwort brauchst du nicht.',
+		sent: 'Wir haben einen Code an {email} geschickt. Gib ihn ein, um dein Konto zu erstellen. Hast du schon ein Konto, meldet dich der Code an. Schau auch im Spam-Ordner nach.',
+		submit: 'Weiter',
+		confirm: 'Konto erstellen',
 	},
 	reset: {
 		tooShort: 'Das Passwort muss mindestens {min, number} Zeichen lang sein.',

@@ -80,7 +80,7 @@ cd manawg
 docker compose up -d
 ```
 
-Öffne [localhost](http://localhost) und registriere dich. Der Anmeldecode landet in Mailpit unter
+Öffne [localhost](http://localhost) und registriere dich mit Name und E-Mail-Adresse, ein Passwort ist nicht nötig. Der 8-stellige Code landet in Mailpit unter
 [localhost:8025](http://localhost:8025). Der Stack startet die App, PostgreSQL, die Anmeldung, den
 Bildspeicher, ein HTTPS-Gateway und den Mail-Fänger und lädt das Image des neuesten Releases.
 

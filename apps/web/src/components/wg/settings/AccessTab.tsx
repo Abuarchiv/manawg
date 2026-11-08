@@ -45,7 +45,7 @@ function useGoogleLinked(): boolean {
 	return linked;
 }
 
-/** The account e-mail for password accounts; null for others and while unknown. */
+/** The account e-mail for accounts that sign in by e-mail; null for others and while unknown. */
 function usePasswordAccountEmail(): string | null {
 	const [email, setEmail] = useState<string | null>(null);
 	useEffect(() => {

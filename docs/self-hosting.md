@@ -366,7 +366,8 @@ delivers to members of your Supabase team and is rate limited, so real users wou
 their sign-in code.
 
 Then push the ManaWG mail templates. This step is required: it also sets the sign-in code length
-to 8 digits, which the sign-in form expects. Create a personal access token under
+to 8 digits, which the sign-in and registration forms expect, and the confirmation mail must carry
+the code. Run it again after an update that changes a template. Create a personal access token under
 [supabase.com/dashboard/account/tokens](https://supabase.com/dashboard/account/tokens):
 
 ```sh

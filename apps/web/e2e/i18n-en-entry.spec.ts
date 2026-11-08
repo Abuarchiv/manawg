@@ -259,46 +259,41 @@ test.describe('entry and auth in English', () => {
 				});
 				await expectEnglishPage(page, width);
 
-				// Email sign-up: local validation, a throttled server answer, then the inbox state.
+				// Email sign-up: local validation, a throttled server answer, then the code step.
 				let signUpCalls = 0;
-				await page.route('**/api/auth/sign-up', (route) => {
+				await page.route('**/api/auth/code-request', (route) => {
 					signUpCalls += 1;
 					return signUpCalls === 1
 						? route.fulfill({ status: 429, json: { error: 'rate_limited', code: 'rate_limited' } })
-						: route.fulfill({ status: 200, json: { sessionEstablished: false } });
+						: route.fulfill({ status: 200, json: { ok: true } });
 				});
 				await page.goto('/signup');
 				await waitForHydration(page, 'form');
+				await expect(
+					page.getByText('We email you a code. You do not need a password.'),
+				).toBeVisible();
+				const submitSignUp = page.getByRole('button', { name: 'Continue', exact: true });
+				await submitSignUp.click();
+				await expect(page.getByText('Enter your name.')).toBeVisible();
 				await page.getByLabel('Your name').fill('Mina');
 				await page.getByLabel('Email address').fill('mina@example.invalid');
-				await page.getByLabel('Password', { exact: true }).fill('short');
-				await page.getByLabel('Confirm password').fill('short');
-				await expect(page.getByText('At least 8 characters.')).toBeVisible();
-				const submitSignUp = page.getByRole('button', { name: 'Create account', exact: true });
 				await submitSignUp.click();
-				await expect(page.getByText('Your password needs at least 8 characters.')).toBeVisible();
-				await expectEnglishPage(page, width);
-				await page.getByLabel('Password', { exact: true }).fill('long-enough-pass');
-				await page.getByLabel('Confirm password').fill('different-pass');
-				await submitSignUp.click();
-				await expect(page.getByText('The passwords do not match.')).toBeVisible();
-				await page.getByLabel('Confirm password').fill('long-enough-pass');
-				await submitSignUp.click();
-				await expect(
-					page.getByText('Too many attempts. Wait a few minutes and try again.'),
-				).toBeVisible();
+				await expect(page.getByText('Too many attempts. Wait a moment.')).toBeVisible();
 				await expectEnglishPage(page, width);
 				await submitSignUp.click();
-				await expect(page.getByText('Check your inbox')).toBeVisible();
 				await expect(
 					page.getByText(
-						/^If no account exists for mina@example\.invalid yet, we have sent a confirmation link/,
+						/^We have sent a code to mina@example\.invalid\. Enter it to create your account/,
 					),
 				).toBeVisible();
-				await expect(page.getByRole('button', { name: /^Resend in \d+ s$/ })).toBeDisabled();
+				await expect(page.getByRole('button', { name: /^Resend code in \d+ s$/ })).toBeDisabled();
+				await expect(
+					page.getByRole('button', { name: 'Create account', exact: true }),
+				).toBeVisible();
 				await expectEnglishPage(page, width);
 				await page.getByRole('button', { name: 'Use a different email address' }).click();
 				await expect(page.getByLabel('Your name')).toBeVisible();
+				await page.unroute('**/api/auth/code-request');
 
 				// Email code: validation, sent state with the sign-up link, wrong code.
 				await page.route('**/api/auth/code-request', (route) =>

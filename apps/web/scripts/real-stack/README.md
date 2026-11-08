@@ -38,6 +38,12 @@ session refresh against real Supabase and real PostgreSQL instead of fixtures.
     directly at Supabase, then confirmed by the owner through sign-up or a code request: the old
     password must fail, a single sign-up lands on the choose-a-password page, and accounts created
     confirmed keep their password).
+    `signup-flows.mjs`: registration with an e-mail code (new address, wrong, reused and expired code,
+    the same answer for an existing address, send frequency, an address pre-registered with a
+    password by someone else, choosing a password afterwards). Start Auth with
+    `GOTRUE_SMTP_MAX_FREQUENCY=1s` and run with `REAL_STACK_VERIFY_LIMIT=1` against an Auth service
+    with `GOTRUE_RATE_LIMIT_VERIFY=40` to also check that wrong codes run into the verify limit.
+    `journey.mjs` registers with the code and returns to the invitation.
 11. Production rate limits: locally the limiter is open (`VERCEL_ENV=development`). For a run with
     real limits start an Upstash-compatible Redis
     (`docker run -d --name srh-redis redis:7-alpine` and

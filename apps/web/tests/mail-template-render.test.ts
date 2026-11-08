@@ -59,3 +59,12 @@ test('the email-change mail names both addresses and says both links are needed'
 		/neue E-Mail-Adresse|new email address|nueva dirección de correo/,
 	);
 });
+
+test('the confirmation mail carries the code that registration asks for, next to the link', () => {
+	const html = readFileSync(
+		new URL('../../../supabase/templates/confirmation.html', import.meta.url),
+		'utf8',
+	);
+	assert.match(html, /\{\{ \.Token \}\}/);
+	assert.match(html, /href="\{\{ \.ConfirmationURL \}\}"/);
+});

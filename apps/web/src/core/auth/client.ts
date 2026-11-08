@@ -86,15 +86,6 @@ export function signInWithEmailPassword(
 	return authRequest('/api/auth/sign-in', { email, password });
 }
 
-export function signUpWithEmailPassword(
-	email: string,
-	password: string,
-	next: string,
-	name: string,
-): Promise<AuthSessionResult> {
-	return authRequest('/api/auth/sign-up', { email, password, next, name });
-}
-
 /** Sends the sign-up confirmation mail again; the response never reveals whether the address exists. */
 export async function resendSignupConfirmation(email: string, next: string): Promise<void> {
 	await authRequest('/api/auth/resend', { email, next });
@@ -124,9 +115,12 @@ export async function updatePassword(password: string): Promise<void> {
 	await authRequest('/api/auth/password', { password });
 }
 
-/** Mails a one-time code to an existing account; unknown addresses are rejected instead of created. */
-export async function requestEmailCode(email: string): Promise<void> {
-	await authRequest('/api/auth/code-request', { email });
+/**
+ * Mails a one-time code. Without a `name` only an existing account gets one (unknown addresses are
+ * not created); with a `name` the code registers a new account, or signs in an existing one.
+ */
+export async function requestEmailCode(email: string, name?: string): Promise<void> {
+	await authRequest('/api/auth/code-request', name === undefined ? { email } : { email, name });
 }
 
 export function verifyEmailCode(email: string, token: string): Promise<AuthSessionResult> {

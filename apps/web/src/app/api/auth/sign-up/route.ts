@@ -11,7 +11,10 @@ const schema = z.object({
 	next: nextField,
 });
 
-/** Creates the account; the response is the same for an address that already exists. */
+/**
+ * Creates a password account; the response is the same for an address that already exists. The
+ * app registers with an e-mail code (`/api/auth/code-request`); this route stays for API clients.
+ */
 export const POST = authPost(
 	schema,
 	async ({ supabase, data, callbackUrl, request }) => {
