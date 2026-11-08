@@ -10,6 +10,8 @@ const state = {
 	rows: [] as Record<string, unknown>[],
 	selected: [] as Record<string, unknown>[],
 	allowed: true,
+	unavailable: false,
+	dbFails: false,
 	rateKeys: [] as string[],
 };
 
@@ -24,7 +26,10 @@ const db = {
 			innerJoin: () => chain,
 			leftJoin: () => chain,
 			where: () => chain,
-			limit: async () => state.rows,
+			limit: async () => {
+				if (state.dbFails) throw new Error('connection refused: postgres://secret-host');
+				return state.rows;
+			},
 		};
 		return chain;
 	},
@@ -45,7 +50,12 @@ mock.module('@/core/rate-limit', {
 			state.rateKeys.push(key);
 			return state.allowed
 				? { success: true, remaining: 1, reset: 0 }
-				: { success: false, remaining: 0, reset: Date.now() + 30_000 };
+				: {
+						success: false,
+						remaining: 0,
+						reset: Date.now() + 30_000,
+						limiterUnavailable: state.unavailable,
+					};
 		},
 		clientIpKey: () => '203.0.113.7',
 		invitePreviewLimiter: {},
@@ -77,6 +87,8 @@ function reset(): void {
 	state.rows = [];
 	state.selected = [];
 	state.allowed = true;
+	state.unavailable = false;
+	state.dbFails = false;
 	state.rateKeys = [];
 }
 
@@ -98,6 +110,20 @@ test('leaves the inviter out when they are gone or have moved out', async () => 
 	assert.deepEqual(await (await call()).json(), { wgName: 'Lindenstraße', inviterName: null });
 	state.rows = [row({ inviterDeactivatedAt: past })];
 	assert.deepEqual(await (await call()).json(), { wgName: 'Lindenstraße', inviterName: null });
+});
+
+test('keeps a title or an initial out of the inviter name', async () => {
+	for (const inviterName of ['Dr. Mika', 'M. Muster']) {
+		reset();
+		state.rows = [row({ inviterName })];
+		assert.deepEqual(await (await call()).json(), { wgName: 'Lindenstraße', inviterName: null });
+	}
+	reset();
+	state.rows = [row({ inviterName: 'Anna-Lena Müller' })];
+	assert.deepEqual(await (await call()).json(), {
+		wgName: 'Lindenstraße',
+		inviterName: 'Anna-Lena',
+	});
 });
 
 test('every token that cannot be used gets the same bare 404', async () => {
@@ -131,4 +157,26 @@ test('is limited per client address and says nothing about the token once the bu
 	assert.ok(!JSON.stringify(await res.json()).includes('Lindenstraße'));
 	// The limit comes first: no lookup happens for a limited caller.
 	assert.equal(state.selected.length, 0);
+});
+
+test('answers 503 without lookup or details when the limiter is unavailable', async () => {
+	reset();
+	state.rows = [row()];
+	state.allowed = false;
+	state.unavailable = true;
+	const res = await call();
+	assert.equal(res.status, 503);
+	assert.equal(res.headers.get('cache-control'), 'no-store');
+	assert.ok(!JSON.stringify(await res.json()).includes('Lindenstraße'));
+	assert.equal(state.selected.length, 0);
+});
+
+test('answers 500 without leaking the database error', async () => {
+	reset();
+	state.dbFails = true;
+	const res = await call();
+	assert.equal(res.status, 500);
+	assert.equal(res.headers.get('cache-control'), 'no-store');
+	const body = JSON.stringify(await res.json());
+	assert.ok(!body.includes('postgres') && !body.includes('secret-host'), body);
 });

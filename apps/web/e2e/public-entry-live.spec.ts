@@ -106,7 +106,10 @@ test.describe('live public dashboard entry', () => {
 		await page.reload();
 		await page.getByRole('link', { name: 'Einladung annehmen', exact: true }).first().click();
 		await expect(page).toHaveURL(`/invite/${token}`);
-		await expect(page.getByText('Melde dich an, um der WG beizutreten.')).toBeVisible();
+		// A made-up token has no invitation behind it, so a guest sees that right away.
+		await expect(
+			page.getByRole('heading', { name: 'Einladung nicht gültig', level: 1 }),
+		).toBeVisible();
 	});
 
 	test('membership lookup failures stay visible and can be retried', async ({ page }) => {

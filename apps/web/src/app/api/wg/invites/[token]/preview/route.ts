@@ -8,9 +8,14 @@ import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, clientIpKey, invitePreviewLimiter } from '@/core/rate-limit';
 import { isInviteToken } from '@/core/utils/invite-token';
 
-/** The first word of a display name: the invitation names a person, not the full entry. */
+/**
+ * The first word of a display name: the invitation names a person, not the full entry. A first
+ * word that ends in a dot is a title or an initial ("Dr. Mika"), which reads wrong alone, so the
+ * page falls back to the wording without a name.
+ */
 function firstName(name: string | null): string | null {
-	return name?.trim().split(/\s+/)[0] || null;
+	const word = name?.trim().split(/\s+/)[0];
+	return word && !word.endsWith('.') ? word : null;
 }
 
 /**

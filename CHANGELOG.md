@@ -24,7 +24,9 @@ settled.
 
 - The invitation page for visitors without an account names who invited them to which flat, offers
   Google next to *Create account* as the main action, and links to sign-in as a plain text link. A
-  link that is expired, used up or wrong is reported before the sign-up instead of after it.
+  link that is expired, used up or wrong is reported before the sign-up instead of after it. A
+  signed-out member who reopens a used-up link now sees that notice instead of being forwarded to
+  their flat after signing in.
 - The notice after a mail link that could not be used points to the *Code by email* tab, because
   the password from before the confirmation is discarded.
 - The installed app's description and its "Join a flat" home-screen shortcut follow the device
