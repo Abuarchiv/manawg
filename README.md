@@ -39,7 +39,7 @@ ManaWG is built for one flat. Splitwise and Spliit are built for any group of pe
 | Cleaning rota, shopping list, calendar, chat | Yes | No | No |
 | Account required | Yes, one per flatmate | Yes | No, the group link is enough |
 | Self-hosting | Yes, Docker Compose | No | Yes |
-| Licence | Apache-2.0 | Proprietary | MIT |
+| License | Apache-2.0 | Proprietary | MIT |
 | Price | Free, no ads, no paid tier | Free, with a paid Pro tier | Free, no ads, funded by donations |
 | Import from other apps (CSV) | Splitwise, Splid, Tricount, Settle Up | Not listed | Not yet, listed as a possible feature |
 | Currencies | EUR, CHF, USD, GBP | 100+ | Set per group |
@@ -53,11 +53,14 @@ mean that the feature does not appear in the project's own feature list. If you 
 a trip and nobody wants to create an account, Spliit fits better. Spot a mistake? Please
 [open an issue](https://github.com/Abuarchiv/manawg/issues/new/choose).
 
-### Status
+Spanish and the Tricount and Settle Up import are in the `main` branch, but not yet in the 0.1.1
+release or on [app.manawg.com](https://app.manawg.com). They ship with the next feature release.
+
+## Status
 
 ManaWG is at version 0.1.x. The first public release, 0.1.0, came out on 5 November 2026, and the
 hosted instance at [app.manawg.com](https://app.manawg.com) is deployed from this repository; its
-running version is shown at `/api/health`. Migrations run on start, and the
+deployed commit and release are shown at `/api/health`. Migrations run on start, and the
 [CHANGELOG](CHANGELOG.md) says when an update needs a manual step.
 
 ## Self-hosting

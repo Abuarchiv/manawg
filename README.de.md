@@ -53,11 +53,15 @@ aufgeführt“ heißen, dass die Funktion in der eigenen Funktionsliste des Proj
 ihr nur eine Reise abrechnen wollt und niemand ein Konto anlegen soll, passt Spliit besser. Fehler
 entdeckt? Dann [eröffne bitte ein Issue](https://github.com/Abuarchiv/manawg/issues/new/choose).
 
-### Stand
+Spanisch und der Import aus Tricount und Settle Up sind im Zweig `main`, aber noch nicht im Release
+0.1.1 und nicht auf [app.manawg.com](https://app.manawg.com). Sie kommen mit dem nächsten
+Funktions-Release.
+
+## Stand
 
 ManaWG ist in Version 0.1.x. Das erste öffentliche Release, 0.1.0, erschien am 5. November 2026, und
 die gehostete Instanz auf [app.manawg.com](https://app.manawg.com) wird aus diesem Repository
-ausgeliefert; ihre laufende Version zeigt `/api/health`. Migrationen laufen beim Start, und das
+ausgeliefert; der ausgelieferte Commit und das Release stehen unter `/api/health`. Migrationen laufen beim Start, und das
 [CHANGELOG](CHANGELOG.md) sagt, wann ein Update einen Handgriff braucht.
 
 ## Selbst hosten
