@@ -4,7 +4,10 @@ import { authPost } from '@/core/auth/route-helpers';
 import { emailField, nameField } from '@/core/auth/route-schemas';
 import { requestLocale } from '@/core/i18n/request-locale';
 
-/** Supabase's answer when no account exists for the address (signups are off for codes). */
+/**
+ * Supabase's answer when no account exists for the address and none may be created. Auth checks
+ * this only for an unknown address, so passing it on would tell a stranger whether one exists.
+ */
 const NO_ACCOUNT_CODES = new Set(['otp_disabled', 'signup_disabled', 'user_not_found']);
 
 /** With a `name` the request is a registration; without one it only signs in an existing account. */
@@ -33,9 +36,7 @@ export const POST = authPost(
 					}
 				: { shouldCreateUser: false },
 		});
-		// Registration is only refused for the whole instance (signups off), which says nothing about the address.
-		if (error && (registering || !NO_ACCOUNT_CODES.has((error as { code?: string }).code ?? '')))
-			throw error;
+		if (error && !NO_ACCOUNT_CODES.has((error as { code?: string }).code ?? '')) throw error;
 		return { ok: true };
 	},
 	{ limited: true },

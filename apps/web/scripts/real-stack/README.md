@@ -43,6 +43,8 @@ session refresh against real Supabase and real PostgreSQL instead of fixtures.
     password by someone else, choosing a password afterwards). Start Auth with
     `GOTRUE_SMTP_MAX_FREQUENCY=1s` and run with `REAL_STACK_VERIFY_LIMIT=1` against an Auth service
     with `GOTRUE_RATE_LIMIT_VERIFY=40` to also check that wrong codes run into the verify limit.
+    `signup-disabled.mjs` runs against an Auth service started with `GOTRUE_DISABLE_SIGNUP=true` and
+    checks that a new and an existing address get the same answer.
     `journey.mjs` registers with the code and returns to the invitation.
 11. Production rate limits: locally the limiter is open (`VERCEL_ENV=development`). For a run with
     real limits start an Upstash-compatible Redis
@@ -63,7 +65,9 @@ session refresh against real Supabase and real PostgreSQL instead of fixtures.
     with `force=1`, checks the debtor's mail in Mailpit (amount owed, statement link) and the
     one-click unsubscribe from its `List-Unsubscribe` header, including a tampered token.
 
-The scripts expect the default local keys of `supabase start`. The addresses live in `env.mjs`;
+The scripts expect the default local keys of `supabase start`; `REAL_STACK_PUBLISHABLE_KEY` sets the
+publishable key for `auth-flows.mjs` and `signup-flows.mjs` when the stack uses another one (the Docker
+stack's `ANON_KEY`). The addresses live in `env.mjs`;
 override them with `REAL_STACK_APP_URL` (default `http://localhost:3140`), `REAL_STACK_SUPABASE_URL`
 (`http://127.0.0.1:54321`), `REAL_STACK_MAILPIT_URL` (`http://127.0.0.1:54324`) and
 `REAL_STACK_DATABASE_URL` (`postgresql://postgres:postgres@127.0.0.1:54322/postgres`).

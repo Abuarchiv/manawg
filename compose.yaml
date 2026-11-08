@@ -94,7 +94,7 @@ services:
       GOTRUE_MAILER_TEMPLATES_EMAIL_CHANGE: http://gateway:8000/mail-templates/email_change.html
       GOTRUE_MAILER_TEMPLATES_PASSWORD_CHANGED_NOTIFICATION: http://gateway:8000/mail-templates/password_changed.html
       # Same subjects as supabase/templates/subjects.json.
-      GOTRUE_MAILER_SUBJECTS_CONFIRMATION: '{{ if eq .Data.locale "en" }}Confirm your email address{{ else if eq .Data.locale "es" }}Confirma tu dirección de correo{{ else }}Bestätige deine E-Mail-Adresse{{ end }}'
+      GOTRUE_MAILER_SUBJECTS_CONFIRMATION: '{{ if eq .Data.registration "code" }}{{ if eq .Data.locale "en" }}{{ .Token }} is your code to create the account{{ else if eq .Data.locale "es" }}{{ .Token }} es tu código para crear la cuenta{{ else }}{{ .Token }} ist dein Code zum Erstellen des Kontos{{ end }}{{ else }}{{ if eq .Data.locale "en" }}Confirm your email address{{ else if eq .Data.locale "es" }}Confirma tu dirección de correo{{ else }}Bestätige deine E-Mail-Adresse{{ end }}{{ end }}'
       GOTRUE_MAILER_SUBJECTS_RECOVERY: '{{ if eq .Data.locale "en" }}Set a new password{{ else if eq .Data.locale "es" }}Elige una contraseña nueva{{ else }}Neues Passwort festlegen{{ end }}'
       GOTRUE_MAILER_SUBJECTS_MAGIC_LINK: '{{ if eq .Data.locale "en" }}{{ .Token }} is your sign-in code{{ else if eq .Data.locale "es" }}{{ .Token }} es tu código de inicio de sesión{{ else }}{{ .Token }} ist dein Anmeldecode{{ end }}'
       GOTRUE_MAILER_SUBJECTS_EMAIL_CHANGE: '{{ if eq .Data.locale "en" }}Confirm the change of your email address{{ else if eq .Data.locale "es" }}Confirma el cambio de tu dirección de correo{{ else }}Bestätige die Änderung deiner E-Mail-Adresse{{ end }}'

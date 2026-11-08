@@ -9,7 +9,8 @@ import { MAIL } from './env.mjs';
 import { BASE, expect, finish, SB, SERVICE, sql } from './modules-lib.mjs';
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-const PUBLISHABLE = 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH';
+const PUBLISHABLE =
+	process.env.REAL_STACK_PUBLISHABLE_KEY ?? 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH';
 const json = { 'content-type': 'application/json' };
 const stamp = Date.now();
 const address = (tag) => `${tag}${stamp}@example.test`;
@@ -27,7 +28,10 @@ async function mailAt(to, subject, count = 1, tries = 30) {
 	}
 	return null;
 }
-const CONFIRM = /Bestätige deine E-Mail-Adresse/;
+// Mail of a registration by code (subject starts with the code) or by password (subject without it).
+// (Any language: a stranger who registered first may have stored another one.)
+const CONFIRM =
+	/Code zum Erstellen des Kontos|Bestätige deine E-Mail-Adresse|code to create the account|Confirm your email address|código para crear la cuenta|Confirma tu dirección de correo/;
 const SIGN_IN = /Anmeldecode/;
 const RECOVERY = /Neues Passwort/;
 const codeOf = (mail) => (mail?.Text ?? '').match(/\b(\d{8})\b/)?.[1];
@@ -65,7 +69,15 @@ expect(true, 'code step appears on the same page', p.url());
 const mail = await mailAt(fresh, CONFIRM);
 const code = codeOf(mail);
 expect(!!code, 'registration mail carries an 8-digit code', mail?.Subject ?? 'no mail');
-expect(!!linkOf(mail), 'registration mail still carries the confirmation link');
+expect(
+	!linkOf(mail) && !/auth\/v1\/verify/.test(mail?.HTML ?? ''),
+	'registration mail has no link that would use up the code',
+);
+expect(
+	/ ist dein Code zum Erstellen des Kontos/.test(mail?.Subject ?? ''),
+	'registration subject names the code',
+	mail?.Subject,
+);
 expect(
 	(mail?.HTML ?? '').includes('lang="de"'),
 	'mail follows the browser language',
@@ -143,6 +155,10 @@ await fetch(`${SB}/auth/v1/admin/users`, {
 		user_metadata: { full_name: 'Codi' },
 	}),
 });
+// An account that has existed for a while (the name only follows a just-confirmed address).
+sql(
+	`update auth.users set email_confirmed_at = now() - interval '30 days' where email='${existing}'`,
+);
 const anon = await api();
 const newAnswer = await anon.post('/api/auth/code-request', {
 	data: { email: address('parity'), name: 'Pari' },
@@ -163,12 +179,12 @@ expect(
 	knownMail?.Subject ?? 'no mail',
 );
 const knownVerify = await (await api()).post('/api/auth/code-verify', {
-	data: { email: existing, token: codeOf(knownMail) },
+	data: { email: existing, token: codeOf(knownMail), name: 'Eindringling' },
 });
 expect(knownVerify.ok(), 'the code signs the existing account in', String(knownVerify.status()));
 expect(
 	userRow(existing, `raw_user_meta_data->>'full_name'`) === 'Codi',
-	'registering with an existing address does not change its name',
+	'registering with an existing address does not change its name, not even at the verify step',
 );
 
 // 4 Expired code: refused, a new code works
@@ -231,47 +247,66 @@ expect(
 	'the page explains the rate limit',
 );
 
-// 6 A password set by someone else before the owner registers never works
-const squatted = address('besetzt');
-const pre = await fetch(`${SB}/auth/v1/signup`, {
-	method: 'POST',
-	headers: { apikey: PUBLISHABLE, ...json },
-	body: JSON.stringify({ email: squatted, password: 'squatter-password-1' }),
-});
-expect(pre.ok, 'direct sign-up against Supabase accepted', String(pre.status));
-// Auth throttles a second mail to the same address within a minute; the squatter's mail just counted.
-sql(
-	`update auth.users set confirmation_sent_at = now() - interval '2 minutes' where email='${squatted}'`,
-);
-const owner = await api();
-const ownerRequest = await owner.post('/api/auth/code-request', {
-	data: { email: squatted, name: 'Besitzer' },
-});
-expect(
-	ownerRequest.ok(),
-	'owner registers a pre-registered address',
-	String(ownerRequest.status()),
-);
-const ownerCode = codeOf(await mailAt(squatted, CONFIRM, 2));
-expect(!!ownerCode, 'owner gets a code for the pre-registered address');
-const ownerVerify = await owner.post('/api/auth/code-verify', {
-	data: { email: squatted, token: ownerCode },
-});
-const ownerBody = await ownerVerify.json();
-expect(
-	ownerVerify.ok() && ownerBody.sessionEstablished === true,
-	'owner is signed in by the code',
-	JSON.stringify(ownerBody),
-);
-expect(
-	ownerBody.passwordPending === true,
-	'the account is sent to choose its own password',
-	JSON.stringify(ownerBody),
-);
-expect(
-	(await passwordLogin(squatted, 'squatter-password-1')).error_code === 'invalid_credentials',
-	'the password set before the confirmation does not log in',
-);
+// 6 A password set by someone else before the owner registers never works, with or without the
+// registration mark (the mark only spares the choose-a-password step), and the owner's name wins
+for (const marked of [false, true]) {
+	const squatted = address(marked ? 'besetztm' : 'besetzt');
+	const pre = await fetch(`${SB}/auth/v1/signup`, {
+		method: 'POST',
+		headers: { apikey: PUBLISHABLE, ...json },
+		body: JSON.stringify({
+			email: squatted,
+			password: 'squatter-password-1',
+			data: {
+				full_name: 'Squatter Evil',
+				locale: 'es',
+				...(marked ? { registration: 'code' } : {}),
+			},
+		}),
+	});
+	expect(pre.ok, `direct sign-up against Supabase accepted (mark: ${marked})`, String(pre.status));
+	// Auth throttles a second mail to the same address within a minute; the squatter's mail just counted.
+	sql(
+		`update auth.users set confirmation_sent_at = now() - interval '2 minutes' where email='${squatted}'`,
+	);
+	const owner = await api();
+	const ownerRequest = await owner.post('/api/auth/code-request', {
+		data: { email: squatted, name: 'Besitzer' },
+	});
+	expect(
+		ownerRequest.ok(),
+		`owner registers a pre-registered address (mark: ${marked})`,
+		String(ownerRequest.status()),
+	);
+	const ownerMail = await mailAt(squatted, CONFIRM, 2);
+	const ownerCode = codeOf(ownerMail);
+	expect(!!ownerCode, `owner gets a code for the pre-registered address (mark: ${marked})`);
+	const ownerVerify = await owner.post('/api/auth/code-verify', {
+		data: { email: squatted, token: ownerCode, name: 'Besitzer' },
+	});
+	const ownerBody = await ownerVerify.json();
+	expect(
+		ownerVerify.ok() && ownerBody.sessionEstablished === true,
+		`owner is signed in by the code (mark: ${marked})`,
+		JSON.stringify(ownerBody),
+	);
+	expect(
+		ownerBody.passwordPending === !marked,
+		marked
+			? 'a marked account is not sent to choose a password'
+			: 'an unmarked account is sent to choose its own password',
+		JSON.stringify(ownerBody),
+	);
+	expect(
+		(await passwordLogin(squatted, 'squatter-password-1')).error_code === 'invalid_credentials',
+		`the password set before the confirmation does not log in (mark: ${marked})`,
+	);
+	expect(
+		userRow(squatted, `raw_user_meta_data->>'full_name'`) === 'Besitzer',
+		`the owner's name replaces the stranger's (mark: ${marked})`,
+		userRow(squatted, `raw_user_meta_data->>'full_name'`),
+	);
+}
 
 // 7 Wrong codes are limited (Auth started with GOTRUE_RATE_LIMIT_VERIFY=40)
 if (process.env.REAL_STACK_VERIFY_LIMIT === '1') {

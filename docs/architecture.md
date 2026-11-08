@@ -87,7 +87,9 @@ Rules:
   in the browser. The session cookies are HttpOnly (`core/auth/cookie-options.ts`), the proxy
   refreshes them and keeps the readable hint cookie `manawg_signed_in` in step. Callback
   `app/auth/callback/route.ts`, password reset `app/auth/reset`. Registration is name and address plus a mailed
-  code (`POST /api/auth/code-request` with a `name`); no password is chosen. The account name
+  code (`POST /api/auth/code-request` with a `name`); no password is chosen. A
+  registration answers like a sign-in code request for every address, also when the instance has
+  signups switched off: the code is then simply not sent to an unknown address. The account name
   entered at registration is `user_metadata.full_name` and prefills the member name.
 - **Invitations**: `wg_invites` (token, 7 days, max 10 uses, revocable). Joining needs a valid
   token (`POST /api/wg/<code>/members` with `inviteToken`); the share code is only an address.

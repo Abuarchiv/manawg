@@ -32,7 +32,8 @@ settled.
 - Registration no longer asks for a password: enter your name and email address, then the 8-digit
   code from the mail on the same page. An address that already has an account is signed in by the
   code instead. A password stays optional and can be set under *Settings → Access*. The
-  confirmation mail now shows the code next to the link. Docker setups pick the new template up on
+  confirmation mail of such an account shows the code and no link, because opening the link
+  would use up the code. Docker setups pick the new template up on
   start; with Supabase hosted, run `scripts/supabase-auth-templates.mjs --apply` again (see the
   self-hosting guide).
 - The installed app's description and its "Join a flat" home-screen shortcut follow the device

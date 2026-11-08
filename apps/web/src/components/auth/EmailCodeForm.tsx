@@ -132,7 +132,7 @@ export function useEmailCode({
 		setBusy('code-verify');
 		try {
 			const { verifyEmailCode } = await import('@/core/auth/client');
-			const result = await verifyEmailCode(sentTo, token);
+			const result = await verifyEmailCode(sentTo, token, signUpName?.trim());
 			if (result.sessionEstablished) {
 				if (result.passwordPending) router.replace(choosePasswordHref(next));
 				else onAuthenticated();

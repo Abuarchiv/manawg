@@ -32,6 +32,11 @@ export const CODE_REGISTRATION_METADATA = { registration: 'code' } as const;
 /** The address counts as just confirmed for this long, which covers the confirming exchange. */
 const JUST_CONFIRMED_MS = 5 * 60_000;
 
+/** True when the address was confirmed within the last minutes, which covers the confirming exchange. */
+export function justConfirmed(user: { email_confirmed_at?: string | null }): boolean {
+	return Date.now() - Date.parse(user.email_confirmed_at ?? '') < JUST_CONFIRMED_MS;
+}
+
 /**
  * True when the address was confirmed just now and the password stored before was dropped, so
  * the account has none yet. Asks the server: the session's own copy of the user is from before
@@ -42,8 +47,7 @@ export async function passwordPending(auth: SupabaseClient['auth']): Promise<boo
 	const user = data.user;
 	if (user?.app_metadata?.password_pending !== true) return false;
 	if (user.user_metadata?.registration === CODE_REGISTRATION_METADATA.registration) return false;
-	const confirmedAt = Date.parse(user.email_confirmed_at ?? '');
-	return Date.now() - confirmedAt < JUST_CONFIRMED_MS;
+	return justConfirmed(user);
 }
 
 export const PASSWORD_RECOVERY_COOKIE = 'manawg_password_recovery';

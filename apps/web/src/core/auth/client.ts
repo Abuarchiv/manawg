@@ -123,8 +123,13 @@ export async function requestEmailCode(email: string, name?: string): Promise<vo
 	await authRequest('/api/auth/code-request', name === undefined ? { email } : { email, name });
 }
 
-export function verifyEmailCode(email: string, token: string): Promise<AuthSessionResult> {
-	return authRequest('/api/auth/code-verify', { email, token });
+/** The `name` of a registration lets the owner of the address replace one a stranger stored first. */
+export function verifyEmailCode(
+	email: string,
+	token: string,
+	name?: string,
+): Promise<AuthSessionResult> {
+	return authRequest('/api/auth/code-verify', name ? { email, token, name } : { email, token });
 }
 
 async function removeCurrentBrowserPushSubscription(

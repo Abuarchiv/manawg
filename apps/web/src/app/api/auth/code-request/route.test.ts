@@ -58,13 +58,22 @@ test('registration answers ok for an address that already has an account', async
 	assert.deepEqual(res.json, { ok: true });
 });
 
-test('registration reports an instance that has signups switched off', async () => {
+test('registration on an instance without signups answers like it does for an existing address', async () => {
+	// Auth refuses only an unknown address, so passing the error on would reveal which addresses exist.
 	kit.auth.signInWithOtp = async () => ({
 		error: new AuthApiError('signups off', 422, 'signup_disabled'),
 	});
 	const res = await call(POST, '/api/auth/code-request', { email: 'a@b.test', name: 'Mina' });
-	assert.equal(res.status, 422);
-	assert.equal(res.json.code, 'signup_disabled');
+	assert.equal(res.status, 200);
+	assert.deepEqual(res.json, { ok: true });
+});
+
+test('registration still reports failures that are not about the address', async () => {
+	kit.auth.signInWithOtp = async () => ({
+		error: new AuthApiError('mail failed', 500, 'unexpected_failure'),
+	});
+	const res = await call(POST, '/api/auth/code-request', { email: 'a@b.test', name: 'Mina' });
+	assert.notEqual(res.status, 200);
 });
 
 test('registration rejects an empty name and an over-long one', async () => {
