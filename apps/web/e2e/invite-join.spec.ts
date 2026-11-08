@@ -90,4 +90,94 @@ test.describe('invitation link', () => {
 			await expect(page.locator('#join-name-error')).toHaveCount(0);
 		});
 	});
+
+	test.describe('guest entry', () => {
+		const TOKEN = 'fixture-invite-token01';
+		const LONG_NAME = 'Gemeinschaftswohnung Kastanienallee Hinterhaus Dachgeschoss links';
+
+		async function openAsGuest(
+			page: Page,
+			width: number,
+			preview: { status: number; json?: unknown },
+		): Promise<void> {
+			await setupMember(page);
+			await page.setViewportSize({ width, height: 780 });
+			await page.route('**/api/wg/mine', (route) =>
+				route.fulfill({ status: 401, json: { error: 'auth_required', code: 'auth_required' } }),
+			);
+			await page.route(`**/api/wg/invites/${TOKEN}`, (route) =>
+				route.fulfill({ status: 401, json: { error: 'auth_required', code: 'auth_required' } }),
+			);
+			await page.route(`**/api/wg/invites/${TOKEN}/preview`, (route) => route.fulfill(preview));
+			await page.goto(`/invite/${TOKEN}`);
+		}
+
+		async function expectNoOverflow(page: Page): Promise<void> {
+			const overflow = await page.evaluate(
+				() => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+			);
+			expect(overflow).toBeLessThanOrEqual(0);
+		}
+
+		for (const width of [390, 320]) {
+			test(`names the inviter and the WG, long names included, at ${width}px`, async ({ page }) => {
+				await openAsGuest(page, width, {
+					status: 200,
+					json: { wgName: LONG_NAME, inviterName: 'Mika' },
+				});
+				await expect(
+					page.getByRole('heading', {
+						name: `Mika lädt dich in die WG „${LONG_NAME}“ ein`,
+						level: 1,
+					}),
+				).toBeVisible({ timeout: 60_000 });
+				await expect(
+					page.getByRole('link', { name: 'Konto erstellen', exact: true }),
+				).toBeVisible();
+				await expect(page.getByRole('link', { name: 'Ich habe schon ein Konto' })).toHaveAttribute(
+					'href',
+					`/login?next=${encodeURIComponent(`/invite/${TOKEN}`)}`,
+				);
+				await expectNoOverflow(page);
+			});
+
+			test(`falls back to the nameless title without an inviter at ${width}px`, async ({
+				page,
+			}) => {
+				await openAsGuest(page, width, {
+					status: 200,
+					json: { wgName: LONG_NAME, inviterName: null },
+				});
+				await expect(
+					page.getByRole('heading', {
+						name: `Du bist in die WG „${LONG_NAME}“ eingeladen`,
+						level: 1,
+					}),
+				).toBeVisible({ timeout: 60_000 });
+				await expectNoOverflow(page);
+			});
+
+			test(`ends at once on a link that cannot be used at ${width}px`, async ({ page }) => {
+				await openAsGuest(page, width, {
+					status: 404,
+					json: { error: 'invite_unavailable', code: 'invite_unavailable' },
+				});
+				await expect(
+					page.getByRole('heading', { name: 'Einladung nicht gültig', level: 1 }),
+				).toBeVisible({ timeout: 60_000 });
+				await expect(page.getByRole('link', { name: 'Konto erstellen' })).toHaveCount(0);
+				await expectNoOverflow(page);
+			});
+		}
+
+		test('keeps the generic guest page when the preview is rate limited', async ({ page }) => {
+			await openAsGuest(page, 390, { status: 429, json: { error: 'rate_limited' } });
+			await expect(page.getByRole('heading', { name: 'Einladung annehmen', level: 1 })).toBeVisible(
+				{
+					timeout: 60_000,
+				},
+			);
+			await expect(page.getByRole('link', { name: 'Konto erstellen', exact: true })).toBeVisible();
+		});
+	});
 });

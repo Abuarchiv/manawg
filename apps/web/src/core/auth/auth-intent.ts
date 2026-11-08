@@ -29,3 +29,18 @@ export function authPageHref(page: typeof SIGN_IN_PATH | typeof SIGN_UP_PATH, se
 	const query = authIntentQuery(search);
 	return query ? `${page}?${query}` : page;
 }
+
+/**
+ * The page behind a sign-in page's own `next`: `/login?next=/invite/x` becomes `/invite/x`. Other
+ * targets (including a sign-in page that carries the create action) stay as they are. A failed
+ * mail or provider callback lands on `/login` with this as `next`, so the start flow can still
+ * lead the visitor on to the invitation once they have signed in there.
+ */
+export function unwrapSignInNext(path: string): string {
+	if (!isAuthPagePath(path)) return path;
+	const { pathname, searchParams } = new URL(path, 'https://manawg.invalid');
+	if (pathname !== SIGN_IN_PATH && pathname !== SIGN_UP_PATH) return path;
+	if (searchParams.get('action') === 'create') return path;
+	const inner = safeNextPath(searchParams.get('next'));
+	return inner !== '/' && !isAuthPagePath(inner) ? inner : path;
+}

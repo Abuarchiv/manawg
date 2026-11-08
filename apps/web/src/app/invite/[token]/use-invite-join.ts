@@ -18,8 +18,21 @@ export type InvitePhase =
 	| { kind: 'loading' }
 	| { kind: 'signed-out' }
 	| { kind: 'ready'; wgName: string; code: string }
-	| { kind: 'dead'; reason: 'invalid' | 'expired' }
+	| { kind: 'dead'; reason: 'invalid' | 'expired' | 'unavailable' }
 	| { kind: 'error' };
+
+/** What a visitor without an account may learn from the link: the WG and who invited. */
+export type InvitePreview = { wgName: string; inviterName: string | null };
+
+function parsePreview(body: unknown): InvitePreview | null {
+	if (typeof body !== 'object' || body === null) return null;
+	const { wgName, inviterName } = body as { wgName?: unknown; inviterName?: unknown };
+	if (typeof wgName !== 'string' || wgName === '') return null;
+	return {
+		wgName,
+		inviterName: typeof inviterName === 'string' && inviterName ? inviterName : null,
+	};
+}
 
 /** The WG a 409 lookup answer points at (the account is already a member), or ''. */
 async function readShareCode(res: Response): Promise<string> {
@@ -42,6 +55,7 @@ export function useInviteJoin(token: string) {
 	const render = useMessage();
 	const [phase, setPhase] = useState<InvitePhase>({ kind: 'loading' });
 	const [retryNonce, setRetryNonce] = useState(0);
+	const [preview, setPreview] = useState<InvitePreview | null>(null);
 	const [name, setName] = useState('');
 	const [error, setError] = useState<string | null>(null);
 	const [nameInvalid, setNameInvalid] = useState(false);
@@ -94,6 +108,25 @@ export function useInviteJoin(token: string) {
 			});
 		return () => controller.abort();
 	}, [token, retryNonce, router]);
+
+	// A visitor without an account sees who invited them to which WG. A link that cannot be used
+	// ends here instead of after the sign-up; any other failure just leaves the generic page.
+	const signedOut = phase.kind === 'signed-out';
+	useEffect(() => {
+		if (!signedOut) return;
+		const controller = new AbortController();
+		fetch(`/api/wg/invites/${encodeURIComponent(token)}/preview`, {
+			cache: 'no-store',
+			signal: anySignal([controller.signal, AbortSignal.timeout(REQUEST_TIMEOUT_MS)]),
+		})
+			.then(async (res) => {
+				if (res.status === 404) return setPhase({ kind: 'dead', reason: 'unavailable' });
+				if (!res.ok) return;
+				setPreview(parsePreview(await res.json()));
+			})
+			.catch(() => undefined);
+		return () => controller.abort();
+	}, [signedOut, token]);
 
 	async function join(): Promise<void> {
 		if (busyRef.current || phase.kind !== 'ready') return;
@@ -156,6 +189,7 @@ export function useInviteJoin(token: string) {
 
 	return {
 		phase,
+		preview,
 		name,
 		setName,
 		error,
@@ -166,7 +200,9 @@ export function useInviteJoin(token: string) {
 		deadMessage: render(
 			phase.kind === 'dead' && phase.reason === 'invalid'
 				? { key: 'entry.errors.inviteInvalid' }
-				: INVITE_EXPIRED_MESSAGE,
+				: phase.kind === 'dead' && phase.reason === 'unavailable'
+					? { key: 'entry.errors.inviteUnavailable' }
+					: INVITE_EXPIRED_MESSAGE,
 		),
 	};
 }

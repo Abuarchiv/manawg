@@ -22,6 +22,13 @@ settled.
 
 ### Changed
 
+- The invitation page for visitors without an account names who invited them to which flat, offers
+  Google next to *Create account* as the main action, and links to sign-in as a plain text link. A
+  link that is expired, used up or wrong is reported before the sign-up instead of after it. A
+  signed-out member who reopens a used-up link now sees that notice instead of being forwarded to
+  their flat after signing in.
+- The notice after a mail link that could not be used points to the *Code by email* tab, because
+  the password from before the confirmation is discarded.
 - Registration no longer asks for a password: enter your name and email address, then the 8-digit
   code from the mail on the same page. An address that already has an account is signed in by the
   code instead. A password stays optional and can be set under *Settings → Access*. The
@@ -35,6 +42,8 @@ settled.
 
 ### Fixed
 
+- A mail or Google link that failed during sign-up from an invitation no longer drops the
+  invitation: after signing in on the page that follows, the visitor still lands on it.
 - The English crash page labels its mail link "Report a problem by email", the wording the other
   error screens use.
 

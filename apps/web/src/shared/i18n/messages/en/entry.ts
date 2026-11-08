@@ -138,6 +138,8 @@ export default {
 		displayNameMissing: 'Your display name is missing.',
 		inviteInvalid:
 			'This invite link is not correct. Check that it was copied completely, or ask a member for a new one.',
+		inviteUnavailable:
+			'This invitation is no longer valid or the link is not correct. Ask a member for a new one.',
 	},
 	start: {
 		titleSignIn: 'Sign in',
@@ -162,7 +164,7 @@ export default {
 		pushFailed:
 			'You are signed out, but push could not be reliably turned off in this browser. Turn off website notifications in the browser settings.',
 		authCallback:
-			'The link could not be used. It has expired or was already used, or you opened it in a different browser. If you have just confirmed your email address, you can sign in now. Otherwise, request a new link.',
+			'The link could not be used. It has expired or was already used, or you opened it in a different browser. If you have just confirmed your email address, your account is ready: sign in now on the “Code by email” tab. Otherwise, request a new link.',
 		iosStandalone:
 			'On iPhone, the installed app is separate from Safari. Sign in here once, and you will stay signed in after that.',
 		yourFlats: 'Your flats',
@@ -205,8 +207,10 @@ export default {
 	},
 	invite: {
 		title: 'Accept invitation',
-		signInBody: 'Sign in to join the flat.',
-		signIn: 'Sign in',
+		signInBody: 'Create an account or sign in to join.',
+		guestTitle: '{inviter} invites you to the flat “{wgName}”',
+		guestTitleAnonymous: 'You are invited to the flat “{wgName}”',
+		haveAccount: 'I already have an account',
 		createAccount: 'Create account',
 		invalidTitle: 'Invitation not valid',
 		toFlats: 'Go to your flats',

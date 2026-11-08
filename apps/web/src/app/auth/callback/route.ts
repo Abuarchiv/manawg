@@ -1,5 +1,6 @@
 import { isAuthRetryableFetchError } from '@supabase/supabase-js';
 import { type NextRequest, NextResponse } from 'next/server';
+import { unwrapSignInNext } from '@/core/auth/auth-intent';
 import { safeNextPath } from '@/core/auth/next-path';
 import {
 	choosePasswordHref,
@@ -15,7 +16,12 @@ import { logApiError } from '@/core/infra/observability';
 function callbackError(request: NextRequest, response?: NextResponse): NextResponse {
 	const url = new URL('/login', requestOrigin(request));
 	url.searchParams.set('error', 'auth_callback');
-	url.searchParams.set('next', safeNextPath(request.nextUrl.searchParams.get('next')));
+	// A sign-in page as target would hide the invitation behind it; the start flow reads it
+	// from `next` once the visitor has signed in on this page.
+	url.searchParams.set(
+		'next',
+		unwrapSignInNext(safeNextPath(request.nextUrl.searchParams.get('next'))),
+	);
 	const redirect = response ?? NextResponse.redirect(url);
 	redirect.headers.set('Location', url.toString());
 	redirect.headers.set('Cache-Control', 'private, no-store');
