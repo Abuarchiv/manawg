@@ -118,6 +118,9 @@ export const wgShareCodeLookupLimiter = build(120, 60, 'wg-code-lookup'); // 120
 // for a foreign WG. Only misses are counted (per signed-in account), so
 // members are never throttled while code enumeration stops after a few tries.
 export const wgShareCodeMissLimiter = build(20, 3600, 'wg-code-miss'); // 20 unknown/foreign share codes / hour / account
+// The invitation preview answers without a session, so it counts per IP. Flatmates open one link
+// each from the same Wi-Fi; 30 a minute leaves room for them and still stops scraping.
+export const invitePreviewLimiter = build(30, 60, 'invite-preview'); // 30 invitation previews / min / IP
 export const notifTestLimiter = build(3, 60, 'notif-test'); // 3 test notifications / min / member — anti-spam
 export const reminderSendLimiter = build(10, 3600, 'reminder-send'); // 10 reminders / hour / member — global anti-spam
 export const inviteMailLimiter = build(10, 3600, 'invite-mail'); // 10 invitation mails / hour / member — anti-spam

@@ -144,6 +144,8 @@ export default {
 		displayNameMissing: 'Dein Anzeigename fehlt.',
 		inviteInvalid:
 			'Dieser Einladungslink stimmt nicht. Prüfe, ob er vollständig kopiert wurde, oder bitte ein Mitglied um einen neuen.',
+		inviteUnavailable:
+			'Diese Einladung ist nicht mehr gültig oder der Link stimmt nicht. Bitte ein Mitglied um einen neuen.',
 	},
 	start: {
 		titleSignIn: 'Anmelden',
@@ -169,7 +171,7 @@ export default {
 		pushFailed:
 			'Du bist abgemeldet, aber Push konnte auf diesem Browser nicht sicher beendet werden. Deaktiviere Website-Benachrichtigungen in den Browsereinstellungen.',
 		authCallback:
-			'Der Link konnte nicht verwendet werden. Er ist abgelaufen oder bereits benutzt, oder du hast ihn in einem anderen Browser geöffnet. Hast du gerade deine E-Mail-Adresse bestätigt, kannst du dich jetzt anmelden. Sonst fordere einen neuen Link an.',
+			'Der Link konnte nicht verwendet werden. Er ist abgelaufen oder bereits benutzt, oder du hast ihn in einem anderen Browser geöffnet. Hast du gerade deine E-Mail-Adresse bestätigt, ist dein Konto fertig: Melde dich jetzt im Reiter „Code per E-Mail“ an. Sonst fordere einen neuen Link an.',
 		iosStandalone:
 			'Auf dem iPhone ist die installierte App von Safari getrennt. Melde dich hier einmal an, danach bleibst du angemeldet.',
 		yourFlats: 'Deine WGs',
@@ -212,8 +214,10 @@ export default {
 	},
 	invite: {
 		title: 'Einladung annehmen',
-		signInBody: 'Melde dich an, um der WG beizutreten.',
-		signIn: 'Anmelden',
+		signInBody: 'Erstelle ein Konto oder melde dich an, um beizutreten.',
+		guestTitle: '{inviter} lädt dich in die WG „{wgName}“ ein',
+		guestTitleAnonymous: 'Du bist in die WG „{wgName}“ eingeladen',
+		haveAccount: 'Ich habe schon ein Konto',
 		createAccount: 'Konto erstellen',
 		invalidTitle: 'Einladung nicht gültig',
 		toFlats: 'Zu deinen WGs',

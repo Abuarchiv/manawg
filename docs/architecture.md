@@ -37,6 +37,9 @@ browser
      `resolveFixtureRequest` and skips this step.
   5. Supabase session refresh.
 - `/api/health` is outside the matcher and applies its own limiter.
+- `GET /api/wg/invites/<token>/preview` answers without a session (WG name and the inviter's first
+  name for the invitation page) and applies its own per-IP limiter; every unusable token gets the
+  same bare `404 invite_unavailable`.
 
 **Route handlers** use `withWgRoute` (`core/guards/with-wg-route.ts`) for the share-code
 preamble and the catch-all `logApiError` + `server_error`. It deliberately does not authenticate;
