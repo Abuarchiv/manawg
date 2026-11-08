@@ -122,3 +122,32 @@ test('logs a failed code exchange only when GoTrue is down or answers 5xx', asyn
 	);
 	assert.deepEqual(kit.logged, ['[auth/callback] exchange failed']);
 });
+
+test('the callback leaves the funnel marker only for a new account or a real sign-in', async () => {
+	const session = (createdAt: Date) => {
+		kit.auth.exchangeCodeForSession = async () => ({
+			data: {
+				session: { user: { id: 'u1', app_metadata: {}, created_at: createdAt.toISOString() } },
+			},
+			error: null,
+		});
+		kit.auth.getUser = async () => ({
+			data: { user: { id: 'u1', app_metadata: {}, created_at: createdAt.toISOString() } },
+			error: null,
+		});
+	};
+	const marker = async (query: string, signedInCookie = false) =>
+		(
+			await GET(
+				new NextRequest(`https://app.manawg.test/auth/callback?${query}`, {
+					headers: signedInCookie ? { cookie: 'manawg_signed_in=1' } : {},
+				}),
+			)
+		).cookies.get('manawg_funnel')?.value;
+	session(new Date());
+	assert.equal(await marker('code=c'), 'signup_confirmed');
+	session(new Date(Date.now() - 24 * 60 * 60 * 1000));
+	assert.equal(await marker('code=c'), 'login_completed');
+	assert.equal(await marker('code=c', true), undefined);
+	assert.equal(await marker('code=c&next=%2Fauth%2Freset'), undefined);
+});

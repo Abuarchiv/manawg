@@ -67,21 +67,14 @@ export function useInviteJoin(token: string) {
 		}
 	}, [name, nameInvalid]);
 
-	// Once per page load, as soon as the invitation is shown or has failed to: never for the
-	// loading state, and not again when the lookup is retried.
+	// Once per page load, as soon as the invitation is shown or has failed to (a dead link counts as
+	// opened): never for the loading state, and not again when the lookup is retried.
 	const openedRef = useRef(false);
 	useEffect(() => {
 		if (phase.kind === 'loading' || openedRef.current) return;
 		openedRef.current = true;
 		posthog.capture('invite_opened');
 	}, [phase.kind]);
-
-	// A dead invitation is a failed join; every way into the state (lookup, token shape, expiry on
-	// submit) is reported here, once per state change.
-	useEffect(() => {
-		if (phase.kind !== 'dead') return;
-		reportJoinFailure(phase.reason === 'invalid' ? 'invite_invalid' : 'invite_expired');
-	}, [phase]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `retryNonce` re-runs the lookup after a transient error.
 	useEffect(() => {
@@ -157,6 +150,8 @@ export function useInviteJoin(token: string) {
 				if (shouldReleaseIdempotencyKey(res.status, apiError)) requestRef.current = null;
 				if (res.status === 409 && apiError === 'already_joined') return router.push(target);
 				if (apiError === 'invite_expired' || apiError === 'invite_required') {
+					// Expiry found on submit is a rejected join; a dead link merely opened is not.
+					reportJoinFailure(apiError);
 					return setPhase({ kind: 'dead', reason: 'expired' });
 				}
 				const nameProblem =
