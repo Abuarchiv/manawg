@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { mock, test } from 'node:test';
 import { NextRequest } from 'next/server';
 
+process.env.MEMBER_SESSION_SECRET ??= 'test-secret-for-invitation-hashes';
+
 const wgInvites = { id: 'wg_invites.id', revokedAt: 'wg_invites.revoked_at' };
 const inviteId = '33333333-3333-4333-8333-333333333333';
 const mailError = new Error('boom');
