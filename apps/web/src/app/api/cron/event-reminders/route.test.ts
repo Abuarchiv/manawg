@@ -160,7 +160,10 @@ mock.module('@/core/db', {
 });
 mock.module('@/core/infra/cron-auth', { namedExports: { requireCronSecret: () => null } });
 mock.module('@/core/infra/observability', {
-	namedExports: { withCronLogging: (_name: string, handler: unknown) => handler },
+	namedExports: {
+		withCronLogging: (_name: string, handler: unknown) => handler,
+		captureException: () => undefined,
+	},
 });
 mock.module('@/core/notifications/notification-dispatch', {
 	namedExports: {

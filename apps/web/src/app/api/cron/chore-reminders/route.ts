@@ -11,7 +11,7 @@ import {
 	wgs,
 } from '@/core/db';
 import { requireCronSecret } from '@/core/infra/cron-auth';
-import { withCronLogging } from '@/core/infra/observability';
+import { captureException, withCronLogging } from '@/core/infra/observability';
 import { dispatchNotification } from '@/core/notifications/notification-dispatch';
 import { endOfBerlinDay, startOfBerlinDay } from '@/core/utils/berlin-day';
 
@@ -35,7 +35,6 @@ interface DueChore {
 	title: string;
 	nextDueAt: Date;
 	assignedMemberId: string | null;
-	lastReminderAt: Date | null;
 	wgId: string;
 	wgName: string;
 	shareCode: string;
@@ -88,13 +87,12 @@ export const GET = withCronLogging(
 		const throttleCutoff = new Date(now.getTime() - REMINDER_THROTTLE_MS);
 		const lookbackStart = new Date(now.getTime() - REMINDER_LOOKBACK_MS);
 
-		const due = (await db
+		const due = await db
 			.select({
 				id: chores.id,
 				title: chores.title,
 				nextDueAt: chores.nextDueAt,
 				assignedMemberId: chores.assignedMemberId,
-				lastReminderAt: chores.lastReminderAt,
 				wgId: wgs.id,
 				wgName: wgs.name,
 				shareCode: wgs.shareCode,
@@ -133,18 +131,17 @@ export const GET = withCronLogging(
 			// first, then the ones reminded longest ago, so a backlog above the
 			// cap cannot keep the same oldest rows in front forever.
 			.orderBy(sql`${chores.lastReminderAt} asc nulls first`, asc(chores.nextDueAt), asc(chores.id))
-			.limit(REMINDER_CANDIDATE_LIMIT)) as DueChore[];
+			.limit(REMINDER_CANDIDATE_LIMIT);
 
 		// Nobody is answerable for these, so without a reminder they would stay overdue.
 		// No lookback: the chore will not rotate on its own, so it keeps its one announcement
 		// per throttle window until somebody picks it up.
-		const unassigned = (await db
+		const unassigned = await db
 			.select({
 				id: chores.id,
 				title: chores.title,
 				nextDueAt: chores.nextDueAt,
 				assignedMemberId: chores.assignedMemberId,
-				lastReminderAt: chores.lastReminderAt,
 				wgId: wgs.id,
 				wgName: wgs.name,
 				shareCode: wgs.shareCode,
@@ -164,7 +161,7 @@ export const GET = withCronLogging(
 				),
 			)
 			.orderBy(sql`${chores.lastReminderAt} asc nulls first`, asc(chores.nextDueAt), asc(chores.id))
-			.limit(UNASSIGNED_CANDIDATE_LIMIT)) as DueChore[];
+			.limit(UNASSIGNED_CANDIDATE_LIMIT);
 		due.push(...unassigned);
 
 		if (due.length === 0) return NextResponse.json({ ok: true, sent: 0 });
@@ -182,19 +179,13 @@ export const GET = withCronLogging(
 				),
 			);
 		const completedToday = new Set(completions.map((item) => item.choreId));
-		const pending = due.filter((item) => {
-			if (completedToday.has(item.id)) return false;
-			// Throttle: skip if we already pinged the assignee within the window.
-			// `lastReminderAt` is null for chores that have never been reminded —
-			// those always pass through.
-			if (item.lastReminderAt && item.lastReminderAt > throttleCutoff) return false;
-			return true;
-		});
+		const pending = due.filter((item) => !completedToday.has(item.id));
 
 		// Claim and dispatch in fixed-size batches so a large backlog never
 		// opens hundreds of concurrent DB claims and push requests at once.
 		const sentChoreIds: string[] = [];
 		const failedClaimKeys: string[] = [];
+		let failed = 0;
 		for (let index = 0; index < pending.length; index += DISPATCH_BATCH_SIZE) {
 			const batch = pending.slice(index, index + DISPATCH_BATCH_SIZE);
 			const claimAttempts = await Promise.all(
@@ -223,7 +214,7 @@ export const GET = withCronLogging(
 							...(item.assignedMemberId ? { targetMemberIds: [item.assignedMemberId] } : {}),
 						});
 					} catch (err) {
-						console.warn('[chore-reminders] notification dispatch failed');
+						captureException(err, { cronJob: 'chore-reminders' });
 						return { sent: 0, failures: [err] };
 					}
 				}),
@@ -239,6 +230,7 @@ export const GET = withCronLogging(
 					sentChoreIds.push(item.id);
 				} else {
 					failedClaimKeys.push(item.reminderClaimKey);
+					if (result?.status === 'fulfilled' && result.value.failures.length > 0) failed += 1;
 				}
 			}
 		}
@@ -248,6 +240,10 @@ export const GET = withCronLogging(
 			await db.update(chores).set({ lastReminderAt: now }).where(inArray(chores.id, sentChoreIds));
 		}
 
-		return NextResponse.json({ ok: true, sent: sentChoreIds.length });
+		// A 503 keeps a failed dispatch visible in the cron log instead of reporting success.
+		return NextResponse.json(
+			{ ok: failed === 0, sent: sentChoreIds.length, ...(failed > 0 ? { failed } : {}) },
+			{ status: failed === 0 ? 200 : 503 },
+		);
 	},
 );

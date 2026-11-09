@@ -36,7 +36,7 @@ export const POST = authPost(
 					}
 				: { shouldCreateUser: false },
 		});
-		if (error && !NO_ACCOUNT_CODES.has((error as { code?: string }).code ?? '')) throw error;
+		if (error && !(error.code && NO_ACCOUNT_CODES.has(error.code))) throw error;
 		return { ok: true };
 	},
 	{ limited: true },

@@ -2,7 +2,7 @@ import { and, asc, eq, gt, inArray, isNull, lte, or, sql } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 import { db, idempotencyResponses, pushSubscriptions, wgEvents, wgMembers, wgs } from '@/core/db';
 import { requireCronSecret } from '@/core/infra/cron-auth';
-import { withCronLogging } from '@/core/infra/observability';
+import { captureException, withCronLogging } from '@/core/infra/observability';
 import { dispatchNotification } from '@/core/notifications/notification-dispatch';
 import { startOfBerlinDay } from '@/core/utils/berlin-day';
 import { MS_PER_DAY } from '@/core/utils/time';
@@ -246,7 +246,7 @@ export const GET = withCronLogging(
 							}
 							return result;
 						} catch (err) {
-							console.warn('[event-reminders] notification dispatch failed');
+							captureException(err, { cronJob: 'event-reminders' });
 							return { sent: 0, failures: [err] };
 						}
 					},
