@@ -11,12 +11,7 @@ import {
 	rejectForeignCurrencyRow,
 	stripBom,
 } from './import-csv-helpers';
-import {
-	type ParsedExpense,
-	type ParsedSplit,
-	type RejectedRow,
-	UnsupportedCurrencyError,
-} from './import-types';
+import type { ParsedExpense, ParsedSplit, RejectedRow } from './import-types';
 
 const PARTICIPANT_HEADERS = ['teilnehmer', 'participants', 'participantes', 'für']; // i18n-ignore import parser column names
 
@@ -86,9 +81,8 @@ export function parseSplidCsv(
 		if (idxCurrency !== -1) {
 			const currencyRaw = (fields[idxCurrency] ?? 'EUR').trim().toUpperCase();
 			if (currencyRaw && currencyRaw !== 'EUR') {
-				// A reported row must not also be imported as euros.
-				if (rejectForeignCurrencyRow(rejected, line, currencyRaw, descRaw)) continue;
-				throw new UnsupportedCurrencyError(currencyRaw);
+				rejectForeignCurrencyRow(rejected, line, currencyRaw, descRaw);
+				continue;
 			}
 		}
 		const participantsRaw =

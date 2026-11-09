@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-const { splitProportionally } = await import('./import-csv-helpers');
+const { parseDecimal, splitProportionally } = await import('./import-csv-helpers');
 
 function seeded(seed: number): () => number {
 	let state = seed;
@@ -46,4 +46,11 @@ test('splitProportionally: sub-cent shares give the extra cent to the first, rat
 		ratio.splits.map((s) => s.amountCents),
 		[333, 667],
 	);
+});
+
+test('parseDecimal: the last separator is the decimal mark when both appear', () => {
+	assert.equal(parseDecimal('1.234,56'), 1234.56);
+	assert.equal(parseDecimal('1,234.56'), 1234.56);
+	assert.equal(parseDecimal('4.055'), 4.055);
+	assert.equal(parseDecimal('12,5'), 12.5);
 });

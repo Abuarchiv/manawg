@@ -10,7 +10,7 @@ import {
 	rejectForeignCurrencyRow,
 	splitProportionally,
 } from './import-csv-helpers';
-import { type ParsedExpense, type RejectedRow, UnsupportedCurrencyError } from './import-types';
+import type { ParsedExpense, RejectedRow } from './import-types';
 
 // Settle Up exports one row per entry: "Who paid", "Amount", "Currency", "For whom" (names joined
 // by ";"), "Split amounts" (one value per name, joined by ";"), "Purpose", "Category",
@@ -105,9 +105,8 @@ export function parseSettleUpCsv(csv: string, rejected?: RejectedRow[]): ParsedE
 		}
 		const currency = cell(fields, columns.currency).toUpperCase() || 'EUR';
 		if (currency !== 'EUR') {
-			// A reported row must not also be imported as euros.
-			if (rejectForeignCurrencyRow(rejected, line, currency, description)) continue;
-			throw new UnsupportedCurrencyError(currency);
+			rejectForeignCurrencyRow(rejected, line, currency, description);
+			continue;
 		}
 		if (names.length === 0) {
 			rejected?.push({ line, reason: 'no_participants', description });

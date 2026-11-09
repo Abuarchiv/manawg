@@ -162,8 +162,6 @@ export default {
 			'El archivo es demasiado grande. Elige uno más pequeño (CSV de hasta 5 MB, imagen de hasta 10 MB).',
 		tooManyRows:
 			'El archivo tiene demasiadas filas (máx. 2000). Divide la exportación en varios archivos.',
-		unsupportedCurrency:
-			'Este archivo no contiene ninguna moneda compatible. Usa una exportación en euros (EUR).',
 		emptyPayload: 'No se encontraron gastos. Revisa el archivo e inténtalo de nuevo.',
 		rowsUnreadable:
 			'No se pudo leer ninguna fila del archivo. Revisa la fecha, el importe y quién pagó en el archivo.',

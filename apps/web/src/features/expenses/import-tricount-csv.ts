@@ -9,7 +9,7 @@ import {
 	rejectForeignCurrencyRow,
 	splitProportionally,
 } from './import-csv-helpers';
-import { type ParsedExpense, type RejectedRow, UnsupportedCurrencyError } from './import-types';
+import type { ParsedExpense, RejectedRow } from './import-types';
 
 // Tricount's export has one row per entry and one "Impacted to <name>" column per person holding
 // that person's share. The column names follow the app language and vary a little between
@@ -131,9 +131,8 @@ export function parseTricountCsv(csv: string, rejected?: RejectedRow[]): ParsedE
 		}
 		const currency = currencyOf(cell(fields, columns.currency)) || columns.headerCurrency || 'EUR';
 		if (currency !== 'EUR') {
-			// A reported row must not also be imported as euros.
-			if (rejectForeignCurrencyRow(rejected, line, currency, label())) continue;
-			throw new UnsupportedCurrencyError(currency);
+			rejectForeignCurrencyRow(rejected, line, currency, label());
+			continue;
 		}
 		const { splits, drifted } = splitProportionally(totalCents, sharing);
 		if (splits.length === 0) {
