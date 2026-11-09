@@ -29,6 +29,11 @@ settled.
   attempt fails.
 - Editing an expense keeps what you typed when the member list refreshes in the background.
 - Deleting a WG also removes the stored request replays that still held its text.
+- A slow rate-limit service no longer holds the WG's write lock, so posts, comments, reactions and
+  chat messages cannot stall the WG's other writes.
+- Chat mentions notify only members whose `@name` is in the message, for new and edited messages.
+- Absence entries in the activity log use one entity type. Migration `0044` converts older
+  entries; the `setup` service applies it on start.
 - The agent consent screen shows the host the authorization code is sent to, not the host the
   client declares for itself.
 - The payment reminder mail no longer promises a one-click settlement; it asks to record the
