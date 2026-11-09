@@ -33,6 +33,7 @@ export const SAFE_TAG_VALUES: Record<string, ReadonlySet<string>> = {
 		'syncOfflineActions',
 	]),
 	area: new Set(['startup', 'rate-limit']),
+	cause: new Set(['upstash-not-configured', 'limiter-call-failed']),
 	// One value per error.tsx; keep in sync when a route boundary is added.
 	boundary: new Set([
 		'global',
