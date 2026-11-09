@@ -48,7 +48,7 @@ export function getDashboardAuditKind(event: {
 	if (event.entityType === 'recurring_expense' || event.eventType.startsWith('recurring')) {
 		return 'recurring';
 	}
-	if (event.entityType === 'absence' || event.entityType === 'member_absence') return 'absence';
+	if (event.entityType === 'member_absence') return 'absence';
 	if (
 		event.entityType === 'expense' ||
 		event.entityType === 'expense_split' ||

@@ -129,7 +129,7 @@ export function getAuditHref(event: {
 	if (event.entityType === 'chore' && event.entityId) {
 		return `/chores?highlight=${encodeURIComponent(event.entityId)}`;
 	}
-	if ((event.entityType === 'absence' || event.entityType === 'member_absence') && event.entityId) {
+	if (event.entityType === 'member_absence' && event.entityId) {
 		return `/chores?panel=absences&absence=${encodeURIComponent(event.entityId)}`;
 	}
 	if (event.entityType === 'recurring_expense' && event.eventType === 'recurring.deleted') {
