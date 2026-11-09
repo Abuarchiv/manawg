@@ -53,19 +53,15 @@ export function useAccountWgs({
 			}
 			setSessionHint(true);
 			setAuthState('loading');
-			try {
-				const res = await fetchAccountWgs();
-				if (cancelled) return;
-				if (res.ok) {
-					setAccountWgs(res.wgs);
-					setAuthState('authenticated');
-					return;
-				}
-				if (res.status === 401) setAccountWgs([]);
-				setAuthState(res.status === 401 ? 'signed-out' : 'error');
-			} catch {
-				if (!cancelled) setAuthState('error');
+			const res = await fetchAccountWgs();
+			if (cancelled) return;
+			if (res.ok) {
+				setAccountWgs(res.wgs);
+				setAuthState('authenticated');
+				return;
 			}
+			if (res.status === 401) setAccountWgs([]);
+			setAuthState(res.status === 401 ? 'signed-out' : 'error');
 		};
 		void loadAccountWgs();
 		return () => {
