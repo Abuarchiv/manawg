@@ -23,6 +23,18 @@ test('a callback without code that reports an error still lands on the error pag
 	}
 });
 
+test('a failed link keeps the invitation reachable behind the sign-in page it came from', async () => {
+	kit.auth.exchangeCodeForSession = async () => ({
+		data: { session: null },
+		error: new Error('x'),
+	});
+	const res = await callback(`code=c&next=${encodeURIComponent('/login?next=%2Finvite%2Fx')}`);
+	const location = new URL(res.headers.get('location') ?? '');
+	assert.equal(location.pathname, '/login');
+	assert.equal(location.searchParams.get('error'), 'auth_callback');
+	assert.equal(location.searchParams.get('next'), '/invite/x');
+});
+
 test('the password-recovery marker is Secure only when the callback is served over https', async () => {
 	kit.auth.exchangeCodeForSession = async () => ({
 		data: { session: { user: { id: 'u1' } } },

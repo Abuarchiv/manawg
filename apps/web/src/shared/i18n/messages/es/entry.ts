@@ -154,6 +154,8 @@ export default {
 		displayNameMissing: 'Falta tu nombre visible.',
 		inviteInvalid:
 			'Este enlace de invitación no es correcto. Comprueba que se haya copiado entero o pide uno nuevo a un miembro.',
+		inviteUnavailable:
+			'Esta invitación ya no es válida o el enlace no es correcto. Pide una nueva a un miembro.',
 	},
 	start: {
 		titleSignIn: 'Iniciar sesión',
@@ -178,7 +180,7 @@ export default {
 		pushFailed:
 			'Has cerrado sesión, pero no se han podido desactivar las notificaciones push de forma fiable en este navegador. Desactiva las notificaciones del sitio web en los ajustes del navegador.',
 		authCallback:
-			'No se ha podido usar el enlace. Ha caducado o ya se usó, o lo has abierto en otro navegador. Si acabas de confirmar tu correo electrónico, ya puedes iniciar sesión. Si no, solicita un enlace nuevo.',
+			'No se ha podido usar el enlace. Ha caducado o ya se usó, o lo has abierto en otro navegador. Si acabas de confirmar tu correo electrónico, tu cuenta ya está lista: inicia sesión ahora en la pestaña “Código por correo”. Si no, solicita un enlace nuevo.',
 		iosStandalone:
 			'En iPhone, la app instalada es independiente de Safari. Inicia sesión aquí una vez y después seguirás con la sesión iniciada.',
 		yourFlats: 'Tus pisos',
@@ -221,8 +223,10 @@ export default {
 	},
 	invite: {
 		title: 'Aceptar invitación',
-		signInBody: 'Inicia sesión para unirte al piso.',
-		signIn: 'Iniciar sesión',
+		signInBody: 'Crea una cuenta o inicia sesión para unirte.',
+		guestTitle: '{inviter} te invita al piso “{wgName}”',
+		guestTitleAnonymous: 'Te han invitado al piso “{wgName}”',
+		haveAccount: 'Ya tengo una cuenta',
 		createAccount: 'Crear cuenta',
 		invalidTitle: 'Invitación no válida',
 		toFlats: 'Ir a tus pisos',

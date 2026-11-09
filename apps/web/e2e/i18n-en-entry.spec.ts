@@ -68,6 +68,9 @@ async function guestSession(page: Page): Promise<void> {
 	await page.route(`**/api/wg/invites/${TOKEN}`, (route) =>
 		route.fulfill({ status: 401, json: { error: 'auth_required', code: 'auth_required' } }),
 	);
+	await page.route(`**/api/wg/invites/${TOKEN}/preview`, (route) =>
+		route.fulfill({ status: 200, json: { wgName: 'Altbau', inviterName: 'Mika' } }),
+	);
 }
 
 test.describe('entry and auth in English', () => {
@@ -132,11 +135,14 @@ test.describe('entry and auth in English', () => {
 
 				await page.goto(`/invite/${TOKEN}`);
 				await expect(
-					page.getByRole('heading', { name: 'Accept invitation', level: 1 }),
+					page.getByRole('heading', { name: 'Mika invites you to the flat “Altbau”', level: 1 }),
 				).toBeVisible({
 					timeout: 60_000,
 				});
-				await expect(page.getByText('Sign in to join the flat.')).toBeVisible();
+				await expect(page.getByText('Create an account or sign in to join.')).toBeVisible();
+				await expect(page.getByRole('button', { name: 'Register with Google' })).toBeVisible();
+				await expect(page.getByRole('link', { name: 'Create account', exact: true })).toBeVisible();
+				await expect(page.getByRole('link', { name: 'I already have an account' })).toBeVisible();
 				await expectEnglishPage(page, width);
 
 				await page.goto('/auth/reset');
