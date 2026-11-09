@@ -38,7 +38,7 @@ interface CalendarMonthProps {
 	/** Chore due dates in the visible grid; they get a dot like events. */
 	choreOccurrences: readonly ChoreOccurrence[];
 	wgBaseHref: string;
-	/** Events not loaded yet (or loading failed): the day list says so instead of "keine Termine". */
+	/** Events not loaded yet (or loading failed): the day list says so instead of the empty-day text. */
 	status?: 'loading' | 'error' | undefined;
 }
 

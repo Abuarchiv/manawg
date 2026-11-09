@@ -1,15 +1,14 @@
 import 'server-only';
 import { afterResponse } from '@/core/infra/after-response';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
-
-const DAY_MS = 24 * 60 * 60 * 1000;
+import { MS_PER_DAY } from '@/core/utils/time';
 
 /**
  * When an event stops mattering: its end, or its start when it has none. An all-day event
  * stores its inclusive last day at UTC midnight, so it matters until that day is over.
  */
 export function eventRelevantUntil(startsAt: number, endsAt: number | null, allDay: boolean) {
-	return (endsAt ?? startsAt) + (allDay ? DAY_MS : 0);
+	return (endsAt ?? startsAt) + (allDay ? MS_PER_DAY : 0);
 }
 
 interface EventChange {
@@ -33,7 +32,7 @@ export function notifyEventChange(event: 'event.moved' | 'event.cancelled', chan
 	// Someone with quiet hours still has to hear tonight that tomorrow morning's event is off.
 	const now = Date.now();
 	const urgent = (change.affectedStarts ?? []).some(
-		(startsAt) => startsAt > now - DAY_MS && startsAt - now < DAY_MS,
+		(startsAt) => startsAt > now - MS_PER_DAY && startsAt - now < MS_PER_DAY,
 	);
 	afterResponse(() =>
 		dispatchNotificationSafely({
