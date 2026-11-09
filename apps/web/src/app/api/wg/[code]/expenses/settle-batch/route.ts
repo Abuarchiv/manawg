@@ -16,6 +16,7 @@ import {
 } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
 import { readIdempotencyKey } from '@/core/idempotency-store';
+import { afterResponse } from '@/core/infra/after-response';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { withExpensePaymentLock } from '@/features/expenses/server/expense-payments';
 import {
@@ -149,17 +150,19 @@ export const POST = withWgRoute('settle-batch POST', async (req, { code }) => {
 				splitIds: outcome.settledIds,
 			},
 		});
-		await notifySettlement({
-			wg: auth.wg,
-			actor: auth.member,
-			otherMemberId:
-				auth.member.memberId === confirmation.fromMemberId
-					? confirmation.toMemberId
-					: confirmation.fromMemberId,
-			amountCents: outcome.settledCents,
-			currency: confirmation.currency,
-			direction: auth.member.memberId === confirmation.fromMemberId ? 'paid' : 'received',
-		});
+		afterResponse(() =>
+			notifySettlement({
+				wg: auth.wg,
+				actor: auth.member,
+				otherMemberId:
+					auth.member.memberId === confirmation.fromMemberId
+						? confirmation.toMemberId
+						: confirmation.fromMemberId,
+				amountCents: outcome.settledCents,
+				currency: confirmation.currency,
+				direction: auth.member.memberId === confirmation.fromMemberId ? 'paid' : 'received',
+			}),
+		);
 	}
 	return noStoreJson(result.body, result.status);
 });
