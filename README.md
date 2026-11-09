@@ -55,7 +55,7 @@ a trip and nobody wants to create an account, Spliit fits better. Spot a mistake
 
 ## Status
 
-ManaWG is at version 0.1.x. The first public release, 0.1.0, came out on 5 November 2026, and the
+ManaWG is at version 0.2.x. The first public release, 0.1.0, came out on 5 November 2026, and the
 hosted instance at [app.manawg.com](https://app.manawg.com) is deployed from this repository; its
 deployed commit and release are shown at `/api/health`. Migrations run on start, and the
 [CHANGELOG](CHANGELOG.md) says when an update needs a manual step.
@@ -75,7 +75,7 @@ Open [localhost](http://localhost) and sign up with your name and email address;
 [localhost:8025](http://localhost:8025). The stack runs the app, PostgreSQL, sign-in, image
 storage, an HTTPS gateway and the mail catcher, and pulls the image of the latest release.
 
-To update, set `MANAWG_VERSION` in `.env` to the new release (or to `0.1` to follow its bug-fix
+To update, set `MANAWG_VERSION` in `.env` to the new release (or to `0.2` to follow its bug-fix
 releases) and run `docker compose pull && docker compose up -d`. The
 [self-hosting guide](docs/self-hosting.md) covers a public domain with HTTPS, real mail, Google
 sign-in, backups and restore, and a setup on Vercel and Supabase instead of Docker.
@@ -106,7 +106,7 @@ browser and installs on Android and iPhone as a progressive web app. *WG* is sho
 | **Cleaning rota** | Chores rotate by workload, so the person with the lightest load is next and nobody gets the same chore twice in a row. Flatmates who are away are skipped. |
 | **Shopping and supplies** | One shared list with suggestions, and household supplies that put an item on the list when it runs low. |
 | **Calendar** | Recurring dates, reminders and an iCal feed for your phone's calendar. |
-| **Pinboard and chat** | Announcements with comments and reactions, and a chat with replies and @mentions. |
+| **Noticeboard and chat** | Announcements with comments and reactions, and a chat with replies and @mentions. |
 | **Everywhere** | Push notifications, light and dark mode, English, German and Spanish following the device language. |
 
 ManaWG is built for one flat of up to 20 people. Trips, offices and landlords are out of scope.

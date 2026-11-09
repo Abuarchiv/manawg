@@ -24,3 +24,5 @@ Terms used in the Spanish interface. The tone is informal ("tú"). Keep new stri
 | Kalender, Termin | Calendario, evento | |
 | ganztägig | todo el día | |
 | Ausgaben, Ausgabe | Gastos, gasto | |
+| Monatsabrechnung | resumen mensual | "Resumen" only means the statement; the flat start page is "inicio" |
+| Übersicht (WG-Startseite) | inicio | "Volver al inicio del piso" |
