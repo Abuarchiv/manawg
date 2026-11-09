@@ -246,7 +246,6 @@ export const POST = withWgRoute('announcements POST', async (req, { code }) => {
 	if (!isAllowedImageUrlForWg(safeImageUrl, wg.id)) return badRequest('image_invalid');
 	const scope = announcementCreateIdempotencyScope(wg.id, auth.member.memberId);
 
-	// SECURITY: author is always the authenticated caller.
 	let outcome: {
 		response: IdempotentReplayResponse;
 		effect: typeof announcements.$inferSelect | null;
@@ -363,22 +362,17 @@ export const POST = withWgRoute('announcements POST', async (req, { code }) => {
 		},
 	});
 
-	let warning: AnnouncementCreateWarning = null;
-	try {
-		const delivery = await dispatchNotificationSafely({
-			wg,
-			event: 'announcement.posted',
-			payload: {
-				announcementId: item.id,
-				title: announcementPushTitle(content),
-				actorName: auth.member.name,
-			},
-			excludeMemberId: auth.member.memberId,
-		});
-		warning = delivery.warning;
-	} catch (err) {
-		logApiError('[announcements POST] post-commit notification failed', err);
-	}
+	const delivery = await dispatchNotificationSafely({
+		wg,
+		event: 'announcement.posted',
+		payload: {
+			announcementId: item.id,
+			title: announcementPushTitle(content),
+			actorName: auth.member.name,
+		},
+		excludeMemberId: auth.member.memberId,
+	});
+	let warning: AnnouncementCreateWarning = delivery.warning;
 	if (warning && outcome.key) {
 		try {
 			if (!(await persistReplayWarning(scope, outcome.key, item.id, warning))) {
