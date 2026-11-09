@@ -175,7 +175,7 @@ test('a send pushes flatmates but never the sender, mentions get only the target
 }, async () => {
 	dispatched.length = 0;
 	const res = await send({
-		body: 'hi',
+		body: `hi @Mate ${suffix} @Me ${suffix}`,
 		mentionMemberIds: [ids.mate, ids.me, ids.other],
 	});
 	assert.equal(res.status, 200, await res.clone().text());

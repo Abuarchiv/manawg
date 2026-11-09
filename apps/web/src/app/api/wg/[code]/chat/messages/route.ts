@@ -31,6 +31,7 @@ import {
 	sanitizeMessageBody,
 } from '@/features/chat/chat-pure';
 import { CHAT_PAGE_SIZE } from '@/features/chat/chat-refresh';
+import { resolveMentionIds } from '@/features/chat/server/chat-mentions';
 import { buildChatCursorWhere } from '@/features/chat/server/chat-unread-query';
 import { loadOwnReadMarker } from '@/features/chat/server/own-read-marker';
 
@@ -339,17 +340,12 @@ async function insertMessage(
 			return { status: HTTP.BAD_REQUEST, body: { error: 'reply_to_not_found' } };
 		}
 	}
-	const requestedMentionIds = Array.from(
-		new Set(input.requestedMentionIds.filter((id) => UUID_PATTERN.test(id))),
-	);
-	let validMentionIds: string[] = [];
-	if (requestedMentionIds.length > 0) {
-		const validRows = await tx
-			.select({ id: wgMembers.id })
-			.from(wgMembers)
-			.where(and(eq(wgMembers.wgId, input.wgId), inArray(wgMembers.id, requestedMentionIds)));
-		validMentionIds = validRows.map((row) => row.id).filter((id) => id !== input.senderMemberId);
-	}
+	const validMentionIds = await resolveMentionIds(tx, {
+		wgId: input.wgId,
+		senderMemberId: input.senderMemberId,
+		body: input.body,
+		requestedMemberIds: input.requestedMentionIds,
+	});
 
 	const [inserted] = await tx
 		.insert(wgChatMessages)
