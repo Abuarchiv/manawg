@@ -7,16 +7,9 @@ import { bodyCodec, withIdempotentWrite } from '@/core/db/idempotent-write';
 import { TransactionAbort } from '@/core/db/transaction';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import {
-	badRequest,
-	forbidden,
-	notFound,
-	rateLimitResponse,
-	serverError,
-} from '@/core/http/api-errors';
+import { badRequest, forbidden, notFound, rateLimitResponse } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey } from '@/core/idempotency-store';
-import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { currencySchema } from '@/core/validators/currency';
 import {
@@ -87,6 +80,7 @@ const advanceSchema = z.object({
 	expectedNextDueAt: z.string().datetime({ offset: true }).optional(),
 	expectedUpdatedAt: z.string().datetime({ offset: true }).optional(),
 	splits: z.array(expenseSplitSchema).min(1).max(MAX_SPLITS).optional(),
+	paused: z.boolean().optional(),
 });
 
 const deleteRecurringSchema = z.object({
@@ -131,6 +125,22 @@ export const POST = withWgRoute('recurring-expenses POST', async (req, { code })
 		if (!auth.ok) return auth.response;
 		const wg = auth.wg;
 		const member = auth.member;
+		const memberIds = Array.from(
+			new Set([input.paidByMemberId, ...input.splits.map((split) => split.debtorMemberId)]),
+		);
+		const allMembersActive = async (executor: Pick<typeof db, 'select'>) =>
+			(
+				await executor
+					.select({ id: wgMembers.id })
+					.from(wgMembers)
+					.where(
+						and(
+							eq(wgMembers.wgId, wg.id),
+							inArray(wgMembers.id, memberIds),
+							isNull(wgMembers.deactivatedAt),
+						),
+					)
+			).length === memberIds.length;
 
 		const result = await withIdempotentWrite(
 			{
@@ -148,25 +158,15 @@ export const POST = withWgRoute('recurring-expenses POST', async (req, { code })
 							stop: forbidden('paid_by_must_include_caller', 'paid_by_must_include_caller'),
 						};
 					}
-					const memberIds = Array.from(
-						new Set([input.paidByMemberId, ...input.splits.map((split) => split.debtorMemberId)]),
-					);
-					const memberRows = await db
-						.select({ id: wgMembers.id })
-						.from(wgMembers)
-						.where(
-							and(
-								eq(wgMembers.wgId, wg.id),
-								inArray(wgMembers.id, memberIds),
-								isNull(wgMembers.deactivatedAt),
-							),
-						);
-					return memberRows.length === memberIds.length
+					return (await allMembersActive(db))
 						? { input: undefined }
 						: { stop: badRequest('member_not_in_wg') };
 				},
 			},
 			async (tx) => {
+				// The check in `prepare` ran before the lock; a move-out that committed meanwhile is
+				// caught here, where no deactivation can run alongside.
+				if (!(await allMembersActive(tx))) throw new TransactionAbort('member_not_in_wg');
 				const [template] = await tx
 					.insert(recurringExpenses)
 					.values({
@@ -211,9 +211,8 @@ export const POST = withWgRoute('recurring-expenses POST', async (req, { code })
 		}
 		return NextResponse.json(result.body, { status: result.status });
 	} catch (err) {
-		if (err instanceof TransactionAbort) {
-			logApiError('[recurring-expenses POST] transaction aborted');
-			return serverError('transaction_aborted');
+		if (err instanceof TransactionAbort && err.code === 'member_not_in_wg') {
+			return badRequest('member_not_in_wg');
 		}
 		throw err;
 	}
@@ -227,6 +226,7 @@ export const PATCH = withWgRoute('recurring-expenses PATCH', async (req, { code 
 			expectedNextDueAt: 'due_date_invalid',
 			expectedUpdatedAt: 'expected_updated_at_invalid',
 			splits: 'splits_invalid',
+			paused: 'paused_invalid',
 		},
 	});
 	if (!parsed.ok) return parsed.response;
@@ -234,7 +234,7 @@ export const PATCH = withWgRoute('recurring-expenses PATCH', async (req, { code 
 	if (edit.currency !== undefined && edit.currency !== 'EUR') {
 		return badRequest('recurring_currency_unsupported');
 	}
-	const isTemplateUpdate = hasEditFields(edit);
+	const isTemplateUpdate = hasEditFields(edit) || edit.paused !== undefined;
 	if (isTemplateUpdate && edit.splits) {
 		// amountCents may be omitted on a partial update (kept from the template); the splits'
 		// own sum stands in, so only shape issues (duplicates, invalid amounts) are caught here.

@@ -50,7 +50,7 @@ export function useImportWizard() {
 	const [commitResult, setCommitResult] = useState<CommitResponse | null>(null);
 	const [skipDuplicates, setSkipDuplicates] = useState(true);
 	const [recoveryAction, setRecoveryAction] = useState<RecoveryAction | null>(null);
-	const commitAttemptRef = useRef<{ signature: string; key: string | null } | null>(null);
+	const commitAttemptRef = useRef<{ signature: string; key: string } | null>(null);
 
 	function clearImportError(): void {
 		setError(null);
@@ -83,8 +83,8 @@ export function useImportWizard() {
 		if (error) document.getElementById('import-error')?.scrollIntoView({ block: 'center' });
 	}, [error]);
 
-	// Import assigns expenses to a member ("aus Listen raus": moved-out members are
-	// not offered as targets). Historic names in the CSV still resolve by name.
+	// Import assigns expenses to a member (moved-out members are not offered
+	// as targets). Historic names in the CSV still resolve by name.
 	const memberOptions = useMemo(
 		() => members.filter((m) => m.active).map((m) => ({ id: m.id, name: m.name })),
 		[members],
@@ -173,16 +173,20 @@ export function useImportWizard() {
 		};
 		const signature = JSON.stringify(commitBody);
 		if (commitAttemptRef.current?.signature !== signature) {
-			commitAttemptRef.current = { signature, key: createIdempotencyKey() };
+			const key = createIdempotencyKey();
+			if (!key) {
+				setError({ key: 'expenses-import.errors.keyUnavailable' });
+				return;
+			}
+			commitAttemptRef.current = { signature, key };
 		}
-		const idempotencyKey = commitAttemptRef.current.key;
 		setBusy(true);
 		setCommitState('pending');
 		clearImportError();
 		const res = await apiFetch<CommitResponse>(`/api/wg/${encodedCode}/imports/commit`, {
 			method: 'POST',
 			memberId: identity.memberId,
-			...(idempotencyKey ? { headers: { 'Idempotency-Key': idempotencyKey } } : {}),
+			headers: { 'Idempotency-Key': commitAttemptRef.current.key },
 			body: signature,
 		});
 		setBusy(false);

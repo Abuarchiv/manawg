@@ -24,7 +24,7 @@ Please keep the details private until then.
 - Not in scope: instances run by others (report to their operator), denial of service through
   traffic volume, and findings that need physical access to an unlocked device.
 
-Test only against your own account and WG, or a local instance. Do not access other people's data
+Test only against your own account and flat, or a local instance. Do not access other people's data
 and do not run automated scans against app.manawg.com.
 
 ## Supported versions

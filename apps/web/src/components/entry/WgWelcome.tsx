@@ -22,7 +22,7 @@ export function InvitationNotice() {
 export function WgWelcome(props: WgWelcomeProps) {
 	const t = useTranslations('entry.welcome');
 	const invitation = props.variant === 'invitation';
-	// Account first: a signed-out visitor registers, then creates or joins a WG from /neu.
+	// Account first: a signed-out visitor registers, then creates or joins a WG from /login.
 	// Only an invitation keeps its intent through sign-in, so the link is not lost.
 	const guestCreate = !invitation && props.guest === true;
 	const actionHref = invitation

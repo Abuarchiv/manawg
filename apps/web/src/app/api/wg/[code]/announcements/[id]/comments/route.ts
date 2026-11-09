@@ -126,14 +126,7 @@ export const POST = withWgRoute<{ id: string }>(
 				if (!comment) throw new Error('announcement_comment_insert_failed');
 
 				const body = {
-					comment: {
-						...comment,
-						authorName: auth.member.name,
-						authorColor:
-							'color' in auth.member && typeof auth.member.color === 'string'
-								? auth.member.color
-								: null,
-					},
+					comment: { ...comment, authorName: auth.member.name },
 					warning: null,
 				};
 				return {

@@ -21,66 +21,58 @@ const patchWgSchema = z.object({
 });
 
 export const GET = withWgRoute('api/wg/[code] GET', async (req, { code }) => {
-	{
-		const auth = await requireWgMembership(req, code, 'api/wg/[code] GET');
-		if (!auth.ok) return auth.response;
-		const { wg } = auth;
+	const auth = await requireWgMembership(req, code, 'api/wg/[code] GET');
+	if (!auth.ok) return auth.response;
+	const { wg } = auth;
 
-		const members = await db
-			.select({ id: wgMembers.id, name: wgMembers.name, color: wgMembers.color })
-			.from(wgMembers)
-			.where(eq(wgMembers.wgId, wg.id));
-		return NextResponse.json({
-			wg,
-			members,
-			currentMember: {
-				memberId: auth.member.memberId,
-				name: auth.member.name,
-				authUserId: auth.authUserId,
-			},
-		});
-	}
+	const members = await db
+		.select({ id: wgMembers.id, name: wgMembers.name, color: wgMembers.color })
+		.from(wgMembers)
+		.where(eq(wgMembers.wgId, wg.id));
+	return NextResponse.json({
+		wg,
+		members,
+		currentMember: {
+			memberId: auth.member.memberId,
+			name: auth.member.name,
+			authUserId: auth.authUserId,
+		},
+	});
 });
 
 export const PATCH = withWgRoute('api/wg/[code] PATCH', async (req, { code }) => {
 	const parsed = await parseBody(req, patchWgSchema, { invalid: 'wg_update_invalid' });
 	if (!parsed.ok) return parsed.response;
 	const { name } = parsed.data;
-	{
-		const admin = await requireWgAdmin(req, code, 'wg-settings');
-		if (!admin.ok) return admin.response;
-		const { wg, member } = admin;
-		const result = await withTransaction(async (tx) => {
-			const actor = await lockActiveAccountMember(tx, wg.id, member.memberId, admin.authUserId);
-			if (actor?.role !== 'admin') {
-				return { ok: false as const, response: forbidden('not_admin', 'not_admin') };
-			}
-			const [currentWg] = await tx
-				.select({ name: wgs.name })
-				.from(wgs)
-				.where(eq(wgs.id, wg.id))
-				.for('update');
-			if (!currentWg) return { ok: false as const, response: notFound('wg_not_found') };
-			const [updated] = await tx
-				.update(wgs)
-				.set({ name, updatedAt: new Date() })
-				.where(eq(wgs.id, wg.id))
-				.returning();
-			if (!updated) return { ok: false as const, response: notFound('wg_not_found') };
-			return { ok: true as const, currentWg, updated };
-		});
-		if (!result.ok) return result.response;
-		await recordAuditEvent({
-			wgId: wg.id,
-			memberId: member.memberId,
-			eventType: 'wg.updated',
-			entityType: 'wg',
-			entityId: wg.id,
-			actorName: member.name,
-			metadata: { nameBefore: result.currentWg.name, nameAfter: result.updated.name },
-		});
-		return NextResponse.json({ wg: result.updated });
-	}
+	const admin = await requireWgAdmin(req, code, 'wg-settings');
+	if (!admin.ok) return admin.response;
+	const { wg, member } = admin;
+	const result = await withTransaction(async (tx) => {
+		const actor = await lockActiveAccountMember(tx, wg.id, member.memberId, admin.authUserId);
+		if (actor?.role !== 'admin') {
+			return { ok: false as const, response: forbidden('not_admin', 'not_admin') };
+		}
+		const [currentWg] = await tx.select({ name: wgs.name }).from(wgs).where(eq(wgs.id, wg.id));
+		if (!currentWg) return { ok: false as const, response: notFound('wg_not_found') };
+		const [updated] = await tx
+			.update(wgs)
+			.set({ name, updatedAt: new Date() })
+			.where(eq(wgs.id, wg.id))
+			.returning();
+		if (!updated) return { ok: false as const, response: notFound('wg_not_found') };
+		return { ok: true as const, currentWg, updated };
+	});
+	if (!result.ok) return result.response;
+	await recordAuditEvent({
+		wgId: wg.id,
+		memberId: member.memberId,
+		eventType: 'wg.updated',
+		entityType: 'wg',
+		entityId: wg.id,
+		actorName: member.name,
+		metadata: { nameBefore: result.currentWg.name, nameAfter: result.updated.name },
+	});
+	return NextResponse.json({ wg: result.updated });
 });
 
 export const DELETE = withWgRoute('api/wg/[code] DELETE', async (req, { code }) => {

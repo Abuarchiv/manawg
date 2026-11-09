@@ -76,6 +76,8 @@ function toIcsExclusiveDate(iso: string): string {
 	return next.toISOString().slice(0, 10).replace(/-/g, '');
 }
 
+// The suffix is an opaque namespace, not a real domain. Changing it would re-issue every UID and
+// duplicate events in existing subscriptions.
 function occurrenceUid(occ: EventOccurrence): string {
 	return `${occ.eventId}-${occ.occurrenceIndex}@manawg.app`;
 }

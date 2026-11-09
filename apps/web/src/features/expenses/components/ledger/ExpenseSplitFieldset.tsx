@@ -164,7 +164,7 @@ export function ExpenseSplitFieldset({
 									}}
 									onBlur={(event) => {
 										const euros = parseEuroAmount(event.target.value, locale);
-										if (euros === null || euros < 0) return;
+										if (euros === null) return;
 										const formatted = formatEuroInput(euros, locale);
 										setManualSplits((previous) => ({ ...previous, [member.id]: formatted }));
 									}}

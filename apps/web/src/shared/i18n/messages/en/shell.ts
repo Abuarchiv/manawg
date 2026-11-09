@@ -51,7 +51,6 @@ export default {
 	},
 	pushPriming: {
 		enabled: 'Notifications are on.',
-		activationFailed: 'Could not turn them on. Check your browser settings and try again.',
 		label: 'Turn on notifications',
 		title: 'Notifications',
 		description: 'Push for due tasks and chat.',

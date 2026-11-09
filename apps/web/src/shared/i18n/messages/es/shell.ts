@@ -52,8 +52,6 @@ export default {
 	},
 	pushPriming: {
 		enabled: 'Las notificaciones están activadas.',
-		activationFailed:
-			'No se han podido activar. Revisa los ajustes de tu navegador e inténtalo de nuevo.',
 		label: 'Activar notificaciones',
 		title: 'Notificaciones',
 		description: 'Push para tareas con vencimiento y chat.',
@@ -222,7 +220,7 @@ export default {
 	errorPage: {
 		details: 'Detalles del error',
 		tryAgain: 'Intentar de nuevo',
-		overview: 'Volver al resumen',
+		overview: 'Volver al inicio',
 		toHome: 'Ir a la página de inicio',
 		report: 'Informar de un problema por correo',
 		somethingWrong: 'Algo ha salido mal',

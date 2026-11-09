@@ -83,11 +83,7 @@ export function validateSplits(
 	const seen = new Set<string>();
 	let sum = 0;
 	for (const split of splits) {
-		if (
-			!Number.isInteger(split.amountCents) ||
-			split.amountCents < MIN_AMOUNT_CENTS ||
-			!Number.isFinite(split.amountCents)
-		) {
+		if (!Number.isInteger(split.amountCents) || split.amountCents < MIN_AMOUNT_CENTS) {
 			return { ok: false, reason: 'invalid_amount' };
 		}
 		if (seen.has(split.debtorMemberId)) {

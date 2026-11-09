@@ -101,35 +101,22 @@ export function chooseNextAvailableMember(input: {
 	members: MemberInput[];
 	currentMemberId: string | null;
 	absentMemberIds?: string[];
-	// Optional chore snapshot — when supplied, picks the lowest-scored
-	// available member (matching the UI's `buildChoreFairness.suggestedAssignee`
-	// hint). Ties broken by round-robin distance from current owner so the
-	// rotation still cycles when everyone is equally loaded. Without this
-	// snapshot, falls back to pure round-robin.
+	// With a chore snapshot the lowest-scored available member wins, ties by round-robin
+	// distance from the current owner; without it this is pure round-robin.
 	chores?: ChoreInput[];
 	now?: number;
 }): string | null {
 	if (input.members.length === 0) return null;
 	const absent = new Set(input.absentMemberIds ?? []);
 
-	// Score-aware path: use the same fairness ranker the UI shows, so the
-	// "Nächste:r: X" hint matches the actual rotation server-side. Prevents
-	// the UI/server drift where UI promised one assignee and the API picked
-	// a different one.
+	// Same ranker as the UI's suggested assignee, so the server never picks someone else.
 	if (input.chores && input.chores.length > 0) {
-		// `exactOptionalPropertyTypes` rejects passing `undefined` for optional
-		// fields — only include them when defined.
-		const fairnessInput: Parameters<typeof buildChoreFairness>[0] = {
+		const fairness = buildChoreFairness({
 			members: input.members,
 			chores: input.chores,
-		};
-		if (input.absentMemberIds !== undefined) {
-			fairnessInput.absentMemberIds = input.absentMemberIds;
-		}
-		if (input.now !== undefined) {
-			fairnessInput.now = input.now;
-		}
-		const fairness = buildChoreFairness(fairnessInput);
+			...(input.absentMemberIds !== undefined && { absentMemberIds: input.absentMemberIds }),
+			...(input.now !== undefined && { now: input.now }),
+		});
 		const available = fairness.rows.filter((row) => row.available);
 		if (available.length === 0) return null;
 		const withoutCurrent = available.filter((row) => row.id !== input.currentMemberId);

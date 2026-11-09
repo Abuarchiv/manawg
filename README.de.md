@@ -55,7 +55,7 @@ entdeckt? Dann [eröffne bitte ein Issue](https://github.com/Abuarchiv/manawg/is
 
 ## Stand
 
-ManaWG ist in Version 0.1.x. Das erste öffentliche Release, 0.1.0, erschien am 5. November 2026, und
+ManaWG ist in Version 0.2.x. Das erste öffentliche Release, 0.1.0, erschien am 5. November 2026, und
 die gehostete Instanz auf [app.manawg.com](https://app.manawg.com) wird aus diesem Repository
 ausgeliefert; der ausgelieferte Commit und das Release stehen unter `/api/health`. Migrationen laufen beim Start, und das
 [CHANGELOG](CHANGELOG.md) sagt, wann ein Update einen Handgriff braucht.
@@ -75,7 +75,7 @@ docker compose up -d
 [localhost:8025](http://localhost:8025). Der Stack startet die App, PostgreSQL, die Anmeldung, den
 Bildspeicher, ein HTTPS-Gateway und den Mail-Fänger und lädt das Image des neuesten Releases.
 
-Zum Aktualisieren setzt du `MANAWG_VERSION` in `.env` auf das neue Release (oder auf `0.1`, um
+Zum Aktualisieren setzt du `MANAWG_VERSION` in `.env` auf das neue Release (oder auf `0.2`, um
 dessen Fehlerbehebungen zu folgen) und führst `docker compose pull && docker compose up -d` aus.
 Die [Anleitung zum Selbst-Hosten](docs/self-hosting.md) (Englisch) erklärt eine eigene Domain mit
 HTTPS, echten Mailversand, Google-Anmeldung, Backups und Wiederherstellung sowie den Betrieb auf

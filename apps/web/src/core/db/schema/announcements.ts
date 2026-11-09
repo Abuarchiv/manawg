@@ -30,7 +30,7 @@ export const announcements = pgTable(
 		wgIdx: index('announcements_wg_idx').on(t.wgId, t.createdAt),
 		pinnedIdx: index('announcements_pinned_idx').on(t.wgId, t.pinnedAt),
 		statusIdx: index('announcements_status_idx').on(t.wgId, t.status),
-		// Values mirror ANNOUNCEMENT_KINDS / ANNOUNCEMENT_STATUS / ANNOUNCEMENT_SOURCES
+		// Values mirror ANNOUNCEMENT_KINDS / ANNOUNCEMENT_SOURCES
 		// in features/announcements/announcement-workflow.ts, which every insert/update
 		// site validates through.
 		kindCheck: check(

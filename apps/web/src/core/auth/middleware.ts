@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { type NextRequest, NextResponse } from 'next/server';
+import { logApiError } from '@/core/infra/observability';
 import { isValidShareCode, normalizeShareCode } from '@/core/utils/share-code';
 import {
 	authCookieOptions,
@@ -126,12 +127,13 @@ export async function refreshSupabaseSession(
 		const signedIn = (await readVerifiedUser(supabase.auth)) !== null;
 		syncSessionHint(request, refreshedResponse, signedIn);
 		if (requiresSignIn && !signedIn) return signInRedirect(request, refreshedResponse);
-	} catch {
+	} catch (err) {
 		// A transient Auth failure is not "signed out": serve the page and let
 		// app/wg/[code]/layout.tsx fail closed. That layout is then the only
 		// barrier for /wg/*, which scripts/check-wg-auth-invariant.mjs keeps
 		// true by rejecting route handlers and server actions under app/wg/**.
 		// Public entry pages remain available when Auth cannot be reached.
+		logApiError('[proxy] session refresh failed', err);
 		return refreshedResponse;
 	}
 	return refreshedResponse;

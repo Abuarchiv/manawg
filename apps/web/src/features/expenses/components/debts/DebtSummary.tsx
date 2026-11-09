@@ -40,11 +40,11 @@ interface DebtSummaryProps {
 	debts: SimplifiedDebt[];
 	summary?: SettlementSummary;
 	/** Net balance per member for the balance list. */
-	balances?: readonly MemberBalance[];
+	balances: readonly MemberBalance[];
 	expenses: readonly Expense[];
 	/** Completed payments; the viewer's cash payments can be voided from here. */
-	payments?: readonly ExpensePaymentInput[];
-	memberName?: (id: string) => string;
+	payments: readonly ExpensePaymentInput[];
+	memberName: (id: string) => string;
 	shareCode: string;
 	currentMemberId: string;
 	onSettled: (message?: string) => void;
@@ -57,10 +57,10 @@ interface DebtSummaryProps {
 export function DebtSummary({
 	debts,
 	summary,
-	balances = [],
+	balances,
 	expenses,
-	payments = [],
-	memberName = () => '',
+	payments,
+	memberName,
 	shareCode,
 	currentMemberId,
 	onSettled,

@@ -21,7 +21,6 @@ import {
 	serverError,
 } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
-import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { imageUrlSchema, isAllowedImageUrlForWg } from '@/core/validators/image-url';
 import { MAX_SPLITS } from '@/features/expenses/expense-constants';
@@ -354,8 +353,7 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 				return conflict('expense_has_settled_shares');
 			return serverError(writeErr.code);
 		}
-		logApiError('[expense PATCH] update failed', writeErr);
-		return serverError('split_insert_failed');
+		throw writeErr;
 	}
 
 	const updated = await db.select().from(expenses).where(eq(expenses.id, id)).limit(1);
@@ -365,7 +363,7 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 	const updatedSplits = await db
 		.select()
 		.from(expenseSplits)
-		.where(inArray(expenseSplits.expenseId, [id]));
+		.where(eq(expenseSplits.expenseId, id));
 	await recordAuditEvent({
 		wgId,
 		memberId: auth.member.memberId,

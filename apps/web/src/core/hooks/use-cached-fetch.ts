@@ -19,7 +19,7 @@ export { prefetchCachedFetch, refreshCachedFetch } from './cached-fetch-store';
 
 /** Subscribes to one cached URL; fetches on mount and on window focus. */
 export function useCachedFetch<T>(url: string, options: CachedFetchOptions = {}) {
-	const { memberId, headers } = options;
+	const { memberId } = options;
 	const key = cacheKey(url, memberId);
 	const getSnapshot = useCallback(() => readCachedSnapshot<T>(key), [key]);
 	const subscribeToUrl = useCallback(
@@ -34,8 +34,8 @@ export function useCachedFetch<T>(url: string, options: CachedFetchOptions = {})
 
 	const refresh = useCallback(
 		({ afterMutation = false }: { afterMutation?: boolean } = {}): Promise<CachedFetchResult<T>> =>
-			refreshCacheEntry<T>(key, url, { memberId, headers }, afterMutation),
-		[headers, key, memberId, url],
+			refreshCacheEntry<T>(key, url, { memberId }, afterMutation),
+		[key, memberId, url],
 	);
 
 	const setData = useCallback((update: CachedDataUpdate<T>) => updateCache(key, update), [key]);

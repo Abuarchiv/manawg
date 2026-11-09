@@ -46,6 +46,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 				),
 			);
 		}
-		return noStore(serverError('image_read_failed'));
+		return noStore(serverError(error, 'image_read_failed'));
 	}
 }

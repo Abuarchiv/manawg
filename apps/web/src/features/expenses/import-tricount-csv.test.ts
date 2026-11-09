@@ -115,9 +115,9 @@ test('Tricount: income, several payers, foreign currency and unreadable rows are
 	);
 });
 
-test('Tricount: a foreign currency row aborts when the caller cannot list rejected rows', () => {
+test('Tricount: a foreign currency row is never imported as euros, even without a rejected list', () => {
 	const csv = 'Title,Amount,Currency,Date,Paid by,Impacted to Anna\nTaxi,20,USD,2026-10-01,Anna,20';
-	assert.throws(() => parseTricountCsv(csv), { name: 'UnsupportedCurrencyError' });
+	assert.deepEqual(parseTricountCsv(csv), []);
 });
 
 test('Tricount: a row without a title is described by its people, a file without share columns is empty', () => {

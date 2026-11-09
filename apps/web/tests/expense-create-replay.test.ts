@@ -9,7 +9,7 @@ import { delegate } from './support/expense-route-fakes.ts';
 // applies its writes to the shared state only when the operation resolves.
 
 const schema = await import('../src/core/db/schema.ts');
-const { idempotencyResponses, recurringExpenses } = schema;
+const { idempotencyResponses, recurringExpenses, wgMembers } = schema;
 
 const WG_ID = '989ac820-58b7-431f-9c65-28721264f333';
 const MEMBER_ID = '7d898f9e-5ad7-4f5d-abed-8c3e99a76973';
@@ -158,13 +158,18 @@ function createHarness(kind: Kind, warning: null | 'notification_delivery_failed
 				draft.created.push(EXPENSE_ID);
 			},
 			select: () => ({
-				from: () => ({
-					where: () => ({
-						limit: () => ({
-							for: async () =>
-								draft.slot ? [{ body: draft.slot.body, expiresAt: draft.slot.expiresAt }] : [],
-						}),
-					}),
+				from: (table: unknown) => ({
+					where: () =>
+						table === wgMembers
+							? Promise.resolve([{ id: MEMBER_ID }])
+							: {
+									limit: () => ({
+										for: async () =>
+											draft.slot
+												? [{ body: draft.slot.body, expiresAt: draft.slot.expiresAt }]
+												: [],
+									}),
+								},
 				}),
 			}),
 			insert: (table: unknown) => ({

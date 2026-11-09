@@ -193,11 +193,7 @@ export function useShoppingAdd({
 				method: 'POST',
 				memberId: identity.memberId,
 				headers: { 'Idempotency-Key': idempotencyKey },
-				body: JSON.stringify({
-					name,
-					quantity: quantity ?? undefined,
-					addedByMemberId: identity.memberId,
-				}),
+				body: JSON.stringify({ name, quantity: quantity ?? undefined }),
 			});
 			if (!res.ok) {
 				const retryableResponse =

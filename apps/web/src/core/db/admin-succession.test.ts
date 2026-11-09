@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mock, test } from 'node:test';
+import { test } from 'node:test';
 import { PgDialect } from 'drizzle-orm/pg-core';
 
 type Call = { kind: string; values?: unknown; query?: { sql: string; params: unknown[] } };
@@ -7,7 +7,6 @@ type Call = { kind: string; values?: unknown; query?: { sql: string; params: unk
 const state = {
 	selects: [] as unknown[][],
 	calls: [] as Call[],
-	logged: [] as string[],
 };
 
 function render(condition: Parameters<PgDialect['sqlToQuery']>[0]): {
@@ -17,15 +16,11 @@ function render(condition: Parameters<PgDialect['sqlToQuery']>[0]): {
 	return new PgDialect().sqlToQuery(condition);
 }
 
-// Every query chain resolves through an async terminal (`limit`/`for`) that pops the next queued result.
+// Every query chain resolves through an async terminal (`limit`) that pops the next queued result.
 function chain(): Record<string, unknown> {
 	const self: Record<string, unknown> = {};
 	for (const name of ['from', 'where', 'orderBy']) self[name] = () => self;
 	self.limit = async () => state.selects.shift() ?? [];
-	self.for = async () => {
-		state.calls.push({ kind: 'lock-wg' });
-		return [];
-	};
 	return self;
 }
 
@@ -38,34 +33,13 @@ const tx = {
 			},
 		}),
 	}),
-	insert: () => ({
-		values: async (values: unknown) => {
-			state.calls.push({ kind: 'insert', values });
-		},
-	}),
 };
-
-mock.module('@/core/db', {
-	namedExports: { db: { select: () => chain() } },
-});
-mock.module('@/core/infra/observability', {
-	namedExports: { logApiError: (message: string) => state.logged.push(message) },
-});
-mock.module('@/core/db/transaction', {
-	namedExports: {
-		lockExpensePayments: async () => {
-			state.calls.push({ kind: 'lock-payments' });
-		},
-		withTransaction: async (fn: (t: unknown) => Promise<unknown>) => fn(tx),
-	},
-});
 
 const { ensureWgAdmin } = await import('./admin-succession');
 
 function reset() {
 	state.selects = [];
 	state.calls = [];
-	state.logged = [];
 }
 
 test('ensureWgAdmin demotes a placeholder admin before promoting the longest-standing member with an account', async () => {

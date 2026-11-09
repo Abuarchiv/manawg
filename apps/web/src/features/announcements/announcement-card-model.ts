@@ -4,7 +4,7 @@ import type {
 	ReactionKey,
 } from '@/features/announcements/components/announcement-types';
 
-/** What a noticeboard card shows, derived from the post; the components only render it. */
+// What a noticeboard card shows, derived from the post; the components only render it.
 
 /** The reactions in display order. */
 export const REACTION_OPTIONS: ReadonlyArray<{ key: ReactionKey }> = [
@@ -34,16 +34,13 @@ export function isLongAnnouncementBody(text: string): boolean {
 /**
  * Splits the reactions into buttons on the card and entries in the menu. A reaction shows on the
  * card when it is the kind's primary one, used by anyone, or touched by the viewer in this
- * session (so it does not jump into the menu right after being toggled off). Resolved posts
- * cannot be taken.
+ * session (so it does not jump into the menu right after being toggled off).
  */
 export function pickReactionOptions(
-	announcement: Pick<Announcement, 'kind' | 'status' | 'myReactions' | 'reactionCounts'>,
+	announcement: Pick<Announcement, 'kind' | 'myReactions' | 'reactionCounts'>,
 	touched: readonly ReactionKey[],
 ): { visible: ReactionKey[]; hidden: ReactionKey[] } {
-	const options = REACTION_OPTIONS.map(({ key }) => key).filter(
-		(key) => announcement.status !== 'resolved' || key !== 'take',
-	);
+	const options = REACTION_OPTIONS.map(({ key }) => key);
 	const visible = options.filter(
 		(key) =>
 			key === PRIMARY_REACTION[announcement.kind] ||

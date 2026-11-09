@@ -43,17 +43,17 @@ interface RecurringSplitFieldsProps {
 	paidByMemberId: string;
 }
 
-/** Cents the manual shares add up to; unreadable and non-positive shares count as zero. */
+/** Cents the manual shares add up to; unreadable shares count as zero. */
 function sumManualShares(manualSplits: Record<string, string>, locale: Locale): number {
 	let sumCents = 0;
 	for (const raw of Object.values(manualSplits)) {
 		const parsed = parseEuroAmount(raw, locale);
-		if (parsed !== null && parsed > 0) sumCents += eurosToCents(parsed);
+		if (parsed !== null) sumCents += eurosToCents(parsed);
 	}
 	return sumCents;
 }
 
-/** "Beteiligte & Aufteilung": equal split preview or one amount field per member. */
+/** Equal split preview or one amount field per member. */
 export function RecurringSplitFields({
 	submitting,
 	splitMode,

@@ -25,6 +25,9 @@ export const E2E_CREATED_WG = {
 	},
 } as const;
 
+export const E2E_CHORE_ID = 'dc02a93f-59f6-4cf9-80a7-53d4a407cb49';
+export const E2E_RECURRING_EXPENSE_ID = 'a1ef32d5-d40a-4df2-9977-7684dce7df3f';
+
 /** 22-character fixture invitations: the first joins `E2E_EXISTING_WG`, the second has expired. */
 export const E2E_INVITE_TOKEN = 'fixture-invite-token01';
 export const E2E_EXPIRED_INVITE_TOKEN = 'expired-invite-token-1';
@@ -64,18 +67,17 @@ export function getE2EWgFixture(code: string): E2EWgFixture | null {
 export function buildE2EDashboardData(code: string): DashboardData {
 	const now = Date.now();
 	const day = 86_400_000;
+	const actor =
+		code === E2E_CREATED_WG.shareCode
+			? { ...E2E_CREATED_WG.member, name: 'Smoke Tester' }
+			: E2E_EXISTING_WG.member;
 
 	return {
 		balances: [
 			{
-				memberId:
-					code === E2E_CREATED_WG.shareCode ? E2E_CREATED_WG.member.id : E2E_EXISTING_WG.member.id,
-				memberName:
-					code === E2E_CREATED_WG.shareCode ? 'Smoke Tester' : E2E_EXISTING_WG.member.name,
-				color:
-					code === E2E_CREATED_WG.shareCode
-						? E2E_CREATED_WG.member.color
-						: E2E_EXISTING_WG.member.color,
+				memberId: actor.id,
+				memberName: actor.name,
+				color: actor.color,
 				currency: 'EUR',
 				paidCents: 3290,
 				owedCents: 0,
@@ -94,16 +96,11 @@ export function buildE2EDashboardData(code: string): DashboardData {
 		openShoppingTop: ['Hafermilch'],
 		dueChores: [
 			{
-				id: 'dc02a93f-59f6-4cf9-80a7-53d4a407cb49',
+				id: E2E_CHORE_ID,
 				title: 'Bad putzen',
-				assignedMemberId:
-					code === E2E_CREATED_WG.shareCode ? E2E_CREATED_WG.member.id : E2E_EXISTING_WG.member.id,
-				assignedMemberName:
-					code === E2E_CREATED_WG.shareCode ? 'Smoke Tester' : E2E_EXISTING_WG.member.name,
-				assignedColor:
-					code === E2E_CREATED_WG.shareCode
-						? E2E_CREATED_WG.member.color
-						: E2E_EXISTING_WG.member.color,
+				assignedMemberId: actor.id,
+				assignedMemberName: actor.name,
+				assignedColor: actor.color,
 				nextDueAt: new Date(now + day).toISOString(),
 				overdue: false,
 			},
@@ -112,10 +109,8 @@ export function buildE2EDashboardData(code: string): DashboardData {
 			{
 				kind: 'expense',
 				timestamp: new Date(now).toISOString(),
-				memberId:
-					code === E2E_CREATED_WG.shareCode ? E2E_CREATED_WG.member.id : E2E_EXISTING_WG.member.id,
-				memberName:
-					code === E2E_CREATED_WG.shareCode ? 'Smoke Tester' : E2E_EXISTING_WG.member.name,
+				memberId: actor.id,
+				memberName: actor.name,
 				text: 'Internet',
 				amountCents: 3290,
 			},
@@ -124,7 +119,7 @@ export function buildE2EDashboardData(code: string): DashboardData {
 		myOpenAnnouncements: [],
 		dueRecurringExpenses: [
 			{
-				id: 'a1ef32d5-d40a-4df2-9977-7684dce7df3f',
+				id: E2E_RECURRING_EXPENSE_ID,
 				description: 'Internet',
 				amountCents: 3290,
 				currency: 'EUR',
@@ -164,7 +159,7 @@ export function buildE2EChatMessages(wgId: string): ChatMessageRow[] {
 		{
 			id: '8c1bb4a9-4722-42fe-bb86-aebf2e2d5b11',
 			wgId,
-			senderMemberId: '7d898f9e-5ad7-4f5d-abed-8c3e99a76973',
+			senderMemberId: E2E_EXISTING_WG.member.id,
 			kind: 'text',
 			body: 'Alles klar, ich bringe Hafermilch mit.',
 			imageUrl: null,

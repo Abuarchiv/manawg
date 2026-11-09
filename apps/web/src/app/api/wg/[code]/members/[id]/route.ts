@@ -2,7 +2,7 @@ import { and, count, eq, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { recordAuditEvent } from '@/core/audit';
-import { db, pushSubscriptions, wgMembers, wgs } from '@/core/db';
+import { db, pushSubscriptions, wgMembers } from '@/core/db';
 import { lockActiveAccountMember } from '@/core/db/account-deletion';
 import { releaseMemberChores } from '@/core/db/member-departure';
 import { availableMemberName, releaseMemberName } from '@/core/db/member-names';
@@ -145,6 +145,7 @@ export const PATCH = withWgRoute<{ id: string }>(
 		if (limited) return limited;
 
 		const result = await withExpensePaymentLock(wgId, async (tx) => {
+			// Also locks the WG row, the same lock a join takes, so a rename and a join cannot race.
 			const actor = await lockActiveAccountMember(tx, wgId, auth.member.memberId, auth.authUserId);
 			if (!actor) return { ok: false as const, response: unauthorized('member_deactivated') };
 			const [target] = await tx
@@ -192,10 +193,6 @@ export const PATCH = withWgRoute<{ id: string }>(
 					renamedByOther: false,
 					member: target,
 				};
-			}
-			// Same row lock as a join, so a join/reactivation and a rename cannot race each other.
-			if (nameChanged || (active === true && activeChanged)) {
-				await tx.select({ id: wgs.id }).from(wgs).where(eq(wgs.id, wgId)).for('update');
 			}
 			if (nameChanged && !(await releaseMemberName(tx, wgId, name, id))) {
 				return { ok: false as const, response: conflict('name_taken', 'name_taken') };

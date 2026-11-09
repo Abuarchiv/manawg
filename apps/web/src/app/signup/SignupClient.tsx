@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
-import { startSocialLogin } from '@/app/login/start-flow';
+import { markJustSignedIn, startSocialLogin } from '@/app/login/start-flow';
 import { CredentialsAuth } from '@/components/auth/CredentialsAuth';
 import { useGoogleSignIn } from '@/components/auth/google-sign-in';
 import { SocialLoginButtons } from '@/components/auth/SocialLoginButtons';
@@ -50,7 +50,11 @@ export function SignupClient({ intentQuery }: { intentQuery: string }) {
 				<CredentialsAuth
 					mode="sign-up"
 					next={afterAuthPath}
-					onAuthenticated={() => router.replace(afterAuthPath)}
+					onAuthenticated={() => {
+						// An address that already has an account is signed in here, like on /login.
+						markJustSignedIn();
+						router.replace(afterAuthPath);
+					}}
 					onBusyChange={setCredentialsBusy}
 				/>
 			</FieldGroup>

@@ -10,7 +10,7 @@ import { useRecurringBooking } from './use-recurring-booking';
 import { useRecurringTemplateSave } from './use-recurring-template-save';
 
 /**
- * Fixed-cost templates ("Fixkosten-Vorlagen"): save/edit a template, book an expense from one,
+ * Recurring-expense templates: save/edit a template, book an expense from one,
  * delete one, and advance a template's due date after it was booked.
  */
 export function useRecurringExpenseActions(

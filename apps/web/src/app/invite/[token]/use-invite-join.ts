@@ -73,7 +73,7 @@ export function useInviteJoin(token: string) {
 	// The name a name error was shown for; the error stays until the name changes.
 	const invalidNameRef = useRef<string | null>(null);
 
-	// The prefilled account name can arrive after an early submit; the "fehlt" error must not outlive it.
+	// The prefilled account name can arrive after an early submit; the "name missing" error must not outlive it.
 	useEffect(() => {
 		if (nameInvalid && name.trim() && name !== invalidNameRef.current) {
 			setNameInvalid(false);

@@ -86,7 +86,7 @@ interface ReminderMessageInput {
 
 // Persisted German audit text for expense_reminders.message; no UI renders it.
 export function formatReminderMessage(input: ReminderMessageInput): string {
-	// Intl puts a no-break space before the currency sign; the push text uses a normal space.
+	// Intl puts a no-break space before the currency sign; the stored text uses a normal space.
 	const amount = formatEuroCents(input.amountCents, input.currency).replace(/\u00a0/g, ' '); // i18n-ignore persisted German DB text
 	const ageSuffix =
 		input.oldestDebtAgeDays >= 1

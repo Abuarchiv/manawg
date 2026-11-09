@@ -59,7 +59,7 @@ export const createExpenseSchema = z
 		const sum = value.splits.reduce((total, split) => total + split.amountCents, 0);
 		if (sum !== value.amountCents) {
 			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
+				code: 'custom',
 				message: 'splits_sum_mismatch',
 				path: ['splits'],
 			});

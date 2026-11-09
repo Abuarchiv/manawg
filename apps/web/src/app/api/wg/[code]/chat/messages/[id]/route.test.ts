@@ -125,12 +125,15 @@ mock.module('@/core/db/transaction', {
 		withTransaction: async (work: (tx: unknown) => unknown) => work(db),
 	},
 });
-mock.module('@/core/guards/admin', {
+mock.module('@/core/db/account-deletion', {
 	namedExports: {
-		requireOwnerOrAdmin: async (_wg: string, member: { memberId: string }, owner: string) =>
-			state.callerIsAdmin || owner === member.memberId
-				? null
-				: Response.json({ error: 'not_owner' }, { status: 403 }),
+		lockActiveAccountMember: async () => ({
+			id: memberId,
+			name: 'Member',
+			role: state.callerIsAdmin ? 'admin' : 'member',
+			authUserId: 'auth-1',
+			deactivatedAt: null,
+		}),
 	},
 });
 mock.module('@/core/guards/api-auth', { namedExports: { UUID_PATTERN: /^[0-9a-f-]{36}$/i } });
@@ -140,6 +143,7 @@ mock.module('@/core/guards/require-wg-member', {
 			ok: true,
 			wg: { id: wgId },
 			member: { memberId, name: 'Member' },
+			authUserId: 'auth-1',
 		}),
 	},
 });

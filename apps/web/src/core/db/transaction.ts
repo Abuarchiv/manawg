@@ -3,6 +3,7 @@ import type { NodePgQueryResultHKT } from 'drizzle-orm/node-postgres';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PgTransaction } from 'drizzle-orm/pg-core';
 import { Client } from 'pg';
+import { logApiError } from '@/core/infra/observability';
 import { closeClientOnQueryTimeout, resolveConnectionString } from './connection';
 import * as schema from './schema';
 
@@ -15,7 +16,10 @@ export type DbTransaction = PgTransaction<
 	ExtractTablesWithRelations<typeof schema>
 >;
 
-/** Acquire before WG/member row locks so capture, cron, and deletion share one lock order. */
+/**
+ * The WG-wide write lock; the name predates the removal of online payments. Take it before any
+ * WG/member row lock so writers, cron jobs, and WG/account deletion share one lock order.
+ */
 export async function lockExpensePayments(tx: DbTransaction, wgId: string): Promise<void> {
 	await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`expense-payment:${wgId}`}))`);
 }
@@ -32,13 +36,15 @@ export async function withFreshTransaction<T>(fn: (tx: DbTransaction) => Promise
 		query_timeout: 5_500,
 		statement_timeout: 5_000,
 	});
+	// A dropped socket emits 'error' on an idle or busy client; without a listener it would crash the process.
+	client.on('error', (error) => logApiError('[db/transaction] Fresh connection error:', error));
 	closeClientOnQueryTimeout(client);
 	await client.connect();
 	try {
 		return await drizzle(client, { schema }).transaction(fn);
 	} finally {
 		await client.end().catch((error: unknown) => {
-			console.warn('[db/transaction] Fresh connection shutdown failed:', error);
+			logApiError('[db/transaction] Fresh connection shutdown failed:', error);
 		});
 	}
 }

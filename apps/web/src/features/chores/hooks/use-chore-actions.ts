@@ -8,7 +8,6 @@ import { choreCompletionFeedback } from '@/features/chores/chore-completion';
 import type { ChoreEditChanges, ChoreEditResult } from '@/features/chores/chore-edit';
 import { choreActionErrorMessage, choreEditErrorMessage } from '@/features/chores/chore-errors';
 import { chooseNextAvailableMember, predictNextDueAt } from '@/features/chores/chore-fairness';
-import { getChoreStatus } from '@/features/chores/chore-status';
 import type { Chore } from '@/features/chores/components/chore-types';
 import { pendingKeys } from '@/features/chores/pending-keys';
 import type { Locale } from '@/shared/i18n/locale';
@@ -178,7 +177,6 @@ export function useChoreActions(ctx: ChorePageContext) {
 		setActionError(null);
 		setActionNotice(null);
 
-		const status = getChoreStatus(chore.nextDueAt);
 		const result = await apiFetch<{ duplicate?: boolean }>(
 			`/api/wg/${encodedShareCode}/announcements`,
 			{
@@ -188,12 +186,7 @@ export function useChoreActions(ctx: ChorePageContext) {
 					kind: 'request',
 					source: 'chore_swap',
 					choreId: chore.id,
-					// Parentheses instead of a linking verb: labels like "in 7 days" or "Check date" read wrong inside the sentence.
-					content: t('actions.swapPost', {
-						name: identity.name,
-						title: chore.title,
-						status: render(status.label),
-					}),
+					content: t('actions.swapPost', { name: identity.name, title: chore.title }),
 				}),
 			},
 		);

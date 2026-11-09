@@ -102,13 +102,13 @@ export interface ShoppingCreateInput {
 export async function withShoppingCreatePostCommitFallback(
 	provisional: ShoppingCreateReplayResponse,
 	finalize: () => Promise<ShoppingCreateReplayResponse>,
-	onFailure: () => void,
+	onFailure: (error: unknown) => void,
 ): Promise<ShoppingCreateReplayResponse> {
 	try {
 		return await finalize();
-	} catch {
+	} catch (error) {
 		try {
-			onFailure();
+			onFailure(error);
 		} catch {
 			// Logging must not turn a committed mutation into an error response.
 		}

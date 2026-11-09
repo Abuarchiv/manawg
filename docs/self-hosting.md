@@ -40,7 +40,7 @@ to a free port and open Mailpit there.
 Compose pulls `ghcr.io/abuarchiv/manawg:<MANAWG_VERSION>` when that tag exists, `latest` by
 default. Otherwise it builds the image from your checkout, which takes about ten minutes; the
 message that it cannot pull the image is harmless then. To get only bug-fix releases, set
-`MANAWG_VERSION=0.1` (see [Updating](#updating)).
+`MANAWG_VERSION=0.2` (see [Updating](#updating)).
 
 To check the whole instance, run `./docker/smoke.sh`. It needs `curl` and `jq` on the host and the
 default Mailpit setup. It signs up a test account, creates a WG, uploads a picture, calls the
@@ -293,7 +293,7 @@ Every setting is in `.env`, described in [`.env.example`](../.env.example). Afte
 | `SMTP_*` | yes | Outgoing mail for sign-in codes, invitations and statements; `SMTP_ADMIN_EMAIL` is the sender address and `SMTP_SENDER_NAME` its display name |
 | Secrets (`POSTGRES_PASSWORD` … `CRON_SECRET`) | yes | Created by `setup.sh`. `ANON_KEY` and `SERVICE_ROLE_KEY` are signed with `JWT_SECRET`; change all three together |
 | `LEGAL_URL`, `SUPPORT_EMAIL` | for public instances | Your legal pages and the address for error reports, see [Legal pages and support](#legal-pages-and-support) |
-| `MANAWG_VERSION` | no | Image tag to run: `latest` (default), a version such as `0.1.1`, or `0.1` for the bug-fix releases of 0.1. Compose pulls it when it exists and builds from the checkout otherwise |
+| `MANAWG_VERSION` | no | Image tag to run: `latest` (default), a version such as `0.2.0`, or `0.2` for the bug-fix releases of 0.2. Compose pulls it when it exists and builds from the checkout otherwise |
 | `MANAWG_IMAGE` | no | Image repository, default `ghcr.io/abuarchiv/manawg`; for a fork or a private registry |
 | `STORAGE_BUCKET` | no | Name of the image storage bucket, default `private-images`. Do not change it after the first start |
 | `GOOGLE_ENABLED`, `GOOGLE_CLIENT_ID`, `GOOGLE_SECRET` | no | Google sign-in with your own OAuth client; redirect URI `<APP_URL>/auth/v1/callback`. Off by default, and the app then shows no Google buttons |
@@ -321,7 +321,7 @@ say when a self-hosted instance needs a manual step. Versions follow
 and a release such as 0.2.0 adds features and may need a manual step, which its notes explain. Watch the repository with *Custom → Releases* to get a mail for each one.
 
 Take a backup first (`./docker/backup.sh`). Then, with the published image, set `MANAWG_VERSION`
-in `.env` to the new version, or to `0.1` to follow the bug-fix releases of 0.1, and run:
+in `.env` to the new version, or to `0.2` to follow the bug-fix releases of 0.2, and run:
 
 ```sh
 docker compose pull && docker compose up -d

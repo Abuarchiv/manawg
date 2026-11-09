@@ -161,7 +161,7 @@ export function hasEditFields(
 /**
  * Edit, pause or resume a template; that is the owner's (or an admin's) call. The update is a
  * compare-and-set on the due date (or on the pause state): an editor that loaded an older due
- * date, or a booking (cron or "Erfassen") that moved it meanwhile, must not get the stale date
+ * date, or a booking (cron or manual booking) that moved it meanwhile, must not get the stale date
  * written back. It also compares the `updatedAt` version, so two members editing the same
  * template cannot silently overwrite each other.
  */

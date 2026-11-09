@@ -242,7 +242,7 @@ export default {
 	},
 	errorPage: {
 		title: 'No se ha podido cargar el plan de limpieza ahora mismo',
-		body: 'Algo ha salido mal en el plan de limpieza. Inténtalo de nuevo o vuelve al resumen del piso.',
+		body: 'Algo ha salido mal en el plan de limpieza. Inténtalo de nuevo o vuelve al inicio del piso.',
 	},
 	page: {
 		draftKept: 'Se conserva tu borrador actual.',
@@ -261,7 +261,7 @@ export default {
 		stillQueued:
 			'Esta tarea sigue en cola sin conexión y solo se podrá editar después de sincronizar.',
 		swapPost:
-			'{name} quiere hacer un cambio: “{title}” ({status}). ¿Alguien puede encargarse o lo hablamos un momento?',
+			'{name} quiere hacer un cambio: “{title}”. ¿Alguien puede encargarse o lo hablamos un momento?',
 		swapDuplicate: 'Ya hay una solicitud de cambio abierta para esta tarea en el tablón.',
 		swapPosted: 'La solicitud de cambio se ha publicado en el tablón.',
 		takenOver: 'Ahora tienes asignada la tarea.',

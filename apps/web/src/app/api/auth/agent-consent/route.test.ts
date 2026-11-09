@@ -9,13 +9,13 @@ const { GET, POST } = await import('./route');
 // biome-ignore lint/suspicious/noExplicitAny: the fake replaces the oauth namespace of the client
 const oauth = (methods: Record<string, unknown>) => ((kit.auth as any).oauth = methods);
 
-test('shows who asks for consent, without the redirect target', async () => {
+test('shows who asks for consent with the host the code is sent to', async () => {
 	oauth({
 		getAuthorizationDetails: async (id: string) => ({
 			data: {
 				authorization_id: id,
 				redirect_uri: 'https://claude.ai/api/mcp/auth_callback',
-				client: { id: 'c1', name: 'Claude', uri: 'https://claude.ai/', logo_uri: '' },
+				client: { id: 'c1', name: 'Claude', uri: 'https://example.test/', logo_uri: '' },
 				user: { id: 'u1', email: 'mina@example.test' },
 				scope: 'email',
 			},

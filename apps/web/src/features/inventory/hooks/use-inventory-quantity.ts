@@ -9,6 +9,7 @@ import { deliveryWarning } from '@/core/notifications/delivery-warning';
 import type { NotificationWarning } from '@/core/notifications/notification-warning';
 import {
 	clampQuantity,
+	INVENTORY_LIMITS,
 	type InventoryItemDto,
 	type InventoryMutationItemDto,
 } from '@/features/inventory/inventory';
@@ -22,8 +23,8 @@ type ConsumeResponse = {
 };
 
 // Server limits per request (consume: -1..-100, PATCH quantityDelta: +-9999).
-const MAX_CONSUME = 100;
-const MAX_RESTOCK = 9999;
+const MAX_CONSUME = -INVENTORY_LIMITS.CONSUME_DELTA_MIN;
+const MAX_RESTOCK = INVENTORY_LIMITS.QUANTITY_MAX;
 
 interface UseInventoryQuantityOptions {
 	item: InventoryItemDto;

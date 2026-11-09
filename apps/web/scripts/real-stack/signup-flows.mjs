@@ -5,12 +5,10 @@
 // with GOTRUE_RATE_LIMIT_VERIFY=40) the limit on wrong codes. Returning to an invitation after
 // registration is covered by journey.mjs.
 import { chromium, devices, request } from '@playwright/test';
-import { MAIL } from './env.mjs';
+import { MAIL, PUBLISHABLE } from './env.mjs';
 import { BASE, expect, finish, SB, SERVICE, sql } from './modules-lib.mjs';
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-const PUBLISHABLE =
-	process.env.REAL_STACK_PUBLISHABLE_KEY ?? 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH';
 const json = { 'content-type': 'application/json' };
 const stamp = Date.now();
 const address = (tag) => `${tag}${stamp}@example.test`;
@@ -65,7 +63,6 @@ await p.getByLabel('Dein Name').fill('Neu Nutzer');
 await p.getByLabel('E-Mail-Adresse').fill(fresh);
 await p.getByRole('button', { name: 'Weiter', exact: true }).click();
 await p.locator('#auth-code').waitFor({ timeout: 15_000 });
-expect(true, 'code step appears on the same page', p.url());
 const mail = await mailAt(fresh, CONFIRM);
 const code = codeOf(mail);
 expect(!!code, 'registration mail carries an 8-digit code', mail?.Subject ?? 'no mail');

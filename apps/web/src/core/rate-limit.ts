@@ -248,16 +248,7 @@ const FAIL_OPEN_PRODUCTION_LOG =
 const FAIL_CLOSED_PRODUCTION_LOG =
 	'[rate-limit] Upstash Redis not configured in production — failing closed';
 const OPEN_STATE_REPORT_INTERVAL_MS = 5 * 60 * 1000;
-// Caps the throttle map: a caller passing request-derived `cause` text must not
-// grow it without bound. Past the cap only known causes keep entries.
-const MAX_TRACKED_CAUSES = 32;
 const lastReportedAt = new Map<string, number>();
-
-function trackCause(map: Map<string, number>, cause: string, value: number): boolean {
-	if (!map.has(cause) && map.size >= MAX_TRACKED_CAUSES) return false;
-	map.set(cause, value);
-	return true;
-}
 
 /**
  * An unavailable limiter must remain visible in either fail mode. Reported at
@@ -285,10 +276,7 @@ function reportUnavailable(
 	const reportKey = `${failMode}:${cause}`;
 	const previous = lastReportedAt.get(reportKey);
 	if (previous !== undefined && now - previous < OPEN_STATE_REPORT_INTERVAL_MS) return;
-	// Unknown causes beyond the tracking cap are logged above but never
-	// captured here — without a stored timestamp they would bypass the
-	// throttle and fire on every request.
-	if (!trackCause(lastReportedAt, reportKey, now)) return;
+	lastReportedAt.set(reportKey, now);
 
 	captureException(new Error(`rate-limit ${state}`), {
 		area: 'rate-limit',

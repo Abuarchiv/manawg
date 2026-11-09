@@ -67,7 +67,11 @@ export function useCalendarSubscription(encodedShareCode: string) {
 		const requestedScope = scope;
 		if (busyScopeRef.current === requestedScope) return;
 		const requestId = ++readRequestIdRef.current;
-		setLoadingState({ scope: requestedScope, value: true });
+		// Only the first read of a scope shows the loading state; a focus refresh updates silently so the
+		// link field (and a selection in it) stays mounted.
+		setLoadingState((prev) =>
+			prev?.scope === requestedScope ? prev : { scope: requestedScope, value: true },
+		);
 		const res = await apiFetch<CalendarSubscriptionResponse>(endpoint, {
 			memberId: identity.memberId,
 		});

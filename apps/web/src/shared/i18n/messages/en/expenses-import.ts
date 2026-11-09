@@ -146,6 +146,7 @@ export default {
 	errors: {
 		failedPreview: 'Preview failed',
 		failedImport: 'Import failed',
+		keyUnavailable: 'The import could not be sent reliably. Try again.',
 		rateLimited: 'Too many import attempts. Wait a moment and try again.',
 		retryLater: 'The import could not be processed just now. Try again shortly.',
 		sessionExpired: 'Open the flat again so your membership can load.',
@@ -159,7 +160,6 @@ export default {
 		payloadTooLarge:
 			'The file is too large. Choose a smaller file (CSV up to 5 MB, image up to 10 MB).',
 		tooManyRows: 'The file has too many rows (max. 2,000). Split the export into several files.',
-		unsupportedCurrency: 'This file contains no supported currency. Use an export in euros (EUR).',
 		emptyPayload: 'No expenses found. Check the file and try again.',
 		rowsUnreadable:
 			'No row of the file could be read. Check the date, amount and payer in the file.',

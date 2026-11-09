@@ -25,7 +25,7 @@ import { badRequest, rateLimitResponse, serverError } from '@/core/http/api-erro
 import { requestLocale } from '@/core/i18n/request-locale';
 import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, wgExportLimiter } from '@/core/rate-limit';
-import { DEFAULT_LOCALE, type Locale } from '@/shared/i18n/locale';
+import type { Locale } from '@/shared/i18n/locale';
 
 function getExportFormat(req: NextRequest): 'json' | 'csv' | null {
 	const format = req.nextUrl.searchParams.get('format');
@@ -117,11 +117,6 @@ function sectionRecord(
 	) as Record<ExportSectionKey, ExportRow[]>;
 }
 
-/** The CSV follows the downloader's locale; a bare request without cookies reads as German. */
-function csvLocale(req: NextRequest): Locale {
-	return req.cookies && req.headers ? requestLocale(req) : DEFAULT_LOCALE;
-}
-
 function csvExportResponse(
 	shareCode: string,
 	section: ExportSectionKey,
@@ -167,7 +162,7 @@ export const GET = withWgRoute('export GET', async (req, { code }) => {
 			// The section's own queries are the only things that can fail here —
 			// a failure is logged with the section name and surfaced as a
 			// section-specific error instead of a generic 500.
-			const locale = csvLocale(req);
+			const locale = requestLocale(req);
 			const loaders = buildSectionLoaders(
 				wg.id,
 				page,
@@ -209,7 +204,7 @@ export const GET = withWgRoute('export GET', async (req, { code }) => {
 				if (directoryFailed) throw new Error('member_directory_unavailable');
 				return memberById;
 			},
-			csvLocale(req),
+			requestLocale(req),
 		);
 
 		const failedSections: string[] = [];

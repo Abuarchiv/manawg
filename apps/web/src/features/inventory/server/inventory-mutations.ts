@@ -165,6 +165,10 @@ export async function updateInventoryItemMutation(
 	}
 
 	if (nextQuantity !== existing.quantity) updates.quantity = nextQuantity;
+	// Mirrors the consume route: a relative decrement counts as a use of the item.
+	if (input.quantity === undefined && nextQuantity < existing.quantity) {
+		updates.lastDecrementedAt = updates.updatedAt;
+	}
 	if (input.name !== undefined) updates.name = input.name;
 	if (input.threshold !== undefined) updates.threshold = input.threshold;
 	if (input.unit !== undefined) updates.unit = input.unit;

@@ -66,7 +66,6 @@ const createMessageSchema = z
 
 export const GET = withWgRoute('chat messages GET', async (req, { code }) => {
 	const url = new URL(req.url);
-	const beforeRaw = url.searchParams.get('before');
 	const beforeId = url.searchParams.get('beforeId');
 	const refreshIdParams = url.searchParams.getAll('refreshId');
 	const limitRaw = url.searchParams.get('limit');
@@ -74,18 +73,12 @@ export const GET = withWgRoute('chat messages GET', async (req, { code }) => {
 		PAGE_MAX,
 		Math.max(1, Number.parseInt(limitRaw ?? `${PAGE_DEFAULT}`, 10) || PAGE_DEFAULT),
 	);
-	const before = beforeRaw ? new Date(beforeRaw) : null;
-	if (before && Number.isNaN(before.getTime())) return badRequest('before_invalid');
 	if (beforeId && !UUID_PATTERN.test(beforeId)) return badRequest('before_id_invalid');
 	if (
 		refreshIdParams.length > CHAT_REFRESH_BATCH_SIZE ||
 		refreshIdParams.some((id) => !UUID_PATTERN.test(id))
 	)
 		return badRequest('refresh_ids_invalid');
-	// Pagination cursor must be complete: beforeId without before (or vice
-	// versa) would either silently fall back to the latest page or lose rows
-	// on createdAt ties.
-	if (!!before !== !!beforeId) return badRequest('before_cursor_incomplete');
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
 	const wg = auth.wg;

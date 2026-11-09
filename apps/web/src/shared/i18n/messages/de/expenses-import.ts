@@ -146,6 +146,7 @@ export default {
 	errors: {
 		failedPreview: 'Vorschau fehlgeschlagen',
 		failedImport: 'Import fehlgeschlagen',
+		keyUnavailable: 'Der Import konnte nicht sicher gesendet werden. Versuche es erneut.',
 		rateLimited: 'Zu viele Importversuche. Warte kurz und versuche es erneut.',
 		retryLater: 'Der Import konnte gerade nicht verarbeitet werden. Versuche es gleich erneut.',
 		sessionExpired: 'Öffne die WG erneut, damit deine Mitgliedschaft geladen wird.',
@@ -160,8 +161,6 @@ export default {
 			'Die Datei ist zu groß. Wähle eine kleinere Datei (CSV bis 5 MB, Bild bis 10 MB).',
 		tooManyRows:
 			'Die Datei hat zu viele Zeilen (max. 2.000). Teile den Export in mehrere Dateien auf.',
-		unsupportedCurrency:
-			'Diese Datei enthält keine unterstützte Währung. Verwende einen Export in Euro (EUR).',
 		emptyPayload: 'Keine Ausgaben gefunden. Prüfe die Datei und versuche es erneut.',
 		rowsUnreadable:
 			'Keine Zeile der Datei konnte gelesen werden. Prüfe Datum, Betrag und zahlende Person in der Datei.',
@@ -203,7 +202,7 @@ export default {
 		splitsDrift:
 			'Die Aufteilung wich minimal vom Gesamtbetrag ab und wurde automatisch angeglichen.',
 		splitsDiscarded:
-			'Die eigene Aufteilung wich zu stark vom Gesamtbetrag ab und wurde verworfen — stattdessen gleichmäßig aufgeteilt.',
+			'Die eigene Aufteilung wich zu stark vom Gesamtbetrag ab und wurde verworfen. Stattdessen wurde gleichmäßig aufgeteilt.',
 		paymentRow:
 			'Rückzahlung, keine Ausgabe. Überspring die Zeile, wenn sie nicht ins Haushaltsbuch soll.',
 		ocr: 'Aus dem Bild erkannt: Prüfe Datum, Betrag und zahlende Person. Die Ausgabe wird nur der zahlenden Person zugeordnet, es entsteht keine Schuld.',

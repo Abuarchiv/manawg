@@ -122,7 +122,8 @@ export function MessageList({
 	// A withdrawn system notice (e.g. its expense was deleted) leaves no trace,
 	// unlike a deleted member message, which keeps its deleted bubble.
 	const visibleMessages = useMemo(
-		() => messages.filter((message) => !(message.kind === 'system' && message.deletedAt)),
+		() =>
+			messages.filter((message) => !(message.kind === SYSTEM_MESSAGE_KIND && message.deletedAt)),
 		[messages],
 	);
 	const groups = useMemo(() => groupMessagesByDay(visibleMessages), [visibleMessages]);

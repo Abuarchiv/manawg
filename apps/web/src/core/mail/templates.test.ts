@@ -42,7 +42,7 @@ test('no mail shouts: subjects and texts carry no exclamation mark', () => {
 	}
 });
 
-test('every mail renders HTML and text with the same title and footer reason', () => {
+test('every mail renders a full HTML document and a text body', () => {
 	for (const mail of ALL) {
 		assert.match(mail.html, /<!DOCTYPE html>/);
 		assert.ok(mail.html.includes('manawg-mark-96.png'), 'mark in the head');

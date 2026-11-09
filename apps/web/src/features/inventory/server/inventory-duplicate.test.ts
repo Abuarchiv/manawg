@@ -26,7 +26,7 @@ function fakeTx(answers: unknown[][]) {
 	};
 }
 
-test('a create with an existing name in other case is a duplicate', async () => {
+test('a create that finds a same-name row is a duplicate', async () => {
 	assert.equal(
 		await isInventoryNameTaken(fakeTx([[{ id: 'x' }]]) as never, 'wg', ' KLOPAPIER '),
 		true,

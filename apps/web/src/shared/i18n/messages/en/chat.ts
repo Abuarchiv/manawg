@@ -95,12 +95,12 @@ export default {
 		joined: '{name} joined the flat.',
 		left: '{name} left the flat.',
 		expenseCreated: '{actor} added {description} for {amount}.',
+		expenseCreatedNoAmount: '{actor} added {description}.',
 		choreCompleted: '{actor} completed “{title}”.',
 		choreCompletedNoTitle: '{actor} completed a task.',
 		unknown: 'System message',
 		someone: 'Someone',
 		anExpense: 'an expense',
-		zeroAmount: '€0.00',
 	},
 	errors: {
 		sendSubject: 'The message could not be sent',

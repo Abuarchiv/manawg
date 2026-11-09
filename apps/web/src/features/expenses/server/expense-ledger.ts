@@ -54,11 +54,8 @@ export async function loadLedger(
 				createdAt: expense.createdAt,
 				debt: {
 					paidByMemberId: expense.paidByMemberId,
-					...(expense.currency ? { currency: expense.currency } : {}),
-					occurredAt:
-						expense.occurredAt instanceof Date
-							? expense.occurredAt.toISOString()
-							: String(expense.occurredAt),
+					currency: expense.currency,
+					occurredAt: expense.occurredAt.toISOString(),
 					splits: [],
 				},
 			};
@@ -68,12 +65,7 @@ export async function loadLedger(
 			entry.debt.splits.push({
 				debtorMemberId: split.debtorMemberId,
 				amountCents: split.amountCents,
-				settledAt:
-					split.settledAt === null
-						? null
-						: split.settledAt instanceof Date
-							? split.settledAt.toISOString()
-							: String(split.settledAt),
+				settledAt: split.settledAt?.toISOString() ?? null,
 			});
 		}
 	}

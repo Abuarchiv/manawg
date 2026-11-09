@@ -45,9 +45,11 @@ jobs:
         env:
           CONFIRMATION: ${{ inputs.confirmation }}
           DEPLOY_HOOK: ${{ secrets.VERCEL_PRODUCTION_DEPLOY_HOOK }}
+          PREVIEW_GATE: ${{ vars.PREVIEW_GATE }}
         run: |
           [ "$GITHUB_REF" = refs/heads/main ] || { echo 'Release only from main.' >&2; exit 1; }
           [ "$CONFIRMATION" = RELEASE_PRODUCTION ] || { echo 'Confirmation must be RELEASE_PRODUCTION.' >&2; exit 1; }
+          [ "$PREVIEW_GATE" = on ] || { echo 'Repository variable PREVIEW_GATE must be on; without it no Preview run exists to pass the gate.' >&2; exit 1; }
           [ -n "$DEPLOY_HOOK" ] || { echo 'Production secret VERCEL_PRODUCTION_DEPLOY_HOOK is missing.' >&2; exit 1; }
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           echo "Candidate: $(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"

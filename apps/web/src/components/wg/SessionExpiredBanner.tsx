@@ -3,8 +3,9 @@
 import { AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { buttonVariants } from '@/components/ui/button';
+import { usePublishHeight } from '@/components/wg/use-publish-height';
 import { SESSION_EXPIRED_EVENT, SESSION_RESTORED_EVENT } from '@/core/infra/api-client';
 import { cn } from '@/shared/lib/cn';
 
@@ -34,21 +35,7 @@ export function SessionExpiredBanner() {
 
 	// Sticky chrome below (home header, settings tabs, chat frame) reads the banner's real
 	// height from --session-banner-height, like the offline banner does for its own.
-	const observerRef = useRef<ResizeObserver | null>(null);
-	const bannerRef = useCallback((el: HTMLDivElement | null) => {
-		observerRef.current?.disconnect();
-		observerRef.current = null;
-		const root = document.documentElement;
-		if (!el) {
-			root.style.removeProperty('--session-banner-height');
-			return;
-		}
-		const measure = () =>
-			root.style.setProperty('--session-banner-height', `${el.getBoundingClientRect().height}px`);
-		measure();
-		observerRef.current = new ResizeObserver(measure);
-		observerRef.current.observe(el);
-	}, []);
+	const bannerRef = usePublishHeight('--session-banner-height');
 
 	if (!returnTo) return null;
 	return (

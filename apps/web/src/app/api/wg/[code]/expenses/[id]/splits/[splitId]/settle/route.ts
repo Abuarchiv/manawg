@@ -14,6 +14,7 @@ import {
 	unreadableJsonBody,
 } from '@/core/http/api-errors';
 import { readJsonLimited } from '@/core/http/read-json';
+import { afterResponse } from '@/core/infra/after-response';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { computeNetBalances } from '@/features/expenses/debt-reduction';
 import {
@@ -203,14 +204,16 @@ export const POST = withWgRoute<{ id: string; splitId: string }>(
 			},
 		});
 		if (settled) {
-			await notifySettlement({
-				wg: auth.wg,
-				actor: auth.member,
-				otherMemberId: isDebtor ? current.paidByMemberId : current.debtorMemberId,
-				amountCents: current.amountCents,
-				currency: current.currency,
-				direction: isDebtor ? 'paid' : 'received',
-			});
+			afterResponse(() =>
+				notifySettlement({
+					wg: auth.wg,
+					actor: auth.member,
+					otherMemberId: isDebtor ? current.paidByMemberId : current.debtorMemberId,
+					amountCents: current.amountCents,
+					currency: current.currency,
+					direction: isDebtor ? 'paid' : 'received',
+				}),
+			);
 		}
 
 		return NextResponse.json({ split: updated });

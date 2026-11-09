@@ -34,16 +34,14 @@ const signSchema = z.object({
 	fileSize: z.number().int().positive().max(PRIVATE_IMAGE_MAX_BYTES),
 });
 
-function extFromMime(mime: string): string {
-	const map: Record<string, string> = {
-		'image/jpeg': 'jpg',
-		'image/png': 'png',
-		'image/webp': 'webp',
-		'image/heic': 'heic',
-		'image/heif': 'heif',
-	};
-	return map[mime] ?? 'jpg';
-}
+// Typed over the policy list, so a new allowed type fails to compile until it has an extension.
+const EXTENSION_BY_MIME: Record<(typeof PRIVATE_IMAGE_MIME_TYPES)[number], string> = {
+	'image/jpeg': 'jpg',
+	'image/png': 'png',
+	'image/webp': 'webp',
+	'image/heic': 'heic',
+	'image/heif': 'heif',
+};
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
 	const parsed = await parseBody(req, signSchema, {
@@ -89,7 +87,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 	if (limited) return noStore(limited);
 
 	try {
-		const ext = extFromMime(mimeType);
+		const ext = EXTENSION_BY_MIME[mimeType];
 		const key = `manawg/${wg.id}/${purpose}/${randomUUID()}.${ext}`;
 		const signature = {
 			...(await createSupabaseSignedUpload(key, mimeType)),
@@ -105,6 +103,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 				),
 			);
 		}
-		return noStore(serverError('sign_failed'));
+		return noStore(serverError(err, 'sign_failed'));
 	}
 }

@@ -79,7 +79,7 @@ export function originAllowed(req: NextRequest): boolean {
 	// Read requests (GET/HEAD/OPTIONS) without Origin are still allowed —
 	// they are served from server-side fetches, CDN edge functions, and
 	// legitimate non-browser clients that cannot set Origin.
-	if (!origin) return req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS';
+	if (!origin) return READ_METHODS.has(req.method);
 	const host = req.headers.get('host');
 	if (!host) return false;
 	try {
@@ -112,9 +112,6 @@ export async function proxy(req: NextRequest): Promise<NextResponse> {
 	}
 
 	if (process.env.MIGRATION_READ_ONLY === 'true') {
-		if (path === '/api/health') {
-			return refreshSupabaseSession(req, NextResponse.next());
-		}
 		// Cron routes are blocked on every method, all other routes on writes only.
 		if (path.startsWith('/api/cron/') || !isRead) {
 			return NextResponse.json(

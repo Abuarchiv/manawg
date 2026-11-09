@@ -50,7 +50,7 @@ export async function prepareUploadImage(file: File): Promise<File> {
 		if (!blob) throw new Error('encode-failed');
 		// A re-encode that does not shrink a file we only touched for size is not worth it.
 		if (!heic && !resized && blob.size >= file.size) return file;
-		return new File([blob], `${file.name.replace(/\.[^.]+$/, '') || 'foto'}.jpg`, {
+		return new File([blob], `${file.name.replace(/\.[^.]+$/, '') || 'image'}.jpg`, {
 			type: 'image/jpeg',
 		});
 	} catch {

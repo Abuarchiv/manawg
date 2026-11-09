@@ -138,7 +138,11 @@ function exportRoute(
 		inArrayCalls: state.inArrayCalls,
 		get: (search = '') =>
 			GET(
-				{ nextUrl: new URL(`https://example.invalid/export${search}`) } as never,
+				{
+					nextUrl: new URL(`https://example.invalid/export${search}`),
+					cookies: new Map(),
+					headers: new Headers(),
+				} as never,
 				{ params: Promise.resolve({ code: 'MTE8PZAT' }) } as never,
 			),
 	};

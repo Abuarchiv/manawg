@@ -15,7 +15,7 @@ export default {
 		},
 		boundary: {
 			title: 'No se han podido cargar los gastos fijos ahora mismo',
-			body: 'Algo ha salido mal en la página de gastos fijos. Inténtalo de nuevo o vuelve al resumen del piso.',
+			body: 'Algo ha salido mal en la página de gastos fijos. Inténtalo de nuevo o vuelve al inicio del piso.',
 		},
 	},
 	deleteDialog: {

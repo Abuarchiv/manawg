@@ -24,20 +24,6 @@ interface UseOfflineQueueSyncOptions {
 	onSynced: () => void;
 }
 
-/**
- * Keeps the offline-action queue in sync with the server and reports how many
- * actions are still waiting.
- *
- * Flushes when the connection comes back, refreshes the count on
- * `manawg:offline-queue` (the event the offline client dispatches whenever the
- * queue changes), and calls `onSynced` on `manawg:offline-synced`, the event a
- * sync dispatches on success regardless of what triggered it. A flush started
- * elsewhere (e.g. the "Jetzt senden" button in `OfflineBanner`) therefore
- * reloads the page's data too.
- *
- * A sync resolving after unmount is ignored, so it never sets state on a page
- * the user already left.
- */
 interface OfflineQueueSync {
 	/** How many actions are waiting to be sent. */
 	queuedCount: number;
@@ -48,6 +34,20 @@ interface OfflineQueueSync {
 	refreshCount: () => void;
 }
 
+/**
+ * Keeps the offline-action queue in sync with the server and reports how many
+ * actions are still waiting.
+ *
+ * Flushes when the connection comes back, refreshes the count on
+ * `manawg:offline-queue` (the event the offline client dispatches whenever the
+ * queue changes), and calls `onSynced` on `manawg:offline-synced`, the event a
+ * sync dispatches on success regardless of what triggered it. A flush started
+ * elsewhere (e.g. the sync button in `OfflineBanner`) therefore
+ * reloads the page's data too.
+ *
+ * A sync resolving after unmount is ignored, so it never sets state on a page
+ * the user already left.
+ */
 export function useOfflineQueueSync({
 	shareCode,
 	memberId,

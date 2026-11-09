@@ -122,7 +122,7 @@ export function useAnnouncementsPage() {
 		openLimit,
 		openItems.findIndex((item) => item.id === highlightedId) + 1,
 	);
-	const myOpenItems = useMemo(() => getMyOpenAnnouncements(items), [items]);
+	const myOpenItems = useMemo(() => getMyOpenAnnouncements(openItems), [openItems]);
 
 	const authorByMemberId = useMemo(
 		() => new Map(members.map((m) => [m.id, { name: m.name, color: m.color ?? null }] as const)),
@@ -139,14 +139,14 @@ export function useAnnouncementsPage() {
 			myReactions: [...a.myReactions, reaction],
 			myAcknowledgedAt: new Date(now).toISOString(),
 		};
-		if (
+		const leavesBoard =
 			!a.myReactions.includes(reaction) &&
 			!isAnnouncementArchived(a, now) &&
-			isAnnouncementArchived(acknowledged, now)
-		) {
-			toast.info(render({ key: 'pinboard.notices.archived' }));
-		}
-		void actions.toggleReaction(a, reaction);
+			isAnnouncementArchived(acknowledged, now);
+		// Announce the disappearance only once the server accepted it, so it never contradicts a rollback.
+		void actions.toggleReaction(a, reaction).then((saved) => {
+			if (saved && leavesBoard) toast.info(render({ key: 'pinboard.notices.archived' }));
+		});
 	});
 	const stableAddComment = useStableCallback(actions.addComment);
 	const stableUpdateComment = useStableCallback(actions.updateComment);

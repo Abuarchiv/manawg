@@ -3,9 +3,9 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { recordAuditEvent } from '@/core/audit';
 import { db, idempotencyResponses, wgChatMessages } from '@/core/db';
+import { lockActiveAccountMember } from '@/core/db/account-deletion';
 import { revokePrivateImageIfUnreferenced } from '@/core/db/private-image-deletions';
 import { lockExpensePayments, withTransaction } from '@/core/db/transaction';
-import { requireOwnerOrAdmin } from '@/core/guards/admin';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
@@ -15,6 +15,7 @@ import {
 	forbidden,
 	notFound,
 	rateLimitResponse,
+	unauthorized,
 } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
@@ -117,6 +118,8 @@ export const DELETE = withWgRoute<{ id: string }>(
 
 		const deletion = await withTransaction(async (tx) => {
 			await lockExpensePayments(tx, wgId);
+			const actor = await lockActiveAccountMember(tx, wgId, auth.member.memberId, auth.authUserId);
+			if (!actor) return { ok: false as const, response: unauthorized('member_deactivated') };
 			const [row] = await tx
 				.select({
 					senderMemberId: wgChatMessages.senderMemberId,
@@ -132,8 +135,10 @@ export const DELETE = withWgRoute<{ id: string }>(
 			if (row.deletedAt) return { ok: true as const, deleted: false as const, row };
 
 			const isAuthor = row.senderMemberId === auth.member.memberId;
-			const denied = await requireOwnerOrAdmin(wgId, auth.member, row.senderMemberId);
-			if (denied) return { ok: false as const, response: denied };
+			// The role comes from the locked actor row: another pool connection here could exhaust the pool.
+			if (!isAuthor && actor.role !== 'admin') {
+				return { ok: false as const, response: forbidden('not_owner', 'not_owner') };
+			}
 
 			const [updated] = await tx
 				.update(wgChatMessages)

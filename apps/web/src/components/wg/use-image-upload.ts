@@ -297,7 +297,9 @@ export function useImageUpload({
 
 	function remove(): void {
 		if (disabled || uploading || !value) return;
-		if (isPendingImageToken(value)) void removePendingImage(value, identity.memberId);
+		if (isPendingImageToken(value)) {
+			void removePendingImage(value, identity.memberId).catch(() => undefined);
+		}
 		setNotice(null);
 		setError(null);
 		onChange(null);

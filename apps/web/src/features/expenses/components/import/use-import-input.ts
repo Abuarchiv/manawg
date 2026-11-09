@@ -2,6 +2,7 @@
 
 import { useLocale } from 'next-intl';
 import { useRef, useState } from 'react';
+import { captureException } from '@/core/infra/capture-client';
 import { MAX_CSV_BYTES } from '@/features/expenses/import-body';
 import { OcrInitializationError, runOcrOnImage } from '@/features/expenses/ocr';
 import type { Locale } from '@/shared/i18n/locale';
@@ -88,7 +89,7 @@ export function useImportInput({
 			setInputStatus(text.trim() ? 'ready' : 'empty');
 		} catch (err) {
 			if (inputRunIdRef.current !== runId) return;
-			console.error('[ImportWizard] OCR failed', err);
+			captureException(err, { action: 'importOcr' });
 			setPickedFileName(null);
 			setInputStatus('error');
 			setError({

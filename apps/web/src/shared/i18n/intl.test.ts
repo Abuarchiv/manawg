@@ -3,17 +3,14 @@ import test from 'node:test';
 
 const { dateTimeFormat, intlTag, numberFormat } = await import('./intl');
 
-test('intl tags are de-DE and en-GB', () => {
+test('intl tags are de-DE, en-GB and es-ES', () => {
 	assert.equal(intlTag('de'), 'de-DE');
 	assert.equal(intlTag('en'), 'en-GB');
+	assert.equal(intlTag('es'), 'es-ES');
 });
 
 test('de-DE formats like the existing call sites', () => {
 	const euro = { style: 'currency', currency: 'EUR' } as const;
-	assert.equal(
-		numberFormat('de', euro).format(12.5),
-		new Intl.NumberFormat('de-DE', euro).format(12.5),
-	);
 	assert.equal(numberFormat('de', euro).format(1284.5), '1.284,50 €');
 	const date = new Date('2026-03-03T12:00:00Z');
 	const options = {

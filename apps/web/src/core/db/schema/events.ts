@@ -1,4 +1,4 @@
-import { relations, sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import {
 	boolean,
 	check,
@@ -89,18 +89,5 @@ export const auditEvents = pgTable(
 			.where(sql`${t.memberId} IS NOT NULL`),
 	}),
 );
-
-export const wgEventsRelations = relations(wgEvents, ({ one }) => ({
-	wg: one(wgs, { fields: [wgEvents.wgId], references: [wgs.id] }),
-	createdBy: one(wgMembers, {
-		fields: [wgEvents.createdByMemberId],
-		references: [wgMembers.id],
-	}),
-}));
-
-export const calendarSubscriptionsRelations = relations(calendarSubscriptions, ({ one }) => ({
-	wg: one(wgs, { fields: [calendarSubscriptions.wgId], references: [wgs.id] }),
-	member: one(wgMembers, { fields: [calendarSubscriptions.memberId], references: [wgMembers.id] }),
-}));
 
 export type CalendarSubscription = typeof calendarSubscriptions.$inferSelect;

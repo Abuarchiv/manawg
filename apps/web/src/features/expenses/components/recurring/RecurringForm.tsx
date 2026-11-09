@@ -78,7 +78,7 @@ export function RecurringForm({
 	const t = useTranslations('expenses-recurring');
 	const message = useMessage();
 	const locale = useLocale();
-	// Only active members are offered for new selections ("aus Listen raus").
+	// Only active members are offered for new selections.
 	// Moved-out members are re-added below where an existing recurringExpense still references
 	// them, so editing never silently drops or reassigns a participant.
 	const activeMembers = useMemo(() => members.filter((member) => member.active), [members]);
@@ -120,21 +120,6 @@ export function RecurringForm({
 		if (validationAttempt === 0) return;
 		formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
 	}, [validationAttempt]);
-
-	useEffect(() => {
-		if (!initial) return;
-		setDescription(initial.description);
-		setCategory(initial.category);
-		setAmountStr(formatCentsInput(initial.amountCents, locale));
-		setPaidByMemberId(initial.paidByMemberId);
-		setIntervalMonths(initial.intervalMonths);
-		setNextDueAt(isoToInputDate(initial.nextDueAt));
-		const participants = initialEqualParticipants(initial, activeMembers);
-		setSplitMode(participants === 'manual' ? 'manual' : 'equal');
-		setParticipantIds(participants === 'manual' ? null : participants);
-		setManualSplits(initialManualMap(initial, locale));
-		setSplitError(null);
-	}, [initial, activeMembers, locale]);
 
 	const parsedAmountCents = useMemo(() => {
 		const euros = parseEuroAmount(amountStr, locale);

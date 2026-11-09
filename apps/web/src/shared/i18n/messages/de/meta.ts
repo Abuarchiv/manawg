@@ -5,7 +5,7 @@ export default {
 			'Mit ManaWG teilt ihr Ausgaben, organisiert Einkäufe und verteilt Aufgaben im Putzplan. Die App ist kostenlos und läuft im Browser.',
 	},
 	manifest: {
-		description: 'Ausgaben, Putzplan, Einkauf und Pinnwand für deine WG — offlinefähig.',
+		description: 'Ausgaben, Putzplan, Einkauf und Pinnwand für deine WG. Auch offline nutzbar.',
 		shortcutName: 'WG beitreten',
 		shortcutShortName: 'Beitreten',
 		shortcutDescription: 'Mit einem Einladungslink einer WG beitreten',
@@ -18,7 +18,7 @@ export default {
 	invite: {
 		title: 'Du bist in eine WG eingeladen',
 		description:
-			'Tritt deiner WG auf ManaWG bei: Ausgaben, Putzplan, Einkauf und Pinnwand. Kostenlos, im Browser, in Deutschland gehostet.',
+			'Tritt deiner WG auf ManaWG bei: Ausgaben, Putzplan, Einkauf und Pinnwand. Kostenlos, im Browser.',
 	},
 	discover: {
 		description: '{description} Die WG-App für Ausgaben, Putzplan, Einkauf und Pinnwand.',

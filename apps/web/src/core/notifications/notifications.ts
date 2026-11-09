@@ -48,7 +48,7 @@ export interface NotificationMessage {
 type PushT = ReturnType<typeof serverT<'push'>>;
 
 function money(amountCents: unknown, currency: unknown, locale: Locale): string {
-	const cents = typeof amountCents === 'number' && Number.isFinite(amountCents) ? amountCents : 0;
+	const cents = typeof amountCents === 'number' ? amountCents : 0;
 	const code = typeof currency === 'string' && currency.trim().length > 0 ? currency : 'EUR';
 	// Replace non-breaking spaces (Intl uses U+00A0) with regular spaces for plain-text channels (push, SMS).
 	return formatEuroCents(cents, code, { locale }).replace(/\u00a0/g, ' ');
@@ -71,9 +71,9 @@ export function notificationCategoryForEvent(event: NotificationEvent): Notifica
 }
 
 export function notificationPriorityForEvent(event: NotificationEvent): NotificationPriority {
-	if (event === 'chore.due') return 'urgent';
-	if (event === 'event.upcoming' || event === 'event.today') return 'urgent';
-	if (event === 'notification.test') return 'normal';
+	if (event === 'chore.due' || event === 'event.upcoming' || event === 'event.today') {
+		return 'urgent';
+	}
 	return 'normal';
 }
 

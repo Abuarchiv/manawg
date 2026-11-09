@@ -22,7 +22,7 @@ export default {
 	invite: {
 		title: 'Te han invitado a un piso',
 		description:
-			'Únete a tu piso en ManaWG: gastos, plan de limpieza, compras y tablón. Gratis, en el navegador y alojado en Alemania.',
+			'Únete a tu piso en ManaWG: gastos, plan de limpieza, compras y tablón. Gratis y en el navegador.',
 	},
 	discover: {
 		description:

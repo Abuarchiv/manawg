@@ -3,6 +3,7 @@ import { serverRenderContext } from '@/core/i18n/render-context';
 import type { MessageKey } from '@/shared/i18n/message';
 import type { ActivityKind } from './activity';
 import { auditActivitySentence } from './activity-audit';
+import type { FeedActivityItem as ActivityItem } from './activity-types';
 import {
 	getDashboardActivityHref,
 	getDashboardAuditHref,
@@ -18,21 +19,7 @@ function clip(text: string, max: number): string {
 	return chars.length > max ? `${chars.slice(0, max).join('')}…` : text;
 }
 
-export interface ActivityItem {
-	kind: 'expense' | 'shopping' | 'announcement' | 'chore' | 'recurring' | 'absence' | 'audit';
-	timestamp: string;
-	/** Lets the UI show own entries as "Du …". */
-	memberId?: string | null;
-	memberName: string;
-	text: string;
-	/** `text` for the reader's own rows; absent when it reads the same. */
-	selfText?: string;
-	/** True when `text` is a server-built sentence ("hat …"), not user content. */
-	sentence?: boolean;
-	amountCents?: number;
-	currency?: string;
-	href?: string;
-}
+export type { ActivityItem };
 
 function isDuplicateAuditActivity(
 	rawByKey: Map<string, number>,

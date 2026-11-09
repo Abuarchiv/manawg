@@ -222,11 +222,11 @@ export const DELETE = withWgRoute<{ id: string }>('inventory DELETE', async (req
 	);
 	if (limitedDelete) return limitedDelete;
 
-	const deleted = await db
+	const [deleted] = await db
 		.delete(wgInventoryItems)
 		.where(and(eq(wgInventoryItems.id, id), eq(wgInventoryItems.wgId, wgId)))
 		.returning({ id: wgInventoryItems.id, name: wgInventoryItems.name });
-	if (deleted.length === 0) return notFound('item_not_found');
+	if (!deleted) return notFound('item_not_found');
 
 	await recordAuditEvent({
 		wgId,
@@ -235,7 +235,7 @@ export const DELETE = withWgRoute<{ id: string }>('inventory DELETE', async (req
 		entityType: 'inventory_item',
 		entityId: id,
 		actorName: auth.member.name,
-		metadata: { name: deleted[0]?.name ?? null },
+		metadata: { name: deleted.name },
 	});
 
 	return NextResponse.json({ deleted: true });

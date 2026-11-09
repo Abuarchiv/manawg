@@ -192,7 +192,7 @@ export default {
 		errors: {
 			subject: 'WG konnte nicht gelöscht werden',
 			network:
-				'Keine Verbindung — ob die WG gelöscht wurde, ist unklar. Lade die Seite neu und prüfe es.',
+				'Keine Verbindung. Ob die WG gelöscht wurde, ist unklar. Lade die Seite neu und prüfe es.',
 			notFound:
 				'Diese WG wurde nicht gefunden. Sie wurde möglicherweise schon gelöscht oder der Link ist veraltet.',
 			invalidCode: 'Der WG-Code ist ungültig. Öffne die WG über einen gültigen Link.',

@@ -208,7 +208,7 @@ test('English pushes use the catalog, en-GB money and Berlin dates', (t) => {
 	);
 });
 
-test('every event has a complete message in both locales', () => {
+test('every event has a complete message in every locale', () => {
 	const events = [
 		'expense.created',
 		'expense.recurring_charged',
@@ -246,11 +246,7 @@ test('counts of 1000 or more stay ungrouped', () => {
 		/ 1000 Ausgaben /,
 	);
 	assert.match(
-		formatNotificationMessage(
-			'expense.reminder',
-			{ oldestDebtAgeDays: 1000, amountFormatted: '1 €' },
-			'de',
-		).body,
+		formatNotificationMessage('expense.reminder', { oldestDebtAgeDays: 1000 }, 'de').body,
 		/1000 Tage alt/,
 	);
 	assert.doesNotMatch(

@@ -56,6 +56,7 @@ export function useAbsences(ctx: ChorePageContext, form: AbsenceFormState, queue
 	const { setAbsenceStart, setAbsenceEnd, setAbsenceReason } = form;
 	const { setQueueEditId, clearEditedQueueItem, editedQueueItemWasSent } = queueEdit;
 	const t = useTranslations('chores');
+	const tCommon = useTranslations('common');
 	const render = useMessage();
 	const [absenceError, setAbsenceError] = useState<string | null>(null);
 	const [absenceListError, setAbsenceListError] = useState<string | null>(null);
@@ -153,7 +154,9 @@ export function useAbsences(ctx: ChorePageContext, form: AbsenceFormState, queue
 						{
 							id: queued.id,
 							memberId: absenceMemberId,
-							memberName: members.find((member) => member.id === absenceMemberId)?.name ?? '?',
+							memberName:
+								members.find((member) => member.id === absenceMemberId)?.name ??
+								tCommon('unknownPerson'),
 							startDate,
 							endDate,
 							reason: absenceReason.trim() || null,

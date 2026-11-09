@@ -4,7 +4,7 @@ import type de from '../de/pinboard';
 export default {
 	errorPage: {
 		title: 'No se pudo cargar el tablón ahora mismo',
-		body: 'Algo salió mal en el tablón. Inténtalo de nuevo o vuelve al resumen del piso.',
+		body: 'Algo salió mal en el tablón. Inténtalo de nuevo o vuelve al inicio del piso.',
 	},
 	page: {
 		title: 'Tablón de anuncios',
@@ -67,8 +67,6 @@ export default {
 		unpinAria: 'Desfijar publicación: {subject}',
 		resolve: 'Marcar como resuelta',
 		resolveAria: 'Marcar como resuelta: {subject}',
-		reopen: 'Reabrir',
-		reopenAria: 'Reabrir publicación: {subject}',
 		remove: 'Eliminar',
 		removeAria: 'Eliminar publicación: {subject}',
 		showLessAria: 'Mostrar menos: {subject}',
@@ -77,7 +75,6 @@ export default {
 		showMore: 'Mostrar más',
 		imageAria: 'Abrir imagen adjunta: {subject}',
 		takers: '{count, plural, one {{names} se encarga de esto} other {{names} se encargan de esto}}',
-		resolvedAt: 'Resuelta {time}',
 		saving: 'Guardando…',
 	},
 	delete: {

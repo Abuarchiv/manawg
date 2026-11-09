@@ -1,4 +1,4 @@
-import { relations, sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import {
 	type AnyPgColumn,
 	check,
@@ -45,9 +45,9 @@ export const wgChatMessages = pgTable(
 			.on(t.replyToMessageId)
 			.where(sql`${t.replyToMessageId} IS NOT NULL`),
 		senderIdx: index('wg_chat_messages_sender_idx').on(t.senderMemberId),
-		// The only values ever written: 'text'/'image' in POST /chat/messages
-		// and 'system' via postChatSystemMessage (see chat-pure.ts and feed-kinds.ts for
-		// TEXT_MESSAGE_KIND/SYSTEM_MESSAGE_KIND).
+		// Written: 'text' by POST /chat/messages and 'system' by postChatSystemMessage (see
+		// chat-pure.ts and feed-kinds.ts for TEXT_MESSAGE_KIND/SYSTEM_MESSAGE_KIND). 'image' is
+		// allowed by the constraint but no route writes it.
 		kindCheck: check('wg_chat_messages_kind_check', sql`${t.kind} in ('text', 'image', 'system')`),
 	}),
 );
@@ -117,50 +117,3 @@ export const wgChatMentions = pgTable(
 		messageIdx: index('wg_chat_mentions_message_idx').on(t.messageId),
 	}),
 );
-
-export const wgChatMessagesRelations = relations(wgChatMessages, ({ one, many }) => ({
-	wg: one(wgs, { fields: [wgChatMessages.wgId], references: [wgs.id] }),
-	sender: one(wgMembers, {
-		fields: [wgChatMessages.senderMemberId],
-		references: [wgMembers.id],
-	}),
-	replyTo: one(wgChatMessages, {
-		fields: [wgChatMessages.replyToMessageId],
-		references: [wgChatMessages.id],
-		relationName: 'wgChatMessageReply',
-	}),
-	replies: many(wgChatMessages, { relationName: 'wgChatMessageReply' }),
-	reactions: many(wgChatReactions),
-	mentions: many(wgChatMentions),
-}));
-
-export const wgChatReactionsRelations = relations(wgChatReactions, ({ one }) => ({
-	message: one(wgChatMessages, {
-		fields: [wgChatReactions.messageId],
-		references: [wgChatMessages.id],
-	}),
-	member: one(wgMembers, {
-		fields: [wgChatReactions.memberId],
-		references: [wgMembers.id],
-	}),
-}));
-
-export const wgChatReadsRelations = relations(wgChatReads, ({ one }) => ({
-	wg: one(wgs, { fields: [wgChatReads.wgId], references: [wgs.id] }),
-	member: one(wgMembers, { fields: [wgChatReads.memberId], references: [wgMembers.id] }),
-	lastReadMessage: one(wgChatMessages, {
-		fields: [wgChatReads.lastReadMessageId],
-		references: [wgChatMessages.id],
-	}),
-}));
-
-export const wgChatMentionsRelations = relations(wgChatMentions, ({ one }) => ({
-	message: one(wgChatMessages, {
-		fields: [wgChatMentions.messageId],
-		references: [wgChatMessages.id],
-	}),
-	member: one(wgMembers, {
-		fields: [wgChatMentions.mentionedMemberId],
-		references: [wgMembers.id],
-	}),
-}));

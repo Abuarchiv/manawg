@@ -17,8 +17,6 @@ export const INVENTORY_LIMITS = {
 	QUANTITY_MAX: 9999,
 	THRESHOLD_MIN: 0,
 	THRESHOLD_MAX: 9999,
-	UNIT_MAX: 40,
-	CATEGORY_MAX: 40,
 	CONSUME_DELTA_MIN: -100,
 	// A consume takes at least one unit; zero would only re-trigger the
 	// low-stock push and shopping entry without anything being used.

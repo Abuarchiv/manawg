@@ -181,7 +181,7 @@ export async function writeImport(tx: DbTransaction, input: CommitInput) {
 			importedByMemberId: input.importedByMemberId,
 			rowCountTotal: input.expenses.length,
 			rawPayloadHash: input.rawPayloadHash,
-			memberMapping: input.mapping as unknown as Record<string, unknown>,
+			memberMapping: input.mapping,
 		})
 		.returning({ id: expenseImports.id });
 	if (!imp) throw new Error('import_insert_failed');
@@ -306,7 +306,10 @@ export async function commitImport<S>(
 				}
 				return prepared;
 			},
-			inTransaction: (work) => withExpensePaymentLock(importInput?.wg.id ?? '', work),
+			inTransaction: (work) => {
+				if (!importInput) throw new Error('import_input_missing');
+				return withExpensePaymentLock(importInput.wg.id, work);
+			},
 		},
 		writeImport,
 	);

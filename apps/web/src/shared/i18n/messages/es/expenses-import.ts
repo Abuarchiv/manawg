@@ -8,7 +8,7 @@ export default {
 	progressAria: 'Importación: paso {step} de 5',
 	boundary: {
 		title: 'No se pudo cargar el asistente de importación',
-		body: 'Algo salió mal al cargar el asistente de importación. Inténtalo de nuevo o vuelve al resumen del piso.',
+		body: 'Algo salió mal al cargar el asistente de importación. Inténtalo de nuevo o vuelve al inicio del piso.',
 	},
 	actions: {
 		back: 'Atrás',
@@ -147,6 +147,7 @@ export default {
 	errors: {
 		failedPreview: 'Falló la vista previa',
 		failedImport: 'Falló la importación',
+		keyUnavailable: 'No se pudo enviar la importación de forma fiable. Inténtalo de nuevo.',
 		rateLimited: 'Demasiados intentos de importación. Espera un momento e inténtalo de nuevo.',
 		retryLater: 'No se pudo procesar la importación ahora mismo. Inténtalo de nuevo en breve.',
 		sessionExpired: 'Abre el piso otra vez para que se cargue tu acceso como miembro.',
@@ -162,8 +163,6 @@ export default {
 			'El archivo es demasiado grande. Elige uno más pequeño (CSV de hasta 5 MB, imagen de hasta 10 MB).',
 		tooManyRows:
 			'El archivo tiene demasiadas filas (máx. 2000). Divide la exportación en varios archivos.',
-		unsupportedCurrency:
-			'Este archivo no contiene ninguna moneda compatible. Usa una exportación en euros (EUR).',
 		emptyPayload: 'No se encontraron gastos. Revisa el archivo e inténtalo de nuevo.',
 		rowsUnreadable:
 			'No se pudo leer ninguna fila del archivo. Revisa la fecha, el importe y quién pagó en el archivo.',

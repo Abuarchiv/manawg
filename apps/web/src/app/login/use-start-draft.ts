@@ -81,7 +81,7 @@ export function useSaveStartDraft({
 			removeDraft(START_DRAFT_KEY);
 			return;
 		}
-		const draft: StartDraft = { step, wgName, creatorName };
+		const draft: StartDraft = { wgName, creatorName };
 		const hasDraft = [wgName, creatorName].some((value) => value.trim().length > 0);
 		if (hasDraft) writeDraft(START_DRAFT_KEY, draft);
 		else removeDraft(START_DRAFT_KEY);

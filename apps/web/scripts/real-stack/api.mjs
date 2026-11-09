@@ -165,8 +165,6 @@ const rv = await call(
 );
 expect(rv.status === 410 || rv.status === 403, 'S2 revoked invite rejected', JSON.stringify(rv));
 // S3 Expenses
-const members = (await call(A, 'GET', `/api/wg/${code}`)).body;
-const _mem = members.members ?? members.wg?.members ?? [];
 const ex = async (u, amt, ids, extra = {}) =>
 	call(
 		u,
@@ -287,17 +285,6 @@ const done = await call(A, 'POST', `/api/wg/${code}/chores/${cid}/complete`, occ
 	'idempotency-key': randomUUID(),
 });
 expect(done.status < 300, 'S4 completed', JSON.stringify(done));
-const _notMine = await call(B, 'POST', `/api/wg/${code}/chores/${cid}/complete`, occ(), {
-	'idempotency-key': randomUUID(),
-});
-const o4 = occ();
-const _parChores = await Promise.all(
-	[1, 2, 3, 4].map(() =>
-		call(A, 'POST', `/api/wg/${code}/chores/${cid}/complete`, o4, {
-			'idempotency-key': randomUUID(),
-		}),
-	),
-);
 // S5 Chat
 const m1 = await call(
 	A,
@@ -324,9 +311,6 @@ const empty = await call(
 	{ 'idempotency-key': randomUUID() },
 );
 expect(empty.status === 400, 'S5 empty message = 400', JSON.stringify(empty));
-// S8 delete account
-const _delA = await call(B, 'DELETE', '/api/account', {});
-const _stillB = await call(B, 'GET', '/api/wg/mine');
 process.stdout.write(`oks=${oks.length} bugs=${bugs.length}\n`);
 for (const entry of bugs) process.stdout.write(`- ${entry}\n`);
 if (bugs.length > 0) process.exitCode = 1;

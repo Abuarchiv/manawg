@@ -214,25 +214,18 @@ export function distributeRemainder(total: number, shares: number[]): number[] {
 	return out;
 }
 
-/**
- * Only EUR is supported, but one foreign-currency row must not sink the whole
- * file: the preview lists rejected rows one by one. Callers without a
- * `rejected` channel still abort, which is what the commit route relies on
- * when it re-parses a payload the preview already cleared.
- */
+/** Only EUR is supported; one foreign-currency row is listed as rejected instead of sinking the whole file. */
 export function rejectForeignCurrencyRow(
 	rejected: RejectedRow[] | undefined,
 	line: number,
 	currency: string,
 	description: string,
-): boolean {
-	if (!rejected) return false;
-	rejected.push({
+): void {
+	rejected?.push({
 		line,
 		reason: 'currency_unsupported',
 		description: `${description} (${currency})`,
 	});
-	return true;
 }
 
 /** How many header rows to scan for the column names; exports may carry a title line above them. */
@@ -295,7 +288,11 @@ export function parseExportDate(raw: string, dayFirst: boolean): string | null {
 export function parseDecimal(raw: string): number | null {
 	const trimmed = raw.trim().replace(/\s/g, '');
 	if (!trimmed) return null;
-	const normalized = trimmed.includes('.') ? trimmed.replace(/,/g, '') : trimmed.replace(',', '.');
+	// With both separators the last one is the decimal mark ("1.234,56" and "1,234.56").
+	const normalized =
+		trimmed.includes('.') && trimmed.lastIndexOf(',') < trimmed.lastIndexOf('.')
+			? trimmed.replace(/,/g, '')
+			: trimmed.replace(/\./g, '').replace(',', '.');
 	if (!/^-?\d+(?:\.\d+)?$/.test(normalized)) return null;
 	return Number(normalized);
 }

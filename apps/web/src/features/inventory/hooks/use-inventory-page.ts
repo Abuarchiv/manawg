@@ -71,7 +71,7 @@ export function useInventoryPage(shareCode: string, memberId: string) {
 				inventory.commit((current) => applyInventoryMutation(current, updated, deletedId));
 			}
 			// Below the threshold the server adds a shopping item; the dashboard cache behind the
-			// "Einkäufe" counter in the sub navigation would otherwise only learn of it on focus.
+			// shopping counter in the sub navigation would otherwise only learn of it on focus.
 			if (updated && isBelowThreshold(updated) && !(before && isBelowThreshold(before))) {
 				void refreshCachedFetch(`/api/wg/${encodedShareCode}/dashboard`, {
 					memberId,

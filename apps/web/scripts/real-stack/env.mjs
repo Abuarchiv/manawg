@@ -5,3 +5,5 @@ export const SB = process.env.REAL_STACK_SUPABASE_URL ?? 'http://127.0.0.1:54321
 export const MAIL = `${process.env.REAL_STACK_MAILPIT_URL ?? 'http://127.0.0.1:54324'}/api/v1`;
 export const DB =
 	process.env.REAL_STACK_DATABASE_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54322/postgres';
+export const PUBLISHABLE =
+	process.env.REAL_STACK_PUBLISHABLE_KEY ?? 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH';

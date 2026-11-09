@@ -11,6 +11,7 @@ import {
 } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey } from '@/core/idempotency-store';
+import { afterResponse } from '@/core/infra/after-response';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
 import { withExpensePaymentLock } from '@/features/expenses/server/expense-payments';
 import {
@@ -74,14 +75,16 @@ export const POST = withWgRoute('manual payment POST', async (req, { code }) => 
 	if (outcome.kind === 'changed') return conflict('settlement_changed');
 
 	const paid = caller === input.fromMemberId;
-	await notifySettlement({
-		wg: auth.wg,
-		actor: auth.member,
-		otherMemberId: paid ? input.toMemberId : input.fromMemberId,
-		amountCents: outcome.amountCents,
-		currency: input.currency,
-		direction: paid ? 'paid' : 'received',
-	});
+	afterResponse(() =>
+		notifySettlement({
+			wg: auth.wg,
+			actor: auth.member,
+			otherMemberId: paid ? input.toMemberId : input.fromMemberId,
+			amountCents: outcome.amountCents,
+			currency: input.currency,
+			direction: paid ? 'paid' : 'received',
+		}),
+	);
 
 	return NextResponse.json(result.body, {
 		status: result.status,

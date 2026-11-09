@@ -138,7 +138,10 @@ export function buildSectionLoaders(
 			mapAnnouncementCommentRows,
 		),
 		events: withNames(() => fetchEventRows(wgId, page), mapEventRows),
-		chatMessages: withNames(() => fetchChatMessageRows(wgId, page), mapChatMessageRows),
+		chatMessages: withNames(
+			() => fetchChatMessageRows(wgId, page),
+			(rows, names) => mapChatMessageRows(rows, names, locale),
+		),
 		auditEvents: withNames(
 			() => fetchAuditRows(wgId, page),
 			(rows, names) => mapAuditRows(rows, names, locale),
