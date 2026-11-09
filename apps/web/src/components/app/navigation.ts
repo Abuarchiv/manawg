@@ -45,11 +45,6 @@ export const WG_SECTIONS = [
 	},
 ] as const;
 
-/** Whether the module named in the URL belongs to the section page with this slug. */
-export function isActivePage(pageSlug: string, activeModule: string | undefined): boolean {
-	return pageSlug === activeModule;
-}
-
 export function getWgSection(pathname: string) {
 	const match = pathname.match(/^(\/wg\/[^/]+)\/([^/]+)/);
 	if (!match) return null;

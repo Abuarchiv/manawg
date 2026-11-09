@@ -50,7 +50,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 	);
 }
 
-/** RFC 8058 one-click target and the confirm form's submit. */
+/**
+ * RFC 8058 one-click target and the confirm form's submit. Deliberately not blocked by
+ * MIGRATION_READ_ONLY: mail clients do not retry a one-click post.
+ */
 export async function POST(req: NextRequest): Promise<NextResponse> {
 	const throttled = await limited(req);
 	if (throttled) return throttled;

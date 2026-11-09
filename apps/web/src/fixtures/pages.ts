@@ -1,3 +1,4 @@
+import type { ChatMessageDto } from '@/features/chat/chat-types';
 import { buildE2EChatMessages, type E2EWgFixture, getE2EWgFixture } from './data';
 import { isE2EDbDownMode } from './mode';
 
@@ -5,7 +6,8 @@ export interface FixtureWgView {
 	wg: E2EWgFixture;
 	/** Fixture rosters are always fully active. */
 	members: Array<E2EWgFixture['members'][number] & { active: true }>;
-	chatMessages: () => ReturnType<typeof buildE2EChatMessages>;
+	/** Ready for `ChatView`: the fixture messages are never deleted and carry no system payload. */
+	chatMessages: () => ChatMessageDto[];
 }
 
 /**
@@ -21,6 +23,13 @@ export function loadFixtureWgView(code: string): FixtureWgView | 'not_found' | n
 	return {
 		wg,
 		members: wg.members.map((member) => ({ ...member, active: true as const })),
-		chatMessages: () => buildE2EChatMessages(wg.id),
+		chatMessages: () =>
+			buildE2EChatMessages(wg.id).map((m) => ({
+				...m,
+				systemPayload: null,
+				createdAt: m.createdAt.toISOString(),
+				editedAt: null,
+				deletedAt: null,
+			})),
 	};
 }

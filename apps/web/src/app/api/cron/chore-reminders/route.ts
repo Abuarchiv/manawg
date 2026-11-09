@@ -14,6 +14,7 @@ import { requireCronSecret } from '@/core/infra/cron-auth';
 import { captureException, withCronLogging } from '@/core/infra/observability';
 import { dispatchNotification } from '@/core/notifications/notification-dispatch';
 import { endOfBerlinDay, startOfBerlinDay } from '@/core/utils/berlin-day';
+import { DISPATCH_BATCH_SIZE } from '@/features/events/event-reminder-dispatch';
 
 // Minimum gap between reminders for one chore. The cron runs daily at 08:00; 18 h keeps a
 // manual replay, retry or clock drift from firing twice on the same day without depending on
@@ -27,8 +28,6 @@ const REMINDER_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000;
 // drained by the following runs instead of being loaded in one go.
 const REMINDER_CANDIDATE_LIMIT = 500;
 const UNASSIGNED_CANDIDATE_LIMIT = 100;
-// Same concurrency cap as the event-reminders cron.
-const DISPATCH_BATCH_SIZE = 10;
 
 interface DueChore {
 	id: string;

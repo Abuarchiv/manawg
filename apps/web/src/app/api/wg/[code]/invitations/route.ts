@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHmac } from 'node:crypto';
 import { and, asc, eq, isNull } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -11,6 +11,7 @@ import { conflict, rateLimitResponse, serviceUnavailable } from '@/core/http/api
 import { parseBody } from '@/core/http/parse-body';
 import { requestLocale } from '@/core/i18n/request-locale';
 import { logApiError } from '@/core/infra/observability';
+import { currentSigningSecret } from '@/core/infra/signing-secrets';
 import { sendMail } from '@/core/mail/send-mail';
 import { renderInvitationMail } from '@/core/mail/templates';
 import {
@@ -31,7 +32,7 @@ async function revokeInvite(id: string): Promise<void> {
 
 /**
  * A member invites someone by address. The mail carries a fresh invitation
- * link (7 days); the address itself is not stored, only a hash in the dedupe
+ * link (7 days); the address itself is not stored, only a keyed hash in the dedupe
  * key (one mail per address, WG and day). A link whose mail was not sent is
  * revoked again, so a duplicate or failure leaves no live token behind. A mail
  * whose delivery is unconfirmed (provider timeout) may have arrived, so its
@@ -44,7 +45,14 @@ export const POST = withWgRoute('invitations POST', async (req, { code }) => {
 	if (!auth.ok) return auth.response;
 	const wg = auth.wg;
 
-	const emailHash = createHash('sha256').update(parsed.data.email).digest('hex').slice(0, 32);
+	// Keyed, so the persisted dedupe key and the limiter keys cannot be matched against guessed
+	// addresses; MEMBER_SESSION_SECRET is required at boot (core/infra/env.ts).
+	const secret = currentSigningSecret();
+	if (!secret) throw new Error('MEMBER_SESSION_SECRET not set');
+	const emailHash = createHmac('sha256', secret)
+		.update(`invite-recipient:${parsed.data.email}`)
+		.digest('hex')
+		.slice(0, 32);
 	// Per member, per account (all WGs) and per recipient (all WGs); a limiter outage answers 503.
 	for (const [limiter, key] of [
 		[inviteMailLimiter, `invite-mail:${auth.member.memberId}`],

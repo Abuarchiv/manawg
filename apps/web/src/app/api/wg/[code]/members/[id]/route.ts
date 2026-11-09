@@ -6,7 +6,6 @@ import { db, pushSubscriptions, wgMembers } from '@/core/db';
 import { lockActiveAccountMember } from '@/core/db/account-deletion';
 import { releaseMemberChores } from '@/core/db/member-departure';
 import { availableMemberName, releaseMemberName } from '@/core/db/member-names';
-import { LIMITS } from '@/core/db/schema';
 import { UUID_PATTERN } from '@/core/guards/api-auth';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
@@ -26,7 +25,7 @@ import {
 	loadCompletedExpensePayments,
 	withExpensePaymentLock,
 } from '@/features/expenses/server/expense-payments';
-import { MAX_MEMBERS_PER_WG } from '@/shared/lib/limits';
+import { MAX_MEMBERS_PER_WG, MEMBER_NAME_MAX_LENGTH } from '@/shared/lib/limits';
 import { isUniqueMemberNameViolation } from '../unique-name-violation';
 
 /** One open debt of the member being viewed, from their own perspective. */
@@ -112,9 +111,9 @@ export const GET = withWgRoute<{ id: string }>('members/[id] GET', async (req, {
 const patchSchema = z
 	.object({
 		active: z.boolean().optional(),
-		name: z.string().trim().min(1).max(LIMITS.NAME_MAX).optional(),
+		name: z.string().trim().min(1).max(MEMBER_NAME_MAX_LENGTH).optional(),
 		// The name the form was opened on; a different current name means someone renamed meanwhile.
-		expectedName: z.string().trim().min(1).max(LIMITS.NAME_MAX).optional(),
+		expectedName: z.string().trim().min(1).max(MEMBER_NAME_MAX_LENGTH).optional(),
 	})
 	.strict()
 	.refine((value) => value.active !== undefined || value.name !== undefined);

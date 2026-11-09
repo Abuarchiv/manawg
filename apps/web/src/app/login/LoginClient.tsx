@@ -11,11 +11,11 @@ import { SignUpPrompt } from '@/components/auth/SignUpPrompt';
 import { SocialLoginButtons } from '@/components/auth/SocialLoginButtons';
 import { EntryFrame } from '@/components/entry/EntryFrame';
 import { LegalLinks } from '@/components/entry/LegalLinks';
+import { RetryNotice } from '@/components/entry/RetryNotice';
 import { useConfirmLogoutDiscard } from '@/components/entry/use-confirm-logout-discard';
 import { Button } from '@/components/ui/button';
 import { FieldGroup, FieldSeparator } from '@/components/ui/field';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Spinner } from '@/components/ui/spinner';
 import { isAuthPagePath } from '@/core/auth/auth-intent';
 import { safeNextPath, withHash } from '@/core/auth/next-path';
 import { invitePath } from '@/core/utils/invite-token';
@@ -212,23 +212,14 @@ export function LoginClient({ appOrigin }: { appOrigin: string }) {
 				{accountSwitchError && <ErrorBox>{accountSwitchError}</ErrorBox>}
 				<StartNotices search={searchParams.toString()} signedIn={false} />
 				{(authState === 'error' || (retried && authState === 'loading')) && (
-					<div className="flex flex-col gap-2">
-						<ErrorBox>{t('authCheckFailed')}</ErrorBox>
-						<Button
-							variant="outline"
-							focusableWhenDisabled
-							disabled={retried}
-							aria-busy={retried}
-							className="aria-disabled:pointer-events-none aria-disabled:opacity-50"
-							onClick={() => {
-								setRetried(true);
-								retryAuth();
-							}}
-						>
-							{retried && <Spinner data-icon="inline-start" aria-hidden />}
-							{retried ? te('public.rechecking') : te('public.recheck')}
-						</Button>
-					</div>
+					<RetryNotice
+						message={t('authCheckFailed')}
+						loading={retried}
+						onRetry={() => {
+							setRetried(true);
+							retryAuth();
+						}}
+					/>
 				)}
 				{authState === 'loading' ? (
 					<output aria-live="polite" aria-label={t('authChecking')} className="flex flex-col gap-4">

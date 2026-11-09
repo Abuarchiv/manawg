@@ -6,7 +6,6 @@ import { db, wgInvites, wgMembers, wgs } from '@/core/db';
 import { assertAccountCanAcquireMembership } from '@/core/db/account-deletion';
 import { responseCodec, type WriteOutcome, withIdempotentWrite } from '@/core/db/idempotent-write';
 import { releaseMemberName } from '@/core/db/member-names';
-import { LIMITS } from '@/core/db/schema';
 import { type DbTransaction, TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { inviteStatus } from '@/core/db/wg-invites';
 import { isWgAdmin } from '@/core/guards/admin';
@@ -29,7 +28,7 @@ import { inheritedMailPrefs } from '@/core/mail/unsubscribe';
 import { checkRateLimit, clientIpKey, wgWriteLimiter } from '@/core/rate-limit';
 import { isInviteToken } from '@/core/utils/invite-token';
 import type { Locale } from '@/shared/i18n/locale';
-import { MAX_MEMBERS_PER_WG } from '@/shared/lib/limits';
+import { MAX_MEMBERS_PER_WG, MEMBER_NAME_MAX_LENGTH } from '@/shared/lib/limits';
 import { isUniqueMemberNameViolation } from './unique-name-violation';
 
 // GET pagination: the listing must never degenerate into an unbounded SELECT.
@@ -102,7 +101,7 @@ export const GET = withWgRoute('members GET', async (req, { code }) => {
 });
 
 const joinMemberSchema = z.object({
-	name: z.string().trim().min(1).max(LIMITS.NAME_MAX),
+	name: z.string().trim().min(1).max(MEMBER_NAME_MAX_LENGTH),
 	color: z.string().trim().max(16).nullish(),
 	inviteToken: z.string().trim().max(64).optional(),
 });
