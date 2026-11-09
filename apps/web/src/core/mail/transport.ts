@@ -111,7 +111,13 @@ function createResendTransport(apiKey: string, from: string, prefix: string): Ma
 				body: JSON.stringify(payload),
 				signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
 			});
-			return { response, body: await response.json().catch(() => null) };
+			const body: unknown = await response.json().catch(() => undefined);
+			// A 2xx whose body cannot be read (a timeout mid-body) was accepted by the provider;
+			// retrying under a new Idempotency-Key would deliver the mail twice.
+			if (body === undefined && response.ok) {
+				return { failure: { kind: 'failed', error: 'unreadable_response', unconfirmed: true } };
+			}
+			return { response, body: body ?? null };
 		} catch (error) {
 			const timedOut = error instanceof Error && error.name === 'TimeoutError';
 			return {
