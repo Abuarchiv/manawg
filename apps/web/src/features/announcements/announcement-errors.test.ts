@@ -19,7 +19,7 @@ test('create errors keep their German texts', () => {
 		'Beitrag konnte nicht gespeichert werden.',
 	);
 	assert.equal(
-		renderMessage(de, announcementCreateError('Netzwerkfehler')),
+		renderMessage(de, announcementCreateError('network_error')),
 		'Beitrag konnte nicht gespeichert werden: Prüfe deine Verbindung und versuche es erneut.',
 	);
 });

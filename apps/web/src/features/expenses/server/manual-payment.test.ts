@@ -107,7 +107,7 @@ test('a netted debt is recorded as one completed manual payment for the whole ne
 
 test('a net amount that changed since the review records nothing', async () => {
 	const { tx, inserted } = fakeTx(datasets([{ id: B }]));
-	const result = await recordCashPayment(tx, WG, B, { ...input, expectedNetCents: 900 });
+	const result = await recordCashPayment(tx, WG, B, { ...input, expectedNetCents: 900 }, 'Ben');
 	assert.equal(result.status, 409);
 	assert.equal(result.context?.kind, 'changed');
 	assert.equal(inserted.length, 0);
@@ -115,14 +115,20 @@ test('a net amount that changed since the review records nothing', async () => {
 
 test('a debt that does not exist records nothing', async () => {
 	const { tx, inserted } = fakeTx(datasets([{ id: A }]));
-	const result = await recordCashPayment(tx, WG, A, { ...input, fromMemberId: A, toMemberId: B });
+	const result = await recordCashPayment(
+		tx,
+		WG,
+		A,
+		{ ...input, fromMemberId: A, toMemberId: B },
+		'Anna',
+	);
 	assert.equal(result.context?.kind, 'changed');
 	assert.equal(inserted.length, 0);
 });
 
 test('a moved-out caller is refused', async () => {
 	const { tx, inserted } = fakeTx(datasets([]));
-	const result = await recordCashPayment(tx, WG, B, input);
+	const result = await recordCashPayment(tx, WG, B, input, 'Ben');
 	assert.equal(result.status, 401);
 	assert.equal(result.context?.kind, 'member_deactivated');
 	assert.equal(inserted.length, 0);
@@ -141,7 +147,7 @@ test('a moved-out counterparty can be paid in cash', async () => {
 test('a member outside the WG is refused', async () => {
 	const stranger = '44444444-4444-4444-8444-444444444444';
 	const { tx, inserted } = fakeTx(datasets([{ id: B }]));
-	const result = await recordCashPayment(tx, WG, B, { ...input, toMemberId: stranger });
+	const result = await recordCashPayment(tx, WG, B, { ...input, toMemberId: stranger }, 'Ben');
 	assert.equal(result.context?.kind, 'member_not_in_wg');
 	assert.equal(inserted.length, 0);
 });
@@ -189,7 +195,7 @@ test('voiding is refused for outsiders, missing and voided payments', async () =
 	] as const;
 	for (const [kind, data, caller, status] of cases) {
 		const { tx, inserted, updated } = fakeTx(data.map((rows) => [...rows]));
-		const result = await voidCashPayment(tx, WG, caller, PAYMENT);
+		const result = await voidCashPayment(tx, WG, caller, PAYMENT, 'Caller');
 		assert.equal(result.context?.kind, kind);
 		assert.equal(result.status, status);
 		assert.equal(inserted.length + updated.length, 0);

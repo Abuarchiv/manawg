@@ -299,7 +299,7 @@ test('chat errors keep their own codes and use the shared buckets with a per-act
 	assert.equal(text('edit', 'message_deleted'), 'Diese Nachricht wurde gelöscht.');
 	assert.match(text('edit', 'edit_not_allowed'), /15 Minuten nach dem Senden/);
 	assert.equal(
-		text('send', 'Netzwerkfehler'),
+		text('send', 'network_error'),
 		'Nachricht konnte nicht gesendet werden: Prüfe deine Verbindung und versuche es erneut.',
 	);
 	assert.match(
@@ -316,7 +316,7 @@ test('chat errors keep their own codes and use the shared buckets with a per-act
 test('chat errors render English', () => {
 	const en = serverRootT('en');
 	assert.equal(
-		renderMessage(en, explainChatError('send', 'Netzwerkfehler')),
+		renderMessage(en, explainChatError('send', 'network_error')),
 		'The message could not be sent: Check your connection and try again.',
 	);
 	assert.equal(

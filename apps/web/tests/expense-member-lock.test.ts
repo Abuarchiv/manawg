@@ -147,7 +147,7 @@ test('writeImport refuses a mapped member who moved out and writes nothing', { s
 		};
 		await assert.rejects(
 			database.transaction((tx) => writeImport(tx as unknown as DbTransaction, input)),
-			{ message: 'member_not_in_wg' },
+			{ code: 'member_not_in_wg' },
 		);
 		assert.equal(await countRows(database, wgId), 0);
 		const imports = await database

@@ -216,10 +216,16 @@ test('a debt that only exists through a third member settles nothing and says wh
 
 const record = (wgId: string, callerId: string, input: Record<string, unknown>) =>
 	database.transaction((tx) =>
-		recordCashPayment(tx as never, wgId, callerId, { currency: 'EUR', ...input } as never),
+		recordCashPayment(
+			tx as never,
+			wgId,
+			callerId,
+			{ currency: 'EUR', ...input } as never,
+			'Caller',
+		),
 	);
 const voidPayment = (wgId: string, callerId: string, paymentId: string) =>
-	database.transaction((tx) => voidCashPayment(tx as never, wgId, callerId, paymentId));
+	database.transaction((tx) => voidCashPayment(tx as never, wgId, callerId, paymentId, 'Caller'));
 const paymentStatus = async (paymentId: string) =>
 	(
 		await database

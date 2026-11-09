@@ -16,10 +16,10 @@ const HTTP_SERVER_ERROR = 500;
 
 /** `error` that `apiFetch` reports with status 0 when the request never got an answer. */
 // i18n-ignore internal error code, never displayed
-export const NETWORK_ERROR_CODE = 'Netzwerkfehler';
+export const NETWORK_ERROR_CODE = 'network_error';
 /** `error` that `apiFetch` reports with status 0 when the answer was not readable JSON. */
 // i18n-ignore internal error code, never displayed
-export const INVALID_RESPONSE_CODE = 'Unerwartete Serverantwort';
+export const INVALID_RESPONSE_CODE = 'invalid_response';
 
 export function isNetworkError(code: string | null, status?: number): boolean {
 	return status === 0 || code === NETWORK_ERROR_CODE || code === 'Failed to fetch';
