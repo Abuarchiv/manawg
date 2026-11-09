@@ -114,7 +114,7 @@ export function SettlementReviewDialog({
 			>
 				<AlertDialogHeader className="place-items-start text-left">
 					<AlertDialogTitle>{t('title')}</AlertDialogTitle>
-					<AlertDialogDescription render={<div />} className="w-full">
+					<AlertDialogDescription render={<div />} className="w-full" aria-live="polite">
 						{preview ? (
 							t('body', {
 								payerSelf: debt.fromId === currentMemberId ? 'yes' : 'no',
@@ -124,13 +124,10 @@ export function SettlementReviewDialog({
 								payee: debt.toName,
 							})
 						) : (
-							<span
-								className="flex flex-col gap-1.5"
-								role="status"
-								aria-label={tSettle('checking')}
-							>
-								<Skeleton className="h-4 w-full" />
-								<Skeleton className="h-4 w-2/3" />
+							<span className="flex flex-col gap-1.5">
+								<span className="sr-only">{tSettle('checking')}</span>
+								<Skeleton className="h-4 w-full" aria-hidden />
+								<Skeleton className="h-4 w-2/3" aria-hidden />
 							</span>
 						)}
 					</AlertDialogDescription>
@@ -175,7 +172,7 @@ export function SettlementReviewDialog({
 						<AlertDescription>{t('noShares')}</AlertDescription>
 					</Alert>
 				)}
-				{preview && (
+				{preview && splits.length > 0 && (
 					<Collapsible>
 						<CollapsibleTrigger
 							render={
@@ -196,7 +193,6 @@ export function SettlementReviewDialog({
 						<CollapsiblePanel>
 							<div className="flex flex-col gap-2 pt-2 text-xs text-muted-foreground">
 								<p>{t('checkedNote')}</p>
-								{sharesCoverPart && <p>{t('cashNote', { amount: money(preview.netCents) })}</p>}
 							</div>
 						</CollapsiblePanel>
 					</Collapsible>
@@ -217,20 +213,15 @@ export function SettlementReviewDialog({
 						</Button>
 					)}
 					{showCash && (
-						<>
-							{sharesCoverPart && (
-								<p className="text-xs text-muted-foreground">{t('cashDiffers')}</p>
-							)}
-							<Button
-								variant={sharesCoverPart ? 'outline' : 'default'}
-								className="h-auto min-h-11 whitespace-normal py-2 leading-snug"
-								disabled={settling}
-								onClick={() => void settleCash()}
-							>
-								{settling && <Spinner data-icon="inline-start" />}
-								{settling ? t('saving') : t('recordCash', { amount: money(preview.netCents) })}
-							</Button>
-						</>
+						<Button
+							variant={sharesCoverPart ? 'outline' : 'default'}
+							className="h-auto min-h-11 whitespace-normal py-2 leading-snug"
+							disabled={settling}
+							onClick={() => void settleCash()}
+						>
+							{settling && <Spinner data-icon="inline-start" />}
+							{settling ? t('saving') : t('recordCash', { amount: money(preview.netCents) })}
+						</Button>
 					)}
 					{preview && preview.settleableCents > 0 && (
 						<Button

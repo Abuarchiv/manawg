@@ -69,6 +69,7 @@ export function useDebtSettlement({
 	const [preview, setPreview] = useState<SettlementPreview | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const settlingRef = useRef(false);
+	const reviewIdRef = useRef(0);
 	const settlementRequestRef = useRef<PendingRequest | null>(null);
 	const cashRequestRef = useRef<PendingRequest | null>(null);
 	const endpoint = `/api/wg/${encodeURIComponent(shareCode)}/expenses/settle-batch`;
@@ -77,6 +78,7 @@ export function useDebtSettlement({
 	async function review(): Promise<void> {
 		if (settlingRef.current) return;
 		settlingRef.current = true;
+		const reviewId = ++reviewIdRef.current;
 		setReviewing(true);
 		setError(null);
 		// The dialog opens at once with a skeleton; its amounts come from the preview only.
@@ -88,6 +90,8 @@ export function useDebtSettlement({
 				`${endpoint}?${new URLSearchParams({ fromMemberId: debt.fromId, toMemberId: debt.toId, currency: normalizeCurrency(debt.currency) })}`,
 				{ memberId: currentMemberId },
 			);
+			// A result for a review the user already closed is dropped.
+			if (reviewId !== reviewIdRef.current) return;
 			if (res.ok) {
 				setPreview(res.data);
 			} else {
@@ -95,8 +99,10 @@ export function useDebtSettlement({
 				toast.error(t('checkFailed'));
 			}
 		} finally {
-			settlingRef.current = false;
-			setReviewing(false);
+			if (reviewId === reviewIdRef.current) {
+				settlingRef.current = false;
+				setReviewing(false);
+			}
 		}
 	}
 
@@ -217,7 +223,15 @@ export function useDebtSettlement({
 	function setReviewDialogOpen(open: boolean): void {
 		if (settling) return;
 		setReviewOpen(open);
-		if (!open) setError(null);
+		if (!open) {
+			setError(null);
+			if (reviewing) {
+				// Abandon the pending preview so the row button is usable again at once.
+				reviewIdRef.current++;
+				settlingRef.current = false;
+				setReviewing(false);
+			}
+		}
 	}
 
 	return {

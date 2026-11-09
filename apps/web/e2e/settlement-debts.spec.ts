@@ -377,7 +377,7 @@ test.describe('debt settle error notice', () => {
 					currency: 'EUR',
 					netCents,
 					settleableCents: 1000,
-					remainingCents: 0,
+					remainingCents: netCents - 1000,
 					splits: [{ id: 'split-rent', expenseId: 'expense-rent', amountCents: 1000 }],
 				},
 			});
@@ -393,6 +393,12 @@ test.describe('debt settle error notice', () => {
 		const dialog = page.getByRole('alertdialog', { name: 'Bereits erfolgte Zahlung bestätigen' });
 		await expect(dialog).toBeVisible();
 		await expect(dialog.getByRole('button', { name: /Prüft/ })).toBeDisabled();
+		// Cancelling mid-load frees the row button at once.
+		await dialog.getByRole('button', { name: 'Abbrechen' }).click();
+		await expect(dialog).not.toBeVisible();
+		await expect(page.getByRole('button', { name: 'Ausgleichen' })).toBeEnabled();
+		await page.getByRole('button', { name: 'Ausgleichen' }).click();
+		await expect(dialog).toBeVisible();
 		release();
 
 		// Equal amounts: one primary action, notes behind "Details".
@@ -406,7 +412,7 @@ test.describe('debt settle error notice', () => {
 		await dialog.getByRole('button', { name: 'Abbrechen' }).click();
 		await expect(dialog).not.toBeVisible();
 
-		// A larger net balance adds the cash alternative with its one-line explanation.
+		// A larger net balance adds the cash alternative next to the open-remainder note.
 		netCents = 1500;
 		await page.getByRole('button', { name: 'Ausgleichen' }).click();
 		await expect(
@@ -415,7 +421,7 @@ test.describe('debt settle error notice', () => {
 		await expect(
 			dialog.getByRole('button', { name: /Gesamten Saldo 15,00 € bar eintragen/ }),
 		).toBeVisible();
-		await expect(dialog.getByText('Der Saldo ist höher als diese Anteile.')).toBeVisible();
+		await expect(dialog.getByText('5,00 € des verrechneten Saldos')).toBeVisible();
 	});
 
 	test('cancelling the settle-confirmation dialog clears a failed settle attempt error', async ({

@@ -92,12 +92,9 @@ export default {
 	review: {
 		title: 'Confirm a payment already made',
 		body: 'Only confirm if {payerSelf, select, yes {you have already paid {payee} {amount}} other {{payer} has already paid {payeeSelf, select, yes {you} other {{payee}}} {amount}}}. No money is transferred.',
-		cashNote:
-			'“Record the full balance as cash” confirms the whole combined balance of {amount} instead.',
 		sharesLabel: 'Expense shares covered',
 		sharesToggle: 'Show {count} expense shares',
 		details: 'Details',
-		cashDiffers: 'The balance is higher than these shares. You can record all of it as cash.',
 		expense: 'Expense',
 		offset: 'Offset against what they owe you',
 		currentShare: 'Current open share',

@@ -93,12 +93,9 @@ export default {
 	review: {
 		title: 'Confirma un pago ya realizado',
 		body: 'Confirma solo si {payerSelf, select, yes {ya has pagado {amount} a {payee}} other {{payeeSelf, select, yes {{payer} ya te ha pagado {amount}} other {{payer} ya ha pagado {amount} a {payee}}}}}. No se transfiere dinero.',
-		cashNote:
-			'“Registrar el saldo completo como efectivo” confirma en su lugar todo el saldo combinado de {amount}.',
 		sharesLabel: 'Partes de gastos cubiertas',
 		sharesToggle: 'Ver {count} partes de gastos',
 		details: 'Detalles',
-		cashDiffers: 'El saldo es mayor que estas partes. Puedes registrarlo todo en efectivo.',
 		expense: 'Gasto',
 		offset: 'Compensado con lo que te debe',
 		currentShare: 'Parte pendiente actual',
