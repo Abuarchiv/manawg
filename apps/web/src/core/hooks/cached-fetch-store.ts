@@ -10,7 +10,6 @@ import { captureException } from '@/core/infra/capture-client';
 
 export interface CachedFetchOptions {
 	memberId?: string | undefined;
-	headers?: HeadersInit | undefined;
 }
 
 export interface CachedFetchError {
@@ -128,7 +127,6 @@ function startFetch<T>(key: string, url: string, options: CachedFetchOptions): P
 
 	const request = apiFetch<T>(url, {
 		...(options.memberId === undefined ? {} : { memberId: options.memberId }),
-		...(options.headers === undefined ? {} : { headers: options.headers }),
 	})
 		.then((result) => {
 			const current = readCachedSnapshot<T>(key);
