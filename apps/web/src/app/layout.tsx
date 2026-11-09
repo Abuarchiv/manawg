@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
 import { headers } from 'next/headers';
-import Script from 'next/script';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages, getTranslations } from 'next-intl/server';
 import { FunnelBeacon } from '@/components/app/FunnelBeacon';
@@ -44,6 +43,8 @@ const jetbrainsMono = localFont({
 	// Amounts only: not worth 31 kB on the critical path of every first paint.
 	preload: false,
 });
+
+const INSTALL_PROMPT_CATCHER_SCRIPT = `(function(){window.__manawgDeferredInstallEvent=null;window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__manawgDeferredInstallEvent=e;window.dispatchEvent(new CustomEvent('manawg:install-ready'));});})();`;
 
 const appUrl = getAppUrl();
 
@@ -159,12 +160,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 				<meta name="apple-mobile-web-app-status-bar-style" content="black" />
 				<meta name="apple-mobile-web-app-title" content="ManaWG" />
 				<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-				{/* Catch the beforeinstallprompt event very early, before React mounts.
-				    The browser fires it only once; without this catcher, components
-				    that mount late lose it entirely. */}
-				<Script id="manawg-install-ready" strategy="beforeInteractive">
-					{`(function(){if(typeof window==='undefined')return;window.__manawgDeferredInstallEvent=null;window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__manawgDeferredInstallEvent=e;window.dispatchEvent(new CustomEvent('manawg:install-ready'));});})();`}
-				</Script>
+				{/* Catch the beforeinstallprompt event before React mounts: the browser fires it only once.
+				    A plain inline script, because next/script beforeInteractive waits for the runtime chunks. */}
+				<script
+					nonce={nonce}
+					suppressHydrationWarning
+					// biome-ignore lint/security/noDangerouslySetInnerHtml: static constant, no dynamic data
+					dangerouslySetInnerHTML={{ __html: INSTALL_PROMPT_CATCHER_SCRIPT }}
+				/>
 				{/* Anti-flicker theme bootstrap. A plain inline script in <head> runs before first paint;
             next/script beforeInteractive only queues it until the runtime chunks have loaded, so
             slow networks showed a white page on dark devices. The browser hides the nonce attribute
