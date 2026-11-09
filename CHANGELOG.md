@@ -16,6 +16,8 @@ settled.
 
 ### Fixed
 
+- The structured data (JSON-LD) of the app now lists all supported interface languages instead
+  of German only.
 - Spanish shopping entries such as "2 kg de arroz" or "2 l de leche" no longer keep the "de" in the
   item name after a metric unit.
 

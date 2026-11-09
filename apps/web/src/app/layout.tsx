@@ -12,7 +12,7 @@ import { PwaRegister } from '@/components/app/PwaRegister';
 import { ThemeProvider } from '@/components/app/ThemeProvider';
 import { GoogleSignInProvider } from '@/components/auth/google-sign-in';
 import { SplashScreen } from '@/components/brand/SplashScreen';
-import { htmlLang } from '@/shared/i18n/locale';
+import { htmlLang, supportedHtmlLangs } from '@/shared/i18n/locale';
 import { pickMessages, ROOT_CLIENT_NAMESPACES } from '@/shared/i18n/root-client-messages';
 import { getAppUrl } from '@/shared/lib/app-url';
 import { APP_SCHEMA_ID, IS_OFFICIAL_INSTANCE, LANDING_SCHEMA_IDS } from '@/shared/lib/landing-url';
@@ -65,7 +65,7 @@ const softwareApplicationSchema = {
 	url: appUrl,
 	applicationCategory: 'LifestyleApplication',
 	operatingSystem: 'Web',
-	inLanguage: 'de-DE',
+	inLanguage: supportedHtmlLangs(),
 	isAccessibleForFree: true,
 	offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' },
 	publisher: { '@id': LANDING_SCHEMA_IDS.organisation },
