@@ -40,8 +40,9 @@ export default {
 		age: '{days, plural, =0 {Ältester Posten von heute.} one {Ältester Posten # Tag alt.} other {Ältester Posten # Tage alt.}}',
 		netted:
 			'Die neuesten Posten. Zahlungen und Ausgaben in die andere Richtung sind im Betrag oben schon verrechnet.',
-		oneClick: 'Ein Klick, und ihr seid quitt. {creditor} sieht es sofort in der App.',
-		button: 'Jetzt ausgleichen',
+		oneClick:
+			'Sobald du bezahlt hast, trag die Zahlung in der App ein. {creditor} sieht sie dort sofort.',
+		button: 'Ausgaben öffnen',
 		footer:
 			'Erinnerungen kommen höchstens alle zwei Tage von derselben Person und nur, wenn du sie eingeschaltet hast.',
 	},

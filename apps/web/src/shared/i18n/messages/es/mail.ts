@@ -42,8 +42,9 @@ export default {
 		age: '{days, plural, =0 {El gasto más antiguo es de hoy.} one {El gasto más antiguo tiene # día.} other {El gasto más antiguo tiene # días.}}',
 		netted:
 			'Los gastos más recientes. Los pagos y gastos en sentido contrario ya están descontados del importe de arriba.',
-		oneClick: 'Con un clic quedáis en paz. {creditor} lo ve en la app al instante.',
-		button: 'Saldar ahora',
+		oneClick:
+			'En cuanto hayas pagado, registra el pago en la app. {creditor} lo ve allí al instante.',
+		button: 'Abrir gastos',
 		footer:
 			'La misma persona puede enviarte un recordatorio como máximo una vez cada dos días, y solo si los has activado.',
 	},
