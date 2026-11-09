@@ -47,7 +47,7 @@ const ROW_CLASS = cn(CALENDAR_ROW_CLASS, 'pr-3 pl-1');
 
 type Translate = ReturnType<typeof useTranslations<'events'>>;
 
-/** Short interval like "wöchentlich"; more complex rules are labeled generically as "wiederkehrend". */
+/** Short interval label for simple rules; more complex rules get the generic "repeating" label. */
 function recurrenceLabel(
 	rule: string | null | undefined,
 	t: Translate,

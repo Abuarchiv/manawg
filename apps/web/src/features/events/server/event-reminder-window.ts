@@ -74,7 +74,7 @@ function recurrenceRawStartAtIndex(
 		const anchorWeekStart = startMs - anchorWeekday * MS_PER_DAY;
 		return anchorWeekStart + (weekBlock * 7 + weekday) * MS_PER_DAY;
 	}
-	// Same anchor-clamped stepping as the expansion in events.ts, so a reminder
+	// Same anchor-clamped stepping as the expansion in event-recurrence.ts, so a reminder
 	// lands on the occurrence the calendar shows (31st → 30th, 29.02 → 28.02).
 	if (rule.freq === 'MONTHLY') {
 		return addMonthsFromAnchor(anchor, anchor.getUTCDate(), rule.interval * index).getTime();
