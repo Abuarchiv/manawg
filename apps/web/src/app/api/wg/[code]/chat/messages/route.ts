@@ -19,9 +19,9 @@ import { badRequest, HTTP, rateLimitedReplayResponse, unauthorized } from '@/cor
 import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
 import { readListLimit } from '@/core/infra/env';
-import { logApiError } from '@/core/infra/observability';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { chatMessageLimiter, checkRateLimit } from '@/core/rate-limit';
+import { persistWarningOrDrop } from '@/core/replay-warning';
 import {
 	CHAT_BODY_MAX,
 	CHAT_REFRESH_BATCH_SIZE,
@@ -282,23 +282,14 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 				? 'notification_delivery_failed'
 				: null;
 	if (warning && key) {
-		try {
-			const target = {
-				match: [{ path: ['body', 'message', 'id'], equals: created.id }],
-				warningPath: ['body', 'warning'],
-				replaces: [null, warning],
-			};
-			if (!(await setReplayWarning(scope, key, target, warning))) {
-				logApiError(
-					'[chat/messages] replay warning persistence failed',
-					new Error('replay_row_missing'),
-				);
-				warning = null;
-			}
-		} catch (err) {
-			logApiError('[chat/messages] replay warning persistence failed', err);
-			warning = null;
-		}
+		const target = {
+			match: [{ path: ['body', 'message', 'id'], equals: created.id }],
+			warningPath: ['body', 'warning'],
+			replaces: [null, warning],
+		};
+		warning = await persistWarningOrDrop('[chat/messages]', warning, (w) =>
+			setReplayWarning(scope, key, target, w),
+		);
 	}
 	return NextResponse.json({ message: created, mentions: mentionIds, warning });
 });

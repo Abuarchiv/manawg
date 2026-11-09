@@ -8,8 +8,8 @@ import { withWgRoute } from '@/core/guards/with-wg-route';
 import { badRequest, forbidden, rateLimitResponse, serverError } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
-import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, expensesReadLimiter, wgWriteLimiter } from '@/core/rate-limit';
+import { persistWarningOrDrop } from '@/core/replay-warning';
 import { isAllowedImageUrlForWg } from '@/core/validators/image-url';
 import { checkPaidByGuard } from '@/features/expenses/paid-by-guard';
 import {
@@ -189,21 +189,13 @@ export const POST = withWgRoute('expenses POST', async (req, { code }) => {
 	});
 	const written = result.body as ExpenseCreateResponseBody;
 	if (!key || warning === null) return NextResponse.json({ ...written, warning });
-	try {
-		const persisted = await setReplayWarning(
-			scope,
-			key,
-			{
-				match: [{ path: ['expense', 'id'], equals: created.id }],
-				warningPath: ['warning'],
-				replaces: [null],
-			},
-			warning,
-		);
-		if (persisted) return NextResponse.json({ ...written, warning });
-		logApiError('[expenses POST] warning replay update missed', new Error('replay_warning_missed'));
-	} catch (err) {
-		logApiError('[expenses POST] warning replay update failed', err);
-	}
-	return NextResponse.json(written);
+	const target = {
+		match: [{ path: ['expense', 'id'], equals: created.id }],
+		warningPath: ['warning'],
+		replaces: [null],
+	};
+	const stored = await persistWarningOrDrop('[expenses POST]', warning, (w) =>
+		setReplayWarning(scope, key, target, w),
+	);
+	return NextResponse.json({ ...written, warning: stored });
 });

@@ -36,10 +36,10 @@ import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { badRequest, conflict, rateLimitedReplayResponse } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
-import { logApiError } from '@/core/infra/observability';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { clampTapTime } from '@/core/offline/replay-retention';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
+import { persistWarningOrDrop } from '@/core/replay-warning';
 import { imageUrlSchema, isAllowedImageUrlForWg } from '@/core/validators/image-url';
 import { tapTimeSchema } from '@/core/validators/tap-time';
 import { announcementPushTitle } from '@/features/announcements/announcement-push-title';
@@ -370,19 +370,11 @@ export const POST = withWgRoute('announcements POST', async (req, { code }) => {
 		excludeMemberId: auth.member.memberId,
 	});
 	let warning: AnnouncementCreateWarning = delivery.warning;
-	if (warning && outcome.key) {
-		try {
-			if (!(await persistReplayWarning(scope, outcome.key, item.id, warning))) {
-				logApiError(
-					'[announcements POST] replay warning persistence failed',
-					new Error('replay_row_missing'),
-				);
-				warning = null;
-			}
-		} catch (err) {
-			logApiError('[announcements POST] replay warning persistence failed', err);
-			warning = null;
-		}
+	const replayKey = outcome.key;
+	if (warning && replayKey) {
+		warning = await persistWarningOrDrop('[announcements POST]', warning, (w) =>
+			persistReplayWarning(scope, replayKey, item.id, w),
+		);
 	}
 	return NextResponse.json({ announcement: item, warning });
 });

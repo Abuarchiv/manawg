@@ -9,10 +9,10 @@ import { badRequest, conflict, notFound, rateLimitResponse } from '@/core/http/a
 import { parseBody } from '@/core/http/parse-body';
 import { requestLocale } from '@/core/i18n/request-locale';
 import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
-import { logApiError } from '@/core/infra/observability';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import type { NotificationWarning } from '@/core/notifications/notification-warning';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
+import { persistWarningOrDrop } from '@/core/replay-warning';
 import { INVENTORY_LIMITS } from '@/features/inventory/inventory';
 import { consumeInventoryMutation } from '@/features/inventory/server/consume-mutation';
 
@@ -125,22 +125,14 @@ export const POST = withWgRoute<{ id: string }>('inventory consume', async (req,
 		}));
 	}
 	if (key && warning !== null) {
-		try {
-			const persisted = await setReplayWarning(
-				scope,
-				key,
-				{
-					match: [{ path: ['item', 'id'], equals: updated.id }],
-					warningPath: ['warning'],
-					replaces: [null],
-				},
-				warning,
-			);
-			if (!persisted) throw new Error('replay_row_missing');
-		} catch (warningError) {
-			logApiError('[inventory/consume] replay warning persistence failed', warningError);
-			warning = null;
-		}
+		const target = {
+			match: [{ path: ['item', 'id'], equals: updated.id }],
+			warningPath: ['warning'],
+			replaces: [null],
+		};
+		warning = await persistWarningOrDrop('[inventory/consume]', warning, (w) =>
+			setReplayWarning(scope, key, target, w),
+		);
 	}
 
 	const responseBody: ConsumeResponseBody = {
