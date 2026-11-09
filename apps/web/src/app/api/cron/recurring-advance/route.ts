@@ -273,6 +273,9 @@ async function settleInBatches<T, R>(
 	return settled;
 }
 
+/** Must match the `crons` entry in vercel.json (a test compares them). */
+const RECURRING_ADVANCE_SCHEDULE = '10 6 * * *';
+
 export const GET = withCronLogging(
 	'recurring-advance',
 	async (req: NextRequest): Promise<NextResponse> => {
@@ -281,9 +284,6 @@ export const GET = withCronLogging(
 		return monitorCron('recurring-advance', RECURRING_ADVANCE_SCHEDULE, advanceDueTemplates);
 	},
 );
-
-/** Must match the `crons` entry in vercel.json (a test compares them). */
-export const RECURRING_ADVANCE_SCHEDULE = '10 6 * * *';
 
 async function advanceDueTemplates(): Promise<NextResponse> {
 	const now = new Date();

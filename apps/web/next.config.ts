@@ -47,7 +47,6 @@ const nextConfig: NextConfig = {
 		? { output: 'standalone' as const, outputFileTracingRoot: path.join(process.cwd(), '..', '..') }
 		: {}),
 	typescript: {
-		ignoreBuildErrors: false,
 		tsconfigPath: process.env.NEXT_TSCONFIG_PATH ?? 'tsconfig.json',
 	},
 	// Browsers and bookmark importers still ask for /favicon.ico; the metadata icons are PNG/SVG.
@@ -105,8 +104,6 @@ const nextConfig: NextConfig = {
 			]),
 		];
 	},
-	// next/image is not used; without remote patterns /_next/image cannot be
-	// used as a free proxy for arbitrary remote images on this project's quota.
 	async headers() {
 		return [
 			{ source: '/:path*', headers: securityHeaders },

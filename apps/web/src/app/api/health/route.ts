@@ -14,7 +14,7 @@ import { checkRateLimit, clientIpKey, healthLimiter } from '@/core/rate-limit';
  * are switched off, so a deploy that silently lost its Redis or VAPID config is
  * visible without reading logs.
  *
- * It carries its own rate limit because `/api/health` is not in the middleware
+ * It carries its own rate limit because `/api/health` is not in the proxy
  * matcher — without one, an unauthenticated caller could drive a database query
  * per request.
  */
