@@ -75,7 +75,7 @@ export async function recordCashPayment(
 	wgId: string,
 	callerId: string,
 	input: ManualPaymentInput,
-	callerName = '',
+	callerName: string,
 ): Promise<WriteOutcome<unknown, RecordOutcome>> {
 	if (!(await lockActiveCaller(tx, wgId, callerId))) return rejected('member_deactivated');
 
@@ -149,7 +149,7 @@ export async function voidCashPayment(
 	wgId: string,
 	callerId: string,
 	paymentId: string,
-	callerName = '',
+	callerName: string,
 ): Promise<WriteOutcome<unknown, VoidOutcome>> {
 	if (!(await lockActiveCaller(tx, wgId, callerId))) return rejected('member_deactivated');
 
