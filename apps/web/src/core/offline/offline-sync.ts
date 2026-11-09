@@ -48,10 +48,8 @@ import {
 	withOfflineQueueLock,
 } from './offline-store';
 
-/**
- * Replays queued actions under their idempotency keys, one sync at a time per tab, and merges the
- * outcomes back into whatever the queue holds by then (edits and removals from other tabs win).
- */
+// Replays queued actions under their idempotency keys, one sync at a time per tab, and merges the
+// outcomes back into whatever the queue holds by then (edits and removals from other tabs win).
 
 const syncInFlight = new Map<string, Promise<number>>();
 let syncTail: Promise<unknown> = Promise.resolve();
