@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { wgLoadError } from '@/core/guards/load-errors';
 import { refreshCachedFetch } from '@/core/hooks/use-cached-fetch';
 import { useStableCallback } from '@/core/hooks/use-stable-callback';
-import { isNetworkError } from '@/core/http/error-codes';
+import { hideStaleNetworkError } from '@/core/sync/collection-overlay';
 import { useSyncedCollection } from '@/core/sync/use-synced-collection';
 import {
 	groupItemsByCategory,
@@ -50,8 +50,8 @@ export function useInventoryPage(shareCode: string, memberId: string) {
 		describeError: (error) =>
 			render(wgLoadError({ key: 'inventory.load.list' }, error.status, error.error)),
 		// A background refresh, or a network failure with a list on screen, adds no banner.
-		hideError: (error, { silent, hasData }) =>
-			hasData && (silent || isNetworkError(error.error, error.status)),
+		hideError: (error, context) =>
+			(context.silent && context.hasData) || hideStaleNetworkError(error, context),
 	});
 	const loadInventory = inventory.load;
 	const load = useCallback(

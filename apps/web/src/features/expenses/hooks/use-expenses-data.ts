@@ -3,6 +3,7 @@
 import { useCallback, useRef } from 'react';
 import type { ActionNotice } from '@/components/wg/ActionNoticeBanner';
 import { wgLoadError } from '@/core/guards/load-errors';
+import { hideStaleNetworkError } from '@/core/sync/collection-overlay';
 import { type SyncedReloadReason, useSyncedCollection } from '@/core/sync/use-synced-collection';
 import { LIST_REFRESH_INTERVAL_MS } from '@/core/utils/use-visibility-paused-interval';
 import {
@@ -40,6 +41,7 @@ export function useExpensesData({ shareCode, memberId, setActionNotice }: UseExp
 		getId: (expense) => expense.id,
 		describeError: (error) =>
 			t(wgLoadError({ key: 'common.loadError.lead.expenses' }, error.status, error.error)),
+		hideError: hideStaleNetworkError,
 		pollIntervalMs: LIST_REFRESH_INTERVAL_MS,
 		reload,
 		offline: {
@@ -60,6 +62,13 @@ export function useExpensesData({ shareCode, memberId, setActionNotice }: UseExp
 		getId: (template) => template.id,
 		describeError: (error) =>
 			t(wgLoadError({ key: 'expenses.page.loadRecurringLead' }, error.status, error.error)),
+		// Offline with the expenses on screen, a missing template cache is no reason for a banner.
+		// Online, a failed template read with no templates shown still says so.
+		hideError: (error, context) =>
+			hideStaleNetworkError(error, {
+				...context,
+				hasData: context.hasData || (expenses.hasData() && navigator.onLine === false),
+			}),
 		// The expenses collection's mount load, poll and replay reload both lists.
 		pollIntervalMs: null,
 		reload: () => undefined,
