@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { type NextRequest, NextResponse } from 'next/server';
 import { db, wgInvites, wgMembers, wgs } from '@/core/db';
 import { inviteStatus } from '@/core/db/wg-invites';
@@ -19,11 +19,13 @@ function firstName(name: string | null): string | null {
 }
 
 /**
- * Preview of an invitation for a visitor who is not signed in yet: the WG name and who invited,
- * so the sign-up page can say "Mika invites you to Lindenstrasse". The token is the only secret
+ * Preview of an invitation for a visitor who is not signed in yet: the WG name, who invited and
+ * how many members are active, so the sign-up page can say "Mika invites you to Lindenstrasse" and
+ * "3 flatmates already in". The token is the only secret
  * and is never found by guessing (128 bits), so this reveals nothing the link does not. Every
  * token that cannot be used (malformed, unknown, expired, revoked, used up) gets the same bare
- * 404, so the answer cannot tell those cases apart. No members, ids or share code leave here.
+ * 404, so the answer cannot tell those cases apart. No names, ids or share code of members leave
+ * here, only their number.
  */
 export async function GET(req: NextRequest, ctx: RouteCtx<{ token: string }>) {
 	const limited = rateLimitResponse(
@@ -46,6 +48,7 @@ export async function GET(req: NextRequest, ctx: RouteCtx<{ token: string }>) {
 				revokedAt: wgInvites.revokedAt,
 				useCount: wgInvites.useCount,
 				maxUses: wgInvites.maxUses,
+				memberCount: sql<number>`(select count(*)::int from ${wgMembers} where ${wgMembers.wgId} = ${wgInvites.wgId} and ${wgMembers.deactivatedAt} is null)`,
 			})
 			.from(wgInvites)
 			.innerJoin(wgs, eq(wgs.id, wgInvites.wgId))
@@ -57,6 +60,7 @@ export async function GET(req: NextRequest, ctx: RouteCtx<{ token: string }>) {
 			NextResponse.json({
 				wgName: row.wgName,
 				inviterName: row.inviterDeactivatedAt ? null : firstName(row.inviterName),
+				memberCount: row.memberCount,
 			}),
 		);
 	} catch (err) {

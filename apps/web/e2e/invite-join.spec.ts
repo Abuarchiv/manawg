@@ -21,7 +21,7 @@ test.describe('invitation link', () => {
 
 		const linkButton = page.getByRole('button', { name: 'Einladungslink kopieren' });
 		await expect(linkButton).toContainText('/invite/', { timeout: 30_000 });
-		await expect(page.getByText('Er gilt 7 Tage.')).toBeVisible();
+		await expect(page.getByText('Er gilt 14 Tage.')).toBeVisible();
 		const link = (await linkButton.textContent())?.trim() ?? '';
 		expect(link).toMatch(/\/invite\/[A-Za-z0-9_-]{22}$/);
 
@@ -88,6 +88,99 @@ test.describe('invitation link', () => {
 
 			await field.fill('Neu');
 			await expect(page.locator('#join-name-error')).toHaveCount(0);
+		});
+	});
+
+	test.describe('one-tap join with a known account name', () => {
+		const TOKEN = 'fixture-invite-token01';
+
+		async function openJoinPage(page: Page, name: string | null): Promise<void> {
+			await setupMember(page);
+			await mockNoWgs(page);
+			await page.route('**/api/auth/identities', (route) =>
+				route.fulfill({
+					json: { email: 'mira@example.test', hasPassword: false, hasGoogle: false, name },
+				}),
+			);
+			await page.route(`**/api/wg/invites/${TOKEN}`, (route) =>
+				route.fulfill({
+					status: 200,
+					json: { wg: { name: 'Altbau', shareCode: FIXTURE_WG.shareCode } },
+				}),
+			);
+			await page.goto(`/invite/${TOKEN}`);
+		}
+
+		test('joins with the account name in one tap, without a field or a keyboard', async ({
+			page,
+		}) => {
+			let sentName = '';
+			await page.route('**/api/wg/*/members', (route) => {
+				if (route.request().method() !== 'POST') return route.fallback();
+				sentName = (route.request().postDataJSON() as { name: string }).name;
+				return route.fulfill({
+					json: { member: { id: 'm1', name: sentName, role: 'member' } },
+				});
+			});
+			await openJoinPage(page, 'Mira');
+			const join = page.getByRole('button', { name: 'Beitreten als Mira', exact: true });
+			await expect(join).toBeVisible({ timeout: 60_000 });
+			await expect(page.getByLabel('Dein Anzeigename')).toHaveCount(0);
+			expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('INPUT');
+			await join.click();
+			await expect(page).toHaveURL(new RegExp(`/wg/${FIXTURE_WG.shareCode}$`));
+			expect(sentName).toBe('Mira');
+		});
+
+		test('"Namen ändern" opens the field, focused, with the name filled in', async ({ page }) => {
+			await openJoinPage(page, 'Mira');
+			await page
+				.getByRole('button', { name: 'Namen ändern', exact: true })
+				.click({ timeout: 60_000 });
+			const field = page.getByLabel('Dein Anzeigename');
+			await expect(field).toHaveValue('Mira');
+			await expect(field).toBeFocused();
+			await expect(page.getByRole('button', { name: 'Beitreten', exact: true })).toBeVisible();
+		});
+
+		test('a taken account name opens the field with the error', async ({ page }) => {
+			await page.route('**/api/wg/*/members', (route) =>
+				route.fulfill({ status: 409, json: { error: 'name_taken' } }),
+			);
+			await openJoinPage(page, 'Mira');
+			await page
+				.getByRole('button', { name: 'Beitreten als Mira', exact: true })
+				.click({ timeout: 60_000 });
+			await expect(page.locator('#join-name-error')).toContainText(
+				'Der Name ist in dieser WG schon vergeben.',
+			);
+			await expect(page.locator('#join-name')).toBeFocused();
+		});
+
+		test('creating a WG asks for the WG name only when the account name is known', async ({
+			page,
+		}) => {
+			await setupMember(page);
+			await mockNoWgs(page);
+			await page.route('**/api/auth/identities', (route) =>
+				route.fulfill({
+					json: { email: 'anna@example.test', hasPassword: false, hasGoogle: false, name: 'Anna' },
+				}),
+			);
+			await page.goto('/login');
+			await page.getByRole('button', { name: 'Neue WG erstellen', exact: true }).click();
+			await expect(page.getByLabel('WG-Name')).toBeFocused({ timeout: 60_000 });
+			await expect(page.getByLabel('Dein Anzeigename')).toHaveCount(0);
+			await page.getByRole('button', { name: 'Du heißt Anna · ändern' }).click();
+			const field = page.getByLabel('Dein Anzeigename');
+			await expect(field).toHaveValue('Anna');
+			await expect(field).toBeFocused();
+		});
+
+		test('shows the field at once when the account has no name', async ({ page }) => {
+			await openJoinPage(page, null);
+			await expect(page.getByLabel('Dein Anzeigename')).toBeVisible({ timeout: 60_000 });
+			await expect(page.getByRole('button', { name: 'Namen ändern' })).toHaveCount(0);
 		});
 	});
 
@@ -169,6 +262,53 @@ test.describe('invitation link', () => {
 				await expectNoOverflow(page);
 			});
 		}
+
+		test('gives a reason to join and shows how many flatmates are in', async ({ page }) => {
+			await openAsGuest(page, 390, {
+				status: 200,
+				json: { wgName: 'Altbau', inviterName: 'Mika', memberCount: 3 },
+			});
+			await expect(
+				page.getByText('Gemeinsame Ausgaben, Putzplan und Einkaufsliste.', { exact: false }),
+			).toBeVisible({ timeout: 60_000 });
+			await expect(page.getByText('3 Mitbewohner sind schon dabei')).toBeVisible();
+		});
+
+		test('leaves the count out while the inviter is alone', async ({ page }) => {
+			await openAsGuest(page, 390, {
+				status: 200,
+				json: { wgName: 'Altbau', inviterName: 'Mika', memberCount: 1 },
+			});
+			await expect(page.getByText('Ohne Passwort', { exact: false })).toBeVisible({
+				timeout: 60_000,
+			});
+			await expect(page.getByText('schon dabei')).toHaveCount(0);
+		});
+
+		test('an expired link offers a ready-made message to ask for a new one', async ({ page }) => {
+			await page.addInitScript(() => {
+				const written: string[] = [];
+				(window as unknown as { __copied: string[] }).__copied = written;
+				Object.defineProperty(navigator, 'clipboard', {
+					value: { writeText: async (text: string) => void written.push(text) },
+					configurable: true,
+				});
+			});
+			await openAsGuest(page, 390, {
+				status: 404,
+				json: { error: 'invite_unavailable', code: 'invite_unavailable' },
+			});
+			await page
+				.getByRole('button', { name: 'Nachricht kopieren', exact: true })
+				.click({ timeout: 60_000 });
+			await expect(page.getByRole('button', { name: 'Kopiert', exact: true })).toBeVisible();
+			const copied = await page.evaluate(
+				() => (window as unknown as { __copied: string[] }).__copied,
+			);
+			expect(copied).toEqual([
+				'Mein ManaWG-Link ist abgelaufen, schickst du mir bitte einen neuen?',
+			]);
+		});
 
 		test('keeps the generic guest page when the preview is rate limited', async ({ page }) => {
 			await openAsGuest(page, 390, { status: 429, json: { error: 'rate_limited' } });

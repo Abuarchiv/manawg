@@ -23,7 +23,7 @@ interface InviteButtonProps {
 
 type ShareState = 'idle' | 'shared' | 'copied' | 'failed';
 
-/** Creates a fresh 7-day invitation link and hands it to the share sheet or the clipboard. */
+/** Creates a fresh 14-day invitation link and hands it to the share sheet or the clipboard. */
 export function InviteButton({
 	code,
 	memberId,

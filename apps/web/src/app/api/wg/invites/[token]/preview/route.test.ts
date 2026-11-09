@@ -40,7 +40,7 @@ mock.module('@/core/db', {
 		db,
 		withTransaction: async () => undefined,
 		wgInvites: table('wg_invites', ['token', 'wgId', 'createdByMemberId']),
-		wgMembers: table('wg_members', ['id', 'name', 'deactivatedAt']),
+		wgMembers: table('wg_members', ['id', 'wgId', 'name', 'deactivatedAt']),
 		wgs: table('wgs', ['id', 'name', 'shareCode']),
 	},
 });
@@ -80,6 +80,7 @@ const row = (over: Record<string, unknown> = {}) => ({
 	revokedAt: null,
 	useCount: 0,
 	maxUses: 10,
+	memberCount: 3,
 	...over,
 });
 
@@ -92,12 +93,16 @@ function reset(): void {
 	state.rateKeys = [];
 }
 
-test('names the WG and the first name of the inviter, and nothing else', async () => {
+test('names the WG, the first name of the inviter and the number of active members, and nothing else', async () => {
 	reset();
 	state.rows = [row()];
 	const res = await call();
 	assert.equal(res.status, 200);
-	assert.deepEqual(await res.json(), { wgName: 'Lindenstraße', inviterName: 'Mika' });
+	assert.deepEqual(await res.json(), {
+		wgName: 'Lindenstraße',
+		inviterName: 'Mika',
+		memberCount: 3,
+	});
 	assert.equal(res.headers.get('cache-control'), 'no-store');
 	// The query asks for no share code, no ids and no member list.
 	const columns = Object.keys(state.selected[0] ?? {});
@@ -107,22 +112,35 @@ test('names the WG and the first name of the inviter, and nothing else', async (
 test('leaves the inviter out when they are gone or have moved out', async () => {
 	reset();
 	state.rows = [row({ inviterName: null })];
-	assert.deepEqual(await (await call()).json(), { wgName: 'Lindenstraße', inviterName: null });
+	assert.deepEqual(await (await call()).json(), {
+		wgName: 'Lindenstraße',
+		inviterName: null,
+		memberCount: 3,
+	});
 	state.rows = [row({ inviterDeactivatedAt: past })];
-	assert.deepEqual(await (await call()).json(), { wgName: 'Lindenstraße', inviterName: null });
+	assert.deepEqual(await (await call()).json(), {
+		wgName: 'Lindenstraße',
+		inviterName: null,
+		memberCount: 3,
+	});
 });
 
 test('keeps a title or an initial out of the inviter name', async () => {
 	for (const inviterName of ['Dr. Mika', 'M. Muster']) {
 		reset();
 		state.rows = [row({ inviterName })];
-		assert.deepEqual(await (await call()).json(), { wgName: 'Lindenstraße', inviterName: null });
+		assert.deepEqual(await (await call()).json(), {
+			wgName: 'Lindenstraße',
+			inviterName: null,
+			memberCount: 3,
+		});
 	}
 	reset();
 	state.rows = [row({ inviterName: 'Anna-Lena Müller' })];
 	assert.deepEqual(await (await call()).json(), {
 		wgName: 'Lindenstraße',
 		inviterName: 'Anna-Lena',
+		memberCount: 3,
 	});
 });
 

@@ -32,7 +32,7 @@ export function activeInvitesOf(wgId: string) {
 }
 
 /**
- * Inserts a 7-day invitation, or `null` when the WG already holds the maximum of active ones.
+ * Inserts a 14-day invitation, or `null` when the WG already holds the maximum of active ones.
  * Count and insert run behind a row lock on the WG, so two parallel requests cannot both pass
  * the cap.
  */
