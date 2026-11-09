@@ -22,6 +22,19 @@ settled.
   of German only.
 - Spanish shopping entries such as "2 kg de arroz" or "2 l de leche" no longer keep the "de" in the
   item name after a metric unit.
+- The Settle Up import reads split amounts such as "1.234,56" correctly instead of as 1.23.
+- A pause sent to the recurring-expenses collection endpoint pauses the template instead of moving
+  its due date.
+- Signing out with unsent offline changes still asks before discarding them when the last sync
+  attempt fails.
+- Editing an expense keeps what you typed when the member list refreshes in the background.
+- Deleting a WG also removes the stored request replays that still held its text.
+- The agent consent screen shows the host the authorization code is sent to, not the host the
+  client declares for itself.
+- The payment reminder mail no longer promises a one-click settlement; it asks to record the
+  payment in the app.
+- Failed post-commit steps when adding a shopping item, failed chore reminder dispatches and failed
+  receipt scans are now reported with their cause instead of being dropped.
 
 ## [0.2.0] - 2026-11-09
 
