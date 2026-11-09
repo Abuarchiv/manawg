@@ -13,10 +13,11 @@ import type { ShoppingItem } from '@/core/db/schema';
 import { isWgAdmin } from '@/core/guards/admin';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { conflict, forbidden, rateLimitResponse, serverError } from '@/core/http/api-errors';
+import { forbidden, rateLimitResponse, serverError } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
 import { readListLimit } from '@/core/infra/env';
+import { logApiError } from '@/core/infra/observability';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { clampTapTime } from '@/core/offline/replay-retention';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
@@ -94,8 +95,7 @@ export const POST = withWgRoute('shopping POST', async (req, { code }) => {
 	const { wg, member } = auth;
 	const key = readIdempotencyKey(req);
 	const scope = `shopping-create:${wg.id}:${member.memberId}`;
-	// SECURITY: addedBy is always the authenticated caller. Any body-supplied member id is
-	// ignored to prevent attribution spoofing.
+	// addedBy is always the authenticated caller; a body-supplied member id is ignored.
 	const input = {
 		wgId: wg.id,
 		addedByMemberId: member.memberId,
@@ -146,9 +146,10 @@ export const POST = withWgRoute('shopping POST', async (req, { code }) => {
 	try {
 		result = await create();
 	} catch (err) {
-		if (key) return serverError('idempotency_response_pending');
-		if (isOpenShoppingItemDuplicate(err)) return conflict('shopping_item_duplicate');
-		throw err;
+		if (!key) throw err;
+		// With a key every failure is safe to retry, and the claim is freed or expires.
+		logApiError('[shopping POST] create failed', err);
+		return serverError('idempotency_response_pending');
 	}
 	if (result.kind === 'stopped') return result.response;
 	if (result.kind === 'replayed' || !result.context) {
@@ -202,11 +203,7 @@ export const DELETE = withWgRoute('shopping DELETE', async (req, { code }) => {
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;
 	const wgId = auth.wg.id;
-	// SECURITY: this clears every bought row of the whole WG (unlike the
-	// item-level DELETE, which is limited to the item's own adder), so it is
-	// admin-only like the other bulk/override mutations (chores DELETE,
-	// announcement override). The caller's identity is resolved from the
-	// Supabase session by requireWgMember, so the DB role check is the proof.
+	// Clears every bought row of the WG (the item-level DELETE is limited to the item's adder), so admin only.
 	if (!(await isWgAdmin(wgId, auth.member.memberId))) {
 		return forbidden('not_admin', 'not_admin');
 	}
