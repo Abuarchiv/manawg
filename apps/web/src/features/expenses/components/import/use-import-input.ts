@@ -1,8 +1,10 @@
 'use client';
 
+import { useLocale } from 'next-intl';
 import { useRef, useState } from 'react';
 import { MAX_CSV_BYTES } from '@/features/expenses/import-body';
 import { OcrInitializationError, runOcrOnImage } from '@/features/expenses/ocr';
+import type { Locale } from '@/shared/i18n/locale';
 import type { Message } from '@/shared/i18n/message';
 import { decodeCsv, type ImportInputStatus, MAX_IMAGE_BYTES } from './import-wizard-types';
 
@@ -26,6 +28,7 @@ export function useImportInput({
 	setError,
 	clearError,
 }: ImportInputCallbacks) {
+	const locale = useLocale() as Locale;
 	const [rawPayload, setRawPayload] = useState('');
 	const [ocrText, setOcrText] = useState('');
 	const [ocrRunning, setOcrRunning] = useState(false);
@@ -78,7 +81,7 @@ export function useImportInput({
 		setPickedFileName(file.name);
 		setOcrRunning(true);
 		try {
-			const text = await runOcrOnImage(file);
+			const text = await runOcrOnImage(file, undefined, { locale });
 			if (inputRunIdRef.current !== runId) return;
 			setOcrText(text);
 			setRawPayload(text);

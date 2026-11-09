@@ -242,6 +242,18 @@ test('optional runner seam still bypasses Tesseract', async () => {
 	assert.equal(createCalls, 0);
 });
 
+test('only a Spanish interface loads the Spanish model', async () => {
+	const requested: unknown[] = [];
+	setTesseractMock(async (langs) => {
+		requested.push(langs);
+		return { recognize: async () => ({ data: { text: '' } }), terminate: async () => {} };
+	});
+	await runOcrOnImage(new Blob());
+	await runOcrOnImage(new Blob(), undefined, { locale: 'en' });
+	await runOcrOnImage(new Blob(), undefined, { locale: 'es' });
+	assert.deepEqual(requested, ['deu+eng', 'deu+eng', 'spa+deu+eng']);
+});
+
 test('SDK init errors reject promptly and repeated attempts do not spawn another pending worker', async () => {
 	let createCalls = 0;
 	setTesseractMock((_langs, _oem, options) => {

@@ -1,10 +1,17 @@
 import { eurosToCents, parseEuroAmount } from '@/core/utils/amount';
 import { AMOUNT_MAX_CENTS, DESCRIPTION_MAX_LENGTH } from '@/features/expenses/expense-constants';
+import type { Locale } from '@/shared/i18n/locale';
 import { parseDayMonthYear } from './import-csv-helpers';
 import type { ParsedExpense } from './import-parsers';
 import { UNKNOWN_NAME } from './import-types';
 
-const OCR_LANGS = 'deu+eng';
+// A model is fetched only when the worker is created with it. Spanish keeps German and English so
+// that a German receipt scanned on a Spanish-language device still reads as before.
+const OCR_LANGS: Record<Locale, string> = {
+	de: 'deu+eng',
+	en: 'deu+eng',
+	es: 'spa+deu+eng',
+};
 
 // The worker, core and models are served from public/tesseract (scripts/copy-tesseract-assets.mjs).
 // tesseract.js starts the worker from a blob URL, where a relative path would not resolve, so the
@@ -43,6 +50,8 @@ interface TesseractModuleLike {
 }
 
 interface OcrRuntimeOptions {
+	/** The interface language; it picks the recognition models. German when omitted. */
+	locale?: Locale;
 	loadTesseract?: () => Promise<TesseractModuleLike>;
 	initTimeoutMs?: number;
 	recognitionTimeoutMs?: number;
@@ -123,7 +132,7 @@ export async function runOcrOnImage(
 	});
 	const workerPromise = (runtime.loadTesseract ?? loadTesseract)().then((tesseract) => {
 		if (initializationAbandoned) throw new Error('OCR initialization was abandoned.');
-		return tesseract.createWorker(OCR_LANGS, undefined, {
+		return tesseract.createWorker(OCR_LANGS[runtime.locale ?? 'de'], undefined, {
 			...assetPaths(),
 			errorHandler: (reason) => {
 				initializationAbandoned = true;
