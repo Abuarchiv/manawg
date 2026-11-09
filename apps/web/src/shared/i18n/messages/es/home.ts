@@ -53,6 +53,13 @@ export default {
 		descriptionWithRoommates: 'Empieza con tu primer registro.',
 		dismiss: 'Ocultar este aviso de bienvenida para siempre',
 		openShopping: 'Abrir compras',
+		descriptionRoommateIn:
+			'{name} ya está dentro. Empezad con el primer gasto o la primera compra.',
+		dismissSolo: 'Recordármelo más tarde',
+		addExpense: 'Añadir gasto',
+	},
+	soloInvite: {
+		text: 'Todavía estás solo en el piso.',
 	},
 	invite: {
 		shareFailed: 'No se pudo compartir la invitación.',

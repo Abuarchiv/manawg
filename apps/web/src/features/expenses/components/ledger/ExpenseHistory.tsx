@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
 	Empty,
+	EmptyContent,
 	EmptyDescription,
 	EmptyHeader,
 	EmptyMedia,
@@ -13,6 +14,7 @@ import {
 } from '@/components/ui/empty';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { SoloInviteRow } from '@/components/wg/SoloInviteRow';
 import {
 	EXPENSE_HISTORY_HEADING_ID,
 	ExpenseRow,
@@ -84,6 +86,7 @@ export function ExpenseHistory({
 					{t('heading')}
 				</h2>
 			)}
+			{expenseCount > 0 && !showSkeleton && <SoloInviteRow />}
 			{showSkeleton ? (
 				<ExpensesSkeleton />
 			) : loadFailed && expenseCount === 0 ? null : expenseCount === 0 && !initialLoading ? (
@@ -95,6 +98,9 @@ export function ExpenseHistory({
 						<EmptyTitle>{t('emptyTitle')}</EmptyTitle>
 						<EmptyDescription>{t('emptyBody')}</EmptyDescription>
 					</EmptyHeader>
+					<EmptyContent>
+						<SoloInviteRow className="justify-center" />
+					</EmptyContent>
 				</Empty>
 			) : (
 				<div className="flex flex-col gap-4">

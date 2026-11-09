@@ -6,9 +6,11 @@ import { sampleBoundaryContrast } from './support/contrast';
 import {
 	dismissOnboarding,
 	FIXTURE_WG,
+	mockDashboard,
 	mockNoWgs,
 	mockUnreadCount,
 	navigateToFeature,
+	SOLO_WG,
 	setupMember,
 	skipUnlessFixtures,
 } from './support/helpers';
@@ -368,11 +370,13 @@ test.describe('label in name audit', () => {
 	});
 
 	test('new-WG invite card names the visible action first', async ({ page }) => {
+		// Only a solo WG offers the invitation on the Start card.
+		const soloBase = `/api/wg/${SOLO_WG.shareCode}`;
 		await setupMember(page);
-		await page.route(`**${BASE}/dashboard`, (route) => route.fulfill({ json: emptyDashboard }));
-		await mockUnreadCount(page, BASE);
+		await mockDashboard(page, soloBase, emptyDashboard);
+		await mockUnreadCount(page, soloBase);
 
-		await navigateToFeature(page, `/wg/${FIXTURE_WG.shareCode}`);
+		await navigateToFeature(page, `/wg/${SOLO_WG.shareCode}`);
 		await dismissOnboarding(page);
 
 		// WCAG 2.5.3 — the visible "Mitbewohner einladen" text must be the whole

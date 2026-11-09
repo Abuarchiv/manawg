@@ -15,6 +15,14 @@ settled.
 - The self-hosting guide has tested nginx and Traefik reverse-proxy examples with the `.env` values,
   the headers and limits ManaWG needs from a proxy, and a check that the sign-in limit sees each
   visitor separately ([Reverse proxy examples](docs/self-hosting.md#reverse-proxy-examples)).
+- While you are the only person in the flat, a short "invite flatmates" line stays on the Expenses
+  tab, the empty shopping list and the empty cleaning rota. It disappears once someone joins.
+
+### Changed
+
+- Dismissing the Start card while you are alone in the flat only hides it for a week; with
+  flatmates it stays hidden for good as before. Once a flatmate has joined and nothing has been
+  entered yet, the card names them and links to "Add expense" and "Open shopping".
 
 ### Fixed
 

@@ -52,6 +52,12 @@ export default {
 		descriptionWithRoommates: 'Start with your first entry.',
 		dismiss: 'Hide this welcome notice for good',
 		openShopping: 'Open shopping',
+		descriptionRoommateIn: '{name} is in. Start with the first expense or shopping item.',
+		dismissSolo: 'Remind me later',
+		addExpense: 'Add expense',
+	},
+	soloInvite: {
+		text: 'You are still alone in this flat.',
 	},
 	invite: {
 		shareFailed: 'The invitation could not be shared.',

@@ -49,6 +49,12 @@ export default {
 		descriptionWithRoommates: 'Startet mit eurem ersten Eintrag.',
 		dismiss: 'Einstiegshinweis dauerhaft ausblenden',
 		openShopping: 'Einkauf öffnen',
+		descriptionRoommateIn: '{name} ist dabei. Startet mit der ersten Ausgabe oder dem Einkauf.',
+		dismissSolo: 'Später erinnern',
+		addExpense: 'Ausgabe hinzufügen',
+	},
+	soloInvite: {
+		text: 'Du bist noch allein in der WG.',
 	},
 	invite: {
 		shareFailed: 'Einladung konnte nicht geteilt werden.',
