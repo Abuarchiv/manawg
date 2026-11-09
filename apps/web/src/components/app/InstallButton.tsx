@@ -14,7 +14,13 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/components/ui/dialog';
-import { Item, ItemContent, ItemDescription, ItemGroup, ItemMedia } from '@/components/ui/item';
+import {
+	ItemContent,
+	ItemDescription,
+	ItemEntry,
+	ItemGroup,
+	ItemMedia,
+} from '@/components/ui/item';
 import { cn } from '@/shared/lib/cn';
 import {
 	type BeforeInstallEvent,
@@ -131,14 +137,14 @@ export function InstallButton({ variant = 'outline', className, label }: Props) 
 
 function Step({ num, children }: { num: number; children: React.ReactNode }) {
 	return (
-		<Item render={<li />} variant="muted" size="sm" className="flex-nowrap items-start">
+		<ItemEntry variant="muted" size="sm" className="flex-nowrap items-start">
 			<ItemMedia>
 				<Badge variant="secondary">{num}</Badge>
 			</ItemMedia>
 			<ItemContent className="min-w-0">
 				<ItemDescription className="line-clamp-none">{children}</ItemDescription>
 			</ItemContent>
-		</Item>
+		</ItemEntry>
 	);
 }
 
