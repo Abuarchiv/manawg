@@ -20,13 +20,18 @@ type Tx = { write: () => unknown };
 const active = {
 	db: {} as Record<string, (...args: never[]) => unknown>,
 	withTransaction: (async () => undefined) as (operation: (tx: Tx) => unknown) => Promise<unknown>,
-	claimReplaySlot: (async () => ({ won: true })) as () => Promise<unknown>,
+	claimReplaySlot: (async () => ({ won: true })) as (
+		scope: string,
+		key: string,
+		deps: { claim: (scope: string, key: string) => Promise<boolean> },
+	) => Promise<unknown>,
 };
 
 mock.module('@/core/db', {
 	namedExports: {
 		db: {
 			delete: (...args: never[]) => active.db.delete?.(...args),
+			insert: (...args: never[]) => active.db.insert?.(...args),
 			select: (...args: never[]) => active.db.select?.(...args),
 			update: (...args: never[]) => active.db.update?.(...args),
 		},
@@ -46,7 +51,10 @@ mock.module('@/core/guards/api-auth', {
 	},
 });
 mock.module('@/core/guards/replay-slot', {
-	namedExports: { claimReplaySlot: () => active.claimReplaySlot() },
+	namedExports: {
+		claimReplaySlot: (...args: Parameters<typeof active.claimReplaySlot>) =>
+			active.claimReplaySlot(...args),
+	},
 });
 mock.module('@/core/infra/observability', { namedExports: { logApiError: () => undefined } });
 
@@ -57,14 +65,12 @@ function harness() {
 		slot: null as Slot,
 		rows: [] as string[],
 		claims: 0,
-		rateLimited: false,
 		failReplayWrite: false,
 		failCommit: false,
 		warningUpdateSucceeds: true,
 		staleRead: false,
 		warningWhere: '',
 		releaseWhere: '',
-		transientReleaseQuery: null as ReturnType<PgDialect['sqlToQuery']> | null,
 		claimExpiry: new Date(Date.now() + 15 * 60_000),
 	};
 	let prior = Promise.resolve();
@@ -73,6 +79,16 @@ function harness() {
 			from: () => ({
 				where: () => ({
 					limit: async () => (state.staleRead || !state.slot ? [] : [{ body: state.slot }]),
+				}),
+			}),
+		}),
+		insert: () => ({
+			values: () => ({
+				onConflictDoUpdate: () => ({
+					returning: async () => {
+						if (!state.slot) state.slot = { _claimed: true };
+						return [{ expiresAt: state.claimExpiry }];
+					},
 				}),
 			}),
 		}),
@@ -112,9 +128,8 @@ function harness() {
 		const tx = {
 			write: () => rows.push('created'),
 			delete: () => ({
-				where: (condition: SQL) => ({
+				where: () => ({
 					returning: async () => {
-						state.transientReleaseQuery = new PgDialect().sqlToQuery(condition);
 						if (JSON.stringify(slot) !== '{"_claimed":true}') return [];
 						slot = null;
 						return [{ scope }];
@@ -155,9 +170,9 @@ function harness() {
 	};
 	active.db = db as never;
 	active.withTransaction = withTransaction as never;
-	active.claimReplaySlot = async () => {
+	active.claimReplaySlot = async (claimScope, key, deps) => {
 		state.claims++;
-		if (!state.slot) state.slot = { _claimed: true };
+		await deps.claim(claimScope, key);
 		return { won: true };
 	};
 	const request = new Request('https://example.invalid', {
@@ -165,9 +180,6 @@ function harness() {
 		headers: { 'Idempotency-Key': claimKey },
 	});
 	const mutate = async (tx: Tx) => {
-		if (state.rateLimited) {
-			return { response: { status: 429, body: { error: 'too_many_requests' } }, effect: null };
-		}
 		tx.write();
 		return {
 			response: { status: 200, body: { id: 'comment-1', warning: null }, entityId: 'comment-1' },
@@ -205,49 +217,40 @@ test('replay write failure rolls back and releases the exact claim for retry', a
 	assert.equal(state.claims, 2);
 });
 
-test('a rate-limited write releases its exact claim and succeeds with the same key later', async () => {
+test('admit refuses after the claim, releases it exactly, and a stored replay still wins', async () => {
 	const { state, run } = harness();
-	state.rateLimited = true;
-	assert.equal((await run()).response.status, 429);
-	assert.equal(state.slot, null);
-	assert.deepEqual(state.rows, []);
-	assert.equal(state.releaseWhere, '');
-	const releaseQuery = state.transientReleaseQuery;
-	assert.ok(releaseQuery);
-	assert.match(releaseQuery.sql, /expires_at/);
-	assert.match(releaseQuery.sql, /_claimed/);
-	assert.deepEqual(releaseQuery.params, [scope, claimKey, state.claimExpiry.toISOString()]);
-	state.rateLimited = false;
-	const success = await run();
-	assert.equal(success.response.status, 200);
-	assert.deepEqual((await run()).response, success.response);
-	assert.deepEqual(state.rows, ['created']);
-	assert.equal(state.claims, 2);
-});
-
-test('admit refuses before the claim and a stored replay still wins over it', async () => {
-	const { state, run } = harness();
-	const refuse = async () => ({ status: 429, body: { error: 'too_many_requests' } });
+	let calls = 0;
+	const refuse = async () => {
+		calls += 1;
+		return { status: 429, body: { error: 'too_many_requests' } };
+	};
 	const refused = await run(refuse);
 	assert.equal(refused.response.status, 429);
 	assert.equal(refused.effect, null);
-	assert.equal(state.claims, 0);
+	assert.equal(state.claims, 1);
 	assert.equal(state.slot, null);
+	assert.deepEqual(state.rows, []);
+	assert.match(state.releaseWhere, /expires_at/);
+	assert.match(state.releaseWhere, /_claimed/);
 	assert.equal((await run()).response.status, 200);
 	const replayed = await run(refuse);
 	assert.equal(replayed.response.status, 200);
-	assert.equal(state.claims, 1);
+	assert.equal(calls, 1);
+	assert.equal(state.claims, 2);
 	assert.deepEqual(state.rows, ['created']);
 });
 
-test('an uncertain rate-limit transaction commit does not release the claim outside the transaction', async () => {
+test('a throwing admit releases the claim and rethrows', async () => {
 	const { state, run } = harness();
-	state.rateLimited = true;
-	state.failCommit = true;
-	await assert.rejects(run(), /commit_outcome_unknown/);
-	assert.deepEqual(state.slot, { _claimed: true });
+	await assert.rejects(
+		run(async () => {
+			throw new Error('limiter_down');
+		}),
+		/limiter_down/,
+	);
+	assert.equal(state.slot, null);
 	assert.deepEqual(state.rows, []);
-	assert.equal(state.releaseWhere, '');
+	assert.equal((await run()).effect, 'created');
 });
 
 test('uncertain COMMIT and malformed claim do not release the claim', async () => {

@@ -19,6 +19,10 @@ import { isRecord } from '@/core/utils/is-record';
  * 2. `prepare` runs: checks that must pass before the claim, such as rate limits.
  * 3. The key is claimed in Postgres. A request that loses the claim polls until
  *    the winner's response is stored and replays it.
+ * 3a. `afterClaim` runs for the request that won the claim (or has no key), outside the
+ *    transaction and its locks: a rate limit or a push call that must not hold them, and
+ *    that only the request which really writes should spend. A non-null answer releases
+ *    the claim and ends the request unstored.
  * 4. One transaction locks the claim, runs the write and stores its response
  *    (only statuses accepted by `storeStatus`), so the response commits
  *    atomically with the write. Other statuses delete the claim in the same
@@ -133,6 +137,12 @@ export interface IdempotentWriteOptions<O extends AnyOutcome, I, S> {
 	/** Runs after a replay lookup missed and before the claim. `stop` ends the request. */
 	prepare?: () => Promise<Prepared<I, S>>;
 	/**
+	 * Runs once the claim is won (without a key: right after `prepare`) and before the
+	 * transaction, so a slow call here holds no lock. A non-null result releases the claim and
+	 * is answered as `stopped`; a throw releases the claim and rethrows.
+	 */
+	afterClaim?: (input: I) => Promise<S | null>;
+	/**
 	 * Runs before a replay found outside the write transaction (the early lookup and
 	 * a lost claim); a non-null result is answered instead of the stored response.
 	 */
@@ -200,6 +210,8 @@ export async function withIdempotentWrite<O extends AnyOutcome, I = undefined, S
 	});
 
 	if (!key) {
+		const refused = await options.afterClaim?.(input);
+		if (refused !== undefined && refused !== null) return stopped(refused);
 		let attemptWrite = write;
 		for (let attempt = 1; ; attempt += 1) {
 			try {
@@ -222,6 +234,19 @@ export async function withIdempotentWrite<O extends AnyOutcome, I = undefined, S
 		read: getCachedResponse,
 	});
 	if (!slot.won) return replay(slot.cached);
+	if (options.afterClaim) {
+		const lease = wonLease as Date | null;
+		try {
+			const refused = await options.afterClaim(input);
+			if (refused !== undefined && refused !== null) {
+				if (lease) await releaseClaimedResponse(scope, key, lease);
+				return stopped(refused);
+			}
+		} catch (error) {
+			if (lease) await releaseClaimedResponse(scope, key, lease);
+			throw error;
+		}
+	}
 
 	const isStored = (body: unknown): body is unknown => codec.decode(body) !== null;
 	// The callback's own error comes back only after ROLLBACK succeeded; any other error (a

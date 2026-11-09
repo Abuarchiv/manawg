@@ -198,14 +198,12 @@ export const POST = withWgRoute('chat messages POST', async (req, { code }) => {
 				key,
 				codec: chatMessageCodec,
 				storeStatus: storeChatStatus,
-				// Before the claim and the WG lock, so the limiter's network call holds neither; a stored
-				// replay was answered before this runs.
-				prepare: async () => {
-					const limited = rateLimitedReplayResponse(
+				// After the claim, before the WG lock: the limiter's network call holds no lock and only the
+				// request that sends counts. A stored replay was answered before this runs.
+				afterClaim: async () =>
+					rateLimitedReplayResponse(
 						await checkRateLimit(chatMessageLimiter, `chat:${wg.id}:${member.memberId}`),
-					);
-					return limited ? { stop: limited } : { input: undefined };
-				},
+					),
 				inTransaction: (work) =>
 					withTransaction(async (tx) => {
 						// The per-WG write lock is shared with payments and WG deletion, so deletion waits for sends.
