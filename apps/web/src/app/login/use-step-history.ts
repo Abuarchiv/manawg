@@ -20,7 +20,7 @@ function isPushed(): boolean {
 
 /**
  * Mirrors the start-flow steps into browser history so the back gesture goes
- * to the previous step instead of leaving /neu. Entry states carry the step;
+ * to the previous step instead of leaving /login. Entry states carry the step;
  * `loginPushed` marks entries created here (the page's first entry never is).
  */
 export function useStepHistory({

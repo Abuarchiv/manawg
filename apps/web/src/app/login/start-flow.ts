@@ -89,7 +89,6 @@ export async function startSocialLogin(provider: SocialProvider, next: string): 
 }
 
 export interface StartDraft extends Record<string, unknown> {
-	step?: StartStep;
 	wgName?: string;
 	creatorName?: string;
 }

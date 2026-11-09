@@ -81,7 +81,7 @@ export function LoginClient({ appOrigin }: { appOrigin: string }) {
 		signedInHere,
 	} = useAccountWgs({ interactive, step, clearError });
 	useAccountNamePrefill(authState === 'authenticated', setCreatorName);
-	// The account name can arrive after an early submit; the "fehlt" error must not outlive it.
+	// The account name can arrive after an early submit; the "name missing" error must not outlive it.
 	useEffect(() => {
 		if (invalidField === 'creatorName' && creatorName.trim()) clearError();
 	}, [creatorName, invalidField, clearError]);
@@ -180,7 +180,7 @@ export function LoginClient({ appOrigin }: { appOrigin: string }) {
 	const previousStepRef = useRef(step);
 	useEffect(() => {
 		if (previousStepRef.current !== step && step === 'choose') {
-			document.getElementById('neu-heading')?.focus();
+			document.getElementById('start-heading')?.focus();
 		}
 		previousStepRef.current = step;
 	}, [step]);
@@ -278,7 +278,7 @@ export function LoginClient({ appOrigin }: { appOrigin: string }) {
 
 	return (
 		<EntryFrame
-			headingId="neu-heading"
+			headingId="start-heading"
 			title={
 				step === 'choose'
 					? t('titleChoose')
