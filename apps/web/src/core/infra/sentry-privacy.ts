@@ -26,6 +26,7 @@ export const SAFE_TAG_VALUES: Record<string, ReadonlySet<string>> = {
 	action: new Set([
 		'cachedFetch',
 		'dispatchNotificationSafely',
+		'importOcr',
 		'loadDashboardData',
 		'offlineAutoSync',
 		'refreshMembers',
