@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ActivityItem, ActivityReminder } from '@/composition/activity';
 import { wgLoadError } from '@/core/guards/load-errors';
+import { hideStaleNetworkError } from '@/core/sync/collection-overlay';
 import { useSyncedCollection } from '@/core/sync/use-synced-collection';
 import { useMessage } from '@/shared/i18n/message';
 
@@ -38,6 +39,7 @@ export function useActivityFeed({
 		getId: (item) => item.id,
 		describeError: (error) =>
 			message(wgLoadError({ key: 'activity.loadError.lead' }, error.status, error.error)),
+		hideError: hideStaleNetworkError,
 	});
 
 	// The reminders belong to the response, which is empty under a fresh cache key; hold the last ones.

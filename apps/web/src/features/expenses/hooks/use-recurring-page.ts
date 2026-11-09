@@ -9,6 +9,7 @@ import {
 	shouldReleaseIdempotencyKey,
 } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
+import { hideStaleNetworkError } from '@/core/sync/collection-overlay';
 import { useSyncedCollection } from '@/core/sync/use-synced-collection';
 import { LIST_REFRESH_INTERVAL_MS } from '@/core/utils/use-visibility-paused-interval';
 import type { RecurringExpense, RecurringFilter } from '@/features/expenses/expense-types';
@@ -59,6 +60,7 @@ export function useRecurringPage() {
 		getId: (recurringExpense) => recurringExpense.id,
 		describeError: (error) =>
 			t(wgLoadError({ key: 'expenses-recurring.page.loadError.lead' }, error.status, error.error)),
+		hideError: hideStaleNetworkError,
 		pollIntervalMs: LIST_REFRESH_INTERVAL_MS,
 	});
 	const {

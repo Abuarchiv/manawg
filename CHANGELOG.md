@@ -18,6 +18,9 @@ settled.
 
 ### Fixed
 
+- Going offline no longer puts a red error above the expenses, fixed costs, pinboard or activity
+  you were already looking at. The offline bar says it; the error only appears when nothing could
+  be loaded or the server answered with an error.
 - The structured data (JSON-LD) of the app now lists all supported interface languages instead
   of German only.
 - Spanish shopping entries such as "2 kg de arroz" or "2 l de leche" no longer keep the "de" in the

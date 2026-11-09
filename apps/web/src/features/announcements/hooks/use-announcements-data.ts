@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { wgLoadError } from '@/core/guards/load-errors';
+import { hideStaleNetworkError } from '@/core/sync/collection-overlay';
 import { useSyncedCollection } from '@/core/sync/use-synced-collection';
 import {
 	mergeBackgroundAnnouncements,
@@ -60,6 +61,7 @@ export function useAnnouncementsData({
 		},
 		describeError: (error) =>
 			render(wgLoadError({ key: 'pinboard.load.board' }, error.status, error.error)),
+		hideError: hideStaleNetworkError,
 		reload: (reason) => void load(reason === 'poll' ? 'background' : 'replace'),
 		offline: { shareCode: wg.shareCode, page: 'pinboard', onReplayed: onQueueSynced },
 	});

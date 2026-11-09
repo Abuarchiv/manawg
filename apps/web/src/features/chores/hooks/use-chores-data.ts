@@ -1,6 +1,6 @@
 import { useCallback, useRef } from 'react';
 import { wgLoadError } from '@/core/guards/load-errors';
-import { isNetworkError } from '@/core/http/error-codes';
+import { type HideLoadError, hideStaleNetworkError } from '@/core/sync/collection-overlay';
 import { type SyncedReloadReason, useSyncedCollection } from '@/core/sync/use-synced-collection';
 import type { AbsenceInput } from '@/features/chores/absence';
 import type {
@@ -34,8 +34,8 @@ export function useChoresData({
 	const reload = (reason: SyncedReloadReason) => void loadAllRef.current(reason !== 'mount');
 	// Offline with either list cached: keep showing the plan instead of an error state.
 	const hasPageCache = (): boolean => chores.hasData() || absences.hasData();
-	const hideOfflineError = (error: { status: number; error: string }): boolean =>
-		hasPageCache() && isNetworkError(error.error, error.status);
+	const hideOfflineError: HideLoadError = (error, context) =>
+		hideStaleNetworkError(error, { ...context, hasData: hasPageCache() });
 
 	const chores = useSyncedCollection<ChoreListResponse, Chore>({
 		url: `/api/wg/${encodedShareCode}/chores`,
