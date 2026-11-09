@@ -8,6 +8,12 @@ settled.
 
 ## [Unreleased]
 
+### Added
+
+- The self-hosting guide has tested nginx and Traefik reverse-proxy examples with the `.env` values,
+  the headers and limits ManaWG needs from a proxy, and a check that the sign-in limit sees each
+  visitor separately ([Reverse proxy examples](docs/self-hosting.md#reverse-proxy-examples)).
+
 ### Fixed
 
 - The structured data (JSON-LD) of the app now lists all supported interface languages instead
