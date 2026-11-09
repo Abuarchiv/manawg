@@ -21,7 +21,7 @@ const CREATE_ERRORS: Record<string, Message> = {
 	rate_limited: { key: 'shell.inviteShare.rateLimited' },
 };
 
-/** Asks the server for a fresh 7-day invitation link of the WG. */
+/** Asks the server for a fresh 14-day invitation link of the WG. */
 export async function createInvite(
 	code: string,
 	memberId: string,

@@ -34,9 +34,22 @@ settled.
   hides it only for a week; with flatmates it stays hidden for good as before. Once a flatmate has
   joined and nothing has been entered yet, the card names them, links to "Add expense" and "Open
   shopping" and keeps the invite button.
+- An invitation link that no longer works offers a "Copy message" button with a ready-made request for
+  a new link to send to whoever invited you.
+
+### Changed
+
+- Invitation links are valid for 14 days instead of 7. The invitation page, the invitation mail and
+  the settings say so.
+- Joining through an invitation takes one tap when your account already has a name: the button reads
+  "Join as Mira", and "Change name" opens the name field. Creating a WG asks for the WG name only,
+  with "You are Mira · change" for the name.
+- The invitation page for visitors without an account says what ManaWG is for and how many
+  flatmates are already in. The shared invitation text says what ManaWG is in one line.
 
 ### Fixed
 
+- A taken name on the join page now moves focus to the name field even when the field was hidden.
 - The structured data (JSON-LD) of the app now lists all supported interface languages instead
   of German only.
 - Spanish shopping entries such as "2 kg de arroz" or "2 l de leche" no longer keep the "de" in the

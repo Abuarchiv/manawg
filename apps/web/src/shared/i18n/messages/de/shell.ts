@@ -145,7 +145,7 @@ export default {
 		rateLimited: 'Zu viele Einladungen auf einmal. Versuch es gleich noch mal.',
 		createFailed: 'Die Einladung konnte nicht erstellt werden',
 		createFailedRetry: 'Die Einladung konnte nicht erstellt werden. Versuch es noch mal.',
-		text: 'Komm in unsere WG „{wgName}“ auf ManaWG: {url}\n(Der Link gilt {days, plural, one {# Tag} other {# Tage}}.)',
+		text: 'Komm in unsere WG „{wgName}“ auf ManaWG: {url}\nGemeinsame Ausgaben, Putzplan und Einkaufsliste. Kostenlos, ohne Werbung.\n(Der Link gilt {days, plural, one {# Tag} other {# Tage}}.)',
 	},
 	inviteMail: {
 		emailInvalid: 'Das sieht nicht wie eine E-Mail-Adresse aus.',

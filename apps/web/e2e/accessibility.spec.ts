@@ -656,6 +656,8 @@ test.describe('enter key next field', () => {
 		const wgName = page.getByLabel('WG-Name');
 		await expect(wgName).toHaveAttribute('enterkeyhint', 'next');
 		await wgName.fill('Sonnenallee');
+		// The name field appears once the account-name lookup has answered.
+		await expect(page.getByLabel('Dein Anzeigename')).toBeVisible();
 		await wgName.press('Enter');
 
 		await expect(page.getByLabel('Dein Anzeigename')).toBeFocused();

@@ -94,7 +94,7 @@ Rules:
   registration answers like a sign-in code request for every address, also when the instance has
   signups switched off: the code is then simply not sent to an unknown address. The account name
   entered at registration is `user_metadata.full_name` and prefills the member name.
-- **Invitations**: `wg_invites` (token, 7 days, max 10 uses, revocable). Joining needs a valid
+- **Invitations**: `wg_invites` (token, 14 days, max 10 uses, revocable). Joining needs a valid
   token (`POST /api/wg/<code>/members` with `inviteToken`); the share code is only an address.
 - **Member**: one `wg_members` row per WG and auth user (`auth_user_id`, unique per WG). A user
   can be a member of several WGs. `deactivated_at` is the move-out soft delete; deactivated

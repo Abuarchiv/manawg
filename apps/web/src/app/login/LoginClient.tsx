@@ -80,7 +80,7 @@ export function LoginClient({ appOrigin }: { appOrigin: string }) {
 		handleAuthenticated,
 		signedInHere,
 	} = useAccountWgs({ interactive, step, clearError });
-	useAccountNamePrefill(authState === 'authenticated', setCreatorName);
+	const nameSettled = useAccountNamePrefill(authState === 'authenticated', setCreatorName);
 	// The account name can arrive after an early submit; the "name missing" error must not outlive it.
 	useEffect(() => {
 		if (invalidField === 'creatorName' && creatorName.trim()) clearError();
@@ -315,6 +315,7 @@ export function LoginClient({ appOrigin }: { appOrigin: string }) {
 					wgName={wgName}
 					onWgNameChange={setWgName}
 					creatorName={creatorName}
+					nameSettled={nameSettled}
 					onCreatorNameChange={setCreatorName}
 					error={error}
 					invalidField={invalidField}

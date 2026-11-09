@@ -29,7 +29,7 @@ export const GET = withWgRoute('invites GET', async (req, { code }) => {
 	return NextResponse.json({ invites: rows });
 });
 
-/** A member creates an invitation link that works for 7 days. */
+/** A member creates an invitation link that works for 14 days. */
 export const POST = withWgRoute('invites POST', async (req, { code }) => {
 	const auth = await requireWgMember(req, code);
 	if (!auth.ok) return auth.response;

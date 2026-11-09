@@ -147,7 +147,7 @@ export default {
 		rateLimited: 'Demasiadas invitaciones a la vez. Inténtalo de nuevo en un momento.',
 		createFailed: 'No se ha podido crear la invitación',
 		createFailedRetry: 'No se ha podido crear la invitación. Inténtalo de nuevo.',
-		text: 'Únete a nuestro piso “{wgName}” en ManaWG: {url}\n(El enlace es válido durante {days, plural, one {# día} other {# días}}.)',
+		text: 'Únete a nuestro piso “{wgName}” en ManaWG: {url}\nGastos compartidos, turnos de limpieza y lista de la compra. Gratis, sin anuncios.\n(El enlace es válido durante {days, plural, one {# día} other {# días}}.)',
 	},
 	inviteMail: {
 		emailInvalid: 'Eso no parece un correo electrónico.',

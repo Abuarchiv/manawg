@@ -47,7 +47,7 @@ export function renderWelcomeMail(input: {
 	});
 }
 
-/** Invitation mail: a member types an address; the mail carries a personal invitation link, valid for 7 days. */
+/** Invitation mail: a member types an address; the mail carries a personal invitation link, valid for 14 days. */
 export function renderInvitationMail(input: {
 	inviterName: string;
 	wgName: string;
