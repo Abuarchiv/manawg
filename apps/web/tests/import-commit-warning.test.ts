@@ -173,18 +173,18 @@ test('warning update targets the committed import row with a scoped JSONB update
 	assert.ok(db.where.params.includes('import-1'));
 });
 
-test('immediate response preserves a known warning when persistence fails', async () => {
+test('immediate response drops the warning when it could not be stored, so a replay agrees', async () => {
 	const saved = await postWith('saved');
 	assert.equal(saved.response.status, 200);
 	assert.equal((await saved.response.json()).warning, warning);
 	assert.equal(saved.logs, 0);
 
 	const missing = await postWith('missing');
-	assert.equal((await missing.response.json()).warning, warning);
+	assert.equal((await missing.response.json()).warning, null);
 	assert.equal(missing.logs, 1);
 
 	const failed = await postWith('throws');
-	assert.equal((await failed.response.json()).warning, warning);
+	assert.equal((await failed.response.json()).warning, null);
 	assert.equal(failed.logs, 1);
 });
 

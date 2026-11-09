@@ -4,10 +4,14 @@ import { announcements, db } from '@/core/db';
 import type { DbTransaction } from '@/core/db/transaction';
 import { logApiError } from '@/core/infra/observability';
 
+/** Source path stored on a chore's swap request announcement. */
+export function choreSwapPath(choreId: string): string {
+	return `/chores?highlight=${encodeURIComponent(choreId)}`;
+}
+
 /** Matches a chore's swap request. */
 export function choreSwapSourcePath(choreId: string) {
-	const id = encodeURIComponent(choreId);
-	return eq(announcements.sourcePath, `/chores?highlight=${id}`);
+	return eq(announcements.sourcePath, choreSwapPath(choreId));
 }
 
 /** Closes the open swap request inside the caller's transaction; a failure aborts it. */

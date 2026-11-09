@@ -6,8 +6,8 @@ import { withWgRoute } from '@/core/guards/with-wg-route';
 import { badRequest, rateLimitResponse } from '@/core/http/api-errors';
 import { requestLocale } from '@/core/i18n/request-locale';
 import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
-import { logApiError } from '@/core/infra/observability';
 import { checkRateLimit, importCommitLimiter } from '@/core/rate-limit';
+import { persistWarningOrDrop } from '@/core/replay-warning';
 import {
 	MAX_CSV_BYTES,
 	MAX_IMPORT_ROWS,
@@ -106,26 +106,15 @@ export const POST = withWgRoute('imports/commit', async (req, { code }) => {
 		if (outcome.kind === 'stopped') return outcome.response;
 		const { result } = outcome;
 		if (outcome.kind === 'committed' && key && result.warning !== null) {
-			try {
-				const persisted = await setReplayWarning(
-					scope,
-					key,
-					{
-						match: [{ path: ['importId'], equals: result.importId }],
-						warningPath: ['warning'],
-						replaces: [null, result.warning],
-					},
-					result.warning,
-				);
-				if (!persisted) {
-					logApiError(
-						'[imports/commit] replay warning persistence failed',
-						new Error('replay_row_missing'),
-					);
-				}
-			} catch (warningErr) {
-				logApiError('[imports/commit] replay warning persistence failed', warningErr);
-			}
+			const target = {
+				match: [{ path: ['importId'], equals: result.importId }],
+				warningPath: ['warning'],
+				replaces: [null, result.warning],
+			};
+			const warning = await persistWarningOrDrop('[imports/commit]', result.warning, (w) =>
+				setReplayWarning(scope, key, target, w),
+			);
+			return NextResponse.json({ ...result, warning });
 		}
 		return NextResponse.json(result);
 	} catch (err) {

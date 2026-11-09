@@ -36,10 +36,10 @@ import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
 import { badRequest, conflict, rateLimitedReplayResponse } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
-import { logApiError } from '@/core/infra/observability';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { clampTapTime } from '@/core/offline/replay-retention';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
+import { persistWarningOrDrop } from '@/core/replay-warning';
 import { imageUrlSchema, isAllowedImageUrlForWg } from '@/core/validators/image-url';
 import { tapTimeSchema } from '@/core/validators/tap-time';
 import { announcementPushTitle } from '@/features/announcements/announcement-push-title';
@@ -51,6 +51,7 @@ import {
 	summarizeAnnouncementReactions,
 } from '@/features/announcements/announcement-workflow';
 import { CONTENT_MAX } from '@/features/announcements/constants';
+import { choreSwapPath } from '@/features/chores/server/resolve-swap-request';
 
 const CONTENT_MIN = 1;
 const ANNOUNCEMENTS_LIST_LIMIT = 300;
@@ -97,10 +98,6 @@ function requestedSwapChoreId(
 ): string | null {
 	if (source !== 'chore_swap') return null;
 	return choreId ?? CHORE_SWAP_PATH_RE.exec(sourcePath ?? '')?.[1] ?? null;
-}
-
-function choreSwapSourcePath(choreId: string): string {
-	return `/chores?highlight=${encodeURIComponent(choreId)}`;
 }
 
 export const GET = withWgRoute('announcements GET', async (req, { code }) => {
@@ -280,7 +277,7 @@ export const POST = withWgRoute('announcements POST', async (req, { code }) => {
 						.for('update');
 					if (chore) {
 						safeSource = 'chore_swap';
-						safeSourcePath = choreSwapSourcePath(chore.id);
+						safeSourcePath = choreSwapPath(chore.id);
 						// One open swap request per chore: a repeated request (other member,
 						// second tab, offline retry) returns the existing post instead of a duplicate.
 						const [existing] = await tx
@@ -374,19 +371,11 @@ export const POST = withWgRoute('announcements POST', async (req, { code }) => {
 		excludeMemberId: auth.member.memberId,
 	});
 	let warning: AnnouncementCreateWarning = delivery.warning;
-	if (warning && outcome.key) {
-		try {
-			if (!(await persistReplayWarning(scope, outcome.key, item.id, warning))) {
-				logApiError(
-					'[announcements POST] replay warning persistence failed',
-					new Error('replay_row_missing'),
-				);
-				warning = null;
-			}
-		} catch (err) {
-			logApiError('[announcements POST] replay warning persistence failed', err);
-			warning = null;
-		}
+	const replayKey = outcome.key;
+	if (warning && replayKey) {
+		warning = await persistWarningOrDrop('[announcements POST]', warning, (w) =>
+			persistReplayWarning(scope, replayKey, item.id, w),
+		);
 	}
 	return NextResponse.json({ announcement: item, warning });
 });

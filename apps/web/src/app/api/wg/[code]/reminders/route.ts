@@ -23,9 +23,9 @@ import {
 import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
 import { afterResponse } from '@/core/infra/after-response';
-import { logApiError } from '@/core/infra/observability';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { checkRateLimit, reminderSendLimiter } from '@/core/rate-limit';
+import { persistWarningOrDrop } from '@/core/replay-warning';
 import { MS_PER_DAY } from '@/core/utils/time';
 import { currencySchema } from '@/core/validators/currency';
 import {
@@ -308,16 +308,10 @@ export const POST = withWgRoute('reminders POST', async (req, { code }) => {
 			warningPath: ['body', 'warning'],
 			replaces: [null],
 		};
-		const persisted = await setReplayWarning(scope, key, target, warning).catch((err: unknown) => {
-			logApiError('[reminders POST] replay warning persistence failed', err);
-			return true;
-		});
-		if (!persisted) {
-			logApiError(
-				'[reminders POST] replay warning persistence failed',
-				new Error('replay_row_missing'),
-			);
-		}
+		const stored = await persistWarningOrDrop('[reminders POST]', warning, (w) =>
+			setReplayWarning(scope, key, target, w),
+		);
+		return NextResponse.json({ reminder: inserted, warning: stored });
 	}
 
 	return NextResponse.json({ reminder: inserted, warning });

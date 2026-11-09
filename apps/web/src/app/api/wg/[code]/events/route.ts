@@ -15,10 +15,10 @@ import {
 } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
-import { logApiError } from '@/core/infra/observability';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import type { NotificationWarning } from '@/core/notifications/notification-warning';
 import { checkRateLimit, clientIpKey, wgReadLimiter, wgWriteLimiter } from '@/core/rate-limit';
+import { persistWarningOrDrop } from '@/core/replay-warning';
 import { isEventYearInRange } from '@/features/events/event-limits';
 import {
 	eventDateTimeSchema,
@@ -203,22 +203,14 @@ export const POST = withWgRoute('events POST', async (req, { code }) => {
 
 	let responseWarning: NotificationWarning = warning;
 	if (key && warning !== null) {
-		try {
-			const persisted = await setReplayWarning(
-				scope,
-				key,
-				{
-					match: [{ path: ['body', 'event', 'id'], equals: row.id }],
-					warningPath: ['body', 'warning'],
-					replaces: [null],
-				},
-				warning,
-			);
-			if (!persisted) responseWarning = null;
-		} catch (err) {
-			responseWarning = null;
-			logApiError('[events POST] warning replay update failed', err);
-		}
+		const target = {
+			match: [{ path: ['body', 'event', 'id'], equals: row.id }],
+			warningPath: ['body', 'warning'],
+			replaces: [null],
+		};
+		responseWarning = await persistWarningOrDrop('[events POST]', warning, (w) =>
+			setReplayWarning(scope, key, target, w),
+		);
 	}
 	const body: EventCreateResponseBody = { event: serializeWgEvent(row), warning: responseWarning };
 	return NextResponse.json(body, { status: result.status });
