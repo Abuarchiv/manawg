@@ -7,11 +7,11 @@ const {
 	canManageRecurringTemplate,
 	countMissedOccurrences,
 	getDueRecurringExpenses,
-	intervalLabelMessage,
 	parseRecurringSplits,
 	previewNextOccurrences,
 	wasRecurringExpenseAlreadyCreated,
 } = await import('./recurring-expenses');
+const { recurringIntervalLabel } = await import('./expense-constants');
 
 test('the preview keeps month-end templates on their anchor day', () => {
 	// Booked on 28 Feb after starting on the 31st: without the anchor the cadence drifts to 28.
@@ -56,15 +56,15 @@ test('only the creator or an admin manages a template, and booking needs a share
 });
 
 test('interval labels name the common cadences and fall back to a month count', () => {
-	assert.deepEqual(intervalLabelMessage(1), { key: 'expenses-recurring.interval.monthly' });
-	assert.deepEqual(intervalLabelMessage(3), { key: 'expenses-recurring.interval.quarterly' });
-	assert.deepEqual(intervalLabelMessage(6), { key: 'expenses-recurring.interval.halfYearly' });
-	assert.deepEqual(intervalLabelMessage(12), { key: 'expenses-recurring.interval.yearly' });
-	assert.deepEqual(intervalLabelMessage(2), {
-		key: 'expenses-recurring.interval.everyMonths',
+	assert.deepEqual(recurringIntervalLabel(1), { key: 'expenses-form.intervals.monthly' });
+	assert.deepEqual(recurringIntervalLabel(3), { key: 'expenses-form.intervals.quarterly' });
+	assert.deepEqual(recurringIntervalLabel(6), { key: 'expenses-form.intervals.halfYearly' });
+	assert.deepEqual(recurringIntervalLabel(12), { key: 'expenses-form.intervals.yearly' });
+	assert.deepEqual(recurringIntervalLabel(2), {
+		key: 'expenses-form.intervals.everyMonths',
 		values: { count: 2 },
 	});
-	assert.deepEqual(intervalLabelMessage(0), { key: 'expenses-recurring.interval.monthly' });
+	assert.deepEqual(recurringIntervalLabel(0), { key: 'expenses-form.intervals.monthly' });
 });
 
 test('a recurring booking on 28 Feb moves to 31 Mar for a template anchored on the 31st', () => {

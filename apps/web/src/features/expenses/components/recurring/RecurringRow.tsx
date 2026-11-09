@@ -13,10 +13,10 @@ import { useWg } from '@/components/wg/WgContextProvider';
 import { berlinDayKey } from '@/core/utils/berlin-day';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatDayMonthYear, formatShortDate } from '@/core/utils/time';
+import { recurringIntervalLabel } from '@/features/expenses/expense-constants';
 import type { MemberOption, RecurringExpense } from '@/features/expenses/expense-types';
 import {
 	canManageRecurringTemplate,
-	intervalLabelMessage,
 	previewNextOccurrences,
 } from '@/features/expenses/recurring-expenses';
 import type { Locale } from '@/shared/i18n/locale';
@@ -115,7 +115,7 @@ export function RecurringRow({
 							) : (
 								t('row.status.next', { date: dueDate(recurringExpense.nextDueAt) })
 							)}
-							{` · ${message(intervalLabelMessage(recurringExpense.intervalMonths))} · `}
+							{` · ${message(recurringIntervalLabel(recurringExpense.intervalMonths))} · `}
 							<span className="sr-only">{t('row.paidBy')} </span>
 							{recurringExpense.paidByMemberId === identity.memberId ? (
 								<>

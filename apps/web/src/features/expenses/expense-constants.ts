@@ -23,17 +23,22 @@ export const RECURRING_INTERVAL_MAX_MONTHS = 24;
 export const AMOUNT_MIN_EUROS = AMOUNT_MIN_CENTS / CENTS_PER_EURO;
 export const AMOUNT_MAX_EUROS = AMOUNT_MAX_CENTS / CENTS_PER_EURO;
 
+export type AmountErrorReason = 'decimals' | 'tooLarge' | 'invalid';
+
 // Above the maximum, "over 0 €" would be misleading: the amount is too large, not too small.
+export function amountErrorReason(euros: number | null, raw = ''): AmountErrorReason {
+	if (euros === null && /[.,]\d{3,}\s*(€|EUR)?$/i.test(raw.trim())) return 'decimals';
+	return euros !== null && euros > AMOUNT_MAX_EUROS ? 'tooLarge' : 'invalid';
+}
+
+const AMOUNT_ERROR_KEYS = {
+	decimals: 'expenses-form.validation.amountDecimals',
+	tooLarge: 'expenses-form.validation.amountTooLarge',
+	invalid: 'expenses-form.validation.amountInvalid',
+} as const;
+
 export function amountError(euros: number | null, raw = ''): Message {
-	if (euros === null && /[.,]\d{3,}\s*(€|EUR)?$/i.test(raw.trim())) {
-		return { key: 'expenses-form.validation.amountDecimals' };
-	}
-	return {
-		key:
-			euros !== null && euros > AMOUNT_MAX_EUROS
-				? 'expenses-form.validation.amountTooLarge'
-				: 'expenses-form.validation.amountInvalid',
-	};
+	return { key: AMOUNT_ERROR_KEYS[amountErrorReason(euros, raw)] };
 }
 
 /** Picker values in order; the labels come from `recurringIntervalOption`. */

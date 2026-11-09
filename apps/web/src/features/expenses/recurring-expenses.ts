@@ -1,6 +1,5 @@
 import type { recurringExpenses } from '@/core/db';
 import { addMonthsFromAnchor, parseTimestamp } from '@/core/utils/time';
-import type { Message } from '@/shared/i18n/message';
 
 export { addMonthsFromAnchor };
 
@@ -156,16 +155,6 @@ export function previewNextOccurrences(input: RecurringPreviewInput, count: numb
 		occurrences.push(addMonthsFromAnchor(previous, anchorDay, months));
 	}
 	return occurrences;
-}
-
-/** Interval wording as data. */
-export function intervalLabelMessage(intervalMonths: number): Message {
-	const months = Math.max(1, Math.floor(intervalMonths));
-	if (months === 1) return { key: 'expenses-recurring.interval.monthly' };
-	if (months === 3) return { key: 'expenses-recurring.interval.quarterly' };
-	if (months === 6) return { key: 'expenses-recurring.interval.halfYearly' };
-	if (months === 12) return { key: 'expenses-recurring.interval.yearly' };
-	return { key: 'expenses-recurring.interval.everyMonths', values: { count: months } };
 }
 
 /**
