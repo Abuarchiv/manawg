@@ -1,3 +1,7 @@
+import { formatEuroCents } from '@/core/utils/money';
+import type { Locale } from '@/shared/i18n/locale';
+import type { Message } from '@/shared/i18n/message';
+
 /**
  * What an expense means for me (like Splitwise: "you get" / "you owe"),
  * instead of showing only the total.
@@ -37,4 +41,45 @@ export function getExpenseImpact(expense: ImpactExpense, memberId: string): Expe
 	return mine.settledAt === null
 		? { kind: 'owe', cents: mine.amountCents }
 		: { kind: 'settled', cents: mine.amountCents };
+}
+
+interface SavedToastExpense extends ImpactExpense {
+	currency: string;
+}
+
+/**
+ * The toast text after saving: what the expense means for the saver instead of a bare "saved".
+ * `nameOf` resolves a member id to a display name.
+ */
+export function savedExpenseMessage(
+	expense: SavedToastExpense,
+	memberId: string,
+	nameOf: (id: string) => string,
+	locale: Locale,
+	isEdit: boolean,
+): Message {
+	const impact = getExpenseImpact(expense, memberId);
+	const money = formatEuroCents(impact.cents, expense.currency, { locale });
+	if (impact.kind === 'lent') {
+		const open = expense.splits.filter(
+			(split) =>
+				split.debtorMemberId !== memberId && split.amountCents > 0 && split.settledAt === null,
+		);
+		return {
+			key: 'expenses-form.notices.savedLent',
+			values: {
+				amount: money,
+				count: open.length,
+				name: open[0] ? nameOf(open[0].debtorMemberId) : '',
+			},
+		};
+	}
+	if (impact.kind === 'owe') {
+		return {
+			key: 'expenses-form.notices.savedOwe',
+			values: { amount: money, payer: nameOf(expense.paidByMemberId) },
+		};
+	}
+	if (impact.kind === 'own') return { key: 'expenses-form.notices.savedOwn' };
+	return { key: isEdit ? 'expenses-form.notices.updated' : 'expenses-form.notices.saved' };
 }

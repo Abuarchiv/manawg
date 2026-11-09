@@ -25,6 +25,13 @@ settled.
   changed the task since, and it also removes a completion that is still waiting offline. A swap
   request closed by the completion opens again. With the keyboard, focus moves to Undo. Late
   tasks still ask first. Push notifications that were already sent are not withdrawn.
+- Adding an expense is quicker: the amount comes right after the description, the category is a row
+  of buttons instead of a drop-down, and a new expense starts on the category you used for the same
+  description before (otherwise the last one you used). When the form opens with a description
+  already filled in, the cursor is in the amount, and Enter there saves.
+- After saving an expense, the confirmation says what it means for you, for example "You get €4.80
+  back (Mina)" or "You owe Mina €10.00". The note that no money is transferred appears only for the
+  first expense of a flat.
 - Receipt scanning recognises Spanish text: with the interface in Spanish, the scanner loads the
   Spanish model as well, so `ñ` and accents are kept. Other languages do not download it.
 - The self-hosting guide has tested nginx and Traefik reverse-proxy examples with the `.env` values,
@@ -48,6 +55,8 @@ settled.
   with "You are Mira · change" for the name.
 - The invitation page for visitors without an account says what ManaWG is for and how many
   flatmates are already in. The shared invitation text says what ManaWG is in one line.
+- Opening the expense form from the shopping list now selects the category Groceries. For "Add as
+  expense" on a single bought item, an earlier expense with the same description keeps its category.
 
 ### Fixed
 

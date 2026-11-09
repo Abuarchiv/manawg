@@ -26,6 +26,8 @@ export type ExpenseSuggestion = Omit<
 	splitMode: SplitMode;
 	recurringSourceId: string | null;
 	category?: ExpenseCategory;
+	/** Used when the member has no earlier expense with this description; never forced. */
+	categoryHint?: ExpenseCategory;
 };
 
 /**
@@ -41,6 +43,8 @@ export type ExpenseDraft = {
 	editingExpense?: unknown;
 	description?: string;
 	category?: string;
+	/** The category last saved in this flat; a new expense starts on it. */
+	lastCategory?: string;
 	amountStr?: string;
 	imageUrl?: string | null;
 	paidByMemberId?: string;

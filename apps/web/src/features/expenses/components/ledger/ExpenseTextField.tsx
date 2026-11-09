@@ -21,6 +21,8 @@ interface ExpenseTextFieldProps {
 	disabled?: boolean;
 	error?: string | undefined;
 	enterKeyHint?: 'done' | 'next' | 'go' | 'search' | 'send';
+	/** Replaces the browser's implicit form submit on Enter, e.g. to move on to the next field. */
+	onEnter?: () => void;
 }
 
 export function ExpenseTextField({
@@ -35,6 +37,7 @@ export function ExpenseTextField({
 	disabled = false,
 	error,
 	enterKeyHint,
+	onEnter,
 }: ExpenseTextFieldProps) {
 	const id = providedId ?? `f-${label.toLowerCase().replace(/\s+/g, '-')}`;
 	const errorId = `${id}-error`;
@@ -52,6 +55,15 @@ export function ExpenseTextField({
 					placeholder={placeholder}
 					disabled={disabled}
 					enterKeyHint={enterKeyHint}
+					onKeyDown={
+						onEnter
+							? (event) => {
+									if (event.key !== 'Enter' || event.nativeEvent.isComposing) return;
+									event.preventDefault();
+									onEnter();
+								}
+							: undefined
+					}
 					aria-invalid={error ? true : undefined}
 					aria-describedby={error ? errorId : undefined}
 					className={cn('min-h-11 text-base', inputMode === 'decimal' && 'font-mono tabular-nums')}

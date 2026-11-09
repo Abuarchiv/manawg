@@ -634,7 +634,7 @@ test.describe('enter key hint forms', () => {
 			.click();
 
 		await expect(page.locator('#expense-description')).toHaveAttribute('enterkeyhint', 'next');
-		await expect(page.locator('#f-betrag')).toHaveAttribute('enterkeyhint', 'next');
+		await expect(page.locator('#expense-amount')).toHaveAttribute('enterkeyhint', 'done');
 	});
 });
 

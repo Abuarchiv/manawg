@@ -79,6 +79,7 @@ export function ShoppingReceiptPrompt({
 					<Link
 						href={expensePrefillHref(shareCode, {
 							new: '1',
+							category: 'groceries',
 							desc: t('description', {
 								names: myFreshBought
 									.slice(0, 5)
