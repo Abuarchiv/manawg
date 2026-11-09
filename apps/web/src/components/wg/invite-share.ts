@@ -3,6 +3,7 @@ import { apiFetch } from '@/core/infra/api-client';
 import { copyText, type NavigatorWithShare } from '@/core/utils/clipboard';
 import { INVITE_VALID_DAYS } from '@/core/utils/invite-token';
 import type { Message } from '@/shared/i18n/message';
+import { MAX_ACTIVE_INVITES } from '@/shared/lib/limits';
 
 export interface CreatedInvite {
 	id: string;
@@ -13,7 +14,10 @@ export interface CreatedInvite {
 export type ShareOutcome = 'shared' | 'copied' | 'failed' | 'cancelled';
 
 const CREATE_ERRORS: Record<string, Message> = {
-	invite_limit_reached: { key: 'shell.inviteShare.limitReached' },
+	invite_limit_reached: {
+		key: 'shell.inviteShare.limitReached',
+		values: { max: MAX_ACTIVE_INVITES },
+	},
 	rate_limited: { key: 'shell.inviteShare.rateLimited' },
 };
 

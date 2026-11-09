@@ -10,6 +10,8 @@ export const WG_NAME_MAX_LENGTH = 100;
 export const MEMBER_NAME_MAX_LENGTH = 80;
 /** Active members a WG can hold; moved-out members do not count. */
 export const MAX_MEMBERS_PER_WG = 20;
+/** Active (unexpired, unrevoked, not used up) invitations one WG may hold at a time. */
+export const MAX_ACTIVE_INVITES = 20;
 
 // Wide enough for yearly birthdays and long-range planning; anything outside is
 // a typo (year 0026, 20266) that would otherwise be stored and expanded.

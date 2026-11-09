@@ -141,7 +141,8 @@ export default {
 		chooseLabel: 'Choose image',
 	},
 	inviteShare: {
-		limitReached: 'There are already 20 active invitations. Revoke one before creating a new one.',
+		limitReached:
+			'There are already {max, number} active invitations. Revoke one before creating a new one.',
 		rateLimited: 'Too many invitations at once. Try again in a moment.',
 		createFailed: 'The invitation could not be created',
 		createFailedRetry: 'The invitation could not be created. Try again.',
@@ -149,7 +150,8 @@ export default {
 	},
 	inviteMail: {
 		emailInvalid: 'That does not look like an email address.',
-		limitReached: 'There are already 20 active invitations. Revoke one before you send a new one.',
+		limitReached:
+			'There are already {max, number} active invitations. Revoke one before you send a new one.',
 		rateLimited: 'Too many invitations at once. Try again in an hour.',
 		mailUnavailable: 'The email could not be sent. Share the link instead.',
 		failed: 'That did not work. Try again.',

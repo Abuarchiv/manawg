@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { apiFetch } from '@/core/infra/api-client';
+import { MAX_ACTIVE_INVITES } from '@/shared/lib/limits';
 
 interface Props {
 	shareCode: string;
@@ -47,6 +48,7 @@ export function InviteByMailForm({ shareCode, memberId, onSent }: Props) {
 					Object.hasOwn(ERROR_KEYS, res.error)
 						? ERROR_KEYS[res.error as keyof typeof ERROR_KEYS]
 						: 'failed',
+					{ max: MAX_ACTIVE_INVITES },
 				),
 			});
 			return;

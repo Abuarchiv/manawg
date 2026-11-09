@@ -115,7 +115,7 @@ export default {
 		deactivated: 'You are marked as moved out of this flat. An admin can reactivate you.',
 		joinInsertFailed: 'Joining could not be saved: check the flat and try again.',
 		joinRetry: 'Joining could not be completed: try again in a moment.',
-		nameInvalid: 'Your name must be 1 to 80 characters long.',
+		nameInvalid: 'Your name must be 1 to {max, number} characters long.',
 		checkInput: 'Check what you entered.',
 		joinOffline: 'Joining could not be completed: check your connection and try again.',
 		joinFailed: 'Joining did not work. Try once more.',

@@ -2,11 +2,10 @@ import { randomBytes } from 'node:crypto';
 import { and, count, eq, gt, isNull, lt, sql } from 'drizzle-orm';
 import { INVITE_VALID_DAYS } from '@/core/utils/invite-token';
 import { MS_PER_DAY } from '@/core/utils/time';
+import { MAX_ACTIVE_INVITES } from '@/shared/lib/limits';
 import { wgInvites } from './schema-invites';
 import { withTransaction } from './transaction';
 
-/** Active (unexpired, unrevoked, not used up) invitations one WG may hold at a time. */
-const MAX_ACTIVE_INVITES = 20;
 const DEFAULT_INVITE_MAX_USES = 10;
 
 type InviteRow = typeof wgInvites.$inferSelect;

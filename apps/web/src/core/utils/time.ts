@@ -25,8 +25,10 @@ function calendarDaysBetween(from: Date, to: Date): number {
 	return Math.round((day(to) - day(from)) / MS_PER_DAY);
 }
 
-// Words of the string formatters; the Message helpers read the catalog.
-const FALLBACK_WORDS: Record<
+// Plain-string words for formatShortDate & co., which return strings and have no translator.
+// The unknown-date/time wording also lives in the catalog (common.time.unknown,
+// expenses.list.unknownDate, offline.conflict.unknownDate) for the Message helpers; keep them in step.
+const FORMATTER_WORDS: Record<
 	Locale,
 	{ unknownDate: string; unknownTime: string; rangeTo: string }
 > = {
@@ -108,14 +110,14 @@ export function formatShortDate(
 	locale: Locale = 'de',
 ): string {
 	const date = parseValidDate(iso);
-	if (!date) return FALLBACK_WORDS[locale].unknownDate;
+	if (!date) return FORMATTER_WORDS[locale].unknownDate;
 	return dateTimeFormat(locale, { ...dayMonthOptions(locale), timeZone }).format(date);
 }
 
 /** Berlin calendar day with year ("06.10.2026"), for due dates; see `formatShortDate`. */
 export function formatDayMonthYear(iso: string, locale: Locale = 'de'): string {
 	const date = parseValidDate(iso);
-	if (!date) return FALLBACK_WORDS[locale].unknownDate;
+	if (!date) return FORMATTER_WORDS[locale].unknownDate;
 	return dateTimeFormat(locale, {
 		...dayMonthOptions(locale, true),
 		timeZone: 'Europe/Berlin',
@@ -130,12 +132,12 @@ export function formatShortDateRange(
 ): string {
 	const from = formatShortDate(startIso, 'Europe/Berlin', locale);
 	if (formatDayMonthYear(startIso, locale) === formatDayMonthYear(endIso, locale)) return from;
-	return `${from} ${FALLBACK_WORDS[locale].rangeTo} ${formatShortDate(endIso, 'Europe/Berlin', locale)}`;
+	return `${from} ${FORMATTER_WORDS[locale].rangeTo} ${formatShortDate(endIso, 'Europe/Berlin', locale)}`;
 }
 
 export function formatTimeFull(iso: string, locale: Locale = 'de'): string {
 	const date = parseValidDate(iso);
-	if (!date) return FALLBACK_WORDS[locale].unknownTime;
+	if (!date) return FORMATTER_WORDS[locale].unknownTime;
 	return dateTimeFormat(locale, {
 		...dayMonthOptions(locale, true),
 		hour: '2-digit',
