@@ -30,6 +30,7 @@ import {
 	splitCandidates,
 } from '@/features/expenses/expense-split-input';
 import { useExpenseForm } from '@/features/expenses/hooks/use-expense-form';
+import { PREFILL_PARAMS } from '@/features/expenses/hooks/use-expense-prefill-handoff';
 import type { Message } from '@/shared/i18n/message';
 import type { ActionNotifier, ExpensePageContext } from './expense-page-context';
 import { useExpenseFormSupport } from './use-expense-form-support';
@@ -102,6 +103,7 @@ export function useExpensesPage() {
 			amount: searchParams.get('amount'),
 			paidBy: searchParams.get('paidBy'),
 			category: searchParams.get('category'),
+			categoryHint: searchParams.get('categoryHint'),
 		},
 		recurringId,
 		expenses,
@@ -149,7 +151,7 @@ export function useExpensesPage() {
 		if (!wasOpen || form.showForm) return;
 		const next = new URLSearchParams(searchParams.toString());
 		let changed = false;
-		for (const key of ['new', 'desc', 'amount', 'paidBy', 'category', 'recurring']) {
+		for (const key of PREFILL_PARAMS) {
 			if (next.has(key)) {
 				next.delete(key);
 				changed = true;

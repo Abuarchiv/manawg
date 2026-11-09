@@ -118,7 +118,7 @@ export default {
 			'{count, plural, one {Saved. You get {amount} back ({name}).} other {Saved. You get {amount} back from {count} people.}}',
 		savedOwe: 'Saved. You owe {payer} {amount}.',
 		savedOwn: 'Saved. Just for you, nothing to split.',
-		noMoneyMoved: 'No money is transferred here.',
+		noMoneyMoved: 'Payments happen outside the app.',
 		keyUnavailableExpense: 'The expense could not be sent reliably. Try again.',
 		keyUnavailableRecurring: 'The fixed-cost expense could not be sent reliably. Try again.',
 		keyUnavailableTemplate: 'The fixed-cost template could not be saved reliably. Try again.',

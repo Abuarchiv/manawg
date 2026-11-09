@@ -115,10 +115,10 @@ export default {
 		saved: 'Gasto guardado.',
 		updated: 'Gasto actualizado.',
 		savedLent:
-			'{count, plural, one {Guardado. Te devuelven {amount} ({name}).} other {Guardado. Te devuelven {amount} de {count} personas.}}',
+			'{count, plural, one {Guardado. Te deben {amount} ({name}).} other {Guardado. Te deben {amount} entre {count} personas.}}',
 		savedOwe: 'Guardado. Debes {amount} a {payer}.',
 		savedOwn: 'Guardado. Solo para ti, nada que repartir.',
-		noMoneyMoved: 'Aquí no se transfiere dinero.',
+		noMoneyMoved: 'Los pagos se hacen fuera de la app.',
 		keyUnavailableExpense: 'No se pudo enviar el gasto de forma fiable. Inténtalo de nuevo.',
 		keyUnavailableRecurring: 'No se pudo enviar el gasto fijo de forma fiable. Inténtalo de nuevo.',
 		keyUnavailableTemplate:

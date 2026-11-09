@@ -129,7 +129,7 @@ test('a shopping prefill opens on the amount; Enter saves and the toast names th
 	// Equal split between two people: the other one owes half.
 	await expect(
 		page.getByText(
-			/Gespeichert\. Du bekommst 4,80\s€ zurück \(Mina\)\. Hier wird kein Geld überwiesen\./,
+			/Gespeichert\. Du bekommst 4,80\s€ zurück \(Mina\)\. Bezahlt wird außerhalb der App\./,
 		),
 	).toBeVisible();
 });
@@ -170,4 +170,27 @@ test('an unknown category in the link is ignored', async ({ page }) => {
 	const dialog = page.getByRole('dialog');
 	await expect(dialog.getByRole('radio', { name: 'Sonstiges' })).toBeChecked();
 	await expect(dialog.getByLabel('Betrag', { exact: true })).toBeFocused();
+});
+
+test('tapping the selected chip counts as a choice', async ({ page }) => {
+	await mockWg(page, [pastExpense('Putzmittel', 'household')]);
+	await navigateToFeature(page, `/wg/${shareCode}/expenses`);
+	await dismissOnboarding(page);
+	await page.getByRole('button', { name: 'Ausgabe hinzufügen' }).first().click();
+	const dialog = page.getByRole('dialog');
+	await dialog.locator('label', { hasText: 'Sonstiges' }).click();
+	await dialog.getByLabel('Beschreibung', { exact: true }).fill('Putzmittel');
+	await expect(dialog.getByRole('radio', { name: 'Sonstiges' })).toBeChecked();
+});
+
+test('a category hint in the link yields to an earlier expense with the same description', async ({
+	page,
+}) => {
+	await mockWg(page, [pastExpense('Putzmittel', 'household')]);
+	await navigateToFeature(
+		page,
+		`/wg/${shareCode}/expenses?new=1&desc=Putzmittel&categoryHint=groceries`,
+	);
+	await dismissOnboarding(page);
+	await expect(page.getByRole('dialog').getByRole('radio', { name: 'Haushalt' })).toBeChecked();
 });

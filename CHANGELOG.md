@@ -25,8 +25,8 @@ settled.
 
 ### Changed
 
-- Opening the expense form from the shopping list (the "Add expense" prompt after shopping, or
-  "Add as expense" on a bought item) now selects the category Groceries.
+- Opening the expense form from the shopping list now selects the category Groceries. For "Add as
+  expense" on a single bought item, an earlier expense with the same description keeps its category.
 
 ### Fixed
 

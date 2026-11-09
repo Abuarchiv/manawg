@@ -299,6 +299,7 @@ export function useExpenseSubmit(
 					reportError(t({ key: 'expenses-form.notices.offlineDraftCleanupFailed' }));
 					return;
 				}
+				if (!isEdit) form.rememberCategory(form.category);
 				form.resetForm();
 				form.setShowForm(false);
 				finishSubmitting();
@@ -357,7 +358,8 @@ export function useExpenseSubmit(
 			reportError(t({ key: 'expenses-form.notices.draftCleanupFailed' }));
 			return;
 		}
-		form.rememberCategory(form.category);
+		// An edit says nothing about what the flat books next.
+		if (!isEdit) form.rememberCategory(form.category);
 		form.resetForm();
 		if (pushWarning) {
 			notify.warning(t(pushWarning));
@@ -383,7 +385,6 @@ export function useExpenseSubmit(
 		}
 		form.setShowForm(false);
 		finishSubmitting();
-		removeDraft(form.draftKey);
 		void reload();
 	}
 

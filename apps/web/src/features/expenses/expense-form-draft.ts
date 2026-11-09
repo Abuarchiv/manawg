@@ -26,6 +26,8 @@ export type ExpenseSuggestion = Omit<
 	splitMode: SplitMode;
 	recurringSourceId: string | null;
 	category?: ExpenseCategory;
+	/** Used when the member has no earlier expense with this description; never forced. */
+	categoryHint?: ExpenseCategory;
 };
 
 /**

@@ -116,7 +116,7 @@ export default {
 			'{count, plural, one {Gespeichert. Du bekommst {amount} zurück ({name}).} other {Gespeichert. Du bekommst {amount} von {count} Personen zurück.}}',
 		savedOwe: 'Gespeichert. Du schuldest {payer} {amount}.',
 		savedOwn: 'Gespeichert. Nur für dich, nichts zu verrechnen.',
-		noMoneyMoved: 'Hier wird kein Geld überwiesen.',
+		noMoneyMoved: 'Bezahlt wird außerhalb der App.',
 		keyUnavailableExpense: 'Ausgabe konnte nicht sicher gesendet werden. Versuche es erneut.',
 		keyUnavailableRecurring:
 			'Fixkosten-Ausgabe konnte nicht sicher gesendet werden. Versuche es erneut.',

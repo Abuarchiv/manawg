@@ -10,12 +10,24 @@ import { buildExpensePrefillDraft } from '@/features/expenses/expense-prefill';
 import type { RecurringExpense } from '@/features/expenses/expense-types';
 import type { Locale } from '@/shared/i18n/locale';
 
-/** The `desc`, `amount`, `paidBy` and `category` search params of a deep link into the form. */
+/** The search params of a deep link into the form; the page clears them when the form closes. */
+export const PREFILL_PARAMS = [
+	'new',
+	'desc',
+	'amount',
+	'paidBy',
+	'category',
+	'categoryHint',
+	'recurring',
+] as const;
+
+/** The `desc`, `amount`, `paidBy`, `category` and `categoryHint` search params of a deep link into the form. */
 export interface ExpensePrefillParams {
 	description: string | null;
 	amount: string | null;
 	paidBy: string | null;
 	category: string | null;
+	categoryHint: string | null;
 }
 
 interface PrefillHandoffOptions {
@@ -43,8 +55,8 @@ export function useExpensePrefillHandoff({
 }: PrefillHandoffOptions): void {
 	const appliedPrefillRef = useRef<string | null>(null);
 	const appliedRecurringRef = useRef<string | null>(null);
-	const { description, amount, paidBy, category } = params;
-	const prefillKey = `${description ?? ''}|${amount ?? ''}|${paidBy ?? ''}|${category ?? ''}`;
+	const { description, amount, paidBy, category, categoryHint } = params;
+	const prefillKey = `${description ?? ''}|${amount ?? ''}|${paidBy ?? ''}|${category ?? ''}|${categoryHint ?? ''}`;
 
 	// A handoff is a new draft, so it must not overwrite unfinished input.
 	useEffect(() => {
@@ -58,10 +70,12 @@ export function useExpensePrefillHandoff({
 		appliedPrefillRef.current = prefillKey;
 		// A category code that is not one of ours is ignored.
 		const prefillCategory = parseExpenseCategory(category);
+		const prefillHint = parseExpenseCategory(categoryHint);
 		suggestPrefill({
 			...prefill,
 			recurringSourceId: null,
 			...(prefillCategory ? { category: prefillCategory } : {}),
+			...(prefillHint ? { categoryHint: prefillHint } : {}),
 		});
 	}, [
 		suggestPrefill,
@@ -71,6 +85,7 @@ export function useExpensePrefillHandoff({
 		amount,
 		paidBy,
 		category,
+		categoryHint,
 		prefillKey,
 		recurringId,
 	]);

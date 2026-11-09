@@ -24,7 +24,7 @@ export function ExpenseCategoryChips({ value, onChange, disabled }: ExpenseCateg
 	return (
 		<FieldSet disabled={disabled}>
 			<FieldLegend variant="label">{t('category')}</FieldLegend>
-			<div role="radiogroup" aria-label={t('category')} className="flex flex-wrap gap-2">
+			<div role="radiogroup" aria-label={t('category')} className="flex flex-wrap gap-x-2 gap-y-3">
 				{EXPENSE_CATEGORIES.map((code) => (
 					<label
 						key={code}
@@ -39,6 +39,8 @@ export function ExpenseCategoryChips({ value, onChange, disabled }: ExpenseCateg
 							value={code}
 							checked={code === value}
 							onChange={() => onChange(code)}
+							// Tapping the selected chip fires no change event, but it still is a choice.
+							onClick={() => onChange(code)}
 							className="sr-only"
 						/>
 						{tCategories(code)}

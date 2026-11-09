@@ -223,7 +223,7 @@ export function useExpenseForm({
 			clearQueued();
 			setConflictExpenseId(null);
 			setDescriptionState(prefill.description);
-			applyCategoryPrefill(prefill.description, prefill.category);
+			applyCategoryPrefill(prefill.description, prefill.category, prefill.categoryHint);
 			setAmountStr(prefill.amountStr);
 			setImageUrl(prefill.imageUrl);
 			setPaidByMemberId(prefill.paidByMemberId);
