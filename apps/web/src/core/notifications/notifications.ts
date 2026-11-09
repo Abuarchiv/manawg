@@ -1,10 +1,10 @@
 import { serverT } from '@/core/i18n/server-t';
 import { formatDecimal } from '@/core/utils/amount';
-import { berlinCalendarDayDistance } from '@/core/utils/berlin-day';
 import { formatEuroCents } from '@/core/utils/money';
 import { dayMonthOptions, formatShortDate } from '@/core/utils/time';
 import { dateTimeFormat } from '@/shared/i18n/intl';
 import type { Locale } from '@/shared/i18n/locale';
+import { choreDueBody } from './chore-due-message';
 
 export type NotificationEvent =
 	| 'expense.created'
@@ -48,7 +48,7 @@ export interface NotificationMessage {
 	urlPath: string;
 }
 
-type PushT = ReturnType<typeof serverT<'push'>>;
+export type PushT = ReturnType<typeof serverT<'push'>>;
 
 function money(amountCents: unknown, currency: unknown, locale: Locale): string {
 	const cents = typeof amountCents === 'number' ? amountCents : 0;
@@ -126,49 +126,6 @@ function formatEventTime(t: PushT, locale: Locale, value: unknown, allDay = fals
 	}).format(date);
 }
 
-/** A bundled chore reminder names this many chores and counts the rest. */
-const CHORE_TITLES_SHOWN = 2;
-
-// Reminders also fire for chores overdue up to a week and for new chores due
-// tomorrow, so the copy follows the Berlin calendar distance to nextDueAt.
-function choreDueBody(
-	t: PushT,
-	locale: Locale,
-	payload: Record<string, unknown>,
-	wgName: string,
-): string {
-	const titles = Array.isArray(payload.titles)
-		? payload.titles.filter((title): title is string => typeof title === 'string')
-		: [];
-	if (titles.length > 1) {
-		const shown = titles.slice(0, CHORE_TITLES_SHOWN).join(', ');
-		const rest = titles.length - CHORE_TITLES_SHOWN;
-		const list = rest > 0 ? `${shown} (+${rest})` : shown;
-		return payload.unassigned === true
-			? `${t('choreDue.manyOpen', { titles: list, wgName })} ${t('choreDue.unassigned')}`
-			: t('choreDue.many', { titles: list });
-	}
-	const body = choreDueSentence(t, locale, payload, wgName);
-	return payload.unassigned === true ? `${body} ${t('choreDue.unassigned')}` : body;
-}
-
-function choreDueSentence(
-	t: PushT,
-	locale: Locale,
-	payload: Record<string, unknown>,
-	wgName: string,
-): string {
-	const title = text(payload.title, t('fallback.task'));
-	const dueAt = typeof payload.nextDueAt === 'string' ? new Date(payload.nextDueAt) : null;
-	if (!dueAt || Number.isNaN(dueAt.getTime())) return t('choreDue.today', { title, wgName });
-	const diffDays = berlinCalendarDayDistance(new Date(), dueAt);
-	if (diffDays < 0) return t('choreDue.overdue', { title, wgName, days: -diffDays });
-	if (diffDays === 0) return t('choreDue.today', { title, wgName });
-	if (diffDays === 1) return t('choreDue.tomorrow', { title, wgName });
-	const date = formatShortDate(dueAt.toISOString(), 'Europe/Berlin', locale);
-	return t('choreDue.onDate', { title, wgName, date });
-}
-
 function inventoryUrlPath(payload: Record<string, unknown>): string {
 	const id = typeof payload.inventoryItemId === 'string' ? payload.inventoryItemId.trim() : '';
 	return id ? `/supplies?highlight=${encodeURIComponent(id)}` : '/supplies';
@@ -223,7 +180,7 @@ export function formatNotificationMessage(
 		case 'expense.deleted':
 			return {
 				title: t('expenseDeleted.title'),
-				body: t('expenseDeleted.body', {
+				body: t(payload.payer === true ? 'expenseDeleted.payer' : 'expenseDeleted.debtor', {
 					actorName,
 					title: text(payload.title, t('fallback.expense')),
 					amount: amount(),

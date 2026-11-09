@@ -10,12 +10,12 @@ settled.
 
 ### Added
 
-- Members get a push when a new flatmate joins ("Mina joined your WG"). It follows the
+- Members get a push when a new flatmate joins ("Mina joined Altbau"). It follows the
   noticeboard notification setting; the person who joined does not get it.
 - Debtors get a push when an expense changes in amount, share or date ("your share 5.00 EUR to
   8.00 EUR") and when it is deleted. Edits to category, description or receipt stay quiet. The
   activity log shows the old and the new amount of an edit, and an edited expense shows "Edited" with
-  its time in the details.
+  the date of the edit in the details.
 - Receipt scanning recognises Spanish text: with the interface in Spanish, the scanner loads the
   Spanish model as well, so `ñ` and accents are kept. Other languages do not download it.
 - The self-hosting guide has tested nginx and Traefik reverse-proxy examples with the `.env` values,
@@ -64,11 +64,11 @@ settled.
 ### Changed
 
 - Quieter pushes: several shopping items added in a row replace one notification ("Mina added 3
-  items to the shopping list") instead of buzzing each time, and a burst of chat messages replaces
-  the previous notification without a new sound. Mentions, due chores and money pushes still
-  alert. Chore reminders arrive as one push per person and day ("Today for you: Bathroom, Trash
-  (+1)") and only on the due day and the day after; the chore stays in "For you" and in the
-  cleaning rota.
+  items to the shopping list") instead of buzzing each time, and a burst of chat messages from
+  one person replaces the previous notification from that person without a new sound. Mentions,
+  due chores and money pushes still alert. Chore reminders, assigned or not, arrive as one push per
+  person and day ("Open for you: Bathroom, Trash (+1)") and only on the due day and the day after;
+  the chore stays in "For you" and in the cleaning rota.
 - The invitation page for visitors without an account names who invited them to which flat, offers
   Google next to *Create account* as the main action, and links to sign-in as a plain text link. A
   link that is expired, used up or wrong is reported before the sign-up instead of after it. A

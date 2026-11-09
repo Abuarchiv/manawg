@@ -31,7 +31,7 @@ export interface DispatchInput {
 	urgent?: boolean;
 	/**
 	 * Same-tag notifications replace each other on the device. The service worker keeps a
-	 * replacement silent for `shopping:` and `chat:` tags; any other tag buzzes again.
+	 * replacement silent for `shopping:` and `chat:` tags (see `burstTag`); any other tag buzzes again.
 	 */
 	tag?: string;
 }

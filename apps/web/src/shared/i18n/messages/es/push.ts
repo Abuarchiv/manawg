@@ -36,7 +36,8 @@ export default {
 	},
 	expenseDeleted: {
 		title: 'Gasto eliminado',
-		body: '{actorName} eliminó {title}. Tu saldo cambia en {amount}.',
+		debtor: '{actorName} eliminó {title}. Debes {amount} menos.',
+		payer: '{actorName} eliminó {title}. Te deben {amount} menos.',
 	},
 	recurringCharged: {
 		title: 'Nuevo cargo de gasto fijo',
@@ -85,8 +86,8 @@ export default {
 		overdue:
 			'{title} lleva pendiente en {wgName} {days, plural, one {{days, number, ::group-off} día} other {{days, number, ::group-off} días}}.',
 		unassigned: 'No hay nadie asignado.',
-		many: 'Hoy para ti: {titles}',
-		manyOpen: 'Pendiente hoy en {wgName}: {titles}.',
+		many: 'Pendiente para ti: {titles}',
+		manyOpen: 'Pendiente en {wgName}: {titles}.',
 	},
 	shoppingAdded: {
 		title: 'Lista de la compra',

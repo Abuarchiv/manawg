@@ -36,7 +36,8 @@ export default {
 	},
 	expenseDeleted: {
 		title: 'Expense deleted',
-		body: '{actorName} deleted {title}. Your balance changes by {amount}.',
+		debtor: '{actorName} deleted {title}. You owe {amount} less.',
+		payer: '{actorName} deleted {title}. You are owed {amount} less.',
 	},
 	recurringCharged: {
 		title: 'New fixed-cost entry',
@@ -74,7 +75,7 @@ export default {
 		body: '{actorName} marked a post as resolved: {title}',
 	},
 	memberJoined: {
-		title: 'New in your WG',
+		title: 'New flatmate',
 		body: '{actorName} joined {wgName}.',
 	},
 	choreDue: {
@@ -85,8 +86,8 @@ export default {
 		overdue:
 			'{title} has been open in {wgName} for {days, plural, one {{days, number, ::group-off} day} other {{days, number, ::group-off} days}}.',
 		unassigned: 'Nobody is assigned.',
-		many: 'Today for you: {titles}',
-		manyOpen: 'Open today in {wgName}: {titles}.',
+		many: 'Open for you: {titles}',
+		manyOpen: 'Open in {wgName}: {titles}.',
 	},
 	shoppingAdded: {
 		title: 'Shopping list',

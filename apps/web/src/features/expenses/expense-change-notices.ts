@@ -62,25 +62,31 @@ export function expenseUpdateNotices(input: {
 }
 
 /**
- * Who hears about a deletion and by how much their balance moves: a debtor by their own share,
- * the payer by what everyone else owed them. The editor and members without a change are left out.
+ * Who hears about a deletion and by how much their balance moves: a debtor owes less by their own share,
+ * the payer is owed less by what everyone else owed them. The editor and members without a change are left out.
  */
 export function expenseDeletionNotices(input: {
 	actorId: string;
 	payerId: string;
 	shares: ExpenseShare[];
-}): Array<{ memberIds: string[]; amountCents: number }> {
+}): Array<{ memberIds: string[]; amountCents: number; payer: boolean }> {
 	const owedToPayer = input.shares
 		.filter((share) => share.debtorMemberId !== input.payerId)
 		.reduce((sum, share) => sum + share.amountCents, 0);
 	const entries = [
-		{ memberId: input.payerId, amountCents: owedToPayer },
+		{ memberId: input.payerId, amountCents: owedToPayer, payer: true },
 		...input.shares
 			.filter((share) => share.debtorMemberId !== input.payerId)
-			.map((share) => ({ memberId: share.debtorMemberId, amountCents: share.amountCents })),
+			.map((share) => ({
+				memberId: share.debtorMemberId,
+				amountCents: share.amountCents,
+				payer: false,
+			})),
 	].filter((entry) => entry.memberId !== input.actorId && entry.amountCents > 0);
-	return group(entries, (e) => String(e.amountCents)).map(({ memberIds, entry }) => ({
+	// The wording differs by role (owes less vs is owed less), so the roles never share a notice.
+	return group(entries, (e) => `${e.payer}:${e.amountCents}`).map(({ memberIds, entry }) => ({
 		memberIds,
 		amountCents: entry.amountCents,
+		payer: entry.payer,
 	}));
 }

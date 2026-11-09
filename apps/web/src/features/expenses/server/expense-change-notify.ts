@@ -65,6 +65,7 @@ export async function notifyExpenseDeleted(
 					title: input.title,
 					currency: input.currency,
 					amountCents: notice.amountCents,
+					...(notice.payer ? { payer: true } : {}),
 				},
 				targetMemberIds: notice.memberIds,
 				excludeMemberId: input.actor.memberId,

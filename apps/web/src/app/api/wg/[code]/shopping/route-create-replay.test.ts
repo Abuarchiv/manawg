@@ -358,7 +358,9 @@ test('adds in a row share one push tag and count the burst', async () => {
 		assert.equal((await post({ name }, `55555555-5555-4555-8555-55555555555${index}`)).status, 200);
 	}
 	assert.equal(dispatched.length, 3);
-	assert.deepEqual(new Set(dispatched.map((d) => d.tag)), new Set([`shopping:${wgId}`]));
+	const tags = new Set(dispatched.map((d) => d.tag));
+	assert.equal(tags.size, 1);
+	assert.match(String([...tags][0]), new RegExp(`^shopping:${wgId}:${memberId}:\\d+$`));
 	const counts = dispatched.map((d) => (d.payload as { addedCount?: number }).addedCount);
 	assert.deepEqual(counts, [undefined, 2, 3]);
 });

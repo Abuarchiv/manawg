@@ -18,6 +18,7 @@ import { parseBody } from '@/core/http/parse-body';
 import { readIdempotencyKey, setReplayWarning } from '@/core/idempotency-store';
 import { readListLimit } from '@/core/infra/env';
 import { logApiError } from '@/core/infra/observability';
+import { BURST_WINDOW_MS, burstTag } from '@/core/notifications/burst-tag';
 import { dispatchNotificationSafely } from '@/core/notifications/notification-dispatch';
 import { clampTapTime } from '@/core/offline/replay-retention';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
@@ -34,8 +35,6 @@ import {
 import { isOpenShoppingItemDuplicate } from '@/features/shopping/shopping-duplicate';
 
 const NAME_MIN = 1;
-/** Items one member adds within this window are announced as one growing push, not one each. */
-const SHOPPING_BURST_WINDOW_MS = 30 * 60 * 1000;
 const SHOPPING_ITEMS_LIST_LIMIT = 1000;
 /** Hard ceiling for `SHOPPING_ITEMS_LIST_LIMIT` — env can lower or raise, never unbound. */
 const SHOPPING_ITEMS_LIST_LIMIT_MAX = 5000;
@@ -89,7 +88,7 @@ async function recentlyAddedCount(wgId: string, memberId: string): Promise<numbe
 				and(
 					eq(shoppingItems.wgId, wgId),
 					eq(shoppingItems.addedByMemberId, memberId),
-					gte(shoppingItems.createdAt, new Date(Date.now() - SHOPPING_BURST_WINDOW_MS)),
+					gte(shoppingItems.createdAt, new Date(Date.now() - BURST_WINDOW_MS)),
 				),
 			);
 		return Math.max(1, row?.total ?? 1);
@@ -208,7 +207,7 @@ export const POST = withWgRoute('shopping POST', async (req, { code }) => {
 				},
 				excludeMemberId: member.memberId,
 				// The device replaces the earlier notification of the burst without buzzing again.
-				tag: `shopping:${wg.id}`,
+				tag: burstTag('shopping', wg.id, member.memberId),
 			});
 			if (key) {
 				await setReplayWarning(

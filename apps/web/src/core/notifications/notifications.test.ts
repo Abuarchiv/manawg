@@ -267,7 +267,7 @@ test('a join push opens the WG start page and follows the announcements setting'
 		'en',
 	);
 	assert.deepEqual(message, {
-		title: 'New in your WG',
+		title: 'New flatmate',
 		body: 'Mina joined Altbau.',
 		urlPath: '/',
 	});
@@ -294,7 +294,12 @@ test('edit and delete pushes tell the recipient their own share and balance', ()
 	);
 	assert.match(
 		formatNotificationMessage('expense.deleted', { ...base, amountCents: 800 }, 'de').body,
-		/^Anna hat Pizza gelöscht\. Dein Saldo ändert sich um 8,00\s€\.$/,
+		/^Anna hat Pizza gelöscht\. Du schuldest 8,00\s€ weniger\.$/,
+	);
+	assert.match(
+		formatNotificationMessage('expense.deleted', { ...base, amountCents: 800, payer: true }, 'de')
+			.body,
+		/^Anna hat Pizza gelöscht\. Dir werden 8,00\s€ weniger geschuldet\.$/,
 	);
 });
 
@@ -318,15 +323,15 @@ test('a burst of shopping adds shows its count, the first add keeps the item wor
 test('bundled chore reminders name two chores and count the rest', () => {
 	const due = (titles: string[], extra: Record<string, unknown> = {}, locale: 'de' | 'en' = 'de') =>
 		formatNotificationMessage('chore.due', { wgName: 'WG', titles, ...extra }, locale);
-	assert.equal(due(['Bad putzen', 'Müll', 'Küche']).body, 'Heute für dich: Bad putzen, Müll (+1)');
-	assert.equal(due(['Bad', 'Müll']).body, 'Heute für dich: Bad, Müll');
+	assert.equal(due(['Bad putzen', 'Müll', 'Küche']).body, 'Offen für dich: Bad putzen, Müll (+1)');
+	assert.equal(due(['Bad', 'Müll']).body, 'Offen für dich: Bad, Müll');
 	assert.equal(
 		due(['Bath', 'Trash', 'Hall', 'Stairs'], {}, 'en').body,
-		'Today for you: Bath, Trash (+2)',
+		'Open for you: Bath, Trash (+2)',
 	);
 	assert.equal(
 		due(['Bad', 'Müll'], { unassigned: true }).body,
-		'Heute offen in WG: Bad, Müll. Niemand ist zuständig.',
+		'Offen in WG: Bad, Müll. Niemand ist zuständig.',
 	);
 	assert.equal(due(['Bad', 'Müll']).urlPath, '/chores');
 	assert.equal(

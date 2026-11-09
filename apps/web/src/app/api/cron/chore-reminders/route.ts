@@ -25,8 +25,6 @@ const REMINDER_CLAIM_SCOPE = 'chore-reminders';
 // drained by the following runs instead of being loaded in one go.
 const REMINDER_CANDIDATE_LIMIT = 500;
 const UNASSIGNED_CANDIDATE_LIMIT = 100;
-// An assigned chore is reminded on its due day and the day after, then the push stays silent;
-// it remains in "For you" and in the plan. This also bounds the candidate query.
 
 interface DueChore {
 	id: string;
@@ -137,6 +135,8 @@ export const GET = withCronLogging(
 		const startOfDay = startOfBerlinDay(now);
 		const endOfDay = endOfBerlinDay(now);
 		const throttleCutoff = new Date(now.getTime() - REMINDER_THROTTLE_MS);
+		// A chore is reminded on its due day and the day after, then the push stays silent; it
+		// remains in "For you" and in the plan. This also bounds the candidate queries.
 		const lookbackStart = prevBerlinDayStart(startOfDay);
 
 		const due = await db
@@ -185,9 +185,8 @@ export const GET = withCronLogging(
 			.orderBy(sql`${chores.lastReminderAt} asc nulls first`, asc(chores.nextDueAt), asc(chores.id))
 			.limit(REMINDER_CANDIDATE_LIMIT);
 
-		// Nobody is answerable for these, so without a reminder they would stay overdue.
-		// No lookback: the chore will not rotate on its own, so it keeps its one announcement
-		// per throttle window until somebody picks it up.
+		// Nobody is answerable for these, so they are announced to the whole WG, with the same
+		// two-day window as assigned chores.
 		const unassigned = await db
 			.select({
 				id: chores.id,
@@ -202,6 +201,7 @@ export const GET = withCronLogging(
 			.innerJoin(wgs, eq(chores.wgId, wgs.id))
 			.where(
 				and(
+					gte(chores.nextDueAt, lookbackStart),
 					lte(chores.nextDueAt, endOfDay),
 					isNull(chores.assignedMemberId),
 					or(isNull(chores.lastReminderAt), lte(chores.lastReminderAt, throttleCutoff)),

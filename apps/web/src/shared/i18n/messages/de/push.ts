@@ -33,7 +33,8 @@ export default {
 	},
 	expenseDeleted: {
 		title: 'Ausgabe gelöscht',
-		body: '{actorName} hat {title} gelöscht. Dein Saldo ändert sich um {amount}.',
+		debtor: '{actorName} hat {title} gelöscht. Du schuldest {amount} weniger.',
+		payer: '{actorName} hat {title} gelöscht. Dir werden {amount} weniger geschuldet.',
 	},
 	recurringCharged: {
 		title: 'Neue Fixkosten-Buchung',
@@ -82,8 +83,8 @@ export default {
 		overdue:
 			'{title} ist in {wgName} seit {days, plural, one {{days, number, ::group-off} Tag} other {{days, number, ::group-off} Tagen}} offen.',
 		unassigned: 'Niemand ist zuständig.',
-		many: 'Heute für dich: {titles}',
-		manyOpen: 'Heute offen in {wgName}: {titles}.',
+		many: 'Offen für dich: {titles}',
+		manyOpen: 'Offen in {wgName}: {titles}.',
 	},
 	shoppingAdded: {
 		title: 'Einkaufsliste',

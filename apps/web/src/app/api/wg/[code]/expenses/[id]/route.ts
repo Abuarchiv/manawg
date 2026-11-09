@@ -1,6 +1,5 @@
 import { and, eq, inArray, isNotNull, isNull, ne, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
-import { z } from 'zod';
 import { updateExpenseChatNotice, withdrawExpenseChatNotice } from '@/core/activity-feed';
 import { recordAuditEvent } from '@/core/audit';
 import { db, expenseSplits, expenses, wgMembers } from '@/core/db';
@@ -22,38 +21,19 @@ import {
 } from '@/core/http/api-errors';
 import { parseBody } from '@/core/http/parse-body';
 import { checkRateLimit, wgWriteLimiter } from '@/core/rate-limit';
-import { imageUrlSchema, isAllowedImageUrlForWg } from '@/core/validators/image-url';
+import { isAllowedImageUrlForWg } from '@/core/validators/image-url';
 import type { ExpenseShare } from '@/features/expenses/expense-change-notices';
-import { MAX_SPLITS } from '@/features/expenses/expense-constants';
-import {
-	expenseAmountSchema,
-	expenseDescriptionSchema,
-	expenseSplitSchema,
-	occurredAtSchema,
-} from '@/features/expenses/expense-schemas';
-import { expenseCategoryValueSchema } from '@/features/expenses/server/expense-category-schema';
-import {
-	notifyExpenseDeleted,
-	notifyExpenseUpdated,
-} from '@/features/expenses/server/expense-change-notify';
+import { notifyExpenseDeleted } from '@/features/expenses/server/expense-change-notify';
 import { storedExpenseHoldingEdit } from '@/features/expenses/server/expense-held-edit';
+import { patchSchema } from '@/features/expenses/server/expense-patch-schema';
 import { withExpensePaymentLock } from '@/features/expenses/server/expense-payments';
+import { recordExpenseUpdate } from '@/features/expenses/server/expense-update-record';
 import {
 	settledAtForOwnShare,
 	splitChangeViolation,
 	splitValidationErrorCode,
 	validateSplits,
 } from '@/features/expenses/split-math';
-
-const patchSchema = z.object({
-	description: expenseDescriptionSchema.optional(),
-	category: expenseCategoryValueSchema.optional(),
-	amountCents: expenseAmountSchema.optional(),
-	imageUrl: imageUrlSchema,
-	occurredAt: occurredAtSchema.optional(),
-	expectedUpdatedAt: z.string().datetime({ offset: true }).optional(),
-	splits: z.array(expenseSplitSchema).min(1).max(MAX_SPLITS).optional(),
-});
 
 export const DELETE = withWgRoute<{ id: string }>('expense DELETE', async (req, { code, id }) => {
 	if (!UUID_PATTERN.test(id)) return badRequest('id_invalid');
@@ -389,42 +369,13 @@ export const PATCH = withWgRoute<{ id: string }>('expense PATCH', async (req, { 
 		.select()
 		.from(expenseSplits)
 		.where(eq(expenseSplits.expenseId, id));
-	await recordAuditEvent({
-		wgId,
-		memberId: auth.member.memberId,
-		eventType: 'expense.updated',
-		entityType: 'expense',
-		entityId: id,
-		actorName: auth.member.name,
-		metadata: {
-			description: updatedRow.description,
-			amountCents: updatedRow.amountCents,
-			currency: updatedRow.currency,
-			splitCount: updatedSplits.length,
-			previousAmountCents: row.amountCents,
-			...(replaced.shares && {
-				previousShares: Object.fromEntries(
-					replaced.shares.map((share) => [share.debtorMemberId, share.amountCents]),
-				),
-			}),
-		},
-	});
-	await notifyExpenseUpdated({
+	await recordExpenseUpdate({
 		wg: auth.wg,
 		actor: { memberId: auth.member.memberId, name: auth.member.name },
-		title: updatedRow.description,
-		currency: updatedRow.currency,
-		expenseId: id,
-		before: {
-			amountCents: row.amountCents,
-			occurredAt: row.occurredAt,
-			shares: replaced.shares ?? updatedSplits,
-		},
-		after: {
-			amountCents: updatedRow.amountCents,
-			occurredAt: updatedRow.occurredAt,
-			shares: updatedSplits,
-		},
+		before: { amountCents: row.amountCents, occurredAt: row.occurredAt },
+		replacedShares: replaced.shares,
+		after: updatedRow,
+		shares: updatedSplits,
 	});
 
 	return NextResponse.json({ ...updatedRow, splits: updatedSplits });

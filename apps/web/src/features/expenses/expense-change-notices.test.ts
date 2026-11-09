@@ -81,10 +81,10 @@ test('a deletion moves a debtor by their share and the payer by what the others 
 		{ debtorMemberId: 'b', amountCents: 300 },
 	];
 	assert.deepEqual(expenseDeletionNotices({ actorId: 'a', payerId: 'payer', shares }), [
-		{ memberIds: ['payer'], amountCents: 600 },
-		{ memberIds: ['b'], amountCents: 300 },
+		{ memberIds: ['payer'], amountCents: 600, payer: true },
+		{ memberIds: ['b'], amountCents: 300, payer: false },
 	]);
 	assert.deepEqual(expenseDeletionNotices({ actorId: 'payer', payerId: 'payer', shares }), [
-		{ memberIds: ['a', 'b'], amountCents: 300 },
+		{ memberIds: ['a', 'b'], amountCents: 300, payer: false },
 	]);
 });
