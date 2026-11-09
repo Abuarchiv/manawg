@@ -2,7 +2,7 @@ import { eurosToCents, formatCentsInput, parseEuroAmount } from '@/core/utils/am
 import type { Locale } from '@/shared/i18n/locale';
 
 /**
- * Pure remainder-distribution step behind "Rest aufteilen", kept out of the
+ * Pure remainder-distribution step behind the "split the rest" action, kept out of the
  * component file (which has JSX) so it can be unit-tested with node's plain
  * `.ts` loader. Too little entered: tops up the empty fields. Too much:
  * claws the excess back from the fields that actually carry an amount —

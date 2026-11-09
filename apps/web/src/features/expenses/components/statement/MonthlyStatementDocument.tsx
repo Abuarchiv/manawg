@@ -165,13 +165,13 @@ export function MonthlyStatementDocument({
 								<th scope="col" className={cn(TH, 'w-full min-w-16 max-w-0 text-left')}>
 									{t('document.person')}
 								</th>
-								<th scope="col" className={cn(TH, 'pl-2 text-right sm:pl-3')}>
+								<th scope="col" className={cn(TH, 'pl-3 text-right')}>
 									{t('document.paid')}
 								</th>
-								<th scope="col" className={cn(TH, 'pl-2 text-right sm:pl-3')}>
+								<th scope="col" className={cn(TH, 'pl-3 text-right')}>
 									{t('document.share')}
 								</th>
-								<th scope="col" className={cn(TH, 'pl-2 text-right sm:pl-3')}>
+								<th scope="col" className={cn(TH, 'pl-3 text-right')}>
 									{t('document.balance')}
 								</th>
 							</tr>
