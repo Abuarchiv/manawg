@@ -7,8 +7,9 @@ import { QUANTITY_MAX } from './components/constants';
 const QUANTITY_PREFIX =
 	/^(\d+(?:[.,]\d+)?\s*(?:x|×|stk\.?|stück|l|liter|ml|g|kg|packungen|packung|pck\.?|dosen|dose|flaschen|flasche|rollen|rolle|pcs?|packs?|rolls?|cans?|bottles?|litres?|liters?|kilos?|lbs?|oz|bags?|boxes|box|jars?|gläser|glas|beutel|bund|paquetes?|latas?|botellas?|bolsas?|cajas?|botes?|frascos?|docenas?|litros?)?)\s+(?:of\s+(?=\S))?(\S.*)$/i;
 
+// The unit follows the digits directly ("2kg") or after a space ("2 kg").
 const SPANISH_UNIT =
-	/\s(?:kg|g|ml|l|kilos?|paquetes?|latas?|botellas?|bolsas?|cajas?|botes?|frascos?|docenas?|litros?)$/i;
+	/[\d\s](?:kg|g|ml|l|kilos?|paquetes?|latas?|botellas?|bolsas?|cajas?|botes?|frascos?|docenas?|litros?)$/i;
 
 // Lowercase only, so a brand such as "2 kg De Cecco Spaghetti" keeps its name.
 const SPANISH_CONNECTOR = /^de\s+(?=\S)/;

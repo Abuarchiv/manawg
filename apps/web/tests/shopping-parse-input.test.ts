@@ -80,3 +80,20 @@ test('the Spanish "de" is also dropped after metric units, a capitalised "De" br
 	});
 	assert.deepEqual(parseShoppingInput('2 kg dessert'), { name: 'dessert', quantity: '2 kg' });
 });
+
+test('the Spanish "de" is dropped after a unit glued to the amount', () => {
+	assert.deepEqual(parseShoppingInput('2kg de arroz'), { name: 'arroz', quantity: '2kg' });
+	assert.deepEqual(parseShoppingInput('500g de harina'), { name: 'harina', quantity: '500g' });
+	assert.deepEqual(parseShoppingInput('1,5l de leche'), { name: 'leche', quantity: '1,5l' });
+	assert.deepEqual(parseShoppingInput('2paquetes de pasta'), {
+		name: 'pasta',
+		quantity: '2paquetes',
+	});
+});
+
+test('a capitalised "De" after a unit is kept as part of the name', () => {
+	assert.deepEqual(parseShoppingInput('2 Paquetes De pasta'), {
+		name: 'De pasta',
+		quantity: '2 Paquetes',
+	});
+});
