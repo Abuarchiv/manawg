@@ -1,5 +1,6 @@
 import { AUTH_RATE_LIMITED_MESSAGE } from '@/core/auth/password-errors';
 import type { Message } from '@/shared/i18n/message';
+import { MEMBER_NAME_MAX_LENGTH } from '@/shared/lib/limits';
 
 export const INVITE_EXPIRED_MESSAGE: Message = { key: 'entry.errors.inviteExpired' };
 export const DELETION_PENDING_MESSAGE: Message = { key: 'entry.errors.deletionPending' };
@@ -23,7 +24,8 @@ export function joinErrorMessage(status: number, error: string): Message {
 	) {
 		return { key: 'entry.errors.joinRetry' };
 	}
-	if (error === 'name_invalid') return { key: 'entry.errors.nameInvalid' };
+	if (error === 'name_invalid')
+		return { key: 'entry.errors.nameInvalid', values: { max: MEMBER_NAME_MAX_LENGTH } };
 	if (status === 400) return { key: 'entry.errors.checkInput' };
 	if (status === 0) return { key: 'entry.errors.joinOffline' };
 	return { key: 'entry.errors.joinFailed' };

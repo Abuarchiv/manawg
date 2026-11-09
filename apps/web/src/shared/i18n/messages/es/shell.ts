@@ -143,7 +143,7 @@ export default {
 		chooseLabel: 'Elegir imagen',
 	},
 	inviteShare: {
-		limitReached: 'Ya hay 20 invitaciones activas. Revoca una antes de crear otra.',
+		limitReached: 'Ya hay {max, number} invitaciones activas. Revoca una antes de crear otra.',
 		rateLimited: 'Demasiadas invitaciones a la vez. Inténtalo de nuevo en un momento.',
 		createFailed: 'No se ha podido crear la invitación',
 		createFailedRetry: 'No se ha podido crear la invitación. Inténtalo de nuevo.',
@@ -151,7 +151,7 @@ export default {
 	},
 	inviteMail: {
 		emailInvalid: 'Eso no parece un correo electrónico.',
-		limitReached: 'Ya hay 20 invitaciones activas. Revoca una antes de enviar otra.',
+		limitReached: 'Ya hay {max, number} invitaciones activas. Revoca una antes de enviar otra.',
 		rateLimited: 'Demasiadas invitaciones a la vez. Inténtalo de nuevo dentro de una hora.',
 		mailUnavailable: 'No se ha podido enviar el correo. Comparte el enlace en su lugar.',
 		failed: 'No ha funcionado. Inténtalo de nuevo.',

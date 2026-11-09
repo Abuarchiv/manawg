@@ -115,7 +115,7 @@ export default {
 		joinInsertFailed:
 			'Beitritt konnte nicht gespeichert werden: Prüfe die WG und versuche es erneut.',
 		joinRetry: 'Beitritt konnte nicht abgeschlossen werden: Versuche es gleich erneut.',
-		nameInvalid: 'Dein Name muss 1 bis 80 Zeichen haben.',
+		nameInvalid: 'Dein Name muss 1 bis {max, number} Zeichen haben.',
 		checkInput: 'Bitte prüfe deine Eingabe.',
 		joinOffline:
 			'Beitritt konnte nicht abgeschlossen werden: Prüfe deine Verbindung und versuche es erneut.',
