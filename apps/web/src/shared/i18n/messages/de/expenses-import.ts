@@ -146,6 +146,7 @@ export default {
 	errors: {
 		failedPreview: 'Vorschau fehlgeschlagen',
 		failedImport: 'Import fehlgeschlagen',
+		keyUnavailable: 'Der Import konnte nicht sicher gesendet werden. Versuche es erneut.',
 		rateLimited: 'Zu viele Importversuche. Warte kurz und versuche es erneut.',
 		retryLater: 'Der Import konnte gerade nicht verarbeitet werden. Versuche es gleich erneut.',
 		sessionExpired: 'Öffne die WG erneut, damit deine Mitgliedschaft geladen wird.',

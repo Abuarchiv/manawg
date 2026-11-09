@@ -147,6 +147,7 @@ export default {
 	errors: {
 		failedPreview: 'Falló la vista previa',
 		failedImport: 'Falló la importación',
+		keyUnavailable: 'No se pudo enviar la importación de forma fiable. Inténtalo de nuevo.',
 		rateLimited: 'Demasiados intentos de importación. Espera un momento e inténtalo de nuevo.',
 		retryLater: 'No se pudo procesar la importación ahora mismo. Inténtalo de nuevo en breve.',
 		sessionExpired: 'Abre el piso otra vez para que se cargue tu acceso como miembro.',
