@@ -149,7 +149,7 @@ test('account deletion erases the leaver absences and keeps the flatmates', asyn
 			wgId: wg.id,
 			memberId: me.id,
 			eventType: 'absence.created',
-			entityType: 'absence',
+			entityType: 'member_absence',
 			entityId: absenceId,
 			summary: 'Absence added',
 			metadataJson: JSON.stringify({ memberId, reason }),
