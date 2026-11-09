@@ -79,7 +79,11 @@ test.describe('chore complete focus', () => {
 		await trigger.focus();
 		await page.keyboard.press('Enter');
 		await expect(page.getByRole('alertdialog')).toHaveCount(0);
-		await expect(page.getByRole('button', { name: 'Rückgängig' })).toBeVisible();
+		// The toast takes focus for keyboard users, so the Undo is one key away.
+		const undo = page.getByRole('button', { name: 'Rückgängig' });
+		await expect(undo).toBeFocused();
+		// Once it is gone, focus returns into the page instead of falling to the body.
+		await page.getByRole('button', { name: 'Benachrichtigung schließen' }).click();
 		await expect
 			.poll(() =>
 				page.evaluate(

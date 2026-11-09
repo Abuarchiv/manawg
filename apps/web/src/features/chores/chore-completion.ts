@@ -1,7 +1,7 @@
 import { isReadOnlyMode, isSessionExpired } from '@/core/http/error-codes';
 import { createIdempotencyKey, shouldReleaseIdempotencyKey } from '@/core/http/idempotency-key';
 import { apiFetch } from '@/core/infra/api-client';
-import { enqueueOfflineAction } from '@/core/offline/offline-client';
+import { enqueueOfflineAction, updateOfflineQueue } from '@/core/offline/offline-client';
 import { createQueuedChoreCompletion } from '@/core/offline/offline-queue';
 import { formatShortDate, parseTimestamp } from '@/core/utils/time';
 import type { Locale } from '@/shared/i18n/locale';
@@ -180,6 +180,40 @@ export async function undoChoreCompletion(
 	);
 	if (result.ok) return 'undone';
 	return result.status === 409 || result.status === 404 ? 'unavailable' : 'failed';
+}
+
+/**
+ * Takes back a completion that is still in the offline queue. Dropping it only helps if it never
+ * reached the server: a request that timed out, or a sync in flight, may have saved it. So after
+ * the entry is gone the chore is read once more; if it already moved on, the completion stands
+ * and cannot be undone here. Without a reachable server the drop is all there is to go on.
+ */
+export async function undoQueuedChoreCompletion(
+	ctx: Pick<ChoreCompletionContext, 'shareCode' | 'memberId'>,
+	queuedActionId: string,
+	chore: ChoreOccurrence,
+): Promise<ChoreUndoResult> {
+	let removed = false;
+	const saved = await updateOfflineQueue((actions) => {
+		const queued = actions.find((action) => action.id === queuedActionId);
+		// Already synced or removed elsewhere: nothing left to drop.
+		if (queued?.type !== 'chore.complete') return null;
+		removed = true;
+		return actions.filter((action) => action.id !== queuedActionId);
+	});
+	if (!saved) return 'failed';
+	if (!removed) return 'unavailable';
+	const current = await apiFetch<{ chore?: { nextDueAt?: unknown; assignedMemberId?: unknown } }>(
+		`/api/wg/${encodeURIComponent(ctx.shareCode)}/chores/${encodeURIComponent(chore.id)}`,
+		{ memberId: ctx.memberId },
+	);
+	if (!current.ok) return 'undone';
+	const saw = current.data.chore;
+	const unchanged =
+		typeof saw?.nextDueAt === 'string' &&
+		Date.parse(saw.nextDueAt) === Date.parse(chore.nextDueAt) &&
+		saw.assignedMemberId === chore.assignedMemberId;
+	return unchanged ? 'undone' : 'unavailable';
 }
 
 export interface ChoreCompletionFeedback {

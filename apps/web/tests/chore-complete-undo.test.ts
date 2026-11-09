@@ -178,11 +178,46 @@ test('a second undo of the same completion is a 409 and changes nothing', { skip
 	assert.equal((await undoneAudits(done.choreId)).length, 1);
 });
 
+test('the window runs on the server clock, not the tap time', { skip }, async () => {
+	const done = await completeChore('Undo behind clock');
+	await pool.query(
+		`UPDATE public.chore_completions SET completed_at = now() - interval '1 hour' WHERE id = $1`,
+		[done.completionId],
+	);
+	const response = await undo(done);
+	assert.equal(response.status, 200, JSON.stringify(await response.json()));
+	assert.equal(await completionCount(done.choreId), 0);
+});
+
+test('an undo reopens the swap request the completion closed', { skip }, async () => {
+	const done = await completeChore('Undo swap');
+	const swapPath = `/chores?highlight=${encodeURIComponent(done.choreId)}`;
+	await pool.query(
+		`INSERT INTO public.announcements (wg_id, author_member_id, content, kind, source, source_path)
+		 VALUES ($1, $2, 'Swap?', 'request', 'chore_swap', $3)`,
+		[ids.wg, ids.anna, swapPath],
+	);
+	const swap = () =>
+		rows<{ status: string; resolved_by_member_id: string | null }>(
+			'SELECT status, resolved_by_member_id FROM public.announcements WHERE source_path = $1',
+			[swapPath],
+		);
+	// Close it the way `complete` does: resolved by the completer at the completion's time.
+	await pool.query(
+		`UPDATE public.announcements a SET status = 'resolved', resolved_by_member_id = $2, resolved_at = c.completed_at
+		 FROM public.chore_completions c WHERE c.id = $3 AND a.source_path = $1`,
+		[swapPath, ids.anna, done.completionId],
+	);
+	assert.equal((await swap())[0]?.status, 'resolved');
+	assert.equal((await undo(done)).status, 200);
+	assert.deepEqual(await swap(), [{ status: 'open', resolved_by_member_id: null }]);
+});
+
 test('a completion older than two minutes stays', { skip }, async () => {
 	const done = await completeChore('Undo expired');
 	await pool.query(
-		`UPDATE public.chore_completions SET completed_at = now() - interval '3 minutes' WHERE id = $1`,
-		[done.completionId],
+		`UPDATE public.chores SET updated_at = now() - interval '3 minutes' WHERE id = $1`,
+		[done.choreId],
 	);
 	const response = await undo(done);
 	assert.equal(response.status, 409);

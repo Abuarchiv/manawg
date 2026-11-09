@@ -12,7 +12,8 @@ settled.
 
 - Marking a task as done takes one tap and no confirm step. The toast has an Undo button that puts
   the task, its due date and its assignee back; it works for two minutes, as long as nobody has
-  changed the task since, and it also removes a completion that is still waiting offline. Late
+  changed the task since, and it also removes a completion that is still waiting offline. A swap
+  request closed by the completion opens again. With the keyboard, focus moves to Undo. Late
   tasks still ask first. Push notifications that were already sent are not withdrawn.
 - Receipt scanning recognises Spanish text: with the interface in Spanish, the scanner loads the
   Spanish model as well, so `ñ` and accents are kept. Other languages do not download it.

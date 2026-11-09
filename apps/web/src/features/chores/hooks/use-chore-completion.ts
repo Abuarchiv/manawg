@@ -1,13 +1,13 @@
 import { useTranslations } from 'next-intl';
 import { useCallback, useRef } from 'react';
 import { type ToastAction, useToast } from '@/components/ui/Toast';
-import { isOfflineActionQueued, removeQueuedAction } from '@/core/offline/offline-client';
 import {
 	type ChoreCompletionOutcome,
 	type ChoreOccurrence,
 	type ChoreUndoResult,
 	submitChoreCompletion,
 	undoChoreCompletion,
+	undoQueuedChoreCompletion,
 } from '@/features/chores/chore-completion';
 
 interface ChoreCompletionIdentity {
@@ -54,13 +54,7 @@ export function useChoreCompletion(
 				revert = () => undoChoreCompletion({ shareCode, memberId }, chore.id, receipt);
 			} else if (outcome.kind === 'queued') {
 				const { queuedActionId } = outcome;
-				revert = async () => {
-					// Already synced: it is a saved completion now, which only the server can undo.
-					if (!isOfflineActionQueued(queuedActionId)) return 'unavailable';
-					return (await removeQueuedAction(queuedActionId, ['chore.complete']))
-						? 'undone'
-						: 'failed';
-				};
+				revert = () => undoQueuedChoreCompletion({ shareCode, memberId }, queuedActionId, chore);
 			}
 			if (!revert) return undefined;
 			const run = revert;

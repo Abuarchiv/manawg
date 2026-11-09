@@ -82,6 +82,14 @@ const toastApi = {
 		addToast(message, 'info', options?.action),
 };
 
+// A keyboard user cannot reach a toast at the end of the page within its few seconds, so a toast
+// with an action takes focus when the last input was a key press.
+let lastInputWasKeyboard = false;
+if (typeof document !== 'undefined') {
+	document.addEventListener('keydown', () => (lastInputWasKeyboard = true), true);
+	document.addEventListener('pointerdown', () => (lastInputWasKeyboard = false), true);
+}
+
 /** True while any toast is on screen, so fixed bottom chrome can step aside. */
 export function useHasToasts(): boolean {
 	return useSyncExternalStore(
@@ -106,6 +114,26 @@ function ToastItem({ toast }: { toast: Toast }) {
 	const t = useTranslations('shell.ui');
 	const Icon = variantIcons[toast.variant];
 	const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const actionRef = useRef<HTMLDivElement>(null);
+	const hasAction = toast.action !== undefined;
+
+	// Keyboard users: focus the action, and hand focus back once the toast is gone.
+	useEffect(() => {
+		const button = actionRef.current?.querySelector('button');
+		if (!hasAction || !lastInputWasKeyboard || !button) return;
+		const returnTo = document.activeElement;
+		button.focus({ preventScroll: true });
+		return () => {
+			const active = document.activeElement;
+			if (
+				returnTo instanceof HTMLElement &&
+				returnTo.isConnected &&
+				(active === button || active === document.body)
+			) {
+				returnTo.focus({ preventScroll: true });
+			}
+		};
+	}, [hasAction]);
 
 	const clearTimer = useCallback(() => {
 		if (timerRef.current !== null) clearTimeout(timerRef.current);
@@ -149,7 +177,7 @@ function ToastItem({ toast }: { toast: Toast }) {
 				{toast.message}
 			</AlertDescription>
 			{/* Action and dismiss wrap together, so a narrow toast never strands the close button. */}
-			<div className="ml-auto flex shrink-0 items-center gap-1">
+			<div ref={actionRef} className="ml-auto flex shrink-0 items-center gap-1">
 				{toast.action && (
 					<Button
 						type="button"

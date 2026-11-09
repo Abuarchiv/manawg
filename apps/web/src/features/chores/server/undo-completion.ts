@@ -1,10 +1,14 @@
 import 'server-only';
-import { and, eq, gt, isNull, sql } from 'drizzle-orm';
+import { and, eq, gt, isNull, ne, sql } from 'drizzle-orm';
 import { auditValues } from '@/core/audit-values';
-import { auditEvents, choreCompletions, chores, withTransaction } from '@/core/db';
+import { announcements, auditEvents, choreCompletions, chores, withTransaction } from '@/core/db';
 import { lockActiveMember } from '@/core/db/member-departure';
+import { choreSwapSourcePath } from '@/features/chores/server/resolve-swap-request';
 
-/** A completion can be taken back for this long after it was made. */
+/**
+ * A completion can be taken back for this long after the chore last changed on the server. The
+ * clock is the chore's own `updatedAt`, not the client's tap time, which may be hours old or off.
+ */
 export const UNDO_WINDOW_MS = 2 * 60_000;
 
 export interface UndoCompletionInput {
@@ -30,9 +34,10 @@ export type UndoCompletionResult =
 
 /**
  * Takes back the caller's own latest completion: restores the date, assignee and anchor from
- * before it, deletes the completion row and writes the compensating audit event, all in one
- * transaction. The chore row is locked first, so a second undo or a concurrent completion
- * waits and then finds the state changed.
+ * before it, reopens the swap request the completion closed, deletes the completion row and
+ * writes the compensating audit event, all in one transaction. Locks are taken member first, then
+ * the chore row (the order of completing and of moving out), so a second undo or a concurrent
+ * completion waits and then finds the state changed.
  */
 export function undoChoreCompletion(
 	wgId: string,
@@ -42,6 +47,12 @@ export function undoChoreCompletion(
 	now = Date.now(),
 ): Promise<UndoCompletionResult> {
 	return withTransaction(async (tx): Promise<UndoCompletionResult> => {
+		// The previous assignee may have moved out since; the chore then stays unassigned.
+		const assignee =
+			input.previous.assignedMemberId &&
+			(await lockActiveMember(tx, wgId, input.previous.assignedMemberId))
+				? input.previous.assignedMemberId
+				: null;
 		const [chore] = await tx
 			.select()
 			.from(chores)
@@ -62,7 +73,7 @@ export function undoChoreCompletion(
 			.limit(1);
 		if (!completion) return { ok: false, error: 'completion_not_found' };
 		if (completion.completedByMemberId !== actor.memberId) return { ok: false, error: 'not_owner' };
-		if (now - completion.completedAt.getTime() > UNDO_WINDOW_MS) {
+		if (now - chore.updatedAt.getTime() > UNDO_WINDOW_MS) {
 			return { ok: false, error: 'undo_expired' };
 		}
 		const [later] = await tx
@@ -71,18 +82,13 @@ export function undoChoreCompletion(
 			.where(
 				and(
 					eq(choreCompletions.choreId, choreId),
+					ne(choreCompletions.id, input.completionId),
 					gt(choreCompletions.completedAt, completion.completedAt),
 				),
 			)
 			.limit(1);
 		if (later) return { ok: false, error: 'not_latest_completion' };
 
-		// The previous assignee may have moved out since; the chore then stays unassigned.
-		const assignee =
-			input.previous.assignedMemberId &&
-			(await lockActiveMember(tx, wgId, input.previous.assignedMemberId))
-				? input.previous.assignedMemberId
-				: null;
 		const assigneeMatch = input.expected.assignedMemberId
 			? eq(chores.assignedMemberId, input.expected.assignedMemberId)
 			: isNull(chores.assignedMemberId);
@@ -102,6 +108,20 @@ export function undoChoreCompletion(
 			.returning();
 		if (!restored) return { ok: false, error: 'chore_changed' };
 
+		// `complete` closed the chore's swap request with this completion's time; ask again.
+		await tx
+			.update(announcements)
+			.set({ status: 'open', resolvedAt: null, resolvedByMemberId: null, updatedAt: new Date(now) })
+			.where(
+				and(
+					eq(announcements.wgId, wgId),
+					eq(announcements.status, 'resolved'),
+					eq(announcements.source, 'chore_swap'),
+					eq(announcements.resolvedByMemberId, actor.memberId),
+					eq(announcements.resolvedAt, completion.completedAt),
+					choreSwapSourcePath(choreId),
+				),
+			);
 		await tx.delete(choreCompletions).where(eq(choreCompletions.id, input.completionId));
 		await tx.insert(auditEvents).values(
 			auditValues({

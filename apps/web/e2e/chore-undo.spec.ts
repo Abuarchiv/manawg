@@ -132,4 +132,21 @@ test.describe('chore completion with undo', () => {
 		await page.waitForTimeout(5000);
 		await expect(undo).toBeVisible();
 	});
+
+	test('a keyboard completion puts focus on Undo and gives it back afterwards', async ({
+		page,
+	}) => {
+		const { undoBodies } = await openRota(page, 200);
+		const complete = page.getByRole('button', { name: 'Als erledigt markieren: Bad putzen' });
+		await complete.focus();
+		await page.keyboard.press('Enter');
+		const undo = page.getByRole('button', { name: 'Rückgängig' });
+		await expect(undo).toBeFocused();
+		await page.keyboard.press('Enter');
+		await expect(page.getByText('Bad putzen ist wieder offen.')).toBeVisible();
+		expect(undoBodies).toHaveLength(1);
+		await expect(undo).toHaveCount(0);
+		await expect(page.locator(':focus')).not.toHaveCount(0);
+		await expect(page.locator('body')).not.toBeFocused();
+	});
 });
