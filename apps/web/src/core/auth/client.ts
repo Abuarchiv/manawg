@@ -246,7 +246,7 @@ export async function clearLocalAccountData(
 		try {
 			keys = await caches.keys();
 		} catch {
-			// Cache cleanup is best effort, as before.
+			// Cache cleanup must not block the logout.
 		}
 		if (!isCurrent()) return false;
 		const deletions: Promise<boolean>[] = [];
@@ -256,7 +256,7 @@ export async function clearLocalAccountData(
 			try {
 				deletions.push(caches.delete(key));
 			} catch {
-				// Cache cleanup is best effort, as before.
+				// Cache cleanup must not block the logout.
 			}
 		}
 		await Promise.allSettled(deletions);
@@ -267,7 +267,7 @@ export async function clearLocalAccountData(
 		try {
 			await navigator.clearAppBadge();
 		} catch {
-			// Badge cleanup is best effort, as before.
+			// Badge cleanup must not block the logout.
 		}
 	}
 	if (!isCurrent()) return false;
@@ -285,39 +285,38 @@ export async function clearLocalAccountData(
 }
 const LOGOUT_SYNC_TIMEOUT_MS = 5_000;
 
-/** Best effort: send what the offline queue still holds before the wipe takes it. */
+/**
+ * Sends what the offline queue still holds before the wipe takes it. Syncing is best effort, but
+ * counting is not: when the queue cannot be read the logout fails instead of wiping it unasked.
+ */
 async function flushOfflineQueueBeforeLogout(): Promise<number> {
-	try {
-		const { readOfflineQueue, syncOfflineActions, countOfflineActions } = await import(
-			'@/core/offline/offline-client'
-		);
-		const pairs = new Map(
-			readOfflineQueue().map((a) => [`${a.shareCode}:${a.memberId}`, a] as const),
-		);
-		if (pairs.size > 0) {
-			const abort = new AbortController();
-			const timeout = setTimeout(() => abort.abort(), LOGOUT_SYNC_TIMEOUT_MS);
-			try {
-				await Promise.race([
-					Promise.all(
-						[...pairs.values()].map((a) =>
-							syncOfflineActions(a.shareCode, {
-								force: true,
-								memberId: a.memberId,
-								signal: abort.signal,
-							}),
-						),
+	const { readOfflineQueue, syncOfflineActions, countOfflineActions } = await import(
+		'@/core/offline/offline-client'
+	);
+	const pairs = new Map(
+		readOfflineQueue().map((a) => [`${a.shareCode}:${a.memberId}`, a] as const),
+	);
+	if (pairs.size > 0) {
+		const abort = new AbortController();
+		const timeout = setTimeout(() => abort.abort(), LOGOUT_SYNC_TIMEOUT_MS);
+		try {
+			await Promise.race([
+				Promise.allSettled(
+					[...pairs.values()].map((a) =>
+						syncOfflineActions(a.shareCode, {
+							force: true,
+							memberId: a.memberId,
+							signal: abort.signal,
+						}),
 					),
-					new Promise((resolve) => abort.signal.addEventListener('abort', resolve)),
-				]);
-			} finally {
-				clearTimeout(timeout);
-			}
+				),
+				new Promise((resolve) => abort.signal.addEventListener('abort', resolve)),
+			]);
+		} finally {
+			clearTimeout(timeout);
 		}
-		return countOfflineActions();
-	} catch {
-		return 0;
 	}
+	return countOfflineActions();
 }
 
 /**
