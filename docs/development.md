@@ -15,7 +15,7 @@ apps/web/
                   utils, validators, i18n (server-side translation), mail (SMTP/Resend transport, templates)
   src/composition/ cross-feature reads (dashboard, activity, export)
   src/features/   vertical slices (chat, chores, events, expenses, inventory, announcements, shopping)
-                  a feature may import core/, shared/ and itself, never another feature
+                  a feature may import components/, core/, shared/ and itself, never another feature
                   features/<x>/server/ holds database and server-only code (import 'server-only')
   src/components/ reusable UI: ui/ (shadcn), animate-ui/ (motion variants), app/ (shell, PWA, theme), wg/ (WG-wide),
                   auth/ (sign-in, sign-up, password-reset forms), brand/ (splash screen), entry/ (signed-out entry app, WG welcome)
@@ -190,12 +190,12 @@ To look at the Auth mail templates while you change them, run `node supabase/tem
 
 These tests skip themselves unless their variable is set. `pnpm test:unit` and `test:e2e:fixtures` never set them, because each needs something those lanes do not provide: a database, a public network, or real credentials. The database suites run in their own workflow (`.github/workflows/database.yml`) against a PostgreSQL service. Locally, `node scripts/test-db-setup.mjs <url>` (from `apps/web`) prepares a fresh loopback database for them: the Supabase roles, a minimal `auth` schema and every migration. The auth UI specs (`e2e/auth-ui.spec.ts`) are not gated: `test:e2e:fixtures` starts a second fixture server on `E2E_PORT` + 1000 built with a fake Supabase project (the specs answer its `/auth/v1` and `/api/auth` requests through page routes), so they run in CI.
 
-| Variable | Enables | How to run | Why not in CI |
+| Variable | Enables | How to run | In CI? |
 | --- | --- | --- | --- |
-| `TEST_DATABASE_URL` | The database-backed suites listed in the `test:db` script of `apps/web/package.json` (scope checks per feature, ledgers, locks, invites, cron writes) | `TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55432/manawg_test pnpm --filter @manawg/web test:db`. The URL must be a disposable loopback Postgres prepared with `scripts/test-db-setup.mjs` | Runs in `database.yml` |
-| `RUN_DB_TIMEOUT_INTEGRATION` | The pool timeout case in `tests/runtime-pool.test.ts` | `pnpm --filter @manawg/web test:db-timeouts` (needs `initdb` and `pg_ctl` on the PATH and a non-root user) | Runs in `database.yml` |
-| `ACCOUNT_DELETE_TEST_URL` | `e2e/account-delete-db-*.spec.ts` (account deletion against real data) | `ACCOUNT_DELETE_TEST_URL=postgresql://postgres@127.0.0.1:55432/manawg_test pnpm --filter @manawg/web test:e2e:account-delete-db` (loopback host and explicit port required) | Runs in `database.yml` |
-| `OCR_RUNTIME_E2E` | The real Tesseract worker proof in `e2e/expense-ui-form.spec.ts` | `OCR_RUNTIME_E2E=true pnpm --filter @manawg/web test:e2e:fixtures e2e/expense-ui-form.spec.ts` | Needs no network: the worker, WASM core and models come from the app's `public/tesseract` (copied from `node_modules` by `next.config.ts`) |
+| `TEST_DATABASE_URL` | The database-backed suites listed in the `test:db` script of `apps/web/package.json` (scope checks per feature, ledgers, locks, invites, cron writes) | `TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55432/manawg_test pnpm --filter @manawg/web test:db`. The URL must be a disposable loopback Postgres prepared with `scripts/test-db-setup.mjs` | Yes, in `database.yml` |
+| `RUN_DB_TIMEOUT_INTEGRATION` | The pool timeout case in `tests/runtime-pool.test.ts` | `pnpm --filter @manawg/web test:db-timeouts` (needs `initdb` and `pg_ctl` on the PATH and a non-root user) | Yes, in `database.yml` |
+| `ACCOUNT_DELETE_TEST_URL` | `e2e/account-delete-db-*.spec.ts` (account deletion against real data) | `ACCOUNT_DELETE_TEST_URL=postgresql://postgres@127.0.0.1:55432/manawg_test pnpm --filter @manawg/web test:e2e:account-delete-db` (loopback host and explicit port required) | Yes, in `database.yml` |
+| `OCR_RUNTIME_E2E` | The real Tesseract worker proof in `e2e/expense-ui-form.spec.ts` | `OCR_RUNTIME_E2E=true pnpm --filter @manawg/web test:e2e:fixtures e2e/expense-ui-form.spec.ts` | No, run by hand. It needs no network (the worker, WASM core and models come from the app's `public/tesseract`, copied from `node_modules` by `next.config.ts`) but loads the real OCR engine, which is slow |
 
 Receipt scanning (OCR) ships the German, English and Spanish Tesseract models. The browser fetches only the models the interface language needs: `deu` and `eng` for German and English, plus `spa` when the interface is Spanish (`OCR_LANGS` in `apps/web/src/features/expenses/ocr.ts`), so Spanish receipts keep `ñ` and accents without making the other languages download the extra model. The Spanish setting still loads `deu` and `eng`, so a German receipt scanned with a Spanish interface reads as before.
 

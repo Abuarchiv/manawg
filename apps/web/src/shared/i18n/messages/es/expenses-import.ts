@@ -8,7 +8,7 @@ export default {
 	progressAria: 'Importación: paso {step} de 5',
 	boundary: {
 		title: 'No se pudo cargar el asistente de importación',
-		body: 'Algo salió mal al cargar el asistente de importación. Inténtalo de nuevo o vuelve al resumen del piso.',
+		body: 'Algo salió mal al cargar el asistente de importación. Inténtalo de nuevo o vuelve al inicio del piso.',
 	},
 	actions: {
 		back: 'Atrás',

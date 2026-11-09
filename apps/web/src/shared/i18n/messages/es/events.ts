@@ -4,7 +4,7 @@ import type de from '../de/events';
 export default {
 	errorPage: {
 		title: 'No se ha podido cargar el calendario ahora mismo',
-		body: 'Algo ha salido mal al cargar los eventos. Inténtalo de nuevo o vuelve al resumen del piso.',
+		body: 'Algo ha salido mal al cargar los eventos. Inténtalo de nuevo o vuelve al inicio del piso.',
 	},
 	page: {
 		title: 'Calendario',

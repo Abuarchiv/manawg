@@ -4,7 +4,7 @@ import type de from '../de/chat';
 export default {
 	errorPage: {
 		title: 'No se ha podido cargar el chat ahora mismo',
-		body: 'Algo ha salido mal en el chat. Inténtalo de nuevo o vuelve al resumen del piso.',
+		body: 'Algo ha salido mal en el chat. Inténtalo de nuevo o vuelve al inicio del piso.',
 	},
 	page: { title: 'Chat', loadingAria: 'Cargando chat' },
 	deleted: 'Este mensaje se ha eliminado.',

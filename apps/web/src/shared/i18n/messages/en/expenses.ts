@@ -74,7 +74,7 @@ export default {
 		emptyTitle: 'No fixed-cost template yet',
 		emptyBody: 'Set up the amount and split once.',
 		prepare: 'Prepare a new expense',
-		deleteTitle: 'Delete template?',
+		deleteTitle: 'Delete fixed cost?',
 		deleteBody: '“{description}” will be deleted. Expenses already recorded stay.',
 		cancel: 'Cancel',
 		delete: 'Delete',

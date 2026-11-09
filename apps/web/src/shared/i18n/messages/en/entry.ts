@@ -4,7 +4,7 @@ import type de from '../de/entry';
 export default {
 	frame: { home: 'ManaWG home', backToSignIn: 'ManaWG, back to sign-in' },
 	legal: {
-		// Owner legal review: faithful translation of the German consent sentence; both documents stay German.
+		// Translation of the German consent sentence; the linked documents are German only.
 		consentSignIn: 'By signing in, you accept our {terms} and the {privacy}.',
 		consentRegister: 'By registering, you accept our {terms} and the {privacy}.',
 		consentTerms: 'terms',

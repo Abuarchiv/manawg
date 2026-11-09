@@ -11,7 +11,7 @@ export default {
 	},
 	error: {
 		title: 'No se han podido cargar los ajustes ahora mismo',
-		body: 'Algo ha salido mal en los ajustes. Inténtalo de nuevo o vuelve al resumen del piso.',
+		body: 'Algo ha salido mal en los ajustes. Inténtalo de nuevo o vuelve al inicio del piso.',
 	},
 	actions: {
 		save: 'Guardar',
@@ -49,12 +49,12 @@ export default {
 	},
 	authFailure: {
 		credentials:
-			'El correo electrónico o la contraseña no son correctos. Revisa lo que has escrito o restablece tu contraseña.',
+			'El correo o la contraseña no son correctos. Revisa lo que has escrito o restablece tu contraseña.',
 		unconfirmed:
-			'Tu correo electrónico aún no está confirmado. Abre el enlace del correo de confirmación y luego inicia sesión.',
+			'Aún no has confirmado tu correo. Abre el enlace del correo de confirmación e inicia sesión.',
 		rateLimit: 'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.',
 		network:
-			'Sin conexión con el servicio de inicio de sesión. Revisa tu conexión e inténtalo de nuevo.',
+			'No hay conexión con el servicio de inicio de sesión. Comprueba tu conexión e inténtalo de nuevo.',
 	},
 	accessTab: {
 		signInMethods: 'Métodos de inicio de sesión',

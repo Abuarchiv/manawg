@@ -4,7 +4,7 @@ import type de from '../de/pinboard';
 export default {
 	errorPage: {
 		title: 'No se pudo cargar el tablón ahora mismo',
-		body: 'Algo salió mal en el tablón. Inténtalo de nuevo o vuelve al resumen del piso.',
+		body: 'Algo salió mal en el tablón. Inténtalo de nuevo o vuelve al inicio del piso.',
 	},
 	page: {
 		title: 'Tablón de anuncios',

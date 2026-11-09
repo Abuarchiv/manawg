@@ -54,7 +54,7 @@ an error otherwise. Restoring over a live instance replaces its current data, so
 `./docker/backup.sh` first.
 
 Test a restore now and then: start a second copy on another machine or port and check that you can
-sign in and see your WG and its pictures.
+sign in and see your flat and its pictures.
 
 ## Vercel and Supabase
 

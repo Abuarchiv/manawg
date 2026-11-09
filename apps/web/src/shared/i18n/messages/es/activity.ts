@@ -14,7 +14,7 @@ export default {
 	loadError: { lead: 'No se pudo cargar la actividad' },
 	error: {
 		title: 'No se pudo cargar la actividad ahora mismo',
-		body: 'Algo salió mal en el registro de actividad. Inténtalo de nuevo o vuelve al resumen del piso.',
+		body: 'Algo salió mal en el registro de actividad. Inténtalo de nuevo o vuelve al inicio del piso.',
 	},
 	feed: {
 		emptyTitle: 'Aún no hay actividad',

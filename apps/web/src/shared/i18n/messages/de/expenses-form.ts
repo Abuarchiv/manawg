@@ -141,7 +141,7 @@ export default {
 		withPeriod: '{subject}.',
 		invalidRequest: 'Die Anfrage war ungültig.',
 		splitSumMismatch:
-			'Beträge stimmen nicht überein — Summe muss exakt dem Gesamtbetrag entsprechen.',
+			'Die Beträge stimmen nicht überein. Die Summe muss genau dem Gesamtbetrag entsprechen.',
 		paidByMustIncludeCaller:
 			'Wenn du für jemand anderen buchst, muss dein eigener Anteil größer als 0 sein.',
 		notTemplateOwner:
@@ -159,7 +159,7 @@ export default {
 			expectedUpdatedAtInvalid: 'Lade die Liste neu und versuche es erneut.',
 			occurredAtInvalid: 'Prüfe das Ausgabedatum.',
 			splitsDuplicateDebtor:
-				'Aufteilung enthält eine Person doppelt — jede Person darf nur einmal vorkommen.',
+				'Die Aufteilung enthält eine Person doppelt. Jede Person darf nur einmal vorkommen.',
 			notPayer: 'Nur wer bezahlt hat, kann diese Ausgabe bearbeiten.',
 			hasSettledShares:
 				'Ein Anteil ist schon beglichen. Betrag und Aufteilung bleiben deshalb, wie sie sind; Beschreibung, Datum und Kategorie lassen sich ändern.',

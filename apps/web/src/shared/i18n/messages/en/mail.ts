@@ -42,8 +42,9 @@ export default {
 		age: '{days, plural, =0 {The oldest item is from today.} one {The oldest item is # day old.} other {The oldest item is # days old.}}',
 		netted:
 			'The newest items. Payments and expenses going the other way are already offset against the amount above.',
-		oneClick: 'One click and you are settled up. {creditor} sees it in the app straight away.',
-		button: 'Settle up now',
+		oneClick:
+			'Once you have paid, record the payment in the app. {creditor} sees it there straight away.',
+		button: 'Open expenses',
 		footer:
 			'Reminders come at most once every two days from the same person, and only if you have turned them on.',
 	},
