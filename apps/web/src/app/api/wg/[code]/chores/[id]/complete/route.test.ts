@@ -28,6 +28,7 @@ interface State {
 	claimExpiresAt: Date | null;
 	audits: number;
 	failReplayWrite: boolean;
+	insertError?: Error;
 	absenceCheckedAt?: number;
 	// The condition the chore lookup ran with.
 	choreLookup?: unknown;
@@ -187,6 +188,7 @@ const withTransaction = async <R>(operation: (tx: unknown) => Promise<R>): Promi
 			values: (value: unknown) => ({
 				returning: async () => {
 					assert.equal(table, tables.choreCompletions);
+					if (state.insertError) throw state.insertError;
 					draft.completions.push(value);
 					return [{ id: `completion-${draft.completions.length}` }];
 				},
@@ -334,6 +336,16 @@ test('chore replay-write failure rolls back completion and lets retry commit exa
 	assert.equal(retry.status, 200);
 	assert.equal(state.completions.length, 1);
 	assert.equal(state.chore.nextDueAt.getTime(), originalDueAt.getTime() + 7 * 86_400_000);
+});
+
+test('a lock timeout while writing the completion answers a retryable 503', async () => {
+	const state = makeState({
+		insertError: Object.assign(new Error('lock timeout'), { code: '55P03' }),
+	});
+	const route = makeRoute(state);
+	const response = await route.post(route.request(), route.context);
+	assert.equal(response.status, 503);
+	assert.equal(state.completions.length, 0);
 });
 
 test('stale and legacy chore completion payloads conflict without advancing the next occurrence', async () => {

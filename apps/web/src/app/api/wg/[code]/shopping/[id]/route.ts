@@ -67,8 +67,7 @@ export const PATCH = withWgRoute<{ id: string }>('shopping PATCH', async (req, {
 	);
 	if (limited) return limited;
 
-	// SECURITY: bought-by is always the authenticated caller. Body-supplied
-	// ids are ignored to prevent attribution spoofing.
+	// bought-by is always the authenticated caller; body-supplied ids are ignored.
 	const boughtBy = isBought ? auth.member.memberId : null;
 	const edited = name !== undefined || quantity !== undefined;
 	const replay = await withIdempotentReplay(

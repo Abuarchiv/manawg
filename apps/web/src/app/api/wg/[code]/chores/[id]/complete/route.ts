@@ -276,8 +276,7 @@ export const POST = withWgRoute<{ id: string }>(
 			.where(and(eq(chores.id, id), eq(chores.wgId, auth.wg.id)))
 			.limit(1);
 		if (!c) return notFound('chore_not_found');
-		// SECURITY: completedBy is always the authenticated caller; any body-supplied
-		// attribution is ignored.
+		// completedBy is always the authenticated caller; body-supplied attribution is ignored.
 		const completedBy = auth.member.memberId;
 		let writing = false;
 
@@ -309,13 +308,10 @@ export const POST = withWgRoute<{ id: string }>(
 		try {
 			result = await complete();
 		} catch (err) {
-			if (!writing) throw err;
-			if (err instanceof TransactionAbort) {
-				logApiError('[chore complete POST] completion insert failed', err);
-				return serverError(err.code);
-			}
-			logApiError('[chore complete POST] transaction failed', err);
-			return serverError('completion_insert_failed');
+			// Anything else (lock timeout, failed COMMIT) goes to withWgRoute for its 503 mapping.
+			if (!writing || !(err instanceof TransactionAbort)) throw err;
+			logApiError('[chore complete POST] completion insert failed', err);
+			return serverError(err.code);
 		}
 		if (result.kind === 'stopped') return result.response;
 		if (result.kind === 'replayed' || !result.context) {

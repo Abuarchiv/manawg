@@ -196,7 +196,7 @@ export const POST = withWgRoute('reminders POST', async (req, { code }) => {
 				debtorMemberId: row.debtorMemberId,
 				creditorMemberId: row.creditorMemberId,
 				currency: row.currency,
-				sentAt: row.sentAt instanceof Date ? row.sentAt.toISOString() : String(row.sentAt),
+				sentAt: row.sentAt.toISOString(),
 			}));
 			const cooldown = canSendReminder(
 				debtorMemberId,
