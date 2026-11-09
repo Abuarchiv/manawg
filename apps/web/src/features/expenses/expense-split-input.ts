@@ -122,7 +122,7 @@ export function buildSplitsFromForm(input: BuildSplitsInput): SplitInputResult {
 		const raw = manualSplits[member.id] ?? '';
 		if (raw.trim().length === 0) continue;
 		const value = parseEuroAmount(raw, input.locale);
-		if (value === null || value < 0) return { ok: false, reason: 'invalid_share' };
+		if (value === null) return { ok: false, reason: 'invalid_share' };
 		const cents = eurosToCents(value);
 		splits.push({ debtorMemberId: member.id, amountCents: cents });
 		sum += cents;
@@ -214,5 +214,5 @@ export function isUnreadableShare(raw: string | undefined, locale: Locale): bool
 	const value = raw?.trim() ?? '';
 	if (value.length === 0) return false;
 	const parsed = parseEuroAmount(value, locale);
-	return parsed === null || parsed < 0;
+	return parsed === null;
 }
