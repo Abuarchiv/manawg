@@ -12,30 +12,14 @@ import { useLocale, useTranslations } from 'next-intl';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { useWg } from '@/components/wg/WgContextProvider';
 import { activityItemKey } from '@/composition/activity';
+import type { FeedActivityItem } from '@/composition/activity-types';
 import { formatEuroCents } from '@/core/utils/money';
 import { relativeTimeMessage } from '@/core/utils/time';
 import type { Locale } from '@/shared/i18n/locale';
 import { useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
 
-interface ActivityItem {
-	id?: string;
-	kind: 'expense' | 'shopping' | 'announcement' | 'chore' | 'recurring' | 'absence' | 'audit';
-	timestamp: string;
-	memberId?: string | null;
-	memberName: string;
-	text: string;
-	/** `text` for the reader's own rows; absent when it reads the same. */
-	selfText?: string;
-	/** Server-built sentence starting with a verb; user content never sets this. */
-	sentence?: boolean;
-	detail?: string;
-	amountCents?: number;
-	currency?: string;
-	href?: string;
-}
-
-const kindIcon: Record<ActivityItem['kind'], typeof Receipt> = {
+const kindIcon: Record<FeedActivityItem['kind'], typeof Receipt> = {
 	expense: Receipt,
 	shopping: ListChecks,
 	announcement: Megaphone,
@@ -45,7 +29,7 @@ const kindIcon: Record<ActivityItem['kind'], typeof Receipt> = {
 	audit: History,
 };
 
-export function ActivityFeed({ items, inset }: { items: ActivityItem[]; inset?: boolean }) {
+export function ActivityFeed({ items, inset }: { items: FeedActivityItem[]; inset?: boolean }) {
 	const t = useTranslations('activity.feed');
 	const message = useMessage();
 	const locale = useLocale() as Locale;

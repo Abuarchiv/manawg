@@ -138,7 +138,6 @@ export function buildActivityTimeline(
 			memberId: item.paidByMemberId,
 			memberName: memberName(members, item.paidByMemberId),
 			text: item.description,
-			completed: false,
 			amountCents: item.amountCents,
 			currency: item.currency ?? 'EUR',
 			href: `/expenses?highlight=${encodeURIComponent(item.id)}`,
@@ -159,7 +158,6 @@ export function buildActivityTimeline(
 			text: say(item.boughtAt ? 'audit.timeline.shoppingBought' : 'audit.timeline.shoppingAdded', {
 				name: item.name,
 			}),
-			completed: item.boughtAt !== null,
 			href: `/shopping?highlight=${encodeURIComponent(item.id)}`,
 		});
 	}
@@ -172,7 +170,6 @@ export function buildActivityTimeline(
 			memberId: item.authorMemberId,
 			memberName: memberName(members, item.authorMemberId),
 			text: item.content,
-			completed: false,
 			href: `/pinboard#announcement-${encodeURIComponent(item.id)}`,
 		});
 	}
@@ -185,7 +182,6 @@ export function buildActivityTimeline(
 			memberId: item.completedByMemberId,
 			memberName: memberName(members, item.completedByMemberId),
 			text: say('audit.timeline.choreDone', { title: item.choreTitle }),
-			completed: true,
 			href: `/chores?highlight=${encodeURIComponent(item.choreId)}`,
 		});
 	}
@@ -203,7 +199,6 @@ export function buildActivityTimeline(
 					: 'audit.timeline.recurringCreated',
 				{ description: item.description },
 			),
-			completed: false,
 			detail: say('audit.timeline.recurringLabel'),
 			amountCents: item.amountCents,
 			currency: item.currency ?? 'EUR',
@@ -220,7 +215,6 @@ export function buildActivityTimeline(
 			memberName: memberName(members, item.memberId),
 			text: say('audit.timeline.absenceAway', { self: 'no' }),
 			selfText: say('audit.timeline.absenceAway', { self: 'yes' }),
-			completed: false,
 			sentence: true,
 			detail: item.reason
 				? `${shortDateRange(item.startDate, item.endDate, locale)} · ${item.reason}`
@@ -245,7 +239,6 @@ export function buildActivityTimeline(
 			text,
 			...(selfText ? { selfText } : {}),
 			sentence: true,
-			completed: false,
 			...(detail ? { detail } : {}),
 			...(href ? { href } : {}),
 		});

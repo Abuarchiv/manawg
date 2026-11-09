@@ -18,12 +18,14 @@ export interface ActivityItem {
 	selfText?: string;
 	/** True when `text` is a server-built sentence ("hat …"), not user content. */
 	sentence?: boolean;
-	completed: boolean;
 	detail?: string;
 	amountCents?: number;
 	currency?: string;
 	href?: string;
 }
+
+/** A feed row as the dashboard and the feed list show it; only the full chronicle guarantees an id. */
+export type FeedActivityItem = Omit<ActivityItem, 'id'> & { id?: string };
 
 export interface ActivityFilter {
 	kind: ActivityKind | 'all';
