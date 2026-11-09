@@ -111,7 +111,7 @@ function ToastItem({ toast }: { toast: Toast }) {
 	return (
 		<Alert
 			variant={toast.variant === 'error' ? 'destructive' : 'default'}
-			// Non-errors are announced by the always-mounted polite stack; errors interrupt as alerts.
+			// Non-errors keep Alert's polite role=status; errors interrupt as alerts.
 			role={toast.variant === 'error' ? 'alert' : undefined}
 			className="flex flex-wrap items-center gap-x-3 gap-y-1"
 			// Mouse only: a tap fires emulated mouseenter but mouseleave comes after the next tap

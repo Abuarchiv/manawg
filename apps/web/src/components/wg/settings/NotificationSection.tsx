@@ -179,7 +179,7 @@ export function NotificationSection({ code, memberId }: { code: string; memberId
 											)}
 										</FieldContent>
 										<Switch
-											checked={status?.[pref.key] ?? true}
+											checked={status[pref.key]}
 											disabled={notificationControlsDisabled}
 											aria-label={t(`prefs.${pref.name}`)}
 											{...(pref.hint

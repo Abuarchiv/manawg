@@ -22,7 +22,7 @@ const ERROR_KEYS = {
 	mail_unavailable: 'mailUnavailable',
 } as const;
 
-/** Sends the invitation mail (E6); the address is only used for this one mail. */
+/** Sends the invitation mail; the address is only used for this one mail. */
 export function InviteByMailForm({ shareCode, memberId, onSent }: Props) {
 	const t = useTranslations('shell.inviteMail');
 	const id = useId();
