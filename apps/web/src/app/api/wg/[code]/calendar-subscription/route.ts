@@ -12,7 +12,7 @@ import {
 import { type DbTransaction, TransactionAbort, withTransaction } from '@/core/db/transaction';
 import { requireWgMember } from '@/core/guards/require-wg-member';
 import { withWgRoute } from '@/core/guards/with-wg-route';
-import { rateLimitResponse, serverError } from '@/core/http/api-errors';
+import { rateLimitResponse, serverError, unauthorized } from '@/core/http/api-errors';
 import { readIdempotencyKey } from '@/core/idempotency-store';
 import { checkRateLimit, clientIpKey, wgReadLimiter, wgWriteLimiter } from '@/core/rate-limit';
 import {
@@ -45,10 +45,6 @@ const calendarCodec: ReplayCodec<unknown> = {
 	encode: (response) => storedCodec.encode({ ...response, body: withoutFeedUrl(response.body) }),
 };
 
-function memberDeactivated(): NextResponse {
-	return NextResponse.json({ error: 'member_deactivated' }, { status: 401 });
-}
-
 /**
  * Runs a calendar feed mutation behind the caller's locked member row. Every outcome is stored
  * for replay, including "not found" and "member deactivated".
@@ -70,7 +66,7 @@ async function withCalendarMutation(
 				codec: calendarCodec,
 				storeStatus: () => true,
 				beforeReplay: async () =>
-					(await withTransaction(lockMember)) ? null : memberDeactivated(),
+					(await withTransaction(lockMember)) ? null : unauthorized('member_deactivated'),
 				inTransaction: (work) =>
 					withTransaction(async (tx) => {
 						member = await lockMember(tx);
@@ -212,7 +208,7 @@ export const POST = withWgRoute('calendar subscription POST', async (req, { code
 								entityId: row.id,
 								actorName: member.name,
 								metadata: { subscriptionId: row.id },
-							} as Parameters<typeof recordAuditEvent>[0],
+							},
 						}
 					: {}),
 			};

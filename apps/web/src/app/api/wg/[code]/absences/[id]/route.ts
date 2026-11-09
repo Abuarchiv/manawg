@@ -15,10 +15,7 @@ export const DELETE = withWgRoute<{ id: string }>('absences DELETE', async (req,
 	if (!auth.ok) return auth.response;
 	const wgId = auth.wg.id;
 
-	// Ownership / admin gate: an absence belongs to a specific member, so only
-	// that member may remove their own absence. The WG admin
-	// can also delete to handle cleanup when a member is unreachable.
-	// Without this check, any member could delete another member's absence silently.
+	// Only the absence's owner or a WG admin may delete it.
 	const existing = await db
 		.select({ memberId: memberAbsences.memberId })
 		.from(memberAbsences)
@@ -33,7 +30,7 @@ export const DELETE = withWgRoute<{ id: string }>('absences DELETE', async (req,
 	);
 	if (limited) return limited;
 
-	const deleted = await db
+	const [row] = await db
 		.delete(memberAbsences)
 		.where(and(eq(memberAbsences.id, id), eq(memberAbsences.wgId, wgId)))
 		.returning({
@@ -42,8 +39,7 @@ export const DELETE = withWgRoute<{ id: string }>('absences DELETE', async (req,
 			startDate: memberAbsences.startDate,
 			endDate: memberAbsences.endDate,
 		});
-	if (deleted.length === 0) return notFound('absence_not_found');
-	const row = deleted[0];
+	if (!row) return notFound('absence_not_found');
 	await recordAuditEvent({
 		wgId: wgId,
 		memberId: auth.member.memberId,
@@ -51,13 +47,11 @@ export const DELETE = withWgRoute<{ id: string }>('absences DELETE', async (req,
 		entityType: 'member_absence',
 		entityId: id,
 		actorName: auth.member.name,
-		metadata: row
-			? {
-					memberId: row.memberId,
-					startDate: row.startDate.toISOString(),
-					endDate: row.endDate.toISOString(),
-				}
-			: {},
+		metadata: {
+			memberId: row.memberId,
+			startDate: row.startDate.toISOString(),
+			endDate: row.endDate.toISOString(),
+		},
 	});
-	return NextResponse.json({ deleted: deleted[0]?.id });
+	return NextResponse.json({ deleted: row.id });
 });

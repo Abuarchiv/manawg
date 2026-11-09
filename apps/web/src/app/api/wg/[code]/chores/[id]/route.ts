@@ -270,10 +270,7 @@ export const DELETE = withWgRoute<{ id: string }>('chores DELETE', async (req, {
 	if (!auth.ok) return auth.response;
 	const wgId = auth.wg.id;
 
-	// Admin-only gate: chores are shared infrastructure for the whole WG,
-	// so any member can edit/reassign (PATCH stays open for collaboration),
-	// but only the admin may permanently remove a chore from the plan.
-	// Without this check, any member could wipe the chore plan.
+	// Any member may edit or reassign a chore; only an admin may remove it from the plan.
 	if (!(await isWgAdmin(wgId, auth.member.memberId))) {
 		return forbidden('admin_required', 'admin_required');
 	}
@@ -291,12 +288,12 @@ export const DELETE = withWgRoute<{ id: string }>('chores DELETE', async (req, {
 	const row = existing[0];
 	if (!row) return notFound('chore_not_found');
 
-	const result = await db
+	const [removed] = await db
 		.delete(chores)
 		.where(and(eq(chores.id, id), eq(chores.wgId, wgId)))
 		.returning({ id: chores.id });
 
-	if (result.length === 0) return notFound('chore_not_found');
+	if (!removed) return notFound('chore_not_found');
 	await resolveChoreSwapRequest(wgId, id, auth.member.memberId);
 	await recordAuditEvent({
 		wgId,
@@ -307,5 +304,5 @@ export const DELETE = withWgRoute<{ id: string }>('chores DELETE', async (req, {
 		actorName: auth.member.name,
 		metadata: { title: row.title },
 	});
-	return NextResponse.json({ deleted: result[0]?.id });
+	return NextResponse.json({ deleted: removed.id });
 });

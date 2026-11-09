@@ -146,7 +146,7 @@ export const POST = withWgRoute('events POST', async (req, { code }) => {
 						description: data.description ?? null,
 						startsAt,
 						endsAt,
-						allDay: data.allDay ?? false,
+						allDay: data.allDay,
 						location: data.location ?? null,
 						recurrence: recurrence.rule,
 						createdByMemberId: member.memberId,
