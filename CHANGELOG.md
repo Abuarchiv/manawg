@@ -8,6 +8,11 @@ settled.
 
 ## [Unreleased]
 
+### Fixed
+
+- The structured data (JSON-LD) of the app now lists all supported interface languages instead
+  of German only.
+
 ## [0.2.0] - 2026-11-09
 
 ### Added
