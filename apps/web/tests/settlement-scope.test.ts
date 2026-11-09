@@ -7,9 +7,9 @@ import { buildActivityTimeline } from '../src/composition/activity';
 import {
 	balanceTotalsFromRows,
 	computeMemberBalances,
-	summarizeDashboardSpend,
-} from '../src/composition/dashboard-data';
+} from '../src/composition/dashboard-balances';
 import { getTodayImportantItems } from '../src/composition/dashboard-insights';
+import { summarizeDashboardSpend } from '../src/composition/dashboard-spend';
 import { formatNotificationMessage } from '../src/core/notifications/notifications';
 import { computeNetBalances } from '../src/features/expenses/debt-reduction';
 import { computeBalances, computeOldestDebtAges } from '../src/features/expenses/debts';
