@@ -61,7 +61,8 @@ BSD libraries, listed in `/tesseract/worker.min.js.LICENSE.txt`.
 - [tesseract.js-core](https://github.com/naptha/tesseract.js-core), the WebAssembly build of
   Tesseract.
 - The `deu`, `eng` and `spa` models from
-  [tessdata_best](https://github.com/tesseract-ocr/tessdata_best), packaged as `@tesseract.js-data/deu`, `@tesseract.js-data/eng` and `@tesseract.js-data/spa`.
+  [tessdata_best](https://github.com/tesseract-ocr/tessdata_best), packaged as
+  `@tesseract.js-data/deu`, `@tesseract.js-data/eng` and `@tesseract.js-data/spa`.
 
 The licence files of the first two and a README naming the sources are placed next to the served
 files in `/tesseract/`.
