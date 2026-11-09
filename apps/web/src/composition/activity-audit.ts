@@ -7,10 +7,7 @@ import {
 } from '@/core/audit-messages';
 import { formatEuroCents } from '@/core/utils/money';
 import { formatShortDate, formatShortDateRange } from '@/core/utils/time';
-import {
-	ANNOUNCEMENT_KINDS,
-	ANNOUNCEMENT_REACTIONS,
-} from '@/features/announcements/announcement-workflow';
+import { ANNOUNCEMENT_KINDS } from '@/features/announcements/announcement-workflow';
 import type { Message, MessageKey } from '@/shared/i18n/message';
 import { MEMBER_NAME_MAX_LENGTH } from '@/shared/lib/limits';
 
@@ -37,21 +34,6 @@ export const ACTIVITY_HIDDEN_AUDIT_EVENT_TYPES = [
 	'announcement.created',
 	'absence.created',
 ] as const;
-
-const NOTIFICATION_FIELD_KEYS: readonly string[] = [
-	'pushOptIn',
-	'notifyAnnouncements',
-	'notifyChores',
-	'notifyExpenses',
-	'notifyShopping',
-	'notifyInventory',
-	'notifyReminders',
-	'notifyChat',
-	'notifyEvents',
-	'notifyStatementEmail',
-	'quietStartHour',
-	'quietEndHour',
-];
 
 /** Short facts of an event ("Typ: Info · mit Bild"), rendered from its metadata in the reader's locale. */
 export function auditDetail(
@@ -82,29 +64,6 @@ export function auditDetail(
 		if (metadata.hasImage === true) {
 			parts.push(say('audit.detail.withImage'));
 		}
-		if (Array.isArray(metadata.notificationFields)) {
-			const fields = metadata.notificationFields
-				.filter((field): field is string => typeof field === 'string' && field.length > 0)
-				.map((field) =>
-					// New rows store field keys; rows written earlier hold the finished label.
-					NOTIFICATION_FIELD_KEYS.includes(field)
-						? say(`audit.detail.fields.${field}` as MessageKey)
-						: field,
-				);
-			if (fields.length > 0) parts.push(fields.join(', '));
-		}
-		if (typeof metadata.pushOptIn === 'boolean') {
-			parts.push(say(metadata.pushOptIn ? 'audit.detail.pushOn' : 'audit.detail.pushOff'));
-		}
-		if ('quietStartHour' in metadata || 'quietEndHour' in metadata) {
-			const start = typeof metadata.quietStartHour === 'number' ? metadata.quietStartHour : null;
-			const end = typeof metadata.quietEndHour === 'number' ? metadata.quietEndHour : null;
-			if (start !== null || end !== null) {
-				parts.push(say('audit.detail.quietHours', { start: start ?? '?', end: end ?? '?' }));
-			} else {
-				parts.push(say('audit.detail.quietHoursOff'));
-			}
-		}
 		if (typeof metadata.reason === 'string' && metadata.reason.length > 0) {
 			parts.push(metadata.reason);
 		}
@@ -114,13 +73,6 @@ export function auditDetail(
 		}
 		if (typeof metadata.splitCount === 'number') {
 			parts.push(say('audit.detail.splitCount', { count: metadata.splitCount }));
-		}
-		if (typeof metadata.reaction === 'string') {
-			// German keeps the stored code; other locales show the pinboard label.
-			const code = ANNOUNCEMENT_REACTIONS.find((known) => known === metadata.reaction);
-			const reaction =
-				code && locale !== 'de' ? say(`pinboard.reaction.${code}`) : metadata.reaction;
-			parts.push(say('audit.detail.reaction', { reaction }));
 		}
 		if (typeof metadata.nameBefore === 'string' && typeof metadata.nameAfter === 'string') {
 			if (metadata.nameBefore !== metadata.nameAfter) {

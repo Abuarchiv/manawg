@@ -111,7 +111,7 @@ export function computeMemberBalances(
 			debt.totalCents;
 	}
 	for (const payment of payments) {
-		const currency = payment.currency?.trim().toUpperCase() || 'EUR';
+		const currency = normalizeCurrency(payment.currency);
 		currencies.add(currency);
 		gross(`${currency}:${payment.fromMemberId}`).paidCents += payment.amountCents;
 		gross(`${currency}:${payment.toMemberId}`).owedCents += payment.amountCents;

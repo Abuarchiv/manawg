@@ -138,6 +138,10 @@ export async function loadDashboardData(
 	const now = new Date();
 	const ctx = serverRenderContext(locale);
 
+	const [primary, secondary] = await Promise.all([
+		loadPrimaryRows(wgId, dashboardSpendSince(now)),
+		loadSecondaryRows(wgId, currentMemberId),
+	]);
 	const {
 		memberRows,
 		recentExpenses,
@@ -149,7 +153,7 @@ export async function loadDashboardData(
 		announcementRows,
 		payerTotals,
 		spendRows,
-	} = await loadPrimaryRows(wgId, dashboardSpendSince(now));
+	} = primary;
 
 	const memberById = new Map(memberRows.map((m) => [m.id, m]));
 
@@ -161,8 +165,7 @@ export async function loadDashboardData(
 		.slice(0, 3)
 		.map((s) => (s.quantity ? `${s.name} (${s.quantity})` : s.name));
 
-	const allDueChores = buildDueChores(choreRows, memberById, now);
-	const dueChores = allDueChores;
+	const dueChores = buildDueChores(choreRows, memberById, now);
 
 	const { activity, rawActivityByKey } = buildPrimaryActivity(
 		recentExpenses,
@@ -175,7 +178,7 @@ export async function loadDashboardData(
 
 	const latestAnnouncement = getLatestManualAnnouncement(announcementRows, memberById);
 	const { myOpenAnnouncements, absenceRows, recurringRows, auditRows, currentMemberNotification } =
-		await loadSecondaryRows(wgId, currentMemberId);
+		secondary;
 	const dueRecurringExpenses = getDueRecurringExpenses(
 		recurringRows
 			.filter((item) => item.pausedAt === null)

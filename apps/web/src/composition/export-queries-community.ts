@@ -146,7 +146,9 @@ export async function fetchChatMessageRows(wgId: string, page: ExportPage) {
 export function mapChatMessageRows(
 	messageRows: Awaited<ReturnType<typeof fetchChatMessageRows>>,
 	memberById: Map<string, string>,
+	locale: Locale,
 ) {
+	const system = serverRenderContext(locale).render({ key: 'audit.timeline.system' });
 	return messageRows.map((message) => {
 		// Same rule as the chat read path (sanitizeChatMessageForRead): a
 		// deleted message keeps its row but must never hand out its text or image.
@@ -154,9 +156,7 @@ export function mapChatMessageRows(
 		return {
 			id: message.id,
 			createdAt: message.createdAt.toISOString(),
-			senderName: message.senderMemberId
-				? (memberById.get(message.senderMemberId) ?? '')
-				: 'System',
+			senderName: message.senderMemberId ? (memberById.get(message.senderMemberId) ?? '') : system,
 			kind: message.kind,
 			body: deleted ? null : message.body,
 			imageUrl: deleted ? '' : (message.imageUrl ?? ''),
@@ -191,8 +191,9 @@ export function mapAuditRows(
 	locale: Locale,
 ) {
 	const ctx = serverRenderContext(locale);
+	const system = ctx.render({ key: 'audit.timeline.system' });
 	return auditRows.map((item) => {
-		const memberName = item.memberId ? (memberById.get(item.memberId) ?? '') : 'System';
+		const memberName = item.memberId ? (memberById.get(item.memberId) ?? '') : system;
 		return {
 			id: item.id,
 			eventType: item.eventType,
