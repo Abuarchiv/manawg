@@ -22,7 +22,11 @@ if (url) {
 const dispatched: { memberId: string | undefined; eventId: string }[] = [];
 mock.module('@/core/infra/cron-auth', { namedExports: { requireCronSecret: () => null } });
 mock.module('@/core/infra/observability', {
-	namedExports: { withCronLogging: (_name: string, handler: unknown) => handler },
+	namedExports: {
+		withCronLogging: (_name: string, handler: unknown) => handler,
+		logApiError: () => {},
+		captureException: () => {},
+	},
 });
 mock.module('@/core/notifications/notification-dispatch', {
 	namedExports: {
