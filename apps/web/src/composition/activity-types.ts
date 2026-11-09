@@ -7,6 +7,9 @@ export type ActivityKind =
 	| 'absence'
 	| 'audit';
 
+/** Most rows the dashboard payload carries; a full list may have older rows left out. */
+export const ACTIVITY_LIMIT = 6;
+
 export interface ActivityItem {
 	id: string;
 	kind: ActivityKind;

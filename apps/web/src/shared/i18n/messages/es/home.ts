@@ -90,8 +90,8 @@ export default {
 	},
 	news: {
 		heading: 'Novedades en tu piso',
-		newOnNoticeboard: 'Novedades en el tablón',
-		noNewEntries: 'Aún no hay entradas nuevas.',
+		headingNew: 'Novedades desde tu última visita · {count}',
+		headingNone: 'Nada nuevo desde tu última visita',
 		failed: 'No se pudieron cargar las novedades.',
 		loading: 'Cargando novedades',
 		allActivity: 'Toda la actividad',

@@ -324,7 +324,6 @@ test.describe('label in name audit', () => {
 		dueChores: [],
 		dueRecurringExpenses: [],
 		activity: [],
-		latestAnnouncement: null,
 		myOpenAnnouncements: [],
 		absentMembers: [],
 		setup: {

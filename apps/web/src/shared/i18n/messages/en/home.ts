@@ -86,8 +86,8 @@ export default {
 	},
 	news: {
 		heading: 'New in your flat',
-		newOnNoticeboard: 'New on the noticeboard',
-		noNewEntries: 'No new entries yet.',
+		headingNew: 'New since your last visit · {count}',
+		headingNone: 'Nothing new since your last visit',
 		failed: 'News could not be loaded.',
 		loading: 'Loading news',
 		allActivity: 'All activity',

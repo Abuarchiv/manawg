@@ -3,10 +3,11 @@ import { getAbsentMemberIds } from '@/features/chores/absence';
 import { getChoreStatus } from '@/features/chores/chore-status';
 import { getDueRecurringExpenses } from '@/features/expenses/recurring-expenses';
 import type { Locale } from '@/shared/i18n/locale';
+import { ACTIVITY_LIMIT } from './activity-types';
 import type { MemberBalance } from './dashboard-balances';
 import { computeMemberBalances } from './dashboard-balances';
 import { type ActivityItem, appendSecondaryActivity, buildPrimaryActivity } from './dashboard-feed';
-import { ACTIVITY_LIMIT, loadPrimaryRows, loadSecondaryRows } from './dashboard-queries';
+import { loadPrimaryRows, loadSecondaryRows } from './dashboard-queries';
 import {
 	type CurrencyTotals,
 	type DaySpend,
@@ -33,6 +34,8 @@ interface DashboardSetup {
 }
 
 export interface DashboardData {
+	/** Server time the payload was built at; the start page's last-visit marker is kept in it. */
+	generatedAt: string;
 	balances: MemberBalance[];
 	spendByDay: DaySpend[];
 	totalSpendByCurrency: CurrencyTotals;
@@ -42,12 +45,6 @@ export interface DashboardData {
 	openShoppingTop: string[];
 	dueChores: ChoreDue[];
 	activity: ActivityItem[];
-	latestAnnouncement: {
-		id?: string;
-		content: string;
-		authorName: string;
-		createdAt: string;
-	} | null;
 	myOpenAnnouncements: Array<{ id: string; kind: string; content: string; createdAt: string }>;
 	dueRecurringExpenses: Array<{
 		id: string;
@@ -64,27 +61,6 @@ export interface DashboardData {
 		isCurrentMember: boolean;
 	}>;
 	setup: DashboardSetup;
-}
-
-/** `announcementRows` holds manual posts only, newest first. */
-function getLatestManualAnnouncement(
-	announcementRows: Array<{
-		id?: string;
-		content: string;
-		authorMemberId: string;
-		createdAt: Date;
-	}>,
-	memberById: Map<string, { name: string }>,
-): DashboardData['latestAnnouncement'] {
-	const latestManual = announcementRows[0];
-	return latestManual
-		? {
-				...(latestManual.id ? { id: latestManual.id } : {}),
-				content: latestManual.content,
-				authorName: memberById.get(latestManual.authorMemberId)?.name ?? '—',
-				createdAt: latestManual.createdAt.toISOString(),
-			}
-		: null;
 }
 
 function getCurrentAbsenceRowsByMember<
@@ -174,7 +150,6 @@ export async function loadDashboardData(
 		ctx,
 	);
 
-	const latestAnnouncement = getLatestManualAnnouncement(announcementRows, memberById);
 	const { myOpenAnnouncements, absenceRows, recurringRows, auditRows, currentMemberNotification } =
 		secondary;
 	const dueRecurringExpenses = getDueRecurringExpenses(
@@ -226,13 +201,13 @@ export async function loadDashboardData(
 	const currentMember = currentMemberId ? (memberById.get(currentMemberId) ?? null) : null;
 
 	return {
+		generatedAt: now.toISOString(),
 		balances: [...balances].sort((a, b) => Math.abs(b.balanceCents) - Math.abs(a.balanceCents)),
 		...spendSummary,
 		openShoppingCount: openShopping.length,
 		openShoppingTop,
 		dueChores,
 		activity: activity.slice(0, ACTIVITY_LIMIT),
-		latestAnnouncement,
 		myOpenAnnouncements: myOpenAnnouncements.map((item) => ({
 			...item,
 			createdAt: item.createdAt.toISOString(),

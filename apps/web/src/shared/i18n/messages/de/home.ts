@@ -86,8 +86,8 @@ export default {
 	},
 	news: {
 		heading: 'Neu in deiner WG',
-		newOnNoticeboard: 'Neu an der Pinnwand',
-		noNewEntries: 'Noch keine neuen Einträge.',
+		headingNew: 'Neu seit deinem letzten Besuch · {count}',
+		headingNone: 'Nichts Neues seit deinem letzten Besuch',
 		failed: 'Neuigkeiten konnten noch nicht geladen werden.',
 		loading: 'Neuigkeiten werden geladen',
 		allActivity: 'Gesamte Aktivität',

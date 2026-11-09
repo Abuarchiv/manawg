@@ -73,6 +73,7 @@ export function buildE2EDashboardData(code: string): DashboardData {
 			: E2E_EXISTING_WG.member;
 
 	return {
+		generatedAt: new Date(now).toISOString(),
 		balances: [
 			{
 				memberId: actor.id,
@@ -115,7 +116,6 @@ export function buildE2EDashboardData(code: string): DashboardData {
 				amountCents: 3290,
 			},
 		],
-		latestAnnouncement: null,
 		myOpenAnnouncements: [],
 		dueRecurringExpenses: [
 			{

@@ -29,7 +29,16 @@ const kindIcon: Record<FeedActivityItem['kind'], typeof Receipt> = {
 	audit: History,
 };
 
-export function ActivityFeed({ items, inset }: { items: FeedActivityItem[]; inset?: boolean }) {
+export function ActivityFeed({
+	items,
+	inset,
+	actorFirst,
+}: {
+	items: FeedActivityItem[];
+	inset?: boolean;
+	/** Puts the person in front of every row, as the "since your last visit" list reads. */
+	actorFirst?: boolean;
+}) {
 	const t = useTranslations('activity.feed');
 	const message = useMessage();
 	const locale = useLocale() as Locale;
@@ -54,6 +63,7 @@ export function ActivityFeed({ items, inset }: { items: FeedActivityItem[]; inse
 				const who = isMe ? t('you') : item.memberName;
 				// Sentences („hat … geändert“) need the person in front; keywords („Brot gekauft“) are the title.
 				const sentence = item.sentence === true;
+				const nameFirst = sentence || actorFirst === true;
 				const text = isMe ? (item.selfText ?? item.text) : item.text;
 				const content = (
 					<>
@@ -77,11 +87,16 @@ export function ActivityFeed({ items, inset }: { items: FeedActivityItem[]; inse
 										inset && 'text-body font-medium',
 									)}
 								>
-									{sentence && <span className="font-medium">{who} </span>}
+									{nameFirst && (
+										<span className="font-medium">
+											{who}
+											{sentence ? ' ' : ' · '}
+										</span>
+									)}
 									{text}
 								</p>
 								<p className="line-clamp-2 text-meta text-muted-foreground">
-									{!sentence && `${who} · `}
+									{!nameFirst && `${who} · `}
 									<time dateTime={item.timestamp}>
 										{message(relativeTimeMessage(item.timestamp, now, locale))}
 									</time>

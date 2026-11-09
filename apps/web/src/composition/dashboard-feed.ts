@@ -3,13 +3,13 @@ import { serverRenderContext } from '@/core/i18n/render-context';
 import type { MessageKey } from '@/shared/i18n/message';
 import type { ActivityKind } from './activity';
 import { auditActivitySentence } from './activity-audit';
-import type { FeedActivityItem as ActivityItem } from './activity-types';
+import { ACTIVITY_LIMIT, type FeedActivityItem as ActivityItem } from './activity-types';
 import {
 	getDashboardActivityHref,
 	getDashboardAuditHref,
 	getDashboardAuditKind,
 } from './dashboard-links';
-import { ACTIVITY_LIMIT, type PrimaryRows, type SecondaryRows } from './dashboard-queries';
+import type { PrimaryRows, SecondaryRows } from './dashboard-queries';
 
 const AUDIT_DEDUPE_WINDOW_MS = 60_000;
 

@@ -16,6 +16,10 @@ settled.
   8.00 EUR") and when it is deleted. Edits to category, description or receipt stay quiet. The
   activity log shows the old and the new amount of an edit, and an edited expense shows "Edited" with
   the date of the edit in the details.
+- The start page shows "New since your last visit": what other members added since you last had
+  the page open, with their name first. The marker stays in this browser only and follows the
+  server's clock. Without anything new, a single quiet line links to the activity list; without a
+  marker (first visit, blocked storage) the heading stays neutral.
 - Receipt scanning recognises Spanish text: with the interface in Spanish, the scanner loads the
   Spanish model as well, so `ñ` and accents are kept. Other languages do not download it.
 - The self-hosting guide has tested nginx and Traefik reverse-proxy examples with the `.env` values,

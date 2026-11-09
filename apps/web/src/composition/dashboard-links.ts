@@ -16,10 +16,6 @@ export function getDashboardActivityHref(
 	return `${base}/chores?highlight=${encodedId}`;
 }
 
-export function getDashboardAnnouncementHref(shareCode: string, id: string): string {
-	return getDashboardActivityHref(shareCode, 'announcement', id);
-}
-
 export function getDashboardAuditHref(
 	shareCode: string,
 	event: {
