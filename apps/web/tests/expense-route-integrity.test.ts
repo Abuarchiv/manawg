@@ -545,6 +545,30 @@ function selectOver(data: Map<unknown, Record<string, unknown>[]>) {
 	};
 }
 
+test('expense PATCH answers a payment-lock timeout with a retryable 503', async () => {
+	const row = {
+		id: EXPENSE_ID,
+		wgId: WG_ID,
+		paidByMemberId: CALLER_ID,
+		amountCents: 1200,
+		updatedAt: new Date(),
+	};
+	env.db = { select: selectOver(new Map([[expenses, [row]]])) } as never;
+	env.payments = {
+		withExpensePaymentLock: async () => {
+			throw Object.assign(new Error('lock timeout'), { code: '55P03' });
+		},
+	} as never;
+
+	const response = await PATCH(
+		jsonRequest('PATCH', { description: 'Neu' }),
+		routeContext({ id: EXPENSE_ID }),
+	);
+
+	assert.equal(response.status, 503);
+	assert.equal(await errorOf(response), 'service_unavailable');
+});
+
 test('expense PATCH is for the payer only', async () => {
 	const row = {
 		id: EXPENSE_ID,
