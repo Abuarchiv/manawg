@@ -44,7 +44,6 @@ const IMPORT_ERROR_MESSAGES: Readonly<Record<string, Message>> = {
 	payload_changed: { key: 'expenses-import.errors.payloadChanged' },
 	payload_too_large: { key: 'expenses-import.errors.payloadTooLarge' },
 	too_many_rows: { key: 'expenses-import.errors.tooManyRows' },
-	unsupported_currency: { key: 'expenses-import.errors.unsupportedCurrency' },
 	empty_payload: { key: 'expenses-import.errors.emptyPayload' },
 	rows_unreadable: { key: 'expenses-import.errors.rowsUnreadable' },
 	invalid_skip_indexes: { key: 'expenses-import.errors.invalidSkipIndexes' },
@@ -85,7 +84,6 @@ export function recoveryActionFor(
 		error === 'payload_changed' ||
 		error === 'payload_too_large' ||
 		error === 'too_many_rows' ||
-		error === 'unsupported_currency' ||
 		error === 'empty_payload' ||
 		error === 'rows_unreadable' ||
 		error === 'invalid_body' ||

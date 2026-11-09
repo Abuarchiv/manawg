@@ -12,12 +12,7 @@ import {
 	rejectForeignCurrencyRow,
 	stripBom,
 } from './import-csv-helpers';
-import {
-	type ParsedExpense,
-	type ParsedSplit,
-	type RejectedRow,
-	UnsupportedCurrencyError,
-} from './import-types';
+import type { ParsedExpense, ParsedSplit, RejectedRow } from './import-types';
 
 const CUSTOM_SPLIT_MAX_DRIFT_CENTS = 2;
 
@@ -130,9 +125,8 @@ export function parseSplitwiseCsv(
 		const currencyRaw =
 			idxCurrency === -1 ? 'EUR' : (fields[idxCurrency] ?? 'EUR').trim().toUpperCase();
 		if (currencyRaw && currencyRaw !== 'EUR') {
-			// A reported row must not also be imported as euros.
-			if (rejectForeignCurrencyRow(rejected, line, currencyRaw, descRaw)) continue;
-			throw new UnsupportedCurrencyError(currencyRaw);
+			rejectForeignCurrencyRow(rejected, line, currencyRaw, descRaw);
+			continue;
 		}
 
 		let paidByName = '';

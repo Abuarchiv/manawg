@@ -57,7 +57,7 @@ type SettlementConfirmationParseResult =
 	| { ok: true; value: SettlementConfirmation }
 	| { ok: false; reason: 'required' | 'invalid' };
 
-const centsSchema = z.number().finite().int().min(0).max(MAX_REVIEW_CENTS);
+const centsSchema = z.number().int().min(0).max(MAX_REVIEW_CENTS);
 
 const settlementSplitSchema = z
 	.object({

@@ -160,8 +160,6 @@ export default {
 			'Die Datei ist zu groß. Wähle eine kleinere Datei (CSV bis 5 MB, Bild bis 10 MB).',
 		tooManyRows:
 			'Die Datei hat zu viele Zeilen (max. 2.000). Teile den Export in mehrere Dateien auf.',
-		unsupportedCurrency:
-			'Diese Datei enthält keine unterstützte Währung. Verwende einen Export in Euro (EUR).',
 		emptyPayload: 'Keine Ausgaben gefunden. Prüfe die Datei und versuche es erneut.',
 		rowsUnreadable:
 			'Keine Zeile der Datei konnte gelesen werden. Prüfe Datum, Betrag und zahlende Person in der Datei.',

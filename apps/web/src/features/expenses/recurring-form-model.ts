@@ -150,7 +150,7 @@ export function buildRecurringSplits(input: {
 		const raw = manualSplits[member.id] ?? '';
 		if (raw.trim().length === 0) continue;
 		const value = parseEuroAmount(raw, locale);
-		if (value === null || value < 0) return 'invalid_share';
+		if (value === null) return 'invalid_share';
 		if (value === 0) continue;
 		const cents = eurosToCents(value);
 		splits.push({ debtorMemberId: member.id, amountCents: cents });

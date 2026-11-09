@@ -42,12 +42,3 @@ export type ImportSource =
 	| 'settleup_csv'
 	| 'ocr_screenshot'
 	| 'manual';
-
-export class UnsupportedCurrencyError extends Error {
-	readonly currency: string;
-	constructor(currency: string) {
-		super('Only EUR imports are supported');
-		this.name = 'UnsupportedCurrencyError';
-		this.currency = currency;
-	}
-}
