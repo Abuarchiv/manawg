@@ -165,7 +165,9 @@ test.describe('English app shell', () => {
 				await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
 				await expect(page.getByRole('heading', { name: 'For you', level: 2 })).toBeVisible();
 				await expect(page.getByRole('heading', { name: 'This week', level: 2 })).toBeVisible();
-				await expect(page.getByRole('button', { name: 'New in your flat' })).toBeVisible();
+				await expect(
+					page.getByRole('button', { name: 'Nothing new since last visit' }),
+				).toBeVisible();
 				await expect(page.getByText('due today', { exact: false }).first()).toBeVisible();
 				await expect(page.getByText('To Anna', { exact: true })).toBeVisible();
 				await expect(page.getByText('€12.50').first()).toBeVisible();
