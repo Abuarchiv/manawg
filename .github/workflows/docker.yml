@@ -12,7 +12,10 @@ on:
       - compose.yaml
       - portainer-template.json
       - docker/**
+      - package.json
       - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - .npmrc
       - apps/web/package.json
       - apps/web/next.config.ts
       - apps/web/scripts/selfhost/**

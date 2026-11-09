@@ -110,7 +110,7 @@ expect(
 	`${r1.status} ${r2.status} ${r3.status}`,
 );
 const browser = await chromium.launch();
-const ctx = await browser.newContext({ ...devices['iPhone 13'], baseURL: BASE });
+const ctx = await browser.newContext({ ...devices['iPhone 13'], baseURL: BASE, locale: 'de-DE' });
 const page = await ctx.newPage();
 const consoleErrors = [];
 page.on('pageerror', (e) => consoleErrors.push(`pageerror ${e.message.slice(0, 160)}`));

@@ -157,6 +157,18 @@ function zodImporterFrom(entry) {
 	return null;
 }
 
+function checkComments(r, source, add) {
+	let german = 0;
+	let history = 0;
+	for (const comment of commentsOf(source)) {
+		if (comment.text.startsWith('// biome-ignore')) continue;
+		if (GERMAN_RE.test(comment.text.replace(QUOTED_RE, ''))) german++;
+		if (HISTORY_RE.test(comment.text)) history++;
+	}
+	if (german > 0) add('comment-lang', r);
+	if (history > 0) add('comment-history', r);
+}
+
 function collect() {
 	const violations = [];
 	const sizes = {};
@@ -252,22 +264,7 @@ function collect() {
 			}
 		}
 
-		if (
-			r.startsWith('src/') ||
-			r.startsWith('tests/') ||
-			r.startsWith('e2e/') ||
-			r.startsWith('scripts/')
-		) {
-			let german = 0;
-			let history = 0;
-			for (const comment of commentsOf(source)) {
-				if (comment.text.startsWith('// biome-ignore')) continue;
-				if (GERMAN_RE.test(comment.text.replace(QUOTED_RE, ''))) german++;
-				if (HISTORY_RE.test(comment.text)) history++;
-			}
-			if (german > 0) add('comment-lang', r);
-			if (history > 0) add('comment-history', r);
-		}
+		checkComments(r, source, add);
 	}
 
 	for (const file of walk(join(ROOT, 'scripts'))) {
@@ -276,14 +273,7 @@ function collect() {
 		const lines = readFileSync(file, 'utf8').split('\n').length;
 		if (lines > SOURCE_LINE_BUDGET) sizes[r] = lines;
 		const source = readFileSync(file, 'utf8');
-		let german = 0;
-		let history = 0;
-		for (const comment of commentsOf(source)) {
-			if (GERMAN_RE.test(comment.text.replace(QUOTED_RE, ''))) german++;
-			if (HISTORY_RE.test(comment.text)) history++;
-		}
-		if (german > 0) add('comment-lang', r);
-		if (history > 0) add('comment-history', r);
+		checkComments(r, source, add);
 	}
 
 	return { violations: [...new Set(violations)].sort(), sizes };

@@ -69,12 +69,7 @@ function isLazyChunk(path) {
 }
 
 function isRenderablePageEntry(entry) {
-	return (
-		entry.endsWith('/page') &&
-		!entry.startsWith('/api/') &&
-		!entry.endsWith('/route') &&
-		!['/layout', '/error', '/loading'].some((suffix) => entry.endsWith(suffix))
-	);
+	return entry.endsWith('/page') && !entry.startsWith('/api/');
 }
 
 function scanTesseractRawKb() {

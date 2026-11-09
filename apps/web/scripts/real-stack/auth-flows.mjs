@@ -3,7 +3,7 @@
 // set before the address is confirmed (pre-registration) that must not survive the confirmation.
 import { randomUUID } from 'node:crypto';
 import { chromium, devices, request } from '@playwright/test';
-import { MAIL } from './env.mjs';
+import { MAIL, PUBLISHABLE } from './env.mjs';
 import { BASE, call, expect, finish, SB, SERVICE, setup, sql, user } from './modules-lib.mjs';
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -30,7 +30,7 @@ await fetch(`${SB}/auth/v1/admin/users`, {
 	body: JSON.stringify({ email, email_confirm: true, user_metadata: { full_name: 'Codi' } }),
 });
 const browser = await chromium.launch();
-const ctx = await browser.newContext({ ...devices['iPhone 13'], baseURL: BASE });
+const ctx = await browser.newContext({ ...devices['iPhone 13'], baseURL: BASE, locale: 'de-DE' });
 const p = await ctx.newPage();
 const bad = [];
 p.on('response', (r) => {
@@ -182,8 +182,6 @@ expect(del.status < 300, 'expense deleted', String(del.status));
 const readAfter = await A.ctx.fetch(url);
 expect(readAfter.status() === 404, 'image revoked after delete', String(readAfter.status()));
 // 4 A password set before the address is confirmed never becomes a working credential
-const PUBLISHABLE =
-	process.env.REAL_STACK_PUBLISHABLE_KEY ?? 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH';
 const json = { 'content-type': 'application/json' };
 const mailLinks = async (address, count) => {
 	for (let i = 0; i < 30; i += 1) {

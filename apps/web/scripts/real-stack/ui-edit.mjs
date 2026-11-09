@@ -23,7 +23,7 @@ const browser = await (process.env.BROWSER === 'webkit' ? webkit : chromium).lau
 const device = devices[process.env.DEVICE ?? 'iPhone 13'];
 const HARNESS_NOISE = /interactive-widget|Refused to apply a stylesheet/;
 async function session(u, tag) {
-	const context = await browser.newContext({ ...device, baseURL: BASE });
+	const context = await browser.newContext({ ...device, baseURL: BASE, locale: 'de-DE' });
 	const page = await context.newPage();
 	page.on('pageerror', (e) => bugs.push(`${tag} pageerror ${e.message.slice(0, 200)}`));
 	page.on('console', (m) => {
