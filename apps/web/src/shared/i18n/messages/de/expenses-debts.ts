@@ -64,6 +64,8 @@ export default {
 		balances: 'Salden',
 		balancesLabel: 'Saldo pro Mitglied',
 		you: 'Du',
+		balanceGets: 'bekommt {amount}',
+		balanceOwes: 'schuldet {amount}',
 		balanceSettled: 'ausgeglichen',
 		howToSettle: 'So wird ausgeglichen',
 		yourPayments: 'Deine offenen Zahlungen',
@@ -86,10 +88,10 @@ export default {
 	},
 	review: {
 		title: 'Bereits erfolgte Zahlung bestätigen',
-		body: 'Nur bestätigen, wenn {payerSelf, select, yes {du} other {{payer}}} {amount} bereits an {payeeSelf, select, yes {dich} other {{payee}}} gezahlt {payerSelf, select, yes {hast} other {hat}}. Es wird kein Geld überwiesen.',
-		cashNote:
-			'„Gesamten Saldo bar eintragen“ bestätigt dagegen den ganzen verrechneten Saldo von {amount}.',
+		body: 'Nur bestätigen, wenn {payerSelf, select, yes {du {payee} {amount} bereits gezahlt hast} other {{payer} {payeeSelf, select, yes {dir} other {{payee}}} {amount} bereits gezahlt hat}}. Es wird kein Geld überwiesen.',
 		sharesLabel: 'Unterstützte Ausgabenanteile',
+		sharesToggle: '{count} Ausgabenanteile anzeigen',
+		details: 'Details',
 		expense: 'Ausgabe',
 		offset: 'Gegenforderung, wird verrechnet',
 		currentShare: 'Aktueller offener Anteil',

@@ -69,6 +69,7 @@ export function useDebtSettlement({
 	const [preview, setPreview] = useState<SettlementPreview | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const settlingRef = useRef(false);
+	const reviewIdRef = useRef(0);
 	const settlementRequestRef = useRef<PendingRequest | null>(null);
 	const cashRequestRef = useRef<PendingRequest | null>(null);
 	const endpoint = `/api/wg/${encodeURIComponent(shareCode)}/expenses/settle-batch`;
@@ -77,23 +78,31 @@ export function useDebtSettlement({
 	async function review(): Promise<void> {
 		if (settlingRef.current) return;
 		settlingRef.current = true;
+		const reviewId = ++reviewIdRef.current;
 		setReviewing(true);
 		setError(null);
+		// The dialog opens at once with a skeleton; its amounts come from the preview only.
+		setPreview(null);
+		setReviewOpen(true);
 		try {
 			// apiFetch reports failures in its result and never throws.
 			const res = await apiFetch<SettlementPreview>(
 				`${endpoint}?${new URLSearchParams({ fromMemberId: debt.fromId, toMemberId: debt.toId, currency: normalizeCurrency(debt.currency) })}`,
 				{ memberId: currentMemberId },
 			);
+			// A result for a review the user already closed is dropped.
+			if (reviewId !== reviewIdRef.current) return;
 			if (res.ok) {
 				setPreview(res.data);
-				setReviewOpen(true);
 			} else {
+				setReviewOpen(false);
 				toast.error(t('checkFailed'));
 			}
 		} finally {
-			settlingRef.current = false;
-			setReviewing(false);
+			if (reviewId === reviewIdRef.current) {
+				settlingRef.current = false;
+				setReviewing(false);
+			}
 		}
 	}
 
@@ -135,14 +144,12 @@ export function useDebtSettlement({
 				if (shouldReleaseIdempotencyKey(res.status, res.error)) settlementRequestRef.current = null;
 				setError(message(settlementError(res.error)));
 				if (res.error === 'settlement_changed') {
-					setPreview(null);
 					setReviewOpen(false);
 				}
 				return;
 			}
 			settlementRequestRef.current = null;
 			const { settled, settledCents, remainingCents, reason } = res.data;
-			setPreview(null);
 			setReviewOpen(false);
 			const names = { from: debt.fromName, to: debt.toName };
 			if (reason === 'no_direct_splits') onSettled(t('noDirectSplits'));
@@ -193,13 +200,11 @@ export function useDebtSettlement({
 				if (shouldReleaseIdempotencyKey(res.status, res.error)) cashRequestRef.current = null;
 				setError(message(settlementError(res.error)));
 				if (res.error === 'settlement_changed') {
-					setPreview(null);
 					setReviewOpen(false);
 				}
 				return;
 			}
 			cashRequestRef.current = null;
-			setPreview(null);
 			setReviewOpen(false);
 			onSettled(
 				t('cashRecorded', {
@@ -218,7 +223,15 @@ export function useDebtSettlement({
 	function setReviewDialogOpen(open: boolean): void {
 		if (settling) return;
 		setReviewOpen(open);
-		if (!open) setError(null);
+		if (!open) {
+			setError(null);
+			if (reviewing) {
+				// Abandon the pending preview so the row button is usable again at once.
+				reviewIdRef.current++;
+				settlingRef.current = false;
+				setReviewing(false);
+			}
+		}
 	}
 
 	return {

@@ -58,6 +58,16 @@ settled.
 - Opening the expense form from the shopping list now selects the category Groceries. For "Add as
   expense" on a single bought item, an earlier expense with the same description keeps its category.
 
+### Changed
+
+- The balance card says "owes €5.00", "gets €12.00" or "settled" for each member instead of a
+  signed number, and leaves the list out in a flat of two, where the heading already says it. The
+  link to all reminders has a history icon; the bell stays for sending a reminder.
+- The settle-up dialog opens at once and fills in the amounts as soon as they are checked. When the
+  shares cover the whole balance it has one button, "Mark €10.00 as paid"; the cash option appears
+  only when it would cover more. The notes sit under "Details", and more than three shares are
+  collapsed.
+
 ### Fixed
 
 - A taken name on the join page now moves focus to the name field even when the field was hidden.

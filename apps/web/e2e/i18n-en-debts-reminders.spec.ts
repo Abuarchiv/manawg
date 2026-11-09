@@ -13,6 +13,7 @@ import {
 import { expectNoGermanChrome, expectNoHorizontalOverflow, setEnglishLocale } from './support/i18n';
 
 const MINA_ID = '0ab8c8f2-5d03-4a84-aadc-4c5d7e8abf55';
+const KAI_ID = '44444444-4444-4444-8444-444444444444';
 const PAYMENT_ID = '55555555-5555-4555-8555-555555555555';
 const BASE = `/wg/${FIXTURE_WG.shareCode}`;
 const API = `**/api/wg/${FIXTURE_WG.shareCode}`;
@@ -114,6 +115,19 @@ test.describe('English debts and reminders', () => {
 						completedAt: '2026-09-02T10:00:00.000Z',
 					},
 				]);
+				// Three members: the balance list only shows from the third member on.
+				await page.route(`${API}/members`, (route) =>
+					route.fulfill({
+						json: {
+							members: [
+								{ id: FIXTURE_WG.memberId, name: 'Jonas', color: null, active: true },
+								{ id: MINA_ID, name: 'Mina', color: null, active: true },
+								{ id: KAI_ID, name: 'Kai', color: null, active: true },
+							],
+							viewerIsAdmin: false,
+						},
+					}),
+				);
 				await page.route(`${API}/recurring-expenses`, (route) =>
 					route.fulfill({ json: { recurringExpenses: [] } }),
 				);
@@ -128,7 +142,14 @@ test.describe('English debts and reminders', () => {
 
 				await expect(page.getByText('Your balance', { exact: true })).toBeVisible();
 				await expect(page.getByText('You are owed').first()).toBeVisible();
-				await expect(page.getByRole('list', { name: 'Balance per member' })).toBeVisible();
+				const balances = page.getByRole('list', { name: 'Balance per member' });
+				await expect(balances).toBeVisible();
+				await expect(balances.getByRole('listitem').filter({ hasText: 'Mina' })).toContainText(
+					'owes €6.00',
+				);
+				await expect(balances.getByRole('listitem').filter({ hasText: 'Kai' })).toContainText(
+					'settled',
+				);
 				await expect(page.getByRole('list', { name: 'Your open payments' })).toBeVisible();
 				await expect(page.getByRole('button', { name: 'Settle up' })).toBeVisible();
 				await expect(page.getByRole('link', { name: 'All reminders' })).toBeVisible();
@@ -191,14 +212,14 @@ test.describe('English debts and reminders', () => {
 		const dialog = page.getByRole('alertdialog', { name: 'Confirm a payment already made' });
 		await expect(dialog).toBeVisible();
 		await expect(
-			dialog.getByText(
-				'Only confirm if Mina has already paid €6.00 to you. No money is transferred.',
-			),
+			dialog.getByText('Only confirm if Mina has already paid you €6.00. No money is transferred.'),
 		).toBeVisible();
+		await expect(dialog.getByText('These shares were checked just now.')).toHaveCount(0);
+		await dialog.getByRole('button', { name: 'Details' }).click();
 		await expect(dialog.getByText('These shares were checked just now.')).toBeVisible();
 		await expect(dialog.getByRole('list', { name: 'Expense shares covered' })).toBeVisible();
 		await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeVisible();
-		await dialog.getByRole('button', { name: 'Record €6.00 as paid' }).click();
+		await dialog.getByRole('button', { name: 'Mark €6.00 as paid' }).click();
 		await expect(
 			page
 				.getByText('The open amounts have changed. Check the payment again before you record it.')
