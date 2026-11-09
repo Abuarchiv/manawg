@@ -91,7 +91,6 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 	const [touchedReactions, setTouchedReactions] = useState<ReactionKey[]>([]);
 	const draftKey = `${buildDraftKey(shareCode, currentMemberId, 'announcement')}:${announcement.id}`;
 
-	const isResolved = announcement.status === 'resolved';
 	const isPinned = Boolean(announcement.pinnedAt);
 	const isAuthor = announcement.authorMemberId === currentMemberId;
 	const canModerate = isAuthor || isAdmin;
@@ -161,7 +160,6 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 							hiddenReactions={reactions.hidden}
 							reactionPending={reactionPending}
 							isPinned={isPinned}
-							isResolved={isResolved}
 							canModerate={canModerate}
 							canEdit={canEdit}
 							canResolve={canResolve}

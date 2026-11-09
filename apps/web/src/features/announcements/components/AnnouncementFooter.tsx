@@ -65,7 +65,6 @@ export function AnnouncementFooter({
 	const commentPendingRef = useRef(false);
 	const replyRef = useRef<HTMLTextAreaElement>(null);
 	const commentDraft = useCommentDraft(`${draftKey}:reply`);
-	const isResolved = announcement.status === 'resolved';
 	const commentCount = announcement.comments.length;
 	useEffect(() => {
 		if (commentDraft.restored) setCommentsOpen(true);
@@ -137,26 +136,23 @@ export function AnnouncementFooter({
 					{commentCount > 0 && <span className="tabular-nums">{commentCount}</span>}
 				</CollapsibleTrigger>
 				{/* Infos and decisions fade out by themselves; everything else is closed here. */}
-				{!isResolved &&
-					canResolve &&
-					announcement.kind !== 'info' &&
-					announcement.kind !== 'decision' && (
-						<Button
-							variant="outline"
-							size="sm"
-							className="gap-1 pr-2 text-meta"
-							disabled={statusPending}
-							onClick={onToggleStatus}
-							aria-label={t('footer.resolveAria', { subject: actionSubject })}
-						>
-							{statusPending ? (
-								<Spinner data-icon="inline-start" />
-							) : (
-								<CheckCircle2 data-icon="inline-start" />
-							)}
-							{t('footer.resolve')}
-						</Button>
-					)}
+				{canResolve && announcement.kind !== 'info' && announcement.kind !== 'decision' && (
+					<Button
+						variant="outline"
+						size="sm"
+						className="gap-1 pr-2 text-meta"
+						disabled={statusPending}
+						onClick={onToggleStatus}
+						aria-label={t('footer.resolveAria', { subject: actionSubject })}
+					>
+						{statusPending ? (
+							<Spinner data-icon="inline-start" />
+						) : (
+							<CheckCircle2 data-icon="inline-start" />
+						)}
+						{t('footer.resolve')}
+					</Button>
+				)}
 			</div>
 			<CollapsiblePanel
 				keepRendered

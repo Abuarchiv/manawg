@@ -1,13 +1,10 @@
 'use client';
 
-import { CheckCircle2, ChevronDown, ChevronUp, Hand, ImageOff } from 'lucide-react';
-import { useLocale, useTranslations } from 'next-intl';
+import { ChevronDown, ChevronUp, Hand, ImageOff } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { relativeTimeMessage } from '@/core/utils/time';
 import { isLongAnnouncementBody } from '@/features/announcements/announcement-card-model';
-import type { Locale } from '@/shared/i18n/locale';
-import { useMessage } from '@/shared/i18n/message';
 import { cn } from '@/shared/lib/cn';
 import type { Announcement } from './announcement-types';
 
@@ -18,7 +15,7 @@ interface AnnouncementBodyProps {
 	busy: boolean;
 }
 
-/** Text (collapsible when long), image attachment and the takers / resolved / saving line. */
+/** Text (collapsible when long), image attachment and the takers / saving line. */
 export function AnnouncementBody({
 	announcement,
 	bodyText,
@@ -27,8 +24,6 @@ export function AnnouncementBody({
 }: AnnouncementBodyProps) {
 	const t = useTranslations('pinboard.card');
 	const tCommon = useTranslations('common');
-	const render = useMessage();
-	const locale = useLocale() as Locale;
 	const [imageFailed, setImageFailed] = useState(false);
 	const [expanded, setExpanded] = useState(false);
 	const isLong = isLongAnnouncementBody(bodyText);
@@ -91,22 +86,12 @@ export function AnnouncementBody({
 					)}
 				</a>
 			)}
-			{(takerNames.length > 0 || announcement.resolvedAt) && (
+			{takerNames.length > 0 && (
 				<p className="flex flex-wrap items-center gap-x-2 text-meta text-muted-foreground [overflow-wrap:anywhere]">
-					{takerNames.length > 0 && (
-						<span className="inline-flex items-center gap-1 text-foreground">
-							<Hand className="size-3.5 shrink-0" aria-hidden />
-							{t('takers', { count: takerNames.length, names: takerNames.join(', ') })}
-						</span>
-					)}
-					{announcement.resolvedAt && (
-						<span className="inline-flex items-center gap-1">
-							<CheckCircle2 className="size-3.5 shrink-0" aria-hidden />
-							{t('resolvedAt', {
-								time: render(relativeTimeMessage(announcement.resolvedAt, Date.now(), locale)),
-							})}
-						</span>
-					)}
+					<span className="inline-flex items-center gap-1 text-foreground">
+						<Hand className="size-3.5 shrink-0" aria-hidden />
+						{t('takers', { count: takerNames.length, names: takerNames.join(', ') })}
+					</span>
 				</p>
 			)}
 			{/* Screen readers only: a visible line would shift the action bar while typing. */}

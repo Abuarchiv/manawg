@@ -116,23 +116,16 @@ export function useAnnouncementActions(
 	function toggleStatus(announcement: Announcement): void {
 		const pendingKey = `${announcement.id}:status`;
 		if (isPending(pendingKey)) return;
-		const nextStatus = announcement.status === 'resolved' ? 'open' : 'resolved';
 		const rollback = captureFields(announcement.id, ['status', 'resolvedAt', 'resolvedByMemberId']);
 		updateItem(announcement.id, (item) => ({
 			...item,
-			status: nextStatus,
-			resolvedAt: nextStatus === 'resolved' ? new Date().toISOString() : null,
-			resolvedByMemberId: nextStatus === 'resolved' ? identity.memberId : null,
+			status: 'resolved',
+			resolvedAt: new Date().toISOString(),
+			resolvedByMemberId: identity.memberId,
 		}));
 		// Success toast only after the server responds, otherwise it contradicts the rollback on errors.
-		void patchAnnouncement(
-			announcement.id,
-			{ status: nextStatus },
-			pendingKey,
-			rollback,
-			nextStatus === 'resolved'
-				? () => toast.success(render({ key: 'pinboard.notices.resolved' }))
-				: undefined,
+		void patchAnnouncement(announcement.id, { status: 'resolved' }, pendingKey, rollback, () =>
+			toast.success(render({ key: 'pinboard.notices.resolved' })),
 		);
 	}
 
@@ -161,10 +154,18 @@ export function useAnnouncementActions(
 		return saved ? 'saved' : conflict ? 'conflict' : 'failed';
 	}
 
-	async function toggleReaction(announcement: Announcement, reaction: ReactionKey): Promise<void> {
+	async function toggleReaction(
+		announcement: Announcement,
+		reaction: ReactionKey,
+	): Promise<boolean> {
 		const pendingKey = `${announcement.id}:reaction:${reaction}`;
-		if (isPending(pendingKey)) return;
-		const rollback = captureFields(announcement.id, ['myReactions', 'reactionCounts', 'takers']);
+		if (isPending(pendingKey)) return false;
+		const rollback = captureFields(announcement.id, [
+			'myReactions',
+			'reactionCounts',
+			'takers',
+			'myAcknowledgedAt',
+		]);
 		const active = announcement.myReactions.includes(reaction);
 		updateItem(announcement.id, (item) =>
 			withToggledReaction(item, reaction, active, {
@@ -182,7 +183,7 @@ export function useAnnouncementActions(
 			rollback();
 			end(pendingKey);
 			setActionError({ key: 'pinboard.errors.reactionKeyUnavailable' });
-			return;
+			return false;
 		}
 		reactionIdempotencyKeysRef.current.set(reactionRequestKey, {
 			active: !active,
@@ -212,12 +213,13 @@ export function useAnnouncementActions(
 				// Someone else resolved the post meanwhile: show the real state right away.
 				if (res.error === 'announcement_resolved') void load('background');
 			}
-			return;
+			return false;
 		}
 		reactionIdempotencyKeysRef.current.delete(reactionRequestKey);
 		const warning = deliveryWarning(res.data.warning);
 		if (warning) toast.info(render(warning));
 		void load('background');
+		return true;
 	}
 
 	/** The dialog shows the error itself: null = removed (or already gone), otherwise the message. */
