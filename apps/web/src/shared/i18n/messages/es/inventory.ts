@@ -4,7 +4,7 @@ import type de from '../de/inventory';
 export default {
 	errorPage: {
 		title: 'No se pudieron cargar los suministros ahora mismo',
-		body: 'Algo salió mal en los suministros. Inténtalo de nuevo o vuelve al resumen del piso.',
+		body: 'Algo salió mal en los suministros. Inténtalo de nuevo o vuelve al inicio del piso.',
 	},
 	page: {
 		title: 'Suministros',

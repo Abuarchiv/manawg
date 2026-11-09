@@ -4,7 +4,7 @@ import type de from '../de/shopping';
 export default {
 	errorPage: {
 		title: 'No se ha podido cargar la compra ahora mismo',
-		body: 'Algo ha salido mal en la lista de la compra. Inténtalo de nuevo o vuelve al resumen del piso.',
+		body: 'Algo ha salido mal en la lista de la compra. Inténtalo de nuevo o vuelve al inicio del piso.',
 	},
 	page: {
 		title: 'Compras',

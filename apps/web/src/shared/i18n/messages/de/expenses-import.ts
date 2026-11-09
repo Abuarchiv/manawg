@@ -203,7 +203,7 @@ export default {
 		splitsDrift:
 			'Die Aufteilung wich minimal vom Gesamtbetrag ab und wurde automatisch angeglichen.',
 		splitsDiscarded:
-			'Die eigene Aufteilung wich zu stark vom Gesamtbetrag ab und wurde verworfen — stattdessen gleichmäßig aufgeteilt.',
+			'Die eigene Aufteilung wich zu stark vom Gesamtbetrag ab und wurde verworfen. Stattdessen wurde gleichmäßig aufgeteilt.',
 		paymentRow:
 			'Rückzahlung, keine Ausgabe. Überspring die Zeile, wenn sie nicht ins Haushaltsbuch soll.',
 		ocr: 'Aus dem Bild erkannt: Prüfe Datum, Betrag und zahlende Person. Die Ausgabe wird nur der zahlenden Person zugeordnet, es entsteht keine Schuld.',

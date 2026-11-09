@@ -12,7 +12,7 @@ export default {
 		add: 'Añadir gasto',
 		errorTitle: 'No se han podido cargar los gastos ahora mismo',
 		errorBody:
-			'Algo ha salido mal en el resumen de gastos. Inténtalo de nuevo o vuelve al resumen del piso.',
+			'Algo ha salido mal en el resumen de gastos. Inténtalo de nuevo o vuelve al inicio del piso.',
 		loadRecurringLead: 'No se han podido cargar los gastos fijos',
 	},
 	history: {
@@ -74,7 +74,7 @@ export default {
 		emptyTitle: 'Aún no hay plantillas de gasto fijo',
 		emptyBody: 'Configura el importe y el reparto una sola vez.',
 		prepare: 'Preparar un gasto nuevo',
-		deleteTitle: '¿Eliminar la plantilla?',
+		deleteTitle: '¿Eliminar el gasto fijo?',
 		deleteBody: 'Se eliminará “{description}”. Los gastos ya registrados se mantienen.',
 		cancel: 'Cancelar',
 		delete: 'Eliminar',

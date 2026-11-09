@@ -14,7 +14,7 @@ export default {
 		loadError: { reminders: 'No se han podido cargar los recordatorios' },
 		boundary: {
 			title: 'No se han podido cargar los recordatorios ahora mismo',
-			body: 'Algo ha salido mal en la página de recordatorios. Inténtalo de nuevo o vuelve al resumen del piso.',
+			body: 'Algo ha salido mal en la página de recordatorios. Inténtalo de nuevo o vuelve al inicio del piso.',
 		},
 	},
 	debtLine:

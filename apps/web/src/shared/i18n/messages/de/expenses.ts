@@ -71,7 +71,7 @@ export default {
 		emptyTitle: 'Noch keine Fixkosten-Vorlage',
 		emptyBody: 'Betrag und Aufteilung einmal vorbereiten.',
 		prepare: 'Neue Ausgabe vorbereiten',
-		deleteTitle: 'Vorlage löschen?',
+		deleteTitle: 'Fixkosten löschen?',
 		deleteBody: '„{description}“ wird gelöscht. Bereits erfasste Ausgaben bleiben erhalten.',
 		cancel: 'Abbrechen',
 		delete: 'Löschen',

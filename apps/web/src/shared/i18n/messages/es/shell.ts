@@ -222,7 +222,7 @@ export default {
 	errorPage: {
 		details: 'Detalles del error',
 		tryAgain: 'Intentar de nuevo',
-		overview: 'Volver al resumen',
+		overview: 'Volver al inicio',
 		toHome: 'Ir a la página de inicio',
 		report: 'Informar de un problema por correo',
 		somethingWrong: 'Algo ha salido mal',

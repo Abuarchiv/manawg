@@ -158,7 +158,7 @@ export default {
 		intervalInvalid: 'Wähle ein gültiges Intervall.',
 		dueDateInvalid: 'Prüfe das nächste Fälligkeitsdatum.',
 		splitsMismatch:
-			'Beträge stimmen nicht überein — Summe muss exakt dem Gesamtbetrag entsprechen.',
+			'Die Beträge stimmen nicht überein. Die Summe muss genau dem Gesamtbetrag entsprechen.',
 		idInvalid: 'Der Eintrag konnte nicht eindeutig zugeordnet werden.',
 		deleteFailed: 'Lade die Liste neu und prüfe, ob der Eintrag noch existiert.',
 	},

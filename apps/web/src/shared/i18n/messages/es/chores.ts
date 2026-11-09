@@ -242,7 +242,7 @@ export default {
 	},
 	errorPage: {
 		title: 'No se ha podido cargar el plan de limpieza ahora mismo',
-		body: 'Algo ha salido mal en el plan de limpieza. Inténtalo de nuevo o vuelve al resumen del piso.',
+		body: 'Algo ha salido mal en el plan de limpieza. Inténtalo de nuevo o vuelve al inicio del piso.',
 	},
 	page: {
 		draftKept: 'Se conserva tu borrador actual.',

@@ -12,7 +12,7 @@ export default {
 		loading: 'Cargando resumen',
 		boundary: {
 			title: 'No se pudo cargar el resumen ahora mismo',
-			body: 'Algo salió mal en la página del resumen. Inténtalo de nuevo o vuelve al resumen del piso.',
+			body: 'Algo salió mal en la página del resumen. Inténtalo de nuevo o vuelve al inicio del piso.',
 		},
 	},
 	document: {

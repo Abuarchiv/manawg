@@ -105,7 +105,7 @@ export default {
 		bodyDetail: 'Bald leer: {itemName} ({quantity} von {threshold}) in {wgName}.',
 	},
 	chatMessage: {
-		title: 'Chat — {wgName}',
+		title: 'Chat – {wgName}',
 		body: '{sender}: {preview}',
 	},
 	chatMention: {
