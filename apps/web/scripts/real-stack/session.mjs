@@ -1,5 +1,5 @@
 import { chromium, devices } from '@playwright/test';
-import { BASE, MAIL, SB } from './env.mjs';
+import { BASE, MAIL, PUBLISHABLE, SB } from './env.mjs';
 
 // Service key of the local `supabase start` stack: `supabase status -o env` prints it.
 const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
@@ -27,7 +27,7 @@ await fetch(`${SB}/auth/v1/admin/users`, {
 	}),
 });
 const browser = await chromium.launch();
-const c = await browser.newContext({ ...devices['iPhone 13'], baseURL: BASE });
+const c = await browser.newContext({ ...devices['iPhone 13'], baseURL: BASE, locale: 'de-DE' });
 const p = await c.newPage();
 // 1 password login wrong/right
 await p.goto('/login');
@@ -56,9 +56,7 @@ sess.expires_in = 0;
 await c.addCookies([
 	{ ...tokenCookie, value: `base64-${Buffer.from(JSON.stringify(sess)).toString('base64url')}` },
 ]);
-const _r = await p.evaluate(
-	async () => (await fetch('/api/wg/mine', { cache: 'no-store' })).status,
-);
+await p.evaluate(() => fetch('/api/wg/mine', { cache: 'no-store' }));
 await p.goto('/login');
 await wait(1500);
 const ck2 = await c.cookies();
@@ -68,7 +66,9 @@ const s2 = JSON.parse(
 );
 if (s2.access_token === sess.access_token) bug('expired token was not renewed');
 // 3 forgot password
-const p2 = await (await browser.newContext({ ...devices['iPhone 13'], baseURL: BASE })).newPage();
+const p2 = await (
+	await browser.newContext({ ...devices['iPhone 13'], baseURL: BASE, locale: 'de-DE' })
+).newPage();
 await p2.goto('/login');
 await p2.getByRole('tab', { name: 'Passwort' }).click();
 await p2
@@ -85,11 +85,6 @@ for (let i = 0; i < 15 && !rm; i++) {
 	if (s.messages?.length) rm = await (await fetch(`${MAIL}/message/${s.messages[0].ID}`)).json();
 	else await wait(700);
 }
-if (!rm) {
-	const _s = await (
-		await fetch(`${MAIL}/search?query=${encodeURIComponent(`to:${email}`)}`)
-	).json();
-}
 const link = rm?.HTML.match(/href="([^"]*auth[^"]*)"/)?.[1]?.replace(/&amp;/g, '&');
 if (link) {
 	await p2.goto(link);
@@ -102,7 +97,7 @@ if (link) {
 	const login = await fetch(`${SB}/auth/v1/token?grant_type=password`, {
 		method: 'POST',
 		headers: {
-			apikey: 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH',
+			apikey: PUBLISHABLE,
 			'content-type': 'application/json',
 		},
 		body: JSON.stringify({ email, password: 'Neues-Passwort-99' }),

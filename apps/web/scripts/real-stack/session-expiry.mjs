@@ -1,9 +1,9 @@
 // Session refresh after the access token expired. Run against a stack whose
-// `jwt_expiry` is 60 (scratch supabase/config.toml), otherwise this waits an hour.
+// `jwt_expiry` is 120 (scratch supabase/config.toml), otherwise this waits an hour.
 import { chromium, devices, request } from '@playwright/test';
 import { BASE, call, expect, finish, user } from './modules-lib.mjs';
 
-const JWT_SECONDS = Number(process.env.JWT_EXPIRY ?? 60);
+const JWT_SECONDS = Number(process.env.JWT_EXPIRY ?? 120);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const expireWait = async (label) => {
 	process.stdout.write(`… waiting ${JWT_SECONDS + 15}s (${label})\n`);
@@ -59,7 +59,7 @@ expect(post.status < 300, 'write after expiry', `${post.status} ${JSON.stringify
 
 // 3 Browser: page open, token expires, client-side navigation and fetches keep working.
 const browser = await chromium.launch();
-const ctx = await browser.newContext({ ...devices['iPhone 13'], baseURL: BASE });
+const ctx = await browser.newContext({ ...devices['iPhone 13'], baseURL: BASE, locale: 'de-DE' });
 await ctx.addCookies((await A.ctx.storageState()).cookies);
 const p = await ctx.newPage();
 const bad = [];
@@ -95,7 +95,6 @@ await p.waitForLoadState('networkidle');
 await p.getByPlaceholder(/Reis/).fill('Nudeln');
 await p.keyboard.press('Enter');
 await p.getByText('Nudeln').first().waitFor({ timeout: 10_000 });
-expect(true, 'shopping item added in browser after expiry');
 await p.reload();
 await p.waitForLoadState('networkidle');
 expect(!/\/(login|signup)/.test(p.url()), 'reload stays signed in', p.url());

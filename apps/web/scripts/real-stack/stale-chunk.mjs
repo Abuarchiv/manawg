@@ -9,7 +9,7 @@ const code = w.body.wg?.shareCode;
 expect(!!code, 'WG created');
 
 const browser = await chromium.launch();
-const ctx = await browser.newContext({ ...devices['iPhone 13'], baseURL: BASE });
+const ctx = await browser.newContext({ ...devices['iPhone 13'], baseURL: BASE, locale: 'de-DE' });
 await ctx.addCookies((await A.ctx.storageState()).cookies);
 const p = await ctx.newPage();
 
