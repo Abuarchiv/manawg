@@ -55,6 +55,27 @@ function isTestDeployment(): boolean {
 	);
 }
 
+/**
+ * Everything besides page views that leaves the browser: the activation and funnel steps. They
+ * carry no property except the failure code of `invite_join_failed`.
+ */
+const PRODUCT_EVENTS: readonly string[] = [
+	'wg_created',
+	'wg_joined',
+	'signup_submitted',
+	'signup_confirmed',
+	'login_completed',
+	'invite_opened',
+	'invite_join_failed',
+	'first_expense_created',
+];
+
+/** An API error code (`invite_expired`, `name_taken`, ...) is lowercase snake case; anything else is not forwarded. */
+function failureCode(properties: unknown): string {
+	const code = (properties as { code?: unknown } | null | undefined)?.code;
+	return typeof code === 'string' && /^[a-z0-9_]{1,40}$/.test(code) ? code : 'other';
+}
+
 function loadAnalytics(key: string, host: string): void {
 	import('posthog-js')
 		.then(({ default: posthog }) => {
@@ -74,7 +95,7 @@ function loadAnalytics(key: string, host: string): void {
 				before_send(event) {
 					if (
 						!event ||
-						!['$pageview', 'wg_created', 'wg_joined'].includes(event.event) ||
+						!['$pageview', ...PRODUCT_EVENTS].includes(event.event) ||
 						typeof event.uuid !== 'string' ||
 						!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(event.uuid)
 					)
@@ -94,6 +115,9 @@ function loadAnalytics(key: string, host: string): void {
 							$host: window.location.hostname,
 							$pathname: routeTemplate(window.location.pathname),
 							$raw_user_agent: navigator.userAgent,
+							...(event.event === 'invite_join_failed'
+								? { code: failureCode(event.properties) }
+								: {}),
 						},
 					};
 				},

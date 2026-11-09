@@ -82,7 +82,7 @@ export function useEmailCode({
 		setBusy('code-request');
 		try {
 			const { requestEmailCode } = await import('@/core/auth/client');
-			await requestEmailCode(address, signUpName?.trim());
+			await requestEmailCode(address, signUpName?.trim(), isResend);
 			setSentTo(address);
 			setCode('');
 			setCooldown(RESEND_COOLDOWN_SECONDS);

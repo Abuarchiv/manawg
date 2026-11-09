@@ -1,6 +1,8 @@
 import { isAuthRetryableFetchError } from '@supabase/supabase-js';
 import { type NextRequest, NextResponse } from 'next/server';
 import { unwrapSignInNext } from '@/core/auth/auth-intent';
+import { SESSION_HINT_COOKIE } from '@/core/auth/cookie-options';
+import { funnelMarkerCookie, funnelMarkerForSession } from '@/core/auth/funnel-marker';
 import { safeNextPath } from '@/core/auth/next-path';
 import {
 	choosePasswordHref,
@@ -68,6 +70,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 			return callbackError(request, response);
 		}
 		queueWelcomeMail(data.session.user, requestLocale(request));
+		const funnelMarker = funnelMarkerForSession({
+			user: data.session.user,
+			next,
+			hadSession: request.cookies.get(SESSION_HINT_COOKIE)?.value === '1',
+		});
+		if (funnelMarker) {
+			response.cookies.set(funnelMarkerCookie(funnelMarker, request.nextUrl.protocol === 'https:'));
+		}
 		const choosePassword = await passwordPending(supabase.auth);
 		if (choosePassword) {
 			response.headers.set(

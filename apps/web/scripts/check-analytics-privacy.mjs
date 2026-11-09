@@ -65,6 +65,17 @@ async function initialize(
 }
 
 const secret = 'private-household-content';
+// Activation and funnel steps beyond $pageview. Only invite_join_failed carries a property (a code).
+const PRODUCT_EVENTS = [
+	'wg_created',
+	'wg_joined',
+	'signup_submitted',
+	'signup_confirmed',
+	'login_completed',
+	'invite_opened',
+	'invite_join_failed',
+	'first_expense_created',
+];
 const env = {
 	NODE_ENV: 'production',
 	NEXT_PUBLIC_POSTHOG_KEY: 'phc_privacy_test',
@@ -94,7 +105,7 @@ assert.equal(typeof config.before_send, 'function');
 assert.equal(config.before_send(null), null);
 const uuid = '12345678-1234-4234-8234-123456789abc';
 const timestamp = new Date('2026-09-03T00:00:00.000Z');
-for (const event of ['$pageview', 'wg_created', 'wg_joined']) {
+for (const event of ['$pageview', ...PRODUCT_EVENTS]) {
 	const cleaned = config.before_send({
 		uuid,
 		event,
@@ -136,9 +147,47 @@ for (const event of ['$pageview', 'wg_created', 'wg_joined']) {
 			$host: 'app.manawg.com',
 			$pathname: '/wg/[code]/expenses',
 			$raw_user_agent: 'ManaWG-privacy-check',
+			...(event === 'invite_join_failed' ? { code: 'other' } : {}),
 		},
 	});
 }
+// A failure code is forwarded when it is a plain API code; anything else (an address, free text) becomes 'other'.
+for (const [code, expected] of [
+	['name_taken', 'name_taken'],
+	['invite_expired', 'invite_expired'],
+	['http_500', 'http_500'],
+	['max@example.com', 'other'],
+	['Name taken', 'other'],
+	[secret, 'other'],
+	[`${'a'.repeat(41)}`, 'other'],
+	[42, 'other'],
+	[undefined, 'other'],
+]) {
+	const cleaned = config.before_send({
+		uuid,
+		event: 'invite_join_failed',
+		timestamp,
+		properties: { code, email: secret, name: secret },
+	});
+	assert.equal(cleaned.properties.code, expected, String(code));
+	assert.deepEqual(Object.keys(cleaned.properties).sort(), [
+		'$cookieless_mode',
+		'$host',
+		'$pathname',
+		'$process_person_profile',
+		'$raw_user_agent',
+		'code',
+		'distinct_id',
+		'token',
+	]);
+}
+// No other event takes the code along.
+assert.equal(
+	'code' in
+		config.before_send({ uuid, event: 'signup_submitted', timestamp, properties: { code: 'x' } })
+			.properties,
+	false,
+);
 // Page paths keep only the route: household codes, invite tokens and unknown paths are replaced.
 for (const [pathname, expected] of [
 	['/', '/'],
@@ -213,14 +262,24 @@ assert.doesNotMatch(pwa, /posthog|onAuthStateChange|createSupabaseBrowserClient/
 const captureCalls = [...onboarding.matchAll(/posthog\.capture\(([^)]*)\)/g)].map(
 	(match) => match[1],
 );
-assert.deepEqual(captureCalls, ["'wg_created'", "'wg_joined'"]);
+assert.deepEqual(captureCalls, [
+	"'wg_created'",
+	"'invite_join_failed', { code }",
+	"'invite_opened'",
+	"'wg_joined'",
+]);
 
 // Minimal analytics contract: only $pageview (autocaptured via
-// capture_pageview, never an explicit capture call) plus the two permitted
-// activation captures wg_created / wg_joined may exist in product source.
+// capture_pageview, never an explicit capture call) plus the permitted
+// activation and funnel captures may exist in product source.
 // Scan every product-source capture call so dead events fail closed here
-// even though runtime before_send already drops them.
-const ALLOWED_CAPTURE_EVENTS = new Set(['wg_created', 'wg_joined']);
+// even though runtime before_send already drops them. The number is how many
+// call sites an event may have: the sign-in steps are sent from the client
+// calls (core/auth/client.ts) and, for the server-side /auth/callback, once
+// from FunnelBeacon; every other event has exactly one site.
+const ALLOWED_CAPTURE_EVENTS = new Map(PRODUCT_EVENTS.map((event) => [event, 1]));
+ALLOWED_CAPTURE_EVENTS.set('signup_confirmed', 2);
+ALLOWED_CAPTURE_EVENTS.set('login_completed', 2);
 const srcDir = fileURLToPath(root);
 async function collectSourceFiles(dir) {
 	const entries = await readdir(dir, { withFileTypes: true });
@@ -249,13 +308,15 @@ const allEvents = allCaptures.map((item) => {
 const uniqueEvents = [...new Set(allEvents)].sort();
 assert.deepEqual(
 	uniqueEvents,
-	[...ALLOWED_CAPTURE_EVENTS].sort(),
+	[...ALLOWED_CAPTURE_EVENTS.keys()].sort(),
 	`non-activation analytics calls contradict the minimal contract: ${allCaptures.join(', ') || 'none found'}`,
 );
-assert.equal(
-	allEvents.length,
-	uniqueEvents.length,
-	`duplicate analytics captures are not allowed: ${allCaptures.join(', ')}`,
-);
+for (const [event, sites] of ALLOWED_CAPTURE_EVENTS) {
+	assert.equal(
+		allEvents.filter((name) => name === event).length,
+		sites,
+		`${event} must have exactly ${sites} capture call site(s): ${allCaptures.join(', ')}`,
+	);
+}
 
 process.stdout.write('analytics privacy check passed\n');

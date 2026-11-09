@@ -44,6 +44,14 @@ async function readShareCode(res: Response): Promise<string> {
 	}
 }
 
+/**
+ * Reports a failed join with its error code only: no name, token or WG. The code is
+ * the API's own (`name_taken`, `invite_expired`, ...); the analytics filter drops anything else.
+ */
+function reportJoinFailure(code: string): void {
+	posthog.capture('invite_join_failed', { code });
+}
+
 /** Moves focus to the name field so a screen reader lands on the marked field and its error. */
 function focusNameField(): void {
 	document.getElementById('join-name')?.focus();
@@ -72,6 +80,15 @@ export function useInviteJoin(token: string) {
 			setError(null);
 		}
 	}, [name, nameInvalid]);
+
+	// Once per page load, as soon as the invitation is shown or has failed to (a dead link counts as
+	// opened): never for the loading state, and not again when the lookup is retried.
+	const openedRef = useRef(false);
+	useEffect(() => {
+		if (phase.kind === 'loading' || openedRef.current) return;
+		openedRef.current = true;
+		posthog.capture('invite_opened');
+	}, [phase.kind]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `retryNonce` re-runs the lookup after a transient error.
 	useEffect(() => {
@@ -166,11 +183,14 @@ export function useInviteJoin(token: string) {
 				if (shouldReleaseIdempotencyKey(res.status, apiError)) requestRef.current = null;
 				if (res.status === 409 && apiError === 'already_joined') return router.push(target);
 				if (apiError === 'invite_expired' || apiError === 'invite_required') {
+					// Expiry found on submit is a rejected join; a dead link merely opened is not.
+					reportJoinFailure(apiError);
 					return setPhase({ kind: 'dead', reason: 'expired' });
 				}
 				const nameProblem =
 					apiError === 'name_invalid' || (res.status === 409 && apiError === 'name_taken');
 				if (nameProblem) invalidNameRef.current = name;
+				reportJoinFailure(apiError || `http_${res.status}`);
 				setNameInvalid(nameProblem);
 				setError(render(joinErrorMessage(res.status, apiError)));
 				if (nameProblem) focusNameField();
@@ -180,6 +200,7 @@ export function useInviteJoin(token: string) {
 			posthog.capture('wg_joined');
 			router.push(target);
 		} catch {
+			reportJoinFailure('network_error');
 			setError(render(joinErrorMessage(0, '')));
 		} finally {
 			busyRef.current = false;

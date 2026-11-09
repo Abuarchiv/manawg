@@ -282,10 +282,16 @@ Mutation error copy goes through `mutationError` (`core/http/error-codes.ts`); f
   error name only, never message or stack.
 - **PostHog** (`instrumentation-client.ts`): initialized only when `NEXT_PUBLIC_POSTHOG_HOST` is
   `https://eu.i.posthog.com`; cookieless, memory persistence, no person profiles, no autocapture
-  or session recording. `before_send` allows only `$pageview`, `wg_created`, `wg_joined` and
-  rebuilds the event without URL or caller properties; only the page path goes along, with WG
-  codes and invite tokens replaced by `[code]` / `[token]`. Preview deployments and loopback hosts
-  send nothing. `scripts/check-analytics-privacy.mjs` enforces this in CI.
+  or session recording. `before_send` allows only `$pageview` and the activation and funnel steps
+  (`signup_submitted`, `signup_confirmed`, `login_completed`, `invite_opened`, `invite_join_failed`,
+  `wg_created`, `wg_joined`, `first_expense_created`) and rebuilds the event without URL or caller
+  properties; only the page path goes along, with WG codes and invite tokens replaced by `[code]` /
+  `[token]`. The one extra property is the API error code of `invite_join_failed` (lowercase snake
+  case, otherwise `other`). The server-side `/auth/callback` leaves a two-minute `manawg_funnel`
+  cookie that holds only the step name; `FunnelBeacon` reads it once, deletes it and sends the
+  event. Events wait for the SDK's idle-time init instead of being dropped, so the path of an event sent early can be the page the visitor has moved on to (fine for step counts, not for per-path breakdowns). `first_expense_created` means the first expense this device sees (empty list); it can repeat per device and misses expenses queued offline. Preview deployments,
+  loopback hosts and automated browsers (`navigator.webdriver`) send nothing.
+  `scripts/check-analytics-privacy.mjs` enforces this in CI.
 - **Boot report**: `instrumentation.ts` runs `checkEnv` and logs `[env] MISSING REQUIRED` /
   `[env] DEGRADED`; it reports to Sentry but does not crash the server. `/api/health` returns only
   counts and feature names.
