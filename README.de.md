@@ -42,7 +42,7 @@ ManaWG ist für eine WG gebaut. Splitwise und Spliit sind für beliebige Gruppen
 | Lizenz | Apache-2.0 | Proprietär | MIT |
 | Preis | Kostenlos, keine Werbung, kein Bezahl-Abo | Kostenlos, mit bezahltem Pro-Tarif | Kostenlos, keine Werbung, durch Spenden finanziert |
 | Import aus anderen Apps (CSV) | Splitwise, Splid, Tricount, Settle Up | Nicht aufgeführt | Noch nicht, als mögliche Funktion gelistet |
-| Währungen | EUR, CHF, USD, GBP | 100+ | Pro Gruppe einstellbar |
+| Währungen | EUR in der App; CHF, USD, GBP über die API, ohne Umrechnung | 100+ | Pro Gruppe einstellbar |
 | Oberflächensprachen | Deutsch, Englisch, Spanisch | 7+ | 24 |
 | Apps | Installierbare Web-App (PWA) | iPhone, Android, Web | Web-App (PWA), iPhone-App |
 
@@ -107,7 +107,7 @@ Deutsch, Englisch und Spanisch, passend zur Sprache des Geräts.
 
 | Bereich | Was es kann |
 | --- | --- |
-| **Ausgaben** | Gleichmäßig oder nach Betrag teilen, in EUR, CHF, USD oder GBP. Salden, Vorschläge zum Ausgleichen mit möglichst wenigen Überweisungen, Barzahlungen, Zahlungserinnerungen und Fixkosten wie die Miete. Jeden Monat kommt eine Abrechnung per Mail mit PDF im Anhang. |
+| **Ausgaben** | Gleichmäßig oder nach Betrag teilen, in Euro (die API nimmt auch CHF, USD und GBP an, Salden laufen dann je Währung getrennt). Salden, Vorschläge zum Ausgleichen mit möglichst wenigen Überweisungen, Barzahlungen, Zahlungserinnerungen und Fixkosten wie die Miete. Jeden Monat kommt eine Abrechnung per Mail mit PDF im Anhang. |
 | **Putzplan** | Aufgaben rotieren nach Aufwand: Wer am wenigsten zu tun hat, ist als Nächstes dran, und niemand bekommt dieselbe Aufgabe zweimal hintereinander. Wer verreist ist, wird übersprungen. |
 | **Einkauf und Vorräte** | Eine gemeinsame Liste mit Vorschlägen und Vorräte, die einen Artikel auf die Liste setzen, sobald er knapp wird. |
 | **Kalender** | Wiederkehrende Termine, Erinnerungen und ein iCal-Feed für den Kalender auf dem Handy. |
