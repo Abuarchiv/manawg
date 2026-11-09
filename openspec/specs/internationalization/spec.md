@@ -27,7 +27,7 @@ The app SHALL render in the locale from the `manawg_locale` cookie when it holds
 
 ### Requirement: German output does not change
 
-Introducing English SHALL NOT change any German text, metadata, JSON-LD or OG data. OG locale and OG images SHALL stay German in every locale. The JSON-LD `inLanguage` SHALL list the `<html lang>` value of every supported locale, derived from the locale constant. The PWA manifest (`/manifest.webmanifest`) follows the request language for its description, shortcut texts and `lang`; its German output is unchanged.
+Introducing English SHALL NOT change any German text, metadata or OG data. OG locale and OG images SHALL stay German in every locale. German JSON-LD stays unchanged except that `inLanguage` SHALL list the `<html lang>` value of every supported locale, derived from the locale constant. The PWA manifest (`/manifest.webmanifest`) follows the request language for its description, shortcut texts and `lang`; its German output is unchanged.
 
 #### Scenario: German head is identical
 - **WHEN** `/`, `/login`, `/signup` and `/discover/<module>` render in German
