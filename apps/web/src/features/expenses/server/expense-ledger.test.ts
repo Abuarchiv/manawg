@@ -35,11 +35,8 @@ const expense = {
 	createdAt: new Date('2026-09-01T10:00:00.000Z'),
 };
 const split = { expenseId: 'e1', debtorMemberId: 'b', amountCents: 500, settledAt: null };
-type Expense = Omit<typeof expense, 'currency' | 'occurredAt'> & {
-	currency: string | null;
-	occurredAt: Date | string;
-};
-type Split = Omit<typeof split, 'settledAt'> & { settledAt: Date | string | null };
+type Expense = typeof expense;
+type Split = Omit<typeof split, 'settledAt'> & { settledAt: Date | null };
 
 function clientFor(expenseRows: Expense[], splitRows: Split[], afterRead = () => {}) {
 	const reads: unknown[] = [];
@@ -105,10 +102,7 @@ test('the ledger never combines old payers with new shares during a concurrent e
 test('the ledger keeps all shares, expenses without shares and import data in a flat-scoped snapshot', async () => {
 	const settledAt = new Date('2026-09-03T00:00:00.000Z');
 	const { client, reads } = clientFor(
-		[
-			{ ...expense },
-			{ ...expense, id: 'e2', paidByMemberId: 'b', currency: null, occurredAt: '2026-09-02' },
-		],
+		[{ ...expense }, { ...expense, id: 'e2', paidByMemberId: 'b' }],
 		[{ ...split }, { ...split, debtorMemberId: 'c', amountCents: 300, settledAt }],
 	);
 	const result = await loadLedger(wgId, client as never);
@@ -135,7 +129,12 @@ test('the ledger keeps all shares, expenses without shares and import data in a 
 		{
 			importId: expense.importId,
 			createdAt: expense.createdAt,
-			debt: { paidByMemberId: 'b', occurredAt: '2026-09-02', splits: [] },
+			debt: {
+				paidByMemberId: 'b',
+				currency: 'EUR',
+				occurredAt: expense.occurredAt.toISOString(),
+				splits: [],
+			},
 		},
 	]);
 });
