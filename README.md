@@ -74,7 +74,7 @@ git clone https://github.com/Abuarchiv/manawg.git && cd manawg
 docker compose up -d
 ```
 
-Open [localhost](http://localhost) and sign up. The sign-in code arrives in Mailpit at
+Open [localhost](http://localhost) and sign up with your name and email address; no password is needed. The 8-digit code arrives in Mailpit at
 [localhost:8025](http://localhost:8025). The stack runs the app, PostgreSQL, sign-in, image
 storage, an HTTPS gateway and the mail catcher, and pulls the image of the latest release.
 

@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { renderTemplate, selectLocale } from '../../../supabase/templates/render.mjs';
+import {
+	renderTemplate,
+	selectLocale,
+	selectRegistration,
+} from '../../../supabase/templates/render.mjs';
 
 const footer =
 	'<a href="https://app.manawg.com" style="x">app.manawg.com</a> &middot; ' +
@@ -58,4 +62,29 @@ test('the email-change mail names both addresses and says both links are needed'
 		subjects.email_change,
 		/neue E-Mail-Adresse|new email address|nueva dirección de correo/,
 	);
+});
+
+test('the confirmation mail of a code registration has the code and no link that would burn it', () => {
+	const html = readFileSync(
+		new URL('../../../supabase/templates/confirmation.html', import.meta.url),
+		'utf8',
+	);
+	const subjects = JSON.parse(
+		readFileSync(new URL('../../../supabase/templates/subjects.json', import.meta.url), 'utf8'),
+	);
+	for (const locale of ['de', 'en', 'es']) {
+		const code = selectLocale(selectRegistration(html, 'code'), locale);
+		assert.match(code, /\{\{ \.Token \}\}/);
+		assert.doesNotMatch(code, /ConfirmationURL/);
+		assert.doesNotMatch(code, /\{\{ (?:if|else|end)/);
+		const other = selectLocale(selectRegistration(html, ''), locale);
+		assert.match(other, /href="\{\{ \.ConfirmationURL \}\}"/);
+		assert.match(other, /\{\{ \.Token \}\}/);
+		const subject = selectLocale(selectRegistration(subjects.confirmation, 'code'), locale);
+		assert.match(subject, /^\{\{ \.Token \}\}/);
+		assert.doesNotMatch(
+			selectLocale(selectRegistration(subjects.confirmation, ''), locale),
+			/Token/,
+		);
+	}
 });

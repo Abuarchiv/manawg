@@ -10,7 +10,7 @@ import { authFailureMessage } from '@/components/wg/settings/settings-errors';
 import { classifyAuthError } from '@/core/auth/password-errors';
 import { useMessage } from '@/shared/i18n/message';
 
-/** Password change for password accounts: shows the account e-mail and mails a reset link to it. */
+/** Password row for e-mail accounts: shows the account e-mail and mails a link to set or change the password. */
 export function PasswordChangeRow({ email }: { email: string | null }) {
 	const t = useTranslations('settings');
 	const m = useMessage();

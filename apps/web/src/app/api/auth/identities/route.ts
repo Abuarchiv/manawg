@@ -15,6 +15,8 @@ export const GET = authGet(async ({ supabase }) => {
 	);
 	return {
 		email: user.email ?? null,
+		// The e-mail identity exists for every account that signs in by e-mail; it says nothing about
+		// whether a password was ever set (accounts registered with a code have none).
 		hasPassword: providers.includes('email'),
 		hasGoogle: providers.includes('google'),
 		name: name ? name.trim().slice(0, MEMBER_NAME_MAX_LENGTH) : null,

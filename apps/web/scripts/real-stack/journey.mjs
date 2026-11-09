@@ -23,8 +23,8 @@ async function mails(to) {
 	return [];
 }
 const stamp = Date.now();
-const A = { email: `anna${stamp}@example.test`, pw: 'Sicheres-Passwort-77', name: 'Anna' };
-const B = { email: `ben${stamp}@example.test`, pw: 'Sicheres-Passwort-88', name: 'Ben' };
+const A = { email: `anna${stamp}@example.test`, name: 'Anna' };
+const B = { email: `ben${stamp}@example.test`, name: 'Ben' };
 const browser = await chromium.launch();
 function watch(page, tag) {
 	page.on('pageerror', (e) => bug(`${tag} pageerror ${e.message.slice(0, 160)}`));
@@ -45,33 +45,27 @@ async function ctx() {
 	const p = await c.newPage();
 	return { c, p };
 }
+// Registration is name and address, then the 8-digit code from the mail on the same page.
 async function register(p, u, tag) {
 	await p.goto('/signup');
 	await p.getByLabel('Dein Name').fill(u.name);
 	await p.getByLabel('E-Mail-Adresse').fill(u.email);
-	await p.getByLabel('Passwort', { exact: true }).fill(u.pw);
-	await p.getByLabel('Passwort wiederholen').fill(u.pw);
-	await p.getByRole('button', { name: 'Konto erstellen', exact: true }).click();
-	await wait(1500);
-	note(
-		`${tag} after sign-up: ${p.url()} | ${(await p.locator('main').innerText()).replace(/\s+/g, ' ').slice(0, 200)}`,
-	);
+	await p.getByRole('button', { name: 'Weiter', exact: true }).click();
+	return enterRegistrationCode(p, u, tag);
+}
+async function enterRegistrationCode(p, u, tag) {
+	await p.getByLabel('8-stelliger Code').waitFor({ timeout: 15000 });
 	const ms = await mails(u.email);
-	const conf = ms.find((m) => /confirm|verify|signup/i.test(m.Text + m.HTML)) ?? ms[0];
-	if (!conf) {
-		bug(`${tag} no confirmation mail`);
+	const code = ms[0] && (ms[0].Text ?? '').match(/\b(\d{8})\b/)?.[1];
+	if (!code) {
+		bug(`${tag} no code in the registration mail`);
 		return false;
 	}
-	note(`${tag} Mail subject: ${conf.Subject}`);
-	const link = (conf.HTML.match(/href="([^"]*auth[^"]*)"/) ??
-		conf.Text.match(/(http\S*verify\S*)/))?.[1]?.replace(/&amp;/g, '&');
-	if (!link) {
-		bug(`${tag} no confirmation link in mail`);
-		return false;
-	}
-	await p.goto(link);
-	await wait(2000);
-	note(`${tag} after confirmation: ${p.url()}`);
+	note(`${tag} Mail subject: ${ms[0].Subject}`);
+	await p.getByLabel('8-stelliger Code').fill(code);
+	await p.getByRole('button', { name: 'Konto erstellen', exact: true }).click();
+	await wait(2500);
+	note(`${tag} after the code: ${p.url()}`);
 	return true;
 }
 // ---- account A
@@ -120,21 +114,12 @@ await wait(500);
 note(`B URL: ${b.p.url()}`);
 await b.p.getByLabel('Dein Name').fill(B.name);
 await b.p.getByLabel('E-Mail-Adresse').fill(B.email);
-await b.p.getByLabel('Passwort', { exact: true }).fill(B.pw);
-await b.p.getByLabel('Passwort wiederholen').fill(B.pw);
-await b.p.getByRole('button', { name: 'Konto erstellen', exact: true }).click();
-await wait(1500);
-const msB = await mails(B.email);
-const confB = msB[0];
-const lB = confB?.HTML.match(/href="([^"]*auth[^"]*)"/)?.[1]?.replace(/&amp;/g, '&');
-if (!lB) bug('B no confirmation mail');
-else {
-	await b.p.goto(lB);
-	await wait(2500);
-}
-note(`B after confirmation: ${b.p.url()}`);
+await b.p.getByRole('button', { name: 'Weiter', exact: true }).click();
+if (!(await enterRegistrationCode(b.p, B, 'B'))) process.exit(1);
+await wait(1000);
+note(`B after registration: ${b.p.url()}`);
 if (!/invite/.test(b.p.url()))
-	bug(`B does not land on the invite after confirmation: ${b.p.url()}`);
+	bug(`B does not land on the invite after registration: ${b.p.url()}`);
 else {
 	note(
 		`B join page: ${(await b.p.locator('main').innerText()).replace(/\s+/g, ' ').slice(0, 200)}`,
@@ -229,5 +214,6 @@ await wait(1500);
 note(
 	`A after reload: ${a.p.url()} signedIn-Cookie: ${(await a.c.cookies()).some((c) => c.name === 'manawg_signed_in')}`,
 );
+if (process.env.VERBOSE === '1') for (const line of log) process.stdout.write(`${line}\n`);
 for (const entry of bugs) process.stdout.write(`- ${entry}\n`);
 await browser.close();

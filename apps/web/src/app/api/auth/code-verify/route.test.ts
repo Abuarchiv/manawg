@@ -55,3 +55,40 @@ test('passes otp_expired through and refuses non-numeric codes', async () => {
 		400,
 	);
 });
+
+test('the name of the registration form replaces one a stranger stored first, only for a new account', async () => {
+	const updates: unknown[] = [];
+	kit.auth.verifyOtp = async () => ({
+		data: { session: { access_token: 't', user: { id: 'u1' } } },
+		error: null,
+	});
+	kit.auth.updateUser = async (args) => {
+		updates.push(args);
+		return { data: {}, error: null };
+	};
+	const account = (confirmedAgoMs: number, registration?: string) => ({
+		data: {
+			user: {
+				id: 'u1',
+				app_metadata: {},
+				user_metadata: { full_name: 'Squatter', registration },
+				email_confirmed_at: new Date(Date.now() - confirmedAgoMs).toISOString(),
+			},
+		},
+		error: null,
+	});
+	const body = { email: 'a@b.test', token: '12345678', name: 'Mina' };
+	kit.auth.getUser = async () => account(1000, 'code');
+	await call(POST, '/api/auth/code-verify', body);
+	assert.deepEqual(updates, [{ data: { full_name: 'Mina' } }]);
+	// A stranger's password-path registration has no mark but is renamed the same way.
+	updates.length = 0;
+	kit.auth.getUser = async () => account(1000);
+	await call(POST, '/api/auth/code-verify', body);
+	assert.deepEqual(updates, [{ data: { full_name: 'Mina' } }]);
+	// An account that existed before is signed in without touching its name.
+	updates.length = 0;
+	kit.auth.getUser = async () => account(30 * 86_400_000, 'code');
+	await call(POST, '/api/auth/code-verify', body);
+	assert.deepEqual(updates, []);
+});

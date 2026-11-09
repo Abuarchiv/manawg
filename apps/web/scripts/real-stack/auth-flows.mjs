@@ -182,7 +182,8 @@ expect(del.status < 300, 'expense deleted', String(del.status));
 const readAfter = await A.ctx.fetch(url);
 expect(readAfter.status() === 404, 'image revoked after delete', String(readAfter.status()));
 // 4 A password set before the address is confirmed never becomes a working credential
-const PUBLISHABLE = 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH';
+const PUBLISHABLE =
+	process.env.REAL_STACK_PUBLISHABLE_KEY ?? 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH';
 const json = { 'content-type': 'application/json' };
 const mailLinks = async (address, count) => {
 	for (let i = 0; i < 30; i += 1) {

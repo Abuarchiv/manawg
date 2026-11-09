@@ -99,22 +99,6 @@ export async function signInWithEmailPassword(
 	return trackSession(await authRequest('/api/auth/sign-in', { email, password }));
 }
 
-export async function signUpWithEmailPassword(
-	email: string,
-	password: string,
-	next: string,
-	name: string,
-): Promise<AuthSessionResult> {
-	const result = await authRequest<AuthSessionResult>('/api/auth/sign-up', {
-		email,
-		password,
-		next,
-		name,
-	});
-	posthog.capture('signup_submitted');
-	return trackSession(result, true);
-}
-
 /** Sends the sign-up confirmation mail again; the response never reveals whether the address exists. */
 export async function resendSignupConfirmation(email: string, next: string): Promise<void> {
 	await authRequest('/api/auth/resend', { email, next });
@@ -144,13 +128,30 @@ export async function updatePassword(password: string): Promise<void> {
 	await authRequest('/api/auth/password', { password });
 }
 
-/** Mails a one-time code to an existing account; unknown addresses are rejected instead of created. */
-export async function requestEmailCode(email: string): Promise<void> {
-	await authRequest('/api/auth/code-request', { email });
+/**
+ * Mails a one-time code. Without a `name` only an existing account gets one (unknown addresses are
+ * not created); with a `name` the code registers a new account, or signs in an existing one.
+ */
+export async function requestEmailCode(
+	email: string,
+	name?: string,
+	isResend = false,
+): Promise<void> {
+	await authRequest('/api/auth/code-request', name === undefined ? { email } : { email, name });
+	if (name !== undefined && !isResend) posthog.capture('signup_submitted');
 }
 
-export async function verifyEmailCode(email: string, token: string): Promise<AuthSessionResult> {
-	return trackSession(await authRequest('/api/auth/code-verify', { email, token }));
+/** The `name` of a registration lets the owner of the address replace one a stranger stored first. */
+export async function verifyEmailCode(
+	email: string,
+	token: string,
+	name?: string,
+): Promise<AuthSessionResult> {
+	const result = await authRequest<AuthSessionResult>(
+		'/api/auth/code-verify',
+		name ? { email, token, name } : { email, token },
+	);
+	return trackSession(result, name !== undefined);
 }
 
 async function removeCurrentBrowserPushSubscription(

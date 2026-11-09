@@ -82,9 +82,10 @@ export default {
 		loadFailed: 'No se han podido cargar los asistentes conectados.',
 	},
 	passwordChange: {
-		signedInWith: 'Sesión iniciada con correo y contraseña: {email}',
-		action: 'Cambiar contraseña',
-		sent: 'Hemos enviado a {email} un enlace para cambiar tu contraseña.',
+		signedInWith:
+			'Inicio de sesión por correo: {email}. La contraseña es opcional, basta con el código por correo.',
+		action: 'Definir o cambiar contraseña',
+		sent: 'Hemos enviado a {email} un enlace para definir o cambiar tu contraseña.',
 		failed: 'No se ha podido enviar el enlace ahora mismo. Inténtalo más tarde.',
 	},
 	emailChange: {
