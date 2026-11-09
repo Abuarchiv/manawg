@@ -108,7 +108,7 @@ export function RemindButton({
 		setStatus((current) => {
 			// 'sent' holds until the reloaded history reports the cooldown; a leftover
 			// 'sending' without an in-flight request must not stick — otherwise the
-			// button stays on "Sende…" forever with no way to retry.
+			// button stays on its sending label forever with no way to retry.
 			if (current === 'sent' && nextStatus !== 'cooldown') return current;
 			return nextStatus;
 		});
@@ -169,12 +169,6 @@ export function RemindButton({
 				setStatus('error');
 			}
 			const failure = errorMessage(res.error);
-			setFeedback(failure);
-			toast.error(message(failure));
-		} catch (err) {
-			rollbackOptimistic?.();
-			const failure = errorMessage(err instanceof Error ? err.message : 'unknown');
-			setStatus('error');
 			setFeedback(failure);
 			toast.error(message(failure));
 		} finally {

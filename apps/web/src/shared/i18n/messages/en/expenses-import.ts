@@ -146,6 +146,7 @@ export default {
 	errors: {
 		failedPreview: 'Preview failed',
 		failedImport: 'Import failed',
+		keyUnavailable: 'The import could not be sent reliably. Try again.',
 		rateLimited: 'Too many import attempts. Wait a moment and try again.',
 		retryLater: 'The import could not be processed just now. Try again shortly.',
 		sessionExpired: 'Open the flat again so your membership can load.',
