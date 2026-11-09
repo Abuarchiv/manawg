@@ -109,8 +109,9 @@ auth).
 
 Behind your own reverse proxy instead, keep `SITE_ADDRESS=:80`, set `HTTP_PORT` to a local port
 and `TRUSTED_PROXIES` to the proxy's address (`private_ranges` covers proxies on the same host or
-network), and let the proxy pass on `Host` and `X-Forwarded-Proto`. `APP_URL` is always the
-address people open.
+network), and let the proxy pass on `Host`, `X-Forwarded-Proto` and `X-Forwarded-For`. `APP_URL`
+is always the address people open. [Reverse proxy examples](#reverse-proxy-examples) shows nginx
+and Traefik.
 
 - `TRUSTED_PROXIES` must list the proxy. Otherwise the gateway ignores the client address the
   proxy sends and the app's rate limits, such as the sign-in limit, are shared by all visitors.
@@ -118,6 +119,163 @@ address people open.
   another service owns 443, set `HTTPS_PORT` to a free port.
 - With `HTTP_BIND=127.0.0.1:` (keep the trailing colon) the gateway is reachable from this host
   only, so nobody can bypass the proxy. Leave it at the default when the proxy runs in another container or on another host.
+
+### Reverse proxy examples
+
+Both examples let the proxy own ports 80 and 443 and the certificate; the gateway then listens
+on a local port only. They were tested with ManaWG 0.2.0 on Docker 29.8 (OrbStack on macOS), with
+nginx 1.30.6 (`nginx:stable-alpine`, in a container on the host network, reaching the gateway at
+`127.0.0.1:8080`) and Traefik 3.6.25 (`traefik:v3.6`), with a self-signed certificate for
+`wg.example.com`. In both, `./docker/smoke.sh` passed through the proxy (sign-up
+with the confirmation link, a WG, a signed image upload, the scheduled jobs, backup and restore),
+and so did sign-up and the 8-digit code in a browser, which kept its sign-in cookies as `Secure`.
+
+What ManaWG needs from any proxy:
+
+- `Host` as the visitor sent it and `X-Forwarded-Proto: https`. Without either, sign-in, sign-up
+  and every other write is refused with `403 {"error":"cross_origin_blocked"}`.
+- `X-Forwarded-For` with the client address, and the proxy listed in `TRUSTED_PROXIES`. Without
+  them all visitors share one rate limit.
+- Request bodies up to 8 MiB. Receipt photos go from the browser to `/storage/v1/object/upload/sign/`
+  through the proxy.
+- Room for large response headers. The page behind a confirmation link sets the sign-in cookies,
+  and its headers measured about 4.7 KB; nginx's default buffer is one memory page, 4 KB here.
+- No `Upgrade` headers: the app opens no WebSocket connections.
+
+Both examples use these values in `.env` (then `docker compose up -d`). `HTTP_BIND=127.0.0.1:`
+keeps the gateway off the network, so nobody can skip the proxy, and a port other than 80 leaves
+80 and 443 to the proxy. `TRUSTED_PROXIES` depends on the proxy and is given below.
+
+```sh
+APP_URL=https://wg.example.com
+SITE_ADDRESS=:80
+HTTP_PORT=8080
+HTTP_BIND=127.0.0.1:
+```
+
+#### nginx
+
+Set `TRUSTED_PROXIES=private_ranges` in `.env`. For nginx on the host, in a file such as
+`/etc/nginx/conf.d/wg.example.com.conf`:
+
+```nginx
+server {
+    listen 80;
+    server_name wg.example.com;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name wg.example.com;
+
+    ssl_certificate     /path/to/fullchain.pem;
+    ssl_certificate_key /path/to/privkey.pem;
+
+    # Receipt photos are up to 8 MiB; the default is 1 MB.
+    client_max_body_size 10m;
+    # The sign-in cookies make some response headers larger than the default buffer.
+    proxy_buffer_size 16k;
+    proxy_buffers 4 16k;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+Run `nginx -t` and reload. If nginx runs as a container, attach it to the Compose network of the
+stack (`docker network ls` shows it as `<checkout folder>_default`) and use
+`proxy_pass http://gateway:80;`; that was tested as well.
+
+#### Traefik
+
+This setup has Traefik discover the gateway by its labels, so the Traefik container and the
+gateway share a Docker network with a fixed address range that `TRUSTED_PROXIES` can name:
+
+```sh
+docker network create --subnet 172.30.0.0/24 proxy
+```
+
+Set `TRUSTED_PROXIES=172.30.0.0/24` in `.env`. Next to `compose.yaml`, create
+`compose.override.yaml`, which Compose reads on its own:
+
+```yaml
+services:
+  gateway:
+    networks: [default, proxy]
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: proxy
+      traefik.http.routers.manawg.rule: Host(`wg.example.com`)
+      traefik.http.routers.manawg.entrypoints: websecure
+      traefik.http.routers.manawg.tls: "true"
+      traefik.http.services.manawg.loadbalancer.server.port: "80"
+
+networks:
+  proxy:
+    external: true
+```
+
+Traefik, as its own Compose project:
+
+```yaml
+services:
+  traefik:
+    image: traefik:v3.6
+    restart: unless-stopped
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks: [proxy]
+
+networks:
+  proxy:
+    external: true
+```
+
+Traefik sends `Host`, `X-Forwarded-Proto` and `X-Forwarded-For` by default and puts no limit on
+request bodies. The certificate is up to your Traefik: add a certificate resolver
+(`traefik.http.routers.manawg.tls.certresolver`) or a certificate file. The test used a file.
+
+#### Check it
+
+```sh
+curl -i https://wg.example.com/api/health
+```
+
+The answer is `200` with `"status":"ok"`. Then check that the sign-in limit sees each visitor
+separately. Sign-in allows 20 attempts per client address in five minutes. From one machine, send
+21 wrong sign-ins:
+
+```sh
+for i in $(seq 21); do
+  curl -s -o /dev/null -w '%{http_code}\n' -X POST https://wg.example.com/api/auth/sign-in \
+    -H 'Origin: https://wg.example.com' -H 'Content-Type: application/json' \
+    -d '{"email":"nobody@example.com","password":"wrong-password"}'
+done | sort | uniq -c
+```
+
+Expect `20 400` and `1 429`. The same loop from a second machine on another network gives
+`20 400` again and no `429`. If it is `429` at once, the proxy is not in `TRUSTED_PROXIES` or does
+not send `X-Forwarded-For`. The counter is in the app's memory: wait five minutes or run
+`docker compose restart app` before you repeat the check.
+
+`TRUSTED_PROXIES=private_ranges` skips every client with a private address, so visitors on your
+LAN or VPN would share one limit. If they matter, list only the proxy's address instead.
 
 ### Configuration
 
@@ -535,6 +693,8 @@ For the Docker setup. On Vercel, start with [Check the deployment](#7-check-the-
 | Push notifications are not delivered | Look for `web push failed status:403` or `status:401` in `docker compose logs app`, then check the VAPID keys and `VAPID_SUBJECT` |
 | A port is already in use | Set `HTTP_PORT` (see [Quick start](#quick-start)), `MAILPIT_PORT` for Mailpit, or `HTTPS_PORT` (see [Public instance with a domain](#public-instance-with-a-domain)) |
 | `password authentication failed` | `.env` does not match the database volume, see [What runs](#what-runs) |
+| Behind a proxy, sign-in or sign-up answers `403 cross_origin_blocked`, or everyone is rate limited at once | The proxy must send `Host`, `X-Forwarded-Proto` and `X-Forwarded-For` and be listed in `TRUSTED_PROXIES`, see [Reverse proxy examples](#reverse-proxy-examples) |
+| nginx answers `502` after a confirmation link, or `413` on an image upload | `upstream sent too big header` in the nginx error log means `proxy_buffer_size` is too small; `413` means `client_max_body_size` is, see [nginx](#nginx) |
 
 ## Getting help
 
