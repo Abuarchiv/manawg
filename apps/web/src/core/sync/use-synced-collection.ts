@@ -116,7 +116,7 @@ export function useSyncedCollection<TData, TItem>(config: SyncedCollectionConfig
 		shareCode: offline?.shareCode ?? null,
 		memberId,
 		page: offline?.page ?? '',
-		// The queue was flushed from elsewhere (online event, "Jetzt senden"): the pages' "saved
+		// The queue was flushed from elsewhere (online event, the banner's sync button): the pages' "saved
 		// offline" notices are obsolete now, not just after this hook's own replay.
 		onSynced: () => {
 			configRef.current.offline?.onReplayed?.();

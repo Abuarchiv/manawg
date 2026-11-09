@@ -3,13 +3,7 @@ import { dateTimeFormat } from '@/shared/i18n/intl';
 import type { Locale } from '@/shared/i18n/locale';
 import type { Message } from '@/shared/i18n/message';
 
-type RecurringTemplateConflict = {
-	description: string;
-	amountCents: number;
-	nextDueAt: string;
-};
-
-type RecurringAdvanceConflict = {
+type RecurringConflict = {
 	nextDueAt: string;
 };
 
@@ -27,7 +21,7 @@ function formatDueDate(value: string, locale: Locale): string | Message {
 }
 
 export function recurringTemplateConflictNote(
-	template: RecurringTemplateConflict,
+	template: RecurringConflict,
 	locale: Locale,
 ): Message {
 	return {
@@ -37,7 +31,7 @@ export function recurringTemplateConflictNote(
 }
 
 export function recurringAdvanceConflictNote(
-	template: RecurringAdvanceConflict,
+	template: RecurringConflict,
 	expectedNextDueAt: string,
 	locale: Locale,
 ): Message {
